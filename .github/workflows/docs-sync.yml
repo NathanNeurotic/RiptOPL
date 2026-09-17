@@ -3,10 +3,9 @@ name: Sync Project Links & Badges
 on:
   push:
     branches:
-      # rebuild/main ONLY. This job regenerates the External Tools block in the source README and
-      # the checked-in site copy. Running it from master -- the old lineage -- would rewrite the live
-      # documentation from a stale template and silently revert the rebuild line's content.
-      - rebuild/main
+      # main is the publishing branch for this fork. This job regenerates the External Tools block
+      # in the source README and the checked-in site copy.
+      - main
   workflow_dispatch:
 
 permissions:
@@ -38,7 +37,7 @@ jobs:
           ember = "https://github.com/Gageformer/Ember"
           popstarter = "https://www.psx-place.com/resources/popstarter.683/"
           neutrino = "https://github.com/rickgaiser/neutrino"
-          badge = "[![CI](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml/badge.svg?branch=rebuild/main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml)"
+          badge = "[![CI](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml/badge.svg?branch=main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml)"
 
           readme = Path("README.md")
           text = readme.read_text(encoding="utf-8")

@@ -73,7 +73,7 @@ launch problems to us; genuine Neutrino bugs belong upstream.
 - **Storage safety:** on the internal HDD, RiptOPL is a game loader, not a partition manager. It
   writes only inside PFS partitions and never edits the APA table, so HDL games and one-game `PP.*`
   PS1 installs are deleted and renamed on a PC. A table that can't be read shows **code 402: don't
-  format it** ([recovery guide](https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/APA-SAFETY.md)).
+  format it** ([recovery guide](https://github.com/NathanNeurotic/RiptOPL/blob/main/docs/APA-SAFETY.md)).
   USB, exFAT HDD, MX4SIO and iLink no longer return stale data after a failed read. A drive whose
   logical sectors aren't 512 bytes (4Kn) is refused, showing **code 500** on USB and exFAT; 512e
   drives work normally.

@@ -2,13 +2,13 @@ name: Neutrino Watch
 
 # Keeps the rolling release "cutting edge" with respect to the upstream Neutrino core.
 #
-# Pushes to master already refresh the rolling release on their own (rolling-release.yml), which
+# Pushes to main already refresh the rolling release on their own (rolling-release.yml), which
 # re-fetches the latest Neutrino each run. This watcher covers the OTHER half: when the official
 # Neutrino repo publishes a newer build than the one currently bundled in our rolling release, it
 # re-dispatches rolling-release.yml so the package rebundles the latest Neutrino -- without waiting
 # for an OPL commit.
 #
-# It is only a slow safety net -- any push to master rebundles Neutrino anyway -- so it ticks about
+# It is only a slow safety net -- any push to main rebundles Neutrino anyway -- so it ticks about
 # once every 10 days rather than the every-3h it used to; use workflow_dispatch for an on-demand check.
 #
 # Cheap + conditional: every run is two read-only API calls; it only dispatches a rebuild when the
@@ -63,12 +63,12 @@ jobs:
           # Neutrino yet, OR a prior rolling build's best-effort fetch failed and wrote no
           # "Included build:" line -- do NOT dispatch: otherwise a persistent upstream outage would
           # re-trigger a full (expensive) rebuild on every cron tick. That state self-heals on the
-          # next push to master (rolling-release re-fetches Neutrino) or a manual rolling dispatch.
+          # next push to main (rolling-release re-fetches Neutrino) or a manual rolling dispatch.
           if [ -z "$CUR" ]; then
-            echo "Rolling has no recorded bundled Neutrino version; deferring to the next push-to-master rebuild."
+            echo "Rolling has no recorded bundled Neutrino version; deferring to the next push-to-main rebuild."
           elif [ "$NEU" != "$CUR" ]; then
             echo "Neutrino changed ($CUR -> $NEU): dispatching rolling-release.yml to rebundle."
-            gh workflow run rolling-release.yml --repo "$GITHUB_REPOSITORY" --ref rebuild/main
+            gh workflow run rolling-release.yml --repo "$GITHUB_REPOSITORY" --ref main
           else
             echo "Rolling already bundles the latest Neutrino ($NEU). Nothing to do."
           fi

@@ -70,7 +70,7 @@ says what exists, and the console streams the ISO itself with plain HTTP byte ra
 asks for sectors. The server must satisfy the client profile: no transfer encoding, no content
 encoding other than identity, no multipart responses, exact <code>Content-Range</code> and <code>Content-Length</code>
 for range reads, and complete response bodies. Check it with the
-<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/pc/http/README.md">conformance tool</a>.</p>
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/main/pc/http/README.md">conformance tool</a>.</p>
 <p>Use HTTP only on a trusted, isolated local network. It provides no encryption or server/content
 authentication; range and length validation detect malformed responses, not substituted game data.</p>
 <p>The design, the byte-range reader RiptOPL follows, and the PC server are

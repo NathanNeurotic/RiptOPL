@@ -289,7 +289,7 @@ destroy them. (Code <b>401</b> now means the drive really did not answer.)
 <code>dd</code> or Win32 Disk Imager's <i>Read</i>. At minimum the recovery tool saves the first 4 MB for you.</p></div>
 <div class="step"><h3>Diagnose (read-only)</h3>
 <p>Get <code>apa_recover.py</code> from
-<a href="https://github.com/NathanNeurotic/RiptOPL/tree/rebuild/main/pc/apa-recovery"><code>pc/apa-recovery</code></a>
+<a href="https://github.com/NathanNeurotic/RiptOPL/tree/main/pc/apa-recovery"><code>pc/apa-recovery</code></a>
 (Python 3.8 or newer, no extra packages) and run it as root:</p>
 <pre>python3 apa_recover.py /dev/sdX</pre>
 <p>On Windows, from an Administrator prompt: <code>python apa_recover.py \\.\PhysicalDrive2</code>. Find the
@@ -302,7 +302,7 @@ checks it with the same rules the PS2 driver applies. It refuses GPT hybrids, a 
 middle, and anything else it cannot verify.</p></div>
 </div>
 
-<p><a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/APA-SAFETY.md">docs/APA-SAFETY.md</a>
+<p><a href="https://github.com/NathanNeurotic/RiptOPL/blob/main/docs/APA-SAFETY.md">docs/APA-SAFETY.md</a>
 lists every protection and what none of them can cover: other software (wLaunchELF, HDD-OSD, PC tools)
 uses its own driver, and a failing drive fails regardless. None of these protections has been through a
 hardware power-cut test yet.</p>

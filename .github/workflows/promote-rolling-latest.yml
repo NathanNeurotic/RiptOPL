@@ -3,9 +3,7 @@ name: Enforce Rolling as Latest
 on:
   push:
     branches:
-      # rebuild/main is the publishing branch. master is old lineage and must never
-      # drive the rolling channel, so it is deliberately NOT a trigger here.
-      - rebuild/main
+      - main
   workflow_dispatch:
 
 permissions:

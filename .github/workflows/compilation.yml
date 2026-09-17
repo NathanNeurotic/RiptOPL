@@ -704,7 +704,7 @@ jobs:
   release:
     needs: [build, merge-variants, build-lang]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master'
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     env:
       USERNAME: ${{ secrets.USERNAME }}
       PASSWORD: ${{ secrets.PASSWORD }}
@@ -778,7 +778,7 @@ jobs:
             ${PRERELEASE_FLAG}
 
 #      - name: Upload pre-release to Mega
-#        if: github.ref == 'refs/heads/master' && env.USERNAME != null
+#        if: github.ref == 'refs/heads/main' && env.USERNAME != null
 #        uses: Difegue/action-megacmd@master
 #        with:
 #          args: put -c RIPTOPL.7z /OPL/Pre-Release/${{ env.OPL_VERSION }}/run_${{ github.run_number }}/

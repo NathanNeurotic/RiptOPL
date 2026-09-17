@@ -1,5 +1,5 @@
 
-<p align="center"><img alt="RiptOPL" src="https://raw.githubusercontent.com/NathanNeurotic/RiptOPL/rebuild/main/docs/assets/riptopl.png" /></p>
+<p align="center"><img alt="RiptOPL" src="https://raw.githubusercontent.com/NathanNeurotic/RiptOPL/main/docs/assets/riptopl.png" /></p>
 
 
 
@@ -16,9 +16,9 @@ Based on Open PS2 Loader · Copyright 2013, Ifcaro & jimmikaelkael<br>
 Licensed under Academic Free License version 3.0<br>
 Review the LICENSE file for further details.<br><br>
 
-[![CI](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml/badge.svg?branch=rebuild/main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml)
-[![Format](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/check-format.yml/badge.svg?branch=rebuild/main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/check-format.yml)
-[![Rolling Release](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml/badge.svg?branch=rebuild/main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml)
+[![CI](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml/badge.svg?branch=main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml)
+[![Format](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/check-format.yml/badge.svg?branch=main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/check-format.yml)
+[![Rolling Release](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml/badge.svg?branch=main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml)
 [![Latest release](https://img.shields.io/github/v/release/NathanNeurotic/RiptOPL?style=plastic&logo=github&label=Latest%20Release&labelColor=navy&color=skyblue&include_prereleases)](https://github.com/NathanNeurotic/RiptOPL/releases)
 ![Released](https://img.shields.io/github/release-date-pre/NathanNeurotic/RiptOPL?style=plastic&logo=github&label=Released&labelColor=navy&color=skyblue)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/NathanNeurotic/RiptOPL/total?style=plastic&logo=github&logoSize=auto&label=Total%20Downloads&labelColor=navy&color=skyblue)
@@ -31,8 +31,8 @@ Review the LICENSE file for further details.<br><br>
 ![Translations](https://img.shields.io/badge/Translations-31%20languages-skyblue?style=flat&logo=googletranslate&logoColor=white&labelColor=navy)
 ![Repo Size](https://img.shields.io/github/repo-size/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Repo%20Size)
 
-![Last Commit](https://img.shields.io/github/last-commit/NathanNeurotic/RiptOPL/rebuild/main?style=flat&labelColor=navy&color=skyblue&logo=git&logoColor=white&label=Last%20Commit)
-![Commits per month](https://img.shields.io/github/commit-activity/m/NathanNeurotic/RiptOPL/rebuild/main?style=flat&labelColor=navy&color=skyblue&logo=github&label=Commits%2FMonth)
+![Last Commit](https://img.shields.io/github/last-commit/NathanNeurotic/RiptOPL/main?style=flat&labelColor=navy&color=skyblue&logo=git&logoColor=white&label=Last%20Commit)
+![Commits per month](https://img.shields.io/github/commit-activity/m/NathanNeurotic/RiptOPL/main?style=flat&labelColor=navy&color=skyblue&logo=github&label=Commits%2FMonth)
 ![Contributors](https://img.shields.io/github/contributors/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Contributors)
 [![Open Issues](https://img.shields.io/github/issues/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Open%20Issues)](https://github.com/NathanNeurotic/RiptOPL/issues)
 [![Stars](https://img.shields.io/github/stars/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Stars)](https://github.com/NathanNeurotic/RiptOPL/stargazers)
@@ -92,7 +92,7 @@ Choose the current development build or a preserved snapshot:
 
 | Channel | What it is |
 | --- | --- |
-| **[Rolling (Latest)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling)** | Updated from `rebuild/main` by successful publishing runs. A full, non-pre-release GitHub release that remains a **development build**, with compatibility depending on the game and hardware. |
+| **[Rolling (Latest)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling)** | Updated from `main` by successful publishing runs. A full, non-pre-release GitHub release that remains a **development build**, with compatibility depending on the game and hardware. |
 | **[Current Fan Favorite Build](https://github.com/NathanNeurotic/RiptOPL/releases/tag/current-fan-favorite)** | A preserved development snapshot selected after positive user feedback. Use it as a fixed comparison point; it is not a universal compatibility guarantee. |
 
 Download the **normal installable package**, `RIPTOPL-<version>.zip`. Separate archives serve

@@ -11,10 +11,10 @@ body = p.read_text(encoding='utf-8')
 root = pathlib.Path(__file__).resolve().parents[2]
 
 banner = '''<p align="center">\n  <img width="400" height="92" alt="AI-Assisted-Software-Lovers-Only" src="https://github.com/user-attachments/assets/71335775-9fe3-4507-ac2c-caa851abb24c" />\n</p>'''
-# The project banner, served from rebuild/main so one file in the repo drives the README, the
+# The project banner, served from main so one file in the repo drives the README, the
 # docs site and every release page at once. It has to be an ABSOLUTE url: a release description
 # is rendered outside any repository context, so a relative path resolves to nothing.
-hero = '''<p align="center"><img alt="RiptOPL" src="https://raw.githubusercontent.com/NathanNeurotic/RiptOPL/rebuild/main/docs/assets/riptopl.png" /></p>'''
+hero = '''<p align="center"><img alt="RiptOPL" src="https://raw.githubusercontent.com/NathanNeurotic/RiptOPL/main/docs/assets/riptopl.png" /></p>'''
 # Anchored to the START of the body and to the asset PATH, not a bare filename, so this only ever
 # removes a hero this script itself put there. Deliberately NOT an exact-string match against `hero`:
 # if the markup is ever edited, an exact match would stop recognising the previous hero and start

@@ -3,7 +3,7 @@
 This fork publishes a continuously-updated **`rolling`** development release so the current
 publishing-branch build can be pulled straight from GitHub as development progresses, without
 changing a preserved snapshot such as `current-fan-favorite`. No stable `v*` release is currently published here. `rolling` is a full (non-pre-release) release and
-intentionally owns GitHub's **Latest** marker. The publishing branch is `rebuild/main` during the
+intentionally owns GitHub's **Latest** marker. The publishing branch is `main`.
 rebuild. `master` is the OLD LINEAGE and is no longer wired to the release workflow at all: a
 push to it builds nothing and publishes nothing.
 
@@ -115,7 +115,7 @@ whether the bleeding-edge build succeeded.
 
 [`.github/workflows/rolling-release.yml`](.github/workflows/rolling-release.yml):
 
-- Triggers on every push to `rebuild/main` (updates `rolling`), on every `v*` **tag** push (cuts a
+- Triggers on every push to `main` (updates `rolling`), on every `v*` **tag** push (cuts a
   curated per-version release with identical packaging), and on manual **Run workflow** (workflow_dispatch).
   `master` is deliberately absent from both the trigger list and the publish gate.
 - Builds four labelled flavours across two toolchain lineages: moving and digest-pinned
@@ -139,7 +139,7 @@ whether the bleeding-edge build succeeded.
 
 This workflow is the **single** place release packaging lives. The pushed ref picks the target:
 
-- **`rebuild/main` push** → updates the `rolling` Latest release (the development channel).
+- **`main` push** → updates the `rolling` Latest release (the development channel).
 - **`v*` tag push** → cuts the **curated per-version release** for that tag (a full release; an
   `-rc*` tag stays a pre-release). Curated tags do not displace `rolling` from GitHub's Latest marker.
   It runs through the **same normalized asset pipeline** as rolling — the same installable bundle,
@@ -147,7 +147,7 @@ This workflow is the **single** place release packaging lives. The pushed ref pi
   best-effort flavour rules — so the two channels cannot drift into different package formats.
 
 `compilation.yml` no longer cuts releases (its release step is retired); it only runs CI +
-uploads run artifacts. Per-ref `concurrency` keeps a `rebuild/main` push and a tag release from
+uploads run artifacts. Per-ref `concurrency` keeps a `main` push and a tag release from
 cancelling each other.
 
 ## Not a stable release

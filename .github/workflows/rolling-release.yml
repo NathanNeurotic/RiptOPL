@@ -3,10 +3,9 @@ name: Rolling Release
 # Continuously publishes the current build of the PUBLISHING BRANCH to a single "rolling"
 # development release. It is a full (non-pre-release) GitHub release marked Latest, and it can be
 # pulled directly from a stable URL as development progresses. The publishing branch is
-# `rebuild/main`, and only rebuild/main: it is the physical publish knob, fast-forwarded to a
+# `main`, and only main: it is the physical publish branch for this repository.
 # tested step-chain tip exactly when Nathan wants a rolling build to go out, never
-# automatically per step. `master` is the OLD LINEAGE and is deliberately not wired to this
-# workflow at all -- see the NOTE(rebuild) on the publish-rolling gate below.
+# automatically per step. The fork's default `main` branch is the only push trigger.
 #
 # Builds four flavours across the ps2dev and official ps2homebrew toolchain lineages so a regression
 # in either moving SDK or either pinned control is visible from the rolling channel (and a hardware
@@ -46,10 +45,7 @@ name: Rolling Release
 on:
   push:
     branches:
-      # rebuild/main is THE publishing branch. master is the old lineage: it is kept
-      # around for history, and a push to it must never republish the rolling channel with
-      # pre-rebuild code. Deliberately not a trigger.
-      - rebuild/main
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -57,8 +53,8 @@ on:
 permissions:
   contents: write
 
-# Per-ref: master pushes still supersede each other (rolling), but a v* tag release runs in its
-# own group, so a new master push can't cancel an in-flight release cut (or vice versa).
+# Per-ref: main pushes supersede each other (rolling), but a v* tag release runs in its
+# own group, so a new main push can't cancel an in-flight release cut (or vice versa).
 concurrency:
   group: rolling-release-${{ github.ref }}
   cancel-in-progress: true
@@ -458,14 +454,12 @@ jobs:
     needs: [build-rolling-pinned, build-rolling-ps2dev-latest, build-rolling-officialsdk, build-rolling-official-pinned]
     # NOTE(rebuild): publish gate. Downstream this job has NO ref check -- anything that is not a
     # v* tag falls through to TAG="rolling" and updates the PUBLIC rolling release (see the tag/title block
-    # below). The gate therefore names the only branch allowed to publish: rebuild/main (the
+    # below). The gate therefore names the only branch allowed to publish: main (the
     # publish knob -- fast-forwarded to a tested step tip only when a rolling build is meant to go
-    # out). Any OTHER ref -- master, a step branch, workflow_dispatch from one, a feature branch --
+    # out). Any OTHER ref -- a step branch, workflow_dispatch from one, a feature branch --
     # still runs the build jobs (the part worth rehearsing) and uploads their artifacts, while
-    # withholding only the publish. master is excluded on purpose: it is the abandoned lineage, and
-    # a push to it publishing over the rolling channel would ship pre-rebuild code as Latest. This
-    # gate is belt-and-braces with the push trigger above, which no longer lists master either.
-    if: ${{ github.ref == 'refs/heads/rebuild/main' || startsWith(github.ref, 'refs/tags/v') }}
+    # withholding only the publish. The gate is belt-and-braces with the push trigger above.
+    if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1147,11 +1141,11 @@ jobs:
       # record, every rolling build is ALSO archived to MEGA as ONE immutable, self-contained
       # zip of the entire release payload. Runs AFTER Publish so the GitHub release is completely
       # unchanged and a MEGA hiccup can never block or alter it -- MEGA is purely additive. Gated to
-      # the publishing branch (rebuild/main) + secrets present, so v* tag cuts and secret-less
-      # forks skip it cleanly. master was dropped 2026-09-02 along with its publish trigger: the
+      # the publishing branch (main) + secrets present, so v* tag cuts and secret-less
+      # forks skip it cleanly.
       # old lineage must not archive over the new one's history either.
       - name: Build all-in-one MEGA archive
-        if: github.ref == 'refs/heads/rebuild/main' && env.USERNAME != '' && env.PASSWORD != ''
+        if: github.ref == 'refs/heads/main' && env.USERNAME != '' && env.PASSWORD != ''
         run: |
           set -eu
           # Validate the payload BEFORE archiving so a broken publish fails loudly instead of pushing
@@ -1234,7 +1228,7 @@ jobs:
           ls -la mega-out
 
       - name: Upload archive and regular ELFs in all 4 flavours to MEGA
-        if: github.ref == 'refs/heads/rebuild/main' && env.USERNAME != '' && env.PASSWORD != ''
+        if: github.ref == 'refs/heads/main' && env.USERNAME != '' && env.PASSWORD != ''
         # Pinned to a full commit SHA rather than @master: this third-party action runs with the
         # MEGA credentials, so freeze it to a reviewed snapshot instead of trusting whatever is on
         # its master branch at build time. bf698c6 == the action's v1.4.0 release == the master HEAD

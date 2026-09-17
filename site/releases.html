@@ -76,7 +76,7 @@
 <b><a href="https://www.psx-place.com/resources/popstarter.683/">POPStarter</a></b> by <b>krHACKen</b> — a PS1 launcher built around Sony's native <b>POPS</b> emulator for the PS2, used as RiptOPL's primary PS1 core alongside Ember. POPStarter provides the compatibility and launch layer for running PS1 VCDs from USB, MX4SIO, MMCE, iLink, internal HDD, and SMB; RiptOPL's iLink handoff is wired but still awaiting a passing hardware retest. The official POPStarter r13 package contains no Sony emulator binaries, libraries, or BIOS files; those components must be supplied separately by the user. Official download, documentation, compatibility information, and releases are maintained on <a href="https://www.psx-place.com/resources/popstarter.683/">PSX-Place</a>.<br>
 <b><a href="https://github.com/rickgaiser/neutrino">Neutrino</a></b> by <b><a href="https://github.com/rickgaiser">rickgaiser</a></b> — a small, fast, modular PS2 device emulator, and RiptOPL's second PS2 loader core alongside OPL's own. Normally ships as a ready-to-use <code>neutrino/</code> folder inside the installable package (check release notes for omissions) (drag-and-drop to <code>mc?:/neutrino/</code>), under the <b>AFL-3.0</b> licence; <a href="https://github.com/rickgaiser/neutrino/releases">releases</a>.</p></section>
 <h1>Releases</h1>
-<p class="lead">Choose <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling">Rolling</a> for current development or <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/current-fan-favorite">Current Fan Favorite Build</a> for a preserved development snapshot. The publishing branch is <code>rebuild/main</code>; neither choice guarantees compatibility with every setup.</p>
+<p class="lead">Choose <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling">Rolling</a> for current development or <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/current-fan-favorite">Current Fan Favorite Build</a> for a preserved development snapshot. The publishing branch is <code>main</code>; neither choice guarantees compatibility with every setup.</p>
 
 <div class="callout info"><div class="h">ℹ One full-feature build</div>
 RiptOPL ships a single standard ELF that includes <b>GSM</b> video-mode handling,
@@ -113,7 +113,7 @@ as pre-releases; a bare <code>v*</code> tag produces a full curated release with
 
 <h2 id="rolling-assets">What the rolling release contains</h2>
 
-<p>Successful publishing runs on <code>rebuild/main</code> replace the rolling assets. Archives are organized by purpose: the normal installable package, RA development package, exact source, VARIANTS, and optional language/debug packs. Read the release notes for omitted flavours or companion downloads.</p>
+<p>Successful publishing runs on <code>main</code> replace the rolling assets. Archives are organized by purpose: the normal installable package, RA development package, exact source, VARIANTS, and optional language/debug packs. Read the release notes for omitted flavours or companion downloads.</p>
 
 <table data-sortable>
 <thead><tr><th>Asset</th><th>What it is</th></tr></thead>
@@ -164,7 +164,7 @@ as pre-releases; a bare <code>v*</code> tag produces a full curated release with
   <code>xeRAbora.url</code> for the PC client the feature talks to. Take this one <i>instead of</i>
   the main archive if you want achievements. <b>A development build</b>: it is written end to end
   but has not been tested on real hardware yet. See
-  <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/RETROACHIEVEMENTS.md">docs/RETROACHIEVEMENTS.md</a>.</td>
+  <a href="https://github.com/NathanNeurotic/RiptOPL/blob/main/docs/RETROACHIEVEMENTS.md">docs/RETROACHIEVEMENTS.md</a>.</td>
 </tr>
 <tr>
   <td><code>RIPTOPL-VARIANTS-*.zip</code></td>
@@ -245,7 +245,7 @@ GitHub) are the only exception.</div>
 release packaging lives. The pushed ref picks the publish target:</p>
 
 <ul class="checklist">
-  <li><b>Push to <code>rebuild/main</code> or <code>master</code></b> → updates the
+  <li><b>Push to <code>main</code></b> → updates the
   <code>rolling</code> full development release, explicitly clears its pre-release flag, and keeps it
   marked as GitHub Latest.</li>
   <li><b>Push of a <code>v*</code> tag</b> → cuts a curated per-version release for that tag,

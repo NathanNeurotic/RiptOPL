@@ -38,8 +38,7 @@ name: build-flavours
 on:
   push:
     branches:
-      - master
-      - rebuild/main
+      - main
   pull_request:
   workflow_dispatch:
 
