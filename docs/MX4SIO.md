@@ -13,7 +13,7 @@ OPL reset the IOP and originally copied and loaded only `mx4sio_bd`; the require
 `freesio2` module was no longer present.
 
 This explains the shared failure pattern in
-[RiptOPL issue #317](https://github.com/NathanNeurotic/Open-PS2-Loader/issues/317) and
+[RiptOPL issue #317](https://github.com/NathanNeurotic/RiptOPL/issues/317) and
 [upstream OPL issue #1731](https://github.com/ps2homebrew/Open-PS2-Loader/issues/1731):
 the card mounts and games are listed, but launching a game stalls before MX4SIO reads
 resume. The SCPH-50004 report in

@@ -4,9 +4,10 @@ Working checklist of features that exist in RiptOPL but are **not explained** to
 documentation surfaces:
 
 * **Repo** — `README.md` and `docs/*.md`
-* **Site** — the GitHub Pages docs, published from the `gh-pages` branch of this repository
+* **Site** — the GitHub Pages docs, deployed from the `site/` directory on `main` by
+  `.github/workflows/pages.yml`
 
-Audited 2026-09-09 against `rebuild/main` @ `10301224`, site @ `d66803be`.
+Audited 2026-09-09 against `main` @ `10301224`, site @ `d66803be`.
 
 Legend: **Missing** = no explanation anywhere · **Setting-line only** = the option appears in a
 settings table with a one-line hint, but nothing tells a user what the feature *is* or how to use it ·

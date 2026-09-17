@@ -1,6 +1,6 @@
 # Auto Loading global settings (#545)
 
-Issue [#545](https://github.com/NathanNeurotic/Open-PS2-Loader/issues/545) tracks
+Issue [#545](https://github.com/NathanNeurotic/RiptOPL/issues/545) tracks
 [CosmicScale's upstream report](https://github.com/ps2homebrew/Open-PS2-Loader/issues/1768)
 on an SCPH-50001. The reporter supplied an APA/PFS ELF path with BDM game arguments:
 

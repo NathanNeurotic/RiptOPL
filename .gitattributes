@@ -17,6 +17,9 @@
 # CRLF<->LF pass through one produces a binary that no longer loads, and the failure would surface
 # as "this POPSTARTER variant hangs" long after the commit that caused it.
 POPS/** binary
+# The provenance manifest is documentation, not payload: keep it diffable as LF text even though
+# the POPS/** rule above would otherwise mark it binary.
+POPS/PROVENANCE.md text eol=lf diff
 *.irx binary
 
 # Ember's core, shipped verbatim exactly like the POPSTARTER payload above. ember.elf is a PS2 ELF;

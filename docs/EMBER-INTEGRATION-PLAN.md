@@ -1,7 +1,7 @@
 # Ember as a second PS1 core — integration plan
 
 > **Internal engineering document.** This is an implementation plan for contributors, not user
-> documentation. For how to *use* the feature, see the [PS1 Games page](https://nathanneurotic.github.io/Open-PS2-Loader/ps1-vcd.html) and [VCD.md](VCD.md).
+> documentation. For how to *use* the feature, see the [PS1 Games page](https://nathanneurotic.github.io/RiptOPL/ps1-vcd.html) and [VCD.md](VCD.md).
 
 **Status:** ordinary device PS1 pages ship both cores in one list; UDPFS and UDPBD ship an
 Ember-only PS1 list because POPSTARTER cannot restore either network transport. Ember handoffs
