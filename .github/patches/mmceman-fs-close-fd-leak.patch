@@ -62,3 +62,4 @@ index ca6f618..6bc0d0e 100644
 +        *(int*)file->privdata = -1;
          return -1;
      }
+ 
