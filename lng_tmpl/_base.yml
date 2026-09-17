@@ -1,0 +1,1334 @@
+comment_for_template_header: |-
+  This file is a template for translators. This file's encoding must be UTF8.
+
+  Entry that has been translated looks like this:
+    LABEL: Some string goes here
+
+  Entry that is intentionally left untranslated looks like this:
+    LABEL:
+    - same
+    - original: Version of this string in English
+
+  Entry that is not yet translated looks like this:
+    LABEL:
+    - untranslated
+    - original: Version of this string in English
+
+  To translate an untranslated entry, simply delete the two lines below the label
+  and replace them with text in target language. To mark the entry as intentionally
+  untranslated, replace "untranslated" with "same".
+  It might be necessary to put your text in quotes if it contains a colon (`:`) or it's a text
+  like "Yes" or "No". See YAML documentation for details. If in doubt, just quote the text.
+
+  Important: if your language require some custom glyphs, you should provide a corresponding
+  TTF/OTF font file too. By default, OPL only comes with the "basic Latin" font built-in.
+
+  Once the translation is complete, you can submit it to the development team.
+
+  To use your custom language with OPL, simply copy the .lng file into your mc?:/OPL or LNG folder
+  (File must start with the "lang_" prefix and have the ".lng" extension)
+
+  Finally, don't put too many comments in your file, it will waste space and increases loading
+  time. One single comment line on top (e.g. "name <yourmail@address.com>") should be enough.
+
+  Thanks for your work.
+comments_for_template_labels:
+  LOCALE: Put here the English name of your language (will be displayed in the OPL Settings menu), in standard latin characters.
+enum_name: _STR_IDS
+enum_label_prefix: _STR_
+string_array_name: internalEnglish
+string_count_label: LANG_STR_COUNT
+string_array_specifiers: ''
+gui_strings:
+- comment: Localized language name
+  label: LOCALE
+  string: English (internal)
+- label: SAVE_CHANGES
+  string: Save Changes
+- label: BACK
+  string: Back
+- label: NETCONFIG
+  string: Network Settings
+- label: SHOW_ADVANCED_OPTS
+  string: Advanced Options
+- label: NO_ITEMS
+  string: <no values>
+- label: SETTINGS_SAVED
+  string: Settings saved to %s
+- label: ERROR_SAVING_SETTINGS
+  string: Error writing settings!
+- label: EXIT
+  string: Exit
+- label: SETTINGS
+  string: Settings
+- label: MENU
+  string: Menu
+- label: BDM_GAMES
+  string: BDM Games
+- label: HDD_GAMES
+  string: HDD Games
+- label: NET_GAMES
+  string: ETH Games
+- label: APPS
+  string: Apps
+- label: THEME
+  string: Theme
+- label: LANGUAGE
+  string: Language
+- label: CONFIRMATION_POFF
+  string: The system will be powered off.
+- label: CONFIRMATION_EXIT
+  string: Exit to Browser?
+- label: CONFIRMATION_CANCEL_UPDATE
+  string: Cancel updating?
+- label: HDD_NOT_CONNECTED_ERROR
+  string: '%d: HardDisk Drive not detected.'
+- label: HDD_NOT_FORMATTED_ERROR
+  string: '%d: HardDisk Drive not formatted.'
+- comment: Generic network error message.
+  label: NETWORK_STARTUP_ERROR
+  string: '%d: Network startup error.'
+- label: NETWORK_STARTUP_ERROR_NETIF
+  string: '%d: No network adaptor detected.'
+- label: NETWORK_STARTUP_ERROR_CONN
+  string: '%d: Cannot connect to SMB server.'
+- label: NETWORK_STARTUP_ERROR_LOGON
+  string: '%d: Cannot log into SMB server.'
+- label: NETWORK_STARTUP_ERROR_SHARE
+  string: '%d: Cannot open SMB share.'
+- label: NETWORK_SHARE_LIST_ERROR
+  string: '%d: Cannot list SMB shares.'
+- label: NETWORK_GAMES_LIST_ERROR
+  string: '%d: Cannot list games.'
+- label: NETWORK_ERROR_DHCP_FAIL
+  string: '%d: DHCP server unavailable.'
+- label: NETWORK_ERROR_LINK_FAIL
+  string: '%d: No network connection.'
+- label: 'ON'
+  string: 'On'
+- label: 'OFF'
+  string: 'Off'
+- label: OK
+  string: OK
+- label: SELECT
+  string: Select
+- label: CANCEL
+  string: Cancel
+- label: CIRCLE
+  string: Circle
+- label: CROSS
+  string: Cross
+- label: GAMES_LIST
+  string: Games List
+- label: COMPAT_SETTINGS
+  string: Game Settings
+- label: REMOVE_ALL_SETTINGS
+  string: Remove Settings
+- label: SCROLLING
+  string: Scrolling Speed
+- label: SLOW
+  string: Slow
+- label: MEDIUM
+  string: Medium
+- label: FAST
+  string: Fast
+- label: DEFDEVICE
+  string: Default Menu
+- label: LOAD_FROM_DISC
+  string: Load From Disc
+- label: PLEASE_WAIT
+  string: Please wait.
+- label: ERROR_LOADING_ID
+  string: Error while loading the Game ID.
+- label: AUTOSORT
+  string: Sort Games Alphabetically
+- label: ERR_LOADING_LANGFILE
+  string: Error loading the language file.
+- label: DEBUG
+  string: Debug Colors
+- label: NO_CONTROLLER
+  string: No controller detected, waiting...
+- label: COVERART
+  string: Cover Art
+- label: WIDE_SCREEN
+  string: Widescreen
+- label: POWEROFF
+  string: Power Off
+- label: LOADING_SETTINGS
+  string: Loading config...
+- label: SAVING_SETTINGS
+  string: Saving config...
+- label: START_DEVICE
+  string: Start Device
+- label: REFRESH
+  string: Refresh
+- label: BDMMODE
+  string: BDM Start Mode
+- label: HDDMODE
+  string: HDD (APA) Start Mode
+- label: ETHMODE
+  string: ETH Start Mode
+- label: APPMODE
+  string: Applications Start Mode
+- label: AUTO
+  string: Auto
+- label: MANUAL
+  string: Manual
+- label: STARTNBD
+  string: Start NBD Server
+- label: STARTINGNBD
+  string: NBD Server starting...
+- label: RUNNINGNBD
+  string: NBD Server running...
+- label: STARTFAILNBD
+  string: Failed to start NBD Server.
+- label: UNLOADNBD
+  string: NBD Server unloading...
+- label: EXITTO
+  string: IGR Path
+- label: BGCOLOR
+  string: Background Color
+- label: TXTCOLOR
+  string: Text Color
+- label: CAT_SMB_SERVER
+  string: '- SMB Server -'
+- label: IP_ADDRESS_TYPE
+  string: IP Address Type
+- label: IP_ADDRESS_TYPE_STATIC
+  string: Static
+- label: IP_ADDRESS_TYPE_DHCP
+  string: DHCP
+- label: IP_ADDRESS
+  string: IP Address
+- label: ADDRESS
+  string: Address
+- label: MASK
+  string: Mask
+- label: GATEWAY
+  string: Gateway
+- label: DNS_SERVER
+  string: DNS Server
+- label: PORT
+  string: Port
+- label: SHARE
+  string: Share
+- label: USER
+  string: User
+- label: PASSWORD
+  string: Password
+- label: NOT_SET
+  string: <not set>
+- label: ADDRESS_TYPE
+  string: Address Type
+- label: ADDR_TYPE_IP
+  string: IP
+- label: ADDR_TYPE_NETBIOS
+  string: NetBIOS
+- label: ACCEPT
+  string: Accept
+- label: DELETE_WARNING
+  string: Item will be permanently deleted, continue?
+- label: RENAME
+  string: Rename
+- label: DELETE
+  string: Delete
+- label: RUN
+  string: Run
+- label: GFX_SETTINGS
+  string: Display Settings
+- label: ENABLE_WRITE
+  string: Write Operations
+- label: LASTPLAYED
+  string: Remember Last Played Game
+- label: SELECTBUTTON
+  string: Select Button
+- label: ERR_FRAGMENTED
+  string: Error, the game is fragmented.
+- label: ERR_FILE_INVALID
+  string: Error, could not run the item.
+- label: TEST
+  string: Test Changes
+- label: HINT_GUEST
+  string: Leave empty for GUEST auth.
+- label: HINT_MODE1
+  string: Accurate Reads
+- label: HINT_MODE2
+  string: Synchronous Mode
+- label: HINT_MODE3
+  string: Unhook Syscalls
+- label: HINT_MODE4
+  string: Skip Videos
+- label: HINT_MODE5
+  string: Emulate DVD-DL
+- label: HINT_MODE6
+  string: Disable IGR
+- label: HINT_VMC_SIZE
+  string: Changing the size will reformat the VMC.
+- label: CREATE
+  string: Create
+- label: START
+  string: Start
+- label: MODIFY
+  string: Modify
+- label: ABORT
+  string: Abort
+- label: RESET
+  string: Reset
+- label: USE_GENERIC
+  string: Use Generic
+- label: VMC_SCREEN
+  string: Configure VMC
+- label: VMC_NAME
+  string: Name
+- label: SIZE
+  string: Size
+- label: VMC_STATUS
+  string: Status
+- label: VMC_PROGRESS
+  string: Progress
+- label: VMC_FILE_EXISTS
+  string: VMC file exists.
+- label: VMC_FILE_ERROR
+  string: Invalid VMC file, size is incorrect.
+- label: VMC_FILE_NEW
+  string: VMC file needs to be created.
+- label: ERR_VMC_CONTINUE
+  string: Error accessing VMC %s. Continue with the Memory Card in slot %d?
+- label: AUTOREFRESH
+  string: Automatic Refresh
+- label: ABOUT
+  string: About
+- label: DEVS
+  string: Coders
+- label: QANDA
+  string: Quality Assurance
+- label: BDM_PREFIX
+  string: BDM Prefix Path
+- label: HINT_EXITPATH
+  string: "Boots a custom ELF after an IGR. Keep it on the memory card (mc0:/mc1:) -- the post-reset loader can't reach MMCE; for MMCE, chain through an MC loader like PS2BBL."
+- label: HINT_SPINDOWN
+  string: Value in minute(s), 0 to disable spin down.
+- label: HDD_SPINDOWN
+  string: Automatic HDD Spin Down
+- label: VMODE
+  string: Video Mode
+- label: UICOLOR
+  string: Dialog Color
+- label: SELCOLOR
+  string: Selected Color
+- label: RESETCOLOR
+  string: Reset Colors
+- label: INFO
+  string: Info
+- label: ALTSTARTUP
+  string: Custom ELF
+- label: COLOR_SELECTION
+  string: Color Selection
+- label: RECONNECT
+  string: Reconnect
+- label: HINT_SHARENAME
+  string: Leave empty to list shares.
+- label: ETH_PREFIX
+  string: ETH Prefix Path
+- label: BACKSPACE
+  string: Backspace
+- label: SPACE
+  string: Space
+- label: ENTER
+  string: Enter
+- label: MODE
+  string: Mode
+- label: VMC_SLOT1
+  string: VMC Slot 1
+- label: VMC_SLOT2
+  string: VMC Slot 2
+- label: GAME_ID
+  string: Game ID
+- label: DMA_MODE
+  string: DMA Mode
+- label: VSYNC
+  string: V-Sync
+- label: MODE1
+  string: Mode 1
+- label: MODE2
+  string: Mode 2
+- label: MODE3
+  string: Mode 3
+- label: MODE4
+  string: Mode 4
+- label: MODE5
+  string: Mode 5
+- label: MODE6
+  string: Mode 6
+- label: GSCONFIG
+  string: Configure GSM
+- label: ETH_OPMODE
+  string: Ethernet Link Mode
+- label: ETH_100MFDX
+  string: 100Mbit Full-duplex
+- label: ETH_100MHDX
+  string: 100Mbit Half-duplex
+- label: ETH_10MFDX
+  string: 10Mbit Full-duplex
+- label: ETH_10MHDX
+  string: 10Mbit Half-duplex
+- label: GSM_SETTINGS
+  string: GSM Settings
+- label: ENABLEGSM
+  string: GSM Selector
+- label: HINT_ENABLEGSM
+  string: Toggles GSM on/off.
+- label: HINT_GSMVMODE
+  string: Forced custom display mode.
+- label: XOFFSET
+  string: H-POS
+- label: HINT_XOFFSET
+  string: Horizontal adjustment.
+- label: YOFFSET
+  string: V-POS
+- label: HINT_YOFFSET
+  string: Vertical adjustment.
+- label: OVERSCAN
+  string: Overscan
+- label: HINT_OVERSCAN
+  string: Overscan adjustment.
+- label: GSMSKIPVIDEOS
+  string: FMV Skip
+- label: HINT_GSMSKIPVIDEOS
+  string: Skips full motion videos.
+- label: CHEAT_SETTINGS
+  string: Cheat Settings
+- label: ENABLECHEAT
+  string: PS2RD Cheat Engine
+- label: HINT_ENABLECHEAT
+  string: Lets PS2RD Cheat Engine patch your game.
+- label: CHEATMODE
+  string: PS2RD Cheat Engine Mode
+- label: HINT_CHEATMODE
+  string: Auto select or select game cheats.
+- label: CHEATMODEAUTO
+  string: Auto Select Cheats
+- label: CHEATMODESELECT
+  string: Select Game Cheats
+- label: ERR_CHEATS_LOAD_FAILED
+  string: 'Error: failed to load cheat file.'
+- label: NO_CHEATS_FOUND
+  string: No cheats found.
+- label: DL_DEFAULTS
+  string: Download Defaults
+- label: NET_UPDATE
+  string: Network Update
+- label: NET_UPDATE_ALL
+  string: Overwrite Existing Records
+- label: NET_UPDATE_FAILED
+  string: Update failed.
+- label: NET_UPDATE_CONN_FAILED
+  string: Failed to connect to update server.
+- label: NET_UPDATE_DONE
+  string: Update completed.
+- label: NET_UPDATE_CANCELLED
+  string: Update cancelled.
+- label: CONFIRMATION_SETTINGS_UPDATE
+  string: Download settings from the network?
+- label: CUSTOMIZED_SETTINGS
+  string: Customized Settings
+- label: DOWNLOADED_DEFAULTS
+  string: Downloaded Defaults
+- label: AUTO_START_IN_N_SECS
+  string: Auto start in %i s...
+- label: AUTOSTARTLAST
+  string: Auto Start
+- label: HINT_AUTOSTARTLAST
+  string: Value in second(s), 0 to disable auto start.
+- label: PS2LOGO
+  string: PS2 Logo
+- label: HINT_PS2LOGO
+  string: Displayed for a valid disc logo matching the console's region.
+- label: PADEMUCONFIG
+  string: Controller Emulation
+- label: PADEMU_SETTINGS
+  string: Pad Emulator Settings
+- label: PADEMU_ENABLE
+  string: Pad Emulator
+- label: HINT_PADEMU_ENABLE
+  string: Turns on/off Pad Emulator for selected game.
+- label: PADEMU_MODE
+  string: Pad Emulator Mode
+- label: HINT_PADEMU_MODE
+  string: Select Pad Emulator mode.
+- label: DS34USB_MODE
+  string: DualShock3/4 USB
+- label: DS34BT_MODE
+  string: DualShock3/4 BT
+- label: PADPORT
+  string: 'Settings For Port:'
+- label: HINT_PAD_PORT
+  string: Select Pad Emulator port for settings.
+- label: PADEMU_PORT
+  string: Emulation
+- label: HINT_PADEMU_PORT
+  string: Turns on/off Pad Emulator for selected port.
+- label: PADEMU_VIB
+  string: Vibration
+- label: HINT_PADEMU_VIB
+  string: Turns on/off vibration for Pad Emulator selected port.
+- label: USBDG_MAC
+  string: 'USB Bluetooth Adapter MAC Address:'
+- label: PAD_MAC
+  string: 'DS Controller Paired To MAC Address:'
+- label: PAIR
+  string: Pair
+- label: PAIR_PAD
+  string: Pair DS Controller
+- label: HINT_PAIRPAD
+  string: Pair DS controller with Bluetooth adapter MAC address.
+- label: NOT_CONNECTED
+  string: Not Connected
+- label: BTINFO
+  string: Bluetooth Adapter Information
+- label: HINT_BTINFO
+  string: Shows more information and supported features.
+- label: HCIVER
+  string: 'HCI Version:'
+- label: LMPVER
+  string: 'LMP Version:'
+- label: MANUFACTURER
+  string: 'Manufacturer ID:'
+- label: SUPFEATURES
+  string: 'Supported Features:'
+- label: 'YES'
+  string: 'Yes'
+- label: 'NO'
+  string: 'No'
+- label: BT_SUPPORTED
+  string: Bluetooth adapter should be fully compatible with DS3/DS4 controllers.
+- label: BT_NOTSUPPORTED
+  string: Bluetooth adapter may not work correctly with DS3/DS4 controllers.
+- label: MTAP_ENABLE
+  string: Multitap Emulation
+- label: HINT_MTAP_ENABLE
+  string: Turns on/off Multitap emulation for selected game.
+- label: MTAP_PORT
+  string: 'Multitap Emulator On Port:'
+- label: HINT_MTAP_PORT
+  string: Select port for Multitap emulation.
+- label: PADEMU_WORKAROUND
+  string: Fake DS3 Workaround
+- label: HINT_PADEMU_WORKAROUND
+  string: Some fake DS3s need a workaround, this option will enable it.
+- label: GSM_FIELD_FIX
+  string: Emulate FIELD Flipping
+- label: HINT_GSM_FIELD_FIX
+  string: Fix for games that glitch under progressive video modes.
+- label: PARENLOCKCONFIG
+  string: Parental Lock Settings
+- label: PARENLOCK_PASSWORD
+  string: Parental Lock Password
+- label: PARENLOCK_PASSWORD_HINT
+  string: Leave blank to disable the parental lock.
+- label: PARENLOCK_ENTER_PASSWORD_TITLE
+  string: Enter Parental Lock Password
+- label: PARENLOCK_PASSWORD_INCORRECT
+  string: Parental lock password incorrect.
+- label: PARENLOCK_DISABLE_WARNING
+  string: Parental lock disabled.
+- label: BUILD_DETAILS
+  string: 'Build Options:'
+- label: PARENLOCK_INVALID_PASSWORD
+  string: Error - this password cannot be used.
+- label: ERR_VMC_FRAGMENTED_CONTINUE
+  string: VMC %s file is fragmented. Continue with Memory Card in slot %d?
+- label: AUDIO_SETTINGS
+  string: Audio Settings
+- label: SFX
+  string: Sound Effects
+- label: BOOT_SND
+  string: Boot Sound
+- label: SFX_VOLUME
+  string: Sound Effects Volume
+- label: BOOT_SND_VOLUME
+  string: Boot Sound Volume
+- label: CFM_VMODE_CHG
+  string: Confirm video mode change?
+- label: CACHE_HDD_GAME_LIST
+  string: Cache Game List (HDD APA)
+- label: ENABLE_NOTIFICATIONS
+  string: Notifications
+- label: CFG_NOTIFICATION
+  string: Config loaded from %s
+- label: THM_NOTIFICATION
+  string: Theme loaded from %s
+- label: LNG_NOTIFICATION
+  string: Language loaded from %s
+- label: PARTITION_NOTIFICATION
+  string: '%s partition mounted.'
+- label: OPTIONS
+  string: Options
+- label: GAME_SETTINGS_SAVED
+  string: Game settings saved.
+- label: GAME_SETTINGS_REMOVED
+  string: '%s settings removed.'
+- label: NET_UPDATE_HINT
+  string: Overwrites existing game compatibility settings when enabled.
+- label: SETTINGS_SOURCE
+  string: Settings Mode
+- label: GLOBAL_SETTINGS
+  string: Global
+- label: PERGAME_SETTINGS
+  string: Per Game
+- label: ALL_SETTINGS
+  string: All
+- label: GAME_SETTINGS_PROMPT
+  string: Select settings to remove.
+- label: FORUM_DETAILS
+  string: 'Support Forums:'
+- label: INFO_TITLE
+  string: Title
+- label: INFO_GENRE
+  string: Genre
+- label: INFO_RELEASE
+  string: Release
+- label: INFO_DEVELOPER
+  string: Developer
+- label: INFO_DESCRIPTION
+  string: Description
+- label: BLOCKDEVICE_SETTINGS
+  string: BDM Devices
+- label: CONTROLLER_SETTINGS
+  string: Controller Settings
+- label: HINT_BDM_START
+  string: Turn on/off Block Device Manager.
+- label: HINT_BLOCK_DEVICES
+  string: Turn on/off BDM Devices (USB/MX4SIO/ILINK/HDD).
+- label: USB_GAMES
+  string: USB Games
+- label: ILINK_GAMES
+  string: iLink Games
+- label: MX4SIO_GAMES
+  string: MX4SIO Games
+- label: PADMACROCONFIG
+  string: Controller Macros
+- label: PADMACRO_SETTINGS
+  string: Pad Macro Settings
+- label: PADMACRO_ENABLE
+  string: Pad macros
+- label: PADMACRO_SLOWDOWN
+  string: 'Analog Slow-Down:'
+- label: HINT_PADMACRO_SLOWDOWN_AXIS
+  string: Reduce the range of analog stick when button is pressed.
+- label: LEFT_ANALOG
+  string: Left Stick
+- label: RIGHT_ANALOG
+  string: Right Stick
+- label: PADMACRO_INVERT_AXIS
+  string: 'Analog Axis Invert:'
+- label: HINT_PADMACRO_INVERT_AXIS
+  string: Inverts the axis of selected analog stick.
+- label: TURBO_SPEED
+  string: Turbo Button Speed
+- label: HINT_TURBO_SPEED
+  string: How fast the button is pressed when turbo is active.
+- label: ACT_WHILE_PRESSED
+  string: While Button Pressed
+- label: ACT_TOGGLED
+  string: Toggled By Button
+- label: LANGUAGE_JAPANESE
+  string: JAPANESE
+- label: LANGUAGE_ENGLISH
+  string: ENGLISH
+- label: LANGUAGE_FRENCH
+  string: FRENCH
+- label: LANGUAGE_SPANISH
+  string: SPANISH
+- label: LANGUAGE_GERMAN
+  string: GERMAN
+- label: LANGUAGE_ITALIAN
+  string: ITALIAN
+- label: LANGUAGE_DUTCH
+  string: DUTCH
+- label: LANGUAGE_PORTUGUESE
+  string: PORTUGUESE
+- label: LANGUAGE_RUSSIAN
+  string: RUSSIAN
+- label: LANGUAGE_KOREAN
+  string: KOREAN
+- label: LANGUAGE_TRAD_CHINESE
+  string: TRADITIONAL CHINESE
+- label: LANGUAGE_SIMPL_CHINESE
+  string: SIMPLIFIED CHINESE
+- label: OSD_SETTINGS
+  string: OSD Settings
+- label: OSD_SETTINGS_LNG
+  string: OSD Language
+- label: HINT_OSD_SETTINGS_LNG
+  string: Force a custom language configuration
+- label: ENABLE_LNG
+  string: Enable
+- label: OSD_SETTINGS_TVASPECT
+  string: Screen Size
+- label: FULL_SCREEN
+  string: Full Screen
+- label: OSD_SETTINGS_VMODE
+  string: Video Mode
+- label: SYSTEM_DEFAULT
+  string: System Default
+- label: BGM
+  string: Background Music
+- label: BGM_VOLUME
+  string: Background Music Volume
+- label: DEF_BGM_PATH
+  string: Default Theme Music
+- label: DEF_BGM_PATH_HINT
+  string: Set path to stream music for internal theme.
+- label: HIGH
+  string: High
+- label: LOW
+  string: Low
+- label: XSENSITIVITY
+  string: Analog X-Axis Sensitivity
+- label: YSENSITIVITY
+  string: Analog Y-Axis Sensitivity
+- label: FILE_COUNT
+  string: 'Files found: %i'
+- label: CHEAT_SELECTION
+  string: Cheat Selection
+- label: HDD_HINT
+  string: Only one HDD allowed, enabling locks APA or GPT.
+- label: ERROR_SAVING_SETTINGS_TO
+  string: Could not write settings to %s (error %d)
+- label: LAUNCH_PS2_DISC
+  string: Launch PS2 Disc
+- label: DISC_LAUNCH_ERR
+  string: No PS2 disc in the drive.
+- label: FINANCIAL_SUPPORT
+  string: Financial Support
+- label: DEFAULT
+  string: Default
+- label: BOOT_LOADING_CONFIG
+  string: Loading settings...
+- label: BOOT_READY
+  string: Ready.
+- label: FAV
+  string: Favorites
+- label: FAVMODE
+  string: Favorites Start Mode
+- label: FAV_HINT
+  string: Favorite
+- label: FAV_MSG
+  string: "%s not allowed through Favorites Menu."
+- label: FAV_PERSISTENCE_MSG
+  string: "%s is not allowed while the item is marked as favorite."
+- label: ADVANCED_ARGUMENTS
+  string: Advanced Arguments
+- label: ADVANCED_SETTINGS
+  string: Advanced
+- label: ARTWORK_SETTINGS
+  string: Artwork Settings
+- label: BDMA_APPLY
+  string: VCD BDMA Apply on Launch
+- label: BDMA_MODE
+  string: BDMA Mode
+- label: BDMA_SETTINGS
+  string: BDMA Settings
+- label: BDMA_SOURCE
+  string: BDMA Source
+- label: COLORS_SETTINGS
+  string: Colors
+- label: COMM_SETTINGS
+  string: Communication Settings
+- label: CONTROLLER_EMULATION
+  string: Controller Emulation
+- label: CONTROLLER_MACROS
+  string: Controller Macros
+- label: CORE_LOADER
+  string: Loader Core
+- label: COVERFLOW_ANIM
+  string: Animation Speed
+- label: COVERFLOW_COUNT
+  string: Cover Count
+- label: COVERFLOW_DIM
+  string: Dim Side Covers
+- label: COVERFLOW_SCALE
+  string: Center Scale
+- label: COVERFLOW_SETTINGS
+  string: Coverflow Settings
+- label: DEFAULT_CORE
+  string: Default Loader Core
+- label: DISPLAY_SETTINGS
+  string: Display
+- label: ENABLEIMAGE
+  string: PS2RD Cheat Image
+- label: ENABLE_ART_TAR
+  string: Cover Art .tar Archive
+- label: FOLDER_NAV
+  string: Browse Folders in Game List
+- label: GAME_LAUNCHING
+  string: Game Launching
+- label: GAME_LIST_SETTINGS
+  string: Game List Settings
+- label: GAME_SOURCES
+  string: Game Sources
+- label: HINT_BDMA_APPLY
+  string: 'On: before a VCD launch, prepare the needed POPSTARTER BDMA memory-card environment when possible. POPSTARTER still launches if preparation fails. Off: manage the card drivers with the Source/Mode pickers below.'
+- label: HINT_BDMA_MODE
+  string: Block-device driver POPSTARTER loads. Changing it copies the modules to the card; FAT32 = none (built-in driver).
+- label: HINT_BDMA_SOURCE
+  string: Device whose POPS folder holds your BDMAssault driver files (usbd.irx.* / usbhdfsd.irx.*); iLink uses the .ilink suffix.
+- label: HINT_DEFAULT_CORE
+  string: Global default core for games whose per-game Loader Core is set to Default. <OPL> is the native core; Neutrino chains the external neutrino.elf. A per-game choice always overrides this.
+- label: HINT_ENABLEIMAGE
+  string: Apply a prebuilt PS2RD .img patch to your game.
+- label: HINT_FOLDER_NAV
+  string: Show subfolders of CD/DVD as browsable entries; select to open, cancel to go back
+- label: HINT_MMCEIGR_SLOT
+  string: Switch to bootcard cmd will be sent to the selected slot(s) on IGR
+- label: HINT_MMCE_USE_ALARMS
+  string: OFF may help performance but can cause MMCE timeouts to result in freezes
+- label: HINT_MMCE_WAIT_CYCLES
+  string: Lower values may improve performance but result in instabilities
+- label: HINT_MODE7
+  string: Neutrino only -- fix games that overrun an IOP buffer (-gc=7)
+- label: HINT_NEUTRINO_ARGS
+  string: Extra Neutrino flags, space-separated (e.g. -mt=dvd). Global applies to all games; per-game adds on top. Prefix a flag with $ to disable it without deleting.
+- label: HINT_NEUTRINO_BSDFS
+  string: Force Neutrino's block-device filesystem (-bsdfs). Auto = per-device default. hdl/bd are expert options; pair them with a matching -dvd= in the launch args if the auto path shape doesn't fit.
+- label: HINT_NEUTRINO_DEVICE
+  string: Device holding neutrino.elf (in a NEUTRINO/ or neutrino/ folder). Auto = the game's own device then mc0/mc1. Game's Device = the game's device only.
+- label: HINT_NEUTRINO_GSM_COMP
+  string: Field-flipping fix for games that shake or tear under a forced Neutrino Video mode. Needs a Neutrino Video mode set.
+- label: HINT_NEUTRINO_VIDEO
+  string: Force Neutrino's GS output video mode (-gsm). Off keeps the game's default.
+- label: HINT_POPSTARTER_DEVICE
+  string: Device holding POPS/POPSTARTER.ELF for PS1 VCD launches. Default = boot device (cwd) then the VCD's own device. Game's Device = the VCD's device only. Custom reveals a free-text path.
+- label: HINT_POPSTARTER_PATH
+  string: Custom POPSTARTER.ELF path; quietly falls back to the device POPS folder if blank/missing. Keyboard caps at 31 chars; longer paths via settings_riptopl.cfg.
+- label: HINT_POPSTARTER_RETROGEM_GAMEID
+  string: Render optical barcode for Pixel FX / RetroGEM / PS2Digital on PS1 VCD launch
+- label: HINT_POPS_IMPORT
+  string: Read POPSTARTER IPCONFIG.DAT and SMBCONFIG.DAT from the connected SMB share's POPS directory. Nothing is written until you confirm with OK.
+- label: HINT_POPS_PORT
+  string: SMB port on the server -- 445 is the default. Leave at 0 (or 445) for a normal share; use 139 for older SMB1 servers.
+- label: HINT_RUMBLE
+  string: Short vibration when moving the cursor, confirming or going back -- needs a DualShock in analog mode
+- label: HINT_VCD_FIRST_DISC
+  string: Show only Disc 1 of a multi-disc PS1 game in the device lists (POPSLoader style). Hides files named (Disc 2), (CD 2), etc. All discs stay on the card for in-game swapping; Favorites are not filtered.
+- label: HINT_VCD_HIDE_GAMEID
+  string: Cosmetic only -- hide a leading game-ID prefix (e.g. SLUS_005.51.) from PS1/VCD list names. Names without an ID are shown as-is. Does not change launch, cover art, or favorites.
+- label: HINT_VCD_SHOW_PP_POPS
+  string: HDD only -- list one-game partitions named PP.<ID>.POPS.<name> (e.g. PP.SCES-01492.POPS.MEDIEVIL) as PS1 games. Enumeration only; launch is unchanged. Other PP.* partitions (apps, PS2 games) stay hidden.
+- label: HINT_VMC_SLOT_DISABLE
+  string: Launch without this slot's VMC while keeping its card configured. Neutrino launches only; the game then uses the real card in that slot.
+- label: INTERFACE_SETTINGS
+  string: Interface
+- label: MENU_NETWORK
+  string: Network
+- label: MMCE
+  string: MMCE
+- label: MMCEIGR_SLOT
+  string: IGR Bootcard Slot(s)
+- label: MMCEMODE
+  string: MMCE Start Mode
+- label: MMCE_PREFIX
+  string: MMCE Prefix Path
+- label: MMCE_SLOT
+  string: MMCE Slot
+- label: MMCE_USE_ALARMS
+  string: Use timeout alarms
+- label: MMCE_WAIT_CYCLES
+  string: Wait cycles after /ACK low
+- label: MODE7
+  string: Mode 7
+- label: NARGS_ATA0
+  string: ATA0 Image (-ata0)
+- label: NARGS_ATA0ID
+  string: ATA0 ID (-ata0id)
+- label: NARGS_ATA1
+  string: ATA1 Image (-ata1)
+- label: NARGS_AUTO_NOTE
+  string: 'Auto: -bsd -dvd -gc -gsm -mc -dbc -logo'
+- label: NARGS_CFG
+  string: Config (-cfg)
+- label: NARGS_CWD
+  string: Working Dir (-cwd)
+- label: NARGS_DBC
+  string: Debug Colors (-dbc)
+- label: NARGS_ELF
+  string: Boot ELF (-elf)
+- label: NARGS_EXTRA
+  string: Extra Args
+- label: NARGS_LOGO
+  string: PS2 Logo (-logo)
+- label: NARGS_QB
+  string: Quick Boot (-qb)
+- label: NET_PROTOCOL
+  string: Network Protocol
+- label: NEUTRINO_ARGS
+  string: Neutrino Launch Args
+- label: NEUTRINO_BSDFS
+  string: Neutrino Filesystem
+- label: NEUTRINO_DEFAULTS
+  string: Neutrino Defaults
+- label: NEUTRINO_DEVICE
+  string: Neutrino Device
+- label: NEUTRINO_GSM_COMP
+  string: Neutrino GSM Compatibility
+- label: NEUTRINO_VIDEO
+  string: Neutrino Video
+- label: OSD_DEFAULTS
+  string: OSD Defaults
+- label: PATH_PREFIXES
+  string: Path Prefixes
+- label: PATH_SETTINGS
+  string: Path Settings
+- label: PLASCOLOR
+  string: Plasma Blend Color
+- label: POPSTARTER
+  string: PS Emulation Settings
+- label: POPSTARTER_DEVICE
+  string: POPSTARTER.ELF Device
+- label: POPSTARTER_PATH
+  string: POPSTARTER.ELF Path
+- label: POPSTARTER_RETROGEM_GAMEID
+  string: RetroGEM Game ID
+- label: POPSTARTER_NETWORK_SETTINGS
+  string: POPSTARTER Network Settings
+- label: GAMEID_MODE_ALL
+  string: On (All)
+- label: GAMEID_MODE_POPSTARTER
+  string: On (POPSTARTER only)
+- label: GAMEID_MODE_PS2
+  string: On (PS2 only)
+- label: GAMEID_MODE_OFF
+  string: 'Off'
+- label: POPS_IMPORT
+  string: Import from SMB POPS Directory
+- label: POPS_NONE_DETECTED
+  string: No existing POPStarter SMB configuration was detected. Enter the correct network settings before creating one.
+- label: POPS_SMB_SECTION
+  string: POPStarter SMB Network
+- label: RUMBLE
+  string: Controller Vibration in Menus
+- label: SECURITY_SETTINGS
+  string: Security
+- label: STORAGE_CACHE
+  string: Storage and Cache
+- label: TOOLS
+  string: Tools
+- label: VCD_FIRST_DISC
+  string: First disc only (multi-disc PS1)
+- label: VCD_HIDE_GAMEID
+  string: Hide PS1 Game ID (VCD list)
+- label: VCD_SHOW_PP_POPS
+  string: Display PP.<ID>.POPS partition games (HDD)
+- label: VCD_USB_MODE_EXFAT
+  string: exFAT
+- label: VCD_USB_MODE_FAT32
+  string: fat32
+- label: VCD_USB_MODE_HINT
+  string: fat32 is recommended for non exFAT USB users.
+- label: VCD_USB_MODE_QUESTION
+  string: fat32 or exFAT USB Mode?
+- label: VCD_USB_MODE_TITLE
+  string: USB VCD Mode
+- label: VMC_SLOT1_DISABLE
+  string: Disable VMC 1 (keep card)
+- label: VMC_SLOT2_DISABLE
+  string: Disable VMC 2 (keep card)
+- label: NONE
+  string: "None"
+- label: SMALL
+  string: Small
+- label: LARGE
+  string: Large
+- label: NORMAL
+  string: Normal
+- label: MENU_CONTROLLER
+  string: Controller
+- label: MENU_AUDIO
+  string: Audio
+- label: NEUTRINO_DEV_UNSUPPORTED
+  string: Neutrino cannot launch from this device -- launch aborted.
+- label: NEUTRINO_TOML_SYNC_FAILED
+  string: Neutrino network config (bsd toml) missing or unwritable -- launch aborted, check the neutrino folder.
+- label: NEUTRINO_VMC_MISSING
+  string: Per-game VMC file not found -- launching without it (game uses its real card).
+- label: GAMES_DEVICE
+  string: Game's Device
+- label: NEUTRINO_BAD_FORMAT
+  string: Neutrino does not support this file format, launching with <OPL> core
+- label: NEUTRINO_NOT_FOUND
+  string: Neutrino ELF not found, launching with <OPL> core
+- label: NEUTRINO_TOO_FRAGMENTED
+  string: Too fragmented for Neutrino (%d fragments, limit %d incl. VMCs) -- trying the OPL core instead.
+- label: BDMA_ERR_SRC
+  string: BDMA module files not found on the source device.
+- label: BDMA_ERR_SPACE
+  string: Not enough memory card space for the BDMA modules.
+- label: BDMA_ERR_IO
+  string: Error writing the BDMA modules to the memory card.
+- label: UDPBD_NEEDS_STATIC_IP
+  string: UDPBD needs a static PS2 IP. Set one under Settings > Network (DHCP is currently on).
+- label: NETBOOT_RESTART
+  string: Restart OPL to apply the network boot protocol change.
+- label: NET_UDPFS_TAB_HINT
+  string: UDPFS on -- open the new UDPFS tab and press Confirm to connect. PC side runs udpfsd -fsroot <games folder>.
+- label: NET_UDPBD_TAB_HINT
+  string: Network block device on -- its tab appears once the PC server answers (udpfsd -bdpath for UDPFS Image, udpbd-server for UDPBD).
+- label: NEUTRINO_TOO_FRAGMENTED_NET
+  string: Too fragmented for Neutrino (%d fragments, limit %d incl. VMCs) -- defragment on the PC; launch aborted.
+- label: UDPFS_GAMES
+  string: UDPFS Games
+- label: NET_NEEDS_NEUTRINO
+  string: Network (UDP) games can only boot via the Neutrino core. Check that neutrino.elf is present and the format is supported.
+- label: VCD_NOT_ON_NET
+  string: 'PS1 (.VCD) games can''t be launched over the network device.'
+- label: MX4SIO_PADEMU_WARN
+  string: MX4SIO and pad emulation share the SIO2 bus and the game may fail to boot.
+- label: MMCE_GAMEID_UNSETTLED
+  string: MMCE card switch not confirmed -- launching anyway
+- label: UDPFSBD_GAMES
+  string: UDPFSBD Games
+- label: UDPBD_GAMES
+  string: UDPBD Games
+- label: BOOT_LOADING_DRIVERS
+  string: Loading storage drivers...
+- label: BOOT_LOADING_USB
+  string: Loading USB storage driver...
+- label: POPSTARTER_NOT_FOUND
+  string: Missing POPSTARTER.ELF
+- label: POPSTARTER_SMB_MISSING
+  string: Missing POPSTARTER SMB requirements
+- label: NEUTRINO_SMB_FALLBACK
+  string: SMB games have no Neutrino support -- launching with the OPL core.
+- label: NEUTRINO_VMC_HDD_UNSUPPORTED
+  string: Neutrino cannot use a VMC on APA HDD (no pfs support) -- launching without it.
+- label: VCD
+  string: PS1
+- label: VCD_ON
+  string: Showing PS1 games
+- label: VCD_OFF
+  string: Showing PS2 games
+- label: BOOT_SCANNING_BDM
+  string: Scanning USB / card / network drives...
+- label: BOOT_SCANNING_NET
+  string: Starting network...
+- label: BOOT_SCANNING_HDD
+  string: Scanning HDD...
+- label: BDMA_SRC_USB
+  string: USB
+- label: BDMA_SRC_MX4SIO
+  string: MX4SIO
+- label: BDMA_SRC_MMCE
+  string: MMCE
+- label: BDMA_SRC_HDD
+  string: Internal HDD
+- label: BDMA_MODE_FAT32
+  string: USB (FAT32)
+- label: BDMA_MODE_USBEXFAT
+  string: USB (exFAT)
+- label: BDMA_MODE_MX4SIO
+  string: MX4SIO (exFAT)
+- label: BDMA_MODE_MMCE
+  string: MMCE (exFAT)
+- label: BDMA_MODE_ATA
+  string: HDD (exFAT)
+- label: POPS_LOADED_FROM
+  string: Loaded from %s
+- label: POPSTARTER_NET_ERR
+  string: Couldn't write POPSTARTER network config to the memory card.
+- label: POPSTARTER_NET_INVALID
+  string: POPSTARTER network configuration is invalid. Correct it in POPSTARTER Network Settings.
+- label: POPSTARTER_SMB_NEEDS_STATIC
+  string: POPSTARTER SMB requires a static network configuration. Configure POPSTARTER Network Settings first.
+- label: POPS_OVERWRITE_TITLE
+  string: Replace POPSTARTER Config?
+- label: POPS_OVERWRITE_MSG
+  string: POPSTARTER network configuration already exists. Replace it with these settings?
+- label: POPS_KEEP_EXISTING
+  string: Keep Existing
+- label: POPS_REPLACE
+  string: Replace
+- label: NEUTRINO_SETTING_NA
+  string: This setting is not used with the Neutrino core.
+- label: DISABLE_ALL
+  string: Disable All
+- label: BOOT_LOADING_SOUNDS
+  string: Loading theme sounds...
+- label: BOOT_BUILDING_MENU
+  string: Building menu...
+- label: GSM_1080P_WARNING
+  string: WARNING -- forced-progressive 1080p uses a non-standard GSM raster. It passed real-hardware testing, but your display may show no picture. Proceed at your own risk.
+- label: GSM_1080P_PROCEED
+  string: Proceed with forcing 1080p for this game?
+- label: GSM_1080P_SURE
+  string: Are you sure? This applies forced-progressive 1080p to this game.
+- label: CUSTOM_SETTINGS_PATH
+  string: Custom Settings Path
+- label: HINT_CUSTOM_SETTINGS_PATH
+  string: "Save settings to a folder you choose, e.g. mass0:/OPL. Leave blank to use the folder OPL booted from. The device is loaded on demand, so it need not be mounted when you type it."
+- label: PERGAME_MIXED_SETTINGS
+  string: Per Game + Global
+- label: GSM_DEFAULTS
+  string: GSM Defaults (All Games)
+- label: ERR_DEVICE_BUSY_TIMEOUT
+  string: "Device busy: the settings write never started. Try again once loading finishes."
+- label: SETTINGS_NO_HOME
+  string: No memory card found -- settings cannot be saved. OPL was booted from a network device, whose settings must live on a local card.
+- label: BDMA_EQUIPPING
+  string: Preparing PS1 driver on memory card...
+- label: VCD_USB_BDMA
+  string: USB BDMA Driver
+- label: HINT_VCD_USB_BDMA
+  string: "PS1 (VCD) launches from a USB stick only. The PS2 cannot detect whether a stick is fat32 or exFAT, so POPSTARTER's driver must be chosen. Ask prompts on every USB VCD launch; exFAT or fat32 pin the answer and skip the prompt."
+- label: VCD_USB_BDMA_ASK
+  string: Ask
+- label: SETTINGS_HDD_FALLBACK
+  string: "HDD settings used the safe fallback home: %s"
+- label: GENERAL_SETTINGS
+  string: General Settings
+- label: DEVICE_SETTINGS
+  string: Game Sources
+- label: MMCE_GAMES
+  string: MMCE Games
+- label: MMCE_ADVANCED
+  string: Advanced
+- label: MMCE_SETTINGS
+  string: MMCE Settings
+- label: MMCE_SEMA
+  string: Lock Sema Enqueuing Method
+- label: HINT_MMCE_SEMA
+  string: THFIFO may help with compatibility but worsen performance
+- label: WRITE_POPSTARTER_NET
+  string: Write POPSTARTER Network Config
+- label: HINT_WRITE_POPSTARTER_NET
+  string: Also save these IP + SMB share values to POPSTARTER's own IPCONFIG.DAT / SMBCONFIG.DAT on the memory card (for VCD-over-SMB).
+- label: NEUTRINO_PATH
+  string: Neutrino ELF Path
+- label: HINT_NEUTRINO_PATH
+  string: Full path to neutrino.elf (e.g. mc0:NEUTRINO/neutrino.elf). Blank = auto-detect on mc0/mc1.
+- label: BOOT_SCANNING_MC
+  string: Scanning memory cards...
+- label: BOOT_ARMING_MMCE
+  string: Arming MMCE game-ID...
+- label: UDPFS_MODE
+  string: UDPFS Access
+- label: MMCE_GAMEID_NEUTRINO_SKIP
+  string: MMCE GameID not applied -- neutrino.elf is on this card (switching it would unload Neutrino).
+# UNUSED / RESERVED: no source call site -- it survives only in the generated lang_autogen.h.
+# It CANNOT be deleted: .lng files are consumed by LINE POSITION, so removing a label shifts
+# every later index and silently corrupts all 31 translations. Wire it up or leave it be.
+- label: HDD_BACKEND_RECONCILED
+  string: Both APA and exFAT internal HDD backends are enabled; each drive is selected by its partition layout (check Game Sources).
+- label: VCD_SETTINGS
+  string: VCD Settings
+- label: SETTINGS_SAVE_PROMPT
+  string: SAVE SETTINGS?
+- label: SETTINGS_SAVE_PROMPT_LINE1
+  string: Your changes are currently active.
+- label: SETTINGS_SAVE_PROMPT_LINE2
+  string: Would you like to save them for future launches?
+- label: SETTINGS_SAVE
+  string: Save Settings
+- label: SETTINGS_EXIT_WITHOUT_SAVING
+  string: Exit Without Saving
+- label: SETTINGS_CONTINUE_EDITING
+  string: Continue Editing
+- label: CONFIGURE
+  string: Configure
+- label: HDD_UNAVAILABLE_ERROR
+  string: '%d: HardDisk Drive unavailable.'
+- label: HDD_PFS_UNAVAILABLE_ERROR
+  string: '%d: HardDisk Drive PFS support unavailable.'
+- label: POPS_LOADING_SETTINGS
+  string: Loading POPSTARTER settings...
+- label: POPS_SMB_NOT_CONNECTED
+  string: SMB is not connected.
+- label: POPS_SMB_SETTINGS_NOT_FOUND
+  string: No POPSTARTER settings found in SMB POPS directory.
+- label: HDD_OPL_PLUS_NOT_FOUND
+  string: +OPL partition not found.
+- label: HDD_OPL_COMMON_NOT_FOUND
+  string: __common partition not found.
+- label: HDD_OPL_PARTITION_RESTART
+  string: Restart RiptOPL to apply the selected OPL partition.
+- label: HDD_OPL_PARTITION_CHECKING
+  string: Checking HDD OPL partition...
+- label: HDD_OPL_PARTITION_BUSY
+  string: HDD is busy. Try again once loading finishes.
+- label: GENERAL_SYSTEM
+  string: General & System
+- label: EMBER_NOT_FOUND
+  string: Missing ember.elf
+- label: EMBER_BIOS_MISSING
+  string: Missing bios.bin beside ember.elf
+- label: EMBER_BAD_NAME
+  string: Ember cannot use this folder name (no slash, colon or backslash, and no leading dots).
+- label: EMBER_NO_DISC
+  string: No PS1 disc image in this Ember game folder.
+- label: VIEW_APPS
+  string: Showing apps
+- label: EMBER_DISPLAY
+  string: Ember Display Mode
+- label: HINT_EMBER_DISPLAY
+  string: Output mode Ember uses for PS1 games. 240p or 480p is written to settings.txt in the launched device's EMBER folder. Default removes that setting again, and the file too if it held nothing else.
+- label: BDMA_SRC_ILINK
+  string: iLink
+- label: BDMA_MODE_ILINK
+  string: iLink
+- label: GAME_VIEW_MODE
+  string: PS2/PS1 Game Display
+- label: HINT_GAME_VIEW_MODE
+  string: "Both mode uses separate PS2/PS1 pages toggled with L3. Mixed combines them and L3 cycles Mixed, PS2, PS1. PS2 or PS1 shows only that type and fully disables L3. APPS and Favorites use their own display rules."
+- label: VIEW_MIXED
+  string: Showing PS2 + PS1 games
+- label: VIEW_PS1_ELF
+  string: Showing PS1 ELF apps
+- label: APPS_DISPLAY
+  string: Applications Display
+- label: HINT_APPS_DISPLAY
+  string: "Mixed shows every ELF in one APPS list with L3 disabled. Apps / PS1ELF splits titles containing [PS1] into a second L3 page; launch behavior is unchanged."
+- label: VIEW
+  string: View
+- label: VIEW_PS2
+  string: Showing PS2 favorites
+- label: VIEW_PS1
+  string: Showing PS1 favorites
+- label: VIEW_ELF
+  string: Showing ELF favorites
+- label: VIEW_ALL
+  string: Showing all favorites
+- label: VMC_FRAGMENTED_ON_CREATE
+  string: VMC created, but it is fragmented. Memory card emulation needs one unbroken file, so this VMC will be skipped at launch and the real card used instead. Free up space and make it again, or copy one in from another device.
+- label: KEYB_MOVE_CURSOR
+  string: Move cursor
+- label: TITLECOLOR
+  string: Game Title Color
+# RetroAchievements (RETROACHIEVEMENTS=1 build flavour) -- appended at the very end on
+# purpose: .lng is consumed by line position, so new labels may ONLY ever be added here.
+- label: RA_CHECK_GAME
+  string: Check RetroAchievements support
+- label: RA_TEST_LINK
+  string: Test RetroAchievements PC link
+- label: RA_CHECKING_IMAGE
+  string: Checking the image, this takes a few seconds...
+- label: RA_CHECK_RUNNING
+  string: An image check is already running
+- label: RA_LOOKING_FOR_PC
+  string: Looking for the PC client...
+- label: RA_UL_UNSUPPORTED
+  string: UL/USBExtreme games cannot be checked yet
+- label: RA_UL_UNSUPPORTED2
+  string: Only plain .iso images in DVD/ or CD/ are supported
+- label: RA_UNKNOWN_IMAGE
+  string: RetroAchievements does not know this image
+- label: RA_STILL_IDENTIFYING
+  string: The PC is still identifying the image
+- label: RA_TRY_AGAIN
+  string: Try again in a few seconds
+- label: RA_NO_SOCKET
+  string: The console could not open a network socket
+- label: RA_NO_SOCKET2
+  string: Restart the console, or check the ETH device in settings
+- label: RA_TEST_NO_SOCKET2
+  string: Check the cable and ETH in settings; if the network is up, reboot the console
+- label: RA_PC_NO_ANSWER
+  string: The PC client did not answer
+- label: RA_PC_NO_ANSWER2
+  string: Check that xeRAbora runs, or try the PC link test
+- label: RA_SUPPORTED
+  string: Supported by RetroAchievements
+- label: RA_START_TO_TRACK
+  string: Start the game to track achievements
+- label: RA_ACHIEVEMENTS
+  string: "%d achievements"
+- label: RA_ACHIEVEMENTS_FULL
+  string: "%d achievements -- %d unlocked, %d unsupported"
+- label: RA_HASH_FAILED
+  string: The image could not be hashed
+- label: RA_HASH_FAILED2
+  string: See RA/hashes.txt next to the games for the reason
+- label: RA_NET_BUSY
+  string: The network is in use by a UDP transport
+- label: RA_NET_BUSY2
+  string: RA needs the SMB stack -- switch the protocol, or build the .wl on the PC
+- label: RA_NET_BUSY_HASH
+  string: The hash is in RA/hashes.txt -- xeRAbora can build the .wl from it
+- label: RA_NO_IP
+  string: The console has no IP address
+- label: RA_NO_IP2
+  string: Check DHCP or the static address in Network settings
+- label: RA_TEST_NO_ANSWER
+  string: No PC client answered within 3 seconds
+- label: RA_TEST_NO_ANSWER2
+  string: "Console%s. Check that xeRAbora runs and UDP 18194 is open"
+- label: RA_TEST_FOUND
+  string: "PC client found%s%s %s"
+- label: RA_TEST_FOUND2
+  string: "Reply in %u ms, console%s"
+- label: RA_NA_NEUTRINO
+  string: "RA tracking needs the <OPL> core -- Neutrino launches never load ee_core"
+- label: RA_NA_UDPFS
+  string: RA tracking is not available on UDPFS -- games launch through Neutrino
+- label: RA_NA_PS1
+  string: RA tracking is not available for PS1 games
+- label: RA_NA_HDD
+  string: HDLoader games have no image file to hash
+- label: RA_NA_HDD2
+  string: Build the .wl in xeRAbora and place it in RA/ on the share
+- label: RA_TELEMETRY
+  string: RetroAchievements telemetry
+- label: RA_BADGES
+  string: RetroAchievements badges
+- label: HTTP_GAMES
+  string: HTTP Games
+- label: HTTP_SERVER
+  string: HTTP server
+- label: HTTP_PORT
+  string: HTTP port
+- label: HTTP_BASE_PATH
+  string: HTTP base path
+- label: HTTP_TEST
+  string: Test HTTP server
+- label: HTTP_TEST_OK
+  string: Server OK -- games listed
+- label: HTTP_TEST_EMPTY
+  string: Catalog is empty -- valid, but it proves nothing about byte ranges
+- label: HTTP_TEST_NO_ISO
+  string: Catalog has no supported image to test a byte range against
+- label: HTTP_ERR_CONNECT
+  string: Cannot reach the HTTP server
+- label: HTTP_ERR_CATALOG
+  string: games.csv is missing, unreadable or too large
+- label: HTTP_ERR_RANGE
+  string: The server did not return the exact bytes that were asked for
+- label: HTTP_LAUNCH_UNAVAILABLE
+  string: HTTP launch is not implemented yet -- the catalog is browsable only
+- label: HTTP_ERR_COMPRESSED
+  string: Compressed images (.zso) are not supported over HTTP yet
+- label: HTTP_NO_VMC
+  string: Virtual memory cards are not available over HTTP -- use a physical card
+- label: HTTP_TAB_HINT
+  string: HTTP reads games.csv from your server. Set the address, port and base path in Network settings, then use Test.
+
+- label: RA_DISC_CHECK
+  string: "RA: check disc support"
+- label: RA_DISC_LAUNCH
+  string: "RA: launch disc"
+- label: RA_DISC_CHECKING
+  string: Checking the disc for RetroAchievements
+- label: RA_DISC_HASH_FAILED
+  string: The disc could not be hashed -- check RA/hashes.txt in the settings folder
+- label: RA_DISC_HOME_ERROR
+  string: The settings path cannot be used for disc watch lists
+- label: RA_DISC_ENABLE
+  string: Enable RetroAchievements telemetry in Network settings first
+- label: RA_DISC_CHECK_FIRST
+  string: No watch list for this disc -- use RA check disc support first
+- label: HDD_APA_TABLE_UNREADABLE_ERROR
+  string: '%d: HDD found, but its APA partition table cannot be read. Do not format it -- your games may be recoverable.'
+- label: BDM_UNSUPPORTED_SECTOR_SIZE_ERROR
+  string: '%d: A drive was not mounted because its sectors are not 512 bytes (e.g. a 4K-sector drive). OPL can only read 512-byte sectors.'
+- label: HDD_PARTITION_RENAME_UNSUPPORTED
+  string: This title is its own APA partition, and OPL never edits the partition table. Rename it on a PC.
+- label: POPS_SETTINGS_UNREADABLE
+  string: Could not read POPSTARTER's settings -- the memory card is busy or unreadable. Try again once loading finishes.

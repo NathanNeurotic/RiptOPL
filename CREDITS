@@ -1,0 +1,179 @@
+-----------------------------------------------------------------------------
+
+  Copyright 2009, Ifcaro & jimmikaelkael
+  Licenced under Academic Free License version 3.0
+  Review OpenPS2Loader README & LICENSE files for further details.
+
+-----------------------------------------------------------------------------
+
+Main code is based on HD Project 1.081
+Copyright (C) 2006-2008 Polo <polo35580@hotmail.fr>
+
+Adaptation to USB Advance format and User interface
+Copyright (C) 2009 Ifcaro <taslokooo@gmail.com>
+
+CDVDMAN, CDVDFSV, CDDEV, DISCID & SMBMAN modules by jimmikaelkael
+Copyright (C) 2009 jimmikaelkael <jimmikaelkael@wanadoo.fr>
+
+NETLOG module, and other contributions
+Copyright (C) 2009 misfire <misfire@xploderfreax.de>
+
+-----------------------------------------------------------------------------
+
+Main Project developers
+by Ifcaro, volca, jimmikaelkael, polo35, izdubar, hominem.te.esse, SP193
+
+Other developers
+by BatRastard, crazyc, dlanor, doctorxyz, reprep, belek666, Maximus32, misfire
+
+UI design
+by Berion
+
+Quality Assurance
+by RandQalan, yoshi314, EP, LocalH, lee4, El_Patas, ShaolinAssassin, algol, gledson999, jolek, zero35
+
+SMSUTILS, SMSMAP & SMSTCPIP modules
+by Eugene Plotnikov
+
+DEV9, ATAD modules and derived code used in cdvdman
+by Marcus R. Brown
+
+USB, Network and PS2HDD modules
+by ps2dev's taken from PS2SDK
+
+MMCE (Memory Card Mass Storage protocol)
+by bbsan2k
+
+OPL-CL project/network update support
+by icyson55
+
+SMB code in Open PS2 Loader includes DES algorithm developed
+by Eric Young (eay@mincom.oz.au)
+
+CI/CD Implementation using Dockers and GiHubActions
+by fjtrujy
+
+-----------------------------------------------------------------------------
+
+RiptOPL fork
+by NathanNeurotic (Ripto)
+
+RiptOPL stands entirely on the shoulders of the PS2 homebrew community. None of it
+would exist without the ps2homebrew team (https://github.com/ps2homebrew) and their
+many years of open-source work on Open PS2 Loader and the PS2SDK, kept free, open,
+and readable so that people like us can study it, learn from it, and build on it.
+Every feature in this fork began as their code and their ideas.
+
+RiptOPL is a direct agglomeration of the wider OPL family, bringing together
+features, code, and ideas from:
+
+  - rickgaiser's OPL                https://github.com/rickgaiser/Open-PS2-Loader
+  - sOPL (mystyq)                   https://github.com/mystyq/Stable-Open-PS2-Loader
+  - uOPL (Wolf3s)                   https://github.com/Wolf3s/uOPL
+  - wOPL (KrahJohlito)              https://github.com/KrahJohlito/wOPL
+  - OPL DB (Jay-Jay-OPL)            https://github.com/Jay-Jay-OPL/OPL-Daily-Builds
+  - POPSLoader                      https://github.com/NathanNeurotic/POPSLoader
+  - OPL RetroGEM ID (CosmicScale)   https://github.com/CosmicScale/Open-PS2-Loader-Retro-GEM
+  - nhddl (pcm720)                  https://github.com/pcm720/nhddl
+  - Modulo-R1 (AdityaKumar7209)     https://github.com/AdityaKumar7209/Modulo-R1-Beta-Preview---PS2
+  - PS2-Launcher (Irfanlesnar)      https://github.com/Irfanlesnar/PS2-Launcher
+  - OPL HTTP (Docmine17)            https://github.com/Docmine17/Open-PS2-Loader-HTTP
+  - official OPL                    https://github.com/ps2homebrew/Open-PS2-Loader
+
+Bundled third-party software, shipped in the release package and NOT part of RiptOPL:
+
+  - Neutrino, by rickgaiser          https://github.com/rickgaiser/neutrino
+    A small, fast, modular PS2 device emulator, and RiptOPL's second PS2 loader
+    core. Bundled as a ready-to-use neutrino/ folder under the AFL-3.0 licence.
+    Deliberately UI-agnostic -- having no interface of its own is precisely what
+    lets a front-end drive it. RiptOPL adds only config/bsd-udpfsbd.toml, so that
+    UDPFS can be launched as -bsd=udpfsbd; nothing upstream is altered.
+
+  - Ember, by Gageformer             https://github.com/Gageformer/Ember
+    An independent PS1 emulator written from scratch for the PS2, and RiptOPL's
+    second PS1 core alongside POPSTARTER. Bundled unmodified with the author's
+    permission under the Ember Public Beta Testing Licence, shipped in the
+    package as EMBER/LICENSE-BETA.txt.
+
+  - RetroAchievements support, by hacan359 (yoba)
+                                     https://github.com/hacan359/Open-PS2-Loader/pull/1
+    The design and the console implementation that RiptOPL's RETROACHIEVEMENTS
+    flavour follows: hashing an image the way rcheevos does, streaming the
+    watched memory addresses out of the running game over UDP, and the PC client
+    that runs rcheevos on the console's behalf. Adopted with the author's
+    permission (2026-08-27); he supplies and maintains the PC client. Re-authored
+    against this fork rather than merged, so any defect in the port is ours.
+    Includes md5.c/md5.h by L. Peter Deutsch, vendored unchanged under the zlib
+    licence.
+
+  - POPStarter, by krHACKen          https://www.psx-place.com/resources/popstarter.683/
+    A PS1 launcher built around Sony's native POPS emulator for the PS2, used as
+    RiptOPL's primary PS1 core alongside Ember. POPStarter provides the
+    compatibility and launch layer for running PS1 VCDs from USB, internal HDD,
+    and SMB. The official POPStarter r13 package contains no Sony emulator
+    binaries, libraries, or BIOS files; those components must be supplied
+    separately by the user. Official download, documentation, compatibility
+    information, and releases are maintained on PSX-Place.
+
+Maintained companion PC & mobile tools:
+
+  - PS2-Servers, by Ripto (NathanNeurotic)
+    https://github.com/NathanNeurotic/PS2-Servers
+    All-in-one PC server launcher for SMBv1, UDPFS and UDPBD.
+
+  - udpfs-server, by YouKnow-sys
+    https://github.com/YouKnow-sys/udpfs-server
+    Android app that shares folders and disk images to the PS2 over UDPFS,
+    built on udpfsd by pcm720.
+
+  - OrbitPS2 Manager, by Luden (Luden02)
+    https://github.com/Luden02/OrbitPS2-Manager
+    Cross-platform desktop library manager for importing discs, cover art,
+    screenshots, ZSO compression, per-game settings and VMC management.
+
+  - OPL PS1 AIO Converter GUI, by shaan (shaanhomebrew-cloud)
+    https://github.com/shaanhomebrew-cloud/OPL-PS1-AIO-Converter-GUI
+    Windows all-in-one PS1/POPStarter preparation tool for converting BIN/CUE
+    backups to VCDs and installing them to USB, MX4SIO, MMCE, iLink, exFAT HDD,
+    SMB and APA internal HDD.
+
+  - PS2RD CHT Manager, by TheRealNextria
+    https://github.com/TheRealNextria/PS2RD-CHT-Manager
+    PC manager for the PS2RD .cht cheat files RiptOPL reads from device CHT folders.
+
+Special and sincere thanks to:
+
+  - Wolf3s and KrahJohlito - the driving force behind uOPL / wOPL, where much of
+    this fork's modern functionality originated. The Neutrino external-core loader
+    and the Coverflow and Favourites interfaces are all reimplementations of
+    features they designed and pioneered together. This fork is as much a tribute
+    to their work as anything else.
+  - bbsan2k - for the MMCE (Memory Card Mass Storage) protocol that makes SD-via-
+    memory-card loading through the PS2's memory-card slot possible.
+  - saildot4k - for BDMA-ATA (exFAT internal-HDD block-device support), and the
+    fixes, feedback, and oversight that shaped this fork's block-device work.
+  - Berion - for the artwork and theme design that has shaped how OPL looks.
+  - AdityaKumar7209 - whose Modulo-R1 project inspired this fork's folder
+    browsing in the game list. We didn't use their code; the idea of navigating
+    game subfolders came from seeing it there.
+  - Irfanlesnar - creator of PS2-Launcher, for UI and feature ideas across the OPL
+    fork ecosystem.
+  - pcm720 - for udpfsd and nhddl, key foundations for modern PS2 streaming.
+  - Ifcaro and jimmikaelkael - the original Open PS2 Loader authors - and every
+    contributor across OPL's long history, all named above in this file.
+
+Testing, bug reports and real-hardware feedback:
+by eliminator1403, lucaslmgv, AndrewBento, AcidReach, bodvenomz, nuno6573, Blade1984
+and zackcage6
+
+The RiptOPL name:
+by Akilluminati47 (https://github.com/akilluminati47)
+who coined it before the project existed
+
+Financial support:
+by Akilluminati47
+
+If you want the canonical, actively-maintained project, it lives at
+https://github.com/ps2homebrew/Open-PS2-Loader - please support it. This fork is a
+downstream labor of love, not a replacement, and it exists only because that
+upstream work is open for everyone to learn from.

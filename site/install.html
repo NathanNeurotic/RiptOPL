@@ -1,0 +1,281 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install &amp; First Boot · RiptOPL Docs</title>
+<meta name="description" content="Get RIPTOPL.ELF onto your PS2 and boot it the first time.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<meta property="og:site_name" content="RiptOPL Docs">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
+<link rel="stylesheet" href="assets/style.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    RiptOPL <small>DOCS</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search devices, themes, Neutrino, settings…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="index.html"><span class="em">🏠</span>Home</a>
+    <h4>Start</h4>
+    <a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
+    <a href="install.html" class="active"><span class="em">📥</span>Install &amp; First Boot</a>
+    <h4>Game sources</h4>
+    <a href="usb.html"><span class="em">🔌</span>USB / MX4SIO / iLink</a>
+    <a href="mmce.html"><span class="em">🧩</span>MMCE</a>
+    <a href="smb.html"><span class="em">🌐</span>SMB (network share)</a>
+    <a href="hdd.html"><span class="em">💽</span>Internal HDD (APA &amp; exFAT)</a>
+    <a href="network-boot.html"><span class="em">📡</span>Network Boot (UDPBD/UDPFS)</a>
+    <a href="http.html"><span class="em">🌐</span>HTTP</a>
+    <h4>Features</h4>
+    <a href="ps1-vcd.html"><span class="em">💿</span>PS1 Games</a>
+    <a href="neutrino.html"><span class="em">⚛️</span>Neutrino Core</a>
+    <a href="coverflow.html"><span class="em">🎴</span>Coverflow</a>
+    <a href="favourites.html"><span class="em">⭐</span>Favorites</a>
+    <a href="apps.html"><span class="em">🧰</span>Apps</a>
+    <a href="per-game-settings.html"><span class="em">🎚️</span>Per-game Settings</a>
+    <a href="gsm.html"><span class="em">📺</span>GSM Video Modes</a>
+    <a href="igr.html"><span class="em">🔄</span>In-Game Reset</a>
+    <a href="vmc.html"><span class="em">💾</span>VMC</a>
+    <a href="cheats.html"><span class="em">🎮</span>Cheats</a>
+    <a href="retroachievements.html"><span class="em">🏆</span>RetroAchievements</a>
+    <h4>Theme Engine</h4>
+    <a href="themes.html"><span class="em">🎨</span>Theme Engine</a>
+    <h4>Reference</h4>
+    <a href="settings.html"><span class="em">🔧</span>Settings Reference</a>
+    <a href="controls.html"><span class="em">🕹️</span>Controls</a>
+    <a href="languages.html"><span class="em">🌐</span>Languages</a>
+    <a href="pademu.html"><span class="em">🎮</span>PADEMU</a>
+    <a href="nbd.html"><span class="em">🖧</span>NBD Server</a>
+    <a href="zso.html"><span class="em">🗜️</span>ZSO Format</a>
+    <a href="ps3-bc.html"><span class="em">🎯</span>PS3 BC</a>
+    <a href="releases.html"><span class="em">📦</span>Releases</a>
+    <a href="fork-gaps.html"><span class="em">🧭</span>Fork Feature Gaps</a>
+    <a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+    <a href="credits.html"><span class="em">🙏</span>Credits &amp; Sources</a>
+    <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="em">📚</span>POPStarter docs ↗</a>
+  </nav>
+  <main class="content">
+<h1>Install &amp; First Boot</h1>
+<p class="lead">The RiptOPL menu and OPL core are in <code>RIPTOPL.ELF</code>. Neutrino and PS1 launching also need their companion folders. Extract the installable package, choose a loader, and copy the files needed by your source/core.</p>
+
+<h2 id="what-is-riptopl-elf">What is RIPTOPL.ELF?</h2>
+<p>RiptOPL is a downstream fork of <a href="https://github.com/ps2homebrew/Open-PS2-Loader">Open PS2 Loader</a> compiled to a single PS2 ELF binary. The standard build includes GSM video-mode handling (including the hardware-confirmed forced-progressive 1080p mode), DS3/DS4 pad emulation (PADEMU), Virtual Memory Cards (VMC), PS2RD cheats, and parental controls in one file. There are no per-feature variant builds to choose between for those; the one ELF does it all. Some build flags are left off by default. <b>In-game screenshots (IGS) and right-to-left (RTL) language support are not compiled into the standard loader folders in the unified package</b> — the Makefile ships <code>EXTRA_FEATURES ?= 0</code> and both flags follow it. To get IGS or RTL, use a ready-made <code>-extra1</code> loader from <code>RIPTOPL-VARIANTS-*.zip</code> or build with <code>make EXTRA_FEATURES=1</code>. DualSense / DualShock 5 (USB) support ships as a ready-made <code>RIPTOPL-&lt;version&gt;-&lt;SDK&gt;-ds5.ELF</code> for each available SDK flavour inside <code>RIPTOPL-VARIANTS-*.zip</code>. The standard loaders already include 1080p; its picker is gated behind a triple confirmation, and holding <b>Triangle + Cross</b> during console boot forces 480p for the menu only, on displays/connections that accept it. You only need <code>make DUALSENSE=1</code> if you build your own DualSense loader — check the <a href="releases.html">Releases</a> page for current assets.</p>
+
+<div class="callout info"><div class="h">ℹ Private config, shared data</div>
+RiptOPL's master settings use <code>settings_riptopl.cfg</code> (with migration from
+<code>conf_riptopl.cfg</code>). That filename is separate from stock OPL's master config, but
+<code>conf_network.cfg</code>, app lists, per-game configuration and support files can still be shared.
+Favorites import from uOPL/wOPL is <b>one-way</b>: the next write saves RiptOPL's own <code>OFAV</code>
+format to <code>favourites.bin</code>, which those loaders cannot read back. Keep an original copy if
+you use them too. The settings home follows boot-directory discovery or <b>Custom Settings Path</b>;
+do not assume it is always <code>mc0:/OPL/</code>.</div>
+
+<h2 id="release-channels">Release channels</h2>
+<p>Choose current development or a preserved development snapshot. Neither is a universal compatibility guarantee; check the release notes for the exact build and available files.</p>
+
+<table data-sortable>
+<thead><tr><th>Channel</th><th>Tag</th><th>When to use</th></tr></thead>
+<tbody>
+<tr>
+  <td><b>Rolling (Latest)</b></td>
+  <td><code>rolling</code></td>
+  <td>Latest code from the publishing branch (<code>rebuild/main</code>), rebuilt on every push and published as GitHub's full, non-pre-release Latest release. Best for eager testers; it may be unstable.</td>
+</tr>
+<tr><td>Current Fan Favorite Build</td><td><code>current-fan-favorite</code></td><td>Preserved development snapshot selected after positive feedback; compatibility is setup-dependent.</td></tr>
+</tbody>
+</table>
+
+<p>See <a href="releases.html">Releases</a> for the full asset listing and pull instructions. The short version: download the <code>RIPTOPL-&lt;version&gt;.zip</code> installable package, unzip it, and start with <code>APP_RIPTOPL-PS2DEVPINNED/RIPTOPL.ELF</code> when that best-effort flavour is present.</p>
+
+<div class="callout info"><div class="h">ℹ Already have RiptOPL installed?</div>
+This page is for a <b>first</b> install. To update one you already have, skip the package: the
+release carries a single loose <a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a>
+(the <code>-OFFICIALROLLING</code> flavour) whose filename and link never change. Download it and
+overwrite the <code>RIPTOPL.ELF</code> you already have — <code>POPS/</code>, <code>EMBER/</code>,
+<code>neutrino/</code> and your settings stay where they are. Use the full package instead if you
+want a pinned flavour, or if any of those companion folders are missing.</div>
+
+<details class="deep"><summary>What is inside the installable zip?</summary>
+<p>The <code>RIPTOPL-&lt;version&gt;.zip</code> package contains:</p>
+<ul>
+  <li><code>APP_RIPTOPL-PS2DEVPINNED/RIPTOPL.ELF</code> — #1 recommended primary, built with a digest-pinned ps2dev SDK.</li>
+  <li><code>APP_RIPTOPL-OFFICIALPINNED/RIPTOPL.ELF</code> — #2 recommended official pinned control.</li>
+  <li><code>APP_RIPTOPL-PS2DEVROLLING/RIPTOPL.ELF</code> — #3 moving <code>ps2dev:latest</code> canary and the required-to-compile flavour.</li>
+  <li><code>APP_RIPTOPL-OFFICIALROLLING/RIPTOPL.ELF</code> — #4 moving official <code>ps2homebrew:main</code> canary.</li>
+  <li><code>POPS/</code> — the single canonical release folder for POPSTARTER support. It contains <code>POPSTARTER.ELF</code>, the SMB externals, <code>PATCH_5.BIN</code>, and every loose BDMA <code>usbd.irx.*</code> / <code>usbhdfsd.irx.*</code> pair, including <code>.ilink</code>. No BDMA pair is embedded in <code>RIPTOPL.ELF</code>, and there is no duplicate release-root <code>POPSTARTER/</code> folder. Only <code>POPS.ELF</code> — Sony's PS1 emulator — is not distributed here.</li>
+  <li><code>EMBER/</code> — the bundled external Ember PS1 core, unmodified and ready for the user-supplied BIOS and games.</li>
+  <li><code>neutrino/</code> — the bundled Neutrino external core, shipped extracted as a drag-and-drop folder (<code>neutrino.elf</code> + <code>config/</code> + <code>modules/</code>) used by the <b>network-boot (UDPBD/UDPFS)</b> subsystem (pre-populated with the UDPFS config). Copy it to <code>mc?:/neutrino/</code> — that path is exactly what <b>Neutrino Device</b> auto-detect looks for, and the same copy serves both per-game Neutrino launching and network boot. No separate download is needed.</li>
+  <li>Five <code>.url</code> shortcuts — <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2-Servers</a>, <a href="https://github.com/YouKnow-sys/udpfs-server">udpfs-server</a>, <a href="https://github.com/Luden02/OrbitPS2-Manager">OrbitPS2 Manager</a>, <a href="https://github.com/shaanhomebrew-cloud/OPL-PS1-AIO-Converter-GUI">OPL PS1 AIO Converter GUI</a>, and <a href="https://github.com/TheRealNextria/PS2RD-CHT-Manager">PS2RD CHT Manager</a>. These are links to the maintained external tools; the tools themselves are not embedded in the RiptOPL package.</li>
+</ul>
+<p>The final GitHub asset set contains archives by purpose (including the separate experimental RA package): the unified package, exact source snapshot, variants, and the language/debug packs when those optional jobs produce them. Bare loader ELFs and build/checksum manifests are not separate public assets; standard loaders are inside the unified package, and DualSense loaders are inside <code>RIPTOPL-VARIANTS-*.zip</code>.</p>
+</details>
+
+<h2 id="install">Getting RIPTOPL.ELF onto your PS2</h2>
+<p>RiptOPL requires a way to boot unsigned ELFs on the PS2. The two most common are <b>FreeMcBoot (FMCB)</b> on a memory card and <b>FreeHDBoot (FHDB)</b> on an internal HDD; FreeDVDBoot is a separate disc-based entry point. Any method that can launch an ELF works.</p>
+
+<div class="steps">
+  <div class="step">
+    <h3>1. Download the package</h3>
+    <p>Go to the <a href="https://github.com/NathanNeurotic/RiptOPL/releases" target="_blank" rel="noopener">Releases page</a> and grab the <code>rolling</code> development build or preserved <code>current-fan-favorite</code> snapshot. Download the unified <code>RIPTOPL-&lt;version&gt;.zip</code> installable package (the archive without <code>LANGS</code>, <code>VARIANTS</code>, <code>DEBUG</code>, <code>RetroAchievements</code>, or <code>src</code> in its name) and unzip it locally.</p>
+  </div>
+  <div class="step">
+    <h3>2. Copy RIPTOPL.ELF to your boot location</h3>
+    <p>Use the ELF from <code>APP_RIPTOPL-PS2DEVPINNED/RIPTOPL.ELF</code> inside the zip when present; otherwise use the next available labelled flavour in the documented order. Where it goes depends on your boot method:</p>
+    <ul>
+      <li><b>FMCB</b> — copy <code>RIPTOPL.ELF</code> to a folder on a device that your launcher can access, such as a USB drive or memory card, then add a FMCB menu entry pointing to it. A common convention is <code>mass:/APPS/RIPTOPL/RIPTOPL.ELF</code> or <code>mc0:/RIPTOPL/RIPTOPL.ELF</code>.</li>
+      <li><b>FHDB</b> — copy into an HDD partition the same way FHDB expects its launch targets.</li>
+      <li><b>Other launchers</b> — place the ELF wherever that launcher is configured to find it; RiptOPL has no path requirements of its own.</li>
+    </ul>
+    <p>The ELF filename itself does not matter to RiptOPL, only to your launcher's menu entry.</p>
+  </div>
+  <div class="step">
+    <h3>3. (Optional) Place the Neutrino folder</h3>
+    <p>Copy the bundled <code>neutrino/</code> folder (drag-and-drop: <code>neutrino.elf</code> + <code>config/</code> + <code>modules/</code>, pre-populated with the UDPFS config) to <code>mc0:/neutrino/</code> or <code>mc1:/neutrino/</code>. That one copy serves both <b>per-game Neutrino launching</b> and <b>network boot (UDPBD/UDPFS)</b> — the resolver finds <code>mc?:/neutrino/neutrino.elf</code> automatically, and the <code>mc?:NEUTRINO/neutrino.elf</code> form is accepted too. You can also pick a device type with <b>Neutrino Device</b> (<b>Settings → Game Launching</b>) after first boot, or set a full custom path with the <code>neutrino_path</code> key in <code>settings_riptopl.cfg</code>. See <a href="neutrino.html">Neutrino Core</a>.</p>
+  </div>
+  <div class="step">
+    <h3>4. Prepare your storage device</h3>
+    <p>OPL expects a specific folder layout on whichever device(s) you plan to load games from. You do not need to create these by hand — RiptOPL auto-creates them once you enable that device — but it helps to know what they are:</p>
+    <pre>DVD/      ← DVD5 and DVD9 ISO images
+CD/       ← CD-based game images (blue-bottom discs)
+ART/      ← cover art images
+CFG/      ← per-game settings files
+VMC/      ← Virtual Memory Card images
+THM/      ← themes
+LNG/      ← language / translation files (see Languages)
+CHT/      ← PS2RD cheat files
+APPS/     ← homebrew ELF files (see Apps)</pre>
+    <p>For the <b>APA/PFS internal HDD</b>, a usable configured data partition takes priority, followed by existing <code>+OPL</code> (root), then <code>__common/OPL/</code>. No partition is created; see <a href="hdd.html#apa-opl-partition">HDD setup</a>. For <b>exFAT HDD</b> (BDMAssault) and all other folder-based devices (USB, MMCE, MX4SIO, iLink, SMB), the folders live at the root of the device.</p>
+  </div>
+</div>
+
+<div class="callout info"><div class="h">ℹ Auto-creation on device enable</div>
+When you enable a device mode in OPL settings and exit back to the game list, OPL automatically creates any missing folders on that device. Nothing is created on a fresh first boot, because every device ships off. You do not need to pre-create <code>DVD/</code>, <code>ART/</code>, etc. manually — just enable the device, save settings, and the directories will appear.
+</div>
+
+<h2 id="first-boot">First boot walkthrough</h2>
+<div class="steps">
+  <div class="step">
+    <h3>Launch RIPTOPL.ELF</h3>
+    <p>Boot through FMCB, FHDB, or your chosen launcher. On a fresh install you land on the <b>start menu</b> — no game-list tabs exist yet, because every device ships off. Enable a device and its tab appears, rendered by the Coverflow theme (RiptOPL's built-in cover-art carousel) once you have games in the right folders.</p>
+  </div>
+  <div class="step">
+    <h3>Enable your device</h3>
+    <p>Navigate to <b>Settings → Game Sources</b>. Enable the storage device(s) you want to use. Nothing is on by default: turn <b>USB</b> on and set the BDM tab's start mode to <b>Manual</b> or <b>Auto</b>, then save. Games in <code>DVD/</code> and <code>CD/</code> appear after the first scan. For SMB, HDD, MMCE, MX4SIO, iLink, or network boot, enable the corresponding toggle and fill in any required details (IP address for SMB/network boot, etc.).</p>
+  </div>
+  <div class="step">
+    <h3>Save settings</h3>
+    <p>Go to <b>Settings → Save Changes</b> (or the equivalent save action in the settings screen). This writes <code>settings_riptopl.cfg</code> to the config path and auto-creates the device folders. From this point on, RiptOPL remembers your preferences across boots.</p>
+  </div>
+  <div class="step">
+    <h3>Launch a game</h3>
+    <p>Back on the main list, your games appear under the device tabs. Highlight a title and press <b>Cross</b> (or <b>Circle</b> for Japanese-layout controllers — the confirm button follows standard OPL behavior and is configurable). The game boots via OPL's built-in core by default. To use Neutrino instead, open <b>Game Settings → Loader Core → Neutrino</b> for that title. See <a href="per-game-settings.html">Per-game Settings</a>.</p>
+  </div>
+</div>
+
+<h2 id="opinionated-defaults">Opinionated defaults</h2>
+<p>Unlike upstream OPL — which ships with most features off and expects you to enable them — RiptOPL boots with a set of opinionated defaults that are on from the very first launch, before you have saved any settings. You can change any of them under <b>Settings</b> at any time.</p>
+
+<table data-sortable>
+<thead><tr><th>Setting</th><th>Default</th><th>Where to change</th></tr></thead>
+<tbody>
+<tr><td>Widescreen (16:9)</td><td>ON</td><td>Interface</td></tr>
+<tr><td>Cover Art</td><td>ON</td><td>Interface → Artwork Settings</td></tr>
+<tr><td>Notifications (popups)</td><td>ON</td><td>Interface</td></tr>
+<tr><td>PS2 Logo</td><td>ON</td><td>Game Launching</td></tr>
+<tr><td>Sound effects (SFX)</td><td>ON (volume 90)</td><td>Audio Settings</td></tr>
+<tr><td>Boot sound</td><td>ON (volume 90)</td><td>Audio Settings</td></tr>
+<tr><td>BGM (background music)</td><td>ON (volume 90)</td><td>Audio Settings</td></tr>
+<tr><td>USB, iLink, MX4SIO, Internal HDD (exFAT)</td><td>OFF</td><td>Game Sources</td></tr>
+<tr><td>Every start mode (HDD, MMCE, BDM devices, network, Apps, Favorites)</td><td>Off</td><td>Game Sources</td></tr>
+<tr><td>Video mode</td><td>Auto (0)</td><td>Interface (menu only)</td></tr>
+<tr><td>Theme</td><td>&lt;Coverflow&gt; (built-in)</td><td>Interface</td></tr>
+<tr><td>Write Operations (rename, delete, VMC creation)</td><td>ON</td><td>General &amp; System</td></tr>
+<tr><td>Show GameID Barcode (Pixel FX)</td><td>On (POPSTARTER only)</td><td>Interface</td></tr>
+<tr><td>Network Connectivity</td><td>Off</td><td>Game Sources</td></tr>
+</tbody>
+</table>
+
+<div class="callout info"><div class="h">ℹ Start modes</div>
+A fresh install ships with every device <b>Off</b>, so no device tabs appear until you enable one in Game Sources. Once a device is enabled, pick its start mode: <b>Manual</b> keeps the tab visible and only populates the game list when you navigate to that tab and explicitly trigger a scan — no automatic background scanning on boot — while <b>Auto</b> scans that tab when OPL starts.
+</div>
+
+<h2 id="config-file">Config file: settings_riptopl.cfg</h2>
+<p>RiptOPL's master settings use <code>settings_riptopl.cfg</code> (with migration from
+<code>conf_riptopl.cfg</code>). That filename is separate from stock OPL's master config, but
+<code>conf_network.cfg</code>, app lists, per-game configuration and support files can still be shared.
+Favorites import from uOPL/wOPL is <b>one-way</b>: the next write saves RiptOPL's own <code>OFAV</code>
+format to <code>favourites.bin</code>, which those loaders cannot read back. Keep an original copy if
+you use them too. The settings home follows boot-directory discovery or <b>Custom Settings Path</b>;
+do not assume it is always <code>mc0:/OPL/</code>.</p>
+
+<p>If you previously used an older RiptOPL build that saved as <code>conf_riptopl.cfg</code>, the new build automatically migrates your settings the next time it saves — you do not need to rename anything manually.</p>
+
+<p>The config file is discovered and written in this priority order (first found wins on read; saves always go back to the same path it was read from):</p>
+
+<ul class="checklist">
+<li>The folder <code>RIPTOPL.ELF</code> was launched from (its working directory) — this is the config home</li>
+<li>Only when the boot path cannot be determined does OPL fall back, in a fixed sequence, starting with the <code>config.path</code> redirect pointer file in the current working directory (the Krah bootstrap — it stores the directory of the last saved config and is rewritten on every save)</li>
+<li>then <code>mc0:</code> / <code>mc1:</code> explicitly, then the boot device (<code>mass:</code> or <code>hdd:</code>), then MMCE, then BDM devices, then the BDM/internal HDD (<code>hdd0:__common/OPL/</code>)</li>
+</ul>
+
+<p><b>Everything else</b> — cover art (<code>ART/</code>), themes (<code>THM/</code>), VMC images (<code>VMC/</code>), per-game config files (<code>CFG/</code>), and <code>favourites.bin</code> — lives in the shared <code>OPL/</code> folder structure and is read and written by any OPL-family build that understands those formats. RiptOPL will import an existing <code>favourites.bin</code> from wOPL or uOPL on first launch.</p>
+
+<h2 id="cover-art">Cover art at a glance</h2>
+<p>All artwork lives in <b>one place</b>: the <code>ART/</code> folder on the device the item is on. There is
+no second location and no fallback folder — if a cover is not appearing, the filename is what to check, not
+the path.</p>
+
+<p>Only the <b>key</b> — the part before the suffix — changes with the kind of item:</p>
+
+<table>
+<thead><tr><th>Item</th><th>Key</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td>PS2 game</td><td>The game ID</td><td><code>ART/SLUS_012.34_COV.png</code></td></tr>
+<tr><td>PS1 game (VCD, POPSTARTER)</td><td>The VCD's name</td><td><code>ART/Spyro 2 (Ripto's Rage)_COV.png</code></td></tr>
+<tr><td>PS1 game (Ember)</td><td>The PS1 disc ID</td><td>See <a href="ps1-vcd.html">PS1 Games</a></td></tr>
+<tr><td>App</td><td>The ELF filename</td><td><code>ART/MYAPP_COV.png</code></td></tr>
+</tbody>
+</table>
+
+<p>The suffix says which image it is — <code>_COV</code> is the cover, <code>_SCR</code> and
+<code>_SCR2</code> are screenshots, <code>_BG</code> a background, <code>_ICO</code> an icon. Which of them a
+given theme actually draws is up to that theme; see <a href="themes.html">Theme Engine</a> for authoring, and
+<a href="coverflow.html">Coverflow</a> for what the default theme uses.</p>
+
+<div class="callout info"><div class="h">ℹ Many small files can be slow to open</div>
+On a slow device a folder of loose images costs one file open per cover. <b>Cover Art .tar Archive</b>
+(<em>Settings → Interface</em>, off by default) is an opt-in loader that also reads art from a single
+<code>ART/art.tar</code> alongside the loose files. See the <a href="settings.html">Settings Reference</a>.</div>
+
+<h2 id="next-steps">Next steps</h2>
+<div class="grid">
+  <a class="tile" href="getting-started.html"><span class="em">🚀</span><b>Getting Started</b><span>End-to-end first game guide</span></a>
+  <a class="tile" href="usb.html"><span class="em">🔌</span><b>USB / MX4SIO / iLink</b><span>FAT32 &amp; exFAT mass devices</span></a>
+  <a class="tile" href="hdd.html"><span class="em">💽</span><b>Internal HDD</b><span>APA/PFS &amp; exFAT (BDMA)</span></a>
+  <a class="tile" href="neutrino.html"><span class="em">⚛️</span><b>Neutrino Core</b><span>External core per-game + network boot</span></a>
+  <a class="tile" href="releases.html"><span class="em">📦</span><b>Releases</b><span>Rolling vs tagged, asset list, checksums</span></a>
+  <a class="tile" href="settings.html"><span class="em">🔧</span><b>Settings Reference</b><span>Every menu option explained</span></a>
+</div>
+</main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>RiptOPL Documentation</b> — for the opinionated Open PS2 Loader fork. Built on, and grateful to, the
+  <a href="https://github.com/ps2homebrew">ps2homebrew</a> team and the wider OPL family — see
+  <a href="credits.html">Credits &amp; Sources</a>. For the canonical project, see
+  <a href="https://github.com/ps2homebrew/Open-PS2-Loader">ps2homebrew/Open-PS2-Loader</a>.</p>
+  <p class="prov-inline">RiptOPL is a downstream fork, not the canonical project. POPSTARTER uses Sony's POPS; Ember is a separate emulator. Sony's POPS is
+  <b>not</b> distributed here. PS1/POPSTARTER deep reference: the sister
+  <a href="https://nathanneurotic.github.io/POPSLoader/">POPStarter docs</a>.</p>
+</footer>
+<script src="assets/app.js"></script>
+</body></html>

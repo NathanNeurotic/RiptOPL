@@ -1,0 +1,15 @@
+
+DECLARE_EXPORT_TABLE(httpc, 1, 1)
+	DECLARE_EXPORT(_start)
+	DECLARE_EXPORT(_exit)
+	DECLARE_EXPORT(_retonly)
+	DECLARE_EXPORT(_retonly)
+	DECLARE_EXPORT(HttpEstabConnection)
+	DECLARE_EXPORT(HttpCloseConnection)
+	DECLARE_EXPORT(HttpSendGetRequest)
+	DECLARE_EXPORT(HttpStreamBegin)
+	DECLARE_EXPORT(HttpStreamRead)
+	DECLARE_EXPORT(HttpStreamEnd)
+END_EXPORT_TABLE
+
+void _retonly(){};

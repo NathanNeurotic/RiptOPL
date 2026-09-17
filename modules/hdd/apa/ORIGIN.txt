@@ -1,0 +1,47 @@
+Vendored from: ps2dev/ps2sdk
+  iop/hdd/apa/src/*          (driver)
+  iop/hdd/libapa/src/*       (APA library)
+  iop/hdd/libapa/include/libapa.h
+Built with the iop/hdd/apa-osd flag set: APA_OSD_VER APA_USE_DEV9 APA_USE_ATAD (see Makefile).
+Pin: 3e46a44a21db66f42a56320b6f64bfc52ea279f8 (2026-09-03)
+License: Academic Free License 2.0, included as LICENSE (headers retained in the sources).
+
+BASELINE PROOF: the unmodified vendoring commit, after repository clang-format 12 formatting,
+builds a ps2hdd-osd.irx that is BYTE-IDENTICAL to $(PS2SDK)/iop/irx/ps2hdd-osd.irx in
+ghcr.io/ps2dev/ps2dev:latest (as of 2026-09-14). Every functional change is therefore isolated in
+the commits that follow it; diff against that commit to review them.
+
+WHY VENDORED: see LOCAL CHANGES below, and docs/APA-SAFETY.md for the incident analysis.
+
+LOCAL CHANGES (all marked "RiptOPL" in the sources; .github/scripts/test_apa_table_safety.py
+compiles the fence and fails if any of the policy below is lost):
+
+1. APA TABLE WRITE FENCE -- src/table_fence.h + src/table_fence.c (fork files). hdd_blkio.h routes
+   blkIoDmaTransfer, the single path every driver read/write takes, through apaFencedDmaTransfer.
+   A write that touches LBA 0-7 (one physical sector on 512e drives: the __mbr header plus the
+   error records) is refused with -EROFS unless it is exactly LBA 0, 2 sectors, carrying a whole
+   valid __mbr header (magic, full 1 KB checksum, Sony MBR magic, id "__mbr", start 0, MBR type,
+   no subs, links inside the disk). Legitimate table edits -- deleting a game at the tail of the
+   disk, journal replay of an __mbr copy -- still pass. Byte offsets are asserted against
+   apa_header_t at compile time.
+2. apa.c: apaSaveError / apaSetPartErrorSector no longer write the LBA 6/7 error records (log
+   instead). They were the only routine writes into the table's physical sector, issued precisely
+   when a read was already failing. Also removes the SDK's NULL dereference of apaCacheAlloc in
+   apaSetPartErrorSector.
+3. apa.c: apaGetPartErrorSector frees its cache entry on a failed read (SDK leaked one per failure).
+4. hdd_fio.c: a game loader is not a partition manager, so every partition edit and raw write is
+   refused with -EACCES: hddFormat, partition creation through O_CREAT in apaOpen, hddRemove,
+   hddReName, HIOCADDSUB/HIOCDELSUB, HDIOC_SWAPTMP, HDIOC_SETOSDMBR and HDIOC_WRITESECTOR. The
+   refused code is kept after the early returns (or marked unused) for diffability. apa.c
+   apaGetNextHeader also logs a start != prev mismatch instead of rewriting the header mid-walk.
+   What remains is opening existing partitions and PFS I/O inside them.
+5. hdd_fio.c: ioctl2Transfer's partition bounds check is overflow-safe (the SDK summed sector + size
+   in u32, so a wrapping request could address anywhere on the disk).
+6. hdd_fio.c: an on-disk sub-partition count above APA_MAXSUB is refused in apaOpen and bounded in
+   fioGetStatFiller. The header has exactly 64 sub slots (apa_header_t.subs, and ioctl2AddSub stops at
+   64), so a larger count is corruption; the SDK would index past the array into unrelated memory.
+
+Unchanged: on-disk format, module name/version, cache, journal, enumeration and link repair, PFS.
+
+RE-VENDOR: fetch the files above from the new pin, clang-format 12, build and cmp against the
+container's prebuilt to re-establish the baseline, then re-apply LOCAL CHANGES and update the pin.

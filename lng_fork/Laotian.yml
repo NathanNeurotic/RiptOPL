@@ -1,0 +1,319 @@
+translations:
+  AUTOSORT: ຈັດຮຽງເກມຕາມຕົວອັກສອນ
+  RUMBLE: ການສັ່ນຂອງຕົວຄວບຄຸມໃນເມນູ
+  HINT_RUMBLE: ສັ່ນສັ້ນໆເມື່ອຍ້າຍຕົວກະພິບ, ຢືນຢັນ ຫຼື ຍ້ອນກັບ -- ຕ້ອງໃຊ້ DualShock ໃນໂໝດອະນາລັອກ
+  FOLDER_NAV: ເປີດເບິ່ງໂຟນເດີໃນລາຍການເກມ
+  HINT_FOLDER_NAV: ສະແດງໂຟນເດີຍ່ອຍຂອງ CD/DVD ເປັນລາຍການທີ່ເປີດເບິ່ງໄດ້, ເລືອກເພື່ອເປີດ, ຍົກເລີກເພື່ອຍ້ອນກັບ
+  SETTINGS_NO_HOME: ບໍ່ພົບ memory card -- ບໍ່ສາມາດບັນທຶກການຕັ້ງຄ່າໄດ້. OPL ຖືກ boot ຈາກອຸປະກອນເຄືອຂ່າຍ, ຊຶ່ງການຕັ້ງຄ່າຂອງມັນຕ້ອງຢູ່ໃນ card ໃນເຄື່ອງ.
+  ERROR_SAVING_SETTINGS_TO: ບໍ່ສາມາດຂຽນການຕັ້ງຄ່າໃສ່ %s ໄດ້ (ຂໍ້ຜິດພາດ %d)
+  GENERAL_SETTINGS: ການຕັ້ງຄ່າທົ່ວໄປ
+  DEVICE_SETTINGS: ການຕັ້ງຄ່າອຸປະກອນ
+  LAUNCH_PS2_DISC: ເປີດແຜ່ນ PS2
+  DISC_LAUNCH_ERR: ບໍ່ມີແຜ່ນ PS2 ໃນໄດ.
+  DEFAULT: ຄ່າເລີ່ມຕົ້ນ
+  HINT_MODE7: Neutrino ເທົ່ານັ້ນ -- ແກ້ໄຂເກມທີ່ overrun IOP buffer (-gc=7)
+  MODE7: Mode 7
+  ENABLEIMAGE: PS2RD Cheat Image
+  HINT_ENABLEIMAGE: ນຳໃຊ້ patch PS2RD .img ທີ່ສ້າງໄວ້ລ່ວງໜ້າກັບເກມຂອງທ່ານ.
+  UDPBD_GAMES: UDPBD Games
+  MMCE: MMCE
+  MMCE_GAMES: MMCE Games
+  MMCEMODE: ໂໝດເລີ່ມຕົ້ນ MMCE
+  MMCE_PREFIX: ເສັ້ນທາງ MMCE Prefix
+  MMCE_SLOT: ຊ່ອງ MMCE
+  MMCEIGR_SLOT: ຊ່ອງ IGR Bootcard
+  HINT_MMCEIGR_SLOT: ຄຳສັ່ງສະລັບ bootcard ຈະຖືກສົ່ງໄປຍັງຊ່ອງທີ່ເລືອກເມື່ອ IGR
+  MMCE_ADVANCED: ຂັ້ນສູງ
+  MMCE_SETTINGS: ການຕັ້ງຄ່າ MMCE
+  MMCE_SEMA: ວິທີ Lock Sema Enqueuing
+  HINT_MMCE_SEMA: THFIFO ອາດຊ່ວຍຄວາມເຂົ້າກັນໄດ້ແຕ່ຫຼຸດປະສິດທິພາບ
+  MMCE_WAIT_CYCLES: Wait cycles ຫຼັງ /ACK ຕ່ຳ
+  HINT_MMCE_WAIT_CYCLES: ຄ່າຕ່ຳອາດປັບປຸງປະສິດທິພາບແຕ່ເກີດຄວາມບໍ່ໝັ້ນຄົງໄດ້
+  MMCE_USE_ALARMS: ໃຊ້ timeout alarms
+  HINT_MMCE_USE_ALARMS: ປິດອາດຊ່ວຍປະສິດທິພາບແຕ່ອາດເຮັດໃຫ້ MMCE timeout ຄ້າງ
+  CORE_LOADER: Loader Core
+  NEUTRINO_BAD_FORMAT: Neutrino ບໍ່ຮອງຮັບຮູບແບບໄຟລ໌ນີ້, ເປີດດ້ວຍ <OPL> core
+  NEUTRINO_NOT_FOUND: ບໍ່ພົບ Neutrino ELF, ເປີດດ້ວຍ <OPL> core
+  UDPBD_NEEDS_STATIC_IP: UDPBD ຕ້ອງການ IP ຄົງທີ່ຂອງ PS2. ຕັ້ງໃນ ການຕັ້ງຄ່າ > ເຄືອຂ່າຍ (DHCP ເປີດຢູ່ຕອນນີ້).
+  NEUTRINO_SETTING_NA: ການຕັ້ງຄ່ານີ້ບໍ່ໃຊ້ກັບ Neutrino core.
+  POPSTARTER_NOT_FOUND: ບໍ່ພົບ POPSTARTER.ELF
+  POPSTARTER_SMB_MISSING: ຂາດຄວາມຕ້ອງການ SMB ສຳລັບ POPSTARTER
+  WRITE_POPSTARTER_NET: ບັນທຶກ POPSTARTER Network Config
+  HINT_WRITE_POPSTARTER_NET: ບັນທຶກຄ່າ IP + SMB share ນີ້ໄປຍັງ IPCONFIG.DAT / SMBCONFIG.DAT ຂອງ POPSTARTER ໃນ memory card (ສຳລັບ VCD ຜ່ານ SMB).
+  POPSTARTER_NET_ERR: ບໍ່ສາມາດບັນທຶກ network config ຂອງ POPSTARTER ລົງ memory card.
+  VCD: PS1
+  VCD_ON: ກຳລັງສະແດງເກມ PS1
+  VCD_OFF: ກຳລັງສະແດງເກມ disc
+  NEUTRINO_ARGS: Neutrino Launch Args
+  HINT_NEUTRINO_ARGS: "flags Neutrino ເພີ່ມເຕີມ, ຄັ່ນດ້ວຍຍະຫວ່າງ (ເຊັ່ນ -mt=dvd). Global ໃຊ້ກັບທຸກເກມ; ຕໍ່ເກມເພີ່ມໄລຍ. ໃສ່ $ ໜ້າ flag ເພື່ອປິດໂດຍບໍ່ລຶບ."
+  NEUTRINO_VIDEO: Neutrino Video
+  HINT_NEUTRINO_VIDEO: ບັງຄັບໂໝດວີດີໂອ GS output ຂອງ Neutrino (-gsm). ປິດຮັກສາຄ່າເລີ່ມຕົ້ນຂອງເກມ.
+  NEUTRINO_PATH: ເສັ້ນທາງ Neutrino ELF
+  HINT_NEUTRINO_PATH: ເສັ້ນທາງເຕັມໄປຫາ neutrino.elf (ເຊັ່ນ mc0:NEUTRINO/neutrino.elf). ວ່າງ = ຊອກຫາອັດຕະໂນມັດໃນ mc0/mc1.
+  POPSTARTER_PATH: ເສັ້ນທາງ POPSTARTER.ELF
+  HINT_POPSTARTER_PATH: ເສັ້ນທາງ POPSTARTER.ELF ກຳນົດເອງ; ໃຊ້ໂຟລເດີ POPS ຂອງອຸປະກອນໂດຍອັດຕະໂນມັດຖ້າຫາກວ່າງ/ບໍ່ພົບ. Keyboard ຈຳກັດ 31 ຕົວອັກສອນ; ເສັ້ນທາງຍາວກວ່ານັ້ນຜ່ານ settings_riptopl.cfg.
+  BDMA_SOURCE: ແຫຼ່ງ BDMA
+  HINT_BDMA_SOURCE: ອຸປະກອນທີ່ໂຟລເດີ POPS ມີໄຟລ໌ driver BDMAssault (usbd.irx.* / usbhdfsd.irx.*).
+  BDMA_MODE: BDMA Mode
+  HINT_BDMA_MODE: driver block-device exFAT ທີ່ POPSTARTER ໂຫຼດ. ການປ່ຽນແປງຈະສຳເນົາ module ໄປຍັງ card; FAT32 = ບໍ່ມີ (driver ໃນຕົວ).
+  BDMA_SRC_USB: USB
+  BDMA_SRC_MX4SIO: MX4SIO
+  BDMA_SRC_MMCE: MMCE
+  BDMA_SRC_HDD: HDD ພາຍໃນ
+  BDMA_MODE_FAT32: USB (FAT32)
+  BDMA_MODE_USBEXFAT: USB (exFAT)
+  BDMA_MODE_MX4SIO: MX4SIO (exFAT)
+  BDMA_MODE_MMCE: MMCE (exFAT)
+  BDMA_MODE_ATA: HDD (exFAT)
+  BDMA_ERR_SRC: ບໍ່ພົບໄຟລ໌ BDMA module ໃນອຸປະກອນຕົ້ນທາງ.
+  BDMA_ERR_SPACE: ບໍ່ມີພື້ນທີ່ memory card ພໍສຳລັບ BDMA modules.
+  BDMA_ERR_IO: ເກີດຂໍ້ຜິດພາດໃນການຂຽນ BDMA modules ລົງ memory card.
+  COVERFLOW_SETTINGS: ການຕັ້ງຄ່າ Coverflow
+  COVERFLOW_COUNT: ຈຳນວນ Cover
+  COVERFLOW_SCALE: ຂະໜາດກາງ
+  COVERFLOW_ANIM: ຄວາມໄວ Animation
+  COVERFLOW_DIM: ມືດ Cover ດ້ານຂ້າງ
+  NONE: ບໍ່ມີ
+  SMALL: ນ້ອຍ
+  LARGE: ໃຫຍ່
+  NORMAL: ປົກກະຕິ
+  FAV: ລາຍການໂປດ
+  FAVMODE: ໂໝດເລີ່ມຕົ້ນລາຍການໂປດ
+  FAV_HINT: ລາຍການໂປດ
+  FAV_MSG: '%s ບໍ່ອະນຸຍາດຜ່ານເມນູລາຍການໂປດ.'
+  FAV_PERSISTENCE_MSG: '%s ບໍ່ສາມາດໃຊ້ໄດ້ຂະນະທີ່ລາຍການຖືກໝາຍເປັນລາຍການໂປດ.'
+  NEUTRINO_DEVICE: ອຸປະກອນ Neutrino
+  HINT_NEUTRINO_DEVICE: ອຸປະກອນທີ່ມີ neutrino.elf (ໃນໂຟລເດີ NEUTRINO/ ຫຼື neutrino/). ອັດຕະໂນມັດສະແກນ mc0 ແລ້ວ mc1.
+  NARGS_QB: Quick Boot (-qb)
+  NARGS_CWD: Working Dir (-cwd)
+  NARGS_CFG: Config (-cfg)
+  NARGS_ELF: Boot ELF (-elf)
+  NARGS_ATA0: ATA0 Image (-ata0)
+  NARGS_ATA0ID: ATA0 ID (-ata0id)
+  NARGS_ATA1: ATA1 Image (-ata1)
+  NARGS_EXTRA: Args ເພີ່ມເຕີມ
+  NARGS_AUTO_NOTE: 'ອັດຕະໂນມັດ: -bsd -dvd -gc -gsm -mc -dbc -logo'
+  ENABLE_ART_TAR: ແຟ້ມ .tar ຮູບປົກ
+  DISABLE_ALL: ປິດທັງໝົດ
+  BOOT_LOADING_CONFIG: ກຳລັງໂຫຼດການຕັ້ງຄ່າ...
+  BOOT_SCANNING_BDM: ກຳລັງສະແກນ USB / ກາດ / ເຄືອຂ່າຍ...
+  BOOT_SCANNING_NET: ກຳລັງເລີ່ມເຄືອຂ່າຍ...
+  BOOT_SCANNING_HDD: ກຳລັງສະແກນ HDD...
+  BOOT_READY: ພ້ອມແລ້ວ.
+  UDPFS_GAMES: "ເກມ UDPFS"
+  UDPFSBD_GAMES: "ເກມ UDPFSBD"
+  NET_PROTOCOL: "ໂປຣໂຕຄໍເຄືອຂ່າຍ"
+  NET_NEEDS_NEUTRINO: "ເກມເຄືອຂ່າຍ (UDP) ສາມາດບູດໄດ້ຜ່ານ core Neutrino ເທົ່ານັ້ນ. ກວດເບິ່ງວ່າມີ neutrino.elf ຢູ່ ແລະ ຮອງຮັບຮູບແບບນັ້ນ."
+  VCD_NOT_ON_NET: "ເກມ PS1 (.VCD) ບໍ່ສາມາດເປີດຜ່ານອຸປະກອນເຄືອຂ່າຍໄດ້."
+  MX4SIO_PADEMU_WARN: "MX4SIO ແລະ ການຈຳລອງແພັດໃຊ້ບັສ SIO2 ຮ່ວມກັນ ແລະ ເກມອາດຈະບູດບໍ່ໄດ້."
+  HINT_OSD_SETTINGS_LNG: "ບັງຄັບໃຊ້ການຕັ້ງຄ່າພາສາແບບກຳນົດເອງ"
+  OSD_SETTINGS_TVASPECT: "ຂະໜາດຈໍ"
+  FULL_SCREEN: "ເຕັມຈໍ"
+  OSD_SETTINGS_VMODE: "ໂໝດວິດີໂອ"
+  SYSTEM_DEFAULT: "ຄ່າເລີ່ມຕົ້ນຂອງລະບົບ"
+  HIGH: "ສູງ"
+  LOW: "ຕໍ່າ"
+  XSENSITIVITY: "ຄວາມໄວແກນ X ອະນາລັອກ"
+  YSENSITIVITY: "ຄວາມໄວແກນ Y ອະນາລັອກ"
+  FILE_COUNT: "ພົບໄຟລ໌: %i"
+  CHEAT_SELECTION: "ການເລືອກໂກງ"
+  HDD_HINT: "ອະນຸຍາດພຽງ HDD ດຽວ, ການເປີດໃຊ້ຈະລັອກ APA ຫຼື GPT."
+  MMCE_GAMEID_NEUTRINO_SKIP: "ບໍ່ໄດ້ນຳໃຊ້ MMCE GameID -- neutrino.elf ຢູ່ໃນກາດນີ້ (ການປ່ຽນມັນຈະຖອນ Neutrino ອອກ)."
+  POPSTARTER_DEVICE: "ອຸປະກອນ POPSTARTER.ELF"
+  HINT_POPSTARTER_DEVICE: "ອຸປະກອນທີ່ເກັບ POPS/POPSTARTER.ELF ສຳລັບການເປີດ PS1 VCD. ຄ່າເລີ່ມຕົ້ນ = ອຸປະກອນບູດ (cwd) ຈາກນັ້ນອຸປະກອນຂອງ VCD ເອງ. ແບບກຳນົດເອງຈະສະແດງເສັ້ນທາງແບບພິມເອງ."
+  BDMA_APPLY: "ນຳໃຊ້ VCD BDMA ຕອນເປີດ"
+  HINT_BDMA_APPLY: "ເປີດ: ຕິດຕັ້ງໄດຣເວີ exFAT ທີ່ກົງກັບ VCD ທີ່ເປີດໃສ່ກາດຄວາມຈຳໂດຍອັດຕະໂນມັດກ່ອນບູດ (ແນະນຳ). ປິດ: ຈັດການເອງດ້ວຍຕົວເລືອກ Source/Mode ຂອງ BDMA ຂ້າງລຸ່ມ."
+  NETBOOT_RESTART: "ຣີສະຕາດ OPL ເພື່ອນຳໃຊ້ການປ່ຽນໂປຣໂຕຄໍການບູດເຄືອຂ່າຍ."
+  UDPFS_MODE: "ການເຂົ້າເຖິງ UDPFS"
+  "MENU": "ເມນູ"
+  "APPS": "ແອັບ"
+  "DEBUG": "ສີດີບັກ"
+  "COVERART": "ຮູບໜ້າປົກ"
+  "IP_ADDRESS_TYPE_DHCP": "DHCP"
+  "PORT": "Port"
+  "ADDR_TYPE_IP": "IP"
+  "ADDR_TYPE_NETBIOS": "NetBIOS"
+  "ENABLE_WRITE": "ການຂຽນຂໍ້ມູນ"
+  "MODE1": "ໂໝດ 1"
+  "MODE2": "ໂໝດ 2"
+  "MODE3": "ໂໝດ 3"
+  "MODE4": "ໂໝດ 4"
+  "MODE5": "ໂໝດ 5"
+  "MODE6": "ໂໝດ 6"
+  "ENABLEGSM": "ຕົວເລືອກ GSM"
+  "OVERSCAN": "Overscan"
+  "ENABLECHEAT": "ເຄື່ອງໂກງ PS2RD"
+  "PADEMU_ENABLE": "ຕົວຈຳລອງແພັດ"
+  "DS34USB_MODE": "DualShock3/4 USB"
+  "PADEMU_PORT": "ການຈຳລອງ"
+  "PADEMU_VIB": "ການສັ່ນ"
+  "PADEMU_WORKAROUND": "ວິທີແກ້ DS3 ປອມ"
+  "SFX": "ສຽງເອັບເຟັກ"
+  "BOOT_SND": "ສຽງເປີດເຄື່ອງ"
+  "ENABLE_NOTIFICATIONS": "ການແຈ້ງເຕືອນ"
+  "OPTIONS": "ຕົວເລືອກ"
+  "GLOBAL_SETTINGS": "ທົ່ວໄປ"
+  "INFO_GENRE": "ປະເພດ"
+  "INFO_RELEASE": "ວັນວາງຈຳໜ່າຍ"
+  "INFO_DESCRIPTION": "ຄຳອະທິບາຍ"
+  "BLOCKDEVICE_SETTINGS": "ອຸປະກອນ Block"
+  "CONTROLLER_SETTINGS": "ຕັ້ງຄ່າຄອນໂທຣນເລີ"
+  "HINT_BDM_START": "ເປີດ/ປິດ Block Device Manager."
+  "HINT_BLOCK_DEVICES": "ເປີດ/ປິດ Block Devices (ເຊັ່ນ USB)."
+  "USB_GAMES": "ເກມ USB"
+  "ILINK_GAMES": "ເກມ iLink"
+  "MX4SIO_GAMES": "ເກມ MX4SIO"
+  "PADMACROCONFIG": "ຕັ້ງຄ່າ PADMACRO"
+  "PADMACRO_SETTINGS": "ຕັ້ງຄ່າ Pad macro"
+  "PADMACRO_ENABLE": "Pad macro"
+  "PADMACRO_SLOWDOWN": "ຫຼຸດຄວາມໄວອານາລັອກ:"
+  "HINT_PADMACRO_SLOWDOWN_AXIS": "ຫຼຸດໄລຍະຂອງກ້ານອານາລັອກເມື່ອກົດປຸ່ມ"
+  "LEFT_ANALOG": "ກ້ານຊ້າຍ"
+  "RIGHT_ANALOG": "ກ້ານຂວາ"
+  "PADMACRO_INVERT_AXIS": "ກັບແກນອານາລັອກ:"
+  "HINT_PADMACRO_INVERT_AXIS": "ກັບແກນຂອງກ້ານອານາລັອກ"
+  "TURBO_SPEED": "ຄວາມໄວປຸ່ມ Turbo"
+  "HINT_TURBO_SPEED": "ຄວາມໄວໃນການກົດປຸ່ມເມື່ອ turbo ເປີດຢູ່"
+  "ACT_WHILE_PRESSED": "ຂະນະກົດປຸ່ມ"
+  "ACT_TOGGLED": "ສະຫຼັບດ້ວຍປຸ່ມ"
+  "LANGUAGE_JAPANESE": "ຍີ່ປຸ່ນ"
+  "LANGUAGE_ENGLISH": "ອັງກິດ"
+  "LANGUAGE_FRENCH": "ຝຣັ່ງ"
+  "LANGUAGE_SPANISH": "ສະເປນ"
+  "LANGUAGE_GERMAN": "ເຢຍລະມັນ"
+  "LANGUAGE_ITALIAN": "ອິຕາລີ"
+  "LANGUAGE_DUTCH": "ໂຮນລັງ"
+  "LANGUAGE_PORTUGUESE": "ໂປຕຸເກດ"
+  "LANGUAGE_RUSSIAN": "ລັດເຊຍ"
+  "LANGUAGE_KOREAN": "ເກົາຫຼີ"
+  "LANGUAGE_TRAD_CHINESE": "ຈີນດັ້ງເດີມ"
+  "LANGUAGE_SIMPL_CHINESE": "ຈີນຕົວຫຍໍ້"
+  "OSD_SETTINGS": "ຕັ້ງຄ່າ OSD"
+  "OSD_SETTINGS_LNG": "ພາສາ OSD"
+  "ENABLE_LNG": "ປ່ຽນພາສາ"
+  "BGM": "ເພງພື້ນຫຼັງ"
+  "BGM_VOLUME": "ລະດັບສຽງເພງພື້ນຫຼັງ"
+  "DEF_BGM_PATH": "ເພງທີມມາດຕະຖານ"
+  "DEF_BGM_PATH_HINT": "ຕັ້ງເສັ້ນທາງເພື່ອສະຕຣີມເພງສຳລັບທີມພາຍໃນ."
+  "BOOT_SCANNING_MC": "ກຳລັງສະແກນເມມໂມຣີກາດ..."
+  "BOOT_LOADING_DRIVERS": "ກຳລັງໂຫຼດໄດຣເວີບ່ອນເກັບຂໍ້ມູນ..."
+  "BOOT_LOADING_USB": "ກຳລັງໂຫຼດໄດຣເວີບ່ອນເກັບຂໍ້ມູນ USB..."
+  "BOOT_ARMING_MMCE": "ກຳລັງຕຽມ MMCE game-ID..."
+  "BOOT_LOADING_SOUNDS": "ກຳລັງໂຫຼດສຽງທີມ..."
+  "BOOT_BUILDING_MENU": "ກຳລັງສ້າງເມນູ..."
+  "NET_UDPFS_TAB_HINT": "UDPFS ເປີດຢູ່ -- ເປີດແທັບ UDPFS ໃໝ່ ແລ້ວກົດ Confirm ເພື່ອເชื่อมต่อ. ຝั่ง PC ແລ່ນ udpfsd -fsroot <games folder>."
+  "NET_UDPBD_TAB_HINT": "ອຸປະກອນບລັອກເครือข่ายເປີດຢູ່ -- ແທັບຂອງມັນຈະປາກົດຂຶ້ນເມື່ອເซิร์ฟเวอร์ PC ຕອບກັບ (udpfsd -bdpath ສຳລັບ UDPFS Image, udpbd-server ສຳລັບ UDPBD)."
+  "NEUTRINO_VMC_MISSING": "ບໍ່ພົບໄຟລ໌ VMC ຕໍ່ເກມ -- ກຳລັງເປີດຕົວໂດຍບໍ່ໃຊ້ມັນ (ເກມໃຊ້ກາດຈິງຂອງມັນ)."
+  "NEUTRINO_DEV_UNSUPPORTED": "Neutrino ບໍ່ສາມາດເປີດຈາກອຸປະກອນນີ້ໄດ້ -- ຍົກເລີກການເປີດ."
+  "NEUTRINO_TOML_SYNC_FAILED": "ຄ่าตั้งเครือข่ายของ Neutrino (bsd toml) ຫາຍໄປ ຫຼື ຂຽນບໍ່ໄດ້ -- ຍົກເລີກການເປີດຕົວ, ກวดสอบโฟลเดอร์ neutrino."
+  "NEUTRINO_TOO_FRAGMENTED": "แตกกระจายเกินไปสำหรับ Neutrino (%d fragments, ຂີດຈຳກັດ %d ລວມ VMCs) -- ກຳລັງລອງໃຊ້ຄอร์ OPL ແທน."
+  "NEUTRINO_TOO_FRAGMENTED_NET": "แตกกระจายเกินไปสำหรับ Neutrino (%d fragments, ຂີດຈຳກັດ %d ລວມ VMCs) -- ຈัดเรียงไฟล์ใหม่ (defragment) ໃນ PC; ຍົກເລີກການເປີດຕົວແລ້ວ."
+  "NEUTRINO_GSM_COMP": "ຄວາມເຂົ້າກັນໄດ້ Neutrino GSM"
+  "HINT_NEUTRINO_GSM_COMP": "ການແກ້ໄຂແບບ field-flipping ສຳລັບເກມທີ່ສັ່ນ ຫຼື ฉีกขาด ພາຍໃຕ້ Neutrino Video mode ທີ່ຖືກບັງຄັບ. ต้องມີການຕັ້ງ Neutrino Video mode."
+  "NARGS_DBC": "ສີດີບັກ (-dbc)"
+  "NARGS_LOGO": "ໂລໂກ້ PS2 (-logo)"
+  "VMC_SLOT1_DISABLE": "ປິດ VMC 1 (ຮັກສາກາດ)"
+  "VMC_SLOT2_DISABLE": "ປິດ VMC 2 (ຮັກສາກາດ)"
+  "HINT_VMC_SLOT_DISABLE": "ເປີດຕົວໂດຍບໍ່ໃຊ້ VMC ຂອງຊ່ອງນີ້ ໃນຂณะທີ່ຍັງຕັ້ງຄ່າກາດຂອງມັນໄວ້. ເປີດຕົວດ້ວຍ Neutrino ເທົ່ານັ້ນ; ຈາກນັ້ນເກມຈະໃຊ້ກາດຈິງໃນຊ່ອງນັ້ນ."
+  "NEUTRINO_BSDFS": "ລະບົບໄຟລ໌ Neutrino"
+  "HINT_NEUTRINO_BSDFS": "ບັງຄັບໃຊ້ລະບົບໄຟລ໌ອຸປະກອນແບບບລັອກຂອງ Neutrino (-bsdfs). Auto = ຄ່າເລີ່ມຕົ້ນຕາມແຕ່ລະອຸປະກອນ. hdl/bd ແມ່ນທາງເລືອກສຳລັບຜູ້ຊ່ຽວຊານ; ຈັບຄູ່ພວກມັນກັບ -dvd= ທີ່ກົງກັນໃນ argument ການເປີດຕົວ ຖ້າຮູບຮ່າງເສັ້ນທາງ auto ບໍ່ເໝາະສົມ."
+  "PLASCOLOR": "ສີຜະສົມ Plasma"
+  "VCD_HIDE_GAMEID": "ເຊື່ອງ PS1 Game ID (ລາຍການ VCD)"
+  "HINT_VCD_HIDE_GAMEID": "ເປັນຄวามงามເທົ່ານັ້ນ -- ເຊື່ອງຄຳນຳໜ້າ game-ID (ຕົວຢ່າງ SLUS_005.51.) ອອກຈາກຊື່ໃນລາຍການ PS1/VCD. ຊື່ທີ່ບໍ່ມີ ID ຈະຖືກສະແດງຕາມເດີມ. ບໍ່ປ່ຽນແປງການເປີດຕົວ, ຮູບໜ້າປົກ, ຫຼື ລາຍການທີ່ມັກ."
+  "VCD_FIRST_DISC": "ແຜ່ນທຳອິດເທົ່ານັ້ນ (PS1 ຫຼາຍແຜ່ນ)"
+  "HINT_VCD_FIRST_DISC": "ສະແດງແຕ່ແຜ່ນທີ 1 (Disc 1) ຂອງເກມ PS1 ແບບຫຼາຍແຜ່ນໃນລາຍການອຸປະກອນ (ຮູບແບບ POPSLoader). ເຊື່ອງໄຟລ໌ທີ່ຕັ້ງຊື່ວ່າ (Disc 2), (CD 2), ແລະ ອື່ນໆ. ແຜ່ນທັງໝົດຍັງຄົງຢູ່ໃນກາດເພື່ອສະຫຼັບໃນເກມ; ລາຍການທີ່ມັກ (Favorites) ຈະບໍ່ຖືກກັ່ນຕອງ."
+  "GAMES_DEVICE": "ອຸປະກອນຂອງເກມ"
+  "DEFAULT_CORE": "Loader Core ມາດຕະຖານ"
+  "HINT_DEFAULT_CORE": "ຄอร์เริ່มต้นแบบ global สำหรับเกมที่ Loader Core ຕໍ່ເກມ ຖືກຕັ້ງເປັນ Default. <OPL> ແມ່ນຄอร์ພື້ນເມືອງ; Neutrino ຕໍ່ຫ່ວງໄປຫາ neutrino.elf ພາຍນອກ. ການເລືອກຕໍ່ເກມຈະລົບລ້າງຄ່ານີ້ສະເໝີ."
+  "VCD_SETTINGS": "ຕັ້ງຄ່າ VCD"
+  "FINANCIAL_SUPPORT": "ການສະໜັບສະໜູນທາງການເງິນ"
+  ADVANCED_ARGUMENTS: ອາກິວເມັນຂັ້ນສູງ
+  ADVANCED_SETTINGS: ຂັ້ນສູງ
+  ARTWORK_SETTINGS: ການຕັ້ງຄ່າຮູບປົກ
+  BDMA_SETTINGS: ການຕັ້ງຄ່າ BDMA
+  COLORS_SETTINGS: ສີ
+  COMM_SETTINGS: ການຕັ້ງຄ່າການສື່ສານ
+  CONTROLLER_EMULATION: ການຈຳລອງຕົວຄວບຄຸມ
+  CONTROLLER_MACROS: ມາໂຄຣຂອງຕົວຄວບຄຸມ
+  DISPLAY_SETTINGS: ການສະແດງຜົນ
+  GAME_LAUNCHING: ການເປີດເກມ
+  GAME_LIST_SETTINGS: ການຕັ້ງຄ່າລາຍການເກມ
+  GAME_SOURCES: ແຫຼ່ງເກມ
+  HINT_POPSTARTER_RETROGEM_GAMEID: ສະແດງບາໂຄດແບບແສງສຳລັບ Pixel FX / RetroGEM / PS2Digital ເມື່ອເປີດ VCD ຂອງ PS1
+  HINT_POPS_IMPORT: ອ່ານໄຟລ໌ IPCONFIG.DAT ແລະ SMBCONFIG.DAT ຂອງ POPSTARTER ຈາກໂຟລເດີ POPS ໃນການແບ່ງປັນ SMB ທີ່ເຊື່ອມຕໍ່ຢູ່. ຈະບໍ່ມີການຂຽນຫຍັງຈົນກວ່າທ່ານຈະຢືນຢັນດ້ວຍ ຕົກລົງ.
+  HINT_POPS_PORT: ພອດ SMB ຢູ່ເຊີບເວີ -- ຄ່າເລີ່ມຕົ້ນຄື 445. ໃຫ້ໄວ້ທີ່ 0 (ຫຼື 445) ສຳລັບການແບ່ງປັນທົ່ວໄປ; ໃຊ້ 139 ສຳລັບເຊີບເວີ SMB1 ຮຸ່ນເກົ່າ.
+  HINT_VCD_SHOW_PP_POPS: ສະເພາະ HDD -- ສະແດງພາທິຊັນທີ່ມີເກມດຽວຊື່ວ່າ PP.<ID>.POPS.<name> (ຕົວຢ່າງ PP.SCES-01492.POPS.MEDIEVIL) ເປັນເກມ PS1. ພຽງແຕ່ການລາຍຊື່ເທົ່ານັ້ນ; ວິທີການເປີດບໍ່ປ່ຽນແປງ. ພາທິຊັນ PP.* ອື່ນໆ (ແອັບ, ເກມ PS2) ຍັງຄົງເຊື່ອງຢູ່.
+  INTERFACE_SETTINGS: ສ່ວນຕິດຕໍ່
+  MENU_NETWORK: ເຄືອຂ່າຍ
+  NEUTRINO_DEFAULTS: ຄ່າເລີ່ມຕົ້ນຂອງ Neutrino
+  OSD_DEFAULTS: ຄ່າເລີ່ມຕົ້ນຂອງ OSD
+  PATH_PREFIXES: ຄຳນຳໜ້າເສັ້ນທາງ
+  PATH_SETTINGS: ການຕັ້ງຄ່າເສັ້ນທາງ
+  POPSTARTER: ການຕັ້ງຄ່າການຈຳລອງ PS
+  POPSTARTER_RETROGEM_GAMEID: Game ID ຂອງ RetroGEM
+  POPSTARTER_NETWORK_SETTINGS: ການຕັ້ງຄ່າເຄືອຂ່າຍ POPSTARTER
+  GAMEID_MODE_ALL: ເປີດ (ທັງໝົດ)
+  GAMEID_MODE_POPSTARTER: ເປີດ (ສະເພາະ POPSTARTER)
+  GAMEID_MODE_PS2: ເປີດ (ສະເພາະ PS2)
+  GAMEID_MODE_OFF: ປິດ
+  POPS_IMPORT: ນຳເຂົ້າຈາກໂຟລເດີ POPS ຜ່ານ SMB
+  POPS_NONE_DETECTED: ບໍ່ພົບການຕັ້ງຄ່າ SMB ຂອງ POPStarter ທີ່ມີຢູ່ແລ້ວ. ກະລຸນາໃສ່ການຕັ້ງຄ່າເຄືອຂ່າຍທີ່ຖືກຕ້ອງກ່ອນສ້າງໃໝ່.
+  POPS_SMB_SECTION: ເຄືອຂ່າຍ SMB ຂອງ POPStarter
+  SECURITY_SETTINGS: ຄວາມປອດໄພ
+  STORAGE_CACHE: ບ່ອນເກັບຂໍ້ມູນ ແລະ ແຄສ
+  TOOLS: ເຄື່ອງມື
+  VCD_SHOW_PP_POPS: ສະແດງເກມຈາກພາທິຊັນ PP.<ID>.POPS (HDD)
+  VCD_USB_MODE_HINT: ແນະນຳໃຫ້ໃຊ້ fat32 ສຳລັບ USB ທີ່ບໍ່ແມ່ນ exFAT.
+  VCD_USB_MODE_QUESTION: ໂໝດ USB ເປັນ fat32 ຫຼື exFAT?
+  VCD_USB_MODE_TITLE: ໂໝດ VCD ຜ່ານ USB
+  MENU_CONTROLLER: ຕົວຄວບຄຸມ
+  MENU_AUDIO: ສຽງ
+  MMCE_GAMEID_UNSETTLED: ການປ່ຽນກາດ MMCE ບໍ່ໄດ້ຮັບການຢືນຢັນ -- ຈະເປີດຕໍ່ໄປ
+  NEUTRINO_SMB_FALLBACK: ເກມຜ່ານ SMB ບໍ່ຮອງຮັບໃນ Neutrino -- ຈະເປີດດ້ວຍແກນ OPL.
+  NEUTRINO_VMC_HDD_UNSUPPORTED: Neutrino ບໍ່ສາມາດໃຊ້ VMC ເທິງ HDD APA (ບໍ່ຮອງຮັບ pfs) -- ຈະເປີດໂດຍບໍ່ໃຊ້ມັນ.
+  POPS_LOADED_FROM: ໂຫຼດຈາກ %s
+  POPSTARTER_NET_INVALID: ການຕັ້ງຄ່າເຄືອຂ່າຍຂອງ POPSTARTER ບໍ່ຖືກຕ້ອງ. ກະລຸນາແກ້ໄຂໃນການຕັ້ງຄ່າເຄືອຂ່າຍ POPSTARTER.
+  POPSTARTER_SMB_NEEDS_STATIC: SMB ຂອງ POPSTARTER ຕ້ອງການການຕັ້ງຄ່າເຄືອຂ່າຍແບບຄົງທີ່. ກະລຸນາຕັ້ງຄ່າເຄືອຂ່າຍ POPSTARTER ກ່ອນ.
+  POPS_OVERWRITE_TITLE: ປ່ຽນແທນການຕັ້ງຄ່າ POPSTARTER ບໍ?
+  POPS_OVERWRITE_MSG: ມີການຕັ້ງຄ່າເຄືອຂ່າຍ POPSTARTER ຢູ່ແລ້ວ. ຈະປ່ຽນແທນດ້ວຍການຕັ້ງຄ່າເຫຼົ່ານີ້ບໍ?
+  POPS_KEEP_EXISTING: ຮັກສາອັນທີ່ມີຢູ່
+  POPS_REPLACE: ປ່ຽນແທນ
+  GSM_1080P_WARNING: ຄຳເຕືອນ -- ການບັງຄັບ 1080p ເປັນການທົດລອງ ແລະ ຍັງບໍ່ໄດ້ຮັບການກວດສອບ. ອາດຈະບໍ່ມີພາບເລີຍ ຫຼື ໃນບາງອຸປະກອນອາດເຮັດໃຫ້ເຄື່ອງເຮັດວຽກໜັກ. ດຳເນີນຕໍ່ດ້ວຍຄວາມສ່ຽງຂອງທ່ານເອງ.
+  GSM_1080P_PROCEED: ຈະບັງຄັບ 1080p ສຳລັບເກມນີ້ບໍ?
+  GSM_1080P_SURE: ແນ່ໃຈບໍ? ໂໝດ 1080p ແບບທົດລອງຈະຖືກນຳໃຊ້ກັບເກມນີ້.
+  CUSTOM_SETTINGS_PATH: ເສັ້ນທາງການຕັ້ງຄ່າແບບກຳນົດເອງ
+  HINT_CUSTOM_SETTINGS_PATH: ບັນທຶກການຕັ້ງຄ່າໄວ້ໃນໂຟລເດີທີ່ທ່ານເລືອກ ເຊັ່ນ mass0:/OPL. ປະໄວ້ຫວ່າງເພື່ອໃຊ້ໂຟລເດີທີ່ OPL ເປີດຂຶ້ນມາ. ອຸປະກອນຈະຖືກໂຫຼດເມື່ອຕ້ອງການ ດັ່ງນັ້ນຈຶ່ງບໍ່ຈຳເປັນຕ້ອງເຊື່ອມຕໍ່ຢູ່ໃນຂະນະທີ່ພິມ.
+  PERGAME_MIXED_SETTINGS: ຕໍ່ເກມ + ທົ່ວໄປ
+  GSM_DEFAULTS: ຄ່າເລີ່ມຕົ້ນຂອງ GSM (ທຸກເກມ)
+  ERR_DEVICE_BUSY_TIMEOUT: 'ອຸປະກອນບໍ່ຫວ່າງ: ການຂຽນການຕັ້ງຄ່າຍັງບໍ່ໄດ້ເລີ່ມເລີຍ. ກະລຸນາລອງໃໝ່ເມື່ອການໂຫຼດແລ້ວໆ.'
+  BDMA_EQUIPPING: ກຳລັງກຽມໄດເວີ PS1 ໃນກາດຄວາມຈຳ...
+  VCD_USB_BDMA: ໄດເວີ BDMA ສຳລັບ USB
+  HINT_VCD_USB_BDMA: ໃຊ້ກັບການເປີດເກມ PS1 (VCD) ຈາກ USB ເທົ່ານັ້ນ. PS2 ບໍ່ສາມາດກວດວ່າ USB ເປັນ fat32 ຫຼື exFAT ດັ່ງນັ້ນຈຶ່ງຕ້ອງເລືອກໄດເວີຂອງ POPSTARTER. ດ້ວຍຕົວເລືອກ ຖາມ ຈະມີການຖາມທຸກຄັ້ງທີ່ເປີດ, ສ່ວນ exFAT ຫຼື fat32 ຈະກຳນົດຄຳຕອບໄວ້ ແລະ ຂ້າມຄຳຖາມນັ້ນ.
+  VCD_USB_BDMA_ASK: ຖາມ
+  SETTINGS_HDD_FALLBACK: 'ການຕັ້ງຄ່າ HDD ໄດ້ໃຊ້ບ່ອນສຳຮອງທີ່ປອດໄພ: %s'
+  HDD_BACKEND_RECONCILED: HDD ພາຍໃນແບບ APA ແລະ exFAT ຖືກເປີດພ້ອມກັນ -- ອັນໜຶ່ງຖືກປິດອັດຕະໂນມັດ (ເບິ່ງການຕັ້ງຄ່າອຸປະກອນ).
+  SETTINGS_SAVE_PROMPT: ບັນທຶກການຕັ້ງຄ່າບໍ?
+  SETTINGS_SAVE_PROMPT_LINE1: ການປ່ຽນແປງຂອງທ່ານກຳລັງມີຜົນຢູ່ໃນຂະນະນີ້.
+  SETTINGS_SAVE_PROMPT_LINE2: ທ່ານຕ້ອງການບັນທຶກໄວ້ສຳລັບການເປີດຄັ້ງຕໍ່ໄປບໍ?
+  SETTINGS_SAVE: ບັນທຶກການຕັ້ງຄ່າ
+  SETTINGS_EXIT_WITHOUT_SAVING: ອອກໂດຍບໍ່ບັນທຶກ
+  SETTINGS_CONTINUE_EDITING: ແກ້ໄຂຕໍ່
+  CONFIGURE: ຕັ້ງຄ່າ
+  HDD_UNAVAILABLE_ERROR: '%d: ບໍ່ສາມາດໃຊ້ຮາດດິດໄດ້.'
+  HDD_PFS_UNAVAILABLE_ERROR: '%d: ບໍ່ສາມາດໃຊ້ການຮອງຮັບ PFS ຂອງຮາດດິດໄດ້.'
+  POPS_LOADING_SETTINGS: ກຳລັງໂຫຼດການຕັ້ງຄ່າ POPSTARTER...
+  POPS_SMB_NOT_CONNECTED: SMB ບໍ່ໄດ້ເຊື່ອມຕໍ່.
+  POPS_SMB_SETTINGS_NOT_FOUND: ບໍ່ພົບການຕັ້ງຄ່າ POPSTARTER ໃນໂຟລເດີ POPS ຜ່ານ SMB.
+  HDD_OPL_PLUS_NOT_FOUND: ບໍ່ພົບພາທິຊັນ +OPL.
+  HDD_OPL_COMMON_NOT_FOUND: ບໍ່ພົບພາທິຊັນ __common.
+  HDD_OPL_PARTITION_RESTART: ກະລຸນາເປີດ RiptOPL ໃໝ່ເພື່ອນຳໃຊ້ພາທິຊັນ OPL ທີ່ເລືອກ.
+  HDD_OPL_PARTITION_CHECKING: ກຳລັງກວດສອບພາທິຊັນ OPL ຂອງ HDD...
+  HDD_OPL_PARTITION_BUSY: HDD ບໍ່ຫວ່າງ. ກະລຸນາລອງໃໝ່ເມື່ອການໂຫຼດແລ້ວໆ.
+  GENERAL_SYSTEM: ທົ່ວໄປ ແລະ ລະບົບ
+  EMBER_NOT_FOUND: ບໍ່ມີ ember.elf
+  EMBER_BIOS_MISSING: ບໍ່ມີ bios.bin ຢູ່ຂ້າງ ember.elf
+  EMBER_BAD_NAME: Ember ບໍ່ສາມາດໃຊ້ຊື່ໂຟລເດີນີ້ໄດ້ (ຫ້າມມີເຄື່ອງໝາຍທັບ, ຈໍ້າສອງເມັດ ຫຼື ທັບກັບ ແລະ ຫ້າມມີຈຸດຢູ່ຕົ້ນຊື່).
+  EMBER_NO_DISC: ບໍ່ມີໄຟລ໌ອິມເມດແຜ່ນ PS1 ໃນໂຟລເດີເກມ Ember ນີ້.
+  VIEW_APPS: ກຳລັງສະແດງແອັບ
+  EMBER_DISPLAY: ໂໝດການສະແດງຜົນຂອງ Ember
+  HINT_EMBER_DISPLAY: ໂໝດການສົ່ງພາບທີ່ Ember ໃຊ້ສຳລັບເກມ PS1. ຄ່າ 240p ຫຼື 480p ຈະຖືກຂຽນລົງໃນ settings.txt ພາຍໃນໂຟລເດີ EMBER ຂອງອຸປະກອນທີ່ເປີດ. ຄ່າເລີ່ມຕົ້ນ ຈະລຶບການຕັ້ງຄ່ານັ້ນອອກ ແລະ ລຶບໄຟລ໌ນຳຖ້າບໍ່ມີຂໍ້ມູນອື່ນຢູ່ໃນນັ້ນ.

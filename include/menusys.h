@@ -1,0 +1,180 @@
+#ifndef __MENUSYS_H
+#define __MENUSYS_H
+
+#include "include/config.h"
+#include "include/dia.h"
+
+// dia.h defines struct UIItem, but dia.h -> opl.h -> menusys.h is a real include CYCLE: when a .c
+// includes dia.h FIRST, dia.h's guard is already set by the time menusys.h is re-entered, so the
+// struct definition has not been reached yet and gameMenuLoadConfig's prototype below sees an
+// incomplete type ("declared inside parameter list will not be visible outside"). Forward-declare
+// it so the prototype refers to the SAME type either way.
+struct UIItem;
+
+/// a single submenu item
+typedef struct submenu_item
+{
+    /// Icon used for rendering of this item
+    int icon_id;
+
+    /// item description
+    char *text;
+
+    /// item description in localized form (used if value is not negative)
+    int text_id;
+
+    /// item id (MUST BE VALID, we assert it is != -1 to optimize rendering)
+    int id;
+
+    int *cache_id;
+    int *cache_uid;
+
+    /// 1 when the item is marked as a favourite (a star is drawn next to it) -- checklist item 33
+    int favourited;
+    /// 1 when this row is a browsable folder, not a launchable game -- checklist item 34
+    int isFolder;
+#ifdef RETROACHIEVEMENTS
+    /// 1 when this game has a RetroAchievements watch list. Resolved once on the I/O thread when
+    /// the row is built, exactly like text and isFolder, so the RENDER path never calls back into
+    /// the badge cache -- that cache is freed and reallocated by raBadgeRefresh on the I/O thread,
+    /// and dereferencing it from a frame draw is a use-after-free waiting for the wrong interleave.
+    int raBadged;
+#endif
+} submenu_item_t;
+
+typedef struct submenu_list
+{
+    struct submenu_item item;
+
+    struct submenu_list *prev, *next;
+} submenu_list_t;
+
+typedef struct menu_hint_item
+{
+    int icon_id;
+    int text_id;
+
+    struct menu_hint_item *next;
+} menu_hint_item_t;
+
+/// a single menu item. Linked list impl (for the ease of rendering)
+typedef struct menu_item
+{
+    /// Icon used for rendering of this item
+    int icon_id;
+
+    /// item description
+    char *text;
+
+    /// item description in localised form (used if value is not negative)
+    int text_id;
+
+    // Indicates if the menu item should be drawn or not.
+    int visible;
+
+    void *userdata;
+
+    /// submenu, selection and page start (only used in static mode)
+    /// submenu, selection, page start, and list tail (the coverflow wrap walks last<->first)
+    struct submenu_list *submenu, *current, *pagestart, *last;
+
+    short remindLast;
+
+    void (*refresh)(struct menu_item *curMenu);
+
+    void (*execCross)(struct menu_item *curMenu);
+
+    void (*execTriangle)(struct menu_item *curMenu);
+
+    void (*execCircle)(struct menu_item *curMenu);
+
+    /// R3: toggle favourite on the current row (checklist item 33)
+    void (*fav)(struct menu_item *curMenu);
+    /// L3: toggle the device's VCD (PS1) view (checklist item 12; NULL until it lands)
+    void (*toggleView)(struct menu_item *curMenu);
+
+    void (*execSquare)(struct menu_item *curMenu);
+
+    /// hint list
+    struct menu_hint_item *hints;
+} menu_item_t;
+
+typedef struct menu_list
+{
+    struct menu_item *item;
+
+    struct menu_list *prev, *next;
+} menu_list_t;
+
+void menuInit();
+void menuEnd();
+// True once the global menu list contains a registered device/mode tab; initSupport uses the FALSE
+// case to spot "user enabled the FIRST tab from the start menu" (#254).
+int menuHasRegisteredItems(void);
+void menuReinitMainMenu(void);
+struct _item_list_t;
+void menuInitGameMenu(struct _item_list_t *support);
+void menuInitAppMenu(void);
+// Reuses the lightweight item-operation menu, but exposes Rename only. VCD/POPSTARTER entries
+// must never enter the PS2 per-game configuration menu.
+void menuInitVcdMenu(void);
+
+void menuAppendItem(menu_item_t *item);
+
+void submenuRebuildCache(submenu_list_t *submenu);
+submenu_list_t *submenuAppendItem(submenu_list_t **submenu, int icon_id, char *text, int id, int text_id);
+// Linear search by id + text (favourites star sync); both text args NULL-guarded.
+submenu_list_t *submenuFindItemByIdAndText(submenu_list_t *submenu, int id, const char *text);
+void submenuRemoveItem(submenu_list_t **submenu, int id);
+void submenuDestroy(submenu_list_t **submenu);
+void submenuSort(submenu_list_t **submenu, int mode);
+
+char *submenuItemGetText(submenu_item_t *it);
+char *menuItemGetText(menu_item_t *it);
+config_set_t *menuLoadConfig();
+config_set_t *gameMenuLoadConfig(struct UIItem *ui);
+int menuSaveConfig();
+int menuSaveSettings(void);
+// Queue an async re-read of the current item's config WITH the #Size stat enabled. The scroll-path
+// load skips that stat (see sbSetConfigStatSize); the info screen calls this so #Size still resolves.
+void menuRequestInfoSize(void);
+
+void menuRenderMain();
+void menuRenderMenu();
+void menuRenderInfo();
+void menuRenderGameMenu();
+void menuRenderAppMenu();
+void menuHandleInputMain();
+void menuHandleInputMenu();
+void menuHandleInputInfo();
+void menuHandleInputGameMenu();
+void menuHandleInputAppMenu();
+
+// Sets the selected item if it is found in the menu list
+void menuSetSelectedItem(menu_item_t *item);
+
+/** Serialize menu_item_t::hints against the renderer.
+ *
+ * ⚠ EVERY toucher of a hint list must bracket itself with these -- readers included. The list is
+ * rebuilt on the IO WORKER (moduleUpdateMenuInternal) while the GUI thread walks it every frame in
+ * themes.c drawHintText(), twice per frame. Without this, a draw landing mid-rebuild follows a
+ * freed ->next.
+ *
+ * These are CALLER-LOCKED on purpose: menuAddHint()/menuRemoveHints() do not lock internally,
+ * because a rebuild is many calls that must be atomic as a whole and the semaphore is not
+ * recursive. Do not nest them.
+ *
+ * Not guiLock(): that is held across rmEndFrame()'s vsync wait, so borrowing it here stalls the IO
+ * worker for a whole frame on every device change. This lock is held only for the list work itself.
+ */
+void menuHintsLock(void);
+void menuHintsUnlock(void);
+
+// Call with menuHintsLock() held -- see above.
+void menuAddHint(menu_item_t *menu, int text_id, int icon_id);
+void menuRemoveHints(menu_item_t *menu);
+
+int menuSetParentalLockCheckState(int enabled);
+int menuCheckParentalLock(void);
+
+#endif

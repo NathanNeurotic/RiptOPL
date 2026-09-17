@@ -1,0 +1,96 @@
+name: Enforce Rolling as Latest
+
+on:
+  push:
+    branches:
+      # rebuild/main is the publishing branch. master is old lineage and must never
+      # drive the rolling channel, so it is deliberately NOT a trigger here.
+      - rebuild/main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Rolling Release publish
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          run_id=""
+          for _ in $(seq 1 120); do
+            run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "Rolling Release" --branch "$GITHUB_REF_NAME" --limit 20 --json databaseId,headSha,status --jq '.[] | select(.headSha == "'"$GITHUB_SHA"'") | .databaseId' | head -n1 || true)"
+            if [ -n "$run_id" ]; then
+              echo "Found Rolling Release run $run_id for $GITHUB_SHA"
+              break
+            fi
+            sleep 10
+          done
+
+          if [ -z "$run_id" ]; then
+            echo "Timed out waiting for Rolling Release run for $GITHUB_SHA" >&2
+            exit 1
+          fi
+
+          # A SUPERSEDED RUN IS NOT A FAILURE. rolling-release.yml uses
+          # `concurrency: cancel-in-progress`, deliberately, so the release always reflects the
+          # NEWEST push. Two merges inside one release cycle (~20 min) therefore cancel the first
+          # publish on purpose -- and `gh run watch --exit-status` reports a cancelled run exactly
+          # like a broken one, which turned that intended behaviour into a red CI run with nothing
+          # wrong. It is also self-correcting: the push that cancelled it started its own promote,
+          # which enforces the state for the build that actually shipped.
+          #
+          # So distinguish the two. Cancelled/skipped => this promote is obsolete, stand down
+          # quietly. Anything else that is not success stays loud, because that IS a broken publish.
+          if gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status; then
+            echo "Rolling Release $run_id succeeded."
+          else
+            concl="$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion 2>/dev/null || echo unknown)"
+            if [ "$concl" = "cancelled" ] || [ "$concl" = "skipped" ]; then
+              echo "Rolling Release $run_id was $concl -- superseded by a newer push to $GITHUB_REF_NAME."
+              echo "That push runs its own promote for the build that shipped; nothing to enforce here."
+              echo "SUPERSEDED=1" >> "$GITHUB_ENV"
+            else
+              echo "Rolling Release $run_id concluded '$concl' -- the publish is broken." >&2
+              exit 1
+            fi
+          fi
+
+      # rolling-release.yml sets this state itself. Keep this post-publish normalization as an
+      # idempotent guard against GitHub or a future workflow edit leaving the moving channel stale.
+      #
+      # --draft=false is the important one now. rolling-release.yml refreshes published_at with a
+      # draft -> published flip (the only mechanism GitHub honours), and although that flip is
+      # trap-guarded on its own side, a hard runner failure between its two edits could still strand
+      # the moving channel as an invisible draft. This job runs after that workflow completes, so it
+      # is the natural second layer: asserting the published state here costs one idempotent call and
+      # closes the only window in which users could find the rolling download page missing.
+      - name: Enforce rolling as Latest, published and non-pre-release
+        # Skipped when the publish we were waiting on was superseded: the release on the tag right
+        # now belongs to a NEWER build whose own promote is enforcing it. Asserting here would race
+        # that run and could fail on a release mid-update through no fault of its own.
+        if: env.SUPERSEDED != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          gh release edit rolling \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Rolling" \
+            --draft=false \
+            --prerelease=false \
+            --latest
+
+          # Report the settled state, and fail loudly rather than leaving a hidden release behind.
+          DRAFT=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/rolling" --jq .draft)
+          PRE=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/rolling" --jq .prerelease)
+          PUB=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/rolling" --jq .published_at)
+          echo "rolling: draft=$DRAFT prerelease=$PRE published_at=$PUB"
+          if [ "$DRAFT" != "false" ] || [ "$PRE" != "false" ]; then
+            echo "ERROR: rolling did not settle as a published, non-pre-release" >&2
+            exit 1
+          fi

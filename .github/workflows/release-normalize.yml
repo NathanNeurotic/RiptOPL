@@ -1,0 +1,192 @@
+name: Normalize Release Assets
+
+on:
+  workflow_run:
+    workflows: ["Rolling Release"]
+    types: [completed]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to normalize (for example: rolling or v1.2.0)"
+        required: true
+        default: rolling
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-normalize-${{ github.event_name == 'workflow_run' && 'rolling' || github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  normalize:
+    if: >-
+      ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Resolve release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            REF="${{ github.event.workflow_run.head_branch }}"
+            if [[ "$REF" == v* ]]; then
+              TAG="$REF"
+            else
+              TAG="rolling"
+            fi
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+          printf 'TAG=%s\n' "$TAG" >> "$GITHUB_ENV"
+          printf 'Normalizing release: %s\n' "$TAG"
+
+      - name: Download release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-work variants-work package-work
+          mkdir -p release-work
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release-work --clobber
+          echo 'Downloaded assets:'
+          find release-work -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - name: Add external-tool shortcuts to the unified package
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The unified package is the one RIPTOPL-*.zip that is not another archive. The RetroAchievements
+          # package must be excluded too: `-print -quit` takes whichever match find lists first.
+          MAIN_ZIP="$(find release-work -maxdepth 1 -type f -name 'RIPTOPL-*.zip' ! -name 'RIPTOPL-VARIANTS-*' ! -name 'RIPTOPL-DEBUG-*' ! -name 'RIPTOPL-LANGS-*' ! -name 'RIPTOPL-RetroAchievements-*' ! -name 'RIPTOPL-RA-*' ! -name '*-src.zip' -print -quit)"
+          if [[ -z "$MAIN_ZIP" ]]; then
+            echo 'ERROR: unified RIPTOPL release package zip is missing.' >&2
+            exit 1
+          fi
+
+          rm -rf package-work
+          mkdir -p package-work
+          unzip -q "$MAIN_ZIP" -d package-work
+
+          printf '%s\r\n' '[InternetShortcut]' 'URL=https://github.com/NathanNeurotic/PS2-Servers' > package-work/PS2-Servers.url
+          printf '%s\r\n' '[InternetShortcut]' 'URL=https://github.com/YouKnow-sys/udpfs-server' > package-work/udpfs-server.url
+          printf '%s\r\n' '[InternetShortcut]' 'URL=https://github.com/Luden02/OrbitPS2-Manager' > package-work/OrbitPS2-Manager.url
+          printf '%s\r\n' '[InternetShortcut]' 'URL=https://github.com/shaanhomebrew-cloud/OPL-PS1-AIO-Converter-GUI' > package-work/OPL-PS1-AIO-Converter-GUI.url
+          printf '%s\r\n' '[InternetShortcut]' 'URL=https://github.com/TheRealNextria/PS2RD-CHT-Manager' > package-work/PS2RD-CHT-Manager.url
+
+          rm -f "$MAIN_ZIP"
+          (
+            cd package-work
+            zip -qr -X "../$(basename "$MAIN_ZIP")" .
+          )
+          echo "Rebuilt $(basename "$MAIN_ZIP") with all five companion-tool shortcuts."
+
+      - name: Add all DS5 loaders to the variants archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          VARIANT_ZIP="$(find release-work -maxdepth 1 -type f -name 'RIPTOPL-VARIANTS-*.zip' -print -quit)"
+          if [[ -z "$VARIANT_ZIP" ]]; then
+            echo 'ERROR: RIPTOPL-VARIANTS-*.zip is missing from the release.' >&2
+            exit 1
+          fi
+
+          rm -rf variants-work
+          mkdir -p variants-work
+          unzip -q "$VARIANT_ZIP" -d variants-work
+
+          found=0
+          while IFS= read -r -d '' ds5; do
+            cp -f "$ds5" variants-work/
+            found=1
+            echo "Added $(basename "$ds5") to variants archive"
+          done < <(find release-work -maxdepth 1 -type f -name '*-ds5.ELF' -print0)
+
+          if [[ "$found" -eq 0 ]]; then
+            echo 'No top-level DS5 loaders found; variants archive already contains its existing DS5 matrix.'
+          fi
+
+          rm -f "$VARIANT_ZIP"
+          (
+            cd variants-work
+            zip -qr -X "../$(basename "$VARIANT_ZIP")" .
+          )
+          echo "Rebuilt $(basename "$VARIANT_ZIP") with DS5 loaders."
+
+      - name: Upload rebuilt unified and variants packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for zip in release-work/RIPTOPL-*.zip; do
+            [[ -f "$zip" ]] || continue
+            case "$(basename "$zip")" in
+              *-src.zip|RIPTOPL-LANGS-*.zip|RIPTOPL-DEBUG-*.zip) continue ;;
+            esac
+            gh release upload "$TAG" "$zip" --repo "$GITHUB_REPOSITORY" --clobber
+          done
+
+      - name: Remove floating build files and manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          # RIPTOPL.ELF is the ONE deliberate exception. Every other loose ELF here is a
+          # version-and-flavour-stamped build that belongs inside an archive; RIPTOPL.ELF exists
+          # precisely so an existing install can be updated by replacing one file, from a link that
+          # never changes. Sweeping it up with the rest would delete the asset the rolling release
+          # advertises in its own "Download" section.
+          for f in release-work/*.ELF release-work/*MANIFEST*.txt release-work/SHA256SUMS.txt release-work/DETAILED_CHANGELOG; do
+            [[ -f "$f" ]] || continue
+            asset="$(basename "$f")"
+            if [[ "$asset" == "RIPTOPL.ELF" ]]; then
+              echo "Keeping one-click loader asset: $asset"
+              continue
+            fi
+            echo "Removing floating release asset: $asset"
+            gh release delete-asset "$TAG" "$asset" --repo "$GITHUB_REPOSITORY" --yes || true
+          done
+
+      - name: Rewrite release notes with standard header and external tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="release-work/original-notes.md"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' > "$BODY"
+
+          # The Download section is written by rolling-release.yml from the archives that actually
+          # built; this pass only adds the banners and External Tools & Services (from README).
+          python3 .github/scripts/normalize_release_notes.py "$BODY" > release-work/notes.md
+
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file release-work/notes.md
+
+      - name: Verify final release asset set
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSETS="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | sort)"
+          echo 'Final release assets:'
+          printf '%s\n' "$ASSETS"
+          echo 'Invariant checks:'
+          # RIPTOPL.ELF is the one sanctioned loose loader (the one-click update download); every
+          # other match is a floating build artefact that should have stayed inside an archive.
+          if printf '%s\n' "$ASSETS" | grep -vFx 'RIPTOPL.ELF' | grep -E '\.ELF$|MANIFEST|SHA256SUMS|DETAILED_CHANGELOG'; then
+            echo 'ERROR: floating ELF/manifest asset remains.' >&2
+            exit 1
+          fi
+          echo 'OK: no floating ELF or manifest assets beyond RIPTOPL.ELF.'
+          if printf '%s\n' "$ASSETS" | grep -qFx 'RIPTOPL.ELF'; then
+            echo 'OK: one-click RIPTOPL.ELF is published.'
+          else
+            # Not fatal: it comes from a best-effort flavour, so a build hiccup means the release
+            # ships without it rather than shipping a stale one under a stable name.
+            echo 'NOTE: no RIPTOPL.ELF this run -- its flavour did not build.'
+          fi

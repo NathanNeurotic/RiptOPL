@@ -1,0 +1,98 @@
+#
+# NOTE! Please use 'git ls-files -i --exclude-standard'
+# command after changing this file, to see if there are
+# any tracked files which get ignored after the change.
+#
+# Normal rules
+#
+.*
+*.a
+*.diff
+*.elf
+*.ELF
+*.erl
+*.exe
+*.irx
+*.map
+*.o
+*.patch
+*.rej
+*.s
+*.zip
+*.ZIP
+*.a
+*.d
+DETAILED_CHANGELOG
+
+#
+# files that we don't want to ignore
+#
+!.gitignore
+!.gitattributes
+!.github
+!.editorconfig
+!.clang-format
+!.clang-format-ignore
+!modules/debug/*.irx
+# Ember's core is a SHIPPED PAYLOAD, not a build product. Both `*.elf` and `*.ELF` above would
+# swallow it -- the lowercase rule matches on any filesystem, and on a case-insensitive checkout
+# (Windows, core.ignorecase=true) the uppercase one does too. `git add` then skips it silently and
+# the release package ships an EMBER/ folder with no core in it, which the loader would happily
+# advertise games for. POPS/POPSTARTER.ELF only escapes the same rules because it was tracked before
+# they existed; this says so explicitly instead of relying on that accident.
+!EMBER/ember.elf
+
+# The alternate POPSTARTER builds, for the same reason and with the same trap. POPS/POPSTARTER.ELF
+# itself escapes `*.ELF` only because it was tracked before that rule existed -- a NEW file at a NEW
+# path gets no such grandfathering, so without this line `git add` skips all five silently and the
+# folder ships empty. Spelled with the directory prefix so it re-includes only these, never any
+# build product that happens to land elsewhere.
+!POPS/POPSTARTER VERSIONS/**/*.ELF
+
+#
+# Generated source files
+#
+pc/iso2usbld/bin/iso2usbld
+IOPRP_img.c
+asm/*.c
+asm/*.gz
+
+#
+# 3rd party
+#
+*modules/network/lwNBD
+*thirdparty/clang-format-lint-action
+
+# language
+lng/lang_*.lng
+*lng_src
+src/lang_internal.c
+include/lang_autogen.h
+tmp/
+
+#
+# Local-only working areas
+#
+# forensic/ holds side-by-side checkouts used to compare this tree against master and against other
+# projects. It got committed once by accident: `git add` on a directory that CONTAINS a git checkout
+# records a GITLINK, so the repo carried four submodule entries with no .gitmodules to resolve them
+# -- and two of them (neutrino, nhddl) named commits from OTHER repositories, which no clone of this
+# one can ever fetch. Ignoring it stops that happening again.
+/forensic/
+#
+# Scratch areas agent runs write into. The Makefile's CODE_ANCHOR already excludes these by name so
+# a dropped file does not read as a code change in the version string; ignoring them keeps them out
+# of `git status` as well.
+/agent-file-drop/
+/frame_builds/
+/_mmcebuild/
+#
+# pc/RA/ is where the xeRAbora PC client lives locally: ~1.6 MB of somebody else's binaries,
+# reference-only, and it must never be committed. It got swept into a commit once by a bare
+# `git add -A`; ignoring it stops that happening again.
+/pc/RA/
+#
+# pc/http/http_conformance.py imports catalog_reference as a module, so running either tool
+# leaves a __pycache__ behind next to them. Nothing generated belongs in the tree.
+__pycache__/
+*.pyc
