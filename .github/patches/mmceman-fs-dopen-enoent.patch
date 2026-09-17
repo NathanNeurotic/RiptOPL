@@ -1,0 +1,15 @@
+diff --git a/mmceman/src/mmce_fs.c b/mmceman/src/mmce_fs.c
+--- a/mmceman/src/mmce_fs.c
++++ b/mmceman/src/mmce_fs.c
+@@ -644,9 +644,15 @@ int mmce_fs_dopen(iomanX_iop_file_t *file, const char *name)
+     if (rdbuf[0x1] != 0xff) {
+         *(int*)file->privdata = rdbuf[0x1];
+     } else {
++        // Distinguish a card-reported missing directory from transient bus failures.
+         DPRINTF("%s ERROR: Got invalid fd: %i\n", __func__, rdbuf[0x1]);
+         file->privdata = NULL;
+-        return -1;
++        return -ENOENT;
+     }
+ 
+     return 0;

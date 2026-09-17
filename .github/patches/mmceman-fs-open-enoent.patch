@@ -1,0 +1,13 @@
+diff --git a/mmceman/src/mmce_fs.c b/mmceman/src/mmce_fs.c
+--- a/mmceman/src/mmce_fs.c
++++ b/mmceman/src/mmce_fs.c
+@@ -131,7 +131,12 @@
+     } else {
+         DPRINTF("%s ERROR: Got bad fd: %i\n", __func__, rdbuf[0x1]);
+         file->privdata = NULL;
+-        return -1;
++        // -ENOENT distinguishes a card-reported missing file from transient bus failures.
++        return -ENOENT;
+     }
+ 
+     return 0;
