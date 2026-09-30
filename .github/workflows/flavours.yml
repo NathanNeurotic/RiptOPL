@@ -268,6 +268,9 @@ jobs:
       - name: Upload ELF (${{ matrix.flavour }})
         if: ${{ success() }}
         uses: actions/upload-artifact@v6
+        # The upload is a debugging convenience, not the gate: a full artifact-storage quota
+        # (account-level, recalculated every 6-12h) must not turn a green compile red.
+        continue-on-error: true
         with:
           name: OPL-${{ matrix.flavour }}
           path: |
