@@ -58,9 +58,18 @@ jobs:
           printf 'Normalizing release: %s\n' "$TAG"
 
       - name: Download release assets
+        id: download
         shell: bash
         run: |
           set -euo pipefail
+          # Releases with no assets (hand-cut placeholders, draft channels not yet populated)
+          # have nothing to normalize -- skip cleanly instead of failing the download retry loop.
+          if [ -z "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>/dev/null)" ]; then
+            echo "Release $TAG has no assets; nothing to normalize."
+            echo "has_assets=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "has_assets=yes" >> "$GITHUB_OUTPUT"
           # GitHub's release API returns the odd transient HTTP 500; one of those on 48537d39 killed this
           # job at the download and left rolling with its raw, un-normalized asset set. Retry instead.
           retry() { for n in 1 2 3 4; do "$@" && return 0; echo "Attempt $n failed: $*"; sleep $((n * 15)); done; return 1; }
@@ -71,6 +80,7 @@ jobs:
           find release-work -maxdepth 1 -type f -printf '%f\n' | sort
 
       - name: Add external-tool shortcuts to the unified package
+        if: steps.download.outputs.has_assets == 'yes'
         shell: bash
         run: |
           set -euo pipefail
@@ -104,6 +114,7 @@ jobs:
           echo "Rebuilt $(basename "$MAIN_ZIP") with all five companion-tool shortcuts."
 
       - name: Add all DS5 loaders to the variants archive
+        if: steps.download.outputs.has_assets == 'yes'
         shell: bash
         run: |
           set -euo pipefail
@@ -136,6 +147,7 @@ jobs:
           echo "Rebuilt $(basename "$VARIANT_ZIP") with DS5 loaders."
 
       - name: Upload rebuilt unified and variants packages
+        if: steps.download.outputs.has_assets == 'yes'
         shell: bash
         run: |
           set -euo pipefail
@@ -151,6 +163,7 @@ jobs:
           done
 
       - name: Remove floating build files and manifests
+        if: steps.download.outputs.has_assets == 'yes'
         shell: bash
         run: |
           set -euo pipefail
@@ -171,6 +184,7 @@ jobs:
           done
 
       - name: Rewrite compact release notes with final assets and changelog
+        if: steps.download.outputs.has_assets == 'yes'
         shell: bash
         run: |
           set -euo pipefail
@@ -185,6 +199,7 @@ jobs:
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file release-work/notes.md
 
       - name: Verify final release asset set
+        if: steps.download.outputs.has_assets == 'yes'
         shell: bash
         run: |
           set -euo pipefail

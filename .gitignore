@@ -86,6 +86,14 @@ tmp/
 /agent-file-drop/
 /frame_builds/
 /_mmcebuild/
+# Same treatment for the rest of the local-only detritus: ad-hoc scratch space, temp output,
+# theme-delivery staging drops, and EE build objects at the root. Nothing the build or the
+# pipeline reads lives in any of these.
+/scratch/
+/temp/
+/new_theme_delivery_for_agent/
+/implementation-handoff-*.md
+/obj/
 #
 # pc/RA/ is where the xeRAbora PC client lives locally: ~1.6 MB of somebody else's binaries,
 # reference-only, and it must never be committed. It got swept into a commit once by a bare

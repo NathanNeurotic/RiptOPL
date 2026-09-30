@@ -18,6 +18,9 @@
 // UI spacing of the dialogues (pixels between consecutive items)
 #define UI_SPACING_H          10
 #define UI_SETTINGS_SPACING_H 10
+// Smallest gap a Settings page may shrink to so it fits without scrolling (diaSettingsFitGap): rows are
+// then 10 + 7 = 17 px apart, the default font's size, so lines touch but never overlap.
+#define UI_SETTINGS_MIN_GAP   7
 #define UI_SPACING_V          2
 // spacer ui element width (simulates tab)
 #define UI_SPACER_WIDTH       50
@@ -948,6 +951,49 @@ void diaSetSettingsContext(int enabled)
     diaSettingsContext = enabled;
 }
 
+// The lowest pixel the dialog would reach (content space, from `top`) with rows `gap` apart. Walks the
+// items exactly as diaRenderUI lays them out, with diaItemHeight standing in for diaRenderItem's *h.
+static int diaLayoutBottom(struct UIItem *ui, int spacingH, int gap, int top)
+{
+    int y = top, hmax = 0, bottom = top;
+
+    for (; ui->type != UI_TERMINATOR; ui++) {
+        int h;
+
+        if (diaShouldBreakLine(ui)) {
+            if (hmax > 0)
+                y += hmax + gap;
+            hmax = 0;
+        }
+        h = diaItemHeight(ui, spacingH);
+        if (h > hmax)
+            hmax = h;
+        if (y + h > bottom)
+            bottom = y + h;
+        if (diaShouldBreakLineAfter(ui)) {
+            if (hmax > 0)
+                y += hmax + gap;
+            hmax = 0;
+        }
+    }
+    return bottom;
+}
+
+// Settings pages FIT the screen before they scroll. A page a few rows too tall (General & System,
+// Interface, Network) put its OK below the hint bar and made the user scroll for it. Shrink the gap
+// between rows just enough to fit -- never below UI_SETTINGS_MIN_GAP -- and leave a page that already
+// fits exactly as it was. A page that still does not fit at the minimum keeps scrolling as before.
+static int diaSettingsFitGap(struct UIItem *ui, int spacingH, int top, int visibleBottom)
+{
+    int gap;
+
+    for (gap = spacingH; gap > UI_SETTINGS_MIN_GAP; gap--) {
+        if (diaLayoutBottom(ui, spacingH, gap, top) <= visibleBottom)
+            break;
+    }
+    return gap;
+}
+
 /// renders whole ui screen (for given dialog setup)
 void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFocus)
 {
@@ -959,6 +1005,8 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
     int settingsShell = (ui == diaSettingsShellUI && diaSettingsIndicator != NULL);
     int settingsContext = settingsShell || diaSettingsContext;
     int spacingH = settingsContext ? UI_SETTINGS_SPACING_H : UI_SPACING_H;
+    // Rows keep their height (spacingH); only the gap between them tightens, and only on a Settings page.
+    int gapH = settingsContext ? diaSettingsFitGap(ui, spacingH, y0, gTheme->usedHeight - 40) : spacingH;
 
     // render all items (shifted up by the scroll offset for tall dialogs)
     struct UIItem *rc = ui;
@@ -973,7 +1021,7 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
             x = x0;
 
             if (hmax > 0)
-                y += hmax + spacingH;
+                y += hmax + gapH;
 
             hmax = 0;
         }
@@ -1019,7 +1067,7 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
             x = x0;
 
             if (hmax > 0)
-                y += hmax + spacingH;
+                y += hmax + gapH;
 
             hmax = 0;
         }
@@ -1070,7 +1118,7 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
     int uiY = gTheme->usedHeight - 32;
     if (settingsContext) {
         int uiHints[3] = {_STR_SELECT, _STR_BACK, _STR_ENTER};
-        int uiIcons[3] = {CROSS_ICON, CIRCLE_ICON, TRIANGLE_ICON};
+        int uiIcons[3] = {guiConfirmIcon(), guiCancelIcon(), TRIANGLE_ICON};
         int uiX = guiAlignSubMenuHints(intFocus ? 3 : 2, uiHints, uiIcons, gTheme->fonts[0], 12, 2);
 
         if (settingsShell) {
@@ -1133,10 +1181,11 @@ static void diaResetValue(struct UIItem *item)
     }
 }
 
-static int diaHandleInput(struct UIItem *item, int *modified, int settingsContext)
+static int diaHandleInput(struct UIItem *item, int *modified)
 {
-    int selectButton = settingsContext ? KEY_CROSS : gSelectButton;
-    int cancelButton = settingsContext ? KEY_CIRCLE : (gSelectButton == KEY_CIRCLE ? KEY_CROSS : KEY_CIRCLE);
+    // Settings follows the user's Select Button like every other screen (it used to force Cross).
+    int selectButton = guiConfirmKey();
+    int cancelButton = guiCancelKey();
 
     // circle loses focus, sets old values first
     if (getKeyOn(cancelButton)) {
@@ -1433,7 +1482,6 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
     diaStoreScrollSpeed();
 
     int settingsShell = diaSettingsShellUI == ui && diaSettingsIndicator != NULL;
-    int settingsContext = settingsShell || diaSettingsContext;
 
     // slower controls for dialogs
     setButtonDelay(KEY_UP, diaScrollDelay());
@@ -1453,7 +1501,7 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
 
         if (haveFocus) {
             modified = 1;
-            haveFocus = diaHandleInput(cur, &modified, settingsContext);
+            haveFocus = diaHandleInput(cur, &modified);
 
             if (!haveFocus) {
                 setButtonDelay(KEY_UP, diaScrollDelay());
@@ -1514,21 +1562,21 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
             // page's edits while a flip kept them (FifthFox). Leaving Settings is where the user
             // decides: Save / Exit without saving / Continue. Sub-dialogs opened from a page are not
             // the shell UI, so for them Circle stays Cancel.
-            if (settingsShell && getKeyOn(KEY_CIRCLE)) {
+            if (settingsShell && getKeyOn(guiCancelKey())) {
                 diaRestoreScrollSpeed();
                 sfxPlay(SFX_CANCEL);
                 return DIA_RESULT_INDEX;
             }
 
             // Cancel button breaks focus or exits with false result
-            if (getKeyOn(settingsContext ? KEY_CIRCLE : (gSelectButton == KEY_CIRCLE ? KEY_CROSS : KEY_CIRCLE))) {
+            if (getKeyOn(guiCancelKey())) {
                 diaRestoreScrollSpeed();
                 sfxPlay(SFX_CANCEL);
                 return UIID_BTN_CANCEL;
             }
 
             // see what key events we have
-            if (getKeyOn(settingsContext ? KEY_CROSS : gSelectButton)) {
+            if (getKeyOn(guiConfirmKey())) {
                 haveFocus = 1;
                 sfxPlay(SFX_CONFIRM);
 
