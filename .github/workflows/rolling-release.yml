@@ -170,13 +170,15 @@ jobs:
         # Runs AFTER staging so the per-build `make clean` can't wipe the saved main ELF.
         run: sh ./.github/scripts/build_rolling_extras.sh "-PS2DEVPINNED" "PS2DEVPINNED"
 
-      - name: Upload pinned rolling assets
-        uses: actions/upload-artifact@v6
+      - name: Stash pinned rolling assets (cache, not artifacts)
+        # Artifact storage is account-quota-capped and shared; the 10 GB per-repo cache
+        # bucket is not. Same handoff, different bucket. continue-on-error so a rare
+        # key collision on a retried job can never fail a build that already compiled.
+        continue-on-error: true
+        uses: actions/cache/save@v4
         with:
-          name: rolling-assets-pinned
+          key: rolling-${{ github.run_id }}-pinned
           path: rolling
-          if-no-files-found: error
-          retention-days: 14
 
   build-rolling-ps2dev-latest:
     runs-on: ubuntu-24.04
@@ -308,13 +310,15 @@ jobs:
         # Runs after staging the main ELF so the per-build `make clean` can't wipe it.
         run: sh ./.github/scripts/build_rolling_extras.sh "-PS2DEVROLLING" "PS2DEVROLLING"
 
-      - name: Upload ps2dev-latest rolling assets
-        uses: actions/upload-artifact@v6
+      - name: Stash ps2dev-latest rolling assets (cache, not artifacts)
+        # Artifact storage is account-quota-capped and shared; the 10 GB per-repo cache
+        # bucket is not. Same handoff, different bucket. continue-on-error so a rare
+        # key collision on a retried job can never fail a build that already compiled.
+        continue-on-error: true
+        uses: actions/cache/save@v4
         with:
-          name: rolling-assets-ps2dev-latest
+          key: rolling-${{ github.run_id }}-ps2dev-latest
           path: rolling
-          if-no-files-found: error
-          retention-days: 14
 
   build-rolling-officialsdk:
     runs-on: ubuntu-24.04
@@ -412,13 +416,15 @@ jobs:
             echo "WARN: OFFICIALROLLING RetroAchievements PADEMU1 build failed; skipping RA asset this run." >&2
           fi
 
-      - name: Upload officialsdk rolling assets
-        uses: actions/upload-artifact@v6
+      - name: Stash officialsdk rolling assets (cache, not artifacts)
+        # Artifact storage is account-quota-capped and shared; the 10 GB per-repo cache
+        # bucket is not. Same handoff, different bucket. continue-on-error so a rare
+        # key collision on a retried job can never fail a build that already compiled.
+        continue-on-error: true
+        uses: actions/cache/save@v4
         with:
-          name: rolling-assets-officialsdk
+          key: rolling-${{ github.run_id }}-officialsdk
           path: rolling
-          if-no-files-found: error
-          retention-days: 14
 
   build-rolling-official-pinned:
     runs-on: ubuntu-24.04
@@ -493,13 +499,15 @@ jobs:
             echo "WARN: OFFICIALPINNED DUALSENSE=1 build failed; skipping DS5 asset this run" >&2
           fi
 
-      - name: Upload official-pinned rolling assets
-        uses: actions/upload-artifact@v6
+      - name: Stash official-pinned rolling assets (cache, not artifacts)
+        # Artifact storage is account-quota-capped and shared; the 10 GB per-repo cache
+        # bucket is not. Same handoff, different bucket. continue-on-error so a rare
+        # key collision on a retried job can never fail a build that already compiled.
+        continue-on-error: true
+        uses: actions/cache/save@v4
         with:
-          name: rolling-assets-official-pinned
+          key: rolling-${{ github.run_id }}-official-pinned
           path: rolling
-          if-no-files-found: error
-          retention-days: 14
 
   publish-rolling:
     needs: [build-rolling-pinned, build-rolling-ps2dev-latest, build-rolling-officialsdk, build-rolling-official-pinned]
@@ -543,34 +551,42 @@ jobs:
 
       - name: Download ps2dev-latest rolling assets
         # The required version-authority build (its job failing already failed the workflow).
-        uses: actions/download-artifact@v8
+        uses: actions/cache/restore@v4
         with:
-          name: rolling-assets-ps2dev-latest
+          key: rolling-${{ github.run_id }}-ps2dev-latest
           path: rolling
+          # A missing cache (best-effort flavour job failed) restores nothing and
+          # does not error -- same publish-what-we-have semantics as before.
 
       - name: Download pinned rolling assets
         # Optional: the pinned fallback build may have failed; publish what we have.
         continue-on-error: true
-        uses: actions/download-artifact@v8
+        uses: actions/cache/restore@v4
         with:
-          name: rolling-assets-pinned
+          key: rolling-${{ github.run_id }}-pinned
           path: rolling
+          # A missing cache (best-effort flavour job failed) restores nothing and
+          # does not error -- same publish-what-we-have semantics as before.
 
       - name: Download officialsdk rolling assets
         # Optional: the official-SDK flavour is best-effort; publish what we have.
         continue-on-error: true
-        uses: actions/download-artifact@v8
+        uses: actions/cache/restore@v4
         with:
-          name: rolling-assets-officialsdk
+          key: rolling-${{ github.run_id }}-officialsdk
           path: rolling
+          # A missing cache (best-effort flavour job failed) restores nothing and
+          # does not error -- same publish-what-we-have semantics as before.
 
       - name: Download official-pinned rolling assets
         # Optional, exactly like its rolling twin: a missing official flavour must not sink the release.
         continue-on-error: true
-        uses: actions/download-artifact@v8
+        uses: actions/cache/restore@v4
         with:
-          name: rolling-assets-official-pinned
+          key: rolling-${{ github.run_id }}-official-pinned
           path: rolling
+          # A missing cache (best-effort flavour job failed) restores nothing and
+          # does not error -- same publish-what-we-have semantics as before.
 
 
       - name: Compute the download file version
