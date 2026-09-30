@@ -43,7 +43,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 from markdown_it import MarkdownIt
 
-REPO_BLOB = "https://github.com/NathanNeurotic/Open-PS2-Loader/blob/rebuild/main/"
+REPO_BLOB = "https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/"
 INDEX = Path("data") / "search-index.json"
 RA_PAGE = "retroachievements.html"
 MAIN_OPEN = '<main class="content">'

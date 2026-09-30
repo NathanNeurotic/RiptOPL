@@ -7,7 +7,7 @@
 #
 # Some devices are case sensitive! Make sure your case matches!
 #
-# Source: github.com/NathanNeurotic/Open-PS2-Loader
+# Source: github.com/NathanNeurotic/RiptOPL
 SET "TITLE" "[APP] RiptOPL"
 SET "VERSION" "1.2.0 Beta"
 SET "AUTHOR" "github.com/NathanNeurotic/"

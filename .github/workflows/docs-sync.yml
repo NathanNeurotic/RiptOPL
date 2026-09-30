@@ -58,7 +58,7 @@ jobs:
           popstarter = "https://www.psx-place.com/resources/popstarter.683/"
           neutrino = "https://github.com/rickgaiser/neutrino"
           psumanager = "https://git.techwritescode.dev/techwritescode/PSUManager"
-          badge = "[![CI](https://github.com/NathanNeurotic/Open-PS2-Loader/actions/workflows/flavours.yml/badge.svg?branch=rebuild/main)](https://github.com/NathanNeurotic/Open-PS2-Loader/actions/workflows/flavours.yml)"
+          badge = "[![CI](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml/badge.svg?branch=rebuild/main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/flavours.yml)"
 
           readme = Path("README.md")
           text = readme.read_text(encoding="utf-8")

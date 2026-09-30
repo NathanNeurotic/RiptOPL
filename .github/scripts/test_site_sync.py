@@ -118,7 +118,7 @@ class SiteSyncTests(unittest.TestCase):
         self.assertIn('<h1 id="title">Title</h1>', body)
         self.assertIn('<h2 id="status">Status</h2>', body)
         self.assertIn('<h2 id="status-1">Status</h2>', body)  # GitHub's duplicate-heading suffix
-        self.assertIn('href="https://github.com/NathanNeurotic/Open-PS2-Loader/blob/rebuild/main/docs/IGR.md#igr"', body)
+        self.assertIn('href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/IGR.md#igr"', body)
         self.assertIn('href="https://example.com/"', body)
         self.assertIn("<table>", body)
         self.assertIn('<code class="language-bash">', body)

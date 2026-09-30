@@ -17,8 +17,8 @@ archives by purpose (RA, DEBUG and language packs are listed when produced):
 | Asset | What it is |
 |---|---|
 | `RIPTOPL-<version>.zip` | **Complete standard install kit.** `APPS/APP_RIPTOPL/` contains a real `RIPTOPL.ELF`, app metadata, icons and music; `ART/RIPTOPL.ELF_*.png` supplies matching artwork. `APP_RIPTOPL.psu` is the same app as a single memory-card save. The app uses `-OFFICIALROLLING` when available, with a named fallback recorded in its metadata. Four separately labelled SDK ELF folders remain for comparisons, subject to best-effort build availability. The ZIP also includes the complete `POPS/`, `EMBER/` and `neutrino/` folders and five companion-tool shortcuts, including `android-udpfs-server.url`. |
-| `RIPTOPL.ELF` | **The loader on its own, for updating an install you already have.** Download it and overwrite your existing `RIPTOPL.ELF` — no archive to unpack, nothing else to copy. Its name never changes (the same goes for `RIPTOPL-RA.ELF` below), so <https://github.com/NathanNeurotic/Open-PS2-Loader/releases/download/rolling/RIPTOPL.ELF> is a permanent link. It is the **`-OFFICIALROLLING`** flavour; there is only one of these because four would put the "which do I pick?" question back in front of the people this file exists for. It is not a first install: the bare loader does not bring `POPS/`, `EMBER/`, `neutrino/` or the language files, so PS1 and Neutrino launches need the package above. If you want a reproducible build to quote in a bug report, take a pinned folder from the package instead — see [Which build should I use?](#which-build-should-i-use). Best-effort, like the flavour it is copied from: if that build fails the release simply ships without it. |
-| `RIPTOPL-RA.ELF` | **The RetroAchievements loader on its own**, for updating an RA install: replace `APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF` with it. Its link never changes: <https://github.com/NathanNeurotic/Open-PS2-Loader/releases/download/rolling/RIPTOPL-RA.ELF>. It is the `-OFFICIALROLLING` `PADEMU=1` RA build, the same one the RA kit's ready app uses. Best-effort: if that build fails, the release ships without it. |
+| `RIPTOPL.ELF` | **The loader on its own, for updating an install you already have.** Download it and overwrite your existing `RIPTOPL.ELF` — no archive to unpack, nothing else to copy. Its name never changes (the same goes for `RIPTOPL-RA.ELF` below), so <https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling/RIPTOPL.ELF> is a permanent link. It is the **`-OFFICIALROLLING`** flavour; there is only one of these because four would put the "which do I pick?" question back in front of the people this file exists for. It is not a first install: the bare loader does not bring `POPS/`, `EMBER/`, `neutrino/` or the language files, so PS1 and Neutrino launches need the package above. If you want a reproducible build to quote in a bug report, take a pinned folder from the package instead — see [Which build should I use?](#which-build-should-i-use). Best-effort, like the flavour it is copied from: if that build fails the release simply ships without it. |
+| `RIPTOPL-RA.ELF` | **The RetroAchievements loader on its own**, for updating an RA install: replace `APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF` with it. Its link never changes: <https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling/RIPTOPL-RA.ELF>. It is the `-OFFICIALROLLING` `PADEMU=1` RA build, the same one the RA kit's ready app uses. Best-effort: if that build fails, the release ships without it. |
 | `APP_RIPTOPL.psu`, `APP_RIPTOPL-RA.psu` | The two kits' ready apps as standalone memory-card saves, for installing the app straight onto a card with a PS2 save manager. Each holds only its app folder's direct files. `APP_RIPTOPL-RA.psu` is published whenever the RA kit is. |
 | `RIPTOPL-<version>-src.zip` | Source snapshot to rebuild this exact commit. |
 | `RIPTOPL-LANGS-*.zip` | Extra UI language files (`.lng` + non-Latin fonts) — copy into your OPL folder. |
@@ -108,7 +108,7 @@ pulled by URL and dropped straight over your existing copy:
 # --fail matters: the asset is best-effort, and a plain `curl -L -o` writes the
 # HTTP error page into the file and still exits 0 -- overwriting a loader that works.
 curl --fail --location --show-error --output RIPTOPL.ELF.tmp \
-  https://github.com/NathanNeurotic/Open-PS2-Loader/releases/download/rolling/RIPTOPL.ELF \
+  https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling/RIPTOPL.ELF \
   && mv RIPTOPL.ELF.tmp RIPTOPL.ELF
 ```
 
@@ -117,16 +117,16 @@ filename — the `gh` CLI grabs whatever is currently published:
 
 ```sh
 # Everything in the current rolling release
-gh release download rolling --repo NathanNeurotic/Open-PS2-Loader --clobber
+gh release download rolling --repo NathanNeurotic/RiptOPL --clobber
 
 # For just the normal installable package, copy its exact filename from the release page.
 # Broad RIPTOPL-* globs also match RA, VARIANTS, DEBUG, LANGS and source archives.
-gh release download rolling --repo NathanNeurotic/Open-PS2-Loader \
+gh release download rolling --repo NathanNeurotic/RiptOPL \
   --pattern "<exact-normal-package-filename>.zip" --clobber
 ```
 
 Or download from the release page:
-<https://github.com/NathanNeurotic/Open-PS2-Loader/releases/tag/rolling>
+<https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling>
 
 Every prior run's assets are wiped before the new ones are uploaded, so nothing stale
 accumulates (GitHub's auto "Source code" archives are added separately). The release
@@ -174,6 +174,6 @@ cancelling each other.
 
 ## Not a stable release
 
-`rolling` is a development build and may be unstable. The [Current Fan Favorite Build](https://github.com/NathanNeurotic/Open-PS2-Loader/releases/tag/current-fan-favorite) is a preserved development snapshot selected after positive user feedback, not a universal compatibility guarantee.
+`rolling` is a development build and may be unstable. The [Current Fan Favorite Build](https://github.com/NathanNeurotic/RiptOPL/releases/tag/current-fan-favorite) is a preserved development snapshot selected after positive user feedback, not a universal compatibility guarantee.
 
 Both installable ZIPs require a usable `neutrino/` bundle; a failed download or incomplete extraction fails release packaging. MEGA uploads depend on successful publishing and configured credentials. Superseded or failed runs may have no archived package.

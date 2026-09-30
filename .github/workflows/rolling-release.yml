@@ -1273,6 +1273,8 @@ jobs:
       # old lineage must not archive over the new one's history either.
       - name: Build all-in-one MEGA archive
         if: (github.ref == 'refs/heads/rebuild/main' || github.ref == 'refs/heads/test/korium-audit-remediation') && env.USERNAME != '' && env.PASSWORD != ''
+        # Never fail the publish over MEGA: the GitHub release above is the source of truth.
+        continue-on-error: true
         run: |
           set -eu
           # Validate the payload BEFORE archiving so a broken publish fails loudly instead of pushing
@@ -1356,6 +1358,8 @@ jobs:
 
       - name: Upload archive and regular ELFs in all 4 flavours to MEGA
         if: (github.ref == 'refs/heads/rebuild/main' || github.ref == 'refs/heads/test/korium-audit-remediation') && env.USERNAME != '' && env.PASSWORD != ''
+        # Never fail the publish over MEGA: purely additive archival.
+        continue-on-error: true
         # Pinned to a full commit SHA rather than @master: this third-party action runs with the
         # MEGA credentials, so freeze it to a reviewed snapshot instead of trusting whatever is on
         # its master branch at build time. bf698c6 == the action's v1.4.0 release == the master HEAD
