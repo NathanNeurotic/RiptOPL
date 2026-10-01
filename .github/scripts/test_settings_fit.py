@@ -165,9 +165,10 @@ for name, value in (('BG_R', '0x0C'), ('BG_G', '0x3A'), ('BG_B', '0xA8'),
 colors = function_text(opl_c, 'src/opl.cpp', 'void setDefaultColors(')
 if colors and 'gDefaultBgColor[0] = RIPTOPL_PLASMA_BG_R;' not in colors:
     failures.append('setDefaultColors: the default plasma must be RiptOPL\'s, not official OPL\'s cyan')
-defaults = function_text(opl_c, 'src/opl.cpp', 'static void setDefaults(')
-if defaults and 'gDefaultPlasBlendColor[2] = RIPTOPL_PLASMA_BLEND_B;' not in defaults:
-    failures.append('setDefaults: the default plasma blend must be RiptOPL\'s near-black')
+# the plain-setting defaults moved from setDefaults() into the table in src/settings.cpp
+settings_cpp = (root / 'src/settings.cpp').read_text(encoding='utf-8')
+if 'colorSetting(CONFIG_OPL_PLAS_BLEND_COLOR, gDefaultPlasBlendColor, {RIPTOPL_PLASMA_BLEND_R, RIPTOPL_PLASMA_BLEND_G, RIPTOPL_PLASMA_BLEND_B})' not in settings_cpp:
+    failures.append('settings.cpp: the default plasma blend must be RiptOPL\'s near-black')
 load = function_text(opl_c, 'src/opl.cpp', 'static void _loadConfig(')
 old_pair = ('gDefaultBgColor[0] == 0x28 && gDefaultBgColor[1] == 0xC5 && gDefaultBgColor[2] == 0xF9 &&\n'
             '                gDefaultPlasBlendColor[0] == 0x00 && gDefaultPlasBlendColor[1] == 0x00 && gDefaultPlasBlendColor[2] == 0x00')

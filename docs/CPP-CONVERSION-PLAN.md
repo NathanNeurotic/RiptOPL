@@ -240,3 +240,22 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
   (bgm ring, IO queue) or straight-line pairs, so a blanket SemaLock rewrite would not buy safety.
 - malloc/free: a leak scan (allocation followed by a return before free) flagged ~45 sites; the ones read were correct ownership
   hand-offs, so no bulk conversion. One real defect fixed: `fntPrepareGlyphCachePage` dereferenced an unchecked `malloc`.
+
+## 11. Phase 3 status (done: one table for the plain settings; the Settings struct is deferred)
+- `src/settings.cpp` holds a constexpr table of 79 rows (key, variable, default) that drives `settingsApplyDefaults()`,
+  `settingsLoad()` and `settingsSave()`. `opl.cpp` lost 242 lines (the matching lines of `setDefaults`, `_loadConfig`, `_saveConfig`)
+  and calls the three functions; everything with migration, clamping or cross-key logic stayed where it was, in its original relative
+  order and now AFTER the table load: the video-mode recovery combo (that row is `loadPlain = false`), the prefix sanitising, the
+  AutoStart/GameView/AppsDisplay/VCD/ArtDelay/Coverflow clamps, the Popstarter device/path migration, the MMCE pacing migration,
+  the network-protocol derivation, the plasma-colour migration and the boot-device reconcile. The extraction/verification scripts
+  checked that no special code reads a table variable before its (now earlier) plain read, apart from `gVMode`.
+- Verified by `tests/host/test_settings.cpp` (real headers via `tests/host/sdk_stub`, real config store): same 79 keys in the old save
+  order, every default equals the old `setDefaults` value (checks generated from the old source in `settings_golden_defaults.inc`),
+  full save -> text -> load round trip, absent keys leave ints/colours alone and empty strings (as `configGetStrCopy` always did).
+- Behaviour notes: on a brand-new settings file, the few keys written by special code (theme, language, MMCE pacing marker, ember,
+  swap-select-button) now land after the plain keys instead of between them; existing files keep their order. Key names/syntax unchanged.
+- Deferred on purpose: regrouping the ~130 extern globals into a `Settings` struct. It is ~2,400 occurrences across src/include plus
+  names the scraping tests match, with no behavioural gain now that the three lists are one table; do it per sub-struct when a module
+  that owns a group (net, neutrino, popstarter, vcd, ember) is extracted in phase 4+.
+- Also: the host test infrastructure can now compile the real `include/opl.h` (empty SDK stubs in `tests/host/sdk_stub`), which makes
+  more modules testable without hand-written header stubs.

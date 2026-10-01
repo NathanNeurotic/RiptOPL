@@ -2,7 +2,9 @@
 // real sources, in a test that exercises them.
 #pragma once
 #include <sys/stat.h>
+#ifndef HOST_ENV_EXTERN_DEBUG
 int gEnableDebug = 0;
+#endif
 char gBaseMCDir[64] = "mc0:/";
 char gOPLPart[64] = "";
 int gLastSaveErrno = 0;

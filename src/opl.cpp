@@ -4,6 +4,7 @@
   Review OpenUsbLd README & LICENSE files for further details.
 */
 
+#include "include/settings.h"
 #include "include/opl.h"
 #include "include/ioman.h"
 #include "include/launchdiag.h" // UDPBD hang-triage stage markers (gated on gLaunchDiag)
@@ -2985,20 +2986,8 @@ static void _loadConfig()
         if (result & CONFIG_OPL) {
             config_set_t *configOPL = configGetByType(CONFIG_OPL);
 
-            configGetInt(configOPL, CONFIG_OPL_SCROLLING, &gScrollSpeed);
-            configGetColor(configOPL, CONFIG_OPL_BGCOLOR, gDefaultBgColor);
-            configGetColor(configOPL, CONFIG_OPL_TEXTCOLOR, gDefaultTextColor);
-            configGetColor(configOPL, CONFIG_OPL_UI_TEXTCOLOR, gDefaultUITextColor);
-            configGetColor(configOPL, CONFIG_OPL_TITLECOLOR, gDefaultTitleColor);
-            configGetColor(configOPL, CONFIG_OPL_SEL_TEXTCOLOR, gDefaultSelTextColor);
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_NOTIFICATIONS, &gEnableNotifications);
-#ifdef RETROACHIEVEMENTS
-            configGetInt(configOPL, CONFIG_OPL_RA_TELEMETRY, &gRATelemetry);
-            configGetInt(configOPL, CONFIG_OPL_RA_BADGES, &gRABadges);
-#endif
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_COVERART, &gEnableArt);
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_DISCART, &gEnableDiscArt);
-            configGetInt(configOPL, CONFIG_OPL_WIDESCREEN, &gWideScreen);
+            settingsLoad(configOPL); // every plain key; the special cases below (recovery combo, clamps, migrations) follow
+
 
             if (getKeyPressed(KEY_TRIANGLE) && getKeyPressed(KEY_CROSS)) {
                 // Recovery combo: force 480p PROGRESSIVE (EDTV 640x448p@60, vmode index 3), not
@@ -3019,13 +3008,7 @@ static void _loadConfig()
                 configGetInt(configOPL, CONFIG_OPL_VMODE, &gVMode);
             }
 
-            configGetInt(configOPL, CONFIG_OPL_XOFF, &gXOff);
-            configGetInt(configOPL, CONFIG_OPL_YOFF, &gYOff);
-            configGetInt(configOPL, CONFIG_OPL_OVERSCAN, &gOverscan);
 
-            configGetInt(configOPL, CONFIG_OPL_BDM_CACHE, &bdmCacheSize);
-            configGetInt(configOPL, CONFIG_OPL_HDD_CACHE, &hddCacheSize);
-            configGetInt(configOPL, CONFIG_OPL_SMB_CACHE, &smbCacheSize);
 
             if (configGetStr(configOPL, CONFIG_OPL_THEME, &temp))
                 themeID = thmFindGuiID(temp);
@@ -3036,41 +3019,14 @@ static void _loadConfig()
             if (configGetInt(configOPL, CONFIG_OPL_SWAP_SEL_BUTTON, &value))
                 gSelectButton = value == 0 ? KEY_CIRCLE : KEY_CROSS;
 
-            configGetInt(configOPL, CONFIG_OPL_XSENSITIVITY, &gXSensitivity);
-            configGetInt(configOPL, CONFIG_OPL_YSENSITIVITY, &gYSensitivity);
-            configGetInt(configOPL, CONFIG_OPL_DISABLE_DEBUG, &gEnableDebug);
-            configGetInt(configOPL, CONFIG_OPL_PS2LOGO, &gPS2Logo);
-            configGetInt(configOPL, CONFIG_OPL_HDD_GAME_LIST_CACHE, &gHDDGameListCache);
-            configGetStrCopy(configOPL, CONFIG_OPL_EXIT_PATH, gExitPath, sizeof(gExitPath));
-            configGetStrCopy(configOPL, CONFIG_OPL_CUSTOM_SETTINGS_PATH, gCustomSettingsPath, sizeof(gCustomSettingsPath));
-            configGetInt(configOPL, CONFIG_OPL_AUTO_SORT, &gAutosort);
-            configGetInt(configOPL, CONFIG_OPL_AUTO_REFRESH, &gAutoRefresh);
-            configGetInt(configOPL, CONFIG_OPL_DEFAULT_DEVICE, &gDefaultDevice);
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_WRITE, &gEnableWrite);
-            configGetInt(configOPL, CONFIG_OPL_HDD_SPINDOWN, &gHDDSpindown);
-            configGetStrCopy(configOPL, CONFIG_OPL_BDM_PREFIX, gBDMPrefix, sizeof(gBDMPrefix));
             sanitizePrefix(gBDMPrefix);
-            configGetStrCopy(configOPL, CONFIG_OPL_ETH_PREFIX, gETHPrefix, sizeof(gETHPrefix));
             sanitizePrefix(gETHPrefix);
-            configGetInt(configOPL, CONFIG_OPL_REMEMBER_LAST, &gRememberLastPlayed);
-            configGetInt(configOPL, CONFIG_OPL_AUTOSTART_LAST, &gAutoStartLastPlayed);
             if (gAutoStartLastPlayed < 0)
                 gAutoStartLastPlayed = 0;
-            configGetInt(configOPL, CONFIG_OPL_BDM_MODE, &gBDMStartMode);
-            configGetInt(configOPL, CONFIG_OPL_HDD_MODE, &gHDDStartMode);
             // resolveBootDirToMass runs before this read. A stored Disabled value must not undo
             // the AUTO fallback for an APA/PFS boot that already mounted and served OPL itself.
             if (gBootHomeApa && gHDDStartMode == START_MODE_DISABLED)
                 gHDDStartMode = START_MODE_AUTO;
-            configGetInt(configOPL, CONFIG_OPL_ETH_MODE, &gETHStartMode);
-            configGetInt(configOPL, CONFIG_OPL_APP_MODE, &gAPPStartMode);
-            configGetStrCopy(configOPL, CONFIG_OPL_MMCE_PREFIX, gMMCEPrefix, sizeof(gMMCEPrefix));
-            configGetInt(configOPL, CONFIG_OPL_MMCE_MODE, &gMMCEStartMode);
-            configGetInt(configOPL, CONFIG_OPL_MMCE_SLOT, &gMMCESlot);
-            configGetInt(configOPL, CONFIG_OPL_MMCEIGR_SLOT, &gMMCEIGRSlot);
-            configGetInt(configOPL, CONFIG_OPL_MMCE_GAMEID, &gMMCEEnableGameID);
-            configGetInt(configOPL, CONFIG_OPL_MMCE_WAIT_CYCLES, &gMMCEAckWaitCycles);
-            configGetInt(configOPL, CONFIG_OPL_MMCE_USE_ALARMS, &gMMCEUseAlarms);
             // SIO2 pacing migration: silently upgrade the 0/0 defaults to 5/1
             {
                 int pacingMigrated = 0;
@@ -3083,13 +3039,8 @@ static void _loadConfig()
                     configSetInt(configOPL, CONFIG_OPL_MMCE_PACING_MIGR, 1);
                 }
             }
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_USB, &gEnableUSB);
-            configGetInt(configOPL, CONFIG_OPL_FAV_MODE, &gFAVStartMode);
-            configGetInt(configOPL, CONFIG_OPL_APPLY_GAMEID, &gApplyGameID);
-            configGetInt(configOPL, CONFIG_OPL_DEFAULT_GAME_VIEW, &gDefaultGameView);
             if (gDefaultGameView < GAME_VIEW_BOTH || gDefaultGameView > GAME_VIEW_MIXED)
                 gDefaultGameView = GAME_VIEW_BOTH;
-            configGetInt(configOPL, CONFIG_OPL_APPS_DISPLAY, &gAppsDisplay);
             if (gAppsDisplay < APPS_DISPLAY_MIXED || gAppsDisplay > APPS_DISPLAY_SPLIT)
                 gAppsDisplay = APPS_DISPLAY_MIXED;
             // Where the user left each L3 page last session. Read from the LAST set (the same
@@ -3108,7 +3059,6 @@ static void _loadConfig()
             // support scans, so each VCD-capable page consumes the dirty flag on its first refresh.
             if (gDefaultGameView != GAME_VIEW_BOTH)
                 libViewMarkAllDirty();
-            configGetStrCopy(configOPL, CONFIG_OPL_POPSTARTER_PATH, gPopstarterPath, sizeof(gPopstarterPath));
             // The POPSTARTER device picker is retired. Preserve older explicit choices by translating
             // them into the new full-path syntax; current runtime then uses the same deterministic
             // Custom -> Game Device -> MC order for old and new configs. Keep POPS_DEV_CUSTOM when a
@@ -3147,26 +3097,15 @@ static void _loadConfig()
             gPopstarterDevice = (gPopstarterPath[0] != '\0') ? POPS_DEV_CUSTOM : POPS_DEV_DEFAULT;
             if (!configGetInt(configOPL, CONFIG_OPL_POPSTARTER_RETROGEM_GAMEID, &gPopstarterRetroGemGameID))
                 gPopstarterRetroGemGameID = 1;
-            configGetInt(configOPL, CONFIG_OPL_BDMA_SOURCE, &gBdmaSource);
-            configGetInt(configOPL, CONFIG_OPL_BDMA_APPLY, &gBdmaApplyOnLaunch);
-            configGetInt(configOPL, CONFIG_OPL_VCD_USB_BDMA, &gVcdUsbBdmaMode);
             // A hand-edited or future-written value must not index past the three enum labels.
             if (gVcdUsbBdmaMode < VCD_USB_BDMA_ASK || gVcdUsbBdmaMode > VCD_USB_BDMA_FAT32)
                 gVcdUsbBdmaMode = VCD_USB_BDMA_ASK;
-            configGetInt(configOPL, CONFIG_OPL_VCD_HIDE_GAMEID, &gVcdHideGameId);
-            configGetInt(configOPL, CONFIG_OPL_VCD_FIRST_DISC_ONLY, &gVcdFirstDiscOnly);
-            configGetInt(configOPL, CONFIG_OPL_VCD_SHOW_PP_POPS, &gVcdShowPpPops);
             configReadNeutrinoGlobals(configOPL); // shared with miniInit's autolaunch path
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_BGART, &gEnableBGArt);
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_ART_TAR, &gEnableArtTar);
-            configGetInt(configOPL, CONFIG_OPL_ART_DELAY, &gArtDelay);
             // Keep the stored domain identical to the Artwork page's enum {0,2,5,8} (item 45), so a
             // hand-edited or legacy value cannot render as a delay the UI is unable to express.
             // An out-of-domain value falls back to 0, matching setDefaults().
             if (gArtDelay != 0 && gArtDelay != 2 && gArtDelay != 5 && gArtDelay != 8)
                 gArtDelay = 0;
-            configGetInt(configOPL, CONFIG_OPL_FOLDER_NAV, &gEnableFolderNav);
-            configGetColor(configOPL, CONFIG_OPL_PLAS_BLEND_COLOR, gDefaultPlasBlendColor);
             // Every settings save writes both plasma colours, so a config saved before the new defaults
             // holds the OLD pair -- official OPL's cyan over black -- even for someone who never touched
             // the Colors page. Exactly that pair means "never customised": give it the new defaults. Any
@@ -3180,10 +3119,6 @@ static void _loadConfig()
                 gDefaultPlasBlendColor[1] = RIPTOPL_PLASMA_BLEND_G;
                 gDefaultPlasBlendColor[2] = RIPTOPL_PLASMA_BLEND_B;
             }
-            configGetInt(configOPL, CONFIG_OPL_COVERFLOW_COUNT, &gCoverflowCount);
-            configGetInt(configOPL, CONFIG_OPL_COVERFLOW_SCALE, &gCoverflowCenterScale);
-            configGetInt(configOPL, CONFIG_OPL_COVERFLOW_ANIM, &gCoverflowAnimSpeed);
-            configGetInt(configOPL, CONFIG_OPL_COVERFLOW_DIM, &gCoverflowDimCovers);
             // clamp count to {3,5} on load -- defends a hand-edited conf.cfg
             gCoverflowCount = (gCoverflowCount == 5) ? 5 : 3;
             // clamp the remaining coverflow values too -- a hand-edited conf.cfg
@@ -3197,11 +3132,7 @@ static void _loadConfig()
             else if (gCoverflowAnimSpeed > 5000)
                 gCoverflowAnimSpeed = 5000;
             gCoverflowDimCovers = gCoverflowDimCovers ? 1 : 0;
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_ILINK, &gEnableILK);
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_MX4SIO, &gEnableMX4SIO);
-            configGetInt(configOPL, CONFIG_OPL_ENABLE_BDMHDD, &gEnableBdmHDD);
             int udpbdKeyPresent = configGetInt(configOPL, CONFIG_OPL_ENABLE_UDPBD, &gEnableUDPBD);
-            configGetInt(configOPL, CONFIG_OPL_NET_BOOT_PROTOCOL, &gNetBootProtocol);
             // Unified network-protocol selector (single SMAP NIC -> at most one transport per session).
             // Read the new key if present (authoritative); otherwise DERIVE it from the three legacy keys,
             // preserving the historical "network BDM wins over SMB" precedence (imported/hand-edited configs
@@ -3273,14 +3204,6 @@ static void _loadConfig()
             gEnableUDPBD = (gNetworkProtocol == NET_PROTO_UDPBD || gNetworkProtocol == NET_PROTO_UDPFSBD);
             gNetBootProtocol = (gNetworkProtocol == NET_PROTO_UDPFSBD) ? NET_BOOT_UDPFS : NET_BOOT_UDPBD;
             gETHStartMode = (gNetworkProtocol == NET_PROTO_SMB) ? gNetStartMode : START_MODE_DISABLED;
-            configGetInt(configOPL, CONFIG_OPL_SFX, &gEnableSFX);
-            configGetInt(configOPL, CONFIG_OPL_RUMBLE, &gEnableRumble);
-            configGetInt(configOPL, CONFIG_OPL_BOOT_SND, &gEnableBootSND);
-            configGetInt(configOPL, CONFIG_OPL_BGM, &gEnableBGM);
-            configGetInt(configOPL, CONFIG_OPL_SFX_VOLUME, &gSFXVolume);
-            configGetInt(configOPL, CONFIG_OPL_BOOT_SND_VOLUME, &gBootSndVolume);
-            configGetInt(configOPL, CONFIG_OPL_BGM_VOLUME, &gBGMVolume);
-            configGetStrCopy(configOPL, CONFIG_OPL_DEFAULT_BGM_PATH, gDefaultBGMPath, sizeof(gDefaultBGMPath));
         }
 
         // BOOT-DEVICE RECONCILE. The device OPL is RUNNING FROM always has its transport enabled.
@@ -3662,70 +3585,13 @@ static void _saveConfig()
 
     if (lscstatus & CONFIG_OPL) {
         config_set_t *configOPL = configGetByType(CONFIG_OPL);
-        configSetInt(configOPL, CONFIG_OPL_SCROLLING, gScrollSpeed);
+        settingsSave(configOPL);
         configSetStr(configOPL, CONFIG_OPL_THEME, thmGetValue());
         configSetStr(configOPL, CONFIG_OPL_LANGUAGE, lngGetValue());
-        configSetColor(configOPL, CONFIG_OPL_BGCOLOR, gDefaultBgColor);
-        configSetColor(configOPL, CONFIG_OPL_TEXTCOLOR, gDefaultTextColor);
-        configSetColor(configOPL, CONFIG_OPL_UI_TEXTCOLOR, gDefaultUITextColor);
-        configSetColor(configOPL, CONFIG_OPL_TITLECOLOR, gDefaultTitleColor);
-        configSetColor(configOPL, CONFIG_OPL_SEL_TEXTCOLOR, gDefaultSelTextColor);
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_NOTIFICATIONS, gEnableNotifications);
-#ifdef RETROACHIEVEMENTS
-        configSetInt(configOPL, CONFIG_OPL_RA_TELEMETRY, gRATelemetry);
-        configSetInt(configOPL, CONFIG_OPL_RA_BADGES, gRABadges);
-#endif
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_COVERART, gEnableArt);
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_DISCART, gEnableDiscArt);
-        configSetInt(configOPL, CONFIG_OPL_WIDESCREEN, gWideScreen);
-        configSetInt(configOPL, CONFIG_OPL_VMODE, gVMode);
-        configSetInt(configOPL, CONFIG_OPL_XOFF, gXOff);
-        configSetInt(configOPL, CONFIG_OPL_YOFF, gYOff);
-        configSetInt(configOPL, CONFIG_OPL_OVERSCAN, gOverscan);
-        configSetInt(configOPL, CONFIG_OPL_DISABLE_DEBUG, gEnableDebug);
-        configSetInt(configOPL, CONFIG_OPL_PS2LOGO, gPS2Logo);
-        configSetInt(configOPL, CONFIG_OPL_HDD_GAME_LIST_CACHE, gHDDGameListCache);
-        configSetStr(configOPL, CONFIG_OPL_EXIT_PATH, gExitPath);
-        configSetStr(configOPL, CONFIG_OPL_CUSTOM_SETTINGS_PATH, gCustomSettingsPath);
-        configSetInt(configOPL, CONFIG_OPL_AUTO_SORT, gAutosort);
-        configSetInt(configOPL, CONFIG_OPL_AUTO_REFRESH, gAutoRefresh);
-        configSetInt(configOPL, CONFIG_OPL_DEFAULT_DEVICE, gDefaultDevice);
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_WRITE, gEnableWrite);
-        configSetInt(configOPL, CONFIG_OPL_HDD_SPINDOWN, gHDDSpindown);
-        configSetStr(configOPL, CONFIG_OPL_BDM_PREFIX, gBDMPrefix);
-        configSetStr(configOPL, CONFIG_OPL_ETH_PREFIX, gETHPrefix);
-        configSetInt(configOPL, CONFIG_OPL_REMEMBER_LAST, gRememberLastPlayed);
-        configSetInt(configOPL, CONFIG_OPL_AUTOSTART_LAST, gAutoStartLastPlayed);
-        configSetInt(configOPL, CONFIG_OPL_BDM_MODE, gBDMStartMode);
-        configSetInt(configOPL, CONFIG_OPL_HDD_MODE, gHDDStartMode);
-        configSetInt(configOPL, CONFIG_OPL_ETH_MODE, gETHStartMode);
-        configSetInt(configOPL, CONFIG_OPL_APP_MODE, gAPPStartMode);
-        configSetStr(configOPL, CONFIG_OPL_MMCE_PREFIX, gMMCEPrefix);
-        configSetInt(configOPL, CONFIG_OPL_MMCE_MODE, gMMCEStartMode);
-        configSetInt(configOPL, CONFIG_OPL_MMCE_SLOT, gMMCESlot);
-        configSetInt(configOPL, CONFIG_OPL_MMCEIGR_SLOT, gMMCEIGRSlot);
-        configSetInt(configOPL, CONFIG_OPL_MMCE_GAMEID, gMMCEEnableGameID);
-        configSetInt(configOPL, CONFIG_OPL_MMCE_WAIT_CYCLES, gMMCEAckWaitCycles);
-        configSetInt(configOPL, CONFIG_OPL_MMCE_USE_ALARMS, gMMCEUseAlarms);
         configSetInt(configOPL, CONFIG_OPL_MMCE_PACING_MIGR, 1);
-        configSetInt(configOPL, CONFIG_OPL_BDM_CACHE, bdmCacheSize);
-        configSetInt(configOPL, CONFIG_OPL_HDD_CACHE, hddCacheSize);
-        configSetInt(configOPL, CONFIG_OPL_SMB_CACHE, smbCacheSize);
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_USB, gEnableUSB);
-        configSetInt(configOPL, CONFIG_OPL_FAV_MODE, gFAVStartMode);
-        configSetInt(configOPL, CONFIG_OPL_APPLY_GAMEID, gApplyGameID);
-        configSetInt(configOPL, CONFIG_OPL_DEFAULT_GAME_VIEW, gDefaultGameView);
-        configSetInt(configOPL, CONFIG_OPL_APPS_DISPLAY, gAppsDisplay);
-        configSetStr(configOPL, CONFIG_OPL_POPSTARTER_PATH, gPopstarterPath);
         emberSaveSettings(configOPL);
         configSetInt(configOPL, CONFIG_OPL_POPSTARTER_DEVICE, gPopstarterDevice);
         configSetInt(configOPL, CONFIG_OPL_POPSTARTER_RETROGEM_GAMEID, gPopstarterRetroGemGameID);
-        configSetInt(configOPL, CONFIG_OPL_BDMA_SOURCE, gBdmaSource);
-        configSetInt(configOPL, CONFIG_OPL_BDMA_APPLY, gBdmaApplyOnLaunch);
-        configSetInt(configOPL, CONFIG_OPL_VCD_USB_BDMA, gVcdUsbBdmaMode);
-        configSetInt(configOPL, CONFIG_OPL_VCD_HIDE_GAMEID, gVcdHideGameId);
-        configSetInt(configOPL, CONFIG_OPL_VCD_FIRST_DISC_ONLY, gVcdFirstDiscOnly);
-        configSetInt(configOPL, CONFIG_OPL_VCD_SHOW_PP_POPS, gVcdShowPpPops);
         configSetStr(configOPL, CONFIG_OPL_NEUTRINO_ARGS, gNeutrinoArgs);
         configSetStr(configOPL, CONFIG_OPL_NEUTRINO_PATH, gNeutrinoPath);
         configSetInt(configOPL, CONFIG_OPL_DEFAULT_CORE, gDefaultCoreLoader);
@@ -3733,36 +3599,13 @@ static void _saveConfig()
         configSetInt(configOPL, CONFIG_OPL_NEUTRINO_GSMCOMP, gNeutrinoGsmCompDefault);
         configSetInt(configOPL, CONFIG_OPL_NEUTRINO_DEVTYPE, gNeutrinoDevice);
         configSetInt(configOPL, CONFIG_OPL_NEUTRINO_ELF_ARG, gNeutrinoElfArg);
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_BGART, gEnableBGArt);
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_ART_TAR, gEnableArtTar);
-        configSetInt(configOPL, CONFIG_OPL_ART_DELAY, gArtDelay);
-        configSetInt(configOPL, CONFIG_OPL_FOLDER_NAV, gEnableFolderNav);
-        configSetColor(configOPL, CONFIG_OPL_PLAS_BLEND_COLOR, gDefaultPlasBlendColor);
-        configSetInt(configOPL, CONFIG_OPL_COVERFLOW_COUNT, gCoverflowCount);
-        configSetInt(configOPL, CONFIG_OPL_COVERFLOW_SCALE, gCoverflowCenterScale);
-        configSetInt(configOPL, CONFIG_OPL_COVERFLOW_ANIM, gCoverflowAnimSpeed);
-        configSetInt(configOPL, CONFIG_OPL_COVERFLOW_DIM, gCoverflowDimCovers);
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_ILINK, gEnableILK);
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_MX4SIO, gEnableMX4SIO);
-        configSetInt(configOPL, CONFIG_OPL_ENABLE_BDMHDD, gEnableBdmHDD);
         configSetInt(configOPL, CONFIG_OPL_ENABLE_UDPBD, gEnableUDPBD);
-        configSetInt(configOPL, CONFIG_OPL_NET_BOOT_PROTOCOL, gNetBootProtocol);
         // Dual-write: the authoritative unified selector PLUS the three legacy keys (derived shadows),
         // so a config saved by this build still boots correctly on an older OPL that only reads the legacy keys.
         // NOTE(rebuild): the fork also persists the SMB dialect here (item 4).
         configSetInt(configOPL, CONFIG_OPL_NETWORK_PROTOCOL, gNetworkProtocol);
         configSetInt(configOPL, CONFIG_OPL_NET_START_MODE, gNetStartMode);
         configSetInt(configOPL, CONFIG_OPL_NET_PROTOCOL_PICK, gNetProtocolPick);
-        configSetInt(configOPL, CONFIG_OPL_SFX, gEnableSFX);
-        configSetInt(configOPL, CONFIG_OPL_RUMBLE, gEnableRumble);
-        configSetInt(configOPL, CONFIG_OPL_BOOT_SND, gEnableBootSND);
-        configSetInt(configOPL, CONFIG_OPL_BGM, gEnableBGM);
-        configSetInt(configOPL, CONFIG_OPL_SFX_VOLUME, gSFXVolume);
-        configSetInt(configOPL, CONFIG_OPL_BOOT_SND_VOLUME, gBootSndVolume);
-        configSetInt(configOPL, CONFIG_OPL_BGM_VOLUME, gBGMVolume);
-        configSetStr(configOPL, CONFIG_OPL_DEFAULT_BGM_PATH, gDefaultBGMPath);
-        configSetInt(configOPL, CONFIG_OPL_XSENSITIVITY, gXSensitivity);
-        configSetInt(configOPL, CONFIG_OPL_YSENSITIVITY, gYSensitivity);
 
         configSetInt(configOPL, CONFIG_OPL_SWAP_SEL_BUTTON, gSelectButton == KEY_CIRCLE ? 0 : 1);
     }
@@ -4539,6 +4382,8 @@ void setDefaultColors(void)
 
 static void setDefaults(void)
 {
+    settingsApplyDefaults(); // plain settings: key, variable and default live in src/settings.cpp
+
     for (int i = 0; i < MODE_COUNT; i++)
         clearIOModuleT(&list_support[i]);
 
@@ -4552,9 +4397,6 @@ static void setDefaults(void)
     gHDDPrefix = NULL;
     gBaseMCDir = "mc?:OPL";
 
-    bdmCacheSize = 16;
-    hddCacheSize = 8;
-    smbCacheSize = 16;
 
     // Network defaults are ONE coherent set, not four independent knobs -- restoring the fork's
     // opinionated fresh-install profile (this had reverted to the upstream 192.168.0.x / DHCP one).
@@ -4603,59 +4445,10 @@ static void setDefaults(void)
     strcpy(gPCUserName, "guest");
     gPCPassword[0] = '\0';
     gNetworkStartup = ERROR_ETH_NOT_STARTED;
-    gHDDSpindown = 20;
-    gScrollSpeed = 1;
-    gExitPath[0] = '\0';
-    gCustomSettingsPath[0] = '\0'; // opt-in: empty means "use the normal boot-dir/discovery home"
-    gDefaultDevice = APP_MODE;
-    gAutosort = 1;
-    gAutoRefresh = 0;
-    gEnableDebug = 0;
-    gPS2Logo = 1; // opinionated defaults: the fork ships ready-to-use
-    gHDDGameListCache = 0;
-    gEnableWrite = 1;
-    gRememberLastPlayed = 0;
-    gAutoStartLastPlayed = 9;
     gSelectButton = KEY_CIRCLE; // Default to Japan.
-    gMMCEPrefix[0] = '\0';
-    gBDMPrefix[0] = '\0';
-    gETHPrefix[0] = '\0';
-    gEnableNotifications = 1;
-#ifdef RETROACHIEVEMENTS
-    gRATelemetry = 0; // opt in: telemetry puts SMAP on the NIC in every launch that has a .wl
-    gRABadges = 1;    // free once telemetry is on -- raBadgeRefresh runs on the I/O thread
-#endif
-    gEnableArt = 1;
-    gEnableDiscArt = 1; // preserve existing ItemIcon/ICO behavior unless the user disables it
-    gWideScreen = 1;
-    gEnableSFX = 1; // safe now: sfxPlay dispatches asynchronously (#340)
-    gEnableRumble = 1;
-    gEnableBootSND = 1;
-    gEnableBGM = 1; // inert without a bgm.ogg on the card
-    gSFXVolume = 90;
-    gBootSndVolume = 90;
-    gBGMVolume = 90;
-    gDefaultBGMPath[0] = '\0';
-    gXSensitivity = 1;
-    gYSensitivity = 1;
 
-    gBDMStartMode = START_MODE_DISABLED;
-    gHDDStartMode = START_MODE_DISABLED;
-    gETHStartMode = START_MODE_DISABLED;
-    gAPPStartMode = START_MODE_DISABLED;
-    gMMCEStartMode = START_MODE_DISABLED;
-    gFAVStartMode = START_MODE_DISABLED;
 
-    gMMCESlot = 2; // Default to first Auto slot
-    gMMCEIGRSlot = 3;
-    gMMCEEnableGameID = 0;
-    gMMCEAckWaitCycles = 5;
-    gMMCEUseAlarms = 1;
 
-    gEnableUSB = 0; // USB block device is opt-in, like the other BDM transports
-    // Visual GameID barcode ships OFF, matching fork commit cc2cdfed ("GameID defaults OFF"): the
-    // HDMI auto-profile latch is only verifiable on real GameID hardware, so it stays opt-in.
-    gApplyGameID = 0;
     gNeutrinoArgs[0] = '\0';
     gNeutrinoPath[0] = '\0';
     gNeutrinoDevice = NEUTRINO_DEV_AUTO;
@@ -4663,10 +4456,7 @@ static void setDefaults(void)
     gNeutrinoVideoDefault = 0; // no global -gsm until the user opts in
     gNeutrinoGsmCompDefault = 0;
     gNeutrinoElfArg = 1; // auto-emit the game ELF for Neutrino compatibility lookup by default
-    gDefaultGameView = GAME_VIEW_BOTH;
-    gAppsDisplay = APPS_DISPLAY_MIXED;
     gPopstarterDevice = POPS_DEV_DEFAULT;
-    gPopstarterPath[0] = '\0';
     gPopstarterRetroGemGameID = 1;
     // Nothing is set until the user changes it here, so no device's settings.txt is touched until asked.
     gEmberDisplay = EMBER_SETTING_UNSET;
@@ -4674,41 +4464,14 @@ static void setDefaults(void)
     gEmberDither = EMBER_SETTING_UNSET;
     gEmberShading = EMBER_SETTING_UNSET;
     gEmberController = EMBER_SETTING_UNSET;
-    gBdmaSource = VCD_BDMA_SRC_USB;
     gBdmaMode = VCD_BDMA_FAT32;
-    gBdmaApplyOnLaunch = 1;             // auto-equip on launch by default
-    gVcdUsbBdmaMode = VCD_USB_BDMA_ASK; // preserve the per-launch prompt as the shipped behaviour
-    gVcdHideGameId = 1;                 // hide the PS1 game-ID prefix by default (display-only)
-    gVcdFirstDiscOnly = 1;              // hide discs 2+ of multi-disc PS1 sets by default (POPSLoader parity)
-    gVcdShowPpPops = 1;                 // list strict PP.<ID>.POPS.<name> one-game HDD partitions by default
     // gBootDir is deliberately NOT reset here. main() resolves it (setBootDir, from argv[0] with a
     // getcwd fallback) BEFORE calling init(), and init() calls setDefaults() -- so clearing it here
     // erased the boot identity a few lines before configInit() needs it, on EVERY boot. That made
     // resolveBootDirToMass() early-return at its `gBootDir[0] == '\0'` guard every time, and homed
     // every config set on the mc?:OPL default regardless of what OPL actually booted from.
     // setBootDir() already zeroes the buffer at its own entry, so nothing needs a reset here.
-    gEnableBGArt = 1; // fork parity; gEnableArt is 1 above, so this is live
-    gEnableArtTar = 0;
-    // NO SETTLE BY DEFAULT. This is the number of INACTIVE frames the menu must see before art is
-    // even asked for, and it shipped at 8 -- the slowest of the four values the UI offers {0,2,5,8}
-    // -- as a placeholder pending a decision that never happened; the comment here previously said
-    // as much. The effect is that art will not begin loading until navigation has fully stopped and
-    // stayed stopped, which reads as covers refusing to appear while browsing.
-    //
-    // The reason to settle at all was to keep art reads off the bus while the user is moving, but
-    // that concern is device-specific and is already handled where it belongs: texcache gates SIO2
-    // devices (MMCE, MX4SIO) on real idleness because their reads contend with pad polling. Making
-    // every device wait for the worst device's constraint is not a trade worth a default.
-    gArtDelay = 0;
-    gEnableFolderNav = 0;
-    gDefaultPlasBlendColor[0] = RIPTOPL_PLASMA_BLEND_R;
-    gDefaultPlasBlendColor[1] = RIPTOPL_PLASMA_BLEND_G;
-    gDefaultPlasBlendColor[2] = RIPTOPL_PLASMA_BLEND_B;
-    gEnableILK = 0;
-    gEnableMX4SIO = 0;
-    gEnableBdmHDD = 0;
     gEnableUDPBD = 0;                  // the UDPBD BLOCK device stays opt-in
-    gNetBootProtocol = NET_BOOT_UDPBD; // default transport when network boot is enabled (back-compat)
     // Unified network selector defaults to OFF. The reason is the NIC latch: every network stack
     // loads its IOP chain ONCE per boot and never unloads (re-binding the UDPRDMA socket bricks
     // UDPFS; smap registers a single SMAP_driver), so whichever protocol is active FIRST owns the
@@ -4722,10 +4485,6 @@ static void setDefaults(void)
 
     frameCounter = 0;
 
-    gVMode = 0;
-    gXOff = 0;
-    gYOff = 0;
-    gOverscan = 0;
 
     setDefaultColors();
 
