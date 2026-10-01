@@ -280,7 +280,7 @@ int main(void) {
 '''
 run('power_input',prefix+s+test)
 
-s=(root/'src/platform/system.cpp').read_text(encoding='utf-8')
+s=(root/'src/platform/sysdisc.cpp').read_text(encoding='utf-8')
 s=s[s.index('static int sysParseBoot2'):s.index('// Boot the physical PS2 disc')]
 run('boot_path', '#include <assert.h>\n#include <stdio.h>\n#include <string.h>\n#include <strings.h>\n'+s+r'''
 int main(void) {

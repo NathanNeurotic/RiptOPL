@@ -25,7 +25,7 @@ import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the
 
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/platform/system.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+source = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/platform/system.cpp', 'src/platform/sysneutrino.cpp', 'src/platform/sysdisc.cpp', 'src/platform/sysvmc.cpp')).replace('\r\n', '\n')
 failures = []
 
 
