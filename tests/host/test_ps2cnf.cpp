@@ -44,9 +44,10 @@ int main()
     // missing file
     CHECK(ps2cnfGetBootFile("/nonexistent/SYSTEM.CNF", out) == ENOENT);
 
-    // A KNOWN BUG (not asserted, would crash): "BOOT2 cdrom0:\X" with no '=' makes CNFGetToken
-    // return NULL for "=", which ps2cnfGetBootFile only compares against (const char *)-1 before
-    // handing it to CNFGetKey -> NULL dereference. Left alone in phase 0 (no behaviour changes).
+    // Regression: "BOOT2 cdrom0:\X" with no '=' used to dereference NULL (CNFGetToken("=") returns NULL on a
+    // non-match, which was only compared against (const char *)-1).
+    CHECK(boot("BOOT2 cdrom0:\\SLUS_203.70;1\nVER = 1.00\n", out) == -1);
+    CHECK(boot("BOOT2 : cdrom0:\\X\n", out) == -1);
 
     char path[256];
     snprintf(path, sizeof(path), "%s/SYSTEM.CNF", dir);

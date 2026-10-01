@@ -364,7 +364,7 @@ static int tarParseFile(TarKind kind, const char *path)
 
         char *fname = entry + sizeof(TarEntryBase);
         strncpy(fname, cleanName, nameMax);
-        fname[nameMax - 1] = '\0';
+        fname[nameMax] = '\0'; // the name field is nameMax + 1 bytes (see TarEntry*::filename)
 
         s_count[kind]++;
 

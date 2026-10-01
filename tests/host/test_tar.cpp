@@ -84,16 +84,14 @@ int main()
     CHECK(e != NULL && e->rawSize == 1000);
     CHECK(tarFindExact(TAR_KIND_ART, "SLUS_999.99_SCR.png") != NULL);
 
-    // Overlong names are truncated, never overflowing the entry. CHARACTERISATION: TarEntryArt::filename
-    // is 48 bytes ("up to 47 chars + null") but tarParseFile keeps 46 (strncpy(nameMax=47) then
-    // fname[nameMax-1]=0) -- an off-by-one. Pinned as-is for phase 0; fixing it changes which long art
-    // names match, so it is a behaviour change for a later commit.
+    // Overlong names are truncated to what the entry holds (47 chars for ART: the field is 48 bytes), never
+    // overflowing. (Used to keep 46: strncpy(nameMax) then fname[nameMax - 1] = 0.)
     std::string longName(90, 'n');
     write_file(dir + "long.tar", put(longName.c_str(), "z") + eof());
     CHECK(tarClose(TAR_KIND_ART) == 0);
     CHECK(tarLoadFile(TAR_KIND_ART, (dir + "long.tar").c_str()) == 0);
-    CHECK(tarFindExact(TAR_KIND_ART, longName.substr(0, 46).c_str()) != NULL);
-    CHECK(tarFindExact(TAR_KIND_ART, longName.substr(0, 47).c_str()) == NULL);
+    CHECK(tarFindExact(TAR_KIND_ART, longName.substr(0, 47).c_str()) != NULL);
+    CHECK(tarFindExact(TAR_KIND_ART, longName.substr(0, 48).c_str()) == NULL);
 
     // CFG kind uses its own (smaller) entry layout.
     write_file(dir + "cfg.tar", put("CFG/SLUS_203.70.cfg", cfg) + eof());

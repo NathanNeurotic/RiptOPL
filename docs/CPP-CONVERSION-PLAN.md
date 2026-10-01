@@ -200,10 +200,10 @@ class extraction can be reviewed in isolation.
   types exist yet, so nothing is lost.
 - **CI:** `.github/workflows/ps2build.yml` runs host tests, the warning gate and the coupling report.
 
-Findings the tests surfaced (documented, deliberately NOT fixed in phase 0):
-1. `ps2cnfGetBootFile`: `BOOT2 <path>` with no `=` makes `CNFGetToken("=")` return NULL, which is only
+Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 and 4 still open):
+1. FIXED `ps2cnfGetBootFile`: `BOOT2 <path>` with no `=` makes `CNFGetToken("=")` return NULL, which is only
    compared to `(const char *)-1` before `CNFGetKey(NULL, ...)` -> NULL dereference on a malformed SYSTEM.CNF.
-2. `tarParseFile`: ART entry names keep 46 characters, not the documented 47 (`strncpy(nameMax)` then
+2. FIXED `tarParseFile` (ARC_VERSION left at 4 to keep wOPL cache compatibility, so an existing art_cache.bin keeps its 46-char names until the archive changes): ART entry names kept 46 characters, not the documented 47 (`strncpy(nameMax)` then
    `fname[nameMax - 1] = 0`); same off-by-one for CFG/CHT.
 3. `vmc_groups`: 12 titles are listed in more than one group (the later group is unreachable for them) and
    8 ids are not the usual `SLUS_000.00` shape.
