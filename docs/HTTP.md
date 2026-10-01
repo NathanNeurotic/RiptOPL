@@ -161,7 +161,7 @@ then reports a disc error. It will not sit there reconnecting forever.
 * **`src/httpcatalog.c` and `tools/pc/http/catalog_reference.py` are one contract.** The fixtures in
   `tools/pc/http/fixtures/` hold them to it and `tools/pc/http/tests/compare_catalog.py` proves it. Change one,
   change all three, in the same commit.
-* **Run the host tests.** `sh tools/tools/pc/http/tests/run.sh` compiles the real sources and exercises the
+* **Run the host tests.** `sh tools/pc/http/tests/run.sh` compiles the real sources and exercises the
   parsers directly — header framing, range validation, truncation, and every catalog fixture in
   three line-ending forms.
 * **`modules/network/common/httpstream.inc` is shared** by the menu RPC module and the in-game
