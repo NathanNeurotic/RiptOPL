@@ -319,19 +319,13 @@ blocked/terminate flags and the per-type HUD counters are members; the `ioPutReq
 `ioman.h` stay as C-callable forwarders (ioman.h is shared with C). `ioPrintf` stays free and uses the instance's print lock.
 `test_io_queue_trims.py` now compiles the real class declaration (private opened up) plus the extracted member functions.
 
-## 16b. ArtQueue
+## 17. ArtQueue
 `include/artqueue.h` + `src/artqueue.cpp`: the art request FIFO (push/pushFront/promote/pop/detachAll/release/reset) and its lock-free
 counters (queued, active, current request, nav-held flag) are `class ArtQueue`; `load_image_request_t` moved to the header.
 `texcache.cpp` keeps the cache entries, the worker thread and the load logic and talks to the queue through one `gArtQ` instance.
 `test_art_queue_order.py` compiles the real class declaration plus the extracted member functions (as C++).
 
-## 17a. Next
-2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
-3. Phase 5 `GameSource` hierarchy (needs go-ahead; hardware testing matters most there).
-4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining
-   analyzer upward edges listed in section 13.
-
-## 17. Deferred: gui as classes
+## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
 `guisettings.cpp` (~3000 lines), plus notifications and the screen-handler table in `gui.cpp`, are still free functions sharing
 file-level statics. Do this later, not now.
@@ -350,3 +344,29 @@ Cost to plan for: the source-scraping python tests (`test_confirm_button`, `test
 `test_net_protocol_pick`, `test_vmode_confirm`, `test_ember_settings`, `test_autolaunch_settings`) extract function bodies by
 signature such as `static int guiSettingsShowIndex(`. They need their extraction updated to member names (`SettingsShell::showIndex(`)
 before the conversion, so do that first and keep the suite green at each step. Start with `SettingsShell` and `Notifications`.
+
+## 19. Next
+2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
+3. Phase 5 `GameSource` hierarchy (needs go-ahead; hardware testing matters most there).
+4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining
+   analyzer upward edges listed in section 13.
+
+## 20. Status (as of the ArtQueue commit)
+| Phase | Status |
+|---|---|
+| 0 safety net | done |
+| 1 visibility, constexpr | done |
+| 2 RAII | helpers done; bulk malloc conversion skipped on purpose |
+| 3 settings table | done; `Settings` struct deferred |
+| 4 HostServices, launch/UI split | done |
+| 5 GameSource hierarchy | not started; needs go-ahead (hardware testing matters most) |
+| 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue done; TextureCache/Font, Renderer, Theme not started; gui classes deferred (section 18) |
+| 7 split god files | gui.cpp done (5197 -> ~1100 lines); opl.cpp (5117), themes.cpp (3958), bdmsupport.cpp not started |
+| 8 directory move, blocking analyzer | not started |
+
+Packed ELF: 1,634,784 B (Atlas) -> 1,634,400 B (ArtQueue). Every step so far: clean `ps2build build`, `tools/run_tests.sh -k`,
+`tools/warning_gate.py build.log --check` (62, baseline 62), `tools/syntax_sweep.py` (only the old EESIO `SIOCookie.h` failure),
+emulator run by the user.
+
+Open decisions: vmc_groups duplicate/odd titles; whether to start phase 5; deleting the old remote branches
+`claude/happy-feynman-8znj3k` and `-elf`; whether to drop the sample `ship/Example/.../RIPTOPL.ELF`.

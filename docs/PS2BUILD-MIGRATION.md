@@ -7,11 +7,21 @@ build through the Makefile. Build:
     tools/assets.py all            # translations, lwNBD, bin2c blobs, asm/opl_version.h
     ps2build build                 # -> build/bin/riptopl-packed.elf
 
-Emulator-tested through the C++ conversion (Atlas, ConfigSet builds confirmed working); not hardware-tested.
+Emulator-tested through the C++ conversion (builds up to IoQueue/ArtQueue confirmed working); not hardware-tested.
 Sources under src/ are now C++ (see CPP-CONVERSION-PLAN.md), so the Makefile can no longer build them.
-Open items: other flavours, `usbd_mini` is built with -G0 (-G16384 broke ds34usb), audsrv
-(SDK `audio` + `audsrv-compat` replaces the old audsrv), `elfldr.elf` size (143 KB), CI cutover
-(.github/workflows/ps2build.yml runs alongside the old jobs), Makefile removal.
+
+CI (GitHub Actions):
+- `ps2build.yml` and the `build-flavour` job in `flavours.yml` install the toolchain/SDK with the `techwritescode/setup-sdk` action
+  (a GitHub mirror of git.techwritescode.dev/ps2/setup-sdk; GitHub cannot `uses:` another host), then
+  `tools/install_ps2build.sh` adds the ogg/vorbis packages. `PS2BUILD_HOME`/`PS2DEV_INSTALL_DIR` point at `$GITHUB_WORKSPACE/.ps2dev`.
+- `flavours.yml` builds the main flavour only; the PS2DEV/OFFICIAL x PINNED/ROLLING container matrix, DIAG and RA are gone until
+  `ps2.yaml` can express them. A transient HTTP/2 stream error while downloading the toolchain was seen once (re-run fixed it).
+- `check-format.yml` (clang-format 12 on `.h`/`.c`): `tests/host` is ignored; headers must be formatted with clang-format 12.
+- `rolling-release.yml` still builds with `make` and will fail where it triggers; not ported.
+
+Open items: other flavours (RA, debug/DIAG, DUALSENSE, pinned/rolling), `rolling-release` port, Makefile removal,
+`usbd_mini` is built with -G0 (-G16384 broke ds34usb), audsrv (SDK `audio` + `audsrv-compat` replaces the old audsrv),
+`elfldr.elf` size (143 KB), hardware testing. `dist/` (handed-out test ELFs) is git-ignored and untracked.
 EE sources in src/ are now C++ (.cpp). Kept as C: src/lz4.c and src/zso.c (shared with the IOP
 modules via #include), src/lang_internal.c (generated), src/md5.c (vendored). C/C++ boundary headers
 carry extern "C": modules/isofs/zso.h, modules/ds34bt/ee/libds34bt.h, modules/ds34usb/ee/libds34usb.h,
