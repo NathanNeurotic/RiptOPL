@@ -40,20 +40,24 @@ static inline void allocFree(struct atlas_allocation_t *alloc)
     free(alloc);
 }
 
-#define ALLOC_FITS(alloc, width, height) \
-    ((alloc->w >= width) && (alloc->h >= height))
+static inline bool allocFits(const struct atlas_allocation_t *alloc, size_t width, size_t height)
+{
+    return (alloc->w >= width) && (alloc->h >= height);
+}
 
-#define ALLOC_ISFREE(alloc) \
-    ((!alloc->leaf1) && (!alloc->leaf2))
+static inline bool allocIsFree(const struct atlas_allocation_t *alloc)
+{
+    return (!alloc->leaf1) && (!alloc->leaf2);
+}
 
 
 static inline struct atlas_allocation_t *allocPlace(struct atlas_allocation_t *alloc, size_t width, size_t height)
 {
     // do we fit?
-    if (!ALLOC_FITS(alloc, width, height))
+    if (!allocFits(alloc, width, height))
         return NULL;
 
-    if (ALLOC_ISFREE(alloc)) {
+    if (allocIsFree(alloc)) {
         // extra space
         size_t dx = alloc->w - width;
         size_t dy = alloc->h - height;

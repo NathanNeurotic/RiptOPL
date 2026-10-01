@@ -80,10 +80,13 @@ BlankSlotList[func_002187e8() % BlankSlots]
         Note: Year is since year 2000.
 */
 
-#define OSD_HISTORY_GET_YEAR(datestamp)         ((datestamp) >> 9 & 0x7F)
-#define OSD_HISTORY_GET_MONTH(datestamp)        ((datestamp) >> 5 & 0xF)
-#define OSD_HISTORY_GET_DATE(datestamp)         ((datestamp)&0x1F)
-#define OSD_HISTORY_SET_DATE(year, month, date) (((unsigned short int)(year)) << 9 | ((unsigned short int)(month)&0xF) << 5 | ((date)&0x1F))
+constexpr unsigned osdHistoryGetYear(unsigned datestamp) { return datestamp >> 9 & 0x7F; }
+constexpr unsigned osdHistoryGetMonth(unsigned datestamp) { return datestamp >> 5 & 0xF; }
+constexpr unsigned osdHistoryGetDate(unsigned datestamp) { return datestamp & 0x1F; }
+constexpr unsigned osdHistorySetDate(unsigned year, unsigned month, unsigned date)
+{
+    return ((unsigned short int)year) << 9 | ((unsigned short int)month & 0xF) << 5 | (date & 0x1F);
+}
 
 struct HistoryEntry
 {

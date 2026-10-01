@@ -333,8 +333,9 @@ void rmEnd(void)
     vmode = -1;
 }
 
-#define X_SCALE(x) (((x)*iDisplayWidth) / 640)
-#define Y_SCALE(y) (((y)*iDisplayHeight) / 480)
+// Scale from the 640x480 design grid to the live display. Generic on purpose: callers pass ints and floats.
+template <typename T> static inline auto scaleX(T x) { return (x * iDisplayWidth) / 640; }
+template <typename T> static inline auto scaleY(T y) { return (y * iDisplayHeight) / 480; }
 /** If txt is null, don't use DIM_UNDEF size */
 static void rmSetupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, rm_quad_t *q)
 {
@@ -344,13 +345,13 @@ static void rmSetupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int 
         h = txt->Height;
 
     // Legacy scaling
-    x = X_SCALE(x);
-    y = Y_SCALE(y);
+    x = scaleX(x);
+    y = scaleY(y);
     if (scaled & SCALING_RATIO)
-        w = X_SCALE(w * iAspectWidth) >> 2;
+        w = scaleX(w * iAspectWidth) >> 2;
     else
-        w = X_SCALE(w);
-    h = Y_SCALE(h);
+        w = scaleX(w);
+    h = scaleY(h);
 
     // Align LEFT/HCENTER/RIGHT
     if (aligned & ALIGN_HCENTER)
@@ -466,14 +467,14 @@ void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w,
     rm_quad_t quad;
     rmSetupQuad(overlay, x, y, aligned, w, h, scaled, color, &quad);
     int origBly = bly, origBry = bry; // unscaled inlay lower corners (element/texture space) for the reflection
-    ulx = X_SCALE(ulx * iAspectWidth) >> 2;
-    urx = X_SCALE(urx * iAspectWidth) >> 2;
-    blx = X_SCALE(blx * iAspectWidth) >> 2;
-    brx = X_SCALE(brx * iAspectWidth) >> 2;
-    uly = Y_SCALE(uly);
-    ury = Y_SCALE(ury);
-    bly = Y_SCALE(bly);
-    bry = Y_SCALE(bry);
+    ulx = scaleX(ulx * iAspectWidth) >> 2;
+    urx = scaleX(urx * iAspectWidth) >> 2;
+    blx = scaleX(blx * iAspectWidth) >> 2;
+    brx = scaleX(brx * iAspectWidth) >> 2;
+    uly = scaleY(uly);
+    ury = scaleY(ury);
+    bly = scaleY(bly);
+    bry = scaleY(bry);
 
     if ((inlay->PSM == GS_PSM_CT32) || (inlay->Clut && inlay->ClutPSM == GS_PSM_CT32))
         gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
@@ -534,14 +535,14 @@ void rmDrawInlayPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h
     rm_quad_t quad;
     rmSetupQuad(txt, x, y, aligned, w, h, scaled, color, &quad);
 
-    ulx = X_SCALE(ulx * iAspectWidth) >> 2;
-    urx = X_SCALE(urx * iAspectWidth) >> 2;
-    blx = X_SCALE(blx * iAspectWidth) >> 2;
-    brx = X_SCALE(brx * iAspectWidth) >> 2;
-    uly = Y_SCALE(uly);
-    ury = Y_SCALE(ury);
-    bly = Y_SCALE(bly);
-    bry = Y_SCALE(bry);
+    ulx = scaleX(ulx * iAspectWidth) >> 2;
+    urx = scaleX(urx * iAspectWidth) >> 2;
+    blx = scaleX(blx * iAspectWidth) >> 2;
+    brx = scaleX(brx * iAspectWidth) >> 2;
+    uly = scaleY(uly);
+    ury = scaleY(ury);
+    bly = scaleY(bly);
+    bry = scaleY(bry);
 
     /* Alpha test as in rmDrawQuad: without it the transparent background
        of the image is painted and the mark becomes a solid square. */
@@ -569,10 +570,10 @@ void rmDrawInlayPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h
 
 void rmDrawRect(int x, int y, int w, int h, u64 color)
 {
-    float fx = X_SCALE(x) + fRenderXOff;
-    float fy = Y_SCALE(y) + fRenderYOff;
-    float fw = X_SCALE(w);
-    float fh = Y_SCALE(h);
+    float fx = scaleX(x) + fRenderXOff;
+    float fy = scaleY(y) + fRenderYOff;
+    float fw = scaleX(w);
+    float fh = scaleY(h);
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
     gsKit_prim_sprite(gsGlobal, fx, fy, fx + fw, fy + fh, order, color);
@@ -586,8 +587,8 @@ void rmDrawRect(int x, int y, int w, int h, u64 color)
    dark colour swatch then read as an open box (zackcage6). Each side keeps at least one line. */
 void rmDrawFramedRect(int x, int y, int w, int h, int border, u64 frameColor, u64 fillColor)
 {
-    int x0 = X_SCALE(x), y0 = Y_SCALE(y), x1 = X_SCALE(x + w), y1 = Y_SCALE(y + h);
-    int bx = X_SCALE(border), by = Y_SCALE(border);
+    int x0 = scaleX(x), y0 = scaleY(y), x1 = scaleX(x + w), y1 = scaleY(y + h);
+    int bx = scaleX(border), by = scaleY(border);
 
     if (bx < 1)
         bx = 1;
@@ -605,10 +606,10 @@ void rmDrawFramedRect(int x, int y, int w, int h, int border, u64 frameColor, u6
 
 void rmDrawLine(int x1, int y1, int x2, int y2, u64 color)
 {
-    float fx1 = X_SCALE(x1) + fRenderXOff;
-    float fy1 = Y_SCALE(y1) + fRenderYOff;
-    float fx2 = X_SCALE(x2) + fRenderXOff;
-    float fy2 = Y_SCALE(y2) + fRenderYOff;
+    float fx1 = scaleX(x1) + fRenderXOff;
+    float fy1 = scaleY(y1) + fRenderYOff;
+    float fx2 = scaleX(x2) + fRenderXOff;
+    float fy2 = scaleY(y2) + fRenderYOff;
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
     gsKit_prim_line(gsGlobal, fx1, fy1, fx2, fy2, order, color);
@@ -666,12 +667,12 @@ static int rmGetInterlacedFrameMode()
 
 int rmScaleX(int x)
 {
-    return X_SCALE(x);
+    return scaleX(x);
 }
 
 int rmScaleY(int y)
 {
-    return Y_SCALE(y);
+    return scaleY(y);
 }
 
 int rmUnScaleX(int x)

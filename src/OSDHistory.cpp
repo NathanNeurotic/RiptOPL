@@ -117,10 +117,10 @@ static int AddOldHistoryFileRecord(const char *path, const struct HistoryEntry *
 static u16 GetTimestamp(void)
 {
     // The original obtained the time and date from globals.
-    // return OSD_HISTORY_SET_DATE(currentYear, currentMonth, currentDate);
+    // return osdHistorySetDate(currentYear, currentMonth, currentDate);
     sceCdCLOCK time;
     sceCdReadClock(&time);
-    return OSD_HISTORY_SET_DATE(btoi(time.year), btoi(time.month & 0x7F), btoi(time.day));
+    return osdHistorySetDate(btoi(time.year), btoi(time.month & 0x7F), btoi(time.day));
 }
 
 static int AddHistoryRecord(const char *name)

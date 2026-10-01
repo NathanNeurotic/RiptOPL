@@ -127,7 +127,10 @@ static FT_Vector delta;
 
 constexpr int GLYPH_CACHE_PAGE_SIZE = 256;
 
-#define GLYPH_PAGE_OK(font, page) ((pageid <= font->cacheMaxPageID) && (font->glyphCache[page]))
+static inline bool glyphPageOk(const font_t *font, int page)
+{
+    return (page <= font->cacheMaxPageID) && (font->glyphCache[page]);
+}
 
 static void fntCacheFlushPage(fnt_glyph_cache_entry_t *page)
 {
@@ -447,7 +450,7 @@ static fnt_glyph_cache_entry_t *fntCacheGlyph(font_t *font, uint32_t gid)
     int idx = gid % GLYPH_CACHE_PAGE_SIZE;
 
     // do not call on every char of every font rendering call
-    if (!GLYPH_PAGE_OK(font, pageid))
+    if (!glyphPageOk(font, pageid))
         if (!fntPrepareGlyphCachePage(font, pageid)) // failed to prepare the page...
             return NULL;
 
