@@ -20,15 +20,15 @@
 // Directories held at once. Three covers the realistic worst case in one view -- a device's ART/
 // folder, a second device's, and the POPS folder the VCD fallback probes -- without turning this into
 // a cache that needs an eviction policy of its own.
-#define ART_INDEX_SLOTS 3
+constexpr int ART_INDEX_SLOTS = 3;
 
 // Refuse to hold a directory larger than this. Not a memory limit so much as a sanity limit: a sweep
 // that big is itself slow enough to be the wrong trade, and a caller is better served by the ordinary
 // probe path. 4096 entries is far past any real ART folder (a 400-game library with five art types
 // per game is 2000).
-#define ART_INDEX_MAX_ENTRIES 4096
+constexpr int ART_INDEX_MAX_ENTRIES = 4096;
 
-#define ART_INDEX_DIR_MAX 192
+constexpr int ART_INDEX_DIR_MAX = 192;
 
 typedef struct
 {

@@ -15,8 +15,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <sys/types.h>
 
-#define UTF8_ACCEPT 0
-#define UTF8_REJECT 1
+constexpr int UTF8_ACCEPT = 0;
+constexpr int UTF8_REJECT = 1;
 
 static const uint8_t utf8d[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 00..1f

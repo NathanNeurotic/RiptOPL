@@ -124,12 +124,12 @@ static int maxSize = 720 * 512 * 4;
 // the card's sequential read-ahead saturated. This is the same "few large reads" the in-game mmcedrv
 // block driver uses. Keep chunks at 32 KB so an abort reaches a checkpoint comfortably inside the
 // MMCE launch/theme drain budgets. A one-shot getStat+single-read is rejected for the same reason.
-#define TEX_MMCE_STAGE_READ_SIZE 32768
+constexpr int TEX_MMCE_STAGE_READ_SIZE = 32768;
 
 // Hard cap on the staged payload. Legitimate art is <= a few MB even at 1080p; anything bigger is
 // corrupt or misplaced content, and letting the doubling buffer chase it would eat the 32 MB EE
 // RAM before malloc can fail (CodeRabbit review of #306 -- vetted, accepted).
-#define TEX_STAGE_MAX_SIZE (8 * 1024 * 1024)
+constexpr int TEX_STAGE_MAX_SIZE = (8 * 1024 * 1024);
 
 typedef struct
 {

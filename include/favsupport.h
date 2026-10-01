@@ -3,10 +3,10 @@
 
 #include "include/iosupport.h"
 
-#define FAV_MODE_UPDATE_DELAY 240
-#define FAV_TEXT_MAX          256        // cap on a stored favourite's text length (incl. NUL)
-#define FAV_MAX_ITEMS         512        // cap on records read from favourites.bin
-#define FAV_MAGIC             0x4641464F // 'OFAV' (little-endian on the EE)
+constexpr int FAV_MODE_UPDATE_DELAY = 240;
+constexpr int FAV_TEXT_MAX = 256;  // cap on a stored favourite's text length (incl. NUL)
+constexpr int FAV_MAX_ITEMS = 512;  // cap on records read from favourites.bin
+constexpr int FAV_MAGIC = 0x4641464F;  // 'OFAV' (little-endian on the EE)
 #define FAV_VERSION           3          // v3 widens v2's isVcd byte to a KIND (see FAV_KIND_*)
 
 // Defined in favsupport.c; consumed by opl.c/gui.c (config load/save/default).

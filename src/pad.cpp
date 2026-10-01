@@ -17,7 +17,7 @@
 #include <libds34usb.h>
 #endif
 
-#define MAX_PADS 4
+constexpr int MAX_PADS = 4;
 
 // Cpu ticks per one milisecond
 #define CLOCKS_PER_MILISEC 147456
@@ -133,8 +133,8 @@ static int isPadReadyState(int state)
 // here for good: a full hard freeze of the menu with the plasma stopped -- reproduced on hardware
 // by enabling BDM HDD + USB + MX4SIO in one visit. Bounded, the same event is a logged <=25 ms
 // hiccup and the pad recovers on a later poll.
-#define PAD_WAIT_POLLS   25
-#define PAD_WAIT_POLL_US 1000
+constexpr int PAD_WAIT_POLLS = 25;
+constexpr int PAD_WAIT_POLL_US = 1000;
 
 // Milliseconds of continuously VERIFIED idle -- clean, zero-input polls -- before a reconnect-edge
 // initializePad() may run (#271/#272). The init is a few hundred ms of polled waits on the GUI
@@ -147,8 +147,8 @@ static int isPadReadyState(int state)
 // "one move per second" hardware report; master's f0b039a6/fcb00dd8 measured the same shape). The
 // gate therefore advances only on polls where every attempted read succeeded (readPad's pollClean),
 // and an inter-poll gap above PAD_IDLE_MAX_CLEAN_GAP_MS breaks the run: gap time is unobserved.
-#define PAD_SELF_HEAL_IDLE_MS     1000
-#define PAD_IDLE_MAX_CLEAN_GAP_MS 100
+constexpr int PAD_SELF_HEAL_IDLE_MS = 1000;
+constexpr int PAD_IDLE_MAX_CLEAN_GAP_MS = 100;
 static u32 padIdleMs = 0;
 
 /*
@@ -495,12 +495,12 @@ shape here: one bad sample would latch a motor on.
 ----------------------------------------------------------------------------------------------------*/
 
 // Longest pulse we will ever hold a motor on for. Menu feedback, not a sustained buzz.
-#define RUMBLE_MAX_MS 500
+constexpr int RUMBLE_MAX_MS = 500;
 
 // Bounded delivery redundancy for actuator commands. See point 1 of the freepad note below for why
 // neither send-once nor re-send-forever is correct. Do not reduce either of these to zero.
-#define RUMBLE_CMD_REPEATS    3 // extra deliveries after the immediate one, drained by readPads()
-#define RUMBLE_OFF_SYNC_SENDS 2 // stop commands issued synchronously, for paths readPads never drains
+constexpr int RUMBLE_CMD_REPEATS = 3;  // extra deliveries after the immediate one, drained by readPads()
+constexpr int RUMBLE_OFF_SYNC_SENDS = 2;  // stop commands issued synchronously, for paths readPads never drains
 
 static int rumbleOnRepeats = 0;
 static int rumbleOffRepeats = 0;

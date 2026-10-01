@@ -17,7 +17,7 @@
 // subpath + a dirty flag consumed in each device's NeedsUpdate to force the deferred rescan.
 
 #define FOLDER_SUB_MAX   128 // joined subpath cap; fits <prefix>CD/<sub> inside the 256-byte path buffers
-#define FOLDER_DEPTH_MAX 8   // max nesting levels below the CD/DVD root
+constexpr int FOLDER_DEPTH_MAX = 8;  // max nesting levels below the CD/DVD root
 
 // True only for the loose-file tree device modes that can browse folders.
 int folderModeSupported(int mode);

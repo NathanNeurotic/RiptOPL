@@ -12,15 +12,15 @@
 #include <time.h>        // clock()/CLOCKS_PER_SEC -- the disc waits are budgeted by wall clock
 
 // Disc-probe budgets (issue #465). All are TOTAL wall-clock caps, not per-poll ones.
-#define SYS_DISC_DETECT_MS   1000 // first "still identifying" settle
-#define SYS_DISC_REDETECT_MS 4000 // spin-up + re-detect after a NODISC report
+constexpr int SYS_DISC_DETECT_MS = 1000;  // first "still identifying" settle
+constexpr int SYS_DISC_REDETECT_MS = 4000;  // spin-up + re-detect after a NODISC report
 // Empty-tray shortcut inside the re-detect budget above. A drive that is actually working on a
 // disc reports SCECdDETCT ("identifying") while it spins up; a drive with nothing in it only ever
 // answers NODISC. So NODISC that has never once been punctuated by DETCT means an empty tray, and
 // waiting out the rest of the re-detect budget only makes the user stare at a frozen-looking menu.
 // Generous on purpose: this is a floor for a cold drive to reach DETCT, not a tuned timeout. Once
 // DETCT is seen the FULL budget applies again, so a slow-but-working drive is unaffected.
-#define SYS_DISC_NODISC_MS   2000
+constexpr int SYS_DISC_NODISC_MS = 2000;
 #include "include/opl.h"
 #include "include/gui.h"
 #include "include/lang.h"       // _l(_STR_...) -- Neutrino preflight abort toasts
@@ -79,12 +79,12 @@ extern unsigned int size_IOPRP_img;
 extern unsigned char eesync_irx[];
 extern unsigned int size_eesync_irx;
 
-#define MAX_MODULES 64
+constexpr int MAX_MODULES = 64;
 static void *g_sysLoadedModBuffer[MAX_MODULES];
 static s32 sysLoadModuleLock = -1;
 
-#define ELF_MAGIC   0x464c457f
-#define ELF_PT_LOAD 1
+constexpr int ELF_MAGIC = 0x464c457f;
+constexpr int ELF_PT_LOAD = 1;
 
 typedef struct
 {
@@ -171,7 +171,7 @@ exit:
     return ret;
 }
 
-#define OPL_SIF_CMD_BUFF_SIZE 1
+constexpr int OPL_SIF_CMD_BUFF_SIZE = 1;
 static SifCmdHandlerData_t OplSifCmdbuffer[OPL_SIF_CMD_BUFF_SIZE];
 static unsigned char dev9Initialized = 0, dev9Loaded = 0, dev9InitCount = 0;
 
@@ -705,14 +705,14 @@ int sysLaunchDisc(int (*progress)(void))
 }
 
 // Module bits
-#define CORE_IRX_USB    0x01
+constexpr int CORE_IRX_USB = 0x01;
 #define CORE_IRX_ETH    0x02
 #define CORE_IRX_SMB    0x04
-#define CORE_IRX_HDD    0x08
-#define CORE_IRX_VMC    0x10
-#define CORE_IRX_DEBUG  0x20
-#define CORE_IRX_DECI2  0x40
-#define CORE_IRX_ILINK  0x80
+constexpr int CORE_IRX_HDD = 0x08;
+constexpr int CORE_IRX_VMC = 0x10;
+constexpr int CORE_IRX_DEBUG = 0x20;
+constexpr int CORE_IRX_DECI2 = 0x40;
+constexpr int CORE_IRX_ILINK = 0x80;
 #define CORE_IRX_MX4SIO 0x100
 #define CORE_IRX_MMCE   0x200
 

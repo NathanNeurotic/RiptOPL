@@ -20,9 +20,9 @@
 #include <time.h>
 #include <math.h>
 
-#define MENU_POS_V                   50
-#define HINT_HEIGHT                  32
-#define DECORATOR_SIZE               20
+constexpr int MENU_POS_V = 50;
+constexpr int HINT_HEIGHT = 32;
+constexpr int DECORATOR_SIZE = 20;
 // Cover cache depth. Hardware (debug HUD, art delay 0, one USB device, BG off): 73 ms per cover
 // load -- the load path is fine -- but D climbing past 100 COMPLETED loads in a single browse, far
 // more covers than the library shows. That is the same files being read again and again: the
@@ -31,7 +31,7 @@
 // is the "drag" that survived removing the throttles. Sized so the visible set and its warmed
 // neighbours fit together; at the size themes actually ship (140x200 in that capture) a decoded
 // cover is well under 100 KB, so this trades ~1 MB of EE RAM for not re-reading USB.
-#define COVER_CACHE_SLOTS            20
+constexpr int COVER_CACHE_SLOTS = 20;
 // Cover warming is derived from each resolved COV cache's actual capacity. The selected cover
 // always claims the first slot; the remaining slots are walked center-out on both sides. This
 // restores the pre-2587 "already waiting for you" behavior without a fixed +/-2 cap, while the
@@ -40,7 +40,7 @@
 // the cover always reaches the IO queue first (see drawGameImage). Half a second at 60 Hz: long
 // enough that a cover request is queued and usually finished, short enough that a background still
 // arrives while the user is reading the row.
-#define BG_REQUEST_EXTRA_IDLE_FRAMES 30
+constexpr int BG_REQUEST_EXTRA_IDLE_FRAMES = 30;
 // Cache slots per AttributeImage element. An AttributeImage is NOT a per-game image -- it is a small FIXED
 // SET of glyphs keyed by the attribute's value, so the cache only ever needs to hold that attribute's whole
 // value set to be thrash-free. Our built-in attributes are tiny (#Format = ISO/ZSO/VCD/UL/ELF/HDL = 6,
@@ -49,7 +49,7 @@
 // 32 covers any realistic custom attribute with headroom. Genuinely cheap -- cacheInitCache allocates only
 // `count` empty cache_entry_t structs (no texture memory until a glyph is actually loaded into a slot), so
 // 32 slots is ~2-3 KB of EE RAM and a #DiscType cache still only ever HOLDS its 3.
-#define ATTR_IMAGE_CACHE_SLOTS       32
+constexpr int ATTR_IMAGE_CACHE_SLOTS = 32;
 
 extern const char conf_theme_OPL_cfg;
 extern u16 size_conf_theme_OPL_cfg;
@@ -71,8 +71,8 @@ static theme_file_t themes[THM_MAX_FILES];
 static const char **guiThemesNames = NULL;
 
 // Coverflow render-mode state (externs in themes.h; defaults match wOPL 3/30/200/0).
-#define COVERFLOW_PAD 1 // extra covers built off each edge, purely to fill the slide (see drawCoverFlow)
-#define COVERFLOW_MAX (5 + 2 * COVERFLOW_PAD)
+constexpr int COVERFLOW_PAD = 1;  // extra covers built off each edge, purely to fill the slide (see drawCoverFlow)
+constexpr int COVERFLOW_MAX = (5 + 2 * COVERFLOW_PAD);
 int gCoverflowCount = 3;        // 3 or 5 only (clamped on load AND at draw)
 int gCoverflowCenterScale = 30; // px added to the center cover (UI 0/15/30/45)
 int gCoverflowAnimSpeed = 200;  // ms (UI 0/100/200/400; 0 = instant, no anim)
@@ -105,13 +105,13 @@ enum ELEM_ATTRIBUTE_TYPE {
     ELEM_TYPE_COUNT
 };
 
-#define DISPLAY_ALWAYS  0
-#define DISPLAY_DEFINED 1
-#define DISPLAY_NEVER   2
+constexpr int DISPLAY_ALWAYS = 0;
+constexpr int DISPLAY_DEFINED = 1;
+constexpr int DISPLAY_NEVER = 2;
 
-#define SIZING_NONE -1
-#define SIZING_CLIP 0
-#define SIZING_WRAP 1
+constexpr int SIZING_NONE = -1;
+constexpr int SIZING_CLIP = 0;
+constexpr int SIZING_WRAP = 1;
 
 static const char *elementsType[ELEM_TYPE_COUNT] = {
     "AttributeText",
@@ -398,8 +398,8 @@ static mutable_text_t *initMutableText(const char *themePath, config_set_t *them
 // text on) is ignored. Only what the text would run INTO counts.
 
 #define THM_TEXT_GAP      4   // keep this much space before the neighbour
-#define THM_TEXT_MIN_ROOM 40  // a smaller room is more likely a misread layout than a real one: keep the old draw
-#define THM_COVER_W       140 // an image with no declared size and no default image: OPL's cover art size
+constexpr int THM_TEXT_MIN_ROOM = 40;  // a smaller room is more likely a misread layout than a real one: keep the old draw
+constexpr int THM_COVER_W = 140;  // an image with no declared size and no default image: OPL's cover art size
 #define THM_COVER_H       200
 
 typedef struct
@@ -1079,7 +1079,7 @@ static theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu
    undefined, since covers vary in size. */
 /* RA: positions along the cover's sides are fractions of RA_MARK_ONE;
    a power of two keeps the division cheap. */
-#define RA_MARK_ONE 1024
+constexpr int RA_MARK_ONE = 1024;
 
 /* A point inside the cover quadrilateral: s is the fraction along the
    top edge, t along the left edge, both out of RA_MARK_ONE. Bilinear
@@ -3380,7 +3380,7 @@ static void thmLoadFonts(config_set_t *themeConfig, const char *themePath, theme
 
 // Bound the MMCE-art drain before a theme swap. On timeout the current theme
 // remains active and a later trigger can retry.
-#define THM_MMCE_ART_ABORT_WAIT_TICKS 500
+constexpr int THM_MMCE_ART_ABORT_WAIT_TICKS = 500;
 
 // Returns 0 on success, -1 when the load was ABANDONED because the art worker would not drain (a
 // wedged MMCE read holding the shared fileXio channel). On -1 the current theme stays untouched;

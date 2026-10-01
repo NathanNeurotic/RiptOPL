@@ -17,7 +17,7 @@
 #define __PGGSM_H
 
 #define GSM_VERSION "0.40"
-#define GSM_ARGS    1
+constexpr int GSM_ARGS = 1;
 #include "../ee_core/include/coreconfig.h"
 
 #define makeSMODE1(VHP, VCKSEL, SLCK2, NVCK, CLKSEL, PEVS, PEHS, PVS, PHS, GCONT, SPML, PCK2, XPCK, SINT, PRST, EX, CMOD, SLCK, T1248, LC, RC) \

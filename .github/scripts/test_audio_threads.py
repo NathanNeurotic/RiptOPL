@@ -22,6 +22,13 @@ import subprocess
 import sys
 import tempfile
 
+def as_macros(text, names_re):
+    """#define lines for the named constants, whether the source still has #define or a constexpr now."""
+    out = re.findall(r'^#define (?:%s)\b.*$' % names_re, text, re.M)
+    out += ['#define %s %s' % (m.group(1), m.group(2)) for m in re.finditer(r'^constexpr (?:int|unsigned) (%s) = (.+?);' % names_re, text, re.M)]
+    return out
+
+
 root = Path(__file__).resolve().parents[2]
 failures = []
 
@@ -71,7 +78,7 @@ if start is None or not re.search(r'if \(audsrv_set_format\(&audsrvFmt\) != AUDS
                                   start):
     failures.append('bgmStart: a format audsrv refuses must stop BGM before any thread starts')
 
-defines = '\n'.join(re.findall(r'^#define (?:BGM_RING_BUFFER_SIZE|BGM_ROOM_[A-Z_]+)\b.*$', sound, re.M))
+defines = '\n'.join(as_macros(sound, r'BGM_RING_BUFFER_SIZE|BGM_ROOM_[A-Z_]+'))
 
 HARNESS = r'''
 #include <stdio.h>

@@ -10,7 +10,7 @@
 #include <tamtypes.h>
 #include <stddef.h>
 
-#define RETROGEM_GAMEID_MAX 12
+constexpr int RETROGEM_GAMEID_MAX = 12;
 
 /**
  * Extracts an 11-character PS1 Game ID (e.g., SLUS_000.01 or SLUS-00001) from a .VCD image file

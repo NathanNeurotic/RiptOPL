@@ -4,7 +4,7 @@
 #include "lang_autogen.h"
 
 // Maximum external languages supported
-#define MAX_LANGUAGE_FILES 15
+constexpr int MAX_LANGUAGE_FILES = 15;
 
 extern char *internalEnglish[LANG_STR_COUNT];
 // getter for a localised string version

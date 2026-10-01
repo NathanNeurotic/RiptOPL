@@ -58,11 +58,11 @@ typedef void (*gui_callback_t)(void);
 extern int guiInactiveFrames;
 extern int guiFrameId;
 
-#define GUI_SCREEN_MAIN      0
-#define GUI_SCREEN_MENU      1
-#define GUI_SCREEN_INFO      2
-#define GUI_SCREEN_GAME_MENU 3
-#define GUI_SCREEN_APP_MENU  4
+constexpr int GUI_SCREEN_MAIN = 0;
+constexpr int GUI_SCREEN_MENU = 1;
+constexpr int GUI_SCREEN_INFO = 2;
+constexpr int GUI_SCREEN_GAME_MENU = 3;
+constexpr int GUI_SCREEN_APP_MENU = 4;
 
 void guiSwitchScreen(int target);
 
@@ -172,7 +172,7 @@ void guiCheckNotifications(int checkTheme, int checkLang);
 // Bound for guiHandleDeferedIO's wait on a deferred config save/load. Far beyond any real config
 // write; only a genuinely stuck device (which would otherwise freeze the GUI forever on "Saving...")
 // reaches it, after which the caller falls into its normal failure path ("Error saving settings").
-#define OPL_DEFERRED_IO_TIMEOUT_MS 30000
+constexpr int OPL_DEFERRED_IO_TIMEOUT_MS = 30000;
 void guiHandleDeferedIO(int *ptr, const char *message, int type, void *data, int timeoutMs);
 
 void guiGameHandleDeferedIO(int *ptr, struct UIItem *ui, int type, void *data);

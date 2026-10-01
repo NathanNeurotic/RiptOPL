@@ -228,7 +228,7 @@ int netGetResidentProtocol(void)
 // -- far past any healthy hand-off, and the ONLY unbounded blocker that was left on the teardown
 // path (found by the rebuild-154 exit-hang audit and parked then because it is not ATA-specific;
 // issue #382 is the not-ATA case).
-#define NET_DEINIT_LOCK_SLICES 30
+constexpr int NET_DEINIT_LOCK_SLICES = 30;
 
 void netDeinitModules(void (*protocolTeardown)(void))
 {

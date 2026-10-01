@@ -37,7 +37,11 @@ typedef unsigned int u32;
 #define HTTP_STREAM_ERR_TRUNC -7
 static int httpLastError;
 """
-    source += "\n".join(re.findall(r"^#define (?:ISO_GAME_NAME_MAX|ISO_GAME_EXTENSION_MAX|GAME_STARTUP_MAX|HTTP_CATALOG_\w+)\b[^\n]*", base + "\n" + limits, re.M))
+    names = r"ISO_GAME_NAME_MAX|ISO_GAME_EXTENSION_MAX|GAME_STARTUP_MAX|HTTP_CATALOG_\w+"
+    both = base + "\n" + limits
+    source += "\n".join(re.findall(r"^#define (?:%s)\b[^\n]*" % names, both, re.M))
+    # headers that went constexpr in the C++ conversion: turn them back into macros for the C-ish harness
+    source += "\n" + "\n".join("#define %s %s" % (m.group(1), m.group(2)) for m in re.finditer(r"^constexpr (?:int|unsigned) (%s) = (.+?);" % names, both, re.M))
     source += "\n" + extract(r"enum GAME_FORMAT \{.*?\n\};", base)
     source += "\n" + extract(r"typedef struct\s*\{[^}]*\} base_game_info_t;", base)
     source += "\n" + extract(r"typedef struct\s*\{[^}]*\} http_catalog_extra_t;", support)

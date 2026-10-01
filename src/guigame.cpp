@@ -124,11 +124,11 @@ typedef struct
     char VMC_msg[64];
 } statusVMCparam_t;
 
-#define OPERATION_CREATE   0
-#define OPERATION_CREATING 1
-#define OPERATION_ABORTING 2
-#define OPERATION_ENDING   3
-#define OPERATION_END      4
+constexpr int OPERATION_CREATE = 0;
+constexpr int OPERATION_CREATING = 1;
+constexpr int OPERATION_ABORTING = 2;
+constexpr int OPERATION_ENDING = 3;
+constexpr int OPERATION_END = 4;
 
 static short vmc_refresh;
 static int vmc_operation;
@@ -596,7 +596,7 @@ static const char *PadEmuPorts_enums[][5] = {
     {"2A", "2B", "2C", "2D", NULL},
 };
 
-#define BtnBit_Off 16
+constexpr int BtnBit_Off = 16;
 // This enum, along with lookup tables, can be re-used anywhere an enum containing all PS2 buttons is necessary.
 static const char *button_names_enum[] = {
     "Off",
@@ -1075,15 +1075,15 @@ static int coreNeverNeutrino = 0;
 // Appended "Default" (follow the global) enum indices for the per-game Neutrino Video / GSM-comp
 // pickers: values 0..5 / 0..3 persist 1:1 (system.c gsmVideoTokens); "Default" removes the key so
 // the launch legs fall back to gNeutrinoVideoDefault/gNeutrinoGsmCompDefault (Loader Core pattern).
-#define NEUTRINO_VIDEO_DEFAULT_IDX   6
-#define NEUTRINO_GSMCOMP_DEFAULT_IDX 4
+constexpr int NEUTRINO_VIDEO_DEFAULT_IDX = 6;
+constexpr int NEUTRINO_GSMCOMP_DEFAULT_IDX = 4;
 
 // Index of the appended "HDTV 1080p @60Hz (EXPERIMENTAL)" entry in gsmvmodeNames[] / predef_vmode[]
 // (both 30 long, last index 29). GSM1080P now defaults to 1, so every SHIPPED build has this entry
 // and the list length no longer varies between published flavours. Selecting it must clear
 // a triple-confirm before it is saved.
 #ifdef GSM_1080P
-#define GSM_VMODE_1080P_IDX 29
+constexpr int GSM_VMODE_1080P_IDX = 29;
 
 // 1080p is GSM-synthetic and hardware-confirmed, but it remains a non-standard raster that not every
 // display accepts. Force a THREE-STEP confirmation before it can reach disk, because a display that

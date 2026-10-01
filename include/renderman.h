@@ -18,21 +18,21 @@
 #define GS_MODE_DTV_576P  0x53
 /// DTV 1080 Progressive Scan (1920x1080). GSM-synthetic mode (no ROM SetGsCrt support): the ee_core
 /// DTV_1080P handler builds the hardware-tested, non-standard raster itself; the GUI triple-confirms it.
-#define GS_MODE_DTV_1080P 0x54
+constexpr int GS_MODE_DTV_1080P = 0x54;
 
-#define DIM_UNDEF -1
+constexpr int DIM_UNDEF = -1;
 
-#define ALIGN_TOP     (0 << 0)
-#define ALIGN_BOTTOM  (1 << 0)
+constexpr int ALIGN_TOP = (0 << 0);
+constexpr int ALIGN_BOTTOM = (1 << 0);
 #define ALIGN_VCENTER (2 << 0)
-#define ALIGN_LEFT    (0 << 2)
+constexpr int ALIGN_LEFT = (0 << 2);
 #define ALIGN_RIGHT   (1 << 2)
 #define ALIGN_HCENTER (2 << 2)
 #define ALIGN_NONE    (ALIGN_TOP | ALIGN_LEFT)
 #define ALIGN_CENTER  (ALIGN_VCENTER | ALIGN_HCENTER)
 
-#define SCALING_NONE  0
-#define SCALING_RATIO 1
+constexpr int SCALING_NONE = 0;
+constexpr int SCALING_RATIO = 1;
 
 /// GSKit CLUT base struct. This should've been in gsKit from the start :)
 typedef struct

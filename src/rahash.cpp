@@ -36,8 +36,8 @@
 #include <ps2sdkapi.h> // lseek64: images can exceed 2 GB
 
 /* Same cap as rcheevos: no boot executable is larger */
-#define RA_HASH_MAX_EXEC (64 * 1024 * 1024)
-#define RA_HASH_CHUNK    (64 * 1024)
+constexpr int RA_HASH_MAX_EXEC = (64 * 1024 * 1024);
+constexpr int RA_HASH_CHUNK = (64 * 1024);
 
 static char g_chunk[RA_HASH_CHUNK] __attribute__((aligned(64)));
 
@@ -82,9 +82,9 @@ static void step_num(const char *what, unsigned int a, unsigned int b, int c)
   bug it exists to avoid.
 */
 
-#define ISO_SECTOR     2048
-#define ISO_PVD_LBA    16
-#define RA_SRC_DISC_FD (-100)
+constexpr int ISO_SECTOR = 2048;
+constexpr int ISO_PVD_LBA = 16;
+constexpr int RA_SRC_DISC_FD = (-100);
 
 static unsigned int le32(const unsigned char *p)
 {
@@ -92,8 +92,8 @@ static unsigned int le32(const unsigned char *p)
            ((unsigned int)p[2] << 16) | ((unsigned int)p[3] << 24);
 }
 
-#define DISC_READ_TRIES     16
-#define DISC_READ_NOM_TRIES 8
+constexpr int DISC_READ_TRIES = 16;
+constexpr int DISC_READ_NOM_TRIES = 8;
 
 static int disc_read_sectors(unsigned int lba, unsigned int count, void *buf)
 {

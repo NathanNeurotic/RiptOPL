@@ -37,7 +37,7 @@ static int mmceULSizePrev = -2;
 static unsigned char mmcePs1Scanned = 0;
 static unsigned char mmcePs1ScanFailed = 0;
 static unsigned char mmcePs1ScanRetries = 0;
-#define MMCE_VCD_SCAN_RETRY_MAX 15
+constexpr int MMCE_VCD_SCAN_RETRY_MAX = 15;
 static time_t mmceModifiedCDPrev;
 static time_t mmceModifiedDVDPrev;
 static int mmceGameCount = 0;
@@ -59,7 +59,7 @@ static int mmceResolvedDevice = -1;
 // card/slot skips the redundant burst (mirrors BDM's FoldersCreated one-shot). Reset by mmceInit and
 // on card removal (empty prefix) so a freshly inserted card still gets its folders.
 static char mmceFoldersCreatedFor[40] = {0};
-#define MMCE_FOLDER_RETRY_MAX 5 // bounded CFG-create retries per card before declaring it obstructed
+constexpr int MMCE_FOLDER_RETRY_MAX = 5;  // bounded CFG-create retries per card before declaring it obstructed
 static unsigned char mmceFolderRetries = 0;
 // Auto-slot presence debounce (#154 audit residual): the cache-hit probe in mmceSetPrefix used to
 // invalidate the slot on ONE failed presence devctl -- and mmceUpdateGameList then frees BOTH game
@@ -71,8 +71,8 @@ static unsigned char mmceFolderRetries = 0;
 // cadence, so a pull is still detected on THIS pass -- just two probes later -- while a bus-quiet
 // window between probes absorbs the transient. No persistent counter: any successful probe breaks
 // the loop and declares the card present.
-#define MMCE_PRESENCE_PROBE_MAX 3
-#define MMCE_PRESENCE_RETRY_US  (200 * 1000)
+constexpr int MMCE_PRESENCE_PROBE_MAX = 3;
+constexpr int MMCE_PRESENCE_RETRY_US = (200 * 1000);
 // 1 once an Auto probe has ever resolved a slot. The debounce above protects the CACHE-HIT probe,
 // but the full re-detect it falls through to had no such protection: mmceDetectSlot() fires one
 // devctl per slot and gives up, so a single contended pass left mmcePrefix empty and
@@ -87,11 +87,11 @@ static unsigned char mmceEverResolved = 0;
 // otherwise the game boots while the card is still mounting and freezes at its MC check (issue #50,
 // cross-device path). A prior change had collapsed the per-poll gap to a sub-ms nopdelay(), which
 // gutted the wait so it returned in well under a second; a real sleep restores it.
-#define MMCE_GAMEID_WAIT_TICKS    15           // max polls of the card-switch busy bit
-#define MMCE_GAMEID_POLL_US       (200 * 1000) // 200 ms between polls -> ~3 s total budget (was 500 ms x 15 = 7.5 s)
+constexpr int MMCE_GAMEID_WAIT_TICKS = 15;  // max polls of the card-switch busy bit
+constexpr int MMCE_GAMEID_POLL_US = (200 * 1000);  // 200 ms between polls -> ~3 s total budget (was 500 ms x 15 = 7.5 s)
 /* The MMCE worker checks its abort flag between 32 KB staged reads. A
  * 500 ms wait gives a slow card time to reach the next safe checkpoint. */
-#define MMCE_ART_ABORT_WAIT_TICKS 500
+constexpr int MMCE_ART_ABORT_WAIT_TICKS = 500;
 
 // forward declaration
 extern item_list_t mmceGameList;

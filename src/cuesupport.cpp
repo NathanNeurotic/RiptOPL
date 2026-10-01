@@ -257,7 +257,7 @@ typedef struct
     const char *value;
 } cue_setting_t;
 
-#define CUE_SETTINGS_MAX 8191
+constexpr int CUE_SETTINGS_MAX = 8191;
 
 static int cueLineSetsKey(const char *line, int lineLen, const char *key)
 {

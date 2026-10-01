@@ -11,7 +11,7 @@
 #include "ps2cnf.h"
 #include "ioman.h"
 
-#define CNF_LEN_MAX 1024
+constexpr int CNF_LEN_MAX = 1024;
 
 static const char *CNFGetToken(const char *cnf, const char *end, const char *key)
 {

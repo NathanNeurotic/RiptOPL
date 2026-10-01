@@ -1400,7 +1400,7 @@ int configRead(config_set_t *configSet)
 
 // Cap on the pre-write snapshot kept in RAM to roll back a failed save. Real config files are a few
 // KB; this bounds a corrupt/huge on-disk size so a bad stat can never malloc something absurd.
-#define CONFIG_MAX_RESTORE_BYTES (256 * 1024)
+constexpr int CONFIG_MAX_RESTORE_BYTES = (256 * 1024);
 
 int configWrite(config_set_t *configSet)
 {

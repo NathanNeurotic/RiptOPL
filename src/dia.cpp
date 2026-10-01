@@ -21,22 +21,22 @@
 // Smallest gap a Settings page may shrink to so it fits without scrolling (diaSettingsFitGap): rows are
 // then 10 + 7 = 17 px apart, the default font's size, so lines touch but never overlap.
 #define UI_SETTINGS_MIN_GAP   7
-#define UI_SPACING_V          2
+constexpr int UI_SPACING_V = 2;
 // spacer ui element width (simulates tab)
-#define UI_SPACER_WIDTH       50
+constexpr int UI_SPACER_WIDTH = 50;
 // minimal pixel width of spacer
-#define UI_SPACER_MINIMAL     30
+constexpr int UI_SPACER_MINIMAL = 30;
 // length of breaking line in pixels
-#define UI_BREAK_LEN          600
+constexpr int UI_BREAK_LEN = 600;
 // Floor for the dialog repeat delay, in ms. Dialogs are deliberately calmer than the game list --
 // overshooting a settings row is more annoying than overshooting a game -- but that intent used to
 // be expressed as a HARDCODED 300 ms, which is exactly the "medium" main-menu value. The result was
 // that Settings ignored the user's Scroll Speed entirely: picking "fast" (100 ms) still gave 300 ms
 // in every dialog (3x slower than asked), and picking "slow" (500 ms) gave no extra slowness at all.
 // See diaScrollDelay(); medium is unchanged, so most users see no difference.
-#define DIA_SCROLL_MIN_MS     200
+constexpr int DIA_SCROLL_MIN_MS = 200;
 // scroll speed (delay in ms!) when setting int value
-#define DIA_INT_SET_SPEED     100
+constexpr int DIA_INT_SET_SPEED = 100;
 
 static int screenWidth;
 static int screenHeight;
@@ -45,14 +45,14 @@ static const char *diaSettingsIndicator;
 static int diaSettingsContext;
 
 // Right edge available to the keyboard's caret hint: CANCEL is drawn at x=500 on the same row.
-#define KEYB_HINT_END 490
+constexpr int KEYB_HINT_END = 490;
 // Width of the keyboard's text field: it starts at x=50 and the separator lines end at x=615.
-#define KEYB_TEXT_W   540
+constexpr int KEYB_TEXT_W = 540;
 // Utility stuff
-#define KEYB_MODE     2
-#define KEYB_WIDTH    12
-#define KEYB_HEIGHT   4
-#define KEYB_ITEMS    (KEYB_WIDTH * KEYB_HEIGHT)
+constexpr int KEYB_MODE = 2;
+constexpr int KEYB_WIDTH = 12;
+constexpr int KEYB_HEIGHT = 4;
+constexpr int KEYB_ITEMS = (KEYB_WIDTH * KEYB_HEIGHT);
 
 static void diaDrawBoundingBox(int x, int y, int w, int h, int focus)
 {
@@ -403,9 +403,9 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, const char *title)
    '-' toggles the sign of the whole entry rather than inserting a character (there is no valid
    entry with a minus anywhere but the front) and is inert, and drawn dim, on an unsigned field.
    '<' is backspace, so the pad is complete on its own without reaching for a shoulder button. */
-#define NUMPAD_WIDTH  3
-#define NUMPAD_HEIGHT 4
-#define NUMPAD_ITEMS  (NUMPAD_WIDTH * NUMPAD_HEIGHT)
+constexpr int NUMPAD_WIDTH = 3;
+constexpr int NUMPAD_HEIGHT = 4;
+constexpr int NUMPAD_ITEMS = (NUMPAD_WIDTH * NUMPAD_HEIGHT);
 
 static int diaShowNumPad(char *text, int maxLen, int minv, int maxv)
 {
@@ -753,7 +753,7 @@ static int diaItemHeight(struct UIItem *item, int spacingH)
 // glyphs are drawn at full width (widescreen draws them at 3/4), a long one ran off the right side:
 // "NTSC 640x448i @60Hz 24bit (FLICKER-F" (#732). Fit it to the room left instead. The selected row
 // scrolls through the whole value; any other row ends in "...". Returns the end x, like fntRenderString.
-#define DIA_VALUE_MARGIN 20 // the dialog's left margin (x0), mirrored on the right
+constexpr int DIA_VALUE_MARGIN = 20;  // the dialog's left margin (x0), mirrored on the right
 
 // The fit itself (scroll the selected value, "..." for the rest) is fntRenderStringFit, shared with theme text.
 static int diaRenderValue(int x, int y, const char *text, u64 color, int selected)

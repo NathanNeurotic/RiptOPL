@@ -24,7 +24,7 @@
 
 /*  The OSDs have this weird bug whereby the size of the icon file is hardcoded to 1776 bytes... even though that is way too long!
     Unfortunately, using the right size will cause the icon to be deemed as corrupted data by the HDDOSD. */
-#define SONY_SYSDATA_ICON_SYS_SIZE 1776
+constexpr int SONY_SYSDATA_ICON_SYS_SIZE = 1776;
 
 extern unsigned char icon_sys_A[];
 extern unsigned char icon_sys_J[];

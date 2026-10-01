@@ -97,19 +97,19 @@
 #include <string.h>
 #include <time.h> /* clock(): round trip of the link test */
 
-#define RA_PORT        18194
-#define RA_MY_PORT     18196 /* own port: the PC replies here directly, past NAT */
-#define RA_CHUNK       896   /* agreed with the PC; rule 3 in the header */
-#define RA_RECV_MAX    992   /* cap for one recvfrom; rule 3 */
-#define RA_TRY         12    /* attempts per request */
-#define RA_POLL_MS     25    /* pause between polls for a reply */
+constexpr int RA_PORT = 18194;
+constexpr int RA_MY_PORT = 18196;  /* own port: the PC replies here directly, past NAT */
+constexpr int RA_CHUNK = 896;  /* agreed with the PC; rule 3 in the header */
+constexpr int RA_RECV_MAX = 992;  /* cap for one recvfrom; rule 3 */
+constexpr int RA_TRY = 12;  /* attempts per request */
+constexpr int RA_POLL_MS = 25;  /* pause between polls for a reply */
 /* How many times to ask again while the PC answers WAIT. Identifying
    the image is a live request to the RetroAchievements server and
    takes seconds. We wait only while the PC keeps answering: if it goes
    silent, ask() gives up within its own three seconds, so "client not
    running" stays a fast failure. */
-#define RA_WAIT_ROUNDS 8
-#define RA_MAX_BYTES   (16 * 1024)
+constexpr int RA_WAIT_ROUNDS = 8;
+constexpr int RA_MAX_BYTES = (16 * 1024);
 
 /* Per-call non-blocking receive. The socket is also set non-blocking via
    fcntl (see open_pc_socket), but on the menu's netman lwIP stack that
@@ -124,7 +124,7 @@
    on the IOP, whose headers define it as 0x08. Sending 0x80 would arrive
    as an unknown flag and block. (The in-game SMSTCPIP stack defines 0x40;
    it serves ee_core's raudp, not this menu path.) */
-#define RA_MSG_DONTWAIT 0x08
+constexpr int RA_MSG_DONTWAIT = 0x08;
 
 /* Alignment is mandatory: rule 1 in the header. */
 static char g_rx[2048] __attribute__((aligned(64)));

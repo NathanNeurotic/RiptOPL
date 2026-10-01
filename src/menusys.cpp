@@ -1545,8 +1545,8 @@ void menuHandleInputMenu()
 // May this list be asked for per-game config right now? Keeps automatic metadata off the active
 // scroll for the two modes where fetching it is expensive: APPS reads a config per app, and MMCE
 // talks to the memory-card bus that also carries the pad. master's predicate.
-#define MENU_APP_CONFIG_IDLE_FRAMES  1
-#define MENU_MMCE_CONFIG_IDLE_FRAMES 3
+constexpr int MENU_APP_CONFIG_IDLE_FRAMES = 1;
+constexpr int MENU_MMCE_CONFIG_IDLE_FRAMES = 3;
 
 static int menuCanRequestItemConfig(item_list_t *list)
 {

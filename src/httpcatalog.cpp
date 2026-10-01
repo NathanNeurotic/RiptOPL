@@ -8,7 +8,7 @@
 
 #include "include/httpcatalog.h"
 
-#define HTTP_CSV_MAX_FIELDS 4
+constexpr int HTTP_CSV_MAX_FIELDS = 4;
 
 char *httpCatalogSkipBlankOrComment(char *line)
 {

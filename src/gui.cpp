@@ -81,7 +81,7 @@ static int showLngPopup;
 // assembled into scratch buffers at entry so the existing field ids, visibility rules and temporary
 // editor buttons remain owned by their original feature code. Values still live in the existing
 // globals/config sets; these buffers are only views, never a second configuration store.
-#define SETTINGS_DIALOG_CAPACITY 256
+constexpr int SETTINGS_DIALOG_CAPACITY = 256;
 static struct UIItem guiSettingsDialog[SETTINGS_DIALOG_CAPACITY];
 // MMCE Settings can be opened from the composed Game Sources page. Keep its editor separate so
 // returning from that child cannot overwrite the parent's dialog contents.
@@ -134,7 +134,7 @@ static int popupArmed;
 // How far ABOVE the vertical centre the boot logo (static splash and animated frames alike) sits.
 // The version line follows it, so the whole boot block moves together; the status line stays
 // anchored near the bottom edge.
-#define BOOT_LOGO_RISE 100
+constexpr int BOOT_LOGO_RISE = 100;
 
 // Boot-splash status line: set via guiSetBootStatus(), drawn under the logo by
 // guiRenderGreeting(). Both on the MAIN thread, so gBootStatus needs no locking.
@@ -206,9 +206,9 @@ static int transIndex;
 
 // Helper perlin noise data
 #define PLASMA_H              32
-#define PLASMA_W              32
-#define PLASMA_ROWS_PER_FRAME 6
-#define FADE_SIZE             256
+constexpr int PLASMA_W = 32;
+constexpr int PLASMA_ROWS_PER_FRAME = 6;
+constexpr int FADE_SIZE = 256;
 
 static GSTEXTURE gBackgroundTex;
 static int pperm[512];
@@ -1737,14 +1737,14 @@ static void guiShowVcdListConfig(void)
 // RPCs. On a slow or absent card that work can take seconds. Keep it on the I/O worker and pump a
 // real runtime frame here; guiHandleDeferedIO is intentionally not used because its text screen
 // does not poll input or animate the Settings plasma.
-#define POPSNET_READ_TIMEOUT_MS  15000
+constexpr int POPSNET_READ_TIMEOUT_MS = 15000;
 // Distinct abort reasons. The editor used to return a single ABORTED code and the caller simply
 // returned, so a read that timed out after fifteen seconds and a read the user cancelled were
 // indistinguishable on screen -- both silently dropped you back on the network page with no
 // explanation. Only CANCELLED is the user's own doing and stays quiet.
-#define GUI_POPSNET_READ_ABORTED (-100) // user pressed Circle
-#define GUI_POPSNET_READ_TIMEOUT (-101) // the worker never finished inside POPSNET_READ_TIMEOUT_MS
-#define GUI_POPSNET_READ_UNAVAIL (-102) // the request could not be queued at all (I/O blocked/OOM)
+constexpr int GUI_POPSNET_READ_ABORTED = (-100);  // user pressed Circle
+constexpr int GUI_POPSNET_READ_TIMEOUT = (-101);  // the worker never finished inside POPSNET_READ_TIMEOUT_MS
+constexpr int GUI_POPSNET_READ_UNAVAIL = (-102);  // the request could not be queued at all (I/O blocked/OOM)
 enum gui_popsnet_read_source {
     GUI_POPSNET_READ_LOCAL = 0,
     GUI_POPSNET_READ_SMB,
@@ -4883,7 +4883,7 @@ void guiRenderTextScreen(const char *message)
 // 1-pixel-pitch strip averages to a solid white bar that the GS scans out for the whole game load.
 // The trailing clean-frame loop at the end of guiShowGameID is what makes that premise hold.
 
-#define GAMEID_HOLD_FRAMES 45 // ~0.75s @ 60fps -- enough stable frames for a scaler to sample
+constexpr int GAMEID_HOLD_FRAMES = 45;  // ~0.75s @ 60fps -- enough stable frames for a scaler to sample
 
 // Normalise a startup id into the serial the GameID device expects: drop a POPS "XX."/"SB." prefix and
 // a trailing ".elf"/".ELF", cap at 11 chars (e.g. "SLUS_200.02"). Copied VERBATIM (no case fold) to

@@ -27,8 +27,8 @@ typedef struct // size = 1024
     } part_specs[65];
 } hdl_apa_header;
 
-#define HDL_GAME_DATA_OFFSET 0x100000 // Sector 0x800 in the extended attribute area.
-#define HDL_FS_MAGIC         0x1337
+constexpr int HDL_GAME_DATA_OFFSET = 0x100000;  // Sector 0x800 in the extended attribute area.
+constexpr int HDL_FS_MAGIC = 0x1337;
 
 u8 IOBuffer[2048] ALIGNED(64); // one sector
 
@@ -265,8 +265,8 @@ static int hddPopsNameCompare(const void *a, const void *b)
     return strcmp((const char *)a, (const char *)b);
 }
 
-#define HDD_APA_ATTR_MAIN_PARTITION 0x0000
-#define HDD_APA_FS_TYPE_PFS         0x0100
+constexpr int HDD_APA_ATTR_MAIN_PARTITION = 0x0000;
+constexpr int HDD_APA_FS_TYPE_PFS = 0x0100;
 
 // POPS' pooled HDD layout recognizes exactly eleven container labels: __.POPS and __.POPS0..9.
 // A looser prefix match misclassifies labels such as __.POPS12, which POPSLoader treats as a possible

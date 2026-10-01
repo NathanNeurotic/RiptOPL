@@ -28,8 +28,8 @@
 extern unsigned char elfldr_irx[];
 extern unsigned int size_elfldr_irx;
 
-#define ELFLDR_ELF_MAGIC 0x464c457f
-#define ELFLDR_PT_LOAD   1
+constexpr int ELFLDR_ELF_MAGIC = 0x464c457f;
+constexpr int ELFLDR_PT_LOAD = 1;
 
 typedef struct
 {

@@ -1803,8 +1803,8 @@ static int sbJoinDeviceTail(char *out, int outSize, const char *root, const char
 // How long a typed custom ELF path waits for a JUST-LOADED transport's device to mount. The BDMA
 // equip's source wait, with the bootstrap resolver's extra spin-up room for ATA. Only paid when no
 // device of the family was mounted at all; this runs before the launch draws "Please wait".
-#define SB_CUSTOM_BDM_WAIT_MS 2000
-#define SB_CUSTOM_ATA_WAIT_MS 5000
+constexpr int SB_CUSTOM_BDM_WAIT_MS = 2000;
+constexpr int SB_CUSTOM_ATA_WAIT_MS = 5000;
 
 // BDM family named by a typed alias, or BDM_TYPE_UNKNOWN. Spellings follow the drivers' own names
 // (bdmDetermineDeviceType): the iLink driver registers as "sd", MX4SIO as "sdc" or "mx4sio".

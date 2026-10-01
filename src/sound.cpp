@@ -66,7 +66,7 @@ static struct audsrv_adpcm_t sfx[SFX_COUNT];
 static int audio_initialized = 0;
 
 #define CURSOR_SFX_CHANNEL_BASE  SFX_COUNT
-#define CURSOR_SFX_CHANNEL_COUNT 6
+constexpr int CURSOR_SFX_CHANNEL_COUNT = 6;
 
 static int cursorChannelIndex = 0;
 
@@ -92,7 +92,7 @@ static void sfxSetCursorChannelsVolume(int volume)
 // So never interrupt. Each sound keeps its own channel, and a one-shot arriving within a frame of
 // the previous one is simply dropped -- that is the double-raise, and one sound is what was asked
 // for either way. Deliberate presses are far more than a frame apart and all still play.
-#define SFX_ONESHOT_COALESCE_MS 50
+constexpr int SFX_ONESHOT_COALESCE_MS = 50;
 
 static int sfxIsUiOneShot(int id)
 {
@@ -275,7 +275,7 @@ int sfxGetSoundDuration(int id)
 // is a SYNCHRONOUS SIF RPC on the GUI thread (one per nav press); under IOP contention it stalls
 // the menu mid-navigation. Always measured (two tick reads), rendered only when Settings ->
 // Debug Colors is on (gui.c / dia.c).
-#define SFX_CLOCKS_PER_MS 147456 // EE cpu_ticks() rate
+constexpr int SFX_CLOCKS_PER_MS = 147456;  // EE cpu_ticks() rate
 
 /* MENU RUMBLE TIMING -- the RETROLauncher model, which is the reference for feedback that actually
    reads as feedback on hardware. Two shapes, and the split matters more than either value:
@@ -293,13 +293,13 @@ int sfxGetSoundDuration(int id)
    Held navigation cannot simply repeat the full thump: steps arrive faster than 240 ms and the
    feedback smears into one continuous drone. Repeats are therefore scaled to a fraction of the
    OBSERVED step interval, with a floor below which we stay silent rather than buzz. */
-#define RUMBLE_NAV_MS               240
-#define RUMBLE_NAV_LEVEL            0x50
-#define RUMBLE_NAV_REPEAT_WINDOW_MS 400
-#define RUMBLE_NAV_REPEAT_DUTY_PCT  45
-#define RUMBLE_NAV_MIN_MS           80
-#define RUMBLE_DECISION_MS          110
-#define RUMBLE_DECISION_LEVEL       0x60
+constexpr int RUMBLE_NAV_MS = 240;
+constexpr int RUMBLE_NAV_LEVEL = 0x50;
+constexpr int RUMBLE_NAV_REPEAT_WINDOW_MS = 400;
+constexpr int RUMBLE_NAV_REPEAT_DUTY_PCT = 45;
+constexpr int RUMBLE_NAV_MIN_MS = 80;
+constexpr int RUMBLE_DECISION_MS = 110;
+constexpr int RUMBLE_DECISION_LEVEL = 0x60;
 static unsigned int sfxLastPlayMs = 0;
 static unsigned int sfxMaxPlayMs = 0;
 
@@ -426,24 +426,24 @@ void sfxPlay(int id)
 /*--    Theme Background Music    -------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------*/
 
-#define BGM_RING_BUFFER_COUNT      192 // 768 KB buffer (~4.35s): extra headroom for long device/list bursts (#364)
+constexpr int BGM_RING_BUFFER_COUNT = 192;  // 768 KB buffer (~4.35s): extra headroom for long device/list bursts (#364)
 #define BGM_RING_BUFFER_SIZE       4096
-#define BGM_STOP_WAIT_SLICES       16
-#define BGM_IO_LOW_WATER_CHUNKS    48 // ~1.1 s: stop STARTING discretionary device reads
-#define BGM_IO_RESUME_WATER_CHUNKS 80 // ~1.8 s: hysteresis before artwork/cosmetic IO resumes
+constexpr int BGM_STOP_WAIT_SLICES = 16;
+constexpr int BGM_IO_LOW_WATER_CHUNKS = 48;  // ~1.1 s: stop STARTING discretionary device reads
+constexpr int BGM_IO_RESUME_WATER_CHUNKS = 80;  // ~1.8 s: hysteresis before artwork/cosmetic IO resumes
 // EE priorities are strict (lower number wins): playback=30, Vorbis I/O/decode=31. Playback is
 // tiny and normally asleep between audsrv room polls; decode now outranks the background I/O worker (32) while
 // sharing the GUI/pad tier (31), whose vsync wait yields naturally. This prevents a long runnable
 // background queue from starving refills; the larger ring also covers stalls that are IOP-bound,
 // where EE thread priority cannot help.
-#define BGM_THREAD_BASE_PRIO       0x1E
-#define BGM_THREAD_STACK_SIZE      0x1000
+constexpr int BGM_THREAD_BASE_PRIO = 0x1E;
+constexpr int BGM_THREAD_STACK_SIZE = 0x1000;
 // Sleep bounds while audsrv's ring has no room for the next piece (see bgmWaitForRoom). The sleep is the
 // time the missing room takes to play out, but never under one SPU2 block -- 512 samples at 48 kHz,
 // 10.7 ms -- because the IOP frees room a block at a time and a shorter sleep only re-reads the same
 // room. A stream that stops draining is polled slowly.
-#define BGM_ROOM_POLL_MIN_US       10000
-#define BGM_ROOM_POLL_MAX_US       20000
+constexpr int BGM_ROOM_POLL_MIN_US = 10000;
+constexpr int BGM_ROOM_POLL_MAX_US = 20000;
 #define BGM_ROOM_STALL_POLLS       50
 #define BGM_ROOM_STALL_US          100000
 // Below this the ring measurement in bgmStart is not believable, and it keeps the whole-chunk target.
@@ -682,8 +682,8 @@ static void bgmIoThread(void *arg)
    a negative descriptor and fails. For the music that read came back empty mid-file, the decoder took
    it for the end of the stream, the rewind failed the same way, and the music stopped for good a few
    seconds into the menu. A successful open writes the whole int again, so reopening is the cure. */
-#define BGM_REOPEN_TRIES    4
-#define BGM_REOPEN_RETRY_US (20 * 1000)
+constexpr int BGM_REOPEN_TRIES = 4;
+constexpr int BGM_REOPEN_RETRY_US = (20 * 1000);
 
 typedef struct
 {

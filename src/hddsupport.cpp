@@ -25,7 +25,7 @@
 #include <hdd-ioctl.h>
 #include <delaythread.h> // DelayThread for the post-ATAD settle in hddLoadModules
 
-#define OPL_HDD_MODE_PS2LOGO_OFFSET 0x17F8
+constexpr int OPL_HDD_MODE_PS2LOGO_OFFSET = 0x17F8;
 
 #include "../modules/isofs/zso.h"
 
@@ -49,7 +49,7 @@ static int hddRetryQueued = 0;
 // answers the ATA stack well before it will answer PS2FS, so a single refusal after the settle says
 // nothing -- hardware shows PFS declining a few of these and then mounting normally. Reset by
 // hddClearPfsDiagFailure() the moment the support stack latches.
-#define HDD_PFS_REPORT_AFTER_FAILURES 3
+constexpr int HDD_PFS_REPORT_AFTER_FAILURES = 3;
 static int hddPfsSettledFailures = 0;
 
 typedef enum {
@@ -58,7 +58,7 @@ typedef enum {
     HDD_PFS_DIAG_REASON_PS2FS_LOAD_FAILURE,
 } hdd_pfs_diag_reason_t;
 
-#define HDD_PFS_DIAG_NOT_RUN (-9999)
+constexpr int HDD_PFS_DIAG_NOT_RUN = (-9999);
 
 static hdd_pfs_diag_reason_t hddPfsDiagReason = HDD_PFS_DIAG_REASON_NONE;
 static int hddPfsDiagHddCheckResult = HDD_PFS_DIAG_NOT_RUN;
@@ -190,7 +190,7 @@ static hdl_games_list_t hddGames;
 // Milliseconds (cacheCancelPendingImageLoadsTimed sleeps via DelayThread(1000), NOT util.c's delay(),
 // whose "tick" is a ~0.25 s NOP spin). Generous because an un-abortable whole-file cover read on this
 // device has been measured at several seconds, and the alternative is remounting under a live reader.
-#define HDD_ART_QUIESCE_MS 2000
+constexpr int HDD_ART_QUIESCE_MS = 2000;
 
 // HDD VCD view: PS1 games gathered from pooled __.POPS[0-9]? partitions and one-game PP. / __.
 // partitions. hddVcdParts is index-parallel to hddVcdGames -- it records the full owning partition
@@ -519,8 +519,8 @@ int hddModulesAreLoaded(void)
     return hddModulesLoaded != 0;
 }
 
-#define HDD_PROBE_READ_FAILED      (-1)
-#define HDD_PROBE_TABLE_UNREADABLE (-2)
+constexpr int HDD_PROBE_READ_FAILED = (-1);
+constexpr int HDD_PROBE_TABLE_UNREADABLE = (-2);
 
 // Validate an APA header without ps2hdd: the "APA" magic plus the header checksum, per ps2sdk
 // apaCheckSum. The non-GPT driver sums all 255 words after the checksum (the whole 1 KB header);

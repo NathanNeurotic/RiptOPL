@@ -126,7 +126,7 @@ static unsigned int frameCounter;
 // A BDM slot that has never held a device is probed this many times less often than one that has.
 // Its probe is only a missed-event net; a present device keeps the full cadence so removal is still
 // noticed promptly.
-#define BDM_EMPTY_SLOT_PROBE_RATIO 8
+constexpr int BDM_EMPTY_SLOT_PROBE_RATIO = 8;
 
 static clock_t lastBgRescan[MODE_COUNT];
 static unsigned int lastSeenBdmGeneration;
@@ -1365,7 +1365,7 @@ void menuDeferredUpdate(void *data)
     }
 }
 
-#define MENU_GENERAL_UPDATE_DELAY          60
+constexpr int MENU_GENERAL_UPDATE_DELAY = 60;
 // Minimum wall-clock gap between background rescans of the SAME updateDelay==0 device (Fix B). At
 // ~2 s this drops the steady SIO2/mass enumeration rate well below the old every-60-frames cadence,
 // cutting MX4SIO bus contention, while a real device change still refreshes immediately
@@ -1386,7 +1386,7 @@ void menuDeferredUpdate(void *data)
   the BdmGeneration bypass below keeps the SHORT gate, so a plugged device is picked up in the
   next tap gap rather than after a full second.
 */
-#define MENU_BG_RESCAN_MIN_INACTIVE_FRAMES 60
+constexpr int MENU_BG_RESCAN_MIN_INACTIVE_FRAMES = 60;
 
 static void menuUpdateHook()
 {
@@ -4103,8 +4103,8 @@ int saveConfig(int types, int showUI)
 // ----------------------------------------------------------
 
 
-#define LWNBD_ART_DRAIN_TICKS 500
-#define LWNBD_IO_DRAIN_TICKS  1000
+constexpr int LWNBD_ART_DRAIN_TICKS = 500;
+constexpr int LWNBD_IO_DRAIN_TICKS = 1000;
 
 static void shutdownLwnbdNetwork(void)
 {
@@ -4356,8 +4356,8 @@ int gArtAbandoned = 0;
 // bound in any sense that mattered; a launch pressed with covers queued simply waited for all of
 // them. Values below are the ORIGINAL INTENT expressed in real ticks. If delay() is ever given a
 // real time base, convert these with it -- do not just scale the numbers again.
-#define EXIT_IO_DRAIN_TICKS   4  // ~1 s
-#define LAUNCH_IO_DRAIN_TICKS 40 // ~10 s, as the paragraph above always meant
+constexpr int EXIT_IO_DRAIN_TICKS = 4;  // ~1 s
+constexpr int LAUNCH_IO_DRAIN_TICKS = 40;  // ~10 s, as the paragraph above always meant
 
 void deinitEx(int exception, int modeSelected, int modeSelected2)
 {
@@ -4876,7 +4876,7 @@ static void deferredAudioInit(void)
 // ----------------------------------------------------------
 
 // Extra delay(6) rounds autoLaunchBDMGame waits for mass0: to publish before giving up on the launch.
-#define AUTOLAUNCH_MASS0_RETRIES 8
+constexpr int AUTOLAUNCH_MASS0_RETRIES = 8;
 
 static void miniInit(int mode)
 {

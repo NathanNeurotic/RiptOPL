@@ -12,7 +12,7 @@ tmp = Path(work.name)
 
 def is_cxx(source):
     # src/*.cpp snippets carry C++ casts; ee_core/*.c snippets are still C
-    return any(k in source for k in ('static_cast', 'reinterpret_cast', 'const_cast'))
+    return any(k in source for k in ('static_cast', 'reinterpret_cast', 'const_cast', 'constexpr'))
 
 def run(name, source, extra=()):
     cxx = is_cxx(source)

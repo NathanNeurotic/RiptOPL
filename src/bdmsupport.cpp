@@ -1896,7 +1896,7 @@ static void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_
 // Every device this helper can see is bdmfs_fatfs-backed (mmce/udpfs launches live in their own
 // support files), including both udp block transports (udpbd + udpfsbd depend on i_bdm), so the
 // ioctl is always valid here. NOT OPL's BDM_MAX_FRAGS: same value today, different owner.
-#define NEUTRINO_BDM_MAX_FRAGS 64
+constexpr int NEUTRINO_BDM_MAX_FRAGS = 64;
 
 static int bdmNeutrinoFragBudgetOk(const char *isoPath, const neutrino_vmc_args_t *vmcArgs, int isUdp)
 {

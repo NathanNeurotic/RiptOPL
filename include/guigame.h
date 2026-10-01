@@ -1,8 +1,8 @@
 #ifndef __GUIGAME_H
 #define __GUIGAME_H
 
-#define SETTINGS_GLOBAL        0
-#define SETTINGS_PERGAME       1
+constexpr int SETTINGS_GLOBAL = 0;
+constexpr int SETTINGS_PERGAME = 1;
 // Per-key GSM inheritance: a key PRESENT in the game's own config wins, a key ABSENT follows the
 // global block. Deliberately a NEW value: only 0 and 1 have ever been written (by this fork, by the
 // upstream fork, and by every build in the field), so a 2 cannot appear in any config that already
@@ -10,7 +10,7 @@
 // Do NOT retrofit this meaning onto SETTINGS_PERGAME: that would silently change games whose keys
 // were stripped for being zero (the per-game save leg removes zero-valued keys, so "absent" there
 // means BOTH "unset" and "explicitly 0").
-#define SETTINGS_PERGAME_MIXED 2
+constexpr int SETTINGS_PERGAME_MIXED = 2;
 
 int guiGameAltStartupNameHandler(char *text, int maxLen);
 

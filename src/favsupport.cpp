@@ -152,7 +152,7 @@ static int favMapWoplMode(int m)
 // bytes, then a short owner-mode. uOPL and wOPL share this exact layout. We never WRITE it --
 // our own writes use the hardened OFAV format -- so this is a one-way carry-over that lets
 // favourites set in those builds appear in RiptOPL. Returns NULL on empty/corrupt input.
-#define WOPL_FAV_STRUCT_SIZE 32 // sizeof(submenu_item_t) on the EE: 8 x 4-byte fields
+constexpr int WOPL_FAV_STRUCT_SIZE = 32;  // sizeof(submenu_item_t) on the EE: 8 x 4-byte fields
 static fav_raw_t *favReadWoplFile(int fd, int *outCount)
 {
     *outCount = 0;

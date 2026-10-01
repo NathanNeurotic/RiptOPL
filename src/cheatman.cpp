@@ -300,7 +300,7 @@ static int is_empty_substr(const char *s, size_t count)
 }
 
 /* Max line length to parse */
-#define CHEAT_LINE_MAX 255
+constexpr int CHEAT_LINE_MAX = 255;
 
 /**
  * parse_buf - Parse a text buffer for cheats.

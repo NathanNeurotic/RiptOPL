@@ -254,9 +254,9 @@ static int vcdEntryCmp(const void *a, const void *b)
 //   3. a per-scan budget caps how many discs one build may open, so a large badly-named library
 //      degrades to "some ids resolve, the rest show their filename" instead of stalling the list.
 //      The remainder resolve on later builds, a few at a time.
-#define VCD_ID_PROBE_BUDGET 8   // discs opened per scan
-#define VCD_ID_MEMO_MAX     512 // ids remembered for the session
-#define VCD_ID_MAX_RETRIES  3   // transient read attempts before marking absent
+constexpr int VCD_ID_PROBE_BUDGET = 8;  // discs opened per scan
+constexpr int VCD_ID_MEMO_MAX = 512;  // ids remembered for the session
+constexpr int VCD_ID_MAX_RETRIES = 3;  // transient read attempts before marking absent
 
 typedef enum {
     VCD_ID_UNREQUESTED = 0,
@@ -989,9 +989,9 @@ int vcdFillGameList(const char *devPrefix, base_game_info_t **outGames)
 // through these helpers: we refuse up front unless the destination card reports enough free space
 // (plus a margin), and we delete any partially-written file on a short write. POSIX IO only.
 
-#define VCD_MC_CLUSTER  1024        // PS2 memory-card cluster size; mcGetInfo "free" is in clusters
-#define VCD_COPY_MARGIN (16 * 1024) // leave >=16 KiB head-room so we never pack the card to 0
-#define VCD_COPY_CHUNK  (16 * 1024) // copy buffer (heap, not stack)
+constexpr int VCD_MC_CLUSTER = 1024;  // PS2 memory-card cluster size; mcGetInfo "free" is in clusters
+constexpr int VCD_COPY_MARGIN = (16 * 1024);  // leave >=16 KiB head-room so we never pack the card to 0
+constexpr int VCD_COPY_CHUNK = (16 * 1024);  // copy buffer (heap, not stack)
 
 // Free bytes on the memory card backing `path` ("mc0:"/"mc1:"), or -1 if it isn't a usable PS2 MC.
 static int vcdMcFreeBytes(const char *path)

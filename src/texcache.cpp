@@ -73,16 +73,16 @@ typedef struct load_image_request
 // Art thread priority. LOWER NUMBER WINS on the EE. BGM playback/decode are 30/31 (sound.c), the
 // GUI/pad thread is 31 (opl.c), and the shared io worker is 32 (ioman.c). 72 (0x48) puts art below
 // every one of them: it can never take the CPU from input, config work, list rebuilds, or audio.
-#define ART_THREAD_PRIORITY 72
+constexpr int ART_THREAD_PRIORITY = 72;
 
 // ...and lower still while reading anything on SIO2. EE priority does not speed up or slow down a
 // thread blocked in an IOP RPC, so this buys nothing on the device read itself -- what it protects
 // is the PNG DECODE that follows, which is tens of ms of pure EE work on the pad's own bus.
-#define ART_SIO2_LOAD_PRIORITY 90
+constexpr int ART_SIO2_LOAD_PRIORITY = 90;
 
 // Matches ioman's worker stack. The identical libpng decode runs on that stack today, so this is a
 // measured size rather than a guess. .bss only; it adds nothing to the ELF.
-#define ART_THREAD_STACK_SIZE (96 * 1024)
+constexpr int ART_THREAD_STACK_SIZE = (96 * 1024);
 
 // Teardown join budgets in MILLISECONDS -- the join sleeps via DelayThread(1000) = 1 ms, NOT via
 // util.c's delay(), whose "tick" is a ~0.25 s NOP spin (the units trap that made the old
@@ -91,9 +91,9 @@ typedef struct load_image_request
 // driver-side timeout), or a worker parked in one is abandoned; on the keep-IOP paths that leaves
 // the target reading through a half-used RPC channel. The join exits as soon as the worker stops,
 // so the larger cap is only ever paid against a real miss.
-#define ART_JOIN_MS_LAUNCH      6000
-#define ART_JOIN_MS_TERMINAL    1500
-#define ART_FOREGROUND_DRAIN_MS 500
+constexpr int ART_JOIN_MS_LAUNCH = 6000;
+constexpr int ART_JOIN_MS_TERMINAL = 1500;
+constexpr int ART_FOREGROUND_DRAIN_MS = 500;
 
 static int gArtThreadId = -1;
 static ee_thread_t gArtThread;
@@ -248,12 +248,12 @@ void cacheInvalidateFailMemo(void)
 
    USB, ATA and the network transports keep the user's setting, 0 included: they share nothing with
    the pad, which is the entire reason this floor is scoped to SIO2 rather than applied globally. */
-#define ART_MIN_SETTLE_FRAMES 8
+constexpr int ART_MIN_SETTLE_FRAMES = 8;
 
 // Frames a queued art request may go undrawn before the worker abandons it. Generous enough that a
 // brief hitch does not throw away a wanted load, short enough that a scroll's worth of superseded
 // covers never reaches the device.
-#define ART_CANCEL_STALE_FRAMES 20
+constexpr int ART_CANCEL_STALE_FRAMES = 20;
 
 // Art requests currently sitting in the ioman queue. LOCK-FREE on purpose, and that is the whole
 // story of this counter: the first backpressure gate here called ioGetPendingRequestCount(), whose

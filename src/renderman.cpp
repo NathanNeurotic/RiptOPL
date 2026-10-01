@@ -23,8 +23,8 @@ static u8 hires = 0;
 static u8 guiWakeupCount;
 static int vsync_id = -1;
 
-#define NUM_RM_VMODES 16
-#define RM_VMODE_AUTO 0
+constexpr int NUM_RM_VMODES = 16;
+constexpr int RM_VMODE_AUTO = 0;
 
 // RM Vmode -> GS Vmode conversion table
 struct rm_mode

@@ -11,8 +11,8 @@
 // Same register ee_core's debug colors write (ee_core/include/ee_core.h GS_BGCOLOUR).
 #define LAUNCHDIAG_GS_BGCOLOUR (*(volatile unsigned long int *)0x120000E0)
 
-#define LAUNCHDIAG_PARK_GRAY  0x404040
-#define LAUNCHDIAG_PARK_FLASH 0xFFFFFF
+constexpr int LAUNCHDIAG_PARK_GRAY = 0x404040;
+constexpr int LAUNCHDIAG_PARK_FLASH = 0xFFFFFF;
 
 int gLaunchDiag = 0;
 

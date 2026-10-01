@@ -4,12 +4,12 @@
 #include "include/iosupport.h"
 
 // A network catalog, so the same slow-poll cadence SMB and UDPFS use.
-#define HTTP_MODE_UPDATE_DELAY 300
+constexpr int HTTP_MODE_UPDATE_DELAY = 300;
 
 // Longest relative ISO path a catalog row may carry. Matches CATALOG_PATH_MAX in
 // tools/pc/http/catalog_reference.py -- the two parsers are one contract and the fixtures under
 // tools/pc/http/fixtures/ hold them to it.
-#define HTTP_CATALOG_PATH_MAX 255
+constexpr int HTTP_CATALOG_PATH_MAX = 255;
 
 // Bound on catalog size and row count. An over-limit catalog is REPORTED, never silently clipped:
 // a library that is quietly missing its last hundred games is worse than one that says so.

@@ -2,11 +2,11 @@
 #define __FNTSYS_H
 
 /// default (built-in) font id
-#define FNT_DEFAULT (0)
+constexpr int FNT_DEFAULT = (0);
 /// Value returned on errors
-#define FNT_ERROR   (-1)
+constexpr int FNT_ERROR = (-1);
 
-#define FNTSYS_DEFAULT_SIZE 17
+constexpr int FNTSYS_DEFAULT_SIZE = 17;
 
 /** Initializes the font subsystem */
 void fntInit();

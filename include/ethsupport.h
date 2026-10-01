@@ -3,7 +3,7 @@
 
 #include "include/iosupport.h"
 
-#define ETH_MODE_UPDATE_DELAY 300
+constexpr int ETH_MODE_UPDATE_DELAY = 300;
 
 #include "include/mcemu.h"
 typedef struct
