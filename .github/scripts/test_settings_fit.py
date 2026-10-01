@@ -35,7 +35,7 @@ def function_text(source, where, signature):
 dia_c = read('src/dia.cpp')
 dia_h = read('include/dia.h')
 dialogs_c = read('src/dialogs.cpp')
-opl_c = read('src/opl.cpp')
+opl_c = read('src/opl.cpp') + read('src/settingsio.cpp')
 opl_h = read('include/opl.h')
 
 # --- the fit, compiled and run ---------------------------------------------------------------------
@@ -169,7 +169,7 @@ if colors and 'gDefaultBgColor[0] = RIPTOPL_PLASMA_BG_R;' not in colors:
 settings_cpp = (root / 'src/settings.cpp').read_text(encoding='utf-8')
 if 'colorSetting(CONFIG_OPL_PLAS_BLEND_COLOR, gDefaultPlasBlendColor, {RIPTOPL_PLASMA_BLEND_R, RIPTOPL_PLASMA_BLEND_G, RIPTOPL_PLASMA_BLEND_B})' not in settings_cpp:
     failures.append('settings.cpp: the default plasma blend must be RiptOPL\'s near-black')
-load = function_text(opl_c, 'src/opl.cpp', 'static void _loadConfig(')
+load = function_text(opl_c, 'src/opl.cpp', 'void _loadConfig(')
 old_pair = ('gDefaultBgColor[0] == 0x28 && gDefaultBgColor[1] == 0xC5 && gDefaultBgColor[2] == 0xF9 &&\n'
             '                gDefaultPlasBlendColor[0] == 0x00 && gDefaultPlasBlendColor[1] == 0x00 && gDefaultPlasBlendColor[2] == 0x00')
 if load and old_pair not in load:

@@ -32,7 +32,7 @@ import tempfile
 
 root = Path(__file__).resolve().parents[2]
 gui = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/gui.cpp', 'src/guisettings.cpp', 'src/guidialogs.cpp')).replace('\r\n', '\n')
-opl = (root / 'src/opl.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+opl = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/opl.cpp', 'src/settingsio.cpp')).replace('\r\n', '\n')
 opl_h = (root / 'include/opl.h').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
@@ -289,7 +289,7 @@ def run_harness():
 
 
 def check_boot_combos():
-    load = function_text(opl, 'static void _loadConfig(', 'src/opl.cpp')
+    load = function_text(opl, 'void _loadConfig(', 'src/opl.cpp')
     cross = re.search(r'if \(getKeyPressed\(KEY_TRIANGLE\) && getKeyPressed\(KEY_CROSS\)\) \{[^}]*gVMode = 3;', load)
     circle = re.search(r'else if \(getKeyPressed\(KEY_TRIANGLE\) && getKeyPressed\(KEY_CIRCLE\)\) \{[^}]*gVMode = 0;', load)
     saved = re.search(r'\} else \{\s*configGetInt\(configOPL, CONFIG_OPL_VMODE, &gVMode\);', load)

@@ -22,7 +22,7 @@ import tempfile
 
 root = Path(__file__).resolve().parents[2]
 gui = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/gui.cpp', 'src/guisettings.cpp', 'src/guidialogs.cpp')).replace('\r\n', '\n')
-opl = (root / 'src/opl.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+opl = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/opl.cpp', 'src/settingsio.cpp')).replace('\r\n', '\n')
 failures = []
 
 

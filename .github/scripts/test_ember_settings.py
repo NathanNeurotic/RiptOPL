@@ -64,7 +64,7 @@ def compile_and_run(name, program):
             failures.extend(lines or ['%s harness exited %d' % (name, run.returncode)])
 
 
-opl_c = read('src/opl.cpp')
+opl_c = read('src/opl.cpp') + read('src/settingsio.cpp')
 opl_h = read('include/opl.h')
 config_h = read('include/config.h')
 cuesupport_h = read('include/cuesupport.h')
@@ -258,7 +258,7 @@ if not failures:
 
 # The load and save must actually be called from the config load/save paths.
 config_paths = re.sub(r'/\*.*?\*/|//[^\n]*', '', opl_c, flags=re.S)
-load_config = function_text(config_paths, 'src/opl.cpp', 'static void _loadConfig(')
+load_config = function_text(config_paths, 'src/opl.cpp', 'void _loadConfig(')
 save_config = function_text(config_paths, 'src/opl.cpp', 'static void _saveConfig(')
 if 'emberLoadSettings(configOPL);' not in load_config:
     failures.append('src/opl.c: _loadConfig does not call emberLoadSettings(configOPL)')

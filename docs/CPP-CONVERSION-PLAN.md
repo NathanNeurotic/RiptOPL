@@ -350,13 +350,17 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
   Functions the loader wires up (`initBasic`, `initItemsList`, `drawGameImage`, ...) lost `static` for this; they are only declared in `themeint.h`.
 - Source-scraping tests (`test_theme_text_room`, `test_art_queue_order`) read the union of the three files.
 
-## 17d. opl.cpp split, step 1 (5117 -> 4688 lines)
+## 17d. opl.cpp split (5117 -> 2330 lines)
 - `src/autolaunch.cpp`: `autoLaunchHDDGame`/`autoLaunchBDMGame` (boot-argument auto-launch).
 - `src/lwnbdctl.cpp`: NBD server (lwNBD) load/teardown and `handleLwnbdSrv`.
 - `include/oplint.h`: what these share with `opl.cpp` (`miniInit`, `reset`, `initAllSupport`, `deinitAllSupport`, `clearErrorMessage`,
   `gExportName`, `AUTOLAUNCH_MASS0_RETRIES`); `include/oplog.h`: the `LOG_INIT`/`LOG_ENABLE` bring-up macros.
-- Still in opl.cpp (next candidates): config-home resolution and recovery (~1300 lines of `try*`/`resolve*`/`checkLoadConfig*`), `_loadConfig`/
-  `_saveConfig` (~1000 lines, share many boot-home statics), the `itemExec*` menu handlers, `setDefaults`, `main`.
+- **Step 2:** `src/settingsio.cpp` (2410 lines): everything under "Configuration handling" -- boot-home resolution (APA/exFAT/MMCE), the
+  config-path redirect, the recovery paths, `_loadConfig`/`_saveConfig`, `applyConfig`/`saveConfig`. Its many file-static helpers and boot-home
+  state (`lscstatus`, `gBootHome*`, `gLastSaveTarget`, ...) stay private to it; only `_loadConfig`, `resolveBootDirToMass`, `tryAlternateDevice`,
+  `configReadNeutrinoGlobals`, `gBootElfName`, `gBootHomeWhy` are shared (via `oplint.h`). opl.cpp is down to 2330 lines.
+  Source-scraping tests read opl.cpp + settingsio.cpp.
+- Still in opl.cpp (next candidates): the `itemExec*` menu handlers, the module list/menu-refresh code, `setDefaults`, `main`.
 
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
@@ -394,7 +398,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 | 4 HostServices, launch/UI split | done |
 | 5 GameSource hierarchy | not started; needs go-ahead (hardware testing matters most) |
 | 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
-| 7 split god files | gui.cpp done (5197 -> ~1100 lines); themes.cpp done (3958 -> 1653, plus themeelems.cpp and coverflow.cpp); opl.cpp in progress (5117 -> 4688: autolaunch.cpp, lwnbdctl.cpp out); bdmsupport.cpp not started |
+| 7 split god files | gui.cpp done (5197 -> ~1100 lines); themes.cpp done (3958 -> 1653, plus themeelems.cpp and coverflow.cpp); opl.cpp in progress (5117 -> 2330: autolaunch.cpp, lwnbdctl.cpp, settingsio.cpp out); bdmsupport.cpp not started |
 | 8 directory move, blocking analyzer | not started |
 
 Packed ELF: 1,634,784 B (Atlas) -> 1,634,400 B (ArtQueue). Every step so far: clean `ps2build build`, `tools/run_tests.sh -k`,
