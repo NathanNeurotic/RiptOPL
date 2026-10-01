@@ -609,11 +609,12 @@ void guiSetBootStatusStickyCopy(const char *label)
 
 // Boot logo glow: a soft halo breathes around the logo. The halo is the logo redrawn at low alpha around its
 // own position -- eight taps 2 px out and four 5 px out -- so it follows the letter shapes with no extra asset.
-// One cycle is BOOT_LOGO_GLOW_PERIOD frames (~2 s at 60 Hz); the pulse is a raised cosine, so it eases in and
+// The halo is tinted with the theme's selected-text colour, so it follows the user's colour settings (the white
+// logo texture takes the tint; the logo itself stays white). One cycle is BOOT_LOGO_GLOW_PERIOD frames (~2 s at 60 Hz); the pulse is a raised cosine, so it eases in and
 // out instead of stepping. `alpha` is the greeting's fade alpha (0..0x80): the glow fades with the splash.
 constexpr int BOOT_LOGO_GLOW_PERIOD = 120;
 constexpr float BOOT_LOGO_GLOW_MIN = 0.15f; // halo strength at the dim end of the pulse
-constexpr float BOOT_LOGO_GLOW_TAP = 0.11f; // per-tap alpha at full pulse, as a fraction of `alpha`
+constexpr float BOOT_LOGO_GLOW_TAP = 0.16f; // per-tap alpha at full pulse, as a fraction of `alpha`
 
 static void guiDrawBootLogo(GSTEXTURE *logo, int cx, int cy, int alpha)
 {
@@ -624,12 +625,16 @@ static void guiDrawBootLogo(GSTEXTURE *logo, int cx, int cy, int alpha)
     const float pulse = 0.5f - 0.5f * cosf(phase); // 0..1..0, zero slope at both ends
     const float strength = BOOT_LOGO_GLOW_MIN + (1.0f - BOOT_LOGO_GLOW_MIN) * pulse;
 
+    // selTextColor is packed RGBA with 0..0xFF components; texture modulation is 0x80 = 1.0, so halve them.
+    const u64 tint = gTheme->selTextColor;
+    const int tr = (int)(tint & 0xFF) >> 1, tg = (int)((tint >> 8) & 0xFF) >> 1, tb = (int)((tint >> 16) & 0xFF) >> 1;
+
     int tapAlpha = (int)((float)alpha * strength * BOOT_LOGO_GLOW_TAP);
     if (tapAlpha > 0) {
-        u64 color = GS_SETREG_RGBA(0x80, 0x80, 0x80, tapAlpha);
+        u64 color = GS_SETREG_RGBA(tr, tg, tb, tapAlpha);
         for (int i = 0; i < 8; i++)
             rmDrawPixmap(logo, cx + inner[i][0], cy + inner[i][1], ALIGN_CENTER, logo->Width, logo->Height, SCALING_RATIO, color, 0);
-        color = GS_SETREG_RGBA(0x80, 0x80, 0x80, tapAlpha >> 1);
+        color = GS_SETREG_RGBA(tr, tg, tb, tapAlpha >> 1);
         for (int i = 0; i < 4; i++)
             rmDrawPixmap(logo, cx + outer[i][0], cy + outer[i][1], ALIGN_CENTER, logo->Width, logo->Height, SCALING_RATIO, color, 0);
     }
