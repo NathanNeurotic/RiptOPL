@@ -1,3 +1,4 @@
+#include <new>
 #include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
@@ -25,6 +26,7 @@
 #include <fileXio_rpc.h> // fileXioDevctl(ethBase, SMB_***)
 
 #include "include/nbns.h"
+#include "include/gamesource.h"
 #include "httpclient.h"
 
 // forward declaration (was declared in the header before it became file-local)
@@ -42,7 +44,6 @@ static int ethPs1GameCount = 0;
 static base_game_info_t *ethPs1Games = NULL;
 
 // forward declarations
-extern item_list_t ethGameList;
 static void smbLoadModules(void);
 
 static unsigned char ethReconnectQueued = 0;
@@ -155,6 +156,49 @@ int ethApplyConfig(void)
 {
     return netApplyConfig();
 }
+class EthSource : public GameSource
+{
+public:
+    EthSource()
+        : GameSource(ETH_MODE, 1, 0, MENU_MIN_INACTIVE_FRAMES, ETH_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_VCD | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+    {
+    }
+
+    void init(item_list_t *itemList) override;
+    int needsUpdate(item_list_t *itemList) override;
+    int update(item_list_t *itemList) override;
+    int rowView(item_list_t *itemList, int id) override;
+    int sourceId(item_list_t *itemList, int id) override;
+    int count(item_list_t *itemList) override;
+    void *game(item_list_t *itemList, int id) override;
+    char *name(item_list_t *itemList, int id) override;
+    int nameLength(item_list_t *itemList, int id) override;
+    char *startup(item_list_t *itemList, int id) override;
+    void deleteGame(item_list_t *itemList, int id) override;
+    void rename(item_list_t *itemList, int id, char *newName) override;
+    void launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet) override;
+    void launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet) override;
+    void launch(item_list_t *itemList, int id, config_set_t *configSet) override;
+    config_set_t *config(item_list_t *itemList, int id) override;
+    int image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm) override;
+    int textId(item_list_t *itemList) override;
+    int iconId(item_list_t *itemList) override;
+    void cleanUp(item_list_t *itemList, int exception) override;
+    void shutdown(item_list_t *itemList) override;
+    int checkVmc(item_list_t *itemList, char *name, int createSize) override;
+    char *prefix(item_list_t *itemList) override;
+};
+
+static EthSource *ethInstance()
+{
+    static EthSource *instance = NULL;
+    alignas(EthSource) static unsigned char storage[sizeof(EthSource)];
+
+    if (instance == NULL)
+        instance = new (storage) EthSource();
+    return instance;
+}
+
 
 static void ethInitSMB(void)
 {
@@ -177,7 +221,7 @@ static void ethInitSMB(void)
         thmAddElements(path, "\\", 1);
 
         snprintf(path, sizeof(path), "%sLNG", ethPrefix);
-        lngAddLanguages(path, "\\", ethGameList.mode);
+        lngAddLanguages(path, "\\", (*ethInstance()).mode);
 
         sbCreateFolders(ethPrefix, 1);
     } else if (gPCShareName[0] || !(gNetworkStartup >= ERROR_ETH_SMB_OPENSHARE)) {
@@ -340,7 +384,7 @@ static void ethReconnectSMB(void)
         ethInitSMB(); // applies link/IP settings before logging on and reopening the share
 
     host::library().markDirty(ETH_MODE);
-    ioPutRequest(IO_MENU_UPDATE_DEFFERED, &ethGameList.mode);
+    ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode);
     ethReconnectQueued = 0;
 }
 
@@ -355,14 +399,14 @@ void ethRequestReconnect(void)
     if (netInitSema() < 0)
         return;
 
-    ethGameList.enabled = 1;
-    ethGameList.delay = gArtDelay;
+    (*ethInstance()).enabled = 1;
+    (*ethInstance()).delay = gArtDelay;
     ethReconnectQueued = 1;
     if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&ethReconnectSMB)) != IO_OK)
         ethReconnectQueued = 0;
 }
 
-static void ethInit(item_list_t *itemList)
+void EthSource::init(item_list_t *itemList)
 {
     if (netInitSema() < 0)
         return;
@@ -380,21 +424,21 @@ static void ethInit(item_list_t *itemList)
         ethGames = NULL;
         ethPs1GameCount = 0;
         ethPs1Games = NULL;
-        ethGameList.delay = gArtDelay;
+        (*ethInstance()).delay = gArtDelay;
         gNetworkStartup = ERROR_ETH_NOT_STARTED;
         ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&smbLoadModules));
-        ethGameList.enabled = 1;
+        (*ethInstance()).enabled = 1;
     }
 }
 
 item_list_t *ethGetObject(int initOnly)
 {
-    if (initOnly && !ethGameList.enabled)
+    if (initOnly && !(*ethInstance()).enabled)
         return NULL;
-    return &ethGameList;
+    return &(*ethInstance());
 }
 
-static int ethNeedsUpdate(item_list_t *itemList)
+int EthSource::needsUpdate(item_list_t *itemList)
 {
     int result;
 
@@ -437,7 +481,7 @@ static int ethNeedsUpdate(item_list_t *itemList)
     return result;
 }
 
-static int ethUpdateGameList(item_list_t *itemList)
+int EthSource::update(item_list_t *itemList)
 {
     int view = host::library().listViewActive(itemList);
 
@@ -533,7 +577,7 @@ int ethResolveIsoFavourite(int id, const char *name, int *outId)
     return 1;
 }
 
-static int ethGetItemView(item_list_t *itemList, int id)
+int EthSource::rowView(item_list_t *itemList, int id)
 {
     int view;
 
@@ -546,15 +590,15 @@ static int ethGetItemView(item_list_t *itemList, int id)
     return view;
 }
 
-static int ethGetSourceId(item_list_t *itemList, int id)
+int EthSource::sourceId(item_list_t *itemList, int id)
 {
     return gPCShareName[0] && host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= ethGameCount ? id - ethGameCount : id;
 }
 
 static base_game_info_t *ethGameForView(item_list_t *itemList, int id)
 {
-    int ps1 = ethGetItemView(itemList, id) == LIB_VIEW_PS1;
-    id = ethGetSourceId(itemList, id);
+    int ps1 = ethInstance()->rowView(itemList, id) == LIB_VIEW_PS1;
+    id = ethInstance()->sourceId(itemList, id);
     base_game_info_t *games = ps1 ? ethPs1Games : ethGames;
     int count = ps1 ? ethPs1GameCount : ethGameCount;
     if (games == NULL || id < 0 || id >= count)
@@ -562,7 +606,7 @@ static base_game_info_t *ethGameForView(item_list_t *itemList, int id)
     return &games[id];
 }
 
-static int ethGetGameCount(item_list_t *itemList)
+int EthSource::count(item_list_t *itemList)
 {
     int view;
 
@@ -574,18 +618,18 @@ static int ethGetGameCount(item_list_t *itemList)
                                     ethGameCount;
 }
 
-static void *ethGetGame(item_list_t *itemList, int id)
+void *EthSource::game(item_list_t *itemList, int id)
 {
     return (void *)ethGameForView(itemList, id);
 }
 
-static char *ethGetGameName(item_list_t *itemList, int id)
+char *EthSource::name(item_list_t *itemList, int id)
 {
     base_game_info_t *game = ethGameForView(itemList, id);
     return game != NULL ? game->name : const_cast<char *>("");
 }
 
-static int ethGetGameNameLength(item_list_t *itemList, int id)
+int EthSource::nameLength(item_list_t *itemList, int id)
 {
     base_game_info_t *game = ethGameForView(itemList, id);
     if (game == NULL)
@@ -593,29 +637,29 @@ static int ethGetGameNameLength(item_list_t *itemList, int id)
     return game->format != GAME_FORMAT_USBLD ? ISO_GAME_NAME_MAX + 1 : UL_GAME_NAME_MAX + 1;
 }
 
-static char *ethGetGameStartup(item_list_t *itemList, int id)
+char *EthSource::startup(item_list_t *itemList, int id)
 {
     base_game_info_t *game = ethGameForView(itemList, id);
     if (game == NULL)
         return "";
     // VCD view keys per-game data (CFG/art) off the VCD filename, not a disc ID (see sbPopulateConfig).
-    if (ethGetItemView(itemList, id) == LIB_VIEW_PS1)
+    if (rowView(itemList, id) == LIB_VIEW_PS1)
         return game->name;
     return game->startup;
 }
 
-static void ethDeleteGame(item_list_t *itemList, int id)
+void EthSource::deleteGame(item_list_t *itemList, int id)
 {
-    if (ethGetItemView(itemList, id) == LIB_VIEW_PS1)
+    if (rowView(itemList, id) == LIB_VIEW_PS1)
         return;
-    id = ethGetSourceId(itemList, id);
+    id = sourceId(itemList, id);
     sbDelete(&ethGames, ethPrefix, "\\", ethGameCount, id);
     ethULSizePrev = -2;
 }
 
-static void ethRenameGame(item_list_t *itemList, int id, char *newName)
+void EthSource::rename(item_list_t *itemList, int id, char *newName)
 {
-    if (ethGetItemView(itemList, id) == LIB_VIEW_PS1) {
+    if (rowView(itemList, id) == LIB_VIEW_PS1) {
         base_game_info_t *game = ethGameForView(itemList, id);
 
         // Rename through the row's OWN core: an Ember title is a FOLDER under EMBER/games/, a
@@ -628,7 +672,7 @@ static void ethRenameGame(item_list_t *itemList, int id, char *newName)
         }
         return;
     }
-    id = ethGetSourceId(itemList, id);
+    id = sourceId(itemList, id);
     sbRename(&ethGames, ethPrefix, "\\", ethGameCount, id, newName);
     ethULSizePrev = -2;
 }
@@ -636,7 +680,7 @@ static void ethRenameGame(item_list_t *itemList, int id, char *newName)
 // Launch a PS1/.VCD entry BY NAME via POPSTARTER over SMB (view-independent entry point: the in-view
 // menu launch below and the Favourites tab both use it). ethPrefix is static and smb: paths use '\'
 // (auto-detected by vcdSep); UNMOUNT_EXCEPTION keeps the share mounted across the IOP reset.
-static void ethLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
+void EthSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
 {
     char vcdElf[256], vcdSelector[320];
 
@@ -678,7 +722,7 @@ static void ethLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_
 
 // Ember (*.cue) launch over SMB. Mirrors bdmLaunchCue; the only SMB-specific part is that the
 // prefix already ends with its own separator, which cuesupport honours via cueSep().
-static void ethLaunchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
+void EthSource::launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
 {
     char emberElf[256], biosPath[288];
 
@@ -716,7 +760,7 @@ static void ethLaunchCue(item_list_t *itemList, const char *cueName, config_set_
     sysLaunchEmber(emberElf, cueName);
 }
 
-static void ethLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
+void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {
     int i, compatmask;
     int EnablePS2Logo = 0;
@@ -732,11 +776,11 @@ static void ethLaunchGame(item_list_t *itemList, int id, config_set_t *configSet
 
     // PS1 view (SMB): the row carries its own core, so dispatch on the ROW, not on the view.
     // A .cue row is Ember's; anything else on this list is a POPSTARTER .VCD.
-    if (gPCShareName[0] && game != NULL && (ethGetItemView(itemList, id) == LIB_VIEW_PS1)) {
+    if (gPCShareName[0] && game != NULL && (rowView(itemList, id) == LIB_VIEW_PS1)) {
         if (cueIsCueEntry(game))
-            ethLaunchCue(itemList, game->name, configSet);
+            launchCue(itemList, game->name, configSet);
         else
-            ethLaunchVcd(itemList, game->name, configSet);
+            launchVcd(itemList, game->name, configSet);
         return;
     }
 
@@ -745,9 +789,9 @@ static void ethLaunchGame(item_list_t *itemList, int id, config_set_t *configSet
         ethULSizePrev = -2;
         ethGameCount = 0;
         ethPs1GameCount = 0;
-        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &ethGameList.mode); // clear the share list
+        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode); // clear the share list
         ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&ethInitSMB));
-        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &ethGameList.mode); // reload the game list
+        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode); // reload the game list
         return;
     }
 
@@ -912,13 +956,13 @@ static void ethLaunchGame(item_list_t *itemList, int id, config_set_t *configSet
     sysLaunchLoaderElf(filename, "ETH_MODE", size_smb_cdvdman_irx, smb_cdvdman_irx, size_mcemu_irx, smb_mcemu_irx, EnablePS2Logo, compatmask);
 }
 
-static config_set_t *ethGetConfig(item_list_t *itemList, int id)
+config_set_t *EthSource::config(item_list_t *itemList, int id)
 {
     base_game_info_t *game = ethGameForView(itemList, id);
     return game != NULL ? sbPopulateConfig(game, ethPrefix, "\\") : NULL;
 }
 
-static int ethGetImage(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
+int EthSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
     char path[256];
 
@@ -934,20 +978,20 @@ static int ethGetImage(item_list_t *itemList, char *folder, int isRelative, char
     return r;
 }
 
-static int ethGetTextId(item_list_t *itemList)
+int EthSource::textId(item_list_t *itemList)
 {
     return _STR_NET_GAMES;
 }
 
-static int ethGetIconId(item_list_t *itemList)
+int EthSource::iconId(item_list_t *itemList)
 {
     return ETH_ICON;
 }
 
 // This may be called, even if ethInit() was not.
-static void ethCleanUp(item_list_t *itemList, int exception)
+void EthSource::cleanUp(item_list_t *itemList, int exception)
 {
-    if (ethGameList.enabled) {
+    if ((*ethInstance()).enabled) {
         LOG("ETHSUPPORT CleanUp\n");
 
         free(ethGames);
@@ -966,9 +1010,9 @@ static void ethCleanUp(item_list_t *itemList, int exception)
 }
 
 // This may be called, even if ethInit() was not.
-static void ethShutdown(item_list_t *itemList)
+void EthSource::shutdown(item_list_t *itemList)
 {
-    if (ethGameList.enabled) {
+    if ((*ethInstance()).enabled) {
         LOG("ETHSUPPORT Shutdown\n");
 
         free(ethGames);
@@ -990,12 +1034,12 @@ static void ethShutdown(item_list_t *itemList)
         sysShutdownDev9();
 }
 
-static int ethCheckVMC(item_list_t *itemList, char *name, int createSize)
+int EthSource::checkVmc(item_list_t *itemList, char *name, int createSize)
 {
     return sysCheckVMC(ethPrefix, "\\", name, createSize, NULL);
 }
 
-static char *ethGetPrefix(item_list_t *itemList)
+char *EthSource::prefix(item_list_t *itemList)
 {
     return ethPrefix;
 }
@@ -1005,11 +1049,6 @@ const char *ethGetSMBPrefix(void)
     return ethPrefix;
 }
 
-item_list_t ethGameList = {
-    ETH_MODE, 1, 0, 0, MENU_MIN_INACTIVE_FRAMES, ETH_MODE_UPDATE_DELAY, NULL, NULL, &ethGetTextId, &ethGetPrefix, &ethInit, &ethNeedsUpdate,
-    &ethUpdateGameList, &ethGetGameCount, &ethGetGame, &ethGetGameName, &ethGetGameNameLength, &ethGetGameStartup, &ethDeleteGame, &ethRenameGame,
-    &ethLaunchGame, &ethGetConfig, &ethGetImage, &ethCleanUp, &ethShutdown, &ethCheckVMC, &ethGetIconId, &ethLaunchVcd,
-    ITEM_VIEW_NATIVE, NULL, &ethLaunchCue, &ethGetItemView, &ethGetSourceId};
 
 int ethGetNetConfig(u8 *ip_address, u8 *netmask, u8 *gateway)
 {

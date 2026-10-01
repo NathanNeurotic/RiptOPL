@@ -1,3 +1,4 @@
+#include <new>
 #include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
@@ -16,6 +17,7 @@
 #include "include/system.h"
 #include "include/extern_irx.h"
 #include "include/cheatman.h"
+#include "include/gamesource.h"
 #include "modules/iopcore/common/cdvd_config.h"
 #include "../ee_core/include/coreconfig.h"
 #include <usbhdfsd-common.h>
@@ -95,7 +97,6 @@ constexpr int MMCE_GAMEID_POLL_US = (200 * 1000);  // 200 ms between polls -> ~3
 constexpr int MMCE_ART_ABORT_WAIT_TICKS = 500;
 
 // forward declaration
-extern item_list_t mmceGameList;
 static void mmceGetDeviceRoot(char *root, size_t size);
 // The card ROOT ("mmceN:/") is where the PS1 library folders live -- POPS/ and EMBER/ alike, exactly
 // as on every other device. mmcePrefix is NOT the root: it carries the user's configurable games
@@ -489,8 +490,51 @@ void mmceArmGameIDTransport(void)
     // shows the arm begin without this completion line localizes a wedge to the mmceman load.
     LOG("MMCESUPPORT GameID transport armed\n");
 }
+class MmceSource : public GameSource
+{
+public:
+    MmceSource()
+        : GameSource(MMCE_MODE, 2, 0, MENU_MIN_INACTIVE_FRAMES, MMCE_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_VCD | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+    {
+    }
 
-static void mmceInit(item_list_t *itemList)
+    void init(item_list_t *itemList) override;
+    int needsUpdate(item_list_t *itemList) override;
+    int update(item_list_t *itemList) override;
+    int count(item_list_t *itemList) override;
+    int rowView(item_list_t *itemList, int id) override;
+    int sourceId(item_list_t *itemList, int id) override;
+    void *game(item_list_t *itemList, int id) override;
+    char *name(item_list_t *itemList, int id) override;
+    int nameLength(item_list_t *itemList, int id) override;
+    char *startup(item_list_t *itemList, int id) override;
+    void deleteGame(item_list_t *itemList, int id) override;
+    void rename(item_list_t *itemList, int id, char *newName) override;
+    void launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet) override;
+    void launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet) override;
+    void launch(item_list_t *itemList, int id, config_set_t *configSet) override;
+    config_set_t *config(item_list_t *itemList, int id) override;
+    int image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm) override;
+    int textId(item_list_t *itemList) override;
+    int iconId(item_list_t *itemList) override;
+    void cleanUp(item_list_t *itemList, int exception) override;
+    void shutdown(item_list_t *itemList) override;
+    int checkVmc(item_list_t *itemList, char *name, int createSize) override;
+    char *prefix(item_list_t *itemList) override;
+};
+
+static MmceSource *mmceInstance()
+{
+    static MmceSource *instance = NULL;
+    alignas(MmceSource) static unsigned char storage[sizeof(MmceSource)];
+
+    if (instance == NULL)
+        instance = new (storage) MmceSource();
+    return instance;
+}
+
+
+void MmceSource::init(item_list_t *itemList)
 {
     LOG("MMCESUPPORT Init\n");
     mmcePrefix[0] = '\0';
@@ -506,23 +550,23 @@ static void mmceInit(item_list_t *itemList)
     mmceFoldersCreatedFor[0] = '\0';
     mmceFolderRetries = 0;
 
-    mmceGameList.delay = gArtDelay;
-    mmceGameList.updateDelay = MMCE_MODE_UPDATE_DELAY;
+    (*mmceInstance()).delay = gArtDelay;
+    (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
 
     mmceLoadModules();
     mmceSetPrefix();
 
-    mmceGameList.enabled = 1;
+    (*mmceInstance()).enabled = 1;
 }
 
 item_list_t *mmceGetObject(int initOnly)
 {
-    if (initOnly && !mmceGameList.enabled)
+    if (initOnly && !(*mmceInstance()).enabled)
         return NULL;
-    return &mmceGameList;
+    return &(*mmceInstance());
 }
 
-static int mmceNeedsUpdate(item_list_t *itemList)
+int MmceSource::needsUpdate(item_list_t *itemList)
 {
     static unsigned char ThemesLoaded = 0;
     static unsigned char LanguagesLoaded = 0;
@@ -535,7 +579,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
     mmceSetPrefix();
 
     if (mmcePrefix[0] == '\0') {
-        mmceGameList.updateDelay = MMCE_MODE_UPDATE_DELAY;
+        (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
         mmceFoldersCreatedFor[0] = '\0'; // card gone: recreate folders on the next (possibly different) card
         mmceFolderRetries = 0;
         // Card gone with an EMPTY failed VCD list never reaches mmceUpdateGameList's resets (this
@@ -553,7 +597,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
         return (mmceGameCount > 0 || mmcePs1GameCount > 0);
     }
 
-    mmceGameList.updateDelay = MENU_UPD_DELAY_NOUPDATE;
+    (*mmceInstance()).updateDelay = MENU_UPD_DELAY_NOUPDATE;
 
     // Register the card's THM/LNG dirs BEFORE the VCD-view early returns (#152, AndrewBento). These
     // used to sit below them, giving one realistic shot at boot: once the first list scan latches
@@ -569,7 +613,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
     }
     if (!LanguagesLoaded) {
         snprintf(path, sizeof(path), "%sLNG", mmcePrefix);
-        if (lngAddLanguages(path, "/", mmceGameList.mode) > 0)
+        if (lngAddLanguages(path, "/", (*mmceInstance()).mode) > 0)
             LanguagesLoaded = 1;
     }
 
@@ -583,7 +627,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
         return 1;
     if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1 || host::library().viewActive(itemList->mode) == LIB_VIEW_MIXED) {
         if (!mmcePs1Scanned) {
-            mmceGameList.updateDelay = MMCE_MODE_UPDATE_DELAY;
+            (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
         // A contended scan left the VCD page empty (S6): keep the ~2s refresh alive until a scan
@@ -591,7 +635,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
         // revives the manual-refresh button in the failed state.
         if (mmcePs1ScanFailed && mmcePs1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
             mmcePs1ScanRetries++;
-            mmceGameList.updateDelay = MMCE_MODE_UPDATE_DELAY;
+            (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
         if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1)
@@ -604,7 +648,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
         // then strand it with no auto-retry (the reported "all MMCE lists vanished"). Keep the ~2s
         // background retry alive until a scan populates the list -- a genuinely-empty readable card
         // sets mmceULSizePrev via *fsize, so this still quiesces once the bus is readable.
-        mmceGameList.updateDelay = MMCE_MODE_UPDATE_DELAY;
+        (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
         result = 1;
     }
 
@@ -667,7 +711,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
             // and the "retry next refresh" never happens. Mirrors the first-scan retry pattern above.
             LOG("MMCE: %s not present after sbCreateFolders -- re-arming retry (%d/%d)\n",
                 cfgPath, mmceFolderRetries, MMCE_FOLDER_RETRY_MAX);
-            mmceGameList.updateDelay = MMCE_MODE_UPDATE_DELAY;
+            (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
     }
@@ -675,7 +719,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
     return result;
 }
 
-static int mmceUpdateGameList(item_list_t *itemList)
+int MmceSource::update(item_list_t *itemList)
 {
     int view = host::library().listViewActive(itemList);
     int result = 0;
@@ -727,7 +771,7 @@ static int mmceUpdateGameList(item_list_t *itemList)
     return result;
 }
 
-static int mmceGetGameCount(item_list_t *itemList)
+int MmceSource::count(item_list_t *itemList)
 {
     int view = host::library().listViewActive(itemList);
     return view == LIB_VIEW_MIXED ? mmceGameCount + mmcePs1GameCount :
@@ -735,7 +779,7 @@ static int mmceGetGameCount(item_list_t *itemList)
                                     mmceGameCount;
 }
 
-static int mmceGetItemView(item_list_t *itemList, int id)
+int MmceSource::rowView(item_list_t *itemList, int id)
 {
     int view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
@@ -743,7 +787,7 @@ static int mmceGetItemView(item_list_t *itemList, int id)
     return view;
 }
 
-static int mmceGetSourceId(item_list_t *itemList, int id)
+int MmceSource::sourceId(item_list_t *itemList, int id)
 {
     return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= mmceGameCount ? id - mmceGameCount : id;
 }
@@ -751,8 +795,8 @@ static int mmceGetSourceId(item_list_t *itemList, int id)
 static base_game_info_t mmceEmptyGame;
 static base_game_info_t *mmceActiveGame(item_list_t *itemList, int id)
 {
-    int vcd = (mmceGetItemView(itemList, id) == LIB_VIEW_PS1);
-    id = mmceGetSourceId(itemList, id);
+    int vcd = (mmceInstance()->rowView(itemList, id) == LIB_VIEW_PS1);
+    id = mmceInstance()->sourceId(itemList, id);
     base_game_info_t *arr = vcd ? mmcePs1Games : mmceGames;
     int count = vcd ? mmcePs1GameCount : mmceGameCount;
     if (arr == NULL || id < 0 || id >= count)
@@ -760,46 +804,46 @@ static base_game_info_t *mmceActiveGame(item_list_t *itemList, int id)
     return &arr[id];
 }
 
-static void *mmceGetGame(item_list_t *itemList, int id)
+void *MmceSource::game(item_list_t *itemList, int id)
 {
     return (void *)mmceActiveGame(itemList, id);
 }
 
-static char *mmceGetGameName(item_list_t *itemList, int id)
+char *MmceSource::name(item_list_t *itemList, int id)
 {
     return mmceActiveGame(itemList, id)->name;
 }
 
-static int mmceGetGameNameLength(item_list_t *itemList, int id)
+int MmceSource::nameLength(item_list_t *itemList, int id)
 {
     base_game_info_t *g = mmceActiveGame(itemList, id);
     return ((g->format != GAME_FORMAT_USBLD) ? ISO_GAME_NAME_MAX + 1 : UL_GAME_NAME_MAX + 1);
 }
 
-static char *mmceGetGameStartup(item_list_t *itemList, int id)
+char *MmceSource::startup(item_list_t *itemList, int id)
 {
     // VCD view keys per-game data (CFG/art) off the VCD filename, not a disc ID (see sbPopulateConfig).
     base_game_info_t *g = mmceActiveGame(itemList, id);
-    if (mmceGetItemView(itemList, id) == LIB_VIEW_PS1)
+    if (rowView(itemList, id) == LIB_VIEW_PS1)
         return g->name;
     return g->startup;
 }
 
-static void mmceDeleteGame(item_list_t *itemList, int id)
+void MmceSource::deleteGame(item_list_t *itemList, int id)
 {
-    if (mmceGetItemView(itemList, id) == LIB_VIEW_PS1)
+    if (rowView(itemList, id) == LIB_VIEW_PS1)
         return; // #120: a VCD is not an ISO game -- no delete in VCD view
     if (mmceActiveGame(itemList, id) == &mmceEmptyGame)
         return;                                   // stale/invalid id: sbDelete does NOT bounds-check, so avoid an OOB/NULL deref + wrong unlink
     sbSetBrowseSub(folderGetSub(itemList->mode)); // delete inside the current subfolder, not the root
-    id = mmceGetSourceId(itemList, id);
+    id = sourceId(itemList, id);
     sbDelete(&mmceGames, mmcePrefix, "/", mmceGameCount, id);
     mmceULSizePrev = -2;
 }
 
-static void mmceRenameGame(item_list_t *itemList, int id, char *newName)
+void MmceSource::rename(item_list_t *itemList, int id, char *newName)
 {
-    if (mmceGetItemView(itemList, id) == LIB_VIEW_PS1) {
+    if (rowView(itemList, id) == LIB_VIEW_PS1) {
         base_game_info_t *game = mmceActiveGame(itemList, id);
 
         if (game == &mmceEmptyGame)
@@ -818,13 +862,13 @@ static void mmceRenameGame(item_list_t *itemList, int id, char *newName)
             mmcePs1Scanned = 0;
             mmcePs1ScanFailed = 0;
             mmcePs1ScanRetries = 0;
-            mmceGameList.updateDelay = MMCE_MODE_UPDATE_DELAY;
+            (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
         }
         return;
     }
     if (mmceActiveGame(itemList, id) == &mmceEmptyGame)
         return; // stale/invalid id (see mmceDeleteGame) -> avoid sbRename OOB
-    id = mmceGetSourceId(itemList, id);
+    id = sourceId(itemList, id);
     sbSetBrowseSub(folderGetSub(itemList->mode)); // rename inside the current subfolder, not the root
     sbRename(&mmceGames, mmcePrefix, "/", mmceGameCount, id, newName);
     mmceULSizePrev = -2;
@@ -833,7 +877,7 @@ static void mmceRenameGame(item_list_t *itemList, int id, char *newName)
 // Launch an Ember (.cue) PS1 title BY NAME -- peer of mmceLaunchVcd below. The card
 // root, where EMBER/ sits next to POPS/. None of the POPSTARTER memory-card preparation applies:
 // Ember performs no IOP reset and inherits our live driver stack, so it needs no MC-side driver.
-static void mmceLaunchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
+void MmceSource::launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
 {
     char emberElf[256], biosPath[288];
     char ps1Root[sizeof(mmcePrefix)];
@@ -884,7 +928,7 @@ static void mmceLaunchCue(item_list_t *itemList, const char *cueName, config_set
 // Launch a PS1/.VCD entry BY NAME via POPSTARTER (view-independent entry point: the in-view menu
 // launch below and the Favourites tab both use it). mmcePrefix is static; UNMOUNT_EXCEPTION keeps the
 // MMCE device mounted across the IOP reset.
-static void mmceLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
+void MmceSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
 {
     char vcdElf[256], vcdSelector[320];
     char ps1Root[sizeof(mmcePrefix)];
@@ -923,7 +967,7 @@ static void mmceLaunchVcd(item_list_t *itemList, const char *vcdName, config_set
     sysLaunchPopstarter(vcdElf, vcdSelector);
 }
 
-static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
+void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {
     int i, index, compatmask = 0;
     int EnablePS2Logo = 0;
@@ -965,12 +1009,12 @@ static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
     }
 
     // VCD view: hand off to POPSTARTER (by name) instead of the disc path below. Menu-launch only.
-    if (gAutoLaunchBDMGame == NULL && game != NULL && (mmceGetItemView(itemList, id) == LIB_VIEW_PS1)) {
+    if (gAutoLaunchBDMGame == NULL && game != NULL && (rowView(itemList, id) == LIB_VIEW_PS1)) {
         // The ROW picks the core, never the page -- both kinds share this one PS1 list.
         if (cueIsCueEntry(game))
-            mmceLaunchCue(itemList, game->name, configSet);
+            launchCue(itemList, game->name, configSet);
         else
-            mmceLaunchVcd(itemList, game->name, configSet);
+            launchVcd(itemList, game->name, configSet);
         return;
     }
 
@@ -1292,7 +1336,7 @@ static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
     sysLaunchLoaderElf(filename, "MMCE_MODE", irx_size, static_cast<void**>(irx), size_mcemu_irx, mmce_mcemu_irx, EnablePS2Logo, compatmask);
 }
 
-static config_set_t *mmceGetConfig(item_list_t *itemList, int id)
+config_set_t *MmceSource::config(item_list_t *itemList, int id)
 {
     // Config (CFG + #Format/#System/#DiscType badges) comes from the ACTIVE view's array; mmceActiveGame
     // picks it (VCD keys off the basename) and returns a safe empty entry for any stale/invalid id,
@@ -1300,7 +1344,7 @@ static config_set_t *mmceGetConfig(item_list_t *itemList, int id)
     return sbPopulateConfig(mmceActiveGame(itemList, id), mmcePrefix, "/");
 }
 
-static int mmceGetImage(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
+int MmceSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
     int r = mmceTryLoadImage(mmceArtPrimary, folder, isRelative, value, suffix, resultTex);
     // ART LIVES IN THE ART FOLDER, and nowhere else. A PS1 cover is
@@ -1310,14 +1354,14 @@ static int mmceGetImage(item_list_t *itemList, char *folder, int isRelative, cha
     return r;
 }
 
-static int mmceGetTextId(item_list_t *itemList)
+int MmceSource::textId(item_list_t *itemList)
 {
     int mode = _STR_MMCE_GAMES;
 
     return mode;
 }
 
-static int mmceGetIconId(item_list_t *itemList)
+int MmceSource::iconId(item_list_t *itemList)
 {
     int mode = MMCE_ICON;
 
@@ -1325,9 +1369,9 @@ static int mmceGetIconId(item_list_t *itemList)
 }
 
 // This may be called, even if mmceInit() was not.
-static void mmceCleanUp(item_list_t *itemList, int exception)
+void MmceSource::cleanUp(item_list_t *itemList, int exception)
 {
-    if (mmceGameList.enabled) {
+    if ((*mmceInstance()).enabled) {
         LOG("MMCESUPPORT CleanUp\n");
 
         free(mmceGames);
@@ -1341,9 +1385,9 @@ static void mmceCleanUp(item_list_t *itemList, int exception)
 }
 
 // This may be called, even if mmceInit() was not.
-static void mmceShutdown(item_list_t *itemList)
+void MmceSource::shutdown(item_list_t *itemList)
 {
-    if (mmceGameList.enabled) {
+    if ((*mmceInstance()).enabled) {
         LOG("MMCESUPPORT Shutdown\n");
 
         free(mmceGames);
@@ -1356,18 +1400,13 @@ static void mmceShutdown(item_list_t *itemList)
     // fileXioDevctl("mass:", USBMASS_DEVCTL_STOP_ALL, NULL, 0, NULL, 0);
 }
 
-static int mmceCheckVMC(item_list_t *itemList, char *name, int createSize)
+int MmceSource::checkVmc(item_list_t *itemList, char *name, int createSize)
 {
     return sysCheckVMC(mmcePrefix, "/", name, createSize, NULL);
 }
 
-static char *mmceGetPrefix(item_list_t *itemList)
+char *MmceSource::prefix(item_list_t *itemList)
 {
     return mmcePrefix;
 }
 
-item_list_t mmceGameList = {
-    MMCE_MODE, 2, 0, 0, MENU_MIN_INACTIVE_FRAMES, MMCE_MODE_UPDATE_DELAY, NULL, NULL, &mmceGetTextId, &mmceGetPrefix, &mmceInit, &mmceNeedsUpdate,
-    &mmceUpdateGameList, &mmceGetGameCount, &mmceGetGame, &mmceGetGameName, &mmceGetGameNameLength, &mmceGetGameStartup, &mmceDeleteGame, &mmceRenameGame,
-    &mmceLaunchGame, &mmceGetConfig, &mmceGetImage, &mmceCleanUp, &mmceShutdown, &mmceCheckVMC, &mmceGetIconId, &mmceLaunchVcd,
-    /* viewOverride */ 0, /* itemGetArtArchivePath */ NULL, &mmceLaunchCue, &mmceGetItemView, &mmceGetSourceId};
