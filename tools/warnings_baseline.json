@@ -1,6 +1,5 @@
 {
 "ee_core/include/coreconfig.h|-Wunused-variable": 1,
-"src/atlas.cpp|-Wsign-compare": 3,
 "src/bdmsupport.cpp|-Wsign-compare": 1,
 "src/cuesupport.cpp|-Wunused-variable": 1,
 "src/dia.cpp|-Wsign-compare": 1,
@@ -8,8 +7,7 @@
 "src/ethsupport.cpp|-Wwrite-strings": 4,
 "src/favsupport.cpp|-Wwrite-strings": 2,
 "src/fntsys.cpp|-Wsign-compare": 1,
-"src/gui.cpp|-Wmissing-declarations": 2,
-"src/gui.cpp|-Wunused-variable": 2,
+"src/guisettings.cpp|-Wunused-variable": 2,
 "src/hdd.cpp|-Wsign-compare": 1,
 "src/hddsupport.cpp|-Wmissing-declarations": 1,
 "src/hddsupport.cpp|-Wsign-compare": 4,

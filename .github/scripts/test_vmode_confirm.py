@@ -31,7 +31,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-gui = (root / 'src/gui.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+gui = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/gui.cpp', 'src/guisettings.cpp', 'src/guidialogs.cpp')).replace('\r\n', '\n')
 opl = (root / 'src/opl.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 opl_h = (root / 'include/opl.h').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
@@ -47,7 +47,7 @@ def function_text(source, signature, where):
 
 
 def define(source, name, where):
-    match = re.search(r'^#define ' + name + r'\s+(\d+)', source, re.M)
+    match = re.search(r'^(?:#define|constexpr int) ' + name + r'\s*=?\s*(\d+)', source, re.M)
     if match is None:
         failures.append('%s: #define %s not found' % (where, name))
         return '0'
@@ -77,7 +77,7 @@ enum { _STR_CFM_VMODE_CHG, _STR_BACK, _STR_CFM_VMODE_HOLD_KEEP, _STR_CFM_VMODE_R
 struct theme { void *fonts[1]; int usedHeight; u64 textColor, selTextColor; };
 static struct theme themeData;
 static struct theme *gTheme = &themeData;
-static int screenWidth = 640, screenHeight = 480, gSelectButton = KEY_CROSS;
+static int gGuiScreenWidth = 640, gGuiScreenHeight = 480, gSelectButton = KEY_CROSS;
 static const u64 gColBlack = 0, gColWhite = 1;
 
 /* Scripted input: frame f has the Accept/Back buttons down per the script. 60 fps clock. */

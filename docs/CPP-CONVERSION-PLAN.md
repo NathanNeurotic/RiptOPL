@@ -304,9 +304,16 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
 - Verification per step: clean `ps2build build`, `tools/run_tests.sh -k`, `tools/warning_gate.py build.log --check` (64 vs baseline 67),
   `tools/syntax_sweep.py` (only the pre-existing EESIO `SIOCookie.h` failure).
 
-## 15. Next
-1. **PlasmaBackground** out of `gui.cpp` (perlin tables, `guiCalcPerlin`, `guiDrawBGPlasma`, the 32x32 texture) into `src/plasma.cpp`;
-   `gui` keeps a thin wrapper. First `gui` extraction; the VU0 asm helpers move with it.
+## 15. gui.cpp split (5197 -> ~1100 lines)
+- `src/plasma.cpp` / `include/plasma.h`: `PlasmaBackground` (perlin tables, VU0 helpers, 32x32 texture; `ease()` doubles as the transition fade).
+- `src/guisettings.cpp`: the Settings shell and every `guiShow*Config` page, `guiConfirmVideoMode`. `src/guidialogs.cpp`: message box, reboot prompt,
+  deferred-IO waits, text screen, Game ID, warnings, remove-settings, cheats.
+- `src/guiqueue.cpp` / `include/guiqueue.h`: `DeferredOpQueue` (enqueue/drain under `raii::SemaLock`). `src/guiboot.cpp` / `include/guiboot.h`: `BootStatus`.
+- `include/guiint.h`: the few symbols the gui units share (`gGuiScreenWidth/Height`, `guiStartFrame/EndFrame`, `guiShow`, ...); not public API.
+- Source-scraping python tests read the union of gui.cpp + guisettings.cpp + guidialogs.cpp.
+- Still to do inside gui: notifications/RA notices, the screen-handler table, the frame watchdog as small classes.
+
+## 16. Next
 2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
 3. Phase 5 `GameSource` hierarchy (needs go-ahead; hardware testing matters most there).
 4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining

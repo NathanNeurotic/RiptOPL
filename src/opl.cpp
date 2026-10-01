@@ -4731,7 +4731,7 @@ static void miniInit(int mode)
              "Game continues after 8 seconds.",
              mode, (long)((clock() - configStart) / (CLOCKS_PER_SEC / 1000)),
              gBootDir, initialHome, configGetHomePath(), gBootHomeWhy, initialRet, ret, CONFIG_GAME,
-             globalGame != NULL && globalGame->head != NULL);
+             globalGame != NULL && globalGame->entries() != NULL);
     printf("%s\n", diagnostic);
     rmInit();
     fntInit();

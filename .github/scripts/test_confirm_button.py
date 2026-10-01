@@ -32,7 +32,7 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-gui_c = read('src/gui.cpp')
+gui_c = read('src/gui.cpp') + read('src/guisettings.cpp') + read('src/guidialogs.cpp')
 dia_c = read('src/dia.cpp')
 
 HARNESS = r'''
