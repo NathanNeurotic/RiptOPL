@@ -6,6 +6,7 @@
 
 #include "include/opl.h"
 #include "include/pad.h"
+#include "include/padmanager.h"
 #include "include/ioman.h"
 #include <libpad.h>
 #include <timer.h>
@@ -17,7 +18,6 @@
 #include <libds34usb.h>
 #endif
 
-constexpr int MAX_PADS = 4;
 
 // Cpu ticks per one milisecond
 #define CLOCKS_PER_MILISEC 147456
@@ -25,26 +25,8 @@ constexpr int MAX_PADS = 4;
 // 200 ms per repeat
 #define DEFAULT_PAD_DELAY 200
 
-struct pad_data_t
-{
-    int port, slot;
-    int state;
-    u32 paddata;
-    u32 oldpaddata;
-    struct padButtonStatus buttons;
-
-    // pad_dma_buf is provided by the user, one buf for each pad
-    // contains the pad's current state
-    char padBuf[256] __attribute__((aligned(64)));
-
-    char actAlign[6];
-    int actuators;
-    int actAligned; // padSetActAlign confirmed; see padRumbleRealign()
-    int needsInit;  // reconnect-edge re-init pending; runs once the verified-idle gate opens (see readPads)
-};
 
 /// milliseconds between the last two polls (see padPollElapsedMs)
-static u32 time_since_last = 0;
 
 // PAD FAULT DISCRIMINATOR (debug HUD). A press is 60-100 ms, i.e. 4-6 frames, so losing one means
 // the pad buffer was empty across that WHOLE span -- a single bad frame cannot do it. Two very
@@ -53,52 +35,40 @@ static u32 time_since_last = 0;
 //   padRead() returned 0        -> freepad reported NOT READY. The sample never happened. That is
 //                                  SIO2 arbitration or the IOP's pad task running late, and it is
 //                                  worth building an instrumented freepad to chase.
-//   padRead() ok, paddata == 0  -> freepad reported READY and EMPTY. The sample WAS fresh and the
+//   padRead() ok, paddata_ == 0  -> freepad reported READY and EMPTY. The sample WAS fresh and the
 //                                  button was not in it. No amount of code changes that; suspect the
 //                                  pad, cable, port or multitap.
 //
-// gPadMaxNotReadyRun is the longest consecutive run of the first; gPadReadyEmptyRun the longest run
+// maxNotReadyRun_ is the longest consecutive run of the first; gPadReadyEmptyRun the longest run
 // of the second. Whichever climbs when a press goes missing names the half of the machine at fault.
-static u32 gPadNotReadyRun = 0, gPadMaxNotReadyRun = 0;
-static u32 gPadEmptyRun = 0, gPadMaxEmptyRun = 0;
 
-void padGetFaultCounters(u32 *maxNotReady, u32 *maxReadyEmpty)
+void PadManager::faultCounters(u32 *maxNotReady, u32 *maxReadyEmpty)
 {
     if (maxNotReady)
-        *maxNotReady = gPadMaxNotReadyRun;
+        *maxNotReady = maxNotReadyRun_;
     if (maxReadyEmpty)
-        *maxReadyEmpty = gPadMaxEmptyRun;
+        *maxReadyEmpty = maxEmptyRun_;
 }
 
-static unsigned short pad_count;
-static struct pad_data_t pad_data[MAX_PADS];
 
-void padGetActuatorDiag(int *act0, int *aligned0, int *act1, int *aligned1)
+void PadManager::actuatorDiag(int *act0, int *aligned0, int *act1, int *aligned1)
 {
     if (act0)
-        *act0 = pad_data[0].actuators;
+        *act0 = padData_[0].actuators;
     if (aligned0)
-        *aligned0 = pad_data[0].actAligned;
+        *aligned0 = padData_[0].actAligned;
     if (act1)
-        *act1 = pad_data[1].actuators;
+        *act1 = padData_[1].actuators;
     if (aligned1)
-        *aligned1 = pad_data[1].actAligned;
+        *aligned1 = padData_[1].actAligned;
 }
 
 // gathered pad data
-static u32 paddata;
-static u32 oldpaddata;
 
-static int delaycnt[16];
-static int paddelay[16];
 
-// Menu rumble pulse state. Declared up here, above readPad(), because the PADEMU poll path drives
+// Menu rumble pulse state. Declared up here, above readOne(), because the PADEMU poll path drives
 // the DS3/DS4/DS5 motors directly from it -- those pads never reach padSetActDirect. The pulse
-// lifetime and timing rules live with padRumble()/padRumbleFlush() further down.
-static u32 rumbleStartTicks = 0;
-static u32 rumbleDurTicks = 0;
-static int rumbleActive = 0;
-static int rumbleLarge = 0;
+// lifetime and timing rules live with rumble()/rumbleFlush() further down.
 
 // KEY_ to PAD_ conversion table
 static const int keyToPad[17] = {
@@ -137,11 +107,11 @@ constexpr int PAD_WAIT_POLLS = 25;
 constexpr int PAD_WAIT_POLL_US = 1000;
 
 // Milliseconds of continuously VERIFIED idle -- clean, zero-input polls -- before a reconnect-edge
-// initializePad() may run (#271/#272). The init is a few hundred ms of polled waits on the GUI
+// initialize() may run (#271/#272). The init is a few hundred ms of polled waits on the GUI
 // thread, and its trigger -- freepad dropping the pad under IOP/SIO2 load -- fires exactly while
 // the user is navigating. CRITICAL: failed reads and state transitions are UNKNOWN, never evidence
-// of idleness. readPads() zeroes paddata every poll and only a successful read repopulates it, so
-// an idle clock fed by bare `paddata == 0` counts the very read starvation that flapped the pad as
+// of idleness. read() zeroes paddata_ every poll and only a successful read repopulates it, so
+// an idle clock fed by bare `paddata_ == 0` counts the very read starvation that flapped the pad as
 // a quiet user -- the init then fires over the user's next press, its own pad-bus traffic causes
 // more misses, and the loop self-sustains as a ~1 s cadence of 300-900 ms input blackouts (the USB
 // "one move per second" hardware report; master's f0b039a6/fcb00dd8 measured the same shape). The
@@ -149,12 +119,11 @@ constexpr int PAD_WAIT_POLL_US = 1000;
 // and an inter-poll gap above PAD_IDLE_MAX_CLEAN_GAP_MS breaks the run: gap time is unobserved.
 constexpr int PAD_SELF_HEAL_IDLE_MS = 1000;
 constexpr int PAD_IDLE_MAX_CLEAN_GAP_MS = 100;
-static u32 padIdleMs = 0;
 
 /*
- * waitPadReady()
+ * waitReady()
  */
-static int waitPadReady(struct pad_data_t *pad)
+int PadManager::waitReady(struct pad_data_t *pad)
 {
     int state = PAD_STATE_DISCONN;
     int polls;
@@ -171,7 +140,7 @@ static int waitPadReady(struct pad_data_t *pad)
     return state;
 };
 
-static int initializePad(struct pad_data_t *pad)
+int PadManager::initialize(struct pad_data_t *pad)
 {
     int tmp;
     int modes;
@@ -188,7 +157,7 @@ static int initializePad(struct pad_data_t *pad)
     pad->actAligned = 0;
 
     // is there any device connected to that port?
-    if (waitPadReady(pad) == PAD_STATE_DISCONN) {
+    if (waitReady(pad) == PAD_STATE_DISCONN) {
         LOG("PAD pad %d,%d not connected.\n", pad->port, pad->slot);
         return 1; // nope, don't waste your time here!
     }
@@ -245,15 +214,15 @@ static int initializePad(struct pad_data_t *pad)
     // When using MMODE_LOCK, user cant change mode with Select button
     padSetMainMode(pad->port, pad->slot, PAD_MMODE_DUALSHOCK, PAD_MMODE_LOCK);
 
-    waitPadReady(pad);
+    waitReady(pad);
     tmp = padInfoPressMode(pad->port, pad->slot);
     LOG("PAD infoPressMode: %d\n", tmp);
 
-    waitPadReady(pad);
+    waitReady(pad);
     tmp = padEnterPressMode(pad->port, pad->slot);
     LOG("PAD enterPressMode: %d\n", tmp);
 
-    waitPadReady(pad);
+    waitReady(pad);
     pad->actuators = padInfoAct(pad->port, pad->slot, -1, 0);
     LOG("PAD # of actuators: %d\n", pad->actuators);
 
@@ -265,7 +234,7 @@ static int initializePad(struct pad_data_t *pad)
         pad->actAlign[4] = 0xff;
         pad->actAlign[5] = 0xff;
 
-        waitPadReady(pad);
+        waitReady(pad);
         tmp = padSetActAlign(pad->port, pad->slot, pad->actAlign);
         pad->actAligned = (tmp != 0);
         LOG("PAD padSetActAlign: %d\n", tmp);
@@ -273,12 +242,12 @@ static int initializePad(struct pad_data_t *pad)
         LOG("PAD Did not find any actuators.\n");
     }
 
-    waitPadReady(pad);
+    waitReady(pad);
 
     return 1;
 }
 
-static void updatePadState(struct pad_data_t *pad, int state)
+void PadManager::updateState(struct pad_data_t *pad, int state)
 { // To simplify processing, monitor only Disconnected, FindCTP1 & Stable states.
     if ((state == PAD_STATE_DISCONN) || (state == PAD_STATE_STABLE) || (state == PAD_STATE_FINDCTP1))
         pad->state = state;
@@ -290,7 +259,7 @@ static void updatePadState(struct pad_data_t *pad, int state)
 // ("High") fell into `default` and came out LESS sensitive than "Medium", and index 0 ("Off") mapped
 // to a 100 deadzone that still navigated. A 128 deadzone cannot be exceeded by a 0..255 axis centred
 // at 127, and the explicit `< 128` guards below make that intent unmistakable: Off really is off.
-static u32 readLeftJoy(struct pad_data_t *pad, u32 pdata)
+u32 PadManager::readLeftJoy(struct pad_data_t *pad, u32 pdata)
 {
     u32 padData = pdata;
     int xDeadzone, yDeadzone;
@@ -352,7 +321,7 @@ static u32 readLeftJoy(struct pad_data_t *pad, u32 pdata)
 // pad's tracked state changed this poll, or when its ATTEMPTED native read failed to deliver a
 // sample. A port sitting stably disconnected attempts no read and stays clean, so an unused
 // controller slot can never hold the gate shut.
-static int readPad(struct pad_data_t *pad, int *pollClean)
+int PadManager::readOne(struct pad_data_t *pad, int *pollClean)
 {
     int rcode = 0, oldState, newState, ret, padsRead;
     u32 newpdata = 0;
@@ -360,9 +329,9 @@ static int readPad(struct pad_data_t *pad, int *pollClean)
     padsRead = 0;
     oldState = pad->state;
     newState = padGetState(pad->port, pad->slot);
-    updatePadState(pad, newState);
+    updateState(pad, newState);
     if ((oldState == PAD_STATE_DISCONN) && isPadReadyState(pad->state)) {
-        // Pad just connected. DEFER the re-init behind the verified-idle gate in readPads() rather
+        // Pad just connected. DEFER the re-init behind the verified-idle gate in read() rather
         // than running it inline: reconnect edges are DRIVEN by the read errors that cluster under
         // IOP/SIO2 load (loading mx4sio_bd, MMCE traffic, USB bulk reads), so ungated this fired
         // precisely while the user was navigating, spending the init's polled waits ON THE GUI
@@ -409,14 +378,14 @@ static int readPad(struct pad_data_t *pad, int *pollClean)
     // applies here: the level is re-asserted every frame as a side effect of polling, and drops back
     // to 0 on the first poll after the pulse expires. Both motors are driven together, matching the
     // known-good RETROLauncher behaviour.
-    // SELF-EXPIRING, deliberately: derived from elapsed ticks rather than trusting rumbleActive to
+    // SELF-EXPIRING, deliberately: derived from elapsed ticks rather than trusting rumbleActive_ to
     // have been cleared. The ds34 driver LATCHES whatever level it was last handed, so if the decay
-    // in readPads() does not run -- reordered, skipped, or the GUI thread blocked -- a stale flag
+    // in read() does not run -- reordered, skipped, or the GUI thread blocked -- a stale flag
     // would leave the motor on with nothing to stop it. Any poll that happens at all now yields 0
     // once the pulse is over.
     u8 pademuRumble = 0;
-    if (gEnableRumble && rumbleActive && (u32)(cpu_ticks() - rumbleStartTicks) < rumbleDurTicks)
-        pademuRumble = (u8)rumbleLarge;
+    if (gEnableRumble && rumbleActive_ && (u32)(cpu_ticks() - rumbleStartTicks_) < rumbleDurTicks_)
+        pademuRumble = (u8)rumbleLarge_;
 
     if (ds34bt_get_status(pad->port) & DS34BT_STATE_RUNNING) {
         ret = ds34bt_get_data(pad->port, (u8 *)&pad->buttons.btns);
@@ -440,17 +409,17 @@ static int readPad(struct pad_data_t *pad, int *pollClean)
     // a freepad-not-ready frame; a poll that read fine but carries no buttons is a fresh, EMPTY
     // sample. Runs are what matter -- a press spans 4-6 frames, so only a RUN can swallow one.
     if (padsRead == 0) {
-        gPadNotReadyRun++;
-        if (gPadNotReadyRun > gPadMaxNotReadyRun)
-            gPadMaxNotReadyRun = gPadNotReadyRun;
+        notReadyRun_++;
+        if (notReadyRun_ > maxNotReadyRun_)
+            maxNotReadyRun_ = notReadyRun_;
     } else {
-        gPadNotReadyRun = 0;
+        notReadyRun_ = 0;
         if (newpdata == 0x0) {
-            gPadEmptyRun++;
-            if (gPadEmptyRun > gPadMaxEmptyRun)
-                gPadMaxEmptyRun = gPadEmptyRun;
+            emptyRun_++;
+            if (emptyRun_ > maxEmptyRun_)
+                maxEmptyRun_ = emptyRun_;
         } else
-            gPadEmptyRun = 0;
+            emptyRun_ = 0;
     }
     if (padsRead > 0) {
         if (newpdata != 0x0) // something
@@ -464,7 +433,7 @@ static int readPad(struct pad_data_t *pad, int *pollClean)
         pad->paddata = newpdata;
 
         // merge into the global vars
-        paddata |= pad->paddata;
+        paddata_ |= pad->paddata;
     }
 
     return rcode;
@@ -475,9 +444,9 @@ static int readPad(struct pad_data_t *pad, int *pollClean)
  * @param repeat Boolean value specifying if we want initial key delay (0) or the repeat key delay (1)
  * @return the delay to the next key event
  */
-static int getKeyDelay(int id, int repeat)
+int PadManager::keyDelay(int id, int repeat)
 {
-    int delay = paddelay[id - 1];
+    int delay = paddelay_[id - 1];
 
     // if not in repeat, the delay is enlarged
     if (!repeat)
@@ -499,11 +468,9 @@ constexpr int RUMBLE_MAX_MS = 500;
 
 // Bounded delivery redundancy for actuator commands. See point 1 of the freepad note below for why
 // neither send-once nor re-send-forever is correct. Do not reduce either of these to zero.
-constexpr int RUMBLE_CMD_REPEATS = 3;  // extra deliveries after the immediate one, drained by readPads()
+constexpr int RUMBLE_CMD_REPEATS = 3;  // extra deliveries after the immediate one, drained by read()
 constexpr int RUMBLE_OFF_SYNC_SENDS = 2;  // stop commands issued synchronously, for paths readPads never drains
 
-static int rumbleOnRepeats = 0;
-static int rumbleOffRepeats = 0;
 
 /* THE TWO THINGS THAT MAKE THIS SILENT ON REAL HARDWARE, both properties of freepad.irx -- which is
    what we ship as padman (Makefile: asm/padman.c is built from $(PS2SDK)/iop/irx/freepad.irx):
@@ -517,30 +484,30 @@ static int rumbleOffRepeats = 0;
       continuous RPC stream on SIO2 -- the pad's own bus, shared with MX4SIO. Sending exactly once
       removes that traffic and reinstates both drops. So each state change is repeated over the next
       few polls and then stops: see RUMBLE_CMD_REPEATS / RUMBLE_OFF_SYNC_SENDS above, which is what
-      readPads() drains. Do NOT "optimise" either of those to zero.
+      read() drains. Do NOT "optimise" either of those to zero.
 
    2. freepad fills its actuator alignment with 0xFF on padPortOpen, and padSetActAlign is the only
       thing that overwrites it. padSetActDirect latches the bytes and returns 1 WITHOUT consulting
       the alignment -- so if padSetActAlign never ran, every send reports success and drives actuator
-      index 0xFF, i.e. nothing at all. initializePad() has five bail-outs above padSetActAlign, so
-      this is reachable; padRumbleRealign() below retries it.
+      index 0xFF, i.e. nothing at all. initialize() has five bail-outs above padSetActAlign, so
+      this is reachable; rumbleRealign() below retries it.
 
    Neither shows up in a log or a return value. Both were found the expensive way. */
 
 // Alignment confirmed for this pad. Tracked so it can be RETRIED -- never used to veto a send: an
 // earlier fork revision gated sends on this and on a padInfoAct count, and any single init hiccup
 // then killed rumble silently for the whole session.
-static void padRumbleRealign(struct pad_data_t *pad)
+void PadManager::rumbleRealign(struct pad_data_t *pad)
 {
     if (pad->actAligned)
         return;
 
-    // RECOVER THE ACTUATOR COUNT RATHER THAN TRUSTING IT. initializePad() clears actuators to 0 up
+    // RECOVER THE ACTUATOR COUNT RATHER THAN TRUSTING IT. initialize() clears actuators to 0 up
     // front -- deliberately, so a digital pad swapped into the port cannot inherit a stale count --
     // and then has FOUR `return 1` bail-outs above the padInfoAct() that would refill it. Any one of
     // them (a mode table that reads short, a pad that is not DUALSHOCK-capable on that pass, an
     // ex-id query that fails) leaves actuators==0 for the rest of the session, and both this
-    // function and padActSet() used to veto on exactly that -- so one init hiccup killed rumble
+    // function and actSet() used to veto on exactly that -- so one init hiccup killed rumble
     // permanently, with nothing logged and no way for the user to tell.
     //
     // padInfoAct() is an EE-local read of the pad buffer freepad has already DMA'd; it neither
@@ -562,13 +529,13 @@ static void padRumbleRealign(struct pad_data_t *pad)
     pad->actAlign[5] = 0xff;
 
     // No waitPadRequestComplete(): that blocks the GUI thread for up to ~150 ms, and this sits on
-    // the path readPads() drives. A refused request just retries on the next pulse -- pulses are
+    // the path read() drives. A refused request just retries on the next pulse -- pulses are
     // user-driven and seconds apart, so an unbounded lazy retry costs nothing.
     if (padSetActAlign(pad->port, pad->slot, pad->actAlign))
         pad->actAligned = 1;
 }
 
-static void padActSet(struct pad_data_t *pad, int small, int large)
+void PadManager::actSet(struct pad_data_t *pad, int small, int large)
 {
     char act[6];
 
@@ -579,7 +546,7 @@ static void padActSet(struct pad_data_t *pad, int small, int large)
     if (!isPadReadyState(pad->state))
         return;
 
-    padRumbleRealign(pad);
+    rumbleRealign(pad);
 
     // Still nothing to drive after the recovery attempt -- genuinely actuator-less pad.
     if (pad->actuators == 0)
@@ -589,55 +556,55 @@ static void padActSet(struct pad_data_t *pad, int small, int large)
     act[0] = small ? 1 : 0;        // small engine: on/off only
     act[1] = (char)(large & 0xff); // large engine: 0..255
     // Fire-and-forget: padSetActDirect latches six bytes on the IOP and returns. Deliberately NOT
-    // preceded by waitPadReady() -- that is a busy wait, and this runs on the GUI thread.
+    // preceded by waitReady() -- that is a busy wait, and this runs on the GUI thread.
     padSetActDirect(pad->port, pad->slot, act);
 }
 
 /** Stops any pulse in flight, on every pad.
- * The decay only runs from readPads(), so anything that can block the GUI thread for longer than a
+ * The decay only runs from read(), so anything that can block the GUI thread for longer than a
  * pulse has to stop the motor on the way in or it buzzes for the whole operation.
  */
 #ifdef PADEMU
-// PADEMU motors normally decay through readPad()'s per-poll drive, but unloadPads() dismantles the
-// pad stack and readPads() never runs again -- so the last non-zero level would stay latched in the
+// PADEMU motors normally decay through readOne()'s per-poll drive, but unload() dismantles the
+// pad stack and read() never runs again -- so the last non-zero level would stay latched in the
 // ds34 driver on the way out. Stop them explicitly on the same path the native actuators use.
-static void padPademuStopAll(void)
+void PadManager::pademuStopAll(void)
 {
     int i;
 
-    for (i = 0; i < pad_count; ++i) {
-        if (ds34bt_get_status(pad_data[i].port) & DS34BT_STATE_RUNNING)
-            ds34bt_set_rumble(pad_data[i].port, 0, 0);
-        if (ds34usb_get_status(pad_data[i].port) & DS34USB_STATE_RUNNING)
-            ds34usb_set_rumble(pad_data[i].port, 0, 0);
+    for (i = 0; i < padCount_; ++i) {
+        if (ds34bt_get_status(padData_[i].port) & DS34BT_STATE_RUNNING)
+            ds34bt_set_rumble(padData_[i].port, 0, 0);
+        if (ds34usb_get_status(padData_[i].port) & DS34USB_STATE_RUNNING)
+            ds34usb_set_rumble(padData_[i].port, 0, 0);
     }
 }
 #endif
 
-void padRumbleFlush(void)
+void PadManager::rumbleFlush(void)
 {
     int i, r;
 
-    if (!rumbleActive)
+    if (!rumbleActive_)
         return;
 
-    rumbleActive = 0;
-    rumbleDurTicks = 0;
-    rumbleLarge = 0;
-    rumbleOnRepeats = 0;
+    rumbleActive_ = 0;
+    rumbleDurTicks_ = 0;
+    rumbleLarge_ = 0;
+    rumbleOnRepeats_ = 0;
 
-    // A dropped stop is the expensive direction (latched motor), and unloadPads() calls this on the
-    // way out where readPads() will never run again to drain the tail. Issue the first few now, and
+    // A dropped stop is the expensive direction (latched motor), and unload() calls this on the
+    // way out where read() will never run again to drain the tail. Issue the first few now, and
     // arm the rest for the polls that follow when there are any.
     for (r = 0; r < RUMBLE_OFF_SYNC_SENDS; ++r)
-        for (i = 0; i < pad_count; ++i)
-            padActSet(&pad_data[i], 0, 0);
+        for (i = 0; i < padCount_; ++i)
+            actSet(&padData_[i], 0, 0);
 
 #ifdef PADEMU
-    padPademuStopAll();
+    pademuStopAll();
 #endif
 
-    rumbleOffRepeats = RUMBLE_CMD_REPEATS;
+    rumbleOffRepeats_ = RUMBLE_CMD_REPEATS;
 }
 
 /** Arms a rumble pulse. STATE ONLY -- issues no pad command, on purpose.
@@ -645,12 +612,12 @@ void padRumbleFlush(void)
  * ⚠ THIS IS CALLED FROM THREADS THAT MUST NEVER TOUCH SIO2. sfxPlay() calls sfxRumble() inline, and
  * sfxPlay(SFX_BD_CONNECT/DISCONNECT) is reached from bdmNeedsUpdate() on the IO WORKER. Issuing
  * padSetActDirect/padSetActAlign from there puts SIO2 traffic on the pad's own bus underneath the
- * GUI thread's readPads(), which is the documented hard-freeze mechanism (see the freepad note
+ * GUI thread's read(), which is the documented hard-freeze mechanism (see the freepad note
  * above and pad.c's bounded waits) -- observed on hardware as the console locking up the moment a
  * second USB device was hotplugged, with the motor stuck on because the poll loop that would have
  * expired the pulse never ran again.
  *
- * So the actuators are driven EXCLUSIVELY from readPads(), which owns the pad bus. Arming only sets
+ * So the actuators are driven EXCLUSIVELY from read(), which owns the pad bus. Arming only sets
  * counters; the next poll issues the command. That costs one frame of onset latency and removes the
  * cross-thread hazard entirely.
  *
@@ -658,7 +625,7 @@ void padRumbleFlush(void)
  * @param large      large (variable-speed) engine strength, 0..255; the small engine runs for the
  *                   whole pulse regardless, since it is the one that gives a crisp click
  */
-void padRumble(int durationMs, int large)
+void PadManager::rumble(int durationMs, int large)
 {
     if (durationMs <= 0)
         return;
@@ -669,23 +636,23 @@ void padRumble(int durationMs, int large)
     if (large > 255)
         large = 255;
 
-    if (rumbleActive) {
-        int strengthChanged = (rumbleLarge != large);
-        rumbleStartTicks = cpu_ticks();
-        rumbleDurTicks = (u32)durationMs * CLOCKS_PER_MILISEC;
-        rumbleLarge = large;
+    if (rumbleActive_) {
+        int strengthChanged = (rumbleLarge_ != large);
+        rumbleStartTicks_ = cpu_ticks();
+        rumbleDurTicks_ = (u32)durationMs * CLOCKS_PER_MILISEC;
+        rumbleLarge_ = large;
         if (strengthChanged)
-            rumbleOnRepeats = RUMBLE_CMD_REPEATS;
+            rumbleOnRepeats_ = RUMBLE_CMD_REPEATS;
         return;
     }
 
-    rumbleStartTicks = cpu_ticks();
-    rumbleDurTicks = (u32)durationMs * CLOCKS_PER_MILISEC;
-    rumbleActive = 1;
-    rumbleLarge = large;
+    rumbleStartTicks_ = cpu_ticks();
+    rumbleDurTicks_ = (u32)durationMs * CLOCKS_PER_MILISEC;
+    rumbleActive_ = 1;
+    rumbleLarge_ = large;
     // A new pulse cancels any stop still being repeated, or the tail would switch it back off.
-    rumbleOffRepeats = 0;
-    rumbleOnRepeats = RUMBLE_CMD_REPEATS;
+    rumbleOffRepeats_ = 0;
+    rumbleOnRepeats_ = RUMBLE_CMD_REPEATS;
 }
 
 /* Screen-transition edge freeze. During the fade the main loop polls pads but dispatches no input,
@@ -696,18 +663,17 @@ void padRumble(int durationMs, int large)
  * seeding the baseline from the transition-TRIGGERING sample on entry keeps that button from
  * replaying on the destination. A tap pressed and released entirely inside the fade remains
  * intentionally ignored. Polling itself continues (rumble timing, pad state, reconnects).
- * NOT a poll pause: pausing readPads() outright was tried and latches the pre-transition sample,
+ * NOT a poll pause: pausing read() outright was tried and latches the pre-transition sample,
  * which re-triggers handlers in a loop on arrival. */
-static int edgeBaselineFrozen = 0;
 
-void padFreezeEdgeBaseline(int freeze)
+void PadManager::freezeEdgeBaseline(int freeze)
 {
     int next = freeze ? 1 : 0;
 
-    if (next && !edgeBaselineFrozen)
-        oldpaddata = paddata; // seed with the triggering sample so it cannot replay
+    if (next && !edgeBaselineFrozen_)
+        oldpaddata_ = paddata_; // seed with the triggering sample so it cannot replay
 
-    edgeBaselineFrozen = next;
+    edgeBaselineFrozen_ = next;
 }
 
 /* Milliseconds since the previous call, for the key-repeat counters and the idle gate.
@@ -715,12 +681,12 @@ void padFreezeEdgeBaseline(int freeze)
    The difference is taken in RAW ticks, which unsigned arithmetic keeps correct across a wrap of the
    32-bit counter (about every 29.1 s), and only then converted. This used to divide each reading
    first and subtract the quotients: at the wrap the reading fell from ~29127 ms to ~0, the u32
-   difference came out near 2^32, and `delaycnt[i] -= time_since_last` in readPads() pushed every
+   difference came out near 2^32, and `delaycnt_[i] -= elapsedMs_` in read() pushed every
    held key's repeat counter UP by ~29 s, and each later wrap pushed it up again just before it ran
    out. A held direction or L1/R1 therefore stopped at a random row and stayed stopped until it was
    released (#729). The sub-millisecond remainder is carried into the next call, so
    the repeat rate keeps the old long-run accuracy instead of losing a fraction of a ms per frame. */
-static u32 padPollElapsedMs(void)
+u32 PadManager::pollElapsedMs(void)
 {
     static u32 lastTicks = 0;
     static u32 carryTicks = 0;
@@ -733,52 +699,52 @@ static u32 padPollElapsedMs(void)
 }
 
 // A held key counts down to its next repeat (getKey); a released one rearms at the initial delay.
-static void padAdvanceRepeatTimers(u32 elapsedMs)
+void PadManager::advanceRepeatTimers(u32 elapsedMs)
 {
     int i;
 
     for (i = 0; i < 16; ++i) {
-        if (getKeyPressed(i + 1))
-            delaycnt[i] -= elapsedMs;
+        if (keyPressed(i + 1))
+            delaycnt_[i] -= elapsedMs;
         else
-            delaycnt[i] = getKeyDelay(i + 1, 0);
+            delaycnt_[i] = keyDelay(i + 1, 0);
     }
 }
 
 /** polling method. Call every frame. */
-int readPads()
+int PadManager::read()
 {
     int i;
     int pollClean = 1;
 
-    if (!edgeBaselineFrozen)
-        oldpaddata = paddata;
-    paddata = 0;
+    if (!edgeBaselineFrozen_)
+        oldpaddata_ = paddata_;
+    paddata_ = 0;
 
-    time_since_last = padPollElapsedMs();
+    elapsedMs_ = pollElapsedMs();
 
     int rslt = 0;
 
-    for (i = 0; i < pad_count; ++i) {
-        rslt |= readPad(&pad_data[i], &pollClean);
+    for (i = 0; i < padCount_; ++i) {
+        rslt |= readOne(&padData_[i], &pollClean);
     }
 
     // Idle clock for the reconnect-edge self-heal gate (see PAD_SELF_HEAL_IDLE_MS). Only a clean,
     // zero-input, gap-free poll counts: misses and transitions are unknown, and an inter-poll gap
     // above the bound is unobserved time that must not be credited as a quiet user.
-    if (!pollClean || paddata || time_since_last > PAD_IDLE_MAX_CLEAN_GAP_MS)
-        padIdleMs = 0;
-    else if (padIdleMs < PAD_SELF_HEAL_IDLE_MS)
-        padIdleMs += time_since_last;
+    if (!pollClean || paddata_ || elapsedMs_ > PAD_IDLE_MAX_CLEAN_GAP_MS)
+        padIdleMs_ = 0;
+    else if (padIdleMs_ < PAD_SELF_HEAL_IDLE_MS)
+        padIdleMs_ += elapsedMs_;
 
     // Deferred reconnect re-init, decided AFTER this poll's samples -- the old shape decided before
     // them, so the press arriving with this very poll could not veto the init that then ate it.
     // One init per verified-quiet run: the reset makes the next pending pad re-earn a full quiet
     // second, so multiple reconnects cannot stack their bounded waits into one long blackout.
-    if (pollClean && !paddata && padIdleMs >= PAD_SELF_HEAL_IDLE_MS) {
-        for (i = 0; i < pad_count; ++i) {
-            if (pad_data[i].needsInit && isPadReadyState(pad_data[i].state)) {
-                pad_data[i].needsInit = 0;
+    if (pollClean && !paddata_ && padIdleMs_ >= PAD_SELF_HEAL_IDLE_MS) {
+        for (i = 0; i < padCount_; ++i) {
+            if (padData_[i].needsInit && isPadReadyState(padData_[i].state)) {
+                padData_[i].needsInit = 0;
 
                 // ONLY re-initialise a pad that actually came back in the wrong MODE. A reconnect
                 // edge says the link flapped; it does not say the pad forgot it is a DualShock. If
@@ -792,12 +758,12 @@ int readPads()
                 // which is exactly why it does not do it. The mode read is EE-local and cheap; the
                 // init behind it is the expensive part, and now it runs only when it has something
                 // to fix.
-                if (pad_data[i].actuators > 0 && padInfoMode(pad_data[i].port, pad_data[i].slot, PAD_MODECURID, 0) == PAD_TYPE_DUALSHOCK) {
-                    LOG("PAD port %d reconnect: already DualShock, skipping re-init\n", pad_data[i].port);
+                if (padData_[i].actuators > 0 && padInfoMode(padData_[i].port, padData_[i].slot, PAD_MODECURID, 0) == PAD_TYPE_DUALSHOCK) {
+                    LOG("PAD port %d reconnect: already DualShock, skipping re-init\n", padData_[i].port);
                     break;
                 }
-                padIdleMs = 0;
-                initializePad(&pad_data[i]);
+                padIdleMs_ = 0;
+                initialize(&padData_[i]);
                 break;
             }
         }
@@ -806,21 +772,21 @@ int readPads()
     // Rumble decay, plus the bounded re-send tail (see RUMBLE_CMD_REPEATS). Edge-driven: the RPC
     // stream stops after a few polls instead of running for the pulse's whole life, but a single
     // dropped padSetActDirect no longer decides whether the pulse happens -- or whether it ends.
-    if (rumbleActive) {
-        if ((u32)(cpu_ticks() - rumbleStartTicks) >= rumbleDurTicks) {
-            padRumbleFlush();
-        } else if (rumbleOnRepeats > 0) {
-            for (i = 0; i < pad_count; ++i)
-                padActSet(&pad_data[i], 1, rumbleLarge);
-            rumbleOnRepeats--;
+    if (rumbleActive_) {
+        if ((u32)(cpu_ticks() - rumbleStartTicks_) >= rumbleDurTicks_) {
+            rumbleFlush();
+        } else if (rumbleOnRepeats_ > 0) {
+            for (i = 0; i < padCount_; ++i)
+                actSet(&padData_[i], 1, rumbleLarge_);
+            rumbleOnRepeats_--;
         }
-    } else if (rumbleOffRepeats > 0) {
-        for (i = 0; i < pad_count; ++i)
-            padActSet(&pad_data[i], 0, 0);
-        rumbleOffRepeats--;
+    } else if (rumbleOffRepeats_ > 0) {
+        for (i = 0; i < padCount_; ++i)
+            actSet(&padData_[i], 0, 0);
+        rumbleOffRepeats_--;
     }
 
-    padAdvanceRepeatTimers(time_since_last);
+    advanceRepeatTimers(elapsedMs_);
 
     return rslt;
 }
@@ -829,7 +795,7 @@ int readPads()
  * @param id The button ID
  * @return nonzero if button is being pressed just now
  */
-int getKey(int id)
+int PadManager::key(int id)
 {
     if ((id <= 0) || (id >= 17))
         return 0;
@@ -838,18 +804,18 @@ int getKey(int id)
 
     // either the button was not pressed this frame, then reset counter and return
     // or it was, then handle the repetition
-    if (getKeyOn(id)) {
-        delaycnt[kid] = getKeyDelay(id, 0);
+    if (keyOn(id)) {
+        delaycnt_[kid] = keyDelay(id, 0);
         KeyPressedOnce = 1;
         DisableCron = 1;
         return 1;
     }
 
-    if (!getKeyPressed(id))
+    if (!keyPressed(id))
         return 0;
 
-    if (delaycnt[kid] <= 0) {
-        delaycnt[kid] = getKeyDelay(id, 1);
+    if (delaycnt_[kid] <= 0) {
+        delaycnt_[kid] = keyDelay(id, 1);
         KeyPressedOnce = 1;
         DisableCron = 1;
         return 1;
@@ -862,7 +828,7 @@ int getKey(int id)
  * @param id The button ID
  * @return nonzero if button is being pressed just now
  */
-int getKeyOn(int id)
+int PadManager::keyOn(int id)
 {
     if ((id <= 0) || (id >= 17))
         return 0;
@@ -870,50 +836,50 @@ int getKeyOn(int id)
     // old v.s. new pad data
     int keyid = keyToPad[id];
 
-    return (paddata & keyid) && (!(oldpaddata & keyid));
+    return (paddata_ & keyid) && (!(oldpaddata_ & keyid));
 }
 
 /** Returns true (nonzero) if the button is currently pressed
  * @param id The button ID
  * @return nonzero if button is being held
  */
-int getKeyPressed(int id)
+int PadManager::keyPressed(int id)
 {
     // old v.s. new pad data
     int keyid = keyToPad[id];
 
-    return (paddata & keyid);
+    return (paddata_ & keyid);
 }
 
 /** Sets the delay to wait for button repetition event to occur.
  * @param button The button ID
  * @param btndelay The button delay (in query count)
  */
-void setButtonDelay(int button, int btndelay)
+void PadManager::setButtonDelay(int button, int btndelay)
 {
     if ((button <= 0) || (button >= 17))
         return;
 
-    paddelay[button - 1] = btndelay;
+    paddelay_[button - 1] = btndelay;
 }
 
 /** Unloads a single pad.
  * @see unloadPads */
-static void unloadPad(struct pad_data_t *pad)
+void PadManager::unloadOne(struct pad_data_t *pad)
 {
     padPortClose(pad->port, pad->slot);
 }
 
-void unloadPadsEx(int keepIopRpc)
+void PadManager::unloadEx(int keepIopRpc)
 {
     int i;
 
     // Last chance to stop a motor. Closing the port does not clear the actuators, and OPL is on its
     // way out here -- a pulse still in flight would keep buzzing into whatever we hand off to.
-    padRumbleFlush();
+    rumbleFlush();
 
-    for (i = 0; i < pad_count; ++i)
-        unloadPad(&pad_data[i]);
+    for (i = 0; i < padCount_; ++i)
+        unloadOne(&padData_[i]);
 
     // Matching wLaunchELF_R3Z parity: on a keep-IOP handoff, keep the IOP pad server (freepad/padman)
     // live and active so the child ELF can immediately open pad ports or call padInit().
@@ -922,15 +888,15 @@ void unloadPadsEx(int keepIopRpc)
 }
 
 /** Unloads all pads. Use to terminate the usage of the pads. */
-void unloadPads()
+void PadManager::unload()
 {
-    unloadPadsEx(0);
+    unloadEx(0);
 }
 
 /** Tries to start a single pad.
  * @param pad The pad data holding structure
  * @return 0 Error, != 0 Ok */
-static int startPad(struct pad_data_t *pad)
+int PadManager::startOne(struct pad_data_t *pad)
 {
     int newState;
 
@@ -938,26 +904,26 @@ static int startPad(struct pad_data_t *pad)
         return 0;
     }
 
-    if (!initializePad(pad)) {
+    if (!initialize(pad)) {
         return 0;
     }
 
-    newState = waitPadReady(pad);
-    updatePadState(pad, newState);
+    newState = waitReady(pad);
+    updateState(pad, newState);
     return 1;
 }
 
 /** Starts all pads.
  * @return Count of dual shock compatible pads. 0 if none present. */
-int startPads()
+int PadManager::start()
 {
     // scan for pads that exist... at least one has to be present
-    pad_count = 0;
+    padCount_ = 0;
 
     // Fresh pad session -- boot, and again after the NBD server's IOP reset re-enters here
     // in-process. Stale idle credit or a stale deferred-init flag from the previous session must
-    // not queue work against the new one (startPad() below runs initializePad() itself).
-    padIdleMs = 0;
+    // not queue work against the new one (startOne() below runs initialize() itself).
+    padIdleMs_ = 0;
 
     int maxports = padGetPortMax();
 
@@ -969,43 +935,122 @@ int startPads()
 
         for (slot = 0; slot < maxslots; ++slot) {
 
-            struct pad_data_t *cpad = &pad_data[pad_count];
+            struct pad_data_t *cpad = &padData_[padCount_];
 
             cpad->port = port;
             cpad->slot = slot;
             cpad->state = PAD_STATE_DISCONN;
             cpad->needsInit = 0;
 
-            if (startPad(cpad))
-                ++pad_count;
+            if (startOne(cpad))
+                ++padCount_;
         }
 
-        if (pad_count >= MAX_PADS)
+        if (padCount_ >= MAX_PADS)
             break; // enough already!
     }
 
     int n;
     for (n = 0; n < 16; ++n) {
-        delaycnt[n] = DEFAULT_PAD_DELAY;
-        paddelay[n] = DEFAULT_PAD_DELAY;
+        delaycnt_[n] = DEFAULT_PAD_DELAY;
+        paddelay_[n] = DEFAULT_PAD_DELAY;
     }
 
-    return pad_count;
+    return padCount_;
+}
+
+void PadManager::storeSettings(int *buffer)
+{
+    int i;
+
+    for (i = 0; i < 16; i++)
+        buffer[i] = paddelay_[i];
+}
+
+
+void PadManager::restoreSettings(int *buffer)
+{
+    int i;
+
+    for (i = 0; i < 16; i++)
+        paddelay_[i] = buffer[i];
+}
+
+// ---- pad.h API ------------------------------------------------------------------------------
+
+static PadManager gPads;
+
+void padGetFaultCounters(u32 *maxNotReady, u32 *maxReadyEmpty)
+{
+    gPads.faultCounters(maxNotReady, maxReadyEmpty);
+}
+
+void padGetActuatorDiag(int *act0, int *aligned0, int *act1, int *aligned1)
+{
+    gPads.actuatorDiag(act0, aligned0, act1, aligned1);
+}
+
+int readPads()
+{
+    return gPads.read();
+}
+
+int getKey(int id)
+{
+    return gPads.key(id);
+}
+
+int getKeyOn(int id)
+{
+    return gPads.keyOn(id);
+}
+
+int getKeyPressed(int id)
+{
+    return gPads.keyPressed(id);
+}
+
+void setButtonDelay(int button, int btndelay)
+{
+    gPads.setButtonDelay(button, btndelay);
+}
+
+void unloadPadsEx(int keepIopRpc)
+{
+    gPads.unloadEx(keepIopRpc);
+}
+
+void unloadPads()
+{
+    gPads.unload();
+}
+
+int startPads()
+{
+    return gPads.start();
 }
 
 void padStoreSettings(int *buffer)
 {
-    int i;
-
-    for (i = 0; i < 16; i++)
-        buffer[i] = paddelay[i];
+    gPads.storeSettings(buffer);
 }
-
 
 void padRestoreSettings(int *buffer)
 {
-    int i;
+    gPads.restoreSettings(buffer);
+}
 
-    for (i = 0; i < 16; i++)
-        paddelay[i] = buffer[i];
+void padFreezeEdgeBaseline(int freeze)
+{
+    gPads.freezeEdgeBaseline(freeze);
+}
+
+void padRumble(int durationMs, int large)
+{
+    gPads.rumble(durationMs, large);
+}
+
+void padRumbleFlush(void)
+{
+    gPads.rumbleFlush();
 }

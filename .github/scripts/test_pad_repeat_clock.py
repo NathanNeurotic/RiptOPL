@@ -53,18 +53,18 @@ if key_table is None:
     failures.append('src/core/pad.c: keyToPad table not found')
 
 functions = ''.join(function_text(pad, sig) for sig in (
-    'static int getKeyDelay(',
-    'static u32 padPollElapsedMs(',
-    'static void padAdvanceRepeatTimers(',
-    'int getKey(',
-    'int getKeyOn(',
-    'int getKeyPressed(',
+    'int PadManager::keyDelay(',
+    'u32 PadManager::pollElapsedMs(',
+    'void PadManager::advanceRepeatTimers(',
+    'int PadManager::key(',
+    'int PadManager::keyOn(',
+    'int PadManager::keyPressed(',
 ))
 
 # readPads must take its elapsed time from the wrap-safe clock and hand it to the repeat counters.
-reads = function_text(pad, 'int readPads(')
-if 'time_since_last = padPollElapsedMs();' not in reads or 'padAdvanceRepeatTimers(time_since_last);' not in reads:
-    failures.append('readPads: must use padPollElapsedMs() and padAdvanceRepeatTimers(time_since_last)')
+reads = function_text(pad, 'int PadManager::read(')
+if 'elapsedMs_ = pollElapsedMs();' not in reads or 'advanceRepeatTimers(elapsedMs_);' not in reads:
+    failures.append('PadManager::read: must use pollElapsedMs() and advanceRepeatTimers(elapsedMs_)')
 if re.search(r'cpu_ticks\(\)\s*/\s*CLOCKS_PER_MILISEC', pad):
     failures.append('src/core/pad.c: a cpu_ticks() reading is divided before it is subtracted (wraps every ~29 s)')
 
@@ -99,15 +99,26 @@ typedef uint64_t u64;
 static u32 fakeTicks;
 static u32 cpu_ticks(void) { return fakeTicks; }
 
-static u32 paddata, oldpaddata;
-static int delaycnt[16], paddelay[16];
 static int KeyPressedOnce, DisableCron;
 
-@TABLE@
+/* The members the extracted functions touch, with the declarations the real class gives them. */
+class PadManager
+{
+public:
+    int key(int id);
+    int keyOn(int id);
+    int keyPressed(int id);
+    int keyDelay(int id, int repeat);
+    u32 pollElapsedMs(void);
+    void advanceRepeatTimers(u32 elapsedMs);
 
-int getKey(int id);
-int getKeyOn(int id);
-int getKeyPressed(int id);
+    u32 elapsedMs_ = 0;
+    u32 paddata_ = 0, oldpaddata_ = 0;
+    int delaycnt_[16] = {}, paddelay_[16] = {};
+};
+static PadManager pm;
+
+@TABLE@
 
 @FUNCTIONS@
 
@@ -129,11 +140,11 @@ static int failures;
 static int poll(double nowMs, u64 startTicks, int held, int useOld)
 {
     fakeTicks = (u32)(startTicks + (u64)(nowMs * CLOCKS_PER_MILISEC));
-    oldpaddata = paddata;
-    paddata = held ? PAD_R1 : 0;
-    u32 elapsed = useOld ? oldPollElapsedMs() : padPollElapsedMs();
-    padAdvanceRepeatTimers(elapsed);
-    return getKey(KEY_R1);
+    pm.oldpaddata_ = pm.paddata_;
+    pm.paddata_ = held ? PAD_R1 : 0;
+    u32 elapsed = useOld ? oldPollElapsedMs() : pm.pollElapsedMs();
+    pm.advanceRepeatTimers(elapsed);
+    return pm.key(KEY_R1);
 }
 
 /* Hold R1 for holdMs starting secondsBeforeWrap before the counter wraps. Returns the longest gap
@@ -178,7 +189,7 @@ int main(void)
     int i, n;
 
     for (i = 0; i < 16; i++)
-        delaycnt[i] = paddelay[i] = DEFAULT_PAD_DELAY;
+        pm.delaycnt_[i] = pm.paddelay_[i] = DEFAULT_PAD_DELAY;
 
     for (i = 0; i < (int)(sizeof(before) / sizeof(before[0])); i++) {
         double worst = holdR1(before[i], holdMs, 0, &n);
@@ -205,10 +216,10 @@ int main(void)
         double t = 0;
         u64 sum = 0;
         fakeTicks = (u32)startTicks;
-        padPollElapsedMs();
+        pm.pollElapsedMs();
         for (t = FRAME_MS; t < 600000.0; t += FRAME_MS) {
             fakeTicks = (u32)(startTicks + (u64)(t * CLOCKS_PER_MILISEC));
-            sum += padPollElapsedMs();
+            sum += pm.pollElapsedMs();
         }
         double real = t - FRAME_MS;
         printf("10 min of polls: %llu ms counted, %.1f ms real\n", (unsigned long long)sum, real);
@@ -250,10 +261,10 @@ if not failures:
 
 if not failures:
     with tempfile.TemporaryDirectory() as tmp:
-        c_file = Path(tmp) / 'pad_clock.c'
+        c_file = Path(tmp) / 'pad_clock.cpp'
         exe = Path(tmp) / ('pad_clock.exe' if sys.platform == 'win32' else 'pad_clock')
         c_file.write_text(source, encoding='utf-8')
-        build = subprocess.run(['cc', '-std=gnu99', '-O1', '-Wall', '-Wextra', '-Werror',
+        build = subprocess.run(['g++', '-std=gnu++17', '-O1', '-Wall', '-Wextra', '-Werror',
                                 '-Wno-unused-function', str(c_file), '-o', str(exe)],
                                capture_output=True, text=True)
         if build.returncode != 0:
