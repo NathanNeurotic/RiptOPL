@@ -15,7 +15,7 @@
  */
 
 /// DTV 576 Progressive Scan (720x576). Not available in ROM v1.70 and earlier.
-#define GS_MODE_DTV_576P  0x53
+#define GS_MODE_DTV_576P 0x53
 /// DTV 1080 Progressive Scan (1920x1080). GSM-synthetic mode (no ROM SetGsCrt support): the ee_core
 /// DTV_1080P handler builds the hardware-tested, non-standard raster itself; the GUI triple-confirms it.
 constexpr int GS_MODE_DTV_1080P = 0x54;

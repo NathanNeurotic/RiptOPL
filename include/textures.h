@@ -129,7 +129,7 @@ enum INTERNAL_TEXTURE {
     TEXTURES_COUNT
 };
 
-constexpr int ERR_BAD_FILE = -1;  // open() failed = the file is not there (genuine absence)
+constexpr int ERR_BAD_FILE = -1; // open() failed = the file is not there (genuine absence)
 constexpr int ERR_READ_STRUCT = -2;
 constexpr int ERR_INFO_STRUCT = -3;
 constexpr int ERR_SET_JMP = -4;

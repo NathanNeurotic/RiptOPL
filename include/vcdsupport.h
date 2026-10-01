@@ -15,9 +15,9 @@
 #include "include/iosupport.h"
 #include "include/supportbase.h" // base_game_info_t (for vcdFillGameList)
 
-constexpr int VCD_NAME_MAX = 256;  // VCD basename without ".VCD" (incl NUL); becomes the selector game name
-constexpr int VCD_ID_MAX = 16;  // optional extracted PS1 disc ID, e.g. "SCUS_123.45"
-constexpr int VCD_MAX_ITEMS = 2048;  // hard cap on VCDs scanned from one folder
+constexpr int VCD_NAME_MAX = 256;   // VCD basename without ".VCD" (incl NUL); becomes the selector game name
+constexpr int VCD_ID_MAX = 16;      // optional extracted PS1 disc ID, e.g. "SCUS_123.45"
+constexpr int VCD_MAX_ITEMS = 2048; // hard cap on VCDs scanned from one folder
 
 // POPStarter access-type prefix, prepended to the selector .ELF token per device class.
 #define VCD_PREFIX_MASS "XX." // USB / MX4SIO / iLink (local block devices)

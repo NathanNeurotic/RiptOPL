@@ -22,18 +22,18 @@ constexpr int GSM_ARGS = 1;
 
 constexpr u64 makeSMODE1(u64 VHP, u64 VCKSEL, u64 SLCK2, u64 NVCK, u64 CLKSEL, u64 PEVS, u64 PEHS, u64 PVS, u64 PHS, u64 GCONT, u64 SPML, u64 PCK2, u64 XPCK, u64 SINT, u64 PRST, u64 EX, u64 CMOD, u64 SLCK, u64 T1248, u64 LC, u64 RC)
 {
-    return (u64)(((u64)(VHP) << 36) | ((u64)(VCKSEL) << 34) | ((u64)(SLCK2) << 33) |                                                                  
-          ((u64)(NVCK) << 32) | ((u64)(CLKSEL) << 30) | ((u64)(PEVS) << 29) |                                                                  
-          ((u64)(PEHS) << 28) | ((u64)(PVS) << 27) | ((u64)(PHS) << 26) |                                                                      
-          ((u64)(GCONT) << 25) | ((u64)(SPML) << 21) | ((u64)(PCK2) << 19) |                                                                   
-          ((u64)(XPCK) << 18) | ((u64)(SINT) << 17) | ((u64)(PRST) << 16) |                                                                    
-          ((u64)(EX) << 15) | ((u64)(CMOD) << 13) | ((u64)(SLCK) << 12) |                                                                      
-          ((u64)(T1248) << 10) | ((u64)(LC) << 3) | ((u64)(RC) << 0));
+    return (u64)(((u64)(VHP) << 36) | ((u64)(VCKSEL) << 34) | ((u64)(SLCK2) << 33) |
+                 ((u64)(NVCK) << 32) | ((u64)(CLKSEL) << 30) | ((u64)(PEVS) << 29) |
+                 ((u64)(PEHS) << 28) | ((u64)(PVS) << 27) | ((u64)(PHS) << 26) |
+                 ((u64)(GCONT) << 25) | ((u64)(SPML) << 21) | ((u64)(PCK2) << 19) |
+                 ((u64)(XPCK) << 18) | ((u64)(SINT) << 17) | ((u64)(PRST) << 16) |
+                 ((u64)(EX) << 15) | ((u64)(CMOD) << 13) | ((u64)(SLCK) << 12) |
+                 ((u64)(T1248) << 10) | ((u64)(LC) << 3) | ((u64)(RC) << 0));
 }
 constexpr u64 makeSYNCH1(u64 HS, u64 HSVS, u64 HSEQ, u64 HBP, u64 HFP)
 {
-    return (u64)(((u64)(HS) << 43) | ((u64)(HSVS) << 32) | ((u64)(HSEQ) << 22) | 
-          ((u64)(HBP) << 11) | ((u64)(HFP) << 0));
+    return (u64)(((u64)(HS) << 43) | ((u64)(HSVS) << 32) | ((u64)(HSEQ) << 22) |
+                 ((u64)(HBP) << 11) | ((u64)(HFP) << 0));
 }
 constexpr u64 makeSYNCH2(u64 HB, u64 HF)
 {
@@ -41,13 +41,13 @@ constexpr u64 makeSYNCH2(u64 HB, u64 HF)
 }
 constexpr u64 makeSYNCV(u64 VS, u64 VDP, u64 VBPE, u64 VBP, u64 VFPE, u64 VFP)
 {
-    return (u64)(((u64)(VS) << 53) | ((u64)(VDP) << 42) | ((u64)(VBPE) << 32) | 
-          ((u64)(VBP) << 20) | ((u64)(VFPE) << 10) | ((u64)(VFP) << 0));
+    return (u64)(((u64)(VS) << 53) | ((u64)(VDP) << 42) | ((u64)(VBPE) << 32) |
+                 ((u64)(VBP) << 20) | ((u64)(VFPE) << 10) | ((u64)(VFP) << 0));
 }
 constexpr u64 makeDISPLAY(u64 DH, u64 DW, u64 MAGV, u64 MAGH, u64 DY, u64 DX)
 {
-    return (u64)(((u64)(DH) << 44) | ((u64)(DW) << 32) | ((u64)(MAGV) << 27) | 
-          ((u64)(MAGH) << 23) | ((u64)(DY) << 12) | ((u64)(DX) << 0));
+    return (u64)(((u64)(DH) << 44) | ((u64)(DW) << 32) | ((u64)(MAGV) << 27) |
+                 ((u64)(MAGH) << 23) | ((u64)(DY) << 12) | ((u64)(DX) << 0));
 }
 
 typedef struct predef_vmode_struct

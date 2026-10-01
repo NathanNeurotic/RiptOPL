@@ -126,8 +126,8 @@ struct cdvdman_settings_mmce
     int use_alarms;
 } __attribute__((packed));
 
-#define CDVDMAN_SETTINGS_DEFAULT_COMMON                    \
-    {                                                      \
+#define CDVDMAN_SETTINGS_DEFAULT_COMMON                                      \
+    {                                                                        \
         0x68, 0x68, 0x1234, 0x39393939, {'D', 'S', 'K', 'I', 'D'}, 16, 8, 16 \
     }
 #define CDVDMAN_SETTINGS_DEFAULT_HDD 0x12345678

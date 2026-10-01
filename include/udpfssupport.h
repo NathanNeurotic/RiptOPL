@@ -6,7 +6,7 @@
 // Reuse ETH's refresh cadence: this is a network filesystem, so the same slow-poll delay applies.
 #define UDPFS_MODE_UPDATE_DELAY 300
 
-int udpfsGetModulesLoaded(void);       // 1 if the UDPFS ioman NIC stack is loaded (SMB/UDPBD must not load on top).
+int udpfsGetModulesLoaded(void); // 1 if the UDPFS ioman NIC stack is loaded (SMB/UDPBD must not load on top).
 // Explicit-loader helper: synchronously load the UDPFS filesystem stack and wait briefly for the
 // server-backed root to answer. Fails closed if SMB/UDPBD already owns the NIC.
 int udpfsEnsureReady(u32 timeoutMs);

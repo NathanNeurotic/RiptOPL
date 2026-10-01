@@ -39,12 +39,12 @@
 constexpr int MAX_HOOKS = 5;
 constexpr int MAX_CODES = 250;
 constexpr int MAX_CHEATLIST = (MAX_HOOKS * 2 + MAX_CODES * 2);
-constexpr int MAX_IMAGEWORDS = 1024;  // prebuilt PS2RD cheat image (.img): up to 4 KB of u32 patch words
+constexpr int MAX_IMAGEWORDS = 1024; // prebuilt PS2RD cheat image (.img): up to 4 KB of u32 patch words
 constexpr int CHEAT_NAME_MAX = 128;
 
 /* Some character defines */
-#define NUL         0x00
-#define LF          0x0A
+#define NUL 0x00
+#define LF  0x0A
 constexpr int CR = 0x0D;
 constexpr int SPACE = 0x20;
 /* Number of digits per cheat code */

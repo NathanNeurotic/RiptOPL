@@ -174,7 +174,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install ps2build + SDK
-        uses: https://git.techwritescode.dev/ps2/setup-sdk@master
+        uses: NathanNeurotic/setup-sdk@master # GitHub mirror of git.techwritescode.dev/ps2/setup-sdk (GitHub cannot `uses:` another host)
         with:
           ps2dev: ${{ github.workspace }}/.ps2dev
 

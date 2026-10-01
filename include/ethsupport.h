@@ -15,9 +15,9 @@ typedef struct
     vmc_spec_t specs; /* Card specifications */
 } smb_vmc_infos_t;
 
-void ethDeinitModules(void);         // Module-only deinitialization, without the GUI's knowledge (for specific reasons, otherwise unused).
-int ethLoadInitModules(void);        // Initializes Ethernet and applies configuration.
-int ethGetModulesLoaded(void);       // 1 if the SMB NIC stack is loaded (UDPBD must not load on top).
+void ethDeinitModules(void);   // Module-only deinitialization, without the GUI's knowledge (for specific reasons, otherwise unused).
+int ethLoadInitModules(void);  // Initializes Ethernet and applies configuration.
+int ethGetModulesLoaded(void); // 1 if the SMB NIC stack is loaded (UDPBD must not load on top).
 // True only after OPENSHARE succeeded and the active smb0: prefix is usable. This is deliberately
 // stronger than "Network Protocol == SMB": callers must not turn a read-only import into a long
 // connection attempt or consume stale saved values.
