@@ -303,8 +303,8 @@ def check_pins():
           'ioInit: after a refused autolaunch, wait (uncapped) for the old worker before reusing its stack')
 
     config = text('src/config.cpp')
-    free_body = function_text(config, 'void configFree(')
-    check(free_body is not None and re.search(r'if \(configSet == NULL\)\s*return;', free_body),
+    free_body = function_text(config, 'void ConfigSet::destroy(')
+    check(free_body is not None and re.search(r'if \((?:configSet|set) == NULL\)\s*return;', free_body),
           'configFree: miniDeinit(NULL) needs a NULL-safe configFree')
     read = function_text(config, 'int configRead(')
     official = read[read.find('CONFIG_OPL_FILENAME_OFFICIAL'):] if read else ''
@@ -312,7 +312,7 @@ def check_pins():
           'configMove(' not in official[:official.find('if (!fileBuffer)')],
           'configRead: the official conf_opl.cfg seed must never re-home the set onto official\'s file')
     translate = function_text(config, 'static void configTranslateOfficialOpl(')
-    check(translate is not None and 'ETH_MODE + (device - 5)' in translate and 'modified = 0' in translate,
+    check(translate is not None and 'ETH_MODE + (device - 5)' in translate and 'clearModified()' in translate,
           'configTranslateOfficialOpl: official default_device 5/6/7 must map to ETH/HDD/APP')
     # RiptOPL settings carried over from the APA home outrank official's seed, and neither re-homes the
     # set: the first save must land in the current (exFAT) home, not back on APA.
@@ -358,7 +358,7 @@ def check_pins():
           'hddReleaseSupportHome: must unmount pfs0: and forget the data partition')
     multi = function_text(config, 'int configReadMulti(')
     check(multi is not None and
-          'configPrepareLoadNotification(configOplCarryOver ? configCarryOverDir : configSet->filename);' in multi,
+          'configPrepareLoadNotification(configOplCarryOver ? configCarryOverDir : configSet->filename());' in multi,
           'configReadMulti: the load toast must name the carry-over home when settings came from there')
     toast = function_text(text('src/gui.cpp'), 'static void guiShowNotifications(')
     check(toast is not None and

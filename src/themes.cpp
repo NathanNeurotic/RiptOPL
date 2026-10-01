@@ -589,9 +589,9 @@ static void drawGameCountText(struct menu_list *menu, struct submenu_list *item,
     mutable_text_t *mutableText = (mutable_text_t *)elem->extended;
 
     if (config) {
-        if (mutableText->currentConfigId != config->uid) {
+        if (mutableText->currentConfigId != config->uid()) {
             // force refresh
-            mutableText->currentConfigId = config->uid;
+            mutableText->currentConfigId = config->uid();
 
             int count = getGameCount(menu->item->userdata);
             snprintf(mutableText->value, sizeof(char) * 60, _l(_STR_FILE_COUNT), count);
@@ -634,9 +634,9 @@ static void drawAttributeText(struct menu_list *menu, struct submenu_list *item,
         return;
     mutable_text_t *mutableText = (mutable_text_t *)elem->extended;
     if (config) {
-        if (mutableText->currentConfigId != config->uid) {
+        if (mutableText->currentConfigId != config->uid()) {
             // force refresh
-            mutableText->currentConfigId = config->uid;
+            mutableText->currentConfigId = config->uid();
             mutableText->currentValue = NULL;
             if (configGetStr(config, mutableText->value, (const char **)&mutableText->currentValue)) {
                 if ((mutableText->sizingMode == SIZING_WRAP) && mutableText->currentValue) {
@@ -1886,12 +1886,12 @@ static void drawAttributeImage(struct menu_list *menu, struct submenu_list *item
         return;
     mutable_image_t *attributeImage = (mutable_image_t *)elem->extended;
     if (config) {
-        if (attributeImage->currentConfigId != config->uid) {
+        if (attributeImage->currentConfigId != config->uid()) {
             // A -2 cache id is a genuine-absence memo for the old value. Clear
             // both identity fields before switching to the new attribute.
             attributeImage->currentCacheId = -1;
             attributeImage->currentUid = -1;
-            attributeImage->currentConfigId = config->uid;
+            attributeImage->currentConfigId = config->uid();
             attributeImage->currentValue = NULL;
             configGetStr(config, attributeImage->cache->suffix, (const char **)&attributeImage->currentValue);
         }

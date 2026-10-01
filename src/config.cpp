@@ -11,6 +11,7 @@
 #include "include/ioman.h"
 #include "include/sound.h"
 #include <string.h>
+#include <new> // placement new
 #include <ctype.h> // isalpha/isalnum -- libconfig identifier grammar in cfgIsLibconfigIdent
 #include <errno.h>
 
@@ -226,9 +227,9 @@ static int configKeyValidate(const char *key)
     return !strchr(key, '=');
 }
 
-static struct config_value_t *allocConfigItem(const char *key, const char *val)
+static config_value_t *allocConfigItem(const char *key, const char *val)
 {
-    struct config_value_t *it = (struct config_value_t *)malloc(sizeof(struct config_value_t));
+    config_value_t *it = static_cast<config_value_t *>(malloc(sizeof(config_value_t)));
     if (it == NULL)
         return NULL;
     strncpy(it->key, key, sizeof(it->key));
@@ -241,32 +242,317 @@ static struct config_value_t *allocConfigItem(const char *key, const char *val)
 }
 
 /// Low level key addition. Does not check for uniqueness.
-static void addConfigValue(config_set_t *configSet, const char *key, const char *val)
+void ConfigSet::append(const char *key, const char *val)
 {
-    if (!configSet->tail) {
-        configSet->head = allocConfigItem(key, val);
-        configSet->tail = configSet->head;
+    config_value_t *it = allocConfigItem(key, val);
+    if (it == NULL)
+        return;
+    if (!tail_)
+        head_ = it;
+    else
+        tail_->next = it;
+    tail_ = it;
+}
+
+config_value_t *ConfigSet::find(const char *name) const
+{
+    for (config_value_t *val = head_; val; val = val->next) {
+        if (strncmp(val->key, name, sizeof(val->key)) == 0)
+            return val;
+    }
+    return NULL;
+}
+
+void ConfigSet::freeEntries()
+{
+    while (head_) {
+        config_value_t *cur = head_;
+        head_ = cur->next;
+        free(cur);
+    }
+    tail_ = NULL;
+}
+
+bool ConfigSet::init(int type, const char *fileName, u32 uid)
+{
+    type_ = type;
+    uid_ = uid;
+    head_ = NULL;
+    tail_ = NULL;
+    filename_ = NULL;
+    modified_ = 0;
+    // A set with no file on disk yet defaults to OUR format: it is the interoperable one (OPL,
+    // OPL-Launcher, SAS and XMB all read it), so a NEW file should never be born libconfig. A file
+    // that already exists overwrites this in configReadFileBuffer from what is actually on disk.
+    format_ = CFG_FMT_LEGACY;
+    if (fileName) {
+        size_t length = strlen(fileName) + 1;
+        filename_ = static_cast<char *>(malloc(length));
+        if (!filename_)
+            return false;
+        memcpy(filename_, fileName, length);
+    }
+    return true;
+}
+
+void ConfigSet::release()
+{
+    freeEntries();
+    free(filename_);
+    filename_ = NULL;
+}
+
+ConfigSet *ConfigSet::create(int type, const char *fileName, u32 uid)
+{
+    void *mem = malloc(sizeof(ConfigSet));
+    if (!mem)
+        return NULL;
+    ConfigSet *set = new (mem) ConfigSet();
+    if (!set->init(type, fileName, uid)) {
+        free(mem);
+        return NULL;
+    }
+    return set;
+}
+
+void ConfigSet::destroy(ConfigSet *set)
+{
+    // Every early autolaunch bail-out calls miniDeinit(NULL): NULL must stay a no-op.
+    if (set == NULL)
+        return;
+    set->clear();
+    set->release();
+    free(set);
+}
+
+// Deep copy into a fresh standalone (heap) set with its own uid. Faithfully copies every entry,
+// including the runtime '#'-prefixed keys (Format/Startup/Size) the launch path needs.
+ConfigSet *ConfigSet::clone(u32 uid) const
+{
+    ConfigSet *dst = create(type_, filename_, uid);
+    if (dst == NULL)
+        return NULL;
+    for (const config_value_t *it = head_; it != NULL; it = it->next)
+        dst->append(it->key, it->val);
+    dst->modified_ = 0;
+    return dst;
+}
+
+bool ConfigSet::rename(const char *fileName)
+{
+    size_t length = strlen(fileName) + 1;
+    // Use a temporary so a failed realloc doesn't clobber (and leak) the old pointer
+    char *tmp = static_cast<char *>(realloc(filename_, length));
+    if (!tmp)
+        return false;
+    filename_ = tmp;
+    memcpy(filename_, fileName, length);
+    return true;
+}
+
+void ConfigSet::clear()
+{
+    freeEntries();
+    modified_ = 1;
+}
+
+int ConfigSet::setStr(const char *key, const char *value)
+{
+    if (!configKeyValidate(key))
+        return 0;
+
+    config_value_t *it = find(key);
+
+    if (it) {
+        if (strncmp(it->val, value, sizeof(it->val)) != 0) {
+            strncpy(it->val, value, sizeof(it->val));
+            it->val[sizeof(it->val) - 1] = '\0';
+            if (it->key[0] != '#')
+                modified_ = 1;
+        }
     } else {
-        struct config_value_t *it = allocConfigItem(key, val);
-        if (it != NULL) {
-            configSet->tail->next = it;
-            configSet->tail = it;
+        append(key, value);
+        if (key[0] != '#')
+            modified_ = 1;
+    }
+
+    return 1;
+}
+
+// sets the value to point to the value str in the config. Do not overwrite - it will overwrite the string in config
+int ConfigSet::getStr(const char *key, const char **value) const
+{
+    if (!configKeyValidate(key))
+        return 0;
+
+    config_value_t *it = find(key);
+    if (!it)
+        return 0;
+    *value = it->val;
+    return 1;
+}
+
+int ConfigSet::getStrCopy(const char *key, char *value, int length) const
+{
+    const char *valref = NULL;
+    if (getStr(key, &valref)) {
+        strncpy(value, valref, length);
+        value[length - 1] = '\0';
+        return 1;
+    }
+    value[0] = '\0';
+    return 0;
+}
+
+int ConfigSet::setInt(const char *key, int value)
+{
+    char tmp[12];
+    snprintf(tmp, sizeof(tmp), "%d", value);
+    return setStr(key, tmp);
+}
+
+int ConfigSet::getInt(const char *key, int *value) const
+{
+    const char *valref = NULL;
+    if (getStr(key, &valref)) {
+        *value = atoi(valref);
+        return 1;
+    }
+    return 0;
+}
+
+int ConfigSet::setColor(const char *key, const unsigned char *color)
+{
+    char tmp[8];
+    snprintf(tmp, sizeof(tmp), "#%02X%02X%02X", color[0], color[1], color[2]);
+    return setStr(key, tmp);
+}
+
+int ConfigSet::getColor(const char *key, unsigned char *color) const
+{
+    const char *valref = NULL;
+    if (getStr(key, &valref)) {
+        strToColor(valref, color);
+        return 1;
+    }
+    return 0;
+}
+
+int ConfigSet::removeKey(const char *key)
+{
+    if (!configKeyValidate(key))
+        return 0;
+
+    config_value_t *val = head_;
+    config_value_t *prev = NULL;
+
+    while (val) {
+        if (strncmp(val->key, key, sizeof(val->key)) == 0) {
+            if (key[0] != '#')
+                modified_ = 1;
+
+            if (val == tail_)
+                tail_ = prev;
+
+            config_value_t *next = val->next;
+            free(val);
+            if (prev)
+                prev->next = next;
+            else
+                head_ = next;
+            val = next;
+        } else {
+            prev = val;
+            val = val->next;
+        }
+    }
+
+    return 1;
+}
+
+void ConfigSet::merge(const ConfigSet &source)
+{
+    for (const config_value_t *val = source.head_; val != NULL; val = val->next)
+        setStr(val->key, val->val);
+}
+
+// dst has to have 5 bytes space
+void ConfigSet::getDiscIDBinary(void *dst) const
+{
+    memset(dst, 0, 5);
+
+    const char *gid = NULL;
+    if (getStr(CONFIG_ITEM_DNAS, &gid)) {
+        // convert from hex to binary
+        char *cdst = static_cast<char *>(dst);
+        int p = 0;
+        while (*gid && p < 10) {
+            int dv = -1;
+
+            while (dv < 0 && *gid) // skip spaces, etc
+                dv = fromHex(*(gid++));
+
+            if (dv < 0)
+                break;
+
+            *cdst = *cdst * 16 + dv;
+            if ((++p & 1) == 0)
+                cdst++;
         }
     }
 }
 
-static struct config_value_t *getConfigItemForName(config_set_t *configSet, const char *name)
+void ConfigSet::getVMC(char *vmc, int length, int slot) const
 {
-    struct config_value_t *val = configSet->head;
+    char gkey[CONFIG_KEY_NAME_LEN];
+    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC, slot);
+    getStrCopy(gkey, vmc, length);
+}
 
-    while (val) {
-        if (strncmp(val->key, name, sizeof(val->key)) == 0)
-            break;
-
-        val = val->next;
+void ConfigSet::setVMC(const char *vmc, int slot)
+{
+    if (vmc[0] == '\0') {
+        removeVMC(slot);
+        return;
     }
+    char gkey[CONFIG_KEY_NAME_LEN];
+    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC, slot);
+    setStr(gkey, vmc);
+}
 
-    return val;
+void ConfigSet::removeVMC(int slot)
+{
+    char gkey[CONFIG_KEY_NAME_LEN];
+    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC, slot);
+    removeKey(gkey);
+}
+
+// Per-slot VMC disable (parity-audit #14): the toggle preserves the configured card name
+// ($VMC_N stays) but makes the Neutrino launch skip that slot's -mc arg -- disable-without-delete,
+// the same convention as the $-prefix on free-text args. Absent key == 0 == enabled.
+void ConfigSet::getVMCDisable(int slot, int *disabled) const
+{
+    char gkey[CONFIG_KEY_NAME_LEN];
+    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC_DISABLE, slot);
+    getInt(gkey, disabled);
+}
+
+void ConfigSet::setVMCDisable(int slot, int disabled)
+{
+    if (!disabled) { // default: keep configs clean, store nothing
+        removeVMCDisable(slot);
+        return;
+    }
+    char gkey[CONFIG_KEY_NAME_LEN];
+    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC_DISABLE, slot);
+    setInt(gkey, disabled);
+}
+
+void ConfigSet::removeVMCDisable(int slot)
+{
+    char gkey[CONFIG_KEY_NAME_LEN];
+    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC_DISABLE, slot);
+    removeKey(gkey);
 }
 
 static char cfgDevice[8];
@@ -393,231 +679,47 @@ void configEnd()
     while (index < CONFIG_INDEX_COUNT) {
         config_set_t *configSet = &configFiles[index];
 
-        configClear(configSet);
-        free(configSet->filename);
-        configSet->filename = NULL;
+        configSet->clear();
+        configSet->release();
         index++;
     }
 }
 
 config_set_t *configAlloc(int type, config_set_t *configSet, const char *fileName)
 {
-    int weAllocated = 0;
-    if (!configSet) {
-        configSet = (config_set_t *)malloc(sizeof(config_set_t));
-        if (!configSet) // OOM: can't proceed without the struct
-            return NULL;
-        weAllocated = 1;
-    }
-
-    configSet->uid = ++currentUID;
-    configSet->type = type;
-    configSet->head = NULL;
-    configSet->tail = NULL;
-    // A set with no file on disk yet defaults to OUR format: it is the interoperable one (OPL,
-    // OPL-Launcher, SAS and XMB all read it), so a NEW file should never be born libconfig. A file
-    // that already exists overwrites this in configReadFileBuffer from what is actually on disk.
-    configSet->format = CFG_FMT_LEGACY;
-    if (fileName) {
-        int length = strlen(fileName) + 1;
-        configSet->filename = (char *)malloc(length * sizeof(char));
-        if (!configSet->filename) { // OOM: clean up and bail
-            if (weAllocated)
-                free(configSet);
-            return NULL;
-        }
-        memcpy(configSet->filename, fileName, length);
-    } else
-        configSet->filename = NULL;
-    configSet->modified = 0;
-    return configSet;
+    u32 uid = ++currentUID;
+    if (!configSet)
+        return ConfigSet::create(type, fileName, uid);
+    return configSet->init(type, fileName, uid) ? configSet : NULL;
 }
 
 static void configMove(config_set_t *configSet, const char *fileName)
 {
-    int length = strlen(fileName) + 1;
-    // Use a temporary so a failed realloc doesn't clobber (and leak) the old pointer
-    char *tmp = static_cast<char*>(realloc(configSet->filename, length));
-    if (!tmp)
-        return;
-    configSet->filename = tmp;
-    memcpy(configSet->filename, fileName, length);
+    configSet->rename(fileName);
 }
 
 void configFree(config_set_t *configSet)
 {
-    // Every early autolaunch bail-out calls miniDeinit(NULL). Without this guard configClear read
-    // NULL->head -- a TLB miss on hardware -- so a refused autolaunch crashed instead of reaching the menu.
-    if (configSet == NULL)
-        return;
-
-    configClear(configSet);
-    free(configSet->filename);
-    free(configSet);
+    ConfigSet::destroy(configSet);
 }
 
 // Deep-copy src into a fresh standalone (heap) config set. The clone is NOT registered in
-// configFiles[] (configAlloc with a NULL set just mallocs one) and gets its own uid, so it is
-// invisible to configGetByType and can be launched from + configFree()d without disturbing the
-// live config. Faithfully copies every entry, including the runtime '#'-prefixed keys (Format/
-// Startup/Size) the launch path needs. Returns NULL on OOM.
+// configFiles[] and gets its own uid, so it is invisible to configGetByType and can be launched
+// from + configFree()d without disturbing the live config. Returns NULL on OOM.
 config_set_t *configClone(config_set_t *src)
 {
     if (src == NULL)
         return NULL;
-
-    config_set_t *dst = configAlloc(src->type, NULL, src->filename);
-    if (dst == NULL)
-        return NULL;
-
-    struct config_value_t *it;
-    for (it = src->head; it != NULL; it = it->next)
-        addConfigValue(dst, it->key, it->val);
-
-    dst->modified = 0;
-    return dst;
+    return src->clone(++currentUID);
 }
 
 config_set_t *configGetByType(int type)
 {
-    int index = 0;
-    while (index < CONFIG_INDEX_COUNT) {
-        config_set_t *configSet = &configFiles[index];
-
-        if (configSet->type == type)
-            return configSet;
-        index++;
+    for (int index = 0; index < CONFIG_INDEX_COUNT; index++) {
+        if (configFiles[index].type() == type)
+            return &configFiles[index];
     }
     return NULL;
-}
-
-int configSetStr(config_set_t *configSet, const char *key, const char *value)
-{
-    if (!configKeyValidate(key))
-        return 0;
-
-    struct config_value_t *it = getConfigItemForName(configSet, key);
-
-    if (it) {
-        if (strncmp(it->val, value, sizeof(it->val)) != 0) {
-            strncpy(it->val, value, sizeof(it->val));
-            it->val[sizeof(it->val) - 1] = '\0';
-            if (it->key[0] != '#')
-                configSet->modified = 1;
-        }
-    } else {
-        addConfigValue(configSet, key, value);
-        if (key[0] != '#')
-            configSet->modified = 1;
-    }
-
-    return 1;
-}
-
-// sets the value to point to the value str in the config. Do not overwrite - it will overwrite the string in config
-int configGetStr(config_set_t *configSet, const char *key, const char **value)
-{
-    if (!configKeyValidate(key))
-        return 0;
-
-    struct config_value_t *it = getConfigItemForName(configSet, key);
-
-    if (it) {
-        *value = it->val;
-        return 1;
-    } else
-        return 0;
-}
-
-int configGetStrCopy(config_set_t *configSet, const char *key, char *value, int length)
-{
-    const char *valref = NULL;
-    if (configGetStr(configSet, key, &valref)) {
-        strncpy(value, valref, length);
-        value[length - 1] = '\0';
-        return 1;
-    } else {
-        value[0] = '\0';
-        return 0;
-    }
-}
-
-int configSetInt(config_set_t *configSet, const char *key, const int value)
-{
-    char tmp[12];
-    snprintf(tmp, sizeof(tmp), "%d", value);
-    return configSetStr(configSet, key, tmp);
-}
-
-int configGetInt(config_set_t *configSet, const char *key, int *value)
-{
-    const char *valref = NULL;
-    if (configGetStr(configSet, key, &valref)) {
-        *value = atoi(valref);
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-int configSetColor(config_set_t *configSet, const char *key, unsigned char *color)
-{
-    char tmp[8];
-    snprintf(tmp, sizeof(tmp), "#%02X%02X%02X", color[0], color[1], color[2]);
-    return configSetStr(configSet, key, tmp);
-}
-
-int configGetColor(config_set_t *configSet, const char *key, unsigned char *color)
-{
-    const char *valref = NULL;
-    if (configGetStr(configSet, key, &valref)) {
-        strToColor(valref, color);
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-int configRemoveKey(config_set_t *configSet, const char *key)
-{
-    if (!configKeyValidate(key))
-        return 0;
-
-    struct config_value_t *val = configSet->head;
-    struct config_value_t *prev = NULL;
-
-    while (val) {
-        if (strncmp(val->key, key, sizeof(val->key)) == 0) {
-            if (key[0] != '#')
-                configSet->modified = 1;
-
-            if (val == configSet->tail)
-                configSet->tail = prev;
-
-            val = val->next;
-            if (prev) {
-                free(prev->next);
-                prev->next = val;
-            } else {
-                free(configSet->head);
-                configSet->head = val;
-            }
-        } else {
-            prev = val;
-            val = val->next;
-        }
-    }
-
-    return 1;
-}
-
-void configMerge(config_set_t *dest, const config_set_t *source)
-{
-    struct config_value_t *val;
-
-    for (val = source->head; val != NULL; val = val->next) {
-        configSetStr(dest, val->key, val->val);
-    }
 }
 
 static int configReadLegacyIP(void)
@@ -662,32 +764,6 @@ static int configReadLegacyIP(void)
     }
 
     return 0;
-}
-
-// dst has to have 5 bytes space
-void configGetDiscIDBinary(config_set_t *configSet, void *dst)
-{
-    memset(dst, 0, 5);
-
-    const char *gid = NULL;
-    if (configGetStr(configSet, CONFIG_ITEM_DNAS, &gid)) {
-        // convert from hex to binary
-        char *cdst = static_cast<char*>(dst);
-        int p = 0;
-        while (*gid && p < 10) {
-            int dv = -1;
-
-            while (dv < 0 && *gid) // skip spaces, etc
-                dv = fromHex(*(gid++));
-
-            if (dv < 0)
-                break;
-
-            *cdst = *cdst * 16 + dv;
-            if ((++p & 1) == 0)
-                cdst++;
-        }
-    }
 }
 
 // Defined further down with the key table; the reader below needs the wOPL->ours direction.
@@ -968,7 +1044,7 @@ static void cfgWriteLibconfig(file_buffer_t *fileBuffer, config_set_t *configSet
     // Pass 1: every root-level scalar -- i.e. anything that does not translate into one of wOPL's
     // groups. A key with no wOPL equivalent lands here verbatim (see cfgOursToWopl) rather than being
     // dropped, so our Neutrino/VMCDisable settings survive a wOPL-format file untouched.
-    for (cur = configSet->head; cur; cur = cur->next) {
+    for (cur = configSet->entries(); cur; cur = cur->next) {
         const char *w;
         int off;
 
@@ -987,7 +1063,7 @@ static void cfgWriteLibconfig(file_buffer_t *fileBuffer, config_set_t *configSet
         char line[128];
         int any = 0;
 
-        for (cur = configSet->head; cur; cur = cur->next) {
+        for (cur = configSet->entries(); cur; cur = cur->next) {
             const char *w, *g;
             int off;
 
@@ -1043,7 +1119,7 @@ static int configReadFileBuffer(file_buffer_t *fileBuffer, config_set_t *configS
         if (!fmtLatched) {
             fmt = (c == CFG_LINE_LIBCONFIG) ? CFG_FMT_LIBCONFIG : CFG_FMT_LEGACY;
             fmtLatched = 1;
-            configSet->format = fmt;
+            configSet->setFormat(fmt);
         }
 
         if (fmt == CFG_FMT_LIBCONFIG) {
@@ -1075,10 +1151,10 @@ static int configReadFileBuffer(file_buffer_t *fileBuffer, config_set_t *configS
         } else if (parsePrefix(line, prefix, sizeof(prefix))) {
             // prefix is set, that's about it
         } else {
-            LOG("CONFIG Malformed file '%s' line %d: '%s'\n", configSet->filename, lineno, line);
+            LOG("CONFIG Malformed file '%s' line %d: '%s'\n", configSet->filename(), lineno, line);
         }
     }
-    configSet->modified = 0;
+    configSet->clearModified();
     return 1;
 }
 
@@ -1087,7 +1163,7 @@ int configReadBuffer(config_set_t *configSet, const void *buffer, int size)
     int ret;
     file_buffer_t *fileBuffer = openFileBufferBuffer(0, buffer, size);
     if (!fileBuffer) {
-        configSet->modified = 0;
+        configSet->clearModified();
         return 0;
     }
 
@@ -1168,7 +1244,7 @@ static void configTranslateOfficialOpl(config_set_t *configSet)
 
     if (configGetInt(configSet, CONFIG_OPL_DEFAULT_DEVICE, &device) && device >= 5 && device <= 7) {
         configSetInt(configSet, CONFIG_OPL_DEFAULT_DEVICE, ETH_MODE + (device - 5));
-        configSet->modified = 0; // normalising a read-only seed is not a user edit
+        configSet->clearModified(); // normalising a read-only seed is not a user edit
     }
 }
 
@@ -1302,28 +1378,28 @@ int configRead(config_set_t *configSet)
     int fromOfficial = 0;
     int fromCarryOver = 0;
 
-    if (configSet != NULL && configSet->type == CONFIG_OPL) {
+    if (configSet != NULL && configSet->type() == CONFIG_OPL) {
         configOplOfficialSeed = 0;
         configOplCarryOver = 0;
     }
-    if (configSet != NULL && configPathIsRawApa(configSet->filename)) {
-        LOG("CONFIG refusing raw APA read path %s; use a mounted pfsN: path\n", configSet->filename);
+    if (configSet != NULL && configPathIsRawApa(configSet->filename())) {
+        LOG("CONFIG refusing raw APA read path %s; use a mounted pfsN: path\n", configSet->filename());
         return 0;
     }
     int ret;
-    file_buffer_t *fileBuffer = configOpenSingleShot(configSet->filename);
+    file_buffer_t *fileBuffer = configOpenSingleShot(configSet->filename());
     if (fileBuffer == NULL)
-        fileBuffer = openFileBuffer(configSet->filename, O_RDONLY, 0, 4096);
+        fileBuffer = openFileBuffer(configSet->filenameForOpen(), O_RDONLY, 0, 4096);
 
-    if (fileBuffer == NULL && configSet->filename != NULL) {
+    if (fileBuffer == NULL && configSet->filename() != NULL) {
         // Our name is absent -- wOPL may have moved this file's data to its own name (see above).
         char woplPath[256];
-        if (configBuildWoplPath(configSet->filename, woplPath, sizeof(woplPath))) {
+        if (configBuildWoplPath(configSet->filename(), woplPath, sizeof(woplPath))) {
             fileBuffer = configOpenSingleShot(woplPath);
             if (fileBuffer == NULL)
                 fileBuffer = openFileBuffer(woplPath, O_RDONLY, 0, 4096);
             if (fileBuffer != NULL) {
-                LOG("CONFIG %s absent; reading wOPL's %s instead\n", configSet->filename, woplPath);
+                LOG("CONFIG %s absent; reading wOPL's %s instead\n", configSet->filename(), woplPath);
                 // Point the set at the file we actually read, so a later save updates THAT file rather
                 // than resurrecting our name beside it and leaving the user with two configs that
                 // disagree. Their layout, honoured end to end.
@@ -1332,7 +1408,7 @@ int configRead(config_set_t *configSet)
         }
     }
 
-    if (fileBuffer == NULL && configCarryOverDir[0] != '\0' && configSet->type != CONFIG_OPL) {
+    if (fileBuffer == NULL && configCarryOverDir[0] != '\0' && configSet->type() != CONFIG_OPL) {
         // A global file the current home lacks, carried over from the previous home (see above). The
         // master set has its own, later rung: its legacy name comes first and official's seed after.
         int index = configGlobalIndex(configSet);
@@ -1340,12 +1416,12 @@ int configRead(config_set_t *configSet)
             fileBuffer = configOpenCarryOver(configFilenames[index]);
     }
 
-    if (fileBuffer == NULL && configSet->type == CONFIG_OPL && configSet->filename != NULL) {
+    if (fileBuffer == NULL && configSet->type() == CONFIG_OPL && configSet->filename() != NULL) {
         // Migration: existing installs have the legacy conf_riptopl.cfg, not settings_riptopl.cfg.
         // Read the legacy file from the same dir so settings aren't lost; the next save writes the
-        // new name. configSet->filename stays the new name, so configWrite migrates transparently.
+        // new name. configSet->filename() stays the new name, so configWrite migrates transparently.
         char legacyPath[256];
-        configBuildLegacyOplPath(configSet->filename, legacyPath, sizeof(legacyPath));
+        configBuildLegacyOplPath(configSet->filename(), legacyPath, sizeof(legacyPath));
         fileBuffer = configOpenSingleShot(legacyPath);
         if (fileBuffer == NULL)
             fileBuffer = openFileBuffer(legacyPath, O_RDONLY, 0, 4096);
@@ -1353,7 +1429,7 @@ int configRead(config_set_t *configSet)
             LOG("CONFIG migrating settings from legacy %s\n", legacyPath);
     }
 
-    if (fileBuffer == NULL && configSet->type == CONFIG_OPL && configSet->filename != NULL &&
+    if (fileBuffer == NULL && configSet->type() == CONFIG_OPL && configSet->filename() != NULL &&
         configCarryOverDir[0] != '\0') {
         // RiptOPL settings the user already saved in a previous home outrank official's seed below.
         fileBuffer = configOpenCarryOver(CONFIG_OPL_FILENAME);
@@ -1362,7 +1438,7 @@ int configRead(config_set_t *configSet)
         fromCarryOver = fileBuffer != NULL;
     }
 
-    if (fileBuffer == NULL && configSet->type == CONFIG_OPL && configSet->filename != NULL) {
+    if (fileBuffer == NULL && configSet->type() == CONFIG_OPL && configSet->filename() != NULL) {
         // No RiptOPL settings here at all: honour official OPL's conf_opl.cfg from the same directory
         // as a READ-ONLY seed (#545), so a drop-in replacement for OPNPS2LD.ELF -- PSBBN, OSDMenu and
         // HDD-OSD autolaunchers, plain MC/USB installs -- starts with the settings the user already
@@ -1370,7 +1446,7 @@ int configRead(config_set_t *configSet)
         // stays settings_riptopl.cfg, so our first save writes our own file and official's is never
         // touched. conf_game.cfg and the other sets already share official's names.
         char officialPath[256];
-        configBuildSiblingPath(configSet->filename, CONFIG_OPL_FILENAME_OFFICIAL, officialPath, sizeof(officialPath));
+        configBuildSiblingPath(configSet->filename(), CONFIG_OPL_FILENAME_OFFICIAL, officialPath, sizeof(officialPath));
         fileBuffer = configOpenSingleShot(officialPath);
         if (fileBuffer == NULL)
             fileBuffer = openFileBuffer(officialPath, O_RDONLY, 0, 4096);
@@ -1380,8 +1456,8 @@ int configRead(config_set_t *configSet)
         }
     }
     if (!fileBuffer) {
-        LOG("CONFIG No file %s.\n", configSet->filename);
-        configSet->modified = 0;
+        LOG("CONFIG No file %s.\n", configSet->filename());
+        configSet->clearModified();
         return 0;
     }
 
@@ -1412,23 +1488,23 @@ int configWrite(config_set_t *configSet)
     // set is clean yet its CURRENT filename is absent, make this explicit save create it. Existing
     // files stay on the zero-write fast path; empty sets are not manufactured merely because their
     // optional file is absent. This is filesystem-only and never bypasses the raw-APA firewall below.
-    if (!configSet->modified && configSet->filename != NULL && configSet->head != NULL) {
+    if (!configSet->modified() && configSet->filename() != NULL && configSet->entries() != NULL) {
         iox_stat_t stat;
-        if (fileXioGetStat(configSet->filename, &stat) < 0) {
-            LOG("CONFIG current save destination %s is absent; materializing populated config\n", configSet->filename);
-            configSet->modified = 1;
+        if (fileXioGetStat(configSet->filename(), &stat) < 0) {
+            LOG("CONFIG current save destination %s is absent; materializing populated config\n", configSet->filename());
+            configSet->markModified();
         }
     }
 
-    if (configSet->modified) {
-        if (configSet->filename == NULL)
+    if (configSet->modified()) {
+        if (configSet->filename() == NULL)
             return 0; // in-memory-only config set: nothing to persist (and openFile would deref NULL)
 
         // Absolute safety boundary: never let a config save reach PS2SDK's raw APA namespace.
         // A past custom path such as hdd0:/+OPL/settings_riptopl.cfg reached open(..., O_CREAT),
         // which the APA driver interprets as partition creation rather than file creation.
-        if (configPathIsRawApa(configSet->filename)) {
-            LOG("CONFIG blocked dangerous raw APA write path %s; use mounted pfsN: instead\n", configSet->filename);
+        if (configPathIsRawApa(configSet->filename())) {
+            LOG("CONFIG blocked dangerous raw APA write path %s; use mounted pfsN: instead\n", configSet->filename());
             gLastSaveErrno = EACCES;
             return 0;
         }
@@ -1453,11 +1529,11 @@ int configWrite(config_set_t *configSet)
         // a flaky device fails the flush) was reported on a wedged HDD/MMCE, not on a memory card,
         // and a failed card write still reports honestly and keeps modified=1 for a retry.
         // "mmce" does not match: its second character is 'm', not 'c'.
-        const int singleOpenDevice = (strncmp(configSet->filename, "mc", 2) == 0);
+        const int singleOpenDevice = (strncmp(configSet->filename(), "mc", 2) == 0);
 
         char *original = NULL;
         int originalLen = 0;
-        int rfd = singleOpenDevice ? -1 : openFile(configSet->filename, O_RDONLY);
+        int rfd = singleOpenDevice ? -1 : openFile(configSet->filenameForOpen(), O_RDONLY);
         if (rfd >= 0) {
             int sz = getFileSize(rfd);
             if (sz > 0 && sz <= CONFIG_MAX_RESTORE_BYTES) {
@@ -1480,7 +1556,7 @@ int configWrite(config_set_t *configSet)
         // then "reports" whatever was lying around, which is how a save failure can name a
         // misleading cause (the stale-errno trap flagged in the #340 handoff).
         errno = 0;
-        file_buffer_t *fileBuffer = openFileBuffer(configSet->filename, O_WRONLY | O_CREAT | O_TRUNC, 0, 4096);
+        file_buffer_t *fileBuffer = openFileBuffer(configSet->filenameForOpen(), O_WRONLY | O_CREAT | O_TRUNC, 0, 4096);
         if (fileBuffer) {
             char line[512];
 
@@ -1490,10 +1566,10 @@ int configWrite(config_set_t *configSet)
             // when we read it is written back as libconfig; a legacy file stays legacy. We never
             // convert a user's file in either direction -- that is the whole point. Before this, a
             // libconfig file hit the legacy key=value loop below and was DESTROYED on the first save.
-            if (configSet->format == CFG_FMT_LIBCONFIG) {
+            if (configSet->format() == CFG_FMT_LIBCONFIG) {
                 cfgWriteLibconfig(fileBuffer, configSet);
             } else {
-                struct config_value_t *cur = configSet->head;
+                struct config_value_t *cur = configSet->entries();
                 while (cur) {
                     if ((cur->key[0] != '\0') && (cur->key[0] != '#')) {
                         // Shared configs also have readers that split on LF without stripping CR.
@@ -1524,7 +1600,7 @@ int configWrite(config_set_t *configSet)
             ok = (closeFileBuffer(fileBuffer) == 0);
             if (!ok) {
                 gLastSaveErrno = errno;
-                LOG("CONFIG write to %s: FLUSH/CLOSE stage failed, errno %d\n", configSet->filename, gLastSaveErrno);
+                LOG("CONFIG write to %s: FLUSH/CLOSE stage failed, errno %d\n", configSet->filename(), gLastSaveErrno);
             }
 
             // EVIDENCE OVER STATUS CODES (#245, temporal bisect): on some MMCE clone firmware the
@@ -1542,8 +1618,8 @@ int configWrite(config_set_t *configSet)
             // cache -- proving nothing about the platter. There, honest failure + retry is the safe
             // behavior. MMCE is cacheless (the read round-trips to the card), which is what makes the
             // rescue's evidence real on the device this targets.
-            if (!ok && intended != NULL && !singleOpenDevice && strncmp(configSet->filename, "pfs", 3) != 0) {
-                int vfd = openFile(configSet->filename, O_RDONLY);
+            if (!ok && intended != NULL && !singleOpenDevice && strncmp(configSet->filename(), "pfs", 3) != 0) {
+                int vfd = openFile(configSet->filenameForOpen(), O_RDONLY);
                 if (vfd >= 0) {
                     int vsz = getFileSize(vfd);
                     if (vsz == (int)intendedLen) {
@@ -1552,7 +1628,7 @@ int configWrite(config_set_t *configSet)
                             if (read(vfd, readBack, intendedLen) == (int)intendedLen &&
                                 memcmp(readBack, intended, intendedLen) == 0) {
                                 LOG("CONFIG write to %s: close reported failure but read-back verifies all %u bytes -- treating as SAVED\n",
-                                    configSet->filename, intendedLen);
+                                    configSet->filename(), intendedLen);
                                 ok = 1;
                                 gLastSaveErrno = 0;
                             }
@@ -1567,7 +1643,7 @@ int configWrite(config_set_t *configSet)
         } else {
             gLastSaveErrno = errno;
             // captured HERE before the restore-path opens below clobber it
-            LOG("CONFIG write to %s: OPEN stage failed, errno %d\n", configSet->filename, gLastSaveErrno);
+            LOG("CONFIG write to %s: OPEN stage failed, errno %d\n", configSet->filename(), gLastSaveErrno);
         }
 
         if (!ok) {
@@ -1578,44 +1654,30 @@ int configWrite(config_set_t *configSet)
             // itself corrupt it on a second failure. Keep modified=1 so a later save retries, and
             // return 0 so saveConfig shows "Error saving settings" instead of a false "Saved".
             if (original != NULL) {
-                int cfd = openFile(configSet->filename, O_RDONLY);
+                int cfd = openFile(configSet->filenameForOpen(), O_RDONLY);
                 int curLen = (cfd >= 0) ? getFileSize(cfd) : 0; // unreadable/gone -> treat as damaged
                 if (cfd >= 0)
                     close(cfd);
                 if (curLen < originalLen) {
-                    int wfd = openFile(configSet->filename, O_WRONLY | O_CREAT | O_TRUNC);
+                    int wfd = openFile(configSet->filenameForOpen(), O_WRONLY | O_CREAT | O_TRUNC);
                     if (wfd >= 0) {
                         write(wfd, original, originalLen);
                         close(wfd);
                     }
-                    LOG("CONFIG write to %s FAILED -- restored %d original bytes\n", configSet->filename, originalLen);
+                    LOG("CONFIG write to %s FAILED -- restored %d original bytes\n", configSet->filename(), originalLen);
                 }
             } else {
-                LOG("CONFIG write to %s FAILED (no snapshot to restore)\n", configSet->filename);
+                LOG("CONFIG write to %s FAILED (no snapshot to restore)\n", configSet->filename());
             }
             free(original);
             return 0;
         }
 
         free(original);
-        configSet->modified = 0;
+        configSet->clearModified();
         return 1;
     }
     return 1;
-}
-
-void configClear(config_set_t *configSet)
-{
-    while (configSet->head) {
-        struct config_value_t *cur = configSet->head;
-        configSet->head = cur->next;
-
-        free(cur);
-    }
-
-    configSet->head = NULL;
-    configSet->tail = NULL;
-    configSet->modified = 1;
 }
 
 int configReadMulti(int types)
@@ -1625,15 +1687,15 @@ int configReadMulti(int types)
     for (index = 0; index < CONFIG_INDEX_COUNT; index++) {
         config_set_t *configSet = &configFiles[index];
 
-        if (configSet->type & types) {
+        if (configSet->type() & types) {
             configClear(configSet);
             if (configRead(configSet)) {
-                result |= configSet->type;
+                result |= configSet->type();
                 // Record the file source BEFORE higher-level recovery re-homes the live config sets
                 // for a future save. Load notifications must describe evidence, not ownership policy --
                 // including settings carried over from the previous home, which live THERE, not here.
-                if (configSet->type == CONFIG_OPL)
-                    configPrepareLoadNotification(configOplCarryOver ? configCarryOverDir : configSet->filename);
+                if (configSet->type() == CONFIG_OPL)
+                    configPrepareLoadNotification(configOplCarryOver ? configCarryOverDir : configSet->filename());
             }
         }
     }
@@ -1653,62 +1715,9 @@ int configWriteMulti(int types)
     for (index = 0; index < CONFIG_INDEX_COUNT; index++) {
         config_set_t *configSet = &configFiles[index];
 
-        if (configSet->type & types)
+        if (configSet->type() & types)
             result += configWrite(configSet);
     }
 
     return result;
-}
-
-void configGetVMC(config_set_t *configSet, char *vmc, int length, int slot)
-{
-    char gkey[CONFIG_KEY_NAME_LEN];
-    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC, slot);
-    configGetStrCopy(configSet, gkey, vmc, length);
-}
-
-void configSetVMC(config_set_t *configSet, const char *vmc, int slot)
-{
-    char gkey[CONFIG_KEY_NAME_LEN];
-    if (vmc[0] == '\0') {
-        configRemoveVMC(configSet, slot);
-        return;
-    }
-    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC, slot);
-    configSetStr(configSet, gkey, vmc);
-}
-
-void configRemoveVMC(config_set_t *configSet, int slot)
-{
-    char gkey[CONFIG_KEY_NAME_LEN];
-    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC, slot);
-    configRemoveKey(configSet, gkey);
-}
-
-// Per-slot VMC disable (parity-audit #14): the toggle preserves the configured card name
-// ($VMC_N stays) but makes the Neutrino launch skip that slot's -mc arg -- disable-without-delete,
-// the same convention as the $-prefix on free-text args. Absent key == 0 == enabled.
-void configGetVMCDisable(config_set_t *configSet, int slot, int *disabled)
-{
-    char gkey[CONFIG_KEY_NAME_LEN];
-    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC_DISABLE, slot);
-    configGetInt(configSet, gkey, disabled);
-}
-
-void configSetVMCDisable(config_set_t *configSet, int slot, int disabled)
-{
-    char gkey[CONFIG_KEY_NAME_LEN];
-    if (!disabled) { // default: keep configs clean, store nothing
-        configRemoveVMCDisable(configSet, slot);
-        return;
-    }
-    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC_DISABLE, slot);
-    configSetInt(configSet, gkey, disabled);
-}
-
-void configRemoveVMCDisable(config_set_t *configSet, int slot)
-{
-    char gkey[CONFIG_KEY_NAME_LEN];
-    snprintf(gkey, sizeof(gkey), "%s_%d", CONFIG_ITEM_VMC_DISABLE, slot);
-    configRemoveKey(configSet, gkey);
 }

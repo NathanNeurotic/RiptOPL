@@ -453,7 +453,7 @@ static void _menuSaveConfig()
 
     if (!result)
         // gLastSaveErrno was latched inside configWrite at the real failure site.
-        setErrorMessagePathCode(_STR_ERROR_SAVING_SETTINGS_TO, itemConfig ? itemConfig->filename : "", gLastSaveErrno);
+        setErrorMessagePathCode(_STR_ERROR_SAVING_SETTINGS_TO, itemConfig ? itemConfig->filename() : "", gLastSaveErrno);
 }
 
 // Every path out of here MUST either queue a load that will clear actionStatus, or clear it itself.

@@ -102,7 +102,7 @@ static int appRebuildVisibleList(void)
 
 static struct config_value_t *appGetConfigValue(int id)
 {
-    struct config_value_t *cur = configApps->head;
+    config_value_t *cur = configApps->entries();
 
     while (id--) {
         cur = cur->next;
@@ -235,7 +235,7 @@ static int appGetRebootIopConfig(config_set_t *configSet)
     if (configSet == NULL)
         return -1;
 
-    for (val = configSet->head; val != NULL; val = val->next) {
+    for (val = configSet->entries(); val != NULL; val = val->next) {
         if (strcasecmp(val->key, "REBOOTIOP") == 0 || strcasecmp(val->key, "REBOOT_IOP") == 0) {
             if (strcasecmp(val->val, "YES") == 0 ||
                 strcasecmp(val->val, "1") == 0 ||
@@ -630,7 +630,7 @@ static int appNeedsUpdate(item_list_t *itemList)
 
 static int addAppsLegacyList(struct app_info_linked **appsLinkedList)
 {
-    struct config_value_t *cur;
+    config_value_t *cur;
     struct app_info_linked *app;
     int count;
 
@@ -638,7 +638,7 @@ static int addAppsLegacyList(struct app_info_linked **appsLinkedList)
     configRead(configApps);
 
     count = 0;
-    cur = configApps->head;
+    cur = configApps->entries();
     while (cur != NULL) {
         if (*appsLinkedList == NULL) {
             app = static_cast<app_info_linked*>(malloc(sizeof(struct app_info_linked)));
@@ -866,10 +866,10 @@ static void appDeleteItem(item_list_t *itemList, int id)
     if (id < 0)
         return;
     if (appsList[id].legacy) {
-        struct config_value_t *cur = appGetConfigValue(id);
+        config_value_t *cur = appGetConfigValue(id);
         unlink(cur->val);
         cur->key[0] = '\0';
-        configApps->modified = 1;
+        configApps->markModified();
         configWrite(configApps);
     } else {
         sysDeleteFolder(appsList[id].path);
@@ -887,7 +887,7 @@ static void appRenameItem(item_list_t *itemList, int id, char *newName)
         return;
 
     if (appsList[id].legacy) {
-        struct config_value_t *cur = appGetConfigValue(id);
+        config_value_t *cur = appGetConfigValue(id);
 
         strncpy(value, cur->val, sizeof(value));
         configRemoveKey(configApps, cur->key);
@@ -1202,7 +1202,7 @@ static config_set_t *appGetConfig(item_list_t *itemList, int id)
         return NULL;
 
     if (appsList[id].legacy) {
-        struct config_value_t *cur = appGetConfigValue(id);
+        config_value_t *cur = appGetConfigValue(id);
         config = host::app().legacyAppsInfo(appGetELFName(cur->val));
         configRead(config);
 

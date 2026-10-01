@@ -43,7 +43,7 @@ int main()
 
     // ---- legacy syntax -------------------------------------------------------------------------
     config_set_t *a = parse(dir + "a.cfg", "compat=3\r\nvmc_0=mc0\r\n$Foo=bar baz\r\n# comment line\r\n\r\nempty=\r\n");
-    CHECK(a->format == CFG_FMT_LEGACY);
+    CHECK(a->format() == CFG_FMT_LEGACY);
     CHECK(num(a, "compat") == 3);
     CHECK(str(a, "vmc_0") == "mc0");
     CHECK(str(a, "$Foo") == "bar baz");     // value keeps inner spaces
@@ -72,7 +72,7 @@ int main()
 
     // ---- libconfig syntax (wOPL) ---------------------------------------------------------------
     config_set_t *b = parse(dir + "b.cfg", "# wOPL file\ncompat = 5;\n$Name = \"Hello World\";\ngsm : {\n  x = 1;\n  y = \"two\";\n};\n");
-    CHECK(b->format == CFG_FMT_LIBCONFIG);            // latched from what was read
+    CHECK(b->format() == CFG_FMT_LIBCONFIG);            // latched from what was read
     CHECK(num(b, "$Compatibility") == 5);            // libconfig "compat" is the in-memory key $Compatibility (wOPL key table)
     CHECK(str(b, "$Name") == "Hello World");
     CHECK(num(b, "gsm_x") == 1);                      // group members flatten to <group>_<key>
@@ -86,7 +86,7 @@ int main()
     // an unknown member like gsm_x is written back flat, only the known per-game keys regroup.
     CHECK(out.find("gsm_x = 1;") != std::string::npos);
     config_set_t *b2 = parse(dir + "b2.cfg", out.c_str());
-    CHECK(b2->format == CFG_FMT_LIBCONFIG);
+    CHECK(b2->format() == CFG_FMT_LIBCONFIG);
     CHECK(num(b2, "gsm_x") == 1 && str(b2, "gsm_y") == "two" && num(b2, "extra") == 7 && str(b2, "$Name") == "Hello World");
 
     // ---- BOM, colors, truncation -----------------------------------------------------------------

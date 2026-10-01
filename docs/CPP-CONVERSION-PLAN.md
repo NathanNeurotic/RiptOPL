@@ -289,3 +289,14 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
   `GameSource` virtuals in phase 5); `lang` <-> fntsys/themes and `sound` -> themes (language/theme switching is app orchestration);
   `system` -> bdm/eth/mmce/menusys/gui/themes/renderman/OSDHistory/xparam (launch teardown and device probing); `gui`/`menusys` ->
   opl (`applyConfig`, `saveConfig`, `oplGetModule` = the source registry).
+
+## 14. Atlas and ConfigSet
+- **`Atlas`** (`include/atlas.h`, `src/atlas.cpp`): glyph atlas packer as a class (`create/destroy/place/texture`), nodes owned by
+  `raii::UniquePtr`; fntsys holds an `Atlas *`.
+- **`ConfigSet`** (`include/configset.h`, storage/key rules in `src/config.cpp`): `config_set_t` is now `typedef ConfigSet` in C++ and an
+  opaque struct in C. Fields are private; `type()/uid()/filename()/modified()/format()/entries()` are accessors, `markModified()/
+  clearModified()/setFormat()/rename()` the mutators. `configGet*/configSet*/configRemoveKey/configMerge/configClear/configGetVMC*`
+  stay as inline forwarders in `config.h` so call sites did not change. Heap sets use `ConfigSet::create/destroy/clone` (malloc +
+  placement new). File syntax (legacy/libconfig reader/writer, official-OPL translation, registry) is still free functions in
+  `config.cpp` driving the class through its public interface. Key names, ordering and on-disk formats are unchanged.
+  `filenameForOpen()` exists because `openFile()` patches an `mc?` placeholder in place.

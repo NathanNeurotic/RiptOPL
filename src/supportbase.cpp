@@ -1165,7 +1165,7 @@ config_set_t *sbPopulateConfig(base_game_info_t *game, const char *prefix, const
             if (fallback != NULL) {
                 if (configRead(fallback)) {
                     configMerge(config, fallback);
-                    config->modified = 0;
+                    config->clearModified();
                 }
                 configFree(fallback);
             }

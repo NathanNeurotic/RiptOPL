@@ -3477,7 +3477,7 @@ static int configWriteChecked(int types)
         for (int bit = 1; bit < (1 << CONFIG_INDEX_COUNT); bit <<= 1) {
             if (types & bit) {
                 config_set_t *cfg = configGetByType(bit); // NULL only if a requested set was never allocated
-                if (cfg != NULL && cfg->modified)
+                if (cfg != NULL && cfg->modified())
                     return 0;
             }
         }
@@ -3489,14 +3489,14 @@ static const char *configFileName(const config_set_t *config)
 {
     const char *name;
 
-    if (config == NULL || config->filename == NULL)
+    if (config == NULL || config->filename() == NULL)
         return NULL;
 
-    name = strrchr(config->filename, '/');
+    name = strrchr(config->filename(), '/');
     if (name != NULL)
         return name + 1;
-    name = strrchr(config->filename, ':');
-    return name != NULL ? name + 1 : config->filename;
+    name = strrchr(config->filename(), ':');
+    return name != NULL ? name + 1 : config->filename();
 }
 
 // The source picker does not remount live pfs0:. When the next boot's APA home differs from
@@ -3529,7 +3529,7 @@ static int saveSelectedHddOplHome(int types)
         // configWrite() only materializes a set that actually changed. Preserve that normal
         // contract so a selector-only save neither creates optional empty files nor overwrites an
         // existing target-side config that the user did not edit this session.
-        if (source == NULL || !source->modified)
+        if (source == NULL || !source->modified())
             continue;
 
         name = configFileName(source);
@@ -3542,17 +3542,17 @@ static int saveSelectedHddOplHome(int types)
 
         // Keep the live sets pointing at their pfs0: home. The target is an isolated copy that
         // carries the live format and values, so pfs1: can be unmounted before selector commit.
-        target = configAlloc(source->type, NULL, path);
+        target = configAlloc(source->type(), NULL, path);
         if (target == NULL) {
             gLastSaveErrno = EIO;
             result = 0;
             break;
         }
-        target->format = source->format;
+        target->setFormat(source->format());
         configMerge(target, source);
-        target->modified = 1;
+        target->markModified();
 
-        if (!configWrite(target) || target->modified) {
+        if (!configWrite(target) || target->modified()) {
             if (gLastSaveErrno == 0)
                 gLastSaveErrno = EIO;
             result = 0;
@@ -3560,7 +3560,7 @@ static int saveSelectedHddOplHome(int types)
             break;
         }
         configFree(target);
-        source->modified = 0;
+        source->clearModified();
     }
 
     hddUnmountSelectedOplHome();
@@ -3748,7 +3748,7 @@ static void _saveConfig()
     if (lscret > 0) {
         config_set_t *oplCfg = configGetByType(CONFIG_OPL);
         if (oplCfg != NULL)
-            checkMCSaveIcons(oplCfg->filename);
+            checkMCSaveIcons(oplCfg->filename());
     }
 
     // Persist the bootstrap pointer only after the explicit config write succeeded. An explicit

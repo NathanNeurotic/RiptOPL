@@ -919,11 +919,11 @@ void bdmCaptureConfigWriteDiag(item_list_t *itemList, const config_set_t *config
     out->configAddr = configSet;
 
     if (configSet != NULL) {
-        out->configUid = configSet->uid;
-        out->configModified = configSet->modified;
-        out->configFormat = configSet->format;
+        out->configUid = configSet->uid();
+        out->configModified = configSet->modified();
+        out->configFormat = configSet->format();
         snprintf(out->configFilename, sizeof(out->configFilename), "%s",
-                 configSet->filename != NULL ? configSet->filename : "<none>");
+                 configSet->filename() != NULL ? configSet->filename() : "<none>");
     } else {
         out->configModified = -1;
         out->configFormat = -1;
