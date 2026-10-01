@@ -375,6 +375,16 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
   pairs (47 symbols); a new pair, or more symbols in an existing one, fails. Fixing an edge lowers the count; `--update` locks it in.
 - The generated `src/core/lang_internal.c` is git-ignored; `tools/assets.py lang` writes it there.
 
+## 17f. Phase 7 finished: bdmsupport, system, texcache
+- `sources/bdmsupport.cpp` 3601 -> 1991 lines: `bdmboot.cpp` (boot-dir resolution), `bdmdevices.cpp` (device table, wait helpers), `bdmlaunch.cpp`
+  (ISO/Neutrino/VCD/CUE launch, 788 lines); shared internals in `include/bdmint.h`.
+- `platform/system.cpp` 2205 -> 1245 lines: `sysneutrino.cpp` (Neutrino launch + preflight), `sysdisc.cpp` (disc boot path), `sysvmc.cpp` (VMC checks). They share
+  nothing with system.cpp's statics, so no internal header was needed. `sendIrxKernelRAM` (256 lines, not the 1468 the plan assumed) stays in system.cpp
+  as it is hardware-critical; making its module list data-driven is deferred.
+- `gfx/texcache.cpp` 1334 -> 510 lines: `artload.cpp` (art worker lifecycle, cancellation, .tar art packs, PNG load); `include/texcacheint.h` shares the queue/worker
+  objects and tuning constants.
+- Source-scraping tests read the union of the pieces; the coupling baseline moved pairs with the code (still 47 symbols / 35 pairs).
+
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
 `guisettings.cpp` (~3000 lines), plus notifications and the screen-handler table in `gui.cpp`, are still free functions sharing
@@ -411,7 +421,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 | 4 HostServices, launch/UI split | done |
 | 5 GameSource hierarchy | not started; needs go-ahead (hardware testing matters most) |
 | 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
-| 7 split god files | gui.cpp done (5197 -> ~1100 lines); themes.cpp done (3958 -> 1653, plus themeelems.cpp and coverflow.cpp); opl.cpp in progress (5117 -> 1813: autolaunch.cpp, lwnbdctl.cpp, settingsio.cpp, menuitems.cpp, appscan.cpp out); bdmsupport.cpp not started |
+| 7 split god files | done: gui.cpp, themes.cpp, opl.cpp, bdmsupport.cpp, system.cpp, texcache.cpp are split (largest remaining: supportbase 2609, bdmsupport 1991, gui ~1100); `sendIrxKernelRAM` data-driven module list deferred |
 | 8 directory move, blocking analyzer | done (layer directories; coupling gate is a ratchet on the 47 existing upward symbols) |
 
 Packed ELF: 1,634,784 B (Atlas) -> 1,634,400 B (ArtQueue). Every step so far: clean `ps2build build`, `tools/run_tests.sh -k`,

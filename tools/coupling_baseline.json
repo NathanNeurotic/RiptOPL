@@ -1,5 +1,6 @@
 {
 "appscan->opl": 1,
+"artload->artindex": 1,
 "debug->ethsupport": 2,
 "favsupport->opl": 1,
 "gui->opl": 1,
@@ -25,7 +26,6 @@
 "system->themes": 1,
 "system->xparam": 1,
 "texcache->appsupport": 1,
-"texcache->artindex": 1,
 "texcache->bdmsupport": 1,
 "texcache->favsupport": 1,
 "texcache->hddsupport": 1,
