@@ -1,0 +1,2205 @@
+/*
+  Copyright 2009, Ifcaro & volca
+  Licenced under Academic Free License version 3.0
+  Review OpenUsbLd README & LICENSE files for further details.
+*/
+
+#include "include/opl.h"
+#include "include/diag.h"
+#include "include/menusys.h"
+#include "include/supportbase.h" // sbSetConfigStatSize -- defer the #Size stat off the scroll path
+#include "include/iosupport.h"
+#include "include/renderman.h"
+#include "include/fntsys.h"
+#include "include/lang.h"
+#include "include/themes.h"
+#include "include/pad.h"
+#include "include/gui.h"
+#include "include/guigame.h"
+#include "include/system.h"
+#ifdef RETROACHIEVEMENTS
+#include "include/discsupport.h"
+#endif
+#include "include/ioman.h"
+#include "include/sound.h"
+#include "include/favsupport.h"   // gFAVStartMode -- the Favourites tab counts as "something to show"
+#include "include/folderbrowse.h" // menuFolderResetLeaving -- leave a device page at its folder root
+#include "include/vcdsupport.h"   // VCD launches never use Neutrino
+#include "include/libview.h"      // libViewActive / libListViewActive -- which list this page shows
+#include "include/bdmsupport.h"   // bdmSupportIsUDPBD() -- UDPBD games are Neutrino-only
+#include <assert.h>
+#include <delaythread.h>
+
+enum MENU_IDs {
+    MENU_SETTINGS = 0,
+    // Retired Network Update slot. Keep subsequent menu IDs stable even though the item itself is gone.
+    MENU_RETIRED_NETWORK_UPDATE,
+    MENU_NBD,
+    MENU_ABOUT,
+    MENU_SAVE_CHANGES,
+    MENU_EXIT,
+    MENU_POWER_OFF,
+    MENU_LAUNCH_PS2_DISC,
+    MENU_MMCE,
+#ifdef RETROACHIEVEMENTS
+    MENU_RA_DISC_CHECK,
+    MENU_RA_DISC_LAUNCH,
+#endif
+};
+
+enum GAME_MENU_IDs {
+    GAME_COMPAT_SETTINGS = 0,
+    GAME_CHEAT_SETTINGS,
+    GAME_GSM_SETTINGS,
+    GAME_VMC_SETTINGS,
+#ifdef PADEMU
+    GAME_PADEMU_SETTINGS,
+    GAME_PADMACRO_SETTINGS,
+#endif
+    GAME_OSD_LANGUAGE_SETTINGS,
+    GAME_SAVE_CHANGES,
+    GAME_TEST_CHANGES,
+    GAME_REMOVE_CHANGES,
+    GAME_RENAME_GAME,
+    GAME_DELETE_GAME,
+#ifdef RETROACHIEVEMENTS
+    // Appended last, and only in the RA flavour: menuRenderGameMenu's extra-spacing arithmetic keys
+    // on these enum positions, so RA entries must not shift the existing ones.
+    GAME_RA_CHECK,
+    GAME_RA_TEST,
+#endif
+};
+
+enum APP_MENU_IDs {
+    APP_RENAME = 0,
+    APP_DELETE,
+    APP_GLOBAL_PS_SETTINGS,
+    APP_EMBER_GAME_SETTINGS,
+};
+
+// global menu variables
+static menu_list_t *menu;
+static menu_list_t *selected_item;
+
+static int actionStatus;
+static int menuSaveResult; // last per-game configWrite() result, published by _menuSaveConfig
+static int itemConfigId;
+static config_set_t *itemConfig;
+// Owner of itemConfigId, including while an async read is in flight. IDs are only indices within a
+// list, so (id == id) across two tabs is not the same game/config. This also lets X/Triangle safely
+// reuse the browse-prefetched config instead of forcing a second device read.
+static item_list_t *itemConfigList;
+// One Info/#Size worker at a time, with a latest-wins target. Repeated enter/back/enter on the
+// SAME row does not queue duplicate CFG+stat reads; moving to another row while one is active replaces
+// the requested target and the worker loops to that newest row before releasing its latch.
+static unsigned char infoSizeWorkerPending;
+static item_list_t *infoSizeRequestList;
+static int infoSizeRequestId = -1;
+static unsigned int infoSizeRequestGeneration;
+
+static u8 parentalLockCheckEnabled = 1;
+
+// "main menu submenu"
+static submenu_list_t *mainMenu;
+// active item in the main menu
+static submenu_list_t *mainMenuCurrent;
+
+// "game settings submenu"
+static submenu_list_t *gameMenu;
+// active item in game settings
+static submenu_list_t *gameMenuCurrent;
+
+static submenu_list_t *appMenu;
+static submenu_list_t *appMenuCurrent;
+
+static s32 menuSemaId = -1;
+
+/* HINT-LIST LOCK. Deliberately its OWN semaphore, and deliberately not guiLock.
+ *
+ * menu_item_t::hints is a linked list that the IO WORKER rebuilds -- moduleUpdateMenuInternal()
+ * calls menuRemoveHints() to free every node and then menuAddHint() several times to malloc and
+ * relink -- while the GUI thread walks that same list every frame in themes.c drawHintText(), twice
+ * (guiAlignMenuHints() to align, then again to draw). Unserialized, a draw landing mid-rebuild
+ * follows a freed ->next into memory already handed back out.
+ *
+ * guiLock() is the WRONG lock for this even though it does exclude the renderer: guiStartFrame()
+ * takes it and guiEndFrame() releases it after rmEndFrame()'s vsync wait, so it is held for
+ * essentially a whole frame. Taking that on a per-device-update path stalls the io worker ~16 ms
+ * every time a device appears or vanishes, which measurably disturbed unrelated timing.
+ *
+ * This one is held only for the list work itself -- a few frees and mallocs, or one traversal --
+ * so the worst a waiter ever sees is microseconds.
+ *
+ * CALLER-LOCKED. menuAddHint()/menuRemoveHints() do NOT lock internally: a rebuild is many calls and
+ * must be atomic as a whole, and this semaphore is not recursive. Every caller brackets its own
+ * sequence with menuHintsLock()/menuHintsUnlock().
+ */
+static s32 menuHintSemaId = -1;
+static ee_sema_t menuHintSema;
+
+void menuHintsLock(void)
+{
+    // Not-ready guard, same shape as guiLock(): hints are built during init before menuInit() has
+    // created this, and everything is single-threaded until the GUI and IO threads exist.
+    if (menuHintSemaId < 0)
+        return;
+    WaitSema(menuHintSemaId);
+}
+
+void menuHintsUnlock(void)
+{
+    if (menuHintSemaId < 0)
+        return;
+    SignalSema(menuHintSemaId);
+}
+static s32 menuListSemaId = -1;
+static ee_sema_t menuSema;
+
+static void menuRenameGame(submenu_list_t **submenu)
+{
+    if (!selected_item->item->current) {
+        return;
+    }
+
+    if (!gEnableWrite)
+        return;
+
+    item_list_t *support = static_cast<item_list_t*>(selected_item->item->userdata);
+
+    if (support && support->mode == FAV_MODE) {
+        char text[128];
+        snprintf(text, sizeof(text), _l(_STR_FAV_MSG), _l(_STR_RENAME));
+        guiMsgBox(text, 0, NULL);
+        return;
+    }
+    if (selected_item->item->current->item.favourited) {
+        char text[128];
+        snprintf(text, sizeof(text), _l(_STR_FAV_PERSISTENCE_MSG), _l(_STR_RENAME));
+        guiMsgBox(text, 0, NULL);
+        return;
+    }
+
+    if (support) {
+        if (support->itemRename) {
+            if (menuCheckParentalLock() == 0) {
+                sfxPlay(SFX_MESSAGE);
+                int nameLength = support->itemGetNameLength(support, selected_item->item->current->item.id);
+                char newName[nameLength];
+                strncpy(newName, selected_item->item->current->item.text, nameLength);
+                if (guiShowKeyboard(newName, nameLength)) {
+                    guiSwitchScreen(GUI_SCREEN_MAIN);
+                    submenuDestroy(submenu);
+
+                    // Only rename the file if the name changed; trying to rename a file with a file name that hasn't changed can cause the file
+                    // to be deleted on certain file systems.
+                    if (strcmp(newName, selected_item->item->current->item.text) != 0) {
+                        support->itemRename(support, selected_item->item->current->item.id, newName);
+                        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
+                    }
+                }
+            }
+        }
+    } else
+        guiMsgBox("NULL Support object. Please report", 0, NULL);
+}
+
+static void menuDeleteGame(submenu_list_t **submenu)
+{
+    if (!selected_item->item->current)
+        return;
+
+    if (!gEnableWrite)
+        return;
+
+    item_list_t *support = static_cast<item_list_t*>(selected_item->item->userdata);
+
+    if (support && support->mode == FAV_MODE) {
+        char text[128];
+        snprintf(text, sizeof(text), _l(_STR_FAV_MSG), _l(_STR_DELETE));
+        guiMsgBox(text, 0, NULL);
+        return;
+    }
+    if (selected_item->item->current->item.favourited) {
+        char text[128];
+        snprintf(text, sizeof(text), _l(_STR_FAV_PERSISTENCE_MSG), _l(_STR_DELETE));
+        guiMsgBox(text, 0, NULL);
+        return;
+    }
+
+    if (support) {
+        if (support->itemDelete) {
+            if (menuCheckParentalLock() == 0) {
+                if (guiMsgBox(_l(_STR_DELETE_WARNING), 1, NULL)) {
+                    guiSwitchScreen(GUI_SCREEN_MAIN);
+                    submenuDestroy(submenu);
+                    support->itemDelete(support, selected_item->item->current->item.id);
+                    ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
+                }
+            }
+        }
+    } else
+        guiMsgBox("NULL Support object. Please report", 0, NULL);
+}
+
+// Waited-on load for the game-settings dialog path (gameMenuLoadConfig). Launch-time
+// menuLoadConfig deliberately bypasses ioman below so foreground launch configuration can never
+// sit behind queued device/list work. This queued variant stays for settings UI transitions.
+static void _menuLoadConfig()
+{
+    WaitSema(menuSemaId);
+    if (!itemConfig) {
+        item_list_t *list = static_cast<item_list_t*>(selected_item->item->userdata);
+        itemConfig = list->itemGetConfig(list, itemConfigId);
+        if (itemConfig != NULL)
+            itemConfigList = list;
+    }
+    actionStatus = 0;
+    SignalSema(menuSemaId);
+}
+
+// Browse-time load (the SETTLE path: menuRenderElements -> _menuRequestConfig each frame). NOBODY
+// waits on this one -- actionStatus is already 0 on that path -- so it can afford to do the read
+// OUTSIDE menuSemaId, which is the whole point: menuRenderElements takes that sema every frame,
+// and itemGetConfig is a per-game CFG open/read on the game's device, so holding it across the read
+// froze rendering and input for the entire read every time the cursor settled on a row (visible on
+// a slow USB stick with art off; worse with art on, when the same device is also serving covers).
+// Snapshot under the sema, read outside it, re-check and publish under it again -- the same shape
+// as _menuResolveInfoSize below.
+static void _menuLoadConfigAsync()
+{
+    item_list_t *list = NULL;
+    config_set_t *loadedConfig = NULL;
+    int configId = -1;
+
+    WaitSema(menuSemaId);
+    if (itemConfig == NULL && selected_item != NULL && selected_item->item != NULL && itemConfigId >= 0) {
+        list = static_cast<item_list_t*>(selected_item->item->userdata);
+        configId = itemConfigId;
+    }
+    SignalSema(menuSemaId);
+
+    // Nothing wanted (already cached, or the id was invalidated while this request sat in the
+    // queue). Deliberately does NOT touch actionStatus: this variant is only ever queued when no
+    // waiter exists, and a dialog that armed one in the meantime queues its own _menuLoadConfig.
+    if (list == NULL)
+        return;
+
+    loadedConfig = list->itemGetConfig(list, configId);
+
+    // Publish only if this is still exactly what the menu wants. The id alone is NOT enough: ids are
+    // per-list indices, so a tab switch mid-read yields the same number from a different device --
+    // re-check the owning list too, or device A's per-game config lands on device B's row.
+    WaitSema(menuSemaId);
+    if (loadedConfig != NULL && itemConfig == NULL && itemConfigId == configId && itemConfigList == list &&
+        selected_item != NULL && selected_item->item != NULL && selected_item->item->userdata == list) {
+        itemConfig = loadedConfig;
+        loadedConfig = NULL;
+    }
+    SignalSema(menuSemaId);
+
+    if (loadedConfig != NULL)
+        configFree(loadedConfig); // lost the race -- drop it, never publish another row's config
+}
+
+// Opening the info screen needs #Size, which the scroll-time config load deliberately skips.
+// The worker is single-instance but the TARGET is replaceable: if the user opens Info for B while A
+// is still resolving, A is discarded when stale and the same worker immediately processes B.
+static void _menuResolveInfoSize()
+{
+    for (;;) {
+        item_list_t *list = NULL;
+        config_set_t *loadedConfig = NULL;
+        int configId = -1;
+        unsigned int generation = 0;
+
+        WaitSema(menuSemaId);
+        list = infoSizeRequestList;
+        configId = infoSizeRequestId;
+        generation = infoSizeRequestGeneration;
+        SignalSema(menuSemaId);
+
+        if (list == NULL || configId < 0)
+            goto complete_request;
+
+        // #Size is cosmetic/discretionary IO. Wait for BGM reserve, but stop waiting on a target that
+        // has already been superseded or a selection the user left; the next loop takes the newest.
+        while (!bgmDiscretionaryIoAllowed()) {
+            int stillWanted;
+            DelayThread(10 * 1000);
+            WaitSema(menuSemaId);
+            stillWanted = infoSizeRequestGeneration == generation && infoSizeRequestList == list &&
+                          infoSizeRequestId == configId && selected_item != NULL &&
+                          selected_item->item != NULL && selected_item->item->current != NULL &&
+                          selected_item->item->userdata == list &&
+                          selected_item->item->current->item.id == configId;
+            SignalSema(menuSemaId);
+            if (!stillWanted)
+                goto complete_request;
+        }
+
+        // itemGetConfig runs outside menuSemaId: it is the slow CFG+stat operation.
+        sbSetConfigStatSize(1);
+        loadedConfig = list->itemGetConfig(list, configId);
+        sbSetConfigStatSize(0);
+
+        // Publish only if this request is STILL the newest target and the same row is selected.
+        WaitSema(menuSemaId);
+        if (loadedConfig != NULL && infoSizeRequestGeneration == generation &&
+            infoSizeRequestList == list && infoSizeRequestId == configId && selected_item != NULL &&
+            selected_item->item != NULL && selected_item->item->current != NULL &&
+            selected_item->item->userdata == list && selected_item->item->current->item.id == configId) {
+            if (itemConfig != NULL)
+                configFree(itemConfig);
+            itemConfig = loadedConfig;
+            itemConfigId = configId;
+            itemConfigList = list;
+            loadedConfig = NULL;
+        }
+        SignalSema(menuSemaId);
+
+        if (loadedConfig != NULL)
+            configFree(loadedConfig);
+
+    complete_request:
+        WaitSema(menuSemaId);
+        if (infoSizeRequestGeneration == generation) {
+            // Nobody replaced this target while it ran: the queue is drained.
+            infoSizeRequestList = NULL;
+            infoSizeRequestId = -1;
+            infoSizeWorkerPending = 0;
+            SignalSema(menuSemaId);
+            return;
+        }
+        // A newer target arrived while this one ran. Leave the worker latch set and loop directly;
+        // no second IO request is needed and the newest request cannot be lost behind a queue failure.
+        SignalSema(menuSemaId);
+    }
+}
+
+// Queued when the info screen opens: resolve #Size without blocking the UI. Same-row repeats dedupe;
+// a different row replaces the target even when the worker is already active.
+void menuRequestInfoSize(void)
+{
+    int queueWorker = 0;
+
+    WaitSema(menuSemaId);
+    if (selected_item == NULL || selected_item->item == NULL || selected_item->item->current == NULL) {
+        SignalSema(menuSemaId);
+        return;
+    }
+
+    item_list_t *list = static_cast<item_list_t*>(selected_item->item->userdata);
+    int configId = selected_item->item->current->item.id;
+
+    if (infoSizeWorkerPending && infoSizeRequestList == list && infoSizeRequestId == configId) {
+        SignalSema(menuSemaId);
+        return; // exact same work is already active/queued
+    }
+
+    infoSizeRequestList = list;
+    infoSizeRequestId = configId;
+    infoSizeRequestGeneration++;
+    if (!infoSizeWorkerPending) {
+        infoSizeWorkerPending = 1;
+        queueWorker = 1;
+    }
+    SignalSema(menuSemaId);
+
+    if (queueWorker && ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&_menuResolveInfoSize)) != IO_OK) {
+        WaitSema(menuSemaId);
+        infoSizeWorkerPending = 0;
+        infoSizeRequestList = NULL;
+        infoSizeRequestId = -1;
+        SignalSema(menuSemaId);
+    }
+}
+
+static void _menuSaveConfig()
+{
+    int result;
+    bdm_config_diag_snapshot_t diag;
+
+    // bdmLogConfigWrite* report device identity by OPENING every BDM root -- up to nine blocking
+    // device probes, most of them failed opens, which cost seconds apiece on a slow stick. Holding
+    // menuSemaId across device I/O is the exact trap documented on _menuLoadConfigAsync above:
+    // menuRenderElements takes that sema every frame, so the whole UI freezes for the duration.
+    //
+    // Nor may they keep borrowing itemConfigList/itemConfig once the sema is released -- either can
+    // be freed the moment it is. So capture every value the report needs into a plain-value stack
+    // snapshot while the sema IS held, then report from the copy with no lock and no borrowed
+    // pointers. In a release build all three calls are no-ops; a diagnostic build is the one we hand
+    // to a tester, and it has to measure the save rather than itself.
+    WaitSema(menuSemaId);
+    bdmCaptureConfigWriteDiag(itemConfigList, itemConfig, &diag);
+    SignalSema(menuSemaId);
+
+    bdmLogConfigWriteEntry(&diag);
+
+    WaitSema(menuSemaId);
+    result = configWrite(itemConfig);
+    itemConfigId = -1;       // to invalidate cache and force reload
+    menuSaveResult = result; // publish BEFORE actionStatus=0 -- that flag is the waiter's release signal
+    actionStatus = 0;
+    SignalSema(menuSemaId);
+
+    bdmLogConfigWriteResult(&diag, result);
+
+    if (!result)
+        // gLastSaveErrno was latched inside configWrite at the real failure site.
+        setErrorMessagePathCode(_STR_ERROR_SAVING_SETTINGS_TO, itemConfig ? itemConfig->filename : "", gLastSaveErrno);
+}
+
+// Every path out of here MUST either queue a load that will clear actionStatus, or clear it itself.
+// The old version had two paths that did neither: the selection changed but the idle-frame gate was
+// not met, or the row was current with itemConfig still NULL. Both left actionStatus=1 with nothing
+// in flight, so guiHandleDeferedIO span on a load that was never requested -- an outright hang
+// before rebuild-38, and a 30s freeze plus a bogus error toast after it.
+// NOTE(rebuild): the fork also swaps list->delay for MENU_APP_CONFIG_IDLE_FRAMES on APP_MODE. That
+// constant does not exist here and is a separate tuning change, so the idle gate is left exactly as
+// it was; only the completion contract is repaired.
+static void _menuRequestConfig()
+{
+    int shouldQueueLoad = 0;
+    int waiterPending;
+
+    WaitSema(menuSemaId);
+    // Which load variant to queue. A waiter (dialog path) needs the publish-unconditionally
+    // in-sema load; the browse/settle path has none and gets the async one that keeps the sema
+    // free across the device read. Read under the sema with everything else it decides on.
+    waiterPending = (actionStatus != 0);
+    if (selected_item == NULL || selected_item->item == NULL || selected_item->item->current == NULL) {
+        // The list can be rebuilt out from under us between the GUI's check and this callback.
+        actionStatus = 0;
+    } else if (itemConfigId != selected_item->item->current->item.id ||
+               itemConfigList != selected_item->item->userdata) {
+        if (itemConfig) {
+            configFree(itemConfig);
+            itemConfig = NULL;
+        }
+        item_list_t *list = static_cast<item_list_t*>(selected_item->item->userdata);
+        if (itemConfigId == -1 || guiInactiveFrames >= list->delay) {
+            itemConfigId = selected_item->item->current->item.id;
+            itemConfigList = list;
+            shouldQueueLoad = 1;
+        } else
+            actionStatus = 0; // still settling: nothing queued, so release the waiter now
+    } else if (itemConfig == NULL && actionStatus != 0) {
+        shouldQueueLoad = 1; // right row, but its config never landed -- ask again
+    } else
+        actionStatus = 0;
+
+    SignalSema(menuSemaId);
+
+    // Queue OUTSIDE the sema: both load variants take it too.
+    if (shouldQueueLoad && ioPutRequest(IO_CUSTOM_SIMPLEACTION, waiterPending ? (void *)&_menuLoadConfig : (void *)&_menuLoadConfigAsync) != IO_OK) {
+        WaitSema(menuSemaId);
+        if (itemConfig == NULL) {
+            itemConfigId = -1; // let the next pass retry rather than caching a row that never loaded
+            itemConfigList = NULL;
+        }
+        actionStatus = 0;
+        SignalSema(menuSemaId);
+    }
+}
+
+static config_set_t *menuGetCachedCurrentConfig(void)
+{
+    config_set_t *cached = NULL;
+
+    WaitSema(menuSemaId);
+    if (itemConfig != NULL && selected_item != NULL && selected_item->item != NULL &&
+        selected_item->item->current != NULL && itemConfigId == selected_item->item->current->item.id &&
+        itemConfigList == selected_item->item->userdata)
+        cached = itemConfig;
+    SignalSema(menuSemaId);
+
+    return cached;
+}
+
+config_set_t *menuLoadConfig()
+{
+    item_list_t *list = NULL;
+    config_set_t *loadedConfig = NULL;
+    config_set_t *result = NULL;
+    int configId = -1;
+
+    // Launch configuration is foreground work. Sending it through the single ioman FIFO makes a
+    // game launch wait behind unrelated device/list rescans and browse-time metadata; on MX4SIO
+    // that can pin the UI at "Loading config..." before the game-side IOP reset is even reached.
+    WaitSema(menuSemaId);
+    if (selected_item != NULL && selected_item->item != NULL && selected_item->item->current != NULL) {
+        list = static_cast<item_list_t*>(selected_item->item->userdata);
+        configId = selected_item->item->current->item.id;
+
+        if (itemConfig != NULL && itemConfigId == configId && itemConfigList == list) {
+            result = itemConfig; // browse-time prefetch already paid the device read
+        } else {
+            if (itemConfig != NULL) {
+                configFree(itemConfig);
+                itemConfig = NULL;
+            }
+            itemConfigId = configId;
+            itemConfigList = list;
+        }
+    } else {
+        if (itemConfig != NULL) {
+            configFree(itemConfig);
+            itemConfig = NULL;
+        }
+        itemConfigId = -1;
+        itemConfigList = NULL;
+    }
+    actionStatus = 0;
+    SignalSema(menuSemaId);
+
+    if (list == NULL || configId < 0)
+        return result;
+
+    // Launch owns the storage path now. Drop speculative art before any launch I/O or cached return.
+    // A zero wait requests cancellation but never kills or waits on an in-flight fileXio/SIO2 RPC;
+    // that transaction is allowed to finish cleanly while no new queued art can get in front.
+    if (list->mode == MMCE_MODE)
+        (void)cacheAbortMmceImageLoadsTimed(0);
+    else
+        (void)cacheCancelPendingImageLoadsTimed(0);
+
+    if (result != NULL)
+        return result;
+
+    loadedConfig = list->itemGetConfig(list, configId);
+
+    // A browse-time load may have completed while the direct read was running. Publish only if this
+    // selection still owns the cache; otherwise free the duplicate/stale result.
+    WaitSema(menuSemaId);
+    if (itemConfig == NULL && itemConfigId == configId && itemConfigList == list) {
+        itemConfig = loadedConfig;
+        loadedConfig = NULL;
+    }
+    if (itemConfigId == configId && itemConfigList == list)
+        result = itemConfig;
+    SignalSema(menuSemaId);
+
+    if (loadedConfig != NULL)
+        configFree(loadedConfig);
+
+    return result;
+}
+
+// we don't want a pop up when transitioning to or refreshing Game Menu gui.
+config_set_t *gameMenuLoadConfig(struct UIItem *ui)
+{
+    config_set_t *cached = menuGetCachedCurrentConfig();
+    if (cached != NULL)
+        return cached; // same fast path, without showing a fake loading phase
+
+    actionStatus = 1;
+    guiGameHandleDeferedIO(&actionStatus, ui, IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&_menuRequestConfig));
+    return itemConfig;
+}
+
+int menuSaveConfig()
+{
+    actionStatus = 1;
+    menuSaveResult = 0;
+    guiHandleDeferedIO(&actionStatus, _l(_STR_SAVING_SETTINGS), IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&_menuSaveConfig), OPL_DEFERRED_IO_TIMEOUT_MS);
+    return menuSaveResult;
+}
+
+int menuSaveSettings(void)
+{
+    int result;
+
+    if (menuCheckParentalLock() != 0)
+        return 0;
+
+    guiGameSaveOSDLanguageGlobalConfig(configGetByType(CONFIG_GAME));
+#ifdef PADEMU
+    guiGameSavePadEmuGlobalConfig(configGetByType(CONFIG_GAME));
+    guiGameSavePadMacroGlobalConfig(configGetByType(CONFIG_GAME));
+#endif
+    // CONFIG_LAST is in the list for the remembered L3 positions (_saveConfig folds them in there).
+    // It is otherwise only written when a game launches, and that write is gated on Remember Last
+    // Played -- so without this a user with that setting off could never persist a view. It costs
+    // nothing when nothing changed: configWrite skips an unmodified set without touching the disk.
+    result = saveConfig(CONFIG_OPL | CONFIG_NETWORK | CONFIG_GAME | CONFIG_LAST, 1);
+    menuSetParentalLockCheckState(1); // Re-enable parental lock check.
+
+    // SMB, UDPFS and UDPBD share the one SMAP NIC and cannot coexist -- each loader refuses to
+    // start while either of the others is resident, and each loads its IOP chain once per boot.
+    // Once a stack is up, a changed protocol applies after a restart.
+    if (result > 0 && guiNetProtocolNeedsRestart() && guiMsgBox(_l(_STR_NETBOOT_RESTART), 1, NULL))
+        sysExecExit();
+
+    return result;
+}
+
+static void menuInitMainMenu(void)
+{
+    if (mainMenu)
+        submenuDestroy(&mainMenu);
+
+    // initialize the menu
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_LAUNCH_PS2_DISC, _STR_LAUNCH_PS2_DISC);
+#ifdef RETROACHIEVEMENTS
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_RA_DISC_CHECK, _STR_RA_DISC_CHECK);
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_RA_DISC_LAUNCH, _STR_RA_DISC_LAUNCH);
+#endif
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_SETTINGS, _STR_SETTINGS);
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_NBD, _STR_STARTNBD);
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_ABOUT, _STR_ABOUT);
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_EXIT, _STR_EXIT);
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_POWER_OFF, _STR_POWEROFF);
+
+    mainMenuCurrent = mainMenu;
+}
+
+void menuReinitMainMenu(void)
+{
+    menuInitMainMenu();
+}
+
+void menuInitGameMenu(item_list_t *support)
+{
+    if (gameMenu)
+        submenuDestroy(&gameMenu);
+
+    // initialize the menu
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_COMPAT_SETTINGS, _STR_COMPAT_SETTINGS);
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_CHEAT_SETTINGS, _STR_CHEAT_SETTINGS);
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_GSM_SETTINGS, _STR_GSCONFIG);
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_VMC_SETTINGS, _STR_VMC_SCREEN);
+#ifdef PADEMU
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_PADEMU_SETTINGS, _STR_PADEMUCONFIG);
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_PADMACRO_SETTINGS, _STR_PADMACROCONFIG);
+#endif
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_OSD_LANGUAGE_SETTINGS, _STR_OSD_SETTINGS);
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_SAVE_CHANGES, _STR_SAVE_CHANGES);
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_TEST_CHANGES, _STR_TEST);
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_REMOVE_CHANGES, _STR_REMOVE_ALL_SETTINGS);
+    if (gEnableWrite) {
+        // Offer only what the page can do. Favorites keeps both so it can explain why not. The APA
+        // HDD page neither renames nor deletes PS2 games: both would edit the partition table.
+        int fav = support != NULL && support->mode == FAV_MODE;
+        if (fav || (support != NULL && support->itemRename != NULL && support->mode != HDD_MODE))
+            submenuAppendItem(&gameMenu, -1, NULL, GAME_RENAME_GAME, _STR_RENAME);
+        if (fav || (support != NULL && support->itemDelete != NULL))
+            submenuAppendItem(&gameMenu, -1, NULL, GAME_DELETE_GAME, _STR_DELETE);
+    }
+#ifdef RETROACHIEVEMENTS
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_RA_CHECK, _STR_RA_CHECK_GAME);
+    submenuAppendItem(&gameMenu, -1, NULL, GAME_RA_TEST, _STR_RA_TEST_LINK);
+#endif
+
+    gameMenuCurrent = gameMenu;
+}
+
+void menuInitAppMenu(void)
+{
+    if (appMenu)
+        submenuDestroy(&appMenu);
+
+    // initialize the menu
+    submenuAppendItem(&appMenu, -1, NULL, APP_RENAME, _STR_RENAME);
+    submenuAppendItem(&appMenu, -1, NULL, APP_DELETE, _STR_DELETE);
+
+    appMenuCurrent = appMenu;
+}
+
+void menuInitVcdMenu(int isEmber)
+{
+    if (appMenu)
+        submenuDestroy(&appMenu);
+
+    // PS1 titles are handed off to POPSTARTER or Ember, so this menu must not imply that RiptOPL
+    // owns per-game emulator settings. Link to the existing GLOBAL PS emulation page instead, and
+    // keep this item-operation path free of PS2 per-game CFG reads/creation.
+    submenuAppendItem(&appMenu, -1, NULL, APP_GLOBAL_PS_SETTINGS, _STR_GLOBAL_PS_EMULATION_SETTINGS);
+    // Ember reads a per-game settings.txt; POPSTARTER has nothing equivalent, so only Ember rows get it.
+    if (isEmber)
+        submenuAppendItem(&appMenu, -1, NULL, APP_EMBER_GAME_SETTINGS, _STR_EMBER_GAME_SETTINGS);
+    submenuAppendItem(&appMenu, -1, NULL, APP_RENAME, _STR_RENAME);
+
+    appMenuCurrent = appMenu;
+}
+
+// -------------------------------------------------------------------------------------------
+// ---------------------------------------- Menu manipulation --------------------------------
+// -------------------------------------------------------------------------------------------
+void menuInit()
+{
+    menu = NULL;
+    selected_item = NULL;
+    itemConfigId = -1;
+    itemConfig = NULL;
+    itemConfigList = NULL;
+    infoSizeWorkerPending = 0;
+    infoSizeRequestList = NULL;
+    infoSizeRequestId = -1;
+    infoSizeRequestGeneration = 0;
+    mainMenu = NULL;
+    mainMenuCurrent = NULL;
+    gameMenu = NULL;
+    gameMenuCurrent = NULL;
+    appMenu = NULL;
+    appMenuCurrent = NULL;
+    menuInitMainMenu();
+
+    // Create once; recreating on a second menuInit would leak the prior semaphore.
+    if (menuSemaId < 0) {
+        menuSema.init_count = 1;
+        menuSema.max_count = 1;
+        menuSema.option = 0;
+        menuSemaId = CreateSema(&menuSema);
+    }
+    if (menuHintSemaId < 0) {
+        menuHintSema.init_count = 1;
+        menuHintSema.max_count = 1;
+        menuHintSema.option = 0;
+        menuHintSemaId = CreateSema(&menuHintSema);
+    }
+    if (menuListSemaId < 0) {
+        menuListSemaId = sbCreateSemaphore();
+    }
+}
+
+void menuEnd()
+{
+    // destroy menu
+    menu_list_t *cur = menu;
+
+    while (cur) {
+        menu_list_t *td = cur;
+        cur = cur->next;
+
+        if (td->item)
+            submenuDestroy(&(td->item->submenu));
+
+        menuHintsLock();
+        menuRemoveHints(td->item);
+        menuHintsUnlock();
+
+        free(td);
+    }
+
+    submenuDestroy(&mainMenu);
+    submenuDestroy(&gameMenu);
+    submenuDestroy(&appMenu);
+
+    if (itemConfig) {
+        configFree(itemConfig);
+        itemConfig = NULL;
+    }
+
+    DeleteSema(menuSemaId);
+    menuSemaId = -1;
+
+    // PUBLISH "GONE" BEFORE DELETING, not after. ioEnd() only sets gIOTerminate and wakes the io
+    // worker -- it does not join it -- so a queued moduleUpdateMenuInternal() can still be running
+    // when we get here. Clearing the id first means such a caller either reads -1 and no-ops
+    // (menuHintsLock's not-ready guard) or has already sampled a live id; deleting first would
+    // additionally let it sample an id we are in the middle of destroying.
+    //
+    // This narrows the window rather than closing it, and the same race already exists for
+    // menuSemaId above -- which ioman handlers (_menuSaveConfig, _menuLoadConfig,
+    // _menuLoadConfigAsync) take directly with no not-ready guard at all. Closing it properly means
+    // joining the io worker before support cleanup, which is a shutdown-ordering change and does
+    // not belong in a hint-list lock.
+    {
+        s32 hintSema = menuHintSemaId;
+        menuHintSemaId = -1;
+        if (hintSema >= 0)
+            DeleteSema(hintSema);
+    }
+    DeleteSema(menuListSemaId);
+    menuListSemaId = -1;
+}
+
+static menu_list_t *AllocMenuItem(menu_item_t *item)
+{
+    menu_list_t *it;
+
+    it = static_cast<menu_list_t*>(malloc(sizeof(menu_list_t)));
+
+    it->prev = NULL;
+    it->next = NULL;
+    it->item = item;
+
+    return it;
+}
+
+static int menuDevicePageRank(const menu_item_t *item)
+{
+    item_list_t *support = item != NULL ? static_cast<item_list_t*>(item->userdata) : NULL;
+    if (support == NULL)
+        return 6;
+
+    if (support->mode >= BDM_MODE && support->mode <= BDM_MODE_LAST)
+        return 0;
+    if (support->mode == MMCE_MODE)
+        return 1;
+    if (support->mode == HDD_MODE)
+        return 2;
+    if (support->mode == ETH_MODE || support->mode == UDPFS_MODE || support->mode == HTTP_MODE)
+        return 3;
+    if (support->mode == APP_MODE)
+        return 4;
+    if (support->mode == FAV_MODE)
+        return 5;
+
+    return 6;
+}
+
+void menuAppendItem(menu_item_t *item)
+{
+    assert(item);
+
+    WaitSema(menuListSemaId);
+
+    menu_list_t *newitem = AllocMenuItem(item);
+    if (menu == NULL) {
+        menu = newitem;
+        selected_item = menu;
+    } else {
+        // The GUI page order is independent of support initialization order. List and Coverflow
+        // share this same ring, so keep both views in the Korium order:
+        // BDM, MMCE, APA HDD, NET, APPS, FAV.
+        const int rank = menuDevicePageRank(item);
+        if (rank < menuDevicePageRank(menu->item)) {
+            newitem->next = menu;
+            menu->prev = newitem;
+            menu = newitem;
+        } else {
+            menu_list_t *cur = menu;
+            while (cur->next != NULL && menuDevicePageRank(cur->next->item) <= rank)
+                cur = cur->next;
+
+            newitem->next = cur->next;
+            newitem->prev = cur;
+            if (cur->next != NULL)
+                cur->next->prev = newitem;
+            cur->next = newitem;
+        }
+    }
+
+    SignalSema(menuListSemaId);
+}
+
+static void refreshMenuPosition(void)
+{
+    // Returning from Start/menu/settings must retain the page the user paused on. The old helper
+    // always selected the first visible tab here, which is commonly USB, even when the current page
+    // remained present. Fall back only when that exact menu vanished or became invisible.
+    if (menu == NULL)
+        return;
+
+    menu_list_t *cur = menu;
+    while (cur != NULL) {
+        if (cur == selected_item && cur->item != NULL && cur->item->visible)
+            return;
+        cur = cur->next;
+    }
+
+    // The retained page is no longer usable: choose the first visible page deterministically.
+    cur = menu;
+    while (cur->item->visible == 0 && cur->next)
+        cur = cur->next;
+
+    if (cur->item->visible == 0) {
+        // No visible menu was found, just set the current menu to the first one in the list.
+        selected_item = menu;
+    } else
+        selected_item = cur;
+}
+
+void submenuRebuildCache(submenu_list_t *submenu)
+{
+    while (submenu) {
+        if (submenu->item.cache_id)
+            free(submenu->item.cache_id);
+        if (submenu->item.cache_uid)
+            free(submenu->item.cache_uid);
+
+        int size = gTheme->gameCacheCount * sizeof(int);
+        submenu->item.cache_id = static_cast<int*>(malloc(size));
+        memset(submenu->item.cache_id, -1, size);
+        submenu->item.cache_uid = static_cast<int*>(malloc(size));
+        memset(submenu->item.cache_uid, -1, size);
+
+        submenu = submenu->next;
+    }
+}
+
+// True once the global menu list contains a registered device/mode tab (returns menu != NULL).
+// initSupport uses the FALSE case to spot "user enabled the FIRST tab from the start menu",
+// where nothing would otherwise take them to it (#254).
+int menuHasRegisteredItems(void)
+{
+    return menu != NULL;
+}
+
+static submenu_list_t *submenuAllocItem(int icon_id, char *text, int id, int text_id)
+{
+    submenu_list_t *it = (submenu_list_t *)malloc(sizeof(submenu_list_t));
+
+    it->prev = NULL;
+    it->next = NULL;
+    it->item.icon_id = icon_id;
+    it->item.text = text;
+    it->item.text_id = text_id;
+    it->item.id = id;
+    it->item.cache_id = NULL;
+    it->item.cache_uid = NULL;
+    it->item.favourited = 0;
+    it->item.isFolder = 0;
+    submenuRebuildCache(it);
+
+    return it;
+}
+
+submenu_list_t *submenuAppendItem(submenu_list_t **submenu, int icon_id, char *text, int id, int text_id)
+{
+    if (*submenu == NULL) {
+        *submenu = submenuAllocItem(icon_id, text, id, text_id);
+        return *submenu;
+    }
+
+    submenu_list_t *cur = *submenu;
+
+    // traverse till the end
+    while (cur->next)
+        cur = cur->next;
+
+    // create new item
+    submenu_list_t *newitem = submenuAllocItem(icon_id, text, id, text_id);
+
+    // link
+    cur->next = newitem;
+    newitem->prev = cur;
+
+    return newitem;
+}
+
+// Linear search by id + text. Favourites uses this to locate the source-list item so the
+// favourited flag (star) stays in sync on both the FAV copy and the source copy. Both text
+// args are NULL-guarded before strcmp.
+submenu_list_t *submenuFindItemByIdAndText(submenu_list_t *submenu, int id, const char *text)
+{
+    submenu_list_t *cur = submenu;
+    while (cur) {
+        if (cur->item.id == id && text && cur->item.text && !strcmp(cur->item.text, text))
+            return cur;
+        cur = cur->next;
+    }
+    return NULL;
+}
+
+static void submenuDestroyItem(submenu_list_t *submenu)
+{
+    free(submenu->item.cache_id);
+    free(submenu->item.cache_uid);
+
+    free(submenu);
+}
+
+void submenuRemoveItem(submenu_list_t **submenu, int id)
+{
+    submenu_list_t *cur = *submenu;
+    submenu_list_t *prev = NULL;
+
+    while (cur) {
+        if (cur->item.id == id) {
+            submenu_list_t *next = cur->next;
+
+            if (prev)
+                prev->next = cur->next;
+
+            if (*submenu == cur)
+                *submenu = next;
+
+            submenuDestroyItem(cur);
+
+            cur = next;
+        } else {
+            prev = cur;
+            cur = cur->next;
+        }
+    }
+}
+
+void submenuDestroy(submenu_list_t **submenu)
+{
+    // destroy sub menu
+    submenu_list_t *cur = *submenu;
+
+    while (cur) {
+        submenu_list_t *td = cur;
+        cur = cur->next;
+
+        submenuDestroyItem(td);
+    }
+
+    *submenu = NULL;
+}
+
+void menuAddHint(menu_item_t *menu, int text_id, int icon_id)
+{
+    // allocate a new hint item
+    menu_hint_item_t *hint = static_cast<menu_hint_item_t*>(malloc(sizeof(menu_hint_item_t)));
+
+    hint->text_id = text_id;
+    hint->icon_id = icon_id;
+    hint->next = NULL;
+
+    if (menu->hints) {
+        menu_hint_item_t *top = menu->hints;
+
+        // rewind to end
+        for (; top->next; top = top->next)
+            ;
+
+        top->next = hint;
+    } else {
+        menu->hints = hint;
+    }
+}
+
+void menuRemoveHints(menu_item_t *menu)
+{
+    while (menu->hints) {
+        menu_hint_item_t *hint = menu->hints;
+        menu->hints = hint->next;
+        free(hint);
+    }
+}
+
+char *menuItemGetText(menu_item_t *it)
+{
+    if (it->text_id >= 0)
+        return _l(it->text_id);
+    else
+        return it->text;
+}
+
+char *submenuItemGetText(submenu_item_t *it)
+{
+    if (it->text_id >= 0)
+        return _l(it->text_id);
+    else
+        return it->text;
+}
+
+// Folder browsing: folders group ahead of games; within each group sort by the on-screen title.
+static int submenuSortCompare(submenu_list_t *a, submenu_list_t *b, item_list_t *support)
+{
+    const char *txt1, *txt2;
+
+    if (a->item.isFolder != b->item.isFolder)
+        return a->item.isFolder ? -1 : 1;
+
+    txt1 = submenuItemGetText(&a->item);
+    txt2 = submenuItemGetText(&b->item);
+    if (!a->item.isFolder) {
+        txt1 = vcdDisplayNameForRow(support, a->item.id, txt1);
+        txt2 = vcdDisplayNameForRow(support, b->item.id, txt2);
+    }
+    return strcasecmp(txt1, txt2);
+}
+
+/* Sorts the given submenu by comparing the on-screen titles.
+
+   A bottom-up merge sort over the linked list: O(n log n) comparisons and no extra memory. This was
+   a bubble sort, O(n^2), and it runs on every list rebuild while Sort Games Alphabetically is on
+   (the default) -- a rescan, an L3 view change, a device attach. The scan hands rows over in REVERSE
+   directory order (scanForISO prepends), which on a library copied in alphabetical order is the
+   bubble sort's worst case: its passes ran the whole list every time, so 1000 games cost ~1,000,000
+   comparisons, each a strcasecmp behind two display-name lookups, drained by the GUI thread between
+   frames. The merge sort needs about 5,000 for the same list, and a list already in order still
+   costs one pass, as it did before.
+
+   Both sorts are stable -- a tie keeps its current order -- and use the same comparison, so the
+   resulting order is identical, row for row. */
+void submenuSort(submenu_list_t **submenu, int mode)
+{
+    submenu_list_t *list, *p, *q, *e, *tail;
+    int insize, nmerges, psize, qsize, i;
+
+    if ((submenu == NULL) || (*submenu == NULL) || ((*submenu)->next == NULL))
+        return;
+
+    item_list_t *support = NULL;
+    if (mode >= 0 && mode < MODE_COUNT) {
+        opl_io_module_t *mod = oplGetModule(mode);
+        if (mod != NULL)
+            support = mod->support;
+    }
+
+    // Already in order (a rebuild of an unchanged, sorted source): one pass and done.
+    for (p = *submenu; p->next != NULL; p = p->next)
+        if (submenuSortCompare(p, p->next, support) > 0)
+            break;
+    if (p->next == NULL)
+        return;
+
+    // Merge runs of insize, doubling each pass, until one pass makes a single merge. Taking from the
+    // left run on a tie is what keeps the sort stable. prev links are rebuilt as each row is placed.
+    list = *submenu;
+    for (insize = 1;; insize *= 2) {
+        p = list;
+        list = NULL;
+        tail = NULL;
+        nmerges = 0;
+
+        while (p != NULL) {
+            nmerges++;
+            q = p;
+            psize = 0;
+            for (i = 0; i < insize && q != NULL; i++) {
+                psize++;
+                q = q->next;
+            }
+            qsize = insize;
+
+            while (psize > 0 || (qsize > 0 && q != NULL)) {
+                if (psize == 0) {
+                    e = q;
+                    q = q->next;
+                    qsize--;
+                } else if (qsize == 0 || q == NULL || submenuSortCompare(p, q, support) <= 0) {
+                    e = p;
+                    p = p->next;
+                    psize--;
+                } else {
+                    e = q;
+                    q = q->next;
+                    qsize--;
+                }
+
+                if (tail != NULL)
+                    tail->next = e;
+                else
+                    list = e;
+                e->prev = tail;
+                tail = e;
+            }
+
+            p = q;
+        }
+
+        tail->next = NULL;
+        if (nmerges <= 1)
+            break;
+    }
+
+    *submenu = list;
+}
+
+// Folder browsing: return the device page we are leaving to its folder root, so a device is never
+// parked inside a subfolder while off-screen. This keeps folder navigation a per-visit affair and
+// guarantees the Favourites tab / last-played always resolve against a device's root list. It also
+// frees the single shared breadcrumb buffer for the next device by restoring the device-name title.
+static void menuFolderResetLeaving(struct menu_list *leaving)
+{
+    if (leaving == NULL || leaving->item == NULL || leaving->item->userdata == NULL)
+        return;
+    item_list_t *support = (item_list_t *)leaving->item->userdata;
+    if (!folderModeSupported(support->mode) || folderDepth(support->mode) == 0)
+        return;
+    folderReset(support->mode);
+    leaving->item->text = NULL;
+    leaving->item->text_id = support->itemTextId(support); // restore the device name (was the breadcrumb)
+    // Queue the rebuild now (folderReset marked the mode dirty) so the device is back at its root list
+    // promptly -- the Favourites tab / last-played resolve against that root, not the subfolder we left.
+    ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
+}
+
+static void menuNextH()
+{
+    struct menu_list *next = selected_item->next;
+    while (next != NULL && next->item->visible == 0)
+        next = next->next;
+
+    // If we found a valid menu transition to it.
+    if (next != NULL) {
+        menuFolderResetLeaving(selected_item);
+        selected_item = next;
+        itemConfigId = -1;
+        sfxPlay(SFX_CURSOR);
+    }
+}
+
+static void menuPrevH()
+{
+    struct menu_list *prev = selected_item->prev;
+    while (prev != NULL && prev->item->visible == 0)
+        prev = prev->prev;
+
+    if (prev != NULL) {
+        menuFolderResetLeaving(selected_item);
+        selected_item = prev;
+        itemConfigId = -1;
+        sfxPlay(SFX_CURSOR);
+    }
+}
+
+static void menuFirstPage()
+{
+    submenu_list_t *cur = selected_item->item->current;
+    if (cur) {
+        if (cur->prev) {
+            sfxPlay(SFX_CURSOR);
+        }
+
+        selected_item->item->current = selected_item->item->submenu;
+        selected_item->item->pagestart = selected_item->item->current;
+    }
+}
+
+static void menuLastPage()
+{
+    submenu_list_t *cur = selected_item->item->current;
+    if (cur) {
+        if (cur->next) {
+            sfxPlay(SFX_CURSOR);
+        }
+        while (cur->next)
+            cur = cur->next; // go to end
+
+        selected_item->item->current = cur;
+
+        int itms = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
+        while (--itms && cur->prev) // and move back to have a full page
+            cur = cur->prev;
+
+        selected_item->item->pagestart = cur;
+    }
+}
+
+static void menuNextV()
+{
+    submenu_list_t *cur = selected_item->item->current;
+
+    if (cur && cur->next) {
+        selected_item->item->current = cur->next;
+        sfxPlay(SFX_CURSOR);
+        // coverflow slide animation; the wrap branch below stays instant
+        if (gTheme->coverflow)
+            thmTriggerCoverflowAnim(1);
+
+        // if the current item is beyond the page start, move the page start one page down
+        cur = selected_item->item->pagestart;
+        int itms = ((items_list_t *)gTheme->itemsList->extended)->displayedItems + 1;
+        while (--itms && cur)
+            if (selected_item->item->current == cur)
+                return;
+            else
+                cur = cur->next;
+
+        selected_item->item->pagestart = selected_item->item->current;
+    } else { // wrap to start
+        menuFirstPage();
+        /*
+          Animate the wrap too, but ONLY in coverflow (#271).
+
+          The carousel's visible window already wraps -- drawCoverFlow fans covers[] out through
+          menu->item->last / ->submenu -- so last->first is a single VISUAL step there, exactly like
+          every other move. Leaving it instant (10c19f1b's documented intent) therefore singled out
+          the two entries at the seam: stepping onto the first game, and the step immediately after
+          it, got no slide and no scale transfer while every other step did. That is what the
+          reporter sees as the selection "clipping/skipping on the first game and the one following
+          it", and it is also the most likely source of "the 3D effect drops to a flat 2D scroll" --
+          because at the seam it literally does.
+
+          The flat list views keep the instant jump: there the wrap really is an N-item page jump,
+          not one step, so a one-step slide would misrepresent it.
+        */
+        if (gTheme->coverflow)
+            thmTriggerCoverflowAnim(1);
+    }
+}
+
+static void menuPrevV()
+{
+    submenu_list_t *cur = selected_item->item->current;
+
+    if (cur && cur->prev) {
+        selected_item->item->current = cur->prev;
+        sfxPlay(SFX_CURSOR);
+
+        // if the current item is on the page start, move the page start one page up
+        if (selected_item->item->pagestart == cur) {
+            int itms = ((items_list_t *)gTheme->itemsList->extended)->displayedItems + 1; // +1 because the selection will move as well
+            while (--itms && selected_item->item->pagestart->prev)
+                selected_item->item->pagestart = selected_item->item->pagestart->prev;
+        }
+
+        // coverflow slide animation; the wrap branch below stays instant
+        if (gTheme->coverflow)
+            thmTriggerCoverflowAnim(-1);
+    } else { // wrap to end
+        menuLastPage();
+        // Mirror of the wrap in menuNextV -- see the rationale there (#271).
+        if (gTheme->coverflow)
+            thmTriggerCoverflowAnim(-1);
+    }
+}
+
+static void menuNextPage()
+{
+    submenu_list_t *cur = selected_item->item->pagestart;
+    int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
+
+    // Probe to the item one row past the bottom of the current page. If the end comes first, the
+    // rest of the list is already on screen, so never page onto it: that over-scroll collapsed a
+    // sub-page list to just its last item (#48).
+    submenu_list_t *probe = cur;
+    int n = displayed;
+    while (n-- && probe)
+        probe = probe->next;
+
+    if (cur && probe) {
+        int itms = displayed + 1;
+        sfxPlay(SFX_CURSOR);
+
+        while (--itms && cur->next)
+            cur = cur->next;
+
+        selected_item->item->current = cur;
+        selected_item->item->pagestart = selected_item->item->current;
+    } else { // wrap to start
+        // Mirror of L1, which wraps from the first page to the last (menuPrevPage). Without this R1
+        // stopped dead at the end of the list while L1 kept cycling. Coverflow shows that at its
+        // worst: its one-row items list makes a page a single title, so holding R1 walked to the
+        // last game and stayed there (#729).
+        menuFirstPage();
+    }
+}
+
+static void menuPrevPage()
+{
+    submenu_list_t *cur = selected_item->item->pagestart;
+
+    if (cur && cur->prev) {
+        int itms = ((items_list_t *)gTheme->itemsList->extended)->displayedItems + 1;
+        sfxPlay(SFX_CURSOR);
+
+        while (--itms && cur->prev)
+            cur = cur->prev;
+
+        selected_item->item->current = cur;
+        selected_item->item->pagestart = selected_item->item->current;
+    } else { // wrap to end
+        menuLastPage();
+    }
+}
+
+void menuSetSelectedItem(menu_item_t *item)
+{
+    menu_list_t *itm = menu;
+
+    while (itm) {
+        if (itm->item == item) {
+            selected_item = itm;
+            return;
+        }
+
+        itm = itm->next;
+    }
+}
+
+void menuRenderMenu()
+{
+    // Optional themed settings background (use_settings_bg): guiDrawBGSettings draws it and
+    // returns non-zero; 0 means the theme has none, so fall back to the plasma. dia.c already
+    // did this for dialogs -- these three menu screens did not, so a theme that shipped a
+    // settings background got it on its dialogs and the plasma on its menus.
+    if (guiDrawBGSettings() == 0)
+        guiDrawBGPlasma();
+
+    if (!mainMenu)
+        return;
+
+    // draw the animated menu
+    if (!mainMenuCurrent)
+        mainMenuCurrent = mainMenu;
+
+    submenu_list_t *it = mainMenu;
+
+    // calculate the number of items
+    int count = 0;
+    int sitem = 0;
+    for (; it; count++, it = it->next) {
+        if (it == mainMenuCurrent)
+            sitem = count;
+    }
+
+    int spacing = 25;
+    int y = (gTheme->usedHeight >> 1) - (spacing * (count >> 1));
+    int cp = 0; // current position
+    for (it = mainMenu; it; it = it->next, cp++) {
+        // render, advance
+        fntRenderString(gTheme->fonts[0], 320, y, ALIGN_CENTER, 0, 0, submenuItemGetText(&it->item), (cp == sitem) ? gTheme->selTextColor : gTheme->textColor);
+        y += spacing;
+        // Group the live service/settings actions above the informational/exit actions.
+        // Key this to the actual row ID, not enum arithmetic, so retired/reserved IDs cannot move the gap.
+        if (it->item.id == MENU_NBD)
+            y += spacing / 2;
+    }
+
+    // hints
+    guiDrawSubMenuHints();
+}
+
+int menuSetParentalLockCheckState(int enabled)
+{
+    int wasEnabled;
+
+    wasEnabled = parentalLockCheckEnabled;
+    parentalLockCheckEnabled = enabled ? 1 : 0;
+
+    return wasEnabled;
+}
+
+int menuCheckParentalLock(void)
+{
+    const char *parentalLockPassword;
+    char password[CONFIG_KEY_VALUE_LEN];
+    int result;
+
+    result = 0; // Default to unlocked.
+    if (parentalLockCheckEnabled) {
+        config_set_t *configOPL = configGetByType(CONFIG_OPL);
+
+        // Prompt for password, only if one was set.
+        if (configGetStr(configOPL, CONFIG_OPL_PARENTAL_LOCK_PWD, &parentalLockPassword) && (parentalLockPassword[0] != '\0')) {
+            password[0] = '\0';
+            if (diaShowKeyb(password, CONFIG_KEY_VALUE_LEN, 1, _l(_STR_PARENLOCK_ENTER_PASSWORD_TITLE))) {
+                if (strncmp(parentalLockPassword, password, CONFIG_KEY_VALUE_LEN) == 0) {
+                    result = 0;
+                    parentalLockCheckEnabled = 0; // Stop asking for the password.
+                } else if (strncmp(OPL_PARENTAL_LOCK_MASTER_PASS, password, CONFIG_KEY_VALUE_LEN) == 0) {
+                    guiMsgBox(_l(_STR_PARENLOCK_DISABLE_WARNING), 0, NULL);
+
+                    configRemoveKey(configOPL, CONFIG_OPL_PARENTAL_LOCK_PWD);
+                    saveConfig(CONFIG_OPL, 1);
+
+                    result = 0;
+                    parentalLockCheckEnabled = 0; // Stop asking for the password.
+                } else {
+                    guiMsgBox(_l(_STR_PARENLOCK_PASSWORD_INCORRECT), 0, NULL);
+                    result = EACCES;
+                }
+            } else // User aborted.
+                result = EACCES;
+        }
+    }
+
+    return result;
+}
+
+void menuHandleInputMenu()
+{
+    if (!mainMenu)
+        return;
+
+    if (!mainMenuCurrent)
+        mainMenuCurrent = mainMenu;
+
+    if (getKey(KEY_UP)) {
+        sfxPlay(SFX_CURSOR);
+        if (mainMenuCurrent->prev)
+            mainMenuCurrent = mainMenuCurrent->prev;
+        else // rewind to the last item
+            while (mainMenuCurrent->next)
+                mainMenuCurrent = mainMenuCurrent->next;
+    }
+
+    if (getKey(KEY_DOWN)) {
+        sfxPlay(SFX_CURSOR);
+        if (mainMenuCurrent->next)
+            mainMenuCurrent = mainMenuCurrent->next;
+        else
+            mainMenuCurrent = mainMenu;
+    }
+
+    if (getKeyOn(gSelectButton)) {
+        // execute the item via looking at the id of it
+        int id = mainMenuCurrent->item.id;
+
+        sfxPlay(SFX_CONFIRM);
+
+#ifdef RETROACHIEVEMENTS
+        if (id == MENU_RA_DISC_CHECK) {
+            if (discCheckSupportDeferred())
+                guiShowRANotice(_l(_STR_RA_DISC_CHECKING), NULL);
+            else
+                guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);
+        } else if (id == MENU_RA_DISC_LAUNCH) {
+            discLaunch(&guiRenderProbeFrame);
+        } else
+#endif
+            if (id == MENU_LAUNCH_PS2_DISC) {
+            // Pump a frame per poll: the drive can take seconds to answer with an empty tray, and
+            // this runs on the GUI thread, so without it the menu simply stops dead (issue #465).
+            // That same callback carries the cancel press back, and a wait the user ended on
+            // purpose is not an error -- returning quietly to the menu IS the acknowledgement.
+            int discResult = sysLaunchDisc(&guiRenderProbeFrame); // success never returns; <0 -> stay in OPL
+            if (discResult < 0 && discResult != SYS_DISC_CANCELLED)
+                guiMsgBox(_l(_STR_DISC_LAUNCH_ERR), 0, NULL);
+        } else if (id == MENU_SETTINGS) {
+            if (menuCheckParentalLock() == 0)
+                guiShowSettings();
+        } else if (id == MENU_NBD) {
+            if (menuCheckParentalLock() == 0)
+                handleLwnbdSrv();
+        } else if (id == MENU_ABOUT) {
+            guiShowAbout();
+        } else if (id == MENU_SAVE_CHANGES) {
+            menuSaveSettings();
+        } else if (id == MENU_EXIT) {
+            if (guiMsgBox(_l(_STR_CONFIRMATION_EXIT), 1, NULL))
+                sysExecExit();
+        } else if (id == MENU_POWER_OFF) {
+            if (guiMsgBox(_l(_STR_CONFIRMATION_POFF), 1, NULL))
+                sysPowerOff();
+        }
+
+        // so the exit press wont propagate twice
+        readPads();
+    }
+
+    if (getKeyOn(KEY_START) || getKeyOn(gSelectButton == KEY_CIRCLE ? KEY_CROSS : KEY_CIRCLE)) {
+        // Check if there is anything to show the user, at all. This MUST list every tab that can
+        // hold rows, or the user gets trapped in the settings menu with no way back to the list:
+        // gFAVStartMode was missing, so a Favourites-only setup could not escape at all.
+        // bdmEffectiveStartMode() rather than raw gBDMStartMode: UDPBD floors the BDM start mode, so
+        // a UDPBD-only rig has rows while gBDMStartMode itself is still disabled.
+        int netActive = (gNetworkProtocol == NET_PROTO_SMB) ? gETHStartMode : (gNetworkProtocol == NET_PROTO_UDPFS ? gNetStartMode : 0);
+        if (gAPPStartMode || gETHStartMode || netActive || bdmEffectiveStartMode() || gHDDStartMode || gFAVStartMode || gMMCEStartMode) {
+            guiSwitchScreen(GUI_SCREEN_MAIN);
+            refreshMenuPosition();
+        }
+    }
+}
+
+// May this list be asked for per-game config right now? Keeps automatic metadata off the active
+// scroll for the two modes where fetching it is expensive: APPS reads a config per app, and MMCE
+// talks to the memory-card bus that also carries the pad. master's predicate.
+#define MENU_APP_CONFIG_IDLE_FRAMES  1
+#define MENU_MMCE_CONFIG_IDLE_FRAMES 3
+
+static int menuCanRequestItemConfig(item_list_t *list)
+{
+    if (list != NULL && list->mode == APP_MODE)
+        return guiInactiveFrames >= MENU_APP_CONFIG_IDLE_FRAMES;
+
+    if (list != NULL && list->mode == MMCE_MODE)
+        return guiInactiveFrames >= MENU_MMCE_CONFIG_IDLE_FRAMES;
+
+    return 1;
+}
+
+static int menuSelectedRowView(item_list_t *list)
+{
+    if (list != NULL && selected_item != NULL && selected_item->item != NULL &&
+        selected_item->item->current != NULL)
+        return libListRowView(list, selected_item->item->current->item.id);
+    return list != NULL ? libListViewActive(list) : LIB_VIEW_ISO;
+}
+
+static void menuRenderElements(theme_elems_t *elems)
+{
+    // selected_item can't be NULL here as we only allow to switch to "Main" rendering when there is at least one device activated
+    theme_element_t *elem = elems->first;
+    item_list_t *list = (selected_item != NULL && selected_item->item != NULL) ? static_cast<item_list_t*>(selected_item->item->userdata) : NULL;
+
+    // ONLY IF SOMETHING ON SCREEN ACTUALLY READS IT. This was unconditional: every settled row
+    // enqueued an IO_CUSTOM_SIMPLEACTION that opens CFG/<game>.cfg on the game device, whether or not
+    // the theme has a single element capable of displaying it. On the stock theme that is every row's
+    // worth of storage traffic bought for nothing -- and a per-game cfg usually does NOT exist, so it
+    // is the expensive kind of file operation: a lookup that must walk the whole directory before it
+    // can answer "no". Measured on hardware at ~3 accepted actions/sec while merely browsing, on the
+    // ioman worker (priority 32), which outranks the art thread (64) and shares the one process-wide
+    // fileXio RPC channel with it. That is the queue the art was waiting behind.
+    //
+    // elems->needsItemConfig has been set by the theme parser all along and READ BY NOTHING -- the
+    // third field in this tree to ship with its data half and no code half, after cache_entry_t.key
+    // and gArtShutdownAbandoned. It is exact rather than approximate: the parser sets it for
+    // AttributeText, GameCountText and AttributeImage (themes.c), and those are precisely the only
+    // three draw functions that consume the config argument. It is per-FAMILY, so the info screen
+    // still loads what it needs the moment it is shown.
+    if (elems->needsItemConfig && menuCanRequestItemConfig(list))
+        _menuRequestConfig();
+
+    // Deep VCD ID inspection is cosmetic and must be explicit-theme-demand only. ItemText is
+    // the sole render element that consumes vcdDisplayIdCached(), so a family without ItemText does
+    // zero .VCD opens/seeks here. The resolver itself is opportunistic and yields to art/BGM.
+    if (elems->needsVcdDisplayId && list != NULL && menuSelectedRowView(list) == LIB_VIEW_PS1 &&
+        selected_item->item->current != NULL) {
+        char *vcdName = list->itemGetStartup(list, selected_item->item->current->item.id);
+        if (vcdName != NULL)
+            vcdRequestDisplayId(vcdName);
+    }
+
+    WaitSema(menuSemaId);
+
+    while (elem) {
+        if (elem->drawElem)
+            elem->drawElem(selected_item, selected_item->item->current, itemConfig, elem);
+
+        elem = elem->next;
+    }
+    SignalSema(menuSemaId);
+}
+
+// True when the highlighted Favourites row is an app favourite -- the same test the theme's per-row
+// cover redirect uses (thmGetElemForItem), so the info page and its cover always agree on the kind.
+static int menuFavSelectedIsApp(item_list_t *list, int rowView)
+{
+    if (rowView == LIB_VIEW_ELF || rowView == LIB_VIEW_PS1_ELF)
+        return 1;
+    if (list != NULL && list->mode == FAV_MODE && selected_item != NULL && selected_item->item != NULL &&
+        selected_item->item->current != NULL)
+        return favGetItemSourceMode(selected_item->item->current->item.id) == APP_MODE;
+    return 0;
+}
+
+// Per-page element families fall back to the GAMES family when the theme defines none. Neither
+// built-in theme (<OPL>, <Coverflow>) declares a single appsInfo*/favsInfo*/vcdInfo* element, and
+// validateBackgroundElems only auto-adds a background to a NON-empty info group -- so dispatching
+// straight to .first handed menuRenderElements a NULL list and the info screen (Square) drew
+// NOTHING for apps, favourites and the PS1/VCD view. The main families are unaffected in practice
+// (validateBackgroundElems seeds them a background, so .first is never NULL) but take the same
+// guard so the two paths cannot drift again.
+static theme_elems_t *menuGetInfoElems(item_list_t *list)
+{
+    // Favourites per-kind info families (opt-in, see theme_t): a PS1 or app favourite's info page uses
+    // favsVcdInfo* / favsAppsInfo* when the theme declares them. Empty families fall through unchanged.
+    if (list != NULL && list->mode == FAV_MODE) {
+        int rowView = menuSelectedRowView(list);
+        if (rowView == LIB_VIEW_PS1 && gTheme->favsVcdInfoElems.first)
+            return &gTheme->favsVcdInfoElems;
+        if (rowView != LIB_VIEW_PS1 && gTheme->favsAppsInfoElems.first && menuFavSelectedIsApp(list, rowView))
+            return &gTheme->favsAppsInfoElems;
+    }
+    if (list != NULL && menuSelectedRowView(list) == LIB_VIEW_PS1)
+        return gTheme->vcdInfoElems.first ? &gTheme->vcdInfoElems : &gTheme->infoElems;
+    if (list != NULL && list->mode == FAV_MODE)
+        return gTheme->favsInfoElems.first ? &gTheme->favsInfoElems : &gTheme->infoElems;
+    if (list != NULL && list->mode == APP_MODE)
+        return gTheme->appsInfoElems.first ? &gTheme->appsInfoElems : &gTheme->infoElems;
+    return &gTheme->infoElems;
+}
+
+static theme_elems_t *menuGetMainElems(item_list_t *list)
+{
+    // Favourites per-kind main families (opt-in): the Favourites PS1 view draws favsVcdMain* and the ELF
+    // view favsAppsMain* when the theme declares them. The All and PS2 views keep favsMain*.
+    if (list != NULL && list->mode == FAV_MODE) {
+        int view = libViewActive(FAV_MODE);
+        if (view == LIB_VIEW_PS1 && gTheme->favsVcdMainElems.first)
+            return &gTheme->favsVcdMainElems;
+        if (view == LIB_VIEW_ELF && gTheme->favsAppsMainElems.first)
+            return &gTheme->favsAppsMainElems;
+    }
+    if (list != NULL && (libViewActive(list->mode) == LIB_VIEW_PS1))
+        return gTheme->vcdMainElems.first ? &gTheme->vcdMainElems : &gTheme->mainElems;
+    if (list != NULL && list->mode == FAV_MODE)
+        return gTheme->favsMainElems.first ? &gTheme->favsMainElems : &gTheme->mainElems;
+    if (list != NULL && list->mode == APP_MODE)
+        return gTheme->appsMainElems.first ? &gTheme->appsMainElems : &gTheme->mainElems;
+    return &gTheme->mainElems;
+}
+
+void menuRenderMain(void)
+{
+    item_list_t *list = static_cast<item_list_t*>(selected_item->item->userdata);
+    theme_elems_t *kindElems = menuGetMainElems(list);
+
+    if (kindElems == &gTheme->favsVcdMainElems || kindElems == &gTheme->favsAppsMainElems) {
+        // A Favourites per-kind family page. Its lists own no global slot, so navigation takes the list
+        // the theme declared in the family (the one drawn), falling back to the slot this view used
+        // before the family existed: the VCD list for the PS1 view, the favourites list for the ELF view.
+        theme_element_t *slot = (kindElems == &gTheme->favsVcdMainElems) ? (gTheme->vcdItemsList ? gTheme->vcdItemsList : gTheme->gamesItemsList) : (gTheme->favsItemsList ? gTheme->favsItemsList : gTheme->gamesItemsList);
+        menuRenderElements(kindElems);
+        gTheme->itemsList = thmFamilyItemsList(kindElems, slot, selected_item->item->icon_id);
+    } else if (libViewActive(list->mode) == LIB_VIEW_PS1) {
+        // VCD/PS1 listings render with the vcd family (vcdMain*; each slot falls back at parse time to
+        // appsMain* then main*). The VCD list uses its OWN items-list slot (vcdItemsList) so it keeps a
+        // SEPARATE cover cache from the device's ISO list -- the view reuses the device's game list
+        // (same item ids), so a shared cache thrashes on every L3 toggle. This also covers the
+        // Favourites tab's own VCD view: VCD favourites render with the PS1 family, not the favs one.
+        menuRenderElements(menuGetMainElems(list));
+        gTheme->itemsList = thmResolveItemsList(&gTheme->vcdMainElems, gTheme->vcdItemsList ? gTheme->vcdItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
+    } else if (list->mode == FAV_MODE) {
+        menuRenderElements(menuGetMainElems(list));
+        gTheme->itemsList = thmResolveItemsList(&gTheme->favsMainElems, gTheme->favsItemsList ? gTheme->favsItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
+    } else if (list->mode == APP_MODE) {
+        menuRenderElements(menuGetMainElems(list));
+        gTheme->itemsList = thmResolveItemsList(&gTheme->appsMainElems, gTheme->appsItemsList ? gTheme->appsItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
+    } else {
+        menuRenderElements(menuGetMainElems(list));
+        // Always falls back to gamesItemsList, never NULL: the scroll/paging code (menuNextV/PrevV/
+        // Page) derefs gTheme->itemsList->extended with no NULL check.
+        gTheme->itemsList = thmResolveItemsList(&gTheme->mainElems, gTheme->gamesItemsList, selected_item->item->icon_id);
+    }
+}
+
+// Coverflow rotates the nav axis on the MAIN screen only: Left/Right step through the
+// carousel (a vertical list move) while Up/Down switch device menus. Non-coverflow themes
+// behave exactly as before. The info screen is intentionally NOT rotated (menuHandleInputInfo).
+static void menuNavigateLeft()
+{
+    if (gTheme->coverflow)
+        menuPrevV();
+    else
+        menuPrevH();
+}
+
+static void menuNavigateRight()
+{
+    if (gTheme->coverflow)
+        menuNextV();
+    else
+        menuNextH();
+}
+
+static void menuNavigateUp()
+{
+    if (gTheme->coverflow)
+        menuPrevH();
+    else
+        menuPrevV();
+}
+
+static void menuNavigateDown()
+{
+    if (gTheme->coverflow)
+        menuNextH();
+    else
+        menuNextV();
+}
+
+void menuHandleInputMain()
+{
+    item_list_t *support = selected_item != NULL && selected_item->item != NULL ? static_cast<item_list_t*>(selected_item->item->userdata) : NULL;
+    int viewPending = support != NULL && libViewPending(support->mode);
+
+    if (getKey(KEY_LEFT)) {
+        menuNavigateLeft();
+    } else if (getKey(KEY_RIGHT)) {
+        menuNavigateRight();
+    } else if (getKey(KEY_UP)) {
+        menuNavigateUp();
+    } else if (getKey(KEY_DOWN)) {
+        menuNavigateDown();
+    } else if (getKeyOn(KEY_CROSS)) {
+        if (!viewPending)
+            selected_item->item->execCross(selected_item->item);
+    } else if (getKeyOn(KEY_TRIANGLE)) {
+        if (!viewPending)
+            selected_item->item->execTriangle(selected_item->item);
+    } else if (getKeyOn(KEY_CIRCLE)) {
+        if (!viewPending)
+            selected_item->item->execCircle(selected_item->item);
+    } else if (getKeyOn(KEY_SQUARE)) {
+        if (!viewPending)
+            selected_item->item->execSquare(selected_item->item);
+    } else if (getKeyOn(KEY_START)) {
+        // reinit main menu - show/hide items valid in the active context
+        menuInitMainMenu();
+        guiSwitchScreen(GUI_SCREEN_MENU);
+    } else if (getKeyOn(KEY_SELECT)) {
+        if (!viewPending)
+            selected_item->item->refresh(selected_item->item);
+    } else if (getKey(KEY_L1)) {
+        menuPrevPage();
+    } else if (getKey(KEY_R1)) {
+        menuNextPage();
+    } else if (getKeyOn(KEY_L2)) { // home
+        menuFirstPage();
+    } else if (getKeyOn(KEY_R2)) { // end
+        menuLastPage();
+    } else if (getKeyOn(KEY_R3)) { // toggle favourite
+        if (!viewPending && selected_item->item->fav)
+            selected_item->item->fav(selected_item->item);
+    } else if (getKeyOn(KEY_L3)) { // advance the current page's library-view ring
+        if (!viewPending && selected_item->item->toggleView)
+            selected_item->item->toggleView(selected_item->item);
+    }
+
+    // Last Played Auto Start
+    if (gRememberLastPlayed && gAutoStartLastPlayed > 0 && RemainSecs < 0 && DisableCron == 0 && !viewPending) {
+        DisableCron = 1; // Disable Counter
+        if (gSelectButton == KEY_CIRCLE)
+            selected_item->item->execCircle(selected_item->item);
+        else
+            selected_item->item->execCross(selected_item->item);
+    }
+}
+
+void menuRenderInfo(void)
+{
+    item_list_t *list = static_cast<item_list_t*>(selected_item->item->userdata);
+    theme_elems_t *kindElems = menuGetInfoElems(list);
+
+    if (kindElems == &gTheme->favsVcdInfoElems || kindElems == &gTheme->favsAppsInfoElems) {
+        // Favourites per-kind info page: same slot-free list resolution as menuRenderMain.
+        theme_element_t *slot = (kindElems == &gTheme->favsVcdInfoElems) ? (gTheme->vcdItemsList ? gTheme->vcdItemsList : gTheme->gamesItemsList) : (gTheme->favsItemsList ? gTheme->favsItemsList : gTheme->gamesItemsList);
+        menuRenderElements(kindElems);
+        gTheme->itemsList = thmFamilyItemsList(kindElems, slot, selected_item->item->icon_id);
+    } else if (menuSelectedRowView(list) == LIB_VIEW_PS1) {
+        menuRenderElements(menuGetInfoElems(list));
+        gTheme->itemsList = thmResolveItemsList(&gTheme->vcdInfoElems, gTheme->vcdItemsList ? gTheme->vcdItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
+    } else if (list->mode == FAV_MODE) {
+        menuRenderElements(menuGetInfoElems(list));
+        gTheme->itemsList = thmResolveItemsList(&gTheme->favsInfoElems, gTheme->favsItemsList ? gTheme->favsItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
+    } else if (list->mode == APP_MODE) {
+        menuRenderElements(menuGetInfoElems(list));
+        gTheme->itemsList = thmResolveItemsList(&gTheme->appsInfoElems, gTheme->appsItemsList ? gTheme->appsItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
+    } else {
+        menuRenderElements(menuGetInfoElems(list));
+        gTheme->itemsList = thmResolveItemsList(&gTheme->infoElems, gTheme->gamesItemsList, selected_item->item->icon_id);
+    }
+}
+
+void menuHandleInputInfo()
+{
+    if (getKeyOn(KEY_CROSS)) {
+        if (gSelectButton == KEY_CIRCLE)
+            guiSwitchScreen(GUI_SCREEN_MAIN);
+        else
+            selected_item->item->execCross(selected_item->item);
+    } else if (getKey(KEY_UP)) {
+        menuPrevV();
+    } else if (getKey(KEY_DOWN)) {
+        menuNextV();
+    } else if (getKeyOn(KEY_CIRCLE)) {
+        if (gSelectButton == KEY_CROSS)
+            guiSwitchScreen(GUI_SCREEN_MAIN);
+        else
+            selected_item->item->execCircle(selected_item->item);
+    } else if (getKey(KEY_L1)) {
+        menuPrevPage();
+    } else if (getKey(KEY_R1)) {
+        menuNextPage();
+    } else if (getKeyOn(KEY_L2)) {
+        menuFirstPage();
+    } else if (getKeyOn(KEY_R2)) {
+        menuLastPage();
+    }
+}
+
+void menuRenderGameMenu()
+{
+    // Optional themed settings background (use_settings_bg): guiDrawBGSettings draws it and
+    // returns non-zero; 0 means the theme has none, so fall back to the plasma. dia.c already
+    // did this for dialogs -- these three menu screens did not, so a theme that shipped a
+    // settings background got it on its dialogs and the plasma on its menus.
+    if (guiDrawBGSettings() == 0)
+        guiDrawBGPlasma();
+
+    if (!gameMenu)
+        return;
+
+    // If the device menu that has the selected game suddenly goes invisible (device was removed), switch
+    // back to the game list menu.
+    if (selected_item->item->visible == 0) {
+        guiSwitchScreen(GUI_SCREEN_MAIN);
+        return;
+    }
+
+    // If we enter the game settings menu and there's no selected item bail out. I'm not entirely sure how we get into
+    // this state but it seems to happen on some consoles when transitioning from the game settings menu back to the game
+    // list menu.
+    if (selected_item->item->current == NULL)
+        return;
+
+    // draw the animated menu
+    if (!gameMenuCurrent)
+        gameMenuCurrent = gameMenu;
+
+    submenu_list_t *it = gameMenu;
+
+    // calculate the number of items
+    int count = 0;
+    int sitem = 0;
+    for (; it; count++, it = it->next) {
+        if (it == gameMenuCurrent)
+            sitem = count;
+    }
+
+    int spacing = 25;
+    int y = (gTheme->usedHeight >> 1) - (spacing * (count >> 1));
+    int cp = 0; // current position
+
+    // game title
+    fntRenderString(gTheme->fonts[0], 320, 20, ALIGN_CENTER, 0, 0, selected_item->item->current->item.text, gTheme->selTextColor);
+
+    // config source
+    char *cfgSource = gameConfigSource();
+    fntRenderString(gTheme->fonts[0], 320, 40, ALIGN_CENTER, 0, 0, cfgSource, gTheme->textColor);
+
+    // settings list
+    for (it = gameMenu; it; it = it->next, cp++) {
+        // render, advance
+        fntRenderString(gTheme->fonts[0], 320, y, ALIGN_CENTER, 0, 0, submenuItemGetText(&it->item), (cp == sitem) ? gTheme->selTextColor : gTheme->textColor);
+        y += spacing;
+        if (cp == (GAME_SAVE_CHANGES - 1) || cp == (GAME_REMOVE_CHANGES - 1))
+            y += spacing / 2;
+    }
+
+    // hints
+    guiDrawSubMenuHints();
+}
+
+// Is the effective launch core for the selected game Neutrino? Per-game Cheats/GSM/PADEMU/OSD are
+// OPL-core features, so under Neutrino they must say so rather than opening a panel that cannot
+// take effect (checklist item 22's guidance half).
+static int gameMenuCoreIsNeutrino(void)
+{
+    int coreLoader = gDefaultCoreLoader; // no per-game $CoreLoader key -> follow the global default core
+    if (itemConfig != NULL)
+        configGetInt(itemConfig, CONFIG_ITEM_CORE_LOADER, &coreLoader);
+    // VCD (PS1) games launch ONLY via POPSTARTER -- never Neutrino -- so a keyless VCD must not
+    // inherit a Neutrino global default here, or its Cheats/GSM/OSD menu entries get blocked with
+    // the wrong "not available under Neutrino" message. SMB is the same shape: ethsupport has no
+    // Neutrino launch leg, the effective core is always <OPL>, so its panels ARE live and must not
+    // be blocked under a Neutrino global default.
+    if (selected_item != NULL && selected_item->item != NULL) {
+        item_list_t *support = (item_list_t *)selected_item->item->userdata;
+        if (support != NULL && ((menuSelectedRowView(support) == LIB_VIEW_PS1) || support->mode == ETH_MODE))
+            return 0;
+    }
+    // UDPBD games are Neutrino-only even while $CoreLoader is still its OPL default.
+    if (!coreLoader && selected_item != NULL && selected_item->item != NULL)
+        coreLoader = bdmSupportIsUDPBD(static_cast<const item_list_t*>(selected_item->item->userdata));
+    return coreLoader;
+}
+
+void menuHandleInputGameMenu()
+{
+    if (!gameMenu)
+        return;
+
+    if (!gameMenuCurrent)
+        gameMenuCurrent = gameMenu;
+
+    if (getKey(KEY_UP)) {
+        sfxPlay(SFX_CURSOR);
+        if (gameMenuCurrent->prev)
+            gameMenuCurrent = gameMenuCurrent->prev;
+        else // rewind to the last item
+            while (gameMenuCurrent->next)
+                gameMenuCurrent = gameMenuCurrent->next;
+    }
+
+    if (getKey(KEY_DOWN)) {
+        sfxPlay(SFX_CURSOR);
+        if (gameMenuCurrent->next)
+            gameMenuCurrent = gameMenuCurrent->next;
+        else
+            gameMenuCurrent = gameMenu;
+    }
+
+    if (getKeyOn(gSelectButton)) {
+        // execute the item via looking at the id of it
+        int menuID = gameMenuCurrent->item.id;
+
+        sfxPlay(SFX_CONFIRM);
+
+#ifdef RETROACHIEVEMENTS
+        if (menuID == GAME_RA_CHECK) {
+            /* RA: hash the selected image, on demand. Hashing every image during the scan would
+               hold the console on the splash screen: the scan runs before the menu appears and
+               each image has to be opened and read.
+               Every refusal SAYS why -- a silent no-op reads as broken, and hashing an image
+               nothing will ever watch is worse. Only the four legs that reach sysLaunchLoaderElf
+               (BDM, ETH/SMB, HDD/APA, MMCE) can ever carry telemetry; the rest exec an external
+               ELF and ee_core never loads. */
+            item_list_t *support = static_cast<item_list_t *>(selected_item->item->userdata);
+            int gid = selected_item->item->current->item.id;
+
+            if (menuSelectedRowView(support) == LIB_VIEW_PS1) {
+                // PS1/VCD rows launch through POPSTARTER or Ember, never ee_core.
+                guiShowRANotice(_l(_STR_RA_NA_PS1), NULL);
+            } else if (support->mode == UDPFS_MODE) {
+                // UDPFS is Neutrino-only in this fork.
+                guiShowRANotice(_l(_STR_RA_NA_UDPFS), NULL);
+            } else if (gameMenuCoreIsNeutrino()) {
+                guiShowRANotice(_l(_STR_RA_NA_NEUTRINO), NULL);
+            } else if (support->mode == HDD_MODE) {
+                /* HDLoader entries (hdl_game_info_t) have no filename and no extension, so there
+                   is nothing to hash. Watch lists still LOAD from RA/ at launch; the .wl has to
+                   be built on the PC. */
+                guiShowRANotice(_l(_STR_RA_NA_HDD), _l(_STR_RA_NA_HDD2));
+            } else if (support->itemGet != NULL && support->itemGetPrefix != NULL) {
+                base_game_info_t *g = (base_game_info_t *)support->itemGet(support, gid);
+                const char *prefix = support->itemGetPrefix(support);
+
+                if (g != NULL && prefix != NULL && g->format != GAME_FORMAT_FOLDER) {
+                    if (sbHashGameDeferred(prefix, g->name, g->extension, g->startup, g->format))
+                        guiShowRANotice(_l(_STR_RA_CHECKING_IMAGE), NULL);
+                    else
+                        guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);
+                }
+            }
+        } else if (menuID == GAME_RA_TEST) {
+            sbTestPCLinkDeferred();
+            guiShowRANotice(_l(_STR_RA_LOOKING_FOR_PC), NULL);
+        } else
+#endif
+            if (menuID == GAME_COMPAT_SETTINGS) {
+            guiGameShowCompatConfig(selected_item->item->current->item.id, static_cast<item_list_t*>(selected_item->item->userdata), itemConfig);
+        } else if (menuID == GAME_CHEAT_SETTINGS) {
+            if (gameMenuCoreIsNeutrino())
+                guiMsgBox(_l(_STR_NEUTRINO_SETTING_NA), 0, NULL);
+            else
+                guiGameShowCheatConfig();
+        } else if (menuID == GAME_GSM_SETTINGS) {
+            if (gameMenuCoreIsNeutrino())
+                guiMsgBox(_l(_STR_NEUTRINO_SETTING_NA), 0, NULL);
+            else
+                guiGameShowGSConfig(0);
+        } else if (menuID == GAME_VMC_SETTINGS) {
+            guiGameShowVMCMenu(selected_item->item->current->item.id, static_cast<item_list_t*>(selected_item->item->userdata));
+#ifdef PADEMU
+        } else if (menuID == GAME_PADEMU_SETTINGS) {
+            if (gameMenuCoreIsNeutrino())
+                guiMsgBox(_l(_STR_NEUTRINO_SETTING_NA), 0, NULL);
+            else
+                guiGameShowPadEmuConfig(0);
+        } else if (menuID == GAME_PADMACRO_SETTINGS) {
+            if (gameMenuCoreIsNeutrino())
+                guiMsgBox(_l(_STR_NEUTRINO_SETTING_NA), 0, NULL);
+            else
+                guiGameShowPadMacroConfig(0);
+#endif
+        } else if (menuID == GAME_OSD_LANGUAGE_SETTINGS) {
+            if (gameMenuCoreIsNeutrino())
+                guiMsgBox(_l(_STR_NEUTRINO_SETTING_NA), 0, NULL);
+            else
+                guiGameShowOSDLanguageConfig(0);
+        } else if (menuID == GAME_SAVE_CHANGES) {
+            if (guiGameSaveConfig(itemConfig, static_cast<item_list_t*>(selected_item->item->userdata)))
+                configSetInt(itemConfig, CONFIG_ITEM_CONFIGSOURCE, CONFIG_SOURCE_USER);
+            int okItem = menuSaveConfig();           // per-game CFG/<id>.cfg (itemConfig)
+            int okGame = saveConfig(CONFIG_GAME, 0); // the global game config set
+            // #245: claim "saved" only when BOTH writes actually persisted. This modal was
+            // UNCONDITIONAL, so a failed write showed "Game settings saved" immediately followed
+            // by the async "error writing settings!" toast -- the exact contradiction Andrew
+            // reported. On failure the error toast already names the path and errno; don't also
+            // lie that it saved.
+            if (okItem && okGame)
+                guiMsgBox(_l(_STR_GAME_SETTINGS_SAVED), 0, NULL);
+            guiGameLoadConfig(static_cast<item_list_t*>(selected_item->item->userdata), gameMenuLoadConfig(NULL));
+        } else if (menuID == GAME_TEST_CHANGES) {
+            guiGameTestSettings(selected_item->item->current->item.id, static_cast<item_list_t*>(selected_item->item->userdata), itemConfig);
+        } else if (menuID == GAME_REMOVE_CHANGES) {
+            if (guiGameShowRemoveSettings(itemConfig, configGetByType(CONFIG_GAME))) {
+                guiGameLoadConfig(static_cast<item_list_t*>(selected_item->item->userdata), gameMenuLoadConfig(NULL));
+            }
+        } else if (menuID == GAME_RENAME_GAME) {
+            menuRenameGame(&gameMenu);
+        } else if (menuID == GAME_DELETE_GAME) {
+            menuDeleteGame(&gameMenu);
+        }
+        // so the exit press wont propagate twice
+        readPads();
+    }
+
+    if (getKeyOn(KEY_START) || getKeyOn(gSelectButton == KEY_CIRCLE ? KEY_CROSS : KEY_CIRCLE)) {
+        guiSwitchScreen(GUI_SCREEN_MAIN);
+    }
+}
+
+void menuRenderAppMenu()
+{
+    // Optional themed settings background (use_settings_bg): guiDrawBGSettings draws it and
+    // returns non-zero; 0 means the theme has none, so fall back to the plasma. dia.c already
+    // did this for dialogs -- these three menu screens did not, so a theme that shipped a
+    // settings background got it on its dialogs and the plasma on its menus.
+    if (guiDrawBGSettings() == 0)
+        guiDrawBGPlasma();
+
+    if (!appMenu)
+        return;
+
+    // draw the animated menu
+    if (!appMenuCurrent)
+        appMenuCurrent = appMenu;
+
+    submenu_list_t *it = appMenu;
+
+    // calculate the number of items
+    int count = 0;
+    int sitem = 0;
+    for (; it; count++, it = it->next) {
+        if (it == appMenuCurrent)
+            sitem = count;
+    }
+
+    int spacing = 25;
+    int y = (gTheme->usedHeight >> 1) - (spacing * (count >> 1));
+    int cp = 0; // current position
+
+    // app title
+    fntRenderString(gTheme->fonts[0], 320, 20, ALIGN_CENTER, 0, 0, selected_item->item->current->item.text, gTheme->selTextColor);
+
+    for (it = appMenu; it; it = it->next, cp++) {
+        // render, advance
+        fntRenderString(gTheme->fonts[0], 320, y, ALIGN_CENTER, 0, 0, submenuItemGetText(&it->item), (cp == sitem) ? gTheme->selTextColor : gTheme->textColor);
+        y += spacing;
+    }
+
+    // hints
+    guiDrawSubMenuHints();
+}
+
+void menuHandleInputAppMenu()
+{
+    if (!appMenu)
+        return;
+
+    if (!appMenuCurrent)
+        appMenuCurrent = appMenu;
+
+    if (getKey(KEY_UP)) {
+        sfxPlay(SFX_CURSOR);
+        if (appMenuCurrent->prev)
+            appMenuCurrent = appMenuCurrent->prev;
+        else // rewind to the last item
+            while (appMenuCurrent->next)
+                appMenuCurrent = appMenuCurrent->next;
+    }
+
+    if (getKey(KEY_DOWN)) {
+        sfxPlay(SFX_CURSOR);
+        if (appMenuCurrent->next)
+            appMenuCurrent = appMenuCurrent->next;
+        else
+            appMenuCurrent = appMenu;
+    }
+
+    if (getKeyOn(gSelectButton)) {
+        // execute the item via looking at the id of it
+        int menuID = appMenuCurrent->item.id;
+
+        sfxPlay(SFX_CONFIRM);
+
+        if (menuID == APP_RENAME) {
+            menuRenameGame(&appMenu);
+        } else if (menuID == APP_DELETE) {
+            menuDeleteGame(&appMenu);
+        } else if (menuID == APP_GLOBAL_PS_SETTINGS) {
+            guiShowPsEmulationSettings();
+        } else if (menuID == APP_EMBER_GAME_SETTINGS) {
+            guiShowEmberGameSettings();
+        }
+        // so the exit press wont propagate twice
+        readPads();
+    }
+
+    if (getKeyOn(KEY_START) || getKeyOn(gSelectButton == KEY_CIRCLE ? KEY_CROSS : KEY_CIRCLE)) {
+        guiSwitchScreen(GUI_SCREEN_MAIN);
+    }
+}

@@ -1,0 +1,1155 @@
+/*
+ Copyright 2022, Thanks to SP193
+ Licenced under Academic Free License version 3.0
+ Review OpenPS2Loader README & LICENSE files for further details.
+ */
+
+#include <audsrv.h>
+#include <timer.h>
+#include <vorbis/vorbisfile.h>
+#include <delaythread.h>
+
+#include "include/sound.h"
+#include "include/opl.h"
+#include "include/ioman.h"
+#include "include/themes.h"
+#include "include/pad.h"
+
+/*--    Theme Sound Effects    ----------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------*/
+
+extern unsigned char boot_adp[];
+extern unsigned int size_boot_adp;
+
+extern unsigned char cancel_adp[];
+extern unsigned int size_cancel_adp;
+
+extern unsigned char confirm_adp[];
+extern unsigned int size_confirm_adp;
+
+extern unsigned char cursor_adp[];
+extern unsigned int size_cursor_adp;
+
+extern unsigned char message_adp[];
+extern unsigned int size_message_adp;
+
+extern unsigned char transition_adp[];
+extern unsigned int size_transition_adp;
+
+extern unsigned char bd_connect_adp[];
+extern unsigned int size_bd_connect_adp;
+
+extern unsigned char bd_disconnect_adp[];
+extern unsigned int size_bd_disconnect_adp;
+
+struct sfxEffect
+{
+    const char *name;
+    void *buffer;
+    int size;
+    int builtin;
+    int duration_ms;
+};
+
+static struct sfxEffect sfx_files[SFX_COUNT] = {
+    {"boot.adp"},
+    {"cancel.adp"},
+    {"confirm.adp"},
+    {"cursor.adp"},
+    {"message.adp"},
+    {"transition.adp"},
+    {"bd_connect.adp"},
+    {"bd_disconnect.adp"},
+};
+
+static struct audsrv_adpcm_t sfx[SFX_COUNT];
+static int audio_initialized = 0;
+
+#define CURSOR_SFX_CHANNEL_BASE  SFX_COUNT
+#define CURSOR_SFX_CHANNEL_COUNT 6
+
+static int cursorChannelIndex = 0;
+
+static int sfxGetCursorChannel(int slot)
+{
+    return CURSOR_SFX_CHANNEL_BASE + slot;
+}
+
+static void sfxSetCursorChannelsVolume(int volume)
+{
+    for (int i = 0; i < CURSOR_SFX_CHANNEL_COUNT; i++)
+        audsrv_adpcm_set_volume_and_pan(sfxGetCursorChannel(i), volume, 0);
+}
+
+// COALESCE the one-shot UI sounds instead of interrupting them.
+//
+// #575 is two of these raised on the SAME frame -- confirming a rename plays SFX_CONFIRM in
+// diaShowKeyb and then SFX_TRANSITION from the guiSwitchScreen right after it -- which stacked into
+// one distorted noise. Sharing a channel fixed that but broke worse: audsrv has no way to stop an
+// adpcm voice, so replaying a BUSY channel left it wedged and the NEXT press went silent (#504, and
+// #575's own follow-up).
+//
+// So never interrupt. Each sound keeps its own channel, and a one-shot arriving within a frame of
+// the previous one is simply dropped -- that is the double-raise, and one sound is what was asked
+// for either way. Deliberate presses are far more than a frame apart and all still play.
+#define SFX_ONESHOT_COALESCE_MS 50
+
+static int sfxIsUiOneShot(int id)
+{
+    return (id == SFX_CONFIRM) || (id == SFX_CANCEL) || (id == SFX_MESSAGE) || (id == SFX_TRANSITION);
+}
+
+// Returns 0 if the specified file was read. The sfxEffect structure will not be updated unless the file is successfully read.
+static int sfxRead(const char *full_path, struct sfxEffect *sfx)
+{
+    int adpcm;
+    void *buffer;
+    int ret, size;
+
+    LOG("SFX: sfxRead('%s')\n", full_path);
+
+    adpcm = open(full_path, O_RDONLY);
+    if (adpcm < 0) {
+        LOG("SFX: %s: Failed to open adpcm file %s\n", __FUNCTION__, full_path);
+        return -ENOENT;
+    }
+
+    size = lseek(adpcm, 0, SEEK_END);
+    if (size <= 0) {
+        LOG("SFX: lseek failed or empty file: %s\n", full_path);
+        close(adpcm);
+        return -EIO;
+    }
+    lseek(adpcm, 0L, SEEK_SET);
+
+    buffer = memalign(64, size);
+    if (buffer == NULL) {
+        LOG("SFX: Failed to allocate memory for SFX\n");
+        close(adpcm);
+        return -ENOMEM;
+    }
+
+    ret = read(adpcm, buffer, size);
+    close(adpcm);
+
+    if (ret != size) {
+        LOG("SFX: Failed to read SFX: %d (expected %d)\n", ret, size);
+        free(buffer);
+        return -EIO;
+    }
+
+    sfx->buffer = buffer;
+    sfx->size = size;
+    sfx->builtin = 0;
+
+    return 0;
+}
+
+static int sfxCalculateSoundDuration(int nSamples)
+{
+    float sampleRate = 44100; // 44.1kHz
+
+    // Return duration in milliseconds
+    return (nSamples / sampleRate) * 1000;
+}
+
+static void sfxInitDefaults(void)
+{
+    int i;
+
+    for (i = 0; i < SFX_COUNT; i++)
+        sfx_files[i].builtin = 1;
+
+    sfx_files[SFX_BOOT].buffer = boot_adp;
+    sfx_files[SFX_BOOT].size = size_boot_adp;
+    sfx_files[SFX_CANCEL].buffer = cancel_adp;
+    sfx_files[SFX_CANCEL].size = size_cancel_adp;
+    sfx_files[SFX_CONFIRM].buffer = confirm_adp;
+    sfx_files[SFX_CONFIRM].size = size_confirm_adp;
+    sfx_files[SFX_CURSOR].buffer = cursor_adp;
+    sfx_files[SFX_CURSOR].size = size_cursor_adp;
+    sfx_files[SFX_MESSAGE].buffer = message_adp;
+    sfx_files[SFX_MESSAGE].size = size_message_adp;
+    sfx_files[SFX_TRANSITION].buffer = transition_adp;
+    sfx_files[SFX_TRANSITION].size = size_transition_adp;
+    sfx_files[SFX_BD_CONNECT].buffer = bd_connect_adp;
+    sfx_files[SFX_BD_CONNECT].size = size_bd_connect_adp;
+    sfx_files[SFX_BD_DISCONNECT].buffer = bd_disconnect_adp;
+    sfx_files[SFX_BD_DISCONNECT].size = size_bd_disconnect_adp;
+}
+
+// Returns 0 (AUDSRV_ERR_NOERROR) if the sound was loaded successfully.
+static int sfxLoad(struct sfxEffect *sfxData, audsrv_adpcm_t *sfx)
+{
+    int ret;
+
+    // Calculate duration based on number of samples. The sample count lives at
+    // u32 offset 3 (bytes 12-15); guard against a SFX file shorter than that
+    // header so we don't read past the buffer.
+    if (sfxData->size >= (int)(4 * sizeof(u32)))
+        sfxData->duration_ms = sfxCalculateSoundDuration(((u32 *)sfxData->buffer)[3]);
+    else
+        sfxData->duration_ms = 0;
+    // Estimate duration based on filesize, if the ADPCM header was 0
+    if (sfxData->duration_ms == 0)
+        sfxData->duration_ms = sfxData->size / 47;
+
+    ret = audsrv_load_adpcm(sfx, sfxData->buffer, sfxData->size);
+    if (sfxData->builtin == 0) {
+        free(sfxData->buffer);
+        sfxData->buffer = NULL; // Mark the buffer as freed.
+    }
+
+    return ret;
+}
+
+// Returns number of audio files successfully loaded, < 0 if an unrecoverable error occurred.
+int sfxInit(int bootSnd)
+{
+    char sound_path[256];
+    char full_path[256];
+    int ret, loaded;
+    int thmSfxEnabled = 0;
+    int i = 1;
+
+    if (!audio_initialized) {
+        LOG("SFX: %s: ERROR: not initialized!\n", __FUNCTION__);
+        return -1;
+    }
+
+    audsrv_adpcm_init();
+    cursorChannelIndex = 0;
+    sfxInitDefaults();
+    audioSetVolume();
+
+    // Check default theme is not current theme
+    int themeID = thmGetGuiValue();
+    char *thmPath = thmGetFilePath(themeID);
+    if (thmPath != NULL) { // NULL for <OPL> + the built-in <Coverflow> -> use default sfx
+        // Get theme path for sfx
+        snprintf(sound_path, sizeof(sound_path), "%ssound", thmPath);
+
+        // Check for custom sfx folder
+        DIR *dir = opendir(sound_path);
+        if (dir != NULL) {
+            thmSfxEnabled = 1;
+            closedir(dir);
+        }
+    }
+
+    loaded = 0;
+    i = bootSnd ? 0 : 1;
+    for (; i < SFX_COUNT; i++) {
+        if (thmSfxEnabled) {
+            snprintf(full_path, sizeof(full_path), "%s/%s", sound_path, sfx_files[i].name);
+            ret = sfxRead(full_path, &sfx_files[i]);
+            if (ret != 0) {
+                LOG("SFX: %s could not be loaded. Using default sound %d.\n", full_path, ret);
+            }
+        } else
+            snprintf(full_path, sizeof(full_path), "builtin/%s", sfx_files[i].name);
+
+        ret = sfxLoad(&sfx_files[i], &sfx[i]);
+        if (ret == 0) {
+            LOG("SFX: Loaded %s, size=%d, duration=%dms\n", full_path, sfx_files[i].size, sfx_files[i].duration_ms);
+            loaded++;
+        } else {
+            LOG("SFX: failed to load %s, error %d\n", full_path, ret);
+        }
+    }
+
+    return loaded;
+}
+
+int sfxGetSoundDuration(int id)
+{
+    if (!audio_initialized) {
+        LOG("SFX: %s: ERROR: not initialized!\n", __FUNCTION__);
+        return 0;
+    }
+
+    return sfx_files[id].duration_ms;
+}
+
+// Debug-Colors instrumentation (#271/#272): per-press audsrv RPC wall time. audsrv_ch_play_adpcm
+// is a SYNCHRONOUS SIF RPC on the GUI thread (one per nav press); under IOP contention it stalls
+// the menu mid-navigation. Always measured (two tick reads), rendered only when Settings ->
+// Debug Colors is on (gui.c / dia.c).
+#define SFX_CLOCKS_PER_MS 147456 // EE cpu_ticks() rate
+
+/* MENU RUMBLE TIMING -- the RETROLauncher model, which is the reference for feedback that actually
+   reads as feedback on hardware. Two shapes, and the split matters more than either value:
+
+     NAVIGATION is a LONG, SOFT big-motor thump. Length is what makes it perceptible -- a DualShock's
+     eccentric mass needs roughly 50-100 ms just to reach amplitude you can feel, so a short pulse is
+     inaudible to the hand no matter how hard it is driven. This was previously 35 ms at 64/255,
+     i.e. below the motor's spin-up time: correct commands, no sensation.
+
+     DECISION is a SHORTER, HARDER bump. It happens once, so it can afford to be crisp.
+
+   The old values had this backwards -- the constant, per-step event was the short weak one and the
+   one-shot events were the long strong ones.
+
+   Held navigation cannot simply repeat the full thump: steps arrive faster than 240 ms and the
+   feedback smears into one continuous drone. Repeats are therefore scaled to a fraction of the
+   OBSERVED step interval, with a floor below which we stay silent rather than buzz. */
+#define RUMBLE_NAV_MS               240
+#define RUMBLE_NAV_LEVEL            0x50
+#define RUMBLE_NAV_REPEAT_WINDOW_MS 400
+#define RUMBLE_NAV_REPEAT_DUTY_PCT  45
+#define RUMBLE_NAV_MIN_MS           80
+#define RUMBLE_DECISION_MS          110
+#define RUMBLE_DECISION_LEVEL       0x60
+static unsigned int sfxLastPlayMs = 0;
+static unsigned int sfxMaxPlayMs = 0;
+
+void sfxGetPlayDiag(unsigned int *lastMs, unsigned int *maxMs)
+{
+    if (lastMs)
+        *lastMs = sfxLastPlayMs;
+    if (maxMs)
+        *maxMs = sfxMaxPlayMs;
+}
+
+void sfxGetDropDiag(unsigned int *staleDrops, unsigned int *fullDrops)
+{
+    if (staleDrops)
+        *staleDrops = 0;
+    if (fullDrops)
+        *fullDrops = 0;
+}
+
+static void sfxRumble(int id)
+{
+    if (!gEnableRumble)
+        return;
+
+    switch (id) {
+        case SFX_CURSOR: {
+            // AN ERM HAS TO SPIN UP BEFORE IT CAN BE FELT. This was a 35 ms pulse at 64/255, and a
+            // DualShock's eccentric mass needs roughly 50-100 ms just to reach perceptible
+            // amplitude -- the stop command arrived before the motor had meaningfully moved, so
+            // navigation rumble was inaudible to the hand even when every command was delivered
+            // correctly. Length matters more than strength here.
+            //
+            // The old fixed 80 ms lockout also cannot survive a longer pulse: a held scroll would
+            // re-arm faster than the pulse ends and the "thump per step" becomes one continuous
+            // buzz. So scale to the OBSERVED step interval instead -- the first step of a scroll
+            // gets the full thump, measured repeats ride at a fraction of their own cadence, and
+            // steps coming in faster than the motor can answer stay silent rather than smearing
+            // into a drone.
+            static u32 lastCursorRumbleTicks;
+            static int haveCursorInterval;
+            u32 now = cpu_ticks();
+            int durationMs = RUMBLE_NAV_MS;
+
+            if (haveCursorInterval) {
+                u32 intervalMs = (now - lastCursorRumbleTicks) / SFX_CLOCKS_PER_MS;
+                if (intervalMs < RUMBLE_NAV_REPEAT_WINDOW_MS) {
+                    int dutyMs = (int)((intervalMs * RUMBLE_NAV_REPEAT_DUTY_PCT) / 100);
+                    if (dutyMs < RUMBLE_NAV_MIN_MS)
+                        return; // faster than an ERM can answer -- a buzz, not feedback
+                    if (dutyMs < durationMs)
+                        durationMs = dutyMs;
+                }
+            }
+
+            lastCursorRumbleTicks = now;
+            haveCursorInterval = 1;
+            padRumble(durationMs, RUMBLE_NAV_LEVEL);
+            break;
+        }
+        // One-shot events all share the decision bump. RETROLauncher does not give each of these its
+        // own signature, and inventing six was how they ended up longer and stronger than the
+        // navigation thump they are supposed to punctuate.
+        case SFX_CONFIRM:
+        case SFX_CANCEL:
+        case SFX_MESSAGE:
+        case SFX_TRANSITION:
+        case SFX_BD_CONNECT:
+        case SFX_BD_DISCONNECT:
+            padRumble(RUMBLE_DECISION_MS, RUMBLE_DECISION_LEVEL);
+            break;
+        default:
+            break;
+    }
+}
+
+void sfxPlay(int id)
+{
+    int channel;
+
+    sfxRumble(id);
+
+    if (!audio_initialized) {
+        LOG("SFX: %s: ERROR: not initialized!\n", __FUNCTION__);
+        return;
+    }
+
+    if (gEnableSFX) {
+        u32 sfxStartTicks = cpu_ticks();
+        if (id == SFX_CURSOR) {
+            static u32 lastCursorTicks = 0;
+            if (lastCursorTicks != 0) {
+                u32 interval = (sfxStartTicks - lastCursorTicks) / SFX_CLOCKS_PER_MS;
+                if (interval < 45)
+                    return;
+            }
+            lastCursorTicks = sfxStartTicks;
+
+            int chosenSlot = cursorChannelIndex;
+
+            cursorChannelIndex = (cursorChannelIndex + 1) % CURSOR_SFX_CHANNEL_COUNT;
+            channel = sfxGetCursorChannel(chosenSlot);
+
+            // Volumes are configured once by audioSetVolume(). Replaying a
+            // rotation channel replaces its old sample in one SIF RPC.
+            audsrv_ch_play_adpcm(channel, &sfx[id]);
+        } else {
+            if (sfxIsUiOneShot(id)) { // see SFX_ONESHOT_COALESCE_MS
+                static u32 lastOneShotTicks = 0;
+                if (lastOneShotTicks != 0 &&
+                    (sfxStartTicks - lastOneShotTicks) / SFX_CLOCKS_PER_MS < SFX_ONESHOT_COALESCE_MS)
+                    return;
+                lastOneShotTicks = sfxStartTicks;
+            }
+            audsrv_ch_play_adpcm(id, &sfx[id]);
+        }
+
+        unsigned int costMs = (unsigned int)((cpu_ticks() - sfxStartTicks) / SFX_CLOCKS_PER_MS);
+        sfxLastPlayMs = costMs;
+        if (costMs > sfxMaxPlayMs)
+            sfxMaxPlayMs = costMs;
+    }
+}
+
+/*--    Theme Background Music    -------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------*/
+
+#define BGM_RING_BUFFER_COUNT      192 // 768 KB buffer (~4.35s): extra headroom for long device/list bursts (#364)
+#define BGM_RING_BUFFER_SIZE       4096
+#define BGM_STOP_WAIT_SLICES       16
+#define BGM_IO_LOW_WATER_CHUNKS    48 // ~1.1 s: stop STARTING discretionary device reads
+#define BGM_IO_RESUME_WATER_CHUNKS 80 // ~1.8 s: hysteresis before artwork/cosmetic IO resumes
+// EE priorities are strict (lower number wins): playback=30, Vorbis I/O/decode=31. Playback is
+// tiny and normally asleep between audsrv room polls; decode now outranks the background I/O worker (32) while
+// sharing the GUI/pad tier (31), whose vsync wait yields naturally. This prevents a long runnable
+// background queue from starving refills; the larger ring also covers stalls that are IOP-bound,
+// where EE thread priority cannot help.
+#define BGM_THREAD_BASE_PRIO       0x1E
+#define BGM_THREAD_STACK_SIZE      0x1000
+// Sleep bounds while audsrv's ring has no room for the next piece (see bgmWaitForRoom). The sleep is the
+// time the missing room takes to play out, but never under one SPU2 block -- 512 samples at 48 kHz,
+// 10.7 ms -- because the IOP frees room a block at a time and a shorter sleep only re-reads the same
+// room. A stream that stops draining is polled slowly.
+#define BGM_ROOM_POLL_MIN_US       10000
+#define BGM_ROOM_POLL_MAX_US       20000
+#define BGM_ROOM_STALL_POLLS       50
+#define BGM_ROOM_STALL_US          100000
+// Below this the ring measurement in bgmStart is not believable, and it keeps the whole-chunk target.
+// The smallest start room of any 16-bit format audsrv accepts is 1168 bytes (11025 Hz mono).
+#define BGM_ROOM_TARGET_MIN        256
+
+extern void *_gp;
+
+static int bgmThreadID, bgmIoThreadID;
+static int outSema, inSema;
+// Shared between the BGM playback thread and the main thread; volatile so updates
+// are observed across threads rather than cached in a register.
+static volatile unsigned char terminateFlag, bgmIsPlaying;
+static volatile unsigned char rdPtr, wrPtr;
+static char bgmBuffer[BGM_RING_BUFFER_COUNT][BGM_RING_BUFFER_SIZE];
+static volatile unsigned char bgmThreadRunning, bgmIoThreadRunning;
+static volatile int bgmBufferedChunks = 0;
+static volatile unsigned char bgmBufferPrimed = 0;
+static volatile unsigned char bgmIoThrottle = 0;
+
+// Nonzero while bgmIoThread may be inside a device read. Read by the art worst-open latch.
+volatile int gBgmInRead = 0;
+
+static void bgmAdjustBufferedChunks(int delta)
+{
+    DIntr();
+    bgmBufferedChunks += delta;
+    if (bgmBufferedChunks <= 0) {
+        bgmBufferedChunks = 0;
+        bgmBufferPrimed = 0;
+    } else if (bgmBufferedChunks >= BGM_RING_BUFFER_COUNT) {
+        bgmBufferedChunks = BGM_RING_BUFFER_COUNT;
+    }
+    if (bgmBufferedChunks >= BGM_IO_RESUME_WATER_CHUNKS)
+        bgmBufferPrimed = 1;
+    EIntr();
+}
+
+int bgmDiscretionaryIoAllowed(void)
+{
+    if (!bgmIsPlaying || !gEnableBGM)
+        return 1;
+
+    if (!bgmBufferPrimed)
+        return 0;
+
+    int buffered = bgmBufferedChunks;
+    if (bgmIoThrottle) {
+        if (buffered >= BGM_IO_RESUME_WATER_CHUNKS)
+            bgmIoThrottle = 0;
+    } else if (buffered <= BGM_IO_LOW_WATER_CHUNKS) {
+        bgmIoThrottle = 1;
+    }
+
+    return !bgmIoThrottle;
+}
+
+static u8 bgmThreadStack[BGM_THREAD_STACK_SIZE] __attribute__((aligned(16)));
+static u8 bgmIoThreadStack[BGM_THREAD_STACK_SIZE] __attribute__((aligned(16)));
+
+static OggVorbis_File *vorbisFile;
+
+// PCM bytes the stream plays per millisecond, set by bgmStart from its format.
+static int bgmBytesPerMs = 0;
+// Most room bgmQueueChunk waits for before queueing: one chunk, or less when the audsrv ring is small.
+// audsrv sizes its ring at ten SPU2 feeds of the stream format and starts a stream with only half of it
+// free, so an 11025 Hz stream never has room for a whole chunk and neither does the start of a 12 kHz
+// stereo or a 22/32 kHz mono one. Set by bgmStart.
+static int bgmRoomTarget = BGM_RING_BUFFER_SIZE;
+
+// Wait until audsrv has room for `want` bytes. Returns that room, or 0 once asked to terminate.
+//
+// NOT audsrv_wait_audio(). That RPC parks audsrv's only IOP RPC thread -- and holds the EE library's
+// call mutex -- until the IOP play thread frees ring space, which it does only while SPU2 keeps
+// completing block transfers. This thread sits in that wait almost all the time, so whenever
+// playback stalled, every audsrv call from every other thread queued behind it for good: the menu
+// thread's per-press sound effect (sfxPlay starts the rumble pulse first, so the controller kept
+// vibrating on a frozen menu), bgmMute() on the way into a launch, any volume change. Polling
+// audsrv_available() keeps each call a short round trip, so a stalled stream costs the music and
+// nothing else, and terminateFlag is seen within one sleep.
+static int bgmWaitForRoom(int want)
+{
+    int lastRoom = -1, samePolls = 0;
+
+    while (!terminateFlag) {
+        int room = audsrv_available();
+        int us;
+
+        if (room >= want)
+            return room;
+
+        if (room == lastRoom) {
+            if (++samePolls == BGM_ROOM_STALL_POLLS)
+                LOG("BGM: audsrv ring has not drained for %d polls -- playback stalled\n", samePolls);
+        } else {
+            samePolls = 0;
+            lastRoom = room;
+        }
+
+        if (samePolls >= BGM_ROOM_STALL_POLLS) {
+            us = BGM_ROOM_STALL_US;
+        } else if (room >= 0 && bgmBytesPerMs > 0) {
+            // The time the missing room takes to play out.
+            us = ((want - room) * 1000) / bgmBytesPerMs;
+            if (us < BGM_ROOM_POLL_MIN_US)
+                us = BGM_ROOM_POLL_MIN_US;
+            else if (us > BGM_ROOM_POLL_MAX_US)
+                us = BGM_ROOM_POLL_MAX_US;
+        } else {
+            us = BGM_ROOM_POLL_MAX_US;
+        }
+        DelayThread(us);
+    }
+    return 0;
+}
+
+// Queue one decoded chunk, in as many pieces as the audsrv ring has room for. audsrv_play_audio keeps
+// what fits and DROPS the rest, so each piece is at most the room just seen and the chunk advances by
+// what was actually queued. Returns 0 once asked to terminate.
+static int bgmQueueChunk(const char *chunk)
+{
+    int done = 0;
+
+    while (done < BGM_RING_BUFFER_SIZE) {
+        int left = BGM_RING_BUFFER_SIZE - done;
+        int room = bgmWaitForRoom(left < bgmRoomTarget ? left : bgmRoomTarget);
+        int sent;
+
+        if (room <= 0)
+            return 0;
+        sent = audsrv_play_audio(chunk + done, room < left ? room : left);
+        if (sent > 0)
+            done += sent;
+        else
+            DelayThread(BGM_ROOM_STALL_US); // audsrv refused it; never spin at this priority
+    }
+    return 1;
+}
+
+static void bgmThread(void *arg)
+{
+    bgmThreadRunning = 1;
+
+    while (!terminateFlag) {
+        WaitSema(outSema);
+        if (terminateFlag)
+            break;
+
+        bgmAdjustBufferedChunks(-1);
+        if (!bgmQueueChunk(bgmBuffer[rdPtr]))
+            break;
+        rdPtr = (rdPtr + 1) % BGM_RING_BUFFER_COUNT;
+
+        SignalSema(inSema);
+
+        // If the ring buffer completely emptied, yield briefly so the decode thread can rebuild
+        // a small cushion instead of stuttering chunk-by-chunk on the verge of starvation.
+        if (bgmBufferedChunks <= 0 && !terminateFlag && bgmIoThreadRunning) {
+            int cushionWait = 0;
+            while (!terminateFlag && bgmIoThreadRunning && bgmBufferedChunks < 16 && cushionWait < 20) {
+                DelayThread(5 * 1000);
+                cushionWait++;
+            }
+        }
+    }
+
+    audsrv_stop_audio();
+
+    rdPtr = 0;
+    wrPtr = 0;
+
+    bgmThreadRunning = 0;
+    bgmIsPlaying = 0;
+}
+
+static void bgmIoThread(void *arg)
+{
+    int decodeTotal, bitStream;
+
+    bgmIoThreadRunning = 1;
+    do {
+        WaitSema(inSema);
+
+        if (terminateFlag || !gEnableBGM)
+            break;
+
+        decodeTotal = BGM_RING_BUFFER_SIZE;
+        int bufferPtr = 0;
+        gBgmInRead = 1;
+        do {
+            int ret = ov_read(vorbisFile, bgmBuffer[wrPtr] + bufferPtr, decodeTotal, 0, 2, 1, &bitStream);
+            if (ret > 0) {
+                bufferPtr += ret;
+                decodeTotal -= ret;
+            } else if (ret == OV_HOLE) {
+                // Recoverable Vorbis discontinuity. libvorbisfile explicitly permits callers to
+                // continue after OV_HOLE; treating it as a fatal device error made one stressed
+                // read permanently stop BGM instead of recovering on the next packet.
+                LOG("BGM: recoverable Vorbis hole; continuing.\n");
+                continue;
+            } else if (ret < 0) {
+                LOG("BGM: fatal I/O/decode error while reading (%d).\n", ret);
+                terminateFlag = 1;
+                break;
+            } else if (ret == 0) {
+                // End of stream: loop the track
+                if (ov_pcm_seek(vorbisFile, 0) != 0) {
+                    LOG("BGM: cannot rewind (descriptor lost?) -- stopping.\n");
+                    terminateFlag = 1;
+                    break;
+                }
+            }
+        } while (decodeTotal > 0);
+        gBgmInRead = 0;
+
+        if (terminateFlag)
+            break;
+
+        wrPtr = (wrPtr + 1) % BGM_RING_BUFFER_COUNT;
+        bgmAdjustBufferedChunks(1);
+        SignalSema(outSema);
+    } while (!terminateFlag && gEnableBGM);
+
+    bgmIoThreadRunning = 0;
+    terminateFlag = 1;
+    SignalSema(outSema);
+}
+
+/* The music file, as the decoder sees it. vorbisfile reads through these callbacks instead of a bare
+   FILE*, so a stream whose descriptor dies under it can be reopened and resumed at the same byte.
+
+   Why it dies: SD2PSX (sd2psxtd firmware, 1.4.0 and develop) keeps the descriptor of the command in
+   progress in an int, but its close/read/write/lseek handlers receive the descriptor into that int's
+   LOW BYTE only. A failed open or stat -- the ul.cfg probe of every MMCE refresh, a cover that does
+   not exist -- stores -1 there first, so the next read or lseek of ANY file that is still open goes to
+   a negative descriptor and fails. For the music that read came back empty mid-file, the decoder took
+   it for the end of the stream, the rewind failed the same way, and the music stopped for good a few
+   seconds into the menu. A successful open writes the whole int again, so reopening is the cure. */
+#define BGM_REOPEN_TRIES    4
+#define BGM_REOPEN_RETRY_US (20 * 1000)
+
+typedef struct
+{
+    FILE *f;
+    long pos;  // where the decoder believes it is
+    long size; // -1 when the size could not be read
+    char path[256];
+} bgm_source_t;
+
+static int bgmSourceReopen(bgm_source_t *src)
+{
+    int tries;
+
+    for (tries = 0; tries < BGM_REOPEN_TRIES; tries++) {
+        FILE *f = fopen(src->path, "rb");
+        if (f != NULL) {
+            if (fseek(f, src->pos, SEEK_SET) == 0) {
+                // Only now close the dead handle: the open above left the card's descriptor state
+                // whole, so this close reaches the right file instead of leaking it.
+                fclose(src->f);
+                src->f = f;
+                LOG("BGM: reopened %s at %ld\n", src->path, src->pos);
+                return 1;
+            }
+            fclose(f);
+        }
+        DelayThread(BGM_REOPEN_RETRY_US);
+    }
+    LOG("BGM: cannot reopen %s at %ld\n", src->path, src->pos);
+    return 0;
+}
+
+static size_t bgmSourceRead(void *ptr, size_t size, size_t nmemb, void *datasource)
+{
+    bgm_source_t *src = (bgm_source_t *)datasource;
+    int tries = 0;
+
+    if (size == 0 || nmemb == 0)
+        return 0;
+    while (1) {
+        size_t r = fread(ptr, size, nmemb, src->f);
+        if (r > 0) {
+            src->pos += (long)(r * size);
+            return r;
+        }
+        // Nothing read. At the real end of the file that is the end of the stream; before it, the
+        // descriptor is gone -- reopen and read again.
+        if (src->size >= 0 && src->pos >= src->size)
+            return 0;
+        if (tries++ >= BGM_REOPEN_TRIES || !bgmSourceReopen(src))
+            return 0;
+    }
+}
+
+static int bgmSourceSeek(void *datasource, ogg_int64_t offset, int whence)
+{
+    bgm_source_t *src = (bgm_source_t *)datasource;
+    long target, keep;
+
+    if (whence == SEEK_SET)
+        target = (long)offset;
+    else if (whence == SEEK_CUR)
+        target = src->pos + (long)offset;
+    else if (whence == SEEK_END && src->size >= 0)
+        target = src->size + (long)offset;
+    else
+        return -1;
+    if (target < 0)
+        return -1;
+
+    if (fseek(src->f, target, SEEK_SET) != 0) {
+        keep = src->pos;
+        src->pos = target;
+        if (!bgmSourceReopen(src)) {
+            src->pos = keep;
+            return -1;
+        }
+    }
+    src->pos = target;
+    return 0;
+}
+
+static long bgmSourceTell(void *datasource)
+{
+    return ((bgm_source_t *)datasource)->pos;
+}
+
+static int bgmSourceClose(void *datasource)
+{
+    bgm_source_t *src = (bgm_source_t *)datasource;
+    int ret = fclose(src->f);
+
+    free(src);
+    return ret;
+}
+
+static ov_callbacks bgmSourceCallbacks = {
+    bgmSourceRead,
+    bgmSourceSeek,
+    bgmSourceClose,
+    bgmSourceTell,
+};
+
+static int bgmTryLoadPath(const char *bgmPath, const char *source)
+{
+    bgm_source_t *src;
+    FILE *bgmFile = fopen(bgmPath, "rb");
+
+    if (bgmFile == NULL) {
+        LOG("BGM: %s BGM not found: %s\n", source, bgmPath);
+        return 0;
+    }
+
+    src = static_cast<bgm_source_t*>(malloc(sizeof(bgm_source_t)));
+    if (src == NULL) {
+        fclose(bgmFile);
+        return 0;
+    }
+    src->f = bgmFile;
+    src->pos = 0;
+    snprintf(src->path, sizeof(src->path), "%s", bgmPath);
+    src->size = -1;
+    if (fseek(bgmFile, 0, SEEK_END) == 0)
+        src->size = ftell(bgmFile);
+    if (fseek(bgmFile, 0, SEEK_SET) != 0) {
+        bgmSourceClose(src);
+        return 0;
+    }
+
+    if (ov_open_callbacks(src, vorbisFile, NULL, 0, bgmSourceCallbacks) == 0) {
+        LOG("BGM: Loaded %s BGM %s (%ld bytes)\n", source, bgmPath, src->size);
+        return 1;
+    }
+
+    // A failed ov_open_callbacks leaves the datasource to the caller.
+    LOG("BGM: %s BGM is not a valid Ogg bitstream: %s\n", source, bgmPath);
+    bgmSourceClose(src);
+    memset(vorbisFile, 0, sizeof(OggVorbis_File));
+    return 0;
+}
+
+static int bgmLoad(void)
+{
+    char bgmPath[256];
+    int themeID;
+
+    vorbisFile = static_cast<OggVorbis_File*>(malloc(sizeof(OggVorbis_File)));
+    if (vorbisFile == NULL)
+        return -ENOMEM;
+
+    memset(vorbisFile, 0, sizeof(OggVorbis_File));
+
+    themeID = thmGetGuiValue();
+    char *thmPath = thmGetFilePath(themeID);
+    if (thmPath != NULL) { // NULL for <OPL> + the built-in <Coverflow>
+        snprintf(bgmPath, sizeof(bgmPath), "%ssound/bgm.ogg", thmPath);
+        if (bgmTryLoadPath(bgmPath, "theme"))
+            return 0;
+    }
+
+    if (gDefaultBGMPath[0] != '\0') {
+        snprintf(bgmPath, sizeof(bgmPath), "%s", gDefaultBGMPath);
+        if (bgmTryLoadPath(bgmPath, "configured"))
+            return 0;
+    }
+
+    // Disk themes keep their existing sound/bgm.ogg -> configured-file priority. Only the two
+    // built-in themes fall back to this one conventional data-home file after the configured path.
+    if (thmPath == NULL && oplGetDefaultThemeBgmPath(bgmPath, sizeof(bgmPath))) {
+        if (bgmTryLoadPath(bgmPath, "built-in theme"))
+            return 0;
+    }
+
+    LOG("BGM: No usable theme, configured, or built-in BGM available.\n");
+    free(vorbisFile);
+    vorbisFile = NULL;
+
+    return -ENOENT;
+}
+
+static int bgmInit(void)
+{
+    ee_thread_t thread;
+    ee_sema_t sema;
+    int result;
+
+    terminateFlag = 0;
+    rdPtr = 0;
+    wrPtr = 0;
+    bgmThreadRunning = 0;
+    bgmIoThreadRunning = 0;
+    bgmBufferedChunks = 0;
+    bgmBufferPrimed = 0;
+    bgmIoThrottle = 0;
+
+    sema.max_count = BGM_RING_BUFFER_COUNT;
+    sema.init_count = BGM_RING_BUFFER_COUNT;
+    sema.attr = 0;
+    sema.option = (u32) "bgm-in-sema";
+    inSema = CreateSema(&sema);
+
+    if (inSema >= 0) {
+        sema.max_count = BGM_RING_BUFFER_COUNT;
+        sema.init_count = 0;
+        sema.attr = 0;
+        sema.option = (u32) "bgm-out-sema";
+        outSema = CreateSema(&sema);
+
+        if (outSema < 0) {
+            DeleteSema(inSema);
+            return outSema;
+        }
+    } else
+        return inSema;
+
+    thread.func = reinterpret_cast<void *>(&bgmThread);
+    thread.stack = bgmThreadStack;
+    thread.stack_size = sizeof(bgmThreadStack);
+    thread.gp_reg = &_gp;
+    thread.initial_priority = BGM_THREAD_BASE_PRIO;
+    thread.attr = 0;
+    thread.option = 0;
+
+    // BGM thread will start in DORMANT state.
+    bgmThreadID = CreateThread(&thread);
+
+    if (bgmThreadID >= 0) {
+        thread.func = reinterpret_cast<void *>(&bgmIoThread);
+        thread.stack = bgmIoThreadStack;
+        thread.stack_size = sizeof(bgmIoThreadStack);
+        thread.gp_reg = &_gp;
+        thread.initial_priority = BGM_THREAD_BASE_PRIO + 1;
+        thread.attr = 0;
+        thread.option = 0;
+
+        // BGM I/O thread will start in DORMANT state.
+        bgmIoThreadID = CreateThread(&thread);
+        if (bgmIoThreadID >= 0) {
+            result = 0;
+        } else {
+            DeleteSema(inSema);
+            DeleteSema(outSema);
+            DeleteThread(bgmThreadID);
+            result = bgmIoThreadID;
+        }
+    } else {
+        result = bgmThreadID;
+        DeleteSema(inSema);
+        DeleteSema(outSema);
+    }
+
+    return result;
+}
+
+static void bgmDeinit(void)
+{
+    DeleteSema(inSema);
+    DeleteSema(outSema);
+    DeleteThread(bgmThreadID);
+    DeleteThread(bgmIoThreadID);
+
+    if (vorbisFile != NULL) {
+        // Vorbisfile takes care of fclose for file-backed sources.
+        ov_clear(vorbisFile);
+        free(vorbisFile);
+        vorbisFile = NULL;
+    }
+}
+
+static void bgmShutdownDelayCallback(s32 alarm_id, u16 time, void *common)
+{
+    iWakeupThread((int)common);
+}
+
+void bgmStart(void)
+{
+    struct audsrv_fmt_t audsrvFmt;
+
+    if (!audio_initialized) {
+        LOG("BGM: %s: ERROR: not initialized!\n", __FUNCTION__);
+        return;
+    }
+
+    int ret = bgmInit();
+    if (ret >= 0) {
+        if (bgmLoad() != 0) {
+            bgmDeinit();
+            return;
+        }
+
+        vorbis_info *vi = ov_info(vorbisFile, -1);
+        ov_pcm_seek(vorbisFile, 0);
+
+        audsrvFmt.channels = vi->channels;
+        audsrvFmt.freq = vi->rate;
+        audsrvFmt.bits = 16;
+        bgmBytesPerMs = (int)((vi->rate * vi->channels * 2) / 1000);
+
+        if (audsrv_set_format(&audsrvFmt) != AUDSRV_ERR_NOERROR) {
+            // No audsrv upsampler for this rate (16 kHz, say): its ring would never drain. The blocking
+            // wait this code used to have hung on that first chunk, holding audsrv, and the menu froze on
+            // its first sound effect. Play no music instead.
+            LOG("BGM: audsrv cannot play %ld Hz, %d ch -- no music\n", vi->rate, vi->channels);
+            bgmDeinit();
+            return;
+        }
+        // A new format starts with nothing queued, and audsrv drains nothing until the first chunk is
+        // queued: the room now is all the first wait can ever see, and free plus queued is the whole ring.
+        int room = audsrv_available();
+        int ring = room + audsrv_queued();
+        bgmRoomTarget = BGM_RING_BUFFER_SIZE;
+        if (ring / 2 < bgmRoomTarget)
+            bgmRoomTarget = ring / 2;
+        if (room < bgmRoomTarget)
+            bgmRoomTarget = room;
+        if (bgmRoomTarget < BGM_ROOM_TARGET_MIN)
+            bgmRoomTarget = BGM_RING_BUFFER_SIZE;
+        LOG("BGM: %ld Hz, %d ch, audsrv ring %d bytes, queue up to %d at a time\n", vi->rate, vi->channels, ring, bgmRoomTarget);
+        audsrv_set_volume(gBGMVolume);
+
+        bgmIsPlaying = 1;
+
+        StartThread(bgmIoThreadID, NULL);
+
+        // Pre-buffer before starting playback thread so the ring buffer is primed and audsrv
+        // never suffers from immediate underrun or device contention at startup.
+        int prebufferWait = 0;
+        while (!terminateFlag && bgmBufferedChunks < BGM_IO_LOW_WATER_CHUNKS && prebufferWait < 100) {
+            DelayThread(5 * 1000);
+            prebufferWait++;
+        }
+
+        if (!terminateFlag && bgmIoThreadRunning)
+            StartThread(bgmThreadID, NULL);
+    }
+}
+
+void bgmQuiesce(void)
+{
+    if (!audio_initialized)
+        return;
+
+    // MUTE FIRST, then ask the threads to wind down. Setting terminateFlag only stops the FEEDER;
+    // audsrv keeps playing whatever is already queued, and the decode thread stops refilling it --
+    // so the last fraction of a second loops or judders while the caller gets on with a teardown
+    // that can block for seconds (see LAUNCH_IO_DRAIN_TICKS). That judder is the "audio stutters
+    // when a game launches" report, and it is purely cosmetic damage done while we are on the way
+    // out. Dropping the volume makes the same interval silent instead.
+    //
+    // Volume, not audsrv_stop_audio(): the BGM thread may be inside audsrv_play_audio right now,
+    // and issuing a competing stop on the same RPC channel from this thread is exactly the class of
+    // teardown race that produced the old exit-hang. Muting touches no state the thread owns, and
+    // the real stop still happens in audioEnd() where it always did.
+    bgmMute();
+
+    terminateFlag = 1;
+    SignalSema(inSema);
+    SignalSema(outSema);
+    WakeupThread(bgmThreadID);
+}
+
+void bgmStop(void)
+{
+    int threadId;
+
+    if (!audio_initialized) {
+        LOG("BGM: %s: ERROR: not initialized!\n", __FUNCTION__);
+        return;
+    }
+
+    LOG("BGM: terminating threads...\n");
+
+    terminateFlag = 1;
+    SignalSema(inSema);
+    SignalSema(outSema);
+    WakeupThread(bgmThreadID);
+
+    threadId = GetThreadId();
+    int waits = BGM_STOP_WAIT_SLICES;
+    while (bgmIoThreadRunning && waits-- > 0) {
+        SetAlarm(200 * 16, &bgmShutdownDelayCallback, (void *)threadId);
+        SleepThread();
+    }
+    waits = BGM_STOP_WAIT_SLICES;
+    while (bgmThreadRunning && waits-- > 0) {
+        SetAlarm(200 * 16, &bgmShutdownDelayCallback, (void *)threadId);
+        SleepThread();
+    }
+
+    if (bgmIoThreadRunning || bgmThreadRunning) {
+        LOG("BGM: threads did not stop (io=%d play=%d) -- abandoning\n",
+            (int)bgmIoThreadRunning, (int)bgmThreadRunning);
+        return;
+    }
+
+    bgmDeinit();
+
+    LOG("BGM: stopped.\n");
+}
+
+int isBgmPlaying(void)
+{
+    int ret = (int)bgmIsPlaying;
+
+    return ret;
+}
+
+// HACK: BGM stutters while perfroming certain tasks, mute during these operations and unmute once completed.
+void bgmMute(void)
+{
+    if (audio_initialized)
+        audsrv_set_volume(0);
+}
+
+void bgmUnMute(void)
+{
+    if (audio_initialized)
+        audsrv_set_volume(gBGMVolume);
+}
+
+/*--    General Audio    ------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------*/
+
+void audioInit(void)
+{
+    if (!audio_initialized) {
+        if (audsrv_init() != 0) {
+            LOG("AUDIO: Failed to initialize audsrv\n");
+            LOG("AUDIO: Audsrv returned error string: %s\n", audsrv_get_error_string());
+            return;
+        }
+        audio_initialized = 1;
+    }
+}
+
+void audioEnd(void)
+{
+    if (!audio_initialized) {
+        LOG("AUDIO: %s: ERROR: not initialized!\n", __FUNCTION__);
+        return;
+    }
+
+    /* Stop BGM if it is still running: bgmIsPlaying covers the normal case;
+     * bgmIoThreadRunning/bgmThreadRunning cover the case where a settings-toggle
+     * caused the IO thread to self-exit (setting terminateFlag=1/bgmIsPlaying=0)
+     * but bgmDeinit() was never called, leaking the semaphores and thread handles. */
+    if (isBgmPlaying() || bgmIoThreadRunning || bgmThreadRunning)
+        bgmStop();
+
+    audsrv_quit();
+    audio_initialized = 0;
+}
+
+void audioSetVolume(void)
+{
+    int i;
+
+    if (!audio_initialized) {
+        LOG("AUDIO: %s: ERROR: not initialized!\n", __FUNCTION__);
+        return;
+    }
+
+    for (i = 1; i < SFX_COUNT; i++)
+        audsrv_adpcm_set_volume(i, gSFXVolume);
+
+    sfxSetCursorChannelsVolume(gSFXVolume);
+    audsrv_adpcm_set_volume(0, gBootSndVolume);
+    audsrv_set_volume(gBGMVolume);
+}

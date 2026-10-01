@@ -84,7 +84,13 @@ typedef struct
     u32 reserved[4];
 } pfs_inode_t;
 
+#ifdef __cplusplus
+extern "C" { // called from src/zso.c (C)
+#endif
 int hddReadSectors(u32 lba, u32 nsectors, void *buf);
+#ifdef __cplusplus
+}
+#endif
 
 // Array should be APA_MAXSUB+1 entries.
 int hddGetPartitionInfo(const char *name, apa_sub_t *parts);

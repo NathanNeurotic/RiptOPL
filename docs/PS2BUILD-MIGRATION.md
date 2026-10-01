@@ -10,6 +10,10 @@ build through the Makefile. Build:
 Not hardware-tested. Open items: other flavours, `usbd_mini` -G16384 equivalence, audsrv
 (SDK `audio` + `audsrv-compat` replaces the old audsrv), `elfldr.elf` size (143 KB), CI cutover
 (.github/workflows/ps2build.yml runs alongside the old jobs), Makefile removal.
+EE sources in src/ are now C++ (.cpp). Kept as C: src/lz4.c and src/zso.c (shared with the IOP
+modules via #include), src/lang_internal.c (generated), src/md5.c (vendored). C/C++ boundary headers
+carry extern "C": modules/isofs/zso.h, modules/ds34bt/ee/libds34bt.h, modules/ds34usb/ee/libds34usb.h,
+hddReadSectors in include/hdd.h. The Makefile can no longer build src/ (no .cpp rule).
 Original plan (written before ps2build was installed) follows. ps2build v2026.09.29 (sdk-core v2026.09.29.1,
 sdk-world v2026.09.30). Reference: `ps2build explain`. Install:
 `curl -sSfL https://git.techwritescode.dev/ps2/install/raw/branch/master/install.sh | sh`
