@@ -76,7 +76,7 @@ def fetch():
 # ------------------------------------------------------------------ lang
 def lang():
     lc = ["python3", "tools/lang_compiler.py"]
-    base = "lng_tmpl/_base.yml"
+    base = "lng/tmpl/_base.yml"
     os.makedirs("lng", exist_ok=True)
     english_yml = "lng_src/English.yml"
     run(*lc, "--make_template_yml", "--base", base, english_yml)
@@ -84,7 +84,7 @@ def lang():
     for t in TRANSLATIONS:
         yml = f"lng_src/{t}.yml"
         run(*lc, "--update_translation_yml", "--base", base, "--translation", yml)
-        overlay = f"lng_fork/{t}.yml"
+        overlay = f"lng/fork/{t}.yml"
         if os.path.isfile(overlay):
             run(*lc, "--overlay_translation_yml", "--base", base, "--translation", yml, "--overlay", overlay)
         run(*lc, "--make_lng", "--base", base, "--translation", yml, f"lng/lang_{t}.lng")
@@ -106,7 +106,7 @@ def embed():
             os.remove(os.path.join(ASM_DIR, stale))
     for a in PNG_ASSETS:
         bin2c(f"gfx/{a}.png", f"{a}_png", f"{a}_png")
-    bin2c("thirdparty/PoeVeticaNew.ttf", "poeveticanew", "poeveticanew_raw")
+    bin2c("third_party/fonts/PoeVeticaNew.ttf", "poeveticanew", "poeveticanew_raw")
     for a in AUDIO:
         bin2c(f"audio/{a}.adp", a, f"{a}_adp")
     for name, src, sym in MISC:
