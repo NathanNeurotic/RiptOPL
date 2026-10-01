@@ -1,6 +1,8 @@
 {
 "appscan->opl": 1,
 "artload->artindex": 1,
+"bgm->settingsio": 1,
+"bgm->themes": 2,
 "debug->ethsupport": 2,
 "favsupport->opl": 1,
 "gui->opl": 1,
@@ -13,8 +15,7 @@
 "menusys->lwnbdctl": 1,
 "menusys->opl": 2,
 "menusys->settingsio": 1,
-"sound->settingsio": 1,
-"sound->themes": 2,
+"sfx->themes": 2,
 "sysdisc->mmcesupport": 1,
 "sysneutrino->bdmsupport": 1,
 "system->OSDHistory": 1,

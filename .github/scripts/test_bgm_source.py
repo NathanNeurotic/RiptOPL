@@ -44,7 +44,7 @@ def function_text(source, signature):
     return source[match.start():end] + '\n}\n'
 
 
-sound = (root / 'src/core/sound.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+sound = (root / 'src/core/bgm.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 
 load = function_text(sound, 'static int bgmTryLoadPath(')
 if load is None:
