@@ -718,8 +718,8 @@ constexpr int CORE_IRX_ILINK = 0x80;
 
 typedef struct
 {
-    char *game;
-    char *mode;
+    const char *game;
+    const char *mode;
     void *module;
     int *module_size;
 } patchlist_t;

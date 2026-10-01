@@ -209,3 +209,22 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
    8 ids are not the usual `SLUS_000.00` shape.
 4. `ioPutRequest(type, void *)` forces `reinterpret_cast<void *>(&fn)` at ~20 call sites; a typed overload
    for `io_simpleaction_t` (phase 6, IoQueue) removes them.
+
+## 9. Phase 1 status (done: visibility, constants, macros, const-correctness)
+- **Dead/local exports:** 55 functions only their own file used are now `static` (declarations removed from
+  headers, forward declarations where needed); 24 functions nothing references were deleted (pad, hdd,
+  menusys submenu helpers, renderman, hddsupport home staging, ...). `ioman` (queue contract) and `tar`
+  (host tests) were left public on purpose. `static` is kept instead of anonymous namespaces: identical
+  linkage, no churn for ~730 declarations.
+- **Constants:** 272 integer `#define`s in C++-only headers/sources became `constexpr`. Headers that IOP modules or host
+  tools compile as C (opl.h, config.h, iosupport.h, supportbase.h, system.h, dia.h, menusys.h, util.h,
+  ...) keep their macros; so do names the preprocessor, the SDK headers or the source-scraping tests use.
+  Verified with a `-Wundef` build and the per-flavour sweep (`tools/syntax_sweep.py`).
+- **Function-like macros:** `pggsm.h` make*, OSD history date helpers, atlas, fntsys glyph page, renderman scale
+  helpers are `constexpr`/inline functions.
+- **Const-correctness:** string tables and the config path API take `const char *` (warnings 184 -> 67).
+- Checked against the previous commit's ELF after each step: `.data` identical; the only code change was atlas
+  inlining (-3 KB text). `tools/warning_gate.py` caught a macro->function rename that had turned
+  `rmScaleX` into infinite recursion (an exported wrapper shared the name).
+- Left for later phases: 15 `-Wmissing-declarations`-style leftovers were removed with the static pass; remaining
+  warnings are `-Wsign-compare` and a few `-Wwrite-strings` that need API changes (SDK `char *` parameters).

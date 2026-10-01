@@ -134,7 +134,7 @@ constexpr int TEX_STAGE_MAX_SIZE = (8 * 1024 * 1024);
 typedef struct
 {
     int id;
-    char *name;
+    const char *name;
     void **texture;
 } texture_t;
 

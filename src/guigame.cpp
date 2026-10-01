@@ -577,7 +577,7 @@ void guiGameShowCheatConfig(void)
 // PADEMU
 #ifdef PADEMU
 // from https://www.bluetooth.com/specifications/assigned-numbers/host-controller-interface
-static char *bt_ver_str[] = {
+static const char *const bt_ver_str[] = {
     "1.0b",
     "1.1",
     "1.2",

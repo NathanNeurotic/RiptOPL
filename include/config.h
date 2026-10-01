@@ -259,10 +259,10 @@ typedef struct
     u32 uid;
 } config_set_t;
 
-void configInit(char *prefix);
-void configSetMove(char *prefix);
+void configInit(const char *prefix);
+void configSetMove(const char *prefix);
 void configEnd();
-config_set_t *configAlloc(int type, config_set_t *configSet, char *fileName);
+config_set_t *configAlloc(int type, config_set_t *configSet, const char *fileName);
 void configFree(config_set_t *configSet);
 // Deep-copy a config set into a fresh standalone (heap) set, NOT registered in configFiles[].
 // Used for transient "test launch" so dialog edits never touch the live config. Free with configFree().
@@ -307,6 +307,6 @@ char *configGetDir(void);
 // Full settings-home directory, not just its device. See src/config.c.
 const char *configGetHomePath(void);
 char *configGetLoadDir(void);
-void configPrepareNotifications(char *prefix);
+void configPrepareNotifications(const char *prefix);
 
 #endif

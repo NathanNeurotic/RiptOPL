@@ -308,7 +308,7 @@ char *configGetLoadDir(void)
     return cfgLoadDevice[0] != '\0' ? cfgLoadDevice : cfgDevice;
 }
 
-void configPrepareNotifications(char *prefix)
+void configPrepareNotifications(const char *prefix)
 {
     configPrepareDevice(cfgDevice, sizeof(cfgDevice), prefix);
 }
@@ -335,7 +335,7 @@ static void configBuildPath(char *out, size_t outSize, const char *prefix, const
     }
 }
 
-void configInit(char *prefix)
+void configInit(const char *prefix)
 {
     char path[256];
     int i;
@@ -365,7 +365,7 @@ const char *configGetHomePath(void)
     return cfgHomePath;
 }
 
-void configSetMove(char *prefix)
+void configSetMove(const char *prefix)
 {
     char path[256];
     int i;
@@ -400,7 +400,7 @@ void configEnd()
     }
 }
 
-config_set_t *configAlloc(int type, config_set_t *configSet, char *fileName)
+config_set_t *configAlloc(int type, config_set_t *configSet, const char *fileName)
 {
     int weAllocated = 0;
     if (!configSet) {
