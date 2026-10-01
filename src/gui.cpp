@@ -42,6 +42,7 @@
 #include "include/tar.h"        // tarInvalidate -- re-arm the .tar probe when the toggle flips
 
 #include <limits.h>
+#include <math.h>
 #include <stdlib.h>
 
 // Last Played Auto Start
@@ -606,16 +607,45 @@ void guiSetBootStatusStickyCopy(const char *label)
     gBoot.setStickyCopy(label);
 }
 
+// Boot logo glow: a soft halo breathes around the logo. The halo is the logo redrawn at low alpha around its
+// own position -- eight taps 2 px out and four 5 px out -- so it follows the letter shapes with no extra asset.
+// One cycle is BOOT_LOGO_GLOW_PERIOD frames (~2 s at 60 Hz); the pulse is a raised cosine, so it eases in and
+// out instead of stepping. `alpha` is the greeting's fade alpha (0..0x80): the glow fades with the splash.
+constexpr int BOOT_LOGO_GLOW_PERIOD = 120;
+constexpr float BOOT_LOGO_GLOW_MIN = 0.15f; // halo strength at the dim end of the pulse
+constexpr float BOOT_LOGO_GLOW_TAP = 0.11f; // per-tap alpha at full pulse, as a fraction of `alpha`
+
+static void guiDrawBootLogo(GSTEXTURE *logo, int cx, int cy, int alpha)
+{
+    static const signed char inner[8][2] = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {2, 2}, {-2, 2}, {2, -2}, {-2, -2}};
+    static const signed char outer[4][2] = {{5, 0}, {-5, 0}, {0, 5}, {0, -5}};
+
+    const float phase = (float)(guiFrameId % BOOT_LOGO_GLOW_PERIOD) * (6.2831853f / BOOT_LOGO_GLOW_PERIOD);
+    const float pulse = 0.5f - 0.5f * cosf(phase); // 0..1..0, zero slope at both ends
+    const float strength = BOOT_LOGO_GLOW_MIN + (1.0f - BOOT_LOGO_GLOW_MIN) * pulse;
+
+    int tapAlpha = (int)((float)alpha * strength * BOOT_LOGO_GLOW_TAP);
+    if (tapAlpha > 0) {
+        u64 color = GS_SETREG_RGBA(0x80, 0x80, 0x80, tapAlpha);
+        for (int i = 0; i < 8; i++)
+            rmDrawPixmap(logo, cx + inner[i][0], cy + inner[i][1], ALIGN_CENTER, logo->Width, logo->Height, SCALING_RATIO, color, 0);
+        color = GS_SETREG_RGBA(0x80, 0x80, 0x80, tapAlpha >> 1);
+        for (int i = 0; i < 4; i++)
+            rmDrawPixmap(logo, cx + outer[i][0], cy + outer[i][1], ALIGN_CENTER, logo->Width, logo->Height, SCALING_RATIO, color, 0);
+    }
+
+    rmDrawPixmap(logo, cx, cy, ALIGN_CENTER, logo->Width, logo->Height, SCALING_RATIO, GS_SETREG_RGBA(0x80, 0x80, 0x80, alpha), 0);
+}
+
 static void guiRenderGreeting(int alpha)
 {
     u64 mycolor = GS_SETREG_RGBA(0x1C, 0x1C, 0x1C, alpha);
     rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, mycolor);
 
-    // If the theme/build ships animated boot-logo frames (logo0..logoN), cycle
-    // them at the loading-icon cadence; otherwise use the single LOGO_PICTURE.
-    int logoTex = LOGO_PICTURE;
-    if (gTheme->logoFrameCount >= 1)
-        logoTex = LOGO0_PICTURE + (guiFrameId >> 1) % gTheme->logoFrameCount;
+    // The logo holds still and glows. It used to flip through the embedded logo0..logoN frames (a vertical
+    // blur that read as a jump); those are a squash/stretch of one crisp image, so the first frame is the
+    // logo and the "animation" is now a halo that breathes around it (guiDrawBootLogo).
+    int logoTex = (gTheme->logoFrameCount >= 1) ? LOGO0_PICTURE : LOGO_PICTURE;
 
     // Sit the logo above centre rather than dead centre: the version + status lines hang below it,
     // so a centred logo pushes that block low and reads bottom-heavy. Clamped so a tall logo (or a
@@ -628,8 +658,7 @@ static void guiRenderGreeting(int alpha)
         if (drawY < (int)(logo->Height >> 1))
             drawY = logo->Height >> 1;
 
-        mycolor = GS_SETREG_RGBA(0x80, 0x80, 0x80, alpha);
-        rmDrawPixmap(logo, gGuiScreenWidth >> 1, drawY, ALIGN_CENTER, logo->Width, logo->Height, SCALING_RATIO, mycolor, 0);
+        guiDrawBootLogo(logo, gGuiScreenWidth >> 1, drawY, alpha);
     }
 
     // Boot info: the RiptOPL version + a live status line, faded with the splash.
