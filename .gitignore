@@ -106,3 +106,6 @@ __pycache__/
 *.pyc
 /build/
 asm/opl_version.h
+
+# Built ELFs handed out for testing; never tracked.
+/dist/
