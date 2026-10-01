@@ -426,7 +426,12 @@ file-level statics. Do this later, not now.
 
 Planned design:
 - `SettingsShell`: owns the dialog buffers, shell/page/save-pending flags and `SourceState`; navigation (`showIndex`, `showFromPage`,
-  `promptSave`, `restoreSourceState`).
+  `promptSave`, `restoreSourceState`). **Done** (include/settingshell.h): `compose/composeInto` (own `dialog_` + `mmceDialog_`),
+  `beginDialog/endDialog`, `pageResult/isShellResult/isPeerResult/leftUntouched`, `promptSave`, `showIndex`, `showFromPage`, the
+  source-state snapshot (`SourceState`, `captureSourceState/restoreSourceState/sourceStateChanged`). Pages stay free functions and
+  reach the shell through `gSettingsShell` (`activeDialog()`, `shellActive()`, `markSavePending()`); `guiShowSettings`/
+  `guiShowPsEmulationSettings` are forwarders. `test_settings_back_keeps_edits` compiles the pageResult family against a stub
+  SettingsShell with g++; `test_confirm_button` reads the member bodies.
 - One class per settings page (General, Sources, Interface, Launch, Popstarter, Net, Audio, Controller, ...) behind a common
   begin/update/read interface.
 - `Notifications`: the popup and RA notices with their timers. **Done** (include/guinotify.h, src/ui/guinotify.cpp; `guiCheckNotifications`/`guiResetNotifications`/`guiShowRANotice` remain as forwarders).

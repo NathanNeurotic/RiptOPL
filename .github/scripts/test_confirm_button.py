@@ -7,7 +7,8 @@ guiCancelKey (and the matching icons).
 
 Checked here:
 - the four helpers, compiled and run, for both Select Button settings;
-- none of those screens names KEY_CROSS / KEY_CIRCLE (in any form) or draws CROSS_ICON / CIRCLE_ICON directly.
+- none of those screens names KEY_CROSS / KEY_CIRCLE (in any form) or draws CROSS_ICON / CIRCLE_ICON directly
+  (the Settings shell screens are SettingsShell member functions since the class conversion).
 """
 from pathlib import Path
 import re
@@ -88,12 +89,12 @@ if not failures:
 # here; these screens take both from the helpers (CodeRabbit #818).
 HARDWIRED = re.compile(r'\bKEY_(?:CROSS|CIRCLE)\b|\b(?:CROSS|CIRCLE)_ICON\b')
 for where, source, signature in (
-    ('src/ui/gui.cpp', gui_c, 'static int guiSettingsPromptSave('),
-    ('src/ui/gui.cpp', gui_c, 'static void guiDrawSettingsIndexHints('),
-    ('src/ui/gui.cpp', gui_c, 'static int guiSettingsShowIndex('),
+    ('src/ui/guisettings.cpp', gui_c, 'int SettingsShell::promptSave('),
+    ('src/ui/guisettings.cpp', gui_c, 'static void guiDrawSettingsIndexHints('),
+    ('src/ui/guisettings.cpp', gui_c, 'int SettingsShell::showIndex('),
     ('src/ui/guimodal.cpp', gui_c, 'bool RebootIopPrompt::onKeys('),
     ('src/ui/guimodal.cpp', gui_c, 'void RebootIopPrompt::draw('),
-    ('src/ui/gui.cpp', gui_c, 'static int guiReadPopsNet('),
+    ('src/ui/guisettings.cpp', gui_c, 'static int guiReadPopsNet('),
     ('src/ui/dia.cpp', dia_c, 'static int diaHandleInput('),
     ('src/ui/dia.cpp', dia_c, 'int diaExecuteDialog('),
 ):

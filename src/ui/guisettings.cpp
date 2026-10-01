@@ -10,6 +10,7 @@
 #include "include/plasma.h"
 #include "include/gui.h"
 #include "include/guiint.h"
+#include "include/settingshell.h"
 #include "include/diag.h" // gLastDeferredTimedOut -- a bounded wait that expired means the handler never ran
 #include "include/renderman.h"
 #include "include/menusys.h"
@@ -67,48 +68,7 @@ static int guiShowMmceConfig(void);
 // assembled into scratch buffers at entry so the existing field ids, visibility rules and temporary
 // editor buttons remain owned by their original feature code. Values still live in the existing
 // globals/config sets; these buffers are only views, never a second configuration store.
-constexpr int SETTINGS_DIALOG_CAPACITY = 256;
-static struct UIItem guiSettingsDialog[SETTINGS_DIALOG_CAPACITY];
-// MMCE Settings can be opened from the composed Game Sources page. Keep its editor separate so
-// returning from that child cannot overwrite the parent's dialog contents.
-static struct UIItem guiMmceSettingsDialog[SETTINGS_DIALOG_CAPACITY];
-static struct UIItem *guiSettingsActiveDialog;
-static int guiSettingsShellActive;
-static int guiSettingsCurrentPage;
-static int guiSettingsSavePending;
-static char guiSettingsPageIndicator[32];
-
-// Settings pages apply their values live while the shell stays open. Keep the source-selection half
-// of that live state transactional: "Exit without saving" must restore the device/network state that
-// was active when Settings opened instead of leaving a Manual/disabled source empty until X starts it
-// again (#806, zackcage6). This is intentionally limited to source activation/routing; page-specific
-// visual/audio edits keep their established live-preview behaviour until a broader transaction model
-// replaces it.
-typedef struct
-{
-    int defaultDevice;
-    int bdmStartMode, hddStartMode, appStartMode, mmceStartMode, favStartMode;
-    int enableUSB, enableILK, enableMX4SIO, enableBdmHDD;
-    int networkProtocol, netStartMode, netProtocolPick;
-    int ethStartMode, enableUDPBD, netBootProtocol;
-    int mmceSlot, mmceIgrSlot, mmceEnableGameID, mmceAckWaitCycles, mmceUseAlarms;
-    char mmcePrefix[sizeof(gMMCEPrefix)];
-} gui_settings_source_state_t;
-
-static gui_settings_source_state_t guiSettingsSourceState;
-
-static int guiSettingsIsShellResult(int result);
-static int guiSettingsLeftUntouched(struct UIItem *ui, int result, const char *pathEdit, const char *pathValue);
-static int guiSettingsPageResult(int result);
-static int guiSettingsPromptSave(void);
-static void guiSettingsBeginDialog(struct UIItem *ui);
-static void guiSettingsEndDialog(void);
-static struct UIItem *guiSettingsCompose(const struct UIItem *const *parts, int partCount,
-                                         const int *skipIDs, int skipCount, int skipPart,
-                                         int suppressSecondaryHeaders);
-static struct UIItem *guiSettingsComposeInto(struct UIItem *dialog, const struct UIItem *const *parts,
-                                             int partCount, const int *skipIDs, int skipCount, int skipPart,
-                                             int suppressSecondaryHeaders);
+SettingsShell gSettingsShell;
 
 static int guiUpdater(int modified)
 {
@@ -482,13 +442,13 @@ static int guiShowMmceConfig(void)
     static const char *deviceIGRSlots[] = {"NONE", "0", "1", "BOTH", NULL};
     static const char *deviceAckWaitCycles[] = {"0", "1", "2", "3", "4", "5", NULL};
     static const char *deviceOnOff[] = {"OFF", "ON", NULL};
-    struct UIItem *previousActiveDialog = guiSettingsActiveDialog;
+    struct UIItem *previousActiveDialog = gSettingsShell.activeDialog();
     struct UIItem *ui;
 
     // diaSetEnum stores the array pointer rather than copying it. Keep the MMCE options alive for
     // the lifetime of the dedicated child dialog, including any parent re-entry after Circle.
     deviceSlots[2] = _l(_STR_AUTO);
-    ui = guiSettingsComposeInto(guiMmceSettingsDialog, parts, 3, skipIDs, 2, -1, 1);
+    ui = gSettingsShell.composeInto(gSettingsShell.mmceDialog(), parts, 3, skipIDs, 2, -1, 1);
 
     if (ui == NULL)
         return -1;
@@ -514,13 +474,13 @@ static int guiShowMmceConfig(void)
         diaGetString(ui, CFG_MMCEPREFIX, gMMCEPrefix, sizeof(gMMCEPrefix));
         // The Settings parent commits the complete Game Sources page after this child returns.
         // Legacy callers still own their own apply path.
-        if (!guiSettingsShellActive) {
+        if (!gSettingsShell.shellActive()) {
             applyConfig(-1, -1, 0);
             menuReinitMainMenu();
         }
     }
 
-    guiSettingsActiveDialog = previousActiveDialog;
+    gSettingsShell.setActiveDialog(previousActiveDialog);
     return ret;
 }
 
@@ -1014,7 +974,7 @@ int guiShowNetConfig(void)
         diaSetVisible(diaNetConfig, NETCFG_RECONNECT, 0);
     }
 
-    guiSettingsBeginDialog(diaNetConfig);
+    gSettingsShell.beginDialog(diaNetConfig);
     int result;
 reshow_network:
     result = diaExecuteDialog(diaNetConfig, -1, 1, &netConfigUpdater);
@@ -1036,7 +996,7 @@ reshow_network:
         guiShowPopsNetConfig();
         goto reshow_network;
     }
-    if (result && !guiSettingsLeftUntouched(diaNetConfig, result, NULL, NULL)) {
+    if (result && !gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL)) {
         int netProtoVal2, netAccessVal2;
         diaGetInt(diaNetConfig, CFG_NETPROTOCOL, &netProtoVal2);
         diaGetInt(diaNetConfig, CFG_UDPFSMODE, &netAccessVal2);
@@ -1101,8 +1061,8 @@ reshow_network:
             ethRequestReconnect();
     }
 
-    guiSettingsEndDialog();
-    return guiSettingsPageResult(result);
+    gSettingsShell.endDialog();
+    return gSettingsShell.pageResult(result);
 }
 
 // Core path fields use a full-size backing buffer. UI_STRING's inline storage is intentionally
@@ -1140,7 +1100,7 @@ int guiPopstarterPathHandler(char *text, int maxLen)
 // Launch" is ON (it auto-equips); re-reveal them live when toggled off.
 static int guiBdmaUpdater(int modified)
 {
-    struct UIItem *ui = guiSettingsActiveDialog != NULL ? guiSettingsActiveDialog : diaBdmaConfig;
+    struct UIItem *ui = gSettingsShell.activeDialog() != NULL ? gSettingsShell.activeDialog() : diaBdmaConfig;
     int bdmaApply;
 
     if (modified) {
@@ -1251,8 +1211,8 @@ static void guiShowVcdListConfig(void)
         // This editor is reachable from both Settings parents. Its values still belong to the
         // existing globals/config set, but an OK inside the shell must participate in the shell's
         // shared Save Changes prompt regardless of which parent opened it.
-        if (guiSettingsShellActive)
-            guiSettingsSavePending = 1;
+        if (gSettingsShell.shellActive())
+            gSettingsShell.markSavePending();
         {
             // #195: hide-gameid is NO LONGER purely cosmetic -- it is now a SORT KEY. The menu sort
             // (submenuSort) orders by the DISPLAYED title, i.e. past the hidden prefix, so a change must
@@ -1930,7 +1890,7 @@ static void guiSetAudioSettingsState(void)
 static int guiAudioUpdater(int modified)
 {
     if (modified) {
-        guiSettingsSavePending = 1;
+        gSettingsShell.markSavePending();
         guiSetAudioSettingsState();
     }
 
@@ -1948,10 +1908,10 @@ static int guiShowAudioConfig(void)
     diaSetString(diaAudioConfig, CFG_DEFAULT_BGM_PATH, gDefaultBGMPath);
     diaSetShowDefaultWhenEmpty(diaAudioConfig, CFG_DEFAULT_BGM_PATH, 1); // blank -> the theme's own bgm
 
-    guiSettingsBeginDialog(diaAudioConfig);
+    gSettingsShell.beginDialog(diaAudioConfig);
     int result = diaExecuteDialog(diaAudioConfig, -1, 1, guiAudioUpdater);
-    guiSettingsEndDialog();
-    return guiSettingsPageResult(result);
+    gSettingsShell.endDialog();
+    return gSettingsShell.pageResult(result);
 }
 
 static int guiShowControllerConfig(void)
@@ -1974,7 +1934,7 @@ static int guiShowControllerConfig(void)
     diaSetInt(diaControllerConfig, CFG_YSENSITIVITY, gYSensitivity);
     diaSetInt(diaControllerConfig, CFG_RUMBLE, gEnableRumble);
 
-    guiSettingsBeginDialog(diaControllerConfig);
+    gSettingsShell.beginDialog(diaControllerConfig);
     int result;
 reshow_controller:
     result = diaExecuteDialog(diaControllerConfig, -1, 1, NULL);
@@ -2002,8 +1962,8 @@ reshow_controller:
         applyConfig(-1, -1, 1);
     }
 
-    guiSettingsEndDialog();
-    return guiSettingsPageResult(result);
+    gSettingsShell.endDialog();
+    return gSettingsShell.pageResult(result);
 }
 
 static int guiSettingsSkipID(int id, const int *skipIDs, int skipCount)
@@ -2017,17 +1977,17 @@ static int guiSettingsSkipID(int id, const int *skipIDs, int skipCount)
     return 0;
 }
 
-static struct UIItem *guiSettingsCompose(const struct UIItem *const *parts, int partCount,
-                                         const int *skipIDs, int skipCount, int skipPart,
-                                         int suppressSecondaryHeaders)
+struct UIItem *SettingsShell::compose(const struct UIItem *const *parts, int partCount,
+                                      const int *skipIDs, int skipCount, int skipPart,
+                                      int suppressSecondaryHeaders)
 {
-    return guiSettingsComposeInto(guiSettingsDialog, parts, partCount, skipIDs, skipCount, skipPart,
-                                  suppressSecondaryHeaders);
+    return composeInto(dialog_, parts, partCount, skipIDs, skipCount, skipPart,
+                       suppressSecondaryHeaders);
 }
 
-static struct UIItem *guiSettingsComposeInto(struct UIItem *dialog, const struct UIItem *const *parts,
-                                             int partCount, const int *skipIDs, int skipCount, int skipPart,
-                                             int suppressSecondaryHeaders)
+struct UIItem *SettingsShell::composeInto(struct UIItem *dialog, const struct UIItem *const *parts,
+                                          int partCount, const int *skipIDs, int skipCount, int skipPart,
+                                          int suppressSecondaryHeaders)
 {
     int part, i, skipTrailingBreak, skipSecondarySplitter;
     int count = 0;
@@ -2102,18 +2062,18 @@ static struct UIItem *guiSettingsComposeInto(struct UIItem *dialog, const struct
 
     dialog[count++] = (struct UIItem) {UI_OK, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_OK}}};
     dialog[count] = (struct UIItem) {UI_TERMINATOR};
-    guiSettingsActiveDialog = dialog;
+    activeDialog_ = dialog;
     return dialog;
 }
 
-static int guiSettingsIsPeerResult(int result)
+int SettingsShell::isPeerResult(int result)
 {
     return result == DIA_RESULT_PREV || result == DIA_RESULT_NEXT;
 }
 
-static int guiSettingsIsShellResult(int result)
+int SettingsShell::isShellResult(int result)
 {
-    return guiSettingsIsPeerResult(result) || result == DIA_RESULT_INDEX;
+    return isPeerResult(result) || result == DIA_RESULT_INDEX;
 }
 
 // Back / L1 / R1 off a page whose rows the user did not change. Such an exit applies nothing, as
@@ -2129,24 +2089,24 @@ static int guiSettingsIsShellResult(int result)
 // its global when it opens, so an edit past the preview is caught by comparing the page's own buffer.
 // Only its own: the other pages' buffers stay empty until their page first opens, and comparing them
 // would make every other page look edited (pathEdit/pathValue are NULL on pages without such a row).
-static int guiSettingsLeftUntouched(struct UIItem *ui, int result, const char *pathEdit, const char *pathValue)
+int SettingsShell::leftUntouched(struct UIItem *ui, int result, const char *pathEdit, const char *pathValue)
 {
-    if (!guiSettingsIsShellResult(result) || diaHasChanges(ui))
+    if (!isShellResult(result) || diaHasChanges(ui))
         return 0;
 
     return pathEdit == NULL || strcmp(pathEdit, pathValue) == 0;
 }
 
-static int guiSettingsPageResult(int result)
+int SettingsShell::pageResult(int result)
 {
     // L1/R1 peer paging and an explicit Index request pass straight back to the shell loop.
-    if (guiSettingsIsShellResult(result)) {
-        guiSettingsSavePending = 1;
+    if (isShellResult(result)) {
+        savePending_ = 1;
         return result;
     }
 
     /* EVERY other way out of a page finishes at the Settings Index -- never at the main menu.
-       Only guiSettingsShowIndex leaves Settings, and only after offering to save.
+       Only showIndex leaves Settings, and only after offering to save.
 
        The old test recognised the two generic button ids and nothing else, but pages carry their
        OWN button ids: the Network page's confirm button is NETCFG_OK, not UIID_BTN_OK. That fell
@@ -2158,22 +2118,22 @@ static int guiSettingsPageResult(int result)
        this fails safe instead: unless the page asked for a specific shell move, we stay inside.
        Cancel is the only result that does not arm the save prompt. */
     if (result != UIID_BTN_CANCEL)
-        guiSettingsSavePending = 1;
+        savePending_ = 1;
 
     return DIA_RESULT_INDEX;
 }
 
-static void guiSettingsBeginDialog(struct UIItem *ui)
+void SettingsShell::beginDialog(struct UIItem *ui)
 {
-    if (!guiSettingsShellActive)
+    if (!shellActive_)
         return;
 
-    snprintf(guiSettingsPageIndicator, sizeof(guiSettingsPageIndicator), "%d/8", guiSettingsCurrentPage + 1);
-    diaSetSettingsShell(ui, guiSettingsPageIndicator);
+    snprintf(pageIndicator_, sizeof(pageIndicator_), "%d/8", currentPage_ + 1);
+    diaSetSettingsShell(ui, pageIndicator_);
     diaSetSettingsContext(1);
 }
 
-static void guiSettingsEndDialog(void)
+void SettingsShell::endDialog()
 {
     diaSetSettingsShell(NULL, NULL);
     diaSetSettingsContext(0);
@@ -2182,11 +2142,12 @@ static void guiSettingsEndDialog(void)
 static int guiSettingsGeneralUpdater(int modified)
 {
     int showAutoStartLast;
+    struct UIItem *activeDialog = gSettingsShell.activeDialog();
 
     if (modified) {
-        diaGetInt(guiSettingsActiveDialog, CFG_LASTPLAYED, &showAutoStartLast);
-        diaSetVisible(guiSettingsActiveDialog, CFG_LBL_AUTOSTARTLAST, showAutoStartLast);
-        diaSetVisible(guiSettingsActiveDialog, CFG_AUTOSTARTLAST, showAutoStartLast);
+        diaGetInt(activeDialog, CFG_LASTPLAYED, &showAutoStartLast);
+        diaSetVisible(activeDialog, CFG_LBL_AUTOSTARTLAST, showAutoStartLast);
+        diaSetVisible(activeDialog, CFG_AUTOSTARTLAST, showAutoStartLast);
     }
     return 0;
 }
@@ -2194,7 +2155,7 @@ static int guiSettingsGeneralUpdater(int modified)
 static int guiSettingsShowGeneral(void)
 {
     const struct UIItem *parts[] = {diaConfig, diaSecurityConfig, diaAdvancedConfig};
-    struct UIItem *ui = guiSettingsCompose(parts, 3, NULL, 0, -1, 1);
+    struct UIItem *ui = gSettingsShell.compose(parts, 3, NULL, 0, -1, 1);
     const char **langNamesSnap = NULL;
     int langID;
     int result;
@@ -2223,17 +2184,17 @@ static int guiSettingsShowGeneral(void)
     diaSetInt(ui, CFG_DEBUG, gEnableDebug);
     guiSetParentalLockValue(ui);
     guiSetAdvancedSettings(ui);
-    guiSettingsBeginDialog(ui);
+    gSettingsShell.beginDialog(ui);
 
 reshow_general:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsGeneralUpdater);
     if (result == GENERAL_GSM_DEFAULTS_BUTTON) {
         if (guiGameShowGSConfig(1))
-            guiSettingsSavePending = 1;
+            gSettingsShell.markSavePending();
         goto reshow_general;
     }
 
-    if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, exitPathEdit, gExitPath)) {
+    if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
         diaGetInt(ui, UICFG_LANG, &langID);
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);
         diaGetString(ui, CFG_CUSTOMCFGPATH, gCustomSettingsPath, sizeof(gCustomSettingsPath));
@@ -2251,16 +2212,18 @@ reshow_general:
     }
 
     guiFreeNameList(langNamesSnap);
-    guiSettingsEndDialog();
-    guiSettingsActiveDialog = NULL;
-    return guiSettingsPageResult(result);
+    gSettingsShell.endDialog();
+    gSettingsShell.setActiveDialog(NULL);
+    return gSettingsShell.pageResult(result);
 }
 
 
 static int guiSettingsSourcesUpdater(int modified)
 {
-    if (modified && guiSettingsActiveDialog != NULL)
-        guiSourcesNetRowsUpdate(guiSettingsActiveDialog);
+    struct UIItem *activeDialog = gSettingsShell.activeDialog();
+
+    if (modified && activeDialog != NULL)
+        guiSourcesNetRowsUpdate(activeDialog);
     return 0;
 }
 
@@ -2270,7 +2233,7 @@ static int guiSettingsShowSources(void)
     const char *deviceNames[] = {_l(_STR_BDM_GAMES), _l(_STR_MMCE), _l(_STR_HDD_GAMES), _l(_STR_NET_GAMES), _l(_STR_APPS), _l(_STR_FAV), NULL};
     const char *deviceModes[] = {_l(_STR_OFF), _l(_STR_MANUAL), _l(_STR_AUTO), NULL};
     static const char *hddOplHomes[] = {"__common/OPL/", "+OPL/", NULL};
-    struct UIItem *ui = guiSettingsCompose(parts, 1, NULL, 0, -1, 0);
+    struct UIItem *ui = gSettingsShell.compose(parts, 1, NULL, 0, -1, 0);
     int deviceModeIndex;
     int result;
 
@@ -2298,7 +2261,7 @@ static int guiSettingsShowSources(void)
     diaSetEnum(ui, CFG_MMCEMODE, deviceModes);
     diaSetInt(ui, CFG_MMCEMODE, gMMCEStartMode);
     diaSetEnabled(ui, CFG_MMCEMODE, 1);
-    guiSettingsBeginDialog(ui);
+    gSettingsShell.beginDialog(ui);
 
 reshow_sources:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsSourcesUpdater);
@@ -2315,7 +2278,7 @@ reshow_sources:
         result = UIID_BTN_OK;
     }
 
-    if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, NULL, NULL)) {
+    if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, NULL, NULL)) {
         diaGetInt(ui, CFG_DEFDEVICE, &deviceModeIndex);
         gDefaultDevice = guiDeviceTypeToIoMode(deviceModeIndex);
         diaGetInt(ui, CFG_BDMMODE, &gBDMStartMode);
@@ -2334,34 +2297,35 @@ reshow_sources:
         menuReinitMainMenu();
     }
 
-    guiSettingsEndDialog();
-    guiSettingsActiveDialog = NULL;
-    return guiSettingsPageResult(result);
+    gSettingsShell.endDialog();
+    gSettingsShell.setActiveDialog(NULL);
+    return gSettingsShell.pageResult(result);
 }
 
 static int guiSettingsDisplayUpdater(int modified)
 {
     int temp, x, y;
+    struct UIItem *activeDialog = gSettingsShell.activeDialog();
 
     if (!modified)
         return 0;
 
-    guiSettingsSavePending = 1;
+    gSettingsShell.markSavePending();
 
-    diaGetInt(guiSettingsActiveDialog, UICFG_XOFF, &x);
-    diaGetInt(guiSettingsActiveDialog, UICFG_YOFF, &y);
+    diaGetInt(activeDialog, UICFG_XOFF, &x);
+    diaGetInt(activeDialog, UICFG_YOFF, &y);
     if (x != gXOff || y != gYOff) {
         gXOff = x;
         gYOff = y;
         rmSetDisplayOffset(x, y);
     }
-    diaGetInt(guiSettingsActiveDialog, UICFG_OVERSCAN, &temp);
+    diaGetInt(activeDialog, UICFG_OVERSCAN, &temp);
     if (temp != gOverscan) {
         gOverscan = temp;
         rmSetOverscan(gOverscan);
         guiUpdateScreenScale();
     }
-    diaGetInt(guiSettingsActiveDialog, UICFG_WIDESCREEN, &temp);
+    diaGetInt(activeDialog, UICFG_WIDESCREEN, &temp);
     if (temp != gWideScreen) {
         gWideScreen = temp;
         rmSetAspectRatio((gWideScreen == 0) ? RM_ARATIO_4_3 : RM_ARATIO_16_9);
@@ -2383,7 +2347,7 @@ static int guiSettingsShowInterface(void)
                                 "PAL 640x512i @50Hz 24bit (FLICKER-FREE)", "NTSC 640x448i @60Hz 24bit (FLICKER-FREE)", NULL};
     // Video Mode stays in diaDisplayConfig for the legacy standalone Display editor, but the
     // composed Interface page supplies its one copy at the top of diaUIConfig.
-    struct UIItem *ui = guiSettingsCompose(parts, 2, skipIDs, 1, 1, 1);
+    struct UIItem *ui = gSettingsShell.compose(parts, 2, skipIDs, 1, 1, 1);
     const char **themeNamesSnap = NULL;
     const char **langNamesSnap = NULL;
     int themeID, langID, previousTheme, previousVMode, result;
@@ -2424,7 +2388,7 @@ static int guiSettingsShowInterface(void)
                                  _l(_STR_GAMEID_MODE_PS2), _l(_STR_GAMEID_MODE_OFF), NULL};
     diaSetEnum(ui, CFG_APPLYGAMEID, gameIDModes);
     diaSetInt(ui, CFG_APPLYGAMEID, guiGameIdModeFromGlobals());
-    guiSettingsBeginDialog(ui);
+    gSettingsShell.beginDialog(ui);
 reshow_interface:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsDisplayUpdater);
     if (result == UICFG_ARTWORK_BUTTON) {
@@ -2445,7 +2409,7 @@ reshow_interface:
     }
     if (result == DISPLAY_GSM_DEFAULTS_BUTTON) {
         if (guiGameShowGSConfig(1))
-            guiSettingsSavePending = 1;
+            gSettingsShell.markSavePending();
         goto reshow_interface;
     }
 
@@ -2489,18 +2453,19 @@ reshow_interface:
 
     guiFreeNameList(themeNamesSnap);
     guiFreeNameList(langNamesSnap);
-    guiSettingsEndDialog();
-    guiSettingsActiveDialog = NULL;
-    return guiSettingsPageResult(result);
+    gSettingsShell.endDialog();
+    gSettingsShell.setActiveDialog(NULL);
+    return gSettingsShell.pageResult(result);
 }
 
 static int guiSettingsLaunchUpdater(int modified)
 {
     int neutrinoVideoDef;
+    struct UIItem *activeDialog = gSettingsShell.activeDialog();
 
     if (modified) {
-        diaGetInt(guiSettingsActiveDialog, CFG_NEUTRINO_VIDEO, &neutrinoVideoDef);
-        diaSetEnabled(guiSettingsActiveDialog, CFG_NEUTRINO_GSMCOMP, neutrinoVideoDef != 0);
+        diaGetInt(activeDialog, CFG_NEUTRINO_VIDEO, &neutrinoVideoDef);
+        diaSetEnabled(activeDialog, CFG_NEUTRINO_GSMCOMP, neutrinoVideoDef != 0);
     }
     return 0;
 }
@@ -2512,7 +2477,7 @@ static int guiSettingsShowLaunch(void)
     const char *defaultCoreStrs[] = {"<OPL>", "Neutrino", NULL};
     static const char *neutrinoVideoDefStrs[] = {"Off", "240p", "480p", "1080i x1", "1080i x2", "1080i x3", NULL};
     static const char *neutrinoGsmCompDefStrs[] = {"Off", "Type 1 (GSM/OPL)", "Type 2", "Type 3", NULL};
-    struct UIItem *ui = guiSettingsCompose(parts, 2, skipIDs, 1, -1, 1);
+    struct UIItem *ui = gSettingsShell.compose(parts, 2, skipIDs, 1, -1, 1);
     int result;
 
     if (ui == NULL)
@@ -2527,7 +2492,7 @@ static int guiSettingsShowLaunch(void)
     diaSetEnum(ui, CFG_NEUTRINO_GSMCOMP, neutrinoGsmCompDefStrs);
     diaSetInt(ui, CFG_NEUTRINO_GSMCOMP, gNeutrinoGsmCompDefault);
     diaSetEnabled(ui, CFG_NEUTRINO_GSMCOMP, gNeutrinoVideoDefault != 0);
-    guiSettingsBeginDialog(ui);
+    gSettingsShell.beginDialog(ui);
 
 reshow_launch:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsLaunchUpdater);
@@ -2537,7 +2502,7 @@ reshow_launch:
     }
     if (result == LAUNCH_GSM_DEFAULTS_BUTTON) {
         if (guiGameShowGSConfig(1))
-            guiSettingsSavePending = 1;
+            gSettingsShell.markSavePending();
         goto reshow_launch;
     }
     if (result == CFG_NEUTRINO_ARGS) {
@@ -2545,7 +2510,7 @@ reshow_launch:
         goto reshow_launch;
     }
 
-    if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, neutrinoPathEdit, gNeutrinoPath)) {
+    if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, neutrinoPathEdit, gNeutrinoPath)) {
         diaGetInt(ui, CFG_DEFAULT_CORE, &gDefaultCoreLoader);
         diaGetInt(ui, CFG_PS2LOGO, &gPS2Logo);
         if (strcmp(gNeutrinoPath, neutrinoPathEdit) != 0)
@@ -2557,9 +2522,9 @@ reshow_launch:
         menuReinitMainMenu();
     }
 
-    guiSettingsEndDialog();
-    guiSettingsActiveDialog = NULL;
-    return guiSettingsPageResult(result);
+    gSettingsShell.endDialog();
+    gSettingsShell.setActiveDialog(NULL);
+    return gSettingsShell.pageResult(result);
 }
 
 static int guiSettingsPopstarterUpdater(int modified)
@@ -2605,7 +2570,7 @@ static int guiSettingsShowPopstarter(void)
     const char *emberDitherStrs[] = {_l(_STR_DEFAULT), _l(_STR_ON), _l(_STR_OFF), NULL};
     const char *emberShadingStrs[] = {_l(_STR_DEFAULT), "15-bit", _l(_STR_EMBER_SHADING_24), NULL};
     const char *emberControllerStrs[] = {_l(_STR_DEFAULT), _l(_STR_AUTO), "Analog", "D2A", NULL};
-    struct UIItem *ui = guiSettingsCompose(parts, 2, skipIDs, 1, -1, 1);
+    struct UIItem *ui = gSettingsShell.compose(parts, 2, skipIDs, 1, -1, 1);
     // A setting never changed in RiptOPL is UNSET and shows as Default; it only becomes stored when
     // the user actually picks something else (see emberSettingFromRow).
     int emberDisplayShown = emberSettingShown(gEmberDisplay);
@@ -2637,7 +2602,7 @@ static int guiSettingsShowPopstarter(void)
     guiCorePathBegin(ui, CFG_POPSTARTER_PATH, popstarterPathEdit, sizeof(popstarterPathEdit), gPopstarterPath);
     diaSetInt(ui, CFG_POPSTARTER_RETROGEM_GAMEID, gPopstarterRetroGemGameID);
     guiSetBdmaSettings(ui);
-    guiSettingsBeginDialog(ui);
+    gSettingsShell.beginDialog(ui);
 
 reshow_popstarter:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsPopstarterUpdater);
@@ -2652,7 +2617,7 @@ reshow_popstarter:
         goto reshow_popstarter;
     }
 
-    if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, popstarterPathEdit, gPopstarterPath)) {
+    if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, popstarterPathEdit, gPopstarterPath)) {
         int gameViewChanged = guiReadGameViewPicker(ui);
 
         diaGetInt(ui, CFG_POPSTARTER_RETROGEM_GAMEID, &gPopstarterRetroGemGameID);
@@ -2677,9 +2642,9 @@ reshow_popstarter:
         menuReinitMainMenu();
     }
 
-    guiSettingsEndDialog();
-    guiSettingsActiveDialog = NULL;
-    return guiSettingsPageResult(result);
+    gSettingsShell.endDialog();
+    gSettingsShell.setActiveDialog(NULL);
+    return gSettingsShell.pageResult(result);
 }
 
 enum gui_settings_page {
@@ -2700,7 +2665,7 @@ enum gui_settings_prompt_result {
     SETTINGS_PROMPT_CONTINUE
 };
 
-static void guiSettingsReadSourceState(gui_settings_source_state_t *state)
+void SettingsShell::readSourceState(SourceState *state)
 {
     memset(state, 0, sizeof(*state));
     state->defaultDevice = gDefaultDevice;
@@ -2727,49 +2692,49 @@ static void guiSettingsReadSourceState(gui_settings_source_state_t *state)
     snprintf(state->mmcePrefix, sizeof(state->mmcePrefix), "%s", gMMCEPrefix);
 }
 
-static void guiSettingsCaptureSourceState(void)
+void SettingsShell::captureSourceState()
 {
-    guiSettingsReadSourceState(&guiSettingsSourceState);
+    readSourceState(&sourceState_);
 }
 
-static int guiSettingsSourceStateChanged(void)
+bool SettingsShell::sourceStateChanged()
 {
-    gui_settings_source_state_t current;
+    SourceState current;
 
-    guiSettingsReadSourceState(&current);
-    return memcmp(&current, &guiSettingsSourceState, sizeof(current)) != 0;
+    readSourceState(&current);
+    return memcmp(&current, &sourceState_, sizeof(current)) != 0;
 }
 
-static void guiSettingsRestoreSourceState(void)
+void SettingsShell::restoreSourceState()
 {
     // Most Settings pages are not source pages. Avoid a full device refresh on a discard that only
     // changed visual/audio/launch options; doing so would manufacture exactly the kind of storage
     // churn this path exists to prevent.
-    if (!guiSettingsSourceStateChanged())
+    if (!sourceStateChanged())
         return;
 
-    gDefaultDevice = guiSettingsSourceState.defaultDevice;
-    gBDMStartMode = guiSettingsSourceState.bdmStartMode;
-    gHDDStartMode = guiSettingsSourceState.hddStartMode;
-    gAPPStartMode = guiSettingsSourceState.appStartMode;
-    gMMCEStartMode = guiSettingsSourceState.mmceStartMode;
-    gFAVStartMode = guiSettingsSourceState.favStartMode;
-    gEnableUSB = guiSettingsSourceState.enableUSB;
-    gEnableILK = guiSettingsSourceState.enableILK;
-    gEnableMX4SIO = guiSettingsSourceState.enableMX4SIO;
-    gEnableBdmHDD = guiSettingsSourceState.enableBdmHDD;
-    gNetworkProtocol = guiSettingsSourceState.networkProtocol;
-    gNetStartMode = guiSettingsSourceState.netStartMode;
-    gNetProtocolPick = guiSettingsSourceState.netProtocolPick;
-    gETHStartMode = guiSettingsSourceState.ethStartMode;
-    gEnableUDPBD = guiSettingsSourceState.enableUDPBD;
-    gNetBootProtocol = guiSettingsSourceState.netBootProtocol;
-    gMMCESlot = guiSettingsSourceState.mmceSlot;
-    gMMCEIGRSlot = guiSettingsSourceState.mmceIgrSlot;
-    gMMCEEnableGameID = guiSettingsSourceState.mmceEnableGameID;
-    gMMCEAckWaitCycles = guiSettingsSourceState.mmceAckWaitCycles;
-    gMMCEUseAlarms = guiSettingsSourceState.mmceUseAlarms;
-    snprintf(gMMCEPrefix, sizeof(gMMCEPrefix), "%s", guiSettingsSourceState.mmcePrefix);
+    gDefaultDevice = sourceState_.defaultDevice;
+    gBDMStartMode = sourceState_.bdmStartMode;
+    gHDDStartMode = sourceState_.hddStartMode;
+    gAPPStartMode = sourceState_.appStartMode;
+    gMMCEStartMode = sourceState_.mmceStartMode;
+    gFAVStartMode = sourceState_.favStartMode;
+    gEnableUSB = sourceState_.enableUSB;
+    gEnableILK = sourceState_.enableILK;
+    gEnableMX4SIO = sourceState_.enableMX4SIO;
+    gEnableBdmHDD = sourceState_.enableBdmHDD;
+    gNetworkProtocol = sourceState_.networkProtocol;
+    gNetStartMode = sourceState_.netStartMode;
+    gNetProtocolPick = sourceState_.netProtocolPick;
+    gETHStartMode = sourceState_.ethStartMode;
+    gEnableUDPBD = sourceState_.enableUDPBD;
+    gNetBootProtocol = sourceState_.netBootProtocol;
+    gMMCESlot = sourceState_.mmceSlot;
+    gMMCEIGRSlot = sourceState_.mmceIgrSlot;
+    gMMCEEnableGameID = sourceState_.mmceEnableGameID;
+    gMMCEAckWaitCycles = sourceState_.mmceAckWaitCycles;
+    gMMCEUseAlarms = sourceState_.mmceUseAlarms;
+    snprintf(gMMCEPrefix, sizeof(gMMCEPrefix), "%s", sourceState_.mmcePrefix);
 
     // Game Sources can have already forced a BDM re-enumeration and every Settings page that calls
     // applyConfig(..., 0) can have rebuilt source visibility. Re-apply the captured routing now so
@@ -2781,7 +2746,7 @@ static void guiSettingsRestoreSourceState(void)
     menuReinitMainMenu();
 }
 
-static int guiSettingsPromptSave(void)
+int SettingsShell::promptSave(void)
 {
     int promptHints[3] = {_STR_SETTINGS_SAVE, _STR_SETTINGS_EXIT_WITHOUT_SAVING, _STR_SETTINGS_CONTINUE_EDITING};
     int promptIcons[3] = {guiConfirmIcon(), guiCancelIcon(), TRIANGLE_ICON};
@@ -2841,7 +2806,7 @@ static void guiDrawSettingsIndexHints(void)
     guiDrawIconAndText(icons[1], hints[1], gTheme->fonts[0], x, y, gTheme->textColor);
 }
 
-static int guiSettingsShowIndex(int *page)
+int SettingsShell::showIndex(int *page)
 {
     const char *labels[SETTINGS_PAGE_COUNT + 1] = {
         _l(_STR_GAME_SOURCES),
@@ -2904,8 +2869,8 @@ static int guiSettingsShowIndex(int *page)
                     // saving once and later choosing "Exit without saving" would wrongly restore
                     // the source state from before Settings was opened, undoing a state that is
                     // already persisted on disk.
-                    guiSettingsCaptureSourceState();
-                    guiSettingsSavePending = 0;
+                    captureSourceState();
+                    savePending_ = 0;
                 }
             } else {
                 *page = selected;
@@ -2913,44 +2878,44 @@ static int guiSettingsShowIndex(int *page)
             }
         } else if (getKeyOn(KEY_START) || getKeyOn(guiCancelKey())) {
             sfxPlay(SFX_CANCEL);
-            if (!guiSettingsSavePending)
+            if (!savePending_)
                 return 0;
 
-            int promptResult = guiSettingsPromptSave();
+            int promptResult = promptSave();
             if (promptResult == SETTINGS_PROMPT_SAVE) {
                 if (menuSaveSettings() > 0) {
-                    guiSettingsSavePending = 0;
+                    savePending_ = 0;
                     return 0;
                 }
             } else if (promptResult == SETTINGS_PROMPT_EXIT) {
                 hddDiscardOplHomeSelection();
-                guiSettingsRestoreSourceState();
-                guiSettingsSavePending = 0;
+                restoreSourceState();
+                savePending_ = 0;
                 return 0;
             }
         }
     }
 }
 
-static void guiShowSettingsFromPage(int page, int showIndexFirst)
+void SettingsShell::showFromPage(int page, int showIndexFirst)
 {
     int result;
 
     if (page < SETTINGS_SOURCES || page >= SETTINGS_PAGE_COUNT)
         page = SETTINGS_SOURCES;
 
-    guiSettingsShellActive = 1;
-    guiSettingsSavePending = 0;
-    guiSettingsCaptureSourceState();
-    if (showIndexFirst && !guiSettingsShowIndex(&page)) {
+    shellActive_ = true;
+    savePending_ = 0;
+    captureSourceState();
+    if (showIndexFirst && !showIndex(&page)) {
         hddDiscardOplHomeSelection();
-        guiSettingsShellActive = 0;
-        guiSettingsSavePending = 0;
+        shellActive_ = false;
+        savePending_ = 0;
         return;
     }
 
     while (1) {
-        guiSettingsCurrentPage = page;
+        currentPage_ = page;
         switch (page) {
             case SETTINGS_GENERAL:
                 result = guiSettingsShowGeneral();
@@ -2978,16 +2943,16 @@ static void guiShowSettingsFromPage(int page, int showIndexFirst)
                 break;
             default:
                 hddDiscardOplHomeSelection();
-                guiSettingsShellActive = 0;
-                guiSettingsSavePending = 0;
+                shellActive_ = false;
+                savePending_ = 0;
                 return;
         }
 
         if (result == DIA_RESULT_INDEX) {
-            if (!guiSettingsShowIndex(&page)) {
+            if (!showIndex(&page)) {
                 hddDiscardOplHomeSelection();
-                guiSettingsShellActive = 0;
-                guiSettingsSavePending = 0;
+                shellActive_ = false;
+                savePending_ = 0;
                 return;
             }
         } else if (result == DIA_RESULT_NEXT) {
@@ -2996,8 +2961,8 @@ static void guiShowSettingsFromPage(int page, int showIndexFirst)
             page = (page + SETTINGS_PAGE_COUNT - 1) % SETTINGS_PAGE_COUNT;
         } else {
             hddDiscardOplHomeSelection();
-            guiSettingsShellActive = 0;
-            guiSettingsSavePending = 0;
+            shellActive_ = false;
+            savePending_ = 0;
             return;
         }
     }
@@ -3005,7 +2970,7 @@ static void guiShowSettingsFromPage(int page, int showIndexFirst)
 
 void guiShowSettings(void)
 {
-    guiShowSettingsFromPage(SETTINGS_SOURCES, 1);
+    gSettingsShell.showFromPage(SETTINGS_SOURCES, 1);
 }
 
 void guiShowPsEmulationSettings(void)
@@ -3013,7 +2978,7 @@ void guiShowPsEmulationSettings(void)
     // PS1 Triangle shortcut: enter the normal Settings shell directly on the global PS emulation
     // page. The shell still owns Save Changes and navigation, and returning leaves the caller's
     // selected PS1 title/menu intact.
-    guiShowSettingsFromPage(SETTINGS_POPSTARTER, 0);
+    gSettingsShell.showFromPage(SETTINGS_POPSTARTER, 0);
 }
 
 // One per-game Ember setting from the row's CFG, or UNSET when absent / out of range.
