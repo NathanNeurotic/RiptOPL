@@ -6,6 +6,7 @@
 
 #include "include/opl.h"
 #include "include/libview.h"
+#include "include/gamesource.h"
 
 // Both-mode device state, the Favorites ring, and the APPS split ring. Zero -- LIB_VIEW_ISO, so
 // PS2 for a device or Favorites and Apps for the APPS tab -- is the wanted FIRST-RUN default
@@ -137,8 +138,8 @@ int libListRowView(item_list_t *itemList, int id)
 
     if (itemList == NULL)
         return LIB_VIEW_ISO;
-    if (itemList->itemGetView != NULL) {
-        view = itemList->itemGetView(itemList, id);
+    if (gsOf(itemList)->hasRowView()) {
+        view = gsOf(itemList)->rowView(itemList, id);
         if (view >= 0 && view < LIB_VIEW_COUNT)
             return view;
     }
@@ -147,8 +148,8 @@ int libListRowView(item_list_t *itemList, int id)
 
 int libListSourceId(item_list_t *itemList, int id)
 {
-    if (itemList != NULL && itemList->itemGetSourceId != NULL)
-        return itemList->itemGetSourceId(itemList, id);
+    if (itemList != NULL && gsOf(itemList)->hasSourceId())
+        return gsOf(itemList)->sourceId(itemList, id);
     return id;
 }
 

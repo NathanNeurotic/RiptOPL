@@ -411,9 +411,13 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
   (`hddLaunchGame`, `hddGetArtArchivePath`, `bdmLaunchGame`, `bdmLaunchCue`, `bdmLaunchVcd`, `bdmGetItemView`, `appGetObject` ...) are kept; the BDM
   launch code lives in bdmlaunch.cpp and `BdmSource` forwards to it. The BDM slots are still `memcpy`'d from `bdmTemplateList()` (the `BdmSource`
   viewed as an `item_list_t`).
-- Not done: removing `item_list_t` (menusys, libview, supportbase, opl still call through the table), a `SourceRegistry` replacing
-  `oplGetModule`/`oplGetAppImageByMode`, `BdmLauncher`/`NeutrinoLauncher` split. Hardware/emulator check wanted: every source page (HTTP, UDPFS, ETH,
-  MMCE, APP, FAV, HDD, BDM) list, launch, rename, delete, and the HDD launch from autolaunch.
+- The function-pointer table is gone: `item_list_t` is now plain per-page data (mode, flags, priv, owner, viewOverride, `source`) and every
+  caller goes through `gsOf(list)->method(list, ...)`; optional methods are asked with `hasPrefix()`, `hasGame()`, `hasDelete()`,
+  `hasCheckVmc()`, `hasLaunchVcd()`, `hasArtArchivePath()`, `hasLaunchCue()`, `hasRowView()`, `hasSourceId()` instead of NULL-testing a pointer.
+  The thunks and `install()` were deleted. Packed ELF 1,643,808 B.
+- Not done: a `SourceRegistry` replacing `oplGetModule`/`oplGetAppImageByMode`, the `BdmLauncher`/`NeutrinoLauncher` split, and turning
+  `item_list_t` into a real base class (it stays a C-compatible struct because `opl_io_module_t` and the proxies copy it by value). Emulator check
+  wanted again, since every list/launch/rename/delete call now dispatches virtually.
 
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
@@ -437,7 +441,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 
 ## 19. Next
 2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
-3. Phase 5 leftovers: drop `item_list_t` callers in favour of `GameSource *`, `SourceRegistry`, launcher split (section 17h).
+3. Phase 5 leftovers: `SourceRegistry`, `BdmLauncher`/`NeutrinoLauncher` split (section 17h); then phase 6 leftovers (Dialog, MenuItem, theme element table).
 4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining
    analyzer upward edges listed in section 13.
 
@@ -449,7 +453,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 | 2 RAII | helpers done; bulk malloc conversion skipped on purpose |
 | 3 settings table | done; `Settings` struct deferred |
 | 4 HostServices, launch/UI split | done |
-| 5 GameSource hierarchy | all eight backends are `GameSource` subclasses behind the old table (section 17h); `item_list_t` removal, registry and launcher split pending; needs emulator/hardware checks |
+| 5 GameSource hierarchy | all eight backends are `GameSource` subclasses and the callback table is removed (section 17h); registry and launcher split pending |
 | 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
 | 7 split god files | done: gui.cpp, themes.cpp, opl.cpp, bdmsupport.cpp, system.cpp, texcache.cpp are split (largest remaining: supportbase 2609, bdmsupport 1991, gui ~1100); `sendIrxKernelRAM` data-driven module list deferred |
 | 8 directory move, blocking analyzer | done (layer directories; coupling gate is a ratchet on the 47 existing upward symbols) |

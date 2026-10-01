@@ -222,7 +222,9 @@ DEFERRED_HARNESS = r'''
 #define MODE_COUNT 12
 
 typedef struct item_list item_list_t;
-struct item_list { short mode; int enabled; int (*itemNeedsUpdate)(item_list_t *); };
+struct item_list { short mode; int enabled; };
+static struct { int (*needsUpdate)(item_list_t *); } gsStub;
+#define gsOf(l) (&gsStub)
 typedef struct { item_list_t *support; } opl_io_module_t;
 
 static opl_io_module_t list_support[MODE_COUNT];
@@ -242,7 +244,7 @@ static void libViewFinishPending(int mode) { (void)mode; pendingView = 0; }
 
 @DEFERRED@
 
-static item_list_t bdm = {2, 1, needsUpdate}, apps = {APP_MODE, 1, needsUpdate}, fav = {FAV_MODE, 1, needsUpdate};
+static item_list_t bdm = {2, 1}, apps = {APP_MODE, 1}, fav = {FAV_MODE, 1};
 
 static int run(item_list_t *l, int need, int flip)
 {
@@ -254,6 +256,7 @@ static int run(item_list_t *l, int need, int flip)
 int main(void)
 {
     int failed = 0;
+    gsStub.needsUpdate = needsUpdate;
     list_support[2].support = &bdm; list_support[APP_MODE].support = &apps; list_support[FAV_MODE].support = &fav;
 
     run(&bdm, 1, 0); /* a device page rebuilt for a real reason (connect, SELECT, rescan) */

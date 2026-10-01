@@ -11,6 +11,7 @@
 #include "include/util.h"
 #include "include/renderman.h"
 #include "include/tar.h"
+#include "include/gamesource.h"
 #include "include/pad.h"        // getKeyPressed -- the SIO2 nav gate, GUI thread only
 #include "include/sound.h"      // BGM low-water admission: don't start art while audio reserve is critical
 #include "include/bdmsupport.h" // bdmModeIsSIO2 -- is this cover on the pad's bus?
@@ -166,8 +167,8 @@ static int cacheResolveArtArchive(item_list_t *list, const char *value, char *pa
         return 0;
 
     // A support that owns its archive answers for itself (HDD does).
-    if (list->itemGetArtArchivePath != NULL)
-        return list->itemGetArtArchivePath(list, path, pathSize);
+    if (gsOf(list)->hasArtArchivePath())
+        return gsOf(list)->artArchivePath(list, path, pathSize);
 
     mode = list->mode;
 

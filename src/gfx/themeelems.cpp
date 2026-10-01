@@ -15,6 +15,7 @@
 #include "include/sound.h"
 #include "include/texcache.h"
 #include "include/favsupport.h"
+#include "include/gamesource.h"
 #include "include/vcdsupport.h" // vcdDisplayName -- display-only VCD game-ID prefix hide
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
 #ifdef RETROACHIEVEMENTS
@@ -474,7 +475,7 @@ void initStaticText(const char *themePath, config_set_t *themeConfig, theme_t *t
 static int getGameCount(void *support)
 {
     item_list_t *list = (item_list_t *)support;
-    return list->itemGetCount(list);
+    return gsOf(list)->count(list);
 }
 
 static void drawGameCountText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
@@ -920,10 +921,10 @@ GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct sub
             return NULL;
 
         item_list_t *list = (item_list_t *)support;
-        if (list == NULL || list->itemGetStartup == NULL)
+        if (list == NULL)
             return NULL;
 
-        char *startup = list->itemGetStartup(list, item->id);
+        char *startup = gsOf(list)->startup(list, item->id);
         if (startup == NULL || startup[0] == '\0')
             return NULL;
 
@@ -1910,8 +1911,8 @@ void drawItemText(struct menu_list *menu, struct submenu_list *item, config_set_
 {
     if (menu != NULL && menu->item != NULL && item != NULL) {
         item_list_t *support = static_cast<item_list_t*>(menu->item->userdata);
-        if (support != NULL && support->itemGetStartup != NULL) {
-            char *startup = support->itemGetStartup(support, item->item.id);
+        if (support != NULL) {
+            char *startup = gsOf(support)->startup(support, item->item.id);
             if (startup != NULL) {
                 // VCD view (#380): the caption shows the resolved disc ID, not the title -- the same
                 // thing the PS2 page shows from this element (g->startup), and 11 chars cannot

@@ -52,6 +52,7 @@
 #include "include/cheatman.h"
 #include "include/sound.h"
 #include "include/xparam.h"
+#include "include/gamesource.h"
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDopen/fileXioIoctl2/fileXioDclose used by BDM autolaunch
@@ -70,7 +71,7 @@
 
 static void itemInitSupport(item_list_t *support)
 {
-    support->itemInit(support);
+    gsOf(support)->init(support);
     moduleUpdateMenuInternal((opl_io_module_t *)support->owner, 0, 0);
 
     // A support that was just started has no populated submenu yet, so always build it once now.
@@ -104,13 +105,13 @@ static void itemExecSelect(struct menu_item *curMenu)
                     return; // a deferred source refresh replaced the row while config IO was pending
                 int launchId = curMenu->current->item.id;
                 char gameIdStartup[128] = {0};
-                char *startup = support->itemGetStartup(support, launchId);
+                char *startup = gsOf(support)->startup(support, launchId);
                 if (startup != NULL)
                     snprintf(gameIdStartup, sizeof(gameIdStartup), "%s", startup);
                 // Flash the GameID barcode (Pixel FX/RetroGEM HDMI auto-profile) before handoff. Use
                 // the stack copy: the hold renders/unlocks for many frames while source lists may refresh.
                 guiShowGameID(gameIdStartup);
-                support->itemLaunch(support, launchId, configSet);
+                gsOf(support)->launch(support, launchId, configSet);
             }
         } else {
             // If we're trying to enable BDM support we need to enable it for all BDM menu slots.
@@ -293,10 +294,10 @@ static int itemFavKind(item_list_t *support, int id, const char *text)
 
     // A PS1 page holds both cores, so the CORE comes from the row. Without itemGet there is nothing
     // to read it from; POPSTARTER is the right assumption, being what every pre-Ember library is.
-    if (support->itemGet == NULL || text == NULL)
+    if (!gsOf(support)->hasGame() || text == NULL)
         return FAV_KIND_VCD;
 
-    game = (const base_game_info_t *)support->itemGet(support, id);
+    game = (const base_game_info_t *)gsOf(support)->game(support, id);
     if (game == NULL)
         return -1;
     // Split-store guards hand back a static EMPTY entry for an id the list cannot honour; its name is
@@ -342,9 +343,9 @@ void itemExecFav(struct menu_item *curMenu)
             return;
         // Only store a favourite this device can actually resolve and launch later. A PS1 record
         // whose source has no hook for that core would be a permanently-hidden, unlaunchable entry.
-        if (kind == FAV_KIND_VCD && support->itemLaunchVcd == NULL)
+        if (kind == FAV_KIND_VCD && !gsOf(support)->hasLaunchVcd())
             return;
-        if (kind == FAV_KIND_CUE && support->itemLaunchCue == NULL)
+        if (kind == FAV_KIND_CUE && !gsOf(support)->hasLaunchCue())
             return;
         if (it->favourited) {
             if (removeFavouriteByIdAndText(support->mode, sourceId, it->text, kind))

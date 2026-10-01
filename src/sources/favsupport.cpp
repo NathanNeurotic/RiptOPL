@@ -456,7 +456,7 @@ static int favKindIsNameAddressed(int kind)
 
 static int favResolveStoredId(item_list_t *source, int id, const char *text, int kind, int *outId)
 {
-    if (source == NULL || text == NULL || outId == NULL || source->itemGetCount == NULL || source->itemGetName == NULL)
+    if (source == NULL || text == NULL || outId == NULL)
         return 0;
 
     // ETH keeps permanent independent PS2/PS1 backing arrays. Use its direct resolver for the PS2
@@ -466,12 +466,12 @@ static int favResolveStoredId(item_list_t *source, int id, const char *text, int
 
     item_list_t view = *source;
     view.viewOverride = favKindIsNameAddressed(kind) ? ITEM_VIEW_FORCE_PS1 : ITEM_VIEW_FORCE_ISO;
-    int count = view.itemGetCount(&view);
+    int count = gsOf(&view)->count(&view);
 
     // APP ids are aggregate-list positions and can move; their stable identity is the title.
     if (source->mode == APP_MODE) {
         for (int i = 0; i < count; i++) {
-            char *name = view.itemGetName(&view, i);
+            char *name = gsOf(&view)->name(&view, i);
             if (name != NULL && strcmp(name, text) == 0) {
                 *outId = i;
                 return 1;
@@ -482,7 +482,7 @@ static int favResolveStoredId(item_list_t *source, int id, const char *text, int
 
     if (id < 0 || id >= count)
         return 0;
-    char *name = view.itemGetName(&view, id);
+    char *name = gsOf(&view)->name(&view, id);
     if (name == NULL || strcmp(name, text) != 0)
         return 0;
     *outId = id;
@@ -499,7 +499,7 @@ static int favSupportLaunches(const item_list_t *support, int needCue)
     // slot merely because the pointer is non-NULL; Ember favorites remain valid there.
     if (!needCue && bdmSupportIsUDPBD(support))
         return 0;
-    return needCue ? (support->itemLaunchCue != NULL) : (support->itemLaunchVcd != NULL);
+    return needCue ? (gsOf(support)->hasLaunchCue()) : (gsOf(support)->hasLaunchVcd());
 }
 
 static item_list_t *favResolve(int mode, int id, const char *text, int kind, int *outMode, int *outId)
@@ -693,7 +693,7 @@ int FavSource::update(item_list_t *itemList)
                 opl_io_module_t *appMod = oplGetModule(APP_MODE);
                 if (!favAppsArmed && appMod != NULL && appMod->support != NULL && !appMod->support->enabled) {
                     favAppsArmed = 1;
-                    appMod->support->itemInit(appMod->support);
+                    gsOf(appMod->support)->init(appMod->support);
                     ioPutRequest(IO_MENU_UPDATE_DEFFERED, &appMod->support->mode);
                 }
             }
@@ -768,7 +768,7 @@ int FavSource::rowView(item_list_t *itemList, int id)
 // to avoid indexing the owner's game array out of bounds.
 static int favOwnerHasId(item_list_t *o, int id)
 {
-    return (o != NULL && o->itemGetCount != NULL && id >= 0 && id < o->itemGetCount(o));
+    return (o != NULL && id >= 0 && id < gsOf(o)->count(o));
 }
 
 char *FavSource::name(item_list_t *itemList, int id)
@@ -789,9 +789,9 @@ char *FavSource::startup(item_list_t *itemList, int id)
         return favArray[id].text; // PS1 favourites key art/launch off the stored name, not a submenu id
     item_list_t ownerView;
     item_list_t *o = favOwnerView(id, &ownerView);
-    if (o == NULL || o->itemGetStartup == NULL || !favOwnerHasId(o, favArray[id].id))
+    if (o == NULL || !favOwnerHasId(o, favArray[id].id))
         return "";
-    return o->itemGetStartup(o, favArray[id].id);
+    return gsOf(o)->startup(o, favArray[id].id);
 }
 
 config_set_t *FavSource::config(item_list_t *itemList, int id)
@@ -806,7 +806,7 @@ config_set_t *FavSource::config(item_list_t *itemList, int id)
     // device is in ISO view). Build the PS1 config straight from the .VCD name + the device prefix,
     // exactly as sbPopulateConfig keys VCD per-game data by filename -> gives Title + #DiscType badge.
     if (favKindIsNameAddressed(favArray[id].kind)) {
-        char *prefix = (o->itemGetPrefix != NULL) ? o->itemGetPrefix(o) : NULL;
+        char *prefix = (gsOf(o)->hasPrefix()) ? gsOf(o)->prefix(o) : NULL;
         if (prefix == NULL)
             return NULL;
         int pl = (int)strlen(prefix);
@@ -823,9 +823,9 @@ config_set_t *FavSource::config(item_list_t *itemList, int id)
         game.format = GAME_FORMAT_ISO; // matches the device scans; the extension drives the PS1 badge
         return sbPopulateConfig(&game, prefix, sep);
     }
-    if (o->itemGetConfig == NULL || !favOwnerHasId(o, favArray[id].id))
+    if (!favOwnerHasId(o, favArray[id].id))
         return NULL;
-    return o->itemGetConfig(o, favArray[id].id);
+    return gsOf(o)->config(o, favArray[id].id);
 }
 
 void FavSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
@@ -843,17 +843,17 @@ void FavSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // fire for a resolved favourite.
     if (favKindIsNameAddressed(favArray[id].kind)) {
         if (favArray[id].kind == FAV_KIND_CUE) {
-            if (o->itemLaunchCue != NULL)
-                o->itemLaunchCue(o, favArray[id].text, configSet);
+            if (gsOf(o)->hasLaunchCue())
+                gsOf(o)->launchCue(o, favArray[id].text, configSet);
         } else {
-            if (o->itemLaunchVcd != NULL)
-                o->itemLaunchVcd(o, favArray[id].text, configSet);
+            if (gsOf(o)->hasLaunchVcd())
+                gsOf(o)->launchVcd(o, favArray[id].text, configSet);
         }
         return;
     }
-    if (o->itemLaunch == NULL || !favOwnerHasId(o, favArray[id].id))
+    if (!favOwnerHasId(o, favArray[id].id))
         return;
-    o->itemLaunch(o, favArray[id].id, configSet);
+    gsOf(o)->launch(o, favArray[id].id, configSet);
 }
 
 // Art proxy: the cache passes the source item's startup as `value`. Find the favourite whose
@@ -877,15 +877,13 @@ int FavSource::image(item_list_t *itemList, char *folder, int isRelative, char *
                     strcmp(fallbackKey, value) != 0)
                     continue;
             }
-            if (o->itemGetImage == NULL)
-                return -1;
-            return o->itemGetImage(o, folder, isRelative, value, suffix, resultTex, psm);
+            return gsOf(o)->image(o, folder, isRelative, value, suffix, resultTex, psm);
         }
-        if (o->itemGetStartup == NULL || o->itemGetImage == NULL || !favOwnerHasId(o, favArray[i].id))
+        if (!favOwnerHasId(o, favArray[i].id))
             continue;
-        char *s = o->itemGetStartup(o, favArray[i].id);
+        char *s = gsOf(o)->startup(o, favArray[i].id);
         if (s != NULL && strcmp(s, value) == 0) {
-            int r = o->itemGetImage(o, folder, isRelative, value, suffix, resultTex, psm);
+            int r = gsOf(o)->image(o, folder, isRelative, value, suffix, resultTex, psm);
             // Relative (ART) requests return as-is -- the matched owner IS the item's owner. For an
             // absolute (theme-folder) request a bare -1 may only mean this owner can't key the path
             // (e.g. appsupport's startup-keyed lookup with an unresolved artMode); fall through to
@@ -914,10 +912,10 @@ int FavSource::image(item_list_t *itemList, char *folder, int isRelative, char *
         for (int i = 0; i < favCount; i++) {
             item_list_t ownerView;
             item_list_t *o = favOwnerView(i, &ownerView);
-            if (o == NULL || o->itemGetImage == NULL ||
+            if (o == NULL ||
                 (!favKindIsNameAddressed(favArray[i].kind) && !favOwnerHasId(o, favArray[i].id)))
                 continue;
-            int r = o->itemGetImage(o, folder, isRelative, value, suffix, resultTex, psm);
+            int r = gsOf(o)->image(o, folder, isRelative, value, suffix, resultTex, psm);
             if (r != -1)
                 return r;
         }
@@ -959,9 +957,9 @@ int favGetArtMode(const char *value)
             }
             return favArray[i].mode;
         }
-        if (o->itemGetStartup == NULL || !favOwnerHasId(o, favArray[i].id))
+        if (!favOwnerHasId(o, favArray[i].id))
             continue;
-        char *s = o->itemGetStartup(o, favArray[i].id);
+        char *s = gsOf(o)->startup(o, favArray[i].id);
         if (s != NULL && strcmp(s, value) == 0)
             return favArray[i].mode;
     }
@@ -1020,9 +1018,9 @@ int FavSource::checkVmc(item_list_t *itemList, char *name, int createSize)
         return -1;
     item_list_t ownerView;
     item_list_t *o = favOwnerView(id, &ownerView);
-    if (o == NULL || o->itemCheckVMC == NULL)
+    if (o == NULL || !gsOf(o)->hasCheckVmc())
         return -1;
-    return o->itemCheckVMC(o, name, createSize);
+    return gsOf(o)->checkVmc(o, name, createSize);
 }
 
 // Two modes "match" for favourite identity if equal, OR both in the BDM range

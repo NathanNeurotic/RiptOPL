@@ -20,6 +20,7 @@
 #include "include/guigame.h"
 #include "include/ds34common.h"
 #include "include/vmc_groups.h"
+#include "include/gamesource.h"
 
 #ifdef PADEMU
 #include <libds34bt.h>
@@ -149,7 +150,7 @@ int guiGameVmcNameHandler(char *text, int maxLen)
 
 static int guiGameRefreshVMCConfig(item_list_t *support, char *name)
 {
-    int size = support->itemCheckVMC(support, name, 0);
+    int size = gsOf(support)->checkVmc(support, name, 0);
 
     if (size != -1) {
         diaSetLabel(diaVMC, VMC_STATUS, _l(_STR_VMC_FILE_EXISTS));
@@ -230,7 +231,7 @@ static int guiGameShowVMCConfig(int id, item_list_t *support, char *VMCName, int
         if (validate)
             return 1; // nothing to validate if no user input
 
-        char *startup = support->itemGetStartup(support, id);
+        char *startup = gsOf(support)->startup(support, id);
         const char *vmcTitle = getGroupIdForTitleId(startup);
         snprintf(vmc, sizeof(vmc), "%s_%d", vmcTitle, slot);
     }
@@ -261,7 +262,7 @@ static int guiGameShowVMCConfig(int id, item_list_t *support, char *VMCName, int
                     sizeUI = 8;
 
                 if (sizeUI != size) {
-                    support->itemCheckVMC(support, vmc, sizeUI);
+                    gsOf(support)->checkVmc(support, vmc, sizeUI);
 
                     diaSetEnabled(diaVMC, VMC_NAME, 0);
                     diaSetEnabled(diaVMC, VMC_SIZE, 0);
@@ -297,7 +298,7 @@ static int guiGameShowVMCConfig(int id, item_list_t *support, char *VMCName, int
             }
         } else if (result == VMC_BUTTON_DELETE) {
             if (guiMsgBox(_l(_STR_DELETE_WARNING), 1, diaVMC)) {
-                support->itemCheckVMC(support, vmc, -1);
+                gsOf(support)->checkVmc(support, vmc, -1);
                 diaSetString(diaVMC, VMC_NAME, "");
                 break;
             }
@@ -1561,11 +1562,11 @@ void guiGameTestSettings(int id, item_list_t *support, config_set_t *configSet)
     if (testConfig == NULL) {
         // Out of memory: fall back to the original behavior rather than refusing to test.
         guiGameSaveConfig(configSet, support);
-        support->itemLaunch(support, id, configSet);
+        gsOf(support)->launch(support, id, configSet);
         return;
     }
     guiGameSaveConfig(testConfig, support);
-    support->itemLaunch(support, id, testConfig);
+    gsOf(support)->launch(support, id, testConfig);
     configFree(testConfig);
 }
 

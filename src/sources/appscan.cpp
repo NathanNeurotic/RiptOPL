@@ -52,6 +52,7 @@
 #include "include/cheatman.h"
 #include "include/sound.h"
 #include "include/xparam.h"
+#include "include/gamesource.h"
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDopen/fileXioIoctl2/fileXioDclose used by BDM autolaunch
@@ -83,7 +84,7 @@ int oplGetAppImageByMode(int mode, char *folder, int isRelative, char *value, ch
 
     listSupport = (*oplGetModule(mode)).support;
     if ((listSupport != NULL) && (listSupport->enabled))
-        return listSupport->itemGetImage(listSupport, folder, isRelative, value, suffix, resultTex, psm);
+        return gsOf(listSupport)->image(listSupport, folder, isRelative, value, suffix, resultTex, psm);
 
     return -1;
 }
@@ -142,8 +143,8 @@ int oplScanApps(int (*callback)(const char *path, config_set_t *appConfig, void 
     count = 0;
     for (i = 0; i < MODE_COUNT; i++) {
         listSupport = (*oplGetModule(i)).support;
-        if ((listSupport != NULL) && (listSupport->enabled) && (listSupport->itemGetPrefix != NULL)) {
-            char *prefix = listSupport->itemGetPrefix(listSupport);
+        if ((listSupport != NULL) && (listSupport->enabled) && (gsOf(listSupport)->hasPrefix())) {
+            char *prefix = gsOf(listSupport)->prefix(listSupport);
             /*
               #253: never scan a DEVICE-LESS prefix.
 
@@ -200,8 +201,8 @@ config_set_t *oplGetLegacyAppsConfig(void)
 
     for (i = MODE_COUNT - 1; i >= 0; i--) {
         listSupport = (*oplGetModule(i)).support;
-        if ((listSupport != NULL) && (listSupport->enabled) && (listSupport->itemGetPrefix != NULL)) {
-            char *prefix = listSupport->itemGetPrefix(listSupport);
+        if ((listSupport != NULL) && (listSupport->enabled) && (gsOf(listSupport)->hasPrefix())) {
+            char *prefix = gsOf(listSupport)->prefix(listSupport);
             if (prefix == NULL || prefix[0] == '\0')
                 continue;
             snprintf(appsPath, sizeof(appsPath), "%sconf_apps.cfg", prefix);
@@ -231,8 +232,8 @@ config_set_t *oplGetLegacyAppsInfo(char *name)
 
     for (i = MODE_COUNT - 1; i >= 0; i--) {
         listSupport = (*oplGetModule(i)).support;
-        if ((listSupport != NULL) && (listSupport->enabled) && (listSupport->itemGetPrefix != NULL)) {
-            char *prefix = listSupport->itemGetPrefix(listSupport);
+        if ((listSupport != NULL) && (listSupport->enabled) && (gsOf(listSupport)->hasPrefix())) {
+            char *prefix = gsOf(listSupport)->prefix(listSupport);
             if (prefix == NULL || prefix[0] == '\0')
                 continue;
             snprintf(appsPath, sizeof(appsPath), "%sCFG%s%s.cfg", prefix, i == ETH_MODE ? "\\" : "/", name);

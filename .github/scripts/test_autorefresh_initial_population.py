@@ -54,8 +54,11 @@ struct item_list {
     int mode;
     int enabled;
     void *owner;
-    void (*itemInit)(item_list_t *);
 };
+
+/* gsOf(list)->init(list): one stub source stands in for the GameSource behind the list. */
+static struct { void (*init)(item_list_t *); } gsStub;
+#define gsOf(l) (&gsStub)
 
 typedef struct { int dummy; } opl_io_module_t;
 
@@ -105,7 +108,7 @@ int main(void)
     memset(&support, 0, sizeof(support));
     support.mode = 3;
     support.owner = NULL;
-    support.itemInit = fakeInit;
+    gsStub.init = fakeInit;
 
     itemInitSupport(&support);
 

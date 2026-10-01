@@ -29,6 +29,7 @@
 #include "include/util.h"
 #include "include/supportbase.h"
 #include "include/rabadge.h"
+#include "include/gamesource.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -94,8 +95,7 @@ void raBadgeRefresh(item_list_t *support, int count)
     const char *prefix;
     int i;
 
-    if (support == NULL || support->itemGetName == NULL ||
-        support->itemGetStartup == NULL || support->itemGetPrefix == NULL)
+    if (support == NULL || !gsOf(support)->hasPrefix())
         return;
 
     slot = slotFor(support);
@@ -117,7 +117,7 @@ void raBadgeRefresh(item_list_t *support, int count)
     if (count <= 0)
         return;
 
-    prefix = support->itemGetPrefix(support);
+    prefix = gsOf(support)->prefix(support);
     if (prefix == NULL)
         return;
 
@@ -129,11 +129,11 @@ void raBadgeRefresh(item_list_t *support, int count)
 
     for (i = 0; i < count; i++) {
         char *dst = slot->text + (size_t)i * RA_BADGE_TEXT;
-        const char *serial = support->itemGetStartup(support, i);
+        const char *serial = gsOf(support)->startup(support, i);
 
         if (watchListExists(prefix, serial))
             snprintf(dst, RA_BADGE_TEXT, "%s%s", RA_BADGE,
-                     support->itemGetName(support, i));
+                     gsOf(support)->name(support, i));
         else
             dst[0] = '\0'; /* empty means show the plain name */
     }

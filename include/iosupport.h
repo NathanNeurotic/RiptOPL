@@ -136,86 +136,13 @@ typedef struct _item_list_t
     // opl_io_module_t instance that owns this item list.
     void *owner;
 
-    /// item description in localised form (used if value is not negative)
-    int (*itemTextId)(item_list_t *itemList);
-
-    /// @return path to device prefix (set callback to NULL if not applicable).
-    char *(*itemGetPrefix)(item_list_t *itemList);
-
-    void (*itemInit)(item_list_t *itemList);
-
-    /** @return 1 if update is needed, 0 otherwise */
-    int (*itemNeedsUpdate)(item_list_t *itemList);
-
-    /** @return game count (0 on error) */
-    int (*itemUpdate)(item_list_t *itemList);
-
-    int (*itemGetCount)(item_list_t *itemList);
-
-    void *(*itemGet)(item_list_t *itemList, int id);
-
-    char *(*itemGetName)(item_list_t *itemList, int id);
-
-    int (*itemGetNameLength)(item_list_t *itemList, int id);
-
-    char *(*itemGetStartup)(item_list_t *itemList, int id);
-
-    void (*itemDelete)(item_list_t *itemList, int id);
-
-    void (*itemRename)(item_list_t *itemList, int id, char *newName);
-
-    void (*itemLaunch)(item_list_t *itemList, int id, config_set_t *configSet);
-
-    config_set_t *(*itemGetConfig)(item_list_t *itemList, int id);
-
-    int (*itemGetImage)(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm);
-
-    void (*itemCleanUp)(item_list_t *itemList, int exception);
-
-    void (*itemShutdown)(item_list_t *itemList);
-
-    int (*itemCheckVMC)(item_list_t *itemList, char *name, int createSize);
-
-    int (*itemIconId)(item_list_t *itemList);
-
-    /// Launch a VCD (PS1/POPSTARTER) item by its stored name, regardless of the device's current
-    /// view. NULL for devices without a VCD view (checklist item 12). Used by the Favourites tab to
-    /// launch a VCD favourite while its source device page may be in ISO view.
-    void (*itemLaunchVcd)(item_list_t *itemList, const char *vcdName, config_set_t *configSet);
-
     /// Optional view override for a shallow proxy of this support. Zero keeps the support's native
     /// per-mode L3 state; Favourites uses the forced values so an ISO/VCD favourite can proxy its
-    // source without mutating the real source page's independent view. Appended last so all legacy
-    /// positional item_list_t initializers default safely to native behavior.
+    // source without mutating the real source page's independent view.
     unsigned char viewOverride;
 
-    // Optional: exact ART tar archive path for this device (e.g. HDD selected home).
-    // Return 1 and fill out when a device-specific archive should be probed, 0 when generic
-    // sweep is appropriate, -1 when no home (no tar should be probed).
-    // Placed after viewOverride so existing positional initializers remain valid.
-    int (*itemGetArtArchivePath)(item_list_t *itemList, char *out, int outSize);
-
-    /// Launch an Ember (.cue) PS1 title by its stored game-folder name, regardless of the device's
-    /// current view -- the peer of itemLaunchVcd. NULL on a device with no Ember support. Used by
-    /// Favourites, whose PS1 shelf holds both cores' titles and must send each row to the right one.
-    /// APPENDED at the end: every support initialises item_list_t POSITIONALLY, so a member added
-    /// anywhere else silently shifts every one of them.
-    void (*itemLaunchCue)(item_list_t *itemList, const char *cueName, config_set_t *configSet);
-
-    /// Return the LIB_VIEW_* kind of one visible row. This differs from the page view when a page
-    /// is mixed (PS2 + PS1), when Favorites shows All, or when APPS displays tagged PS1 ELFs with
-    /// ordinary apps. NULL means the row has the page's active view.
-    /// APPENDED: all positional initializers written before mixed views default safely to NULL.
-    int (*itemGetView)(item_list_t *itemList, int id);
-
-    /// Translate one visible-row id to the id in that row's source list. Mixed device pages use a
-    /// single visible id range but Favorites must persist the original PS2/PS1 id; APPS likewise
-    /// keeps its master discovery id while showing a filtered subset. NULL means identity mapping.
-    /// APPENDED for positional-initializer compatibility.
-    int (*itemGetSourceId)(item_list_t *itemList, int id);
-
-    /// The GameSource object behind this list (NULL for a backend not yet migrated to the class). Copies of a list,
-    /// such as Favourites' proxies, keep it. APPENDED like the entries above so positional initializers stay valid.
+    /// The GameSource object behind this list Copies of a list, such as Favourites' proxies
+    /// and the BDM device slots, keep it.
     void *source;
 } item_list_t;
 

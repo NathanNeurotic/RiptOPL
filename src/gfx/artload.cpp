@@ -10,6 +10,7 @@
 #include "include/util.h"
 #include "include/renderman.h"
 #include "include/tar.h"
+#include "include/gamesource.h"
 #include "include/pad.h"        // getKeyPressed -- the SIO2 nav gate, GUI thread only
 #include "include/sound.h"      // BGM low-water admission: don't start art while audio reserve is critical
 #include "include/bdmsupport.h" // bdmModeIsSIO2 -- is this cover on the pad's bus?
@@ -589,7 +590,7 @@ static void cacheLoadImage(load_image_request_t *req)
 
     // Fall through to the per-file lookup whenever the archive is off, absent, or lacks this key.
     if (result < 0)
-        result = handler->itemGetImage(handler, req->cache->prefix(), req->cache->isPrefixRelative(), req->value, req->cache->suffix(), &staged, GS_PSM_CT24);
+        result = gsOf(handler)->image(handler, req->cache->prefix(), req->cache->isPrefixRelative(), req->value, req->cache->suffix(), &staged, GS_PSM_CT24);
 
     texSetLoadAbortFlag(NULL);
 

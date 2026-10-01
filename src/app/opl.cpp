@@ -66,6 +66,7 @@
 #endif
 
 #include "include/oplog.h"
+#include "include/gamesource.h"
 
 // App support stuff.
 
@@ -356,9 +357,9 @@ void moduleUpdateMenuInternal(opl_io_module_t *mod, int themeChanged, int langCh
 
 static void initMenuForListSupport(opl_io_module_t *mod)
 {
-    mod->menuItem.icon_id = mod->support->itemIconId(mod->support);
+    mod->menuItem.icon_id = gsOf(mod->support)->iconId(mod->support);
     mod->menuItem.text = NULL;
-    mod->menuItem.text_id = mod->support->itemTextId(mod->support);
+    mod->menuItem.text_id = gsOf(mod->support)->textId(mod->support);
     mod->menuItem.visible = 1;
 
     mod->menuItem.userdata = mod->support;
@@ -470,7 +471,7 @@ void initSupport(item_list_t *itemList, int mode, int force_reinit)
         }
 
         if (((force_reinit) && (mod->support->enabled)) || (startMode == START_MODE_AUTO && !mod->support->enabled)) {
-            mod->support->itemInit(mod->support);
+            gsOf(mod->support)->init(mod->support);
             moduleUpdateMenuInternal(mod, 0, 0);
 
             ioPutRequest(IO_MENU_UPDATE_DEFFERED, &list_support[mode].support->mode); // can't use mode as the variable will die at end of execution
@@ -590,8 +591,8 @@ int oplPath2Mode(const char *path)
 
     for (i = 0; i < MODE_COUNT; i++) {
         listSupport = list_support[i].support;
-        if ((listSupport != NULL) && (listSupport->itemGetPrefix != NULL)) {
-            char *prefix = listSupport->itemGetPrefix(listSupport);
+        if ((listSupport != NULL) && (gsOf(listSupport)->hasPrefix())) {
+            char *prefix = gsOf(listSupport)->prefix(listSupport);
             snprintf(appsPath, sizeof(appsPath), "%sAPPS", prefix);
 
             blkdevnameend = strchr(appsPath, ':');
@@ -622,7 +623,7 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
     // the thing that renumbers rows. Folder rows have no startup and are skipped.
     char keepStartup[128] = {0};
     if (mdl->menuItem.current != NULL && !mdl->menuItem.current->item.isFolder) {
-        const char *s = mdl->support->itemGetStartup(mdl->support, mdl->menuItem.current->item.id);
+        const char *s = gsOf(mdl->support)->startup(mdl->support, mdl->menuItem.current->item.id);
         if (s != NULL)
             snprintf(keepStartup, sizeof(keepStartup), "%s", s);
     }
@@ -651,12 +652,12 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
         configGetStr(configGetByType(CONFIG_LAST), "last_played", &temp);
 
     // refresh device icon and text (for bdm)
-    mdl->menuItem.icon_id = mdl->support->itemIconId(mdl->support);
-    mdl->menuItem.text_id = mdl->support->itemTextId(mdl->support);
+    mdl->menuItem.icon_id = gsOf(mdl->support)->iconId(mdl->support);
+    mdl->menuItem.text_id = gsOf(mdl->support)->textId(mdl->support);
 
     // read the new game list
     struct gui_update_t *gup = NULL;
-    int count = mdl->support->itemUpdate(mdl->support);
+    int count = gsOf(mdl->support)->update(mdl->support);
 
 #ifdef RETROACHIEVEMENTS
     // RA badges: recompute on every list rebuild. This runs on the I/O thread (itemUpdate
@@ -671,7 +672,7 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
     const int folderMode = folderModeSupported(mdl->support->mode);
     if (folderMode && folderDepth(mdl->support->mode) > 0) {
         static char folderCrumb[256]; // generous headroom for a localized device name + subpath
-        snprintf(folderCrumb, sizeof(folderCrumb), "%s: %s", _l(mdl->support->itemTextId(mdl->support)), folderGetSub(mdl->support->mode));
+        snprintf(folderCrumb, sizeof(folderCrumb), "%s: %s", _l(gsOf(mdl->support)->textId(mdl->support)), folderGetSub(mdl->support->mode));
         mdl->menuItem.text = folderCrumb;
         mdl->menuItem.text_id = -1;
     }
@@ -690,8 +691,8 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
                 // Flag folder rows so the dispatch descends and the renderer marks them. Only the
                 // loose-file tree devices return base_game_info_t from itemGet, so gate on the mode.
                 int isFolderRow = 0;
-                if (folderMode && mdl->support->itemGet != NULL) {
-                    base_game_info_t *ginfo = (base_game_info_t *)mdl->support->itemGet(mdl->support, i);
+                if (folderMode && gsOf(mdl->support)->hasGame()) {
+                    base_game_info_t *ginfo = (base_game_info_t *)gsOf(mdl->support)->game(mdl->support, i);
                     isFolderRow = (ginfo != NULL && ginfo->format == GAME_FORMAT_FOLDER);
                 }
                 // Pass 0 emits folders, pass 1 emits games (single-pass mode emits every row).
@@ -711,13 +712,13 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
                 {
                     // The RA badge prefix, when this game has a watch list. NULL means plain name.
                     const char *badge = raBadgeText(mdl->support, i);
-                    gup->submenu.text = (char *)(badge != NULL ? badge : mdl->support->itemGetName(mdl->support, i));
+                    gup->submenu.text = (char *)(badge != NULL ? badge : gsOf(mdl->support)->name(mdl->support, i));
                     /* Resolve the cover mark HERE, on the I/O thread that owns the badge cache,
                        and carry the answer to the renderer as a plain int. */
                     gup->submenu.raBadged = (badge != NULL);
                 }
 #else
-                gup->submenu.text = mdl->support->itemGetName(mdl->support, i);
+                gup->submenu.text = gsOf(mdl->support)->name(mdl->support, i);
 #endif
                 gup->submenu.text_id = -1;
                 gup->submenu.selected = 0;
@@ -729,7 +730,7 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
                 // Last Played match may release the Auto Start countdown; cursor restoration must
                 // never turn a menu rebuild into an automatic launch.
                 if (!isFolderRow) {
-                    const char *st = mdl->support->itemGetStartup(mdl->support, i);
+                    const char *st = gsOf(mdl->support)->startup(mdl->support, i);
                     if (st != NULL) {
                         if (keepStartup[0] && strcmp(keepStartup, st) == 0) {
                             gup->submenu.selected = 1;
@@ -777,7 +778,7 @@ void menuDeferredUpdate(void *data)
     int viewFlip = libViewPending(mod->support->mode);
 
     // see if we have to update
-    if (mod->support->itemNeedsUpdate(mod->support)) {
+    if (gsOf(mod->support)->needsUpdate(mod->support)) {
         updateMenuFromGameList(mod);
 
         // If other modes have been updated, then the apps list should be updated too.
@@ -1080,11 +1081,9 @@ static void moduleCleanup(opl_io_module_t *mod, int exception, int modeSelected)
 
     // Shutdown if not required anymore.
     if ((mod->support->mode != modeSelected) && (modeSelected != IO_MODE_SELECTED_ALL) && (modeSelected != IO_MODE_SELECTED_ALL_SPARE)) {
-        if (mod->support->itemShutdown)
-            mod->support->itemShutdown(mod->support);
+        gsOf(mod->support)->shutdown(mod->support);
     } else {
-        if (mod->support->itemCleanUp)
-            mod->support->itemCleanUp(mod->support, exception);
+        gsOf(mod->support)->cleanUp(mod->support, exception);
     }
 
     clearMenuGameList(mod);

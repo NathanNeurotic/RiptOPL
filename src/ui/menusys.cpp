@@ -23,6 +23,7 @@
 #endif
 #include "include/ioman.h"
 #include "include/sound.h"
+#include "include/gamesource.h"
 #include "include/favsupport.h"   // gFAVStartMode -- the Favourites tab counts as "something to show"
 #include "include/folderbrowse.h" // menuFolderResetLeaving -- leave a device page at its folder root
 #include "include/vcdsupport.h"   // VCD launches never use Neutrino
@@ -181,22 +182,20 @@ static void menuRenameGame(submenu_list_t **submenu)
     }
 
     if (support) {
-        if (support->itemRename) {
-            if (menuCheckParentalLock() == 0) {
-                sfxPlay(SFX_MESSAGE);
-                int nameLength = support->itemGetNameLength(support, selected_item->item->current->item.id);
-                char newName[nameLength];
-                strncpy(newName, selected_item->item->current->item.text, nameLength);
-                if (guiShowKeyboard(newName, nameLength)) {
-                    guiSwitchScreen(GUI_SCREEN_MAIN);
-                    submenuDestroy(submenu);
+        if (menuCheckParentalLock() == 0) {
+            sfxPlay(SFX_MESSAGE);
+            int nameLength = gsOf(support)->nameLength(support, selected_item->item->current->item.id);
+            char newName[nameLength];
+            strncpy(newName, selected_item->item->current->item.text, nameLength);
+            if (guiShowKeyboard(newName, nameLength)) {
+                guiSwitchScreen(GUI_SCREEN_MAIN);
+                submenuDestroy(submenu);
 
-                    // Only rename the file if the name changed; trying to rename a file with a file name that hasn't changed can cause the file
-                    // to be deleted on certain file systems.
-                    if (strcmp(newName, selected_item->item->current->item.text) != 0) {
-                        support->itemRename(support, selected_item->item->current->item.id, newName);
-                        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
-                    }
+                // Only rename the file if the name changed; trying to rename a file with a file name that hasn't changed can cause the file
+                // to be deleted on certain file systems.
+                if (strcmp(newName, selected_item->item->current->item.text) != 0) {
+                    gsOf(support)->rename(support, selected_item->item->current->item.id, newName);
+                    ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
                 }
             }
         }
@@ -228,12 +227,12 @@ static void menuDeleteGame(submenu_list_t **submenu)
     }
 
     if (support) {
-        if (support->itemDelete) {
+        if (gsOf(support)->hasDelete()) {
             if (menuCheckParentalLock() == 0) {
                 if (guiMsgBox(_l(_STR_DELETE_WARNING), 1, NULL)) {
                     guiSwitchScreen(GUI_SCREEN_MAIN);
                     submenuDestroy(submenu);
-                    support->itemDelete(support, selected_item->item->current->item.id);
+                    gsOf(support)->deleteGame(support, selected_item->item->current->item.id);
                     ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
                 }
             }
@@ -250,7 +249,7 @@ static void _menuLoadConfig()
     WaitSema(menuSemaId);
     if (!itemConfig) {
         item_list_t *list = static_cast<item_list_t*>(selected_item->item->userdata);
-        itemConfig = list->itemGetConfig(list, itemConfigId);
+        itemConfig = gsOf(list)->config(list, itemConfigId);
         if (itemConfig != NULL)
             itemConfigList = list;
     }
@@ -285,7 +284,7 @@ static void _menuLoadConfigAsync()
     if (list == NULL)
         return;
 
-    loadedConfig = list->itemGetConfig(list, configId);
+    loadedConfig = gsOf(list)->config(list, configId);
 
     // Publish only if this is still exactly what the menu wants. The id alone is NOT enough: ids are
     // per-list indices, so a tab switch mid-read yields the same number from a different device --
@@ -331,7 +330,7 @@ static void menuResolveInfoSizeRequest(item_list_t *list, int configId, unsigned
 
     // itemGetConfig runs outside menuSemaId: it is the slow CFG+stat operation.
     sbSetConfigStatSize(1);
-    config_set_t *loadedConfig = list->itemGetConfig(list, configId);
+    config_set_t *loadedConfig = gsOf(list)->config(list, configId);
     sbSetConfigStatSize(0);
 
     // Publish only if this request is STILL the newest target and the same row is selected.
@@ -573,7 +572,7 @@ config_set_t *menuLoadConfig()
     if (result != NULL)
         return result;
 
-    loadedConfig = list->itemGetConfig(list, configId);
+    loadedConfig = gsOf(list)->config(list, configId);
 
     // A browse-time load may have completed while the direct read was running. Publish only if this
     // selection still owns the cache; otherwise free the duplicate/stale result.
@@ -687,9 +686,9 @@ void menuInitGameMenu(item_list_t *support)
         // Offer only what the page can do. Favorites keeps both so it can explain why not. The APA
         // HDD page neither renames nor deletes PS2 games: both would edit the partition table.
         int fav = support != NULL && support->mode == FAV_MODE;
-        if (fav || (support != NULL && support->itemRename != NULL && support->mode != HDD_MODE))
+        if (fav || (support != NULL && support->mode != HDD_MODE))
             submenuAppendItem(&gameMenu, -1, NULL, GAME_RENAME_GAME, _STR_RENAME);
-        if (fav || (support != NULL && support->itemDelete != NULL))
+        if (fav || (support != NULL && gsOf(support)->hasDelete()))
             submenuAppendItem(&gameMenu, -1, NULL, GAME_DELETE_GAME, _STR_DELETE);
     }
 #ifdef RETROACHIEVEMENTS
@@ -1174,7 +1173,7 @@ static void menuFolderResetLeaving(struct menu_list *leaving)
         return;
     folderReset(support->mode);
     leaving->item->text = NULL;
-    leaving->item->text_id = support->itemTextId(support); // restore the device name (was the breadcrumb)
+    leaving->item->text_id = gsOf(support)->textId(support); // restore the device name (was the breadcrumb)
     // Queue the rebuild now (folderReset marked the mode dirty) so the device is back at its root list
     // promptly -- the Favourites tab / last-played resolve against that root, not the subfolder we left.
     ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
@@ -1603,7 +1602,7 @@ static void menuRenderElements(theme_elems_t *elems)
     // zero .VCD opens/seeks here. The resolver itself is opportunistic and yields to art/BGM.
     if (elems->needsVcdDisplayId && list != NULL && menuSelectedRowView(list) == LIB_VIEW_PS1 &&
         selected_item->item->current != NULL) {
-        char *vcdName = list->itemGetStartup(list, selected_item->item->current->item.id);
+        char *vcdName = gsOf(list)->startup(list, selected_item->item->current->item.id);
         if (vcdName != NULL)
             vcdRequestDisplayId(vcdName);
     }
@@ -2000,9 +1999,9 @@ void menuHandleInputGameMenu()
                    is nothing to hash. Watch lists still LOAD from RA/ at launch; the .wl has to
                    be built on the PC. */
                 guiShowRANotice(_l(_STR_RA_NA_HDD), _l(_STR_RA_NA_HDD2));
-            } else if (support->itemGet != NULL && support->itemGetPrefix != NULL) {
-                base_game_info_t *g = (base_game_info_t *)support->itemGet(support, gid);
-                const char *prefix = support->itemGetPrefix(support);
+            } else if (gsOf(support)->hasGame() && gsOf(support)->hasPrefix()) {
+                base_game_info_t *g = (base_game_info_t *)gsOf(support)->game(support, gid);
+                const char *prefix = gsOf(support)->prefix(support);
 
                 if (g != NULL && prefix != NULL && g->format != GAME_FORMAT_FOLDER) {
                     if (sbHashGameDeferred(prefix, g->name, g->extension, g->startup, g->format))
