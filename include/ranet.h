@@ -19,7 +19,6 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
 /* 1 when a UDP transport (UDPBD, or the UDPFS filesystem chain) owns the
    SMAP NIC. RA must not raise the SMB stack on top of it; the menu actions
    refuse with a notice instead. */
-int raNetNicBusy(void);
 
 /* Brings the menu network up for a telemetry launch (see ranet.c). */
 void raLaunchNetworkUp(void);

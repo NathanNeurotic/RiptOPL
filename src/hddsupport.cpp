@@ -1527,14 +1527,6 @@ int hddGetOplHomeSelection(void)
     return live >= 0 ? live : HDD_OPL_HOME_COMMON;
 }
 
-int hddOplHomeIsLegacy(void)
-{
-    if (hddOplHomePending >= 0 || hddOplHomeCommitted >= 0)
-        return 0;
-    return gOPLPart[0] != '\0' && strcmp(gOPLPart, "hdd0:__common") != 0 &&
-           strcmp(gOPLPart, "hdd0:+OPL") != 0;
-}
-
 int hddOplHomeSelectionPending(void)
 {
     return hddOplHomePending >= 0;
@@ -1543,67 +1535,6 @@ int hddOplHomeSelectionPending(void)
 void hddDiscardOplHomeSelection(void)
 {
     hddOplHomePending = -1;
-}
-
-// Why the last staging attempt ended the way it did. Five distinct conditions were all collapsed
-// into two user-visible messages ("not found" / "busy"), which is why this row resisted several
-// rounds of fixing: the message never named which one had fired. Surfaced in OPLDIAG builds only.
-static const char *hddOplHomeStageReasonText = "none";
-
-const char *hddOplHomeStageReason(void)
-{
-    return hddOplHomeStageReasonText;
-}
-
-int hddStageOplHomeSelection(int selection)
-{
-    const char *partition;
-
-    hddOplHomeStageReasonText = "entered";
-
-    if (selection != HDD_OPL_HOME_COMMON && selection != HDD_OPL_HOME_PLUS) {
-        hddOplHomeStageReasonText = "invalid-selection";
-        return 0;
-    }
-
-    // Use only the already-resident ATA stack. The selector is a short-lived proof, not an owner
-    // of a module reference; hddLoadModulesReady() would retain one on every stage/save cycle.
-    // Do not call hddLoadSupportModules here: its normal data-home recovery may mount pfs0: and
-    // create OPL folders, neither of which belongs to a source selector proof.
-    // "COULD NOT CHECK" IS NOT "DOES NOT EXIST". These two arms used to return 0, the same value the
-    // failed mount below returns, and the caller renders 0 as "+OPL partition not found." -- so a
-    // user with a perfectly good +OPL was told it was missing whenever the ATA stack or PS2FS was
-    // not up yet. That is the SAME condition behind the deferred Code 222, which is why the two get
-    // reported together. -1 is the caller's existing "cannot answer right now" state.
-    // BRING THE STACK UP RATHER THAN REFUSING. This used to require the ATA modules to already be
-    // resident, on the reasoning that a selector should not own a module reference. But nothing
-    // guarantees they are resident when the user opens Settings, and when they are not, the check
-    // can never pass -- so the row reported "not found" (before) or "busy" (after that was
-    // corrected) on every single attempt, with no sequence of user actions able to fix it. A
-    // setting that cannot be changed is a worse outcome than an extra hddModulesLoadCount bump.
-    //
-    // Affordable here specifically: this runs on the io worker behind guiHandleDeferedIO's spinner
-    // with a 15 s budget, which is exactly the machinery for a load that may take a second.
-    // hddLoadSupportModules() is still deliberately NOT called -- its data-home recovery mounts
-    // pfs0: and creates OPL folders, and neither belongs to a source-selector proof.
-    if (!hddModulesAreLoaded() && !hddLoadModulesReady()) {
-        hddOplHomeStageReasonText = "ata-stack-unavailable";
-        return -1; // cannot answer, not "absent"
-    }
-    if (!hddLoadCoreSupportModules()) {
-        hddOplHomeStageReasonText = "pfs-support-unavailable";
-        return -1;
-    }
-
-    partition = selection == HDD_OPL_HOME_PLUS ? "hdd0:+OPL" : "hdd0:__common";
-    if (!hddPartitionMountableAt("pfs1:", partition, FIO_MT_RDONLY)) {
-        hddOplHomeStageReasonText = "partition-mount-refused";
-        return 0; // genuinely absent: the stack was up and the mount still refused
-    }
-
-    hddOplHomeStageReasonText = "ok";
-    hddOplHomePending = selection;
-    return 1;
 }
 
 int hddOplHomeSelectionNeedsTargetSave(void)

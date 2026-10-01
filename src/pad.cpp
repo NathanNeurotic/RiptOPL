@@ -873,21 +873,6 @@ int getKeyOn(int id)
     return (paddata & keyid) && (!(oldpaddata & keyid));
 }
 
-/** Detects key-off event. Returns true if the button was pressed the last frame but is not pressed this frame.
- * @param id The button ID
- * @return nonzero if button is being released
- */
-int getKeyOff(int id)
-{
-    if ((id <= 0) || (id >= 17))
-        return 0;
-
-    // old v.s. new pad data
-    int keyid = keyToPad[id];
-
-    return (!(paddata & keyid)) && (oldpaddata & keyid);
-}
-
 /** Returns true (nonzero) if the button is currently pressed
  * @param id The button ID
  * @return nonzero if button is being held
@@ -910,14 +895,6 @@ void setButtonDelay(int button, int btndelay)
         return;
 
     paddelay[button - 1] = btndelay;
-}
-
-int getButtonDelay(int button)
-{
-    if ((button <= 0) || (button >= 17))
-        return 0;
-
-    return paddelay[button - 1];
 }
 
 /** Unloads a single pad.

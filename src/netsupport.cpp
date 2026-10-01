@@ -50,13 +50,13 @@ int netInitSema(void)
     return 0;
 }
 
-void netLockInit(void)
+static void netLockInit(void)
 {
     if (netInitSemaID >= 0)
         WaitSema(netInitSemaID);
 }
 
-void netUnlockInit(void)
+static void netUnlockInit(void)
 {
     if (netInitSemaID >= 0)
         SignalSema(netInitSemaID);

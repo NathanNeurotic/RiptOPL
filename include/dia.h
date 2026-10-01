@@ -107,7 +107,6 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, const char *title);
 void diaSetEnabled(struct UIItem *ui, int id, int enabled);
 void diaSetShowDefaultWhenEmpty(struct UIItem *ui, int id, int show);
 void diaSetVisible(struct UIItem *ui, int id, int visible);
-void diaSetItemType(struct UIItem *ui, int id, UIItemType type);
 int diaGetInt(struct UIItem *ui, int id, int *value);
 int diaHasChanges(struct UIItem *ui);
 int diaSetInt(struct UIItem *ui, int id, int value);

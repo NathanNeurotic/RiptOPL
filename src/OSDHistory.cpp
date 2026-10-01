@@ -32,7 +32,7 @@ extern unsigned char icon_sys_C[];
 
 #define DEBUG_PRINTF(args...)
 
-int CreateSystemDataFolder(const char *path, char FolderRegionLetter)
+static int CreateSystemDataFolder(const char *path, char FolderRegionLetter)
 {
     char fullpath[64];
     int fd, result, size;
@@ -68,7 +68,7 @@ int CreateSystemDataFolder(const char *path, char FolderRegionLetter)
     return result;
 }
 
-int LoadHistoryFile(const char *path, struct HistoryEntry *HistoryEntries)
+static int LoadHistoryFile(const char *path, struct HistoryEntry *HistoryEntries)
 {
     char fullpath[64];
     int fd, result;
@@ -83,7 +83,7 @@ int LoadHistoryFile(const char *path, struct HistoryEntry *HistoryEntries)
     return result;
 }
 
-int SaveHistoryFile(const char *path, const struct HistoryEntry *HistoryEntries)
+static int SaveHistoryFile(const char *path, const struct HistoryEntry *HistoryEntries)
 {
     char fullpath[64];
     int fd, result;
@@ -98,7 +98,7 @@ int SaveHistoryFile(const char *path, const struct HistoryEntry *HistoryEntries)
     return result;
 }
 
-int AddOldHistoryFileRecord(const char *path, const struct HistoryEntry *OldHistoryEntry)
+static int AddOldHistoryFileRecord(const char *path, const struct HistoryEntry *OldHistoryEntry)
 {
     char fullpath[64];
     int fd, result;
@@ -123,7 +123,7 @@ static u16 GetTimestamp(void)
     return OSD_HISTORY_SET_DATE(btoi(time.year), btoi(time.month & 0x7F), btoi(time.day));
 }
 
-int AddHistoryRecord(const char *name)
+static int AddHistoryRecord(const char *name)
 {
     struct HistoryEntry HistoryEntries[MAX_HISTORY_ENTRIES], *NewEntry, OldHistoryEntry;
     int i, value, LeastUsedRecord, LeastUsedRecordLaunchCount, LeastUsedRecordTimestamp, NewLaunchCount, result, mcType, format;

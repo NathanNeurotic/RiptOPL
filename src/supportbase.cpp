@@ -35,6 +35,9 @@
 
 #include "../modules/isofs/zso.h"
 
+// forward declaration (was declared in the header before it became file-local)
+static int sbFileExists(const char *path);
+
 /// internal linked list used to populate the list from directory listing
 struct game_list_t
 {
@@ -1005,7 +1008,7 @@ void sbUnprepare(void *pCommon)
     memcpy(pCommon, &cdvdman_settings_common_sample, sizeof(struct cdvdman_settings_common));
 }
 
-void sbRebuildULCfg(base_game_info_t **list, const char *prefix, int gamecount, int excludeID)
+static void sbRebuildULCfg(base_game_info_t **list, const char *prefix, int gamecount, int excludeID)
 {
     char path[256];
     USBExtreme_game_entry_t GameEntry;
@@ -1369,7 +1372,7 @@ static void sbCheatLogAppend(const char *what)
     snprintf(cheatSearchLog + used, sizeof(cheatSearchLog) - used, "%s%s", used ? "\n" : "", what);
 }
 
-const char *sbGetCheatSearchLog(void)
+static const char *sbGetCheatSearchLog(void)
 {
     return cheatSearchLog;
 }
@@ -1379,7 +1382,7 @@ const char *sbGetCheatSearchLog(void)
   static buffer, valid until the next call. If the log is somehow empty the localized string is
   returned unchanged, so this can never render a bare header with nothing under it.
 */
-const char *sbCheatsNotFoundText(void)
+static const char *sbCheatsNotFoundText(void)
 {
     static char msg[640];
     const char *log = sbGetCheatSearchLog();
@@ -1722,7 +1725,7 @@ static void naAppendKV(char *out, int outSize, const char *key, const char *val)
     naAppend(out, outSize, tmp);
 }
 
-int sbFileExists(const char *path)
+static int sbFileExists(const char *path)
 {
     if (path == NULL)
         return 0;
@@ -2432,7 +2435,7 @@ void raHashLogClose(void)
 /* on the splash screen. The image's folder is not known in advance,   */
 /* so DVD is tried first, then CD, the way OPL itself lays them out.   */
 
-void sbHashGame(const char *path, const char *name, const char *ext, const char *startup, int format)
+static void sbHashGame(const char *path, const char *name, const char *ext, const char *startup, int format)
 {
     static const char *dirs[] = {"DVD", "CD", NULL};
     char iso[256], hash[33], info[96], info2[96];

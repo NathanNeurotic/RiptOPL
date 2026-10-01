@@ -242,7 +242,7 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
     return ExecPS2((void *)eh->entry, NULL, argc + 1 + extra_args, new_argv);
 }
 
-int sysLoadELF(const char *filename, const char *partition, int argc, char *argv[], int resetIop)
+static int sysLoadELF(const char *filename, const char *partition, int argc, char *argv[], int resetIop)
 {
     return sysLoadELFCommon(filename, partition, argc, argv, resetIop, 0);
 }

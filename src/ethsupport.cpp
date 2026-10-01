@@ -26,6 +26,9 @@
 #include "include/nbns.h"
 #include "httpclient.h"
 
+// forward declaration (was declared in the header before it became file-local)
+static void ethDisplayErrorStatus(void);
+
 static char ethPrefix[40]; // Contains the full path to the folder where all the games are.
 static char *ethBase;
 static int ethULSizePrev = -2;
@@ -236,7 +239,7 @@ int ethLoadInitModules(void)
     return netLoadInitModules(NET_PROTO_SMB);
 }
 
-void ethDisplayErrorStatus(void)
+static void ethDisplayErrorStatus(void)
 {
     switch (gNetworkStartup) {
         case 0: // No error
@@ -358,7 +361,7 @@ void ethRequestReconnect(void)
         ethReconnectQueued = 0;
 }
 
-void ethInit(item_list_t *itemList)
+static void ethInit(item_list_t *itemList)
 {
     if (netInitSema() < 0)
         return;

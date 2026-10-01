@@ -295,7 +295,7 @@ static vcd_id_memo_t *vcdIdMemoFind(const char *name)
 // cannot work out for itself: vcdScanDir appends POPS/ to a device root while vcdScanDirRoot takes a
 // directory directly (the APA/PFS HDD), so any attempt to reconstruct the path later can only be
 // right about one of the two layouts.
-void vcdNoteScanDir(const char *name, const char *dirPath)
+static void vcdNoteScanDir(const char *name, const char *dirPath)
 {
     if (name == NULL || dirPath == NULL || name[0] == '\0')
         return;
@@ -403,7 +403,7 @@ static int vcdCanonDisplayId(const char *idIn, char *idOut, int idSize)
 // shows the id pays one disc read per game per session, and a theme that does not pays nothing --
 // exactly how #Size behaves, and exactly what Nathan asked for: it may arrive late, it must never
 // hold anything up.
-int vcdResolveDisplayId(const char *name, char *idOut, int idSize)
+static int vcdResolveDisplayId(const char *name, char *idOut, int idSize)
 {
     if (name == NULL || idOut == NULL || idSize <= 0)
         return 0;
@@ -663,7 +663,7 @@ static int vcdScanOpenDir(const char *dirPath, vcd_entry_t **outList)
     return count;
 }
 
-int vcdScanDir(const char *devPrefix, vcd_entry_t **outList)
+static int vcdScanDir(const char *devPrefix, vcd_entry_t **outList)
 {
     if (outList == NULL)
         return 0;
@@ -1020,7 +1020,7 @@ int vcdMcHasSpace(const char *path, int needBytes)
 // Copy srcPath -> dstPath, but only after confirming the destination card can hold it.
 //   0  success      -1  source missing/unreadable
 //  -2  MC too full (NOTHING written)   -3  write/IO error (partial dst removed)
-int vcdSafeCopyFile(const char *srcPath, const char *dstPath)
+static int vcdSafeCopyFile(const char *srcPath, const char *dstPath)
 {
     if (srcPath == NULL || dstPath == NULL)
         return -1;
@@ -1461,7 +1461,7 @@ static int vcdGetFileSize(const char *path)
 }
 
 // Strict BDMA environment validation: verifies that the MC environment matches the requested family.
-int vcdBdmaEnvironmentValid(int mode)
+static int vcdBdmaEnvironmentValid(int mode)
 {
     if (mode < 0 || mode >= VCD_BDMA_MODE_COUNT)
         return 0;
@@ -1655,16 +1655,6 @@ static int vcdSmbModulesPresentAt(const char *mcDir)
         close(fd);
     }
     return 1;
-}
-
-int vcdSmbModulesPresent(void)
-{
-    static const char *cards[2] = {"mc0:/POPSTARTER", "mc1:/POPSTARTER"};
-    for (int c = 0; c < 2; c++) {
-        if (vcdSmbModulesPresentAt(cards[c]))
-            return 1; // this card has the complete SMB stack
-    }
-    return 0;
 }
 
 // ---- POPStarter network files (IPCONFIG.DAT / SMBCONFIG.DAT) --------------------------------

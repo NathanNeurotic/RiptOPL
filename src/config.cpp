@@ -18,7 +18,9 @@
 //        Use newlib's 'stat' to get GMT time.
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // iox_stat_t, fileXioGetStat
-int configGetStat(config_set_t *configSet, iox_stat_t *stat);
+
+// forward declaration (was declared in the header before it became file-local)
+static void configMove(config_set_t *configSet, const char *fileName);
 
 static u32 currentUID = 0;
 static config_set_t configFiles[CONFIG_INDEX_COUNT];
@@ -70,7 +72,7 @@ static int strToColor(const char *string, unsigned char *color)
 }
 
 /// true if given a whitespace character
-int isWS(char c)
+static int isWS(char c)
 {
     return c == ' ' || c == '\t';
 }
@@ -431,7 +433,7 @@ config_set_t *configAlloc(int type, config_set_t *configSet, char *fileName)
     return configSet;
 }
 
-void configMove(config_set_t *configSet, const char *fileName)
+static void configMove(config_set_t *configSet, const char *fileName)
 {
     int length = strlen(fileName) + 1;
     // Use a temporary so a failed realloc doesn't clobber (and leak) the old pointer
@@ -1600,11 +1602,6 @@ int configWrite(config_set_t *configSet)
         return 1;
     }
     return 1;
-}
-
-int configGetStat(config_set_t *configSet, iox_stat_t *stat)
-{
-    return (fileXioGetStat(configSet->filename, stat) >= 0 ? 1 : 0);
 }
 
 void configClear(config_set_t *configSet)

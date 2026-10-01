@@ -15,7 +15,6 @@ typedef struct
     vmc_spec_t specs; /* Card specifications */
 } smb_vmc_infos_t;
 
-void ethInit(item_list_t *itemList); // Full initialization (Start ETH + SMB and apply configuration). GUI must be already initialized, used by GUI to start SMB mode.
 void ethDeinitModules(void);         // Module-only deinitialization, without the GUI's knowledge (for specific reasons, otherwise unused).
 int ethLoadInitModules(void);        // Initializes Ethernet and applies configuration.
 int ethGetModulesLoaded(void);       // 1 if the SMB NIC stack is loaded (UDPBD must not load on top).
@@ -30,7 +29,6 @@ int ethEnsureSMBShareConnected(void);
 // (link mode + IP/DHCP), log on/open the share again, and rebuild the list. Safe to call repeatedly;
 // one request is coalesced while the IO worker is reconnecting.
 void ethRequestReconnect(void);
-void ethDisplayErrorStatus(void); // Displays the current error status (if any). GUI must be already initialized.
 int ethGetNetConfig(u8 *ip_address, u8 *netmask, u8 *gateway);
 int ethApplyConfig(void);
 int ethGetDHCPStatus(void);

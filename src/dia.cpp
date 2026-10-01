@@ -1636,16 +1636,6 @@ void diaSetVisible(struct UIItem *ui, int id, int visible)
     item->visible = visible;
 }
 
-void diaSetItemType(struct UIItem *ui, int id, UIItemType type)
-{
-    struct UIItem *item = diaFindByID(ui, id);
-
-    if (!item)
-        return;
-
-    item->type = type;
-}
-
 // 1 when any value row now differs from what the page put there. diaSetInt/diaSetString store the
 // value as the row's def as well, and editing a row (unlike Cancel, which restores it) leaves def
 // alone -- so def is exactly "what this page showed when it opened". A row the page never set keeps

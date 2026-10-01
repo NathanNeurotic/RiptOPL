@@ -1163,7 +1163,7 @@ static int initKernel(void *eeload, void *modStorageEnd, void **eeloadCopy, void
 }
 
 #ifdef __DEBUG
-void sysPrintEECoreConfig(struct EECoreConfig_t *config)
+static void sysPrintEECoreConfig(struct EECoreConfig_t *config)
 {
     LOG("EECoreConfig Values = 0x%08X\n", (u32)config);
 

@@ -54,7 +54,7 @@ def define(source, name, where):
     return match.group(1)
 
 
-confirm = function_text(gui, 'int guiConfirmVideoMode(', 'src/gui.cpp')
+confirm = function_text(gui, 'static int guiConfirmVideoMode(', 'src/gui.cpp')
 if 'guiShow()' in confirm:
     failures.append('guiConfirmVideoMode: must not render the menu (guiShow) under its opaque backdrop')
 

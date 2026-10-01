@@ -34,7 +34,7 @@ static char cueSep(const char *devPrefix)
     return (n > 0 && devPrefix[n - 1] == '\\') ? '\\' : '/';
 }
 
-const char *cueEmberFolder(void)
+static const char *cueEmberFolder(void)
 {
     // A configurable folder name can arrive later as a setting. Resolving it through this accessor
     // from the start keeps that change to one line and keeps every caller honest about the fact
@@ -69,7 +69,7 @@ int cueResolveEmberBios(const char *devPrefix, char *out, int outSize)
     return cueResolveEmberFile(devPrefix, EMBER_BIOS_NAME, out, outSize);
 }
 
-void cueBuildGamesDir(const char *devPrefix, char *out, int outSize)
+static void cueBuildGamesDir(const char *devPrefix, char *out, int outSize)
 {
     if (out == NULL || outSize <= 0)
         return;
@@ -283,7 +283,7 @@ static int cueLineSetsKey(const char *line, int lineLen, const char *key)
     return i < lineLen && line[i] == ':';
 }
 
-int cueRewriteSettings(const char *before, int len, const cue_setting_t *want, int wantCount, char *after, int afterSize)
+static int cueRewriteSettings(const char *before, int len, const cue_setting_t *want, int wantCount, char *after, int afterSize)
 {
     int out = 0;
     int lineStart;
@@ -640,20 +640,6 @@ int cueRenameGame(const char *devPrefix, const char *oldName, const char *newNam
 int cueIsCueEntry(const base_game_info_t *game)
 {
     return (game != NULL && strcasecmp(game->extension, CUE_ROW_EXTENSION) == 0);
-}
-
-int cueRowIsCueByName(const base_game_info_t *games, int count, const char *name)
-{
-    int i;
-
-    if (games == NULL || name == NULL)
-        return -1;
-
-    for (i = 0; i < count; i++) {
-        if (strcmp(games[i].name, name) == 0)
-            return cueIsCueEntry(&games[i]) ? 1 : 0;
-    }
-    return -1;
 }
 
 // Merged-list comparator. Sorts by the same visible key the VCD-only scan always used, so turning

@@ -979,51 +979,12 @@ submenu_list_t *submenuAppendItem(submenu_list_t **submenu, int icon_id, char *t
     return newitem;
 }
 
-// Linear search by id + text. Favourites uses this to locate the source-list item so the
-// favourited flag (star) stays in sync on both the FAV copy and the source copy. Both text
-// args are NULL-guarded before strcmp.
-submenu_list_t *submenuFindItemByIdAndText(submenu_list_t *submenu, int id, const char *text)
-{
-    submenu_list_t *cur = submenu;
-    while (cur) {
-        if (cur->item.id == id && text && cur->item.text && !strcmp(cur->item.text, text))
-            return cur;
-        cur = cur->next;
-    }
-    return NULL;
-}
-
 static void submenuDestroyItem(submenu_list_t *submenu)
 {
     free(submenu->item.cache_id);
     free(submenu->item.cache_uid);
 
     free(submenu);
-}
-
-void submenuRemoveItem(submenu_list_t **submenu, int id)
-{
-    submenu_list_t *cur = *submenu;
-    submenu_list_t *prev = NULL;
-
-    while (cur) {
-        if (cur->item.id == id) {
-            submenu_list_t *next = cur->next;
-
-            if (prev)
-                prev->next = cur->next;
-
-            if (*submenu == cur)
-                *submenu = next;
-
-            submenuDestroyItem(cur);
-
-            cur = next;
-        } else {
-            prev = cur;
-            cur = cur->next;
-        }
-    }
 }
 
 void submenuDestroy(submenu_list_t **submenu)

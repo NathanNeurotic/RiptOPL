@@ -261,7 +261,6 @@ typedef struct
 
 void configInit(char *prefix);
 void configSetMove(char *prefix);
-void configMove(config_set_t *configSet, const char *fileName);
 void configEnd();
 config_set_t *configAlloc(int type, config_set_t *configSet, char *fileName);
 void configFree(config_set_t *configSet);

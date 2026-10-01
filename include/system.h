@@ -64,10 +64,6 @@ void sysLaunchPopstarter(const char *popstarterElf, const char *selector);
 // performs no IOP reset of its own and cannot bring a device back up.
 void sysLaunchEmber(const char *emberElf, const char *gameFolder);
 
-// ELF handoff that KEEPS the IOP (drivers + mounts) alive -- NHDDL parity: the vendored elfldr/
-// child loader SifLoadElf()s the target through OPL's live mounts and never SifIopReset()s (the
-// target resets the IOP itself). argv is the target's FULL argv, argv[0] INCLUDED and
-int sysLoadELF(const char *filename, const char *partition, int argc, char *argv[], int resetIop);
 // Ordinary APPS variant. cleanupHdd requests the wLaunchELF_R3Z post-load PFS/HDD/DEV9 teardown;
 // dedicated Ember/Neutrino/POPSTARTER paths keep using their existing handoff functions.
 int sysLoadELFApp(const char *filename, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd);

@@ -91,8 +91,6 @@ void rmInvalidateTexture(GSTEXTURE *txt);
 /** Unload texture from texture manager, performance optimization */
 void rmUnloadTexture(GSTEXTURE *txt);
 
-/** Uploads a texture to VRAM without drawing it. */
-void rmPrimeTexture(GSTEXTURE *txt);
 
 void rmDrawQuad(rm_quad_t *q);
 
@@ -144,8 +142,6 @@ int rmWideScale(int x);
 /** Get Pixel Aspect Ratio of native resolution */
 float rmGetPAR();
 
-/** Get interfaced frame mode */
-int rmGetInterlacedFrameMode();
 
 /** Scale x from 640 to native resolution */
 int rmScaleX(int x);
@@ -156,8 +152,6 @@ int rmScaleY(int y);
 /** Scale x from native to 640 resolution */
 int rmUnScaleX(int x);
 
-/** Scale y from native to 480 resolution */
-int rmUnScaleY(int y);
 
 // Returns H-sync frequency in KHz
 unsigned char rmGetHsync(void);

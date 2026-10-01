@@ -448,7 +448,7 @@ void httpTestServer(const int *ip, int port, const char *base, char *msg, size_t
 // item_list_t
 // ---------------------------------------------------------------------------
 
-const char *httpGetLocalPrefix(void)
+static const char *httpGetLocalPrefix(void)
 {
     const char *home = configGetHomePath();
     size_t len;
@@ -487,7 +487,7 @@ static int httpGetIconId(item_list_t *itemList)
     return ETH_ICON; // a network source; it shares SMB's glyph until HTTP gets its own
 }
 
-void httpInit(item_list_t *itemList)
+static void httpInit(item_list_t *itemList)
 {
     (void)itemList;
     LOG("HTTPSUPPORT Init\n");

@@ -155,7 +155,7 @@ static void udpfsSetWaitingForServer(int waiting)
     udpfsGameList.updateDelay = (waiting || !udpfsThemesScanned) ? MENU_UPD_DELAY_GENREFRESH : UDPFS_MODE_UPDATE_DELAY;
 }
 
-void udpfsInit(item_list_t *itemList)
+static void udpfsInit(item_list_t *itemList)
 {
     LOG("UDPFSSUPPORT Init\n");
 

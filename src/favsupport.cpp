@@ -432,7 +432,7 @@ static int favIdsMatchForMode(int mode, int recId, int liveId)
     return (mode == APP_MODE) || (recId == liveId);
 }
 
-int favKindView(int kind)
+static int favKindView(int kind)
 {
     switch (kind) {
         case FAV_KIND_VCD:
@@ -707,7 +707,7 @@ int favGetItemSourceMode(int id)
     return favValidIndex(id) ? favArray[id].mode : -1;
 }
 
-int favGetItemView(int id)
+static int favGetItemView(int id)
 {
     return favValidIndex(id) ? favKindView(favArray[id].kind) : -1;
 }

@@ -378,7 +378,7 @@ static int mmceTryLoadImage(const char *prefix, char *folder, int isRelative, ch
     return texDiscoverLoad(resultTex, path, -1);
 }
 
-int mmceDetectSlot(void)
+static int mmceDetectSlot(void)
 {
     int ret = -1;
     if (fileXioDevctl("mmce0:/", 0x1, NULL, 0, NULL, 0) != -1) {
@@ -391,7 +391,7 @@ int mmceDetectSlot(void)
     return ret;
 }
 
-void mmceSetPrefix(void)
+static void mmceSetPrefix(void)
 {
     if (gMMCESlot == 0)
         snprintf(mmcePrefix, sizeof(mmcePrefix), "mmce0:/%s", gMMCEPrefix);
@@ -489,7 +489,7 @@ void mmceArmGameIDTransport(void)
     LOG("MMCESUPPORT GameID transport armed\n");
 }
 
-void mmceInit(item_list_t *itemList)
+static void mmceInit(item_list_t *itemList)
 {
     LOG("MMCESUPPORT Init\n");
     mmcePrefix[0] = '\0';
@@ -922,7 +922,7 @@ static void mmceLaunchVcd(item_list_t *itemList, const char *vcdName, config_set
     sysLaunchPopstarter(vcdElf, vcdSelector);
 }
 
-void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
+static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
 {
     int i, index, compatmask = 0;
     int EnablePS2Logo = 0;

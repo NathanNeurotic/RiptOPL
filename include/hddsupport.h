@@ -73,7 +73,6 @@ typedef enum {
 // Auto and Manual (Vapor). Pair with the retryable-failure change in hddLoadModules.
 
 int hddCheck(void);
-u32 hddGetTotalSectors(void);
 int hddIs48bit(void);
 int hddSetTransferMode(int type, int mode);
 void hddSetIdleTimeout(int timeout);
@@ -144,8 +143,6 @@ int hddGetLiveOplHomeSelection(void);
 // Resolve a relative file path inside the already-selected live APA data home. This may load/mount
 // the normal HDD support stack, but never selects or mounts an arbitrary partition.
 int hddResolveLiveOplDataPath(const char *relativePath, char *out, int outSize);
-int hddOplHomeIsLegacy(void);
-int hddStageOplHomeSelection(int selection);
 // A successfully saved selector applies on the next boot, while pfs0: intentionally remains on
 // the current live data home. These helpers expose that next-home write target through pfs1:.
 int hddOplHomeSelectionNeedsTargetSave(void);
@@ -155,14 +152,6 @@ int hddCommitOplHomeSelection(void);
 void hddDiscardOplHomeSelection(void);
 int hddOplHomeSelectionPending(void);
 
-/** Why the last hddStageOplHomeSelection() ended as it did, as a short static token
- * ("ata-stack-unavailable", "pfs-support-unavailable", "partition-mount-refused", "ok", ...).
- *
- * Several distinct conditions share only two user-visible messages, so a failure here never said
- * WHICH one fired -- which is exactly why the APA data-home row survived repeated fix attempts.
- * Shown only in OPLDIAG builds; a normal release keeps the plain localized message.
- */
-const char *hddOplHomeStageReason(void);
 
 void hddLaunchGame(item_list_t *itemList, int id, config_set_t *configSet);
 int hddIsPresent();

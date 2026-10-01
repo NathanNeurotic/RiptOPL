@@ -594,10 +594,6 @@ int fromHex(char digit)
 }
 
 static const char htab[] = "0123456789ABCDEF";
-char toHex(int digit)
-{
-    return htab[digit & 0x0F];
-}
 
 static short int ConsoleRegion = CONSOLE_REGION_INVALID;
 static char SystemDataFolderPath[] = "BRDATA-SYSTEM";
@@ -651,11 +647,6 @@ const char *GetSystemDataPath(void)
 char GetSystemFolderLetter(void)
 {
     return SystemFolderLetter;
-}
-
-int GetSystemRegion(void)
-{
-    return ConsoleRegion;
 }
 
 int CheckPS2Logo(int fd, u32 lba)

@@ -60,20 +60,17 @@
 
 int oplPath2Mode(const char *path);
 int oplGetAppImageByMode(int mode, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm);
-int oplGetAppImage(const char *device, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm);
 int oplScanApps(int (*callback)(const char *path, config_set_t *appConfig, void *arg), void *arg);
 int oplShouldAppsUpdate(void);
 config_set_t *oplGetLegacyAppsConfig(void);
 config_set_t *oplGetLegacyAppsInfo(char *name);
 
-void setErrorMessage(int strId);
 void setErrorMessageWithCode(int strId, int error);
 void setErrorMessageWithCodeAndDetail(int strId, int error, const char *detail);
 void setErrorMessagePathCode(int strId, const char *path, int error);
 // Drop a queued error only when it is the exact condition that subsequently recovered. This avoids
 // hiding an unrelated notification merely because a later storage probe happened to succeed.
 void clearErrorMessageIf(int strId);
-int loadConfig(int types);
 int saveConfig(int types, int showUI);
 void applyConfig(int themeID, int langID, int skipDeviceRefresh);
 // True only while init() is rendering the initial boot splash. GUI code uses this to keep the

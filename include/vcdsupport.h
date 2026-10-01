@@ -29,9 +29,6 @@ typedef struct
     char name[VCD_NAME_MAX]; // VCD basename WITHOUT ".VCD" (the POPSTARTER selector game name)
 } vcd_entry_t;
 
-// Scan "<devPrefix>POPS/" for *.VCD (case-insensitive). Returns the count; *outList is a malloc'd
-// vcd_entry_t array the caller frees (NULL/0 on none/error). POSIX dir IO only (newlib-port rule).
-int vcdScanDir(const char *devPrefix, vcd_entry_t **outList);
 
 // Like vcdScanDir but scans `dirPath` DIRECTLY (no POPS/ subfolder) -- for the APA/PFS HDD where each
 // __.POPS* partition holds its .VCD at the mounted root (e.g. dirPath = "pfs1:/").
@@ -45,15 +42,7 @@ int vcdExtractGameId(const char *name, char *idOut, int idSize);
 // inside the label, or 0 when the label is not a strict PP-POPS partition. Pure string parsing.
 int vcdPopsPartitionTitleOffset(const char *label);
 
-// Remember which directory a VCD was scanned from. String work only -- NO device access; the scan
-// must never block on IO. Called per entry by the scan.
-void vcdNoteScanDir(const char *name, const char *dirPath);
 
-// DISPLAY-ONLY PS1 disc id, resolved lazily from the image only when the active theme family
-// contains the ItemText element that consumes it. Returns 1 and writes the
-// id, or 0 when there is none -- the caller then shows the filename, as before. NOT identity: art,
-// CFG and the launch all key off the VCD filename.
-int vcdResolveDisplayId(const char *name, char *idOut, int idSize);
 
 // Render-thread half of the caption id (#380): returns the ALREADY-resolved id from the session
 // memo, 0 if not yet resolved. Never touches the device, never queues -- safe to call every frame.
@@ -122,8 +111,6 @@ int vcdIsHiddenDisc(const char *name);
 
 // Room for `needBytes` (+ safety margin) on `path`'s card? 1 = yes, 0 = no, -1 = not an MC / can't tell.
 int vcdMcHasSpace(const char *path, int needBytes);
-// Copy srcPath -> dstPath: 0 ok, -1 src missing, -2 MC too full (nothing written), -3 IO error (partial removed).
-int vcdSafeCopyFile(const char *srcPath, const char *dstPath);
 // Write a buffer to dstPath under the same gate: 0 ok, -2 MC too full, -3 IO error (partial removed).
 int vcdSafeWriteFile(const char *dstPath, const void *buf, int len);
 
@@ -158,8 +145,6 @@ enum {
 int vcdEquipBdma(int source, int mode, char *diag, int diagSize);
 // Read the equipped variant from mc?:/POPSTARTER/bdma_config.txt (VCD_BDMA_FAT32 if absent).
 int vcdReadBdmaMode(void);
-// Validate whether the MC environment matches the requested BDMA family (marker + complete pair signature).
-int vcdBdmaEnvironmentValid(int mode);
 // Auto-equip the BDMA variant matching the game's device (source/mode) before a VCD launch.
 // BDMA prep is card preparation, never a POPSTARTER launch gate: failure toasts in passing, never blocks.
 void vcdEnsureBdmaForLaunch(int source, int mode);
@@ -173,9 +158,6 @@ void vcdApplyUsbModeForLaunch(int mode);
 // Returns 0 when every file was already present or copied, otherwise the first copy error (-1/-2/-3).
 int vcdInstallPopstarterMc(const char *devPrefix);
 
-// Are POPSTARTER's SMB network modules (smbman/ps2ip/ps2smap/ps2dev9) present on a card? 1 = yes.
-// Gate SMB/ETH VCD launches on this after the direct-POPS/ installer gets one chance to self-heal.
-int vcdSmbModulesPresent(void);
 
 // ---- POPStarter network files (IPCONFIG.DAT / SMBCONFIG.DAT) --------------------------------
 // POPSLoader-parity flow: READ existing values when available, otherwise stay blank until the

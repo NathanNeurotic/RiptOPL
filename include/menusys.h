@@ -123,9 +123,6 @@ void menuAppendItem(menu_item_t *item);
 
 void submenuRebuildCache(submenu_list_t *submenu);
 submenu_list_t *submenuAppendItem(submenu_list_t **submenu, int icon_id, char *text, int id, int text_id);
-// Linear search by id + text (favourites star sync); both text args NULL-guarded.
-submenu_list_t *submenuFindItemByIdAndText(submenu_list_t *submenu, int id, const char *text);
-void submenuRemoveItem(submenu_list_t **submenu, int id);
 void submenuDestroy(submenu_list_t **submenu);
 void submenuSort(submenu_list_t **submenu, int mode);
 

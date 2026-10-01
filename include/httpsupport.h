@@ -16,7 +16,6 @@
 #define HTTP_CATALOG_BYTES_MAX 262144
 #define HTTP_CATALOG_ROWS_MAX  2048
 
-void httpInit(item_list_t *itemList);
 item_list_t *httpGetObject(int initOnly);
 
 // Normalise a user-entered base path in place: force a leading '/', drop any trailing one, collapse
@@ -32,8 +31,5 @@ int httpBuildRequestPath(const char *relative, char *out, size_t outSize);
 // verifies one small byte range and the total size. Writes a human-readable outcome into msg.
 void httpTestServer(const int *ip, int port, const char *base, char *msg, size_t msgSize);
 
-// Where HTTP's per-game CFG and art live. HTTP has no filesystem of its own, so this is the
-// settings home rather than a device root; see docs/HTTP-INTEGRATION-PLAN.md section 2.2.
-const char *httpGetLocalPrefix(void);
 
 #endif

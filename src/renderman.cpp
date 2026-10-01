@@ -115,12 +115,6 @@ void rmUnloadTexture(GSTEXTURE *txt)
     gsKit_TexManager_free(gsGlobal, txt);
 }
 
-void rmPrimeTexture(GSTEXTURE *txt)
-{
-    if (txt != NULL && txt->Mem != NULL)
-        gsKit_TexManager_bind(gsGlobal, txt);
-}
-
 void rmStartFrame(void)
 {
     if (hires == 0)
@@ -662,7 +656,7 @@ float rmGetPAR()
 }
 
 // Get interfaced frame mode
-int rmGetInterlacedFrameMode()
+static int rmGetInterlacedFrameMode()
 {
     if ((gsGlobal->Interlace == GS_INTERLACED) && (gsGlobal->Field == GS_FRAME))
         return 1;
@@ -683,11 +677,6 @@ int rmScaleY(int y)
 int rmUnScaleX(int x)
 {
     return (x * 640) / iDisplayWidth;
-}
-
-int rmUnScaleY(int y)
-{
-    return (y * 480) / iDisplayHeight;
 }
 
 void rmSetOverscan(int overscan)

@@ -136,7 +136,7 @@ static unsigned char g_wl[RA_MAX_BYTES];
    ethLoadModules() would refuse anyway, but the caller deserves a distinct
    "network busy" answer rather than a generic socket failure. The in-game
    half is unaffected: raudp speaks over whatever SMAP the launch loaded. */
-int raNetNicBusy(void)
+static int raNetNicBusy(void)
 {
     return bdmIsUDPBDLoaded() || udpfsGetModulesLoaded();
 }

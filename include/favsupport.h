@@ -27,8 +27,6 @@ enum FAV_KIND {
     FAV_KIND_ELF
 };
 
-// The LIB_VIEW_* shelf a kind is displayed on.
-int favKindView(int kind);
 
 item_list_t *favGetObject(int initOnly);
 
@@ -40,9 +38,6 @@ unsigned char favGetFlags(item_list_t *itemList);
 // theme engine to draw APP favourites with the apps element (proper art box + overlay).
 int favGetItemSourceMode(int id);
 
-// LIB_VIEW_ISO / PS1 / ELF kind of one displayed favorite, or -1 when id is invalid. The Favorites
-// All-in-One shelf uses this to keep row-specific menus honest even though the page view is ALL.
-int favGetItemView(int id);
 
 // FAV_KIND_* of one displayed favourite, or -1 when id is invalid (which core a PS1 favourite uses).
 int favGetItemKind(int id);

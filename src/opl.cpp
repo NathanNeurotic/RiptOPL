@@ -979,44 +979,6 @@ int oplGetAppImageByMode(int mode, char *folder, int isRelative, char *value, ch
     return -1;
 }
 
-int oplGetAppImage(const char *device, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
-{
-    int i, remaining, elfbootmode;
-    char priority;
-    item_list_t *listSupport;
-
-    elfbootmode = -1;
-    if (device != NULL) {
-        elfbootmode = oplPath2Mode(device);
-        if (elfbootmode >= 0) {
-            listSupport = list_support[elfbootmode].support;
-
-            if ((listSupport != NULL) && (listSupport->enabled)) {
-                if (listSupport->itemGetImage(listSupport, folder, isRelative, value, suffix, resultTex, psm) >= 0)
-                    return 0;
-            }
-        }
-    }
-
-    // We search on ever devices from fatest to slowest.
-    for (remaining = MODE_COUNT, priority = 0; remaining > 0 && priority < 4; priority++) {
-        for (i = 0; i < MODE_COUNT; i++) {
-            listSupport = list_support[i].support;
-
-            if (i == elfbootmode)
-                continue;
-
-            if ((listSupport != NULL) && (listSupport->enabled) && (listSupport->appsPriority == priority)) {
-                if (listSupport->itemGetImage(listSupport, folder, isRelative, value, suffix, resultTex, psm) >= 0)
-                    return 0;
-                remaining--;
-            }
-        }
-    }
-
-    return -1;
-}
-
 static int scanApps(int (*callback)(const char *path, config_set_t *appConfig, void *arg), void *arg, char *appsPath, int exception)
 {
     struct dirent *pdirent;
@@ -1628,13 +1590,6 @@ void setErrorMessageWithCodeAndDetail(int strId, int error, const char *detail)
     guiSetFrameHook(&errorMessageHook);
 }
 
-void setErrorMessage(int strId)
-{
-    formatErrorMessage(_l(strId), NULL, 0, 0, 0);
-    errorMessageStringId = strId;
-    guiSetFrameHook(&errorMessageHook);
-}
-
 void setErrorMessagePathCode(int strId, const char *path, int error)
 {
     formatErrorMessage(_l(strId), path, error, 1, 1);
@@ -1686,49 +1641,6 @@ static int checkLoadConfigMMCE(int types)
             configSetInt(configOPL, CONFIG_OPL_MMCE_MODE, START_MODE_AUTO);
             return value;
         }
-    }
-
-    return 0;
-}
-
-static int checkLoadConfigBDM(int types)
-{
-    char path[64];
-    int value;
-    int bdm_result;
-    int is_hdd = 0;
-
-    // Probe the CURRENT settings filename, then the legacy one, so an existing install is still
-    // discovered (read-fallback migration; the next save rewrites it under the current name).
-    // These MUST be the CONFIG_OPL_FILENAME macros: config.c writes the file through them, so a
-    // hardcoded name here silently searches for a file this build never creates.
-    // check USB
-    bdm_result = bdmFindPartition(path, CONFIG_OPL_FILENAME, 0);
-    if (!bdm_result)
-        bdm_result = bdmFindPartition(path, CONFIG_OPL_FILENAME_LEGACY, 0);
-    // if not on USB, check BDM HDD
-    if (bdm_result == 0) {
-        // wait for up to 5 seconds for the HDD to spin up and become accessible...
-        if (hddLoadModules() >= 0 && bdmHDDIsPresent(5000)) {
-            bdm_result = bdmFindPartition(path, CONFIG_OPL_FILENAME, 0);
-            if (!bdm_result)
-                bdm_result = bdmFindPartition(path, CONFIG_OPL_FILENAME_LEGACY, 0);
-            if (bdm_result)
-                is_hdd = 1;
-        }
-    }
-
-    if (bdm_result) {
-        configEnd();
-        configInit(path);
-        value = configReadMulti(types);
-        config_set_t *configOPL = configGetByType(CONFIG_OPL);
-        configSetInt(configOPL, CONFIG_OPL_BDM_MODE, START_MODE_AUTO);
-        if (is_hdd != 0) {
-            gEnableBdmHDD = 1;
-            configSetInt(configOPL, CONFIG_OPL_ENABLE_BDMHDD, gEnableBdmHDD);
-        }
-        return value;
     }
 
     return 0;
@@ -4127,16 +4039,6 @@ void applyConfig(int themeID, int langID, int skipDeviceRefresh)
 #ifdef __DEBUG
     debugApplyConfig();
 #endif
-}
-
-int loadConfig(int types)
-{
-    lscstatus = types;
-    lscret = 0;
-
-    guiHandleDeferedIO(&lscstatus, _l(_STR_LOADING_SETTINGS), IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&_loadConfig), OPL_DEFERRED_IO_TIMEOUT_MS);
-
-    return lscret;
 }
 
 int saveConfig(int types, int showUI)

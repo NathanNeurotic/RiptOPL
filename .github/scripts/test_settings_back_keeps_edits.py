@@ -136,7 +136,7 @@ if page_functions.count('{') >= 3:
 
 PAGES = ('static int guiSettingsShowGeneral(', 'static int guiSettingsShowSources(', 'int guiShowNetConfig(',
          'static int guiSettingsShowInterface(', 'static int guiSettingsShowLaunch(',
-         'static int guiSettingsShowPopstarter(', 'int guiShowControllerConfig(')
+         'static int guiSettingsShowPopstarter(', 'static int guiShowControllerConfig(')
 # Pages whose apply block is a full device re-apply: an untouched Back/L1/R1 must skip it (#806).
 DEVICE_PAGES = {
     'static int guiSettingsShowGeneral(': 'if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, exitPathEdit, gExitPath))',
@@ -156,7 +156,7 @@ for sig in PAGES:
         failures.append('%s...): its rows must apply for every result except Cancel' % sig)
     if 'guiSettingsPageResult(result)' not in body:
         failures.append('%s...): must return through guiSettingsPageResult(result)' % sig)
-audio = function_text(gui_c, 'src/gui.cpp', 'int guiShowAudioConfig(')
+audio = function_text(gui_c, 'src/gui.cpp', 'static int guiShowAudioConfig(')
 if audio and 'guiSettingsPageResult(result)' not in audio:
     failures.append('guiShowAudioConfig: must return through guiSettingsPageResult(result)')
 

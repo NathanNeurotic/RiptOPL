@@ -56,7 +56,5 @@ int netGetDHCPStatus(void);
 // The stack init lock. ethsupport's SMB entry points take it around their own apply-config calls;
 // anything else that raises or reconfigures the stack must take it too.
 int netInitSema(void);
-void netLockInit(void);
-void netUnlockInit(void);
 
 #endif

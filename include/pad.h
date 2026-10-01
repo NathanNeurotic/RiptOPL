@@ -28,7 +28,6 @@ void unloadPadsEx(int keepIopRpc);
 int getKey(int num);
 
 int getKeyOn(int num);
-int getKeyOff(int num);
 int getKeyPressed(int num);
 
 /** Sets the repetition delay for the specified button
@@ -36,8 +35,6 @@ int getKeyPressed(int num);
  * @param btndelay the delay in miliseconds per repeat (clamped by framerate!) */
 void setButtonDelay(int button, int btndelay);
 
-/** Gets the repetition delay for the specified button */
-int getButtonDelay(int button);
 
 
 /** Store's the button delay into specified integer array (has to have 16 items) */

@@ -1550,14 +1550,6 @@ void thmTriggerCoverflowAnim(int dir)
     cfAnimFrameCount = 0;
 }
 
-// Poll-side read of the slide state. The Debug-Colors HUD (gui.c) steps aside while a slide is
-// in flight: binding the font atlas every frame can evict cover textures from the VRAM arena
-// mid-animation (the historic #120 HUD note).
-int thmCoverflowIsAnimating(void)
-{
-    return cfIsAnimating;
-}
-
 static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     if (!item)

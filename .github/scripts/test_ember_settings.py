@@ -443,7 +443,7 @@ int main(void)
 
 rewrite_functions = ''.join(function_text(cue_c, 'src/cuesupport.cpp', sig) for sig in (
     'static int cueLineSetsKey(',
-    'int cueRewriteSettings(',
+    'static int cueRewriteSettings(',
     'static void cueWantSetting(',
 ))
 if rewrite_functions.count('{') >= 3:

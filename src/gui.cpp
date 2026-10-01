@@ -44,6 +44,21 @@
 // Last Played Auto Start
 #include <time.h>
 
+// forward declaration (was declared in the header before it became file-local)
+static int guiConfirmVideoMode(void);
+
+// forward declaration (was declared in the header before it became file-local)
+static void guiShowVcdListConfig(void);
+
+// forward declaration (was declared in the header before it became file-local)
+static void guiShowCoverflowConfig(void);
+
+// forward declaration (was declared in the header before it became file-local)
+static void guiShowArtworkConfig(void);
+
+// forward declaration (was declared in the header before it became file-local)
+static int guiShowMmceConfig(void);
+
 static int gScheduledOps;
 static int gCompletedOps;
 static int gTerminate;
@@ -300,7 +315,7 @@ static u32 gFrameLastUs = 0;
 static u32 gFrameWorstUs = 0;
 static u32 gFrameOverruns = 0; // frames longer than ~1.5 vsyncs
 
-u32 guiGetFrameWatchdog(u32 *worstUs, u32 *overruns)
+static u32 guiGetFrameWatchdog(u32 *worstUs, u32 *overruns)
 {
     if (worstUs)
         *worstUs = gFrameWorstUs;
@@ -518,7 +533,7 @@ static int guiRenderRANotices(int y, int yadd)
     return y;
 }
 
-void guiShowRANotices(void)
+static void guiShowRANotices(void)
 {
     guiRenderRANotices(10, 35);
 }
@@ -536,7 +551,7 @@ static int guiUpdater(int modified)
     return 0;
 }
 
-int guiDeviceTypeToIoMode(int deviceType)
+static int guiDeviceTypeToIoMode(int deviceType)
 {
     // Translates an index into deviceNames into an IO mode index used internally.
     if (deviceType == 0)
@@ -555,7 +570,7 @@ int guiDeviceTypeToIoMode(int deviceType)
         return APP_MODE; // safe fallback for unexpected indices: Apps is always present, FAV may be disabled
 }
 
-int guiIoModeToDeviceType(int ioMode)
+static int guiIoModeToDeviceType(int ioMode)
 {
     if (ioMode >= BDM_MODE && ioMode < ETH_MODE)
         return 0;
@@ -653,7 +668,7 @@ reshow_config:
 // mutually exclusive on the single SMAP NIC -- each of the three loaders refuses to start while either
 // of the others is resident (bdmsupport.c's UDPBD gate, ethsupport.c's SMB gate, udpfssupport.c's
 // UDPFS gate) -- so at most one of these can answer, and the order below is only for definiteness.
-int guiGetResidentNetProtocol(void)
+static int guiGetResidentNetProtocol(void)
 {
     if (ethGetModulesLoaded())
         return netGetResidentProtocol();
@@ -888,7 +903,7 @@ reshow_device:
 // MMCE page (settings-layout restructure, was MMCE Settings): SD2PSX / MemCard PRO2 basics plus
 // communication tuning and the library path. The legacy child definitions remain available, but
 // this entry composes their fields inline so the user does not need another navigation layer.
-int guiShowMmceConfig(void)
+static int guiShowMmceConfig(void)
 {
     const struct UIItem *parts[] = {diaMmceConfig, diaMmceCommConfig, diaMmcePathConfig};
     const int skipIDs[] = {MMCE_COMM_BUTTON, MMCE_PATH_BUTTON};
@@ -1652,21 +1667,8 @@ static void guiSaveBdmaSettings(struct UIItem *ui)
     }
 }
 
-// POPStarter -> BDMA Settings (BDMAssault exFAT-driver equip). MODE reflects what's ACTUALLY on the
-// card (marker read), so the page is honest even if POPSLoader or a prior session set it.
-void guiShowBdmaConfig(void)
-{
-    guiSetBdmaSettings(diaBdmaConfig);
-
-    int ret = diaExecuteDialog(diaBdmaConfig, -1, 1, &guiBdmaUpdater);
-    if (ret) {
-        guiSaveBdmaSettings(diaBdmaConfig);
-        applyConfig(-1, -1, 0);
-    }
-}
-
 // POPStarter -> Game List Settings (VCD list display options).
-void guiShowVcdListConfig(void)
+static void guiShowVcdListConfig(void)
 {
     diaSetInt(diaVcdListConfig, CFG_VCD_HIDE_GAMEID, gVcdHideGameId);
     diaSetInt(diaVcdListConfig, CFG_VCD_FIRST_DISC_ONLY, gVcdFirstDiscOnly);
@@ -2183,7 +2185,7 @@ static int artDelayToEnum(int delay)
 }
 
 // Interface -> Artwork Settings (cover art display + ART.TAR loading).
-void guiShowArtworkConfig(void)
+static void guiShowArtworkConfig(void)
 {
     diaSetInt(diaArtworkConfig, UICFG_COVERART, gEnableArt);
     diaSetInt(diaArtworkConfig, UICFG_ENABLE_DISCART, gEnableDiscArt);
@@ -2269,35 +2271,6 @@ void guiShowColorsConfig(void)
     }
 }
 
-// Display page live-updater: the geometry/aspect rows apply live so the user sees the change as
-// they adjust it (moved out of the old guiUIUpdater).
-static int guiDisplayUpdater(int modified)
-{
-    if (modified) {
-        int temp, x, y;
-        diaGetInt(diaDisplayConfig, UICFG_XOFF, &x);
-        diaGetInt(diaDisplayConfig, UICFG_YOFF, &y);
-        if ((x != gXOff) || (y != gYOff)) {
-            gXOff = x;
-            gYOff = y;
-            rmSetDisplayOffset(x, y);
-        }
-        diaGetInt(diaDisplayConfig, UICFG_OVERSCAN, &temp);
-        if (temp != gOverscan) {
-            gOverscan = temp;
-            rmSetOverscan(gOverscan);
-            guiUpdateScreenScale();
-        }
-        diaGetInt(diaDisplayConfig, UICFG_WIDESCREEN, &temp);
-        if (temp != gWideScreen) {
-            gWideScreen = temp;
-            rmSetAspectRatio((gWideScreen == 0) ? RM_ARATIO_4_3 : RM_ARATIO_16_9);
-            guiUpdateScreenScale();
-        }
-    }
-
-    return 0;
-}
 static int guiGameIdModeFromGlobals(void)
 {
     if (gApplyGameID)
@@ -2311,7 +2284,7 @@ static void guiApplyGameIdMode(int mode)
     gPopstarterRetroGemGameID = mode == 0 || mode == 1;
 }
 
-void guiShowCoverflowConfig(void)
+static void guiShowCoverflowConfig(void)
 {
     int value;
     int i;
@@ -2393,7 +2366,7 @@ static int guiAudioUpdater(int modified)
     return 0;
 }
 
-int guiShowAudioConfig(void)
+static int guiShowAudioConfig(void)
 {
     diaSetInt(diaAudioConfig, CFG_SFX, gEnableSFX);
     diaSetInt(diaAudioConfig, CFG_BOOT_SND, gEnableBootSND);
@@ -2410,7 +2383,7 @@ int guiShowAudioConfig(void)
     return guiSettingsPageResult(result);
 }
 
-int guiShowControllerConfig(void)
+static int guiShowControllerConfig(void)
 {
     int value;
 
@@ -3549,11 +3522,6 @@ int guiShowKeyboard(char *value, int maxLength)
     }
 
     return result;
-}
-
-int guiGetOpCompleted(int opid)
-{
-    return gCompletedOps > opid;
 }
 
 int guiDeferUpdate(struct gui_update_t *op)
@@ -5087,7 +5055,7 @@ void guiWarning(const char *text, int count)
 #define VMODE_KEEP_HOLD_MS     2000 // how long Accept must be held to keep a new video mode
 #define VMODE_KEEP_BAR_FULL_MS 1750 // the hold bar reads full this far in -- a beat BEFORE the keep
 
-int guiConfirmVideoMode(void)
+static int guiConfirmVideoMode(void)
 {
     // Elapsed form. This auto-revert is the ONLY thing that rescues a user whose new video mode
     // does not sync -- there is nothing on screen to read and nothing to aim at. A deadline that

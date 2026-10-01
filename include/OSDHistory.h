@@ -95,9 +95,4 @@ struct HistoryEntry
     unsigned short int DateStamp;
 };
 
-// Functions
-int LoadHistoryFile(const char *path, struct HistoryEntry *HistoryEntries);
-int SaveHistoryFile(const char *path, const struct HistoryEntry *HistoryEntries);
-int AddOldHistoryFileRecord(const char *path, const struct HistoryEntry *OldHistoryEntry);
-int AddHistoryRecord(const char *name);
 int AddHistoryRecordUsingFullPath(const char *path);

@@ -47,12 +47,6 @@ int hddCheck(void)
 }
 
 //-------------------------------------------------------------------------
-u32 hddGetTotalSectors(void)
-{
-    return fileXioDevctl("hdd0:", HDIOC_TOTALSECTOR, NULL, 0, NULL, 0);
-}
-
-//-------------------------------------------------------------------------
 int hddIs48bit(void)
 {
     return fileXioDevctl("xhdd0:", ATA_DEVCTL_IS_48BIT, NULL, 0, NULL, 0);
