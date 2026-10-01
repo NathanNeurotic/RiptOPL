@@ -60,7 +60,7 @@ if waiter:
     if not cadence.search(waiter):
         failures.append("failed THM discovery must keep the general-refresh retry cadence alive")
 
-init = function_body(src, "void udpfsInit(item_list_t *itemList)")
+init = function_body(src, "void UdpfsSource::init(item_list_t *itemList)")
 if init:
     for needle in ("thmReinit(udpfsBase);", "udpfsThemesScanned = 0;"):
         if needle not in init:
@@ -219,7 +219,7 @@ entry_fn = function_body(themes_c, "int ThemeCatalog::readEntry(")
 if entry_fn and (entry_fn.count('strncasecmp(name, "thm_", 4) == 0') != 2 or 'strncmp(name, "thm_"' in entry_fn):
     failures.append("thmReadEntry must match the thm_ prefix in any case, in both checks")
 
-needs = function_body(src, "static int udpfsNeedsUpdate(item_list_t *itemList)")
+needs = function_body(src, "int UdpfsSource::needsUpdate(item_list_t *itemList)")
 if needs:
     call = needs.find("udpfsDiscoverThemes();")
     if call < 0:
@@ -232,7 +232,7 @@ if needs:
         if call >= 0 and pos >= 0 and call > pos:
             failures.append(f"theme discovery must run before the {label} early return")
 
-update = function_body(src, "static int udpfsUpdateGameList(item_list_t *itemList)")
+update = function_body(src, "int UdpfsSource::update(item_list_t *itemList)")
 if update:
     asked = update.find("answeredBefore = udpfsServerAnswers();")
     scan = update.find("cueFillGameList(")

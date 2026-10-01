@@ -1,3 +1,4 @@
+#include <new>
 #include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
@@ -15,6 +16,7 @@
 #include "include/system.h"
 #include "include/extern_irx.h"
 #include "include/cheatman.h"
+#include "include/gamesource.h"
 #include "include/ethsupport.h"  // ethGetModulesLoaded() for the UDPFS<->SMB NIC interlock
 #include "include/bdmsupport.h"  // bdmIsUDPBDLoaded() for the UDPFS<->UDPBD NIC interlock
 #include "include/mmcesupport.h" // mmceSendGameID() cross-device game-id (#261)
@@ -44,7 +46,6 @@ static int udpfsThemesScanned = 0;    // THM is registered once per active UDPFS
 static int udpfsPs1Scanned = 0;       // a PS1-view scan has reached the server this session; see udpfsNeedsUpdate
 
 // forward declaration
-extern item_list_t udpfsGameList;
 
 // Load the UDPFS ioman IRX chain ONCE per boot. Mirrors bdmsupport's udpfs_bd chain load
 // (bdmLoadBlockDeviceModules), but loads udpfs_ioman (the FILESYSTEM variant) instead of udpfs_bd (the
@@ -139,6 +140,48 @@ static int udpfsServerAnswers(void)
 
     return stat(udpfsPrefix, &st) == 0;
 }
+class UdpfsSource : public GameSource
+{
+public:
+    UdpfsSource()
+        : GameSource(UDPFS_MODE, 1, 0, MENU_MIN_INACTIVE_FRAMES, UDPFS_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+    {
+    }
+
+    void init(item_list_t *itemList) override;
+    int rowView(item_list_t *itemList, int id) override;
+    int sourceId(item_list_t *itemList, int id) override;
+    int needsUpdate(item_list_t *itemList) override;
+    int update(item_list_t *itemList) override;
+    int count(item_list_t *itemList) override;
+    void *game(item_list_t *itemList, int id) override;
+    char *name(item_list_t *itemList, int id) override;
+    int nameLength(item_list_t *itemList, int id) override;
+    char *startup(item_list_t *itemList, int id) override;
+    void deleteGame(item_list_t *itemList, int id) override;
+    void rename(item_list_t *itemList, int id, char *newName) override;
+    void launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet) override;
+    void launch(item_list_t *itemList, int id, config_set_t *configSet) override;
+    config_set_t *config(item_list_t *itemList, int id) override;
+    int image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm) override;
+    int textId(item_list_t *itemList) override;
+    int iconId(item_list_t *itemList) override;
+    void cleanUp(item_list_t *itemList, int exception) override;
+    void shutdown(item_list_t *itemList) override;
+    int checkVmc(item_list_t *itemList, char *name, int createSize) override;
+    char *prefix(item_list_t *itemList) override;
+};
+
+static UdpfsSource *udpfsInstance()
+{
+    static UdpfsSource *instance = NULL;
+    alignas(UdpfsSource) static unsigned char storage[sizeof(UdpfsSource)];
+
+    if (instance == NULL)
+        instance = new (storage) UdpfsSource();
+    return instance;
+}
+
 
 // Without Automatic Refresh (off by default) this page is scanned when it first comes up and on SELECT,
 // nothing else. udpfs_ioman connects in the background, so a first scan that ran before the server
@@ -153,10 +196,10 @@ static void udpfsSetWaitingForServer(int waiting)
     // The server root/game folders can become usable slightly before udpfs:/THM does; without this,
     // a failed first THM attempt drops back to the normal cadence and, with Automatic Refresh off,
     // is never retried for the rest of the session.
-    udpfsGameList.updateDelay = (waiting || !udpfsThemesScanned) ? MENU_UPD_DELAY_GENREFRESH : UDPFS_MODE_UPDATE_DELAY;
+    (*udpfsInstance()).updateDelay = (waiting || !udpfsThemesScanned) ? MENU_UPD_DELAY_GENREFRESH : UDPFS_MODE_UPDATE_DELAY;
 }
 
-static void udpfsInit(item_list_t *itemList)
+void UdpfsSource::init(item_list_t *itemList)
 {
     LOG("UDPFSSUPPORT Init\n");
 
@@ -178,23 +221,23 @@ static void udpfsInit(item_list_t *itemList)
     udpfsGames = NULL;
     udpfsPs1GameCount = 0;
     udpfsPs1Games = NULL;
-    udpfsGameList.delay = gArtDelay;
+    (*udpfsInstance()).delay = gArtDelay;
     udpfsSetWaitingForServer(0);
     ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&udpfsLoadModules));
-    udpfsGameList.enabled = 1;
+    (*udpfsInstance()).enabled = 1;
 }
 
 item_list_t *udpfsGetObject(int initOnly)
 {
-    if (initOnly && !udpfsGameList.enabled)
+    if (initOnly && !(*udpfsInstance()).enabled)
         return NULL;
-    return &udpfsGameList;
+    return &(*udpfsInstance());
 }
 
 // Keep the PS2 and Ember lists physically separate. Besides making forced-view/Favorites proxies
 // unambiguous, this prevents a transient first Ember scan failure from exposing stale PS2 rows on
 // the PS1 page. A network PS1 page is therefore Ember-only even in its failure state.
-static int udpfsGetItemView(item_list_t *itemList, int id)
+int UdpfsSource::rowView(item_list_t *itemList, int id)
 {
     int view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
@@ -202,7 +245,7 @@ static int udpfsGetItemView(item_list_t *itemList, int id)
     return view;
 }
 
-static int udpfsGetSourceId(item_list_t *itemList, int id)
+int UdpfsSource::sourceId(item_list_t *itemList, int id)
 {
     return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= udpfsGameCount ? id - udpfsGameCount : id;
 }
@@ -221,8 +264,8 @@ static int udpfsActiveGameCount(const item_list_t *itemList)
 static base_game_info_t udpfsEmptyGame = {0};
 static base_game_info_t *udpfsActiveGame(item_list_t *itemList, int id)
 {
-    int ps1 = udpfsGetItemView(itemList, id) == LIB_VIEW_PS1;
-    id = udpfsGetSourceId(itemList, id);
+    int ps1 = udpfsInstance()->rowView(itemList, id) == LIB_VIEW_PS1;
+    id = udpfsInstance()->sourceId(itemList, id);
     base_game_info_t *games = ps1 ? udpfsPs1Games : udpfsGames;
     int count = ps1 ? udpfsPs1GameCount : udpfsGameCount;
 
@@ -281,7 +324,7 @@ static void udpfsDiscoverThemes(void)
     udpfsSetWaitingForServer(udpfsWaitingForServer);
 }
 
-static int udpfsNeedsUpdate(item_list_t *itemList)
+int UdpfsSource::needsUpdate(item_list_t *itemList)
 {
     int result = 0;
 
@@ -340,7 +383,7 @@ static int udpfsNeedsUpdate(item_list_t *itemList)
 
 static int udpfsFoldersCreated = 0;
 
-static int udpfsUpdateGameList(item_list_t *itemList)
+int UdpfsSource::update(item_list_t *itemList)
 {
     int view = host::library().listViewActive(itemList);
     int reached = 0;
@@ -388,22 +431,22 @@ static int udpfsUpdateGameList(item_list_t *itemList)
     return udpfsActiveGameCount(itemList);
 }
 
-static int udpfsGetGameCount(item_list_t *itemList)
+int UdpfsSource::count(item_list_t *itemList)
 {
     return udpfsActiveGameCount(itemList);
 }
 
-static void *udpfsGetGame(item_list_t *itemList, int id)
+void *UdpfsSource::game(item_list_t *itemList, int id)
 {
     return (void *)udpfsActiveGame(itemList, id);
 }
 
-static char *udpfsGetGameName(item_list_t *itemList, int id)
+char *UdpfsSource::name(item_list_t *itemList, int id)
 {
     return udpfsActiveGame(itemList, id)->name;
 }
 
-static int udpfsGetGameNameLength(item_list_t *itemList, int id)
+int UdpfsSource::nameLength(item_list_t *itemList, int id)
 {
     if (udpfsActiveGame(itemList, id)->format != GAME_FORMAT_USBLD)
         return ISO_GAME_NAME_MAX + 1;
@@ -411,31 +454,31 @@ static int udpfsGetGameNameLength(item_list_t *itemList, int id)
         return UL_GAME_NAME_MAX + 1;
 }
 
-static char *udpfsGetGameStartup(item_list_t *itemList, int id)
+char *UdpfsSource::startup(item_list_t *itemList, int id)
 {
     base_game_info_t *game = udpfsActiveGame(itemList, id);
 
     // VCD view keys per-game data (CFG/art) off the VCD filename, not a disc ID (see sbPopulateConfig).
-    if (udpfsGetItemView(itemList, id) == LIB_VIEW_PS1)
+    if (rowView(itemList, id) == LIB_VIEW_PS1)
         return game->name;
     return game->startup;
 }
 
-static void udpfsDeleteGame(item_list_t *itemList, int id)
+void UdpfsSource::deleteGame(item_list_t *itemList, int id)
 {
-    if (udpfsGetItemView(itemList, id) == LIB_VIEW_PS1)
+    if (rowView(itemList, id) == LIB_VIEW_PS1)
         return; // PS1 rows are Ember folders, not CD/DVD images for sbDelete
     if (udpfsActiveGame(itemList, id) == &udpfsEmptyGame)
         return;
     sbSetBrowseSub(folderGetSub(itemList->mode)); // delete inside the current subfolder, not the root
-    id = udpfsGetSourceId(itemList, id);
+    id = sourceId(itemList, id);
     sbDelete(&udpfsGames, udpfsPrefix, "/", udpfsGameCount, id);
     udpfsULSizePrev = -2;
 }
 
-static void udpfsRenameGame(item_list_t *itemList, int id, char *newName)
+void UdpfsSource::rename(item_list_t *itemList, int id, char *newName)
 {
-    if (udpfsGetItemView(itemList, id) == LIB_VIEW_PS1) {
+    if (rowView(itemList, id) == LIB_VIEW_PS1) {
         base_game_info_t *game = udpfsActiveGame(itemList, id);
         if (game != &udpfsEmptyGame && cueIsCueEntry(game) && cueRenameGame(udpfsPrefix, game->name, newName) == 0)
             host::library().markDirty(itemList->mode); // the already-queued menu update must re-scan EMBER/games
@@ -443,7 +486,7 @@ static void udpfsRenameGame(item_list_t *itemList, int id, char *newName)
     }
     if (udpfsActiveGame(itemList, id) == &udpfsEmptyGame)
         return;
-    id = udpfsGetSourceId(itemList, id);
+    id = sourceId(itemList, id);
     sbSetBrowseSub(folderGetSub(itemList->mode)); // rename inside the current subfolder, not the root
     sbRename(&udpfsGames, udpfsPrefix, "/", udpfsGameCount, id, newName);
     udpfsULSizePrev = -2;
@@ -461,7 +504,7 @@ static void udpfsLaunchVcd(item_list_t *itemList, const char *vcdName, config_se
 
 // Ember over UDPFS. Ember performs no IOP reset, so it inherits the live udpfs: filesystem and can
 // read both its own ELF and EMBER/games/<name>/ from the connection already mounted by RiptOPL.
-static void udpfsLaunchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
+void UdpfsSource::launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
 {
     char emberElf[256], biosPath[288];
     char launchName[CUE_NAME_MAX];
@@ -498,7 +541,7 @@ static void udpfsLaunchCue(item_list_t *itemList, const char *cueName, config_se
     sysLaunchEmber(emberElf, launchName);
 }
 
-static void udpfsLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
+void UdpfsSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {
     int compatmask = 0, index;
     int EnablePS2Logo = 0;
@@ -517,9 +560,9 @@ static void udpfsLaunchGame(item_list_t *itemList, int id, config_set_t *configS
 
     // PS1 view: UDPFS publishes Ember rows only. Keep the POPSTARTER guard as a defensive fallback
     // for stale or corrupt row state.
-    if (game != NULL && (udpfsGetItemView(itemList, id) == LIB_VIEW_PS1)) {
+    if (game != NULL && (rowView(itemList, id) == LIB_VIEW_PS1)) {
         if (cueIsCueEntry(game))
-            udpfsLaunchCue(itemList, game->name, configSet);
+            launchCue(itemList, game->name, configSet);
         else
             udpfsLaunchVcd(itemList, game->name, configSet);
         return;
@@ -629,14 +672,14 @@ static void udpfsLaunchGame(item_list_t *itemList, int id, config_set_t *configS
     sysLaunchNeutrino("udpfs", partname, gameStartup, compatmask, EnablePS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0 /* udpfs is fileid, no fs layer */, -1, &neutrinoVmc);
 }
 
-static config_set_t *udpfsGetConfig(item_list_t *itemList, int id)
+config_set_t *UdpfsSource::config(item_list_t *itemList, int id)
 {
     base_game_info_t *game = udpfsActiveGame(itemList, id);
 
     return game == &udpfsEmptyGame ? NULL : sbPopulateConfig(game, udpfsPrefix, "/");
 }
 
-static int udpfsGetImage(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
+int UdpfsSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
     char path[256];
 
@@ -652,20 +695,20 @@ static int udpfsGetImage(item_list_t *itemList, char *folder, int isRelative, ch
     return r;
 }
 
-static int udpfsGetTextId(item_list_t *itemList)
+int UdpfsSource::textId(item_list_t *itemList)
 {
     return _STR_UDPFS_GAMES;
 }
 
-static int udpfsGetIconId(item_list_t *itemList)
+int UdpfsSource::iconId(item_list_t *itemList)
 {
     return UDPFS_ICON;
 }
 
 // This may be called, even if udpfsInit() was not.
-static void udpfsCleanUp(item_list_t *itemList, int exception)
+void UdpfsSource::cleanUp(item_list_t *itemList, int exception)
 {
-    if (udpfsGameList.enabled) {
+    if ((*udpfsInstance()).enabled) {
         LOG("UDPFSSUPPORT CleanUp\n");
         free(udpfsGames);
         udpfsGames = NULL;
@@ -680,9 +723,9 @@ static void udpfsCleanUp(item_list_t *itemList, int exception)
 }
 
 // This may be called, even if udpfsInit() was not.
-static void udpfsShutdown(item_list_t *itemList)
+void UdpfsSource::shutdown(item_list_t *itemList)
 {
-    if (udpfsGameList.enabled) {
+    if ((*udpfsInstance()).enabled) {
         LOG("UDPFSSUPPORT Shutdown\n");
         free(udpfsGames);
         udpfsGames = NULL;
@@ -695,19 +738,13 @@ static void udpfsShutdown(item_list_t *itemList)
     // and is left to the shared dev9 refcount / final power-off.
 }
 
-static int udpfsCheckVMC(item_list_t *itemList, char *name, int createSize)
+int UdpfsSource::checkVmc(item_list_t *itemList, char *name, int createSize)
 {
     return sysCheckVMC(udpfsPrefix, "/", name, createSize, NULL);
 }
 
-static char *udpfsGetPrefix(item_list_t *itemList)
+char *UdpfsSource::prefix(item_list_t *itemList)
 {
     return udpfsPrefix;
 }
 
-item_list_t udpfsGameList = {
-    UDPFS_MODE, 1, 0, 0, MENU_MIN_INACTIVE_FRAMES, UDPFS_MODE_UPDATE_DELAY, NULL, NULL, &udpfsGetTextId, &udpfsGetPrefix, &udpfsInit, &udpfsNeedsUpdate,
-    &udpfsUpdateGameList, &udpfsGetGameCount, &udpfsGetGame, &udpfsGetGameName, &udpfsGetGameNameLength, &udpfsGetGameStartup, &udpfsDeleteGame, &udpfsRenameGame,
-    &udpfsLaunchGame, &udpfsGetConfig, &udpfsGetImage, &udpfsCleanUp, &udpfsShutdown, &udpfsCheckVMC, &udpfsGetIconId,
-    /* itemLaunchVcd */ NULL, /* viewOverride */ 0, /* itemGetArtArchivePath */ NULL, &udpfsLaunchCue,
-    &udpfsGetItemView, &udpfsGetSourceId};
