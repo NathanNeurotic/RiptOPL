@@ -32,7 +32,7 @@ def read(rel):
 
 
 def function_text(source, where, signature):
-    match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
+    match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*(?:const\s*)?\{', source, re.M)
     if match is None:
         failures.append('%s: %s...) not found' % (where, signature))
         return ''
@@ -45,17 +45,17 @@ bdm = read('src/bdmsupport.cpp')
 opl = read('src/opl.cpp')
 
 io_functions = ''.join(function_text(ioman, 'src/ioman.cpp', sig) for sig in (
-    'static io_request_handler_t ioGetHandler(',
-    'static int ioAppendLocked(',
-    'int ioPutRequest(',
-    'int ioPutRequestUnlessWaiting(',
+    'io_request_handler_t IoQueue::findHandler(',
+    'int IoQueue::appendLocked(',
+    'int IoQueue::put(',
+    'int IoQueue::putUnlessWaiting(',
 ))
 # The scan and the append must be ONE gEndSemaId hold, or the GUI thread and the worker asking at
 # once can both miss each other and queue two (CodeRabbit on #764).
-unless = function_text(ioman, 'src/ioman.cpp', 'int ioPutRequestUnlessWaiting(')
-if unless.count('WaitSema(gEndSemaId)') != 1 or 'ioAppendLocked(type, data)' not in unless or 'ioPutRequest(' in unless:
-    failures.append('ioPutRequestUnlessWaiting: scan and append must share one gEndSemaId hold (ioAppendLocked), '
-                    'not release it and call ioPutRequest')
+unless = function_text(ioman, 'src/ioman.cpp', 'int IoQueue::putUnlessWaiting(')
+if unless.count('WaitSema(endSema_)') != 1 or 'appendLocked(type, data)' not in unless or re.search(r'(?<![A-Za-z])put\(', unless):
+    failures.append('IoQueue::putUnlessWaiting: scan and append must share one endSema_ hold (appendLocked), '
+                    'not release it and call put')
 should_queue = function_text(bdm, 'src/bdmsupport.cpp', 'static int bdmShouldQueueModuleLoad(')
 deferred = function_text(opl, 'src/opl.cpp', 'void menuDeferredUpdate(')
 module_pass = function_text(bdm, 'src/bdmsupport.cpp', 'static void bdmLoadBlockDeviceModules(')
@@ -74,9 +74,13 @@ if 'usbSecondProbeDone' not in module_pass or 'bdmProbeMassSlots("after-usb-sett
     failures.append('bdmLoadBlockDeviceModules: the USB double tap (settle + bdmProbeMassSlots + refresh) is gone')
 if 'modsNow != modsWere && !wasFirstPass' not in module_pass:
     failures.append('bdmLoadBlockDeviceModules: the late-load refresh (enabling a transport from Game Sources) is gone')
-worker = function_text(ioman, 'src/ioman.cpp', 'static void ioWorkerThread(')
-if not re.search(r'gReqRunning = req;\s*\n\s*ioProcessRequest\(req\);', worker) or 'gReqRunning = NULL;' not in worker:
-    failures.append('ioWorkerThread: must mark the request it runs (gReqRunning) around ioProcessRequest')
+worker = function_text(ioman, 'src/ioman.cpp', 'void IoQueue::workerLoop(')
+if not re.search(r'current_ = req;\s*\n\s*process\(req\);', worker) or 'current_ = NULL;' not in worker:
+    failures.append('IoQueue::workerLoop: must mark the request it runs (current_) around process')
+
+# The real class declaration, minus its includes; private members are opened up so the harness can seed state.
+class_text = '#define private public\n' + ''.join(
+    line for line in read('include/ioqueue.h').splitlines(True) if not line.startswith('#include')) + '#undef private\n'
 
 IO_HARNESS = r'''
 #include <stdio.h>
@@ -90,27 +94,24 @@ IO_HARNESS = r'''
 #define IO_CUSTOM_SIMPLEACTION 1
 #define IO_MENU_UPDATE_DEFFERED 2
 #define IO_REQ_TYPE_COUNT 5
-#define MAX_IO_HANDLERS 64
 
 typedef void (*io_request_handler_t)(void *request);
-struct io_request_t { int type; void *data; struct io_request_t *next; };
-struct io_handler_t { int type; io_request_handler_t handler; };
+typedef int s32;
+#define NULL_PLACEHOLDER 0
 
-static struct io_request_t *gReqList, *gReqEnd;
-static struct io_request_t *volatile gReqRunning;
-static struct io_handler_t gRequestHandlers[MAX_IO_HANDLERS];
-static int gHandlerCount, isIOBlocked, gEndSemaId, gIOThreadId;
-static int gIoPending[IO_REQ_TYPE_COUNT];
-static unsigned int gIoTotal[IO_REQ_TYPE_COUNT];
 static int semaHeld;
 static void WaitSema(int s) { (void)s; semaHeld++; }
 static void SignalSema(int s) { (void)s; semaHeld--; }
+@CLASS@
+static IoQueue q;
 /* Every queue node must be allocated and linked inside the gEndSemaId hold, or a scan on the other
    thread can walk a half-linked list (CodeRabbit on #764). */
 static int unlockedAllocs;
 static void *lockedMalloc(size_t n) { unlockedAllocs += semaHeld <= 0; return malloc(n); }
 #define malloc(n) lockedMalloc(n)
 static void WakeupThread(int t) { (void)t; }
+static void SleepThread(void) {}
+static int CreateSema(void *) { return 1; }
 static void handler(void *d) { (void)d; }
 
 @IO@
@@ -120,7 +121,7 @@ static short slotMode[8];
 static int count(void *data)
 {
     int n = 0;
-    for (struct io_request_t *r = gReqList; r; r = r->next)
+    for (IoQueue::Request *r = q.head_; r; r = r->next)
         n += r->data == data;
     return n;
 }
@@ -128,18 +129,18 @@ static int count(void *data)
 int main(void)
 {
     int failed = 0;
-    gRequestHandlers[0].type = IO_CUSTOM_SIMPLEACTION; gRequestHandlers[0].handler = handler;
-    gRequestHandlers[1].type = IO_MENU_UPDATE_DEFFERED; gRequestHandlers[1].handler = handler;
-    gHandlerCount = 2;
+    q.handlers_[0].type = IO_CUSTOM_SIMPLEACTION; q.handlers_[0].handler = handler;
+    q.handlers_[1].type = IO_MENU_UPDATE_DEFFERED; q.handlers_[1].handler = handler;
+    q.handlerCount_ = 2;
 
     /* Boot: bdmEnumerateDevices -> initSupport per slot -> bdmInit (module pass) + that slot's list
        update, then bdmEnumerateDevices' own pass. The worker has not run yet. */
     for (int i = 0; i < 8; i++) {
-        ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
-        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &slotMode[i]);
+        q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
+        q.put(IO_MENU_UPDATE_DEFFERED, &slotMode[i]);
     }
-    ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
-    if (count((void *)&pass) != 1 || gReqList->data != (void *)&pass) {
+    q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
+    if (count((void *)&pass) != 1 || q.head_->data != (void *)&pass) {
         printf("FAIL boot: %d module passes queued (want 1, still first in the queue)\n", count((void *)&pass));
         failed = 1;
     }
@@ -150,25 +151,25 @@ int main(void)
 
     /* The worker starts that pass: it may already have read a setting the caller now changes, so a
        new request must queue behind it. */
-    gReqRunning = gReqList;
-    ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
+    q.current_ = q.head_;
+    q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
     if (count((void *)&pass) != 2) {
         printf("FAIL a request while the pass RUNS must queue a new one (have %d, want 2)\n", count((void *)&pass));
         failed = 1;
     }
-    ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
+    q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
     if (count((void *)&pass) != 2) {
         printf("FAIL a request while one is WAITING must not queue another (have %d, want 2)\n", count((void *)&pass));
         failed = 1;
     }
     /* Same data, different type is a different request. */
-    ioPutRequestUnlessWaiting(IO_MENU_UPDATE_DEFFERED, (void *)&pass);
+    q.putUnlessWaiting(IO_MENU_UPDATE_DEFFERED, (void *)&pass);
     if (count((void *)&pass) != 3) {
         printf("FAIL type is part of the identity (have %d, want 3)\n", count((void *)&pass));
         failed = 1;
     }
-    isIOBlocked = 1;
-    if (ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&handler) != IO_ERR_IO_BLOCKED) {
+    q.blocked_ = 1;
+    if (q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&handler) != IO_ERR_IO_BLOCKED) {
         printf("FAIL a blocked queue must refuse, like ioPutRequest\n");
         failed = 1;
     }
@@ -295,7 +296,7 @@ def compile_and_run(name, program):
 
 
 if not failures:
-    compile_and_run('io_queue', IO_HARNESS.replace('@IO@', io_functions))
+    compile_and_run('io_queue', IO_HARNESS.replace('@IO@', io_functions).replace('@CLASS@', class_text))
     compile_and_run('should_queue', SHOULD_HARNESS.replace('@SHOULD@', should_queue))
     compile_and_run('deferred', DEFERRED_HARNESS.replace('@DEFERRED@', deferred))
 

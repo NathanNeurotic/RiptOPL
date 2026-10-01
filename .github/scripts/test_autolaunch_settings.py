@@ -294,12 +294,12 @@ def check_pins():
           'InitCheatsConfig: gCheatFromGlobal is reset each launch and set only by the all-games default')
 
     ioman = text('src/ioman.cpp')
-    io_init = function_text(ioman, 'void ioInit(')
+    io_init = function_text(ioman, 'void IoQueue::start(')
     # The wait must be uncapped (loop condition is ONLY the worker flag) and must finish before anything
-    # the old worker shares -- gIOTerminate, the queue, the static stack -- is reset or reused.
-    wait = re.search(r'for \([^;]*;\s*\*\(volatile int \*\)&isIORunning\s*;', io_init or '')
-    check(io_init is not None and wait is not None and 'isIOBlocked = 0;' in io_init and
-          wait.start() < io_init.find('gIOTerminate = 0;') < io_init.find('CreateThread('),
+    # the old worker shares -- terminate_, the queue, the static stack -- is reset or reused.
+    wait = re.search(r'for \([^;]*;\s*\*\(volatile int \*\)&workerRunning_\s*;', io_init or '')
+    check(io_init is not None and wait is not None and 'blocked_ = 0;' in io_init and
+          wait.start() < io_init.find('terminate_ = 0;') < io_init.find('CreateThread('),
           'ioInit: after a refused autolaunch, wait (uncapped) for the old worker before reusing its stack')
 
     config = text('src/config.cpp')

@@ -313,7 +313,13 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
 - Source-scraping python tests read the union of gui.cpp + guisettings.cpp + guidialogs.cpp.
 - Still to do inside gui: notifications/RA notices, the screen-handler table, the frame watchdog as small classes.
 
-## 16. Next
+## 16. IoQueue
+`src/ioman.cpp` + `include/ioqueue.h`: the IO worker is `class IoQueue` (one file-static instance). Queue, handler table, semaphores,
+blocked/terminate flags and the per-type HUD counters are members; the `ioPutRequest`/`ioBlockOps`/`ioGetPending`/... functions in
+`ioman.h` stay as C-callable forwarders (ioman.h is shared with C). `ioPrintf` stays free and uses the instance's print lock.
+`test_io_queue_trims.py` now compiles the real class declaration (private opened up) plus the extracted member functions.
+
+## 17a. Next
 2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
 3. Phase 5 `GameSource` hierarchy (needs go-ahead; hardware testing matters most there).
 4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining

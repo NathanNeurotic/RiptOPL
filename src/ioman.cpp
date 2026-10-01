@@ -1,7 +1,9 @@
 #include "include/opl.h"
 #include "include/ioman.h"
+#include "include/ioqueue.h"
 #include "include/util.h" // delay() -- bounded drain in ioBlockOpsTimed
 #include <kernel.h>
+#include <stdarg.h>
 #include <delaythread.h> // DelayThread -- ioInit waits for a previous worker to leave
 #include <string.h>
 #include <malloc.h>
@@ -35,119 +37,62 @@
   that parks forever -- the exact failure classes this fork keeps having to fix. IO_ERR_TOO_MANY_REQUESTS
   stays: ioPutRequest still returns it when the node allocation itself fails.
 */
-#define MAX_IO_HANDLERS 64
-
 extern void *_gp;
-
-static int gIOTerminate = 0;
 
 constexpr int THREAD_STACK_SIZE = (96 * 1024);
 
 static u8 thread_stack[THREAD_STACK_SIZE] ALIGNED(16);
 
-struct io_request_t
-{
-    int type;
-    void *data;
-    struct io_request_t *next;
-};
-
-struct io_handler_t
-{
-    int type;
-    io_request_handler_t handler;
-};
-
-/// Circular request queue
-static struct io_request_t *gReqList;
-static struct io_request_t *gReqEnd;
-// The request the worker is executing (still linked at the head until it returns), or NULL. Lets
-// ioPutRequestUnlessWaiting tell a request that is WAITING from one that has already started.
-static struct io_request_t *volatile gReqRunning;
-
-static struct io_handler_t gRequestHandlers[MAX_IO_HANDLERS];
-
-static int gHandlerCount;
-
-// id of the processing thread
-static s32 gIOThreadId;
-
-// lock for tip processing
-static s32 gProcSemaId;
-// lock for queue end
-static s32 gEndSemaId;
-// ioPrintf sema id
-static s32 gIOPrintfSemaId;
-
 static ee_thread_t gIOThread;
-static ee_sema_t gQueueSema;
 
-static int isIOBlocked = 0;
-static int isIORunning = 0;
+static IoQueue gQueue;
 
-// DIAGNOSTIC ONLY. The busy overlay is driven by ioHasPendingRequests(), i.e. purely by this queue
-// being non-empty -- so a spinner that never fades means something in here genuinely is not
-// completing. Reading the source cannot say WHICH of the four request types that is, and cannot
-// tell apart the two very different causes: ONE slow request that never finishes, versus something
-// re-queueing itself every frame so the queue is never observed empty. So count both. `pending`
-// answers the first; `total` still climbing while the spinner sits still answers the second.
-//
-// Plain ints on purpose: written under gEndSemaId, which both the enqueue and the worker's unlink
-// already hold, and read unsynchronised from the GUI thread for display -- exactly like the gArt*
-// counters the HUD already shows. The GUI thread must NEVER take an ioman semaphore.
-static int gIoPending[IO_REQ_TYPE_COUNT];
-static unsigned int gIoTotal[IO_REQ_TYPE_COUNT];
-
-int ioGetPending(int type)
+int IoQueue::pending(int type) const
 {
-    return (type > 0 && type < IO_REQ_TYPE_COUNT) ? gIoPending[type] : 0;
+    return (type > 0 && type < IO_REQ_TYPE_COUNT) ? pendingByType_[type] : 0;
 }
 
-unsigned int ioGetTotal(int type)
+unsigned int IoQueue::total(int type) const
 {
-    return (type > 0 && type < IO_REQ_TYPE_COUNT) ? gIoTotal[type] : 0;
+    return (type > 0 && type < IO_REQ_TYPE_COUNT) ? totalByType_[type] : 0;
 }
 
-int ioRegisterHandler(int type, io_request_handler_t handler)
+int IoQueue::registerHandler(int type, io_request_handler_t handler)
 {
-    WaitSema(gProcSemaId);
+    WaitSema(procSema_);
 
-    // Every early return below must release gProcSemaId, otherwise a registration
+    // Every early return below must release procSema_, otherwise a registration
     // failure leaves the semaphore held and deadlocks the entire I/O subsystem.
     if (handler == NULL) {
-        SignalSema(gProcSemaId);
+        SignalSema(procSema_);
         return IO_ERR_INVALID_HANDLER;
     }
 
-    if (gHandlerCount >= MAX_IO_HANDLERS) {
-        SignalSema(gProcSemaId);
+    if (handlerCount_ >= kMaxHandlers) {
+        SignalSema(procSema_);
         return IO_ERR_TOO_MANY_HANDLERS;
     }
 
-    int i;
-
-    for (i = 0; i < gHandlerCount; ++i) {
-        if (gRequestHandlers[i].type == type) {
-            SignalSema(gProcSemaId);
+    for (int i = 0; i < handlerCount_; ++i) {
+        if (handlers_[i].type == type) {
+            SignalSema(procSema_);
             return IO_ERR_DUPLICIT_HANDLER;
         }
     }
 
-    gRequestHandlers[gHandlerCount].type = type;
-    gRequestHandlers[gHandlerCount].handler = handler;
-    gHandlerCount++;
+    handlers_[handlerCount_].type = type;
+    handlers_[handlerCount_].handler = handler;
+    handlerCount_++;
 
-    SignalSema(gProcSemaId);
+    SignalSema(procSema_);
 
     return IO_OK;
 }
 
-static io_request_handler_t ioGetHandler(int type)
+io_request_handler_t IoQueue::findHandler(int type) const
 {
-    int i;
-
-    for (i = 0; i < gHandlerCount; ++i) {
-        struct io_handler_t *h = &gRequestHandlers[i];
+    for (int i = 0; i < handlerCount_; ++i) {
+        const Handler *h = &handlers_[i];
 
         if (h->type == type)
             return h->handler;
@@ -156,12 +101,12 @@ static io_request_handler_t ioGetHandler(int type)
     return NULL;
 }
 
-static void ioProcessRequest(struct io_request_t *req)
+void IoQueue::process(Request *req)
 {
     if (!req)
         return;
 
-    io_request_handler_t hlr = ioGetHandler(req->type);
+    io_request_handler_t hlr = findHandler(req->type);
 
     // invalidate the request
     void *data = req->data;
@@ -170,57 +115,63 @@ static void ioProcessRequest(struct io_request_t *req)
         hlr(data);
 }
 
-static void ioWorkerThread(void *arg)
+void IoQueue::workerEntry(void *arg)
 {
-    while (!gIOTerminate) {
+    (void)arg;
+    gQueue.workerLoop();
+}
+
+void IoQueue::workerLoop()
+{
+    while (!terminate_) {
         SleepThread();
 
         // if term requested exit immediately from the loop
-        if (gIOTerminate)
+        if (terminate_)
             break;
 
         // do we have a request in the queue?
-        WaitSema(gProcSemaId);
-        while (gReqList) {
+        WaitSema(procSema_);
+        while (head_) {
             // if term requested exit immediately from the loop
-            if (gIOTerminate)
+            if (terminate_)
                 break;
 
-            struct io_request_t *req = gReqList;
-            gReqRunning = req;
-            ioProcessRequest(req);
+            Request *req = head_;
+            current_ = req;
+            process(req);
 
             // lock the queue tip as well now
-            WaitSema(gEndSemaId);
-            gReqRunning = NULL;
+            WaitSema(endSema_);
+            current_ = NULL;
 
-            if (req->type > 0 && req->type < IO_REQ_TYPE_COUNT && gIoPending[req->type] > 0)
-                gIoPending[req->type]--;
+            if (req->type > 0 && req->type < IO_REQ_TYPE_COUNT && pendingByType_[req->type] > 0)
+                pendingByType_[req->type]--;
 
             // can't be sure if the request was
-            gReqList = req->next;
+            head_ = req->next;
             free(req);
 
-            if (!gReqList)
-                gReqEnd = NULL;
+            if (!head_)
+                tail_ = NULL;
 
-            SignalSema(gEndSemaId);
+            SignalSema(endSema_);
         }
-        SignalSema(gProcSemaId);
+        SignalSema(procSema_);
     }
 
     // delete the pending requests
-    while (gReqList) {
-        struct io_request_t *req = gReqList;
-        gReqList = gReqList->next;
+    while (head_) {
+        Request *req = head_;
+        head_ = head_->next;
         free(req);
     }
 
     // delete the semaphores
-    DeleteSema(gProcSemaId);
-    DeleteSema(gEndSemaId);
+    DeleteSema(procSema_);
+    DeleteSema(endSema_);
 
-    isIORunning = 0;
+    workerRunning_ = 0;
 
     ExitDeleteThread();
 }
@@ -233,46 +184,47 @@ static void ioSimpleActionHandler(void *data)
         action();
 }
 
-void ioInit(void)
+void IoQueue::start()
 {
-    // A second ioInit happens only when a refused autolaunch falls back to the menu. miniDeinit's drain
-    // is bounded, so when it asks the first worker to stop (ioEnd) that worker may still be inside the
+    // A second start happens only when a refused autolaunch falls back to the menu. miniDeinit's drain
+    // is bounded, so when it asks the first worker to stop (stop) that worker may still be inside the
     // one request it was running -- and it runs below this thread. Wait until it has actually left,
     // with NO cap: it lives on the static thread_stack reused below, and resetting the queue, the
-    // semaphores and gIOTerminate while it is alive would put two threads on one stack. A cap would
+    // semaphores and terminate_ while it is alive would put two threads on one stack. A cap would
     // not save the menu anyway: the worker only blocks in bounded waits or IOP RPCs, and an RPC that
     // never returns leaves that IOP service stuck for this thread's own calls too.
-    for (int waited = 0; *(volatile int *)&isIORunning; waited++) {
+    for (int waited = 0; *(volatile int *)&workerRunning_; waited++) {
         if (waited > 0 && waited % 100 == 0)
             LOG("IOMAN ioInit: previous worker still finishing its request (%d s)\n", waited / 100);
         DelayThread(10 * 1000);
     }
     // The new worker starts with an open queue, whatever the previous session left behind.
-    isIOBlocked = 0;
+    blocked_ = 0;
 
-    gIOTerminate = 0;
-    gHandlerCount = 0;
-    gReqList = NULL;
-    gReqEnd = NULL;
-    gReqRunning = NULL;
+    terminate_ = 0;
+    handlerCount_ = 0;
+    head_ = NULL;
+    tail_ = NULL;
+    current_ = NULL;
 
-    gIOThreadId = 0;
+    threadId_ = 0;
 
-    gQueueSema.init_count = 1;
-    gQueueSema.max_count = 1;
-    gQueueSema.option = 0;
+    ee_sema_t sema;
+    sema.init_count = 1;
+    sema.max_count = 1;
+    sema.option = 0;
 
-    gProcSemaId = CreateSema(&gQueueSema);
-    gEndSemaId = CreateSema(&gQueueSema);
-    gIOPrintfSemaId = CreateSema(&gQueueSema);
+    procSema_ = CreateSema(&sema);
+    endSema_ = CreateSema(&sema);
+    printSema_ = CreateSema(&sema);
 
     // default custom simple action handler
-    ioRegisterHandler(IO_CUSTOM_SIMPLEACTION, &ioSimpleActionHandler);
+    registerHandler(IO_CUSTOM_SIMPLEACTION, &ioSimpleActionHandler);
 
     gIOThread.attr = 0;
     gIOThread.stack_size = THREAD_STACK_SIZE;
     gIOThread.gp_reg = &_gp;
-    gIOThread.func = reinterpret_cast<void *>(&ioWorkerThread);
+    gIOThread.func = reinterpret_cast<void *>(&IoQueue::workerEntry);
     gIOThread.stack = thread_stack;
     // BELOW the GUI/pad thread (31), not above it.
     //
@@ -292,109 +244,109 @@ void ioInit(void)
     // be the one holding the user's input.
     gIOThread.initial_priority = 32;
 
-    isIORunning = 1;
-    gIOThreadId = CreateThread(&gIOThread);
-    StartThread(gIOThreadId, NULL);
+    workerRunning_ = 1;
+    threadId_ = CreateThread(&gIOThread);
+    StartThread(threadId_, NULL);
 }
 
-// Link a request at the queue tail. Caller holds gEndSemaId (and has checked isIOBlocked and the
+// Link a request at the queue tail. Caller holds endSema_ (and has checked blocked_ and the
 // handler); the caller also wakes the worker once the semaphore is released.
-static int ioAppendLocked(int type, void *data)
+int IoQueue::appendLocked(int type, void *data)
 {
     // We don't have to lock the tip of the queue...
     // If it exists, it won't be touched, if it does not exist, it is not being processed
     // Allocate FIRST and bail cleanly on OOM (fork parity): the old shape malloc'd straight into
-    // gReqList/gReqEnd->next and then dereferenced the result, so an allocation failure was a NULL
+    // head_/tail_->next and then dereferenced the result, so an allocation failure was a NULL
     // write plus a corrupted queue tail -- with the semaphore held.
-    struct io_request_t *req = (struct io_request_t *)malloc(sizeof(struct io_request_t));
+    Request *req = static_cast<Request *>(malloc(sizeof(Request)));
     if (!req)
         return IO_ERR_TOO_MANY_REQUESTS;
 
-    if (!gReqEnd)
-        gReqList = req;
+    if (!tail_)
+        head_ = req;
     else
-        gReqEnd->next = req;
-    gReqEnd = req;
+        tail_->next = req;
+    tail_ = req;
 
     req->next = NULL;
     req->type = type;
     req->data = data;
 
     if (type > 0 && type < IO_REQ_TYPE_COUNT) {
-        gIoPending[type]++;
-        gIoTotal[type]++;
+        pendingByType_[type]++;
+        totalByType_[type]++;
     }
     return IO_OK;
 }
 
-int ioPutRequest(int type, void *data)
+int IoQueue::put(int type, void *data)
 {
     int result;
 
-    if (isIOBlocked)
+    if (blocked_)
         return IO_ERR_IO_BLOCKED;
 
     // check the type before queueing
-    if (!ioGetHandler(type))
+    if (!findHandler(type))
         return IO_ERR_INVALID_HANDLER;
 
-    WaitSema(gEndSemaId);
-    result = ioAppendLocked(type, data);
-    SignalSema(gEndSemaId);
+    WaitSema(endSema_);
+    result = appendLocked(type, data);
+    SignalSema(endSema_);
 
     // Worker thread cannot wake itself up (WakeupThread will return an error), but it will find the new request before sleeping.
     if (result == IO_OK)
-        WakeupThread(gIOThreadId);
+        WakeupThread(threadId_);
     return result;
 }
 
-int ioPutRequestUnlessWaiting(int type, void *data)
+int IoQueue::putUnlessWaiting(int type, void *data)
 {
     int result = IO_OK, found = 0;
 
-    if (isIOBlocked)
+    if (blocked_)
         return IO_ERR_IO_BLOCKED;
-    if (!ioGetHandler(type))
+    if (!findHandler(type))
         return IO_ERR_INVALID_HANDLER;
 
-    // gEndSemaId only, as ioPutRequest takes it: it is held for a link or an unlink and never across
-    // a handler, so this is safe from the GUI thread. (gProcSemaId is held across the whole drain and
-    // must never be taken here -- see gIoPending.) The scan and the append are ONE hold, so the GUI
+    // endSema_ only, as the plain enqueue takes it: it is held for a link or an unlink and never across
+    // a handler, so this is safe from the GUI thread. (procSema_ is held across the whole drain and
+    // must never be taken here -- see pendingByType_.) The scan and the append are ONE hold, so the GUI
     // thread and the worker asking at once cannot both miss each other and queue two (CodeRabbit).
-    WaitSema(gEndSemaId);
-    for (struct io_request_t *r = gReqList; r != NULL && !found; r = r->next)
-        found = (r != gReqRunning && r->type == type && r->data == data); // not started: sees the change
+    WaitSema(endSema_);
+    for (Request *r = head_; r != NULL && !found; r = r->next)
+        found = (r != current_ && r->type == type && r->data == data); // not started: sees the change
     if (!found)
-        result = ioAppendLocked(type, data);
-    SignalSema(gEndSemaId);
+        result = appendLocked(type, data);
+    SignalSema(endSema_);
 
     if (!found && result == IO_OK)
-        WakeupThread(gIOThreadId);
+        WakeupThread(threadId_);
     return result;
 }
 
-int ioRemoveRequests(int type)
+int IoQueue::removeAll(int type)
 {
     // lock the deletion sema and the queue end sema as well
-    WaitSema(gProcSemaId);
-    WaitSema(gEndSemaId);
+    WaitSema(procSema_);
+    WaitSema(endSema_);
 
     int count = 0;
-    struct io_request_t *req = gReqList;
-    struct io_request_t *last = NULL;
+    Request *req = head_;
+    Request *last = NULL;
 
     while (req) {
         if (req->type == type) {
-            struct io_request_t *next = req->next;
+            Request *next = req->next;
 
             if (last)
                 last->next = next;
 
-            if (req == gReqList)
-                gReqList = next;
+            if (req == head_)
+                head_ = next;
 
-            if (req == gReqEnd)
-                gReqEnd = last;
+            if (req == tail_)
+                tail_ = last;
 
             count++;
             free(req);
@@ -406,76 +358,46 @@ int ioRemoveRequests(int type)
         }
     }
 
-    SignalSema(gEndSemaId);
-    SignalSema(gProcSemaId);
+    SignalSema(endSema_);
+    SignalSema(procSema_);
 
     return count;
 }
 
-void ioEnd(void)
+void IoQueue::stop()
 {
     // termination requested flag
-    gIOTerminate = 1;
+    terminate_ = 1;
 
     // wake up and wait for end
-    WakeupThread(gIOThreadId);
+    WakeupThread(threadId_);
 }
 
-int ioGetPendingRequestCount(void)
+int IoQueue::pendingCount()
 {
     int count = 0;
 
-    struct io_request_t *req = gReqList;
+    Request *req = head_;
 
-    WaitSema(gProcSemaId);
+    WaitSema(procSema_);
 
     while (req) {
         count++;
         req = req->next;
     }
 
-    SignalSema(gProcSemaId);
+    SignalSema(procSema_);
 
     return count;
 }
 
-int ioHasPendingRequests(void)
-{
-    return gReqList != NULL ? 1 : 0;
-}
-
-#ifdef __EESIO_DEBUG
-static char tbuf[2048];
-#endif
-
-int ioPrintf(const char *format, ...)
-{
-    if (isIORunning == 1)
-        WaitSema(gIOPrintfSemaId);
-
-    va_list args;
-    va_start(args, format);
-#ifdef __EESIO_DEBUG
-    int ret = vsnprintf((char *)tbuf, sizeof(tbuf), format, args);
-    sio_putsn(tbuf);
-#else
-    int ret = vprintf(format, args);
-#endif
-    va_end(args);
-
-    if (isIORunning == 1)
-        SignalSema(gIOPrintfSemaId);
-
-    return ret;
-}
-
-int ioBlockOpsTimed(int block, int timeoutTicks)
+int IoQueue::blockOps(int block, int timeoutTicks)
 {
     ee_thread_status_t status;
     int ThreadID;
 
-    if (block && !isIOBlocked) {
-        isIOBlocked = 1;
+    if (block && !blocked_) {
+        blocked_ = 1;
 
         ThreadID = GetThreadId();
         // EE ReferThreadStatus() returns the thread status (>= 0) or a negative error, NOT 0 on
@@ -489,7 +411,7 @@ int ioBlockOpsTimed(int block, int timeoutTicks)
         // (the historical behaviour); a non-negative value caps the wait. The NBD preflight
         // passes a bound so a request stuck on a removed/slow device fails the start instead
         // of freezing after audio and pads have already been dismantled.
-        while (ioHasPendingRequests()) {
+        while (hasPending()) {
             if (timeoutTicks == 0)
                 break;
             delay(1);
@@ -502,11 +424,93 @@ int ioBlockOpsTimed(int block, int timeoutTicks)
             ChangeThreadPriority(ThreadID, status.current_priority);
 
         // now all io should be blocked
-    } else if (!block && isIOBlocked) {
-        isIOBlocked = 0;
+    } else if (!block && blocked_) {
+        blocked_ = 0;
     }
 
     return IO_OK;
+}
+
+// ---- C-callable API (ioman.h) -------------------------------------------------------------------
+
+int ioGetPending(int type)
+{
+    return gQueue.pending(type);
+}
+
+unsigned int ioGetTotal(int type)
+{
+    return gQueue.total(type);
+}
+
+int ioRegisterHandler(int type, io_request_handler_t handler)
+{
+    return gQueue.registerHandler(type, handler);
+}
+
+void ioInit(void)
+{
+    gQueue.start();
+}
+
+int ioPutRequest(int type, void *data)
+{
+    return gQueue.put(type, data);
+}
+
+int ioPutRequestUnlessWaiting(int type, void *data)
+{
+    return gQueue.putUnlessWaiting(type, data);
+}
+
+int ioRemoveRequests(int type)
+{
+    return gQueue.removeAll(type);
+}
+
+void ioEnd(void)
+{
+    gQueue.stop();
+}
+
+int ioGetPendingRequestCount(void)
+{
+    return gQueue.pendingCount();
+}
+
+int ioHasPendingRequests(void)
+{
+    return gQueue.hasPending() ? 1 : 0;
+}
+
+#ifdef __EESIO_DEBUG
+static char tbuf[2048];
+#endif
+
+int ioPrintf(const char *format, ...)
+{
+    if (gQueue.running())
+        gQueue.lockPrint();
+
+    va_list args;
+    va_start(args, format);
+#ifdef __EESIO_DEBUG
+    int ret = vsnprintf((char *)tbuf, sizeof(tbuf), format, args);
+    sio_putsn(tbuf);
+#else
+    int ret = vprintf(format, args);
+#endif
+    va_end(args);
+
+    if (gQueue.running())
+        gQueue.unlockPrint();
+
+    return ret;
+}
+
+int ioBlockOpsTimed(int block, int timeoutTicks)
+{
+    return gQueue.blockOps(block, timeoutTicks);
 }
 
 int ioBlockOps(int block)
