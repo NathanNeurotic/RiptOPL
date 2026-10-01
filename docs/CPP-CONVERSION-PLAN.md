@@ -325,6 +325,22 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
 `texcache.cpp` keeps the cache entries, the worker thread and the load logic and talks to the queue through one `gArtQ` instance.
 `test_art_queue_order.py` compiles the real class declaration plus the extracted member functions (as C++).
 
+## 17b. Renderer, FontSystem, ArtWorker, ThemeCatalog
+- **`Renderer`** (`include/renderer.h`, `src/renderman.cpp`): video mode, display geometry, aspect ratio, overscan, reflection offset and
+  the draw primitives are members of one instance; the `rm*` functions in `renderman.h` are one-line forwarders (+368 B). `gsGlobal` and
+  `guiThreadID` stay global (read from other files).
+- **`FontSystem`** (`include/fontsystem.h`, `src/fntsys.cpp`): FreeType library, the 16 font slots, glyph caches, atlases, shared CLUT and the
+  font lock. The per-call scratch state that used to be file statics (`quad`, `codepoint`, `state`, kerning) is now a per-call `GlyphRun`
+  (the RTL path hands it to `renderSubRTL`). `fntRenderStringFit`, `fntTextWidth` and `fntFitString` stay free functions layered on the
+  public API, so `test_theme_text_room.py` is unchanged.
+- **`ArtWorker`** (`include/artworker.h`, `src/artworker.cpp`): the art thread, its lifecycle flags, the epochs that supersede queued
+  work, the focus tracker and the HUD counters. Data members are deliberately public (lock-free single-word cross-thread access, each
+  reasoned about individually); behaviour spanning fields (`wake`, `updateFocus`) is in methods. The 96 KiB thread stack stays a file-static
+  array: inside the object it landed in `.data` (+100 KB uncompressed) instead of `.bss`.
+- **`ThemeCatalog`** (`include/themecatalog.h`, in `src/themes.cpp`): the list of disk themes, the built-ins, the selected id and the published
+  name list. `themes.cpp` itself (3900 lines: loader, per-element draw functions, coverflow) is not split yet (phase 7).
+- Size across the batch: 1,634,400 B -> 1,634,848 B.
+
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
 `guisettings.cpp` (~3000 lines), plus notifications and the screen-handler table in `gui.cpp`, are still free functions sharing
@@ -360,7 +376,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 | 3 settings table | done; `Settings` struct deferred |
 | 4 HostServices, launch/UI split | done |
 | 5 GameSource hierarchy | not started; needs go-ahead (hardware testing matters most) |
-| 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue done; TextureCache/Font, Renderer, Theme not started; gui classes deferred (section 18) |
+| 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
 | 7 split god files | gui.cpp done (5197 -> ~1100 lines); opl.cpp (5117), themes.cpp (3958), bdmsupport.cpp not started |
 | 8 directory move, blocking analyzer | not started |
 

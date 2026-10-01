@@ -215,7 +215,7 @@ int main(void)
                 failures.append("THM case harness reported failures")
 
 themes_c = (root / "src/themes.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
-entry_fn = function_body(themes_c, "static int thmReadEntry(")
+entry_fn = function_body(themes_c, "int ThemeCatalog::readEntry(")
 if entry_fn and (entry_fn.count('strncasecmp(name, "thm_", 4) == 0') != 2 or 'strncmp(name, "thm_"' in entry_fn):
     failures.append("thmReadEntry must match the thm_ prefix in any case, in both checks")
 

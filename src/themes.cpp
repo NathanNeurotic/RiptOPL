@@ -1,6 +1,7 @@
 #include "include/host.h"
 #include "include/opl.h"
 #include "include/themes.h"
+#include "include/themecatalog.h"
 #include "include/util.h"
 #include "include/gui.h"
 #include "include/renderman.h"
@@ -59,17 +60,10 @@ extern u16 size_theme_coverflow_cfg;
 
 theme_t *gTheme;
 
-// Set transiently around thmLoad(NULL) to load the embedded coverflow theme instead of
-// the default OPL theme (the built-in "<Coverflow>" entry in the theme list).
-static int gLoadCoverflowBuiltin = 0;
+static ThemeCatalog gCatalog;
 
 static int screenWidth;
 static int screenHeight;
-static int guiThemeID = 0;
-
-static int nThemes = 0;
-static theme_file_t themes[THM_MAX_FILES];
-static const char **guiThemesNames = NULL;
 
 // Coverflow render-mode state (externs in themes.h; defaults match wOPL 3/30/200/0).
 constexpr int COVERFLOW_PAD = 1;  // extra covers built off each edge, purely to fill the slide (see drawCoverFlow)
@@ -1896,7 +1890,7 @@ static void drawAttributeImage(struct menu_list *menu, struct submenu_list *item
             configGetStr(config, attributeImage->cache->suffix, (const char **)&attributeImage->currentValue);
         }
         if (attributeImage->currentValue) {
-            if (thmGetGuiValue() == 0 || thmGetGuiValue() == nThemes + 1) {
+            if (thmGetGuiValue() == 0 || thmGetGuiValue() == gCatalog.count() + 1) {
                 GSTEXTURE *texture = thmGetTexture(thmAttributeTexId(attributeImage));
                 if (texture && texture->Mem)
                     rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
@@ -3255,7 +3249,7 @@ static void thmFree(theme_t *theme)
     }
 }
 
-static int thmReadEntry(int index, const char *path, const char *separator, const char *name, unsigned char d_type)
+int ThemeCatalog::readEntry(int index, const char *path, const char *separator, const char *name, unsigned char d_type)
 {
     // #152: don't trust d_type alone. It is derived from iomanX FIO_S_IFDIR mode bits, but MMCE
     // card FIRMWARE fills stat.mode verbatim over the wire (mmceman copies it through), and clone
@@ -3281,7 +3275,7 @@ static int thmReadEntry(int index, const char *path, const char *separator, cons
     // strncmp, not upstream's strstr: the name parse below assumes the prefix is at the START
     // (name + 4), so a mid-string "thm_" match always produced a garbage theme name anyway.
     if (isDir && strncasecmp(name, "thm_", 4) == 0) {
-        theme_file_t *currTheme = &themes[nThemes + index];
+        theme_file_t *currTheme = &themes_[count_ + index];
 
         int length = strlen(name) - 4 + 1;
         currTheme->name = (char *)malloc(length * sizeof(char));
@@ -3446,7 +3440,7 @@ static int thmLoad(const char *themePath)
     if (!themePath) {
         // No theme specified. Prepare and load the default theme.
         themeConfig = configAlloc(0, NULL, NULL);
-        if (gLoadCoverflowBuiltin)
+        if (gCatalog.loadingBuiltinCoverflow())
             configReadBuffer(themeConfig, &theme_coverflow_cfg, size_theme_coverflow_cfg);
         else
             configReadBuffer(themeConfig, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
@@ -3738,49 +3732,54 @@ static int thmLoad(const char *themePath)
     return 0;
 }
 
+int ThemeCatalog::readEntryCallback(int index, const char *path, const char *separator, const char *name, unsigned char d_type)
+{
+    return gCatalog.readEntry(index, path, separator, name, d_type);
+}
+
 // Callers MUST hold guiLock (except pre-GUI single-threaded init, where the lock is a not-ready
 // no-op): this free()s the list the UI-Settings dialog may be handed via thmGetGuiList, and it
 // runs on the IO worker for device-triggered rebuilds. guiShowUIConfig snapshots the list under
 // the same lock. NOT self-locking: thmReinit must hold the lock across its name-string frees AND
 // this rebuild as ONE critical section (between the two, the published list points at freed
 // strings), and the sema is not recursive.
-static void thmRebuildGuiNames(void)
+void ThemeCatalog::rebuildNames()
 {
-    if (guiThemesNames)
-        free(guiThemesNames);
+    if (names_)
+        free(names_);
 
     // build the themes name list (+1 default internal, +1 built-in coverflow, +1 NULL)
-    guiThemesNames = (const char **)malloc((nThemes + 3) * sizeof(char **));
+    names_ = (const char **)malloc((count_ + 3) * sizeof(char **));
 
     // add default internal
-    guiThemesNames[0] = "<OPL>";
+    names_[0] = "<OPL>";
 
     int i = 0;
-    for (; i < nThemes; i++) {
-        guiThemesNames[i + 1] = themes[i].name;
+    for (; i < count_; i++) {
+        names_[i + 1] = themes_[i].name;
     }
 
     // built-in coverflow theme occupies the slot right after the disk themes
-    guiThemesNames[nThemes + 1] = "<Coverflow>";
-    guiThemesNames[nThemes + 2] = NULL;
+    names_[count_ + 1] = "<Coverflow>";
+    names_[count_ + 2] = NULL;
 }
 
-int thmAddElements(char *path, const char *separator, int forceRefresh)
+int ThemeCatalog::addElements(char *path, const char *separator, int forceRefresh)
 {
     int result, i;
 
-    result = listDir(path, separator, THM_MAX_FILES - nThemes, &thmReadEntry);
-    nThemes += result;
-    // Appends above only fill NEW themes[] slots (the published name list references old slots
+    result = listDir(path, separator, THM_MAX_FILES - count_, &readEntryCallback);
+    count_ += result;
+    // Appends above only fill NEW themes_[] slots (the published name list references old slots
     // untouched); the rebuild's free+swap is what must be serialized against the GUI's readers.
     host::ui().lock();
-    thmRebuildGuiNames();
+    rebuildNames();
     host::ui().unlock();
 
     const char *temp;
     if (configGetStr(configGetByType(CONFIG_OPL), "theme", &temp)) {
         LOG("THEMES Trying to set again theme: %s\n", temp);
-        if (thmSetGuiValue(thmFindGuiID(temp), 0) && forceRefresh) {
+        if (setGuiValue(findGuiID(temp), 0) && forceRefresh) {
             for (i = 0; i < MODE_COUNT; i++)
                 host::app().moduleUpdateMenu(i, 1, 0);
         }
@@ -3799,13 +3798,13 @@ void thmInit(void)
     // initialize default internal
     thmLoad(NULL);
 
-    thmAddElements(gBaseMCDir, "/", 0);
+    gCatalog.addElements(gBaseMCDir, "/", 0);
 }
 
-void thmReinit(const char *path)
+void ThemeCatalog::reinit(const char *path)
 {
     // Nad #5 (settings change reverts the look): this used to UNCONDITIONALLY thmLoad(NULL) +
-    // guiThemeID=0 -- reverting to the default <OPL> look even when the ACTIVE theme does not live
+    // themeId_=0 -- reverting to the default <OPL> look even when the ACTIVE theme does not live
     // on the device being removed. Worse, an SMB/ETH re-init calls in here on EVERY settings-OK
     // while the network is in any error state (server asleep, cable out, or plain share-browse
     // mode, which parks in an "error" state even when healthy), and a subsequent Save Changes then
@@ -3814,33 +3813,33 @@ void thmReinit(const char *path)
     // otherwise keep it and just re-index (the removal loop reshuffles ids, so re-find by name).
     char activeName[64] = "";
     int activeOnDevice = 0;
-    if (guiThemeID >= 1 && guiThemeID <= nThemes) {
-        snprintf(activeName, sizeof(activeName), "%s", themes[guiThemeID - 1].name);
-        activeOnDevice = strncmp(themes[guiThemeID - 1].filePath, path, strlen(path)) == 0;
-    } else if (guiThemeID == nThemes + 1) {
-        snprintf(activeName, sizeof(activeName), "<Coverflow>"); // built-in; its id (nThemes+1) shifts as themes are removed
+    if (themeId_ >= 1 && themeId_ <= count_) {
+        snprintf(activeName, sizeof(activeName), "%s", themes_[themeId_ - 1].name);
+        activeOnDevice = strncmp(themes_[themeId_ - 1].filePath, path, strlen(path)) == 0;
+    } else if (themeId_ == count_ + 1) {
+        snprintf(activeName, sizeof(activeName), "<Coverflow>"); // built-in; its id (count_+1) shifts as themes are removed
     }
 
     // One guiLock section across the removal loop AND the rebuild: the frees below invalidate
-    // strings the CURRENTLY PUBLISHED guiThemesNames points at, so the GUI-side readers
+    // strings the CURRENTLY PUBLISHED names_ points at, so the GUI-side readers
     // (frame-locked renders, guiShowUIConfig's snapshot) must not run between free and swap.
     host::ui().lock();
     int i = 0;
-    while (i < nThemes) {
-        if (strncmp(themes[i].filePath, path, strlen(path)) == 0) {
-            LOG("THEMES Remove theme: %s\n", themes[i].filePath);
-            nThemes--;
-            free(themes[i].name);
-            themes[i].name = themes[nThemes].name;
-            themes[nThemes].name = NULL;
-            free(themes[i].filePath);
-            themes[i].filePath = themes[nThemes].filePath;
-            themes[nThemes].filePath = NULL;
+    while (i < count_) {
+        if (strncmp(themes_[i].filePath, path, strlen(path)) == 0) {
+            LOG("THEMES Remove theme: %s\n", themes_[i].filePath);
+            count_--;
+            free(themes_[i].name);
+            themes_[i].name = themes_[count_].name;
+            themes_[count_].name = NULL;
+            free(themes_[i].filePath);
+            themes_[i].filePath = themes_[count_].filePath;
+            themes_[count_].filePath = NULL;
         } else
             i++;
     }
 
-    thmRebuildGuiNames();
+    rebuildNames();
     host::ui().unlock();
 
     if (activeOnDevice) {
@@ -3848,11 +3847,11 @@ void thmReinit(const char *path)
         // Honor thmLoad's abandon-and-retry (#120): commit the default id only if the swap happened,
         // else keep the old id so the still-displayed theme and the saved config stay consistent.
         if (thmLoad(NULL) == 0)
-            guiThemeID = 0;
-    } else if (guiThemeID != 0) {
+            themeId_ = 0;
+    } else if (themeId_ != 0) {
         // Active theme untouched (built-in coverflow, or a theme on another device): keep it. gTheme
         // needs no reload -- its loaded resources are unaffected by the removed entries.
-        guiThemeID = thmFindGuiID(activeName);
+        themeId_ = findGuiID(activeName);
     }
 }
 
@@ -3861,37 +3860,37 @@ void thmReloadScreenExtents(void)
     rmGetScreenExtents(&screenWidth, &screenHeight);
 }
 
-const char *thmGetValue(void)
+const char *ThemeCatalog::currentName() const
 {
-    return guiThemesNames[guiThemeID];
+    return names_[themeId_];
 }
 
-int thmSetGuiValue(int themeID, int reload)
+int ThemeCatalog::setGuiValue(int themeID, int reload)
 {
     if (themeID != -1) {
-        if (guiThemeID != themeID || reload) {
+        if (themeId_ != themeID || reload) {
             int loadResult;
-            if (themeID == nThemes + 1) {
+            if (themeID == count_ + 1) {
                 // built-in coverflow theme: load the embedded buffer via thmLoad(NULL).
-                // Checked BEFORE the themes[themeID - 1] access below (which would be OOB).
-                gLoadCoverflowBuiltin = 1;
+                // Checked BEFORE the themes_[themeID - 1] access below (which would be OOB).
+                loadBuiltin_ = 1;
                 loadResult = thmLoad(NULL);
-                gLoadCoverflowBuiltin = 0;
+                loadBuiltin_ = 0;
             } else
-                loadResult = thmLoad(themeID != 0 ? themes[themeID - 1].filePath : NULL);
+                loadResult = thmLoad(themeID != 0 ? themes_[themeID - 1].filePath : NULL);
 
             // #120: an abandoned load (wedged MMCE art worker) keeps the CURRENT theme -- do not
             // commit the new id, so the next thmAddElements/settings-apply trigger retries it.
             if (loadResult != 0)
                 return 0;
 
-            guiThemeID = themeID;
+            themeId_ = themeID;
             return 1;
-        } else if (guiThemeID == 0 || guiThemeID == nThemes + 1) {
+        } else if (themeId_ == 0 || themeId_ == count_ + 1) {
             /* Re-apply the edited gDefault*Color values to the LIVE theme when the theme itself is
                not being reloaded -- which is the whole of what a colour edit does.
 
-               This used to fire for theme 0 alone, so the built-in Coverflow theme (id nThemes + 1)
+               This used to fire for theme 0 alone, so the built-in Coverflow theme (id count_ + 1)
                silently dropped every colour change: guiShowColorsConfig offers Coverflow as
                editable, wrote the new values into gDefault*Color, then called applyConfig with the
                SAME theme id and reload == 0, and landed here to be skipped. The colours were saved
@@ -3906,53 +3905,98 @@ int thmSetGuiValue(int themeID, int reload)
     return 0;
 }
 
-int thmGetGuiValue(void)
+int ThemeCatalog::guiValue() const
 {
-    return guiThemeID;
+    return themeId_;
 }
 
-int thmFindGuiID(const char *theme)
+int ThemeCatalog::findGuiID(const char *theme) const
 {
     if (theme) {
         if (strcasecmp(theme, "<Coverflow>") == 0)
-            return nThemes + 1; // built-in coverflow theme
+            return count_ + 1; // built-in coverflow theme
         int i = 0;
-        for (; i < nThemes; i++) {
-            if (strcasecmp(themes[i].name, theme) == 0)
+        for (; i < count_; i++) {
+            if (strcasecmp(themes_[i].name, theme) == 0)
                 return i + 1;
         }
     }
     return 0;
 }
 
-const char **thmGetGuiList(void)
+const char **ThemeCatalog::guiList() const
 {
-    return guiThemesNames;
+    return names_;
 }
 
-char *thmGetFilePath(int themeID)
+char *ThemeCatalog::filePath(int themeID)
 {
-    // Disk themes occupy IDs 1..nThemes. The built-ins (<OPL> = 0, <Coverflow> = nThemes+1)
+    // Disk themes occupy IDs 1..count_. The built-ins (<OPL> = 0, <Coverflow> = count_+1)
     // and any out-of-range ID have no on-disk path -> return NULL so callers fall back to
-    // the default/internal assets instead of indexing themes[] out of bounds.
-    if (themeID <= 0 || themeID > nThemes)
+    // the default/internal assets instead of indexing themes_[] out of bounds.
+    if (themeID <= 0 || themeID > count_)
         return NULL;
 
-    theme_file_t *currTheme = &themes[themeID - 1];
+    theme_file_t *currTheme = &themes_[themeID - 1];
     char *path = currTheme->filePath;
 
     return path;
 }
 
+void ThemeCatalog::end()
+{
+    for (int i = 0; i < count_; i++) {
+        free(themes_[i].name);
+        free(themes_[i].filePath);
+    }
+
+    free(names_);
+}
+
+// ---- themes.h API --------------------------------------------------------------------------------
+
+int thmAddElements(char *path, const char *separator, int forceRefresh)
+{
+    return gCatalog.addElements(path, separator, forceRefresh);
+}
+
+void thmReinit(const char *path)
+{
+    gCatalog.reinit(path);
+}
+
+const char *thmGetValue(void)
+{
+    return gCatalog.currentName();
+}
+
+int thmSetGuiValue(int themeID, int reload)
+{
+    return gCatalog.setGuiValue(themeID, reload);
+}
+
+int thmGetGuiValue(void)
+{
+    return gCatalog.guiValue();
+}
+
+int thmFindGuiID(const char *theme)
+{
+    return gCatalog.findGuiID(theme);
+}
+
+const char **thmGetGuiList(void)
+{
+    return gCatalog.guiList();
+}
+
+char *thmGetFilePath(int themeID)
+{
+    return gCatalog.filePath(themeID);
+}
+
 void thmEnd(void)
 {
     thmFree(gTheme);
-
-    int i = 0;
-    for (; i < nThemes; i++) {
-        free(themes[i].name);
-        free(themes[i].filePath);
-    }
-
-    free(guiThemesNames);
+    gCatalog.end();
 }
