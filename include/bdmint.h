@@ -16,7 +16,9 @@ void bdmBuildGamePrefix(char *target, int targetLength, const char *deviceRoot);
 int bdmDeviceIsPresent(int deviceId);
 extern item_list_t bdmDeviceList[MAX_BDM_DEVICES];
 extern int bdmDeviceListInitialized;
-extern item_list_t bdmGameList;
+/** The BdmSource instance as the item_list_t each device slot is cloned from (its `source` pointer is shared by
+    every slot, so the thunks reach the one BdmSource). */
+item_list_t *bdmTemplateList(void);
 extern int bdmDeviceModeStarted;
 void bdmLoadBlockDeviceModules(void);
 int bdmLoadOptionalModule(const char *name, void *module, int moduleSize);

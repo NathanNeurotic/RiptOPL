@@ -64,7 +64,7 @@ void GameSource::install(unsigned caps)
     itemGetName = &tName;
     itemGetNameLength = &tNameLength;
     itemGetStartup = &tStartup;
-    itemDelete = &tDelete;
+    itemDelete = (caps & OMIT_DELETE) ? NULL : &tDelete;
     itemRename = &tRename;
     itemLaunch = &tLaunch;
     itemGetConfig = &tConfig;
@@ -81,6 +81,7 @@ void GameSource::install(unsigned caps)
 }
 
 char *GameSource::prefix(item_list_t *) { return NULL; }
+void GameSource::deleteGame(item_list_t *, int) {}
 void *GameSource::game(item_list_t *, int) { return NULL; }
 int GameSource::checkVmc(item_list_t *, char *, int) { return -1; }
 void GameSource::launchVcd(item_list_t *, const char *, config_set_t *) {}

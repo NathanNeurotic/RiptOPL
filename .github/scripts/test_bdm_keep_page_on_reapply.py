@@ -62,6 +62,7 @@ typedef struct {
 
 static item_list_t bdmDeviceList[MAX_BDM_DEVICES];
 static item_list_t bdmGameList;
+static item_list_t *bdmTemplateList(void) { return &bdmGameList; }
 static opl_io_module_t owners[MAX_BDM_DEVICES];
 static int bdmDeviceListInitialized;
 static int bdmDeviceModeStarted;

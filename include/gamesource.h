@@ -26,6 +26,7 @@ public:
         OMIT_PREFIX = 1u << 5,
         OMIT_GAME = 1u << 6,
         OMIT_CHECK_VMC = 1u << 7,
+        OMIT_DELETE = 1u << 8, // HDD cannot delete games from the menu
     };
 
     // The table is filled by install(), called from the subclass constructor: a base constructor must not see
@@ -43,7 +44,7 @@ public:
     virtual char *name(item_list_t *itemList, int id) = 0;
     virtual int nameLength(item_list_t *itemList, int id) = 0;
     virtual char *startup(item_list_t *itemList, int id) = 0;
-    virtual void deleteGame(item_list_t *itemList, int id) = 0;
+    virtual void deleteGame(item_list_t *itemList, int id);
     virtual void rename(item_list_t *itemList, int id, char *newName) = 0;
     virtual void launch(item_list_t *itemList, int id, config_set_t *configSet) = 0;
     virtual config_set_t *config(item_list_t *itemList, int id) = 0;

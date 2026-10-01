@@ -398,6 +398,23 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
 - Left in phase 6 (deliberately): `Dialog` (dia.cpp) and `MenuItem` (menusys.cpp) are tied to the `item_list_t`/menu structs phase 5 replaces, and the
   `theme_t` loader/element code is a table of function pointers rather than an object with state. They are best converted together with phase 5.
 
+## 17h. Phase 5: GameSource hierarchy (backends converted)
+- `GameSource` (include/gamesource.h, src/sources/gamesource.cpp) derives from `item_list_t`. Its constructor installs static thunks into the old
+  function-pointer table; each thunk finds the object through `item_list_t::source` (a field appended to the struct, so struct copies such as the
+  Favourites proxies and the BDM slot copies keep pointing at the one object). Every virtual receives the calling `item_list_t *`, so proxy fields
+  (`viewOverride`, `priv`, `owner`) still come from the caller.
+- Optional table entries stay NULL unless a capability flag is passed (`CAP_LAUNCH_VCD`, `CAP_ART_ARCHIVE_PATH`, `CAP_LAUNCH_CUE`, `CAP_ROW_VIEW`,
+  `CAP_SOURCE_ID`), and the entries that were NULL in a few backends are dropped with `OMIT_PREFIX` / `OMIT_GAME` / `OMIT_CHECK_VMC` /
+  `OMIT_DELETE` (callers NULL-test them: HDD has no delete, App and Favourites have no prefix/raw game pointer, App has no VMC check).
+- Converted: `HttpSource`, `UdpfsSource`, `EthSource`, `MmceSource`, `AppSource`, `FavSource`, `HddSource`, `BdmSource`. Instances are built lazily by
+  `xxxInstance()` with placement new into static storage (no global constructors). The old free entry points other files call
+  (`hddLaunchGame`, `hddGetArtArchivePath`, `bdmLaunchGame`, `bdmLaunchCue`, `bdmLaunchVcd`, `bdmGetItemView`, `appGetObject` ...) are kept; the BDM
+  launch code lives in bdmlaunch.cpp and `BdmSource` forwards to it. The BDM slots are still `memcpy`'d from `bdmTemplateList()` (the `BdmSource`
+  viewed as an `item_list_t`).
+- Not done: removing `item_list_t` (menusys, libview, supportbase, opl still call through the table), a `SourceRegistry` replacing
+  `oplGetModule`/`oplGetAppImageByMode`, `BdmLauncher`/`NeutrinoLauncher` split. Hardware/emulator check wanted: every source page (HTTP, UDPFS, ETH,
+  MMCE, APP, FAV, HDD, BDM) list, launch, rename, delete, and the HDD launch from autolaunch.
+
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
 `guisettings.cpp` (~3000 lines), plus notifications and the screen-handler table in `gui.cpp`, are still free functions sharing
@@ -420,7 +437,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 
 ## 19. Next
 2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
-3. Phase 5 `GameSource` hierarchy (needs go-ahead; hardware testing matters most there).
+3. Phase 5 leftovers: drop `item_list_t` callers in favour of `GameSource *`, `SourceRegistry`, launcher split (section 17h).
 4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining
    analyzer upward edges listed in section 13.
 
@@ -432,7 +449,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 | 2 RAII | helpers done; bulk malloc conversion skipped on purpose |
 | 3 settings table | done; `Settings` struct deferred |
 | 4 HostServices, launch/UI split | done |
-| 5 GameSource hierarchy | not started; needs go-ahead (hardware testing matters most) |
+| 5 GameSource hierarchy | all eight backends are `GameSource` subclasses behind the old table (section 17h); `item_list_t` removal, registry and launcher split pending; needs emulator/hardware checks |
 | 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
 | 7 split god files | done: gui.cpp, themes.cpp, opl.cpp, bdmsupport.cpp, system.cpp, texcache.cpp are split (largest remaining: supportbase 2609, bdmsupport 1991, gui ~1100); `sendIrxKernelRAM` data-driven module list deferred |
 | 8 directory move, blocking analyzer | done (layer directories; coupling gate is a ratchet on the 47 existing upward symbols) |

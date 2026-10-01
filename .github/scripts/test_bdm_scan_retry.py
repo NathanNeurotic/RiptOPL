@@ -50,7 +50,9 @@ def function_text(signature):
     return source[match.start():end] + '\n}\n'
 
 
-functions = function_text('static int bdmNeedsUpdate(') + function_text('static int bdmUpdateGameList(')
+# The two are BdmSource members now; the harness stubs were written for free functions, so rename the extracted text.
+functions = (function_text('int BdmSource::needsUpdate(').replace('int BdmSource::needsUpdate(', 'static int bdmNeedsUpdate(', 1) +
+             function_text('int BdmSource::update(').replace('int BdmSource::update(', 'static int bdmUpdateGameList(', 1))
 
 HARNESS = r'''
 #include <stdio.h>

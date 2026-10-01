@@ -64,7 +64,7 @@ void bdmInitDevicesData()
         for (int i = 0; i < MAX_BDM_DEVICES; i++) {
             // Setup the device list item.
             item_list_t *pDeviceSupport = &bdmDeviceList[i];
-            memcpy(pDeviceSupport, &bdmGameList, sizeof(item_list_t));
+            memcpy(pDeviceSupport, bdmTemplateList(), sizeof(item_list_t));
             pDeviceSupport->mode = i;
 
             // Setup the per-device data.

@@ -1,3 +1,4 @@
+#include <new>
 #include "include/host.h"
 #include "include/sema_lock.h"
 #include "include/opl.h"
@@ -24,6 +25,7 @@
 #include "include/cheatman.h"
 #include "include/sound.h"
 #include "include/bdmevent.h"
+#include "include/gamesource.h"
 #include "modules/iopcore/common/cdvd_config.h"
 
 #include <usbhdfsd-common.h>
@@ -1321,7 +1323,55 @@ void bdmLoadModules(void)
     ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&bdmLoadBlockDeviceModules));
 }
 
-static void bdmInit(item_list_t *itemList)
+class BdmSource : public GameSource
+{
+public:
+    BdmSource()
+        : GameSource(BDM_MODE, 2, 0, MENU_MIN_INACTIVE_FRAMES, BDM_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_VCD | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+    {
+    }
+
+    void init(item_list_t *itemList) override;
+    int needsUpdate(item_list_t *itemList) override;
+    int update(item_list_t *itemList) override;
+    int count(item_list_t *itemList) override;
+    int sourceId(item_list_t *itemList, int id) override;
+    void *game(item_list_t *itemList, int id) override;
+    char *name(item_list_t *itemList, int id) override;
+    int nameLength(item_list_t *itemList, int id) override;
+    char *startup(item_list_t *itemList, int id) override;
+    void deleteGame(item_list_t *itemList, int id) override;
+    void rename(item_list_t *itemList, int id, char *newName) override;
+    config_set_t *config(item_list_t *itemList, int id) override;
+    int image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm) override;
+    int textId(item_list_t *itemList) override;
+    int iconId(item_list_t *itemList) override;
+    void cleanUp(item_list_t *itemList, int exception) override;
+    void shutdown(item_list_t *itemList) override;
+    int checkVmc(item_list_t *itemList, char *name, int createSize) override;
+    char *prefix(item_list_t *itemList) override;
+    void launch(item_list_t *itemList, int id, config_set_t *configSet) override;
+    void launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet) override;
+    void launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet) override;
+    int rowView(item_list_t *itemList, int id) override;
+};
+
+static BdmSource *bdmInstance()
+{
+    static BdmSource *instance = NULL;
+    alignas(BdmSource) static unsigned char storage[sizeof(BdmSource)];
+
+    if (instance == NULL)
+        instance = new (storage) BdmSource();
+    return instance;
+}
+
+item_list_t *bdmTemplateList(void)
+{
+    return bdmInstance();
+}
+
+void BdmSource::init(item_list_t *itemList)
 {
     LOG("BDMSUPPORT Init\n");
 
@@ -1390,7 +1440,7 @@ static void bdmReportUnsupportedDrives(void)
     BdmUnsupportedSectorReported = count;
 }
 
-static int bdmNeedsUpdate(item_list_t *itemList)
+int BdmSource::needsUpdate(item_list_t *itemList)
 {
     char path[256];
     int result = 0;
@@ -1552,7 +1602,7 @@ static int bdmNeedsUpdate(item_list_t *itemList)
     return result;
 }
 
-static int bdmUpdateGameList(item_list_t *itemList)
+int BdmSource::update(item_list_t *itemList)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     int view = host::library().listViewActive(itemList);
@@ -1588,7 +1638,7 @@ static int bdmUpdateGameList(item_list_t *itemList)
     return result;
 }
 
-static int bdmGetGameCount(item_list_t *itemList)
+int BdmSource::count(item_list_t *itemList)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
 
@@ -1608,7 +1658,7 @@ int bdmGetItemView(item_list_t *itemList, int id)
     return view;
 }
 
-static int bdmGetSourceId(item_list_t *itemList, int id)
+int BdmSource::sourceId(item_list_t *itemList, int id)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= pDeviceData->bdmGameCount ? id - pDeviceData->bdmGameCount : id;
@@ -1625,7 +1675,7 @@ base_game_info_t *bdmActiveGame(item_list_t *itemList, int id)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     int vcd = (bdmGetItemView(itemList, id) == LIB_VIEW_PS1);
-    id = bdmGetSourceId(itemList, id);
+    id = bdmInstance()->sourceId(itemList, id);
     base_game_info_t *arr = vcd ? pDeviceData->bdmPs1Games : pDeviceData->bdmGames;
     int count = vcd ? pDeviceData->bdmPs1GameCount : pDeviceData->bdmGameCount;
 
@@ -1634,24 +1684,24 @@ base_game_info_t *bdmActiveGame(item_list_t *itemList, int id)
     return &arr[id];
 }
 
-static void *bdmGetGame(item_list_t *itemList, int id)
+void *BdmSource::game(item_list_t *itemList, int id)
 {
     return (void *)bdmActiveGame(itemList, id);
 }
 
-static char *bdmGetGameName(item_list_t *itemList, int id)
+char *BdmSource::name(item_list_t *itemList, int id)
 {
     return bdmActiveGame(itemList, id)->name;
 }
 
-static int bdmGetGameNameLength(item_list_t *itemList, int id)
+int BdmSource::nameLength(item_list_t *itemList, int id)
 {
     base_game_info_t *g = bdmActiveGame(itemList, id);
 
     return ((g->format != GAME_FORMAT_USBLD) ? ISO_GAME_NAME_MAX + 1 : UL_GAME_NAME_MAX + 1);
 }
 
-static char *bdmGetGameStartup(item_list_t *itemList, int id)
+char *BdmSource::startup(item_list_t *itemList, int id)
 {
     base_game_info_t *g = bdmActiveGame(itemList, id);
 
@@ -1662,7 +1712,7 @@ static char *bdmGetGameStartup(item_list_t *itemList, int id)
     return g->startup;
 }
 
-static void bdmDeleteGame(item_list_t *itemList, int id)
+void BdmSource::deleteGame(item_list_t *itemList, int id)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
 
@@ -1671,13 +1721,13 @@ static void bdmDeleteGame(item_list_t *itemList, int id)
     if (bdmActiveGame(itemList, id) == &bdmEmptyGame)
         return;                                   // stale/invalid id: sbDelete does NOT bounds-check -> avoid an OOB/wrong unlink
     sbSetBrowseSub(folderGetSub(itemList->mode)); // delete inside the current subfolder, not the root
-    id = bdmGetSourceId(itemList, id);
+    id = sourceId(itemList, id);
     sbDelete(&pDeviceData->bdmGames, pDeviceData->bdmPrefix, "/", pDeviceData->bdmGameCount, id);
     pDeviceData->bdmULSizePrev = -2;
     pDeviceData->ForceRefresh = 1;
 }
 
-static void bdmRenameGame(item_list_t *itemList, int id, char *newName)
+void BdmSource::rename(item_list_t *itemList, int id, char *newName)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
 
@@ -1699,7 +1749,7 @@ static void bdmRenameGame(item_list_t *itemList, int id, char *newName)
     }
     if (bdmActiveGame(itemList, id) == &bdmEmptyGame)
         return; // stale/invalid id (see bdmDeleteGame) -> avoid sbRename OOB
-    id = bdmGetSourceId(itemList, id);
+    id = sourceId(itemList, id);
     sbSetBrowseSub(folderGetSub(itemList->mode)); // rename inside the current subfolder, not the root
     sbRename(&pDeviceData->bdmGames, pDeviceData->bdmPrefix, "/", pDeviceData->bdmGameCount, id, newName);
     pDeviceData->bdmULSizePrev = -2;
@@ -1707,7 +1757,7 @@ static void bdmRenameGame(item_list_t *itemList, int id, char *newName)
 }
 
 
-static config_set_t *bdmGetConfig(item_list_t *itemList, int id)
+config_set_t *BdmSource::config(item_list_t *itemList, int id)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     config_set_t *config;
@@ -1719,7 +1769,7 @@ static config_set_t *bdmGetConfig(item_list_t *itemList, int id)
     return config;
 }
 
-static int bdmGetImage(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
+int BdmSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
     char path[256];
 
@@ -1737,7 +1787,7 @@ static int bdmGetImage(item_list_t *itemList, char *folder, int isRelative, char
     return r;
 }
 
-static int bdmGetTextId(item_list_t *itemList)
+int BdmSource::textId(item_list_t *itemList)
 {
     int mode = _STR_BDM_GAMES;
 
@@ -1757,7 +1807,7 @@ static int bdmGetTextId(item_list_t *itemList)
     return mode;
 }
 
-static int bdmGetIconId(item_list_t *itemList)
+int BdmSource::iconId(item_list_t *itemList)
 {
     int mode = BDM_ICON;
 
@@ -1778,7 +1828,7 @@ static int bdmGetIconId(item_list_t *itemList)
 }
 
 // This may be called, even if bdmInit() was not.
-static void bdmCleanUp(item_list_t *itemList, int exception)
+void BdmSource::cleanUp(item_list_t *itemList, int exception)
 {
     if (itemList->enabled) {
         LOG("BDMSUPPORT CleanUp\n");
@@ -1795,7 +1845,7 @@ static void bdmCleanUp(item_list_t *itemList, int exception)
 }
 
 // This may be called, even if bdmInit() was not.
-static void bdmShutdown(item_list_t *itemList)
+void BdmSource::shutdown(item_list_t *itemList)
 {
     char path[BDM_DEVICE_ROOT_MAX];
     LOG("BDMSUPPORT Shutdown\n");
@@ -1829,23 +1879,40 @@ static void bdmShutdown(item_list_t *itemList)
     }
 }
 
-static int bdmCheckVMC(item_list_t *itemList, char *name, int createSize)
+int BdmSource::checkVmc(item_list_t *itemList, char *name, int createSize)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     return sysCheckVMC(pDeviceData->bdmPrefix, "/", name, createSize, NULL);
 }
 
-static char *bdmGetPrefix(item_list_t *itemList)
+char *BdmSource::prefix(item_list_t *itemList)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     return pDeviceData->bdmPrefix;
 }
 
-item_list_t bdmGameList = {
-    BDM_MODE, 2, 0, 0, MENU_MIN_INACTIVE_FRAMES, BDM_MODE_UPDATE_DELAY, NULL, NULL, &bdmGetTextId, &bdmGetPrefix, &bdmInit, &bdmNeedsUpdate,
-    &bdmUpdateGameList, &bdmGetGameCount, &bdmGetGame, &bdmGetGameName, &bdmGetGameNameLength, &bdmGetGameStartup, &bdmDeleteGame, &bdmRenameGame,
-    &bdmLaunchGame, &bdmGetConfig, &bdmGetImage, &bdmCleanUp, &bdmShutdown, &bdmCheckVMC, &bdmGetIconId, &bdmLaunchVcd,
-    /* viewOverride */ 0, /* itemGetArtArchivePath */ NULL, &bdmLaunchCue, &bdmGetItemView, &bdmGetSourceId};
+// The launch and row-view entry points live in bdmlaunch.cpp / below as free functions other code calls directly;
+// BdmSource forwards to them.
+void BdmSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
+{
+    bdmLaunchGame(itemList, id, configSet);
+}
+
+void BdmSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
+{
+    bdmLaunchVcd(itemList, vcdName, configSet);
+}
+
+void BdmSource::launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
+{
+    bdmLaunchCue(itemList, cueName, configSet);
+}
+
+int BdmSource::rowView(item_list_t *itemList, int id)
+{
+    return bdmGetItemView(itemList, id);
+}
+
 
 
 
