@@ -173,7 +173,17 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      # The toolchain download (~167 MB from git.techwritescode.dev) is occasionally cut off mid-stream
+      # ("stream error ... INTERNAL_ERROR; received from peer"). One retry; the second attempt resumes with
+      # whatever the first installed.
       - name: Install ps2build + SDK
+        id: sdk1
+        continue-on-error: true
+        uses: techwritescode/setup-sdk@master
+        with:
+          ps2dev: ${{ github.workspace }}/.ps2dev
+      - name: Install ps2build + SDK (retry)
+        if: steps.sdk1.outcome == 'failure'
         uses: techwritescode/setup-sdk@master
         with:
           ps2dev: ${{ github.workspace }}/.ps2dev
