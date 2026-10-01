@@ -226,5 +226,5 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
 - Checked against the previous commit's ELF after each step: `.data` identical; the only code change was atlas
   inlining (-3 KB text). `tools/warning_gate.py` caught a macro->function rename that had turned
   `rmScaleX` into infinite recursion (an exported wrapper shared the name).
-- Left for later phases: 15 `-Wmissing-declarations`-style leftovers were removed with the static pass; remaining
-  warnings are `-Wsign-compare` and a few `-Wwrite-strings` that need API changes (SDK `char *` parameters).
+- Remaining 67 warnings: 34 `-Wsign-compare`, 21 `-Wwrite-strings` (SDK `char *` parameters and `gHDDPrefix`-style globals),
+  5 `-Wmissing-declarations`, 4 unused variables, 2 pointer-arith, 1 register.
