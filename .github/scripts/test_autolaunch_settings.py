@@ -360,10 +360,10 @@ def check_pins():
     check(multi is not None and
           'configPrepareLoadNotification(configOplCarryOver ? configCarryOverDir : configSet->filename());' in multi,
           'configReadMulti: the load toast must name the carry-over home when settings came from there')
-    toast = function_text(text('src/ui/gui.cpp') + text('src/ui/guisettings.cpp') + text('src/ui/guidialogs.cpp'), 'static void guiShowNotifications(')
+    toast = function_text(text('src/ui/gui.cpp') + text('src/ui/guisettings.cpp') + text('src/ui/guidialogs.cpp') + text('src/ui/guinotify.cpp'), 'void Notifications::show(')
     check(toast is not None and
           'configOplIsOfficialSeed() ? _STR_OFFICIAL_CFG_NOTIFICATION : _STR_CFG_NOTIFICATION' in toast,
-          'guiShowNotifications: official OPL\'s seed must not be announced as RiptOPL settings')
+          'Notifications::show: official OPL\'s seed must not be announced as RiptOPL settings')
     # One decision for an on-time drive and a late one. A failed ATA load is retryable, so the drive can
     # first come up in tryAlternateDevice's retry; a bare PFS mount there skipped the hybrid check and homed
     # the hybrid on __common/OPL (CodeRabbit on #725).

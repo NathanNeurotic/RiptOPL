@@ -429,7 +429,7 @@ Planned design:
   `promptSave`, `restoreSourceState`).
 - One class per settings page (General, Sources, Interface, Launch, Popstarter, Net, Audio, Controller, ...) behind a common
   begin/update/read interface.
-- `Notifications`: the popup and RA notices with their timers.
+- `Notifications`: the popup and RA notices with their timers. **Done** (include/guinotify.h, src/ui/guinotify.cpp; `guiCheckNotifications`/`guiResetNotifications`/`guiShowRANotice` remain as forwarders).
 - `ScreenManager`: screen-handler table, transitions, `guiShow`.
 - `gui.h` keeps the current function names as thin forwarders to the instances, so the many callers (`opl`, `menusys`, the support
   files) do not change.

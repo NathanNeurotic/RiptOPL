@@ -10,6 +10,7 @@
 #include "include/guiint.h"
 #include "include/guiqueue.h"
 #include "include/guiboot.h"
+#include "include/guinotify.h"
 #include "include/diag.h" // gLastDeferredTimedOut -- a bounded wait that expired means the handler never ran
 #include "include/renderman.h"
 #include "include/menusys.h"
@@ -59,17 +60,6 @@ static ee_sema_t gQueueSema;
 
 int gGuiScreenWidth;
 int gGuiScreenHeight;
-
-static int showPartPopup = 0;
-static int showThmPopup;
-static int showLngPopup;
-
-// Notification popup: START tick + how long to hold, NOT an absolute deadline. clock() is a
-// 32-bit microsecond counter, so it wraps every ~71.6 minutes; `clock() >= start + duration`
-// silently becomes false-for-71-minutes whenever the sum crosses the wrap. The (clock() - start)
-// ELAPSED form is correct across one wrap by ordinary unsigned arithmetic.
-static clock_t popupStart;
-static int popupArmed;
 
 // How far ABOVE the vertical centre the boot logo (static splash and animated frames alike) sits.
 // The version line follows it, so the whole boot block moves together; the status line stays
@@ -260,159 +250,6 @@ void guiShowAbout()
 
     diaExecuteDialog(diaAbout, -1, 1, NULL);
 }
-
-void guiCheckNotifications(int checkTheme, int checkLang)
-{
-    if (gEnableNotifications) {
-        if (checkTheme) {
-            // Only DISK themes have a path to announce; the built-ins (<OPL>, <Coverflow>) return NULL
-            // from thmGetFilePath. The old `!= 0` test was correct only while theme IDs ran 0..nThemes;
-            // this tree's themes.c adds a built-in at nThemes+1, so a saved <Coverflow> passed the test
-            // and fed NULL to the "%s" in _STR_THM_NOTIFICATION on EVERY boot. Coverflow is our default.
-            if (thmGetFilePath(thmGetGuiValue()) != NULL)
-                showThmPopup = 1;
-        }
-
-        if (checkLang) {
-            if (lngGetGuiValue() != 0)
-                showLngPopup = 1;
-        }
-    }
-}
-
-void guiResetNotifications(void)
-{
-    showThmPopup = 0;
-    showLngPopup = 0;
-    popupArmed = 0;
-}
-
-static void guiRenderNotifications(char *string, int y)
-{
-    int x;
-
-    x = gGuiScreenWidth - rmUnScaleX(fntCalcDimensions(gTheme->fonts[0], string)) - 10;
-
-    rmDrawRect(x - 10, y, gGuiScreenWidth - x, MENU_ITEM_HEIGHT + 10, gColDarker);
-    fntRenderString(gTheme->fonts[0], x - 5, y + 5, ALIGN_NONE, 0, 0, string, gTheme->textColor);
-}
-
-static void guiShowNotifications(void)
-{
-    char notification[128];
-    char *col_pos;
-    int y = 10;
-    int yadd = 35;
-
-    if (showPartPopup || showThmPopup || showLngPopup || showCfgPopup || showNetDhcpPopup) {
-        if (!popupArmed) {
-            popupStart = clock();
-            popupArmed = 1;
-            sfxPlay(SFX_MESSAGE);
-        }
-
-        if (showPartPopup) {
-            col_pos = strchr(gOPLPart, ':');
-            col_pos++;
-
-            snprintf(notification, sizeof(notification), _l(_STR_PARTITION_NOTIFICATION), col_pos);
-            guiRenderNotifications(notification, y);
-            y += yadd;
-        }
-
-        if (showCfgPopup) {
-            // Official OPL's conf_opl.cfg is only a read-only seed (#545): say so, or "Config loaded"
-            // reads as the user's RiptOPL settings on a device that has none (CosmicScale, APA-Jail).
-            snprintf(notification, sizeof(notification), _l(configOplIsOfficialSeed() ? _STR_OFFICIAL_CFG_NOTIFICATION : _STR_CFG_NOTIFICATION), configGetLoadDir());
-            if ((col_pos = strchr(notification, ':')) != NULL)
-                *(col_pos + 1) = '\0';
-
-            guiRenderNotifications(notification, y);
-            y += yadd;
-        }
-
-        if (showThmPopup) {
-            snprintf(notification, sizeof(notification), _l(_STR_THM_NOTIFICATION), thmGetFilePath(thmGetGuiValue()));
-            if ((col_pos = strchr(notification, ':')) != NULL)
-                *(col_pos + 1) = '\0';
-
-            guiRenderNotifications(notification, y);
-            y += yadd;
-        }
-
-        if (showLngPopup) {
-            snprintf(notification, sizeof(notification), _l(_STR_LNG_NOTIFICATION), lngGetFilePath(lngGetGuiValue()));
-            if ((col_pos = strchr(notification, ':')) != NULL)
-                *(col_pos + 1) = '\0';
-
-            guiRenderNotifications(notification, y);
-            y += yadd;
-        }
-
-        // One-time network notice set at config load: UDP transports always use the saved static PS2
-        // IP fields. If DHCP is the preserved SMB/HTTP preference, remind the user which address UDP uses.
-        if (showNetDhcpPopup) {
-            guiRenderNotifications(_l(_STR_UDPBD_NEEDS_STATIC_IP), y);
-            y += yadd;
-        }
-
-        if ((clock() - popupStart) >= (clock_t)5000 * (CLOCKS_PER_SEC / 1000)) {
-            guiResetNotifications();
-            showPartPopup = 0;
-            showCfgPopup = 0;
-            showNetDhcpPopup = 0;
-        }
-    }
-}
-
-#ifdef RETROACHIEVEMENTS
-/* RA notices: two-line feedback from the check/test actions, which run on the
-   I/O thread and so cannot open a dialog. They set the text; the render loop
-   draws it. Deliberately NOT gated on gEnableNotifications -- they are the
-   answer to an action the user just took, not a courtesy popup. */
-static char raNotice[2][96];
-static int raNoticeLines = 0;
-static clock_t raNoticeTimer = 0;
-
-void guiShowRANotice(const char *line1, const char *line2)
-{
-    raNoticeLines = 0; /* renderer stops drawing before the new text lands */
-    snprintf(raNotice[0], sizeof(raNotice[0]), "%s", line1 ? line1 : "");
-    snprintf(raNotice[1], sizeof(raNotice[1]), "%s", line2 ? line2 : "");
-    raNoticeTimer = 0;
-    raNoticeLines = (line2 != NULL && line2[0] != '\0') ? 2 : 1;
-}
-
-static int guiRenderRANotices(int y, int yadd)
-{
-    int i;
-
-    if (raNoticeLines <= 0)
-        return y;
-
-    if (!raNoticeTimer) {
-        raNoticeTimer = clock() + 8000 * (CLOCKS_PER_SEC / 1000);
-        sfxPlay(SFX_MESSAGE);
-    }
-
-    for (i = 0; i < raNoticeLines; i++) {
-        guiRenderNotifications(raNotice[i], y);
-        y += yadd;
-    }
-
-    if (clock() >= raNoticeTimer) {
-        raNoticeLines = 0;
-        raNoticeTimer = 0;
-    }
-
-    return y;
-}
-
-static void guiShowRANotices(void)
-{
-    guiRenderRANotices(10, 35);
-}
-#endif
 
 int guiShowKeyboard(char *value, int maxLength)
 {
@@ -996,11 +833,11 @@ void guiIntroLoop(void)
 
 void guiMainLoop(void)
 {
-    guiResetNotifications();
-    guiCheckNotifications(1, 1);
+    gNotifications.reset();
+    gNotifications.check(true, true);
 
     if (gOPLPart[0] != '\0')
-        showPartPopup = 1;
+        gNotifications.showPartition();
 
     if (gEnableBGM)
         bgmStart();
@@ -1020,12 +857,12 @@ void guiMainLoop(void)
         // The DHCP notice is a misconfiguration warning, not a courtesy popup -- show it even
         // when the user has notifications off (it explains an otherwise-silent empty games page).
         if (gEnableNotifications || showNetDhcpPopup)
-            guiShowNotifications();
+            gNotifications.show();
 
 #ifdef RETROACHIEVEMENTS
         // RA action feedback: always drawn while a notice is set (it is the answer to
         // something the user just asked for), independent of gEnableNotifications.
-        guiShowRANotices();
+        gNotifications.drawRA();
 #endif
 
         // handle deferred operations
