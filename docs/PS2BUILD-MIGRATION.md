@@ -1,6 +1,16 @@
 # Migration plan: Makefile + ps2sdk -> ps2build
 
-Status: plan only, no build files changed yet. ps2build v2026.09.29 (sdk-core v2026.09.29.1,
+Status: MAIN FLAVOUR PORTED (GSM1080P + PADEMU, no debug/RA/IGS/RTL/DTL). Other flavours still
+build through the Makefile. Build:
+
+    tools/install_ps2build.sh      # ps2build + ogg/vorbis packages (not shipped by the SDK)
+    tools/assets.py all            # translations, lwNBD, bin2c blobs, asm/opl_version.h
+    ps2build build                 # -> build/bin/riptopl-packed.elf
+
+Not hardware-tested. Open items: other flavours, `usbd_mini` -G16384 equivalence, audsrv
+(SDK `audio` + `audsrv-compat` replaces the old audsrv), `elfldr.elf` size (143 KB), CI cutover
+(.github/workflows/ps2build.yml runs alongside the old jobs), Makefile removal.
+Original plan (written before ps2build was installed) follows. ps2build v2026.09.29 (sdk-core v2026.09.29.1,
 sdk-world v2026.09.30). Reference: `ps2build explain`. Install:
 `curl -sSfL https://git.techwritescode.dev/ps2/install/raw/branch/master/install.sh | sh`
 (glibc Linux only, no Alpine; installs to `~/.local/share/ps2build`, no other deps).
@@ -24,7 +34,7 @@ cdvdfsv, udnl, udnl-t300, smbman, mmceman/mmcedrv/mmceigr, ioptrap, siocookie, g
 freetype, png, z, elf-loader-nocolour, `audio` (+ `audsrv-compat`).
 
 GAPS (must be vendored or built in-repo):
-- `libvorbis`, `libvorbisfile`, `libogg`: not in packages. Vendor as `ee_lib` targets.
+- `libvorbis`, `libvorbisfile`, `libogg`: not in the SDK, but released at git.techwritescode.dev/ps2/{ogg,vorbis}; `tools/install_ps2build.sh` installs them into packages/world.
 - `libwnbdsvr` / lwNBD and `lwnbdsvr.irx`: already fetched by `tools/download_lwNBD.sh`. Pin it
   and build it as in-repo targets.
 - `libaudsrv`: use `audsrv-compat` + `embed_irx: ["audio:audsrv"]`. The SDK audsrv is a different

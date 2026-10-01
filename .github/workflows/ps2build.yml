@@ -1,0 +1,25 @@
+name: ps2build
+
+# Main flavour only (GSM1080P + PADEMU). Other flavours still build through the Makefile.
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install ps2build
+        run: tools/install_ps2build.sh
+      - name: Assets (translations, lwNBD, embedded blobs, version)
+        run: tools/assets.py all
+      - name: Build
+        run: ~/.local/share/ps2build/ps2build build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: riptopl-ps2build
+          path: build/bin/riptopl-packed.elf
