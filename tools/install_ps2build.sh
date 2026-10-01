@@ -1,11 +1,14 @@
 #!/bin/sh
-# Install ps2build plus the two port packages it does not ship (ogg, vorbis/vorbisfile).
+# Install ps2build (unless already present) plus the two port packages it does not ship (ogg, vorbis/vorbisfile).
 # Pin with PS2DEV_INSTALL_VERSION (ps2build) and OGG_VERSION / VORBIS_VERSION (default: latest).
 set -e
 HOST=git.techwritescode.dev
 SDK="${PS2DEV_INSTALL_DIR:-$HOME/.local/share/ps2build}"
 
-curl -sSfL "https://$HOST/ps2/install/raw/branch/master/install.sh" | PS2DEV_INSTALL_DIR="$SDK" sh
+# CI installs ps2build + SDK with the setup-sdk action first; only bootstrap when it is not there yet.
+if [ ! -x "$SDK/ps2build" ]; then
+    curl -sSfL "https://$HOST/ps2/install/raw/branch/master/install.sh" | PS2DEV_INSTALL_DIR="$SDK" sh
+fi
 
 for pkg in ogg vorbis; do
     case $pkg in ogg) ver="${OGG_VERSION:-latest}" ;; vorbis) ver="${VORBIS_VERSION:-latest}" ;; esac

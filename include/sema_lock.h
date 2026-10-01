@@ -12,7 +12,8 @@ namespace raii
 class SemaLock
 {
 public:
-    explicit SemaLock(int id) : id_(id)
+    explicit SemaLock(int id)
+        : id_(id)
     {
         if (id_ >= 0)
             WaitSema(id_);

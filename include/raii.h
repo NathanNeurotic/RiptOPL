@@ -20,8 +20,14 @@ class UniqueFd
 {
 public:
     UniqueFd() = default;
-    explicit UniqueFd(int fd) : fd_(fd) {}
-    UniqueFd(UniqueFd &&o) noexcept : fd_(o.release()) {}
+    explicit UniqueFd(int fd)
+        : fd_(fd)
+    {
+    }
+    UniqueFd(UniqueFd &&o) noexcept
+        : fd_(o.release())
+    {
+    }
     UniqueFd &operator=(UniqueFd &&o) noexcept
     {
         if (this != &o)
@@ -103,8 +109,16 @@ template <typename F>
 class ScopeExit
 {
 public:
-    explicit ScopeExit(F f) : f_(std::move(f)) {}
-    ScopeExit(ScopeExit &&o) noexcept : f_(std::move(o.f_)), active_(o.active_) { o.active_ = false; }
+    explicit ScopeExit(F f)
+        : f_(std::move(f))
+    {
+    }
+    ScopeExit(ScopeExit &&o) noexcept
+        : f_(std::move(o.f_))
+        , active_(o.active_)
+    {
+        o.active_ = false;
+    }
     ScopeExit(const ScopeExit &) = delete;
     ScopeExit &operator=(const ScopeExit &) = delete;
     ~ScopeExit()
