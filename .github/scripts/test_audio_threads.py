@@ -52,31 +52,31 @@ for path in sorted((root / 'src').rglob('*.c')):
 
 sound = (root / 'src/core/bgm.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 
-wait = function_text(sound, 'static int bgmWaitForRoom(')
+wait = function_text(sound, 'int BgmPlayer::waitForRoom(')
 if wait is None:
     failures.append('src/core/sound.c: bgmWaitForRoom() not found')
-elif not all(token in wait for token in ('audsrv_available()', 'DelayThread(', 'terminateFlag')):
-    failures.append('bgmWaitForRoom: must poll audsrv_available(), sleep between polls and honour terminateFlag')
+elif not all(token in wait for token in ('audsrv_available()', 'DelayThread(', 'terminate_')):
+    failures.append('BgmPlayer::waitForRoom: must poll audsrv_available(), sleep between polls and honour terminate_')
 
-queue = function_text(sound, 'static int bgmQueueChunk(')
+queue = function_text(sound, 'int BgmPlayer::queueChunk(')
 if queue is None:
     failures.append('src/core/sound.c: bgmQueueChunk() not found')
-elif 'bgmWaitForRoom(' not in queue or 'done += sent' not in queue:
-    failures.append('bgmQueueChunk: must wait through bgmWaitForRoom() and advance by what audsrv queued')
+elif 'waitForRoom(' not in queue or 'done += sent' not in queue:
+    failures.append('BgmPlayer::queueChunk: must wait through waitForRoom() and advance by what audsrv queued')
 
-thread = function_text(sound, 'static void bgmThread(')
-if thread is None or 'bgmQueueChunk(' not in thread or 'audsrv_play_audio(' in thread:
-    failures.append('bgmThread: must queue chunks through bgmQueueChunk(), never audsrv_play_audio() directly')
+thread = function_text(sound, 'void BgmPlayer::threadMain(')
+if thread is None or 'queueChunk(' not in thread or 'audsrv_play_audio(' in thread:
+    failures.append('BgmPlayer::threadMain: must queue chunks through queueChunk(), never audsrv_play_audio() directly')
 
-start = function_text(sound, 'void bgmStart(')
+start = function_text(sound, 'void BgmPlayer::start(')
 sizing = re.search(r'^[ \t]*int room = audsrv_available\(\);\n[ \t]*int ring = room \+ audsrv_queued\(\);\n.*?'
-                   r'^[ \t]*if \(bgmRoomTarget < BGM_ROOM_TARGET_MIN\)\n[^\n]*\n', start or '', re.M | re.S)
+                   r'^[ \t]*if \(roomTarget_ < BGM_ROOM_TARGET_MIN\)\n[^\n]*\n', start or '', re.M | re.S)
 if sizing is None or start.find('audsrv_set_format(') > sizing.start():
-    failures.append('bgmStart: must size bgmRoomTarget from the room and ring right after audsrv_set_format()')
+    failures.append('BgmPlayer::start: must size roomTarget_ from the room and ring right after audsrv_set_format()')
 # An unsupported rate leaves a ring that never drains; the stream must not start on it.
-if start is None or not re.search(r'if \(audsrv_set_format\(&audsrvFmt\) != AUDSRV_ERR_NOERROR\) \{[^}]*bgmDeinit\(\);\s*return;',
+if start is None or not re.search(r'if \(audsrv_set_format\(&audsrvFmt\) != AUDSRV_ERR_NOERROR\) \{[^}]*deinit\(\);\s*return;',
                                   start):
-    failures.append('bgmStart: a format audsrv refuses must stop BGM before any thread starts')
+    failures.append('BgmPlayer::start: a format audsrv refuses must stop BGM before any thread starts')
 
 defines = '\n'.join(as_macros(sound, r'BGM_RING_BUFFER_SIZE|BGM_ROOM_[A-Z_]+'))
 
@@ -90,9 +90,19 @@ static int stallLogs;
 
 @DEFINES@
 
-static volatile unsigned char terminateFlag;
-static int bgmBytesPerMs;
-static int bgmRoomTarget = BGM_RING_BUFFER_SIZE;
+/* The members the extracted functions touch. */
+class BgmPlayer
+{
+public:
+    int waitForRoom(int want);
+    int queueChunk(const char *chunk);
+    void applySizing(void);
+
+    volatile unsigned char terminate_ = 0;
+    int bytesPerMs_ = 0;
+    int roomTarget_ = BGM_RING_BUFFER_SIZE;
+};
+static BgmPlayer bp;
 
 /* ---- ps2sdk iop/sound/audsrv/src/audsrv.c, reduced to the ring ---- */
 static char ringbuf[20480];
@@ -161,7 +171,7 @@ static int DelayThread(int us)
     }
     runSpu();
     if (terminateAtUs >= 0 && nowUs >= terminateAtUs)
-        terminateFlag = 1;
+        bp.terminate_ = 1;
     return 0;
 }
 
@@ -211,15 +221,17 @@ static int audsrv_play_audio(const char *buf, int buflen)
 
 @WAIT@
 @QUEUE@
+void BgmPlayer::applySizing(void)
+{
+@SIZING@
+}
 
 static void startStream(int freq, int channels)
 {
     iopSetFormat(freq, channels);
-    bgmBytesPerMs = (freq * channels * 2) / 1000;
-    {
-@SIZING@
-    }
-    terminateFlag = 0;
+    bp.bytesPerMs_ = (freq * channels * 2) / 1000;
+    bp.applySizing();
+    bp.terminate_ = 0;
     terminateAtUs = -1;
     spuStalled = 0;
     nowUs = nextBlockUs = 0;
@@ -236,7 +248,7 @@ static int queueNext(void)
     int i;
     for (i = 0; i < BGM_RING_BUFFER_SIZE; i++)
         chunk[i] = (char)seq++;
-    return bgmQueueChunk(chunk);
+    return bp.queueChunk(chunk);
 }
 
 static int fails;
@@ -256,10 +268,10 @@ static void steady(int freq, int channels)
 
     seq = 0;
     startStream(freq, channels);
-    chunks = (2500 * bgmBytesPerMs) / BGM_RING_BUFFER_SIZE + 1; /* 2.5 s of music */
+    chunks = (2500 * bp.bytesPerMs_) / BGM_RING_BUFFER_SIZE + 1; /* 2.5 s of music */
     for (i = 0; i < chunks && done; i++)
         done = queueNext();
-    audioMs = ((long long)chunks * BGM_RING_BUFFER_SIZE) / bgmBytesPerMs;
+    audioMs = ((long long)chunks * BGM_RING_BUFFER_SIZE) / bp.bytesPerMs_;
 
     expectThat(done, "a chunk was never queued", freq, channels, i);
     expectThat(written == (long long)chunks * BGM_RING_BUFFER_SIZE, "bytes queued", freq, channels, written);
@@ -271,7 +283,7 @@ static void steady(int freq, int channels)
     expectThat(badDelays == 0, "slept for zero or less", freq, channels, badDelays);
     expectThat(rpcs * 1000 <= audioMs * 400, "audsrv RPCs per second of music", freq, channels, rpcs * 1000 / audioMs);
     printf("%5d Hz %d ch: ring %5d, target %4d, %lld RPC/s, %d chunks OK\n", freq, channels, ringbufSize,
-           bgmRoomTarget, rpcs * 1000 / audioMs, chunks);
+           bp.roomTarget_, rpcs * 1000 / audioMs, chunks);
 }
 
 static void stalled(int freq, int channels)
@@ -324,10 +336,10 @@ def run_ring_harness():
     program = (HARNESS.replace('@DEFINES@', defines).replace('@WAIT@', wait).replace('@QUEUE@', queue)
                .replace('@SIZING@', sizing.group(0)))
     with tempfile.TemporaryDirectory() as tmp:
-        src = Path(tmp) / 'bgm_ring.c'
+        src = Path(tmp) / 'bgm_ring.cpp'
         exe = Path(tmp) / 'bgm_ring'
         src.write_text(program)
-        result = subprocess.run(['cc', '-std=c99', '-Wall', '-Wextra', '-Werror', '-o', str(exe), str(src)],
+        result = subprocess.run(['g++', '-std=gnu++17', '-Wall', '-Wextra', '-Werror', '-o', str(exe), str(src)],
                                 capture_output=True, text=True)
         if result.returncode != 0:
             failures.append('bgm ring harness did not compile:\n%s' % result.stderr)

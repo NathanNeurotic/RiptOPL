@@ -46,12 +46,12 @@ def function_text(source, signature):
 
 sound = (root / 'src/core/bgm.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 
-load = function_text(sound, 'static int bgmTryLoadPath(')
+load = function_text(sound, 'int BgmPlayer::tryLoadPath(')
 if load is None:
-    failures.append('src/core/sound.c: bgmTryLoadPath() not found')
+    failures.append('src/core/sound.c: BgmPlayer::tryLoadPath() not found')
 else:
     if not re.search(r'ov_open_callbacks\(\s*src\s*,[^;]*bgmSourceCallbacks\s*\)', load):
-        failures.append('bgmTryLoadPath: the decoder must read through bgmSourceCallbacks, not a bare FILE*')
+        failures.append('BgmPlayer::tryLoadPath: the decoder must read through bgmSourceCallbacks, not a bare FILE*')
     if 'SEEK_END' not in load or 'ftell(' not in load:
         failures.append('bgmTryLoadPath: must measure the file size, or an empty read cannot be told from the end')
     if 'bgmSourceClose(src)' not in load:
