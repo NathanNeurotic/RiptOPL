@@ -273,3 +273,19 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
   (`oplGetModule` = the source registry of phase 5; `oplGetAppImageByMode` needs GSTEXTURE).
 - Source-scraping tests read `src/*.cpp` through `.github/scripts/hostmap.py`, which maps the host calls back to the old function
   names their mocks use; host tests mock `host::ui()` in `tests/host/host_env.h`.
+
+## 13. Phase 4b/4c status
+- **4b `LaunchServices`** (`host::launch()`): `system.cpp` no longer includes cheatman/rawatch/gsm/discsupport; the feature-derived ee_core
+  fields (cheat list, PS2RD image, RetroAchievements watch list + work area, GSM) are filled by `fillCoreConfig()` in `src/host.cpp`.
+  `warningId()` lets `system` raise translated toasts without touching the language tables.
+- **4c theme/UI split:** the hint-row helpers (`guiDrawIconAndText`, `guiDrawIconAndLiteralText`, `guiAlignMenuHints`,
+  `guiAlignSubMenuHints`) moved from `gui.cpp` to `src/uidraw.cpp` (graphics layer; they only need textures, fonts, the renderer and the
+  language table); `themes` calls the UI through `host::ui()` for lock/unlock/plasma and `host::app()` for `moduleUpdateMenu`.
+  Behaviour note: the moved helpers read the live screen width (`rmGetScreenExtents`) instead of gui.cpp's cached copy, which is
+  refreshed from the same call by `guiReloadScreenExtents()`.
+- Analyzer (comments/strings/members ignored): upward dependencies 164 -> 47 symbols (69 -> 31 module pairs); largest cycle 38 -> 32.
+- What is left is one-off edges, each needing its own answer: `themes` -> menusys (hint locks, item text) / vcdsupport (display names) /
+  favsupport; `texcache`/`textures` -> artindex/favsupport/appsupport/hddsupport/bdmsupport (art path/mode queries: these become
+  `GameSource` virtuals in phase 5); `lang` <-> fntsys/themes and `sound` -> themes (language/theme switching is app orchestration);
+  `system` -> bdm/eth/mmce/menusys/gui/themes/renderman/OSDHistory/xparam (launch teardown and device probing); `gui`/`menusys` ->
+  opl (`applyConfig`, `saveConfig`, `oplGetModule` = the source registry).

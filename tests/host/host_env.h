@@ -41,6 +41,7 @@ struct NullUi final : UiServices
     void manageCheats() override {}
     int showVcdUsbMode() override { return 0; }
     int promptRebootIop() override { return 0; }
+    void drawBackgroundPlasma() override {}
     void lock() override {}
     void unlock() override {}
 } gNullUi;

@@ -123,11 +123,9 @@ void guiUpdateScrollSpeed(void);
 void guiUpdateScreenScale(void);
 
 void guiDrawBGPlasma();
-int guiDrawIconAndText(int iconId, int textId, int font, int x, int y, u64 color);
+#include "include/uidraw.h" // the hint helpers moved out of gui.cpp
 void guiDrawSubMenuHints(void);
 
-int guiAlignMenuHints(menu_hint_item_t *hint, int font, int width);
-int guiAlignSubMenuHints(int hintCount, int *textID, int *iconID, int font, int width, int align);
 
 void guiShowAbout();
 void guiShowConfig();

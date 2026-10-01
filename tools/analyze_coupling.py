@@ -12,7 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAYERS = [
     "system ioman util tar ps2cnf ioprp atlas httpclient nbns launchdiag elfldr_noreset debug httpcatalog hdd md5 lz4 zso",
     "config lang xparam cheatman gsm pad sound OSDHistory vmc_groups settings",
-    "renderman textures texcache fntsys themes",
+    "renderman textures texcache fntsys themes uidraw",
     "supportbase bdmsupport hddsupport ethsupport appsupport mmcesupport udpfssupport httpsupport favsupport vcdsupport cuesupport discsupport netsupport artindex folderbrowse rabadge ranet rawatch rahash retrogem",
     "menusys dia dialogs gui guigame libview",
     "opl host",

@@ -1,3 +1,4 @@
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/themes.h"
 #include "include/util.h"
@@ -1343,7 +1344,7 @@ static void drawGameImage(struct menu_list *menu, struct submenu_list *item, con
                 texture = &gameImage->defaultTexture->source;
             else {
                 if (elem->type == ELEM_TYPE_BACKGROUND)
-                    guiDrawBGPlasma();
+                    host::ui().drawBackgroundPlasma();
                 return;
             }
         }
@@ -1369,7 +1370,7 @@ static void drawGameImage(struct menu_list *menu, struct submenu_list *item, con
         if (gameImage->defaultTexture)
             rmDrawPixmap(&gameImage->defaultTexture->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
         else
-            guiDrawBGPlasma();
+            host::ui().drawBackgroundPlasma();
     }
 }
 
@@ -2084,7 +2085,7 @@ static theme_element_t *initBasic(const char *themePath, config_set_t *themeConf
 // Internal elements ////////////////////////////////////////////////////////////////////////////////////////////////////////
 static void drawBackground(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
-    guiDrawBGPlasma();
+    host::ui().drawBackgroundPlasma();
 }
 
 static void initBackground(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, const char *pattern, int count, const char *texture)
@@ -3772,16 +3773,16 @@ int thmAddElements(char *path, const char *separator, int forceRefresh)
     nThemes += result;
     // Appends above only fill NEW themes[] slots (the published name list references old slots
     // untouched); the rebuild's free+swap is what must be serialized against the GUI's readers.
-    guiLock();
+    host::ui().lock();
     thmRebuildGuiNames();
-    guiUnlock();
+    host::ui().unlock();
 
     const char *temp;
     if (configGetStr(configGetByType(CONFIG_OPL), "theme", &temp)) {
         LOG("THEMES Trying to set again theme: %s\n", temp);
         if (thmSetGuiValue(thmFindGuiID(temp), 0) && forceRefresh) {
             for (i = 0; i < MODE_COUNT; i++)
-                moduleUpdateMenu(i, 1, 0);
+                host::app().moduleUpdateMenu(i, 1, 0);
         }
     }
 
@@ -3823,7 +3824,7 @@ void thmReinit(const char *path)
     // One guiLock section across the removal loop AND the rebuild: the frees below invalidate
     // strings the CURRENTLY PUBLISHED guiThemesNames points at, so the GUI-side readers
     // (frame-locked renders, guiShowUIConfig's snapshot) must not run between free and swap.
-    guiLock();
+    host::ui().lock();
     int i = 0;
     while (i < nThemes) {
         if (strncmp(themes[i].filePath, path, strlen(path)) == 0) {
@@ -3840,7 +3841,7 @@ void thmReinit(const char *path)
     }
 
     thmRebuildGuiNames();
-    guiUnlock();
+    host::ui().unlock();
 
     if (activeOnDevice) {
         // The displayed theme's files just went away with its device: drop to the built-in default.

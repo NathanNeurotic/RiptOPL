@@ -39,6 +39,7 @@ public:
     void manageCheats() override { guiManageCheats(); }
     int showVcdUsbMode() override { return guiShowVcdUsbMode(); }
     int promptRebootIop() override { return guiPromptRebootIop(); }
+    void drawBackgroundPlasma() override { guiDrawBGPlasma(); }
     void lock() override { guiLock(); }
     void unlock() override { guiUnlock(); }
 };
