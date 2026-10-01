@@ -46,6 +46,9 @@ constexpr int ART_FOREGROUND_DRAIN_MS = 500;
 
 static ArtQueue gArtQ;
 static ArtWorker gArtW;
+// The thread stack stays a plain file-static array: inside the object it would drag all 96 KiB into .data (the
+// object has non-zero initialisers), instead of .bss.
+static u8 gArtStack[ART_THREAD_STACK_SIZE] __attribute__((aligned(16)));
 
 static void cacheWakeArtWorker(void);
 
@@ -773,7 +776,7 @@ void cacheInit()
     gArtW.thread.stack_size = ART_THREAD_STACK_SIZE;
     gArtW.thread.gp_reg = &_gp;
     gArtW.thread.func = reinterpret_cast<void *>(&cacheArtWorkerThread);
-    gArtW.thread.stack = gArtW.stack;
+    gArtW.thread.stack = gArtStack;
     gArtW.thread.initial_priority = ART_THREAD_PRIORITY;
 
     gArtW.threadId = CreateThread(&gArtW.thread);

@@ -31,7 +31,6 @@ public:
 
     int threadId = -1;
     ee_thread_t thread = {};
-    u8 stack[ART_THREAD_STACK_SIZE] __attribute__((aligned(16))) = {};
     volatile int running = 0;
     volatile int terminate = 0;
     volatile int shutdownAbandoned = 0;
