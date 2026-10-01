@@ -11,6 +11,7 @@
 
 #include "include/sound.h"
 #include "include/soundint.h"
+#include "include/soundeffects.h"
 #include "include/opl.h"
 #include "include/ioman.h"
 #include "include/themes.h"
@@ -45,32 +46,12 @@ extern unsigned int size_bd_connect_adp;
 extern unsigned char bd_disconnect_adp[];
 extern unsigned int size_bd_disconnect_adp;
 
-struct sfxEffect
-{
-    const char *name;
-    void *buffer;
-    int size;
-    int builtin;
-    int duration_ms;
-};
 
-static struct sfxEffect sfx_files[SFX_COUNT] = {
-    {"boot.adp"},
-    {"cancel.adp"},
-    {"confirm.adp"},
-    {"cursor.adp"},
-    {"message.adp"},
-    {"transition.adp"},
-    {"bd_connect.adp"},
-    {"bd_disconnect.adp"},
-};
 
-static struct audsrv_adpcm_t sfx[SFX_COUNT];
 
 #define CURSOR_SFX_CHANNEL_BASE  SFX_COUNT
 constexpr int CURSOR_SFX_CHANNEL_COUNT = 6;
 
-static int cursorChannelIndex = 0;
 
 static int sfxGetCursorChannel(int slot)
 {
@@ -102,13 +83,13 @@ static int sfxIsUiOneShot(int id)
 }
 
 // Returns 0 if the specified file was read. The sfxEffect structure will not be updated unless the file is successfully read.
-static int sfxRead(const char *full_path, struct sfxEffect *sfx)
+int SoundEffects::readFile(const char *full_path, struct sfxEffect *sfx)
 {
     int adpcm;
     void *buffer;
     int ret, size;
 
-    LOG("SFX: sfxRead('%s')\n", full_path);
+    LOG("SFX: readFile('%s')\n", full_path);
 
     adpcm = open(full_path, O_RDONLY);
     if (adpcm < 0) {
@@ -155,33 +136,33 @@ static int sfxCalculateSoundDuration(int nSamples)
     return (nSamples / sampleRate) * 1000;
 }
 
-static void sfxInitDefaults(void)
+void SoundEffects::initDefaults(void)
 {
     int i;
 
     for (i = 0; i < SFX_COUNT; i++)
-        sfx_files[i].builtin = 1;
+        files_[i].builtin = 1;
 
-    sfx_files[SFX_BOOT].buffer = boot_adp;
-    sfx_files[SFX_BOOT].size = size_boot_adp;
-    sfx_files[SFX_CANCEL].buffer = cancel_adp;
-    sfx_files[SFX_CANCEL].size = size_cancel_adp;
-    sfx_files[SFX_CONFIRM].buffer = confirm_adp;
-    sfx_files[SFX_CONFIRM].size = size_confirm_adp;
-    sfx_files[SFX_CURSOR].buffer = cursor_adp;
-    sfx_files[SFX_CURSOR].size = size_cursor_adp;
-    sfx_files[SFX_MESSAGE].buffer = message_adp;
-    sfx_files[SFX_MESSAGE].size = size_message_adp;
-    sfx_files[SFX_TRANSITION].buffer = transition_adp;
-    sfx_files[SFX_TRANSITION].size = size_transition_adp;
-    sfx_files[SFX_BD_CONNECT].buffer = bd_connect_adp;
-    sfx_files[SFX_BD_CONNECT].size = size_bd_connect_adp;
-    sfx_files[SFX_BD_DISCONNECT].buffer = bd_disconnect_adp;
-    sfx_files[SFX_BD_DISCONNECT].size = size_bd_disconnect_adp;
+    files_[SFX_BOOT].buffer = boot_adp;
+    files_[SFX_BOOT].size = size_boot_adp;
+    files_[SFX_CANCEL].buffer = cancel_adp;
+    files_[SFX_CANCEL].size = size_cancel_adp;
+    files_[SFX_CONFIRM].buffer = confirm_adp;
+    files_[SFX_CONFIRM].size = size_confirm_adp;
+    files_[SFX_CURSOR].buffer = cursor_adp;
+    files_[SFX_CURSOR].size = size_cursor_adp;
+    files_[SFX_MESSAGE].buffer = message_adp;
+    files_[SFX_MESSAGE].size = size_message_adp;
+    files_[SFX_TRANSITION].buffer = transition_adp;
+    files_[SFX_TRANSITION].size = size_transition_adp;
+    files_[SFX_BD_CONNECT].buffer = bd_connect_adp;
+    files_[SFX_BD_CONNECT].size = size_bd_connect_adp;
+    files_[SFX_BD_DISCONNECT].buffer = bd_disconnect_adp;
+    files_[SFX_BD_DISCONNECT].size = size_bd_disconnect_adp;
 }
 
 // Returns 0 (AUDSRV_ERR_NOERROR) if the sound was loaded successfully.
-static int sfxLoad(struct sfxEffect *sfxData, audsrv_adpcm_t *sfx)
+int SoundEffects::load(struct sfxEffect *sfxData, audsrv_adpcm_t *sfx)
 {
     int ret;
 
@@ -206,7 +187,7 @@ static int sfxLoad(struct sfxEffect *sfxData, audsrv_adpcm_t *sfx)
 }
 
 // Returns number of audio files successfully loaded, < 0 if an unrecoverable error occurred.
-int sfxInit(int bootSnd)
+int SoundEffects::init(int bootSnd)
 {
     char sound_path[256];
     char full_path[256];
@@ -220,18 +201,18 @@ int sfxInit(int bootSnd)
     }
 
     audsrv_adpcm_init();
-    cursorChannelIndex = 0;
-    sfxInitDefaults();
+    cursorChannel_ = 0;
+    initDefaults();
     audioSetVolume();
 
     // Check default theme is not current theme
     int themeID = thmGetGuiValue();
     char *thmPath = thmGetFilePath(themeID);
-    if (thmPath != NULL) { // NULL for <OPL> + the built-in <Coverflow> -> use default sfx
-        // Get theme path for sfx
+    if (thmPath != NULL) { // NULL for <OPL> + the built-in <Coverflow> -> use default adpcm_
+        // Get theme path for adpcm_
         snprintf(sound_path, sizeof(sound_path), "%ssound", thmPath);
 
-        // Check for custom sfx folder
+        // Check for custom adpcm_ folder
         DIR *dir = opendir(sound_path);
         if (dir != NULL) {
             thmSfxEnabled = 1;
@@ -243,17 +224,17 @@ int sfxInit(int bootSnd)
     i = bootSnd ? 0 : 1;
     for (; i < SFX_COUNT; i++) {
         if (thmSfxEnabled) {
-            snprintf(full_path, sizeof(full_path), "%s/%s", sound_path, sfx_files[i].name);
-            ret = sfxRead(full_path, &sfx_files[i]);
+            snprintf(full_path, sizeof(full_path), "%s/%s", sound_path, files_[i].name);
+            ret = readFile(full_path, &files_[i]);
             if (ret != 0) {
                 LOG("SFX: %s could not be loaded. Using default sound %d.\n", full_path, ret);
             }
         } else
-            snprintf(full_path, sizeof(full_path), "builtin/%s", sfx_files[i].name);
+            snprintf(full_path, sizeof(full_path), "builtin/%s", files_[i].name);
 
-        ret = sfxLoad(&sfx_files[i], &sfx[i]);
+        ret = load(&files_[i], &adpcm_[i]);
         if (ret == 0) {
-            LOG("SFX: Loaded %s, size=%d, duration=%dms\n", full_path, sfx_files[i].size, sfx_files[i].duration_ms);
+            LOG("SFX: Loaded %s, size=%d, duration=%dms\n", full_path, files_[i].size, files_[i].duration_ms);
             loaded++;
         } else {
             LOG("SFX: failed to load %s, error %d\n", full_path, ret);
@@ -263,14 +244,14 @@ int sfxInit(int bootSnd)
     return loaded;
 }
 
-int sfxGetSoundDuration(int id)
+int SoundEffects::soundDuration(int id)
 {
     if (!gAudioInitialized) {
         LOG("SFX: %s: ERROR: not initialized!\n", __FUNCTION__);
         return 0;
     }
 
-    return sfx_files[id].duration_ms;
+    return files_[id].duration_ms;
 }
 
 // Debug-Colors instrumentation (#271/#272): per-press audsrv RPC wall time. audsrv_ch_play_adpcm
@@ -302,15 +283,13 @@ constexpr int RUMBLE_NAV_REPEAT_DUTY_PCT = 45;
 constexpr int RUMBLE_NAV_MIN_MS = 80;
 constexpr int RUMBLE_DECISION_MS = 110;
 constexpr int RUMBLE_DECISION_LEVEL = 0x60;
-static unsigned int sfxLastPlayMs = 0;
-static unsigned int sfxMaxPlayMs = 0;
 
-void sfxGetPlayDiag(unsigned int *lastMs, unsigned int *maxMs)
+void SoundEffects::playDiag(unsigned int *lastMs, unsigned int *maxMs)
 {
     if (lastMs)
-        *lastMs = sfxLastPlayMs;
+        *lastMs = lastPlayMs_;
     if (maxMs)
-        *maxMs = sfxMaxPlayMs;
+        *maxMs = maxPlayMs_;
 }
 
 void sfxGetDropDiag(unsigned int *staleDrops, unsigned int *fullDrops)
@@ -377,7 +356,7 @@ static void sfxRumble(int id)
     }
 }
 
-void sfxPlay(int id)
+void SoundEffects::play(int id)
 {
     int channel;
 
@@ -399,14 +378,14 @@ void sfxPlay(int id)
             }
             lastCursorTicks = sfxStartTicks;
 
-            int chosenSlot = cursorChannelIndex;
+            int chosenSlot = cursorChannel_;
 
-            cursorChannelIndex = (cursorChannelIndex + 1) % CURSOR_SFX_CHANNEL_COUNT;
+            cursorChannel_ = (cursorChannel_ + 1) % CURSOR_SFX_CHANNEL_COUNT;
             channel = sfxGetCursorChannel(chosenSlot);
 
             // Volumes are configured once by audioSetVolume(). Replaying a
             // rotation channel replaces its old sample in one SIF RPC.
-            audsrv_ch_play_adpcm(channel, &sfx[id]);
+            audsrv_ch_play_adpcm(channel, &adpcm_[id]);
         } else {
             if (sfxIsUiOneShot(id)) { // see SFX_ONESHOT_COALESCE_MS
                 static u32 lastOneShotTicks = 0;
@@ -415,13 +394,36 @@ void sfxPlay(int id)
                     return;
                 lastOneShotTicks = sfxStartTicks;
             }
-            audsrv_ch_play_adpcm(id, &sfx[id]);
+            audsrv_ch_play_adpcm(id, &adpcm_[id]);
         }
 
         unsigned int costMs = (unsigned int)((cpu_ticks() - sfxStartTicks) / SFX_CLOCKS_PER_MS);
-        sfxLastPlayMs = costMs;
-        if (costMs > sfxMaxPlayMs)
-            sfxMaxPlayMs = costMs;
+        lastPlayMs_ = costMs;
+        if (costMs > maxPlayMs_)
+            maxPlayMs_ = costMs;
     }
 }
 
+static SoundEffects gSfx;
+
+// ---- sound.h API ----------------------------------------------------------------------------
+
+int sfxInit(int bootSnd)
+{
+    return gSfx.init(bootSnd);
+}
+
+int sfxGetSoundDuration(int id)
+{
+    return gSfx.soundDuration(id);
+}
+
+void sfxGetPlayDiag(unsigned int *lastMs, unsigned int *maxMs)
+{
+    gSfx.playDiag(lastMs, maxMs);
+}
+
+void sfxPlay(int id)
+{
+    gSfx.play(id);
+}
