@@ -191,6 +191,8 @@ static int fntPrepareGlyphCachePage(font_t *font, int pageid)
 
     // allocate the page
     font->glyphCache[pageid] = static_cast<fnt_glyph_cache_entry_t*>(malloc(sizeof(fnt_glyph_cache_entry_t) * GLYPH_CACHE_PAGE_SIZE));
+    if (!font->glyphCache[pageid])
+        return 0; // out of memory: the caller treats this as "page not available" (it used to dereference NULL)
 
     int i;
     for (i = 0; i < GLYPH_CACHE_PAGE_SIZE; ++i) {

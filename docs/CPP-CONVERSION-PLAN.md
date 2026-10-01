@@ -228,3 +228,15 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
   `rmScaleX` into infinite recursion (an exported wrapper shared the name).
 - Remaining 67 warnings: 34 `-Wsign-compare`, 21 `-Wwrite-strings` (SDK `char *` parameters and `gHDDPrefix`-style globals),
   5 `-Wmissing-declarations`, 4 unused variables, 2 pointer-arith, 1 register.
+
+## 10. Phase 2 status (RAII: helpers and the cleanup paths done; bulk malloc conversion deliberately not done)
+- `include/raii.h` (UniqueFd, UniqueFile, UniqueMalloc, ScopeExit) and `include/sema_lock.h` (SemaLock), unit-tested in
+  `tests/host/test_raii.cpp`.
+- Converted: `tar.cpp` (all fds and buffers; `goto fail` and the declaration hoist gone), `bdmTryNeutrinoLaunch` (abort path is a
+  function), `sysLoadModuleBuffer` and the BDM transport lock (SemaLock), `discCheckWorker` (scope guards), the menusys info-size
+  worker (split into helpers, no goto). The only gotos left are 23 backward `goto reshow_*` re-display loops in `gui.cpp`/`guigame.cpp`
+  (control flow, not cleanup; they belong to the gui split in phase 7).
+- Semaphores: only two of the ~140 Wait/Signal sites were scoped locks with early exits; the rest are producer/consumer signals
+  (bgm ring, IO queue) or straight-line pairs, so a blanket SemaLock rewrite would not buy safety.
+- malloc/free: a leak scan (allocation followed by a return before free) flagged ~45 sites; the ones read were correct ownership
+  hand-offs, so no bulk conversion. One real defect fixed: `fntPrepareGlyphCachePage` dereferenced an unchecked `malloc`.
