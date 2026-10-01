@@ -37,8 +37,8 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-texcache = read('src/texcache.c')
-themes = read('src/themes.c')
+texcache = read('src/texcache.cpp')
+themes = read('src/themes.cpp')
 
 # --- The cache floor that makes a `count == 1` guard dead code ---------------------------------
 if not re.search(r'if \(cachePattern != NULL && cacheCount < 2\)\s*\n\s*cacheCount = 2;', themes):
@@ -63,7 +63,7 @@ if re.search(r'texture = getGameImageTextureEx\(gameImage->cache, menu->item->us
              themes):
     failures.append('themes.c: the per-game background is requested as a PRIORITY image again (#772)')
 
-functions = ''.join(function_text(texcache, 'src/texcache.c', sig) for sig in (
+functions = ''.join(function_text(texcache, 'src/texcache.cpp', sig) for sig in (
     'static void artPush(',
     'static void artPushFront(',
     'static void artPromote(',

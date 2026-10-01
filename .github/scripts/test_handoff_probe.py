@@ -21,7 +21,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/elfldr_noreset.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+source = (root / 'src/elfldr_noreset.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 header = (root / 'include/launchdiag.h').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
@@ -55,8 +55,8 @@ functions = ''.join(function_text(sig) for sig in (
 
 # -bsdfs=bd names the game's OWN bdm device ("<driver><devNr>p0"): a second stick on the same driver
 # is usb1, never usb0. The bdm leg must copy massDeviceIndex before the teardown frees pDeviceData.
-system_c = (root / 'src/system.c').read_text(encoding='utf-8').replace('\r\n', '\n')
-bdm_c = (root / 'src/bdmsupport.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+system_c = (root / 'src/system.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+bdm_c = (root / 'src/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 if '"-dvd=bdfs:%s%dp0", driver, bdDevNr >= 0 ? bdDevNr : 0' not in system_c:
     failures.append('sysLaunchNeutrino: the bdfs tuple must use the caller\'s bdm device number')
 

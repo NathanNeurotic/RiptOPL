@@ -22,8 +22,8 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-src = (root / "src/udpfssupport.c").read_text(encoding="utf-8").replace("\r\n", "\n")
-libview = (root / "src/libview.c").read_text(encoding="utf-8").replace("\r\n", "\n")
+src = (root / "src/udpfssupport.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
+libview = (root / "src/libview.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
 failures = []
 
 
@@ -211,7 +211,7 @@ int main(void)
             if run.returncode != 0:
                 failures.append("THM case harness reported failures")
 
-themes_c = (root / "src/themes.c").read_text(encoding="utf-8").replace("\r\n", "\n")
+themes_c = (root / "src/themes.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
 entry_fn = function_body(themes_c, "static int thmReadEntry(")
 if entry_fn and (entry_fn.count('strncasecmp(name, "thm_", 4) == 0') != 2 or 'strncmp(name, "thm_"' in entry_fn):
     failures.append("thmReadEntry must match the thm_ prefix in any case, in both checks")
@@ -259,7 +259,7 @@ if init and "udpfsPs1Scanned = 0;" not in init:
 load = function_body(libview, "void libViewLoadFromConfig(config_set_t *configLast)")
 if load and "libDirty" in load:
     failures.append("libViewLoadFromConfig must not mark restored pages dirty (it scans empty BDM slots at boot)")
-bdm = (root / "src/bdmsupport.c").read_text(encoding="utf-8").replace("\r\n", "\n")
+bdm = (root / "src/bdmsupport.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
 if "sub[0] == '\\0' && pDeviceData->bdmPrefix[0] != '\\0')\n            setErrorMessagePathCode(_STR_BDM_PS2_FOLDERS_UNREADABLE" not in bdm:
     failures.append("the CD/DVD-unreadable popup must never fire for a slot with no device path")
 

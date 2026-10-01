@@ -17,7 +17,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-menusys = (root / 'src/menusys.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+menusys = (root / 'src/menusys.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 

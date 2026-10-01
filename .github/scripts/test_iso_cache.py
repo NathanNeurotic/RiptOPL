@@ -21,7 +21,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-support = (root / 'src/supportbase.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+support = (root / 'src/supportbase.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
@@ -245,10 +245,10 @@ int main(void)
 
 if not failures:
     with tempfile.TemporaryDirectory() as tmp:
-        c_file = Path(tmp) / 'iso_cache.c'
+        c_file = Path(tmp) / 'iso_cache.cpp'
         exe = Path(tmp) / ('iso_cache.exe' if sys.platform == 'win32' else 'iso_cache')
         c_file.write_text(HARNESS.replace('@FUNCTIONS@', functions), encoding='utf-8')
-        build = subprocess.run(['cc', '-std=gnu99', '-O1', '-Wall', '-Wextra', '-Werror',
+        build = subprocess.run(['g++', '-std=gnu++17', '-O1', '-Wall', '-Wextra', '-Werror',
                                 '-Wno-unused-function', '-Wno-sign-compare', '-Wno-format-truncation',
                                 str(c_file), '-o', str(exe)],
                                capture_output=True, text=True)

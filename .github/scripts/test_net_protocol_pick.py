@@ -21,8 +21,8 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-gui = (root / 'src/gui.c').read_text(encoding='utf-8').replace('\r\n', '\n')
-opl = (root / 'src/opl.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+gui = (root / 'src/gui.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+opl = (root / 'src/opl.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
@@ -35,7 +35,7 @@ def function_text(source, signature, where):
     return source[match.start():end] + '\n}\n'
 
 
-helpers = ''.join(function_text(gui, sig, 'src/gui.c') for sig in (
+helpers = ''.join(function_text(gui, sig, 'src/gui.cpp') for sig in (
     'static int guiNetProtocolShown(',
     'static int guiNetProtocolToPicker(',
     'static int guiNetProtocolAccess(',
@@ -144,7 +144,7 @@ load_pick = opl.find('CONFIG_OPL_NET_PROTOCOL_PICK, &gNetProtocolPick')
 reconcile = opl.find('if (gNetStartMode == START_MODE_DISABLED || gNetworkProtocol == NET_PROTO_OFF)')
 if load_pick < 0 or reconcile < 0 or load_pick > reconcile:
     failures.append('src/opl.c: the pick must be taken BEFORE the start-row reconcile forces OFF')
-if 'gNetProtocolPick = NET_PROTO_SMB;' not in function_text(opl, 'static void setDefaults(', 'src/opl.c'):
+if 'gNetProtocolPick = NET_PROTO_SMB;' not in function_text(opl, 'static void setDefaults(', 'src/opl.cpp'):
     failures.append('src/opl.c: setDefaults does not default the pick to SMB')
 if 'gNetworkProtocol = guiNetProtocolFromPicker' in gui or 'guiNetProtocolToPicker(gNetworkProtocol)' in gui:
     failures.append('src/gui.c: a Protocol row still bypasses the remembered pick')

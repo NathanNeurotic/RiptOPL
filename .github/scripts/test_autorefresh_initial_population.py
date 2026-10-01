@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-opl = (root / "src/opl.c").read_text(encoding="utf-8").replace("\r\n", "\n")
+opl = (root / "src/opl.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
 
 
 def function_text(signature):

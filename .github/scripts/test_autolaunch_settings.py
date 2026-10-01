@@ -236,7 +236,7 @@ int main(void)
 
 
 def run_hybrid_harness():
-    source = text('src/hddsupport.c')
+    source = text('src/hddsupport.cpp')
     header_valid = function_text(source, 'static int hddApaHeaderValid(')
     hybrid = function_text(source, 'int hddIsApaMbrHybrid(')
     reserved = re.search(r'^#define HDD_APA_RESERVED_SECTORS .*$', source, re.M)
@@ -248,7 +248,7 @@ def run_hybrid_harness():
 
 
 def run_path_harness():
-    source = text('src/config.c')
+    source = text('src/config.cpp')
     dir_end = function_text(source, 'static const char *configPathDirEnd(')
     sibling = function_text(source, 'static void configBuildSiblingPath(')
     if dir_end is None or sibling is None:
@@ -258,19 +258,19 @@ def run_path_harness():
 
 
 def check_pins():
-    bdm = text('src/bdmsupport.c')
+    bdm = text('src/bdmsupport.cpp')
     launch = function_text(bdm, 'void bdmLaunchGame(')
     check(launch is not None and 'itemList != NULL ? folderGetSub(itemList->mode) : ""' in launch and
           not re.search(r'sbSetBrowseSub\(folderGetSub\(itemList->mode\)\)', launch),
           'bdmLaunchGame: autolaunch (itemList == NULL) must not read itemList->mode')
 
-    gui = text('src/gui.c')
+    gui = text('src/gui.cpp')
     msgbox = function_text(gui, 'int guiMsgBox(')
     check(msgbox is not None and re.search(r'if \(gTheme == NULL\) \{[^}]*return 0;', msgbox) and
           msgbox.find('gTheme == NULL') < msgbox.find('guiWrapText('),
           'guiMsgBox: must answer "back" (0) before the GUI exists')
 
-    support = text('src/supportbase.c')
+    support = text('src/supportbase.cpp')
     cheats = function_text(support, 'int sbCheatsMissingContinue(')
     # The accept branch itself, not just the call: a negated test (!guiMsgBox) or a comparison against
     # anything other than truthiness would make "continue without cheats" cancel the launch again.
@@ -284,13 +284,13 @@ def check_pins():
     silent = re.search(r'if \(cheatResult == -ENOENT && GetCheatsFromGlobalDefault\(\)\) \{[^}]*return 1;', cheats or '')
     check(silent is not None and silent.start() < cheats.find('guiMsgBox('),
           'sbCheatsMissingContinue: a missing .cht with cheats on for all games must continue without a prompt')
-    init = function_text(text('src/cheatman.c'), 'void InitCheatsConfig(')
+    init = function_text(text('src/cheatman.cpp'), 'void InitCheatsConfig(')
     per_game, _, global_branch = (init or '').partition('} else {')
     check(init is not None and 'gCheatFromGlobal = 0;' in per_game and 'gCheatFromGlobal = 1;' not in per_game and
           'gCheatFromGlobal = 1;' in global_branch,
           'InitCheatsConfig: gCheatFromGlobal is reset each launch and set only by the all-games default')
 
-    ioman = text('src/ioman.c')
+    ioman = text('src/ioman.cpp')
     io_init = function_text(ioman, 'void ioInit(')
     # The wait must be uncapped (loop condition is ONLY the worker flag) and must finish before anything
     # the old worker shares -- gIOTerminate, the queue, the static stack -- is reset or reused.
@@ -299,7 +299,7 @@ def check_pins():
           wait.start() < io_init.find('gIOTerminate = 0;') < io_init.find('CreateThread('),
           'ioInit: after a refused autolaunch, wait (uncapped) for the old worker before reusing its stack')
 
-    config = text('src/config.c')
+    config = text('src/config.cpp')
     free_body = function_text(config, 'void configFree(')
     check(free_body is not None and re.search(r'if \(configSet == NULL\)\s*return;', free_body),
           'configFree: miniDeinit(NULL) needs a NULL-safe configFree')
@@ -320,7 +320,7 @@ def check_pins():
 
     # Retest of #545: a hybrid is homed on exFAT like official OPL. Only an explicit Custom Settings Path
     # in the APA home keeps APA; RiptOPL settings found there are carried over instead of winning.
-    apa_home = function_text(text('src/opl.c'), 'static int resolveApaBootHome(')
+    apa_home = function_text(text('src/opl.cpp'), 'static int resolveApaBootHome(')
     check(apa_home is not None and
           'haveExfatHome && !bootHomeHasFile(gHDDPrefix, configPathRedirectFile)' in apa_home and
           apa_home.find('configSetCarryOverDir(gHDDPrefix);') <
@@ -341,7 +341,7 @@ def check_pins():
           'hddReleaseSupportHome();' in apa_home[apa_home.rfind('if (haveExfatHome) {'):unusable],
           'resolveApaBootHome: a hybrid must inspect the APA home without creating __common/OPL/ and '
           'release it unless settings are carried over from it')
-    hdd = text('src/hddsupport.c')
+    hdd = text('src/hddsupport.cpp')
     mount = function_text(hdd, 'static void hddMountSupportHome(')
     check(mount is not None and
           re.search(r'if \(createCommonHome\)\s*\(void\)hddCheckOPLFolder\(hddPrefix\);', mount) and
@@ -357,25 +357,25 @@ def check_pins():
     check(multi is not None and
           'configPrepareLoadNotification(configOplCarryOver ? configCarryOverDir : configSet->filename);' in multi,
           'configReadMulti: the load toast must name the carry-over home when settings came from there')
-    toast = function_text(text('src/gui.c'), 'static void guiShowNotifications(')
+    toast = function_text(text('src/gui.cpp'), 'static void guiShowNotifications(')
     check(toast is not None and
           'configOplIsOfficialSeed() ? _STR_OFFICIAL_CFG_NOTIFICATION : _STR_CFG_NOTIFICATION' in toast,
           'guiShowNotifications: official OPL\'s seed must not be announced as RiptOPL settings')
     # One decision for an on-time drive and a late one. A failed ATA load is retryable, so the drive can
     # first come up in tryAlternateDevice's retry; a bare PFS mount there skipped the hybrid check and homed
     # the hybrid on __common/OPL (CodeRabbit on #725).
-    to_mass = function_text(text('src/opl.c'), 'static void resolveBootDirToMass(')
+    to_mass = function_text(text('src/opl.cpp'), 'static void resolveBootDirToMass(')
     check(to_mass is not None and 'hddLoadModulesReady() && resolveApaBootHome()' in to_mass and
           'hddIsApaMbrHybrid(' not in to_mass,
           'resolveBootDirToMass: the APA home must come from resolveApaBootHome')
-    retry = function_text(text('src/opl.c'), 'static int tryAlternateDevice(')
+    retry = function_text(text('src/opl.cpp'), 'static int tryAlternateDevice(')
     retry_head = retry[:retry.find('readConfigPathRedirect(')] if retry else ''
     check(retry is not None and
           re.search(r'hddLoadModulesReady\(\) && resolveApaBootHome\(\) && gBootHomeHybridExfat\)\s*\{\s*'
                     r'value = configReadMulti\(types\);', retry_head) and
           'hddLoadSupportModules();' not in retry_head,
           'tryAlternateDevice: a drive that comes up on the retry must get the boot-time hybrid decision')
-    load = function_text(text('src/opl.c'), 'static void _loadConfig(')
+    load = function_text(text('src/opl.cpp'), 'static void _loadConfig(')
     check(load is not None and
           re.search(r'gBootHomeHybridExfat && gBDMStartMode == START_MODE_DISABLED &&\s*'
                     r'\(!\(result & CONFIG_OPL\) \|\| configOplIsOfficialSeed\(\) \|\| configOplIsCarryOver\(\)\)', load) and
@@ -386,7 +386,7 @@ def check_pins():
     check(re.search(r'BDM_MODE7,\s*ETH_MODE,\s*HDD_MODE,\s*APP_MODE,', iosupport),
           'iosupport.h: the official default_device mapping assumes ETH/HDD/APP follow BDM_MODE7')
 
-    opl = text('src/opl.c')
+    opl = text('src/opl.cpp')
     check(re.search(r'^static int tryAlternateDevice\(int types\)$', opl, re.M),
           'tryAlternateDevice: autolaunch must not get its own discovery branch again')
     mini = function_text(opl, 'static void miniInit(')

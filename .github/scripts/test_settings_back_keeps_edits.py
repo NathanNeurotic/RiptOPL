@@ -62,21 +62,21 @@ def compile_and_run(name, program):
             failures.extend(lines or ['%s harness exited %d' % (name, run.returncode)])
 
 
-dia_c = read('src/dia.c')
-gui_c = read('src/gui.c')
-menusys_c = read('src/menusys.c')
-dialogs_c = read('src/dialogs.c')
+dia_c = read('src/dia.cpp')
+gui_c = read('src/gui.cpp')
+menusys_c = read('src/menusys.cpp')
+dialogs_c = read('src/dialogs.cpp')
 dialogs_h = read('include/dialogs.h')
 gui_h = read('include/gui.h')
-guigame_c = read('src/guigame.c')
-opl_c = read('src/opl.c')
+guigame_c = read('src/guigame.cpp')
+opl_c = read('src/opl.cpp')
 opl_h = read('include/opl.h')
 config_h = read('include/config.h')
 iosupport_h = read('include/iosupport.h')
 
 # --- dia.c: Circle on a Settings page -> Index, ahead of the generic Cancel ----------------------
 
-execute = function_text(dia_c, 'src/dia.c', 'int diaExecuteDialog(')
+execute = function_text(dia_c, 'src/dia.cpp', 'int diaExecuteDialog(')
 # "Back" is the user's cancel button -- Circle by default, Cross when Circle is chosen as confirm.
 back = re.search(r'if \(settingsShell && getKeyOn\(guiCancelKey\(\)\)\) \{[^}]*return DIA_RESULT_INDEX;', execute)
 cancel = execute.find('return UIID_BTN_CANCEL;')
@@ -124,7 +124,7 @@ int main(void)
 }
 '''
 
-page_functions = ''.join(function_text(gui_c, 'src/gui.c', sig) for sig in (
+page_functions = ''.join(function_text(gui_c, 'src/gui.cpp', sig) for sig in (
     'static int guiSettingsIsPeerResult(',
     'static int guiSettingsIsShellResult(',
     'static int guiSettingsPageResult(',
@@ -146,7 +146,7 @@ DEVICE_PAGES = {
     'static int guiSettingsShowPopstarter(': 'if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, popstarterPathEdit, gPopstarterPath))',
 }
 for sig in PAGES:
-    body = function_text(gui_c, 'src/gui.c', sig)
+    body = function_text(gui_c, 'src/gui.cpp', sig)
     if not body:
         continue
     if sig in DEVICE_PAGES:
@@ -156,13 +156,13 @@ for sig in PAGES:
         failures.append('%s...): its rows must apply for every result except Cancel' % sig)
     if 'guiSettingsPageResult(result)' not in body:
         failures.append('%s...): must return through guiSettingsPageResult(result)' % sig)
-audio = function_text(gui_c, 'src/gui.c', 'int guiShowAudioConfig(')
+audio = function_text(gui_c, 'src/gui.cpp', 'int guiShowAudioConfig(')
 if audio and 'guiSettingsPageResult(result)' not in audio:
     failures.append('guiShowAudioConfig: must return through guiSettingsPageResult(result)')
 
 # --- an untouched page: which exits count, and the long-path edit buffers -----------------------
 
-untouched = function_text(gui_c, 'src/gui.c', 'static int guiSettingsLeftUntouched(')
+untouched = function_text(gui_c, 'src/gui.cpp', 'static int guiSettingsLeftUntouched(')
 if untouched:
     if 'if (!guiSettingsIsShellResult(result) || diaHasChanges(ui))' not in untouched:
         failures.append('guiSettingsLeftUntouched: only an unchanged Back/L1/R1 counts as untouched')
@@ -233,7 +233,7 @@ int main(void)
 dia_h = read('include/dia.h')
 item_enum = re.search(r'^typedef enum \{.*?\} UIItemType;', dia_h, re.M | re.S)
 item_struct = re.search(r'^struct UIItem\s*\{.*?^\};', dia_h, re.M | re.S)
-has_changes = function_text(dia_c, 'src/dia.c', 'int diaHasChanges(')
+has_changes = function_text(dia_c, 'src/dia.cpp', 'int diaHasChanges(')
 if item_enum is None or item_struct is None:
     failures.append('include/dia.h: UIItemType / struct UIItem not found')
 elif has_changes:
@@ -242,12 +242,12 @@ elif has_changes:
 
 # --- Exit without saving: restore the source state captured at Settings entry --------------------
 
-read_source = function_text(gui_c, 'src/gui.c', 'static void guiSettingsReadSourceState(')
-capture = function_text(gui_c, 'src/gui.c', 'static void guiSettingsCaptureSourceState(')
-changed = function_text(gui_c, 'src/gui.c', 'static int guiSettingsSourceStateChanged(')
-restore = function_text(gui_c, 'src/gui.c', 'static void guiSettingsRestoreSourceState(')
-shell = function_text(gui_c, 'src/gui.c', 'static void guiShowSettingsFromPage(')
-index = function_text(gui_c, 'src/gui.c', 'static int guiSettingsShowIndex(')
+read_source = function_text(gui_c, 'src/gui.cpp', 'static void guiSettingsReadSourceState(')
+capture = function_text(gui_c, 'src/gui.cpp', 'static void guiSettingsCaptureSourceState(')
+changed = function_text(gui_c, 'src/gui.cpp', 'static int guiSettingsSourceStateChanged(')
+restore = function_text(gui_c, 'src/gui.cpp', 'static void guiSettingsRestoreSourceState(')
+shell = function_text(gui_c, 'src/gui.cpp', 'static void guiShowSettingsFromPage(')
+index = function_text(gui_c, 'src/gui.cpp', 'static int guiSettingsShowIndex(')
 
 SOURCE_FIELDS = (
     'gDefaultDevice', 'gBDMStartMode', 'gHDDStartMode', 'gAPPStartMode', 'gMMCEStartMode',
@@ -290,19 +290,19 @@ if index:
 # --- Obsolete compatibility download feature is gone end-to-end -------------------------------
 
 for where, source, needle in (
-    ('src/menusys.c', menusys_c, 'MENU_NETWORK_UPDATE'),
-    ('src/menusys.c', menusys_c, 'guiShowNetCompatUpdate'),
-    ('src/dialogs.c', dialogs_c, 'diaNetCompatUpdate'),
-    ('src/dialogs.c', dialogs_c, 'COMPAT_DL_DEFAULTS'),
+    ('src/menusys.cpp', menusys_c, 'MENU_NETWORK_UPDATE'),
+    ('src/menusys.cpp', menusys_c, 'guiShowNetCompatUpdate'),
+    ('src/dialogs.cpp', dialogs_c, 'diaNetCompatUpdate'),
+    ('src/dialogs.cpp', dialogs_c, 'COMPAT_DL_DEFAULTS'),
     ('include/dialogs.h', dialogs_h, 'NETUPD_OPT_UPD_ALL'),
     ('include/dialogs.h', dialogs_h, 'diaNetCompatUpdate'),
     ('include/dialogs.h', dialogs_h, 'COMPAT_DL_DEFAULTS'),
-    ('src/gui.c', gui_c, 'guiShowNetCompatUpdate'),
+    ('src/gui.cpp', gui_c, 'guiShowNetCompatUpdate'),
     ('include/gui.h', gui_h, 'guiShowNetCompatUpdate'),
-    ('src/guigame.c', guigame_c, 'COMPAT_DL_DEFAULTS'),
-    ('src/opl.c', opl_c, 'oplUpdateGameCompat'),
-    ('src/opl.c', opl_c, 'CompatUpdateStatus'),
-    ('src/opl.c', opl_c, 'IO_COMPAT_UPDATE_DEFFERED'),
+    ('src/guigame.cpp', guigame_c, 'COMPAT_DL_DEFAULTS'),
+    ('src/opl.cpp', opl_c, 'oplUpdateGameCompat'),
+    ('src/opl.cpp', opl_c, 'CompatUpdateStatus'),
+    ('src/opl.cpp', opl_c, 'IO_COMPAT_UPDATE_DEFFERED'),
     ('include/opl.h', opl_h, 'IO_COMPAT_UPDATE_DEFFERED'),
     ('include/opl.h', opl_h, 'OPL_COMPAT_UPDATE_STAT_'),
 ):
@@ -339,7 +339,7 @@ for where, source, needle in (
 
 # --- Network page: reconnect only on OK/Reconnect or a real change (compiled and run) -----------
 
-net = function_text(gui_c, 'src/gui.c', 'int guiShowNetConfig(')
+net = function_text(gui_c, 'src/gui.cpp', 'int guiShowNetConfig(')
 if net:
     if not re.search(r'gui_smb_link_t smbBefore;\s*\n\s*guiSmbLinkCapture\(&smbBefore\);', net):
         failures.append('guiShowNetConfig: must snapshot the SMB link (guiSmbLinkCapture) before the dialog')
@@ -417,7 +417,7 @@ int main(void)
 link_type = re.search(r'^typedef struct\s*\{[^}]*\} gui_smb_link_t;', gui_c, re.M)
 if link_type is None:
     failures.append('src/gui.c: typedef gui_smb_link_t not found')
-link_functions = ''.join(function_text(gui_c, 'src/gui.c', sig) for sig in (
+link_functions = ''.join(function_text(gui_c, 'src/gui.cpp', sig) for sig in (
     'static void guiSmbLinkCapture(',
     'static int guiSmbLinkChanged(',
 ))

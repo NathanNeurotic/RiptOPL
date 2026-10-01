@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     fseek(f, 0, SEEK_END);
     size = ftell(f);
     fseek(f, 0, SEEK_SET);
-    buf = malloc(size + 2);
+    buf = (char *)malloc(size + 2);
     if (!buf) {
         fclose(f);
         return 2;

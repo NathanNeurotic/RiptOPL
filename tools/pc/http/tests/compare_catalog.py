@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Diff the C catalog parser against the Python reference, fixture by fixture.
 
-docs/HTTP-INTEGRATION-PLAN.md says src/httpcatalog.c and tools/pc/http/catalog_reference.py are one
+docs/HTTP-INTEGRATION-PLAN.md says src/httpcatalog.cpp and tools/pc/http/catalog_reference.py are one
 contract. This is what holds them to it. Every fixture is run through both, in all three
 line-ending forms, and any disagreement is printed and fails the run.
 
@@ -17,8 +17,8 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-sys.path.insert(0, os.path.join(ROOT, "pc", "http"))
+ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
+sys.path.insert(0, os.path.join(ROOT, "tools", "pc", "http"))
 import catalog_reference  # noqa: E402
 
 # enum HTTP_CAT_REJECT in include/httpcatalog.h, in declaration order.
@@ -88,7 +88,7 @@ def run_py(text):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin", required=True, help="compiled test_catalog binary")
-    ap.add_argument("--fixtures", default=os.path.join(ROOT, "pc", "http", "fixtures"))
+    ap.add_argument("--fixtures", default=os.path.join(ROOT, "tools", "pc", "http", "fixtures"))
     args = ap.parse_args()
 
     names = sorted(n for n in os.listdir(args.fixtures) if n.endswith(".csv"))

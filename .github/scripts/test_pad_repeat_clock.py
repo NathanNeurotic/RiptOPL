@@ -26,7 +26,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-pad = (root / 'src/pad.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+pad = (root / 'src/pad.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 

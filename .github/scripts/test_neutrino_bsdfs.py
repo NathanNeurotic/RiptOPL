@@ -22,7 +22,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/system.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+source = (root / 'src/system.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
@@ -53,7 +53,7 @@ if 'int fsOverride = neutrinoEffectiveBsdfs(deviceName, neutrinoBsdfs, extraArgs
                     'and always emit it as its own -bsdfs=')
 
 # Every Neutrino leg must hand the preflight what it will hand sysLaunchNeutrino.
-bdm = (root / 'src/bdmsupport.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+bdm = (root / 'src/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 if 'sysNeutrinoPreflight(bdmCurrentDriver, neutrinoPath, neutrinoBsdfs, neutrinoExtraArgs, bdmDevNr)' not in bdm:
     failures.append('bdmTryNeutrinoLaunch: the preflight must get neutrinoBsdfs, the per-game args and bdmDevNr')
 

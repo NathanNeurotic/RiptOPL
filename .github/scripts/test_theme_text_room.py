@@ -22,9 +22,9 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-themes = (root / 'src/themes.c').read_text(encoding='utf-8').replace('\r\n', '\n')
-fntsys = (root / 'src/fntsys.c').read_text(encoding='utf-8').replace('\r\n', '\n')
-dia = (root / 'src/dia.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+themes = (root / 'src/themes.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+fntsys = (root / 'src/fntsys.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+dia = (root / 'src/dia.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
@@ -45,9 +45,9 @@ def define(source, name):
     return match.group(1)
 
 
-room_fn = function_text(themes, 'static int thmTextRoom(', 'src/themes.c')
-fit_fn = function_text(fntsys, 'int fntRenderStringFit(', 'src/fntsys.c')
-width_fn = function_text(fntsys, 'static int fntTextWidth(', 'src/fntsys.c')
+room_fn = function_text(themes, 'static int thmTextRoom(', 'src/themes.cpp')
+fit_fn = function_text(fntsys, 'int fntRenderStringFit(', 'src/fntsys.cpp')
+width_fn = function_text(fntsys, 'static int fntTextWidth(', 'src/fntsys.cpp')
 
 HARNESS = r'''
 #include <stdio.h>
@@ -205,23 +205,23 @@ if room_fn and fit_fn and width_fn:
                 failures.append('room/scroll behaviour failed')
 
 # Wiring.
-validate = function_text(themes, 'static void validateGUIElems(', 'src/themes.c')
+validate = function_text(themes, 'static void validateGUIElems(', 'src/themes.cpp')
 for family in ('mainElems', 'infoElems', 'appsMainElems', 'appsInfoElems', 'favsMainElems', 'favsInfoElems',
                'vcdMainElems', 'vcdInfoElems', 'favsVcdMainElems', 'favsVcdInfoElems', 'favsAppsMainElems',
                'favsAppsInfoElems'):
     if validate and 'thmComputeTextRooms(&theme->%s);' % family not in validate:
         failures.append('validateGUIElems: %s gets no text rooms' % family)
-items = function_text(themes, 'static void drawItemsList(', 'src/themes.c')
+items = function_text(themes, 'static void drawItemsList(', 'src/themes.cpp')
 if items and items.count('elem->textRoom, dispText, color, ps == item);') != 2:
     failures.append('drawItemsList: the highlighted row (and only it) must scroll inside the room, with and without a decorator')
-if 'fntRenderStringFit(' not in function_text(dia, 'static int diaRenderValue(', 'src/dia.c'):
+if 'fntRenderStringFit(' not in function_text(dia, 'static int diaRenderValue(', 'src/dia.cpp'):
     failures.append('dia.c: settings values no longer use the shared scroller')
 if 'diaTextWidth' in dia or 'DIA_MARQUEE' in dia:
     failures.append('dia.c: a private copy of the scroller is back')
 
 # A devices=-filtered element is on one page only; counting it everywhere boxed the built-in Coverflow
 # title into 196 units because of the Favorites icon (zackcage6, Beta-3335).
-rooms = function_text(themes, 'static void thmComputeTextRooms(', 'src/themes.c')
+rooms = function_text(themes, 'static void thmComputeTextRooms(', 'src/themes.cpp')
 if rooms and 'if (other->deviceFilter && (other->type == ELEM_TYPE_MENU_ICON || other->type == ELEM_TYPE_ITEMS_LIST ||' not in rooms:
     failures.append('thmComputeTextRooms: only the device-gated types (MenuIcon/ItemsList/HintText) may be skipped as obstacles')
 # ...and the built-in Coverflow title spans the top instead of a 400-unit box. Found by TYPE, not by

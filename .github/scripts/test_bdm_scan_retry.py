@@ -30,7 +30,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-source_path = root / 'src/bdmsupport.c'
+source_path = root / 'src/bdmsupport.cpp'
 if len(sys.argv) == 3 and sys.argv[1] == '--baseline':
     source_path = Path(sys.argv[2])
 source = source_path.read_text(encoding='utf-8').replace('\r\n', '\n')
@@ -315,7 +315,7 @@ int main(void)
 # The error number in that message comes from the REAL scan: scanForISO records the errno of a CD/DVD
 # folder that will not open, and sbReadList clears it at the start of every scan. Compile that span of
 # src/supportbase.c (sbReadListErrno through sbReadList) against a scripted opendir.
-support = (root / 'src/supportbase.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+support = (root / 'src/supportbase.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 span_start = support.find('static int sbReadListErrno;')
 span_end_match = re.search(r'^int sbReadList\([^;{]*\)\s*\{', support, re.M)
 if span_start < 0 or span_end_match is None:
@@ -465,10 +465,10 @@ int main(void)
 
 def compile_and_run(name, program):
     with tempfile.TemporaryDirectory() as tmp:
-        c_file = Path(tmp) / (name + '.c')
+        c_file = Path(tmp) / (name + '.cpp')
         exe = Path(tmp) / name
         c_file.write_text(program, encoding='utf-8')
-        build = subprocess.run(['cc', '-std=gnu99', '-Wall', '-Wno-unused-function', '-o', str(exe), str(c_file)],
+        build = subprocess.run(['g++', '-std=gnu++17', '-Wall', '-Wno-unused-function', '-o', str(exe), str(c_file)],
                                capture_output=True, text=True)
         if build.returncode != 0:
             failures.append('%s harness did not compile:\n%s%s' % (name, build.stdout, build.stderr))

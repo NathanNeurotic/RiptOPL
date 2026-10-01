@@ -40,11 +40,11 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-ioman = read('src/ioman.c')
-bdm = read('src/bdmsupport.c')
-opl = read('src/opl.c')
+ioman = read('src/ioman.cpp')
+bdm = read('src/bdmsupport.cpp')
+opl = read('src/opl.cpp')
 
-io_functions = ''.join(function_text(ioman, 'src/ioman.c', sig) for sig in (
+io_functions = ''.join(function_text(ioman, 'src/ioman.cpp', sig) for sig in (
     'static io_request_handler_t ioGetHandler(',
     'static int ioAppendLocked(',
     'int ioPutRequest(',
@@ -52,17 +52,17 @@ io_functions = ''.join(function_text(ioman, 'src/ioman.c', sig) for sig in (
 ))
 # The scan and the append must be ONE gEndSemaId hold, or the GUI thread and the worker asking at
 # once can both miss each other and queue two (CodeRabbit on #764).
-unless = function_text(ioman, 'src/ioman.c', 'int ioPutRequestUnlessWaiting(')
+unless = function_text(ioman, 'src/ioman.cpp', 'int ioPutRequestUnlessWaiting(')
 if unless.count('WaitSema(gEndSemaId)') != 1 or 'ioAppendLocked(type, data)' not in unless or 'ioPutRequest(' in unless:
     failures.append('ioPutRequestUnlessWaiting: scan and append must share one gEndSemaId hold (ioAppendLocked), '
                     'not release it and call ioPutRequest')
-should_queue = function_text(bdm, 'src/bdmsupport.c', 'static int bdmShouldQueueModuleLoad(')
-deferred = function_text(opl, 'src/opl.c', 'void menuDeferredUpdate(')
-module_pass = function_text(bdm, 'src/bdmsupport.c', 'static void bdmLoadBlockDeviceModules(')
+should_queue = function_text(bdm, 'src/bdmsupport.cpp', 'static int bdmShouldQueueModuleLoad(')
+deferred = function_text(opl, 'src/opl.cpp', 'void menuDeferredUpdate(')
+module_pass = function_text(bdm, 'src/bdmsupport.cpp', 'static void bdmLoadBlockDeviceModules(')
 
 # --- source guards -------------------------------------------------------------------------------
-raw_puts = bdm.count('ioPutRequest(IO_CUSTOM_SIMPLEACTION, &bdmLoadBlockDeviceModules)')
-coalesced = bdm.count('ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, &bdmLoadBlockDeviceModules)')
+raw_puts = bdm.count('ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&bdmLoadBlockDeviceModules))')
+coalesced = bdm.count('ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&bdmLoadBlockDeviceModules))')
 if raw_puts != 0 or coalesced != 3:
     failures.append('bdmsupport.c: all three module-pass requests (bdmLoadModules, bdmNeedsUpdate, '
                     'bdmEnumerateDevices) must use ioPutRequestUnlessWaiting (found %d raw, %d coalesced)'
@@ -74,7 +74,7 @@ if 'usbSecondProbeDone' not in module_pass or 'bdmProbeMassSlots("after-usb-sett
     failures.append('bdmLoadBlockDeviceModules: the USB double tap (settle + bdmProbeMassSlots + refresh) is gone')
 if 'modsNow != modsWere && !wasFirstPass' not in module_pass:
     failures.append('bdmLoadBlockDeviceModules: the late-load refresh (enabling a transport from Game Sources) is gone')
-worker = function_text(ioman, 'src/ioman.c', 'static void ioWorkerThread(')
+worker = function_text(ioman, 'src/ioman.cpp', 'static void ioWorkerThread(')
 if not re.search(r'gReqRunning = req;\s*\n\s*ioProcessRequest\(req\);', worker) or 'gReqRunning = NULL;' not in worker:
     failures.append('ioWorkerThread: must mark the request it runs (gReqRunning) around ioProcessRequest')
 
@@ -278,10 +278,12 @@ int main(void)
 
 def compile_and_run(name, program):
     with tempfile.TemporaryDirectory() as tmp:
-        src = Path(tmp) / (name + '.c')
+        cxx = any(k in program for k in ('static_cast', 'reinterpret_cast', 'const_cast'))
+        src = Path(tmp) / (name + ('.cpp' if cxx else '.c'))
         exe = Path(tmp) / name
         src.write_text(program, encoding='utf-8')
-        build = subprocess.run(['gcc', '-std=gnu99', '-Wall', '-Wno-unused-function', '-Wno-unused-variable', '-o', str(exe), str(src)],
+        cc = (['g++', '-std=gnu++17', '-Wno-write-strings'] if cxx else ['gcc', '-std=gnu99'])
+        build = subprocess.run(cc + ['-Wall', '-Wno-unused-function', '-Wno-unused-variable', '-o', str(exe), str(src)],
                                capture_output=True, text=True)
         if build.returncode != 0:
             failures.append('%s harness did not compile:\n%s' % (name, build.stderr))

@@ -43,7 +43,7 @@ for path in sorted((root / 'src').rglob('*.c')):
             failures.append('%s:%d calls audsrv_wait_audio(); poll audsrv_available() instead'
                             % (path.relative_to(root).as_posix(), number))
 
-sound = (root / 'src/sound.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+sound = (root / 'src/sound.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 
 wait = function_text(sound, 'static int bgmWaitForRoom(')
 if wait is None:

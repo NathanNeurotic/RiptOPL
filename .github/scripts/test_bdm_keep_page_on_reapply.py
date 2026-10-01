@@ -20,7 +20,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/bdmsupport.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+source = (root / 'src/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 

@@ -11,7 +11,7 @@ import re
 import subprocess
 import tempfile
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 
 
 def extract(pattern, text):
@@ -22,7 +22,7 @@ def extract(pattern, text):
 
 
 def main():
-    support = (ROOT / "src/httpsupport.c").read_text()
+    support = (ROOT / "src/httpsupport.cpp").read_text()
     base = (ROOT / "include/supportbase.h").read_text()
     limits = (ROOT / "include/httpsupport.h").read_text()
     source = """
@@ -45,7 +45,7 @@ static int httpLastError;
     source += r'''
 int main(void)
 {
-    char *buf = malloc(HTTP_CATALOG_BYTES_MAX + 1);
+    char *buf = (char *)malloc(HTTP_CATALOG_BYTES_MAX + 1);
     base_game_info_t *games;
     http_catalog_extra_t *extras;
     int scenario, i, len, result;
@@ -80,11 +80,11 @@ int main(void)
 '''
     with tempfile.TemporaryDirectory(prefix="http-catalog-limits-") as directory:
         path = Path(directory)
-        (path / "test.c").write_text(source)
+        (path / "test.cpp").write_text(source)
         binary = path / "test"
-        subprocess.run([os.environ.get("CC", "gcc"), "-O1", "-Wall", "-Wextra",
-                        "-I" + str(ROOT), str(path / "test.c"),
-                        str(ROOT / "src/httpcatalog.c"), "-o", str(binary)], check=True)
+        subprocess.run([os.environ.get("CXX", "g++"), "-std=gnu++17", "-O1", "-Wall", "-Wextra", "-Wno-unused-function",
+                        "-I" + str(ROOT), str(path / "test.cpp"),
+                        str(ROOT / "src/httpcatalog.cpp"), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
 
 

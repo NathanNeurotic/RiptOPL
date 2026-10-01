@@ -31,8 +31,8 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-gui = (root / 'src/gui.c').read_text(encoding='utf-8').replace('\r\n', '\n')
-opl = (root / 'src/opl.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+gui = (root / 'src/gui.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+opl = (root / 'src/opl.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 opl_h = (root / 'include/opl.h').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
@@ -54,7 +54,7 @@ def define(source, name, where):
     return match.group(1)
 
 
-confirm = function_text(gui, 'int guiConfirmVideoMode(', 'src/gui.c')
+confirm = function_text(gui, 'int guiConfirmVideoMode(', 'src/gui.cpp')
 if 'guiShow()' in confirm:
     failures.append('guiConfirmVideoMode: must not render the menu (guiShow) under its opaque backdrop')
 
@@ -267,8 +267,8 @@ int main(void)
 
 def run_harness():
     program = (HARNESS.replace('@TIMEOUT@', define(opl_h, 'OPL_VMODE_CHANGE_CONFIRMATION_TIMEOUT_MS', 'include/opl.h'))
-               .replace('@HOLD@', define(gui, 'VMODE_KEEP_HOLD_MS', 'src/gui.c'))
-               .replace('@BARFULL@', define(gui, 'VMODE_KEEP_BAR_FULL_MS', 'src/gui.c'))
+               .replace('@HOLD@', define(gui, 'VMODE_KEEP_HOLD_MS', 'src/gui.cpp'))
+               .replace('@BARFULL@', define(gui, 'VMODE_KEEP_BAR_FULL_MS', 'src/gui.cpp'))
                .replace('@CONFIRM@', confirm))
     if failures:
         return
@@ -289,7 +289,7 @@ def run_harness():
 
 
 def check_boot_combos():
-    load = function_text(opl, 'static void _loadConfig(', 'src/opl.c')
+    load = function_text(opl, 'static void _loadConfig(', 'src/opl.cpp')
     cross = re.search(r'if \(getKeyPressed\(KEY_TRIANGLE\) && getKeyPressed\(KEY_CROSS\)\) \{[^}]*gVMode = 3;', load)
     circle = re.search(r'else if \(getKeyPressed\(KEY_TRIANGLE\) && getKeyPressed\(KEY_CIRCLE\)\) \{[^}]*gVMode = 0;', load)
     saved = re.search(r'\} else \{\s*configGetInt\(configOPL, CONFIG_OPL_VMODE, &gVMode\);', load)
