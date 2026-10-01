@@ -318,3 +318,23 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
 3. Phase 5 `GameSource` hierarchy (needs go-ahead; hardware testing matters most there).
 4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining
    analyzer upward edges listed in section 13.
+
+## 17. Deferred: gui as classes
+The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
+`guisettings.cpp` (~3000 lines), plus notifications and the screen-handler table in `gui.cpp`, are still free functions sharing
+file-level statics. Do this later, not now.
+
+Planned design:
+- `SettingsShell`: owns the dialog buffers, shell/page/save-pending flags and `SourceState`; navigation (`showIndex`, `showFromPage`,
+  `promptSave`, `restoreSourceState`).
+- One class per settings page (General, Sources, Interface, Launch, Popstarter, Net, Audio, Controller, ...) behind a common
+  begin/update/read interface.
+- `Notifications`: the popup and RA notices with their timers.
+- `ScreenManager`: screen-handler table, transitions, `guiShow`.
+- `gui.h` keeps the current function names as thin forwarders to the instances, so the many callers (`opl`, `menusys`, the support
+  files) do not change.
+
+Cost to plan for: the source-scraping python tests (`test_confirm_button`, `test_settings_back_keeps_edits`,
+`test_net_protocol_pick`, `test_vmode_confirm`, `test_ember_settings`, `test_autolaunch_settings`) extract function bodies by
+signature such as `static int guiSettingsShowIndex(`. They need their extraction updated to member names (`SettingsShell::showIndex(`)
+before the conversion, so do that first and keep the suite green at each step. Start with `SettingsShell` and `Notifications`.
