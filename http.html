@@ -75,7 +75,7 @@ says what exists, and the console streams the ISO itself with plain HTTP byte ra
 asks for sectors. The server must satisfy the client profile: no transfer encoding, no content
 encoding other than identity, no multipart responses, exact <code>Content-Range</code> and <code>Content-Length</code>
 for range reads, and complete response bodies. Check it with the
-<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/blob/rebuild/main/pc/http/README.md">conformance tool</a>.</p>
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/tools/pc/http/README.md">conformance tool</a>.</p>
 <p>Use HTTP only on a trusted, isolated local network. It provides no encryption or server/content
 authentication; range and length validation detect malformed responses, not substituted game data.</p>
 <p>The design, the byte-range reader RiptOPL follows, and the PC server are
@@ -303,10 +303,10 @@ then reports a disc error. It will not sit there reconnecting forever.</p>
 <hr/>
 <h2 id="notes-for-anyone-changing-this-code">Notes for anyone changing this code</h2>
 <ul>
-<li><strong><code>src/httpcatalog.c</code> and <code>pc/http/catalog_reference.py</code> are one contract.</strong> The fixtures in
-  <code>pc/http/fixtures/</code> hold them to it and <code>pc/http/tests/compare_catalog.py</code> proves it. Change one,
+<li><strong><code>src/httpcatalog.c</code> and <code>tools/pc/http/catalog_reference.py</code> are one contract.</strong> The fixtures in
+  <code>tools/pc/http/fixtures/</code> hold them to it and <code>tools/pc/http/tests/compare_catalog.py</code> proves it. Change one,
   change all three, in the same commit.</li>
-<li><strong>Run the host tests.</strong> <code>sh pc/http/tests/run.sh</code> compiles the real sources and exercises the
+<li><strong>Run the host tests.</strong> <code>sh tools/pc/http/tests/run.sh</code> compiles the real sources and exercises the
   parsers directly — header framing, range validation, truncation, and every catalog fixture in
   three line-ending forms.</li>
 <li><strong><code>modules/network/common/httpstream.inc</code> is shared</strong> by the menu RPC module and the in-game

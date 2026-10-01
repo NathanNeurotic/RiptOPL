@@ -132,6 +132,7 @@ sizes are on <a href="#general-settings">General &amp; System</a>.</p>
 <tr><td>MX4SIO</td><td>Off / On</td><td>The MX4SIO SD-card adapter driver.</td></tr>
 <tr><td>iLink</td><td>Off / On</td><td>The iLink (IEEE 1394) mass-storage driver.</td></tr>
 <tr><td>Network Connectivity</td><td>Off / Manual / Auto</td><td>Whether and when the network stack starts. <em>Off</em> (the default) leaves the network adapter alone; <em>Manual</em> waits until you open the tab; <em>Auto</em> starts immediately. What it connects to is set on the <a href="#network-settings">Network</a> page.</td></tr>
+<tr><td>Protocol</td><td>SMB / UDPFS / UDPBD / HTTP</td><td>Indented under <em>Network Connectivity</em>. Chooses the network transport while preserving the selected value when connectivity is turned off. <em>Default Menu</em> set to <em>ETH Games</em> follows this choice.</td></tr>
 <tr><td>Applications Page Start Mode</td><td>Off / Manual / Auto</td><td>Startup mode for the Apps tab. See <a href="apps.html">Apps</a>.</td></tr>
 <tr><td>Favorites Page Start Mode</td><td>Off / Manual / Auto</td><td>Startup mode for the Favorites tab. <em>Off</em> hides the tab. See <a href="favourites.html">Favorites</a>.</td></tr>
 </tbody>
@@ -417,7 +418,11 @@ This is an OPL core feature. See <a href="per-game-settings.html#osd-language">P
 <tr><td>PS2/PS1 Game Display</td><td>Both (L3) / Mixed / PS2 / PS1</td><td>The same setting as on <a href="#display-settings">Interface</a>.</td></tr>
 <tr><td>POPSTARTER.ELF Path</td><td>text (full path)</td><td>Where <code>POPSTARTER.ELF</code> is. <em>&lt;not set&gt;</em> (the default) looks in the VCD's own <code>POPS</code> folder, then <code>mc0:</code>/<code>mc1:</code>; APA HDD VCDs use <code>__common/POPS</code>. A path you set is tried first, on any device, and falls back the same way when it is unavailable. The editor takes the whole path. Replaces the old <em>POPSTARTER.ELF Device</em> picker, whose device choice becomes the matching path when you upgrade. SMB PS1 VCDs also use an <code>SB.&lt;name&gt;.ELF</code> selector.</td></tr>
 <tr><td>RetroGEM Game ID</td><td>Off / On</td><td>Draws the game-ID barcode read by Pixel FX / RetroGEM / PS2Digital when a PS1 VCD launches. On by default.</td></tr>
-<tr><td>Ember Display Mode</td><td>Default / 240p / 480p</td><td>Output mode Ember uses. 240p or 480p is written to <code>settings.txt</code> in the launching device's <code>EMBER</code> folder; <em>Default</em> removes that setting again, and the file too if it held nothing else.</td></tr>
+<tr><td>Ember Display Mode</td><td>Default / 240p / 480i / 480p</td><td>Output mode Ember uses. The selected value is written to <code>settings.txt</code> in the launching device's <code>EMBER</code> folder; <em>Default</em> removes that setting again.</td></tr>
+<tr><td>Ember Timing</td><td>Default / Auto / NTSC / PAL</td><td>Timing standard passed to Ember; <em>Default</em> inherits Ember's default.</td></tr>
+<tr><td>Ember Dithering</td><td>Default / On / Off</td><td>Ember colour dithering override.</td></tr>
+<tr><td>Ember Shading</td><td>Default / 15-bit / 24-bit</td><td>Ember output shading depth override.</td></tr>
+<tr><td>Ember Controller</td><td>Default / Auto / Analog / D2A</td><td>Ember controller mode override.</td></tr>
 <tr><td>VCD Games List Settings</td><td>[sub-screen]</td><td>See <a href="#vcd-list-settings">below</a>.</td></tr>
 <tr><td>POPSTARTER Network Settings</td><td>[sub-screen]</td><td>POPSTARTER's own network files, needed for PS1 over SMB. See <a href="#pops-network-settings">POPSTARTER Network Settings</a>.</td></tr>
 <tr><td>VCD BDMA Apply on Launch</td><td>Off / On</td><td>On by default. Launching a PS1 VCD then equips its matching exFAT driver on the memory card first, and <em>BDMA Source</em> and <em>BDMA Mode</em> are hidden. Turn it off to manage those yourself.</td></tr>
@@ -511,7 +516,7 @@ supplying only some of the eight falls back to the built-in sound for the rest. 
 <a href="per-game-settings.html">Per-game Settings</a> page.</p>
 
 <ul class="checklist">
-<li><b>Game Settings</b> — Loader Core, DMA Mode, Game ID, Custom ELF, compatibility Modes 1–7, Download Defaults, and the Neutrino overrides (Neutrino Launch Args, Neutrino Video, Neutrino GSM Compatibility, Neutrino Filesystem). See <a href="neutrino.html">Neutrino Core</a>.</li>
+<li><b>Game Settings</b> — Loader Core, DMA Mode, Game ID, Custom ELF, compatibility Modes 1–7, and the Neutrino overrides (Neutrino Launch Args, Neutrino Video, Neutrino GSM Compatibility, Neutrino Filesystem). See <a href="neutrino.html">Neutrino Core</a>.</li>
 <li><b>Cheat Settings</b> — PS2RD Cheat Engine, its mode, and PS2RD Cheat Image. Global or per-game. See <a href="cheats.html">Cheats</a>.</li>
 <li><b>Configure GSM</b> — GSM Selector, forced video mode, H-POS and V-POS, Emulate FIELD Flipping. Global or per-game. OPL core only. See <a href="gsm.html">GSM Video Modes</a>.</li>
 <li><b>Configure VMC</b> — VMC Slot 1 and Slot 2 assignment, image creation and deletion, and keeping a physical card in a slot. See <a href="vmc.html">VMC</a>.</li>
@@ -524,7 +529,7 @@ supplying only some of the eight falls back to the built-in sound for the rest. 
 <details class="deep"><summary>Which settings are greyed out under the Neutrino core?</summary>
 <p>OPL-only features are unavailable when a game is set to use the Neutrino core. In the per-game
 <b>Game Settings</b> screen the following are greyed (shown with a <em>"Not used with Neutrino"</em>
-hint): Modes 4 and 6 (Skip Videos and Disable IGR), Download Defaults, and the Configure GSM, Cheat
+hint): Modes 4 and 6 (Skip Videos and Disable IGR), and the Configure GSM, Cheat
 Settings and Controller Emulation / Controller Macros screens. Modes 1/2/3/5 stay active because they map
 directly to Neutrino's <code>-gc=</code> flag. Mode 7 is Neutrino-only and is available (passes
 <code>-gc=7</code> to Neutrino). DMA Mode, Game ID, Custom ELF, and VMC settings remain active regardless
