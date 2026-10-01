@@ -53,7 +53,7 @@ upstream language repository above doesn't know about those labels, so without h
 they would show in **English** in every translated language.
 
 To fill that gap without forking the upstream language files, the fork keeps a small
-per-language **translation overlay** under [`lng/fork/`](../lng/fork). Each file is just a
+per-language **translation overlay** under [`lng/fork`](fork). Each file is just a
 `translations:` map of the fork's labels:
 
 ```yml
