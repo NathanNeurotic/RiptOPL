@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <new>
 #include "include/host.h"
 #include "include/opl.h"
 #include "include/iosupport.h"
@@ -31,11 +32,11 @@
 #include "include/ethsupport.h" // ETH ISO favourite resolution while the live source is in VCD view
 #include "include/bdmsupport.h" // bdmSupportIsUDPBD -- POPSTARTER favourites cannot bind to UDPBD
 #include "include/favsupport.h"
+#include "include/gamesource.h"
 
 int gFAVStartMode;
 
 // Forward declaration; the initialised definition is at the bottom of this file.
-extern item_list_t favItemList;
 
 // In-memory, validated favourites. Rebuilt by favUpdateItemList from favourites.bin; each
 // entry's owner/id are confirmed present in the source submenu, so proxying never goes OOB.
@@ -579,8 +580,46 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
 
 // ---- item_list_t callbacks ----------------------------------------------------
 
-static int favGetTextId(item_list_t *itemList) { return _STR_FAV; }
-static int favGetIconId(item_list_t *itemList) { return FAV_ICON; }
+class FavSource : public GameSource
+{
+public:
+    FavSource()
+        : GameSource(FAV_MODE, -1, 0, MENU_MIN_INACTIVE_FRAMES, FAV_MODE_UPDATE_DELAY, GameSource::OMIT_PREFIX | GameSource::OMIT_GAME | GameSource::CAP_ROW_VIEW)
+    {
+    }
+
+    int textId(item_list_t *itemList) override;
+    int iconId(item_list_t *itemList) override;
+    int needsUpdate(item_list_t *itemList) override;
+    void init(item_list_t *itemList) override;
+    int update(item_list_t *itemList) override;
+    int count(item_list_t *itemList) override;
+    int rowView(item_list_t *itemList, int id) override;
+    char *name(item_list_t *itemList, int id) override;
+    int nameLength(item_list_t *itemList, int id) override;
+    char *startup(item_list_t *itemList, int id) override;
+    config_set_t *config(item_list_t *itemList, int id) override;
+    void launch(item_list_t *itemList, int id, config_set_t *configSet) override;
+    int image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm) override;
+    void deleteGame(item_list_t *itemList, int id) override;
+    void rename(item_list_t *itemList, int id, char *newName) override;
+    void cleanUp(item_list_t *itemList, int exception) override;
+    void shutdown(item_list_t *itemList) override;
+    int checkVmc(item_list_t *itemList, char *name, int createSize) override;
+};
+
+static FavSource *favInstance()
+{
+    static FavSource *instance = NULL;
+    alignas(FavSource) static unsigned char storage[sizeof(FavSource)];
+
+    if (instance == NULL)
+        instance = new (storage) FavSource();
+    return instance;
+}
+
+int FavSource::textId(item_list_t *itemList) { return _STR_FAV; }
+int FavSource::iconId(item_list_t *itemList) { return FAV_ICON; }
 
 // The FAV list is rebuilt on demand only. favForceUpdate is raised by loadFavourites (initial
 // boot, every source-list change, and each R3 toggle) and consumed exactly once here, so the
@@ -589,7 +628,7 @@ static int favGetIconId(item_list_t *itemList) { return FAV_ICON; }
 // self-clearing one-shot -- never a constant 1 -- avoids a per-frame rebuild storm.
 static int favForceUpdate = 1;
 
-static int favNeedsUpdate(item_list_t *itemList)
+int FavSource::needsUpdate(item_list_t *itemList)
 {
     // Consume the FAV L3 ISO<->VCD dirty flag UNCONDITIONALLY (and first) so a concurrent
     // favForceUpdate rebuild also clears it -- otherwise a default-view change that raises both would
@@ -602,7 +641,7 @@ static int favNeedsUpdate(item_list_t *itemList)
     return viewToggled; // L3 toggled the FAV view -> rebuild so the list re-filters
 }
 
-static void favInit(item_list_t *itemList)
+void FavSource::init(item_list_t *itemList)
 {
     itemList->enabled = 1;
 }
@@ -610,7 +649,7 @@ static void favInit(item_list_t *itemList)
 // MUST drive a single append pass: rebuild the validated in-memory array and return its
 // count. updateMenuFromGameList does the clear + append from this count -- we never clear or
 // append the submenu here (that would double-drive the list).
-static int favUpdateItemList(item_list_t *itemList)
+int FavSource::update(item_list_t *itemList)
 {
     favFreeArray();
 
@@ -679,7 +718,7 @@ static int favUpdateItemList(item_list_t *itemList)
     return favCount;
 }
 
-static int favGetItemCount(item_list_t *itemList) { return favCount; }
+int FavSource::count(item_list_t *itemList) { return favCount; }
 
 static int favValidIndex(int id) { return (favArray != NULL && id >= 0 && id < favCount); }
 
@@ -718,7 +757,7 @@ int favGetItemKind(int id)
     return favValidIndex(id) ? favArray[id].kind : -1;
 }
 
-static int favGetRowView(item_list_t *itemList, int id)
+int FavSource::rowView(item_list_t *itemList, int id)
 {
     (void)itemList;
     return favGetItemView(id);
@@ -732,17 +771,17 @@ static int favOwnerHasId(item_list_t *o, int id)
     return (o != NULL && o->itemGetCount != NULL && id >= 0 && id < o->itemGetCount(o));
 }
 
-static char *favGetItemName(item_list_t *itemList, int id)
+char *FavSource::name(item_list_t *itemList, int id)
 {
     return favValidIndex(id) ? favArray[id].text : const_cast<char *>("");
 }
 
-static int favGetItemNameLength(item_list_t *itemList, int id)
+int FavSource::nameLength(item_list_t *itemList, int id)
 {
     return favValidIndex(id) ? ((int)strlen(favArray[id].text) + 1) : 0;
 }
 
-static char *favGetItemStartup(item_list_t *itemList, int id)
+char *FavSource::startup(item_list_t *itemList, int id)
 {
     if (!favValidIndex(id))
         return "";
@@ -755,7 +794,7 @@ static char *favGetItemStartup(item_list_t *itemList, int id)
     return o->itemGetStartup(o, favArray[id].id);
 }
 
-static config_set_t *favGetConfig(item_list_t *itemList, int id)
+config_set_t *FavSource::config(item_list_t *itemList, int id)
 {
     if (!favValidIndex(id))
         return NULL;
@@ -789,7 +828,7 @@ static config_set_t *favGetConfig(item_list_t *itemList, int id)
     return o->itemGetConfig(o, favArray[id].id);
 }
 
-static void favLaunchItem(item_list_t *itemList, int id, config_set_t *configSet)
+void FavSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {
     if (!favValidIndex(id))
         return;
@@ -819,7 +858,7 @@ static void favLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
 
 // Art proxy: the cache passes the source item's startup as `value`. Find the favourite whose
 // source startup matches and forward to its owner's image lookup.
-static int favGetImage(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
+int FavSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
     if (favArray == NULL || value == NULL)
         return -1;
@@ -930,17 +969,17 @@ int favGetArtMode(const char *value)
 }
 
 // Rename/Delete are blocked for favourites (also guarded at the menu level).
-static void favDeleteItem(item_list_t *itemList, int id) {}
-static void favRenameItem(item_list_t *itemList, int id, char *newName) {}
+void FavSource::deleteGame(item_list_t *itemList, int id) {}
+void FavSource::rename(item_list_t *itemList, int id, char *newName) {}
 
-static void favCleanUp(item_list_t *itemList, int exception)
+void FavSource::cleanUp(item_list_t *itemList, int exception)
 {
     // Intentionally does NOT free favArray: the FAV submenu's item.text aliases favArray
     // text, and the array is freed/rebuilt only by favUpdateItemList (after the submenu has
     // been cleared) or favShutdown. Freeing here could dangle a live submenu's text.
 }
 
-static void favShutdown(item_list_t *itemList)
+void FavSource::shutdown(item_list_t *itemList)
 {
     favFreeArray();
 }
@@ -971,7 +1010,7 @@ unsigned char favGetFlags(item_list_t *itemList)
 
 // VMC check proxy: itemCheckVMC is device-context (no id), so forward to the current FAV
 // item's SOURCE device. Without this, the game-Options VMC menu would call a NULL callback.
-static int favCheckVMC(item_list_t *itemList, char *name, int createSize)
+int FavSource::checkVmc(item_list_t *itemList, char *name, int createSize)
 {
     opl_io_module_t *mod = oplGetModule(FAV_MODE);
     if (mod == NULL || mod->menuItem.current == NULL)
@@ -1094,18 +1133,13 @@ void loadFavourites(void)
     // one-shot), so we must NOT clear here: an eager clear on every source refresh would blank
     // the tab (and reset its cursor) even when the favourites set did not change.
     favForceUpdate = 1;
-    ioPutRequest(IO_MENU_UPDATE_DEFFERED, &favItemList.mode);
+    ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*favInstance()).mode);
 }
 
 item_list_t *favGetObject(int initOnly)
 {
-    if (initOnly && !favItemList.enabled)
+    if (initOnly && !(*favInstance()).enabled)
         return NULL;
-    return &favItemList;
+    return &(*favInstance());
 }
 
-item_list_t favItemList = {
-    FAV_MODE, -1, 0, 0, MENU_MIN_INACTIVE_FRAMES, FAV_MODE_UPDATE_DELAY, NULL, NULL, &favGetTextId, NULL, &favInit, &favNeedsUpdate, &favUpdateItemList,
-    &favGetItemCount, NULL, &favGetItemName, &favGetItemNameLength, &favGetItemStartup, &favDeleteItem, &favRenameItem, &favLaunchItem,
-    &favGetConfig, &favGetImage, &favCleanUp, &favShutdown, &favCheckVMC, &favGetIconId,
-    NULL, ITEM_VIEW_NATIVE, NULL, NULL, &favGetRowView, NULL};

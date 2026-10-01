@@ -21,6 +21,11 @@ public:
         CAP_LAUNCH_CUE = 1u << 2,
         CAP_ROW_VIEW = 1u << 3,
         CAP_SOURCE_ID = 1u << 4,
+        // Entries that exist for most sources but are NULL in a few (App and Favourites have no prefix/raw game pointer,
+        // App has no VMC check): pass the OMIT_ flag and leave the virtual at its default.
+        OMIT_PREFIX = 1u << 5,
+        OMIT_GAME = 1u << 6,
+        OMIT_CHECK_VMC = 1u << 7,
     };
 
     // The table is filled by install(), called from the subclass constructor: a base constructor must not see
@@ -29,12 +34,12 @@ public:
 
     // item_list_t callbacks as virtuals (same parameters, `itemList` first).
     virtual int textId(item_list_t *itemList) = 0;
-    virtual char *prefix(item_list_t *itemList) = 0;
+    virtual char *prefix(item_list_t *itemList);
     virtual void init(item_list_t *itemList) = 0;
     virtual int needsUpdate(item_list_t *itemList) = 0;
     virtual int update(item_list_t *itemList) = 0;
     virtual int count(item_list_t *itemList) = 0;
-    virtual void *game(item_list_t *itemList, int id) = 0;
+    virtual void *game(item_list_t *itemList, int id);
     virtual char *name(item_list_t *itemList, int id) = 0;
     virtual int nameLength(item_list_t *itemList, int id) = 0;
     virtual char *startup(item_list_t *itemList, int id) = 0;
@@ -45,7 +50,7 @@ public:
     virtual int image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm) = 0;
     virtual void cleanUp(item_list_t *itemList, int exception) = 0;
     virtual void shutdown(item_list_t *itemList) = 0;
-    virtual int checkVmc(item_list_t *itemList, char *name, int createSize) = 0;
+    virtual int checkVmc(item_list_t *itemList, char *name, int createSize);
     virtual int iconId(item_list_t *itemList) = 0;
 
     // Optional capabilities (declared through Caps).

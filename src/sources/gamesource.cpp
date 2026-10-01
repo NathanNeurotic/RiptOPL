@@ -55,12 +55,12 @@ GameSource::GameSource(short int mode_, char appsPriority_, unsigned char flags_
 void GameSource::install(unsigned caps)
 {
     itemTextId = &tTextId;
-    itemGetPrefix = &tPrefix;
+    itemGetPrefix = (caps & OMIT_PREFIX) ? NULL : &tPrefix;
     itemInit = &tInit;
     itemNeedsUpdate = &tNeedsUpdate;
     itemUpdate = &tUpdate;
     itemGetCount = &tCount;
-    itemGet = &tGame;
+    itemGet = (caps & OMIT_GAME) ? NULL : &tGame;
     itemGetName = &tName;
     itemGetNameLength = &tNameLength;
     itemGetStartup = &tStartup;
@@ -71,7 +71,7 @@ void GameSource::install(unsigned caps)
     itemGetImage = &tImage;
     itemCleanUp = &tCleanUp;
     itemShutdown = &tShutdown;
-    itemCheckVMC = &tCheckVmc;
+    itemCheckVMC = (caps & OMIT_CHECK_VMC) ? NULL : &tCheckVmc;
     itemIconId = &tIconId;
     itemLaunchVcd = (caps & CAP_LAUNCH_VCD) ? &tLaunchVcd : NULL;
     itemGetArtArchivePath = (caps & CAP_ART_ARCHIVE_PATH) ? &tArtArchive : NULL;
@@ -80,6 +80,9 @@ void GameSource::install(unsigned caps)
     itemGetSourceId = (caps & CAP_SOURCE_ID) ? &tSourceId : NULL;
 }
 
+char *GameSource::prefix(item_list_t *) { return NULL; }
+void *GameSource::game(item_list_t *, int) { return NULL; }
+int GameSource::checkVmc(item_list_t *, char *, int) { return -1; }
 void GameSource::launchVcd(item_list_t *, const char *, config_set_t *) {}
 int GameSource::artArchivePath(item_list_t *, char *, int) { return 0; }
 void GameSource::launchCue(item_list_t *, const char *, config_set_t *) {}

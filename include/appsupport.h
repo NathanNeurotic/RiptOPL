@@ -31,7 +31,6 @@ typedef struct
     u8 legacy;
 } app_info_t;
 
-void appInit(item_list_t *itemList);
 item_list_t *appGetObject(int initOnly);
 int appGetArtMode(const char *startup);
 

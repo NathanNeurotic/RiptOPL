@@ -1,3 +1,4 @@
+#include <new>
 #include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
@@ -17,6 +18,7 @@
 #include "include/texcache.h"
 #include "include/textures.h"
 #include "include/libview.h"
+#include "include/gamesource.h"
 
 #include <elf-loader.h>
 #include <errno.h>
@@ -41,7 +43,6 @@ struct app_info_linked
 };
 
 // forward declaration
-extern item_list_t appItemList;
 
 static void appFreeList(void);
 static void appFreeArtLookup(void);
@@ -577,12 +578,50 @@ int appGetArtMode(const char *startup)
 
     return app->artMode;
 }
+class AppSource : public GameSource
+{
+public:
+    AppSource()
+        : GameSource(APP_MODE, -1, MODE_FLAG_NO_COMPAT | MODE_FLAG_NO_UPDATE, MENU_MIN_INACTIVE_FRAMES, APP_MODE_UPDATE_DELAY, GameSource::OMIT_PREFIX | GameSource::OMIT_GAME | GameSource::OMIT_CHECK_VMC | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+    {
+    }
 
-void appInit(item_list_t *itemList)
+    void init(item_list_t *itemList) override;
+    int needsUpdate(item_list_t *itemList) override;
+    int update(item_list_t *itemList) override;
+    int count(item_list_t *itemList) override;
+    char *name(item_list_t *itemList, int id) override;
+    int nameLength(item_list_t *itemList, int id) override;
+    char *startup(item_list_t *itemList, int id) override;
+    void deleteGame(item_list_t *itemList, int id) override;
+    void rename(item_list_t *itemList, int id, char *newName) override;
+    void launch(item_list_t *itemList, int id, config_set_t *configSet) override;
+    config_set_t *config(item_list_t *itemList, int id) override;
+    int image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm) override;
+    int textId(item_list_t *itemList) override;
+    int iconId(item_list_t *itemList) override;
+    int rowView(item_list_t *itemList, int id) override;
+    int sourceId(item_list_t *itemList, int id) override;
+    void cleanUp(item_list_t *itemList, int exception) override;
+    void shutdown(item_list_t *itemList) override;
+};
+
+static AppSource *appInstance()
+{
+    static AppSource *instance = NULL;
+    alignas(AppSource) static unsigned char storage[sizeof(AppSource)];
+
+    if (instance == NULL)
+        instance = new (storage) AppSource();
+    return instance;
+}
+
+
+void AppSource::init(item_list_t *itemList)
 {
     LOG("APPSUPPORT Init\n");
     appForceUpdate = 1;
-    appItemList.delay = gArtDelay;
+    (*appInstance()).delay = gArtDelay;
     if (configApps != NULL)
         configFree(configApps);
     configApps = host::app().legacyAppsConfig();
@@ -590,17 +629,17 @@ void appInit(item_list_t *itemList)
     appVisibleIds = NULL;
     appVisibleCount = 0;
     appViewOnlyUpdate = 0;
-    appItemList.enabled = 1;
+    (*appInstance()).enabled = 1;
 }
 
 item_list_t *appGetObject(int initOnly)
 {
-    if (initOnly && !appItemList.enabled)
+    if (initOnly && !(*appInstance()).enabled)
         return NULL;
-    return &appItemList;
+    return &(*appInstance());
 }
 
-static int appNeedsUpdate(item_list_t *itemList)
+int AppSource::needsUpdate(item_list_t *itemList)
 {
     int update, viewChanged;
 
@@ -738,7 +777,7 @@ static int appScanCallback(const char *path, config_set_t *appConfig, void *arg)
     }
 }
 
-static int appUpdateItemList(item_list_t *itemList)
+int AppSource::update(item_list_t *itemList)
 {
     struct app_info_linked *appsLinkedList;
     struct app_info_linked *appsLinkedListHead;
@@ -836,31 +875,31 @@ static void appFreeList(void)
     appItemCount = 0;
 }
 
-static int appGetItemCount(item_list_t *itemList)
+int AppSource::count(item_list_t *itemList)
 {
     return itemList != NULL && itemList->viewOverride != ITEM_VIEW_NATIVE ? appItemCount : appVisibleCount;
 }
 
-static char *appGetItemName(item_list_t *itemList, int id)
+char *AppSource::name(item_list_t *itemList, int id)
 {
     id = appVisibleToMaster(itemList, id);
     return id >= 0 ? appsList[id].title : const_cast<char *>("");
 }
 
-static int appGetItemNameLength(item_list_t *itemList, int id)
+int AppSource::nameLength(item_list_t *itemList, int id)
 {
     return CONFIG_KEY_NAME_LEN;
 }
 
 /* appGetItemStartup() is called to get the startup path for display & for the art assets.
    The path is used immediately, before a subsequent call to appGetItemStartup(). */
-static char *appGetItemStartup(item_list_t *itemList, int id)
+char *AppSource::startup(item_list_t *itemList, int id)
 {
     id = appVisibleToMaster(itemList, id);
     return id >= 0 ? appsList[id].startup : const_cast<char *>("");
 }
 
-static void appDeleteItem(item_list_t *itemList, int id)
+void AppSource::deleteGame(item_list_t *itemList, int id)
 {
     id = appVisibleToMaster(itemList, id);
     if (id < 0)
@@ -878,7 +917,7 @@ static void appDeleteItem(item_list_t *itemList, int id)
     appForceUpdate = 1;
 }
 
-static void appRenameItem(item_list_t *itemList, int id, char *newName)
+void AppSource::rename(item_list_t *itemList, int id, char *newName)
 {
     char value[256];
 
@@ -977,7 +1016,7 @@ static const char *appBuildHddHandoffPath(char *out, size_t outSize, const char 
     return out;
 }
 
-static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet)
+void AppSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {
     int fd;
     char filename[256];
@@ -987,7 +1026,7 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
     if (id < 0)
         return;
 
-    // Retrieve configuration set by appGetConfig()
+    // Retrieve configuration set by config()
     configGetStrCopy(configSet, CONFIG_ITEM_STARTUP, filename, sizeof(filename));
 
     // If no device number is specified use mass? to auto find device number
@@ -1192,7 +1231,7 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
     }
 }
 
-static config_set_t *appGetConfig(item_list_t *itemList, int id)
+config_set_t *AppSource::config(item_list_t *itemList, int id)
 {
     config_set_t *config;
     char tmp[8];
@@ -1241,7 +1280,7 @@ static config_set_t *appGetConfig(item_list_t *itemList, int id)
     return config;
 }
 
-static int appGetImage(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
+int AppSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
     app_info_t *app;
 
@@ -1266,17 +1305,17 @@ static int appGetImage(item_list_t *itemList, char *folder, int isRelative, char
     return oplGetAppImageByMode(app->artMode, folder, isRelative, value, suffix, resultTex, psm);
 }
 
-static int appGetTextId(item_list_t *itemList)
+int AppSource::textId(item_list_t *itemList)
 {
     return _STR_APPS;
 }
 
-static int appGetIconId(item_list_t *itemList)
+int AppSource::iconId(item_list_t *itemList)
 {
     return APP_ICON;
 }
 
-static int appGetItemView(item_list_t *itemList, int id)
+int AppSource::rowView(item_list_t *itemList, int id)
 {
     id = appVisibleToMaster(itemList, id);
     if (id < 0)
@@ -1284,15 +1323,15 @@ static int appGetItemView(item_list_t *itemList, int id)
     return appTitleIsPs1Elf(appsList[id].title) ? LIB_VIEW_PS1_ELF : LIB_VIEW_ELF;
 }
 
-static int appGetSourceId(item_list_t *itemList, int id)
+int AppSource::sourceId(item_list_t *itemList, int id)
 {
     return appVisibleToMaster(itemList, id);
 }
 
 // This may be called, even if appInit() was not.
-static void appCleanUp(item_list_t *itemList, int exception)
+void AppSource::cleanUp(item_list_t *itemList, int exception)
 {
-    if (appItemList.enabled) {
+    if ((*appInstance()).enabled) {
         LOG("APPSUPPORT CleanUp\n");
 
         appFreeList();
@@ -1304,9 +1343,9 @@ static void appCleanUp(item_list_t *itemList, int exception)
 }
 
 // This may be called, even if appInit() was not.
-static void appShutdown(item_list_t *itemList)
+void AppSource::shutdown(item_list_t *itemList)
 {
-    if (appItemList.enabled) {
+    if ((*appInstance()).enabled) {
         LOG("APPSUPPORT Shutdown\n");
 
         appFreeList();
@@ -1317,8 +1356,3 @@ static void appShutdown(item_list_t *itemList)
     }
 }
 
-item_list_t appItemList = {
-    APP_MODE, -1, 0, MODE_FLAG_NO_COMPAT | MODE_FLAG_NO_UPDATE, MENU_MIN_INACTIVE_FRAMES, APP_MODE_UPDATE_DELAY, NULL, NULL, &appGetTextId, NULL, &appInit, &appNeedsUpdate, &appUpdateItemList,
-    &appGetItemCount, NULL, &appGetItemName, &appGetItemNameLength, &appGetItemStartup, &appDeleteItem, &appRenameItem, &appLaunchItem,
-    &appGetConfig, &appGetImage, &appCleanUp, &appShutdown, NULL, &appGetIconId,
-    NULL, ITEM_VIEW_NATIVE, NULL, NULL, &appGetItemView, &appGetSourceId};
