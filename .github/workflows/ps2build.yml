@@ -16,20 +16,44 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # The toolchain download (~167 MB from git.techwritescode.dev) is occasionally cut off mid-stream
-      # ("stream error ... INTERNAL_ERROR; received from peer"). One retry; the second attempt resumes with
-      # whatever the first installed.
+      # Toolchain + SDK cache. setup-sdk runs `ps2build update`, which refreshes any component that is out of
+      # date, so a stale restore is safe; a warm cache just skips the ~167 MB download from
+      # git.techwritescode.dev, which cuts connections ("stream error ... INTERNAL_ERROR", HTTP 521) when several
+      # jobs fetch at once.
+      - name: Restore the ps2dev cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.ps2dev
+          key: ps2dev-${{ runner.os }}-v1-${{ github.run_id }}
+          restore-keys: ps2dev-${{ runner.os }}-v1-
+
+      # Cold cache: up to three attempts with a pause between them (a second attempt a moment later hit the
+      # same overloaded host).
       - name: Install ps2build + SDK
         id: sdk1
         continue-on-error: true
         uses: techwritescode/setup-sdk@master
         with:
           ps2dev: ${{ github.workspace }}/.ps2dev
-      - name: Install ps2build + SDK (retry)
+      - name: Wait before retrying the SDK install
         if: steps.sdk1.outcome == 'failure'
+        run: sleep 45
+      - name: Install ps2build + SDK (retry 1)
+        id: sdk2
+        if: steps.sdk1.outcome == 'failure'
+        continue-on-error: true
         uses: techwritescode/setup-sdk@master
         with:
           ps2dev: ${{ github.workspace }}/.ps2dev
+      - name: Wait before retrying the SDK install again
+        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
+        run: sleep 90
+      - name: Install ps2build + SDK (retry 2)
+        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
+        uses: techwritescode/setup-sdk@master
+        with:
+          ps2dev: ${{ github.workspace }}/.ps2dev
+
       - name: Install the ogg/vorbis packages (not shipped by the SDK)
         run: tools/install_ps2build.sh
       - name: Assets (translations, lwNBD, embedded blobs, version)
