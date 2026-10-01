@@ -25,8 +25,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-extern unsigned char elfldr_elf[];
-extern unsigned int size_elfldr_elf;
+extern unsigned char elfldr_irx[];
+extern unsigned int size_elfldr_irx;
 
 #define ELFLDR_ELF_MAGIC 0x464c457f
 #define ELFLDR_PT_LOAD   1
@@ -213,19 +213,19 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
 
     wipeBramMem();
 
-    eh = (elfldr_header_t *)elfldr_elf;
+    eh = (elfldr_header_t *)elfldr_irx;
     if (_lw((u32)&eh->ident) != ELFLDR_ELF_MAGIC) {
         if (diag)
             launchDiagRefuse(LAUNCHDIAG_REFUSE_CHILD_MAGIC);
         return -1;
     }
 
-    eph = (elfldr_pheader_t *)(elfldr_elf + eh->phoff);
+    eph = (elfldr_pheader_t *)(elfldr_irx + eh->phoff);
     for (i = 0; i < eh->phnum; i++) {
         if (eph[i].type != ELFLDR_PT_LOAD)
             continue;
 
-        pdata = (void *)(elfldr_elf + eph[i].offset);
+        pdata = (void *)(elfldr_irx + eph[i].offset);
         memcpy(eph[i].vaddr, pdata, eph[i].filesz);
 
         if (eph[i].memsz > eph[i].filesz)

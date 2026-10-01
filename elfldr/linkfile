@@ -20,17 +20,21 @@ SECTIONS {
 	.reginfo : { *(.reginfo) } >MAIN_REGION
 
 	.ctors ALIGN(16): {
+		PROVIDE(__CTOR_LIST__ = .);
 		KEEP(*crtbegin*.o(.ctors))
 		KEEP(*(EXCLUDE_FILE(*crtend*.o) .ctors))
 		KEEP(*(SORT(.ctors.*)))
 		KEEP(*(.ctors))
+		PROVIDE(__CTOR_END__ = .);
 	} >MAIN_REGION
 
 	.dtors ALIGN(16): {
+		PROVIDE(__DTOR_LIST__ = .);
 		KEEP(*crtbegin*.o(.dtors))
 		KEEP(*(EXCLUDE_FILE(*crtend*.o) .dtors))
 		KEEP(*(SORT(.dtors.*)))
 		KEEP(*(.dtors))
+		PROVIDE(__DTOR_END__ = .);
 	} >MAIN_REGION
 
 	.rodata ALIGN(128): {

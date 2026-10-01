@@ -104,3 +104,5 @@ tmp/
 # leaves a __pycache__ behind next to them. Nothing generated belongs in the tree.
 __pycache__/
 *.pyc
+/build/
+asm/opl_version.h

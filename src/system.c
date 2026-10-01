@@ -70,8 +70,8 @@ typedef struct
     int VMC_card_slot;
 } createVMCparam_t;
 
-extern unsigned char eecore_elf[];
-extern unsigned int size_eecore_elf;
+extern unsigned char eecore_irx[];
+extern unsigned int size_eecore_irx;
 
 extern unsigned char IOPRP_img[];
 extern unsigned int size_IOPRP_img;
@@ -1926,7 +1926,7 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     ModuleStorageEnd = (void *)((u8 *)ModuleStorage + ModuleStorageSize);
 
     // NB: LOADER.ELF is embedded
-    boot_elf = (u8 *)&eecore_elf;
+    boot_elf = (u8 *)&eecore_irx;
     eh = (elf_header_t *)boot_elf;
     eph = (elf_pheader_t *)(boot_elf + eh->phoff);
 
@@ -1955,9 +1955,9 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     }
 
     struct EECoreConfig_t *config = NULL;
-    u32 *core_ptr = (u32 *)&eecore_elf;
+    u32 *core_ptr = (u32 *)&eecore_irx;
 
-    for (i = 0; i < size_eecore_elf / 4; i++) {
+    for (i = 0; i < size_eecore_irx / 4; i++) {
         if (core_ptr[0] == EE_CORE_MAGIC_0 && core_ptr[1] == EE_CORE_MAGIC_1) {
             config = (struct EECoreConfig_t *)core_ptr;
             break;

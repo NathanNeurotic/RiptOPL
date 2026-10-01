@@ -7,6 +7,8 @@
 // half of the old ethDeinitModules() is now netDeinitModules(), taking the protocol's own teardown
 // as a callback so it still runs at exactly the point in the sequence it always did.
 
+#include <ps2ip.h>      // t_ip_info, DHCP_STATE_*, ps2ip_getconfig: no longer pulled in by ps2ips.h
+#include <lwip/ip_addr.h> // struct ip4_addr, IP4_ADDR, ip_addr_set/cmp (same reason)
 #include <delaythread.h> // DelayThread -- bounded lock acquire in netDeinitModules
 #include "include/opl.h"
 #include "include/netsupport.h"
