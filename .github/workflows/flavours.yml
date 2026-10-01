@@ -167,6 +167,10 @@ jobs:
     env:
       PS2BUILD_HOME: ${{ github.workspace }}/.ps2dev
       PS2DEV_INSTALL_DIR: ${{ github.workspace }}/.ps2dev
+      # Experiment: the toolchain download dies with HTTP/2 "stream error ... INTERNAL_ERROR" / HTTP 521 from the
+      # Cloudflare-fronted host on GitHub runners only. Force ps2build (Go) onto HTTP/1.1 to see whether it is the
+      # h2 stream that gets reset.
+      GODEBUG: http2client=0
     steps:
       - uses: actions/checkout@v6
         with:
