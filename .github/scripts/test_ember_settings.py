@@ -64,7 +64,7 @@ def compile_and_run(name, program):
             failures.extend(lines or ['%s harness exited %d' % (name, run.returncode)])
 
 
-opl_c = read('src/opl.cpp') + read('src/settingsio.cpp')
+opl_c = read('src/opl.cpp') + read('src/settingsio.cpp') + read('src/menuitems.cpp')
 opl_h = read('include/opl.h')
 config_h = read('include/config.h')
 cuesupport_h = read('include/cuesupport.h')
@@ -341,7 +341,7 @@ if vcd_menu and not re.search(r'if \(isEmber\)\s*submenuAppendItem\(&appMenu, -1
     failures.append('src/menusys.c: Ember Game Settings is not offered only on Ember rows')
 if 'guiShowEmberGameSettings();' not in menusys_c:
     failures.append('src/menusys.c: APP_EMBER_GAME_SETTINGS does not open guiShowEmberGameSettings')
-if 'menuInitVcdMenu(kind == FAV_KIND_CUE);' not in read('src/opl.cpp'):
+if 'menuInitVcdMenu(kind == FAV_KIND_CUE);' not in read('src/menuitems.cpp'):
     failures.append('src/opl.c: the PS1 Triangle menu is not told whether the row is an Ember row')
 
 game_page = function_text(gui_c, 'src/gui.cpp', 'void guiShowEmberGameSettings(')

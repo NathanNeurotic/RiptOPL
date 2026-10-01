@@ -226,7 +226,7 @@ struct item_list { short mode; int enabled; int (*itemNeedsUpdate)(item_list_t *
 typedef struct { item_list_t *support; } opl_io_module_t;
 
 static opl_io_module_t list_support[MODE_COUNT];
-static unsigned char shouldAppsUpdate;
+static unsigned char gShouldAppsUpdate;
 static int gFAVStartMode = 1;
 static int needs, pendingView, appsQueued, favLoads, rebuilds;
 static int needsUpdate(item_list_t *l) { (void)l; return needs; }
@@ -246,7 +246,7 @@ static item_list_t bdm = {2, 1, needsUpdate}, apps = {APP_MODE, 1, needsUpdate},
 
 static int run(item_list_t *l, int need, int flip)
 {
-    needs = need; pendingView = flip; appsQueued = favLoads = rebuilds = 0; shouldAppsUpdate = 0;
+    needs = need; pendingView = flip; appsQueued = favLoads = rebuilds = 0; gShouldAppsUpdate = 0;
     menuDeferredUpdate(&l->mode);
     return 0;
 }
@@ -257,13 +257,13 @@ int main(void)
     list_support[2].support = &bdm; list_support[APP_MODE].support = &apps; list_support[FAV_MODE].support = &fav;
 
     run(&bdm, 1, 0); /* a device page rebuilt for a real reason (connect, SELECT, rescan) */
-    if (rebuilds != 1 || appsQueued != 1 || !shouldAppsUpdate || favLoads != 1) {
-        printf("FAIL real rebuild: rebuilds %d apps %d flag %d fav %d (want 1 1 1 1)\n", rebuilds, appsQueued, shouldAppsUpdate, favLoads);
+    if (rebuilds != 1 || appsQueued != 1 || !gShouldAppsUpdate || favLoads != 1) {
+        printf("FAIL real rebuild: rebuilds %d apps %d flag %d fav %d (want 1 1 1 1)\n", rebuilds, appsQueued, gShouldAppsUpdate, favLoads);
         failed = 1;
     }
     run(&bdm, 1, 1); /* L3 flip on that page */
-    if (rebuilds != 1 || appsQueued != 0 || shouldAppsUpdate || favLoads != 1) {
-        printf("FAIL L3 flip: rebuilds %d apps %d flag %d fav %d (want 1 0 0 1)\n", rebuilds, appsQueued, shouldAppsUpdate, favLoads);
+    if (rebuilds != 1 || appsQueued != 0 || gShouldAppsUpdate || favLoads != 1) {
+        printf("FAIL L3 flip: rebuilds %d apps %d flag %d fav %d (want 1 0 0 1)\n", rebuilds, appsQueued, gShouldAppsUpdate, favLoads);
         failed = 1;
     }
     run(&apps, 1, 0); /* APPS itself never re-queues APPS */

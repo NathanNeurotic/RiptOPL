@@ -66,7 +66,6 @@
 #include <libds34usb.h>
 #endif
 
-#include "include/oplog.h"
 
 // Settings persistence: where the settings live (boot-home resolution, config-path redirect, recovery), loading and saving them,
 // and applyConfig/saveConfig. Split out of opl.cpp.

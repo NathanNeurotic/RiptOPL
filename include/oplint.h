@@ -29,6 +29,18 @@ extern const char *gBootHomeWhy; // why the boot home was chosen (diagnostics)
 void menuUpdateHook();
 void moduleUpdateMenuInternal(opl_io_module_t *mod, int themeChanged, int langChanged);
 
+// appscan.cpp
+extern unsigned char gShouldAppsUpdate;
+
+// menuitems.cpp: button handlers installed on each source's menu item
+void itemExecRefresh(struct menu_item *curMenu);
+void itemExecCross(struct menu_item *curMenu);
+void itemExecTriangle(struct menu_item *curMenu);
+void itemExecSquare(struct menu_item *curMenu);
+void itemExecCircle(struct menu_item *curMenu);
+void itemExecFav(struct menu_item *curMenu);
+void itemExecToggleView(struct menu_item *curMenu);
+
 // autolaunch.cpp
 void autoLaunchHDDGame(char *argv[]);
 void autoLaunchBDMGame(char *argv[]);

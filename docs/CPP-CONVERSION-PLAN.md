@@ -350,7 +350,7 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
   Functions the loader wires up (`initBasic`, `initItemsList`, `drawGameImage`, ...) lost `static` for this; they are only declared in `themeint.h`.
 - Source-scraping tests (`test_theme_text_room`, `test_art_queue_order`) read the union of the three files.
 
-## 17d. opl.cpp split (5117 -> 2330 lines)
+## 17d. opl.cpp split (5117 -> 1813 lines)
 - `src/autolaunch.cpp`: `autoLaunchHDDGame`/`autoLaunchBDMGame` (boot-argument auto-launch).
 - `src/lwnbdctl.cpp`: NBD server (lwNBD) load/teardown and `handleLwnbdSrv`.
 - `include/oplint.h`: what these share with `opl.cpp` (`miniInit`, `reset`, `initAllSupport`, `deinitAllSupport`, `clearErrorMessage`,
@@ -360,7 +360,10 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
   state (`lscstatus`, `gBootHome*`, `gLastSaveTarget`, ...) stay private to it; only `_loadConfig`, `resolveBootDirToMass`, `tryAlternateDevice`,
   `configReadNeutrinoGlobals`, `gBootElfName`, `gBootHomeWhy` are shared (via `oplint.h`). opl.cpp is down to 2330 lines.
   Source-scraping tests read opl.cpp + settingsio.cpp.
-- Still in opl.cpp (next candidates): the `itemExec*` menu handlers, the module list/menu-refresh code, `setDefaults`, `main`.
+- **Step 3:** `src/menuitems.cpp` (405 lines: the per-source button handlers `itemExec*`, `itemInitSupport`) and `src/appscan.cpp` (256 lines: Apps
+  list scanning, legacy apps config lookups; owns `gShouldAppsUpdate`). opl.cpp is down to 1813 lines.
+- Still in opl.cpp (next candidates): `updateMenuFromGameList`/`menuDeferredUpdate`/`menuUpdateHook` (share frame/rescan throttle state with the error-message
+  hook), `setDefaults`/`init`/`miniInit`, `main`.
 
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
@@ -398,7 +401,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 | 4 HostServices, launch/UI split | done |
 | 5 GameSource hierarchy | not started; needs go-ahead (hardware testing matters most) |
 | 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
-| 7 split god files | gui.cpp done (5197 -> ~1100 lines); themes.cpp done (3958 -> 1653, plus themeelems.cpp and coverflow.cpp); opl.cpp in progress (5117 -> 2330: autolaunch.cpp, lwnbdctl.cpp, settingsio.cpp out); bdmsupport.cpp not started |
+| 7 split god files | gui.cpp done (5197 -> ~1100 lines); themes.cpp done (3958 -> 1653, plus themeelems.cpp and coverflow.cpp); opl.cpp in progress (5117 -> 1813: autolaunch.cpp, lwnbdctl.cpp, settingsio.cpp, menuitems.cpp, appscan.cpp out); bdmsupport.cpp not started |
 | 8 directory move, blocking analyzer | not started |
 
 Packed ELF: 1,634,784 B (Atlas) -> 1,634,400 B (ArtQueue). Every step so far: clean `ps2build build`, `tools/run_tests.sh -k`,
