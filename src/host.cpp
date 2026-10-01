@@ -5,6 +5,15 @@
 #include "include/opl.h"
 #include "include/gui.h"
 #include "include/libview.h"
+#include "include/lang.h"
+#include "include/cheatman.h"
+#include "include/pggsm.h"
+#include "../ee_core/include/coreconfig.h"
+#ifdef RETROACHIEVEMENTS
+#include "include/rawatch.h"
+#include "include/discsupport.h"
+#include "modules/network/common/ra_snap.h"
+#endif
 
 namespace
 {
@@ -14,6 +23,7 @@ class OplUi final : public UiServices
 public:
     int msgBox(const char *text, int addAccept, struct UIItem *ui) override { return guiMsgBox(text, addAccept, ui); }
     void warning(const char *text, int count) override { guiWarning(text, count); }
+    void warningId(int strId, int count) override { guiWarning(_l(strId), count); }
     void raNotice(const char *line1, const char *line2) override
     {
 #ifdef RETROACHIEVEMENTS
@@ -68,10 +78,83 @@ public:
     void bdmAttach(int mode, int bdmType) override { libViewBdmAttach(mode, bdmType); }
 };
 
+class OplLaunch final : public LaunchServices
+{
+public:
+    void fillCoreConfig(struct EECoreConfig_t *config, bool discMode, void *raWorkArea) override
+    {
+        if (!discMode && GetCheatsEnabled()) {
+            set_cheats_list();
+            config->gCheatList = GetCheatsList();
+        } else
+            config->gCheatList = NULL;
+
+        // PS2RD .img cheats (item 26). Without this the EE loads the .img into RAM and then never hands
+        // the pointer to the core, so LinkImage() had nothing to link and the whole feature was dead.
+        config->gImage = !discMode && GetImageEnabled() ? (u32 *)GetImage() : NULL;
+
+#ifdef RETROACHIEVEMENTS
+        // RetroAchievements: the watch list for this game, already loaded by the launch
+        // leg. It may legitimately be absent -- the game simply is not tracked -- in
+        // which case ee_core sees NULL and never starts the telemetry path.
+        config->raWatchList = GetWatchList();
+        config->raWatchCount = GetWatchCount();
+        config->raSnapBytes = GetWatchBytes();
+        config->raNodeList = GetNodeList();
+        config->raNodeCount = GetNodeCount();
+        config->raWorkArea = raWorkArea;
+
+        // The last point where the list is still ours: from here it goes into ee_core
+        // with no feedback. A zero shows up in the launch log directly, rather than as
+        // empty packets on the PC.
+        raLaunchNote("to-ee-core", config->raWatchCount, config->raSnapBytes);
+#else
+        (void)raWorkArea;
+#endif
+
+        struct GsmConfig_t gsm_config;
+        // GSM now.
+        config->EnableGSMOp = !discMode && GetGSMEnabled();
+        if (config->EnableGSMOp) {
+            PrepareGSM(NULL, &gsm_config);
+            config->GsmConfig.interlace = gsm_config.interlace;
+            config->GsmConfig.mode = gsm_config.mode;
+            config->GsmConfig.ffmd = gsm_config.ffmd;
+            config->GsmConfig.display = gsm_config.display;
+            config->GsmConfig.syncv = gsm_config.syncv;
+            config->GsmConfig.smode2 = gsm_config.smode2;
+            config->GsmConfig.dx_offset = gsm_config.dx_offset;
+            config->GsmConfig.dy_offset = gsm_config.dy_offset;
+            config->GsmConfig.k576P_fix = gsm_config.k576P_fix;
+            config->GsmConfig.kGsDxDyOffsetSupported = gsm_config.kGsDxDyOffsetSupported;
+            config->GsmConfig.FIELD_fix = gsm_config.FIELD_fix;
+        }
+    }
+
+    int raWatchCount() override
+    {
+#ifdef RETROACHIEVEMENTS
+        return GetWatchCount();
+#else
+        return 0;
+#endif
+    }
+
+    bool discCheckBusy() override
+    {
+#ifdef RETROACHIEVEMENTS
+        return ::discCheckBusy() != 0;
+#else
+        return false;
+#endif
+    }
+};
+
 // Stateless, trivially constructed: constant-initialised, so safe before any other static init.
 OplUi gUi;
 OplApp gApp;
 OplLibrary gLibrary;
+OplLaunch gLaunch;
 
 } // namespace
 
@@ -80,4 +163,5 @@ namespace host
 UiServices &ui() { return gUi; }
 AppServices &app() { return gApp; }
 LibraryServices &library() { return gLibrary; }
+LaunchServices &launch() { return gLaunch; }
 } // namespace host

@@ -20,6 +20,7 @@
 
 typedef struct _item_list_t item_list_t;
 struct UIItem;
+struct EECoreConfig_t;
 
 // Dialogs, notices and boot status on the user-facing side.
 class UiServices
@@ -28,6 +29,8 @@ public:
     virtual ~UiServices() = default;
     virtual int msgBox(const char *text, int addAccept, struct UIItem *ui) = 0;
     virtual void warning(const char *text, int count) = 0;
+    // Same, for a translatable string id (the UI layer owns the language tables).
+    virtual void warningId(int strId, int count) = 0;
     virtual void raNotice(const char *line1, const char *line2) = 0;
     virtual void bootStatusSticky(const char *label) = 0;
     virtual void bootStatusStickyCopy(const char *label) = 0;
@@ -80,10 +83,25 @@ public:
     virtual void bdmAttach(int mode, int bdmType) = 0;
 };
 
+// What optional features (cheats, GSM, RetroAchievements) contribute to a game launch. system.cpp builds the ee_core
+// configuration but must not know those feature modules.
+class LaunchServices
+{
+public:
+    virtual ~LaunchServices() = default;
+    // Fill the feature-derived fields of the ee_core config: cheat list, PS2RD image, RetroAchievements watch
+    // list/buffers, GSM. discMode launches carry none of cheats/image/GSM.
+    virtual void fillCoreConfig(struct EECoreConfig_t *config, bool discMode, void *raWorkArea) = 0;
+    // Entries in the loaded RetroAchievements watch list (0 outside that flavour or for an untracked game).
+    virtual int raWatchCount() = 0;
+    virtual bool discCheckBusy() = 0;
+};
+
 namespace host
 {
 UiServices &ui();
 AppServices &app();
+LaunchServices &launch();
 LibraryServices &library();
 } // namespace host
 

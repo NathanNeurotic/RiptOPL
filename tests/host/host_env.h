@@ -33,6 +33,7 @@ struct NullUi final : UiServices
 {
     int msgBox(const char *, int, struct UIItem *) override { return 0; }
     void warning(const char *, int) override {}
+    void warningId(int, int) override {}
     void raNotice(const char *, const char *) override {}
     void bootStatusSticky(const char *) override {}
     void bootStatusStickyCopy(const char *) override {}

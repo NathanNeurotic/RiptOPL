@@ -120,7 +120,6 @@ typedef struct
 
 void guiEnd();
 void menuEnd();
-void lngEnd();
 void thmEnd();
 void rmEnd();
 
@@ -652,7 +651,7 @@ int sysLaunchDisc(int (*progress)(void))
     char *args[1];
     int result;
 #ifdef RETROACHIEVEMENTS
-    if (discCheckBusy())
+    if (host::launch().discCheckBusy())
         return -1;
 #endif
     result = sysGetDiscBootPath(path, sizeof(path), progress);
@@ -821,7 +820,7 @@ static unsigned int sendIrxKernelRAM(const char *startup, const char *mode_str, 
       GetWatchCount() is authoritative here because the launch legs have already
       run sbLoadWatchList() by this point; no list means nothing to send.
     */
-    if (gRATelemetry && GetWatchCount() > 0)
+    if (gRATelemetry && host::launch().raWatchCount() > 0)
         modules |= CORE_IRX_ETH;
 #endif
 
@@ -1477,7 +1476,7 @@ int sysNeutrinoPreflight(const char *driver, const char *neutrinoPath, int neutr
     const char *deviceName = getDeviceName(driver);
     if (!strcmp(deviceName, "unsupported")) {
         LOG("[NEUTRINO] preflight: unsupported device '%s'\n", driver);
-        host::ui().warning(_l(_STR_NEUTRINO_DEV_UNSUPPORTED), 6);
+        host::ui().warningId(_STR_NEUTRINO_DEV_UNSUPPORTED, 6);
         return -1;
     }
 
@@ -1490,7 +1489,7 @@ int sysNeutrinoPreflight(const char *driver, const char *neutrinoPath, int neutr
     // The native leg refuses a device with no number outright; this refuses only its bd launches.
     if (neutrinoEffectiveBsdfs(deviceName, neutrinoBsdfs, extraArgs) == 3 && bdDevNr < 0 && strcmp(deviceName, "ata") != 0) {
         LOG("[NEUTRINO] preflight: -bsdfs=bd on '%s' with no device number\n", driver);
-        host::ui().warning(_l(_STR_NEUTRINO_BD_NO_DEVICE_NUMBER), 6);
+        host::ui().warningId(_STR_NEUTRINO_BD_NO_DEVICE_NUMBER, 6);
         return -1;
     }
 
@@ -1498,7 +1497,7 @@ int sysNeutrinoPreflight(const char *driver, const char *neutrinoPath, int neutr
     // failure can still be reported (see sysSyncNeutrinoUdpfsToml for the abort conditions).
     if (!strcmp(deviceName, "udpfs") || !strcmp(deviceName, "udpfsbd") || !strcmp(deviceName, "udpbd")) {
         if (sysSyncNeutrinoUdpfsToml(neutrinoPath, deviceName) < 0) {
-            host::ui().warning(_l(_STR_NEUTRINO_TOML_SYNC_FAILED), 6);
+            host::ui().warningId(_STR_NEUTRINO_TOML_SYNC_FAILED, 6);
             return -1;
         }
     }
@@ -1860,7 +1859,6 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     char ElfPath[32];
     char *argv[4];
     void *eeloadCopy, *initUserMemory;
-    struct GsmConfig_t gsm_config;
 
     ethGetNetConfig(local_ip_address, local_netmask, local_gateway);
 #if (!defined(__DEBUG) && !defined(_DTL_T10000))
@@ -1911,7 +1909,7 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
        64-byte aligned, so the area is too. Same gate as the network modules:
        an untracked game reserves nothing. */
     void *raWorkArea = NULL;
-    if (gRATelemetry && GetWatchCount() > 0) {
+    if (gRATelemetry && host::launch().raWatchCount() > 0) {
         raWorkArea = (u8 *)ModuleStorage + ModuleStorageSize;
         ModuleStorageSize += (RA_EE_WORK_BYTES + 0x3F) & ~0x3F;
     }
@@ -1976,53 +1974,16 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     config->HDDSpindown = gHDDSpindown;
     config->g_ps2_ETHOpMode = gETHOpMode;
 
-    if (!discMode && GetCheatsEnabled()) {
-        set_cheats_list();
-        config->gCheatList = GetCheatsList();
-    } else
-        config->gCheatList = NULL;
-
-    // PS2RD .img cheats (item 26). Without this the EE loads the .img into RAM and then never hands
-    // the pointer to the core, so LinkImage() had nothing to link and the whole feature was dead.
-    config->gImage = !discMode && GetImageEnabled() ? (u32 *)GetImage() : NULL;
-
 #ifdef RETROACHIEVEMENTS
-    // RetroAchievements: the watch list for this game, already loaded by the launch
-    // leg. It may legitimately be absent -- the game simply is not tracked -- in
-    // which case ee_core sees NULL and never starts the telemetry path.
-    config->raWatchList = GetWatchList();
-    config->raWatchCount = GetWatchCount();
-    config->raSnapBytes = GetWatchBytes();
-    config->raNodeList = GetNodeList();
-    config->raNodeCount = GetNodeCount();
-    config->raWorkArea = raWorkArea;
-
-    // The last point where the list is still ours: from here it goes into ee_core
-    // with no feedback. A zero shows up in the launch log directly, rather than as
-    // empty packets on the PC.
-    raLaunchNote("to-ee-core", config->raWatchCount, config->raSnapBytes);
+    host::launch().fillCoreConfig(config, discMode, raWorkArea);
+#else
+    host::launch().fillCoreConfig(config, discMode, NULL);
 #endif
 
     sprintf(config->g_ps2_ip, "%u.%u.%u.%u", local_ip_address[0], local_ip_address[1], local_ip_address[2], local_ip_address[3]);
     sprintf(config->g_ps2_netmask, "%u.%u.%u.%u", local_netmask[0], local_netmask[1], local_netmask[2], local_netmask[3]);
     sprintf(config->g_ps2_gateway, "%u.%u.%u.%u", local_gateway[0], local_gateway[1], local_gateway[2], local_gateway[3]);
 
-    // GSM now.
-    config->EnableGSMOp = !discMode && GetGSMEnabled();
-    if (config->EnableGSMOp) {
-        PrepareGSM(NULL, &gsm_config);
-        config->GsmConfig.interlace = gsm_config.interlace;
-        config->GsmConfig.mode = gsm_config.mode;
-        config->GsmConfig.ffmd = gsm_config.ffmd;
-        config->GsmConfig.display = gsm_config.display;
-        config->GsmConfig.syncv = gsm_config.syncv;
-        config->GsmConfig.smode2 = gsm_config.smode2;
-        config->GsmConfig.dx_offset = gsm_config.dx_offset;
-        config->GsmConfig.dy_offset = gsm_config.dy_offset;
-        config->GsmConfig.k576P_fix = gsm_config.k576P_fix;
-        config->GsmConfig.kGsDxDyOffsetSupported = gsm_config.kGsDxDyOffsetSupported;
-        config->GsmConfig.FIELD_fix = gsm_config.FIELD_fix;
-    }
 
 #ifdef PADEMU
     config->EnablePadEmuOp = !discMode && gEnablePadEmu;
