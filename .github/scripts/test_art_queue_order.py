@@ -46,10 +46,10 @@ if not re.search(r'if \(cachePattern != NULL && cacheCount < 2\)\s*\n\s*cacheCou
                     'whether cacheAbortOtherBackgrounds still needs to scan every slot')
 
 # --- The BG abort must be the tested helper, called for BG caches whatever their size ----------
-if re.search(r'cache->count\s*==\s*1\s*&&\s*cache->suffix', texcache):
+if re.search(r'cache->count_?\s*==\s*1\s*&&\s*cache->suffix', texcache):
     failures.append('texcache.c: the BG abort is guarded by cache->count == 1 again -- BG caches '
                     'have at least 2 slots, so it would never fire')
-if not re.search(r'strcmp\(cache->suffix, "BG"\) == 0\)\s*\n\s*cacheAbortOtherBackgrounds\(cache, value\);',
+if not re.search(r'strcmp\(cache->suffix_, "BG"\) == 0\)\s*\n\s*cacheAbortOtherBackgrounds\(cache, value\);',
                  texcache):
     failures.append('texcache.c: cacheGetTextureEx no longer calls cacheAbortOtherBackgrounds for '
                     'BG caches')
@@ -69,7 +69,7 @@ functions = ''.join(function_text(artqueue, 'src/gfx/artqueue.cpp', sig) for sig
     'void ArtQueue::pushFront(',
     'void ArtQueue::promote(',
     'load_image_request_t *ArtQueue::pop(',
-)) + function_text(texcache, 'src/gfx/texcache.cpp', 'static void cacheAbortOtherBackgrounds(')
+)) + function_text(texcache, 'src/gfx/texcache.cpp', 'void cacheAbortOtherBackgrounds(')
 # The real class declaration, private opened up so the harness can seed and inspect the queue.
 _hdr = read('include/artqueue.h')
 class_text = '#define private public\n' + _hdr[_hdr.index('class ArtQueue'):_hdr.index('#endif')] + '#undef private\n'
@@ -96,8 +96,8 @@ typedef struct {
 } cache_entry_t;
 
 typedef struct {
-    int count;
-    cache_entry_t *content;
+    int count_;
+    cache_entry_t *content_;
 } image_cache_t;
 
 @CLASS@

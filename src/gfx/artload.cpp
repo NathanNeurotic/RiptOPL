@@ -232,10 +232,10 @@ GSTEXTURE *cacheLookupTexture(image_cache_t *cache, int *cacheId, int *UID)
     if (cache == NULL || cacheId == NULL || UID == NULL)
         return NULL;
 
-    if (*cacheId < 0 || *cacheId >= cache->count)
+    if (*cacheId < 0 || *cacheId >= cache->count())
         return NULL;
 
-    cache_entry_t *entry = &cache->content[*cacheId];
+    cache_entry_t *entry = &cache->content_[*cacheId];
     if (entry->UID != *UID || entry->qr != NULL || entry->lastUsed == 0 || entry->texture.Mem == NULL)
         return NULL;
 
@@ -293,8 +293,8 @@ static void artFreeChain(load_image_request_t *chain)
 
         if (chain->entry && chain->entry->qr == chain)
             cacheClearItem(chain->entry, 0);
-        if (chain->cache && chain->cache->activeRequests > 0)
-            chain->cache->activeRequests--;
+        if (chain->cache)
+            chain->cache->requestFinished();
 
         gArtW.dropped++;
         free(chain);
@@ -309,8 +309,8 @@ static void artReleaseRequest(load_image_request_t *req, int completed)
 {
     gArtQ.release(req);
 
-    if (req->cache && req->cache->activeRequests > 0)
-        req->cache->activeRequests--;
+    if (req->cache)
+        req->cache->requestFinished();
 
     if (completed)
         gArtW.done++;
@@ -582,14 +582,14 @@ static void cacheLoadImage(load_image_request_t *req)
         if (req->artArchive < 0)
             result = -1; // source has a home we cannot reach -- never fall back to another device's archive
         else if (req->artArchive > 0 && req->artArchivePath != NULL)
-            result = artTarLoadImageExact(req->value, req->cache->suffix, req->artArchivePath, &staged);
+            result = artTarLoadImageExact(req->value, req->cache->suffix(), req->artArchivePath, &staged);
         else
-            result = artTarLoadImage(req->value, req->cache->suffix, &staged);
+            result = artTarLoadImage(req->value, req->cache->suffix(), &staged);
     }
 
     // Fall through to the per-file lookup whenever the archive is off, absent, or lacks this key.
     if (result < 0)
-        result = handler->itemGetImage(handler, req->cache->prefix, req->cache->isPrefixRelative, req->value, req->cache->suffix, &staged, GS_PSM_CT24);
+        result = handler->itemGetImage(handler, req->cache->prefix(), req->cache->isPrefixRelative(), req->value, req->cache->suffix(), &staged, GS_PSM_CT24);
 
     texSetLoadAbortFlag(NULL);
 

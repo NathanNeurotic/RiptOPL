@@ -1,4 +1,5 @@
 #include "include/opl.h"
+#include <new>
 #include "include/texcache.h"
 #include "include/texcacheint.h"
 #include "include/artqueue.h"
@@ -41,27 +42,30 @@ void cacheClearItem(cache_entry_t *item, int freeTxt)
 
 image_cache_t *cacheInitCache(int userId, const char *prefix, int isPrefixRelative, const char *suffix, int count)
 {
-    image_cache_t *cache = (image_cache_t *)malloc(sizeof(image_cache_t));
-    cache->userId = userId;
-    cache->count = count;
-    cache->prefix = NULL;
+    image_cache_t *cache = static_cast<image_cache_t *>(malloc(sizeof(image_cache_t)));
+    if (cache == NULL)
+        return NULL;
+    new (cache) image_cache_t();
+    cache->userId_ = userId;
+    cache->count_ = count;
+    cache->prefix_ = NULL;
     int length;
     if (prefix) {
         length = strlen(prefix) + 1;
-        cache->prefix = (char *)malloc(length * sizeof(char));
-        memcpy(cache->prefix, prefix, length);
+        cache->prefix_ = (char *)malloc(length * sizeof(char));
+        memcpy(cache->prefix_, prefix, length);
     }
-    cache->isPrefixRelative = isPrefixRelative;
+    cache->isPrefixRelative_ = isPrefixRelative;
     length = strlen(suffix) + 1;
-    cache->suffix = (char *)malloc(length * sizeof(char));
-    memcpy(cache->suffix, suffix, length);
-    cache->nextUID = 1;
-    cache->activeRequests = 0;
-    cache->content = (cache_entry_t *)malloc(count * sizeof(cache_entry_t));
+    cache->suffix_ = (char *)malloc(length * sizeof(char));
+    memcpy(cache->suffix_, suffix, length);
+    cache->nextUID_ = 1;
+    cache->activeRequests_ = 0;
+    cache->content_ = (cache_entry_t *)malloc(count * sizeof(cache_entry_t));
 
     int i;
     for (i = 0; i < count; ++i)
-        cacheClearItem(&cache->content[i], 0);
+        cacheClearItem(&cache->content_[i], 0);
 
     return cache;
 }
@@ -77,36 +81,36 @@ void cacheDestroyCache(image_cache_t *cache)
     // exactly one: endMutableImage via thmFree, i.e. a theme switch. The others destroy a fresh
     // clone no request can ever have referenced.
     //
-    // What a stray request would do if we just freed: dereference req->cache->suffix and ->prefix,
+    // What a stray request would do if we just freed: dereference req->cache->suffix_ and ->prefix,
     // and req->entry -- a pointer INTO the content[] array below. Worse, a cancellation early-out
     // would then call cacheClearItem on whatever bytes now occupy the freed slot, i.e. free() a
     // garbage pointer. Harmless while art shared the io worker; a live use-after-free with a worker
     // running concurrently.
-    if (cache->activeRequests > 0) {
+    if (cache->activeRequests_ > 0) {
         if (gArtQ.current() && gArtQ.current()->cache == cache)
             gArtQ.current()->abortRequested = 1;
         cacheWakeArtWorker();
 
-        while (cache->activeRequests > 0 && ms-- > 0)
+        while (cache->activeRequests_ > 0 && ms-- > 0)
             DelayThread(1000);
     }
 
     // LEAK RATHER THAN FREE. If the wait expired something still holds a pointer into this cache. A
     // few KB of EE RAM on a path that only runs on a theme switch is cheap; a use-after-free in the
     // art path is the entire class of bug this change exists to close.
-    if (cache->activeRequests > 0) {
+    if (cache->activeRequests_ > 0) {
         LOG("cacheDestroyCache: %d art request(s) still reference this cache -- leaking it\n",
-            cache->activeRequests);
+            cache->activeRequests_);
         return;
     }
 
-    for (i = 0; i < cache->count; ++i) {
-        cacheClearItem(&cache->content[i], 1); // GUI thread: gsKit contact is correct here
+    for (i = 0; i < cache->count_; ++i) {
+        cacheClearItem(&cache->content_[i], 1); // GUI thread: gsKit contact is correct here
     }
 
-    free(cache->prefix);
-    free(cache->suffix);
-    free(cache->content);
+    free(cache->prefix_);
+    free(cache->suffix_);
+    free(cache->content_);
     free(cache);
 }
 
@@ -185,16 +189,16 @@ static int cacheResolveArtArchive(item_list_t *list, const char *value, char *pa
 }
 
 // Abort every background still queued or loading for a game other than `value`. Scans EVERY slot:
-// initMutableImage floors each per-game art cache at 2, so the `cache->count == 1` guard this used to
+// initMutableImage floors each per-game art cache at 2, so the `cache->count_ == 1` guard this used to
 // sit behind made it dead code, and an abandoned background kept its decode running in front of the
 // next cover (#772). Marking it aborted rather than dropping it keeps one owner for the request: the
 // worker releases it on its own terms, whether it is still queued or already inside the read.
-static void cacheAbortOtherBackgrounds(image_cache_t *cache, const char *value)
+void cacheAbortOtherBackgrounds(image_cache_t *cache, const char *value)
 {
     int i;
 
-    for (i = 0; i < cache->count; i++) {
-        cache_entry_t *entry = &cache->content[i];
+    for (i = 0; i < cache->count_; i++) {
+        cache_entry_t *entry = &cache->content_[i];
         if (entry->qr != NULL && entry->key[0] != '\0' && strcmp(entry->key, value) != 0)
             ((load_image_request_t *)entry->qr)->abortRequested = 1;
     }
@@ -230,8 +234,8 @@ GSTEXTURE *cacheGetTextureEx(image_cache_t *cache, item_list_t *list, int *cache
         // Bounds check, which this path never had: a row keeps its cache_id across a theme switch,
         // and the new theme's cache can be SMALLER. content[*cacheId] was then an out-of-bounds read
         // whose UID happened not to match often enough to be noticed.
-        if (*cacheId >= 0 && *cacheId < cache->count) {
-            cache_entry_t *entry = &cache->content[*cacheId];
+        if (*cacheId >= 0 && *cacheId < cache->count_) {
+            cache_entry_t *entry = &cache->content_[*cacheId];
             if (entry->UID == *UID) {
                 if (entry->qr) {
                     // Still loading -- but mark it as still WANTED. This stamp is the only evidence
@@ -276,9 +280,9 @@ GSTEXTURE *cacheGetTextureEx(image_cache_t *cache, item_list_t *list, int *cache
     // cover is loading orphans that request and immediately queues a SECOND read of the same file.
     {
         size_t keyLen = strlen(value);
-        if (keyLen > 0 && keyLen < sizeof(cache->content[0].key)) {
-            for (i = 0; i < cache->count; i++) {
-                cache_entry_t *entry = &cache->content[i];
+        if (keyLen > 0 && keyLen < sizeof(cache->content_[0].key)) {
+            for (i = 0; i < cache->count_; i++) {
+                cache_entry_t *entry = &cache->content_[i];
 
                 if (entry->key[0] == '\0' || strcmp(entry->key, value) != 0)
                     continue;
@@ -354,7 +358,7 @@ GSTEXTURE *cacheGetTextureEx(image_cache_t *cache, item_list_t *list, int *cache
     // waits behind somebody else's scenery -- seconds, on the evidence above. The stale-stamp
     // cancellation in cacheLoadImage cannot help, because the row it belongs to may still be on
     // screen and still stamping.
-    if (cache->suffix != NULL && strcmp(cache->suffix, "BG") == 0)
+    if (cache->suffix_ != NULL && strcmp(cache->suffix_, "BG") == 0)
         cacheAbortOtherBackgrounds(cache, value);
 
     cache_entry_t *currEntry, *oldestEntry = NULL;
@@ -365,8 +369,8 @@ GSTEXTURE *cacheGetTextureEx(image_cache_t *cache, item_list_t *list, int *cache
     // with pad polling exists. USB, HDD, and SMB stream-evict smoothly without holding.
     int navHoldsCache = isSio2 && gArtQ.navActive();
 
-    for (i = 0; i < cache->count; i++) {
-        currEntry = &cache->content[i];
+    for (i = 0; i < cache->count_; i++) {
+        currEntry = &cache->content_[i];
         if (currEntry->qr)
             continue;
         if (navHoldsCache && currEntry->lastUsed > 0)
@@ -426,7 +430,7 @@ GSTEXTURE *cacheGetTextureEx(image_cache_t *cache, item_list_t *list, int *cache
         } else {
             req->artArchivePath = NULL;
         }
-        req->cacheUID = cache->nextUID;
+        req->cacheUID = cache->nextUID_;
         req->epoch = gArtW.epoch;           // the view this cover belongs to; see cacheDropQueuedArt()
         req->failEpoch = gArtW.failEpoch;   // the generation an "absent" answer would belong to
         req->focusEpoch = gArtW.focusEpoch; // selected-game neighborhood this speculative read serves
@@ -438,7 +442,7 @@ GSTEXTURE *cacheGetTextureEx(image_cache_t *cache, item_list_t *list, int *cache
 
         cacheClearItem(oldestEntry, 1);
         oldestEntry->qr = req;
-        oldestEntry->UID = cache->nextUID;
+        oldestEntry->UID = cache->nextUID_;
 
         // The slot's identity, and the only thing that lets a renumbered row find this art again.
         // Written only when the value FITS, so a hit is always a whole-string match; an over-long
@@ -484,12 +488,12 @@ GSTEXTURE *cacheGetTextureEx(image_cache_t *cache, item_list_t *list, int *cache
         // increments before anything draws), so this can never write the 0 that means "load failed".
         oldestEntry->lastUsed = guiFrameId;
 
-        *UID = cache->nextUID++;
+        *UID = cache->nextUID_++;
 
         // The cache now owns an in-flight reference. cacheDestroyCache waits on this rather than
         // freeing content[] out from under a request that still points into it -- which a theme
         // switch would otherwise do.
-        cache->activeRequests++;
+        cache->activeRequests_++;
 
         // artPush takes its own DIntr bracket and does the the queued count inside it. It cannot
         // fail: no allocation, no queue cap. Priority requests push to the head of the FIFO unless

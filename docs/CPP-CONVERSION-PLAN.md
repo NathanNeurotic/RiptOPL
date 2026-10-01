@@ -385,6 +385,19 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
   objects and tuning constants.
 - Source-scraping tests read the union of the pieces; the coupling baseline moved pairs with the code (still 47 symbols / 35 pairs).
 
+## 17g. Phase 6, second batch: PadManager, BgmPlayer, SoundEffects, ImageCache
+- `core/pad.cpp` + `include/padmanager.h`: `PadManager` owns the libpad ports, repeat timers, rumble pulse and fault counters; `readPads`/`getKey`/... forward to it.
+  `test_pad_repeat_clock.py` compiles the extracted member functions against a minimal stub of the class.
+- `core/sound.cpp` split into `sound.cpp` (audsrv bring-up, volumes), `sfx.cpp` (`SoundEffects`, `include/soundeffects.h`) and `bgm.cpp` (`BgmPlayer`,
+  `include/bgmplayer.h`); `soundint.h` shares `gAudioInitialized`. The 768 KB BGM ring stays a file-static array: inside the object it would land in `.data`.
+  The thread bodies are entered through two free trampolines. `test_audio_threads.py` / `test_bgm_source.py` read `bgm.cpp`.
+- `image_cache_t` is now `class ImageCache` (typedef kept): private fields, accessors (`userId()`, `count()`, `prefix()`, `suffix()`, ...) and
+  `requestQueued()/requestFinished()` for the art in-flight count; the five functions that own the cache logic are friends.
+- Split-off members avoid names that collide with non-static free functions elsewhere (e.g. `BgmPlayer::teardown`, not `deinit`), because the coupling
+  analyzer matches identifiers by name.
+- Left in phase 6 (deliberately): `Dialog` (dia.cpp) and `MenuItem` (menusys.cpp) are tied to the `item_list_t`/menu structs phase 5 replaces, and the
+  `theme_t` loader/element code is a table of function pointers rather than an object with state. They are best converted together with phase 5.
+
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
 `guisettings.cpp` (~3000 lines), plus notifications and the screen-handler table in `gui.cpp`, are still free functions sharing

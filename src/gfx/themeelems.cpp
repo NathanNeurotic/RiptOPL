@@ -600,7 +600,7 @@ void findDuplicate(theme_element_t *first, const char *cachePattern, const char 
         if ((elem->type == ELEM_TYPE_STATIC_IMAGE) || (elem->type == ELEM_TYPE_ATTRIBUTE_IMAGE) || (elem->type == ELEM_TYPE_GAME_IMAGE) || (elem->type == ELEM_TYPE_BACKGROUND)) {
             mutable_image_t *source = (mutable_image_t *)elem->extended;
 
-            if (cachePattern && source->cache && !strcmp(cachePattern, source->cache->suffix)) {
+            if (cachePattern && source->cache && !strcmp(cachePattern, source->cache->suffix())) {
                 target->cache = source->cache;
                 target->cacheLinked = 1;
                 LOG("THEMES Re-using a cache for pattern %s\n", cachePattern);
@@ -895,7 +895,7 @@ void initStaticImage(const char *themePath, config_set_t *themeConfig, theme_t *
 // users can keep covers/backgrounds while hiding the large disc image used by some themes.
 static int isDiscArtCache(const image_cache_t *cache)
 {
-    return cache != NULL && cache->suffix != NULL && strcmp(cache->suffix, "ICO") == 0;
+    return cache != NULL && cache->suffix() != NULL && strcmp(cache->suffix(), "ICO") == 0;
 }
 
 GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct submenu_item *item, int isPriority)
@@ -906,17 +906,17 @@ GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct sub
     if (item == NULL || item->isFolder)
         return NULL;
 
-    if (cache == NULL || cache->userId < 0 || item->cache_id == NULL || item->cache_uid == NULL)
+    if (cache == NULL || cache->userId() < 0 || item->cache_id == NULL || item->cache_uid == NULL)
         return NULL;
 
     if (!gEnableDiscArt && isDiscArtCache(cache))
         return NULL;
 
-    if (gTheme == NULL || cache->userId >= gTheme->gameCacheCount)
+    if (gTheme == NULL || cache->userId() >= gTheme->gameCacheCount)
         return NULL;
 
     if (gEnableArt) {
-        if (cache->suffix != NULL && strcmp(cache->suffix, "BG") == 0 && !gEnableBGArt)
+        if (cache->suffix() != NULL && strcmp(cache->suffix(), "BG") == 0 && !gEnableBGArt)
             return NULL;
 
         item_list_t *list = (item_list_t *)support;
@@ -927,7 +927,7 @@ GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct sub
         if (startup == NULL || startup[0] == '\0')
             return NULL;
 
-        return cacheGetTextureEx(cache, list, &item->cache_id[cache->userId], &item->cache_uid[cache->userId], startup, isPriority);
+        return cacheGetTextureEx(cache, list, &item->cache_id[cache->userId()], &item->cache_uid[cache->userId()], startup, isPriority);
     }
 
     return NULL;
@@ -946,16 +946,16 @@ static GSTEXTURE *getGameImageCached(image_cache_t *cache, struct submenu_item *
     if (item == NULL || item->isFolder || !gEnableArt)
         return NULL;
 
-    if (cache == NULL || cache->userId < 0 || item->cache_id == NULL || item->cache_uid == NULL)
+    if (cache == NULL || cache->userId() < 0 || item->cache_id == NULL || item->cache_uid == NULL)
         return NULL;
 
     if (!gEnableDiscArt && isDiscArtCache(cache))
         return NULL;
 
-    if (gTheme == NULL || cache->userId >= gTheme->gameCacheCount)
+    if (gTheme == NULL || cache->userId() >= gTheme->gameCacheCount)
         return NULL;
 
-    return cacheLookupTexture(cache, &item->cache_id[cache->userId], &item->cache_uid[cache->userId]);
+    return cacheLookupTexture(cache, &item->cache_id[cache->userId()], &item->cache_uid[cache->userId()]);
 }
 
 // Favourites element redirection (defined in the Coverflow section below; used by both draw
@@ -1207,9 +1207,9 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
                             // the carousel gets to enqueue its visible neighbours. Hold only this background
                             // request for that short window. A loaded cover, disabled art, or a confirmed
                             // absent cover (-2) releases the gate immediately.
-                            if (gEnableArt && coverTexture == NULL && cfImg->cache->userId >= 0 &&
-                                cfImg->cache->userId < gTheme->gameCacheCount && item->item.cache_id != NULL &&
-                                item->item.cache_id[cfImg->cache->userId] != -2)
+                            if (gEnableArt && coverTexture == NULL && cfImg->cache->userId() >= 0 &&
+                                cfImg->cache->userId() < gTheme->gameCacheCount && item->item.cache_id != NULL &&
+                                item->item.cache_id[cfImg->cache->userId()] != -2)
                                 coverflowCoverSettled = 0;
                         }
                     }
@@ -1315,7 +1315,7 @@ static theme_element_t *thmFindElemBySuffixEx(theme_elems_t *elems, const char *
         if (declaredOnly && e->inherited)
             continue;
         mutable_image_t *eimg = (mutable_image_t *)e->extended;
-        if (eimg == NULL || eimg->cache == NULL || eimg->cache->suffix == NULL || strcmp(eimg->cache->suffix, suffix) != 0)
+        if (eimg == NULL || eimg->cache == NULL || eimg->cache->suffix() == NULL || strcmp(eimg->cache->suffix(), suffix) != 0)
             continue;
         if (like != NULL && e->drawElem == like->drawElem)
             return e;
@@ -1413,7 +1413,7 @@ theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *
                 if (!elem->inherited)
                     return elem;
             } else if (img != NULL && img->cache != NULL) {
-                theme_element_t *favElem = thmFindElemBySuffixEx(favFamily, img->cache->suffix, elem, 1);
+                theme_element_t *favElem = thmFindElemBySuffixEx(favFamily, img->cache->suffix(), elem, 1);
                 if (favElem != NULL)
                     return favElem;
             }
@@ -1426,7 +1426,7 @@ theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *
 
     if (img == NULL || img->cache == NULL)
         return elem;
-    theme_element_t *kindElem = thmFindElemBySuffix(family, img->cache->suffix, elem);
+    theme_element_t *kindElem = thmFindElemBySuffix(family, img->cache->suffix(), elem);
     return (kindElem != NULL) ? kindElem : elem;
 }
 
@@ -1443,7 +1443,7 @@ static int thmAttributeTexId(mutable_image_t *attributeImage)
         return texLookupInternalTexId(attributeImage->currentValue);
 
     char imgName[32];
-    snprintf(imgName, sizeof(imgName), "%s_%s", attributeImage->cache->suffix, &seppos[1]);
+    snprintf(imgName, sizeof(imgName), "%s_%s", attributeImage->cache->suffix(), &seppos[1]);
     return texLookupInternalTexId(imgName);
 }
 
@@ -1462,7 +1462,7 @@ void drawAttributeImage(struct menu_list *menu, struct submenu_list *item, confi
             attributeImage->currentUid = -1;
             attributeImage->currentConfigId = config->uid();
             attributeImage->currentValue = NULL;
-            configGetStr(config, attributeImage->cache->suffix, (const char **)&attributeImage->currentValue);
+            configGetStr(config, attributeImage->cache->suffix(), (const char **)&attributeImage->currentValue);
         }
         if (attributeImage->currentValue) {
             if (thmGetGuiValue() == 0 || thmGetGuiValue() == thmDiskThemeCount() + 1) {
@@ -1495,7 +1495,7 @@ void drawAttributeImage(struct menu_list *menu, struct submenu_list *item, confi
                 // that a custom theme uses its OWN assets entirely. Disk themes now fall through to
                 // the element's own _default (or draw nothing). thmLoad also no longer decodes the
                 // baked set for disk themes, so this gate is double-covered.
-                if (attributeImage->cache->prefix == NULL) {
+                if (attributeImage->cache->prefix() == NULL) {
                     texture = thmGetTexture(thmAttributeTexId(attributeImage));
                     if (texture && texture->Mem) {
                         rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
@@ -1775,7 +1775,7 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
             }
         }
 
-        int warmRadius = (selectedCache != NULL && selectedCache->count > 1) ? selectedCache->count - 1 : 0;
+        int warmRadius = (selectedCache != NULL && selectedCache->count() > 1) ? selectedCache->count() - 1 : 0;
         struct
         {
             image_cache_t *cache;
@@ -1800,7 +1800,7 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
                     if (warmImg != NULL)
                         warmCache = warmImg->cache;
                 }
-                if (warmCache == NULL || warmCache->count < 2)
+                if (warmCache == NULL || warmCache->count() < 2)
                     continue;
 
                 int b;
@@ -1810,7 +1810,7 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
                     continue;
                 if (listWarm[b].cache == NULL) {
                     listWarm[b].cache = warmCache;
-                    listWarm[b].left = warmCache->count - 1; // selected's slot remains reserved
+                    listWarm[b].left = warmCache->count() - 1; // selected's slot remains reserved
                 }
                 if (listWarm[b].left > 0) {
                     listWarm[b].left--;

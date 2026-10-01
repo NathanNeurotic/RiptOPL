@@ -198,14 +198,14 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
       (plus the slide padding), so scrolling faster than a decode leaves every incoming cover
       cold -- "CF covers load only on focus". Walk the ring outward from the selection,
       wrap-aware like the window builder above, and request neighbours beyond the window while
-      the cache budget lasts. Depth is (cache->count - 1)/2 per side, so one frame touches at
-      most cache->count distinct keys (selected + both walks) and warming can never evict the
+      the cache budget lasts. Depth is (cache->count() - 1)/2 per side, so one frame touches at
+      most cache->count() distinct keys (selected + both walks) and warming can never evict the
       selected cover; the per-cache request budget mirrors drawItemsList (a Favourites tab can
       resolve covers into TWO caches via thmGetElemForItem). Folders carry no cover. Themes
       tune the depth with the existing main0_count knob -- more cache slots, deeper warming.
     */
     mutable_image_t *elemImg = (mutable_image_t *)elem->extended;
-    int warmRadius = (elemImg != NULL && elemImg->cache != NULL) ? (elemImg->cache->count - 1) / 2 : 0;
+    int warmRadius = (elemImg != NULL && elemImg->cache != NULL) ? (elemImg->cache->count() - 1) / 2 : 0;
     struct
     {
         image_cache_t *cache;
@@ -225,9 +225,9 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
                 continue;
 
             mutable_image_t *wimg = (mutable_image_t *)thmGetElemForItem(menu, next, elem)->extended;
-            if (wimg == NULL || wimg->cache == NULL || wimg->cache->count < 2)
+            if (wimg == NULL || wimg->cache == NULL || wimg->cache->count() < 2)
                 continue;
-            if (step >= (wimg->cache->count - 1) / 2)
+            if (step >= (wimg->cache->count() - 1) / 2)
                 continue; // deeper than THIS resolved cache can hold
 
             int b;
@@ -237,7 +237,7 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
                 continue;
             if (cfWarm[b].cache == NULL) {
                 cfWarm[b].cache = wimg->cache;
-                cfWarm[b].left = wimg->cache->count - 1; // selected's slot stays reserved
+                cfWarm[b].left = wimg->cache->count() - 1; // selected's slot stays reserved
             }
             if (cfWarm[b].left > 0) {
                 cfWarm[b].left--;

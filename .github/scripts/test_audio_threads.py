@@ -74,7 +74,7 @@ sizing = re.search(r'^[ \t]*int room = audsrv_available\(\);\n[ \t]*int ring = r
 if sizing is None or start.find('audsrv_set_format(') > sizing.start():
     failures.append('BgmPlayer::start: must size roomTarget_ from the room and ring right after audsrv_set_format()')
 # An unsupported rate leaves a ring that never drains; the stream must not start on it.
-if start is None or not re.search(r'if \(audsrv_set_format\(&audsrvFmt\) != AUDSRV_ERR_NOERROR\) \{[^}]*deinit\(\);\s*return;',
+if start is None or not re.search(r'if \(audsrv_set_format\(&audsrvFmt\) != AUDSRV_ERR_NOERROR\) \{[^}]*teardown\(\);\s*return;',
                                   start):
     failures.append('BgmPlayer::start: a format audsrv refuses must stop BGM before any thread starts')
 

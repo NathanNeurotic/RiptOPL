@@ -541,7 +541,7 @@ int BgmPlayer::init(void)
     return result;
 }
 
-void BgmPlayer::deinit(void)
+void BgmPlayer::teardown(void)
 {
     DeleteSema(inSema_);
     DeleteSema(outSema_);
@@ -573,7 +573,7 @@ void BgmPlayer::start(void)
     int ret = init();
     if (ret >= 0) {
         if (load() != 0) {
-            deinit();
+            teardown();
             return;
         }
 
@@ -590,7 +590,7 @@ void BgmPlayer::start(void)
             // wait this code used to have hung on that first chunk, holding audsrv, and the menu froze on
             // its first sound effect. Play no music instead.
             LOG("BGM: audsrv cannot play %ld Hz, %d ch -- no music\n", vi->rate, vi->channels);
-            deinit();
+            teardown();
             return;
         }
         // A new format starts with nothing queued, and audsrv drains nothing until the first chunk is
@@ -682,7 +682,7 @@ void BgmPlayer::stop(void)
         return;
     }
 
-    deinit();
+    teardown();
 
     LOG("BGM: stopped.\n");
 }

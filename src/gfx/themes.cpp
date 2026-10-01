@@ -100,9 +100,9 @@ static theme_element_t *validateItemsList(const char *themePath, config_set_t *t
                     mutable_image_t *gameImage = (mutable_image_t *)decoratorElem->extended;
                     // A GAME_IMAGE element can have cache == NULL (no _pattern); guard before
                     // dereferencing ->suffix, matching drawGameImage and the other cache users.
-                    if (gameImage->cache && !strcmp(itemsList->decorator, gameImage->cache->suffix)) {
+                    if (gameImage->cache && !strcmp(itemsList->decorator, gameImage->cache->suffix())) {
                         // if user want to cache less than displayed items, then disable itemslist icons, if not would load constantly
-                        if (gameImage->cache->count >= itemsList->displayedItems)
+                        if (gameImage->cache->count() >= itemsList->displayedItems)
                             itemsList->decoratorImage = gameImage;
                         break;
                     }
@@ -215,7 +215,7 @@ static image_cache_t *cloneImageCache(theme_t *theme, image_cache_t *source)
     if (theme == NULL || source == NULL)
         return NULL;
 
-    cache = cacheInitCache(theme->gameCacheCount++, source->prefix, source->isPrefixRelative, source->suffix, source->count);
+    cache = cacheInitCache(theme->gameCacheCount++, source->prefix(), source->isPrefixRelative(), source->suffix(), source->count());
 
     return cache;
 }
@@ -258,7 +258,7 @@ static void splitDecoratorCoverCache(theme_t *theme, theme_element_t *list)
         return;
 
     sourceCache = itemsList->decoratorImage->cache;
-    if (sourceCache->suffix == NULL || strcmp(sourceCache->suffix, "COV") != 0)
+    if (sourceCache->suffix() == NULL || strcmp(sourceCache->suffix(), "COV") != 0)
         return;
 
     replacementCache = cloneImageCache(theme, sourceCache);
@@ -350,8 +350,8 @@ static void separateVcdCoverCache(theme_t *theme)
     while (elem != NULL) {
         if (elem->type == ELEM_TYPE_GAME_IMAGE) {
             mutable_image_t *gameImage = (mutable_image_t *)elem->extended;
-            if (gameImage != NULL && gameImage->cache != NULL && gameImage->cache->suffix != NULL &&
-                strcmp(gameImage->cache->suffix, "COV") == 0 && !isDecoratorCoverImage(theme, gameImage)) {
+            if (gameImage != NULL && gameImage->cache != NULL && gameImage->cache->suffix() != NULL &&
+                strcmp(gameImage->cache->suffix(), "COV") == 0 && !isDecoratorCoverImage(theme, gameImage)) {
                 source = gameImage->cache; // the COV cache shared with the games view (via findDuplicate)
                 break;
             }

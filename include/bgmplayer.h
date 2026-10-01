@@ -30,7 +30,7 @@ private:
     int tryLoadPath(const char *bgmPath, const char *source);
     int load(void);
     int init(void);
-    void deinit(void);
+    void teardown(void);
 
     int threadId_ = 0, ioThreadId_ = 0;
     int outSema_ = 0, inSema_ = 0;
