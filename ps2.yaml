@@ -254,14 +254,14 @@ targets:
     headers: *iop_headers
 
   # FORK-VENDORED usbd_mini (pre-2024-09-04 driver). Do NOT use the SDK usbd_mini package.
-  # OPEN: original Makefile set IOP_PREFER_GPOPT=16384; verify -G16384 matches and gp handling is right on hardware.
+  # -G0, not the original Makefile's IOP_PREFER_GPOPT=16384: with USE_GP_REGISTER=0, -G16384 made RegisterLdd fail and ds34usb_init() spin forever.
   - name: usbd_mini_fork
     type: iop
     sources: [modules/usb/usbd-ra/src/hcd.c, modules/usb/usbd-ra/src/hub.c, modules/usb/usbd-ra/src/interface.c, modules/usb/usbd-ra/src/mem.c, modules/usb/usbd-ra/src/usbd.c, modules/usb/usbd-ra/src/usbio.c, modules/usb/usbd-ra/src/driver.c]
     include_dirs: [modules/usb/usbd-ra/src, modules/usb/usbd-ra/include]
     headers: *iop_headers
     defines: [MINI_DRIVER, USE_GP_REGISTER=0]
-    cflags: [-G16384]
+    cflags: [-G0]
     imports_lst: modules/usb/usbd-ra/src/imports.lst
     exports_tab: modules/usb/usbd-ra/src/exports.tab
 
