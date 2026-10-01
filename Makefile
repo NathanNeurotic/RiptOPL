@@ -514,7 +514,7 @@ clean:	download_lwNBD
 	echo " -usbd-ra"
 	$(MAKE) -C modules/usb/usbd-ra clean
 	echo "-pc tools"
-	$(MAKE) -C pc clean
+	$(MAKE) -C tools/pc clean
 
 realclean: clean
 	echo "-Language"
@@ -530,11 +530,11 @@ sim: $(EE_BIN_PACKED)
 
 pc_tools:
 	echo "Building iso2opl, opl2iso and genvmc..."
-	$(MAKE) _WIN32=0 -C pc
+	$(MAKE) _WIN32=0 -C tools/pc
 
 pc_tools_win32:
 	echo "Building WIN32 iso2opl, opl2iso and genvmc..."
-	$(MAKE) _WIN32=1 -C pc
+	$(MAKE) _WIN32=1 -C tools/pc
 
 cfla = "third_party/clang-format-lint-action"
 format-check: download_cfla
