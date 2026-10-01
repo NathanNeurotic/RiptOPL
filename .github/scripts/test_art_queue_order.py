@@ -38,7 +38,7 @@ def function_text(source, where, signature):
 
 
 texcache = read('src/texcache.cpp')
-themes = read('src/themes.cpp')
+themes = read('src/themes.cpp') + read('src/themeelems.cpp') + read('src/coverflow.cpp')
 
 # --- The cache floor that makes a `count == 1` guard dead code ---------------------------------
 if not re.search(r'if \(cachePattern != NULL && cacheCount < 2\)\s*\n\s*cacheCount = 2;', themes):

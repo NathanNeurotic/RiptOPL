@@ -341,6 +341,15 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
   name list. `themes.cpp` itself (3900 lines: loader, per-element draw functions, coverflow) is not split yet (phase 7).
 - Size across the batch: 1,634,400 B -> 1,634,848 B.
 
+## 17c. themes.cpp split (3958 -> 1653 lines)
+- `src/themeelems.cpp` (1986 lines): per-device filters, text/image/game-image/attribute elements, basic and internal elements (menu icon/text,
+  items list, hints) and their draw functions.
+- `src/coverflow.cpp` (364 lines): the carousel element, its slide animation and the `gCoverflow*` render settings.
+- `src/themes.cpp` (1653 lines): validation, element wiring (`addGUIElem`), `thmLoad`/`thmFree`, resources, `ThemeCatalog` and the public `thm*` API.
+- `include/themeint.h`: the element-type enum, sizing/display constants, `elementsType`, and the prototypes the three files share (not public API).
+  Functions the loader wires up (`initBasic`, `initItemsList`, `drawGameImage`, ...) lost `static` for this; they are only declared in `themeint.h`.
+- Source-scraping tests (`test_theme_text_room`, `test_art_queue_order`) read the union of the three files.
+
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
 `guisettings.cpp` (~3000 lines), plus notifications and the screen-handler table in `gui.cpp`, are still free functions sharing
@@ -377,7 +386,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 | 4 HostServices, launch/UI split | done |
 | 5 GameSource hierarchy | not started; needs go-ahead (hardware testing matters most) |
 | 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
-| 7 split god files | gui.cpp done (5197 -> ~1100 lines); opl.cpp (5117), themes.cpp (3958), bdmsupport.cpp not started |
+| 7 split god files | gui.cpp done (5197 -> ~1100 lines); themes.cpp done (3958 -> 1653, plus themeelems.cpp and coverflow.cpp); opl.cpp (5117) and bdmsupport.cpp not started |
 | 8 directory move, blocking analyzer | not started |
 
 Packed ELF: 1,634,784 B (Atlas) -> 1,634,400 B (ArtQueue). Every step so far: clean `ps2build build`, `tools/run_tests.sh -k`,
