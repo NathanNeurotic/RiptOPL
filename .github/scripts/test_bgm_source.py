@@ -9,7 +9,7 @@ descriptor and fails, until some open succeeds and writes the whole int again. T
 the empty read for the end of the stream, the rewind failed the same way, and theme music stopped
 for good a few seconds into the menu.
 
-src/sound.c feeds vorbisfile through bgmSource* callbacks that keep their own position and reopen
+src/core/sound.c feeds vorbisfile through bgmSource* callbacks that keep their own position and reopen
 the file when a read comes back empty before the end, or a seek fails.
 
 Part 1 pins the load path to those callbacks. Part 2 compiles bgmSourceReopen, bgmSourceRead,
@@ -44,11 +44,11 @@ def function_text(source, signature):
     return source[match.start():end] + '\n}\n'
 
 
-sound = (root / 'src/sound.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+sound = (root / 'src/core/sound.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 
 load = function_text(sound, 'static int bgmTryLoadPath(')
 if load is None:
-    failures.append('src/sound.c: bgmTryLoadPath() not found')
+    failures.append('src/core/sound.c: bgmTryLoadPath() not found')
 else:
     if not re.search(r'ov_open_callbacks\(\s*src\s*,[^;]*bgmSourceCallbacks\s*\)', load):
         failures.append('bgmTryLoadPath: the decoder must read through bgmSourceCallbacks, not a bare FILE*')
@@ -63,7 +63,7 @@ functions = []
 for name in names:
     text = function_text(sound, name)
     if text is None:
-        failures.append('src/sound.c: %s) not found' % name[:-1])
+        failures.append('src/core/sound.c: %s) not found' % name[:-1])
     functions.append(text)
 
 reopen = functions[0]
@@ -76,7 +76,7 @@ if reopen is not None:
 
 source_type = re.search(r'^typedef struct\n\{\n[ \t]*FILE \*f;.*?^\} bgm_source_t;\n', sound, re.M | re.S)
 if source_type is None:
-    failures.append('src/sound.c: bgm_source_t not found')
+    failures.append('src/core/sound.c: bgm_source_t not found')
 defines = '\n'.join(as_macros(sound, r'BGM_REOPEN_[A-Z_]+'))
 
 HARNESS = r'''

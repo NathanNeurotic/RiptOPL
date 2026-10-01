@@ -4,7 +4,7 @@
 #include <set>
 #include <string>
 #include <string.h>
-#include "../../src/vmc_groups.cpp"
+#include "../../src/core/vmc_groups.cpp"
 #include "check.h"
 
 int main()

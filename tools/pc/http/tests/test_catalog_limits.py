@@ -22,7 +22,7 @@ def extract(pattern, text):
 
 
 def main():
-    support = (ROOT / "src/httpsupport.cpp").read_text()
+    support = (ROOT / "src/sources/httpsupport.cpp").read_text()
     base = (ROOT / "include/supportbase.h").read_text()
     limits = (ROOT / "include/httpsupport.h").read_text()
     source = """
@@ -88,7 +88,7 @@ int main(void)
         binary = path / "test"
         subprocess.run([os.environ.get("CXX", "g++"), "-std=gnu++17", "-O1", "-Wall", "-Wextra", "-Wno-unused-function",
                         "-I" + str(ROOT), str(path / "test.cpp"),
-                        str(ROOT / "src/httpcatalog.cpp"), "-o", str(binary)], check=True)
+                        str(ROOT / "src/platform/httpcatalog.cpp"), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
 
 

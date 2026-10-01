@@ -8,7 +8,7 @@ counter UP by ~29 s. The next wrap arrived just before that countdown ran out an
 so a held direction or L1/R1 stopped at a random row and stayed stopped until it was released.
 
 This compiles padPollElapsedMs, padAdvanceRepeatTimers, getKeyDelay, getKey, getKeyOn and
-getKeyPressed from src/pad.c on the host, with cpu_ticks() replaced by a simulated counter, and holds
+getKeyPressed from src/core/pad.c on the host, with cpu_ticks() replaced by a simulated counter, and holds
 R1 at 60 Hz for 70 s from several points before a wrap:
 
 - every repeat after the initial delay must follow the previous one within one repeat period plus
@@ -26,7 +26,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-pad = (root / 'src/pad.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+pad = (root / 'src/core/pad.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
@@ -34,7 +34,7 @@ def function_text(source, signature):
     # Whole definition (a prototype ends in ';'), closing brace included.
     match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
     if match is None:
-        failures.append('src/pad.c: %s...) not found' % signature)
+        failures.append('src/core/pad.c: %s...) not found' % signature)
         return ''
     end = source.index('\n}', match.start())
     return source[match.start():end] + '\n}\n'
@@ -43,14 +43,14 @@ def function_text(source, signature):
 def define(name):
     match = re.search(r'^#define ' + name + r'\s+(\d+)', pad, re.M)
     if match is None:
-        failures.append('src/pad.c: #define %s not found' % name)
+        failures.append('src/core/pad.c: #define %s not found' % name)
         return '0'
     return match.group(1)
 
 
 key_table = re.search(r'^static const int keyToPad\[17\] = \{.*?\};', pad, re.M | re.S)
 if key_table is None:
-    failures.append('src/pad.c: keyToPad table not found')
+    failures.append('src/core/pad.c: keyToPad table not found')
 
 functions = ''.join(function_text(pad, sig) for sig in (
     'static int getKeyDelay(',
@@ -66,7 +66,7 @@ reads = function_text(pad, 'int readPads(')
 if 'time_since_last = padPollElapsedMs();' not in reads or 'padAdvanceRepeatTimers(time_since_last);' not in reads:
     failures.append('readPads: must use padPollElapsedMs() and padAdvanceRepeatTimers(time_since_last)')
 if re.search(r'cpu_ticks\(\)\s*/\s*CLOCKS_PER_MILISEC', pad):
-    failures.append('src/pad.c: a cpu_ticks() reading is divided before it is subtracted (wraps every ~29 s)')
+    failures.append('src/core/pad.c: a cpu_ticks() reading is divided before it is subtracted (wraps every ~29 s)')
 
 HARNESS = r'''
 #include <stdio.h>

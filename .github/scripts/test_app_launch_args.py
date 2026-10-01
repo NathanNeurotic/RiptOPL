@@ -14,7 +14,7 @@ import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the
 
 
 root = Path(__file__).resolve().parents[2]
-source = root / "src/appsupport.cpp"
+source = root / "src/sources/appsupport.cpp"
 if len(sys.argv) == 3 and sys.argv[1] == "--baseline":
     source = Path(sys.argv[2])
 text = source.read_text()
@@ -238,7 +238,7 @@ with tempfile.TemporaryDirectory(prefix="opl-app-args-") as temp:
     harness.write_text(STUBS + helpers + function("appLaunchItem(") + TESTS)
     executable = path / ("launch.exe" if os.name == "nt" else "launch")
     flags = ["-std=c99", "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter"]
-    if source != root / "src/appsupport.cpp":
+    if source != root / "src/sources/appsupport.cpp":
         flags.append("-Wno-error=format-truncation")
     subprocess.run([os.environ.get("CC", "gcc"), *flags, str(harness), "-o", str(executable)], check=True)
     subprocess.run([str(executable)], check=True)

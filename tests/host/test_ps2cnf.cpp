@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "../../src/ps2cnf.cpp"
+#include "../../src/platform/ps2cnf.cpp"
 #include "check.h"
 
 static char dir[] = "/tmp/riptopl-ps2cnf-XXXXXX";

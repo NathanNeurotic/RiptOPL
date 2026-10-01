@@ -4,22 +4,21 @@
 Heuristic (regex, not a parser): a symbol is "defined" by the src file holding its column-0
 non-static definition; a file "uses" it if the identifier appears anywhere in its text.
 Edit LAYERS to match the target architecture in docs/CPP-CONVERSION-PLAN.md.
-    tools/analyze_coupling.py [--check]    (--check exits 1 on any upward dependency)
+    tools/analyze_coupling.py [--check|--update]
+        --check exits 1 on any upward dependency beyond tools/coupling_baseline.json (a ratchet: new edges fail,
+        existing ones may only shrink); --update rewrites the baseline after a cleanup.
 """
-import collections, glob, os, re, sys
+import collections, glob, json, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LAYERS = [
-    "system ioman util tar ps2cnf ioprp atlas httpclient nbns launchdiag elfldr_noreset debug httpcatalog hdd md5 lz4 zso",
-    "config lang xparam cheatman gsm pad sound OSDHistory vmc_groups settings",
-    "renderman textures texcache fntsys themes uidraw",
-    "supportbase bdmsupport hddsupport ethsupport appsupport mmcesupport udpfssupport httpsupport favsupport vcdsupport cuesupport discsupport netsupport artindex folderbrowse rabadge ranet rawatch rahash retrogem",
-    "menusys dia dialogs gui guigame libview",
-    "opl host",
-]
-layer = {n: i for i, l in enumerate(LAYERS) for n in l.split()}
+# The layer of a module is its directory under src/, lowest first. A module may depend on its own layer and
+# below; a dependency on a higher layer is an "upward" edge.
+LAYERS = ["platform", "core", "gfx", "sources", "ui", "app"]
+BASELINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "coupling_baseline.json")
+paths = sorted(glob.glob(f"{ROOT}/src/*/*.cpp"))
+layer = {os.path.basename(p)[:-4]: LAYERS.index(os.path.basename(os.path.dirname(p))) for p in paths}
 
-files = {os.path.basename(f)[:-4]: open(f, errors="replace").read() for f in glob.glob(f"{ROOT}/src/*.cpp")}
+files = {os.path.basename(f)[:-4]: open(f, errors="replace").read() for f in paths}
 pat = re.compile(r"^(?!static|typedef|#|//|\s)([A-Za-z_][\w \*\t]*?[\s\*])([A-Za-z_]\w*)\s*\(([^;{]*?)\)\s*\n?\{", re.M)
 defs = {}
 for n, t in files.items():
@@ -78,5 +77,17 @@ dead = {n: sorted(d for d in {s for s, o in defs.items() if o == n} if not any(t
 print(f"\nnon-static functions no other src file mentions: {sum(len(v) for v in dead.values())}")
 for n, l in sorted(dead.items(), key=lambda x: -len(x[1])):
     if l: print(f"  {n} ({len(l)}): {', '.join(l)}")
-if "--check" in sys.argv and tot:
-    sys.exit(1)
+current = {f"{a}->{b}": len(sy) for (a, b), sy in up.items()}
+if "--update" in sys.argv:
+    json.dump(dict(sorted(current.items())), open(BASELINE, "w"), indent=0, sort_keys=True)
+    print(f"\nwrote {BASELINE}")
+if "--check" in sys.argv:
+    base = json.load(open(BASELINE)) if os.path.exists(BASELINE) else {}
+    bad = {k: (v, base.get(k, 0)) for k, v in current.items() if v > base.get(k, 0)}
+    fixed = {k for k in base if current.get(k, 0) < base[k]}
+    for k, (v, was) in sorted(bad.items()):
+        print(f"NEW upward dependency {k}: {v} symbol(s), baseline {was}")
+    if fixed:
+        print(f"{len(fixed)} upward pair(s) shrank: run --update to lock in the improvement")
+    if bad:
+        sys.exit(1)

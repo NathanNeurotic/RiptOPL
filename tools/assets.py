@@ -3,7 +3,7 @@
 
     tools/assets.py all        fetch + lang + embed + version   (run before `ps2build build`)
     tools/assets.py fetch      lng_src (translations) and lwNBD, pinned by tools/download_*.sh
-    tools/assets.py lang       .lng files, src/lang_internal.c, include/lang_autogen.h
+    tools/assets.py lang       .lng files, src/core/lang_internal.c, include/lang_autogen.h
     tools/assets.py embed      asm/*.c from gfx/audio/misc/font/IOPRP.img via bin2c
     tools/assets.py version    asm/opl_version.h (force-included by ps2.yaml)
     tools/assets.py release    zip RIPTOPL-<ver>.ZIP from the packed ELF (after `ps2build build`)
@@ -48,7 +48,7 @@ AUDIO = "boot cancel confirm cursor message transition bd_connect bd_disconnect"
 # (output basename, source file, symbol). Symbols are what src/ declares as extern.
 MISC = [
     ("icon_sys", "misc/icon.sys", "icon_sys"),
-    ("save_icn", "misc/list.icn", "save_icn"),  # one blob, three destination names (src/util.c)
+    ("save_icn", "misc/list.icn", "save_icn"),  # one blob, three destination names (src/platform/util.c)
     ("icon_sys_A", "misc/icon_A.sys", "icon_sys_A"),
     ("icon_sys_J", "misc/icon_J.sys", "icon_sys_J"),
     ("icon_sys_C", "misc/icon_C.sys", "icon_sys_C"),
@@ -88,7 +88,7 @@ def lang():
         if os.path.isfile(overlay):
             run(*lc, "--overlay_translation_yml", "--base", base, "--translation", yml, "--overlay", overlay)
         run(*lc, "--make_lng", "--base", base, "--translation", yml, f"lng/lang_{t}.lng")
-    run(*lc, "--make_source", "--base", base, "src/lang_internal.c")
+    run(*lc, "--make_source", "--base", base, "src/core/lang_internal.c")
     run(*lc, "--make_header", "--base", base, "include/lang_autogen.h")
 
 

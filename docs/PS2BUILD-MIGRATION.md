@@ -22,8 +22,8 @@ CI (GitHub Actions):
 Open items: other flavours (RA, debug/DIAG, DUALSENSE, pinned/rolling), `rolling-release` port, Makefile removal,
 `usbd_mini` is built with -G0 (-G16384 broke ds34usb), audsrv (SDK `audio` + `audsrv-compat` replaces the old audsrv),
 `elfldr.elf` size (143 KB), hardware testing. `dist/` (handed-out test ELFs) is git-ignored and untracked.
-EE sources in src/ are now C++ (.cpp). Kept as C: src/lz4.c and src/zso.c (shared with the IOP
-modules via #include), src/lang_internal.c (generated), src/md5.c (vendored). C/C++ boundary headers
+EE sources in src/ are now C++ (.cpp). Kept as C: src/platform/lz4.c and src/platform/zso.c (shared with the IOP
+modules via #include), src/core/lang_internal.c (generated), src/platform/md5.c (vendored). C/C++ boundary headers
 carry extern "C": modules/isofs/zso.h, modules/ds34bt/ee/libds34bt.h, modules/ds34usb/ee/libds34usb.h,
 hddReadSectors in include/hdd.h. The Makefile can no longer build src/ (no .cpp rule).
 Original plan (written before ps2build was installed) follows. ps2build v2026.09.29 (sdk-core v2026.09.29.1,

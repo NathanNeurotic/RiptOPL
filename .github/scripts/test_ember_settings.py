@@ -64,12 +64,12 @@ def compile_and_run(name, program):
             failures.extend(lines or ['%s harness exited %d' % (name, run.returncode)])
 
 
-opl_c = read('src/opl.cpp') + read('src/settingsio.cpp') + read('src/menuitems.cpp')
+opl_c = read('src/app/opl.cpp') + read('src/app/settingsio.cpp') + read('src/ui/menuitems.cpp')
 opl_h = read('include/opl.h')
 config_h = read('include/config.h')
 cuesupport_h = read('include/cuesupport.h')
 
-# --- Global settings: load, migration, save (src/opl.c) ------------------------------------------
+# --- Global settings: load, migration, save (src/app/opl.c) ------------------------------------------
 
 CONFIG_KEYS = ('CONFIG_OPL_EMBER_DISPLAY', 'CONFIG_OPL_EMBER_DISPLAY_MODE', 'CONFIG_OPL_EMBER_TIMING',
                'CONFIG_OPL_EMBER_DITHER', 'CONFIG_OPL_EMBER_SHADING', 'CONFIG_OPL_EMBER_CONTROLLER')
@@ -242,7 +242,7 @@ int main(void)
 }
 '''
 
-global_functions = ''.join(function_text(opl_c, 'src/opl.cpp', sig) for sig in (
+global_functions = ''.join(function_text(opl_c, 'src/app/opl.cpp', sig) for sig in (
     'static int emberSettingGet(',
     'static void emberSettingSet(',
     'static void emberLoadSettings(',
@@ -258,18 +258,18 @@ if not failures:
 
 # The load and save must actually be called from the config load/save paths.
 config_paths = re.sub(r'/\*.*?\*/|//[^\n]*', '', opl_c, flags=re.S)
-load_config = function_text(config_paths, 'src/opl.cpp', 'void _loadConfig(')
-save_config = function_text(config_paths, 'src/opl.cpp', 'static void _saveConfig(')
+load_config = function_text(config_paths, 'src/app/opl.cpp', 'void _loadConfig(')
+save_config = function_text(config_paths, 'src/app/opl.cpp', 'static void _saveConfig(')
 if 'emberLoadSettings(configOPL);' not in load_config:
-    failures.append('src/opl.c: _loadConfig does not call emberLoadSettings(configOPL)')
+    failures.append('src/app/opl.c: _loadConfig does not call emberLoadSettings(configOPL)')
 if 'emberSaveSettings(configOPL);' not in save_config:
-    failures.append('src/opl.c: the settings save does not call emberSaveSettings(configOPL)')
+    failures.append('src/app/opl.c: the settings save does not call emberSaveSettings(configOPL)')
 if re.search(r'configSetInt\(configOPL, CONFIG_OPL_EMBER_DISPLAY,', opl_c):
-    failures.append('src/opl.c: the legacy ember_display key is still written directly')
+    failures.append('src/app/opl.c: the legacy ember_display key is still written directly')
 
-# --- A settings row stores a value only when the user actually changed it (src/gui.c) ------------
+# --- A settings row stores a value only when the user actually changed it (src/ui/gui.c) ------------
 
-gui_c = read('src/gui.cpp') + read('src/guisettings.cpp') + read('src/guidialogs.cpp')
+gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guidialogs.cpp')
 
 ROW_HARNESS = r'''
 #include <stdio.h>
@@ -309,42 +309,42 @@ int main(void)
 
 # Every Ember row is on the PS1 page, gets its enum on the composed `ui`, and is read back through
 # emberSettingFromRow -- a row wired any other way renders empty or never saves (see gui.c).
-dialogs_c = read('src/dialogs.cpp')
-page = function_text(gui_c, 'src/gui.cpp', 'static int guiSettingsShowPopstarter(')
+dialogs_c = read('src/ui/dialogs.cpp')
+page = function_text(gui_c, 'src/ui/gui.cpp', 'static int guiSettingsShowPopstarter(')
 for row, var in (('CFG_EMBER_DISPLAY', 'gEmberDisplay'), ('CFG_EMBER_TIMING', 'gEmberTiming'),
                  ('CFG_EMBER_DITHER', 'gEmberDither'), ('CFG_EMBER_SHADING', 'gEmberShading'),
                  ('CFG_EMBER_CONTROLLER', 'gEmberController')):
     if f'{{UI_ENUM, {row},' not in dialogs_c:
-        failures.append(f'src/dialogs.c: no {row} row on the PS1 page')
+        failures.append(f'src/ui/dialogs.c: no {row} row on the PS1 page')
     if page and f'diaSetEnum(ui, {row},' not in page:
-        failures.append(f'src/gui.c: {row} gets no enum list on the composed page')
+        failures.append(f'src/ui/gui.c: {row} gets no enum list on the composed page')
     if page and f'emberSettingFromRow(ui, {row},' not in page:
-        failures.append(f'src/gui.c: {row} is not read back through emberSettingFromRow')
+        failures.append(f'src/ui/gui.c: {row} is not read back through emberSettingFromRow')
     if page and f'{var} = emberSettingShown' not in page and f'Shown = emberSettingShown({var})' not in page:
-        failures.append(f'src/gui.c: {var} is not shown through emberSettingShown')
+        failures.append(f'src/ui/gui.c: {var} is not shown through emberSettingShown')
 if page and '_STR_EMBER_480P_CONFIRM' not in page:
-    failures.append('src/gui.c: choosing Ember 480p does not ask for confirmation')
+    failures.append('src/ui/gui.c: choosing Ember 480p does not ask for confirmation')
 
 # --- Ember Game Settings (per game) -------------------------------------------------------------
 
 # An Ember row's CFG is keyed by its full folder name: its startup is that name cut to 12 characters,
 # which made two "Crash Bandic..." games share one CFG, and a Favourites proxy has no startup at all.
-populate = function_text(read('src/supportbase.cpp'), 'src/supportbase.cpp', 'config_set_t *sbPopulateConfig(')
+populate = function_text(read('src/sources/supportbase.cpp'), 'src/sources/supportbase.cpp', 'config_set_t *sbPopulateConfig(')
 if populate and not re.search(r'isPs1\s*=\s*isVcd\s*\|\|\s*cueIsCueEntry\(game\)', populate):
-    failures.append('src/supportbase.c: sbPopulateConfig does not treat an Ember row as PS1')
+    failures.append('src/sources/supportbase.c: sbPopulateConfig does not treat an Ember row as PS1')
 if populate and 'cfgKey = isPs1 ? game->name : game->startup' not in populate:
-    failures.append('src/supportbase.c: sbPopulateConfig does not key an Ember row by its full name')
+    failures.append('src/sources/supportbase.c: sbPopulateConfig does not key an Ember row by its full name')
 
-menusys_c = read('src/menusys.cpp')
-vcd_menu = function_text(menusys_c, 'src/menusys.cpp', 'void menuInitVcdMenu(')
+menusys_c = read('src/ui/menusys.cpp')
+vcd_menu = function_text(menusys_c, 'src/ui/menusys.cpp', 'void menuInitVcdMenu(')
 if vcd_menu and not re.search(r'if \(isEmber\)\s*submenuAppendItem\(&appMenu, -1, NULL, APP_EMBER_GAME_SETTINGS', vcd_menu):
-    failures.append('src/menusys.c: Ember Game Settings is not offered only on Ember rows')
+    failures.append('src/ui/menusys.c: Ember Game Settings is not offered only on Ember rows')
 if 'guiShowEmberGameSettings();' not in menusys_c:
-    failures.append('src/menusys.c: APP_EMBER_GAME_SETTINGS does not open guiShowEmberGameSettings')
-if 'menuInitVcdMenu(kind == FAV_KIND_CUE);' not in read('src/menuitems.cpp'):
-    failures.append('src/opl.c: the PS1 Triangle menu is not told whether the row is an Ember row')
+    failures.append('src/ui/menusys.c: APP_EMBER_GAME_SETTINGS does not open guiShowEmberGameSettings')
+if 'menuInitVcdMenu(kind == FAV_KIND_CUE);' not in read('src/ui/menuitems.cpp'):
+    failures.append('src/app/opl.c: the PS1 Triangle menu is not told whether the row is an Ember row')
 
-game_page = function_text(gui_c, 'src/gui.cpp', 'void guiShowEmberGameSettings(')
+game_page = function_text(gui_c, 'src/ui/gui.cpp', 'void guiShowEmberGameSettings(')
 for key, row in (
     ('CONFIG_ITEM_EMBER_TIMING', 'CFG_EMBER_TIMING'),
     ('CONFIG_ITEM_EMBER_DITHER', 'CFG_EMBER_DITHER'),
@@ -352,19 +352,19 @@ for key, row in (
     ('CONFIG_ITEM_EMBER_CONTROLLER', 'CFG_EMBER_CONTROLLER'),
 ):
     if game_page and f'diaGetInt(diaEmberGameConfig, {row},' not in game_page:
-        failures.append(f'src/gui.c: Ember Game Settings does not read {row} back')
+        failures.append(f'src/ui/gui.c: Ember Game Settings does not read {row} back')
     if game_page and f'configSetInt(configSet, {key},' not in game_page:
-        failures.append(f'src/gui.c: Ember Game Settings never stores {key}')
+        failures.append(f'src/ui/gui.c: Ember Game Settings never stores {key}')
 if game_page and 'menuSaveConfig()' not in game_page:
-    failures.append('src/gui.c: Ember Game Settings does not save the CFG')
+    failures.append('src/ui/gui.c: Ember Game Settings does not save the CFG')
 
-row_function = function_text(gui_c, 'src/gui.cpp', 'static int emberSettingFromRow(')
+row_function = function_text(gui_c, 'src/ui/gui.cpp', 'static int emberSettingFromRow(')
 if row_function:
     compile_and_run('ember_row', ROW_HARNESS.replace('@FUNCTIONS@', row_function))
 
-# --- The settings.txt rewrite (src/cuesupport.c) ------------------------------------------------
+# --- The settings.txt rewrite (src/sources/cuesupport.c) ------------------------------------------------
 
-cue_c = read('src/cuesupport.cpp')
+cue_c = read('src/sources/cuesupport.cpp')
 
 REWRITE_HARNESS = r'''
 #include <stdio.h>
@@ -441,7 +441,7 @@ int main(void)
 }
 '''
 
-rewrite_functions = ''.join(function_text(cue_c, 'src/cuesupport.cpp', sig) for sig in (
+rewrite_functions = ''.join(function_text(cue_c, 'src/sources/cuesupport.cpp', sig) for sig in (
     'static int cueLineSetsKey(',
     'static int cueRewriteSettings(',
     'static void cueWantSetting(',
@@ -450,7 +450,7 @@ if rewrite_functions.count('{') >= 3:
     compile_and_run('ember_rewrite', REWRITE_HARNESS.replace('@FUNCTIONS@', rewrite_functions))
 
 # cueApplySettings only opens a file when it has something to do there.
-apply_fn = function_text(cue_c, 'src/cuesupport.cpp', 'void cueApplySettings(')
+apply_fn = function_text(cue_c, 'src/sources/cuesupport.cpp', 'void cueApplySettings(')
 if apply_fn and not re.search(r'if \(nGlobal > 0\)', apply_fn):
     failures.append('cueApplySettings: the main settings.txt must only be touched when a global setting is set')
 if apply_fn and not re.search(r'if \(nGame > 0\)', apply_fn):
@@ -594,8 +594,8 @@ int main(void)
 '''
 
 if apply_fn:
-    apply_functions = (function_text(cue_c, 'src/cuesupport.cpp', 'int cueNameLaunchable(') +
-                       function_text(cue_c, 'src/cuesupport.cpp', 'static void cueWantSetting(') +
+    apply_functions = (function_text(cue_c, 'src/sources/cuesupport.cpp', 'int cueNameLaunchable(') +
+                       function_text(cue_c, 'src/sources/cuesupport.cpp', 'static void cueWantSetting(') +
                        apply_fn)
     apply_defines = (defines(config_h, 'include/config.h',
                              ('CONFIG_ITEM_EMBER_TIMING', 'CONFIG_ITEM_EMBER_DITHER',
@@ -607,25 +607,25 @@ if apply_fn:
                         .replace('@ENUMS@', ember_enums(opl_h)).replace('@FUNCTIONS@', apply_functions))
 
 # All five Ember launch legs call cueApplySettings with the game name and configSet.
-for rel in ('src/bdmsupport.cpp', 'src/ethsupport.cpp', 'src/hddsupport.cpp', 'src/mmcesupport.cpp', 'src/udpfssupport.cpp'):
+for rel in ('src/sources/bdmsupport.cpp', 'src/sources/ethsupport.cpp', 'src/sources/hddsupport.cpp', 'src/sources/mmcesupport.cpp', 'src/sources/udpfssupport.cpp'):
     content = read(rel)
     if 'cueApplySettings(' not in content:
         failures.append('%s: does not call cueApplySettings' % rel)
     if 'cueApplyDisplaySetting(' in content:
         failures.append('%s: still calls the legacy cueApplyDisplaySetting' % rel)
-if 'cueApplyDisplaySetting(' in read('src/cuesupport.cpp'):
-    failures.append('src/cuesupport.c: legacy cueApplyDisplaySetting is still present')
+if 'cueApplyDisplaySetting(' in read('src/sources/cuesupport.cpp'):
+    failures.append('src/sources/cuesupport.c: legacy cueApplyDisplaySetting is still present')
 
-# --- APA HDD: the partition Ember inherits must be WRITE-THROUGH (src/hddsupport.c) -----------------
+# --- APA HDD: the partition Ember inherits must be WRITE-THROUGH (src/sources/hddsupport.c) -----------------
 # FIO_MT_RDWR is 0x00. PFS commits on write/close only when the mount flags carry 0x02 (ps2sdk libpfs
 # PFS_FIO_ATTR_WRITEABLE); otherwise writes wait in its RAM cache for an unmount or sync that Ember never
 # issues, and a reset loses the memory cards (Gageformer/Ember#69).
-hdd_c = read('src/hddsupport.cpp')
+hdd_c = read('src/sources/hddsupport.cpp')
 if not re.search(r'^#define HDD_PFS_MT_WRITETHROUGH 0x02\b', hdd_c, re.M):
-    failures.append('src/hddsupport.c: HDD_PFS_MT_WRITETHROUGH must be 0x02 (libpfs PFS_FIO_ATTR_WRITEABLE)')
-ember_leg = function_text(hdd_c, 'src/hddsupport.cpp', 'static void hddDoLaunchEmber(')
+    failures.append('src/sources/hddsupport.c: HDD_PFS_MT_WRITETHROUGH must be 0x02 (libpfs PFS_FIO_ATTR_WRITEABLE)')
+ember_leg = function_text(hdd_c, 'src/sources/hddsupport.cpp', 'static void hddDoLaunchEmber(')
 if ember_leg and 'fileXioMount(hddPrefix, mountSrc, FIO_MT_RDWR | HDD_PFS_MT_WRITETHROUGH)' not in ember_leg:
-    failures.append('src/hddsupport.c: the Ember partition must be mounted write-through, or its saves never reach the disk')
+    failures.append('src/sources/hddsupport.c: the Ember partition must be mounted write-through, or its saves never reach the disk')
 
 if failures:
     print('Ember settings checks FAILED:')

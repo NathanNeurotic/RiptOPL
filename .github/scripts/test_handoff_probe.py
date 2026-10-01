@@ -1,6 +1,6 @@
 """The keep-IOP handoff probe must not refuse a target the child could still load (#755 triage).
 
-sysLoadELFCommon (src/elfldr_noreset.c) opens the target once more after the launch teardown, so a bad
+sysLoadELFCommon (src/platform/elfldr_noreset.c) opens the target once more after the launch teardown, so a bad
 path fails in OPL instead of inside the child loader. On FatBaldDad's UDPBD setup neutrino.elf on
 mmce0: opened fine before the teardown and failed that probe after it, and the old probe refused on
 the first failed open(). The child loads the target through fileXio, not newlib, so the probe now:
@@ -10,7 +10,7 @@ the first failed open(). The child loads the target through fileXio, not newlib,
 - retries a bounded ~3 s for a device that is still settling;
 - on a real refusal, tells "device root still opens" from "device root gone" apart.
 
-This compiles probeTargetOnce, probeDeviceRootOpens and probeTarget from src/elfldr_noreset.c on the
+This compiles probeTargetOnce, probeDeviceRootOpens and probeTarget from src/platform/elfldr_noreset.c on the
 host with open/fileXio/DelayThread replaced by a scripted device, and checks each outcome, the time
 it costs and the diagnostic code it reports.
 """
@@ -21,7 +21,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/elfldr_noreset.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+source = (root / 'src/platform/elfldr_noreset.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 header = (root / 'include/launchdiag.h').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
@@ -29,7 +29,7 @@ failures = []
 def function_text(signature):
     match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
     if match is None:
-        failures.append('src/elfldr_noreset.c: %s...) not found' % signature)
+        failures.append('src/platform/elfldr_noreset.c: %s...) not found' % signature)
         return ''
     end = source.index('\n}', match.start())
     return source[match.start():end] + '\n}\n'
@@ -38,7 +38,7 @@ def function_text(signature):
 def define(name):
     match = re.search(r'^#define ' + name + r'\s+(.+)$', source, re.M)
     if match is None:
-        failures.append('src/elfldr_noreset.c: #define %s not found' % name)
+        failures.append('src/platform/elfldr_noreset.c: #define %s not found' % name)
         return '0'
     return match.group(1).strip()
 
@@ -55,8 +55,8 @@ functions = ''.join(function_text(sig) for sig in (
 
 # -bsdfs=bd names the game's OWN bdm device ("<driver><devNr>p0"): a second stick on the same driver
 # is usb1, never usb0. The bdm leg must copy massDeviceIndex before the teardown frees pDeviceData.
-system_c = (root / 'src/system.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
-bdm_c = (root / 'src/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+system_c = (root / 'src/platform/system.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+bdm_c = (root / 'src/sources/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 if '"-dvd=bdfs:%s%dp0", driver, bdDevNr >= 0 ? bdDevNr : 0' not in system_c:
     failures.append('sysLaunchNeutrino: the bdfs tuple must use the caller\'s bdm device number')
 

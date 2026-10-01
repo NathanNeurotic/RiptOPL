@@ -5,7 +5,7 @@
 # header framing, Content-Range validation, encoding refusal and truncation detection run exactly
 # as they do on the IOP -- and because modules/network/common/httpstream.inc is shared with the
 # in-game driver, testing it here tests the reader device-http.c uses too. The catalog test runs
-# src/httpcatalog.c unmodified and diffs it against pc/http/catalog_reference.py over the shared
+# src/platform/httpcatalog.c unmodified and diffs it against pc/http/catalog_reference.py over the shared
 # fixtures, in all three line-ending forms.
 #
 # Usage, from the repo root:
@@ -33,12 +33,12 @@ echo "== streaming HTTP client =="
 
 echo
 echo "== catalog parser vs the Python reference =="
-# src/httpcatalog.cpp is C++ now, so the harness is built as C++ too (shared C++ linkage).
+# src/platform/httpcatalog.cpp is C++ now, so the harness is built as C++ too (shared C++ linkage).
 "${CXX:-g++}" -std=gnu++17 -O1 -Wall -Wextra -Wno-unused-parameter \
     -I"$root" \
     -o "$out-catalog" \
     -x c++ "$root/tools/pc/http/tests/test_catalog.c" \
-    -x c++ "$root/src/httpcatalog.cpp"
+    -x c++ "$root/src/platform/httpcatalog.cpp"
 python3 "$root/tools/pc/http/tests/compare_catalog.py" --bin "$out-catalog"
 
 python3 "$root/tools/pc/http/tests/test_catalog_limits.py"

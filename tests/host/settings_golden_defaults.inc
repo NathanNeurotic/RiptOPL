@@ -1,4 +1,4 @@
-// GENERATED from the setDefaults() that preceded src/settings.cpp: one check per table row.
+// GENERATED from the setDefaults() that preceded src/core/settings.cpp: one check per table row.
 CHECK(gScrollSpeed == (1));
 // gDefaultBgColor: no default in setDefaults (initialiser / another routine owns it)
 // gDefaultTextColor: no default in setDefaults (initialiser / another routine owns it)

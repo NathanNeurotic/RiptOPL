@@ -1,13 +1,13 @@
 """A BDM page whose first PS2 scan fails must not rescan on every idle poll -- and must say why.
 
-sbReadList (src/supportbase.c) keeps the old list and leaves bdmULSizePrev at -2 ("never scanned")
+sbReadList (src/sources/supportbase.c) keeps the old list and leaves bdmULSizePrev at -2 ("never scanned")
 when neither CD nor DVD opens and there is no ul.cfg. bdmNeedsUpdate used to treat a published page
 still at -2 as needing a scan on EVERY poll (the #186 rescue), and menuUpdateHook polls each BDM page
 about every 2 s of idle. So a device whose folders would not open rescanned forever, and every pass
 also rebuilt APPS and Favourites (menuDeferredUpdate) -- every L3 on every page waited behind it
 (FifthFox, USB and MX4SIO). Upstream never had the rescue: "no change" returns 0.
 
-This compiles bdmNeedsUpdate and bdmUpdateGameList from src/bdmsupport.c on the host against stubs
+This compiles bdmNeedsUpdate and bdmUpdateGameList from src/sources/bdmsupport.c on the host against stubs
 and checks:
 
 - a failed first scan runs ONCE; 30 idle polls and a generation bump add no scans;
@@ -16,7 +16,7 @@ and checks:
 - a slot whose identity is not ready yet is still re-polled every pass (the -2 bypass upstream has);
 - a successful scan, a subfolder scan and the PS1 view raise no message.
 
-A second harness compiles the real span of src/supportbase.c (sbReadListErrno through sbReadList)
+A second harness compiles the real span of src/sources/supportbase.c (sbReadListErrno through sbReadList)
 against a scripted opendir: a folder that will not open records its errno, the next scan clears it,
 and a driver that fails without setting errno never reports a stale one.
 
@@ -33,7 +33,7 @@ import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the
 
 
 root = Path(__file__).resolve().parents[2]
-source_path = root / 'src/bdmsupport.cpp'
+source_path = root / 'src/sources/bdmsupport.cpp'
 if len(sys.argv) == 3 and sys.argv[1] == '--baseline':
     source_path = Path(sys.argv[2])
 source = source_path.read_text(encoding='utf-8').replace('\r\n', '\n')
@@ -317,12 +317,12 @@ int main(void)
 
 # The error number in that message comes from the REAL scan: scanForISO records the errno of a CD/DVD
 # folder that will not open, and sbReadList clears it at the start of every scan. Compile that span of
-# src/supportbase.c (sbReadListErrno through sbReadList) against a scripted opendir.
-support = (root / 'src/supportbase.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+# src/sources/supportbase.c (sbReadListErrno through sbReadList) against a scripted opendir.
+support = (root / 'src/sources/supportbase.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 span_start = support.find('static int sbReadListErrno;')
 span_end_match = re.search(r'^int sbReadList\([^;{]*\)\s*\{', support, re.M)
 if span_start < 0 or span_end_match is None:
-    failures.append('src/supportbase.c: sbReadListErrno ... sbReadList span not found')
+    failures.append('src/sources/supportbase.c: sbReadListErrno ... sbReadList span not found')
     scan_span = ''
 else:
     scan_span = support[span_start:support.index('\n}', span_end_match.start())] + '\n}\n'

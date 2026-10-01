@@ -242,7 +242,7 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
   hand-offs, so no bulk conversion. One real defect fixed: `fntPrepareGlyphCachePage` dereferenced an unchecked `malloc`.
 
 ## 11. Phase 3 status (done: one table for the plain settings; the Settings struct is deferred)
-- `src/settings.cpp` holds a constexpr table of 79 rows (key, variable, default) that drives `settingsApplyDefaults()`,
+- `src/core/settings.cpp` holds a constexpr table of 79 rows (key, variable, default) that drives `settingsApplyDefaults()`,
   `settingsLoad()` and `settingsSave()`. `opl.cpp` lost 242 lines (the matching lines of `setDefaults`, `_loadConfig`, `_saveConfig`)
   and calls the three functions; everything with migration, clamping or cross-key logic stayed where it was, in its original relative
   order and now AFTER the table load: the video-mode recovery combo (that row is `loadPlain = false`), the prefix sanitising, the
@@ -262,7 +262,7 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
 
 ## 12. Phase 4a status (HostServices: backends no longer call opl/gui/libview directly)
 - `include/host.h` defines three small interfaces (`UiServices`, `AppServices`, `LibraryServices`) with accessors
-  `host::ui()/app()/library()`; `src/host.cpp` (application layer) forwards them to the existing functions. 276 call sites in 15
+  `host::ui()/app()/library()`; `src/app/host.cpp` (application layer) forwards them to the existing functions. 276 call sites in 15
   modules (the support backends, supportbase, discsupport, vcdsupport, favsupport, util, lang, system, ranet) now use them.
 - **Measurement correction:** the first numbers in section 1 (43-module cycle, 224 upward symbols) came from a naive scan that also
   counted words in comments and strings and member names (`obj.deinit`). `tools/analyze_coupling.py` now strips those. Honest
@@ -276,10 +276,10 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
 
 ## 13. Phase 4b/4c status
 - **4b `LaunchServices`** (`host::launch()`): `system.cpp` no longer includes cheatman/rawatch/gsm/discsupport; the feature-derived ee_core
-  fields (cheat list, PS2RD image, RetroAchievements watch list + work area, GSM) are filled by `fillCoreConfig()` in `src/host.cpp`.
+  fields (cheat list, PS2RD image, RetroAchievements watch list + work area, GSM) are filled by `fillCoreConfig()` in `src/app/host.cpp`.
   `warningId()` lets `system` raise translated toasts without touching the language tables.
 - **4c theme/UI split:** the hint-row helpers (`guiDrawIconAndText`, `guiDrawIconAndLiteralText`, `guiAlignMenuHints`,
-  `guiAlignSubMenuHints`) moved from `gui.cpp` to `src/uidraw.cpp` (graphics layer; they only need textures, fonts, the renderer and the
+  `guiAlignSubMenuHints`) moved from `gui.cpp` to `src/gfx/uidraw.cpp` (graphics layer; they only need textures, fonts, the renderer and the
   language table); `themes` calls the UI through `host::ui()` for lock/unlock/plasma and `host::app()` for `moduleUpdateMenu`.
   Behaviour note: the moved helpers read the live screen width (`rmGetScreenExtents`) instead of gui.cpp's cached copy, which is
   refreshed from the same call by `guiReloadScreenExtents()`.
@@ -291,9 +291,9 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
   opl (`applyConfig`, `saveConfig`, `oplGetModule` = the source registry).
 
 ## 14. Atlas and ConfigSet
-- **`Atlas`** (`include/atlas.h`, `src/atlas.cpp`): glyph atlas packer as a class (`create/destroy/place/texture`), nodes owned by
+- **`Atlas`** (`include/atlas.h`, `src/gfx/atlas.cpp`): glyph atlas packer as a class (`create/destroy/place/texture`), nodes owned by
   `raii::UniquePtr`; fntsys holds an `Atlas *`.
-- **`ConfigSet`** (`include/configset.h`, storage/key rules in `src/config.cpp`): `config_set_t` is now `typedef ConfigSet` in C++ and an
+- **`ConfigSet`** (`include/configset.h`, storage/key rules in `src/core/config.cpp`): `config_set_t` is now `typedef ConfigSet` in C++ and an
   opaque struct in C. Fields are private; `type()/uid()/filename()/modified()/format()/entries()` are accessors, `markModified()/
   clearModified()/setFormat()/rename()` the mutators. `configGet*/configSet*/configRemoveKey/configMerge/configClear/configGetVMC*`
   stay as inline forwarders in `config.h` so call sites did not change. Heap sets use `ConfigSet::create/destroy/clone` (malloc +
@@ -305,65 +305,75 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
   `tools/syntax_sweep.py` (only the pre-existing EESIO `SIOCookie.h` failure).
 
 ## 15. gui.cpp split (5197 -> ~1100 lines)
-- `src/plasma.cpp` / `include/plasma.h`: `PlasmaBackground` (perlin tables, VU0 helpers, 32x32 texture; `ease()` doubles as the transition fade).
-- `src/guisettings.cpp`: the Settings shell and every `guiShow*Config` page, `guiConfirmVideoMode`. `src/guidialogs.cpp`: message box, reboot prompt,
+- `src/gfx/plasma.cpp` / `include/plasma.h`: `PlasmaBackground` (perlin tables, VU0 helpers, 32x32 texture; `ease()` doubles as the transition fade).
+- `src/ui/guisettings.cpp`: the Settings shell and every `guiShow*Config` page, `guiConfirmVideoMode`. `src/ui/guidialogs.cpp`: message box, reboot prompt,
   deferred-IO waits, text screen, Game ID, warnings, remove-settings, cheats.
-- `src/guiqueue.cpp` / `include/guiqueue.h`: `DeferredOpQueue` (enqueue/drain under `raii::SemaLock`). `src/guiboot.cpp` / `include/guiboot.h`: `BootStatus`.
+- `src/ui/guiqueue.cpp` / `include/guiqueue.h`: `DeferredOpQueue` (enqueue/drain under `raii::SemaLock`). `src/ui/guiboot.cpp` / `include/guiboot.h`: `BootStatus`.
 - `include/guiint.h`: the few symbols the gui units share (`gGuiScreenWidth/Height`, `guiStartFrame/EndFrame`, `guiShow`, ...); not public API.
 - Source-scraping python tests read the union of gui.cpp + guisettings.cpp + guidialogs.cpp.
 - Still to do inside gui: notifications/RA notices, the screen-handler table, the frame watchdog as small classes.
 
 ## 16. IoQueue
-`src/ioman.cpp` + `include/ioqueue.h`: the IO worker is `class IoQueue` (one file-static instance). Queue, handler table, semaphores,
+`src/platform/ioman.cpp` + `include/ioqueue.h`: the IO worker is `class IoQueue` (one file-static instance). Queue, handler table, semaphores,
 blocked/terminate flags and the per-type HUD counters are members; the `ioPutRequest`/`ioBlockOps`/`ioGetPending`/... functions in
 `ioman.h` stay as C-callable forwarders (ioman.h is shared with C). `ioPrintf` stays free and uses the instance's print lock.
 `test_io_queue_trims.py` now compiles the real class declaration (private opened up) plus the extracted member functions.
 
 ## 17. ArtQueue
-`include/artqueue.h` + `src/artqueue.cpp`: the art request FIFO (push/pushFront/promote/pop/detachAll/release/reset) and its lock-free
+`include/artqueue.h` + `src/gfx/artqueue.cpp`: the art request FIFO (push/pushFront/promote/pop/detachAll/release/reset) and its lock-free
 counters (queued, active, current request, nav-held flag) are `class ArtQueue`; `load_image_request_t` moved to the header.
 `texcache.cpp` keeps the cache entries, the worker thread and the load logic and talks to the queue through one `gArtQ` instance.
 `test_art_queue_order.py` compiles the real class declaration plus the extracted member functions (as C++).
 
 ## 17b. Renderer, FontSystem, ArtWorker, ThemeCatalog
-- **`Renderer`** (`include/renderer.h`, `src/renderman.cpp`): video mode, display geometry, aspect ratio, overscan, reflection offset and
+- **`Renderer`** (`include/renderer.h`, `src/gfx/renderman.cpp`): video mode, display geometry, aspect ratio, overscan, reflection offset and
   the draw primitives are members of one instance; the `rm*` functions in `renderman.h` are one-line forwarders (+368 B). `gsGlobal` and
   `guiThreadID` stay global (read from other files).
-- **`FontSystem`** (`include/fontsystem.h`, `src/fntsys.cpp`): FreeType library, the 16 font slots, glyph caches, atlases, shared CLUT and the
+- **`FontSystem`** (`include/fontsystem.h`, `src/gfx/fntsys.cpp`): FreeType library, the 16 font slots, glyph caches, atlases, shared CLUT and the
   font lock. The per-call scratch state that used to be file statics (`quad`, `codepoint`, `state`, kerning) is now a per-call `GlyphRun`
   (the RTL path hands it to `renderSubRTL`). `fntRenderStringFit`, `fntTextWidth` and `fntFitString` stay free functions layered on the
   public API, so `test_theme_text_room.py` is unchanged.
-- **`ArtWorker`** (`include/artworker.h`, `src/artworker.cpp`): the art thread, its lifecycle flags, the epochs that supersede queued
+- **`ArtWorker`** (`include/artworker.h`, `src/gfx/artworker.cpp`): the art thread, its lifecycle flags, the epochs that supersede queued
   work, the focus tracker and the HUD counters. Data members are deliberately public (lock-free single-word cross-thread access, each
   reasoned about individually); behaviour spanning fields (`wake`, `updateFocus`) is in methods. The 96 KiB thread stack stays a file-static
   array: inside the object it landed in `.data` (+100 KB uncompressed) instead of `.bss`.
-- **`ThemeCatalog`** (`include/themecatalog.h`, in `src/themes.cpp`): the list of disk themes, the built-ins, the selected id and the published
+- **`ThemeCatalog`** (`include/themecatalog.h`, in `src/gfx/themes.cpp`): the list of disk themes, the built-ins, the selected id and the published
   name list. `themes.cpp` itself (3900 lines: loader, per-element draw functions, coverflow) is not split yet (phase 7).
 - Size across the batch: 1,634,400 B -> 1,634,848 B.
 
 ## 17c. themes.cpp split (3958 -> 1653 lines)
-- `src/themeelems.cpp` (1986 lines): per-device filters, text/image/game-image/attribute elements, basic and internal elements (menu icon/text,
+- `src/gfx/themeelems.cpp` (1986 lines): per-device filters, text/image/game-image/attribute elements, basic and internal elements (menu icon/text,
   items list, hints) and their draw functions.
-- `src/coverflow.cpp` (364 lines): the carousel element, its slide animation and the `gCoverflow*` render settings.
-- `src/themes.cpp` (1653 lines): validation, element wiring (`addGUIElem`), `thmLoad`/`thmFree`, resources, `ThemeCatalog` and the public `thm*` API.
+- `src/gfx/coverflow.cpp` (364 lines): the carousel element, its slide animation and the `gCoverflow*` render settings.
+- `src/gfx/themes.cpp` (1653 lines): validation, element wiring (`addGUIElem`), `thmLoad`/`thmFree`, resources, `ThemeCatalog` and the public `thm*` API.
 - `include/themeint.h`: the element-type enum, sizing/display constants, `elementsType`, and the prototypes the three files share (not public API).
   Functions the loader wires up (`initBasic`, `initItemsList`, `drawGameImage`, ...) lost `static` for this; they are only declared in `themeint.h`.
 - Source-scraping tests (`test_theme_text_room`, `test_art_queue_order`) read the union of the three files.
 
 ## 17d. opl.cpp split (5117 -> 1813 lines)
-- `src/autolaunch.cpp`: `autoLaunchHDDGame`/`autoLaunchBDMGame` (boot-argument auto-launch).
-- `src/lwnbdctl.cpp`: NBD server (lwNBD) load/teardown and `handleLwnbdSrv`.
+- `src/app/autolaunch.cpp`: `autoLaunchHDDGame`/`autoLaunchBDMGame` (boot-argument auto-launch).
+- `src/app/lwnbdctl.cpp`: NBD server (lwNBD) load/teardown and `handleLwnbdSrv`.
 - `include/oplint.h`: what these share with `opl.cpp` (`miniInit`, `reset`, `initAllSupport`, `deinitAllSupport`, `clearErrorMessage`,
   `gExportName`, `AUTOLAUNCH_MASS0_RETRIES`); `include/oplog.h`: the `LOG_INIT`/`LOG_ENABLE` bring-up macros.
-- **Step 2:** `src/settingsio.cpp` (2410 lines): everything under "Configuration handling" -- boot-home resolution (APA/exFAT/MMCE), the
+- **Step 2:** `src/app/settingsio.cpp` (2410 lines): everything under "Configuration handling" -- boot-home resolution (APA/exFAT/MMCE), the
   config-path redirect, the recovery paths, `_loadConfig`/`_saveConfig`, `applyConfig`/`saveConfig`. Its many file-static helpers and boot-home
   state (`lscstatus`, `gBootHome*`, `gLastSaveTarget`, ...) stay private to it; only `_loadConfig`, `resolveBootDirToMass`, `tryAlternateDevice`,
   `configReadNeutrinoGlobals`, `gBootElfName`, `gBootHomeWhy` are shared (via `oplint.h`). opl.cpp is down to 2330 lines.
   Source-scraping tests read opl.cpp + settingsio.cpp.
-- **Step 3:** `src/menuitems.cpp` (405 lines: the per-source button handlers `itemExec*`, `itemInitSupport`) and `src/appscan.cpp` (256 lines: Apps
+- **Step 3:** `src/ui/menuitems.cpp` (405 lines: the per-source button handlers `itemExec*`, `itemInitSupport`) and `src/sources/appscan.cpp` (256 lines: Apps
   list scanning, legacy apps config lookups; owns `gShouldAppsUpdate`). opl.cpp is down to 1813 lines.
 - Still in opl.cpp (next candidates): `updateMenuFromGameList`/`menuDeferredUpdate`/`menuUpdateHook` (share frame/rescan throttle state with the error-message
   hook), `setDefaults`/`init`/`miniInit`, `main`.
+
+## 17e. Phase 8: directory layout and the coupling gate
+- `src/` is split by layer, lowest first, and the directory IS the layer the analyzer enforces:
+  `platform/` (system, ioman, util, tar, ps2cnf, ioprp, http client/catalog, hdd, lz4/zso/md5, `new`), `core/` (config, lang, xparam, cheatman, gsm, pad,
+  sound, OSDHistory, vmc_groups, settings), `gfx/` (renderman, textures, texcache, artqueue/artworker, fntsys, atlas, plasma, themes/themeelems/coverflow,
+  uidraw), `sources/` (supportbase + every backend, artindex, folderbrowse, RA), `ui/` (menusys, dia, dialogs, gui*, guigame, libview, menuitems), `app/`
+  (opl, host, settingsio, autolaunch, lwnbdctl). Headers stay in `include/` (flat), so no `#include` changed.
+- `tools/analyze_coupling.py --check` is now blocking in CI (`ps2build.yml`). It is a ratchet: `tools/coupling_baseline.json` records the 35 existing upward
+  pairs (47 symbols); a new pair, or more symbols in an existing one, fails. Fixing an edge lowers the count; `--update` locks it in.
+- The generated `src/core/lang_internal.c` is git-ignored; `tools/assets.py lang` writes it there.
 
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
@@ -402,7 +412,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 | 5 GameSource hierarchy | not started; needs go-ahead (hardware testing matters most) |
 | 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
 | 7 split god files | gui.cpp done (5197 -> ~1100 lines); themes.cpp done (3958 -> 1653, plus themeelems.cpp and coverflow.cpp); opl.cpp in progress (5117 -> 1813: autolaunch.cpp, lwnbdctl.cpp, settingsio.cpp, menuitems.cpp, appscan.cpp out); bdmsupport.cpp not started |
-| 8 directory move, blocking analyzer | not started |
+| 8 directory move, blocking analyzer | done (layer directories; coupling gate is a ratchet on the 47 existing upward symbols) |
 
 Packed ELF: 1,634,784 B (Atlas) -> 1,634,400 B (ArtQueue). Every step so far: clean `ps2build build`, `tools/run_tests.sh -k`,
 `tools/warning_gate.py build.log --check` (62, baseline 62), `tools/syntax_sweep.py` (only the old EESIO `SIOCookie.h` failure),

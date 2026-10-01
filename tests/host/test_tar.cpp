@@ -6,7 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <vector>
-#include "../../src/tar.cpp"
+#include "../../src/platform/tar.cpp"
 #include "check.h"
 
 static std::string put(const char *name, const std::string &data, char type = '0', const char *prefix = "", long long fakeSize = -1)

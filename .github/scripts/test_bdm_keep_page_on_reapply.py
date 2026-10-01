@@ -6,7 +6,7 @@ Returning from the Start menu in that window, refreshMenuPosition found the user
 moved them to the first visible tab -- APPS, Favourites -- and the games came back only after a
 refresh and a wait (Beta-3383).
 
-This compiles the real bdmSlotIdentified + bdmInitDevicesData from src/bdmsupport.c against stubs and
+This compiles the real bdmSlotIdentified + bdmInitDevicesData from src/sources/bdmsupport.c against stubs and
 checks, for Auto and for Manual-after-start:
 
 - a slot with a mounted, identified device keeps its page visible (and is re-checked: tick reset);
@@ -23,14 +23,14 @@ import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the
 
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+source = (root / 'src/sources/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
 def function_text(signature):
     match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
     if match is None:
-        failures.append('src/bdmsupport.c: %s...) not found' % signature)
+        failures.append('src/sources/bdmsupport.c: %s...) not found' % signature)
         return ''
     end = source.index('\n}', match.start())
     return source[match.start():end] + '\n}\n'

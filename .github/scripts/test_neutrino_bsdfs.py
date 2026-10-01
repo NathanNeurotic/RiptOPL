@@ -1,6 +1,6 @@
 """A -bsdfs=bd Neutrino launch must be refused BEFORE the teardown when the device has no number.
 
--bsdfs=bd names the raw bdm device "<driver><devNr>p0" (src/system.c, sysLaunchNeutrino). A mount
+-bsdfs=bd names the raw bdm device "<driver><devNr>p0" (src/platform/system.c, sysLaunchNeutrino). A mount
 whose USBMASS_IOCTL_GET_DEVICE_NUMBER failed carries -1, and sysLaunchNeutrino used to turn that into
 device 0 after the menu was already gone -- the wrong stick when two share a driver (CodeRabbit on
 PR #756). sysNeutrinoPreflight now refuses it while the GUI is alive, using the same
@@ -13,7 +13,7 @@ the picker. A typed -dvd= does NOT exempt a launch: it is a tail token the argv 
 which would leave our device-0 tuple in charge (CodeRabbit's security review of #762).
 
 This compiles neutrinoArgHasActiveFlag, neutrinoEffectiveBsdfs, getDeviceName and sysNeutrinoPreflight
-from src/system.c on the host and checks every case that decides the refusal.
+from src/platform/system.c on the host and checks every case that decides the refusal.
 """
 from pathlib import Path
 import re
@@ -25,14 +25,14 @@ import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the
 
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/system.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+source = (root / 'src/platform/system.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
 def function_text(signature):
     match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
     if match is None:
-        failures.append('src/system.c: %s...) not found' % signature)
+        failures.append('src/platform/system.c: %s...) not found' % signature)
         return ''
     end = source.index('\n}', match.start())
     return source[match.start():end] + '\n}\n'
@@ -56,7 +56,7 @@ if 'int fsOverride = neutrinoEffectiveBsdfs(deviceName, neutrinoBsdfs, extraArgs
                     'and always emit it as its own -bsdfs=')
 
 # Every Neutrino leg must hand the preflight what it will hand sysLaunchNeutrino.
-bdm = (root / 'src/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+bdm = (root / 'src/sources/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 if 'sysNeutrinoPreflight(bdmCurrentDriver, neutrinoPath, neutrinoBsdfs, neutrinoExtraArgs, bdmDevNr)' not in bdm:
     failures.append('bdmTryNeutrinoLaunch: the preflight must get neutrinoBsdfs, the per-game args and bdmDevNr')
 

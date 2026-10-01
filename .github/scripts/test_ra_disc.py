@@ -39,7 +39,7 @@ def run(name, source, extra=()):
                         str(path), *objs, '-o', str(exe)], check=True)
     subprocess.run([str(exe)], check=True)
 
-s = (root / 'src/ioprp.cpp').read_text(encoding='utf-8')
+s = (root / 'src/platform/ioprp.cpp').read_text(encoding='utf-8')
 entry = s[s.index('struct romdir_entry'):s.index('/* Pointers')]
 builder = s[s.index('// Physical-disc reset image:'):s.rindex('#endif')]
 run('reset_image', '#include <assert.h>\n#include <string.h>\n#include <stdio.h>\n' + entry + '''
@@ -72,7 +72,7 @@ int main(void) {
 }
 ''')
 
-s=(root/'src/rahash.cpp').read_text(encoding='utf-8')
+s=(root/'src/sources/rahash.cpp').read_text(encoding='utf-8')
 s=re.sub(r'^#include.*$', '', s, flags=re.M)
 payload=bytes(i%251 for i in range(65536+17))
 expected=hashlib.md5(b'SLUS_201.74'+payload).hexdigest()
@@ -158,9 +158,9 @@ int main(void) {
     puts("PASS: file/raw hash agreement, short reads, sector tail, retries, failure rejects partial hash, held image reports -6");
 }
 '''.replace('EXPECTED', expected)
-run('hash', prefix+s+test, [root/'src/md5.c'])
+run('hash', prefix+s+test, [root/'src/platform/md5.c'])
 
-s=(root/'src/discsupport.cpp').read_text(encoding='utf-8')
+s=(root/'src/sources/discsupport.cpp').read_text(encoding='utf-8')
 s=re.sub(r'^#include.*$', '', s, flags=re.M)
 labels=sorted(set(re.findall(r'_STR_\w+',s)))
 prefix='''
@@ -280,7 +280,7 @@ int main(void) {
 '''
 run('power_input',prefix+s+test)
 
-s=(root/'src/system.cpp').read_text(encoding='utf-8')
+s=(root/'src/platform/system.cpp').read_text(encoding='utf-8')
 s=s[s.index('static int sysParseBoot2'):s.index('// Boot the physical PS2 disc')]
 run('boot_path', '#include <assert.h>\n#include <stdio.h>\n#include <string.h>\n#include <strings.h>\n'+s+r'''
 int main(void) {
@@ -303,7 +303,7 @@ int main(void) {
 }
 ''')
 
-s=(root/'src/supportbase.cpp').read_text(encoding='utf-8')
+s=(root/'src/sources/supportbase.cpp').read_text(encoding='utf-8')
 s=s[s.index('static char ra_hash_path'):s.index('static void sbTestPCLinkWorker')]
 prefix=r'''
 #include <assert.h>

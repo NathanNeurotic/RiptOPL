@@ -9,7 +9,7 @@ audsrv_available() instead, sleeping between polls.
 
 Part 1 statically forbids audsrv_wait_audio() in src/ and pins that shape.
 
-Part 2 compiles bgmWaitForRoom, bgmQueueChunk and bgmStart's ring sizing from src/sound.c on the host
+Part 2 compiles bgmWaitForRoom, bgmQueueChunk and bgmStart's ring sizing from src/core/sound.c on the host
 and runs them against a model of ps2sdk's IOP audsrv ring (iop/sound/audsrv/src/audsrv.c): ten SPU2
 feeds of the stream format, play_audio keeping only what fits. audsrv's ring for 16-bit mono under
 19.2 kHz is SMALLER than one 4096-byte chunk (11025 Hz: 2340 bytes), so waiting for a whole chunk's
@@ -50,17 +50,17 @@ for path in sorted((root / 'src').rglob('*.c')):
             failures.append('%s:%d calls audsrv_wait_audio(); poll audsrv_available() instead'
                             % (path.relative_to(root).as_posix(), number))
 
-sound = (root / 'src/sound.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+sound = (root / 'src/core/sound.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 
 wait = function_text(sound, 'static int bgmWaitForRoom(')
 if wait is None:
-    failures.append('src/sound.c: bgmWaitForRoom() not found')
+    failures.append('src/core/sound.c: bgmWaitForRoom() not found')
 elif not all(token in wait for token in ('audsrv_available()', 'DelayThread(', 'terminateFlag')):
     failures.append('bgmWaitForRoom: must poll audsrv_available(), sleep between polls and honour terminateFlag')
 
 queue = function_text(sound, 'static int bgmQueueChunk(')
 if queue is None:
-    failures.append('src/sound.c: bgmQueueChunk() not found')
+    failures.append('src/core/sound.c: bgmQueueChunk() not found')
 elif 'bgmWaitForRoom(' not in queue or 'done += sent' not in queue:
     failures.append('bgmQueueChunk: must wait through bgmWaitForRoom() and advance by what audsrv queued')
 

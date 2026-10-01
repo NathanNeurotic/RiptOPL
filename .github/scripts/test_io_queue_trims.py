@@ -14,8 +14,8 @@ Three removals (audit of everything queued on the ioman worker, after FifthFox's
    ioPutRequestUnlessWaiting: one waiting pass covers the rest. The first pass keeps its place, and
    the one-shot MX4SIO / USB "double tap" inside it must stay -- checked below.
 
-This compiles ioPutRequest + ioPutRequestUnlessWaiting (src/ioman.c), bdmShouldQueueModuleLoad
-(src/bdmsupport.c) and menuDeferredUpdate (src/opl.c) on the host against stubs.
+This compiles ioPutRequest + ioPutRequestUnlessWaiting (src/platform/ioman.c), bdmShouldQueueModuleLoad
+(src/sources/bdmsupport.c) and menuDeferredUpdate (src/app/opl.c) on the host against stubs.
 """
 from pathlib import Path
 import re
@@ -40,11 +40,11 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-ioman = read('src/ioman.cpp')
-bdm = read('src/bdmsupport.cpp')
-opl = read('src/opl.cpp')
+ioman = read('src/platform/ioman.cpp')
+bdm = read('src/sources/bdmsupport.cpp')
+opl = read('src/app/opl.cpp')
 
-io_functions = ''.join(function_text(ioman, 'src/ioman.cpp', sig) for sig in (
+io_functions = ''.join(function_text(ioman, 'src/platform/ioman.cpp', sig) for sig in (
     'io_request_handler_t IoQueue::findHandler(',
     'int IoQueue::appendLocked(',
     'int IoQueue::put(',
@@ -52,13 +52,13 @@ io_functions = ''.join(function_text(ioman, 'src/ioman.cpp', sig) for sig in (
 ))
 # The scan and the append must be ONE gEndSemaId hold, or the GUI thread and the worker asking at
 # once can both miss each other and queue two (CodeRabbit on #764).
-unless = function_text(ioman, 'src/ioman.cpp', 'int IoQueue::putUnlessWaiting(')
+unless = function_text(ioman, 'src/platform/ioman.cpp', 'int IoQueue::putUnlessWaiting(')
 if unless.count('WaitSema(endSema_)') != 1 or 'appendLocked(type, data)' not in unless or re.search(r'(?<![A-Za-z])put\(', unless):
     failures.append('IoQueue::putUnlessWaiting: scan and append must share one endSema_ hold (appendLocked), '
                     'not release it and call put')
-should_queue = function_text(bdm, 'src/bdmsupport.cpp', 'static int bdmShouldQueueModuleLoad(')
-deferred = function_text(opl, 'src/opl.cpp', 'void menuDeferredUpdate(')
-module_pass = function_text(bdm, 'src/bdmsupport.cpp', 'static void bdmLoadBlockDeviceModules(')
+should_queue = function_text(bdm, 'src/sources/bdmsupport.cpp', 'static int bdmShouldQueueModuleLoad(')
+deferred = function_text(opl, 'src/app/opl.cpp', 'void menuDeferredUpdate(')
+module_pass = function_text(bdm, 'src/sources/bdmsupport.cpp', 'static void bdmLoadBlockDeviceModules(')
 
 # --- source guards -------------------------------------------------------------------------------
 raw_puts = bdm.count('ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&bdmLoadBlockDeviceModules))')
@@ -74,7 +74,7 @@ if 'usbSecondProbeDone' not in module_pass or 'bdmProbeMassSlots("after-usb-sett
     failures.append('bdmLoadBlockDeviceModules: the USB double tap (settle + bdmProbeMassSlots + refresh) is gone')
 if 'modsNow != modsWere && !wasFirstPass' not in module_pass:
     failures.append('bdmLoadBlockDeviceModules: the late-load refresh (enabling a transport from Game Sources) is gone')
-worker = function_text(ioman, 'src/ioman.cpp', 'void IoQueue::workerLoop(')
+worker = function_text(ioman, 'src/platform/ioman.cpp', 'void IoQueue::workerLoop(')
 if not re.search(r'current_ = req;\s*\n\s*process\(req\);', worker) or 'current_ = NULL;' not in worker:
     failures.append('IoQueue::workerLoop: must mark the request it runs (current_) around process')
 

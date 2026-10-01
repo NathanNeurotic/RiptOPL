@@ -69,8 +69,8 @@ jobs:
         run: $PS2BUILD_HOME/ps2build build 2>&1 | tee build.log
       - name: Warning baseline (no new warnings)
         run: tools/warning_gate.py build.log --check
-      - name: Coupling report (informational until phase 8)
-        run: tools/analyze_coupling.py | head -40
+      - name: Coupling gate (no new upward dependencies between layers)
+        run: tools/analyze_coupling.py --check
       - uses: actions/upload-artifact@v4
         with:
           name: riptopl-ps2build

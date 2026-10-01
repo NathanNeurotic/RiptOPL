@@ -26,7 +26,7 @@ def run(args):
 only = sys.argv[1:] or list(sets)
 for name in only:
     defs = sets[name]
-    files = sorted(glob.glob(os.path.join(ROOT, 'src', '*.cpp')))
+    files = sorted(glob.glob(os.path.join(ROOT, 'src', '**', '*.cpp'), recursive=True))
     if name != 'RA': files = [f for f in files if os.path.basename(f)[:-4] not in RA_ONLY]
     errs = []
     with cf.ThreadPoolExecutor(8) as ex:

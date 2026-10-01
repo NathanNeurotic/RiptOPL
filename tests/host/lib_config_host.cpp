@@ -2,6 +2,6 @@
 // The real config.cpp + util.cpp file buffers, built against the stub headers.
 #define HOST_ENV_EXTERN_DEBUG // gEnableDebug belongs to the settings table; the test defines it
 extern int gEnableDebug;
-#include "../../src/util.cpp"
-#include "../../src/config.cpp"
+#include "../../src/platform/util.cpp"
+#include "../../src/core/config.cpp"
 #include "host_env.h"

@@ -32,8 +32,8 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-gui_c = read('src/gui.cpp') + read('src/guisettings.cpp') + read('src/guidialogs.cpp')
-dia_c = read('src/dia.cpp')
+gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guidialogs.cpp')
+dia_c = read('src/ui/dia.cpp')
 
 HARNESS = r'''
 #include <stdio.h>
@@ -67,7 +67,7 @@ int main(void)
 }
 '''
 
-helpers = ''.join(function_text(gui_c, 'src/gui.cpp', 'int %s(' % name)
+helpers = ''.join(function_text(gui_c, 'src/ui/gui.cpp', 'int %s(' % name)
                   for name in ('guiConfirmKey', 'guiCancelKey', 'guiConfirmIcon', 'guiCancelIcon'))
 if not failures:
     with tempfile.TemporaryDirectory() as tmp:
@@ -88,13 +88,13 @@ if not failures:
 # here; these screens take both from the helpers (CodeRabbit #818).
 HARDWIRED = re.compile(r'\bKEY_(?:CROSS|CIRCLE)\b|\b(?:CROSS|CIRCLE)_ICON\b')
 for where, source, signature in (
-    ('src/gui.cpp', gui_c, 'static int guiSettingsPromptSave('),
-    ('src/gui.cpp', gui_c, 'static void guiDrawSettingsIndexHints('),
-    ('src/gui.cpp', gui_c, 'static int guiSettingsShowIndex('),
-    ('src/gui.cpp', gui_c, 'int guiPromptRebootIop('),
-    ('src/gui.cpp', gui_c, 'static int guiReadPopsNet('),
-    ('src/dia.cpp', dia_c, 'static int diaHandleInput('),
-    ('src/dia.cpp', dia_c, 'int diaExecuteDialog('),
+    ('src/ui/gui.cpp', gui_c, 'static int guiSettingsPromptSave('),
+    ('src/ui/gui.cpp', gui_c, 'static void guiDrawSettingsIndexHints('),
+    ('src/ui/gui.cpp', gui_c, 'static int guiSettingsShowIndex('),
+    ('src/ui/gui.cpp', gui_c, 'int guiPromptRebootIop('),
+    ('src/ui/gui.cpp', gui_c, 'static int guiReadPopsNet('),
+    ('src/ui/dia.cpp', dia_c, 'static int diaHandleInput('),
+    ('src/ui/dia.cpp', dia_c, 'int diaExecuteDialog('),
 ):
     body = function_text(source, where, signature)
     hit = HARDWIRED.search(body) if body else None
@@ -102,7 +102,7 @@ for where, source, signature in (
         failures.append('%s %s...): hard-wires "%s" -- use guiConfirmKey/guiCancelKey and their icons'
                         % (where, signature, hit.group(0)))
 
-render = function_text(dia_c, 'src/dia.cpp', 'void diaRenderUI(')
+render = function_text(dia_c, 'src/ui/dia.cpp', 'void diaRenderUI(')
 settings_hints = render.split('if (settingsContext) {', 1)[1].split('} else {', 1)[0] if 'if (settingsContext) {' in render else ''
 if not settings_hints:
     failures.append('diaRenderUI: the Settings hint bar block was not found')

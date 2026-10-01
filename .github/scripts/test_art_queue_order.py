@@ -12,7 +12,7 @@ art cache at 2 slots, so that guard made the abort dead code: an abandoned backg
 running in front of the next cover. The abort now lives in cacheAbortOtherBackgrounds, which scans
 every slot, and is tested here with a real 2-slot cache.
 
-Everything below is compiled from the production source text of src/texcache.c, not a copy.
+Everything below is compiled from the production source text of src/gfx/texcache.c, not a copy.
 """
 from pathlib import Path
 import re
@@ -37,8 +37,8 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-texcache = read('src/texcache.cpp')
-themes = read('src/themes.cpp') + read('src/themeelems.cpp') + read('src/coverflow.cpp')
+texcache = read('src/gfx/texcache.cpp')
+themes = read('src/gfx/themes.cpp') + read('src/gfx/themeelems.cpp') + read('src/gfx/coverflow.cpp')
 
 # --- The cache floor that makes a `count == 1` guard dead code ---------------------------------
 if not re.search(r'if \(cachePattern != NULL && cacheCount < 2\)\s*\n\s*cacheCount = 2;', themes):
@@ -63,13 +63,13 @@ if re.search(r'texture = getGameImageTextureEx\(gameImage->cache, menu->item->us
              themes):
     failures.append('themes.c: the per-game background is requested as a PRIORITY image again (#772)')
 
-artqueue = read('src/artqueue.cpp')
-functions = ''.join(function_text(artqueue, 'src/artqueue.cpp', sig) for sig in (
+artqueue = read('src/gfx/artqueue.cpp')
+functions = ''.join(function_text(artqueue, 'src/gfx/artqueue.cpp', sig) for sig in (
     'void ArtQueue::push(',
     'void ArtQueue::pushFront(',
     'void ArtQueue::promote(',
     'load_image_request_t *ArtQueue::pop(',
-)) + function_text(texcache, 'src/texcache.cpp', 'static void cacheAbortOtherBackgrounds(')
+)) + function_text(texcache, 'src/gfx/texcache.cpp', 'static void cacheAbortOtherBackgrounds(')
 # The real class declaration, private opened up so the harness can seed and inspect the queue.
 _hdr = read('include/artqueue.h')
 class_text = '#define private public\n' + _hdr[_hdr.index('class ArtQueue'):_hdr.index('#endif')] + '#undef private\n'

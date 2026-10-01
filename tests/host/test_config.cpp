@@ -3,8 +3,8 @@
 // behaviour the planned Settings/ConfigSet rewrite must keep: files shared with wOPL/OPL-Launcher.
 #include <string>
 #include <string.h>
-#include "../../src/util.cpp"
-#include "../../src/config.cpp"
+#include "../../src/platform/util.cpp"
+#include "../../src/core/config.cpp"
 #include "host_env.h"
 #include "check.h"
 

@@ -1,11 +1,11 @@
 """The game-list sort must produce exactly the old order, in O(n log n) comparisons.
 
-submenuSort (src/menusys.c) runs on every list rebuild while Sort Games Alphabetically is on (the
+submenuSort (src/ui/menusys.c) runs on every list rebuild while Sort Games Alphabetically is on (the
 default), and the rows come off the scan in reverse directory order. It used to be a bubble sort:
 O(n^2), and worst-case on a library copied in alphabetical order. It is now a stable bottom-up merge
 sort with the same comparison, so every row must land exactly where the bubble sort put it.
 
-This compiles submenuItemGetText, submenuSortCompare and submenuSort from src/menusys.c on the host,
+This compiles submenuItemGetText, submenuSortCompare and submenuSort from src/ui/menusys.c on the host,
 next to the removed bubble sort (kept here only as the reference), and checks on random lists --
 case-only ties, folders, localized rows and PS1 rows whose game-ID prefix is hidden -- that both give
 the same row order with consistent prev links. It then counts comparisons on large lists.
@@ -17,7 +17,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-menusys = (root / 'src/menusys.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+menusys = (root / 'src/ui/menusys.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
@@ -25,7 +25,7 @@ def function_text(source, signature):
     # Whole definition (a prototype ends in ';'), closing brace included.
     match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
     if match is None:
-        failures.append('src/menusys.c: %s...) not found' % signature)
+        failures.append('src/ui/menusys.c: %s...) not found' % signature)
         return ''
     end = source.index('\n}', match.start())
     return source[match.start():end] + '\n}\n'

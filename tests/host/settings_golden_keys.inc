@@ -1,4 +1,4 @@
-// GENERATED from the _saveConfig() that preceded src/settings.cpp: plain keys in their original save order.
+// GENERATED from the _saveConfig() that preceded src/core/settings.cpp: plain keys in their original save order.
     CONFIG_OPL_SCROLLING,
     CONFIG_OPL_BGCOLOR,
     CONFIG_OPL_TEXTCOLOR,

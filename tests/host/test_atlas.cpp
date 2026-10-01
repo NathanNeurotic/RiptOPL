@@ -3,7 +3,7 @@
 #include <string.h>
 #include <vector>
 #include "include/atlas.h"
-#include "../../src/atlas.cpp"
+#include "../../src/gfx/atlas.cpp"
 #include "check.h"
 
 // renderman hooks the atlas calls: count them

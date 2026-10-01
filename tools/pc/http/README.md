@@ -31,7 +31,7 @@ silently test nothing. Generating the variants means git normalisation cannot li
 is only worth something because a human agreed with it; regenerating it to make a failing test pass
 converts the contract into a description of whatever the code currently does.
 
-When the C parser in `src/httpsupport.c` exists it must agree with `expected.json` on every fixture.
+When the C parser in `src/sources/httpsupport.c` exists it must agree with `expected.json` on every fixture.
 If the two disagree, this directory is right and the C is wrong — unless the disagreement is
 deliberate, in which case change the fixture, the plan and the C in one commit.
 

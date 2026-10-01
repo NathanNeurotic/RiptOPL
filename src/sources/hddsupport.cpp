@@ -28,7 +28,7 @@
 
 constexpr int OPL_HDD_MODE_PS2LOGO_OFFSET = 0x17F8;
 
-#include "../modules/isofs/zso.h"
+#include "modules/isofs/zso.h"
 
 extern int probed_fd;
 extern u32 probed_lba;

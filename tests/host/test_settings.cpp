@@ -5,7 +5,7 @@
 #include <string>
 #include <string.h>
 #include "include/settings.h"
-#include "../../src/settings.cpp"
+#include "../../src/core/settings.cpp"
 #include "check.h"
 
 // Variables the table points at, defined from the real declarations (generated per run).
