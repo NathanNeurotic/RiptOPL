@@ -9,6 +9,7 @@
 
 #include "include/opl.h"
 #include "include/renderman.h"
+#include "include/renderer.h"
 #include "include/ioman.h"
 
 // Allocateable space in vram, as indicated in GsKit's code
@@ -17,11 +18,8 @@
 GSGLOBAL *gsGlobal;
 s32 guiThreadID;
 
-static int order;
-static short int vmode = -1;
-static u8 hires = 0;
-static u8 guiWakeupCount;
-static int vsync_id = -1;
+static Renderer gRenderer;
+
 
 constexpr int NUM_RM_VMODES = 16;
 constexpr int RM_VMODE_AUTO = 0;
@@ -84,18 +82,10 @@ static struct rm_mode rm_mode_table[NUM_RM_VMODES] = {
 // clang-format on
 
 // Display Aspect Ratio
-static int iAspectWidth = 4;
-static enum rm_aratio DAR = RM_ARATIO_4_3;
 
 // Display dimensions after overscan compensation
-static int iDisplayWidth;
-static int iDisplayHeight;
-static int iDisplayXOff;
-static int iDisplayYOff;
 
 // Transposition values including overscan compensation
-static float fRenderXOff = 0.0f;
-static float fRenderYOff = 0.0f;
 
 const u64 gColWhite = GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x80);  // Alpha 0x80 -> solid white
 const u64 gColBlack = GS_SETREG_RGBA(0x00, 0x00, 0x00, 0x80);  // Alpha 0x80 -> solid black
@@ -105,27 +95,27 @@ const u64 gColFocus = GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x50);  // Alpha 0x50 -> 
 const u64 gDefaultCol = GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80); // Special color for texture multiplication
 const u64 gDefaultAlpha = GS_SETREG_ALPHA(0, 1, 0, 1, 0);
 
-void rmInvalidateTexture(GSTEXTURE *txt)
+void Renderer::invalidateTexture(GSTEXTURE *txt)
 {
     gsKit_TexManager_invalidate(gsGlobal, txt);
 }
 
-void rmUnloadTexture(GSTEXTURE *txt)
+void Renderer::unloadTexture(GSTEXTURE *txt)
 {
     gsKit_TexManager_free(gsGlobal, txt);
 }
 
-void rmStartFrame(void)
+void Renderer::startFrame(void)
 {
-    if (hires == 0)
+    if (hires_ == 0)
         gsKit_clear(gsGlobal, gColBlack);
 
-    order = 0;
+    order_ = 0;
 }
 
-void rmEndFrame(void)
+void Renderer::endFrame(void)
 {
-    if (hires) {
+    if (hires_) {
         gsKit_hires_sync(gsGlobal);
         gsKit_hires_flip(gsGlobal);
     } else {
@@ -137,7 +127,7 @@ void rmEndFrame(void)
 
         if (!gsGlobal->FirstFrame) {
             SleepThread();
-            guiWakeupCount = 0;
+            wakeCount_ = 0;
 
             if (gsGlobal->DoubleBuffering == GS_SETTING_ON) {
                 GS_SET_DISPFB2(gsGlobal->ScreenBuffer[gsGlobal->ActiveBuffer & 1] / 8192,
@@ -153,18 +143,23 @@ void rmEndFrame(void)
     gsKit_TexManager_nextFrame(gsGlobal);
 }
 
-static int rmOnVSync(int cause)
+void Renderer::onVSync()
 {
-    if (guiWakeupCount == 0) {
-        guiWakeupCount = 1;
+    if (wakeCount_ == 0) {
+        wakeCount_ = 1;
         iWakeupThread(guiThreadID);
     }
+}
+
+static int rmOnVSync(int cause)
+{
+    gRenderer.onVSync();
 
     ExitHandler();
     return 0;
 }
 
-void rmInit()
+void Renderer::init()
 {
     short int mode = gsKit_check_rom();
 
@@ -178,40 +173,40 @@ void rmInit()
     // Initialize the DMAC
     dmaKit_chan_init(DMA_CHANNEL_GIF);
 
-    rmSetMode(1);
+    setMode(1);
 
-    order = 0;
+    order_ = 0;
 
-    guiWakeupCount = 0;
+    wakeCount_ = 0;
     guiThreadID = GetThreadId();
 }
 
-int rmSetMode(int force)
+int Renderer::setMode(int force)
 {
     if (gVMode < RM_VMODE_AUTO || gVMode >= NUM_RM_VMODES)
         gVMode = RM_VMODE_AUTO;
 
-    // we don't want to set the vmode without a reason...
-    int changed = (vmode != gVMode || force);
+    // we don't want to set the vmode_ without a reason...
+    int changed = (vmode_ != gVMode || force);
     if (changed) {
         // Cleanup previous gsKit instance
-        if (vmode >= 0)
-            rmEnd();
+        if (vmode_ >= 0)
+            end();
 
-        vmode = gVMode;
-        hires = (rm_mode_table[vmode].passes > 1) ? 1 : 0;
+        vmode_ = gVMode;
+        hires_ = (rm_mode_table[vmode_].passes > 1) ? 1 : 0;
 
-        if (hires) {
+        if (hires_) {
             gsGlobal = gsKit_hires_init_global();
         } else {
             gsGlobal = gsKit_init_global();
-            vsync_id = gsKit_add_vsync_handler(&rmOnVSync);
+            vsyncId_ = gsKit_add_vsync_handler(&rmOnVSync);
         }
-        gsGlobal->Mode = rm_mode_table[vmode].mode;
-        gsGlobal->Width = rm_mode_table[vmode].width;
-        gsGlobal->Height = rm_mode_table[vmode].height;
-        gsGlobal->Interlace = rm_mode_table[vmode].interlace;
-        gsGlobal->Field = rm_mode_table[vmode].field;
+        gsGlobal->Mode = rm_mode_table[vmode_].mode;
+        gsGlobal->Width = rm_mode_table[vmode_].width;
+        gsGlobal->Height = rm_mode_table[vmode_].height;
+        gsGlobal->Interlace = rm_mode_table[vmode_].interlace;
+        gsGlobal->Field = rm_mode_table[vmode_].field;
         gsGlobal->PSM = GS_PSM_CT24;
         // Higher resolution use too much VRAM
         // so automatically switch back to 16bit color depth
@@ -237,13 +232,13 @@ int rmSetMode(int force)
         gsGlobal->OffsetX = ((4096 - gsGlobal->Width) / 2) * 16;
         gsGlobal->OffsetY = ((4096 - gsGlobal->Height) / 2) * 16;
 
-        if (hires) {
+        if (hires_) {
             // PrimAlphaEnable MUST be OFF across this call, and the bracket below is a real fix, not
             // hygiene (FifthFox's 1080i "scrolling leaves artifacts that persist", HW).
             //
             // gsKit_hires_init_screen -> _gsKit_create_passes bakes a gsKit_clear into each pass's
-            // PERSISTENT queue -- that baked clear is the ONLY thing that ever erases a hires frame
-            // (rmStartFrame deliberately skips clearing when hires; see there). But gsKit_clear's
+            // PERSISTENT queue -- that baked clear is the ONLY thing that ever erases a hires_ frame
+            // (rmStartFrame deliberately skips clearing when hires_; see there). But gsKit_clear's
             // sprite samples the PRIM ABE bit from gsGlobal->PrimAlphaEnable AT CREATION TIME
             // (gsPrimitive.c gsKit_prim_list_sprite_flat), and the colour gsKit bakes is
             // GS_SETREG_RGBAQ(0,0,0,0x00,0) -- ALPHA ZERO. With PrimAlphaEnable ON (set above) and our
@@ -252,7 +247,7 @@ int rmSetMode(int force)
             //
             // That is why a band whose pass misses its 1/180s deadline shows STALE pixels instead of
             // black, and why they persist across screens: nothing under the UI ever repaints. The
-            // non-hires path never had this bug for exactly one reason: rmStartFrame's per-frame
+            // non-hires_ path never had this bug for exactly one reason: rmStartFrame's per-frame
             // clear passes gColBlack, whose alpha is 0x80 (opaque) -- same function, different alpha.
             //
             // With ABE=0 baked in, the clear writes opaque black regardless of the runtime blend
@@ -261,7 +256,7 @@ int rmSetMode(int force)
             // other _gsKit_create_passes caller is gsKit_hires_set_bg, which OPL never calls (and
             // must not casually: a bg texture replaces the baked clear entirely).
             gsGlobal->PrimAlphaEnable = GS_SETTING_OFF;
-            gsKit_hires_init_screen(gsGlobal, rm_mode_table[vmode].passes);
+            gsKit_hires_init_screen(gsGlobal, rm_mode_table[vmode_].passes);
             gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
         } else {
             gsKit_init_screen(gsGlobal);
@@ -272,7 +267,7 @@ int rmSetMode(int force)
         gsKit_set_primalpha(gsGlobal, gDefaultAlpha, 0);
 
         // reset the contents of the screen to avoid garbage being displayed
-        if (hires) {
+        if (hires_) {
             gsKit_hires_sync(gsGlobal);
             gsKit_hires_flip(gsGlobal);
         } else {
@@ -298,46 +293,44 @@ int rmSetMode(int force)
             gsKit_sync_flip(gsGlobal);
         }
 
-        LOG("RENDERMAN New vmode: %d, %d x %d\n", vmode, gsGlobal->Width, gsGlobal->Height);
+        LOG("RENDERMAN New vmode_: %d, %d x %d\n", vmode_, gsGlobal->Width, gsGlobal->Height);
     }
 
-    rmSetDisplayOffset(gXOff, gYOff);
-    rmSetOverscan(gOverscan);
-    rmSetAspectRatio((gWideScreen == 0) ? RM_ARATIO_4_3 : RM_ARATIO_16_9);
+    setDisplayOffset(gXOff, gYOff);
+    setOverscan(gOverscan);
+    setAspectRatio((gWideScreen == 0) ? RM_ARATIO_4_3 : RM_ARATIO_16_9);
 
     return changed;
 }
 
-void rmGetScreenExtentsNative(int *w, int *h)
+void Renderer::getScreenExtentsNative(int *w, int *h)
 {
-    *w = iDisplayWidth;
-    *h = iDisplayHeight;
+    *w = displayWidth_;
+    *h = displayHeight_;
 }
 
-void rmGetScreenExtents(int *w, int *h)
+void Renderer::getScreenExtents(int *w, int *h)
 {
     // Emulate 640x480 (square pixel VGA)
     *w = 640;
     *h = 480;
 }
 
-void rmEnd(void)
+void Renderer::end(void)
 {
-    if (hires) {
+    if (hires_) {
         gsKit_hires_deinit_global(gsGlobal);
     } else {
         gsKit_deinit_global(gsGlobal);
-        gsKit_remove_vsync_handler(vsync_id);
+        gsKit_remove_vsync_handler(vsyncId_);
     }
 
-    vmode = -1;
+    vmode_ = -1;
 }
 
 // Scale from the 640x480 design grid to the live display. Generic on purpose: callers pass ints and floats.
-template <typename T> static inline auto scaleX(T x) { return (x * iDisplayWidth) / 640; }
-template <typename T> static inline auto scaleY(T y) { return (y * iDisplayHeight) / 480; }
 /** If txt is null, don't use DIM_UNDEF size */
-static void rmSetupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, rm_quad_t *q)
+void Renderer::setupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, rm_quad_t *q)
 {
     if (w == DIM_UNDEF)
         w = txt->Width;
@@ -348,7 +341,7 @@ static void rmSetupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int 
     x = scaleX(x);
     y = scaleY(y);
     if (scaled & SCALING_RATIO)
-        w = scaleX(w * iAspectWidth) >> 2;
+        w = scaleX(w * aspectWidth_) >> 2;
     else
         w = scaleX(w);
     h = scaleY(h);
@@ -381,7 +374,7 @@ static void rmSetupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int 
     }
 }
 
-void rmDrawQuad(rm_quad_t *q)
+void Renderer::drawQuad(rm_quad_t *q)
 {
     if ((q->txt->PSM == GS_PSM_CT32) || (q->txt->Clut && q->txt->ClutPSM == GS_PSM_CT32)) {
         gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
@@ -393,20 +386,19 @@ void rmDrawQuad(rm_quad_t *q)
 
     gsKit_TexManager_bind(gsGlobal, q->txt);
     gsKit_prim_sprite_texture(gsGlobal, q->txt,
-                              q->ul.x + fRenderXOff, q->ul.y + fRenderYOff,
+                              q->ul.x + renderXOff_, q->ul.y + renderYOff_,
                               q->ul.u, q->ul.v,
-                              q->br.x + fRenderXOff, q->br.y + fRenderYOff,
-                              q->br.u, q->br.v, order, q->color);
-    order++;
+                              q->br.x + renderXOff_, q->br.y + renderYOff_,
+                              q->br.u, q->br.v, order_, q->color);
+    order_++;
 }
 
 // Vertical offset (px) applied to the coverflow reflection; set per-element by drawCoverFlow
 // from the theme's reflection_offset. 0 = flush under the cover, negative = up, positive = down.
-static int gReflectionYOff = 0;
 
-void rmSetReflectionYOffset(int yoff)
+void Renderer::setReflectionYOffset(int yoff)
 {
-    gReflectionYOff = yoff;
+    reflectionYOff_ = yoff;
 }
 
 // Coverflow mirror: a vertically-flipped, alpha-faded reflection below the cover.
@@ -414,18 +406,18 @@ void rmSetReflectionYOffset(int yoff)
 // visible bottom. For an overlay (case art) these track the FRAME, not the padded
 // element, so the case's transparent bottom padding is never mirrored into a gap and
 // the mirror sits flush under the cover regardless of widescreen/PAR. reflection_offset
-// (gReflectionYOff) is left as an optional fine-tune knob on top. Dormant unless a
+// (reflectionYOff_) is left as an optional fine-tune knob on top. Dormant unless a
 // caller passes reflection != 0 (only drawCoverFlow does).
 //
 // gsKit sprites are single-color, so the alpha gradient is built from N stacked strips
 // whose alpha falls off linearly to 0 with distance from the cover -- a real reflection
 // fade instead of a flat, "pasted-on second box".
-static void rmDrawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float botV)
+void Renderer::drawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float botV)
 {
     int reflH = (bottomY - q->ul.y) / 4;
     if (reflH <= 0)
         return;
-    float ry = bottomY + gReflectionYOff;
+    float ry = bottomY + reflectionYOff_;
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
     gsKit_TexManager_bind(gsGlobal, txt);
@@ -444,33 +436,33 @@ static void rmDrawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float 
         float v0 = botV + (q->ul.v - botV) * s / strips;
         float v1 = botV + (q->ul.v - botV) * (s + 1) / strips;
         gsKit_prim_sprite_texture(gsGlobal, txt,
-                                  q->ul.x + fRenderXOff, y0 + fRenderYOff,
+                                  q->ul.x + renderXOff_, y0 + renderYOff_,
                                   q->ul.u, v0,
-                                  q->br.x + fRenderXOff, y1 + fRenderYOff,
-                                  q->br.u, v1, order, GS_SETREG_RGBA(0x80, 0x80, 0x80, a));
-        order++;
+                                  q->br.x + renderXOff_, y1 + renderYOff_,
+                                  q->br.u, v1, order_, GS_SETREG_RGBA(0x80, 0x80, 0x80, a));
+        order_++;
     }
 }
 
-void rmDrawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int reflection)
+void Renderer::drawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int reflection)
 {
     rm_quad_t quad;
-    rmSetupQuad(txt, x, y, aligned, w, h, scaled, color, &quad);
-    rmDrawQuad(&quad);
+    setupQuad(txt, x, y, aligned, w, h, scaled, color, &quad);
+    drawQuad(&quad);
     if (reflection)
-        rmDrawReflection(txt, &quad, quad.br.y, quad.br.v); // plain pixmap: the whole texture is the cover
+        drawReflection(txt, &quad, quad.br.y, quad.br.v); // plain pixmap: the whole texture is the cover
 }
 
-void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w, int h, short scaled, u64 color,
+void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w, int h, short scaled, u64 color,
                          GSTEXTURE *inlay, int ulx, int uly, int urx, int ury, int blx, int bly, int brx, int bry, int reflection)
 {
     rm_quad_t quad;
-    rmSetupQuad(overlay, x, y, aligned, w, h, scaled, color, &quad);
+    setupQuad(overlay, x, y, aligned, w, h, scaled, color, &quad);
     int origBly = bly, origBry = bry; // unscaled inlay lower corners (element/texture space) for the reflection
-    ulx = scaleX(ulx * iAspectWidth) >> 2;
-    urx = scaleX(urx * iAspectWidth) >> 2;
-    blx = scaleX(blx * iAspectWidth) >> 2;
-    brx = scaleX(brx * iAspectWidth) >> 2;
+    ulx = scaleX(ulx * aspectWidth_) >> 2;
+    urx = scaleX(urx * aspectWidth_) >> 2;
+    blx = scaleX(blx * aspectWidth_) >> 2;
+    brx = scaleX(brx * aspectWidth_) >> 2;
     uly = scaleY(uly);
     ury = scaleY(ury);
     bly = scaleY(bly);
@@ -483,17 +475,17 @@ void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w,
 
     gsKit_TexManager_bind(gsGlobal, inlay);
     gsKit_prim_quad_texture(gsGlobal, inlay,
-                            quad.ul.x + ulx + fRenderXOff, quad.ul.y + uly + fRenderYOff,
+                            quad.ul.x + ulx + renderXOff_, quad.ul.y + uly + renderYOff_,
                             0.0f, 0.0f,
-                            quad.ul.x + urx + fRenderXOff, quad.ul.y + ury + fRenderYOff,
+                            quad.ul.x + urx + renderXOff_, quad.ul.y + ury + renderYOff_,
                             inlay->Width, 0.0f,
-                            quad.ul.x + blx + fRenderXOff, quad.ul.y + bly + fRenderYOff,
+                            quad.ul.x + blx + renderXOff_, quad.ul.y + bly + renderYOff_,
                             0.0f, inlay->Height,
-                            quad.ul.x + brx + fRenderXOff, quad.ul.y + bry + fRenderYOff,
-                            inlay->Width, inlay->Height, order, color);
-    order++;
+                            quad.ul.x + brx + renderXOff_, quad.ul.y + bry + renderYOff_,
+                            inlay->Width, inlay->Height, order_, color);
+    order_++;
 
-    rmDrawQuad(&quad);
+    drawQuad(&quad);
     if (reflection) {
         // Anchor the mirror to the cover's VISIBLE bottom (the inlay's lower corner), not
         // the padded element bottom, and sample only the frame's texture rows -- so the
@@ -509,7 +501,7 @@ void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w,
         // from the inlay's own (scaled) left/right corners and its u/v over the whole inlay texture.
         // Share the frame's waterline + height so the art and frame reflections track together, and
         // draw the inlay mirror FIRST so the frame mirror lands on top (matching the upright
-        // inlay-then-frame draw order above). Non-coverflow callers pass reflection=0, so unaffected.
+        // inlay-then-frame draw order_ above). Non-coverflow callers pass reflection=0, so unaffected.
         rm_quad_t iquad = quad;
         iquad.ul.x = quad.ul.x + ((ulx < blx) ? ulx : blx);
         iquad.br.x = quad.ul.x + ((urx > brx) ? urx : brx);
@@ -520,8 +512,8 @@ void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w,
         iquad.ul.u = 0.0f;
         iquad.br.u = inlay->Width;
         iquad.ul.v = 0.0f;
-        rmDrawReflection(inlay, &iquad, waterline, inlay->Height);
-        rmDrawReflection(overlay, &quad, waterline, botV);
+        drawReflection(inlay, &iquad, waterline, inlay->Height);
+        drawReflection(overlay, &quad, waterline, botV);
     }
 }
 
@@ -529,16 +521,16 @@ void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w,
 /* RA: the cover mark, drawn as a quadrilateral INSIDE the cover's own (possibly slanted)
    coordinate system. Same mapping as the overlay/inlay pair above, minus the reflection:
    the mark is a badge, not art. */
-void rmDrawInlayPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color,
+void Renderer::drawInlayPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color,
                        int ulx, int uly, int urx, int ury, int blx, int bly, int brx, int bry)
 {
     rm_quad_t quad;
-    rmSetupQuad(txt, x, y, aligned, w, h, scaled, color, &quad);
+    setupQuad(txt, x, y, aligned, w, h, scaled, color, &quad);
 
-    ulx = scaleX(ulx * iAspectWidth) >> 2;
-    urx = scaleX(urx * iAspectWidth) >> 2;
-    blx = scaleX(blx * iAspectWidth) >> 2;
-    brx = scaleX(brx * iAspectWidth) >> 2;
+    ulx = scaleX(ulx * aspectWidth_) >> 2;
+    urx = scaleX(urx * aspectWidth_) >> 2;
+    blx = scaleX(blx * aspectWidth_) >> 2;
+    brx = scaleX(brx * aspectWidth_) >> 2;
     uly = scaleY(uly);
     ury = scaleY(ury);
     bly = scaleY(bly);
@@ -556,28 +548,28 @@ void rmDrawInlayPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h
 
     gsKit_TexManager_bind(gsGlobal, txt);
     gsKit_prim_quad_texture(gsGlobal, txt,
-                            quad.ul.x + ulx + fRenderXOff, quad.ul.y + uly + fRenderYOff,
+                            quad.ul.x + ulx + renderXOff_, quad.ul.y + uly + renderYOff_,
                             0.0f, 0.0f,
-                            quad.ul.x + urx + fRenderXOff, quad.ul.y + ury + fRenderYOff,
+                            quad.ul.x + urx + renderXOff_, quad.ul.y + ury + renderYOff_,
                             txt->Width, 0.0f,
-                            quad.ul.x + blx + fRenderXOff, quad.ul.y + bly + fRenderYOff,
+                            quad.ul.x + blx + renderXOff_, quad.ul.y + bly + renderYOff_,
                             0.0f, txt->Height,
-                            quad.ul.x + brx + fRenderXOff, quad.ul.y + bry + fRenderYOff,
-                            txt->Width, txt->Height, order, color);
-    order++;
+                            quad.ul.x + brx + renderXOff_, quad.ul.y + bry + renderYOff_,
+                            txt->Width, txt->Height, order_, color);
+    order_++;
 }
 #endif
 
-void rmDrawRect(int x, int y, int w, int h, u64 color)
+void Renderer::drawRect(int x, int y, int w, int h, u64 color)
 {
-    float fx = scaleX(x) + fRenderXOff;
-    float fy = scaleY(y) + fRenderYOff;
+    float fx = scaleX(x) + renderXOff_;
+    float fy = scaleY(y) + renderYOff_;
     float fw = scaleX(w);
     float fh = scaleY(h);
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
-    gsKit_prim_sprite(gsGlobal, fx, fy, fx + fw, fy + fh, order, color);
-    order++;
+    gsKit_prim_sprite(gsGlobal, fx, fy, fx + fw, fy + fh, order_, color);
+    order_++;
 }
 
 /* A frame and its fill, placed from the frame's EDGES in display pixels. Drawing them as two
@@ -585,7 +577,7 @@ void rmDrawRect(int x, int y, int w, int h, u64 color)
    (the flicker-free 448i/512i rows, 224p/256p) a 17-high swatch became 7 lines and its 13-high fill
    6, so whichever of the 2px top or bottom borders rounded to a line left the other with none. A
    dark colour swatch then read as an open box (zackcage6). Each side keeps at least one line. */
-void rmDrawFramedRect(int x, int y, int w, int h, int border, u64 frameColor, u64 fillColor)
+void Renderer::drawFramedRect(int x, int y, int w, int h, int border, u64 frameColor, u64 fillColor)
 {
     int x0 = scaleX(x), y0 = scaleY(y), x1 = scaleX(x + w), y1 = scaleY(y + h);
     int bx = scaleX(border), by = scaleY(border);
@@ -596,57 +588,57 @@ void rmDrawFramedRect(int x, int y, int w, int h, int border, u64 frameColor, u6
         by = 1;
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
-    gsKit_prim_sprite(gsGlobal, x0 + fRenderXOff, y0 + fRenderYOff, x1 + fRenderXOff, y1 + fRenderYOff, order, frameColor);
-    order++;
+    gsKit_prim_sprite(gsGlobal, x0 + renderXOff_, y0 + renderYOff_, x1 + renderXOff_, y1 + renderYOff_, order_, frameColor);
+    order_++;
     if (x1 - x0 > 2 * bx && y1 - y0 > 2 * by) {
-        gsKit_prim_sprite(gsGlobal, x0 + bx + fRenderXOff, y0 + by + fRenderYOff, x1 - bx + fRenderXOff, y1 - by + fRenderYOff, order, fillColor);
-        order++;
+        gsKit_prim_sprite(gsGlobal, x0 + bx + renderXOff_, y0 + by + renderYOff_, x1 - bx + renderXOff_, y1 - by + renderYOff_, order_, fillColor);
+        order_++;
     }
 }
 
-void rmDrawLine(int x1, int y1, int x2, int y2, u64 color)
+void Renderer::drawLine(int x1, int y1, int x2, int y2, u64 color)
 {
-    float fx1 = scaleX(x1) + fRenderXOff;
-    float fy1 = scaleY(y1) + fRenderYOff;
-    float fx2 = scaleX(x2) + fRenderXOff;
-    float fy2 = scaleY(y2) + fRenderYOff;
+    float fx1 = scaleX(x1) + renderXOff_;
+    float fy1 = scaleY(y1) + renderYOff_;
+    float fx2 = scaleX(x2) + renderXOff_;
+    float fy2 = scaleY(y2) + renderYOff_;
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
-    gsKit_prim_line(gsGlobal, fx1, fy1, fx2, fy2, order, color);
-    order++;
+    gsKit_prim_line(gsGlobal, fx1, fy1, fx2, fy2, order_, color);
+    order_++;
 }
 
-void rmSetDisplayOffset(int x, int y)
+void Renderer::setDisplayOffset(int x, int y)
 {
-    gsKit_set_display_offset(gsGlobal, x * rm_mode_table[vmode].VCK, y);
+    gsKit_set_display_offset(gsGlobal, x * rm_mode_table[vmode_].VCK, y);
 }
 
-void rmSetAspectRatio(enum rm_aratio dar)
+void Renderer::setAspectRatio(enum rm_aratio dar)
 {
-    DAR = dar;
+    dar_ = dar;
 
-    switch (DAR) {
+    switch (dar_) {
         case RM_ARATIO_4_3:
-            iAspectWidth = 4; // width = width * 4 / 4
+            aspectWidth_ = 4; // width = width * 4 / 4
             break;
         case RM_ARATIO_16_9:
-            iAspectWidth = 3; // width = width * 3 / 4
+            aspectWidth_ = 3; // width = width * 3 / 4
             break;
     };
 }
 
-int rmWideScale(int x)
+int Renderer::wideScale(int x)
 {
-    return (x * iAspectWidth) >> 2;
+    return (x * aspectWidth_) >> 2;
 }
 
 // Get the pixel aspect ratio (how wide or narrow are the pixels?)
-float rmGetPAR()
+float Renderer::getPAR()
 {
-    float fPAR = (float)rm_mode_table[vmode].PAR2 / (float)rm_mode_table[vmode].PAR1;
+    float fPAR = (float)rm_mode_table[vmode_].PAR2 / (float)rm_mode_table[vmode_].PAR1;
 
     // In anamorphic mode the pixels are stretched to 16:9
-    if ((DAR == RM_ARATIO_16_9) && (rm_mode_table[vmode].aratio == RM_ARATIO_4_3))
+    if ((dar_ == RM_ARATIO_16_9) && (rm_mode_table[vmode_].aratio == RM_ARATIO_4_3))
         fPAR *= 0.75f;
 
     // In interlaced frame mode, the pixel are (virtually) twice as high
@@ -657,7 +649,7 @@ float rmGetPAR()
 }
 
 // Get interfaced frame mode
-static int rmGetInterlacedFrameMode()
+int Renderer::interlacedFrameMode()
 {
     if ((gsGlobal->Interlace == GS_INTERLACED) && (gsGlobal->Field == GS_FRAME))
         return 1;
@@ -665,36 +657,170 @@ static int rmGetInterlacedFrameMode()
     return 0;
 }
 
-int rmScaleX(int x)
+int Renderer::scaleXi(int x)
 {
     return scaleX(x);
 }
 
-int rmScaleY(int y)
+int Renderer::scaleYi(int y)
 {
     return scaleY(y);
 }
 
+int Renderer::unScaleX(int x)
+{
+    return (x * 640) / displayWidth_;
+}
+
+void Renderer::setOverscan(int overscan)
+{
+    displayXOff_ = (gsGlobal->Width * overscan) / (2 * 1000);
+    displayYOff_ = (gsGlobal->Height * overscan) / (2 * 1000);
+    displayWidth_ = gsGlobal->Width - (2 * displayXOff_);
+    displayHeight_ = gsGlobal->Height - (2 * displayYOff_);
+
+    renderXOff_ = (float)displayXOff_ - 0.5f;
+    renderYOff_ = (float)displayYOff_ - 0.5f;
+
+    if (interlacedFrameMode() == 1)
+        renderYOff_ += 0.25f;
+}
+
+unsigned char Renderer::getHsync(void)
+{
+    return rm_mode_table[vmode_].hsync;
+}
+
+// ---- rm* API (renderman.h) -------------------------------------------------------------------
+
+void rmInvalidateTexture(GSTEXTURE *txt)
+{
+    gRenderer.invalidateTexture(txt);
+}
+
+void rmUnloadTexture(GSTEXTURE *txt)
+{
+    gRenderer.unloadTexture(txt);
+}
+
+void rmStartFrame(void)
+{
+    gRenderer.startFrame();
+}
+
+void rmEndFrame(void)
+{
+    gRenderer.endFrame();
+}
+
+void rmInit()
+{
+    gRenderer.init();
+}
+
+int rmSetMode(int force)
+{
+    return gRenderer.setMode(force);
+}
+
+void rmGetScreenExtentsNative(int *w, int *h)
+{
+    gRenderer.getScreenExtentsNative(w, h);
+}
+
+void rmGetScreenExtents(int *w, int *h)
+{
+    gRenderer.getScreenExtents(w, h);
+}
+
+void rmEnd(void)
+{
+    gRenderer.end();
+}
+
+void rmDrawQuad(rm_quad_t *q)
+{
+    gRenderer.drawQuad(q);
+}
+
+void rmSetReflectionYOffset(int yoff)
+{
+    gRenderer.setReflectionYOffset(yoff);
+}
+
+void rmDrawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int reflection)
+{
+    gRenderer.drawPixmap(txt, x, y, aligned, w, h, scaled, color, reflection);
+}
+
+void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w, int h, short scaled, u64 color, GSTEXTURE *inlay, int ulx, int uly, int urx, int ury, int blx, int bly, int brx, int bry, int reflection)
+{
+    gRenderer.drawOverlayPixmap(overlay, x, y, aligned, w, h, scaled, color, inlay, ulx, uly, urx, ury, blx, bly, brx, bry, reflection);
+}
+
+#ifdef RETROACHIEVEMENTS
+void rmDrawInlayPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, int ulx, int uly, int urx, int ury, int blx, int bly, int brx, int bry)
+{
+    gRenderer.drawInlayPixmap(txt, x, y, aligned, w, h, scaled, color, ulx, uly, urx, ury, blx, bly, brx, bry);
+}
+#endif
+
+void rmDrawRect(int x, int y, int w, int h, u64 color)
+{
+    gRenderer.drawRect(x, y, w, h, color);
+}
+
+void rmDrawFramedRect(int x, int y, int w, int h, int border, u64 frameColor, u64 fillColor)
+{
+    gRenderer.drawFramedRect(x, y, w, h, border, frameColor, fillColor);
+}
+
+void rmDrawLine(int x1, int y1, int x2, int y2, u64 color)
+{
+    gRenderer.drawLine(x1, y1, x2, y2, color);
+}
+
+void rmSetDisplayOffset(int x, int y)
+{
+    gRenderer.setDisplayOffset(x, y);
+}
+
+void rmSetAspectRatio(enum rm_aratio dar)
+{
+    gRenderer.setAspectRatio(dar);
+}
+
+int rmWideScale(int x)
+{
+    return gRenderer.wideScale(x);
+}
+
+float rmGetPAR()
+{
+    return gRenderer.getPAR();
+}
+
+int rmScaleX(int x)
+{
+    return gRenderer.scaleXi(x);
+}
+
+int rmScaleY(int y)
+{
+    return gRenderer.scaleYi(y);
+}
+
 int rmUnScaleX(int x)
 {
-    return (x * 640) / iDisplayWidth;
+    return gRenderer.unScaleX(x);
 }
 
 void rmSetOverscan(int overscan)
 {
-    iDisplayXOff = (gsGlobal->Width * overscan) / (2 * 1000);
-    iDisplayYOff = (gsGlobal->Height * overscan) / (2 * 1000);
-    iDisplayWidth = gsGlobal->Width - (2 * iDisplayXOff);
-    iDisplayHeight = gsGlobal->Height - (2 * iDisplayYOff);
-
-    fRenderXOff = (float)iDisplayXOff - 0.5f;
-    fRenderYOff = (float)iDisplayYOff - 0.5f;
-
-    if (rmGetInterlacedFrameMode() == 1)
-        fRenderYOff += 0.25f;
+    gRenderer.setOverscan(overscan);
 }
 
 unsigned char rmGetHsync(void)
 {
-    return rm_mode_table[vmode].hsync;
+    return gRenderer.getHsync();
 }
