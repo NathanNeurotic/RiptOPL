@@ -392,7 +392,7 @@ def check_pins():
     opl = text('src/opl.cpp')
     check(re.search(r'^static int tryAlternateDevice\(int types\)$', opl, re.M),
           'tryAlternateDevice: autolaunch must not get its own discovery branch again')
-    mini = function_text(opl, 'static void miniInit(')
+    mini = function_text(opl, 'void miniInit(')
     check(mini is not None and 'resolveBootDirToMass();' in mini and 'gBootHomeApa' not in mini,
           'miniInit: autolaunch must run exactly the menu discovery')
     check(re.search(r'!\(result & CONFIG_NETWORK\) && !\(lscstatus & CONFIG_OPL\)', opl),

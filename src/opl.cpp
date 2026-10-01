@@ -5,6 +5,7 @@
 */
 
 #include "include/settings.h"
+#include "include/oplint.h"
 #include "include/opl.h"
 #include "include/ioman.h"
 #include "include/launchdiag.h" // UDPBD hang-triage stage markers (gated on gLaunchDiag)
@@ -64,28 +65,7 @@
 #include <libds34usb.h>
 #endif
 
-#ifdef __EESIO_DEBUG
-#include "SIOCookie.h"
-#define LOG_INIT() ee_sio_start(38400, 0, 0, 0, 0, 1)
-#define LOG_ENABLE() \
-    do {             \
-    } while (0)
-#else
-#ifdef __DEBUG
-#include "include/debug.h"
-#define LOG_INIT() \
-    do {           \
-    } while (0)
-#define LOG_ENABLE() ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&debugSetActive))
-#else
-#define LOG_INIT() \
-    do {           \
-    } while (0)
-#define LOG_ENABLE() \
-    do {             \
-    } while (0)
-#endif
-#endif
+#include "include/oplog.h"
 
 // App support stuff.
 static unsigned char shouldAppsUpdate;
@@ -116,7 +96,6 @@ static void clearIOModuleT(opl_io_module_t *mod)
 // forward decl
 static void clearMenuGameList(opl_io_module_t *mdl);
 static void moduleCleanup(opl_io_module_t *mod, int exception, int modeSelected);
-static void reset(void);
 static void deferredAudioInit(void);
 
 // frame counter
@@ -847,7 +826,7 @@ int oplIsBootInProgress(void)
     return gBootInProgress;
 }
 
-static void initAllSupport(int force_reinit)
+void initAllSupport(int force_reinit)
 {
     // Keep support probing in its established order. GUI page order is handled independently by
     // menuAppendItem(), so visual tab placement does not change device initialization timing.
@@ -887,7 +866,7 @@ static void initAllSupport(int force_reinit)
         mmceArmGameIDTransport();
 }
 
-static void deinitAllSupport(int exception, int modeSelected)
+void deinitAllSupport(int exception, int modeSelected)
 {
     for (int i = 0; i < MODE_COUNT; i++) {
         if (list_support[i].support != NULL)
@@ -1499,7 +1478,7 @@ static void menuUpdateHook()
     }
 }
 
-static void clearErrorMessage(void)
+void clearErrorMessage(void)
 {
     // reset the original frame hook
     frameCounter = 0;
@@ -3941,206 +3920,7 @@ int saveConfig(int types, int showUI)
     return lscret;
 }
 
-// ----------------------------------------------------------
-// -------------------- NBD SRV Support ---------------------
-// ----------------------------------------------------------
-
-
-constexpr int LWNBD_ART_DRAIN_TICKS = 500;
-constexpr int LWNBD_IO_DRAIN_TICKS = 1000;
-
-static void shutdownLwnbdNetwork(void)
-{
-    // The loaded-check mirrors ethShutdown: DEV9's refcount is shared with BDM/HDD, so only
-    // release it when the eth path actually holds it.
-    int ethWasLoaded = ethGetModulesLoaded();
-
-    ethDeinitModules();
-    if (ethWasLoaded)
-        sysShutdownDev9();
-}
-
-static int loadLwnbdSvr(int *teardownStarted)
-{
-    int ret, padStatus, padTries;
-    int ethWasLoadedBeforePreflight;
-    struct lwnbd_config
-    {
-        char defaultexport[32];
-        uint8_t readonly;
-    };
-    struct lwnbd_config config;
-
-    *teardownStarted = 0;
-
-    /* compat stuff for user not providing name export (useless when there was only one export) */
-    ret = strlen(gExportName);
-    if (ret == 0)
-        strcpy(config.defaultexport, "hdd0");
-    else
-        strcpy(config.defaultexport, gExportName);
-
-    config.readonly = !gEnableWrite;
-
-    /*
-     * Prove that the NIC can establish link and configuration while the live menu
-     * is still intact. In particular, an unplugged cable must not send the failure
-     * path through audioEnd(), unloadPads(), or the IOP reset used to restore a
-     * successfully-started server -- that is the reported freeze at the
-     * "NBD Server unloading..." screen (#307).
-     */
-    ethWasLoadedBeforePreflight = ethGetModulesLoaded();
-    ret = ethLoadInitModules();
-    if (ret != 0) {
-        if (!ethWasLoadedBeforePreflight)
-            shutdownLwnbdNetwork();
-        return ret;
-    }
-
-    /*
-     * If preflight brought up the stack solely for this check, return DEV9 to its
-     * prior ownership state. The normal post-teardown load below then starts from
-     * the same clean state as every other NBD launch.
-     */
-    if (!ethWasLoadedBeforePreflight)
-        shutdownLwnbdNetwork();
-
-    /*
-     * Support cleanup invalidates device-owned lists used by art requests.
-     * If the bounded drain cannot make that ownership safe, keep the live menu
-     * intact and let the user retry.
-     */
-    if (!cacheAbortMmceImageLoadsTimed(LWNBD_ART_DRAIN_TICKS) ||
-        !cacheCancelPendingImageLoadsTimed(LWNBD_ART_DRAIN_TICKS))
-        return -1;
-
-    /*
-     * Block new foreground work and bound the drain while the rest of the menu
-     * is still live. A stuck request therefore fails the start instead of
-     * freezing after audio and pads have already been dismantled.
-     */
-    ioBlockOpsTimed(1, LWNBD_IO_DRAIN_TICKS);
-    if (ioHasPendingRequests()) {
-        ioBlockOps(0);
-        return -1;
-    }
-
-    *teardownStarted = 1;
-
-    // deinit audio lib while nbd server is running
-    audioEnd();
-
-    guiExecDeferredOps();
-
-    // Deinitialize all support without shutting down the HDD unit.
-    // NOTE(rebuild): the fork passes a 3rd "spare a second mode" argument here; this tree's
-    // deinitAllSupport is still the 2-arg form, so the call is adapted rather than copied.
-    deinitAllSupport(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
-    clearErrorMessage(); /* At this point, an error might have been displayed (since background tasks were completed).
-                            Clear it, otherwise it will get displayed after the server is closed. */
-
-    unloadPads();
-
-    ret = ethLoadInitModules();
-    if (ret == 0) {
-        ret = sysLoadModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL); /* gHDDStartMode ? */
-        if (ret >= 0) {
-            ret = sysLoadModuleBuffer(&lwnbdsvr_irx, size_lwnbdsvr_irx, sizeof(config), (char *)&config);
-            if (ret >= 0)
-                ret = 0;
-        }
-    }
-
-    if (ret != 0)
-        shutdownLwnbdNetwork();
-
-    padInit(0);
-
-    // init all pads, but never wedge the status screen on a failed reconnect
-    padStatus = 0;
-    padTries = 0;
-    while (!padStatus && padTries++ < 100) {
-        padStatus = startPads();
-        if (!padStatus)
-            delay(50);
-    }
-    if (!padStatus)
-        LOG("loadLwnbdSvr: pads did not start after teardown (%d tries)\n", padTries);
-
-    // now ready to display some status
-
-    return ret;
-}
-
-
-static void unloadLwnbdSvr(void)
-{
-    // Release the live server stack before resetting the IOP (#307): reset() -> sysReset() parks
-    // the EE in unbounded SifIopReset/SifIopSync waits, which wedge against a live, DEV9-powered
-    // stack. This function is now only reached when loadLwnbdSvr actually dismantled the menu
-    // (teardownStarted), so a failed bring-up never gets here at all.
-    shutdownLwnbdNetwork();
-    unloadPads();
-
-    reset();
-
-    LOG_INIT();
-    LOG_ENABLE();
-
-    // reinit the input pads
-    padInit(0);
-
-    /* Bounded retry (#307): an unbounded startPads loop turns a half-completed IOP reset into a
-     * hard freeze at exactly the reported "NBD Server unloading..." screen. ~5 s of retries covers
-     * a slow IOP; if pads still won't start, degrade (log + continue, the menu's own pad handling
-     * recovers on later polls) instead of wedging forever. */
-    int ret = 0, tries = 0;
-    while (!ret && tries++ < 100) {
-        ret = startPads();
-        if (!ret)
-            delay(50);
-    }
-    if (!ret)
-        LOG("unloadLwnbdSvr: pads did not start after IOP reset (%d tries)\n", tries);
-
-    // now start io again
-    ioBlockOps(0);
-
-    // init all supports again
-    initAllSupport(1);
-
-    audioInit();
-    sfxInit(0);
-    if (gEnableBGM)
-        bgmStart();
-}
-
-void handleLwnbdSrv()
-{
-    char temp[256];
-    int teardownStarted;
-
-    // prepare for lwnbd, display screen with info
-    guiRenderTextScreen(_l(_STR_STARTINGNBD));
-    if (loadLwnbdSvr(&teardownStarted) == 0) {
-        snprintf(temp, sizeof(temp), "%s", _l(_STR_RUNNINGNBD));
-        guiMsgBox(temp, 0, NULL);
-    } else
-        guiMsgBox(_l(_STR_STARTFAILNBD), 0, NULL);
-
-    // Only a path that actually dismantled the menu needs the reset-and-restore cycle. A failed
-    // preflight (no cable/link) leaves the menu live, so it must NOT reach the IOP reset -- that
-    // reset is the reported freeze at the "NBD Server unloading..." screen (#307).
-    if (teardownStarted) {
-        guiRenderTextScreen(_l(_STR_UNLOADNBD));
-        unloadLwnbdSvr();
-    }
-}
-
-// ----------------------------------------------------------
-// --------------------- Init/Deinit ------------------------
-// ----------------------------------------------------------
-static void reset(void)
+void reset(void)
 {
     sysReset(SYS_LOAD_MC_MODULES | SYS_LOAD_USB_MODULES | SYS_LOAD_ISOFS_MODULE);
 
@@ -4634,10 +4414,8 @@ static void deferredAudioInit(void)
 // --------------------- Auto Loading -----------------------
 // ----------------------------------------------------------
 
-// Extra delay(6) rounds autoLaunchBDMGame waits for mass0: to publish before giving up on the launch.
-constexpr int AUTOLAUNCH_MASS0_RETRIES = 8;
 
-static void miniInit(int mode)
+void miniInit(int mode)
 {
     int ret;
 #ifdef __OPLDIAG
@@ -4760,234 +4538,6 @@ void miniDeinit(config_set_t *configSet)
 
     ioEnd();
     configEnd();
-}
-
-static void autoLaunchHDDGame(char *argv[])
-{
-    char path[256];
-    char launchPart[sizeof(gOPLPart)];
-    config_set_t *configSet;
-
-    miniInit(HDD_MODE);
-
-    gAutoLaunchGame = static_cast<hdl_game_info_t*>(malloc(sizeof(hdl_game_info_t)));
-    if (gAutoLaunchGame == NULL) {
-        miniDeinit(NULL);
-        return;
-    }
-    memset(gAutoLaunchGame, 0, sizeof(hdl_game_info_t));
-
-    // "%s", argv[1] -- NOT argv[1] as the format string. These come from another program's argv
-    // (a launcher/shortcut), so a name containing a % sequence made snprintf walk a nonexistent
-    // varargs list. Same below for argv[2] in the BDM twin.
-    snprintf(gAutoLaunchGame->startup, sizeof(gAutoLaunchGame->startup), "%s", argv[1]);
-    gAutoLaunchGame->start_sector = strtoul(argv[2], NULL, 0);
-    snprintf(launchPart, sizeof(launchPart), "hdd0:%s", argv[3]);
-    // argv[3] is a compatibility hint from the launching OPL instance. Re-read the authoritative
-    // __common/OPL/conf_hdd.cfg policy in miniInit() rather than letting a stale launcher hint
-    // overwrite the mounted data home used for CFG/VMC sidecars in this process.
-    if (gOPLPart[0] != '\0' && strcmp(gOPLPart, launchPart) != 0)
-        LOG("HDD mini launch: ignoring stale partition hint %s; policy selected %s\n", launchPart, gOPLPart);
-
-    if (gHDDPrefix != NULL && gHDDPrefix[0] != '\0') {
-        snprintf(path, sizeof(path), "%sCFG/%s.cfg", gHDDPrefix, gAutoLaunchGame->startup);
-        configSet = configAlloc(0, NULL, path);
-        configRead(configSet);
-    } else {
-        // HDL autolaunch does not require a persistent config/art PFS home. Keep the launch alive
-        // with defaults only; never format a NULL prefix into a bogus path.
-        configSet = configAlloc(0, NULL, NULL);
-    }
-    if (configSet == NULL) {
-        free(gAutoLaunchGame);
-        gAutoLaunchGame = NULL;
-        miniDeinit(NULL);
-        return;
-    }
-    // A menu launch gets #Startup from hddGetConfig; this config came straight from the CFG file, which
-    // never stores '#' keys. sbGetCompatModes needs it to find a title's default compatibility modes.
-    configSetStr(configSet, CONFIG_ITEM_STARTUP, gAutoLaunchGame->startup);
-
-    hddLaunchGame(NULL, -1, configSet);
-
-    // Only reached when the launch was refused. hddLaunchGame tears the mini session down only on the
-    // way to a handoff, so finish it here: main() then boots the menu, which must not inherit a live
-    // gAutoLaunchGame (every later menu launch would be treated as this autolaunch).
-    if (gAutoLaunchGame != NULL) {
-        LOG("AUTOLAUNCH HDD launch refused; falling back to the menu\n");
-        free(gAutoLaunchGame);
-        gAutoLaunchGame = NULL;
-        miniDeinit(configSet);
-    }
-}
-
-static void autoLaunchBDMGame(char *argv[])
-{
-    char path[256];
-    config_set_t *configSet;
-
-    miniInit(BDM_MODE);
-
-    gAutoLaunchBDMGame = static_cast<base_game_info_t*>(malloc(sizeof(base_game_info_t)));
-    if (gAutoLaunchBDMGame == NULL) {
-        miniDeinit(NULL);
-        return;
-    }
-    memset(gAutoLaunchBDMGame, 0, sizeof(base_game_info_t));
-
-    // nameLen MUST be initialised and the return MUST be checked. isValidIsoName (supportbase.c)
-    // returns 0 WITHOUT writing *pNameLen for anything that is not *.iso/*.zso -- so an unchecked
-    // call left nameLen holding stack garbage, which then became the length argument of the two
-    // strncpy calls below and the index of the NUL store after them. Any launcher handing OPL a
-    // name it does not recognise wrote an arbitrary distance past a 0x100-byte heap allocation.
-    int nameLen = 0;
-    int format = isValidIsoName(argv[1], &nameLen);
-    // Reject unsupported / over-long filenames. Clamping nameLen instead would desync the
-    // extension offset from the real suffix position, so bail rather than repair.
-    if (format <= 0 || nameLen < 0 || nameLen > ISO_GAME_NAME_MAX) {
-        free(gAutoLaunchBDMGame);
-        gAutoLaunchBDMGame = NULL;
-        miniDeinit(NULL);
-        return;
-    }
-    if (format == GAME_FORMAT_OLD_ISO) {
-        strncpy(gAutoLaunchBDMGame->name, &argv[1][GAME_STARTUP_MAX], nameLen);
-        gAutoLaunchBDMGame->name[nameLen] = '\0';
-        strncpy(gAutoLaunchBDMGame->extension, &argv[1][GAME_STARTUP_MAX + nameLen], sizeof(gAutoLaunchBDMGame->extension));
-        gAutoLaunchBDMGame->extension[sizeof(gAutoLaunchBDMGame->extension) - 1] = '\0';
-    } else {
-        strncpy(gAutoLaunchBDMGame->name, argv[1], nameLen);
-        gAutoLaunchBDMGame->name[nameLen] = '\0';
-        strncpy(gAutoLaunchBDMGame->extension, &argv[1][nameLen], sizeof(gAutoLaunchBDMGame->extension));
-        gAutoLaunchBDMGame->extension[sizeof(gAutoLaunchBDMGame->extension) - 1] = '\0';
-    }
-
-    snprintf(gAutoLaunchBDMGame->startup, sizeof(gAutoLaunchBDMGame->startup), "%s", argv[2]);
-
-    if (strcasecmp("DVD", argv[3]) == 0)
-        gAutoLaunchBDMGame->media = SCECdPS2DVD;
-    else if (strcasecmp("CD", argv[3]) == 0)
-        gAutoLaunchBDMGame->media = SCECdPS2CD;
-
-    gAutoLaunchBDMGame->format = format;
-    gAutoLaunchBDMGame->parts = 1; // ul not supported.
-
-    gAutoLaunchDeviceData = static_cast<bdm_device_data_t*>(malloc(sizeof(bdm_device_data_t)));
-    if (gAutoLaunchDeviceData == NULL) {
-        free(gAutoLaunchBDMGame);
-        gAutoLaunchBDMGame = NULL;
-        miniDeinit(NULL);
-        return;
-    }
-    memset(gAutoLaunchDeviceData, 0, sizeof(bdm_device_data_t));
-    // memset leaves these at 0, and 0 is a VALID BDM_TYPE / a valid UDMA mode -- so an autolaunch
-    // that never identifies the device would claim a concrete type instead of "unknown".
-    gAutoLaunchDeviceData->bdmDeviceType = BDM_TYPE_UNKNOWN;
-    gAutoLaunchDeviceData->bdmHddIsLBA48 = -1;
-    gAutoLaunchDeviceData->ataHighestUDMAMode = -1;
-
-    char apaDevicePrefix[BDM_DEVICE_ROOT_MAX] = {0};
-    // The driver name and device index MUST be recorded together with the slot they came from.
-    // Reading them straight into gAutoLaunchDeviceData meant every probed slot overwrote them, so
-    // after the loop they described the LAST slot opened while apaDevicePrefix still named the
-    // first -- the config path and the device identity disagreed whenever more than one mass
-    // device was present.
-    int selectedMassSlot = -1;
-    // Upstream retries mass0: forever, so a device that never publishes a filesystem hung the
-    // autolaunch on a black screen. Bound it (delay() ticks are ~0.25 s, so about 12 s) and let the
-    // menu boot instead, where the device and its error are visible.
-    int mass0Retries = 0;
-    delay(8);
-    // Loop through mass0: to mass4:
-    for (int i = 0; i <= 4; i++) {
-        snprintf(path, sizeof(path), "mass%d:/", i);
-        int dir = fileXioDopen(path);
-
-        if (dir >= 0) {
-            char detectedDriver[sizeof(gAutoLaunchDeviceData->bdmDriver)] = {0};
-            int detectedDeviceIndex = -1;
-
-            // Every slot in this sweep gets asked, including ones whose backing device has gone --
-            // and asking for the name WITH a return buffer there faults the IOP outright. Boot is
-            // the worst place to do that, so go through the guarded reader and only chase the
-            // device number once it has confirmed a mounted block device. See bdmReadDriverName().
-            if (bdmReadDriverName(dir, detectedDriver, sizeof(detectedDriver)) >= 0)
-                fileXioIoctl2(dir, USBMASS_IOCTL_GET_DEVICE_NUMBER, NULL, 0, &detectedDeviceIndex, sizeof(detectedDeviceIndex));
-            fileXioDclose(dir);
-
-            if (selectedMassSlot < 0) {
-                selectedMassSlot = i;
-                snprintf(gAutoLaunchDeviceData->bdmDriver, sizeof(gAutoLaunchDeviceData->bdmDriver), "%s", detectedDriver);
-                gAutoLaunchDeviceData->massDeviceIndex = detectedDeviceIndex;
-                snprintf(apaDevicePrefix, sizeof(apaDevicePrefix), "mass%d:", i);
-            }
-
-            if (!strcmp(detectedDriver, "ata") && strlen(detectedDriver) == 3) {
-                selectedMassSlot = i;
-                snprintf(gAutoLaunchDeviceData->bdmDriver, sizeof(gAutoLaunchDeviceData->bdmDriver), "%s", detectedDriver);
-                gAutoLaunchDeviceData->massDeviceIndex = detectedDeviceIndex;
-                bdmResolveLBA_UDMA(gAutoLaunchDeviceData); // fills bdmHddIsLBA48 / ataHighestUDMAMode
-                snprintf(apaDevicePrefix, sizeof(apaDevicePrefix), "mass%d:", i);
-                break; // Exit the loop if "ata" device is found
-            }
-        } else {
-            // Retry for mass0: only, and only for a bounded time.
-            if (i == 0 && mass0Retries++ < AUTOLAUNCH_MASS0_RETRIES) {
-                delay(6);
-                i--;
-            } else {
-                break;
-            }
-        }
-        delay(6);
-    }
-
-    // No mass device answered at all. The old mass0: guess could only build a path to a file that is
-    // not there, and the launch error behind it has no screen to show on.
-    if (selectedMassSlot < 0) {
-        LOG("AUTOLAUNCH no mass device answered; falling back to the menu\n");
-        free(gAutoLaunchDeviceData);
-        gAutoLaunchDeviceData = NULL;
-        free(gAutoLaunchBDMGame);
-        gAutoLaunchBDMGame = NULL;
-        miniDeinit(NULL);
-        return;
-    }
-
-    // bdmDeviceRoot was never written on this path, so the launch legs that resolve paths through
-    // it saw an empty string.
-    snprintf(gAutoLaunchDeviceData->bdmDeviceRoot, sizeof(gAutoLaunchDeviceData->bdmDeviceRoot), "%s", apaDevicePrefix);
-
-    if (gBDMPrefix[0] != '\0') {
-        snprintf(path, sizeof(path), "%s%s/CFG/%s.cfg", apaDevicePrefix, gBDMPrefix, gAutoLaunchBDMGame->startup);
-        snprintf(gAutoLaunchDeviceData->bdmPrefix, sizeof(gAutoLaunchDeviceData->bdmPrefix), "%s%s/", apaDevicePrefix, gBDMPrefix);
-    } else {
-        snprintf(path, sizeof(path), "%sCFG/%s.cfg", apaDevicePrefix, gAutoLaunchBDMGame->startup);
-        snprintf(gAutoLaunchDeviceData->bdmPrefix, sizeof(gAutoLaunchDeviceData->bdmPrefix), "%s", apaDevicePrefix);
-    }
-
-
-    configSet = configAlloc(0, NULL, path);
-    configRead(configSet);
-    // A menu launch gets #Startup from sbPopulateConfig; this config came straight from the CFG file, which
-    // never stores '#' keys. sbGetCompatModes needs it to find a title's default compatibility modes.
-    if (configSet != NULL)
-        configSetStr(configSet, CONFIG_ITEM_STARTUP, gAutoLaunchBDMGame->startup);
-
-    bdmLaunchGame(NULL, -1, configSet);
-
-    // Only reached when the launch was refused (missing ISO, fragmented image, unusable device).
-    // bdmLaunchGame tears the mini session down only on the way to a handoff; a Neutrino abort that
-    // already did so has cleared gAutoLaunchBDMGame. Finish it here, or main() would boot the menu with
-    // live autolaunch state and treat every later menu launch as this autolaunch.
-    if (gAutoLaunchBDMGame != NULL) {
-        LOG("AUTOLAUNCH BDM launch refused; falling back to the menu\n");
-        free(gAutoLaunchDeviceData);
-        gAutoLaunchDeviceData = NULL;
-        free(gAutoLaunchBDMGame);
-        gAutoLaunchBDMGame = NULL;
-        miniDeinit(configSet);
-    }
 }
 
 // --------------------- Main --------------------
