@@ -11,11 +11,11 @@ import collections, glob, os, re, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAYERS = [
     "system ioman util tar ps2cnf ioprp atlas httpclient nbns launchdiag elfldr_noreset debug httpcatalog hdd md5 lz4 zso",
-    "config lang xparam cheatman gsm pad sound OSDHistory vmc_groups",
+    "config lang xparam cheatman gsm pad sound OSDHistory vmc_groups settings",
     "renderman textures texcache fntsys themes",
     "supportbase bdmsupport hddsupport ethsupport appsupport mmcesupport udpfssupport httpsupport favsupport vcdsupport cuesupport discsupport netsupport artindex folderbrowse rabadge ranet rawatch rahash retrogem",
     "menusys dia dialogs gui guigame libview",
-    "opl",
+    "opl host",
 ]
 layer = {n: i for i, l in enumerate(LAYERS) for n in l.split()}
 
@@ -26,7 +26,16 @@ for n, t in files.items():
     for m in pat.finditer(t):
         if m.group(2) not in ("if", "while", "for", "switch", "main"):
             defs.setdefault(m.group(2), n)
-tok = {n: collections.Counter(re.findall(r"\b[A-Za-z_]\w*\b", t)) for n, t in files.items()}
+def code_only(text):
+    """Drop comments and string/char literals so words in prose do not count as references."""
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+    text = re.sub(r"//[^\n]*", " ", text)
+    text = re.sub(r'"(?:\\.|[^"\\\n])*"', '""', text)
+    return text
+
+# Identifiers that are not member names (obj.name, p->name, ns::name): those are not references to a free function.
+IDENT = re.compile(r"(?<![\w.>:])[A-Za-z_]\w*\b")
+tok = {n: collections.Counter(IDENT.findall(code_only(t))) for n, t in files.items()}
 
 edges = collections.defaultdict(collections.Counter)
 up = collections.defaultdict(list)

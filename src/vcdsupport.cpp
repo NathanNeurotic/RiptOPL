@@ -17,6 +17,7 @@
 #include <sys/stat.h> // mkdir (POSIX, used like util.c / OSDHistory.c)
 #include <kernel.h>   // DIntr/EIntr -- the one-slot display-id resolve request (#380)
 
+#include "include/host.h"
 #include "include/opl.h"         // pulls <dirent.h> (opendir/readdir/DIR) + strcasecmp, like supportbase.c
 #include "include/system.h"      // POPS_FOLDER
 #include "include/ioman.h"       // LOG (BDMA equip probe trace)
@@ -176,7 +177,7 @@ const char *vcdDisplayName(int mode, const char *text)
     // VCD rows only, and deliberately so: the game-ID prefix this strips is a POPSTARTER/.VCD
     // filename convention. A CUE row's name is an Ember game FOLDER, which carries no such prefix
     // and must never be trimmed by this option.
-    if (!gVcdHideGameId || text == NULL || libViewActive(mode) != LIB_VIEW_PS1)
+    if (!gVcdHideGameId || text == NULL || host::library().viewActive(mode) != LIB_VIEW_PS1)
         return text;
     n = vcdGameIdPrefixLen(text);
     return n ? text + n : text;
@@ -188,7 +189,7 @@ const char *vcdDisplayNameForRow(item_list_t *itemList, int id, const char *text
 
     // A Mixed page is not itself a PS1 page, so the legacy mode-only helper cannot identify its
     // VCD rows. Ask the list for the row view; homogeneous pages fall back to their active view.
-    if (!gVcdHideGameId || text == NULL || itemList == NULL || libListRowView(itemList, id) != LIB_VIEW_PS1)
+    if (!gVcdHideGameId || text == NULL || itemList == NULL || host::library().listRowView(itemList, id) != LIB_VIEW_PS1)
         return text;
     n = vcdGameIdPrefixLen(text);
     return n ? text + n : text;
@@ -1557,11 +1558,11 @@ void vcdEnsureBdmaForLaunch(int source, int mode)
 
     LOG("VCD BDMA equip failed (%d: %s) -- launching as-is (card keeps its current driver pair)\n", er, diag);
     if (er == -4)
-        guiWarning(_l(_STR_BDMA_ERR_SRC), 6);
+        host::ui().warning(_l(_STR_BDMA_ERR_SRC), 6);
     else if (er == -2)
-        guiWarning(_l(_STR_BDMA_ERR_SPACE), 6);
+        host::ui().warning(_l(_STR_BDMA_ERR_SPACE), 6);
     else
-        guiWarning(_l(_STR_BDMA_ERR_IO), 6);
+        host::ui().warning(_l(_STR_BDMA_ERR_IO), 6);
 }
 
 // Explicit USB mode application for the per-launch fat32/exFAT dialog (bdmLaunchVcd, USB devices).
@@ -1582,11 +1583,11 @@ void vcdApplyUsbModeForLaunch(int mode)
 
     LOG("VCD USB-mode equip failed (%d: %s) -- launching as-is (card keeps its current driver pair)\n", er, diag);
     if (er == -4)
-        guiWarning(_l(_STR_BDMA_ERR_SRC), 6);
+        host::ui().warning(_l(_STR_BDMA_ERR_SRC), 6);
     else if (er == -2)
-        guiWarning(_l(_STR_BDMA_ERR_SPACE), 6);
+        host::ui().warning(_l(_STR_BDMA_ERR_SPACE), 6);
     else
-        guiWarning(_l(_STR_BDMA_ERR_IO), 6);
+        host::ui().warning(_l(_STR_BDMA_ERR_IO), 6);
 }
 
 // ---- POPSTARTER memory-card externals -----------------------------------------------

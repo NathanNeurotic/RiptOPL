@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "include/host.h"
 #include "include/raii.h"
 #include "include/opl.h"
 #include "include/system.h"
@@ -69,7 +70,7 @@ static void discCheckWorker(void)
     int result;
     auto releaseBusy = raii::scopeExit([] { discBusy = 0; }); // every exit clears the busy latch
     if (discSupportPrefix(prefix, sizeof(prefix)) < 0) {
-        guiShowRANotice(_l(_STR_RA_DISC_HOME_ERROR), NULL);
+        host::ui().raNotice(_l(_STR_RA_DISC_HOME_ERROR), NULL);
         return;
     }
     raHashLogOpen(prefix);
@@ -79,28 +80,28 @@ static void discCheckWorker(void)
         raHashLogClose();
     });
     if (discIdentity(bootPath, startup, NULL) < 0) {
-        guiShowRANotice(_l(_STR_DISC_LAUNCH_ERR), NULL);
+        host::ui().raNotice(_l(_STR_DISC_LAUNCH_ERR), NULL);
         return;
     }
     // A failed re-check must not keep a stale set for this serial in memory.
     ClearWatchList();
     if (raHashDisc(bootPath, startup, hash) < 0) {
-        guiShowRANotice(_l(_STR_RA_DISC_HASH_FAILED), NULL);
+        host::ui().raNotice(_l(_STR_RA_DISC_HASH_FAILED), NULL);
         return;
     }
     raHashLogAdd("(disc)", startup, hash);
     result = raAskPC(hash, startup, prefix, info, sizeof(info), info2, sizeof(info2));
     if (result == 0)
-        guiShowRANotice(info[0] ? info : _l(_STR_RA_SUPPORTED),
+        host::ui().raNotice(info[0] ? info : _l(_STR_RA_SUPPORTED),
                         info2[0] ? info2 : _l(_STR_RA_START_TO_TRACK));
     else if (result == 1)
-        guiShowRANotice(_l(_STR_RA_UNKNOWN_IMAGE), hash);
+        host::ui().raNotice(_l(_STR_RA_UNKNOWN_IMAGE), hash);
     else if (result == -7)
-        guiShowRANotice(_l(_STR_RA_STILL_IDENTIFYING), _l(_STR_RA_TRY_AGAIN));
+        host::ui().raNotice(_l(_STR_RA_STILL_IDENTIFYING), _l(_STR_RA_TRY_AGAIN));
     else if (result == -8)
-        guiShowRANotice(_l(_STR_RA_NET_BUSY), _l(_STR_RA_NET_BUSY_HASH));
+        host::ui().raNotice(_l(_STR_RA_NET_BUSY), _l(_STR_RA_NET_BUSY_HASH));
     else
-        guiShowRANotice(_l(_STR_RA_PC_NO_ANSWER), _l(_STR_RA_PC_NO_ANSWER2));
+        host::ui().raNotice(_l(_STR_RA_PC_NO_ANSWER), _l(_STR_RA_PC_NO_ANSWER2));
 }
 
 int discCheckSupportDeferred(void)
@@ -119,30 +120,30 @@ void discLaunch(int (*progress)(void))
 {
     char bootPath[64], startup[16], prefix[120];
     if (discCheckBusy()) {
-        guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);
+        host::ui().raNotice(_l(_STR_RA_CHECK_RUNNING), NULL);
         return;
     }
     if (!gRATelemetry) {
-        guiShowRANotice(_l(_STR_RA_DISC_ENABLE), NULL);
+        host::ui().raNotice(_l(_STR_RA_DISC_ENABLE), NULL);
         return;
     }
     int identity = discIdentity(bootPath, startup, progress);
     if (identity < 0) {
         if (identity != SYS_DISC_CANCELLED)
-            guiShowRANotice(_l(_STR_DISC_LAUNCH_ERR), NULL);
+            host::ui().raNotice(_l(_STR_DISC_LAUNCH_ERR), NULL);
         return;
     }
     if (discSupportPrefix(prefix, sizeof(prefix)) < 0) {
-        guiShowRANotice(_l(_STR_RA_DISC_HOME_ERROR), NULL);
+        host::ui().raNotice(_l(_STR_RA_DISC_HOME_ERROR), NULL);
         return;
     }
     if (sbLoadWatchList(prefix, startup) <= 0) {
-        guiShowRANotice(_l(_STR_RA_DISC_CHECK_FIRST), NULL);
+        host::ui().raNotice(_l(_STR_RA_DISC_CHECK_FIRST), NULL);
         return;
     }
     sbEnsureIgrUsbDrivers(0); // before the MMCE switch below, so mc0: is still the boot card
     mmceSendGameID(startup, NULL, 0);
-    deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
     // Keep PS2LOGO's disc-authentication path; the EE core supplies telemetry.
     sysLaunchLoaderElf(startup, "DISC_MODE", 0, NULL, 0, NULL, 1, 0);
 }

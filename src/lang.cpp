@@ -1,3 +1,4 @@
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/util.h"
@@ -161,14 +162,14 @@ int lngAddLanguages(char *path, const char *separator, int mode)
     // already locked this way in themes.c): this runs on the IO worker for device-triggered language
     // discovery, and guiShowUIConfig hands the very same list to its dialog. The lock is a
     // not-ready no-op during pre-GUI init.
-    guiLock();
+    host::ui().lock();
     lngRebuildLangNames();
-    guiUnlock();
+    host::ui().unlock();
 
     const char *temp;
     if (configGetStr(configGetByType(CONFIG_OPL), "language_text", &temp)) {
         if (lngSetGuiValue(lngFindGuiID(temp)))
-            moduleUpdateMenu(mode, 0, 1);
+            host::app().moduleUpdateMenu(mode, 0, 1);
     }
 
     return result;

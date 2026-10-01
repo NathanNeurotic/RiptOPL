@@ -4,6 +4,7 @@
   Review OpenUsbLd README & LICENSE files for further details.
 */
 
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/util.h"
 #include "include/ioman.h"
@@ -35,7 +36,6 @@ static const char *const saveIconName[3] = {"list.icn", "copy.icn", "del.icn"};
 
 static int mcID = -1;
 
-void guiWarning(const char *text, int count);
 
 int getmcID(void)
 {
@@ -702,14 +702,14 @@ int CheckPS2Logo(int fd, u32 lba)
                 strcat(text, "don't match!");
             }
             if (gEnableDebug)
-                guiWarning(text, 12);
+                host::ui().warning(text, 12);
         } else {
             if (gEnableDebug)
-                guiWarning("Not a valid PS2 Logo first byte!", 12);
+                host::ui().warning("Not a valid PS2 Logo first byte!", 12);
         }
     } else {
         if (gEnableDebug)
-            guiWarning("Error reading first 12 disc sectors (PS2 Logo)!", 25);
+            host::ui().warning("Error reading first 12 disc sectors (PS2 Logo)!", 25);
     }
     return ValidPS2Logo;
 }

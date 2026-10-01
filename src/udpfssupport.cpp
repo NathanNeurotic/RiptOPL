@@ -1,3 +1,4 @@
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/gui.h"
@@ -195,7 +196,7 @@ item_list_t *udpfsGetObject(int initOnly)
 // the PS1 page. A network PS1 page is therefore Ember-only even in its failure state.
 static int udpfsGetItemView(item_list_t *itemList, int id)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
         return id >= 0 && id < udpfsGameCount ? LIB_VIEW_ISO : LIB_VIEW_PS1;
     return view;
@@ -203,12 +204,12 @@ static int udpfsGetItemView(item_list_t *itemList, int id)
 
 static int udpfsGetSourceId(item_list_t *itemList, int id)
 {
-    return libListViewActive(itemList) == LIB_VIEW_MIXED && id >= udpfsGameCount ? id - udpfsGameCount : id;
+    return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= udpfsGameCount ? id - udpfsGameCount : id;
 }
 
 static int udpfsActiveGameCount(const item_list_t *itemList)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     return view == LIB_VIEW_MIXED ? udpfsGameCount + udpfsPs1GameCount :
            view == LIB_VIEW_PS1   ? udpfsPs1GameCount :
                                     udpfsGameCount;
@@ -289,7 +290,7 @@ static int udpfsNeedsUpdate(item_list_t *itemList)
     udpfsDiscoverThemes();
 
     // PS1/Ember view: force a rescan once on toggle, then refresh on toggle only (skip disc heuristics).
-    if (libViewConsumeDirty(itemList->mode))
+    if (host::library().consumeDirty(itemList->mode))
         return 1;
     // Folder browsing: descend/ascend forces one rescan.
     if (folderConsumeDirty(itemList->mode))
@@ -302,7 +303,7 @@ static int udpfsNeedsUpdate(item_list_t *itemList)
     // restored onto a remembered PS1 view (Remember Last Played on an Ember title) otherwise returned
     // here forever and stayed blank until the user toggled L3 (TwistedZeon, 09-29). MMCE and BDM
     // build that first list the same way (mmcePs1Scanned; bdmNeedsUpdate's connect pass).
-    if (libListViewActive(itemList) == LIB_VIEW_PS1)
+    if (host::library().listViewActive(itemList) == LIB_VIEW_PS1)
         return !udpfsPs1Scanned;
 
     if (udpfsULSizePrev == -2)
@@ -341,7 +342,7 @@ static int udpfsFoldersCreated = 0;
 
 static int udpfsUpdateGameList(item_list_t *itemList)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     int reached = 0;
     int answeredBefore;
     if (udpfsIomanModLoaded == 0)
@@ -437,7 +438,7 @@ static void udpfsRenameGame(item_list_t *itemList, int id, char *newName)
     if (udpfsGetItemView(itemList, id) == LIB_VIEW_PS1) {
         base_game_info_t *game = udpfsActiveGame(itemList, id);
         if (game != &udpfsEmptyGame && cueIsCueEntry(game) && cueRenameGame(udpfsPrefix, game->name, newName) == 0)
-            libViewMarkDirty(itemList->mode); // the already-queued menu update must re-scan EMBER/games
+            host::library().markDirty(itemList->mode); // the already-queued menu update must re-scan EMBER/games
         return;
     }
     if (udpfsActiveGame(itemList, id) == &udpfsEmptyGame)
@@ -455,7 +456,7 @@ static void udpfsLaunchVcd(item_list_t *itemList, const char *vcdName, config_se
     (void)itemList;
     (void)vcdName;
     (void)configSet;
-    guiMsgBox(_l(_STR_VCD_NOT_ON_NET), 0, NULL);
+    host::ui().msgBox(_l(_STR_VCD_NOT_ON_NET), 0, NULL);
 }
 
 // Ember over UDPFS. Ember performs no IOP reset, so it inherits the live udpfs: filesystem and can
@@ -468,21 +469,21 @@ static void udpfsLaunchCue(item_list_t *itemList, const char *cueName, config_se
     if (cueName == NULL || cueName[0] == '\0')
         return;
     if (!cueNameLaunchable(cueName)) {
-        guiMsgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
         return;
     }
     if (!cueResolveEmber(udpfsPrefix, emberElf, sizeof(emberElf))) {
-        guiMsgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
         return;
     }
     if (!cueResolveEmberBios(udpfsPrefix, biosPath, sizeof(biosPath))) {
-        guiMsgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
         return;
     }
 
     cueApplySettings(udpfsPrefix, cueName, configSet); // best-effort marker, never a launch gate
     if (!cueGameHasImage(udpfsPrefix, cueName)) {
-        guiMsgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
         return;
     }
 
@@ -493,7 +494,7 @@ static void udpfsLaunchCue(item_list_t *itemList, const char *cueName, config_se
 
     // UNMOUNT_EXCEPTION is load-bearing: Ember inherits this live mount. udpfsCleanUp keeps the
     // socket/module chain resident for the whole boot, so no network reinitialization is attempted.
-    deinit(UNMOUNT_EXCEPTION, itemList->mode);
+    host::app().deinit(UNMOUNT_EXCEPTION, itemList->mode);
     sysLaunchEmber(emberElf, launchName);
 }
 
@@ -532,7 +533,7 @@ static void udpfsLaunchGame(item_list_t *itemList, int id, config_set_t *configS
 
     if (gRememberLastPlayed) {
         configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        saveConfig(CONFIG_LAST, 0);
+        host::app().saveConfig(CONFIG_LAST, 0);
     }
 
     // sbPrepare resolves the per-game compat mask (and per-game pad-emu etc.). The udpfs launch does not
@@ -581,11 +582,11 @@ static void udpfsLaunchGame(item_list_t *itemList, int id, config_set_t *configS
     // fallback the generic _STR_NEUTRINO_* warnings promise does not exist for a network filesystem) and
     // abort cleanly while the GUI is still up (no deinit into a no-op launch = black screen).
     if (game->format == GAME_FORMAT_USBLD || !strcasecmp(game->extension, ".zso")) {
-        guiWarning(_l(_STR_NET_NEEDS_NEUTRINO), 6);
+        host::ui().warning(_l(_STR_NET_NEEDS_NEUTRINO), 6);
         return;
     }
     if (neutrinoPath == NULL) {
-        guiWarning(_l(_STR_NET_NEEDS_NEUTRINO), 6);
+        host::ui().warning(_l(_STR_NET_NEEDS_NEUTRINO), 6);
         return;
     }
 
@@ -618,10 +619,10 @@ static void udpfsLaunchGame(item_list_t *itemList, int id, config_set_t *configS
     mmceSendGameID(game->startup, neutrinoPath,
                    (neutrinoVmc.arg[0][0] ? 1 : 0) | (neutrinoVmc.arg[1][0] ? 2 : 0)); // Δ3: -mc-covered slots keep their card
 
-    int neutrinoDevMode = oplPath2Mode(neutrinoPath);
+    int neutrinoDevMode = host::app().pathToMode(neutrinoPath);
     char gameStartup[GAME_STARTUP_MAX + 1];
     snprintf(gameStartup, sizeof(gameStartup), "%s", game->startup);
-    deinitEx(sbNeutrinoDeinitException(neutrinoPath), itemList->mode, neutrinoDevMode); // itemCleanUp frees udpfsGames/game
+    host::app().deinitEx(sbNeutrinoDeinitException(neutrinoPath), itemList->mode, neutrinoDevMode); // itemCleanUp frees udpfsGames/game
 
     // Hand off to Neutrino with the udpfs driver token. `partname` and `gameStartup` survive the deinit;
     // `game` does not and is not dereferenced past this point.

@@ -1,3 +1,4 @@
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/util.h"
@@ -869,7 +870,7 @@ void sbEnsureIgrUsbDrivers(int compatmask)
     asked = 1;
     snprintf(dir, sizeof(dir), "mc%d:/SYS-CONF", mc);
     sbFillArg(msg, sizeof(msg), _l(_STR_IGR_USB_DRIVERS_PROMPT), dir);
-    if (!guiMsgBox(msg, 1, NULL))
+    if (!host::ui().msgBox(msg, 1, NULL))
         return;
 
     if (vcdMcHasSpace(dir, need[mc]) == 0)
@@ -890,7 +891,7 @@ void sbEnsureIgrUsbDrivers(int compatmask)
                 unlink(path[i]); // the core would load the one and fail the other
         }
         sbFillArg(msg, sizeof(msg), _l(_STR_IGR_USB_DRIVERS_FAILED), dir);
-        guiMsgBox(msg, 0, NULL);
+        host::ui().msgBox(msg, 0, NULL);
     }
 }
 
@@ -1418,7 +1419,7 @@ int sbCheatsMissingContinue(void *pCommon, int cheatResult)
     // internal terminate code minus one. Testing for 2 here made "continue without cheats" cancel the
     // launch too, so a title with cheats enabled but no .cht file could never start from the menu.
     // addAccept draws both icons.
-    if (guiMsgBox(text, 1, NULL))
+    if (host::ui().msgBox(text, 1, NULL))
         return 1;
 
     sbUnprepare(pCommon);
@@ -1501,7 +1502,7 @@ int sbLoadCheats(const char *path, const char *file)
                         if (cheatMode >= 0) {
                             LOG("Cheats found in CHT/cht.tar (%s)\n", tarGetDevicePrefix(TAR_KIND_CHT));
                             if ((gAutoLaunchGame == NULL) && (gAutoLaunchBDMGame == NULL) && (cheatMode == 1))
-                                guiManageCheats();
+                                host::ui().manageCheats();
                             return cheatMode;
                         }
                     }
@@ -1557,7 +1558,7 @@ int sbLoadCheats(const char *path, const char *file)
         } else {
             LOG("Cheats found\n");
             if ((gAutoLaunchGame == NULL) && (gAutoLaunchBDMGame == NULL) && (cheatMode == 1))
-                guiManageCheats();
+                host::ui().manageCheats();
         }
     }
 
@@ -2313,14 +2314,14 @@ void sbBuildVmcNeutrinoArgs(config_set_t *configSet, const char *vmcPrefix, neut
             int b = snprintf(binPath, sizeof(binPath), "%sVMC/%s.bin", vmcPrefix, vmcName);
             if (b >= (int)sizeof(binPath) || !sbFileExists(binPath)) {
                 LOG("[NEUTRINO] VMC slot %d (%s) not found/oversize -- launching without it\n", slot, vmcName);
-                guiWarning(_l(_STR_NEUTRINO_VMC_MISSING), 6);
+                host::ui().warning(_l(_STR_NEUTRINO_VMC_MISSING), 6);
                 vmcArgs->arg[slot][0] = '\0';
                 continue;
             }
             int n = snprintf(vmcArgs->arg[slot], sizeof(vmcArgs->arg[slot]), "-mc%d=%s", slot, binPath);
             if (n >= (int)sizeof(vmcArgs->arg[slot])) { // "-mc0=" + path overflowed the arg buffer
                 LOG("[NEUTRINO] VMC slot %d arg truncated (%d bytes) -- launching without it\n", slot, n);
-                guiWarning(_l(_STR_NEUTRINO_VMC_MISSING), 6);
+                host::ui().warning(_l(_STR_NEUTRINO_VMC_MISSING), 6);
                 vmcArgs->arg[slot][0] = '\0';
             }
         }
@@ -2452,7 +2453,7 @@ static void sbHashGame(const char *path, const char *name, const char *ext, cons
     if (format == GAME_FORMAT_USBLD) {
         raHashStep("1-ul-format-not-supported");
         raHashLogAdd(name, startup, "UL: not an image, not supported yet");
-        guiShowRANotice(_l(_STR_RA_UL_UNSUPPORTED), _l(_STR_RA_UL_UNSUPPORTED2));
+        host::ui().raNotice(_l(_STR_RA_UL_UNSUPPORTED), _l(_STR_RA_UL_UNSUPPORTED2));
         raHashSetStepLog(NULL);
         raHashLogClose();
         return;
@@ -2491,28 +2492,28 @@ static void sbHashGame(const char *path, const char *name, const char *ext, cons
 
             if (q == 0) {
                 raHashStep("7-list-received");
-                guiShowRANotice(info[0] ? info : _l(_STR_RA_SUPPORTED),
+                host::ui().raNotice(info[0] ? info : _l(_STR_RA_SUPPORTED),
                                 info2[0] ? info2 : _l(_STR_RA_START_TO_TRACK));
             } else if (q == 1) {
                 raHashStep("7-pc-does-not-know-image");
-                guiShowRANotice(_l(_STR_RA_UNKNOWN_IMAGE), hash);
+                host::ui().raNotice(_l(_STR_RA_UNKNOWN_IMAGE), hash);
             } else if (q == -7) {
                 raHashStep("7-pc-still-identifying");
-                guiShowRANotice(_l(_STR_RA_STILL_IDENTIFYING), _l(_STR_RA_TRY_AGAIN));
+                host::ui().raNotice(_l(_STR_RA_STILL_IDENTIFYING), _l(_STR_RA_TRY_AGAIN));
             } else if (q == -8) {
                 /* NIC owned by a UDP transport (the settlement): the ask was
                    refused without touching the network. The hash is already in
                    the log, so the PC-side path to a .wl stays open. */
                 raHashStep("7-nic-busy-udp-transport");
-                guiShowRANotice(_l(_STR_RA_NET_BUSY), _l(_STR_RA_NET_BUSY_HASH));
+                host::ui().raNotice(_l(_STR_RA_NET_BUSY), _l(_STR_RA_NET_BUSY_HASH));
             } else if (q == -1) {
                 /* The console could not open a UDP socket, so nothing was
                    ever sent -- report that, not a PC that never heard us. */
                 raHashStep("7-no-socket-on-console");
-                guiShowRANotice(_l(_STR_RA_NO_SOCKET), _l(_STR_RA_NO_SOCKET2));
+                host::ui().raNotice(_l(_STR_RA_NO_SOCKET), _l(_STR_RA_NO_SOCKET2));
             } else {
                 raHashStep("7-pc-did-not-answer");
-                guiShowRANotice(_l(_STR_RA_PC_NO_ANSWER), _l(_STR_RA_PC_NO_ANSWER2));
+                host::ui().raNotice(_l(_STR_RA_PC_NO_ANSWER), _l(_STR_RA_PC_NO_ANSWER2));
             }
 
             raHashSetStepLog(NULL);
@@ -2540,7 +2541,7 @@ static void sbHashGame(const char *path, const char *name, const char *ext, cons
     raHashLogAdd(name, startup, last_err);
     raHashSetStepLog(NULL);
     raHashLogClose();
-    guiShowRANotice(_l(_STR_RA_HASH_FAILED), _l(_STR_RA_HASH_FAILED2));
+    host::ui().raNotice(_l(_STR_RA_HASH_FAILED), _l(_STR_RA_HASH_FAILED2));
 }
 
 /* ------------------------------------------------------------------ */
@@ -2598,7 +2599,7 @@ static void sbTestPCLinkWorker(void)
     char line1[96], line2[96];
 
     raNetTestLink(line1, sizeof(line1), line2, sizeof(line2));
-    guiShowRANotice(line1, line2);
+    host::ui().raNotice(line1, line2);
 }
 
 void sbTestPCLinkDeferred(void)

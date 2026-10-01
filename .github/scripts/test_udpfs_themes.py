@@ -20,6 +20,9 @@ import re
 import subprocess
 import sys
 import tempfile
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the names the mocks use)
+
 
 root = Path(__file__).resolve().parents[2]
 src = (root / "src/udpfssupport.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")

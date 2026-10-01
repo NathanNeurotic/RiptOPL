@@ -25,4 +25,26 @@ unsigned char save_icn[1]; unsigned int size_save_icn = 0;
 int probed_fd = -1; u32 probed_lba = 0;
 void ziso_init(ZISO_header *, u32) {}
 int ziso_read_sector(u8 *, u32, unsigned int) { return 0; }
-void guiWarning(const char *, int) {}
+// util.cpp reaches the GUI through host::ui(); the tests give it a recording no-op.
+#include "include/host.h"
+namespace
+{
+struct NullUi final : UiServices
+{
+    int msgBox(const char *, int, struct UIItem *) override { return 0; }
+    void warning(const char *, int) override {}
+    void raNotice(const char *, const char *) override {}
+    void bootStatusSticky(const char *) override {}
+    void bootStatusStickyCopy(const char *) override {}
+    void renderTextScreen(const char *) override {}
+    void manageCheats() override {}
+    int showVcdUsbMode() override { return 0; }
+    int promptRebootIop() override { return 0; }
+    void lock() override {}
+    void unlock() override {}
+} gNullUi;
+} // namespace
+namespace host
+{
+UiServices &ui() { return gNullUi; }
+} // namespace host

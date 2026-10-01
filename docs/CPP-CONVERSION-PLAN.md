@@ -259,3 +259,17 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
   that owns a group (net, neutrino, popstarter, vcd, ember) is extracted in phase 4+.
 - Also: the host test infrastructure can now compile the real `include/opl.h` (empty SDK stubs in `tests/host/sdk_stub`), which makes
   more modules testable without hand-written header stubs.
+
+## 12. Phase 4a status (HostServices: backends no longer call opl/gui/libview directly)
+- `include/host.h` defines three small interfaces (`UiServices`, `AppServices`, `LibraryServices`) with accessors
+  `host::ui()/app()/library()`; `src/host.cpp` (application layer) forwards them to the existing functions. 276 call sites in 15
+  modules (the support backends, supportbase, discsupport, vcdsupport, favsupport, util, lang, system, ranet) now use them.
+- **Measurement correction:** the first numbers in section 1 (43-module cycle, 224 upward symbols) came from a naive scan that also
+  counted words in comments and strings and member names (`obj.deinit`). `tools/analyze_coupling.py` now strips those. Honest
+  before/after for this step: largest cycle 38 -> 31 modules, upward symbol dependencies 164 -> 70 (69 -> 38 module pairs).
+- Remaining upward edges, by family: `system` -> rawatch/cheatman/gsm/lang/discsupport (launch config assembly), `themes` -> gui/menusys/
+  vcdsupport/favsupport (drawing helpers, row text), `lang` -> fntsys/themes, `sound` -> themes/opl, `menusys`/`gui` -> opl,
+  `texcache`/`textures` -> artindex/favsupport, `debug` -> ethsupport, `atlas` -> renderman, `favsupport`/`appsupport` -> opl
+  (`oplGetModule` = the source registry of phase 5; `oplGetAppImageByMode` needs GSTEXTURE).
+- Source-scraping tests read `src/*.cpp` through `.github/scripts/hostmap.py`, which maps the host calls back to the old function
+  names their mocks use; host tests mock `host::ui()` in `tests/host/host_env.h`.

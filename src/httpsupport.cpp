@@ -8,6 +8,7 @@
 // nicety: the legacy two- and three-field rows below are why an existing games.csv keeps working
 // with no conversion step.
 
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/gui.h"
@@ -507,7 +508,7 @@ static int httpNeedsUpdate(item_list_t *itemList)
     if (gNetworkProtocol != NET_PROTO_HTTP)
         return 0;
 
-    return httpRefreshPending || libViewConsumeDirty(HTTP_MODE);
+    return httpRefreshPending || host::library().consumeDirty(HTTP_MODE);
 }
 
 static int httpUpdateGameList(item_list_t *itemList)
@@ -695,7 +696,7 @@ static void httpLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
     // A .zso lists so an existing catalog is not silently short, but streaming compressed bytes as
     // raw sectors would corrupt without ever reporting an error. Refuse it by name.
     if (!httpExtras[id].supported) {
-        guiMsgBox(_l(_STR_HTTP_ERR_COMPRESSED), 0, NULL);
+        host::ui().msgBox(_l(_STR_HTTP_ERR_COMPRESSED), 0, NULL);
         return;
     }
 
@@ -709,7 +710,7 @@ static void httpLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
         if (coreLoader == 2)
             coreLoader = gDefaultCoreLoader;
         if (coreLoader)
-            guiWarning(_l(_STR_NEUTRINO_SMB_FALLBACK), 6);
+            host::ui().warning(_l(_STR_NEUTRINO_SMB_FALLBACK), 6);
     }
 
     // Everything the launch needs, copied into storage the launch owns, BEFORE deinit frees the
@@ -719,7 +720,7 @@ static void httpLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
     snprintf(relative, sizeof(relative), "%s", httpExtras[id].path);
 
     if (!httpBuildPath(&endpoint, relative, uri, sizeof(uri))) {
-        guiMsgBox(_l(_STR_HTTP_ERR_CATALOG), 0, NULL);
+        host::ui().msgBox(_l(_STR_HTTP_ERR_CATALOG), 0, NULL);
         return;
     }
     httpServerIpString(&endpoint, server, sizeof(server));
@@ -727,13 +728,13 @@ static void httpLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
     // The size is not optional: device-http.c bounds every read against it, so a launch without it
     // would either refuse every sector or trust the server's framing alone.
     if (!httpProbeImage(&endpoint, relative, media, &imageSize, &layer1Start)) {
-        guiMsgBox(_l(_STR_HTTP_ERR_RANGE), 0, NULL);
+        host::ui().msgBox(_l(_STR_HTTP_ERR_RANGE), 0, NULL);
         return;
     }
 
     if (gRememberLastPlayed) {
         configSetStr(configGetByType(CONFIG_LAST), "last_played", startup);
-        saveConfig(CONFIG_LAST, 0);
+        host::app().saveConfig(CONFIG_LAST, 0);
     }
 
     compatmask = sbPrepare(game, configSet, size_http_cdvdman_irx, http_cdvdman_irx, &i);
@@ -770,7 +771,7 @@ static void httpLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
         snprintf(filename, sizeof(filename), "%s", startup);
 
     mmceSendGameID(startup, NULL, 0);
-    deinit(NO_EXCEPTION, HTTP_MODE); // frees httpGames/httpExtras -- everything above is a copy
+    host::app().deinit(NO_EXCEPTION, HTTP_MODE); // frees httpGames/httpExtras -- everything above is a copy
 
     // EnablePS2Logo is 0 unconditionally: CheckPS2Logo needs a file descriptor to read the logo
     // out of the image, and HTTP has no filesystem to open. Passing gPS2Logo through unverified

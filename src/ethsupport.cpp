@@ -1,3 +1,4 @@
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/gui.h"
@@ -245,33 +246,33 @@ static void ethDisplayErrorStatus(void)
         case 0: // No error
             break;
         case ERROR_ETH_MODULE_NETIF_FAILURE:
-            setErrorMessageWithCode(_STR_NETWORK_STARTUP_ERROR_NETIF, gNetworkStartup);
+            host::app().setError(_STR_NETWORK_STARTUP_ERROR_NETIF, gNetworkStartup);
             break;
         case ERROR_ETH_SMB_CONN:
-            setErrorMessageWithCode(_STR_NETWORK_STARTUP_ERROR_CONN, gNetworkStartup);
+            host::app().setError(_STR_NETWORK_STARTUP_ERROR_CONN, gNetworkStartup);
             break;
         case ERROR_ETH_SMB_LOGON:
-            setErrorMessageWithCode(_STR_NETWORK_STARTUP_ERROR_LOGON, gNetworkStartup);
+            host::app().setError(_STR_NETWORK_STARTUP_ERROR_LOGON, gNetworkStartup);
             break;
         case ERROR_ETH_SMB_OPENSHARE:
-            setErrorMessageWithCode(_STR_NETWORK_STARTUP_ERROR_SHARE, gNetworkStartup);
+            host::app().setError(_STR_NETWORK_STARTUP_ERROR_SHARE, gNetworkStartup);
             break;
         case ERROR_ETH_SMB_LISTSHARES:
-            setErrorMessageWithCode(_STR_NETWORK_SHARE_LIST_ERROR, gNetworkStartup);
+            host::app().setError(_STR_NETWORK_SHARE_LIST_ERROR, gNetworkStartup);
             break;
         case ERROR_ETH_SMB_LISTGAMES:
-            setErrorMessageWithCode(_STR_NETWORK_GAMES_LIST_ERROR, gNetworkStartup);
+            host::app().setError(_STR_NETWORK_GAMES_LIST_ERROR, gNetworkStartup);
             break;
         case ERROR_ETH_LINK_FAIL:
             LOG("ETH: Unable to get valid link status.\n");
-            setErrorMessageWithCode(_STR_NETWORK_ERROR_LINK_FAIL, gNetworkStartup);
+            host::app().setError(_STR_NETWORK_ERROR_LINK_FAIL, gNetworkStartup);
             break;
         case ERROR_ETH_DHCP_FAIL:
             LOG("ETH: Unable to get valid IP address via DHCP.\n");
-            setErrorMessageWithCode(_STR_NETWORK_ERROR_DHCP_FAIL, gNetworkStartup);
+            host::app().setError(_STR_NETWORK_ERROR_DHCP_FAIL, gNetworkStartup);
             break;
         default:
-            setErrorMessageWithCode(_STR_NETWORK_STARTUP_ERROR, gNetworkStartup);
+            host::app().setError(_STR_NETWORK_STARTUP_ERROR, gNetworkStartup);
     }
 }
 
@@ -338,7 +339,7 @@ static void ethReconnectSMB(void)
     else
         ethInitSMB(); // applies link/IP settings before logging on and reopening the share
 
-    libViewMarkDirty(ETH_MODE);
+    host::library().markDirty(ETH_MODE);
     ioPutRequest(IO_MENU_UPDATE_DEFFERED, &ethGameList.mode);
     ethReconnectQueued = 0;
 }
@@ -401,9 +402,9 @@ static int ethNeedsUpdate(item_list_t *itemList)
 
     // VCD view: force a rescan once on toggle; once a share is selected, the VCD list refreshes on
     // toggle only (skip disc heuristics). With no share yet, fall through so the share list updates.
-    if (libViewConsumeDirty(itemList->mode))
+    if (host::library().consumeDirty(itemList->mode))
         return 1;
-    if (gPCShareName[0] && (libListViewActive(itemList) == LIB_VIEW_PS1))
+    if (gPCShareName[0] && (host::library().listViewActive(itemList) == LIB_VIEW_PS1))
         return 0;
 
     if (ethULSizePrev == -2)
@@ -438,7 +439,7 @@ static int ethNeedsUpdate(item_list_t *itemList)
 
 static int ethUpdateGameList(item_list_t *itemList)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
 
     if (gPCShareName[0]) {
         if (gNetworkStartup != 0)
@@ -539,7 +540,7 @@ static int ethGetItemView(item_list_t *itemList, int id)
     // Before a share is chosen, the page is a share picker regardless of the global game display.
     if (!gPCShareName[0])
         return LIB_VIEW_ISO;
-    view = libListViewActive(itemList);
+    view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
         return id >= 0 && id < ethGameCount ? LIB_VIEW_ISO : LIB_VIEW_PS1;
     return view;
@@ -547,7 +548,7 @@ static int ethGetItemView(item_list_t *itemList, int id)
 
 static int ethGetSourceId(item_list_t *itemList, int id)
 {
-    return gPCShareName[0] && libListViewActive(itemList) == LIB_VIEW_MIXED && id >= ethGameCount ? id - ethGameCount : id;
+    return gPCShareName[0] && host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= ethGameCount ? id - ethGameCount : id;
 }
 
 static base_game_info_t *ethGameForView(item_list_t *itemList, int id)
@@ -567,7 +568,7 @@ static int ethGetGameCount(item_list_t *itemList)
 
     if (!gPCShareName[0])
         return ethGameCount;
-    view = libListViewActive(itemList);
+    view = host::library().listViewActive(itemList);
     return view == LIB_VIEW_MIXED ? ethGameCount + ethPs1GameCount :
            view == LIB_VIEW_PS1   ? ethPs1GameCount :
                                     ethGameCount;
@@ -623,7 +624,7 @@ static void ethRenameGame(item_list_t *itemList, int id, char *newName)
             (cueIsCueEntry(game) ? cueRenameGame(ethPrefix, game->name, newName) : vcdRenameFile(ethPrefix, game->name, newName)) == 0) {
             // ETH otherwise treats its VCD list as toggle-only; consume this on the already queued
             // deferred update so the renamed POPS/ directory is scanned again.
-            libViewMarkDirty(itemList->mode);
+            host::library().markDirty(itemList->mode);
         }
         return;
     }
@@ -642,25 +643,25 @@ static void ethLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_
     if (!gPCShareName[0] || vcdName == NULL || vcdName[0] == '\0' || !strcasecmp(vcdName, "POPSTARTER")) // reserved-name belt: the scanner no longer lists it (#154); strcasecmp -- FAT is case-insensitive
         return;
     if (!vcdResolvePopstarter(ethPrefix, vcdElf, sizeof(vcdElf))) {
-        guiMsgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
         return;
     }
     {
         vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(ethPrefix);
         if (ens == VCD_POPSNET_SMB_MISSING) {
-            guiMsgBox(_l(_STR_POPSTARTER_SMB_MISSING), 0, NULL);
+            host::ui().msgBox(_l(_STR_POPSTARTER_SMB_MISSING), 0, NULL);
             return;
         }
         if (ens == VCD_POPSNET_NEED_STATIC) {
-            guiMsgBox(_l(_STR_POPSTARTER_SMB_NEEDS_STATIC), 0, NULL);
+            host::ui().msgBox(_l(_STR_POPSTARTER_SMB_NEEDS_STATIC), 0, NULL);
             return;
         }
         if (ens == VCD_POPSNET_IO_ERROR) {
-            guiMsgBox(_l(_STR_POPSTARTER_NET_ERR), 0, NULL);
+            host::ui().msgBox(_l(_STR_POPSTARTER_NET_ERR), 0, NULL);
             return;
         }
         if (ens == VCD_POPSNET_INVALID) {
-            guiMsgBox(_l(_STR_POPSTARTER_NET_INVALID), 0, NULL);
+            host::ui().msgBox(_l(_STR_POPSTARTER_NET_INVALID), 0, NULL);
             return;
         }
     }
@@ -671,7 +672,7 @@ static void ethLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_
     snprintf(vcdFullPath, sizeof(vcdFullPath), "%sPOPS%c%s.VCD", ethPrefix, separator, vcdName);
     vcdPrepareRetroGemBarcode(vcdFullPath);
     // Keep the SMB game share plus any distinct custom POPSTARTER.ELF backend through handoff.
-    deinitEx(sbLoaderDeinitException(vcdElf), itemList->mode, oplPath2Mode(vcdElf));
+    host::app().deinitEx(sbLoaderDeinitException(vcdElf), itemList->mode, host::app().pathToMode(vcdElf));
     sysLaunchPopstarter(vcdElf, vcdSelector);
 }
 
@@ -686,20 +687,20 @@ static void ethLaunchCue(item_list_t *itemList, const char *cueName, config_set_
 
     // Refuse what Ember itself would refuse, while a dialog can still be drawn.
     if (!cueNameLaunchable(cueName)) {
-        guiMsgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
         return;
     }
     if (!cueResolveEmber(ethPrefix, emberElf, sizeof(emberElf))) {
-        guiMsgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
         return;
     }
     if (!cueResolveEmberBios(ethPrefix, biosPath, sizeof(biosPath))) {
-        guiMsgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
         return;
     }
     cueApplySettings(ethPrefix, cueName, configSet); // best-effort marker, never a launch gate
     if (!cueGameHasImage(ethPrefix, cueName)) {
-        guiMsgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
         return;
     }
 
@@ -711,7 +712,7 @@ static void ethLaunchCue(item_list_t *itemList, const char *cueName, config_set_
 
     // UNMOUNT_EXCEPTION is load-bearing: Ember reads its game through the SMB mount that is live
     // right now, so that mount must survive the teardown.
-    deinit(UNMOUNT_EXCEPTION, itemList->mode);
+    host::app().deinit(UNMOUNT_EXCEPTION, itemList->mode);
     sysLaunchEmber(emberElf, cueName);
 }
 
@@ -761,7 +762,7 @@ static void ethLaunchGame(item_list_t *itemList, int id, config_set_t *configSet
         if (coreLoader == 2)                 // "Default" sentinel: the dialog never persists it (index 2 removes the
             coreLoader = gDefaultCoreLoader; // key), but a hand-edited cfg can carry it (Gemini, #161)
         if (coreLoader)
-            guiWarning(_l(_STR_NEUTRINO_SMB_FALLBACK), 6);
+            host::ui().warning(_l(_STR_NEUTRINO_SMB_FALLBACK), 6);
     }
 
     char vmc_name[32];
@@ -788,7 +789,7 @@ static void ethLaunchGame(item_list_t *itemList, int id, config_set_t *configSet
             } else {
                 char error[256];
                 snprintf(error, sizeof(error), _l(_STR_ERR_VMC_CONTINUE), vmc_name, (vmc_id + 1));
-                if (!guiMsgBox(error, 1, NULL))
+                if (!host::ui().msgBox(error, 1, NULL))
                     return;
             }
         }
@@ -805,7 +806,7 @@ static void ethLaunchGame(item_list_t *itemList, int id, config_set_t *configSet
 
     if (gRememberLastPlayed) {
         configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        saveConfig(CONFIG_LAST, 0);
+        host::app().saveConfig(CONFIG_LAST, 0);
     }
 
     compatmask = sbPrepare(game, configSet, size_smb_cdvdman_irx, smb_cdvdman_irx, &i);
@@ -900,7 +901,7 @@ static void ethLaunchGame(item_list_t *itemList, int id, config_set_t *configSet
     // MMCE cross-device game-id (#261): push the disc id to a present MMCE card before the SMB teardown
     // (self-probes mmce0/mmce1; no-ops if no card / feature off). Read `game` before deinit frees it.
     mmceSendGameID(game->startup, NULL, 0); // SMB has no Neutrino branch -> nothing to protect, no -mc args
-    deinit(NO_EXCEPTION, ETH_MODE);         // CAREFUL: deinit will call ethCleanUp, so ethGames/game will be freed
+    host::app().deinit(NO_EXCEPTION, ETH_MODE);         // CAREFUL: deinit will call ethCleanUp, so ethGames/game will be freed
 
     settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_DEV9;
     settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_SMAP;

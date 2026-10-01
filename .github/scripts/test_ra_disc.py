@@ -3,6 +3,9 @@ import hashlib
 import re
 import subprocess
 import tempfile
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the names the mocks use)
+
 
 # Compile the production functions against host I/O stubs. These checks cover
 # data and launch contracts; they cannot validate PS2 drive or IOP behavior.

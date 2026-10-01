@@ -21,6 +21,7 @@ constexpr int SYS_DISC_REDETECT_MS = 4000;  // spin-up + re-detect after a NODIS
 // Generous on purpose: this is a floor for a cold drive to reach DETCT, not a tuned timeout. Once
 // DETCT is seen the FULL budget applies again, so a slow-but-working drive is unaffected.
 constexpr int SYS_DISC_NODISC_MS = 2000;
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/gui.h"
 #include "include/lang.h"       // _l(_STR_...) -- Neutrino preflight abort toasts
@@ -117,7 +118,6 @@ typedef struct
     u32 align;
 } elf_pheader_t;
 
-void guiWarning(const char *text, int count);
 void guiEnd();
 void menuEnd();
 void lngEnd();
@@ -362,7 +362,7 @@ static void poweroffHandler(void *arg)
 
 void sysPowerOff(void)
 {
-    deinit(NO_EXCEPTION, IO_MODE_SELECTED_NONE);
+    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_NONE);
     poweroffShutdown();
 }
 
@@ -451,7 +451,7 @@ int sysGetDiscID(char *hexDiscID)
 void sysExecExit(void)
 {
     // Deinitialize without shutting down active devices.
-    deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
     exit(0);
 }
 
@@ -691,7 +691,7 @@ int sysLaunchDisc(int (*progress)(void))
         }
     }
 
-    deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL); // tear OPL down (mirrors sysExecExit)
+    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL); // tear OPL down (mirrors sysExecExit)
 
     args[0] = path;
     LoadExecPS2("rom0:PS2LOGO", 1, args); // logo performs the disc region/auth check
@@ -1477,7 +1477,7 @@ int sysNeutrinoPreflight(const char *driver, const char *neutrinoPath, int neutr
     const char *deviceName = getDeviceName(driver);
     if (!strcmp(deviceName, "unsupported")) {
         LOG("[NEUTRINO] preflight: unsupported device '%s'\n", driver);
-        guiWarning(_l(_STR_NEUTRINO_DEV_UNSUPPORTED), 6);
+        host::ui().warning(_l(_STR_NEUTRINO_DEV_UNSUPPORTED), 6);
         return -1;
     }
 
@@ -1490,7 +1490,7 @@ int sysNeutrinoPreflight(const char *driver, const char *neutrinoPath, int neutr
     // The native leg refuses a device with no number outright; this refuses only its bd launches.
     if (neutrinoEffectiveBsdfs(deviceName, neutrinoBsdfs, extraArgs) == 3 && bdDevNr < 0 && strcmp(deviceName, "ata") != 0) {
         LOG("[NEUTRINO] preflight: -bsdfs=bd on '%s' with no device number\n", driver);
-        guiWarning(_l(_STR_NEUTRINO_BD_NO_DEVICE_NUMBER), 6);
+        host::ui().warning(_l(_STR_NEUTRINO_BD_NO_DEVICE_NUMBER), 6);
         return -1;
     }
 
@@ -1498,7 +1498,7 @@ int sysNeutrinoPreflight(const char *driver, const char *neutrinoPath, int neutr
     // failure can still be reported (see sysSyncNeutrinoUdpfsToml for the abort conditions).
     if (!strcmp(deviceName, "udpfs") || !strcmp(deviceName, "udpfsbd") || !strcmp(deviceName, "udpbd")) {
         if (sysSyncNeutrinoUdpfsToml(neutrinoPath, deviceName) < 0) {
-            guiWarning(_l(_STR_NEUTRINO_TOML_SYNC_FAILED), 6);
+            host::ui().warning(_l(_STR_NEUTRINO_TOML_SYNC_FAILED), 6);
             return -1;
         }
     }

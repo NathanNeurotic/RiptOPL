@@ -1,3 +1,4 @@
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/gui.h"
@@ -90,7 +91,7 @@ static int appRebuildVisibleList(void)
     if (appVisibleIds == NULL)
         return 0;
 
-    view = libViewActive(APP_MODE);
+    view = host::library().viewActive(APP_MODE);
     for (i = 0; i < appItemCount; i++) {
         int tagged = appTitleIsPs1Elf(appsList[i].title);
         if (view == LIB_VIEW_MIXED || (view == LIB_VIEW_PS1_ELF && tagged) || (view == LIB_VIEW_ISO && !tagged))
@@ -468,7 +469,7 @@ static void appSetArtSource(app_info_t *app)
     }
 
     if (app->artDevice[0] != '\0')
-        app->artMode = oplPath2Mode(app->artDevice);
+        app->artMode = host::app().pathToMode(app->artDevice);
 }
 
 static void appSetResolvedStartup(app_info_t *app)
@@ -584,7 +585,7 @@ void appInit(item_list_t *itemList)
     appItemList.delay = gArtDelay;
     if (configApps != NULL)
         configFree(configApps);
-    configApps = oplGetLegacyAppsConfig();
+    configApps = host::app().legacyAppsConfig();
     appsList = NULL;
     appVisibleIds = NULL;
     appVisibleCount = 0;
@@ -608,10 +609,10 @@ static int appNeedsUpdate(item_list_t *itemList)
         appForceUpdate = 0;
         update = 1;
     }
-    if (oplShouldAppsUpdate())
+    if (host::app().shouldAppsUpdate())
         update = 1;
 
-    viewChanged = libViewConsumeDirty(APP_MODE);
+    viewChanged = host::library().consumeDirty(APP_MODE);
     if (viewChanged && !update) {
         appViewOnlyUpdate = 1;
         return 1;
@@ -621,7 +622,7 @@ static int appNeedsUpdate(item_list_t *itemList)
     if (update) {
         if (configApps != NULL)
             configFree(configApps);
-        configApps = oplGetLegacyAppsConfig();
+        configApps = host::app().legacyAppsConfig();
     }
 
     return update;
@@ -762,7 +763,7 @@ static int appUpdateItemList(item_list_t *itemList)
     appItemCount += addAppsLegacyList(&appsLinkedList);
 
     // Scan devices for apps.
-    appItemCount += oplScanApps(&appScanCallback, &appsLinkedList);
+    appItemCount += host::app().scanApps(&appScanCallback, &appsLinkedList);
     appsLinkedListHead = appsLinkedList;
 
     // Generate apps list
@@ -1032,7 +1033,7 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
         strcpy(partition, "");
 
         // To keep the necessary device accessible, we will assume the mode that owns the device which contains the file to boot.
-        mode = oplPath2Mode(filename);
+        mode = host::app().pathToMode(filename);
         if (mode < 0)
             mode = APP_MODE; // Legacy apps mode on memory card (mc?:/*)
 
@@ -1045,19 +1046,19 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
         if (mode == ETH_MODE && appIsPopstarterSmb(filename)) {
             vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(ethGetSMBPrefix());
             if (ens == VCD_POPSNET_SMB_MISSING) {
-                guiMsgBox(_l(_STR_POPSTARTER_SMB_MISSING), 0, NULL);
+                host::ui().msgBox(_l(_STR_POPSTARTER_SMB_MISSING), 0, NULL);
                 return;
             }
             if (ens == VCD_POPSNET_NEED_STATIC) {
-                guiMsgBox(_l(_STR_POPSTARTER_SMB_NEEDS_STATIC), 0, NULL);
+                host::ui().msgBox(_l(_STR_POPSTARTER_SMB_NEEDS_STATIC), 0, NULL);
                 return;
             }
             if (ens == VCD_POPSNET_IO_ERROR) {
-                guiMsgBox(_l(_STR_POPSTARTER_NET_ERR), 0, NULL);
+                host::ui().msgBox(_l(_STR_POPSTARTER_NET_ERR), 0, NULL);
                 return;
             }
             if (ens == VCD_POPSNET_INVALID) {
-                guiMsgBox(_l(_STR_POPSTARTER_NET_INVALID), 0, NULL);
+                host::ui().msgBox(_l(_STR_POPSTARTER_NET_INVALID), 0, NULL);
                 return;
             }
         }
@@ -1070,7 +1071,7 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
         if (!isPops) {
             rebootIop = appGetRebootIopConfig(configSet);
             if (rebootIop < 0) {
-                rebootIop = guiPromptRebootIop();
+                rebootIop = host::ui().promptRebootIop();
                 if (rebootIop < 0)
                     return; // User cancelled launch
             }
@@ -1078,7 +1079,7 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
         }
 
         if (appNormalizeLaunchPath(normFilename, sizeof(normFilename), filename) == NULL) {
-            guiMsgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
+            host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
             return;
         }
         target_argv[0] = isPops ? filename : normFilename;
@@ -1114,20 +1115,20 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
             const char *emberGame = (target_argc > 1) ? target_argv[1] : NULL;
 
             if (emberGame != NULL && !cueNameLaunchable(emberGame)) {
-                guiMsgBox("Ember probe: argv1 must be a bare folder name under games/\n"
+                host::ui().msgBox("Ember probe: argv1 must be a bare folder name under games/\n"
                           "No '/', ':' or '\\', not starting with '..', max 180 chars.",
                           0, NULL);
                 return;
             }
 
-            deinit(UNMOUNT_EXCEPTION, mode); // keep THIS device mounted: Ember cannot remount it
+            host::app().deinit(UNMOUNT_EXCEPTION, mode); // keep THIS device mounted: Ember cannot remount it
             sysLaunchEmber(filename, emberGame);
             return; // reached only when the handoff itself failed; OPL is already torn down
         }
 #endif
 
         if (isPops) {
-            deinit(UNMOUNT_EXCEPTION, mode); // CAREFUL: deinit will call appCleanUp, which frees appsList, appArtLookupTable, and configApps
+            host::app().deinit(UNMOUNT_EXCEPTION, mode); // CAREFUL: deinit will call appCleanUp, which frees appsList, appArtLookupTable, and configApps
             char *pops_argv[1];
             int pops_argc = 0;
             if (target_argc > 1) {
@@ -1143,12 +1144,12 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
             // launcHER treats the numbered mount token as part of the partition name and quickboot fails.
             if (mode == HDD_MODE) {
                 if (gOPLPart[0] == '\0') {
-                    guiMsgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
+                    host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
                     return;
                 }
 
                 if (appBuildHddHandoffPath(appArgv0, sizeof(appArgv0), partition, normFilename) == NULL) {
-                    guiMsgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
+                    host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
                     return;
                 }
                 target_argv[0] = appArgv0;
@@ -1164,7 +1165,7 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
             else if (rebootIop)
                 argBytes += sizeof("-reset-iop");
             if (argBytes > 256) {
-                guiMsgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
+                host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
                 return;
             }
 
@@ -1172,7 +1173,7 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
             // child then performs wLaunchELF_R3Z's post-load PFS/HDD/DEV9 cleanup (H) before
             // entering the app, regardless of the Reboot IOP choice. This is intentionally NOT
             // used by the dedicated Ember PS1-page path, which requires its inherited live PFS.
-            deinit(UNMOUNT_EXCEPTION | (rebootIop == 0 ? KEEPIOP_EXCEPTION : 0), IO_MODE_SELECTED_ALL_SPARE);
+            host::app().deinit(UNMOUNT_EXCEPTION | (rebootIop == 0 ? KEEPIOP_EXCEPTION : 0), IO_MODE_SELECTED_ALL_SPARE);
             sysLoadELFApp(normFilename, partition, target_argc, target_argv, rebootIop, mode == HDD_MODE);
         }
     } else {
@@ -1184,9 +1185,9 @@ static void appLaunchItem(item_list_t *itemList, int id, config_set_t *configSet
         snprintf(diagnostic, sizeof(diagnostic),
                  "%s\n\nAPPS diagnostic:\n%s\nfd %d, errno %d",
                  _l(_STR_ERR_FILE_INVALID), filename, fd, errno);
-        guiMsgBox(diagnostic, 0, NULL);
+        host::ui().msgBox(diagnostic, 0, NULL);
 #else
-        guiMsgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
+        host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
 #endif
     }
 }
@@ -1202,7 +1203,7 @@ static config_set_t *appGetConfig(item_list_t *itemList, int id)
 
     if (appsList[id].legacy) {
         struct config_value_t *cur = appGetConfigValue(id);
-        config = oplGetLegacyAppsInfo(appGetELFName(cur->val));
+        config = host::app().legacyAppsInfo(appGetELFName(cur->val));
         configRead(config);
 
         configSetStr(config, CONFIG_ITEM_NAME, appGetELFName(cur->val));

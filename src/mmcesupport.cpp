@@ -1,3 +1,4 @@
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/gui.h"
@@ -176,7 +177,7 @@ int mmceSendGameID(const char *startup, const char *protectMcPath, int vmcSlotMa
             // under sysLaunchNeutrino. Leave the card as-is so the launch still works, but SOFT-FAIL with
             // a transient notice (was a silent no-op) so the user understands their per-game card folder
             // wasn't applied this launch -- the only situation GameID + MMCE + neutrino-on-mc can collide.
-            guiWarning(_l(_STR_MMCE_GAMEID_NEUTRINO_SKIP), 6);
+            host::ui().warning(_l(_STR_MMCE_GAMEID_NEUTRINO_SKIP), 6);
             return 0;
         }
     }
@@ -482,7 +483,7 @@ void mmceArmGameIDTransport(void)
     if (!gMMCEEnableGameID || mmceModLoaded)
         return;
 
-    guiSetBootStatusSticky(_l(_STR_BOOT_ARMING_MMCE)); // boot-step localizer (IO thread) -- see gui.c
+    host::ui().bootStatusSticky(_l(_STR_BOOT_ARMING_MMCE)); // boot-step localizer (IO thread) -- see gui.c
     mmceLoadModules();
     // Post-load marker (#254): the boot arm runs right after GUI_INIT_DONE; a serial log that
     // shows the arm begin without this completion line localizes a wedge to the mmceman load.
@@ -573,14 +574,14 @@ static int mmceNeedsUpdate(item_list_t *itemList)
     }
 
     // VCD view: force a rescan once on toggle, then skip the disc heuristics while showing VCDs.
-    if (libViewConsumeDirty(itemList->mode)) {
+    if (host::library().consumeDirty(itemList->mode)) {
         mmcePs1ScanRetries = 0; // fresh user toggle re-arms the failed-scan retry budget
         return 1;
     }
     // Folder browsing: descend/ascend forces one rescan (consumed before the NOUPDATE latch below).
     if (folderConsumeDirty(itemList->mode))
         return 1;
-    if (libViewActive(itemList->mode) == LIB_VIEW_PS1 || libViewActive(itemList->mode) == LIB_VIEW_MIXED) {
+    if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1 || host::library().viewActive(itemList->mode) == LIB_VIEW_MIXED) {
         if (!mmcePs1Scanned) {
             mmceGameList.updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
@@ -593,7 +594,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
             mmceGameList.updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
-        if (libViewActive(itemList->mode) == LIB_VIEW_PS1)
+        if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1)
             return result;
     }
 
@@ -676,7 +677,7 @@ static int mmceNeedsUpdate(item_list_t *itemList)
 
 static int mmceUpdateGameList(item_list_t *itemList)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     int result = 0;
     if (mmcePrefix[0] == '\0') {
         // Card absent / slot unresolved (Auto mode after removal). Actually CLEAR the list rather
@@ -728,7 +729,7 @@ static int mmceUpdateGameList(item_list_t *itemList)
 
 static int mmceGetGameCount(item_list_t *itemList)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     return view == LIB_VIEW_MIXED ? mmceGameCount + mmcePs1GameCount :
            view == LIB_VIEW_PS1   ? mmcePs1GameCount :
                                     mmceGameCount;
@@ -736,7 +737,7 @@ static int mmceGetGameCount(item_list_t *itemList)
 
 static int mmceGetItemView(item_list_t *itemList, int id)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
         return id >= 0 && id < mmceGameCount ? LIB_VIEW_ISO : LIB_VIEW_PS1;
     return view;
@@ -744,7 +745,7 @@ static int mmceGetItemView(item_list_t *itemList, int id)
 
 static int mmceGetSourceId(item_list_t *itemList, int id)
 {
-    return libListViewActive(itemList) == LIB_VIEW_MIXED && id >= mmceGameCount ? id - mmceGameCount : id;
+    return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= mmceGameCount ? id - mmceGameCount : id;
 }
 
 static base_game_info_t mmceEmptyGame;
@@ -840,27 +841,27 @@ static void mmceLaunchCue(item_list_t *itemList, const char *cueName, config_set
     if (cueName == NULL || cueName[0] == '\0')
         return;
     if (!cueNameLaunchable(cueName)) {
-        guiMsgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
         return;
     }
 
-    guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
+    host::ui().renderTextScreen(_l(_STR_PLEASE_WAIT));
 
     // MMCE artwork and this launch share the SIO2 bus -- quiesce before touching the card, exactly
     // as the POPSTARTER leg does.
     if (!cacheAbortMmceImageLoadsTimed(MMCE_ART_ABORT_WAIT_TICKS)) {
-        guiWarning(_l(_STR_ERR_FILE_INVALID), 8);
+        host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
         return;
     }
 
     mmceGetDeviceRoot(ps1Root, sizeof(ps1Root));
 
     if (!cueResolveEmber(ps1Root, emberElf, sizeof(emberElf))) {
-        guiMsgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
         return;
     }
     if (!cueResolveEmberBios(ps1Root, biosPath, sizeof(biosPath))) {
-        guiMsgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
         return;
     }
     // The scan lists folders without reading inside them -- that would be a directory read per row
@@ -871,12 +872,12 @@ static void mmceLaunchCue(item_list_t *itemList, const char *cueName, config_set
     cueApplySettings(ps1Root, cueName, configSet);
 
     if (!cueGameHasImage(ps1Root, cueName)) {
-        guiMsgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
         return;
     }
 
     // UNMOUNT_EXCEPTION is load-bearing: Ember cannot remount the card it reads the game from.
-    deinit(UNMOUNT_EXCEPTION, itemList->mode);
+    host::app().deinit(UNMOUNT_EXCEPTION, itemList->mode);
     sysLaunchEmber(emberElf, cueName);
 }
 
@@ -892,18 +893,18 @@ static void mmceLaunchVcd(item_list_t *itemList, const char *vcdName, config_set
         return;
 
     // Present preparation indicator before potentially expensive memory-card file IO
-    guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
+    host::ui().renderTextScreen(_l(_STR_PLEASE_WAIT));
 
     // Quiesce in-flight MMCE art reads before touching the card. MMCE artwork and VCD prep share the SIO2 bus.
     if (!cacheAbortMmceImageLoadsTimed(MMCE_ART_ABORT_WAIT_TICKS)) {
-        guiWarning(_l(_STR_ERR_FILE_INVALID), 8);
+        host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
         return;
     }
 
     mmceGetDeviceRoot(ps1Root, sizeof(ps1Root));
 
     if (!vcdResolvePopstarter(ps1Root, vcdElf, sizeof(vcdElf))) {
-        guiMsgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
         return;
     }
     vcdBuildSelector(ps1Root, VCD_PREFIX_MASS, vcdName, vcdSelector, sizeof(vcdSelector));
@@ -918,7 +919,7 @@ static void mmceLaunchVcd(item_list_t *itemList, const char *vcdName, config_set
     snprintf(vcdFullPath, sizeof(vcdFullPath), "%sPOPS/%s.VCD", ps1Root, vcdName);
     vcdPrepareRetroGemBarcode(vcdFullPath);
     // Keep the MMCE game device plus any distinct custom POPSTARTER.ELF backend through handoff.
-    deinitEx(sbLoaderDeinitException(vcdElf), itemList->mode, oplPath2Mode(vcdElf));
+    host::app().deinitEx(sbLoaderDeinitException(vcdElf), itemList->mode, host::app().pathToMode(vcdElf));
     sysLaunchPopstarter(vcdElf, vcdSelector);
 }
 
@@ -959,7 +960,7 @@ static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
     if (!cacheAbortMmceImageLoadsTimed(MMCE_ART_ABORT_WAIT_TICKS)) {
         // The card is still busy. Leave the menu and worker intact so the user
         // can retry after the current read returns.
-        guiWarning(_l(_STR_ERR_FILE_INVALID), 8);
+        host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
         return;
     }
 
@@ -987,7 +988,7 @@ static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
     // card instead of the boot card (adversarial review of the native-send re-land).
     if (gRememberLastPlayed) {
         configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        saveConfig(CONFIG_LAST, 0);
+        host::app().saveConfig(CONFIG_LAST, 0);
     }
 
     // Native-core GameID (AndrewBento, Gen2: with PS2 Logo off nothing ever names the game to the
@@ -1133,7 +1134,7 @@ static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
             // Make the bail VISIBLE (HW batch S5: "does gameID and then nothing" with no message).
             // deinit has not run yet, mmceLaunchGame is on the GUI thread, and guiWarning self-guards
             // for autolaunch -- same pattern as the quiesce bail above.
-            guiWarning(_l(_STR_ERR_FILE_INVALID), 8);
+            host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
             // Close the VMC fds opened above so a failed launch does not leak them
             // back to the menu across repeated attempts (Codex audit, Medium 2).
             if (vmc_fds[0] >= 0)
@@ -1169,10 +1170,10 @@ static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
         if (game->format == GAME_FORMAT_USBLD || !strcasecmp(game->extension, ".zso")) {
             // isValidIsoName() admits .zso case-insensitively and game->extension is stored
             // verbatim, so an upper/mixed-case ".ZSO" must reject here too (Neutrino can't run it).
-            guiWarning(_l(_STR_NEUTRINO_BAD_FORMAT), 6);
+            host::ui().warning(_l(_STR_NEUTRINO_BAD_FORMAT), 6);
             coreLoader = 0;
         } else if (neutrinoPath == NULL) {
-            guiWarning(_l(_STR_NEUTRINO_NOT_FOUND), 6);
+            host::ui().warning(_l(_STR_NEUTRINO_NOT_FOUND), 6);
             coreLoader = 0;
         }
         // Falling back to the OPL core: the native branch above skipped the IGR driver check, and no
@@ -1226,8 +1227,8 @@ static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
         // IOP reset -- keep BOTH mounted. An MC-hosted neutrino needs no exception (-1 second slot).
         if (sysNeutrinoPreflight("mmce", neutrinoPath, 0, NULL, -1) < 0) // D6 pre-teardown validation
             return;
-        int neutrinoDevMode = oplPath2Mode(neutrinoPath);
-        deinitEx(sbNeutrinoDeinitException(neutrinoPath), itemList->mode, neutrinoDevMode);
+        int neutrinoDevMode = host::app().pathToMode(neutrinoPath);
+        host::app().deinitEx(sbNeutrinoDeinitException(neutrinoPath), itemList->mode, neutrinoDevMode);
         sysLaunchNeutrino("mmce", mmcePartname, mmceStartup, compatmask, EnablePS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0 /* #11: mmce is fileid, no fs layer */, -1, &neutrinoVmc);
         return;
     }
@@ -1249,7 +1250,7 @@ static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
             fileXioClose(vmc_fds[0]);
         if (vmc_fds[1] >= 0)
             fileXioClose(vmc_fds[1]);
-        guiWarning(_l(_STR_ERR_FILE_INVALID), 8); // batch S5: never bail silently
+        host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8); // batch S5: never bail silently
         return;
     }
 
@@ -1275,7 +1276,7 @@ static void mmceLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
     // paths (bdm/hdd/eth) send it too, with the same wait.
 
     if (gAutoLaunchBDMGame == NULL) {
-        deinit(NO_EXCEPTION, MMCE_MODE); // CAREFUL: deinit will call mmceCleanUp, so mmceGames/game will be freed
+        host::app().deinit(NO_EXCEPTION, MMCE_MODE); // CAREFUL: deinit will call mmceCleanUp, so mmceGames/game will be freed
     }
 
     /* No autolaunch yet

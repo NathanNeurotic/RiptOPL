@@ -1,4 +1,5 @@
 #include "sys/fcntl.h"
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/gui.h"
@@ -128,7 +129,7 @@ static void hddDiagBootStageBegin(const char *stage)
 
     snprintf(status, sizeof(status), "BEGIN %s", stage);
     LOG("%s\n", status);
-    guiSetBootStatusStickyCopy(status);
+    host::ui().bootStatusStickyCopy(status);
 }
 
 static void hddDiagBootStageEnd(const char *stage, int result)
@@ -140,7 +141,7 @@ static void hddDiagBootStageEnd(const char *stage, int result)
 
     snprintf(status, sizeof(status), "END %s result=%d", stage, result);
     LOG("%s\n", status);
-    guiSetBootStatusStickyCopy(status);
+    host::ui().bootStatusStickyCopy(status);
 }
 
 static void hddDiagBootStageEndVoid(const char *stage)
@@ -152,7 +153,7 @@ static void hddDiagBootStageEndVoid(const char *stage)
 
     snprintf(status, sizeof(status), "END %s", stage);
     LOG("%s\n", status);
-    guiSetBootStatusStickyCopy(status);
+    host::ui().bootStatusStickyCopy(status);
 }
 #else
 static void hddDiagBootStageBegin(const char *stage)
@@ -176,11 +177,11 @@ static void hddClearRecoveredErrors(void)
 {
     // Do not blank an unrelated queued notification. These are the only messages emitted by this
     // support path, and each call is made only after the underlying APA/PFS check succeeded.
-    clearErrorMessageIf(_STR_HDD_NOT_CONNECTED_ERROR);
-    clearErrorMessageIf(_STR_HDD_NOT_FORMATTED_ERROR);
-    clearErrorMessageIf(_STR_HDD_UNAVAILABLE_ERROR);
-    clearErrorMessageIf(_STR_HDD_PFS_UNAVAILABLE_ERROR);
-    clearErrorMessageIf(_STR_HDD_APA_TABLE_UNREADABLE_ERROR);
+    host::app().clearErrorIf(_STR_HDD_NOT_CONNECTED_ERROR);
+    host::app().clearErrorIf(_STR_HDD_NOT_FORMATTED_ERROR);
+    host::app().clearErrorIf(_STR_HDD_UNAVAILABLE_ERROR);
+    host::app().clearErrorIf(_STR_HDD_PFS_UNAVAILABLE_ERROR);
+    host::app().clearErrorIf(_STR_HDD_APA_TABLE_UNREADABLE_ERROR);
 }
 
 static char *hddPrefix = "pfs0:";
@@ -456,7 +457,7 @@ int hddLoadModules(void)
 
         if (retLoadModule < 0) {
             LOG("HDD: No HardDisk Drive detected.\n");
-            setErrorMessageWithCode(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_IF_NOT_DETECTED);
+            host::app().setError(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_IF_NOT_DETECTED);
             retStatus = HDD_LOADMODULES_STATUS_ERROR;
             // Make the failure RETRYABLE. Leaving the count consumed turned one bad first probe into a
             // whole-session poison: every later call took the else branch and returned BUSYLOADING(2),
@@ -731,10 +732,10 @@ static int hddLoadCoreSupportModules(void)
         // is false there, and it is the wording that sends people to delete configs, re-run tools and
         // eventually reformat a disk whose games are all still on it.
         if (nonSony == HDD_PROBE_TABLE_UNREADABLE && !hddSupportErrToasted) {
-            setErrorMessageWithCode(_STR_HDD_APA_TABLE_UNREADABLE_ERROR, ERROR_HDD_APA_TABLE_UNREADABLE);
+            host::app().setError(_STR_HDD_APA_TABLE_UNREADABLE_ERROR, ERROR_HDD_APA_TABLE_UNREADABLE);
             hddSupportErrToasted = 1;
         } else if (nonSony < 0 && !hddSupportErrToasted) {
-            setErrorMessageWithCode(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_NOT_DETECTED);
+            host::app().setError(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_NOT_DETECTED);
             hddSupportErrToasted = 1;
         } else if (nonSony > 0) {
             // A recognized MBR/GPT/exFAT disk is normal BDM territory, not an APA formatting
@@ -751,7 +752,7 @@ static int hddLoadCoreSupportModules(void)
         if (ret < 0) {
             LOG("HDD: No HardDisk Drive detected.\n");
             if (!hddSupportErrToasted) {
-                setErrorMessageWithCode(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_MODULE_HDD_FAILURE);
+                host::app().setError(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_MODULE_HDD_FAILURE);
                 hddSupportErrToasted = 1;
             }
             return 0;
@@ -765,7 +766,7 @@ static int hddLoadCoreSupportModules(void)
         if (ret < 0) {
             LOG("HDD: No HardDisk Drive detected.\n");
             if (!hddSupportErrToasted) {
-                setErrorMessageWithCode(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_NOT_DETECTED);
+                host::app().setError(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_NOT_DETECTED);
                 hddSupportErrToasted = 1;
             }
             return 0;
@@ -779,7 +780,7 @@ static int hddLoadCoreSupportModules(void)
         if (ret == 2) {
             LOG("HDD: APA status reports an unavailable drive.\n");
             if (!hddSupportErrToasted) {
-                setErrorMessageWithCode(_STR_HDD_UNAVAILABLE_ERROR, ERROR_HDD_NOT_DETECTED);
+                host::app().setError(_STR_HDD_UNAVAILABLE_ERROR, ERROR_HDD_NOT_DETECTED);
                 hddSupportErrToasted = 1;
             }
             return 0;
@@ -937,7 +938,7 @@ static void hddPublishVcdGameList(base_game_info_t *games, char (*parts)[APA_IDM
     base_game_info_t *oldGames;
     char(*oldParts)[APA_IDMAX + 1];
 
-    guiLock();
+    host::ui().lock();
     oldGames = hddVcdGames;
     oldParts = hddVcdParts;
     hddVcdGames = games;
@@ -946,7 +947,7 @@ static void hddPublishVcdGameList(base_game_info_t *games, char (*parts)[APA_IDM
     hddVcdListBuilt = built;
     free(oldGames);
     free(oldParts);
-    guiUnlock();
+    host::ui().unlock();
 }
 
 static void hddFreeVcdGameList(void)
@@ -961,13 +962,13 @@ static void hddPublishHdlGameList(hdl_games_list_t *replacement)
     if (replacement == NULL)
         return;
 
-    guiLock();
+    host::ui().lock();
     old = hddGames;
     hddGames = *replacement;
     replacement->games = NULL;
     replacement->count = 0;
     hddFreeHDLGamelist(&old);
-    guiUnlock();
+    host::ui().unlock();
 }
 
 // Build the HDD VCD game list from both supported APA/PFS shapes. Exact __.POPS / __.POPS0..9
@@ -1227,9 +1228,9 @@ static int hddBuildVcdGameList(void)
 static int hddNeedsUpdate(item_list_t *itemList)
 { /* Auto refresh is disabled by setting HDD_MODE_UPDATE_DELAY to MENU_UPD_DELAY_NOUPDATE, within hddsupport.h.
        Hence any update request would be issued by the user, which should be taken as an explicit request to re-scan the HDD. */
-    if (libViewConsumeDirty(itemList->mode))
+    if (host::library().consumeDirty(itemList->mode))
         return 1; // L3 toggle / default-view change -> rebuild the submenu (the ARRAY may be cached)
-    if (libListViewActive(itemList) == LIB_VIEW_PS1)
+    if (host::library().listViewActive(itemList) == LIB_VIEW_PS1)
         // The locked-to-VCD startup path also receives the normal initial deferred update, but no
         // toggle dirtied the view first. Build once when the VCD backing list does not exist yet.
         // A manual HDD/VCD refresh invalidates this latch before posting the same deferred update.
@@ -1239,7 +1240,7 @@ static int hddNeedsUpdate(item_list_t *itemList)
 
 static int hddUpdateGameList(item_list_t *itemList)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     // GUI thread must never block on the 1 s ATA settle (hddLoadModules DelayThread).
     // If the base ATA stack has never completed (hddModulesLoadCount==0), defer and
     // ensure a deduplicated IO-worker retry is queued. hddLoadModules resets the count
@@ -1299,10 +1300,10 @@ static int hddUpdateGameList(item_list_t *itemList)
                     // for the session. That is not a PFS problem, and "PFS support unavailable" hid
                     // the one thing that matters: the drive is there and must not be formatted.
                     hddLogPfsDiagState("emit-code-402", "settled-retries-exhausted");
-                    setErrorMessageWithCode(_STR_HDD_APA_TABLE_UNREADABLE_ERROR, ERROR_HDD_APA_TABLE_UNREADABLE);
+                    host::app().setError(_STR_HDD_APA_TABLE_UNREADABLE_ERROR, ERROR_HDD_APA_TABLE_UNREADABLE);
                 } else {
                     hddLogPfsDiagState("emit-code-222", "settled-retries-exhausted");
-                    setErrorMessageWithCodeAndDetail(_STR_HDD_PFS_UNAVAILABLE_ERROR, ERROR_HDD_MODULE_PFS_FAILURE,
+                    host::app().setErrorDetail(_STR_HDD_PFS_UNAVAILABLE_ERROR, ERROR_HDD_MODULE_PFS_FAILURE,
                                                      hddPfsDiagReasonName(hddPfsDiagReason));
                 }
                 hddSupportErrToasted = 1;
@@ -1379,7 +1380,7 @@ static int hddUpdateGameList(item_list_t *itemList)
 
 static int hddGetGameCount(item_list_t *itemList)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     return view == LIB_VIEW_MIXED ? (int)hddGames.count + hddVcdGameCount :
            view == LIB_VIEW_PS1   ? hddVcdGameCount :
                                     (int)hddGames.count;
@@ -1387,7 +1388,7 @@ static int hddGetGameCount(item_list_t *itemList)
 
 static int hddGetItemView(item_list_t *itemList, int id)
 {
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
         return id >= 0 && id < (int)hddGames.count ? LIB_VIEW_ISO : LIB_VIEW_PS1;
     return view;
@@ -1395,7 +1396,7 @@ static int hddGetItemView(item_list_t *itemList, int id)
 
 static int hddGetSourceId(item_list_t *itemList, int id)
 {
-    return libListViewActive(itemList) == LIB_VIEW_MIXED && id >= (int)hddGames.count ? id - (int)hddGames.count : id;
+    return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= (int)hddGames.count ? id - (int)hddGames.count : id;
 }
 
 // Split-store guard (Codex/Fable audit), mirroring mmceActiveGame. L3 stages its destination until
@@ -1706,7 +1707,7 @@ static void hddRenameVcd(int id, const char *newName)
     ioBlockOps(0);
 
     if (isApaLabel)
-        guiMsgBox(_l(_STR_HDD_PARTITION_RENAME_UNSUPPORTED), 0, NULL);
+        host::ui().msgBox(_l(_STR_HDD_PARTITION_RENAME_UNSUPPORTED), 0, NULL);
 
     if (renamed) {
         vcdInvalidateGameIds();
@@ -1829,7 +1830,7 @@ static void hddDoLaunchEmber(item_list_t *itemList, const char *name, const char
     // Refuse what Ember itself would refuse, while a dialog can still be drawn and before anything
     // has been torn down. Same order as every other device's Ember leg.
     if (!cueNameLaunchable(name)) {
-        guiMsgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
         return;
     }
 
@@ -1838,7 +1839,7 @@ static void hddDoLaunchEmber(item_list_t *itemList, const char *name, const char
     cacheAbortMmceImageLoadsTimed(HDD_ART_QUIESCE_MS);
     if (!cacheCancelPendingImageLoadsTimed(HDD_ART_QUIESCE_MS)) {
         LOG("HDD EMBER: art did not quiesce; refusing the pfs0: remount\n");
-        guiMsgBox(_l(_STR_PLEASE_WAIT), 0, NULL);
+        host::ui().msgBox(_l(_STR_PLEASE_WAIT), 0, NULL);
         return;
     }
     ioBlockOps(1);
@@ -1848,7 +1849,7 @@ static void hddDoLaunchEmber(item_list_t *itemList, const char *name, const char
     if (fileXioMount(hddPrefix, mountSrc, FIO_MT_RDWR | HDD_PFS_MT_WRITETHROUGH) < 0) {
         hddRestoreDataHome();
         ioBlockOps(0);
-        guiMsgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
         return;
     }
 
@@ -1857,25 +1858,25 @@ static void hddDoLaunchEmber(item_list_t *itemList, const char *name, const char
     if (!cueResolveEmber("pfs0:/", emberElf, sizeof(emberElf))) {
         hddRestoreDataHome();
         ioBlockOps(0);
-        guiMsgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
         return;
     }
     if (!cueResolveEmberBios("pfs0:/", biosPath, sizeof(biosPath))) {
         hddRestoreDataHome();
         ioBlockOps(0);
-        guiMsgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
         return;
     }
     if (!cueGameHasImage("pfs0:/", name)) {
         hddRestoreDataHome();
         ioBlockOps(0);
-        guiMsgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
         return;
     }
     cueApplySettings("pfs0:/", name, configSet); // best-effort marker, never a launch gate -- needs the RDWR mount
 
     // Past this point pfs0: stays where it is and IO stays blocked; deinit re-blocks anyway.
-    deinit(UNMOUNT_EXCEPTION | KEEPIOP_EXCEPTION, itemList->mode);
+    host::app().deinit(UNMOUNT_EXCEPTION | KEEPIOP_EXCEPTION, itemList->mode);
     sysLaunchEmber(emberElf, name);
 }
 
@@ -1916,7 +1917,7 @@ static void hddDoLaunchVcd(item_list_t *itemList, const char *name, const char *
         cacheAbortMmceImageLoadsTimed(HDD_ART_QUIESCE_MS);
         if (!cacheCancelPendingImageLoadsTimed(HDD_ART_QUIESCE_MS)) {
             LOG("HDD VCD: art did not quiesce; refusing the pfs0: remount\n");
-            guiMsgBox(_l(_STR_PLEASE_WAIT), 0, NULL);
+            host::ui().msgBox(_l(_STR_PLEASE_WAIT), 0, NULL);
             return;
         }
         ioBlockOps(1);
@@ -1928,7 +1929,7 @@ static void hddDoLaunchVcd(item_list_t *itemList, const char *name, const char *
             // or queue BDM work during teardown preparation.
             if (!vcdResolvePopstarterMcElf(vcdElf, sizeof(vcdElf))) {
                 ioBlockOps(0);
-                guiMsgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
+                host::ui().msgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
                 return;
             }
         }
@@ -1942,7 +1943,7 @@ static void hddDoLaunchVcd(item_list_t *itemList, const char *name, const char *
     // The game data is APA, while POPSTARTER.ELF may be on a second device. Keep both backends
     // available until sysLoadELFKeepIOP has loaded the target. A pfs-hosted ELF additionally needs
     // KEEP_PFS_FDS_EXCEPTION so PDIOC_CLOSEALL cannot invalidate it before that open.
-    deinitEx(sbLoaderDeinitException(vcdElf), HDD_MODE, oplPath2Mode(vcdElf));
+    host::app().deinitEx(sbLoaderDeinitException(vcdElf), HDD_MODE, host::app().pathToMode(vcdElf));
     sysLaunchPopstarter(vcdElf, vcdSelector);
 }
 
@@ -1978,7 +1979,7 @@ static void hddLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_
     }
     ioBlockOps(0); // resolvedName/resolvedPart are now independent of the mutable backing arrays
     if (idx < 0) {
-        guiMsgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
         return;
     }
     if (isEmber) {
@@ -2007,7 +2008,7 @@ static int hddTryNeutrinoLaunch(hdl_game_info_t *game, config_set_t *configSet)
     // core, which can. Same read the native path performs for its layer-1 setup.
     hddReadSectors(game->start_sector + OPL_HDD_MODE_PS2LOGO_OFFSET, 1, IOBuffer);
     if (*(u32 *)IOBuffer == ZSO_MAGIC) {
-        guiWarning(_l(_STR_NEUTRINO_BAD_FORMAT), 6);
+        host::ui().warning(_l(_STR_NEUTRINO_BAD_FORMAT), 6);
         return 0;
     }
 
@@ -2016,7 +2017,7 @@ static int hddTryNeutrinoLaunch(hdl_game_info_t *game, config_set_t *configSet)
     // resolution order intact: custom full path -> game device (gHDDPrefix) -> mc0/mc1.
     const char *neutrinoPath = sbResolveNeutrinoPath(gHDDPrefix);
     if (neutrinoPath == NULL) {
-        guiWarning(_l(_STR_NEUTRINO_NOT_FOUND), 6);
+        host::ui().warning(_l(_STR_NEUTRINO_NOT_FOUND), 6);
         return 0;
     }
 
@@ -2032,7 +2033,7 @@ static int hddTryNeutrinoLaunch(hdl_game_info_t *game, config_set_t *configSet)
 
     if (gRememberLastPlayed) {
         configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        saveConfig(CONFIG_LAST, 0);
+        host::app().saveConfig(CONFIG_LAST, 0);
     }
 
     // Δ6 pre-teardown validation. On failure fall back to the native core (same contract as
@@ -2056,7 +2057,7 @@ static int hddTryNeutrinoLaunch(hdl_game_info_t *game, config_set_t *configSet)
             configGetVMCDisable(configSet, slot, &slotDisabled);
             if (vmcName[0] != '\0' && !slotDisabled) {
                 LOG("[NEUTRINO] apa: VMC slot %d (%s) configured but unsupported -- launching without it\n", slot, vmcName);
-                guiWarning(_l(_STR_NEUTRINO_VMC_HDD_UNSUPPORTED), 6);
+                host::ui().warning(_l(_STR_NEUTRINO_VMC_HDD_UNSUPPORTED), 6);
                 break;
             }
         }
@@ -2073,10 +2074,10 @@ static int hddTryNeutrinoLaunch(hdl_game_info_t *game, config_set_t *configSet)
     if (gAutoLaunchGame == NULL) {
         // Keep-IOP handoff: keep the HDD stack up (NHDDL hands off with its full ATA stack
         // resident) AND the neutrino.elf device (-cwd config/module reads).
-        int neutrinoDevMode = oplPath2Mode(neutrinoPath);
-        deinitEx(sbNeutrinoDeinitException(neutrinoPath), HDD_MODE, neutrinoDevMode); // CAREFUL: itemCleanUp frees hddGames/game
+        int neutrinoDevMode = host::app().pathToMode(neutrinoPath);
+        host::app().deinitEx(sbNeutrinoDeinitException(neutrinoPath), HDD_MODE, neutrinoDevMode); // CAREFUL: itemCleanUp frees hddGames/game
     } else {
-        miniDeinit(configSet);
+        host::app().miniDeinit(configSet);
         free(gAutoLaunchGame);
         gAutoLaunchGame = NULL;
         // The game itself is read raw (-bsd=ata -bsdfs=hdl), so this teardown normally drops pfs0:
@@ -2118,16 +2119,16 @@ void hddLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
 
         id = hddGetSourceId(itemList, id);
 
-        guiLock();
+        host::ui().lock();
         base_game_info_t *vcd = hddActiveVcd(id);
         if (vcd == &hddEmptyVcd) {
-            guiUnlock();
+            host::ui().unlock();
             return; // stale/invalid id -> nothing to launch
         }
         snprintf(vcdName, sizeof(vcdName), "%s", vcd->name);
         snprintf(vcdPart, sizeof(vcdPart), "%s", hddVcdParts[id]);
         int isEmber = cueIsCueEntry(vcd); // read the row's kind while the list is still locked
-        guiUnlock();
+        host::ui().unlock();
 
         if (isEmber)
             hddDoLaunchEmber(itemList, vcdName, vcdPart, configSet);
@@ -2213,7 +2214,7 @@ void hddLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
                             snprintf(error, sizeof(error), _l(_STR_ERR_VMC_FRAGMENTED_CONTINUE), vmc_name[vmc_id], (vmc_id + 1));
                         else
                             snprintf(error, sizeof(error), _l(_STR_ERR_VMC_CONTINUE), vmc_name[vmc_id], (vmc_id + 1));
-                        if (!guiMsgBox(error, 1, NULL))
+                        if (!host::ui().msgBox(error, 1, NULL))
                             return;
                     } else
                         LOG("VMC error\n");
@@ -2233,7 +2234,7 @@ void hddLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
 
     if (gRememberLastPlayed) {
         configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        saveConfig(CONFIG_LAST, 0);
+        host::app().saveConfig(CONFIG_LAST, 0);
     }
 
     char gid[5];
@@ -2317,9 +2318,9 @@ void hddLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
     mmceSendGameID(game->startup, NULL, 0);
 
     if (gAutoLaunchGame == NULL) {
-        deinit(NO_EXCEPTION, HDD_MODE); // CAREFUL: deinit will call hddCleanUp, so hddGames/game will be freed
+        host::app().deinit(NO_EXCEPTION, HDD_MODE); // CAREFUL: deinit will call hddCleanUp, so hddGames/game will be freed
     } else {
-        miniDeinit(configSet);
+        host::app().miniDeinit(configSet);
 
         free(gAutoLaunchGame);
         gAutoLaunchGame = NULL;

@@ -1,3 +1,4 @@
+#include "include/host.h"
 #include "include/sema_lock.h"
 #include "include/opl.h"
 #include "include/lang.h"
@@ -603,7 +604,7 @@ static int bdmProbeMassSlots(const char *when)
 
     LOG("[BDM DIAG] %s\n", summary);
 #ifdef __OPLDIAG
-    guiSetBootStatusStickyCopy(summary);
+    host::ui().bootStatusStickyCopy(summary);
 #endif
 
     return absent;
@@ -620,7 +621,7 @@ static void bdmDiagBootStageBegin(const char *stage)
 
     snprintf(status, sizeof(status), "BEGIN %s", stage);
     LOG("[BDM DIAG] %s\n", status);
-    guiSetBootStatusStickyCopy(status);
+    host::ui().bootStatusStickyCopy(status);
 }
 
 static void bdmDiagBootStageEnd(const char *stage, int result)
@@ -629,7 +630,7 @@ static void bdmDiagBootStageEnd(const char *stage, int result)
 
     snprintf(status, sizeof(status), "END %s result=%d", stage, result);
     LOG("[BDM DIAG] %s\n", status);
-    guiSetBootStatusStickyCopy(status);
+    host::ui().bootStatusStickyCopy(status);
 }
 #else
 static void bdmDiagBootStageBegin(const char *stage)
@@ -1039,7 +1040,7 @@ static int bdmLoadUsbMassBd(void)
     // Localized boot step, restored with the move into bdmLoadCoreModules. USBMASS_BD is the prime
     // suspect for a real exFAT/USB boot wedge, so it is the last step a stalled console should be
     // naming -- losing this left a wedge here reading as a stall in the PREVIOUS step (BDMFS_FATFS).
-    guiSetBootStatusSticky(_l(_STR_BOOT_LOADING_USB));
+    host::ui().bootStatusSticky(_l(_STR_BOOT_LOADING_USB));
     bdmDiagBootStageBegin("USBMASS_BD");
     result = bdmLoadOptionalModule("USBMASS_BD", &usbmass_bd_irx, size_usbmass_bd_irx);
     bdmDiagBootStageEnd("USBMASS_BD", result);
@@ -1073,7 +1074,7 @@ static void bdmLoadBlockDeviceModules(void)
     // Boot-step localizer: this runs on the IO thread and can wedge on a real drive with no timeout,
     // freezing the splash. Publish the step so a hang here names it instead of the main thread's "Ready.".
     // (brenotomaz exFAT-USB boot hang investigation.)
-    guiSetBootStatusSticky(_l(_STR_BOOT_LOADING_DRIVERS));
+    host::ui().bootStatusSticky(_l(_STR_BOOT_LOADING_DRIVERS));
 
     WaitSema(bdmLoadModuleLock);
 
@@ -1084,7 +1085,7 @@ static void bdmLoadBlockDeviceModules(void)
     // Retry a synchronous bdmLoadCoreModules failure via the generation/worker path. Gated on the
     // setting for the same reason as the core load above: an off source must not become resident.
     if (gEnableUSB && !iUSBModLoaded) {
-        guiSetBootStatusSticky(_l(_STR_BOOT_LOADING_USB));
+        host::ui().bootStatusSticky(_l(_STR_BOOT_LOADING_USB));
         bdmLoadUsbMassBd();
     }
 
@@ -1386,9 +1387,9 @@ static void bdmReportUnsupportedDrives(void)
     unsigned int count = BdmUnsupportedSectorDrives;
 
     if (count > BdmUnsupportedSectorReported)
-        setErrorMessageWithCode(_STR_BDM_UNSUPPORTED_SECTOR_SIZE_ERROR, ERROR_BDM_UNSUPPORTED_SECTOR_SIZE);
+        host::app().setError(_STR_BDM_UNSUPPORTED_SECTOR_SIZE_ERROR, ERROR_BDM_UNSUPPORTED_SECTOR_SIZE);
     else if (count == 0 && BdmUnsupportedSectorReported != 0)
-        clearErrorMessageIf(_STR_BDM_UNSUPPORTED_SECTOR_SIZE_ERROR);
+        host::app().clearErrorIf(_STR_BDM_UNSUPPORTED_SECTOR_SIZE_ERROR);
     BdmUnsupportedSectorReported = count;
 }
 
@@ -1422,7 +1423,7 @@ static int bdmNeedsUpdate(item_list_t *itemList)
         // If the device page is visible but the device support is not enabled, hide the device page.
         if (bdmTransportEnabled(pDeviceData->bdmDeviceType) == 0) {
             pOwner->menuItem.visible = 0;
-            moduleUpdateMenu(itemList->mode, 0, 0);
+            host::app().moduleUpdateMenu(itemList->mode, 0, 0);
         }
     }
 
@@ -1431,7 +1432,7 @@ static int bdmNeedsUpdate(item_list_t *itemList)
     // mmceNeedsUpdate checks it first). Otherwise a device already scanned this BdmGeneration -- which
     // every USB stick is, the moment its ISO list loads -- short-circuits at the gate and never
     // rescans, leaving the VCD (PS1/POPSTARTER) list permanently empty on USB/BDM while MMCE worked.
-    if (libViewConsumeDirty(itemList->mode))
+    if (host::library().consumeDirty(itemList->mode))
         return 1;
 
     // Folder browsing: a descend/ascend marks the mode dirty but bumps nothing the tick gate below
@@ -1515,7 +1516,7 @@ static int bdmNeedsUpdate(item_list_t *itemList)
     // Return `result`, not 0: on the connect pass it is 1, and that pass is what builds a newly
     // attached device's first list. Returning 0 left a page whose remembered view was PS1 blank until
     // L3 or a view change forced a rescan (found while investigating FifthFox's empty BDM pages).
-    if (libListViewActive(itemList) == LIB_VIEW_PS1)
+    if (host::library().listViewActive(itemList) == LIB_VIEW_PS1)
         return result;
 
     snprintf(path, sizeof(path), "%sCD", pDeviceData->bdmPrefix);
@@ -1557,7 +1558,7 @@ static int bdmNeedsUpdate(item_list_t *itemList)
 static int bdmUpdateGameList(item_list_t *itemList)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     int result = 0;
 
     // #120: each view scans into its OWN array (see bdm_device_data_t). Previously both shared
@@ -1584,7 +1585,7 @@ static int bdmUpdateGameList(item_list_t *itemList)
         // it looked rather than leave a silently empty page. Only a connect, SELECT, L3 or
         // delete/rename pass scans, so this cannot repeat on its own.
         if (pDeviceData->bdmULSizePrev == -2 && sub[0] == '\0' && pDeviceData->bdmPrefix[0] != '\0')
-            setErrorMessagePathCode(_STR_BDM_PS2_FOLDERS_UNREADABLE, pDeviceData->bdmPrefix, sbGetReadListError());
+            host::app().setErrorPath(_STR_BDM_PS2_FOLDERS_UNREADABLE, pDeviceData->bdmPrefix, sbGetReadListError());
         result += pDeviceData->bdmGameCount;
     }
     return result;
@@ -1594,7 +1595,7 @@ static int bdmGetGameCount(item_list_t *itemList)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
 
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
     return view == LIB_VIEW_MIXED ? pDeviceData->bdmGameCount + pDeviceData->bdmPs1GameCount :
            view == LIB_VIEW_PS1   ? pDeviceData->bdmPs1GameCount :
                                     pDeviceData->bdmGameCount;
@@ -1603,7 +1604,7 @@ static int bdmGetGameCount(item_list_t *itemList)
 static int bdmGetItemView(item_list_t *itemList, int id)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
-    int view = libListViewActive(itemList);
+    int view = host::library().listViewActive(itemList);
 
     if (view == LIB_VIEW_MIXED)
         return id >= 0 && id < pDeviceData->bdmGameCount ? LIB_VIEW_ISO : LIB_VIEW_PS1;
@@ -1613,7 +1614,7 @@ static int bdmGetItemView(item_list_t *itemList, int id)
 static int bdmGetSourceId(item_list_t *itemList, int id)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
-    return libListViewActive(itemList) == LIB_VIEW_MIXED && id >= pDeviceData->bdmGameCount ? id - pDeviceData->bdmGameCount : id;
+    return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= pDeviceData->bdmGameCount ? id - pDeviceData->bdmGameCount : id;
 }
 
 // Split-store guard (mirrors mmceActiveGame). L3 now stages the destination until the old submenu is
@@ -1730,20 +1731,20 @@ static void bdmLaunchCue(item_list_t *itemList, const char *cueName, config_set_
     // filters these out, so reaching this is either a favourite stored before a rename or a
     // hand-edited entry -- both worth a message rather than a drop to the PS1 BIOS shell.
     if (!cueNameLaunchable(cueName)) {
-        guiMsgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
         return;
     }
 
     bdmBuildPs1Prefix(ps1Prefix, sizeof(ps1Prefix), itemList->mode); // device ROOT: EMBER/ lives there
 
     if (!cueResolveEmber(ps1Prefix, emberElf, sizeof(emberElf))) {
-        guiMsgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
         return;
     }
     // Ember needs a user-supplied bios.bin beside it and says nothing useful when it is missing --
     // it just runs the PS1 BIOS shell. Check while we can still explain.
     if (!cueResolveEmberBios(ps1Prefix, biosPath, sizeof(biosPath))) {
-        guiMsgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
         return;
     }
     // The scan lists folders without reading inside them -- that would be a directory read per row
@@ -1754,14 +1755,14 @@ static void bdmLaunchCue(item_list_t *itemList, const char *cueName, config_set_
     cueApplySettings(ps1Prefix, cueName, configSet);
 
     if (!cueGameHasImage(ps1Prefix, cueName)) {
-        guiMsgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
+        host::ui().msgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
         return;
     }
 
     // MX4SIO shares the SIO2 bus with MMCE artwork; quiesce it before the handoff reads the device.
     if (pDeviceData->bdmDeviceType == BDM_TYPE_SDC) {
         if (!cacheAbortMmceImageLoadsTimed(500)) {
-            guiWarning(_l(_STR_ERR_FILE_INVALID), 8);
+            host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
             return;
         }
     }
@@ -1772,7 +1773,7 @@ static void bdmLaunchCue(item_list_t *itemList, const char *cueName, config_set_
 
     // UNMOUNT_EXCEPTION is load-bearing here, not defensive: Ember never resets the IOP, so the
     // device it reads its game from must still be mounted when it starts.
-    deinit(UNMOUNT_EXCEPTION, itemList->mode);
+    host::app().deinit(UNMOUNT_EXCEPTION, itemList->mode);
     sysLaunchEmber(emberElf, launchName);
 }
 
@@ -1790,12 +1791,12 @@ static void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_
     // the network (udp) block device (no BDMA variant for it), so a PS1 VCD on the udp device would just
     // drop to OSDSYS. Abort cleanly with a message instead of a dead launch.
     if (pDeviceData->bdmDeviceType == BDM_TYPE_UDPBD) {
-        guiMsgBox(_l(_STR_VCD_NOT_ON_NET), 0, NULL);
+        host::ui().msgBox(_l(_STR_VCD_NOT_ON_NET), 0, NULL);
         return;
     }
     bdmBuildPs1Prefix(vcdPrefix, sizeof(vcdPrefix), itemList->mode); // device root, NOT gBDMPrefix -- POPSTARTER reads <root>/POPS only
     if (!vcdResolvePopstarter(vcdPrefix, vcdElf, sizeof(vcdElf))) {
-        guiMsgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
+        host::ui().msgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
         return;
     }
     // vcdBuildSelector emits the BARE POPSTARTER label ("mass:/POPS/XX.<name>.ELF"), NOT this live
@@ -1831,7 +1832,7 @@ static void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_
         } else if (gVcdUsbBdmaMode == VCD_USB_BDMA_FAT32) {
             usbBdmaVariant = VCD_BDMA_FAT32;
         } else {
-            int usbMode = guiShowVcdUsbMode();
+            int usbMode = host::ui().showVcdUsbMode();
             if (usbMode == VCDUSB_BTN_FAT32)
                 usbBdmaVariant = VCD_BDMA_FAT32;
             else if (usbMode == VCDUSB_BTN_EXFAT)
@@ -1842,12 +1843,12 @@ static void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_
     }
 
     // Present preparation indicator before potentially expensive memory-card file IO
-    guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
+    host::ui().renderTextScreen(_l(_STR_PLEASE_WAIT));
 
     // MMCE artwork must be quiesced before VCD card I/O because MMCE and MX4SIO share the SIO2/fileXio path.
     if (pDeviceData->bdmDeviceType == BDM_TYPE_SDC) {
         if (!cacheAbortMmceImageLoadsTimed(500)) {
-            guiWarning(_l(_STR_ERR_FILE_INVALID), 8);
+            host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
             return;
         }
     }
@@ -1883,7 +1884,7 @@ static void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_
 
     // POPSTARTER.ELF may be on a different backend than the VCD. Keep both alive until the
     // argv-preserving loader has opened the ELF; POPSTARTER performs its own IOP reset afterwards.
-    deinitEx(sbLoaderDeinitException(vcdElf), itemList->mode, oplPath2Mode(vcdElf));
+    host::app().deinitEx(sbLoaderDeinitException(vcdElf), itemList->mode, host::app().pathToMode(vcdElf));
     sysLaunchPopstarter(vcdElf, vcdSelector);
 }
 
@@ -1933,7 +1934,7 @@ static int bdmNeutrinoFragBudgetOk(const char *isoPath, const neutrino_vmc_args_
         // local outcome is a native-core fallback (which usually boots: OPL's own 64-frag
         // table holds the ISO only -- VMCs go through mcemu's contiguity check instead).
         snprintf(msg, sizeof(msg), _l(isUdp ? _STR_NEUTRINO_TOO_FRAGMENTED_NET : _STR_NEUTRINO_TOO_FRAGMENTED), total, NEUTRINO_BDM_MAX_FRAGS);
-        guiWarning(msg, 6);
+        host::ui().warning(msg, 6);
         return 0;
     }
     return 1;
@@ -1945,7 +1946,7 @@ static int bdmNeutrinoAbort(int failResult, config_set_t *configSet)
 {
     launchDiagDisarm();
     if (failResult && gAutoLaunchBDMGame != NULL) {
-        miniDeinit(configSet); // mirror the normal autolaunch teardown (ioEnd/configEnd + frees configSet)
+        host::app().miniDeinit(configSet); // mirror the normal autolaunch teardown (ioEnd/configEnd + frees configSet)
         free(gAutoLaunchBDMGame);
         gAutoLaunchBDMGame = NULL;
         free(gAutoLaunchDeviceData);
@@ -1986,13 +1987,13 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
     if (game->format == GAME_FORMAT_USBLD || !strcasecmp(game->extension, ".zso")) {
         // isValidIsoName() admits .zso case-insensitively and game->extension is stored verbatim,
         // so an upper/mixed-case ".ZSO" must reject here too (Neutrino can't run it).
-        guiWarning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_BAD_FORMAT), 6);
+        host::ui().warning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_BAD_FORMAT), 6);
         return bdmNeutrinoAbort(failResult, configSet);
     }
 
     const char *neutrinoPath = sbResolveNeutrinoPath(pDeviceData->bdmPrefix); // #300: AUTO probes this device for a co-located install
     if (neutrinoPath == NULL) {
-        guiWarning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_NOT_FOUND), 6);
+        host::ui().warning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_NOT_FOUND), 6);
         return bdmNeutrinoAbort(failResult, configSet);
     }
 
@@ -2027,7 +2028,7 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
 
     if (gRememberLastPlayed) {
         configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        saveConfig(CONFIG_LAST, 0);
+        host::app().saveConfig(CONFIG_LAST, 0);
     }
 
     // Δ6 preflight (driver token + network toml sync) -- abort stays in a live menu.
@@ -2043,7 +2044,7 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
                        (neutrinoVmc.arg[0][0] ? 1 : 0) | (neutrinoVmc.arg[1][0] ? 2 : 0)) < 0 &&
         bdmDriverIsMx4sio(bdmCurrentDriver)) {
         if (mmceGameIdSettle(5000) < 0)
-            guiWarning(_l(_STR_MMCE_GAMEID_UNSETTLED), 6);
+            host::ui().warning(_l(_STR_MMCE_GAMEID_UNSETTLED), 6);
     }
     if (gLaunchDiag)
         launchDiagMark(4);
@@ -2057,10 +2058,10 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
     if (gAutoLaunchBDMGame == NULL) {
         // Keep-IOP handoff: keep BOTH the game device and the neutrino.elf device mounted
         // (Neutrino reads its -cwd config/modules and the ISO through our mounts pre-reset).
-        int neutrinoDevMode = oplPath2Mode(neutrinoPath);
-        deinitEx(sbNeutrinoDeinitException(neutrinoPath), itemList->mode, neutrinoDevMode); // CAREFUL: itemCleanUp frees bdmGames/game
+        int neutrinoDevMode = host::app().pathToMode(neutrinoPath);
+        host::app().deinitEx(sbNeutrinoDeinitException(neutrinoPath), itemList->mode, neutrinoDevMode); // CAREFUL: itemCleanUp frees bdmGames/game
     } else {
-        miniDeinit(configSet);
+        host::app().miniDeinit(configSet);
         free(gAutoLaunchBDMGame);
         gAutoLaunchBDMGame = NULL;
         free(gAutoLaunchDeviceData);
@@ -2156,7 +2157,7 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
         LOG("BDMSUPPORT launch aborted: device %d has no natively launchable driver token ('%s')\n",
             itemList != NULL ? itemList->mode : -1, pDeviceData->bdmDriver);
         if (gAutoLaunchBDMGame == NULL)
-            guiMsgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
+            host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
         return;
     }
 
@@ -2180,7 +2181,7 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
         LOG("BDMSUPPORT launch aborted: device %d ('%s') never reported a device number\n",
             itemList != NULL ? itemList->mode : -1, pDeviceData->bdmDriver);
         if (gAutoLaunchBDMGame == NULL)
-            guiMsgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
+            host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
         return;
     }
 
@@ -2241,7 +2242,7 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
                     snprintf(error, sizeof(error), _l(_STR_ERR_VMC_FRAGMENTED_CONTINUE), vmc_name, (vmc_id + 1));
                 else
                     snprintf(error, sizeof(error), _l(_STR_ERR_VMC_CONTINUE), vmc_name, (vmc_id + 1));
-                if (!guiMsgBox(error, 1, NULL)) {
+                if (!host::ui().msgBox(error, 1, NULL)) {
                     return;
                 }
             }
@@ -2280,7 +2281,7 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
     // inherent shared-bus conflict, not fixable here, so warn instead of leaving a mystery black
     // screen. sbPrepare() above resolved gEnablePadEmu for this game (global or per-game).
     if (pDeviceData->bdmDeviceType == BDM_TYPE_SDC && gEnablePadEmu)
-        guiWarning(_l(_STR_MX4SIO_PADEMU_WARN), 6);
+        host::ui().warning(_l(_STR_MX4SIO_PADEMU_WARN), 6);
 #endif
 
     settings = (struct cdvdman_settings_bdm *)((u8 *)irx + index);
@@ -2302,7 +2303,7 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
         fd = open(partname, O_RDONLY);
         if (fd < 0) {
             sbUnprepare(&settings->common);
-            guiMsgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
+            host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
             return;
         }
         iop_fd = ps2sdk_get_iop_fd(fd); // only valid after confirming fd >= 0
@@ -2315,7 +2316,7 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
             // iteration's destination offset and size.
             close(fd);
             sbUnprepare(&settings->common);
-            guiMsgBox(_l(_STR_ERR_FRAGMENTED), 0, NULL);
+            host::ui().msgBox(_l(_STR_ERR_FRAGMENTED), 0, NULL);
             return;
         }
         iso_frag->frag_count += iFragCount;
@@ -2370,7 +2371,7 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
 
     if (gRememberLastPlayed) {
         configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        saveConfig(CONFIG_LAST, 0);
+        host::app().saveConfig(CONFIG_LAST, 0);
     }
 
     if (configGetStrCopy(configSet, CONFIG_ITEM_ALTSTARTUP, filename, sizeof(filename)) == 0)
@@ -2427,13 +2428,13 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
     // BDM transports don't share SIO2, so only the SDC leg pays it).
     if (mmceSendGameID(game->startup, NULL, 0) < 0 && bdmDriverIsMx4sio(bdmCurrentDriver)) {
         if (mmceGameIdSettle(5000) < 0)
-            guiWarning(_l(_STR_MMCE_GAMEID_UNSETTLED), 6);
+            host::ui().warning(_l(_STR_MMCE_GAMEID_UNSETTLED), 6);
     }
 
     if (gAutoLaunchBDMGame == NULL) {
-        deinit(NO_EXCEPTION, itemList->mode); // CAREFUL: deinit will call bdmCleanUp, so bdmGames/game will be freed
+        host::app().deinit(NO_EXCEPTION, itemList->mode); // CAREFUL: deinit will call bdmCleanUp, so bdmGames/game will be freed
     } else {
-        miniDeinit(configSet);
+        host::app().miniDeinit(configSet);
 
         free(gAutoLaunchBDMGame);
         gAutoLaunchBDMGame = NULL;
@@ -2641,7 +2642,7 @@ void bdmInitDevicesData()
     // Refresh the visibility of the menu.
     for (int i = 0; i < MAX_BDM_DEVICES; i++) {
         // Register the device structure into the UI.
-        initSupport(&bdmDeviceList[i], i, 0);
+        host::app().initSupport(&bdmDeviceList[i], i, 0);
 
         // If bdm support is set to auto then make the page invisible and reset the bdm tick counter, when a bdm device is mounted it will dynamically be made visible.
         // If bdm support is set to manual then only make the first page visible.
@@ -2802,7 +2803,7 @@ int bdmUpdateDeviceData(item_list_t *itemList)
     if (dir >= 0 && visible == 0 && bdmSlotIdentified(pDeviceData)) {
         if (itemList->owner != NULL) {
             ((opl_io_module_t *)itemList->owner)->menuItem.visible = 1;
-            moduleUpdateMenu(itemList->mode, 0, 0);
+            host::app().moduleUpdateMenu(itemList->mode, 0, 0);
         }
         pDeviceData->bdmMissCount = 0;
         LOG("bdmUpdateDeviceData: device %d reappeared intact -- restoring page, no rescan\n", itemList->mode);
@@ -2893,13 +2894,13 @@ int bdmUpdateDeviceData(item_list_t *itemList)
 
         // Attach order can hand this device a different massN slot than last boot; take the L3
         // position remembered for its type before the first scan reads it.
-        libViewBdmAttach(itemList->mode, pDeviceData->bdmDeviceType);
+        host::library().bdmAttach(itemList->mode, pDeviceData->bdmDeviceType);
 
         // Make the menu item visible.
         if (itemList->owner != NULL) {
             LOG("bdmUpdateDeviceData: setting device %d visible\n", itemList->mode);
             ((opl_io_module_t *)itemList->owner)->menuItem.visible = 1;
-            moduleUpdateMenu(itemList->mode, 0, 0);
+            host::app().moduleUpdateMenu(itemList->mode, 0, 0);
         }
 
         // Close the device handle.
@@ -2931,7 +2932,7 @@ int bdmUpdateDeviceData(item_list_t *itemList)
         if (itemList->owner != NULL) {
             LOG("bdmUpdateDeviceData: setting device %d invisible\n", itemList->mode);
             ((opl_io_module_t *)itemList->owner)->menuItem.visible = 0;
-            moduleUpdateMenu(itemList->mode, 0, 0);
+            host::app().moduleUpdateMenu(itemList->mode, 0, 0);
         }
 
         bdmLogIdentityDiagnosticLive("update-confirmed-disconnect", itemList, NULL);

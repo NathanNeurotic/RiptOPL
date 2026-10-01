@@ -70,6 +70,7 @@
 
 #ifdef RETROACHIEVEMENTS
 
+#include "include/host.h"
 #include "include/opl.h"
 #include "include/util.h"
 #include "include/ioman.h"
@@ -531,7 +532,7 @@ void raLaunchNetworkUp(void)
     if (!linkUp) {
         LOG("RA: network unavailable, launching without telemetry\n");
         ClearWatchList();
-        guiWarning(_l(_STR_RA_NO_LINK_UNTRACKED), 6);
+        host::ui().warning(_l(_STR_RA_NO_LINK_UNTRACKED), 6);
     }
 }
 
