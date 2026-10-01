@@ -32,7 +32,7 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guidialogs.cpp')
+gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guimodal.cpp') + read('src/ui/guiwait.cpp') + read('src/ui/guigameid.cpp')
 dia_c = read('src/ui/dia.cpp')
 
 HARNESS = r'''
@@ -91,7 +91,8 @@ for where, source, signature in (
     ('src/ui/gui.cpp', gui_c, 'static int guiSettingsPromptSave('),
     ('src/ui/gui.cpp', gui_c, 'static void guiDrawSettingsIndexHints('),
     ('src/ui/gui.cpp', gui_c, 'static int guiSettingsShowIndex('),
-    ('src/ui/gui.cpp', gui_c, 'int guiPromptRebootIop('),
+    ('src/ui/guimodal.cpp', gui_c, 'bool RebootIopPrompt::onKeys('),
+    ('src/ui/guimodal.cpp', gui_c, 'void RebootIopPrompt::draw('),
     ('src/ui/gui.cpp', gui_c, 'static int guiReadPopsNet('),
     ('src/ui/dia.cpp', dia_c, 'static int diaHandleInput('),
     ('src/ui/dia.cpp', dia_c, 'int diaExecuteDialog('),

@@ -63,7 +63,7 @@ def compile_and_run(name, program):
 
 
 dia_c = read('src/ui/dia.cpp')
-gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guidialogs.cpp')
+gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guimodal.cpp') + read('src/ui/guiwait.cpp') + read('src/ui/guigameid.cpp')
 menusys_c = read('src/ui/menusys.cpp')
 dialogs_c = read('src/ui/dialogs.cpp')
 dialogs_h = read('include/dialogs.h')

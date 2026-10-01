@@ -269,7 +269,7 @@ if re.search(r'configSetInt\(configOPL, CONFIG_OPL_EMBER_DISPLAY,', opl_c):
 
 # --- A settings row stores a value only when the user actually changed it (src/ui/gui.c) ------------
 
-gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guidialogs.cpp')
+gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guimodal.cpp') + read('src/ui/guiwait.cpp') + read('src/ui/guigameid.cpp')
 
 ROW_HARNESS = r'''
 #include <stdio.h>

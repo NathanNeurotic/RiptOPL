@@ -21,7 +21,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-gui = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/ui/gui.cpp', 'src/ui/guisettings.cpp', 'src/ui/guidialogs.cpp')).replace('\r\n', '\n')
+gui = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/ui/gui.cpp', 'src/ui/guisettings.cpp', 'src/ui/guimodal.cpp', 'src/ui/guiwait.cpp', 'src/ui/guigameid.cpp')).replace('\r\n', '\n')
 opl = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/app/opl.cpp', 'src/app/settingsio.cpp')).replace('\r\n', '\n')
 failures = []
 

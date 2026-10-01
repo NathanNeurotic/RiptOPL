@@ -267,10 +267,10 @@ def check_pins():
           not re.search(r'sbSetBrowseSub\(folderGetSub\(itemList->mode\)\)', launch),
           'bdmLaunchGame: autolaunch (itemList == NULL) must not read itemList->mode')
 
-    gui = text('src/ui/gui.cpp') + text('src/ui/guisettings.cpp') + text('src/ui/guidialogs.cpp')
+    gui = text('src/ui/gui.cpp') + text('src/ui/guisettings.cpp') + text('src/ui/guimodal.cpp') + text('src/ui/guiwait.cpp') + text('src/ui/guigameid.cpp')
     msgbox = function_text(gui, 'int guiMsgBox(')
     check(msgbox is not None and re.search(r'if \(gTheme == NULL\) \{[^}]*return 0;', msgbox) and
-          msgbox.find('gTheme == NULL') < msgbox.find('guiWrapText('),
+          msgbox.find('gTheme == NULL') < msgbox.find('MessageBoxScreen box('),
           'guiMsgBox: must answer "back" (0) before the GUI exists')
 
     support = text('src/sources/supportbase.cpp')
@@ -360,7 +360,7 @@ def check_pins():
     check(multi is not None and
           'configPrepareLoadNotification(configOplCarryOver ? configCarryOverDir : configSet->filename());' in multi,
           'configReadMulti: the load toast must name the carry-over home when settings came from there')
-    toast = function_text(text('src/ui/gui.cpp') + text('src/ui/guisettings.cpp') + text('src/ui/guidialogs.cpp') + text('src/ui/guinotify.cpp'), 'void Notifications::show(')
+    toast = function_text(text('src/ui/gui.cpp') + text('src/ui/guisettings.cpp') + text('src/ui/guimodal.cpp') + text('src/ui/guiwait.cpp') + text('src/ui/guigameid.cpp') + text('src/ui/guinotify.cpp'), 'void Notifications::show(')
     check(toast is not None and
           'configOplIsOfficialSeed() ? _STR_OFFICIAL_CFG_NOTIFICATION : _STR_CFG_NOTIFICATION' in toast,
           'Notifications::show: official OPL\'s seed must not be announced as RiptOPL settings')
