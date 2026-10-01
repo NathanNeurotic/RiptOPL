@@ -431,9 +431,9 @@ Planned design:
   begin/update/read interface.
 - `Notifications`: the popup and RA notices with their timers. **Done** (include/guinotify.h, src/ui/guinotify.cpp; `guiCheckNotifications`/`guiResetNotifications`/`guiShowRANotice` remain as forwarders).
 - `ScreenManager`: screen-handler table, transitions, `guiShow`. **Done** (include/guiscreens.h, src/ui/guiscreens.cpp).
-- Also extracted from gui.cpp: `FrameClock` (frame-time watchdog, debug FPS; guiframe.cpp), `Overlays` (busy spinner, debug HUDs, auto-start countdown, sub-menu hints; guioverlay.cpp), `BootSplash` (glowing logo, status line, intro loop; guisplash.cpp). **gui.cpp itself is NOT yet classes**: its remaining ~450 lines (init/end, the GUI lock, frame start/end, deferred-op handler, main loop, keyboard, about) are still free functions over file statics. Next: a `Gui` runtime class owning those, with the `guiXxx` functions as one-line forwarders.
+- Also extracted from gui.cpp: `FrameClock` (frame-time watchdog, debug FPS; guiframe.cpp), `Overlays` (busy spinner, debug HUDs, auto-start countdown, sub-menu hints; guioverlay.cpp), `BootSplash` (glowing logo, status line, intro loop; guisplash.cpp). `gui.cpp` is now one class, `Gui` (include/guiruntime.h): the frame lock, frame start/end, deferred-op queue and handler, plasma background, probe frame, main loop, keyboard, about and the scroll-speed/screen-scale updaters are its methods; the `guiXxx` functions at the bottom of gui.cpp are one-line forwarders to `gGui`.
 - guidialogs.cpp is gone: `ModalScreen` (frame loop base) with `MessageBoxScreen`, `RebootIopPrompt`, `RemoveSettingsPrompt`, `CheatScreen` (guimodal.cpp), `DeferredIoWait` (guiwait.cpp), `GameIdBarcode` (guigameid.cpp); the `guiMsgBox`, `guiPromptRebootIop`, `guiHandleDeferedIO`, ... functions remain as forwarders (guiMsgBox keeps the pre-GUI `gTheme == NULL` guard).
-- Still to do: `Gui` runtime (gui.cpp), guigame.cpp (1941 lines), guisettings.cpp (3172 lines: page-file split, `SettingsShell`, one class per page).
+- Still to do: guigame.cpp (1941 lines), guisettings.cpp (3172 lines: page-file split, `SettingsShell`, one class per page).
 - `gui.h` keeps the current function names as thin forwarders to the instances, so the many callers (`opl`, `menusys`, the support
   files) do not change.
 
