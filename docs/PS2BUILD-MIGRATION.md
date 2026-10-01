@@ -7,7 +7,9 @@ build through the Makefile. Build:
     tools/assets.py all            # translations, lwNBD, bin2c blobs, asm/opl_version.h
     ps2build build                 # -> build/bin/riptopl-packed.elf
 
-Not hardware-tested. Open items: other flavours, `usbd_mini` -G16384 equivalence, audsrv
+Emulator-tested through the C++ conversion (Atlas, ConfigSet builds confirmed working); not hardware-tested.
+Sources under src/ are now C++ (see CPP-CONVERSION-PLAN.md), so the Makefile can no longer build them.
+Open items: other flavours, `usbd_mini` is built with -G0 (-G16384 broke ds34usb), audsrv
 (SDK `audio` + `audsrv-compat` replaces the old audsrv), `elfldr.elf` size (143 KB), CI cutover
 (.github/workflows/ps2build.yml runs alongside the old jobs), Makefile removal.
 EE sources in src/ are now C++ (.cpp). Kept as C: src/lz4.c and src/zso.c (shared with the IOP

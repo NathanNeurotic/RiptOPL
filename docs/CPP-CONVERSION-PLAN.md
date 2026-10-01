@@ -300,3 +300,14 @@ Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 
   placement new). File syntax (legacy/libconfig reader/writer, official-OPL translation, registry) is still free functions in
   `config.cpp` driving the class through its public interface. Key names, ordering and on-disk formats are unchanged.
   `filenameForOpen()` exists because `openFile()` patches an `mc?` placeholder in place.
+- Emulator-verified after each of Atlas and ConfigSet (menus, config load/save, game list). Binary growth: +48 B for ConfigSet.
+- Verification per step: clean `ps2build build`, `tools/run_tests.sh -k`, `tools/warning_gate.py build.log --check` (64 vs baseline 67),
+  `tools/syntax_sweep.py` (only the pre-existing EESIO `SIOCookie.h` failure).
+
+## 15. Next
+1. **PlasmaBackground** out of `gui.cpp` (perlin tables, `guiCalcPerlin`, `guiDrawBGPlasma`, the 32x32 texture) into `src/plasma.cpp`;
+   `gui` keeps a thin wrapper. First `gui` extraction; the VU0 asm helpers move with it.
+2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
+3. Phase 5 `GameSource` hierarchy (needs go-ahead; hardware testing matters most there).
+4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining
+   analyzer upward edges listed in section 13.
