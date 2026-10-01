@@ -44,6 +44,7 @@ constexpr int SYS_DISC_NODISC_MS = 2000;
 #include "../ee_core/include/coreconfig.h"
 #include <osd_config.h>
 #include "include/pggsm.h"
+#include "include/sema_lock.h"
 #include "include/cheatman.h"
 #include "include/xparam.h"
 #ifdef RETROACHIEVEMENTS
@@ -130,7 +131,7 @@ int sysLoadModuleBuffer(void *buffer, int size, int argc, char *argv)
 
     int i, id, ret, index = 0;
 
-    WaitSema(sysLoadModuleLock);
+    raii::SemaLock lock(sysLoadModuleLock);
 
     // check we have not reached MAX_MODULES
     for (i = 0; i < MAX_MODULES; i++) {
@@ -141,34 +142,27 @@ int sysLoadModuleBuffer(void *buffer, int size, int argc, char *argv)
     }
     if (i == MAX_MODULES) {
         LOG("WARNING: REACHED MODULES LIMIT (%d)\n", MAX_MODULES);
-        ret = -1;
-        goto exit;
+        return -1;
     }
 
     // check if the module was already loaded
     for (i = 0; i < MAX_MODULES; i++) {
         if (g_sysLoadedModBuffer[i] == buffer) {
             LOG("MODULE ALREADY LOADED (%d)\n", i);
-            ret = 0;
-            goto exit;
+            return 0;
         }
     }
 
     // load the module
     id = SifExecModuleBuffer(buffer, size, argc, argv, &ret);
     LOG("\t-- ID=%d, ret=%d\n", id, ret);
-    if ((id < 0) || (ret)) {
-        ret = -2;
-        goto exit;
-    }
+    if ((id < 0) || (ret))
+        return -2;
 
     // add the module to the list
     g_sysLoadedModBuffer[index] = buffer;
 
-    ret = 0;
-exit:
-    SignalSema(sysLoadModuleLock);
-    return ret;
+    return 0;
 }
 
 constexpr int OPL_SIF_CMD_BUFF_SIZE = 1;

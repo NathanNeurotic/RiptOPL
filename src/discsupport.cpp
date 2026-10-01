@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "include/raii.h"
 #include "include/opl.h"
 #include "include/system.h"
 #include "include/supportbase.h"
@@ -66,21 +67,26 @@ static void discCheckWorker(void)
 {
     char bootPath[64], startup[16], prefix[120], hash[33], info[96], info2[96];
     int result;
+    auto releaseBusy = raii::scopeExit([] { discBusy = 0; }); // every exit clears the busy latch
     if (discSupportPrefix(prefix, sizeof(prefix)) < 0) {
         guiShowRANotice(_l(_STR_RA_DISC_HOME_ERROR), NULL);
-        goto done;
+        return;
     }
     raHashLogOpen(prefix);
     raHashSetStepLog(&raHashStep);
+    auto closeLog = raii::scopeExit([] { // runs before releaseBusy, as the old close_log/done labels did
+        raHashSetStepLog(NULL);
+        raHashLogClose();
+    });
     if (discIdentity(bootPath, startup, NULL) < 0) {
         guiShowRANotice(_l(_STR_DISC_LAUNCH_ERR), NULL);
-        goto close_log;
+        return;
     }
     // A failed re-check must not keep a stale set for this serial in memory.
     ClearWatchList();
     if (raHashDisc(bootPath, startup, hash) < 0) {
         guiShowRANotice(_l(_STR_RA_DISC_HASH_FAILED), NULL);
-        goto close_log;
+        return;
     }
     raHashLogAdd("(disc)", startup, hash);
     result = raAskPC(hash, startup, prefix, info, sizeof(info), info2, sizeof(info2));
@@ -95,11 +101,6 @@ static void discCheckWorker(void)
         guiShowRANotice(_l(_STR_RA_NET_BUSY), _l(_STR_RA_NET_BUSY_HASH));
     else
         guiShowRANotice(_l(_STR_RA_PC_NO_ANSWER), _l(_STR_RA_PC_NO_ANSWER2));
-close_log:
-    raHashSetStepLog(NULL);
-    raHashLogClose();
-done:
-    discBusy = 0;
 }
 
 int discCheckSupportDeferred(void)

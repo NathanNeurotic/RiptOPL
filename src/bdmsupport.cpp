@@ -1,3 +1,4 @@
+#include "include/sema_lock.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/gui.h"
@@ -1938,6 +1939,21 @@ static int bdmNeutrinoFragBudgetOk(const char *isoPath, const neutrino_vmc_args_
     return 1;
 }
 
+// Abort path of bdmTryNeutrinoLaunch: back to a live menu so a later launch from another device does not
+// inherit this one's markers. Returns failResult (1 = launch consumed on udp, 0 = fall back to native).
+static int bdmNeutrinoAbort(int failResult, config_set_t *configSet)
+{
+    launchDiagDisarm();
+    if (failResult && gAutoLaunchBDMGame != NULL) {
+        miniDeinit(configSet); // mirror the normal autolaunch teardown (ioEnd/configEnd + frees configSet)
+        free(gAutoLaunchBDMGame);
+        gAutoLaunchBDMGame = NULL;
+        free(gAutoLaunchDeviceData);
+        gAutoLaunchDeviceData = NULL;
+    }
+    return failResult;
+}
+
 // Δ8 (NHDDL parity): the LEAN Neutrino launch path. Everything bdmLaunchGame's native flow
 // prepares -- VMC superblock prompts + mcemu patching, sbPrepare's cdvdman patch, per-part
 // fragment lists (with a hard abort past 64 frags), layer-1 probing, cheats (with dialogs),
@@ -1967,24 +1983,17 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
     // launch (autolaunch mirrors its normal teardown); on local devices fall back to native.
     int failResult = isUdp ? 1 : 0;
 
-    // Declared up front: the `goto fail` paths below must not jump over initialisations (C++).
-    const char *neutrinoPath;
-    int compatmask = 0, neutrinoVideo = gNeutrinoVideoDefault, neutrinoGsmComp = gNeutrinoGsmCompDefault, neutrinoBsdfs = 0;
-    char neutrinoExtraArgs[256] = "";
-    neutrino_vmc_args_t neutrinoVmc = {0};
-    int bdmDevNr = pDeviceData->massDeviceIndex;
-
     if (game->format == GAME_FORMAT_USBLD || !strcasecmp(game->extension, ".zso")) {
         // isValidIsoName() admits .zso case-insensitively and game->extension is stored verbatim,
         // so an upper/mixed-case ".ZSO" must reject here too (Neutrino can't run it).
         guiWarning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_BAD_FORMAT), 6);
-        goto fail;
+        return bdmNeutrinoAbort(failResult, configSet);
     }
 
-    neutrinoPath = sbResolveNeutrinoPath(pDeviceData->bdmPrefix); // #300: AUTO probes this device for a co-located install
+    const char *neutrinoPath = sbResolveNeutrinoPath(pDeviceData->bdmPrefix); // #300: AUTO probes this device for a co-located install
     if (neutrinoPath == NULL) {
         guiWarning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_NOT_FOUND), 6);
-        goto fail;
+        return bdmNeutrinoAbort(failResult, configSet);
     }
 
     // Everything Neutrino actually needs from the config/device, copied to THIS stack frame
@@ -1992,6 +2001,9 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
     // Absent per-game $NeutrinoVideo/$NeutrinoGsmComp keys = follow the global defaults (the
     // per-game picker's "Default" row removes the keys; explicit values -- including Off=0 --
     // persist and override).
+    int compatmask = 0, neutrinoVideo = gNeutrinoVideoDefault, neutrinoGsmComp = gNeutrinoGsmCompDefault, neutrinoBsdfs = 0;
+    char neutrinoExtraArgs[256] = "";
+    neutrino_vmc_args_t neutrinoVmc = {0};
     char partname[256], bdmCurrentDriver[32];
     compatmask = sbGetCompatModes(configSet); // same source sbPrepare reads; no IRX patch needed
     configGetStrCopy(configSet, CONFIG_ITEM_NEUTRINO_ARGS, neutrinoExtraArgs, sizeof(neutrinoExtraArgs));
@@ -2004,12 +2016,12 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
     // The bdm device number behind this mount (USBMASS_IOCTL_GET_DEVICE_NUMBER, the same value the
     // native leg binds) -- the <devNr> of a -bsdfs=bd "<driver><devNr>p0" tuple. Copied now: the
     // teardown below frees pDeviceData.
-    bdmDevNr = pDeviceData->massDeviceIndex;
+    int bdmDevNr = pDeviceData->massDeviceIndex;
 
     // Δ9: neutrino only discovers a blown fragment budget after its own IOP reset (debug
     // printf + exit = black screen). Count it now: udp consumes the launch, local falls native.
     if (!bdmNeutrinoFragBudgetOk(partname, &neutrinoVmc, isUdp))
-        goto fail;
+        return bdmNeutrinoAbort(failResult, configSet);
     if (gLaunchDiag)
         launchDiagMark(2);
 
@@ -2020,7 +2032,7 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
 
     // Δ6 preflight (driver token + network toml sync) -- abort stays in a live menu.
     if (sysNeutrinoPreflight(bdmCurrentDriver, neutrinoPath, neutrinoBsdfs, neutrinoExtraArgs, bdmDevNr) < 0)
-        goto fail;
+        return bdmNeutrinoAbort(failResult, configSet);
     if (gLaunchDiag)
         launchDiagMark(3);
 
@@ -2059,18 +2071,6 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
     // read/validation for -logo, so the native path's CheckPS2Logo disc pass is not needed here.
     sysLaunchNeutrino(bdmCurrentDriver, partname, bdmStartup, compatmask, gPS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, neutrinoBsdfs, bdmDevNr, &neutrinoVmc);
     return 1;
-
-fail:
-    // Back to a live menu: a later launch from another device must not inherit this one's markers.
-    launchDiagDisarm();
-    if (failResult && gAutoLaunchBDMGame != NULL) {
-        miniDeinit(configSet); // mirror the normal autolaunch teardown (ioEnd/configEnd + frees configSet)
-        free(gAutoLaunchBDMGame);
-        gAutoLaunchBDMGame = NULL;
-        free(gAutoLaunchDeviceData);
-        gAutoLaunchDeviceData = NULL;
-    }
-    return failResult;
 }
 
 void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
@@ -3039,26 +3039,26 @@ int bdmEnsureSourceModules(int bdmType, u32 timeoutMs)
     // math explode on the first check for any call after that -- the wait budget silently collapses.
     u64 start;
 
-    WaitSema(bdmLoadModuleLock);
-    switch (bdmType) {
-        case BDM_TYPE_USB:
-            wasLoaded = iUSBModLoaded;
-            break;
-        case BDM_TYPE_SDC:
-            wasLoaded = mx4sioModLoaded;
-            break;
-        case BDM_TYPE_ILINK:
-            wasLoaded = iLinkModLoaded;
-            break;
-        case BDM_TYPE_ATA:
-            wasLoaded = hddModLoaded;
-            break;
-        default:
-            SignalSema(bdmLoadModuleLock);
-            return 0;
+    {
+        raii::SemaLock lock(bdmLoadModuleLock);
+        switch (bdmType) {
+            case BDM_TYPE_USB:
+                wasLoaded = iUSBModLoaded;
+                break;
+            case BDM_TYPE_SDC:
+                wasLoaded = mx4sioModLoaded;
+                break;
+            case BDM_TYPE_ILINK:
+                wasLoaded = iLinkModLoaded;
+                break;
+            case BDM_TYPE_ATA:
+                wasLoaded = hddModLoaded;
+                break;
+            default:
+                return 0;
+        }
+        bdmEnsureTransportLoaded(bdmType);
     }
-    bdmEnsureTransportLoaded(bdmType);
-    SignalSema(bdmLoadModuleLock);
 
     // Already loaded -> any connected device is already mounted, so the first probe returns with no stall
     // (and if nothing is connected we bail immediately). Just loaded -> poll until the IOP detects and

@@ -161,6 +161,7 @@ s=(root/'src/discsupport.cpp').read_text(encoding='utf-8')
 s=re.sub(r'^#include.*$', '', s, flags=re.M)
 labels=sorted(set(re.findall(r'_STR_\w+',s)))
 prefix='''
+#include "include/raii.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

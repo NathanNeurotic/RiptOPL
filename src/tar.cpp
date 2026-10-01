@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "include/tar.h"
+#include "include/raii.h"
 #include "include/ioman.h" // LOG -- this engine shipped with ZERO tracing, which made every "art.tar
                            // doesn't work" report unfalsifiable (the CHT path announces its hit at
                            // supportbase.c; ART said nothing at all).
@@ -111,47 +112,34 @@ static int buildTarPath(const TarDevice *dev, TarKind kind, char *out, int outSi
 
 static int tarReadCache(const char *cachePath, const char *tarPath, TarKind kind)
 {
-    int fd = open(cachePath, O_RDONLY);
-    if (fd < 0)
+    raii::UniqueFd fd(open(cachePath, O_RDONLY));
+    if (!fd)
         return -1;
 
     struct stat stCache;
-    if (fstat(fd, &stCache) < 0) {
-        close(fd);
+    if (fstat(fd.get(), &stCache) < 0)
         return -1;
-    }
 
     int fileSize = stCache.st_size;
-    if (fileSize < (int)sizeof(TarCacheHeader)) {
-        close(fd);
+    if (fileSize < (int)sizeof(TarCacheHeader))
         return -1;
-    }
 
-    void *buf = memalign(64, fileSize);
-    if (!buf) {
-        close(fd);
+    raii::UniqueMalloc<void> buf(memalign(64, fileSize));
+    if (!buf)
         return -1;
-    }
 
-    if (read(fd, buf, fileSize) != fileSize) {
-        free(buf);
-        close(fd);
+    if (read(fd.get(), buf.get(), fileSize) != fileSize)
         return -1;
-    }
-    close(fd);
+    fd.reset();
 
-    TarCacheHeader *hdr = (TarCacheHeader *)buf;
+    TarCacheHeader *hdr = (TarCacheHeader *)buf.get();
 
-    if (memcmp(hdr->magic, ARC_MAGIC, 4) != 0 || hdr->version != ARC_VERSION) {
-        free(buf);
+    if (memcmp(hdr->magic, ARC_MAGIC, 4) != 0 || hdr->version != ARC_VERSION)
         return -1;
-    }
 
     struct stat stTar;
-    if (stat(tarPath, &stTar) < 0 || (u64)stTar.st_size != hdr->tarSize) {
-        free(buf);
+    if (stat(tarPath, &stTar) < 0 || (u64)stTar.st_size != hdr->tarSize)
         return -1;
-    }
 
     u32 entrySize = gTarInfo[kind].entrySize;
     // Guard a corrupt/hostile entryCount: validate by DIVISION so entryCount * entrySize can
@@ -159,36 +147,27 @@ static int tarReadCache(const char *cachePath, const char *tarPath, TarKind kind
     // and memcpy use the wrapped (small) size, yet s_count keeps the huge original count -- and
     // tarFind then walks that many entrySize-strides off the small allocation (OOB read).
     u32 maxEntries = (u32)(fileSize - (int)sizeof(TarCacheHeader)) / entrySize;
-    if (entrySize == 0 || hdr->entryCount > maxEntries) {
-        free(buf);
+    if (entrySize == 0 || hdr->entryCount > maxEntries)
         return -1;
-    }
 
-    void *entries = malloc(hdr->entryCount * entrySize);
-    if (!entries) {
-        free(buf);
+    raii::UniqueMalloc<void> entries(malloc(hdr->entryCount * entrySize));
+    if (!entries)
         return -1;
-    }
 
-    memcpy(entries, (unsigned char *)buf + sizeof(TarCacheHeader), hdr->entryCount * entrySize);
+    memcpy(entries.get(), (unsigned char *)buf.get() + sizeof(TarCacheHeader), hdr->entryCount * entrySize);
 
     // The live parser caps every rawSize at MAX_FILE_SIZE (the tar.h invariant); a corrupt cache could
     // carry a larger value. Reject such a cache so the caller re-parses the tar (which re-caps and
     // rewrites a clean cache) instead of trusting an out-of-range size downstream.
     for (u32 i = 0; i < hdr->entryCount; i++) {
-        TarEntryBase *e = (TarEntryBase *)((unsigned char *)entries + entrySize * i);
-        if (e->rawSize > MAX_FILE_SIZE) {
-            free(entries);
-            free(buf);
+        TarEntryBase *e = (TarEntryBase *)((unsigned char *)entries.get() + entrySize * i);
+        if (e->rawSize > MAX_FILE_SIZE)
             return -1;
-        }
     }
 
-    s_index[kind] = entries;
     s_count[kind] = hdr->entryCount;
     s_cap[kind] = hdr->entryCount;
-
-    free(buf);
+    s_index[kind] = entries.release();
     return 0;
 }
 
@@ -204,25 +183,18 @@ static int tarWriteCache(const char *cachePath, const char *tarPath, TarKind kin
     hdr.tarSize = stTar.st_size;
     hdr.entryCount = s_count[kind];
 
-    int fd = open(cachePath, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    if (fd < 0)
+    raii::UniqueFd fd(open(cachePath, O_WRONLY | O_CREAT | O_TRUNC, 0666));
+    if (!fd)
         return -1;
 
-    if (write(fd, &hdr, sizeof(hdr)) != (int)sizeof(hdr)) {
-        close(fd);
+    if (write(fd.get(), &hdr, sizeof(hdr)) != (int)sizeof(hdr))
         return -1;
-    }
 
     u32 entrySize = gTarInfo[kind].entrySize;
     u32 totalSize = entrySize * s_count[kind];
-    if (totalSize > 0) {
-        if (write(fd, s_index[kind], totalSize) != (int)totalSize) {
-            close(fd);
-            return -1;
-        }
-    }
+    if (totalSize > 0 && write(fd.get(), s_index[kind], totalSize) != (int)totalSize)
+        return -1;
 
-    close(fd);
     return 0;
 }
 
@@ -249,8 +221,8 @@ static int tarParseFile(TarKind kind, const char *path)
     if (tarReadCache(fullCachePath, path, kind) == 0)
         return 0;
 
-    int fd = open(path, O_RDONLY);
-    if (fd < 0)
+    raii::UniqueFd fd(open(path, O_RDONLY));
+    if (!fd)
         return -1;
 
     free(s_index[kind]);
@@ -258,23 +230,33 @@ static int tarParseFile(TarKind kind, const char *path)
     s_count[kind] = 0;
     s_cap[kind] = 0;
 
-    u32 nameMax;
+    // Any early return below leaves NO index behind (a half-built one must never be served).
+    bool indexed = false;
+    auto dropIndexOnFailure = raii::scopeExit([&] {
+        if (!indexed) {
+            free(s_index[kind]);
+            s_index[kind] = NULL;
+            s_count[kind] = 0;
+            s_cap[kind] = 0;
+        }
+    });
+
     u32 entrySize = gTarInfo[kind].entrySize;
     if (entrySize <= sizeof(TarEntryBase) + 1)
-        goto fail;
+        return -1;
 
-    nameMax = entrySize - sizeof(TarEntryBase) - 1;
+    u32 nameMax = entrySize - sizeof(TarEntryBase) - 1;
 
     while (1) {
         unsigned char header[TAR_BLOCK_SIZE] __attribute__((aligned(64)));
-        int r = read(fd, header, TAR_BLOCK_SIZE);
+        int r = read(fd.get(), header, TAR_BLOCK_SIZE);
         if (r == 0)
             break;
 
         if (r < 0)
-            goto fail;
+            return -1;
         if (r != TAR_BLOCK_SIZE)
-            goto fail;
+            return -1;
 
         // Do NOT stop at the first end-of-archive marker. A tar EOF marker is a run of zero
         // blocks, and a CONCATENATED art.tar (a covers pack + a BG pack + a SCR pack merged with
@@ -296,19 +278,19 @@ static int tarParseFile(TarKind kind, const char *path)
 
         if (typeflag != '\0' && typeflag != '0') {
             // Skip directory or non-file entries (e.g. typeflag '5')
-            if (lseek64(fd, paddedSize, SEEK_CUR) == (u64)-1)
-                goto fail;
+            if (lseek64(fd.get(), paddedSize, SEEK_CUR) == (u64)-1)
+                return -1;
             continue;
         }
 
-        u64 dataOffset = lseek64(fd, 0, SEEK_CUR);
+        u64 dataOffset = lseek64(fd.get(), 0, SEEK_CUR);
         if (dataOffset == (u64)-1)
-            goto fail;
+            return -1;
 
         if (oversized) {
             LOG("TAR skip oversized entry (%lu bytes > %d) in %s\n", (unsigned long)rawSize, MAX_FILE_SIZE, path);
-            if (lseek64(fd, paddedSize, SEEK_CUR) == (u64)-1)
-                goto fail;
+            if (lseek64(fd.get(), paddedSize, SEEK_CUR) == (u64)-1)
+                return -1;
             continue;
         }
 
@@ -316,7 +298,7 @@ static int tarParseFile(TarKind kind, const char *path)
             u32 newCap = s_cap[kind] ? (s_cap[kind] + 64) : 64;
             void *newIndex = realloc(s_index[kind], entrySize * newCap);
             if (!newIndex)
-                goto fail;
+                return -1;
             s_index[kind] = newIndex;
             s_cap[kind] = newCap;
         }
@@ -368,21 +350,14 @@ static int tarParseFile(TarKind kind, const char *path)
 
         s_count[kind]++;
 
-        if (lseek64(fd, paddedSize, SEEK_CUR) == (u64)-1)
-            goto fail;
+        if (lseek64(fd.get(), paddedSize, SEEK_CUR) == (u64)-1)
+            return -1;
     }
 
-    close(fd);
+    indexed = true;
+    fd.reset();
     tarWriteCache(fullCachePath, path, kind);
     return 0;
-
-fail:
-    close(fd);
-    free(s_index[kind]);
-    s_index[kind] = NULL;
-    s_count[kind] = 0;
-    s_cap[kind] = 0;
-    return -1;
 }
 
 // Load ONE named archive, bypassing the multi-device sweep. Three invariants this has to hold, each
@@ -431,11 +406,8 @@ int tarLoadFromAnyDevice(TarKind kind)
     if (s_index[kind] && s_dev[kind]) {
         char tarPath[256];
         if (buildTarPath(s_dev[kind], kind, tarPath, sizeof(tarPath)) == 0) {
-            int fd = open(tarPath, O_RDONLY);
-            if (fd >= 0) {
-                close(fd);
+            if (raii::UniqueFd probe{open(tarPath, O_RDONLY)})
                 return 0;
-            }
         }
         tarCloseInternal(kind);
     }
@@ -449,10 +421,8 @@ int tarLoadFromAnyDevice(TarKind kind)
         if (buildTarPath(dev, kind, tarPath, sizeof(tarPath)) < 0)
             continue;
 
-        int fd = open(tarPath, O_RDONLY);
-        if (fd < 0)
+        if (!raii::UniqueFd(open(tarPath, O_RDONLY))) // probe only; closed at the end of the full-expression
             continue;
-        close(fd);
 
         s_dev[kind] = dev;
         if (tarParseFile(kind, tarPath) == 0) {
@@ -607,30 +577,21 @@ u32 tarRead(TarKind kind, const TarEntryBase *entry, void *dst, u32 dstSize)
             return 0;
     }
 
-    int fd = open(tarPath, O_RDONLY);
-    if (fd < 0)
+    raii::UniqueFd fd(open(tarPath, O_RDONLY));
+    if (!fd)
         return 0;
 
-    if (lseek64(fd, entry->offset, SEEK_SET) != entry->offset) {
-        close(fd);
+    if (lseek64(fd.get(), entry->offset, SEEK_SET) != entry->offset)
         return 0;
-    }
 
     u32 total = 0;
     while (total < entry->rawSize) {
-        int r = read(fd, (unsigned char *)dst + total, entry->rawSize - total);
-        if (r < 0) {
-            close(fd);
+        int r = read(fd.get(), (unsigned char *)dst + total, entry->rawSize - total);
+        if (r <= 0)
             return 0;
-        }
-        if (r == 0) {
-            close(fd);
-            return 0;
-        }
         total += r;
     }
 
-    close(fd);
     return total;
 }
 
@@ -643,16 +604,14 @@ void *tarGet(TarKind kind, const char *filename)
     if (!entry)
         return NULL;
 
-    void *buf = memalign(64, entry->rawSize);
+    raii::UniqueMalloc<void> buf(memalign(64, entry->rawSize));
     if (!buf)
         return NULL;
 
-    if (tarRead(kind, entry, buf, entry->rawSize) != entry->rawSize) {
-        free(buf);
+    if (tarRead(kind, entry, buf.get(), entry->rawSize) != entry->rawSize)
         return NULL;
-    }
 
-    return buf;
+    return buf.release(); // the caller frees it
 }
 
 int tarEnsureLoaded(TarKind kind)

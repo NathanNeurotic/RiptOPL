@@ -4,6 +4,7 @@
   Review OpenUsbLd README & LICENSE files for further details.
 */
 
+#include "include/sema_lock.h"
 #include "include/opl.h"
 #include "include/diag.h"
 #include "include/menusys.h"
@@ -301,53 +302,42 @@ static void _menuLoadConfigAsync()
         configFree(loadedConfig); // lost the race -- drop it, never publish another row's config
 }
 
-// Opening the info screen needs #Size, which the scroll-time config load deliberately skips.
-// The worker is single-instance but the TARGET is replaceable: if the user opens Info for B while A
-// is still resolving, A is discarded when stale and the same worker immediately processes B.
-static void _menuResolveInfoSize()
+// True while this request is still the newest target AND its row is still the selected one.
+// Caller holds menuSemaId.
+static bool menuInfoSizeStillWanted(item_list_t *list, int configId, unsigned int generation)
 {
-    for (;;) {
-        item_list_t *list = NULL;
-        config_set_t *loadedConfig = NULL;
-        int configId = -1;
-        unsigned int generation = 0;
+    return infoSizeRequestGeneration == generation && infoSizeRequestList == list &&
+           infoSizeRequestId == configId && selected_item != NULL &&
+           selected_item->item != NULL && selected_item->item->current != NULL &&
+           selected_item->item->userdata == list &&
+           selected_item->item->current->item.id == configId;
+}
 
-        WaitSema(menuSemaId);
-        list = infoSizeRequestList;
-        configId = infoSizeRequestId;
-        generation = infoSizeRequestGeneration;
-        SignalSema(menuSemaId);
+// Resolve #Size for one request and publish it if the request is still wanted. Returns early (leaving
+// nothing to clean up) when the target was superseded or abandoned.
+static void menuResolveInfoSizeRequest(item_list_t *list, int configId, unsigned int generation)
+{
+    if (list == NULL || configId < 0)
+        return;
 
-        if (list == NULL || configId < 0)
-            goto complete_request;
+    // #Size is cosmetic/discretionary IO. Wait for BGM reserve, but stop waiting on a target that
+    // has already been superseded or a selection the user left; the next loop takes the newest.
+    while (!bgmDiscretionaryIoAllowed()) {
+        DelayThread(10 * 1000);
+        raii::SemaLock lock(menuSemaId);
+        if (!menuInfoSizeStillWanted(list, configId, generation))
+            return;
+    }
 
-        // #Size is cosmetic/discretionary IO. Wait for BGM reserve, but stop waiting on a target that
-        // has already been superseded or a selection the user left; the next loop takes the newest.
-        while (!bgmDiscretionaryIoAllowed()) {
-            int stillWanted;
-            DelayThread(10 * 1000);
-            WaitSema(menuSemaId);
-            stillWanted = infoSizeRequestGeneration == generation && infoSizeRequestList == list &&
-                          infoSizeRequestId == configId && selected_item != NULL &&
-                          selected_item->item != NULL && selected_item->item->current != NULL &&
-                          selected_item->item->userdata == list &&
-                          selected_item->item->current->item.id == configId;
-            SignalSema(menuSemaId);
-            if (!stillWanted)
-                goto complete_request;
-        }
+    // itemGetConfig runs outside menuSemaId: it is the slow CFG+stat operation.
+    sbSetConfigStatSize(1);
+    config_set_t *loadedConfig = list->itemGetConfig(list, configId);
+    sbSetConfigStatSize(0);
 
-        // itemGetConfig runs outside menuSemaId: it is the slow CFG+stat operation.
-        sbSetConfigStatSize(1);
-        loadedConfig = list->itemGetConfig(list, configId);
-        sbSetConfigStatSize(0);
-
-        // Publish only if this request is STILL the newest target and the same row is selected.
-        WaitSema(menuSemaId);
-        if (loadedConfig != NULL && infoSizeRequestGeneration == generation &&
-            infoSizeRequestList == list && infoSizeRequestId == configId && selected_item != NULL &&
-            selected_item->item != NULL && selected_item->item->current != NULL &&
-            selected_item->item->userdata == list && selected_item->item->current->item.id == configId) {
+    // Publish only if this request is STILL the newest target and the same row is selected.
+    {
+        raii::SemaLock lock(menuSemaId);
+        if (loadedConfig != NULL && menuInfoSizeStillWanted(list, configId, generation)) {
             if (itemConfig != NULL)
                 configFree(itemConfig);
             itemConfig = loadedConfig;
@@ -355,24 +345,41 @@ static void _menuResolveInfoSize()
             itemConfigList = list;
             loadedConfig = NULL;
         }
-        SignalSema(menuSemaId);
+    }
 
-        if (loadedConfig != NULL)
-            configFree(loadedConfig);
+    if (loadedConfig != NULL)
+        configFree(loadedConfig);
+}
 
-    complete_request:
-        WaitSema(menuSemaId);
+// Opening the info screen needs #Size, which the scroll-time config load deliberately skips.
+// The worker is single-instance but the TARGET is replaceable: if the user opens Info for B while A
+// is still resolving, A is discarded when stale and the same worker immediately processes B.
+static void _menuResolveInfoSize()
+{
+    for (;;) {
+        item_list_t *list = NULL;
+        int configId = -1;
+        unsigned int generation = 0;
+
+        {
+            raii::SemaLock lock(menuSemaId);
+            list = infoSizeRequestList;
+            configId = infoSizeRequestId;
+            generation = infoSizeRequestGeneration;
+        }
+
+        menuResolveInfoSizeRequest(list, configId, generation);
+
+        raii::SemaLock lock(menuSemaId);
         if (infoSizeRequestGeneration == generation) {
             // Nobody replaced this target while it ran: the queue is drained.
             infoSizeRequestList = NULL;
             infoSizeRequestId = -1;
             infoSizeWorkerPending = 0;
-            SignalSema(menuSemaId);
             return;
         }
         // A newer target arrived while this one ran. Leave the worker latch set and loop directly;
         // no second IO request is needed and the newest request cannot be lost behind a queue failure.
-        SignalSema(menuSemaId);
     }
 }
 
