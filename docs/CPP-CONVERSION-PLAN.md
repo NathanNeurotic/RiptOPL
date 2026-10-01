@@ -193,7 +193,7 @@ class extraction can be reviewed in isolation.
   `tests/host/stub`): `config` (both syntaxes, format latch, merge/clone, VMC helpers, wOPL key
   translation), `tar` (index, cache round trip, concatenated archives, oversize, name rules),
   `ps2cnf` (BOOT2 variants), `vmc_groups` (table + lookup contract).
-- **Warning baseline:** `tools/warnings.py build.log --check` (196 warnings in 28 files; 138 are
+- **Warning baseline:** `tools/warning_gate.py build.log --check` (196 warnings in 28 files; 138 are
   `-Wwrite-strings`, 34 `-Wsign-compare`, 15 `-Wmissing-declarations`). `ps2.yaml` now builds with
   `-fno-exceptions -Wmissing-declarations`. `-fno-rtti` is NOT enabled: ps2build `cflags` also hit C
   files and gcc warns once per C file; revisit when ps2build gets per-language flags. No polymorphic

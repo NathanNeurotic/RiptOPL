@@ -2,9 +2,9 @@
 """Warning baseline for the ps2build main flavour.
 
     ps2build build 2>&1 | tee build.log       (clean build: warnings only print when compiling)
-    tools/warnings.py build.log               summary by warning flag and by file
-    tools/warnings.py build.log --check       fail if any (file, flag) count exceeds the baseline
-    tools/warnings.py build.log --update      rewrite tools/warnings_baseline.json
+    tools/warning_gate.py build.log               summary by warning flag and by file
+    tools/warning_gate.py build.log --check       fail if any (file, flag) count exceeds the baseline
+    tools/warning_gate.py build.log --update      rewrite tools/warnings_baseline.json
 
 Only warnings in this repository's own code are counted (src/, ee_core/, elfldr/, modules/, include/);
 SDK headers and the downloaded lwNBD tree are ignored. Counts are per (file, flag), so refactors that
