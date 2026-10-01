@@ -8,11 +8,13 @@
 // nicety: the legacy two- and three-field rows below are why an existing games.csv keeps working
 // with no conversion step.
 
+#include <new>
 #include "include/host.h"
 #include "include/opl.h"
 #include "include/lang.h"
 #include "include/gui.h"
 #include "include/supportbase.h"
+#include "include/gamesource.h"
 #include "include/httpsupport.h"
 #include "include/httpcatalog.h"
 #include "include/netsupport.h"
@@ -54,7 +56,6 @@ typedef struct
 } http_endpoint_t;
 static http_endpoint_t httpEndpoint;
 
-extern item_list_t httpGameList;
 
 // ---------------------------------------------------------------------------
 // Endpoint helpers
@@ -449,6 +450,38 @@ void httpTestServer(const int *ip, int port, const char *base, char *msg, size_t
 // item_list_t
 // ---------------------------------------------------------------------------
 
+class HttpSource : public GameSource
+{
+public:
+    HttpSource()
+        : GameSource(HTTP_MODE, 0, 0, MENU_MIN_INACTIVE_FRAMES, HTTP_MODE_UPDATE_DELAY, 0)
+    {
+        // The positional initializer this replaced put MODE_FLAG_NO_UPDATE in the `enabled` slot (and 0 in `flags`).
+        // Behaviour is preserved as it was; init() sets enabled = 1 when the source starts.
+        enabled = MODE_FLAG_NO_UPDATE;
+    }
+
+    char * prefix(item_list_t *itemList) override;
+    int textId(item_list_t *itemList) override;
+    int iconId(item_list_t *itemList) override;
+    void init(item_list_t *itemList) override;
+    int needsUpdate(item_list_t *itemList) override;
+    int update(item_list_t *itemList) override;
+    int count(item_list_t *itemList) override;
+    void * game(item_list_t *itemList, int id) override;
+    char * name(item_list_t *itemList, int id) override;
+    int nameLength(item_list_t *itemList, int id) override;
+    char * startup(item_list_t *itemList, int id) override;
+    void deleteGame(item_list_t *itemList, int id) override;
+    void rename(item_list_t *itemList, int id, char *newName) override;
+    void launch(item_list_t *itemList, int id, config_set_t *configSet) override;
+    config_set_t * config(item_list_t *itemList, int id) override;
+    int image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm) override;
+    void cleanUp(item_list_t *itemList, int exception) override;
+    void shutdown(item_list_t *itemList) override;
+    int checkVmc(item_list_t *itemList, char *name, int createSize) override;
+};
+
 static const char *httpGetLocalPrefix(void)
 {
     const char *home = configGetHomePath();
@@ -468,7 +501,7 @@ static const char *httpGetLocalPrefix(void)
     return httpLocalPrefix;
 }
 
-static char *httpGetPrefix(item_list_t *itemList)
+char * HttpSource::prefix(item_list_t *itemList)
 {
     (void)itemList;
     // Not a filesystem prefix -- there is no http: ioman device and there deliberately is not going
@@ -476,19 +509,19 @@ static char *httpGetPrefix(item_list_t *itemList)
     return NULL;
 }
 
-static int httpGetTextId(item_list_t *itemList)
+int HttpSource::textId(item_list_t *itemList)
 {
     (void)itemList;
     return _STR_HTTP_GAMES;
 }
 
-static int httpGetIconId(item_list_t *itemList)
+int HttpSource::iconId(item_list_t *itemList)
 {
     (void)itemList;
     return ETH_ICON; // a network source; it shares SMB's glyph until HTTP gets its own
 }
 
-static void httpInit(item_list_t *itemList)
+void HttpSource::init(item_list_t *itemList)
 {
     (void)itemList;
     LOG("HTTPSUPPORT Init\n");
@@ -497,11 +530,11 @@ static void httpInit(item_list_t *itemList)
     memcpy(httpEndpoint.ip, gHttpServerIp, sizeof(httpEndpoint.ip));
     httpEndpoint.port = gHttpPort;
     snprintf(httpEndpoint.base, sizeof(httpEndpoint.base), "%s", gHttpBasePath);
-    httpGameList.enabled = 1;
+    enabled = 1;
     httpRefreshPending = 1;
 }
 
-static int httpNeedsUpdate(item_list_t *itemList)
+int HttpSource::needsUpdate(item_list_t *itemList)
 {
     (void)itemList;
 
@@ -511,7 +544,7 @@ static int httpNeedsUpdate(item_list_t *itemList)
     return httpRefreshPending || host::library().consumeDirty(HTTP_MODE);
 }
 
-static int httpUpdateGameList(item_list_t *itemList)
+int HttpSource::update(item_list_t *itemList)
 {
     char *buf = NULL;
     int len;
@@ -551,13 +584,13 @@ static int httpUpdateGameList(item_list_t *itemList)
     return httpGameCount;
 }
 
-static int httpGetGameCount(item_list_t *itemList)
+int HttpSource::count(item_list_t *itemList)
 {
     (void)itemList;
     return httpGameCount;
 }
 
-static void *httpGetGame(item_list_t *itemList, int id)
+void * HttpSource::game(item_list_t *itemList, int id)
 {
     (void)itemList;
     if (id < 0 || id >= httpGameCount || httpGames == NULL)
@@ -566,7 +599,7 @@ static void *httpGetGame(item_list_t *itemList, int id)
     return &httpGames[id];
 }
 
-static char *httpGetGameName(item_list_t *itemList, int id)
+char * HttpSource::name(item_list_t *itemList, int id)
 {
     (void)itemList;
     if (id < 0 || id >= httpGameCount || httpGames == NULL)
@@ -575,7 +608,7 @@ static char *httpGetGameName(item_list_t *itemList, int id)
     return httpGames[id].name;
 }
 
-static int httpGetGameNameLength(item_list_t *itemList, int id)
+int HttpSource::nameLength(item_list_t *itemList, int id)
 {
     (void)itemList;
     if (id < 0 || id >= httpGameCount)
@@ -584,7 +617,7 @@ static int httpGetGameNameLength(item_list_t *itemList, int id)
     return ISO_GAME_NAME_MAX + 1;
 }
 
-static char *httpGetGameStartup(item_list_t *itemList, int id)
+char * HttpSource::startup(item_list_t *itemList, int id)
 {
     (void)itemList;
     if (id < 0 || id >= httpGameCount || httpGames == NULL)
@@ -595,13 +628,13 @@ static char *httpGetGameStartup(item_list_t *itemList, int id)
 
 // The catalog is the server's, and this profile is read-only. Both are deliberately inert rather
 // than silently doing nothing somewhere the user cannot see.
-static void httpDeleteGame(item_list_t *itemList, int id)
+void HttpSource::deleteGame(item_list_t *itemList, int id)
 {
     (void)itemList;
     (void)id;
 }
 
-static void httpRenameGame(item_list_t *itemList, int id, char *newName)
+void HttpSource::rename(item_list_t *itemList, int id, char *newName)
 {
     (void)itemList;
     (void)id;
@@ -670,7 +703,7 @@ static int httpProbeImage(const http_endpoint_t *endpoint, const char *relative,
     return 1;
 }
 
-static void httpLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
+void HttpSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {
     struct cdvdman_settings_http *settings;
     http_endpoint_t endpoint;
@@ -779,7 +812,7 @@ static void httpLaunchGame(item_list_t *itemList, int id, config_set_t *configSe
     sysLaunchLoaderElf(filename, "HTTP_MODE", size_http_cdvdman_irx, http_cdvdman_irx, 0, NULL, 0, compatmask);
 }
 
-static config_set_t *httpGetConfig(item_list_t *itemList, int id)
+config_set_t * HttpSource::config(item_list_t *itemList, int id)
 {
     (void)itemList;
     if (id < 0 || id >= httpGameCount || httpGames == NULL)
@@ -789,7 +822,7 @@ static config_set_t *httpGetConfig(item_list_t *itemList, int id)
     return sbPopulateConfig(&httpGames[id], httpGetLocalPrefix(), "/");
 }
 
-static int httpGetImage(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
+int HttpSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
     char path[256];
 
@@ -807,7 +840,7 @@ static int httpGetImage(item_list_t *itemList, char *folder, int isRelative, cha
     return texDiscoverLoad(resultTex, path, -1);
 }
 
-static void httpCleanUp(item_list_t *itemList, int exception)
+void HttpSource::cleanUp(item_list_t *itemList, int exception)
 {
     (void)itemList;
     (void)exception;
@@ -823,9 +856,9 @@ static void httpCleanUp(item_list_t *itemList, int exception)
     httpGameCount = 0;
 }
 
-static void httpShutdown(item_list_t *itemList)
+void HttpSource::shutdown(item_list_t *itemList)
 {
-    httpCleanUp(itemList, NO_EXCEPTION);
+    cleanUp(itemList, NO_EXCEPTION);
 
     int httpWasLoaded = (netGetResidentProtocol() == NET_PROTO_HTTP);
     if (httpWasLoaded) {
@@ -834,7 +867,7 @@ static void httpShutdown(item_list_t *itemList)
     }
 }
 
-static int httpCheckVMC(item_list_t *itemList, char *name, int createSize)
+int HttpSource::checkVmc(item_list_t *itemList, char *name, int createSize)
 {
     (void)itemList;
     (void)name;
@@ -850,17 +883,14 @@ static int httpCheckVMC(item_list_t *itemList, char *name, int createSize)
     return -1;
 }
 
+// Built on first use into static storage: no global constructor runs at startup and no init guard is needed.
 item_list_t *httpGetObject(int initOnly)
 {
-    if (initOnly && !httpGameList.enabled)
-        return &httpGameList;
+    static HttpSource *instance = NULL;
+    alignas(HttpSource) static unsigned char storage[sizeof(HttpSource)];
 
-    return &httpGameList;
+    (void)initOnly;
+    if (instance == NULL)
+        instance = new (storage) HttpSource();
+    return instance;
 }
-
-item_list_t httpGameList = {
-    HTTP_MODE, 0, MODE_FLAG_NO_UPDATE, 0, MENU_MIN_INACTIVE_FRAMES, HTTP_MODE_UPDATE_DELAY, NULL, NULL, &httpGetTextId, &httpGetPrefix, &httpInit, &httpNeedsUpdate,
-    &httpUpdateGameList, &httpGetGameCount, &httpGetGame, &httpGetGameName, &httpGetGameNameLength, &httpGetGameStartup, &httpDeleteGame, &httpRenameGame,
-    &httpLaunchGame, &httpGetConfig, &httpGetImage, &httpCleanUp, &httpShutdown, &httpCheckVMC, &httpGetIconId,
-    /* itemLaunchVcd */ NULL, /* viewOverride */ 0, /* itemGetArtArchivePath */ NULL, /* itemLaunchCue */ NULL,
-    /* itemGetView */ NULL, /* itemGetSourceId */ NULL};

@@ -213,6 +213,10 @@ typedef struct _item_list_t
     /// keeps its master discovery id while showing a filtered subset. NULL means identity mapping.
     /// APPENDED for positional-initializer compatibility.
     int (*itemGetSourceId)(item_list_t *itemList, int id);
+
+    /// The GameSource object behind this list (NULL for a backend not yet migrated to the class). Copies of a list,
+    /// such as Favourites' proxies, keep it. APPENDED like the entries above so positional initializers stay valid.
+    void *source;
 } item_list_t;
 
 #define ITEM_VIEW_NATIVE    0
