@@ -63,7 +63,7 @@ These are not suggestions. Each has drawn blood before.
    without evidence. Gratuitous "improvements" to working code are how the 2026-08-27 breakages
    happened.
 3. **Language strings are APPEND-ONLY.** New `_STR_RA_*` labels go at the **end** of
-   `lng_tmpl/_base.yml`; `.lng` files are consumed by line position. `lang_autogen.h` and
+   `lng/tmpl/_base.yml`; `.lng` files are consumed by line position. `lang_autogen.h` and
    `lang_internal.c` are gitignored build artifacts — never commit them.
 4. **Art lives in the ART folder.** One art location per type; only the key varies. Do not invent a
    second lookup path for RA badges.
@@ -323,7 +323,7 @@ computes for the same file. Confirm against the author's client, not against a l
 | `src/opl.c` | `raBadgeRefresh()` in `updateMenuFromGameList()`, badged name selection |
 | `include/textures.h`, `src/textures.c`, `gfx/ra_mark.png` | the `RA_MARK` internal texture |
 | `include/themes.h`, `src/themes.c`, `include/renderman.h`, `src/renderman.c` | `raIsCover` flag + `rmDrawInlayPixmap()` for the mark over the cover |
-| `lng_tmpl/_base.yml` | new `_STR_RA_*` labels **appended at the end** |
+| `lng/tmpl/_base.yml` | new `_STR_RA_*` labels **appended at the end** |
 | `src/dialogs.c` | RA credit — see the About-dialog constraint below |
 
 **Deviations you must make — this is where upstream is wrong for us:**
@@ -334,7 +334,7 @@ computes for the same file. Confirm against the author's client, not against a l
    lists across devices.
 2. **Hardcoded English strings.** Upstream ships `"RA: check game support"` etc. inline. Route every
    user-visible string through the language pipeline: new labels at the **end** of
-   `lng_tmpl/_base.yml`, translations in `lng_fork/<Lang>.yml`. Watch the two known YAML traps —
+   `lng/tmpl/_base.yml`, translations in `lng/fork/<Lang>.yml`. Watch the two known YAML traps —
    bool coercion, and a `colon-space` in a value breaks the overlay (use `--`).
 3. **Main-menu items.** Upstream adds `MENU_RA_DISC_LAUNCH` / `MENU_RA_DISC_CHECK` to the main menu
    and then patches the separator arithmetic with a magic `+ 2`
@@ -538,7 +538,7 @@ git clone --depth 4 --single-branch --branch ra https://github.com/hacan359/Open
 Answer these before Phase 3 lands; they do not block Phases 0-2.
 
 1. **PC client.** Has the author delivered the platform-independent build and the protocol spec? Under
-   what licence, and does it get a `pc/` entry, a docs-sync External Tools entry, or just a link?
+   what licence, and does it get a `tools/pc/` entry, a docs-sync External Tools entry, or just a link?
 2. **NIC settlement.** Is the Phase 3 recommendation (RA as a fourth interlock claimant, clean
    refusal under UDPBD/UDPFS) acceptable for v1, or should the decoupled hand-built menu path be
    scoped now?

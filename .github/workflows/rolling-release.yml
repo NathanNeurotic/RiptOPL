@@ -709,7 +709,7 @@ jobs:
           #                                      of its own -- only the assertion below that it arrived.
           #
           #   There is deliberately NO POPSTARTER/ folder. It used to ship a second copy of nine files
-          #   that POPS/ already carries, plus three templates from popsmb/ that did not belong there:
+          #   that POPS/ already carries, plus three templates from docs/popsmb/ that did not belong there:
           #   OPL reads and writes IPCONFIG.DAT / SMBCONFIG.DAT under POPS\ (see vcdsupport.c), and
           #   bdma_config.txt is a marker OPL WRITES to record which BDMA variant it equipped -- the
           #   shipped copy said "fat32", so a fresh install claimed an equipped variant it did not have.
@@ -774,11 +774,11 @@ jobs:
           else
             echo "WARN: officialsdk build missing this run; package ships without APPS/APP_RIPTOPL-OFFICIALROLLING" >&2
           fi
-          cp -rf POPS/. "$PKG/POPS/"
+          cp -rf ship/POPS/. "$PKG/POPS/"
           # The supplied install-kit example adds POPStarter's cheats, IGR artwork, KELF and
           # Trojan beside the files already tracked in POPS/. Keep the iLink drivers in POPS/:
           # RiptOPL resolves that pair there, even though the example also has copies at its root.
-          EXAMPLE=Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP
+          EXAMPLE=ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP
           for f in CHEATS.TXT IGR_BG.TM2 IGR_NO.TM2 IGR_YES.TM2 POPSTARTER.KELF TROJAN_7.BIN; do
             test -s "$EXAMPLE/POPS/$f"
             cp -f "$EXAMPLE/POPS/$f" "$PKG/POPS/$f"
@@ -811,14 +811,14 @@ jobs:
           # Ember, the second PS1 core. Copied whole, like POPS/. Asserted rather than best-effort:
           # the loader lists Ember titles whenever a device has an EMBER/ folder, so shipping that
           # folder WITHOUT its ember.elf would hand users a library whose rows cannot launch.
-          test -f EMBER/ember.elf
+          test -f ship/EMBER/ember.elf
           # Ember's licence (LICENSE-BETA.txt, section 2) permits bundling ONLY IF the build ships
           # unmodified, complete and WITH THE LICENCE FILE, credited to Gageformer by name with a
           # link to the official release page. Shipping the ELF without the licence is not a
           # missing nicety, it is a breach of the terms that let us ship it at all -- so this is a
           # hard failure, exactly like the bios.bin guard below.
-          test -f EMBER/LICENSE-BETA.txt
-          cp -rf EMBER/. "$PKG/EMBER/"
+          test -f ship/EMBER/LICENSE-BETA.txt
+          cp -rf ship/EMBER/. "$PKG/EMBER/"
           mkdir -p "$PKG/EMBER/games/Per-Game-Folder"
           cp -f "$EXAMPLE/EMBER/games/Per-Game-Folder/GAME FILES" "$PKG/EMBER/games/Per-Game-Folder/GAME FILES"
           if [ ! -s "$PKG/EMBER/LICENSE-BETA.txt" ]; then
@@ -839,24 +839,24 @@ jobs:
           # Keep PC-side servers in their dedicated release stream. The shortcut opens the maintained
           # PS2 Servers all-in-one launcher for UDPFS, SMBv1 and UDPBD; no server binaries or source are
           # embedded in the RiptOPL install package.
-          test -f pc/PS2-Servers.url
-          cp -f pc/PS2-Servers.url "$PKG/PS2-Servers.url"
+          test -f tools/pc/PS2-Servers.url
+          cp -f tools/pc/PS2-Servers.url "$PKG/PS2-Servers.url"
           # udpfs-server: the same job from a phone rather than a PC -- an Android UDPFS server,
           # found by broadcast, built on pcm720's udpfsd. Shipped as a shortcut for the same reason
           # as the rest: link the maintained tool, never vendor a copy of it.
-          test -f pc/udpfs-server.url
-          cp -f pc/udpfs-server.url "$PKG/android-udpfs-server.url"
+          test -f tools/pc/udpfs-server.url
+          cp -f tools/pc/udpfs-server.url "$PKG/android-udpfs-server.url"
           # OrbitPS2 Manager: the PC-side library manager (import discs, fetch covers/screenshots,
           # ZSO compression, per-game settings, VMC management). Shipped as a shortcut for the same
           # reason as PS2-Servers -- link the maintained tool, never vendor a copy of it.
-          test -f pc/OrbitPS2-Manager.url
-          cp -f pc/OrbitPS2-Manager.url "$PKG/OrbitPS2-Manager.url"
+          test -f tools/pc/OrbitPS2-Manager.url
+          cp -f tools/pc/OrbitPS2-Manager.url "$PKG/OrbitPS2-Manager.url"
           # The PS1 converter and PS2RD cheat manager are external companion repositories too.
           # Ship shortcuts for them alongside the other PC-side tools, never their binaries/source.
-          test -f pc/OPL-PS1-AIO-Converter-GUI.url
-          cp -f pc/OPL-PS1-AIO-Converter-GUI.url "$PKG/OPL-PS1-AIO-Converter-GUI.url"
-          test -f pc/PS2RD-CHT-Manager.url
-          cp -f pc/PS2RD-CHT-Manager.url "$PKG/PS2RD-CHT-Manager.url"
+          test -f tools/pc/OPL-PS1-AIO-Converter-GUI.url
+          cp -f tools/pc/OPL-PS1-AIO-Converter-GUI.url "$PKG/OPL-PS1-AIO-Converter-GUI.url"
+          test -f tools/pc/PS2RD-CHT-Manager.url
+          cp -f tools/pc/PS2RD-CHT-Manager.url "$PKG/PS2RD-CHT-Manager.url"
           # neutrino/ (package folder) -- the official latest pre-release of the Neutrino core,
           # EXTRACTED into a plain folder so the user just drag-and-drops it onto the card (no
           # zip-in-zip). Both installable ZIPs require it; a failed fetch fails packaging. The archive
@@ -864,8 +864,8 @@ jobs:
           # mc?:/neutrino/. RiptOPL adds ONLY config/bsd-udpfsbd.toml (UDPFS); else the official build.
           # This file is fork-private -- upstream Neutrino will not supply it -- so fail loudly if a
           # refactor ever drops the source payload instead of publishing an IMG-mode-broken package.
-          if [ ! -s neutrino/bsd-udpfsbd.toml ]; then
-            echo "ERROR: fork-private neutrino/bsd-udpfsbd.toml is missing or empty; refusing to package." >&2
+          if [ ! -s ship/neutrino/bsd-udpfsbd.toml ]; then
+            echo "ERROR: fork-private ship/neutrino/bsd-udpfsbd.toml is missing or empty; refusing to package." >&2
             exit 1
           fi
           NEUTRINO_VER=""
@@ -891,8 +891,8 @@ jobs:
             # built-in -bsd token for it; RiptOPL launches UDPFS via -bsd=udpfsbd, so add that config
             # next to the others in config/. Require neutrino.elf at the folder root.
             if [ -n "$SEVENZ" ] && "$SEVENZ" x -y -o"$PKG/neutrino" "$NEUT_ABS" >/dev/null && [ -s "$PKG/neutrino/neutrino.elf" ]; then
-              mkdir -p "$PKG/neutrino/config" && cp neutrino/bsd-udpfsbd.toml "$PKG/neutrino/config/bsd-udpfsbd.toml"
-              if [ ! -s "$PKG/neutrino/config/bsd-udpfsbd.toml" ] || ! cmp -s neutrino/bsd-udpfsbd.toml "$PKG/neutrino/config/bsd-udpfsbd.toml"; then
+              mkdir -p "$PKG/neutrino/config" && cp ship/neutrino/bsd-udpfsbd.toml "$PKG/neutrino/config/bsd-udpfsbd.toml"
+              if [ ! -s "$PKG/neutrino/config/bsd-udpfsbd.toml" ] || ! cmp -s ship/neutrino/bsd-udpfsbd.toml "$PKG/neutrino/config/bsd-udpfsbd.toml"; then
                 echo "ERROR: fork-private bsd-udpfsbd.toml did not reach the staged Neutrino config unchanged." >&2
                 exit 1
               fi
@@ -959,7 +959,7 @@ jobs:
           python3 .github/scripts/package_release_app.py verify \
             --zip "rolling/${ZIP}" --source-elf "$INSTALL_ELF" \
             --app-name APP_RIPTOPL --elf-name RIPTOPL.ELF
-          if ! unzip -p "rolling/${ZIP}" neutrino/config/bsd-udpfsbd.toml | cmp -s neutrino/bsd-udpfsbd.toml -; then
+          if ! unzip -p "rolling/${ZIP}" neutrino/config/bsd-udpfsbd.toml | cmp -s ship/neutrino/bsd-udpfsbd.toml -; then
             echo "ERROR: final RIPTOPL package is missing or changed neutrino/config/bsd-udpfsbd.toml." >&2
             exit 1
           fi
@@ -984,8 +984,8 @@ jobs:
           # PC-side tool: link the maintained thing, never vendor a copy. Asserted rather than
           # best-effort for the same reason as the Ember licence: a package that omits it hands
           # somebody a loader with no way to use it.
-          test -f pc/xeRAbora.url
-          cp -f pc/xeRAbora.url "$PKG/xeRAbora.url"
+          test -f tools/pc/xeRAbora.url
+          cp -f tools/pc/xeRAbora.url "$PKG/xeRAbora.url"
           if [ ! -d rolling/ra ] || [ -z "$(ls -A rolling/ra 2>/dev/null)" ]; then
             echo "No RA builds present; skipping the RetroAchievements zip."
           else
@@ -1105,7 +1105,7 @@ jobs:
               python3 .github/scripts/package_release_app.py verify \
                 --zip "rolling/${RA_ZIP}" --source-elf "$RA_INSTALL_SRC" \
                 --app-name APP_RIPTOPL-RA --elf-name RIPTOPL-RA.ELF --ra
-              if ! unzip -p "rolling/${RA_ZIP}" neutrino/config/bsd-udpfsbd.toml | cmp -s neutrino/bsd-udpfsbd.toml -; then
+              if ! unzip -p "rolling/${RA_ZIP}" neutrino/config/bsd-udpfsbd.toml | cmp -s ship/neutrino/bsd-udpfsbd.toml -; then
                 echo "ERROR: final RetroAchievements package is missing or changed neutrino/config/bsd-udpfsbd.toml." >&2
                 exit 1
               fi

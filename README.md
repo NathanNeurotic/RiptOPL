@@ -651,7 +651,7 @@ Sources**. For PS2, 48-bit LBA internal HDDs are supported. The HDD can be forma
 
 - APA partitioning with PFS filesystem (up to 2TB)
 	- RiptOPL mounts an existing data partition. A usable `hdd_partition` selection in `__common/OPL/conf_hdd.cfg` takes priority, followed by existing `+OPL`, then `__common/OPL/`. No partition is created, resized or formatted. `+OPL` uses its root for support folders; `__common` uses `OPL/`.
-	- **Table protection:** RiptOPL is a game loader, not a partition manager. It writes only inside PFS partitions (settings, art, VCD and Ember renames) and never to the APA partition table: its driver refuses formatting and creating, deleting or renaming partitions, and raw sector writes. So HDL games can't be deleted or renamed from RiptOPL, and neither can one-game `PP.*` PS1 installs; use a PC tool. If a disk reports **code 402** (or "Formatted: NO" elsewhere), **do not format it** — your games are almost certainly still there. See **[docs/APA-SAFETY.md](docs/APA-SAFETY.md)** and the PC recovery tool in [`pc/apa-recovery`](pc/apa-recovery/README.md).
+	- **Table protection:** RiptOPL is a game loader, not a partition manager. It writes only inside PFS partitions (settings, art, VCD and Ember renames) and never to the APA partition table: its driver refuses formatting and creating, deleting or renaming partitions, and raw sector writes. So HDL games can't be deleted or renamed from RiptOPL, and neither can one-game `PP.*` PS1 installs; use a PC tool. If a disk reports **code 402** (or "Formatted: NO" elsewhere), **do not format it** — your games are almost certainly still there. See **[docs/APA-SAFETY.md](docs/APA-SAFETY.md)** and the PC recovery tool in [`tools/pc/apa-recovery`](tools/pc/apa-recovery/README.md).
 	- **4Kn drives** (4096-byte *logical* sectors) are refused: every PS2 driver counts in 512-byte sectors. 512e drives (4K physical, 512 logical, nearly every modern disk) work normally.
 - MBR partitioning (up to 2TB) or GPT partitioning (capacities above the MBR limit, subject to the driver and tested hardware) with the exFAT filesystem
 	- Enable **BDM HDD** in **Game Sources**. The exFAT HDD then mounts through the Block Device Manager (BDMAssault / "BDMA") into the shared `massN:` namespace — the same path as USB/MX4SIO — and appears as an **HDD (exFAT)** games list with the HDD icon.
@@ -788,13 +788,13 @@ pip install lz4
 To compress an ISO file to ZSO:
 
   ```sh
-python pc/ziso.py -c 2 "input.iso" "output.zso"
+python tools/pc/ziso.py -c 2 "input.iso" "output.zso"
 ```
 
 To decompress a ZSO back to the original ISO:
 
 ```sh
-python pc/ziso.py -c 0 "input.zso" "output.iso"
+python tools/pc/ziso.py -c 0 "input.zso" "output.iso"
 ```
 
 For OPL-core folder-based sources, copy ZSO files beside your ISOs. Local ZSO is not a Neutrino format, and HTTP refuses compressed-image launches; see the [source table](#introduction).
@@ -864,7 +864,7 @@ go early after the time is up goes straight back.
 The drive answered, but its APA partition table can't be read. This is almost always the table's
 first sectors only — every partition, and every game, is normally still on the disk. **Do not
 format or initialize it.** Connect it to a PC and follow **[docs/APA-SAFETY.md](docs/APA-SAFETY.md)**,
-which uses [`pc/apa-recovery/apa_recover.py`](pc/apa-recovery/README.md) to check and, when safe,
+which uses [`tools/pc/apa-recovery/apa_recover.py`](tools/pc/apa-recovery/README.md) to check and, when safe,
 rebuild just that table.
 
 ### A drive shows code 500 and never appears

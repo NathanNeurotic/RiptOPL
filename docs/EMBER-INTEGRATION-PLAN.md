@@ -352,10 +352,10 @@ grep -rn "vcdViewActive\|vcdListViewActive\|vcdToggleView\|vcdConsumeDirty" src/
 ### 2.4 UI strings
 
 The L3 hint became `PS1` and its toast `Showing PS1 games`. `VCD` is a bare token in all 31
-`lng_fork` translations, so that swap is safe in every language; `VCD_OFF` ("disc games" and its
+`lng/fork` translations, so that swap is safe in every language; `VCD_OFF` ("disc games" and its
 translations) is untouched because the PS2 list really is discs.
 
-New labels go at the **END** of `lng_tmpl/_base.yml` — `.lng` files are consumed by line position.
+New labels go at the **END** of `lng/tmpl/_base.yml` — `.lng` files are consumed by line position.
 `lang_autogen.h` and `lang_internal.c` are gitignored build artifacts; regenerate, never hand-edit.
 
 
@@ -865,11 +865,11 @@ RetroGEM game-ID parity and `settings.txt` display passthrough remain separate c
 | Fav resolve/launch/art | `src/favsupport.c:448-560`, `713-760` |
 | Device badges | `src/supportbase.c:1218` `sbSetDiscAttributes()` |
 | POPSTARTER settings page (UI template) | `src/gui.c:1356` `guiShowVcdConfig()` |
-| Language template (append at END) | `lng_tmpl/_base.yml`, after `GENERAL_SYSTEM` |
+| Language template (append at END) | `lng/tmpl/_base.yml`, after `GENERAL_SYSTEM` |
 
 **Standing rules that apply to this work**
 
-* `lng_tmpl/_base.yml` is **append-only**; `.lng` files are read by line position.
+* `lng/tmpl/_base.yml` is **append-only**; `.lng` files are read by line position.
   `lang_autogen.h` and `lang_internal.c` are gitignored build artifacts.
 * Any `item_list_t` / `base_game_info_t` change → **`rm obj/*.o`** before rebuilding.
 * `diaSetEnum` keeps a raw pointer — its string array must outlive every dialog render.

@@ -17,7 +17,7 @@ Nothing here ships to a PlayStation 2. These are host-side tools.
 ## Checking the parser
 
 ```bash
-python pc/http/catalog_reference.py --selftest
+python tools/pc/http/catalog_reference.py --selftest
 ```
 
 Every fixture is parsed in three line-ending forms — LF, CRLF, and no final newline — and diffed
@@ -38,8 +38,8 @@ deliberate, in which case change the fixture, the plan and the C in one commit.
 ## Checking a server
 
 ```bash
-python pc/http/http_conformance.py http://192.168.1.10:1100/
-python pc/http/http_conformance.py http://192.168.1.10:1100/ --iso "DVD/Game.iso" \
+python tools/pc/http/http_conformance.py http://192.168.1.10:1100/
+python tools/pc/http/http_conformance.py http://192.168.1.10:1100/ --iso "DVD/Game.iso" \
                                    --verify-against /path/to/local/Game.iso
 ```
 

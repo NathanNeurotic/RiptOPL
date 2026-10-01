@@ -5,40 +5,40 @@
 # BDMAssault IRX variants. NEVER line-ending normalize these -- a stray CRLF<->LF pass corrupts the
 # IRX and POPSTARTER then fails to load it.
 #
-# BOTH lines are needed, and the directory rule is spelled POPS/ on purpose. The BDMAssault variants
-# are named usbd.irx.ata / usbhdfsd.irx.mmce / ... -- the extension is the MODE, so they do NOT end
-# in ".irx" and `*.irx` alone misses every one of them. Upstream spells this rule `pops/*`, which
-# matches nothing on a case-sensitive checkout (the directory is POPS/), so the CI runner never
-# applied it; using the real casing here is a deliberate divergence, not a typo.
+# BOTH lines are needed, and the directory rule is spelled ship/POPS/ on purpose. The BDMAssault
+# variants are named usbd.irx.ata / usbhdfsd.irx.mmce / ... -- the extension is the MODE, so they do
+# NOT end in ".irx" and `*.irx` alone misses every one of them. Upstream spells this rule `pops/*`,
+# which matches nothing on a case-sensitive checkout (the directory is POPS/), so the CI runner
+# never applied it; using the real casing here is a deliberate divergence, not a typo.
 #
-# Spelled `POPS/**` rather than `POPS/*` because the folder now carries a "POPSTARTER VERSIONS"
-# subdirectory of alternate POPSTARTER builds, and the single-star form stops at the top level --
-# exactly the reason EMBER/** below is spelled the same way. Those nested files are PS2 ELFs; a
-# CRLF<->LF pass through one produces a binary that no longer loads, and the failure would surface
-# as "this POPSTARTER variant hangs" long after the commit that caused it.
-POPS/** binary
+# Spelled `ship/POPS/**` rather than `ship/POPS/*` because the folder now carries a
+# "POPSTARTER VERSIONS" subdirectory of alternate POPSTARTER builds, and the single-star form stops
+# at the top level -- exactly the reason ship/EMBER/** below is spelled the same way. Those nested
+# files are PS2 ELFs; a CRLF<->LF pass through one produces a binary that no longer loads, and the
+# failure would surface as "this POPSTARTER variant hangs" long after the commit that caused it.
+ship/POPS/** binary
 *.irx binary
 
 # Ember's core, shipped verbatim exactly like the POPSTARTER payload above. ember.elf is a PS2 ELF;
 # a CRLF<->LF pass through it produces a binary that no longer loads, and the failure would show up
 # as "Ember does not start" long after the commit that caused it.
 #
-# Spelled with ** rather than EMBER/* because the folder carries a games/ subdirectory, and the
+# Spelled with ** rather than ship/EMBER/* because the folder carries a games/ subdirectory, and the
 # single-star form stops at the top level. The `*.url text eol=crlf` rule further down deliberately
-# still wins for EMBER/Ember Official Webpage.url -- gitattributes is last-match-wins, and a Windows
-# internet shortcut is one of the few files that genuinely must check out with CRLF.
-EMBER/** binary
-Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/EMBER/** binary
+# still wins for ship/EMBER/Ember Official Webpage.url -- gitattributes is last-match-wins, and a
+# Windows internet shortcut is one of the few files that genuinely must check out with CRLF.
+ship/EMBER/** binary
+ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/EMBER/** binary
 
 # PS2 memory-card browser save icons: the save-folder icon.sys and the .icn geometry/texture files
-# it names. POPS/** above already covers POPSTARTER's copies; these are the ones embedded in the
-# ELF and written to the settings folder. A CRLF<->LF pass through either corrupts the icon, and
+# it names. ship/POPS/** above already covers POPSTARTER's copies; these are the ones embedded in
+# the ELF and written to the settings folder. A CRLF<->LF pass through either corrupts the icon, and
 # the failure surfaces as a save folder the browser draws as "Corrupted Data" -- the exact bug the
 # files exist to prevent -- long after the commit that caused it.
 *.icn binary
 misc/*.sys binary
 
-# Internet shortcuts are a Windows-native format and must check out with CRLF. pc/PS2-Servers.url is
+# Internet shortcuts are a Windows-native format and must check out with CRLF. tools/pc/PS2-Servers.url is
 # copied straight into the release package, so this is load-bearing at publish time, not cosmetic.
 *.url text eol=crlf
 *.bat text eol=crlf

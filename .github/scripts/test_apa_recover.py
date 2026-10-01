@@ -1,4 +1,4 @@
-"""pc/apa-recovery/apa_recover.py against synthetic APA disk images.
+"""tools/pc/apa-recovery/apa_recover.py against synthetic APA disk images.
 
 Each scenario builds a small sparse APA image (a real __mbr, system partitions, PFS partitions and
 an HDL game with a sub-partition, all linked the way ps2sdk links them), damages it the way a disk
@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location('apa_recover', root / 'pc/apa-recovery/apa_recover.py')
+spec = importlib.util.spec_from_file_location('apa_recover', root / 'tools/pc/apa-recovery/apa_recover.py')
 tool = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tool)
 

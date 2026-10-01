@@ -8,8 +8,8 @@ things that would corrupt a disc read rather than merely look untidy.
 Docmine17's unmodified pc/http_server.py is the primary target: it must pass with no changes.
 Any other static server that passes is usable too.
 
-    python pc/http/http_conformance.py http://192.168.1.10:1100/
-    python pc/http/http_conformance.py http://127.0.0.1:1100/ --iso "DVD/Game.iso"
+    python tools/pc/http/http_conformance.py http://192.168.1.10:1100/
+    python tools/pc/http/http_conformance.py http://127.0.0.1:1100/ --iso "DVD/Game.iso"
 
 Exit status is 0 only if every non-skipped check passed.
 """

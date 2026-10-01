@@ -208,8 +208,8 @@ EE_ASM_DIR = asm/
 LNG_SRC_DIR = lng_src/
 # Fork-maintained translation overlay (item 57). Fills gaps in the upstream language files for
 # labels this fork added, without ever touching lng_src/ (which tools/download_lng.sh rewrites).
-LNG_FORK_DIR = lng_fork/
-LNG_TMPL_DIR = lng_tmpl/
+LNG_FORK_DIR = lng/fork/
+LNG_TMPL_DIR = lng/tmpl/
 LNG_DIR = lng/
 PNG_ASSETS_DIR = gfx/
 
@@ -536,7 +536,7 @@ pc_tools_win32:
 	echo "Building WIN32 iso2opl, opl2iso and genvmc..."
 	$(MAKE) _WIN32=1 -C pc
 
-cfla = "thirdparty/clang-format-lint-action"
+cfla = "third_party/clang-format-lint-action"
 format-check: download_cfla
 	@python3 $(cfla)/run-clang-format.py --clang-format-executable $(cfla)/clang-format/clang-format12 -r .
 
@@ -1085,7 +1085,7 @@ $(EE_ASM_DIR)mcman.c: $(PS2SDK)/iop/irx/mcman.irx | $(EE_ASM_DIR)
 $(EE_ASM_DIR)mcserv.c: $(PS2SDK)/iop/irx/mcserv.irx | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)_irx
 
-$(EE_ASM_DIR)poeveticanew.c: thirdparty/PoeVeticaNew.ttf | $(EE_ASM_DIR)
+$(EE_ASM_DIR)poeveticanew.c: third_party/fonts/PoeVeticaNew.ttf | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)_raw
 
 $(EE_ASM_DIR)icon_sys.c: misc/icon.sys | $(EE_ASM_DIR)

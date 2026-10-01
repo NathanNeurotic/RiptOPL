@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Diff the C catalog parser against the Python reference, fixture by fixture.
 
-docs/HTTP-INTEGRATION-PLAN.md says src/httpcatalog.c and pc/http/catalog_reference.py are one
+docs/HTTP-INTEGRATION-PLAN.md says src/httpcatalog.c and tools/pc/http/catalog_reference.py are one
 contract. This is what holds them to it. Every fixture is run through both, in all three
 line-ending forms, and any disagreement is printed and fails the run.
 
-    python pc/http/tests/compare_catalog.py --bin /tmp/test_catalog
+    python tools/pc/http/tests/compare_catalog.py --bin /tmp/test_catalog
 
 Build the C side first (pc/http/tests/run.sh does both).
 """

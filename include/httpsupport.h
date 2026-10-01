@@ -7,8 +7,8 @@
 #define HTTP_MODE_UPDATE_DELAY 300
 
 // Longest relative ISO path a catalog row may carry. Matches CATALOG_PATH_MAX in
-// pc/http/catalog_reference.py -- the two parsers are one contract and the fixtures under
-// pc/http/fixtures/ hold them to it.
+// tools/pc/http/catalog_reference.py -- the two parsers are one contract and the fixtures under
+// tools/pc/http/fixtures/ hold them to it.
 #define HTTP_CATALOG_PATH_MAX 255
 
 // Bound on catalog size and row count. An over-limit catalog is REPORTED, never silently clipped:

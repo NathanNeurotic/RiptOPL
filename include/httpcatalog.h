@@ -4,8 +4,8 @@
 // The games.csv contract, on its own, depending on nothing but the C library.
 //
 // It lives apart from httpsupport.c so the host can compile it unchanged and run it against the
-// same fixtures as pc/http/catalog_reference.py. The two parsers are one contract; that claim is
-// only worth something if something checks it, and pc/http/tests/test_catalog.c is what does.
+// same fixtures as tools/pc/http/catalog_reference.py. The two parsers are one contract; that claim is
+// only worth something if something checks it, and tools/pc/http/tests/test_catalog.c is what does.
 //
 // Section 4 of docs/HTTP-INTEGRATION-PLAN.md is the prose version.
 

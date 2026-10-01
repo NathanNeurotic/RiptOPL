@@ -1,7 +1,7 @@
 #!/bin/sh
 
 REPO_URL="https://github.com/DoozyX/clang-format-lint-action.git"
-REPO_FOLDER="thirdparty/clang-format-lint-action"
+REPO_FOLDER="third_party/clang-format-lint-action"
 COMMIT="c3b2c943e924028b93a707a5b1b017976ab8d50c"
 
 if test ! -d "$REPO_FOLDER"; then

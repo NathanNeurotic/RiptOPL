@@ -109,7 +109,7 @@ control that does not exist.
 
 Recorded in the README developer notes so it is not invisible to contributors.
 
-**Sources:** `src/xparam.c`, `notes/xparam`.
+**Sources:** `src/xparam.c`, `docs/xparam`.
 
 ---
 

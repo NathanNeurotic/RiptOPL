@@ -1,8 +1,8 @@
 // HTTP as a game source: a games.csv catalog on a plain static HTTP server, and (from phase 4)
 // byte-range reads of the ISO behind each row.
 //
-// The catalog parser here and pc/http/catalog_reference.py are one contract, held to it by the
-// fixtures in pc/http/fixtures/. Change one and you change all three, in the same commit.
+// The catalog parser here and tools/pc/http/catalog_reference.py are one contract, held to it by the
+// fixtures in tools/pc/http/fixtures/. Change one and you change all three, in the same commit.
 //
 // Compatibility with Docmine17's existing server and existing catalogs is a release gate, not a
 // nicety: the legacy two- and three-field rows below are why an existing games.csv keeps working
@@ -141,7 +141,7 @@ static void httpServerIpString(const http_endpoint_t *endpoint, char *out, size_
 
 // ---------------------------------------------------------------------------
 // Catalog parsing lives in src/httpcatalog.c, which depends on nothing but the C library so the
-// host can compile it and diff it against pc/http/catalog_reference.py over the shared fixtures.
+// host can compile it and diff it against tools/pc/http/catalog_reference.py over the shared fixtures.
 // ---------------------------------------------------------------------------
 
 // Parse a whole catalog buffer. Returns the accepted row count.

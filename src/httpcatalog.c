@@ -1,7 +1,7 @@
 // The games.csv parser. See include/httpcatalog.h for why it is its own file.
 //
-// Depends on nothing but string.h and stdio.h so that pc/http/tests/test_catalog.c can compile it
-// on the host and diff it, fixture for fixture, against pc/http/catalog_reference.py.
+// Depends on nothing but string.h and stdio.h so that tools/pc/http/tests/test_catalog.c can compile it
+// on the host and diff it, fixture for fixture, against tools/pc/http/catalog_reference.py.
 
 #include <stdio.h>
 #include <string.h>

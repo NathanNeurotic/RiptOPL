@@ -7,8 +7,8 @@ build time. This doc explains the pipeline and the exact steps to add or update 
 
 | Piece | What it is | Do you edit it? |
 |---|---|---|
-| `lng_tmpl/_base.yml` | The fork's **master list** of every string + its **English** text. Source of truth. | **Yes** — add strings here. |
-| `lng_fork/<Language>.yml` | The fork's **own translations** of fork strings (and overrides). | **Yes** — add translations here. |
+| `lng/tmpl/_base.yml` | The fork's **master list** of every string + its **English** text. Source of truth. | **Yes** — add strings here. |
+| `lng/fork/<Language>.yml` | The fork's **own translations** of fork strings (and overrides). | **Yes** — add translations here. |
 | `lng_src/` (git-ignored) | The **upstream** community translations, cloned from [`ps2homebrew/Open-PS2-Loader-lang`](https://github.com/ps2homebrew/Open-PS2-Loader-lang) by `tools/download_lng.sh`. | **No** — upstream owns these. |
 | `tools/lang_compiler.py` | The tool that assembles everything into the binary `.lng` files + the C sources. | No (it's the machinery). |
 
@@ -18,7 +18,7 @@ build time. This doc explains the pipeline and the exact steps to add or update 
   string: MMCE Prefix Path
 ```
 
-### `lng_fork/<Language>.yml` entry format
+### `lng/fork/<Language>.yml` entry format
 ```yaml
 translations:
   MMCE_PREFIX: Chemin du préfixe MMCE
@@ -32,7 +32,7 @@ translations:
    translate English, and a missing translation always falls back to English, never blank.
 2. **`--update_translation_yml`** → sync each upstream `lng_src/<Lang>.yml` against
    `_base.yml`; any label it lacks is marked `untranslated`.
-3. **`--overlay_translation_yml --overlay lng_fork/<Lang>.yml`** → pour the fork's own
+3. **`--overlay_translation_yml --overlay lng/fork/<Lang>.yml`** → pour the fork's own
    translations on top. If upstream later translates a label, the overlay quietly steps
    aside (upstream wins). Idempotent — safe to re-run.
 4. **`--make_lng`** → compile the merged `.yml` into the binary `lng/lang_<Lang>.lng`.
@@ -41,7 +41,7 @@ translations:
 
 ## How to ADD a new string
 
-1. Add it to the **END** of `lng_tmpl/_base.yml`, below the APPEND-ONLY banner (~line 923):
+1. Add it to the **END** of `lng/tmpl/_base.yml`, below the APPEND-ONLY banner (~line 923):
 
    ```yaml
    - label: MY_NEW_SETTING
@@ -56,7 +56,7 @@ translations:
 
 ## How to TRANSLATE a string (per language)
 
-Add the key under `translations:` in the target `lng_fork/<Language>.yml`:
+Add the key under `translations:` in the target `lng/fork/<Language>.yml`:
 ```yaml
 translations:
   MY_NEW_SETTING: Mon nouveau réglage
@@ -65,10 +65,10 @@ Repeat per language you want to cover. Untranslated languages fall back to Engli
 
 ## Important: there is **no auto-translator** in the build
 
-`tools/lang_compiler.py` only *merges* translations that already exist in `lng_fork/*.yml`. The
+`tools/lang_compiler.py` only *merges* translations that already exist in `lng/fork/*.yml`. The
 initial bulk fill of the 31 fork languages was a **one-off external step** (a machine
 translation pass), not part of this repo's build. So to keep translations current you must
-supply the translated text for `lng_fork/*.yml` yourself (by hand, an external MT tool, or
+supply the translated text for `lng/fork/*.yml` yourself (by hand, an external MT tool, or
 an assistant) — the build will not invent it.
 
 ## Which languages are built, and adding one
@@ -82,7 +82,7 @@ language exists upstream as `lng_src/<Language>.yml`; to ship it, add its name t
 - **Serbian** has no font upstream, and the built-in font has no `č`, `ć` or `đ`. Serbian Latin uses
   exactly Croatian's letters, so `lng_pack.sh` ships `font_Croatian.ttf` as `font_Serbian.ttf`.
   Check a new language's characters against the built-in font before assuming it needs no font.
-- **Fork strings.** A language with no `lng_fork/<Language>.yml` (Galician and Serbian today) shows
+- **Fork strings.** A language with no `lng/fork/<Language>.yml` (Galician and Serbian today) shows
   the fork's own strings in English until someone adds that file.
 
 ## Building just the languages
@@ -95,6 +95,6 @@ run clones the upstream lang repo into `lng_src/`). CI does this automatically.
 
 ## Where the fork strings live
 
-Fork-added strings are the labels in `lng_tmpl/_base.yml` that upstream doesn't have. To
+Fork-added strings are the labels in `lng/tmpl/_base.yml` that upstream doesn't have. To
 see which are still English-only in a given language, run `make languages` and look for
 `untranslated` entries in `lng_src/<Language>.yml` after the overlay step.

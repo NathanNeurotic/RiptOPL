@@ -2,7 +2,7 @@
 
 This page explains how RiptOPL protects an internal APA (PS2-formatted) hard disk. It also covers what to do if a disk shows up as **"Formatted: NO"**, or RiptOPL reports **code 402**.
 
-**Short version:** RiptOPL is a game loader, not a partition manager. It writes only inside PFS partitions and never edits the APA partition table: its driver refuses formatting, creating, deleting or renaming partitions, and raw sector writes, and it never writes error records. If a disk's table is damaged anyway, your games are almost certainly still on it. **Do not format it.** Use [`pc/apa-recovery`](../pc/apa-recovery/README.md).
+**Short version:** RiptOPL is a game loader, not a partition manager. It writes only inside PFS partitions and never edits the APA partition table: its driver refuses formatting, creating, deleting or renaming partitions, and raw sector writes, and it never writes error records. If a disk's table is damaged anyway, your games are almost certainly still on it. **Do not format it.** Use [`tools/pc/apa-recovery`](../tools/pc/apa-recovery/README.md).
 
 ## Why LBA 0–7 matter
 
@@ -67,7 +67,7 @@ The driver is built from ps2sdk source. The unmodified copy builds **byte-identi
 3. **Diagnose** (read-only):
 
    ```bash
-   python3 pc/apa-recovery/apa_recover.py /dev/sdX
+   python3 tools/pc/apa-recovery/apa_recover.py /dev/sdX
    ```
 
    On Windows, run as Administrator: `python apa_recover.py \\.\PhysicalDrive2`. Pick the right disk number in Disk Management; the APA disk shows as unallocated.
@@ -76,7 +76,7 @@ The driver is built from ps2sdk source. The unmodified copy builds **byte-identi
 4. **Repair**, if it says *Repairable*:
 
    ```bash
-   python3 pc/apa-recovery/apa_recover.py /dev/sdX --repair
+   python3 tools/pc/apa-recovery/apa_recover.py /dev/sdX --repair
    ```
 
    It backs up the first 4 MB, then rewrites **only** LBA 0–7:

@@ -9,11 +9,11 @@ in the plan, in the same commit.
 
 Run the self-test:
 
-    python pc/http/catalog_reference.py --selftest
+    python tools/pc/http/catalog_reference.py --selftest
 
 Parse a real catalog:
 
-    python pc/http/catalog_reference.py path/to/games.csv
+    python tools/pc/http/catalog_reference.py path/to/games.csv
 """
 
 import argparse

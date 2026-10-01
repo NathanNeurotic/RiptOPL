@@ -9,11 +9,11 @@
 # fixtures, in all three line-ending forms.
 #
 # Usage, from the repo root:
-#     sh pc/http/tests/run.sh
+#     sh tools/pc/http/tests/run.sh
 #
 # With no host compiler, the same thing inside the build image:
 #     docker run --rm -v "$PWD:/repo" -w /repo ps2dev/ps2dev:latest \
-#         sh -c "apk add --no-cache build-base python3 >/dev/null 2>&1; sh pc/http/tests/run.sh"
+#         sh -c "apk add --no-cache build-base python3 >/dev/null 2>&1; sh tools/pc/http/tests/run.sh"
 
 set -e
 

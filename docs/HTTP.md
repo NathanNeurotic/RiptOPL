@@ -5,7 +5,7 @@ says what exists, and the console streams the ISO itself with plain HTTP byte ra
 asks for sectors. The server must satisfy the client profile: no transfer encoding, no content
 encoding other than identity, no multipart responses, exact `Content-Range` and `Content-Length`
 for range reads, and complete response bodies. Check it with the
-[conformance tool](../pc/http/README.md).
+[conformance tool](../tools/pc/http/README.md).
 
 Use HTTP only on a trusted, isolated local network. It provides no encryption or server/content
 authentication; range and length validation detect malformed responses, not substituted game data.
@@ -158,10 +158,10 @@ then reports a disc error. It will not sit there reconnecting forever.
 
 ## Notes for anyone changing this code
 
-* **`src/httpcatalog.c` and `pc/http/catalog_reference.py` are one contract.** The fixtures in
-  `pc/http/fixtures/` hold them to it and `pc/http/tests/compare_catalog.py` proves it. Change one,
+* **`src/httpcatalog.c` and `tools/pc/http/catalog_reference.py` are one contract.** The fixtures in
+  `tools/pc/http/fixtures/` hold them to it and `tools/pc/http/tests/compare_catalog.py` proves it. Change one,
   change all three, in the same commit.
-* **Run the host tests.** `sh pc/http/tests/run.sh` compiles the real sources and exercises the
+* **Run the host tests.** `sh tools/tools/pc/http/tests/run.sh` compiles the real sources and exercises the
   parsers directly — header framing, range validation, truncation, and every catalog fixture in
   three line-ending forms.
 * **`modules/network/common/httpstream.inc` is shared** by the menu RPC module and the in-game

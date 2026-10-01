@@ -40,19 +40,19 @@ DETAILED_CHANGELOG
 # the release package ships an EMBER/ folder with no core in it, which the loader would happily
 # advertise games for. POPS/POPSTARTER.ELF only escapes the same rules because it was tracked before
 # they existed; this says so explicitly instead of relying on that accident.
-!EMBER/ember.elf
+!ship/EMBER/ember.elf
 
 # The alternate POPSTARTER builds, for the same reason and with the same trap. POPS/POPSTARTER.ELF
 # itself escapes `*.ELF` only because it was tracked before that rule existed -- a NEW file at a NEW
 # path gets no such grandfathering, so without this line `git add` skips all five silently and the
 # folder ships empty. Spelled with the directory prefix so it re-includes only these, never any
 # build product that happens to land elsewhere.
-!POPS/POPSTARTER VERSIONS/**/*.ELF
+!ship/POPS/POPSTARTER VERSIONS/**/*.ELF
 
 #
 # Generated source files
 #
-pc/iso2usbld/bin/iso2usbld
+tools/pc/iso2usbld/bin/iso2usbld
 IOPRP_img.c
 asm/*.c
 asm/*.gz
@@ -61,7 +61,7 @@ asm/*.gz
 # 3rd party
 #
 *modules/network/lwNBD
-*thirdparty/clang-format-lint-action
+*third_party/clang-format-lint-action
 
 # language
 lng/lang_*.lng
@@ -95,12 +95,12 @@ tmp/
 /implementation-handoff-*.md
 /obj/
 #
-# pc/RA/ is where the xeRAbora PC client lives locally: ~1.6 MB of somebody else's binaries,
+# tools/pc/RA/ is where the xeRAbora PC client lives locally: ~1.6 MB of somebody else's binaries,
 # reference-only, and it must never be committed. It got swept into a commit once by a bare
 # `git add -A`; ignoring it stops that happening again.
-/pc/RA/
+/tools/pc/RA/
 #
-# pc/http/http_conformance.py imports catalog_reference as a module, so running either tool
+# tools/pc/http/http_conformance.py imports catalog_reference as a module, so running either tool
 # leaves a __pycache__ behind next to them. Nothing generated belongs in the tree.
 __pycache__/
 *.pyc

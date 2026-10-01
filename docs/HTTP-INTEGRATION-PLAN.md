@@ -10,7 +10,7 @@ immediately below before picking anything up.
 
 | Phase | State |
 | --- | --- |
-| 1 — contract and fixtures | **done.** `pc/http/`: reference parser, fixtures, `expected.json`, server conformance harness. Docmine17's unmodified server passes it 14/0/1. |
+| 1 — contract and fixtures | **done.** `tools/pc/http/`: reference parser, fixtures, `expected.json`, server conformance harness. Docmine17's unmodified server passes it 14/0/1. |
 | 2 — shared TCP/IP stack | **done.** `src/netsupport.c` owns the stack; `ethsupport.c` keeps the SMB session. Every moved body diffs identical to its original. |
 | 3 — menu RPC, settings, source | **done.** Streaming GET (`STREAM_BEGIN`/`STREAM_READ`), `NET_PROTO_HTTP`, `HTTP_MODE`, the Network page rows and Test action, `src/httpsupport.c` as an `item_list_t`, `src/httpcatalog.c` as the parser. |
 | 4 — in-game driver | **written, unproven.** `device-http.c`, the `USE_HTTP` cdvdman target, `cdvdman_settings_http`, `HTTP_MODE` through ee_core, and the EE launch that fills all of it. |
@@ -76,7 +76,7 @@ The parts that map closely are the donor's `modules/iopcore/cdvdman/http.c`, `ht
 2. **Deviation rule.** Copy upstream *behaviour*, restructure freely. Do not change behaviour
    without evidence.
 3. **Language strings are APPEND-ONLY.** New `_STR_HTTP_*` labels go at the **end** of
-   `lng_tmpl/_base.yml`; `.lng` files are consumed by line position. `lang_autogen.h` and
+   `lng/tmpl/_base.yml`; `.lng` files are consumed by line position. `lang_autogen.h` and
    `lang_internal.c` are gitignored build artifacts — never commit them.
 4. **Art lives in the ART folder.** One art location per type; only the key varies. Do not invent a
    second lookup path for HTTP covers.
@@ -284,7 +284,7 @@ SLUS_123.45,"Example, The",DVD,DVD/Example Game.iso
   control characters, absolute URLs and paths escaping the base.
 * Deliver incrementally with bounded buffers. The bounds are **262144 bytes** and **2048 records** —
   `HTTP_CATALOG_BYTES_MAX` / `HTTP_CATALOG_ROWS_MAX` in `include/httpsupport.h`, mirrored as
-  `CATALOG_BYTES_MAX` / `CATALOG_ROWS_MAX` in `pc/http/catalog_reference.py`; the two must stay
+  `CATALOG_BYTES_MAX` / `CATALOG_ROWS_MAX` in `tools/pc/http/catalog_reference.py`; the two must stay
   equal. Exceeding either fails the **whole** catalog rather than truncating it: a library quietly
   missing its last hundred games looks like games that were deleted, and someone will go hunting
   for them on the server. On the console the byte cap lives in `httpFetchCatalog` — it can refuse
