@@ -4,141 +4,17 @@
   Review OpenUsbLd README & LICENSE files for further details.
 */
 
+#include <new>
 #include <stdio.h>
 #include <malloc.h>
 #include "include/opl.h"
 #include "include/atlas.h"
 #include "include/renderman.h"
 
-static inline struct atlas_allocation_t *allocNew(int x, int y, size_t width, size_t height)
+namespace
 {
-    struct atlas_allocation_t *al = (struct atlas_allocation_t *)malloc(sizeof(struct atlas_allocation_t));
 
-    al->x = x;
-    al->y = y;
-    al->w = width;
-    al->h = height;
-
-    al->leaf1 = NULL;
-    al->leaf2 = NULL;
-
-    return al;
-}
-
-static inline void allocFree(struct atlas_allocation_t *alloc)
-{
-    if (!alloc)
-        return;
-
-    // NOTE: If used on a tree component it
-    // would have to be ensured pointers to freed
-    // allocation are fixed
-
-    allocFree(alloc->leaf1); // safe
-    allocFree(alloc->leaf2);
-
-    free(alloc);
-}
-
-static inline bool allocFits(const struct atlas_allocation_t *alloc, size_t width, size_t height)
-{
-    return (alloc->w >= width) && (alloc->h >= height);
-}
-
-static inline bool allocIsFree(const struct atlas_allocation_t *alloc)
-{
-    return (!alloc->leaf1) && (!alloc->leaf2);
-}
-
-
-static inline struct atlas_allocation_t *allocPlace(struct atlas_allocation_t *alloc, size_t width, size_t height)
-{
-    // do we fit?
-    if (!allocFits(alloc, width, height))
-        return NULL;
-
-    if (allocIsFree(alloc)) {
-        // extra space
-        size_t dx = alloc->w - width;
-        size_t dy = alloc->h - height;
-
-        // make the wider piece also longer - less wasted space
-        if (dx < dy) {
-            alloc->leaf1 = allocNew(alloc->x + width, alloc->y, dx, height);
-            alloc->leaf2 = allocNew(alloc->x, alloc->y + height, alloc->w, dy);
-        } else {
-            alloc->leaf1 = allocNew(alloc->x, alloc->y + height, width, dy);
-            alloc->leaf2 = allocNew(alloc->x + width, alloc->y, dx, alloc->h);
-        }
-
-        return alloc;
-    } else {
-        // already occupied. Try children
-        struct atlas_allocation_t *p = allocPlace(alloc->leaf1, width, height);
-        if (p)
-            return p;
-
-        p = allocPlace(alloc->leaf2, width, height);
-        if (p)
-            return p;
-    }
-
-    return NULL;
-}
-
-atlas_t *atlasNew(size_t width, size_t height, u8 psm)
-{
-    atlas_t *atlas = (atlas_t *)malloc(sizeof(atlas_t));
-
-    atlas->allocation = allocNew(0, 0, width, height);
-
-    atlas->surface.Width = width;
-    atlas->surface.Height = height;
-
-    atlas->surface.Filter = GS_FILTER_NEAREST;
-
-    size_t txtsize = gsKit_texture_size(width, height, psm);
-    atlas->surface.PSM = psm;
-    atlas->surface.Mem = (u32 *)memalign(128, txtsize);
-    atlas->surface.Vram = 0;
-
-    // defaults to no clut
-    atlas->surface.ClutPSM = 0;
-    atlas->surface.Clut = NULL;
-    atlas->surface.VramClut = 0;
-    atlas->surface.ClutStorageMode = GS_CLUT_STORAGE_CSM1;
-
-    // Bail out on OOM rather than dereferencing a NULL allocation tree or memset-ing through a
-    // NULL surface buffer (allocFree tolerates NULL; verified).
-    if (atlas->allocation == NULL || atlas->surface.Mem == NULL) {
-        allocFree(atlas->allocation);
-        free(atlas->surface.Mem);
-        free(atlas);
-        return NULL;
-    }
-
-    // zero out the atlas surface
-    memset(atlas->surface.Mem, 0x0, txtsize);
-
-    return atlas;
-}
-
-void atlasFree(atlas_t *atlas)
-{
-    if (!atlas)
-        return;
-
-    allocFree(atlas->allocation);
-    atlas->allocation = NULL;
-
-    rmUnloadTexture(&atlas->surface);
-    free(atlas->surface.Mem);
-    atlas->surface.Mem = NULL;
-
-    free(atlas);
-}
-
-static size_t pixelSize(u8 psm)
+size_t pixelSize(u8 psm)
 {
     switch (psm) {
         case GS_PSM_CT32:
@@ -156,43 +32,147 @@ static size_t pixelSize(u8 psm)
     }
 }
 
-// copies the data into atlas
-static void atlasCopyData(atlas_t *atlas, struct atlas_allocation_t *al, size_t width, size_t height, const void *surface)
-{
-    int y;
-    size_t ps = pixelSize(atlas->surface.PSM);
+} // namespace
 
+Atlas::Atlas()
+{
+    memset(&surface_, 0, sizeof(surface_));
+}
+
+Atlas::~Atlas()
+{
+    rmUnloadTexture(&surface_);
+    free(surface_.Mem);
+    surface_.Mem = NULL;
+}
+
+GSTEXTURE *Atlas::texture()
+{
+    return &surface_;
+}
+
+raii::UniquePtr<Atlas::Node> Atlas::newNode(int x, int y, size_t width, size_t height)
+{
+    raii::UniquePtr<Node> node = raii::makeUnique<Node>();
+    if (node)
+        node->area = {x, y, (int)width, (int)height};
+    return node;
+}
+
+void Atlas::destroy(Atlas *atlas)
+{
+    raii::DestroyFree()(atlas);
+}
+
+Atlas *Atlas::create(size_t width, size_t height, u8 psm)
+{
+    void *mem = malloc(sizeof(Atlas)); // not `new`: see raii::makeUnique
+    if (!mem)
+        return NULL;
+    raii::UniquePtr<Atlas> atlas(new (mem) Atlas());
+    if (!atlas)
+        return NULL;
+
+    atlas->root_ = newNode(0, 0, width, height);
+
+    GSTEXTURE &s = atlas->surface_;
+    s.Width = width;
+    s.Height = height;
+    s.Filter = GS_FILTER_NEAREST;
+
+    size_t txtsize = gsKit_texture_size(width, height, psm);
+    s.PSM = psm;
+    s.Mem = (u32 *)memalign(128, txtsize);
+    s.Vram = 0;
+
+    // defaults to no clut
+    s.ClutPSM = 0;
+    s.Clut = NULL;
+    s.VramClut = 0;
+    s.ClutStorageMode = GS_CLUT_STORAGE_CSM1;
+
+    // Bail out on OOM rather than dereferencing a NULL allocation tree or memset-ing through a NULL
+    // surface buffer. (~Atlas tolerates both being NULL.)
+    if (!atlas->root_ || !s.Mem)
+        return NULL;
+
+    // zero out the atlas surface
+    memset(s.Mem, 0x0, txtsize);
+
+    return atlas.release();
+}
+
+Atlas::Node *Atlas::placeIn(Node *node, size_t width, size_t height)
+{
+    // do we fit?
+    if (!(node->area.w >= (int)width && node->area.h >= (int)height))
+        return NULL;
+
+    if (!node->leaf1 && !node->leaf2) {
+        // extra space
+        size_t dx = node->area.w - width;
+        size_t dy = node->area.h - height;
+
+        // make the wider piece also longer - less wasted space
+        if (dx < dy) {
+            node->leaf1 = newNode(node->area.x + width, node->area.y, dx, height);
+            node->leaf2 = newNode(node->area.x, node->area.y + height, node->area.w, dy);
+        } else {
+            node->leaf1 = newNode(node->area.x, node->area.y + height, width, dy);
+            node->leaf2 = newNode(node->area.x + width, node->area.y, dx, node->area.h);
+        }
+
+        // An allocation failure leaves a leaf missing: the split is then simply unusable, which wastes space
+        // but never crashes (placeIn tolerates absent children).
+        return node;
+    }
+
+    // already occupied. Try children
+    if (node->leaf1)
+        if (Node *p = placeIn(node->leaf1.get(), width, height))
+            return p;
+    if (node->leaf2)
+        if (Node *p = placeIn(node->leaf2.get(), width, height))
+            return p;
+
+    return NULL;
+}
+
+// copies the data into the atlas
+void Atlas::copyData(const Allocation &al, size_t width, size_t height, const void *pixels)
+{
+    size_t ps = pixelSize(surface_.PSM);
     if (!ps)
         return;
 
-    const char *src = static_cast<const char *>(surface);
-    char *data = (char *)atlas->surface.Mem;
+    const char *src = static_cast<const char *>(pixels);
+    char *data = (char *)surface_.Mem;
+    const size_t atlasWidth = root_->area.w;
 
     // advance the pointer to the atlas position start (first pixel)
-    data += ps * (al->y * atlas->allocation->w + al->x);
+    data += ps * (al.y * atlasWidth + al.x);
 
     size_t rowsize = width * ps;
 
-    for (y = 0; y < height; ++y) {
+    for (size_t y = 0; y < height; ++y) {
         memcpy(data, src, rowsize);
-        data += ps * atlas->allocation->w;
+        data += ps * atlasWidth;
         src += ps * width;
     }
 }
 
-struct atlas_allocation_t *atlasPlace(atlas_t *atlas, size_t width, size_t height, const void *surface)
+const Atlas::Allocation *Atlas::place(size_t width, size_t height, const void *pixels)
 {
-    if (!surface)
+    if (!pixels)
         return NULL;
 
-    struct atlas_allocation_t *al = allocPlace(atlas->allocation, width + 1, height + 1);
-
-    if (!al)
+    Node *node = placeIn(root_.get(), width + 1, height + 1);
+    if (!node)
         return NULL;
 
-    atlasCopyData(atlas, al, width, height, surface);
+    copyData(node->area, width, height, pixels);
 
-    rmInvalidateTexture(&atlas->surface);
+    rmInvalidateTexture(&surface_);
 
-    return al;
+    return &node->area;
 }

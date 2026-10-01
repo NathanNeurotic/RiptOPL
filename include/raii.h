@@ -6,6 +6,7 @@
 #define RAII_H
 
 #include <memory>
+#include <new>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -69,6 +70,33 @@ struct FreeDeleter
 // Memory from malloc/calloc/realloc/memalign, released with free().
 template <typename T = void>
 using UniqueMalloc = std::unique_ptr<T, FreeDeleter>;
+
+// Objects created with makeUnique() live in malloc memory. This deliberately avoids `new (std::nothrow)`: naming the
+// std::nothrow object makes the linker pull in libstdc++'s new_handler.o and with it the whole exception/unwinder/
+// demangler machinery (~120 KB) that this exception-free build otherwise never links.
+struct DestroyFree
+{
+    template <typename T>
+    void operator()(T *p) const
+    {
+        if (p) {
+            p->~T();
+            free(p);
+        }
+    }
+};
+template <typename T>
+using UniquePtr = std::unique_ptr<T, DestroyFree>;
+
+// Constructs a T in malloc memory; an empty pointer when malloc fails (T's constructor must not fail).
+template <typename T, typename... Args>
+UniquePtr<T> makeUnique(Args &&...args)
+{
+    void *mem = malloc(sizeof(T));
+    if (!mem)
+        return UniquePtr<T>();
+    return UniquePtr<T>(new (mem) T(std::forward<Args>(args)...));
+}
 
 // Runs a callable when the scope ends, on every path. dismiss() cancels it (e.g. after a successful commit).
 template <typename F>

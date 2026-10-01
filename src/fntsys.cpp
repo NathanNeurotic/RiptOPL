@@ -47,10 +47,10 @@ typedef struct
     int shx, shy;
 
     // atlas for which the allocation was done
-    atlas_t *atlas;
+    Atlas *atlas;
 
     // atlas allocation position
-    struct atlas_allocation_t *allocation;
+    const Atlas::Allocation *allocation;
 
 } fnt_glyph_cache_entry_t;
 
@@ -75,7 +75,7 @@ typedef struct
     int fontSize;
 
     /// Texture atlases (default to NULL)
-    atlas_t *atlases[ATLAS_MAX];
+    Atlas *atlases[ATLAS_MAX];
 
     /// Pointer to data, if allocation takeover was selected (will be freed)
     void *dataPtr;
@@ -163,7 +163,7 @@ static void fntCacheFlush(font_t *font)
     // free all atlasses too, they're invalid now anyway
     int aid;
     for (aid = 0; aid < ATLAS_MAX; ++aid) {
-        atlasFree(font->atlases[aid]);
+        Atlas::destroy(font->atlases[aid]);
         font->atlases[aid] = NULL;
     }
 }
@@ -401,12 +401,15 @@ void fntEnd()
     fntDestroyCLUT();
 }
 
-static atlas_t *fntNewAtlas()
+static Atlas *fntNewAtlas()
 {
-    atlas_t *atl = atlasNew(ATLAS_WIDTH, ATLAS_HEIGHT, GS_PSM_T8);
+    Atlas *atl = Atlas::create(ATLAS_WIDTH, ATLAS_HEIGHT, GS_PSM_T8);
+    if (!atl)
+        return NULL; // out of memory (this used to be dereferenced unchecked)
 
-    atl->surface.ClutPSM = GS_PSM_CT32;
-    atl->surface.Clut = fontClut.Clut;
+    GSTEXTURE *surface = atl->texture();
+    surface->ClutPSM = GS_PSM_CT32;
+    surface->Clut = fontClut.Clut;
 
     return atl;
 }
@@ -425,13 +428,15 @@ static int fntGlyphAtlasPlace(font_t *font, fnt_glyph_cache_entry_t *glyph)
     int aid = 0;
     for (; aid < ATLAS_MAX; aid++) {
         // LOG("FNTSYS Placing aid %d...\n", aid);
-        atlas_t **atl = &font->atlases[aid];
+        Atlas **atl = &font->atlases[aid];
         if (!*atl) { // atlas slot not yet used
             // LOG("FNTSYS aid %d is new...\n", aid);
             *atl = fntNewAtlas();
+            if (!*atl)
+                return 0;
         }
 
-        glyph->allocation = atlasPlace(*atl, slot->bitmap.width, slot->bitmap.rows, slot->bitmap.buffer);
+        glyph->allocation = (*atl)->place(slot->bitmap.width, slot->bitmap.rows, slot->bitmap.buffer);
         if (glyph->allocation) {
             // LOG("FNTSYS Found placement\n", aid);
             glyph->atlas = *atl;
@@ -554,7 +559,7 @@ static void fntRenderGlyph(fnt_glyph_cache_entry_t *glyph, int pen_x, int pen_y)
         quad.br.u = quad.ul.u + glyph->width;
         quad.br.v = quad.ul.v + glyph->height;
 
-        quad.txt = &glyph->atlas->surface;
+        quad.txt = glyph->atlas->texture();
 
         rmDrawQuad(&quad);
     }
