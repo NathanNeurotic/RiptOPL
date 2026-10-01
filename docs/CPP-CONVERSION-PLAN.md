@@ -1,6 +1,6 @@
 # Plan: idiomatic C++ for src/ (classes, constexpr, visibility, decoupling)
 
-Status: plan only. Baseline = `ps2build` branch after the mechanical .c -> .cpp rename (commit
+Status: plan; phase 0 (safety net) done -- see section 8. Baseline = `ps2build` branch after the mechanical .c -> .cpp rename (commit
 `ec17be0`). Numbers come from `tools/analyze_coupling.py` (regex heuristics, not a parser) and greps.
 
 ## 1. What the code looks like today
@@ -184,3 +184,28 @@ class extraction can be reviewed in isolation.
 3. `OSDHistory` macros -> `constexpr`; `iosupport.h` flags/enums -> `enum class` + flag helpers.
 4. Host test harness + config round-trip test (unblocks phase 3).
 5. `UniqueFd`/`SemaLock` and conversion of `tar.cpp` (also removes the `goto fail` hoist).
+
+## 8. Phase 0 status (done)
+- **Existing tests repaired.** The .c -> .cpp rename and the upstream root reorg had silently broken 25
+  `.github/scripts/test_*.py` source checks and `tools/pc/http/tests` (paths, C snippets that now contain
+  casts, `ioPutRequest` mocks). All pass again; `tools/run_tests.sh [-k]` runs everything.
+- **Host unit tests** in `tests/host/` (ASan + UBSan, real source #included against stub headers in
+  `tests/host/stub`): `config` (both syntaxes, format latch, merge/clone, VMC helpers, wOPL key
+  translation), `tar` (index, cache round trip, concatenated archives, oversize, name rules),
+  `ps2cnf` (BOOT2 variants), `vmc_groups` (table + lookup contract).
+- **Warning baseline:** `tools/warnings.py build.log --check` (196 warnings in 28 files; 138 are
+  `-Wwrite-strings`, 34 `-Wsign-compare`, 15 `-Wmissing-declarations`). `ps2.yaml` now builds with
+  `-fno-exceptions -Wmissing-declarations`. `-fno-rtti` is NOT enabled: ps2build `cflags` also hit C
+  files and gcc warns once per C file; revisit when ps2build gets per-language flags. No polymorphic
+  types exist yet, so nothing is lost.
+- **CI:** `.github/workflows/ps2build.yml` runs host tests, the warning gate and the coupling report.
+
+Findings the tests surfaced (documented, deliberately NOT fixed in phase 0):
+1. `ps2cnfGetBootFile`: `BOOT2 <path>` with no `=` makes `CNFGetToken("=")` return NULL, which is only
+   compared to `(const char *)-1` before `CNFGetKey(NULL, ...)` -> NULL dereference on a malformed SYSTEM.CNF.
+2. `tarParseFile`: ART entry names keep 46 characters, not the documented 47 (`strncpy(nameMax)` then
+   `fname[nameMax - 1] = 0`); same off-by-one for CFG/CHT.
+3. `vmc_groups`: 12 titles are listed in more than one group (the later group is unreachable for them) and
+   8 ids are not the usual `SLUS_000.00` shape.
+4. `ioPutRequest(type, void *)` forces `reinterpret_cast<void *>(&fn)` at ~20 call sites; a typed overload
+   for `io_simpleaction_t` (phase 6, IoQueue) removes them.

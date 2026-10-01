@@ -436,7 +436,7 @@ targets:
     include_dirs: [., asm, include, modules/iopcore/common, modules/network/common, modules/hdd/common, modules/ds34bt/ee, modules/ds34usb/ee]
     headers: [kernel, cdvd, filexio, mc, poweroff, patches, vux, ps2ips, ps2ip, pad, netman, gskit, dmakit, freetype, png, z, audio, audsrv-compat, ogg, vorbis, elf-loader-nocolour]
     defines: [GSM_1080P, PADEMU]
-    cflags: [-fsingle-precision-constant, -Wno-format-truncation, -Wno-stringop-truncation, -fdata-sections, -ffunction-sections, -include, opl_version.h]
+    cflags: [-fno-exceptions, -Wmissing-declarations, -fsingle-precision-constant, -Wno-format-truncation, -Wno-stringop-truncation, -fdata-sections, -ffunction-sections, -include, opl_version.h]
     ldflags: [-fdata-sections, -ffunction-sections, "-Wl,--gc-sections", "-Wl,-Map,opl.map", -lpadx]
     libs: [gskit, dmakit, poweroff, filexio, patches, png, z, mc, freetype, vux, cdvd, netman, ps2ips, audsrv-compat, vorbisfile, vorbis, ogg, pad, elf-loader-nocolour, ds34usb_ee, ds34bt_ee]
     pack: true

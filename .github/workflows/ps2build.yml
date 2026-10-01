@@ -3,7 +3,7 @@ name: ps2build
 # Main flavour only (GSM1080P + PADEMU). Other flavours still build through the Makefile.
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [ps2build, rebuild/main, "claude/**"]
   pull_request:
 
 jobs:
@@ -17,8 +17,15 @@ jobs:
         run: tools/install_ps2build.sh
       - name: Assets (translations, lwNBD, embedded blobs, version)
         run: tools/assets.py all
+      - name: Host tests (source checks, HTTP parsers, ASan/UBSan unit tests)
+        run: tools/run_tests.sh -k
       - name: Build
-        run: ~/.local/share/ps2build/ps2build build
+        shell: bash   # -o pipefail, so a failed build is not masked by tee
+        run: ~/.local/share/ps2build/ps2build build 2>&1 | tee build.log
+      - name: Warning baseline (no new warnings)
+        run: tools/warnings.py build.log --check
+      - name: Coupling report (informational until phase 8)
+        run: tools/analyze_coupling.py | head -40
       - uses: actions/upload-artifact@v4
         with:
           name: riptopl-ps2build
