@@ -56,7 +56,7 @@ functions = ''.join(function_text(sig) for sig in (
 # -bsdfs=bd names the game's OWN bdm device ("<driver><devNr>p0"): a second stick on the same driver
 # is usb1, never usb0. The bdm leg must copy massDeviceIndex before the teardown frees pDeviceData.
 system_c = (root / 'src/platform/system.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
-bdm_c = (root / 'src/sources/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+bdm_c = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/sources/bdmsupport.cpp', 'src/sources/bdmlaunch.cpp')).replace('\r\n', '\n')
 if '"-dvd=bdfs:%s%dp0", driver, bdDevNr >= 0 ? bdDevNr : 0' not in system_c:
     failures.append('sysLaunchNeutrino: the bdfs tuple must use the caller\'s bdm device number')
 

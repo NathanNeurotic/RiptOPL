@@ -23,7 +23,7 @@ import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the
 
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/sources/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+source = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/sources/bdmsupport.cpp', 'src/sources/bdmdevices.cpp', 'src/sources/bdmboot.cpp')).replace('\r\n', '\n')
 failures = []
 
 

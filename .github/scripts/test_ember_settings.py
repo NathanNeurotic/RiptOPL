@@ -607,7 +607,7 @@ if apply_fn:
                         .replace('@ENUMS@', ember_enums(opl_h)).replace('@FUNCTIONS@', apply_functions))
 
 # All five Ember launch legs call cueApplySettings with the game name and configSet.
-for rel in ('src/sources/bdmsupport.cpp', 'src/sources/ethsupport.cpp', 'src/sources/hddsupport.cpp', 'src/sources/mmcesupport.cpp', 'src/sources/udpfssupport.cpp'):
+for rel in ('src/sources/bdmlaunch.cpp', 'src/sources/ethsupport.cpp', 'src/sources/hddsupport.cpp', 'src/sources/mmcesupport.cpp', 'src/sources/udpfssupport.cpp'):
     content = read(rel)
     if 'cueApplySettings(' not in content:
         failures.append('%s: does not call cueApplySettings' % rel)

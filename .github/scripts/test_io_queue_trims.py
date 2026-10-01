@@ -41,7 +41,7 @@ def function_text(source, where, signature):
 
 
 ioman = read('src/platform/ioman.cpp')
-bdm = read('src/sources/bdmsupport.cpp')
+bdm = read('src/sources/bdmsupport.cpp') + read('src/sources/bdmdevices.cpp') + read('src/sources/bdmboot.cpp')
 opl = read('src/app/opl.cpp')
 
 io_functions = ''.join(function_text(ioman, 'src/platform/ioman.cpp', sig) for sig in (
@@ -58,7 +58,7 @@ if unless.count('WaitSema(endSema_)') != 1 or 'appendLocked(type, data)' not in 
                     'not release it and call put')
 should_queue = function_text(bdm, 'src/sources/bdmsupport.cpp', 'static int bdmShouldQueueModuleLoad(')
 deferred = function_text(opl, 'src/app/opl.cpp', 'void menuDeferredUpdate(')
-module_pass = function_text(bdm, 'src/sources/bdmsupport.cpp', 'static void bdmLoadBlockDeviceModules(')
+module_pass = function_text(bdm, 'src/sources/bdmsupport.cpp', 'void bdmLoadBlockDeviceModules(')
 
 # --- source guards -------------------------------------------------------------------------------
 raw_puts = bdm.count('ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&bdmLoadBlockDeviceModules))')

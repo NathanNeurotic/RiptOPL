@@ -261,7 +261,7 @@ def run_path_harness():
 
 
 def check_pins():
-    bdm = text('src/sources/bdmsupport.cpp')
+    bdm = text('src/sources/bdmsupport.cpp') + text('src/sources/bdmlaunch.cpp')
     launch = function_text(bdm, 'void bdmLaunchGame(')
     check(launch is not None and 'itemList != NULL ? folderGetSub(itemList->mode) : ""' in launch and
           not re.search(r'sbSetBrowseSub\(folderGetSub\(itemList->mode\)\)', launch),

@@ -5,6 +5,7 @@
 #include "include/gui.h"
 #include "include/supportbase.h"
 #include "include/bdmsupport.h"
+#include "include/bdmint.h"
 #include "include/vcdsupport.h"
 #include "include/cuesupport.h" // PS1 rows can belong to either core; the ROW decides
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
@@ -33,12 +34,12 @@
 #include <delaythread.h>
 #include <sys/stat.h> // mkdir() -- create the config folder before a BDM save probe
 
-static int iUSBModLoaded = 0;
-static int iLinkModLoaded = 0;
-static int iLinkManModLoaded = 0;
-static int ieee1394ModLoaded = 0;
-static int mx4sioModLoaded = 0;
-static int hddModLoaded = 0;
+int iUSBModLoaded = 0;
+int iLinkModLoaded = 0;
+int iLinkManModLoaded = 0;
+int ieee1394ModLoaded = 0;
+int mx4sioModLoaded = 0;
+int hddModLoaded = 0;
 static int udpbdModLoaded = 0;
 /*
   WHICH network block transport is actually resident, as NET_BOOT_UDPBD / NET_BOOT_UDPFS, or -1
@@ -54,17 +55,13 @@ static int udpbdModLoaded = 0;
   Consumers below use this instead, so they always describe what is really loaded.
 */
 static int udpbdLoadedProtocol = -1;
-static s32 bdmLoadModuleLock;
+s32 bdmLoadModuleLock;
 int bdmDeviceModeStarted;
 
-static item_list_t bdmDeviceList[MAX_BDM_DEVICES];
-static int bdmDeviceListInitialized = 0;
+item_list_t bdmDeviceList[MAX_BDM_DEVICES];
+int bdmDeviceListInitialized = 0;
 
-void bdmInitDevicesData();
-int bdmUpdateDeviceData(item_list_t *itemList);
-static void bdmLoadCoreModules(int forceUsb);
-
-static unsigned int BdmGeneration = 0;
+unsigned int BdmGeneration = 0;
 // Drives BDM refused because their sectors are not 512 bytes (4K-sector drives, refused by design).
 // They never become massN:, so without a message they just look dead. Written by bdmEventHandler,
 // reported by bdmReportUnsupportedDrives on the ordinary update path.
@@ -73,48 +70,48 @@ static unsigned int BdmUnsupportedSectorReported;
 #ifdef __DEBUG
 // bdmEventHandler runs in the SIF command callback context; never perform diagnostic I/O there.
 // Snapshot the change and emit it from the ordinary deferred device-update worker instead.
-static volatile unsigned int BdmDiagEventPreviousGeneration;
-static volatile unsigned int BdmDiagEventGeneration;
-static volatile unsigned int BdmDiagEventReceivedCount;
-static volatile int BdmDiagEventCause;
-static volatile unsigned int BdmDiagIopCallbackSequence;
-static volatile unsigned int BdmDiagIopMountCallbackCount;
-static volatile unsigned int BdmDiagIopUnmountCallbackCount;
-static volatile unsigned int BdmDiagIopBlockDeviceCount;
-static volatile unsigned int BdmDiagIopUsbRootCount;
-static volatile unsigned int BdmDiagIopUsbRootMask;
-static volatile int BdmDiagEventPending;
-static volatile int BdmDiagIopSnapshotPending;
-static unsigned int BdmDiagSnapshotRequestCount;
-static unsigned int BdmDiagSlotProbeCount[MAX_BDM_DEVICES];
+volatile unsigned int BdmDiagEventPreviousGeneration;
+volatile unsigned int BdmDiagEventGeneration;
+volatile unsigned int BdmDiagEventReceivedCount;
+volatile int BdmDiagEventCause;
+volatile unsigned int BdmDiagIopCallbackSequence;
+volatile unsigned int BdmDiagIopMountCallbackCount;
+volatile unsigned int BdmDiagIopUnmountCallbackCount;
+volatile unsigned int BdmDiagIopBlockDeviceCount;
+volatile unsigned int BdmDiagIopUsbRootCount;
+volatile unsigned int BdmDiagIopUsbRootMask;
+volatile int BdmDiagEventPending;
+volatile int BdmDiagIopSnapshotPending;
+unsigned int BdmDiagSnapshotRequestCount;
+unsigned int BdmDiagSlotProbeCount[MAX_BDM_DEVICES];
 #endif
 
-static int bdmDriverIsUSB(const char *driverName)
+int bdmDriverIsUSB(const char *driverName)
 {
     return driverName != NULL && strcmp(driverName, "usb") == 0;
 }
 
-static int bdmDriverIsIlink(const char *driverName)
+int bdmDriverIsIlink(const char *driverName)
 {
     return driverName != NULL && (strcmp(driverName, "sd") == 0 || strcmp(driverName, "ilink") == 0);
 }
 
-static int bdmDriverIsMx4sio(const char *driverName)
+int bdmDriverIsMx4sio(const char *driverName)
 {
     return driverName != NULL && (strcmp(driverName, "sdc") == 0 || strcmp(driverName, "mx4sio") == 0);
 }
 
-static int bdmDriverIsATA(const char *driverName)
+int bdmDriverIsATA(const char *driverName)
 {
     return driverName != NULL && strcmp(driverName, "ata") == 0;
 }
 
-static int bdmDriverIsUDPBD(const char *driverName)
+int bdmDriverIsUDPBD(const char *driverName)
 {
     return driverName != NULL && strcmp(driverName, "udp") == 0;
 }
 
-static int bdmDetermineDeviceType(const char *driverName)
+int bdmDetermineDeviceType(const char *driverName)
 {
     if (bdmDriverIsUSB(driverName))
         return BDM_TYPE_USB;
@@ -154,7 +151,7 @@ static const char *bdmDeviceTypeName(int type)
 // "ata", "mass1" -> "mass") and unit number (-1 when the token carries no digits, e.g. uLE's "mass:").
 // Anchored to the FIRST ':' so it can never match a folder name deeper in the path. Returns 1 on a
 // well-formed device token, 0 otherwise. Used by bdmResolveBootDir to classify boot directories.
-static int bdmParseBootStem(const char *bootPath, char *stem, size_t stemSize, int *unit)
+int bdmParseBootStem(const char *bootPath, char *stem, size_t stemSize, int *unit)
 {
     if (bootPath == NULL)
         return 0;
@@ -188,7 +185,7 @@ static int bdmParseBootStem(const char *bootPath, char *stem, size_t stemSize, i
     return n > 0; // require a non-empty alpha stem ("0:" is not a device token)
 }
 
-static void bdmSetLaunchDeviceBinding(struct cdvdman_settings_bdm *settings, const char *driverName, int deviceIndex)
+void bdmSetLaunchDeviceBinding(struct cdvdman_settings_bdm *settings, const char *driverName, int deviceIndex)
 {
     settings->bdDeviceId = deviceIndex;
     // Match the IOP-side block device by its exported driver token, not the EE typed mount alias.
@@ -198,7 +195,7 @@ static void bdmSetLaunchDeviceBinding(struct cdvdman_settings_bdm *settings, con
         settings->bdDeviceDriver[0] = '\0';
 }
 
-static void bdmBuildGamePrefix(char *target, int targetLength, const char *deviceRoot)
+void bdmBuildGamePrefix(char *target, int targetLength, const char *deviceRoot)
 {
     if (gBDMPrefix[0] != '\0')
         snprintf(target, targetLength, "%s%s/", deviceRoot, gBDMPrefix);
@@ -210,7 +207,7 @@ static void bdmBuildGamePrefix(char *target, int targetLength, const char *devic
 // library folder: POPSTARTER's own BDMA driver always reads <root>/POPS/<name>.VCD, so a prefixed scan
 // ("mass0:<prefix>/POPS") would list VCDs that POPSTARTER can never boot -- they'd all drop to OSDSYS.
 // gBDMPrefix stays a PS2-game-library concept only.
-static void bdmBuildPs1Prefix(char *target, int targetLength, int massSlot)
+void bdmBuildPs1Prefix(char *target, int targetLength, int massSlot)
 {
     snprintf(target, targetLength, "mass%d:/", massSlot);
 }
@@ -271,7 +268,7 @@ int bdmReadDriverName(int dir, char *driverName, int driverNameLength)
     return fileXioIoctl2(dir, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, driverName, driverNameLength - 1);
 }
 
-static int bdmReadDeviceIdentity(const char *path, char *driverName, int driverNameLength, int *deviceIndex)
+int bdmReadDeviceIdentity(const char *path, char *driverName, int driverNameLength, int *deviceIndex)
 {
     int dir, result;
 
@@ -520,7 +517,7 @@ int bdmGetDeviceSlotsByType(int bdmType, int *slots, int maxSlots)
     return n;
 }
 
-static int bdmLoadOptionalModule(const char *name, void *module, int moduleSize)
+int bdmLoadOptionalModule(const char *name, void *module, int moduleSize)
 {
     int result;
 
@@ -819,7 +816,7 @@ static void bdmEventHandler(void *packet, void *opt)
 }
 
 #ifdef __DEBUG
-static void bdmDiagRequestIopSnapshot(const char *reason, int mode, int openResult)
+void bdmDiagRequestIopSnapshot(const char *reason, int mode, int openResult)
 {
     static SifCmdHeader_t query;
     int result;
@@ -831,7 +828,7 @@ static void bdmDiagRequestIopSnapshot(const char *reason, int mode, int openResu
         BdmDiagSnapshotRequestCount, reason, BdmGeneration, mode, openResult, result);
 }
 
-static void bdmDiagFlushPendingIopState(item_list_t *itemList)
+void bdmDiagFlushPendingIopState(item_list_t *itemList)
 {
     if (BdmDiagEventPending) {
         unsigned int previousGeneration = BdmDiagEventPreviousGeneration;
@@ -951,7 +948,7 @@ void bdmCaptureConfigWriteDiag(item_list_t *itemList, const config_set_t *config
 // Capture-and-report in one step, for the in-module callers that run on the IO worker holding NO
 // menu lock and owning the pointers they pass. Only the settings-save path needs the two-phase form,
 // because only it must release a lock between the capture and the device probes.
-static void bdmLogIdentityDiagnosticLive(const char *event, item_list_t *itemList, const config_set_t *configSet)
+void bdmLogIdentityDiagnosticLive(const char *event, item_list_t *itemList, const config_set_t *configSet)
 {
 #ifdef __DEBUG
     bdm_config_diag_snapshot_t snap;
@@ -1069,7 +1066,7 @@ static int bdmShouldQueueModuleLoad(void)
     return 0;
 }
 
-static void bdmLoadBlockDeviceModules(void)
+void bdmLoadBlockDeviceModules(void)
 {
     // Boot-step localizer: this runs on the IO thread and can wedge on a real drive with no timeout,
     // freezing the splash. Publish the step so a hang here names it instead of the main thread's "Ready.".
@@ -1263,7 +1260,7 @@ static void bdmLoadBlockDeviceModules(void)
 // forceUsb: load the USB block driver even when the USB games source is off. Only the literal
 // massN: boot resolver passes 1 -- it must be able to identify whatever slot the user actually
 // booted from, and that is independent of which sources they browse.
-static void bdmLoadCoreModules(int forceUsb)
+void bdmLoadCoreModules(int forceUsb)
 {
     LOG("BDMSUPPORT LoadModules\n");
 
@@ -1362,7 +1359,7 @@ int bdmEffectiveStartMode(void)
 
 // Per-transport enable flag for a classified BDM device type.
 // Returns 1 = enabled, 0 = disabled, -1 = unclassifiable (generic/unknown driver: never force-hidden).
-static int bdmTransportEnabled(int bdmDeviceType)
+int bdmTransportEnabled(int bdmDeviceType)
 {
     switch (bdmDeviceType) {
         case BDM_TYPE_USB:
@@ -1601,7 +1598,7 @@ static int bdmGetGameCount(item_list_t *itemList)
                                     pDeviceData->bdmGameCount;
 }
 
-static int bdmGetItemView(item_list_t *itemList, int id)
+int bdmGetItemView(item_list_t *itemList, int id)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     int view = host::library().listViewActive(itemList);
@@ -1623,8 +1620,8 @@ static int bdmGetSourceId(item_list_t *itemList, int id)
 // an out-of-range id yields a STATIC EMPTY entry, so a stale read is safe empty data and
 // launch/delete/rename treat &bdmEmptyGame as "nothing there". (The shared store this replaced could
 // not OOB: one array + one count stayed self-consistent -- splitting them makes this guard mandatory.)
-static base_game_info_t bdmEmptyGame = {0};
-static base_game_info_t *bdmActiveGame(item_list_t *itemList, int id)
+base_game_info_t bdmEmptyGame = {0};
+base_game_info_t *bdmActiveGame(item_list_t *itemList, int id)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     int vcd = (bdmGetItemView(itemList, id) == LIB_VIEW_PS1);
@@ -1709,756 +1706,6 @@ static void bdmRenameGame(item_list_t *itemList, int id, char *newName)
     pDeviceData->ForceRefresh = 1;
 }
 
-// Launch an Ember (.cue) PS1 title BY NAME -- the view-independent entry point, peer of
-// bdmLaunchVcd below. `cueName` is the game FOLDER under EMBER/games/, which is also Ember's launch
-// argument and the row's identity for art and per-game config.
-//
-// Notice how much SHORTER this is than the POPSTARTER path below, and why: every one of that
-// function's memory-card steps -- installing MC externals, equipping a BDMAssault exFAT driver
-// pair, the fat32/exFAT prompt -- exists because POPSTARTER resets the IOP and then reloads its
-// block driver from mc?:/POPSTARTER/. Ember performs no reset and inherits our live driver stack,
-// so none of that applies to it. Do not port any of it here.
-static void bdmLaunchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
-{
-    bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
-    char ps1Prefix[64], emberElf[256], biosPath[288];
-    char launchName[CUE_NAME_MAX];
-
-    if (pDeviceData == NULL || cueName == NULL || cueName[0] == '\0')
-        return;
-
-    // Refuse what Ember itself would refuse, while a dialog can still be drawn. The scanner already
-    // filters these out, so reaching this is either a favourite stored before a rename or a
-    // hand-edited entry -- both worth a message rather than a drop to the PS1 BIOS shell.
-    if (!cueNameLaunchable(cueName)) {
-        host::ui().msgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
-        return;
-    }
-
-    bdmBuildPs1Prefix(ps1Prefix, sizeof(ps1Prefix), itemList->mode); // device ROOT: EMBER/ lives there
-
-    if (!cueResolveEmber(ps1Prefix, emberElf, sizeof(emberElf))) {
-        host::ui().msgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
-        return;
-    }
-    // Ember needs a user-supplied bios.bin beside it and says nothing useful when it is missing --
-    // it just runs the PS1 BIOS shell. Check while we can still explain.
-    if (!cueResolveEmberBios(ps1Prefix, biosPath, sizeof(biosPath))) {
-        host::ui().msgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
-        return;
-    }
-    // The scan lists folders without reading inside them -- that would be a directory read per row
-    // on every refresh. Pay for it once, HERE, while a dialog can still be drawn: an empty or
-    // mis-filled folder otherwise drops the user into the PS1 BIOS shell with no explanation.
-    // Leave Ember's display marker before the handoff, like the BDMA equip does for POPSTARTER.
-    // Best-effort: never a launch gate.
-    cueApplySettings(ps1Prefix, cueName, configSet);
-
-    if (!cueGameHasImage(ps1Prefix, cueName)) {
-        host::ui().msgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
-        return;
-    }
-
-    // MX4SIO shares the SIO2 bus with MMCE artwork; quiesce it before the handoff reads the device.
-    if (pDeviceData->bdmDeviceType == BDM_TYPE_SDC) {
-        if (!cacheAbortMmceImageLoadsTimed(500)) {
-            host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
-            return;
-        }
-    }
-
-    // itemCleanUp frees the active BDM PS1 array during deinit, so preserve the folder-name argv
-    // before teardown. This is especially load-bearing for the newly reachable UDPBD Ember path.
-    snprintf(launchName, sizeof(launchName), "%s", cueName);
-
-    // UNMOUNT_EXCEPTION is load-bearing here, not defensive: Ember never resets the IOP, so the
-    // device it reads its game from must still be mounted when it starts.
-    host::app().deinit(UNMOUNT_EXCEPTION, itemList->mode);
-    sysLaunchEmber(emberElf, launchName);
-}
-
-// Launch a PS1/.VCD entry BY NAME via POPSTARTER (the view-independent entry point used by both the
-// in-view menu launch below and the Favourites tab). Every BDM device is a massN: mount at runtime,
-// so the ELF + selector both use the live prefix; UNMOUNT_EXCEPTION keeps it mounted across the reset.
-static void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
-{
-    bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
-    char vcdPrefix[64], vcdElf[256], vcdSelector[320];
-
-    if (pDeviceData == NULL || vcdName == NULL || vcdName[0] == '\0' || !strcasecmp(vcdName, "POPSTARTER")) // reserved-name belt: the scanner no longer lists it (#154); strcasecmp -- FAT is case-insensitive
-        return;
-    // POPSTARTER does its own IOP reset and reloads its block drivers from the MC -- it can't bring up
-    // the network (udp) block device (no BDMA variant for it), so a PS1 VCD on the udp device would just
-    // drop to OSDSYS. Abort cleanly with a message instead of a dead launch.
-    if (pDeviceData->bdmDeviceType == BDM_TYPE_UDPBD) {
-        host::ui().msgBox(_l(_STR_VCD_NOT_ON_NET), 0, NULL);
-        return;
-    }
-    bdmBuildPs1Prefix(vcdPrefix, sizeof(vcdPrefix), itemList->mode); // device root, NOT gBDMPrefix -- POPSTARTER reads <root>/POPS only
-    if (!vcdResolvePopstarter(vcdPrefix, vcdElf, sizeof(vcdElf))) {
-        host::ui().msgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
-        return;
-    }
-    // vcdBuildSelector emits the BARE POPSTARTER label ("mass:/POPS/XX.<name>.ELF"), NOT this live
-    // unit-numbered mount -- POPSTARTER remounts under "mass:" after its own IOP reset (see the function).
-    vcdBuildSelector(vcdPrefix, VCD_PREFIX_MASS, vcdName, vcdSelector, sizeof(vcdSelector));
-
-    // ASK FIRST. Nothing above this point has written to the card or put anything on screen, and
-    // nothing below it asks the user a question -- which is the ordering Nathan asked for: the
-    // fat32/exFAT decision comes before every visible and every expensive step, and the RetroGEM
-    // barcode is the very last thing that happens before the handoff.
-    //
-    // It used to sit after vcdInstallPopstarterMc, which populates mc?:/POPSTARTER and is the
-    // "Preparing PS1 driver on memory card..." step -- many seconds of card writes on hardware. So
-    // pressing Back at the dialog meant OPL had already spent all of that on a launch the user then
-    // cancelled, and the question arrived after the wait rather than before it.
-    //
-    // USB is special: the PS2 cannot detect whether the stick is fat32 or exFAT formatted, so the
-    // POPSTARTER USB driver has to be CHOSEN rather than detected. fat32 = POPSTARTER's built-in USB
-    // stack (recommended for non-exFAT users); exFAT = the BDMAssault usbexfat pair.
-    //
-    // Asking on EVERY USB VCD launch was the original directive (2026-08-01) and remains the shipped
-    // default, because a wrong answer here is a failed boot rather than a wrong setting. It is now the
-    // ASK value of a three-way preference (BDMA Settings -> USB BDMA Driver) rather than the only
-    // behaviour: a user whose sticks are all one format was being asked a question with the same
-    // answer every single time.
-    //
-    // Back still cancels the LAUNCH, and only in ASK mode -- a pinned choice has no dialog to cancel.
-    // USB VCDs only; the MX4SIO, iLink and ATA cases equip by device type and never ask.
-    int usbBdmaVariant = -1;
-    if (pDeviceData->bdmDeviceType == BDM_TYPE_USB) {
-        if (gVcdUsbBdmaMode == VCD_USB_BDMA_EXFAT) {
-            usbBdmaVariant = VCD_BDMA_USBEXFAT;
-        } else if (gVcdUsbBdmaMode == VCD_USB_BDMA_FAT32) {
-            usbBdmaVariant = VCD_BDMA_FAT32;
-        } else {
-            int usbMode = host::ui().showVcdUsbMode();
-            if (usbMode == VCDUSB_BTN_FAT32)
-                usbBdmaVariant = VCD_BDMA_FAT32;
-            else if (usbMode == VCDUSB_BTN_EXFAT)
-                usbBdmaVariant = VCD_BDMA_USBEXFAT;
-            else
-                return; // dialog cancelled -- nothing written, nothing prepared, nothing displayed
-        }
-    }
-
-    // Present preparation indicator before potentially expensive memory-card file IO
-    host::ui().renderTextScreen(_l(_STR_PLEASE_WAIT));
-
-    // MMCE artwork must be quiesced before VCD card I/O because MMCE and MX4SIO share the SIO2/fileXio path.
-    if (pDeviceData->bdmDeviceType == BDM_TYPE_SDC) {
-        if (!cacheAbortMmceImageLoadsTimed(500)) {
-            host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
-            return;
-        }
-    }
-
-    // Populate mc?:/POPSTARTER from this game's own direct POPS/ folder. Best effort: local VCD
-    // launches keep their existing handoff behavior when optional files are absent or the card is full.
-    (void)vcdInstallPopstarterMc(vcdPrefix);
-
-    // Best-effort card prep: POPSTARTER reloads its block-device driver pair from the MC after its OWN
-    // IOP reset, so equip the device-matching BDMAssault variant. NEVER a launch gate -- the handoff
-    // below always proceeds (POPSTARTER owns everything past the exec); a failed equip just toasts its
-    // diagnostic in passing. UDPBD/unknown have no BDMA variant and are left as-is.
-    switch (pDeviceData->bdmDeviceType) {
-        case BDM_TYPE_USB:
-            vcdApplyUsbModeForLaunch(usbBdmaVariant); // decided above, before anything was written
-            break;
-        case BDM_TYPE_SDC:
-            vcdEnsureBdmaForLaunch(VCD_BDMA_SRC_MX4SIO, VCD_BDMA_MX4SIO);
-            break;
-        case BDM_TYPE_ILINK:
-            vcdEnsureBdmaForLaunch(VCD_BDMA_SRC_ILINK, VCD_BDMA_ILINK);
-            break;
-        case BDM_TYPE_ATA:
-            vcdEnsureBdmaForLaunch(VCD_BDMA_SRC_HDD, VCD_BDMA_ATA);
-            break;
-        default:
-            break;
-    }
-
-    char vcdFullPath[256];
-    snprintf(vcdFullPath, sizeof(vcdFullPath), "%sPOPS/%s.VCD", vcdPrefix, vcdName);
-    vcdPrepareRetroGemBarcode(vcdFullPath);
-
-    // POPSTARTER.ELF may be on a different backend than the VCD. Keep both alive until the
-    // argv-preserving loader has opened the ELF; POPSTARTER performs its own IOP reset afterwards.
-    host::app().deinitEx(sbLoaderDeinitException(vcdElf), itemList->mode, host::app().pathToMode(vcdElf));
-    sysLaunchPopstarter(vcdElf, vcdSelector);
-}
-
-// Δ9 (NHDDL parity): Neutrino's bd backend packs the ISO and BOTH -mc VMCs into ONE shared
-// 64-entry fragment table (BDM_MAX_FRAGS in neutrino's fhi_bd_config.h; fhi_config.c's
-// backend_bd_add_file_fd errors past it). That packing runs AFTER neutrino's own IOP reset,
-// where its only error output is a debug printf -- from the couch, a black screen. So pre-count
-// the same budget here, while the menu can still explain the abort, using the count-only form
-// of the same ioctl (NULL buffer: bdmfs_fatfs's get_frag_list gates only the WRITE on capacity,
-// the count is unconditional -- it returns the file's TOTAL fragment count and writes nothing).
-// Every device this helper can see is bdmfs_fatfs-backed (mmce/udpfs launches live in their own
-// support files), including both udp block transports (udpbd + udpfsbd depend on i_bdm), so the
-// ioctl is always valid here. NOT OPL's BDM_MAX_FRAGS: same value today, different owner.
-constexpr int NEUTRINO_BDM_MAX_FRAGS = 64;
-
-static int bdmNeutrinoFragBudgetOk(const char *isoPath, const neutrino_vmc_args_t *vmcArgs, int isUdp)
-{
-    const char *paths[1 + NEUTRINO_VMC_SLOTS];
-    int nPaths = 0, total = 0, i;
-
-    paths[nPaths++] = isoPath;
-    for (i = 0; i < NEUTRINO_VMC_SLOTS; i++) {
-        const char *eq = vmcArgs->arg[i][0] ? strchr(vmcArgs->arg[i], '=') : NULL;
-        if (eq != NULL && eq[1] != '\0')
-            paths[nPaths++] = eq + 1; // "-mcN=<path>"; Δ2 already verified the file exists
-    }
-
-    for (i = 0; i < nPaths; i++) {
-        int fd = open(paths[i], O_RDONLY);
-        if (fd < 0) { // advisory check only: never veto the launch on a probe failure
-            LOG("[NEUTRINO] frag pre-count: open(%s) failed, file skipped\n", paths[i]);
-            continue;
-        }
-        int frags = fileXioIoctl2(ps2sdk_get_iop_fd(fd), USBMASS_IOCTL_GET_FRAGLIST, NULL, 0, NULL, 0);
-        close(fd);
-        if (frags < 0) {
-            LOG("[NEUTRINO] frag pre-count: ioctl(%s) = %d, file skipped\n", paths[i], frags);
-            continue;
-        }
-        total += frags;
-    }
-
-    if (total > NEUTRINO_BDM_MAX_FRAGS) { // == is fine: neutrino packs exactly-full tables
-        char msg[256];                    // headroom for the lng/fork overlay's longer translations
-        LOG("[NEUTRINO] frag budget exceeded: %d/%d across ISO + VMCs\n", total, NEUTRINO_BDM_MAX_FRAGS);
-        // Match the Δ8 abort-message convention: the udp outcome is a consumed launch, the
-        // local outcome is a native-core fallback (which usually boots: OPL's own 64-frag
-        // table holds the ISO only -- VMCs go through mcemu's contiguity check instead).
-        snprintf(msg, sizeof(msg), _l(isUdp ? _STR_NEUTRINO_TOO_FRAGMENTED_NET : _STR_NEUTRINO_TOO_FRAGMENTED), total, NEUTRINO_BDM_MAX_FRAGS);
-        host::ui().warning(msg, 6);
-        return 0;
-    }
-    return 1;
-}
-
-// Abort path of bdmTryNeutrinoLaunch: back to a live menu so a later launch from another device does not
-// inherit this one's markers. Returns failResult (1 = launch consumed on udp, 0 = fall back to native).
-static int bdmNeutrinoAbort(int failResult, config_set_t *configSet)
-{
-    launchDiagDisarm();
-    if (failResult && gAutoLaunchBDMGame != NULL) {
-        host::app().miniDeinit(configSet); // mirror the normal autolaunch teardown (ioEnd/configEnd + frees configSet)
-        free(gAutoLaunchBDMGame);
-        gAutoLaunchBDMGame = NULL;
-        free(gAutoLaunchDeviceData);
-        gAutoLaunchDeviceData = NULL;
-    }
-    return failResult;
-}
-
-// Δ8 (NHDDL parity): the LEAN Neutrino launch path. Everything bdmLaunchGame's native flow
-// prepares -- VMC superblock prompts + mcemu patching, sbPrepare's cdvdman patch, per-part
-// fragment lists (with a hard abort past 64 frags), layer-1 probing, cheats (with dialogs),
-// PS2RD images, ATA DMA setup -- exists for the EMBEDDED cdvdman core; Neutrino re-derives all
-// of it from -bsd/-dvd after its own IOP reset. Paying for that work meant a Neutrino launch
-// could DIE on native-only failures (the fragmented-ISO abort, an interactive cheats dialog
-// mid-launch, a VMC-superblock cancel whose result the launch then ignored). NHDDL's whole
-// pre-handoff is ~3 file operations; this is ours.
-// Returns 1 = handled (handed off, or aborted with the user informed -- caller returns);
-// 0 = proceed with the native launch (core is OPL, or Neutrino unavailable on a non-udp device).
-static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, bdm_device_data_t *pDeviceData, config_set_t *configSet)
-{
-    int coreLoader = gDefaultCoreLoader; // no per-game $CoreLoader key -> follow the global default core
-    configGetInt(configSet, CONFIG_ITEM_CORE_LOADER, &coreLoader);
-    // UDPBD/UDPFS have no embedded cdvdman backend -- the "udp" BDM device can ONLY boot via
-    // Neutrino, so force the core and treat every Neutrino failure below as a clean abort
-    // (falling through to the native path would deinit into a no-op = black screen).
-    int isUdp = bdmDriverIsUDPBD(pDeviceData->bdmDriver);
-    if (isUdp)
-        coreLoader = 1;
-    if (!coreLoader)
-        return 0;
-    if (isUdp)
-        launchDiagMark(1); // arms gLaunchDiag; every later marker gates on it
-
-    // Abort helper contract: on udp the launch is unbootable without Neutrino -- consume the
-    // launch (autolaunch mirrors its normal teardown); on local devices fall back to native.
-    int failResult = isUdp ? 1 : 0;
-
-    if (game->format == GAME_FORMAT_USBLD || !strcasecmp(game->extension, ".zso")) {
-        // isValidIsoName() admits .zso case-insensitively and game->extension is stored verbatim,
-        // so an upper/mixed-case ".ZSO" must reject here too (Neutrino can't run it).
-        host::ui().warning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_BAD_FORMAT), 6);
-        return bdmNeutrinoAbort(failResult, configSet);
-    }
-
-    const char *neutrinoPath = sbResolveNeutrinoPath(pDeviceData->bdmPrefix); // #300: AUTO probes this device for a co-located install
-    if (neutrinoPath == NULL) {
-        host::ui().warning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_NOT_FOUND), 6);
-        return bdmNeutrinoAbort(failResult, configSet);
-    }
-
-    // Everything Neutrino actually needs from the config/device, copied to THIS stack frame
-    // (deinit below frees configSet's owner + pDeviceData).
-    // Absent per-game $NeutrinoVideo/$NeutrinoGsmComp keys = follow the global defaults (the
-    // per-game picker's "Default" row removes the keys; explicit values -- including Off=0 --
-    // persist and override).
-    int compatmask = 0, neutrinoVideo = gNeutrinoVideoDefault, neutrinoGsmComp = gNeutrinoGsmCompDefault, neutrinoBsdfs = 0;
-    char neutrinoExtraArgs[256] = "";
-    neutrino_vmc_args_t neutrinoVmc = {0};
-    char partname[256], bdmCurrentDriver[32];
-    compatmask = sbGetCompatModes(configSet); // same source sbPrepare reads; no IRX patch needed
-    configGetStrCopy(configSet, CONFIG_ITEM_NEUTRINO_ARGS, neutrinoExtraArgs, sizeof(neutrinoExtraArgs));
-    configGetInt(configSet, CONFIG_ITEM_NEUTRINO_VIDEO, &neutrinoVideo);
-    configGetInt(configSet, CONFIG_ITEM_NEUTRINO_GSMCOMP, &neutrinoGsmComp);
-    configGetInt(configSet, CONFIG_ITEM_NEUTRINO_BSDFS, &neutrinoBsdfs);     // #11: bdm legs (incl. udpbd/udpfsbd) are the block-backed consumers
-    sbBuildVmcNeutrinoArgs(configSet, pDeviceData->bdmPrefix, &neutrinoVmc); // Δ2-validated -mc args
-    sbCreatePath(game, partname, pDeviceData->bdmPrefix, "/", 0);            // -dvd target (multi-part was rejected above)
-    snprintf(bdmCurrentDriver, sizeof(bdmCurrentDriver), "%s", pDeviceData->bdmDriver);
-    // The bdm device number behind this mount (USBMASS_IOCTL_GET_DEVICE_NUMBER, the same value the
-    // native leg binds) -- the <devNr> of a -bsdfs=bd "<driver><devNr>p0" tuple. Copied now: the
-    // teardown below frees pDeviceData.
-    int bdmDevNr = pDeviceData->massDeviceIndex;
-
-    // Δ9: neutrino only discovers a blown fragment budget after its own IOP reset (debug
-    // printf + exit = black screen). Count it now: udp consumes the launch, local falls native.
-    if (!bdmNeutrinoFragBudgetOk(partname, &neutrinoVmc, isUdp))
-        return bdmNeutrinoAbort(failResult, configSet);
-    if (gLaunchDiag)
-        launchDiagMark(2);
-
-    if (gRememberLastPlayed) {
-        configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        host::app().saveConfig(CONFIG_LAST, 0);
-    }
-
-    // Δ6 preflight (driver token + network toml sync) -- abort stays in a live menu.
-    if (sysNeutrinoPreflight(bdmCurrentDriver, neutrinoPath, neutrinoBsdfs, neutrinoExtraArgs, bdmDevNr) < 0)
-        return bdmNeutrinoAbort(failResult, configSet);
-    if (gLaunchDiag)
-        launchDiagMark(3);
-
-    // MMCE cross-device game-id (#261) with the Δ3 -mc-covered-slot guard. Before deinit (uses game).
-    // Same MX4SIO settle gate as the native leg below (CodeRabbit review of #248, vetted): a switch
-    // still in flight through the IOP reboot can starve the SD enumeration on the shared SIO2.
-    if (mmceSendGameID(game->startup, neutrinoPath,
-                       (neutrinoVmc.arg[0][0] ? 1 : 0) | (neutrinoVmc.arg[1][0] ? 2 : 0)) < 0 &&
-        bdmDriverIsMx4sio(bdmCurrentDriver)) {
-        if (mmceGameIdSettle(5000) < 0)
-            host::ui().warning(_l(_STR_MMCE_GAMEID_UNSETTLED), 6);
-    }
-    if (gLaunchDiag)
-        launchDiagMark(4);
-
-    // game->startup lives inside bdmGames / gAutoLaunchBDMGame, both freed below (deinitEx's
-    // itemCleanUp, or the explicit free in the autolaunch branch). Copy it before the teardown so
-    // sysLaunchNeutrino's -elf build reads valid stack memory instead of freed heap (UAF).
-    char bdmStartup[GAME_STARTUP_MAX + 1];
-    snprintf(bdmStartup, sizeof(bdmStartup), "%s", game->startup);
-
-    if (gAutoLaunchBDMGame == NULL) {
-        // Keep-IOP handoff: keep BOTH the game device and the neutrino.elf device mounted
-        // (Neutrino reads its -cwd config/modules and the ISO through our mounts pre-reset).
-        int neutrinoDevMode = host::app().pathToMode(neutrinoPath);
-        host::app().deinitEx(sbNeutrinoDeinitException(neutrinoPath), itemList->mode, neutrinoDevMode); // CAREFUL: itemCleanUp frees bdmGames/game
-    } else {
-        host::app().miniDeinit(configSet);
-        free(gAutoLaunchBDMGame);
-        gAutoLaunchBDMGame = NULL;
-        free(gAutoLaunchDeviceData);
-        gAutoLaunchDeviceData = NULL;
-    }
-
-    // gPS2Logo passes the user's preference straight through: Neutrino performs its own logo
-    // read/validation for -logo, so the native path's CheckPS2Logo disc pass is not needed here.
-    sysLaunchNeutrino(bdmCurrentDriver, partname, bdmStartup, compatmask, gPS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, neutrinoBsdfs, bdmDevNr, &neutrinoVmc);
-    return 1;
-}
-
-void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
-{
-    int i, fd, iop_fd, index, compatmask = 0;
-    int EnablePS2Logo = 0;
-    int result;
-    u64 startingLBA;
-    unsigned int startCluster;
-    char partname[256], filename[32];
-    base_game_info_t *game;
-    struct cdvdman_settings_bdm *settings;
-    u32 layer1_start, layer1_offset;
-    unsigned short int layer1_part;
-
-    bdm_device_data_t *pDeviceData = NULL;
-
-    if (gAutoLaunchBDMGame == NULL) {
-        pDeviceData = (bdm_device_data_t *)itemList->priv;
-        // Resolve through the ACTIVE view's array (#120 split): in the VCD view this yields the VCD
-        // entry whose name the POPSTARTER handoff below uses, and any stale/invalid id yields the
-        // empty entry rather than indexing a possibly NULL/shorter array.
-        game = bdmActiveGame(itemList, id);
-        if (game == &bdmEmptyGame)
-            return; // nothing there (stale id / not scanned) -- never launch a blank entry
-    } else {
-        pDeviceData = gAutoLaunchDeviceData;
-        game = gAutoLaunchBDMGame;
-    }
-
-    // Folder browsing: a folder row is never launchable (the dispatch descends instead of reaching
-    // here); guard defensively. Otherwise pin the path composers to the current subfolder so a game
-    // inside it resolves to <prefix>CD|DVD/<sub>/<name>.
-    if (game != NULL && game->format == GAME_FORMAT_FOLDER)
-        return;
-    // Autolaunch passes itemList == NULL (autoLaunchBDMGame), and an argv launch always names a file
-    // at the CD/DVD root. Reading itemList->mode there loads from virtual address 0, which the EE's
-    // default TLB leaves unmapped below 0x80000: a TLB-miss exception on real hardware, i.e. every BDM
-    // autolaunch hung on a black screen from the day folder browsing landed (#545).
-    sbSetBrowseSub(itemList != NULL ? folderGetSub(itemList->mode) : "");
-
-    // VCD view: this device is showing PS1 VCDs -> hand off to POPSTARTER (by name) instead of the
-    // disc / Neutrino path below (which is entirely disc-specific). The BDM_TYPE_ATA internal exFAT HDD
-    // still launches off the live massN: prefix, NOT ata0:/ (OPL never mounts an ata0: filesystem -- a
-    // re-point there made LoadELFFromFile fail into an already-deinit'd OPL = black-screen freeze).
-    if (gAutoLaunchBDMGame == NULL && game != NULL && (bdmGetItemView(itemList, id) == LIB_VIEW_PS1)) {
-        // ONE PS1 list, TWO cores. Which one runs this title is a property of the ROW -- a .VCD row
-        // goes to POPSTARTER, an Ember game folder to ember.elf -- and NEVER of the page, because
-        // both kinds sit side by side in the same list. Asking the view here instead of the row is
-        // exactly the mistake that would send every Ember title to POPSTARTER.
-        if (cueIsCueEntry(game))
-            bdmLaunchCue(itemList, game->name, configSet);
-        else
-            bdmLaunchVcd(itemList, game->name, configSet);
-        return;
-    }
-
-    // Δ8: Neutrino core gets its own lean path FIRST -- everything below is native-core prep it
-    // neither needs nor should be able to die on (see bdmTryNeutrinoLaunch).
-    if (bdmTryNeutrinoLaunch(itemList, game, pDeviceData, configSet))
-        return;
-
-    // NATIVE PATH ONLY, and it must be refused HERE if it cannot possibly finish.
-    //
-    // Everything below ends in the driver-token dispatch at the bottom of this function -- usb /
-    // sd+ilink / sdc+mx4sio / ata -- which has NO default branch, and which runs AFTER deinit() has
-    // torn the UI down. A device whose identity was never readable matches none of them: the launch
-    // then simply RETURNS into a deinit'd OPL, and the user is left staring at a black screen with a
-    // stuck loading icon until they reset the console. That is exactly what MX4SIO did after
-    // rebuild-135 deferred its transport load past the first device poll, and bdmUpdateDeviceData
-    // publishes such a slot quite happily: it fills bdmPrefix before the identity ioctl and treats an
-    // unclassifiable transport as "never force-hide", so the games list and browse fine.
-    //
-    // Neutrino already refuses the same case while the menu is still alive (sysNeutrinoPreflight's
-    // "unsupported device" stop); the native leg had no equivalent. The test is written as the exact
-    // negation of the dispatch chain rather than as a device-type check, so the two cannot drift apart.
-    //
-    // bdmEnumerateDevices now waits for an enabled MX4SIO to answer that ioctl before any page polls,
-    // so this should be unreachable. It is here to make "should" cost a message box instead of a dead
-    // console -- and it also closes the udp hole the Neutrino helper's own comment warns about.
-    if (!bdmDriverIsUSB(pDeviceData->bdmDriver) && !bdmDriverIsIlink(pDeviceData->bdmDriver) &&
-        !bdmDriverIsMx4sio(pDeviceData->bdmDriver) && !bdmDriverIsATA(pDeviceData->bdmDriver)) {
-        LOG("BDMSUPPORT launch aborted: device %d has no natively launchable driver token ('%s')\n",
-            itemList != NULL ? itemList->mode : -1, pDeviceData->bdmDriver);
-        if (gAutoLaunchBDMGame == NULL)
-            host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
-        return;
-    }
-
-    // Same dead end, reached by the OTHER half of the identity pass. USBMASS_IOCTL_GET_DEVICE_NUMBER
-    // is allowed to fail on its own (bdmUpdateDeviceData only LOGs it and publishes anyway -- some USB
-    // drives genuinely do not answer it), which leaves massDeviceIndex at -1. Nothing ever retries it:
-    // the identity re-entry gate tests the root, the driver token and the device TYPE, but never the
-    // index, so a slot that missed only this ioctl is latched at -1 until the console is rebooted.
-    //
-    // A -1 index is not a cosmetic gap. bdmSetLaunchDeviceBinding assigns it to settings->bdDeviceId,
-    // which is a u32 (modules/iopcore/common/cdvd_config.h:82), so it reaches the IOP as 0xFFFFFFFF.
-    // The in-game matcher requires bd->devNr == bdDeviceId (modules/iopcore/cdvdman/device-bdm.c:57-59),
-    // no real device can ever equal that, so g_bd is never attached, bdm_io_sema is never signalled and
-    // the game blocks on it FOREVER: the same black screen with a stuck loading icon, except this one
-    // cannot self-heal at all.
-    //
-    // ATA is deliberately exempt: its cdvdman exposes one synthetic "ata" block device and binds by
-    // driver token alone (the USE_BDM_ATA branch in the same matcher), so an ATA launch is unharmed by
-    // a missing device number and must not be blocked here.
-    if (pDeviceData->massDeviceIndex < 0 && !bdmDriverIsATA(pDeviceData->bdmDriver)) {
-        LOG("BDMSUPPORT launch aborted: device %d ('%s') never reported a device number\n",
-            itemList != NULL ? itemList->mode : -1, pDeviceData->bdmDriver);
-        if (gAutoLaunchBDMGame == NULL)
-            host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
-        return;
-    }
-
-    char vmc_name[32], vmc_path[256], have_error = 0;
-    int vmc_id, size_mcemu_irx = 0;
-    bdm_vmc_infos_t bdm_vmc_infos;
-    vmc_superblock_t vmc_superblock;
-
-    for (vmc_id = 0; vmc_id < 2; vmc_id++) {
-        memset(&bdm_vmc_infos, 0, sizeof(bdm_vmc_infos_t));
-        configGetVMC(configSet, vmc_name, sizeof(vmc_name), vmc_id);
-        if (vmc_name[0]) {
-            have_error = 1;
-            int vmcSizeInMb = sysCheckVMC(pDeviceData->bdmPrefix, "/", vmc_name, 0, &vmc_superblock);
-            if (vmcSizeInMb > 0) {
-                bdm_vmc_infos.flags = vmc_superblock.mc_flag & 0xFF;
-                bdm_vmc_infos.flags |= 0x100;
-                bdm_vmc_infos.specs.page_size = vmc_superblock.page_size;
-                bdm_vmc_infos.specs.block_size = vmc_superblock.pages_per_block;
-                bdm_vmc_infos.specs.card_size = vmc_superblock.pages_per_cluster * vmc_superblock.clusters_per_card;
-
-                sprintf(vmc_path, "%sVMC/%s.bin", pDeviceData->bdmPrefix, vmc_name);
-
-                fd = open(vmc_path, O_RDONLY);
-                if (fd >= 0) {
-                    iop_fd = ps2sdk_get_iop_fd(fd);
-                    if (fileXioIoctl2(iop_fd, USBMASS_IOCTL_GET_LBA, NULL, 0, &startingLBA, sizeof(startingLBA)) == 0 && (startCluster = (unsigned int)fileXioIoctl(iop_fd, USBMASS_IOCTL_GET_CLUSTER, vmc_path)) != 0) {
-
-                        // VMC only supports 32bit LBAs at the moment, so if the starting LBA + size of the VMC crosses the 32bit boundary
-                        // just report the VMC as being fragmented to prevent file system corruption.
-                        int vmcSectorCount = vmcSizeInMb * ((1024 * 1024) / 512); // size in MB * sectors per MB
-                        if (startingLBA + vmcSectorCount > 0x100000000) {
-                            LOG("BDMSUPPORT VMC bad LBA range\n");
-                            have_error = 2;
-                        }
-                        // Check VMC cluster chain for fragmentation (write operation can cause damage to the filesystem).
-                        else if (fileXioIoctl(iop_fd, USBMASS_IOCTL_CHECK_CHAIN, const_cast<char *>("")) == 1) {
-                            LOG("BDMSUPPORT Cluster Chain OK\n");
-                            have_error = 0;
-                            bdm_vmc_infos.active = 1;
-                            bdm_vmc_infos.start_sector = startingLBA;
-                            LOG("BDMSUPPORT VMC slot %d start: 0x%08x%08x\n", vmc_id, ((u32 *)&startingLBA)[1], ((u32 *)&startingLBA)[0]);
-                        } else {
-                            LOG("BDMSUPPORT Cluster Chain NG\n");
-                            have_error = 2;
-                        }
-                    }
-
-                    close(fd);
-                }
-            }
-        }
-
-        if (gAutoLaunchBDMGame == NULL) {
-            if (have_error) {
-                char error[256];
-                if (have_error == 2) // VMC file is fragmented
-                    snprintf(error, sizeof(error), _l(_STR_ERR_VMC_FRAGMENTED_CONTINUE), vmc_name, (vmc_id + 1));
-                else
-                    snprintf(error, sizeof(error), _l(_STR_ERR_VMC_CONTINUE), vmc_name, (vmc_id + 1));
-                if (!host::ui().msgBox(error, 1, NULL)) {
-                    return;
-                }
-            }
-        } else
-            LOG("VMC error\n");
-
-        for (i = 0; i < size_bdm_mcemu_irx; i++) {
-            if (((u32 *)&bdm_mcemu_irx)[i] == (0xC0DEFAC0 + vmc_id)) {
-                if (bdm_vmc_infos.active)
-                    size_mcemu_irx = size_bdm_mcemu_irx;
-                memcpy(&((u32 *)&bdm_mcemu_irx)[i], &bdm_vmc_infos, sizeof(bdm_vmc_infos_t));
-                break;
-            }
-        }
-    }
-
-    void *irx = NULL;
-    int irx_size = 0;
-    if (bdmDriverIsATA(pDeviceData->bdmDriver)) {
-        irx = &bdm_ata_cdvdman_irx;
-        irx_size = size_bdm_ata_cdvdman_irx;
-    } else {
-        irx = &bdm_cdvdman_irx;
-        irx_size = size_bdm_cdvdman_irx;
-    }
-
-    compatmask = sbPrepare(game, configSet, irx_size, static_cast<void**>(irx), &index);
-    if (compatmask < 0) // sbPrepare failed (patch zone not found): `index` is unset -- bail before using
-        return;         // it. (The old `if (settings == NULL)` guard was dead: irx + index is never NULL.)
-    sbEnsureIgrUsbDrivers(compatmask);
-
-#ifdef PADEMU
-    // MX4SIO reads the SD card over the SIO2 / memory-card bus -- the SAME bus pad emulation hooks
-    // (modules/pademu installs a sio2man hook while pad emulation is enabled). With both active they
-    // contend on SIO2 and the game frequently fails to boot (black screen, issue #53). It is an
-    // inherent shared-bus conflict, not fixable here, so warn instead of leaving a mystery black
-    // screen. sbPrepare() above resolved gEnablePadEmu for this game (global or per-game).
-    if (pDeviceData->bdmDeviceType == BDM_TYPE_SDC && gEnablePadEmu)
-        host::ui().warning(_l(_STR_MX4SIO_PADEMU_WARN), 6);
-#endif
-
-    settings = (struct cdvdman_settings_bdm *)((u8 *)irx + index);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-overflow"
-    memset(&settings->frags[0], 0, sizeof(bd_fragment_t) * BDM_MAX_FRAGS);
-#pragma GCC diagnostic pop
-    u8 iTotalFragCount = 0;
-
-    //
-    // Add ISO as fragfile[0] to fragment list
-    //
-    struct cdvdman_fragfile *iso_frag = &settings->fragfile[0];
-    iso_frag->frag_start = 0;
-    iso_frag->frag_count = 0;
-    for (i = 0; i < game->parts; i++) {
-        // Open file
-        sbCreatePath(game, partname, pDeviceData->bdmPrefix, "/", i);
-        fd = open(partname, O_RDONLY);
-        if (fd < 0) {
-            sbUnprepare(&settings->common);
-            host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
-            return;
-        }
-        iop_fd = ps2sdk_get_iop_fd(fd); // only valid after confirming fd >= 0
-
-        // Get fragment list
-        int iFragCount = fileXioIoctl2(iop_fd, USBMASS_IOCTL_GET_FRAGLIST, NULL, 0, (void *)&settings->frags[iTotalFragCount], sizeof(bd_fragment_t) * (BDM_MAX_FRAGS - iTotalFragCount));
-        if (iFragCount < 0 || iFragCount > BDM_MAX_FRAGS - iTotalFragCount) {
-            // Negative (ioctl error) or more fragments than the remaining frags[] slots.
-            // A negative value would underflow the u8 iTotalFragCount and corrupt the next
-            // iteration's destination offset and size.
-            close(fd);
-            sbUnprepare(&settings->common);
-            host::ui().msgBox(_l(_STR_ERR_FRAGMENTED), 0, NULL);
-            return;
-        }
-        iso_frag->frag_count += iFragCount;
-        iTotalFragCount += iFragCount;
-
-        if ((gPS2Logo) && (i == 0))
-            EnablePS2Logo = CheckPS2Logo(fd, 0);
-
-        close(fd);
-    }
-
-    // Initialize layer 1 information.
-    sbCreatePath(game, partname, pDeviceData->bdmPrefix, "/", 0);
-    layer1_start = sbGetISO9660MaxLBA(partname);
-
-    switch (game->format) {
-        case GAME_FORMAT_USBLD:
-            layer1_part = layer1_start / 0x80000;
-            layer1_offset = layer1_start % 0x80000;
-            sbCreatePath(game, partname, pDeviceData->bdmPrefix, "/", layer1_part);
-            break;
-        default: // Raw ISO9660 disc image; one part.
-            layer1_part = 0;
-            layer1_offset = layer1_start;
-    }
-
-    if (sbProbeISO9660(partname, game, layer1_offset) != 0) {
-        layer1_start = 0;
-        LOG("DVD detected.\n");
-    } else {
-        layer1_start -= 16;
-        LOG("DVD-DL layer 1 @ part %u sector 0x%lx.\n", layer1_part, layer1_offset);
-    }
-    settings->common.layer1_start = layer1_start;
-
-    // adjust ZSO cache
-    settings->common.zso_cache = bdmCacheSize;
-
-#ifdef RETROACHIEVEMENTS
-    // RA: this game's watch list, settled before sysLaunchLoaderElf reads
-    // GetWatchCount() to decide whether the network modules travel with the
-    // launch. Absent is normal -- the game is simply not tracked.
-    sbLoadWatchList(pDeviceData->bdmPrefix, game->startup);
-#endif
-    if ((result = sbLoadCheats(pDeviceData->bdmPrefix, game->startup)) < 0) {
-        // #265: let the user back out instead of sitting through the whole load. The helper does
-        // the sbUnprepare itself -- see include/supportbase.h; skipping it breaks the NEXT launch.
-        if (!sbCheatsMissingContinue(&settings->common, result))
-            return;
-    }
-    sbLoadImage(pDeviceData->bdmPrefix, game->startup);
-
-    if (gRememberLastPlayed) {
-        configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        host::app().saveConfig(CONFIG_LAST, 0);
-    }
-
-    if (configGetStrCopy(configSet, CONFIG_ITEM_ALTSTARTUP, filename, sizeof(filename)) == 0)
-        strcpy(filename, game->startup);
-
-    // deinit will free per device data.. copy driver name before free to compare for launch
-    char bdmCurrentDriver[32];
-    snprintf(bdmCurrentDriver, sizeof(bdmCurrentDriver), "%s", pDeviceData->bdmDriver);
-    bdmSetLaunchDeviceBinding(settings, bdmCurrentDriver, pDeviceData->massDeviceIndex);
-
-    if (bdmDriverIsATA(bdmCurrentDriver)) {
-        // Get DMA settings for ATA mode.
-        int dmaType = 0, dmaMode = 7;
-
-        if (pDeviceData->bdmHddIsLBA48 < 0 || pDeviceData->ataHighestUDMAMode < 0)
-            bdmResolveLBA_UDMA(pDeviceData);
-
-        configGetInt(configSet, CONFIG_ITEM_DMA, &dmaMode);
-
-        // Set DMA mode and spindown time.
-        if (dmaMode < 3)
-            dmaType = 0x20;
-        else {
-            dmaType = 0x40;
-            dmaMode -= 3;
-            // Use the user's configured UDMA mode, only CLAMPED to the drive's max -- don't FORCE the
-            // highest, which is unstable on some drives/SATA adapters (wOPL 0f7443e, KrahJohlito). NB:
-            // RiptOPL already avoids the worse scan-time UDMA push -- bdmResolveLBA_UDMA only queries
-            // (never sets) the mode and caps it to UDMA 4 -- so the reported exFAT-HDD corruption from a
-            // max-UDMA scan does not apply here; this just respects a user's lower-DMA stability choice.
-            if (pDeviceData->ataHighestUDMAMode > 0 && dmaMode > pDeviceData->ataHighestUDMAMode)
-                dmaMode = pDeviceData->ataHighestUDMAMode;
-        }
-
-        hddSetTransferMode(dmaType, dmaMode);
-        // gHDDSpindown [0..20] -> spindown [0..240] -> seconds [0..1200]
-        hddSetIdleTimeout(gHDDSpindown * 12);
-        settings->hddIsLBA48 = pDeviceData->bdmHddIsLBA48;
-    }
-
-    // Δ8: Neutrino never reaches this point (bdmTryNeutrinoLaunch handled it at the top), so
-    // everything from here on is the NATIVE (embedded cdvdman) launch only -- including the udp
-    // impossibility: the udp device is Neutrino-only and its aborts happen inside the helper.
-
-    // MMCE cross-device game-id (#261): push the disc id to a present SD2PSX/MemCard PRO2 (either slot)
-    // so it switches its per-game folder, even though this game is not on the MMCE. Self-probes +
-    // no-ops if no card answers / feature off. Must run BEFORE deinit frees `game`.
-    //
-    // MX4SIO settle gate (HW batch S7): MX4SIO shares SIO2 with the MMCE, and an mmce card switch
-    // still in flight during the IOP reboot can starve the SD enumeration cdvdman then waits on
-    // FOREVER (the lime-green hang -- ee_core's marker right before LoadElf from cdrom0:). When the
-    // send reports "switched but settle NOT confirmed" (-1), re-probe the exact slot it targeted for
-    // up to 5 s; on expiry, warn and LAUNCH ANYWAY (the gate mitigates, never blocks -- and other
-    // BDM transports don't share SIO2, so only the SDC leg pays it).
-    if (mmceSendGameID(game->startup, NULL, 0) < 0 && bdmDriverIsMx4sio(bdmCurrentDriver)) {
-        if (mmceGameIdSettle(5000) < 0)
-            host::ui().warning(_l(_STR_MMCE_GAMEID_UNSETTLED), 6);
-    }
-
-    if (gAutoLaunchBDMGame == NULL) {
-        host::app().deinit(NO_EXCEPTION, itemList->mode); // CAREFUL: deinit will call bdmCleanUp, so bdmGames/game will be freed
-    } else {
-        host::app().miniDeinit(configSet);
-
-        free(gAutoLaunchBDMGame);
-        gAutoLaunchBDMGame = NULL;
-
-        free(gAutoLaunchDeviceData);
-        gAutoLaunchDeviceData = NULL;
-    }
-
-    LOG("bdm pre sysLaunchLoaderElf\n");
-    if (bdmDriverIsUSB(bdmCurrentDriver)) {
-        settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_USBD;
-        sysLaunchLoaderElf(filename, "BDM_USB_MODE", irx_size, static_cast<void**>(irx), size_mcemu_irx, bdm_mcemu_irx, EnablePS2Logo, compatmask);
-    } else if (bdmDriverIsIlink(bdmCurrentDriver)) {
-        settings->common.fakemodule_flags |= 0 /* TODO! fake ilinkman ? */;
-        sysLaunchLoaderElf(filename, "BDM_ILK_MODE", irx_size, static_cast<void**>(irx), size_mcemu_irx, bdm_mcemu_irx, EnablePS2Logo, compatmask);
-    } else if (bdmDriverIsMx4sio(bdmCurrentDriver)) {
-        settings->common.fakemodule_flags |= 0;
-        sysLaunchLoaderElf(filename, "BDM_M4S_MODE", irx_size, static_cast<void**>(irx), size_mcemu_irx, bdm_mcemu_irx, EnablePS2Logo, compatmask);
-    } else if (bdmDriverIsATA(bdmCurrentDriver)) {
-        settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_DEV9;
-        settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_ATAD;
-        sysLaunchLoaderElf(filename, "BDM_ATA_MODE", irx_size, static_cast<void**>(irx), size_mcemu_irx, bdm_mcemu_irx, EnablePS2Logo, compatmask);
-    }
-}
 
 static config_set_t *bdmGetConfig(item_list_t *itemList, int id)
 {
@@ -2594,873 +1841,13 @@ static char *bdmGetPrefix(item_list_t *itemList)
     return pDeviceData->bdmPrefix;
 }
 
-static item_list_t bdmGameList = {
+item_list_t bdmGameList = {
     BDM_MODE, 2, 0, 0, MENU_MIN_INACTIVE_FRAMES, BDM_MODE_UPDATE_DELAY, NULL, NULL, &bdmGetTextId, &bdmGetPrefix, &bdmInit, &bdmNeedsUpdate,
     &bdmUpdateGameList, &bdmGetGameCount, &bdmGetGame, &bdmGetGameName, &bdmGetGameNameLength, &bdmGetGameStartup, &bdmDeleteGame, &bdmRenameGame,
     &bdmLaunchGame, &bdmGetConfig, &bdmGetImage, &bdmCleanUp, &bdmShutdown, &bdmCheckVMC, &bdmGetIconId, &bdmLaunchVcd,
     /* viewOverride */ 0, /* itemGetArtArchivePath */ NULL, &bdmLaunchCue, &bdmGetItemView, &bdmGetSourceId};
 
-void bdmInitSemaphore()
-{
-    // Create a semaphore so only one thread can load IOP modules at a time.
-    ee_sema_t semaphore;
-    semaphore.init_count = 1;
-    semaphore.max_count = 1;
-    semaphore.option = 0;
-    bdmLoadModuleLock = CreateSema(&semaphore);
-}
 
-// This slot's device is mounted and fully identified, with a published list. Such a page is kept
-// through a settings re-apply (bdmInitDevicesData) and restored as-is when it reappears
-// (bdmUpdateDeviceData) -- nothing about the device changed, so there is nothing to hide or re-read.
-static int bdmSlotIdentified(const bdm_device_data_t *pDeviceData)
-{
-    return pDeviceData != NULL && pDeviceData->bdmDeviceRoot[0] != '\0' && pDeviceData->bdmDriver[0] != '\0' &&
-           pDeviceData->bdmDeviceType != BDM_TYPE_UNKNOWN && pDeviceData->bdmULSizePrev != -2;
-}
-
-void bdmInitDevicesData()
-{
-    // If the device list hasn't been initialized do it now.
-    if (bdmDeviceListInitialized == 0) {
-        bdmDeviceListInitialized = 1;
-
-        for (int i = 0; i < MAX_BDM_DEVICES; i++) {
-            // Setup the device list item.
-            item_list_t *pDeviceSupport = &bdmDeviceList[i];
-            memcpy(pDeviceSupport, &bdmGameList, sizeof(item_list_t));
-            pDeviceSupport->mode = i;
-
-            // Setup the per-device data.
-            bdm_device_data_t *pDeviceData = (bdm_device_data_t *)malloc(sizeof(bdm_device_data_t));
-            if (pDeviceData != NULL) // guard the memset on OOM; bdmShutdown tolerates a NULL priv
-                memset(pDeviceData, 0, sizeof(bdm_device_data_t));
-            pDeviceSupport->priv = pDeviceData;
-        }
-    }
-
-    // Refresh the visibility of the menu.
-    for (int i = 0; i < MAX_BDM_DEVICES; i++) {
-        // Register the device structure into the UI.
-        host::app().initSupport(&bdmDeviceList[i], i, 0);
-
-        // If bdm support is set to auto then make the page invisible and reset the bdm tick counter, when a bdm device is mounted it will dynamically be made visible.
-        // If bdm support is set to manual then only make the first page visible.
-        //
-        // A page whose device is still mounted and identified is NOT hidden here, only re-checked (tick
-        // reset). This runs on every settings apply (applyConfig -> initAllSupport), and hiding the page
-        // the user is on sent them, on return from the Start menu, to the first visible tab
-        // (refreshMenuPosition) -- APPS, Favourites -- until the next device poll brought the page back
-        // (#806, zackcage6, Beta-3383). The poll still hides it if the device is gone (the debounced
-        // removal path) or its transport was switched off (bdmNeedsUpdate).
-        if (bdmDeviceList[i].owner != NULL) {
-            opl_io_module_t *pOwner = (opl_io_module_t *)bdmDeviceList[i].owner;
-            bdm_device_data_t *pDeviceData = (bdm_device_data_t *)bdmDeviceList[i].priv;
-
-            int effectiveMode = bdmEffectiveStartMode();
-            if (effectiveMode == START_MODE_DISABLED) {
-                pOwner->menuItem.visible = 0;
-            } else if (effectiveMode == START_MODE_MANUAL) {
-                // If BDM has already been started then make the page invisible and reset the bdm tick counter so visibility status is refreshed
-                // according to device state.
-                if (bdmDeviceModeStarted == 1) {
-                    if (!bdmSlotIdentified(pDeviceData))
-                        pOwner->menuItem.visible = 0;
-                    pDeviceData->bdmDeviceTick = -1;
-                } else
-                    pOwner->menuItem.visible = (i == 0 ? 1 : 0);
-            } else if (effectiveMode == START_MODE_AUTO) {
-                if (!bdmSlotIdentified(pDeviceData))
-                    pOwner->menuItem.visible = 0;
-                pDeviceData->bdmDeviceTick = -1;
-            }
-
-            LOG("bdmInitDevicesData: setting device %d %s\n", i, (pOwner->menuItem.visible != 0 ? "visible" : "invisible"));
-        }
-    }
-}
-
-void bdmEnumerateDevices()
-{
-    LOG("bdmEnumerateDevices\n");
-
-    // Optional transports must remain asynchronous. A synchronous MX4SIO mount/identity wait here
-    // makes Auto startup depend on an IOP RPC returning on the GUI thread, where a real device wedge
-    // can freeze the splash indefinitely. bdmUpdateDeviceData keeps a mounted-but-unidentified slot
-    // unpublished and retries it on the deferred IO worker instead.
-
-    // Initialize the device list data if it hasn't been initialized yet.
-    bdmInitDevicesData();
-
-    // Because bdmLoadModules is called before the config file is loaded bdmLoadBlockDeviceModules will not have loaded any
-    // optional bdm modules. Now that the config file has been loaded try loading any optional modules that weren't previously loaded.
-    // A pass still waiting reads the loaded config when it runs, so it is not queued twice.
-    ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&bdmLoadBlockDeviceModules));
-
-    LOG("bdmEnumerateDevices done\n");
-}
-
-void bdmResolveLBA_UDMA(bdm_device_data_t *pDeviceData)
-{
-    // If atad is loaded then xhdd is also loaded, query the hdd to see if it supports LBA48 or not.
-    pDeviceData->bdmHddIsLBA48 = fileXioDevctl("xhdd0:", ATA_DEVCTL_IS_48BIT, NULL, 0, NULL, 0);
-    if (pDeviceData->bdmHddIsLBA48 < 0) {
-        // Failed to query the LBA limit of the device, fail safe to LBA28.
-        LOG("Mass device %d is backed by ATA but failed to get LBA limit %d\n", pDeviceData->massDeviceIndex, pDeviceData->bdmHddIsLBA48);
-        pDeviceData->bdmHddIsLBA48 = 0;
-    }
-
-    // Query the drive for the highest UDMA mode.
-    pDeviceData->ataHighestUDMAMode = fileXioDevctl("xhdd0:", ATA_DEVCTL_GET_HIGHEST_UDMA_MODE, NULL, 0, NULL, 0);
-    if (pDeviceData->ataHighestUDMAMode < 0) {
-        // Failed to query highest UDMA mode supported.
-        LOG("Mass device %d is backed by ATA but failed to get highest UDMA mode %d\n", pDeviceData->massDeviceIndex, pDeviceData->ataHighestUDMAMode);
-        pDeviceData->ataHighestUDMAMode = 4;
-    } else if (pDeviceData->ataHighestUDMAMode > 4) {
-        // Limit max UDMA mode to 4 to avoid compatibility issues
-        LOG("Mass device %d supports up to UDMA mode %d, limiting to UDMA 4\n", pDeviceData->massDeviceIndex, pDeviceData->ataHighestUDMAMode);
-        pDeviceData->ataHighestUDMAMode = 4;
-    }
-}
-
-int bdmUpdateDeviceData(item_list_t *itemList)
-{
-    char path[BDM_DEVICE_ROOT_MAX + 2] = {0};
-    int driverResult, deviceResult;
-
-#ifdef __DEBUG
-    bdmDiagFlushPendingIopState(itemList);
-#endif
-
-    // If bdm mode is disabled bail out as we don't want to update the visibility state of the device pages.
-    if (bdmEffectiveStartMode() == START_MODE_DISABLED)
-        return 0;
-
-    // LOG("bdmUpdateDeviceData: %d\n", itemList->mode);
-
-    // Get the per-device data and check if the menu item is currently visible.
-    bdm_device_data_t *pDeviceData = static_cast<bdm_device_data_t*>(itemList->priv);
-    int visible = itemList->owner != NULL ? ((opl_io_module_t *)itemList->owner)->menuItem.visible : 0;
-
-    // Format the device path and try to open the device.
-    snprintf(path, sizeof(path), "mass%d:/", itemList->mode);
-    int dir = fileXioDopen(path);
-    // LOG("opendir %s -> %d\n", path, dir);
-
-#ifdef __DEBUG
-    {
-        const int diagSlot = itemList->mode - BDM_MODE;
-
-        if (diagSlot >= 0 && diagSlot < MAX_BDM_DEVICES) {
-            const unsigned int probe = ++BdmDiagSlotProbeCount[diagSlot];
-
-            if (probe <= 4 || (dir >= 0 && pDeviceData->bdmDeviceRoot[0] == '\0')) {
-                LOG("[BDM COLD DIAG] event=slot-probe probe=%u generation=%u eeReceived=%u "
-                    "iopCallbacks=%u mountCallbacks=%u unmountCallbacks=%u blockDevices=%u "
-                    "usbRoots=%u usbRootMask=0x%08x mode=%d slot=%d legacy=\"%s\" open=%d "
-                    "visible=%d tick=%u ulPrev=%d root=\"%s\" driver=\"%s\" type=%d\n",
-                    probe, BdmGeneration, BdmDiagEventReceivedCount, BdmDiagIopCallbackSequence,
-                    BdmDiagIopMountCallbackCount, BdmDiagIopUnmountCallbackCount,
-                    BdmDiagIopBlockDeviceCount, BdmDiagIopUsbRootCount, BdmDiagIopUsbRootMask,
-                    itemList->mode, diagSlot, path, dir, visible, pDeviceData->bdmDeviceTick,
-                    pDeviceData->bdmULSizePrev, pDeviceData->bdmDeviceRoot,
-                    pDeviceData->bdmDriver, pDeviceData->bdmDeviceType);
-            }
-
-            if (probe == 1 && (diagSlot == 0 || diagSlot == 1 || diagSlot == MAX_BDM_DEVICES - 1))
-                bdmDiagRequestIopSnapshot("slot-first-probe", itemList->mode, dir);
-            else if (probe == 2 && diagSlot == 1 && dir < 0)
-                bdmDiagRequestIopSnapshot("slot1-second-miss", itemList->mode, dir);
-        }
-    }
-#endif
-
-    // Device reachable this poll -> clear the debounce miss counter (see the hide branch below).
-    if (dir >= 0) {
-        pDeviceData->bdmMissCount = 0;
-        // Latch "something has mounted here" the moment the root answers, BEFORE identity is known.
-        // The publish path below deliberately defers a mount whose driver ioctl is not ready yet,
-        // and without this latch that slot still looks empty to bdmSlotEverConnected() -- so the one
-        // slot guaranteed to need another look promptly is the one sent to the slow rotation.
-        pDeviceData->bdmSeenMounted = 1;
-    }
-
-    // If we opened the device and the menu isn't visible (OR is visible but hasn't been initialized ex: manual device start) initialize device info.
-    // A device that went away and came RIGHT BACK, identity intact, is a stall -- not a new device.
-    // Tell them apart before doing anything drastic.
-    //
-    // Hardware (a second tester, whose art pipeline is provably IDLE at the moment of the fault --
-    // "ART Q0 A0 R0 D24, 3ms"): the menu hangs and, in his words, "it is like it unplugged and
-    // plugged in". It is exactly that: the presence Dopen fails for a poll or two, the page hides,
-    // and the recovery below treats the return as a FIRST sight of the device -- wiping the
-    // identity, re-running the driver ioctls, recreating folders, rescanning THM/LNG and forcing a
-    // full sbReadList of the entire library. THAT rebuild is the hang, and it also wipes every
-    // row's cache ids, which is why art dies alongside it. His empty art queue is what proves the
-    // fault lives here and not in the art path.
-    //
-    // So: if this slot already knows what it is and has published a list, a reappearance restores
-    // the page and nothing else. Nothing about the device changed, so there is nothing to re-read.
-    if (dir >= 0 && visible == 0 && bdmSlotIdentified(pDeviceData)) {
-        if (itemList->owner != NULL) {
-            ((opl_io_module_t *)itemList->owner)->menuItem.visible = 1;
-            host::app().moduleUpdateMenu(itemList->mode, 0, 0);
-        }
-        pDeviceData->bdmMissCount = 0;
-        LOG("bdmUpdateDeviceData: device %d reappeared intact -- restoring page, no rescan\n", itemList->mode);
-        bdmLogIdentityDiagnosticLive("update-fast-reappearance", itemList, NULL);
-        fileXioDclose(dir);
-        return 0; // "nothing changed": no connect sound, no folder pass, no sbReadList
-    }
-
-    if (dir >= 0 && (visible == 0 || pDeviceData->bdmDeviceRoot[0] == '\0' || pDeviceData->bdmDriver[0] == '\0' || pDeviceData->bdmDeviceType == BDM_TYPE_UNKNOWN)) {
-        char driverName[sizeof(pDeviceData->bdmDriver)] = {0};
-        int massDeviceIndex = -1;
-
-        // A BDM mount can answer Dopen before its backing transport can answer the identity
-        // ioctl. Do not publish an empty-driver page: it cannot reach the native launch dispatch.
-        // This runs on the deferred IO worker, so a slow or wedged IOP RPC cannot freeze boot;
-        // the never-scanned state keeps this slot eligible for the normal later retry.
-        // Must go through bdmReadDriverName(): asking for the name WITH a return buffer on a volume
-        // whose block device has gone faults the IOP outright. See the note on that function.
-        driverResult = bdmReadDriverName(dir, driverName, sizeof(driverName));
-        deviceResult = -1;
-        if (driverResult >= 0 && driverName[0] != '\0')
-            deviceResult = fileXioIoctl2(dir, USBMASS_IOCTL_GET_DEVICE_NUMBER, NULL, 0, &massDeviceIndex, sizeof(massDeviceIndex));
-
-        if (driverResult < 0 || driverName[0] == '\0') {
-            LOG("Mass device: %d mounted but driver identity is not ready (%d); deferring page publication\n", itemList->mode, driverResult);
-            LOG("[BDM DIAG] event=update-identity-not-ready generation=%u itemList=%p mode=%d legacy=\"%s\" open=%d driverResult=%d deviceResult=%d driver=\"%s\"\n",
-                BdmGeneration, itemList, itemList->mode, path, dir, driverResult, deviceResult, driverName);
-            fileXioDclose(dir);
-            return 0;
-        }
-
-        snprintf(pDeviceData->bdmDeviceRoot, sizeof(pDeviceData->bdmDeviceRoot), "mass%d:", itemList->mode);
-        bdmBuildGamePrefix(pDeviceData->bdmPrefix, sizeof(pDeviceData->bdmPrefix), pDeviceData->bdmDeviceRoot);
-        LOG("[BDM DIAG] event=folder-reset reason=connect generation=%u itemList=%p mode=%d old=%u new=0\n",
-            BdmGeneration, itemList, itemList->mode, pDeviceData->FoldersCreated);
-        pDeviceData->FoldersCreated = 0;
-        snprintf(pDeviceData->bdmDriver, sizeof(pDeviceData->bdmDriver), "%s", driverName);
-        pDeviceData->massDeviceIndex = massDeviceIndex;
-        pDeviceData->bdmDeviceType = BDM_TYPE_UNKNOWN;
-        pDeviceData->bdmHddIsLBA48 = -1;
-        pDeviceData->ataHighestUDMAMode = -1;
-
-        itemList->flags = 0;
-
-        pDeviceData->bdmDeviceType = bdmDetermineDeviceType(pDeviceData->bdmDriver);
-
-        if (deviceResult < 0) {
-            LOG("Mass device: %d driver %s failed to report device number: %d, using %s\n", itemList->mode, pDeviceData->bdmDriver, deviceResult, pDeviceData->bdmDeviceRoot);
-        }
-
-        if (pDeviceData->bdmDeviceType == BDM_TYPE_ATA) {
-            itemList->flags = MODE_FLAG_COMPAT_DMA;
-        }
-
-        if (pDeviceData->bdmDeviceType == BDM_TYPE_ATA)
-            LOG("Mass device: %d (%d) ATA device %s (compat root %s)\n", itemList->mode, pDeviceData->massDeviceIndex, pDeviceData->bdmPrefix, pDeviceData->bdmDeviceRoot);
-        else if (pDeviceData->bdmDriver[0] != '\0')
-            LOG("Mass device: %d (%d) %s -> %s (compat root %s)\n", itemList->mode, pDeviceData->massDeviceIndex, pDeviceData->bdmPrefix, pDeviceData->bdmDriver, pDeviceData->bdmDeviceRoot);
-        else
-            LOG("Mass device: %d using generic BDM path %s\n", itemList->mode, pDeviceData->bdmPrefix);
-
-        bdmLogIdentityDiagnosticLive("update-connect-identity", itemList, NULL);
-
-        // Publish-time enable gate (#120 audit F-13): the visible-page filter in bdmNeedsUpdate only
-        // hides a page that is ALREADY showing, i.e. one refresh pass too late. Without this gate a
-        // mounted slot on a DISABLED transport (e.g. an ATA-backed mass slot left over from the
-        // boot-resolver escalation or a BDMA-equip force-load, with BDM HDD OFF) flashes its tab,
-        // plays the connect sound and folder-writes the device on every BdmGeneration bump. Identity
-        // stays populated above: the BDMA equip and the device pickers read it through
-        // bdmGetDeviceSlotsByType/bdmReadDeviceIdentity independent of page visibility.
-        if (bdmTransportEnabled(pDeviceData->bdmDeviceType) == 0) {
-            LOG("bdmUpdateDeviceData: device %d is %s-backed but that transport is disabled; not publishing\n",
-                itemList->mode, pDeviceData->bdmDriver);
-            fileXioDclose(dir);
-            return 0;
-        }
-
-        // An EXPLICIT BDM = Off is only overridden by the UDPBD floor (bdmEffectiveStartMode) so
-        // the selected UDPBD protocol can publish ITS tab -- every other transport's page stays
-        // hidden exactly as the user asked (their sticks would otherwise resurface with the dialog
-        // still showing "Off").
-        if (gBDMStartMode == START_MODE_DISABLED && pDeviceData->bdmDeviceType != BDM_TYPE_UDPBD) {
-            LOG("bdmUpdateDeviceData: device %d withheld -- BDM is explicitly Off (UDPBD floor active)\n",
-                itemList->mode);
-            fileXioDclose(dir);
-            return 0;
-        }
-
-        // Attach order can hand this device a different massN slot than last boot; take the L3
-        // position remembered for its type before the first scan reads it.
-        host::library().bdmAttach(itemList->mode, pDeviceData->bdmDeviceType);
-
-        // Make the menu item visible.
-        if (itemList->owner != NULL) {
-            LOG("bdmUpdateDeviceData: setting device %d visible\n", itemList->mode);
-            ((opl_io_module_t *)itemList->owner)->menuItem.visible = 1;
-            host::app().moduleUpdateMenu(itemList->mode, 0, 0);
-        }
-
-        // Close the device handle.
-        fileXioDclose(dir);
-        return 1;
-    } else if (dir < 0 && visible == 1) {
-        // Device open failed while the page is showing. ONE missed poll is not evidence of removal
-        // on ANY transport, so every transport debounces now.
-        //
-        // Local devices used to hide on the FIRST miss, reasoning that a local Dopen only fails if
-        // the device is gone. Hardware disagrees: the reporter saw "the USB acted like it was
-        // replugged" twice in a session having touched nothing, and this branch is literally that --
-        // one failed Dopen hides the tab and plays the disconnect sound, then the next successful
-        // poll takes the visible == 0 path above, plays the connect sound, recreates folders,
-        // rescans THM/LNG and runs a FULL sbReadList. That rebuild is what the debug HUD caught as
-        // "Q19 A0": every row is reborn with cache_id -1, so the whole viewport's art is discarded
-        // and re-read behind a multi-second scan.
-        //
-        // A real unplug still hides one poll later (about a second) -- a far better trade than
-        // turning a single transient miss into a full device rescan.
-        int hideThreshold = (pDeviceData->bdmDeviceType == BDM_TYPE_UDPBD) ? BDM_NET_HIDE_MISSES : 2;
-        if (++pDeviceData->bdmMissCount < hideThreshold) {
-            LOG("bdmUpdateDeviceData: device %d miss %d/%d (debounce, keeping page)\n", itemList->mode, pDeviceData->bdmMissCount, hideThreshold);
-            return 0; // within the grace window -- keep the page, re-poll next cycle
-        }
-
-        // Device has been removed, make the menu item invisible. We can't really cleanup resources (like the game list) just yet
-        // as we don't know if the data is being used asynchronously.
-        if (itemList->owner != NULL) {
-            LOG("bdmUpdateDeviceData: setting device %d invisible\n", itemList->mode);
-            ((opl_io_module_t *)itemList->owner)->menuItem.visible = 0;
-            host::app().moduleUpdateMenu(itemList->mode, 0, 0);
-        }
-
-        bdmLogIdentityDiagnosticLive("update-confirmed-disconnect", itemList, NULL);
-        LOG("[BDM DIAG] event=folder-reset reason=confirmed-disconnect generation=%u itemList=%p mode=%d old=%u new=0\n",
-            BdmGeneration, itemList, itemList->mode, pDeviceData->FoldersCreated);
-        pDeviceData->FoldersCreated = 0;
-        pDeviceData->bdmMissCount = 0;
-        LOG("Mass device: %d (%d) disconnected\n", itemList->mode, pDeviceData->massDeviceIndex);
-        return -1;
-    }
-
-    // No change to the device state detected.
-    if (dir >= 0)
-        fileXioDclose(dir);
-    return 0;
-}
-
-static int bdmWaitForDevice(int deviceId, u32 timeoutMs)
-{
-    const int RETRY_DELAY = 100;
-    char path[16];
-
-    u32 start = GetTimerSystemTime();
-    snprintf(path, sizeof(path), "mass%d:/", deviceId);
-
-    while (1) {
-        int dir = fileXioDopen(path);
-
-        if (dir >= 0) {
-            fileXioDclose(dir);
-            return 1; // ready
-        }
-
-        u32 now = GetTimerSystemTime();
-        u32 elapsed_ms = (now - start) / (kBUSCLK / 1000);
-
-        if (elapsed_ms > timeoutMs) {
-            return 0; // timeout
-        }
-
-        DelayThread(RETRY_DELAY * 1000);
-    }
-}
-
-static int bdmDeviceIsPresent(int deviceId)
-{
-    char path[16];
-    snprintf(path, sizeof(path), "mass%d:/", deviceId);
-    int dir = fileXioDopen(path);
-
-    if (dir >= 0) {
-        fileXioDclose(dir);
-        return 1; // ready
-    }
-
-    return 0;
-}
-
-// Load the block-device transport driver for one BDM type, IGNORING the gEnable* config gates (the
-// callers exist precisely because the wanted device may not be enabled for games -- or, for the boot-dir
-// resolver, because the config that holds the gates cannot be read until the transport is up). Caller
-// must hold bdmLoadModuleLock. Idempotent. Returns 1 when the transport is (already) loaded, 0 on
-// failure or an unsupported type. MMCE is a separate subsystem with its own namespace + loader.
-static int bdmEnsureTransportLoaded(int bdmType)
-{
-    switch (bdmType) {
-        case BDM_TYPE_USB:
-            if (!iUSBModLoaded && bdmLoadOptionalModule("USBMASS_BD", &usbmass_bd_irx, size_usbmass_bd_irx) >= 0)
-                iUSBModLoaded = 1;
-            return iUSBModLoaded;
-        case BDM_TYPE_SDC:
-            if (!mx4sioModLoaded && bdmLoadOptionalModule("MX4SIO_BD", &mx4sio_bd_irx, size_mx4sio_bd_irx) >= 0)
-                mx4sioModLoaded = 1;
-            return mx4sioModLoaded;
-        case BDM_TYPE_ILINK:
-            if (!iLinkModLoaded) {
-                if (!iLinkManModLoaded && bdmLoadOptionalModule("ILINKMAN", &iLinkman_irx, size_iLinkman_irx) >= 0)
-                    iLinkManModLoaded = 1;
-                if (iLinkManModLoaded && !ieee1394ModLoaded && bdmLoadOptionalModule("IEEE1394_BD", &IEEE1394_bd_irx, size_IEEE1394_bd_irx) >= 0)
-                    ieee1394ModLoaded = 1;
-                iLinkModLoaded = iLinkManModLoaded && ieee1394ModLoaded;
-            }
-            return iLinkModLoaded;
-        case BDM_TYPE_ATA:
-            if (!hddModLoaded && hddLoadModulesReady())
-                hddModLoaded = 1;
-            return hddModLoaded;
-        default:
-            return 0;
-    }
-}
-
-// Ensure the BDM transport for a BDMA source type is loaded AND a device of that type is mounted, so
-// the equip can read modules from a source device even when that device family is NOT enabled for games
-// (e.g. BDMA files kept on a USB stick you never browse). Force-loads the driver -- the games tab stays
-// hidden because bdmNeedsUpdate gates page visibility on gEnable* independently -- then waits up to
-// timeoutMs for the just-loaded device to mount. Idempotent + instant when the transport is already up.
-// Returns 1 if a device of the type is present afterwards, 0 otherwise.
-int bdmEnsureSourceModules(int bdmType, u32 timeoutMs)
-{
-    int wasLoaded;
-    char root[BDM_DEVICE_ROOT_MAX + 2];
-    // u64, NOT u32: GetTimerSystemTime() returns a u64 bus-clock count that passes 2^32 after ~29 s of
-    // uptime. Truncating the start into a u32 while subtracting it from the full u64 makes the elapsed
-    // math explode on the first check for any call after that -- the wait budget silently collapses.
-    u64 start;
-
-    {
-        raii::SemaLock lock(bdmLoadModuleLock);
-        switch (bdmType) {
-            case BDM_TYPE_USB:
-                wasLoaded = iUSBModLoaded;
-                break;
-            case BDM_TYPE_SDC:
-                wasLoaded = mx4sioModLoaded;
-                break;
-            case BDM_TYPE_ILINK:
-                wasLoaded = iLinkModLoaded;
-                break;
-            case BDM_TYPE_ATA:
-                wasLoaded = hddModLoaded;
-                break;
-            default:
-                return 0;
-        }
-        bdmEnsureTransportLoaded(bdmType);
-    }
-
-    // Already loaded -> any connected device is already mounted, so the first probe returns with no stall
-    // (and if nothing is connected we bail immediately). Just loaded -> poll until the IOP detects and
-    // mounts the device, or timeoutMs elapses.
-    start = GetTimerSystemTime();
-    while (!bdmGetDeviceRootByType(bdmType, root, sizeof(root))) {
-        if (wasLoaded)
-            return 0;
-        if ((GetTimerSystemTime() - start) / (kBUSCLK / 1000) > timeoutMs)
-            return 0;
-        DelayThread(100 * 1000);
-    }
-    return 1;
-}
-
-// True when the booted ELF's own folder exists on mass<slot>: -- the weak boot-device evidence.
-static int bdmBootDirPresent(int slot, const char *tail)
-{
-    char path[288];
-    int dir;
-
-    if (tail[0] == '\0')
-        snprintf(path, sizeof(path), "mass%d:/", slot);
-    else if (tail[0] == '/')
-        snprintf(path, sizeof(path), "mass%d:%s", slot, tail);
-    else
-        snprintf(path, sizeof(path), "mass%d:/%s", slot, tail);
-
-    dir = fileXioDopen(path);
-    if (dir < 0)
-        return 0;
-    fileXioDclose(dir);
-    return 1;
-}
-
-// True when the booted ELF itself exists at <tail>/<elfName> on mass<slot>: -- the definitive
-// boot-device evidence (OPL is running from that very file).
-static int bdmBootElfPresent(int slot, const char *tail, const char *elfName)
-{
-    char path[320];
-    int fd;
-
-    if (tail[0] == '\0' || tail[0] == '/')
-        snprintf(path, sizeof(path), "mass%d:%s/%s", slot, tail, elfName);
-    else
-        snprintf(path, sizeof(path), "mass%d:/%s/%s", slot, tail, elfName);
-
-    fd = open(path, O_RDONLY);
-    if (fd < 0)
-        return 0;
-    close(fd);
-    return 1;
-}
-
-// Rewrite ONLY the device prefix of the boot dir, preserving the boot folder ("ata0:/APPS" ->
-// "mass1:/APPS"). tail points INTO bootDir, so compose into a local buffer before writing back.
-static void bdmRewriteBootDir(char *bootDir, int bootDirSize, int slot, const char *tail)
-{
-    char resolved[256];
-
-    if (tail[0] == '\0' || tail[0] == '/')
-        snprintf(resolved, sizeof(resolved), "mass%d:%s", slot, tail);
-    else
-        snprintf(resolved, sizeof(resolved), "mass%d:/%s", slot, tail);
-
-    snprintf(bootDir, bootDirSize, "%s", resolved);
-}
-
-// Read identity from ONE literal massN: slot. The driver name is the authoritative classification;
-// USBMASS_IOCTL_GET_DEVICE_NUMBER is still requested for diagnostics, but some usable devices do not
-// implement it, so its failure must not discard a valid driver name.
-static int bdmReadLiteralMassIdentity(int slot, int *outType)
-{
-    char path[16], driver[32];
-    int deviceIndex = -1;
-
-    snprintf(path, sizeof(path), "mass%d:/", slot);
-    bdmReadDeviceIdentity(path, driver, sizeof(driver), &deviceIndex);
-    if (driver[0] == '\0')
-        return 0;
-
-    *outType = bdmDetermineDeviceType(driver);
-    LOG("BOOT literal mass%d: driver %s device %d\n", slot, driver, deviceIndex);
-    return 1;
-}
-
-// Resolve an explicit massN: boot identity without treating it as an invitation to search every
-// mounted BDM device. The launcher has already named the filesystem slot; after IOP reset the only
-// work required is to let a possible transport register THAT slot, then query its own driver/device
-// ioctls. A cold untyped slot needs bounded transport bring-up, but every Dopen/ioctl below remains
-// massN: itself. Bare mass: and typed launch aliases retain the legacy broader resolver below.
-static int bdmResolveLiteralMassSlot(int slot, int *ioBdmType,
-                                     u32 initialBudgetMs, u32 ataInitialBudgetMs,
-                                     u32 mx4sioExtraBudgetMs, u32 expensiveExtraBudgetMs)
-{
-    int knownType = *ioBdmType;
-    int detectedType;
-
-    if (bdmReadLiteralMassIdentity(slot, &detectedType)) {
-        *ioBdmType = detectedType;
-        return detectedType == BDM_TYPE_UDPBD ? -1 : 1;
-    }
-
-    // A UDPBD identity cannot be mounted until its network configuration has been read. Do not
-    // make that bootstrap cycle worse by loading unrelated local transports or scanning other slots.
-    if (knownType == BDM_TYPE_UDPBD)
-        return -1;
-
-    bdmLoadCoreModules(1); // literal boot slot: identify it whatever the USB source setting says
-
-    // A save-time retry may already know the exact backing family. Load only that family and wait
-    // only for the literal slot; an identity change never redirects settings to another massN:.
-    if (knownType != BDM_TYPE_UNKNOWN) {
-        u32 budgetMs = knownType == BDM_TYPE_ATA ? ataInitialBudgetMs : initialBudgetMs;
-        u64 start;
-
-        WaitSema(bdmLoadModuleLock);
-        bdmEnsureTransportLoaded(knownType);
-        SignalSema(bdmLoadModuleLock);
-
-        start = GetTimerSystemTime();
-        for (;;) {
-            if (bdmReadLiteralMassIdentity(slot, &detectedType)) {
-                *ioBdmType = detectedType;
-                return detectedType == BDM_TYPE_UDPBD ? -1 : 1;
-            }
-            if ((GetTimerSystemTime() - start) / (kBUSCLK / 1000) > budgetMs)
-                break;
-            DelayThread(100 * 1000);
-        }
-
-        *ioBdmType = knownType;
-        return -1;
-    }
-
-    // With an untyped massN: token, try the possible local transports in increasing cost. The
-    // final iLink/ATA tier shares a budget because both can be cold, but no tier ever probes a
-    // different mass slot to infer where the launcher came from.
-    for (int tier = 0; tier < 3; tier++) {
-        u32 budgetMs;
-        u64 start;
-
-        WaitSema(bdmLoadModuleLock);
-        if (tier == 0) {
-            bdmEnsureTransportLoaded(BDM_TYPE_USB);
-            budgetMs = initialBudgetMs;
-        } else if (tier == 1) {
-            bdmEnsureTransportLoaded(BDM_TYPE_SDC);
-            budgetMs = mx4sioExtraBudgetMs;
-        } else {
-            bdmEnsureTransportLoaded(BDM_TYPE_ILINK);
-            bdmEnsureTransportLoaded(BDM_TYPE_ATA);
-            budgetMs = expensiveExtraBudgetMs;
-        }
-        SignalSema(bdmLoadModuleLock);
-
-        start = GetTimerSystemTime();
-        for (;;) {
-            if (bdmReadLiteralMassIdentity(slot, &detectedType)) {
-                *ioBdmType = detectedType;
-                return detectedType == BDM_TYPE_UDPBD ? -1 : 1;
-            }
-            if ((GetTimerSystemTime() - start) / (kBUSCLK / 1000) > budgetMs)
-                break;
-            DelayThread(100 * 1000);
-        }
-    }
-
-    return -1;
-}
-
-// Resolve a boot directory that names a BDM device into that device's mounted massN: filesystem root,
-// force-loading whatever driver stack the boot device needs FIRST. Called from the deferred config
-// load -- after ioInit()/bdmInitSemaphore(), before the first configReadMulti() -- because at boot time
-// the IOP has NO BDM modules at all (sysReset loads none; the BDM page only loads them on tab entry),
-// so a "mass0:/APPS" or "ata0:/APPS" boot dir is unreadable exactly when settings must load. Two input
-// families are handled:
-//   - launch-binding identities (usb0:/ilink0:/sd0:/mx4sio0:/sdc0:/ata0:) -- device names with no
-//     filesystem OPL reads; remapped to the SAME device's massN: mount.
-//   - massN: -- an explicit filesystem slot. It is identified through THAT slot's driver/device ioctls
-//     after the required transport registers it; it is never renumbered by probing other devices.
-//   - mass: -- a legacy unspecified filesystem token, which has no literal slot and retains the
-//     broader boot-ELF proof below.
-// elfName (argv[0]'s basename; may be empty for a getcwd()-derived boot dir) anchors the verification:
-// typed launch aliases and bare mass: are resolved to the slot that actually holds <tail>/<elfName>.
-// The gEnable* config flags are deliberately ignored when loading transports -- the config is precisely
-// what cannot be read yet (the exFAT-HDD chicken-and-egg: mounting it needs gEnableBdmHDD, which lives
-// in the unreadable config); the caller reconciles the flags after the config loads.
-// *ioBdmType is in/out: pass the boot device's BDM_TYPE_* when already known (the save-path re-resolve)
-// to pin the search to that transport, or BDM_TYPE_UNKNOWN to classify from the prefix; on success it
-// holds the resolved device's type.
-// Returns 1 with bootDir rewritten in place on success; 0 when bootDir is not a BDM path (left
-// untouched -- mc/mmce/host/pfs/hdd/... prefixes are not ours); -1 when the boot device never mounted
-// within the budget (bootDir left untouched so its caller can keep the explicit identity and use defaults).
-static int bdmResolveBootDirWithBudget(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType,
-                                       u32 initialBudgetMs, u32 ataInitialBudgetMs,
-                                       u32 mx4sioExtraBudgetMs, u32 expensiveExtraBudgetMs)
-{
-    char stem[16];
-    int unit;
-
-    // *ioBdmType must never ERASE the caller's knowledge of the boot device's type -- the save-path
-    // retry keys on it. It is written on success, and also on the -1 (never-mounted) paths with the
-    // PREFIX CLASSIFICATION: that is not an erase (for an untyped massN: boot filterType IS knownType,
-    // so it round-trips unchanged; for a typed usb0:/ata0:/... boot the prefix is authoritative). This
-    // matters now that a failed resolve KEEPS the boot dir instead of dropping it to legacy discovery:
-    // the caller zeroes this to UNKNOWN before every call, so without writing it back a slow-to-mount
-    // boot device left gBootDirBdmType == UNKNOWN and _saveConfig's re-resolve-and-retry -- gated on
-    // exactly that -- could never fire, so the settings never reached the device once it did mount
-    // (CodeRabbit review of #202).
-    int knownType = *ioBdmType;
-
-    if (!bdmParseBootStem(bootDir, stem, sizeof(stem), &unit))
-        return 0;
-
-    int isMass = (strcmp(stem, "mass") == 0);
-    int filterType = isMass ? knownType : bdmDetermineDeviceType(stem);
-    if (!isMass && filterType == BDM_TYPE_UNKNOWN)
-        return 0; // mc/mmce/host/pfs/hdd/cdrom/... -- not a BDM boot path, leave it alone
-    // Reachable ONLY for a TYPED "udp0:" boot token, and never for the massN: form -- worth stating
-    // because the massN: form is the one a UDPBD launcher actually hands over, so this reads like the
-    // guard for it and is not. When isMass, filterType IS knownType, and resolveBootDirToMass zeroes
-    // gBootDirBdmType to BDM_TYPE_UNKNOWN on the line immediately before every boot-path call; so on
-    // that path this comparison cannot hold. It still earns its place on the _saveConfig re-resolve,
-    // which passes the already-classified type back in.
-    //
-    // The consequence is deliberate and not fixable here: a UDPBD/UDPFS-BD boot arriving as
-    // "massN:/OPL" is byte-identical to a USB one until the "udp" driver has registered, and that
-    // transport needs the static IP out of the config being sought. The literal-slot resolver therefore
-    // tries only local transports and fails closed rather than adding a network rung to every boot.
-    if (filterType == BDM_TYPE_UDPBD) {
-        *ioBdmType = filterType; // keep the classification so a later save retry stays pinned to it
-        return -1;               // network block device: no local mount to resolve at config-load time
-    }
-
-    // A numeric massN: names one filesystem slot. Do not use the boot ELF as a reason to scan
-    // MAX_BDM_DEVICES and potentially select a different device that happens to contain it.
-    if (isMass && unit >= 0)
-        return bdmResolveLiteralMassSlot(unit, ioBdmType, initialBudgetMs, ataInitialBudgetMs,
-                                         mx4sioExtraBudgetMs, expensiveExtraBudgetMs);
-
-    const char *tail = strchr(bootDir, ':') + 1; // "" | "/APPS" | "APPS" (bdmParseBootStem proved the ':')
-    // A typed launch alias's unit digit is a scan-order hint. Bare mass: has no literal slot, so its
-    // legacy boot-ELF proof begins at mass0: and may inspect the remaining slots.
-    int literalSlot = (unit >= 0 && unit < MAX_BDM_DEVICES) ? unit : 0;
-    int haveElf = (elfName != NULL && elfName[0] != '\0');
-
-    // Bring-up: the BDM core (bdm.irx + bdmfs_fatfs + hotplug events; idempotent -- every bdmInit calls
-    // it too) plus the transport(s) the boot prefix implies. Only a legacy bare mass: has no transport
-    // or literal slot, so start with the cheap common ones (USB, MX4SIO) and only escalate to iLink +
-    // the ATA stack (iLinkman is known to break PCSX2, where a virtual-USB mass: boot is possible; ATA
-    // means dev9 power + drive spin-up) if nothing turns up holding the boot folder.
-    bdmLoadModules();
-    WaitSema(bdmLoadModuleLock);
-    if (filterType != BDM_TYPE_UNKNOWN) {
-        bdmEnsureTransportLoaded(filterType);
-    } else {
-        // USB ONLY at first pass; MX4SIO waits for the escalation below.
-        //
-        // mx4sio_bd is an SD-card driver on SIO2 -- THE PAD'S OWN BUS -- and once loaded it is
-        // resident for the session: mx4sioModLoaded latches and no unload path exists. Turning
-        // MX4SIO Off in settings afterwards cannot undo it, and this resolver ignores that flag by
-        // design. The literal massN: resolver above delays it until its second bounded tier; this
-        // remaining broad path is only for an old bare mass: token.
-        //
-        // rebuild-66 never reaches this resolver at all (its setDefaults clears gBootDir before
-        // configInit), and uOPL has no resolver and loads MX4SIO only when the user enables it.
-        // Both are hardware-clean; this fork drops navigation inputs in every menu with the EE
-        // provably at 60 Hz. This is the only source-proven HEAD-only difference that touches SIO2.
-        //
-        // Deferring costs a USB booter nothing and an MX4SIO booter one extra scan round.
-        bdmEnsureTransportLoaded(BDM_TYPE_USB);
-    }
-    SignalSema(bdmLoadModuleLock);
-
-    u32 budgetMs = (filterType == BDM_TYPE_ATA) ? ataInitialBudgetMs : initialBudgetMs;
-    // Escalation tier for a bare mass: search: 0 = only USB is up, 1 = MX4SIO added, 2 = iLink + ATA
-    // added, i.e. everything. A TYPED search starts past the end -- its one transport was loaded up
-    // front and no other family can satisfy it -- which keeps its timeout path exactly as it was.
-    // The full resolver receives 3000 + 3000 + 8000 = 14 s for explicit/save-time recovery. The
-    // bootstrap wrapper below uses a shorter bounded ladder: a missing first-run config must reach
-    // defaults promptly instead of spending that full recovery budget before the boot splash moves.
-    int escalationTier = (filterType != BDM_TYPE_UNKNOWN) ? 2 : 0;
-    // u64: GetTimerSystemTime() passes 2^32 bus ticks ~29 s after boot; a u32 start would make every
-    // POST-BOOT resolve (the _saveConfig hotplug retry, a settings reload) compute a bogus huge elapsed
-    // and give up after a single scan instead of waiting the budget out.
-    u64 start = GetTimerSystemTime();
-
-    for (;;) {
-        int matchSlot = -1, fallbackSlot = -1;
-        int matchType = BDM_TYPE_UNKNOWN, fallbackType = BDM_TYPE_UNKNOWN;
-
-        for (int scan = 0; scan < MAX_BDM_DEVICES; scan++) {
-            // Probe the boot dir's LITERAL slot first, then the rest in order: with duplicate OPL
-            // installs on two same-type devices the ELF probe matches both, and first-match-wins
-            // must prefer the slot the launcher actually named over an arbitrary lower one.
-            int i = (scan == 0) ? literalSlot : (scan <= literalSlot ? scan - 1 : scan);
-            char path[16], driver[32];
-            int devIndex = -1;
-
-            snprintf(path, sizeof(path), "mass%d:/", i);
-            bdmReadDeviceIdentity(path, driver, sizeof(driver), &devIndex);
-            if (driver[0] == '\0')
-                continue; // slot not mounted (yet)
-
-            int slotType = bdmDetermineDeviceType(driver);
-            if (filterType != BDM_TYPE_UNKNOWN && slotType != filterType)
-                continue; // wrong device family for a typed/pinned search
-
-            if (haveElf && bdmBootElfPresent(i, tail, elfName)) {
-                matchSlot = i; // definitive: the ELF we are running from is right here
-                matchType = slotType;
-                break;
-            }
-            int dirOk = bdmBootDirPresent(i, tail);
-            if (!haveElf && dirOk && (!isMass || i == literalSlot)) {
-                matchSlot = i; // getcwd-derived boot dir: folder presence is the best evidence there is
-                matchType = slotType;
-                break;
-            }
-            if (fallbackSlot < 0 && dirOk && (!isMass || i == literalSlot)) {
-                fallbackSlot = i; // boot folder exists but the ELF probe missed -- hold as weak fallback
-                fallbackType = slotType;
-            }
-        }
-
-        if (matchSlot >= 0) {
-            *ioBdmType = matchType;
-            bdmRewriteBootDir(bootDir, bootDirSize, matchSlot, tail);
-            return 1;
-        }
-
-        if ((GetTimerSystemTime() - start) / (kBUSCLK / 1000) > budgetMs) {
-            if (escalationTier == 0) {
-                // TIER 1 -- MX4SIO alone, and nothing else. rebuild-135 moved the SD driver out of the
-                // first pass because it lives on SIO2, the pad's bus; it did NOT stop being a cheap,
-                // silent, dev9-free load. Lumping it in with iLink and ATA meant every MX4SIO boot also
-                // dragged in ILINKMAN + IEEE1394_BD + dev9 + ps2atad + xhdd, which pre-135 it never
-                // touched -- and on the usual MX4SIO rig (no HDD) the ATA leg fails and posts
-                // _STR_HDD_NOT_CONNECTED_ERROR, whose setErrorMessageWithCode REPLACES the frame hook
-                // with a modal box. The hook it replaces is menuUpdateHook, i.e. the thing that
-                // schedules every BDM rescan and holds them back while covers are in flight. Splitting
-                // the tiers costs a plain USB boot nothing (it matches in the first pass and never gets
-                // here) and takes an MX4SIO boot straight from the SD load to its definitive ELF match.
-                escalationTier = 1;
-                WaitSema(bdmLoadModuleLock);
-                bdmEnsureTransportLoaded(BDM_TYPE_SDC);
-                SignalSema(bdmLoadModuleLock);
-                budgetMs += mx4sioExtraBudgetMs;
-                continue;
-            }
-            if (escalationTier == 1) {
-                // TIER 2 -- the expensive ones. The boot device may still be the internal exFAT HDD
-                // handed in massN: form (HDD-OSD launchers do this) or an iLink drive; extra budget for
-                // dev9 power-up and platter spin-up.
-                escalationTier = 2;
-                WaitSema(bdmLoadModuleLock);
-                bdmEnsureTransportLoaded(BDM_TYPE_ILINK);
-                bdmEnsureTransportLoaded(BDM_TYPE_ATA);
-                SignalSema(bdmLoadModuleLock);
-                budgetMs += expensiveExtraBudgetMs;
-                continue;
-            }
-            // The weak fallback is now consumed LAST, after every transport has had its chance --
-            // it used to be tested above the escalation, which was harmless only while the first pass
-            // loaded MX4SIO too. Post-135 the first pass can see nothing but USB, so a USB stick that
-            // merely CONTAINS a folder with the boot dir's name (an /OPL you keep on a second stick)
-            // became the only candidate in sight, was latched here as fallbackSlot, and won -- the
-            // resolver returned it as the boot device and the escalation that would have revealed the
-            // real MX4SIO card never ran at all. That homed the config on the wrong device. Folder
-            // presence is a guess; a mounted transport holding the booted ELF is evidence, so the guess
-            // must not be allowed to pre-empt gathering the evidence.
-            if (fallbackSlot >= 0) {
-                *ioBdmType = fallbackType;
-                bdmRewriteBootDir(bootDir, bootDirSize, fallbackSlot, tail);
-                return 1;
-            }
-            *ioBdmType = filterType; // never mounted in time, but keep the classification: the caller
-                                     // now KEEPS the boot dir, and _saveConfig's retry is gated on this
-                                     // being != UNKNOWN (see the header comment)
-            return -1;
-        }
-        DelayThread(100 * 1000);
-    }
-}
-
-int bdmResolveBootDir(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType)
-{
-    // Full-budget resolver for explicit Custom Settings Path and save-time hotplug recovery.
-    return bdmResolveBootDirWithBudget(bootDir, bootDirSize, elfName, ioBdmType,
-                                       3000, 10000, 3000, 8000);
-}
-
-int bdmResolveBootDirBootstrap(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType)
-{
-    // Bootstrap is allowed to defer a cold/ambiguous device to the first explicit save retry, but
-    // it must not make defaults wait for every BDM transport. ATA retains a little extra spin-up
-    // room; an untyped massN: ladder is at most 1500 + 1500 + 3500 ms, plus its one ATA settle.
-    return bdmResolveBootDirWithBudget(bootDir, bootDirSize, elfName, ioBdmType,
-                                       1500, 5000, 1500, 3500);
-}
 
 static int bdmDeviceIsATA(int deviceId)
 {

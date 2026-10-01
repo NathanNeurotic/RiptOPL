@@ -56,7 +56,7 @@ if 'int fsOverride = neutrinoEffectiveBsdfs(deviceName, neutrinoBsdfs, extraArgs
                     'and always emit it as its own -bsdfs=')
 
 # Every Neutrino leg must hand the preflight what it will hand sysLaunchNeutrino.
-bdm = (root / 'src/sources/bdmsupport.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
+bdm = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/sources/bdmsupport.cpp', 'src/sources/bdmlaunch.cpp')).replace('\r\n', '\n')
 if 'sysNeutrinoPreflight(bdmCurrentDriver, neutrinoPath, neutrinoBsdfs, neutrinoExtraArgs, bdmDevNr)' not in bdm:
     failures.append('bdmTryNeutrinoLaunch: the preflight must get neutrinoBsdfs, the per-game args and bdmDevNr')
 
