@@ -63,13 +63,16 @@ if re.search(r'texture = getGameImageTextureEx\(gameImage->cache, menu->item->us
              themes):
     failures.append('themes.c: the per-game background is requested as a PRIORITY image again (#772)')
 
-functions = ''.join(function_text(texcache, 'src/texcache.cpp', sig) for sig in (
-    'static void artPush(',
-    'static void artPushFront(',
-    'static void artPromote(',
-    'static load_image_request_t *artPop(',
-    'static void cacheAbortOtherBackgrounds(',
-))
+artqueue = read('src/artqueue.cpp')
+functions = ''.join(function_text(artqueue, 'src/artqueue.cpp', sig) for sig in (
+    'void ArtQueue::push(',
+    'void ArtQueue::pushFront(',
+    'void ArtQueue::promote(',
+    'load_image_request_t *ArtQueue::pop(',
+)) + function_text(texcache, 'src/texcache.cpp', 'static void cacheAbortOtherBackgrounds(')
+# The real class declaration, private opened up so the harness can seed and inspect the queue.
+_hdr = read('include/artqueue.h')
+class_text = '#define private public\n' + _hdr[_hdr.index('class ArtQueue'):_hdr.index('#endif')] + '#undef private\n'
 
 HARNESS = r'''
 #include <stdio.h>
@@ -97,13 +100,8 @@ typedef struct {
     cache_entry_t *content;
 } image_cache_t;
 
-static load_image_request_t *gArtReqList = NULL;
-static load_image_request_t *gArtReqEnd = NULL;
-static load_image_request_t *volatile gArtCurrentReq = NULL;
-static volatile int gArtQueuedCount = 0;
-static volatile int gArtActiveCount = 0;
-static unsigned int gArtQueueEpoch = 1;
-static volatile int gArtNavActive = 0;
+@CLASS@
+static ArtQueue gArtQ;
 
 @FUNCTIONS@
 
@@ -114,7 +112,7 @@ static void expectOrder(const char *what, const char **want, int n)
     int i = 0;
     load_image_request_t *prev = NULL, *cur;
 
-    for (cur = gArtReqList; cur; cur = cur->next, i++) {
+    for (cur = gArtQ.head_; cur; cur = cur->next, i++) {
         if (i >= n || strcmp(cur->value, want[i]) != 0) {
             printf("FAIL %s: position %d is %s, expected %s\n", what, i, cur->value, i < n ? want[i] : "(end)");
             failed = 1;
@@ -130,7 +128,7 @@ static void expectOrder(const char *what, const char **want, int n)
         printf("FAIL %s: %d queued, expected %d\n", what, i, n);
         failed = 1;
     }
-    if (gArtReqEnd != prev) {
+    if (gArtQ.tail_ != prev) {
         printf("FAIL %s: tail pointer does not match the last request\n", what);
         failed = 1;
     }
@@ -138,9 +136,9 @@ static void expectOrder(const char *what, const char **want, int n)
 
 static void drain(void)
 {
-    while (artPop() != NULL)
-        gArtCurrentReq = NULL;
-    gArtActiveCount = 0;
+    while (gArtQ.pop() != NULL)
+        gArtQ.current_ = NULL;
+    gArtQ.active_ = 0;
 }
 
 int main(void)
@@ -150,40 +148,40 @@ int main(void)
     //    is LOOKING AT must be read first -- under #770's FIFO tier it was read last.
     load_image_request_t a = {.value = "COV_A"}, b = {.value = "COV_B"};
     load_image_request_t c = {.value = "COV_C"}, d = {.value = "COV_D"};
-    artPushFront(&a);
-    artPushFront(&b);
-    artPushFront(&c);
-    artPushFront(&d);
+    gArtQ.pushFront(&a);
+    gArtQ.pushFront(&b);
+    gArtQ.pushFront(&c);
+    gArtQ.pushFront(&d);
     {
         const char *want[] = {"COV_D", "COV_C", "COV_B", "COV_A"};
         expectOrder("scroll A->D", want, 4);
     }
-    load_image_request_t *first = artPop();
+    load_image_request_t *first = gArtQ.pop();
     if (first != &d) {
         printf("FAIL scroll A->D: the selected cover (COV_D) must be read first, got %s\n", first ? first->value : "NULL");
         failed = 1;
     }
-    gArtCurrentReq = NULL;
+    gArtQ.current_ = NULL;
     drain();
 
     // 2. A neighbour already warming at the back of the queue becomes the selection: promote moves
     //    it to the front in one splice, and the tail pointer follows when it was the tail.
     load_image_request_t n1 = {.value = "NEIGHBOUR_1"}, n2 = {.value = "NEIGHBOUR_2"};
     load_image_request_t n3 = {.value = "NEIGHBOUR_3"};
-    artPush(&n1);
-    artPush(&n2);
-    artPush(&n3);
-    artPromote(&n3);
+    gArtQ.push(&n1);
+    gArtQ.push(&n2);
+    gArtQ.push(&n3);
+    gArtQ.promote(&n3);
     {
         const char *want[] = {"NEIGHBOUR_3", "NEIGHBOUR_1", "NEIGHBOUR_2"};
         expectOrder("promote the tail", want, 3);
     }
-    artPromote(&n1); // from the middle
+    gArtQ.promote(&n1); // from the middle
     {
         const char *want[] = {"NEIGHBOUR_1", "NEIGHBOUR_3", "NEIGHBOUR_2"};
         expectOrder("promote the middle", want, 3);
     }
-    artPromote(&n1); // already at the head: no-op
+    gArtQ.promote(&n1); // already at the head: no-op
     {
         const char *want[] = {"NEIGHBOUR_1", "NEIGHBOUR_3", "NEIGHBOUR_2"};
         expectOrder("promote the head", want, 3);
@@ -192,34 +190,34 @@ int main(void)
 
     // 3. The request the worker is executing is never spliced back into the queue.
     load_image_request_t run = {.value = "RUNNING"}, q1 = {.value = "QUEUED"};
-    artPush(&run);
-    artPush(&q1);
-    if (artPop() != &run) {
+    gArtQ.push(&run);
+    gArtQ.push(&q1);
+    if (gArtQ.pop() != &run) {
         printf("FAIL running: expected RUNNING to pop first\n");
         failed = 1;
     }
-    artPromote(&run);
+    gArtQ.promote(&run);
     {
         const char *want[] = {"QUEUED"};
         expectOrder("promote the running request", want, 1);
     }
-    gArtCurrentReq = NULL;
+    gArtQ.current_ = NULL;
     drain();
 
     // 4. SIO2 defer (#340): an SIO2 head is not started while a direction is held.
-    load_image_request_t sio2 = {.value = "SIO2_COVER", .sio2 = 1};
-    artPushFront(&sio2);
-    gArtNavActive = 1;
-    if (artPop() != NULL) {
+    load_image_request_t sio2 = {.sio2 = 1, .value = (char *)"SIO2_COVER"};
+    gArtQ.pushFront(&sio2);
+    gArtQ.navActive_ = 1;
+    if (gArtQ.pop() != NULL) {
         printf("FAIL sio2: an SIO2 cover must not start while a direction is held\n");
         failed = 1;
     }
-    gArtNavActive = 0;
-    if (artPop() != &sio2) {
+    gArtQ.navActive_ = 0;
+    if (gArtQ.pop() != &sio2) {
         printf("FAIL sio2: the deferred SIO2 cover must start once navigation stops\n");
         failed = 1;
     }
-    gArtCurrentReq = NULL;
+    gArtQ.current_ = NULL;
     drain();
 
     // 5. Latest background wins, in a real 2-slot cache (the floor initMutableImage applies). A
@@ -260,10 +258,10 @@ int main(void)
 
 def compile_and_run(name, program):
     with tempfile.TemporaryDirectory() as tmp:
-        src = Path(tmp) / (name + '.c')
+        src = Path(tmp) / (name + '.cpp')
         exe = Path(tmp) / (name + ('.exe' if sys.platform == 'win32' else ''))
         src.write_text(program, encoding='utf-8')
-        build = subprocess.run(['gcc', '-std=gnu99', '-Wall', '-Wno-unused-function', '-o', str(exe), str(src)],
+        build = subprocess.run(['g++', '-std=gnu++17', '-Wall', '-Wno-unused-function', '-fpermissive', '-Wno-write-strings', '-o', str(exe), str(src)],
                                capture_output=True, text=True, check=False)
         if build.returncode != 0:
             failures.append('%s harness did not compile:\n%s' % (name, build.stderr))
@@ -275,7 +273,7 @@ def compile_and_run(name, program):
 
 
 if not failures:
-    compile_and_run('art_queue_order', HARNESS.replace('@FUNCTIONS@', functions))
+    compile_and_run('art_queue_order', HARNESS.replace('@CLASS@', class_text).replace('@FUNCTIONS@', functions))
 
 if failures:
     print('Art queue order checks FAILED:')

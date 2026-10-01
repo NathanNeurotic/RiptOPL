@@ -319,6 +319,12 @@ blocked/terminate flags and the per-type HUD counters are members; the `ioPutReq
 `ioman.h` stay as C-callable forwarders (ioman.h is shared with C). `ioPrintf` stays free and uses the instance's print lock.
 `test_io_queue_trims.py` now compiles the real class declaration (private opened up) plus the extracted member functions.
 
+## 16b. ArtQueue
+`include/artqueue.h` + `src/artqueue.cpp`: the art request FIFO (push/pushFront/promote/pop/detachAll/release/reset) and its lock-free
+counters (queued, active, current request, nav-held flag) are `class ArtQueue`; `load_image_request_t` moved to the header.
+`texcache.cpp` keeps the cache entries, the worker thread and the load logic and talks to the queue through one `gArtQ` instance.
+`test_art_queue_order.py` compiles the real class declaration plus the extracted member functions (as C++).
+
 ## 17a. Next
 2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
 3. Phase 5 `GameSource` hierarchy (needs go-ahead; hardware testing matters most there).
