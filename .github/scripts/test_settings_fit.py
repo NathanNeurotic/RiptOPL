@@ -46,7 +46,7 @@ HARNESS = r'''
 
 typedef unsigned long long u64;
 @TYPES@
-static int screenHeight = 480;
+static int diaScreenHeight = 480;
 @DEFINES@
 @FUNCTIONS@
 

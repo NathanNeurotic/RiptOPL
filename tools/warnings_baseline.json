@@ -28,6 +28,6 @@
 "src/sources/supportbase.cpp|-Wsign-compare": 4,
 "src/sources/udpfssupport.cpp|-Wwrite-strings": 1,
 "src/sources/vcdsupport.cpp|-Wsign-compare": 1,
-"src/ui/dia.cpp|-Wsign-compare": 1,
+"src/ui/diaeditors.cpp|-Wsign-compare": 1,
 "src/ui/guisettings.cpp|-Wunused-variable": 2
 }

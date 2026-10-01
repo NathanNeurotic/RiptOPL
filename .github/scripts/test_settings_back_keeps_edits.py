@@ -233,7 +233,7 @@ int main(void)
 dia_h = read('include/dia.h')
 item_enum = re.search(r'^typedef enum \{.*?\} UIItemType;', dia_h, re.M | re.S)
 item_struct = re.search(r'^struct UIItem\s*\{.*?^\};', dia_h, re.M | re.S)
-has_changes = function_text(dia_c, 'src/ui/dia.cpp', 'int diaHasChanges(')
+has_changes = function_text(read('src/ui/diaitems.cpp'), 'src/ui/diaitems.cpp', 'int diaHasChanges(')
 if item_enum is None or item_struct is None:
     failures.append('include/dia.h: UIItemType / struct UIItem not found')
 elif has_changes:

@@ -455,7 +455,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 | 4 HostServices, launch/UI split | done |
 | 5 GameSource hierarchy | all eight backends are `GameSource` subclasses and the callback table is removed (section 17h); registry and launcher split pending |
 | 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
-| 7 split god files | done: gui.cpp, themes.cpp, opl.cpp, bdmsupport.cpp, system.cpp, texcache.cpp are split (largest remaining: supportbase 2609, bdmsupport 1991, gui ~1100); `sendIrxKernelRAM` data-driven module list deferred |
+| 7 split god files | done: gui.cpp, themes.cpp, opl.cpp, bdmsupport.cpp, system.cpp, texcache.cpp are split (largest remaining: supportbase 2609, bdmsupport 1991, gui ~1100); dia.cpp is split into dia, diaeditors, diaitems; `sendIrxKernelRAM` data-driven module list deferred |
 | 8 directory move, blocking analyzer | done (layer directories; coupling gate is a ratchet on the 47 existing upward symbols) |
 
 Packed ELF: 1,634,784 B (Atlas) -> 1,634,400 B (ArtQueue). Every step so far: clean `ps2build build`, `tools/run_tests.sh -k`,
