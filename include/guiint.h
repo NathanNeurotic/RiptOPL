@@ -12,6 +12,7 @@ void guiEndFrame(void);
 void guiDrawOverlays(void);
 void guiResetNotifications(void);
 void guiShow(void); // one frame of the active screen
+int guiInitComplete(void); // the deferred boot ops have all run
 void guiDrawBusy(int alpha);
 int guiScreenInMenu(void);
 

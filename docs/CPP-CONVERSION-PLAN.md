@@ -430,7 +430,8 @@ Planned design:
 - One class per settings page (General, Sources, Interface, Launch, Popstarter, Net, Audio, Controller, ...) behind a common
   begin/update/read interface.
 - `Notifications`: the popup and RA notices with their timers. **Done** (include/guinotify.h, src/ui/guinotify.cpp; `guiCheckNotifications`/`guiResetNotifications`/`guiShowRANotice` remain as forwarders).
-- `ScreenManager`: screen-handler table, transitions, `guiShow`.
+- `ScreenManager`: screen-handler table, transitions, `guiShow`. **Done** (include/guiscreens.h, src/ui/guiscreens.cpp).
+- Also done, from the rest of gui.cpp (3-4 thousand lines of C-style globals down to 456): `FrameClock` (frame-time watchdog, debug FPS; guiframe.cpp), `Overlays` (busy spinner, debug HUDs, auto-start countdown, sub-menu hints; guioverlay.cpp), `BootSplash` (glowing logo, status line, intro loop; guisplash.cpp). gui.cpp keeps the runtime: init/end, the GUI lock, frame start/end, deferred-op handling, the main loop. The `guiXxx` functions are forwarders.
 - `gui.h` keeps the current function names as thin forwarders to the instances, so the many callers (`opl`, `menusys`, the support
   files) do not change.
 
