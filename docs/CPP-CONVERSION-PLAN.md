@@ -415,9 +415,11 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
   caller goes through `gsOf(list)->method(list, ...)`; optional methods are asked with `hasPrefix()`, `hasGame()`, `hasDelete()`,
   `hasCheckVmc()`, `hasLaunchVcd()`, `hasArtArchivePath()`, `hasLaunchCue()`, `hasRowView()`, `hasSourceId()` instead of NULL-testing a pointer.
   The thunks and `install()` were deleted. Packed ELF 1,643,808 B.
-- Not done: a `SourceRegistry` replacing `oplGetModule`/`oplGetAppImageByMode`, the `BdmLauncher`/`NeutrinoLauncher` split, and turning
-  `item_list_t` into a real base class (it stays a C-compatible struct because `opl_io_module_t` and the proxies copy it by value). Emulator check
-  wanted again, since every list/launch/rename/delete call now dispatches virtually.
+- Done later: the `BdmLauncher`/`NeutrinoLauncher` split (include/bdmlauncher.h, include/neutrinolauncher.h;
+  section 21). Still not done: a `SourceRegistry` replacing `oplGetModule`/`oplGetAppImageByMode`, and turning
+  `item_list_t` into a real base class (it stays a C-compatible struct because `opl_io_module_t` and the
+  proxies copy it by value). Emulator check wanted again, since every list/launch/rename/delete call now
+  dispatches virtually.
 
 ## 18. Deferred: gui as classes
 The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
@@ -449,7 +451,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 
 ## 19. Next
 2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
-3. Phase 5 leftovers: `SourceRegistry`, `BdmLauncher`/`NeutrinoLauncher` split (section 17h); then phase 6 leftovers (Dialog, MenuItem, theme element table).
+3. Phase 5 leftovers: `SourceRegistry` replacing `oplGetModule`/`oplGetAppImageByMode` (the launcher split is done, section 21); then phase 6 leftovers (Dialog, MenuItem, theme element table).
 4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining
    analyzer upward edges listed in section 13.
 
@@ -472,3 +474,27 @@ emulator run by the user.
 
 Open decisions: vmc_groups duplicate/odd titles; whether to start phase 5; deleting the old remote branches
 `claude/happy-feynman-8znj3k` and `-elf`; whether to drop the sample `ship/Example/.../RIPTOPL.ELF`.
+
+## 21. Source backends: file-scope statics into state-owning classes (done)
+Every `src/sources/` module's file-scope `static`s now live in one constant-initialized instance of a class; the public
+`xxx.h` entry points stay free functions (forwarders), so no caller changed. New internal headers (flat `include/`, `extern`
+instance + definition in the module .cpp, members constant-initialized per the EE rule; classes with a non-trivial base such
+as `AppSource` keep the phase-5 lazy placement-new `xxxInstance()` idiom):
+- `SupportBase` (supportbaseint.h): IGR-USB latch, deferred #Size gate, RA hash-log handle.
+- `ArtIndex` (artindexint.h), `FolderBrowse` (folderbrowseint.h) -- the leaves; plus `DiscSupport`, defined inside
+  discsupport.cpp because test_ra_disc.py compiles that whole file with its includes stripped.
+- `CueSupport`, `VcdSupport` (in their existing public headers, state sections only), `UdpfsSupport`, `HttpSupport`.
+- `MmceSupport` (mmceint.h), `HddSupport` (hddint.h; the public hddsupport.h stays C-compatible for zso.c), `EthSupport` +
+  `NetSupport`, `FavSupport`, `AppSource` (appsource.h -- the phase-5 class now also owns the appsupport.cpp statics;
+  appscan.cpp deliberately unchanged, `gShouldAppsUpdate` is pinned by oplint.h).
+- BDM glue: `BdmBoot` (bdmboot.h), `BdmLauncher` + `NeutrinoLauncher` (bdmlauncher.h / neutrinolauncher.h -- the 17h
+  "not done" launcher split), `BdmSupport` (bdmsupportcore.h). bdmdevices.cpp was already stateless (its state lives in
+  bdmsupport.cpp/bdmint.h) and needed no class.
+- RetroAchievements: `RaWatch`, `Ranet`, `RaBadge`, `RetroGEM` in their existing headers; `RaHash` stays file-local in
+  rahash.cpp because test_ra_disc.py strips includes and compiles the whole file.
+What stayed free, throughout: every test-pinned body (the python scrapers extract by exact `name(` signature and compile it
+against host stubs), ioPutRequest/alarm function-pointer thunks, pure helpers with no state, and the shared bdmint.h globals.
+Packed ELF 1,644,672 -> 1,645,936 B (+1,264 B, +0.08%). Verified: clean `ps2build build`, `tools/run_tests.sh -k` (all
+suites), `tools/warning_gate.py build.log --check` (0 regressions), `tools/analyze_coupling.py --check`, `tools/syntax_sweep.py`
+(only the old EESIO `SIOCookie.h` failure), PCSX2 smoke test (SCPH-79001: clean ~40 s boot/run of riptopl.elf, no EE/IOP
+exceptions; only the usual MMCE SIO2-probe noise).
