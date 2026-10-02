@@ -89,9 +89,11 @@ void BootSplash::render(int alpha)
 
     // Credit mark in the bottom-right corner, faded with the splash.
     GSTEXTURE *credit = thmGetTexture(TECHWRITESCODE_LOGO);
-    if (credit)
-        rmDrawPixmap(credit, gGuiScreenWidth - BOOT_CREDIT_MARGIN - (credit->Width >> 1), gTheme->usedHeight - BOOT_CREDIT_MARGIN - (credit->Height >> 1),
-                     ALIGN_CENTER, credit->Width, credit->Height, SCALING_RATIO, GS_SETREG_RGBA(0x80, 0x80, 0x80, alpha), 0);
+    if (credit) {
+        const int cw = credit->Width >> 1, ch = credit->Height >> 1; // drawn at half size
+        rmDrawPixmap(credit, gGuiScreenWidth - BOOT_CREDIT_MARGIN - (cw >> 1), gTheme->usedHeight - BOOT_CREDIT_MARGIN - (ch >> 1),
+                     ALIGN_CENTER, cw, ch, SCALING_RATIO, GS_SETREG_RGBA(0x80, 0x80, 0x80, alpha), 0);
+    }
 
     // Boot info: the RiptOPL version + a live status line, faded with the splash.
     // Reuses gTheme->fonts[0] (always-loaded built-in) and the same OPL_VERSION About shows.
