@@ -39,24 +39,87 @@
 constexpr int RA_HASH_MAX_EXEC = (64 * 1024 * 1024);
 constexpr int RA_HASH_CHUNK = (64 * 1024);
 
+/* Scratch buffer for the ISO9660 walker (one chunk of the executable, one
+   sector of a directory). File-scope on purpose: the source-scraping test
+   harness reaches in and calls disc_read_at() with this buffer, and a 64 KB
+   64-byte-aligned buffer is better kept out of the object. */
 static char g_chunk[RA_HASH_CHUNK] __attribute__((aligned(64)));
 
-/* Crumbs: where to report each step. Set by the caller. */
-static ra_step_fn g_step = NULL;
+/* The image hash, computed the way RetroAchievements computes it. File-local
+   class: test_ra_disc.py compiles this file with its #include lines stripped,
+   so the class has to be defined here rather than in a header. One instance
+   (gRaHash); raHashSetStepLog/raHashIsoDirect/raHashDisc below are thin
+   forwarders, and disc_read_at stays a file-scope forwarder for the test
+   harness. */
+class RaHash
+{
+public:
+    /* Where to report hashing steps. Set by the caller. */
+    void setStepLog(ra_step_fn fn) { step_ = fn; }
+
+    /* Hashes the boot executable of an image WITHOUT mounting it: walks ISO9660
+       with 64-bit offsets, because a mounted image on USB hangs when reading files
+       beyond the 2 GB mark. out33 receives 32 hex digits plus the terminator.
+       Returns 0 on success. */
+    int hashIsoDirect(const char *isopath, const char *startup, char *out33);
+
+    /* The same boot executable through the ROM filesystem first; direct
+       sector reads are the fallback. */
+    int hashDisc(const char *bootPath, const char *startup, char *out33);
+
+    /* Read whole sectors into the caller's aligned buffer (see the comment
+       at the file-scope disc_read_at forwarder). */
+    int discReadAt(long long off, void *buf, int len);
+
+private:
+    void step(const char *what);
+    void stepNum(const char *what, unsigned int a, unsigned int b, int c);
+    int discReadSectors(unsigned int lba, unsigned int count, void *buf);
+    int readAt(int fd, long long off, void *buf, int len);
+    /* Finds a directory entry. Returns 0 and fills lba/size. */
+    int findEntry(int fd, unsigned int dir_lba, unsigned int dir_size,
+                  const char *want, unsigned int *out_lba, unsigned int *out_size);
+    /* Root directory of the volume. */
+    int readRoot(int fd, unsigned int *root_lba, unsigned int *root_size);
+    /* MD5( name || contents of that file ), the way RetroAchievements does it. */
+    int hashBootExec(int fd, const char *startup, char *out33);
+
+    ra_step_fn step_ = NULL;
+};
+
+static RaHash gRaHash;
 
 void raHashSetStepLog(ra_step_fn fn)
 {
-    g_step = fn;
+    gRaHash.setStepLog(fn);
 }
 
-static void step(const char *what)
+int raHashIsoDirect(const char *isopath, const char *startup, char *out33)
 {
-    if (g_step != NULL)
-        g_step(what);
+    return gRaHash.hashIsoDirect(isopath, startup, out33);
+}
+
+int raHashDisc(const char *bootPath, const char *startup, char *out33)
+{
+    return gRaHash.hashDisc(bootPath, startup, out33);
+}
+
+/* Read whole sectors into the caller's aligned buffer. The image walker uses
+   sector-aligned offsets and buffers large enough for the rounded-up tail;
+   return only the requested byte count so padding never enters the hash. */
+static int disc_read_at(long long off, void *buf, int len)
+{
+    return gRaHash.discReadAt(off, buf, len);
+}
+
+void RaHash::step(const char *what)
+{
+    if (step_ != NULL)
+        step_(what);
 }
 
 /* A crumb with numbers in it. */
-static void step_num(const char *what, unsigned int a, unsigned int b, int c)
+void RaHash::stepNum(const char *what, unsigned int a, unsigned int b, int c)
 {
     char line[64];
 
@@ -95,7 +158,7 @@ static unsigned int le32(const unsigned char *p)
 constexpr int DISC_READ_TRIES = 16;
 constexpr int DISC_READ_NOM_TRIES = 8;
 
-static int disc_read_sectors(unsigned int lba, unsigned int count, void *buf)
+int RaHash::discReadSectors(unsigned int lba, unsigned int count, void *buf)
 {
     sceCdRMode mode;
     int attempt, rv, err = SCECdErNO;
@@ -122,19 +185,16 @@ static int disc_read_sectors(unsigned int lba, unsigned int count, void *buf)
         err = sceCdGetError();
         if (err == SCECdErNO) {
             if (attempt > 0)
-                step_num("cd-read-ok-after-retries", lba, count, attempt);
+                stepNum("cd-read-ok-after-retries", lba, count, attempt);
             return 0;
         }
     }
 
-    step_num("cd-read-error", lba, count, err);
+    stepNum("cd-read-error", lba, count, err);
     return -1;
 }
 
-/* Read whole sectors into the caller's aligned buffer. The image walker uses
-   sector-aligned offsets and buffers large enough for the rounded-up tail;
-   return only the requested byte count so padding never enters the hash. */
-static int disc_read_at(long long off, void *buf, int len)
+int RaHash::discReadAt(long long off, void *buf, int len)
 {
     unsigned int lba, sectors;
 
@@ -142,20 +202,20 @@ static int disc_read_at(long long off, void *buf, int len)
         return -1;
 
     if ((off % ISO_SECTOR) != 0) { /* never happens; a guard, not logic */
-        step_num("cd-read-unaligned", (unsigned int)off, (unsigned int)len, 0);
+        stepNum("cd-read-unaligned", (unsigned int)off, (unsigned int)len, 0);
         return -1;
     }
 
     lba = (unsigned int)(off / ISO_SECTOR);
     sectors = (unsigned int)((len + ISO_SECTOR - 1) / ISO_SECTOR);
 
-    if (disc_read_sectors(lba, sectors, buf) != 0)
+    if (discReadSectors(lba, sectors, buf) != 0)
         return -1;
 
     return len;
 }
 
-static int read_at(int fd, long long off, void *buf, int len)
+int RaHash::readAt(int fd, long long off, void *buf, int len)
 {
     if (fd == RA_SRC_DISC_FD)
         return disc_read_at(off, buf, len);
@@ -167,13 +227,13 @@ static int read_at(int fd, long long off, void *buf, int len)
 }
 
 /* Finds a directory entry. Returns 0 and fills lba/size. */
-static int find_entry(int fd, unsigned int dir_lba, unsigned int dir_size,
+int RaHash::findEntry(int fd, unsigned int dir_lba, unsigned int dir_size,
                       const char *want, unsigned int *out_lba, unsigned int *out_size)
 {
     unsigned int done = 0;
 
     while (done < dir_size) {
-        int got = read_at(fd, (long long)(dir_lba)*ISO_SECTOR + done, g_chunk, ISO_SECTOR);
+        int got = readAt(fd, (long long)(dir_lba)*ISO_SECTOR + done, g_chunk, ISO_SECTOR);
         int p = 0;
         /* Parse only as far as the DIRECTORY runs, which is not always as far as the sector we
            just read. A well-formed ISO9660 sizes every directory extent in whole 2048-byte
@@ -244,12 +304,12 @@ static int find_entry(int fd, unsigned int dir_lba, unsigned int dir_size,
 }
 
 /* Root directory of the volume. */
-static int read_root(int fd, unsigned int *root_lba, unsigned int *root_size)
+int RaHash::readRoot(int fd, unsigned int *root_lba, unsigned int *root_size)
 {
     static unsigned char pvd[ISO_SECTOR] __attribute__((aligned(64)));
 
     /* Primary volume descriptor: sector 16, "CD001" at offset 1 */
-    if (read_at(fd, (long long)ISO_PVD_LBA * ISO_SECTOR, pvd, ISO_SECTOR) != ISO_SECTOR ||
+    if (readAt(fd, (long long)ISO_PVD_LBA * ISO_SECTOR, pvd, ISO_SECTOR) != ISO_SECTOR ||
         pvd[1] != 'C' || pvd[2] != 'D' || pvd[3] != '0' || pvd[4] != '0' || pvd[5] != '1') {
         step("2-no-cd001");
         return -1;
@@ -259,13 +319,13 @@ static int read_root(int fd, unsigned int *root_lba, unsigned int *root_size)
     /* The root directory record lives inside the descriptor at offset 156 */
     *root_lba = le32(&pvd[156 + 2]);
     *root_size = le32(&pvd[156 + 10]);
-    step_num("2-root", *root_lba, *root_size, 0);
+    stepNum("2-root", *root_lba, *root_size, 0);
 
     return 0;
 }
 
 /* MD5( name || contents of that file ), the way RetroAchievements does it. */
-static int hash_boot_exec(int fd, const char *startup, char *out33)
+int RaHash::hashBootExec(int fd, const char *startup, char *out33)
 {
     md5_state_t md5;
     md5_byte_t digest[16];
@@ -273,10 +333,10 @@ static int hash_boot_exec(int fd, const char *startup, char *out33)
     long long off;
     int i;
 
-    if (read_root(fd, &root_lba, &root_size) != 0)
+    if (readRoot(fd, &root_lba, &root_size) != 0)
         return -2;
 
-    if (find_entry(fd, root_lba, root_size, startup, &elf_lba, &elf_size) != 0) {
+    if (findEntry(fd, root_lba, root_size, startup, &elf_lba, &elf_size) != 0) {
         step("3-elf-not-in-directory");
         return -3;
     }
@@ -296,7 +356,7 @@ static int hash_boot_exec(int fd, const char *startup, char *out33)
 
     while (left > 0) {
         int want = left > RA_HASH_CHUNK ? RA_HASH_CHUNK : (int)left;
-        int got = read_at(fd, off, g_chunk, want);
+        int got = readAt(fd, off, g_chunk, want);
 
         if (got <= 0) {
             step("4-read-broke-off");
@@ -324,7 +384,7 @@ static int hash_boot_exec(int fd, const char *startup, char *out33)
     return 0;
 }
 
-int raHashIsoDirect(const char *isopath, const char *startup, char *out33)
+int RaHash::hashIsoDirect(const char *isopath, const char *startup, char *out33)
 {
     int ret, fd;
 
@@ -348,7 +408,7 @@ int raHashIsoDirect(const char *isopath, const char *startup, char *out33)
         return err == EBUSY ? -6 : -1;
     }
 
-    ret = hash_boot_exec(fd, startup, out33);
+    ret = hashBootExec(fd, startup, out33);
     close(fd);
 
     return ret;
@@ -356,7 +416,7 @@ int raHashIsoDirect(const char *isopath, const char *startup, char *out33)
 
 // Hash the same boot executable through the ROM filesystem first. Exact length
 // checks reject a truncated read instead of identifying a partial executable.
-int raHashDisc(const char *bootPath, const char *startup, char *out33)
+int RaHash::hashDisc(const char *bootPath, const char *startup, char *out33)
 {
     md5_state_t md5;
     md5_byte_t digest[16];
@@ -397,5 +457,5 @@ int raHashDisc(const char *bootPath, const char *startup, char *out33)
         return 0;
 
     // Some ROM file drivers cannot read an extent that direct sector reads can.
-    return hash_boot_exec(RA_SRC_DISC_FD, startup, out33);
+    return hashBootExec(RA_SRC_DISC_FD, startup, out33);
 }

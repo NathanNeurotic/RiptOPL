@@ -17,28 +17,32 @@
 #include "include/vcdsupport.h"
 #include "include/retrogem.h"
 
-// Table of known PS1 disc PVD volume creation timestamps (16-byte ASCII) for discs that lack
-// SYSTEM.CNF or boot generic targets like PSX.EXE.
-typedef struct
-{
-    const char timestamp[17]; // 16-char ASCII timestamp + NUL
-    const char game_id[12];   // 11-char Game ID + NUL
-} ps1_generic_game_id_t;
+RetroGEM gRetroGEM;
 
-static const ps1_generic_game_id_t ps1_generic_game_ids[] = {
+const RetroGEM::genericGameId RetroGEM::genericIds_[] = {
     // Known PS1 generic volume creation timestamps
     {"1995121500000000", "SLUS_000.01"}, // Example entry template
     {"", ""}                             // Sentinel
 };
 
+int retrogemGetVcdGameID(const char *vcdPath, char *gameID, size_t maxLen)
+{
+    return gRetroGEM.getVcdGameId(vcdPath, gameID, maxLen);
+}
+
+void displayRetroGemGameID(const char *gameID, int frames)
+{
+    gRetroGEM.displayGameId(gameID, frames);
+}
+
 // Check if a character is valid in a title ID (alpha, digit, '_', '.', '-')
-static int isValidIdChar(char c)
+int RetroGEM::isValidIdChar(char c)
 {
     return (isalnum((unsigned char)c) || c == '_' || c == '.' || c == '-');
 }
 
 // Clean and normalize a string into an 11-char PS1 Game ID (e.g., SLUS_000.01 or SLUS-00001)
-static int retrogemCleanTitleID(const char *raw, char *out, size_t maxLen)
+int RetroGEM::cleanTitleId(const char *raw, char *out, size_t maxLen)
 {
     size_t i, len;
     char tmp[32];
@@ -101,7 +105,7 @@ static int retrogemCleanTitleID(const char *raw, char *out, size_t maxLen)
 }
 
 // Tier 1 & 2 helper: ISO 9660 SYSTEM.CNF parsing and PVD Timestamp lookup
-static int retrogemParseIsoSector16(FILE *f, char *gameID, size_t maxLen)
+int RetroGEM::parseIsoSector16(FILE *f, char *gameID, size_t maxLen)
 {
     unsigned char pvd[2048];
     long pvdOffset = -1;
@@ -180,7 +184,7 @@ static int retrogemParseIsoSector16(FILE *f, char *gameID, size_t maxLen)
                                             bootPtr = strstr(sysBuf, "boot");
                                         if (bootPtr) {
                                             char *eq = strchr(bootPtr, '=');
-                                            if (eq && retrogemCleanTitleID(eq + 1, gameID, maxLen)) {
+                                            if (eq && cleanTitleId(eq + 1, gameID, maxLen)) {
                                                 free(sysBuf);
                                                 free(dirBuf);
                                                 return 1; // Tier 1 Success!
@@ -206,9 +210,9 @@ static int retrogemParseIsoSector16(FILE *f, char *gameID, size_t maxLen)
     timestamp[16] = '\0';
 
     int idx = 0;
-    while (ps1_generic_game_ids[idx].timestamp[0] != '\0') {
-        if (!strncmp(timestamp, ps1_generic_game_ids[idx].timestamp, 16)) {
-            snprintf(gameID, maxLen, "%s", ps1_generic_game_ids[idx].game_id);
+    while (genericIds_[idx].timestamp[0] != '\0') {
+        if (!strncmp(timestamp, genericIds_[idx].timestamp, 16)) {
+            snprintf(gameID, maxLen, "%s", genericIds_[idx].gameId);
             return 1; // Tier 2 Success!
         }
         idx++;
@@ -217,7 +221,7 @@ static int retrogemParseIsoSector16(FILE *f, char *gameID, size_t maxLen)
     return 0;
 }
 
-int retrogemGetVcdGameID(const char *vcdPath, char *gameID, size_t maxLen)
+int RetroGEM::getVcdGameId(const char *vcdPath, char *gameID, size_t maxLen)
 {
     if (vcdPath == NULL || gameID == NULL || maxLen < 12)
         return 0;
@@ -226,7 +230,7 @@ int retrogemGetVcdGameID(const char *vcdPath, char *gameID, size_t maxLen)
     // --- Tier 1 & Tier 2: ISO 9660 SYSTEM.CNF Parsing / PVD Timestamp ---
     FILE *f = fopen(vcdPath, "rb");
     if (f != NULL) {
-        int res = retrogemParseIsoSector16(f, gameID, maxLen);
+        int res = parseIsoSector16(f, gameID, maxLen);
         fclose(f);
         if (res && gameID[0] != '\0')
             return 1;
@@ -235,7 +239,7 @@ int retrogemGetVcdGameID(const char *vcdPath, char *gameID, size_t maxLen)
     // --- Tier 3: Partition / Subpath Parsing ---
     // e.g. PP.SLUS-12345/IMAGE0.VCD or __.POPS/SLUS_123.45.VCD
     const char *p1 = strstr(vcdPath, "PP.");
-    if (p1 != NULL && retrogemCleanTitleID(p1 + 3, gameID, maxLen))
+    if (p1 != NULL && cleanTitleId(p1 + 3, gameID, maxLen))
         return 1;
 
     const char *p2 = strrchr(vcdPath, '/');
@@ -252,7 +256,7 @@ int retrogemGetVcdGameID(const char *vcdPath, char *gameID, size_t maxLen)
             if (dlen > 0 && dlen < sizeof(dirName)) {
                 memcpy(dirName, p3 + 1, dlen);
                 dirName[dlen] = '\0';
-                if (retrogemCleanTitleID(dirName, gameID, maxLen))
+                if (cleanTitleId(dirName, gameID, maxLen))
                     return 1;
             }
         }
@@ -272,13 +276,13 @@ int retrogemGetVcdGameID(const char *vcdPath, char *gameID, size_t maxLen)
     if (vcdExtractGameId(fname, gameID, (int)maxLen))
         return 1;
 
-    if (retrogemCleanTitleID(fname, gameID, maxLen))
+    if (cleanTitleId(fname, gameID, maxLen))
         return 1;
 
     return 0;
 }
 
-static u8 retrogemCalculateCRC(const u8 *data, int len)
+u8 RetroGEM::calculateCrc(const u8 *data, int len)
 {
     int i;
     u8 sum = 0;
@@ -287,7 +291,7 @@ static u8 retrogemCalculateCRC(const u8 *data, int len)
     return (u8)(0x100 - sum);
 }
 
-void displayRetroGemGameID(const char *gameID, int frames)
+void RetroGEM::displayGameId(const char *gameID, int frames)
 {
     u8 data[64];
     int gidlen, dpos, data_len, xstart, ystart, height;
@@ -319,7 +323,7 @@ void displayRetroGemGameID(const char *gameID, int frames)
     data[dpos++] = 0x00; // Padding
 
     data_len = dpos;
-    data[2] = retrogemCalculateCRC(&data[3], data_len - 3);
+    data[2] = calculateCrc(&data[3], data_len - 3);
 
     rmGetScreenExtents(&screenWidth, &screenHeight);
     xstart = (screenWidth / 2) - (data_len * 8);

@@ -39,34 +39,37 @@
                                theme font has no other glyphs */
 #define RA_BADGE_TEXT (ISO_GAME_NAME_MAX + 8)
 
-struct ra_badge_slot
+RaBadge gRaBadge;
+
+void raBadgeRefresh(item_list_t *support, int count)
 {
-    item_list_t *support;
-    int count;
-    char *text; /* count strings of RA_BADGE_TEXT each, or NULL */
-};
+    gRaBadge.refresh(support, count);
+}
 
-static struct ra_badge_slot g_slots[MODE_COUNT];
+const char *raBadgeText(item_list_t *support, int idx)
+{
+    return gRaBadge.text(support, idx);
+}
 
-static struct ra_badge_slot *slotFor(item_list_t *support)
+struct ra_badge_slot *RaBadge::slotFor(item_list_t *support)
 {
     int i;
 
     for (i = 0; i < MODE_COUNT; i++)
-        if (g_slots[i].support == support)
-            return &g_slots[i];
+        if (slots_[i].support == support)
+            return &slots_[i];
 
     for (i = 0; i < MODE_COUNT; i++) {
-        if (g_slots[i].support == NULL) {
-            g_slots[i].support = support;
-            return &g_slots[i];
+        if (slots_[i].support == NULL) {
+            slots_[i].support = support;
+            return &slots_[i];
         }
     }
 
     return NULL;
 }
 
-static int watchListExists(const char *prefix, const char *serial)
+int RaBadge::watchListExists(const char *prefix, const char *serial)
 {
     char path[256];
     struct stat st;
@@ -89,7 +92,7 @@ static int watchListExists(const char *prefix, const char *serial)
     return 0;
 }
 
-void raBadgeRefresh(item_list_t *support, int count)
+void RaBadge::refresh(item_list_t *support, int count)
 {
     struct ra_badge_slot *slot;
     const char *prefix;
@@ -110,7 +113,7 @@ void raBadgeRefresh(item_list_t *support, int count)
 
     /* Switched off: return AFTER the clear above, never before it, so turning badges off
        drops the cache on the next list rebuild instead of freezing the last one on screen.
-       raBadgeText reads this slot, and the cover mark rides on the same answer. */
+       text() reads this slot, and the cover mark rides on the same answer. */
     if (!gRATelemetry || !gRABadges)
         return;
 
@@ -139,15 +142,15 @@ void raBadgeRefresh(item_list_t *support, int count)
     }
 }
 
-const char *raBadgeText(item_list_t *support, int idx)
+const char *RaBadge::text(item_list_t *support, int idx)
 {
     struct ra_badge_slot *slot = NULL;
     char *text;
     int i;
 
     for (i = 0; i < MODE_COUNT; i++)
-        if (g_slots[i].support == support)
-            slot = &g_slots[i];
+        if (slots_[i].support == support)
+            slot = &slots_[i];
 
     if (slot == NULL || slot->text == NULL || idx < 0 || idx >= slot->count)
         return NULL;

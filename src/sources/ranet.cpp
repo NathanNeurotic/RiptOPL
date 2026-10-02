@@ -45,7 +45,7 @@
     "recvfrom returned 14, buffer full of zeros".
 
   The rules this file follows:
-  1) g_rx is 64-byte aligned, so the "middle" starts at byte zero and
+  1) rx_ is 64-byte aligned, so the "middle" starts at byte zero and
      arrives by direct DMA;
   2) the PC pads EVERY reply to a multiple of 64 and to at least 128
      bytes, so there is neither head nor tail for recv_intr and the
@@ -110,10 +110,9 @@ constexpr int RA_POLL_MS = 25;  /* pause between polls for a reply */
    silent, ask() gives up within its own three seconds, so "client not
    running" stays a fast failure. */
 constexpr int RA_WAIT_ROUNDS = 8;
-constexpr int RA_MAX_BYTES = (16 * 1024);
 
 /* Per-call non-blocking receive. The socket is also set non-blocking via
-   fcntl (see open_pc_socket), but on the menu's netman lwIP stack that
+   fcntl (see Ranet::openPcSocket), but on the menu's netman lwIP stack that
    flag does not take effect: recvfrom blocks forever when no reply comes.
    In raAskPC the very first recvfrom is the drain loop that runs BEFORE
    the request is sent, so a blocking socket means the request never goes
@@ -127,9 +126,23 @@ constexpr int RA_MAX_BYTES = (16 * 1024);
    it serves ee_core's raudp, not this menu path.) */
 constexpr int RA_MSG_DONTWAIT = 0x08;
 
-/* Alignment is mandatory: rule 1 in the header. */
-static char g_rx[2048] __attribute__((aligned(64)));
-static unsigned char g_wl[RA_MAX_BYTES];
+Ranet gRanet;
+
+int raAskPC(const char *hash, const char *serial, const char *savepath,
+            char *info, int infosz, char *info2, int info2sz)
+{
+    return gRanet.askPc(hash, serial, savepath, info, infosz, info2, info2sz);
+}
+
+void raLaunchNetworkUp(void)
+{
+    gRanet.launchNetworkUp();
+}
+
+int raNetTestLink(char *line1, int sz1, char *line2, int sz2)
+{
+    return gRanet.netTestLink(line1, sz1, line2, sz2);
+}
 
 /* The NIC settlement (design doc, decided 2026-09-03): RA's menu check is a
    fourth claimant on the one SMAP NIC. When a UDP transport (UDPBD, or the
@@ -137,7 +150,7 @@ static unsigned char g_wl[RA_MAX_BYTES];
    ethLoadModules() would refuse anyway, but the caller deserves a distinct
    "network busy" answer rather than a generic socket failure. The in-game
    half is unaffected: raudp speaks over whatever SMAP the launch loaded. */
-static int raNetNicBusy(void)
+int Ranet::nicBusy()
 {
     return bdmIsUDPBDLoaded() || udpfsGetModulesLoaded();
 }
@@ -145,7 +158,7 @@ static int raNetNicBusy(void)
 /* Waits for a reply, resending the request. Returns the length or -1.
    The socket is non-blocking; SO_RCVTIMEO is not to be trusted on this
    stack. */
-static int ask(int sock, struct sockaddr_in *to, const char *req, char *out, int outmax)
+int Ranet::ask(int sock, struct sockaddr_in *to, const char *req, char *out, int outmax)
 {
     int t;
 
@@ -194,11 +207,11 @@ static int ask(int sock, struct sockaddr_in *to, const char *req, char *out, int
    ETH device is enabled, and one can play from USB alone. Bringing it
    up here is allowed because this runs on the I/O thread, like the
    network settings dialog -- and only when no UDP transport owns the
-   NIC (raNetNicBusy; ethLoadModules() is the runtime backstop).
+   NIC (Ranet::nicBusy; ethLoadModules() is the runtime backstop).
    Non-blocking is mandatory: the first unanswered recvfrom would
    otherwise hang the thread for good. The fixed own port is the return
    path past Docker NAT (see the header). */
-static int open_pc_socket(char *myaddr, int sz, u8 ip[4])
+int Ranet::openPcSocket(char *myaddr, int sz, unsigned char ip[4])
 {
     struct sockaddr_in me;
     u8 mask[4], gw[4];
@@ -265,7 +278,7 @@ static int open_pc_socket(char *myaddr, int sz, u8 ip[4])
     return sock;
 }
 
-static void broadcast_target(struct sockaddr_in *to)
+void Ranet::broadcastTarget(struct sockaddr_in *to)
 {
     memset(to, 0, sizeof(*to));
     to->sin_family = AF_INET;
@@ -273,13 +286,13 @@ static void broadcast_target(struct sockaddr_in *to)
     to->sin_addr.s_addr = htonl(INADDR_BROADCAST);
 }
 
-int raAskPC(const char *hash, const char *serial, const char *savepath,
-            char *info, int infosz, char *info2, int info2sz)
+int Ranet::askPc(const char *hash, const char *serial, const char *savepath,
+                 char *info, int infosz, char *info2, int info2sz)
 {
     struct sockaddr_in to;
     char req[80];
     char myaddr[32];
-    u8 ip[4];
+    unsigned char ip[4];
     int sock, got;
     int total = 0, chunks = 0, received = 0, i;
 
@@ -288,22 +301,22 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
     if (info2 != NULL && info2sz > 0)
         info2[0] = '\0';
 
-    if (raNetNicBusy()) {
+    if (nicBusy()) {
         LOG("RA: NIC is owned by a UDP transport, not asking the PC\n");
         raHashStep("6-nic-busy-udp-transport");
         return -8;
     }
 
-    sock = open_pc_socket(myaddr, sizeof(myaddr), ip);
+    sock = openPcSocket(myaddr, sizeof(myaddr), ip);
     if (sock < 0)
         return -1;
 
-    broadcast_target(&to);
+    broadcastTarget(&to);
 
     snprintf(req, sizeof(req), "RAQ1 %s %s%s", hash, serial, myaddr);
     LOG("RA: asking the PC about %s\n", hash);
 
-    got = ask(sock, &to, req, g_rx, sizeof(g_rx));
+    got = ask(sock, &to, req, rx_, sizeof(rx_));
     if (got <= 0) {
         LOG("RA: no reply from the PC\n");
         disconnect(sock);
@@ -315,10 +328,10 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
     {
         int w;
 
-        for (w = 0; w < RA_WAIT_ROUNDS && strncmp(g_rx, "RAA1 WAIT", 9) == 0; w++) {
+        for (w = 0; w < RA_WAIT_ROUNDS && strncmp(rx_, "RAA1 WAIT", 9) == 0; w++) {
             LOG("RA: PC is asking the server, waiting (%d)\n", w + 1);
 
-            got = ask(sock, &to, req, g_rx, sizeof(g_rx));
+            got = ask(sock, &to, req, rx_, sizeof(rx_));
             if (got <= 0) {
                 LOG("RA: PC went silent while identifying the image\n");
                 disconnect(sock);
@@ -327,14 +340,14 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
         }
     }
 
-    if (strncmp(g_rx, "RAA1 WAIT", 9) == 0) {
+    if (strncmp(rx_, "RAA1 WAIT", 9) == 0) {
         LOG("RA: PC is still identifying the image\n");
         disconnect(sock);
         return -7;
     }
 
-    if (strncmp(g_rx, "RAA1 OK ", 8) != 0) {
-        LOG("RA: PC does not know this image: %s\n", g_rx);
+    if (strncmp(rx_, "RAA1 OK ", 8) != 0) {
+        LOG("RA: PC does not know this image: %s\n", rx_);
         disconnect(sock);
         return 1; /* not an error: the game is unsupported */
     }
@@ -352,14 +365,14 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
         char *title;
         int len;
 
-        if (sscanf(g_rx + 8, "%d %d %d %d %d %n",
+        if (sscanf(rx_ + 8, "%d %d %d %d %d %n",
                    &bytes, &ch, &nach, &nunlocked, &nunsupported, &pos) != 5) {
             nunlocked = nunsupported = -1; /* unknown: older client */
             pos = 0;
-            sscanf(g_rx + 8, "%d %d %d %n", &bytes, &ch, &nach, &pos);
+            sscanf(rx_ + 8, "%d %d %d %n", &bytes, &ch, &nach, &pos);
         }
 
-        title = g_rx + 8 + pos;
+        title = rx_ + 8 + pos;
         len = (int)strlen(title);
         while (len > 0 && title[len - 1] == ' ')
             title[--len] = '\0';
@@ -376,9 +389,9 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
         }
     }
 
-    if (sscanf(g_rx + 8, "%d %d", &total, &chunks) != 2 ||
+    if (sscanf(rx_ + 8, "%d %d", &total, &chunks) != 2 ||
         total <= 0 || total > RA_MAX_BYTES || chunks <= 0) {
-        LOG("RA: malformed reply: %s\n", g_rx);
+        LOG("RA: malformed reply: %s\n", rx_);
         disconnect(sock);
         return -3;
     }
@@ -395,7 +408,7 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
         /* A reply carrying another chunk's index is a leftover from an
            earlier request: ask again rather than fail. */
         for (attempt = 0; attempt < 3; attempt++) {
-            got = ask(sock, &to, req, g_rx, sizeof(g_rx));
+            got = ask(sock, &to, req, rx_, sizeof(rx_));
             if (got <= 0) {
                 LOG("RA: chunk %d did not arrive\n", i);
                 disconnect(sock);
@@ -406,7 +419,7 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
                          if idx happens to equal i the guard below passes, and the length
                          check that follows evaluates `len < 0` BEFORE it reaches `hdr == 0`. */
             hdr = 0;
-            if (sscanf(g_rx, "RAC1 %d %d %n", &idx, &len, &hdr) >= 2 && idx == i)
+            if (sscanf(rx_, "RAC1 %d %d %n", &idx, &len, &hdr) >= 2 && idx == i)
                 break;
         }
 
@@ -422,7 +435,7 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
             return -6;
         }
 
-        memcpy(&g_wl[i * RA_CHUNK], &g_rx[hdr], len);
+        memcpy(&wl_[i * RA_CHUNK], &rx_[hdr], len);
         received += len;
     }
 
@@ -437,7 +450,7 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
        on whether the file reached the medium: on a USB stick writes sit
        in the USB driver's cache and the file may appear later, or never
        if the power goes off. */
-    if (SetWatchList(g_wl, total, serial) > 0)
+    if (SetWatchList(wl_, total, serial) > 0)
         raHashStep("8-list-in-memory");
     else
         raHashStep("8x-list-not-parsed");
@@ -470,7 +483,7 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
                 continue;
             }
 
-            fwrite(g_wl, 1, (size_t)total, f);
+            fwrite(wl_, 1, (size_t)total, f);
             fclose(f);
             saved++;
 
@@ -500,7 +513,7 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
    loads (InitPHY, modules/network/smap-ingame/smap.c), so a game launched with the network modules
    and no cable would never start. Dropping the list keeps those modules out of the launch, exactly
    as for a game with no watch list. */
-void raLaunchNetworkUp(void)
+void Ranet::launchNetworkUp()
 {
     int sock, linkUp;
     u8 ip[4], mask[4], gateway[4];
@@ -509,7 +522,7 @@ void raLaunchNetworkUp(void)
         return;
 
     /* UDPBD/UDPFS own the NIC and are not telemetry launch paths. */
-    if (raNetNicBusy())
+    if (nicBusy())
         return;
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -539,7 +552,7 @@ void raLaunchNetworkUp(void)
 /* Link test for the menu: broadcasts every 250 ms for up to three seconds.
    The reply's source address and the version in its text tell what
    answered; the round trip is measured with clock(). */
-int raNetTestLink(char *line1, int sz1, char *line2, int sz2)
+int Ranet::netTestLink(char *line1, int sz1, char *line2, int sz2)
 {
     struct sockaddr_in to, from;
     socklen_t fromlen;
@@ -554,13 +567,13 @@ int raNetTestLink(char *line1, int sz1, char *line2, int sz2)
     clock_t t0, deadline;
     unsigned int ms;
 
-    if (raNetNicBusy()) {
+    if (nicBusy()) {
         snprintf(line1, sz1, "%s", _l(_STR_RA_NET_BUSY));
         snprintf(line2, sz2, "%s", _l(_STR_RA_NET_BUSY2));
         return 0;
     }
 
-    sock = open_pc_socket(myaddr, sizeof(myaddr), ip);
+    sock = openPcSocket(myaddr, sizeof(myaddr), ip);
     if (sock < 0) {
         /* Either the network is really down or the IOP refused a socket
            (pool exhausted). Name both, rather than blaming the cable. */
@@ -576,7 +589,7 @@ int raNetTestLink(char *line1, int sz1, char *line2, int sz2)
         return 0;
     }
 
-    broadcast_target(&to);
+    broadcastTarget(&to);
     snprintf(req, sizeof(req), "RAP1%s", myaddr);
 
     t0 = clock();
