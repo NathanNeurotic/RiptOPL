@@ -87,7 +87,7 @@ void BootSplash::render(int alpha)
     // Credit mark, centred between the version line and the status line, faded with the splash.
     GSTEXTURE *credit = thmGetTexture(TECHWRITESCODE_LOGO);
     if (credit) {
-        const int cw = credit->Width * 5 / 8, ch = credit->Height * 5 / 8; // drawn at 62.5% (half size + 25%)
+        const int cw = credit->Width, ch = credit->Height; // drawn at native size
         const int creditY = ((logoCenterY + 80) + (gTheme->usedHeight - 40)) >> 1;
         rmDrawPixmap(credit, gGuiScreenWidth >> 1, creditY, ALIGN_CENTER, cw, ch, SCALING_RATIO, GS_SETREG_RGBA(0x80, 0x80, 0x80, alpha), 0);
     }
