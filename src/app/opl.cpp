@@ -7,6 +7,7 @@
 #include "include/settings.h"
 #include "include/oplint.h"
 #include "include/opl.h"
+#include "include/sourceregistry.h" // SourceRegistry gSourceRegistry
 #include "include/ioman.h"
 #include "include/launchdiag.h" // UDPBD hang-triage stage markers (gated on gLaunchDiag)
 #include "include/gui.h"
@@ -114,13 +115,35 @@ static unsigned int lastSeenBdmGeneration;
 static char errorMessage[256];
 static int errorMessageStringId = -1;
 
-static opl_io_module_t list_support[MODE_COUNT];
+// The page table itself lives in gSourceRegistry (include/sourceregistry.h). list_support stays as
+// a NAME in this file, a constant-initialized pointer at the table's first slot: the body of
+// menuDeferredUpdate below is extracted by test_io_queue_trims.py and compiled against a harness
+// that declares its own file-scope list_support[], so that body must keep saying list_support[i].
+static opl_io_module_t *const list_support = gSourceRegistry.table();
 
-// Favourites accessor (see opl.h): keep list_support[] file-static, but let favsupport.c
-// reach the FAV module through this thin wrapper.
+SourceRegistry gSourceRegistry;
+
+// Favourites accessor (see opl.h): the table lives in gSourceRegistry; this thin wrapper is the
+// cross-module reach (favsupport and the rest address pages by mode, never by the table).
 opl_io_module_t *oplGetModule(int mode)
 {
-    return &list_support[mode];
+    return gSourceRegistry.module(mode);
+}
+
+// Body of the oplGetAppImageByMode entry point (declared in opl.h, kept as a free forwarder in
+// appscan.cpp): art lookup addressed by IO MODE rather than by a device string.
+int SourceRegistry::appImageByMode(int mode, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
+{
+    item_list_t *listSupport;
+
+    if (mode < 0 || mode >= MODE_COUNT)
+        return -1;
+
+    listSupport = module(mode)->support;
+    if ((listSupport != NULL) && (listSupport->enabled))
+        return gsOf(listSupport)->image(listSupport, folder, isRelative, value, suffix, resultTex, psm);
+
+    return -1;
 }
 
 // Global data

@@ -7,6 +7,7 @@
 #include "include/settings.h"
 #include "include/oplint.h"
 #include "include/opl.h"
+#include "include/sourceregistry.h" // SourceRegistry gSourceRegistry
 #include "include/ioman.h"
 #include "include/launchdiag.h" // UDPBD hang-triage stage markers (gated on gLaunchDiag)
 #include "include/gui.h"
@@ -74,19 +75,10 @@ unsigned char gShouldAppsUpdate;
 
 // Art lookup addressed by IO MODE rather than by a device string. appsupport resolves each app's art
 // source to a mode once at scan time (appSetArtSource), so the per-cover lookup does not have to
-// re-derive it from a path on every request.
+// re-derive it from a path on every request. Body lives in SourceRegistry::appImageByMode (opl.cpp).
 int oplGetAppImageByMode(int mode, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
-    item_list_t *listSupport;
-
-    if (mode < 0 || mode >= MODE_COUNT)
-        return -1;
-
-    listSupport = (*oplGetModule(mode)).support;
-    if ((listSupport != NULL) && (listSupport->enabled))
-        return gsOf(listSupport)->image(listSupport, folder, isRelative, value, suffix, resultTex, psm);
-
-    return -1;
+    return gSourceRegistry.appImageByMode(mode, folder, isRelative, value, suffix, resultTex, psm);
 }
 
 static int scanApps(int (*callback)(const char *path, config_set_t *appConfig, void *arg), void *arg, char *appsPath, int exception)
