@@ -5,6 +5,7 @@
 #include "include/iosupport.h"
 #include "include/system.h"
 #include "include/supportbase.h"
+#include "include/supportbaseint.h" // SupportBase gSupportBase
 #include "include/folderbrowse.h" // FOLDER_SUB_MAX + folder-browse subpath state
 #include "include/vcdsupport.h"   // vcdExtractGameId + VCD_ID_MAX -- VCD per-game CFG keying
 #include "include/cuesupport.h"   // cueIsCueEntry -- Ember rows key their CFG by folder name too
@@ -51,6 +52,10 @@ struct game_cache_list
     unsigned int count;
     base_game_info_t *games;
 };
+
+// The module-state instance. Its state is only what the host-test extraction spans do not pin into
+// supportbase.cpp as file-scope statics (see supportbaseint.h); everything else stays free.
+SupportBase gSupportBase;
 
 int sbIsSameSize(const char *prefix, int prevSize)
 {
@@ -827,15 +832,19 @@ static void sbFillArg(char *out, int size, const char *tmpl, const char *arg)
 // call it before any MMCE game-ID switch, so mc0: is still the boot card.
 void sbEnsureIgrUsbDrivers(int compatmask)
 {
+    gSupportBase.ensureIgrUsbDrivers(compatmask);
+}
+
+void SupportBase::ensureIgrUsbDrivers(int compatmask)
+{
     static const char *names[2] = {"USBD.IRX", "USBHDFSD.IRX"};
-    static int asked = 0;
     const void *data[2] = {usbd_irx, usbhdfsd_irx};
     int size[2] = {size_usbd_irx, size_usbhdfsd_irx};
     int have[2][2] = {{0}}, wrote[2] = {0, 0};
     int mc, i, need[2] = {0, 0}, rc = 0;
     char dir[16], path[2][32], msg[512];
 
-    if (asked || (compatmask & COMPAT_MODE_6) || strncmp(gExitPath, "mass", 4) != 0)
+    if (igrUsbAsked_ || (compatmask & COMPAT_MODE_6) || strncmp(gExitPath, "mass", 4) != 0)
         return;
     if ((gAutoLaunchGame != NULL) || (gAutoLaunchBDMGame != NULL))
         return; // nobody at the pad to answer
@@ -867,7 +876,7 @@ void sbEnsureIgrUsbDrivers(int compatmask)
     else
         return; // no usable memory card to hold them
 
-    asked = 1;
+    igrUsbAsked_ = 1;
     snprintf(dir, sizeof(dir), "mc%d:/SYS-CONF", mc);
     sbFillArg(msg, sizeof(msg), _l(_STR_IGR_USB_DRIVERS_PROMPT), dir);
     if (!host::ui().msgBox(msg, 1, NULL))
@@ -1117,16 +1126,15 @@ void sbRename(base_game_info_t **list, const char *prefix, const char *sep, int 
 // main page only needs the metadata-derived badges (#DiscType/#Media/#Format), never #Size.
 // The info screen flips this on via menuRequestInfoSize() so #Size still resolves on demand;
 // game->sizeMB is cached after the first resolve, so later scrolls show the size for free.
-static int sbConfigStatSize = 0;
-
+// The gate itself lives in gSupportBase (include/supportbaseint.h).
 void sbSetConfigStatSize(int enable)
 {
-    sbConfigStatSize = enable;
+    gSupportBase.setConfigStatSize(enable);
 }
 
 int sbConfigStatSizeEnabled(void)
 {
-    return sbConfigStatSize;
+    return gSupportBase.configStatSizeEnabled();
 }
 
 config_set_t *sbPopulateConfig(base_game_info_t *game, const char *prefix, const char *sep)
@@ -1172,7 +1180,7 @@ config_set_t *sbPopulateConfig(base_game_info_t *game, const char *prefix, const
         }
     }
 
-    // Get game size if not already set (deferred off the scroll path; see sbConfigStatSize). A .VCD (PS1) has
+    // Get game size if not already set (deferred off the scroll path; see sbConfigStatSizeEnabled). A .VCD (PS1) has
     // no meaningful ISO size and its file lives in POPS/, not CD/DVD/, so statting the CD/DVD path always
     // misses, leaves sizeMB at 0, never caches, and re-probes the shared MMCE bus on every info entry (#120).
     // Hard-stop it by EXTENSION here (not mutable view state) so a .VCD can never reach the ISO stat path,
@@ -1186,7 +1194,7 @@ config_set_t *sbPopulateConfig(base_game_info_t *game, const char *prefix, const
     else
         subseg[0] = '\0';
 
-    if (sbConfigStatSize && !isPs1 && game->sizeMB == 0) {
+    if (gSupportBase.configStatSizeEnabled() && !isPs1 && game->sizeMB == 0) {
         char gamepath[256];
 
         if (game->format == GAME_FORMAT_ISO) {
@@ -2380,22 +2388,26 @@ int sbLoadWatchList(const char *path, const char *file)
 /* RA: the hash log. One file, <path>RA/hashes.txt, opened around a    */
 /* check; the crumb trail shows how far a check got even when the      */
 /* console hangs partway through (LOG output is invisible in the menu  */
-/* on hardware). ranet.c drops its network crumbs here too.            */
-
-static FILE *ra_hashlog = NULL;
+/* on hardware). ranet.c drops its network crumbs here too. The log    */
+/* handle lives in gSupportBase (include/supportbaseint.h).            */
 
 void raHashLogOpen(const char *path)
 {
+    gSupportBase.hashLogOpen(path);
+}
+
+void SupportBase::hashLogOpen(const char *path)
+{
     char dir[128], file[192];
 
-    raHashLogClose();
+    hashLogClose();
 
     snprintf(dir, sizeof(dir), "%sRA", path);
     mkdir(dir, 0777);
     snprintf(file, sizeof(file), "%sRA/hashes.txt", path);
 
-    ra_hashlog = fopen(file, "a");
-    if (ra_hashlog == NULL)
+    raHashlog_ = fopen(file, "a");
+    if (raHashlog_ == NULL)
         LOG("RA: could not open %s for writing\n", file);
     else
         LOG("RA: writing hashes to %s\n", file);
@@ -2406,27 +2418,42 @@ void raHashLogOpen(const char *path)
    here, otherwise a network failure is known only by its outcome. */
 void raHashStep(const char *what)
 {
-    if (ra_hashlog == NULL)
+    gSupportBase.hashStep(what);
+}
+
+void SupportBase::hashStep(const char *what)
+{
+    if (raHashlog_ == NULL)
         return;
 
-    fprintf(ra_hashlog, "  step: %s\n", what);
-    fflush(ra_hashlog);
+    fprintf(raHashlog_, "  step: %s\n", what);
+    fflush(raHashlog_);
 }
 
 void raHashLogAdd(const char *name, const char *startup, const char *hash)
 {
-    if (ra_hashlog == NULL)
+    gSupportBase.hashLogAdd(name, startup, hash);
+}
+
+void SupportBase::hashLogAdd(const char *name, const char *startup, const char *hash)
+{
+    if (raHashlog_ == NULL)
         return;
 
-    fprintf(ra_hashlog, "%-60s %-12s %s\n", name, startup, hash);
-    fflush(ra_hashlog);
+    fprintf(raHashlog_, "%-60s %-12s %s\n", name, startup, hash);
+    fflush(raHashlog_);
 }
 
 void raHashLogClose(void)
 {
-    if (ra_hashlog != NULL) {
-        fclose(ra_hashlog);
-        ra_hashlog = NULL;
+    gSupportBase.hashLogClose();
+}
+
+void SupportBase::hashLogClose()
+{
+    if (raHashlog_ != NULL) {
+        fclose(raHashlog_);
+        raHashlog_ = NULL;
     }
 }
 
