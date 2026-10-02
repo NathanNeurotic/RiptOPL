@@ -152,8 +152,9 @@ static int cacheRequestIsSIO2(item_list_t *list, const char *value)
 
 // WHICH .tar archive serves this row -- resolved here, on the GUI thread at enqueue, under the same
 // rule and for the same reason as cacheRequestIsSIO2 directly above. FAV and APP rows are PROXIES,
-// so answering it means reading favArray / the app list, and the HDD answer reads gHDDPrefix; all
-// three are rewritten by the prio-30 IO worker during a list rebuild. The worker asking them itself
+// so answering it means reading the FAV store / the app list, and the HDD answer reads the HDD
+// prefix; all three live in support-private state (now the source objects) that the prio-30 IO
+// worker rewrites during a list rebuild. The worker asking them itself
 // is a race, which is what this function exists to prevent.
 //
 // Returns 1 and fills path when one specific archive must be used, -1 when the row's source has an

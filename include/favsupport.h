@@ -27,6 +27,94 @@ enum FAV_KIND {
     FAV_KIND_ELF
 };
 
+// In-memory, validated favourites. Rebuilt by the store rebuild (FavSupport::ingest, driven from
+// FavSource::update); each entry's owner/id are confirmed present in the source submenu, so
+// proxying never goes OOB.
+typedef struct
+{
+    item_list_t *owner; // resolved source list
+    int mode;           // resolved source mode (BDM re-matched across slots)
+    int id;             // source item id (validated present in owner's submenu; unused for VCD)
+    int icon_id;
+    int text_id;
+    int kind;   // FAV_KIND_*: which shelf it sits on and which core launches it
+    char *text; // heap copy; owned by FavSupport (for a VCD favourite this is the .VCD basename / launch name)
+} fav_rec_t;
+
+// Raw on-disk record (pre-validation).
+typedef struct
+{
+    int mode;
+    int id;
+    int icon_id;
+    int text_id;
+    int kind; // FAV_KIND_*; v1 files and foreign imports default to FAV_KIND_ISO
+    char text[FAV_TEXT_MAX];
+} fav_raw_t;
+
+// The Favourites store (src/sources/favsupport.cpp). One instance (gFavSupport). Owns the
+// validated in-memory favourite array (rebuilt from favourites.bin), the deferred-rebuild
+// one-shot and the APPS auto-init one-shot; the favXxx free functions below forward to it, and
+// FavSource (the GameSource) reaches the store through it as well.
+class FavSupport
+{
+public:
+    // The deferred-rebuild one-shot: raised by loadFavourites (initial boot, every source-list
+    // change, and each R3 toggle) and consumed exactly once by FavSource::needsUpdate, so the
+    // deferred-update driver actually runs the rebuild. Starting at 1 makes the FIRST deferred
+    // pass populate the tab; a self-clearing one-shot -- never a constant 1 -- avoids a
+    // per-frame rebuild storm.
+    void requestRebuild() { forceUpdate_ = 1; }
+    int consumeRebuildRequest()
+    {
+        int pending = forceUpdate_;
+        forceUpdate_ = 0;
+        return pending;
+    }
+
+    // In-memory array lifecycle. clear() NULLs array_/count_ before the rebuild's first blocking
+    // point, so a GUI-thread scan started around a rebuild hits the live()==false guard.
+    void clear();
+    // Single append pass over freshly-read raw records: resolve each against its source, filter
+    // by the FAV page's L3 shelf, and append the survivors. Returns the new count. Never clears
+    // or appends the submenu -- the caller's deferred driver does that from the count.
+    int ingest(const fav_raw_t *recs, int rawCount);
+    // Arm the APPS scan once per boot when a stored app favourite's APPS tab never loaded.
+    void armAppsScan();
+
+    // Store-backed queries. All index by FAV-list id and return -1 / NULL when the store is not
+    // live or the id is out of range.
+    bool live() const { return array_ != NULL; }
+    int itemCount() const { return count_; }
+    const fav_rec_t *entry(int id) const { return validIndex(id) ? &array_[id] : NULL; }
+    int itemSourceMode(int id) const;
+    int itemKind(int id) const;
+    int itemView(int id) const;
+    int artMode(const char *value);
+    // Dynamic mode flags of the currently-selected FAV item (its source's live flags).
+    unsigned char selectedItemFlags();
+
+    // Build a stack-local view of a favourite's LIVE source support. Only viewOverride changes;
+    // priv, callbacks, flags and owner all come from the current source object. The returned
+    // pointer is valid only as long as `view` remains in scope.
+    item_list_t *ownerView(int id, item_list_t *view);
+
+    // R3 toggle API.
+    int addItem(int mode, int id, int icon_id, int text_id, const char *text, int kind);
+    int removeByIdAndText(int mode, int id, const char *text, int kind);
+    void removeByIndex(int favIndex);
+
+private:
+    bool validIndex(int id) const { return array_ != NULL && id >= 0 && id < count_; }
+
+    fav_rec_t *array_ = NULL;
+    int count_ = 0;
+    int forceUpdate_ = 1;
+    int appsArmed_ = 0;
+};
+
+extern FavSupport gFavSupport;
+
 
 item_list_t *favGetObject(int initOnly);
 
@@ -45,8 +133,8 @@ int favGetItemKind(int id);
 // Source device mode of the favourite whose art-cache value (source startup / VCD name) matches,
 // or -1 if none does. Used by texcache's cacheGetEffectiveMode so MMCE idle
 // deferral, abort, and worker-priority rules follow the device a FAV-tab read
-// actually lands on. GUI thread only -- favArray is rebuilt
-// unlocked on the IO worker; see favGetArtMode's safety note in favsupport.c.
+// actually lands on. GUI thread only -- the store array is rebuilt
+// unlocked on the IO worker; see FavSupport::artMode's safety note in favsupport.cpp.
 int favGetArtMode(const char *value);
 
 // R3-toggle helpers (called from opl.c). add/remove rewrite favourites.bin and return 1 on a

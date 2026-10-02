@@ -42,8 +42,9 @@ typedef struct load_image_request
     // background rescan rewrites underneath. One byte, copied in, is immune.
     unsigned char sio2;
     // Which .tar archive this cover must come from, resolved on the GUI THREAD at enqueue for
-    // exactly the same reason sio2 is. Answering it reaches into support-private state -- favArray,
-    // the app list, gHDDPrefix -- that the prio-30 IO worker rewrites during a list rebuild, so the
+    // exactly the same reason sio2 is. Answering it reaches into support-private state -- the FAV
+    // store, the app list, the HDD prefix -- that the prio-30 IO worker rewrites during a list
+    // rebuild, so the
     // art worker must never ask the question itself.
     //   1 = read artArchivePath and nothing else   0 = ordinary multi-device sweep
     //  -1 = this row's source has no archive home; probe no archive at all

@@ -36,23 +36,9 @@
 
 int gFAVStartMode;
 
-// Forward declaration; the initialised definition is at the bottom of this file.
-
-// In-memory, validated favourites. Rebuilt by favUpdateItemList from favourites.bin; each
-// entry's owner/id are confirmed present in the source submenu, so proxying never goes OOB.
-typedef struct
-{
-    item_list_t *owner; // resolved source list
-    int mode;           // resolved source mode (BDM re-matched across slots)
-    int id;             // source item id (validated present in owner's submenu; unused for VCD)
-    int icon_id;
-    int text_id;
-    int kind;   // FAV_KIND_*: which shelf it sits on and which core launches it
-    char *text; // heap copy; owned here (for a VCD favourite this is the .VCD basename / launch name)
-} fav_rec_t;
-
-static fav_rec_t *favArray = NULL;
-static int favCount = 0;
+// The one Favourites store; the public favXxx functions below and the FavSource callbacks
+// forward to it. Constant-initialized only (no dynamic init before main).
+FavSupport gFavSupport;
 
 static char *favStrdup(const char *s)
 {
@@ -106,18 +92,6 @@ static int rdU32(int fd, u32 *v)
     *v = (u32)b[0] | ((u32)b[1] << 8) | ((u32)b[2] << 16) | ((u32)b[3] << 24);
     return 1;
 }
-
-// ---- raw on-disk record (pre-validation) --------------------------------------
-
-typedef struct
-{
-    int mode;
-    int id;
-    int icon_id;
-    int text_id;
-    int kind; // FAV_KIND_*; v1 files and foreign imports default to FAV_KIND_ISO
-    char text[FAV_TEXT_MAX];
-} fav_raw_t;
 
 // Little-endian signed 32-bit from a byte buffer (for the foreign-format import below).
 static int rdS32le(const u8 *b)
@@ -374,18 +348,7 @@ static int favWriteFile(fav_raw_t *recs, int count)
     return 1;
 }
 
-// ---- in-memory array lifecycle ------------------------------------------------
-
-static void favFreeArray(void)
-{
-    if (favArray != NULL) {
-        for (int i = 0; i < favCount; i++)
-            free(favArray[i].text);
-        free(favArray);
-        favArray = NULL;
-    }
-    favCount = 0;
-}
+// ---- resolution helpers (stateless; operate on a source list, not the store) ---
 
 // Resolve a stored record to a live source list + mark the source item favourited. BDM-range
 // modes are re-matched across all 8 slots (hotplug / different bus). Returns the resolved
@@ -578,6 +541,288 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
     return mod->support;
 }
 
+// Guard the stored source id against the owner's CURRENT count -- the source list may have
+// shrunk / re-scanned since the favourite was validated, so re-check before every proxy call
+// to avoid indexing the owner's game array out of bounds.
+static int favOwnerHasId(item_list_t *o, int id)
+{
+    return (o != NULL && id >= 0 && id < gsOf(o)->count(o));
+}
+
+// Two modes "match" for favourite identity if equal, OR both in the BDM range
+// (USB/iLink/MX4SIO/ATA slots are interchangeable -- a BDM favourite can move slots).
+static int favModesMatch(int a, int b)
+{
+    int aBdm = (a >= BDM_MODE && a <= BDM_MODE_LAST);
+    int bBdm = (b >= BDM_MODE && b <= BDM_MODE_LAST);
+    if (aBdm && bBdm)
+        return 1;
+    return a == b;
+}
+
+// ---- the store ----------------------------------------------------------------
+
+void FavSupport::clear()
+{
+    if (array_ != NULL) {
+        for (int i = 0; i < count_; i++)
+            free(array_[i].text);
+        free(array_);
+        array_ = NULL;
+    }
+    count_ = 0;
+}
+
+int FavSupport::ingest(const fav_raw_t *recs, int rawCount)
+{
+    array_ = (fav_rec_t *)calloc(rawCount, sizeof(fav_rec_t));
+    if (array_ == NULL)
+        return 0;
+
+    int favShelf = host::library().viewActive(FAV_MODE);
+
+    // Resolve EVERY record before filtering the Favorites tab's independent view. Resolution
+    // also restores the star on the source submenu. Filtering first meant a saved VCD record was never
+    // resolved while FAV itself was in ISO view, so rebuilding the HDD list on an L3 toggle erased the
+    // visible star and loadFavourites() could not put it back (#495).
+    for (int i = 0; i < rawCount; i++) {
+        int resolvedMode = recs[i].mode;
+        int resolvedId = recs[i].id;
+        item_list_t *owner = favResolve(recs[i].mode, recs[i].id, recs[i].text, recs[i].kind, &resolvedMode, &resolvedId);
+
+        // The FAV page keeps its own L3 ring (All / PS2 / PS1 / ELF): resolution above is global
+        // star/state reconciliation. All accepts every kind; the other stops filter one shelf.
+        if (favShelf != LIB_VIEW_ALL && favKindView(recs[i].kind) != favShelf)
+            continue;
+
+        if (owner == NULL) {
+            if (recs[i].mode == APP_MODE)
+                armAppsScan();
+            continue; // device not loaded / item absent -> hidden (kept in the file)
+        }
+
+        char *txt = favStrdup(recs[i].text);
+        if (txt == NULL)
+            continue; // OOM -> skip this record rather than store a NULL name
+
+        array_[count_].owner = owner;
+        array_[count_].mode = resolvedMode;
+        array_[count_].id = resolvedId;
+        array_[count_].icon_id = recs[i].icon_id;
+        array_[count_].text_id = recs[i].text_id;
+        array_[count_].kind = recs[i].kind;
+        array_[count_].text = txt;
+        count_++;
+    }
+
+    return count_;
+}
+
+void FavSupport::armAppsScan()
+{
+    // APPS never populate on their own: gAPPStartMode defaults to MANUAL and nothing scans a
+    // MANUAL tab until the user opens it, so every stored app favourite sat hidden ("device
+    // not loaded") until the APPS tab happened to be visited that session -- while game
+    // favourites resolved because the user starts their game tab every time. If the user has
+    // app favourites, they've opted in: arm the apps scan ONCE per boot ourselves. appInit is
+    // plain state init (safe on this IO thread, where config IO already runs), and the
+    // deferred update it queues re-calls loadFavourites when the list lands (opl.c
+    // menuDeferredUpdate), so the stars light through the normal resync -- no special path.
+    opl_io_module_t *appMod = oplGetModule(APP_MODE);
+    if (!appsArmed_ && appMod != NULL && appMod->support != NULL && !appMod->support->enabled) {
+        appsArmed_ = 1;
+        gsOf(appMod->support)->init(appMod->support);
+        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &appMod->support->mode);
+    }
+}
+
+int FavSupport::itemSourceMode(int id) const
+{
+    return validIndex(id) ? array_[id].mode : -1;
+}
+
+int FavSupport::itemKind(int id) const
+{
+    return validIndex(id) ? array_[id].kind : -1;
+}
+
+int FavSupport::itemView(int id) const
+{
+    return validIndex(id) ? favKindView(array_[id].kind) : -1;
+}
+
+// Resolve an art-cache `value` (a source item's startup, or a VCD favourite's .VCD name /
+// strict PS1 id) to the favourite's SOURCE device mode, using the same matching FavSource::image
+// uses to route the actual read. Lets texcache apply MMCE idle deferral, abort,
+// and load priority to the device the read really lands on instead of the FAV
+// wrapper mode. Returns -1 when no favourite matches (e.g. a theme attribute-image
+// value, which takes the passthrough path in FavSource::image). Pure in-memory scan, no IO.
+//
+// Thread safety: callers are GUI-thread render paths (prio 31), but the store array is rebuilt
+// UNLOCKED here (from FavSource::update) on the prio-30 IO worker (menuDeferredUpdate). Safe today
+// because the IO thread outranks the GUI thread (a rebuild in progress keeps us off-CPU),
+// clear() NULLs the array/count before the rebuild's first blocking point (favReadFile)
+// so a scan started around a rebuild hits the live()==false guard, entries become visible only after
+// full population (count_++ last), and the FAV submenu rows that drive these scans are torn
+// down (clearMenuGameList) before the rebuild starts. Do NOT raise the GUI thread's priority
+// to/above the IO worker's or add a yield inside clear() without adding real
+// synchronization here.
+int FavSupport::artMode(const char *value)
+{
+    if (!live() || value == NULL)
+        return -1;
+    for (int i = 0; i < count_; i++) {
+        item_list_t ownerView;
+        item_list_t *o = this->ownerView(i, &ownerView);
+        if (o == NULL)
+            continue;
+        if (favKindIsNameAddressed(array_[i].kind)) {
+            if (strcmp(array_[i].text, value) != 0) {
+                char fallbackKey[VCD_ID_MAX];
+                if (!vcdExtractGameId(array_[i].text, fallbackKey, sizeof(fallbackKey)) ||
+                    strcmp(fallbackKey, value) != 0)
+                    continue;
+            }
+            return array_[i].mode;
+        }
+        if (!favOwnerHasId(o, array_[i].id))
+            continue;
+        char *s = gsOf(o)->startup(o, array_[i].id);
+        if (s != NULL && strcmp(s, value) == 0)
+            return array_[i].mode;
+    }
+    return -1;
+}
+
+unsigned char FavSupport::selectedItemFlags()
+{
+    opl_io_module_t *mod = oplGetModule(FAV_MODE);
+    if (mod == NULL || mod->menuItem.current == NULL)
+        return 0;
+    int id = mod->menuItem.current->item.id;
+    if (!validIndex(id))
+        return 0;
+    // Prefer the SOURCE list's live flags so dynamic capabilities are forwarded -- e.g. a BDM
+    // device backed by ATA only sets MODE_FLAG_COMPAT_DMA on itemList->flags after its scan, so
+    // re-deriving from mode alone would hide the DMA compat option for ATA-backed favourites.
+    item_list_t ownerView;
+    item_list_t *o = this->ownerView(id, &ownerView);
+    if (o != NULL)
+        return o->flags;
+    // Fallback by resolved mode if the owner pointer is somehow absent.
+    int m = array_[id].mode;
+    if (m == APP_MODE)
+        return MODE_FLAG_NO_COMPAT | MODE_FLAG_NO_UPDATE;
+    if (m == HDD_MODE)
+        return MODE_FLAG_COMPAT_DMA;
+    return 0;
+}
+
+// Build a stack-local view of a favourite's LIVE source support. Only viewOverride changes; priv,
+// callbacks, flags and owner all come from the current source object. This lets Favourites keep its
+// ISO/VCD split independent from the source page's own L3 state without copying or mutating device
+// state. The returned pointer is valid only as long as `view` remains in scope.
+item_list_t *FavSupport::ownerView(int id, item_list_t *view)
+{
+    if (!validIndex(id) || view == NULL || array_[id].owner == NULL)
+        return NULL;
+
+    *view = *array_[id].owner;
+    // A PS1 favourite reads its source's retained PS1 array (which holds both cores' rows) even
+    // while that source page shows PS2; anything else reads the source's own base list. An ELF
+    // favourite's source is the APPS tab, which has one list and ignores the override entirely.
+    view->viewOverride = favKindIsNameAddressed(array_[id].kind) ? ITEM_VIEW_FORCE_PS1 : ITEM_VIEW_FORCE_ISO;
+    return view;
+}
+
+int FavSupport::addItem(int mode, int id, int icon_id, int text_id, const char *text, int kind)
+{
+    if (text == NULL || text[0] == '\0')
+        return 0;
+
+    int count = 0;
+    fav_raw_t *recs = favReadFile(&count); // may be NULL (empty / new file)
+
+    // Already present (same mode + id + text + kind) -> treat as success (the star stays set).
+    // Use favModesMatch so a BDM favourite that moved slots (e.g. BDM_MODE -> BDM_MODE1) is
+    // recognised as already-present, matching the BDM-lenient logic in removeByIdAndText.
+    // kind is part of the identity so a disc favourite and a PS1 favourite never collide.
+    for (int i = 0; i < count; i++) {
+        // favIdsMatchForMode: apps identify by title (their stored id shifts with the device set) --
+        // without it, a shifted app would collect a DUPLICATE record on every re-favourite.
+        if (favModesMatch(recs[i].mode, mode) && favIdsMatchForMode(mode, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
+            free(recs);
+            return 1;
+        }
+    }
+
+    int newCount = count + 1;
+    if (newCount > FAV_MAX_ITEMS) {
+        free(recs);
+        return 0;
+    }
+    fav_raw_t *out = (fav_raw_t *)calloc(newCount, sizeof(fav_raw_t));
+    if (out == NULL) {
+        free(recs);
+        return 0;
+    }
+    for (int i = 0; i < count; i++)
+        out[i] = recs[i];
+    out[count].mode = mode;
+    out[count].id = id;
+    out[count].icon_id = icon_id;
+    out[count].text_id = text_id;
+    out[count].kind = kind;
+    snprintf(out[count].text, FAV_TEXT_MAX, "%s", text);
+
+    int ok = favWriteFile(out, newCount);
+    free(out);
+    free(recs);
+    return ok;
+}
+
+int FavSupport::removeByIdAndText(int mode, int id, const char *text, int kind)
+{
+    int count = 0;
+    fav_raw_t *recs = favReadFile(&count);
+    if (recs == NULL)
+        return 0;
+
+    int survivors = 0;
+    for (int i = 0; i < count; i++) {
+        // Match on id + text + mode (BDM-lenient) + kind so a same-titled favourite in a different
+        // device mode -- or a disc vs PS1 favourite of the same title -- is NOT collaterally deleted.
+        // Apps match by title alone (favIdsMatchForMode): their stored id shifts with the device set,
+        // and without the leniency R3 on an already-starred app could not un-favourite it.
+        if (!(favIdsMatchForMode(mode, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 && favModesMatch(recs[i].mode, mode) && recs[i].kind == kind))
+            recs[survivors++] = recs[i]; // compact in place (single buffer)
+    }
+    int ok = favWriteFile(recs, survivors); // survivors may be 0 -> writes a header-only (empty) file
+    free(recs);
+    return ok;
+}
+
+void FavSupport::removeByIndex(int favIndex)
+{
+    if (!validIndex(favIndex))
+        return;
+    int srcMode = array_[favIndex].mode;
+    int srcId = array_[favIndex].id;
+    int srcKind = array_[favIndex].kind;
+    char *txt = array_[favIndex].text;
+
+    // Clear the star on the source-list copy, then drop the record from the store. (For a VCD fav the
+    // live submenu may be the device's disc list right now -> the by-id+text find simply misses, which
+    // is fine -- the record is still removed from the store.)
+    opl_io_module_t *mod = oplGetModule(srcMode);
+    if (mod != NULL) {
+        submenu_list_t *src = favFindVisibleSource(mod, srcId, txt, favKindView(srcKind));
+        if (src != NULL)
+            src->item.favourited = 0;
+    }
+    removeByIdAndText(srcMode, srcId, txt, srcKind);
+}
+
 // ---- item_list_t callbacks ----------------------------------------------------
 
 class FavSource : public GameSource
@@ -621,21 +866,13 @@ static FavSource *favInstance()
 int FavSource::textId(item_list_t *itemList) { return _STR_FAV; }
 int FavSource::iconId(item_list_t *itemList) { return FAV_ICON; }
 
-// The FAV list is rebuilt on demand only. favForceUpdate is raised by loadFavourites (initial
-// boot, every source-list change, and each R3 toggle) and consumed exactly once here, so the
-// deferred-update driver (menuDeferredUpdate -> updateMenuFromGameList) actually runs
-// favUpdateItemList. Starting at 1 makes the FIRST deferred pass populate the tab; a
-// self-clearing one-shot -- never a constant 1 -- avoids a per-frame rebuild storm.
-static int favForceUpdate = 1;
-
 int FavSource::needsUpdate(item_list_t *itemList)
 {
     // Consume the FAV L3 ISO<->VCD dirty flag UNCONDITIONALLY (and first) so a concurrent
-    // favForceUpdate rebuild also clears it -- otherwise a default-view change that raises both would
+    // rebuild request also clears it -- otherwise a default-view change that raises both would
     // trigger one redundant byte-identical re-read on the following pass.
     int viewToggled = host::library().consumeDirty(FAV_MODE);
-    if (favForceUpdate) {
-        favForceUpdate = 0;
+    if (gFavSupport.consumeRebuildRequest()) {
         return 1;
     }
     return viewToggled; // L3 toggled the FAV view -> rebuild so the list re-filters
@@ -651,161 +888,73 @@ void FavSource::init(item_list_t *itemList)
 // append the submenu here (that would double-drive the list).
 int FavSource::update(item_list_t *itemList)
 {
-    favFreeArray();
+    gFavSupport.clear();
 
     int rawCount = 0;
     fav_raw_t *recs = favReadFile(&rawCount);
     if (recs == NULL)
         return 0;
 
-    favArray = (fav_rec_t *)calloc(rawCount, sizeof(fav_rec_t));
-    if (favArray == NULL) {
-        free(recs);
-        return 0;
-    }
-
-    // Resolve EVERY record before filtering the Favorites tab's independent view. Resolution
-    // also restores the star on the source submenu. Filtering first meant a saved VCD record was never
-    // resolved while FAV itself was in ISO view, so rebuilding the HDD list on an L3 toggle erased the
-    // visible star and loadFavourites() could not put it back (#495).
-    int favShelf = host::library().viewActive(FAV_MODE);
-    for (int i = 0; i < rawCount; i++) {
-        int resolvedMode = recs[i].mode;
-        int resolvedId = recs[i].id;
-        item_list_t *owner = favResolve(recs[i].mode, recs[i].id, recs[i].text, recs[i].kind, &resolvedMode, &resolvedId);
-
-        // The FAV page keeps its own L3 ring (All / PS2 / PS1 / ELF): resolution above is global
-        // star/state reconciliation. All accepts every kind; the other stops filter one shelf.
-        if (favShelf != LIB_VIEW_ALL && favKindView(recs[i].kind) != favShelf)
-            continue;
-
-        if (owner == NULL) {
-            // APPS never populate on their own: gAPPStartMode defaults to MANUAL and nothing scans a
-            // MANUAL tab until the user opens it, so every stored app favourite sat hidden ("device
-            // not loaded") until the APPS tab happened to be visited that session -- while game
-            // favourites resolved because the user starts their game tab every time. If the user has
-            // app favourites, they've opted in: arm the apps scan ONCE per boot ourselves. appInit is
-            // plain state init (safe on this IO thread, where config IO already runs), and the
-            // deferred update it queues re-calls loadFavourites when the list lands (opl.c
-            // menuDeferredUpdate), so the stars light through the normal resync -- no special path.
-            if (recs[i].mode == APP_MODE) {
-                static int favAppsArmed = 0;
-                opl_io_module_t *appMod = oplGetModule(APP_MODE);
-                if (!favAppsArmed && appMod != NULL && appMod->support != NULL && !appMod->support->enabled) {
-                    favAppsArmed = 1;
-                    gsOf(appMod->support)->init(appMod->support);
-                    ioPutRequest(IO_MENU_UPDATE_DEFFERED, &appMod->support->mode);
-                }
-            }
-            continue; // device not loaded / item absent -> hidden (kept in the file)
-        }
-
-        char *txt = favStrdup(recs[i].text);
-        if (txt == NULL)
-            continue; // OOM -> skip this record rather than store a NULL name
-
-        favArray[favCount].owner = owner;
-        favArray[favCount].mode = resolvedMode;
-        favArray[favCount].id = resolvedId;
-        favArray[favCount].icon_id = recs[i].icon_id;
-        favArray[favCount].text_id = recs[i].text_id;
-        favArray[favCount].kind = recs[i].kind;
-        favArray[favCount].text = txt;
-        favCount++;
-    }
-
+    int n = gFavSupport.ingest(recs, rawCount);
     free(recs);
-    return favCount;
+    return n;
 }
 
-int FavSource::count(item_list_t *itemList) { return favCount; }
-
-static int favValidIndex(int id) { return (favArray != NULL && id >= 0 && id < favCount); }
-
-// Build a stack-local view of a favourite's LIVE source support. Only viewOverride changes; priv,
-// callbacks, flags and owner all come from the current source object. This lets Favourites keep its
-// ISO/VCD split independent from the source page's own L3 state without copying or mutating device
-// state. The returned pointer is valid only as long as `view` remains in scope.
-static item_list_t *favOwnerView(int id, item_list_t *view)
-{
-    if (!favValidIndex(id) || view == NULL || favArray[id].owner == NULL)
-        return NULL;
-
-    *view = *favArray[id].owner;
-    // A PS1 favourite reads its source's retained PS1 array (which holds both cores' rows) even
-    // while that source page shows PS2; anything else reads the source's own base list. An ELF
-    // favourite's source is the APPS tab, which has one list and ignores the override entirely.
-    view->viewOverride = favKindIsNameAddressed(favArray[id].kind) ? ITEM_VIEW_FORCE_PS1 : ITEM_VIEW_FORCE_ISO;
-    return view;
-}
+int FavSource::count(item_list_t *itemList) { return gFavSupport.itemCount(); }
 
 // Source device mode (APP_MODE / HDD_MODE / BDM range / ...) of the FAV item at FAV-list index
 // id, or -1 if id is out of range. Lets the theme engine redirect e.g. an APP favourite to the
 // apps element (correct art folder + case overlay) instead of the game cover element.
 int favGetItemSourceMode(int id)
 {
-    return favValidIndex(id) ? favArray[id].mode : -1;
-}
-
-static int favGetItemView(int id)
-{
-    return favValidIndex(id) ? favKindView(favArray[id].kind) : -1;
-}
-
-int favGetItemKind(int id)
-{
-    return favValidIndex(id) ? favArray[id].kind : -1;
+    return gFavSupport.itemSourceMode(id);
 }
 
 int FavSource::rowView(item_list_t *itemList, int id)
 {
     (void)itemList;
-    return favGetItemView(id);
-}
-
-// Guard the stored source id against the owner's CURRENT count -- the source list may have
-// shrunk / re-scanned since the favourite was validated, so re-check before every proxy call
-// to avoid indexing the owner's game array out of bounds.
-static int favOwnerHasId(item_list_t *o, int id)
-{
-    return (o != NULL && id >= 0 && id < gsOf(o)->count(o));
+    return gFavSupport.itemView(id);
 }
 
 char *FavSource::name(item_list_t *itemList, int id)
 {
-    return favValidIndex(id) ? favArray[id].text : const_cast<char *>("");
+    const fav_rec_t *fav = gFavSupport.entry(id);
+    return fav != NULL ? fav->text : const_cast<char *>("");
 }
 
 int FavSource::nameLength(item_list_t *itemList, int id)
 {
-    return favValidIndex(id) ? ((int)strlen(favArray[id].text) + 1) : 0;
+    const fav_rec_t *fav = gFavSupport.entry(id);
+    return fav != NULL ? ((int)strlen(fav->text) + 1) : 0;
 }
 
 char *FavSource::startup(item_list_t *itemList, int id)
 {
-    if (!favValidIndex(id))
+    const fav_rec_t *fav = gFavSupport.entry(id);
+    if (fav == NULL)
         return "";
-    if (favKindIsNameAddressed(favArray[id].kind))
-        return favArray[id].text; // PS1 favourites key art/launch off the stored name, not a submenu id
+    if (favKindIsNameAddressed(fav->kind))
+        return fav->text; // PS1 favourites key art/launch off the stored name, not a submenu id
     item_list_t ownerView;
-    item_list_t *o = favOwnerView(id, &ownerView);
-    if (o == NULL || !favOwnerHasId(o, favArray[id].id))
+    item_list_t *o = gFavSupport.ownerView(id, &ownerView);
+    if (o == NULL || !favOwnerHasId(o, fav->id))
         return "";
-    return gsOf(o)->startup(o, favArray[id].id);
+    return gsOf(o)->startup(o, fav->id);
 }
 
 config_set_t *FavSource::config(item_list_t *itemList, int id)
 {
-    if (!favValidIndex(id))
+    const fav_rec_t *fav = gFavSupport.entry(id);
+    if (fav == NULL)
         return NULL;
     item_list_t ownerView;
-    item_list_t *o = favOwnerView(id, &ownerView);
+    item_list_t *o = gFavSupport.ownerView(id, &ownerView);
     if (o == NULL)
         return NULL;
     // VCD favourite: the owner's id-based config is the disc list (wrong list / wrong id while the
     // device is in ISO view). Build the PS1 config straight from the .VCD name + the device prefix,
     // exactly as sbPopulateConfig keys VCD per-game data by filename -> gives Title + #DiscType badge.
-    if (favKindIsNameAddressed(favArray[id].kind)) {
+    if (favKindIsNameAddressed(fav->kind)) {
         char *prefix = (gsOf(o)->hasPrefix()) ? gsOf(o)->prefix(o) : NULL;
         if (prefix == NULL)
             return NULL;
@@ -813,27 +962,28 @@ config_set_t *FavSource::config(item_list_t *itemList, int id)
         char sep[2] = {(pl > 0 && prefix[pl - 1] == '\\') ? '\\' : '/', '\0'};
         base_game_info_t game;
         memset(&game, 0, sizeof(game));
-        snprintf(game.name, sizeof(game.name), "%s", favArray[id].text);
+        snprintf(game.name, sizeof(game.name), "%s", fav->text);
         // The extension is the ROW-KIND discriminator, exactly as on a device page: stamp the
         // core this favourite actually belongs to, or an Ember favourite would describe itself as a
         // POPSTARTER one to every consumer that inspects the row.
         snprintf(game.extension, sizeof(game.extension), "%s",
-                 (favArray[id].kind == FAV_KIND_CUE) ? CUE_ROW_EXTENSION : ".VCD");
+                 (fav->kind == FAV_KIND_CUE) ? CUE_ROW_EXTENSION : ".VCD");
         game.parts = 1;
         game.format = GAME_FORMAT_ISO; // matches the device scans; the extension drives the PS1 badge
         return sbPopulateConfig(&game, prefix, sep);
     }
-    if (!favOwnerHasId(o, favArray[id].id))
+    if (!favOwnerHasId(o, fav->id))
         return NULL;
-    return gsOf(o)->config(o, favArray[id].id);
+    return gsOf(o)->config(o, fav->id);
 }
 
 void FavSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {
-    if (!favValidIndex(id))
+    const fav_rec_t *fav = gFavSupport.entry(id);
+    if (fav == NULL)
         return;
     item_list_t ownerView;
-    item_list_t *o = favOwnerView(id, &ownerView);
+    item_list_t *o = gFavSupport.ownerView(id, &ownerView);
     if (o == NULL)
         return;
     // PS1 favourite: hand the stored name to the owner's launcher for THIS row's core. Being
@@ -841,47 +991,50 @@ void FavSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // whose PS1 branch is gated on the device being live in its PS1 view. favResolve only binds a
     // PS1 favourite to a device that provides the matching hook, so neither NULL check below should
     // fire for a resolved favourite.
-    if (favKindIsNameAddressed(favArray[id].kind)) {
-        if (favArray[id].kind == FAV_KIND_CUE) {
+    if (favKindIsNameAddressed(fav->kind)) {
+        if (fav->kind == FAV_KIND_CUE) {
             if (gsOf(o)->hasLaunchCue())
-                gsOf(o)->launchCue(o, favArray[id].text, configSet);
+                gsOf(o)->launchCue(o, fav->text, configSet);
         } else {
             if (gsOf(o)->hasLaunchVcd())
-                gsOf(o)->launchVcd(o, favArray[id].text, configSet);
+                gsOf(o)->launchVcd(o, fav->text, configSet);
         }
         return;
     }
-    if (!favOwnerHasId(o, favArray[id].id))
+    if (!favOwnerHasId(o, fav->id))
         return;
-    gsOf(o)->launch(o, favArray[id].id, configSet);
+    gsOf(o)->launch(o, fav->id, configSet);
 }
 
 // Art proxy: the cache passes the source item's startup as `value`. Find the favourite whose
 // source startup matches and forward to its owner's image lookup.
 int FavSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
-    if (favArray == NULL || value == NULL)
+    if (!gFavSupport.live() || value == NULL)
         return -1;
-    for (int i = 0; i < favCount; i++) {
+    for (int i = 0; i < gFavSupport.itemCount(); i++) {
+        const fav_rec_t *fav = gFavSupport.entry(i);
+        if (fav == NULL)
+            continue; // store cleared mid-scan by the higher-prio IO worker (see artMode's note)
         item_list_t ownerView;
-        item_list_t *o = favOwnerView(i, &ownerView);
+        item_list_t *o = gFavSupport.ownerView(i, &ownerView);
         if (o == NULL)
             continue;
         // PS1 favourite: route both the primary name and the cache's strict-ID fallback through the
         // OWNER device's normal ART path, which already resolves the per-core in-library fallback by
         // row kind. The disc-ID fallback simply never matches an Ember folder name, which is correct.
-        if (favKindIsNameAddressed(favArray[i].kind)) {
-            if (strcmp(favArray[i].text, value) != 0) {
+        if (favKindIsNameAddressed(fav->kind)) {
+            if (strcmp(fav->text, value) != 0) {
                 char fallbackKey[VCD_ID_MAX];
-                if (!vcdExtractGameId(favArray[i].text, fallbackKey, sizeof(fallbackKey)) ||
+                if (!vcdExtractGameId(fav->text, fallbackKey, sizeof(fallbackKey)) ||
                     strcmp(fallbackKey, value) != 0)
                     continue;
             }
             return gsOf(o)->image(o, folder, isRelative, value, suffix, resultTex, psm);
         }
-        if (!favOwnerHasId(o, favArray[i].id))
+        if (!favOwnerHasId(o, fav->id))
             continue;
-        char *s = gsOf(o)->startup(o, favArray[i].id);
+        char *s = gsOf(o)->startup(o, fav->id);
         if (s != NULL && strcmp(s, value) == 0) {
             int r = gsOf(o)->image(o, folder, isRelative, value, suffix, resultTex, psm);
             // Relative (ART) requests return as-is -- the matched owner IS the item's owner. For an
@@ -909,59 +1062,19 @@ int FavSource::image(item_list_t *itemList, char *folder, int isRelative, char *
     // other than plain -1 is a real signal (success, or a transient error worth surfacing over a
     // bogus "absent"); a bare -1 may just mean "this owner can't key that path".
     if (!isRelative) {
-        for (int i = 0; i < favCount; i++) {
+        for (int i = 0; i < gFavSupport.itemCount(); i++) {
+            const fav_rec_t *fav = gFavSupport.entry(i);
+            if (fav == NULL)
+                continue; // store cleared mid-scan by the higher-prio IO worker (see artMode's note)
             item_list_t ownerView;
-            item_list_t *o = favOwnerView(i, &ownerView);
+            item_list_t *o = gFavSupport.ownerView(i, &ownerView);
             if (o == NULL ||
-                (!favKindIsNameAddressed(favArray[i].kind) && !favOwnerHasId(o, favArray[i].id)))
+                (!favKindIsNameAddressed(fav->kind) && !favOwnerHasId(o, fav->id)))
                 continue;
             int r = gsOf(o)->image(o, folder, isRelative, value, suffix, resultTex, psm);
             if (r != -1)
                 return r;
         }
-    }
-    return -1;
-}
-
-// Resolve an art-cache `value` (a source item's startup, or a VCD favourite's .VCD name /
-// strict PS1 id) to the favourite's SOURCE device mode, using the same matching favGetImage
-// uses to route the actual read. Lets texcache apply MMCE idle deferral, abort,
-// and load priority to the device the read really lands on instead of the FAV
-// wrapper mode. Returns -1 when no favourite matches (e.g. a theme attribute-image
-// value, which takes the passthrough path in favGetImage). Pure in-memory scan, no IO.
-//
-// Thread safety: callers are GUI-thread render paths (prio 31), but favArray is rebuilt
-// UNLOCKED by favUpdateItemList on the prio-30 IO worker (menuDeferredUpdate). Safe today
-// because the IO thread outranks the GUI thread (a rebuild in progress keeps us off-CPU),
-// favFreeArray NULLs favArray/favCount before the rebuild's first blocking point (favReadFile)
-// so a scan started around a rebuild hits the NULL guard, entries become visible only after
-// full population (favCount++ last), and the FAV submenu rows that drive these scans are torn
-// down (clearMenuGameList) before the rebuild starts. Do NOT raise the GUI thread's priority
-// to/above the IO worker's or add a yield inside favFreeArray without adding real
-// synchronization here.
-int favGetArtMode(const char *value)
-{
-    if (favArray == NULL || value == NULL)
-        return -1;
-    for (int i = 0; i < favCount; i++) {
-        item_list_t ownerView;
-        item_list_t *o = favOwnerView(i, &ownerView);
-        if (o == NULL)
-            continue;
-        if (favKindIsNameAddressed(favArray[i].kind)) {
-            if (strcmp(favArray[i].text, value) != 0) {
-                char fallbackKey[VCD_ID_MAX];
-                if (!vcdExtractGameId(favArray[i].text, fallbackKey, sizeof(fallbackKey)) ||
-                    strcmp(fallbackKey, value) != 0)
-                    continue;
-            }
-            return favArray[i].mode;
-        }
-        if (!favOwnerHasId(o, favArray[i].id))
-            continue;
-        char *s = gsOf(o)->startup(o, favArray[i].id);
-        if (s != NULL && strcmp(s, value) == 0)
-            return favArray[i].mode;
     }
     return -1;
 }
@@ -972,38 +1085,20 @@ void FavSource::rename(item_list_t *itemList, int id, char *newName) {}
 
 void FavSource::cleanUp(item_list_t *itemList, int exception)
 {
-    // Intentionally does NOT free favArray: the FAV submenu's item.text aliases favArray
-    // text, and the array is freed/rebuilt only by favUpdateItemList (after the submenu has
-    // been cleared) or favShutdown. Freeing here could dangle a live submenu's text.
+    // Intentionally does NOT free the store array: the FAV submenu's item.text aliases the
+    // array's text, and the array is freed/rebuilt only by the store rebuild (ingest(), driven
+    // from update() after the submenu has been cleared) or shutdown(). Freeing here could dangle
+    // a live submenu's text.
 }
 
 void FavSource::shutdown(item_list_t *itemList)
 {
-    favFreeArray();
+    gFavSupport.clear();
 }
 
 unsigned char favGetFlags(item_list_t *itemList)
 {
-    opl_io_module_t *mod = oplGetModule(FAV_MODE);
-    if (mod == NULL || mod->menuItem.current == NULL)
-        return 0;
-    int id = mod->menuItem.current->item.id;
-    if (!favValidIndex(id))
-        return 0;
-    // Prefer the SOURCE list's live flags so dynamic capabilities are forwarded -- e.g. a BDM
-    // device backed by ATA only sets MODE_FLAG_COMPAT_DMA on itemList->flags after its scan, so
-    // re-deriving from mode alone would hide the DMA compat option for ATA-backed favourites.
-    item_list_t ownerView;
-    item_list_t *o = favOwnerView(id, &ownerView);
-    if (o != NULL)
-        return o->flags;
-    // Fallback by resolved mode if the owner pointer is somehow absent.
-    int m = favArray[id].mode;
-    if (m == APP_MODE)
-        return MODE_FLAG_NO_COMPAT | MODE_FLAG_NO_UPDATE;
-    if (m == HDD_MODE)
-        return MODE_FLAG_COMPAT_DMA;
-    return 0;
+    return gFavSupport.selectedItemFlags();
 }
 
 // VMC check proxy: itemCheckVMC is device-context (no id), so forward to the current FAV
@@ -1014,124 +1109,54 @@ int FavSource::checkVmc(item_list_t *itemList, char *name, int createSize)
     if (mod == NULL || mod->menuItem.current == NULL)
         return -1;
     int id = mod->menuItem.current->item.id;
-    if (!favValidIndex(id))
+    const fav_rec_t *fav = gFavSupport.entry(id);
+    if (fav == NULL)
         return -1;
     item_list_t ownerView;
-    item_list_t *o = favOwnerView(id, &ownerView);
+    item_list_t *o = gFavSupport.ownerView(id, &ownerView);
     if (o == NULL || !gsOf(o)->hasCheckVmc())
         return -1;
     return gsOf(o)->checkVmc(o, name, createSize);
 }
 
-// Two modes "match" for favourite identity if equal, OR both in the BDM range
-// (USB/iLink/MX4SIO/ATA slots are interchangeable -- a BDM favourite can move slots).
-static int favModesMatch(int a, int b)
+// ---- public toggle / refresh API (forwarders to the store) --------------------
+
+// FAV_KIND_* of one displayed favourite, or -1 when id is invalid (which core a PS1 favourite uses).
+int favGetItemKind(int id)
 {
-    int aBdm = (a >= BDM_MODE && a <= BDM_MODE_LAST);
-    int bBdm = (b >= BDM_MODE && b <= BDM_MODE_LAST);
-    if (aBdm && bBdm)
-        return 1;
-    return a == b;
+    return gFavSupport.itemKind(id);
 }
 
-// ---- public toggle / refresh API ----------------------------------------------
-
-int addFavouriteItem(int mode, int id, int icon_id, int text_id, const char *text, int kind)
+// Art-device mode for a favourite's startup/name value (see FavSupport::artMode above); texcache
+// calls this on the GUI render path.
+int favGetArtMode(const char *value)
 {
-    if (text == NULL || text[0] == '\0')
-        return 0;
-
-    int count = 0;
-    fav_raw_t *recs = favReadFile(&count); // may be NULL (empty / new file)
-
-    // Already present (same mode + id + text + kind) -> treat as success (the star stays set).
-    // Use favModesMatch so a BDM favourite that moved slots (e.g. BDM_MODE -> BDM_MODE1) is
-    // recognised as already-present, matching the BDM-lenient logic in removeFavouriteByIdAndText.
-    // kind is part of the identity so a disc favourite and a PS1 favourite never collide.
-    for (int i = 0; i < count; i++) {
-        // favIdsMatchForMode: apps identify by title (their stored id shifts with the device set) --
-        // without it, a shifted app would collect a DUPLICATE record on every re-favourite.
-        if (favModesMatch(recs[i].mode, mode) && favIdsMatchForMode(mode, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
-            free(recs);
-            return 1;
-        }
-    }
-
-    int newCount = count + 1;
-    if (newCount > FAV_MAX_ITEMS) {
-        free(recs);
-        return 0;
-    }
-    fav_raw_t *out = (fav_raw_t *)calloc(newCount, sizeof(fav_raw_t));
-    if (out == NULL) {
-        free(recs);
-        return 0;
-    }
-    for (int i = 0; i < count; i++)
-        out[i] = recs[i];
-    out[count].mode = mode;
-    out[count].id = id;
-    out[count].icon_id = icon_id;
-    out[count].text_id = text_id;
-    out[count].kind = kind;
-    snprintf(out[count].text, FAV_TEXT_MAX, "%s", text);
-
-    int ok = favWriteFile(out, newCount);
-    free(out);
-    free(recs);
-    return ok;
-}
-
-int removeFavouriteByIdAndText(int mode, int id, const char *text, int kind)
-{
-    int count = 0;
-    fav_raw_t *recs = favReadFile(&count);
-    if (recs == NULL)
-        return 0;
-
-    int survivors = 0;
-    for (int i = 0; i < count; i++) {
-        // Match on id + text + mode (BDM-lenient) + kind so a same-titled favourite in a different
-        // device mode -- or a disc vs PS1 favourite of the same title -- is NOT collaterally deleted.
-        // Apps match by title alone (favIdsMatchForMode): their stored id shifts with the device set,
-        // and without the leniency R3 on an already-starred app could not un-favourite it.
-        if (!(favIdsMatchForMode(mode, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 && favModesMatch(recs[i].mode, mode) && recs[i].kind == kind))
-            recs[survivors++] = recs[i]; // compact in place (single buffer)
-    }
-    int ok = favWriteFile(recs, survivors); // survivors may be 0 -> writes a header-only (empty) file
-    free(recs);
-    return ok;
+    return gFavSupport.artMode(value);
 }
 
 void favRemoveByIndex(int favIndex)
 {
-    if (!favValidIndex(favIndex))
-        return;
-    int srcMode = favArray[favIndex].mode;
-    int srcId = favArray[favIndex].id;
-    int srcKind = favArray[favIndex].kind;
-    char *txt = favArray[favIndex].text;
-
-    // Clear the star on the source-list copy, then drop the record from the store. (For a VCD fav the
-    // live submenu may be the device's disc list right now -> the by-id+text find simply misses, which
-    // is fine -- the record is still removed from the store.)
-    opl_io_module_t *mod = oplGetModule(srcMode);
-    if (mod != NULL) {
-        submenu_list_t *src = favFindVisibleSource(mod, srcId, txt, favKindView(srcKind));
-        if (src != NULL)
-            src->item.favourited = 0;
-    }
-    removeFavouriteByIdAndText(srcMode, srcId, txt, srcKind);
+    gFavSupport.removeByIndex(favIndex);
 }
 
 void loadFavourites(void)
 {
     // Mark the FAV list stale and schedule its single canonical rebuild. The clear + re-append
-    // happen together inside the deferred updateMenuFromGameList (favNeedsUpdate consumes the
-    // one-shot), so we must NOT clear here: an eager clear on every source refresh would blank
+    // happen together inside the deferred updateMenuFromGameList (FavSource::needsUpdate consumes
+    // the one-shot), so we must NOT clear here: an eager clear on every source refresh would blank
     // the tab (and reset its cursor) even when the favourites set did not change.
-    favForceUpdate = 1;
+    gFavSupport.requestRebuild();
     ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*favInstance()).mode);
+}
+
+int addFavouriteItem(int mode, int id, int icon_id, int text_id, const char *text, int kind)
+{
+    return gFavSupport.addItem(mode, id, icon_id, text_id, text, kind);
+}
+
+int removeFavouriteByIdAndText(int mode, int id, const char *text, int kind)
+{
+    return gFavSupport.removeByIdAndText(mode, id, text, kind);
 }
 
 item_list_t *favGetObject(int initOnly)
@@ -1140,4 +1165,3 @@ item_list_t *favGetObject(int initOnly)
         return NULL;
     return &(*favInstance());
 }
-
