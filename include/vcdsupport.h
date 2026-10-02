@@ -14,6 +14,7 @@
 
 #include "include/iosupport.h"
 #include "include/supportbase.h" // base_game_info_t (for vcdFillGameList)
+#include "include/opl.h"         // gPopstarterPath (sizes VcdSupport::customPopsFor_)
 
 constexpr int VCD_NAME_MAX = 256;   // VCD basename without ".VCD" (incl NUL); becomes the selector game name
 constexpr int VCD_ID_MAX = 16;      // optional extracted PS1 disc ID, e.g. "SCUS_123.45"
@@ -243,5 +244,58 @@ vcd_popsnet_ensure_t vcdPreparePopstarterSmbLaunch(const char *smbPrefix);
 
 // Render the RetroGEM Game ID optical barcode immediately prior to a POPStarter VCD launch.
 void vcdPrepareRetroGemBarcode(const char *vcdPath);
+
+// ---- module runtime state -------------------------------------------------------------
+// The one VcdSupport instance (src/sources/vcdsupport.cpp) owns the mutable state this module keeps
+// between calls: the session disc-id memo + the single async resolve-request slot (issue #380) and
+// the remembered tier-1 custom POPSTARTER.ELF resolution. Everything else here is stateless
+// scanning/parsing/equip work and stays behind the free functions above, reaching the state
+// through gVcdSupport.
+struct vcd_id_memo; // memo entry node, defined in vcdsupport.cpp (flexible-array name)
+
+class VcdSupport
+{
+public:
+    // ---- disc-id memo + async resolve slot (#380) ----
+    // Scan-side hook: remember which directory a scanned VCD lives in (STRING WORK ONLY -- the scan
+    // path must never touch the device).
+    void noteScanDir(const char *name, const char *dirPath);
+    // Forget every remembered id and scan directory, so swapped media is not described by the
+    // previous disc. Cheap: ids re-resolve lazily as rows are settled on.
+    void invalidateGameIds();
+    // Render-thread half: returns the ALREADY-resolved id from the memo, 0 if not yet resolved.
+    // Never touches the device, never queues -- safe to call every frame.
+    int displayIdCached(const char *name, char *idOut, int idSize);
+    // Ask for a settled VCD row's id to be resolved off-thread (one queued resolve per row per
+    // session, memo-deduped). A cold memo with a request already in flight is a no-op.
+    void requestDisplayId(const char *name);
+
+    // ---- tier-1 custom POPSTARTER.ELF cache ----
+    // Resolve gPopstarterPath to a file, remembering the value last resolved and the file it
+    // resolved to ("" on a miss). vcdEquipBdma's pre-probe reads the cache beside this.
+    const char *resolveCustomPopstarter();
+
+    // Equip the chosen BDMA variant (copy from SOURCE's POPS/, or remove for FAT32) + write the
+    // marker. Reads the custom cache above for the adaptive seek-order pre-probe.
+    int equipBdma(int source, int mode, char *diag, int diagSize);
+
+private:
+    // The io-worker body behind requestDisplayId; ioPutRequest(IO_CUSTOM_SIMPLEACTION, ...) takes
+    // a plain function pointer, so the request is handed in through this static thunk.
+    static void resolveQueuedDisplayIdThunk();
+    void resolveQueuedDisplayId();
+    struct vcd_id_memo *idMemoFind(const char *name);
+    // The device IO behind the memo: resolves one VCD's disc id, memoizing hit AND miss.
+    int resolveDisplayId(const char *name, char *idOut, int idSize);
+
+    struct vcd_id_memo *memoHead_ = NULL;
+    int memoCount_ = 0;
+    char idReqName_[256] = {};   // one-slot request: the GUI writes it, the io worker reads + clears
+    volatile int idReqPending_ = 0; // DIntr/EIntr-guarded, like the SFX dispatch ring
+    char customPopsFor_[sizeof(gPopstarterPath)] = {}; // gPopstarterPath value the cache resolved for
+    char customPopsElf_[256] = {};                     // the file it resolved to ("" on a miss)
+};
+
+extern VcdSupport gVcdSupport;
 
 #endif

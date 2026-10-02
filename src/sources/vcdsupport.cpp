@@ -34,6 +34,8 @@
 #include "include/libview.h" // which list a page is showing (the L3 ring)
 #include "include/retrogem.h"
 
+VcdSupport gVcdSupport;
+
 
 // Recognized documented POPSTARTER prefixes:
 // XX. = USB / MX4SIO / iLink (local block devices)
@@ -267,23 +269,22 @@ typedef enum {
     VCD_ID_ABSENT
 } vcd_id_state_t;
 
-typedef struct vcd_id_memo
+struct vcd_id_memo
 {
-    struct vcd_id_memo *next;
+    vcd_id_memo *next;
     char id[VCD_ID_MAX];     // resolved disc id; empty once absent
     char *dir;               // directory this VCD was scanned from -- the ONLY correct path source
     unsigned char state;     // vcd_id_state_t
     unsigned char retries;   // count of failed read attempts before transitioning to ABSENT
     unsigned int retryFrame; // guiFrameId when deferred retry is next permitted
     char name[];             // flexible: VCD basenames run long, most are far short of the cap
-} vcd_id_memo_t;
+};
 
-static vcd_id_memo_t *gVcdIdMemo = NULL;
-static int gVcdIdMemoCount = 0;
+typedef struct vcd_id_memo vcd_id_memo_t;
 
-static vcd_id_memo_t *vcdIdMemoFind(const char *name)
+vcd_id_memo_t *VcdSupport::idMemoFind(const char *name)
 {
-    for (vcd_id_memo_t *m = gVcdIdMemo; m != NULL; m = m->next) {
+    for (vcd_id_memo_t *m = memoHead_; m != NULL; m = m->next) {
         if (!strcmp(m->name, name))
             return m;
     }
@@ -296,12 +297,12 @@ static vcd_id_memo_t *vcdIdMemoFind(const char *name)
 // cannot work out for itself: vcdScanDir appends POPS/ to a device root while vcdScanDirRoot takes a
 // directory directly (the APA/PFS HDD), so any attempt to reconstruct the path later can only be
 // right about one of the two layouts.
-static void vcdNoteScanDir(const char *name, const char *dirPath)
+void VcdSupport::noteScanDir(const char *name, const char *dirPath)
 {
     if (name == NULL || dirPath == NULL || name[0] == '\0')
         return;
 
-    vcd_id_memo_t *m = vcdIdMemoFind(name);
+    vcd_id_memo_t *m = idMemoFind(name);
     if (m != NULL) {
         if (m->dir == NULL || strcmp(m->dir, dirPath) != 0) {
             free(m->dir); // same name on a different device: re-point, and re-ask the disc
@@ -314,7 +315,7 @@ static void vcdNoteScanDir(const char *name, const char *dirPath)
         return;
     }
 
-    if (gVcdIdMemoCount >= VCD_ID_MEMO_MAX)
+    if (memoCount_ >= VCD_ID_MEMO_MAX)
         return; // full: this game simply keeps showing its filename
 
     size_t len = strlen(name);
@@ -327,16 +328,16 @@ static void vcdNoteScanDir(const char *name, const char *dirPath)
     m->retries = 0;
     m->retryFrame = 0;
     m->dir = strdup(dirPath);
-    m->next = gVcdIdMemo;
-    gVcdIdMemo = m;
-    gVcdIdMemoCount++;
+    m->next = memoHead_;
+    memoHead_ = m;
+    memoCount_++;
 }
 
-void vcdInvalidateGameIds(void)
+void VcdSupport::invalidateGameIds()
 {
-    vcd_id_memo_t *m = gVcdIdMemo;
-    gVcdIdMemo = NULL;
-    gVcdIdMemoCount = 0;
+    vcd_id_memo_t *m = memoHead_;
+    memoHead_ = NULL;
+    memoCount_ = 0;
     while (m != NULL) {
         vcd_id_memo_t *next = m->next;
         free(m->dir);
@@ -345,11 +346,16 @@ void vcdInvalidateGameIds(void)
     }
 }
 
+void vcdInvalidateGameIds(void)
+{
+    gVcdSupport.invalidateGameIds();
+}
+
 // DISPLAY ONLY, and lazy. Returns 1 and writes the disc's own id, or 0 when there is none to show.
 //
 // The caption renders ONE id shape: AAAA_NNN.NN -- the PS2 page's form (g->startup) and the
 // filename parser's strict output. The disc resolver can legitimately hand back the SAME id as
-// "AAAA-NNNNN" (dash naming from partitions / some SYSTEM.CNF files survives retrogemCleanTitleID
+// "AAAA-NNNNN" (dash naming from partitions / some SYSTEM.CNF files survives RetroGEM::cleanTitleId
 // verbatim for several input shapes); without this step the caption would visibly change shape when
 // the disc read landed (step-171). Display-layer only: the memo stores the canonical form, and the
 // RetroGEM launch/barcode path keeps its own resolver output -- it never reads the memo.
@@ -404,13 +410,13 @@ static int vcdCanonDisplayId(const char *idIn, char *idOut, int idSize)
 // shows the id pays one disc read per game per session, and a theme that does not pays nothing --
 // exactly how #Size behaves, and exactly what Nathan asked for: it may arrive late, it must never
 // hold anything up.
-static int vcdResolveDisplayId(const char *name, char *idOut, int idSize)
+int VcdSupport::resolveDisplayId(const char *name, char *idOut, int idSize)
 {
     if (name == NULL || idOut == NULL || idSize <= 0)
         return 0;
     idOut[0] = '\0';
 
-    vcd_id_memo_t *m = vcdIdMemoFind(name);
+    vcd_id_memo_t *m = idMemoFind(name);
     if (m == NULL || m->dir == NULL)
         return 0; // never scanned (or the table was full): caller falls back to the filename
 
@@ -468,7 +474,7 @@ static int vcdResolveDisplayId(const char *name, char *idOut, int idSize)
 // never meet directly:
 //
 //   menuRenderElements (settled row, GUI thread) -> vcdRequestDisplayId -> one-slot request
-//   -> ioman worker (IO_CUSTOM_SIMPLEACTION) -> vcdResolveDisplayId (the IO) -> the memo
+//   -> ioman worker (IO_CUSTOM_SIMPLEACTION) -> VcdSupport::resolveDisplayId (the IO) -> the memo
 //   -> next frame's drawItemText -> vcdDisplayIdCached (memo only, NO IO) -> the id on screen.
 //
 // This is deliberately NOT the per-game config path: that path is gated on the theme having
@@ -479,40 +485,47 @@ static int vcdResolveDisplayId(const char *name, char *idOut, int idSize)
 
 // Memo-read half for the render thread: returns the id ONLY if it is already resolved. Never
 // touches the device, never queues anything -- a miss means "not yet", and the caller falls back.
-int vcdDisplayIdCached(const char *name, char *idOut, int idSize)
+int VcdSupport::displayIdCached(const char *name, char *idOut, int idSize)
 {
     if (name == NULL || idOut == NULL || idSize <= 0)
         return 0;
     idOut[0] = '\0';
 
-    vcd_id_memo_t *m = vcdIdMemoFind(name);
+    vcd_id_memo_t *m = idMemoFind(name);
     if (m == NULL || m->state != VCD_ID_RESOLVED || m->id[0] == '\0')
         return 0;
     snprintf(idOut, idSize, "%s", m->id);
     return 1;
 }
 
-// One outstanding resolve request: the GUI writes it, the io worker reads and clears it. Both
-// bracket with DIntr/EIntr -- EE thread preemption requires an interrupt, so that is a complete
-// guard (same pattern as the SFX dispatch ring).
-static char gVcdIdReqName[256];
-static volatile int gVcdIdReqPending = 0;
+int vcdDisplayIdCached(const char *name, char *idOut, int idSize)
+{
+    return gVcdSupport.displayIdCached(name, idOut, idSize);
+}
 
-static void vcdResolveQueuedDisplayId(void)
+// One outstanding resolve request (idReqName_/idReqPending_): the GUI writes it, the io worker
+// reads and clears it. Both bracket with DIntr/EIntr -- EE thread preemption requires an
+// interrupt, so that is a complete guard (same pattern as the SFX dispatch ring).
+void VcdSupport::resolveQueuedDisplayIdThunk()
+{
+    gVcdSupport.resolveQueuedDisplayId();
+}
+
+void VcdSupport::resolveQueuedDisplayId()
 {
     char name[256];
     char id[VCD_ID_MAX];
 
     DIntr();
-    if (!gVcdIdReqPending) {
+    if (!idReqPending_) {
         EIntr();
         return;
     }
-    snprintf(name, sizeof(name), "%s", gVcdIdReqName);
-    gVcdIdReqPending = 0;
+    snprintf(name, sizeof(name), "%s", idReqName_);
+    idReqPending_ = 0;
     EIntr();
 
-    vcd_id_memo_t *m = vcdIdMemoFind(name);
+    vcd_id_memo_t *m = idMemoFind(name);
 
     // Async is not enough by itself: a device read can still starve the same USB/PFS channel
     // used by artwork and BGM. If either pipeline is busy, transition to DEFERRED with a throttled
@@ -525,10 +538,10 @@ static void vcdResolveQueuedDisplayId(void)
         return;
     }
 
-    vcdResolveDisplayId(name, id, sizeof(id));
+    resolveDisplayId(name, id, sizeof(id));
 }
 
-void vcdRequestDisplayId(const char *name)
+void VcdSupport::requestDisplayId(const char *name)
 {
     char parsed[VCD_ID_MAX];
 
@@ -539,7 +552,7 @@ void vcdRequestDisplayId(const char *name)
     if (vcdExtractGameId(name, parsed, sizeof(parsed)))
         return;
 
-    vcd_id_memo_t *m = vcdIdMemoFind(name);
+    vcd_id_memo_t *m = idMemoFind(name);
     if (m == NULL || m->dir == NULL)
         return;
 
@@ -551,27 +564,32 @@ void vcdRequestDisplayId(const char *name)
     if (m->state == VCD_ID_DEFERRED && guiFrameId < m->retryFrame)
         return;
 
-    if (strlen(name) >= sizeof(gVcdIdReqName))
+    if (strlen(name) >= sizeof(idReqName_))
         return; // pathological basename: leave the title
 
     DIntr();
-    if (gVcdIdReqPending) {
+    if (idReqPending_) {
         EIntr();
         return;
     }
-    snprintf(gVcdIdReqName, sizeof(gVcdIdReqName), "%s", name);
-    gVcdIdReqPending = 1;
+    snprintf(idReqName_, sizeof(idReqName_), "%s", name);
+    idReqPending_ = 1;
     m->state = VCD_ID_QUEUED;
     EIntr();
 
-    if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&vcdResolveQueuedDisplayId)) != IO_OK) {
+    if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&VcdSupport::resolveQueuedDisplayIdThunk)) != IO_OK) {
         // Enqueue failed: throttle retry so we don't spam
         DIntr();
-        gVcdIdReqPending = 0;
+        idReqPending_ = 0;
         m->state = VCD_ID_DEFERRED;
         m->retryFrame = guiFrameId + 60;
         EIntr();
     }
+}
+
+void vcdRequestDisplayId(const char *name)
+{
+    gVcdSupport.requestDisplayId(name);
 }
 
 // dirPath is the directory that was just opened; fileName is what readdir returned (with ".VCD");
@@ -639,7 +657,7 @@ static int vcdScanOpenDir(const char *dirPath, vcd_entry_t **outList)
             baseLen = VCD_NAME_MAX - 1; // unreachable after the cap above; kept as a belt
         memcpy(list[count].name, de->d_name, baseLen);
         list[count].name[baseLen] = '\0';
-        vcdNoteScanDir(list[count].name, dirPath); // string only -- NO device IO on the scan path
+        gVcdSupport.noteScanDir(list[count].name, dirPath); // string only -- NO device IO on the scan path
         count++;
     }
     closedir(dir);
@@ -782,7 +800,7 @@ int vcdRenameFileInDir(const char *dirPath, const char *oldName, const char *new
         return -1;
     }
 
-    vcdInvalidateGameIds();
+    gVcdSupport.invalidateGameIds();
     return 0;
 }
 
@@ -825,20 +843,17 @@ int vcdResolvePopstarterMcElf(char *out, int outSize)
     return 0;
 }
 
-// Tier 1 of the POPSTARTER lookup, remembered: the gPopstarterPath value last resolved and the file
-// it resolved to ("" on a miss). vcdEquipBdma pre-probes beside that FILE -- an alias such as
-// mmce:/, usb:/ or smb:/ is not an openable directory -- and reuses the launch's own result rather
-// than bringing a storage stack up a second time.
-static char vcdCustomPopsFor[sizeof(gPopstarterPath)];
-static char vcdCustomPopsElf[256];
-
-static const char *vcdResolveCustomPopstarter(void)
+// Tier 1 of the POPSTARTER lookup, remembered (customPopsFor_/customPopsElf_): the gPopstarterPath
+// value last resolved and the file it resolved to ("" on a miss). vcdEquipBdma pre-probes beside
+// that FILE -- an alias such as mmce:/, usb:/ or smb:/ is not an openable directory -- and reuses
+// the launch's own result rather than bringing a storage stack up a second time.
+const char *VcdSupport::resolveCustomPopstarter()
 {
-    snprintf(vcdCustomPopsFor, sizeof(vcdCustomPopsFor), "%s", gPopstarterPath);
+    snprintf(customPopsFor_, sizeof(customPopsFor_), "%s", gPopstarterPath);
     if (gPopstarterPath[0] == '\0' ||
-        !sbResolveCustomLoaderPath(gPopstarterPath, vcdCustomPopsElf, sizeof(vcdCustomPopsElf)))
-        vcdCustomPopsElf[0] = '\0';
-    return vcdCustomPopsElf[0] != '\0' ? vcdCustomPopsElf : NULL;
+        !sbResolveCustomLoaderPath(gPopstarterPath, customPopsElf_, sizeof(customPopsElf_)))
+        customPopsElf_[0] = '\0';
+    return customPopsElf_[0] != '\0' ? customPopsElf_ : NULL;
 }
 
 int vcdResolvePopstarter(const char *devPrefix, char *out, int outSize)
@@ -854,7 +869,7 @@ int vcdResolvePopstarter(const char *devPrefix, char *out, int outSize)
     //   3) mc0:/mc1:.
     // The retired POPSTARTER device picker remains in the config schema only for downgrade
     // compatibility; it no longer changes runtime lookup order.
-    customElf = vcdResolveCustomPopstarter();
+    customElf = gVcdSupport.resolveCustomPopstarter();
     if (customElf != NULL && snprintf(out, outSize, "%s", customElf) < outSize)
         return 1;
 
@@ -961,7 +976,7 @@ int vcdFillGameList(const char *devPrefix, base_game_info_t **outGames)
             // IDENTITY, and it stays the FILENAME. Art, per-game CFG and the launch all key off this
             // (bdmGetGameStartup returns g->name for the VCD view), and the files on disk are named
             // after the VCD, not after the disc's internal id. The disc-derived id is a DISPLAY value
-            // only, resolved lazily on the config path -- see vcdResolveDisplayId. Putting it here
+            // only, resolved lazily on the config path -- see VcdSupport::resolveDisplayId. Putting it here
             // would have pointed every art lookup at a name nothing on disk is called.
             snprintf(games[kept].startup, sizeof(games[kept].startup), "%s", vcds[i].name);
             snprintf(games[kept].extension, sizeof(games[kept].extension), ".VCD");
@@ -1214,7 +1229,7 @@ int vcdReadBdmaMode(void)
     return VCD_BDMA_FAT32;
 }
 
-int vcdEquipBdma(int source, int mode, char *diag, int diagSize)
+int VcdSupport::equipBdma(int source, int mode, char *diag, int diagSize)
 {
     if (diag != NULL && diagSize > 0)
         diag[0] = '\0';
@@ -1261,10 +1276,10 @@ int vcdEquipBdma(int source, int mode, char *diag, int diagSize)
         // an equip outside a launch (the BDMA settings page) resolves it here once.
         const char *customElf = NULL;
         if (gPopstarterPath[0] != '\0') {
-            if (strcmp(vcdCustomPopsFor, gPopstarterPath) != 0)
-                vcdResolveCustomPopstarter();
-            if (vcdCustomPopsElf[0] != '\0')
-                customElf = vcdCustomPopsElf;
+            if (strcmp(customPopsFor_, gPopstarterPath) != 0)
+                resolveCustomPopstarter();
+            if (customPopsElf_[0] != '\0')
+                customElf = customPopsElf_;
         }
         if (customElf != NULL) {
             const char *s1 = strrchr(customElf, '/');
@@ -1424,6 +1439,11 @@ int vcdEquipBdma(int source, int mode, char *diag, int diagSize)
     return (mr != 0) ? mr : 0;
 }
 
+int vcdEquipBdma(int source, int mode, char *diag, int diagSize)
+{
+    return gVcdSupport.equipBdma(source, mode, diag, diagSize);
+}
+
 // 1.0.1-style fast path for the launch equip: a card with NO marker but BOTH driver modules present is
 // a pair the user (or an install predating the marker file) manages MANUALLY. vcdReadBdmaMode()
 // collapses "marker absent" into VCD_BDMA_FAT32, so before this check every launch on such a card read
@@ -1552,7 +1572,7 @@ void vcdEnsureBdmaForLaunch(int source, int mode)
     }
 
     // 2. Perform transactional equip
-    int er = vcdEquipBdma(source, mode, diag, sizeof(diag));
+    int er = gVcdSupport.equipBdma(source, mode, diag, sizeof(diag));
     if (er == 0 && vcdBdmaEnvironmentValid(mode))
         return;
 
@@ -1577,7 +1597,7 @@ void vcdApplyUsbModeForLaunch(int mode)
     if (vcdBdmaEnvironmentValid(mode) || (mode == VCD_BDMA_USBEXFAT && vcdBdmaManualPairMatches(mode)))
         return;
 
-    int er = vcdEquipBdma(VCD_BDMA_SRC_USB, mode, diag, sizeof(diag));
+    int er = gVcdSupport.equipBdma(VCD_BDMA_SRC_USB, mode, diag, sizeof(diag));
     if (er == 0 && vcdBdmaEnvironmentValid(mode))
         return;
 
