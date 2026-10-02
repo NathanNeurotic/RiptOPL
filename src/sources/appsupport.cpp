@@ -19,39 +19,13 @@
 #include "include/textures.h"
 #include "include/libview.h"
 #include "include/gamesource.h"
+#include "include/appsource.h"
 
 #include <elf-loader.h>
 #include <errno.h>
 
-static int appForceUpdate = 1;
-static int appItemCount = 0;
-static char appStartupPath[256];
-static char appResolvedStartupPath[256];
-static int *appArtLookupTable;
-static int appArtLookupTableSize = 0;
-
-static config_set_t *configApps;
-static app_info_t *appsList;
-static int *appVisibleIds;
-static int appVisibleCount;
-static int appViewOnlyUpdate;
-
-struct app_info_linked
-{
-    struct app_info_linked *next;
-    app_info_t app;
-};
-
-// forward declaration
-
-static void appFreeList(void);
-static void appFreeArtLookup(void);
-static int appBuildArtLookup(void);
+// forward declaration (stays a free helper: update() hands it the temporary discovery list)
 static void appFreeLinkedList(struct app_info_linked *appsLinkedList);
-static app_info_t *appLookupByStartup(const char *startup);
-static void appSetArtSource(app_info_t *app);
-static void appSetResolvedStartup(app_info_t *app);
-static int appRebuildVisibleList(void);
 
 static int appTitleIsPs1Elf(const char *title)
 {
@@ -69,7 +43,7 @@ static int appTitleIsPs1Elf(const char *title)
     return 0;
 }
 
-static int appVisibleToMaster(item_list_t *itemList, int id)
+int AppSource::appVisibleToMaster(item_list_t *itemList, int id)
 {
     // Favorites owns a shallow forced-view proxy and stores master discovery ids, not whichever
     // filtered APPS row number happens to be visible today.
@@ -78,7 +52,7 @@ static int appVisibleToMaster(item_list_t *itemList, int id)
     return (appVisibleIds != NULL && id >= 0 && id < appVisibleCount) ? appVisibleIds[id] : -1;
 }
 
-static int appRebuildVisibleList(void)
+int AppSource::appRebuildVisibleList(void)
 {
     int i, view;
 
@@ -101,7 +75,7 @@ static int appRebuildVisibleList(void)
     return appVisibleCount;
 }
 
-static struct config_value_t *appGetConfigValue(int id)
+struct config_value_t *AppSource::appGetConfigValue(int id)
 {
     config_value_t *cur = configApps->entries();
 
@@ -341,8 +315,7 @@ static int appStartupKeyEqual(const char *a, const char *b)
 // donates its argv1 (title.cfg-only metadata) to an empty-handed legacy survivor. Legacy-vs-legacy
 // collisions (two conf_apps.cfg keys pointing at the same ELF) are KEPT: dropping one would shift
 // the config-node mapping, and a duplicated hand-edited entry is the user's own data.
-static int appDroppedCount;
-static void appDedupList(void)
+void AppSource::appDedupList(void)
 {
     appDroppedCount = 0;
     if (appsList == NULL || appItemCount <= 1)
@@ -379,7 +352,7 @@ static void appDedupList(void)
 // cable. DIAGNOSTIC BUILDS ONLY (OPLDIAG) -- it writes a file into the config home, which is a
 // device root, and no display setting should be able to cause that.
 #ifdef __OPLDIAG
-static void appDumpDiscovery(void)
+void AppSource::appDumpDiscovery(void)
 {
     char path[300];
     FILE *f;
@@ -407,7 +380,7 @@ static void appDumpDiscovery(void)
 #endif
 
 
-static const char *appBuildStartupPath(const char *path, const char *boot)
+const char *AppSource::appBuildStartupPath(const char *path, const char *boot)
 {
     if (path[0] != '\0') {
         const char *leaf = appGetELFName((char *)path);
@@ -421,7 +394,7 @@ static const char *appBuildStartupPath(const char *path, const char *boot)
     return boot;
 }
 
-static const char *appResolveLegacyMassStartup(const char *startup)
+const char *AppSource::appResolveLegacyMassStartup(const char *startup)
 {
     int fd;
     const char *suffix;
@@ -473,7 +446,7 @@ static void appSetArtSource(app_info_t *app)
         app->artMode = host::app().pathToMode(app->artDevice);
 }
 
-static void appSetResolvedStartup(app_info_t *app)
+void AppSource::appSetResolvedStartup(app_info_t *app)
 {
     const char *startup;
 
@@ -493,7 +466,7 @@ static void appSetResolvedStartup(app_info_t *app)
     appSetArtSource(app);
 }
 
-static void appFreeArtLookup(void)
+void AppSource::appFreeArtLookup(void)
 {
     if (appArtLookupTable != NULL) {
         free(appArtLookupTable);
@@ -503,7 +476,7 @@ static void appFreeArtLookup(void)
     appArtLookupTableSize = 0;
 }
 
-static int appBuildArtLookup(void)
+int AppSource::appBuildArtLookup(void)
 {
     int size;
 
@@ -543,7 +516,7 @@ static int appBuildArtLookup(void)
     return 0;
 }
 
-static app_info_t *appLookupByStartup(const char *startup)
+app_info_t *AppSource::appLookupByStartup(const char *startup)
 {
     if (startup == NULL || appsList == NULL)
         return NULL;
@@ -569,43 +542,6 @@ static app_info_t *appLookupByStartup(const char *startup)
     return NULL;
 }
 
-int appGetArtMode(const char *startup)
-{
-    app_info_t *app = appLookupByStartup(startup);
-
-    if (app == NULL)
-        return -1;
-
-    return app->artMode;
-}
-class AppSource : public GameSource
-{
-public:
-    AppSource()
-        : GameSource(APP_MODE, -1, MODE_FLAG_NO_COMPAT | MODE_FLAG_NO_UPDATE, MENU_MIN_INACTIVE_FRAMES, APP_MODE_UPDATE_DELAY, GameSource::OMIT_PREFIX | GameSource::OMIT_GAME | GameSource::OMIT_CHECK_VMC | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
-    {
-    }
-
-    void init(item_list_t *itemList) override;
-    int needsUpdate(item_list_t *itemList) override;
-    int update(item_list_t *itemList) override;
-    int count(item_list_t *itemList) override;
-    char *name(item_list_t *itemList, int id) override;
-    int nameLength(item_list_t *itemList, int id) override;
-    char *startup(item_list_t *itemList, int id) override;
-    void deleteGame(item_list_t *itemList, int id) override;
-    void rename(item_list_t *itemList, int id, char *newName) override;
-    void launch(item_list_t *itemList, int id, config_set_t *configSet) override;
-    config_set_t *config(item_list_t *itemList, int id) override;
-    int image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm) override;
-    int textId(item_list_t *itemList) override;
-    int iconId(item_list_t *itemList) override;
-    int rowView(item_list_t *itemList, int id) override;
-    int sourceId(item_list_t *itemList, int id) override;
-    void cleanUp(item_list_t *itemList, int exception) override;
-    void shutdown(item_list_t *itemList) override;
-};
-
 static AppSource *appInstance()
 {
     static AppSource *instance = NULL;
@@ -617,11 +553,16 @@ static AppSource *appInstance()
 }
 
 
+AppSource::AppSource()
+    : GameSource(APP_MODE, -1, MODE_FLAG_NO_COMPAT | MODE_FLAG_NO_UPDATE, MENU_MIN_INACTIVE_FRAMES, APP_MODE_UPDATE_DELAY, GameSource::OMIT_PREFIX | GameSource::OMIT_GAME | GameSource::OMIT_CHECK_VMC | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+{
+}
+
 void AppSource::init(item_list_t *itemList)
 {
     LOG("APPSUPPORT Init\n");
     appForceUpdate = 1;
-    (*appInstance()).delay = gArtDelay;
+    delay = gArtDelay;
     if (configApps != NULL)
         configFree(configApps);
     configApps = host::app().legacyAppsConfig();
@@ -629,7 +570,7 @@ void AppSource::init(item_list_t *itemList)
     appVisibleIds = NULL;
     appVisibleCount = 0;
     appViewOnlyUpdate = 0;
-    (*appInstance()).enabled = 1;
+    enabled = 1;
 }
 
 item_list_t *appGetObject(int initOnly)
@@ -637,6 +578,16 @@ item_list_t *appGetObject(int initOnly)
     if (initOnly && !(*appInstance()).enabled)
         return NULL;
     return &(*appInstance());
+}
+
+int appGetArtMode(const char *startup)
+{
+    app_info_t *app = (*appInstance()).appLookupByStartup(startup);
+
+    if (app == NULL)
+        return -1;
+
+    return app->artMode;
 }
 
 int AppSource::needsUpdate(item_list_t *itemList)
@@ -667,7 +618,7 @@ int AppSource::needsUpdate(item_list_t *itemList)
     return update;
 }
 
-static int addAppsLegacyList(struct app_info_linked **appsLinkedList)
+int AppSource::addAppsLegacyList(struct app_info_linked **appsLinkedList)
 {
     config_value_t *cur;
     struct app_info_linked *app;
@@ -769,7 +720,7 @@ static int appScanCallback(const char *path, config_set_t *appConfig, void *arg)
         } else
             app->app.argv1[0] = '\0';
         app->app.legacy = 0;
-        appSetResolvedStartup(&app->app);
+        (*appInstance()).appSetResolvedStartup(&app->app);
         return 0;
     } else {
         LOG("APPSUPPORT item has no boot/title.\n");
@@ -859,7 +810,7 @@ static void appFreeLinkedList(struct app_info_linked *appsLinkedList)
     }
 }
 
-static void appFreeList(void)
+void AppSource::appFreeList(void)
 {
     appFreeArtLookup();
 
@@ -1331,7 +1282,7 @@ int AppSource::sourceId(item_list_t *itemList, int id)
 // This may be called, even if appInit() was not.
 void AppSource::cleanUp(item_list_t *itemList, int exception)
 {
-    if ((*appInstance()).enabled) {
+    if (enabled) {
         LOG("APPSUPPORT CleanUp\n");
 
         appFreeList();
@@ -1345,7 +1296,7 @@ void AppSource::cleanUp(item_list_t *itemList, int exception)
 // This may be called, even if appInit() was not.
 void AppSource::shutdown(item_list_t *itemList)
 {
-    if ((*appInstance()).enabled) {
+    if (enabled) {
         LOG("APPSUPPORT Shutdown\n");
 
         appFreeList();
