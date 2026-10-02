@@ -20,12 +20,24 @@
 #include "include/mmcesupport.h"
 #include "include/discsupport.h"
 
-static volatile int discBusy;
-
-int discCheckBusy(void)
+// The disc-support state (the busy latch serialising the deferred check against launches) and the
+// operations on it. Defined in this translation unit rather than a header because the source-
+// scraping RA disc test compiles this file's body with its #includes removed; the class has to be
+// part of that body. One instance; discIdentity/discSupportPrefix stay free helpers (they touch
+// no state), and the discCheckBusy/discCheckSupportDeferred/discLaunch API remains as forwarders.
+class DiscSupport
 {
-    return discBusy || sbHashGameBusy();
-}
+public:
+    int checkBusy() { return busy_ || sbHashGameBusy(); }
+    int checkSupportDeferred();
+    void launch(int (*progress)(void));
+    void checkWorker();
+
+private:
+    volatile int busy_ = 0;
+};
+
+static DiscSupport gDiscSupport;
 
 // The watch-list format keys games by their root boot executable (up to 15 chars).
 static int discIdentity(char *bootPath, char *startup, int (*progress)(void))
@@ -64,11 +76,27 @@ static int discSupportPrefix(char *prefix, size_t size)
     return 0;
 }
 
-static void discCheckWorker(void)
+// Queued on the IO worker via ioPutRequest; the free trampoline keeps the entry point stable for
+// both the queue and the RA disc test, which calls it directly.
+static void discCheckWorker(void);
+
+int DiscSupport::checkSupportDeferred()
+{
+    if (checkBusy())
+        return 0;
+    busy_ = 1;
+    if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&discCheckWorker)) != IO_OK) {
+        busy_ = 0;
+        return 0;
+    }
+    return 1;
+}
+
+void DiscSupport::checkWorker()
 {
     char bootPath[64], startup[16], prefix[120], hash[33], info[96], info2[96];
     int result;
-    auto releaseBusy = raii::scopeExit([] { discBusy = 0; }); // every exit clears the busy latch
+    auto releaseBusy = raii::scopeExit([this] { busy_ = 0; }); // every exit clears the busy latch
     if (discSupportPrefix(prefix, sizeof(prefix)) < 0) {
         host::ui().raNotice(_l(_STR_RA_DISC_HOME_ERROR), NULL);
         return;
@@ -104,22 +132,25 @@ static void discCheckWorker(void)
         host::ui().raNotice(_l(_STR_RA_PC_NO_ANSWER), _l(_STR_RA_PC_NO_ANSWER2));
 }
 
+static void discCheckWorker(void)
+{
+    gDiscSupport.checkWorker();
+}
+
+int discCheckBusy(void)
+{
+    return gDiscSupport.checkBusy();
+}
+
 int discCheckSupportDeferred(void)
 {
-    if (discCheckBusy())
-        return 0;
-    discBusy = 1;
-    if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&discCheckWorker)) != IO_OK) {
-        discBusy = 0;
-        return 0;
-    }
-    return 1;
+    return gDiscSupport.checkSupportDeferred();
 }
 
 void discLaunch(int (*progress)(void))
 {
     char bootPath[64], startup[16], prefix[120];
-    if (discCheckBusy()) {
+    if (gDiscSupport.checkBusy()) {
         host::ui().raNotice(_l(_STR_RA_CHECK_RUNNING), NULL);
         return;
     }
