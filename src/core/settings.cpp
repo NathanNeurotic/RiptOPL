@@ -114,7 +114,16 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_VCD_HIDE_GAMEID, &gVcdHideGameId, 1),  // hide the PS1 game-ID prefix by default (display-only)
     intSetting(CONFIG_OPL_VCD_FIRST_DISC_ONLY, &gVcdFirstDiscOnly, 1),  // hide discs 2+ of multi-disc PS1 sets by default (POPSLoader parity)
     intSetting(CONFIG_OPL_VCD_SHOW_PP_POPS, &gVcdShowPpPops, 1),  // list strict PP.<ID>.POPS.<name> one-game HDD partitions by default
-    intSetting(CONFIG_OPL_ENABLE_BGART, &gEnableBGArt, 1),  // fork parity; gEnableArt is 1 above, so this is live
+    // OFF BY DEFAULT -- opt-in. Both built-in themes now draw a per-game background behind the MAIN
+    // list (pattern=BG on main0), and that requests ART/<id>_BG.png for every row the selection
+    // settles on while browsing. drawGameImage holds each request back until the cover has loaded,
+    // but on a slow bus it still competes with the single IO worker -- the same competition that
+    // left "the settings write never started" stalled on a PCSX2 host: boot. So it is the user's
+    // call. getGameImageTextureEx checks this flag before any request is made, so off means no I/O.
+    //
+    // Only a FRESH install sees this: saving settings writes enable_bgart unconditionally, so anyone
+    // who has ever saved settings keeps the value they already have.
+    intSetting(CONFIG_OPL_ENABLE_BGART, &gEnableBGArt, 0),
     intSetting(CONFIG_OPL_ENABLE_ART_TAR, &gEnableArtTar, 0),
     // NO SETTLE BY DEFAULT. This is the number of INACTIVE frames the menu must see before art is
     // even asked for, and it shipped at 8 -- the slowest of the four values the UI offers {0,2,5,8}
