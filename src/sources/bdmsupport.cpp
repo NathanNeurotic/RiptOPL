@@ -6,6 +6,7 @@
 #include "include/gui.h"
 #include "include/supportbase.h"
 #include "include/bdmsupport.h"
+#include "include/bdmsupportcore.h"
 #include "include/bdmint.h"
 #include "include/vcdsupport.h"
 #include "include/cuesupport.h" // PS1 rows can belong to either core; the ROW decides
@@ -44,9 +45,6 @@ int mx4sioModLoaded = 0;
 int hddModLoaded = 0;
 static int udpbdModLoaded = 0;
 /*
-  WHICH network block transport is actually resident, as NET_BOOT_UDPBD / NET_BOOT_UDPFS, or -1
-  when none is loaded.
-
   udpbdModLoaded alone is protocol-agnostic: both branches of the loader set it to 1, so once
   either chain is up the module gate short-circuits. But the tab label, the tab icon and the
   Neutrino -bsd backend all read the LIVE gNetBootProtocol. Change the picker without rebooting and
@@ -54,9 +52,9 @@ static int udpbdModLoaded = 0;
   and a "-bsd=udpfsbd" launch arg while the smap_udpbd monolith is what is actually resident.
   (A restart notice is shown on protocol change, but nothing enforces it.)
 
-  Consumers below use this instead, so they always describe what is really loaded.
+  The resident protocol identity therefore lives in BdmSupport (gBdmSupport.loadedNetProtocol()),
+  not in a bare global; consumers use that so they always describe what is really loaded.
 */
-static int udpbdLoadedProtocol = -1;
 s32 bdmLoadModuleLock;
 int bdmDeviceModeStarted;
 
@@ -64,11 +62,9 @@ item_list_t bdmDeviceList[MAX_BDM_DEVICES];
 int bdmDeviceListInitialized = 0;
 
 unsigned int BdmGeneration = 0;
-// Drives BDM refused because their sectors are not 512 bytes (4K-sector drives, refused by design).
-// They never become massN:, so without a message they just look dead. Written by bdmEventHandler,
-// reported by bdmReportUnsupportedDrives on the ordinary update path.
-static volatile unsigned int BdmUnsupportedSectorDrives;
-static unsigned int BdmUnsupportedSectorReported;
+
+BdmSupport gBdmSupport;
+
 #ifdef __DEBUG
 // bdmEventHandler runs in the SIF command callback context; never perform diagnostic I/O there.
 // Snapshot the change and emit it from the ordinary deferred device-update worker instead.
@@ -670,21 +666,21 @@ int bdmIsUDPBDLoaded(void)
     return udpbdModLoaded;
 }
 
+int BdmSupport::loadedNetProtocol() const
+{
+    return (udpbdLoadedProtocol_ >= 0) ? udpbdLoadedProtocol_ : gNetBootProtocol;
+}
+
 /*
   The network block transport actually resident (NET_BOOT_UDPBD / NET_BOOT_UDPFS). Falls back to the
   live gNetBootProtocol before anything has loaded, so first-boot labelling is unchanged.
 */
 int bdmGetLoadedNetProtocol(void)
 {
-    return (udpbdLoadedProtocol >= 0) ? udpbdLoadedProtocol : gNetBootProtocol;
+    return gBdmSupport.loadedNetProtocol();
 }
 
-// Custom ELF paths may deliberately live on a network block device whose game page is disabled.
-// Load exactly the requested wire protocol, never whichever protocol happens to be selected in the
-// menu. The two protocols bind different sockets but share the single SMAP NIC, so an already
-// resident SMB/UDPFS-filesystem stack -- or the OTHER block protocol -- makes this request
-// impossible until reboot and must fail closed.
-int bdmEnsureNetworkSourceModules(int protocol, u32 timeoutMs)
+int BdmSupport::ensureNetworkSourceModules(int protocol, u32 timeoutMs)
 {
     char ipArg[24];
     char root[BDM_DEVICE_ROOT_MAX];
@@ -705,7 +701,7 @@ int bdmEnsureNetworkSourceModules(int protocol, u32 timeoutMs)
     WaitSema(bdmLoadModuleLock);
 
     if (udpbdModLoaded) {
-        int same = udpbdLoadedProtocol == protocol;
+        int same = udpbdLoadedProtocol_ == protocol;
         SignalSema(bdmLoadModuleLock);
         if (!same)
             return 0;
@@ -725,7 +721,7 @@ int bdmEnsureNetworkSourceModules(int protocol, u32 timeoutMs)
 
         if (result >= 0) {
             udpbdModLoaded = 1;
-            udpbdLoadedProtocol = protocol;
+            udpbdLoadedProtocol_ = protocol;
         } else {
             sysShutdownDev9();
         }
@@ -742,6 +738,16 @@ int bdmEnsureNetworkSourceModules(int protocol, u32 timeoutMs)
         DelayThread(100 * 1000);
     }
     return 1;
+}
+
+// Custom ELF paths may deliberately live on a network block device whose game page is disabled.
+// Load exactly the requested wire protocol, never whichever protocol happens to be selected in the
+// menu. The two protocols bind different sockets but share the single SMAP NIC, so an already
+// resident SMB/UDPFS-filesystem stack -- or the OTHER block protocol -- makes this request
+// impossible until reboot and must fail closed.
+int bdmEnsureNetworkSourceModules(int protocol, u32 timeoutMs)
+{
+    return gBdmSupport.ensureNetworkSourceModules(protocol, timeoutMs);
 }
 
 // A typed custom ELF path (usb:/ata:/mx4sio:/ilink:) may name a family whose games page is off, so
@@ -776,14 +782,20 @@ int bdmModeIsUDPBD(int mode)
     return ((bdm_device_data_t *)bdmDeviceList[mode - BDM_MODE].priv)->bdmDeviceType == BDM_TYPE_UDPBD;
 }
 
+// Registered with SifAddCmdHandler for BDMEVENT_EE_EVENT_CMD; forwards to the instance.
 static void bdmEventHandler(void *packet, void *opt)
+{
+    gBdmSupport.handleEvent(packet, opt);
+}
+
+void BdmSupport::handleEvent(void *packet, void *opt)
 {
     const bdm_event_packet_t *event = (const bdm_event_packet_t *)packet;
 
     (void)opt;
 
     if (event != NULL)
-        BdmUnsupportedSectorDrives = event->unsupportedSectorCount;
+        unsupportedSectorDrives_ = event->unsupportedSectorCount;
 
 #ifdef __DEBUG
     if (event != NULL) {
@@ -1138,14 +1150,14 @@ void bdmLoadBlockDeviceModules(void)
                 networkResult = bdmDiagLoadOptionalModule("UDPFS_BD", "UDPFS_BD", &udpfs_bd_irx, size_udpfs_bd_irx);
             if (networkResult >= 0) {
                 udpbdModLoaded = 1;
-                udpbdLoadedProtocol = NET_BOOT_UDPFS;
+                gBdmSupport.setLoadedNetProtocol(NET_BOOT_UDPFS);
             }
         } else {
             // UDPBD: the self-contained smap_udpbd monolith (smap + ministack + udpbd in one irx).
             networkResult = bdmDiagLoadOptionalModuleArgs("SMAP_UDPBD", "SMAP_UDPBD", &smap_udpbd_irx, size_smap_udpbd_irx, (int)strlen(ipArg) + 1, ipArg);
             if (networkResult >= 0) {
                 udpbdModLoaded = 1;
-                udpbdLoadedProtocol = NET_BOOT_UDPBD;
+                gBdmSupport.setLoadedNetProtocol(NET_BOOT_UDPBD);
             }
         }
         bdmDiagBootStageEnd(networkStage, networkResult);
@@ -1429,15 +1441,21 @@ int bdmTransportEnabled(int bdmDeviceType)
 
 // Once per rise in the number of refused drives: plugging one in says why it will not appear, and
 // unplugging it re-arms the message (and withdraws it if it has not been shown yet).
+void BdmSupport::reportUnsupportedDrives()
+{
+    unsigned int count = unsupportedSectorDrives_;
+
+    if (count > unsupportedSectorReported_)
+        host::app().setError(_STR_BDM_UNSUPPORTED_SECTOR_SIZE_ERROR, ERROR_BDM_UNSUPPORTED_SECTOR_SIZE);
+    else if (count == 0 && unsupportedSectorReported_ != 0)
+        host::app().clearErrorIf(_STR_BDM_UNSUPPORTED_SECTOR_SIZE_ERROR);
+    unsupportedSectorReported_ = count;
+}
+
+// Called from BdmSource::needsUpdate (kept free: its body is compiled by source-scraping tests).
 static void bdmReportUnsupportedDrives(void)
 {
-    unsigned int count = BdmUnsupportedSectorDrives;
-
-    if (count > BdmUnsupportedSectorReported)
-        host::app().setError(_STR_BDM_UNSUPPORTED_SECTOR_SIZE_ERROR, ERROR_BDM_UNSUPPORTED_SECTOR_SIZE);
-    else if (count == 0 && BdmUnsupportedSectorReported != 0)
-        host::app().clearErrorIf(_STR_BDM_UNSUPPORTED_SECTOR_SIZE_ERROR);
-    BdmUnsupportedSectorReported = count;
+    gBdmSupport.reportUnsupportedDrives();
 }
 
 int BdmSource::needsUpdate(item_list_t *itemList)

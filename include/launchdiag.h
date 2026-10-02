@@ -7,8 +7,8 @@
 // ee_core's debug colors use, ee_core/include/ee_core.h) and a LOG line. Nothing repaints the
 // display between the launch teardown and the handoff target's first draw, so the LAST colour
 // left on screen pins the boundary where execution stopped. Markers are silent on non-udpbd
-// launches: bdmTryNeutrinoLaunch arms gLaunchDiag only when the game device is a udp block
-// transport, and every later call site gates on it.
+// launches: NeutrinoLauncher::tryLaunch arms gLaunchDiag (launchDiagMark(1)) only when the game
+// device is a udp block transport, and every later call site gates on it.
 //
 // Stage map (what each colour means):
 //   1  red          udpbd neutrino leg entered (frag pre-count next)

@@ -6,6 +6,7 @@
 #include "include/supportbase.h"
 #include "include/bdmsupport.h"
 #include "include/bdmint.h"
+#include "include/bdmboot.h"
 #include "include/vcdsupport.h"
 #include "include/cuesupport.h" // PS1 rows can belong to either core; the ROW decides
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
@@ -37,8 +38,10 @@
 // Boot directory resolution on BDM: map a launcher path on a mass/ilink/mx4sio/udpbd device to the concrete mass slot and settings home.
 // Split out of bdmsupport.cpp.
 
+BdmBoot gBdmBoot;
+
 // True when the booted ELF's own folder exists on mass<slot>: -- the weak boot-device evidence.
-static int bdmBootDirPresent(int slot, const char *tail)
+int BdmBoot::bootDirPresent(int slot, const char *tail)
 {
     char path[288];
     int dir;
@@ -59,7 +62,7 @@ static int bdmBootDirPresent(int slot, const char *tail)
 
 // True when the booted ELF itself exists at <tail>/<elfName> on mass<slot>: -- the definitive
 // boot-device evidence (OPL is running from that very file).
-static int bdmBootElfPresent(int slot, const char *tail, const char *elfName)
+int BdmBoot::bootElfPresent(int slot, const char *tail, const char *elfName)
 {
     char path[320];
     int fd;
@@ -78,7 +81,7 @@ static int bdmBootElfPresent(int slot, const char *tail, const char *elfName)
 
 // Rewrite ONLY the device prefix of the boot dir, preserving the boot folder ("ata0:/APPS" ->
 // "mass1:/APPS"). tail points INTO bootDir, so compose into a local buffer before writing back.
-static void bdmRewriteBootDir(char *bootDir, int bootDirSize, int slot, const char *tail)
+void BdmBoot::rewriteBootDir(char *bootDir, int bootDirSize, int slot, const char *tail)
 {
     char resolved[256];
 
@@ -93,7 +96,7 @@ static void bdmRewriteBootDir(char *bootDir, int bootDirSize, int slot, const ch
 // Read identity from ONE literal massN: slot. The driver name is the authoritative classification;
 // USBMASS_IOCTL_GET_DEVICE_NUMBER is still requested for diagnostics, but some usable devices do not
 // implement it, so its failure must not discard a valid driver name.
-static int bdmReadLiteralMassIdentity(int slot, int *outType)
+int BdmBoot::readLiteralMassIdentity(int slot, int *outType)
 {
     char path[16], driver[32];
     int deviceIndex = -1;
@@ -113,14 +116,14 @@ static int bdmReadLiteralMassIdentity(int slot, int *outType)
 // work required is to let a possible transport register THAT slot, then query its own driver/device
 // ioctls. A cold untyped slot needs bounded transport bring-up, but every Dopen/ioctl below remains
 // massN: itself. Bare mass: and typed launch aliases retain the legacy broader resolver below.
-static int bdmResolveLiteralMassSlot(int slot, int *ioBdmType,
-                                     u32 initialBudgetMs, u32 ataInitialBudgetMs,
-                                     u32 mx4sioExtraBudgetMs, u32 expensiveExtraBudgetMs)
+int BdmBoot::resolveLiteralMassSlot(int slot, int *ioBdmType,
+                                    u32 initialBudgetMs, u32 ataInitialBudgetMs,
+                                    u32 mx4sioExtraBudgetMs, u32 expensiveExtraBudgetMs)
 {
     int knownType = *ioBdmType;
     int detectedType;
 
-    if (bdmReadLiteralMassIdentity(slot, &detectedType)) {
+    if (readLiteralMassIdentity(slot, &detectedType)) {
         *ioBdmType = detectedType;
         return detectedType == BDM_TYPE_UDPBD ? -1 : 1;
     }
@@ -144,7 +147,7 @@ static int bdmResolveLiteralMassSlot(int slot, int *ioBdmType,
 
         start = GetTimerSystemTime();
         for (;;) {
-            if (bdmReadLiteralMassIdentity(slot, &detectedType)) {
+            if (readLiteralMassIdentity(slot, &detectedType)) {
                 *ioBdmType = detectedType;
                 return detectedType == BDM_TYPE_UDPBD ? -1 : 1;
             }
@@ -180,7 +183,7 @@ static int bdmResolveLiteralMassSlot(int slot, int *ioBdmType,
 
         start = GetTimerSystemTime();
         for (;;) {
-            if (bdmReadLiteralMassIdentity(slot, &detectedType)) {
+            if (readLiteralMassIdentity(slot, &detectedType)) {
                 *ioBdmType = detectedType;
                 return detectedType == BDM_TYPE_UDPBD ? -1 : 1;
             }
@@ -216,9 +219,9 @@ static int bdmResolveLiteralMassSlot(int slot, int *ioBdmType,
 // Returns 1 with bootDir rewritten in place on success; 0 when bootDir is not a BDM path (left
 // untouched -- mc/mmce/host/pfs/hdd/... prefixes are not ours); -1 when the boot device never mounted
 // within the budget (bootDir left untouched so its caller can keep the explicit identity and use defaults).
-static int bdmResolveBootDirWithBudget(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType,
-                                       u32 initialBudgetMs, u32 ataInitialBudgetMs,
-                                       u32 mx4sioExtraBudgetMs, u32 expensiveExtraBudgetMs)
+int BdmBoot::resolveWithBudget(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType,
+                               u32 initialBudgetMs, u32 ataInitialBudgetMs,
+                               u32 mx4sioExtraBudgetMs, u32 expensiveExtraBudgetMs)
 {
     char stem[16];
     int unit;
@@ -260,8 +263,8 @@ static int bdmResolveBootDirWithBudget(char *bootDir, int bootDirSize, const cha
     // A numeric massN: names one filesystem slot. Do not use the boot ELF as a reason to scan
     // MAX_BDM_DEVICES and potentially select a different device that happens to contain it.
     if (isMass && unit >= 0)
-        return bdmResolveLiteralMassSlot(unit, ioBdmType, initialBudgetMs, ataInitialBudgetMs,
-                                         mx4sioExtraBudgetMs, expensiveExtraBudgetMs);
+        return resolveLiteralMassSlot(unit, ioBdmType, initialBudgetMs, ataInitialBudgetMs,
+                                      mx4sioExtraBudgetMs, expensiveExtraBudgetMs);
 
     const char *tail = strchr(bootDir, ':') + 1; // "" | "/APPS" | "APPS" (bdmParseBootStem proved the ':')
     // A typed launch alias's unit digit is a scan-order hint. Bare mass: has no literal slot, so its
@@ -331,12 +334,12 @@ static int bdmResolveBootDirWithBudget(char *bootDir, int bootDirSize, const cha
             if (filterType != BDM_TYPE_UNKNOWN && slotType != filterType)
                 continue; // wrong device family for a typed/pinned search
 
-            if (haveElf && bdmBootElfPresent(i, tail, elfName)) {
+            if (haveElf && bootElfPresent(i, tail, elfName)) {
                 matchSlot = i; // definitive: the ELF we are running from is right here
                 matchType = slotType;
                 break;
             }
-            int dirOk = bdmBootDirPresent(i, tail);
+            int dirOk = bootDirPresent(i, tail);
             if (!haveElf && dirOk && (!isMass || i == literalSlot)) {
                 matchSlot = i; // getcwd-derived boot dir: folder presence is the best evidence there is
                 matchType = slotType;
@@ -350,7 +353,7 @@ static int bdmResolveBootDirWithBudget(char *bootDir, int bootDirSize, const cha
 
         if (matchSlot >= 0) {
             *ioBdmType = matchType;
-            bdmRewriteBootDir(bootDir, bootDirSize, matchSlot, tail);
+            rewriteBootDir(bootDir, bootDirSize, matchSlot, tail);
             return 1;
         }
 
@@ -396,7 +399,7 @@ static int bdmResolveBootDirWithBudget(char *bootDir, int bootDirSize, const cha
             // must not be allowed to pre-empt gathering the evidence.
             if (fallbackSlot >= 0) {
                 *ioBdmType = fallbackType;
-                bdmRewriteBootDir(bootDir, bootDirSize, fallbackSlot, tail);
+                rewriteBootDir(bootDir, bootDirSize, fallbackSlot, tail);
                 return 1;
             }
             *ioBdmType = filterType; // never mounted in time, but keep the classification: the caller
@@ -408,18 +411,28 @@ static int bdmResolveBootDirWithBudget(char *bootDir, int bootDirSize, const cha
     }
 }
 
-int bdmResolveBootDir(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType)
+int BdmBoot::resolve(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType)
 {
     // Full-budget resolver for explicit Custom Settings Path and save-time hotplug recovery.
-    return bdmResolveBootDirWithBudget(bootDir, bootDirSize, elfName, ioBdmType,
-                                       3000, 10000, 3000, 8000);
+    return resolveWithBudget(bootDir, bootDirSize, elfName, ioBdmType,
+                             3000, 10000, 3000, 8000);
 }
 
-int bdmResolveBootDirBootstrap(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType)
+int BdmBoot::resolveBootstrap(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType)
 {
     // Bootstrap is allowed to defer a cold/ambiguous device to the first explicit save retry, but
     // it must not make defaults wait for every BDM transport. ATA retains a little extra spin-up
     // room; an untyped massN: ladder is at most 1500 + 1500 + 3500 ms, plus its one ATA settle.
-    return bdmResolveBootDirWithBudget(bootDir, bootDirSize, elfName, ioBdmType,
-                                       1500, 5000, 1500, 3500);
+    return resolveWithBudget(bootDir, bootDirSize, elfName, ioBdmType,
+                             1500, 5000, 1500, 3500);
+}
+
+int bdmResolveBootDir(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType)
+{
+    return gBdmBoot.resolve(bootDir, bootDirSize, elfName, ioBdmType);
+}
+
+int bdmResolveBootDirBootstrap(char *bootDir, int bootDirSize, const char *elfName, int *ioBdmType)
+{
+    return gBdmBoot.resolveBootstrap(bootDir, bootDirSize, elfName, ioBdmType);
 }

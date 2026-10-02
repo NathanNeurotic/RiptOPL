@@ -25,6 +25,8 @@
 #include "include/sound.h"
 #include "include/bdmevent.h"
 #include "modules/iopcore/common/cdvd_config.h"
+#include "include/bdmlauncher.h"
+#include "include/neutrinolauncher.h"
 
 #include <usbhdfsd-common.h>
 
@@ -34,10 +36,16 @@
 #include <delaythread.h>
 #include <sys/stat.h> // mkdir() -- create the config folder before a BDM save probe
 
-// BDM launch paths: ISO/ZSO/UL via OPL, the Neutrino path, and the PS1 VCD / CUE launches. Split out of bdmsupport.cpp.
+// BDM launch paths: the ISO/ZSO/UL native-core launch plus the PS1 VCD/CUE launches (BdmLauncher),
+// and the Δ8 lean Neutrino path (NeutrinoLauncher). Split out of bdmsupport.cpp. The public entry
+// points stay free functions -- BdmSource and the autolaunch flow call them directly, and
+// .github/scripts/test_autolaunch_settings.py extracts bdmLaunchGame's body by name -- forwarding
+// to these single instances.
+BdmLauncher gBdmLauncher;
+NeutrinoLauncher gNeutrinoLauncher;
 
 // Launch an Ember (.cue) PS1 title BY NAME -- the view-independent entry point, peer of
-// bdmLaunchVcd below. `cueName` is the game FOLDER under EMBER/games/, which is also Ember's launch
+// launchVcd below. `cueName` is the game FOLDER under EMBER/games/, which is also Ember's launch
 // argument and the row's identity for art and per-game config.
 //
 // Notice how much SHORTER this is than the POPSTARTER path below, and why: every one of that
@@ -45,7 +53,7 @@
 // pair, the fat32/exFAT prompt -- exists because POPSTARTER resets the IOP and then reloads its
 // block driver from mc?:/POPSTARTER/. Ember performs no reset and inherits our live driver stack,
 // so none of that applies to it. Do not port any of it here.
-void bdmLaunchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
+void BdmLauncher::launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     char ps1Prefix[64], emberElf[256], biosPath[288];
@@ -104,10 +112,15 @@ void bdmLaunchCue(item_list_t *itemList, const char *cueName, config_set_t *conf
     sysLaunchEmber(emberElf, launchName);
 }
 
+void bdmLaunchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
+{
+    gBdmLauncher.launchCue(itemList, cueName, configSet);
+}
+
 // Launch a PS1/.VCD entry BY NAME via POPSTARTER (the view-independent entry point used by both the
 // in-view menu launch below and the Favourites tab). Every BDM device is a massN: mount at runtime,
 // so the ELF + selector both use the live prefix; UNMOUNT_EXCEPTION keeps it mounted across the reset.
-void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
+void BdmLauncher::launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
 {
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     char vcdPrefix[64], vcdElf[256], vcdSelector[320];
@@ -215,6 +228,11 @@ void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_t *conf
     sysLaunchPopstarter(vcdElf, vcdSelector);
 }
 
+void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
+{
+    gBdmLauncher.launchVcd(itemList, vcdName, configSet);
+}
+
 // Δ9 (NHDDL parity): Neutrino's bd backend packs the ISO and BOTH -mc VMCs into ONE shared
 // 64-entry fragment table (BDM_MAX_FRAGS in neutrino's fhi_bd_config.h; fhi_config.c's
 // backend_bd_add_file_fd errors past it). That packing runs AFTER neutrino's own IOP reset,
@@ -224,10 +242,9 @@ void bdmLaunchVcd(item_list_t *itemList, const char *vcdName, config_set_t *conf
 // the count is unconditional -- it returns the file's TOTAL fragment count and writes nothing).
 // Every device this helper can see is bdmfs_fatfs-backed (mmce/udpfs launches live in their own
 // support files), including both udp block transports (udpbd + udpfsbd depend on i_bdm), so the
-// ioctl is always valid here. NOT OPL's BDM_MAX_FRAGS: same value today, different owner.
-constexpr int NEUTRINO_BDM_MAX_FRAGS = 64;
-
-static int bdmNeutrinoFragBudgetOk(const char *isoPath, const neutrino_vmc_args_t *vmcArgs, int isUdp)
+// ioctl is always valid here. The budget itself is NeutrinoLauncher::kMaxFrags
+// (include/neutrinolauncher.h): NOT OPL's BDM_MAX_FRAGS -- same value today, different owner.
+int NeutrinoLauncher::fragBudgetOk(const char *isoPath, const neutrino_vmc_args_t *vmcArgs, int isUdp)
 {
     const char *paths[1 + NEUTRINO_VMC_SLOTS];
     int nPaths = 0, total = 0, i;
@@ -254,22 +271,22 @@ static int bdmNeutrinoFragBudgetOk(const char *isoPath, const neutrino_vmc_args_
         total += frags;
     }
 
-    if (total > NEUTRINO_BDM_MAX_FRAGS) { // == is fine: neutrino packs exactly-full tables
+    if (total > kMaxFrags) { // == is fine: neutrino packs exactly-full tables
         char msg[256];                    // headroom for the lng/fork overlay's longer translations
-        LOG("[NEUTRINO] frag budget exceeded: %d/%d across ISO + VMCs\n", total, NEUTRINO_BDM_MAX_FRAGS);
+        LOG("[NEUTRINO] frag budget exceeded: %d/%d across ISO + VMCs\n", total, kMaxFrags);
         // Match the Δ8 abort-message convention: the udp outcome is a consumed launch, the
         // local outcome is a native-core fallback (which usually boots: OPL's own 64-frag
         // table holds the ISO only -- VMCs go through mcemu's contiguity check instead).
-        snprintf(msg, sizeof(msg), _l(isUdp ? _STR_NEUTRINO_TOO_FRAGMENTED_NET : _STR_NEUTRINO_TOO_FRAGMENTED), total, NEUTRINO_BDM_MAX_FRAGS);
+        snprintf(msg, sizeof(msg), _l(isUdp ? _STR_NEUTRINO_TOO_FRAGMENTED_NET : _STR_NEUTRINO_TOO_FRAGMENTED), total, kMaxFrags);
         host::ui().warning(msg, 6);
         return 0;
     }
     return 1;
 }
 
-// Abort path of bdmTryNeutrinoLaunch: back to a live menu so a later launch from another device does not
+// Abort path of tryLaunch: back to a live menu so a later launch from another device does not
 // inherit this one's markers. Returns failResult (1 = launch consumed on udp, 0 = fall back to native).
-static int bdmNeutrinoAbort(int failResult, config_set_t *configSet)
+int NeutrinoLauncher::abortLaunch(int failResult, config_set_t *configSet)
 {
     launchDiagDisarm();
     if (failResult && gAutoLaunchBDMGame != NULL) {
@@ -292,7 +309,7 @@ static int bdmNeutrinoAbort(int failResult, config_set_t *configSet)
 // pre-handoff is ~3 file operations; this is ours.
 // Returns 1 = handled (handed off, or aborted with the user informed -- caller returns);
 // 0 = proceed with the native launch (core is OPL, or Neutrino unavailable on a non-udp device).
-static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, bdm_device_data_t *pDeviceData, config_set_t *configSet)
+int NeutrinoLauncher::tryLaunch(item_list_t *itemList, base_game_info_t *game, bdm_device_data_t *pDeviceData, config_set_t *configSet)
 {
     int coreLoader = gDefaultCoreLoader; // no per-game $CoreLoader key -> follow the global default core
     configGetInt(configSet, CONFIG_ITEM_CORE_LOADER, &coreLoader);
@@ -315,13 +332,13 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
         // isValidIsoName() admits .zso case-insensitively and game->extension is stored verbatim,
         // so an upper/mixed-case ".ZSO" must reject here too (Neutrino can't run it).
         host::ui().warning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_BAD_FORMAT), 6);
-        return bdmNeutrinoAbort(failResult, configSet);
+        return abortLaunch(failResult, configSet);
     }
 
     const char *neutrinoPath = sbResolveNeutrinoPath(pDeviceData->bdmPrefix); // #300: AUTO probes this device for a co-located install
     if (neutrinoPath == NULL) {
         host::ui().warning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_NOT_FOUND), 6);
-        return bdmNeutrinoAbort(failResult, configSet);
+        return abortLaunch(failResult, configSet);
     }
 
     // Everything Neutrino actually needs from the config/device, copied to THIS stack frame
@@ -348,8 +365,8 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
 
     // Δ9: neutrino only discovers a blown fragment budget after its own IOP reset (debug
     // printf + exit = black screen). Count it now: udp consumes the launch, local falls native.
-    if (!bdmNeutrinoFragBudgetOk(partname, &neutrinoVmc, isUdp))
-        return bdmNeutrinoAbort(failResult, configSet);
+    if (!fragBudgetOk(partname, &neutrinoVmc, isUdp))
+        return abortLaunch(failResult, configSet);
     if (gLaunchDiag)
         launchDiagMark(2);
 
@@ -360,7 +377,7 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
 
     // Δ6 preflight (driver token + network toml sync) -- abort stays in a live menu.
     if (sysNeutrinoPreflight(bdmCurrentDriver, neutrinoPath, neutrinoBsdfs, neutrinoExtraArgs, bdmDevNr) < 0)
-        return bdmNeutrinoAbort(failResult, configSet);
+        return abortLaunch(failResult, configSet);
     if (gLaunchDiag)
         launchDiagMark(3);
 
@@ -403,23 +420,13 @@ static int bdmTryNeutrinoLaunch(item_list_t *itemList, base_game_info_t *game, b
 
 void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
 {
-    int i, fd, iop_fd, index, compatmask = 0;
-    int EnablePS2Logo = 0;
-    int result;
-    u64 startingLBA;
-    unsigned int startCluster;
-    char partname[256], filename[32];
     base_game_info_t *game;
-    struct cdvdman_settings_bdm *settings;
-    u32 layer1_start, layer1_offset;
-    unsigned short int layer1_part;
-
     bdm_device_data_t *pDeviceData = NULL;
 
     if (gAutoLaunchBDMGame == NULL) {
         pDeviceData = (bdm_device_data_t *)itemList->priv;
         // Resolve through the ACTIVE view's array (#120 split): in the VCD view this yields the VCD
-        // entry whose name the POPSTARTER handoff below uses, and any stale/invalid id yields the
+        // entry whose name the POPSTARTER handoff uses, and any stale/invalid id yields the
         // empty entry rather than indexing a possibly NULL/shorter array.
         game = bdmActiveGame(itemList, id);
         if (game == &bdmEmptyGame)
@@ -437,8 +444,25 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
     // Autolaunch passes itemList == NULL (autoLaunchBDMGame), and an argv launch always names a file
     // at the CD/DVD root. Reading itemList->mode there loads from virtual address 0, which the EE's
     // default TLB leaves unmapped below 0x80000: a TLB-miss exception on real hardware, i.e. every BDM
-    // autolaunch hung on a black screen from the day folder browsing landed (#545).
+    // autolaunch hung on a black screen from the day folder browsing landed (#545). The line is
+    // pinned by name in .github/scripts/test_autolaunch_settings.py, so it stays here in the free
+    // entry rather than in BdmLauncher::launch.
     sbSetBrowseSub(itemList != NULL ? folderGetSub(itemList->mode) : "");
+
+    gBdmLauncher.launch(itemList, id, configSet, game, pDeviceData);
+}
+
+void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet, base_game_info_t *game, bdm_device_data_t *pDeviceData)
+{
+    int i, fd, iop_fd, index, compatmask = 0;
+    int EnablePS2Logo = 0;
+    int result;
+    u64 startingLBA;
+    unsigned int startCluster;
+    char partname[256], filename[32];
+    struct cdvdman_settings_bdm *settings;
+    u32 layer1_start, layer1_offset;
+    unsigned short int layer1_part;
 
     // VCD view: this device is showing PS1 VCDs -> hand off to POPSTARTER (by name) instead of the
     // disc / Neutrino path below (which is entirely disc-specific). The BDM_TYPE_ATA internal exFAT HDD
@@ -450,15 +474,15 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
         // both kinds sit side by side in the same list. Asking the view here instead of the row is
         // exactly the mistake that would send every Ember title to POPSTARTER.
         if (cueIsCueEntry(game))
-            bdmLaunchCue(itemList, game->name, configSet);
+            launchCue(itemList, game->name, configSet);
         else
-            bdmLaunchVcd(itemList, game->name, configSet);
+            launchVcd(itemList, game->name, configSet);
         return;
     }
 
     // Δ8: Neutrino core gets its own lean path FIRST -- everything below is native-core prep it
-    // neither needs nor should be able to die on (see bdmTryNeutrinoLaunch).
-    if (bdmTryNeutrinoLaunch(itemList, game, pDeviceData, configSet))
+    // neither needs nor should be able to die on (see NeutrinoLauncher::tryLaunch).
+    if (gNeutrinoLauncher.tryLaunch(itemList, game, pDeviceData, configSet))
         return;
 
     // NATIVE PATH ONLY, and it must be refused HERE if it cannot possibly finish.
@@ -739,7 +763,7 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
         settings->hddIsLBA48 = pDeviceData->bdmHddIsLBA48;
     }
 
-    // Δ8: Neutrino never reaches this point (bdmTryNeutrinoLaunch handled it at the top), so
+    // Δ8: Neutrino never reaches this point (gNeutrinoLauncher.tryLaunch handled it at the top), so
     // everything from here on is the NATIVE (embedded cdvdman) launch only -- including the udp
     // impossibility: the udp device is Neutrino-only and its aborts happen inside the helper.
 
