@@ -1,13 +1,13 @@
 """A BDM page whose first PS2 scan fails must not rescan on every idle poll -- and must say why.
 
-sbReadList (src/supportbase.c) keeps the old list and leaves bdmULSizePrev at -2 ("never scanned")
+sbReadList (src/sources/supportbase.c) keeps the old list and leaves bdmULSizePrev at -2 ("never scanned")
 when neither CD nor DVD opens and there is no ul.cfg. bdmNeedsUpdate used to treat a published page
 still at -2 as needing a scan on EVERY poll (the #186 rescue), and menuUpdateHook polls each BDM page
 about every 2 s of idle. So a device whose folders would not open rescanned forever, and every pass
 also rebuilt APPS and Favourites (menuDeferredUpdate) -- every L3 on every page waited behind it
 (FifthFox, USB and MX4SIO). Upstream never had the rescue: "no change" returns 0.
 
-This compiles bdmNeedsUpdate and bdmUpdateGameList from src/bdmsupport.c on the host against stubs
+This compiles bdmNeedsUpdate and bdmUpdateGameList from src/sources/bdmsupport.c on the host against stubs
 and checks:
 
 - a failed first scan runs ONCE; 30 idle polls and a generation bump add no scans;
@@ -16,7 +16,7 @@ and checks:
 - a slot whose identity is not ready yet is still re-polled every pass (the -2 bypass upstream has);
 - a successful scan, a subfolder scan and the PS1 view raise no message.
 
-A second harness compiles the real span of src/supportbase.c (sbReadListErrno through sbReadList)
+A second harness compiles the real span of src/sources/supportbase.c (sbReadListErrno through sbReadList)
 against a scripted opendir: a folder that will not open records its errno, the next scan clears it,
 and a driver that fails without setting errno never reports a stale one.
 
@@ -28,9 +28,12 @@ import re
 import subprocess
 import sys
 import tempfile
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the names the mocks use)
+
 
 root = Path(__file__).resolve().parents[2]
-source_path = root / 'src/bdmsupport.c'
+source_path = root / 'src/sources/bdmsupport.cpp'
 if len(sys.argv) == 3 and sys.argv[1] == '--baseline':
     source_path = Path(sys.argv[2])
 source = source_path.read_text(encoding='utf-8').replace('\r\n', '\n')
@@ -47,7 +50,9 @@ def function_text(signature):
     return source[match.start():end] + '\n}\n'
 
 
-functions = function_text('static int bdmNeedsUpdate(') + function_text('static int bdmUpdateGameList(')
+# The two are BdmSource members now; the harness stubs were written for free functions, so rename the extracted text.
+functions = (function_text('int BdmSource::needsUpdate(').replace('int BdmSource::needsUpdate(', 'static int bdmNeedsUpdate(', 1) +
+             function_text('int BdmSource::update(').replace('int BdmSource::update(', 'static int bdmUpdateGameList(', 1))
 
 HARNESS = r'''
 #include <stdio.h>
@@ -314,12 +319,12 @@ int main(void)
 
 # The error number in that message comes from the REAL scan: scanForISO records the errno of a CD/DVD
 # folder that will not open, and sbReadList clears it at the start of every scan. Compile that span of
-# src/supportbase.c (sbReadListErrno through sbReadList) against a scripted opendir.
-support = (root / 'src/supportbase.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+# src/sources/supportbase.c (sbReadListErrno through sbReadList) against a scripted opendir.
+support = (root / 'src/sources/supportbase.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 span_start = support.find('static int sbReadListErrno;')
 span_end_match = re.search(r'^int sbReadList\([^;{]*\)\s*\{', support, re.M)
 if span_start < 0 or span_end_match is None:
-    failures.append('src/supportbase.c: sbReadListErrno ... sbReadList span not found')
+    failures.append('src/sources/supportbase.c: sbReadListErrno ... sbReadList span not found')
     scan_span = ''
 else:
     scan_span = support[span_start:support.index('\n}', span_end_match.start())] + '\n}\n'
@@ -465,10 +470,10 @@ int main(void)
 
 def compile_and_run(name, program):
     with tempfile.TemporaryDirectory() as tmp:
-        c_file = Path(tmp) / (name + '.c')
+        c_file = Path(tmp) / (name + '.cpp')
         exe = Path(tmp) / name
         c_file.write_text(program, encoding='utf-8')
-        build = subprocess.run(['cc', '-std=gnu99', '-Wall', '-Wno-unused-function', '-o', str(exe), str(c_file)],
+        build = subprocess.run(['g++', '-std=gnu++17', '-Wall', '-Wno-unused-function', '-o', str(exe), str(c_file)],
                                capture_output=True, text=True)
         if build.returncode != 0:
             failures.append('%s harness did not compile:\n%s%s' % (name, build.stdout, build.stderr))

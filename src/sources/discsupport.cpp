@@ -1,0 +1,180 @@
+/* Physical-disc RetroAchievements support, based on hacan359's RA disc mode.
+ * Upstream: https://github.com/hacan359/Open-PS2-Loader/tree/cb713e686acb2fb63de20aa44b3fd4e8c59ca680
+ * Academic Free License 3.0; see LICENSE.
+ */
+#include <stdio.h>
+#include <string.h>
+
+#include "include/host.h"
+#include "include/raii.h"
+#include "include/opl.h"
+#include "include/system.h"
+#include "include/supportbase.h"
+#include "include/rahash.h"
+#include "include/rawatch.h"
+#include "include/ranet.h"
+#include "include/gui.h"
+#include "include/lang.h"
+#include "include/ioman.h"
+#include "include/iosupport.h"
+#include "include/mmcesupport.h"
+#include "include/discsupport.h"
+
+// The disc-support state (the busy latch serialising the deferred check against launches) and the
+// operations on it. Defined in this translation unit rather than a header because the source-
+// scraping RA disc test compiles this file's body with its #includes removed; the class has to be
+// part of that body. One instance; discIdentity/discSupportPrefix stay free helpers (they touch
+// no state), and the discCheckBusy/discCheckSupportDeferred/discLaunch API remains as forwarders.
+class DiscSupport
+{
+public:
+    int checkBusy() { return busy_ || sbHashGameBusy(); }
+    int checkSupportDeferred();
+    void launch(int (*progress)(void));
+    void checkWorker();
+
+private:
+    volatile int busy_ = 0;
+};
+
+static DiscSupport gDiscSupport;
+
+// The watch-list format keys games by their root boot executable (up to 15 chars).
+static int discIdentity(char *bootPath, char *startup, int (*progress)(void))
+{
+    const char *name, *end;
+    size_t len;
+    // Returned verbatim so SYS_DISC_CANCELLED survives: a user-ended wait must not surface as a
+    // disc error here any more than it does on the plain Launch Disc path.
+    int result = sysGetDiscBootPath(bootPath, 64, progress);
+    if (result < 0)
+        return result;
+    if (strncmp(bootPath, "cdrom0:", 7) != 0)
+        return -1;
+    name = bootPath + 7;
+    if (*name == '\\' || *name == '/')
+        name++;
+    end = strchr(name, ';');
+    len = end ? (size_t)(end - name) : strlen(name);
+    if (len == 0 || len >= 16 || memchr(name, '\\', len) || memchr(name, '/', len))
+        return -1;
+    memcpy(startup, name, len);
+    startup[len] = '\0';
+    return 0;
+}
+
+static int discSupportPrefix(char *prefix, size_t size)
+{
+    const char *home = configGetHomePath();
+    size_t len;
+    if (home == NULL || home[0] == '\0')
+        return -1;
+    len = strlen(home);
+    if (snprintf(prefix, size, "%s%s", home,
+                 home[len - 1] == '/' || home[len - 1] == ':' ? "" : "/") >= (int)size)
+        return -1;
+    return 0;
+}
+
+// Queued on the IO worker via ioPutRequest; the free trampoline keeps the entry point stable for
+// both the queue and the RA disc test, which calls it directly.
+static void discCheckWorker(void);
+
+int DiscSupport::checkSupportDeferred()
+{
+    if (checkBusy())
+        return 0;
+    busy_ = 1;
+    if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&discCheckWorker)) != IO_OK) {
+        busy_ = 0;
+        return 0;
+    }
+    return 1;
+}
+
+void DiscSupport::checkWorker()
+{
+    char bootPath[64], startup[16], prefix[120], hash[33], info[96], info2[96];
+    int result;
+    auto releaseBusy = raii::scopeExit([this] { busy_ = 0; }); // every exit clears the busy latch
+    if (discSupportPrefix(prefix, sizeof(prefix)) < 0) {
+        host::ui().raNotice(_l(_STR_RA_DISC_HOME_ERROR), NULL);
+        return;
+    }
+    raHashLogOpen(prefix);
+    raHashSetStepLog(&raHashStep);
+    auto closeLog = raii::scopeExit([] { // runs before releaseBusy, as the old close_log/done labels did
+        raHashSetStepLog(NULL);
+        raHashLogClose();
+    });
+    if (discIdentity(bootPath, startup, NULL) < 0) {
+        host::ui().raNotice(_l(_STR_DISC_LAUNCH_ERR), NULL);
+        return;
+    }
+    // A failed re-check must not keep a stale set for this serial in memory.
+    ClearWatchList();
+    if (raHashDisc(bootPath, startup, hash) < 0) {
+        host::ui().raNotice(_l(_STR_RA_DISC_HASH_FAILED), NULL);
+        return;
+    }
+    raHashLogAdd("(disc)", startup, hash);
+    result = raAskPC(hash, startup, prefix, info, sizeof(info), info2, sizeof(info2));
+    if (result == 0)
+        host::ui().raNotice(info[0] ? info : _l(_STR_RA_SUPPORTED),
+                        info2[0] ? info2 : _l(_STR_RA_START_TO_TRACK));
+    else if (result == 1)
+        host::ui().raNotice(_l(_STR_RA_UNKNOWN_IMAGE), hash);
+    else if (result == -7)
+        host::ui().raNotice(_l(_STR_RA_STILL_IDENTIFYING), _l(_STR_RA_TRY_AGAIN));
+    else if (result == -8)
+        host::ui().raNotice(_l(_STR_RA_NET_BUSY), _l(_STR_RA_NET_BUSY_HASH));
+    else
+        host::ui().raNotice(_l(_STR_RA_PC_NO_ANSWER), _l(_STR_RA_PC_NO_ANSWER2));
+}
+
+static void discCheckWorker(void)
+{
+    gDiscSupport.checkWorker();
+}
+
+int discCheckBusy(void)
+{
+    return gDiscSupport.checkBusy();
+}
+
+int discCheckSupportDeferred(void)
+{
+    return gDiscSupport.checkSupportDeferred();
+}
+
+void discLaunch(int (*progress)(void))
+{
+    char bootPath[64], startup[16], prefix[120];
+    if (gDiscSupport.checkBusy()) {
+        host::ui().raNotice(_l(_STR_RA_CHECK_RUNNING), NULL);
+        return;
+    }
+    if (!gRATelemetry) {
+        host::ui().raNotice(_l(_STR_RA_DISC_ENABLE), NULL);
+        return;
+    }
+    int identity = discIdentity(bootPath, startup, progress);
+    if (identity < 0) {
+        if (identity != SYS_DISC_CANCELLED)
+            host::ui().raNotice(_l(_STR_DISC_LAUNCH_ERR), NULL);
+        return;
+    }
+    if (discSupportPrefix(prefix, sizeof(prefix)) < 0) {
+        host::ui().raNotice(_l(_STR_RA_DISC_HOME_ERROR), NULL);
+        return;
+    }
+    if (sbLoadWatchList(prefix, startup) <= 0) {
+        host::ui().raNotice(_l(_STR_RA_DISC_CHECK_FIRST), NULL);
+        return;
+    }
+    sbEnsureIgrUsbDrivers(0); // before the MMCE switch below, so mc0: is still the boot card
+    mmceSendGameID(startup, NULL, 0);
+    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+    // Keep PS2LOGO's disc-authentication path; the EE core supplies telemetry.
+    sysLaunchLoaderElf(startup, "DISC_MODE", 0, NULL, 0, NULL, 1, 0);
+}

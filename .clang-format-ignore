@@ -3,8 +3,9 @@
 ./modules/network/lwNBD
 ./third_party/clang-format-lint-action
 ./modules/network/ps2ips/ps2ips.c
-./src/md5.c
+./src/platform/md5.c
 ./include/md5.h
 ./modules/network/smbman-ra
 ./modules/usb/usbd-ra
 ./modules/bdmassault
+./tests/host

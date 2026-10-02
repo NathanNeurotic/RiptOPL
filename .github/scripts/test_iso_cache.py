@@ -1,12 +1,12 @@
 """The games.bin cache must answer exactly as before, without O(n^2) work per scan.
 
-scanForISO (src/supportbase.c) asks queryISOGameListCache for every ISO it reads, and hands the list
+scanForISO (src/sources/supportbase.c) asks queryISOGameListCache for every ISO it reads, and hands the list
 to updateISOGameList to decide whether games.bin must be rewritten. The lookup used to snprintf every
 cache entry for every file. The cache is written in the REVERSE of the order the next scan reads the
 directory, so each lookup walked about half the cache. The change check compared the same pair
 cache->count times and read past the cache when games had been added.
 
-This compiles isoCacheEntryMatches, queryISOGameListCache and updateISOGameList from src/supportbase.c
+This compiles isoCacheEntryMatches, queryISOGameListCache and updateISOGameList from src/sources/supportbase.c
 on the host, next to the removed versions (kept here only as the reference), and checks:
 
 - every lookup, in reverse, forward and random scan order, returns what the old one returned, entry
@@ -21,7 +21,7 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-support = (root / 'src/supportbase.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+support = (root / 'src/sources/supportbase.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
@@ -29,7 +29,7 @@ def function_text(source, signature):
     # Whole definition (a prototype ends in ';'), closing brace included.
     match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
     if match is None:
-        failures.append('src/supportbase.c: %s...) not found' % signature)
+        failures.append('src/sources/supportbase.c: %s...) not found' % signature)
         return ''
     end = source.index('\n}', match.start())
     return source[match.start():end] + '\n}\n'
@@ -245,10 +245,10 @@ int main(void)
 
 if not failures:
     with tempfile.TemporaryDirectory() as tmp:
-        c_file = Path(tmp) / 'iso_cache.c'
+        c_file = Path(tmp) / 'iso_cache.cpp'
         exe = Path(tmp) / ('iso_cache.exe' if sys.platform == 'win32' else 'iso_cache')
         c_file.write_text(HARNESS.replace('@FUNCTIONS@', functions), encoding='utf-8')
-        build = subprocess.run(['cc', '-std=gnu99', '-O1', '-Wall', '-Wextra', '-Werror',
+        build = subprocess.run(['g++', '-std=gnu++17', '-O1', '-Wall', '-Wextra', '-Werror',
                                 '-Wno-unused-function', '-Wno-sign-compare', '-Wno-format-truncation',
                                 str(c_file), '-o', str(exe)],
                                capture_output=True, text=True)

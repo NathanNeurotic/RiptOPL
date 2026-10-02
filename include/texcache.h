@@ -54,24 +54,46 @@ typedef struct
 } cache_entry_t;
 
 
+class ImageCache;
+typedef ImageCache image_cache_t;
+
 /// One texture cache instance
-typedef struct
+class ImageCache
 {
-    /// User specified ID, not used in any way by the cache code (not even initialized!)
-    int userId;
-
+public:
+    /// User specified ID, not used in any way by the cache code
+    int userId() const { return userId_; }
     /// count of entries (copy of the requested cache size upon cache initialization)
-    int count;
-
+    int count() const { return count_; }
     /// directory prefix for this cache (if any)
-    char *prefix;
-    int isPrefixRelative;
-    char *suffix;
+    char *prefix() const { return prefix_; }
+    int isPrefixRelative() const { return isPrefixRelative_; }
+    char *suffix() const { return suffix_; }
 
-    int nextUID;
+    /// An art request now holds a pointer INTO this cache's content (GUI thread, at enqueue).
+    void requestQueued() { activeRequests_++; }
+    /// ...and the art thread released it.
+    void requestFinished()
+    {
+        if (activeRequests_ > 0)
+            activeRequests_--;
+    }
 
+private:
+    friend image_cache_t *cacheInitCache(int, const char *, int, const char *, int);
+    friend void cacheDestroyCache(image_cache_t *);
+    friend GSTEXTURE *cacheGetTextureEx(image_cache_t *, item_list_t *, int *, int *, char *, int);
+    friend GSTEXTURE *cacheLookupTexture(image_cache_t *, int *, int *);
+    friend void cacheAbortOtherBackgrounds(image_cache_t *, const char *);
+
+    int userId_;
+    int count_;
+    char *prefix_;
+    int isPrefixRelative_;
+    char *suffix_;
+    int nextUID_;
     /// the cache entries itself
-    cache_entry_t *content;
+    cache_entry_t *content_;
 
     /// In-flight art requests holding a pointer INTO this cache's content[]. Incremented on the GUI
     /// thread at enqueue, decremented on the art thread when the request is released.
@@ -82,8 +104,8 @@ typedef struct
     /// thread that was survivable by accident; with a worker running concurrently it is a real
     /// use-after-free, so cacheDestroyCache now waits on this and leaks rather than frees if the
     /// wait expires.
-    volatile int activeRequests;
-} image_cache_t;
+    volatile int activeRequests_;
+};
 
 /** Initializes the cache subsystem.
  */

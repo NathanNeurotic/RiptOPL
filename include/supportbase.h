@@ -54,9 +54,6 @@ int sbReadList(base_game_info_t **list, const char *prefix, const char *sub, int
 int sbGetReadListError(void);
 // Folder browsing: set the active subpath the path composers inject (see sbBrowseSub in supportbase.c).
 void sbSetBrowseSub(const char *sub);
-const char *sbGetCheatSearchLog(void);
-// "No cheats found" text with the locations actually probed appended (#265).
-const char *sbCheatsNotFoundText(void);
 int sbCheatsMissingContinue(void *pCommon, int cheatResult);
 int sbLoadImage(const char *path, const char *file);
 void sbSetDiscAttributes(config_set_t *config, int isPS1, int isCD); // #System/#Media/#DiscType identity stamp
@@ -69,7 +66,6 @@ int sbGetCompatModes(config_set_t *configSet);
 void sbEnsureIgrUsbDrivers(int compatmask);
 int sbPrepare(base_game_info_t *game, config_set_t *configSet, int size_cdvdman, void **cdvdman_irx, int *patchindex);
 void sbUnprepare(void *pCommon);
-void sbRebuildULCfg(base_game_info_t **list, const char *prefix, int gamecount, int excludeID);
 void sbCreatePath(const base_game_info_t *game, char *path, const char *prefix, const char *sep, int part);
 void sbDelete(base_game_info_t **list, const char *prefix, const char *sep, int gamecount, int id);
 void sbRename(base_game_info_t **list, const char *prefix, const char *sep, int gamecount, int id, char *newname);
@@ -90,7 +86,6 @@ int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset);
 int sbLoadCheats(const char *path, const char *file);
 
 
-int sbFileExists(const char *path);
 
 // Resolve one user-entered full ELF path into the filesystem path RiptOPL can actually open.
 // This activates the explicitly named storage stack when safe (USB/MX4SIO/iLink/exFAT BDM,
@@ -145,11 +140,6 @@ void raHashStep(const char *what);
 void raHashLogAdd(const char *name, const char *startup, const char *hash);
 void raHashLogClose(void);
 
-// RA: hash one image and ask the PC client for its watch list. From the menu
-// call ONLY the deferred variant -- it runs on the I/O thread, where device
-// access is safe. sbHashGameDeferred returns 1 when queued, 0 when a check is
-// already running.
-void sbHashGame(const char *path, const char *name, const char *ext, const char *startup, int format);
 int sbHashGameBusy(void);
 int sbHashGameDeferred(const char *path, const char *name, const char *ext, const char *startup, int format);
 

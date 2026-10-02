@@ -4,7 +4,7 @@ gNetworkProtocol is OFF while Connectivity is Off -- every consumer reads that a
 that stays. Before gNetProtocolPick, OFF was all that was stored, so both Protocol rows (Game Sources
 and Network) showed SMB afterwards and a UDPFS / UDPBD / HTTP user had to pick it again.
 
-This compiles the real protocol helpers from src/gui.c on the host and checks:
+This compiles the real protocol helpers from src/ui/gui.c on the host and checks:
 
 - a live protocol is shown as itself; while Off the rows show the remembered pick;
 - storing with Connectivity Off keeps the pick and leaves the live protocol OFF;
@@ -12,7 +12,7 @@ This compiles the real protocol helpers from src/gui.c on the host and checks:
 - picking a different protocol on the Network page while Off is remembered too;
 - UDPBD -> UDPFS keeps IMG (the Access both pages derive from the shown protocol);
 
-and pins the load / save / default halves in src/opl.c.
+and pins the load / save / default halves in src/app/opl.c.
 """
 from pathlib import Path
 import re
@@ -21,8 +21,8 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-gui = (root / 'src/gui.c').read_text(encoding='utf-8').replace('\r\n', '\n')
-opl = (root / 'src/opl.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+gui = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/ui/gui.cpp', 'src/ui/guisettings.cpp', 'src/ui/guimodal.cpp', 'src/ui/guiwait.cpp', 'src/ui/guigameid.cpp')).replace('\r\n', '\n')
+opl = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/app/opl.cpp', 'src/app/settingsio.cpp')).replace('\r\n', '\n')
 failures = []
 
 
@@ -35,7 +35,7 @@ def function_text(source, signature, where):
     return source[match.start():end] + '\n}\n'
 
 
-helpers = ''.join(function_text(gui, sig, 'src/gui.c') for sig in (
+helpers = ''.join(function_text(gui, sig, 'src/ui/gui.cpp') for sig in (
     'static int guiNetProtocolShown(',
     'static int guiNetProtocolToPicker(',
     'static int guiNetProtocolAccess(',
@@ -135,19 +135,19 @@ if helpers and not failures:
             if run.returncode != 0:
                 failures.append('protocol helpers failed the off/on round trip')
 
-# The persisted halves (src/opl.c).
+# The persisted halves (src/app/opl.c).
 if 'configSetInt(configOPL, CONFIG_OPL_NET_PROTOCOL_PICK, gNetProtocolPick);' not in opl:
-    failures.append('src/opl.c: the settings save does not write net_protocol_pick')
+    failures.append('src/app/opl.c: the settings save does not write net_protocol_pick')
 if not re.search(r'if \(gNetworkProtocol != NET_PROTO_OFF\)\s*gNetProtocolPick = gNetworkProtocol;\s*else if \(!configGetInt\(configOPL, CONFIG_OPL_NET_PROTOCOL_PICK', opl):
-    failures.append('src/opl.c: the load does not take the pick from a live protocol, else net_protocol_pick')
+    failures.append('src/app/opl.c: the load does not take the pick from a live protocol, else net_protocol_pick')
 load_pick = opl.find('CONFIG_OPL_NET_PROTOCOL_PICK, &gNetProtocolPick')
 reconcile = opl.find('if (gNetStartMode == START_MODE_DISABLED || gNetworkProtocol == NET_PROTO_OFF)')
 if load_pick < 0 or reconcile < 0 or load_pick > reconcile:
-    failures.append('src/opl.c: the pick must be taken BEFORE the start-row reconcile forces OFF')
-if 'gNetProtocolPick = NET_PROTO_SMB;' not in function_text(opl, 'static void setDefaults(', 'src/opl.c'):
-    failures.append('src/opl.c: setDefaults does not default the pick to SMB')
+    failures.append('src/app/opl.c: the pick must be taken BEFORE the start-row reconcile forces OFF')
+if 'gNetProtocolPick = NET_PROTO_SMB;' not in function_text(opl, 'static void setDefaults(', 'src/app/opl.cpp'):
+    failures.append('src/app/opl.c: setDefaults does not default the pick to SMB')
 if 'gNetworkProtocol = guiNetProtocolFromPicker' in gui or 'guiNetProtocolToPicker(gNetworkProtocol)' in gui:
-    failures.append('src/gui.c: a Protocol row still bypasses the remembered pick')
+    failures.append('src/ui/gui.c: a Protocol row still bypasses the remembered pick')
 
 if failures:
     for failure in failures:

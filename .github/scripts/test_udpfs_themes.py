@@ -20,10 +20,13 @@ import re
 import subprocess
 import sys
 import tempfile
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the names the mocks use)
+
 
 root = Path(__file__).resolve().parents[2]
-src = (root / "src/udpfssupport.c").read_text(encoding="utf-8").replace("\r\n", "\n")
-libview = (root / "src/libview.c").read_text(encoding="utf-8").replace("\r\n", "\n")
+src = (root / "src/sources/udpfssupport.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
+libview = (root / "src/ui/libview.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
 failures = []
 
 
@@ -57,7 +60,7 @@ if waiter:
     if not cadence.search(waiter):
         failures.append("failed THM discovery must keep the general-refresh retry cadence alive")
 
-init = function_body(src, "void udpfsInit(item_list_t *itemList)")
+init = function_body(src, "void UdpfsSource::init(item_list_t *itemList)")
 if init:
     for needle in ("thmReinit(udpfsBase);", "udpfsThemesScanned = 0;"):
         if needle not in init:
@@ -211,12 +214,12 @@ int main(void)
             if run.returncode != 0:
                 failures.append("THM case harness reported failures")
 
-themes_c = (root / "src/themes.c").read_text(encoding="utf-8").replace("\r\n", "\n")
-entry_fn = function_body(themes_c, "static int thmReadEntry(")
+themes_c = (root / "src/gfx/themes.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
+entry_fn = function_body(themes_c, "int ThemeCatalog::readEntry(")
 if entry_fn and (entry_fn.count('strncasecmp(name, "thm_", 4) == 0') != 2 or 'strncmp(name, "thm_"' in entry_fn):
     failures.append("thmReadEntry must match the thm_ prefix in any case, in both checks")
 
-needs = function_body(src, "static int udpfsNeedsUpdate(item_list_t *itemList)")
+needs = function_body(src, "int UdpfsSource::needsUpdate(item_list_t *itemList)")
 if needs:
     call = needs.find("udpfsDiscoverThemes();")
     if call < 0:
@@ -229,7 +232,7 @@ if needs:
         if call >= 0 and pos >= 0 and call > pos:
             failures.append(f"theme discovery must run before the {label} early return")
 
-update = function_body(src, "static int udpfsUpdateGameList(item_list_t *itemList)")
+update = function_body(src, "int UdpfsSource::update(item_list_t *itemList)")
 if update:
     asked = update.find("answeredBefore = udpfsServerAnswers();")
     scan = update.find("cueFillGameList(")
@@ -259,7 +262,7 @@ if init and "udpfsPs1Scanned = 0;" not in init:
 load = function_body(libview, "void libViewLoadFromConfig(config_set_t *configLast)")
 if load and "libDirty" in load:
     failures.append("libViewLoadFromConfig must not mark restored pages dirty (it scans empty BDM slots at boot)")
-bdm = (root / "src/bdmsupport.c").read_text(encoding="utf-8").replace("\r\n", "\n")
+bdm = (root / "src/sources/bdmsupport.cpp").read_text(encoding="utf-8").replace("\r\n", "\n")
 if "sub[0] == '\\0' && pDeviceData->bdmPrefix[0] != '\\0')\n            setErrorMessagePathCode(_STR_BDM_PS2_FOLDERS_UNREADABLE" not in bdm:
     failures.append("the CD/DVD-unreadable popup must never fire for a slot with no device path")
 

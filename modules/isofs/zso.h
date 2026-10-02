@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <tamtypes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ZSO_MAGIC 0x4F53495A // ZISO
 
 // no game should request more than 256 sectors per read (512KB of data)
@@ -44,5 +48,9 @@ int ziso_read_sector(u8 *buf, u32 sector, unsigned int count);
 // This must be implemented by isofs/cdvdman/frontend
 extern void *ziso_alloc(u32 size);
 extern int read_raw_data(u8 *addr, u32 size, u32 offset, u32 shift);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

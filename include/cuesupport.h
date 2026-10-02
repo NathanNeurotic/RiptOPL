@@ -106,8 +106,6 @@ typedef struct
     char name[CUE_NAME_MAX]; // game FOLDER name under EMBER/games/ -- the launch argument and identity
 } cue_entry_t;
 
-// The active per-device Ember folder name. Never NULL.
-const char *cueEmberFolder(void);
 
 // Build "<devPrefix><EmberFolder><sep>ember.elf" into out; returns 1 when that file exists, else 0.
 // devPrefix is a device ROOT ending in its separator ("mass0:/", "mmce0:/", an SMB prefix ending
@@ -118,8 +116,6 @@ int cueResolveEmber(const char *devPrefix, char *out, int outSize);
 // Ember to the PS1 shell with no explanation, so callers check this BEFORE deinit and say so.
 int cueResolveEmberBios(const char *devPrefix, char *out, int outSize);
 
-// Build "<devPrefix><EmberFolder><sep>games" into out (no trailing separator, ready for opendir).
-void cueBuildGamesDir(const char *devPrefix, char *out, int outSize);
 
 // 1 when `name` is legal as Ember's game argument. Mirrors Ember's own checks exactly rather than a
 // tidied version of them: any '/', ':' or '\\' refuses (its char scan at main+0x3d48), and so does
@@ -151,10 +147,6 @@ int cueGameHasImage(const char *devPrefix, const char *name);
 // for launch dispatch and art fallback instead of asking which view the page is on.
 int cueIsCueEntry(const base_game_info_t *game);
 
-// Which core owns the PS1 row called `name` in an already-published list: 1 = Ember, 0 = POPSTARTER,
-// -1 = not found. Pure memory scan, no device access -- for callers like a device getImage that are
-// handed a name rather than the row.
-int cueRowIsCueByName(const base_game_info_t *games, int count, const char *name);
 
 // Rename an Ember game by renaming its FOLDER under EMBER/games/. The folder name IS the identity
 // -- launch argument, art key, config key -- so this is the exact peer of vcdRenameFile, which
@@ -180,5 +172,28 @@ int cueFillGameList(const char *devPrefix, base_game_info_t **outGames);
 // games prefix, is the right home for them.
 int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames);
 
+// The CUE support instance (defined in src/sources/cuesupport.cpp). The module is deliberately
+// stateless -- every helper works on its parameters and the published lists live in the callers --
+// except the table of extensions Ember's io_find_disc accepts, which the launch-path image probe
+// matches against. That table and the probe are members of this one instance. The settings.txt
+// rewrite family and the scan/list builders stay free functions: cueApplySettings, cueNameLaunchable
+// and the cueRewriteSettings/cueLineSetsKey/cueWantSetting helpers are extracted into C test
+// harnesses by exact signature (.github/scripts/test_ember_settings.py) and must keep compiling
+// there unchanged, and everything else operates on parameters, not on module state.
+class CueSupport
+{
+public:
+    // Does this game folder actually hold something Ember can mount? Same contract as the
+    // cueGameHasImage forwarder above; defined in src/sources/cuesupport.cpp.
+    int gameHasImage(const char *devPrefix, const char *name);
+
+private:
+    // The extensions Ember's io_find_disc accepts, in ITS priority order (.cue beats .exe beats
+    // .bin). We only test presence, so the order is documentation rather than logic -- but it is
+    // the reason a folder holding just a .bin is still a valid game.
+    static constexpr const char *discExts_[] = {".cue", ".exe", ".bin"};
+};
+
+extern CueSupport gCueSupport;
 
 #endif

@@ -1,0 +1,1245 @@
+/*
+  Copyright 2009, Ifcaro
+  Licenced under Academic Free License version 3.0
+  Review OpenUsbLd README & LICENSE files for further details.
+*/
+
+#ifdef __DECI2_DEBUG
+#include <iopcontrol_special.h>
+#endif
+
+#include <delaythread.h> // DelayThread for the bounded disc re-detect polls in sysLaunchDisc
+#include <time.h>        // clock()/CLOCKS_PER_SEC -- the disc waits are budgeted by wall clock
+
+// Disc-probe budgets (issue #465). All are TOTAL wall-clock caps, not per-poll ones.
+constexpr int SYS_DISC_DETECT_MS = 1000;  // first "still identifying" settle
+constexpr int SYS_DISC_REDETECT_MS = 4000;  // spin-up + re-detect after a NODISC report
+// Empty-tray shortcut inside the re-detect budget above. A drive that is actually working on a
+// disc reports SCECdDETCT ("identifying") while it spins up; a drive with nothing in it only ever
+// answers NODISC. So NODISC that has never once been punctuated by DETCT means an empty tray, and
+// waiting out the rest of the re-detect budget only makes the user stare at a frozen-looking menu.
+// Generous on purpose: this is a floor for a cold drive to reach DETCT, not a tuned timeout. Once
+// DETCT is seen the FULL budget applies again, so a slow-but-working drive is unaffected.
+constexpr int SYS_DISC_NODISC_MS = 2000;
+#include "include/host.h"
+#include "include/opl.h"
+#include "include/gui.h"
+#include "include/lang.h"       // _l(_STR_...) -- Neutrino preflight abort toasts
+#include "include/launchdiag.h" // UDPBD hang-triage stage markers (gated on gLaunchDiag)
+#include "include/ethsupport.h"
+#include "include/hddsupport.h"
+#include "include/util.h"
+#include "include/pad.h"
+#include "include/system.h"
+#ifdef RETROACHIEVEMENTS
+#include "include/discsupport.h"
+#endif
+#include "include/ioman.h"
+#include "include/ioprp.h"
+#include "include/bdmsupport.h"
+#include "include/mmcesupport.h"
+#include "include/OSDHistory.h"
+#include "include/renderman.h"
+#include "include/extern_irx.h"
+#include "../ee_core/include/modules.h"
+#include "../ee_core/include/coreconfig.h"
+#include <osd_config.h>
+#include "include/pggsm.h"
+#include "include/sema_lock.h"
+#include "include/cheatman.h"
+#include "include/xparam.h"
+#ifdef RETROACHIEVEMENTS
+#include "include/rawatch.h"
+#include "modules/network/common/ra_snap.h"
+#endif
+
+#ifdef PADEMU
+#include <libds34bt.h>
+#include <libds34usb.h>
+#endif
+
+#define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>     // fileXioInit, fileXioExit, fileXioDevctl
+#include <usbhdfsd-common.h> // USBMASS_IOCTL_GET_LBA / _CHECK_CHAIN -- VMC contiguity probe
+#include <ps2sdkapi.h>       // ps2sdk_get_iop_fd -- the ioctls above take the IOP-side fd
+
+typedef struct
+{
+    char VMC_filename[1024];
+    int VMC_size_mb;
+    int VMC_blocksize;
+    int VMC_thread_priority;
+    int VMC_card_slot;
+} createVMCparam_t;
+
+extern unsigned char eecore_irx[];
+extern unsigned int size_eecore_irx;
+
+extern unsigned char IOPRP_img[];
+extern unsigned int size_IOPRP_img;
+
+extern unsigned char eesync_irx[];
+extern unsigned int size_eesync_irx;
+
+constexpr int MAX_MODULES = 64;
+static void *g_sysLoadedModBuffer[MAX_MODULES];
+static s32 sysLoadModuleLock = -1;
+
+constexpr int ELF_MAGIC = 0x464c457f;
+constexpr int ELF_PT_LOAD = 1;
+
+typedef struct
+{
+    u8 ident[16]; // struct definition for ELF object header
+    u16 type;
+    u16 machine;
+    u32 version;
+    u32 entry;
+    u32 phoff;
+    u32 shoff;
+    u32 flags;
+    u16 ehsize;
+    u16 phentsize;
+    u16 phnum;
+    u16 shentsize;
+    u16 shnum;
+    u16 shstrndx;
+} elf_header_t;
+
+typedef struct
+{
+    u32 type; // struct definition for ELF program section header
+    u32 offset;
+    void *vaddr;
+    u32 paddr;
+    u32 filesz;
+    u32 memsz;
+    u32 flags;
+    u32 align;
+} elf_pheader_t;
+
+void guiEnd();
+void menuEnd();
+void thmEnd();
+void rmEnd();
+
+static void poweroffHandler(void *arg);
+
+int sysLoadModuleBuffer(void *buffer, int size, int argc, char *argv)
+{
+
+    int i, id, ret, index = 0;
+
+    raii::SemaLock lock(sysLoadModuleLock);
+
+    // check we have not reached MAX_MODULES
+    for (i = 0; i < MAX_MODULES; i++) {
+        if (g_sysLoadedModBuffer[i] == NULL) {
+            index = i;
+            break;
+        }
+    }
+    if (i == MAX_MODULES) {
+        LOG("WARNING: REACHED MODULES LIMIT (%d)\n", MAX_MODULES);
+        return -1;
+    }
+
+    // check if the module was already loaded
+    for (i = 0; i < MAX_MODULES; i++) {
+        if (g_sysLoadedModBuffer[i] == buffer) {
+            LOG("MODULE ALREADY LOADED (%d)\n", i);
+            return 0;
+        }
+    }
+
+    // load the module
+    id = SifExecModuleBuffer(buffer, size, argc, argv, &ret);
+    LOG("\t-- ID=%d, ret=%d\n", id, ret);
+    if ((id < 0) || (ret))
+        return -2;
+
+    // add the module to the list
+    g_sysLoadedModBuffer[index] = buffer;
+
+    return 0;
+}
+
+constexpr int OPL_SIF_CMD_BUFF_SIZE = 1;
+static SifCmdHandlerData_t OplSifCmdbuffer[OPL_SIF_CMD_BUFF_SIZE];
+static unsigned char dev9Initialized = 0, dev9Loaded = 0, dev9InitCount = 0;
+
+void sysInitDev9(void)
+{
+    if (!dev9Initialized) {
+        LOG("[DEV9]:\n");
+        // DEV9.IRX must have loaded AND returned RESIDENT END for the adapter to be usable.
+        dev9Loaded = (sysLoadModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL) == 0);
+
+        // LATCH ONLY ON SUCCESS. This used to set dev9Initialized unconditionally, so a single
+        // failed load disabled DEV9 -- and with it the NIC and the internal HDD -- for the whole
+        // session: every later call saw the flag, skipped the load and just bumped the refcount.
+        //
+        // Retrying is safe rather than a double-load risk, because the guard lives one layer down:
+        // sysLoadModuleBuffer keeps a table of buffers it has loaded, returns 0 for one it already
+        // holds, and never records a failure. So a retry after a failure genuinely re-attempts, and
+        // a retry after a success is a cheap no-op. That is also why no extra in-progress flag is
+        // needed here -- that table is consulted under sysLoadModuleLock.
+        dev9Initialized = dev9Loaded;
+    }
+
+    // Refcount every caller regardless, so each sysInitDev9 still pairs with its sysShutdownDev9.
+    // On a failed load dev9Loaded stays 0, so the power-off at count 0 is correctly skipped.
+    dev9InitCount++;
+}
+
+void sysShutdownDev9(void)
+{
+    if (dev9InitCount > 0) {
+        --dev9InitCount;
+
+        if (dev9InitCount == 0) { /* Switch off DEV9 once nothing needs it. */
+            if (dev9Loaded) {
+                // Bounded: an IOP whose dev9x never acknowledges (dying interface, wedged driver)
+                // must not spin the power-off forever -- this runs on shutdown paths.
+                int retry = 100;
+                while (retry-- > 0 && fileXioDevctl("dev9x:", DDIOC_OFF, NULL, 0, NULL, 0) < 0) {
+                    ;
+                }
+            }
+        }
+    }
+}
+
+void sysReset(int modload_mask)
+{
+    static int sInitialBoot = 1;
+
+    if (!sInitialBoot) {
+#ifdef PADEMU
+        ds34usb_reset();
+        ds34bt_reset();
+#endif
+        fileXioExit();
+        SifExitIopHeap();
+        SifLoadFileExit();
+        SifExitRpc();
+    } else {
+        // Initial boot: detach inherited parent-launcher RPC/fileXio state before rebooting the IOP
+        fileXioExit();
+        SifExitRpc();
+    }
+    sInitialBoot = 0;
+
+    SifInitRpc(0);
+
+#ifdef _DTL_T10000
+    while (!SifIopReset("rom0:UDNL", 0))
+        ;
+#else
+#ifdef __DECI2_DEBUG
+    while (!SifIopRebootBuffer(&deci2_img, size_deci2_img))
+        ;
+#else
+    while (!SifIopReset("", 0))
+        ;
+#endif
+#endif
+
+    // The IOP was just rebooted: its DEV9 modules and refcount are gone, so reset the bookkeeping
+    // vars together. Leaving dev9InitCount stale inflates the refcount across resets, so
+    // sysShutdownDev9() would never power DEV9 off again.
+    //
+    // dev9Loaded is cleared for the same reason the other two are -- the module it describes no
+    // longer exists. It was previously left behind, which was harmless only because the old
+    // unconditional assignment in sysInitDev9 always overwrote it before use. Now that the load can
+    // fail without latching, a stale 1 could outlive the reset and let sysShutdownDev9 try to power
+    // off a DEV9 that was never brought back up.
+    dev9Initialized = 0;
+    dev9Loaded = 0;
+    dev9InitCount = 0;
+    while (!SifIopSync())
+        ;
+
+    SifInitRpc(0);
+    SifSetCmdBuffer(OplSifCmdbuffer, OPL_SIF_CMD_BUFF_SIZE);
+    sceCdInit(SCECdINoD);
+
+    // init loadfile & iopheap services
+    SifLoadFileInit();
+    SifInitIopHeap();
+
+    // apply sbv patches
+    sbv_patch_enable_lmb();
+    sbv_patch_disable_prefix_check();
+
+    if (sysLoadModuleLock < 0) {
+        sysLoadModuleLock = sbCreateSemaphore();
+    }
+
+    // clears modules list
+    memset((void *)&g_sysLoadedModBuffer[0], 0, MAX_MODULES * 4);
+
+    // load modules
+    LOG("[IOMANX]:\n");
+    sysLoadModuleBuffer(&iomanx_irx, size_iomanx_irx, 0, NULL);
+    LOG("[FILEXIO]:\n");
+    sysLoadModuleBuffer(&filexio_irx, size_filexio_irx, 0, NULL);
+
+    LOG("[SIO2MAN]:\n");
+    sysLoadModuleBuffer(&sio2man_irx, size_sio2man_irx, 0, NULL);
+
+    if (modload_mask & SYS_LOAD_MC_MODULES) {
+        LOG("[MCMAN]:\n");
+        sysLoadModuleBuffer(&mcman_irx, size_mcman_irx, 0, NULL);
+        LOG("[MCSERV]:\n");
+        sysLoadModuleBuffer(&mcserv_irx, size_mcserv_irx, 0, NULL);
+    }
+
+    LOG("[PADMAN]:\n");
+    sysLoadModuleBuffer(&padman_irx, size_padman_irx, 0, NULL);
+
+    LOG("[POWEROFF]:\n");
+    sysLoadModuleBuffer(&poweroff_irx, size_poweroff_irx, 0, NULL);
+
+    /*
+      usbd is the USB HOST STACK, not a storage driver: it must be resident before ANY usbd client
+      loads, and it stays unconditional (independent of gEnableUSB, which gates only usbmass_bd).
+      The PADEMU block ~20 lines below loads ds34usb.irx/ds34bt.irx, and both hard-import usbd
+      (each module's iop/imports.lst carries a usbd_IMPORTS_start block). Without usbd resident their
+      loadcore link stage fails, neither registers its SIF RPC server, and ds34usb_init()'s unbounded
+      "do { SifBindRpc } while (!server)" spin never terminates -- sysReset() never returns, init()
+      never runs, and the console black-screens before the GS is even initialised.
+
+      This lives HERE, matching fork master (src/system.c, after POWEROFF), NOT in bdmLoadModules().
+      Official OPL loads usbd inside bdmsupport.c and steps 01..11 followed official; rebuild-12 then
+      landed the FORK's bdmsupport.c byte-identically -- and the fork's copy has no usbd load, because
+      the fork does it right here. Both halves of that contract now match the fork. Do not move it
+      back into bdmLoadModules() without also removing the fork-parity claim on bdmsupport.c.
+    */
+    LOG("[USBD]:\n");
+    sysLoadModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL);
+
+    if (modload_mask & SYS_LOAD_ISOFS_MODULE) {
+        LOG("[ISOFS]:\n");
+        sysLoadModuleBuffer(&isofs_irx, size_isofs_irx, 0, NULL);
+    }
+
+    LOG("[GENVMC]:\n");
+    sysLoadModuleBuffer(&genvmc_irx, size_genvmc_irx, 0, NULL);
+
+    LOG("[LIBSD]:\n");
+    sysLoadModuleBuffer(&libsd_irx, size_libsd_irx, 0, NULL);
+    LOG("[AUDSRV]:\n");
+    sysLoadModuleBuffer(&audsrv_irx, size_audsrv_irx, 0, NULL);
+
+#ifdef PADEMU
+    int ds3pads = 1; // only one pad enabled
+
+    ds34usb_deinit();
+    ds34bt_deinit();
+
+    if (modload_mask & SYS_LOAD_USB_MODULES) {
+        LOG("[DS34_USB]:\n");
+        sysLoadModuleBuffer(&ds34usb_irx, size_ds34usb_irx, 4, (char *)&ds3pads);
+        LOG("[DS34_BT]:\n");
+        sysLoadModuleBuffer(&ds34bt_irx, size_ds34bt_irx, 4, (char *)&ds3pads);
+
+        ds34usb_init();
+        ds34bt_init();
+    }
+#endif
+
+    fileXioInit();
+    poweroffInit();
+    poweroffSetCallback(&poweroffHandler, NULL);
+}
+
+static void poweroffHandler(void *arg)
+{
+    sysPowerOff();
+}
+
+void sysPowerOff(void)
+{
+    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_NONE);
+    poweroffShutdown();
+}
+
+static unsigned int crctab[0x400];
+
+unsigned int USBA_crc32(const char *string)
+{
+    u32 crc;
+    int table, count;
+    unsigned char byte; // MUST be unsigned: a signed char sign-extends bytes >= 0x80 and the XOR
+                        // below then produces a negative crctab index (OOB read)
+
+    for (table = 0; table < 256; table++) {
+        crc = (u32)table << 24;
+
+        for (count = 8; count > 0; count--) {
+            if (crc & 0x80000000)
+                crc = crc << 1;
+            else
+                crc = (crc << 1) ^ 0x04C11DB7;
+        }
+        crctab[255 - table] = crc;
+    }
+
+    do {
+        byte = string[count++];
+        crc = crctab[byte ^ ((crc >> 24) & 0xFF)] ^ ((crc << 8) & 0xFFFFFF00);
+    } while ((string[count - 1] != 0) && (count <= 32));
+
+    return crc;
+}
+
+int sysGetDiscID(char *hexDiscID)
+{
+    u8 key[16];
+
+    if (sceCdStatus() == SCECdErOPENS) // If tray is open, error
+        return -1;
+
+    {
+        int detecting = 0;
+        while (sceCdGetDiskType() == SCECdDETCT && detecting++ < 50)
+            DelayThread(20 * 1000); // ~1 s cap, yields (issue #465: bound DETCT, preserve NODISC budget)
+    }
+    if (sceCdGetDiskType() == SCECdNODISC)
+        return -1;
+
+    sceCdDiskReady(0);
+    LOG("SYSTEM Disc drive is ready\n");
+    int cdmode = sceCdGetDiskType();
+    if (cdmode == SCECdNODISC)
+        return -1;
+
+    if ((cdmode != SCECdPS2DVD) && (cdmode != SCECdPS2CD) && (cdmode != SCECdPS2CDDA)) {
+        sceCdStop();
+        sceCdSync(0);
+        LOG("SYSTEM Disc stopped, Disc is not ps2 disc!\n");
+        return -2;
+    }
+
+    LOG("SYSTEM Disc standby\n");
+    sceCdStandby();
+    sceCdSync(0);
+
+    LOG("SYSTEM Disc read key\n");
+    if (sceCdReadKey(0, 0, 0x4b, key) == 0) {
+        LOG("SYSTEM Cannot read CD/DVD key.\n");
+        sceCdStop();
+        sceCdSync(0);
+        LOG("SYSTEM Disc stopped\n");
+        return -3;
+    }
+
+    sceCdStop();
+
+    // convert to hexadecimal string
+    snprintf(hexDiscID, 15, "%02X %02X %02X %02X %02X", key[10], key[11], key[12], key[13], key[14]);
+    LOG("SYSTEM PS2 Disc ID = %s\n", hexDiscID);
+
+    sceCdSync(0);
+    LOG("SYSTEM Disc stopped\n");
+
+    return 1;
+}
+
+void sysExecExit(void)
+{
+    // Deinitialize without shutting down active devices.
+    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+    exit(0);
+}
+
+
+// Module bits
+constexpr int CORE_IRX_USB = 0x01;
+#define CORE_IRX_ETH    0x02
+#define CORE_IRX_SMB    0x04
+constexpr int CORE_IRX_HDD = 0x08;
+constexpr int CORE_IRX_VMC = 0x10;
+constexpr int CORE_IRX_DEBUG = 0x20;
+constexpr int CORE_IRX_DECI2 = 0x40;
+constexpr int CORE_IRX_ILINK = 0x80;
+#define CORE_IRX_MX4SIO 0x100
+#define CORE_IRX_MMCE   0x200
+
+typedef struct
+{
+    const char *game;
+    const char *mode;
+    void *module;
+    int *module_size;
+} patchlist_t;
+
+// Blank string for mode = all modes.
+static const patchlist_t iop_patch_list[] = {
+    {"SLUS_205.61", "", &iremsndpatch_irx, &size_iremsndpatch_irx},     // Disaster Report
+    {"SLES_513.01", "", &iremsndpatch_irx, &size_iremsndpatch_irx},     // SOS: The Final Escape
+    {"SLPS_251.13", "", &iremsndpatch_irx, &size_iremsndpatch_irx},     // Zettai Zetsumei Toshi
+    {"SLES_535.08", "", &apemodpatch_irx, &size_apemodpatch_irx},       // Ultimate Pro Pinball
+    {"SLUS_204.13", "", &f2techioppatch_irx, &size_f2techioppatch_irx}, // Shadow Man: 2econd Coming (NTSC-U/C)
+    {"SLES_504.46", "", &f2techioppatch_irx, &size_f2techioppatch_irx}, // Shadow Man: 2econd Coming (PAL)
+    {"SLES_506.08", "", &f2techioppatch_irx, &size_f2techioppatch_irx}, // Shadow Man: 2econd Coming (PAL German)
+    {NULL, NULL, NULL, NULL},                                           // Terminator
+};
+
+static unsigned int addIopPatch(const char *mode_str, const char *startup, irxptr_t *tab)
+{
+    const patchlist_t *p;
+    int i;
+
+    for (i = 0; iop_patch_list[i].game != NULL; i++) {
+        p = &iop_patch_list[i];
+
+        if (!strcmp(p->game, startup) && (p->mode[0] == '\0' || !strcmp(p->mode, mode_str))) { // was strcmp(p->mode, startup): a mode-specific patch row could never match
+            tab->info = (*(p->module_size)) | SET_OPL_MOD_ID(OPL_MODULE_ID_IOP_PATCH);
+            tab->ptr = (void *)p->module;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+typedef struct
+{
+    char *game;
+    void *addr;
+} modStorageSetting_t;
+
+static const modStorageSetting_t mod_storage_location_list[] = {
+    {"SLUS_209.77", (void *)0x01fc7000}, // Virtua Quest
+    {"SLPM_656.32", (void *)0x01fc7000}, // Virtua Fighter Cyber Generation: Judgment Six No Yabou
+    {NULL, NULL},                        // Terminator
+};
+
+static void *GetModStorageLocation(const char *startup, unsigned compatFlags)
+{
+    const modStorageSetting_t *p;
+    int i;
+
+    for (i = 0; mod_storage_location_list[i].game != NULL; i++) {
+        p = &mod_storage_location_list[i];
+
+        if (!strcmp(p->game, startup)) {
+            return p->addr;
+        }
+    }
+
+    return ((void *)OPL_MOD_STORAGE);
+}
+
+static unsigned int sendIrxKernelRAM(const char *startup, const char *mode_str, unsigned int modules, void *ModuleStorage, int size_cdvdman_irx, void **cdvdman_irx, int size_mcemu_irx, void **mcemu_irx)
+{ // Send IOP modules that core must use to Kernel RAM
+    irxtab_t *irxtable;
+    irxptr_t *irxptr_tab;
+    void *irxptr, *ioprp_image;
+    int i, modcount;
+    unsigned int curIrxSize, size_ioprp_image, total_size;
+
+#ifdef RETROACHIEVEMENTS
+    if (!strcmp(mode_str, "DISC_MODE")) {
+        // No emulated storage driver for the physical drive.
+    } else
+#endif
+        if (!strcmp(mode_str, "BDM_USB_MODE"))
+        modules |= CORE_IRX_USB;
+    else if (!strcmp(mode_str, "BDM_ILK_MODE"))
+        modules |= CORE_IRX_ILINK;
+    else if (!strcmp(mode_str, "BDM_M4S_MODE"))
+        modules |= CORE_IRX_MX4SIO;
+    else if (!strcmp(mode_str, "BDM_ATA_MODE"))
+        modules |= CORE_IRX_HDD;
+    else if (!strcmp(mode_str, "ETH_MODE"))
+        modules |= CORE_IRX_ETH | CORE_IRX_SMB;
+    else if (!strcmp(mode_str, "HTTP_MODE"))
+        modules |= CORE_IRX_ETH;
+    else if (!strcmp(mode_str, "MMCE_MODE"))
+        modules |= CORE_IRX_MMCE;
+    else
+        modules |= CORE_IRX_HDD;
+
+#ifdef RETROACHIEVEMENTS
+    /*
+      RetroAchievements telemetry leaves the console over the network whatever the
+      game was booted from, so the in-game SMAP + SMSTCPIP pair has to travel in
+      the module table even for a USB launch.
+
+      DEVIATION from upstream, which sets this unconditionally. It is not free:
+      the two modules cost roughly 57 KB of the module storage area
+      (OPL_MOD_STORAGE, include/iosupport.h) and put SMAP on the NIC in every
+      game. Gated on the watch list, a RA build launching an untracked game
+      reserves and loads exactly what the default build does.
+
+      GetWatchCount() is authoritative here because the launch legs have already
+      run sbLoadWatchList() by this point; no list means nothing to send.
+    */
+    if (gRATelemetry && host::launch().raWatchCount() > 0)
+        modules |= CORE_IRX_ETH;
+#endif
+
+    irxtable = (irxtab_t *)ModuleStorage;
+    irxptr_tab = (irxptr_t *)((unsigned char *)irxtable + sizeof(irxtab_t));
+    size_ioprp_image = size_IOPRP_img + size_cdvdman_irx + size_cdvdfsv_irx + size_eesync_irx + 256;
+#ifdef RETROACHIEVEMENTS
+    if (!strcmp(mode_str, "DISC_MODE"))
+        size_ioprp_image = patch_IOPRP_image_disc_size();
+#endif
+    LOG("IOPRP image size calculated: %d\n", size_ioprp_image);
+    ioprp_image = malloc(size_ioprp_image);
+    if (ioprp_image == NULL) {
+        // Avoid patch_IOPRP_image writing through a NULL pointer; an OOM here fails the launch
+        // regardless.
+        LOG("IOPRP image allocation failed (%d bytes)\n", size_ioprp_image);
+        size_ioprp_image = 0;
+    } else {
+#ifdef RETROACHIEVEMENTS
+        if (!strcmp(mode_str, "DISC_MODE"))
+            size_ioprp_image = patch_IOPRP_image_disc(ioprp_image);
+        else
+#endif
+            size_ioprp_image = patch_IOPRP_image(ioprp_image, cdvdman_irx, size_cdvdman_irx);
+    }
+    LOG("IOPRP image size actual:     %d\n", size_ioprp_image);
+
+    modcount = 0;
+    // Basic modules
+    irxptr_tab[modcount].info = size_udnl_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_UDNL);
+    irxptr_tab[modcount++].ptr = (void *)&udnl_irx;
+    irxptr_tab[modcount].info = size_ioprp_image | SET_OPL_MOD_ID(OPL_MODULE_ID_IOPRP);
+    irxptr_tab[modcount++].ptr = ioprp_image;
+    irxptr_tab[modcount].info = size_imgdrv_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_IMGDRV);
+    irxptr_tab[modcount++].ptr = (void *)&imgdrv_irx;
+    irxptr_tab[modcount].info = size_resetspu_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_RESETSPU);
+    irxptr_tab[modcount++].ptr = (void *)&resetspu_irx;
+
+#ifdef PADEMU
+#define PADEMU_ARG || gEnablePadEmu
+#else
+#define PADEMU_ARG
+#endif
+    if ((modules & CORE_IRX_USB) PADEMU_ARG) {
+        irxptr_tab[modcount].info = size_usbd_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_USBD);
+        irxptr_tab[modcount++].ptr = (void *)&usbd_irx;
+    }
+    if (modules & CORE_IRX_USB) {
+        irxptr_tab[modcount].info = size_usbmass_bd_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_USBMASSBD);
+        irxptr_tab[modcount++].ptr = (void *)&usbmass_bd_irx;
+    }
+    if (modules & CORE_IRX_ILINK) {
+        irxptr_tab[modcount].info = size_iLinkman_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_ILINK);
+        irxptr_tab[modcount++].ptr = (void *)&iLinkman_irx;
+        irxptr_tab[modcount].info = size_IEEE1394_bd_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_ILINKBD);
+        irxptr_tab[modcount++].ptr = (void *)&IEEE1394_bd_irx;
+    }
+    if (modules & CORE_IRX_MX4SIO) {
+        // mx4sio_bd requires PS2SDK's sio2man after the game-side IOP reset. Without it the block
+        // device never comes up in-game and the launch hangs. Keep these adjacent and ordered;
+        // ee_core loads them in the same order.
+        irxptr_tab[modcount].info = size_sio2man_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_SIO2MAN);
+        irxptr_tab[modcount++].ptr = (void *)&sio2man_irx;
+        irxptr_tab[modcount].info = size_mx4sio_bd_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_MX4SIOBD);
+        irxptr_tab[modcount++].ptr = (void *)&mx4sio_bd_irx;
+    }
+#ifdef RETROACHIEVEMENTS
+    if (!strcmp(mode_str, "DISC_MODE") && (modules & CORE_IRX_ETH)) {
+        irxptr_tab[modcount].info = size_ps2dev9_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_DEV9);
+        irxptr_tab[modcount++].ptr = (void *)&ps2dev9_irx;
+        irxptr_tab[modcount].info = size_smsutils_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_SMSUTILS);
+        irxptr_tab[modcount++].ptr = (void *)&smsutils_irx;
+    }
+#endif
+    if (modules & CORE_IRX_ETH) {
+        irxptr_tab[modcount].info = size_smap_ingame_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_SMAP);
+        irxptr_tab[modcount++].ptr = (void *)&smap_ingame_irx;
+        irxptr_tab[modcount].info = size_ingame_smstcpip_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_SMSTCPIP);
+        irxptr_tab[modcount++].ptr = (void *)&ingame_smstcpip_irx;
+    }
+    if (modules & CORE_IRX_SMB) {
+        irxptr_tab[modcount].info = size_smbinit_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_SMBINIT);
+        irxptr_tab[modcount++].ptr = (void *)&smbinit_irx;
+    }
+
+#ifdef RETROACHIEVEMENTS
+    // RetroAchievements telemetry sender. Registered only alongside the network
+    // modules it imports from -- raudp links against SMAP's SMAPSendPacket, so
+    // shipping it without CORE_IRX_ETH would just fail to load with -200.
+    if (modules & CORE_IRX_ETH) {
+        irxptr_tab[modcount].info = size_raudp_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_RAUDP);
+        irxptr_tab[modcount++].ptr = (void *)&raudp_irx;
+    }
+#endif
+
+    //Load MMCEIGR module (~1.4KB) on reset if bootcard switch is enabled for either slot
+    if (gMMCEIGRSlot != 0) {
+        irxptr_tab[modcount].info = size_mmceigr_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_MMCEIGR);
+        irxptr_tab[modcount++].ptr = (void *)&mmceigr_irx;
+    }
+
+    if (modules & CORE_IRX_VMC) {
+        irxptr_tab[modcount].info = size_mcemu_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_MCEMU);
+        irxptr_tab[modcount++].ptr = (void *)mcemu_irx;
+    }
+
+    if ((modules & CORE_IRX_MMCE) || gMMCEIGRSlot != 0) {
+        irxptr_tab[modcount].info = size_mmcedrv_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_MMCEDRV);
+        irxptr_tab[modcount++].ptr = (void *)&mmcedrv_irx;
+    }
+
+#ifdef PADEMU
+    if (gEnablePadEmu) {
+        if (gPadEmuSettings & 0xFF) {
+            irxptr_tab[modcount].info = size_bt_pademu_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_PADEMU);
+            irxptr_tab[modcount++].ptr = (void *)&bt_pademu_irx;
+        } else {
+            irxptr_tab[modcount].info = size_usb_pademu_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_PADEMU);
+            irxptr_tab[modcount++].ptr = (void *)&usb_pademu_irx;
+        }
+    }
+#endif
+
+#ifdef __INGAME_DEBUG
+#ifdef __DECI2_DEBUG
+    if (modules & CORE_IRX_DECI2) {
+        irxptr_tab[modcount].info = size_drvtif_ingame_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_DRVTIF);
+        irxptr_tab[modcount++].ptr = (void *)&drvtif_ingame_irx;
+        irxptr_tab[modcount].info = size_tifinet_ingame_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_TIFINET);
+        irxptr_tab[modcount++].ptr = (void *)&tifinet_ingame_irx;
+    }
+#elif defined(TTY_UDP)
+    if (modules & CORE_IRX_DEBUG) {
+        irxptr_tab[modcount].info = size_udptty_ingame_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_UDPTTY);
+        irxptr_tab[modcount++].ptr = (void *)&udptty_ingame_irx;
+        irxptr_tab[modcount].info = size_ioptrap_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_IOPTRAP);
+        irxptr_tab[modcount++].ptr = (void *)&ioptrap_irx;
+    }
+#elif defined(TTY_PPC_UART)
+    if (modules & CORE_IRX_DEBUG) {
+        irxptr_tab[modcount].info = size_ppctty_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_PPCTTY);
+        irxptr_tab[modcount++].ptr = (void *)&ppctty_irx;
+        irxptr_tab[modcount].info = size_ioptrap_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_IOPTRAP);
+        irxptr_tab[modcount++].ptr = (void *)&ioptrap_irx;
+    }
+#endif
+#endif
+
+#ifdef RETROACHIEVEMENTS
+    if (strcmp(mode_str, "DISC_MODE") != 0)
+#endif
+        modcount += addIopPatch(mode_str, startup, &irxptr_tab[modcount]);
+
+    irxtable->modules = irxptr_tab;
+    irxtable->count = modcount;
+
+#ifdef __DECI2_DEBUG
+    // For DECI2 debugging mode, the UDNL module will have to be stored within kernel RAM because there isn't enough space below user RAM.
+    // total_size will hence not include the IOPRP image, but it's okay because the EE core is interested in protecting the module storage within user RAM.
+    irxptr = (void *)0x00033000;
+    LOG("SYSTEM DECI2 UDNL address start: %p end: %p\n", irxptr, (void *)((u8 *)irxptr + GET_OPL_MOD_SIZE(irxptr_tab[0].info)));
+    DI();
+    ee_kmode_enter();
+    memcpy((void *)(0x80000000 | (unsigned int)irxptr), irxptr_tab[0].ptr, GET_OPL_MOD_SIZE(irxptr_tab[0].info));
+    ee_kmode_exit();
+    EI();
+
+    irxptr_tab[0].ptr = irxptr; // UDNL is the first module.
+#endif
+
+    total_size = (sizeof(irxtab_t) + sizeof(irxptr_t) * modcount + 0xF) & ~0xF;
+    irxptr = (void *)((((unsigned int)irxptr_tab + sizeof(irxptr_t) * modcount) + 0xF) & ~0xF);
+
+#ifdef __DECI2_DEBUG
+    for (i = 1; i < modcount; i++) {
+#else
+    for (i = 0; i < modcount; i++) {
+#endif
+        curIrxSize = GET_OPL_MOD_SIZE(irxptr_tab[i].info);
+
+        if (curIrxSize > 0) {
+            LOG("SYSTEM IRX %u address start: %p end: %p\n", GET_OPL_MOD_ID(irxptr_tab[i].info), irxptr, (void *)((u8 *)irxptr + curIrxSize));
+            memcpy(irxptr, irxptr_tab[i].ptr, curIrxSize);
+
+            irxptr_tab[i].ptr = irxptr;
+            irxptr = (void *)((u8 *)irxptr + ((curIrxSize + 0xF) & ~0xF));
+            total_size += ((curIrxSize + 0xF) & ~0xF);
+        } else {
+            irxptr_tab[i].ptr = NULL;
+        }
+    }
+
+    free(ioprp_image);
+
+    LOG("SYSTEM IRX STORAGE %p - %p\n", ModuleStorage, (u8 *)ModuleStorage + total_size);
+
+    return total_size;
+}
+
+#ifdef __DECI2_DEBUG
+/*
+    Look for the start of the EE DECI2 manager initialization function.
+
+    The stock EE kernel has no reset function, but the EE kernel is most likely already primed to self-destruct and in need of a good reset.
+    What happens is that the OSD initializes the EE DECI2 TTY protocol at startup, but the EE DECI2 manager is never aware that the OSDSYS ever loads other programs.
+
+    As a result, the EE kernel crashes immediately when the EE TTY gets used (when the IOP side of DECI2 comes up), when it invokes whatever that exists at the OSD's old ETTY handler's location. :(
+
+    Must be run in kernel mode.
+*/
+static int ResetDECI2(void)
+{
+    int result;
+    unsigned int i, *ptr;
+    void (*pDeci2ManagerInit)(void);
+    static const unsigned int Deci2ManagerInitPattern[] = {
+        0x3c02bf80, // lui v0, $bf80
+        0x3c04bfc0, // lui a0, $bfc0
+        0x34423800, // ori v0, v0, $3800
+        0x34840102  // ori a0, a0, $0102
+    };
+
+    result = -1;
+    ptr = (u32 *)0x80000000;
+    for (i = 0; i < 0x20000 / 4; i++) {
+        if (ptr[i + 0] == Deci2ManagerInitPattern[0] &&
+            ptr[i + 1] == Deci2ManagerInitPattern[1] &&
+            ptr[i + 2] == Deci2ManagerInitPattern[2] &&
+            ptr[i + 3] == Deci2ManagerInitPattern[3]) {
+            pDeci2ManagerInit = reinterpret_cast<void (*)()>(&ptr[i - 14]);
+            pDeci2ManagerInit();
+            result = 0;
+            break;
+        }
+    }
+
+    return result;
+}
+
+int sysInitDECI2(void)
+{
+    int result;
+
+    DI();
+    ee_kmode_enter();
+
+    result = ResetDECI2();
+
+    ee_kmode_exit();
+    EI();
+
+    return result;
+}
+#endif
+
+/*  Returns the patch location of LoadExecPS2(), which resides in kernel memory.
+ *  Patches the kernel to use the EELOAD module at the specified location.
+ *  Must be run in kernel mode.
+ */
+static void *initLoadExecPS2(void *new_eeload)
+{
+    void *result;
+
+    /* The pattern of the code in LoadExecPS2() that prepares the kernel for copying EELOAD from rom0: */
+    static const unsigned int initEELOADCopyPattern[] = {
+        0x8FA30010, /* lw       v1, 0x0010(sp) */
+        0x0240302D, /* daddu    a2, s2, zero */
+        0x8FA50014, /* lw       a1, 0x0014(sp) */
+        0x8C67000C, /* lw       a3, 0x000C(v1) */
+        0x18E00009, /* blez     a3, +9 <- The kernel will skip the EELOAD copying loop if the value in $a3 is less than, or equal to 0. Lets do that... */
+    };
+
+    u32 *p;
+
+    result = NULL;
+    /* Find the part of LoadExecPS2() that initilizes the EELOAD copying loop's variables */
+    for (p = (u32 *)0x80001000; p < (u32 *)0x80030000; p++) {
+        if (memcmp(p, &initEELOADCopyPattern, sizeof(initEELOADCopyPattern)) == 0) {
+            p[1] = 0x3C120000 | (u16)((u32)new_eeload >> 16);    /* lui s2, HI16(new_eeload) */
+            p[2] = 0x36520000 | (u16)((u32)new_eeload & 0xFFFF); /* ori s2, s2, LO16(new_eeload) */
+            p[3] = 0x24070000;                                   /* li a3, 0 <- Disable the EELOAD copying loop */
+            result = (void *)p;
+            break; /* All done. */
+        }
+    }
+
+    return result;
+}
+
+/*  Gets the address of the jump to the function that initializes user memory.
+ *  Pathces the kernel to begin erasure of memory from the specified address.
+ *  Must be run in kernel mode.
+ */
+static void *initInitializeUserMemory(void *start)
+{
+    u32 *p;
+    void *result;
+
+    result = NULL;
+    for (p = (unsigned int *)0x80001000; p < (unsigned int *)0x80030000; p++) {
+        /*
+         * Search for function call and where $a0 is set.
+         *  lui  $a0, 0x0008
+         *  jal  InitializeUserMemory
+         *  ori  $a0, $a0, 0x2000
+         */
+        if (p[0] == 0x3c040008 && (p[1] & 0xfc000000) == 0x0c000000 && p[2] == 0x34842000) {
+            p[0] = 0x3c040000 | ((unsigned int)start >> 16);
+            p[2] = 0x34840000 | ((unsigned int)start & 0xffff);
+            result = (void *)p;
+            break;
+        }
+    }
+
+    return result;
+}
+
+static int initKernel(void *eeload, void *modStorageEnd, void **eeloadCopy, void **initUserMemory)
+{
+    DI();
+    ee_kmode_enter();
+
+#ifdef __DECI2_DEBUG
+    ResetDECI2();
+#endif
+    *eeloadCopy = initLoadExecPS2(eeload);
+    *initUserMemory = initInitializeUserMemory(modStorageEnd);
+
+    ee_kmode_exit();
+    EI();
+
+    return ((*eeloadCopy != NULL && *initUserMemory != NULL) ? 0 : -1);
+}
+
+#ifdef __DEBUG
+static void sysPrintEECoreConfig(struct EECoreConfig_t *config)
+{
+    LOG("EECoreConfig Values = 0x%08X\n", (u32)config);
+
+    LOG("Game Mode Desc = %s\n", config->GameModeDesc);
+    LOG("EnableDebug = %d\n", config->EnableDebug);
+
+    LOG("Exit Path = (%s)\n", config->ExitPath);
+    LOG("HDD Spindown = %d\n", config->HDDSpindown);
+
+    LOG("IP=%s NM=%s GW=%s mode: %d\n", config->g_ps2_ip, config->g_ps2_netmask, config->g_ps2_gateway, config->g_ps2_ETHOpMode);
+
+    LOG("PS2RD Cheat Engine = %s\n", config->gCheatList == NULL ? "Disabled" : "Enabled");
+
+    LOG("EnforceLanguage = %s\n", config->enforceLanguage == 0 ? "Disabled" : "Enabled");
+
+    LOG("GSM = %s\n", config->EnableGSMOp == 0 ? "Disabled" : "Enabled");
+
+    LOG("PADEMU = %s\n", config->EnablePadEmuOp == 0 ? "Disabled" : "Enabled");
+
+    LOG("enforceLanguage = %s\n", config->enforceLanguage == 0 ? "Disabled" : "Enabled");
+
+    LOG("eeloadCopy = 0x%08X\n", config->eeloadCopy);
+    LOG("initUserMemory = 0x%08X\n", config->initUserMemory);
+
+    LOG("ModStorageStart = 0x%08X\n", config->ModStorageStart);
+    LOG("ModStorageEnd = 0x%08X\n", config->ModStorageEnd);
+
+    LOG("GameID = %s\n", config->GameID);
+
+    LOG("Compat Mask = 0x%02x\n", config->_CompatMask);
+}
+#endif
+
+
+// Hand off to an external POPSTARTER.ELF to boot a PS1 VCD. The caller resolves the per-device
+// POPSTARTER.ELF path + builds the argv[0] selector ("<POPS>/<XX.|SB.><name>.ELF", which
+// POPSTARTER itself re-derives the matching .VCD from), copies both to stack buffers, and
+// deinit()s the owning device with UNMOUNT_EXCEPTION BEFORE calling this -- the same contract as
+// sysLaunchNeutrino (so the VCD-holding device stays mounted across the IOP reset).
+void sysLaunchPopstarter(const char *popstarterElf, const char *selector)
+{
+    if (popstarterElf == NULL || selector == NULL) {
+        LOG("[POPS] null arg, abort\n");
+        return;
+    }
+
+    char *argv[1];
+    argv[0] = (char *)selector;
+    LOG("[POPS] elf=%s argv0=%s\n", popstarterElf, selector);
+
+    // Every POPSTARTER route depends on the selector remaining target argv[0]. The stock SDK
+    // partition loader replaces it with the ELF load path; use the argv-preserving loader
+    // uniformly. POPSTARTER performs its own IOP reset and device discovery from the selector.
+    if (sysLoadELFKeepIOP(popstarterElf, "", 1, argv) < 0)
+        LOG("[POPS] keep-IOP handoff failed for %s\n", popstarterElf);
+}
+
+// Hand off to an external ember.elf to boot a PS1 CUE title. Contract in include/system.h.
+//
+// The keep-IOP loader is MANDATORY here, not a preference. ember.elf carries sceSifInitRpc,
+// SifLoadModule and SifInitIopHeap but NO SifIopReset / SifIopRebootBuffer / sceSifRebootIop
+// (verified against the shipped Beta binary, which is unstripped) -- it cannot rebuild a device
+// stack and simply inherits whatever the launcher leaves running. Ember's own bundled launcher.elf
+// resets the IOP and then loads iomanX + fileXio + usbd + usbmass_bd + bdm + bdmfs_fatfs before
+// ExecPS2'ing into it; OPL's live IOP is a superset of that, which is why this handoff reaches
+// every device OPL can mount rather than USB alone. Using the resetting SDK loader instead leaves
+// Ember with no drivers and no way to make any -- a black screen, not a degraded launch.
+//
+// argv[0] must be ember.elf's real path: ps2sdk's __init_cwd derives the target's working
+// directory from it, and Ember resolves bios.bin, settings.txt and games/<name> against that.
+// sysLoadELFKeepIOP forwards argv verbatim (argv[0] included), the same property the POPSTARTER
+// selector relies on.
+void sysLaunchEmber(const char *emberElf, const char *gameFolder)
+{
+    char *argv[2];
+    int argc = 0;
+
+    if (emberElf == NULL) {
+        LOG("[EMBER] null arg, abort\n");
+        return;
+    }
+
+    argv[argc++] = (char *)emberElf;
+
+    // No game argument is a legitimate call, not a caller bug: Ember then resolves games/default
+    // and, failing that, runs the PS1 BIOS shell. Both are useful answers when probing a setup.
+    if (gameFolder != NULL && gameFolder[0] != '\0')
+        argv[argc++] = (char *)gameFolder;
+
+    LOG("[EMBER] elf=%s game=%s\n", emberElf, (argc > 1) ? argv[1] : "(none)");
+
+    // The kernel argv budget (15 strings / 256-byte pool, counting the child loader's own argv[0])
+    // is enforced inside sysLoadELFKeepIOP, which refuses rather than truncating. Callers keep the
+    // game name under CUE_NAME_LAUNCH_MAX so a refusal here means a pathological device path.
+    if (sysLoadELFKeepIOP(emberElf, "", argc, argv) < 0)
+        LOG("[EMBER] keep-IOP handoff failed for %s\n", emberElf);
+}
+
+void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdvdman_irx, void **cdvdman_irx, int size_mcemu_irx, void **mcemu_irx, int EnablePS2Logo, unsigned int compatflags)
+{
+    unsigned int modules, ModuleStorageSize;
+    void *ModuleStorage, *ModuleStorageEnd;
+    u8 local_ip_address[4], local_netmask[4], local_gateway[4];
+    u8 *boot_elf = NULL;
+    elf_header_t *eh;
+    elf_pheader_t *eph;
+    void *pdata;
+    int argc, i;
+    char ElfPath[32];
+    char *argv[4];
+    void *eeloadCopy, *initUserMemory;
+
+    ethGetNetConfig(local_ip_address, local_netmask, local_gateway);
+#if (!defined(__DEBUG) && !defined(_DTL_T10000))
+    AddHistoryRecordUsingFullPath(filename);
+#endif
+
+    if (gExitPath[0] == '\0')
+        strncpy(gExitPath, "Browser", sizeof(gExitPath));
+
+    // Disable sound effects via libsd, to prevent some games with improper initialization from inadvertently using digital effect settings from other software.
+    LOG("[CLEAREFFECTS]:\n");
+    sysLoadModuleBuffer(&cleareffects_irx, size_cleareffects_irx, 0, NULL);
+
+    // Wipe the low user memory region, since this region might not be wiped after OPL's EE core is installed.
+    // Start wiping from 0x00084000 instead (as the HDD Browser does), as the alarm patch is installed at 0x00082000.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+    memset((void *)0x00084000, 0, 0x00100000 - 0x00084000);
+#pragma GCC diagnostic pop
+
+    modules = 0;
+    ModuleStorage = GetModStorageLocation(filename, compatflags);
+
+#ifdef __DECI2_DEBUG
+    modules |= CORE_IRX_DECI2 | CORE_IRX_ETH;
+#elif defined(__INGAME_DEBUG)
+    modules |= CORE_IRX_DEBUG;
+#ifdef TTY_UDP
+    modules |= CORE_IRX_ETH;
+#endif
+#endif
+
+#ifdef RETROACHIEVEMENTS
+    const int discMode = !strcmp(mode_str, "DISC_MODE");
+#else
+    const int discMode = 0;
+#endif
+    if (!discMode)
+        modules |= CORE_IRX_VMC;
+
+    LOG("SYSTEM LaunchLoaderElf loading modules\n");
+    ModuleStorageSize = (sendIrxKernelRAM(filename, mode_str, modules, ModuleStorage, size_cdvdman_irx, cdvdman_irx, size_mcemu_irx, mcemu_irx) + 0x3F) & ~0x3F;
+
+#ifdef RETROACHIEVEMENTS
+    /* ee_core's RetroAchievements buffers live at the end of module storage,
+       not in its .bss -- see EECoreConfig_t.raWorkArea. ModuleStorageSize is
+       64-byte aligned, so the area is too. Same gate as the network modules:
+       an untracked game reserves nothing. */
+    void *raWorkArea = NULL;
+    if (gRATelemetry && host::launch().raWatchCount() > 0) {
+        raWorkArea = (u8 *)ModuleStorage + ModuleStorageSize;
+        ModuleStorageSize += (RA_EE_WORK_BYTES + 0x3F) & ~0x3F;
+    }
+#endif
+
+    ModuleStorageEnd = (void *)((u8 *)ModuleStorage + ModuleStorageSize);
+
+    // NB: LOADER.ELF is embedded
+    boot_elf = (u8 *)&eecore_irx;
+    eh = (elf_header_t *)boot_elf;
+    eph = (elf_pheader_t *)(boot_elf + eh->phoff);
+
+    ApplyDeckardXParam(filename);
+
+    // Get the kernel to use our EELOAD module and to begin erasure after module storage. EE core will erase any memory before the module storage (if any).
+    if (initKernel((void *)eh->entry, ModuleStorageEnd, &eeloadCopy, &initUserMemory) != 0) { // Should not happen, but...
+        LOG("Error - kernel is unsupported.\n");
+        asm volatile("break\n");
+    }
+    ConfigParam PARAM;
+    GetOsdConfigParam(&PARAM);
+    if (!discMode && gOSDLanguageEnable) { // only patch if enabled, and only on config fields wich have not chosen "system default"
+        if (gOSDLanguageValue >= LANGUAGE_JAPANESE && gOSDLanguageValue <= LANGUAGE_PORTUGUESE) {
+            PARAM.language = gOSDLanguageValue;
+            LOG("System Language enforced to %d\n", gOSDLanguageValue);
+        }
+        if (gOSDTVAspectRatio >= TV_SCREEN_43 && gOSDTVAspectRatio <= TV_SCREEN_169) {
+            PARAM.screenType = gOSDTVAspectRatio;
+            LOG("System screenType enforced to %d\n", gOSDTVAspectRatio);
+        }
+        if (gOSDVideOutput == VIDEO_OUTPUT_RGB || gOSDVideOutput == VIDEO_OUTPUT_COMPONENT) {
+            PARAM.videoOutput = gOSDVideOutput;
+            LOG("System video output enforced to %d\n", gOSDVideOutput);
+        }
+    }
+
+    struct EECoreConfig_t *config = NULL;
+    u32 *core_ptr = (u32 *)&eecore_irx;
+
+    for (i = 0; i < size_eecore_irx / 4; i++) {
+        if (core_ptr[0] == EE_CORE_MAGIC_0 && core_ptr[1] == EE_CORE_MAGIC_1) {
+            config = (struct EECoreConfig_t *)core_ptr;
+            break;
+        }
+        core_ptr++;
+    }
+
+    if (config == NULL) { // Should not happen, but...
+        LOG("Error - EE core config MAGIC not found!\n");
+        asm volatile("break\n");
+    }
+
+    memset(config, 0, sizeof(struct EECoreConfig_t));
+
+    config->magic[0] = EE_CORE_MAGIC_0;
+    config->magic[1] = EE_CORE_MAGIC_1;
+
+    strncpy(config->ExitPath, gExitPath, CORE_EXIT_PATH_MAX_LEN);
+    strncpy(config->GameModeDesc, mode_str, CORE_GAME_MODE_DESC_MAX_LEN);
+
+    config->EnableDebug = gEnableDebug;
+    config->HDDSpindown = gHDDSpindown;
+    config->g_ps2_ETHOpMode = gETHOpMode;
+
+#ifdef RETROACHIEVEMENTS
+    host::launch().fillCoreConfig(config, discMode, raWorkArea);
+#else
+    host::launch().fillCoreConfig(config, discMode, NULL);
+#endif
+
+    sprintf(config->g_ps2_ip, "%u.%u.%u.%u", local_ip_address[0], local_ip_address[1], local_ip_address[2], local_ip_address[3]);
+    sprintf(config->g_ps2_netmask, "%u.%u.%u.%u", local_netmask[0], local_netmask[1], local_netmask[2], local_netmask[3]);
+    sprintf(config->g_ps2_gateway, "%u.%u.%u.%u", local_gateway[0], local_gateway[1], local_gateway[2], local_gateway[3]);
+
+
+#ifdef PADEMU
+    config->EnablePadEmuOp = !discMode && gEnablePadEmu;
+    config->PadEmuSettings = (unsigned int)(gPadEmuSettings >> 8);
+    config->PadMacroSettings = (unsigned int)(gPadMacroSettings);
+#endif
+
+    config->CustomOSDConfigParam.spdifMode = PARAM.spdifMode;
+    config->CustomOSDConfigParam.screenType = PARAM.screenType;
+    config->CustomOSDConfigParam.videoOutput = PARAM.videoOutput;
+    config->CustomOSDConfigParam.japLanguage = PARAM.japLanguage;
+    config->CustomOSDConfigParam.ps1drvConfig = PARAM.ps1drvConfig;
+    config->CustomOSDConfigParam.version = PARAM.version;
+    config->CustomOSDConfigParam.language = PARAM.language;
+    config->CustomOSDConfigParam.timezoneOffset = PARAM.timezoneOffset;
+
+    config->enforceLanguage = !discMode && gOSDLanguageEnable;
+
+    config->eeloadCopy = eeloadCopy;
+    config->initUserMemory = initUserMemory;
+
+    config->ModStorageStart = ModuleStorage;
+    config->ModStorageEnd = ModuleStorageEnd;
+
+    strncpy(config->GameID, filename, CORE_GAME_ID_MAX_LEN);
+
+    config->_CompatMask = compatflags;
+
+    //MMCEIGR Settings
+    config->MMCEIGRSettings = gMMCEIGRSlot;
+
+#ifdef __DEBUG
+
+    sysPrintEECoreConfig(config);
+
+#endif
+    // Scan through the ELF's program headers and copy them into RAM, then
+    // zero out any non-loaded regions.
+
+    FlushCache(0);
+    FlushCache(2);
+
+    for (i = 0; i < eh->phnum; i++) {
+        if (eph[i].type != ELF_PT_LOAD)
+            continue;
+
+        pdata = (void *)((u8 *)boot_elf + eph[i].offset);
+        memcpy(eph[i].vaddr, pdata, eph[i].filesz);
+        LOG("EECORE PH COPY: %d 0x%08X 0x%08X 0x%08X\n", i, (u32)eph[i].vaddr, (u32)pdata, eph[i].filesz);
+
+        if (eph[i].memsz > eph[i].filesz) {
+            LOG("EECORE PH CLEAR: %d 0x%08X 0x%08X\n", i, (u32)((u32)eph[i].vaddr + eph[i].filesz), eph[i].memsz - eph[i].filesz);
+            memset(eph[i].vaddr + eph[i].filesz, 0, eph[i].memsz - eph[i].filesz);
+        }
+    }
+
+    argc = 0;
+
+    // PS2LOGO Caller, based on l_oliveira & SP193 tips
+    // Don't call LoadExecPS2 here because it will wipe all memory above the EE core, making it impossible to pass data via pointers.
+    if (EnablePS2Logo) { // Not all roms have PS2LOGO
+        int fd = 0;
+        if ((fd = open("rom0:PS2LOGO", O_RDONLY)) >= 0) {
+            close(fd);
+            argv[argc] = "rom0:PS2LOGO";
+            argc++;
+        }
+    }
+
+    snprintf(ElfPath, sizeof(ElfPath), "cdrom0:\\%s;1", filename);
+    argv[argc] = ElfPath;
+    argc++;
+
+#ifdef __DEBUG
+    LOG("Starting ee_core with following argv arguments:\n");
+    for (i = 0; i < argc; i++) {
+        LOG("[%d] %s\n", i, argv[i]);
+    }
+#endif
+
+    LOG("Leaving OPL GUI, starting eecore = 0x%08X \n", (u32)eh->entry);
+
+    // Let's go.
+    fileXioExit();
+    SifExitRpc();
+
+    FlushCache(0);
+    FlushCache(2);
+
+    ExecPS2((void *)eh->entry, NULL, argc, argv);
+}
+

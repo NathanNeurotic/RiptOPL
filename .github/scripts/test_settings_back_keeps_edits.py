@@ -8,11 +8,11 @@ Index. Leaving Settings is where the decision is made (Save / Exit without savin
 Checked here, from the production source:
 - dia.c: on a Settings PAGE (the shell UI), Circle returns DIA_RESULT_INDEX, before the generic
   Cancel; sub-dialogs opened from a page are not the shell UI and keep Circle = Cancel.
-- gui.c: guiSettingsPageResult arms the save prompt for DIA_RESULT_INDEX (compiled and run).
+- gui.c: gSettingsShell.pageResult arms the save prompt for DIA_RESULT_INDEX (compiled and run).
 - every page applies its rows for any result other than Cancel, so DIA_RESULT_INDEX applies them --
   except that Back/L1/R1 off a page whose rows were NOT changed applies nothing. The pages whose
   apply is a full device re-apply (General, Game Sources, Network, Launch, PS1) gate on
-  guiSettingsLeftUntouched; diaHasChanges (compiled + run) compares every value row with the def
+  SettingsShell::leftUntouched; diaHasChanges (compiled + run) compares every value row with the def
   the page set. Merely entering Game Sources and backing out re-applied every source and blanked
   the USB page (#806, zackcage6, Beta-3338).
 - the Network page no longer reconnects SMB on an exit that changed nothing: it snapshots what a
@@ -45,12 +45,13 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-def compile_and_run(name, program):
+def compile_and_run(name, program, cpp=False):
     with tempfile.TemporaryDirectory() as tmp:
-        src = Path(tmp) / (name + '.c')
+        src = Path(tmp) / (name + ('.cpp' if cpp else '.c'))
         exe = Path(tmp) / (name + ('.exe' if sys.platform == 'win32' else ''))
         src.write_text(program, encoding='utf-8')
-        build = subprocess.run(['gcc', '-std=gnu99', '-Wall', '-Werror', '-Wno-unused-function', '-o', str(exe), str(src)],
+        compiler = ['g++', '-std=c++17'] if cpp else ['gcc', '-std=gnu99']
+        build = subprocess.run(compiler + ['-Wall', '-Werror', '-Wno-unused-function', '-o', str(exe), str(src)],
                                capture_output=True, text=True, check=False)
         if build.returncode != 0:
             failures.append('%s harness did not compile:\n%s' % (name, build.stderr))
@@ -62,21 +63,21 @@ def compile_and_run(name, program):
             failures.extend(lines or ['%s harness exited %d' % (name, run.returncode)])
 
 
-dia_c = read('src/dia.c')
-gui_c = read('src/gui.c')
-menusys_c = read('src/menusys.c')
-dialogs_c = read('src/dialogs.c')
+dia_c = read('src/ui/dia.cpp')
+gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guimodal.cpp') + read('src/ui/guiwait.cpp') + read('src/ui/guigameid.cpp')
+menusys_c = read('src/ui/menusys.cpp')
+dialogs_c = read('src/ui/dialogs.cpp')
 dialogs_h = read('include/dialogs.h')
 gui_h = read('include/gui.h')
-guigame_c = read('src/guigame.c')
-opl_c = read('src/opl.c')
+guigame_c = read('src/ui/guigame.cpp')
+opl_c = read('src/app/opl.cpp')
 opl_h = read('include/opl.h')
 config_h = read('include/config.h')
 iosupport_h = read('include/iosupport.h')
 
 # --- dia.c: Circle on a Settings page -> Index, ahead of the generic Cancel ----------------------
 
-execute = function_text(dia_c, 'src/dia.c', 'int diaExecuteDialog(')
+execute = function_text(dia_c, 'src/ui/dia.cpp', 'int diaExecuteDialog(')
 # "Back" is the user's cancel button -- Circle by default, Cross when Circle is chosen as confirm.
 back = re.search(r'if \(settingsShell && getKeyOn\(guiCancelKey\(\)\)\) \{[^}]*return DIA_RESULT_INDEX;', execute)
 cancel = execute.find('return UIID_BTN_CANCEL;')
@@ -87,6 +88,8 @@ elif cancel < 0 or back.start() > cancel:
 
 # --- gui.c: the Index result arms the save prompt (compiled and run) --------------------------
 
+# The page-result family lives on class SettingsShell since the shell conversion; the harness
+# mirrors the class (the one piece of state pageResult arms is the shell's save-pending flag).
 PAGE_HARNESS = r'''
 #include <stdio.h>
 #define DIA_RESULT_PREV (-2)
@@ -94,18 +97,25 @@ PAGE_HARNESS = r'''
 #define DIA_RESULT_INDEX (-4)
 #define UIID_BTN_CANCEL 0
 #define UIID_BTN_OK 1
-static int guiSettingsSavePending;
+
+struct SettingsShell {
+    int savePending_;
+    int isPeerResult(int result);
+    int isShellResult(int result);
+    int pageResult(int result);
+};
 
 @FUNCTIONS@
 
 static int fails;
+static SettingsShell shell;
 static void expect(const char *what, int result, int wantReturn, int wantPending)
 {
     int got;
-    guiSettingsSavePending = 0;
-    got = guiSettingsPageResult(result);
-    if (got != wantReturn || guiSettingsSavePending != wantPending) {
-        printf("FAIL %s: returned %d, pending %d (want %d, %d)\n", what, got, guiSettingsSavePending, wantReturn, wantPending);
+    shell.savePending_ = 0;
+    got = shell.pageResult(result);
+    if (got != wantReturn || shell.savePending_ != wantPending) {
+        printf("FAIL %s: returned %d, pending %d (want %d, %d)\n", what, got, shell.savePending_, wantReturn, wantPending);
         fails++;
     }
 }
@@ -124,29 +134,29 @@ int main(void)
 }
 '''
 
-page_functions = ''.join(function_text(gui_c, 'src/gui.c', sig) for sig in (
-    'static int guiSettingsIsPeerResult(',
-    'static int guiSettingsIsShellResult(',
-    'static int guiSettingsPageResult(',
+page_functions = ''.join(function_text(gui_c, 'src/ui/guisettings.cpp', sig) for sig in (
+    'int SettingsShell::isPeerResult(',
+    'int SettingsShell::isShellResult(',
+    'int SettingsShell::pageResult(',
 ))
 if page_functions.count('{') >= 3:
-    compile_and_run('settings_page_result', PAGE_HARNESS.replace('@FUNCTIONS@', page_functions))
+    compile_and_run('settings_page_result', PAGE_HARNESS.replace('@FUNCTIONS@', page_functions), cpp=True)
 
 # --- every page applies its rows for DIA_RESULT_INDEX ------------------------------------------
 
 PAGES = ('static int guiSettingsShowGeneral(', 'static int guiSettingsShowSources(', 'int guiShowNetConfig(',
          'static int guiSettingsShowInterface(', 'static int guiSettingsShowLaunch(',
-         'static int guiSettingsShowPopstarter(', 'int guiShowControllerConfig(')
+         'static int guiSettingsShowPopstarter(', 'static int guiShowControllerConfig(')
 # Pages whose apply block is a full device re-apply: an untouched Back/L1/R1 must skip it (#806).
 DEVICE_PAGES = {
-    'static int guiSettingsShowGeneral(': 'if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, exitPathEdit, gExitPath))',
-    'static int guiSettingsShowSources(': 'if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, NULL, NULL))',
-    'int guiShowNetConfig(': 'if (result && !guiSettingsLeftUntouched(diaNetConfig, result, NULL, NULL))',
-    'static int guiSettingsShowLaunch(': 'if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, neutrinoPathEdit, gNeutrinoPath))',
-    'static int guiSettingsShowPopstarter(': 'if (result != UIID_BTN_CANCEL && result != -1 && !guiSettingsLeftUntouched(ui, result, popstarterPathEdit, gPopstarterPath))',
+    'static int guiSettingsShowGeneral(': 'if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath))',
+    'static int guiSettingsShowSources(': 'if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, NULL, NULL))',
+    'int guiShowNetConfig(': 'if (result && !gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL))',
+    'static int guiSettingsShowLaunch(': 'if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, neutrinoPathEdit, gNeutrinoPath))',
+    'static int guiSettingsShowPopstarter(': 'if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, popstarterPathEdit, gPopstarterPath))',
 }
 for sig in PAGES:
-    body = function_text(gui_c, 'src/gui.c', sig)
+    body = function_text(gui_c, 'src/ui/gui.cpp', sig)
     if not body:
         continue
     if sig in DEVICE_PAGES:
@@ -154,25 +164,25 @@ for sig in PAGES:
             failures.append('%s...): its full re-apply must be skipped when Back/L1/R1 left it untouched (#806)' % sig)
     elif 'if (result != UIID_BTN_CANCEL && result != -1)' not in body and 'if (result) {' not in body:
         failures.append('%s...): its rows must apply for every result except Cancel' % sig)
-    if 'guiSettingsPageResult(result)' not in body:
-        failures.append('%s...): must return through guiSettingsPageResult(result)' % sig)
-audio = function_text(gui_c, 'src/gui.c', 'int guiShowAudioConfig(')
-if audio and 'guiSettingsPageResult(result)' not in audio:
-    failures.append('guiShowAudioConfig: must return through guiSettingsPageResult(result)')
+    if 'gSettingsShell.pageResult(result)' not in body:
+        failures.append('%s...): must return through gSettingsShell.pageResult(result)' % sig)
+audio = function_text(gui_c, 'src/ui/gui.cpp', 'static int guiShowAudioConfig(')
+if audio and 'gSettingsShell.pageResult(result)' not in audio:
+    failures.append('guiShowAudioConfig: must return through gSettingsShell.pageResult(result)')
 
 # --- an untouched page: which exits count, and the long-path edit buffers -----------------------
 
-untouched = function_text(gui_c, 'src/gui.c', 'static int guiSettingsLeftUntouched(')
+untouched = function_text(gui_c, 'src/ui/guisettings.cpp', 'int SettingsShell::leftUntouched(')
 if untouched:
-    if 'if (!guiSettingsIsShellResult(result) || diaHasChanges(ui))' not in untouched:
-        failures.append('guiSettingsLeftUntouched: only an unchanged Back/L1/R1 counts as untouched')
+    if 'if (!isShellResult(result) || diaHasChanges(ui))' not in untouched:
+        failures.append('SettingsShell::leftUntouched: only an unchanged Back/L1/R1 counts as untouched')
     # Each page passes ITS OWN long-path buffer (CodeRabbit #807): another page's buffer is still
     # empty until that page opens, so comparing it would make every page look edited.
     if 'return pathEdit == NULL || strcmp(pathEdit, pathValue) == 0;' not in untouched:
-        failures.append('guiSettingsLeftUntouched: must compare only the page\'s own long-path buffer')
+        failures.append('SettingsShell::leftUntouched: must compare only the page\'s own long-path buffer')
     for buffer in ('exitPathEdit', 'neutrinoPathEdit', 'popstarterPathEdit'):
         if buffer in untouched:
-            failures.append('guiSettingsLeftUntouched: must not read %s itself; the page passes its own' % buffer)
+            failures.append('SettingsShell::leftUntouched: must not read %s itself; the page passes its own' % buffer)
 
 CHANGES_HARNESS = r'''
 #include <stdio.h>
@@ -233,7 +243,7 @@ int main(void)
 dia_h = read('include/dia.h')
 item_enum = re.search(r'^typedef enum \{.*?\} UIItemType;', dia_h, re.M | re.S)
 item_struct = re.search(r'^struct UIItem\s*\{.*?^\};', dia_h, re.M | re.S)
-has_changes = function_text(dia_c, 'src/dia.c', 'int diaHasChanges(')
+has_changes = function_text(read('src/ui/diaitems.cpp'), 'src/ui/diaitems.cpp', 'int diaHasChanges(')
 if item_enum is None or item_struct is None:
     failures.append('include/dia.h: UIItemType / struct UIItem not found')
 elif has_changes:
@@ -242,12 +252,12 @@ elif has_changes:
 
 # --- Exit without saving: restore the source state captured at Settings entry --------------------
 
-read_source = function_text(gui_c, 'src/gui.c', 'static void guiSettingsReadSourceState(')
-capture = function_text(gui_c, 'src/gui.c', 'static void guiSettingsCaptureSourceState(')
-changed = function_text(gui_c, 'src/gui.c', 'static int guiSettingsSourceStateChanged(')
-restore = function_text(gui_c, 'src/gui.c', 'static void guiSettingsRestoreSourceState(')
-shell = function_text(gui_c, 'src/gui.c', 'static void guiShowSettingsFromPage(')
-index = function_text(gui_c, 'src/gui.c', 'static int guiSettingsShowIndex(')
+read_source = function_text(gui_c, 'src/ui/guisettings.cpp', 'void SettingsShell::readSourceState(')
+capture = function_text(gui_c, 'src/ui/guisettings.cpp', 'void SettingsShell::captureSourceState(')
+changed = function_text(gui_c, 'src/ui/guisettings.cpp', 'bool SettingsShell::sourceStateChanged(')
+restore = function_text(gui_c, 'src/ui/guisettings.cpp', 'void SettingsShell::restoreSourceState(')
+shell = function_text(gui_c, 'src/ui/guisettings.cpp', 'void SettingsShell::showFromPage(')
+index = function_text(gui_c, 'src/ui/guisettings.cpp', 'int SettingsShell::showIndex(')
 
 SOURCE_FIELDS = (
     'gDefaultDevice', 'gBDMStartMode', 'gHDDStartMode', 'gAPPStartMode', 'gMMCEStartMode',
@@ -262,47 +272,47 @@ for field in SOURCE_FIELDS:
     if restore and field not in restore:
         failures.append('guiSettingsRestoreSourceState: missing %s' % field)
 
-if capture and 'guiSettingsReadSourceState(&guiSettingsSourceState);' not in capture:
-    failures.append('guiSettingsCaptureSourceState: must snapshot through the complete source-state reader')
-if changed and 'memcmp(&current, &guiSettingsSourceState, sizeof(current)) != 0' not in changed:
-    failures.append('guiSettingsSourceStateChanged: must compare the complete captured source state')
-if shell and 'guiSettingsCaptureSourceState();' not in shell:
-    failures.append('guiShowSettingsFromPage: must capture source state before any Settings page can apply edits')
+if capture and 'readSourceState(&sourceState_);' not in capture:
+    failures.append('SettingsShell::captureSourceState: must snapshot through the complete source-state reader')
+if changed and 'memcmp(&current, &sourceState_, sizeof(current)) != 0' not in changed:
+    failures.append('SettingsShell::sourceStateChanged: must compare the complete captured source state')
+if shell and 'captureSourceState();' not in shell:
+    failures.append('SettingsShell::showFromPage: must capture source state before any Settings page can apply edits')
 if restore:
-    if 'if (!guiSettingsSourceStateChanged())' not in restore:
-        failures.append('guiSettingsRestoreSourceState: must avoid a device refresh when no source state changed')
+    if 'if (!sourceStateChanged())' not in restore:
+        failures.append('SettingsShell::restoreSourceState: must avoid a device refresh when no source state changed')
     for needle in ('bdmForceDeviceRefresh();', 'applyConfig(-1, -1, 0);', 'menuReinitMainMenu();'):
         if needle not in restore:
-            failures.append('guiSettingsRestoreSourceState: missing %s' % needle)
+            failures.append('SettingsShell::restoreSourceState: missing %s' % needle)
 if index:
     exit_pos = index.find('promptResult == SETTINGS_PROMPT_EXIT')
-    restore_pos = index.find('guiSettingsRestoreSourceState();', exit_pos)
+    restore_pos = index.find('restoreSourceState();', exit_pos)
     return_pos = index.find('return 0;', exit_pos)
     if exit_pos < 0 or restore_pos < 0 or return_pos < 0 or restore_pos > return_pos:
         failures.append('Exit without saving must restore source state before leaving Settings')
 
     save_pos = index.find('if (menuSaveSettings() > 0)')
-    recapture_pos = index.find('guiSettingsCaptureSourceState();', save_pos)
-    pending_clear = index.find('guiSettingsSavePending = 0;', save_pos)
+    recapture_pos = index.find('captureSourceState();', save_pos)
+    pending_clear = index.find('savePending_ = 0;', save_pos)
     if save_pos < 0 or recapture_pos < 0 or pending_clear < 0 or not (save_pos < recapture_pos < pending_clear):
         failures.append('a successful in-shell Save Changes must become the new discard baseline')
 
 # --- Obsolete compatibility download feature is gone end-to-end -------------------------------
 
 for where, source, needle in (
-    ('src/menusys.c', menusys_c, 'MENU_NETWORK_UPDATE'),
-    ('src/menusys.c', menusys_c, 'guiShowNetCompatUpdate'),
-    ('src/dialogs.c', dialogs_c, 'diaNetCompatUpdate'),
-    ('src/dialogs.c', dialogs_c, 'COMPAT_DL_DEFAULTS'),
+    ('src/ui/menusys.cpp', menusys_c, 'MENU_NETWORK_UPDATE'),
+    ('src/ui/menusys.cpp', menusys_c, 'guiShowNetCompatUpdate'),
+    ('src/ui/dialogs.cpp', dialogs_c, 'diaNetCompatUpdate'),
+    ('src/ui/dialogs.cpp', dialogs_c, 'COMPAT_DL_DEFAULTS'),
     ('include/dialogs.h', dialogs_h, 'NETUPD_OPT_UPD_ALL'),
     ('include/dialogs.h', dialogs_h, 'diaNetCompatUpdate'),
     ('include/dialogs.h', dialogs_h, 'COMPAT_DL_DEFAULTS'),
-    ('src/gui.c', gui_c, 'guiShowNetCompatUpdate'),
+    ('src/ui/gui.cpp', gui_c, 'guiShowNetCompatUpdate'),
     ('include/gui.h', gui_h, 'guiShowNetCompatUpdate'),
-    ('src/guigame.c', guigame_c, 'COMPAT_DL_DEFAULTS'),
-    ('src/opl.c', opl_c, 'oplUpdateGameCompat'),
-    ('src/opl.c', opl_c, 'CompatUpdateStatus'),
-    ('src/opl.c', opl_c, 'IO_COMPAT_UPDATE_DEFFERED'),
+    ('src/ui/guigame.cpp', guigame_c, 'COMPAT_DL_DEFAULTS'),
+    ('src/app/opl.cpp', opl_c, 'oplUpdateGameCompat'),
+    ('src/app/opl.cpp', opl_c, 'CompatUpdateStatus'),
+    ('src/app/opl.cpp', opl_c, 'IO_COMPAT_UPDATE_DEFFERED'),
     ('include/opl.h', opl_h, 'IO_COMPAT_UPDATE_DEFFERED'),
     ('include/opl.h', opl_h, 'OPL_COMPAT_UPDATE_STAT_'),
 ):
@@ -315,11 +325,11 @@ if (root / 'include/compatupd.h').exists():
 # Preserve numeric/UI identity around removed rows so deleting the feature cannot silently retag
 # surviving menu/dialog controls. The retired constants must never be rendered or handled.
 if 'MENU_RETIRED_NETWORK_UPDATE' not in menusys_c:
-    failures.append('src/menusys.c: retired Network Update slot must remain reserved')
+    failures.append('src/ui/menusys.c: retired Network Update slot must remain reserved')
 if 'COMPAT_RETIRED_DOWNLOAD_DEFAULTS' not in dialogs_h:
     failures.append('include/dialogs.h: retired Download Defaults slot must remain reserved')
 if 'if (it->item.id == MENU_NBD)' not in menusys_c:
-    failures.append('src/menusys.c: main-menu spacing must key off the live NBD row, not enum arithmetic')
+    failures.append('src/ui/menusys.c: main-menu spacing must key off the live NBD row, not enum arithmetic')
 
 # Removal of the fetcher must not rewrite the per-game compatibility/config ABI. Old downloaded
 # configs still need to load as such, and the actual compatibility mode/core keys remain untouched.
@@ -339,7 +349,7 @@ for where, source, needle in (
 
 # --- Network page: reconnect only on OK/Reconnect or a real change (compiled and run) -----------
 
-net = function_text(gui_c, 'src/gui.c', 'int guiShowNetConfig(')
+net = function_text(gui_c, 'src/ui/gui.cpp', 'int guiShowNetConfig(')
 if net:
     if not re.search(r'gui_smb_link_t smbBefore;\s*\n\s*guiSmbLinkCapture\(&smbBefore\);', net):
         failures.append('guiShowNetConfig: must snapshot the SMB link (guiSmbLinkCapture) before the dialog')
@@ -416,8 +426,8 @@ int main(void)
 
 link_type = re.search(r'^typedef struct\s*\{[^}]*\} gui_smb_link_t;', gui_c, re.M)
 if link_type is None:
-    failures.append('src/gui.c: typedef gui_smb_link_t not found')
-link_functions = ''.join(function_text(gui_c, 'src/gui.c', sig) for sig in (
+    failures.append('src/ui/gui.c: typedef gui_smb_link_t not found')
+link_functions = ''.join(function_text(gui_c, 'src/ui/gui.cpp', sig) for sig in (
     'static void guiSmbLinkCapture(',
     'static int guiSmbLinkChanged(',
 ))

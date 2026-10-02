@@ -1,6 +1,7 @@
 #ifndef __NET_SUPPORT_H
 #define __NET_SUPPORT_H
 
+#include <lwip/ip_addr.h> // struct ip4_addr
 #include "include/opl.h"
 
 // The menu-side TCP/IP stack, as distinct from any protocol that runs over it.
@@ -56,7 +57,52 @@ int netGetDHCPStatus(void);
 // The stack init lock. ethsupport's SMB entry points take it around their own apply-config calls;
 // anything else that raises or reconfigures the stack must take it too.
 int netInitSema(void);
-void netLockInit(void);
-void netUnlockInit(void);
+
+// The shared stack as a class (src/sources/netsupport.cpp): module residency, the protocol that
+// made the stack resident, the cached address from the last live read and the init-lock semaphore.
+// One instance (gNetSupport); the netXxx free functions above forward to it. netGetNetIFLinkStatus
+// is a private static so it can be handed to waitValidState as a plain function pointer.
+class NetSupport
+{
+public:
+    constexpr NetSupport() = default;
+    NetSupport(const NetSupport &) = delete;
+    NetSupport &operator=(const NetSupport &) = delete;
+
+    int initSema();
+    int applyNetConfig();
+    int modulesLoaded() const { return modulesLoaded_; }
+    int residentProtocol() const { return residentProtocol_; }
+    void deinitModules(void (*protocolTeardown)(void));
+    int loadInitModules(int protocol);
+    int ensureModules();
+    int getConfig(u8 *ip_address, u8 *netmask, u8 *gateway);
+    int dhcpStatus();
+
+private:
+    static int netGetNetIFLinkStatus(void);
+
+    void lockInit();
+    void unlockInit();
+    int waitValidState(int (*checkingFunction)(void));
+    int waitValidLinkState();
+    int waitValidDhcpState();
+    int initApplyConfig();
+    int loadModules(int protocol);
+    int readNetConfig();
+    int applyNetifConfig();
+    int netifLinkStatus();
+    int applyIpConfig();
+
+    unsigned char modulesLoaded_ = 0;
+    int residentProtocol_ = NET_PROTO_OFF;
+    struct ip4_addr lastIP_ = {};
+    struct ip4_addr lastNM_ = {};
+    struct ip4_addr lastGW_ = {};
+    int initSemaId_ = -1;
+    int netifCurrentMode_ = NETMAN_NETIF_ETH_LINK_MODE_AUTO; // was the function-local CurrentMode
+};
+
+extern NetSupport gNetSupport;
 
 #endif

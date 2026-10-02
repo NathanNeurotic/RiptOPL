@@ -15,24 +15,24 @@
  */
 
 /// DTV 576 Progressive Scan (720x576). Not available in ROM v1.70 and earlier.
-#define GS_MODE_DTV_576P  0x53
+#define GS_MODE_DTV_576P 0x53
 /// DTV 1080 Progressive Scan (1920x1080). GSM-synthetic mode (no ROM SetGsCrt support): the ee_core
 /// DTV_1080P handler builds the hardware-tested, non-standard raster itself; the GUI triple-confirms it.
-#define GS_MODE_DTV_1080P 0x54
+constexpr int GS_MODE_DTV_1080P = 0x54;
 
-#define DIM_UNDEF -1
+constexpr int DIM_UNDEF = -1;
 
-#define ALIGN_TOP     (0 << 0)
-#define ALIGN_BOTTOM  (1 << 0)
+constexpr int ALIGN_TOP = (0 << 0);
+constexpr int ALIGN_BOTTOM = (1 << 0);
 #define ALIGN_VCENTER (2 << 0)
-#define ALIGN_LEFT    (0 << 2)
+constexpr int ALIGN_LEFT = (0 << 2);
 #define ALIGN_RIGHT   (1 << 2)
 #define ALIGN_HCENTER (2 << 2)
 #define ALIGN_NONE    (ALIGN_TOP | ALIGN_LEFT)
 #define ALIGN_CENTER  (ALIGN_VCENTER | ALIGN_HCENTER)
 
-#define SCALING_NONE  0
-#define SCALING_RATIO 1
+constexpr int SCALING_NONE = 0;
+constexpr int SCALING_RATIO = 1;
 
 /// GSKit CLUT base struct. This should've been in gsKit from the start :)
 typedef struct
@@ -91,8 +91,6 @@ void rmInvalidateTexture(GSTEXTURE *txt);
 /** Unload texture from texture manager, performance optimization */
 void rmUnloadTexture(GSTEXTURE *txt);
 
-/** Uploads a texture to VRAM without drawing it. */
-void rmPrimeTexture(GSTEXTURE *txt);
 
 void rmDrawQuad(rm_quad_t *q);
 
@@ -144,8 +142,6 @@ int rmWideScale(int x);
 /** Get Pixel Aspect Ratio of native resolution */
 float rmGetPAR();
 
-/** Get interfaced frame mode */
-int rmGetInterlacedFrameMode();
 
 /** Scale x from 640 to native resolution */
 int rmScaleX(int x);
@@ -156,8 +152,6 @@ int rmScaleY(int y);
 /** Scale x from native to 640 resolution */
 int rmUnScaleX(int x);
 
-/** Scale y from native to 480 resolution */
-int rmUnScaleY(int y);
 
 // Returns H-sync frequency in KHz
 unsigned char rmGetHsync(void);

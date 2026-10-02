@@ -1,6 +1,6 @@
 """A cheat file that exists but will not load must never be reported as "no cheats found".
 
-sbLoadCheats (src/supportbase.c) tries CHT/cht.tar, then CHT/<ID>.cht, then CHT/<ID>.CHT, and returns
+sbLoadCheats (src/sources/supportbase.c) tries CHT/cht.tar, then CHT/<ID>.cht, then CHT/<ID>.CHT, and returns
 -ENOENT only when there is no cheat source at all -- the launch legs show "No cheats found" for that,
 and with cheats switched on for ALL games the launch now continues with no prompt. Anything that
 exists and fails to load must come back as a load failure, which always prompts.
@@ -22,16 +22,19 @@ import re
 import subprocess
 import sys
 import tempfile
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the names the mocks use)
+
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/supportbase.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+source = (root / 'src/sources/supportbase.cpp').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
 
 def function_text(signature):
     match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
     if match is None:
-        failures.append('src/supportbase.c: %s...) not found' % signature)
+        failures.append('src/sources/supportbase.c: %s...) not found' % signature)
         return ''
     end = source.index('\n}', match.start())
     return source[match.start():end] + '\n}\n'
@@ -39,7 +42,7 @@ def function_text(signature):
 
 member_max = re.search(r'^#define CHT_TAR_MEMBER_MAX\s+(.+)$', source, re.M)
 if member_max is None:
-    failures.append('src/supportbase.c: #define CHT_TAR_MEMBER_MAX not found')
+    failures.append('src/sources/supportbase.c: #define CHT_TAR_MEMBER_MAX not found')
 functions = function_text('static void sbCheatLogAppend(') + function_text('int sbLoadCheats(')
 
 HARNESS = r'''

@@ -1,11 +1,11 @@
-/* Runs the REAL src/httpcatalog.c over the fixtures and prints one line per outcome.
+/* Runs the REAL src/platform/httpcatalog.c over the fixtures and prints one line per outcome.
  *
  * On its own it proves nothing -- compare_catalog.py diffs this output against
  * catalog_reference.py over the same fixtures, in all three line-ending forms. That comparison is
  * the only thing that makes "the two parsers are one contract" a fact rather than a comment.
  *
  * This models the CATALOG, not just the line: first-record-wins de-duplication happens here
- * because httpCatalogParseLine cannot see across lines, and src/httpsupport.c does the same thing
+ * because httpCatalogParseLine cannot see across lines, and src/sources/httpsupport.c does the same thing
  * for the same reason. Leaving it out made the two sides disagree on duplicates.csv, which is how
  * it got noticed.
  *
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     fseek(f, 0, SEEK_END);
     size = ftell(f);
     fseek(f, 0, SEEK_SET);
-    buf = malloc(size + 2);
+    buf = (char *)malloc(size + 2);
     if (!buf) {
         fclose(f);
         return 2;

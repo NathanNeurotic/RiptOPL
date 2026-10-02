@@ -1,0 +1,511 @@
+# Plan: idiomatic C++ for src/ (classes, constexpr, visibility, decoupling)
+
+Status: plan; phase 0 (safety net) done -- see section 8. Baseline = `ps2build` branch after the mechanical .c -> .cpp rename (commit
+`ec17be0`). Numbers come from `tools/analyze_coupling.py` (regex heuristics, not a parser) and greps.
+
+## 1. What the code looks like today
+
+| Measure | Value |
+|---|---|
+| src/*.cpp / lines | 55 modules / ~62k (opl 5.4k, gui 5.3k, themes 4.0k, bdmsupport 3.6k, hddsupport 2.7k, supportbase 2.6k, vcdsupport 2.3k, system 2.3k) |
+| Modules in ONE dependency cycle | **43 of 55** (acyclic: atlas, dialogs, httpcatalog, httpclient, ioprp, launchdiag, nbns, ps2cnf, rahash, renderman, tar, vmc_groups) |
+| Upward (layer-violating) symbol deps | **224** across 88 module pairs (layering in section 3) |
+| Extern globals in headers | 192; **137 in opl.h** alone (settings), 35 in dialogs.h (dialog tables) |
+| File-scope `static` variables | ~730 |
+| Non-static functions no other file references | **84** (gui 14, vcdsupport 6, hddsupport 5, supportbase 5, OSDHistory 5, tar 4, cuesupport 4, mmcesupport 4 ...) |
+| `#define` numeric constants / func-like macros | ~406 / ~24 |
+| malloc-family / free / goto / open+close | 123 / 308 / 46 / 130+154 |
+| Semaphore ops (manual lock/unlock) | 133 |
+| Giant functions | `sendIrxKernelRAM` 1468 lines, `bdmLaunchGame` 385, `thmLoad` 350, `drawCoverFlow` 295, `_loadConfig` 452, `_saveConfig` 302, `setDefaults` 198 |
+| Hand-rolled vtable | `item_list_t`: 8 backends x ~25 function pointers, plus `void *priv`, `void *owner`; ~100 call sites |
+| Hand-rolled vtable #2 | `menu_item_t` (6 callbacks + `void *userdata`), theme elements, `UIItem` dialogs |
+
+Hot spots of coupling (symbol uses, most referenced first): config 928, dia 844, lang 494, gui 381,
+opl 226, supportbase 209. The worst edges:
+
+- Support backends -> `opl`: `initSupport/deinit/deinitEx/miniDeinit/applyConfig/saveConfig/
+  oplPath2Mode/clearErrorMessageIf/setErrorMessage` (bdm 12, hdd 8, app 8, mmce 6, eth 5, udpfs 4).
+  The backend calls back into the application that owns it.
+- `themes` -> `gui` (9: `guiDrawIconAndText`, `guiDrawBGPlasma`, `guiAlignMenuHints` ...), `menusys`
+  (5), `vcdsupport` (5: `vcdDisplayName*`), `opl` (3). The renderer depends on the UI that depends on it.
+- Backends -> `libview` (`libViewMarkDirty`, `libViewActive`, `libViewConsumeDirty`), backends -> `gui`
+  (`guiMsgBox`, `guiSetBootStatusSticky`, `guiHandleDeferedIO`).
+- `system` (the lowest layer: IOP reset, module loading, ee_core config blob) -> `rawatch`, `cheatman`
+  (`GetWatchList`, `GetCheatsList`, ...): the launch core reaches up into two feature modules.
+- `util` -> `gui`; `menusys` -> `opl` (`moduleUpdateMenuInternal`, `saveConfig`).
+
+## 2. Target design (what "good" looks like here)
+
+Constraints that shape every choice: EE has ~32 MB and no heap to waste, so no exceptions, no RTTI,
+no `std::string` in hot paths; virtual dispatch and small RAII wrappers are free by comparison. The
+compiler default is `gnu++17` (g++ 15): `constexpr` if/lambdas, inline variables, structured bindings,
+`std::string_view`, `std::array`, `std::optional` are available. `-std=` cannot be set per language in
+ps2build (`cflags` hits C files too), so stay on the default.
+
+### 2.1 Game sources: one abstract class replaces `item_list_t`
+```cpp
+class GameSource {                         // src/sources/game_source.h
+public:
+    virtual ~GameSource() = default;
+    virtual Mode mode() const = 0;
+    virtual int  textId() const = 0;  virtual int iconId() const = 0;
+    virtual void init() {}            virtual void shutdown() {}
+    virtual bool needsUpdate() { return false; }
+    virtual int  update() = 0;        virtual int  count() const = 0;
+    virtual const GameInfo *game(int id) const = 0;
+    virtual void launch(int id, ConfigSet &cfg) = 0;
+    virtual void cleanup(CleanupMode) {}  // defaults replace today's `if (list->itemX)` NULL checks
+    // optional capabilities: rename, remove, checkVmc, launchVcd/Cue, art archive, view/sourceId ...
+protected:
+    explicit GameSource(HostServices &host) : host_(host) {}
+    HostServices &host_;                  // the ONLY way a backend talks to the app (see 2.2)
+};
+class BdmSource : public GameSource { ... private: device table, scan state ... };
+```
+Backends: `BdmSource, EthSource, HddSource, AppSource, MmceSource, FavSource, UdpfsSource, HttpSource`.
+A `SourceRegistry` indexed by `Mode` replaces the `mode` switch statements and the `ethGetObject`/
+`hddGetObject`/... accessor family. `priv`/`owner` disappear (members); `FavSource` becomes a view over
+other sources instead of the `favResolve` owner-juggling. Shared logic (`supportbase`: ISO scanning,
+cheat/art discovery, compat flags) becomes a `GameListCache` helper the backends hold, not free
+functions every backend includes.
+
+### 2.2 `HostServices`: cut the backend -> `opl` / `gui` edges
+A small pure interface the app implements and hands to every backend and to the UI-facing modules:
+`reportError(code, text)`, `clearErrorIf(code)`, `requestSave()`, `pathToMode()`, `deferIo(fn)`,
+`bootStatus(text)`, `msgBox/warning(...)`, `notifyListChanged(Mode)` (replaces `libViewMarkDirty` pokes:
+the library view subscribes, backends only publish). Backends then depend on `core/` only; the 224
+upward edges shrink to the host boundary. Same trick for `system`: `LaunchContext` carries the cheat
+list and RA watch list in (`launchWith(ctx)`), so `system` stops importing `cheatman`/`rawatch`.
+
+### 2.3 Settings: 137 globals -> one typed struct + a constexpr key table
+`struct Settings { struct Net {...} net; struct Neutrino {...} neutrino; Ember ember; Popstarter pops; Vcd vcd;
+Pad pad; Bdma bdma; Http http; Ui ui; ... }`, one instance `Settings &settings()`. Load/save/default become
+a `constexpr` descriptor table (`{key, member-pointer, default, min, max}`) walked by one loop. This
+replaces `_loadConfig` (452 lines), `_saveConfig` (302), `setDefaults` (198), and the matching externs
+in opl.h. Config-file keys and format do not change (a golden round-trip test enforces it).
+
+### 2.4 Subsystem classes (state owned by an object, lifetime explicit)
+| Today | Becomes |
+|---|---|
+| `config_set_t` + 37 `config*` functions, hand-linked list | `ConfigSet` (RAII, move-only; `get<int>`/`getString` overloads; iterator over entries; format latch stays private) |
+| `ioman` (worker thread, handler table, `void *` payloads) | `IoQueue` + typed `submit(Request<T>)`; handlers registered as `std::function`-free function objects (templates), `LOG` stays a macro |
+| `renderman` `rm*` (globals for display state) | `Renderer` (explicit `instance()` for init order), private display state, `constexpr` scaling helpers |
+| `texcache`/`textures`/`atlas`/`fntsys` | `TextureCache`, `TextureLoader`, `Atlas`, `Font` resource owners (RAII frees GS memory; no `goto fail`) |
+| `themes` elements + draw-function pointers | `ThemeElement` base (`draw()`, `validate()`), derived `ItemsList, CoverFlow, GameImage, Text ...`; loader split from renderer |
+| `menusys` `menu_item_t`/`submenu_item_t` callbacks | `MenuItem`/`SubMenu` with virtual `onCross/onTriangle/onRefresh`; `userdata` goes away |
+| `dia`/`dialogs` `UIItem` arrays + 35 global dialog tables | `Dialog` builder returning a value; tables become `constexpr` where static |
+| `pad`, `sound` | `PadManager` (per-port `Pad` objects), `AudioMixer` (BGM/SFX state private) |
+| `tar`, `vmc_groups`, `artindex`, `ranet`, `httpcatalog` | one class each, already mostly self-contained |
+
+### 2.5 constexpr / enum class
+- Numeric `#define`s (~406: `UL_GAME_NAME_MAX`, `COMPAT_MODE_n`, `MODE_FLAG_*`, error codes, `MENU_*`) ->
+  `constexpr`/`enum class` with `operator|` helpers for flag sets (`CompatMode`, `ModeFlag`).
+- Function-like macros (~24: `OSD_HISTORY_GET_*`, `X_SCALE/Y_SCALE`, `ALLOC_FITS`, `GLYPH_PAGE_OK`,
+  `makeSYNCV/makeDISPLAY`) -> `constexpr inline` functions (type-checked, still compile-time).
+- Static lookup tables (button maps, vmode tables, key tables, extension lists, `htab`) -> `constexpr`
+  arrays; the pad-macro slowdown inverse in guigame becomes a `constexpr` inverse built at compile time.
+- Leave `#define` for: include guards, string-literal concatenation, `LOG(...)`, `__DEBUG` switches.
+- Not constexpr: anything touching IOP/EE state, floating-point-heavy GS maths (no benefit).
+
+### 2.6 Visibility
+- Every file-scope `static` (~730) and every function nothing else mentions (**84**) goes into an
+  anonymous namespace (or becomes a private member). Their header declarations are deleted.
+- Headers expose classes and a handful of free functions only; the 192 externs are replaced by
+  accessors on `Settings`/owner classes. Compiler help: `-Wmissing-declarations` flags any non-static
+  free function without a prior declaration.
+- Include hygiene: headers carry forward declarations, not other project headers (fan-in today:
+  opl.h 44 files, ioman.h 43, util.h 26, gui.h 22, lang.h 21 -- opl.h is the worst offender).
+
+### 2.7 RAII and error paths
+`UniqueFd`, `UniqueFile`, `UniqueMalloc<T>` (free deleter; keeps `malloc` for large GS/IO buffers),
+`SemaLock` (scoped wait/signal for the 133 manual sema operations), `ScopedIoBlock`. Removes the 46
+`goto fail` sites (bdmsupport, tar, ...) without hoisting declarations, and the early-return leak
+class. No exceptions: functions keep returning status codes (`Result`-style small struct where it helps).
+
+## 3. Layering (enforced by the analyzer)
+
+```
+L5 app        opl (App lifecycle only)
+L4 ui         menusys dia dialogs gui guigame libview
+L3 sources    supportbase *support (bdm hdd eth app mmce udpfs http fav vcd cue disc net) ra* artindex ...
+L2 gfx        renderman textures texcache fntsys themes
+L1 core       config lang xparam cheatman gsm pad sound OSDHistory vmc_groups
+L0 platform   system ioman util tar ps2cnf ioprp atlas httpclient nbns launchdiag hdd(rpc) md5 lz4 zso
+```
+Rule: a module may include/call only its own layer or lower; upward needs go through an interface
+(`HostServices`, observer, or a callback passed in). `tools/analyze_coupling.py --check` exits non-zero
+on any upward symbol and runs in CI; target is 0 (today 224). Physical layout follows:
+`src/{platform,core,gfx,sources,ui,app}/`. ps2build lib targets cannot link other libs (v1 limit),
+so the layers stay directories inside the single `riptopl` target and the script is the enforcer.
+
+## 4. Phases (each ends green: clean ps2build build + flavour syntax sweep + size check + smoke test)
+
+| # | Phase | Risk | Behaviour change |
+|---|---|---|---|
+| 0 | **Safety net.** Warning baseline (157 `-Wwrite-strings`, 34 `-Wsign-compare`), add `-Wmissing-declarations`, `-fno-exceptions -fno-rtti`; host-built unit tests (g++ on Linux, no PS2 headers) for the pure modules: config parser/writer round trip, tar index, lz4/zso, ps2cnf, httpcatalog, atlas, ioprp patching, vmc_groups; analyzer in CI as informational | low | none |
+| 1 | **Visibility + constexpr.** Anonymous namespaces, delete the 84 dead exports and their header decls, defines -> constexpr/enum class, func macros -> constexpr functions, `const`/`constexpr` tables | low | none (binary size should not grow) |
+| 2 | **RAII layer.** `UniqueFd/File/Malloc`, `SemaLock`; convert module by module, deleting the `goto fail` sites and manual `free` chains. Revert the declaration hoists from `ec17be0` as part of it | low-med | none intended; leak fixes |
+| 3 | **Settings struct + descriptor table.** opl.h externs -> `settings()`; one load/save loop. Golden-file test: old config in, byte-identical config out | med | none (key names fixed) |
+| 4 | **HostServices + observers.** Define interfaces in `core/`; make `opl` implement them; migrate backends one at a time behind an adapter so `item_list_t` still works. `system` takes `LaunchContext`. Cycle count drops step by step | med | none |
+| 5 | **GameSource hierarchy.** Start with the smallest backend (`AppSource` or `HttpSource`), then `Mmce`, `Udpfs`, `Eth`, `Hdd`, `Bdm` last (385-line `bdmLaunchGame`, Neutrino path). Delete `item_list_t` when the last backend moves; split launch code into `BdmLauncher`/`NeutrinoLauncher` | med-high | none intended; this is where hardware testing matters most |
+| 6 | **Subsystem classes.** Order by leaf-first: `ConfigSet`, `IoQueue`, `Atlas/TextureCache/Font`, `Renderer`, `Theme` (+ move `guiDraw*` helpers into a `ui/draw` module so `themes` stops importing `gui`), `MenuItem`, `Dialog`, `PadManager`, `AudioMixer` | med | none intended |
+| 7 | **Split god files.** opl.cpp -> `App` (lifecycle), `SourceManager`, `AutoLaunch`, `ApaSetup`; gui.cpp -> `GuiCore`, `SettingsScreens` (the `guiShow*Config` family), `Overlays`; themes.cpp -> `ThemeLoader`, `ThemeRenderer`, `CoverFlow`; bdmsupport.cpp -> `BdmSource`, `BdmDevices`, `NeutrinoLauncher`; `sendIrxKernelRAM` (1468 lines) -> data-driven module list | med | none |
+| 8 | **Directory move + CI gate.** `src/{platform,core,gfx,sources,ui,app}/`; `--check` becomes blocking | low | none |
+
+Phases 1-3 are independent of the class work and pay off immediately (smaller headers, compile-time
+tables, one place for settings). Phase 4 is the keystone: until backends stop calling `opl`/`gui`, no
+class extraction can be reviewed in isolation.
+
+## 5. Process rules
+- One module (or one backend) per commit; every commit builds and keeps the old interface alive via a
+  thin adapter until its last caller moves ("strangler"), so a revert is always a single commit.
+- Refactors that move code do not change it; behaviour-changing fixes ride separate commits.
+- Hardware/emulator smoke test after phases 3, 5, 6 (boot, each backend lists games, launch one,
+  settings round trip, theme switch, BGM). Phase 5 needs real USB/HDD/SMB runs.
+- Size budget: compare `riptopl-packed.elf` after each phase; > +2% needs an explanation (vtables and
+  inline wrappers should be net-neutral once dead code is gone).
+- Flavours: the debug/RA/IGS/RTL/DTL define sets must keep compiling (the syntax sweep used for the
+  .cpp rename is worth keeping as `tools/syntax_sweep.py`).
+
+## 6. Risks / decisions needed
+1. **Config format drift** (phase 3): shared with wOPL/OPL-Launcher; keep keys/ordering/format latch; golden tests first.
+2. **`item_list_t` is touched everywhere** (~100 call sites in opl, favsupport, menusys, guigame, libview ...); the adapter
+   step keeps phase 5 incremental, but favsupport's owner juggling needs a design pass before starting.
+3. **Static init order:** objects with constructors at namespace scope run before `main` on EE; use
+   function-local statics or explicit `init()` for anything touching IOP/GS (a rule, enforced in review).
+4. **Code size/RTTI:** keep exceptions and RTTI off; no `dynamic_cast`, no `std::function` in hot paths.
+5. **Flavour breadth:** the Makefile can no longer build `src/`; non-main flavours depend on porting them to ps2build first.
+6. **Scope:** `ee_core/` and `elfldr/` are separate ELFs (own crt0/linkfile, asm) and stay out of this plan; they get a
+   later, much smaller pass.
+
+## 7. Suggested first slices (smallest useful PRs)
+1. `tools/analyze_coupling.py` in CI (informational) + `-Wmissing-declarations` + warning baseline.
+2. Visibility sweep of `tar`, `OSDHistory`, `cuesupport`, `vcdsupport` (dead exports + anonymous namespaces).
+3. `OSDHistory` macros -> `constexpr`; `iosupport.h` flags/enums -> `enum class` + flag helpers.
+4. Host test harness + config round-trip test (unblocks phase 3).
+5. `UniqueFd`/`SemaLock` and conversion of `tar.cpp` (also removes the `goto fail` hoist).
+
+## 8. Phase 0 status (done)
+- **Existing tests repaired.** The .c -> .cpp rename and the upstream root reorg had silently broken 25
+  `.github/scripts/test_*.py` source checks and `tools/pc/http/tests` (paths, C snippets that now contain
+  casts, `ioPutRequest` mocks). All pass again; `tools/run_tests.sh [-k]` runs everything.
+- **Host unit tests** in `tests/host/` (ASan + UBSan, real source #included against stub headers in
+  `tests/host/stub`): `config` (both syntaxes, format latch, merge/clone, VMC helpers, wOPL key
+  translation), `tar` (index, cache round trip, concatenated archives, oversize, name rules),
+  `ps2cnf` (BOOT2 variants), `vmc_groups` (table + lookup contract).
+- **Warning baseline:** `tools/warning_gate.py build.log --check` (196 warnings in 28 files; 138 are
+  `-Wwrite-strings`, 34 `-Wsign-compare`, 15 `-Wmissing-declarations`). `ps2.yaml` now builds with
+  `-fno-exceptions -Wmissing-declarations`. `-fno-rtti` is NOT enabled: ps2build `cflags` also hit C
+  files and gcc warns once per C file; revisit when ps2build gets per-language flags. No polymorphic
+  types exist yet, so nothing is lost.
+- **CI:** `.github/workflows/ps2build.yml` runs host tests, the warning gate and the coupling report.
+
+Findings the tests surfaced (1 and 2 fixed afterwards, with regression tests; 3 and 4 still open):
+1. FIXED `ps2cnfGetBootFile`: `BOOT2 <path>` with no `=` makes `CNFGetToken("=")` return NULL, which is only
+   compared to `(const char *)-1` before `CNFGetKey(NULL, ...)` -> NULL dereference on a malformed SYSTEM.CNF.
+2. FIXED `tarParseFile` (ARC_VERSION left at 4 to keep wOPL cache compatibility, so an existing art_cache.bin keeps its 46-char names until the archive changes): ART entry names kept 46 characters, not the documented 47 (`strncpy(nameMax)` then
+   `fname[nameMax - 1] = 0`); same off-by-one for CFG/CHT.
+3. `vmc_groups`: 12 titles are listed in more than one group (the later group is unreachable for them) and
+   8 ids are not the usual `SLUS_000.00` shape.
+4. `ioPutRequest(type, void *)` forces `reinterpret_cast<void *>(&fn)` at ~20 call sites; a typed overload
+   for `io_simpleaction_t` (phase 6, IoQueue) removes them.
+
+## 9. Phase 1 status (done: visibility, constants, macros, const-correctness)
+- **Dead/local exports:** 55 functions only their own file used are now `static` (declarations removed from
+  headers, forward declarations where needed); 24 functions nothing references were deleted (pad, hdd,
+  menusys submenu helpers, renderman, hddsupport home staging, ...). `ioman` (queue contract) and `tar`
+  (host tests) were left public on purpose. `static` is kept instead of anonymous namespaces: identical
+  linkage, no churn for ~730 declarations.
+- **Constants:** 272 integer `#define`s in C++-only headers/sources became `constexpr`. Headers that IOP modules or host
+  tools compile as C (opl.h, config.h, iosupport.h, supportbase.h, system.h, dia.h, menusys.h, util.h,
+  ...) keep their macros; so do names the preprocessor, the SDK headers or the source-scraping tests use.
+  Verified with a `-Wundef` build and the per-flavour sweep (`tools/syntax_sweep.py`).
+- **Function-like macros:** `pggsm.h` make*, OSD history date helpers, atlas, fntsys glyph page, renderman scale
+  helpers are `constexpr`/inline functions.
+- **Const-correctness:** string tables and the config path API take `const char *` (warnings 184 -> 67).
+- Checked against the previous commit's ELF after each step: `.data` identical; the only code change was atlas
+  inlining (-3 KB text). `tools/warning_gate.py` caught a macro->function rename that had turned
+  `rmScaleX` into infinite recursion (an exported wrapper shared the name).
+- Remaining 67 warnings: 34 `-Wsign-compare`, 21 `-Wwrite-strings` (SDK `char *` parameters and `gHDDPrefix`-style globals),
+  5 `-Wmissing-declarations`, 4 unused variables, 2 pointer-arith, 1 register.
+
+## 10. Phase 2 status (RAII: helpers and the cleanup paths done; bulk malloc conversion deliberately not done)
+- `include/raii.h` (UniqueFd, UniqueFile, UniqueMalloc, ScopeExit) and `include/sema_lock.h` (SemaLock), unit-tested in
+  `tests/host/test_raii.cpp`.
+- Converted: `tar.cpp` (all fds and buffers; `goto fail` and the declaration hoist gone), `bdmTryNeutrinoLaunch` (abort path is a
+  function), `sysLoadModuleBuffer` and the BDM transport lock (SemaLock), `discCheckWorker` (scope guards), the menusys info-size
+  worker (split into helpers, no goto). The only gotos left are 23 backward `goto reshow_*` re-display loops in `gui.cpp`/`guigame.cpp`
+  (control flow, not cleanup; they belong to the gui split in phase 7).
+- Semaphores: only two of the ~140 Wait/Signal sites were scoped locks with early exits; the rest are producer/consumer signals
+  (bgm ring, IO queue) or straight-line pairs, so a blanket SemaLock rewrite would not buy safety.
+- malloc/free: a leak scan (allocation followed by a return before free) flagged ~45 sites; the ones read were correct ownership
+  hand-offs, so no bulk conversion. One real defect fixed: `fntPrepareGlyphCachePage` dereferenced an unchecked `malloc`.
+
+## 11. Phase 3 status (done: one table for the plain settings; the Settings struct is deferred)
+- `src/core/settings.cpp` holds a constexpr table of 79 rows (key, variable, default) that drives `settingsApplyDefaults()`,
+  `settingsLoad()` and `settingsSave()`. `opl.cpp` lost 242 lines (the matching lines of `setDefaults`, `_loadConfig`, `_saveConfig`)
+  and calls the three functions; everything with migration, clamping or cross-key logic stayed where it was, in its original relative
+  order and now AFTER the table load: the video-mode recovery combo (that row is `loadPlain = false`), the prefix sanitising, the
+  AutoStart/GameView/AppsDisplay/VCD/ArtDelay/Coverflow clamps, the Popstarter device/path migration, the MMCE pacing migration,
+  the network-protocol derivation, the plasma-colour migration and the boot-device reconcile. The extraction/verification scripts
+  checked that no special code reads a table variable before its (now earlier) plain read, apart from `gVMode`.
+- Verified by `tests/host/test_settings.cpp` (real headers via `tests/host/sdk_stub`, real config store): same 79 keys in the old save
+  order, every default equals the old `setDefaults` value (checks generated from the old source in `settings_golden_defaults.inc`),
+  full save -> text -> load round trip, absent keys leave ints/colours alone and empty strings (as `configGetStrCopy` always did).
+- Behaviour notes: on a brand-new settings file, the few keys written by special code (theme, language, MMCE pacing marker, ember,
+  swap-select-button) now land after the plain keys instead of between them; existing files keep their order. Key names/syntax unchanged.
+- Deferred on purpose: regrouping the ~130 extern globals into a `Settings` struct. It is ~2,400 occurrences across src/include plus
+  names the scraping tests match, with no behavioural gain now that the three lists are one table; do it per sub-struct when a module
+  that owns a group (net, neutrino, popstarter, vcd, ember) is extracted in phase 4+.
+- Also: the host test infrastructure can now compile the real `include/opl.h` (empty SDK stubs in `tests/host/sdk_stub`), which makes
+  more modules testable without hand-written header stubs.
+
+## 12. Phase 4a status (HostServices: backends no longer call opl/gui/libview directly)
+- `include/host.h` defines three small interfaces (`UiServices`, `AppServices`, `LibraryServices`) with accessors
+  `host::ui()/app()/library()`; `src/app/host.cpp` (application layer) forwards them to the existing functions. 276 call sites in 15
+  modules (the support backends, supportbase, discsupport, vcdsupport, favsupport, util, lang, system, ranet) now use them.
+- **Measurement correction:** the first numbers in section 1 (43-module cycle, 224 upward symbols) came from a naive scan that also
+  counted words in comments and strings and member names (`obj.deinit`). `tools/analyze_coupling.py` now strips those. Honest
+  before/after for this step: largest cycle 38 -> 31 modules, upward symbol dependencies 164 -> 70 (69 -> 38 module pairs).
+- Remaining upward edges, by family: `system` -> rawatch/cheatman/gsm/lang/discsupport (launch config assembly), `themes` -> gui/menusys/
+  vcdsupport/favsupport (drawing helpers, row text), `lang` -> fntsys/themes, `sound` -> themes/opl, `menusys`/`gui` -> opl,
+  `texcache`/`textures` -> artindex/favsupport, `debug` -> ethsupport, `atlas` -> renderman, `favsupport`/`appsupport` -> opl
+  (`oplGetModule` = the source registry of phase 5; `oplGetAppImageByMode` needs GSTEXTURE).
+- Source-scraping tests read `src/*.cpp` through `.github/scripts/hostmap.py`, which maps the host calls back to the old function
+  names their mocks use; host tests mock `host::ui()` in `tests/host/host_env.h`.
+
+## 13. Phase 4b/4c status
+- **4b `LaunchServices`** (`host::launch()`): `system.cpp` no longer includes cheatman/rawatch/gsm/discsupport; the feature-derived ee_core
+  fields (cheat list, PS2RD image, RetroAchievements watch list + work area, GSM) are filled by `fillCoreConfig()` in `src/app/host.cpp`.
+  `warningId()` lets `system` raise translated toasts without touching the language tables.
+- **4c theme/UI split:** the hint-row helpers (`guiDrawIconAndText`, `guiDrawIconAndLiteralText`, `guiAlignMenuHints`,
+  `guiAlignSubMenuHints`) moved from `gui.cpp` to `src/gfx/uidraw.cpp` (graphics layer; they only need textures, fonts, the renderer and the
+  language table); `themes` calls the UI through `host::ui()` for lock/unlock/plasma and `host::app()` for `moduleUpdateMenu`.
+  Behaviour note: the moved helpers read the live screen width (`rmGetScreenExtents`) instead of gui.cpp's cached copy, which is
+  refreshed from the same call by `guiReloadScreenExtents()`.
+- Analyzer (comments/strings/members ignored): upward dependencies 164 -> 47 symbols (69 -> 31 module pairs); largest cycle 38 -> 32.
+- What is left is one-off edges, each needing its own answer: `themes` -> menusys (hint locks, item text) / vcdsupport (display names) /
+  favsupport; `texcache`/`textures` -> artindex/favsupport/appsupport/hddsupport/bdmsupport (art path/mode queries: these become
+  `GameSource` virtuals in phase 5); `lang` <-> fntsys/themes and `sound` -> themes (language/theme switching is app orchestration);
+  `system` -> bdm/eth/mmce/menusys/gui/themes/renderman/OSDHistory/xparam (launch teardown and device probing); `gui`/`menusys` ->
+  opl (`applyConfig`, `saveConfig`, `oplGetModule` = the source registry).
+
+## 14. Atlas and ConfigSet
+- **`Atlas`** (`include/atlas.h`, `src/gfx/atlas.cpp`): glyph atlas packer as a class (`create/destroy/place/texture`), nodes owned by
+  `raii::UniquePtr`; fntsys holds an `Atlas *`.
+- **`ConfigSet`** (`include/configset.h`, storage/key rules in `src/core/config.cpp`): `config_set_t` is now `typedef ConfigSet` in C++ and an
+  opaque struct in C. Fields are private; `type()/uid()/filename()/modified()/format()/entries()` are accessors, `markModified()/
+  clearModified()/setFormat()/rename()` the mutators. `configGet*/configSet*/configRemoveKey/configMerge/configClear/configGetVMC*`
+  stay as inline forwarders in `config.h` so call sites did not change. Heap sets use `ConfigSet::create/destroy/clone` (malloc +
+  placement new). File syntax (legacy/libconfig reader/writer, official-OPL translation, registry) is still free functions in
+  `config.cpp` driving the class through its public interface. Key names, ordering and on-disk formats are unchanged.
+  `filenameForOpen()` exists because `openFile()` patches an `mc?` placeholder in place.
+- Emulator-verified after each of Atlas and ConfigSet (menus, config load/save, game list). Binary growth: +48 B for ConfigSet.
+- Verification per step: clean `ps2build build`, `tools/run_tests.sh -k`, `tools/warning_gate.py build.log --check` (64 vs baseline 67),
+  `tools/syntax_sweep.py` (only the pre-existing EESIO `SIOCookie.h` failure).
+
+## 15. gui.cpp split (5197 -> ~1100 lines)
+- `src/gfx/plasma.cpp` / `include/plasma.h`: `PlasmaBackground` (perlin tables, VU0 helpers, 32x32 texture; `ease()` doubles as the transition fade).
+- `src/ui/guisettings.cpp`: the Settings shell and every `guiShow*Config` page, `guiConfirmVideoMode`. `src/ui/guidialogs.cpp`: message box, reboot prompt,
+  deferred-IO waits, text screen, Game ID, warnings, remove-settings, cheats.
+- `src/ui/guiqueue.cpp` / `include/guiqueue.h`: `DeferredOpQueue` (enqueue/drain under `raii::SemaLock`). `src/ui/guiboot.cpp` / `include/guiboot.h`: `BootStatus`.
+- `include/guiint.h`: the few symbols the gui units share (`gGuiScreenWidth/Height`, `guiStartFrame/EndFrame`, `guiShow`, ...); not public API.
+- Source-scraping python tests read the union of gui.cpp + guisettings.cpp + guidialogs.cpp.
+- Still to do inside gui: notifications/RA notices, the screen-handler table, the frame watchdog as small classes.
+
+## 16. IoQueue
+`src/platform/ioman.cpp` + `include/ioqueue.h`: the IO worker is `class IoQueue` (one file-static instance). Queue, handler table, semaphores,
+blocked/terminate flags and the per-type HUD counters are members; the `ioPutRequest`/`ioBlockOps`/`ioGetPending`/... functions in
+`ioman.h` stay as C-callable forwarders (ioman.h is shared with C). `ioPrintf` stays free and uses the instance's print lock.
+`test_io_queue_trims.py` now compiles the real class declaration (private opened up) plus the extracted member functions.
+
+## 17. ArtQueue
+`include/artqueue.h` + `src/gfx/artqueue.cpp`: the art request FIFO (push/pushFront/promote/pop/detachAll/release/reset) and its lock-free
+counters (queued, active, current request, nav-held flag) are `class ArtQueue`; `load_image_request_t` moved to the header.
+`texcache.cpp` keeps the cache entries, the worker thread and the load logic and talks to the queue through one `gArtQ` instance.
+`test_art_queue_order.py` compiles the real class declaration plus the extracted member functions (as C++).
+
+## 17b. Renderer, FontSystem, ArtWorker, ThemeCatalog
+- **`Renderer`** (`include/renderer.h`, `src/gfx/renderman.cpp`): video mode, display geometry, aspect ratio, overscan, reflection offset and
+  the draw primitives are members of one instance; the `rm*` functions in `renderman.h` are one-line forwarders (+368 B). `gsGlobal` and
+  `guiThreadID` stay global (read from other files).
+- **`FontSystem`** (`include/fontsystem.h`, `src/gfx/fntsys.cpp`): FreeType library, the 16 font slots, glyph caches, atlases, shared CLUT and the
+  font lock. The per-call scratch state that used to be file statics (`quad`, `codepoint`, `state`, kerning) is now a per-call `GlyphRun`
+  (the RTL path hands it to `renderSubRTL`). `fntRenderStringFit`, `fntTextWidth` and `fntFitString` stay free functions layered on the
+  public API, so `test_theme_text_room.py` is unchanged.
+- **`ArtWorker`** (`include/artworker.h`, `src/gfx/artworker.cpp`): the art thread, its lifecycle flags, the epochs that supersede queued
+  work, the focus tracker and the HUD counters. Data members are deliberately public (lock-free single-word cross-thread access, each
+  reasoned about individually); behaviour spanning fields (`wake`, `updateFocus`) is in methods. The 96 KiB thread stack stays a file-static
+  array: inside the object it landed in `.data` (+100 KB uncompressed) instead of `.bss`.
+- **`ThemeCatalog`** (`include/themecatalog.h`, in `src/gfx/themes.cpp`): the list of disk themes, the built-ins, the selected id and the published
+  name list. `themes.cpp` itself (3900 lines: loader, per-element draw functions, coverflow) is not split yet (phase 7).
+- Size across the batch: 1,634,400 B -> 1,634,848 B.
+
+## 17c. themes.cpp split (3958 -> 1653 lines)
+- `src/gfx/themeelems.cpp` (1986 lines): per-device filters, text/image/game-image/attribute elements, basic and internal elements (menu icon/text,
+  items list, hints) and their draw functions.
+- `src/gfx/coverflow.cpp` (364 lines): the carousel element, its slide animation and the `gCoverflow*` render settings.
+- `src/gfx/themes.cpp` (1653 lines): validation, element wiring (`addGUIElem`), `thmLoad`/`thmFree`, resources, `ThemeCatalog` and the public `thm*` API.
+- `include/themeint.h`: the element-type enum, sizing/display constants, `elementsType`, and the prototypes the three files share (not public API).
+  Functions the loader wires up (`initBasic`, `initItemsList`, `drawGameImage`, ...) lost `static` for this; they are only declared in `themeint.h`.
+- Source-scraping tests (`test_theme_text_room`, `test_art_queue_order`) read the union of the three files.
+
+## 17d. opl.cpp split (5117 -> 1813 lines)
+- `src/app/autolaunch.cpp`: `autoLaunchHDDGame`/`autoLaunchBDMGame` (boot-argument auto-launch).
+- `src/app/lwnbdctl.cpp`: NBD server (lwNBD) load/teardown and `handleLwnbdSrv`.
+- `include/oplint.h`: what these share with `opl.cpp` (`miniInit`, `reset`, `initAllSupport`, `deinitAllSupport`, `clearErrorMessage`,
+  `gExportName`, `AUTOLAUNCH_MASS0_RETRIES`); `include/oplog.h`: the `LOG_INIT`/`LOG_ENABLE` bring-up macros.
+- **Step 2:** `src/app/settingsio.cpp` (2410 lines): everything under "Configuration handling" -- boot-home resolution (APA/exFAT/MMCE), the
+  config-path redirect, the recovery paths, `_loadConfig`/`_saveConfig`, `applyConfig`/`saveConfig`. Its many file-static helpers and boot-home
+  state (`lscstatus`, `gBootHome*`, `gLastSaveTarget`, ...) stay private to it; only `_loadConfig`, `resolveBootDirToMass`, `tryAlternateDevice`,
+  `configReadNeutrinoGlobals`, `gBootElfName`, `gBootHomeWhy` are shared (via `oplint.h`). opl.cpp is down to 2330 lines.
+  Source-scraping tests read opl.cpp + settingsio.cpp.
+- **Step 3:** `src/ui/menuitems.cpp` (405 lines: the per-source button handlers `itemExec*`, `itemInitSupport`) and `src/sources/appscan.cpp` (256 lines: Apps
+  list scanning, legacy apps config lookups; owns `gShouldAppsUpdate`). opl.cpp is down to 1813 lines.
+- Still in opl.cpp (next candidates): `updateMenuFromGameList`/`menuDeferredUpdate`/`menuUpdateHook` (share frame/rescan throttle state with the error-message
+  hook), `setDefaults`/`init`/`miniInit`, `main`.
+
+## 17e. Phase 8: directory layout and the coupling gate
+- `src/` is split by layer, lowest first, and the directory IS the layer the analyzer enforces:
+  `platform/` (system, ioman, util, tar, ps2cnf, ioprp, http client/catalog, hdd, lz4/zso/md5, `new`), `core/` (config, lang, xparam, cheatman, gsm, pad,
+  sound, OSDHistory, vmc_groups, settings), `gfx/` (renderman, textures, texcache, artqueue/artworker, fntsys, atlas, plasma, themes/themeelems/coverflow,
+  uidraw), `sources/` (supportbase + every backend, artindex, folderbrowse, RA), `ui/` (menusys, dia, dialogs, gui*, guigame, libview, menuitems), `app/`
+  (opl, host, settingsio, autolaunch, lwnbdctl). Headers stay in `include/` (flat), so no `#include` changed.
+- `tools/analyze_coupling.py --check` is now blocking in CI (`ps2build.yml`). It is a ratchet: `tools/coupling_baseline.json` records the 35 existing upward
+  pairs (47 symbols); a new pair, or more symbols in an existing one, fails. Fixing an edge lowers the count; `--update` locks it in.
+- The generated `src/core/lang_internal.c` is git-ignored; `tools/assets.py lang` writes it there.
+
+## 17f. Phase 7 finished: bdmsupport, system, texcache
+- `sources/bdmsupport.cpp` 3601 -> 1991 lines: `bdmboot.cpp` (boot-dir resolution), `bdmdevices.cpp` (device table, wait helpers), `bdmlaunch.cpp`
+  (ISO/Neutrino/VCD/CUE launch, 788 lines); shared internals in `include/bdmint.h`.
+- `platform/system.cpp` 2205 -> 1245 lines: `sysneutrino.cpp` (Neutrino launch + preflight), `sysdisc.cpp` (disc boot path), `sysvmc.cpp` (VMC checks). They share
+  nothing with system.cpp's statics, so no internal header was needed. `sendIrxKernelRAM` (256 lines, not the 1468 the plan assumed) stays in system.cpp
+  as it is hardware-critical; making its module list data-driven is deferred.
+- `gfx/texcache.cpp` 1334 -> 510 lines: `artload.cpp` (art worker lifecycle, cancellation, .tar art packs, PNG load); `include/texcacheint.h` shares the queue/worker
+  objects and tuning constants.
+- Source-scraping tests read the union of the pieces; the coupling baseline moved pairs with the code (still 47 symbols / 35 pairs).
+
+## 17g. Phase 6, second batch: PadManager, BgmPlayer, SoundEffects, ImageCache
+- `core/pad.cpp` + `include/padmanager.h`: `PadManager` owns the libpad ports, repeat timers, rumble pulse and fault counters; `readPads`/`getKey`/... forward to it.
+  `test_pad_repeat_clock.py` compiles the extracted member functions against a minimal stub of the class.
+- `core/sound.cpp` split into `sound.cpp` (audsrv bring-up, volumes), `sfx.cpp` (`SoundEffects`, `include/soundeffects.h`) and `bgm.cpp` (`BgmPlayer`,
+  `include/bgmplayer.h`); `soundint.h` shares `gAudioInitialized`. The 768 KB BGM ring stays a file-static array: inside the object it would land in `.data`.
+  The thread bodies are entered through two free trampolines. `test_audio_threads.py` / `test_bgm_source.py` read `bgm.cpp`.
+- `image_cache_t` is now `class ImageCache` (typedef kept): private fields, accessors (`userId()`, `count()`, `prefix()`, `suffix()`, ...) and
+  `requestQueued()/requestFinished()` for the art in-flight count; the five functions that own the cache logic are friends.
+- Split-off members avoid names that collide with non-static free functions elsewhere (e.g. `BgmPlayer::teardown`, not `deinit`), because the coupling
+  analyzer matches identifiers by name.
+- Left in phase 6 (deliberately): `Dialog` (dia.cpp) and `MenuItem` (menusys.cpp) are tied to the `item_list_t`/menu structs phase 5 replaces, and the
+  `theme_t` loader/element code is a table of function pointers rather than an object with state. They are best converted together with phase 5.
+
+## 17h. Phase 5: GameSource hierarchy (backends converted)
+- `GameSource` (include/gamesource.h, src/sources/gamesource.cpp) derives from `item_list_t`. Its constructor installs static thunks into the old
+  function-pointer table; each thunk finds the object through `item_list_t::source` (a field appended to the struct, so struct copies such as the
+  Favourites proxies and the BDM slot copies keep pointing at the one object). Every virtual receives the calling `item_list_t *`, so proxy fields
+  (`viewOverride`, `priv`, `owner`) still come from the caller.
+- Optional table entries stay NULL unless a capability flag is passed (`CAP_LAUNCH_VCD`, `CAP_ART_ARCHIVE_PATH`, `CAP_LAUNCH_CUE`, `CAP_ROW_VIEW`,
+  `CAP_SOURCE_ID`), and the entries that were NULL in a few backends are dropped with `OMIT_PREFIX` / `OMIT_GAME` / `OMIT_CHECK_VMC` /
+  `OMIT_DELETE` (callers NULL-test them: HDD has no delete, App and Favourites have no prefix/raw game pointer, App has no VMC check).
+- Converted: `HttpSource`, `UdpfsSource`, `EthSource`, `MmceSource`, `AppSource`, `FavSource`, `HddSource`, `BdmSource`. Instances are built lazily by
+  `xxxInstance()` with placement new into static storage (no global constructors). The old free entry points other files call
+  (`hddLaunchGame`, `hddGetArtArchivePath`, `bdmLaunchGame`, `bdmLaunchCue`, `bdmLaunchVcd`, `bdmGetItemView`, `appGetObject` ...) are kept; the BDM
+  launch code lives in bdmlaunch.cpp and `BdmSource` forwards to it. The BDM slots are still `memcpy`'d from `bdmTemplateList()` (the `BdmSource`
+  viewed as an `item_list_t`).
+- The function-pointer table is gone: `item_list_t` is now plain per-page data (mode, flags, priv, owner, viewOverride, `source`) and every
+  caller goes through `gsOf(list)->method(list, ...)`; optional methods are asked with `hasPrefix()`, `hasGame()`, `hasDelete()`,
+  `hasCheckVmc()`, `hasLaunchVcd()`, `hasArtArchivePath()`, `hasLaunchCue()`, `hasRowView()`, `hasSourceId()` instead of NULL-testing a pointer.
+  The thunks and `install()` were deleted. Packed ELF 1,643,808 B.
+- Done later: the `BdmLauncher`/`NeutrinoLauncher` split (include/bdmlauncher.h, include/neutrinolauncher.h;
+  section 21) and the `SourceRegistry` (include/sourceregistry.h; section 22). Still not done: turning
+  `item_list_t` into a real base class (it stays a C-compatible struct because `opl_io_module_t` and the
+  proxies copy it by value). Emulator check wanted again, since every list/launch/rename/delete call now
+  dispatches virtually.
+
+## 18. Deferred: gui as classes
+The gui split (section 15) moved code into files and extracted only the pieces that already owned their own state. The bulk of
+`guisettings.cpp` (~3000 lines), plus notifications and the screen-handler table in `gui.cpp`, are still free functions sharing
+file-level statics. Do this later, not now.
+
+Planned design:
+- `SettingsShell`: owns the dialog buffers, shell/page/save-pending flags and `SourceState`; navigation (`showIndex`, `showFromPage`,
+  `promptSave`, `restoreSourceState`). **Done** (include/settingshell.h): `compose/composeInto` (own `dialog_` + `mmceDialog_`),
+  `beginDialog/endDialog`, `pageResult/isShellResult/isPeerResult/leftUntouched`, `promptSave`, `showIndex`, `showFromPage`, the
+  source-state snapshot (`SourceState`, `captureSourceState/restoreSourceState/sourceStateChanged`). Pages stay free functions and
+  reach the shell through `gSettingsShell` (`activeDialog()`, `shellActive()`, `markSavePending()`); `guiShowSettings`/
+  `guiShowPsEmulationSettings` are forwarders. `test_settings_back_keeps_edits` compiles the pageResult family against a stub
+  SettingsShell with g++; `test_confirm_button` reads the member bodies.
+- One class per settings page (General, Sources, Interface, Launch, Popstarter, Net, Audio, Controller, ...) behind a common
+  begin/update/read interface.
+- `Notifications`: the popup and RA notices with their timers. **Done** (include/guinotify.h, src/ui/guinotify.cpp; `guiCheckNotifications`/`guiResetNotifications`/`guiShowRANotice` remain as forwarders).
+- `ScreenManager`: screen-handler table, transitions, `guiShow`. **Done** (include/guiscreens.h, src/ui/guiscreens.cpp).
+- Also extracted from gui.cpp: `FrameClock` (frame-time watchdog, debug FPS; guiframe.cpp), `Overlays` (busy spinner, debug HUDs, auto-start countdown, sub-menu hints; guioverlay.cpp), `BootSplash` (glowing logo, status line, intro loop; guisplash.cpp). `gui.cpp` is now one class, `Gui` (include/guiruntime.h): the frame lock, frame start/end, deferred-op queue and handler, plasma background, probe frame, main loop, keyboard, about and the scroll-speed/screen-scale updaters are its methods; the `guiXxx` functions at the bottom of gui.cpp are one-line forwarders to `gGui`.
+- guidialogs.cpp is gone: `ModalScreen` (frame loop base) with `MessageBoxScreen`, `RebootIopPrompt`, `RemoveSettingsPrompt`, `CheatScreen` (guimodal.cpp), `DeferredIoWait` (guiwait.cpp), `GameIdBarcode` (guigameid.cpp); the `guiMsgBox`, `guiPromptRebootIop`, `guiHandleDeferedIO`, ... functions remain as forwarders (guiMsgBox keeps the pre-GUI `gTheme == NULL` guard).
+- Still to do: guigame.cpp (1941 lines), guisettings.cpp (3172 lines: page-file split, `SettingsShell`, one class per page).
+- `gui.h` keeps the current function names as thin forwarders to the instances, so the many callers (`opl`, `menusys`, the support
+  files) do not change.
+
+Cost to plan for: the source-scraping python tests (`test_confirm_button`, `test_settings_back_keeps_edits`,
+`test_net_protocol_pick`, `test_vmode_confirm`, `test_ember_settings`, `test_autolaunch_settings`) extract function bodies by
+signature such as `static int guiSettingsShowIndex(`. They need their extraction updated to member names (`SettingsShell::showIndex(`)
+before the conversion, so do that first and keep the suite green at each step. Start with `SettingsShell` and `Notifications`.
+
+## 19. Next
+2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
+3. Phase 5 leftovers are done (launcher split section 21, `SourceRegistry` section 22); next: phase 6 leftovers (Dialog, MenuItem, theme element table).
+4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining
+   analyzer upward edges listed in section 13.
+
+## 20. Status (as of the ArtQueue commit)
+| Phase | Status |
+|---|---|
+| 0 safety net | done |
+| 1 visibility, constexpr | done |
+| 2 RAII | helpers done; bulk malloc conversion skipped on purpose |
+| 3 settings table | done; `Settings` struct deferred |
+| 4 HostServices, launch/UI split | done |
+| 5 GameSource hierarchy | all eight backends are `GameSource` subclasses and the callback table is removed (section 17h); registry and launcher split pending |
+| 6 subsystem classes | Atlas, ConfigSet, PlasmaBackground, DeferredOpQueue, BootStatus, IoQueue, ArtQueue, Renderer, FontSystem, ArtWorker, ThemeCatalog done; the image cache (`image_cache_t`) and `theme_t` loader/draw code are still C-style structs plus functions; gui classes deferred (section 18) |
+| 7 split god files | done: gui.cpp, themes.cpp, opl.cpp, bdmsupport.cpp, system.cpp, texcache.cpp are split (largest remaining: supportbase 2609, bdmsupport 1991, gui ~1100); dia.cpp is split into dia, diaeditors, diaitems; `sendIrxKernelRAM` data-driven module list deferred |
+| 8 directory move, blocking analyzer | done (layer directories; coupling gate is a ratchet on the 47 existing upward symbols) |
+
+Packed ELF: 1,634,784 B (Atlas) -> 1,634,400 B (ArtQueue). Every step so far: clean `ps2build build`, `tools/run_tests.sh -k`,
+`tools/warning_gate.py build.log --check` (62, baseline 62), `tools/syntax_sweep.py` (only the old EESIO `SIOCookie.h` failure),
+emulator run by the user.
+
+Open decisions: vmc_groups duplicate/odd titles; whether to start phase 5; deleting the old remote branches
+`claude/happy-feynman-8znj3k` and `-elf`; whether to drop the sample `ship/Example/.../RIPTOPL.ELF`.
+
+## 21. Source backends: file-scope statics into state-owning classes (done)
+Every `src/sources/` module's file-scope `static`s now live in one constant-initialized instance of a class; the public
+`xxx.h` entry points stay free functions (forwarders), so no caller changed. New internal headers (flat `include/`, `extern`
+instance + definition in the module .cpp, members constant-initialized per the EE rule; classes with a non-trivial base such
+as `AppSource` keep the phase-5 lazy placement-new `xxxInstance()` idiom):
+- `SupportBase` (supportbaseint.h): IGR-USB latch, deferred #Size gate, RA hash-log handle.
+- `ArtIndex` (artindexint.h), `FolderBrowse` (folderbrowseint.h) -- the leaves; plus `DiscSupport`, defined inside
+  discsupport.cpp because test_ra_disc.py compiles that whole file with its includes stripped.
+- `CueSupport`, `VcdSupport` (in their existing public headers, state sections only), `UdpfsSupport`, `HttpSupport`.
+- `MmceSupport` (mmceint.h), `HddSupport` (hddint.h; the public hddsupport.h stays C-compatible for zso.c), `EthSupport` +
+  `NetSupport`, `FavSupport`, `AppSource` (appsource.h -- the phase-5 class now also owns the appsupport.cpp statics;
+  appscan.cpp deliberately unchanged, `gShouldAppsUpdate` is pinned by oplint.h).
+- BDM glue: `BdmBoot` (bdmboot.h), `BdmLauncher` + `NeutrinoLauncher` (bdmlauncher.h / neutrinolauncher.h -- the 17h
+  "not done" launcher split), `BdmSupport` (bdmsupportcore.h). bdmdevices.cpp was already stateless (its state lives in
+  bdmsupport.cpp/bdmint.h) and needed no class.
+- RetroAchievements: `RaWatch`, `Ranet`, `RaBadge`, `RetroGEM` in their existing headers; `RaHash` stays file-local in
+  rahash.cpp because test_ra_disc.py strips includes and compiles the whole file.
+What stayed free, throughout: every test-pinned body (the python scrapers extract by exact `name(` signature and compile it
+against host stubs), ioPutRequest/alarm function-pointer thunks, pure helpers with no state, and the shared bdmint.h globals.
+Packed ELF 1,644,672 -> 1,645,936 B (+1,264 B, +0.08%). Verified: clean `ps2build build`, `tools/run_tests.sh -k` (all
+suites), `tools/warning_gate.py build.log --check` (0 regressions), `tools/analyze_coupling.py --check`, `tools/syntax_sweep.py`
+(only the old EESIO `SIOCookie.h` failure), PCSX2 smoke test (SCPH-79001: clean ~40 s boot/run of riptopl.elf, no EE/IOP
+exceptions; only the usual MMCE SIO2-probe noise).
+
+## 22. SourceRegistry (done)
+`oplGetModule`/`oplGetAppImageByMode` no longer sit on a file-scope table: `class SourceRegistry`
+(include/sourceregistry.h) owns `opl_io_module_t modules_[MODE_COUNT]` (constant-initialized; one
+`gSourceRegistry` in opl.cpp) and implements the mode-keyed art lookup. Both public names stay free
+forwarders (`oplGetAppImageByMode` keeps living in appscan.cpp, forwarding to
+`SourceRegistry::appImageByMode`). opl.cpp keeps the NAME `list_support` as a constant-initialized
+pointer at the table because test_io_queue_trims.py extracts `menuDeferredUpdate()` and compiles it
+against a harness declaring its own file-scope `list_support[]` -- the extracted body must keep
+saying `list_support[i]`. Packed ELF 1,646,000 -> 1,645,744 B (-256 B). Verified: clean build, full
+test suite (incl. the two registry-pinning scrapers), warning gate, coupling, flavour sweep.

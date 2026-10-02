@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 enum eDS34USBStatus {
     DS34USB_STATE_DISCONNECTED = 0x00,
@@ -17,3 +21,7 @@ int ds34usb_set_rumble(int port, u8 lrum, u8 rrum);
 int ds34usb_set_led(int port, u8 led);
 int ds34usb_get_data(int port, u8 *data);
 int ds34usb_reset();
+
+#ifdef __cplusplus
+}
+#endif

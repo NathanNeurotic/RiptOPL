@@ -231,15 +231,6 @@ enum CONFIG_INDEX {
 #define CONFIG_KEY_NAME_LEN  32
 #define CONFIG_KEY_VALUE_LEN 256
 
-struct config_value_t
-{
-    // Including the NULL terminator
-    char key[CONFIG_KEY_NAME_LEN];
-    char val[CONFIG_KEY_VALUE_LEN];
-
-    struct config_value_t *next;
-};
-
 // On-disk syntax of a config file. We support BOTH as first-class citizens and NEVER convert a user's
 // file from one to the other -- whatever format we read is the format we write back (see configWrite).
 // wOPL migrated to libconfig (their PR #286) and rewrites shared files IN PLACE, so a user who has run
@@ -248,38 +239,23 @@ struct config_value_t
 #define CFG_FMT_LEGACY    0 // "key=value\r\n" -- OPL's own syntax; also what OPL-Launcher/SAS/XMB read
 #define CFG_FMT_LIBCONFIG 1 // "key = value;" -- wOPL/libconfig, groups as "name : { ... };"
 
-typedef struct
-{
-    int type;
-    struct config_value_t *head;
-    struct config_value_t *tail;
-    char *filename;
-    int modified;
-    int format; // CFG_FMT_*: latched from the file we READ, honoured by configWrite
-    u32 uid;
-} config_set_t;
+#ifdef __cplusplus
+class ConfigSet;
+typedef ConfigSet config_set_t;
+#else
+typedef struct ConfigSet config_set_t;
+#endif
 
-void configInit(char *prefix);
-void configSetMove(char *prefix);
-void configMove(config_set_t *configSet, const char *fileName);
+void configInit(const char *prefix);
+void configSetMove(const char *prefix);
 void configEnd();
-config_set_t *configAlloc(int type, config_set_t *configSet, char *fileName);
+config_set_t *configAlloc(int type, config_set_t *configSet, const char *fileName);
 void configFree(config_set_t *configSet);
 // Deep-copy a config set into a fresh standalone (heap) set, NOT registered in configFiles[].
 // Used for transient "test launch" so dialog edits never touch the live config. Free with configFree().
 config_set_t *configClone(config_set_t *src);
 config_set_t *configGetByType(int type);
-int configSetStr(config_set_t *configSet, const char *key, const char *value);
-int configGetStr(config_set_t *configSet, const char *key, const char **value);
-int configGetStrCopy(config_set_t *configSet, const char *key, char *value, int length);
-int configSetInt(config_set_t *configSet, const char *key, const int value);
-int configGetInt(config_set_t *configSet, const char *key, int *value);
-int configSetColor(config_set_t *configSet, const char *key, unsigned char *color);
-int configGetColor(config_set_t *configSet, const char *key, unsigned char *color);
-int configRemoveKey(config_set_t *configSet, const char *key);
-void configMerge(config_set_t *dest, const config_set_t *source);
 
-void configGetDiscIDBinary(config_set_t *configSet, void *dst);
 
 int configRead(config_set_t *configSet);
 int configReadBuffer(config_set_t *configSet, const void *buffer, int size);
@@ -295,19 +271,35 @@ void configSetCarryOverDir(const char *dir);
 int configOplIsCarryOver(void);
 int configWrite(config_set_t *configSet);
 int configWriteMulti(int types);
-void configClear(config_set_t *configSet);
 
-void configGetVMC(config_set_t *configSet, char *vmc, int length, int slot);
-void configSetVMC(config_set_t *configSet, const char *vmc, int slot);
-void configRemoveVMC(config_set_t *configSet, int slot);
-void configGetVMCDisable(config_set_t *configSet, int slot, int *disabled);
-void configSetVMCDisable(config_set_t *configSet, int slot, int disabled);
-void configRemoveVMCDisable(config_set_t *configSet, int slot);
 
 char *configGetDir(void);
 // Full settings-home directory, not just its device. See src/config.c.
 const char *configGetHomePath(void);
 char *configGetLoadDir(void);
-void configPrepareNotifications(char *prefix);
+void configPrepareNotifications(const char *prefix);
+
+
+#ifdef __cplusplus
+#include "configset.h"
+// Free-function API kept for the many call sites; the work lives in ConfigSet.
+inline int configSetStr(config_set_t *s, const char *key, const char *value) { return s->setStr(key, value); }
+inline int configGetStr(config_set_t *s, const char *key, const char **value) { return s->getStr(key, value); }
+inline int configGetStrCopy(config_set_t *s, const char *key, char *value, int length) { return s->getStrCopy(key, value, length); }
+inline int configSetInt(config_set_t *s, const char *key, const int value) { return s->setInt(key, value); }
+inline int configGetInt(config_set_t *s, const char *key, int *value) { return s->getInt(key, value); }
+inline int configSetColor(config_set_t *s, const char *key, unsigned char *color) { return s->setColor(key, color); }
+inline int configGetColor(config_set_t *s, const char *key, unsigned char *color) { return s->getColor(key, color); }
+inline int configRemoveKey(config_set_t *s, const char *key) { return s->removeKey(key); }
+inline void configMerge(config_set_t *dest, const config_set_t *source) { dest->merge(*source); }
+inline void configGetDiscIDBinary(config_set_t *s, void *dst) { s->getDiscIDBinary(dst); }
+inline void configClear(config_set_t *s) { s->clear(); }
+inline void configGetVMC(config_set_t *s, char *vmc, int length, int slot) { s->getVMC(vmc, length, slot); }
+inline void configSetVMC(config_set_t *s, const char *vmc, int slot) { s->setVMC(vmc, slot); }
+inline void configRemoveVMC(config_set_t *s, int slot) { s->removeVMC(slot); }
+inline void configGetVMCDisable(config_set_t *s, int slot, int *disabled) { s->getVMCDisable(slot, disabled); }
+inline void configSetVMCDisable(config_set_t *s, int slot, int disabled) { s->setVMCDisable(slot, disabled); }
+inline void configRemoveVMCDisable(config_set_t *s, int slot) { s->removeVMCDisable(slot); }
+#endif
 
 #endif

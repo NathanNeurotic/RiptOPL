@@ -5,8 +5,8 @@
 #include "include/texcache.h"
 #include "include/menusys.h"
 
-#define THM_MAX_FILES 64
-#define THM_MAX_FONTS 16
+constexpr int THM_MAX_FILES = 64;
+constexpr int THM_MAX_FONTS = 16;
 
 typedef struct
 {
@@ -219,7 +219,6 @@ extern theme_t *gTheme;
 
 extern int gCoverflowCount, gCoverflowCenterScale, gCoverflowAnimSpeed, gCoverflowDimCovers;
 void thmTriggerCoverflowAnim(int dir);
-int thmCoverflowIsAnimating(void);
 
 void thmInit(void);
 void thmReinit(const char *path);

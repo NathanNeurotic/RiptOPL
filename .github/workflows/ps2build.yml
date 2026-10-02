@@ -1,0 +1,77 @@
+name: ps2build
+
+# Main flavour only (GSM1080P + PADEMU). Other flavours still build through the Makefile.
+on:
+  push:
+    branches: [ps2build, rebuild/main, "claude/**"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PS2BUILD_HOME: ${{ github.workspace }}/.ps2dev
+      PS2DEV_INSTALL_DIR: ${{ github.workspace }}/.ps2dev
+      # Experiment: the toolchain download dies with HTTP/2 "stream error ... INTERNAL_ERROR" / HTTP 521 from the
+      # Cloudflare-fronted host on GitHub runners only. Force ps2build (Go) onto HTTP/1.1 to see whether it is the
+      # h2 stream that gets reset.
+      GODEBUG: http2client=0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Toolchain + SDK cache. setup-sdk runs `ps2build update`, which refreshes any component that is out of
+      # date, so a stale restore is safe; a warm cache just skips the ~167 MB download from
+      # git.techwritescode.dev, which cuts connections ("stream error ... INTERNAL_ERROR", HTTP 521) when several
+      # jobs fetch at once.
+      - name: Restore the ps2dev cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.ps2dev
+          key: ps2dev-${{ runner.os }}-v1-${{ github.run_id }}
+          restore-keys: ps2dev-${{ runner.os }}-v1-
+
+      # Cold cache: up to three attempts with a pause between them (a second attempt a moment later hit the
+      # same overloaded host).
+      - name: Install ps2build + SDK
+        id: sdk1
+        continue-on-error: true
+        uses: techwritescode/setup-sdk@master
+        with:
+          ps2dev: ${{ github.workspace }}/.ps2dev
+      - name: Wait before retrying the SDK install
+        if: steps.sdk1.outcome == 'failure'
+        run: sleep 45
+      - name: Install ps2build + SDK (retry 1)
+        id: sdk2
+        if: steps.sdk1.outcome == 'failure'
+        continue-on-error: true
+        uses: techwritescode/setup-sdk@master
+        with:
+          ps2dev: ${{ github.workspace }}/.ps2dev
+      - name: Wait before retrying the SDK install again
+        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
+        run: sleep 90
+      - name: Install ps2build + SDK (retry 2)
+        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
+        uses: techwritescode/setup-sdk@master
+        with:
+          ps2dev: ${{ github.workspace }}/.ps2dev
+
+      - name: Install the ogg/vorbis packages (not shipped by the SDK)
+        run: tools/install_ps2build.sh
+      - name: Assets (translations, lwNBD, embedded blobs, version)
+        run: tools/assets.py all
+      - name: Host tests (source checks, HTTP parsers, ASan/UBSan unit tests)
+        run: tools/run_tests.sh -k
+      - name: Build
+        shell: bash   # -o pipefail, so a failed build is not masked by tee
+        run: $PS2BUILD_HOME/ps2build build 2>&1 | tee build.log
+      - name: Warning baseline (no new warnings)
+        run: tools/warning_gate.py build.log --check
+      - name: Coupling gate (no new upward dependencies between layers)
+        run: tools/analyze_coupling.py --check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: riptopl-ps2build
+          path: build/bin/riptopl-packed.elf

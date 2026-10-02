@@ -66,7 +66,7 @@ asm/*.gz
 # language
 lng/lang_*.lng
 *lng_src
-src/lang_internal.c
+src/core/lang_internal.c
 include/lang_autogen.h
 tmp/
 
@@ -104,3 +104,8 @@ tmp/
 # leaves a __pycache__ behind next to them. Nothing generated belongs in the tree.
 __pycache__/
 *.pyc
+/build/
+asm/opl_version.h
+
+# Built ELFs handed out for testing; never tracked.
+/dist/

@@ -1,6 +1,6 @@
 """A video mode the TV cannot show must not be kept by a blind button press (zackcage6, 09-25).
 
-guiConfirmVideoMode (src/gui.c) is the only thing between a user and a menu they cannot see: after a
+guiConfirmVideoMode (src/ui/gui.c) is the only thing between a user and a menu they cannot see: after a
 mode change it asks to keep the new mode and reverts on Back or on a 10 s timeout. It used to keep the
 mode on one TAP of Accept, and a user looking at a black screen taps buttons -- the dead mode was kept,
 saved with the next Save, and every boot came up black until the .cfg was deleted.
@@ -21,7 +21,7 @@ scripted frame loop (60 fps), and checks:
 - nothing is rendered under the opaque prompt: rendering the menu there (guiShow) only cost frame
   time, and in heavy modes made the bar jump to ~4/5 and the keep land before it looked full.
 
-It also pins the boot recovery combos in src/opl.c: Triangle + Cross forces 480p and Triangle +
+It also pins the boot recovery combos in src/app/opl.c: Triangle + Cross forces 480p and Triangle +
 Circle forces Auto (the region's interlaced mode) for interlaced-only TVs.
 """
 from pathlib import Path
@@ -31,8 +31,8 @@ import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-gui = (root / 'src/gui.c').read_text(encoding='utf-8').replace('\r\n', '\n')
-opl = (root / 'src/opl.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+gui = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/ui/gui.cpp', 'src/ui/guisettings.cpp', 'src/ui/guimodal.cpp', 'src/ui/guiwait.cpp', 'src/ui/guigameid.cpp')).replace('\r\n', '\n')
+opl = ''.join((root / p).read_text(encoding='utf-8') for p in ('src/app/opl.cpp', 'src/app/settingsio.cpp')).replace('\r\n', '\n')
 opl_h = (root / 'include/opl.h').read_text(encoding='utf-8').replace('\r\n', '\n')
 failures = []
 
@@ -47,14 +47,14 @@ def function_text(source, signature, where):
 
 
 def define(source, name, where):
-    match = re.search(r'^#define ' + name + r'\s+(\d+)', source, re.M)
+    match = re.search(r'^(?:#define|constexpr int) ' + name + r'\s*=?\s*(\d+)', source, re.M)
     if match is None:
         failures.append('%s: #define %s not found' % (where, name))
         return '0'
     return match.group(1)
 
 
-confirm = function_text(gui, 'int guiConfirmVideoMode(', 'src/gui.c')
+confirm = function_text(gui, 'static int guiConfirmVideoMode(', 'src/ui/gui.cpp')
 if 'guiShow()' in confirm:
     failures.append('guiConfirmVideoMode: must not render the menu (guiShow) under its opaque backdrop')
 
@@ -77,7 +77,7 @@ enum { _STR_CFM_VMODE_CHG, _STR_BACK, _STR_CFM_VMODE_HOLD_KEEP, _STR_CFM_VMODE_R
 struct theme { void *fonts[1]; int usedHeight; u64 textColor, selTextColor; };
 static struct theme themeData;
 static struct theme *gTheme = &themeData;
-static int screenWidth = 640, screenHeight = 480, gSelectButton = KEY_CROSS;
+static int gGuiScreenWidth = 640, gGuiScreenHeight = 480, gSelectButton = KEY_CROSS;
 static const u64 gColBlack = 0, gColWhite = 1;
 
 /* Scripted input: frame f has the Accept/Back buttons down per the script. 60 fps clock. */
@@ -267,8 +267,8 @@ int main(void)
 
 def run_harness():
     program = (HARNESS.replace('@TIMEOUT@', define(opl_h, 'OPL_VMODE_CHANGE_CONFIRMATION_TIMEOUT_MS', 'include/opl.h'))
-               .replace('@HOLD@', define(gui, 'VMODE_KEEP_HOLD_MS', 'src/gui.c'))
-               .replace('@BARFULL@', define(gui, 'VMODE_KEEP_BAR_FULL_MS', 'src/gui.c'))
+               .replace('@HOLD@', define(gui, 'VMODE_KEEP_HOLD_MS', 'src/ui/gui.cpp'))
+               .replace('@BARFULL@', define(gui, 'VMODE_KEEP_BAR_FULL_MS', 'src/ui/gui.cpp'))
                .replace('@CONFIRM@', confirm))
     if failures:
         return
@@ -289,7 +289,7 @@ def run_harness():
 
 
 def check_boot_combos():
-    load = function_text(opl, 'static void _loadConfig(', 'src/opl.c')
+    load = function_text(opl, 'void _loadConfig(', 'src/app/opl.cpp')
     cross = re.search(r'if \(getKeyPressed\(KEY_TRIANGLE\) && getKeyPressed\(KEY_CROSS\)\) \{[^}]*gVMode = 3;', load)
     circle = re.search(r'else if \(getKeyPressed\(KEY_TRIANGLE\) && getKeyPressed\(KEY_CIRCLE\)\) \{[^}]*gVMode = 0;', load)
     saved = re.search(r'\} else \{\s*configGetInt\(configOPL, CONFIG_OPL_VMODE, &gVMode\);', load)

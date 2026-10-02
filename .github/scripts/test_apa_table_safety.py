@@ -265,15 +265,15 @@ def check_driver_policy():
           'apa.c: walking the partition chain writes headers again (start != prev repair)')
 
     # ...and the loader itself never asks for a partition edit or a raw write.
-    hdd_c = text(root / 'src/hdd.c')
-    support = text(root / 'src/hddsupport.c')
+    hdd_c = text(root / 'src/platform/hdd.cpp')
+    support = text(root / 'src/sources/hddsupport.cpp')
     check('HDIOC_WRITESECTOR' not in hdd_c and 'unlink(' not in hdd_c,
-          'src/hdd.c: the loader issues raw sector writes or partition deletes again')
+          'src/platform/hdd.c: the loader issues raw sector writes or partition deletes again')
     check('fileXioRename(' not in support and 'hddDeleteGame' not in support and 'hddSetHDLGameInfo' not in support,
-          'src/hddsupport.c: the HDD page renames a partition, deletes a game or rewrites an HDL header again')
+          'src/sources/hddsupport.c: the HDD page renames a partition, deletes a game or rewrites an HDL header again')
 
     # The probe classifies a GPT/APA hybrid as GPT before it ever looks for an APA header.
-    probe = function_body(text(root / 'src/hddsupport.c'), 'int hddDetectNonSonyFileSystem(')
+    probe = function_body(text(root / 'src/sources/hddsupport.cpp'), 'int hddDetectNonSonyFileSystem(')
     check(probe is not None and 0 <= probe.find('"EFI PART"') < probe.find('"APA", 3'),
           'hddsupport.c: the probe no longer classifies GPT/APA hybrids before the APA header check')
 
@@ -520,7 +520,7 @@ def run_bd_harness():
 # creation regardless; this keeps new code from even trying, as the RA launch log and the tar device
 # table once did.)
 RAW_APA_LITERAL = re.compile(r'"hdd(?:[0-9]|%[a-z])?:')
-RAW_APA_ALLOWED = {'src/hdd.c', 'src/hddsupport.c', 'src/opl.c'}
+RAW_APA_ALLOWED = {'src/platform/hdd.cpp', 'src/sources/hddsupport.cpp', 'src/app/opl.cpp'}
 
 
 def check_raw_apa_namespace():

@@ -32,10 +32,10 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-dia_c = read('src/dia.c')
+dia_c = read('src/ui/dia.cpp')
 dia_h = read('include/dia.h')
-dialogs_c = read('src/dialogs.c')
-opl_c = read('src/opl.c')
+dialogs_c = read('src/ui/dialogs.cpp')
+opl_c = read('src/app/opl.cpp') + read('src/app/settingsio.cpp')
 opl_h = read('include/opl.h')
 
 # --- the fit, compiled and run ---------------------------------------------------------------------
@@ -46,7 +46,7 @@ HARNESS = r'''
 
 typedef unsigned long long u64;
 @TYPES@
-static int screenHeight = 480;
+static int diaScreenHeight = 480;
 @DEFINES@
 @FUNCTIONS@
 
@@ -115,7 +115,7 @@ int main(void)
 item_enum = re.search(r'^typedef enum \{.*?\} UIItemType;', dia_h, re.M | re.S)
 item_struct = re.search(r'^struct UIItem\s*\{.*?^\};', dia_h, re.M | re.S)
 defines = '\n'.join(re.findall(r'^#define UI_SETTINGS_(?:SPACING_H|MIN_GAP)\s+\d+', dia_c, re.M))
-functions = ''.join(function_text(dia_c, 'src/dia.c', sig) for sig in (
+functions = ''.join(function_text(dia_c, 'src/ui/dia.cpp', sig) for sig in (
     'static int diaShouldBreakLine(',
     'static int diaShouldBreakLineAfter(',
     'static int diaItemHeight(',
@@ -125,7 +125,7 @@ functions = ''.join(function_text(dia_c, 'src/dia.c', sig) for sig in (
 if item_enum is None or item_struct is None:
     failures.append('include/dia.h: UIItemType / struct UIItem not found')
 elif defines.count('#define') != 2:
-    failures.append('src/dia.c: UI_SETTINGS_SPACING_H / UI_SETTINGS_MIN_GAP not found')
+    failures.append('src/ui/dia.c: UI_SETTINGS_SPACING_H / UI_SETTINGS_MIN_GAP not found')
 elif not failures:
     program = (HARNESS.replace('@TYPES@', item_enum.group(0) + '\n' + item_struct.group(0))
                .replace('@DEFINES@', defines).replace('@FUNCTIONS@', functions))
@@ -143,7 +143,7 @@ elif not failures:
             if run.returncode != 0:
                 failures.append('settings fit harness reported failures')
 
-render = function_text(dia_c, 'src/dia.c', 'void diaRenderUI(')
+render = function_text(dia_c, 'src/ui/dia.cpp', 'void diaRenderUI(')
 if render:
     if 'int gapH = settingsContext ? diaSettingsFitGap(ui, spacingH, y0, gTheme->usedHeight - 40) : spacingH;' not in render:
         failures.append('diaRenderUI: Settings pages must take their row gap from diaSettingsFitGap')
@@ -162,13 +162,14 @@ for name, value in (('BG_R', '0x0C'), ('BG_G', '0x3A'), ('BG_B', '0xA8'),
                     ('BLEND_R', '0x00'), ('BLEND_G', '0x02'), ('BLEND_B', '0x0A')):
     if not re.search(r'^#define RIPTOPL_PLASMA_%s\s+%s\b' % (name, value), opl_h, re.M):
         failures.append('opl.h: RIPTOPL_PLASMA_%s must be %s' % (name, value))
-colors = function_text(opl_c, 'src/opl.c', 'void setDefaultColors(')
+colors = function_text(opl_c, 'src/app/opl.cpp', 'void setDefaultColors(')
 if colors and 'gDefaultBgColor[0] = RIPTOPL_PLASMA_BG_R;' not in colors:
     failures.append('setDefaultColors: the default plasma must be RiptOPL\'s, not official OPL\'s cyan')
-defaults = function_text(opl_c, 'src/opl.c', 'static void setDefaults(')
-if defaults and 'gDefaultPlasBlendColor[2] = RIPTOPL_PLASMA_BLEND_B;' not in defaults:
-    failures.append('setDefaults: the default plasma blend must be RiptOPL\'s near-black')
-load = function_text(opl_c, 'src/opl.c', 'static void _loadConfig(')
+# the plain-setting defaults moved from setDefaults() into the table in src/core/settings.cpp
+settings_cpp = (root / 'src/core/settings.cpp').read_text(encoding='utf-8')
+if 'colorSetting(CONFIG_OPL_PLAS_BLEND_COLOR, gDefaultPlasBlendColor, {RIPTOPL_PLASMA_BLEND_R, RIPTOPL_PLASMA_BLEND_G, RIPTOPL_PLASMA_BLEND_B})' not in settings_cpp:
+    failures.append('settings.cpp: the default plasma blend must be RiptOPL\'s near-black')
+load = function_text(opl_c, 'src/app/opl.cpp', 'void _loadConfig(')
 old_pair = ('gDefaultBgColor[0] == 0x28 && gDefaultBgColor[1] == 0xC5 && gDefaultBgColor[2] == 0xF9 &&\n'
             '                gDefaultPlasBlendColor[0] == 0x00 && gDefaultPlasBlendColor[1] == 0x00 && gDefaultPlasBlendColor[2] == 0x00')
 if load and old_pair not in load:

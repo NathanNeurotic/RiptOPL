@@ -2,7 +2,7 @@
 """Reference implementation of the RiptOPL HTTP catalog (games.csv) contract.
 
 This is the executable half of docs/HTTP-INTEGRATION-PLAN.md section 4. The C parser in
-src/httpsupport.c must agree with this file on every fixture in fixtures/, in all three
+src/sources/httpsupport.c must agree with this file on every fixture in fixtures/, in all three
 line-ending forms. Where the two disagree, this file and expected.json are the contract and
 the C is wrong -- unless the disagreement is deliberate, in which case change both here and
 in the plan, in the same commit.
@@ -142,7 +142,7 @@ def has_control_chars(s):
 def split_extension(name):
     """Donor-compatible: move a trailing .iso/.zso off the title.
 
-    Mirrors the donor's src/ethsupport.c:580-585 so that a legacy row whose title already
+    Mirrors the donor's src/sources/ethsupport.c:580-585 so that a legacy row whose title already
     carries the extension resolves to the same filename it resolves to today.
     """
     lowered = name.lower()

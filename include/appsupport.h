@@ -3,14 +3,14 @@
 
 #include "include/iosupport.h"
 
-#define APP_MODE_UPDATE_DELAY 240
+constexpr int APP_MODE_UPDATE_DELAY = 240;
 
-#define APP_TITLE_MAX      128
-#define APP_PATH_MAX       128
-#define APP_BOOT_MAX       64
-#define APP_STARTUP_MAX    255
-#define APP_ARGV1_MAX      128
-#define APP_ART_DEVICE_MAX 32
+constexpr int APP_TITLE_MAX = 128;
+constexpr int APP_PATH_MAX = 128;
+constexpr int APP_BOOT_MAX = 64;
+constexpr int APP_STARTUP_MAX = 255;
+constexpr int APP_ARGV1_MAX = 128;
+constexpr int APP_ART_DEVICE_MAX = 32;
 
 #define APP_CONFIG_TITLE "title"
 #define APP_CONFIG_BOOT  "boot"
@@ -31,7 +31,6 @@ typedef struct
     u8 legacy;
 } app_info_t;
 
-void appInit(item_list_t *itemList);
 item_list_t *appGetObject(int initOnly);
 int appGetArtMode(const char *startup);
 

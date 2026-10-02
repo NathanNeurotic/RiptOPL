@@ -3,6 +3,9 @@ import hashlib
 import re
 import subprocess
 import tempfile
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the names the mocks use)
+
 
 # Compile the production functions against host I/O stubs. These checks cover
 # data and launch contracts; they cannot validate PS2 drive or IOP behavior.
@@ -10,15 +13,33 @@ root = Path(__file__).resolve().parents[2]
 work = tempfile.TemporaryDirectory(prefix='ra-disc-tests-')
 tmp = Path(work.name)
 
+def is_cxx(source):
+    # src/*.cpp snippets carry C++ casts; ee_core/*.c snippets are still C
+    return any(k in source for k in ('static_cast', 'reinterpret_cast', 'const_cast', 'constexpr'))
+
 def run(name, source, extra=()):
-    path = tmp / (name + '.c')
+    cxx = is_cxx(source)
+    path = tmp / (name + ('.cpp' if cxx else '.c'))
     path.write_text(source, encoding='utf-8')
     exe = tmp / (name + '.exe')
-    subprocess.run(['gcc', '-std=gnu99', '-Wall', '-Wextra', '-Werror', '-I', str(root),
-                    str(path), *map(str, extra), '-o', str(exe)], check=True)
+    if not cxx:
+        subprocess.run(['gcc', '-std=gnu99', '-Wall', '-Wextra', '-Werror', '-I', str(root),
+                        str(path), *map(str, extra), '-o', str(exe)], check=True)
+    else:
+        # C++ harness; sibling .c sources (md5.c) stay C and are linked in (their headers carry extern "C")
+        objs = []
+        for i, e in enumerate(map(str, extra)):
+            if e.endswith('.c'):
+                o = str(tmp / (name + '_x%d.o' % i))
+                subprocess.run(['gcc', '-std=gnu99', '-Wall', '-Wextra', '-Werror', '-I', str(root), '-c', e, '-o', o], check=True)
+                objs.append(o)
+            else:
+                objs.append(e)
+        subprocess.run(['g++', '-std=gnu++17', '-Wall', '-Wextra', '-Werror', '-Wno-write-strings', '-I', str(root),
+                        str(path), *objs, '-o', str(exe)], check=True)
     subprocess.run([str(exe)], check=True)
 
-s = (root / 'src/ioprp.c').read_text(encoding='utf-8')
+s = (root / 'src/platform/ioprp.cpp').read_text(encoding='utf-8')
 entry = s[s.index('struct romdir_entry'):s.index('/* Pointers')]
 builder = s[s.index('// Physical-disc reset image:'):s.rindex('#endif')]
 run('reset_image', '#include <assert.h>\n#include <string.h>\n#include <stdio.h>\n' + entry + '''
@@ -33,7 +54,7 @@ int main(void) {
         memset(eesync_irx, 0x61, sizeof(eesync_irx));
         memset(image, 0xcc, sizeof(image));
         unsigned size=patch_IOPRP_image_disc(image);
-        struct romdir_entry *r=(void *)image;
+        struct romdir_entry *r=(struct romdir_entry *)image;
         assert(sizeof(*r)==16);
         assert(size==112+((lengths[n]+15)&~15));
         assert(size==patch_IOPRP_image_disc_size());
@@ -51,7 +72,7 @@ int main(void) {
 }
 ''')
 
-s=(root/'src/rahash.c').read_text(encoding='utf-8')
+s=(root/'src/sources/rahash.cpp').read_text(encoding='utf-8')
 s=re.sub(r'^#include.*$', '', s, flags=re.M)
 payload=bytes(i%251 for i in range(65536+17))
 expected=hashlib.md5(b'SLUS_201.74'+payload).hexdigest()
@@ -137,12 +158,13 @@ int main(void) {
     puts("PASS: file/raw hash agreement, short reads, sector tail, retries, failure rejects partial hash, held image reports -6");
 }
 '''.replace('EXPECTED', expected)
-run('hash', prefix+s+test, [root/'src/md5.c'])
+run('hash', prefix+s+test, [root/'src/platform/md5.c'])
 
-s=(root/'src/discsupport.c').read_text(encoding='utf-8')
+s=(root/'src/sources/discsupport.cpp').read_text(encoding='utf-8')
 s=re.sub(r'^#include.*$', '', s, flags=re.M)
 labels=sorted(set(re.findall(r'_STR_\w+',s)))
 prefix='''
+#include "include/raii.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -165,7 +187,7 @@ static int raHashDisc(const char *p,const char *s,char *h) {(void)p;(void)s;h[0]
 static void raHashLogAdd(const char *p,const char *s,const char *h) {(void)p;(void)s;(void)h;}
 static int raAskPC(const char*h,const char*s,const char*p,char*i,int n,char*j,int m) {(void)h;(void)s;(void)p;(void)i;(void)n;(void)j;(void)m;return -1;}
 static void raHashLogClose(void) {}
-static int ioPutRequest(int mode,void(*fn)(void)) {(void)mode;(void)fn;queue_count++;return queued_result;}
+static int ioPutRequest(int mode,void *fn) {(void)mode;(void)fn;queue_count++;return queued_result;}
 static int sbLoadWatchList(const char *p,const char *s) {assert(!strcmp(p,"mc0:/OPL/"));assert(!strcmp(s,"SLUS_201.74"));return watch_count;}
 static void mmceSendGameID(const char *s,const char *p,int mode) {assert(!strcmp(s,"SLUS_201.74"));assert(p==NULL && mode==0);}
 static int igr_checks;
@@ -258,7 +280,7 @@ int main(void) {
 '''
 run('power_input',prefix+s+test)
 
-s=(root/'src/system.c').read_text(encoding='utf-8')
+s=(root/'src/platform/sysdisc.cpp').read_text(encoding='utf-8')
 s=s[s.index('static int sysParseBoot2'):s.index('// Boot the physical PS2 disc')]
 run('boot_path', '#include <assert.h>\n#include <stdio.h>\n#include <string.h>\n#include <strings.h>\n'+s+r'''
 int main(void) {
@@ -281,7 +303,7 @@ int main(void) {
 }
 ''')
 
-s=(root/'src/supportbase.c').read_text(encoding='utf-8')
+s=(root/'src/sources/supportbase.cpp').read_text(encoding='utf-8')
 s=s[s.index('static char ra_hash_path'):s.index('static void sbTestPCLinkWorker')]
 prefix=r'''
 #include <assert.h>
@@ -289,7 +311,7 @@ prefix=r'''
 enum { IO_OK=0, IO_CUSTOM_SIMPLEACTION=1 };
 static int result, requests, hashes;
 static void (*worker)(void);
-static int ioPutRequest(int kind,void (*fn)(void)) {assert(kind==IO_CUSTOM_SIMPLEACTION);requests++;worker=fn;return result;}
+static int ioPutRequest(int kind,void *fn) {assert(kind==IO_CUSTOM_SIMPLEACTION);requests++;worker=(void (*)(void))fn;return result;}
 static void sbHashGame(const char *p,const char*n,const char*e,const char*s,int f) {(void)p;(void)n;(void)e;(void)s;(void)f;hashes++;}
 '''
 run('image_queue',prefix+s+r'''

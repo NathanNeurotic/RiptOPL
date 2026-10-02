@@ -9,16 +9,29 @@ import os
 import subprocess
 import sys
 import tempfile
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the names the mocks use)
+
 
 root = Path(__file__).resolve().parents[2]
-source = root / "src/appsupport.c"
+source = root / "src/sources/appsupport.cpp"
 if len(sys.argv) == 3 and sys.argv[1] == "--baseline":
     source = Path(sys.argv[2])
 text = source.read_text()
 
 
-def function(name):
-    """Extract a complete top-level static C function for the host harness."""
+def function(name, member=None):
+    """Extract a complete top-level C function for the host harness. A GameSource member (AppSource::launch) is
+    rewritten into the free `static` function the harness stubs were written for, under its old name."""
+    if member is not None and member in text:
+        at = text.index(member)
+        start = text.rindex("\n", 0, at) + 1
+        end = text.index("\n}", start) + 2
+        body = text[start:end]
+        header, rest = body.split("\n", 1)
+        args = header[header.index("("):]
+        ret = header[:header.index(member)].strip()
+        return "static %s %s%s\n%s" % (ret, name[:-1], args, rest)
     start = text.index("static ", text.index(name) - 25)
     end = text.index("\n}", start) + 2
     return text[start:end]
@@ -232,10 +245,10 @@ with tempfile.TemporaryDirectory(prefix="opl-app-args-") as temp:
     helpers = function("appNormalizeLaunchPath(") + "\n"
     if "appBuildHddHandoffPath(" in text:
         helpers += function("appBuildHddHandoffPath(") + "\n"
-    harness.write_text(STUBS + helpers + function("appLaunchItem(") + TESTS)
+    harness.write_text(STUBS + helpers + function("appLaunchItem(", "AppSource::launch(") + TESTS)
     executable = path / ("launch.exe" if os.name == "nt" else "launch")
     flags = ["-std=c99", "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter"]
-    if source != root / "src/appsupport.c":
+    if source != root / "src/sources/appsupport.cpp":
         flags.append("-Wno-error=format-truncation")
     subprocess.run([os.environ.get("CC", "gcc"), *flags, str(harness), "-o", str(executable)], check=True)
     subprocess.run([str(executable)], check=True)

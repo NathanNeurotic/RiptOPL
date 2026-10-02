@@ -14,8 +14,8 @@ Three removals (audit of everything queued on the ioman worker, after FifthFox's
    ioPutRequestUnlessWaiting: one waiting pass covers the rest. The first pass keeps its place, and
    the one-shot MX4SIO / USB "double tap" inside it must stay -- checked below.
 
-This compiles ioPutRequest + ioPutRequestUnlessWaiting (src/ioman.c), bdmShouldQueueModuleLoad
-(src/bdmsupport.c) and menuDeferredUpdate (src/opl.c) on the host against stubs.
+This compiles ioPutRequest + ioPutRequestUnlessWaiting (src/platform/ioman.c), bdmShouldQueueModuleLoad
+(src/sources/bdmsupport.c) and menuDeferredUpdate (src/app/opl.c) on the host against stubs.
 """
 from pathlib import Path
 import re
@@ -32,7 +32,7 @@ def read(rel):
 
 
 def function_text(source, where, signature):
-    match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
+    match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*(?:const\s*)?\{', source, re.M)
     if match is None:
         failures.append('%s: %s...) not found' % (where, signature))
         return ''
@@ -40,29 +40,29 @@ def function_text(source, where, signature):
     return source[match.start():end] + '\n}\n'
 
 
-ioman = read('src/ioman.c')
-bdm = read('src/bdmsupport.c')
-opl = read('src/opl.c')
+ioman = read('src/platform/ioman.cpp')
+bdm = read('src/sources/bdmsupport.cpp') + read('src/sources/bdmdevices.cpp') + read('src/sources/bdmboot.cpp')
+opl = read('src/app/opl.cpp')
 
-io_functions = ''.join(function_text(ioman, 'src/ioman.c', sig) for sig in (
-    'static io_request_handler_t ioGetHandler(',
-    'static int ioAppendLocked(',
-    'int ioPutRequest(',
-    'int ioPutRequestUnlessWaiting(',
+io_functions = ''.join(function_text(ioman, 'src/platform/ioman.cpp', sig) for sig in (
+    'io_request_handler_t IoQueue::findHandler(',
+    'int IoQueue::appendLocked(',
+    'int IoQueue::put(',
+    'int IoQueue::putUnlessWaiting(',
 ))
 # The scan and the append must be ONE gEndSemaId hold, or the GUI thread and the worker asking at
 # once can both miss each other and queue two (CodeRabbit on #764).
-unless = function_text(ioman, 'src/ioman.c', 'int ioPutRequestUnlessWaiting(')
-if unless.count('WaitSema(gEndSemaId)') != 1 or 'ioAppendLocked(type, data)' not in unless or 'ioPutRequest(' in unless:
-    failures.append('ioPutRequestUnlessWaiting: scan and append must share one gEndSemaId hold (ioAppendLocked), '
-                    'not release it and call ioPutRequest')
-should_queue = function_text(bdm, 'src/bdmsupport.c', 'static int bdmShouldQueueModuleLoad(')
-deferred = function_text(opl, 'src/opl.c', 'void menuDeferredUpdate(')
-module_pass = function_text(bdm, 'src/bdmsupport.c', 'static void bdmLoadBlockDeviceModules(')
+unless = function_text(ioman, 'src/platform/ioman.cpp', 'int IoQueue::putUnlessWaiting(')
+if unless.count('WaitSema(endSema_)') != 1 or 'appendLocked(type, data)' not in unless or re.search(r'(?<![A-Za-z])put\(', unless):
+    failures.append('IoQueue::putUnlessWaiting: scan and append must share one endSema_ hold (appendLocked), '
+                    'not release it and call put')
+should_queue = function_text(bdm, 'src/sources/bdmsupport.cpp', 'static int bdmShouldQueueModuleLoad(')
+deferred = function_text(opl, 'src/app/opl.cpp', 'void menuDeferredUpdate(')
+module_pass = function_text(bdm, 'src/sources/bdmsupport.cpp', 'void bdmLoadBlockDeviceModules(')
 
 # --- source guards -------------------------------------------------------------------------------
-raw_puts = bdm.count('ioPutRequest(IO_CUSTOM_SIMPLEACTION, &bdmLoadBlockDeviceModules)')
-coalesced = bdm.count('ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, &bdmLoadBlockDeviceModules)')
+raw_puts = bdm.count('ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&bdmLoadBlockDeviceModules))')
+coalesced = bdm.count('ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&bdmLoadBlockDeviceModules))')
 if raw_puts != 0 or coalesced != 3:
     failures.append('bdmsupport.c: all three module-pass requests (bdmLoadModules, bdmNeedsUpdate, '
                     'bdmEnumerateDevices) must use ioPutRequestUnlessWaiting (found %d raw, %d coalesced)'
@@ -74,9 +74,13 @@ if 'usbSecondProbeDone' not in module_pass or 'bdmProbeMassSlots("after-usb-sett
     failures.append('bdmLoadBlockDeviceModules: the USB double tap (settle + bdmProbeMassSlots + refresh) is gone')
 if 'modsNow != modsWere && !wasFirstPass' not in module_pass:
     failures.append('bdmLoadBlockDeviceModules: the late-load refresh (enabling a transport from Game Sources) is gone')
-worker = function_text(ioman, 'src/ioman.c', 'static void ioWorkerThread(')
-if not re.search(r'gReqRunning = req;\s*\n\s*ioProcessRequest\(req\);', worker) or 'gReqRunning = NULL;' not in worker:
-    failures.append('ioWorkerThread: must mark the request it runs (gReqRunning) around ioProcessRequest')
+worker = function_text(ioman, 'src/platform/ioman.cpp', 'void IoQueue::workerLoop(')
+if not re.search(r'current_ = req;\s*\n\s*process\(req\);', worker) or 'current_ = NULL;' not in worker:
+    failures.append('IoQueue::workerLoop: must mark the request it runs (current_) around process')
+
+# The real class declaration, minus its includes; private members are opened up so the harness can seed state.
+class_text = '#define private public\n' + ''.join(
+    line for line in read('include/ioqueue.h').splitlines(True) if not line.startswith('#include')) + '#undef private\n'
 
 IO_HARNESS = r'''
 #include <stdio.h>
@@ -90,27 +94,24 @@ IO_HARNESS = r'''
 #define IO_CUSTOM_SIMPLEACTION 1
 #define IO_MENU_UPDATE_DEFFERED 2
 #define IO_REQ_TYPE_COUNT 5
-#define MAX_IO_HANDLERS 64
 
 typedef void (*io_request_handler_t)(void *request);
-struct io_request_t { int type; void *data; struct io_request_t *next; };
-struct io_handler_t { int type; io_request_handler_t handler; };
+typedef int s32;
+#define NULL_PLACEHOLDER 0
 
-static struct io_request_t *gReqList, *gReqEnd;
-static struct io_request_t *volatile gReqRunning;
-static struct io_handler_t gRequestHandlers[MAX_IO_HANDLERS];
-static int gHandlerCount, isIOBlocked, gEndSemaId, gIOThreadId;
-static int gIoPending[IO_REQ_TYPE_COUNT];
-static unsigned int gIoTotal[IO_REQ_TYPE_COUNT];
 static int semaHeld;
 static void WaitSema(int s) { (void)s; semaHeld++; }
 static void SignalSema(int s) { (void)s; semaHeld--; }
+@CLASS@
+static IoQueue q;
 /* Every queue node must be allocated and linked inside the gEndSemaId hold, or a scan on the other
    thread can walk a half-linked list (CodeRabbit on #764). */
 static int unlockedAllocs;
 static void *lockedMalloc(size_t n) { unlockedAllocs += semaHeld <= 0; return malloc(n); }
 #define malloc(n) lockedMalloc(n)
 static void WakeupThread(int t) { (void)t; }
+static void SleepThread(void) {}
+static int CreateSema(void *) { return 1; }
 static void handler(void *d) { (void)d; }
 
 @IO@
@@ -120,7 +121,7 @@ static short slotMode[8];
 static int count(void *data)
 {
     int n = 0;
-    for (struct io_request_t *r = gReqList; r; r = r->next)
+    for (IoQueue::Request *r = q.head_; r; r = r->next)
         n += r->data == data;
     return n;
 }
@@ -128,18 +129,18 @@ static int count(void *data)
 int main(void)
 {
     int failed = 0;
-    gRequestHandlers[0].type = IO_CUSTOM_SIMPLEACTION; gRequestHandlers[0].handler = handler;
-    gRequestHandlers[1].type = IO_MENU_UPDATE_DEFFERED; gRequestHandlers[1].handler = handler;
-    gHandlerCount = 2;
+    q.handlers_[0].type = IO_CUSTOM_SIMPLEACTION; q.handlers_[0].handler = handler;
+    q.handlers_[1].type = IO_MENU_UPDATE_DEFFERED; q.handlers_[1].handler = handler;
+    q.handlerCount_ = 2;
 
     /* Boot: bdmEnumerateDevices -> initSupport per slot -> bdmInit (module pass) + that slot's list
        update, then bdmEnumerateDevices' own pass. The worker has not run yet. */
     for (int i = 0; i < 8; i++) {
-        ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
-        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &slotMode[i]);
+        q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
+        q.put(IO_MENU_UPDATE_DEFFERED, &slotMode[i]);
     }
-    ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
-    if (count((void *)&pass) != 1 || gReqList->data != (void *)&pass) {
+    q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
+    if (count((void *)&pass) != 1 || q.head_->data != (void *)&pass) {
         printf("FAIL boot: %d module passes queued (want 1, still first in the queue)\n", count((void *)&pass));
         failed = 1;
     }
@@ -150,25 +151,25 @@ int main(void)
 
     /* The worker starts that pass: it may already have read a setting the caller now changes, so a
        new request must queue behind it. */
-    gReqRunning = gReqList;
-    ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
+    q.current_ = q.head_;
+    q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
     if (count((void *)&pass) != 2) {
         printf("FAIL a request while the pass RUNS must queue a new one (have %d, want 2)\n", count((void *)&pass));
         failed = 1;
     }
-    ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
+    q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&pass);
     if (count((void *)&pass) != 2) {
         printf("FAIL a request while one is WAITING must not queue another (have %d, want 2)\n", count((void *)&pass));
         failed = 1;
     }
     /* Same data, different type is a different request. */
-    ioPutRequestUnlessWaiting(IO_MENU_UPDATE_DEFFERED, (void *)&pass);
+    q.putUnlessWaiting(IO_MENU_UPDATE_DEFFERED, (void *)&pass);
     if (count((void *)&pass) != 3) {
         printf("FAIL type is part of the identity (have %d, want 3)\n", count((void *)&pass));
         failed = 1;
     }
-    isIOBlocked = 1;
-    if (ioPutRequestUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&handler) != IO_ERR_IO_BLOCKED) {
+    q.blocked_ = 1;
+    if (q.putUnlessWaiting(IO_CUSTOM_SIMPLEACTION, (void *)&handler) != IO_ERR_IO_BLOCKED) {
         printf("FAIL a blocked queue must refuse, like ioPutRequest\n");
         failed = 1;
     }
@@ -221,11 +222,13 @@ DEFERRED_HARNESS = r'''
 #define MODE_COUNT 12
 
 typedef struct item_list item_list_t;
-struct item_list { short mode; int enabled; int (*itemNeedsUpdate)(item_list_t *); };
+struct item_list { short mode; int enabled; };
+static struct { int (*needsUpdate)(item_list_t *); } gsStub;
+#define gsOf(l) (&gsStub)
 typedef struct { item_list_t *support; } opl_io_module_t;
 
 static opl_io_module_t list_support[MODE_COUNT];
-static unsigned char shouldAppsUpdate;
+static unsigned char gShouldAppsUpdate;
 static int gFAVStartMode = 1;
 static int needs, pendingView, appsQueued, favLoads, rebuilds;
 static int needsUpdate(item_list_t *l) { (void)l; return needs; }
@@ -241,11 +244,11 @@ static void libViewFinishPending(int mode) { (void)mode; pendingView = 0; }
 
 @DEFERRED@
 
-static item_list_t bdm = {2, 1, needsUpdate}, apps = {APP_MODE, 1, needsUpdate}, fav = {FAV_MODE, 1, needsUpdate};
+static item_list_t bdm = {2, 1}, apps = {APP_MODE, 1}, fav = {FAV_MODE, 1};
 
 static int run(item_list_t *l, int need, int flip)
 {
-    needs = need; pendingView = flip; appsQueued = favLoads = rebuilds = 0; shouldAppsUpdate = 0;
+    needs = need; pendingView = flip; appsQueued = favLoads = rebuilds = 0; gShouldAppsUpdate = 0;
     menuDeferredUpdate(&l->mode);
     return 0;
 }
@@ -253,16 +256,17 @@ static int run(item_list_t *l, int need, int flip)
 int main(void)
 {
     int failed = 0;
+    gsStub.needsUpdate = needsUpdate;
     list_support[2].support = &bdm; list_support[APP_MODE].support = &apps; list_support[FAV_MODE].support = &fav;
 
     run(&bdm, 1, 0); /* a device page rebuilt for a real reason (connect, SELECT, rescan) */
-    if (rebuilds != 1 || appsQueued != 1 || !shouldAppsUpdate || favLoads != 1) {
-        printf("FAIL real rebuild: rebuilds %d apps %d flag %d fav %d (want 1 1 1 1)\n", rebuilds, appsQueued, shouldAppsUpdate, favLoads);
+    if (rebuilds != 1 || appsQueued != 1 || !gShouldAppsUpdate || favLoads != 1) {
+        printf("FAIL real rebuild: rebuilds %d apps %d flag %d fav %d (want 1 1 1 1)\n", rebuilds, appsQueued, gShouldAppsUpdate, favLoads);
         failed = 1;
     }
     run(&bdm, 1, 1); /* L3 flip on that page */
-    if (rebuilds != 1 || appsQueued != 0 || shouldAppsUpdate || favLoads != 1) {
-        printf("FAIL L3 flip: rebuilds %d apps %d flag %d fav %d (want 1 0 0 1)\n", rebuilds, appsQueued, shouldAppsUpdate, favLoads);
+    if (rebuilds != 1 || appsQueued != 0 || gShouldAppsUpdate || favLoads != 1) {
+        printf("FAIL L3 flip: rebuilds %d apps %d flag %d fav %d (want 1 0 0 1)\n", rebuilds, appsQueued, gShouldAppsUpdate, favLoads);
         failed = 1;
     }
     run(&apps, 1, 0); /* APPS itself never re-queues APPS */
@@ -278,10 +282,12 @@ int main(void)
 
 def compile_and_run(name, program):
     with tempfile.TemporaryDirectory() as tmp:
-        src = Path(tmp) / (name + '.c')
+        cxx = any(k in program for k in ('static_cast', 'reinterpret_cast', 'const_cast'))
+        src = Path(tmp) / (name + ('.cpp' if cxx else '.c'))
         exe = Path(tmp) / name
         src.write_text(program, encoding='utf-8')
-        build = subprocess.run(['gcc', '-std=gnu99', '-Wall', '-Wno-unused-function', '-Wno-unused-variable', '-o', str(exe), str(src)],
+        cc = (['g++', '-std=gnu++17', '-Wno-write-strings'] if cxx else ['gcc', '-std=gnu99'])
+        build = subprocess.run(cc + ['-Wall', '-Wno-unused-function', '-Wno-unused-variable', '-o', str(exe), str(src)],
                                capture_output=True, text=True)
         if build.returncode != 0:
             failures.append('%s harness did not compile:\n%s' % (name, build.stderr))
@@ -293,7 +299,7 @@ def compile_and_run(name, program):
 
 
 if not failures:
-    compile_and_run('io_queue', IO_HARNESS.replace('@IO@', io_functions))
+    compile_and_run('io_queue', IO_HARNESS.replace('@IO@', io_functions).replace('@CLASS@', class_text))
     compile_and_run('should_queue', SHOULD_HARNESS.replace('@SHOULD@', should_queue))
     compile_and_run('deferred', DEFERRED_HARNESS.replace('@DEFERRED@', deferred))
 

@@ -58,11 +58,11 @@ typedef void (*gui_callback_t)(void);
 extern int guiInactiveFrames;
 extern int guiFrameId;
 
-#define GUI_SCREEN_MAIN      0
-#define GUI_SCREEN_MENU      1
-#define GUI_SCREEN_INFO      2
-#define GUI_SCREEN_GAME_MENU 3
-#define GUI_SCREEN_APP_MENU  4
+constexpr int GUI_SCREEN_MAIN = 0;
+constexpr int GUI_SCREEN_MENU = 1;
+constexpr int GUI_SCREEN_INFO = 2;
+constexpr int GUI_SCREEN_GAME_MENU = 3;
+constexpr int GUI_SCREEN_APP_MENU = 4;
 
 void guiSwitchScreen(int target);
 
@@ -96,10 +96,6 @@ when rendering is not going on. This allows us, for example, to schedule
 updates of the menu from another thread without stalls.
 */
 
-/** Detects if a given deffered operation is already complete
- * @param opid The operation id, as returned from guiDeferUpdate
- * @return 1 if the operation was already completed, 0 otherwise */
-int guiGetOpCompleted(int opid);
 
 /** Defers the given update to an appropriate time.
  * @param op The operation to defer
@@ -127,11 +123,9 @@ void guiUpdateScrollSpeed(void);
 void guiUpdateScreenScale(void);
 
 void guiDrawBGPlasma();
-int guiDrawIconAndText(int iconId, int textId, int font, int x, int y, u64 color);
+#include "include/uidraw.h" // the hint helpers moved out of gui.cpp
 void guiDrawSubMenuHints(void);
 
-int guiAlignMenuHints(menu_hint_item_t *hint, int font, int width);
-int guiAlignSubMenuHints(int hintCount, int *textID, int *iconID, int font, int width, int align);
 
 void guiShowAbout();
 void guiShowConfig();
@@ -141,29 +135,15 @@ void guiShowPsEmulationSettings(void); // PS1 Triangle shortcut to the global PS
 void guiShowEmberGameSettings(void);   // PS1 Triangle, Ember rows: timing/dither/shading/controller
 // Settings-layout category pages (rebuild step 06)
 void guiShowDeviceConfig(void);
-int guiShowControllerConfig(void);
-int guiShowMmceConfig(void);
-void guiShowArtworkConfig(void);
-void guiShowCoverflowConfig(void);
 void guiShowColorsConfig(void);
 int guiDrawBGSettings(void);
-int guiDeviceTypeToIoMode(int deviceType);
-int guiIoModeToDeviceType(int ioMode);
 void guiShowNeutrinoDefaults(void);
 int guiNeutrinoPathHandler(char *text, int maxLen);
 int guiPopstarterPathHandler(char *text, int maxLen);
 int guiExitPathHandler(char *text, int maxLen);
 void guiShowNeutrinoArgsConfig(char *argsBuf, int bufSize);
-int guiShowAudioConfig(void);
 int guiShowNetConfig(void);
 
-// The network protocol the NIC is ACTUALLY running right now, as a NET_PROTO_* value, derived from
-// which IOP stack is resident -- NET_PROTO_OFF when none is. gNetworkProtocol is only ever written
-// from the config file, the legacy derivation or the picker, so it records what the user WANTS and
-// never what is live; this is the other half of that pair. SMB, UDPFS and UDPBD are mutually
-// exclusive on the single SMAP NIC and each loads its chain once per boot (the load latch is never
-// cleared), so the two can disagree for the whole rest of the session after a switch.
-int guiGetResidentNetProtocol(void);
 
 // 1 when a network stack is resident and the saved protocol is NOT the one running -- i.e. the
 // user's choice cannot take effect until OPL is restarted. Asked from the SAVE path, never from the
@@ -174,8 +154,6 @@ int guiNetProtocolNeedsRestart(void);
 // One-shot POPSTARTER USB driver pick (FAT32 vs exFAT), shown on EVERY USB VCD launch
 // (maintainer directive 2026-08-01: the user picks per launch, never a sticky default).
 int guiShowVcdUsbMode(void);
-void guiShowBdmaConfig(void);    // BDMA (exFAT driver stack) source/mode equip page
-void guiShowVcdListConfig(void); // VCD list options (hide game-id prefix, first-disc-only)
 void guiShowPopsNetConfig(void); // POPSTARTER's OWN IPCONFIG.DAT/SMBCONFIG.DAT editor
 
 void guiCheckNotifications(int checkTheme, int checkLang);
@@ -192,7 +170,7 @@ void guiCheckNotifications(int checkTheme, int checkLang);
 // Bound for guiHandleDeferedIO's wait on a deferred config save/load. Far beyond any real config
 // write; only a genuinely stuck device (which would otherwise freeze the GUI forever on "Saving...")
 // reaches it, after which the caller falls into its normal failure path ("Error saving settings").
-#define OPL_DEFERRED_IO_TIMEOUT_MS 30000
+constexpr int OPL_DEFERRED_IO_TIMEOUT_MS = 30000;
 void guiHandleDeferedIO(int *ptr, const char *message, int type, void *data, int timeoutMs);
 
 void guiGameHandleDeferedIO(int *ptr, struct UIItem *ui, int type, void *data);
@@ -221,7 +199,6 @@ void guiSetBootStatusStickyCopy(const char *label);
 
 void guiWarning(const char *text, int count);
 
-int guiConfirmVideoMode(void);
 
 int guiGameShowRemoveSettings(config_set_t *configSet, config_set_t *configGame);
 
@@ -232,7 +209,6 @@ void guiManageCheats(void);
    there) and drawn by the render loop. guiShowRANotices() is called once per
    frame from the main loop. */
 void guiShowRANotice(const char *line1, const char *line2);
-void guiShowRANotices(void);
 #endif
 
 #endif

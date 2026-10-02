@@ -1,0 +1,444 @@
+project: riptopl
+
+targets:
+  - name: isofs
+    type: iop
+    sources: [modules/isofs/isofs.c, modules/isofs/zso.c, modules/isofs/lz4.c]
+    include_dirs: [modules/isofs/]
+    headers: &iop_headers [common, startup, stdio, ioman, iomanx, intrman, excepman, loadcore, sysmem, sysclib, threadman, timrman, dmacman, heaplib, sifcmd, sifman, modload, cdvd, dev9, smap, netman, ps2ip-nm, bdm, usbd, sio2man, padman, mcman, secrman, sior, atad, libsd, spu2, vblank, ioptrap, poweroff, filexio, iopmgr, ioprpgen, cdvdfsv, ssbusc]
+    imports_lst: modules/isofs/imports.lst
+
+  - name: bdmevent
+    type: iop
+    sources: [modules/bdmevent/main.c]
+    include_dirs: [modules/bdmevent/, include]
+    headers: *iop_headers
+    imports_lst: modules/bdmevent/imports.lst
+
+  - name: imgdrv
+    type: iop
+    sources: [modules/iopcore/imgdrv/imgdrv.c]
+    include_dirs: [modules/iopcore/imgdrv/]
+    headers: *iop_headers
+    imports_lst: modules/iopcore/imgdrv/imports.lst
+
+  - name: resetspu
+    type: iop
+    sources: [modules/iopcore/resetspu/resetspu.c]
+    include_dirs: [modules/iopcore/resetspu/]
+    headers: *iop_headers
+    imports_lst: modules/iopcore/resetspu/imports.lst
+
+  - name: apemodpatch
+    type: iop
+    sources: [modules/iopcore/patches/apemodpatch/main.c]
+    include_dirs: [modules/iopcore/patches/apemodpatch/]
+    headers: *iop_headers
+    imports_lst: modules/iopcore/patches/apemodpatch/imports.lst
+
+  - name: cleareffects
+    type: iop
+    sources: [modules/iopcore/patches/cleareffects/main.c]
+    include_dirs: [modules/iopcore/patches/cleareffects/]
+    headers: *iop_headers
+    imports_lst: modules/iopcore/patches/cleareffects/imports.lst
+
+  - name: f2techioppatch
+    type: iop
+    sources: [modules/iopcore/patches/f2techioppatch/main.c]
+    include_dirs: [modules/iopcore/patches/f2techioppatch/]
+    headers: *iop_headers
+    imports_lst: modules/iopcore/patches/f2techioppatch/imports.lst
+
+  - name: iremsndpatch
+    type: iop
+    sources: [modules/iopcore/patches/iremsndpatch/main.c, modules/iopcore/patches/iremsndpatch/asm.S]
+    include_dirs: [modules/iopcore/patches/iremsndpatch/]
+    headers: *iop_headers
+    imports_lst: modules/iopcore/patches/iremsndpatch/imports.lst
+
+  - name: genvmc
+    type: iop
+    sources: [modules/vmc/genvmc/genvmc.c]
+    include_dirs: [modules/vmc/genvmc/]
+    headers: *iop_headers
+    imports_lst: modules/vmc/genvmc/imports.lst
+
+  - name: cdvdfsv
+    type: iop
+    sources: [modules/iopcore/cdvdfsv/cdvdfsv.c, modules/iopcore/cdvdfsv/searchfile.c, modules/iopcore/cdvdfsv/ncmd.c, modules/iopcore/cdvdfsv/scmd.c]
+    include_dirs: [modules/iopcore/cdvdfsv/, modules/iopcore/common]
+    headers: *iop_headers
+    imports_lst: modules/iopcore/cdvdfsv/imports.lst
+    exports_tab: modules/iopcore/cdvdfsv/exports.tab
+
+  - name: SMSUTILS
+    type: iop
+    sources: [modules/network/SMSUTILS/SMSUTILS.S]
+    include_dirs: [modules/network/SMSUTILS/, modules/iopcore/common]
+    headers: *iop_headers
+
+  - name: smbinit
+    type: iop
+    sources: [modules/network/smbinit/main.c, modules/network/smbinit/smbauth.c, modules/network/smbinit/des.c, modules/network/smbinit/md4.c]
+    include_dirs: [modules/network/smbinit/, modules/iopcore/common]
+    headers: *iop_headers
+    imports_lst: modules/network/smbinit/imports.lst
+
+  - name: nbns
+    type: iop
+    sources: [modules/network/nbns/main.c, modules/network/nbns/nbns.c]
+    include_dirs: [modules/network/nbns/, include]
+    headers: *iop_headers
+    imports_lst: modules/network/nbns/imports.lst
+    exports_tab: modules/network/nbns/exports.tab
+
+  - name: httpclient
+    type: iop
+    sources: [modules/network/httpclient/main.c, modules/network/httpclient/httpclient.c]
+    include_dirs: [modules/network/httpclient/, modules/network/common]
+    headers: *iop_headers
+    imports_lst: modules/network/httpclient/imports.lst
+    exports_tab: modules/network/httpclient/exports.tab
+
+  - name: raudp
+    type: iop
+    sources: [modules/network/raudp/raudp.c]
+    include_dirs: [modules/network/raudp/, modules/network/common, modules/iopcore/common]
+    headers: *iop_headers
+    imports_lst: modules/network/raudp/imports.lst
+    exports_tab: modules/network/raudp/exports.tab
+
+  - name: xhdd
+    type: iop
+    sources: [modules/hdd/xhdd/xhdd.c, modules/hdd/xhdd/xatad.c, modules/hdd/xhdd/hdpro.c]
+    include_dirs: [modules/hdd/xhdd/, modules/hdd/common]
+    headers: *iop_headers
+    imports_lst: modules/hdd/xhdd/imports.lst
+
+  - name: udptty_ingame
+    type: iop
+    sources: [modules/debug/udptty-ingame/udptty.c]
+    include_dirs: [modules/debug/udptty-ingame/, modules/network/common]
+    headers: *iop_headers
+    defines: [KPRTTY]
+    imports_lst: modules/debug/udptty-ingame/imports.lst
+    exports_tab: modules/debug/udptty-ingame/exports.tab
+
+  # FORK-VENDORED ps2ips (RA fixes) - shadows the SDK ps2ips package; do not use the package.
+  - name: ps2ips_fork
+    type: iop
+    sources: [modules/network/ps2ips/ps2ips.c]
+    include_dirs: [modules/network/ps2ips/]
+    headers: *iop_headers
+    defines: [PS2IP_DNS]
+    imports_lst: modules/network/ps2ips/imports.lst
+
+  # smbman. Default flavour used the stock SDK prebuilt (embed_irx: smbman package); the RA flavour uses this fork.
+  - name: smbman_ra
+    type: iop
+    sources: [modules/network/smbman-ra/smbman.c, modules/network/smbman-ra/smb_fio.c, modules/network/smbman-ra/smb.c, modules/network/smbman-ra/poll.c, modules/network/smbman-ra/auth.c, modules/network/smbman-ra/des.c, modules/network/smbman-ra/md4.c]
+    include_dirs: [modules/network/smbman-ra/]
+    headers: *iop_headers
+    libs: [gcc]
+    imports_lst: modules/network/smbman-ra/imports.lst
+
+  - name: smap_ingame
+    type: iop
+    sources: [modules/network/smap-ingame/main.c, modules/network/smap-ingame/smap.c, modules/network/smap-ingame/xfer.c]
+    include_dirs: [modules/network/smap-ingame/, modules/iopcore/common, modules/network/common]
+    headers: *iop_headers
+    imports_lst: modules/network/smap-ingame/imports.lst
+    exports_tab: modules/network/smap-ingame/exports.tab
+
+  - name: SMSTCPIP
+    type: iop
+    sources: [modules/network/SMSTCPIP/ps2ip.c, modules/network/SMSTCPIP/inet.S, modules/network/SMSTCPIP/ip.c, modules/network/SMSTCPIP/ip_addr.c, modules/network/SMSTCPIP/ip_frag.c, modules/network/SMSTCPIP/etharp.c, modules/network/SMSTCPIP/tcp_in.c, modules/network/SMSTCPIP/tcp_out.c, modules/network/SMSTCPIP/tcp.c, modules/network/SMSTCPIP/tcpip.c, modules/network/SMSTCPIP/mem.c, modules/network/SMSTCPIP/api_lib.c, modules/network/SMSTCPIP/api_msg.c, modules/network/SMSTCPIP/sockets.c, modules/network/SMSTCPIP/netif.c, modules/network/SMSTCPIP/udp.c, modules/network/SMSTCPIP/memp.c, modules/network/SMSTCPIP/icmp.c, modules/network/SMSTCPIP/pbuf.c, modules/network/SMSTCPIP/timers.c]
+    include_dirs: [modules/network/SMSTCPIP/, modules/network/SMSTCPIP/include, modules/iopcore/common]
+    headers: *iop_headers
+    defines: [LWIP_NOASSERT, INGAME_DRIVER, INTERRUPT_CTX_INPKT]
+    cflags: [-mno-memcpy, -Wno-attributes, -Wno-array-bounds, -Wno-unused-but-set-variable]
+    imports_lst: modules/network/SMSTCPIP/imports.lst
+    exports_tab: modules/network/SMSTCPIP/exports.tab
+
+  # lwNBD (downloaded + pinned by the asset script into modules/network/lwNBD; gitignored)
+  - name: lwnbdsvr
+    type: iop
+    sources: [modules/network/lwNBD/ports/playstation2/lwnbd_irx.c, modules/network/lwNBD/ports/playstation2/exports.c, modules/network/lwNBD/ports/playstation2/imports.c, modules/network/lwNBD/src/servers.c, modules/network/lwNBD/src/plugins.c, modules/network/lwNBD/src/contexts.c, modules/network/lwNBD/servers/nbd/protocol-handshake.c, modules/network/lwNBD/servers/nbd/protocol.c, modules/network/lwNBD/servers/nbd/nbd.c, modules/network/lwNBD/servers/nbd/tcp.c, modules/network/lwNBD/plugins/memory/memory.c, modules/network/lwNBD/plugins/atad/atad_d.c, modules/network/lwNBD/plugins/mcman/mcman_d.c]
+    include_dirs: [modules/network/lwNBD/, modules/network/lwNBD/ports/playstation2, modules/network/lwNBD/include]
+    headers: *iop_headers
+    defines: ['APP_NAME=\"lwnbdsvr\"']
+    cflags: [-include, ps2sdk-compat.h]
+    libs: [gcc]
+
+  - name: smap_udpbd
+    type: iop
+    sources: [modules/network/smap_udpbd/src/main.c, modules/network/smap_udpbd/src/smap.c, modules/network/smap_udpbd/src/xfer.c, modules/network/smap_udpbd/src/ministack.c, modules/network/smap_udpbd/src/udpbd.c, modules/network/smap_udpbd/src/udptty.c]
+    include_dirs: [modules/network/smap_udpbd/src, modules/network/smap_udpbd/src/include]
+    headers: *iop_headers
+    cflags: [-mno-check-zero-division]
+    imports_lst: modules/network/smap_udpbd/src/imports.lst
+    exports_tab: modules/network/smap_udpbd/src/exports.tab
+
+  - name: udpfs_smap
+    type: iop
+    sources: [modules/network/udpfs_smap/src/main.c, modules/network/udpfs_smap/src/smap.c, modules/network/udpfs_smap/src/xfer.c]
+    include_dirs: [modules/network/udpfs_smap/src, modules/network/udpfs_smap/include]
+    headers: *iop_headers
+    cflags: [-mno-check-zero-division]
+    imports_lst: modules/network/udpfs_smap/src/imports.lst
+    exports_tab: modules/network/udpfs_smap/src/exports.tab
+
+  - name: udpfs_ministack
+    type: iop
+    sources: [modules/network/udpfs_ministack/src/main.c, modules/network/udpfs_ministack/src/ministack_arp.c, modules/network/udpfs_ministack/src/ministack_eth.c, modules/network/udpfs_ministack/src/ministack_ip.c, modules/network/udpfs_ministack/src/ministack_udp.c, modules/network/udpfs_ministack/src/udptty.c]
+    include_dirs: [modules/network/udpfs_ministack/src, modules/network/udpfs_ministack/include, modules/network/udpfs_smap/include]
+    headers: *iop_headers
+    cflags: [-mno-check-zero-division]
+    imports_lst: modules/network/udpfs_ministack/src/imports.lst
+    exports_tab: modules/network/udpfs_ministack/src/exports.tab
+
+  - name: udpfs_bd
+    type: iop
+    sources: [modules/network/udpfs_bd/src/main.c, modules/network/udpfs_bd/src/udprdma.c, modules/network/udpfs_bd/src/udpfs_core.c, modules/network/udpfs_bd/src/udpfs_bd.c]
+    include_dirs: [modules/network/udpfs_bd/src, modules/network/udpfs_bd/include, modules/network/udpfs_smap/include, modules/network/udpfs_ministack/include]
+    headers: *iop_headers
+    defines: [FEATURE_UDPFS_BD, UDPRDMA_MAX_SOCKETS=1]
+    cflags: [-mno-check-zero-division]
+    imports_lst: modules/network/udpfs_bd/src/imports.lst
+    exports_tab: modules/network/udpfs_bd/src/exports.tab
+
+  - name: udpfs_ioman
+    type: iop
+    sources: [modules/network/udpfs_ioman/src/main.c, modules/network/udpfs_ioman/src/udprdma.c, modules/network/udpfs_ioman/src/udpfs_core.c, modules/network/udpfs_ioman/src/udpfs_ioman.c]
+    include_dirs: [modules/network/udpfs_ioman/src, modules/network/udpfs_ioman/include, modules/network/udpfs_smap/include, modules/network/udpfs_ministack/include]
+    headers: *iop_headers
+    defines: [FEATURE_UDPFS_IOMAN, UDPRDMA_MAX_SOCKETS=1]
+    cflags: [-mno-check-zero-division]
+    imports_lst: modules/network/udpfs_ioman/src/imports.lst
+    exports_tab: modules/network/udpfs_ioman/src/exports.tab
+
+  # FORK-VENDORED atad (retryable sceAtaInit). Embedded as ps2atad_irx.
+  - name: ata_bd
+    type: iop
+    sources: [modules/hdd/atad/src/ps2atad.c]
+    include_dirs: [modules/hdd/atad/src]
+    headers: *iop_headers
+    defines: [ATA_USE_DEV9=1, ATA_GAMESTAR_WORKAROUND=1, ATA_ENABLE_BDM=1]
+    imports_lst: modules/hdd/atad/src/imports.lst
+    exports_tab: modules/hdd/atad/src/exports.tab
+
+  # FORK-VENDORED APA driver. Embedded as ps2hdd_irx.
+  - name: ps2hdd_osd
+    type: iop
+    sources: [modules/hdd/apa/src/hdd_fio.c, modules/hdd/apa/src/hdd_blkio.c, modules/hdd/apa/src/hdd.c, modules/hdd/apa/src/password.c, modules/hdd/apa/src/misc.c, modules/hdd/apa/src/cache.c, modules/hdd/apa/src/apa.c, modules/hdd/apa/src/journal.c, modules/hdd/apa/src/free.c, modules/hdd/apa/src/table_fence.c]
+    include_dirs: [modules/hdd/apa/src]
+    headers: *iop_headers
+    defines: [APA_OSD_VER, APA_USE_DEV9, APA_USE_ATAD, IOMANX_OLD_NAME_COMPATIBILITY=0, IOMANX_OLD_NAME_ADDDELDRV=0]
+    imports_lst: modules/hdd/apa/src/imports.lst
+
+  # FORK-VENDORED BDM (block-cache refill fix); links the vendored libbdm below.
+  - name: bdm_drv
+    type: iop
+    sources: [modules/bdm/src/main.c, modules/bdm/src/bdm.c, modules/bdm/src/part_driver.c, modules/bdm/src/part_driver_mbr.c, modules/bdm/src/part_driver_gpt.c]
+    include_dirs: [modules/bdm/src, modules/bdm/src/include, modules/bdm/libbdm/include]
+    headers: *iop_headers
+    libs: [bdm_fork, gcc]
+    imports_lst: modules/bdm/src/imports.lst
+    exports_tab: modules/bdm/src/exports.tab
+
+  - name: bdm_fork
+    type: iop_lib
+    sources: [modules/bdm/libbdm/src/bd_defrag.c, modules/bdm/libbdm/src/bd_cache.c]
+    include_dirs: [modules/bdm/libbdm/src/include, modules/bdm/libbdm/include]
+    headers: *iop_headers
+
+  # FORK-VENDORED usbd_mini (pre-2024-09-04 driver). Do NOT use the SDK usbd_mini package.
+  # -G0, not the original Makefile's IOP_PREFER_GPOPT=16384: with USE_GP_REGISTER=0, -G16384 made RegisterLdd fail and ds34usb_init() spin forever.
+  - name: usbd_mini_fork
+    type: iop
+    sources: [modules/usb/usbd-ra/src/hcd.c, modules/usb/usbd-ra/src/hub.c, modules/usb/usbd-ra/src/interface.c, modules/usb/usbd-ra/src/mem.c, modules/usb/usbd-ra/src/usbd.c, modules/usb/usbd-ra/src/usbio.c, modules/usb/usbd-ra/src/driver.c]
+    include_dirs: [modules/usb/usbd-ra/src, modules/usb/usbd-ra/include]
+    headers: *iop_headers
+    defines: [MINI_DRIVER, USE_GP_REGISTER=0]
+    cflags: [-G0]
+    imports_lst: modules/usb/usbd-ra/src/imports.lst
+    exports_tab: modules/usb/usbd-ra/src/exports.tab
+
+  - name: hdd_cdvdman
+    type: iop
+    sources: [modules/iopcore/cdvdman/cdvdman.c, modules/iopcore/cdvdman/ioops.c, modules/iopcore/cdvdman/ncmd.c, modules/iopcore/cdvdman/scmd.c, modules/iopcore/cdvdman/searchfile.c, modules/iopcore/cdvdman/streaming.c, modules/iopcore/cdvdman/ioplib_util.c, modules/iopcore/cdvdman/smsutils.S, modules/iopcore/cdvdman/device-hdd.c, modules/iopcore/cdvdman/atad.c, modules/iopcore/cdvdman/dev9.c, modules/isofs/zso.c, modules/isofs/lz4.c]
+    include_dirs: [modules/iopcore/cdvdman/, modules/iopcore/common]
+    headers: *iop_headers
+    defines: [HDD_DRIVER, __USE_DEV9]
+    imports_lst: modules/iopcore/cdvdman/imports.lst
+    exports_tab: modules/iopcore/cdvdman/exports.tab
+
+  - name: hdd_hdpro_cdvdman
+    type: iop
+    sources: [modules/iopcore/cdvdman/cdvdman.c, modules/iopcore/cdvdman/ioops.c, modules/iopcore/cdvdman/ncmd.c, modules/iopcore/cdvdman/scmd.c, modules/iopcore/cdvdman/searchfile.c, modules/iopcore/cdvdman/streaming.c, modules/iopcore/cdvdman/ioplib_util.c, modules/iopcore/cdvdman/smsutils.S, modules/iopcore/cdvdman/device-hdd.c, modules/iopcore/cdvdman/hdpro_atad.c, modules/isofs/zso.c, modules/isofs/lz4.c]
+    include_dirs: [modules/iopcore/cdvdman/, modules/iopcore/common]
+    headers: *iop_headers
+    defines: [HDD_DRIVER, HD_PRO]
+    imports_lst: modules/iopcore/cdvdman/imports.lst
+    exports_tab: modules/iopcore/cdvdman/exports.tab
+
+  - name: smb_cdvdman
+    type: iop
+    sources: [modules/iopcore/cdvdman/cdvdman.c, modules/iopcore/cdvdman/ioops.c, modules/iopcore/cdvdman/ncmd.c, modules/iopcore/cdvdman/scmd.c, modules/iopcore/cdvdman/searchfile.c, modules/iopcore/cdvdman/streaming.c, modules/iopcore/cdvdman/ioplib_util.c, modules/iopcore/cdvdman/smsutils.S, modules/iopcore/cdvdman/device-smb.c, modules/iopcore/cdvdman/smb.c, modules/iopcore/cdvdman/dev9.c, modules/isofs/zso.c, modules/isofs/lz4.c]
+    include_dirs: [modules/iopcore/cdvdman/, modules/iopcore/common, modules/network/common]
+    headers: *iop_headers
+    defines: [SMB_DRIVER, __USE_DEV9]
+    imports_lst: modules/iopcore/cdvdman/imports.lst
+    exports_tab: modules/iopcore/cdvdman/exports.tab
+
+  - name: http_cdvdman
+    type: iop
+    sources: [modules/iopcore/cdvdman/cdvdman.c, modules/iopcore/cdvdman/ioops.c, modules/iopcore/cdvdman/ncmd.c, modules/iopcore/cdvdman/scmd.c, modules/iopcore/cdvdman/searchfile.c, modules/iopcore/cdvdman/streaming.c, modules/iopcore/cdvdman/ioplib_util.c, modules/iopcore/cdvdman/smsutils.S, modules/iopcore/cdvdman/device-http.c, modules/iopcore/cdvdman/dev9.c, modules/isofs/zso.c, modules/isofs/lz4.c]
+    include_dirs: [modules/iopcore/cdvdman/, modules/iopcore/common, modules/network/common]
+    headers: *iop_headers
+    defines: [HTTP_DRIVER, __USE_DEV9]
+    imports_lst: modules/iopcore/cdvdman/imports.lst
+    exports_tab: modules/iopcore/cdvdman/exports.tab
+
+  - name: bdm_cdvdman
+    type: iop
+    sources: [modules/iopcore/cdvdman/cdvdman.c, modules/iopcore/cdvdman/ioops.c, modules/iopcore/cdvdman/ncmd.c, modules/iopcore/cdvdman/scmd.c, modules/iopcore/cdvdman/searchfile.c, modules/iopcore/cdvdman/streaming.c, modules/iopcore/cdvdman/ioplib_util.c, modules/iopcore/cdvdman/smsutils.S, modules/iopcore/cdvdman/device-bdm.c, modules/isofs/zso.c, modules/isofs/lz4.c]
+    include_dirs: [modules/iopcore/cdvdman/, modules/iopcore/common]
+    headers: *iop_headers
+    defines: [BDM_DRIVER]
+    libs: [bdm]
+    imports_lst: modules/iopcore/cdvdman/imports.lst
+    exports_tab: modules/iopcore/cdvdman/exports.tab
+
+  - name: bdm_ata_cdvdman
+    type: iop
+    sources: [modules/iopcore/cdvdman/cdvdman.c, modules/iopcore/cdvdman/ioops.c, modules/iopcore/cdvdman/ncmd.c, modules/iopcore/cdvdman/scmd.c, modules/iopcore/cdvdman/searchfile.c, modules/iopcore/cdvdman/streaming.c, modules/iopcore/cdvdman/ioplib_util.c, modules/iopcore/cdvdman/smsutils.S, modules/iopcore/cdvdman/device-bdm.c, modules/iopcore/cdvdman/atad.c, modules/iopcore/cdvdman/dev9.c, modules/isofs/zso.c, modules/isofs/lz4.c]
+    include_dirs: [modules/iopcore/cdvdman/, modules/iopcore/common]
+    headers: *iop_headers
+    defines: [BDM_DRIVER, USE_BDM_ATA, __USE_DEV9]
+    libs: [bdm]
+    imports_lst: modules/iopcore/cdvdman/imports.lst
+    exports_tab: modules/iopcore/cdvdman/exports.tab
+
+  - name: mmce_cdvdman
+    type: iop
+    sources: [modules/iopcore/cdvdman/cdvdman.c, modules/iopcore/cdvdman/ioops.c, modules/iopcore/cdvdman/ncmd.c, modules/iopcore/cdvdman/scmd.c, modules/iopcore/cdvdman/searchfile.c, modules/iopcore/cdvdman/streaming.c, modules/iopcore/cdvdman/ioplib_util.c, modules/iopcore/cdvdman/smsutils.S, modules/iopcore/cdvdman/device-mmce.c, modules/isofs/zso.c, modules/isofs/lz4.c]
+    include_dirs: [modules/iopcore/cdvdman/, modules/iopcore/common]
+    headers: *iop_headers
+    defines: [MMCE_DRIVER]
+    imports_lst: modules/iopcore/cdvdman/imports.lst
+    exports_tab: modules/iopcore/cdvdman/exports.tab
+
+  - name: hdd_mcemu
+    type: iop
+    sources: [modules/mcemu/mcemu.c, modules/mcemu/mcemu_io.c, modules/mcemu/mcemu_sys.c, modules/mcemu/mcemu_var.c, modules/mcemu/mcemu_rpc.c, modules/mcemu/device-hdd.c]
+    include_dirs: [modules/mcemu/, include]
+    headers: *iop_headers
+    defines: [HDD_DRIVER, PADEMU]
+    imports_lst: modules/mcemu/imports.lst
+
+  - name: smb_mcemu
+    type: iop
+    sources: [modules/mcemu/mcemu.c, modules/mcemu/mcemu_io.c, modules/mcemu/mcemu_sys.c, modules/mcemu/mcemu_var.c, modules/mcemu/mcemu_rpc.c, modules/mcemu/device-smb.c]
+    include_dirs: [modules/mcemu/, include]
+    headers: *iop_headers
+    defines: [SMB_DRIVER, PADEMU]
+    imports_lst: modules/mcemu/imports.lst
+
+  - name: bdm_mcemu
+    type: iop
+    sources: [modules/mcemu/mcemu.c, modules/mcemu/mcemu_io.c, modules/mcemu/mcemu_sys.c, modules/mcemu/mcemu_var.c, modules/mcemu/mcemu_rpc.c, modules/mcemu/device-bdm.c]
+    include_dirs: [modules/mcemu/, include]
+    headers: *iop_headers
+    defines: [BDM_DRIVER, PADEMU]
+    imports_lst: modules/mcemu/imports.lst
+
+  - name: mmce_mcemu
+    type: iop
+    sources: [modules/mcemu/mcemu.c, modules/mcemu/mcemu_io.c, modules/mcemu/mcemu_sys.c, modules/mcemu/mcemu_var.c, modules/mcemu/mcemu_rpc.c, modules/mcemu/device-mmce.c]
+    include_dirs: [modules/mcemu/, include]
+    headers: *iop_headers
+    defines: [MMCE_DRIVER, PADEMU]
+    imports_lst: modules/mcemu/imports.lst
+
+  - name: usb_pademu
+    type: iop
+    sources: [modules/pademu/pademu.c, modules/pademu/sys_utils.c, modules/pademu/padmacro.c, modules/pademu/ds34common.c, modules/pademu/ds34usb.c]
+    include_dirs: [modules/pademu/, include]
+    headers: *iop_headers
+    defines: [USB, USE_SMSUTILS]
+    imports_lst: modules/pademu/imports.lst
+    exports_tab: modules/pademu/exports.tab
+
+  - name: bt_pademu
+    type: iop
+    sources: [modules/pademu/pademu.c, modules/pademu/sys_utils.c, modules/pademu/padmacro.c, modules/pademu/ds34common.c, modules/pademu/ds34bt.c]
+    include_dirs: [modules/pademu/, include]
+    headers: *iop_headers
+    defines: [BT, USE_SMSUTILS]
+    imports_lst: modules/pademu/imports.lst
+    exports_tab: modules/pademu/exports.tab
+
+  - name: ds34usb
+    type: iop
+    sources: [modules/ds34usb/iop/ds34usb.c, modules/ds34usb/iop/smsutils.S]
+    include_dirs: [modules/ds34usb/iop/, include]
+    headers: *iop_headers
+    imports_lst: modules/ds34usb/iop/imports.lst
+
+  - name: ds34bt
+    type: iop
+    sources: [modules/ds34bt/iop/ds34bt.c, modules/ds34bt/iop/smsutils.S]
+    include_dirs: [modules/ds34bt/iop/, include]
+    headers: *iop_headers
+    imports_lst: modules/ds34bt/iop/imports.lst
+
+  # ---- EE-side helper ELFs (embedded into the main ELF) ----
+  - name: eecore
+    type: ee
+    sources: [ee_core/src/main.c, ee_core/src/syshook.c, ee_core/src/iopmgr.c, ee_core/src/modmgr.c, ee_core/src/util.c, ee_core/src/patches.c, ee_core/src/patches_asm.S, ee_core/src/padhook.c, ee_core/src/cd_igr_rpc.c, ee_core/src/tlb.c, ee_core/src/asm.S, ee_core/src/crt0.S, ee_core/src/gsm_engine.S, ee_core/src/gsm_api.c, ee_core/src/dve_reg.S, ee_core/src/cheat_engine.S, ee_core/src/cheat_api.c]
+    include_dirs: [ee_core/include, ee_core]
+    headers: [patches, cdvd, filexio, ps2ips, pad, mc, poweroff]
+    defines: [GSM_1080P, PADEMU]
+    libs: [patches, kernel, gcc]
+    linkfile: ee_core/linkfile
+    opt: -Os
+    ldflags: [-nostartfiles, -nostdlib, "-Wl,-Map,eecore.map"]
+
+  - name: elfldr
+    type: ee
+    sources: [elfldr/loader.c]
+    defines: [NEWLIB_PORT_AWARE]
+    cflags: [-fdata-sections, -ffunction-sections]
+    ldflags: ["-Wl,-zmax-page-size=128", "-Wl,--gc-sections"]
+    libs: [filexio]
+    headers: [filexio]
+    linkfile: elfldr/linkfile
+    opt: -Os
+
+  # ---- EE libraries for the PADEMU Bluetooth/USB pad drivers ----
+  - name: ds34usb_ee
+    type: ee_lib
+    sources: [modules/ds34usb/ee/libds34usb.c]
+    cflags: [-Wall]
+    headers: [kernel]
+  - name: ds34bt_ee
+    type: ee_lib
+    sources: [modules/ds34bt/ee/libds34bt.c]
+    cflags: [-Wall]
+    headers: [kernel]
+
+  # ---- main loader ----
+  - name: riptopl
+    type: ee
+    sources: [src/core/pad.cpp, src/core/xparam.cpp, src/gfx/fntsys.cpp, src/gfx/renderman.cpp, src/ui/menusys.cpp, src/core/OSDHistory.cpp, src/platform/system.cpp, src/platform/sysvmc.cpp, src/platform/sysneutrino.cpp, src/platform/sysdisc.cpp, src/platform/elfldr_noreset.cpp, src/core/lang.cpp, src/core/lang_internal.c, src/core/config.cpp, src/platform/hdd.cpp, src/ui/dialogs.cpp, src/sources/favsupport.cpp, src/ui/dia.cpp, src/ui/diaeditors.cpp, src/ui/diaitems.cpp, src/platform/ioman.cpp, src/gfx/texcache.cpp, src/gfx/artload.cpp, src/gfx/artqueue.cpp, src/gfx/artworker.cpp, src/gfx/themes.cpp, src/gfx/themeelems.cpp, src/gfx/coverflow.cpp, src/sources/supportbase.cpp, src/sources/bdmsupport.cpp, src/sources/bdmlaunch.cpp, src/sources/bdmdevices.cpp, src/sources/bdmboot.cpp, src/sources/netsupport.cpp, src/sources/ethsupport.cpp, src/platform/httpcatalog.cpp, src/sources/httpsupport.cpp, src/sources/gamesource.cpp, src/sources/udpfssupport.cpp, src/sources/hddsupport.cpp, src/platform/zso.c, src/platform/lz4.c, src/platform/launchdiag.cpp, src/sources/appsupport.cpp, src/sources/mmcesupport.cpp, src/sources/artindex.cpp, src/sources/vcdsupport.cpp, src/sources/cuesupport.cpp, src/ui/libview.cpp, src/sources/retrogem.cpp, src/sources/folderbrowse.cpp, src/ui/gui.cpp, src/ui/guisettings.cpp, src/ui/guiqueue.cpp, src/ui/guiboot.cpp, src/ui/guinotify.cpp, src/ui/guiscreens.cpp, src/ui/guiframe.cpp, src/ui/guioverlay.cpp, src/ui/guisplash.cpp, src/ui/guimodal.cpp, src/ui/guiwait.cpp, src/ui/guigameid.cpp, src/gfx/plasma.cpp, src/gfx/uidraw.cpp, src/ui/guigame.cpp, src/core/vmc_groups.cpp, src/gfx/textures.cpp, src/platform/new.cpp, src/app/opl.cpp, src/ui/menuitems.cpp, src/sources/appscan.cpp, src/app/settingsio.cpp, src/app/lwnbdctl.cpp, src/app/autolaunch.cpp, src/core/settings.cpp, src/app/host.cpp, src/gfx/atlas.cpp, src/platform/nbns.cpp, src/platform/httpclient.cpp, src/core/gsm.cpp, src/core/cheatman.cpp, src/core/sound.cpp, src/core/sfx.cpp, src/core/bgm.cpp, src/platform/ps2cnf.cpp, src/platform/tar.cpp, src/platform/ioprp.cpp, src/platform/util.cpp, "asm/*.c"]
+    include_dirs: [., asm, include, modules/iopcore/common, modules/network/common, modules/hdd/common, modules/ds34bt/ee, modules/ds34usb/ee]
+    headers: [kernel, cdvd, filexio, mc, poweroff, patches, vux, ps2ips, ps2ip, pad, netman, gskit, dmakit, freetype, png, z, audio, audsrv-compat, ogg, vorbis, elf-loader-nocolour]
+    defines: [GSM_1080P, PADEMU]
+    cflags: [-fno-exceptions, -Wmissing-declarations, -fsingle-precision-constant, -Wno-format-truncation, -Wno-stringop-truncation, -fdata-sections, -ffunction-sections, -include, opl_version.h]
+    ldflags: [-fdata-sections, -ffunction-sections, "-Wl,--gc-sections", "-Wl,-Map,opl.map", -lpadx]
+    libs: [gskit, dmakit, poweroff, filexio, patches, png, z, mc, freetype, vux, cdvd, netman, ps2ips, audsrv-compat, vorbisfile, vorbis, ogg, pad, elf-loader-nocolour, ds34usb_ee, ds34bt_ee]
+    pack: true
+    embed_irx: [isofs, bdmevent, genvmc, nbns, httpclient, imgdrv, resetspu, apemodpatch, cleareffects, f2techioppatch, iremsndpatch, cdvdfsv, smbinit, SMSUTILS:smsutils, SMSTCPIP:ingame_smstcpip, smap_ingame, xhdd, smap_udpbd, udpfs_smap, udpfs_ministack, udpfs_bd, udpfs_ioman, lwnbdsvr, ps2ips_fork:ps2ips, bdm_drv:bdm, usbd_mini_fork:usbd, ata_bd:ps2atad, ps2hdd_osd:ps2hdd, hdd_cdvdman, hdd_hdpro_cdvdman, smb_cdvdman, http_cdvdman, bdm_cdvdman, bdm_ata_cdvdman, mmce_cdvdman, hdd_mcemu, smb_mcemu, bdm_mcemu, mmce_mcemu, usb_pademu, bt_pademu, ds34usb, ds34bt, eecore, elfldr, smbman, usbhdfsd, libsd, audio:audsrv, bdmfs_fatfs, iLinkman, IEEE1394_bd_mini:IEEE1394_bd, usbmass_bd_mini:usbmass_bd, mx4sio_bd_mini:mx4sio_bd, hdpro_atad, poweroff, dev9:ps2dev9, ps2ip-nm:ps2ip, smap, netman, iomanx, filexio, sio2man, padman, mcman, mcserv, mmceman, mmcedrv, mmceigr, fs-osd:ps2fs, eesync-nano:eesync, udnl]
+
