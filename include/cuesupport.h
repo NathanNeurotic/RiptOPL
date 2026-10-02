@@ -172,5 +172,28 @@ int cueFillGameList(const char *devPrefix, base_game_info_t **outGames);
 // games prefix, is the right home for them.
 int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames);
 
+// The CUE support instance (defined in src/sources/cuesupport.cpp). The module is deliberately
+// stateless -- every helper works on its parameters and the published lists live in the callers --
+// except the table of extensions Ember's io_find_disc accepts, which the launch-path image probe
+// matches against. That table and the probe are members of this one instance. The settings.txt
+// rewrite family and the scan/list builders stay free functions: cueApplySettings, cueNameLaunchable
+// and the cueRewriteSettings/cueLineSetsKey/cueWantSetting helpers are extracted into C test
+// harnesses by exact signature (.github/scripts/test_ember_settings.py) and must keep compiling
+// there unchanged, and everything else operates on parameters, not on module state.
+class CueSupport
+{
+public:
+    // Does this game folder actually hold something Ember can mount? Same contract as the
+    // cueGameHasImage forwarder above; defined in src/sources/cuesupport.cpp.
+    int gameHasImage(const char *devPrefix, const char *name);
+
+private:
+    // The extensions Ember's io_find_disc accepts, in ITS priority order (.cue beats .exe beats
+    // .bin). We only test presence, so the order is documentation rather than logic -- but it is
+    // the reason a folder holding just a .bin is still a valid game.
+    static constexpr const char *discExts_[] = {".cue", ".exe", ".bin"};
+};
+
+extern CueSupport gCueSupport;
 
 #endif

@@ -24,6 +24,10 @@
 #include "include/vcdsupport.h" // vcdFillGameList + vcdSortKey -- the POPSTARTER half of the union
 #include "include/cuesupport.h"
 
+// The one CUE support instance (declared in include/cuesupport.h). Constant-initialized: it owns
+// only the extension table the launch-path image probe matches against.
+CueSupport gCueSupport;
+
 // Path separator for a device prefix: '\\' for SMB (its prefix ends in a backslash), else '/'.
 // Auto-detected from the trailing character so one code path serves mass/mmce/pfs and SMB alike.
 // Same rule as vcdsupport.c's vcdSep(); kept local rather than shared so neither file's separator
@@ -245,11 +249,6 @@ int cueScanDir(const char *devPrefix, cue_entry_t **outList)
     *outList = list;
     return count;
 }
-
-// The extensions Ember's io_find_disc accepts, in ITS priority order (.cue beats .exe beats .bin).
-// We only test presence, so the order is documentation rather than logic -- but it is the reason a
-// folder holding just a .bin is still a valid game.
-static const char *const cueDiscExts[] = {".cue", ".exe", ".bin"};
 
 typedef struct
 {
@@ -554,7 +553,7 @@ void cueApplySettings(const char *devPrefix, const char *name, config_set_t *con
     }
 }
 
-int cueGameHasImage(const char *devPrefix, const char *name)
+int CueSupport::gameHasImage(const char *devPrefix, const char *name)
 {
     char gamesDir[288];
     char gameDir[320];
@@ -583,8 +582,8 @@ int cueGameHasImage(const char *devPrefix, const char *name)
         int len = (int)strlen(de->d_name);
         if (len < 5)
             continue; // shortest possible match is "x.cue"
-        for (i = 0; i < sizeof(cueDiscExts) / sizeof(cueDiscExts[0]); i++) {
-            if (strcasecmp(de->d_name + len - 4, cueDiscExts[i]) == 0) {
+        for (i = 0; i < sizeof(discExts_) / sizeof(discExts_[0]); i++) {
+            if (strcasecmp(de->d_name + len - 4, discExts_[i]) == 0) {
                 found = 1;
                 break;
             }
@@ -595,6 +594,11 @@ int cueGameHasImage(const char *devPrefix, const char *name)
     if (!found)
         LOG("[CUE] '%s' holds no .cue/.bin/.exe\n", gameDir);
     return found;
+}
+
+int cueGameHasImage(const char *devPrefix, const char *name)
+{
+    return gCueSupport.gameHasImage(devPrefix, name);
 }
 
 int cueRenameGame(const char *devPrefix, const char *oldName, const char *newName)
