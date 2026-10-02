@@ -18,6 +18,7 @@
 #include "include/extern_irx.h"
 #include "include/cheatman.h"
 #include "include/gamesource.h"
+#include "include/mmceint.h" // gMmceSupport -- owns the module state (was file-scope statics)
 #include "modules/iopcore/common/cdvd_config.h"
 #include "../ee_core/include/coreconfig.h"
 #include <usbhdfsd-common.h>
@@ -28,63 +29,30 @@
 #include <fileXio_rpc.h> // fileXioIoctl, fileXioDevctl
 #include <delaythread.h> // DelayThread() -- real-sleep gap in the MMCE card-switch wait
 
-static char mmcePrefix[40]; // Contains the full path to the folder where all the games are.
-static char mmceArtPrimary[40];
-static int mmceULSizePrev = -2;
-// VCD-scan self-heal (HW batch S6): a failed vcdFillGameList on a CONTENDED bus (-1) used to latch
-// an empty VCD page under NOUPDATE with no rescan for the session. Bounded retry, same shape as the
-// ISO first-scan sentinel: ~15 passes at the ~2s cadence, re-armed by a fresh L3 toggle, self-
-// quiescing on success/expiry. (The other half of the old "-1 for both" ambiguity is now split at
-// the source: vcdScanOpenDir returns 0 for a genuinely-ABSENT POPS folder -- #154 residual -- so
-// only contention ever arms this budget.)
-static unsigned char mmcePs1Scanned = 0;
-static unsigned char mmcePs1ScanFailed = 0;
-static unsigned char mmcePs1ScanRetries = 0;
+// The one MMCE state owner (class + rationale in include/mmceint.h). Members are
+// constant-initialized (EE rule: no dynamic initialization before main).
+MmceSupport gMmceSupport;
+
+// VCD-scan retry budget (member ps1ScanRetries): ~15 passes at the ~2s cadence, re-armed by a fresh
+// L3 toggle, self-quiescing on success/expiry. (The other half of the old "-1 for both" ambiguity
+// is split at the source: vcdScanOpenDir returns 0 for a genuinely-ABSENT POPS folder -- #154
+// residual -- so only contention ever arms this budget.)
 constexpr int MMCE_VCD_SCAN_RETRY_MAX = 15;
-static time_t mmceModifiedCDPrev;
-static time_t mmceModifiedDVDPrev;
-static int mmceGameCount = 0;
-static base_game_info_t *mmceGames;
-// #120: the PS2 (ISO) and PS1 (VCD) views must NOT share one backing store. When they did, a failed
-// ISO rescan on a contended MMCE bus fell into sbReadList's preserve-on-failure and re-published the
-// STALE list -- which, being shared, was the VCD list -> pressing "show PS2 games" silently kept the PS1
-// list on screen (Andrew's #129 "can't switch to PS2 list"). Separate arrays (mirroring hddGames vs
-// hddVcdGames) make a failed scan of one view preserve only THAT view's last-good (empty if never
-// scanned), so it can never resurrect the other view's contents.
-static int mmcePs1GameCount = 0;
-static base_game_info_t *mmcePs1Games = NULL;
-// Auto-slot (gMMCESlot==2) resolution cache: mmceDetectSlot()'s last result (2=mmce0, 3=mmce1,
-// -1=unresolved). Avoids re-probing BOTH slots over SIO2 every menu refresh -- that steady devctl
-// drip contends with MX4SIO on the shared bus. Reset by mmceInit (tab re-enable / settings apply).
-static int mmceResolvedDevice = -1;
-// sbCreateFolders() issues ~10 mkdir devctls; on an mmceN: card each is an SIO2 round-trip that
-// contends with MX4SIO. Remember the prefix we last created folders for so a refresh on an unchanged
-// card/slot skips the redundant burst (mirrors BDM's FoldersCreated one-shot). Reset by mmceInit and
-// on card removal (empty prefix) so a freshly inserted card still gets its folders.
-static char mmceFoldersCreatedFor[40] = {0};
-constexpr int MMCE_FOLDER_RETRY_MAX = 5;  // bounded CFG-create retries per card before declaring it obstructed
-static unsigned char mmceFolderRetries = 0;
-// Auto-slot presence debounce (#154 audit residual): the cache-hit probe in mmceSetPrefix used to
-// invalidate the slot on ONE failed presence devctl -- and mmceUpdateGameList then frees BOTH game
-// lists -- so a transiently contended SIO2 bus (list scan + art read + MX4SIO traffic all sharing
-// it) read as "card pulled" and both lists vanished until the next ~2s refresh re-detected.
-// Require MMCE_PRESENCE_PROBE_MAX CONSECUTIVE failures before invalidating, re-probing INLINE with
-// a short gap (the same 200 ms DelayThread cadence the GameID settle loops use): worst case ~1.0 s
-// on a genuine pull (3x the devctl's own 200 ms timeout + 2 gaps), still inside the ~2s refresh
-// cadence, so a pull is still detected on THIS pass -- just two probes later -- while a bus-quiet
-// window between probes absorbs the transient. No persistent counter: any successful probe breaks
-// the loop and declares the card present.
+// Bounded CFG-create retries per card before declaring it obstructed.
+constexpr int MMCE_FOLDER_RETRY_MAX = 5;
+// Auto-slot presence debounce (#154 audit residual): the cache-hit probe in setPrefix used to
+// invalidate the slot on ONE failed presence devctl -- and update() then frees BOTH game lists --
+// so a transiently contended SIO2 bus (list scan + art read + MX4SIO traffic all sharing it) read
+// as "card pulled" and both lists vanished until the next ~2s refresh re-detected. Require
+// MMCE_PRESENCE_PROBE_MAX CONSECUTIVE failures before invalidating, re-probing INLINE with a short
+// gap (the same 200 ms DelayThread cadence the GameID settle loops use): worst case ~1.0 s on a
+// genuine pull (3x the devctl's own 200 ms timeout + 2 gaps), still inside the ~2s refresh cadence,
+// so a pull is still detected on THIS pass -- just two probes later -- while a bus-quiet window
+// between probes absorbs the transient. No persistent counter: any successful probe breaks the loop
+// and declares the card present.
 constexpr int MMCE_PRESENCE_PROBE_MAX = 3;
 constexpr int MMCE_PRESENCE_RETRY_US = (200 * 1000);
-// 1 once an Auto probe has ever resolved a slot. The debounce above protects the CACHE-HIT probe,
-// but the full re-detect it falls through to had no such protection: mmceDetectSlot() fires one
-// devctl per slot and gives up, so a single contended pass left mmcePrefix empty and
-// mmceUpdateGameList freed BOTH game lists -- the same "card pulled" misread the debounce exists to
-// stop, one step further down. Retry the detect too, but ONLY for a card we have already seen: a
-// console with genuinely no MMCE must not pay ~1.6 s of devctl timeouts on every 2 s refresh.
-static unsigned char mmceEverResolved = 0;
-
-// Card-switch wait: poll the MMCE busy bit every 500 ms for up to ~7.5 s, matching mmceman's own
+// Card-switch wait: poll the MMCE busy bit every 200 ms for up to ~3 s, matching mmceman's own
 // switch handshake. On a CROSS-DEVICE launch (a USB/HDD/SMB game whose per-game card lives on the
 // MMCE) the 0x8 push physically switches the SD card, and the launch MUST wait for that to finish --
 // otherwise the game boots while the card is still mounting and freezes at its MC check (issue #50,
@@ -96,25 +64,11 @@ constexpr int MMCE_GAMEID_POLL_US = (200 * 1000);  // 200 ms between polls -> ~3
  * 500 ms wait gives a slow card time to reach the next safe checkpoint. */
 constexpr int MMCE_ART_ABORT_WAIT_TICKS = 500;
 
-// forward declaration
-static void mmceGetDeviceRoot(char *root, size_t size);
-// The card ROOT ("mmceN:/") is where the PS1 library folders live -- POPS/ and EMBER/ alike, exactly
-// as on every other device. mmcePrefix is NOT the root: it carries the user's configurable games
-// prefix (gMMCEPrefix), which is right for OPL's own data (CD/ DVD/ ART/ CFG/ VMC/) and wrong for a
-// library folder. POPS used to be resolved under it, which put an MMCE card with a configured
-// prefix out of step with its own documentation and with every other device.
-//
-// Read it with mmceGetDeviceRoot() into a LOCAL buffer, never a shared one: these paths are built
-// on the IO worker (the list scan), the art thread (the cover fallback) and the GUI thread (launch
-// and rename), and the device re-detect can blank mmcePrefix underneath any of them.
-static int mmceModLoaded = 0;          // latched by mmceLoadModules; read by mmceSendGameID's arm check
-static char mmceGameIdTarget[8] = {0}; // last device a GameID 0x8 switch was SENT to (mmceGameIdSettle polls it)
-
-int mmceSendGameID(const char *startup, const char *protectMcPath, int vmcSlotMask)
+int MmceSupport::sendGameID(const char *startup, const char *protectMcPath, int vmcSlotMask)
 {
-    char mmceDevice[sizeof(mmcePrefix)];
+    char mmceDevice[sizeof(prefix)];
 
-    mmceGameIdTarget[0] = '\0'; // no stale target: only a send made by THIS call may be settled against
+    gameIdTarget[0] = '\0'; // no stale target: only a send made by THIS call may be settled against
 
     if (!gMMCEEnableGameID || startup == NULL || startup[0] == '\0')
         return 0;
@@ -125,19 +79,19 @@ int mmceSendGameID(const char *startup, const char *protectMcPath, int vmcSlotMa
     // feature is on), where a failure is a harmless LOG. Preserves the #51 intent -- GameID works
     // without the MMCE page ever being enabled -- with the risk moved off the launch path. If the
     // module is not resident by launch time (arm failed / raced), skip gracefully like no-card.
-    if (!mmceModLoaded) {
+    if (!modLoaded) {
         LOG("MMCE GameID: transport not armed -- skipping (menu-time arm failed or pending)\n");
         return 0;
     }
 
     // Candidate order: the configured/resolved slot first, then both slots as fallback -- a card in
     // EITHER slot still gets the game-id on a cross-device launch (#261). Same 0x1 presence devctl
-    // as mmceDetectSlot. Δ3 (NHDDL parity): a slot whose -mc<slot> Neutrino arg is set gets its MC
+    // as detectSlot. Δ3 (NHDDL parity): a slot whose -mc<slot> Neutrino arg is set gets its MC
     // from the VMC FILE, not the card's per-game folder -- switching the physical card for it is
     // moot and only adds the busy/re-mount window, so covered slots are skipped; a card in the
     // OTHER, uncovered slot still gets the push. vmcSlotMask bit N = "-mcN arg present" (0 = the
     // OPL-core paths, which use mcemu and keep today's behavior).
-    mmceGetDeviceRoot(mmceDevice, sizeof(mmceDevice));
+    getDeviceRoot(mmceDevice, sizeof(mmceDevice));
     {
         const char *cands[3] = {mmceDevice[0] != '\0' ? mmceDevice : NULL, "mmce0:/", "mmce1:/"};
         int tried[2] = {0, 0};
@@ -188,7 +142,7 @@ int mmceSendGameID(const char *startup, const char *protectMcPath, int vmcSlotMa
 
     // Remember the slot this send actually targeted -- mmceGameIdSettle() (the MX4SIO pre-launch
     // gate, batch S7) must poll the SAME device, not a guess.
-    snprintf(mmceGameIdTarget, sizeof(mmceGameIdTarget), "%s", mmceDevice);
+    snprintf(gameIdTarget, sizeof(gameIdTarget), "%s", mmceDevice);
 
     // Wait until the busy bit clears -- i.e. until the physical card has finished switching to the
     // per-game folder. This runs on the single GUI thread BEFORE deinit, so every millisecond here is a
@@ -219,19 +173,24 @@ int mmceSendGameID(const char *startup, const char *protectMcPath, int vmcSlotMa
     return -1;
 }
 
+int mmceSendGameID(const char *startup, const char *protectMcPath, int vmcSlotMask)
+{
+    return gMmceSupport.sendGameID(startup, protectMcPath, vmcSlotMask);
+}
+
 // Bounded post-GameID settle for cross-device launches that share SIO2 with the MMCE (MX4SIO, batch
 // S7: the lime-green hang is cdvdman waiting forever for the SD card to enumerate; an mmce switch
 // still in flight during the IOP reboot can starve that enumeration). Polls the exact device the
 // last send targeted: settled when presence answers AND the busy bit is clear OR unavailable --
 // requiring a readable busy bit would turn every busy-devctl-less firmware into a guaranteed full
 // stall. Returns 0 settled, -1 expired. NEVER blocks the launch -- the caller toasts and proceeds.
-int mmceGameIdSettle(int timeoutMs)
+int MmceSupport::gameIdSettle(int timeoutMs)
 {
-    if (mmceGameIdTarget[0] == '\0')
+    if (gameIdTarget[0] == '\0')
         return 0;
     for (int waited = 0; waited <= timeoutMs; waited += 200) {
-        if (fileXioDevctl(mmceGameIdTarget, 0x1, NULL, 0, NULL, 0) != -1) {
-            int busy = fileXioDevctl(mmceGameIdTarget, 0x2, NULL, 0, NULL, 0);
+        if (fileXioDevctl(gameIdTarget, 0x1, NULL, 0, NULL, 0) != -1) {
+            int busy = fileXioDevctl(gameIdTarget, 0x2, NULL, 0, NULL, 0);
             if (busy < 0 || (busy & 1) == 0)
                 return 0;
         }
@@ -241,20 +200,25 @@ int mmceGameIdSettle(int timeoutMs)
     return -1;
 }
 
-static void mmceGetDeviceRoot(char *root, size_t size)
+int mmceGameIdSettle(int timeoutMs)
 {
-    const char *separator = strstr(mmcePrefix, ":/");
+    return gMmceSupport.gameIdSettle(timeoutMs);
+}
+
+void MmceSupport::getDeviceRoot(char *root, size_t size)
+{
+    const char *separator = strstr(prefix, ":/");
     size_t length;
 
     if (root == NULL || size == 0)
         return;
 
     if (separator != NULL) {
-        length = (size_t)(separator - mmcePrefix) + 2;
+        length = (size_t)(separator - prefix) + 2;
         if (length >= size)
             length = size - 1;
 
-        memcpy(root, mmcePrefix, length);
+        memcpy(root, prefix, length);
         root[length] = '\0';
         return;
     }
@@ -267,20 +231,20 @@ static void mmceGetDeviceRoot(char *root, size_t size)
         root[0] = '\0';
 }
 
-int mmceReset(void)
+int MmceSupport::resetCards(void)
 {
-    char mmceDevice[sizeof(mmcePrefix)];
+    char mmceDevice[sizeof(prefix)];
     int resetCount = 0;
 
-    mmceGameIdTarget[0] = '\0';
+    gameIdTarget[0] = '\0';
 
-    if (!mmceModLoaded)
-        mmceLoadModules();
+    if (!modLoaded)
+        loadModules();
 
-    if (!mmceModLoaded)
+    if (!modLoaded)
         return 0;
 
-    mmceGetDeviceRoot(mmceDevice, sizeof(mmceDevice));
+    getDeviceRoot(mmceDevice, sizeof(mmceDevice));
     {
         const char *cands[3] = {mmceDevice[0] != '\0' ? mmceDevice : NULL, "mmce0:/", "mmce1:/"};
         int tried[2] = {0, 0};
@@ -312,18 +276,23 @@ int mmceReset(void)
     return resetCount;
 }
 
+int mmceReset(void)
+{
+    return gMmceSupport.resetCards();
+}
+
 // Fs-settle after a GameID card switch. The 0x8 devctl physically re-mounts the card, and on Gen2
-// the busy bit (mmceSendGameID's own wait) can clear before the FILESYSTEM surface is back. Probe
+// the busy bit (sendGameID's own wait) can clear before the FILESYSTEM surface is back. Probe
 // the switched slot until a directory open answers: poll-first so a fast card costs ~0 ms; bounded
 // (~5 s) so a dead card can't hang; LOG each outcome so a debug ELF can localise a black screen to
 // OPL vs the loaded core. The helper may have fallen back to the OTHER slot when the game's slot
 // has no card (or is -mc-covered), so stay consistent: if the game's slot isn't present, settle the
 // other slot instead -- otherwise we'd probe an empty slot for the full ~5 s (PR #89 review). Same
 // 0x1 presence devctl mmceSendGameID itself uses.
-static void mmceSettleAfterSwitch(void)
+void MmceSupport::settleAfterSwitch(void)
 {
-    char mmceRoot[sizeof(mmcePrefix)];
-    mmceGetDeviceRoot(mmceRoot, sizeof(mmceRoot));
+    char mmceRoot[sizeof(prefix)];
+    getDeviceRoot(mmceRoot, sizeof(mmceRoot));
     if (mmceRoot[0] != '\0' && strlen(mmceRoot) >= 5 &&
         fileXioDevctl(mmceRoot, 0x1, NULL, 0, NULL, 0) == -1)
         mmceRoot[4] = (mmceRoot[4] == '0') ? '1' : '0'; // mmce0:/ <-> mmce1:/
@@ -345,24 +314,24 @@ static void mmceSettleAfterSwitch(void)
         LOG("MMCE settle: %s fs surface not back within ~5000 ms; launching anyway\n", mmceRoot);
 }
 
-static void mmceRefreshArtRoots(void)
+void MmceSupport::refreshArtRoots(void)
 {
     int len;
 
-    mmceArtPrimary[0] = '\0';
+    artPrimary[0] = '\0';
 
-    if (mmcePrefix[0] == '\0')
+    if (prefix[0] == '\0')
         return;
 
-    /* Ensure mmcePrefix always ends with '/' so path concatenation is correct
+    /* Ensure prefix always ends with '/' so path concatenation is correct
      * (e.g. "mmce0:/CD" -> "mmce0:/CD/" prevents "mmce0:/CDART" paths). */
-    len = strlen(mmcePrefix);
-    if (len < (int)sizeof(mmcePrefix) - 1 && mmcePrefix[len - 1] != '/') {
-        mmcePrefix[len] = '/';
-        mmcePrefix[len + 1] = '\0';
+    len = strlen(prefix);
+    if (len < (int)sizeof(prefix) - 1 && prefix[len - 1] != '/') {
+        prefix[len] = '/';
+        prefix[len + 1] = '\0';
     }
 
-    snprintf(mmceArtPrimary, sizeof(mmceArtPrimary), "%s", mmcePrefix);
+    snprintf(artPrimary, sizeof(artPrimary), "%s", prefix);
 }
 
 static int mmceTryLoadImage(const char *prefix, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex)
@@ -380,34 +349,34 @@ static int mmceTryLoadImage(const char *prefix, char *folder, int isRelative, ch
     return texDiscoverLoad(resultTex, path, -1);
 }
 
-static int mmceDetectSlot(void)
+int MmceSupport::detectSlot(void)
 {
     int ret = -1;
     if (fileXioDevctl("mmce0:/", 0x1, NULL, 0, NULL, 0) != -1) {
-        snprintf(mmcePrefix, sizeof(mmcePrefix), "mmce0:/%s", gMMCEPrefix);
+        snprintf(prefix, sizeof(prefix), "mmce0:/%s", gMMCEPrefix);
         ret = 2;
     } else if (fileXioDevctl("mmce1:/", 0x1, NULL, 0, NULL, 0) != -1) {
-        snprintf(mmcePrefix, sizeof(mmcePrefix), "mmce1:/%s", gMMCEPrefix);
+        snprintf(prefix, sizeof(prefix), "mmce1:/%s", gMMCEPrefix);
         ret = 3;
     }
     return ret;
 }
 
-static void mmceSetPrefix(void)
+void MmceSupport::setPrefix(void)
 {
     if (gMMCESlot == 0)
-        snprintf(mmcePrefix, sizeof(mmcePrefix), "mmce0:/%s", gMMCEPrefix);
+        snprintf(prefix, sizeof(prefix), "mmce0:/%s", gMMCEPrefix);
     else if (gMMCESlot == 1)
-        snprintf(mmcePrefix, sizeof(mmcePrefix), "mmce1:/%s", gMMCEPrefix);
+        snprintf(prefix, sizeof(prefix), "mmce1:/%s", gMMCEPrefix);
     else if (gMMCESlot == 2) {
         // Auto: reuse the previously-detected slot instead of probing BOTH slots every refresh.
         // On a cache hit, a presence devctl on the resolved slot confirms the card is still there
-        // (mmcePrefix from the prior detect is still correct); only MMCE_PRESENCE_PROBE_MAX
+        // (prefix from the prior detect is still correct); only MMCE_PRESENCE_PROBE_MAX
         // CONSECUTIVE misses mean the card was pulled (#154 debounce, below), so invalidate and fall
         // through to a full re-detect. Net: 1 SIO2 probe/cycle instead of 2 on the happy path, and
-        // card removal is still noticed (mmceDetectSlot alone leaves a stale prefix on a lost card).
-        if (mmceResolvedDevice > 0) {
-            const char *root = (mmceResolvedDevice == 2) ? "mmce0:/" : "mmce1:/";
+        // card removal is still noticed (detectSlot alone leaves a stale prefix on a lost card).
+        if (resolvedDevice > 0) {
+            const char *root = (resolvedDevice == 2) ? "mmce0:/" : "mmce1:/";
             // Debounced presence check (#154): invalidate only after MMCE_PRESENCE_PROBE_MAX
             // consecutive failed devctls -- see the define block above. One success = present.
             int probe;
@@ -418,39 +387,39 @@ static void mmceSetPrefix(void)
                     DelayThread(MMCE_PRESENCE_RETRY_US); // let a contended bus quiet, then re-probe
             }
             if (probe >= MMCE_PRESENCE_PROBE_MAX) {
-                mmceResolvedDevice = -1;
-                mmcePrefix[0] = '\0';
+                resolvedDevice = -1;
+                prefix[0] = '\0';
             } else {
-                // Still present. Rebuild mmcePrefix from the CURRENT gMMCEPrefix (a Device-Settings
+                // Still present. Rebuild prefix from the CURRENT gMMCEPrefix (a Device-Settings
                 // prefix change must apply immediately -- initSupport does not re-init an already-
                 // enabled MMCE tab) using the cached slot; we skip only the second SIO2 slot probe.
-                snprintf(mmcePrefix, sizeof(mmcePrefix), "mmce%d:/%s", (mmceResolvedDevice == 2) ? 0 : 1, gMMCEPrefix);
+                snprintf(prefix, sizeof(prefix), "mmce%d:/%s", (resolvedDevice == 2) ? 0 : 1, gMMCEPrefix);
             }
         }
-        if (mmceResolvedDevice <= 0) {
+        if (resolvedDevice <= 0) {
             /* A USB hotplug is the worst moment to ask: re-enumeration floods the shared io worker
                while the pad keeps polling SIO2, and that is exactly when Kamo's MMCE tab emptied.
                Give the re-detect the same inline debounce as the presence probe above -- same gap,
                same reasoning -- so a bus-quiet window between attempts can absorb the transient. */
-            int attempt, attempts = mmceEverResolved ? MMCE_PRESENCE_PROBE_MAX : 1;
+            int attempt, attempts = everResolved ? MMCE_PRESENCE_PROBE_MAX : 1;
             for (attempt = 0; attempt < attempts; attempt++) {
-                mmceResolvedDevice = mmceDetectSlot();
-                if (mmceResolvedDevice > 0)
+                resolvedDevice = detectSlot();
+                if (resolvedDevice > 0)
                     break;
                 if (attempt + 1 < attempts)
                     DelayThread(MMCE_PRESENCE_RETRY_US);
             }
         }
-        if (mmceResolvedDevice > 0)
-            mmceEverResolved = 1;
+        if (resolvedDevice > 0)
+            everResolved = 1;
     }
 
-    mmceRefreshArtRoots();
+    refreshArtRoots();
 }
 
-void mmceLoadModules(void)
+void MmceSupport::loadModules(void)
 {
-    // mmceman is a singleton, and this is called from several places -- mmceInit, the BDMA equip
+    // mmceman is a singleton, and this is called from several places -- MmceSource::init, the BDMA equip
     // (to wake an MMCE source when MMCE games are off or Manual-not-started), and the boot-dir
     // resolver -- so it has to be idempotent.
     //
@@ -464,31 +433,41 @@ void mmceLoadModules(void)
     // Latch on SUCCESS instead. A retry after a failure genuinely re-attempts; a retry after a
     // success is a cheap no-op; and a racing second caller is serialised by that same lock, so no
     // in-progress flag is needed either.
-    if (mmceModLoaded)
+    if (modLoaded)
         return;
     LOG("MMCESUPPORT LoadModules\n");
     LOG("[MMCEMAN]:\n");
     if (sysLoadModuleBuffer(&mmceman_irx, size_mmceman_irx, 0, NULL) == 0)
-        mmceModLoaded = 1;
+        modLoaded = 1;
     else
         LOG("MMCESUPPORT mmceman load FAILED -- retry stays armed\n");
 }
 
+void mmceLoadModules(void)
+{
+    gMmceSupport.loadModules();
+}
+
 // Δ4 (NHDDL parity): arm the GameID transport OUTSIDE the launch path. NHDDL loads mmceman once at
-// boot; RiptOPL used to self-arm inside mmceSendGameID -- an IRX load/start at the launch's most
+// boot; RiptOPL used to self-arm inside sendGameID -- an IRX load/start at the launch's most
 // fragile moment (issue #51's fix, right intent, wrong timing). Called from initAllSupport (boot +
 // every settings apply) via the IO worker, so a wedged load is a harmless LOG at menu time instead
-// of a dead launch. Idempotent (derived from mmceModLoaded); no-op when the GameID feature is off.
-void mmceArmGameIDTransport(void)
+// of a dead launch. Idempotent (derived from modLoaded); no-op when the GameID feature is off.
+void MmceSupport::armGameIDTransport(void)
 {
-    if (!gMMCEEnableGameID || mmceModLoaded)
+    if (!gMMCEEnableGameID || modLoaded)
         return;
 
     host::ui().bootStatusSticky(_l(_STR_BOOT_ARMING_MMCE)); // boot-step localizer (IO thread) -- see gui.c
-    mmceLoadModules();
+    loadModules();
     // Post-load marker (#254): the boot arm runs right after GUI_INIT_DONE; a serial log that
     // shows the arm begin without this completion line localizes a wedge to the mmceman load.
     LOG("MMCESUPPORT GameID transport armed\n");
+}
+
+void mmceArmGameIDTransport(void)
+{
+    gMmceSupport.armGameIDTransport();
 }
 class MmceSource : public GameSource
 {
@@ -537,24 +516,24 @@ static MmceSource *mmceInstance()
 void MmceSource::init(item_list_t *itemList)
 {
     LOG("MMCESUPPORT Init\n");
-    mmcePrefix[0] = '\0';
-    mmceArtPrimary[0] = '\0';
-    mmceULSizePrev = -2;
-    mmceModifiedCDPrev = 0;
-    mmceModifiedDVDPrev = 0;
-    mmceGameCount = 0;
-    mmceGames = NULL;
-    mmcePs1GameCount = 0;
-    mmcePs1Games = NULL;
-    mmceResolvedDevice = -1; // re-detect the Auto slot on a fresh init (tab re-enable / settings apply)
-    mmceFoldersCreatedFor[0] = '\0';
-    mmceFolderRetries = 0;
+    gMmceSupport.prefix[0] = '\0';
+    gMmceSupport.artPrimary[0] = '\0';
+    gMmceSupport.ulSizePrev = -2;
+    gMmceSupport.modifiedCDPrev = 0;
+    gMmceSupport.modifiedDVDPrev = 0;
+    gMmceSupport.gameCount = 0;
+    gMmceSupport.games = NULL;
+    gMmceSupport.ps1GameCount = 0;
+    gMmceSupport.ps1Games = NULL;
+    gMmceSupport.resolvedDevice = -1; // re-detect the Auto slot on a fresh init (tab re-enable / settings apply)
+    gMmceSupport.foldersCreatedFor[0] = '\0';
+    gMmceSupport.folderRetries = 0;
 
     (*mmceInstance()).delay = gArtDelay;
     (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
 
-    mmceLoadModules();
-    mmceSetPrefix();
+    gMmceSupport.loadModules();
+    gMmceSupport.setPrefix();
 
     (*mmceInstance()).enabled = 1;
 }
@@ -576,25 +555,25 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     struct stat st;
 
     // Hacky: check if slot was changed, update prefix if needed
-    mmceSetPrefix();
+    gMmceSupport.setPrefix();
 
-    if (mmcePrefix[0] == '\0') {
+    if (gMmceSupport.prefix[0] == '\0') {
         (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
-        mmceFoldersCreatedFor[0] = '\0'; // card gone: recreate folders on the next (possibly different) card
-        mmceFolderRetries = 0;
-        // Card gone with an EMPTY failed VCD list never reaches mmceUpdateGameList's resets (this
+        gMmceSupport.foldersCreatedFor[0] = '\0'; // card gone: recreate folders on the next (possibly different) card
+        gMmceSupport.folderRetries = 0;
+        // Card gone with an EMPTY failed VCD list never reaches update()'s resets (this
         // early return fires first), so a reinserted card would inherit an exhausted retry budget
         // and a dead VCD page (CodeRabbit review of #248, vetted). Fresh card = fresh budget.
-        mmcePs1Scanned = 0;
-        mmcePs1ScanFailed = 0;
-        mmcePs1ScanRetries = 0;
+        gMmceSupport.ps1Scanned = 0;
+        gMmceSupport.ps1ScanFailed = 0;
+        gMmceSupport.ps1ScanRetries = 0;
         // Card gone: re-arm THM/LNG registration so a swapped-in card's assets get discovered
         // (Gemini review of #153). The old card's already-registered entries stay in the pickers --
         // eviction infrastructure doesn't exist -- but picking a stale one fails gracefully
         // (thmLoad abandons and keeps the current theme), and thmAddElements caps at THM_MAX_FILES.
         ThemesLoaded = 0;
         LanguagesLoaded = 0;
-        return (mmceGameCount > 0 || mmcePs1GameCount > 0);
+        return (gMmceSupport.gameCount > 0 || gMmceSupport.ps1GameCount > 0);
     }
 
     (*mmceInstance()).updateDelay = MENU_UPD_DELAY_NOUPDATE;
@@ -607,34 +586,34 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     // session while USB's fast first try succeeded. Here every pass retries until each succeeds; the
     // cost is one dir-open per pass until then (identical to the old ISO-view retry behavior).
     if (!ThemesLoaded) {
-        snprintf(path, sizeof(path), "%sTHM", mmcePrefix);
+        snprintf(path, sizeof(path), "%sTHM", gMmceSupport.prefix);
         if (thmAddElements(path, "/", 1) > 0)
             ThemesLoaded = 1;
     }
     if (!LanguagesLoaded) {
-        snprintf(path, sizeof(path), "%sLNG", mmcePrefix);
+        snprintf(path, sizeof(path), "%sLNG", gMmceSupport.prefix);
         if (lngAddLanguages(path, "/", (*mmceInstance()).mode) > 0)
             LanguagesLoaded = 1;
     }
 
     // VCD view: force a rescan once on toggle, then skip the disc heuristics while showing VCDs.
     if (host::library().consumeDirty(itemList->mode)) {
-        mmcePs1ScanRetries = 0; // fresh user toggle re-arms the failed-scan retry budget
+        gMmceSupport.ps1ScanRetries = 0; // fresh user toggle re-arms the failed-scan retry budget
         return 1;
     }
     // Folder browsing: descend/ascend forces one rescan (consumed before the NOUPDATE latch below).
     if (folderConsumeDirty(itemList->mode))
         return 1;
     if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1 || host::library().viewActive(itemList->mode) == LIB_VIEW_MIXED) {
-        if (!mmcePs1Scanned) {
+        if (!gMmceSupport.ps1Scanned) {
             (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
         // A contended scan left the VCD page empty (S6): keep the ~2s refresh alive until a scan
         // succeeds or the bounded budget runs out (no endless bus churn -- #246 doctrine). Also
         // revives the manual-refresh button in the failed state.
-        if (mmcePs1ScanFailed && mmcePs1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
-            mmcePs1ScanRetries++;
+        if (gMmceSupport.ps1ScanFailed && gMmceSupport.ps1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
+            gMmceSupport.ps1ScanRetries++;
             (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
@@ -642,35 +621,35 @@ int MmceSource::needsUpdate(item_list_t *itemList)
             return result;
     }
 
-    if (mmceULSizePrev == -2) {
+    if (gMmceSupport.ulSizePrev == -2) {
         // First scan not yet successful. If it wedges on a contended SIO2 bus, sbReadList leaves
-        // mmceULSizePrev at its -2 sentinel and the tab stays empty; the NOUPDATE latch above would
+        // ulSizePrev at its -2 sentinel and the tab stays empty; the NOUPDATE latch above would
         // then strand it with no auto-retry (the reported "all MMCE lists vanished"). Keep the ~2s
         // background retry alive until a scan populates the list -- a genuinely-empty readable card
-        // sets mmceULSizePrev via *fsize, so this still quiesces once the bus is readable.
+        // sets ulSizePrev via *fsize, so this still quiesces once the bus is readable.
         (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
         result = 1;
     }
 
-    snprintf(path, sizeof(path), "%sCD", mmcePrefix);
+    snprintf(path, sizeof(path), "%sCD", gMmceSupport.prefix);
     if (stat(path, &st) != 0)
         st.st_mtime = 0;
 
-    if (mmceModifiedCDPrev != st.st_mtime) {
-        mmceModifiedCDPrev = st.st_mtime;
+    if (gMmceSupport.modifiedCDPrev != st.st_mtime) {
+        gMmceSupport.modifiedCDPrev = st.st_mtime;
         result = 1;
     }
 
-    snprintf(path, sizeof(path), "%sDVD", mmcePrefix);
+    snprintf(path, sizeof(path), "%sDVD", gMmceSupport.prefix);
     if (stat(path, &st) != 0)
         st.st_mtime = 0;
 
-    if (mmceModifiedDVDPrev != st.st_mtime) {
-        mmceModifiedDVDPrev = st.st_mtime;
+    if (gMmceSupport.modifiedDVDPrev != st.st_mtime) {
+        gMmceSupport.modifiedDVDPrev = st.st_mtime;
         result = 1;
     }
 
-    if (!sbIsSameSize(mmcePrefix, mmceULSizePrev))
+    if (!sbIsSameSize(gMmceSupport.prefix, gMmceSupport.ulSizePrev))
         result = 1;
 
     // Themes/Languages registration moved ABOVE the VCD-view early returns (#152) -- see the block
@@ -683,17 +662,17 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     // config write targets <prefix>CFG/<id>.cfg (#245, AndrewBento). Leaving the memo unset here lets
     // the ~2s refresh keep retrying until CFG is confirmed present, so a missing folder always heals
     // itself instead of stranding saves.
-    if (strcmp(mmceFoldersCreatedFor, mmcePrefix) != 0) {
-        sbCreateFolders(mmcePrefix, 1);
+    if (strcmp(gMmceSupport.foldersCreatedFor, gMmceSupport.prefix) != 0) {
+        sbCreateFolders(gMmceSupport.prefix, 1);
 
-        char cfgPath[sizeof(mmcePrefix) + 4];
-        snprintf(cfgPath, sizeof(cfgPath), "%sCFG", mmcePrefix);
+        char cfgPath[sizeof(gMmceSupport.prefix) + 4];
+        snprintf(cfgPath, sizeof(cfgPath), "%sCFG", gMmceSupport.prefix);
         DIR *cfgDir = opendir(cfgPath);
         if (cfgDir != NULL) {
             closedir(cfgDir);
-            snprintf(mmceFoldersCreatedFor, sizeof(mmceFoldersCreatedFor), "%s", mmcePrefix);
-            mmceFolderRetries = 0;
-        } else if (++mmceFolderRetries >= MMCE_FOLDER_RETRY_MAX) {
+            snprintf(gMmceSupport.foldersCreatedFor, sizeof(gMmceSupport.foldersCreatedFor), "%s", gMmceSupport.prefix);
+            gMmceSupport.folderRetries = 0;
+        } else if (++gMmceSupport.folderRetries >= MMCE_FOLDER_RETRY_MAX) {
             // CFG is OBSTRUCTED, not merely missing: mkdir + opendir have now both failed repeatedly
             // (a non-directory entry named CFG, or on-card FS damage to that dir entry -- e.g. a
             // PC-side deletion that left a broken record). Retrying forever would churn the shared
@@ -703,14 +682,14 @@ int MmceSource::needsUpdate(item_list_t *itemList)
             // save's failure toast names the exact path + errno -- the card needs a PC-side look.
             LOG("MMCE: %s still absent after %d create attempts -- obstructed; giving up for this session\n",
                 cfgPath, MMCE_FOLDER_RETRY_MAX);
-            snprintf(mmceFoldersCreatedFor, sizeof(mmceFoldersCreatedFor), "%s", mmcePrefix);
-            mmceFolderRetries = 0;
+            snprintf(gMmceSupport.foldersCreatedFor, sizeof(gMmceSupport.foldersCreatedFor), "%s", gMmceSupport.prefix);
+            gMmceSupport.folderRetries = 0;
         } else {
             // Keep the ~2s background refresh alive so the create genuinely retries -- the NOUPDATE
-            // latch at the top of this function (line 390) would otherwise settle the callback to 0
+            // latch at the top of this function would otherwise settle the callback to 0
             // and the "retry next refresh" never happens. Mirrors the first-scan retry pattern above.
             LOG("MMCE: %s not present after sbCreateFolders -- re-arming retry (%d/%d)\n",
-                cfgPath, mmceFolderRetries, MMCE_FOLDER_RETRY_MAX);
+                cfgPath, gMmceSupport.folderRetries, MMCE_FOLDER_RETRY_MAX);
             (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
@@ -723,50 +702,50 @@ int MmceSource::update(item_list_t *itemList)
 {
     int view = host::library().listViewActive(itemList);
     int result = 0;
-    if (mmcePrefix[0] == '\0') {
+    if (gMmceSupport.prefix[0] == '\0') {
         // Card absent / slot unresolved (Auto mode after removal). Actually CLEAR the list rather
-        // than returning the stale count: mmceNeedsUpdate keeps reporting "update needed" while
-        // mmceGameCount > 0, so returning the stale count here leaves the removed card's games on
+        // than returning the stale count: needsUpdate keeps reporting "update needed" while
+        // gameCount > 0, so returning the stale count here leaves the removed card's games on
         // screen and spins a menu-rebuild + apps-rescan + favourites-reload loop every ~2s. Freeing
         // lets updateMenuFromGameList empty the menu and drives needsUpdate's (count > 0) test to 0.
-        if (mmceGames != NULL) {
-            free(mmceGames);
-            mmceGames = NULL;
+        if (gMmceSupport.games != NULL) {
+            free(gMmceSupport.games);
+            gMmceSupport.games = NULL;
         }
-        if (mmcePs1Games != NULL) {
-            free(mmcePs1Games);
-            mmcePs1Games = NULL;
+        if (gMmceSupport.ps1Games != NULL) {
+            free(gMmceSupport.ps1Games);
+            gMmceSupport.ps1Games = NULL;
         }
-        mmceGameCount = 0;
-        mmcePs1GameCount = 0;
-        mmceULSizePrev = -2; // force a fresh scan when a card returns
-        mmcePs1Scanned = 0;
-        mmcePs1ScanFailed = 0;
-        mmcePs1ScanRetries = 0;
+        gMmceSupport.gameCount = 0;
+        gMmceSupport.ps1GameCount = 0;
+        gMmceSupport.ulSizePrev = -2; // force a fresh scan when a card returns
+        gMmceSupport.ps1Scanned = 0;
+        gMmceSupport.ps1ScanFailed = 0;
+        gMmceSupport.ps1ScanRetries = 0;
         return 0;
     }
 
     // Each view scans into its OWN array (#120): a failed rescan preserves only that view's last-good and
-    // can never resurrect the other view's list (see the mmcePs1Games comment at the declarations).
+    // can never resurrect the other view's list (see the ps1Games member comment in include/mmceint.h).
     if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
         // ONE list, BOTH cores -- POPS/*.VCD unioned with EMBER/games/*, both at the card root.
-        char ps1Root[sizeof(mmcePrefix)];
-        mmceGetDeviceRoot(ps1Root, sizeof(ps1Root));
-        int r = ps1FillGameList(ps1Root, &mmcePs1Games);
+        char ps1Root[sizeof(gMmceSupport.prefix)];
+        gMmceSupport.getDeviceRoot(ps1Root, sizeof(ps1Root));
+        int r = ps1FillGameList(ps1Root, &gMmceSupport.ps1Games);
         if (r >= 0) { // r < 0: transient scan failure (contended bus) -> keep the last-good VCD list
-            mmcePs1Scanned = 1;
-            mmcePs1GameCount = r;
-            mmcePs1ScanFailed = 0;
-            mmcePs1ScanRetries = 0;
+            gMmceSupport.ps1Scanned = 1;
+            gMmceSupport.ps1GameCount = r;
+            gMmceSupport.ps1ScanFailed = 0;
+            gMmceSupport.ps1ScanRetries = 0;
         } else {
-            mmcePs1Scanned = 0;
-            mmcePs1ScanFailed = 1; // arm mmceNeedsUpdate's bounded retry (S6)
+            gMmceSupport.ps1Scanned = 0;
+            gMmceSupport.ps1ScanFailed = 1; // arm needsUpdate's bounded retry (S6)
         }
-        result += mmcePs1GameCount;
+        result += gMmceSupport.ps1GameCount;
     }
     if (view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) {
-        sbReadList(&mmceGames, mmcePrefix, folderGetSub(itemList->mode), &mmceULSizePrev, &mmceGameCount);
-        result += mmceGameCount;
+        sbReadList(&gMmceSupport.games, gMmceSupport.prefix, folderGetSub(itemList->mode), &gMmceSupport.ulSizePrev, &gMmceSupport.gameCount);
+        result += gMmceSupport.gameCount;
     }
     return result;
 }
@@ -774,56 +753,55 @@ int MmceSource::update(item_list_t *itemList)
 int MmceSource::count(item_list_t *itemList)
 {
     int view = host::library().listViewActive(itemList);
-    return view == LIB_VIEW_MIXED ? mmceGameCount + mmcePs1GameCount :
-           view == LIB_VIEW_PS1   ? mmcePs1GameCount :
-                                    mmceGameCount;
+    return view == LIB_VIEW_MIXED ? gMmceSupport.gameCount + gMmceSupport.ps1GameCount :
+           view == LIB_VIEW_PS1   ? gMmceSupport.ps1GameCount :
+                                    gMmceSupport.gameCount;
 }
 
 int MmceSource::rowView(item_list_t *itemList, int id)
 {
     int view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
-        return id >= 0 && id < mmceGameCount ? LIB_VIEW_ISO : LIB_VIEW_PS1;
+        return id >= 0 && id < gMmceSupport.gameCount ? LIB_VIEW_ISO : LIB_VIEW_PS1;
     return view;
 }
 
 int MmceSource::sourceId(item_list_t *itemList, int id)
 {
-    return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= mmceGameCount ? id - mmceGameCount : id;
+    return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= gMmceSupport.gameCount ? id - gMmceSupport.gameCount : id;
 }
 
-static base_game_info_t mmceEmptyGame;
-static base_game_info_t *mmceActiveGame(item_list_t *itemList, int id)
+base_game_info_t *MmceSupport::activeGame(item_list_t *itemList, int id)
 {
     int vcd = (mmceInstance()->rowView(itemList, id) == LIB_VIEW_PS1);
     id = mmceInstance()->sourceId(itemList, id);
-    base_game_info_t *arr = vcd ? mmcePs1Games : mmceGames;
-    int count = vcd ? mmcePs1GameCount : mmceGameCount;
+    base_game_info_t *arr = vcd ? ps1Games : games;
+    int count = vcd ? ps1GameCount : gameCount;
     if (arr == NULL || id < 0 || id >= count)
-        return &mmceEmptyGame;
+        return &emptyGame;
     return &arr[id];
 }
 
 void *MmceSource::game(item_list_t *itemList, int id)
 {
-    return (void *)mmceActiveGame(itemList, id);
+    return (void *)gMmceSupport.activeGame(itemList, id);
 }
 
 char *MmceSource::name(item_list_t *itemList, int id)
 {
-    return mmceActiveGame(itemList, id)->name;
+    return gMmceSupport.activeGame(itemList, id)->name;
 }
 
 int MmceSource::nameLength(item_list_t *itemList, int id)
 {
-    base_game_info_t *g = mmceActiveGame(itemList, id);
+    base_game_info_t *g = gMmceSupport.activeGame(itemList, id);
     return ((g->format != GAME_FORMAT_USBLD) ? ISO_GAME_NAME_MAX + 1 : UL_GAME_NAME_MAX + 1);
 }
 
 char *MmceSource::startup(item_list_t *itemList, int id)
 {
     // VCD view keys per-game data (CFG/art) off the VCD filename, not a disc ID (see sbPopulateConfig).
-    base_game_info_t *g = mmceActiveGame(itemList, id);
+    base_game_info_t *g = gMmceSupport.activeGame(itemList, id);
     if (rowView(itemList, id) == LIB_VIEW_PS1)
         return g->name;
     return g->startup;
@@ -833,54 +811,54 @@ void MmceSource::deleteGame(item_list_t *itemList, int id)
 {
     if (rowView(itemList, id) == LIB_VIEW_PS1)
         return; // #120: a VCD is not an ISO game -- no delete in VCD view
-    if (mmceActiveGame(itemList, id) == &mmceEmptyGame)
+    if (gMmceSupport.activeGame(itemList, id) == &gMmceSupport.emptyGame)
         return;                                   // stale/invalid id: sbDelete does NOT bounds-check, so avoid an OOB/NULL deref + wrong unlink
     sbSetBrowseSub(folderGetSub(itemList->mode)); // delete inside the current subfolder, not the root
     id = sourceId(itemList, id);
-    sbDelete(&mmceGames, mmcePrefix, "/", mmceGameCount, id);
-    mmceULSizePrev = -2;
+    sbDelete(&gMmceSupport.games, gMmceSupport.prefix, "/", gMmceSupport.gameCount, id);
+    gMmceSupport.ulSizePrev = -2;
 }
 
 void MmceSource::rename(item_list_t *itemList, int id, char *newName)
 {
     if (rowView(itemList, id) == LIB_VIEW_PS1) {
-        base_game_info_t *game = mmceActiveGame(itemList, id);
+        base_game_info_t *game = gMmceSupport.activeGame(itemList, id);
 
-        if (game == &mmceEmptyGame)
+        if (game == &gMmceSupport.emptyGame)
             return; // stale/invalid id
         // The ROW picks the target, exactly as the launch does. Dispatching on the view would send
         // an Ember row to vcdRenameFile, which searches POPS/ for "<name>.VCD" -- absent for an
         // Ember title, so the rename would quietly do nothing; and where a .VCD of the same name
         // exists (a game held for BOTH cores, the case the merged list makes ordinary) it would
         // rename the POPSTARTER file instead. Renaming the wrong file is the worse half of that.
-        char ps1Root[sizeof(mmcePrefix)];
-        mmceGetDeviceRoot(ps1Root, sizeof(ps1Root));
+        char ps1Root[sizeof(gMmceSupport.prefix)];
+        gMmceSupport.getDeviceRoot(ps1Root, sizeof(ps1Root));
         int renamed = cueIsCueEntry(game) ? cueRenameGame(ps1Root, game->name, newName) : vcdRenameFile(ps1Root, game->name, newName);
         if (renamed == 0) {
             // MMCE normally latches a successful VCD scan under NOUPDATE. Re-arm its normal scan
             // path so the deferred menu update publishes the new filename immediately.
-            mmcePs1Scanned = 0;
-            mmcePs1ScanFailed = 0;
-            mmcePs1ScanRetries = 0;
+            gMmceSupport.ps1Scanned = 0;
+            gMmceSupport.ps1ScanFailed = 0;
+            gMmceSupport.ps1ScanRetries = 0;
             (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
         }
         return;
     }
-    if (mmceActiveGame(itemList, id) == &mmceEmptyGame)
-        return; // stale/invalid id (see mmceDeleteGame) -> avoid sbRename OOB
+    if (gMmceSupport.activeGame(itemList, id) == &gMmceSupport.emptyGame)
+        return; // stale/invalid id (see deleteGame) -> avoid sbRename OOB
     id = sourceId(itemList, id);
     sbSetBrowseSub(folderGetSub(itemList->mode)); // rename inside the current subfolder, not the root
-    sbRename(&mmceGames, mmcePrefix, "/", mmceGameCount, id, newName);
-    mmceULSizePrev = -2;
+    sbRename(&gMmceSupport.games, gMmceSupport.prefix, "/", gMmceSupport.gameCount, id, newName);
+    gMmceSupport.ulSizePrev = -2;
 }
 
-// Launch an Ember (.cue) PS1 title BY NAME -- peer of mmceLaunchVcd below. The card
+// Launch an Ember (.cue) PS1 title BY NAME -- peer of launchVcd below. The card
 // root, where EMBER/ sits next to POPS/. None of the POPSTARTER memory-card preparation applies:
 // Ember performs no IOP reset and inherits our live driver stack, so it needs no MC-side driver.
 void MmceSource::launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
 {
     char emberElf[256], biosPath[288];
-    char ps1Root[sizeof(mmcePrefix)];
+    char ps1Root[sizeof(gMmceSupport.prefix)];
 
     if (cueName == NULL || cueName[0] == '\0')
         return;
@@ -898,7 +876,7 @@ void MmceSource::launchCue(item_list_t *itemList, const char *cueName, config_se
         return;
     }
 
-    mmceGetDeviceRoot(ps1Root, sizeof(ps1Root));
+    gMmceSupport.getDeviceRoot(ps1Root, sizeof(ps1Root));
 
     if (!cueResolveEmber(ps1Root, emberElf, sizeof(emberElf))) {
         host::ui().msgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
@@ -926,12 +904,12 @@ void MmceSource::launchCue(item_list_t *itemList, const char *cueName, config_se
 }
 
 // Launch a PS1/.VCD entry BY NAME via POPSTARTER (view-independent entry point: the in-view menu
-// launch below and the Favourites tab both use it). mmcePrefix is static; UNMOUNT_EXCEPTION keeps the
+// launch below and the Favourites tab both use it). gMmceSupport.prefix persists; UNMOUNT_EXCEPTION keeps the
 // MMCE device mounted across the IOP reset.
 void MmceSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
 {
     char vcdElf[256], vcdSelector[320];
-    char ps1Root[sizeof(mmcePrefix)];
+    char ps1Root[sizeof(gMmceSupport.prefix)];
 
     if (vcdName == NULL || vcdName[0] == '\0' || !strcasecmp(vcdName, "POPSTARTER")) // reserved-name belt: the scanner no longer lists it (#154); strcasecmp -- FAT is case-insensitive
         return;
@@ -945,7 +923,7 @@ void MmceSource::launchVcd(item_list_t *itemList, const char *vcdName, config_se
         return;
     }
 
-    mmceGetDeviceRoot(ps1Root, sizeof(ps1Root));
+    gMmceSupport.getDeviceRoot(ps1Root, sizeof(ps1Root));
 
     if (!vcdResolvePopstarter(ps1Root, vcdElf, sizeof(vcdElf))) {
         host::ui().msgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
@@ -981,9 +959,9 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 
     // No Autolaunch yet
     if (gAutoLaunchBDMGame == NULL) {
-        game = mmceActiveGame(itemList, id);
-        if (game == &mmceEmptyGame)
-            return; // stale/invalid id (see mmceActiveGame) -> nothing to launch
+        game = gMmceSupport.activeGame(itemList, id);
+        if (game == &gMmceSupport.emptyGame)
+            return; // stale/invalid id (see MmceSupport::activeGame) -> nothing to launch
     } else
         game = gAutoLaunchBDMGame;
 
@@ -1060,7 +1038,7 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
             // protectMcPath=NULL: the native path loads no ELF from mcN: mid-launch (ee_core is
             // embedded; sysLaunchLoaderElf reads rom0: only).
             if (mmceSendGameID(game->startup, NULL, vmcMask))
-                mmceSettleAfterSwitch();
+                gMmceSupport.settleAfterSwitch();
         }
     }
 
@@ -1077,7 +1055,7 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         memset(&mmce_vmc_infos, 0, sizeof(mmce_vmc_infos));
         configGetVMC(configSet, vmc_name, sizeof(vmc_name), vmc_id);
         if (vmc_name[0]) {
-            vmc_size_mb = sysCheckVMC(mmcePrefix, "/", vmc_name, 0, &vmc_superblock);
+            vmc_size_mb = sysCheckVMC(gMmceSupport.prefix, "/", vmc_name, 0, &vmc_superblock);
             if (vmc_size_mb > 0) {
                 mmce_vmc_infos.flags = vmc_superblock.mc_flag & 0xFF;
                 mmce_vmc_infos.flags |= 0x100;
@@ -1085,7 +1063,7 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
                 mmce_vmc_infos.specs.block_size = vmc_superblock.pages_per_block;
                 mmce_vmc_infos.specs.card_size = vmc_superblock.pages_per_cluster * vmc_superblock.clusters_per_card;
 
-                snprintf(vmc_path, sizeof(vmc_path), "%sVMC/%s.bin", mmcePrefix, vmc_name);
+                snprintf(vmc_path, sizeof(vmc_path), "%sVMC/%s.bin", gMmceSupport.prefix, vmc_name);
 
                 vmc_fd = fileXioOpen(vmc_path, 0x3, 0666);
                 if (vmc_fd >= 0) {
@@ -1108,7 +1086,7 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     }
 
     // Initialize layer 1 information.
-    sbCreatePath(game, partname, mmcePrefix, "/", 0);
+    sbCreatePath(game, partname, gMmceSupport.prefix, "/", 0);
 
     if (gPS2Logo) {
         int fd = open(partname, O_RDONLY, 0666);
@@ -1124,7 +1102,7 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         case GAME_FORMAT_USBLD:
             layer1_part = layer1_start / 0x80000;
             layer1_offset = layer1_start % 0x80000;
-            sbCreatePath(game, partname, mmcePrefix, "/", layer1_part);
+            sbCreatePath(game, partname, gMmceSupport.prefix, "/", layer1_part);
             break;
         default: // Raw ISO9660 disc image; one part.
             layer1_part = 0;
@@ -1144,9 +1122,9 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // RA: this game's watch list, settled before sysLaunchLoaderElf reads
     // GetWatchCount() to decide whether the network modules travel with the
     // launch. Absent is normal -- the game is simply not tracked.
-    sbLoadWatchList(mmcePrefix, game->startup);
+    sbLoadWatchList(gMmceSupport.prefix, game->startup);
 #endif
-    if ((result = sbLoadCheats(mmcePrefix, game->startup)) < 0) {
+    if ((result = sbLoadCheats(gMmceSupport.prefix, game->startup)) < 0) {
         // #265: let the user back out instead of sitting through the whole load. The helper does
         // the sbUnprepare itself -- see include/supportbase.h; skipping it breaks the NEXT launch.
         if (!sbCheatsMissingContinue(&settings->common, result)) {
@@ -1157,7 +1135,7 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
             return;
         }
     }
-    sbLoadImage(mmcePrefix, game->startup);
+    sbLoadImage(gMmceSupport.prefix, game->startup);
 
     // (last-played persistence hoisted above the GameID switch -- see the native-core send block)
 
@@ -1171,12 +1149,12 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     else if (gMMCESlot == 1)
         settings->port = 3;
     else if (gMMCESlot == 2) {
-        int detectedPort = mmceDetectSlot();
+        int detectedPort = gMmceSupport.detectSlot();
         if (detectedPort < 0) {
             // Neither slot responded; abort rather than forward port -1 to the IOP.
             LOG("MMCE slot lost, aborting launch\n");
             // Make the bail VISIBLE (HW batch S5: "does gameID and then nothing" with no message).
-            // deinit has not run yet, mmceLaunchGame is on the GUI thread, and guiWarning self-guards
+            // deinit has not run yet, the launch is on the GUI thread, and guiWarning self-guards
             // for autolaunch -- same pattern as the quiesce bail above.
             host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
             // Close the VMC fds opened above so a failed launch does not leak them
@@ -1188,13 +1166,13 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
             return;
         }
         settings->port = detectedPort;
-        // Re-apply trailing-slash normalization: mmceDetectSlot() rewrites
-        // mmcePrefix via sprintf with no slash append, de-normalizing the
-        // value mmceRefreshArtRoots() previously set. sbBuildVmcNeutrinoArgs
+        // Re-apply trailing-slash normalization: detectSlot() rewrites
+        // prefix via sprintf with no slash append, de-normalizing the
+        // value refreshArtRoots() previously set. sbBuildVmcNeutrinoArgs
         // (called below) builds "-mcN=<prefix>VMC/<name>.bin" and requires
-        // mmcePrefix to end in '/' -- without this call a non-empty gMMCEPrefix
+        // prefix to end in '/' -- without this call a non-empty gMMCEPrefix
         // (e.g. "GAMES") produces the broken path "mmce0:/GAMESVMC/<name>.bin".
-        mmceRefreshArtRoots();
+        gMmceSupport.refreshArtRoots();
     }
 
     // Per-game Neutrino core: gate BEFORE opening iso_file so no fd is leaked on
@@ -1210,7 +1188,7 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         configGetStrCopy(configSet, CONFIG_ITEM_NEUTRINO_ARGS, neutrinoExtraArgs, sizeof(neutrinoExtraArgs));
         configGetInt(configSet, CONFIG_ITEM_NEUTRINO_VIDEO, &neutrinoVideo);
         configGetInt(configSet, CONFIG_ITEM_NEUTRINO_GSMCOMP, &neutrinoGsmComp);
-        neutrinoPath = sbResolveNeutrinoPath(mmcePrefix); // #300: AUTO also probes this MMCE card for a co-located neutrino.elf
+        neutrinoPath = sbResolveNeutrinoPath(gMmceSupport.prefix); // #300: AUTO also probes this MMCE card for a co-located neutrino.elf
         if (game->format == GAME_FORMAT_USBLD || !strcasecmp(game->extension, ".zso")) {
             // isValidIsoName() admits .zso case-insensitively and game->extension is stored
             // verbatim, so an upper/mixed-case ".ZSO" must reject here too (Neutrino can't run it).
@@ -1226,15 +1204,15 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
             sbEnsureIgrUsbDrivers(compatmask);
 
         // VMC -> neutrino (#47): resolve any per-game VMC into discrete -mc0/-mc1 argv entries
-        // (mmcePrefix ends in '/'); not the whitespace-tokenized extra-args buffer (spaced names).
+        // (prefix ends in '/'); not the whitespace-tokenized extra-args buffer (spaced names).
         if (coreLoader)
-            sbBuildVmcNeutrinoArgs(configSet, mmcePrefix, &neutrinoVmc);
+            sbBuildVmcNeutrinoArgs(configSet, gMmceSupport.prefix, &neutrinoVmc);
     }
     if (coreLoader) {
         char mmcePartname[256];
         snprintf(mmcePartname, sizeof(mmcePartname), "%s", partname); // defensive copy across the deinit teardown (partname is a stack buffer, not freed by deinit)
-        // game (== &mmceGames[id]) is freed by deinitEx() below (moduleCleanup -> mmceCleanUp frees
-        // mmceGames), but sysLaunchNeutrino still reads game->startup afterwards to build its -elf
+        // game (== &gMmceSupport.games[id]) is freed by deinitEx() below (moduleCleanup -> cleanUp frees
+        // gMmceSupport.games), but sysLaunchNeutrino still reads game->startup afterwards to build its -elf
         // argument -- a use-after-free read. Copy startup onto this stack frame like mmcePartname.
         char mmceStartup[GAME_STARTUP_MAX + 1];
         snprintf(mmceStartup, sizeof(mmceStartup), "%s", game->startup);
@@ -1260,12 +1238,12 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         // sits on this slot's mcN:).
         int gameIdSwitched = mmceSendGameID(game->startup, neutrinoPath,
                                             (neutrinoVmc.arg[0][0] ? 1 : 0) | (neutrinoVmc.arg[1][0] ? 2 : 0)); // Δ3: -mc-covered slots keep their card
-        // Fs-settle after a card switch (shared helper; see mmceSettleAfterSwitch). The game on this
+        // Fs-settle after a card switch (shared helper; see MmceSupport::settleAfterSwitch). The game on this
         // leg is ALWAYS mmce-hosted, so after any actual switch both our own reads below (neutrino.elf
         // load, ISO open for the keep-IOP handoff) AND Neutrino's own post-reset mmceman read hit the
         // just-switched card -- wait for the switched slot's fs to answer first (issue #56/#68).
         if (gameIdSwitched)
-            mmceSettleAfterSwitch();
+            gMmceSupport.settleAfterSwitch();
         // Neutrino keep-IOP handoff (sysLoadELFKeepIOP): Neutrino opens the mmce-hosted game through
         // OUR mmceman mount and its config/modules from the neutrino.elf device (-cwd) before its own
         // IOP reset -- keep BOTH mounted. An MC-hosted neutrino needs no exception (-1 second slot).
@@ -1320,7 +1298,7 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // paths (bdm/hdd/eth) send it too, with the same wait.
 
     if (gAutoLaunchBDMGame == NULL) {
-        host::app().deinit(NO_EXCEPTION, MMCE_MODE); // CAREFUL: deinit will call mmceCleanUp, so mmceGames/game will be freed
+        host::app().deinit(NO_EXCEPTION, MMCE_MODE); // CAREFUL: deinit will call cleanUp, so gMmceSupport.games/game will be freed
     }
 
     /* No autolaunch yet
@@ -1338,15 +1316,15 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 
 config_set_t *MmceSource::config(item_list_t *itemList, int id)
 {
-    // Config (CFG + #Format/#System/#DiscType badges) comes from the ACTIVE view's array; mmceActiveGame
-    // picks it (VCD keys off the basename) and returns a safe empty entry for any stale/invalid id,
-    // so this can never index the wrong/NULL array out of range.
-    return sbPopulateConfig(mmceActiveGame(itemList, id), mmcePrefix, "/");
+    // Config (CFG + #Format/#System/#DiscType badges) comes from the ACTIVE view's array;
+    // gMmceSupport.activeGame picks it (VCD keys off the basename) and returns a safe empty entry
+    // for any stale/invalid id, so this can never index the wrong/NULL array out of range.
+    return sbPopulateConfig(gMmceSupport.activeGame(itemList, id), gMmceSupport.prefix, "/");
 }
 
 int MmceSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
 {
-    int r = mmceTryLoadImage(mmceArtPrimary, folder, isRelative, value, suffix, resultTex);
+    int r = mmceTryLoadImage(gMmceSupport.artPrimary, folder, isRelative, value, suffix, resultTex);
     // ART LIVES IN THE ART FOLDER, and nowhere else. A PS1 cover is
     // ART/<name>_COV.png -- the same rule as a PS2 title -- which the texDiscoverLoad
     // above already tried. A miss is simply "no cover": there is no second directory to
@@ -1368,32 +1346,32 @@ int MmceSource::iconId(item_list_t *itemList)
     return mode;
 }
 
-// This may be called, even if mmceInit() was not.
+// This may be called, even if init() was not.
 void MmceSource::cleanUp(item_list_t *itemList, int exception)
 {
     if ((*mmceInstance()).enabled) {
         LOG("MMCESUPPORT CleanUp\n");
 
-        free(mmceGames);
-        mmceGames = NULL;
-        free(mmcePs1Games); // #120: free the separate VCD array too; NULL both (CleanUp + Shutdown both run)
-        mmcePs1Games = NULL;
+        free(gMmceSupport.games);
+        gMmceSupport.games = NULL;
+        free(gMmceSupport.ps1Games); // #120: free the separate VCD array too; NULL both (CleanUp + Shutdown both run)
+        gMmceSupport.ps1Games = NULL;
 
         //      if ((exception & UNMOUNT_EXCEPTION) == 0)
         //          ...
     }
 }
 
-// This may be called, even if mmceInit() was not.
+// This may be called, even if init() was not.
 void MmceSource::shutdown(item_list_t *itemList)
 {
     if ((*mmceInstance()).enabled) {
         LOG("MMCESUPPORT Shutdown\n");
 
-        free(mmceGames);
-        mmceGames = NULL;
-        free(mmcePs1Games);
-        mmcePs1Games = NULL;
+        free(gMmceSupport.games);
+        gMmceSupport.games = NULL;
+        free(gMmceSupport.ps1Games);
+        gMmceSupport.ps1Games = NULL;
     }
 
     // As required by some (typically 2.5") HDDs, issue the SCSI STOP UNIT command to avoid causing an emergency park.
@@ -1402,11 +1380,11 @@ void MmceSource::shutdown(item_list_t *itemList)
 
 int MmceSource::checkVmc(item_list_t *itemList, char *name, int createSize)
 {
-    return sysCheckVMC(mmcePrefix, "/", name, createSize, NULL);
+    return sysCheckVMC(gMmceSupport.prefix, "/", name, createSize, NULL);
 }
 
 char *MmceSource::prefix(item_list_t *itemList)
 {
-    return mmcePrefix;
+    return gMmceSupport.prefix;
 }
 
