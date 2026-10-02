@@ -34,27 +34,27 @@
 
 // One catalog row. base_game_info_t has nowhere to put the relative path -- it carries name[161],
 // startup[13] and extension[5] and nothing else -- so the path lives here, indexed in step with
-// httpGames. Overloading name for the path is how the donor ends up requesting the display title.
+// the catalog list owned by gHttpSupport. Overloading name for the path is how the donor ends up
+// requesting the display title.
+//
+// This typedef stays in this file rather than moving into include/httpsupport.h: the host test
+// tools/pc/http/tests/test_catalog_limits.py extracts it (and httpParseCatalog below) verbatim out
+// of this source and compiles them in a stub harness, so the class keeps its extras list opaque.
 typedef struct
 {
     char path[HTTP_CATALOG_PATH_MAX + 1];
     unsigned char supported; // 0 for a row we can list but must refuse to launch (.zso today)
 } http_catalog_extra_t;
 
-static base_game_info_t *httpGames = NULL;
-static http_catalog_extra_t *httpExtras = NULL;
-static int httpGameCount = 0;
-static int httpRefreshPending = 1;
-static int httpLastError = 0; // an HTTP status, or an HTTP_STREAM_ERR_*, or 0
-static char httpLocalPrefix[256];
+// An HTTP status, or an HTTP_STREAM_ERR_*, or 0: what the last failed open/read below can be named
+// by the UI. Deliberately a file-scope static and NOT an HttpSupport member: test_catalog_limits.py
+// compiles the extracted httpParseCatalog against this exact symbol.
+static int httpLastError = 0;
 
-typedef struct
-{
-    int ip[4];
-    int port;
-    char base[HTTP_BASE_PATH_MAX];
-} http_endpoint_t;
-static http_endpoint_t httpEndpoint;
+// The module state: the configured endpoint, the listed catalog, the refresh flag and the local
+// prefix per-game data resolves through. One instance; HttpSource's virtuals and the entry points
+// below reach it through gHttpSupport (include/httpsupport.h).
+HttpSupport gHttpSupport;
 
 
 // ---------------------------------------------------------------------------
@@ -147,6 +147,8 @@ static void httpServerIpString(const http_endpoint_t *endpoint, char *out, size_
 // ---------------------------------------------------------------------------
 
 // Parse a whole catalog buffer. Returns the accepted row count.
+// Kept a free function (not an HttpSupport method): test_catalog_limits.py extracts this exact
+// definition out of this file and compiles it in a stub harness that provides httpLastError.
 static int httpParseCatalog(char *buf, int len, base_game_info_t **outGames, http_catalog_extra_t **outExtras)
 {
     int rows = 0, rejected = 0;
@@ -247,8 +249,8 @@ static int httpParseCatalog(char *buf, int len, base_game_info_t **outGames, htt
 
 // Opens a connection, issues one GET (ranged or not), and returns the socket with a live stream.
 // Returns <0 on failure, and sets httpLastError to something the UI can name.
-static int httpOpenRequest(const http_endpoint_t *endpoint, const char *relative, int useRange, u64 from, u64 to,
-                           int *contentLen, u64 *total, int *hasTotal)
+int HttpSupport::openRequest(const http_endpoint_t *endpoint, const char *relative, int useRange, u64 from, u64 to,
+                             int *contentLen, u64 *total, int *hasTotal)
 {
     char server[32];
     char uri[HTTP_CLIENT_STREAM_URI_MAX];
@@ -281,7 +283,7 @@ static int httpOpenRequest(const http_endpoint_t *endpoint, const char *relative
 // Fetch the catalog into a freshly allocated buffer. Returns the byte count, or <0 on failure.
 // A partial transfer is a failure, never a shorter success: publishing half a library as if it
 // were whole is the failure mode that makes a missing game look like a deleted one.
-static int httpFetchCatalog(const http_endpoint_t *endpoint, char **outBuf)
+int HttpSupport::fetchCatalog(const http_endpoint_t *endpoint, char **outBuf)
 {
     char *buf = NULL;
     int cap = 8192, len = 0;
@@ -290,7 +292,7 @@ static int httpFetchCatalog(const http_endpoint_t *endpoint, char **outBuf)
 
     *outBuf = NULL;
 
-    sock = httpOpenRequest(endpoint, "games.csv", 0, 0, 0, &contentLen, &total, &hasTotal);
+    sock = openRequest(endpoint, "games.csv", 0, 0, 0, &contentLen, &total, &hasTotal);
     if (sock < 0)
         return -1;
 
@@ -361,6 +363,58 @@ static int httpFetchCatalog(const http_endpoint_t *endpoint, char **outBuf)
 }
 
 // ---------------------------------------------------------------------------
+// HttpSupport state
+// ---------------------------------------------------------------------------
+
+void HttpSupport::setEndpoint(const int *ip, int port, const char *base)
+{
+    memcpy(endpoint_.ip, ip, sizeof(endpoint_.ip));
+    endpoint_.port = port;
+    snprintf(endpoint_.base, sizeof(endpoint_.base), "%s", base);
+}
+
+void HttpSupport::setCatalog(base_game_info_t *games, void *extras, int count)
+{
+    free(games_);
+    free(extras_);
+    games_ = games;
+    extras_ = extras;
+    gameCount_ = count;
+}
+
+void HttpSupport::clearCatalog()
+{
+    if (games_ != NULL) {
+        free(games_);
+        games_ = NULL;
+    }
+    if (extras_ != NULL) {
+        free(extras_);
+        extras_ = NULL;
+    }
+    gameCount_ = 0;
+}
+
+const char *HttpSupport::localPrefix()
+{
+    const char *home = configGetHomePath();
+    size_t len;
+
+    if (home == NULL || home[0] == '\0')
+        home = "mc0:OPL";
+
+    snprintf(localPrefix_, sizeof(localPrefix_), "%s", home);
+    len = strlen(localPrefix_);
+    if (len > 0 && localPrefix_[len - 1] != '/' && localPrefix_[len - 1] != ':' &&
+        len + 1 < sizeof(localPrefix_)) {
+        localPrefix_[len] = '/';
+        localPrefix_[len + 1] = '\0';
+    }
+
+    return localPrefix_;
+}
+
+// ---------------------------------------------------------------------------
 // Test server
 // ---------------------------------------------------------------------------
 
@@ -380,7 +434,7 @@ void httpTestServer(const int *ip, int port, const char *base, char *msg, size_t
         return;
     }
 
-    len = httpFetchCatalog(&testEndpoint, &buf);
+    len = gHttpSupport.fetchCatalog(&testEndpoint, &buf);
     if (len < 0) {
         snprintf(msg, msgSize, "%s", _l(_STR_HTTP_ERR_CATALOG));
         return;
@@ -417,7 +471,7 @@ void httpTestServer(const int *ip, int port, const char *base, char *msg, size_t
             snprintf(msg, msgSize, "%s", _l(_STR_HTTP_TEST_NO_ISO));
             return;
         }
-        sock = httpOpenRequest(&testEndpoint, probePath, 1, 0, 2047, &contentLen, &total, &hasTotal);
+        sock = gHttpSupport.openRequest(&testEndpoint, probePath, 1, 0, 2047, &contentLen, &total, &hasTotal);
         if (sock < 0) {
             snprintf(msg, msgSize, "%s", _l(_STR_HTTP_ERR_RANGE));
             return;
@@ -482,30 +536,11 @@ public:
     int checkVmc(item_list_t *itemList, char *name, int createSize) override;
 };
 
-static const char *httpGetLocalPrefix(void)
-{
-    const char *home = configGetHomePath();
-    size_t len;
-
-    if (home == NULL || home[0] == '\0')
-        home = "mc0:OPL";
-
-    snprintf(httpLocalPrefix, sizeof(httpLocalPrefix), "%s", home);
-    len = strlen(httpLocalPrefix);
-    if (len > 0 && httpLocalPrefix[len - 1] != '/' && httpLocalPrefix[len - 1] != ':' &&
-        len + 1 < sizeof(httpLocalPrefix)) {
-        httpLocalPrefix[len] = '/';
-        httpLocalPrefix[len + 1] = '\0';
-    }
-
-    return httpLocalPrefix;
-}
-
 char * HttpSource::prefix(item_list_t *itemList)
 {
     (void)itemList;
     // Not a filesystem prefix -- there is no http: ioman device and there deliberately is not going
-    // to be one in this release. Per-game data resolves through httpGetLocalPrefix() instead.
+    // to be one in this release. Per-game data resolves through gHttpSupport.localPrefix() instead.
     return NULL;
 }
 
@@ -527,11 +562,9 @@ void HttpSource::init(item_list_t *itemList)
     LOG("HTTPSUPPORT Init\n");
 
     httpNormalizeBasePath(gHttpBasePath, sizeof(gHttpBasePath));
-    memcpy(httpEndpoint.ip, gHttpServerIp, sizeof(httpEndpoint.ip));
-    httpEndpoint.port = gHttpPort;
-    snprintf(httpEndpoint.base, sizeof(httpEndpoint.base), "%s", gHttpBasePath);
+    gHttpSupport.setEndpoint(gHttpServerIp, gHttpPort, gHttpBasePath);
     enabled = 1;
-    httpRefreshPending = 1;
+    gHttpSupport.setRefreshPending(1);
 }
 
 int HttpSource::needsUpdate(item_list_t *itemList)
@@ -541,7 +574,7 @@ int HttpSource::needsUpdate(item_list_t *itemList)
     if (gNetworkProtocol != NET_PROTO_HTTP)
         return 0;
 
-    return httpRefreshPending || host::library().consumeDirty(HTTP_MODE);
+    return gHttpSupport.refreshPending() || host::library().consumeDirty(HTTP_MODE);
 }
 
 int HttpSource::update(item_list_t *itemList)
@@ -550,7 +583,7 @@ int HttpSource::update(item_list_t *itemList)
     int len;
 
     (void)itemList;
-    httpRefreshPending = 0;
+    gHttpSupport.setRefreshPending(0);
 
     if (gNetworkProtocol != NET_PROTO_HTTP)
         return 0;
@@ -560,12 +593,12 @@ int HttpSource::update(item_list_t *itemList)
         return 0;
     }
 
-    len = httpFetchCatalog(&httpEndpoint, &buf);
+    len = gHttpSupport.fetchCatalog(gHttpSupport.endpoint(), &buf);
     if (len < 0) {
         // Keep whatever was listed before rather than replacing a good library with an empty one
         // on a transient failure. A successful EMPTY catalog is different, and clears it below.
-        LOG("HTTPSUPPORT: catalog fetch failed, keeping %d existing row(s)\n", httpGameCount);
-        return httpGameCount;
+        LOG("HTTPSUPPORT: catalog fetch failed, keeping %d existing row(s)\n", gHttpSupport.gameCount());
+        return gHttpSupport.gameCount();
     }
 
     base_game_info_t *newGames;
@@ -573,45 +606,41 @@ int HttpSource::update(item_list_t *itemList)
     int count = httpParseCatalog(buf, len, &newGames, &newExtras);
     free(buf);
     if (count < 0)
-        return httpGameCount;
-    free(httpGames);
-    free(httpExtras);
-    httpGames = newGames;
-    httpExtras = newExtras;
-    httpGameCount = count;
-    LOG("HTTPSUPPORT: %d game(s)\n", httpGameCount);
+        return gHttpSupport.gameCount();
+    gHttpSupport.setCatalog(newGames, newExtras, count);
+    LOG("HTTPSUPPORT: %d game(s)\n", gHttpSupport.gameCount());
 
-    return httpGameCount;
+    return gHttpSupport.gameCount();
 }
 
 int HttpSource::count(item_list_t *itemList)
 {
     (void)itemList;
-    return httpGameCount;
+    return gHttpSupport.gameCount();
 }
 
 void * HttpSource::game(item_list_t *itemList, int id)
 {
     (void)itemList;
-    if (id < 0 || id >= httpGameCount || httpGames == NULL)
+    if (id < 0 || id >= gHttpSupport.gameCount() || gHttpSupport.games() == NULL)
         return NULL;
 
-    return &httpGames[id];
+    return &gHttpSupport.games()[id];
 }
 
 char * HttpSource::name(item_list_t *itemList, int id)
 {
     (void)itemList;
-    if (id < 0 || id >= httpGameCount || httpGames == NULL)
+    if (id < 0 || id >= gHttpSupport.gameCount() || gHttpSupport.games() == NULL)
         return NULL;
 
-    return httpGames[id].name;
+    return gHttpSupport.games()[id].name;
 }
 
 int HttpSource::nameLength(item_list_t *itemList, int id)
 {
     (void)itemList;
-    if (id < 0 || id >= httpGameCount)
+    if (id < 0 || id >= gHttpSupport.gameCount())
         return 0;
 
     return ISO_GAME_NAME_MAX + 1;
@@ -620,10 +649,10 @@ int HttpSource::nameLength(item_list_t *itemList, int id)
 char * HttpSource::startup(item_list_t *itemList, int id)
 {
     (void)itemList;
-    if (id < 0 || id >= httpGameCount || httpGames == NULL)
+    if (id < 0 || id >= gHttpSupport.gameCount() || gHttpSupport.games() == NULL)
         return NULL;
 
-    return httpGames[id].startup;
+    return gHttpSupport.games()[id].startup;
 }
 
 // The catalog is the server's, and this profile is read-only. Both are deliberately inert rather
@@ -649,8 +678,8 @@ static int httpProbeRead(const http_endpoint_t *endpoint, const char *relative,
 {
     int contentLen, hasTotal, sock, got = 0, n;
 
-    sock = httpOpenRequest(endpoint, relative, 1, offset, offset + (u64)length - 1,
-                           &contentLen, total, &hasTotal);
+    sock = gHttpSupport.openRequest(endpoint, relative, 1, offset, offset + (u64)length - 1,
+                                    &contentLen, total, &hasTotal);
     if (sock < 0)
         return 0;
 
@@ -707,6 +736,7 @@ void HttpSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {
     struct cdvdman_settings_http *settings;
     http_endpoint_t endpoint;
+    http_catalog_extra_t *extras;
     base_game_info_t *game;
     char filename[32];
     char startup[GAME_STARTUP_MAX + 1];
@@ -720,15 +750,16 @@ void HttpSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 
     (void)itemList;
 
-    if (id < 0 || id >= httpGameCount || httpGames == NULL || httpExtras == NULL)
+    if (id < 0 || id >= gHttpSupport.gameCount() || gHttpSupport.games() == NULL || gHttpSupport.extras() == NULL)
         return;
 
-    game = &httpGames[id];
+    game = &gHttpSupport.games()[id];
+    extras = (http_catalog_extra_t *)gHttpSupport.extras();
     media = game->media;
 
     // A .zso lists so an existing catalog is not silently short, but streaming compressed bytes as
     // raw sectors would corrupt without ever reporting an error. Refuse it by name.
-    if (!httpExtras[id].supported) {
+    if (!extras[id].supported) {
         host::ui().msgBox(_l(_STR_HTTP_ERR_COMPRESSED), 0, NULL);
         return;
     }
@@ -747,10 +778,10 @@ void HttpSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     }
 
     // Everything the launch needs, copied into storage the launch owns, BEFORE deinit frees the
-    // catalog. game and httpExtras[id] both die in httpCleanUp.
-    memcpy(&endpoint, &httpEndpoint, sizeof(endpoint));
+    // catalog. game and extras[id] both die when deinit runs cleanUp() below.
+    memcpy(&endpoint, gHttpSupport.endpoint(), sizeof(endpoint));
     snprintf(startup, sizeof(startup), "%s", game->startup);
-    snprintf(relative, sizeof(relative), "%s", httpExtras[id].path);
+    snprintf(relative, sizeof(relative), "%s", extras[id].path);
 
     if (!httpBuildPath(&endpoint, relative, uri, sizeof(uri))) {
         host::ui().msgBox(_l(_STR_HTTP_ERR_CATALOG), 0, NULL);
@@ -776,13 +807,13 @@ void HttpSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 #ifdef RETROACHIEVEMENTS
     // Settled before sysLaunchLoaderElf reads GetWatchCount(). Local, like the rest of HTTP's
     // per-game data -- there is no writable server side to put a watch list on.
-    sbLoadWatchList(httpGetLocalPrefix(), startup);
+    sbLoadWatchList(gHttpSupport.localPrefix(), startup);
 #endif
-    if ((result = sbLoadCheats(httpGetLocalPrefix(), startup)) < 0) {
+    if ((result = sbLoadCheats(gHttpSupport.localPrefix(), startup)) < 0) {
         if (!sbCheatsMissingContinue((u8 *)(&http_cdvdman_irx) + i, result))
             return;
     }
-    sbLoadImage(httpGetLocalPrefix(), startup);
+    sbLoadImage(gHttpSupport.localPrefix(), startup);
 
     settings = (struct cdvdman_settings_http *)((u8 *)(&http_cdvdman_irx) + i);
 
@@ -804,7 +835,7 @@ void HttpSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         snprintf(filename, sizeof(filename), "%s", startup);
 
     mmceSendGameID(startup, NULL, 0);
-    host::app().deinit(NO_EXCEPTION, HTTP_MODE); // frees httpGames/httpExtras -- everything above is a copy
+    host::app().deinit(NO_EXCEPTION, HTTP_MODE); // frees the catalog -- everything above is a copy
 
     // EnablePS2Logo is 0 unconditionally: CheckPS2Logo needs a file descriptor to read the logo
     // out of the image, and HTTP has no filesystem to open. Passing gPS2Logo through unverified
@@ -815,11 +846,11 @@ void HttpSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 config_set_t * HttpSource::config(item_list_t *itemList, int id)
 {
     (void)itemList;
-    if (id < 0 || id >= httpGameCount || httpGames == NULL)
+    if (id < 0 || id >= gHttpSupport.gameCount() || gHttpSupport.games() == NULL)
         return NULL;
 
     // Local, because HTTP has no writable filesystem of its own. See the plan, section 2.2.
-    return sbPopulateConfig(&httpGames[id], httpGetLocalPrefix(), "/");
+    return sbPopulateConfig(&gHttpSupport.games()[id], gHttpSupport.localPrefix(), "/");
 }
 
 int HttpSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
@@ -833,7 +864,7 @@ int HttpSource::image(item_list_t *itemList, char *folder, int isRelative, char 
     // no http: filesystem to open through. Adding a second lookup path here is the mistake the
     // standing rule exists to prevent.
     if (isRelative)
-        snprintf(path, sizeof(path), "%s%s/%s_%s", httpGetLocalPrefix(), folder, value, suffix);
+        snprintf(path, sizeof(path), "%s%s/%s_%s", gHttpSupport.localPrefix(), folder, value, suffix);
     else
         snprintf(path, sizeof(path), "%s%s_%s", folder, value, suffix);
 
@@ -845,15 +876,7 @@ void HttpSource::cleanUp(item_list_t *itemList, int exception)
     (void)itemList;
     (void)exception;
 
-    if (httpGames != NULL) {
-        free(httpGames);
-        httpGames = NULL;
-    }
-    if (httpExtras != NULL) {
-        free(httpExtras);
-        httpExtras = NULL;
-    }
-    httpGameCount = 0;
+    gHttpSupport.clearCatalog();
 }
 
 void HttpSource::shutdown(item_list_t *itemList)
