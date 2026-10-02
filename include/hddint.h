@@ -46,9 +46,9 @@ public:
     void settleSupportRetry();
 
     // ---- OPL data-home discovery + the staged normal-APA OPL-home selection ---------------
-    void findOplPartition();        // was hddFindOPLPartition: existing-partitions-only discovery
-    int getLiveOplHomeSelection();  // was hddGetLiveOplHomeSelection
-    int getOplHomeSelection();      // was hddGetOplHomeSelection (pending -> committed -> live)
+    void findOplPartition();                                                      // was hddFindOPLPartition: existing-partitions-only discovery
+    int getLiveOplHomeSelection();                                                // was hddGetLiveOplHomeSelection
+    int getOplHomeSelection();                                                    // was hddGetOplHomeSelection (pending -> committed -> live)
     int resolveLiveOplDataPath(const char *relativePath, char *out, int outSize); // was hddResolveLiveOplDataPath
     int oplHomeSelectionNeedsTargetSave();                                        // was hddOplHomeSelectionNeedsTargetSave
     int mountSelectedOplHome(char *prefix, int prefixLen);                        // was hddMountSelectedOplHome

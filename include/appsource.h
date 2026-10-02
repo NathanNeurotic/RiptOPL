@@ -29,7 +29,7 @@ struct app_info_linked
     app_info_t app;
 };
 
-class AppSource : public GameSource
+class AppSource: public GameSource
 {
 public:
     AppSource();

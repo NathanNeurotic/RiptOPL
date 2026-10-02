@@ -290,8 +290,8 @@ private:
 
     struct vcd_id_memo *memoHead_ = NULL;
     int memoCount_ = 0;
-    char idReqName_[256] = {};   // one-slot request: the GUI writes it, the io worker reads + clears
-    volatile int idReqPending_ = 0; // DIntr/EIntr-guarded, like the SFX dispatch ring
+    char idReqName_[256] = {};                         // one-slot request: the GUI writes it, the io worker reads + clears
+    volatile int idReqPending_ = 0;                    // DIntr/EIntr-guarded, like the SFX dispatch ring
     char customPopsFor_[sizeof(gPopstarterPath)] = {}; // gPopstarterPath value the cache resolved for
     char customPopsElf_[256] = {};                     // the file it resolved to ("" on a miss)
 };
