@@ -1287,6 +1287,7 @@ static int thmLoad(const char *themePath)
 
     // LOGO, loaded here to avoid flickering during startup with device in AUTO + theme set
     texLoadInternal(&newT->textures[LOGO_PICTURE], LOGO_PICTURE);
+    texLoadInternal(&newT->textures[TECHWRITESCODE_LOGO], TECHWRITESCODE_LOGO);
 
     // Optional animated boot-logo frames (embedded build assets logo0..logo6).
     // Count the contiguous frames that actually load; guiRenderGreeting() cycles

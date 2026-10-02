@@ -30,6 +30,9 @@ constexpr int BOOT_LOGO_RISE = 100;
 // The halo is tinted with the theme's selected-text colour, so it follows the user's colour settings (the white
 // logo texture takes the tint; the logo itself stays white). One cycle is BOOT_LOGO_GLOW_PERIOD frames (~2 s at 60 Hz); the pulse is a raised cosine, so it eases in and
 // out instead of stepping. `alpha` is the greeting's fade alpha (0..0x80): the glow fades with the splash.
+// Gap between the credit mark and the right/bottom screen edges.
+constexpr int BOOT_CREDIT_MARGIN = 16;
+
 constexpr int BOOT_LOGO_GLOW_PERIOD = 120;
 constexpr float BOOT_LOGO_GLOW_MIN = 0.15f; // halo strength at the dim end of the pulse
 constexpr float BOOT_LOGO_GLOW_TAP = 0.16f; // per-tap alpha at full pulse, as a fraction of `alpha`
@@ -83,6 +86,12 @@ void BootSplash::render(int alpha)
 
         drawLogo(logo, gGuiScreenWidth >> 1, drawY, alpha);
     }
+
+    // Credit mark in the bottom-right corner, faded with the splash.
+    GSTEXTURE *credit = thmGetTexture(TECHWRITESCODE_LOGO);
+    if (credit)
+        rmDrawPixmap(credit, gGuiScreenWidth - BOOT_CREDIT_MARGIN - (credit->Width >> 1), gTheme->usedHeight - BOOT_CREDIT_MARGIN - (credit->Height >> 1),
+                     ALIGN_CENTER, credit->Width, credit->Height, SCALING_RATIO, GS_SETREG_RGBA(0x80, 0x80, 0x80, alpha), 0);
 
     // Boot info: the RiptOPL version + a live status line, faded with the splash.
     // Reuses gTheme->fonts[0] (always-loaded built-in) and the same OPL_VERSION About shows.

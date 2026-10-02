@@ -120,6 +120,7 @@ enum INTERNAL_TEXTURE {
     UDPFS_ICON,
     L1_ICON, // Settings peer-page navigation hint
     R1_ICON, // Settings peer-page navigation hint
+    TECHWRITESCODE_LOGO, // boot-splash credit mark (bottom right), embedded techwritescode_png
 #ifdef RETROACHIEVEMENTS
     // RA mark over a tracked game's cover (theme override "ra_mark"). Appended last:
     // texId is positional.
