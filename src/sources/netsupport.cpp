@@ -22,44 +22,37 @@
 #include "include/nbns.h"         // nbnsDeinit -- released with the other RPC client
 #include "httpclient.h"
 
-static unsigned char netModulesLoaded = 0;
-static int netResidentProtocol = NET_PROTO_OFF;
-
-static struct ip4_addr lastIP;
-static struct ip4_addr lastNM;
-static struct ip4_addr lastGW;
-
-static int netInitSemaID = -1;
+NetSupport gNetSupport;
 
 // forward declaration
-static int netWaitValidNetIFLinkState(void);
-static int netWaitValidDHCPState(void);
-static int netGetNetIFLinkStatus(void);
-static int netApplyNetIFConfig(void);
-static int netApplyIPConfig(void);
-static int netReadNetConfig(void);
+static void NetStatusCheckCb(s32 alarm_id, u16 time, void *common);
 
 // Initializes locking semaphore for network support (not for just SMB support, but for the network subsystem).
-int netInitSema(void)
+int NetSupport::initSema()
 {
-    if (netInitSemaID < 0) {
-        if ((netInitSemaID = sbCreateSemaphore()) < 0)
-            return netInitSemaID;
+    if (initSemaId_ < 0) {
+        if ((initSemaId_ = sbCreateSemaphore()) < 0)
+            return initSemaId_;
     }
 
     return 0;
 }
 
-static void netLockInit(void)
+int netInitSema(void)
 {
-    if (netInitSemaID >= 0)
-        WaitSema(netInitSemaID);
+    return gNetSupport.initSema();
 }
 
-static void netUnlockInit(void)
+void NetSupport::lockInit()
 {
-    if (netInitSemaID >= 0)
-        SignalSema(netInitSemaID);
+    if (initSemaId_ >= 0)
+        WaitSema(initSemaId_);
+}
+
+void NetSupport::unlockInit()
+{
+    if (initSemaId_ >= 0)
+        SignalSema(initSemaId_);
 }
 
 static void NetStatusCheckCb(s32 alarm_id, u16 time, void *common)
@@ -67,7 +60,12 @@ static void NetStatusCheckCb(s32 alarm_id, u16 time, void *common)
     iSignalSema(*(int *)common);
 }
 
-static int WaitValidNetState(int (*checkingFunction)(void))
+int NetSupport::netGetNetIFLinkStatus(void)
+{
+    return (NetManIoctl(NETMAN_NETIF_IOCTL_GET_LINK_STATUS, NULL, 0, NULL, 0) == NETMAN_NETIF_ETH_LINK_STATE_UP);
+}
+
+int NetSupport::waitValidState(int (*checkingFunction)(void))
 {
     int SemaID, retry_cycles;
     ee_sema_t SemaData;
@@ -94,38 +92,38 @@ static int WaitValidNetState(int (*checkingFunction)(void))
     return 0;
 }
 
-static int netWaitValidNetIFLinkState(void)
+int NetSupport::waitValidLinkState()
 {
-    return WaitValidNetState(&netGetNetIFLinkStatus);
+    return waitValidState(&NetSupport::netGetNetIFLinkStatus);
 }
 
-static int netWaitValidDHCPState(void)
+int NetSupport::waitValidDhcpState()
 {
-    return WaitValidNetState(&netGetDHCPStatus);
+    return waitValidState(&netGetDHCPStatus);
 }
 
 // Caller must hold the init lock.
-static int netInitApplyConfig(void)
+int NetSupport::initApplyConfig()
 {
     LOG("NETSUPPORT ApplyConfig\n");
 
     do {
-        if (netWaitValidNetIFLinkState() != 0) {
+        if (waitValidLinkState() != 0) {
             gNetworkStartup = ERROR_ETH_LINK_FAIL;
             return ERROR_ETH_LINK_FAIL;
         }
-    } while (netApplyNetIFConfig() != 0);
+    } while (applyNetifConfig() != 0);
 
     // Wait for the link to re-establish after applying the NIF link-mode setting.
-    if (netWaitValidNetIFLinkState() != 0) {
+    if (waitValidLinkState() != 0) {
         gNetworkStartup = ERROR_ETH_LINK_FAIL;
         return ERROR_ETH_LINK_FAIL;
     }
 
-    netApplyIPConfig();
+    applyIpConfig();
 
     // Wait for DHCP to initialize, if DHCP is enabled.
-    if (ps2_ip_use_dhcp && (netWaitValidDHCPState() != 0)) {
+    if (ps2_ip_use_dhcp && (waitValidDhcpState() != 0)) {
         gNetworkStartup = ERROR_ETH_DHCP_FAIL;
         return ERROR_ETH_DHCP_FAIL;
     }
@@ -133,24 +131,29 @@ static int netInitApplyConfig(void)
     return 0;
 }
 
-int netApplyConfig(void)
+int NetSupport::applyNetConfig()
 {
     int ret;
 
-    netLockInit();
-    ret = netInitApplyConfig();
-    netUnlockInit();
+    lockInit();
+    ret = initApplyConfig();
+    unlockInit();
 
     return ret;
 }
 
+int netApplyConfig(void)
+{
+    return gNetSupport.applyNetConfig();
+}
+
 int netGetModulesLoaded(void)
 {
-    return netModulesLoaded;
+    return gNetSupport.modulesLoaded();
 }
 
 // Caller must hold the init lock.
-static int netLoadModules(int protocol)
+int NetSupport::loadModules(int protocol)
 {
     LOG("NETSUPPORT LoadModules\n");
 
@@ -169,9 +172,9 @@ static int netLoadModules(int protocol)
         return -1;
     }
 
-    if (!netModulesLoaded) {
-        netModulesLoaded = 1;
-        netResidentProtocol = protocol;
+    if (!modulesLoaded_) {
+        modulesLoaded_ = 1;
+        residentProtocol_ = protocol;
 
         sysInitDev9();
 
@@ -184,7 +187,7 @@ static int netLoadModules(int protocol)
             if (sysLoadModuleBuffer(&smap_irx, size_smap_irx, 0, NULL) >= 0) {
                 // Before the network stack is loaded, attempt to set the link settings in order to avoid needing double-initialization of the IF.
                 // But do not fail here because there is currently no way to re-start initialization.
-                netApplyNetIFConfig();
+                applyNetifConfig();
                 LOG("[PS2IP]:\n");
                 if (sysLoadModuleBuffer(&ps2ip_irx, size_ps2ip_irx, 0, NULL) >= 0) {
                     LOG("[PS2IPS]:\n");
@@ -221,7 +224,7 @@ static int netLoadModules(int protocol)
 
 int netGetResidentProtocol(void)
 {
-    return netResidentProtocol;
+    return gNetSupport.residentProtocol();
 }
 
 // Slices netDeinitModules will wait for the init lock before giving up. One slice is 100 ms, so ~3 s
@@ -230,9 +233,9 @@ int netGetResidentProtocol(void)
 // issue #382 is the not-ATA case).
 constexpr int NET_DEINIT_LOCK_SLICES = 30;
 
-void netDeinitModules(void (*protocolTeardown)(void))
+void NetSupport::deinitModules(void (*protocolTeardown)(void))
 {
-    if (netModulesLoaded) {
+    if (modulesLoaded_) {
         // BOUNDED ACQUIRE, was an unbounded WaitSema. deinit runs this while a game launch is in
         // flight, and anything still holding this lock -- an in-progress SMB reconnect, a network
         // read that will not return because the link is already going away -- used to stop the exit
@@ -242,10 +245,10 @@ void netDeinitModules(void (*protocolTeardown)(void))
         // Giving up is safe and is the whole point: every caller is on its way to an IOP reset that
         // reclaims the network stack wholesale. A teardown that gives up beats one that hangs.
         int lockHeld = 0;
-        if (netInitSemaID >= 0) {
+        if (initSemaId_ >= 0) {
             int slices = NET_DEINIT_LOCK_SLICES;
             while (slices-- > 0) {
-                if (PollSema(netInitSemaID) == netInitSemaID) {
+                if (PollSema(initSemaId_) == initSemaId_) {
                     lockHeld = 1;
                     break;
                 }
@@ -262,59 +265,74 @@ void netDeinitModules(void (*protocolTeardown)(void))
         HttpDeinit();
         nbnsDeinit();
         NetManDeinit();
-        netModulesLoaded = 0;
-        netResidentProtocol = NET_PROTO_OFF;
+        modulesLoaded_ = 0;
+        residentProtocol_ = NET_PROTO_OFF;
         // The protocol's own state is cleared HERE, immediately after netModulesLoaded and before
         // the semaphore goes, because that is precisely where SMB cleared its two flags.
         if (protocolTeardown != NULL)
             protocolTeardown();
 
-        if (netInitSemaID >= 0) {
+        if (initSemaId_ >= 0) {
             if (lockHeld)
-                SignalSema(netInitSemaID);
-            DeleteSema(netInitSemaID);
-            netInitSemaID = -1;
+                SignalSema(initSemaId_);
+            DeleteSema(initSemaId_);
+            initSemaId_ = -1;
         }
 
         // To allow the configuration to be read later on, read the latest version now.
-        netReadNetConfig();
+        readNetConfig();
         ps2ip_deinit();
     }
 }
 
-int netLoadInitModules(int protocol)
+void netDeinitModules(void (*protocolTeardown)(void))
+{
+    gNetSupport.deinitModules(protocolTeardown);
+}
+
+int NetSupport::loadInitModules(int protocol)
 {
     int ret;
 
-    if ((ret = netInitSema()) < 0)
+    if ((ret = initSema()) < 0)
         return ret;
 
-    WaitSema(netInitSemaID);
+    WaitSema(initSemaId_);
 
-    if ((ret = netLoadModules(protocol)) == 0) {
-        ret = netInitApplyConfig();
+    if ((ret = loadModules(protocol)) == 0) {
+        ret = initApplyConfig();
     }
 
-    SignalSema(netInitSemaID);
+    SignalSema(initSemaId_);
+
+    return ret;
+}
+
+int netLoadInitModules(int protocol)
+{
+    return gNetSupport.loadInitModules(protocol);
+}
+
+int NetSupport::ensureModules()
+{
+    int ret;
+
+    if ((ret = initSema()) < 0)
+        return ret;
+
+    WaitSema(initSemaId_);
+    ret = loadModules(NET_PROTO_SMB);
+    SignalSema(initSemaId_);
 
     return ret;
 }
 
 int netEnsureModules(void)
 {
-    int ret;
-
-    if ((ret = netInitSema()) < 0)
-        return ret;
-
-    WaitSema(netInitSemaID);
-    ret = netLoadModules(NET_PROTO_SMB);
-    SignalSema(netInitSemaID);
-
-    return ret;
+    return gNetSupport.ensureModules();
 }
 
-static int netReadNetConfig(void)
+int NetSupport::readNetConfig(void)
 {
     t_ip_info ip_info;
     int result;
@@ -322,47 +340,51 @@ static int netReadNetConfig(void)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
     if ((result = ps2ip_getconfig("sm0", &ip_info)) >= 0) {
-        lastIP = *(struct ip4_addr *)&ip_info.ipaddr;
-        lastNM = *(struct ip4_addr *)&ip_info.netmask;
-        lastGW = *(struct ip4_addr *)&ip_info.gw;
+        lastIP_ = *(struct ip4_addr *)&ip_info.ipaddr;
+        lastNM_ = *(struct ip4_addr *)&ip_info.netmask;
+        lastGW_ = *(struct ip4_addr *)&ip_info.gw;
     } else {
-        ip4_addr_set_zero(&lastIP);
-        ip4_addr_set_zero(&lastNM);
-        ip4_addr_set_zero(&lastGW);
+        ip4_addr_set_zero(&lastIP_);
+        ip4_addr_set_zero(&lastNM_);
+        ip4_addr_set_zero(&lastGW_);
     }
 #pragma GCC diagnostic pop
 
     return result;
 }
 
-int netGetConfig(u8 *ip_address, u8 *netmask, u8 *gateway)
+int NetSupport::getConfig(u8 *ip_address, u8 *netmask, u8 *gateway)
 {
     int result;
 
     // Read a cached copy of the settings, if this is read after deinitialization.
-    result = netModulesLoaded ? netReadNetConfig() : -1;
-    ip_address[0] = ip4_addr1(&lastIP);
-    ip_address[1] = ip4_addr2(&lastIP);
-    ip_address[2] = ip4_addr3(&lastIP);
-    ip_address[3] = ip4_addr4(&lastIP);
+    result = modulesLoaded_ ? readNetConfig() : -1;
+    ip_address[0] = ip4_addr1(&lastIP_);
+    ip_address[1] = ip4_addr2(&lastIP_);
+    ip_address[2] = ip4_addr3(&lastIP_);
+    ip_address[3] = ip4_addr4(&lastIP_);
 
-    netmask[0] = ip4_addr1(&lastNM);
-    netmask[1] = ip4_addr2(&lastNM);
-    netmask[2] = ip4_addr3(&lastNM);
-    netmask[3] = ip4_addr4(&lastNM);
+    netmask[0] = ip4_addr1(&lastNM_);
+    netmask[1] = ip4_addr2(&lastNM_);
+    netmask[2] = ip4_addr3(&lastNM_);
+    netmask[3] = ip4_addr4(&lastNM_);
 
-    gateway[0] = ip4_addr1(&lastGW);
-    gateway[1] = ip4_addr2(&lastGW);
-    gateway[2] = ip4_addr3(&lastGW);
-    gateway[3] = ip4_addr4(&lastGW);
+    gateway[0] = ip4_addr1(&lastGW_);
+    gateway[1] = ip4_addr2(&lastGW_);
+    gateway[2] = ip4_addr3(&lastGW_);
+    gateway[3] = ip4_addr4(&lastGW_);
 
     return result;
 }
 
-static int netApplyNetIFConfig(void)
+int netGetConfig(u8 *ip_address, u8 *netmask, u8 *gateway)
+{
+    return gNetSupport.getConfig(ip_address, netmask, gateway);
+}
+
+int NetSupport::applyNetifConfig(void)
 {
     int mode, result;
-    static int CurrentMode = NETMAN_NETIF_ETH_LINK_MODE_AUTO;
 
     switch (gETHOpMode) {
         case ETH_OP_MODE_100M_FDX:
@@ -381,21 +403,16 @@ static int netApplyNetIFConfig(void)
             mode = NETMAN_NETIF_ETH_LINK_MODE_AUTO;
     }
 
-    if (CurrentMode != mode) {
+    if (netifCurrentMode_ != mode) {
         if ((result = NetManSetLinkMode(mode)) == 0)
-            CurrentMode = mode;
+            netifCurrentMode_ = mode;
     } else
         result = 0;
 
     return result;
 }
 
-static int netGetNetIFLinkStatus(void)
-{
-    return (NetManIoctl(NETMAN_NETIF_IOCTL_GET_LINK_STATUS, NULL, 0, NULL, 0) == NETMAN_NETIF_ETH_LINK_STATE_UP);
-}
-
-static int netApplyIPConfig(void)
+int NetSupport::applyIpConfig(void)
 {
     t_ip_info ip_info;
     struct ip4_addr ipaddr, netmask, gw, dns;
@@ -443,7 +460,7 @@ static int netApplyIPConfig(void)
     return result;
 }
 
-int netGetDHCPStatus(void)
+int NetSupport::dhcpStatus(void)
 {
     t_ip_info ip_info;
     int result;
@@ -457,3 +474,9 @@ int netGetDHCPStatus(void)
 
     return result;
 }
+
+int netGetDHCPStatus(void)
+{
+    return gNetSupport.dhcpStatus();
+}
+

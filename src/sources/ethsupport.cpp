@@ -23,32 +23,15 @@
 #include "modules/iopcore/common/cdvd_config.h"
 
 #define NEWLIB_PORT_AWARE
-#include <fileXio_rpc.h> // fileXioDevctl(ethBase, SMB_***)
+#include <fileXio_rpc.h> // fileXioDevctl(dev, SMB_***)
 
 #include "include/nbns.h"
 #include "include/gamesource.h"
 #include "httpclient.h"
 
-// forward declaration (was declared in the header before it became file-local)
-static void ethDisplayErrorStatus(void);
+EthSupport gEthSupport;
 
-static char ethPrefix[40]; // Contains the full path to the folder where all the games are.
-static char *ethBase;
-static int ethULSizePrev = -2;
-static time_t ethModifiedCDPrev;
-static time_t ethModifiedDVDPrev;
-static int ethGameCount = 0;
-static unsigned char ethSmbModuleLoaded = 0;
-static base_game_info_t *ethGames = NULL;
-static int ethPs1GameCount = 0;
-static base_game_info_t *ethPs1Games = NULL;
-
-// forward declarations
-static void smbLoadModules(void);
-
-static unsigned char ethReconnectQueued = 0;
-
-static void ethSMBConnect(void)
+void EthSupport::smbConnect(void)
 {
     unsigned char share_ip_address[4];
     smbLogOn_in_t logon;
@@ -57,9 +40,9 @@ static void ethSMBConnect(void)
     int result;
 
     if (gETHPrefix[0] != '\0')
-        sprintf(ethPrefix, "%s%s\\", ethBase, gETHPrefix);
+        sprintf(prefix_, "%s%s\\", base_, gETHPrefix);
     else
-        strcpy(ethPrefix, ethBase);
+        strcpy(prefix_, base_);
 
     // open tcp connection with the server / logon to SMB server
     if (gPCShareAddressIsNetBIOS) {
@@ -83,7 +66,7 @@ static void ethSMBConnect(void)
         strncpy(logon.User, gPCUserName, sizeof(logon.User));
         strncpy(passwd.password, gPCPassword, sizeof(passwd.password));
 
-        if (fileXioDevctl(ethBase, SMB_DEVCTL_GETPASSWORDHASHES, (void *)&passwd, sizeof(passwd), (void *)&passwdhashes, sizeof(passwdhashes)) == 0) {
+        if (fileXioDevctl(base_, SMB_DEVCTL_GETPASSWORDHASHES, (void *)&passwd, sizeof(passwd), (void *)&passwdhashes, sizeof(passwdhashes)) == 0) {
             // hash generated okay, can use
             memcpy((void *)logon.Password, (void *)&passwdhashes, sizeof(passwdhashes));
             logon.PasswordType = HASHED_PASSWORD;
@@ -102,7 +85,7 @@ static void ethSMBConnect(void)
         openshare.PasswordType = NO_PASSWORD;
     }
 
-    if ((result = fileXioDevctl(ethBase, SMB_DEVCTL_LOGON, (void *)&logon, sizeof(logon), NULL, 0)) >= 0) {
+    if ((result = fileXioDevctl(base_, SMB_DEVCTL_LOGON, (void *)&logon, sizeof(logon), NULL, 0)) >= 0) {
         // SMB server alive test
         strcpy(echo.echo, "ALIVE ECHO TEST");
         echo.len = strlen("ALIVE ECHO TEST");
@@ -115,14 +98,14 @@ static void ethSMBConnect(void)
             pc_ip[3] = share_ip_address[3];
         }
 
-        if (fileXioDevctl(ethBase, SMB_DEVCTL_ECHO, (void *)&echo, sizeof(echo), NULL, 0) >= 0) {
+        if (fileXioDevctl(base_, SMB_DEVCTL_ECHO, (void *)&echo, sizeof(echo), NULL, 0) >= 0) {
             gNetworkStartup = ERROR_ETH_SMB_OPENSHARE;
 
             if (gPCShareName[0]) {
                 // connect to the share
                 strcpy(openshare.ShareName, gPCShareName);
 
-                if (fileXioDevctl(ethBase, SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0) >= 0) {
+                if (fileXioDevctl(base_, SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0) >= 0) {
                     // everything is ok
                     gNetworkStartup = 0;
                 }
@@ -135,15 +118,15 @@ static void ethSMBConnect(void)
     }
 }
 
-static int ethSMBDisconnect(void)
+int EthSupport::smbDisconnect(void)
 {
     int shareRet, logoffRet;
 
     // Always attempt both halves. CLOSESHARE legitimately fails after a connection/logon error or
     // when LOGON succeeded but OPENSHARE did not; returning early there used to leave that partial
     // session alive, so the next explicit reconnect was not actually a clean retry.
-    shareRet = fileXioDevctl(ethBase, SMB_DEVCTL_CLOSESHARE, NULL, 0, NULL, 0);
-    logoffRet = fileXioDevctl(ethBase, SMB_DEVCTL_LOGOFF, NULL, 0, NULL, 0);
+    shareRet = fileXioDevctl(base_, SMB_DEVCTL_CLOSESHARE, NULL, 0, NULL, 0);
+    logoffRet = fileXioDevctl(base_, SMB_DEVCTL_LOGOFF, NULL, 0, NULL, 0);
     if (shareRet < 0)
         return -1;
     if (logoffRet < 0)
@@ -199,33 +182,58 @@ static EthSource *ethInstance()
     return instance;
 }
 
-
+// IO-worker entry points. ioPutRequest takes a plain function pointer, so these file-local
+// trampolines forward to the session instance; ethDeinitModules likewise hands its teardown to
+// netDeinitModules as a callback.
 static void ethInitSMB(void)
+{
+    gEthSupport.initSmb();
+}
+
+// SMB's own teardown. netDeinitModules runs this inside the init lock, at the point in the
+// sequence nbnsDeinit() has always occupied: after the HTTP RPC client is released, before
+// NetManDeinit.
+static void ethProtocolTeardown(void)
+{
+    gEthSupport.protocolTeardown();
+}
+
+static void smbLoadModules(void)
+{
+    gEthSupport.loadModules();
+}
+
+static void ethReconnectSMB(void)
+{
+    gEthSupport.reconnectSmb();
+}
+
+void EthSupport::initSmb(void)
 {
     int ret;
 
     ret = netApplyConfig();
 
     if (ret != 0) {
-        ethDisplayErrorStatus();
+        displayErrorStatus();
         return;
     }
 
     // connect
-    ethSMBConnect();
+    smbConnect();
 
     if (gNetworkStartup == 0) {
         // update Themes
         char path[256];
-        snprintf(path, sizeof(path), "%sTHM", ethPrefix);
+        snprintf(path, sizeof(path), "%sTHM", prefix_);
         thmAddElements(path, "\\", 1);
 
-        snprintf(path, sizeof(path), "%sLNG", ethPrefix);
+        snprintf(path, sizeof(path), "%sLNG", prefix_);
         lngAddLanguages(path, "\\", (*ethInstance()).mode);
 
-        sbCreateFolders(ethPrefix, 1);
+        sbCreateFolders(prefix_, 1);
     } else if (gPCShareName[0] || !(gNetworkStartup >= ERROR_ETH_SMB_OPENSHARE)) {
-        ethDisplayErrorStatus();
+        displayErrorStatus();
     }
 }
 
@@ -236,7 +244,7 @@ int ethGetModulesLoaded(void)
 
 int ethIsSMBShareConnected(void)
 {
-    return netGetModulesLoaded() && gNetworkStartup == 0 && ethPrefix[0] != '\0';
+    return gEthSupport.smbShareConnected();
 }
 
 // A custom core path is an explicit request to use SMB even when the SMB game page is disabled.
@@ -246,31 +254,38 @@ int ethIsSMBShareConnected(void)
 // game-device / memory-card fallback.
 int ethEnsureSMBShareConnected(void)
 {
-    if (ethIsSMBShareConnected())
+    return gEthSupport.ensureShareConnected();
+}
+
+bool EthSupport::smbShareConnected() const
+{
+    return netGetModulesLoaded() && gNetworkStartup == 0 && prefix_[0] != '\0';
+}
+
+int EthSupport::ensureShareConnected()
+{
+    if (smbShareConnected())
         return 1;
     if (udpfsGetModulesLoaded() || bdmIsUDPBDLoaded())
         return 0;
     if (netInitSema() < 0)
         return 0;
 
-    if (ethBase == NULL)
-        ethBase = "smb0:";
+    if (base() == NULL)
+        setBase("smb0:");
 
-    if (!netGetModulesLoaded() || !ethSmbModuleLoaded)
-        smbLoadModules();
+    if (!netGetModulesLoaded() || !smbModuleLoaded_)
+        loadModules();
     else
-        ethInitSMB();
+        initSmb();
 
-    return ethIsSMBShareConnected();
+    return smbShareConnected();
 }
 
-// SMB's own teardown. netDeinitModules runs this inside the init lock, at the point in the
-// sequence nbnsDeinit() has always occupied: after the HTTP RPC client is released, before
-// NetManDeinit.
-static void ethProtocolTeardown(void)
+void EthSupport::protocolTeardown()
 {
     nbnsDeinit();
-    ethSmbModuleLoaded = 0;
+    smbModuleLoaded_ = 0;
     gNetworkStartup = ERROR_ETH_NOT_STARTED;
 }
 
@@ -284,7 +299,7 @@ int ethLoadInitModules(void)
     return netLoadInitModules(NET_PROTO_SMB);
 }
 
-static void ethDisplayErrorStatus(void)
+void EthSupport::displayErrorStatus(void)
 {
     switch (gNetworkStartup) {
         case 0: // No error
@@ -320,7 +335,7 @@ static void ethDisplayErrorStatus(void)
     }
 }
 
-static void smbLoadModules(void)
+void EthSupport::loadModules(void)
 {
     int ret;
 
@@ -345,65 +360,70 @@ static void smbLoadModules(void)
         // this build speaks SMBv1 unconditionally, exactly like every pre-dialect build.
         LOG("[SMBMAN]:\n");
         if (sysLoadModuleBuffer((void *)&smbman_irx, size_smbman_irx, 0, NULL) >= 0) {
-            ethSmbModuleLoaded = 1;
+            smbModuleLoaded_ = 1;
             LOG("[NBNS]:\n");
             sysLoadModuleBuffer(&nbns_irx, size_nbns_irx, 0, NULL);
             nbnsInit();
 
             LOG("SMBSUPPORT Modules loaded\n");
-            ethInitSMB();
+            initSmb();
             return;
         }
     }
 
-    ethDisplayErrorStatus();
+    displayErrorStatus();
 }
 
-static void ethReconnectSMB(void)
+void EthSupport::reconnectSmb(void)
 {
     // Runs on the serialized IO worker. Keep the old backing allocations alive until the normal
     // deferred menu rebuild has detached their row text, but publish zero counts immediately so a
     // button press during reconnect resolves to an inert row rather than launching stale data.
-    if (ethBase == NULL)
-        ethBase = "smb0:";
+    if (base() == NULL)
+        setBase("smb0:");
 
-    if (ethSmbModuleLoaded)
-        (void)ethSMBDisconnect();
+    if (smbModuleLoaded_)
+        (void)smbDisconnect();
 
-    thmReinit(ethBase);
-    ethULSizePrev = -2;
-    ethModifiedCDPrev = 0;
-    ethModifiedDVDPrev = 0;
-    ethGameCount = 0;
-    ethPs1GameCount = 0;
+    thmReinit(base());
+    ulSizePrev_ = -2;
+    modifiedCDPrev_ = 0;
+    modifiedDVDPrev_ = 0;
+    gameCount_ = 0;
+    ps1GameCount_ = 0;
     gNetworkStartup = ERROR_ETH_NOT_STARTED;
 
-    if (!netGetModulesLoaded() || !ethSmbModuleLoaded)
-        smbLoadModules();
+    if (!netGetModulesLoaded() || !smbModuleLoaded_)
+        loadModules();
     else
-        ethInitSMB(); // applies link/IP settings before logging on and reopening the share
+        initSmb(); // applies link/IP settings before logging on and reopening the share
 
     host::library().markDirty(ETH_MODE);
     ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode);
-    ethReconnectQueued = 0;
+    reconnectQueued_ = 0;
 }
 
-void ethRequestReconnect(void)
+void EthSupport::requestReconnect()
 {
     // A protocol switch while another NIC stack is resident is restart-only. Do not let Refresh on
     // a stale/hidden ETH page fight that interlock or revive SMB after Network Start was disabled.
     if (gNetworkProtocol != NET_PROTO_SMB || gETHStartMode == START_MODE_DISABLED)
         return;
-    if (ethReconnectQueued)
+    if (reconnectQueued_)
         return;
     if (netInitSema() < 0)
         return;
 
     (*ethInstance()).enabled = 1;
     (*ethInstance()).delay = gArtDelay;
-    ethReconnectQueued = 1;
+    reconnectQueued_ = 1;
     if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&ethReconnectSMB)) != IO_OK)
-        ethReconnectQueued = 0;
+        reconnectQueued_ = 0;
+}
+
+void ethRequestReconnect(void)
+{
+    gEthSupport.requestReconnect();
 }
 
 void EthSource::init(item_list_t *itemList)
@@ -416,14 +436,14 @@ void EthSource::init(item_list_t *itemList)
         ethRequestReconnect();
     } else {
         LOG("ETHSUPPORT Init\n");
-        ethBase = "smb0:";
-        ethULSizePrev = -2;
-        ethModifiedCDPrev = 0;
-        ethModifiedDVDPrev = 0;
-        ethGameCount = 0;
-        ethGames = NULL;
-        ethPs1GameCount = 0;
-        ethPs1Games = NULL;
+        gEthSupport.setBase("smb0:");
+        gEthSupport.ulSizePrev() = -2;
+        gEthSupport.modifiedCDPrev() = 0;
+        gEthSupport.modifiedDVDPrev() = 0;
+        gEthSupport.gameCount() = 0;
+        gEthSupport.games() = NULL;
+        gEthSupport.ps1GameCount() = 0;
+        gEthSupport.ps1Games() = NULL;
         (*ethInstance()).delay = gArtDelay;
         gNetworkStartup = ERROR_ETH_NOT_STARTED;
         ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&smbLoadModules));
@@ -451,30 +471,30 @@ int EthSource::needsUpdate(item_list_t *itemList)
     if (gPCShareName[0] && (host::library().listViewActive(itemList) == LIB_VIEW_PS1))
         return 0;
 
-    if (ethULSizePrev == -2)
+    if (gEthSupport.ulSizePrev() == -2)
         result = 1;
 
     if (gNetworkStartup == 0) {
         struct stat st;
         char path[256];
 
-        snprintf(path, sizeof(path), "%sCD", ethPrefix);
+        snprintf(path, sizeof(path), "%sCD", gEthSupport.prefix());
         if (stat(path, &st) != 0)
             st.st_mtime = 0;
-        if (ethModifiedCDPrev != st.st_mtime) {
-            ethModifiedCDPrev = st.st_mtime;
+        if (gEthSupport.modifiedCDPrev() != st.st_mtime) {
+            gEthSupport.modifiedCDPrev() = st.st_mtime;
             result = 1;
         }
 
-        snprintf(path, sizeof(path), "%sDVD", ethPrefix);
+        snprintf(path, sizeof(path), "%sDVD", gEthSupport.prefix());
         if (stat(path, &st) != 0)
             st.st_mtime = 0;
-        if (ethModifiedDVDPrev != st.st_mtime) {
-            ethModifiedDVDPrev = st.st_mtime;
+        if (gEthSupport.modifiedDVDPrev() != st.st_mtime) {
+            gEthSupport.modifiedDVDPrev() = st.st_mtime;
             result = 1;
         }
 
-        if (!sbIsSameSize(ethPrefix, ethULSizePrev))
+        if (!sbIsSameSize(gEthSupport.prefix(), gEthSupport.ulSizePrev()))
             result = 1;
     }
 
@@ -504,16 +524,16 @@ int EthSource::update(item_list_t *itemList)
             // path composition does not work on a given server, the Ember half contributes nothing
             // and the POPSTARTER half is untouched -- which is exactly the "no half lists" rule it
             // wanted. The feature gates itself on a real file open.
-            int r = ps1FillGameList(ethPrefix, &ethPs1Games);
+            int r = ps1FillGameList(gEthSupport.prefix(), &gEthSupport.ps1Games());
             if (r >= 0) // r < 0: transient scan failure -> preserve the last-good list
-                ethPs1GameCount = r;
+                gEthSupport.ps1GameCount() = r;
             // NULL sub opts SMB/ETH out of folder-row collection: it uses a "\\" separator and does not
             // participate in folder browsing (see the folderlist gate in sbReadList).
         }
         if ((view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) &&
-            (sbReadList(&ethGames, ethPrefix, /* sub: */ NULL, &ethULSizePrev, &ethGameCount)) < 0) {
+            (sbReadList(&gEthSupport.games(), gEthSupport.prefix(), /* sub: */ NULL, &gEthSupport.ulSizePrev(), &gEthSupport.gameCount())) < 0) {
             gNetworkStartup = ERROR_ETH_SMB_LISTGAMES;
-            ethDisplayErrorStatus();
+            gEthSupport.displayErrorStatus();
         }
     } else {
         int i, count;
@@ -526,17 +546,17 @@ int EthSource::update(item_list_t *itemList)
         getsharelist.EE_addr = (void *)&sharelist[0];
         getsharelist.maxent = 128;
 
-        count = fileXioDevctl(ethBase, SMB_DEVCTL_GETSHARELIST, (void *)&getsharelist, sizeof(getsharelist), NULL, 0);
+        count = fileXioDevctl(gEthSupport.base(), SMB_DEVCTL_GETSHARELIST, (void *)&getsharelist, sizeof(getsharelist), NULL, 0);
         if (count > 0) {
-            free(ethGames);
-            ethGames = (base_game_info_t *)malloc(sizeof(base_game_info_t) * count);
+            free(gEthSupport.games());
+            gEthSupport.games() = (base_game_info_t *)malloc(sizeof(base_game_info_t) * count);
             // On allocation failure, skip population so the loop below never
-            // dereferences NULL; ethGameCount is then set to 0 after the loop.
-            if (ethGames == NULL)
+            // dereferences NULL; the game count is then set to 0 after the loop.
+            if (gEthSupport.games() == NULL)
                 count = 0;
             for (i = 0; i < count; i++) {
                 LOG("ETHSUPPORT Share found: %s\n", sharelist[i].ShareName);
-                base_game_info_t *g = &ethGames[i];
+                base_game_info_t *g = &gEthSupport.games()[i];
                 memcpy(g->name, sharelist[i].ShareName, sizeof(g->name));
                 g->name[31] = '\0';
                 sprintf(g->startup, "SHARE");
@@ -546,35 +566,40 @@ int EthSource::update(item_list_t *itemList)
                 g->format = GAME_FORMAT_USBLD;
                 g->sizeMB = 0;
             }
-            ethGameCount = count;
+            gEthSupport.gameCount() = count;
         } else if (count == 0) {
-            free(ethGames);
-            ethGames = NULL;
-            ethGameCount = 0;
+            free(gEthSupport.games());
+            gEthSupport.games() = NULL;
+            gEthSupport.gameCount() = 0;
         } else {
             gNetworkStartup = ERROR_ETH_SMB_LISTSHARES;
-            ethDisplayErrorStatus();
+            gEthSupport.displayErrorStatus();
         }
     }
     if (!gPCShareName[0])
-        return ethGameCount;
-    return view == LIB_VIEW_MIXED ? ethGameCount + ethPs1GameCount :
-           view == LIB_VIEW_PS1   ? ethPs1GameCount :
-                                    ethGameCount;
+        return gEthSupport.gameCount();
+    return view == LIB_VIEW_MIXED ? gEthSupport.gameCount() + gEthSupport.ps1GameCount() :
+           view == LIB_VIEW_PS1   ? gEthSupport.ps1GameCount() :
+                                    gEthSupport.gameCount();
 }
 
-int ethResolveIsoFavourite(int id, const char *name, int *outId)
+int EthSupport::resolveIsoFavourite(int id, const char *name, int *outId)
 {
     if (name == NULL || outId == NULL || id < 0 || !gPCShareName[0] || gNetworkStartup != 0)
         return 0;
 
     // ISO and PS1 now have permanent independent stores, so Favorites never needs to rescan or
     // borrow the visible page's backing array.
-    if (ethGames == NULL || id >= ethGameCount || strcmp(ethGames[id].name, name) != 0)
+    if (games_ == NULL || id >= gameCount_ || strcmp(games_[id].name, name) != 0)
         return 0;
 
     *outId = id;
     return 1;
+}
+
+int ethResolveIsoFavourite(int id, const char *name, int *outId)
+{
+    return gEthSupport.resolveIsoFavourite(id, name, outId);
 }
 
 int EthSource::rowView(item_list_t *itemList, int id)
@@ -586,21 +611,21 @@ int EthSource::rowView(item_list_t *itemList, int id)
         return LIB_VIEW_ISO;
     view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
-        return id >= 0 && id < ethGameCount ? LIB_VIEW_ISO : LIB_VIEW_PS1;
+        return id >= 0 && id < gEthSupport.gameCount() ? LIB_VIEW_ISO : LIB_VIEW_PS1;
     return view;
 }
 
 int EthSource::sourceId(item_list_t *itemList, int id)
 {
-    return gPCShareName[0] && host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= ethGameCount ? id - ethGameCount : id;
+    return gPCShareName[0] && host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= gEthSupport.gameCount() ? id - gEthSupport.gameCount() : id;
 }
 
-static base_game_info_t *ethGameForView(item_list_t *itemList, int id)
+base_game_info_t *EthSupport::gameForView(item_list_t *itemList, int id)
 {
     int ps1 = ethInstance()->rowView(itemList, id) == LIB_VIEW_PS1;
     id = ethInstance()->sourceId(itemList, id);
-    base_game_info_t *games = ps1 ? ethPs1Games : ethGames;
-    int count = ps1 ? ethPs1GameCount : ethGameCount;
+    base_game_info_t *games = ps1 ? ps1Games_ : games_;
+    int count = ps1 ? ps1GameCount_ : gameCount_;
     if (games == NULL || id < 0 || id >= count)
         return NULL;
     return &games[id];
@@ -611,27 +636,27 @@ int EthSource::count(item_list_t *itemList)
     int view;
 
     if (!gPCShareName[0])
-        return ethGameCount;
+        return gEthSupport.gameCount();
     view = host::library().listViewActive(itemList);
-    return view == LIB_VIEW_MIXED ? ethGameCount + ethPs1GameCount :
-           view == LIB_VIEW_PS1   ? ethPs1GameCount :
-                                    ethGameCount;
+    return view == LIB_VIEW_MIXED ? gEthSupport.gameCount() + gEthSupport.ps1GameCount() :
+           view == LIB_VIEW_PS1   ? gEthSupport.ps1GameCount() :
+                                    gEthSupport.gameCount();
 }
 
 void *EthSource::game(item_list_t *itemList, int id)
 {
-    return (void *)ethGameForView(itemList, id);
+    return (void *)gEthSupport.gameForView(itemList, id);
 }
 
 char *EthSource::name(item_list_t *itemList, int id)
 {
-    base_game_info_t *game = ethGameForView(itemList, id);
+    base_game_info_t *game = gEthSupport.gameForView(itemList, id);
     return game != NULL ? game->name : const_cast<char *>("");
 }
 
 int EthSource::nameLength(item_list_t *itemList, int id)
 {
-    base_game_info_t *game = ethGameForView(itemList, id);
+    base_game_info_t *game = gEthSupport.gameForView(itemList, id);
     if (game == NULL)
         return 0;
     return game->format != GAME_FORMAT_USBLD ? ISO_GAME_NAME_MAX + 1 : UL_GAME_NAME_MAX + 1;
@@ -639,7 +664,7 @@ int EthSource::nameLength(item_list_t *itemList, int id)
 
 char *EthSource::startup(item_list_t *itemList, int id)
 {
-    base_game_info_t *game = ethGameForView(itemList, id);
+    base_game_info_t *game = gEthSupport.gameForView(itemList, id);
     if (game == NULL)
         return "";
     // VCD view keys per-game data (CFG/art) off the VCD filename, not a disc ID (see sbPopulateConfig).
@@ -653,19 +678,19 @@ void EthSource::deleteGame(item_list_t *itemList, int id)
     if (rowView(itemList, id) == LIB_VIEW_PS1)
         return;
     id = sourceId(itemList, id);
-    sbDelete(&ethGames, ethPrefix, "\\", ethGameCount, id);
-    ethULSizePrev = -2;
+    sbDelete(&gEthSupport.games(), gEthSupport.prefix(), "\\", gEthSupport.gameCount(), id);
+    gEthSupport.ulSizePrev() = -2;
 }
 
 void EthSource::rename(item_list_t *itemList, int id, char *newName)
 {
     if (rowView(itemList, id) == LIB_VIEW_PS1) {
-        base_game_info_t *game = ethGameForView(itemList, id);
+        base_game_info_t *game = gEthSupport.gameForView(itemList, id);
 
         // Rename through the row's OWN core: an Ember title is a FOLDER under EMBER/games/, a
         // POPSTARTER title is a .VCD file in POPS/. Renaming one as the other silently fails.
         if (game != NULL &&
-            (cueIsCueEntry(game) ? cueRenameGame(ethPrefix, game->name, newName) : vcdRenameFile(ethPrefix, game->name, newName)) == 0) {
+            (cueIsCueEntry(game) ? cueRenameGame(gEthSupport.prefix(), game->name, newName) : vcdRenameFile(gEthSupport.prefix(), game->name, newName)) == 0) {
             // ETH otherwise treats its VCD list as toggle-only; consume this on the already queued
             // deferred update so the renamed POPS/ directory is scanned again.
             host::library().markDirty(itemList->mode);
@@ -673,12 +698,13 @@ void EthSource::rename(item_list_t *itemList, int id, char *newName)
         return;
     }
     id = sourceId(itemList, id);
-    sbRename(&ethGames, ethPrefix, "\\", ethGameCount, id, newName);
-    ethULSizePrev = -2;
+    sbRename(&gEthSupport.games(), gEthSupport.prefix(), "\\", gEthSupport.gameCount(), id, newName);
+    gEthSupport.ulSizePrev() = -2;
 }
 
 // Launch a PS1/.VCD entry BY NAME via POPSTARTER over SMB (view-independent entry point: the in-view
-// menu launch below and the Favourites tab both use it). ethPrefix is static and smb: paths use '\'
+// menu launch below and the Favourites tab both use it). The prefix is session state (gEthSupport)
+// and smb: paths use '\'
 // (auto-detected by vcdSep); UNMOUNT_EXCEPTION keeps the share mounted across the IOP reset.
 void EthSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
 {
@@ -686,12 +712,12 @@ void EthSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set
 
     if (!gPCShareName[0] || vcdName == NULL || vcdName[0] == '\0' || !strcasecmp(vcdName, "POPSTARTER")) // reserved-name belt: the scanner no longer lists it (#154); strcasecmp -- FAT is case-insensitive
         return;
-    if (!vcdResolvePopstarter(ethPrefix, vcdElf, sizeof(vcdElf))) {
+    if (!vcdResolvePopstarter(gEthSupport.prefix(), vcdElf, sizeof(vcdElf))) {
         host::ui().msgBox(_l(_STR_POPSTARTER_NOT_FOUND), 0, NULL);
         return;
     }
     {
-        vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(ethPrefix);
+        vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(gEthSupport.prefix());
         if (ens == VCD_POPSNET_SMB_MISSING) {
             host::ui().msgBox(_l(_STR_POPSTARTER_SMB_MISSING), 0, NULL);
             return;
@@ -709,11 +735,11 @@ void EthSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set
             return;
         }
     }
-    vcdBuildSelector(ethPrefix, VCD_PREFIX_SMB, vcdName, vcdSelector, sizeof(vcdSelector));
-    size_t prefixLen = strlen(ethPrefix);
-    char separator = (prefixLen > 0 && ethPrefix[prefixLen - 1] == '\\') ? '\\' : '/';
+    vcdBuildSelector(gEthSupport.prefix(), VCD_PREFIX_SMB, vcdName, vcdSelector, sizeof(vcdSelector));
+    size_t prefixLen = strlen(gEthSupport.prefix());
+    char separator = (prefixLen > 0 && gEthSupport.prefix()[prefixLen - 1] == '\\') ? '\\' : '/';
     char vcdFullPath[256];
-    snprintf(vcdFullPath, sizeof(vcdFullPath), "%sPOPS%c%s.VCD", ethPrefix, separator, vcdName);
+    snprintf(vcdFullPath, sizeof(vcdFullPath), "%sPOPS%c%s.VCD", gEthSupport.prefix(), separator, vcdName);
     vcdPrepareRetroGemBarcode(vcdFullPath);
     // Keep the SMB game share plus any distinct custom POPSTARTER.ELF backend through handoff.
     host::app().deinitEx(sbLoaderDeinitException(vcdElf), itemList->mode, host::app().pathToMode(vcdElf));
@@ -734,16 +760,16 @@ void EthSource::launchCue(item_list_t *itemList, const char *cueName, config_set
         host::ui().msgBox(_l(_STR_EMBER_BAD_NAME), 0, NULL);
         return;
     }
-    if (!cueResolveEmber(ethPrefix, emberElf, sizeof(emberElf))) {
+    if (!cueResolveEmber(gEthSupport.prefix(), emberElf, sizeof(emberElf))) {
         host::ui().msgBox(_l(_STR_EMBER_NOT_FOUND), 0, NULL);
         return;
     }
-    if (!cueResolveEmberBios(ethPrefix, biosPath, sizeof(biosPath))) {
+    if (!cueResolveEmberBios(gEthSupport.prefix(), biosPath, sizeof(biosPath))) {
         host::ui().msgBox(_l(_STR_EMBER_BIOS_MISSING), 0, NULL);
         return;
     }
-    cueApplySettings(ethPrefix, cueName, configSet); // best-effort marker, never a launch gate
-    if (!cueGameHasImage(ethPrefix, cueName)) {
+    cueApplySettings(gEthSupport.prefix(), cueName, configSet); // best-effort marker, never a launch gate
+    if (!cueGameHasImage(gEthSupport.prefix(), cueName)) {
         host::ui().msgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
         return;
     }
@@ -766,7 +792,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     int EnablePS2Logo = 0;
     int result;
     char filename[32], partname[256];
-    base_game_info_t *game = ethGameForView(itemList, id);
+    base_game_info_t *game = gEthSupport.gameForView(itemList, id);
     struct cdvdman_settings_smb *settings;
 
     if (game == NULL)
@@ -786,9 +812,9 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 
     if (!gPCShareName[0]) {
         memcpy(gPCShareName, game->name, sizeof(gPCShareName));
-        ethULSizePrev = -2;
-        ethGameCount = 0;
-        ethPs1GameCount = 0;
+        gEthSupport.ulSizePrev() = -2;
+        gEthSupport.gameCount() = 0;
+        gEthSupport.ps1GameCount() = 0;
         ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode); // clear the share list
         ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&ethInitSMB));
         ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode); // reload the game list
@@ -818,7 +844,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         memset(&smb_vmc_infos, 0, sizeof(smb_vmc_infos_t));
         configGetVMC(configSet, vmc_name, sizeof(vmc_name), vmc_id);
         if (vmc_name[0]) {
-            if (sysCheckVMC(ethPrefix, "\\", vmc_name, 0, &vmc_superblock) > 0) {
+            if (sysCheckVMC(gEthSupport.prefix(), "\\", vmc_name, 0, &vmc_superblock) > 0) {
                 smb_vmc_infos.flags = vmc_superblock.mc_flag & 0xFF;
                 smb_vmc_infos.flags |= 0x100;
                 smb_vmc_infos.specs.page_size = vmc_superblock.page_size;
@@ -860,16 +886,16 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // RA: this game's watch list, settled before sysLaunchLoaderElf reads
     // GetWatchCount() to decide whether the network modules travel with the
     // launch. Absent is normal -- the game is simply not tracked.
-    sbLoadWatchList(ethPrefix, game->startup);
+    sbLoadWatchList(gEthSupport.prefix(), game->startup);
 #endif
-    if ((result = sbLoadCheats(ethPrefix, game->startup)) < 0) {
+    if ((result = sbLoadCheats(gEthSupport.prefix(), game->startup)) < 0) {
         // #265: let the user back out instead of sitting through the whole load. The helper does
         // the sbUnprepare itself -- see include/supportbase.h; skipping it breaks the NEXT launch.
         // `settings` is not assigned until below, so derive the common block from the IRX base.
         if (!sbCheatsMissingContinue((u8 *)(&smb_cdvdman_irx) + i, result))
             return;
     }
-    sbLoadImage(ethPrefix, game->startup);
+    sbLoadImage(gEthSupport.prefix(), game->startup);
 
     settings = (struct cdvdman_settings_smb *)((u8 *)(&smb_cdvdman_irx) + i);
 
@@ -908,7 +934,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     strcpy(settings->smb_password, gPCPassword);
 
     // Initialize layer 1 information.
-    sbCreatePath(game, partname, ethPrefix, "\\", 0);
+    sbCreatePath(game, partname, gEthSupport.prefix(), "\\", 0);
 
     if (gPS2Logo) {
         int fd = open(partname, O_RDONLY, 0666);
@@ -924,7 +950,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         case GAME_FORMAT_USBLD:
             layer1_part = layer1_start / 0x80000;
             layer1_offset = layer1_start % 0x80000;
-            sbCreatePath(game, partname, ethPrefix, "\\", layer1_part);
+            sbCreatePath(game, partname, gEthSupport.prefix(), "\\", layer1_part);
             break;
         default: // Raw ISO9660 disc image; one part.
             layer1_part = 0;
@@ -945,7 +971,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // MMCE cross-device game-id (#261): push the disc id to a present MMCE card before the SMB teardown
     // (self-probes mmce0/mmce1; no-ops if no card / feature off). Read `game` before deinit frees it.
     mmceSendGameID(game->startup, NULL, 0); // SMB has no Neutrino branch -> nothing to protect, no -mc args
-    host::app().deinit(NO_EXCEPTION, ETH_MODE);         // CAREFUL: deinit will call ethCleanUp, so ethGames/game will be freed
+    host::app().deinit(NO_EXCEPTION, ETH_MODE);         // CAREFUL: deinit will call ethCleanUp, so the backing list (gEthSupport.games()) / game will be freed
 
     settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_DEV9;
     settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_SMAP;
@@ -958,8 +984,8 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 
 config_set_t *EthSource::config(item_list_t *itemList, int id)
 {
-    base_game_info_t *game = ethGameForView(itemList, id);
-    return game != NULL ? sbPopulateConfig(game, ethPrefix, "\\") : NULL;
+    base_game_info_t *game = gEthSupport.gameForView(itemList, id);
+    return game != NULL ? sbPopulateConfig(game, gEthSupport.prefix(), "\\") : NULL;
 }
 
 int EthSource::image(item_list_t *itemList, char *folder, int isRelative, char *value, char *suffix, GSTEXTURE *resultTex, short psm)
@@ -967,7 +993,7 @@ int EthSource::image(item_list_t *itemList, char *folder, int isRelative, char *
     char path[256];
 
     if (isRelative)
-        snprintf(path, sizeof(path), "%s%s\\%s_%s", ethPrefix, folder, value, suffix);
+        snprintf(path, sizeof(path), "%s%s\\%s_%s", gEthSupport.prefix(), folder, value, suffix);
     else
         snprintf(path, sizeof(path), "%s%s_%s", folder, value, suffix);
     int r = texDiscoverLoad(resultTex, path, -1);
@@ -994,15 +1020,15 @@ void EthSource::cleanUp(item_list_t *itemList, int exception)
     if ((*ethInstance()).enabled) {
         LOG("ETHSUPPORT CleanUp\n");
 
-        free(ethGames);
-        ethGames = NULL;
-        free(ethPs1Games);
-        ethPs1Games = NULL;
-        ethGameCount = 0;
-        ethPs1GameCount = 0;
+        free(gEthSupport.games());
+        gEthSupport.games() = NULL;
+        free(gEthSupport.ps1Games());
+        gEthSupport.ps1Games() = NULL;
+        gEthSupport.gameCount() = 0;
+        gEthSupport.ps1GameCount() = 0;
         // disconnect from the active SMB session
         if ((exception & UNMOUNT_EXCEPTION) == 0)
-            ethSMBDisconnect();
+            gEthSupport.smbDisconnect();
     }
 
     // UI may have initialized modules outside of ETH mode, so deinitialize regardless of the enabled status.
@@ -1015,14 +1041,14 @@ void EthSource::shutdown(item_list_t *itemList)
     if ((*ethInstance()).enabled) {
         LOG("ETHSUPPORT Shutdown\n");
 
-        free(ethGames);
-        ethGames = NULL;
-        free(ethPs1Games);
-        ethPs1Games = NULL;
-        ethGameCount = 0;
-        ethPs1GameCount = 0;
+        free(gEthSupport.games());
+        gEthSupport.games() = NULL;
+        free(gEthSupport.ps1Games());
+        gEthSupport.ps1Games() = NULL;
+        gEthSupport.gameCount() = 0;
+        gEthSupport.ps1GameCount() = 0;
         // disconnect from the active SMB session
-        ethSMBDisconnect();
+        gEthSupport.smbDisconnect();
     }
 
     // UI may have initialized modules outside of ETH mode, so deinitialize regardless of the enabled status.
@@ -1036,17 +1062,17 @@ void EthSource::shutdown(item_list_t *itemList)
 
 int EthSource::checkVmc(item_list_t *itemList, char *name, int createSize)
 {
-    return sysCheckVMC(ethPrefix, "\\", name, createSize, NULL);
+    return sysCheckVMC(gEthSupport.prefix(), "\\", name, createSize, NULL);
 }
 
 char *EthSource::prefix(item_list_t *itemList)
 {
-    return ethPrefix;
+    return gEthSupport.prefix();
 }
 
 const char *ethGetSMBPrefix(void)
 {
-    return ethPrefix;
+    return gEthSupport.prefix();
 }
 
 
