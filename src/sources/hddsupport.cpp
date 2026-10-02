@@ -6,6 +6,7 @@
 #include "include/gui.h"
 #include "include/supportbase.h"
 #include "include/hddsupport.h"
+#include "include/hddint.h"
 #include "include/cuesupport.h" // Ember rows share the HDD PS1 list with the VCD ones
 #include "include/vcdsupport.h" // HDD VCD view: vcdScanDirRoot + vcd_entry_t
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
@@ -36,155 +37,19 @@ extern int probed_fd;
 extern u32 probed_lba;
 extern u8 IOBuffer[2048];
 
-static unsigned char hddForceUpdate = 0;
-static unsigned char hddHDProKitDetected = 0;
-static unsigned char hddModulesLoadCount = 0;
-static unsigned char hddModulesLoaded = 0;
-static unsigned char hddSupportModulesLoaded = 0;
-// One toast per failure streak: hddUpdateGameList now RETRIES the support-module load every refresh
-// while it keeps failing, and re-toasting the same error box each pass would bury the UI. Reset on
-// success so a later, different failure toasts again.
-static unsigned char hddSupportErrToasted = 0;
-static unsigned char hddPfsDeferredFailed = 0;
-static int hddRetryQueued = 0;
+// The single persistent data-home mount point; a named constant (never reassigned), also spelled by
+// the source-scraping-test-pinned helpers below (hddMountSupportHome, hddReleaseSupportHome,
+// hddDoLaunchEmber).
+static char *hddPrefix = "pfs0:";
 
-// Settled PS2FS attempts that must ALL fail before Code 222 is shown. A drive still spinning up
-// answers the ATA stack well before it will answer PS2FS, so a single refusal after the settle says
-// nothing -- hardware shows PFS declining a few of these and then mounting normally. Reset by
-// hddClearPfsDiagFailure() the moment the support stack latches.
-constexpr int HDD_PFS_REPORT_AFTER_FAILURES = 3;
-static int hddPfsSettledFailures = 0;
+HddSupport gHddSupport;
 
-typedef enum {
-    HDD_PFS_DIAG_REASON_NONE = 0,
-    HDD_PFS_DIAG_REASON_HDD_CHECK_STATUS_1,
-    HDD_PFS_DIAG_REASON_PS2FS_LOAD_FAILURE,
-} hdd_pfs_diag_reason_t;
+// How long the HDD VCD launch waits for the art worker to let go before it remounts pfs0: under it.
+// Milliseconds (cacheCancelPendingImageLoadsTimed sleeps via DelayThread(1000), NOT util.c's delay(),
+// whose "tick" is a ~0.25 s NOP spin). Generous because an un-abortable whole-file cover read on this
+// device has been measured at several seconds, and the alternative is remounting under a live reader.
+constexpr int HDD_ART_QUIESCE_MS = 2000;
 
-constexpr int HDD_PFS_DIAG_NOT_RUN = (-9999);
-
-static hdd_pfs_diag_reason_t hddPfsDiagReason = HDD_PFS_DIAG_REASON_NONE;
-static int hddPfsDiagHddCheckResult = HDD_PFS_DIAG_NOT_RUN;
-static int hddPfsDiagPs2fsResult = HDD_PFS_DIAG_NOT_RUN;
-static unsigned char hddDiagBootStageActive = 0;
-// A Settings selection is deliberately staged until Save Settings. It never changes the active
-// pfs0: mount: a live OPL data home can have artwork/config readers using it.
-static int hddOplHomePending = -1;
-// After the selector is committed, retain its next-boot value for later saves in this process.
-// The live pfs0: data home remains unchanged until the requested restart.
-static int hddOplHomeCommitted = -1;
-// +OPL can be the existing automatic home only when __common was unavailable during discovery.
-// Keep that distinct from an explicit conf_hdd.cfg redirect, which may fall back to __common.
-static unsigned char hddOplHomeAutoPlus = 0;
-
-static const char *hddPfsDiagReasonName(hdd_pfs_diag_reason_t reason)
-{
-    switch (reason) {
-        case HDD_PFS_DIAG_REASON_HDD_CHECK_STATUS_1:
-            return "HDD_CHECK_STATUS_1_UNFORMATTED";
-        case HDD_PFS_DIAG_REASON_PS2FS_LOAD_FAILURE:
-            return "PS2FS_LOAD_FAILURE";
-        default:
-            return "NONE";
-    }
-}
-
-static void hddLogPfsDiagState(const char *action, const char *why)
-{
-    LOG("[HDD PFS DIAG] action=%s why=%s reason=%s hddCheck=%d ps2fs=%d "
-        "hddModulesLoaded=%u hddSupportModulesLoaded=%u gOPLPart=\"%s\" gHDDPrefix=\"%s\"\n",
-        action, why, hddPfsDiagReasonName(hddPfsDiagReason), hddPfsDiagHddCheckResult,
-        hddPfsDiagPs2fsResult, hddModulesLoaded, hddSupportModulesLoaded, gOPLPart,
-        gHDDPrefix != NULL ? gHDDPrefix : "<null>");
-}
-
-static void hddArmPfsDiagFailure(hdd_pfs_diag_reason_t reason, int hddCheckResult, int ps2fsResult)
-{
-    hddPfsDiagReason = reason;
-    hddPfsDiagHddCheckResult = hddCheckResult;
-    hddPfsDiagPs2fsResult = ps2fsResult;
-    hddPfsDeferredFailed = 1;
-    hddLogPfsDiagState("arm", "support-load-failure");
-}
-
-static void hddClearPfsDiagFailure(const char *why)
-{
-    hddLogPfsDiagState("clear", why);
-    hddPfsDeferredFailed = 0;
-    hddPfsSettledFailures = 0; // PFS came up: the retries that failed before it were spin-up, not fault
-    hddPfsDiagReason = HDD_PFS_DIAG_REASON_NONE;
-    hddPfsDiagHddCheckResult = HDD_PFS_DIAG_NOT_RUN;
-    hddPfsDiagPs2fsResult = HDD_PFS_DIAG_NOT_RUN;
-}
-
-// Diagnostic-build only, same rule as bdmDiagBootStage*: this publishes untranslated developer text
-// to the boot status line that every other caller feeds through _l(). hddDiagBootStageActive
-// additionally scopes it to the bracket opened by hddDiagLoadModulesReady(), so even a diagnostic
-// build only narrates the ATA startup it was asked to narrate.
-#ifdef __OPLDIAG
-static void hddDiagBootStageBegin(const char *stage)
-{
-    char status[96];
-
-    if (!hddDiagBootStageActive)
-        return;
-
-    snprintf(status, sizeof(status), "BEGIN %s", stage);
-    LOG("%s\n", status);
-    host::ui().bootStatusStickyCopy(status);
-}
-
-static void hddDiagBootStageEnd(const char *stage, int result)
-{
-    char status[96];
-
-    if (!hddDiagBootStageActive)
-        return;
-
-    snprintf(status, sizeof(status), "END %s result=%d", stage, result);
-    LOG("%s\n", status);
-    host::ui().bootStatusStickyCopy(status);
-}
-
-static void hddDiagBootStageEndVoid(const char *stage)
-{
-    char status[96];
-
-    if (!hddDiagBootStageActive)
-        return;
-
-    snprintf(status, sizeof(status), "END %s", stage);
-    LOG("%s\n", status);
-    host::ui().bootStatusStickyCopy(status);
-}
-#else
-static void hddDiagBootStageBegin(const char *stage)
-{
-    (void)stage;
-}
-
-static void hddDiagBootStageEnd(const char *stage, int result)
-{
-    (void)stage;
-    (void)result;
-}
-
-static void hddDiagBootStageEndVoid(const char *stage)
-{
-    (void)stage;
-}
-#endif
-
-static void hddClearRecoveredErrors(void)
-{
-    // Do not blank an unrelated queued notification. These are the only messages emitted by this
-    // support path, and each call is made only after the underlying APA/PFS check succeeded.
-    host::app().clearErrorIf(_STR_HDD_NOT_CONNECTED_ERROR);
-    host::app().clearErrorIf(_STR_HDD_NOT_FORMATTED_ERROR);
-    host::app().clearErrorIf(_STR_HDD_UNAVAILABLE_ERROR);
-    host::app().clearErrorIf(_STR_HDD_PFS_UNAVAILABLE_ERROR);
-    host::app().clearErrorIf(_STR_HDD_APA_TABLE_UNREADABLE_ERROR);
-}
 class HddSource : public GameSource
 {
 public:
@@ -228,54 +93,14 @@ static HddSource *hddInstance()
     return instance;
 }
 
+// Settled PS2FS attempts that must ALL fail before Code 222 is shown. A drive still spinning up
+// answers the ATA stack well before it will answer PS2FS, so a single refusal after the settle says
+// nothing -- hardware shows PFS declining a few of these and then mounting normally. Reset by
+// clearPfsDiagFailure() the moment the support stack latches.
+constexpr int HDD_PFS_REPORT_AFTER_FAILURES = 3;
 
-static char *hddPrefix = "pfs0:";
-static hdl_games_list_t hddGames;
-
-// How long the HDD VCD launch waits for the art worker to let go before it remounts pfs0: under it.
-// Milliseconds (cacheCancelPendingImageLoadsTimed sleeps via DelayThread(1000), NOT util.c's delay(),
-// whose "tick" is a ~0.25 s NOP spin). Generous because an un-abortable whole-file cover read on this
-// device has been measured at several seconds, and the alternative is remounting under a live reader.
-constexpr int HDD_ART_QUIESCE_MS = 2000;
-
-// HDD VCD view: PS1 games gathered from pooled __.POPS[0-9]? partitions and one-game PP. / __.
-// partitions. hddVcdParts is index-parallel to hddVcdGames -- it records the full owning partition
-// label for the launch handoff.
-static base_game_info_t *hddVcdGames = NULL;
-static int hddVcdGameCount = 0;
-static char (*hddVcdParts)[APA_IDMAX + 1] = NULL;
-
-// forward declaration
-
-static int hddLoadGameListCache(hdl_games_list_t *cache);
-static int hddUpdateGameListCache(hdl_games_list_t *cache, hdl_games_list_t *game_list);
-
-static void hddInitModules(void)
-{
-    hddRetryQueued = 0;
-    hddLoadModules();
-    hddLoadSupportModules();
-
-    // Existing-partitions-only discovery may legitimately fail closed. Do not dereference a
-    // missing data home, and do not create any folders until a PFS partition is actually mounted.
-    if (gHDDPrefix == NULL) {
-        LOG("HDDSUPPORT InitModules: no existing PFS data home mounted\n");
-        return;
-    }
-
-    // update Themes
-    char path[256];
-    snprintf(path, sizeof(path), "%sTHM", gHDDPrefix);
-    thmAddElements(path, "/", 1);
-
-    snprintf(path, sizeof(path), "%sLNG", gHDDPrefix);
-    lngAddLanguages(path, "/", (*hddInstance()).mode);
-
-    // Create normal OPL folders only inside the selected mounted PFS data home. A configured
-    // existing APA partition owns its root; the canonical __common fallback owns __common/OPL/.
-    // Never create an APA partition to obtain a home.
-    sbCreateFolders(gHDDPrefix, 0);
-}
+constexpr int HDD_PROBE_READ_FAILED = (-1);
+constexpr int HDD_PROBE_TABLE_UNREADABLE = (-2);
 
 // HD Pro Kit is mapping the 1st word in ROM0 seg as a main ATA controller,
 // The pseudo ATA controller registers are accessed (input/ouput) by writing
@@ -358,145 +183,196 @@ static int hddPartitionMountable(const char *partition)
     return ret == 0;
 }
 
-static void hddFindOPLPartition(void)
+const char *HddSupport::pfsDiagReasonName(hdd_pfs_diag_reason_t reason) const
 {
-    config_set_t *config;
-    char name[64] = {0};
-    char candidate[sizeof(gOPLPart)];
-    const char *label;
-
-    /* ORDER OF PREFERENCE, and the middle two are deliberately swapped from what this used to do:
-     *
-     *   1. an explicit conf_hdd.cfg selection  -- a stated choice outranks any default
-     *   2. an existing +OPL partition          -- PREFERRED default
-     *   3. __common                            -- fallback
-     *   4. nothing: fail closed
-     *
-     * +OPL used to sit at 3 and __common at 2, so a drive that has both silently landed on __common
-     * and the only route to +OPL was the Settings row -- which is exactly the path that has been
-     * failing. Preferring the partition the user actually created means the common case needs no
-     * setting at all.
-     *
-     * Discovery still never manufactures a partition, resizes one, or writes raw hdd0: metadata.
-     * Every branch below only MOUNTS something that already exists, and the last one gives up
-     * rather than create anything. */
-    int commonAvailable = 0;
-
-    hddOplHomeAutoPlus = 0;
-    fileXioUmount(hddPrefix);
-    if (fileXioMount(hddPrefix, "hdd0:__common", FIO_MT_RDONLY) == 0) {
-        config = configAlloc(0, NULL, "pfs0:OPL/conf_hdd.cfg");
-        if (config != NULL) {
-            if (configRead(config))
-                configGetStrCopy(config, "hdd_partition", name, sizeof(name));
-            configFree(config);
-        }
-        fileXioUmount(hddPrefix);
-
-        if (name[0] != '\0') {
-            // The historical value is a bare APA ID (for example +OPL). Accept an hdd0:
-            // spelling too, but never silently redirect this drive's owner to hdd1.
-            if (!strncmp(name, "hdd0:", 5))
-                label = name + 5;
-            else if (!strncmp(name, "hdd", 3))
-                label = NULL;
-            else
-                label = name;
-
-            // conf_hdd.cfg names one APA partition label, not a raw hdd device or a PFS path.
-            // Reject delimiters and an empty/oversized label before passing anything to the mount
-            // RPC, so an invalid redirect can only select the documented __common fallback.
-            if (label == NULL || label[0] == '\0' || strlen(label) > APA_IDMAX ||
-                strpbrk(label, ":/\\") != NULL)
-                candidate[0] = '\0';
-            else
-                snprintf(candidate, sizeof(candidate), "hdd0:%s", label);
-
-            if (candidate[0] != '\0' && hddPartitionMountable(candidate)) {
-                snprintf(gOPLPart, sizeof(gOPLPart), "%s", candidate);
-                LOG("HDD: using configured existing data partition %s\n", gOPLPart);
-                return;
-            }
-            LOG("HDD: configured data partition %s is unavailable; ignoring it\n", name);
-        }
-
-        // __common mounted but named nothing usable. Record that it is available and keep going --
-        // +OPL is preferred below when it exists. The successful mount above is already all the
-        // proof this needs; do not remount merely to rediscover the same topology.
-        commonAvailable = 1;
+    switch (reason) {
+        case HDD_PFS_DIAG_REASON_HDD_CHECK_STATUS_1:
+            return "HDD_CHECK_STATUS_1_UNFORMATTED";
+        case HDD_PFS_DIAG_REASON_PS2FS_LOAD_FAILURE:
+            return "PS2FS_LOAD_FAILURE";
+        default:
+            return "NONE";
     }
-
-    // PREFERRED DEFAULT: an existing +OPL. It owns its PFS root directly, so the mounted data
-    // prefix is pfs0:. Still an automatic effective choice, not a request to write conf_hdd.cfg or
-    // to create an APA partition -- taken only when the partition is already there and mountable.
-    if (hddPartitionMountable("hdd0:+OPL")) {
-        snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:+OPL");
-        hddOplHomeAutoPlus = 1;
-        LOG("HDD: using existing +OPL data home (preferred over __common)\n");
-        return;
-    }
-
-    // Fallback: the canonical __common/OPL/ layout, already proven mountable above.
-    if (commonAvailable) {
-        snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:__common");
-        LOG("HDD: no +OPL partition; using canonical __common/OPL/ fallback\n");
-        return;
-    }
-
-    // Nothing suitable exists. Leave the data partition unresolved and fail closed.
-    gOPLPart[0] = '\0';
-    LOG("HDD: no existing PFS data partition is available; refusing to create one\n");
 }
 
-int hddLoadModules(void)
+void HddSupport::logPfsDiagState(const char *action, const char *why) const
+{
+    LOG("[HDD PFS DIAG] action=%s why=%s reason=%s hddCheck=%d ps2fs=%d "
+        "hddModulesLoaded=%u hddSupportModulesLoaded=%u gOPLPart=\"%s\" gHDDPrefix=\"%s\"\n",
+        action, why, pfsDiagReasonName(pfsDiagReason), pfsDiagHddCheckResult,
+        pfsDiagPs2fsResult, modulesLoaded, supportModulesLoaded, gOPLPart,
+        gHDDPrefix != NULL ? gHDDPrefix : "<null>");
+}
+
+void HddSupport::armPfsDiagFailure(hdd_pfs_diag_reason_t reason, int hddCheckResult, int ps2fsResult)
+{
+    pfsDiagReason = reason;
+    pfsDiagHddCheckResult = hddCheckResult;
+    pfsDiagPs2fsResult = ps2fsResult;
+    pfsDeferredFailed = 1;
+    logPfsDiagState("arm", "support-load-failure");
+}
+
+void HddSupport::clearPfsDiagFailure(const char *why)
+{
+    logPfsDiagState("clear", why);
+    pfsDeferredFailed = 0;
+    pfsSettledFailures = 0; // PFS came up: the retries that failed before it were spin-up, not fault
+    pfsDiagReason = HDD_PFS_DIAG_REASON_NONE;
+    pfsDiagHddCheckResult = HDD_PFS_DIAG_NOT_RUN;
+    pfsDiagPs2fsResult = HDD_PFS_DIAG_NOT_RUN;
+}
+
+// Diagnostic-build only, same rule as bdmDiagBootStage*: this publishes untranslated developer text
+// to the boot status line that every other caller feeds through _l(). diagBootStageActive
+// additionally scopes it to the bracket opened by diagLoadModulesReady(), so even a diagnostic
+// build only narrates the ATA startup it was asked to narrate.
+#ifdef __OPLDIAG
+void HddSupport::diagBootStageBegin(const char *stage)
+{
+    char status[96];
+
+    if (!diagBootStageActive)
+        return;
+
+    snprintf(status, sizeof(status), "BEGIN %s", stage);
+    LOG("%s\n", status);
+    host::ui().bootStatusStickyCopy(status);
+}
+
+void HddSupport::diagBootStageEnd(const char *stage, int result)
+{
+    char status[96];
+
+    if (!diagBootStageActive)
+        return;
+
+    snprintf(status, sizeof(status), "END %s result=%d", stage, result);
+    LOG("%s\n", status);
+    host::ui().bootStatusStickyCopy(status);
+}
+
+void HddSupport::diagBootStageEndVoid(const char *stage)
+{
+    char status[96];
+
+    if (!diagBootStageActive)
+        return;
+
+    snprintf(status, sizeof(status), "END %s", stage);
+    LOG("%s\n", status);
+    host::ui().bootStatusStickyCopy(status);
+}
+#else
+void HddSupport::diagBootStageBegin(const char *stage)
+{
+    (void)stage;
+}
+
+void HddSupport::diagBootStageEnd(const char *stage, int result)
+{
+    (void)stage;
+    (void)result;
+}
+
+void HddSupport::diagBootStageEndVoid(const char *stage)
+{
+    (void)stage;
+}
+#endif
+
+void HddSupport::clearRecoveredErrors(void)
+{
+    // Do not blank an unrelated queued notification. These are the only messages emitted by this
+    // support path, and each call is made only after the underlying APA/PFS check succeeded.
+    host::app().clearErrorIf(_STR_HDD_NOT_CONNECTED_ERROR);
+    host::app().clearErrorIf(_STR_HDD_NOT_FORMATTED_ERROR);
+    host::app().clearErrorIf(_STR_HDD_UNAVAILABLE_ERROR);
+    host::app().clearErrorIf(_STR_HDD_PFS_UNAVAILABLE_ERROR);
+    host::app().clearErrorIf(_STR_HDD_APA_TABLE_UNREADABLE_ERROR);
+}
+
+void HddSupport::initModulesEntry()
+{
+    gHddSupport.initModules();
+}
+
+void HddSupport::initModules()
+{
+    retryQueued = 0;
+    hddLoadModules();
+    hddLoadSupportModules();
+
+    // Existing-partitions-only discovery may legitimately fail closed. Do not dereference a
+    // missing data home, and do not create any folders until a PFS partition is actually mounted.
+    if (gHDDPrefix == NULL) {
+        LOG("HDDSUPPORT InitModules: no existing PFS data home mounted\n");
+        return;
+    }
+
+    // update Themes
+    char path[256];
+    snprintf(path, sizeof(path), "%sTHM", gHDDPrefix);
+    thmAddElements(path, "/", 1);
+
+    snprintf(path, sizeof(path), "%sLNG", gHDDPrefix);
+    lngAddLanguages(path, "/", (*hddInstance()).mode);
+
+    // Create normal OPL folders only inside the selected mounted PFS data home. A configured
+    // existing APA partition owns its root; the canonical __common fallback owns __common/OPL/.
+    // Never create an APA partition to obtain a home.
+    sbCreateFolders(gHDDPrefix, 0);
+}
+
+int HddSupport::loadModules()
 {
     int retLoadModule = HDD_PFS_DIAG_NOT_RUN;
     int retBdmModule = HDD_PFS_DIAG_NOT_RUN;
     int retXhddModule = HDD_PFS_DIAG_NOT_RUN;
     int retStatus = HDD_LOADMODULES_STATUS_UNK;
 
-    LOG("[HDD STARTUP DIAG] hddLoadModules entry count=%u loaded=%u\n", hddModulesLoadCount, hddModulesLoaded);
+    LOG("[HDD STARTUP DIAG] hddLoadModules entry count=%u loaded=%u\n", modulesLoadCount, modulesLoaded);
 
-    if (hddModulesLoaded)
+    if (modulesLoaded)
         retStatus = HDD_LOADMODULES_STATUS_ALREADYLOADED;
 
-    if (hddModulesLoadCount == 0) {
+    if (modulesLoadCount == 0) {
         // Increment the load count as soon as possible to prevent thread scheduling from allowing another thread to
         // call into here and try to double load modules.
-        hddModulesLoadCount = 1;
+        modulesLoadCount = 1;
 
         // DEV9 must be loaded, as HDD.IRX depends on it. Even if not required by the I/F (i.e. HDPro)
-        hddDiagBootStageBegin("HDD:DEV9");
+        diagBootStageBegin("HDD:DEV9");
         sysInitDev9();
-        hddDiagBootStageEndVoid("HDD:DEV9");
+        diagBootStageEndVoid("HDD:DEV9");
 
         // try to detect HD Pro Kit (not the connected HDD),
         // if detected it loads the specific ATAD module
-        hddDiagBootStageBegin("HDD:HDPRO-PROBE");
-        hddHDProKitDetected = hddCheckHDProKit();
-        hddDiagBootStageEnd("HDD:HDPRO-PROBE", hddHDProKitDetected);
-        if (hddHDProKitDetected) {
+        diagBootStageBegin("HDD:HDPRO-PROBE");
+        hdProKitDetected = hddCheckHDProKit();
+        diagBootStageEnd("HDD:HDPRO-PROBE", hdProKitDetected);
+        if (hdProKitDetected) {
             LOG("[ATAD_HDPRO]:\n");
-            hddDiagBootStageBegin("HDD:ATAD-HDPRO");
+            diagBootStageBegin("HDD:ATAD-HDPRO");
             retLoadModule = sysLoadModuleBuffer(&hdpro_atad_irx, size_hdpro_atad_irx, 0, NULL);
-            hddDiagBootStageEnd("HDD:ATAD-HDPRO", retLoadModule);
+            diagBootStageEnd("HDD:ATAD-HDPRO", retLoadModule);
             LOG("[XHDD]:\n");
-            hddDiagBootStageBegin("HDD:XHDD-HDPRO");
+            diagBootStageBegin("HDD:XHDD-HDPRO");
             retXhddModule = sysLoadModuleBuffer(&xhdd_irx, size_xhdd_irx, 6, "-hdpro");
-            hddDiagBootStageEnd("HDD:XHDD-HDPRO", retXhddModule);
+            diagBootStageEnd("HDD:XHDD-HDPRO", retXhddModule);
         } else {
             LOG("[BDM]:\n");
-            hddDiagBootStageBegin("HDD:BDM");
+            diagBootStageBegin("HDD:BDM");
             retBdmModule = sysLoadModuleBuffer(&bdm_irx, size_bdm_irx, 0, NULL);
-            hddDiagBootStageEnd("HDD:BDM", retBdmModule);
+            diagBootStageEnd("HDD:BDM", retBdmModule);
             LOG("[ATAD]:\n");
-            hddDiagBootStageBegin("HDD:ATAD");
+            diagBootStageBegin("HDD:ATAD");
             retLoadModule = sysLoadModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL);
-            hddDiagBootStageEnd("HDD:ATAD", retLoadModule);
+            diagBootStageEnd("HDD:ATAD", retLoadModule);
             LOG("[XHDD]:\n");
-            hddDiagBootStageBegin("HDD:XHDD");
+            diagBootStageBegin("HDD:XHDD");
             retXhddModule = sysLoadModuleBuffer(&xhdd_irx, size_xhdd_irx, 0, NULL);
-            hddDiagBootStageEnd("HDD:XHDD", retXhddModule);
+            diagBootStageEnd("HDD:XHDD", retXhddModule);
         }
 
         if (retLoadModule < 0) {
@@ -518,54 +394,112 @@ int hddLoadModules(void)
             // dev9 down. The UDPBD arm in bdmsupport.c already pairs its init/shutdown this way; this
             // arm did not, and rebuild-153's device-refresh bump made the retry more frequent.
             sysShutdownDev9();
-            hddModulesLoadCount = 0;
+            modulesLoadCount = 0;
         } else {
             retStatus = HDD_LOADMODULES_STATUS_NOERROR;
-            hddModulesLoaded = 1;
+            modulesLoaded = 1;
             // Settle ~1 s after a FRESH ATA-stack load before anyone probes xhdd0: or loads ps2hdd.
             // Every working reference does this: NHDDL sleeps 1 s after ata_bd ("prevents ps2hdd from
             // hanging") and POPSLoader settles 1 s around ata_bd as well. Our earliest callers run
             // seconds after power-on (APA boot-identity config resolution), so the very first
             // ATA_DEVCTL_READ_PARTITION_SECTOR probe / ps2hdd init can otherwise race a drive that is
             // still spinning up. Runs once per load generation: the dedupe branch above never gets here.
-            hddDiagBootStageBegin("HDD:SETTLE");
+            diagBootStageBegin("HDD:SETTLE");
             DelayThread(1000 * 1000);
-            hddDiagBootStageEndVoid("HDD:SETTLE");
+            diagBootStageEndVoid("HDD:SETTLE");
         }
     } else {
-        hddModulesLoadCount++;
-        if (!hddModulesLoaded)
+        modulesLoadCount++;
+        if (!modulesLoaded)
             retStatus = HDD_LOADMODULES_STATUS_BUSYLOADING;
     }
 
     LOG("[HDD STARTUP DIAG] hddLoadModules exit count=%u loaded=%u ret=%d bdm=%d atad=%d xhdd=%d\n",
-        hddModulesLoadCount, hddModulesLoaded, retStatus, retBdmModule, retLoadModule, retXhddModule);
+        modulesLoadCount, modulesLoaded, retStatus, retBdmModule, retLoadModule, retXhddModule);
     return retStatus;
 }
 
-int hddDiagLoadModulesReady(void)
+int HddSupport::diagLoadModulesReady()
 {
     int result;
 
-    hddDiagBootStageActive = 1;
-    hddDiagBootStageBegin("HDD:READY");
-    LOG("[HDD STARTUP DIAG] hddLoadModulesReady entry count=%u loaded=%u\n", hddModulesLoadCount, hddModulesLoaded);
+    diagBootStageActive = 1;
+    diagBootStageBegin("HDD:READY");
+    LOG("[HDD STARTUP DIAG] hddLoadModulesReady entry count=%u loaded=%u\n", modulesLoadCount, modulesLoaded);
     result = hddLoadModulesReady();
     LOG("[HDD STARTUP DIAG] hddLoadModulesReady exit count=%u loaded=%u result=%d\n",
-        hddModulesLoadCount, hddModulesLoaded, result);
-    hddDiagBootStageEnd("HDD:READY", result);
-    hddDiagBootStageActive = 0;
+        modulesLoadCount, modulesLoaded, result);
+    diagBootStageEnd("HDD:READY", result);
+    diagBootStageActive = 0;
 
     return result;
 }
 
-int hddModulesAreLoaded(void)
+// The deferred-retry/report block of the list update (moved out of HddSource::update): retry the
+// support stack when the base ATA stack is resident, then toast Code 222/402 once a failure persists
+// across enough settled attempts.
+void HddSupport::settleSupportRetry()
 {
-    return hddModulesLoaded != 0;
+    if (!supportModulesLoaded || gHDDPrefix == NULL) {
+        // Only chase the support stack when the base modules are actually resident -- calling it
+        // anyway made a failed base load toast TWICE (base failure + the doomed non-Sony probe's)
+        // on the first pass (Gemini + CodeRabbit review of #249, vetted). A loaded module stack
+        // with no data mount is also retryable: Step-209 deliberately separates those lifetimes.
+        // WHETHER THE RETRY ACTUALLY RAN decides whether a failure is reportable. loadModules
+        // stamps modulesLoadCount=1 on ENTRY -- before sysInitDev9, before the ATAD load, and
+        // before the 1 s settle, all of which run on the io worker. So the guard at the top of the
+        // update stops firing almost immediately, while the base stack is still coming up, and
+        // hddLoadModulesReady() correctly answers BUSYLOADING -> false for that whole window.
+        //
+        // Without this flag the code then fell through to the toast having attempted NOTHING, and
+        // announced it as "settled-update-retry-still-failed" -- which is why Code 222 appeared on
+        // consoles whose APA worked perfectly a moment later. A base stack that is still loading is
+        // not evidence of anything; say nothing until it is actually resident.
+        int baseReady = hddLoadModulesReady();
+        if (baseReady)
+            hddLoadSupportModules();
+        // Deferred Code 222: early boot probes never toast; a settled retry that really ran may.
+        if (supportModulesLoaded) {
+            clearPfsDiagFailure("update-retry-loaded-support");
+            supportErrToasted = 0;
+            clearRecoveredErrors();
+        } else if (baseReady && pfsDeferredFailed && !supportErrToasted) {
+            // ONE FAILED ATTEMPT IS NOT EVIDENCE OF A DEAD DRIVE. Gating on baseReady stopped us
+            // reporting a retry that never ran, but it still reported the FIRST settled retry that
+            // failed -- and hardware says PFS can decline several of those and then mount fine, so
+            // the box appeared on consoles whose APA worked seconds later. The 1 s post-ATAD settle
+            // is a floor, not a guarantee: a drive that is still spinning up answers the ATA stack
+            // long before it will answer PS2FS.
+            //
+            // So require the failure to PERSIST across a few settled attempts. Each pass through
+            // here is a genuine retry (hddLoadSupportModules ran and did not latch), and the success
+            // arm above resets the count, so this only fires when PFS has really refused to come up.
+            if (++pfsSettledFailures >= HDD_PFS_REPORT_AFTER_FAILURES) {
+                if (pfsDiagReason == HDD_PFS_DIAG_REASON_HDD_CHECK_STATUS_1) {
+                    // ps2hdd itself rejected the APA table (apaGetFormat), and its status is latched
+                    // for the session. That is not a PFS problem, and "PFS support unavailable" hid
+                    // the one thing that matters: the drive is there and must not be formatted.
+                    logPfsDiagState("emit-code-402", "settled-retries-exhausted");
+                    host::app().setError(_STR_HDD_APA_TABLE_UNREADABLE_ERROR, ERROR_HDD_APA_TABLE_UNREADABLE);
+                } else {
+                    logPfsDiagState("emit-code-222", "settled-retries-exhausted");
+                    host::app().setErrorDetail(_STR_HDD_PFS_UNAVAILABLE_ERROR, ERROR_HDD_MODULE_PFS_FAILURE,
+                                                     pfsDiagReasonName(pfsDiagReason));
+                }
+                supportErrToasted = 1;
+            } else {
+                logPfsDiagState("defer-code-222", "settled-retry-failed-below-threshold");
+            }
+        }
+    } else {
+        // Successful path also clears any prior deferred failure.
+        if (pfsDeferredFailed) {
+            clearPfsDiagFailure("update-found-support-already-ready");
+            supportErrToasted = 0;
+            clearRecoveredErrors();
+        }
+    }
 }
-
-constexpr int HDD_PROBE_READ_FAILED = (-1);
-constexpr int HDD_PROBE_TABLE_UNREADABLE = (-2);
 
 // Validate an APA header without ps2hdd: the "APA" magic plus the header checksum, per ps2sdk
 // apaCheckSum. The non-GPT driver sums all 255 words after the checksum (the whole 1 KB header);
@@ -716,7 +650,7 @@ int hddIsApaMbrHybrid(void)
 // Bring up only the APA/PFS support needed for a read-only pfs1: probe. This intentionally does
 // not discover, mount, or create the persistent pfs0: OPL data home: Settings uses it to validate
 // an already-existing selector target without changing the live data-home state.
-static int hddLoadCoreSupportModules(void)
+int HddSupport::loadCoreSupportModules()
 {
     static char hddarg[] = "-o"
                            "\0"
@@ -746,7 +680,7 @@ static int hddLoadCoreSupportModules(void)
     LOG("HDDSUPPORT LoadSupportModules\n");
 
     // ALREADY PROVEN -- do not re-litigate it. The non-Sony probe below exists to avoid loading APA
-    // modules onto a non-APA drive, which is a one-time question: if hddSupportModulesLoaded is set
+    // modules onto a non-APA drive, which is a one-time question: if supportModulesLoaded is set
     // then ps2hdd and PS2FS are up, and that cannot have happened on a drive this probe would
     // reject. Re-running it on every call re-asks a settled question against a live drive, and
     // hddDetectNonSonyFileSystem() answers -1 on a transient devctl error (busy bus, drive mid-seek)
@@ -754,10 +688,10 @@ static int hddLoadCoreSupportModules(void)
     // demonstrably working -- which is how the APA data-home selector came to report failure on a
     // console that was browsing HDD games at the time.
     //
-    // Placed above the probe, not merged into the existing !hddSupportModulesLoaded guard below,
+    // Placed above the probe, not merged into the existing !supportModulesLoaded guard below,
     // because that guard only covers the module loads -- the probe already ran by the time it is
     // reached.
-    if (hddSupportModulesLoaded)
+    if (supportModulesLoaded)
         return 1;
 
     // Check if the drive contains MBR/GPT partition data before we load the APA/PFS modules. If the drive is not
@@ -775,29 +709,29 @@ static int hddLoadCoreSupportModules(void)
         // A drive that ANSWERED but carries no recognizable table gets its own message. "Not detected"
         // is false there, and it is the wording that sends people to delete configs, re-run tools and
         // eventually reformat a disk whose games are all still on it.
-        if (nonSony == HDD_PROBE_TABLE_UNREADABLE && !hddSupportErrToasted) {
+        if (nonSony == HDD_PROBE_TABLE_UNREADABLE && !supportErrToasted) {
             host::app().setError(_STR_HDD_APA_TABLE_UNREADABLE_ERROR, ERROR_HDD_APA_TABLE_UNREADABLE);
-            hddSupportErrToasted = 1;
-        } else if (nonSony < 0 && !hddSupportErrToasted) {
+            supportErrToasted = 1;
+        } else if (nonSony < 0 && !supportErrToasted) {
             host::app().setError(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_NOT_DETECTED);
-            hddSupportErrToasted = 1;
+            supportErrToasted = 1;
         } else if (nonSony > 0) {
             // A recognized MBR/GPT/exFAT disk is normal BDM territory, not an APA formatting
             // failure. It also proves a prior transient APA probe error is stale.
-            hddSupportErrToasted = 0;
-            hddClearRecoveredErrors();
+            supportErrToasted = 0;
+            clearRecoveredErrors();
         }
         return 0;
     }
 
-    if (!hddSupportModulesLoaded) {
+    if (!supportModulesLoaded) {
         LOG("[HDD]:\n");
         ret = sysLoadModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg);
         if (ret < 0) {
             LOG("HDD: No HardDisk Drive detected.\n");
-            if (!hddSupportErrToasted) {
+            if (!supportErrToasted) {
                 host::app().setError(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_MODULE_HDD_FAILURE);
-                hddSupportErrToasted = 1;
+                supportErrToasted = 1;
             }
             return 0;
         }
@@ -809,23 +743,23 @@ static int hddLoadCoreSupportModules(void)
         ret = hddCheck();
         if (ret < 0) {
             LOG("HDD: No HardDisk Drive detected.\n");
-            if (!hddSupportErrToasted) {
+            if (!supportErrToasted) {
                 host::app().setError(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_NOT_DETECTED);
-                hddSupportErrToasted = 1;
+                supportErrToasted = 1;
             }
             return 0;
         }
         if (ret == 1) {
             LOG("HDD: APA status reports an unformatted drive.\n");
-            hddSupportErrToasted = 0;
-            hddArmPfsDiagFailure(HDD_PFS_DIAG_REASON_HDD_CHECK_STATUS_1, ret, HDD_PFS_DIAG_NOT_RUN);
+            supportErrToasted = 0;
+            armPfsDiagFailure(HDD_PFS_DIAG_REASON_HDD_CHECK_STATUS_1, ret, HDD_PFS_DIAG_NOT_RUN);
             return 0;
         }
         if (ret == 2) {
             LOG("HDD: APA status reports an unavailable drive.\n");
-            if (!hddSupportErrToasted) {
+            if (!supportErrToasted) {
                 host::app().setError(_STR_HDD_UNAVAILABLE_ERROR, ERROR_HDD_NOT_DETECTED);
-                hddSupportErrToasted = 1;
+                supportErrToasted = 1;
             }
             return 0;
         }
@@ -834,19 +768,310 @@ static int hddLoadCoreSupportModules(void)
         ret = sysLoadModuleBuffer(&ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg);
         if (ret < 0) {
             LOG("HDD: PFS support module failed to load.\n");
-            hddSupportErrToasted = 0;
-            hddArmPfsDiagFailure(HDD_PFS_DIAG_REASON_PS2FS_LOAD_FAILURE, 0, ret);
+            supportErrToasted = 0;
+            armPfsDiagFailure(HDD_PFS_DIAG_REASON_PS2FS_LOAD_FAILURE, 0, ret);
             return 0;
         }
 
-        hddSupportModulesLoaded = 1;
-        hddClearPfsDiagFailure("core-support-load-succeeded");
-        hddSupportErrToasted = 0;
-        hddClearRecoveredErrors();
+        supportModulesLoaded = 1;
+        clearPfsDiagFailure("core-support-load-succeeded");
+        supportErrToasted = 0;
+        clearRecoveredErrors();
         LOG("HDDSUPPORT modules loaded\n");
     }
 
     return 1;
+}
+
+void HddSupport::findOplPartition()
+{
+    config_set_t *config;
+    char name[64] = {0};
+    char candidate[sizeof(gOPLPart)];
+    const char *label;
+
+    /* ORDER OF PREFERENCE, and the middle two are deliberately swapped from what this used to do:
+     *
+     *   1. an explicit conf_hdd.cfg selection  -- a stated choice outranks any default
+     *   2. an existing +OPL partition          -- PREFERRED default
+     *   3. __common                            -- fallback
+     *   4. nothing: fail closed
+     *
+     * +OPL used to sit at 3 and __common at 2, so a drive that has both silently landed on __common
+     * and the only route to +OPL was the Settings row -- which is exactly the path that has been
+     * failing. Preferring the partition the user actually created means the common case needs no
+     * setting at all.
+     *
+     * Discovery still never manufactures a partition, resizes one, or writes raw hdd0: metadata.
+     * Every branch below only MOUNTS something that already exists, and the last one gives up
+     * rather than create anything. */
+    int commonAvailable = 0;
+
+    oplHomeAutoPlus = 0;
+    fileXioUmount(hddPrefix);
+    if (fileXioMount(hddPrefix, "hdd0:__common", FIO_MT_RDONLY) == 0) {
+        config = configAlloc(0, NULL, "pfs0:OPL/conf_hdd.cfg");
+        if (config != NULL) {
+            if (configRead(config))
+                configGetStrCopy(config, "hdd_partition", name, sizeof(name));
+            configFree(config);
+        }
+        fileXioUmount(hddPrefix);
+
+        if (name[0] != '\0') {
+            // The historical value is a bare APA ID (for example +OPL). Accept an hdd0:
+            // spelling too, but never silently redirect this drive's owner to hdd1.
+            if (!strncmp(name, "hdd0:", 5))
+                label = name + 5;
+            else if (!strncmp(name, "hdd", 3))
+                label = NULL;
+            else
+                label = name;
+
+            // conf_hdd.cfg names one APA partition label, not a raw hdd device or a PFS path.
+            // Reject delimiters and an empty/oversized label before passing anything to the mount
+            // RPC, so an invalid redirect can only select the documented __common fallback.
+            if (label == NULL || label[0] == '\0' || strlen(label) > APA_IDMAX ||
+                strpbrk(label, ":/\\") != NULL)
+                candidate[0] = '\0';
+            else
+                snprintf(candidate, sizeof(candidate), "hdd0:%s", label);
+
+            if (candidate[0] != '\0' && hddPartitionMountable(candidate)) {
+                snprintf(gOPLPart, sizeof(gOPLPart), "%s", candidate);
+                LOG("HDD: using configured existing data partition %s\n", gOPLPart);
+                return;
+            }
+            LOG("HDD: configured data partition %s is unavailable; ignoring it\n", name);
+        }
+
+        // __common mounted but named nothing usable. Record that it is available and keep going --
+        // +OPL is preferred below when it exists. The successful mount above is already all the
+        // proof this needs; do not remount merely to rediscover the same topology.
+        commonAvailable = 1;
+    }
+
+    // PREFERRED DEFAULT: an existing +OPL. It owns its PFS root directly, so the mounted data
+    // prefix is pfs0:. Still an automatic effective choice, not a request to write conf_hdd.cfg or
+    // to create an APA partition -- taken only when the partition is already there and mountable.
+    if (hddPartitionMountable("hdd0:+OPL")) {
+        snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:+OPL");
+        oplHomeAutoPlus = 1;
+        LOG("HDD: using existing +OPL data home (preferred over __common)\n");
+        return;
+    }
+
+    // Fallback: the canonical __common/OPL/ layout, already proven mountable above.
+    if (commonAvailable) {
+        snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:__common");
+        LOG("HDD: no +OPL partition; using canonical __common/OPL/ fallback\n");
+        return;
+    }
+
+    // Nothing suitable exists. Leave the data partition unresolved and fail closed.
+    gOPLPart[0] = '\0';
+    LOG("HDD: no existing PFS data partition is available; refusing to create one\n");
+}
+
+int HddSupport::getLiveOplHomeSelection()
+{
+    if (strcmp(gOPLPart, "hdd0:+OPL") == 0)
+        return HDD_OPL_HOME_PLUS;
+    if (strcmp(gOPLPart, "hdd0:__common") == 0)
+        return HDD_OPL_HOME_COMMON;
+    return -1;
+}
+
+int HddSupport::getOplHomeSelection()
+{
+    if (oplHomePending >= 0)
+        return oplHomePending;
+    if (oplHomeCommitted >= 0)
+        return oplHomeCommitted;
+
+    int live = getLiveOplHomeSelection();
+    return live >= 0 ? live : HDD_OPL_HOME_COMMON;
+}
+
+int HddSupport::resolveLiveOplDataPath(const char *relativePath, char *out, int outSize)
+{
+    int fd;
+    const char *rel = relativePath;
+
+    if (out == NULL || outSize <= 0 || rel == NULL)
+        return 0;
+    out[0] = '\0';
+
+    if (!modulesLoaded && !hddLoadModulesReady())
+        return 0;
+    hddLoadSupportModules();
+    if (gHDDPrefix == NULL)
+        return 0;
+
+    while (*rel == '/' || *rel == '\\')
+        rel++;
+
+    if (snprintf(out, outSize, "%s%s", gHDDPrefix, rel) >= outSize) {
+        out[0] = '\0';
+        return 0;
+    }
+    fd = open(out, O_RDONLY);
+    if (fd >= 0) {
+        close(fd);
+        return 1;
+    }
+
+    // __common uses pfs0:OPL/ as OPL's data-home prefix, but legacy core installs may live at
+    // that same already-mounted partition's root. This is still the live pfs0: mount; no APA
+    // partition is selected, remounted, or guessed here.
+    if (strcmp(gHDDPrefix, "pfs0:") != 0) {
+        if (snprintf(out, outSize, "pfs0:/%s", rel) >= outSize) {
+            out[0] = '\0';
+            return 0;
+        }
+        fd = open(out, O_RDONLY);
+        if (fd >= 0) {
+            close(fd);
+            return 1;
+        }
+    }
+
+    out[0] = '\0';
+    return 0;
+}
+
+int HddSupport::oplHomeSelectionNeedsTargetSave()
+{
+    int selection = getOplHomeSelection();
+
+    if (oplHomePending < 0 && oplHomeCommitted < 0)
+        return 0;
+
+    return selection == HDD_OPL_HOME_PLUS ? strcmp(gOPLPart, "hdd0:+OPL") != 0 : strcmp(gOPLPart, "hdd0:__common") != 0;
+}
+
+// Settings probes use pfs1:, never pfs0:. The latter is the persistent OPL data-home mount and
+// remounting it under live readers is both unsafe and unnecessary just to prove an APA partition
+// already exists.
+static int hddPartitionMountableAt(const char *mountPoint, const char *partition, int flags)
+{
+    int ret;
+
+    fileXioUmount(mountPoint);
+    ret = fileXioMount(mountPoint, partition, flags);
+    if (ret == 0)
+        fileXioUmount(mountPoint);
+
+    return ret == 0;
+}
+
+int HddSupport::mountSelectedOplHome(char *prefix, int prefixLen)
+{
+    const char *partition;
+    const char *selectedPrefix;
+    int selection;
+    int n;
+
+    if (prefix == NULL || prefixLen <= 0)
+        return 0;
+    prefix[0] = '\0';
+
+    selection = getOplHomeSelection();
+    if (oplHomePending < 0 && oplHomeCommitted < 0)
+        return 0;
+    if (!modulesLoaded || !loadCoreSupportModules())
+        return 0;
+
+    partition = selection == HDD_OPL_HOME_PLUS ? "hdd0:+OPL" : "hdd0:__common";
+    fileXioUmount("pfs1:");
+    if (fileXioMount("pfs1:", partition, FIO_MT_RDWR) < 0)
+        return 0;
+
+    if (selection == HDD_OPL_HOME_COMMON) {
+        if (!hddCheckOPLFolder("pfs1:")) {
+            fileXioUmount("pfs1:");
+            return 0;
+        }
+        selectedPrefix = "pfs1:OPL/";
+    } else {
+        selectedPrefix = "pfs1:";
+    }
+
+    n = snprintf(prefix, prefixLen, "%s", selectedPrefix);
+    if (n < 0 || n >= prefixLen) {
+        fileXioUmount("pfs1:");
+        prefix[0] = '\0';
+        return 0;
+    }
+
+    return 1;
+}
+
+int HddSupport::commitOplHomeSelection()
+{
+    config_set_t *config = NULL;
+    const char *path = "pfs1:OPL/conf_hdd.cfg";
+    int fd;
+    int exists;
+    int result = 0;
+
+    if (oplHomePending < 0)
+        return 1;
+
+    // An automatic +OPL home has no __common control file. The active pfs0: mount proves the
+    // staged effective choice, so commit it as a fileless no-op without probing or writing
+    // __common. This preserves the no-__common topology across ordinary Settings saves.
+    if (!modulesLoaded)
+        return 0;
+    if (!loadCoreSupportModules())
+        return 0;
+    if (oplHomePending == HDD_OPL_HOME_PLUS && oplHomeAutoPlus &&
+        !strcmp(gOPLPart, "hdd0:+OPL") && gHDDPrefix != NULL) {
+        oplHomeCommitted = oplHomePending;
+        oplHomePending = -1;
+        return 1;
+    }
+
+    // Re-prove the common owner at commit time. No raw APA operation, partition creation, or pfs0:
+    // remount is involved; this is only a bounded pfs1: read/write mount of an existing partition.
+    if (!hddPartitionMountableAt("pfs1:", "hdd0:__common", FIO_MT_RDWR))
+        return 0;
+
+    if (fileXioMount("pfs1:", "hdd0:__common", FIO_MT_RDWR) < 0)
+        return 0;
+
+    fd = open(path, O_RDONLY);
+    exists = fd >= 0;
+    if (fd >= 0)
+        close(fd);
+
+    // A missing selector already means __common/OPL/. Keep that default fileless; only an
+    // explicit +OPL selection needs to materialize conf_hdd.cfg.
+    if (!exists && oplHomePending == HDD_OPL_HOME_COMMON)
+        result = 1;
+    else
+        config = configAlloc(0, NULL, (char *)path);
+    if (config != NULL) {
+        // A present-but-unreadable file is user data, not an invitation to replace it with a new
+        // selector. A missing file is the normal common-home default and can be born only for an
+        // explicit +OPL choice.
+        if (!exists || configRead(config)) {
+            if (oplHomePending == HDD_OPL_HOME_PLUS)
+                configSetStr(config, "hdd_partition", "+OPL");
+            else
+                configRemoveKey(config, "hdd_partition");
+
+            result = configWrite(config) > 0;
+        }
+        configFree(config);
+    }
+
+    fileXioUmount("pfs1:");
+    if (result) {
+        oplHomeCommitted = oplHomePending;
+        oplHomePending = -1;
+    }
+    return result;
 }
 
 // createCommonHome: make __common/OPL/ when __common is the data partition and the folder is missing.
@@ -855,7 +1080,7 @@ static void hddMountSupportHome(int createCommonHome)
 {
     int ret;
 
-    if (!hddLoadCoreSupportModules())
+    if (!gHddSupport.loadCoreSupportModules())
         return;
 
     // The modules and the persistent pfs0: data mount have separate lifetimes. If an
@@ -865,13 +1090,13 @@ static void hddMountSupportHome(int createCommonHome)
         return;
 
     if (gOPLPart[0] == '\0')
-        hddFindOPLPartition();
+        gHddSupport.findOplPartition();
 
     if (gOPLPart[0] == '\0') {
         // HDL/VCD enumeration can still work without a persistent OPL data home. A missing or
         // stale redirect is not evidence that the APA disk is unformatted, so retry discovery
         // later without poisoning the user with a false formatting warning.
-        hddSupportErrToasted = 0;
+        gHddSupport.supportErrToasted = 0;
         return;
     }
 
@@ -882,7 +1107,7 @@ static void hddMountSupportHome(int createCommonHome)
     // creating/reformatting APA metadata. An automatic +OPL home was chosen because __common
     // was unavailable, so fail closed rather than probing it again. An explicit redirect keeps
     // the established existing-__common fallback.
-    if (ret < 0 && strcmp(gOPLPart, "hdd0:__common") != 0 && !hddOplHomeAutoPlus) {
+    if (ret < 0 && strcmp(gOPLPart, "hdd0:__common") != 0 && !gHddSupport.oplHomeAutoPlus) {
         LOG("HDD: could not mount %s (%d); trying existing __common/OPL/ fallback\n", gOPLPart, ret);
         fileXioUmount(hddPrefix);
         ret = fileXioMount(hddPrefix, "hdd0:__common", FIO_MT_RDWR);
@@ -895,12 +1120,12 @@ static void hddMountSupportHome(int createCommonHome)
         // Force the next call to rediscover. This does not unload/reload the APA/PFS modules.
         gOPLPart[0] = '\0';
         gHDDPrefix = NULL;
-        hddSupportErrToasted = 0;
+        gHddSupport.supportErrToasted = 0;
         return;
     }
 
-    hddSupportErrToasted = 0;
-    hddClearRecoveredErrors();
+    gHddSupport.supportErrToasted = 0;
+    gHddSupport.clearRecoveredErrors();
     if (!strcmp(gOPLPart, "hdd0:__common")) {
         if (createCommonHome)
             (void)hddCheckOPLFolder(hddPrefix);
@@ -936,15 +1161,15 @@ void hddReleaseSupportHome(void)
     fileXioUmount(hddPrefix);
     gHDDPrefix = NULL;
     gOPLPart[0] = '\0';
-    hddOplHomeAutoPlus = 0;
+    gHddSupport.oplHomeAutoPlus = 0;
 }
 
 void HddSource::init(item_list_t *itemList)
 {
     LOG("HDDSUPPORT Init\n");
-    hddForceUpdate = 0; // Use cache at initial startup.
+    gHddSupport.forceUpdate = 0; // Use cache at initial startup.
     (*hddInstance()).delay = gArtDelay;
-    ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&hddInitModules));
+    ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&HddSupport::initModulesEntry));
     (*hddInstance()).enabled = 1;
 }
 
@@ -955,51 +1180,39 @@ item_list_t *hddGetObject(int initOnly)
     return &(*hddInstance());
 }
 
-// ---- HDD VCD view (PS1 games on APA/PFS partitions) ---------------------------------------
+// forward declaration
+static int hddLoadGameListCache(hdl_games_list_t *cache);
+static int hddUpdateGameListCache(hdl_games_list_t *cache, hdl_games_list_t *game_list);
 
-// Once-per-session latch (POPSLoader's HAS_CHECKED parity: "HDD is checked only once since it cannot
-// be removed/replaced without damaging the console"). While set, hddUpdateGameList's VCD branch reuses
-// the built arrays so an L3 toggle rebuilds only the submenu, never re-walks the partitions. A latch
-// (not hddVcdGames != NULL) so a drive whose candidates scanned to ZERO VCDs is also remembered.
-// Each POPS/Ember partition enumerator distinguishes a successful zero-candidate walk from a failed
-// APA walk; only a complete two-phase scan may replace/latch the current combined PS1 list.
-// Cleared by hddFreeVcdGameList (covers rebuilds + hddCleanUp/hddShutdown teardown) and by
-// hddVcdInvalidateCache (the first-disc-only setting filters at scan time, so its change must rescan).
-// The generation counter keeps an invalidation from being SWALLOWED by a build already in flight on
-// the IO worker (GUI-thread dialog save during a cold scan): the build re-latches only if no
-// invalidation arrived since it started.
-static unsigned char hddVcdListBuilt = 0;
-static volatile unsigned int hddVcdCacheGen = 0;
-
-void hddVcdInvalidateCache(void)
+void HddSupport::invalidateVcdCache()
 {
-    hddVcdCacheGen++;
-    hddVcdListBuilt = 0;
+    vcdCacheGen++;
+    vcdListBuilt = 0;
 }
 
-static void hddPublishVcdGameList(base_game_info_t *games, char (*parts)[APA_IDMAX + 1], int count, int built)
+void HddSupport::publishVcdGameList(base_game_info_t *games, char (*parts)[APA_IDMAX + 1], int count, int built)
 {
     base_game_info_t *oldGames;
     char(*oldParts)[APA_IDMAX + 1];
 
     host::ui().lock();
-    oldGames = hddVcdGames;
-    oldParts = hddVcdParts;
-    hddVcdGames = games;
-    hddVcdParts = parts;
-    hddVcdGameCount = count;
-    hddVcdListBuilt = built;
+    oldGames = vcdGames;
+    oldParts = vcdParts;
+    vcdGames = games;
+    vcdParts = parts;
+    vcdGameCount = count;
+    vcdListBuilt = built;
     free(oldGames);
     free(oldParts);
     host::ui().unlock();
 }
 
-static void hddFreeVcdGameList(void)
+void HddSupport::freeVcdGameList()
 {
-    hddPublishVcdGameList(NULL, NULL, 0, 0);
+    publishVcdGameList(NULL, NULL, 0, 0);
 }
 
-static void hddPublishHdlGameList(hdl_games_list_t *replacement)
+void HddSupport::publishHdlGameList(hdl_games_list_t *replacement)
 {
     hdl_games_list_t old;
 
@@ -1007,8 +1220,8 @@ static void hddPublishHdlGameList(hdl_games_list_t *replacement)
         return;
 
     host::ui().lock();
-    old = hddGames;
-    hddGames = *replacement;
+    old = hdlGames;
+    hdlGames = *replacement;
     replacement->games = NULL;
     replacement->count = 0;
     hddFreeHDLGamelist(&old);
@@ -1023,15 +1236,14 @@ static void hddPublishHdlGameList(hdl_games_list_t *replacement)
 // partition from an ordinary ID-labelled HDDOSD/HDL one (e.g. PP.SLUS-21025.01.BATTLEFIELD_2_H),
 // so a drive full of app/game partitions no longer pays a PFS mount/probe/umount cycle per label.
 // Mounts use the dedicated pfs1: scan slot; pfs0: stays on the OPL data partition throughout.
-
-static int hddBuildVcdGameList(void)
+int HddSupport::buildVcdGameList()
 {
     hdd_pops_list_t parts;
     base_game_info_t *newGames = NULL;
     char(*newParts)[APA_IDMAX + 1] = NULL;
     int total = 0;
     int scanIncomplete = 0;
-    unsigned int genAtEntry = hddVcdCacheGen; // re-latch below only if no invalidation raced this build
+    unsigned int genAtEntry = vcdCacheGen; // re-latch below only if no invalidation raced this build
 
     // Best-effort cleanup from an interrupted prior scan. This never touches pfs0:, which remains the
     // live OPL data mount used by both PS2 and VCD config/art lookups.
@@ -1042,9 +1254,9 @@ static int hddBuildVcdGameList(void)
         // TRANSACTIONAL LIST OWNERSHIP: a failed APA table walk is not an empty VCD library. Keep the
         // last-good arrays exactly as they are and leave the cache unlatched so a later explicit
         // refresh can retry.
-        LOG("HDD VCD: APA partition enumeration failed (%d); preserving %d last-good game(s)\n", partCount, hddVcdGameCount);
-        hddVcdListBuilt = 0;
-        return hddVcdGameCount;
+        LOG("HDD VCD: APA partition enumeration failed (%d); preserving %d last-good game(s)\n", partCount, vcdGameCount);
+        vcdListBuilt = 0;
+        return vcdGameCount;
     }
     // Zero POPSTARTER candidates is authoritative only for the POPS half of this combined PS1
     // library. Do not publish an empty list yet: an Ember-only drive may still have __.EMBER or
@@ -1077,7 +1289,7 @@ static int hddBuildVcdGameList(void)
 
             base_game_info_t *g = &newGames[total];
             memset(g, 0, sizeof(base_game_info_t));
-            // The title past ".POPS." is the display name AND the launch key (hddFindVcdByName and
+            // The title past ".POPS." is the display name AND the launch key (findVcdByName and
             // the Favourites entry point both resolve by name), so it must stay unique: two region
             // variants like PP.SCUS-....POPS.Game / PP.SCPS-....POPS.Game would otherwise both be
             // "Game" and always launch the first partition. On a collision fall back to the full
@@ -1216,7 +1428,7 @@ static int hddBuildVcdGameList(void)
 
             int kept = 0;
             for (int i = 0; i < n; i++) {
-                // Names are resolved back to a partition by hddFindVcdByName, which matches on name
+                // Names are resolved back to a partition by findVcdByName, which matches on name
                 // alone. An Ember folder that collides with a VCD title (or with an Ember folder on
                 // another partition) would otherwise always launch whichever came first, so drop
                 // the duplicate rather than list a row that launches someone else's game.
@@ -1254,18 +1466,18 @@ static int hddBuildVcdGameList(void)
     fileXioUmount("pfs1:");
 
     // If a refresh could not inspect every candidate, a non-empty last-good list has more authority
-    // than a newly-built partial one. This is the VCD twin of the transactional HDL refresh above.
-    if (scanIncomplete && hddVcdGameCount > 0) {
+    // than a newly-built partial one. This is the VCD twin of the transactional HDL refresh below.
+    if (scanIncomplete && vcdGameCount > 0) {
         free(newGames);
         free(newParts);
-        hddVcdListBuilt = 0;
-        LOG("HDD VCD: incomplete refresh; preserving %d last-good game(s)\n", hddVcdGameCount);
-        return hddVcdGameCount;
+        vcdListBuilt = 0;
+        LOG("HDD VCD: incomplete refresh; preserving %d last-good game(s)\n", vcdGameCount);
+        return vcdGameCount;
     }
 
     // A first-ever incomplete scan may still expose the entries it proved readable, but it is never
     // latched as complete. A fully successful zero/nonzero scan is latched unless invalidated mid-run.
-    hddPublishVcdGameList(newGames, newParts, total, !scanIncomplete && (genAtEntry == hddVcdCacheGen));
+    publishVcdGameList(newGames, newParts, total, !scanIncomplete && (genAtEntry == vcdCacheGen));
     return total;
 }
 
@@ -1278,7 +1490,7 @@ int HddSource::needsUpdate(item_list_t *itemList)
         // The locked-to-VCD startup path also receives the normal initial deferred update, but no
         // toggle dirtied the view first. Build once when the VCD backing list does not exist yet.
         // A manual HDD/VCD refresh invalidates this latch before posting the same deferred update.
-        return !hddVcdListBuilt;
+        return !gHddSupport.vcdListBuilt;
     return 1;
 }
 
@@ -1286,83 +1498,25 @@ int HddSource::update(item_list_t *itemList)
 {
     int view = host::library().listViewActive(itemList);
     // GUI thread must never block on the 1 s ATA settle (hddLoadModules DelayThread).
-    // If the base ATA stack has never completed (hddModulesLoadCount==0), defer and
+    // If the base ATA stack has never completed (modulesLoadCount == 0), defer and
     // ensure a deduplicated IO-worker retry is queued. hddLoadModules resets the count
-    // to 0 on failure for retryability, and the one-shot hddInit queue may already be
+    // to 0 on failure for retryability, and the one-shot initModules queue may already be
     // consumed, so without this the stack would strand permanently.
-    if (hddModulesLoadCount == 0) {
-        if (!hddRetryQueued) {
-            if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&hddInitModules)) == IO_OK)
-                hddRetryQueued = 1;
+    if (gHddSupport.modulesLoadCount == 0) {
+        if (!gHddSupport.retryQueued) {
+            if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&HddSupport::initModulesEntry)) == IO_OK)
+                gHddSupport.retryQueued = 1;
         }
         return 0;
     }
 
     // Self-heal (wLaunchELF-R3Z3N parity: latch only on success, retry per use): a boot-time first
     // touch that raced drive spin-up used to leave the APA page EMPTY for the whole session -- the
-    // one-shot hddInitModules never retried, and nothing else reloads the support stack. Both calls
-    // are idempotent (hddLoadModules dedupes via ALREADYLOADED and its failed count is retryable
-    // post-#241; hddLoadSupportModules no-ops once hddSupportModulesLoaded), so tab entry / refresh
+    // one-shot initModules bring-up never retried, and nothing else reloads the support stack. Both
+    // calls are idempotent (hddLoadModules dedupes via ALREADYLOADED and its failed count is retryable
+    // post-#241; hddLoadSupportModules no-ops once supportModulesLoaded), so tab entry / refresh
     // becomes a real second attempt. Runs on the IO worker like the original init.
-    if (!hddSupportModulesLoaded || gHDDPrefix == NULL) {
-        // Only chase the support stack when the base modules are actually resident -- calling it
-        // anyway made a failed base load toast TWICE (base failure + the doomed non-Sony probe's)
-        // on the first pass (Gemini + CodeRabbit review of #249, vetted). A loaded module stack
-        // with no data mount is also retryable: Step-209 deliberately separates those lifetimes.
-        // WHETHER THE RETRY ACTUALLY RAN decides whether a failure is reportable. hddLoadModules
-        // stamps hddModulesLoadCount=1 on ENTRY -- before sysInitDev9, before the ATAD load, and
-        // before the 1 s settle, all of which run on the io worker. So the guard at the top of this
-        // function stops firing almost immediately, while the base stack is still coming up, and
-        // hddLoadModulesReady() correctly answers BUSYLOADING -> false for that whole window.
-        //
-        // Without this flag the code then fell through to the toast having attempted NOTHING, and
-        // announced it as "settled-update-retry-still-failed" -- which is why Code 222 appeared on
-        // consoles whose APA worked perfectly a moment later. A base stack that is still loading is
-        // not evidence of anything; say nothing until it is actually resident.
-        int baseReady = hddLoadModulesReady();
-        if (baseReady)
-            hddLoadSupportModules();
-        // Deferred Code 222: early boot probes never toast; a settled retry that really ran may.
-        if (hddSupportModulesLoaded) {
-            hddClearPfsDiagFailure("update-retry-loaded-support");
-            hddSupportErrToasted = 0;
-            hddClearRecoveredErrors();
-        } else if (baseReady && hddPfsDeferredFailed && !hddSupportErrToasted) {
-            // ONE FAILED ATTEMPT IS NOT EVIDENCE OF A DEAD DRIVE. Gating on baseReady stopped us
-            // reporting a retry that never ran, but it still reported the FIRST settled retry that
-            // failed -- and hardware says PFS can decline several of those and then mount fine, so
-            // the box appeared on consoles whose APA worked seconds later. The 1 s post-ATAD settle
-            // is a floor, not a guarantee: a drive that is still spinning up answers the ATA stack
-            // long before it will answer PS2FS.
-            //
-            // So require the failure to PERSIST across a few settled attempts. Each pass through
-            // here is a genuine retry (hddLoadSupportModules ran and did not latch), and the success
-            // arm above resets the count, so this only fires when PFS has really refused to come up.
-            if (++hddPfsSettledFailures >= HDD_PFS_REPORT_AFTER_FAILURES) {
-                if (hddPfsDiagReason == HDD_PFS_DIAG_REASON_HDD_CHECK_STATUS_1) {
-                    // ps2hdd itself rejected the APA table (apaGetFormat), and its status is latched
-                    // for the session. That is not a PFS problem, and "PFS support unavailable" hid
-                    // the one thing that matters: the drive is there and must not be formatted.
-                    hddLogPfsDiagState("emit-code-402", "settled-retries-exhausted");
-                    host::app().setError(_STR_HDD_APA_TABLE_UNREADABLE_ERROR, ERROR_HDD_APA_TABLE_UNREADABLE);
-                } else {
-                    hddLogPfsDiagState("emit-code-222", "settled-retries-exhausted");
-                    host::app().setErrorDetail(_STR_HDD_PFS_UNAVAILABLE_ERROR, ERROR_HDD_MODULE_PFS_FAILURE,
-                                                     hddPfsDiagReasonName(hddPfsDiagReason));
-                }
-                hddSupportErrToasted = 1;
-            } else {
-                hddLogPfsDiagState("defer-code-222", "settled-retry-failed-below-threshold");
-            }
-        }
-    } else {
-        // Successful path also clears any prior deferred failure.
-        if (hddPfsDeferredFailed) {
-            hddClearPfsDiagFailure("update-found-support-already-ready");
-            hddSupportErrToasted = 0;
-            hddClearRecoveredErrors();
-        }
-    }
+    gHddSupport.settleSupportRetry();
 
     // Game discovery and the persistent config/art PFS home are separate lifetimes. HDL games
     // live in the APA table and HDD VCDs live in existing POPS partitions; neither requires the
@@ -1373,23 +1527,23 @@ int HddSource::update(item_list_t *itemList)
     // APA-table read and must not disappear merely because the persistent PFS side is still settling.
     // Retry above, then let each read-only scanner prove what is actually available. HDL enumeration
     // fails harmlessly if hdd0: is not ready; the VCD builder likewise skips mounts it cannot open.
-    if (!hddSupportModulesLoaded)
+    if (!gHddSupport.supportModulesLoaded)
         LOG("HDDSUPPORT UpdateGameList: PFS support incomplete; attempting read-only APA enumeration anyway\n");
 
     if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
-        // Reuse the session's built list on view flips; hddBuildVcdGameList runs only when never
-        // built, invalidated (first-disc-only change), or freed by teardown (hddFreeVcdGameList).
-        if (!hddVcdListBuilt)
-            hddBuildVcdGameList();
+        // Reuse the session's built list on view flips; buildVcdGameList runs only when never
+        // built, invalidated (first-disc-only change), or freed by teardown (freeVcdGameList).
+        if (!gHddSupport.vcdListBuilt)
+            gHddSupport.buildVcdGameList();
         if (view == LIB_VIEW_PS1)
-            return hddVcdGameCount;
+            return gHddSupport.vcdGameCount;
     }
 
     hdl_games_list_t cachedGames = {0};
     hdl_games_list_t hddGamesNew = {0};
     int cacheRet, scanRet = 0;
 
-    // TRANSACTIONAL REFRESH. hddGames is the LIVE backing array used by the menu. The old path
+    // TRANSACTIONAL REFRESH. gHddSupport.hdlGames is the LIVE backing array used by the menu. The old path
     // passed it directly to hddLoadGameListCache(), whose first action is hddFreeHDLGamelist(): a
     // missing/corrupt games.bin therefore destroyed a perfectly good live list BEFORE the fallback
     // APA scan had proved it could replace it. If that scan failed, VCD -> HDL returned to a blank
@@ -1399,82 +1553,80 @@ int HddSource::update(item_list_t *itemList)
 
     // Force a live APA scan when the cache is absent/bad, a prior build requested a refresh, or the
     // cache is empty. Otherwise the initial boot may use the valid games.bin exactly as before.
-    if (cacheRet == 0 && !hddForceUpdate && cachedGames.count > 0) {
-        hddPublishHdlGameList(&cachedGames);
+    if (cacheRet == 0 && !gHddSupport.forceUpdate && cachedGames.count > 0) {
+        gHddSupport.publishHdlGameList(&cachedGames);
     } else {
         scanRet = hddGetHDLGamelist(&hddGamesNew);
         if (scanRet == 0) {
             hddUpdateGameListCache(&cachedGames, &hddGamesNew);
-            hddPublishHdlGameList(&hddGamesNew);
+            gHddSupport.publishHdlGameList(&hddGamesNew);
         } else {
             // Keep the last-good live list. On a first entry with no live list yet, a valid cache is
             // still a safer fallback than turning a transient scan failure into an empty page.
-            if (hddGames.count == 0 && cachedGames.count > 0)
-                hddPublishHdlGameList(&cachedGames);
-            LOG("HDDSUPPORT HDL refresh failed (%d); preserving %u last-good game(s)\n", scanRet, hddGames.count);
+            if (gHddSupport.hdlGames.count == 0 && cachedGames.count > 0)
+                gHddSupport.publishHdlGameList(&cachedGames);
+            LOG("HDDSUPPORT HDL refresh failed (%d); preserving %u last-good game(s)\n", scanRet, gHddSupport.hdlGames.count);
         }
     }
 
     hddFreeHDLGamelist(&cachedGames);
     hddFreeHDLGamelist(&hddGamesNew);
-    hddForceUpdate = 1; // Subsequent refresh operations will cause the HDD to be scanned.
+    gHddSupport.forceUpdate = 1; // Subsequent refresh operations will cause the HDD to be scanned.
 
-    return view == LIB_VIEW_MIXED ? (int)hddGames.count + hddVcdGameCount : (int)hddGames.count;
+    return view == LIB_VIEW_MIXED ? (int)gHddSupport.hdlGames.count + gHddSupport.vcdGameCount : (int)gHddSupport.hdlGames.count;
 }
 
 int HddSource::count(item_list_t *itemList)
 {
     int view = host::library().listViewActive(itemList);
-    return view == LIB_VIEW_MIXED ? (int)hddGames.count + hddVcdGameCount :
-           view == LIB_VIEW_PS1   ? hddVcdGameCount :
-                                    (int)hddGames.count;
+    return view == LIB_VIEW_MIXED ? (int)gHddSupport.hdlGames.count + gHddSupport.vcdGameCount :
+           view == LIB_VIEW_PS1   ? gHddSupport.vcdGameCount :
+                                    (int)gHddSupport.hdlGames.count;
 }
 
 int HddSource::rowView(item_list_t *itemList, int id)
 {
     int view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
-        return id >= 0 && id < (int)hddGames.count ? LIB_VIEW_ISO : LIB_VIEW_PS1;
+        return id >= 0 && id < (int)gHddSupport.hdlGames.count ? LIB_VIEW_ISO : LIB_VIEW_PS1;
     return view;
 }
 
 int HddSource::sourceId(item_list_t *itemList, int id)
 {
-    return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= (int)hddGames.count ? id - (int)hddGames.count : id;
+    return host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= (int)gHddSupport.hdlGames.count ? id - (int)gHddSupport.hdlGames.count : id;
 }
 
-// Split-store guard (Codex/Fable audit), mirroring mmceActiveGame. L3 stages its destination until
+// Split-store resolvers, mirroring mmceActiveGame. L3 stages its destination until
 // the old submenu is cleared, but either backing array can still be NULL/shorter when never scanned,
 // partially refreshed, or torn down. Resolve every id through these: an out-of-range id returns a
 // static empty entry so a stale read is safe empty data and launch/delete/rename early-return on the
 // sentinel. HDD needs TWO resolvers -- ISO is hdl_game_info_t, VCD is base_game_info_t.
-static base_game_info_t hddEmptyVcd = {.extension = ".VCD"};
-static hdl_game_info_t hddEmptyHdl = {0};
-static base_game_info_t *hddActiveVcd(int id)
+base_game_info_t *HddSupport::activeVcd(int id)
 {
-    if (hddVcdGames == NULL || id < 0 || id >= hddVcdGameCount)
-        return &hddEmptyVcd;
-    return &hddVcdGames[id];
+    if (vcdGames == NULL || id < 0 || id >= vcdGameCount)
+        return &emptyVcd;
+    return &vcdGames[id];
 }
-static hdl_game_info_t *hddActiveHdl(int id)
+hdl_game_info_t *HddSupport::activeHdl(int id)
 {
-    if (hddGames.games == NULL || id < 0 || id >= (int)hddGames.count)
-        return &hddEmptyHdl;
-    return &hddGames.games[id];
+    if (hdlGames.games == NULL || id < 0 || id >= (int)hdlGames.count)
+        return &emptyHdl;
+    return &hdlGames.games[id];
 }
 
 void *HddSource::game(item_list_t *itemList, int id)
 {
     int ps1 = rowView(itemList, id) == LIB_VIEW_PS1;
     id = sourceId(itemList, id);
-    return ps1 ? (void *)hddActiveVcd(id) : (void *)hddActiveHdl(id);
+    return ps1 ? (void *)gHddSupport.activeVcd(id) : (void *)gHddSupport.activeHdl(id);
 }
 
 char *HddSource::name(item_list_t *itemList, int id)
 {
     int ps1 = rowView(itemList, id) == LIB_VIEW_PS1;
     id = sourceId(itemList, id);
-    return ps1 ? hddActiveVcd(id)->name : hddActiveHdl(id)->name;
+    return ps1 ? gHddSupport.activeVcd(id)->name : gHddSupport.activeHdl(id)->name;
 }
 
 int HddSource::nameLength(item_list_t *itemList, int id)
@@ -1484,229 +1636,13 @@ int HddSource::nameLength(item_list_t *itemList, int id)
 
 char *HddSource::startup(item_list_t *itemList, int id)
 {
-    // VCD view keys per-game CFG/art off the VCD filename (game->name), not a disc id.
+    // VCD (PS1) view keys per-game CFG/art off the VCD filename (game->name), not a disc id.
     int ps1 = rowView(itemList, id) == LIB_VIEW_PS1;
     id = sourceId(itemList, id);
-    return ps1 ? hddActiveVcd(id)->name : hddActiveHdl(id)->startup;
+    return ps1 ? gHddSupport.activeVcd(id)->name : gHddSupport.activeHdl(id)->startup;
 }
 
-// Settings probes use pfs1:, never pfs0:. The latter is the persistent OPL data-home mount and
-// remounting it under live readers is both unsafe and unnecessary just to prove an APA partition
-// already exists.
-static int hddPartitionMountableAt(const char *mountPoint, const char *partition, int flags)
-{
-    int ret;
-
-    fileXioUmount(mountPoint);
-    ret = fileXioMount(mountPoint, partition, flags);
-    if (ret == 0)
-        fileXioUmount(mountPoint);
-
-    return ret == 0;
-}
-
-int hddGetLiveOplHomeSelection(void)
-{
-    if (strcmp(gOPLPart, "hdd0:+OPL") == 0)
-        return HDD_OPL_HOME_PLUS;
-    if (strcmp(gOPLPart, "hdd0:__common") == 0)
-        return HDD_OPL_HOME_COMMON;
-    return -1;
-}
-
-int hddResolveLiveOplDataPath(const char *relativePath, char *out, int outSize)
-{
-    int fd;
-    const char *rel = relativePath;
-
-    if (out == NULL || outSize <= 0 || rel == NULL)
-        return 0;
-    out[0] = '\0';
-
-    if (!hddModulesAreLoaded() && !hddLoadModulesReady())
-        return 0;
-    hddLoadSupportModules();
-    if (gHDDPrefix == NULL)
-        return 0;
-
-    while (*rel == '/' || *rel == '\\')
-        rel++;
-
-    if (snprintf(out, outSize, "%s%s", gHDDPrefix, rel) >= outSize) {
-        out[0] = '\0';
-        return 0;
-    }
-    fd = open(out, O_RDONLY);
-    if (fd >= 0) {
-        close(fd);
-        return 1;
-    }
-
-    // __common uses pfs0:OPL/ as OPL's data-home prefix, but legacy core installs may live at
-    // that same already-mounted partition's root. This is still the live pfs0: mount; no APA
-    // partition is selected, remounted, or guessed here.
-    if (strcmp(gHDDPrefix, "pfs0:") != 0) {
-        if (snprintf(out, outSize, "pfs0:/%s", rel) >= outSize) {
-            out[0] = '\0';
-            return 0;
-        }
-        fd = open(out, O_RDONLY);
-        if (fd >= 0) {
-            close(fd);
-            return 1;
-        }
-    }
-
-    out[0] = '\0';
-    return 0;
-}
-
-int hddGetOplHomeSelection(void)
-{
-    if (hddOplHomePending >= 0)
-        return hddOplHomePending;
-    if (hddOplHomeCommitted >= 0)
-        return hddOplHomeCommitted;
-
-    int live = hddGetLiveOplHomeSelection();
-    return live >= 0 ? live : HDD_OPL_HOME_COMMON;
-}
-
-int hddOplHomeSelectionPending(void)
-{
-    return hddOplHomePending >= 0;
-}
-
-void hddDiscardOplHomeSelection(void)
-{
-    hddOplHomePending = -1;
-}
-
-int hddOplHomeSelectionNeedsTargetSave(void)
-{
-    int selection = hddGetOplHomeSelection();
-
-    if (hddOplHomePending < 0 && hddOplHomeCommitted < 0)
-        return 0;
-
-    return selection == HDD_OPL_HOME_PLUS ? strcmp(gOPLPart, "hdd0:+OPL") != 0 : strcmp(gOPLPart, "hdd0:__common") != 0;
-}
-
-int hddMountSelectedOplHome(char *prefix, int prefixLen)
-{
-    const char *partition;
-    const char *selectedPrefix;
-    int selection;
-    int n;
-
-    if (prefix == NULL || prefixLen <= 0)
-        return 0;
-    prefix[0] = '\0';
-
-    selection = hddGetOplHomeSelection();
-    if (hddOplHomePending < 0 && hddOplHomeCommitted < 0)
-        return 0;
-    if (!hddModulesAreLoaded() || !hddLoadCoreSupportModules())
-        return 0;
-
-    partition = selection == HDD_OPL_HOME_PLUS ? "hdd0:+OPL" : "hdd0:__common";
-    fileXioUmount("pfs1:");
-    if (fileXioMount("pfs1:", partition, FIO_MT_RDWR) < 0)
-        return 0;
-
-    if (selection == HDD_OPL_HOME_COMMON) {
-        if (!hddCheckOPLFolder("pfs1:")) {
-            fileXioUmount("pfs1:");
-            return 0;
-        }
-        selectedPrefix = "pfs1:OPL/";
-    } else {
-        selectedPrefix = "pfs1:";
-    }
-
-    n = snprintf(prefix, prefixLen, "%s", selectedPrefix);
-    if (n < 0 || n >= prefixLen) {
-        fileXioUmount("pfs1:");
-        prefix[0] = '\0';
-        return 0;
-    }
-
-    return 1;
-}
-
-void hddUnmountSelectedOplHome(void)
-{
-    fileXioUmount("pfs1:");
-}
-
-int hddCommitOplHomeSelection(void)
-{
-    config_set_t *config = NULL;
-    const char *path = "pfs1:OPL/conf_hdd.cfg";
-    int fd;
-    int exists;
-    int result = 0;
-
-    if (hddOplHomePending < 0)
-        return 1;
-
-    // An automatic +OPL home has no __common control file. The active pfs0: mount proves the
-    // staged effective choice, so commit it as a fileless no-op without probing or writing
-    // __common. This preserves the no-__common topology across ordinary Settings saves.
-    if (!hddModulesAreLoaded())
-        return 0;
-    if (!hddLoadCoreSupportModules())
-        return 0;
-    if (hddOplHomePending == HDD_OPL_HOME_PLUS && hddOplHomeAutoPlus &&
-        !strcmp(gOPLPart, "hdd0:+OPL") && gHDDPrefix != NULL) {
-        hddOplHomeCommitted = hddOplHomePending;
-        hddOplHomePending = -1;
-        return 1;
-    }
-
-    // Re-prove the common owner at commit time. No raw APA operation, partition creation, or pfs0:
-    // remount is involved; this is only a bounded pfs1: read/write mount of an existing partition.
-    if (!hddPartitionMountableAt("pfs1:", "hdd0:__common", FIO_MT_RDWR))
-        return 0;
-
-    if (fileXioMount("pfs1:", "hdd0:__common", FIO_MT_RDWR) < 0)
-        return 0;
-
-    fd = open(path, O_RDONLY);
-    exists = fd >= 0;
-    if (fd >= 0)
-        close(fd);
-
-    // A missing selector already means __common/OPL/. Keep that default fileless; only an
-    // explicit +OPL selection needs to materialize conf_hdd.cfg.
-    if (!exists && hddOplHomePending == HDD_OPL_HOME_COMMON)
-        result = 1;
-    else
-        config = configAlloc(0, NULL, (char *)path);
-    if (config != NULL) {
-        // A present-but-unreadable file is user data, not an invitation to replace it with a new
-        // selector. A missing file is the normal common-home default and can be born only for an
-        // explicit +OPL choice.
-        if (!exists || configRead(config)) {
-            if (hddOplHomePending == HDD_OPL_HOME_PLUS)
-                configSetStr(config, "hdd_partition", "+OPL");
-            else
-                configRemoveKey(config, "hdd_partition");
-
-            result = configWrite(config) > 0;
-        }
-        configFree(config);
-    }
-
-    fileXioUmount("pfs1:");
-    if (result) {
-        hddOplHomeCommitted = hddOplHomePending;
-        hddOplHomePending = -1;
-    }
-    return result;
-}
-
-static void hddRenameVcd(int id, const char *newName)
+void HddSupport::renameVcd(int id, const char *newName)
 {
     char oldName[VCD_NAME_MAX];
     char part[APA_IDMAX + 1];
@@ -1717,10 +1653,10 @@ static void hddRenameVcd(int id, const char *newName)
     // The list builder owns pfs1: and the backing arrays on the IO worker. Block it before copying
     // the selected storage identity and before temporarily mounting a pooled POPS partition RW.
     ioBlockOps(1);
-    if (hddVcdGames != NULL && hddVcdParts != NULL && id >= 0 && id < hddVcdGameCount) {
-        snprintf(oldName, sizeof(oldName), "%s", hddVcdGames[id].name);
-        snprintf(part, sizeof(part), "%s", hddVcdParts[id]);
-        isEmber = cueIsCueEntry(&hddVcdGames[id]);
+    if (vcdGames != NULL && vcdParts != NULL && id >= 0 && id < vcdGameCount) {
+        snprintf(oldName, sizeof(oldName), "%s", vcdGames[id].name);
+        snprintf(part, sizeof(part), "%s", vcdParts[id]);
+        isEmber = cueIsCueEntry(&vcdGames[id]);
 
         if (isEmber) {
             // An Ember title IS its folder, on the partition the scan recorded. Mount that partition
@@ -1755,7 +1691,7 @@ static void hddRenameVcd(int id, const char *newName)
 
     if (renamed) {
         vcdInvalidateGameIds();
-        hddVcdInvalidateCache();
+        invalidateVcdCache();
     }
 }
 
@@ -1764,14 +1700,13 @@ void HddSource::rename(item_list_t *itemList, int id, char *newName)
     // PS1 titles only. An HDL game's name lives in its partition's HDL header, outside any PFS
     // filesystem, and the loader never writes there (the game menu offers no Rename on this page).
     if (rowView(itemList, id) == LIB_VIEW_PS1)
-        hddRenameVcd(sourceId(itemList, id), newName);
+        gHddSupport.renameVcd(sourceId(itemList, id), newName);
 }
 
-// Index of the VCD whose basename matches vcdName in the current hddVcdGames list, or -1.
-static int hddFindVcdByName(const char *vcdName)
+int HddSupport::findVcdByName(const char *vcdName)
 {
-    for (int i = 0; i < hddVcdGameCount; i++) {
-        if (strcmp(hddVcdGames[i].name, vcdName) == 0)
+    for (int i = 0; i < vcdGameCount; i++) {
+        if (strcmp(vcdGames[i].name, vcdName) == 0)
             return i;
     }
     return -1;
@@ -1828,7 +1763,7 @@ static void hddInstallPopstarterMcFromCommon(void)
     // The APA driver will not open a partition that is already open (getFileSlot -> -EBUSY), so when
     // the live data home IS __common -- the default -- a pfs1: mount of it always fails. Read the
     // payload through the pfs0: mount that already holds it; nothing is remounted either way.
-    if (gHDDPrefix != NULL && hddGetLiveOplHomeSelection() == HDD_OPL_HOME_COMMON) {
+    if (gHDDPrefix != NULL && gHddSupport.getLiveOplHomeSelection() == HDD_OPL_HOME_COMMON) {
         (void)vcdInstallPopstarterMc("pfs0:/");
         return;
     }
@@ -1992,9 +1927,9 @@ static void hddDoLaunchVcd(item_list_t *itemList, const char *name, const char *
 }
 
 // Launch an HDD PS1/.VCD entry BY NAME -- the Favourites tab's view-independent entry point. The
-// per-game __.POPS* partition lives in hddVcdParts, which is only populated while the HDD page is in
+// per-game __.POPS* partition lives in gHddSupport.vcdParts, which is only populated while the HDD page is in
 // its VCD view; from Favourites it may be empty/stale, so (re)scan via the SAME safe partition walk the
-// VCD view uses (hddBuildVcdGameList mounts each __.POPS on the dedicated pfs1: scan slot) to resolve
+// VCD view uses (buildVcdGameList mounts each __.POPS on the dedicated pfs1: scan slot) to resolve
 // name -> partition, then hand off exactly as the in-view launch does.
 void HddSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set_t *configSet)
 {
@@ -2008,18 +1943,18 @@ void HddSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set
     // cancellation is needed because the live pfs0: mount is not disturbed. Copy the result while the
     // worker remains blocked so a later refresh cannot invalidate the list storage passed to launch.
     ioBlockOps(1);
-    int idx = hddFindVcdByName(vcdName);
+    int idx = gHddSupport.findVcdByName(vcdName);
     if (idx < 0) {
-        // Cold path: the per-game __.POPS partition is unknown (hddVcdGames is only built while the HDD
+        // Cold path: the per-game __.POPS partition is unknown (vcdGames is only built while the HDD
         // page is in VCD view), so rebuild it through the dedicated pfs1: scan slot.
-        hddBuildVcdGameList();
-        idx = hddFindVcdByName(vcdName);
+        gHddSupport.buildVcdGameList();
+        idx = gHddSupport.findVcdByName(vcdName);
     }
     int isEmber = 0;
     if (idx >= 0) {
-        snprintf(resolvedName, sizeof(resolvedName), "%s", hddVcdGames[idx].name);
-        snprintf(resolvedPart, sizeof(resolvedPart), "%s", hddVcdParts[idx]);
-        isEmber = cueIsCueEntry(&hddVcdGames[idx]); // kind read while the worker is still blocked
+        snprintf(resolvedName, sizeof(resolvedName), "%s", gHddSupport.vcdGames[idx].name);
+        snprintf(resolvedPart, sizeof(resolvedPart), "%s", gHddSupport.vcdParts[idx]);
+        isEmber = cueIsCueEntry(&gHddSupport.vcdGames[idx]); // kind read while the worker is still blocked
     }
     ioBlockOps(0); // resolvedName/resolvedPart are now independent of the mutable backing arrays
     if (idx < 0) {
@@ -2110,7 +2045,7 @@ static int hddTryNeutrinoLaunch(hdl_game_info_t *game, config_set_t *configSet)
     // MMCE cross-device game-id (#261); HDD emits no -mc args (no APA/pfs backing store, above), mask 0.
     mmceSendGameID(game->startup, neutrinoPath, 0);
 
-    // game->startup lives in hddGames / gAutoLaunchGame, freed below (deinitEx's itemCleanUp or the
+    // game->startup lives in gHddSupport.hdlGames / gAutoLaunchGame, freed below (deinitEx's itemCleanUp or the
     // explicit free). Copy it before the teardown so sysLaunchNeutrino's -elf build is not a UAF read.
     char apaStartup[sizeof(game->startup)];
     snprintf(apaStartup, sizeof(apaStartup), "%s", game->startup);
@@ -2119,7 +2054,7 @@ static int hddTryNeutrinoLaunch(hdl_game_info_t *game, config_set_t *configSet)
         // Keep-IOP handoff: keep the HDD stack up (NHDDL hands off with its full ATA stack
         // resident) AND the neutrino.elf device (-cwd config/module reads).
         int neutrinoDevMode = host::app().pathToMode(neutrinoPath);
-        host::app().deinitEx(sbNeutrinoDeinitException(neutrinoPath), HDD_MODE, neutrinoDevMode); // CAREFUL: itemCleanUp frees hddGames/game
+        host::app().deinitEx(sbNeutrinoDeinitException(neutrinoPath), HDD_MODE, neutrinoDevMode); // CAREFUL: itemCleanUp frees gHddSupport.hdlGames/game
     } else {
         host::app().miniDeinit(configSet);
         free(gAutoLaunchGame);
@@ -2164,13 +2099,13 @@ void HddSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         id = sourceId(itemList, id);
 
         host::ui().lock();
-        base_game_info_t *vcd = hddActiveVcd(id);
-        if (vcd == &hddEmptyVcd) {
+        base_game_info_t *vcd = gHddSupport.activeVcd(id);
+        if (vcd == &gHddSupport.emptyVcd) {
             host::ui().unlock();
             return; // stale/invalid id -> nothing to launch
         }
         snprintf(vcdName, sizeof(vcdName), "%s", vcd->name);
-        snprintf(vcdPart, sizeof(vcdPart), "%s", hddVcdParts[id]);
+        snprintf(vcdPart, sizeof(vcdPart), "%s", gHddSupport.vcdParts[id]);
         int isEmber = cueIsCueEntry(vcd); // read the row's kind while the list is still locked
         host::ui().unlock();
 
@@ -2182,8 +2117,8 @@ void HddSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     }
 
     if (gAutoLaunchGame == NULL) {
-        game = hddActiveHdl(id);
-        if (game == &hddEmptyHdl)
+        game = gHddSupport.activeHdl(id);
+        if (game == &gHddSupport.emptyHdl)
             return; // stale/invalid id -> nothing to launch
     } else
         game = gAutoLaunchGame;
@@ -2296,7 +2231,7 @@ void HddSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // gHDDSpindown [0..20] -> spindown [0..240] -> seconds [0..1200]
     hddSetIdleTimeout(gHDDSpindown * 12);
 
-    if (hddHDProKitDetected) {
+    if (gHddSupport.hdProKitDetected) {
         size_irx = size_hdd_hdpro_cdvdman_irx;
         irx = &hdd_hdpro_cdvdman_irx;
     } else {
@@ -2362,7 +2297,7 @@ void HddSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     mmceSendGameID(game->startup, NULL, 0);
 
     if (gAutoLaunchGame == NULL) {
-        host::app().deinit(NO_EXCEPTION, HDD_MODE); // CAREFUL: deinit will call hddCleanUp, so hddGames/game will be freed
+        host::app().deinit(NO_EXCEPTION, HDD_MODE); // CAREFUL: deinit will call hddCleanUp, so gHddSupport.hdlGames/game will be freed
     } else {
         host::app().miniDeinit(configSet);
 
@@ -2388,11 +2323,11 @@ config_set_t *HddSource::config(item_list_t *itemList, int id)
     char vcdId[VCD_ID_MAX];
     config_set_t *config;
 
-    // VCD (PS1) view: `id` indexes hddVcdGames, NOT hddGames. The list itself is discoverable from
+    // VCD (PS1) view: `id` indexes gHddSupport.vcdGames, NOT gHddSupport.hdlGames. The list itself is discoverable from
     // APA even when the persistent config/art PFS home is temporarily unavailable. In that state
     // return a runtime-only config instead of dereferencing a NULL prefix or hiding the whole list.
     if (rowView(itemList, id) == LIB_VIEW_PS1) {
-        base_game_info_t *g = hddActiveVcd(sourceId(itemList, id));
+        base_game_info_t *g = gHddSupport.activeVcd(sourceId(itemList, id));
         if (gHDDPrefix != NULL)
             return sbPopulateConfig(g, gHDDPrefix, "/");
 
@@ -2408,7 +2343,7 @@ config_set_t *HddSource::config(item_list_t *itemList, int id)
         return config;
     }
 
-    hdl_game_info_t *game = hddActiveHdl(sourceId(itemList, id));
+    hdl_game_info_t *game = gHddSupport.activeHdl(sourceId(itemList, id));
 
     if (gHDDPrefix != NULL) {
         snprintf(path, sizeof(path), "%sCFG/%s.cfg", gHDDPrefix, game->startup);
@@ -2474,15 +2409,15 @@ void HddSource::cleanUp(item_list_t *itemList, int exception)
     if (gArtAbandoned) {
         LOG("HDDSUPPORT CleanUp: art worker abandoned mid-read -- leaving pfs mounted\n");
         if ((*hddInstance()).enabled) {
-            hddFreeHDLGamelist(&hddGames);
-            hddFreeVcdGameList();
+            hddFreeHDLGamelist(&gHddSupport.hdlGames);
+            gHddSupport.freeVcdGameList();
         }
         return;
     }
 
     if ((*hddInstance()).enabled) {
-        hddFreeHDLGamelist(&hddGames);
-        hddFreeVcdGameList();
+        hddFreeHDLGamelist(&gHddSupport.hdlGames);
+        gHddSupport.freeVcdGameList();
 
         // pfs1: is a scratch slot used by HDD scans/settings and historically gets torn down even
         // when pfs0: is deliberately spared. Do not broaden UNMOUNT_EXCEPTION to pfs1: -- Apps and
@@ -2494,8 +2429,13 @@ void HddSource::cleanUp(item_list_t *itemList, int exception)
             fileXioUmount(hddPrefix);
     }
 
+    gHddSupport.cleanUpSupportModules(exception);
+}
+
+void HddSupport::cleanUpSupportModules(int exception)
+{
     // UI may have loaded modules outside of HDD mode, so deinitialize regardless of the enabled status.
-    if (hddSupportModulesLoaded) {
+    if (supportModulesLoaded) {
         // PDIOC_CLOSEALL closes EVERY pfs descriptor in the IOP. Ember/wLaunchELF keep the broader
         // IOP state and therefore use KEEPIOP_EXCEPTION; an external Neutrino/POPSTARTER ELF hosted
         // on PFS only needs those descriptors long enough for sysLoadELFKeepIOP to open the child,
@@ -2507,7 +2447,7 @@ void HddSource::cleanUp(item_list_t *itemList, int exception)
         // this drive may be a power cut. Harmless to a keep-IOP child, which reads through the mount.
         hddFlushCache();
 
-        hddSupportModulesLoaded = 0;
+        supportModulesLoaded = 0;
         gHDDPrefix = NULL; // pfs0: is no longer a valid persistent data-home mount marker
     }
 }
@@ -2523,14 +2463,20 @@ void HddSource::shutdown(item_list_t *itemList)
     LOG("HDDSUPPORT Shutdown\n");
 
     if ((*hddInstance()).enabled) {
-        hddFreeHDLGamelist(&hddGames);
-        hddFreeVcdGameList();
+        hddFreeHDLGamelist(&gHddSupport.hdlGames);
+        gHddSupport.freeVcdGameList();
         fileXioUmount("pfs1:");
         fileXioUmount(hddPrefix);
     }
 
+    gHddSupport.shutdownSupportModules();
+    gHddSupport.shutdownBaseModules();
+}
+
+void HddSupport::shutdownSupportModules()
+{
     // UI may have loaded modules outside of HDD mode, so deinitialize regardless of the enabled status.
-    if (hddSupportModulesLoaded) {
+    if (supportModulesLoaded) {
         /* Close all files */
         fileXioDevctl("pfs:", PDIOC_CLOSEALL, NULL, 0, NULL, 0);
 
@@ -2541,13 +2487,16 @@ void HddSource::shutdown(item_list_t *itemList)
         if (gDeinitTerminal)
             hddFlushCache();
 
-        hddSupportModulesLoaded = 0;
+        supportModulesLoaded = 0;
         gHDDPrefix = NULL; // pfs0: is no longer a valid persistent data-home mount marker
     }
+}
 
-    if (hddModulesLoadCount > 0) {
-        hddModulesLoadCount -= 1;
-        if (hddModulesLoadCount == 0) {
+void HddSupport::shutdownBaseModules()
+{
+    if (modulesLoadCount > 0) {
+        modulesLoadCount -= 1;
+        if (modulesLoadCount == 0) {
             // DEV9 will remain active if ETH is in use, so put the HDD in IDLE state.
             // The HDD should still enter standby state after 21 minutes & 15 seconds, as per the ATAD defaults.
             hddSetIdleImmediate();
@@ -2697,6 +2646,74 @@ void HddSource::launchCue(item_list_t *itemList, const char *vcdName, config_set
     launchVcd(itemList, vcdName, configSet);
 }
 
+// ---- exported free entry points (declared in include/hddsupport.h) ---------------------------
+// Other translation units (autolaunch, settingsio, the art loaders, the Settings page) keep calling
+// these; each forwards to the single gHddSupport instance.
+
+int hddLoadModules(void)
+{
+    return gHddSupport.loadModules();
+}
+
+int hddDiagLoadModulesReady(void)
+{
+    return gHddSupport.diagLoadModulesReady();
+}
+
+int hddModulesAreLoaded(void)
+{
+    return gHddSupport.modulesLoaded != 0;
+}
+
+void hddVcdInvalidateCache(void)
+{
+    gHddSupport.invalidateVcdCache();
+}
+
+int hddGetLiveOplHomeSelection(void)
+{
+    return gHddSupport.getLiveOplHomeSelection();
+}
+
+int hddGetOplHomeSelection(void)
+{
+    return gHddSupport.getOplHomeSelection();
+}
+
+int hddResolveLiveOplDataPath(const char *relativePath, char *out, int outSize)
+{
+    return gHddSupport.resolveLiveOplDataPath(relativePath, out, outSize);
+}
+
+int hddOplHomeSelectionPending(void)
+{
+    return gHddSupport.oplHomePending >= 0;
+}
+
+void hddDiscardOplHomeSelection(void)
+{
+    gHddSupport.oplHomePending = -1;
+}
+
+int hddOplHomeSelectionNeedsTargetSave(void)
+{
+    return gHddSupport.oplHomeSelectionNeedsTargetSave();
+}
+
+int hddMountSelectedOplHome(char *prefix, int prefixLen)
+{
+    return gHddSupport.mountSelectedOplHome(prefix, prefixLen);
+}
+
+void hddUnmountSelectedOplHome(void)
+{
+    fileXioUmount("pfs1:");
+}
+
+int hddCommitOplHomeSelection(void)
+{
+    return gHddSupport.commitOplHomeSelection();
+}
 
 // Free-function entry points for callers outside the source (autolaunch, the art loaders).
 void hddLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
