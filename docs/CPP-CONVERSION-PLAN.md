@@ -416,7 +416,7 @@ counters (queued, active, current request, nav-held flag) are `class ArtQueue`; 
   `hasCheckVmc()`, `hasLaunchVcd()`, `hasArtArchivePath()`, `hasLaunchCue()`, `hasRowView()`, `hasSourceId()` instead of NULL-testing a pointer.
   The thunks and `install()` were deleted. Packed ELF 1,643,808 B.
 - Done later: the `BdmLauncher`/`NeutrinoLauncher` split (include/bdmlauncher.h, include/neutrinolauncher.h;
-  section 21). Still not done: a `SourceRegistry` replacing `oplGetModule`/`oplGetAppImageByMode`, and turning
+  section 21) and the `SourceRegistry` (include/sourceregistry.h; section 22). Still not done: turning
   `item_list_t` into a real base class (it stays a C-compatible struct because `opl_io_module_t` and the
   proxies copy it by value). Emulator check wanted again, since every list/launch/rename/delete call now
   dispatches virtually.
@@ -451,7 +451,7 @@ before the conversion, so do that first and keep the suite green at each step. S
 
 ## 19. Next
 2. Remaining phase 6 leaves: `IoQueue`, `TextureCache/Font`, `Renderer`, `Theme`.
-3. Phase 5 leftovers: `SourceRegistry` replacing `oplGetModule`/`oplGetAppImageByMode` (the launcher split is done, section 21); then phase 6 leftovers (Dialog, MenuItem, theme element table).
+3. Phase 5 leftovers are done (launcher split section 21, `SourceRegistry` section 22); next: phase 6 leftovers (Dialog, MenuItem, theme element table).
 4. Open: vmc_groups duplicate-title decision; other flavours (RA, debug, DUALSENSE) and Makefile removal/CI cutover; the remaining
    analyzer upward edges listed in section 13.
 
@@ -498,3 +498,14 @@ Packed ELF 1,644,672 -> 1,645,936 B (+1,264 B, +0.08%). Verified: clean `ps2buil
 suites), `tools/warning_gate.py build.log --check` (0 regressions), `tools/analyze_coupling.py --check`, `tools/syntax_sweep.py`
 (only the old EESIO `SIOCookie.h` failure), PCSX2 smoke test (SCPH-79001: clean ~40 s boot/run of riptopl.elf, no EE/IOP
 exceptions; only the usual MMCE SIO2-probe noise).
+
+## 22. SourceRegistry (done)
+`oplGetModule`/`oplGetAppImageByMode` no longer sit on a file-scope table: `class SourceRegistry`
+(include/sourceregistry.h) owns `opl_io_module_t modules_[MODE_COUNT]` (constant-initialized; one
+`gSourceRegistry` in opl.cpp) and implements the mode-keyed art lookup. Both public names stay free
+forwarders (`oplGetAppImageByMode` keeps living in appscan.cpp, forwarding to
+`SourceRegistry::appImageByMode`). opl.cpp keeps the NAME `list_support` as a constant-initialized
+pointer at the table because test_io_queue_trims.py extracts `menuDeferredUpdate()` and compiles it
+against a harness declaring its own file-scope `list_support[]` -- the extracted body must keep
+saying `list_support[i]`. Packed ELF 1,646,000 -> 1,645,744 B (-256 B). Verified: clean build, full
+test suite (incl. the two registry-pinning scrapers), warning gate, coupling, flavour sweep.
