@@ -54,7 +54,7 @@ class HddSource : public GameSource
 {
 public:
     HddSource()
-        : GameSource(HDD_MODE, 0, MODE_FLAG_COMPAT_DMA, MENU_MIN_INACTIVE_FRAMES, HDD_MODE_UPDATE_DELAY, GameSource::OMIT_DELETE | GameSource::CAP_LAUNCH_VCD | GameSource::CAP_ART_ARCHIVE_PATH | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+        : GameSource(HDD_MODE, 0, MODE_FLAG_COMPAT_DMA, MENU_MIN_INACTIVE_FRAMES, HDD_MODE_UPDATE_DELAY, GameSource::OMIT_DELETE | GameSource::CAP_LAUNCH_VCD | GameSource::CAP_ART_ARCHIVE_PATH | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID | GameSource::CAP_SAVE_CUE_SETTINGS)
     {
     }
 
@@ -64,6 +64,7 @@ public:
     int count(item_list_t *itemList) override;
     int rowView(item_list_t *itemList, int id) override;
     int sourceId(item_list_t *itemList, int id) override;
+    int saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet) override;
     void *game(item_list_t *itemList, int id) override;
     char *name(item_list_t *itemList, int id) override;
     int nameLength(item_list_t *itemList, int id) override;
@@ -2724,4 +2725,33 @@ void hddLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
 int hddGetArtArchivePath(item_list_t *itemList, char *out, int outSize)
 {
     return hddInstance()->artArchivePath(itemList, out, outSize);
+}
+
+int HddSource::saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet)
+{
+    char mountSrc[APA_IDMAX + 6];
+    int idx, result = 0;
+    (void)itemList;
+    (void)id;
+
+    if (name == NULL || !cueNameLaunchable(name))
+        return 0;
+
+    // The scan and this write share pfs1:. Leave the live pfs0: data-home mount alone.
+    ioBlockOps(1);
+    idx = gHddSupport.findVcdByName(name);
+    if (idx < 0) {
+        gHddSupport.buildVcdGameList();
+        idx = gHddSupport.findVcdByName(name);
+    }
+    if (idx >= 0 && cueIsCueEntry(&gHddSupport.vcdGames[idx])) {
+        snprintf(mountSrc, sizeof(mountSrc), "hdd0:%s", gHddSupport.vcdParts[idx]);
+        fileXioUmount("pfs1:");
+        if (fileXioMount("pfs1:", mountSrc, FIO_MT_RDWR | HDD_PFS_MT_WRITETHROUGH) == 0) {
+            result = cueSaveGameSettings("pfs1:/", name, configSet);
+            fileXioUmount("pfs1:");
+        }
+    }
+    ioBlockOps(0);
+    return result;
 }

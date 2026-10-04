@@ -143,7 +143,7 @@ class EthSource : public GameSource
 {
 public:
     EthSource()
-        : GameSource(ETH_MODE, 1, 0, MENU_MIN_INACTIVE_FRAMES, ETH_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_VCD | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+        : GameSource(ETH_MODE, 1, 0, MENU_MIN_INACTIVE_FRAMES, ETH_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_VCD | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID | GameSource::CAP_SAVE_CUE_SETTINGS)
     {
     }
 
@@ -152,6 +152,7 @@ public:
     int update(item_list_t *itemList) override;
     int rowView(item_list_t *itemList, int id) override;
     int sourceId(item_list_t *itemList, int id) override;
+    int saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet) override;
     int count(item_list_t *itemList) override;
     void *game(item_list_t *itemList, int id) override;
     char *name(item_list_t *itemList, int id) override;
@@ -1084,4 +1085,11 @@ int ethGetNetConfig(u8 *ip_address, u8 *netmask, u8 *gateway)
 int ethGetDHCPStatus(void)
 {
     return netGetDHCPStatus();
+}
+
+int EthSource::saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet)
+{
+    (void)itemList;
+    (void)id;
+    return gPCShareName[0] && cueSaveGameSettings(gEthSupport.prefix(), name, configSet);
 }

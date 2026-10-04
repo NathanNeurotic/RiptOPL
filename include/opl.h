@@ -21,7 +21,14 @@
 #include <libcdvd.h>
 #include <libpad.h>
 #include <libmc.h>
+// NetMan is a C library; older SDK headers do not supply linkage guards.
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <netman.h>
+#ifdef __cplusplus
+}
+#endif
 #include <ps2ips.h>
 #include <debug.h>
 #include <gsKit.h>

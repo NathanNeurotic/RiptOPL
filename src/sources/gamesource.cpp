@@ -27,3 +27,4 @@ int GameSource::artArchivePath(item_list_t *, char *, int) { return 0; }
 void GameSource::launchCue(item_list_t *, const char *, config_set_t *) {}
 int GameSource::rowView(item_list_t *, int) { return 0; }
 int GameSource::sourceId(item_list_t *, int id) { return id; }
+int GameSource::saveCueSettings(item_list_t *, int, const char *, config_set_t *) { return 0; }

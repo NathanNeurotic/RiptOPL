@@ -75,7 +75,7 @@ def fetch():
 
 # ------------------------------------------------------------------ lang
 def lang():
-    lc = ["python3", "tools/lang_compiler.py"]
+    lc = [sys.executable, "tools/lang_compiler.py"]
     base = "lng/tmpl/_base.yml"
     os.makedirs("lng", exist_ok=True)
     english_yml = "lng_src/English.yml"
@@ -117,7 +117,7 @@ def embed():
 # ------------------------------------------------------------------ version
 def opl_version():
     dirty = ""
-    if subprocess.run(["git", "diff", "--quiet"]).returncode == 1 or not os.path.isdir(".git"):
+    if subprocess.run(["git", "diff", "--quiet"]).returncode == 1 or not os.path.exists(".git"):
         dirty = "-dirty"
     tag = out("git", "describe", "--exact-match", "--tags", "--match", "v*")
     local = os.environ.get("LOCALVERSION", "")

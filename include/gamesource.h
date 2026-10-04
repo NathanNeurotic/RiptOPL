@@ -25,6 +25,7 @@ public:
         OMIT_GAME = 1u << 6,
         OMIT_CHECK_VMC = 1u << 7,
         OMIT_DELETE = 1u << 8, // HDD cannot delete games from the menu
+        CAP_SAVE_CUE_SETTINGS = 1u << 9,
     };
 
     GameSource(short int mode, char appsPriority, unsigned char flags, int delay, int updateDelay, unsigned caps);
@@ -56,6 +57,7 @@ public:
     virtual void launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet);
     virtual int rowView(item_list_t *itemList, int id);
     virtual int sourceId(item_list_t *itemList, int id);
+    virtual int saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet);
 
     bool hasPrefix() const { return !(caps_ & OMIT_PREFIX); }
     bool hasGame() const { return !(caps_ & OMIT_GAME); }
@@ -65,6 +67,7 @@ public:
     bool hasArtArchivePath() const { return (caps_ & CAP_ART_ARCHIVE_PATH) != 0; }
     bool hasLaunchCue() const { return (caps_ & CAP_LAUNCH_CUE) != 0; }
     bool hasRowView() const { return (caps_ & CAP_ROW_VIEW) != 0; }
+    bool hasSaveCueSettings() const { return (caps_ & CAP_SAVE_CUE_SETTINGS) != 0; }
     bool hasSourceId() const { return (caps_ & CAP_SOURCE_ID) != 0; }
 
 protected:

@@ -829,7 +829,7 @@ class FavSource : public GameSource
 {
 public:
     FavSource()
-        : GameSource(FAV_MODE, -1, 0, MENU_MIN_INACTIVE_FRAMES, FAV_MODE_UPDATE_DELAY, GameSource::OMIT_PREFIX | GameSource::OMIT_GAME | GameSource::CAP_ROW_VIEW)
+        : GameSource(FAV_MODE, -1, 0, MENU_MIN_INACTIVE_FRAMES, FAV_MODE_UPDATE_DELAY, GameSource::OMIT_PREFIX | GameSource::OMIT_GAME | GameSource::CAP_ROW_VIEW | GameSource::CAP_SAVE_CUE_SETTINGS)
     {
     }
 
@@ -840,6 +840,7 @@ public:
     int update(item_list_t *itemList) override;
     int count(item_list_t *itemList) override;
     int rowView(item_list_t *itemList, int id) override;
+    int saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet) override;
     char *name(item_list_t *itemList, int id) override;
     int nameLength(item_list_t *itemList, int id) override;
     char *startup(item_list_t *itemList, int id) override;
@@ -1164,4 +1165,16 @@ item_list_t *favGetObject(int initOnly)
     if (initOnly && !(*favInstance()).enabled)
         return NULL;
     return &(*favInstance());
+}
+
+int FavSource::saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet)
+{
+    item_list_t ownerView;
+    (void)itemList;
+    const fav_rec_t *entry = gFavSupport.entry(id);
+    if (entry == NULL || name == NULL || entry->kind != FAV_KIND_CUE || strcmp(entry->text, name) != 0)
+        return 0;
+    item_list_t *owner = gFavSupport.ownerView(id, &ownerView);
+    return owner != NULL && gsOf(owner)->hasSaveCueSettings() &&
+           gsOf(owner)->saveCueSettings(owner, entry->id, name, configSet);
 }

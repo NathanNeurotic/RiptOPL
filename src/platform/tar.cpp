@@ -10,7 +10,7 @@
 // toggle is off the engine is never called, and even when on a device with no ART/art.tar is marked
 // inactive and costs nothing.
 
-#include <ps2sdkapi.h>
+#include "include/ps2sdkapi_compat.h"
 #include <stdio.h>
 #include <malloc.h>
 #include <fcntl.h>

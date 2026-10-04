@@ -611,6 +611,27 @@ int menuSaveConfig()
     return menuSaveResult;
 }
 
+int menuSaveEmberGameSettings(config_set_t *configSet)
+{
+    item_list_t *support;
+    int id;
+    char *name;
+
+    if (selected_item == NULL || selected_item->item == NULL ||
+        selected_item->item->current == NULL || configSet == NULL)
+        return 0;
+    support = static_cast<item_list_t *>(selected_item->item->userdata);
+    id = selected_item->item->current->item.id;
+    if (support == NULL || !gsOf(support)->hasSaveCueSettings())
+        return 0;
+    name = gsOf(support)->name(support, id);
+    if (name == NULL || name[0] == '\0')
+        return 0;
+
+    guiRenderTextScreen(_l(_STR_SAVING_SETTINGS));
+    return gsOf(support)->saveCueSettings(support, id, name, configSet);
+}
+
 int menuSaveSettings(void)
 {
     int result;
@@ -2111,6 +2132,12 @@ void menuRenderAppMenu()
 
     // app title
     fntRenderString(gTheme->fonts[0], 320, 20, ALIGN_CENTER, 0, 0, selected_item->item->current->item.text, gTheme->selTextColor);
+
+    // A PS1 row opens this smaller menu, not the PS2 VMC editor. Say why the missing PS2 control
+    // is intentional without claiming that Ember and POPSTARTER store their cards identically.
+    if (appMenu->item.id == APP_GLOBAL_PS_SETTINGS)
+        fntRenderStringFit(gTheme->fonts[0], 320, 43, ALIGN_CENTER, 600,
+                           _l(_STR_PS1_SAVE_GUIDANCE), gTheme->textColor, 0);
 
     for (it = appMenu; it; it = it->next, cp++) {
         // render, advance

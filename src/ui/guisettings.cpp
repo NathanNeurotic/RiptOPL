@@ -2627,10 +2627,21 @@ reshow_popstarter:
         if (emberDisplay == EMBER_DISPLAY_480P && gEmberDisplay != EMBER_DISPLAY_480P && !guiMsgBox(_l(_STR_EMBER_480P_CONFIRM), 1, NULL))
             emberDisplay = gEmberDisplay;
         gEmberDisplay = emberDisplay;
-        gEmberTiming = emberSettingFromRow(ui, CFG_EMBER_TIMING, emberTimingShown, gEmberTiming);
-        gEmberDither = emberSettingFromRow(ui, CFG_EMBER_DITHER, emberDitherShown, gEmberDither);
-        gEmberShading = emberSettingFromRow(ui, CFG_EMBER_SHADING, emberShadingShown, gEmberShading);
-        gEmberController = emberSettingFromRow(ui, CFG_EMBER_CONTROLLER, emberControllerShown, gEmberController);
+        int emberTiming = emberSettingFromRow(ui, CFG_EMBER_TIMING, emberTimingShown, gEmberTiming);
+        int emberDither = emberSettingFromRow(ui, CFG_EMBER_DITHER, emberDitherShown, gEmberDither);
+        int emberShading = emberSettingFromRow(ui, CFG_EMBER_SHADING, emberShadingShown, gEmberShading);
+        int emberController = emberSettingFromRow(ui, CFG_EMBER_CONTROLLER, emberControllerShown, gEmberController);
+        // Global Timing / Dithering / Shading / Controller go into EMBER/settings.txt and reach EVERY PS1
+        // game; some cannot take them (Arcade's Greatest Hits 1, a 2D MAME package, crashed -- FifthFox).
+        // Gageformer: only Display belongs there. Warn when one of these is newly set (not back to
+        // Default), pointing at the per-game menu; the choice itself is kept.
+        if ((emberTiming != gEmberTiming && emberTiming > 0) || (emberDither != gEmberDither && emberDither > 0) ||
+            (emberShading != gEmberShading && emberShading > 0) || (emberController != gEmberController && emberController > 0))
+            guiMsgBox(_l(_STR_EMBER_GLOBAL_WARNING), 0, NULL);
+        gEmberTiming = emberTiming;
+        gEmberDither = emberDither;
+        gEmberShading = emberShading;
+        gEmberController = emberController;
         snprintf(gPopstarterPath, sizeof(gPopstarterPath), "%s", popstarterPathEdit);
         // Runtime ignores the retired picker, but keeping CUSTOM in the persisted compatibility
         // key means a downgrade still honours the full path the user entered here.
@@ -2992,9 +3003,8 @@ static int emberGameSettingGet(config_set_t *configSet, const char *key, int cou
 }
 
 // PS1 Triangle -> Ember Game Settings. Ember accepts timing, dither, shading and controller in
-// a game's settings.txt; display is deliberately global-only. In this editor Default means inherit
-// the global Ember setting. Confirming Default stores 0 in the game's CFG so cueApplySettings removes
-// that per-game key at launch instead of preserving a stale hand-written override.
+// a game's settings.txt; display is deliberately global-only. Untouched Default preserves existing
+// game values; changing a managed value back to Default removes that override before launch.
 void guiShowEmberGameSettings(void)
 {
     const char *timingStrs[] = {_l(_STR_DEFAULT), _l(_STR_AUTO), "NTSC", "PAL", NULL};
@@ -3034,16 +3044,22 @@ void guiShowEmberGameSettings(void)
     diaGetInt(diaEmberGameConfig, CFG_EMBER_SHADING, &newShading);
     diaGetInt(diaEmberGameConfig, CFG_EMBER_CONTROLLER, &newController);
 
-    // An absent CFG key is displayed as Default, but OK makes that inheritance explicit. This is
-    // intentional: Ember defines a missing game key as "use the global settings.txt value".
-    if (newTiming == timing && newDither == dither && newShading == shading && newController == controller)
-        return;
+    // An absent CFG key is displayed as Default and stays unmanaged until a row changes. Once a row
+    // changes, store all four choices so a later return to Default can remove its per-game override.
+    if (newTiming != emberSettingShown(timing) || newDither != emberSettingShown(dither) ||
+        newShading != emberSettingShown(shading) || newController != emberSettingShown(controller)) {
+        configSetInt(configSet, CONFIG_ITEM_EMBER_TIMING, newTiming);
+        configSetInt(configSet, CONFIG_ITEM_EMBER_DITHER, newDither);
+        configSetInt(configSet, CONFIG_ITEM_EMBER_SHADING, newShading);
+        configSetInt(configSet, CONFIG_ITEM_EMBER_CONTROLLER, newController);
+        if (!menuSaveConfig()) // the normal CFG error message includes its path and errno
+            return;
+    }
 
-    configSetInt(configSet, CONFIG_ITEM_EMBER_TIMING, newTiming);
-    configSetInt(configSet, CONFIG_ITEM_EMBER_DITHER, newDither);
-    configSetInt(configSet, CONFIG_ITEM_EMBER_SHADING, newShading);
-    configSetInt(configSet, CONFIG_ITEM_EMBER_CONTROLLER, newController);
-    menuSaveConfig(); // a failed write raises the usual "error saving settings" message
+    if (menuSaveEmberGameSettings(configSet))
+        guiMsgBox(_l(_STR_GAME_SETTINGS_SAVED), 0, NULL);
+    else
+        guiMsgBox(_l(_STR_ERROR_SAVING_SETTINGS), 0, NULL);
 }
 
 static int guiConfirmVideoMode(void)
@@ -3134,4 +3150,3 @@ static int guiConfirmVideoMode(void)
 
     return terminate - 1;
 }
-

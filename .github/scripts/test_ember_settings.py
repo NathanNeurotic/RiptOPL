@@ -69,7 +69,7 @@ opl_h = read('include/opl.h')
 config_h = read('include/config.h')
 cuesupport_h = read('include/cuesupport.h')
 
-# --- Global settings: load, migration, save (src/app/opl.c) ------------------------------------------
+# --- Global settings: load, migration, save (src/opl.c) ------------------------------------------
 
 CONFIG_KEYS = ('CONFIG_OPL_EMBER_DISPLAY', 'CONFIG_OPL_EMBER_DISPLAY_MODE', 'CONFIG_OPL_EMBER_TIMING',
                'CONFIG_OPL_EMBER_DITHER', 'CONFIG_OPL_EMBER_SHADING', 'CONFIG_OPL_EMBER_CONTROLLER')
@@ -242,7 +242,7 @@ int main(void)
 }
 '''
 
-global_functions = ''.join(function_text(opl_c, 'src/app/opl.cpp', sig) for sig in (
+global_functions = ''.join(function_text(opl_c, 'src/opl.c', sig) for sig in (
     'static int emberSettingGet(',
     'static void emberSettingSet(',
     'static void emberLoadSettings(',
@@ -258,18 +258,18 @@ if not failures:
 
 # The load and save must actually be called from the config load/save paths.
 config_paths = re.sub(r'/\*.*?\*/|//[^\n]*', '', opl_c, flags=re.S)
-load_config = function_text(config_paths, 'src/app/opl.cpp', 'void _loadConfig(')
-save_config = function_text(config_paths, 'src/app/opl.cpp', 'static void _saveConfig(')
+load_config = function_text(config_paths, 'src/app/settingsio.cpp', 'void _loadConfig(')
+save_config = function_text(config_paths, 'src/opl.c', 'static void _saveConfig(')
 if 'emberLoadSettings(configOPL);' not in load_config:
-    failures.append('src/app/opl.c: _loadConfig does not call emberLoadSettings(configOPL)')
+    failures.append('src/opl.c: _loadConfig does not call emberLoadSettings(configOPL)')
 if 'emberSaveSettings(configOPL);' not in save_config:
-    failures.append('src/app/opl.c: the settings save does not call emberSaveSettings(configOPL)')
+    failures.append('src/opl.c: the settings save does not call emberSaveSettings(configOPL)')
 if re.search(r'configSetInt\(configOPL, CONFIG_OPL_EMBER_DISPLAY,', opl_c):
-    failures.append('src/app/opl.c: the legacy ember_display key is still written directly')
+    failures.append('src/opl.c: the legacy ember_display key is still written directly')
 
-# --- A settings row stores a value only when the user actually changed it (src/ui/gui.c) ------------
+# --- A settings row stores a value only when the user actually changed it (src/ui/guisettings.cpp) ------------
 
-gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/guimodal.cpp') + read('src/ui/guiwait.cpp') + read('src/ui/guigameid.cpp')
+gui_c = read('src/ui/gui.cpp') + read('src/ui/guisettings.cpp') + read('src/ui/dialogs.cpp')
 
 ROW_HARNESS = r'''
 #include <stdio.h>
@@ -310,20 +310,20 @@ int main(void)
 # Every Ember row is on the PS1 page, gets its enum on the composed `ui`, and is read back through
 # emberSettingFromRow -- a row wired any other way renders empty or never saves (see gui.c).
 dialogs_c = read('src/ui/dialogs.cpp')
-page = function_text(gui_c, 'src/ui/gui.cpp', 'static int guiSettingsShowPopstarter(')
+page = function_text(gui_c, 'src/ui/guisettings.cpp', 'static int guiSettingsShowPopstarter(')
 for row, var in (('CFG_EMBER_DISPLAY', 'gEmberDisplay'), ('CFG_EMBER_TIMING', 'gEmberTiming'),
                  ('CFG_EMBER_DITHER', 'gEmberDither'), ('CFG_EMBER_SHADING', 'gEmberShading'),
                  ('CFG_EMBER_CONTROLLER', 'gEmberController')):
     if f'{{UI_ENUM, {row},' not in dialogs_c:
-        failures.append(f'src/ui/dialogs.c: no {row} row on the PS1 page')
+        failures.append(f'src/dialogs.c: no {row} row on the PS1 page')
     if page and f'diaSetEnum(ui, {row},' not in page:
-        failures.append(f'src/ui/gui.c: {row} gets no enum list on the composed page')
+        failures.append(f'src/ui/guisettings.cpp: {row} gets no enum list on the composed page')
     if page and f'emberSettingFromRow(ui, {row},' not in page:
-        failures.append(f'src/ui/gui.c: {row} is not read back through emberSettingFromRow')
+        failures.append(f'src/ui/guisettings.cpp: {row} is not read back through emberSettingFromRow')
     if page and f'{var} = emberSettingShown' not in page and f'Shown = emberSettingShown({var})' not in page:
-        failures.append(f'src/ui/gui.c: {var} is not shown through emberSettingShown')
+        failures.append(f'src/ui/guisettings.cpp: {var} is not shown through emberSettingShown')
 if page and '_STR_EMBER_480P_CONFIRM' not in page:
-    failures.append('src/ui/gui.c: choosing Ember 480p does not ask for confirmation')
+    failures.append('src/ui/guisettings.cpp: choosing Ember 480p does not ask for confirmation')
 
 # --- Ember Game Settings (per game) -------------------------------------------------------------
 
@@ -331,20 +331,20 @@ if page and '_STR_EMBER_480P_CONFIRM' not in page:
 # which made two "Crash Bandic..." games share one CFG, and a Favourites proxy has no startup at all.
 populate = function_text(read('src/sources/supportbase.cpp'), 'src/sources/supportbase.cpp', 'config_set_t *sbPopulateConfig(')
 if populate and not re.search(r'isPs1\s*=\s*isVcd\s*\|\|\s*cueIsCueEntry\(game\)', populate):
-    failures.append('src/sources/supportbase.c: sbPopulateConfig does not treat an Ember row as PS1')
+    failures.append('src/supportbase.c: sbPopulateConfig does not treat an Ember row as PS1')
 if populate and 'cfgKey = isPs1 ? game->name : game->startup' not in populate:
-    failures.append('src/sources/supportbase.c: sbPopulateConfig does not key an Ember row by its full name')
+    failures.append('src/supportbase.c: sbPopulateConfig does not key an Ember row by its full name')
 
 menusys_c = read('src/ui/menusys.cpp')
 vcd_menu = function_text(menusys_c, 'src/ui/menusys.cpp', 'void menuInitVcdMenu(')
 if vcd_menu and not re.search(r'if \(isEmber\)\s*submenuAppendItem\(&appMenu, -1, NULL, APP_EMBER_GAME_SETTINGS', vcd_menu):
-    failures.append('src/ui/menusys.c: Ember Game Settings is not offered only on Ember rows')
+    failures.append('src/ui/menusys.cpp: Ember Game Settings is not offered only on Ember rows')
 if 'guiShowEmberGameSettings();' not in menusys_c:
-    failures.append('src/ui/menusys.c: APP_EMBER_GAME_SETTINGS does not open guiShowEmberGameSettings')
-if 'menuInitVcdMenu(kind == FAV_KIND_CUE);' not in read('src/ui/menuitems.cpp'):
-    failures.append('src/app/opl.c: the PS1 Triangle menu is not told whether the row is an Ember row')
+    failures.append('src/ui/menusys.cpp: APP_EMBER_GAME_SETTINGS does not open guiShowEmberGameSettings')
+if 'menuInitVcdMenu(kind == FAV_KIND_CUE);' not in read('src/app/opl.cpp') + read('src/app/settingsio.cpp') + read('src/ui/menuitems.cpp'):
+    failures.append('src/opl.c: the PS1 Triangle menu is not told whether the row is an Ember row')
 
-game_page = function_text(gui_c, 'src/ui/gui.cpp', 'void guiShowEmberGameSettings(')
+game_page = function_text(gui_c, 'src/ui/guisettings.cpp', 'void guiShowEmberGameSettings(')
 for key, row in (
     ('CONFIG_ITEM_EMBER_TIMING', 'CFG_EMBER_TIMING'),
     ('CONFIG_ITEM_EMBER_DITHER', 'CFG_EMBER_DITHER'),
@@ -352,17 +352,19 @@ for key, row in (
     ('CONFIG_ITEM_EMBER_CONTROLLER', 'CFG_EMBER_CONTROLLER'),
 ):
     if game_page and f'diaGetInt(diaEmberGameConfig, {row},' not in game_page:
-        failures.append(f'src/ui/gui.c: Ember Game Settings does not read {row} back')
+        failures.append(f'src/ui/guisettings.cpp: Ember Game Settings does not read {row} back')
     if game_page and f'configSetInt(configSet, {key},' not in game_page:
-        failures.append(f'src/ui/gui.c: Ember Game Settings never stores {key}')
+        failures.append(f'src/ui/guisettings.cpp: Ember Game Settings never stores {key}')
 if game_page and 'menuSaveConfig()' not in game_page:
-    failures.append('src/ui/gui.c: Ember Game Settings does not save the CFG')
+    failures.append('src/ui/guisettings.cpp: Ember Game Settings does not save the CFG')
+if game_page and 'menuSaveEmberGameSettings(configSet)' not in game_page:
+    failures.append('src/ui/guisettings.cpp: Ember Game Settings does not save settings.txt before launch')
 
-row_function = function_text(gui_c, 'src/ui/gui.cpp', 'static int emberSettingFromRow(')
+row_function = function_text(gui_c, 'src/ui/guisettings.cpp', 'static int emberSettingFromRow(')
 if row_function:
     compile_and_run('ember_row', ROW_HARNESS.replace('@FUNCTIONS@', row_function))
 
-# --- The settings.txt rewrite (src/sources/cuesupport.c) ------------------------------------------------
+# --- The settings.txt rewrite (src/sources/cuesupport.cpp) ------------------------------------------------
 
 cue_c = read('src/sources/cuesupport.cpp')
 
@@ -449,12 +451,13 @@ rewrite_functions = ''.join(function_text(cue_c, 'src/sources/cuesupport.cpp', s
 if rewrite_functions.count('{') >= 3:
     compile_and_run('ember_rewrite', REWRITE_HARNESS.replace('@FUNCTIONS@', rewrite_functions))
 
-# cueApplySettings only opens a file when it has something to do there.
+# The launch path and explicit save only open a file when they have something to do there.
 apply_fn = function_text(cue_c, 'src/sources/cuesupport.cpp', 'void cueApplySettings(')
+save_game_fn = function_text(cue_c, 'src/sources/cuesupport.cpp', 'int cueSaveGameSettings(')
 if apply_fn and not re.search(r'if \(nGlobal > 0\)', apply_fn):
     failures.append('cueApplySettings: the main settings.txt must only be touched when a global setting is set')
-if apply_fn and not re.search(r'if \(nGame > 0\)', apply_fn):
-    failures.append('cueApplySettings: a game\'s settings.txt must only be touched when that game has a setting')
+if save_game_fn and not re.search(r'if \(nGame == 0\)\s*return 1;', save_game_fn):
+    failures.append('cueSaveGameSettings: a game with no managed setting must not touch settings.txt')
 
 APPLY_HARNESS = r'''
 #include <stdio.h>
@@ -486,7 +489,8 @@ int gEmberDither = EMBER_SETTING_UNSET;
 int gEmberShading = EMBER_SETTING_UNSET;
 int gEmberController = EMBER_SETTING_UNSET;
 
-static int globalTouches, gameTouches;
+static int globalTouches, gameTouches, writeResult = 1;
+static char lastGamePath[768];
 
 static int configGetInt(config_set_t *cfg, const char *key, int *value)
 {
@@ -510,14 +514,16 @@ static int configGetInt(config_set_t *cfg, const char *key, int *value)
 }
 static const char *cueEmberFolder(void) { return "EMBER"; }
 static char cueSep(const char *prefix) { (void)prefix; return '/'; }
-static void cueRewriteSettingsFile(const char *path, const cue_setting_t *want, int count)
+static int cueRewriteSettingsFile(const char *path, const cue_setting_t *want, int count)
 {
     (void)want;
     (void)count;
-    if (strstr(path, "/games/") != NULL)
+    if (strstr(path, "/games/") != NULL) {
         gameTouches++;
-    else
+        snprintf(lastGamePath, sizeof(lastGamePath), "%s", path);
+    } else
         globalTouches++;
+    return writeResult;
 }
 
 @FUNCTIONS@
@@ -532,6 +538,8 @@ static void reset(config_set_t *cfg)
     gEmberShading = EMBER_SETTING_UNSET;
     gEmberController = EMBER_SETTING_UNSET;
     globalTouches = gameTouches = 0;
+    lastGamePath[0] = '\0';
+    writeResult = 1;
 }
 static void expect(const char *what, int globalWant, int gameWant)
 {
@@ -587,15 +595,33 @@ int main(void)
     cueApplySettings("mass0:/", "../x", &cfg);
     expect("path-like game names do not touch game settings", 0, 0);
 
+    reset(&cfg);
+    gEmberDisplay = EMBER_DISPLAY_240;
+    cfg.shadingPresent = 1;
+    cfg.shading = EMBER_SHADING_24;
+    if (!cueSaveGameSettings("mass0:/", "Game", &cfg))
+        fails++;
+    expect("explicit game save does not write global settings", 0, 1);
+    if (strcmp(lastGamePath, "mass0:/EMBER/games/Game/settings.txt") != 0) {
+        printf("FAIL explicit save used wrong game path: %s\n", lastGamePath);
+        fails++;
+    }
+    writeResult = 0;
+    if (cueSaveGameSettings("mass0:/", "Game", &cfg) != 0) {
+        printf("FAIL failed settings.txt write reported success\n");
+        fails++;
+    }
+
     if (!fails)
         printf("ember settings: apply guards prevent file access for empty setting lists\n");
     return fails ? 1 : 0;
 }
 '''
 
-if apply_fn:
+if apply_fn and save_game_fn:
     apply_functions = (function_text(cue_c, 'src/sources/cuesupport.cpp', 'int cueNameLaunchable(') +
                        function_text(cue_c, 'src/sources/cuesupport.cpp', 'static void cueWantSetting(') +
+                       save_game_fn +
                        apply_fn)
     apply_defines = (defines(config_h, 'include/config.h',
                              ('CONFIG_ITEM_EMBER_TIMING', 'CONFIG_ITEM_EMBER_DITHER',
@@ -606,6 +632,68 @@ if apply_fn:
         compile_and_run('ember_apply', APPLY_HARNESS.replace('@DEFINES@', apply_defines)
                         .replace('@ENUMS@', ember_enums(opl_h)).replace('@FUNCTIONS@', apply_functions))
 
+# Execute the actual per-game editor against simulated dialog rows. An absent CFG value is -1,
+# while the displayed Default row is 0: comparing those raw values used to rewrite an untouched game.
+EDITOR_HARNESS = APPLY_HARNESS.split('@FUNCTIONS@', 1)[0] + r'''
+#define _l(x) "label"
+#define CFG_EMBER_TIMING 0
+#define CFG_EMBER_DITHER 1
+#define CFG_EMBER_SHADING 2
+#define CFG_EMBER_CONTROLLER 3
+#define diaEmberGameConfig 0
+#define UIID_BTN_OK 1
+static config_set_t editorCfg;
+static int rows[4], changedRow = -1, changedValue, dialogResult = 1;
+static int cfgWrites, gameWrites, cfgWriteResult = 1;
+static config_set_t *gameMenuLoadConfig(void *unused) { (void)unused; return &editorCfg; }
+static void diaSetEnum(int ui, int row, const char **values) { (void)ui; (void)row; (void)values; }
+static void diaSetInt(int ui, int row, int value) { (void)ui; rows[row] = value; }
+static int diaExecuteDialog(int ui, int a, int b, void *c) { (void)ui; (void)a; (void)b; (void)c; return dialogResult; }
+static void diaGetInt(int ui, int row, int *value) { (void)ui; *value = row == changedRow ? changedValue : rows[row]; }
+static int configSetInt(config_set_t *cfg, const char *key, int value)
+{
+    if (strcmp(key, CONFIG_ITEM_EMBER_TIMING) == 0) { cfg->timingPresent = 1; cfg->timing = value; }
+    if (strcmp(key, CONFIG_ITEM_EMBER_DITHER) == 0) { cfg->ditherPresent = 1; cfg->dither = value; }
+    if (strcmp(key, CONFIG_ITEM_EMBER_SHADING) == 0) { cfg->shadingPresent = 1; cfg->shading = value; }
+    if (strcmp(key, CONFIG_ITEM_EMBER_CONTROLLER) == 0) { cfg->controllerPresent = 1; cfg->controller = value; }
+    return 1;
+}
+static int menuSaveConfig(void) { cfgWrites++; return cfgWriteResult; }
+static int menuSaveEmberGameSettings(config_set_t *cfg) { (void)cfg; gameWrites++; return 1; }
+static int guiMsgBox(const char *text, int confirm, void *ui) { (void)text; (void)confirm; (void)ui; return 1; }
+@EDITOR@
+int main(void)
+{
+    guiShowEmberGameSettings();
+    if (cfgWrites != 0 || editorCfg.timingPresent || editorCfg.ditherPresent || editorCfg.shadingPresent || editorCfg.controllerPresent)
+        return puts("FAIL untouched Default created managed overrides"), 1;
+    changedRow = CFG_EMBER_SHADING;
+    changedValue = EMBER_SHADING_24;
+    guiShowEmberGameSettings();
+    if (cfgWrites != 1 || editorCfg.shading != EMBER_SHADING_24 || gameWrites != 2)
+        return puts("FAIL changed game was not saved immediately"), 1;
+    changedValue = 0;
+    guiShowEmberGameSettings();
+    if (cfgWrites != 2 || editorCfg.shading != 0 || !editorCfg.shadingPresent)
+        return puts("FAIL return to Default did not manage removal"), 1;
+    cfgWriteResult = 0;
+    changedValue = EMBER_SHADING_24;
+    guiShowEmberGameSettings();
+    if (gameWrites != 3)
+        return puts("FAIL failed CFG save still wrote settings.txt"), 1;
+    dialogResult = -1;
+    guiShowEmberGameSettings();
+    if (cfgWrites != 3 || gameWrites != 3)
+        return puts("FAIL cancelling the editor wrote settings"), 1;
+    puts("ember settings: untouched Default, immediate save, reset, failed CFG and cancel verified");
+    return 0;
+}
+'''
+editor_functions = (function_text(gui_c, 'src/ui/guisettings.cpp', 'static int emberSettingShown(') +
+                    function_text(gui_c, 'src/ui/guisettings.cpp', 'static int emberGameSettingGet(') + game_page)
+compile_and_run('ember_editor', EDITOR_HARNESS.replace('@DEFINES@', apply_defines)
+                .replace('@ENUMS@', ember_enums(opl_h)).replace('@EDITOR@', editor_functions))
+
 # All five Ember launch legs call cueApplySettings with the game name and configSet.
 for rel in ('src/sources/bdmlaunch.cpp', 'src/sources/ethsupport.cpp', 'src/sources/hddsupport.cpp', 'src/sources/mmcesupport.cpp', 'src/sources/udpfssupport.cpp'):
     content = read(rel)
@@ -614,18 +702,36 @@ for rel in ('src/sources/bdmlaunch.cpp', 'src/sources/ethsupport.cpp', 'src/sour
     if 'cueApplyDisplaySetting(' in content:
         failures.append('%s: still calls the legacy cueApplyDisplaySetting' % rel)
 if 'cueApplyDisplaySetting(' in read('src/sources/cuesupport.cpp'):
-    failures.append('src/sources/cuesupport.c: legacy cueApplyDisplaySetting is still present')
+    failures.append('src/sources/cuesupport.cpp: legacy cueApplyDisplaySetting is still present')
 
-# --- APA HDD: the partition Ember inherits must be WRITE-THROUGH (src/sources/hddsupport.c) -----------------
+# --- APA HDD: the partition Ember inherits must be WRITE-THROUGH (src/sources/hddsupport.cpp) -----------------
 # FIO_MT_RDWR is 0x00. PFS commits on write/close only when the mount flags carry 0x02 (ps2sdk libpfs
 # PFS_FIO_ATTR_WRITEABLE); otherwise writes wait in its RAM cache for an unmount or sync that Ember never
 # issues, and a reset loses the memory cards (Gageformer/Ember#69).
 hdd_c = read('src/sources/hddsupport.cpp')
 if not re.search(r'^#define HDD_PFS_MT_WRITETHROUGH 0x02\b', hdd_c, re.M):
-    failures.append('src/sources/hddsupport.c: HDD_PFS_MT_WRITETHROUGH must be 0x02 (libpfs PFS_FIO_ATTR_WRITEABLE)')
+    failures.append('src/sources/hddsupport.cpp: HDD_PFS_MT_WRITETHROUGH must be 0x02 (libpfs PFS_FIO_ATTR_WRITEABLE)')
 ember_leg = function_text(hdd_c, 'src/sources/hddsupport.cpp', 'static void hddDoLaunchEmber(')
 if ember_leg and 'fileXioMount(hddPrefix, mountSrc, FIO_MT_RDWR | HDD_PFS_MT_WRITETHROUGH)' not in ember_leg:
-    failures.append('src/sources/hddsupport.c: the Ember partition must be mounted write-through, or its saves never reach the disk')
+    failures.append('src/sources/hddsupport.cpp: the Ember partition must be mounted write-through, or its saves never reach the disk')
+
+# Global Timing / Dithering / Shading / Controller reach every PS1 game; newly setting one warns and points at
+# the per-game menu (FifthFox: Arcade's Greatest Hits 1 crashed; Gageformer: only Display belongs globally).
+popstarter_page = function_text(gui_c, 'src/ui/guisettings.cpp', 'static int guiSettingsShowPopstarter(')
+if popstarter_page:
+    if 'guiMsgBox(_l(_STR_EMBER_GLOBAL_WARNING), 0, NULL);' not in popstarter_page:
+        failures.append('guiSettingsShowPopstarter: newly setting a global Ember Timing/Dithering/Shading/Controller must warn')
+    for name in ('emberTiming', 'emberDither', 'emberShading', 'emberController'):
+        if '(%s != g%s && %s > 0)' % (name, name[0].upper() + name[1:], name) not in popstarter_page:
+            failures.append('guiSettingsShowPopstarter: the global-Ember warning must cover a newly set %s' % name)
+# Labels are positional: EMBER_GLOBAL_WARNING was APPENDED after HINT_EMBER_TIMING (the last label when it
+# landed). Later labels may follow it; it must never move ahead of the ones that existed before it.
+base_labels = [line.strip()[len('- label: '):] for line in read('lng/tmpl/_base.yml').splitlines()
+               if line.strip().startswith('- label: ')]
+if 'EMBER_GLOBAL_WARNING' not in base_labels:
+    failures.append('lng/tmpl/_base.yml: EMBER_GLOBAL_WARNING label is missing')
+elif 'HINT_EMBER_TIMING' in base_labels and base_labels.index('EMBER_GLOBAL_WARNING') < base_labels.index('HINT_EMBER_TIMING'):
+    failures.append('lng/tmpl/_base.yml: EMBER_GLOBAL_WARNING must stay after HINT_EMBER_TIMING (labels are positional)')
 
 if failures:
     print('Ember settings checks FAILED:')

@@ -31,7 +31,7 @@
 
 #include <usbhdfsd-common.h>
 
-#include <ps2sdkapi.h>
+#include "include/ps2sdkapi_compat.h"
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioIoctl, fileXioDevctl
 #include <delaythread.h>
@@ -1339,7 +1339,7 @@ class BdmSource : public GameSource
 {
 public:
     BdmSource()
-        : GameSource(BDM_MODE, 2, 0, MENU_MIN_INACTIVE_FRAMES, BDM_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_VCD | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+        : GameSource(BDM_MODE, 2, 0, MENU_MIN_INACTIVE_FRAMES, BDM_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_VCD | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID | GameSource::CAP_SAVE_CUE_SETTINGS)
     {
     }
 
@@ -1348,6 +1348,7 @@ public:
     int update(item_list_t *itemList) override;
     int count(item_list_t *itemList) override;
     int sourceId(item_list_t *itemList, int id) override;
+    int saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet) override;
     void *game(item_list_t *itemList, int id) override;
     char *name(item_list_t *itemList, int id) override;
     int nameLength(item_list_t *itemList, int id) override;
@@ -2070,4 +2071,16 @@ int bdmFindPartition(char *target, const char *name, int write)
     else
         sprintf(target, "mass0:");
     return 0;
+}
+
+int BdmSource::saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet)
+{
+    bdm_device_data_t *device = (bdm_device_data_t *)itemList->priv;
+    char ps1Prefix[64];
+    (void)id;
+
+    if (device == NULL || (device->bdmDeviceType == BDM_TYPE_SDC && !cacheAbortMmceImageLoadsTimed(500)))
+        return 0;
+    bdmBuildPs1Prefix(ps1Prefix, sizeof(ps1Prefix), itemList->mode);
+    return cueSaveGameSettings(ps1Prefix, name, configSet);
 }

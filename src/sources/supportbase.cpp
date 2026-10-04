@@ -33,7 +33,7 @@
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioMount("iso:", ***), fileXioUmount("iso:")
 #include <io_common.h>   // FIO_MT_RDONLY
-#include <ps2sdkapi.h>   // lseek64
+#include "include/ps2sdkapi_compat.h"   // lseek64
 
 #include "../modules/isofs/zso.h"
 

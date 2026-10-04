@@ -28,7 +28,7 @@
 
 #include <usbhdfsd-common.h>
 
-#include <ps2sdkapi.h>
+#include "include/ps2sdkapi_compat.h"
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioIoctl, fileXioDevctl
 #include <delaythread.h>

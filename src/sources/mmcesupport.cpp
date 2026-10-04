@@ -24,7 +24,7 @@
 #include <usbhdfsd-common.h>
 
 #include <kernel.h>
-#include <ps2sdkapi.h>
+#include "include/ps2sdkapi_compat.h"
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioIoctl, fileXioDevctl
 #include <delaythread.h> // DelayThread() -- real-sleep gap in the MMCE card-switch wait
@@ -473,7 +473,7 @@ class MmceSource : public GameSource
 {
 public:
     MmceSource()
-        : GameSource(MMCE_MODE, 2, 0, MENU_MIN_INACTIVE_FRAMES, MMCE_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_VCD | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID)
+        : GameSource(MMCE_MODE, 2, 0, MENU_MIN_INACTIVE_FRAMES, MMCE_MODE_UPDATE_DELAY, GameSource::CAP_LAUNCH_VCD | GameSource::CAP_LAUNCH_CUE | GameSource::CAP_ROW_VIEW | GameSource::CAP_SOURCE_ID | GameSource::CAP_SAVE_CUE_SETTINGS)
     {
     }
 
@@ -483,6 +483,7 @@ public:
     int count(item_list_t *itemList) override;
     int rowView(item_list_t *itemList, int id) override;
     int sourceId(item_list_t *itemList, int id) override;
+    int saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet) override;
     void *game(item_list_t *itemList, int id) override;
     char *name(item_list_t *itemList, int id) override;
     int nameLength(item_list_t *itemList, int id) override;
@@ -1388,3 +1389,15 @@ char *MmceSource::prefix(item_list_t *itemList)
     return gMmceSupport.prefix;
 }
 
+
+int MmceSource::saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet)
+{
+    char ps1Root[64];
+    (void)itemList;
+    (void)id;
+
+    if (!cacheAbortMmceImageLoadsTimed(MMCE_ART_ABORT_WAIT_TICKS))
+        return 0;
+    gMmceSupport.getDeviceRoot(ps1Root, sizeof(ps1Root));
+    return cueSaveGameSettings(ps1Root, name, configSet);
+}

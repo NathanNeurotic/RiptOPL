@@ -33,7 +33,7 @@
 #include "include/md5.h"
 #include "include/rahash.h"
 
-#include <ps2sdkapi.h> // lseek64: images can exceed 2 GB
+#include "include/ps2sdkapi_compat.h" // lseek64: images can exceed 2 GB
 
 /* Same cap as rcheevos: no boot executable is larger */
 constexpr int RA_HASH_MAX_EXEC = (64 * 1024 * 1024);

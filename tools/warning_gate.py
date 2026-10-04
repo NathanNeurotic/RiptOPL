@@ -17,8 +17,8 @@ BASELINE = os.path.join(ROOT, "tools", "warnings_baseline.json")
 OWN = ("src/", "ee_core/", "elfldr/", "modules/", "include/")
 SKIP = ("modules/network/lwNBD/",)
 
-rx = re.compile(r"^(/[^:\s]+):\d+:\d+: warning: .*\[(-W[\w+-]+)\]\s*$")
-rx_plain = re.compile(r"^(/[^:\s]+):\d+:\d+: warning: (.*)$")
+rx = re.compile(r"^((?:[A-Za-z]:)?/[^:\s]+):\d+:\d+: warning: .*\[(-W[\w+-]+)\]\s*$")
+rx_plain = re.compile(r"^((?:[A-Za-z]:)?/[^:\s]+):\d+:\d+: warning: (.*)$")
 
 def parse(path):
     counts = collections.Counter()
@@ -32,7 +32,7 @@ def parse(path):
             m = rx_plain.match(line)
             if not m: continue
             f, msg = m.groups(); flag = "(" + re.sub(r"[‘’'].*", "", msg).strip()[:40] + ")"
-        rel = os.path.relpath(f, ROOT)
+        rel = os.path.relpath(f, ROOT).replace(os.sep, "/")
         if not rel.startswith(OWN) or rel.startswith(SKIP): continue
         # the same header warning repeats once per including TU: count it once per (file, line text)
         key = (rel, flag, line)

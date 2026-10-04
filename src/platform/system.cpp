@@ -61,7 +61,7 @@ constexpr int SYS_DISC_NODISC_MS = 2000;
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>     // fileXioInit, fileXioExit, fileXioDevctl
 #include <usbhdfsd-common.h> // USBMASS_IOCTL_GET_LBA / _CHECK_CHAIN -- VMC contiguity probe
-#include <ps2sdkapi.h>       // ps2sdk_get_iop_fd -- the ioctls above take the IOP-side fd
+#include "include/ps2sdkapi_compat.h"       // ps2sdk_get_iop_fd -- the ioctls above take the IOP-side fd
 
 typedef struct
 {
