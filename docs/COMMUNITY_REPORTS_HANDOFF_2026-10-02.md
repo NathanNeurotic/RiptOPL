@@ -3,6 +3,18 @@
 This handoff collects the RiptOPL reports from TwistedZeon, FifthFox,
 eliminator1403, Aislinn, and zackcage6. It is a triage and implementation
 guide, not a claim that the reported behavior has been reproduced or fixed.
+
+> **Source citations.** This handoff was written against the legacy C tree of
+> [NathanNeurotic/Open-PS2-Loader](https://github.com/NathanNeurotic/Open-PS2-Loader)
+> (`rebuild/main` at `40791f41`). Its `src/*.c:<line>` references point there.
+> In this C++ tree the same code lives in: `gui.c` → `src/ui/gui*.cpp`
+> (settings and the Ember editor in `src/ui/guisettings.cpp`); `guigame.c`,
+> `dialogs.c`, `menusys.c` → `src/ui/`; `opl.c` → `src/app/opl.cpp`;
+> `system.c` → `src/platform/system.cpp` and `src/platform/sysneutrino.cpp`;
+> `themes.c`, `texcache.c`, `textures.c`, `renderman.c` → `src/gfx/`;
+> `gsm.c` → `src/core/gsm.cpp`; `bdmsupport.c` → `src/sources/bdmsupport.cpp`
+> and `src/sources/bdmlaunch.cpp`; the other `*support.c` and `artindex.c`
+> → `src/sources/`.
 The [artwork comparison screenshot](./community-report-evidence/2026-10-02/art-last-good-3248.png)
 adds one concrete artwork comparison:
 **3248 loaded artwork normally; Beta 3420 Korium loads it slowly**, according

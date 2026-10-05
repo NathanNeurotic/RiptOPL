@@ -178,9 +178,9 @@ Our daughter project:
     PS2-inspired front end; the custom OPL theme and RIPPS2.elf are planned next.
     The project is still alpha.
 
-Planned collaboration:
+ps2build C++ edition:
 
-  - A ps2build C++ edition, in collaboration with techwritescode.
+  - This repository, built on ps2build in collaboration with techwritescode.
     https://git.techwritescode.dev/techwritescode/PSUManager
 
 Special and sincere thanks to:

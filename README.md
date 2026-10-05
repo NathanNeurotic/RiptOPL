@@ -7,7 +7,7 @@
 
 > **Our daughter project: [RIPPS2](https://github.com/akilluminati47/RIPPS2) by Akilluminati47.** It is a PS2-inspired front end with a [web-theme beta](https://akilluminati47.github.io/RIPPS2/) available now. A custom OPL theme and `RIPPS2.elf` are planned next; the project is still alpha, but we recommend it as an alternative with features intended to be on par with RiptOPL.
 
-> **Planned collaboration: ps2build C++ edition.** A ps2build C++ edition is planned in collaboration with **[techwritescode](https://git.techwritescode.dev/techwritescode/PSUManager)**.
+> **ps2build C++ edition.** This repository is RiptOPL's C++ edition on ps2build, built in collaboration with **[techwritescode](https://git.techwritescode.dev/techwritescode/PSUManager)**.
 
 ## Community Contributors
 

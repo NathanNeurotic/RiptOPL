@@ -4,7 +4,8 @@ The [full handoff](./COMMUNITY_REPORTS_HANDOFF_2026-10-02.md) has the reports
 and technical detail. [#825](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/825)
 (Ember settings save) and [#826](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/826)
 (PS1 labels and menu guidance) are merged into `rebuild/main`. Builds and host
-checks passed; the console check is still open.
+checks passed; the console check is still open. In this C++ tree both arrive
+through [RiptOPL #13](https://github.com/NathanNeurotic/RiptOPL/pull/13).
 
 ## Finish line
 
