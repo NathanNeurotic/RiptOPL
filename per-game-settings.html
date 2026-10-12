@@ -5,9 +5,9 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <meta property="og:site_name" content="RiptOPL Docs">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://nathanneurotic.github.io/Open-PS2-Loader/assets/riptopl.png">
+<meta property="og:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://nathanneurotic.github.io/Open-PS2-Loader/assets/riptopl.png">
+<meta name="twitter:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
 <link rel="stylesheet" href="assets/style.css">
 </head><body data-base="">
 <header class="topbar">
@@ -17,7 +17,7 @@
     RiptOPL <small>DOCS</small></a>
     <div class="topbar-actions">
     <a class="topbar-btn primary" href="releases.html" title="Downloads &amp; Releases"><span class="icon icon-releases"></span>Downloads</a>
-    <a class="topbar-btn" href="https://github.com/NathanNeurotic/Open-PS2-Loader" target="_blank" rel="noopener" title="GitHub Repository"><span class="icon icon-github"></span>GitHub</a>
+    <a class="topbar-btn" href="https://github.com/NathanNeurotic/RiptOPL" target="_blank" rel="noopener" title="GitHub Repository"><span class="icon icon-github"></span>GitHub</a>
   </div>
   <div class="search">
     <span class="ico"></span>
@@ -69,6 +69,7 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
+<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/codex/sdk-llvm-parity/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1>Per-game Settings</h1>
 <p class="lead">Every PS2 title in RiptOPL has its own configuration file stored in the <code>CFG/</code> folder on
 your game device. The <b>Game Settings</b> screen lets you tune compatibility, memory cards, cheats, video,
@@ -114,11 +115,10 @@ The screen adapts immediately when you change this picker — see
 <a href="#core-aware-adaptation">Core-aware adaptation</a> below.</p>
 
 <div class="callout info"><div class="h">i UDPBD / UDPFS games always launch through Neutrino</div>
-Network-boot games (UDPBD / UDPFS) have no OPL core backend, so they launch through Neutrino whatever
-this picker says. On the block-device tabs (UDPBD and UDPFS <b>IMG</b>) the Loader Core selector is
-locked to <b>Neutrino</b> and cannot be changed; on the UDPFS <b>Files</b> tab the row stays editable,
-but the launch forces Neutrino anyway. If <code>neutrino.elf</code> is missing, OPL warns
-you and returns to the menu — there is no fallback.
+Network-boot games (UDPBD / UDPFS) have no OPL core backend, so they launch through Neutrino.
+The Loader Core selector is locked to <b>Neutrino</b> on UDPBD, UDPFS <b>IMG</b>, and UDPFS
+<b>Files</b> games, including Favorites that resolve back to those sources. If
+<code>neutrino.elf</code> is missing, OPL warns you and returns to the menu — there is no fallback.
 </div>
 
 <h3 id="neutrino-args-video">Neutrino Launch Args &amp; Neutrino Video (Neutrino core only)</h3>
@@ -157,7 +157,7 @@ Core is Neutrino. They are greyed under <code>&lt;OPL&gt;</code>.</p>
     <tr><td>1080i x1</td><td><code>-gsm=1080ix1</code></td><td>Force 1080i</td></tr>
     <tr><td>1080i x2</td><td><code>-gsm=1080ix2</code></td><td>Force 1080i</td></tr>
     <tr><td>1080i x3</td><td><code>-gsm=1080ix3</code></td><td>Force 1080i — the community "1080p impression" setting</td></tr>
-    <tr><td>Default</td><td><em>(nothing per-game)</em></td><td>Removes <code>$NeutrinoVideo</code> entirely, so the title follows the global <b>Settings → Game Launching → Neutrino Video</b> value</td></tr>
+    <tr><td>Default</td><td><em>(nothing per-game)</em></td><td>Removes <code>$NeutrinoVideo</code> entirely, so the title follows the global <b>Settings → Game Launching → Neutrino Defaults → Neutrino Video</b> value</td></tr>
   </tbody>
 </table>
 <p>See <a href="neutrino.html#neutrino-video">Neutrino Core &sect;5</a> for the same table with the global
@@ -238,9 +238,7 @@ audio plays correctly. The screen shows the default ticked. Untick it and save t
 <div class="callout info"><div class="h">i How -gc is built for Neutrino</div>
 When the Loader Core is Neutrino, OPL converts the compatibility bitmask to Neutrino's
 <code>-gc=&lt;value&gt;</code> format, forwarding modes 1, 2, 3, 5, and 7 (mode 4 and mode 6 have
-no Neutrino equivalent and are silently skipped). The <b>Download Defaults</b> button — which downloads
-OPL-bitmask compatibility data from the network — is greyed under the Neutrino core because
-that data does not map to <code>-gc</code>.
+no Neutrino equivalent and are silently skipped).
 </div>
 
 <h3 id="dma-mode">DMA Mode</h3>
@@ -279,10 +277,11 @@ longer names can be set by editing the <code>.cfg</code> file directly.
 
 <h2 id="cheats">Cheat Settings</h2>
 <p>The <b>Cheat Settings</b> screen lets you enable or disable PS2RD cheat codes loaded from a
-<code>.cht</code> file in the <code>CHT/</code> folder. Cheats are applied by OPL's built-in core at
-launch; <b>this panel is an OPL core feature</b> and is not available under Neutrino.</p>
-<p>If the game's Loader Core is set to Neutrino, opening Cheat Settings displays the message
-<em>"This setting is not used with the Neutrino core."</em></p>
+<code>.cht</code> file in the <code>CHT/</code> folder. It works on <b>both cores</b>: OPL's built-in core applies
+the codes itself, and a Neutrino game gets them handed over in <code>riptopl-cheats.toml</code>. With the
+Neutrino core only the <b>PS2RD Cheat Image</b> row is greyed &mdash; Neutrino has no cheat-image support.</p>
+<p>In <b>Select Game Cheats</b> mode the cheats you pick are remembered for that game, by name, and are already
+ticked the next time it launches, on either core.</p>
 <p>For the cheat file format and a full how-to, see <a href="cheats.html">Cheats</a> and the
 <a href="https://nathanneurotic.github.io/POPSLoader/cheats.html">POPStarter cheats reference</a>.</p>
 
@@ -328,13 +327,12 @@ will be silently ignored at launch.</p>
     <tr><td>Mode 4 — Skip Videos</td><td><b>Active</b></td><td>Greyed (no Neutrino equivalent)</td></tr>
     <tr><td>Mode 6 — Disable IGR</td><td><b>Active</b></td><td>Greyed (no Neutrino equivalent)</td></tr>
     <tr><td>Mode 7 — Fix IOP buffer overrun</td><td>Greyed (no OPL effect)</td><td><b>Active</b></td></tr>
-    <tr><td>Download Defaults button</td><td><b>Active</b></td><td>Greyed (OPL bitmask data, not -gc)</td></tr>
-    <tr><td>Cheats panel</td><td><b>Active</b></td><td>Shows "not used with Neutrino core"</td></tr>
+    <tr><td>Cheats panel</td><td><b>Active</b></td><td><b>Active</b> (PS2RD Cheat Image row greyed)</td></tr>
     <tr><td>GSM panel</td><td><b>Active</b></td><td>Shows "not used with Neutrino core"</td></tr>
     <tr><td>PADEMU / Pad Macro panels</td><td><b>Active</b></td><td>Shows "not used with Neutrino core"</td></tr>
     <tr><td>OSD Language panel</td><td><b>Active</b></td><td>Shows "not used with Neutrino core"</td></tr>
     <tr><td>VMC panel</td><td><b>Active</b></td><td><b>Active</b> (via -mc0/-mc1)</td></tr>
-    <tr><td>Loader Core selector</td><td><b>Active</b></td><td><b>Active</b> (locked for the UDP block devices, SMB and VCD)</td></tr>
+    <tr><td>Loader Core selector</td><td><b>Active</b> where supported</td><td><b>Active</b> where supported; locked to Neutrino for UDPFS/UDPBD, and locked away from Neutrino for SMB/HTTP/PS1</td></tr>
   </tbody>
 </table>
 
@@ -346,8 +344,12 @@ entry: the choice is inert and no <code>$CoreLoader</code> key is written. For P
 settings (IGR hotkeys, multi-disc, cheats), see the
 <a href="https://nathanneurotic.github.io/POPSLoader/">POPStarter docs</a>; for Ember, see
 <a href="ps1-vcd.html#ember">Ember — the second PS1 core</a>. An Ember row's Triangle menu has its own
-<b>Ember Game Settings</b> entry for that game's Ember Controller.
+<b>Ember Game Settings</b> entry for that game's Ember Timing, Dithering, Shading and Controller,
+written to the game's <code>settings.txt</code> as soon as you press OK.
 </div>
+
+<h3 id="custom-elf-save-recovery">A Custom ELF path changed after saving</h3>
+<p>The config round-trip fix in PR #885 prevents backslashes from multiplying after repeated saves. If an older build already expanded or truncated your Custom ELF value, updating does not reconstruct the original path: re-enter the correct path once, save, reopen the settings and check it remains intact. A white screen alone does not identify this bug; compare the displayed path with the original ELF location.</p>
 
 <h2 id="save-test-remove">Save Changes, Test Changes, Remove Settings</h2>
 
