@@ -5,9 +5,9 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <meta property="og:site_name" content="RiptOPL Docs">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://nathanneurotic.github.io/Open-PS2-Loader/assets/riptopl.png">
+<meta property="og:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://nathanneurotic.github.io/Open-PS2-Loader/assets/riptopl.png">
+<meta name="twitter:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
 <link rel="stylesheet" href="assets/style.css">
 </head><body data-base="">
 <header class="topbar">
@@ -17,7 +17,7 @@
     RiptOPL <small>DOCS</small></a>
     <div class="topbar-actions">
     <a class="topbar-btn primary" href="releases.html" title="Downloads &amp; Releases"><span class="icon icon-releases"></span>Downloads</a>
-    <a class="topbar-btn" href="https://github.com/NathanNeurotic/Open-PS2-Loader" target="_blank" rel="noopener" title="GitHub Repository"><span class="icon icon-github"></span>GitHub</a>
+    <a class="topbar-btn" href="https://github.com/NathanNeurotic/RiptOPL" target="_blank" rel="noopener" title="GitHub Repository"><span class="icon icon-github"></span>GitHub</a>
   </div>
   <div class="search">
     <span class="ico"></span>
@@ -69,6 +69,7 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
+<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/codex/sdk-llvm-parity/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1>Fork Feature Gaps</h1>
 <p class="lead">Features, fixes and companion workflows that other PS2 loaders, forks and utilities offer beyond RiptOPL and the PS2-Servers ecosystem. Each entry
 was checked against RiptOPL's own code rather than taken from another project's changelog, and links to where that
@@ -585,7 +586,7 @@ The five sources above produced six confirmed entries.
 <p><b>Audited code:</b> The <a href="https://github.com/Rian6/caduceus-opl/tree/2a98a9d7361f8e33f421244bc88c318eab3bdf2f">actual OPL snapshot</a> was compared against <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/tree/7452341a076d3e7a5e14e613429c7eca594f4888">RiptOPL code</a>, and the <a href="https://github.com/Rian6/caduceus/tree/311f4eabc4ddaad649cbd0d60859f27d0ffcbbfc">Caduceus desktop modules</a> against <a href="https://github.com/NathanNeurotic/PS2-Servers/tree/c1eb1e5aecd9e8359dc5b7799fc7f135a81f51d5">PS2-Servers</a>. RiptOPL already has normal RA hashing, watch lists, SMB reconnect, PNG artwork support and an in-game unlock indicator; none is newly counted as missing. CO4 is richer presentation, not a missing RA notification system. CO6 is a more proactive check, not missing basic SMB recovery. Caduceus OPL's custom account protocol needs a companion endpoint and cannot be obtained just by swapping SMB servers.</p>
 
 <p><a href="https://github.com/Rian6/caduceus">Rian6/Caduceus</a> is the Windows-side application (Electron/React/TypeScript/SQLite) that manages a game catalogue and launches the separately sourced <a href="https://github.com/elmariolo/OPL-Server">OPLServer</a> SMB server. <a href="https://github.com/Rian6/caduceus-opl">Rian6/Caduceus OPL</a> is its cooperating console-side OPL derivative. That is a <b>tightly paired host + console loader</b>, not one interchangeable executable. Their source repositories are distinct; the OPL source is also tracked as an <code>opl-snapshot</code> submodule.</p>
-<p>Our comparable pairing is <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2-Servers</a> (host-side network service) and <a href="https://github.com/NathanNeurotic/Open-PS2-Loader">RiptOPL</a> (PS2 launcher). PS2-Servers deliberately serves multiple kinds of PS2 clients; Caduceus invests more heavily in a companion library and account experience. The table identifies <b>host-side product gaps</b> as well as console-side differences, without treating them as interchangeable RiptOPL feature gaps.</p>
+<p>Our comparable pairing is <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2-Servers</a> (host-side network service) and <a href="https://github.com/NathanNeurotic/RiptOPL">RiptOPL</a> (PS2 launcher). PS2-Servers deliberately serves multiple kinds of PS2 clients; Caduceus invests more heavily in a companion library and account experience. The table identifies <b>host-side product gaps</b> as well as console-side differences, without treating them as interchangeable RiptOPL feature gaps.</p>
 <div class="callout info"><div class="h">Comparison scope and counting</div>
 Source checked on 2026-10-08: <a href="https://github.com/Rian6/caduceus/tree/311f4eabc4ddaad649cbd0d60859f27d0ffcbbfc"><code>caduceus/main@311f4eab</code></a>,
 <a href="https://github.com/Rian6/caduceus-opl/tree/cc1713a893a976c9b26ae1dd9975c200a461edfe"><code>caduceus-opl/main@cc1713a8</code></a> (console gitlink <a href="https://github.com/Rian6/caduceus-opl/tree/2a98a9d7361f8e33f421244bc88c318eab3bdf2f"><code>opl-snapshot@2a98a9d7</code></a>),
@@ -656,7 +657,7 @@ Seven CA-series and seven CO-series source-attributed gaps are now listed, inclu
 <tr><td><a href="https://github.com/Irfanlesnar/PS2-Launcher">Irfanlesnar/PS2-Launcher</a></td><td><code>main</code></td><td><a href="https://github.com/Irfanlesnar/PS2-Launcher/commit/46bad5a4a469c51e45eb1ed879fe43c100b8cb7b"><code>46bad5a4</code></a></td><td>Selected implementation differences checked</td></tr>
 <tr><td><a href="https://github.com/Jay-Jay-OPL/OPL-Daily-Builds">Jay-Jay-OPL/OPL-Daily-Builds</a></td><td><code>master</code></td><td><a href="https://github.com/Jay-Jay-OPL/OPL-Daily-Builds/commit/aa531a858c583104bfd577c4715339c8ce68d534"><code>aa531a85</code></a></td><td>Revision checked; existing detailed evidence retained</td></tr>
 <tr><td><a href="https://github.com/L10N37/Open-PS2-Loader-Extended-APA">L10N37/Open-PS2-Loader-Extended-APA</a></td><td><code>main</code></td><td><a href="https://github.com/L10N37/Open-PS2-Loader-Extended-APA/commit/5cb8058907204501f425b5c170316063ef18f69a"><code>5cb80589</code></a></td><td>Revision checked; existing detailed evidence retained</td></tr>
-<tr><td><a href="https://github.com/NathanNeurotic/Open-PS2-Loader">NathanNeurotic/Open-PS2-Loader</a></td><td><code>rebuild/main</code></td><td><a href="https://github.com/NathanNeurotic/Open-PS2-Loader/commit/9ef8d643a739d88a4f4b5fd055a209d0b27299c4"><code>9ef8d643</code></a></td><td>Revision checked; existing detailed evidence retained</td></tr>
+<tr><td><a href="https://github.com/NathanNeurotic/RiptOPL">NathanNeurotic/Open-PS2-Loader</a></td><td><code>rebuild/main</code></td><td><a href="https://github.com/NathanNeurotic/Open-PS2-Loader/commit/9ef8d643a739d88a4f4b5fd055a209d0b27299c4"><code>9ef8d643</code></a></td><td>Revision checked; existing detailed evidence retained</td></tr>
 <tr><td><a href="https://github.com/NathanNeurotic/neutrino">NathanNeurotic/neutrino</a></td><td><code>master</code></td><td><a href="https://github.com/NathanNeurotic/neutrino/commit/a7b673648254942e11315c9006c4c7bb776e58a1"><code>a7b67364</code></a></td><td>Revision checked; existing detailed evidence retained</td></tr>
 <tr><td><a href="https://github.com/NathanNeurotic/uOPL">NathanNeurotic/uOPL</a></td><td><code>wOPL-base</code></td><td><a href="https://github.com/NathanNeurotic/uOPL/commit/4ae7414877ba566177ef1130de29ce850a5e15b3"><code>4ae74148</code></a></td><td>Revision checked; existing detailed evidence retained</td></tr>
 <tr><td><a href="https://github.com/NathanNeurotic/xerabora">NathanNeurotic/xerabora</a></td><td><code>main</code></td><td><a href="https://github.com/NathanNeurotic/xerabora/commit/ebd18ed68a28c901f437d0ec381e52fc26d5698a"><code>ebd18ed6</code></a></td><td>Revision checked; existing detailed evidence retained</td></tr>
