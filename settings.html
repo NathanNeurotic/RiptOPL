@@ -271,6 +271,11 @@ hidden.</p>
 <b>HTTP base path</b> (default <code>/</code>) and <b>Test HTTP server</b>. They are separate from the SMB
 fields, so pointing HTTP elsewhere never changes SMB. See <a href="http.html">HTTP</a>.</p>
 
+<h3 id="network-retroachievements">RetroAchievements</h3>
+<p>In the <a href="retroachievements.html">RetroAchievements</a> build only, this page ends with
+<b>RetroAchievements telemetry</b> and <b>RetroAchievements badges</b>. They are shown whatever the
+Protocol is: telemetry uses the network driver the game launch loads, not the menu's.</p>
+
 <h3 id="pops-network-settings">POPSTARTER Network Settings</h3>
 <p>The <b>POPSTARTER Network Settings</b> row (also on <a href="#vcd-settings">PS Emulation Settings</a>)
 opens POPSTARTER's own network files, <code>IPCONFIG.DAT</code> and <code>SMBCONFIG.DAT</code>, which PS1
@@ -281,9 +286,7 @@ games over SMB need. They are not RiptOPL's settings.</p>
 folder. Nothing is written until you press OK.</li>
 <li>The fields are the PS2's IP address type, IP, mask and gateway, then the SMB server's address, port,
 share, user and password.</li>
-<li>OK writes only what you actually changed. On a first setup, with neither file on the card, saving the SMB values writes <code>IPCONFIG.DAT</code> too, as DHCP unless a complete static IP is entered. In the <a href="retroachievements.html">RetroAchievements</a>
-build, the screen also holds the <b>RetroAchievements telemetry</b> and <b>RetroAchievements badges</b>
-switches.</li>
+<li>OK writes only what you actually changed. On a first setup, with neither file on the card, saving the SMB values writes <code>IPCONFIG.DAT</code> too, as DHCP unless a complete static IP is entered.</li>
 </ul>
 
 <div class="callout info"><div class="h">i Apply and reconnect immediately</div>Confirming the Network
@@ -298,8 +301,9 @@ settings or saving the whole configuration.</div>
 <table data-sortable>
 <thead><tr><th>Option</th><th>Values</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>PS2/PS1 Game Display</td><td>Both (L3) / Mixed / PS2 / PS1</td><td><em>Both (L3)</em> keeps separate PS2 and PS1 pages toggled with L3. <em>Mixed</em> combines them and L3 cycles Mixed / PS2 / PS1. <em>PS2</em> or <em>PS1</em> shows only that type and fully disables L3. APPS and Favorites use their own rules. The same setting as on PS Emulation Settings. See <a href="ps1-vcd.html">PS1 Games</a>.</td></tr>
+<tr><td>PS2/PS1 Game Display</td><td>Both (L3) / Mixed / PS2 / PS1</td><td><em>Both (L3)</em> keeps separate PS2 and PS1 pages toggled with L3. <em>Mixed</em> combines them and L3 cycles Mixed / PS2 / PS1. <em>PS2</em> or <em>PS1</em> shows only that type and fully disables L3. APPS and Favorites use their own rules. See <a href="ps1-vcd.html">PS1 Games</a>.</td></tr>
 <tr><td>Applications Display</td><td>Mixed / Apps / PS1ELF (L3)</td><td><em>Mixed</em> shows every ELF in one APPS list with L3 disabled. <em>Apps / PS1ELF (L3)</em> moves titles containing <code>[PS1]</code> to a second L3 page; launch behaviour is unchanged.</td></tr>
+<tr><td>Show [PS1]/[PS2] Labels</td><td>Off / On</td><td>Starts each disc-game row with <code>[PS1]</code> or <code>[PS2]</code>, which helps in the <em>Mixed</em> view. Off by default. Display only: names, sorting, renames and favourites are unchanged, and app and folder rows are never labelled.</td></tr>
 <tr><td>Video Mode</td><td>Auto / PAL / NTSC / &hellip;</td><td>Output mode for the <b>menu</b>. <em>Auto</em> follows the console. The two <em>FLICKER-FREE</em> entries at the end of the list send the same 480i/576i signal but read both fields from the same lines, so thin lines and font edges stop strobing on a CRT &mdash; at the cost of half the vertical detail. After a change, <b>hold</b> Accept to keep the new mode; a tap does nothing, and Back or 10 seconds restores the old one (see <a href="controls.html#keep-video-mode">Keeping a new video mode</a>). Games use GSM instead; see <a href="gsm.html">GSM Video Modes</a>.</td></tr>
 <tr><td>Theme</td><td><em>installed themes</em></td><td>Active theme. The default is <em>Coverflow</em>. Themes are read from <code>THM/</code> on each device. See <a href="themes.html">Theme Engine</a>.</td></tr>
 <tr><td>Coverflow Settings</td><td>[sub-screen]</td><td>See <a href="#coverflow-settings">Coverflow Settings</a>.</td></tr>
@@ -348,6 +352,7 @@ the display pickers above no longer allow is discarded, not forced.</div>
 <tr><td>Cover Art</td><td>Off / On</td><td>Loads cover art. When off, no art images are loaded even if present. On by default.</td></tr>
 <tr><td>Disc Artwork</td><td>Off / On</td><td>Shows the theme's disc art: every image keyed on the <code>ICO</code> suffix (<code>&lt;ID&gt;_ICO</code> in <code>ART/</code>), including the theme's own placeholder for it. Turn it off to hide the disc while keeping covers and backgrounds. On by default.</td></tr>
 <tr><td>Background Art</td><td>Off / On</td><td>Shows a game's background image (<code>&lt;ID&gt;_BG</code> in <code>ART/</code>) when the theme uses one. On by default.</td></tr>
+<tr><td>3D Save Icons</td><td>Off / On</td><td>Shows a save icon where the theme has a spot for it (both built-in themes do). PS2 titles use the assigned VMC first, then memory cards. PS1 titles read the 2D save icon from POPSTARTER's SLOT0.VMC/SLOT1.VMC or Ember's MC1.vmc/MC2.vmc in the game's save folder; those cards appear after the emulator creates them. Off by default. Themes place it with the <a href="themes.html#saveicon">SaveIcon element</a>.</td></tr>
 <tr><td>Cover Art .tar Archive</td><td>Off / On</td><td>Also reads art from an <code>ART/art.tar</code> archive alongside the loose image files. Off by default.</td></tr>
 <tr><td>Art Delay</td><td>0 (Instant) / 2 (Fast) / 5 (Medium) / 8 (Standard)</td><td>How many frames the cursor must rest on a title before its art starts loading. <em>0</em>, the default, loads straight away; a higher value skips art for titles you scroll past.</td></tr>
 </tbody>
@@ -374,12 +379,25 @@ the display pickers above no longer allow is discarded, not forced.</div>
 <thead><tr><th>Option</th><th>Values</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td>PS2 Logo</td><td>Off / On</td><td>Shows the PS2 logo before a game, when the disc logo is valid and matches the console's region. On by default.</td></tr>
-<tr><td>Default Loader Core</td><td>&lt;OPL&gt; / Neutrino</td><td>Core for games whose per-game <em>Loader Core</em> is <em>Default</em>. <em>&lt;OPL&gt;</em> (the default) is the native core; <em>Neutrino</em> chains the external <code>neutrino.elf</code>. A per-game choice always wins. See <a href="neutrino.html">Neutrino Core</a>.</td></tr>
+<tr><td>Create VMC on First Launch</td><td>Off / On</td><td>Launching a PS2 game with nothing in VMC slot 1 creates an 8 MB card on the game's own device, named as the VMC screen suggests (every disc of a multi-disc game shares one), assigns it and saves it before the game starts. An existing card of that name is reused; Back during creation cancels the launch. Skips PS1 and app rows, HTTP, and the internal APA HDD under Neutrino. Off by default, because it moves those games' saves off the physical card. See <a href="vmc.html#assigning">Virtual Memory Cards</a>.</td></tr>
+<tr><td>Default Loader Core</td><td>&lt;OPL&gt; / Neutrino</td><td>Global default only for sources that support both cores. <em>&lt;OPL&gt;</em> (the default) is the native core; <em>Neutrino</em> chains the external <code>neutrino.elf</code>. UDPFS / UDPBD always use Neutrino; SMB / HTTP always use &lt;OPL&gt;. A per-game choice overrides the global default only where that source supports both. See <a href="neutrino.html">Neutrino Core</a>.</td></tr>
+<tr><td>Neutrino Defaults</td><td>[sub-screen]</td><td>The global Neutrino settings. See <a href="#neutrino-defaults">Neutrino Defaults</a>.</td></tr>
 <tr><td>OSD Defaults</td><td>[sub-screen]</td><td>The global <a href="#osd-settings">OSD Settings</a>: the console language, screen size and video mode handed to games that do not set their own.</td></tr>
 <tr><td>GSM Defaults (All Games)</td><td>[sub-screen]</td><td>The global GSM settings. See <a href="gsm.html">GSM Video Modes</a>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="neutrino-defaults">Neutrino Defaults</h3>
+<p>Opened from Game Launching. Games whose per-game pickers are <em>Default</em> follow these, and the arguments here go to every Neutrino launch.</p>
+
+<table data-sortable>
+<thead><tr><th>Option</th><th>Values</th><th>Description</th></tr></thead>
+<tbody>
 <tr><td>Neutrino Path</td><td>text (full path)</td><td>Where <code>neutrino.elf</code> is. <em>&lt;not set&gt;</em> (the default) looks on the active game's device, then <code>mc0:</code>/<code>mc1:</code>; a path you set is tried first, on any device, and falls back the same way when it is unavailable. Device aliases such as <code>usb:/</code>, <code>ata:/</code>, <code>mmce:/</code>, <code>hdd:/</code> and <code>smb:/</code> are accepted. For MMCE + GameID switching, keep Neutrino on <code>mmceN:</code> (or the MMCE Prefix Path), not the same slot's <code>mcN:</code>. Replaces the old <em>Neutrino Device</em> picker. See <a href="neutrino.html#neutrino-device">Neutrino Core</a>.</td></tr>
 <tr><td>Neutrino Video</td><td>Off / 240p / 480p / 1080i x1 / 1080i x2 / 1080i x3</td><td>Default Neutrino <code>-gsm</code> video mode for games whose per-game picker is <em>Default</em>. Off by default.</td></tr>
 <tr><td>Neutrino GSM Compatibility</td><td>Off / Type 1 (GSM/OPL) / Type 2 / Type 3</td><td>Field-flipping fix for games that shake or tear under a forced Neutrino video mode: the <code>:c</code> half of <code>-gsm</code>. Greyed until a Neutrino Video mode is set. Off by default.</td></tr>
+<tr><td>Auto Boot ELF (-elf)</td><td>Off / On</td><td>Passes the game's boot ELF to Neutrino, for example <code>-elf=cdrom0:\SLUS_123.45;1</code>, so Neutrino can find a per-title config. On by default; a Boot ELF you set in the arguments takes precedence. See <a href="neutrino.html#launch-args">Neutrino Core</a>.</td></tr>
+<tr><td>Show Launch Arguments</td><td>Off / On</td><td>Just before a Neutrino launch hands over, shows every argument Neutrino will receive. <b>Accept</b> launches; <b>Back</b> stays in the menu. Auto Loading never asks. Off by default. See <a href="neutrino.html#show-args">Neutrino Core</a>.</td></tr>
 <tr><td>Neutrino Advanced Arguments</td><td>[sub-screen]</td><td>The structured global Neutrino arguments editor. These apply to every Neutrino game; per-game arguments add on top. Prefix a flag with <code>$</code> to disable it without deleting it. See <a href="neutrino.html">Neutrino Core</a>.</td></tr>
 </tbody>
 </table>
@@ -415,7 +433,6 @@ This is an OPL core feature. See <a href="per-game-settings.html#osd-language">P
 <table data-sortable>
 <thead><tr><th>Option</th><th>Values</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>PS2/PS1 Game Display</td><td>Both (L3) / Mixed / PS2 / PS1</td><td>The same setting as on <a href="#display-settings">Interface</a>.</td></tr>
 <tr><td>POPSTARTER.ELF Path</td><td>text (full path)</td><td>Where <code>POPSTARTER.ELF</code> is. <em>&lt;not set&gt;</em> (the default) looks in the VCD's own <code>POPS</code> folder, then <code>mc0:</code>/<code>mc1:</code>; APA HDD VCDs use <code>__common/POPS</code>. A path you set is tried first, on any device, and falls back the same way when it is unavailable. The editor takes the whole path. Replaces the old <em>POPSTARTER.ELF Device</em> picker, whose device choice becomes the matching path when you upgrade. SMB PS1 VCDs also use an <code>SB.&lt;name&gt;.ELF</code> selector.</td></tr>
 <tr><td>RetroGEM Game ID</td><td>Off / On</td><td>Draws the game-ID barcode read by Pixel FX / RetroGEM / PS2Digital when a PS1 VCD launches. On by default.</td></tr>
 <tr><td>Ember Display Mode</td><td>Default / 240p / 480i / 480p</td><td>Output mode Ember uses, written to <code>settings.txt</code> in the launching device's <code>EMBER</code> folder. <em>480p</em> needs component or HDMI (composite shows no picture), so choosing it asks first. RiptOPL used to label 480i as "480p"; it has always written 480i.</td></tr>
@@ -462,9 +479,9 @@ This is an OPL core feature. See <a href="per-game-settings.html#osd-language">P
 <table data-sortable>
 <thead><tr><th>Option</th><th>Values</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>Sound Effects</td><td>Off / On</td><td>UI navigation sound effects. On by default in RiptOPL.</td></tr>
-<tr><td>Boot Sound</td><td>Off / On</td><td>Plays a sound when RiptOPL starts. On by default in RiptOPL.</td></tr>
-<tr><td>Background Music</td><td>Off / On</td><td>Streams background music. On by default, and silent unless a music file is found (see below).</td></tr>
+<tr><td>Sound Effects</td><td>Off / On</td><td>UI navigation sound effects. Off by default, as in stock OPL.</td></tr>
+<tr><td>Boot Sound</td><td>Off / On</td><td>Plays a sound when RiptOPL starts. Off by default.</td></tr>
+<tr><td>Background Music</td><td>Off / On</td><td>Streams background music. Off by default; when on, it stays silent unless a music file is found (see below).</td></tr>
 <tr><td>Sound Effects Volume</td><td>0&ndash;100</td><td>Volume of UI sound effects.</td></tr>
 <tr><td>Boot Sound Volume</td><td>0&ndash;100</td><td>Volume of the boot sound.</td></tr>
 <tr><td>Background Music Volume</td><td>0&ndash;100</td><td>Volume of background music.</td></tr>
@@ -516,22 +533,23 @@ supplying only some of the eight falls back to the built-in sound for the rest. 
 <a href="per-game-settings.html">Per-game Settings</a> page.</p>
 
 <ul class="checklist">
-<li><b>Game Settings</b> — Loader Core, DMA Mode, Game ID, Custom ELF, compatibility Modes 1–7, Download Defaults, and the Neutrino overrides (Neutrino Launch Args, Neutrino Video, Neutrino GSM Compatibility, Neutrino Filesystem). See <a href="neutrino.html">Neutrino Core</a>.</li>
+<li><b>Game Settings</b> — Loader Core, DMA Mode, Game ID, Custom ELF, compatibility Modes 1–7, and the Neutrino overrides (Neutrino Launch Args, Neutrino Video, Neutrino GSM Compatibility, Neutrino Filesystem). See <a href="neutrino.html">Neutrino Core</a>.</li>
 <li><b>Cheat Settings</b> — PS2RD Cheat Engine, its mode, and PS2RD Cheat Image. Global or per-game. See <a href="cheats.html">Cheats</a>.</li>
 <li><b>Configure GSM</b> — GSM Selector, forced video mode, H-POS and V-POS, Emulate FIELD Flipping. Global or per-game. OPL core only. See <a href="gsm.html">GSM Video Modes</a>.</li>
 <li><b>Configure VMC</b> — VMC Slot 1 and Slot 2 assignment, image creation and deletion, and keeping a physical card in a slot. See <a href="vmc.html">VMC</a>.</li>
 <li><b>Controller Emulation</b> and <b>Controller Macros</b> — per-game pad emulation and macros. See <a href="pademu.html">PADEMU</a>.</li>
 <li><b>OSD Settings</b> — OSD language, screen size and video mode. See <a href="#osd-settings">OSD Settings</a> above.</li>
 <li><b>Save Changes</b>, <b>Test Changes</b> and <b>Remove Settings</b> — save this game's settings, launch with them unsaved, or delete them.</li>
-<li>On a PS1 title the menu is shorter: <b>Global PS Emulation Settings</b>, <b>Ember Game Settings</b> (Ember titles only: this game's Ember Controller) and <b>Rename</b>. See <a href="ps1-vcd.html#ember">Ember</a>.</li>
+<li>On a PS1 title the menu is shorter: <b>Global PS Emulation Settings</b>, <b>Ember Game Settings</b> (Ember titles only: this game's Ember Timing, Dithering, Shading and Controller, written to its <code>settings.txt</code> when you press OK) and <b>Rename</b>. See <a href="ps1-vcd.html#ember">Ember</a>.</li>
 <li><b>Rename</b> and <b>Delete</b> — only with <em>Write Operations</em> on, and never for PS2 games on the internal HDD. See <a href="hdd.html#disk-safety">Disk safety</a>.</li>
 </ul>
 
 <details class="deep"><summary>Which settings are greyed out under the Neutrino core?</summary>
 <p>OPL-only features are unavailable when a game is set to use the Neutrino core. In the per-game
 <b>Game Settings</b> screen the following are greyed (shown with a <em>"Not used with Neutrino"</em>
-hint): Modes 4 and 6 (Skip Videos and Disable IGR), Download Defaults, and the Configure GSM, Cheat
-Settings and Controller Emulation / Controller Macros screens. Modes 1/2/3/5 stay active because they map
+hint): Modes 4 and 6 (Skip Videos and Disable IGR), and the Configure GSM and Controller Emulation /
+Controller Macros screens. Cheat Settings stays: Neutrino runs cheats too, and only its PS2RD Cheat
+Image row is greyed. Modes 1/2/3/5 stay active because they map
 directly to Neutrino's <code>-gc=</code> flag. Mode 7 is Neutrino-only and is available (passes
 <code>-gc=7</code> to Neutrino). DMA Mode, Game ID, Custom ELF, and VMC settings remain active regardless
 of core. See <a href="per-game-settings.html">Per-game Settings</a>.</p>
