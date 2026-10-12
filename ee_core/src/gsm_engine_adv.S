@@ -154,7 +154,7 @@ DTV_1080P:
     ld      $v1, GS_CSR($v0)
     dsrl    $v1, 16
     andi    $v1, 0xFF
-    sltiu   $v1, 0x19
+    sltiu   $v1, $v1, 0x19
     bnez    $v1, DTV_1080P_oldGS
     nop
 

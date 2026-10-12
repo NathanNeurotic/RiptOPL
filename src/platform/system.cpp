@@ -1203,7 +1203,7 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
 
         if (eph[i].memsz > eph[i].filesz) {
             LOG("EECORE PH CLEAR: %d 0x%08X 0x%08X\n", i, (u32)((u32)eph[i].vaddr + eph[i].filesz), eph[i].memsz - eph[i].filesz);
-            memset(eph[i].vaddr + eph[i].filesz, 0, eph[i].memsz - eph[i].filesz);
+            memset((char *)eph[i].vaddr + eph[i].filesz, 0, eph[i].memsz - eph[i].filesz);
         }
     }
 

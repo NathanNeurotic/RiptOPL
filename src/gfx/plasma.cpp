@@ -25,6 +25,8 @@ float PlasmaBackground::smoothStep(float t) const
 // The same as mix, but with 8 (2*4) values mixed at once
 static void VU0MixVec(VU_VECTOR *a, VU_VECTOR *b, float mix, VU_VECTOR *res)
 {
+    unsigned int mixBits;
+    __builtin_memcpy(&mixBits, &mix, sizeof(mixBits));
     asm volatile(
 #if __GNUC__ > 3
         "lqc2           $vf1, (%[a])\n"        // load the first vector
@@ -46,7 +48,7 @@ static void VU0MixVec(VU_VECTOR *a, VU_VECTOR *b, float mix, VU_VECTOR *res)
         "sqc2           vf1, (%[res])\n"    // transfer the result in acc to the ee
 #endif
         : [res] "+r"(res), "=m"(*res)
-        : [a] "r"(a), [b] "r"(b), [mix] "r"(mix), "m"(*a), "m"(*b));
+        : [a] "r"(a), [b] "r"(b), [mix] "r"(mixBits), "m"(*a), "m"(*b));
 }
 
 float PlasmaBackground::noise(float x, float y, float z) const

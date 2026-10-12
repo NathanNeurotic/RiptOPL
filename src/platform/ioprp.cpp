@@ -110,7 +110,7 @@ static inline void Align_offsets(void *base_address, unsigned int *offset_in, st
         if ((romdir_out->fileSize & 0xF) == 0)
             *offset_out += romdir_out->fileSize;
         else { /* Fill the alignment gap with 0s */
-            register unsigned int new_filesize = (romdir_out->fileSize + 0xF) & ~0xF;
+            unsigned int new_filesize = (romdir_out->fileSize + 0xF) & ~0xF;
             memset((void *)((u32)base_address + (*offset_out) + romdir_out->fileSize), 0, new_filesize - romdir_out->fileSize);
             *offset_out += new_filesize;
         }

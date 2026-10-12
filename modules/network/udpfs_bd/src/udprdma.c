@@ -406,7 +406,7 @@ void udprdma_destroy(udprdma_socket_t *socket)
 int udprdma_discover(udprdma_socket_t *socket, uint32_t timeout_ms)
 {
     iop_sys_clock_t clock;
-    uint32_t evf_bits;
+    u32 evf_bits;
     int retries;
 
     if (socket == NULL)
@@ -465,7 +465,7 @@ void udprdma_inform(udprdma_socket_t *socket)
 int udprdma_send(udprdma_socket_t *socket, const void *data, uint32_t size)
 {
     iop_sys_clock_t clock;
-    uint32_t evf_bits;
+    u32 evf_bits;
     uint16_t sent_seq_nr;
     int retries;
 
@@ -526,7 +526,7 @@ int udprdma_send_ll(udprdma_socket_t *socket,
                     const void *data, uint32_t data_size)
 {
     iop_sys_clock_t clock;
-    uint32_t evf_bits;
+    u32 evf_bits;
     uint16_t sent_seq_nr;
     int retries;
 
@@ -582,7 +582,7 @@ int udprdma_send_ll(udprdma_socket_t *socket,
 int udprdma_recv(udprdma_socket_t *socket, void *buffer, uint32_t size, uint32_t timeout_ms)
 {
     iop_sys_clock_t clock;
-    uint32_t evf_bits;
+    u32 evf_bits;
 
     if (socket == NULL || buffer == NULL)
         return UDPRDMA_ERR_INVAL;
