@@ -255,8 +255,8 @@ for the controller, and 24-bit shading can cause issues. Earlier builds labelled
 
 <h3>Device support</h3>
 <p>Ember titles are supported on <b>USB, MX4SIO, iLink, exFAT-ATA, MMCE, SMB, APA/PFS HDD,
-UDPFS and UDPBD</b>. Ordinary device pages merge Ember folders with their POPSTARTER rows; the two
-UDP network pages are Ember-only. A device with no <code>EMBER/</code> library simply contributes no
+UDPFS and UDPBD</b>. UDPFS Files merges Ember folders with uppercase POPSTARTER VCD rows.
+UDPBD and UDPFS IMG remain Ember-only. A device with no <code>EMBER/</code> library simply contributes no
 Ember rows, and every ordinary device's POPSTARTER library lists exactly as before.</p>
 
 <h2 id="file-layout">Where to put your VCD files</h2>
@@ -342,11 +342,17 @@ itself permits missing files and falls back to defaults. Installing support file
 device does not change that runtime USB requirement.</p>
 <p>With <strong>VCD BDMA Apply on Launch</strong> enabled, RiptOPL equips the <code>.udpfs</code> pair on the memory
 card and hands POPSTARTER its usual <code>mass:/POPS/XX.&lt;name&gt;.ELF</code> selector. With automatic
-equip disabled, select <strong>BDMA Mode → UDPFS</strong> and equip the pair manually. Existing BDMA
-equip failures remain best-effort warnings, so inspect the installed pair if a launch fails.
+equip disabled, select <strong>BDMA Mode → UDPFS</strong> and equip the pair manually. The launch
+checks the installed pair and refuses to tear down RiptOPL if neither
+the recorded pair nor a manually installed matching pair is ready.
+No dummy USB VCD is required: the missing VCD triggers network fallback.
 USB VCDs take precedence over the server when both contain the same path. UDPBD and UDPFS
 IMG remain Ember-only. The new RiptOPL VCD handoff is implemented and host-tested; physical
-console validation is still pending, and POPS UDPFS RetroAchievements integration is unavailable.</p>
+console validation is still pending, and POPS UDPFS RetroAchievements integration is unavailable.
+If any connected USB volume contains RiptOPL's USB-only RA <code>POPS/MODULE_9.IRX</code>,
+launch is refused. Back up and remove that module before retrying a clean POPS
+UDPFS launch. Unreadable modules also prevent handoff; user-owned modules are
+left untouched. This check does not delete files or add POPS RA support.</p>
 <p>Credit goes to <strong>Okeanos</strong> for BDM-UDPFS Assault, <strong>israpps</strong> for the original BDM Assault,
 <strong>krHACKen</strong> for POPSTARTER, <strong>rickgaiser</strong> for Neutrino/UDPFS/UDPRDMA, <strong>pcm720</strong> for <code>udpfsd</code>,
 and the <strong>PS2SDK contributors</strong>. The upstream release is <strong>Alpha</strong>. Its license and third-party
