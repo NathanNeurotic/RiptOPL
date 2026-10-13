@@ -292,8 +292,13 @@ from both SDK lineages failed, so the result is not isolated to one compiler ima
   <li>For exFAT HDD, confirm <b>Internal HDD (exFAT)</b> is enabled in <b>Game Sources</b> and that the HDD has mounted — the game list should show an <b>HDD Games</b> entry. VCDs on the exFAT HDD live in <code>massN:/POPS/</code>.</li>
 </ul>
 
-<div class="callout info"><div class="h">i UDPFS / UDPBD are Ember-only PS1 pages</div>
-The network-page scanner currently enumerates Ember. For POPSTARTER VCD reads over UDPFS, use <a href="ps1-vcd.html#pops-udpfs">Okeanos’s BDM-UDPFS Assault setup</a>: install the matching memory-card pair, keep other POPS files and configs on USB, and check uppercase <code>.VCD</code> paths and the server subnet. This pair does not support UDPBD. Automatic network VCD enumeration/equip is a separate integration step.
+<div class="callout info"><div class="h">i POPS UDPFS launch preparation</div>
+UDPFS Files lists uppercase <code>POPS/*.VCD</code> with Ember titles. For POPSTARTER, follow
+<a href="ps1-vcd.html#pops-udpfs">BDM-UDPFS Assault setup</a>: keep non-VCD POPS runtime files
+on USB, save matching valid network configs on every connected USB volume, and equip the matching
+memory-card driver pair. A missing dummy USB VCD is not an error; absent VCDs fall back to the server.
+The launch refuses an unready driver pair or the known USB-only RA module before teardown.
+UDPBD and UDPFS IMG remain Ember-only. The C++ handoff still needs physical-console acceptance.
 </div>
 
 <div class="callout info"><div class="h">i Favorites always has four views</div>
