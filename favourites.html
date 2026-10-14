@@ -134,10 +134,9 @@ automatically on first boot and carry your starred games over. Your favorites wi
 versioned <code>OFAV</code> format on the next write. That OFAV format is RiptOPL's own — uOPL and wOPL cannot read it back, so the carry-over is one-way only.</div>
 
 <p>The on-disk format uses an <code>OFAV</code> magic header, a version number, and an explicit record count,
-followed by one record per favorite. Every field is written as an explicit scalar (no raw struct dumps), and the
-reader validates the header, version, record count, and every text-length field before accepting a file — a
-corrupt or truncated <code>favourites.bin</code> is rejected cleanly rather than causing a crash or out-of-bounds
-read.</p>
+followed by one record per favorite. The reader checks the complete bounded file, including text terminators,
+trailing data and successful reads and close. A salvageable prefix may still appear, but an incomplete or
+unreadable list cannot be silently saved over.</p>
 
 <table data-sortable>
   <thead><tr><th>Field</th><th>Value / limit</th></tr></thead>
@@ -150,6 +149,22 @@ read.</p>
     <tr><td>Import from uOPL / wOPL</td><td>Automatic, read-only (one-way carry-over)</td></tr>
   </tbody>
 </table>
+
+<h3 id="storage-recovery">Saving and recovering Favorites</h3>
+<p>Each edit first writes <code>favourites.bin.new</code>, closes it and reads it back. Only after that copy
+matches does RiptOPL rewrite and verify <code>favourites.bin</code>. A failed primary write keeps the recovery
+copy. If the device has too little free space for staging, the edit fails and the old list stays intact;
+free space before retrying.</p>
+<p>A complete readable primary always wins, including a list edited on a PC or a valid empty OFAV list.
+If the primary is missing or structurally incomplete, a complete native OFAV recovery copy can supply the
+list. Before another edit, RiptOPL restores and verifies that copy as the primary. Unknown versions,
+oversized files and read or allocation failures keep edits blocked, even if recovery entries can be shown.</p>
+<div class="callout warning"><div class="h">Keep both files after a storage error</div>
+Copy <code>favourites.bin</code> and <code>favourites.bin.new</code> elsewhere before attempting manual
+recovery. Do not delete an unreadable primary just to make an edit succeed. Readback checks file contents;
+it does not prove that physical media has flushed writes or guarantee survival of a power cut.
+See the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/FAVORITES-STORAGE.md">storage reference</a>
+for the precedence and recovery rules.</div>
 
 <span id="device-settings"></span>
 <h2 id="game-sources">Game Sources option</h2>
