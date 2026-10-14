@@ -141,6 +141,10 @@ slot 1 and saves the game's config before the game starts. An existing card with
 creation cancels the launch. PS1 and app rows, HTTP, and the internal APA HDD under Neutrino are skipped. Turning it on
 moves those games' saves off the physical memory card.</div>
 
+<h2 id="automatic-creation">Automatic creation, cancellation and existing cards</h2>
+<p>With the VMC safety follow-ups in <a href="https://github.com/NathanNeurotic/RiptOPL/pull/34">PR #34</a>, a working formatter is allowed to finish even when a slow device takes more than two minutes. Back cancels the launch and requests cleanup. The menu waits up to 600 further status polls; if cleanup is still running, it stays in the menu and refuses another automatic launch while the job is busy. A blocked device call can delay a poll, so this is not a wall-clock deadline.</p>
+<p>After creation reports success, the game source must still contain the expected 8 MB image before it is assigned. A changed game row or device during the progress screen cancels continuation. PS2 Favorites resolve their owning source again after the wait.</p>
+<p>The actual loader governs existing-card handling: UDPFS and UDPBD use Neutrino, SMB uses native OPL. Native OPL requires a supported card size; Neutrino receives an existing odd-size card as is. Neither path automatically reformats an existing image. These checks do not establish that a size-correct image is structurally complete.</p>
 <h2 id="configure-vmc-screen">The Configure VMC screen</h2>
 <p>This dialog manages a single VMC image file. It contains the following fields:</p>
 
@@ -179,6 +183,8 @@ If you change the <b>Size</b> of an existing VMC image and press <b>Modify</b>, 
 <p><b>Neutrino:</b> its BDM mapping can use multiple extents, with a shared 64-fragment budget across the game and memory-card files in the bundled runtime. A native OPL contiguity warning and a Neutrino fragment-budget failure are different checks. Record the selected core and the exact point where the error appears.</p>
 <p>For a creation failure, record the error text/code, whether progress completed, whether the file remains, PS2 model, RiptOPL version, loader/device, FAT32/exFAT/APA filesystem, changed settings, VMC and PADEMU state. Include whether the same card works after a retry or only until reboot. See <a href="troubleshooting.html#vmc-errors">VMC troubleshooting</a>.</p>
 
+<div class="callout amber" id="failed-format-retry"><div class="h">An unfinished image can have the expected size</div>
+<p>A format failure after the erase pass can leave a full-size image without completed card metadata. The current automatic size probe may reuse it on a later launch; this shared limitation is tracked in <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/issues/941">original issue #941</a> and <a href="https://github.com/NathanNeurotic/RiptOPL/issues/20">migration issue #20</a>. File length or a successful retry is not proof that formatting completed. Back up any card containing saves and keep the original failure details before attempting recovery.</p></div>
 <h2 id="access-errors">Access errors at launch</h2>
 <p>If a VMC file cannot be opened at game launch — for example, because the file is missing or the drive is not ready — OPL shows:</p>
 <pre>Error accessing VMC %s. Continue with the Memory Card in slot %d?</pre>
