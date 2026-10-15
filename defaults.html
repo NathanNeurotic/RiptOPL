@@ -1,0 +1,182 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fresh-start defaults &middot; RiptOPL Docs</title>
+<meta name="description" content="Verified fresh-start display, theme and audio settings for RiptOPL, with saved-setting overrides.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<meta property="og:site_name" content="RiptOPL Docs">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
+<link rel="stylesheet" href="assets/style.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    RiptOPL <small>DOCS</small></a>
+    <div class="topbar-actions">
+    <a class="topbar-btn primary" href="releases.html" title="Downloads &amp; Releases"><span class="icon icon-releases"></span>Downloads</a>
+    <a class="topbar-btn" href="https://github.com/NathanNeurotic/RiptOPL" target="_blank" rel="noopener" title="GitHub Repository"><span class="icon icon-github"></span>GitHub</a>
+  </div>
+  <div class="search">
+    <span class="ico"></span>
+    <input id="q" type="search" placeholder="Search devices, themes, Neutrino, settings…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-brand-sub">PLAYSTATION 2 // RIPTOPL</div>
+    <a href="index.html"><span class="icon icon-home"></span>Home</a>
+    <h4>Start</h4>
+    <a href="getting-started.html"><span class="icon icon-start"></span>Getting Started</a>
+    <a href="install.html"><span class="icon icon-install"></span>Install &amp; First Boot</a>
+    <h4>Game sources</h4>
+    <a href="usb.html"><span class="icon icon-usb"></span>USB / MX4SIO / iLink</a>
+    <a href="mmce.html"><span class="icon icon-mmce"></span>MMCE</a>
+    <a href="smb.html"><span class="icon icon-smb"></span>SMB (network share)</a>
+    <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network Boot (UDPBD/UDPFS)</a>
+    <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
+    <h4>Features</h4>
+    <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
+    <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
+    <a href="coverflow.html" class="active"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
+    <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
+    <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
+    <a href="gsm.html"><span class="icon icon-gsm"></span>GSM Video Modes</a>
+    <a href="igr.html"><span class="icon icon-igr"></span>In-Game Reset</a>
+    <a href="vmc.html"><span class="icon icon-vmc"></span>VMC</a>
+    <a href="cheats.html"><span class="icon icon-cheats"></span>Cheats</a>
+    <a href="retroachievements.html"><span class="icon icon-ra"></span>RetroAchievements</a>
+    <h4>Theme Engine</h4>
+    <a href="themes.html"><span class="icon icon-themes"></span>Theme Engine</a>
+    <h4>Reference</h4>
+    <a href="settings.html"><span class="icon icon-settings"></span>Settings Reference</a>
+    <a href="controls.html"><span class="icon icon-controls"></span>Controls</a>
+    <a href="languages.html"><span class="icon icon-languages"></span>Languages</a>
+    <a href="pademu.html"><span class="icon icon-pademu"></span>PADEMU</a>
+    <a href="nbd.html"><span class="icon icon-nbd"></span>NBD Server</a>
+    <a href="zso.html"><span class="icon icon-zso"></span>ZSO Format</a>
+    <a href="ps3-bc.html"><span class="icon icon-ps3"></span>PS3 BC</a>
+    <a href="releases.html"><span class="icon icon-releases"></span>Releases</a>
+    <a href="fork-gaps.html"><span class="icon icon-fork-gaps"></span>Fork Feature Gaps <span class="nav-badge">AUDIT</span></a>
+    <a href="troubleshooting.html"><span class="icon icon-troubleshoot"></span>Troubleshooting</a>
+    <a href="credits.html"><span class="icon icon-credits"></span>Credits &amp; Sources</a>
+    <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
+  </nav>
+  <main class="content">
+<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
+<h1 id="fresh-start-defaults">Fresh-start defaults</h1>
+<p>These defaults describe this C++/ps2build repository when no saved master
+configuration is loaded. Updating the ELF does not reset saved settings. A new
+installation folder can still discover settings on another device.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Fresh default</th>
+<th>Where to change it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Menu aspect ratio</td>
+<td>16:9; Widescreen on</td>
+<td>Settings → Interface</td>
+</tr>
+<tr>
+<td>Menu video mode</td>
+<td>Auto</td>
+<td>Settings → Interface</td>
+</tr>
+<tr>
+<td>Theme</td>
+<td>Built-in <code>&lt;OPL&gt;</code></td>
+<td>Settings → Interface → Theme</td>
+</tr>
+<tr>
+<td>Coverflow</td>
+<td>Optional built-in <code>&lt;Coverflow&gt;</code> theme</td>
+<td>Settings → Interface → Theme</td>
+</tr>
+<tr>
+<td>Cover and disc artwork</td>
+<td>On</td>
+<td>Settings → Interface → Artwork Settings</td>
+</tr>
+<tr>
+<td>Notifications</td>
+<td>On</td>
+<td>Settings → Interface</td>
+</tr>
+<tr>
+<td>PS2 logo</td>
+<td>On</td>
+<td>Settings → Game Launching</td>
+</tr>
+<tr>
+<td>Sound effects, boot sound, background music</td>
+<td>On; stored volume 90</td>
+<td>Settings → Audio Settings</td>
+</tr>
+<tr>
+<td>Remember last played</td>
+<td>Off</td>
+<td>Settings → General &amp; System</td>
+</tr>
+<tr>
+<td>Automatic VMC creation</td>
+<td>Off</td>
+<td>Settings → Game Launching</td>
+</tr>
+<tr>
+<td>GameID barcode</td>
+<td>Off</td>
+<td>Settings → Interface</td>
+</tr>
+</tbody>
+</table>
+<p>Background music still needs a playable configured/default track. An enabled
+setting alone does not supply music. Storage discovery and saved configuration
+can affect the active presentation after initial defaults are applied.</p>
+<p>Select <strong>Theme: <code>&lt;Coverflow&gt;</code></strong> under <strong>Settings → Interface</strong>, apply, and save
+to keep the carousel presentation. Coverflow supports both 4:3 and 16:9;
+selecting it does not toggle widescreen. Use <strong>Widescreen: Off</strong> for a 4:3 menu.
+The carousel starts with three covers, center scale 30, 200 ms animation and
+side-cover dimming off. L1/R1 page moves animate only when selection changes,
+including wraps; flat list themes keep their existing page behavior.</p>
+<p>Existing <code>settings_riptopl.cfg</code> values override fresh defaults. The legacy
+<code>conf_riptopl.cfg</code> can also be migrated. Inspect the active configuration location
+before diagnosing a different appearance as a failed update; preserve settings
+and saves instead of deleting them to force a reset.</p>
+<p>Menu video settings do not force the same video mode in games. <strong>Triangle + Cross</strong>
+at boot selects the explicit 480p menu-recovery override; <strong>Triangle + Circle</strong>
+selects Auto/interlaced recovery. Use the override suitable for the connected display.</p>
+<p>Implementation references: <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/src/core/settings.cpp">settings table</a>,
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/src/app/settingsio.cpp">configuration loading</a>,
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/src/gfx/themes.cpp">initial theme</a>, <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/include/themecatalog.h">theme catalog</a>,
+and <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/src/gfx/coverflow.cpp">carousel tuning</a>.</p>
+<p>The original Open-PS2-Loader repository's newer guide describes 4:3, disabled
+audio and center scale 45. This branch retains 16:9, enabled audio and scale 30.
+Those are explicit migration differences, tracked in
+<a href="https://github.com/NathanNeurotic/RiptOPL/issues/20">issue #20</a>; this documentation
+update does not change runtime defaults or claim complete defaults parity.</p>
+</main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>RiptOPL Documentation</b> — for the opinionated Open PS2 Loader fork. Built on, and grateful to, the
+  <a href="https://github.com/ps2homebrew">ps2homebrew</a> team and the wider OPL family — see
+  <a href="credits.html">Credits &amp; Sources</a>. For the canonical project, see
+  <a href="https://github.com/ps2homebrew/Open-PS2-Loader">ps2homebrew/Open-PS2-Loader</a>.</p>
+  <p class="prov-inline">RiptOPL is a downstream fork, not the canonical project. POPSTARTER uses Sony's POPS; Ember is a separate emulator. Sony's POPS is
+  <b>not</b> distributed here. PS1/POPSTARTER deep reference: the sister
+  <a href="https://nathanneurotic.github.io/POPSLoader/">POPStarter docs</a>.</p>
+</footer>
+<script src="assets/app.js"></script>
+<script src="assets/orbs.js"></script>
+</body></html>
