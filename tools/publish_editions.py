@@ -110,6 +110,11 @@ def release_notes(options, sha, neutrino, repo="NathanNeurotic/RiptOPL"):
     )
 
 
+def latest_release_arg(edition):
+    """Only IncebtIon is presented as GitHub's Latest release."""
+    return "--latest=" + ("true" if edition == "incebtion" else "false")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("artifacts", type=Path)
@@ -151,7 +156,7 @@ def main():
                     raise ValueError(f"GitHub did not retain the verified asset: {tag}/{file.name}")
             update_tag(repo, tag, sha)
             gh("release", "edit", tag, "--repo", repo, "--title", options["title"], "--notes-file", str(notes_path),
-               "--draft=false", "--prerelease=false", "--latest=" + ("true" if edition == "korium" else "false"))
+               "--draft=false", "--prerelease=false", latest_release_arg(edition))
             reference = json.loads(gh("api", f"repos/{repo}/git/ref/tags/{tag}"))
             if reference["object"]["sha"] != sha:
                 raise ValueError(f"release tag drifted: {tag}")
