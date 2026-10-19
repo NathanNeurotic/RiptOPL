@@ -56,6 +56,12 @@ class PublicationTests(unittest.TestCase):
             self.assertFalse(publisher.publication_allowed(dict(environment, **{key: value}), "abc123"))
         self.assertFalse(publisher.publication_allowed({}, "abc123"))
 
+    def test_only_incebtion_is_designated_latest(self):
+        self.assertEqual(set(publisher.EDITIONS), {"korium", "ra", "incebtion"})
+        for edition in publisher.EDITIONS:
+            expected = "--latest=true" if edition == "incebtion" else "--latest=false"
+            self.assertEqual(publisher.latest_release_arg(edition), expected)
+
     def test_first_draft_release_creates_missing_tag(self):
         result = subprocess.CompletedProcess([], 1, "", "gh: Not Found (HTTP 404)")
         with patch.object(publisher.subprocess, "run", return_value=result), patch.object(publisher, "gh") as gh:
