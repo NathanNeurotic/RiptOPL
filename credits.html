@@ -38,9 +38,12 @@
     <a href="mmce.html"><span class="icon icon-mmce"></span>MMCE</a>
     <a href="smb.html"><span class="icon icon-smb"></span>SMB (network share)</a>
     <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
+    <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
+    <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
     <a href="network-boot.html"><span class="icon icon-netboot"></span>Network Boot (UDPBD/UDPFS)</a>
     <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
     <h4>Features</h4>
+    <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
     <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
@@ -64,7 +67,9 @@
     <a href="ps3-bc.html"><span class="icon icon-ps3"></span>PS3 BC</a>
     <a href="releases.html"><span class="icon icon-releases"></span>Releases</a>
     <a href="fork-gaps.html"><span class="icon icon-fork-gaps"></span>Fork Feature Gaps <span class="nav-badge">AUDIT</span></a>
+    <a href="ps2sdk-notes.html"><span class="icon icon-book"></span>Notes for ps2sdk</a>
     <a href="troubleshooting.html"><span class="icon icon-troubleshoot"></span>Troubleshooting</a>
+    <a href="launch-diagnostics.html"><span class="icon icon-troubleshoot"></span>Launch Diagnostics</a>
     <a href="credits.html" class="active"><span class="icon icon-credits"></span>Credits &amp; Sources</a>
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
@@ -89,6 +94,9 @@ and their many years of open-source work on Open PS2 Loader and the
 The toolchain, the IOP module ecosystem, the network stack, the HDD drivers, the memory-card protocol,
 the pad-emulation IRX chain — all of it was built, maintained, and kept free and open so that
 people could study and extend it. Every feature in RiptOPL is built on that foundation.</p>
+
+<p>Where RiptOPL replaces or patches a PS2SDK module, <a href="ps2sdk-notes.html">Notes for ps2sdk</a> records
+why: each defect found, the evidence for it, and whether ps2sdk master still has it.</p>
 
 <p>Original Open PS2 Loader authors: <b>Ifcaro</b> and <b>jimmikaelkael</b> (copyright 2009).
 Core OPL development has been carried on by Ifcaro, volca, jimmikaelkael, polo35, izdubar,
@@ -481,6 +489,9 @@ are distributed with Ember or with RiptOPL. See <a href="ps1-vcd.html#ember">Emb
 core</a>.
 </div>
 
+<h2 id="dvr-tool">PSX DVR / DTL TOOL: developers and technical references</h2>
+<p>The experimental <a href="psx-dvr.html">PSX DESR DVR ISO support</a> builds upon <a href="https://github.com/pcm720/neutrino/tree/bsd-dvr"><b>pcm720</b></a>'s external DVR-enabled Neutrino backend; DVRP modules from <a href="https://github.com/ps2dev/ps2sdk"><b>ps2dev / PS2SDK contributors</b></a>; and DVR initialization precedent in <a href="https://github.com/saildot4k/wLaunchELF_R3Z"><b>wLaunchELF_R3Z</b></a> and the LaunchELF family. RiptOPL carries the integration from the original's <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/947">PR #947</a>.</p>
+<p>Credit also belongs to the PS2 community members who support Sony's <b>DTL-T10000 development TOOL</b> systems, including maintainers of <a href="https://github.com/ps2homebrew/wOPL">wOPL</a> and upstream OPL's <code>DTL_T10000</code> build variants. These are <b>different</b> consoles from Sony's PSX DESR DVR; support for one does not prove compatibility with the other. Early PC CARD CompactFlash work independently credits <a href="https://github.com/mihhru/PS2CF"><b>mihhru / PS2CF</b></a> on the <a href="pc-card-cf.html">CompactFlash page</a>.</p>
 <h2 id="license">License</h2>
 
 <p>Open PS2 Loader, and this fork, are licensed under the
