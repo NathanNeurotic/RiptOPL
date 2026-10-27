@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -74,7 +74,6 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1>NBD Server</h1>
 <p class="lead">RiptOPL can turn the PS2 into an <a href="https://en.wikipedia.org/wiki/Network_block_device">NBD (Network Block Device)</a> server, exposing the internal HDD to any PC on your LAN. The implementation is based on <a href="https://github.com/bignaux/lwNBD">lwNBD</a> — a formally-documented, open-standard NBD protocol stack. Once connected, the drive appears to the host OS the same way it would if physically attached, so any tool that works directly on the drive (including <code>hdl_dump</code> and <code>pfs-shell</code>) works identically over NBD.</p>
 
@@ -98,7 +97,7 @@ The NBD server exports the drive as <b>read-only</b> when the <b>Write Operation
 <div class="steps">
   <div class="step">
     <h3>Open the main menu</h3>
-    <p>From any game list, press <b>Triangle</b> to open the main menu.</p>
+    <p>From any game list, press <b>Start</b> to open the main menu.</p>
   </div>
   <div class="step">
     <h3>Select "Start NBD Server"</h3>
@@ -153,7 +152,7 @@ nbdfuse ps2/ nbd://192.168.1.45 &amp;</pre>
 <pre>wnbd-client.exe unmap hdd0</pre>
 
 <h2 id="macos">macOS</h2>
-<p>macOS is <b>not supported</b>. There is no NBD client available for macOS that is compatible with the lwNBD server.</p>
+<p>macOS is <b>not supported</b>. This project does not document or validate a macOS NBD client. Use one of the tested client environments above.</p>
 
 <h2 id="hdl-dump-workflow">Using hdl_dump over NBD</h2>
 <p>Once the drive is connected via any of the clients above, <code>hdl_dump</code> treats the exposed block device (or file) the same as a local drive. A typical workflow to install a game image to the PS2's HDD:</p>
@@ -179,7 +178,7 @@ nbdfuse ps2/ nbd://192.168.1.45 &amp;</pre>
 </div>
 
 <details class="deep"><summary>What happens internally when the server starts?</summary>
-<p>Selecting <b>Start NBD Server</b> calls <code>handleLwnbdSrv()</code> in <code>src/opl.c</code>. This function:</p>
+<p>Selecting <b>Start NBD Server</b> calls <code>handleLwnbdSrv()</code> in <code>src/app/lwnbdctl.cpp</code>. This function:</p>
 <ol>
   <li>Suspends the audio library (<code>audioEnd()</code>).</li>
   <li>Blocks pending I/O operations and waits for them to finish.</li>

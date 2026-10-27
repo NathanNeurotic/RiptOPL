@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -75,13 +75,12 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1>Troubleshooting</h1>
 <p class="lead">Step-by-step fixes for the most common RiptOPL problems — boot hangs, blank screens, video mode locks, white-screen game failures, BDMA driver errors, and PS1/VCD list issues.</p>
 
 <div class="callout info"><div class="h">i Still stuck after reading this page?</div>
-Report RiptOPL regressions in <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/issues">our issue tracker</a>.
-Include version/SHA, SDK flavour, console model, game ID, source/protocol, core, steps, settings and any
+Report RiptOPL regressions in <a href="https://github.com/NathanNeurotic/RiptOPL/issues">our issue tracker</a>.
+Include version/SHA, edition and configuration, console model, game ID, source/protocol, core, steps, settings and any
 known-good build comparison. The <a href="https://www.psx-place.com/threads/open-ps2-loader-game-bug-reports.19401/">upstream OPL forum</a> remains a community resource. For PS1 internals (IGR, cheats, multi-disc, config table), see the sister
 <a href="https://nathanneurotic.github.io/POPSLoader/">POPStarter docs</a>.
 </div>
@@ -167,7 +166,7 @@ the APA partition table, so the HDD library is managed from a PC with HDL-Dump.<
   </div>
   <div class="step">
     <h3>Do PS2 ISOs list from the device?</h3>
-    <p>If yes, the filesystem/mount layer is proven working, so "but it works in another loader" adds no new information past this step. The release publishes four labelled flavours: <code>PS2DEVPINNED</code>, <code>OFFICIALPINNED</code>, <code>PS2DEVROLLING</code>, and <code>OFFICIALROLLING</code>. Start with the pinned primary control, and report the exact in-app suffix if behavior differs across flavours.</p>
+    <p>If yes, the filesystem/mount layer is proven working, so "but it works in another loader" adds no new information past this step. Every edition is built with the same SDK, so there is no toolchain flavour to compare. Report the exact in-app version string, which names the edition and any nonstandard configuration, and compare against another configuration from the same release only when asked.</p>
   </div>
   <div class="step">
     <h3>Check PS2/PS1 Game Display</h3>
@@ -227,9 +226,10 @@ an empty folder is simply an empty list.</p>
 
 <h2 id="ilink-handoff-status">iLink — revision 2692 handoff failures</h2>
 
-<p><b>Test control:</b> On an SCPH-39001 with the same IEEE 1394 HDD, Ember launched in all four
-revision 2692 flavours. Native OPL, Neutrino, and POPSTARTER did not. Both pinned and rolling builds
-from both SDK lineages failed, so the result is not isolated to one compiler image.</p>
+<p><b>Test control:</b> These results come from the legacy C loader (Open-PS2-Loader). On an SCPH-39001 with the
+same IEEE 1394 HDD, Ember launched in all four of its revision 2692 SDK builds. Native OPL, Neutrino, and POPSTARTER
+did not. Both pinned and rolling builds from both SDK lineages failed, so the result is not isolated to one compiler
+image. RiptOPL's C++ builds have <b>NOT been tested</b> on iLink hardware.</p>
 
 <ul class="checklist">
   <li><b>What Ember proves:</b> RiptOPL can enumerate and read the iLink disk, select the title, and
@@ -297,19 +297,12 @@ from both SDK lineages failed, so the result is not isolated to one compiler ima
   <li>For exFAT HDD, confirm <b>Internal HDD (exFAT)</b> is enabled in <b>Game Sources</b> and that the HDD has mounted — the game list should show an <b>HDD Games</b> entry. VCDs on the exFAT HDD live in <code>massN:/POPS/</code>.</li>
 </ul>
 
-<div class="callout info"><div class="h">i POPS UDPFS launch preparation</div>
-UDPFS Files lists uppercase <code>POPS/*.VCD</code> with Ember titles. For POPSTARTER, follow
-<a href="ps1-vcd.html#pops-udpfs">BDM-UDPFS Assault setup</a>: keep non-VCD POPS runtime files
-on USB, save matching valid network configs on every connected USB volume, and equip the matching
-memory-card driver pair. A missing dummy USB VCD is not an error; absent VCDs fall back to the server.
-The launch refuses an unready driver pair or the known USB-only RA module before teardown.
-UDPBD and UDPFS IMG remain Ember-only. The C++ handoff still needs physical-console acceptance.
-</div>
+<div class="callout info"><div class="h">PS1 over UDPFS versus UDPBD</div>UDPFS Files lists uppercase <code>POPS/*.VCD</code> alongside Ember. POPSTARTER needs Okeanos's <code>.udpfs</code> pair on the memory card, its network files in <code>mc?:/SYS-CONF/</code> (missing ones are copied there at launch from the server's <code>POPS/</code>), and a same-subnet server that allows writes. Its VCD handoff has not been tested on a real console. UDPBD and UDPFS IMG remain Ember-only for PS1. See <a href="ps1-vcd.html#pops-udpfs">POPS UDPFS setup</a>.</div>
 
 <div class="callout info"><div class="h">i Favorites always has four views</div>
 Press L3 on Favorites to cycle <b>PS2 → PS1 → ELF → All in One</b>. This independent ring is not
-pinned or disabled by PS2/PS1 Game Display. Fresh configurations open on All in One;
-an existing valid saved shelf is preserved, and Favorites returns to that remembered shelf.
+pinned or disabled by PS2/PS1 Game Display. The page opens on PS2 and then comes back to whichever
+shelf you last left it on.
 </div>
 
 <h2 id="unicode-titles">Japanese game names show squares or garbled characters</h2><p>Install an appropriate <code>font_CJK.ttf</code> beside the active <code>settings_riptopl.cfg</code>, not just the <code>LNG/</code> directory, and fully restart. Fonts don't convert Shift-JIS filenames to UTF-8. See <a href="unicode-titles.html">Unicode title troubleshooting</a>.</p>
@@ -359,8 +352,7 @@ an existing valid saved shelf is preserved, and Favorites returns to that rememb
   <a class="tile" href="https://www.psx-place.com/threads/open-ps2-loader-game-bug-reports.19401/"><span class="icon icon-start"></span><b>Bug report thread</b><span>Report game-specific compatibility issues</span></a>
 </div>
 <h2 id="vmc-errors">VMC creation or layout errors</h2>
-<p>For first-launch automatic creation, a slow working job has no two-minute cutoff. After cancellation, stay in the menu while cleanup finishes. A failed format can leave an image with the expected file size; see <a href="vmc.html#failed-format-retry">the known failed-format retry limitation</a> before treating a retry as recovery.</p>
-<ol><li>Back up any existing card. Record the exact error text and whether it appears during creation, after progress finishes, or during launch.</li><li>Check that the game's device has a writable <code>VMC/</code> directory and enough space. For network cards, verify the server/share allows writes.</li><li>Use the current rolling release before comparing MMCE behavior; its unsupported-query fix does not prove that a USB card is contiguous.</li><li>Record the core (OPL or Neutrino), transport and filesystem. Native BDM VMC needs contiguous storage; Neutrino's game and card mappings share a fragment budget. See <a href="vmc.html#fragmentation">VMC layout checks</a>.</li><li>If retrying changes the result, include the before/after error, card filename and whether reboot brings it back. Avoid recreating a card containing the only copy of your saves.</li></ol>
+<ol><li>Back up any existing card. Record the exact error text and whether it appears during creation, after progress finishes, or during launch.</li><li>Check that the game's device has a writable <code>VMC/</code> directory and enough space. For network cards, verify the server/share allows writes.</li><li>Use the current rolling release before comparing MMCE behavior; its unsupported-query fix does not prove that a USB card is contiguous.</li><li>Record the core (OPL or Neutrino), transport and filesystem. New native BDM cards request a contiguous reservation before formatting; existing cards still need a valid single extent. Neutrino's game and card mappings instead share a 64-fragment budget, and its prompt can skip the named VMC for a physical card. See <a href="vmc.html#fragmentation">VMC layout checks</a>.</li><li>If retrying changes the result, include the before/after error, card filename and whether reboot brings it back. Avoid recreating a card containing the only copy of your saves.</li></ol>
 <h2 id="report-details">Details to include in a bug report</h2>
 <pre>PS2 MODEL:
 OPL VERSION:
@@ -371,11 +363,11 @@ SETTINGS CHANGED:
 VMC ENABLED/DISABLED:
 PADEMU ENABLED/DISABLED:
 EXACT ERROR AND REPRODUCTION STEPS:</pre>
-<p>Report a RiptOPL UI, configuration or handoff regression in <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/issues">RiptOPL's tracker</a>. If the game failure also reproduces in standalone Neutrino with the same arguments and files, report it to <a href="https://github.com/rickgaiser/neutrino/issues">Neutrino</a> and link the related report. Include a known-good version comparison when available; a black screen alone does not identify the responsible component.</p>
+<p>Report a RiptOPL UI, configuration or handoff regression in <a href="https://github.com/NathanNeurotic/RiptOPL/issues">RiptOPL's tracker</a>. If the game failure also reproduces in standalone Neutrino with the same arguments and files, report it to <a href="https://github.com/rickgaiser/neutrino/issues">Neutrino</a> and link the related report. Include a known-good version comparison when available; a black screen alone does not identify the responsible component.</p>
 <h2 id="setup-setup-questions-and-reporting-launch-failures">Setup questions and reporting launch failures</h2>
 <h2 id="setup-which-build-should-i-download">Which build should I download?</h2>
-<p>The ready-to-copy app and the unsuffixed standalone release ELF deliberately prefer <strong>OFFICIALROLLING</strong> when available. <strong>PS2DEVPINNED</strong> is the recommended conservative comparison build because its toolchain is pinned. These are different policies: the package default is not a claim that a moving SDK is the most reproducible choice.</p>
-<p>Use a named flavour from the same release when comparing behavior. Record its complete suffix; a successful build does not prove that it boots on your console. Keep the disk, configuration and selected core unchanged during a comparison. A failure in one flavour is evidence to investigate, not proof by itself of an SDK defect.</p>
+<p>Every RiptOPL build uses one SDK, ps2build, so there is no toolchain flavour to choose. Pick an edition: <strong>Korium</strong> (the default theme), <strong>IncebtIon</strong> (the IncebtIon theme) or <strong>RetroAchievements</strong> (Korium with the achievements runtime and its own kit). The Korium release also carries <code>RIPTOPL-VARIANTS.zip</code> (pad emulation off, DualSense and extras builds) and <code>RIPTOPL-DEBUG.zip</code> (debug and diagnostic builds).</p>
+<p>Use builds from the same release when comparing behavior. Record the complete version string, which names a nonstandard configuration; a successful build does not prove that it boots on your console. Keep the disk, configuration and selected core unchanged during a comparison. A failure in one configuration is evidence to investigate, not proof by itself of a defect in that configuration.</p>
 <h2 id="setup-does-browser-mean-the-memory-card-browser">Does Browser mean the memory-card browser?</h2>
 <p>Exiting to <strong>Browser</strong> hands control to the PS2's <strong>OSDSYS</strong> system interface. Seeing OSDSYS is expected. The eventual screen also depends on the console's installed boot/menu modifications. This option does not launch wLaunchELF's file browser. If you want a particular homebrew menu, configure its ELF as the exit target instead.</p>
 <h2 id="setup-why-is-another-language-unavailable">Why is another language unavailable?</h2>

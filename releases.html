@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -75,19 +75,57 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1>Releases and packages</h1>
-<p class="lead">Three editions, one SDK: ps2build. GCC is the release compiler; GCC and LLVM are both checked in CI.</p>
+<p class="lead">Three editions, one SDK: ps2build. GCC is the release compiler; GCC and LLVM are both checked in CI.
+Each edition has its own release channel, rebuilt from <code>rebuild/main</code> and verified before it is published.</p>
+
+<h2 id="channels">Editions and channels</h2>
 <table><thead><tr><th>Edition</th><th>Channel</th><th>Contents</th></tr></thead><tbody>
-<tr><td>Korium</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium">rolling-korium</a></td><td>Standard loader with Korium Komblete graphics and layout.</td></tr>
-<tr><td>RetroAchievements</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra">rolling-ra</a></td><td>Korium theme with the separate RetroAchievements runtime and PC client link.</td></tr>
-<tr><td>IncebtIon</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion">rolling-incebtion</a></td><td>Standard loader with the original IncebtIon built-in theme.</td></tr>
+<tr><td>Korium</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium">rolling-korium</a></td><td>Standard loader with Korium Komblete graphics and layout. Also carries the variant and debug builds.</td></tr>
+<tr><td>RetroAchievements</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra">rolling-ra</a></td><td>Korium theme with the RetroAchievements runtime and the xeRAbora client shortcut, plus the same kit built with the IncebtIon theme.</td></tr>
+<tr><td>IncebtIon</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion">rolling-incebtion</a></td><td>Standard loader with the IncebtIon built-in theme. GitHub marks this channel as Latest.</td></tr>
 </tbody></table>
-<div class="callout amber"><div class="h">Availability and validation</div><p>A channel becomes downloadable after its release build, package verification and deliberate publication succeed. The migration does not inherit the production repository's hardware acceptance. Preview artifacts are available in <a href="https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml">Rolling Release</a> runs.</p></div>
+<div class="callout amber"><div class="h">Development builds</div><p>Every channel is a development build. Publication checks the source commit, clean state, SDK consistency, file inventory and checksums, but a passing build does not mean it has been tested on your console, storage and settings. Check the release notes for the exact commit. Builds that are not published yet are in the <a href="https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml">Rolling Release</a> runs as workflow artifacts.</p></div>
+
+<h2 id="rolling-assets">What each channel carries</h2>
+<table><thead><tr><th>Asset</th><th>What it is</th></tr></thead><tbody>
+<tr><td><code>RIPTOPL-Korium.zip</code>, <code>RIPTOPL-IncebtIon.zip</code>, <code>RIPTOPL-RetroAchievements.zip</code></td><td>The full install kit: <code>APPS/</code> with the ready app, matching <code>ART/</code>, the app PSU, <code>POPS/</code> with every BDMA pair, the licensed <code>EMBER/</code> core, the official Neutrino release as <code>neutrino/</code> with RiptOPL's UDPFS config and i.LINK pair (ORBIT's RA build of Neutrino in the RetroAchievements kits), external-tool shortcuts, license, credits and build manifest.</td></tr>
+<tr><td><code>RIPTOPL.ELF</code> (<code>RIPTOPL-RA.ELF</code> in RetroAchievements)</td><td>The exact loader used in that kit, under a name and link that never change. Use it to update an existing install.</td></tr>
+<tr><td><code>APP_RIPTOPL.psu</code> (<code>APP_RIPTOPL-RA.psu</code>)</td><td>The app's own files as one memory-card save, for a PS2 save manager.</td></tr>
+<tr><td><code>RIPTOPL-LANGS.zip</code></td><td>Every translation and the font its script needs, one folder per language. See <a href="languages.html">Languages</a>.</td></tr>
+<tr><td><code>RIPTOPL-src.zip</code></td><td>Git's source archive of the exact built commit.</td></tr>
+<tr><td><code>BUILD-MANIFEST.json</code>, <code>SHA256SUMS.txt</code></td><td>Build identity and asset checksums.</td></tr>
+</tbody></table>
+
+<p>Two channels carry extra builds, each as one folder per configuration with its own <code>RIPTOPL.ELF</code> and manifest,
+built from the same commit and SDK as the kit:</p>
+<ul>
+<li><b>Korium</b>: <code>RIPTOPL-VARIANTS.zip</code> with <code>pademu0</code> (pad emulation compiled out), <code>ds5</code>
+(USB DualSense), <code>extras</code> (in-game screenshots and right-to-left languages) and <code>extras_ds5</code>; and
+<code>RIPTOPL-DEBUG.zip</code> with every debug and diagnostic configuration (<code>dtl</code>, <code>diag</code>,
+<code>debug</code>, <code>debug_uart</code>, <code>ingame_debug</code>, <code>iopcore_debug</code>, <code>eesio_debug</code>,
+<code>ingame_debug_uart</code>, <code>iopcore_debug_uart</code>, <code>ingamediag</code>).</li>
+<li><b>RetroAchievements</b>: <code>RIPTOPL-RA-VARIANTS.zip</code> with <code>pademu0</code>, and the IncebtIon-theme kit as
+<code>RIPTOPL-RetroAchievements-IncebtIon.zip</code>, <code>RIPTOPL-RA-IncebtIon.ELF</code> and
+<code>APP_RIPTOPL-RA-IncebtIon.psu</code>. Inside that kit the app is still <code>APP_RIPTOPL-RA</code>.</li>
+</ul>
+<p>Standard kits never include RetroAchievements resources. No BIOS or Sony emulator file is distributed.</p>
+
 <h2 id="install">Installing</h2><p>Use the edition's full install ZIP, extract it to the device root, and launch its app from <code>APPS/</code>. The accompanying PSU contains only the app and its direct metadata files for memory-card installation. Keep the bundled POPS, EMBER and neutrino folders beside APPS when using those cores; supply your own required BIOS/emulator components. See <a href="install.html">Installation</a> and <a href="ps1-vcd.html">PS1 games</a>.</p>
-<h2 id="identity">Identify a tested build</h2><p>Report the edition, source commit, SDK component versions and compiler from <code>BUILD-MANIFEST.json</code>, plus your hardware, storage backend and relevant settings. Verify downloads against <code>SHA256SUMS.txt</code>. The in-loader version also names the edition. Older ps2dev/official pinned and rolling SDK choices belong to the <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/releases">production repository's release history</a>.</p>
-<h2 id="source">Source and licenses</h2><p>Each channel includes a source snapshot, credits, licensing and the exact build manifest. Companion binaries retain their own licenses. Standard editions do not include the RA agent/client resources.</p>
-<span id="channels"></span><span id="rolling-assets"></span><span id="two-toolchains"></span><span id="test-artifacts"></span><span id="four-flavours"></span><span id="bundled-neutrino"></span><span id="how-to-pull"></span><span id="pipeline"></span><span id="getting-started"></span><span id="archive-availability"></span><span id="archive"></span><span id="building"></span><span id="ecosystem"></span><span id="external-tools"></span>
+
+<h2 id="identity">Identify a tested build</h2><p>Report the edition, source commit, SDK component versions and compiler from <code>BUILD-MANIFEST.json</code>, plus your hardware, storage backend and relevant settings. Verify downloads against <code>SHA256SUMS.txt</code>. The in-loader version names the edition, and any nonstandard configuration. The older ps2dev/official pinned and rolling SDK flavours belong to the <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/releases">legacy Open-PS2-Loader edition's release history</a>; they are not built here.</p>
+
+<h2 id="building">Building it yourself</h2><p>With ps2build installed, run from the repository root:</p>
+<pre>python tools/assets.py fetch
+python tools/assets.py lang
+python tools/build_edition.py korium
+python tools/build_edition.py korium --configuration extras</pre>
+<p>The editions are <code>korium</code>, <code>ra</code>, <code>incebtion</code> and <code>ra_incebtion</code>. See
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/ROLLING_RELEASE.md">ROLLING_RELEASE.md</a> and
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md">Build configurations</a>.</p>
+
+<h2 id="source">Source and licenses</h2><p>Each channel includes a source snapshot, credits, licensing and the exact build manifest. Companion binaries retain their own licenses.</p>
+<span id="two-toolchains"></span><span id="test-artifacts"></span><span id="four-flavours"></span><span id="bundled-neutrino"></span><span id="how-to-pull"></span><span id="pipeline"></span><span id="getting-started"></span><span id="archive-availability"></span><span id="archive"></span><span id="ecosystem"></span><span id="external-tools"></span>
 </main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>

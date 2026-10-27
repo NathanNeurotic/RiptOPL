@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -74,14 +74,13 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1 id="http">HTTP</h1>
 <p>RiptOPL can read a game library straight off an ordinary HTTP server: a small <code>games.csv</code> catalog
 says what exists, and the console streams the ISO itself with plain HTTP byte ranges as the game
 asks for sectors. The server must satisfy the client profile: no transfer encoding, no content
 encoding other than identity, no multipart responses, exact <code>Content-Range</code> and <code>Content-Length</code>
 for range reads, and complete response bodies. Check it with the
-<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/blob/rebuild/main/pc/http/README.md">conformance tool</a>.</p>
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/tools/pc/http/README.md">conformance tool</a>.</p>
 <p>Use HTTP only on a trusted, isolated local network. It provides no encryption or server/content
 authentication; range and length validation detect malformed responses, not substituted game data.</p>
 <p>The design, the byte-range reader RiptOPL follows, and the PC server are
@@ -318,15 +317,14 @@ then reports a disc error. It will not sit there reconnecting forever.</p>
 <hr/>
 <h2 id="notes-for-anyone-changing-this-code">Notes for anyone changing this code</h2>
 <ul>
-<li><strong><code>src/httpcatalog.c</code> and <code>pc/http/catalog_reference.py</code> are one contract.</strong> The fixtures in
+<li><strong><code>src/platform/httpcatalog.cpp</code> and <code>pc/http/catalog_reference.py</code> are one contract.</strong> The fixtures in
   <code>pc/http/fixtures/</code> hold them to it and <code>pc/http/tests/compare_catalog.py</code> proves it. Change one,
   change all three, in the same commit.</li>
-<li><strong>Run the host tests.</strong> <code>sh pc/http/tests/run.sh</code> compiles the real sources and exercises the
+<li><strong>Run the host tests.</strong> <code>sh tools/pc/http/tests/run.sh</code> compiles the real sources and exercises the
   parsers directly — header framing, range validation, truncation, and every catalog fixture in
   three line-ending forms.</li>
 <li><strong><code>modules/network/common/httpstream.inc</code> is shared</strong> by the menu RPC module and the in-game
-  cdvdman driver. Both IRX rules depend on it in the top-level Makefile, because make cannot see
-  inside a sub-make and a stale IRX otherwise builds clean locally and fails CI.</li>
+  cdvdman driver. A change to it must rebuild both modules; check both after editing it.</li>
 <li><strong>The two lwIP stacks are not interchangeable.</strong> <code>MSG_DONTWAIT</code> is <code>0x08</code> on the menu path and
   <code>0x40</code> in SMSTCPIP, and SMSTCPIP exports no <code>select</code>, so the in-game reader polls against a
   deadline instead.</li>

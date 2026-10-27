@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -133,7 +133,7 @@ contributed code, ideas, or directly-ported features:</p>
   <td><b>uOPL</b> / <b>wOPL</b></td>
   <td>KrahJohlito</td>
   <td>The single biggest influence on this fork: KrahJohlito's uOPL (Unofficial Open PS2 Loader) and its continuation wOPL, where the modern OPL experience was invented. The Neutrino external-core launcher and per-game Neutrino args; the Coverflow cover-art carousel; the Favorites tab and <code>favourites.bin</code> format; the PS2RD cheat-image loader</td>
-  <td><a href="https://github.com/KrahJohlito/wOPL">GitHub</a></td>
+  <td>Historical project; public repository unavailable at the October 2026 audit</td>
 </tr>
 <tr>
   <td><b>uOPL fork</b></td>
@@ -230,10 +230,12 @@ this fork builds on top of it — traces directly back to that work.</p>
 alongside OPL's own.
 Every release package bundles the official latest build, re-fetched from upstream at publish time, as
 a ready-to-use <code>neutrino/</code> folder.</p>
-<p>It is bundled under the <b>AFL-3.0</b> licence. One honest note on "unmodified": we add exactly one
+<p>It is bundled under the <b>AFL-3.0</b> licence. One honest note on "unmodified": we add one
 file, <code>config/bsd-udpfsbd.toml</code> — Neutrino ships <code>udpfs_bd.irx</code> without a
-matching <code>-bsd</code> token, and RiptOPL launches UDPFS as <code>-bsd=udpfsbd</code>. Nothing of
-rickgaiser's is altered or removed.</p>
+matching <code>-bsd</code> token, and RiptOPL launches UDPFS as <code>-bsd=udpfsbd</code>. We also replace
+the i.LINK pair, <code>modules/IEEE1394_bd_mini.irx</code> and <code>modules/iLinkman.irx</code>, with RiptOPL's
+builds of the same ps2sdk modules, which keep the drive's login across an IOP reset (<b>NOT tested</b> on
+hardware yet). Nothing else of rickgaiser's is altered or removed.</p>
 <p>Neutrino is deliberately <b>UI-agnostic</b> — it has no interface of its own, and that design
 choice is precisely what makes front-ends like this one possible. RiptOPL is one of several:
 <b><a href="https://github.com/dnunezx/LUNA">LUNA</a></b> by <a href="https://github.com/dnunezx">darkladark</a>
@@ -241,7 +243,7 @@ choice is precisely what makes front-ends like this one possible. RiptOPL is one
 <b>XEB+ Plugin</b>, <b>RETROLauncher</b>, <b>OSD-XMB</b> and <b>PSBBN/BBNL</b> drive the
 same core, and are worth a look if you want a different shape of launcher over it. Please report
 <i>launching</i> problems to
-<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/issues">us</a> — building the arguments
+<a href="https://github.com/NathanNeurotic/RiptOPL/issues">us</a> — building the arguments
 and handing off are ours — and genuine Neutrino bugs upstream.</p>
 </dd>
 </div>
@@ -257,7 +259,7 @@ POPSTARTER.</p>
 <p>It is bundled unmodified under the <b>Ember Public Beta Testing
 Licence</b> — included in the package as <code>EMBER/LICENSE-BETA.txt</code>, which governs the
 build it accompanies. Please report Ember problems to
-<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/issues">us</a> first, not to him: the
+<a href="https://github.com/NathanNeurotic/RiptOPL/issues">us</a> first, not to him: the
 launching is ours.</p>
 <p>Ember's own licence credits <b><a href="https://github.com/stenzek/duckstation">DuckStation</a></b>
 as a correctness reference for a small number of routines. Ember is not a fork or port of it.</p>
@@ -273,8 +275,8 @@ handful of memory addresses that game's achievements watch, while everything abo
 rcheevos, the RetroAchievements servers, your login — happens on the PC. That split is why the
 console side stays small enough to live inside a loader.</p>
 <p>RiptOPL implements the <b>published wire protocol</b> and ships
-as its own <code>RIPTOPL-RetroAchievements-*.zip</code> build with a shortcut to xeRAbora inside. Please report
-<i>RiptOPL</i> problems to <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/issues">us</a>
+as its own <code>RIPTOPL-RetroAchievements.zip</code> build with a shortcut to xeRAbora inside. Please report
+<i>RiptOPL</i> problems to <a href="https://github.com/NathanNeurotic/RiptOPL/issues">us</a>
 first, not to him — the loader side is ours.</p>
 </dd>
 </div>
@@ -301,14 +303,16 @@ Access</i>), his own visual loader built on NHDDL and Neutrino, with a PS2-inspi
 and four switchable library views. LUNA is <b>our #1 recommended alternative to RiptOPL</b> for
 lightweight, customized Neutrino gameplay: if RiptOPL is more loader than you need, start there.</p>
 <p>He also contributes to RiptOPL directly: his
-<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/733">#733</a> brings LUNA's Collection
-cover-art screen to RiptOPL's renderer. Thank you for sharing your work with us.</p>
+<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/733">#733</a> contributed LUNA's Collection display.
+<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/977">#977</a> supersedes that PR by adapting
+the display as the native <a href="coverflow.html#psbbn-flow">PSBBN Flow</a> theme, retaining his
+perspective geometry and animation while preserving the normal R3 Favorite action. Thank you for sharing your work with us.</p>
 </dd>
 </div>
 
 <div class="credit">
 <dt>Okeanos — POPS UDPFS / BDM-UDPFS Assault</dt>
-<dd><p><b><a href="https://github.com/Okeanos86/BDMAssault/releases">BDM-UDPFS Assault</a></b> by <b><a href="https://github.com/Okeanos86">Okeanos</a></b> — POPSTARTER-specific BDMA drivers with read-only UDPFS fallback for VCDs, based on israpps' BDM Assault. Credits also belong to krHACKen (POPSTARTER), rickgaiser (UDPFS/UDPRDMA), pcm720 (udpfsd), and the PS2SDK contributors. See <a href="ps1-vcd.html#pops-udpfs">POPS UDPFS setup</a> and the bundled upstream notices.</p></dd>
+<dd><p><b><a href="https://github.com/Okeanos86/BDMAssault/releases">BDM-UDPFS Assault</a></b> by <b><a href="https://github.com/Okeanos86">Okeanos</a></b> — the UDPFS Assault 1.0.0 POPSTARTER BDMA driver, which serves VCDs, POPS files and VMC saves from a UDPFS server, based on israpps' BDM Assault. Credits also belong to krHACKen (POPSTARTER), ps2max32 / rickgaiser (UDPFS/UDPRDMA), pcm720 (udpfsd), Gageformer, and the PS2SDK contributors. See <a href="ps1-vcd.html#pops-udpfs">POPS UDPFS setup</a> and the bundled upstream notices.</p></dd>
 </div>
 <div class="credit">
 <dt>saildot4k — BDMA-ATA / exFAT HDD</dt>
@@ -336,7 +340,7 @@ filename. Converting the config to LF restored VMC loading.</p>
 caught issues and shaped fixes across this fork. Hands-on QA on real PS2 hardware is what turns
 a build that compiles into a build that actually works. Credited in the OPL CREDITS file:
 <b>eliminator1403</b>, <b>lucaslmgv</b>, <b>AndrewBento</b>, <b>AcidReach</b>, <b>bodvenomz</b>,
-<b>nuno6573</b>, <b>Blade1984</b>, <b>zackcage6</b>, <b>Vapor</b>, and <b>Aislinn🏳️‍⚧️</b>.</p>
+<b>nuno6573</b>, <b>Blade1984</b>, <b>zackcage6</b>, <b>Vapor</b>, <b>V3ditata</b>, and <b>Aislinn🏳️‍⚧️</b>.</p>
 </dd>
 </div>
 
@@ -490,13 +494,13 @@ core</a>.
 </div>
 
 <h2 id="dvr-tool">PSX DVR / DTL TOOL: developers and technical references</h2>
-<p>The experimental <a href="psx-dvr.html">PSX DESR DVR ISO support</a> builds upon <a href="https://github.com/pcm720/neutrino/tree/bsd-dvr"><b>pcm720</b></a>'s external DVR-enabled Neutrino backend; DVRP modules from <a href="https://github.com/ps2dev/ps2sdk"><b>ps2dev / PS2SDK contributors</b></a>; and DVR initialization precedent in <a href="https://github.com/saildot4k/wLaunchELF_R3Z"><b>wLaunchELF_R3Z</b></a> and the LaunchELF family. RiptOPL carries the integration from the original's <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/947">PR #947</a>.</p>
+<p>The experimental <a href="psx-dvr.html">PSX DESR DVR ISO support</a> builds upon <a href="https://github.com/pcm720/neutrino/tree/bsd-dvr"><b>pcm720</b></a>'s external DVR-enabled Neutrino backend; DVRP modules from <a href="https://github.com/ps2dev/ps2sdk"><b>ps2dev / PS2SDK contributors</b></a>; and DVR initialization precedent in <a href="https://github.com/saildot4k/wLaunchELF_R3Z"><b>wLaunchELF_R3Z</b></a> and the LaunchELF family. <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/947">PR #947</a> tracks RiptOPL's own integration.</p>
 <p>Credit also belongs to the PS2 community members who support Sony's <b>DTL-T10000 development TOOL</b> systems, including maintainers of <a href="https://github.com/ps2homebrew/wOPL">wOPL</a> and upstream OPL's <code>DTL_T10000</code> build variants. These are <b>different</b> consoles from Sony's PSX DESR DVR; support for one does not prove compatibility with the other. Early PC CARD CompactFlash work independently credits <a href="https://github.com/mihhru/PS2CF"><b>mihhru / PS2CF</b></a> on the <a href="pc-card-cf.html">CompactFlash page</a>.</p>
 <h2 id="license">License</h2>
 
 <p>Open PS2 Loader, and this fork, are licensed under the
 <b>Academic Free License version 3.0</b>. Review the
-<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/blob/rebuild/main/LICENSE">LICENSE</a>
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/LICENSE">LICENSE</a>
 file in the repository for the full terms.</p>
 
 <details class="deep"><summary>Why a fork at all, rather than contributing upstream?</summary>

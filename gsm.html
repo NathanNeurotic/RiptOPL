@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -74,7 +74,6 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1>GSM — forced video modes</h1>
 <p class="lead">GSM makes a game output a video mode it was never written to output. Most PS2 games render 480i
 (or 576i in PAL). GSM intercepts the game's video setup and substitutes a different raster, so the same game
@@ -222,19 +221,17 @@ it.</li>
 </ul>
 
 <details><summary>Notes for builders</summary>
-<p>Two names are involved, and they are not the same thing. <b><code>GSM1080P</code> is the Makefile
-variable</b>; it defaults to <code>1</code>, and when set the <code>Makefile</code> adds
-<b><code>-DGSM_1080P</code></b> — the preprocessor macro the code actually tests — to the EE build, and
-forwards <code>GSM1080P=1</code> on to <code>ee_core/Makefile</code>.</p>
-<p>So every shipped build has mode 29 and the list is a consistent 30 entries across published flavours.
-Building with <code>GSM1080P=0</code> drops it and shortens the list.</p>
+<p>The code tests the preprocessor macro <b><code>GSM_1080P</code></b>. The ps2build definition
+(<code>ps2.yaml</code>) defines it for both the loader and the EE core in the <code>standard</code> configuration and in every
+release variant, so every shipped build has mode 29 and the list is a consistent 30 entries. A custom build without
+the macro drops it and shortens the list.</p>
 <p>In-game screenshots (IGS) require GSM to be enabled — see <a href="igr.html#igs">In-Game Reset</a>.</p>
 <table>
 <thead><tr><th>File</th><th>Role</th></tr></thead>
 <tbody>
 <tr><td><code>ee_core/src/gsm_api.c</code>, <code>gsm_engine.S</code>, <code>gsm_engine_adv.S</code></td><td>The GSM engine</td></tr>
-<tr><td><code>src/guigame.c</code></td><td>The GSM settings page, the mode list, and the 1080p confirmation gate</td></tr>
-<tr><td><code>src/dialogs.c</code></td><td>The six GSM dialog rows</td></tr>
+<tr><td><code>src/ui/guigame.cpp</code></td><td>The GSM settings page, the mode list, and the 1080p confirmation gate</td></tr>
+<tr><td><code>src/ui/dialogs.cpp</code></td><td>The six GSM dialog rows</td></tr>
 </tbody>
 </table>
 </details>

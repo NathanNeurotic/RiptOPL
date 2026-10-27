@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html" class="active"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -74,7 +74,6 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1>PS1 Games</h1>
 <p class="lead">RiptOPL can list and launch your PlayStation 1 games right alongside your PS2 library,
 on the same device. It does this through <b>two</b> cores — <b>POPSTARTER</b> for <code>*.VCD</code>
@@ -118,7 +117,7 @@ multi-disc setups, and memory-card storage — see the
 list with filters, or one locked library. They remain views of the same device page — with the same
 covers, favorites, and per-game settings — rather than separate device tabs.</p>
 
-<div class="callout info"><div class="h">POPS UDPFS and Ember network libraries</div><b>UDPFS Files</b> now lists uppercase <code>POPS/*.VCD</code> alongside Ember titles and prepares POPSTARTER launches with <a href="https://github.com/Okeanos86/BDMAssault/releases">Okeanos's BDM-UDPFS Assault</a>. POPS UDPFS Network Settings writes matching runtime configs to every connected USB volume; automatic BDMA equip installs the UDPFS driver pair on the memory card. See <a href="ps1-vcd.html#pops-udpfs">setup, supplied files and credits</a>. The new VCD handoff awaits console validation. UDPBD and UDPFS IMG remain Ember-only.</div>
+<div class="callout info"><div class="h">POPS UDPFS and Ember network libraries</div><b>UDPFS Files</b> lists uppercase <code>POPS/*.VCD</code> alongside Ember titles and launches them through <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0">Okeanos's UDPFS Assault 1.0.0</a>, which serves every POPSTARTER file and VMC save from the server. No USB device is involved. See <a href="ps1-vcd.html#pops-udpfs">setup, supplied files and credits</a>. The VCD handoff has not been tested on a real console. UDPBD and UDPFS IMG remain Ember-only.</div>
 
 <h2 id="default-game-view">PS2/PS1 Game Display</h2>
 
@@ -166,8 +165,9 @@ game <em>folder</em> and finds its own disc image inside it.</p>
 apply unchanged.</p>
 
 <div class="callout amber"><div class="h">iLink POPSTARTER is wired, not yet hardware-confirmed</div>
-Revision 2692 still returned POPSTARTER to wLaunchELF from iLink on an SCPH-39001 in all four SDK
-flavours, while Ember passed from the same drive. The selector and external equip documented here
+On the legacy C loader (Open-PS2-Loader), revision 2692 still returned POPSTARTER to wLaunchELF from iLink on an
+SCPH-39001 in all four of its SDK builds, while Ember passed from the same drive. RiptOPL's C++ handoff has
+<b>NOT been tested</b> on iLink hardware. The selector and external equip documented here
 are present, but that test result is not a pass. Use the card-file checks below to distinguish a
 RiptOPL equip failure from a POPSTARTER/BDMA runtime failure after handoff.
 </div>
@@ -200,7 +200,7 @@ selling, and no modifying or repackaging the build.</p>
 
 <div class="callout info"><div class="h">Report Ember problems to us first</div>
 The launching is ours and most issues turn out to be on our side. Please raise them on the
-<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/issues">RiptOPL issue tracker</a> rather
+<a href="https://github.com/NathanNeurotic/RiptOPL/issues">RiptOPL issue tracker</a> rather
 than with Gageformer.
 </div>
 
@@ -249,19 +249,20 @@ Ember games stay in the list even when <code>ember.elf</code> is missing or misn
 
 <p><b>RiptOPL only touches a setting you have changed in RiptOPL.</b> A row left on <b>Default</b>
 leaves that key alone in every file, so a <code>settings.txt</code> written by hand keeps working
-exactly as written. A row you change is written when you launch an Ember title, on that device
-only — creating the file if it is not there, updating it in place if it is. Changing a row back to
+exactly as written. Changed per-game rows are saved on OK; global rows are applied when you launch
+an Ember title on that device, creating the file if needed and updating it in place. Changing a row back to
 <b>Default</b> removes the key again (and the file, if that key was all it held), so Ember's own
 default — or, for a game, the global row — applies. Every other line in the file is kept.</p>
 
-<p>Controller is the only per-game setting, on Ember's author's advice: per-game settings are meant
-for the controller, and 24-bit shading can cause issues. Earlier builds labelled Ember's
+<p>Timing, Dithering, Shading and Controller can be overridden per game; Display Mode stays global.
+24-bit shading can cause issues in some titles. Earlier builds labelled Ember's
 <code>480</code> as "480p"; it has always been 480i, and the 480i / 480p rows now say so.</p>
 
 <h3>Device support</h3>
 <p>Ember titles are supported on <b>USB, MX4SIO, iLink, exFAT-ATA, MMCE, SMB, APA/PFS HDD,
-UDPFS and UDPBD</b>. UDPFS Files merges Ember folders with uppercase POPSTARTER VCD rows.
-UDPBD and UDPFS IMG remain Ember-only. A device with no <code>EMBER/</code> library simply contributes no
+UDPFS and UDPBD</b>. Ordinary device pages merge Ember folders with their POPSTARTER rows.
+UDPFS Files also lists uppercase <code>POPS/*.VCD</code>; UDPBD and UDPFS IMG remain Ember-only.
+A device with no <code>EMBER/</code> library simply contributes no
 Ember rows, and every ordinary device's POPSTARTER library lists exactly as before.</p>
 
 <h2 id="file-layout">Where to put your VCD files</h2>
@@ -292,76 +293,69 @@ launched; it just won't auto-match art by ID.
 </div>
 
 <h2 id="pops-udpfs">POPS UDPFS with BDM-UDPFS Assault</h2>
-<p><a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos's BDM-UDPFS Assault</a>
-adds <strong>read-only UDPFS fallback</strong> to POPSTARTER's USB driver. USB is tried first; when a VCD
-is absent there, the driver requests the same path from the UDPFS server after POPSTARTER's
-IOP reset. This is a POPSTARTER driver, separate from Neutrino's PS2 UDPFS loader.</p>
-<p>The included <code>POPS/</code> folder supplies these four files:</p>
+<p>RiptOPL uses <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0">Okeanos's UDPFS Assault 1.0.0</a> as its only POPSTARTER UDPFS
+BDMA driver. It serves every <code>mass:</code> request from the UDPFS server, including POPS dependencies
+and VMC writes. <strong>USB is not required.</strong> The older Alpha driver, which tried USB first and only
+fetched VCDs from the network, is no longer bundled or selected. The driver starts again after POPSTARTER
+resets the IOP, independently of RiptOPL's own UDPFS connection, and is separate from Neutrino's PS2 UDPFS
+loader.</p>
+
+<p><strong>BDMA Mode → UDPFS</strong> uses <code>POPS/usbd.irx.udpfs</code> (the unmodified 44,597-byte
+<code>udp_fs_assault.irx</code>) and <code>POPS/usbhdfsd.irx.udpfs</code> (the 34,508-byte
+<code>usbd_bd_assault.irx</code>). They install as <code>mc?:/POPSTARTER/usbd.irx</code> and
+<code>usbhdfsd.irx</code>. With <strong>VCD BDMA Apply on Launch</strong> enabled, a UDPFS game equips this pair
+automatically; a matching installed pair is not copied again, and an old Alpha pair counts as stale. With
+automatic equip disabled, equip <strong>UDPFS</strong> manually before launching.</p>
+
+<p>Keep all support files in <code>POPS/</code> under the server's shared root (<code>udpfs:/POPS/</code> while
+RiptOPL is running). Automatic equip reads this folder only and never substitutes another device's pair. Put
+your own <code>POPSTARTER.ELF</code>, <code>POPS_IOX.PAK</code>, VCDs and other POPS dependencies there at their
+normal paths. Use uppercase <code>.VCD</code> and exact path casing on Linux servers. RiptOPL does not migrate
+existing saves.</p>
+
 <table>
 <thead>
-<tr>
-<th>Included file</th>
-<th>Installation / purpose</th>
-</tr>
+<tr><th>Optional file in the server's <code>POPS/</code></th><th>Memory-card destination</th><th>Contents</th></tr>
 </thead>
 <tbody>
-<tr>
-<td><code>usbd.irx.udpfs</code></td>
-<td>Copy to <code>mc?:/POPSTARTER/usbd.irx</code>, removing <code>.udpfs</code></td>
-</tr>
-<tr>
-<td><code>usbhdfsd.irx.udpfs</code></td>
-<td>Copy to <code>mc?:/POPSTARTER/usbhdfsd.irx</code>, removing <code>.udpfs</code></td>
-</tr>
-<tr>
-<td><code>IPCONFIG.DAT</code></td>
-<td>USB <code>mass:/POPS/IPCONFIG.DAT</code>: PS2 IP, netmask, optional gateway</td>
-</tr>
-<tr>
-<td><code>UDPFSCONFIG.DAT</code></td>
-<td>USB <code>mass:/POPS/UDPFSCONFIG.DAT</code>: UDPFS server IP; empty file enables discovery</td>
-</tr>
+<tr><td><code>IPCONFIG.DAT</code></td><td><code>mc?:/SYS-CONF/IPCONFIG.DAT</code></td><td>PS2 IP, netmask, optional gateway</td></tr>
+<tr><td><code>UDPFSCONFIG.DAT</code></td><td><code>mc?:/SYS-CONF/UDPFSCONFIG.DAT</code></td><td>Server IP; absent or empty selects discovery</td></tr>
 </tbody>
 </table>
-<p>Keep your own <code>POPS_IOX.PAK</code> and other runtime POPS files on USB. The driver pair can be
-sourced from <code>POPS/</code> on any supported device, including APA HDD <code>__common/POPS/</code>.
-On the server, place the VCD at the matching path relative to the shared root, for example
-<code>POPS/SLUS_011.56.VCD</code>; the driver also accepts <code>POPS0/</code> through <code>POPS9/</code>. Use uppercase
-<code>.VCD</code>. Only VCD reads fall back to the network; other files and writes stay on USB.
-The upstream release reports testing with <code>udpfsd</code> and <code>udpfs_server.py</code>.</p>
-<p>Edit the supplied examples for your LAN before use: <code>IPCONFIG.DAT</code> contains
-<code>192.168.1.10 255.255.255.0 192.168.1.1</code>, and <code>UDPFSCONFIG.DAT</code> contains <code>192.168.1.11</code>.
-Without a valid IP config, the driver uses PS2 <code>192.168.1.10/24</code>; without a valid same-subnet
-server address it uses broadcast discovery. The server must be on the PS2's subnet: the
-driver does not route through the gateway. These files are read from USB, not from the
-memory card and not from RiptOPL's saved network settings.</p>
-<p><strong>RiptOPL setup:</strong> open <strong>POPS Network Settings → POPS UDPFS Network Settings</strong> and enter
-your PS2 IP, netmask and server IP. Server <code>0.0.0.0</code> selects broadcast discovery. Saving writes
-both files to <strong>every connected USB volume's <code>POPS/</code> folder</strong>, with replacement confirmation
-for existing files. This editor is separate from the SMB memory-card configuration.</p>
-<p>The <strong>UDPFS Files</strong> PS1/Mixed view now lists uppercase <code>POPS/*.VCD</code> alongside Ember titles.
-Launching a VCD there, or from Favorites, checks the USB config pair on every connected USB
-volume and requires matching valid values before proceeding. This explicit check is an interim
-requirement because the Alpha IRX reads runtime configs from USB <code>mass:/POPS/</code>; upstream
-itself permits missing files and falls back to defaults. Installing support files on another
-device does not change that runtime USB requirement.</p>
-<p>With <strong>VCD BDMA Apply on Launch</strong> enabled, RiptOPL equips the <code>.udpfs</code> pair on the memory
-card and hands POPSTARTER its usual <code>mass:/POPS/XX.&lt;name&gt;.ELF</code> selector. With automatic
-equip disabled, select <strong>BDMA Mode → UDPFS</strong> and equip the pair manually. The launch
-checks the installed pair and refuses to tear down RiptOPL if neither
-the recorded pair nor a manually installed matching pair is ready.
-No dummy USB VCD is required: the missing VCD triggers network fallback.
-USB VCDs take precedence over the server when both contain the same path. UDPBD and UDPFS
-IMG remain Ember-only. The new RiptOPL VCD handoff is implemented and host-tested; physical
-console validation is still pending, and POPS UDPFS RetroAchievements integration is unavailable.
-If any connected USB volume contains RiptOPL's USB-only RA <code>POPS/MODULE_9.IRX</code>,
-launch is refused. Back up and remove that module before retrying a clean POPS
-UDPFS launch. Unreadable modules also prevent handoff; user-owned modules are
-left untouched. This check does not delete files or add POPS RA support.</p>
+
+<p>Edit the supplied DAT examples for your LAN. Before each launch, each file is checked on its own: an
+existing copy on either memory card is kept, and a missing one is copied from the server's <code>POPS/</code>
+if supplied. This happens even when the drivers are already equipped. New files go to the card that holds
+POPSTARTER, or the first available card. Files over the upstream 120-byte limit are refused rather than
+truncated.</p>
+
+<p>The driver reads each file from <code>mc0:/SYS-CONF/</code>, then <code>mc1:/SYS-CONF/</code>. Without
+configuration it uses PS2 <code>192.168.1.10/24</code> and server discovery. The server must be on the PS2's
+subnet: the driver does not route through the gateway. USB <code>mass:/POPS/</code> config files from the Alpha
+driver are no longer read.</p>
+
+<p><strong>RiptOPL setup:</strong> open <strong>POPSTARTER Network Settings</strong> (on <strong>Settings → PS Emulation
+Settings</strong> or <strong>Settings → Network</strong>) and choose <strong>POPS UDPFS Network Settings</strong>. It edits the
+effective memory-card files, shows where they are, and asks before replacing them; server <code>0.0.0.0</code>
+selects discovery. A file on MC0 wins over its MC1 counterpart. Saving checks the original and the
+replacement and keeps a backup without relying on memory-card rename; if a restore fails, recover the
+leftover <code>.bak</code> files before saving again. The SMB POPSTARTER settings are kept separately.</p>
+
+<p><strong>The server must allow writes</strong> (<code>udpfsd</code> without <code>-ro</code>, or
+<code>udpfs_server.py</code> without <code>--read-only</code>), because VMC saves now live on the server. Keep
+backups: upstream documents that a long network interruption while saving can leave an incomplete file.</p>
+
+<p>The UDPFS Files PS1/Mixed view and Favorites share this launch path. If the required driver pair is
+missing or stale, RiptOPL stops before shutting anything down and says so. Ember keeps its own
+<code>udpfs:</code> backend; UDPBD and UDPFS IMG are outside this POPSTARTER feature. POPS UDPFS has no
+RetroAchievements support, so RiptOPL offers to delete a RetroAchievements module left in the server's
+<code>POPS/</code> by an earlier tracked launch. <strong>NOT TESTED</strong> on a real console: gameplay and
+saves have only passed host checks and target builds.</p>
+
 <p>Credit goes to <strong>Okeanos</strong> for BDM-UDPFS Assault, <strong>israpps</strong> for the original BDM Assault,
-<strong>krHACKen</strong> for POPSTARTER, <strong>rickgaiser</strong> for Neutrino/UDPFS/UDPRDMA, <strong>pcm720</strong> for <code>udpfsd</code>,
-and the <strong>PS2SDK contributors</strong>. The upstream release is <strong>Alpha</strong>. Its license and third-party
-notices accompany the drivers in <code>POPS/UDPFS-NOTICES/</code>.</p>
+<strong>krHACKen</strong> for POPSTARTER, <strong>ps2max32 / rickgaiser</strong> for UDPFS/UDPRDMA, <strong>pcm720</strong> for
+<code>udpfsd</code>, <strong>Gageformer</strong>, and the <strong>PS2SDK contributors</strong>. Unmodified upstream instructions,
+license notices and verified hashes accompany the drivers in <code>POPS/UDPFS-NOTICES/</code>.</p>
 <h2 id="bdma">exFAT support — the BDMA equip</h2>
 
 <p>POPSTARTER's stock driver handles ordinary USB FAT32. USB exFAT and the MX4SIO, MMCE, ATA and
@@ -487,7 +481,15 @@ hanging silently.</p>
 <a href="hdd.html">Internal HDD (APA &amp; exFAT)</a>.</p>
 
 <h2 id="limitations">Notes &amp; limitations</h2>
+<p><b>Ember list empty on internal exFAT or another BDM drive?</b> Older builds let a loose file such as
+<code>EMBER/games/readme.txt</code> or <code>.DS_Store</code> abort the Ember scan on FAT32 and exFAT.
+Current builds skip loose files (the original's
+<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/999">#999</a>, checked in CI against real FAT32 and
+exFAT images). If you are on an older build, move loose files out of <code>EMBER/games/</code>; this does not
+require reformatting the disk or changing the PS2 BDM Prefix.</p>
 <ul class="checklist">
+  <li>Ember does not provide IGR. POPSTARTER supplies its own reset behavior; neither uses
+  <a href="igr.html">RiptOPL's PS2 IGR hook</a>.</li>
   <li>The PS1 view reuses the normal device pipeline, so covers, favorites, and the theme all work
   exactly as they do for disc games.</li>
   <li>POPSTARTER, every loose BDMA pair (including <code>.ilink</code>), and the POPS patch file
@@ -525,7 +527,7 @@ re-documented here:</p>
 </div>
 
 <h2 id="save-icons">PS1 save icons</h2>
-<p><b>Artwork Settings ? 3D Save Icons</b> also displays PS1 save artwork, using the card's 2D icon. POPSTARTER cards are <code>SLOT0.VMC</code>/<code>SLOT1.VMC</code> in the VCD's accompanying save folder; Ember cards are <code>MC1.vmc</code>/<code>MC2.vmc</code> inside the listed game folder. Launch the game and create a save first. These emulator cards are separate from the PS2 <code>VMC/&lt;name&gt;.bin</code> assignments.</p>
+<p><b>Artwork Settings → 3D Save Icons</b> also displays PS1 save artwork, using the card's 2D icon. POPSTARTER cards are <code>SLOT0.VMC</code>/<code>SLOT1.VMC</code> in the VCD's accompanying save folder; Ember cards are <code>MC1.vmc</code>/<code>MC2.vmc</code> inside the listed game folder. Launch the game and create a save first. These emulator cards are separate from the PS2 <code>VMC/&lt;name&gt;.bin</code> assignments.</p>
 </main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
