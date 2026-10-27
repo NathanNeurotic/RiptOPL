@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -74,7 +74,7 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
+<div class="callout info" id="specialized-storage"><div class="h">Specialized Sony hardware</div><p><a href="psx-dvr.html"><b>PSX DESR DVR support</b></a> is a separate experimental read-only ISO path, awaiting real DVR tests. <a href="pc-card-cf.html"><b>PC CARD CompactFlash</b></a> for Japanese SCPH-10000/15000/18000 consoles awaits hardware testing. Neither feature changes the standard APA/exFAT workflows documented below.</p></div>
 <h1>Internal HDD (APA &amp; exFAT)</h1>
 <p class="lead">RiptOPL supports two completely different ways to use the PS2's internal ATA/IDE hard drive: the traditional
 <b>APA/PFS partition scheme</b> (HDLoader format, used by HDL-Dump and virtually all legacy tools), and the modern
@@ -301,7 +301,7 @@ destroy them. (Code <b>401</b> now means the drive really did not answer.)
 <code>dd</code> or Win32 Disk Imager's <i>Read</i>. At minimum the recovery tool saves the first 4 MB for you.</p></div>
 <div class="step"><h3>Diagnose (read-only)</h3>
 <p>Get <code>apa_recover.py</code> from
-<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/tree/rebuild/main/pc/apa-recovery"><code>pc/apa-recovery</code></a>
+<a href="https://github.com/NathanNeurotic/RiptOPL/tree/rebuild/main/tools/pc/apa-recovery"><code>pc/apa-recovery</code></a>
 (Python 3.8 or newer, no extra packages) and run it as root:</p>
 <pre>python3 apa_recover.py /dev/sdX</pre>
 <p>On Windows, from an Administrator prompt: <code>python apa_recover.py \\.\PhysicalDrive2</code>. Find the
@@ -314,7 +314,7 @@ checks it with the same rules the PS2 driver applies. It refuses GPT hybrids, a 
 middle, and anything else it cannot verify.</p></div>
 </div>
 
-<p><a href="https://github.com/NathanNeurotic/Open-PS2-Loader/blob/rebuild/main/docs/APA-SAFETY.md">docs/APA-SAFETY.md</a>
+<p><a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/APA-SAFETY.md">docs/APA-SAFETY.md</a>
 lists every protection and what none of them can cover: other software (wLaunchELF, HDD-OSD, PC tools)
 uses its own driver, and a failing drive fails regardless. None of these protections has been through a
 hardware power-cut test yet.</p>
@@ -328,7 +328,7 @@ hardware power-cut test yet.</p>
 <tr><td>PS2 game format</td><td>HDLoader partitions</td><td>ISO / ZSO in <code>DVD/</code> or <code>CD/</code></td></tr>
 <tr><td>OPL data location</td><td>Standard folders at the OPL partition root (<code>pfs0:</code>)</td><td>Standard folders at drive root</td></tr>
 <tr><td>PS1 support</td><td><code>__.POPS*</code> (POPSTARTER) and <code>__.EMBER*</code> (Ember) APA partitions</td><td><code>POPS/</code> + BDMA equip, and/or <code>EMBER/</code></td></tr>
-<tr><td>Fragmentation risk</td><td>None (partition-based)</td><td>Yes — add files one at a time</td></tr>
+<tr><td>Fragmentation risk</td><td>HDLoader game partitions use their own layout; PFS support files and VMCs have separate mapping limits</td><td>Yes — add files one at a time</td></tr>
 <tr><td>Tool ecosystem</td><td>HDL-Dump, pfs-shell, uLaunchELF</td><td>Any PC file manager</td></tr>
 <tr><td>Enable in RiptOPL</td><td>Game Sources → HDD (APA) Start Mode</td><td>Game Sources → Internal HDD (exFAT)</td></tr>
 </tbody>
@@ -444,7 +444,7 @@ HDD and network boot at the same time.</li>
 <p>This depends on the exFAT volume mounting successfully. If it is not available during discovery, RiptOPL can use an accessible APA data home instead. Check the reported settings path and the actual volume before deleting configurations or assuming a save failed. RiptOPL's master file is <code>settings_riptopl.cfg</code>; official OPL's <code>conf_opl.cfg</code> is a separate file. Network, artwork, per-game files and other shared data still need their correct paths.</p>
 <h3 id="guide-safety-and-troubleshooting">Safety and troubleshooting</h3>
 <p>RiptOPL is not an APA-Jail partition manager. Its APA driver refuses partition-table modifications, and the ATA BDM write fence protects the first 128 MiB of an APA disk. Those guards do not validate every possible hybrid layout or make an overlapping partition safe. Back up valuable data, use the layout's own maintenance tools, and do not convert an installed APA-Jail disk to GPT or reformat it to fix an empty list.</p>
-<p>For missing games, check the <strong>exFAT BDM list</strong>, its transport/start settings and prefix first. For missing settings, check which home was selected and whether an APA Custom Settings Path is present. <strong>Code 402 is not an instruction to format.</strong> See <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/blob/rebuild/main/docs/APA-SAFETY.md">APA safety and recovery</a>.</p>
+<p>For missing games, check the <strong>exFAT BDM list</strong>, its transport/start settings and prefix first. For missing settings, check which home was selected and whether an APA Custom Settings Path is present. <strong>Code 402 is not an instruction to format.</strong> See <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/APA-SAFETY.md">APA safety and recovery</a>.</p>
 <h2 id="guide-hdd-detected-but-games-missing">HDD detected, but games missing</h2>
 <p>Check the game list and path before changing the disk:</p>
 <ol>

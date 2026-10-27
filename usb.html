@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -74,7 +74,6 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1>USB / MX4SIO / iLink</h1>
 <p class="lead">USB mass storage, MX4SIO SD cards (via memory-card slot adapter), and iLink (SBP2 over IEEE 1394)
 are OPL's three <b>BDM mass-device transports</b>. They share the same filesystem rules, folder layout, and
@@ -116,7 +115,7 @@ models do not have an iLink port.</p>
 <p>Enable toggle in Game Sources: <b>iLink → On/Off</b>.</p>
 
 <div class="callout amber"><div class="h">Revision 2692 iLink launch status</div>
-On an SCPH-39001, the same IEEE 1394 disk listed and launched Ember in all four SDK flavours, but
+On an SCPH-39001 running the legacy C loader (Open-PS2-Loader), the same IEEE 1394 disk listed and launched Ember in all four of its SDK builds, but
 native OPL, Neutrino, and POPSTARTER failed at their reset/handoff boundaries. The post-2692 build
 corrects a confirmed Neutrino handoff mismatch by auto-emitting <code>-qb</code> with
 <code>-bsd=ilink</code>; hardware retest must still prove whether that was the complete cause.

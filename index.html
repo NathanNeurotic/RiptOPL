@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Home · RiptOPL Docs</title>
-<meta name="description" content="RiptOPL — an opinionated Open PS2 Loader fork. Cover-art Coverflow, Favorites, per-game Neutrino, every storage backend, PS1 through POPSTARTER and Ember, and a deep theme engine.">
+<meta name="description" content="RiptOPL — an opinionated Open PS2 Loader fork. Coverflow and PSBBN Flow cover art, Favorites, per-game Neutrino, every storage backend, PS1 through POPSTARTER and Ember, and a deep theme engine.">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <meta property="og:site_name" content="RiptOPL Docs">
 <meta property="og:type" content="website">
@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -75,7 +75,6 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <div class="hero">
 <img class="hero-banner" src="assets/riptopl.png" alt="RiptOPL">
 <h1>RiptOPL <span class="g">Documentation</span></h1>
@@ -107,7 +106,9 @@ format to <code>favourites.bin</code>, which those loaders cannot read back. Kee
 you use them too. The settings home follows boot-directory discovery or <b>Custom Settings Path</b>;
 do not assume it is always <code>mc0:/OPL/</code>. The <a href="getting-started.html"><b>Getting Started</b></a> guide walks you through your first game;
 the sections below are the deep reference. For the canonical project, see
-<a href="https://github.com/ps2homebrew/Open-PS2-Loader">ps2homebrew/Open-PS2-Loader</a>.</div>
+<a href="https://github.com/ps2homebrew/Open-PS2-Loader">ps2homebrew/Open-PS2-Loader</a>.
+This C++ edition, built with ps2build, is where RiptOPL is developed now; the C codebase continues as the
+<a href="https://github.com/NathanNeurotic/Open-PS2-Loader">legacy Open-PS2-Loader edition</a>.</div>
 
 <div class="callout info callout-luna" id="luna">
   <div class="h">Featured Alternative: LUNA</div>
@@ -141,20 +142,21 @@ the sections below are the deep reference. For the canonical project, see
 
 <h2 id="additions">What RiptOPL adds on top of OPL</h2>
 <ul class="checklist">
-<li><b>Fresh-start defaults</b> &mdash; built-in &lt;OPL&gt;, 16:9 and Auto menu video. Saved settings override defaults. See <a href="defaults.html">the verified defaults guide</a>.</li>
+<li><b>Fresh-start defaults</b> &mdash; built-in &lt;OPL&gt;, 4:3 and Auto menu video, as in the original. Saved settings override defaults. See <a href="defaults.html">the verified defaults guide</a>.</li>
 <li><b>Coverflow theme (optional)</b> — a centered cover-art carousel with reflection, animated scrolling, a
 configurable cover count, and aspect-correct covers in 4:3 and widescreen. Tunable live under <b>Coverflow Settings</b>.</li>
+<li><b><a href="coverflow.html#psbbn-flow">Optional PSBBN Flow theme</a></b> — darkladark's Collection-style perspective fan, with a large focal cover on the right and a diminishing tail on the left. Select it in the Theme picker; sources, artwork and launch actions are shared, and R3 remains Favorite.</li>
 <li><b>Favorites tab</b> — press <b>R3</b> to star any game; a virtual Favorites page gathers starred games from
 every device. Imports an existing uOPL / wOPL <code>favourites.bin</code>.</li>
 <li><b>Neutrino external core (per-game)</b> — hand a game to an external <code>neutrino.elf</code> instead of OPL's
-built-in core, with a <b>Device</b> picker and a structured <b>Launch Args</b> screen.</li>
+built-in core, with a full <b>Neutrino Path</b> setting and a structured <b>Launch Args</b> screen.</li>
 <li><b>Network boot</b> — stream games from a PC over the LAN as their own list via <b>UDPBD</b> or <b>UDPFS</b> (Neutrino).</li>
 <li><b>PS1 games — two cores, flexible display</b> — <b>POPSTARTER</b> (<code>*.VCD</code>) and
 <b>Ember</b> (<code>*.cue</code>) share one PS1 library, while <b>PS2/PS1 Game Display</b> offers
 separate L3 views, a combined Mixed list with filters, or a locked PS2/PS1 list. UDPFS Files lists
-Ember and uppercase VCDs; UDPBD and UDPFS IMG remain Ember-only; <a href="ps1-vcd.html#pops-udpfs">POPS UDPFS</a> uses Okeanos’s separate USB-first BDMA driver; APA HDD supports <code>__.EMBER</code> and <code>__.EMBER0</code>–<code>9</code>.</li>
-<li><b>Category settings layout</b> — organised category pages (Game Sources, General &amp; System, Network, Interface, Game Launching, PS Emulation Settings, Controller Settings, Audio Settings) instead of one flat list.</li>
-<li><b>Ready-to-use defaults</b> — widescreen, cover art, notifications and the PS2 logo are on out of the box, sound effects and boot sound also start on, and enabled music needs a playable track; storage devices ship off by default until enabled under Game Sources.</li>
+Ember and uppercase VCDs; UDPBD and UDPFS IMG remain Ember-only; <a href="ps1-vcd.html#pops-udpfs">POPS UDPFS</a> uses Okeanos’s network-only UDPFS Assault driver; APA HDD supports <code>__.EMBER</code> and <code>__.EMBER0</code>–<code>9</code>.</li>
+<li><b>Category settings layout</b> — organised category pages (Game Sources, General &amp; System, Network, Interface, Game Launching, PS Emulation Settings, Controller Settings, Audio Settings, Language) instead of one flat list.</li>
+<li><b>Ready-to-use defaults</b> — cover art, notifications and the PS2 logo are on out of the box; the menu starts in 4:3 with sound and menu vibration off, and storage devices ship off until enabled under Game Sources.</li>
 </ul>
 
 <h2 id="sections">Full reference</h2>
@@ -169,8 +171,8 @@ Ember and uppercase VCDs; UDPBD and UDPFS IMG remain Ember-only; <a href="ps1-vc
 <a class="tile" href="pc-card-cf.html"><span class="icon icon-hdd"></span><b>PC CARD CompactFlash</b><span>Early Japanese PS2 models; experimental native core; hardware testing pending</span></a>
 <a class="tile" href="network-boot.html"><span class="icon icon-netboot"></span><b>Network Boot</b><span>UDPBD &amp; UDPFS</span></a>
 <a class="tile" href="ps1-vcd.html"><span class="icon icon-ps1"></span><b>PS1 Games</b><span>POPSTARTER + Ember</span></a>
-<a class="tile" href="neutrino.html"><span class="icon icon-neutrino"></span><b>Neutrino Core</b><span>Device + Args pickers</span></a>
-<a class="tile" href="coverflow.html"><span class="icon icon-coverflow"></span><b>Coverflow</b><span>Optional cover carousel</span></a>
+<a class="tile" href="neutrino.html"><span class="icon icon-neutrino"></span><b>Neutrino Core</b><span>Runtime path and launch arguments</span></a>
+<a class="tile" href="coverflow.html"><span class="icon icon-coverflow"></span><b>Coverflow &amp; PSBBN Flow</b><span>Choose a cover-art theme and learn its controls</span></a>
 <a class="tile" href="http.html"><span class="icon icon-http"></span><b>HTTP</b><span>ISO catalog and range streaming; development feature</span></a>
 <a class="tile" href="retroachievements.html"><span class="icon icon-ra"></span><b>RetroAchievements</b><span>RA build and xeRAbora; hardware validation pending</span></a>
 <a class="tile" href="favourites.html"><span class="icon icon-favorites"></span><b>Favorites</b><span>R3 to star · four L3 views</span></a>
@@ -208,7 +210,9 @@ Ember and uppercase VCDs; UDPBD and UDPFS IMG remain Ember-only; <a href="ps1-vc
 continuation of his earlier <b>uOPL</b> (Unofficial Open PS2 Loader) — is the fork where much of the modern
 Coverflow / Favorites / Neutrino work originated. <b>RiptOPL</b>
 is a downstream "agglomeration" fork that brings those features together with opinionated defaults and additional device
-support, with a separate master settings filename and shared support files (favorites migration is one-way). It is a labor of love, <b>not</b> a replacement for upstream — please support the
+support, with a separate master settings filename and shared support files (favorites migration is one-way). This site documents
+its C++ edition, built with ps2build; the original C codebase is kept as the
+<a href="https://github.com/NathanNeurotic/Open-PS2-Loader">legacy Open-PS2-Loader edition</a>. It is a labor of love, <b>not</b> a replacement for upstream — please support the
 canonical project.</p></details>
 </main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>

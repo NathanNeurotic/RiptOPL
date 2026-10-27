@@ -46,7 +46,7 @@
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
     <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
     <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
-    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
     <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
     <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
     <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
@@ -74,18 +74,14 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1>Controls</h1>
 <p class="lead">Every button RiptOPL responds to, in one place — the game list, the menus, inside a running
 game, and at boot.</p>
 
 <div class="callout info"><div class="h">Two settings change what you read below</div>
 <b>Select Button</b> (<em>Settings → Controller Settings</em>) swaps which face button confirms. The tables use
-<b>Cross = confirm, Circle = back</b>, which is the default everywhere except <b>Japanese consoles</b>, where
-RiptOPL starts with Circle as confirm to match the regional convention. If Circle is your select button, swap
-those two everywhere <em>except</em> the Settings screens (see the note under <a href="#settings-screens">Settings
-screens</a>).<br>
-<b>Coverflow</b> (<em>Settings → Interface</em>) rotates the navigation axis on the game list. Both layouts
+<b>Cross = confirm, Circle = back</b>, which is the default everywhere except <b>Japanese consoles</b>, where RiptOPL starts with Circle as confirm to match the regional convention. Saved preferences override that. Swap the two in these tables when Circle is selected, including on Settings screens, and follow the on-screen hints.<br>
+<b>Coverflow and PSBBN Flow</b> (<em>Settings → Interface → Theme</em>) rotate the navigation axis on the game list. Both layouts
 are given below.</div>
 
 <h2 id="game-list">Game list</h2>
@@ -108,18 +104,19 @@ are given below.</div>
 </tbody>
 </table>
 
-<h3 id="coverflow-axis">With Coverflow enabled</h3>
-<p>Coverflow rotates the two navigation axes on the game list — <b>and only there</b>. The info screen and
+<span id="with-coverflow-enabled"></span>
+<h3 id="coverflow-axis">With Coverflow or PSBBN Flow selected</h3>
+<p>Both flow themes rotate the two navigation axes on the game list — <b>and only there</b>. The info screen and
 every menu keep the standard layout.</p>
 
 <table>
-<thead><tr><th>Button</th><th>Coverflow off</th><th>Coverflow on</th></tr></thead>
+<thead><tr><th>Button</th><th>List theme, such as &lt;OPL&gt;</th><th>Coverflow / PSBBN Flow</th></tr></thead>
 <tbody>
 <tr><td><b>Up / Down</b></td><td>Move through the list</td><td>Switch device page</td></tr>
 <tr><td><b>Left / Right</b></td><td>Switch device page</td><td>Move through the carousel</td></tr>
 </tbody>
 </table>
-<p>Every other button is unchanged. See <a href="coverflow.html">Coverflow</a>.</p>
+<p>Every other button is unchanged, including <b>R3 = toggle Favorite</b>. Choose PSBBN Flow in the Theme picker; R3 does not switch displays. See <a href="coverflow.html">Coverflow</a>.</p>
 
 <h3 id="button-notes">Notes on individual buttons</h3>
 <p><b>Triangle</b> adapts to what is selected. On a PS2 title it opens
