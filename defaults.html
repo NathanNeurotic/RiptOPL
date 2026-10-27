@@ -74,7 +74,6 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<div class="callout amber" id="sdk-migration-status"><div class="h">ps2build C++ migration</div><p>This repository is the C++/ps2build transition of RiptOPL. These guides include the production project's full documentation; feature and hardware parity are still being validated. The release targets are <b>Korium</b>, <b>RetroAchievements</b> and <b>IncebtIon</b>, all on ps2build. Check the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UPSTREAM-PARITY-2026-10-12.md">migration ledger</a> before treating an imported production feature as verified here.</p></div>
 <h1 id="fresh-start-defaults">Fresh-start defaults</h1>
 <p>These defaults describe this C++/ps2build repository when no saved master
 configuration is loaded. Updating the ELF does not reset saved settings. A new
@@ -90,7 +89,7 @@ installation folder can still discover settings on another device.</p>
 <tbody>
 <tr>
 <td>Menu aspect ratio</td>
-<td>16:9; Widescreen on</td>
+<td>4:3; Widescreen off</td>
 <td>Settings → Interface</td>
 </tr>
 <tr>
@@ -109,8 +108,18 @@ installation folder can still discover settings on another device.</p>
 <td>Settings → Interface → Theme</td>
 </tr>
 <tr>
+<td>PSBBN Flow</td>
+<td>Optional built-in <code>&lt;PSBBN Flow&gt;</code> theme</td>
+<td>Settings → Interface → Theme</td>
+</tr>
+<tr>
 <td>Cover and disc artwork</td>
 <td>On</td>
+<td>Settings → Interface → Artwork Settings</td>
+</tr>
+<tr>
+<td>Per-game background art</td>
+<td>Off in Korium and RetroAchievements (as the original's Korium); On in IncebtIon</td>
 <td>Settings → Interface → Artwork Settings</td>
 </tr>
 <tr>
@@ -125,8 +134,13 @@ installation folder can still discover settings on another device.</p>
 </tr>
 <tr>
 <td>Sound effects, boot sound, background music</td>
-<td>On; stored volume 90</td>
+<td>Off; stored volume 90</td>
 <td>Settings → Audio Settings</td>
+</tr>
+<tr>
+<td>Controller Vibration in Menus</td>
+<td>Off</td>
+<td>Settings → Controller Settings</td>
 </tr>
 <tr>
 <td>Remember last played</td>
@@ -140,7 +154,7 @@ installation folder can still discover settings on another device.</p>
 </tr>
 <tr>
 <td>GameID barcode</td>
-<td>Off</td>
+<td>PS1 half On, PS2 half Off (shown as <em>On (POPSTARTER only)</em>)</td>
 <td>Settings → Interface</td>
 </tr>
 </tbody>
@@ -148,12 +162,16 @@ installation folder can still discover settings on another device.</p>
 <p>Background music still needs a playable configured/default track. An enabled
 setting alone does not supply music. Storage discovery and saved configuration
 can affect the active presentation after initial defaults are applied.</p>
-<p>Select <strong>Theme: <code>&lt;Coverflow&gt;</code></strong> under <strong>Settings → Interface</strong>, apply, and save
-to keep the carousel presentation. Coverflow supports both 4:3 and 16:9;
-selecting it does not toggle widescreen. Use <strong>Widescreen: Off</strong> for a 4:3 menu.
-The carousel starts with three covers, center scale 30, 200 ms animation and
+<p>To use the widescreen/carousel presentation, select <strong>Widescreen: On</strong> and
+<strong>Theme: <code>&lt;Coverflow&gt;</code></strong> under <strong>Settings → Interface</strong>, apply, and save.
+Coverflow supports both 4:3 and 16:9; selecting it does not toggle widescreen.
+The carousel starts with three covers, Large center scale (45), 200 ms animation and
 side-cover dimming off. L1/R1 page moves animate only when selection changes,
 including wraps; flat list themes keep their existing page behavior.</p>
+<p>For the PSBBN Definitive Project Game Collection look, choose <strong>Theme: <code>&lt;PSBBN Flow&gt;</code></strong> in the same
+picker, apply and save. It uses the colour picker's palette and its own fixed perspective layout and
+25-frame glide; the Coverflow count, scale, animation and dimming settings do not apply to it. See
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/THEME_ENGINE.md#psbbn-flow">PSBBN Flow</a> for artwork and authoring details.</p>
 <p>Existing <code>settings_riptopl.cfg</code> values override fresh defaults. The legacy
 <code>conf_riptopl.cfg</code> can also be migrated. Inspect the active configuration location
 before diagnosing a different appearance as a failed update; preserve settings
@@ -165,11 +183,9 @@ selects Auto/interlaced recovery. Use the override suitable for the connected di
 <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/src/app/settingsio.cpp">configuration loading</a>,
 <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/src/gfx/themes.cpp">initial theme</a>, <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/include/themecatalog.h">theme catalog</a>,
 and <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/src/gfx/coverflow.cpp">carousel tuning</a>.</p>
-<p>The original Open-PS2-Loader repository's newer guide describes 4:3, disabled
-audio and center scale 45. This branch retains 16:9, enabled audio and scale 30.
-Those are explicit migration differences, tracked in
-<a href="https://github.com/NathanNeurotic/RiptOPL/issues/20">issue #20</a>; this documentation
-update does not change runtime defaults or claim complete defaults parity.</p>
+<p>These match the original Open-PS2-Loader's fresh-start defaults (4:3, audio and
+menu rumble off, center scale 45). Saved settings are untouched, so an existing
+installation keeps its own choices.</p>
 </main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
