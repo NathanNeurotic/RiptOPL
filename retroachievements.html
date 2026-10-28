@@ -146,7 +146,32 @@ as finished.</p>
 </table>
 <hr/>
 <h2 id="using-it">Using it</h2>
-<p>Two settings, on the <strong>Network</strong> settings page:</p>
+<h3 id="first-tracked-game">First tracked game</h3>
+<ol>
+<li>Start <strong>RIPTOPL-RA.ELF</strong> from the RetroAchievements kit (<code>rolling-ra</code>). The Korium and
+IncebtIon kits have no achievement telemetry and need no companion PC.</li>
+<li>Run <strong>xeRAbora v0.1.0-alpha.17</strong> on the companion PC and sign in to your RetroAchievements
+account in its Settings page. Keep it running.</li>
+<li>In <strong>Settings → Network</strong>, leave <strong>RA Mode</strong> on <strong>Xerabora</strong>, turn <strong>RetroAchievements
+telemetry</strong> on and save. Telemetry is Off on a fresh start. Give the PS2 working network
+settings on the same LAN as the PC, and set <strong>RA companion IP</strong> to the PC's IPv4 address to
+target it directly (0.0.0.0 finds it by broadcast).</li>
+<li>For a first test use a PS2 image on USB or MMCE, with <strong>OPL</strong> chosen as the game's core. The
+RA kit's Neutrino has its own limits (see <a href="#neutrino-in-the-ra-edition">Neutrino in the RA edition</a>);
+the other launch paths and their state are under <a href="#which-launch-paths-can-work">Which launch paths can work</a>.</li>
+<li>On the game's menu run <strong>Test RetroAchievements PC link</strong>, then <strong>Check RetroAchievements
+support</strong>. The first proves the console reaches xeRAbora; the second fetches the watch list.
+Let xeRAbora through the PC firewall, including inbound UDP 18194.</li>
+<li>Launch the game after a successful check, and confirm xeRAbora's LIVE view receives snapshots.
+The list badge alone does not prove in-game telemetry.</li>
+</ol>
+<p>Run the support check once for each image you want tracked. A game without a watch list starts
+an ordinary, untracked game. An unknown hash can mean a different region or dump, or a game with
+no set; it does not mean the storage source is unsupported. For Caduceus, select that mode and
+complete its pairing instead (see <a href="#ra-mode-and-the-companion-pc">RA Mode and the companion PC</a>);
+run one achievement service per PC.</p>
+<h3 id="settings-and-menu-actions">Settings and menu actions</h3>
+<p>The settings, on the <strong>Network</strong> settings page:</p>
 <table>
 <thead>
 <tr>
