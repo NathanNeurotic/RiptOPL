@@ -193,6 +193,40 @@ class InstallPortsTests(unittest.TestCase):
             self.assertEqual(len(backups), 1)
             self.assertEqual(backups[0].read_text(), "keep")
 
+    def mirror_env(self, sums, **extra):
+        import hashlib
+        return {"OGG_VERSION": "v1", "PS2BUILD_SDK_TAG": "sdk-v1-abcd", "PS2BUILD_SDK_MIRROR_URL": "https://mirror.test",
+                "PS2BUILD_SDK_SUMS_SHA256": hashlib.sha256(sums).hexdigest(), **extra}
+
+    def test_pinned_package_comes_from_the_checksummed_mirror(self):
+        import hashlib
+        data = archive()
+        sums = f"{hashlib.sha256(data).hexdigest()}  ogg-v1-gcc.zip\n".encode()
+        with tempfile.TemporaryDirectory() as directory, patch.dict(ports.os.environ, self.mirror_env(sums)):
+            sdk = Path(directory)
+            with patch.object(ports, "download", side_effect=[sums, data]) as fetched:
+                ports.install(sdk, "ogg", "gcc")
+            self.assertEqual([c.args[0] for c in fetched.call_args_list],
+                             ["https://mirror.test/SHA256SUMS", "https://mirror.test/ogg-v1-gcc.zip"])
+            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")
+            with patch.object(ports, "download") as fetched:
+                ports.install(sdk, "ogg", "gcc")  # the cached pinned package needs no download
+            fetched.assert_not_called()
+
+    def test_mirror_that_fails_verification_falls_back_to_the_official_host(self):
+        import hashlib
+        data = archive()
+        sums = f"{hashlib.sha256(b'other').hexdigest()}  ogg-v1-gcc.zip\n".encode()
+        metadata = json.dumps(release("ogg-v1-gcc.zip")).encode()
+        for env in (self.mirror_env(sums), self.mirror_env(b"forged", PS2BUILD_SDK_SUMS_SHA256="0" * 64)):
+            with tempfile.TemporaryDirectory() as directory, patch.dict(ports.os.environ, env):
+                sdk = Path(directory)
+                responses = [sums, data, metadata, data] if env["PS2BUILD_SDK_SUMS_SHA256"] != "0" * 64 else [b"forged", metadata, data]
+                with patch.object(ports, "download", side_effect=responses) as fetched:
+                    ports.install(sdk, "ogg", "gcc")
+                self.assertTrue(fetched.call_args_list[-2].args[0].startswith(ports.HOST))
+                self.assertEqual((sdk / "packages/world/ogg/lib/libogg.a").read_bytes(), b"new archive")
+
 
 if __name__ == "__main__":
     unittest.main()

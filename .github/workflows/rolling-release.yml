@@ -61,39 +61,16 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      - uses: actions/cache@v4
+      # The pinned SDK (.github/ps2build-sdk.env): a cache restore, else the checksummed
+      # NathanNeurotic/ps2build-mirror release, else git.techwritescode.dev pinned per component. The key
+      # changes only with the pin, so one SDK per toolchain is kept instead of a new 1.7 GB entry per run.
+      - name: Restore the pinned ps2build SDK
+        uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.ps2dev
-          key: release-ps2build-${{ runner.os }}-${{ matrix.target.edition }}-${{ matrix.target.configuration }}-${{ github.run_id }}
-          restore-keys: |
-            release-ps2build-${{ runner.os }}-${{ matrix.target.edition }}-
-            ps2dev-${{ runner.os }}-gcc-v2-
-      - name: Install ps2build and its only SDK
-        id: sdk1
-        continue-on-error: true
-        uses: techwritescode/setup-sdk@master
-        with:
-          ps2dev: ${{ github.workspace }}/.ps2dev
-      # git.techwritescode.dev has multi-minute HTTP 521 outages; one retry 45 s later was not enough
-      # (rebuild/main 894dca3). Same three attempts as flavours.yml and ps2build.yml.
-      - name: Retry SDK setup after a transient download failure
-        if: steps.sdk1.outcome == 'failure'
-        run: sleep 45
-      - name: Install ps2build (retry 1)
-        id: sdk2
-        if: steps.sdk1.outcome == 'failure'
-        continue-on-error: true
-        uses: techwritescode/setup-sdk@master
-        with:
-          ps2dev: ${{ github.workspace }}/.ps2dev
-      - name: Wait before retrying the SDK setup again
-        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
-        run: sleep 90
-      - name: Install ps2build (retry 2)
-        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
-        uses: techwritescode/setup-sdk@master
-        with:
-          ps2dev: ${{ github.workspace }}/.ps2dev
+          key: ps2build-sdk-${{ runner.os }}-${{ hashFiles('.github/ps2build-sdk.env') }}-gcc
+      - name: Install the pinned ps2build SDK
+        run: sh tools/ps2build_sdk.sh "$PS2BUILD_HOME"
       - name: Install matching audio packages and fetch assets
         run: |
           sh tools/install_ps2build.sh

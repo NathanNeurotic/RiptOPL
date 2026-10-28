@@ -25,49 +25,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # Toolchain + SDK cache. setup-sdk runs `ps2build update`, which refreshes any component that is out of
-      # date, so a stale restore is safe; a warm cache just skips the ~167 MB download from
-      # git.techwritescode.dev, which cuts connections ("stream error ... INTERNAL_ERROR", HTTP 521) when several
-      # jobs fetch at once.
-      - name: Restore the ps2dev cache
+      # The pinned SDK (.github/ps2build-sdk.env): a cache restore, else the checksummed
+      # NathanNeurotic/ps2build-mirror release, else git.techwritescode.dev pinned per component. The key
+      # changes only with the pin, so one SDK per toolchain is kept instead of a new 1.7 GB entry per run.
+      - name: Restore the pinned ps2build SDK
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.ps2dev
-          key: ps2dev-${{ runner.os }}-${{ matrix.toolchain }}-v2-${{ github.run_id }}
-          restore-keys: |
-            ps2dev-${{ runner.os }}-${{ matrix.toolchain }}-v2-
-            ps2dev-${{ runner.os }}-v1-
-
-      # Cold cache: up to three attempts with a pause between them (a second attempt a moment later hit the
-      # same overloaded host).
-      - name: Install ps2build + SDK
-        id: sdk1
-        continue-on-error: true
-        uses: techwritescode/setup-sdk@master
-        with:
-          ps2dev: ${{ github.workspace }}/.ps2dev
-      - name: Wait before retrying the SDK install
-        if: steps.sdk1.outcome == 'failure'
-        run: sleep 45
-      - name: Install ps2build + SDK (retry 1)
-        id: sdk2
-        if: steps.sdk1.outcome == 'failure'
-        continue-on-error: true
-        uses: techwritescode/setup-sdk@master
-        with:
-          ps2dev: ${{ github.workspace }}/.ps2dev
-      - name: Wait before retrying the SDK install again
-        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
-        run: sleep 90
-      - name: Install ps2build + SDK (retry 2)
-        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
-        uses: techwritescode/setup-sdk@master
-        with:
-          ps2dev: ${{ github.workspace }}/.ps2dev
-
-      - name: Install the optional LLVM toolchain
-        if: matrix.toolchain == 'llvm'
-        run: $PS2BUILD_HOME/ps2build update llvm-toolchain
+          key: ps2build-sdk-${{ runner.os }}-${{ hashFiles('.github/ps2build-sdk.env') }}-${{ matrix.toolchain }}
+      - name: Install the pinned ps2build SDK
+        run: sh tools/ps2build_sdk.sh ${{ matrix.toolchain == 'llvm' && '--llvm' || '' }} "$PS2BUILD_HOME"
       - name: Install matching ogg/vorbis packages (not shipped by the SDK)
         run: tools/install_ps2build.sh
       - name: Assets (translations, lwNBD, embedded blobs, version)

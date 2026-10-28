@@ -54,44 +54,16 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      - uses: actions/cache@v4
+      # The pinned SDK (.github/ps2build-sdk.env): a cache restore, else the checksummed
+      # NathanNeurotic/ps2build-mirror release, else git.techwritescode.dev pinned per component. The key
+      # changes only with the pin, so one SDK per toolchain is kept instead of a new 1.7 GB entry per run.
+      - name: Restore the pinned ps2build SDK
+        uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.ps2dev
-          # Share the compiler-validation cache instead of storing one SDK per variant.
-          key: ps2dev-${{ runner.os }}-${{ matrix.toolchain }}-v2-${{ github.run_id }}
-          restore-keys: |
-            ps2dev-${{ runner.os }}-${{ matrix.toolchain }}-v2-
-      - name: Install ps2build and update the SDK
-        id: sdk1
-        continue-on-error: true
-        uses: techwritescode/setup-sdk@master
-        with:
-          ps2dev: ${{ github.workspace }}/.ps2dev
-      # git.techwritescode.dev has multi-minute HTTP 521 outages: three attempts, as flavours.yml and ps2build.yml.
-      - name: Wait before retrying SDK setup
-        if: steps.sdk1.outcome == 'failure'
-        run: sleep 45
-      - name: Install ps2build (retry 1)
-        id: sdk2
-        if: steps.sdk1.outcome == 'failure'
-        continue-on-error: true
-        uses: techwritescode/setup-sdk@master
-        with:
-          ps2dev: ${{ github.workspace }}/.ps2dev
-      - name: Wait before retrying SDK setup again
-        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
-        run: sleep 90
-      - name: Install ps2build (retry 2)
-        if: steps.sdk1.outcome == 'failure' && steps.sdk2.outcome == 'failure'
-        uses: techwritescode/setup-sdk@master
-        with:
-          ps2dev: ${{ github.workspace }}/.ps2dev
-      # A plain "ps2build update" does not install llvm-toolchain. The LLVM jobs only passed while a warm
-      # cache already held it; on a cold cache (the first run on rebuild/main after #77) every LLVM job
-      # failed with "the llvm toolchain is not installed". Same step as ps2build.yml.
-      - name: Install the optional LLVM toolchain
-        if: matrix.toolchain == 'llvm'
-        run: $PS2BUILD_HOME/ps2build update llvm-toolchain
+          key: ps2build-sdk-${{ runner.os }}-${{ hashFiles('.github/ps2build-sdk.env') }}-${{ matrix.toolchain }}
+      - name: Install the pinned ps2build SDK
+        run: sh tools/ps2build_sdk.sh ${{ matrix.toolchain == 'llvm' && '--llvm' || '' }} "$PS2BUILD_HOME"
       - name: Install matching ports and prepare assets
         run: |
           sh tools/install_ps2build.sh
