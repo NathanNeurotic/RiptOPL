@@ -9,7 +9,7 @@ installation folder can still discover settings on another device.
 | Menu aspect ratio | 4:3; Widescreen off | Settings → Interface |
 | Menu video mode | Auto | Settings → Interface |
 | Theme | Built-in `<OPL>` | Settings → Interface → Theme |
-| Theme View | Default (List for `<OPL>`); Coverflow and PSBBN Flow are optional views | Settings → Interface → Theme View, or hold L3 |
+| Theme View | Default (List for `<OPL>`); Coverflow, PSBBN Flow and Grid are optional views | Settings → Interface → Theme View, or hold L3 |
 | Cover and disc artwork | On | Settings → Interface → Artwork Settings |
 | Per-game background art | Off in Korium and RetroAchievements (as the original's Korium); On in IncebtIon | Settings → Interface → Artwork Settings |
 | Notifications | On | Settings → Interface |
