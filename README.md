@@ -858,6 +858,8 @@ and ideas from [rickgaiser's OPL](https://github.com/rickgaiser/Open-PS2-Loader)
 
 With special and sincere thanks to:
 
+- **[belomaxorka](https://github.com/belomaxorka)** — developer of **[YAOPL](https://github.com/yaopl/yaopl)**, whose detailed compatibility research, backend reliability fixes and reproducible regression work across ISO/ZSO, USB/PADEMU, controllers, MMCE and UDPBD are invaluable to OPL and RiptOPL's parity efforts. Thank you for your contributions to the PS2 homebrew community.
+
 - **KrahJohlito** — the legend, and the single biggest influence on this fork. Creator of
   **uOPL (Unofficial Open PS2 Loader)** and its continuation
   **[wOPL](https://github.com/KrahJohlito/wOPL)**, where the modern OPL experience was
