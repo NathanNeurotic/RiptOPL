@@ -97,17 +97,17 @@ Each edition has its own release channel, rebuilt from <code>rebuild/main</code>
 <tr><td><code>BUILD-MANIFEST.json</code>, <code>SHA256SUMS.txt</code></td><td>Build identity and asset checksums.</td></tr>
 </tbody></table>
 
-<p>Two channels carry extra builds, each as one folder per configuration with its own <code>RIPTOPL.ELF</code> and manifest,
+<p>Every channel carries extra builds, built with its own theme, each as one folder per configuration with its own <code>RIPTOPL.ELF</code> and manifest,
 built from the same commit and SDK as the kit:</p>
 <ul>
-<li><b>Korium</b>: <code>RIPTOPL-VARIANTS.zip</code> with <code>pademu0</code> (pad emulation compiled out), <code>ds5</code>
+<li><b>Korium</b> and <b>IncebtIon</b>: <code>RIPTOPL-VARIANTS.zip</code> with <code>pademu0</code> (pad emulation compiled out), <code>ds5</code>
 (USB DualSense), <code>extras</code> (in-game screenshots and right-to-left languages) and <code>extras_ds5</code>; and
 <code>RIPTOPL-DEBUG.zip</code> with every debug and diagnostic configuration (<code>dtl</code>, <code>diag</code>,
 <code>debug</code>, <code>debug_uart</code>, <code>ingame_debug</code>, <code>iopcore_debug</code>, <code>eesio_debug</code>,
 <code>ingame_debug_uart</code>, <code>iopcore_debug_uart</code>, <code>ingamediag</code>).</li>
 <li><b>RetroAchievements</b>: <code>RIPTOPL-RA-VARIANTS.zip</code> with <code>pademu0</code>, and the IncebtIon-theme kit as
-<code>RIPTOPL-RetroAchievements-IncebtIon.zip</code>, <code>RIPTOPL-RA-IncebtIon.ELF</code> and
-<code>APP_RIPTOPL-RA-IncebtIon.psu</code>. Inside that kit the app is still <code>APP_RIPTOPL-RA</code>.</li>
+<code>RIPTOPL-RetroAchievements-IncebtIon.zip</code>, <code>RIPTOPL-RA-IncebtIon.ELF</code>,
+<code>APP_RIPTOPL-RA-IncebtIon.psu</code> and <code>RIPTOPL-RA-VARIANTS-IncebtIon.zip</code>. Inside that kit the app is still <code>APP_RIPTOPL-RA</code>.</li>
 </ul>
 <p>Standard kits never include RetroAchievements resources. No BIOS or Sony emulator file is distributed.</p>
 
