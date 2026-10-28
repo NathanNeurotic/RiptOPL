@@ -289,8 +289,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      # The pinned SDK (.github/ps2build-sdk.env): a cache restore, else the checksummed
-      # NathanNeurotic/ps2build-mirror release, else git.techwritescode.dev pinned per component. The key
+      # The pinned SDK (.github/ps2build-sdk.env): a cache restore, else git.techwritescode.dev
+      # pinned per component, else (when that host fails) the checksummed NathanNeurotic/ps2build-mirror release. The key
       # changes only with the pin, so one SDK per toolchain is kept instead of a new 1.7 GB entry per run.
       - name: Restore the pinned ps2build SDK
         uses: actions/cache@v4

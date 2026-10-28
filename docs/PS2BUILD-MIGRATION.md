@@ -76,10 +76,10 @@ Sources under src/ are now C++ (see CPP-CONVERSION-PLAN.md), so the Makefile can
 
 CI (GitHub Actions):
 - Every ps2build job installs the SDK pinned in `.github/ps2build-sdk.env` with `tools/ps2build_sdk.sh`: an
-  `actions/cache` restore keyed on that file, else the checksummed release on
-  [NathanNeurotic/ps2build-mirror](https://github.com/NathanNeurotic/ps2build-mirror), else git.techwritescode.dev pinned
-  per component (`ps2build update <component> --version <tag>`, never "latest"). `tools/install_ps2build.sh` then adds the
-  pinned ogg/vorbis packages, from the same mirror release when there is one. `PS2BUILD_HOME`/`PS2DEV_INSTALL_DIR` point at
+  `actions/cache` restore keyed on that file, else git.techwritescode.dev pinned per component
+  (`ps2build update <component> --version <tag>`, never "latest"), else, only when that host fails, the checksummed release
+  on [NathanNeurotic/ps2build-mirror](https://github.com/NathanNeurotic/ps2build-mirror). `tools/install_ps2build.sh` then
+  adds the pinned ogg/vorbis packages the same way: official host first, the mirror release when it is down. `PS2BUILD_HOME`/`PS2DEV_INSTALL_DIR` point at
   `$GITHUB_WORKSPACE/.ps2dev`. To move to a newer SDK, replace the pin file with a mirror release's `pin.env` in a PR.
 - `flavours.yml` builds the main flavour only; the PS2DEV/OFFICIAL x PINNED/ROLLING container matrix, DIAG and RA are gone until
   `ps2.yaml` can express them. A transient HTTP/2 stream error while downloading the toolchain was seen once (re-run fixed it).

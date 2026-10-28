@@ -64,8 +64,8 @@ def unpack(data, destination, package):
 def mirror_archive(package, version, toolchain):
     """The pinned package from the ps2build-mirror release named in .github/ps2build-sdk.env, or None.
 
-    Its SHA256SUMS must hash to the pinned value and the archive must match its line there; any failure
-    falls back to the official host."""
+    Used only when the official host fails. Its SHA256SUMS must hash to the pinned value and the archive
+    must match its line there."""
     tag, sums_sha = os.environ.get("PS2BUILD_SDK_TAG"), os.environ.get("PS2BUILD_SDK_SUMS_SHA256")
     if version == "latest" or not tag or not sums_sha:
         return None
@@ -83,7 +83,7 @@ def mirror_archive(package, version, toolchain):
         if hashlib.sha256(data).hexdigest() != expected[0]:
             raise ValueError(f"{name} does not match SHA256SUMS")
     except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead, ValueError) as error:
-        print(f"warning: mirror {base} failed for {name} ({error}); using {HOST}", flush=True)
+        print(f"warning: mirror {base} failed for {name} ({error})", flush=True)
         return None
     return f"{base}/{name}", data
 
@@ -99,23 +99,26 @@ def install(sdk, package, toolchain):
             and all((installed / name).is_file() for name in ("package.yaml", *(f"lib/{lib}" for lib in LIBRARIES[package]))):
         print(f"{package} {version} ({toolchain}) already installed")
         return
-    mirrored = mirror_archive(package, version, toolchain)
     try:
-        if mirrored:
-            release, (url, data) = {"tag_name": version}, mirrored
-        else:
-            release = json.loads(download(f"{HOST}/api/v1/repos/ps2/{package}/releases/{release_path}"))
-            url = select_asset(release, package, toolchain)
-            data = download(url)
+        release = json.loads(download(f"{HOST}/api/v1/repos/ps2/{package}/releases/{release_path}"))
+        url = select_asset(release, package, toolchain)
+        data = download(url)
     except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead) as error:
-        # The package host has outages of several minutes. A complete package restored from the SDK
-        # cache is the one a previous run installed, so build with it rather than fail; a pinned
-        # version is never substituted.
-        if version != "latest" or isinstance(error, urllib.error.HTTPError) and error.code < 500 \
+        # The official host has outages of several minutes. A missing release (4xx) is a real error;
+        # otherwise take the same pinned package from the ps2build-mirror release.
+        client_error = isinstance(error, urllib.error.HTTPError) and error.code < 500
+        mirrored = None if client_error else mirror_archive(package, version, toolchain)
+        if mirrored:
+            print(f"warning: {HOST} unreachable ({error}); using the ps2build-mirror copy", flush=True)
+            release, (url, data) = {"tag_name": version}, mirrored
+        # A complete package restored from the SDK cache is the one a previous run installed, so build
+        # with it rather than fail; a pinned version is never substituted.
+        elif version != "latest" or client_error \
                 or not all((installed / name).is_file() for name in ("package.yaml", *(f"lib/{lib}" for lib in LIBRARIES[package]))):
             raise
-        print(f"warning: {HOST} unreachable ({error}); keeping the installed {package} ({toolchain})", flush=True)
-        return
+        else:
+            print(f"warning: {HOST} unreachable ({error}); keeping the installed {package} ({toolchain})", flush=True)
+            return
     world.mkdir(parents=True, exist_ok=True)
     world = world.resolve()
     target = world / package
