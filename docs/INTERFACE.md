@@ -34,7 +34,7 @@ separate settings. A configuration that saved the former `<Coverflow>` or `<PSBB
 Both flow views rotate navigation on the main game list: Left/Right browse covers and Up/Down
 change sources. R3 remains Favorite, and info/settings screens keep their normal controls.
 **Coverflow Settings** tunes the `Coverflow` renderer; PSBBN Flow uses its fixed layout and
-25-frame glide. All three views share the editable palette, artwork and audio settings.
+25-frame glide. All four views share the editable palette, artwork and audio settings.
 Theme authors declare views with `views=` and `<view>.` blocks; see the
 [Theme Engine reference](THEME_ENGINE.md#views-multi-view-themes--this-fork). Idea and design: KrahJohlito.
 **NOT TESTED on hardware.**
