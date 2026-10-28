@@ -279,7 +279,8 @@ jobs:
   build-flavour:
     # The Makefile can no longer build src/ (it is C++ now); ps2build is the build. It brings its own
     # toolchain, so the PS2DEV/OFFICIAL x PINNED/ROLLING container matrix is gone: tools/ps2build_sdk.sh
-    # installs the SDK pinned in .github/ps2build-sdk.env, and BUILD-MANIFEST.txt records what it installed.
+    # installs the newest SDK (.github/ps2build-sdk.env lists the components), and BUILD-MANIFEST.txt records
+    # what it installed.
     # The RA and DIAG flavours return when ps2.yaml can express them.
     runs-on: ubuntu-24.04
     env:
@@ -295,19 +296,31 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      # The pinned SDK (.github/ps2build-sdk.env): a cache restore, else git.techwritescode.dev
-      # pinned per component, else (when that host fails) the checksummed NathanNeurotic/ps2build-mirror release. The key
-      # changes only with the pin, so one SDK per toolchain is kept instead of a new 1.7 GB entry per run.
-      - name: Restore the pinned ps2build SDK
-        uses: actions/cache@v4
+      # The newest ps2build SDK: the latest versions come from git.techwritescode.dev's release API (or,
+      # when it is down, the newest NathanNeurotic/ps2build-mirror release). The SDK cached under them is
+      # restored, else an older cached SDK is updated in place, else it is installed; then it is cached. A
+      # mirror fallback older than the latest is never cached under the latest versions.
+      - name: Resolve the latest ps2build SDK
+        id: sdk
+        run: sh tools/ps2build_sdk.sh --resolve "$RUNNER_TEMP/ps2build-sdk.env"
+      - name: Restore the ps2build SDK
+        id: sdk-cache
+        uses: actions/cache/restore@v4
         with:
           path: ${{ github.workspace }}/.ps2dev
-          key: ps2build-sdk-${{ runner.os }}-${{ hashFiles('.github/ps2build-sdk.env') }}-gcc
-      - name: Install the pinned ps2build SDK
+          key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
+          restore-keys: ps2build-sdk-${{ runner.os }}-gcc-
+      - name: Install the ps2build SDK
         run: sh tools/ps2build_sdk.sh "$PS2BUILD_HOME"
 
       - name: Install the ogg/vorbis packages (not shipped by the SDK)
         run: tools/install_ps2build.sh
+      - name: Cache the ps2build SDK
+        if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/.ps2dev
+          key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
 
       - name: Assets (translations, lwNBD, embedded blobs, version)
         run: tools/assets.py all

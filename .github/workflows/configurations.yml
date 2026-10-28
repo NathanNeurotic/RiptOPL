@@ -54,21 +54,33 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      # The pinned SDK (.github/ps2build-sdk.env): a cache restore, else git.techwritescode.dev
-      # pinned per component, else (when that host fails) the checksummed NathanNeurotic/ps2build-mirror release. The key
-      # changes only with the pin, so one SDK per toolchain is kept instead of a new 1.7 GB entry per run.
-      - name: Restore the pinned ps2build SDK
-        uses: actions/cache@v4
+      # The newest ps2build SDK: the latest versions come from git.techwritescode.dev's release API (or,
+      # when it is down, the newest NathanNeurotic/ps2build-mirror release). The SDK cached under them is
+      # restored, else an older cached SDK is updated in place, else it is installed; then it is cached. A
+      # mirror fallback older than the latest is never cached under the latest versions.
+      - name: Resolve the latest ps2build SDK
+        id: sdk
+        run: sh tools/ps2build_sdk.sh --resolve ${{ matrix.toolchain == 'llvm' && '--llvm' || '' }} "$RUNNER_TEMP/ps2build-sdk.env"
+      - name: Restore the ps2build SDK
+        id: sdk-cache
+        uses: actions/cache/restore@v4
         with:
           path: ${{ github.workspace }}/.ps2dev
-          key: ps2build-sdk-${{ runner.os }}-${{ hashFiles('.github/ps2build-sdk.env') }}-${{ matrix.toolchain }}
-      - name: Install the pinned ps2build SDK
+          key: ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-${{ steps.sdk.outputs.key }}
+          restore-keys: ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-
+      - name: Install the ps2build SDK
         run: sh tools/ps2build_sdk.sh ${{ matrix.toolchain == 'llvm' && '--llvm' || '' }} "$PS2BUILD_HOME"
       - name: Install matching ports and prepare assets
         run: |
           sh tools/install_ps2build.sh
           python tools/assets.py fetch
           python tools/assets.py lang
+      - name: Cache the ps2build SDK
+        if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/.ps2dev
+          key: ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-${{ steps.sdk.outputs.key }}
       - name: Build configuration candidate
         shell: bash
         run: |

@@ -226,6 +226,23 @@ class InstallPortsTests(unittest.TestCase):
                              ["https://mirror.test/SHA256SUMS", "https://mirror.test/ogg-v1-gcc.zip"])
             self.assertEqual((sdk / "packages/world/ogg/lib/libogg.a").read_bytes(), b"new archive")
 
+    def test_latest_package_falls_back_to_the_newest_mirror_release(self):
+        import hashlib
+        data = archive()
+        sums = f"{hashlib.sha256(data).hexdigest()}  ogg-v1-gcc.zip\n".encode()
+        pin = (f"PS2BUILD_SDK_TAG=sdk-v1-abcd\nPS2BUILD_SDK_SUMS_SHA256={hashlib.sha256(sums).hexdigest()}\n"
+               "OGG_VERSION=v1\n").encode()
+        outage = ports.urllib.error.HTTPError(ports.HOST + "/api", 521, "origin down", None, None)
+        env = {"OGG_VERSION": "latest", "PS2BUILD_SDK_TAG": "", "PS2BUILD_SDK_SUMS_SHA256": "",
+               "PS2BUILD_SDK_MIRROR_LATEST_URL": "https://latest.test", "PS2BUILD_SDK_MIRROR_URL": "https://mirror.test"}
+        with tempfile.TemporaryDirectory() as directory, patch.dict(ports.os.environ, env):
+            sdk = Path(directory)
+            with patch.object(ports, "download", side_effect=[outage, pin, sums, data]) as fetched:
+                ports.install(sdk, "ogg", "gcc")
+            self.assertEqual([c.args[0] for c in fetched.call_args_list][1:],
+                             ["https://latest.test/pin.env", "https://mirror.test/SHA256SUMS", "https://mirror.test/ogg-v1-gcc.zip"])
+            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")
+
     def test_mirror_is_not_used_for_a_missing_release_or_when_it_fails_verification(self):
         import hashlib
         data = archive()

@@ -13,7 +13,7 @@ outputs and cannot be published as the three standard release kits.
 Status: MAIN FLAVOUR PORTED (GSM1080P + PADEMU, no debug/RA/IGS/RTL/DTL). Other flavours still
 need SDK definitions; the legacy Makefile cannot compile the converted C++ sources. Build:
 
-    tools/install_ps2build.sh      # pinned ps2build SDK if missing + ogg/vorbis packages (not shipped by the SDK)
+    tools/install_ps2build.sh      # newest ps2build SDK if missing + ogg/vorbis packages (not shipped by the SDK)
     tools/assets.py all            # translations, lwNBD, bin2c blobs, asm/opl_version.h
     python3 tools/build.py         # -> build/bin/riptopl-packed.elf
 
@@ -75,12 +75,15 @@ Emulator-tested through the C++ conversion (builds up to IoQueue/ArtQueue confir
 Sources under src/ are now C++ (see CPP-CONVERSION-PLAN.md), so the Makefile can no longer build them.
 
 CI (GitHub Actions):
-- Every ps2build job installs the SDK pinned in `.github/ps2build-sdk.env` with `tools/ps2build_sdk.sh`: an
-  `actions/cache` restore keyed on that file, else git.techwritescode.dev pinned per component
-  (`ps2build update <component> --version <tag>`, never "latest"), else, only when that host fails, the checksummed release
-  on [NathanNeurotic/ps2build-mirror](https://github.com/NathanNeurotic/ps2build-mirror). `tools/install_ps2build.sh` then
-  adds the pinned ogg/vorbis packages the same way: official host first, the mirror release when it is down. `PS2BUILD_HOME`/`PS2DEV_INSTALL_DIR` point at
-  `$GITHUB_WORKSPACE/.ps2dev`. To move to a newer SDK, replace the pin file with a mirror release's `pin.env` in a PR.
+- Every ps2build job builds with the newest SDK. `tools/ps2build_sdk.sh --resolve` asks git.techwritescode.dev's release
+  API for the latest version of each component listed in `.github/ps2build-sdk.env` (when the API is down, the newest
+  [NathanNeurotic/ps2build-mirror](https://github.com/NathanNeurotic/ps2build-mirror) release decides). The SDK cached
+  under those versions is restored; an older cached SDK is updated in place (`ps2build update <component> --version <tag>`
+  for what changed); with nothing cached it is installed from the official server. Only when that host fails is the
+  newest mirror release installed, checked against its `SHA256SUMS`; a mirror copy older than the latest gets a warning
+  and is not cached under the latest versions. `tools/install_ps2build.sh` adds the ogg/vorbis packages the same way.
+  `PS2BUILD_HOME`/`PS2DEV_INSTALL_DIR` point at `$GITHUB_WORKSPACE/.ps2dev`. To hold a component back after a broken
+  upstream release, write `name=version` for it in `.github/ps2build-sdk.env`.
 - `flavours.yml` builds the main flavour only; the PS2DEV/OFFICIAL x PINNED/ROLLING container matrix, DIAG and RA are gone until
   `ps2.yaml` can express them. A transient HTTP/2 stream error while downloading the toolchain was seen once (re-run fixed it).
 - `check-format.yml` (clang-format 12 on `.h`/`.c`): `tests/host` is ignored; headers must be formatted with clang-format 12.
@@ -117,7 +120,7 @@ cdvdfsv, udnl, udnl-t300, smbman, mmceman/mmcedrv/mmceigr, ioptrap, siocookie, g
 freetype, png, z, elf-loader-nocolour, `audio` (+ `audsrv-compat`).
 
 GAPS (must be vendored or built in-repo):
-- `libvorbis`, `libvorbisfile`, `libogg`: not in the SDK, but released at git.techwritescode.dev/ps2/{ogg,vorbis} and mirrored with the SDK; `tools/install_ps2build.sh` installs the pinned versions into packages/world.
+- `libvorbis`, `libvorbisfile`, `libogg`: not in the SDK, but released at git.techwritescode.dev/ps2/{ogg,vorbis} and mirrored with the SDK; `tools/install_ps2build.sh` installs the newest versions into packages/world.
 - `libwnbdsvr` / lwNBD and `lwnbdsvr.irx`: already fetched by `tools/download_lwNBD.sh`. Pin it
   and build it as in-repo targets.
 - `libaudsrv`: use `audsrv-compat` + `embed_irx: ["audio:audsrv"]`. The SDK audsrv is a different

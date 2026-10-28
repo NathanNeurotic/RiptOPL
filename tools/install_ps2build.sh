@@ -1,6 +1,7 @@
 #!/bin/sh
-# Install the pinned ps2build SDK (unless already present) plus the two port packages it does not ship
-# (ogg, vorbis/vorbisfile). Versions come from .github/ps2build-sdk.env; PS2BUILD_TOOLCHAIN selects gcc
+# Install the newest ps2build SDK (unless already present) plus the two port packages it does not ship
+# (ogg, vorbis/vorbisfile). Versions come from .github/ps2build-sdk.env (in CI, the versions the SDK step
+# resolved, through PS2BUILD_SDK_PIN); PS2BUILD_TOOLCHAIN selects gcc
 # (default), llvm, or all for the port packages.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,7 +13,7 @@ PIN="${PS2BUILD_SDK_PIN:-$ROOT/.github/ps2build-sdk.env}"
 export PS2BUILD_SDK_MIRROR PS2BUILD_SDK_TAG PS2BUILD_SDK_SUMS_SHA256
 export OGG_VERSION VORBIS_VERSION
 
-# CI installs the pinned SDK with tools/ps2build_sdk.sh first. Locally, only bootstrap a missing SDK:
+# CI installs the SDK with tools/ps2build_sdk.sh first. Locally, only bootstrap a missing SDK:
 # an existing install (perhaps newer, from "ps2build update") is left alone.
 if [ -n "${GITHUB_ACTIONS:-}" ] || [ ! -x "$SDK/ps2build" ]; then
     case "${PS2BUILD_TOOLCHAIN:-gcc}" in llvm|all) llvm=--llvm ;; *) llvm= ;; esac

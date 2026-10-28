@@ -62,18 +62,39 @@ def unpack(data, destination, package):
         archive.extractall(destination)
 
 
-def mirror_archive(package, version, toolchain):
-    """The pinned package from the ps2build-mirror release named in .github/ps2build-sdk.env, or None.
+def mirror_pin(repo):
+    """TAG, SHA256SUMS hash and versions of the newest ps2build-mirror release, from its pin.env."""
+    base = os.environ.get("PS2BUILD_SDK_MIRROR_LATEST_URL") or f"https://github.com/{repo}/releases/latest/download"
+    values = {}
+    for line in download(f"{base}/pin.env").decode().splitlines():
+        name, _, value = line.partition("=")
+        if value:
+            values[name.strip()] = value.strip().strip('"')
+    return values
 
-    Used only when the official host fails. Its SHA256SUMS must hash to the pinned value and the archive
-    must match its line there."""
+
+def mirror_archive(package, version, toolchain):
+    """The package from a ps2build-mirror release, or None. Used only when the official host fails.
+
+    The release is the one the SDK step resolved (PS2BUILD_SDK_TAG), else the newest one, whose own
+    version of the package is taken when it is older. The archive must match that release's SHA256SUMS,
+    and SHA256SUMS the hash its pin names."""
     tag, sums_sha = os.environ.get("PS2BUILD_SDK_TAG"), os.environ.get("PS2BUILD_SDK_SUMS_SHA256")
-    if version == "latest" or not tag or not sums_sha:
-        return None
     repo = os.environ.get("PS2BUILD_SDK_MIRROR") or "NathanNeurotic/ps2build-mirror"
-    base = os.environ.get("PS2BUILD_SDK_MIRROR_URL") or f"https://github.com/{repo}/releases/download/{tag}"
-    name = f"{package}-{version}-{toolchain}.zip"
     try:
+        if not tag or not sums_sha:
+            pin = mirror_pin(repo)
+            tag, sums_sha = pin.get("PS2BUILD_SDK_TAG"), pin.get("PS2BUILD_SDK_SUMS_SHA256")
+            mirrored = pin.get(f"{package.upper()}_VERSION")
+            if not tag or not sums_sha or not mirrored:
+                raise ValueError("the newest release's pin.env is incomplete")
+            if mirrored != version:
+                print(f"warning: the newest ps2build-mirror release has {package} {mirrored}, not {version}", flush=True)
+            version = mirrored
+        if version == "latest":
+            return None
+        base = os.environ.get("PS2BUILD_SDK_MIRROR_URL") or f"https://github.com/{repo}/releases/download/{tag}"
+        name = f"{package}-{version}-{toolchain}.zip"
         sums = download(f"{base}/SHA256SUMS")
         if hashlib.sha256(sums).hexdigest() != sums_sha:
             raise ValueError("SHA256SUMS does not match the pinned hash")
@@ -84,9 +105,9 @@ def mirror_archive(package, version, toolchain):
         if hashlib.sha256(data).hexdigest() != expected[0]:
             raise ValueError(f"{name} does not match SHA256SUMS")
     except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead, ValueError) as error:
-        print(f"warning: mirror {base} failed for {name} ({error})", flush=True)
+        print(f"warning: the ps2build-mirror fallback failed for {package} ({error})", flush=True)
         return None
-    return f"{base}/{name}", data
+    return f"{base}/{name}", data, version
 
 
 def install(sdk, package, toolchain):
@@ -111,7 +132,8 @@ def install(sdk, package, toolchain):
         mirrored = None if client_error else mirror_archive(package, version, toolchain)
         if mirrored:
             print(f"warning: {HOST} unreachable ({error}); using the ps2build-mirror copy", flush=True)
-            release, (url, data) = {"tag_name": version}, mirrored
+            url, data, mirrored_version = mirrored
+            release = {"tag_name": mirrored_version}
         # A complete package restored from the SDK cache is the one a previous run installed, so build
         # with it rather than fail; a pinned version is never substituted.
         elif version != "latest" or client_error \
