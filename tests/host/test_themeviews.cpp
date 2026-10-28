@@ -132,5 +132,12 @@ int main()
     CHECK(info.mask == (1u << THM_VIEW_LIST));
     configFree(junk);
 
+    // Key prefixes are matched exactly: blocks are looked up as "<lowercase view>.<key>", so a mixed-case
+    // prefix declares no view and its inherit=0 does not strip the base.
+    config_set_t *mixed = parse("main0:\n\ttype=Background\nCoverflow.inherit=0\nCoverflow.main1:\n\ttype=Coverflow\n");
+    thmViewScan(mixed, &info);
+    CHECK(info.blocksMask == 0 && info.ownMask == 0 && info.mask == (1u << THM_VIEW_LIST));
+    configFree(mixed);
+
     TEST_DONE("themeviews");
 }
