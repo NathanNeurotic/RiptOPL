@@ -1,0 +1,163 @@
+Installed SDK versions
+suite: ""
+components:
+    cmake: v2026.10.12
+    llvm-toolchain: v0.3.8
+    ninja: v1.13.2
+    ps2build: v2026.10.15
+    sdk-core: v2026.10.13.1
+    sdk-world: v2026.10.13.1
+    srxfixup: v2026.09.05
+    toolchain: v2026.09.27
+    tools: v2026.09.29.1
+    vcl: v2026.10.07
+
+libpad.a SHA256 86812d951c0f91b9084cbf3f6d3f7d25c15f82726db4d4478db7f4d3349128d7
+
+In archive [PS2BUILD]\packages\core\pad\lib\libpad.a:
+
+libpad.o:     file format elf32-nlittlemips
+
+
+Disassembly of section .text.padRead:
+
+00000000 <padRead>:
+   0:	2c820002 	sltiu	v0,a0,2
+   4:	1040002d 	beqz	v0,bc <padRead+0xbc>
+   8:	00000000 	nop
+   c:	2ca20008 	sltiu	v0,a1,8
+  10:	1040002a 	beqz	v0,bc <padRead+0xbc>
+  14:	00000000 	nop
+  18:	00051080 	sll	v0,a1,0x2
+  1c:	00041880 	sll	v1,a0,0x2
+  20:	00451021 	addu	v0,v0,a1
+  24:	00641821 	addu	v1,v1,a0
+  28:	00031940 	sll	v1,v1,0x5
+  2c:	00021080 	sll	v0,v0,0x2
+  30:	3c050000 	lui	a1,0x0
+			30: R_MIPS_HI16	.bss+0x8
+  34:	00431021 	addu	v0,v0,v1
+  38:	24a30000 	addiu	v1,a1,0
+			38: R_MIPS_LO16	.bss+0x8
+  3c:	27bdffe0 	addiu	sp,sp,-32
+  40:	00431021 	addu	v0,v0,v1
+  44:	24040001 	li	a0,1
+  48:	8c430000 	lw	v1,0(v0)
+  4c:	10640022 	beq	v1,a0,d8 <padRead+0xd8>
+  50:	ffbf0018 	sd	ra,24(sp)
+  54:	24040002 	li	a0,2
+  58:	1464001b 	bne	v1,a0,c8 <padRead+0xc8>
+  5c:	00000000 	nop
+  60:	8c43000c 	lw	v1,12(v0)
+  64:	00602025 	move	a0,v1
+  68:	24650100 	addiu	a1,v1,256
+  6c:	afa30000 	sw	v1,0(sp)
+  70:	0c000000 	jal	0 <padRead>
+			70: R_MIPS_26	SyncDCache
+  74:	afa60004 	sw	a2,4(sp)
+  78:	8fa30000 	lw	v1,0(sp)
+  7c:	8c620058 	lw	v0,88(v1)
+  80:	8c6400d8 	lw	a0,216(v1)
+  84:	0044102b 	sltu	v0,v0,a0
+  88:	10400002 	beqz	v0,94 <padRead+0x94>
+  8c:	8fa70004 	lw	a3,4(sp)
+  90:	24630080 	addiu	v1,v1,128
+  94:	8c660060 	lw	a2,96(v1)
+  98:	00602825 	move	a1,v1
+  9c:	00e02025 	move	a0,a3
+  a0:	0c000000 	jal	0 <padRead>
+			a0: R_MIPS_26	memcpy
+  a4:	afa30000 	sw	v1,0(sp)
+  a8:	8fa30000 	lw	v1,0(sp)
+  ac:	dfbf0018 	ld	ra,24(sp)
+  b0:	90620060 	lbu	v0,96(v1)
+  b4:	03e00008 	jr	ra
+  b8:	27bd0020 	addiu	sp,sp,32
+  bc:	03e00008 	jr	ra
+  c0:	00000000 	nop
+  c4:	00000000 	nop
+  c8:	dfbf0018 	ld	ra,24(sp)
+  cc:	00001025 	move	v0,zero
+  d0:	03e00008 	jr	ra
+  d4:	27bd0020 	addiu	sp,sp,32
+  d8:	8c43000c 	lw	v1,12(v0)
+  dc:	00602025 	move	a0,v1
+  e0:	24650100 	addiu	a1,v1,256
+  e4:	afa30000 	sw	v1,0(sp)
+  e8:	0c000000 	jal	0 <padRead>
+			e8: R_MIPS_26	SyncDCache
+  ec:	afa60004 	sw	a2,4(sp)
+  f0:	8fa30000 	lw	v1,0(sp)
+  f4:	8c620000 	lw	v0,0(v1)
+  f8:	8c640040 	lw	a0,64(v1)
+  fc:	0044102b 	sltu	v0,v0,a0
+ 100:	10400002 	beqz	v0,10c <padRead+0x10c>
+ 104:	8fa70004 	lw	a3,4(sp)
+ 108:	24630040 	addiu	v1,v1,64
+ 10c:	8c660028 	lw	a2,40(v1)
+ 110:	24650008 	addiu	a1,v1,8
+ 114:	00e02025 	move	a0,a3
+ 118:	0c000000 	jal	0 <padRead>
+			118: R_MIPS_26	memcpy
+ 11c:	afa30000 	sw	v1,0(sp)
+ 120:	8fa30000 	lw	v1,0(sp)
+ 124:	dfbf0018 	ld	ra,24(sp)
+ 128:	90620028 	lbu	v0,40(v1)
+ 12c:	03e00008 	jr	ra
+ 130:	27bd0020 	addiu	sp,sp,32
+ 134:	00000000 	nop
+
+
+SIO2MAN export 23 and 26 (0x6cc / 0x76c)
+
+[PS2BUILD]\packages\core\sio2man\bin\sio2man.irx:     file format elf32-littlemips
+
+
+Disassembly of section .text:
+
+000006cc <.text+0x6cc>:
+ 6cc:	3c040000 	lui	a0,0x0
+ 6d0:	8c840b28 	lw	a0,2856(a0)
+ 6d4:	27bdffe8 	addiu	sp,sp,-24
+ 6d8:	afbf0014 	sw	ra,20(sp)
+ 6dc:	04110102 	bal	0xae8
+ 6e0:	afb00010 	sw	s0,16(sp)
+ 6e4:	8fbf0014 	lw	ra,20(sp)
+ 6e8:	8fb00010 	lw	s0,16(sp)
+ 6ec:	3c010000 	lui	at,0x0
+ 6f0:	ac200b2c 	sw	zero,2860(at)
+ 6f4:	03e00008 	jr	ra
+ 6f8:	27bd0018 	addiu	sp,sp,24
+ 6fc:	27bdffe8 	addiu	sp,sp,-24
+ 700:	afbf0014 	sw	ra,20(sp)
+ 704:	0411fff1 	bal	0x6cc
+ 708:	00000000 	nop
+ 70c:	3c030000 	lui	v1,0x0
+ 710:	24630b20 	addiu	v1,v1,2848
+ 714:	8c620010 	lw	v0,16(v1)
+ 718:	8c64000c 	lw	a0,12(v1)
+ 71c:	8fbf0014 	lw	ra,20(sp)
+ 720:	30420001 	andi	v0,v0,0x1
+ 724:	00441025 	or	v0,v0,a0
+ 728:	ac62000c 	sw	v0,12(v1)
+ 72c:	03e00008 	jr	ra
+ 730:	27bd0018 	addiu	sp,sp,24
+ 734:	27bdffe8 	addiu	sp,sp,-24
+ 738:	afbf0014 	sw	ra,20(sp)
+ 73c:	0411ffe3 	bal	0x6cc
+ 740:	00000000 	nop
+ 744:	3c030000 	lui	v1,0x0
+ 748:	24630b20 	addiu	v1,v1,2848
+ 74c:	8c620010 	lw	v0,16(v1)
+ 750:	8c64000c 	lw	a0,12(v1)
+ 754:	8fbf0014 	lw	ra,20(sp)
+ 758:	30420002 	andi	v0,v0,0x2
+ 75c:	00441025 	or	v0,v0,a0
+ 760:	ac62000c 	sw	v0,12(v1)
+ 764:	03e00008 	jr	ra
+ 768:	27bd0018 	addiu	sp,sp,24
+ 76c:	3c040000 	lui	a0,0x0
+ 770:	8c840b28 	lw	a0,2856(a0)
+ 774:	3c010000 	lui	at,0x0
+ 778:	100000d7 	b	0xad8
+ 77c:	ac200b2c 	sw	zero,2860(at)
