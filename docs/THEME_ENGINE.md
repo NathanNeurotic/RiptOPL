@@ -12,7 +12,8 @@ value token, and built-in asset name the engine understands, including this fork
   (`misc/conf_theme_OPL.cfg`), Coverflow (`misc/theme_coverflow.cfg`) and PSBBN Flow
   (`misc/theme_psbbn_flow.cfg`). Fresh configurations start with the List view; choosing a flow
   view does not change the menu aspect-ratio setting. Configurations that saved the former
-  `<Coverflow>` or `<PSBBN Flow>` themes load `<OPL>` with that view. See
+  `<Coverflow>` or `<PSBBN Flow>` themes load `<OPL>` with that view. A theme of your own can offer several views
+  too: see [Views](#views-multi-view-themes--this-fork). See
   [Fresh-start defaults](DEFAULTS.md) for this C++ branch's display and audio defaults.
 
 ## PSBBN Flow
@@ -214,6 +215,66 @@ reflections start together.
 The parser reads blocks **in order starting from 0 and stops at the first gap.** If you define
 `main0`, `main1`, `main3` (skipping `main2`), then `main3` is **never read**. When you remove
 a block, **renumber** the ones after it so there are no holes.
+
+### Views (multi-view themes) — *this fork*
+
+One `conf_theme.cfg` can describe several **views** of the main and info pages: `list`, `coverflow`,
+`psbbn` and `grid` (Grid is reserved; it has no element yet). The user picks a view under
+**Settings → Interface → Theme View**, or holds **L3** for half a second on the main page to switch to
+the next view the theme offers (a tap on L3 still cycles the library view). Idea and design:
+KrahJohlito.
+
+The unprefixed blocks are the **base**. A block named `<view>.<block>` replaces that block in that
+view only, and every block a view does not declare is inherited from the base:
+
+```ini
+views=list,coverflow           # the views this theme offers, in L3 order
+default_view=list              # used until the user picks one
+
+main2:                         # base (List): a cover panel
+	type=ItemCover
+	default=cover
+
+coverflow.main2:               # Coverflow: the carousel replaces block 2
+	type=Coverflow
+	default=cover
+	reflection=1
+coverflow.appsMain2:           # families work inside a view too
+	type=Coverflow
+	default=coverapp
+coverflow.main1_enabled=0      # hide a base block in this view only
+coverflow.main9:               # or add blocks after the base list's last block (here main8)
+	type=StaticText
+	value=Coverflow
+coverflow.coverflow_cover_offset=12   # a theme-wide key for this view only
+```
+
+**How a block is chosen.** For slot `N` of a family in view `V`, the first block present wins:
+`V.<family>N`, then `V.` + each step of that family's fallback chain (for example `V.mainN`), then
+the base chain (`<family>N`, …, `mainN`). So `coverflow.main2` also replaces `appsMain2` in Coverflow
+unless the theme adds `coverflow.appsMain2`. A view block replaces the **whole** base block; it does
+not merge single keys from it, so a view that changes `type` gets no stale keys. `_enabled=0` counts
+as present, which is how a view hides a base block. The [contiguous numbering
+rule](#-contiguous-numbering-rule) applies to the merged list: the view's list ends at the first slot
+where neither the view nor the base has a block.
+
+| Key | Value | Meaning |
+|---|---|---|
+| `views` | comma list of `list`, `coverflow`, `psbbn`, `grid` | The views the theme offers, in L3 order. Absent: the theme's own view (from its base blocks: a `PSBBNFlow` element = psbbn, a `Coverflow` element = coverflow, else list) plus every view it declares a `<view>.` key for. |
+| `default_view` | a view name | The view used until the user picks one, and when the user's pick is not offered. Absent: the theme's own view. |
+| `<view>.inherit` | `0` | That view never falls back to the base blocks: it brings its whole main and info layout. Use it when a view shares little with the base, instead of a long list of `<view>.mainN_enabled=0` lines. |
+| `<view>.<global key>` | as the key | Overrides `use_default`, `use_real_height`, `coverflow_cover_offset` and the colour keys in that view. |
+
+- Make the base the List view. Stock OPL and other forks ignore the prefixed blocks, so they still load
+  the theme as a list.
+- The user's Theme View choice is one setting for every theme (saved as `theme_view=`). A theme that
+  does not offer it shows its `default_view`.
+- Only the active view is built. Switching views reloads the theme, so it costs no extra memory.
+- Names stay within 47 characters. The longest prefixed key,
+  `coverflow.favsVcdMain12_reflection_offset`, is 41.
+- The built-in `<OPL>` theme offers List, Coverflow and PSBBN Flow as views. Each still lives in its own
+  file (`misc/conf_theme_OPL.cfg`, `misc/theme_coverflow.cfg`, `misc/theme_psbbn_flow.cfg`), which are
+  good references for a view's blocks.
 
 ---
 
