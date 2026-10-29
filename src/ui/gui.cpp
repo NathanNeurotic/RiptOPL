@@ -25,6 +25,7 @@
 #include "include/themes.h"
 #include "include/favsupport.h" // gFAVStartMode -- Favourites Start Mode row
 #include "include/pad.h"
+#include "include/menuwatch.h" // menuWatchStep: where the frame is, for the diagnostic freeze report
 #include "include/sound.h" // sfxGetPlayDiag/sfxGetDropDiag -- SFX RPC cost + silent-drop counters for the debug HUD
 #include "include/util.h"
 #include "include/config.h"
@@ -336,19 +337,24 @@ void Gui::mainLoop()
         bgmStart();
 
     while (!terminate_) {
+        menuWatchStep(MENUWATCH_FRAME_START);
         startFrame();
 
         // Read the pad states to prepare for input processing in the screen handler
+        menuWatchStep(MENUWATCH_PADS);
         pollPads();
 
         // handle inputs and render screen
+        menuWatchStep(MENUWATCH_SHOW);
         show();
 
         // Render overlaying gui thingies :)
+        menuWatchStep(MENUWATCH_OVERLAYS);
         guiDrawOverlays();
 
         // The DHCP notice is a misconfiguration warning, not a courtesy popup -- show it even
         // when the user has notifications off (it explains an otherwise-silent empty games page).
+        menuWatchStep(MENUWATCH_NOTIFICATIONS);
         if (gEnableNotifications || showNetDhcpPopup)
             gNotifications.show();
 
@@ -360,14 +366,18 @@ void Gui::mainLoop()
         gNotifications.drawToast();
 
         // handle deferred operations
+        menuWatchStep(MENUWATCH_DEFERRED);
         execDeferred();
 
+        menuWatchStep(MENUWATCH_FRAME_END);
         endFrame();
 
         // if not transiting, handle input
         // done here so we can use renderman if needed
+        menuWatchStep(MENUWATCH_INPUT);
         gScreens.dispatchInput();
 
+        menuWatchStep(MENUWATCH_FRAME_HOOK);
         if (frameHook_)
             frameHook_();
     }
