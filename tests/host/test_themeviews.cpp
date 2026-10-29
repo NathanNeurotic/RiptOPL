@@ -205,5 +205,66 @@ int main()
         CHECK(thmLayoutAutoFitX(100, 640) == 155);
     }
 
+    // ---- fallback views: a theme without views= gets every view, built from its own layout ---------------
+    {
+        config_set_t *lv = parse("views=list,coverflow\nmain0:\n\ttype=Background\n");
+        thmViewScan(lv, &info);
+        CHECK(info.listed == 1);
+        configFree(lv);
+
+        static const char *listTheme = "main0:\n\ttype=Background\n\tdefault=bg\n"
+                                       "main1:\n\ttype=MenuIcon\n\tx=40\n"
+                                       "main2:\n\ttype=ItemsList\n\tx=20\n\ty=60\n\twidth=380\n\theight=330\n\tfont=1\n"
+                                       "main3:\n\ttype=ItemCover\n\tdefault=cover\n\tx=-120\n"
+                                       "main4:\n\ttype=StaticText\n\tvalue=Hi\n"
+                                       "main5_enabled=0\n"
+                                       "appsMain3:\n\ttype=ItemCover\n\tdefault=coverapp\n"
+                                       "info0:\n\ttype=Background\n";
+        static const char *cfTemplate = "main0:\n\ttype=Background\n"
+                                        "main2:\n\ttype=Coverflow\n\tdefault=cover\n\ty=233\n\twidth=184\n"
+                                        "appsMain2:\n\ttype=Coverflow\n\tdefault=coverapp\n\ty=239\n"
+                                        "vcdMain2:\n\ttype=Coverflow\n\tdefault=cover\n"
+                                        "main15:\n\ttype=ItemsList\n\tx=POS_MID\n\ty=45\n\twidth=DIM_INF\n\theight=24\n\taligned=1\n";
+        config_set_t *t = parse(listTheme);
+        config_set_t *tmpl = parse(cfTemplate);
+        thmViewScan(t, &info);
+        CHECK(info.listed == 0 && info.mask == (1u << THM_VIEW_LIST));
+        CHECK(thmViewSynthesize(t, tmpl, THM_VIEW_COVERFLOW) == 1);
+        const char *v;
+        int i;
+        CHECK(slot(t, "coverflow", mainChain, 1, 0) == "coverflow.main0");
+        CHECK(configGetStr(t, "coverflow.main0_default", &v) && strcmp(v, "bg") == 0);     // the theme's own background
+        CHECK(configGetStr(t, "coverflow.main3_type", &v) && strcmp(v, "Coverflow") == 0); // cover -> carousel, same slot
+        CHECK(configGetInt(t, "coverflow.main3_y", &i) && i == 233);
+        CHECK(!configGetStr(t, "coverflow.main3_x", &v));                        // no stale key from the theme's ItemCover
+        CHECK(configGetStr(t, "coverflow.main2_y", &v) && strcmp(v, "45") == 0); // list moved to the title strip
+        CHECK(configGetStr(t, "coverflow.main2_width", &v) && strcmp(v, "DIM_INF") == 0);
+        CHECK(configGetInt(t, "coverflow.main2_font", &i) && i == 1); // keeps its own font
+        CHECK(configGetStr(t, "coverflow.main4_value", &v) && strcmp(v, "Hi") == 0);
+        CHECK(configGetInt(t, "coverflow.main5_enabled", &i) && i == 0);
+        CHECK(configGetStr(t, "coverflow.appsMain3_default", &v) && strcmp(v, "coverapp") == 0); // apps template
+        CHECK(configGetInt(t, "coverflow.appsMain3_y", &i) && i == 239);
+        CHECK(configGetStr(t, "coverflow.vcdMain3_type", &v) && strcmp(v, "Coverflow") == 0); // PS1 gets its own
+        CHECK(!configGetStr(t, "coverflow.info0_type", &v));                                  // info pages untouched
+        CHECK(configGetStr(t, "main3_type", &v) && strcmp(v, "ItemCover") == 0);              // base left as is
+        configFree(t);
+
+        // A list-only theme without a cover: the presenter goes after its last main block.
+        t = parse("main0:\n\ttype=Background\nmain1:\n\ttype=ItemsList\n");
+        CHECK(thmViewSynthesize(t, tmpl, THM_VIEW_COVERFLOW) == 1);
+        CHECK(configGetStr(t, "coverflow.main2_type", &v) && strcmp(v, "Coverflow") == 0);
+        CHECK(slot(t, "coverflow", mainChain, 1, 2) == "coverflow.main2");
+        configFree(t);
+
+        // A template without the presenter builds nothing.
+        config_set_t *empty = parse("main0:\n\ttype=Background\n");
+        t = parse(listTheme);
+        CHECK(thmViewSynthesize(t, empty, THM_VIEW_GRID) == 0);
+        CHECK(!configGetStr(t, "grid.main0_type", &v));
+        configFree(t);
+        configFree(empty);
+        configFree(tmpl);
+    }
+
     TEST_DONE("themeviews");
 }
