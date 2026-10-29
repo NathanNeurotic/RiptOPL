@@ -191,6 +191,27 @@ struct image_cache_t {
                 return &tex[i];
         return NULL;
     }
+    int adoptFallback(const char *name, int *cacheId, int *uid, GSTEXTURE **t)
+    {
+        *t = NULL;
+        if (*cacheId >= 0 && *cacheId < SLOTS && slots[*cacheId].uid == *uid)
+            return 0;
+        for (int i = 0; i < SLOTS; i++) {
+            if (!slots[i].nameFallback || strcmp(slots[i].key, name) != 0)
+                continue;
+            if (slots[i].state == ABSENT) {
+                *cacheId = CACHE_ID_PS1_BOTH_ABSENT, *uid = EPOCH;
+                return 1;
+            }
+            if (slots[i].state == FREE)
+                return 0;
+            *cacheId = i, *uid = slots[i].uid;
+            if (slots[i].state == READY)
+                *t = &tex[i];
+            return 1;
+        }
+        return 0;
+    }
 };
 static int cacheAbsenceIsCurrent(int uid) { return uid == EPOCH; }
 /* texcache.cpp's contract: fast path by (id, UID), a parked -2 honoured for this fail epoch,
@@ -270,6 +291,12 @@ int main(void)
     for (int i = 0; i < SLOTS; i++)
         if (slots[i].state == ABSENT)
             memset(&slots[i], 0, sizeof(slots[i]));
+    assert(frames(&cid, &uid, 8) == &tex[cid] && !strcmp(slots[cid].key, NAME) && claims == 2);
+    /* a list rebuild re-seats the row with no slot: it takes its settled name fallback back, no id re-read */
+    for (int i = 0; i < SLOTS; i++)
+        if (slots[i].state == ABSENT)
+            memset(&slots[i], 0, sizeof(slots[i]));
+    cid = -1, uid = -1;
     assert(frames(&cid, &uid, 8) == &tex[cid] && !strcmp(slots[cid].key, NAME) && claims == 2);
     reset(0, 0), cid = -1; /* neither: both parked, nothing re-queued */
     assert(frames(&cid, &uid, 8) == NULL && claims == 2 && cid == CACHE_ID_PS1_BOTH_ABSENT);

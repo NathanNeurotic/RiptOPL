@@ -181,6 +181,49 @@ int main()
         cacheDestroyCache(cache);
     }
 
+    // A list rebuild WITHOUT a new fail generation (a background rescan, an L3 ISO/VCD toggle): every row is reborn
+    // with cache_id -1 and no slot. It takes back the name fallback its old self settled on instead of re-reading its
+    // id -- whose absence memo the name claim already evicted -- and claiming a slot for it, which on a full cache
+    // evicted a visible cover. Before the adoption this cost 10 reads and 14 placeholders per rebuild.
+    {
+        resetRows();
+        image_cache_t *cache = cacheInitCache(0, "ART", 1, "COV", 5);
+        int f;
+        for (f = 0; f < 10; f++)
+            frame(cache, 0, 5);
+        for (int r = 0; r < ROWS; r++) {
+            rows[r].cacheId = -1;
+            rows[r].uid = -1; // menusys seeds both arrays with -1
+        }
+        int before = gDeviceReads, flicker = 0;
+        for (f = 0; f < 50; f++)
+            flicker += frame(cache, 0, 5);
+        CHECK(flicker == 0);
+        CHECK(gDeviceReads == before);
+        cacheDestroyCache(cache);
+    }
+
+    // The same rebuild for rows with neither art: they re-find their parked name absence and stay parked.
+    {
+        resetRows();
+        for (int r = 0; r < ROWS; r++)
+            snprintf(rows[r].name, sizeof(rows[r].name), "NONE%d", r);
+        image_cache_t *cache = cacheInitCache(0, "ART", 1, "COV", 8);
+        int f;
+        for (f = 0; f < 10; f++)
+            frame(cache, 0, 5);
+        for (int r = 0; r < ROWS; r++) {
+            rows[r].cacheId = -1;
+            rows[r].uid = -1;
+        }
+        int before = gDeviceReads;
+        for (f = 0; f < 50; f++)
+            frame(cache, 0, 5);
+        CHECK(gDeviceReads == before);
+        CHECK(rows[0].cacheId == CACHE_ID_PS1_BOTH_ABSENT);
+        cacheDestroyCache(cache);
+    }
+
     // Scrolling a 5-wide window one row at a time through 8 rows: each row that enters is read at most twice (its
     // id probe and its name), and a window that stops moving settles at once.
     {

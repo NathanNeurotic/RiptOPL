@@ -557,6 +557,17 @@ GSTEXTURE *cacheGetTextureIdOrName(image_cache_t *cache, item_list_t *list, int 
         return nameTex;
     }
 
+    // A row reborn without its slot (every list rebuild, a device rescan, an L3 ISO/VCD toggle) takes
+    // over the name fallback a row already settled on. Reunion by value alone would look for the id
+    // first, and the id's absence memo is gone by then (the name claim usually evicts it: lastUsed 0
+    // goes first) -- so every visible PS1 cover re-read its id off the device, and on a full cache
+    // that claim evicted a visible cover, after every rebuild.
+    {
+        GSTEXTURE *adopted;
+        if (cache->adoptFallback(name, cacheId, cacheUid, &adopted))
+            return adopted;
+    }
+
     // UID alone cannot tell which value owns the slot: when another value does (or an absence is
     // parked with no value attached), let reunion-by-value find the id's own slot.
     if (*cacheId == -2 || cache->slotKeyedOther(*cacheId, id))

@@ -250,6 +250,47 @@ GSTEXTURE *ImageCache::residentByValue(const char *value)
     return NULL;
 }
 
+int ImageCache::adoptFallback(const char *name, int *cacheId, int *uid, GSTEXTURE **tex)
+{
+    int i;
+
+    *tex = NULL;
+
+    // The row still owns a slot of its own (its id probe, say): that answer comes first.
+    if (*cacheId >= 0 && *cacheId < count_ && content_[*cacheId].UID == *uid)
+        return 0;
+    if (strlen(name) >= sizeof(content_[0].key))
+        return 0;
+
+    for (i = 0; i < count_; i++) {
+        cache_entry_t *entry = &content_[i];
+        if (!entry->nameFallback || entry->UID == 0 || strcmp(entry->key, name) != 0)
+            continue;
+
+        if (entry->qr == NULL && entry->lastUsed == 0) {
+            // The name is parked absent too. Only this generation's park answers for both values;
+            // the name claim that parked it was made right after the id's absence in that same one.
+            if (entry->failEpoch != gArtW.failEpoch)
+                return 0;
+            *cacheId = CACHE_ID_PS1_BOTH_ABSENT;
+            *uid = (int)gArtW.failEpoch;
+            return 1;
+        }
+
+        if (entry->qr == NULL && entry->texture.Mem == NULL)
+            return 0;
+
+        *cacheId = i;
+        *uid = entry->UID;
+        entry->lastUsed = guiFrameId;
+        if (entry->qr == NULL)
+            *tex = &entry->texture;
+        return 1;
+    }
+
+    return 0;
+}
+
 int cacheAbsenceIsCurrent(int uid)
 {
     return (unsigned int)uid == gArtW.failEpoch;

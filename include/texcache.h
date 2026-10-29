@@ -88,6 +88,10 @@ public:
     void markFallback(int i, int uid);
     /// The decoded texture of any slot keyed `value`, or NULL. Never claims a slot or queues a load.
     GSTEXTURE *residentByValue(const char *value);
+    /// A row that holds no live slot (a list rebuild, an ISO/VCD toggle) re-finds a slot keyed `name`
+    /// that some row already settled on as its name fallback, and takes it over: 1 when it did, with
+    /// *tex the art (NULL while it is still loading, or when *cacheId became CACHE_ID_PS1_BOTH_ABSENT).
+    int adoptFallback(const char *name, int *cacheId, int *uid, GSTEXTURE **tex);
     /// directory prefix for this cache (if any)
     char *prefix() const { return prefix_; }
     int isPrefixRelative() const { return isPrefixRelative_; }
