@@ -334,7 +334,7 @@ One `conf_theme.cfg` can carry a 4:3 layout and a 16:9 layout, so a theme no lon
 "SD" and "HD/widescreen" packages. Ideas: KrahJohlito (uOPL/wOPL's `wsX` key) and Berion
 (`_sd`/`_hd` suffixes that fall back to the plain key).
 
-Add `_hd` to **any** key to give the value used while **Settings → Display → Widescreen** is on, or
+Add `_hd` to **any** key to give the value used while **Settings → Interface → Widescreen** is on, or
 `_sd` for the value used while it is off. A key without a variant for the current mode keeps its
 plain value, so a theme without these keys looks exactly as before:
 
