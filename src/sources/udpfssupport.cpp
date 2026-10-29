@@ -745,12 +745,21 @@ void UdpfsSource::launchVcd(item_list_t *itemList, const char *vcdName, config_s
     (void)configSet;
     if (vcdName == NULL || vcdName[0] == '\0' || !strcasecmp(vcdName, "POPSTARTER"))
         return;
-    // Linux servers are case-sensitive and this IRX only accepts uppercase .VCD.
+    // Linux servers are case-sensitive and this IRX only accepts uppercase .VCD. Without one, UDPFS
+    // Assault builds the VCD from POPS/<game>.cue (or .CUE) and its .bin files on the fly.
     snprintf(vcdPath, sizeof(vcdPath), "%sPOPS/%s.VCD", udpfsPrefix, vcdName);
     int fd = open(vcdPath, O_RDONLY);
     if (fd < 0) {
-        host::ui().missingFile(_l(_STR_ERR_FILE_INVALID), vcdPath);
-        return;
+        char cuePath[320];
+        static const char *const cueExt[] = {".cue", ".CUE"};
+        for (int k = 0; k < 2 && fd < 0; k++) {
+            snprintf(cuePath, sizeof(cuePath), "%sPOPS/%s%s", udpfsPrefix, vcdName, cueExt[k]);
+            fd = open(cuePath, O_RDONLY);
+        }
+        if (fd < 0) {
+            host::ui().missingFile(_l(_STR_ERR_FILE_INVALID), vcdPath);
+            return;
+        }
     }
     close(fd);
     if (!vcdResolvePopstarter(udpfsPrefix, elf, sizeof(elf))) {

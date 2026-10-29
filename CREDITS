@@ -235,7 +235,7 @@ Special and sincere thanks to:
     game subfolders came from seeing it there.
   - Irfanlesnar - creator of PS2-Launcher, for UI and feature ideas across the OPL
     fork ecosystem.
-  - Okeanos (Okeanos86) - for UDPFS Assault 1.0.0, POPSTARTER's network read/write
+  - Okeanos (Okeanos86) - for UDPFS Assault (TEST 2026-10-28), POPSTARTER's network read/write
     VCD driver based on israpps' BDM Assault (https://github.com/Okeanos86/BDMAssault/releases).
     The unchanged driver pair, archive hash and complete upstream license/credit
     notices are preserved under ship/POPS/UDPFS-NOTICES/.

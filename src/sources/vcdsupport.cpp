@@ -676,15 +676,23 @@ static int vcdScanOpenDir(const char *dirPath, vcd_entry_t **outList, int statSi
         return -1; // OOM: cannot build a list -> preserve the caller's current one rather than blank it
     }
 
-    int count = 0;
+    // UDPFS Assault (Okeanos, TEST 2026-10-28) presents POPS/<game>.cue or .CUE plus its .bin files to
+    // POPSTARTER as POPS/<game>.VCD when no real .VCD exists, so a UDPFS POPS folder lists cue sheets
+    // too. Only those two spellings: the driver asks the case-sensitive server for exactly them.
+    const int udpfsDir = !strncmp(dirPath, "udpfs:", 6);
+    int count = 0, cueCount = 0;
     struct dirent *de;
     while (count < VCD_MAX_ITEMS && (de = readdir(dir)) != NULL) {
         int len = (int)strlen(de->d_name);
-        if (len < 5 || strcasecmp(de->d_name + len - 4, ".VCD") != 0)
+        if (len < 5)
             continue;
-        if (!strncmp(dirPath, "udpfs:", 6) && strcmp(de->d_name + len - 4, ".VCD") != 0)
+        const char *ext = de->d_name + len - 4;
+        int isCue = udpfsDir && (!strcmp(ext, ".cue") || !strcmp(ext, ".CUE"));
+        if (!isCue && strcasecmp(ext, ".VCD") != 0)
+            continue;
+        if (udpfsDir && !isCue && strcmp(ext, ".VCD") != 0)
             continue;          // keep only "*.VCD" (case-insensitive)
-        int baseLen = len - 4; // strip ".VCD"
+        int baseLen = len - 4; // strip ".VCD" / ".cue"
         // Skip names no launch leg can start truthfully (#154 forensics) -- listing them made a
         // dead X button:
         // - basenames longer than ISO_GAME_NAME_MAX: the game list stores base_game_info_t names
@@ -705,6 +713,21 @@ static int vcdScanOpenDir(const char *dirPath, vcd_entry_t **outList, int statSi
             baseLen = VCD_NAME_MAX - 1; // unreachable after the cap above; kept as a belt
         memcpy(list[count].name, de->d_name, baseLen);
         list[count].name[baseLen] = '\0';
+        if (isCue) {
+            // One row per game: a real .VCD wins in the driver, and a .cue/.CUE pair is one game.
+            int dup = 0;
+            for (int k = 0; k < count && !dup; k++)
+                dup = !strcmp(list[k].name, list[count].name);
+            if (dup)
+                continue;
+            cueCount++;
+        } else if (cueCount > 0) {
+            int k = 0;
+            while (k < count && strcmp(list[k].name, list[count].name) != 0)
+                k++;
+            if (k < count)
+                continue; // the cue row already stands for this game, and launches the .VCD
+        }
         gVcdSupport.noteScanDir(list[count].name, dirPath); // string only -- NO device IO on the scan path
         if (statSize) {
             // HDD only: one PFS stat per VCD while the pooled container is mounted anyway. Every other
@@ -1700,7 +1723,7 @@ static const bdma_pair_sig_t vcdBdmaPairSig[VCD_BDMA_MODE_COUNT] = {
     {11841, 19733}, // mmce
     {42749, 21837}, // ata
     {48500, 27129}, // iLink (27145 before the SBP-2 status decode fix, 21609 before #1018/#1042)
-    {44597, 34508}  // UDPFS Assault 1.0.0 (network read/write)
+    {51029, 34508}  // UDPFS Assault TEST 2026-10-28 (network read/write, BIN/CUE)
 };
 
 // Size-based, as before; it does not authenticate a module. Only the CURRENT pair matches: every

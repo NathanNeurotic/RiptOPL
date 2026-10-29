@@ -174,6 +174,7 @@ run("pops_launch", r'''
 #include <cstring>
 #include <cstdio>
 #include <strings.h>
+#include <string>
 #include <vector>
 #define POPS_FOLDER "POPS"
 enum { _STR_ERR_FILE_INVALID, _STR_POPSTARTER_NOT_FOUND, _STR_PLEASE_WAIT, _STR_BDMA_ERR_SPACE, _STR_BDMA_ERR_IO,
@@ -197,7 +198,14 @@ struct App {
 static Ui &ui() { static Ui value; return value; }
 static App &app() { static App value; return value; }
 }
-static int open(const char *path, int) { assert(!strcmp(path, "udpfs:/POPS/title.VCD")); return missing == 1 ? -1 : 4; }
+// missing: 1 = no image at all, 2 = no POPSTARTER, 3 = only POPS/title.CUE (the TEST driver builds the VCD).
+static std::vector<std::string> opened;
+static int open(const char *path, int) {
+    opened.push_back(path);
+    if (!strcmp(path, "udpfs:/POPS/title.VCD")) return missing == 1 || missing == 3 ? -1 : 4;
+    assert(!strcmp(path, "udpfs:/POPS/title.cue") || !strcmp(path, "udpfs:/POPS/title.CUE"));
+    return missing == 3 && !strcmp(path, "udpfs:/POPS/title.CUE") ? 5 : -1;
+}
 static int close(int) { return 0; }
 static int vcdResolvePopstarter(const char *root, char *elf, int size) {
     assert(!strcmp(root, udpfsPrefix)); if (missing == 2) return 0;
@@ -244,6 +252,10 @@ int main() {
     events.clear(); ready = VCD_BDMA_UDPFS; clean = 0; source.launchVcd(&item, "title", nullptr);
     assert(!events.empty() && events.back() == 4);                     // RA module refused: no teardown
     for (missing = 1; missing <= 2; ++missing) assert(!launch(VCD_BDMA_UDPFS));
+    opened.clear(); missing = 1; assert(!launch(VCD_BDMA_UDPFS) && error == _STR_ERR_FILE_INVALID);
+    assert((opened == std::vector<std::string>{"udpfs:/POPS/title.VCD", "udpfs:/POPS/title.cue", "udpfs:/POPS/title.CUE"}));
+    missing = 3; assert(launch(VCD_BDMA_UDPFS));                        // cue-only game launches as XX.title
+    missing = 0; opened.clear(); assert(launch(VCD_BDMA_UDPFS) && opened.size() == 1); // a .VCD is not second-guessed
 }
 ''')
 
@@ -254,7 +266,7 @@ assert "gUdpfsSupport.invalidateIsoScan();" in function(udpfs, "void UdpfsSource
 assert "gUdpfsSupport.invalidateIsoScan();" in function(udpfs, "void UdpfsSource::rename(")
 
 provenance = json.loads(read("ship/POPS/UDPFS-NOTICES/PROVENANCE.json"))
-assert provenance["archive_sha256"] == "a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e"
+assert provenance["archive_sha256"] == "225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f"
 for filename, expected in provenance["files"].items():
     assert hashlib.sha256((ROOT / "ship/POPS" / filename).read_bytes()).hexdigest() == expected["sha256"], filename
 print("UDPFS: ISO-only/cache preservation, partial PS1 recovery, launch gates and pinned payloads passed")

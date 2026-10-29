@@ -1,14 +1,14 @@
 {
-  "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0",
-  "archive_url": "https://github.com/Okeanos86/BDMAssault/releases/download/1.0.0/UDPFS_Assault.zip",
-  "archive_sha256": "a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e",
+  "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST",
+  "archive_url": "https://github.com/Okeanos86/BDMAssault/releases/download/UDPFS_TEST/UDPFS_Assault_TEST.zip",
+  "archive_sha256": "225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f",
   "files": {
     "usbd.irx.udpfs": {
-      "archive_member": "READY_TO_USE/POPSTARTER/usbd.irx",
-      "sha256": "f6bda124c58f1eb770f4278d6366bb99c8c568fea94a06968c50c265d6f6cba7"
+      "archive_member": "udp_fs_assault.irx",
+      "sha256": "24e272996a6ea4af5ef20cb5d89a29aa615d8b828087032e75bc2b05aaac583e"
     },
     "usbhdfsd.irx.udpfs": {
-      "archive_member": "READY_TO_USE/POPSTARTER/usbhdfsd.irx",
+      "archive_member": "usbd_bd_assault.irx",
       "sha256": "70a369e47745e7f995fa771edbbfed086727b759fba915a7070c0fbcf061dd34"
     },
     "IPCONFIG.DAT": {
@@ -33,7 +33,7 @@
     },
     "UDPFS-NOTICES/README_CONFIG.txt": {
       "archive_member": "docs/README_CONFIG.txt",
-      "sha256": "e81eb32947e9a99451a57375c1befd76f022ec6fd8cfcba340d7f6bd72fdb0d4"
+      "sha256": "46d850fc7180220e7694aabbe5b65f9515f4a783e6148fc487a24236ff32a877"
     },
     "UDPFS-NOTICES/THIRD_PARTY_NOTICES.md": {
       "archive_member": "docs/THIRD_PARTY_NOTICES.md",
@@ -41,7 +41,13 @@
     },
     "UDPFS-NOTICES/UPSTREAM-README.md": {
       "archive_member": "README.MD",
-      "sha256": "7dc4103798970cf663df368df4c3e83e89a9ddb0d3e18c11cc63d001ee611415"
+      "sha256": "787c90f8fd71f40985f3b0590ef642a9769e58f171e25613b616db02ddc1f40f"
     }
+  },
+  "prerelease": true,
+  "superseded": {
+    "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0",
+    "archive_sha256": "a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e",
+    "usbd.irx.udpfs_sha256": "f6bda124c58f1eb770f4278d6366bb99c8c568fea94a06968c50c265d6f6cba7"
   }
 }

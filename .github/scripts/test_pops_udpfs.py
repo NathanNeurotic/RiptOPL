@@ -1,4 +1,4 @@
-"""Exercise production UDPFS Assault 1.0.0 DAT population/editor code with host IO and MC faults.
+"""Exercise production UDPFS Assault TEST DAT population/editor code with host IO and MC faults.
 
 Ported from the original (#1057). The launch order itself is driven in test_udpfs_library_launch.py.
 """
@@ -193,14 +193,74 @@ equip = function('int VcdSupport::equipBdma(int source, int mode, char *diag, in
 assert 'An explicit game-device POPS source is authoritative.' in equip
 assert 'if (found || popsDir != NULL) {' in equip
 assert equip.index('vcdWriteBdmaMarker(mcDir, mode);') < equip.index('return vcdInstallPopsUdpfsNet(sourcePops);')
-assert '{44597, 34508}  // UDPFS Assault 1.0.0' in source
+assert '{51029, 34508}  // UDPFS Assault TEST 2026-10-28' in source
 assert 'if (strcmp(buf, "udpfsnet") == 0)' in function('int vcdReadBdmaMode(')
 
 provenance = json.loads((ROOT/'ship/POPS/UDPFS-NOTICES/PROVENANCE.json').read_text(encoding='utf-8'))
-assert provenance['release'].endswith('/tag/1.0.0')
-assert provenance['archive_sha256'] == 'a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e'
+assert provenance['release'].endswith('/tag/UDPFS_TEST') and provenance['prerelease'] is True
+assert provenance['archive_sha256'] == '225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f'
 for name, expected in provenance['files'].items():
     assert hashlib.sha256((ROOT/'ship/POPS'/name).read_bytes()).hexdigest() == expected['sha256'], name
-assert (ROOT/'ship/POPS/usbd.irx.udpfs').stat().st_size == 44597
+assert (ROOT/'ship/POPS/usbd.irx.udpfs').stat().st_size == 51029
+
+# The TEST driver presents POPS/<game>.cue (or .CUE) as a VCD: the UDPFS scan lists it once and the
+# launch accepts it when no .VCD exists. Other devices still list only .VCD.
+scan = function('static int vcdScanOpenDir(')
+assert 'const int udpfsDir = !strncmp(dirPath, "udpfs:", 6);' in scan
+assert '(!strcmp(ext, ".cue") || !strcmp(ext, ".CUE"))' in scan and 'udpfsDir &&' in scan
+assert 'the cue row already stands for this game' in scan
+assert 'static const char *const cueExt[] = {".cue", ".CUE"};' in launch
+assert launch.index('%sPOPS/%s.VCD') < launch.index('cueExt[k]') < launch.index('vcdResolvePopstarter(')
 assert (ROOT/'ship/POPS/usbhdfsd.irx.udpfs').stat().st_size == 34508
-print('POPS UDPFS: game-device equip, launch wiring and pinned 1.0.0 payload passed')
+
+# Behaviour of the scan itself, on a fake directory: UDPFS lists *.VCD (uppercase only) and *.cue/.CUE
+# once per game; any other device keeps its case-insensitive .VCD-only listing.
+SCAN = r"""
+#include <assert.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/stat.h>
+typedef unsigned int u32;
+#define VCD_NAME_MAX 256
+#define VCD_MAX_ITEMS 2048
+#define ISO_GAME_NAME_MAX 160
+#define LOG(...) ((void)0)
+typedef struct { char name[VCD_NAME_MAX]; u32 sizeMB; } vcd_entry_t;
+struct dirent { char d_name[256]; };
+typedef struct { const char **names; int at; struct dirent de; } DIR;
+static const char **gNames;
+static DIR gDir;
+static DIR *opendir(const char *) { gDir.names = gNames; gDir.at = 0; return &gDir; }
+static struct dirent *readdir(DIR *d) {
+    if (d->names[d->at] == NULL) return NULL;
+    snprintf(d->de.d_name, sizeof(d->de.d_name), "%s", d->names[d->at++]); return &d->de;
+}
+static int closedir(DIR *) { return 0; }
+static int gAutosort = 1;
+static int vcdEntryCmp(const void *a, const void *b) { return strcmp(((const vcd_entry_t *)a)->name, ((const vcd_entry_t *)b)->name); }
+static int vcdJoinDirFile(char *, int, const char *, const char *) { return -1; }
+struct { void noteScanDir(const char *, const char *) {} } gVcdSupport;
+""" + function('static int vcdScanOpenDir(') + r"""
+static int scan(const char *dir, const char **names, vcd_entry_t **list) { gNames = names; return vcdScanOpenDir(dir, list, 0); }
+int main() {
+    vcd_entry_t *l = NULL;
+    const char *udp[] = {"A.cue", "A.VCD", "B.VCD", "B.CUE", "C.CUE", "C.cue", "D.Cue", "E.vcd", "F.bin", "G.VCD", NULL};
+    assert(scan("udpfs:/POPS", udp, &l) == 4);
+    assert(!strcmp(l[0].name, "A") && !strcmp(l[1].name, "B") && !strcmp(l[2].name, "C") && !strcmp(l[3].name, "G"));
+    free(l); l = NULL;
+    const char *usb[] = {"A.cue", "B.VCD", "C.vcd", NULL};
+    assert(scan("mass0:/POPS", usb, &l) == 2 && !strcmp(l[0].name, "B") && !strcmp(l[1].name, "C"));
+    free(l);
+    return 0;
+}
+"""
+with tempfile.TemporaryDirectory() as tmp:
+    src = Path(tmp) / 'scan.cpp'
+    exe = Path(tmp) / 'scan'
+    src.write_text(SCAN, encoding='utf-8')
+    subprocess.run(['g++', '-std=c++17', '-Wall', '-Werror', '-Wno-unused-function', str(src), '-o', str(exe)], check=True)
+    subprocess.run([str(exe)], check=True)
+print('POPS UDPFS: game-device equip, launch wiring, cue rows and pinned TEST payload passed')

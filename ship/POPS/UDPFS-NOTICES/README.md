@@ -1,8 +1,8 @@
 # UDPFS Assault credits and provenance
 
 The adjacent `usbd.irx.udpfs` / `usbhdfsd.irx.udpfs` pair and IP config examples are from
-**Okeanos (Okeanos86)**, [UDPFS Assault 1.0.0](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0),
-the network read/write release: every `mass:` request after POPSTARTER's IOP reset, VMC writes
+**Okeanos (Okeanos86)**, [UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST)
+(pre-release of 2026-10-28, which adds BIN/CUE games to the 1.0.0 network read/write release): every `mass:` request after POPSTARTER's IOP reset, VMC writes
 included, goes to the UDPFS server. They are included unchanged. The original project is
 **israpps' BDM Assault**; POPSTARTER is by **krHACKen**. Further upstream credits and license
 notices are preserved in this folder.
