@@ -14,11 +14,6 @@
 #include "include/opl.h"
 #include "include/config.h"
 #include "include/diaglog.h"
-#include "include/fntsys.h"
-#include "include/gui.h"
-#include "include/guiint.h"
-#include "include/renderman.h"
-#include "include/themes.h"
 #include <kernel.h>
 #endif
 
@@ -283,16 +278,6 @@ void navTraceAutoSave()
     record(6, captures, ok, finished - at);
 }
 
-void navTraceDraw()
-{
-#ifndef NAVTRACE_HOST
-    char line[120];
-    snprintf(line, sizeof(line), "NAV investigation %s - recreate, then rest 5 seconds",
-             candidate ? "B" : "A");
-    rmDrawRect(0, 0, gGuiScreenWidth, 46, GS_SETREG_RGBA(0, 0, 0, 0x70));
-    const u64 white = GS_SETREG_RGBA(0xff, 0xff, 0xff, 0x80);
-    fntRenderString(gTheme->fonts[0], 8, 3, 0, gGuiScreenWidth - 16, 20, line, white);
-    fntRenderString(gTheme->fonts[0], 8, 24, 0, gGuiScreenWidth - 16, 20, status, white);
-#endif
-}
+const char *navTraceStatus() { return status; }
+int navTraceCandidate() { return candidate; }
 #endif

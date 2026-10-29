@@ -592,10 +592,10 @@ void PadManager::actSet(struct pad_data_t *pad, int small, int large)
     // preceded by waitReady() -- that is a busy wait, and this runs on the GUI thread.
 #ifdef OPL_NAV_INVESTIGATION
     navTraceWork(NAVTRACE_ACT, 1, NULL, 2);
-#endif
     int delivered = padSetActDirect(pad->port, pad->slot, act);
-#ifdef OPL_NAV_INVESTIGATION
     navTraceWork(NAVTRACE_ACT, 0, NULL, delivered);
+#else
+    padSetActDirect(pad->port, pad->slot, act);
 #endif
 }
 

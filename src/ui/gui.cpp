@@ -64,6 +64,19 @@ int guiFrameId;
 
 Gui gGui;
 
+#ifdef OPL_NAV_INVESTIGATION
+void navTraceDraw()
+{
+    char line[120];
+    snprintf(line, sizeof(line), "NAV investigation %s - recreate, then rest 5 seconds",
+             navTraceCandidate() ? "B" : "A");
+    rmDrawRect(0, 0, gGuiScreenWidth, 46, GS_SETREG_RGBA(0, 0, 0, 0x70));
+    const u64 white = GS_SETREG_RGBA(0xff, 0xff, 0xff, 0x80);
+    fntRenderString(gTheme->fonts[0], 8, 3, 0, gGuiScreenWidth - 16, 20, line, white);
+    fntRenderString(gTheme->fonts[0], 8, 24, 0, gGuiScreenWidth - 16, 20, navTraceStatus(), white);
+}
+#endif
+
 void Gui::init()
 {
     guiFrameId = 0;

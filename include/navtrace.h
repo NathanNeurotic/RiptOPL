@@ -19,6 +19,8 @@ void navTraceKey(int id, int edge, int timer);
 void navTraceWork(int kind, int begin, const char *path, int result);
 void navTraceSelection(int page, int source, int row);
 void navTraceAutoSave();
+const char *navTraceStatus();
+int navTraceCandidate();
 void navTraceDraw();
 #else
 inline void navTraceBegin()
@@ -32,6 +34,8 @@ inline void navTraceKey(int, int, int) {}
 inline void navTraceWork(int, int, const char *, int) {}
 inline void navTraceSelection(int, int, int) {}
 inline void navTraceAutoSave() {}
+inline const char *navTraceStatus() { return ""; }
+inline int navTraceCandidate() { return 0; }
 inline void navTraceDraw() {}
 #endif
 
