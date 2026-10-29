@@ -86,7 +86,7 @@ built with one SDK, ps2build, into a single PS2 ELF. It is the main line of this
 GSM video-mode handling (including the forced-progressive 1080p mode), DS3/DS4 pad emulation (PADEMU), Virtual Memory Cards,
 PS2RD cheats and parental controls in one file. <b>In-game screenshots (IGS) and right-to-left (RTL) language support are not in
 the standard loader</b>; they belong to the <code>extras</code> configuration. USB DualSense support is the <code>ds5</code>
-configuration. Ready-made loaders for both are in the Korium and IncebtIon releases' <code>RIPTOPL-VARIANTS.zip</code> (see
+configuration. Ready-made loaders for both are in the Korium and IncebtIon releases' <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> (see
 <a href="releases.html">Releases</a>). The 1080p picker is gated behind a triple confirmation, and holding <b>Triangle + Cross</b>
 during console boot forces 480p for the menu only, on displays and connections that accept it.</p>
 
@@ -107,14 +107,14 @@ release notes for the exact build.</p>
 <table data-sortable>
 <thead><tr><th>Edition</th><th>Tag</th><th>What it is</th></tr></thead>
 <tbody>
-<tr><td><b>Korium</b></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium"><code>rolling-korium</code></a></td><td>The standard loader with the Korium Komblete theme. Also carries <code>RIPTOPL-VARIANTS.zip</code> and <code>RIPTOPL-DEBUG.zip</code>.</td></tr>
-<tr><td><b>IncebtIon</b></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion"><code>rolling-incebtion</code></a></td><td>The standard loader with the IncebtIon theme. GitHub marks it as Latest. Also carries <code>RIPTOPL-VARIANTS.zip</code> and <code>RIPTOPL-DEBUG.zip</code>.</td></tr>
+<tr><td><b>Korium</b></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium"><code>rolling-korium</code></a></td><td>The standard loader with the Korium Komblete theme. Also carries <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> and <code>RIPTOPL-DEBUG-&lt;version&gt;.zip</code>.</td></tr>
+<tr><td><b>IncebtIon</b></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion"><code>rolling-incebtion</code></a></td><td>The standard loader with the IncebtIon theme. GitHub marks it as Latest. Also carries <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> and <code>RIPTOPL-DEBUG-&lt;version&gt;.zip</code>.</td></tr>
 <tr><td><b>RetroAchievements</b></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra"><code>rolling-ra</code></a></td><td>Korium with the RetroAchievements runtime, plus the same kit built with the IncebtIon theme. See <a href="retroachievements.html">RetroAchievements</a>.</td></tr>
 </tbody>
 </table>
 
-<p>Download your edition's install kit (<code>RIPTOPL-Korium.zip</code>, <code>RIPTOPL-IncebtIon.zip</code> or
-<code>RIPTOPL-RetroAchievements.zip</code>), unzip it, and either copy its ready app folder
+<p>Download your edition's install kit (<code>RIPTOPL-Korium-&lt;version&gt;.zip</code>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code> or
+<code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>), unzip it, and either copy its ready app folder
 (<code>APPS/APP_RIPTOPL/</code>) to a device or import <code>APP_RIPTOPL.psu</code> onto a memory card. See
 <a href="releases.html">Releases</a> for the full asset list.</p>
 
@@ -154,8 +154,8 @@ before updating.</div>
   <a href="https://github.com/TheRealNextria/PS2RD-CHT-Manager">PS2RD CHT Manager</a>. The tools themselves are not embedded.
   The RetroAchievements kit adds a shortcut to the xeRAbora client.</li>
 </ul>
-<p>Translations are a separate asset, <code>RIPTOPL-LANGS.zip</code> (see <a href="languages.html">Languages</a>). Every channel
-also publishes the loose loader, the app <code>.psu</code>, <code>RIPTOPL-src.zip</code> (the exact built commit),
+<p>Translations are a separate asset, <code>RIPTOPL-LANGS-&lt;version&gt;.zip</code> (see <a href="languages.html">Languages</a>). Every channel
+also publishes the loose loader, the app <code>.psu</code>, <code>RIPTOPL-src-&lt;version&gt;.zip</code> (the exact built commit),
 <code>BUILD-MANIFEST.json</code> and <code>SHA256SUMS.txt</code>.</p>
 </details>
 
@@ -165,7 +165,7 @@ also publishes the loose loader, the app <code>.psu</code>, <code>RIPTOPL-src.zi
 <div class="steps">
   <div class="step">
     <h3>1. Download the package</h3>
-    <p>Go to the <a href="https://github.com/NathanNeurotic/RiptOPL/releases" target="_blank" rel="noopener">Releases page</a>, pick an <a href="#release-channels">edition</a>, and download its install kit: <code>RIPTOPL-Korium.zip</code>, <code>RIPTOPL-IncebtIon.zip</code> or <code>RIPTOPL-RetroAchievements.zip</code>. Unzip it locally.</p>
+    <p>Go to the <a href="https://github.com/NathanNeurotic/RiptOPL/releases" target="_blank" rel="noopener">Releases page</a>, pick an <a href="#release-channels">edition</a>, and download its install kit: <code>RIPTOPL-Korium-&lt;version&gt;.zip</code>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code> or <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>. Unzip it locally.</p>
   </div>
   <div class="step">
     <h3>2. Copy RIPTOPL.ELF to your boot location</h3>
