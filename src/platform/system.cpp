@@ -1229,7 +1229,7 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
        for the whole game, as RIPPS2 carries its menu's data. Only at the default address and only below 0xD0000
        (above it some games keep data, see ee_core/linkfile): a game moved lower (mod_storage_location_list) or a
        storage too full for it gets the menu without the page, and its cheats run as ticked before the launch. */
-    if (ModuleStorage == (void *)OPL_MOD_STORAGE) {
+    if (ModuleStorage == (void *)OPL_MOD_STORAGE && !(compatflags & COMPAT_MODE_6)) {
         u8 *at = (u8 *)ModuleStorage + ModuleStorageSize;
         unsigned int room = (u32)at < 0xD0000 ? 0xD0000 - (u32)at : 0;
         unsigned int bytes = host::launch().igrCheatsPlace(at, room);
@@ -1237,7 +1237,7 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
         if (bytes > 0)
             LOG("IGR menu cheats: %u bytes at %p (room %u)\n", bytes, at, room);
     } else
-        host::launch().igrCheatsPlace(NULL, 0); // no page: clear any block left from before
+        host::launch().igrCheatsPlace(NULL, 0); // no page (or Mode 6): clear any block left from before
 #endif
 
     ModuleStorageEnd = (void *)((u8 *)ModuleStorage + ModuleStorageSize);
@@ -1347,6 +1347,10 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     snprintf(config->GameID, sizeof(config->GameID), "%s", filename);
 
     config->_CompatMask = compatflags;
+#ifdef IGR_MENU
+    if (compatflags & COMPAT_MODE_6) // Mode 6 (Disable IGR) turns the in-game menu off too, whatever its setting
+        config->IgrMenu = 0;
+#endif
 
     //MMCEIGR Settings
     config->MMCEIGRSettings = gMMCEIGRSlot;
