@@ -27,6 +27,11 @@ def apply_configuration(config, configuration):
         main["embed_irx"] = [v for v in main["embed_irx"] if v not in ("usb_pademu", "bt_pademu", "ds34usb", "ds34bt")]
     if configuration in ("ds5", "extras_ds5"):
         add(targets["ds34usb"], "defines", "DS5_ENABLE")
+    if configuration in ("extras", "extras_ds5", "ingamediag"):
+        # ee_core's ram84 holds the in-game menu or IGS / the freeze report, not both (IGS overflows it; the
+        # report would leave the stack about 4 KB): these keep the plain IGR combo and no In-Game Menu row.
+        for target in (main, core):
+            target["defines"] = [v for v in target.get("defines", []) if v != "IGR_MENU"]
     if configuration in ("extras", "extras_ds5"):
         add(main, "defines", "__RTL", "IGS")
         add(core, "defines", "IGS")

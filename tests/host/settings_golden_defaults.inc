@@ -35,6 +35,7 @@ CHECK(gAutosort == (1));
 CHECK(gAutoRefresh == (0));
 CHECK(gDefaultDevice == (APP_MODE));
 CHECK(gAutoCreateVmc == (0));
+CHECK(gIgrMenu == (0));
 CHECK(gEnableWrite == (1));
 CHECK(gHDDSpindown == (20));
 CHECK(gBDMPrefix[0] == '\0');

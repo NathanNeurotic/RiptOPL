@@ -189,6 +189,7 @@ char gNeutrinoPath[256];     // optional full path; runtime order: custom -> gam
 int gNeutrinoDevice;         // retired picker value; only MC/APA survive, as a migration marker (configReadNeutrinoGlobals)
 int gDefaultCoreLoader;      // global default Loader Core (0=<OPL>, 1=Neutrino); per-game $CoreLoader overrides, absent key = follow this
 int gAutoCreateVmc;          // opt in: create and assign a first-launch PS2 card in slot 1
+int gIgrMenu;                // opt in: the IGR combo pauses the game under the in-game menu (beta)
 int gNeutrinoVideoDefault;   // global default Neutrino -gsm video mode (0=Off..5=1080i x3); per-game $NeutrinoVideo overrides
 int gNeutrinoGsmCompDefault; // global default -gsm ":c" field-flip half (0=off, 1-3=type)
 int gNeutrinoShowArgs;       // default-off: show the composed Neutrino argv and ask before each launch

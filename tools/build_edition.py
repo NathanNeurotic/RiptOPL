@@ -43,6 +43,10 @@ def definition(edition, configuration="standard", toolchain="gcc"):
     if options["ra"]:
         for target in (main, core):
             add(target, "defines", "RETROACHIEVEMENTS")
+        # The in-game menu does not fit beside RA in ee_core's ram84 (it would leave the stack under 1 KB):
+        # RA editions keep the plain IGR combo, and the launcher has no In-Game Menu row.
+        for target in (main, core):
+            target["defines"] = [v for v in target["defines"] if v != "IGR_MENU"]
         add(main, "sources", "src/platform/md5.c", *[
             f"src/sources/{name}.cpp" for name in ("rawatch", "rahash", "ranet", "rabadge", "discsupport", "achievements",
                                                    "rapopslaunch")])

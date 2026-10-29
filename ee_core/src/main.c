@@ -144,6 +144,11 @@ static int eecoreInit(int argc, char **argv)
     else if (config->raOverlayBuf)
         EnableGSTracker();
 #endif
+#ifdef IGR_MENU
+    // The in-game menu draws into the frame the game last set to show (igrmenu.c): the same passive record
+    else if (config->IgrMenu)
+        EnableGSTracker();
+#endif
 
     set_ipconfig();
 

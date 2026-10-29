@@ -62,11 +62,7 @@ GSMSourceGSRegs:    .space 88
 GSMDestGSRegs:      .space 88
 
 .globl GSMFlags
-#ifdef RETROACHIEVEMENTS
-GSMFlags: .space 20
-#else
-GSMFlags: .space 19
-#endif
+GSMFlags: .space 20 # the last byte: TRACK_ONLY (RetroAchievements cards, the in-game menu)
 
 .p2align 4                                          # align 16 bytes (IMPORTANT!!!)
 
@@ -157,7 +153,6 @@ Hook_SetGsCrt:
 
 # -----------------------------------------------------------------------------------------
 
-#ifdef RETROACHIEVEMENTS
     /* RA can install this hook only to keep the GS write breakpoint alive.
        In that mode preserve the game's original SetGsCrt arguments exactly. */
     la      $t0, GSMFlags
@@ -169,7 +164,6 @@ Hook_SetGsCrt:
 
 Apply_GSM_SetGsCrt:
 
-#endif
     la      $v0, GSMDestSetGsCrt
     lh      $a0, Target_INT($v0)
     lh      $a1, Target_MODE($v0)
@@ -495,7 +489,6 @@ have_some_write:                                    # Opcode is a write, so we m
     nop
     ld      $a1, 0($a1)                             # a1 = value in rt
 
-#ifdef RETROACHIEVEMENTS
     /* RetroAchievements can reuse this handler as a passive recorder. In
        TRACK_ONLY mode record the display values RA needs, then execute the
        game's write unchanged. Do not enter any GSM adaptation path. */
@@ -534,7 +527,6 @@ track_DISPLAY2_write:
     sd      $a1, Source_DISPLAY2($s0)
 
 normal_GS_write:
-#endif
 
 
     addi    $v1, $v0, -GS_PMODE
@@ -1273,14 +1265,12 @@ Enable_GSBreakpoint:
 
     li      $a0, TRAP_BASE                          # Address base for trapping
     li      $a1, TRAP_MASK                          # Address mask for GSM
-#ifdef RETROACHIEVEMENTS
     la      $t0, GSMFlags
     lbu     $t0, TRACK_ONLY($t0)
     beqz    $t0, gs_trap_address_ready
     nop
     li      $a1, 0x1FFFFF0F                         # RA: exclude CSR/IMR status page
  gs_trap_address_ready:
-#endif
 
                                                     # Trapping range is extended to match all kernel access segments
 
@@ -1300,14 +1290,12 @@ Enable_GSBreakpoint:
     sync.p                                          # Await instruction completion
 
     li      $a2, 0x60280000                         # Data read & write breakpoint on (DRE, DWE, DUE, DKE = 1). Syscalls are run in kernel mode, for the EE.
-#ifdef RETROACHIEVEMENTS
     la      $t0, GSMFlags
     lbu     $t0, TRACK_ONLY($t0)
     beqz    $t0, gs_trap_control_ready
     nop
     li      $a2, 0x20280000                         # RA: writes only, never poll reads
  gs_trap_control_ready:
-#endif
 
     mtbpc   $a2
 

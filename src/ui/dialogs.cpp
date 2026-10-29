@@ -1091,6 +1091,13 @@ struct UIItem diaLaunchConfig[] = {
     {UI_BOOL, CFG_AUTO_CREATE_VMC, 1, 1, _STR_HINT_AUTO_CREATE_VMC, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
+#ifdef IGR_MENU // not in RA editions, nor in the IGS and freeze-report configurations (no room in ee_core)
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_IGR_MENU}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_IGR_MENU, 1, 1, _STR_HINT_IGR_MENU, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+
     // Neutrino's fields are composed below; the Settings shell skips this legacy button.
     {UI_BUTTON, LAUNCH_NEUTRINO_DEFAULTS_BUTTON, 1, 1, _STR_HINT_NEUTRINO_DEFAULTS_BUTTON, 0, 0, {.label = {NULL, _STR_NEUTRINO_DEFAULTS}}},
     {UI_BREAK},

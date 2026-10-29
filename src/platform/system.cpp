@@ -1224,6 +1224,24 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     }
 #endif
 
+#ifdef IGR_MENU
+    /* The in-game menu's CHEATS page (ee_core igrmenu.c): every cheat of the game's file goes after the modules,
+       for the whole game, as RIPPS2 carries its menu's data. Only at the default address and only below 0xD0000
+       (above it some games keep data, see ee_core/linkfile): a game moved lower (mod_storage_location_list) or a
+       storage too full for it gets the menu without the page, and its cheats run as ticked before the launch. */
+    void *igrCheats = NULL;
+    if (gIgrMenu && GetCheatsEnabled() && ModuleStorage == (void *)OPL_MOD_STORAGE) {
+        u8 *at = (u8 *)ModuleStorage + ModuleStorageSize;
+        unsigned int room = (u32)at < 0xD0000 ? 0xD0000 - (u32)at : 0;
+        int bytes = igrCheatsPack(at, room);
+        if (bytes > 0) {
+            igrCheats = at;
+            ModuleStorageSize += (bytes + 0x3F) & ~0x3F;
+        }
+        LOG("IGR menu cheats: %d bytes at %p (room %u)\n", bytes, at, room);
+    }
+#endif
+
     ModuleStorageEnd = (void *)((u8 *)ModuleStorage + ModuleStorageSize);
 
     // NB: LOADER.ELF is embedded
@@ -1295,6 +1313,17 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     }
 #else
     host::launch().fillCoreConfig(config, discMode, NULL, 0);
+#endif
+#ifdef IGR_MENU
+    // The in-game menu (RIPPS2's, by akilluminati47; ee_core igrmenu.c). RetroAchievements editions and the IGS and
+    // freeze-report configurations build ee_core without it (no room), and leave these zero.
+    config->IgrMenu = gIgrMenu;
+    config->IgrConfirmCircle = gSelectButton == KEY_CIRCLE;
+    if (igrCheats != NULL && config->gCheatList != NULL) {
+        set_cheats_list_live(igrCheats); // every hook, and the ticked cheats as the menu builds them
+        config->gCheatList = GetCheatsList();
+        config->IgrCheats = igrCheats;
+    }
 #endif
 
     sprintf(config->g_ps2_ip, "%u.%u.%u.%u", local_ip_address[0], local_ip_address[1], local_ip_address[2], local_ip_address[3]);

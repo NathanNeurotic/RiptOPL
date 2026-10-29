@@ -108,6 +108,14 @@ struct EECoreConfig_t
     char raHost[16];    /* the companion's IPv4, dotted; raudp's passive and pinned target */
     void *raOverlayBuf; /* RA_CARD_PACKET_BYTES in the work area for Caduceus cards, or NULL */
 #endif
+    /* The in-game menu (igrmenu.c; RIPPS2's, by akilluminati47). APPENDED, like the above.
+       IgrMenu: the IGR combo pauses the game under the menu (0: it leaves at once, as before).
+       IgrConfirmCircle: the launcher's confirm button is Circle (Cross otherwise).
+       IgrCheats: every cheat of the game's file for the menu's CHEATS page (igrcheats.h), after the IOP modules,
+       or NULL (no page). */
+    int IgrMenu;
+    int IgrConfirmCircle;
+    void *IgrCheats;
 };
 
 #define USE_LOCAL_EECORE_CONFIG struct EECoreConfig_t *config = &g_ee_core_config;

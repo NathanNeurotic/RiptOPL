@@ -15,9 +15,7 @@ void UpdateGSMParams(s16 interlace, s16 mode, s16 ffmd, u64 display, u64 syncv, 
 void Enable_GSBreakpoint(void);
 void Disable_GSBreakpoint(void);
 void EnableGSM(void);
-#ifdef RETROACHIEVEMENTS
 void EnableGSTracker(void);
 void DisableGSTracker(void);
-#endif
 void DisableGSM(void);
 void setdve_576P(void);

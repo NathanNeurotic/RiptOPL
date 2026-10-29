@@ -89,6 +89,7 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_AUTO_REFRESH, &gAutoRefresh, 0),
     intSetting(CONFIG_OPL_DEFAULT_DEVICE, &gDefaultDevice, APP_MODE),
     intSetting(CONFIG_OPL_AUTO_CREATE_VMC, &gAutoCreateVmc, 0),
+    intSetting(CONFIG_OPL_IGR_MENU, &gIgrMenu, 0),
     intSetting(CONFIG_OPL_ENABLE_WRITE, &gEnableWrite, 1),
     intSetting(CONFIG_OPL_HDD_SPINDOWN, &gHDDSpindown, 20),
     strSetting(CONFIG_OPL_BDM_PREFIX, gBDMPrefix),
