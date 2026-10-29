@@ -518,15 +518,15 @@ python tools/build_edition.py ra_incebtion   # IncebtIon theme
 <p>Each edition build regenerates its assets and objects under <code>build/editions/&lt;edition&gt;-gcc</code>, so
 switching between RA and a standard edition needs no clean step. See
 <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/ROLLING_RELEASE.md">release channels and packaging</a> for packaging.</p>
-<p>The <code>rolling-ra</code> channel publishes the kit as <strong><code>RIPTOPL-RetroAchievements.zip</code></strong>, built to the same
+<p>The <code>rolling-ra</code> channel publishes the kit as <strong><code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code></strong>, built to the same
 shape as the standard kit: <code>POPS/</code>, <code>EMBER/</code>, <code>neutrino/</code> and the PC-tool shortcuts, with
 <code>APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF</code>, matching <code>ART/RIPTOPL-RA.ELF_*.png</code> artwork, and
 <code>APP_RIPTOPL-RA.psu</code>. The PSU contains only the direct files of <code>APP_RIPTOPL-RA</code>; import it with a
 PS2 save manager for a memory-card installation, then copy the other folders separately.</p>
-<p>The same channel carries the IncebtIon-theme kit (<code>RIPTOPL-RetroAchievements-IncebtIon.zip</code>, with
+<p>The same channel carries the IncebtIon-theme kit (<code>RIPTOPL-RetroAchievements-IncebtIon-&lt;version&gt;.zip</code>, with
 <code>RIPTOPL-RA-IncebtIon.ELF</code> and <code>APP_RIPTOPL-RA-IncebtIon.psu</code>; inside it the app is still
-<code>APP_RIPTOPL-RA</code>), and <code>RIPTOPL-RA-VARIANTS.zip</code> with the <code>pademu0</code> loader (pad emulation compiled
-out); <code>RIPTOPL-RA-VARIANTS-IncebtIon.zip</code> is the same loader with the IncebtIon theme. The kit also carries <strong><code>xeRAbora.url</code></strong> (pointing directly to the paired
+<code>APP_RIPTOPL-RA</code>), and <code>RIPTOPL-RA-VARIANTS-&lt;version&gt;.zip</code> with the <code>pademu0</code> loader (pad emulation compiled
+out); <code>RIPTOPL-RA-VARIANTS-IncebtIon-&lt;version&gt;.zip</code> is the same loader with the IncebtIon theme. The kit also carries <strong><code>xeRAbora.url</code></strong> (pointing directly to the paired
 <a href="https://github.com/hacan359/xerabora/releases/tag/v1.0.1">v1.0.1 release</a>),
 because the loader does nothing without the PC client.</p>
 <p>The standard editions are unaffected: every RA source file and call site is behind
