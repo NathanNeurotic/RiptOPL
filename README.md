@@ -94,7 +94,7 @@ akilluminati47 and what is still not tested on hardware.
 - **HTTP:** implemented and host-tested, but not yet tested on PS2 hardware. ISO only; no VMC, Neutrino or PS1. DVD9 probing is implemented but unproven. [HTTP guide](docs/HTTP.md).
 - **RetroAchievements:** a separate development package; the console integration has not been hardware-tested. It requires [xeRAbora v0.1.0-alpha.17](https://github.com/hacan359/xerabora/releases/tag/v0.1.0-alpha.17) on a PC and OPL-core launching. The RA build includes main-menu actions to check and launch a physical PS2 disc with achievements; this path also needs hardware validation. Keep games you play with achievements on a local device — upstream reports on hardware that a game with an achievement set stops loading about a minute in from a network share. [RA guide](docs/RETROACHIEVEMENTS.md).
 - **iLink:** revision 2692 passed Ember on the tested SCPH-39001 but failed native OPL, Neutrino and POPSTARTER handoffs. The Neutrino `-qb` correction is implemented; a passing retest is still needed.
-- **Core switching is source-dependent:** SMB and HTTP use OPL; UDPFS/UDPBD use Neutrino. See the [source table](#introduction).
+- **Core switching is source-dependent:** SMB and HTTP use OPL; UDPFS Files uses Neutrino; UDPBD and UDPFS IMG default to Neutrino and can use OPL per game. See the [source table](#introduction).
 
 ## Introduction
 Open PS2 Loader (OPL) is a 100% Open source game and application loader for
@@ -106,7 +106,7 @@ the PS2 and supported backward-compatible PS3 units (see [PS3 BC](#ps3-bc)). Rip
 | iLink | OPL or Neutrino paths implemented | Local files | Launch remains pending hardware retest; see [iLink status](#usbmmcemx4sioilink) |
 | Internal HDD, APA | OPL or Neutrino | HDLoader partitions | OPL supports VMC; Neutrino drops APA/PFS VMC with a warning |
 | SMB | OPL | ISO, ZSO, UL | Server must permit writes for VMC saves |
-| UDPFS Files / IMG and UDPBD | Neutrino | Files under `CD/` / `DVD/`, or a served FAT/exFAT disk image | Depends on backend and write access; see [Neutrino](docs/NEUTRINO.md) |
+| UDPFS Files / IMG and UDPBD | Neutrino (IMG and UDPBD: `<OPL>` per game) | Files under `CD/` / `DVD/`, or a served FAT/exFAT disk image | Depends on backend and write access; see [Neutrino](docs/NEUTRINO.md) |
 | HTTP | OPL | ISO listed in `games.csv`; compressed images refuse to launch | No VMC; use physical memory cards |
 | PC CARD CF (experimental, off by default) | OPL only | ISO on MBR FAT32/exFAT CF, same `CD/`/`DVD/` layout; read-only | CF VMCs refused; use a physical memory card. Japanese SCPH-10000/15000/18000 only; see [PC CARD CF](docs/PC-CARD-CF.md) |
 | PSX DESR DVR ISOs (experimental, off by default) | Neutrino (DVR companion build) | `.iso` files on the DVR partitions, mounted read-only | Needs `bsd-dvr.toml` plus the `dvrdrv`/`dvrfile` modules; see [DESR DVR](docs/DESR-DVR.md) |
@@ -218,9 +218,9 @@ This build layers several features on top of upstream OPL:
 - **Neutrino external core (per-game):** hand a game off to an external `neutrino.elf`
   instead of OPL's built-in core, chosen per title, with custom launch flags you can set
   globally and per-game. See **[docs/NEUTRINO.md](docs/NEUTRINO.md)**.
-- **UDPBD network boot (Neutrino):** stream games from a PC over the LAN as a network block
+- **UDPBD network boot (Neutrino, or the OPL core per game):** stream games from a PC over the LAN as a network block
   device — they show up as a **UDPBD Games** list with full covers and per-game settings, just
-  like a local drive. UDPBD launches via Neutrino, is mutually exclusive with SMB (they share
+  like a local drive. UDPBD launches via Neutrino unless a game's Loader Core is `<OPL>`, is mutually exclusive with SMB (they share
   the one network adapter), and needs a static PS2 IP (the default is `192.168.1.10`); the
   fork's **network protocol defaults to Off** — pick UDPFS or UDPBD in **Network** and it
   loads live (a restart is only needed to *switch away* from a protocol already loaded). Confirming

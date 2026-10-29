@@ -60,6 +60,15 @@ IOP_CFLAGS += -DDEV9_DEBUG
 endif
 endif
 
+ifeq ($(USE_BDM_UDP),1)
+IOP_BIN  = bdm_udp_cdvdman.irx
+IOP_OBJS_DIR = obj.bdm_udp/
+IOP_OBJS += device-bdm.o
+IOP_CFLAGS += -DBDM_DRIVER -DUSE_BDM_UDP
+IOP_LIBS += -L$(PS2SDK)/iop/lib -lbdm
+USE_DEV9 = 1
+endif
+
 ifeq ($(USE_MMCE),1)
 IOP_BIN  = mmce_cdvdman.irx
 IOP_OBJS_DIR = obj.mmce/

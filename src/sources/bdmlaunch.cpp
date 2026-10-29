@@ -352,7 +352,7 @@ int NeutrinoLauncher::fragBudgetOk(const char *isoPath, neutrino_vmc_args_t *vmc
 }
 
 // Abort path of tryLaunch: back to a live menu so a later launch from another device does not
-// inherit this one's markers. Returns failResult (1 = launch consumed on udp, 0 = fall back to native).
+// inherit this one's markers. Returns failResult (1 = launch consumed, 0 = fall back to native).
 int NeutrinoLauncher::abortLaunch(int failResult, config_set_t *configSet)
 {
     launchDiagDisarm();
@@ -375,7 +375,7 @@ int NeutrinoLauncher::abortLaunch(int failResult, config_set_t *configSet)
 // mid-launch, a VMC-superblock cancel whose result the launch then ignored). NHDDL's whole
 // pre-handoff is ~3 file operations; this is ours.
 // Returns 1 = handled (handed off, or aborted with the user informed -- caller returns);
-// 0 = proceed with the native launch (core is OPL, or Neutrino unavailable on a non-udp device).
+// 0 = proceed with the native launch (core is OPL, or Neutrino unavailable).
 int NeutrinoLauncher::tryLaunch(item_list_t *itemList, base_game_info_t *game, bdm_device_data_t *pDeviceData, config_set_t *configSet)
 {
     // Native CF driver only; external Neutrino cannot restore this transport.
@@ -383,31 +383,30 @@ int NeutrinoLauncher::tryLaunch(item_list_t *itemList, base_game_info_t *game, b
         return 0;
     int coreLoader = gDefaultCoreLoader; // no per-game $CoreLoader key -> follow the global default core
     configGetInt(configSet, CONFIG_ITEM_CORE_LOADER, &coreLoader);
-    // UDPBD/UDPFS have no embedded cdvdman backend -- the "udp" BDM device can ONLY boot via
-    // Neutrino, so force the core and treat every Neutrino failure below as a clean abort
-    // (falling through to the native path would deinit into a no-op = black screen).
+    // The "udp" BDM device (UDPBD or UDPFS block) defaults to Neutrino, not to the global core; the
+    // OPL core runs it only when the game's Loader Core says <OPL> (bdmNetBlockCoreLoader).
     int isUdp = bdmDriverIsUDPBD(pDeviceData->bdmDriver);
     if (isUdp)
-        coreLoader = 1;
+        coreLoader = bdmNetBlockCoreLoader(configSet);
     if (!coreLoader)
         return 0;
     if (isUdp)
         launchDiagMark(1); // arms gLaunchDiag; every later marker gates on it
 
-    // Abort helper contract: on udp the launch is unbootable without Neutrino -- consume the
-    // launch (autolaunch mirrors its normal teardown); on local devices fall back to native.
-    int failResult = isUdp ? 1 : 0;
+    // Abort helper contract: a failure here falls back to the native core, which since BDM_UDP_MODE /
+    // BDM_UFS_MODE can also boot the udp device. Declined prompts and argv overflows still abort.
+    int failResult = 0;
 
     if (game->format == GAME_FORMAT_USBLD || !strcasecmp(game->extension, ".zso")) {
         // isValidIsoName() admits .zso case-insensitively and game->extension is stored verbatim,
         // so an upper/mixed-case ".ZSO" must reject here too (Neutrino can't run it).
-        host::ui().warning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_BAD_FORMAT), 6);
+        host::ui().warning(_l(_STR_NEUTRINO_BAD_FORMAT), 6);
         return abortLaunch(failResult, configSet);
     }
 
     const char *neutrinoPath = sbResolveNeutrinoPath(pDeviceData->bdmPrefix); // #300: AUTO probes this device for a co-located install
     if (neutrinoPath == NULL) {
-        host::ui().warning(_l(isUdp ? _STR_NET_NEEDS_NEUTRINO : _STR_NEUTRINO_NOT_FOUND), 6);
+        host::ui().warning(_l(_STR_NEUTRINO_NOT_FOUND), 6);
         return abortLaunch(failResult, configSet);
     }
 
@@ -434,8 +433,9 @@ int NeutrinoLauncher::tryLaunch(item_list_t *itemList, base_game_info_t *game, b
     int bdmDevNr = pDeviceData->massDeviceIndex;
 
     // Δ9: neutrino only discovers a blown fragment budget after its own IOP reset (debug
-    // printf + exit = black screen). Count it now: udp consumes the launch, local falls native.
-    int fragCheck = fragBudgetOk(partname, &neutrinoVmc, isUdp);
+    // printf + exit = black screen). Count it now: a blown budget falls back to the native core,
+    // which since BDM_UDP_MODE / BDM_UFS_MODE boots the udp device too, so udp takes the local message.
+    int fragCheck = fragBudgetOk(partname, &neutrinoVmc, 0);
     if (fragCheck <= 0) {
         if (fragCheck < 0)
             failResult = 1; // User declined prompt: abort launch, do not fall back to native core
@@ -632,10 +632,10 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
     //
     // bdmEnumerateDevices now waits for an enabled MX4SIO to answer that ioctl before any page polls,
     // so this should be unreachable. It is here to make "should" cost a message box instead of a dead
-    // console -- and it also closes the udp hole the Neutrino helper's own comment warns about.
+    // console. The udp device is natively launchable since BDM_UDP_MODE / BDM_UFS_MODE.
     if (!bdmDriverIsUSB(pDeviceData->bdmDriver) && !bdmDriverIsIlink(pDeviceData->bdmDriver) &&
         !bdmDriverIsMx4sio(pDeviceData->bdmDriver) && !bdmDriverIsATA(pDeviceData->bdmDriver) &&
-        pDeviceData->bdmDeviceType != BDM_TYPE_PCCF) {
+        !bdmDriverIsUDPBD(pDeviceData->bdmDriver) && pDeviceData->bdmDeviceType != BDM_TYPE_PCCF) {
         LOG("BDMSUPPORT launch aborted: device %d has no natively launchable driver token ('%s')\n",
             itemList != NULL ? itemList->mode : -1, pDeviceData->bdmDriver);
         if (gAutoLaunchBDMGame == NULL)
@@ -747,6 +747,9 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
     } else if (bdmDriverIsATA(pDeviceData->bdmDriver)) {
         irx = &bdm_ata_cdvdman_irx;
         irx_size = size_bdm_ata_cdvdman_irx;
+    } else if (bdmDriverIsUDPBD(pDeviceData->bdmDriver)) {
+        irx = &bdm_udp_cdvdman_irx;
+        irx_size = size_bdm_udp_cdvdman_irx;
     } else {
         irx = &bdm_cdvdman_irx;
         irx_size = size_bdm_cdvdman_irx;
@@ -911,8 +914,10 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
     }
 
     // Δ8: Neutrino never reaches this point (gNeutrinoLauncher.tryLaunch handled it at the top), so
-    // everything from here on is the NATIVE (embedded cdvdman) launch only -- including the udp
-    // impossibility: the udp device is Neutrino-only and its aborts happen inside the helper.
+    // everything from here on is the NATIVE (embedded cdvdman) launch only. The udp device gets
+    // here when its game's Loader Core is <OPL>, or when its Neutrino leg fell back.
+    // Read before the teardown: which network block chain is resident decides the in-game modules.
+    int netBlockProtocol = bdmGetLoadedNetProtocol();
 
     // MMCE cross-device game-id (#261): push the disc id to a present SD2PSX/MemCard PRO2 (either slot)
     // so it switches its per-game folder, even though this game is not on the MMCE. Self-probes +
@@ -959,5 +964,11 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
         settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_DEV9;
         settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_ATAD;
         sysLaunchLoaderElf(filename, "BDM_ATA_MODE", irx_size, static_cast<void **>(irx), size_mcemu_irx, bdm_mcemu_irx, EnablePS2Logo, compatmask);
+    } else if (bdmDriverIsUDPBD(bdmCurrentDriver)) {
+        // The block driver owns the network adapter in game: the game's own DEV9 and SMAP are faked,
+        // as SMB does, so the game cannot take the adapter from it.
+        settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_DEV9;
+        settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_SMAP;
+        sysLaunchLoaderElf(filename, netBlockProtocol == NET_BOOT_UDPFS ? "BDM_UFS_MODE" : "BDM_UDP_MODE", irx_size, static_cast<void **>(irx), size_mcemu_irx, bdm_mcemu_irx, EnablePS2Logo, compatmask);
     }
 }

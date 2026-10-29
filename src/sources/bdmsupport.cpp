@@ -800,7 +800,20 @@ int bdmEnsureTypedSource(int bdmType, u32 timeoutMs)
     return bdmEnsureSourceModules(bdmType, timeoutMs);
 }
 
-// True when this support's device is the UDPBD block device (its games are Neutrino-only).
+// The core a UDPBD / UDPFS (block) game launches with: 1 = Neutrino, 0 = the OPL core. These games
+// booted only through Neutrino until the OPL core learned to reload their network block chain, so
+// Neutrino stays their default whatever the global core is; only the game's own Loader Core set to
+// <OPL> picks the OPL core. Before that, a "Default" game here was always a Neutrino game.
+int bdmNetBlockCoreLoader(config_set_t *configSet)
+{
+    int coreLoader = 1;
+
+    if (configSet != NULL && configGetInt(configSet, CONFIG_ITEM_CORE_LOADER, &coreLoader) && coreLoader == 0)
+        return 0;
+    return 1;
+}
+
+// True when this support's device is the UDPBD block device (UDPBD or UDPFS block protocol).
 // Returns 0 for non-BDM supports (incl. FAV-wrapped items, which have no source lookup here).
 int bdmSupportIsUDPBD(const item_list_t *support)
 {

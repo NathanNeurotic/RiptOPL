@@ -17,8 +17,8 @@ slots remain unchanged. Slot 2 is untouched.
 Apps and PS1 rows are skipped. HTTP has no writable VMC backend, and internal
 APA HDD games under Neutrino have no supported VMC path, so those are skipped
 too. Favorites resolve the owning source before applying this policy.
-UDPFS and UDPBD use Neutrino regardless of the saved loader preference; SMB uses
-the native core. The same effective-loader rules govern VMC checks and warnings.
+UDPFS Files uses Neutrino regardless of the saved loader preference, UDPBD and UDPFS IMG use
+Neutrino unless the game's own Loader Core is `<OPL>`, and SMB uses the native core. The same effective-loader rules govern VMC checks and warnings.
 The VMC configuration dialogs resolve the effective launch core for the selected
 title, ensuring games launching through Neutrino suppress native mcemu single-extent
 fragmentation warnings on card creation.

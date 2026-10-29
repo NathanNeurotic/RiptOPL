@@ -74,6 +74,7 @@ static int libListRowView(item_list_t*,int) {return rowView;}
 [[maybe_unused]] static int bdmModeIsPCCF(int) {return 0;}
 static int guiIsActive() {return active;}
 static void configGetInt(config_set_t *c,int,int *out) {*out=c->loader;}
+[[maybe_unused]] static int bdmNetBlockCoreLoader(config_set_t *c) {return c->loader==0?0:1;}
 static void configGetVMC(config_set_t *c,char *out,int,int) {strcpy(out,c->assigned);}
 static void configGetVMCDisable(config_set_t *c,int,int *out) {*out=c->disabled;}
 static void configSetVMC(config_set_t *c,const char *name,int) {if(assignOk)strcpy(c->assigned,name);}
@@ -168,7 +169,7 @@ int main() {
         reset();cfg={};list={};probe=0;
         if(transport==0)cfg.loader=1;
         if(transport==1)list.mode=UDPFS_MODE;
-        if(transport==2)udpbd=true;
+        if(transport==2){udpbd=true;cfg.loader=2;} // UDPBD on Default: Neutrino whatever the global
         if(transport==3){list.mode=FAV_MODE;owner.mode=UDPFS_MODE;}
         assert(guiGameAutoCreateVmc(&list,1,&cfg));
         assert(writes==1 && !creates && !contiguity && !strcmp(cfg.assigned,"GROUP_0"));
@@ -178,6 +179,9 @@ int main() {
         assert(guiGameAutoCreateVmc(&list,1,&cfg) && writes==1 && !creates);
     }
     reset();cfg={};list={};list.mode=ETH_MODE;cfg.loader=1;probe=0;
+    assert(guiGameAutoCreateVmc(&list,1,&cfg));noCard(cfg);
+    // UDPBD with its own <OPL> key launches native, which refuses the odd-size card like SMB does.
+    reset();cfg={};list={};udpbd=true;cfg.loader=0;probe=0;
     assert(guiGameAutoCreateVmc(&list,1,&cfg));noCard(cfg);
     reset();cfg={};list={};char longStartup[257];memset(longStartup,'x',256);longStartup[256]=0;title=longStartup;
     assert(!guiGameAutoCreateVmc(&list,1,&cfg));noCard(cfg);

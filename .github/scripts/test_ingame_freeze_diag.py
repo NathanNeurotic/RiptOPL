@@ -162,7 +162,7 @@ check("freeze_diag_format(" in irx, "the IRX uses the host-tested formatter")
 fmt = read("ee_core/src/freeze_diag_format.c")
 check("long long" not in fmt, "the formatter needs no 64-bit division (IOP has none)")
 mods = read("ee_core/include/modules.h")
-check(re.search(r"#ifdef INGAMEDIAG\n(?:\s*//[^\n]*\n)*\s*OPL_MODULE_ID_FREEZEDIAG,\n#endif\n\n\s*OPL_MODULE_ID_PCCF = 60,\n\s*OPL_MODULE_ID_COUNT", mods) is not None,
+check(re.search(r"#ifdef INGAMEDIAG\n(?:\s*//[^\n]*\n)*\s*OPL_MODULE_ID_FREEZEDIAG,\n#endif\n\n\s*OPL_MODULE_ID_PCCF = 60,\n(?:[^\n]*\n)*?\s*OPL_MODULE_ID_COUNT", mods) is not None,
       "the diagnostic ID is guarded, and the CF ID is pinned after it, so every other ID is unchanged")
 modmgr = read("ee_core/src/modmgr.c")
 check(re.search(r"result == -400\n(?:#if[^\n]*\n[^\n]*\n#endif\n)*#ifdef INGAMEDIAG\n\s*&& id != OPL_MODULE_ID_FREEZEDIAG\n#endif", modmgr) is not None,

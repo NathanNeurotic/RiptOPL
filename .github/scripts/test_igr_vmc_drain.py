@@ -342,7 +342,7 @@ for edition in editions.EDITIONS:
               'cdvdman.c is in every CDVDMAN variant')
         variant_sets += [(t['name'], configuration, sorted(set(t.get('defines', [])))) for t in targets]
 names = {name for name, _, _ in variant_sets}
-check(len(names) == 8, 'eight CDVDMAN variants in ps2.yaml (got %d)' % len(names))
+check(len(names) == 9, 'nine CDVDMAN variants in ps2.yaml (got %d)' % len(names))
 
 region = cdvdman[start:cdvdman.find(shutdown) + len(shutdown)] if (start >= 0 and shutdown) else ''
 seen = set()
