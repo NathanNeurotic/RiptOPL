@@ -175,7 +175,45 @@ def fold_companions(candidates):
     return [candidate for candidate in candidates if "into" not in candidate[1]]
 
 
-def release_notes(options, sha, neutrino, repo="NathanNeurotic/RiptOPL"):
+def release_version(candidates):
+    """The version a download name ends with: the build version without its commit hash and build
+    label (v1.2.0-Beta-3925-151fc05-PS2BUILD-Korium-GCC -> v1.2.0-Beta-3925). Every channel of one
+    publication must carry the same one."""
+    versions = set()
+    for _, _, path, _ in candidates:
+        full = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))["version"].split('"')[1]
+        versions.add(re.sub(r"-[0-9a-f]{7}$", "", full.split("-PS2BUILD-", 1)[0]))
+    if len(versions) != 1:
+        raise ValueError(f"channels carry different versions: {sorted(versions)}")
+    version = versions.pop()
+    if not re.fullmatch(r"v[0-9][A-Za-z0-9.+-]*", version):
+        raise ValueError(f"unsafe release version: {version}")
+    return version
+
+
+def versioned(name, version):
+    """A download's published name: every archive ends with the version (RIPTOPL-Korium-v1.2.0-Beta-3925.zip).
+    The ELF, PSU, manifest and checksums keep their names, so their links never change."""
+    return f"{name.removesuffix('.zip')}-{version}.zip" if name.endswith(".zip") else name
+
+
+def name_assets(candidates, version):
+    """Give each channel's archives their versioned names, in its folder and its checksums."""
+    for _, _, path, _ in candidates:
+        sums = path / "SHA256SUMS.txt"
+        lines = []
+        for line in sums.read_text(encoding="utf-8").splitlines():
+            digest, name = line.split("  ", 1)
+            target = versioned(name, version)
+            if target != name:
+                if (path / target).exists():
+                    raise ValueError(f"versioned asset already exists: {target}")
+                (path / name).rename(path / target)
+            lines.append(f"{digest}  {target}")
+        sums.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+
+
+def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"):
     """Keep release changes visible; installation detail belongs in the guides."""
     base = f"https://github.com/{repo}"
     history = git("log", "--no-merges", "-10", "--format=%H%x00%s", sha, "--")
@@ -190,17 +228,17 @@ def release_notes(options, sha, neutrino, repo="NathanNeurotic/RiptOPL"):
     psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
     downloads = f"{base}/releases/download/{options['tag']}"
     return (
-        f"**RiptOPL {options['title']}** - Development build [{sha[:8]}]({base}/commit/{sha}).\n\n"
+        f"**RiptOPL {options['title']}** `{version}` - Development build [{sha[:8]}]({base}/commit/{sha}).\n\n"
         "## Changes\n\n" + "\n".join(changes)
         + f"\n\n[Full history]({base}/commits/{sha})\n\n"
         "## Downloads\n\n"
-        f"- [Full install kit]({downloads}/RIPTOPL-{options['title']}.zip) - loader and companions.\n"
+        f"- [Full install kit]({downloads}/RIPTOPL-{options['title']}-{version}.zip) - loader and companions.\n"
         f"- [Loader ELF]({downloads}/{elf}) - update an existing installation.\n"
         f"- [Memory-card app]({downloads}/{psu}) - PSU import.\n"
-        f"- [Languages]({downloads}/RIPTOPL-LANGS.zip) - translations and their fonts.\n"
-        + "".join(f"- [{name.replace('-', ' ').title().replace('Ra ', 'RA ')}]({downloads}/RIPTOPL-{name}.zip) - {what}.\n"
+        f"- [Languages]({downloads}/RIPTOPL-LANGS-{version}.zip) - translations and their fonts.\n"
+        + "".join(f"- [{name.replace('-', ' ').title().replace('Ra ', 'RA ')}]({downloads}/RIPTOPL-{name}-{version}.zip) - {what}.\n"
                   for name, _, what in bundles(options))
-        + "".join(f"- {other['label']} theme: " + ", ".join(f"[{what}]({downloads}/{name})" for what, name in
+        + "".join(f"- {other['label']} theme: " + ", ".join(f"[{what}]({downloads}/{versioned(name, version)})" for what, name in
                   zip(("install kit", "ELF", "app", *(what for _, _, what in bundles(other))),
                       companion_assets(other).values())) + ".\n"
                   for other in EDITIONS.values() if EDITIONS.get(other.get("into")) is options)
@@ -248,6 +286,23 @@ def upload_verified(repo, tag, sha, title, notes_path, assets, exists):
             raise
 
 
+def remove_stale_archives(repo, tag, published):
+    """Archive names carry the version, so a new build's archives sit beside the last one's until those
+    are deleted. Runs only after the new set is verified and its notes point at it; a failure leaves an
+    extra old file, never a missing new one."""
+    try:
+        current = {a["name"] for a in json.loads(gh("release", "view", tag, "--repo", repo, "--json", "assets"))["assets"]}
+    except subprocess.CalledProcessError:
+        print(f"could not list {tag} to remove the previous build's archives", file=sys.stderr)
+        return
+    for name in sorted(current - set(published)):
+        if name.startswith("RIPTOPL-") and name.endswith(".zip"):
+            try:
+                gh("release", "delete-asset", tag, name, "--repo", repo, "--yes")
+            except subprocess.CalledProcessError:
+                print(f"could not remove the previous build's {tag}/{name}", file=sys.stderr)
+
+
 def latest_release_arg(edition):
     """Only IncebtIon is presented as GitHub's Latest release."""
     return "--latest=" + ("true" if edition == "incebtion" else "false")
@@ -261,8 +316,10 @@ def main():
     sha = git("rev-parse", "HEAD")
     bundle_configurations(args.artifacts, sha)
     candidates = fold_companions(verify(args.artifacts, sha))
+    version = release_version(candidates)
+    name_assets(candidates, version)
     if args.check:
-        print(f"Verified all three channels at {sha}")
+        print(f"Verified all three channels at {sha} ({version})")
         return
     repo = "NathanNeurotic/RiptOPL"
     if not publication_allowed(os.environ, sha):
@@ -274,7 +331,7 @@ def main():
         tag = options["tag"]
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
         neutrino = manifest["neutrino_archive"]["filename"].removeprefix("neutrino_").removesuffix(".7z").removesuffix(".zip")
-        notes = release_notes(options, sha, neutrino, repo)
+        notes = release_notes(options, sha, neutrino, version, repo)
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".md", delete=False) as stream:
             stream.write(notes)
             notes_path = Path(stream.name)
@@ -288,6 +345,7 @@ def main():
             reference = json.loads(gh("api", f"repos/{repo}/git/ref/tags/{tag}"))
             if reference["object"]["sha"] != sha:
                 raise ValueError(f"release tag drifted: {tag}")
+            remove_stale_archives(repo, tag, [Path(a).name for a in assets])
             print(f"Published and verified {tag} at {sha}")
         finally:
             notes_path.unlink()

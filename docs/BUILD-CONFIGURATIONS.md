@@ -6,13 +6,16 @@ settings within an edition. GCC and LLVM select compilers. Configuration
 candidates are not extra release channels and cannot replace standard release kits.
 
 Releases carry them for every theme, as the original did: the Korium and IncebtIon
-channels each publish `RIPTOPL-VARIANTS.zip` (`pademu0`, `ds5`, `extras`, `extras_ds5`)
-and `RIPTOPL-DEBUG.zip` (every other nonstandard configuration), built with that channel's
+channels each publish `RIPTOPL-VARIANTS-<version>.zip` (`pademu0`, `ds5`, `extras`, `extras_ds5`)
+and `RIPTOPL-DEBUG-<version>.zip` (every other nonstandard configuration), built with that channel's
 theme, one folder per configuration with its GCC `RIPTOPL.ELF` and build manifest; the
-RetroAchievements channel publishes `RIPTOPL-RA-VARIANTS.zip` (`pademu0`, as `RIPTOPL-RA.ELF`)
-and `RIPTOPL-RA-VARIANTS-IncebtIon.zip` for its IncebtIon-theme kit. The
+RetroAchievements channel publishes `RIPTOPL-RA-VARIANTS-<version>.zip` (`pademu0`, as `RIPTOPL-RA.ELF`)
+and `RIPTOPL-RA-VARIANTS-IncebtIon-<version>.zip` for its IncebtIon-theme kit. The
 publisher packs them only from builds of the released commit and SDK suite. Every channel
-also publishes `RIPTOPL-LANGS.zip`, the translations and their fonts.
+also publishes `RIPTOPL-LANGS-<version>.zip`, the translations and their fonts. Every archive
+name ends with the build version, for example `RIPTOPL-Korium-v1.2.0-Beta-3925.zip`; the
+loader ELFs, PSUs, `BUILD-MANIFEST.json` and `SHA256SUMS.txt` keep fixed names, so their download
+links never change. The release notes name the version at the top.
 
 Prepare the SDK/ports and assets as described in [PS2BUILD-MIGRATION.md](PS2BUILD-MIGRATION.md),
 then use the existing builder:

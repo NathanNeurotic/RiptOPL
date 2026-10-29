@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -21,31 +22,36 @@ class PublicationTests(unittest.TestCase):
             if "into" in options:
                 continue  # a companion's links are in its parent's notes
             with patch.object(publisher, "git", return_value=history) as git:
-                body = publisher.release_notes(options, sha, "v1.8.0")
+                body = publisher.release_notes(options, sha, "v1.8.0", "v1.2.0-Beta-3925")
             git.assert_called_once_with("log", "--no-merges", "-10", "--format=%H%x00%s", sha, "--")
             self.assertIn("## Changes\n\n", body)
             self.assertIn(r"Fix \[launch\] \<edge\>", body)
             self.assertIn("/commit/" + "b" * 40, body)
             self.assertIn("/commits/" + sha, body)
-            self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-{options['title']}.zip", body)
+            self.assertIn(f"**RiptOPL {options['title']}** `v1.2.0-Beta-3925`", body)
+            self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-{options['title']}-v1.2.0-Beta-3925.zip)", body)
             elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
             psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
             self.assertIn(f"/{elf})", body)
             self.assertIn(f"/{psu})", body)
-            self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-LANGS.zip)", body)
+            self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-LANGS-v1.2.0-Beta-3925.zip)", body)
+            # Every archive link ends with the version; the ELF and PSU links never change.
+            for link in re.findall(r"\]\((\S+?)\)", body.split("## Downloads", 1)[1]):
+                if link.endswith(".zip"):
+                    self.assertTrue(link.endswith("-v1.2.0-Beta-3925.zip"), link)
             if options["tag"] == "rolling-ra":
-                for name in ("RIPTOPL-RetroAchievements-IncebtIon.zip", "RIPTOPL-RA-IncebtIon.ELF", "APP_RIPTOPL-RA-IncebtIon.psu",
-                             "RIPTOPL-RA-VARIANTS-IncebtIon.zip"):
+                for name in ("RIPTOPL-RetroAchievements-IncebtIon-v1.2.0-Beta-3925.zip", "RIPTOPL-RA-IncebtIon.ELF",
+                             "APP_RIPTOPL-RA-IncebtIon.psu", "RIPTOPL-RA-VARIANTS-IncebtIon-v1.2.0-Beta-3925.zip"):
                     self.assertIn(f"/releases/download/rolling-ra/{name})", body)
             self.assertEqual({"rolling-ra": 5}.get(options["tag"], 6), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             self.assertIn("Included build: v1.8.0 ", body)
             self.assertNotIn("Release compiler", body)
             self.assertNotIn("Imported production documentation", body)
-            self.assertLess(len(body), 1800)
+            self.assertLess(len(body), 2000)  # the RA notes link eight versioned downloads
 
     def test_notes_refuse_empty_history(self):
         with patch.object(publisher, "git", return_value=""), self.assertRaises(ValueError):
-            publisher.release_notes(publisher.EDITIONS["korium"], "a" * 40, "v1")
+            publisher.release_notes(publisher.EDITIONS["korium"], "a" * 40, "v1", "v1.2.0-Beta-1")
 
     def test_only_matching_integration_push_or_dispatch_can_publish(self):
         environment = {
@@ -174,6 +180,64 @@ class PublicationTests(unittest.TestCase):
                 self.assertEqual(bool(restores), restored)
                 if not exists:
                     self.assertIn("--draft", next(c for c in calls if c[:2] == ("release", "create")))
+
+    def candidates(self, root, versions):
+        found = []
+        for edition, version in versions.items():
+            path = root / edition
+            path.mkdir()
+            (path / "BUILD-MANIFEST.json").write_text(json.dumps({"version": f'#define OPL_VERSION "{version}"\n'}))
+            found.append((edition, publisher.EDITIONS[edition], path, {}))
+        return found
+
+    def test_release_version_drops_the_hash_and_build_label(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            found = self.candidates(root, {"korium": "v1.2.0-Beta-3925-151fc05-PS2BUILD-Korium-GCC",
+                                           "incebtion": "v1.2.0-Beta-3925-151fc05-PS2BUILD-IncebtIon-GCC"})
+            self.assertEqual(publisher.release_version(found), "v1.2.0-Beta-3925")
+        with tempfile.TemporaryDirectory() as temporary:  # a v* tag names the build
+            self.assertEqual(publisher.release_version(self.candidates(Path(temporary), {"ra": "v1.3.0-PS2BUILD-RetroAchievements-GCC"})), "v1.3.0")
+        with tempfile.TemporaryDirectory() as temporary, self.assertRaisesRegex(ValueError, "different versions"):
+            publisher.release_version(self.candidates(Path(temporary), {"korium": "v1.2.0-Beta-3925-151fc05-PS2BUILD-Korium-GCC",
+                                                                         "ra": "v1.2.0-Beta-3926-1234567-PS2BUILD-RetroAchievements-GCC"}))
+
+    def test_every_archive_name_ends_with_the_version(self):
+        version = "v1.2.0-Beta-3925"
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary)
+            names = ["RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip",
+                     "RIPTOPL-Korium.zip", "RIPTOPL-VARIANTS.zip", "RIPTOPL-DEBUG.zip"]
+            sums = "".join(f"{hashlib.sha256(n.encode()).hexdigest()}  {n}\n" for n in names)
+            for name in names:
+                (path / name).write_bytes(name.encode())
+            (path / "SHA256SUMS.txt").write_text(sums)
+            publisher.name_assets([("korium", publisher.EDITIONS["korium"], path, {})], version)
+            expected = {"RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "SHA256SUMS.txt",
+                        *(f"RIPTOPL-{k}-{version}.zip" for k in ("src", "LANGS", "Korium", "VARIANTS", "DEBUG"))}
+            self.assertEqual({p.name for p in path.iterdir()}, expected)
+            for line in (path / "SHA256SUMS.txt").read_text().splitlines():
+                digest, name = line.split("  ", 1)
+                self.assertEqual(hashlib.sha256((path / name).read_bytes()).hexdigest(), digest)
+        self.assertEqual(publisher.versioned("RIPTOPL-RetroAchievements-IncebtIon.zip", version),
+                         "RIPTOPL-RetroAchievements-IncebtIon-v1.2.0-Beta-3925.zip")
+        self.assertEqual(publisher.versioned("RIPTOPL-RA-IncebtIon.ELF", version), "RIPTOPL-RA-IncebtIon.ELF")
+
+    def test_previous_builds_archives_are_removed_after_publication(self):
+        calls = []
+
+        def fake(*args, retry=True):
+            calls.append(args)
+            if args[:2] == ("release", "view"):
+                return json.dumps(dict(assets=[{"name": n} for n in (
+                    "RIPTOPL.ELF", "RIPTOPL-Korium.zip", "RIPTOPL-Korium-v1.2.0-Beta-3924.zip",
+                    "RIPTOPL-Korium-v1.2.0-Beta-3925.zip", "notes.txt")]))
+            return ""
+
+        with patch.object(publisher, "gh", side_effect=fake):
+            publisher.remove_stale_archives("owner/repo", "rolling-korium", ["RIPTOPL.ELF", "RIPTOPL-Korium-v1.2.0-Beta-3925.zip"])
+        deleted = [c[3] for c in calls if c[:2] == ("release", "delete-asset")]
+        self.assertEqual(deleted, ["RIPTOPL-Korium-v1.2.0-Beta-3924.zip", "RIPTOPL-Korium.zip"])
 
     def test_ra_kit_ships_the_mbedtls_licence_and_ordinary_kits_refuse_it(self):
         package = (ROOT / "tools/package_edition.py").read_text(encoding="utf-8")

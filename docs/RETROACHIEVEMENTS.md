@@ -382,16 +382,16 @@ Each edition build regenerates its assets and objects under `build/editions/<edi
 switching between RA and a standard edition needs no clean step. See
 [release channels and packaging](../ROLLING_RELEASE.md) for packaging.
 
-The `rolling-ra` channel publishes the kit as **`RIPTOPL-RetroAchievements.zip`**, built to the same
+The `rolling-ra` channel publishes the kit as **`RIPTOPL-RetroAchievements-<version>.zip`**, built to the same
 shape as the standard kit: `POPS/`, `EMBER/`, `neutrino/` and the PC-tool shortcuts, with
 `APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF`, matching `ART/RIPTOPL-RA.ELF_*.png` artwork, and
 `APP_RIPTOPL-RA.psu`. The PSU contains only the direct files of `APP_RIPTOPL-RA`; import it with a
 PS2 save manager for a memory-card installation, then copy the other folders separately.
 
-The same channel carries the IncebtIon-theme kit (`RIPTOPL-RetroAchievements-IncebtIon.zip`, with
+The same channel carries the IncebtIon-theme kit (`RIPTOPL-RetroAchievements-IncebtIon-<version>.zip`, with
 `RIPTOPL-RA-IncebtIon.ELF` and `APP_RIPTOPL-RA-IncebtIon.psu`; inside it the app is still
-`APP_RIPTOPL-RA`), and `RIPTOPL-RA-VARIANTS.zip` with the `pademu0` loader (pad emulation compiled
-out); `RIPTOPL-RA-VARIANTS-IncebtIon.zip` is the same loader with the IncebtIon theme. The kit also carries **`xeRAbora.url`** (pointing directly to the paired
+`APP_RIPTOPL-RA`), and `RIPTOPL-RA-VARIANTS-<version>.zip` with the `pademu0` loader (pad emulation compiled
+out); `RIPTOPL-RA-VARIANTS-IncebtIon-<version>.zip` is the same loader with the IncebtIon theme. The kit also carries **`xeRAbora.url`** (pointing directly to the paired
 [v1.0.1 release](https://github.com/hacan359/xerabora/releases/tag/v1.0.1)),
 because the loader does nothing without the PC client.
 
