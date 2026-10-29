@@ -105,6 +105,7 @@ struct Renderer {
     void setDisplayOffset(int, int) {}
     void setOverscan(int) {}
     void setAspectRatio(enum rm_aratio) {}
+    int wideDisplay() const { return 0; }
 };
 @SETMODE@
 @END@

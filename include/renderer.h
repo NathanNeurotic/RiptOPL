@@ -35,6 +35,7 @@ public:
     void setDisplayOffset(int x, int y);
     void setAspectRatio(enum rm_aratio dar);
     int wideScale(int x);
+    int wideDisplay() const;
     float getPAR();
     int scaleXi(int x);
     int scaleYi(int y);

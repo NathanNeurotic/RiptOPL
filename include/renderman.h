@@ -136,6 +136,9 @@ void rmSetOverscan(int overscan);
  * When set, it will treat all pixmap widths/heights (not positions) as scaled with the ratios provided */
 void rmSetAspectRatio(enum rm_aratio dar);
 
+/** 1 when the screen is 16:9: the Widescreen setting is on, or the video mode is natively 16:9 (720p, 1080i) */
+int rmIsWideDisplay(void);
+
 /** Widescreen scaling */
 int rmWideScale(int x);
 

@@ -1367,7 +1367,7 @@ static int thmLoad(const char *themePath)
 
     // SD/HD layouts: copy the _sd or _hd variants (and uOPL/wOPL _wsX) over their plain keys before anything
     // reads the cfg, so the rest of the load sees one layout. Themes without them are untouched.
-    newT->layoutWide = gWideScreen != 0;
+    newT->layoutWide = rmIsWideDisplay();
     newT->layoutDependsOnWide = thmApplyDisplayLayout(themeConfig, newT->layoutWide);
 
     // Pick the view to build (docs/MULTI-VIEW-THEMES-PLAN.md). Only that view is parsed; switching views
@@ -1988,7 +1988,7 @@ int thmSetView(int view)
 
 int thmRefreshDisplayLayout(void)
 {
-    if (gTheme == NULL || !gTheme->layoutDependsOnWide || gTheme->layoutWide == (gWideScreen != 0))
+    if (gTheme == NULL || !gTheme->layoutDependsOnWide || gTheme->layoutWide == rmIsWideDisplay())
         return 0;
     return gCatalog.setGuiValue(gCatalog.guiValue(), 1);
 }
