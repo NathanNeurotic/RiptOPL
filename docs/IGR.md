@@ -162,7 +162,7 @@ into the picture the game is showing, which it finds through the same GS write b
   leaves at once, as before. Nothing is lost compared with the menu off.
 * Game sound keeps playing (looping) while the menu is open, and the panel stays on a still screen
   until the game draws over it.
-* Not in the **RetroAchievements** editions, nor in the IGS (`-extra1`) and freeze-report builds:
+* Not in the **RetroAchievements** editions, nor in the IGS (`-extra1`), freeze-report and EE SIO debug builds:
   `ee_core` has no room for both. Those keep the plain combo and have no *In-Game Menu* row.
 * The CHEATS page needs a game whose modules sit at the usual address; a few games moved elsewhere
   (`mod_storage_location_list`) get the menu without it, and their cheats run as ticked before launch.
