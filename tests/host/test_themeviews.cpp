@@ -143,5 +143,67 @@ int main()
     CHECK(info.blocksMask == 0 && info.ownMask == 0 && info.mask == (1u << THM_VIEW_LIST));
     configFree(mixed);
 
+    // ---- SD/HD layouts: _sd/_hd variants and the uOPL/wOPL _wsX key -----------------------------------
+    {
+        static const char *layout = "bg_color=#000000\n"
+                                    "bg_color_hd=#101010\n"
+                                    "main1:\n\ttype=StaticImage\n\tx=100\n\ty=50\n\tx_hd=140\n\ty_hd=60\n"
+                                    "main2:\n\ttype=StaticImage\n\tx=200\n\twsX=-150\n"
+                                    "main3:\n\ttype=StaticImage\n\tx=300\n\twsX=310\n\tx_hd=320\n"
+                                    "main4:\n\ttype=StaticImage\n\tx=400\n\tx_sd=410\n"
+                                    "coverflow.main5:\n\ttype=Coverflow\n\ty=240\n\ty_hd=250\n";
+        const char *v;
+        int i;
+
+        config_set_t *sd = parse(layout);
+        CHECK(thmApplyDisplayLayout(sd, 0) == 1);
+        CHECK(configGetInt(sd, "main1_x", &i) && i == 100);
+        CHECK(configGetInt(sd, "main1_y", &i) && i == 50);
+        CHECK(configGetInt(sd, "main2_x", &i) && i == 200); // _wsX is for 16:9 only
+        CHECK(configGetInt(sd, "main4_x", &i) && i == 410); // _sd wins in 4:3
+        CHECK(configGetStr(sd, "bg_color", &v) && strcmp(v, "#000000") == 0);
+        CHECK(configGetInt(sd, "coverflow.main5_y", &i) && i == 240);
+        configFree(sd);
+
+        config_set_t *hd = parse(layout);
+        CHECK(thmApplyDisplayLayout(hd, 1) == 1);
+        CHECK(configGetInt(hd, "main1_x", &i) && i == 140);
+        CHECK(configGetInt(hd, "main1_y", &i) && i == 60);
+        CHECK(configGetInt(hd, "main2_x", &i) && i == -150); // negative = from the right edge, as for x
+        CHECK(configGetInt(hd, "main3_x", &i) && i == 320);  // x_hd beats wsX
+        CHECK(configGetInt(hd, "main4_x", &i) && i == 400);  // no _hd: the plain key
+        CHECK(configGetStr(hd, "bg_color", &v) && strcmp(v, "#101010") == 0);
+        CHECK(configGetInt(hd, "coverflow.main5_y", &i) && i == 250); // works under a view prefix
+        CHECK(configGetInt(hd, "main1_x_hd", &i) && i == 140);        // the variant keys stay readable
+        configFree(hd);
+
+        // A theme without variants reports none and is left exactly as read.
+        config_set_t *none = parse("main0:\n\ttype=Background\nmain1:\n\ttype=StaticImage\n\tx=12\n\tshadow=3\n");
+        int before = 0, after = 0;
+        for (const config_value_t *it = none->entries(); it; it = it->next)
+            before++;
+        CHECK(thmApplyDisplayLayout(none, 1) == 0);
+        for (const config_value_t *it = none->entries(); it; it = it->next)
+            after++;
+        CHECK(before == after);
+        CHECK(configGetInt(none, "main1_x", &i) && i == 12);
+        configFree(none);
+        CHECK(thmApplyDisplayLayout(NULL, 1) == 0);
+
+        // A variant whose plain key is missing creates it: an element can exist in one mode only.
+        config_set_t *only = parse("main6_type_hd=StaticText\n");
+        CHECK(thmApplyDisplayLayout(only, 0) == 1 && !configGetStr(only, "main6_type", &v));
+        configFree(only);
+        only = parse("main6_type_hd=StaticText\n");
+        CHECK(thmApplyDisplayLayout(only, 1) == 1 && configGetStr(only, "main6_type", &v) && strcmp(v, "StaticText") == 0);
+        configFree(only);
+
+        // hd_autofit: the 4:3 layout scaled by 3/4 about the centre; centre, edges and gaps keep their shape.
+        CHECK(thmLayoutAutoFitX(320, 640) == 320);
+        CHECK(thmLayoutAutoFitX(0, 640) == 80);
+        CHECK(thmLayoutAutoFitX(640, 640) == 560);
+        CHECK(thmLayoutAutoFitX(100, 640) == 155);
+    }
+
     TEST_DONE("themeviews");
 }
