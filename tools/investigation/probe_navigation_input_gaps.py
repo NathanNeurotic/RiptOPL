@@ -21,6 +21,8 @@ DEFAULT_REFS = ("6edea174e5522b241139eeb4c683c9f2c76f776f",
 
 
 def source(ref, path):
+    if ref == "WORKTREE":
+        return (ROOT / path).read_text(encoding="utf-8")
     return subprocess.check_output(
         ["git", "-c", "core.fsmonitor=false", "show", f"{ref}:{path}"],
         cwd=ROOT, text=True, encoding="utf-8")

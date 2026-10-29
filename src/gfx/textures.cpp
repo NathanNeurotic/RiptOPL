@@ -1,4 +1,5 @@
 #include "include/opl.h"
+#include "include/navtrace.h"
 #include "include/textures.h"
 #include "include/artindex.h"
 #include "include/util.h"
@@ -1310,15 +1311,29 @@ static int texFindArt(GSTEXTURE *texture, const char *stem)
         LOG("texDiscoverLoad: '%s' absent per directory index (no device access)\n", stem);
         return ERR_BAD_FILE;
     }
-    if (found == 1)
-        return texLoadArtFile(texture, filePath);
+    if (found == 1) {
+#ifdef OPL_NAV_INVESTIGATION
+        navTraceWork(NAVTRACE_ART, 1, filePath, 0);
+#endif
+        int loaded = texLoadArtFile(texture, filePath);
+#ifdef OPL_NAV_INVESTIGATION
+        navTraceWork(NAVTRACE_ART, 0, filePath, loaded);
+#endif
+        return loaded;
+    }
 
     for (unsigned int i = 0; i < sizeof(ext) / sizeof(ext[0]); i++) {
         if (snprintf(filePath, sizeof(filePath), "%s.%s", stem, ext[i]) >= (int)sizeof(filePath))
             return ERR_BAD_FILE;
         if (!artIndexMayExist(filePath))
             continue;
+#ifdef OPL_NAV_INVESTIGATION
+        navTraceWork(NAVTRACE_ART, 1, filePath, 0);
+#endif
         result = texLoadArtFile(texture, filePath);
+#ifdef OPL_NAV_INVESTIGATION
+        navTraceWork(NAVTRACE_ART, 0, filePath, result);
+#endif
         if (result != ERR_BAD_FILE || texLoadAbortRequested())
             return result;
     }

@@ -8,6 +8,7 @@
 #include "include/diaglog.h" // the hardware log, DIAG.TXT (RIPPS2 build 115)
 #include "include/oplint.h"
 #include "include/opl.h"
+#include "include/navtrace.h"
 #include "include/cfgtitle.h"
 #include "include/sourceregistry.h" // SourceRegistry gSourceRegistry
 #include "include/ioman.h"
@@ -251,7 +252,7 @@ int gEnableLogoArt;
 int gWideScreen;
 int gFontSize = FONT_SIZE_DEFAULT;
 int gGlyphSet = 0; // GLYPH_SET_THEME
-int gVMode; // 0 - Auto, 1 - PAL, 2 - NTSC
+int gVMode;        // 0 - Auto, 1 - PAL, 2 - NTSC
 int gXOff;
 int gYOff;
 int gOverscan;
@@ -702,7 +703,13 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
     // read the new game list
     struct gui_update_t *gup = NULL;
     int count = gsOf(mdl->support)->update(mdl->support);
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_HIDDEN, 1, NULL, mdl->support->mode);
+#endif
     hiddenReload(mdl->support); // the device's hidden list, read with its games
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_HIDDEN, 0, NULL, mdl->support->mode);
+#endif
 
 #ifdef RETROACHIEVEMENTS
     // RA badges: recompute on every list rebuild. This runs on the I/O thread (itemUpdate

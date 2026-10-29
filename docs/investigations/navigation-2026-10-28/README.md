@@ -8,9 +8,13 @@ and the cut-off investigation supplied by the user. The matching legacy tracker 
 The user clarified that the interference could be a double tap or interrupted
 hold, rather than a complete hang. That distinction materially changes the diagnosis.
 
-This PR contains investigation scripts and their evidence. It changes no runtime
-source, SDK, driver, default setting or release configuration. No physical console
-test, hardware bisect or confirmed last-good binary is available.
+This PR contains investigation scripts, their evidence and an opt-in automatic
+diagnostic ELF for one console session. [The trial instructions](TEST-INSTRUCTIONS.md)
+describe its automatic captures and navigation-only candidate. Ordinary builds
+compile out the diagnostic hooks; only the dedicated trial build defines
+`OPL_NAV_INVESTIGATION`. No SDK, driver, default setting or release configuration
+is changed. No physical console test, hardware bisect or confirmed last-good
+binary is available.
 
 ## What the evidence now supports
 
@@ -287,7 +291,12 @@ filesystem status/timeout/handle behavior. The latter needs
 `GIT_CEILING_DIRECTORIES` set to the temporary root when that root is inside a
 checkout: otherwise `git apply` detects the parent repository and can skip the
 isolated fixture's paths. This is a host-fixture setup issue, not a driver or
-SDK failure. No target rebuild is claimed for this documentation/probe-only PR.
+SDK failure. The separate opt-in diagnostic build has also compiled, linked and
+packed with the installed GCC PS2 toolchain; this is build validation, not a
+physical-console result. Its live integration and automatic append exporter are
+covered by `tools/investigation/test_navtrace_trial.py`, including verified
+releases/disconnects, a bounded unknown gap, independent pads, clock wrap, A/B/A
+capture retention, short writes, EINTR, ENOSPC retention and automatic retry.
 
 ## Next discriminating experiment
 

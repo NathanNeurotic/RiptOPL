@@ -9,6 +9,7 @@
 #include "include/pad.h"
 #include "include/padmanager.h"
 #include "include/ioman.h"
+#include "include/navtrace.h"
 #include <libpad.h>
 #include <timer.h>
 #include <time.h>
@@ -329,6 +330,9 @@ u32 PadManager::readLeftJoy(struct pad_data_t *pad, u32 pdata)
 int PadManager::readOne(struct pad_data_t *pad, int *pollClean)
 {
     int rcode = 0, oldState, newState, ret, padsRead;
+#ifdef OPL_NAV_INVESTIGATION
+    int nativeLength = 0;
+#endif
     u32 newpdata = 0;
 
     padsRead = 0;
@@ -359,6 +363,9 @@ int PadManager::readOne(struct pad_data_t *pad, int *pollClean)
     if ((pad->state == PAD_STATE_STABLE) || (pad->state == PAD_STATE_FINDCTP1)) {
         // pad is connected. Read pad button information.
         ret = padRead(pad->port, pad->slot, &pad->buttons); // port, slot, buttons
+#ifdef OPL_NAV_INVESTIGATION
+        nativeLength = ret;
+#endif
         pad->readOk = ret != 0;
 
         if (ret != 0) {
@@ -373,6 +380,10 @@ int PadManager::readOne(struct pad_data_t *pad, int *pollClean)
         }
     }
 
+#ifdef OPL_NAV_INVESTIGATION
+    navTracePad(pad - padData_, pad->port, pad->slot, newState, nativeLength,
+                pad->buttons.mode, pad->buttons.btns, pad->padBuf);
+#endif
 #ifdef PADEMU
     // A DS3/DS4/DS5 NEVER passes through padSetActDirect: its motors live on this PADEMU channel,
     // so the rumble state has to be driven here or the pad simply cannot vibrate, no matter what the
@@ -441,8 +452,15 @@ int PadManager::readOne(struct pad_data_t *pad, int *pollClean)
         pad->paddata = newpdata;
 
         // merge into the global vars
+#ifndef OPL_NAV_INVESTIGATION
         paddata_ |= pad->paddata;
+#endif
     }
+
+#ifdef OPL_NAV_INVESTIGATION
+    paddata_ |= navTraceSample(pad - padData_, newState != PAD_STATE_DISCONN,
+                               padsRead > 0, pad->paddata);
+#endif
 
     return rcode;
 }
@@ -539,7 +557,14 @@ void PadManager::rumbleRealign(struct pad_data_t *pad)
     // No waitPadRequestComplete(): that blocks the GUI thread for up to ~150 ms, and this sits on
     // the path read() drives. A refused request just retries on the next pulse -- pulses are
     // user-driven and seconds apart, so an unbounded lazy retry costs nothing.
-    if (padSetActAlign(pad->port, pad->slot, pad->actAlign))
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_ACT, 1, NULL, 1);
+#endif
+    int aligned = padSetActAlign(pad->port, pad->slot, pad->actAlign);
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_ACT, 0, NULL, aligned);
+#endif
+    if (aligned)
         pad->actAligned = 1;
 }
 
@@ -565,7 +590,13 @@ void PadManager::actSet(struct pad_data_t *pad, int small, int large)
     act[1] = (char)(large & 0xff); // large engine: 0..255
     // Fire-and-forget: padSetActDirect latches six bytes on the IOP and returns. Deliberately NOT
     // preceded by waitReady() -- that is a busy wait, and this runs on the GUI thread.
-    padSetActDirect(pad->port, pad->slot, act);
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_ACT, 1, NULL, 2);
+#endif
+    int delivered = padSetActDirect(pad->port, pad->slot, act);
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_ACT, 0, NULL, delivered);
+#endif
 }
 
 /** Stops any pulse in flight, on every pad.
@@ -730,6 +761,10 @@ void PadManager::advanceRepeatTimers(u32 elapsedMs)
         elapsedMs = PAD_REPEAT_MAX_CREDIT_MS;
 
     for (i = 0; i < 16; ++i) {
+#ifdef OPL_NAV_INVESTIGATION
+        if (navTraceUnknown() & keyToPad[i + 1])
+            continue; // unknown holds preserve their timer, and cannot emit movement.
+#endif
         if (keyPressed(i + 1))
             delaycnt_[i] -= elapsedMs;
         else
@@ -742,6 +777,9 @@ int PadManager::read()
 {
     int i;
     int pollClean = 1;
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceBegin();
+#endif
 
     if (!edgeBaselineFrozen_)
         oldpaddata_ = paddata_;
@@ -813,6 +851,10 @@ int PadManager::read()
     }
 
     advanceRepeatTimers(elapsedMs_);
+#ifdef OPL_NAV_INVESTIGATION
+    rslt |= navTraceUnknown() != 0; // a retained unknown direction is not a verified idle user.
+    navTraceFrame(oldpaddata_, paddata_, elapsedMs_, pollClean);
+#endif
 
     return rslt;
 }
@@ -828,9 +870,17 @@ int PadManager::key(int id)
 
     int kid = id - 1;
 
+#ifdef OPL_NAV_INVESTIGATION
+    if (navTraceUnknown() & keyToPad[id])
+        return 0;
+#endif
+
     // either the button was not pressed this frame, then reset counter and return
     // or it was, then handle the repetition
     if (keyOn(id)) {
+#ifdef OPL_NAV_INVESTIGATION
+        navTraceKey(id, 1, delaycnt_[kid]);
+#endif
         delaycnt_[kid] = keyDelay(id, 0);
         KeyPressedOnce = 1;
         DisableCron = 1;
@@ -841,6 +891,9 @@ int PadManager::key(int id)
         return 0;
 
     if (delaycnt_[kid] <= 0) {
+#ifdef OPL_NAV_INVESTIGATION
+        navTraceKey(id, 0, delaycnt_[kid]);
+#endif
         delaycnt_[kid] = keyDelay(id, 1);
         KeyPressedOnce = 1;
         DisableCron = 1;
@@ -861,6 +914,11 @@ int PadManager::keyOn(int id)
 
     // old v.s. new pad data
     int keyid = keyToPad[id];
+
+#ifdef OPL_NAV_INVESTIGATION
+    if (navTraceUnknown() & keyid)
+        return 0;
+#endif
 
     return (paddata_ & keyid) && (!(oldpaddata_ & keyid));
 }

@@ -5,9 +5,10 @@
 */
 
 #include "include/sema_lock.h"
-#include "include/diaglog.h" // the hardware log, DIAG.TXT (RIPPS2 build 115)
+#include "include/diaglog.h"     // the hardware log, DIAG.TXT (RIPPS2 build 115)
 #include "include/drivestatus.h" // Drive Status (RIPPS2 build 114)
 #include "include/opl.h"
+#include "include/navtrace.h"
 #include "include/cfgtitle.h"
 #include "include/diag.h"
 #include "include/menusys.h"
@@ -478,7 +479,13 @@ static void _menuLoadConfigAsync()
             generation = itemConfigGeneration;
         }
         if (list != NULL) {
+#ifdef OPL_NAV_INVESTIGATION
+            navTraceWork(NAVTRACE_INFO, 1, NULL, configId);
+#endif
             loadedConfig = gsOf(list)->config(list, configId);
+#ifdef OPL_NAV_INVESTIGATION
+            navTraceWork(NAVTRACE_INFO, 0, NULL, configId);
+#endif
             {
                 raii::SemaLock lock(menuSemaId);
                 if (loadedConfig != NULL && itemConfig == NULL && itemConfigGeneration == generation &&
@@ -531,7 +538,13 @@ static void menuResolveInfoSizeRequest(item_list_t *list, int configId, unsigned
 
     // itemGetConfig runs outside menuSemaId: it is the slow CFG+stat operation.
     sbSetConfigStatSize(1);
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_INFO, 1, NULL, configId);
+#endif
     config_set_t *loadedConfig = gsOf(list)->config(list, configId);
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_INFO, 0, NULL, configId);
+#endif
     sbSetConfigStatSize(0);
 
     // Publish only if this request is STILL the newest target and the same row is selected.
@@ -2537,6 +2550,10 @@ void menuHandleInputMain()
         refreshMenuPosition();
     item_list_t *support = selected_item != NULL && selected_item->item != NULL ? static_cast<item_list_t *>(selected_item->item->userdata) : NULL;
     int viewPending = support != NULL && libViewPending(support->mode);
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceSelection(0, support ? support->mode : -1,
+                      selected_item && selected_item->item && selected_item->item->current ? selected_item->item->current->item.id : -1);
+#endif
 
     if (getKey(KEY_LEFT)) {
         menuNavigateLeft();
@@ -2622,6 +2639,10 @@ void menuRenderInfo(void)
 
 void menuHandleInputInfo()
 {
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceSelection(2, selected_item && selected_item->item && selected_item->item->userdata ? static_cast<item_list_t *>(selected_item->item->userdata)->mode : -1,
+                      selected_item && selected_item->item && selected_item->item->current ? selected_item->item->current->item.id : -1);
+#endif
     if (getKeyOn(KEY_CROSS)) {
         if (gSelectButton == KEY_CIRCLE)
             guiSwitchScreen(GUI_SCREEN_MAIN);

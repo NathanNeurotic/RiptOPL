@@ -30,6 +30,7 @@
 #define siAllocTexels(bytes) malloc(bytes)
 #else
 #include "include/opl.h"
+#include "include/navtrace.h"
 #include "include/ioman.h"
 #include "include/renderman.h"
 #include <dirent.h>
@@ -845,6 +846,10 @@ static void siLoadAction(void)
     if (key[0] == '\0')
         return;
 
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_SAVEICON, 1, startup, ps1);
+#endif
+
     memset(&model, 0, sizeof(model));
     memset(&light, 0, sizeof(light));
     if (ps1) {
@@ -925,6 +930,9 @@ static void siLoadAction(void)
     siUnlock();
     if (found)
         saveIconFreeModel(&model); // the selection moved on while the cards were read
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_SAVEICON, 0, startup, ps1);
+#endif
 }
 
 static void siFreeRetired(void)

@@ -5,6 +5,7 @@
  */
 
 #include "include/opl.h"
+#include "include/navtrace.h"
 #include "include/plasma.h"
 #include "include/gui.h"
 #include "include/guiint.h"
@@ -346,6 +347,9 @@ void Gui::mainLoop()
 
         // Render overlaying gui thingies :)
         guiDrawOverlays();
+#ifdef OPL_NAV_INVESTIGATION
+        navTraceDraw();
+#endif
 
         // The DHCP notice is a misconfiguration warning, not a courtesy popup -- show it even
         // when the user has notifications off (it explains an otherwise-silent empty games page).
@@ -367,6 +371,9 @@ void Gui::mainLoop()
         // if not transiting, handle input
         // done here so we can use renderman if needed
         gScreens.dispatchInput();
+#ifdef OPL_NAV_INVESTIGATION
+        navTraceAutoSave(); // outside the GUI lock; writes only after a quiet capture boundary.
+#endif
 
         if (frameHook_)
             frameHook_();

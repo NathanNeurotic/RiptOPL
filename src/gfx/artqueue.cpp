@@ -1,5 +1,6 @@
 // The art request FIFO. Split out of texcache.cpp.
 #include "include/opl.h"
+#include "include/navtrace.h"
 #include "include/artqueue.h"
 
 #include <kernel.h>
@@ -110,6 +111,10 @@ load_image_request_t *ArtQueue::pop()
     }
     EIntr();
 
+#ifdef OPL_NAV_INVESTIGATION
+    if (req)
+        navTraceWork(NAVTRACE_ART, 1, req->value, req->sio2);
+#endif
     return req;
 }
 
@@ -139,6 +144,9 @@ void ArtQueue::release(load_image_request_t *req)
     if (active_ > 0)
         active_--;
     EIntr();
+#ifdef OPL_NAV_INVESTIGATION
+    navTraceWork(NAVTRACE_ART, 0, req->value, req->sio2);
+#endif
 }
 
 void ArtQueue::reset()

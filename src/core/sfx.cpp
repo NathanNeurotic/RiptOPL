@@ -13,6 +13,7 @@
 #include "include/soundint.h"
 #include "include/soundeffects.h"
 #include "include/opl.h"
+#include "include/navtrace.h"
 #include "include/ioman.h"
 #include "include/themes.h"
 #include "include/pad.h"
@@ -48,8 +49,7 @@ extern unsigned int size_bd_disconnect_adp;
 
 
 
-
-#define CURSOR_SFX_CHANNEL_BASE  SFX_COUNT
+#define CURSOR_SFX_CHANNEL_BASE SFX_COUNT
 constexpr int CURSOR_SFX_CHANNEL_COUNT = 6;
 
 
@@ -388,16 +388,34 @@ void SoundEffects::play(int id)
 
             // Volumes are configured once by audioSetVolume(). Replaying a
             // rotation channel replaces its old sample in one SIF RPC.
+#ifdef OPL_NAV_INVESTIGATION
+            navTraceWork(NAVTRACE_SFX, 1, NULL, id);
+#endif
             audsrv_ch_play_adpcm(channel, &adpcm_[id]);
+#ifdef OPL_NAV_INVESTIGATION
+            navTraceWork(NAVTRACE_SFX, 0, NULL, id);
+#endif
         } else if (sfxIsUiOneShot(id)) { // see SFX_ONESHOT_COALESCE_MS
             static u32 lastOneShotTicks = 0;
             if (lastOneShotTicks != 0 &&
                 (sfxStartTicks - lastOneShotTicks) / SFX_CLOCKS_PER_MS < SFX_ONESHOT_COALESCE_MS)
                 return;
             lastOneShotTicks = sfxStartTicks;
+#ifdef OPL_NAV_INVESTIGATION
+            navTraceWork(NAVTRACE_SFX, 1, NULL, id);
+#endif
             audsrv_ch_play_adpcm(SFX_CANCEL, &adpcm_[id]); // one shared voice: the replay is the cut
+#ifdef OPL_NAV_INVESTIGATION
+            navTraceWork(NAVTRACE_SFX, 0, NULL, id);
+#endif
         } else {
+#ifdef OPL_NAV_INVESTIGATION
+            navTraceWork(NAVTRACE_SFX, 1, NULL, id);
+#endif
             audsrv_ch_play_adpcm(id, &adpcm_[id]);
+#ifdef OPL_NAV_INVESTIGATION
+            navTraceWork(NAVTRACE_SFX, 0, NULL, id);
+#endif
         }
 
         unsigned int costMs = (unsigned int)((cpu_ticks() - sfxStartTicks) / SFX_CLOCKS_PER_MS);
