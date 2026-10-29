@@ -255,11 +255,14 @@ void navTraceAutoSave()
     if (on)
         EIntr();
     bool ok = exportTo(gBootDir, count, start, forced) ||
-              exportTo(configGetHomePath(), count, start, forced) ||
-              exportTo("mass0:", count, start, forced) ||
-              exportTo("mass1:", count, start, forced) ||
-              exportTo("mc0:", count, start, forced) ||
-              exportTo("mc1:", count, start, forced);
+              exportTo(configGetHomePath(), count, start, forced);
+    for (int device = 0; !ok && device < 9; ++device) {
+        char root[16];
+        snprintf(root, sizeof(root), "mass%d:/", device);
+        ok = exportTo(root, count, start, forced);
+    }
+    if (!ok)
+        ok = exportTo("mc0:/", count, start, forced) || exportTo("mc1:/", count, start, forced);
     if (ok) {
         ++captures;
         lastAttempt = 0; // throttle failures, not successful consecutive recreations.
@@ -287,8 +290,9 @@ void navTraceDraw()
     snprintf(line, sizeof(line), "NAV investigation %s - recreate, then rest 5 seconds",
              candidate ? "B" : "A");
     rmDrawRect(0, 0, gGuiScreenWidth, 46, GS_SETREG_RGBA(0, 0, 0, 0x70));
-    fntRenderString(gTheme->fonts[0], 8, 3, 0, gGuiScreenWidth - 16, 20, line, gTheme->textColor);
-    fntRenderString(gTheme->fonts[0], 8, 24, 0, gGuiScreenWidth - 16, 20, status, gTheme->textColor);
+    const u64 white = GS_SETREG_RGBA(0xff, 0xff, 0xff, 0x80);
+    fntRenderString(gTheme->fonts[0], 8, 3, 0, gGuiScreenWidth - 16, 20, line, white);
+    fntRenderString(gTheme->fonts[0], 8, 24, 0, gGuiScreenWidth - 16, 20, status, white);
 #endif
 }
 #endif
