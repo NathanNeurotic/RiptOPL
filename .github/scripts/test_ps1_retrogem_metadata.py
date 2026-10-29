@@ -16,6 +16,7 @@ vcd = (ROOT / 'src/sources/vcdsupport.cpp').read_text()
 vcd_h = (ROOT / 'include/vcdsupport.h').read_text()
 elems = (ROOT / 'src/gfx/themeelems.cpp').read_text()
 artload = (ROOT / 'src/gfx/artload.cpp').read_text()
+texcache = (ROOT / 'src/gfx/texcache.cpp').read_text()
 gamesource = (ROOT / 'src/sources/gamesource.cpp').read_text()
 supportbase = (ROOT / 'src/sources/supportbase.cpp').read_text()
 cue = (ROOT / 'src/sources/cuesupport.cpp').read_text()
@@ -165,7 +166,8 @@ typedef struct item_list item_list_t;
 struct item_list { int unused; };
 enum { FREE, LOADING, READY, ABSENT };
 constexpr int SLOTS = 4, EPOCH = 5;
-struct entry { char key[32]; int state, uid; };
+constexpr int CACHE_ID_PS1_BOTH_ABSENT = -3;
+struct entry { char key[32]; int state, uid, nameFallback; };
 static entry slots[SLOTS];
 static GSTEXTURE tex[SLOTS];
 static int nextUid = 100, claims;
@@ -173,7 +175,24 @@ static int haveId, haveName;
 static const char *ID = "SLUS_012.34", *NAME = "Crash";
 struct image_cache_t {
     int slotKeyedOther(int i, const char *value) const { return i >= 0 && i < SLOTS && strcmp(slots[i].key, value) != 0; }
+    int holdsFallback(int i, int uid, const char *value) const
+    {
+        return i >= 0 && i < SLOTS && slots[i].uid == uid && slots[i].nameFallback && !strcmp(slots[i].key, value);
+    }
+    void markFallback(int i, int uid)
+    {
+        if (i >= 0 && i < SLOTS && slots[i].uid == uid)
+            slots[i].nameFallback = 1;
+    }
+    GSTEXTURE *residentByValue(const char *value)
+    {
+        for (int i = 0; i < SLOTS; i++)
+            if (slots[i].state == READY && !strcmp(slots[i].key, value))
+                return &tex[i];
+        return NULL;
+    }
 };
+static int cacheAbsenceIsCurrent(int uid) { return uid == EPOCH; }
 /* texcache.cpp's contract: fast path by (id, UID), a parked -2 honoured for this fail epoch,
    reunion by value (loading adopts, absent parks, ready returns), else claim a slot and queue. */
 static GSTEXTURE *cacheGetTextureEx(image_cache_t *, item_list_t *, int *cacheId, int *uid, char *value, int)
@@ -233,7 +252,7 @@ static GSTEXTURE *frames(int *cid, int *uid, int n)
     strcpy(id, ID);
     strcpy(name, NAME);
     for (int i = 0; i < n; i++) {
-        t = ps1IdArt(&cache, &list, cid, uid, id, name, 0);
+        t = cacheGetTextureIdOrName(&cache, &list, cid, uid, id, name, 0);
         work();
     }
     return t;
@@ -246,7 +265,16 @@ int main(void)
     assert(frames(&cid, &uid, 5) == &tex[cid] && !strcmp(slots[cid].key, ID) && claims == 1);
     reset(0, 1), cid = -1; /* no id art: the name fallback draws, and stays drawn without re-reads */
     assert(frames(&cid, &uid, 8) == &tex[cid] && !strcmp(slots[cid].key, NAME) && claims == 2);
+    /* ...even once the id's absence memo is evicted (parked memos go first on a full cache): the row
+       stays on its name slot instead of re-reading the id and flashing the placeholder meanwhile */
+    for (int i = 0; i < SLOTS; i++)
+        if (slots[i].state == ABSENT)
+            memset(&slots[i], 0, sizeof(slots[i]));
+    assert(frames(&cid, &uid, 8) == &tex[cid] && !strcmp(slots[cid].key, NAME) && claims == 2);
     reset(0, 0), cid = -1; /* neither: both parked, nothing re-queued */
+    assert(frames(&cid, &uid, 8) == NULL && claims == 2 && cid == CACHE_ID_PS1_BOTH_ABSENT);
+    for (int i = 0; i < SLOTS; i++) /* both memos evicted: the row's own park still holds */
+        memset(&slots[i], 0, sizeof(slots[i]));
     assert(frames(&cid, &uid, 8) == NULL && claims == 2);
     reset(1, 1), cid = -1; /* name art already resident (an old row): the id still takes over */
     strcpy(slots[0].key, NAME), slots[0].state = READY, slots[0].uid = 1, cid = 0, uid = 1;
@@ -261,7 +289,7 @@ with tempfile.TemporaryDirectory() as directory:
     for label, source in (
         ('memo', MEMO_HARNESS.replace('@ROWS@', row_enum).replace('@SKIP@', skip).replace('@EXTRACT@', extract)
                  .replace('@CLASS@', klass).replace('@MEMO@', memo)),
-        ('art', ART_HARNESS.replace('@ART@', function(elems, 'static GSTEXTURE *ps1IdArt('))),
+        ('art', ART_HARNESS.replace('@ART@', function(texcache, 'GSTEXTURE *cacheGetTextureIdOrName('))),
     ):
         cfile = folder / (label + '.cpp')
         cfile.write_text(source)
@@ -276,7 +304,7 @@ art_id = function(gamesource, 'int GameSource::ps1ArtId(')
 assert 'FAV_MODE' in art_id and 'APP_MODE' in art_id and 'cueIsCueEntry(row)' in art_id and '".VCD"' in art_id
 assert art_id.index('ps1RowIdRequest(') < art_id.index('ps1RowIdCached(')
 consumer = function(elems, 'GSTEXTURE *getGameImageTextureEx(')
-assert consumer.index('ps1ArtId(') < consumer.index('ps1IdArt(') < consumer.rindex('cacheGetTextureEx(')
+assert consumer.index('ps1ArtId(') < consumer.index('cacheGetTextureIdOrName(') < consumer.rindex('cacheGetTextureEx(')
 # Ember rows are noted with their device root; the scan stays string-only.
 fill = function(cue, 'cueFillGameListUnsorted(') if 'cueFillGameListUnsorted(' in cue else cue
 assert 'gVcdSupport.noteScanDir(entries[i].name, devPrefix, PS1_ROW_CUE);' in fill
