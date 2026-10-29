@@ -84,7 +84,7 @@ running it streams the handful of memory addresses that game's achievements depe
 else — talking to the RetroAchievements servers, deciding what unlocked, your login — happens on the
 PC.</p>
 <p>Based on the RetroAchievements implementation by <strong><a href="https://github.com/hacan359/Open-PS2-Loader/pull/1">hacan359 (yoba)</a></strong>.
-Use the upstream <strong><a href="https://github.com/hacan359/xerabora">xeRAbora PC client</a></strong> with RiptOPL's RA build. Download the required <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v0.1.0-alpha.17">v0.1.0-alpha.17 release</a></strong>.</p>
+Use the upstream <strong><a href="https://github.com/hacan359/xerabora">xeRAbora PC client</a></strong> with RiptOPL's RA build. Download the required <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v1.0.1">v1.0.1 release</a></strong>.</p>
 <p>RiptOPL's real-hardware stabilization was contributed by <strong><a href="https://github.com/oMrRexD">oMrRexD</a></strong> through
 PRs <strong>#702–#705</strong>, covering the ee_core stack squeeze, MMCE DEV9 dependency, cold-launch network
 bring-up / unusable-IP fallback, and the misplaced RA settings rows.</p>
@@ -151,7 +151,7 @@ as finished.</p>
 <ol>
 <li>Start <strong>RIPTOPL-RA.ELF</strong> from the RetroAchievements kit (<code>rolling-ra</code>). The Korium and
 IncebtIon kits have no achievement telemetry and need no companion PC.</li>
-<li>Run <strong>xeRAbora v0.1.0-alpha.17</strong> on the companion PC and sign in to your RetroAchievements
+<li>Run <strong>xeRAbora v1.0.1</strong> (alpha.17 or later) on the companion PC and sign in to your RetroAchievements
 account in its Settings page. Keep it running.</li>
 <li>In <strong>Settings → Network</strong>, leave <strong>RA Mode</strong> on <strong>Xerabora</strong>, turn <strong>RetroAchievements
 telemetry</strong> on and save. Telemetry is Off on a fresh start. Give the PS2 working network
@@ -501,7 +501,7 @@ Updating the external client alone does not update the telemetry code in your EL
 <li><strong>PC-requested return:</strong> the client's return command takes the existing IGR path, so it is unavailable in Mode 6.</li>
 <li><strong>Snapshot delivery:</strong> telemetry polls every 4 ms, sends each new snapshot once, retries busy or torn copies, repeats an unchanged snapshot after ~1 second, and marks the staged sequence sent only after every part is accepted.</li>
 </ul>
-<div class="callout amber"><div class="h">Important</div>Use <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v0.1.0-alpha.17">xeRAbora v0.1.0-alpha.17</a></strong> with this build, the version the original OPL fork also pairs with. Its wire protocol is unchanged since alpha.10. Later releases (v1.0.x) have not been checked against this build. Host tests and successful builds do not establish console timing or game compatibility; the alpha.10 hardware report above is historical evidence, not validation of this update.</div>
+<div class="callout amber"><div class="h">Important</div>Use <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v1.0.1">xeRAbora v1.0.1</a></strong> with this build; alpha.17 or later works. The console wire protocol is unchanged since alpha.10. Since alpha.17 the client has only gained a setting that keeps unlock notices off the TV (it then sends nothing) and reads optional link counters from the snapshot header. That is from a source review of xeRAbora <code>v0.1.0-alpha.17...v1.0.1</code> and its console fork <code>fa2d2e42...a9f97397</code>; <strong>v1.0.1 is NOT TESTED on hardware with this build.</strong> Host tests and successful builds do not establish console timing or game compatibility; the alpha.10 hardware report above is historical evidence, not validation of this update.</div>
 <hr/>
 <h2 id="files-on-the-card">Files on the card</h2>
 <pre><code>&lt;device root&gt;/RA/&lt;serial&gt;.wl        e.g. mass0:/RA/SLUS_210.65.wl
@@ -527,7 +527,7 @@ PS2 save manager for a memory-card installation, then copy the other folders sep
 <code>RIPTOPL-RA-IncebtIon.ELF</code> and <code>APP_RIPTOPL-RA-IncebtIon.psu</code>; inside it the app is still
 <code>APP_RIPTOPL-RA</code>), and <code>RIPTOPL-RA-VARIANTS.zip</code> with the <code>pademu0</code> loader (pad emulation compiled
 out); <code>RIPTOPL-RA-VARIANTS-IncebtIon.zip</code> is the same loader with the IncebtIon theme. The kit also carries <strong><code>xeRAbora.url</code></strong> (pointing directly to the paired
-<a href="https://github.com/hacan359/xerabora/releases/tag/v0.1.0-alpha.17">v0.1.0-alpha.17 release</a>),
+<a href="https://github.com/hacan359/xerabora/releases/tag/v1.0.1">v1.0.1 release</a>),
 because the loader does nothing without the PC client.</p>
 <p>The standard editions are unaffected: every RA source file and call site is behind
 <code>#ifdef RETROACHIEVEMENTS</code>, the standard kits reject RA resources, and every build manifest
