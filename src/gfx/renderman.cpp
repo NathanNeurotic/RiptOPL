@@ -256,6 +256,17 @@ int Renderer::setMode(int force)
             // other _gsKit_create_passes caller is gsKit_hires_set_bg, which OPL never calls (and
             // must not casually: a bg texture replaces the baked clear entirely).
             gsGlobal->PrimAlphaEnable = GS_SETTING_OFF;
+            // gsKit_hires_init_screen raises its CALLER to priority 2 (a HACK in gsHires.c, so the
+            // caller sits right under its priority-1 DMA thread) and gsKit_hires_deinit_global never
+            // lowers it again. Remember who that is and what it ran at, so end() can put it back:
+            // otherwise one visit to a 704-wide, 720p or 1080i mode left the GUI thread (31 since
+            // main) at 2 until reboot, above the background-music threads (30/31) it normally yields
+            // to, in every mode chosen after it.
+            // setMode can also run on the IO worker (applyConfig from _loadConfig), so the thread is
+            // recorded, not assumed to be guiThreadID.
+            ee_thread_status_t status;
+            hiresThread_ = GetThreadId();
+            hiresPriority_ = (ReferThreadStatus(hiresThread_, &status) >= 0) ? status.current_priority : -1;
             gsKit_hires_init_screen(gsGlobal, rm_mode_table[vmode_].passes);
             gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
         } else {
@@ -320,6 +331,12 @@ void Renderer::end(void)
 {
     if (hires_) {
         gsKit_hires_deinit_global(gsGlobal);
+        // Undo gsKit_hires_init_screen's priority bump (see setMode). ReferThreadStatus returns the
+        // status (>= 0) on the EE, so a failed lookup is the only case left at -1 and skipped.
+        if (hiresThread_ >= 0 && hiresPriority_ >= 0)
+            ChangeThreadPriority(hiresThread_, hiresPriority_);
+        hiresThread_ = -1;
+        hiresPriority_ = -1;
     } else {
         gsKit_deinit_global(gsGlobal);
         gsKit_remove_vsync_handler(vsyncId_);

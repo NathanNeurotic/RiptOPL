@@ -67,6 +67,9 @@ private:
     u8 hires_ = 0;
     u8 wakeCount_ = 0;
     int vsyncId_ = -1;
+    // The thread gsKit_hires_init_screen raised to priority 2, and the priority it had before (-1: none).
+    int hiresThread_ = -1;
+    int hiresPriority_ = -1;
 
     // Display Aspect Ratio
     int aspectWidth_ = 4;
