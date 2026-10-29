@@ -217,6 +217,44 @@ int ImageCache::slotKeyedOther(int i, const char *value) const
     return i >= 0 && i < count_ && strlen(value) < sizeof(content_[i].key) && strcmp(content_[i].key, value) != 0;
 }
 
+int ImageCache::holdsFallback(int i, int uid, const char *value) const
+{
+    if (i < 0 || i >= count_)
+        return 0;
+
+    const cache_entry_t *entry = &content_[i];
+    return entry->UID == uid && entry->nameFallback && strcmp(entry->key, value) == 0;
+}
+
+void ImageCache::markFallback(int i, int uid)
+{
+    if (i >= 0 && i < count_ && content_[i].UID == uid)
+        content_[i].nameFallback = 1;
+}
+
+GSTEXTURE *ImageCache::residentByValue(const char *value)
+{
+    int i;
+
+    if (strlen(value) >= sizeof(content_[0].key))
+        return NULL;
+
+    for (i = 0; i < count_; i++) {
+        cache_entry_t *entry = &content_[i];
+        if (entry->qr == NULL && entry->lastUsed != 0 && entry->texture.Mem != NULL && strcmp(entry->key, value) == 0) {
+            entry->lastUsed = guiFrameId; // still on screen: keep it away from the eviction scan
+            return &entry->texture;
+        }
+    }
+
+    return NULL;
+}
+
+int cacheAbsenceIsCurrent(int uid)
+{
+    return (unsigned int)uid == gArtW.failEpoch;
+}
+
 // LOOKUP ONLY: hand back this item's texture if its slot is still live, and never claim a slot,
 // never queue a load, never touch the fail memo. For a caller that wants to keep DRAWING art it
 // already has while deliberately not asking for more -- without this, "don't request" also means

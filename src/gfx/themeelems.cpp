@@ -909,30 +909,6 @@ int isHiddenArtworkCache(const image_cache_t *cache)
            (!gEnableLogoArt && strcmp(cache->suffix(), "LGO") == 0);
 }
 
-// The id-keyed probe with the name-keyed fallback. The row has one cache slot for both values.
-static GSTEXTURE *ps1IdArt(image_cache_t *cache, item_list_t *list, int *cacheId, int *cacheUid, char *id, char *name, int isPriority)
-{
-    // UID alone cannot tell which value owns the slot: when another value does (or an absence is
-    // parked with no value attached), let reunion-by-value find the id's own slot.
-    if (*cacheId == -2 || cache->slotKeyedOther(*cacheId, id))
-        *cacheId = -1;
-    GSTEXTURE *idTex = cacheGetTextureEx(cache, list, cacheId, cacheUid, id, isPriority);
-    if (idTex != NULL || *cacheId != -2)
-        return idTex; // resident, or still loading: adopted on a later frame
-
-    // The id art is parked absent for this fail generation. That memo belongs to the id value: set
-    // it aside so it cannot shadow the name fallback, and restore it only when the name probe left
-    // the slot untouched (a loading or resident name entry owns the slot).
-    int parkId = *cacheId, parkUid = *cacheUid;
-    *cacheId = -1;
-    GSTEXTURE *nameTex = cacheGetTextureEx(cache, list, cacheId, cacheUid, name, isPriority);
-    if (*cacheId == -1) {
-        *cacheId = parkId;
-        *cacheUid = parkUid;
-    }
-    return nameTex;
-}
-
 GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct submenu_item *item, int isPriority)
 {
     // Folder browsing: a folder row has no cover art (and no startup key). Never route it through the
@@ -973,7 +949,7 @@ GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct sub
         // identities. The id resolves off-thread into the memo; the request makes that happen even
         // without an ItemText element. This only changes which file a cover is READ from.
         if (gsOf(list)->ps1ArtId(list, item->id, startup, id, sizeof(id)))
-            return ps1IdArt(cache, list, cacheId, cacheUid, id, startup, isPriority);
+            return cacheGetTextureIdOrName(cache, list, cacheId, cacheUid, id, startup, isPriority);
         return cacheGetTextureEx(cache, list, cacheId, cacheUid, startup, isPriority);
     }
 
@@ -1162,10 +1138,10 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
                             // pending, starting a full-screen BG read here would occupy the art worker before
                             // the carousel gets to enqueue its visible neighbours. Hold only this background
                             // request for that short window. A loaded cover, disabled art, or a confirmed
-                            // absent cover (-2) releases the gate immediately.
+                            // absent cover (-2, or -3 for a PS1 row with neither art) releases the gate immediately.
                             if (gEnableArt && coverTexture == NULL && cfImg->cache->userId() >= 0 &&
                                 cfImg->cache->userId() < gTheme->gameCacheCount && item->item.cache_id != NULL &&
-                                item->item.cache_id[cfImg->cache->userId()] != -2)
+                                item->item.cache_id[cfImg->cache->userId()] >= -1)
                                 coverflowCoverSettled = 0;
                         }
                     }

@@ -532,6 +532,61 @@ GSTEXTURE *cacheGetTextureEx(image_cache_t *cache, item_list_t *list, int *cache
     return NULL;
 }
 
+// The id-keyed probe with the name-keyed fallback (PS1 rows: RetroGEM disc id first, row name second).
+// The row has one (cacheId, UID) pair for both values.
+GSTEXTURE *cacheGetTextureIdOrName(image_cache_t *cache, item_list_t *list, int *cacheId, int *cacheUid, char *id, char *name, int isPriority)
+{
+    // Both values asked and parked absent in this fail generation: nothing to ask, no slot held.
+    if (*cacheId == CACHE_ID_PS1_BOTH_ABSENT) {
+        if (cacheAbsenceIsCurrent(*cacheUid))
+            return NULL;
+        *cacheId = -1;
+    }
+
+    // Already settled on the name fallback: stay on it while it is resident, exactly as a resident
+    // PS2 cover is never re-asked for. Re-asking for the id every frame needed the id's absence memo
+    // to stay resident in a SECOND slot, and a parked memo (lastUsed 0) is the first thing any claim
+    // evicts -- so on a full cache (coverflow warming fills it, one slot per row) every PS1 row with
+    // name art re-queued its id read, drew the placeholder while it ran, and flickered back to its
+    // cover when it failed, over and over. Once the slot is evicted the row asks for the id again,
+    // which is when id art added since shows up.
+    if (cache->holdsFallback(*cacheId, *cacheUid, name)) {
+        GSTEXTURE *nameTex = cacheGetTextureEx(cache, list, cacheId, cacheUid, name, isPriority);
+        if (*cacheId == -2)
+            *cacheId = CACHE_ID_PS1_BOTH_ABSENT;
+        return nameTex;
+    }
+
+    // UID alone cannot tell which value owns the slot: when another value does (or an absence is
+    // parked with no value attached), let reunion-by-value find the id's own slot.
+    if (*cacheId == -2 || cache->slotKeyedOther(*cacheId, id))
+        *cacheId = -1;
+    GSTEXTURE *idTex = cacheGetTextureEx(cache, list, cacheId, cacheUid, id, isPriority);
+    if (idTex != NULL)
+        return idTex;
+    if (*cacheId != -2) {
+        // The id art is still loading (a re-probe after the name slot was evicted, say). Keep drawing the name
+        // art the cache still holds instead of flashing the placeholder; NULL when there is none.
+        return cache->residentByValue(name);
+    }
+
+    // The id art is parked absent for this fail generation. That memo belongs to the id value: set
+    // it aside so it cannot shadow the name fallback, and restore it only when the name probe left
+    // the slot untouched (a loading or resident name entry owns the slot).
+    int parkId = *cacheId, parkUid = *cacheUid;
+    *cacheId = -1;
+    GSTEXTURE *nameTex = cacheGetTextureEx(cache, list, cacheId, cacheUid, name, isPriority);
+    if (*cacheId == -1) {
+        *cacheId = parkId;
+        *cacheUid = parkUid;
+    } else if (*cacheId == -2) {
+        *cacheId = CACHE_ID_PS1_BOTH_ABSENT; // cacheUid already holds the fail generation
+    } else {
+        cache->markFallback(*cacheId, *cacheUid);
+    }
+    return nameTex;
+}
+
 GSTEXTURE *cacheGetTexture(image_cache_t *cache, item_list_t *list, int *cacheId, int *UID, char *value)
 {
     return cacheGetTextureEx(cache, list, cacheId, UID, value, 0);
