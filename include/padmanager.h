@@ -22,9 +22,10 @@ struct pad_data_t
 
     char actAlign[6];
     int actuators;
-    int actAligned; // padSetActAlign confirmed; see padRumbleRealign()
-    int needsInit;  // reconnect-edge re-init pending; runs once the verified-idle gate opens (see readPads)
-    int readOk;     // the last native read delivered a sample (rightStick trusts no older one)
+    int actAligned;  // padSetActAlign confirmed; see padRumbleRealign()
+    int needsInit;   // reconnect-edge re-init pending; runs once the verified-idle gate opens (see readPads)
+    int readOk;      // the last native read delivered a sample (rightStick trusts no older one)
+    u32 sampleTicks; // cpu_ticks() of the last delivered sample (see PAD_MISS_HOLD_TICKS)
 };
 
 class PadManager
@@ -76,6 +77,8 @@ private:
     // gathered pad data
     u32 paddata_ = 0;
     u32 oldpaddata_ = 0;
+    // Buttons in paddata_ only because a pad missed this poll (see PAD_MISS_HOLD_TICKS).
+    u32 heldUnknown_ = 0;
     int delaycnt_[16] = {};
     int paddelay_[16] = {};
     // Menu rumble pulse state (the PADEMU poll path drives the DS3/DS4/DS5 motors from it too).
