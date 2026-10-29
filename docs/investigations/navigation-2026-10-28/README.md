@@ -13,8 +13,25 @@ diagnostic ELF for one console session. [The trial instructions](TEST-INSTRUCTIO
 describe its automatic captures and navigation-only candidate. Ordinary builds
 compile out the diagnostic hooks; only the dedicated trial build defines
 `OPL_NAV_INVESTIGATION`. No SDK, driver, default setting or release configuration
-is changed. No physical console test, hardware bisect or confirmed last-good
-binary is available.
+is changed. No captured physical-console trace, hardware bisect or confirmed
+last-good binary is available.
+
+## Reported follow-up test
+
+On October 28, the user reported **completely normal navigation** while testing
+the supplied NAVTRACE ELF built from `20d3fe5323a74d7014a0d37db9f19dcab91a7988`.
+They confirmed this meant no double steps or interrupted holds, in addition to
+no full UI stall. This is a reported non-reproduction on that setup, not evidence
+that the candidate cured the original reporter's issue.
+
+No `NAVTRACE.TXT` from that run has been supplied yet. Capture modes, pad packet
+progression, input gaps, backend/index conditions and workload overlap therefore
+remain unverified. The first capture starts with original input handling (A);
+the guard is enabled only after a completed idle capture. A clean A trace would
+be a useful control demonstrating that the issue was absent before the guard
+was active. Logging and the banner remain active in both modes and can change
+timing, so neither mode is a byte-identical comparison against the release ELF.
+Keep the same supplied binary for the reporter's planned comparison test.
 
 ## What the evidence now supports
 
