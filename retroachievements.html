@@ -277,6 +277,10 @@ path. Disc boot, telemetry across game IOP resets and the IGR return path still 
 <td>RA kit's ORBIT runtime (below), with the support check run from the menu over the UDPFS link; <strong>not hardware-tested</strong></td>
 </tr>
 <tr>
+<td>UDPBD / UDPFS IMG on <code>&lt;OPL&gt;</code></td>
+<td><strong>no</strong> telemetry: OPL's RA module needs the SMB network stack, which cannot share the adapter with the block driver</td>
+</tr>
+<tr>
 <td>PS1 / USB VCD (POPStarter)</td>
 <td>yes, through its own module (below); <strong>NOT TESTED on hardware</strong></td>
 </tr>

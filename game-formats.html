@@ -131,8 +131,8 @@ iLink, MMCE, SMB and internal-HDD paths. Ordinary file-based installations use
 the same <code>CD/</code> or <code>DVD/</code> placement and naming rules as ISO. APA installations
 require an appropriate installer rather than copying a file into a folder.</p>
 <p>When Neutrino is selected for a direct ZSO image, RiptOPL falls back to OPL on
-paths with a built-in core. UDPFS/UDPBD have no such fallback, so a compressed
-image reaching Neutrino directly is refused. A <strong>server-decoded virtual ISO</strong>
+paths with a built-in core, which now include UDPBD and UDPFS IMG. UDPFS Files has
+no such fallback, so a compressed image reaching Neutrino there is refused. A <strong>server-decoded virtual ISO</strong>
 over UDPFS avoids this restriction: Neutrino receives ISO data, not ZSO bytes.</p>
 <p>See the <a href="https://nathanneurotic.github.io/RiptOPL/zso.html">ZSO guide</a>
 for conversion commands, and the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/NEUTRINO.md">Neutrino reference</a> for core limits.
