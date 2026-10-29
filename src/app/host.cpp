@@ -8,6 +8,7 @@
 #include "include/libview.h"
 #include "include/lang.h"
 #include "include/cheatman.h"
+#include "include/pad.h"
 #include "include/pggsm.h"
 #include "../ee_core/include/coreconfig.h"
 #ifdef RETROACHIEVEMENTS
@@ -103,6 +104,10 @@ public:
     const char *listDisplayName(item_list_t *itemList, int id, const char *text) override { return cfgTitleDisplayName(itemList, id, text); }
     void bdmAttach(int mode, int bdmType) override { libViewBdmAttach(mode, bdmType); }
 };
+
+#ifdef IGR_MENU
+static void *igrCheats; // OplLaunch::igrCheatsPlace's block, for fillCoreConfig
+#endif
 
 class OplLaunch final: public LaunchServices
 {
@@ -208,6 +213,33 @@ public:
             config->GsmConfig.kGsDxDyOffsetSupported = gsm_config.kGsDxDyOffsetSupported;
             config->GsmConfig.FIELD_fix = gsm_config.FIELD_fix;
         }
+
+#ifdef IGR_MENU
+        // The in-game menu (RIPPS2's, by akilluminati47; ee_core igrmenu.c). RetroAchievements editions and the IGS
+        // and freeze-report configurations build ee_core without it (no room), and leave these zero.
+        config->IgrMenu = gIgrMenu;
+        config->IgrConfirmCircle = gSelectButton == KEY_CIRCLE;
+        if (igrCheats != NULL && config->gCheatList != NULL) {
+            set_cheats_list_live(igrCheats); // every hook, and the ticked cheats as the menu builds them
+            config->gCheatList = GetCheatsList();
+            config->IgrCheats = igrCheats;
+        }
+#endif
+    }
+
+    unsigned int igrCheatsPlace(void *at, unsigned int room) override
+    {
+#ifdef IGR_MENU
+        igrCheats = NULL;
+        int bytes = gIgrMenu && GetCheatsEnabled() ? igrCheatsPack(at, room) : 0;
+        if (bytes > 0)
+            igrCheats = at;
+        return bytes > 0 ? (unsigned int)bytes : 0;
+#else
+        (void)at;
+        (void)room;
+        return 0;
+#endif
     }
 
     int raWatchCount() override

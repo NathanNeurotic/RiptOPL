@@ -109,6 +109,10 @@ public:
     virtual unsigned int raWorkBytes(const void *at) = 0;
     // Entries in the loaded RetroAchievements watch list (0 outside that flavour or for an untracked game).
     virtual int raWatchCount() = 0;
+    // The in-game menu's CHEATS page (ee_core igrcheats.h): with the menu and the game's cheats on, every cheat of
+    // the file is packed at 'at' (room bytes); returns the bytes used (0: none). fillCoreConfig then hands it to
+    // ee_core. Always 0 in builds without IGR_MENU.
+    virtual unsigned int igrCheatsPlace(void *at, unsigned int room) = 0;
     virtual bool discCheckBusy() = 0;
 };
 
