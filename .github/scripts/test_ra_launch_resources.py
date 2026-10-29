@@ -26,6 +26,8 @@ load_begin = special_reset.index("    ra_snap_iop = 0;\n    if (RA_TelemetryWant
 load_end = special_reset.rindex("\n#endif")
 load_body = special_reset[load_begin:load_end]
 module_loader = function(mod, "int LoadOPLModule(int id, int mode, int arg_len, const char *args)")
+transport = (function(mod, "static int IsRequiredTransport(int id)") + "\n" +
+             function(mod, "static void RequiredTransportFailed(void)"))
 
 harness = r"""
 #include <assert.h>
@@ -40,6 +42,10 @@ harness = r"""
 #define HTTP_MODE 4
 #define OPL_MODULE_ID_RAUDP 111
 #define OPL_MODULE_ID_PCCF 60
+#define OPL_MODULE_ID_SMAP_UDPBD 61
+#define OPL_MODULE_ID_UDPFS_SMAP 62
+#define OPL_MODULE_ID_UDPFS_MINISTACK 63
+#define OPL_MODULE_ID_UDPFS_BD 64
 #define MODMGR 0
 #define BGCOLND(...) ((void)0)
 #define DBGCOL(...) ((void)0)
@@ -81,7 +87,7 @@ static int LoadMemModule(int mode, void *p, unsigned size, int argc, const char 
 }
 static void *RA_OverlayEventBuffer(void) { return (void *)0x00123440; }
 """
-harness += wanted + "\n" + hex32 + "\n" + module_loader + "\n"
+harness += wanted + "\n" + hex32 + "\n" + transport + "\n" + module_loader + "\n"
 harness += "static void load_ra(EECoreConfig_t *config) {\n" + load_body + "\n}\n"
 harness += r"""
 static void reset(void) {
