@@ -118,7 +118,7 @@ multi-disc setups, and memory-card storage — see the
 list with filters, or one locked library. They remain views of the same device page — with the same
 covers, favorites, and per-game settings — rather than separate device tabs.</p>
 
-<div class="callout info"><div class="h">POPS UDPFS and Ember network libraries</div><b>UDPFS Files</b> lists uppercase <code>POPS/*.VCD</code> alongside Ember titles and launches them through <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0">Okeanos's UDPFS Assault 1.0.0</a>, which serves every POPSTARTER file and VMC save from the server. No USB device is involved. See <a href="ps1-vcd.html#pops-udpfs">setup, supplied files and credits</a>. The VCD handoff has not been tested on a real console. UDPBD and UDPFS IMG remain Ember-only.</div>
+<div class="callout info"><div class="h">POPS UDPFS and Ember network libraries</div><b>UDPFS Files</b> lists uppercase <code>POPS/*.VCD</code> and <code>POPS/*.cue</code> games alongside Ember titles and launches them through <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST">Okeanos's UDPFS Assault TEST</a> pre-release, which serves every POPSTARTER file and VMC save from the server and builds a VCD from a cue sheet on the fly. No USB device is involved. See <a href="ps1-vcd.html#pops-udpfs">setup, supplied files and credits</a>. The VCD handoff has not been tested on a real console. UDPBD and UDPFS IMG remain Ember-only.</div>
 
 <h2 id="default-game-view">PS2/PS1 Game Display</h2>
 
@@ -307,18 +307,18 @@ copied, nothing already there is overwritten, and a copy that fails part way is 
 <p>From RIPPS2 builds 85, 89 and 115 by akilluminati47. NOT TESTED on hardware.</p>
 
 <h2 id="pops-udpfs">POPS UDPFS with BDM-UDPFS Assault</h2>
-<p>RiptOPL uses <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0">Okeanos's UDPFS Assault 1.0.0</a> as its only POPSTARTER UDPFS
-BDMA driver. It serves every <code>mass:</code> request from the UDPFS server, including POPS dependencies
+<p>RiptOPL uses <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST">Okeanos's UDPFS Assault TEST</a> pre-release (2026-10-28; it replaces
+<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0">1.0.0</a>) as its only POPSTARTER UDPFS BDMA driver. It serves every <code>mass:</code> request from the UDPFS server, including POPS dependencies
 and VMC writes. <strong>USB is not required.</strong> The older Alpha driver, which tried USB first and only
 fetched VCDs from the network, is no longer bundled or selected. The driver starts again after POPSTARTER
 resets the IOP, independently of RiptOPL's own UDPFS connection, and is separate from Neutrino's PS2 UDPFS
 loader.</p>
 
-<p><strong>BDMA Mode → UDPFS</strong> uses <code>POPS/usbd.irx.udpfs</code> (the unmodified 44,597-byte
+<p><strong>BDMA Mode → UDPFS</strong> uses <code>POPS/usbd.irx.udpfs</code> (the unmodified 51,029-byte
 <code>udp_fs_assault.irx</code>) and <code>POPS/usbhdfsd.irx.udpfs</code> (the 34,508-byte
 <code>usbd_bd_assault.irx</code>). They install as <code>mc?:/POPSTARTER/usbd.irx</code> and
 <code>usbhdfsd.irx</code>. With <strong>VCD BDMA Apply on Launch</strong> enabled, a UDPFS game equips this pair
-automatically; a matching installed pair is not copied again, and an old Alpha pair counts as stale. With
+automatically; a matching installed pair is not copied again, and a 1.0.0 or Alpha pair counts as stale and is replaced. With
 automatic equip disabled, equip <strong>UDPFS</strong> manually before launching.</p>
 
 <p>Keep all support files in <code>POPS/</code> under the server's shared root (<code>udpfs:/POPS/</code> while
@@ -326,6 +326,16 @@ RiptOPL is running). Automatic equip reads this folder only and never substitute
 your own <code>POPSTARTER.ELF</code>, <code>POPS_IOX.PAK</code>, VCDs and other POPS dependencies there at their
 normal paths. Use uppercase <code>.VCD</code> and exact path casing on Linux servers. RiptOPL does not migrate
 existing saves.</p>
+
+<p><strong>BIN/CUE without conversion.</strong> A game can also be <code>POPS/&lt;game&gt;.cue</code> (or <code>.CUE</code>)
+plus the <code>.bin</code> file(s) it names, in the same folder. RiptOPL lists it like a VCD, and the driver
+presents it to POPSTARTER as <code>POPS/&lt;game&gt;.VCD</code>, built on the fly. A real <code>.VCD</code> with the same
+name always wins, and the list shows that game once. One <code>.bin</code> per disc or one per track (Redump)
+both work. Upstream limits: track 1 must be MODE2/2352, no PREGAP/POSTGAP, every track needs INDEX 01,
+<code>.bin</code> sizes must be multiples of 2352, cue sheets up to 16 KiB and 99 tracks, images under 4 GiB.
+The driver opens each <code>.bin</code> once at start (about 10 ms per file) and uses about 46 KB more IOP RAM
+than 1.0.0. A cue game's disc ID is not read from the image in the list or for the RetroGEM barcode; name
+the file <code>SLUS_123.45.Title.cue</code> if you want the ID shown. <strong>NOT TESTED</strong> on a real console.</p>
 
 <table>
 <thead>
