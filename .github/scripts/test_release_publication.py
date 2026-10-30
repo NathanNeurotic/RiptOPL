@@ -249,6 +249,50 @@ class PublicationTests(unittest.TestCase):
         deleted = [c[3] for c in calls if c[:2] == ("release", "delete-asset")]
         self.assertEqual(deleted, ["RIPTOPL-Korium-v1.2.0-Beta-3924.zip", "RIPTOPL-Korium.zip"])
 
+    def refresh(self, fail=None, stays_draft=False, moves=True):
+        calls, state = [], dict(isDraft=False, publishedAt="2026-10-16T23:47:34Z")
+
+        def fake(*args, retry=True):
+            calls.append(args)
+            if args[:2] == ("release", "view"):
+                return json.dumps(state)
+            if args[:2] == ("release", "edit"):
+                if fail and fail in args:
+                    raise subprocess.CalledProcessError(1, "gh")
+                if "--draft=true" in args:
+                    state["isDraft"] = True
+                elif not stays_draft:
+                    state["isDraft"] = False
+                    if moves:
+                        state["publishedAt"] = "2026-10-30T06:00:00Z"
+            return ""
+
+        with patch.object(publisher, "gh", side_effect=fake):
+            publisher.refresh_release_date("owner/repo", "rolling-incebtion", ("--prerelease=false", "--latest=true"))
+        return [c for c in calls if c[:2] == ("release", "edit")], state
+
+    def test_republished_channel_gets_a_new_date_and_keeps_its_flags(self):
+        edits, state = self.refresh()
+        self.assertEqual(edits, [("release", "edit", "rolling-incebtion", "--repo", "owner/repo", "--draft=true"),
+                                 ("release", "edit", "rolling-incebtion", "--repo", "owner/repo", "--draft=false",
+                                  "--prerelease=false", "--latest=true")])
+        self.assertEqual(state, dict(isDraft=False, publishedAt="2026-10-30T06:00:00Z"))
+        # GitHub ignoring the flip is reported, not fatal: the channel is still published.
+        self.assertFalse(self.refresh(moves=False)[1]["isDraft"])
+
+    def test_date_refresh_never_leaves_a_channel_hidden(self):
+        # A failed draft call still republishes; a channel that stays a draft fails the run.
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.refresh(fail="--draft=true")
+        with self.assertRaisesRegex(RuntimeError, "still a draft"):
+            self.refresh(stays_draft=True)
+
+    def test_only_existing_channels_are_flipped_and_before_the_tag_check(self):
+        source = (ROOT / "tools" / "publish_editions.py").read_text(encoding="utf-8")
+        main = source[source.index("def main():"):]
+        self.assertIn("if exists:  # a first publication is already dated now\n                refresh_release_date(repo, tag, flags)", main)
+        self.assertLess(main.index("refresh_release_date("), main.index('reference = json.loads('))
+
     def test_ra_kit_ships_the_mbedtls_licence_and_ordinary_kits_refuse_it(self):
         package = (ROOT / "tools/package_edition.py").read_text(encoding="utf-8")
         app = (ROOT / ".github/scripts/package_release_app.py").read_text(encoding="utf-8")
