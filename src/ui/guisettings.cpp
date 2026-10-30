@@ -3547,7 +3547,7 @@ static int guiConfirmVideoMode(void)
         rmDrawLine(50, 75, gGuiScreenWidth - 50, 75, gColWhite);
         rmDrawLine(50, 410, gGuiScreenWidth - 50, 410, gColWhite);
 
-        fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, gTheme->usedHeight >> 1, ALIGN_CENTER, 0, 0, _l(_STR_CFM_VMODE_CHG), gTheme->textColor);
+        int textBottom = guiDrawMsgText(_l(_STR_CFM_VMODE_CHG));
         // How long until the automatic revert (zackcage6's idea). Hidden during a hold. A hold does NOT
         // pause the deadline -- it only defers the revert check so a started hold can finish; let go
         // early after the deadline and the next pass reverts. Whole seconds rounded up, so it reads
@@ -3556,7 +3556,7 @@ static int guiConfirmVideoMode(void)
             int leftMs = OPL_VMODE_CHANGE_CONFIRMATION_TIMEOUT_MS - (int)((clock() - timeStart) / (CLOCKS_PER_SEC / 1000));
             char countdown[64];
             snprintf(countdown, sizeof(countdown), _l(_STR_CFM_VMODE_REVERT_IN), leftMs > 0 ? (leftMs + 999) / 1000 : 1);
-            fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, (gTheme->usedHeight >> 1) + 32, ALIGN_CENTER, 0, 0, countdown, gTheme->textColor);
+            fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, textBottom + 32, ALIGN_CENTER, 0, 0, countdown, gTheme->textColor);
         }
         guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? CROSS_ICON : CIRCLE_ICON, _STR_BACK, gTheme->fonts[0], 500, 417, gTheme->textColor);
         guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? CIRCLE_ICON : CROSS_ICON, _STR_CFM_VMODE_HOLD_KEEP, gTheme->fonts[0], 70, 417, gTheme->textColor);
