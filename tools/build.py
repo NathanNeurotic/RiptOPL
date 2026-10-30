@@ -65,7 +65,15 @@ def main():
                         default=os.environ.get("PS2BUILD_TOOLCHAIN", "gcc"))
     parser.add_argument("--out-dir", default="build")
     args = parser.parse_args()
-    return build(args.toolchain, args.out_dir)
+    definition = None
+    if args.toolchain == "llvm":
+        # LLVM -Os leaves an ee_core with the in-game menu (or IGS) under its 3 KB stack guard: -Oz, as
+        # build_edition.py does. LLVM builds are CI's compiler check only; GCC builds ps2.yaml as it is.
+        definition = yaml.safe_load((ROOT / "ps2.yaml").read_text())
+        for target in definition["targets"]:
+            if target["name"] == "eecore" and {"IGS", "IGR_MENU"} & set(target.get("defines", [])):
+                target["opt"] = "-Oz"
+    return build(args.toolchain, args.out_dir, definition)
 
 
 if __name__ == "__main__":
