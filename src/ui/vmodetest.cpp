@@ -40,12 +40,13 @@
 
 extern GSGLOBAL *gsGlobal;
 
-#define VMT_MODE_224P  13  // rm_mode_table rows, see renderman.cpp
-#define VMT_FIRST_WAIT 600 // frames before the first capture: device scans and cover art settle
-#define VMT_STEP_WAIT  240 // frames after each switch: theme reload and art settle
-#define VMT_MAX_W      640
-#define VMT_MAX_H      512
-#define VMT_LOG_SIZE   (16 * 1024)
+#define VMT_MODE_224P   13  // rm_mode_table rows, see renderman.cpp
+#define VMT_FIRST_WAIT  600 // frames before the first capture: device scans and cover art settle
+#define VMT_STEP_WAIT   240 // frames after each switch: theme reload and art settle
+#define VMT_TEST_FRAMES 360 // the test screen stays up this long (~6 s) so an outside screen grab can catch it
+#define VMT_MAX_W       640
+#define VMT_MAX_H       512
+#define VMT_LOG_SIZE    (16 * 1024)
 
 static const int vmtSteps[] = {13, 14, 13, 1, 13, 15, 13};
 #define VMT_STEP_COUNT ((int)(sizeof(vmtSteps) / sizeof(vmtSteps[0])))
@@ -56,7 +57,7 @@ enum { VMT_OFF = 0,
        VMT_DONE };
 
 static int vmtState = VMT_UNCHECKED;
-static int vmtStep, vmtFrames, vmtBootMode;
+static int vmtStep, vmtFrames, vmtBootMode, vmtReadback;
 static u8 *vmtCap;     // the capture being taken
 static u8 *vmtBase[2]; // the first 224p capture: [0] menu, [1] test screen
 static int vmtBaseW, vmtBaseH, vmtBaseBpp;
@@ -338,14 +339,14 @@ static void vmtSwitch(int mode)
 
     gVMode = mode;
     screenPosModeChanged(prev, gXOff, gYOff, gOverscan); // as the Interface dialog does, before applyConfig
-    host::app().applyConfig(-1, -1, 1); // the app layer, as guisettings reaches it
+    host::app().applyConfig(-1, -1, 1);                  // the app layer, as guisettings reaches it
 }
 
 static void vmtFinish(void)
 {
     vmtPrintf("\r\nboot mode %d%s\r\n", vmtBootMode, vmtBootMode == VMT_MODE_224P ? " (cold 224p baseline)" : " (NOT a cold 224p baseline: the first 224p capture came from a switch)");
     if (vmtCompared == 0)
-        vmtPrintf("VERDICT: nothing compared\r\n");
+        vmtPrintf("VERDICT: no readback in this run; compare the state lines above and outside screen grabs of the test screens\r\n");
     else if (vmtMismatch[1] == 0)
         vmtPrintf("VERDICT: the 224p test screen is pixel-identical after every round trip (%d compared); menu mismatches %d (animation and the clock also move these)\r\n", vmtCompared, vmtMismatch[0]);
     else
@@ -384,6 +385,12 @@ void vmodeTestFrame(void)
         }
         if (fd < 0)
             return;
+        // GS readback only when the file says "readback": in PCSX2 the frame after a readback never
+        // finished (the GUI thread spun in the next end-of-frame), so by default the test only holds
+        // each screen long enough for an outside screen grab and logs the state.
+        char arm[64] = {0};
+        read(fd, arm, sizeof(arm) - 1);
+        vmtReadback = strstr(arm, "readback") != NULL;
         close(fd);
         vmtCap = (u8 *)memalign(64, VMT_MAX_W * VMT_MAX_H * 4);
         vmtLog = (char *)malloc(VMT_LOG_SIZE);
@@ -413,11 +420,17 @@ void vmodeTestFrame(void)
     char what[48];
     snprintf(what, sizeof(what), "\r\nstep %d", vmtStep);
     vmtLogState(what);
-    vmtCapture(0); // the menu frame that was just shown
-    vmtPrintf("  drawing the test screen\r\n");
+    if (vmtReadback)
+        vmtCapture(0); // the menu frame that was just shown
+    vmtPrintf("  test screen from %.1f s", (double)clock() / CLOCKS_PER_SEC);
     vmtSaveLog(); // so a hang in the next frame still says how far it got
-    vmtDrawTestScreen();
-    vmtCapture(1);
+    printf("VMT step %d vmode %d: test screen up\n", vmtStep, gVMode);
+    for (int i = 0; i < VMT_TEST_FRAMES; i++)
+        vmtDrawTestScreen();
+    vmtPrintf(" to %.1f s\r\n", (double)clock() / CLOCKS_PER_SEC);
+    printf("VMT step %d vmode %d: test screen down\n", vmtStep, gVMode);
+    if (vmtReadback)
+        vmtCapture(1);
     vmtSaveLog(); // after every step, so a hang still leaves the steps before it
 
     if (++vmtStep >= VMT_STEP_COUNT) {
