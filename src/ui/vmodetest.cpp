@@ -106,23 +106,30 @@ static void vmtSaveLog(void)
 #define VMT_GS_CSR   ((volatile u64 *)0x12001000)
 #define VMT_BUSDIR   ((volatile u64 *)0x12001040)
 #define VMT_VIF1STAT ((volatile u32 *)0x10003c00)
-#define VMT_VIF1FIFO ((volatile u128 *)0x10005000)
+
+// Spin until (*reg & mask) == want, at most ~1 s of polling. 0 on timeout.
+static int vmtWait(volatile u32 *reg, u32 mask, u32 want)
+{
+    for (u32 i = 0; i < 0x2000000; i++)
+        if ((*reg & mask) == want)
+            return 1;
+    return 0;
+}
 
 static int vmtDownload(void *dest, u32 vramByteAddr, int w, int h, int psm, int bpp)
 {
-    static union
-    {
-        u32 w[4];
-        u128 q;
-    } enablePath3 __attribute__((aligned(16))) = {{0x06000000, 0, 0, 0}}; // MSKPATH3(0)
     u64 chain[14] __attribute__((aligned(16)));
     u32 *c32 = (u32 *)chain;
     u64 *c64 = chain + 2;
     u32 qwc = (u32)(w * h * bpp) / 16;
     u32 prevImr;
+    int ok = 0;
 
+    // No MSKPATH3 here, unlike libdebug: rmEndFrame already waited for the GIF to finish, nothing
+    // else draws from this thread meanwhile, and the first PCSX2 run hung on the next frame after a
+    // capture -- the EE store that was meant to unmask PATH3 again is the suspect.
     c32[0] = 0;                               // NOP
-    c32[1] = 0x06008000;                      // MSKPATH3(1)
+    c32[1] = 0;                               // NOP
     c32[2] = 0x13000000;                      // FLUSHA
     c32[3] = 0x50000006;                      // DIRECT 6 qwords
     c64[0] = 5 | (1ULL << 15) | (1ULL << 60); // GIFTAG NLOOP 5, EOP, PACKED, NREG 1
@@ -148,29 +155,25 @@ static int vmtDownload(void *dest, u32 vramByteAddr, int w, int h, int psm, int 
     *VMT_D1_MADR = (u32)chain;
     *VMT_D1_CHCR = 0x101;
     asm volatile("sync.l");
-    while (*VMT_D1_CHCR & 0x0100)
-        ;
-    while ((*VMT_GS_CSR & 2) == 0)
-        ;
-    while (*VMT_VIF1STAT & 0x1f000000)
-        ;
-    *VMT_VIF1STAT = 1 << 23; // FDR: VIF1 FIFO reads from the GS
-    *VMT_BUSDIR = 1;
-    FlushCache(0);
-    *VMT_D1_QWC = qwc;
-    *VMT_D1_MADR = (u32)dest;
-    *VMT_D1_CHCR = 0x100;
-    asm volatile("sync.l");
-    while (*VMT_D1_CHCR & 0x0100)
-        ;
-    *VMT_D1_CHCR = prevChcr;
+    if (vmtWait(VMT_D1_CHCR, 0x0100, 0) && vmtWait((volatile u32 *)VMT_GS_CSR, 2, 2) && vmtWait(VMT_VIF1STAT, 0x1f000000, 0)) {
+        *VMT_VIF1STAT = 1 << 23; // FDR: VIF1 FIFO reads from the GS
+        *VMT_BUSDIR = 1;
+        FlushCache(0);
+        *VMT_D1_QWC = qwc;
+        *VMT_D1_MADR = (u32)dest;
+        *VMT_D1_CHCR = 0x100;
+        asm volatile("sync.l");
+        ok = vmtWait(VMT_D1_CHCR, 0x0100, 0);
+        if (!ok)
+            *VMT_D1_CHCR = 0; // stop the transfer rather than leave the channel running
+    }
+    *VMT_D1_CHCR = prevChcr & ~0x0100;
     asm volatile("sync.l");
     *VMT_VIF1STAT = 0;
     *VMT_BUSDIR = 0;
     GsPutIMR(prevImr);
     *VMT_GS_CSR = 2;
-    *VMT_VIF1FIFO = enablePath3.q;
-    return 1;
+    return ok;
 }
 
 static int vmtBpp(int psm)
@@ -270,7 +273,7 @@ static void vmtCapture(int kind)
         return;
     }
     if (!vmtDownload(vmtCap, shown, w, h, psm, bpp)) {
-        vmtPrintf("  %s: GS download busy, not captured\r\n", kind ? "test screen" : "menu");
+        vmtPrintf("  %s: GS download failed or timed out, not captured\r\n", kind ? "test screen" : "menu");
         return;
     }
     snprintf(name, sizeof(name), "VMT%02d_%02d%c.TGA", vmtStep, gVMode, kind ? 'P' : 'M');
@@ -411,6 +414,8 @@ void vmodeTestFrame(void)
     snprintf(what, sizeof(what), "\r\nstep %d", vmtStep);
     vmtLogState(what);
     vmtCapture(0); // the menu frame that was just shown
+    vmtPrintf("  drawing the test screen\r\n");
+    vmtSaveLog(); // so a hang in the next frame still says how far it got
     vmtDrawTestScreen();
     vmtCapture(1);
     vmtSaveLog(); // after every step, so a hang still leaves the steps before it
