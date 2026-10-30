@@ -6,6 +6,32 @@
 
 YAOPL master: https://github.com/yaopl/yaopl (initial audit at `3ea3a521a0e9`; follow-up through [`b0f8c2ec`](https://github.com/yaopl/yaopl/commit/b0f8c2ecaa112ac89372bf40448eb9da5224ffc9)); changelog: https://github.com/yaopl/yaopl/blob/master/CHANGELOG.md; regression corpus: https://github.com/yaopl/yaopl/tree/master/labs/host-repro; YAOPL author: https://github.com/belomaxorka.
 
+## Status on 2026-10-30
+
+Merged into `rebuild/main` of NathanNeurotic/RiptOPL. None of these is hardware-tested yet, so the
+boxes below stay unticked under this plan's own rule (a tick means implemented AND tested).
+
+| Item | Merged in |
+|---|---|
+| YA-01 | #142 (53b4d38), follow-up 68bc7fd |
+| YA-02 | #150 |
+| YA-03 | #151 |
+| YA-04 | #142 (53b4d38) |
+| YA-05 | #142 (53b4d38) |
+| YA-06 | #149 |
+| YA-07 | #147 |
+| YA-09 | #146 |
+| YA-10 | already present; regression test cf34eea |
+| YA-12 | #152 |
+| YA-14 | #154 |
+| YA-15 | #142 (53b4d38) |
+| YA-16 | #142 (53b4d38) |
+| YA-17 | #144, plus UDP games 3d77415 |
+| YA-18 | #158, merged into rebuild/main by #162 |
+
+Still open: **YA-08** (UDPBD read size, investigation only), **YA-11** (deferred, upstream
+withdrew it), **YA-13** (MMCE icon presentation) and the verify-only queue.
+
 ## Goals and non-goals
 - Harvest proven game-compatibility and safety wins, **not** rewrite this fork into YAOPL.
 - Keep all RiptOPL-specific OPL/Neutrino/POPStarter/Ember, RetroAchievements, MMCE, MX4SIO, PC-CARD, UDPFS/UDPBD, iLink, BDM and UI behavior. Neither identical source files nor a green cross-compiler build establish game compatibility.
