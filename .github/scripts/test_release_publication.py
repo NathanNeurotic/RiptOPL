@@ -250,7 +250,8 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(deleted, ["RIPTOPL-Korium-v1.2.0-Beta-3924.zip", "RIPTOPL-Korium.zip"])
 
     def refresh(self, fail=None, stays_draft=False, moves=True):
-        calls, state = [], dict(isDraft=False, publishedAt="2026-10-16T23:47:34Z")
+        calls = self.calls = []
+        state = dict(isDraft=False, publishedAt="2026-10-16T23:47:34Z")
 
         def fake(*args, retry=True):
             calls.append(args)
@@ -261,7 +262,7 @@ class PublicationTests(unittest.TestCase):
                     raise subprocess.CalledProcessError(1, "gh")
                 if "--draft=true" in args:
                     state["isDraft"] = True
-                elif not stays_draft:
+                elif state["isDraft"] and not stays_draft:
                     state["isDraft"] = False
                     if moves:
                         state["publishedAt"] = "2026-10-30T06:00:00Z"
@@ -284,6 +285,7 @@ class PublicationTests(unittest.TestCase):
         # A failed draft call still republishes; a channel that stays a draft fails the run.
         with self.assertRaises(subprocess.CalledProcessError):
             self.refresh(fail="--draft=true")
+        self.assertIn("--draft=false", self.calls[-1])
         with self.assertRaisesRegex(RuntimeError, "still a draft"):
             self.refresh(stays_draft=True)
 
