@@ -106,6 +106,8 @@ For every item, first write a failing host test or reproducible hardware case. I
 
 ## Implementation progress (2026-10-29)
 
+> Dated snapshot. The PRs below were later merged together (see the "Status on 2026-10-30" table above); use that table for merge status.
+
 - **YA-15:** [implementation #135](https://github.com/NathanNeurotic/RiptOPL/pull/135) is ready for review; required CI passed. Both disc-key paths share a synchronous helper with balanced ownership instead of a post-call repair. Host tests reproduce the old leak and cover success/failure and rejected acquisitions. Hardware stop/read/launch checks remain pending.
 - **YA-16:** [implementation #136](https://github.com/NathanNeurotic/RiptOPL/pull/136) adds existing fragment counts and backup-first Cancel guidance, preserving native refusal, range/layout checks, slot isolation and autolaunch. Extended native VMC launch tests and strict translation checks pass. CI/review and console validation remain pending.
 - **YA-01:** [implementation #137](https://github.com/NathanNeurotic/RiptOPL/pull/137) bounds history filenames to 16 bytes plus NUL. The new guarded-output regression fails on the unmodified base and passes after the fix, including long names, exact fits, separators, versions and empty input. CI/review and console validation remain pending.
