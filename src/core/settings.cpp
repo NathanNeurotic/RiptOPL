@@ -152,6 +152,7 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_COVERFLOW_SCALE, &gCoverflowCenterScale),
     intSetting(CONFIG_OPL_COVERFLOW_ANIM, &gCoverflowAnimSpeed),
     intSetting(CONFIG_OPL_COVERFLOW_DIM, &gCoverflowDimCovers),
+    intSetting(CONFIG_OPL_GRID_LAYOUT, &gGridLayout),
     intSetting(CONFIG_OPL_ENABLE_ILINK, &gEnableILK, 0),
     intSetting(CONFIG_OPL_ENABLE_MX4SIO, &gEnableMX4SIO, 0),
     intSetting(CONFIG_OPL_ENABLE_PCCF, &gEnablePCCF, 0),

@@ -39,9 +39,12 @@ and every menu keep the standard layout.
 
 | Button | List view, such as `<OPL>` | Coverflow / PSBBN Flow | Grid |
 |---|---|---|---|
-| **Up / Down** | Move through the list | Switch device page | Move one row, keeping the column; on the top or bottom row, switch device page |
-| **Left / Right** | Switch device page | Move through the covers | Move one cover |
+| **Up / Down** | Move through the list | Switch device page | Move one row, keeping the column; stops at the top and bottom rows |
+| **Left / Right** | Switch device page | Move through the covers | Move one cover; Left on the first column opens the device sidebar |
 | **L1 / R1** | Page up / down the list | Page up / down the list | Turn a whole page of covers, keeping your place on it; wraps at either end |
+| **Right stick** | — | — | Hold to one side: turn the selected case over to its back cover, and back |
+
+In Grid's device sidebar, **Up / Down** switch device page (the grid follows at once) and **Right**, **Cross** or **Circle** go back to the covers. A theme can drop the sidebar (`<block>_devices=0`); Up/Down then switch device page from the top and bottom rows.
 
 Every other button is unchanged, including **R3 = toggle Favorite**.
 

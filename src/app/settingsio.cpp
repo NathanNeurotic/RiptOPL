@@ -55,6 +55,7 @@
 #include "include/cheatman.h"
 #include "include/sound.h"
 #include "include/xparam.h"
+#include "include/grid.h" // GRID_LAYOUTS -- clamp a hand-edited grid_layout
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDopen/fileXioIoctl2/fileXioDclose used by BDM autolaunch
@@ -1702,6 +1703,8 @@ void _loadConfig()
             else if (gCoverflowAnimSpeed > 5000)
                 gCoverflowAnimSpeed = 5000;
             gCoverflowDimCovers = gCoverflowDimCovers ? 1 : 0;
+            if (gGridLayout < 0 || gGridLayout > GRID_LAYOUTS)
+                gGridLayout = 0;
             int udpbdKeyPresent = configGetInt(configOPL, CONFIG_OPL_ENABLE_UDPBD, &gEnableUDPBD);
             // Unified network-protocol selector (single SMAP NIC -> at most one transport per session).
             // Read the new key if present (authoritative); otherwise DERIVE it from the three legacy keys,

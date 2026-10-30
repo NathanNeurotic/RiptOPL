@@ -154,6 +154,7 @@ void menuRenderInfo();
 void menuRenderGameMenu();
 void menuRenderAppMenu();
 void menuHandleInputMain();
+int menuGridSidebarFocused(void); // the Grid's device sidebar has the pad (grid.cpp draws it open)
 void menuHandleInputMenu();
 void menuHandleInputInfo();
 void menuHandleInputGameMenu();

@@ -51,7 +51,8 @@ Scan_480p1 Scan_480p2 Scan_480p3 Scan_480p4 Scan_480p5 Scan_576i Scan_576p Scan_
 Scan_1080i Scan_1080i2 Scan_1080p Vmode_multi Vmode_ntsc Vmode_pal logo
 logo0 logo1 logo2 logo3 case
 Index_0 Index_1 Index_2 Index_3 Index_4 Index2_0 Index2_1 Index3_0 Index3_1 Index3_2
-Index4_0 Index4_1 Index4_2 Index4_3 fav fav_mark R3 L3 L1 R1 PS1 PS2 case_overlay psbbn_bg techwritescode""".split()
+Index4_0 Index4_1 Index4_2 Index4_3 fav fav_mark R3 L3 L1 R1 PS1 PS2 case_overlay psbbn_bg techwritescode
+grid_devices""".split()
 # Button glyph sets (RIPPS2 build 90, akilluminati47): Standard and White, for Settings > Interface > Button Glyphs
 PNG_ASSETS += ["glyph_%s_%s" % (s, n) for s in ("standard", "white")
                for n in "cross circle square triangle start select L1 R1 L3 R3 left right".split()]

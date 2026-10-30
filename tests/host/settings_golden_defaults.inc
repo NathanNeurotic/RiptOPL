@@ -81,6 +81,7 @@ CHECK(gDefaultPlasBlendColor[0] == RIPTOPL_PLASMA_BLEND_R && gDefaultPlasBlendCo
 // gCoverflowCenterScale: no default in setDefaults (initialiser / another routine owns it)
 // gCoverflowAnimSpeed: no default in setDefaults (initialiser / another routine owns it)
 // gCoverflowDimCovers: no default in setDefaults (initialiser / another routine owns it)
+// gGridLayout: no default in setDefaults (initialiser owns it: 0, the theme's layout)
 CHECK(gEnableILK == (0));
 CHECK(gEnableMX4SIO == (0));
 CHECK(gEnablePCCF == (0));
