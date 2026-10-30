@@ -31,6 +31,7 @@ can affect the active presentation after initial defaults are applied.
 To use the widescreen/carousel presentation, select **Widescreen: On** and
 **Theme View: Coverflow** under **Settings → Interface** (theme `<OPL>`), apply, and save.
 Coverflow supports both 4:3 and 16:9; selecting it does not toggle widescreen.
+The 720p and 1080i video modes are always drawn as 16:9, whatever the Widescreen setting.
 The carousel starts with three covers, Large center scale (45), 200 ms animation and
 side-cover dimming off. L1/R1 page moves animate only when selection changes,
 including wraps; flat list themes keep their existing page behavior.

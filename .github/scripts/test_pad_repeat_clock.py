@@ -117,7 +117,7 @@ public:
     void advanceRepeatTimers(u32 elapsedMs);
 
     u32 elapsedMs_ = 0;
-    u32 paddata_ = 0, oldpaddata_ = 0;
+    u32 paddata_ = 0, oldpaddata_ = 0, heldUnknown_ = 0;
     int delaycnt_[16] = {}, paddelay_[16] = {};
 };
 static PadManager pm;
