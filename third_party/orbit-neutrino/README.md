@@ -29,5 +29,8 @@ not claimed. ORBIT is Neutrino v1.8.0 based: Neutrino cheats are not available t
 Do not replace this pin automatically when a new release appears: review the new
 release's handoff, snapshot limit and chain support first, then update `release.json`,
 `RA_ORBIT_SNAPSHOT_MAX` (`src/sources/supportbase.cpp`) and the tests together.
+`.github/workflows/orbit-neutrino-watch.yml` checks ORBIT's latest release on Neutrino Watch's
+schedule and opens the "ORBIT Neutrino RA runtime update" issue when it differs from this pin
+(a newer tag, or the same tag with a replaced archive). It never edits the pin.
 
 **NOT TESTED on hardware** in RiptOPL.
