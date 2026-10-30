@@ -13,6 +13,7 @@
 #include "include/saveicon.h"
 #include "include/pad.h"
 #include "include/grid.h"
+#include "include/lang.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -28,6 +29,7 @@
  * the right stick turns over to its back cover, and the devices in a sidebar on the left. */
 
 int gGridLayout = 0; // Settings > Interface > Coverflow Settings > Grid Layout (grid.h, gridLayoutPreset)
+int gGridSidebarOpen = 0; // menusys gives the device sidebar the pad; only set while a Grid page with a sidebar is on screen
 
 #define GRID_SLIDE_SCALE 8 // the page slide lasts Coverflow's Animation Speed x 8/5 (Normal: 320 ms, RIPPS2's)
 #define GRID_FLIP_HOLD_S 0.42f
@@ -147,7 +149,7 @@ static void gridFlipUpdate(const void *selected, int backReady)
     padGetRightStick(&sx, &sy);
     int side = sx >= GRID_FLIP_STICK ? 1 : sx <= -GRID_FLIP_STICK ? -1 :
                                                                     0;
-    if (side == 0 || selected == NULL || !backReady || menuGridSidebarFocused()) {
+    if (side == 0 || selected == NULL || !backReady || gGridSidebarOpen) {
         gridFlipHoldItem = NULL;
         return;
     }
@@ -442,7 +444,7 @@ static void drawDeviceSidebar(struct menu_list *menu, int centerY)
     if (count == 0)
         return;
 
-    int open = menuGridSidebarFocused();
+    int open = gGridSidebarOpen;
     u64 sel = gTheme->selTextColor;
     int sr = sel & 0xFF, sg = (sel >> 8) & 0xFF, sb = (sel >> 16) & 0xFF;
     int barW = rmWideScale(open ? GRID_DRAWER_W : GRID_BAR_W), screenH = gTheme->usedHeight > 0 ? gTheme->usedHeight : 480;
@@ -466,7 +468,7 @@ static void drawDeviceSidebar(struct menu_list *menu, int centerY)
             drawGlyph(tex, glyph, 0, glyphX, y, GRID_GLYPH_SIZE, lit ? GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80) : GS_SETREG_RGBA(0x55, 0x5E, 0x76, 0x60));
         }
         if (open) {
-            const char *name = menuItemGetText(m->item);
+            const char *name = m->item->text_id >= 0 ? _l(m->item->text_id) : m->item->text;
             int x = rmWideScale(GRID_BAR_W + 4);
             if (name != NULL)
                 fntRenderStringFit(gTheme->fonts[0], x, y, ALIGN_VCENTER, barW - x - rmWideScale(6), name,
@@ -491,7 +493,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
     int rows = gTheme->gridRows, columns = gTheme->gridColumns, spacing = gTheme->gridSpacing, perPage = rows * columns;
     int first = gridTopRow(count, index, rows, columns) * columns;
     int sidebar = gTheme->gridDevices && gTheme->grid != NULL;
-    int focused = !(sidebar && menuGridSidebarFocused()); // the covers have the pad
+    int focused = !(sidebar && gGridSidebarOpen); // the covers have the pad
     int vignette = gCoverflowDimCovers ? 2 : gTheme->gridVignette;
 
     // The selected cover first, at priority, so its neighbours cannot crowd it out of the queue.

@@ -2501,11 +2501,9 @@ static void menuGridPage(int dir)
 // The Grid's device sidebar (RIPPS2 build 113's category sidebar, akilluminati47): while it has the pad,
 // Up/Down switch device page and the grid shows that device at once; Right, Cross or Circle go back to the
 // covers. Drawn by grid.cpp.
-static int menuGridSidebar;
-
 int menuGridSidebarFocused(void)
 {
-    return menuGridSidebar && gTheme != NULL && gTheme->gridDevices && menuPageIsGrid();
+    return gGridSidebarOpen && gTheme != NULL && gTheme->gridDevices && menuPageIsGrid();
 }
 
 static int menuGridAtRowStart(void)
@@ -2527,22 +2525,22 @@ static void menuGridSidebarInput(void)
     } else if (getKey(KEY_DOWN)) {
         menuNextH();
     } else if (getKeyOn(KEY_RIGHT) || getKeyOn(KEY_CROSS) || getKeyOn(KEY_CIRCLE)) {
-        menuGridSidebar = 0;
+        gGridSidebarOpen = 0;
         sfxPlay(SFX_CURSOR);
     } else if (getKeyOn(KEY_START)) {
-        menuGridSidebar = 0;
+        gGridSidebarOpen = 0;
         menuInitMainMenu();
         guiSwitchScreen(GUI_SCREEN_MENU);
     }
     if (!menuPageIsGrid())
-        menuGridSidebar = 0; // a device page another view draws has no sidebar
+        gGridSidebarOpen = 0; // a device page another view draws has no sidebar
 }
 
 static void menuNavigateLeft()
 {
     if (menuPageIsGrid() && gTheme->gridDevices && menuGridAtRowStart()) {
         if (getKeyOn(KEY_LEFT)) { // a fresh press, so a held Left stops at the first column
-            menuGridSidebar = 1;
+            gGridSidebarOpen = 1;
             sfxPlay(SFX_CURSOR);
         }
         return;
@@ -2627,7 +2625,7 @@ void menuHandleInputMain()
         menuGridSidebarInput();
         return;
     }
-    menuGridSidebar = 0;
+    gGridSidebarOpen = 0;
 
     if (getKey(KEY_LEFT)) {
         menuNavigateLeft();

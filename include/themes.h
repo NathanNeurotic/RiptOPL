@@ -292,6 +292,7 @@ extern theme_t *gTheme;
 extern int gThemeViewRequest;
 
 extern int gCoverflowCount, gCoverflowCenterScale, gCoverflowAnimSpeed, gCoverflowDimCovers;
+extern int gGridSidebarOpen; // the Grid's device sidebar has the pad (menusys sets it, grid.cpp draws it open)
 extern int gGridLayout; // Grid Layout: 0 the theme's, 1..GRID_LAYOUTS RIPPS2's presets (grid.h)
 void thmTriggerCoverflowAnim(int dir);
 
