@@ -74,8 +74,14 @@ static int StFillStreamBuffer(void)
             // Failed to start reading.
             cdvdman_stat.StreamingData.StIsReading = 0;
             result = -1;
+#ifdef INGAMEDIAG
+            freeze_diag_stream(FREEZE_DIAG_ST_FILL_REFUSED, 0, 0);
+#endif
         } else {
             result = 0;
+#ifdef INGAMEDIAG
+            freeze_diag_stream(FREEZE_DIAG_ST_FILL, 0, 0);
+#endif
         }
     } else {
         iDPRINTF("Stream fill buffer: Stream full.\n");
@@ -272,6 +278,10 @@ int sceCdStStart(u32 lsn, sceCdRMode *mode)
     int OldState;
 
     DPRINTF("StStart called. lsn: 0x%08lx\n", lsn);
+#ifdef INGAMEDIAG
+    g_freeze_diag.st_starts++;
+    freeze_diag_event(FREEZE_DIAG_EV_ST_START, lsn, cdvdman_stat.StreamingData.StBufmax, cdvdman_stat.StreamingData.StBanksize);
+#endif
 
     sceCdStStop();
 
@@ -302,6 +312,10 @@ int sceCdStStop(void)
     int OldState;
 
     DPRINTF("StStop called. Stat: 0x%x\n", cdvdman_stat.StreamingData.StStat);
+#ifdef INGAMEDIAG
+    g_freeze_diag.st_stops++;
+    freeze_diag_event(FREEZE_DIAG_EV_ST_STOP, cdvdman_stat.StreamingData.Stlsn, 0, cdvdman_stat.StreamingData.StStat);
+#endif
 
     cdvdman_stat.err = SCECdErNO;
     cdvdman_stat.status = SCECdStatPause;
@@ -329,6 +343,10 @@ int sceCdStPause(void)
     int OldState;
 
     DPRINTF("StPause called. Stat: 0x%x\n", cdvdman_stat.StreamingData.StStat);
+#ifdef INGAMEDIAG
+    g_freeze_diag.st_pauses++;
+    freeze_diag_event(FREEZE_DIAG_EV_ST_PAUSE, cdvdman_stat.StreamingData.Stlsn, 0, cdvdman_stat.StreamingData.StStat);
+#endif
 
     cdvdman_stat.err = SCECdErNO;
     cdvdman_stat.status = SCECdStatPause;
@@ -354,6 +372,10 @@ int sceCdStResume(void)
     int OldState;
 
     DPRINTF("StResume called. Stat: 0x%x\n", cdvdman_stat.StreamingData.StStat);
+#ifdef INGAMEDIAG
+    g_freeze_diag.st_resumes++;
+    freeze_diag_event(FREEZE_DIAG_EV_ST_RESUME, cdvdman_stat.StreamingData.Stlsn, 0, cdvdman_stat.StreamingData.StStat);
+#endif
 
     cdvdman_stat.err = SCECdErNO;
     cdvdman_stat.status = SCECdStatPause;
@@ -394,6 +416,16 @@ int sceCdStRead(u32 sectors, u32 *buffer, u32 mode, u32 *error)
     cdvdman_stat.err = SCECdErNO;
     if (cdvdman_stat.StreamingData.StStat) {
         SetEventFlag(cdvdman_stat.intr_ef, 8);
+#ifdef INGAMEDIAG
+        {
+            iop_sys_clock_t now;
+
+            GetSystemTime(&now);
+            g_freeze_diag.st_wait_start_hi = now.hi;
+            g_freeze_diag.st_wait_start_lo = now.lo;
+            g_freeze_diag.st_read_waiting = 1;
+        }
+#endif
         for (SectorsToRead = sectors, result = 0, SectorsRead = 0, ptr = (void *)((u32)buffer & ~0x80000000); result < sectors; SectorsToRead -= SectorsRead, ptr += SectorsRead * 2048) {
             WaitEventFlag(cdvdman_stat.intr_ef, 8, WEF_AND, NULL);
             ClearEventFlag(cdvdman_stat.intr_ef, ~8);
@@ -414,6 +446,10 @@ int sceCdStRead(u32 sectors, u32 *buffer, u32 mode, u32 *error)
                 break;
         }
         *error = sceCdGetError();
+#ifdef INGAMEDIAG
+        g_freeze_diag.st_read_waiting = 0;
+        freeze_diag_stream(((u32)buffer & 0x80000000) ? FREEZE_DIAG_ST_READ_EE : FREEZE_DIAG_ST_READ, sectors, result);
+#endif
 
         StStartFillStreamBuffer();
     } else {

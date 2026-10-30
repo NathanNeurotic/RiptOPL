@@ -64,7 +64,112 @@ static void freeze_diag_read_end(int err)
     if (err != SCECdErNO) {
         g_freeze_diag.read_errors++;
         g_freeze_diag.last_err = err;
+        freeze_diag_event(FREEZE_DIAG_EV_ERROR, g_freeze_diag.busy_lsn, g_freeze_diag.busy_sectors, (unsigned int)err);
     }
+}
+
+static freeze_diag_event_t *freeze_diag_newest(void)
+{
+    if (g_freeze_diag.trace_count == 0)
+        return NULL;
+    return &g_freeze_diag.trace[(g_freeze_diag.trace_count - 1) % FREEZE_DIAG_TRACE];
+}
+
+static freeze_diag_event_t *freeze_diag_push(unsigned int code, u32 lsn, unsigned int sectors, unsigned int arg)
+{
+    freeze_diag_event_t *e = &g_freeze_diag.trace[g_freeze_diag.trace_count % FREEZE_DIAG_TRACE];
+    iop_sys_clock_t now;
+
+    GetSystemTime(&now);
+    e->tick_lo = now.lo;
+    e->lsn = lsn;
+    e->code_sectors = (code << 24) | (sectors & 0xFFFFFF);
+    e->arg = arg;
+    g_freeze_diag.trace_count++;
+    return e;
+}
+
+// Callable from threads and interrupts.
+void freeze_diag_event(unsigned int code, u32 lsn, unsigned int sectors, unsigned int arg)
+{
+    int OldState;
+
+    CpuSuspendIntr(&OldState);
+    freeze_diag_push(code, lsn, sectors, arg);
+    CpuResumeIntr(OldState);
+}
+
+// The game's read that was just logged as R was refused because a read held the drive. Games retry
+// in a loop, so a refusal in a row only bumps the count on the previous B entry instead of pushing
+// the history out.
+void freeze_diag_refused(u32 lsn, unsigned int sectors)
+{
+    freeze_diag_event_t *e, *prev;
+    int OldState;
+
+    CpuSuspendIntr(&OldState);
+    g_freeze_diag.busy_refusals++;
+    e = freeze_diag_newest();
+    if (e != NULL && (e->code_sectors >> 24) == FREEZE_DIAG_EV_READ && e->lsn == lsn) {
+        prev = g_freeze_diag.trace_count >= 2 ? &g_freeze_diag.trace[(g_freeze_diag.trace_count - 2) % FREEZE_DIAG_TRACE] : NULL;
+        if (prev != NULL && (prev->code_sectors >> 24) == FREEZE_DIAG_EV_BUSY && prev->lsn == lsn) {
+            prev->arg++;
+            e->code_sectors = 0; // the slot now reads as the oldest; 0 = empty, the report skips it
+            g_freeze_diag.trace_count--;
+        } else {
+            e->code_sectors = (FREEZE_DIAG_EV_BUSY << 24) | (sectors & 0xFFFFFF);
+            e->arg = 1;
+        }
+    } else
+        freeze_diag_push(FREEZE_DIAG_EV_BUSY, lsn, sectors, 1);
+    CpuResumeIntr(OldState);
+}
+
+// Streaming work happens every few frames, so a run of it is one entry with counters.
+void freeze_diag_stream(unsigned int what, unsigned int sectors_asked, unsigned int sectors_got)
+{
+    freeze_diag_event_t *e;
+    unsigned int fills, refused, reads, shorts;
+    int OldState;
+
+    CpuSuspendIntr(&OldState);
+    switch (what) {
+        case FREEZE_DIAG_ST_FILL:
+            g_freeze_diag.st_fills++;
+            break;
+        case FREEZE_DIAG_ST_FILL_REFUSED:
+            g_freeze_diag.st_fill_refused++;
+            break;
+        default:
+            g_freeze_diag.st_reads++;
+            if (what == FREEZE_DIAG_ST_READ_EE)
+                g_freeze_diag.st_reads_ee++;
+            if (sectors_got < sectors_asked)
+                g_freeze_diag.st_short_reads++;
+            break;
+    }
+
+    e = freeze_diag_newest();
+    if (e == NULL || (e->code_sectors >> 24) != FREEZE_DIAG_EV_ST_RUN)
+        e = freeze_diag_push(FREEZE_DIAG_EV_ST_RUN, cdvdman_stat.StreamingData.Stlsn, 0, 0);
+    fills = e->code_sectors & 0xFFF;
+    refused = (e->code_sectors >> 12) & 0xFFF;
+    reads = e->arg >> 16;
+    shorts = e->arg & 0xFFFF;
+    if (what == FREEZE_DIAG_ST_FILL && fills < 0xFFF)
+        fills++;
+    else if (what == FREEZE_DIAG_ST_FILL_REFUSED && refused < 0xFFF)
+        refused++;
+    else if (what != FREEZE_DIAG_ST_FILL && what != FREEZE_DIAG_ST_FILL_REFUSED) {
+        if (reads < 0xFFFF)
+            reads++;
+        if (sectors_got < sectors_asked && shorts < 0xFFFF)
+            shorts++;
+    }
+    e->lsn = cdvdman_stat.StreamingData.Stlsn;
+    e->code_sectors = (FREEZE_DIAG_EV_ST_RUN << 24) | (refused << 12) | fills;
+    e->arg = (reads << 16) | shorts;
+    CpuResumeIntr(OldState);
 }
 #endif
 
@@ -833,6 +938,18 @@ int sceCdSC(int code, int *param)
             g_freeze_diag.now_hi = now.hi;
             g_freeze_diag.now_lo = now.lo;
             g_freeze_diag.media_lsn_count = mediaLsnCount;
+            g_freeze_diag.sync_flag = sync_flag;
+            g_freeze_diag.cd_status = cdvdman_stat.status;
+            g_freeze_diag.user_cb = (unsigned int)cb_data.user_cb;
+            g_freeze_diag.st_stat = cdvdman_stat.StreamingData.StStat;
+            g_freeze_diag.st_stm0_cb = Stm0Callback != NULL;
+            g_freeze_diag.st_is_reading = cdvdman_stat.StreamingData.StIsReading;
+            g_freeze_diag.st_lsn = cdvdman_stat.StreamingData.Stlsn;
+            g_freeze_diag.st_bufmax = cdvdman_stat.StreamingData.StBufmax;
+            g_freeze_diag.st_banksize = cdvdman_stat.StreamingData.StBanksize;
+            g_freeze_diag.st_streamed = cdvdman_stat.StreamingData.StStreamed;
+            g_freeze_diag.st_wr = cdvdman_stat.StreamingData.StWritePtr;
+            g_freeze_diag.st_rd = cdvdman_stat.StreamingData.StReadPtr;
             *param = (int)&g_freeze_diag;
             result = 1;
             break;
@@ -977,7 +1094,27 @@ static void cdvdman_cdread_Thread(void *args)
         // Set with the drive lock held, so it still describes this read: the next one cannot be queued before it ends.
         for_stream = cdread_for_stream;
 
+#ifdef INGAMEDIAG
+        iop_sys_clock_t diag_start, diag_end;
+
+        GetSystemTime(&diag_start);
+#endif
         cdvdman_read(cdvdman_stat.cdread_lba, cdvdman_stat.cdread_sectors, cdvdman_stat.sector_size, cdvdman_stat.cdread_buf);
+#ifdef INGAMEDIAG
+        GetSystemTime(&diag_end);
+        if (!for_stream) {
+            unsigned int ms = (diag_end.lo - diag_start.lo) / FREEZE_DIAG_IOP_TICKS_PER_MS;
+            unsigned int code;
+
+            // Since #236 a game read gets the game's callback even while a stream is open, so none goes to the stream.
+            if (cb_data.user_cb != NULL) {
+                code = FREEZE_DIAG_EV_DONE_CB;
+                g_freeze_diag.cb_runs++;
+            } else
+                code = FREEZE_DIAG_EV_DONE_NOCB;
+            freeze_diag_event(code, cdvdman_stat.cdread_lba, cdvdman_stat.cdread_sectors, ms);
+        }
+#endif
 
         /* This streaming callback is not compatible with the original SONY stream channel 0 (IOP) callback's design.
        The original is run from the interrupt handler, but we want it to run

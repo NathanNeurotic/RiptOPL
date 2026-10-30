@@ -159,6 +159,15 @@ extern freeze_diag_iop_t g_freeze_diag;
 // IOP heap record for ee_core's freeze report: see heapdiag.c and ../common/heap_diag.h.
 void heap_diag_install(void);
 
+// Disc command history (cdvdman.c). Both are safe from interrupts.
+#define FREEZE_DIAG_ST_FILL         1 // a stream fill read was queued
+#define FREEZE_DIAG_ST_FILL_REFUSED 2 // a stream fill could not start: the drive was held
+#define FREEZE_DIAG_ST_READ         3 // sceCdStRead into IOP memory
+#define FREEZE_DIAG_ST_READ_EE      4 // sceCdStRead into EE memory (the EE's stream)
+void freeze_diag_event(unsigned int code, u32 lsn, unsigned int sectors, unsigned int arg);
+void freeze_diag_refused(u32 lsn, unsigned int sectors); // the game's read just logged as R was refused
+void freeze_diag_stream(unsigned int what, unsigned int sectors_asked, unsigned int sectors_got);
+
 // VMC sector I/O exported to MCEMU. A call that never returns stays marked busy in the report.
 static inline void freeze_diag_vmc_begin(unsigned int op, unsigned int lba)
 {
