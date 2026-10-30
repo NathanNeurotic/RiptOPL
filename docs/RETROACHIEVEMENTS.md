@@ -327,6 +327,9 @@ launch or a network settings change waits until the page has loaded.
   then shows its title and achievement count with a note to play it once. A failed connection is
   tried once per session; **Select** tries again. TCP needs the menu's own network stack, so UDPFS
   and UDPBD cannot open it.
+  A set opened from a game's **View achievements** is also saved as `<device>/RA/<serial>.ach` beside
+  the watch list; with **In-Game Menu** on, the game's next launch shows it on the menu's Achievements
+  page with what is left to hunt ([IGR.md](IGR.md)). Open it again to bring the list up to date.
 - **The HTTPS lookup** uses [Mbed TLS](https://github.com/Mbed-TLS/mbedtls) 3.6.7 (RA edition only,
   Apache-2.0, `LICENSE-MBEDTLS.txt` in the package) with TLS 1.3/1.2 and full certificate checks
   against five embedded roots (`third_party/ca-roots`). The PS2 has no hardware random number

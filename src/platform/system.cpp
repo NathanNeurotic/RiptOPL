@@ -79,6 +79,7 @@ extern unsigned char eecore_irx[];
 extern unsigned int size_eecore_irx;
 #ifdef IGR_OVERLAY
 #include "../ee_core/include/igrovl.h"
+#include "include/supportbase.h" // sbGetRaHunt: the menu's LEFT TO HUNT
 extern unsigned char igrovl_irx[];
 extern unsigned int size_igrovl_irx;
 #endif
@@ -1298,6 +1299,23 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
 #endif
 
 #ifdef IGR_OVERLAY
+    /* The menu's ACHIEVEMENTS page (RIPPS2 build 94): the game's locked achievements as RA/<startup>.ach had them, in
+       the menu's lines (sbGetRaHunt), after the cheats and below the overlay. With no room for all of it, the page
+       gives the counts alone. */
+    const u8 *raHunt = NULL, *huntSrc;
+    int raHuntCount = 0, raHuntBytes = 0, raHuntTotal = 0, raHuntUnlocked = 0;
+    if (gIgrMenu && !(compatflags & COMPAT_MODE_6) && ModuleStorage == (void *)OPL_MOD_STORAGE &&
+        (huntSrc = sbGetRaHunt(filename, &raHuntCount, &raHuntBytes, &raHuntTotal, &raHuntUnlocked)) != NULL) {
+        if (raHuntCount > 0 && (u32)ModuleStorage + ModuleStorageSize + raHuntBytes <= IGROVL_BASE) {
+            raHunt = (u8 *)ModuleStorage + ModuleStorageSize;
+            memcpy((void *)raHunt, huntSrc, raHuntBytes);
+            ModuleStorageSize += (raHuntBytes + 0x3F) & ~0x3F;
+            LOG("IGR menu hunt: %d of %d locked, %d bytes at %p\n", raHuntCount, raHuntTotal - raHuntUnlocked, raHuntBytes, raHunt);
+        } else
+            raHuntCount = 0;
+    } else
+        raHuntTotal = 0;
+
     /* RA editions: the menu itself is igrovl.elf (ee_core/include/igrovl.h), linked at the top of the module storage
        region. It goes in only with the menu on, only at the default address and only when the modules (and the
        cheats above) end below it; the storage then runs to its end so the kernel's erase leaves it alone. Without
@@ -1426,6 +1444,10 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
 #ifdef IGR_OVERLAY
     if (!igrOvlPlaced) // no overlay for this launch: the combo leaves the game, as with the menu off
         config->IgrMenu = 0;
+    config->IgrRaHunt = raHunt;
+    config->IgrRaHuntCount = raHunt != NULL ? raHuntCount : 0;
+    config->IgrRaTotal = raHuntTotal;
+    config->IgrRaUnlocked = raHuntUnlocked;
 #endif
 
     //MMCEIGR Settings

@@ -30,8 +30,9 @@ typedef struct
 int achievementsBusy(void);
 // kind 'G' (library) or 'A' (one game's set, target its ID); filter 0 All, 1 Earned, 2 Locked, 3 Hardcore.
 int achievementsRequest(char kind, int page, int filter, const char *target);
-// One ISO image's set, found by its hash.
-int achievementsRequestImage(const char *path, const char *startup);
+// One ISO image's set, found by its hash. With a prefix (the game's device, as its launch reads RA/ under it), a
+// set read from the xeRAbora PC is also saved as <prefix>RA/<startup>.ach for the in-game menu.
+int achievementsRequestImage(const char *path, const char *startup, const char *prefix);
 // A PS1 VCD's set, found by the hash of the executable its SYSTEM.CNF names.
 int achievementsRequestVcd(const char *path);
 void achievementsSnapshot(achievement_page_t *result);

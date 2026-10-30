@@ -53,7 +53,7 @@ def definition(edition, configuration="standard", toolchain="gcc"):
         main["embed_irx"].insert(main["embed_irx"].index("eecore") + 1, "igrovl")
         add(main, "sources", "src/platform/md5.c", *[
             f"src/sources/{name}.cpp" for name in ("rawatch", "rahash", "ranet", "rabadge", "discsupport", "achievements",
-                                                   "rapopslaunch")])
+                                                   "rahunt", "rapopslaunch")])
         # USB PS1 under POPStarter: rapops is written as POPS/MODULE_9.IRX and starts the network
         # modules the loader copies into it, then rapull, which reads the game's RAM from the IOP.
         headers = targets["raudp"]["headers"]

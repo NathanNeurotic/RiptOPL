@@ -934,7 +934,7 @@ void menuSaveSettingsAndRestart(void)
    main menu. The I/O thread fetches; this screen draws the latest snapshot. */
 static int achFromCard, achKind, achPage, achLibraryPage, achFilter, achSelected, achNeedsPage;
 static int achImageVcd, achReturnScreen; // the card's image is a PS1 VCD; the menu it was opened from
-static char achTarget[33], achImagePath[256], achImageStartup[16];
+static char achTarget[33], achImagePath[256], achImageStartup[16], achImagePrefix[256];
 static image_cache_t *achIcons;
 static int achIconIds[ACH_PAGE_SIZE] = {-1, -1, -1}, achIconUids[ACH_PAGE_SIZE];
 
@@ -1101,7 +1101,7 @@ void menuHandleInputAchievements()
             if (achImageVcd)
                 achievementsRequestVcd(achImagePath);
             else
-                achievementsRequestImage(achImagePath, achImageStartup);
+                achievementsRequestImage(achImagePath, achImageStartup, achImagePrefix);
         } else {
             achievementsForget();
             achievementReload();
@@ -2906,9 +2906,10 @@ void menuHandleInputGameMenu()
             else {
                 char path[256];
                 sbCreatePath(g, path, prefix, "/", 0);
-                if (achievementsRequestImage(path, g->startup)) {
+                if (achievementsRequestImage(path, g->startup, prefix)) {
                     snprintf(achImagePath, sizeof(achImagePath), "%s", path);
                     snprintf(achImageStartup, sizeof(achImageStartup), "%s", g->startup);
+                    snprintf(achImagePrefix, sizeof(achImagePrefix), "%s", prefix);
                     menuOpenAchievements("image");
                 } else
                     guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);

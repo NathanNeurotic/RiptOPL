@@ -26,7 +26,11 @@ prefix = r"""
 #include <strings.h>
 #include "include/achievements.h"
 #include "include/ratls.h"
+#include "src/sources/rahunt.cpp"
 #define RETROACHIEVEMENTS 1
+#define LOG(...) ((void)0)
+static int mkdir(const char *, int) { assert(!"Caduceus mode saves no RA/<startup>.ach"); return -1; }
+static int unlink(const char *) { return 0; }
 #define IO_OK 0
 #define IO_CUSTOM_SIMPLEACTION 1
 #define O_RDONLY 0
@@ -77,7 +81,7 @@ int main() {
  assert(!parse("OK\tG\t0\t1\t0\t0\t0\tu\tt\n1\t0\t0\t0\t0\t../bad\tt\td\t", &page));
  assert(!parse("OK\tG\t0\t4\t0\t0\t0\tu\tt\n1\t0\t0\t0\t0\t-\ta\t\t\n2\t0\t0\t0\t0\t-\tb\t\t\n3\t0\t0\t0\t0\t-\tc\t\t\n4\t0\t0\t0\t0\t-\td\t\t", &page));
  queue_fail = 1; assert(!achievementsRequest('G', 0, 0, "0") && !achievementsBusy()); queue_fail = 0;
- hash_busy = 1; assert(!achievementsRequest('G', 0, 0, "0") && !achievementsRequestImage("a", "b")); hash_busy = 0;
+ hash_busy = 1; assert(!achievementsRequest('G', 0, 0, "0") && !achievementsRequestImage("a", "b", "mass0:")); hash_busy = 0;
  assert(!achievementsRequest('X', 0, 0, "0") && !achievementsRequest('G', 0, 4, "0") && !achievementsRequest('G', 0, 0, "0x"));
  assert(achievementsRequest('G', 0, 0, "0"));
  assert(!achievementsRequest('G', 1, 0, "0"));
@@ -92,15 +96,16 @@ int main() {
  /* A page for another kind or page number is not this request's answer. */
  assert(achievementsRequest('G', 1, 0, "0")); worker(); achievementsSnapshot(&page); assert(page.state == ACH_ERROR);
  network_fail = 1; assert(achievementsRequest('G', 0, 0, "0")); worker(); achievementsSnapshot(&page); assert(page.state == ACH_ERROR); network_fail = 0;
- assert(achievementsRequestImage("mass0:DVD/Game.iso", "SLUS_123.45")); worker();
+ assert(achievementsRequestImage("mass0:DVD/Game.iso", "SLUS_123.45", "mass0:")); worker();
  assert(hashed == 1 && strstr(received, " A 0 0 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb "));
  /* A PS1 VCD hashes by its boot executable, not as an ISO. */
  assert(achievementsRequestVcd("mass0:/POPS/Game.VCD")); worker();
  assert(vcdHashed == 1 && hashed == 1 && strstr(received, " A 0 0 cccccccccccccccccccccccccccccccc "));
- assert(!achievementsRequestImage("", "SLUS_123.45") && !achievementsRequestImage("x", NULL));
+ assert(!achievementsRequestImage("", "SLUS_123.45", NULL) && !achievementsRequestImage("x", NULL, NULL));
  { /* never truncate into another image's identity */
   char longPath[300]; memset(longPath, 'p', 299); longPath[299] = 0;
-  assert(!achievementsRequestImage(longPath, "SLUS_123.45") && !achievementsRequestImage("x", "SLUS_123.45_TOO_LONG") && !achievementsBusy());
+  assert(!achievementsRequestImage(longPath, "SLUS_123.45", NULL) && !achievementsRequestImage("x", "SLUS_123.45_TOO_LONG", NULL) &&
+         !achievementsRequestImage("x", "SLUS_123.45", longPath) && !achievementsBusy());
  }
  nic_busy = 1; assert(achievementsRequest('G', 0, 0, "0")); worker(); achievementsSnapshot(&page); assert(page.state == ACH_OFFLINE);
  /* UDPFS Files owns the NIC: key (and badges) come from the share it serves, never SMB. */
@@ -264,7 +269,7 @@ ui = r"""
 enum {KEY_CROSS = 1, KEY_CIRCLE, KEY_START, KEY_SELECT, KEY_SQUARE, KEY_L1, KEY_R1, KEY_UP, KEY_DOWN};
 enum {GUI_SCREEN_MENU = 1, GUI_SCREEN_GAME_MENU = 3, GUI_SCREEN_APP_MENU = 4, SFX_CURSOR};
 static int achFromCard, achKind, achPage, achLibraryPage, achFilter, achSelected, achNeedsPage;
-static char achTarget[33], achImagePath[256], achImageStartup[16];
+static char achTarget[33], achImagePath[256], achImageStartup[16], achImagePrefix[256];
 static int achImageVcd, achReturnScreen = GUI_SCREEN_GAME_MENU, vcdRetries;
 static int achIconIds[3], gSelectButton = KEY_CROSS, key, busy, screen, retries, forgets;
 static achievement_page_t current;
@@ -274,7 +279,7 @@ static int getKeyOn(int k) { return key == k; }
 static int getKey(int k) { return key == k; }
 static void guiSwitchScreen(int id) { screen = id; }
 static void sfxPlay(int) {}
-int achievementsRequestImage(const char *, const char *) { retries++; return 1; }
+int achievementsRequestImage(const char *, const char *, const char *) { retries++; return 1; }
 int achievementsRequestVcd(const char *) { vcdRetries++; return 1; }
 void achievementsForget(void) { forgets++; }
 """
