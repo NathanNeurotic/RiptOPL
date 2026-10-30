@@ -91,7 +91,7 @@ def issue_body(release, pin, reason, asset, tag_commit="", asset_sha256="", root
         "",
         "Before moving the pin, review the new runtime's:",
         "- archive digest against the checksums in the release notes",
-        "- RiptOPL handoff (`-ra=` argument, `ORBIT-RA.txt` marker, `raagent.irx`)",
+        "- loader handoff (`-ra=` argument, `ORBIT-RA.txt` marker, `raagent.irx`)",
         "- one-packet snapshot limit (currently " + str(pin.get("snapshot_bytes_max")) + " bytes) and pointer-chain "
         "support (currently " + str(pin.get("pointer_chains")).lower() + ")",
         "- network module ordering, IGR, and the i.LINK driver replacement",
