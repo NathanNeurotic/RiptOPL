@@ -116,7 +116,7 @@ For every item, first write a failing host test or reproducible hardware case. I
 
 - **YA-05:** [implementation #140](https://github.com/NathanNeurotic/RiptOPL/pull/140) stops at the first excess named cheat, preserving all accepted codes. Production-parser ASan/UBSan tests reproduce the base corruption and pass across capacity boundaries, multi-code entries, Auto/Select, duplicate names and line endings. Existing cheat-load and Neutrino tests pass. Local Korium and RetroAchievements LLVM builds pass. Full CI/review and console validation remain tracked on the PR.
 
-These PRs remain separate and unmerged. No checkbox is promoted to hardware-confirmed acceptance by these host results. Remaining YA tasks are still open.
+These implementation changes were later merged into `rebuild/main` (see the status table above). No checkbox is promoted to hardware-confirmed acceptance by these host results. Remaining YA tasks are still open.
 
 ## Attribution
 Thank **[belomaxorka](https://github.com/belomaxorka)** and **[YAOPL](https://github.com/yaopl/yaopl)** for the compatibility investigations, backend fixes and host reproductions. Existing README/CREDITS and Applications/About acknowledgments are tracked separately; this plan neither changes those credits nor falsely claims that unmerged YAOPL patches are already in RiptOPL.
