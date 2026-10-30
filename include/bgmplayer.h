@@ -37,6 +37,7 @@ private:
     // Shared between the BGM playback thread and the main thread; volatile so updates are observed across threads
     // rather than cached in a register.
     volatile unsigned char terminate_ = 0, playing_ = 0;
+    unsigned char live_ = 0; // semaphores, threads and decoder exist and teardown() has not run
     volatile unsigned char rdPtr_ = 0, wrPtr_ = 0;
     volatile int bufferedChunks_ = 0;
     volatile unsigned char bufferPrimed_ = 0;

@@ -538,6 +538,7 @@ int BgmPlayer::init(void)
         ioThreadId_ = CreateThread(&thread);
         if (ioThreadId_ >= 0) {
             result = 0;
+            live_ = 1;
         } else {
             DeleteSema(inSema_);
             DeleteSema(outSema_);
@@ -555,6 +556,7 @@ int BgmPlayer::init(void)
 
 void BgmPlayer::teardown(void)
 {
+    live_ = 0;
     DeleteSema(inSema_);
     DeleteSema(outSema_);
     DeleteThread(threadId_);
@@ -580,6 +582,15 @@ void BgmPlayer::start(void)
     if (!gAudioInitialized) {
         LOG("BGM: %s: ERROR: not initialized!\n", __FUNCTION__);
         return;
+    }
+
+    // Music that stopped on its own (a bad stream, BGM switched off) leaves its semaphores, threads and
+    // decoder behind. Release them before making new ones, or every restart leaks a set. If the old
+    // threads will not stop, do not start a second player on top of them.
+    if (live_) {
+        stop();
+        if (live_)
+            return;
     }
 
     int ret = init();
@@ -633,6 +644,13 @@ void BgmPlayer::start(void)
 
         if (!terminate_ && bgmIoThreadRunning)
             StartThread(threadId_, NULL);
+        else {
+            // The feeder gave up before playback began, so the playback thread that would clear the
+            // playing flag never runs. Release everything now so the next start is not skipped.
+            LOG("BGM: no audio before playback started -- stopping.\n");
+            stop();
+            playing_ = 0;
+        }
     }
 }
 
