@@ -35,6 +35,7 @@
 #include "include/uidraw.h"
 #include "include/diaglog.h"
 #include "include/renderman.h"
+#include "include/host.h"
 #include "include/vmodetest.h"
 
 extern GSGLOBAL *gsGlobal;
@@ -332,7 +333,7 @@ static void vmtSwitch(int mode)
 
     gVMode = mode;
     screenPosModeChanged(prev, gXOff, gYOff, gOverscan); // as the Interface dialog does, before applyConfig
-    applyConfig(-1, -1, 1);
+    host::app().applyConfig(-1, -1, 1); // the app layer, as guisettings reaches it
 }
 
 static void vmtFinish(void)
