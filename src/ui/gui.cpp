@@ -147,32 +147,22 @@ void Gui::drawBackground()
 
 void Gui::showAbout()
 {
-    char OPLVersion[40];
-    char OPLBuildDetails[40];
+    // Both strings are made of compile-time constants, so they are passed as literals: a 40-byte buffer cut
+    // "Open PS2 Loader v1.2.0-Beta-N-<channel>-<hash>" short, and the build options past "... - PADE".
+    // (YAOPL 9847f4ca, Roman Kelesidis.)
+    diaSetLabel(diaAbout, ABOUT_TITLE, "Open PS2 Loader " OPL_VERSION);
 
-    snprintf(OPLVersion, sizeof(OPLVersion), "Open PS2 Loader %s", OPL_VERSION);
-    diaSetLabel(diaAbout, ABOUT_TITLE, OPLVersion);
-
-    snprintf(OPLBuildDetails, sizeof(OPLBuildDetails), "GSM %s"
-                                                       " - UDMA+"
+    diaSetLabel(diaAbout, ABOUT_BUILD_DETAILS, "GSM " GSM_VERSION " - UDMA+"
 #ifdef __RTL
-                                                       " - RTL"
+                                               " - RTL"
 #endif
 #ifdef IGS
-                                                       " - IGS %s"
+                                               " - IGS " IGS_VERSION
 #endif
 #ifdef PADEMU
-                                                       " - PADEMU"
-#endif
-             // Version numbers
-             ,
-             GSM_VERSION
-#ifdef IGS
-             ,
-             IGS_VERSION
+                                               " - PADEMU"
 #endif
     );
-    diaSetLabel(diaAbout, ABOUT_BUILD_DETAILS, OPLBuildDetails);
 
     diaExecuteDialog(diaAbout, -1, 1, NULL);
 }

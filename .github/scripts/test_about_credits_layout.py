@@ -29,3 +29,11 @@ assert "algol, Berion, Blade1984, El_Patas, EP, gledson999, jolek, lee4, Vapor" 
 assert "LocalH, RandQalan, ShaolinAssassin, yoshi314, zero35, zackcage6" in dia_about
 
 print("PASS: About dialog layout has testers under QA, no financial section, and trimmed spacing")
+
+# 4. NathanNeurotic is credited among the coders, on a fifth row; Network update shares one row with its name so the
+#    dialog keeps its height
+assert '"NathanNeurotic - techwritescode"' in dia_about, "NathanNeurotic should be credited in diaAbout"
+assert '"Akilluminati47 - belomaxorka - darkladark - mihhru"' in dia_about
+net = dia_about.find("_STR_NET_UPDATE")
+assert net != -1 and dia_about.find("UI_BREAK", net) > dia_about.find('"icyson55"', net), "Network update and icyson55 share a row"
+print("PASS: NathanNeurotic credited; About keeps its row count")

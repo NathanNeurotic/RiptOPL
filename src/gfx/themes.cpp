@@ -1028,8 +1028,27 @@ static int thmLoadResource(GSTEXTURE *texture, int texId, const char *themePath,
     return success;
 }
 
+// The other screens' elements (info, apps, favourites, PS1 and their info pages) are re-coloured only where they
+// still carry the colour the settings gave them, so an element whose colour the theme cfg sets keeps it. Images
+// keep theirs too. Without this a Colours change reached the main list alone and the other screens kept the old
+// colour until the theme was loaded again (YAOPL d21b3bc5, Roman Kelesidis).
+static void thmRecolorFollowers(theme_elems_t *elems, u64 oldText, u64 oldTitle, const theme_t *theme)
+{
+    for (theme_element_t *elem = elems->first; elem != NULL; elem = elem->next) {
+        if (elem->type == ELEM_TYPE_ATTRIBUTE_IMAGE || elem->type == ELEM_TYPE_GAME_IMAGE || elem->type == ELEM_TYPE_STATIC_IMAGE ||
+            elem->type == ELEM_TYPE_BACKGROUND || elem->type == ELEM_TYPE_MENU_ICON || elem->type == ELEM_TYPE_BDM_INDEX)
+            continue;
+        if (elem->color == oldTitle && (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT))
+            elem->color = theme->titleColor;
+        else if (elem->color == oldText)
+            elem->color = theme->textColor;
+    }
+}
+
 static void thmSetColors(theme_t *theme)
 {
+    const u64 oldText = theme->textColor, oldTitle = theme->titleColor;
+
     memcpy(theme->bgColor, gDefaultBgColor, 3);
     memcpy(theme->plasBlendColor, gDefaultPlasBlendColor, 3);
     theme->textColor = GS_SETREG_RGBA(gDefaultTextColor[0], gDefaultTextColor[1], gDefaultTextColor[2], 0x80);
@@ -1054,6 +1073,12 @@ static void thmSetColors(theme_t *theme)
         elem->color = (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT) ? theme->titleColor : theme->textColor;
         elem = elem->next;
     }
+
+    theme_elems_t *others[11] = {&theme->infoElems, &theme->appsMainElems, &theme->appsInfoElems, &theme->favsMainElems,
+                                 &theme->favsInfoElems, &theme->vcdMainElems, &theme->vcdInfoElems, &theme->favsVcdMainElems,
+                                 &theme->favsVcdInfoElems, &theme->favsAppsMainElems, &theme->favsAppsInfoElems};
+    for (int g = 0; g < 11; g++)
+        thmRecolorFollowers(others[g], oldText, oldTitle, theme);
 }
 
 static void thmLoadFonts(config_set_t *themeConfig, const char *themePath, theme_t *theme)
@@ -2027,6 +2052,16 @@ int thmGetGuiValue(void)
 int thmFindGuiID(const char *theme)
 {
     return gCatalog.findGuiID(theme);
+}
+
+// The saved theme is a disk theme (by name, not a built-in "<...>") that no drive has offered yet: its drive is still
+// coming up, or is gone. The boot greeting waits a bounded time for it (RIPPS2 build 125, AK).
+int thmSavedThemePending(void)
+{
+    const char *temp = NULL;
+    if (!configGetStr(configGetByType(CONFIG_OPL), CONFIG_OPL_THEME, &temp) || temp == NULL || temp[0] == '\0' || temp[0] == '<')
+        return 0;
+    return thmFindGuiID(temp) == 0;
 }
 
 const char **thmGetGuiList(void)
