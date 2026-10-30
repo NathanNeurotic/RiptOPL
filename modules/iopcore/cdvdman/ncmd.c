@@ -17,8 +17,14 @@ int sceCdSync(int mode)
     if ((mode == 1) || (mode == 17))
         return 1;
 
+#ifdef INGAMEDIAG
+    g_freeze_diag.sync_waiting++;
+#endif
     while (sync_flag)
         WaitEventFlag(cdvdman_stat.intr_ef, 1, WEF_AND, NULL);
+#ifdef INGAMEDIAG
+    g_freeze_diag.sync_waiting--;
+#endif
 
     return 0;
 }
@@ -43,9 +49,24 @@ int sceCdRead(u32 lsn, u32 sectors, void *buf, sceCdRMode *mode)
     DPRINTF("sceCdRead lsn=%d sectors=%d sector_size=%d buf=%08x\n", (int)lsn, (int)sectors, (int)sector_size, (int)buf);
 
     if ((!(cdvdman_settings.common.flags & IOPCORE_COMPAT_ALT_READ)) || QueryIntrContext()) {
+#ifdef INGAMEDIAG
+        // Logged before the read is queued, so it precedes its own completion in the history.
+        freeze_diag_event(FREEZE_DIAG_EV_READ, lsn, sectors, QueryIntrContext() ? 1 : 0);
+#endif
         result = cdvdman_AsyncRead(lsn, sectors, sector_size, buf);
+#ifdef INGAMEDIAG
+        if (!result)
+            freeze_diag_refused(lsn, sectors);
+#endif
     } else {
+#ifdef INGAMEDIAG
+        freeze_diag_event(FREEZE_DIAG_EV_READ, lsn, sectors, 2);
+#endif
         result = cdvdman_SyncRead(lsn, sectors, sector_size, buf);
+#ifdef INGAMEDIAG
+        if (!result)
+            freeze_diag_refused(lsn, sectors);
+#endif
     }
 
     return result;
