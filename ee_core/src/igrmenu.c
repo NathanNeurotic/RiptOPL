@@ -32,7 +32,7 @@
   IGR_MENU_HOST_TEST builds only the renderer, for tests/ (a picture of the panel on the PC).
 */
 
-#if defined(IGR_MENU) || defined(IGR_MENU_HOST_TEST) // RetroAchievements builds leave it out: ee_core has no room
+#if defined(IGR_MENU) || defined(IGR_MENU_HOST_TEST) // not in IGS or freeze-report builds; RA runs it as igrovl.elf
 #ifndef IGR_MENU_HOST_TEST
 #include "ee_core.h"
 #include "coreconfig.h"

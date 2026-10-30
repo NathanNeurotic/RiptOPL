@@ -1283,7 +1283,12 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
        storage too full for it gets the menu without the page, and its cheats run as ticked before the launch. */
     if (ModuleStorage == (void *)OPL_MOD_STORAGE && !(compatflags & COMPAT_MODE_6)) {
         u8 *at = (u8 *)ModuleStorage + ModuleStorageSize;
-        unsigned int room = (u32)at < 0xD0000 ? 0xD0000 - (u32)at : 0;
+#ifdef IGR_OVERLAY
+        const u32 top = IGROVL_BASE; // the menu itself goes above (RA editions)
+#else
+        const u32 top = 0xD0000;
+#endif
+        unsigned int room = (u32)at < top ? top - (u32)at : 0;
         unsigned int bytes = host::launch().igrCheatsPlace(at, room);
         ModuleStorageSize += (bytes + 0x3F) & ~0x3F;
         if (bytes > 0)
