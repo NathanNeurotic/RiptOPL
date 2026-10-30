@@ -297,5 +297,30 @@ int main()
         cacheDestroyCache(cache);
     }
 
+    // #211: a view switch reloads the theme without rebuilding the rows. A row made for List's caches must be
+    // grown, not indexed past, when Grid brings more; and its pairs from the old load are dropped, since the
+    // new caches hand out the same slots and UIDs again.
+    {
+        int *ids = NULL, *uids = NULL, capacity = 0;
+        unsigned int gen = 0;
+        CHECK(cacheRowPairsReady(&ids, &uids, &capacity, &gen, 3, 1)); // List: 3 caches
+        CHECK(capacity == 3 && gen == 1 && ids[2] == -1 && uids[2] == -1);
+        ids[1] = 4;
+        uids[1] = 7;
+        CHECK(cacheRowPairsReady(&ids, &uids, &capacity, &gen, 3, 1)); // same load: kept
+        CHECK(ids[1] == 4 && uids[1] == 7);
+        CHECK(cacheRowPairsReady(&ids, &uids, &capacity, &gen, 6, 2)); // Grid: 6 caches, a new load
+        CHECK(capacity == 6 && gen == 2);
+        for (int i = 0; i < 6; i++)
+            CHECK(ids[i] == -1 && uids[i] == -1);
+        ids[5] = 1; // the last of the new caches is in bounds (ASan)
+        uids[5] = 1;
+        CHECK(cacheRowPairsReady(&ids, &uids, &capacity, &gen, 3, 3)); // back to List: reset, kept large
+        CHECK(capacity == 6 && gen == 3 && ids[1] == -1 && ids[5] == -1);
+        CHECK(!cacheRowPairsReady(&ids, &uids, &capacity, &gen, 0, 4)); // a theme with no game caches
+        free(ids);
+        free(uids);
+    }
+
     TEST_DONE("ps1art");
 }
