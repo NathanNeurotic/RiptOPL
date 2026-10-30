@@ -57,7 +57,7 @@ enum { VMT_OFF = 0,
        VMT_DONE };
 
 static int vmtState = VMT_UNCHECKED;
-static int vmtStep, vmtFrames, vmtBootMode, vmtReadback;
+static int vmtStep, vmtFrames, vmtBootMode, vmtReadback, vmtArgArmed;
 static u8 *vmtCap;     // the capture being taken
 static u8 *vmtBase[2]; // the first 224p capture: [0] menu, [1] test screen
 static int vmtBaseW, vmtBaseH, vmtBaseBpp;
@@ -76,8 +76,10 @@ static void vmtPrintf(const char *fmt, ...)
     va_start(ap, fmt);
     int n = vsnprintf(vmtLog + vmtLogLen, VMT_LOG_SIZE - vmtLogLen, fmt, ap);
     va_end(ap);
-    if (n > 0)
+    if (n > 0) {
+        printf("%s", vmtLog + vmtLogLen); // and to the EE tty: a rig run without writable storage still gets the lines
         vmtLogLen += (n < VMT_LOG_SIZE - vmtLogLen) ? n : VMT_LOG_SIZE - 1 - vmtLogLen;
+    }
 }
 
 static void vmtPath(char *out, int size, const char *name)
@@ -251,6 +253,9 @@ static void vmtDrawTestScreen(void)
     fntRenderString(font, 40, 60, ALIGN_NONE, 0, 0, "The quick brown fox jumps over the lazy dog 0123456789", gColWhite);
     fntRenderString(font, 40, 110, ALIGN_NONE, 0, 0, "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz", gColWhite);
     fntRenderString(FNT_DEFAULT, 40, 160, ALIGN_NONE, 0, 0, "Built-in font: Settings > Interface > Video Mode", gColWhite);
+    char label[64]; // which step a video capture is looking at
+    snprintf(label, sizeof(label), "STEP %d  VMODE %d  BOOT %d", vmtStep, gVMode, vmtBootMode);
+    fntRenderString(FNT_DEFAULT, 360, 220, ALIGN_NONE, 0, 0, label, gColWhite);
     guiDrawIconAndText(CROSS_ICON, _STR_BACK, font, 40, 220, gColWhite);
     guiDrawIconAndText(CIRCLE_ICON, _STR_BACK, font, 240, 220, gColWhite);
     for (int i = 0; i < 8; i++) {
@@ -363,6 +368,12 @@ static void vmtFinish(void)
     vmtState = VMT_DONE;
 }
 
+void vmodeTestArm(void)
+{
+    vmtArgArmed = 1;
+    gVMode = VMT_MODE_224P; // a cold 224p boot, unless a saved config overrides it (the log says which)
+}
+
 void vmodeTestFrame(void)
 {
     if (vmtState == VMT_OFF || vmtState == VMT_DONE)
@@ -383,15 +394,21 @@ void vmodeTestFrame(void)
             vmtPath(path, sizeof(path), "VMODETEST");
             fd = open(path, O_RDONLY);
         }
-        if (fd < 0)
+        if (fd < 0 && !vmtArgArmed)
             return;
+        if (fd < 0) { // armed from the command line: no file to read options from
+            snprintf(vmtDir, sizeof(vmtDir), "%s", gBootDir[0] ? gBootDir : configGetHomePath());
+            snprintf(path, sizeof(path), "the command line");
+        }
         // GS readback only when the file says "readback": in PCSX2 the frame after a readback never
         // finished (the GUI thread spun in the next end-of-frame), so by default the test only holds
         // each screen long enough for an outside screen grab and logs the state.
         char arm[64] = {0};
-        read(fd, arm, sizeof(arm) - 1);
+        if (fd >= 0) {
+            read(fd, arm, sizeof(arm) - 1);
+            close(fd);
+        }
         vmtReadback = strstr(arm, "readback") != NULL;
-        close(fd);
         vmtCap = (u8 *)memalign(64, VMT_MAX_W * VMT_MAX_H * 4);
         vmtLog = (char *)malloc(VMT_LOG_SIZE);
         if (vmtCap == NULL || vmtLog == NULL) {

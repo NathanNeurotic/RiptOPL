@@ -19,7 +19,11 @@
 
 #ifdef __OPLDIAG
 void vmodeTestFrame(void);
+void vmodeTestArm(void); // a "vmodetest" argument: arm without a file and boot in 224p
 #else
+static inline void vmodeTestArm(void)
+{
+}
 static inline void vmodeTestFrame(void)
 {
 }

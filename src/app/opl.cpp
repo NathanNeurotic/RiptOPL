@@ -30,6 +30,7 @@
 #include "include/fntsys.h"
 #ifdef __OPLDIAG
 #include <delaythread.h>
+#include "include/vmodetest.h"
 #endif
 #include "include/config.h"
 #include "include/util.h"
@@ -1966,6 +1967,12 @@ int main(int argc, char *argv[])
         if (!strcmp(argv[4], "bdm"))
             autoLaunchBDMGame(argv);
     }
+
+#ifdef __OPLDIAG
+    for (int i = 1; i < argc; i++)
+        if (argv[i] != NULL && !strcmp(argv[i], "vmodetest"))
+            vmodeTestArm(); // issue #132 self-test on a console with no writable boot folder (ps2rig)
+#endif
 
     init();
 
