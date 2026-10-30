@@ -41,6 +41,7 @@ BUNDLE_README = ("RiptOPL {title} configuration builds. Each folder holds one {e
 # GitHub's release API intermittently answers 5xx. Calls are retried unless retry=False: a create that
 # failed part-way has already made the release, so repeating it can only fail.
 RETRY_DELAYS = (5, 15)
+REPUBLISH_DELAY = 60
 
 
 def gh(*args, retry=True):
@@ -333,9 +334,20 @@ def refresh_release_date(repo, tag, flags):
     before = json.loads(gh("release", "view", tag, "--repo", repo, "--json", "publishedAt"))["publishedAt"]
     try:
         gh("release", "edit", tag, "--repo", repo, "--draft=true")
-    finally:
-        # A draft cannot hold the Latest marker, so the channel's flags are asserted again here.
-        gh("release", "edit", tag, "--repo", repo, "--draft=false", *flags)
+    except subprocess.CalledProcessError as error:
+        # Only the date is lost; still republish, check the state and go on to the other channels.
+        print(f"{tag}: could not switch to draft ({error}); checking it is still published", file=sys.stderr)
+    # A draft cannot hold the Latest marker, so the flags are asserted again. A hidden release is worse
+    # than a stale date, so the republish gets one more try after GitHub has had a minute to recover.
+    for delay in (REPUBLISH_DELAY, None):
+        try:
+            gh("release", "edit", tag, "--repo", repo, "--draft=false", *flags)
+            break
+        except subprocess.CalledProcessError:
+            if delay is None:
+                raise
+            print(f"{tag}: republish failed; retrying in {delay}s", file=sys.stderr)
+            time.sleep(delay)
     state = json.loads(gh("release", "view", tag, "--repo", repo, "--json", "isDraft,publishedAt"))
     if state["isDraft"]:
         raise RuntimeError(f"{tag} is still a draft after its date refresh; it is hidden from users")

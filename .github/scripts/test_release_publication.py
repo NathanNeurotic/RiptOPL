@@ -268,7 +268,7 @@ class PublicationTests(unittest.TestCase):
                         state["publishedAt"] = "2026-10-30T06:00:00Z"
             return ""
 
-        with patch.object(publisher, "gh", side_effect=fake):
+        with patch.object(publisher, "gh", side_effect=fake), patch.object(publisher.time, "sleep"):
             publisher.refresh_release_date("owner/repo", "rolling-incebtion", ("--prerelease=false", "--latest=true"))
         return [c for c in calls if c[:2] == ("release", "edit")], state
 
@@ -282,10 +282,16 @@ class PublicationTests(unittest.TestCase):
         self.assertFalse(self.refresh(moves=False)[1]["isDraft"])
 
     def test_date_refresh_never_leaves_a_channel_hidden(self):
-        # A failed draft call still republishes; a channel that stays a draft fails the run.
+        # A failed draft call costs only the date: the channel is republished and checked, and the
+        # run goes on to the other channels.
+        edits, state = self.refresh(fail="--draft=true")
+        self.assertIn("--draft=false", edits[-1])
+        self.assertFalse(state["isDraft"])
+        # A republish that keeps failing gets one more try a minute later, then fails the run.
         with self.assertRaises(subprocess.CalledProcessError):
-            self.refresh(fail="--draft=true")
-        self.assertIn("--draft=false", self.calls[-1])
+            self.refresh(fail="--draft=false")
+        republishes = [c for c in self.calls if "--draft=false" in c]
+        self.assertEqual(len(republishes), 2)
         with self.assertRaisesRegex(RuntimeError, "still a draft"):
             self.refresh(stays_draft=True)
 
