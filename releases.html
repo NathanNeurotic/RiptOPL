@@ -83,14 +83,14 @@ Each edition has its own release channel, rebuilt from <code>rebuild/main</code>
 <h2 id="channels">Editions and channels</h2>
 <table><thead><tr><th>Edition</th><th>Channel</th><th>Contents</th></tr></thead><tbody>
 <tr><td>Korium</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium">rolling-korium</a></td><td>Standard loader with Korium Komblete graphics and layout. Also carries the variant and debug builds.</td></tr>
-<tr><td>RetroAchievements</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra">rolling-ra</a></td><td>Korium theme with the RetroAchievements runtime and the xeRAbora client shortcut, plus the same kit built with the IncebtIon theme.</td></tr>
+<tr><td>RetroAchievements</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra">rolling-ra</a></td><td>Korium theme with the RetroAchievements runtime, the <a href="https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2">ORBIT Neutrino RA runtime v1.0.2</a> (in place of upstream Neutrino) and the xeRAbora client shortcut, plus the same kit built with the IncebtIon theme.</td></tr>
 <tr><td>IncebtIon</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion">rolling-incebtion</a></td><td>Standard loader with the IncebtIon built-in theme. GitHub marks this channel as Latest.</td></tr>
 </tbody></table>
 <div class="callout amber"><div class="h">Development builds</div><p>Every channel is a development build. Publication checks the source commit, clean state, SDK consistency, file inventory and checksums, but a passing build does not mean it has been tested on your console, storage and settings. Check the release notes for the exact commit. Builds that are not published yet are in the <a href="https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml">Rolling Release</a> runs as workflow artifacts.</p></div>
 
 <h2 id="rolling-assets">What each channel carries</h2>
 <table><thead><tr><th>Asset</th><th>What it is</th></tr></thead><tbody>
-<tr><td><code>RIPTOPL-Korium-&lt;version&gt;.zip</code>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code>, <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code></td><td>The full install kit: <code>APPS/</code> with the ready app, matching <code>ART/</code>, the app PSU, <code>POPS/</code> with every BDMA pair, the licensed <code>EMBER/</code> core, the official Neutrino release as <code>neutrino/</code> with RiptOPL's UDPFS config and i.LINK pair (ORBIT's RA build of Neutrino in the RetroAchievements kits), external-tool shortcuts, license, credits and build manifest.</td></tr>
+<tr><td><code>RIPTOPL-Korium-&lt;version&gt;.zip</code>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code>, <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code></td><td>The full install kit: <code>APPS/</code> with the ready app, matching <code>ART/</code>, the app PSU, <code>POPS/</code> with every BDMA pair, the licensed <code>EMBER/</code> core, the official Neutrino release as <code>neutrino/</code> with RiptOPL's UDPFS config and i.LINK pair (the <a href="https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2">ORBIT Neutrino RA runtime v1.0.2</a> in the RetroAchievements kits), external-tool shortcuts, license, credits and build manifest.</td></tr>
 <tr><td><code>RIPTOPL.ELF</code> (<code>RIPTOPL-RA.ELF</code> in RetroAchievements)</td><td>The exact loader used in that kit, under a name and link that never change. Use it to update an existing install.</td></tr>
 <tr><td><code>APP_RIPTOPL.psu</code> (<code>APP_RIPTOPL-RA.psu</code>)</td><td>The app's own files as one memory-card save, for a PS2 save manager.</td></tr>
 <tr><td><code>RIPTOPL-LANGS-&lt;version&gt;.zip</code></td><td>Every translation and the font its script needs, one folder per language. See <a href="languages.html">Languages</a>.</td></tr>
@@ -132,7 +132,7 @@ sha256sum -c --ignore-missing SHA256SUMS.txt</pre>
 <p>The Korium and IncebtIon kits carry the newest build of <a href="https://github.com/rickgaiser/neutrino/releases">rickgaiser/neutrino</a>'s
 <code>latest</code> development release at the time the kit was built (<code>v1.8.0-61-g7be8de2</code> on 2026-10-28; each channel's release notes name the included build), unmodified apart from RiptOPL's UDPFS config and i.LINK pair
 (see <a href="neutrino.html">Neutrino Core</a>). It is newer than Neutrino v1.8.0, which is what text cheats under Neutrino need
-(see <a href="cheats.html#neutrino">Cheats</a>). The RetroAchievements kits carry ORBIT's RA runtime instead, which is built on
+(see <a href="cheats.html#neutrino">Cheats</a>). The RetroAchievements kits carry the <a href="https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2">ORBIT Neutrino RA runtime v1.0.2</a> instead, which is built on
 Neutrino v1.8.0 (see <a href="retroachievements.html">RetroAchievements</a>). An ELF-only update never changes the
 <code>neutrino/</code> folder; copy it from the kit when the release notes say it changed.</p>
 <h2 id="test-artifacts">Download a PR or Actions test build</h2>
