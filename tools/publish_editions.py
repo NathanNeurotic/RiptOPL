@@ -25,6 +25,8 @@ STANDARD_BUNDLES = (
     ("DEBUG", tuple(c for c in CONFIGURATIONS if c != "standard" and c not in VARIANTS), "debug and diagnostic builds"),
 )
 RA_BUNDLES = (("RA-VARIANTS", ("pademu0",), "pad emulation off"),)
+# The RA kits ship ORBIT's pinned RA runtime in place of upstream Neutrino; their notes link it.
+ORBIT_PIN = Path(__file__).resolve().parents[1] / "third_party/orbit-neutrino/release.json"
 
 
 def bundles(options):
@@ -213,6 +215,19 @@ def name_assets(candidates, version):
         sums.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
 
 
+def included_neutrino(options, neutrino):
+    """The "Included build:" line (Neutrino Watch reads its first word). An RA kit names ORBIT's runtime."""
+    if not options["ra"]:
+        return f"Included build: {neutrino} -- Neutrino.\n\n"
+    pin = json.loads(ORBIT_PIN.read_text(encoding="utf-8"))
+    if neutrino != Path(pin["asset"]).stem:
+        raise ValueError(f"RA kit carries {neutrino}, not the pinned ORBIT {pin['asset']}")
+    owner = pin["repository"].split("/", 1)[0]
+    return (f"Included build: {neutrino} -- [ORBIT Neutrino RA runtime {pin['tag']}]"
+            f"(https://github.com/{pin['repository']}/releases/tag/{pin['tag']}) by [{owner}](https://github.com/{owner}), "
+            "based on Neutrino v1.8.0; it replaces upstream Neutrino in the RA kits.\n\n")
+
+
 def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"):
     """Keep release changes visible; installation detail belongs in the guides."""
     base = f"https://github.com/{repo}"
@@ -243,8 +258,8 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
                       companion_assets(other).values())) + ".\n"
                   for other in EDITIONS.values() if EDITIONS.get(other.get("into")) is options)
         + "\n"
-        f"Included build: {neutrino} -- Neutrino.\n\n"
-        "[Installation and guides](https://nathanneurotic.github.io/RiptOPL/) - "
+        + included_neutrino(options, neutrino)
+        + "[Installation and guides](https://nathanneurotic.github.io/RiptOPL/) - "
         f"[Wiki]({base}/wiki)\n"
     )
 

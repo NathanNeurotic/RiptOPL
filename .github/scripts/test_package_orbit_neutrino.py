@@ -51,6 +51,7 @@ class OrbitStagingTests(unittest.TestCase):
         self.assertIn("RETROACHIEVEMENTS EDITION", label)
         self.assertIn("NOT the standard RiptOPL", label)
         self.assertIn("Neutrino v1.8.0", label)
+        self.assertIn(f"https://github.com/{self.pin['repository']}/releases/tag/{self.pin['tag']}", label)
 
     def test_marker_is_what_the_loader_compares(self):
         package_edition.stage_orbit(self.archive(), self.destination, self.pin)

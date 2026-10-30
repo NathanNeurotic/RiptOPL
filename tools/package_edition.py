@@ -66,7 +66,9 @@ def stage_orbit(archive, destination, pin):
         "keep this folder with the RA loader (APPS/APP_RIPTOPL-RA) and the standard one with the standard loader.\n"
         "\n"
         "Every Neutrino launch in the RA edition uses this runtime, so upstream changes made\n"
-        "after Neutrino v1.8.0 (including Neutrino cheats) are not available here.\n", encoding="utf-8")
+        "after Neutrino v1.8.0 (including Neutrino cheats) are not available here.\n"
+        "\n"
+        f"ORBIT Neutrino RA runtime {pin['tag']}: https://github.com/{pin['repository']}/releases/tag/{pin['tag']}\n", encoding="utf-8")
 
 
 LANGS_README = """RiptOPL translations

@@ -22,7 +22,7 @@ class PublicationTests(unittest.TestCase):
             if "into" in options:
                 continue  # a companion's links are in its parent's notes
             with patch.object(publisher, "git", return_value=history) as git:
-                body = publisher.release_notes(options, sha, "v1.8.0", "v1.2.0-Beta-3925")
+                body = publisher.release_notes(options, sha, "ORBIT-v1.0.2" if options["ra"] else "v1.8.0", "v1.2.0-Beta-3925")
             git.assert_called_once_with("log", "--no-merges", "-10", "--format=%H%x00%s", sha, "--")
             self.assertIn("## Changes\n\n", body)
             self.assertIn(r"Fix \[launch\] \<edge\>", body)
@@ -44,10 +44,20 @@ class PublicationTests(unittest.TestCase):
                              "APP_RIPTOPL-RA-IncebtIon.psu", "RIPTOPL-RA-VARIANTS-IncebtIon-v1.2.0-Beta-3925.zip"):
                     self.assertIn(f"/releases/download/rolling-ra/{name})", body)
             self.assertEqual({"rolling-ra": 5}.get(options["tag"], 6), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
-            self.assertIn("Included build: v1.8.0 ", body)
+            if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
+                self.assertIn("Included build: ORBIT-v1.0.2 -- [ORBIT Neutrino RA runtime v1.0.2]"
+                              "(https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2)", body)
+                self.assertIn("by [danielnuld](https://github.com/danielnuld)", body)
+            else:
+                self.assertIn("Included build: v1.8.0 -- Neutrino.", body)
+                self.assertNotIn("ORBIT", body)
             self.assertNotIn("Release compiler", body)
             self.assertNotIn("Imported production documentation", body)
-            self.assertLess(len(body), 2000)  # the RA notes link eight versioned downloads
+            self.assertLess(len(body), 2200)  # the RA notes link eight versioned downloads and ORBIT
+
+    def test_ra_notes_refuse_a_runtime_other_than_the_pin(self):
+        with patch.object(publisher, "git", return_value="b" * 40 + "\x00Fix"), self.assertRaises(ValueError):
+            publisher.release_notes(publisher.EDITIONS["ra"], "a" * 40, "v1.8.0", "v1.2.0-Beta-1")
 
     def test_notes_refuse_empty_history(self):
         with patch.object(publisher, "git", return_value=""), self.assertRaises(ValueError):
