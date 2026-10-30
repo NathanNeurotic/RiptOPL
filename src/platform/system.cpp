@@ -77,6 +77,11 @@ typedef struct
 
 extern unsigned char eecore_irx[];
 extern unsigned int size_eecore_irx;
+#ifdef IGR_OVERLAY
+#include "../ee_core/include/igrovl.h"
+extern unsigned char igrovl_irx[];
+extern unsigned int size_igrovl_irx;
+#endif
 
 extern unsigned char IOPRP_img[];
 extern unsigned int size_IOPRP_img;
@@ -1149,6 +1154,39 @@ void sysLaunchEmber(const char *emberElf, const char *gameFolder)
         LOG("[EMBER] keep-IOP handoff failed for %s\n", emberElf);
 }
 
+#ifdef IGR_OVERLAY
+// igrovl.elf's loadable segments to the addresses it was linked at, its bss zeroed: 1 when it is the overlay
+// ee_core expects (magic, ABI) and fits from IGROVL_BASE to 0xD0000
+static int sysPlaceIgrOverlay(void)
+{
+    const elf_header_t *eh = (const elf_header_t *)igrovl_irx;
+    const elf_pheader_t *ph = (const elf_pheader_t *)(igrovl_irx + eh->phoff);
+    const igrovl_hdr_t *h = (const igrovl_hdr_t *)IGROVL_BASE;
+    int i, placed = 0;
+
+    if (size_igrovl_irx < sizeof(*eh) || igrovl_irx[0] != 0x7f || igrovl_irx[1] != 'E' || igrovl_irx[2] != 'L' ||
+        igrovl_irx[3] != 'F')
+        return 0;
+    for (i = 0; i < eh->phnum; i++) {
+        if (ph[i].type != 1) // PT_LOAD
+            continue;
+        if ((u32)ph[i].vaddr < IGROVL_BASE || (u32)ph[i].vaddr + ph[i].memsz > IGROVL_BASE + IGROVL_SIZE ||
+            ph[i].offset + ph[i].filesz > size_igrovl_irx)
+            return 0;
+        memcpy(ph[i].vaddr, igrovl_irx + ph[i].offset, ph[i].filesz);
+        memset((u8 *)ph[i].vaddr + ph[i].filesz, 0, ph[i].memsz - ph[i].filesz);
+        placed = 1;
+    }
+    if (!placed || h->magic != IGROVL_MAGIC || h->abi != IGROVL_ABI || h->end > IGROVL_BASE + IGROVL_SIZE)
+        return 0;
+    for (i = 0; i < eh->phnum; i++) // a NOLOAD bss outside every segment: up to the end the header gives
+        if (ph[i].type == 1 && (u32)ph[i].vaddr + ph[i].memsz < h->end)
+            memset((u8 *)ph[i].vaddr + ph[i].memsz, 0, h->end - ((u32)ph[i].vaddr + ph[i].memsz));
+    FlushCache(0);
+    return 1;
+}
+#endif
+
 void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdvdman_irx, void **cdvdman_irx, int size_mcemu_irx, void **mcemu_irx, int EnablePS2Logo, unsigned int compatflags)
 {
     unsigned int modules, ModuleStorageSize;
@@ -1252,6 +1290,21 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
             LOG("IGR menu cheats: %u bytes at %p (room %u)\n", bytes, at, room);
     } else
         host::launch().igrCheatsPlace(NULL, 0); // no page (or Mode 6): clear any block left from before
+#endif
+
+#ifdef IGR_OVERLAY
+    /* RA editions: the menu itself is igrovl.elf (ee_core/include/igrovl.h), linked at the top of the module storage
+       region. It goes in only with the menu on, only at the default address and only when the modules (and the
+       cheats above) end below it; the storage then runs to its end so the kernel's erase leaves it alone. Without
+       it the launch is the menu-off one: config->IgrMenu goes to 0 below. */
+    int igrOvlPlaced = 0;
+    if (gIgrMenu && !(compatflags & COMPAT_MODE_6) && ModuleStorage == (void *)OPL_MOD_STORAGE &&
+        (u32)ModuleStorage + ModuleStorageSize <= IGROVL_BASE)
+        igrOvlPlaced = sysPlaceIgrOverlay();
+    if (igrOvlPlaced) {
+        ModuleStorageSize = IGROVL_BASE + IGROVL_SIZE - (u32)ModuleStorage;
+        LOG("IGR menu overlay at 0x%x\n", IGROVL_BASE);
+    }
 #endif
 
     ModuleStorageEnd = (void *)((u8 *)ModuleStorage + ModuleStorageSize);
@@ -1363,6 +1416,10 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     config->_CompatMask = compatflags;
 #ifdef IGR_MENU
     if (compatflags & COMPAT_MODE_6) // Mode 6 (Disable IGR) turns the in-game menu off too, whatever its setting
+        config->IgrMenu = 0;
+#endif
+#ifdef IGR_OVERLAY
+    if (!igrOvlPlaced) // no overlay for this launch: the combo leaves the game, as with the menu off
         config->IgrMenu = 0;
 #endif
 
