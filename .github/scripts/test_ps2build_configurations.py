@@ -172,7 +172,7 @@ class PublisherTests(unittest.TestCase):
     """Small synthetic kits exercise manifest/provenance checks, not PS2 acceptance."""
     sha = "1234567890abcdef" * 2 + "12345678"
 
-    def kit(self, root, configuration="standard", dirty=False, source=None):
+    def kit(self, root, configuration="standard", dirty=False, source=None, ra_neutrino="ORBIT-v1.0.2.zip"):
         for edition, options in editions.EDITIONS.items():
             path = root / ("release-" + edition)
             path.mkdir()
@@ -184,7 +184,9 @@ class PublisherTests(unittest.TestCase):
                         "dirty": dirty, "edition": edition, "compiler": "gcc", "sdk": "ps2build",
                         "ra": options["ra"], "configuration": configuration,
                         "ps2build_version": "test", "components": {}, "ports": {},
-                        "elf_sha256": hashlib.sha256(payload).hexdigest()}
+                        "elf_sha256": hashlib.sha256(payload).hexdigest(),
+                        "neutrino_archive": {"filename": ra_neutrino if options["ra"] else "neutrino_v1.8.0.7z",
+                                             "sha256": "0" * 64}}
             (path / elf).write_bytes(payload)
             (path / psu).write_bytes(b"synthetic-psu")
             (path / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
@@ -256,6 +258,13 @@ class PublisherTests(unittest.TestCase):
                         publish_editions.verify(root, self.sha)
                 else:
                     self.assertEqual(len(publish_editions.verify(root, self.sha)), 4)
+
+    def test_unpinned_ra_runtime_is_refused_before_publication(self):
+        with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
+            root = Path(directory)
+            self.kit(root, ra_neutrino="neutrino_v1.8.0.7z")
+            with self.assertRaisesRegex(ValueError, "not the pinned ORBIT"):
+                publish_editions.verify(root, self.sha)
 
     def test_ra_incebtion_kit_ships_inside_the_ra_channel(self):
         with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
