@@ -85,7 +85,9 @@ def definition(edition, configuration="standard", toolchain="gcc"):
     apply_configuration(config, configuration)
     # IGS makes LLVM -Os leave only 2,712 bytes for the core's stack. -Oz leaves
     # 6,040 with the same 3 KB linker guard and fixed memory regions; GCC stays -Os.
-    if toolchain == "llvm" and "IGS" in core["defines"]:
+    # The in-game menu's silent pause and held frame leave LLVM -Os 2,136 bytes, so it takes -Oz too.
+    # LLVM builds are CI's compiler check only: every released ee_core is GCC -Os.
+    if toolchain == "llvm" and ("IGS" in core["defines"] or "IGR_MENU" in core["defines"]):
         core["opt"] = "-Oz"
     return config
 
