@@ -5,7 +5,7 @@
 */
 
 #include "include/sema_lock.h"
-#include "include/diaglog.h" // the hardware log, DIAG.TXT (RIPPS2 build 115)
+#include "include/diaglog.h"     // the hardware log, DIAG.TXT (RIPPS2 build 115)
 #include "include/drivestatus.h" // Drive Status (RIPPS2 build 114)
 #include "include/opl.h"
 #include "include/cfgtitle.h"
@@ -1562,6 +1562,7 @@ submenu_list_t *submenuAppendItem(submenu_list_t **submenu, int icon_id, char *t
 
 static void submenuDestroyItem(submenu_list_t *submenu)
 {
+    gridForgetItem(submenu);
 #ifdef RETROACHIEVEMENTS
     free(submenu->item.raText);
 #endif
@@ -2622,6 +2623,9 @@ void menuHandleInputMain()
     int viewPending = support != NULL && libViewPending(support->mode);
 
     if (menuGridSidebarFocused()) {
+        // R3 still marks the selected game (read before the sidebar can move to another device this frame)
+        if (getKeyOn(KEY_R3) && !viewPending && selected_item->item->fav)
+            selected_item->item->fav(selected_item->item);
         menuGridSidebarInput();
         return;
     }

@@ -49,6 +49,7 @@ struct gui_update_t {
     struct { int icon_id, id, text_id, isFolder, lastPlayed, raBadged, favourited, selected, autoStart; char *text, *raText; } submenu;
 };
 static int live, failNext, appendFail, depth;
+static void gridForgetItem(const void *) {} // grid.cpp: a freed row drops its case-flip state
 static int gRememberLastPlayed, gAutoStartLastPlayed, KeyPressedOnce, DisableCron;
 static void *take(size_t n)
 {
