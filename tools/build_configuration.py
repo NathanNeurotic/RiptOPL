@@ -51,6 +51,9 @@ def apply_configuration(config, configuration):
         for target in config["targets"]:
             if target["name"] in ("riptopl", "eecore", "cdvdfsv") or target["name"].endswith("_cdvdman"):
                 add(target, "defines", "INGAMEDIAG")
+            if target["name"].endswith("_cdvdman"):
+                # The IOP heap record ee_core reads for the report (modules/iopcore/common/heap_diag.h).
+                add(target, "sources", "modules/iopcore/cdvdman/heapdiag.c")
         add(core, "sources", "ee_core/src/freeze_diag.c")
         # The formatter is ee_core's, shared so the host test covers what runs on the IOP.
         config["targets"].append({
