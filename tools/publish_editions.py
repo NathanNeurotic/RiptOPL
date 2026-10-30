@@ -118,6 +118,7 @@ def verify(root, expected_sha):
                 or manifest["sdk"] != "ps2build" or manifest["ra"] != options["ra"]
                 or manifest.get("configuration", "standard") != "standard"):
             raise ValueError(f"invalid source/edition manifest for {edition}")
+        included_neutrino(options, bundled_neutrino(manifest))  # refuse an unpinned RA runtime before any publish
         suites.append((manifest["ps2build_version"], manifest["components"], manifest["ports"]))
         sums = {}
         for line in (path / "SHA256SUMS.txt").read_text(encoding="utf-8").splitlines():
@@ -213,6 +214,10 @@ def name_assets(candidates, version):
                 (path / name).rename(path / target)
             lines.append(f"{digest}  {target}")
         sums.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+
+
+def bundled_neutrino(manifest):
+    return manifest["neutrino_archive"]["filename"].removeprefix("neutrino_").removesuffix(".7z").removesuffix(".zip")
 
 
 def included_neutrino(options, neutrino):
@@ -345,8 +350,7 @@ def main():
     for edition, options, path, sums in candidates:
         tag = options["tag"]
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-        neutrino = manifest["neutrino_archive"]["filename"].removeprefix("neutrino_").removesuffix(".7z").removesuffix(".zip")
-        notes = release_notes(options, sha, neutrino, version, repo)
+        notes = release_notes(options, sha, bundled_neutrino(manifest), version, repo)
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".md", delete=False) as stream:
             stream.write(notes)
             notes_path = Path(stream.name)
