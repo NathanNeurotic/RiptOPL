@@ -476,7 +476,10 @@ Without internet, or with the console clock unset (the certificate check needs i
 then says so), the set is found by its title in the account library instead: a game never played
 then shows its title and achievement count with a note to play it once. A failed connection is
 tried once per session; <strong>Select</strong> tries again. TCP needs the menu's own network stack, so UDPFS
-and UDPBD cannot open it.</li>
+and UDPBD cannot open it.
+A set opened from a game's <strong>View achievements</strong> is also saved as <code>&lt;device&gt;/RA/&lt;serial&gt;.ach</code> beside
+the watch list; with <strong>In-Game Menu</strong> on, the game's next launch shows it on the menu's Achievements
+page with what is left to hunt (<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/IGR.md">IGR.md</a>). Open it again to bring the list up to date.</li>
 <li><strong>The HTTPS lookup</strong> uses <a href="https://github.com/Mbed-TLS/mbedtls">Mbed TLS</a> 3.6.7 (RA edition only,
 Apache-2.0, <code>LICENSE-MBEDTLS.txt</code> in the package) with TLS 1.3/1.2 and full certificate checks
 against five embedded roots (<code>third_party/ca-roots</code>). The PS2 has no hardware random number
