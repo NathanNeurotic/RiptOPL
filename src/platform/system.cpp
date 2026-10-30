@@ -79,7 +79,6 @@ extern unsigned char eecore_irx[];
 extern unsigned int size_eecore_irx;
 #ifdef IGR_OVERLAY
 #include "../ee_core/include/igrovl.h"
-#include "include/supportbase.h" // sbGetRaHunt: the menu's LEFT TO HUNT
 extern unsigned char igrovl_irx[];
 extern unsigned int size_igrovl_irx;
 #endif
@@ -1300,12 +1299,12 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
 
 #ifdef IGR_OVERLAY
     /* The menu's ACHIEVEMENTS page (RIPPS2 build 94): the game's locked achievements as RA/<startup>.ach had them, in
-       the menu's lines (sbGetRaHunt), after the cheats and below the overlay. With no room for all of it, the page
+       the menu's lines (host igrRaHunt), after the cheats and below the overlay. With no room for all of it, the page
        gives the counts alone. */
     const u8 *raHunt = NULL, *huntSrc;
     int raHuntCount = 0, raHuntBytes = 0, raHuntTotal = 0, raHuntUnlocked = 0;
     if (gIgrMenu && !(compatflags & COMPAT_MODE_6) && ModuleStorage == (void *)OPL_MOD_STORAGE &&
-        (huntSrc = sbGetRaHunt(filename, &raHuntCount, &raHuntBytes, &raHuntTotal, &raHuntUnlocked)) != NULL) {
+        (huntSrc = host::launch().igrRaHunt(filename, &raHuntCount, &raHuntBytes, &raHuntTotal, &raHuntUnlocked)) != NULL) {
         if (raHuntCount > 0 && (u32)ModuleStorage + ModuleStorageSize + raHuntBytes <= IGROVL_BASE) {
             raHunt = (u8 *)ModuleStorage + ModuleStorageSize;
             memcpy((void *)raHunt, huntSrc, raHuntBytes);
