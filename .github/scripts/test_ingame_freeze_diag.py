@@ -200,6 +200,27 @@ with tempfile.TemporaryDirectory() as tmp:
         ran = subprocess.run([str(exe)], capture_output=True, text=True)
         check(ran.returncode == 0, "the formatter host test passes: " + ran.stdout.strip()[-400:])
 
+# 6. The TV page: drawn before anything asks the IOP, and its composer's host test.
+begin = core[core.index("void FreezeDiag_Begin("):]
+begin = begin[:begin.index("\n}\n")]
+check(begin.index("heap_snapshot();") < begin.index("FreezeDiag_Screen(&report, HEAP_SNAPSHOT);"),
+      "the TV page shows the heap snapshot, taken first")
+screen = read("ee_core/src/freeze_diag_screen.c")
+check("Sif" not in screen, "the TV page asks nothing of the IOP")
+pad = read("ee_core/src/padhook.c")
+thread = pad[pad.index("static void IGR_Thread(void *arg)"):]
+check(thread.index("FreezeDiag_Begin(") < thread.index("SifInitRpc(0);"), "the report (and its TV page) comes before the first SIF call")
+check("FREEZE_DIAG_STALL_VBLANKS" in pad and "Freeze_Stall_Fired = 1;" in pad, "the pad-data watchdog takes the report on its own")
+with tempfile.TemporaryDirectory() as tmp:
+    exe = Path(tmp) / "test_freeze_diag_screen"
+    built = subprocess.run(["cc", "-std=gnu99", "-Wall", "-Wextra", "-Werror", "-DFREEZE_DIAG_SCREEN_HOST_TEST", "-Iee_core/include",
+                            "ee_core/tests/test_freeze_diag_screen.c", "ee_core/src/freeze_diag_screen.c", "-o", str(exe)],
+                           cwd=ROOT, capture_output=True, text=True)
+    check(built.returncode == 0, "the TV page host test builds: " + built.stderr.strip()[-400:])
+    if built.returncode == 0:
+        ran = subprocess.run([str(exe)], capture_output=True, text=True)
+        check(ran.returncode == 0, "the TV page host test passes: " + ran.stdout.strip()[-400:])
+
 if FAILURES:
     for f in FAILURES:
         print("FAIL:", f)
