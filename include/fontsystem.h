@@ -38,6 +38,9 @@ public:
     void updateAspectRatio();
     int renderString(int id, int x, int y, short aligned, size_t width, size_t height, const char *string, u64 colour);
     int calcDimensions(int id, const char *str);
+#ifdef __OPLDIAG
+    int diagDescribe(char *out, int size); // the video mode self-test's font state line
+#endif
 
     /** Single entry in the glyph cache */
     typedef struct

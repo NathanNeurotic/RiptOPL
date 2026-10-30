@@ -76,4 +76,9 @@ int fntWrapText(int id, const char *text, int innerW, char *out, int outSize);
  * We can't use the height for alignment, as the horizontal center would depends of the contained text itself */
 int fntCalcDimensions(int id, const char *str);
 
+#ifdef __OPLDIAG
+/// Diagnostic builds: one " fN:..." entry per loaded font (size, scaled size, FreeType ppem, embolden).
+int fntDiagDescribe(char *out, int size);
+#endif
+
 #endif
