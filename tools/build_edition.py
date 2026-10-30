@@ -47,6 +47,7 @@ def definition(edition, configuration="standard", toolchain="gcc"):
         # RA editions keep the plain IGR combo, and the launcher has no In-Game Menu row.
         for target in (main, core):
             target["defines"] = [v for v in target["defines"] if v != "IGR_MENU"]
+        main["embed_irx"] = [v for v in main["embed_irx"] if v != "igrmbox"]
         add(main, "sources", "src/platform/md5.c", *[
             f"src/sources/{name}.cpp" for name in ("rawatch", "rahash", "ranet", "rabadge", "discsupport", "achievements",
                                                    "rapopslaunch")])

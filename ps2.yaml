@@ -29,6 +29,15 @@ targets:
     headers: *iop_headers
     imports_lst: modules/iopcore/resetspu/imports.lst
 
+  # The in-game menu's mailbox (the silent pause, the frame held under the panel): packed and loaded only for a
+  # launch with In-Game Menu on. Builds without IGR_MENU drop it (tools/build_configuration.py, build_edition.py).
+  - name: igrmbox
+    type: iop
+    sources: [modules/iopcore/igrmbox/igrmbox.c]
+    include_dirs: [modules/iopcore/igrmbox/, modules/iopcore/common]
+    headers: *iop_headers
+    imports_lst: modules/iopcore/igrmbox/imports.lst
+
   - name: apemodpatch
     type: iop
     sources: [modules/iopcore/patches/apemodpatch/main.c]
@@ -512,7 +521,7 @@ targets:
   # ---- EE-side helper ELFs (embedded into the main ELF) ----
   - name: eecore
     type: ee
-    sources: [ee_core/src/main.c, ee_core/src/syshook.c, ee_core/src/iopmgr.c, ee_core/src/modmgr.c, ee_core/src/util.c, ee_core/src/patches.c, ee_core/src/patches_asm.S, ee_core/src/padhook.c, ee_core/src/cd_igr_rpc.c, ee_core/src/tlb.c, ee_core/src/asm.S, ee_core/src/crt0.S, ee_core/src/gsm_engine.S, ee_core/src/gsm_api.c, ee_core/src/dve_reg.S, ee_core/src/cheat_engine.S, ee_core/src/cheat_api.c, ee_core/src/igrmenu.c]
+    sources: [ee_core/src/main.c, ee_core/src/syshook.c, ee_core/src/iopmgr.c, ee_core/src/modmgr.c, ee_core/src/util.c, ee_core/src/patches.c, ee_core/src/patches_asm.S, ee_core/src/padhook.c, ee_core/src/cd_igr_rpc.c, ee_core/src/tlb.c, ee_core/src/asm.S, ee_core/src/crt0.S, ee_core/src/gsm_engine.S, ee_core/src/gsm_api.c, ee_core/src/dve_reg.S, ee_core/src/cheat_engine.S, ee_core/src/cheat_api.c, ee_core/src/igrmenu.c, ee_core/src/igrmbox.c]
     include_dirs: [ee_core/include, ee_core]
     headers: [patches, cdvd, filexio, ps2ips, pad, mc, poweroff]
     defines: [GSM_1080P, PADEMU, IGR_MENU]
@@ -555,5 +564,5 @@ targets:
     ldflags: [-fdata-sections, -ffunction-sections, "-Wl,--gc-sections", "-Wl,-Map,opl.map", -lpadx]
     libs: [gskit, dmakit, poweroff, filexio, patches, png, jpeg, z, mc, freetype, vux, cdvd, netman, ps2ips, audsrv-compat, vorbisfile, vorbis, ogg, pad, elf-loader-nocolour, ds34usb_ee, ds34bt_ee]
     pack: true
-    embed_irx: [isofs, bdmevent, genvmc, nbns, httpclient, imgdrv, resetspu, apemodpatch, cleareffects, f2techioppatch, iremsndpatch, cdvdfsv, smbinit, SMSUTILS:smsutils, SMSTCPIP:ingame_smstcpip, smap_ingame, xhdd, smap_udpbd, udpfs_smap, udpfs_ministack, udpfs_bd, udpfs_ioman, udpfs_fhi, lwnbdsvr, ps2ips_fork:ps2ips, bdm_drv:bdm, usbd_mini_fork:usbd, ata_bd:ps2atad, ps2hdd_osd:ps2hdd, hdd_cdvdman, hdd_hdpro_cdvdman, smb_cdvdman, http_cdvdman, bdm_cdvdman, bdm_ata_cdvdman, bdm_udp_cdvdman, udpfs_cdvdman, pccf_cdvdman, mmce_cdvdman, hdd_mcemu, smb_mcemu, bdm_mcemu, mmce_mcemu, udpfs_mcemu, usb_pademu, bt_pademu, ds34usb, ds34bt, pvrdrv:dvrdrv, dvrfile, eecore, elfldr, smbman_ra:smbman, usbhdfsd, libsd, audio:audsrv, bdmfs_fatfs_fork:bdmfs_fatfs, iLinkman_fork:iLinkman, IEEE1394_bd_mini_fork:IEEE1394_bd, usbmass_bd_mini:usbmass_bd, mx4sio_bd_mini:mx4sio_bd, pccf_bd, pccf_game, hdpro_atad, poweroff, dev9:ps2dev9, ps2ip-nm:ps2ip, smap, netman, iomanx, filexio, sio2man, padman, mcman, mcserv, mmceman_fork:mmceman, mmcedrv, mmceigr, fs-osd:ps2fs, eesync-nano:eesync, udnl]
+    embed_irx: [isofs, bdmevent, genvmc, nbns, httpclient, imgdrv, resetspu, igrmbox, apemodpatch, cleareffects, f2techioppatch, iremsndpatch, cdvdfsv, smbinit, SMSUTILS:smsutils, SMSTCPIP:ingame_smstcpip, smap_ingame, xhdd, smap_udpbd, udpfs_smap, udpfs_ministack, udpfs_bd, udpfs_ioman, udpfs_fhi, lwnbdsvr, ps2ips_fork:ps2ips, bdm_drv:bdm, usbd_mini_fork:usbd, ata_bd:ps2atad, ps2hdd_osd:ps2hdd, hdd_cdvdman, hdd_hdpro_cdvdman, smb_cdvdman, http_cdvdman, bdm_cdvdman, bdm_ata_cdvdman, bdm_udp_cdvdman, udpfs_cdvdman, pccf_cdvdman, mmce_cdvdman, hdd_mcemu, smb_mcemu, bdm_mcemu, mmce_mcemu, udpfs_mcemu, usb_pademu, bt_pademu, ds34usb, ds34bt, pvrdrv:dvrdrv, dvrfile, eecore, elfldr, smbman_ra:smbman, usbhdfsd, libsd, audio:audsrv, bdmfs_fatfs_fork:bdmfs_fatfs, iLinkman_fork:iLinkman, IEEE1394_bd_mini_fork:IEEE1394_bd, usbmass_bd_mini:usbmass_bd, mx4sio_bd_mini:mx4sio_bd, pccf_bd, pccf_game, hdpro_atad, poweroff, dev9:ps2dev9, ps2ip-nm:ps2ip, smap, netman, iomanx, filexio, sio2man, padman, mcman, mcserv, mmceman_fork:mmceman, mmcedrv, mmceigr, fs-osd:ps2fs, eesync-nano:eesync, udnl]
 

@@ -33,6 +33,7 @@ def apply_configuration(config, configuration):
         # the plain IGR combo and no In-Game Menu row.
         for target in (main, core):
             target["defines"] = [v for v in target.get("defines", []) if v != "IGR_MENU"]
+        main["embed_irx"] = [v for v in main["embed_irx"] if v != "igrmbox"]
     if configuration in ("extras", "extras_ds5"):
         add(main, "defines", "__RTL", "IGS")
         add(core, "defines", "IGS")
