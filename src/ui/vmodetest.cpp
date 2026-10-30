@@ -187,6 +187,8 @@ static void vmtSaveTga(const char *name, const u8 *px, int w, int h, int bpp)
     char path[300];
     int fd;
 
+    if (!strncmp(vmtDir, "mc", 2)) // 14 captures of ~0.5 MB would fill a memory card; the hashes and diffs still run
+        return;
     vmtPath(path, sizeof(path), name);
     if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0) {
         vmtPrintf("  cannot write %s\r\n", path);
@@ -367,9 +369,17 @@ void vmodeTestFrame(void)
         int fd;
 
         vmtState = VMT_OFF;
-        snprintf(vmtDir, sizeof(vmtDir), "%s", configGetHomePath());
-        vmtPath(path, sizeof(path), "VMODETEST");
-        if ((fd = open(path, O_RDONLY)) < 0)
+        // The boot folder first (an emulator's host: folder, a USB stick), then the settings folder.
+        const char *dirs[2] = {gBootDir, configGetHomePath()};
+        fd = -1;
+        for (int i = 0; i < 2 && fd < 0; i++) {
+            if (dirs[i] == NULL || dirs[i][0] == '\0')
+                continue;
+            snprintf(vmtDir, sizeof(vmtDir), "%s", dirs[i]);
+            vmtPath(path, sizeof(path), "VMODETEST");
+            fd = open(path, O_RDONLY);
+        }
+        if (fd < 0)
             return;
         close(fd);
         vmtCap = (u8 *)memalign(64, VMT_MAX_W * VMT_MAX_H * 4);
@@ -383,7 +393,7 @@ void vmodeTestFrame(void)
         }
         vmtLogLen = 0;
         vmtBootMode = gVMode;
-        vmtPrintf("RiptOPL %s video mode self-test (issue #132), settings folder %s\r\n", OPL_VERSION, vmtDir);
+        vmtPrintf("RiptOPL %s video mode self-test (issue #132), folder %s\r\n", OPL_VERSION, vmtDir);
         vmtLogState("boot");
         diagLog("vmodetest: armed by %s", path);
         vmtStep = 0;

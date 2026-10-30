@@ -4,7 +4,8 @@
 /*
   Video mode round-trip self-test (diagnostic builds only, issue #132).
 
-  Armed by a file named VMODETEST in the settings folder. Once the menu is up it switches modes on
+  Armed by a file named VMODETEST in the boot folder or the settings folder; output goes next to it
+  (no TGA files on a memory card). Once the menu is up it switches modes on
   its own, the same way the Interface settings do (NTSC 640x224p -> PAL 640x512i FLICKER-FREE ->
   224p -> PAL 640x512i -> 224p -> NTSC 640x448i FLICKER-FREE -> 224p). After each switch it saves
   the displayed framebuffer twice to the settings folder, once with the real menu (VMTnn_mmM.TGA)
