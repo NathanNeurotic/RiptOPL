@@ -1388,6 +1388,9 @@ static int thmLoad(const char *themePath)
             config_set_t *tmpl = configAlloc(0, NULL, NULL);
             if (tmpl != NULL) {
                 thmReadViewTemplate(tmpl, requested);
+                // The template's own SD/HD keys (the built-in Grid's columns_hd) resolve for this picture too.
+                if (thmApplyDisplayLayout(tmpl, newT->layoutWide))
+                    newT->layoutDependsOnWide = 1;
                 built = thmViewSynthesize(themeConfig, tmpl, requested);
                 configFree(tmpl);
             }
