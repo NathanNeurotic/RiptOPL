@@ -133,7 +133,8 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, const char *title)
 
         // Title
         if (title != NULL) {
-            fntRenderString(gTheme->fonts[0], 25, 20, ALIGN_NONE, 0, 0, title, gTheme->textColor);
+            // Ends where the separating line does: "..." when a long (translated) title would run past it
+            fntRenderStringFit(gTheme->fonts[0], 25, 20, ALIGN_NONE, 615 - 25, title, gTheme->textColor, 0);
             // separating line
             rmDrawLine(25, 38, 615, 38, gColWhite);
         }
