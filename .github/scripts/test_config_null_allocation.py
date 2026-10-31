@@ -65,7 +65,7 @@ need("int guiGameSaveConfig(config_set_t *configSet, item_list_t *support)\n{\n 
      "guigame.cpp: guiGameSaveConfig lacks a NULL guard")
 need("void guiGameRemoveSettings(config_set_t *configSet)\n{\n    if (configSet == NULL)\n        return;" in guigame,
      "guigame.cpp: guiGameRemoveSettings lacks a NULL guard")
-load = body(guigame, "void guiGameLoadConfig(item_list_t *support, config_set_t *configSet)")
+load = body(guigame, "void guiGameLoadConfig(int id, item_list_t *support, config_set_t *configSet)")
 need(0 <= load.find("if (configSet == NULL)\n        return;") < load.find("configSource[0]"),
      "guigame.cpp: guiGameLoadConfig touches the UI before checking configSet")
 
