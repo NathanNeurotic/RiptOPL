@@ -57,6 +57,11 @@ length is the guard a per-game fix needs. `heap_hint=` sums it up. The hooks pas
 through unchanged, but CDVDMAN is about 2 KB larger in this build, which shifts where the game's
 blocks land, so a freeze that stops happening in this build is a result worth reporting too.
 
+Since report v3 it also records whether a read still holds the drive, the game's read callback,
+the CD streaming state (`stream=`), and a `history` of the last 16 disc commands: the game's reads,
+refusals, which callback each finished read got, and stream start/stop/pause/resume, with each
+run of streaming work merged into one line. `hint=` also says when one of those looks stuck.
+
 You do not always need the combo. If the game stops sending controller data for about 15 seconds
 (18 on PAL), which is what a stuck I/O processor looks like, the build takes the report on its own.
 A tap of the **power button** (once or twice) also takes it; in this build a tap never powers the

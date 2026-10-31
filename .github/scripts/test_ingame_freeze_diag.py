@@ -75,6 +75,8 @@ for rel in [
     "ee_core/src/iopmgr.c",
     "modules/iopcore/cdvdman/cdvdman.c",
     "modules/iopcore/cdvdman/internal.h",
+    "modules/iopcore/cdvdman/ncmd.c",
+    "modules/iopcore/cdvdman/streaming.c",
     "modules/iopcore/cdvdman/device-bdm.c",
     "modules/iopcore/cdvdman/device-mmce.c",
     "modules/iopcore/cdvdfsv/cdvdfsv.c",
@@ -188,6 +190,15 @@ check(len(values) == len(set(values)), "CDSC codes are unique")
 check(("CDSC_GET_FREEZE_DIAG", "0xFFFFFFEF") in codes, "freeze report CDSC code defined")
 shared = read("modules/iopcore/common/freeze_diag.h")
 check(re.search(r"#define FREEZE_DIAG_RPC_FNO\s+2\b", shared) is not None, "RPC function 2 (1 is shutdown)")
+check(re.search(r"#define TEXT_CAP 16384\b", irx) is not None and "static char out[16384]" in read("ee_core/tests/test_freeze_diag_format.c"),
+      "the host test formats into the same buffer size freezediag.irx allocates")
+# The history: a game read that the stream's callback swallowed is the Tales of the Abyss lead (#185).
+cd = read("modules/iopcore/cdvdman/cdvdman.c")
+thr = cd[cd.index("static void cdvdman_cdread_Thread(void *args)"):]
+thr = thr[:thr.index("\n}\n")]
+check(thr.index("diag_stream_read = cdvdman_stat.StreamingData.StIsReading") < thr.index("cdvdman_read(cdvdman_stat.cdread_lba"),
+      "a stream fill is told apart from a game read before the read runs (its callback clears StIsReading)")
+check("FREEZE_DIAG_EV_DONE_STREAM" in thr and "FREEZE_DIAG_EV_DONE_CB" in thr, "the read thread logs which callback a game read got")
 
 # 5. The formatter's host test.
 with tempfile.TemporaryDirectory() as tmp:
