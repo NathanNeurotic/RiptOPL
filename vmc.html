@@ -214,7 +214,7 @@ step on BDM and PFS; <b>the rebuild has NOT been run on hardware.</b> See the
 <p>A format failure after the erase pass can leave a full-size image without completed card metadata. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/38">PR #38</a> makes automatic assignment check the complete header, which the formatter writes after its metadata, and matching geometry. Erased headers and seek/read/close failures refuse assignment on retry, including after restart. Invalid files remain intact for recovery; manual selection is separate. Back up any card containing saves and keep the original failure details. Header validation is not a filesystem integrity scan or proof of media flush/power-loss durability. See <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/issues/941">original issue #941</a> and <a href="https://github.com/NathanNeurotic/RiptOPL/issues/20">migration issue #20</a> for remaining acceptance work.</p></div>
 <h2 id="saves">Saves on a card</h2>
 <p>The per-game VMC dialog has a <b>Saves</b> button for a card that exists. It opens a page that treats the
-card like a folder. From RIPPS2 builds 98 to 115 by akilluminati47; NOT TESTED on hardware.</p>
+card like a folder. From <a href="https://github.com/akilluminati47/RIPPS2">RIPPS2</a> builds 98 to 115 by <a href="https://github.com/akilluminati47">akilluminati47</a>; NOT TESTED on hardware.</p>
 <ul>
 <li><b>On the card</b> lists the saves by their titles, read from each save's <code>icon.sys</code>; <b>Free</b>
 shows the card's free space.</li>
