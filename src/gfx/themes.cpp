@@ -1775,7 +1775,7 @@ int ThemeCatalog::readEntryCallback(int index, const char *path, const char *sep
 
 // Callers MUST hold guiLock (except pre-GUI single-threaded init, where the lock is a not-ready
 // no-op): this free()s the list the UI-Settings dialog may be handed via thmGetGuiList, and it
-// runs on the IO worker for device-triggered rebuilds. guiShowUIConfig snapshots the list under
+// runs on the IO worker for device-triggered rebuilds. guiSettingsShowInterface snapshots the list under
 // the same lock. NOT self-locking: thmReinit must hold the lock across its name-string frees AND
 // this rebuild as ONE critical section (between the two, the published list points at freed
 // strings), and the sema is not recursive.
@@ -1854,7 +1854,7 @@ void ThemeCatalog::reinit(const char *path)
 
     // One guiLock section across the removal loop AND the rebuild: the frees below invalidate
     // strings the CURRENTLY PUBLISHED names_ points at, so the GUI-side readers
-    // (frame-locked renders, guiShowUIConfig's snapshot) must not run between free and swap.
+    // (frame-locked renders, guiSettingsShowInterface's snapshot) must not run between free and swap.
     host::ui().lock();
     int i = 0;
     while (i < count_) {

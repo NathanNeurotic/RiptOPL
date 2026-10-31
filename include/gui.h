@@ -135,16 +135,12 @@ void guiDrawSubMenuHints(void);
 
 
 void guiShowAbout();
-void guiShowConfig();
-void guiShowUIConfig();
 void guiShowSettings(void);
 void guiShowPsEmulationSettings(void); // PS1 Triangle shortcut to the global PS emulation page
 void guiShowEmberGameSettings(void);   // PS1 Triangle, Ember rows: timing/dither/shading/controller
 // Settings-layout category pages (rebuild step 06)
-void guiShowDeviceConfig(void);
 void guiShowColorsConfig(void);
 int guiDrawBGSettings(void);
-void guiShowNeutrinoDefaults(void);
 int guiNeutrinoPathHandler(char *text, int maxLen);
 int guiPopstarterPathHandler(char *text, int maxLen);
 int guiExitPathHandler(char *text, int maxLen);
