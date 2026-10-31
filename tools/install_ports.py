@@ -200,7 +200,8 @@ def _archive_objects(data):
 
 
 def _locals_after_globals(elf):
-    """1 when a local symbol sits at or after .symtab's sh_info (the first global), as ld.lld refuses."""
+    """1 when .symtab's sh_info (the first non-local) is wrong either way, as ld.lld refuses both: a local symbol
+    at or after it, or a non-local one before it."""
     is64, endian = elf[4] == 2, "<" if elf[5] == 1 else ">"
     shoff = struct.unpack_from(endian + ("Q" if is64 else "I"), elf, 0x28 if is64 else 0x20)[0]
     shentsize, shnum = struct.unpack_from(endian + "HH", elf, 0x3A if is64 else 0x2E)
@@ -216,7 +217,8 @@ def _locals_after_globals(elf):
             offset, size = struct.unpack_from(endian + "II", elf, sh + 0x10)
             info, = struct.unpack_from(endian + "I", elf, sh + 0x1C)
             entsize, bind_at = struct.unpack_from(endian + "I", elf, sh + 0x24)[0], 12
-        return any(elf[offset + k * entsize + bind_at] >> 4 == 0 for k in range(info, size // entsize))
+        binds = [elf[offset + k * entsize + bind_at] >> 4 for k in range(size // entsize)]
+        return any(b == 0 for b in binds[info:]) or any(b != 0 for b in binds[1:info])  # [0] is the null symbol
     return False
 
 

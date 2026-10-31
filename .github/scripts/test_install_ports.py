@@ -273,7 +273,7 @@ class SymtabRepairTests(unittest.TestCase):
         subprocess.run(["cc", "-c", "-O0", str(source), "-o", str(obj)], check=True)
         if obj.read_bytes()[:4] != b"\x7fELF":
             self.skipTest("host cc does not make ELF objects")
-        if broken:
+        if broken:  # True: sh_info too low (a local after it); "high": too high (a global before it)
             elf = bytearray(obj.read_bytes())
             is64, end = elf[4] == 2, "<" if elf[5] == 1 else ">"
             shoff = struct.unpack_from(end + ("Q" if is64 else "I"), elf, 0x28 if is64 else 0x20)[0]
@@ -281,7 +281,13 @@ class SymtabRepairTests(unittest.TestCase):
             for i in range(shnum):
                 sh = shoff + i * shentsize
                 if struct.unpack_from(end + "I", elf, sh + 4)[0] == 2:
-                    struct.pack_into(end + "I", elf, sh + (0x2C if is64 else 0x1C), 1)  # sh_info says globals start at 1
+                    if broken == "high":  # sh_info past every symbol: the globals now sit before it
+                        size = struct.unpack_from(end + ("Q" if is64 else "I"), elf, sh + (0x20 if is64 else 0x14))[0]
+                        entsize = struct.unpack_from(end + ("Q" if is64 else "I"), elf, sh + (0x38 if is64 else 0x24))[0]
+                        info = size // entsize
+                    else:
+                        info = 1  # sh_info says globals start at 1
+                    struct.pack_into(end + "I", elf, sh + (0x2C if is64 else 0x1C), info)
             obj.write_bytes(bytes(elf))
         library = directory / "libjpeg.a"
         subprocess.run(["ar", "rcs", str(library), str(obj)], check=True)
@@ -300,6 +306,9 @@ class SymtabRepairTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
             self.assertTrue(ports.needs_symtab_repair(self.make_library(directory, broken=True)))
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            self.assertTrue(ports.needs_symtab_repair(self.make_library(directory, broken="high")))
 
     def test_clean_library_is_left_alone(self):
         with tempfile.TemporaryDirectory() as directory:
