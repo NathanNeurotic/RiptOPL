@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <kernel.h>
+#include <delaythread.h>
 
 #include "include/opl.h"
 #include "include/renderman.h"
