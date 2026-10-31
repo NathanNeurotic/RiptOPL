@@ -193,8 +193,12 @@ void BootSplash::run()
 
         // While the greeting waits for the saved theme, run the menu update hook as the main loop would: a drive that
         // comes up late is only picked up there (BdmGeneration), so without it the hold could never see the theme.
-        if (themeHold)
+        // The splash never polls the pads, so advance the idle count here as an untouched pad would: the hook skips all
+        // device work until the user has been idle for MENU_MIN_INACTIVE_FRAMES.
+        if (themeHold) {
+            guiInactiveFrames++;
             gGui.runFrameHook();
+        }
     }
     active_ = false;
 }
