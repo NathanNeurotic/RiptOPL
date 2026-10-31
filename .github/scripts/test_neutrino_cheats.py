@@ -312,7 +312,7 @@ if not re.search(r'if \(sbNeutrinoHandCheats\([^;]+\) < 0\)\s*return;', udpfs):
 support = text('src/sources/supportbase.cpp')
 calls = re.findall(r'sbLoadCheats\(([^;]*?)\)\) < 0', '\n'.join(text('src/sources/' + f) for f in (
     'bdmlaunch.cpp', 'ethsupport.cpp', 'hddsupport.cpp', 'httpsupport.cpp', 'mmcesupport.cpp', 'udpfssupport.cpp')))
-if len(calls) != 7 or any(not c.rstrip().endswith('configSet') for c in calls):
+if len(calls) != 8 or any(not c.rstrip().endswith('configSet') for c in calls):
     failures.append('every sbLoadCheats caller must pass the game config (found %r)' % calls)
 select = function(support, 'static void sbCheatsSelect(')
 if (select.find('cheatConfigLoadSelections(configSet);') < 0 or select.find('guiManageCheats(configSet);') <
