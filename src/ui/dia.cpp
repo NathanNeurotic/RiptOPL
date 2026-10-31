@@ -41,6 +41,8 @@ constexpr int DIA_INT_SET_SPEED = 100;
 static struct UIItem *diaSettingsShellUI;
 static const char *diaSettingsIndicator;
 static int diaSettingsContext;
+static struct UIItem *diaListUI; // diaSetListKeys
+static int diaListKeyLast;
 
 // --------------------------- Dialogue handling ------------------------------
 // ----------------------------------------------------------------------------
@@ -403,6 +405,16 @@ void diaSetSettingsShell(struct UIItem *ui, const char *indicator)
 void diaSetSettingsContext(int enabled)
 {
     diaSettingsContext = enabled;
+}
+
+void diaSetListKeys(struct UIItem *ui)
+{
+    diaListUI = ui;
+}
+
+int diaListKey(void)
+{
+    return diaListKeyLast;
 }
 
 // The lowest pixel the dialog would reach (content space, from `top`) with rows `gap` apart. Walks the
@@ -1023,6 +1035,22 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
                 return DIA_RESULT_NEXT;
             }
 
+            // A list dialog (the File Manager): L1/R1 turn its pages, and Square/Triangle act on the row's button
+            if (ui == diaListUI) {
+                if (getKeyOn(KEY_L1) || getKeyOn(KEY_R1)) {
+                    diaRestoreScrollSpeed();
+                    sfxPlay(SFX_CURSOR);
+                    return getKeyOn(KEY_L1) ? DIA_RESULT_PREV : DIA_RESULT_NEXT;
+                }
+                if (cur->type == UI_BUTTON && (getKeyOn(KEY_SQUARE) || getKeyOn(KEY_TRIANGLE))) {
+                    diaListKeyLast = getKeyOn(KEY_SQUARE) ? DIA_KEY_SQUARE : DIA_KEY_TRIANGLE;
+                    diaRestoreScrollSpeed();
+                    sfxPlay(SFX_CONFIRM);
+                    diaReturnRemember(ui, cur->id);
+                    return cur->id;
+                }
+            }
+
             // the right stick peeks up or down a long page, silently; the cursor stays put
             {
                 int sx, sy;
@@ -1100,6 +1128,7 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
                 if (cur->type == UI_BUTTON) {
                     diaRestoreScrollSpeed();
                     diaReturnRemember(ui, cur->id);
+                    diaListKeyLast = DIA_KEY_CONFIRM;
                     return cur->id;
                 }
 

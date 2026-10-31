@@ -7,6 +7,7 @@
 #include "include/sema_lock.h"
 #include "include/diaglog.h"     // the hardware log, DIAG.TXT (RIPPS2 build 115)
 #include "include/drivestatus.h" // Drive Status (RIPPS2 build 114)
+#include "include/guifilemgr.h"  // File Manager (after RIPPS2's Memory Files)
 #include "include/opl.h"
 #include "include/cfgtitle.h"
 #include "include/diag.h"
@@ -62,6 +63,7 @@ enum MENU_IDs {
     MENU_RA_ACHIEVEMENTS,
     MENU_RA_DISC_LAUNCH,
 #endif
+    MENU_FILE_MANAGER, // after RIPPS2's Memory Files browser (akilluminati47)
 };
 
 enum GAME_MENU_IDs {
@@ -1153,6 +1155,7 @@ static void menuInitMainMenu(void)
     submenuAppendItem(&mainMenu, -1, NULL, MENU_SETTINGS, _STR_SETTINGS);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_NBD, _STR_STARTNBD);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_DRIVE_STATUS, _STR_DRIVE_STATUS);
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_FILE_MANAGER, _STR_FILE_MANAGER);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_ABOUT, _STR_ABOUT);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_EXIT, _STR_EXIT);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_POWER_OFF, _STR_POWEROFF);
@@ -2236,6 +2239,9 @@ void menuHandleInputMenu()
                 handleLwnbdSrv();
         } else if (id == MENU_DRIVE_STATUS) {
             guiShowDriveStatus();
+        } else if (id == MENU_FILE_MANAGER) {
+            if (menuCheckParentalLock() == 0) // it can delete and run anything
+                guiShowFileManager();
         } else if (id == MENU_ABOUT) {
             guiShowAbout();
         } else if (id == MENU_SAVE_CHANGES) {
