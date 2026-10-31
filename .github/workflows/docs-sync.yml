@@ -190,7 +190,8 @@ jobs:
             --md-page docs/GAME-FORMATS.md=game-formats.html \
             --md-page docs/LAUNCH-DIAGNOSTICS.md=launch-diagnostics.html \
             --md-page docs/DEFAULTS.md=defaults.html \
-            --md-page docs/GAME-LIBRARY.md=library.html | tee "$RUNNER_TEMP/site-sync.log"
+            --md-page docs/GAME-LIBRARY.md=library.html \
+            --md-page docs/FILE_MANAGER.md=file-manager.html | tee "$RUNNER_TEMP/site-sync.log"
 
       - name: Commit regenerated site files
         shell: bash
@@ -202,7 +203,7 @@ jobs:
           git add retroachievements.html data/search-index.json
           # site_sync.py skips an --md-page whose page is not on gh-pages yet; `git add` of a missing
           # file would fail the step instead.
-          for page in ps2sdk-notes.html game-formats.html launch-diagnostics.html defaults.html library.html; do
+          for page in ps2sdk-notes.html game-formats.html launch-diagnostics.html defaults.html library.html file-manager.html; do
             if [ -e "$page" ]; then git add "$page"; fi
           done
           if git diff --cached --quiet; then
