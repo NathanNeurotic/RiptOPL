@@ -514,10 +514,17 @@ static int guiGameShowVMCConfig(int id, item_list_t *support, config_set_t *conf
     else if (validate)
         return 1; // nothing to validate if no user input
 
-    const char *now = gsOf(support)->startup(support, id);
-    if (now != NULL)
+    // A copy from the game's own config, not the source's game array: an IO-worker refresh can free
+    // that array while this dialog is open. The array is only read, as before, when a default name is needed.
+    const char *now = NULL;
+    if (configSet != NULL && configGetStr(configSet, CONFIG_ITEM_STARTUP, &now) && now != NULL)
         snprintf(startup, sizeof(startup), "%s", now);
     if (!strlen(VMCName)) {
+        if (startup[0] == '\0') {
+            now = gsOf(support)->startup(support, id);
+            if (now != NULL)
+                snprintf(startup, sizeof(startup), "%s", now);
+        }
         const char *vmcTitle = getGroupIdForTitleId(startup);
         snprintf(vmc, sizeof(vmc), "%s_%d", vmcTitle, slot);
     }
