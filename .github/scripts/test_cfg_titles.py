@@ -274,13 +274,13 @@ assert "intSetting(CONFIG_OPL_CFG_TITLES, &gCfgTitlesInLists, 0)" in settings
 dialogs = (ROOT / "src/ui/dialogs.cpp").read_text(encoding="utf-8")
 assert "UICFG_CFG_TITLES, 1, 1, _STR_HINT_CFG_TITLES" in dialogs
 gui = (ROOT / "src/ui/guisettings.cpp").read_text(encoding="utf-8")
-assert gui.count("diaGetInt(diaUIConfig, UICFG_CFG_TITLES") + gui.count("diaGetInt(ui, UICFG_CFG_TITLES") == 2
+assert gui.count("diaGetInt(ui, UICFG_CFG_TITLES") == 1
 # A flip must rebuild every game list: mark the pages dirty (each NeedsUpdate consumes it) and
 # queue HTTP too, which oplQueueLibraryDeviceUpdates leaves out.
 refresh = gui[gui.index("static void guiRefreshCfgTitles(void)\n{"):]
 refresh = refresh[:refresh.index("\n}\n")]
 assert "libViewMarkAllDirty();" in refresh and "oplQueueLibraryDeviceUpdates();" in refresh and "httpGetObject(0)" in refresh
-assert gui.count("guiRefreshCfgTitles();") == 7  # both CFG-title flips, the RA badge (#1039) flip, the All Games flip, 3 Show Hidden Games flips
+assert gui.count("guiRefreshCfgTitles();") == 5  # the CFG-title flip, the RA badge (#1039) flip, the All Games flip, 2 Show Hidden Games flips
 base = (ROOT / "lng/tmpl/_base.yml").read_text(encoding="utf-8")
 assert base.index("- label: CFG_TITLES") > base.index("- label: AUTO_VMC_TIMEOUT")
 print("PASS: CFG titles in game lists are opt-in, display-only and read once per rebuild")
@@ -321,4 +321,4 @@ int main(){
 # not depend on automatic refresh or the PS1-capable-only device queue.
 assert refresh.index('libViewMarkAllDirty();') < refresh.index('oplQueueLibraryDeviceUpdates();')
 assert refresh.index('ioPutRequest(IO_MENU_UPDATE_DEFFERED, &http->mode);') < refresh.index('loadFavourites();')
-assert gui.count('diaSetInt(diaUIConfig, UICFG_CFG_TITLES') + gui.count('diaSetInt(ui, UICFG_CFG_TITLES') == 2
+assert gui.count('diaSetInt(ui, UICFG_CFG_TITLES') == 1

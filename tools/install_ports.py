@@ -9,6 +9,7 @@ import os
 from pathlib import Path, PurePosixPath
 import shutil
 import stat
+import struct
 import subprocess
 import tempfile
 import time
@@ -174,12 +175,62 @@ def install(sdk, package, toolchain):
     print(f"  SHA256 {hashlib.sha256(data).hexdigest()}")
 
 
-# ps2build's jpeg package (both compilers) ships objects whose symbol tables list some local symbols
-# after the first global one, under a .symtab sh_info that says otherwise. GNU ld accepts that; ld.lld
-# rejects every such object ("symbol (N) has invalid binding: 0"), so the LLVM link of riptopl fails as
-# soon as JPG art pulls libjpeg in. llvm-objcopy rewrites each member with locals first; it changes no
-# code or data and is idempotent. Remove this once the package is rebuilt upstream.
+# ps2build's jpeg package used to ship objects whose symbol tables list some local symbols after the first
+# global one, under a .symtab sh_info that says otherwise. GNU ld accepts that; ld.lld rejects every such object
+# ("symbol (N) has invalid binding: 0"), so the LLVM link of riptopl failed as soon as JPG art pulled libjpeg in.
+# The official sdk-world v2026.10.28 ships a clean LLVM jpeg (checked 2026-10-31: 0 of 101 members bad), but an
+# older SDK can still arrive (a cached one, or the NathanNeurotic/ps2build-mirror fallback, last built from
+# v2026.10.15). So each library is checked first and llvm-objcopy rewrites it (locals first; no code or data
+# changes) only when it really has the fault. Remove this once the mirror carries a fixed world as well.
 LLVM_REPAIRS = ("jpeg/lib/libjpeg.a", "jpeg_ps2_addons/lib/libjpeg_ps2_addons.a")
+
+
+def _archive_objects(data):
+    """The ELF members of a GNU ar archive."""
+    if data[:8] != b"!<arch>\n":
+        return
+    at = 8
+    while at + 60 <= len(data):
+        header = data[at:at + 60]
+        size = int(header[48:58].decode().strip())
+        body = data[at + 60:at + 60 + size]
+        if body[:4] == b"\x7fELF":
+            yield body
+        at += 60 + size + (size & 1)
+
+
+def _locals_after_globals(elf):
+    """1 when .symtab's sh_info (the first non-local) is wrong either way, as ld.lld refuses both: a local symbol
+    at or after it, or a non-local one before it."""
+    is64, endian = elf[4] == 2, "<" if elf[5] == 1 else ">"
+    shoff = struct.unpack_from(endian + ("Q" if is64 else "I"), elf, 0x28 if is64 else 0x20)[0]
+    shentsize, shnum = struct.unpack_from(endian + "HH", elf, 0x3A if is64 else 0x2E)
+    for i in range(shnum):
+        sh = shoff + i * shentsize
+        if struct.unpack_from(endian + "I", elf, sh + 4)[0] != 2:  # SHT_SYMTAB
+            continue
+        if is64:
+            offset, size = struct.unpack_from(endian + "QQ", elf, sh + 0x18)
+            info, = struct.unpack_from(endian + "I", elf, sh + 0x2C)
+            entsize, bind_at = struct.unpack_from(endian + "Q", elf, sh + 0x38)[0], 4
+        else:
+            offset, size = struct.unpack_from(endian + "II", elf, sh + 0x10)
+            info, = struct.unpack_from(endian + "I", elf, sh + 0x1C)
+            entsize, bind_at = struct.unpack_from(endian + "I", elf, sh + 0x24)[0], 12
+        binds = [elf[offset + k * entsize + bind_at] >> 4 for k in range(size // entsize)]
+        return any(b == 0 for b in binds[info:]) or any(b != 0 for b in binds[1:info])  # [0] is the null symbol
+    return False
+
+
+def needs_symtab_repair(library):
+    """True unless every member could be read and none has the fault: a library this cannot read (a cut-short
+    member, a thin or BSD archive, no ELF members at all) is rewritten anyway, as before this check existed.
+    llvm-objcopy leaves a clean library as it was."""
+    try:
+        objects = list(_archive_objects(Path(library).read_bytes()))
+        return not objects or any(_locals_after_globals(obj) for obj in objects)
+    except (ValueError, struct.error, IndexError):
+        return True
 
 
 def repair_llvm_symtabs(sdk):
@@ -189,6 +240,9 @@ def repair_llvm_symtabs(sdk):
     for relative in LLVM_REPAIRS:
         library = world / relative
         if not library.is_file():
+            continue
+        if not needs_symtab_repair(library):
+            print(f"symbol tables already in order in {library}; no repair needed")
             continue
         if objcopy is None:
             print(f"warning: no llvm-objcopy; {library} keeps symbol tables ld.lld rejects", flush=True)

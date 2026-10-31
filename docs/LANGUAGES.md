@@ -113,7 +113,7 @@ drivers mount. A matching `font_<Name>.ttf`/`.otf` beside the file is loaded wit
 
 ## Right-to-left and CJK text
 
-Ported from RIPPS2 build 104 by akilluminati47 (`src/gfx/textshape.cpp`). NOT TESTED on hardware.
+Ported from [RIPPS2](https://github.com/akilluminati47/RIPPS2) build 104 by [akilluminati47](https://github.com/akilluminati47) (`src/gfx/textshape.cpp`). NOT TESTED on hardware.
 
 - **Arabic and Persian** letters are joined into their presentation forms (lam-alef as one
   letter), and each line is laid out right to left. Latin words and numbers keep their own order,

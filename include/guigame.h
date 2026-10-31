@@ -19,6 +19,8 @@ char *gameConfigSource(void);
 int guiGameResolveEffectiveCore(config_set_t *configSet, item_list_t *support, int id);
 int guiGameVmcNameHandler(char *text, int maxLen);
 void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet = NULL);
+// The string id that says why the last vmcsaves call failed (the File Manager's PSU actions use it too)
+int guiGameVMCSavesErrorText(void);
 int guiGameAutoCreateVmc(item_list_t *support, int id, config_set_t *configSet);
 void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configSet);
 // Returns the child dialog result so Settings peer pages can preserve their shared Save Changes

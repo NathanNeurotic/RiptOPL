@@ -8,11 +8,11 @@ boot better under Neutrino, or for users who prefer Neutrino's loader and its la
 
 ## Credit and licence
 
-**Neutrino is created by [rickgaiser](https://github.com/rickgaiser)** — a *"Small, Fast and Modular
+**[Neutrino](https://github.com/rickgaiser/neutrino) is created by [rickgaiser](https://github.com/rickgaiser)** — a *"Small, Fast and Modular
 PS2 Device Emulator"*. Home: <https://github.com/rickgaiser/neutrino>.
 
 The RiptOPL release package
-normally bundles the official latest build, re-fetched from upstream at publish time (a failed download/extraction can omit it; check the release notes), under Neutrino's
+normally bundles the official latest build, re-fetched from upstream at publish time (a failed download/extraction can omit it; check the release notes), under [Neutrino](https://github.com/rickgaiser/neutrino)'s
 **AFL-3.0** licence. We add one file to that folder — `config/bsd-udpfsbd.toml`, because
 Neutrino ships `udpfs_bd.irx` without a matching `-bsd` token and RiptOPL launches UDPFS as
 `-bsd=udpfsbd` — and replace the i.LINK pair: `modules/IEEE1394_bd_mini.irx` and its manager
@@ -20,16 +20,16 @@ Neutrino ships `udpfs_bd.irx` without a matching `-bsd` token and RiptOPL launch
 `modules/ilink/iLinkman`, see their `ORIGIN.txt`). The manager carries the transmit-cancel, alarm and
 receive-FIFO fixes the driver relies on. The stock driver gives up logging in to an i.LINK drive before the drive lets go of the login held
 across an IOP reset, so i.LINK games never started. Packaging fails rather than ship the stock
-files. Nothing else of rickgaiser's is altered or removed. Not yet confirmed on hardware.
+files. Nothing else of [rickgaiser](https://github.com/rickgaiser)'s is altered or removed. Not yet confirmed on hardware.
 
-Neutrino is deliberately **UI-agnostic**: it has no interface of its own, and that is exactly what
+[Neutrino](https://github.com/rickgaiser/neutrino) is deliberately **UI-agnostic**: it has no interface of its own, and that is exactly what
 makes a front-end like this one possible. RiptOPL is one of several — **[LUNA](https://github.com/dnunezx/LUNA)**
 by **[darkladark](https://github.com/dnunezx)** (our #1 recommended alternative, for lightweight,
-customized Neutrino gameplay), **NHDDL**, **XEB+ Plugin**, **RETROLauncher**, **OSD-XMB** and
+customized Neutrino gameplay), **[NHDDL](https://github.com/pcm720/nhddl)**, **XEB+ Plugin**, **RETROLauncher**, **OSD-XMB** and
 **PSBBN/BBNL** all drive the same core.
 
-Report *launching* problems here — building the arguments and handing off are ours. Genuine Neutrino
-bugs belong on rickgaiser's tracker.
+Report *launching* problems here — building the arguments and handing off are ours. Genuine [Neutrino](https://github.com/rickgaiser/neutrino)
+bugs belong on [rickgaiser](https://github.com/rickgaiser)'s tracker.
 
 ## 1. Install Neutrino
 
@@ -270,14 +270,14 @@ For the full list of flags Neutrino accepts, see the
 RiptOPL streams games from a PC over the LAN, chosen with the **Game Sources → Network
 Connectivity** row (**Off** / Manual / Auto) plus the **Protocol** selector — **SMB / UDPFS /
 UDPBD / HTTP** — shown indented under it and on **Network** (one setting, both places). HTTP uses OPL’s core and has its own [guide](HTTP.md). **UDPFS** is the modern
-network-boot protocol (Rick Gaiser's **UDPRDMA** transport); **UDPBD** is the older SUDPBDv2 protocol,
+network-boot protocol ([Rick Gaiser](https://github.com/rickgaiser)'s **UDPRDMA** transport); **UDPBD** is the older SUDPBDv2 protocol,
 kept for users still running the `udpbd-server`. Both appear in OPL as their own games list — with
-covers and per-game settings — and boot via the external Neutrino core. **SMB** uses
+covers and per-game settings — and boot via the external [Neutrino](https://github.com/rickgaiser/neutrino) core. **SMB** uses
 a mounted SMB file share served by OPL's **own** core (no Neutrino), and it keeps its own address /
 port / share / credentials fields plus an **SMB Version** row (**SMBv1** default, or **SMB2**).
 Changing the version only takes effect on the next boot — OPL shows the usual restart notice when a
 network stack is already up — and it warns first that SMB2 changes **both** browsing and in-game
-reading, so an SMBv1-only server (including the bundled PS2-Servers tool) will list no games.
+reading, so an SMBv1-only server (including the bundled [PS2-Servers](https://github.com/NathanNeurotic/PS2-Servers) tool) will list no games.
 
 | Choice | Wire protocol | On the PS2 | Core | PC server |
 |---|---|---|---|---|

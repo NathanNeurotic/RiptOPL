@@ -258,5 +258,80 @@ class InstallPortsTests(unittest.TestCase):
                 ports.install(Path(directory), "ogg", "gcc")
 
 
+class SymtabRepairTests(unittest.TestCase):
+    """The jpeg symbol-table repair runs only on a library that has the fault ld.lld refuses."""
+
+    def make_library(self, directory, broken):
+        import shutil
+        import struct
+        import subprocess
+        if shutil.which("cc") is None or shutil.which("ar") is None:
+            self.skipTest("no host cc/ar")
+        source = directory / "a.c"
+        source.write_text("static int hidden(int x) { return x + 1; }\nint shown(int x) { return hidden(x); }\n")
+        obj = directory / "a.o"
+        subprocess.run(["cc", "-c", "-O0", str(source), "-o", str(obj)], check=True)
+        if obj.read_bytes()[:4] != b"\x7fELF":
+            self.skipTest("host cc does not make ELF objects")
+        if broken:  # True: sh_info too low (a local after it); "high": too high (a global before it)
+            elf = bytearray(obj.read_bytes())
+            is64, end = elf[4] == 2, "<" if elf[5] == 1 else ">"
+            shoff = struct.unpack_from(end + ("Q" if is64 else "I"), elf, 0x28 if is64 else 0x20)[0]
+            shentsize, shnum = struct.unpack_from(end + "HH", elf, 0x3A if is64 else 0x2E)
+            for i in range(shnum):
+                sh = shoff + i * shentsize
+                if struct.unpack_from(end + "I", elf, sh + 4)[0] == 2:
+                    if broken == "high":  # sh_info past every symbol: the globals now sit before it
+                        size = struct.unpack_from(end + ("Q" if is64 else "I"), elf, sh + (0x20 if is64 else 0x14))[0]
+                        entsize = struct.unpack_from(end + ("Q" if is64 else "I"), elf, sh + (0x38 if is64 else 0x24))[0]
+                        info = size // entsize
+                    else:
+                        info = 1  # sh_info says globals start at 1
+                    struct.pack_into(end + "I", elf, sh + (0x2C if is64 else 0x1C), info)
+            obj.write_bytes(bytes(elf))
+        library = directory / "libjpeg.a"
+        subprocess.run(["ar", "rcs", str(library), str(obj)], check=True)
+        return library
+
+    def fake_objcopy(self, sdk):
+        objcopy = sdk / "llvm-toolchain" / "llvm" / "bin" / "llvm-objcopy"
+        objcopy.parent.mkdir(parents=True)
+        objcopy.write_text("")
+        return objcopy
+
+    def test_detects_only_the_fault(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            self.assertFalse(ports.needs_symtab_repair(self.make_library(directory, broken=False)))
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            self.assertTrue(ports.needs_symtab_repair(self.make_library(directory, broken=True)))
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            self.assertTrue(ports.needs_symtab_repair(self.make_library(directory, broken="high")))
+
+    def test_clean_library_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sdk = Path(directory)
+            lib_dir = sdk / "packages-llvm" / "world" / "jpeg" / "lib"
+            lib_dir.mkdir(parents=True)
+            self.make_library(lib_dir, broken=False)
+            self.fake_objcopy(sdk)
+            with patch.object(ports.subprocess, "run") as run:
+                ports.repair_llvm_symtabs(sdk)
+            run.assert_not_called()
+
+    def test_faulty_library_is_repaired(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sdk = Path(directory)
+            lib_dir = sdk / "packages-llvm" / "world" / "jpeg" / "lib"
+            lib_dir.mkdir(parents=True)
+            library = self.make_library(lib_dir, broken=True)
+            objcopy = self.fake_objcopy(sdk)
+            with patch.object(ports.subprocess, "run") as run:
+                ports.repair_llvm_symtabs(sdk)
+            run.assert_called_once_with([str(objcopy), str(library)], check=True)
+
+
 if __name__ == "__main__":
     unittest.main()

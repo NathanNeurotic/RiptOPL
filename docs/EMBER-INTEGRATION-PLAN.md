@@ -883,7 +883,7 @@ RetroGEM game-ID parity and `settings.txt` display passthrough remain separate c
 
 ## Part 10 — Ember Beta 2 settings (updated 2026-09-28)
 
-The current Ember Beta 2 contract, confirmed by Gageformer and reflected in Ember's README, has five
+The current [Ember](https://github.com/Gageformer/Ember) Beta 2 contract, confirmed by [Gageformer](https://github.com/Gageformer) and reflected in Ember's README, has five
 global keys. Four of them may also be overridden per game. RiptOPL mirrors that model instead of
 inventing a second settings scheme.
 

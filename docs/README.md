@@ -19,6 +19,7 @@ Use the references below for implementation details, exact limits and contributo
 | Diagnose setup or a failed launch | [Setup questions](SETUP-QUESTIONS.md) · [Troubleshooting](https://nathanneurotic.github.io/RiptOPL/troubleshooting.html) |
 | Separate package, core, transport and launch-stage failures | [Launch diagnostics](LAUNCH-DIAGNOSTICS.md) |
 | Recover a failed VMC creation | [VMC creation and recovery](VMC.md) · [Automatic VMC](AUTOMATIC-VMC.md) |
+| Copy, move or delete files, back up saves as PSU | [File Manager](FILE_MANAGER.md) |
 | Diagnose an APA disk without formatting it | [APA safety](APA-SAFETY.md) · [Recovery tool](../tools/pc/apa-recovery/README.md) |
 
 ## Sources and game cores

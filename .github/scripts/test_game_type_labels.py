@@ -35,8 +35,6 @@ assert "intSetting(CONFIG_OPL_GAME_TYPE_LABELS, &gGameTypeLabels, 0)" in setting
 assert "UICFG_GAME_TYPE_LABELS" in dialogs_h
 assert "_STR_GAME_TYPE_LABELS" in dialogs_cpp
 assert "UICFG_GAME_TYPE_LABELS" in dialogs_cpp
-assert "diaSetInt(diaUIConfig, UICFG_GAME_TYPE_LABELS, gGameTypeLabels);" in guisettings_cpp
-assert "diaGetInt(diaUIConfig, UICFG_GAME_TYPE_LABELS, &gGameTypeLabels);" in guisettings_cpp
 assert "diaSetInt(ui, UICFG_GAME_TYPE_LABELS, gGameTypeLabels);" in guisettings_cpp
 assert "diaGetInt(ui, UICFG_GAME_TYPE_LABELS, &gGameTypeLabels);" in guisettings_cpp
 

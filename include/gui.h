@@ -135,16 +135,12 @@ void guiDrawSubMenuHints(void);
 
 
 void guiShowAbout();
-void guiShowConfig();
-void guiShowUIConfig();
 void guiShowSettings(void);
 void guiShowPsEmulationSettings(void); // PS1 Triangle shortcut to the global PS emulation page
 void guiShowEmberGameSettings(void);   // PS1 Triangle, Ember rows: timing/dither/shading/controller
 // Settings-layout category pages (rebuild step 06)
-void guiShowDeviceConfig(void);
 void guiShowColorsConfig(void);
 int guiDrawBGSettings(void);
-void guiShowNeutrinoDefaults(void);
 int guiNeutrinoPathHandler(char *text, int maxLen);
 int guiPopstarterPathHandler(char *text, int maxLen);
 int guiExitPathHandler(char *text, int maxLen);
@@ -223,6 +219,11 @@ void guiSetBootStatusSticky(const char *label);
 void guiSetBootStatusStickyCopy(const char *label);
 
 void guiWarning(const char *text, int count);
+// Word-wraps `text` to the message box width and draws it centred between the message rules.
+// Returns the y of the last line, for anything drawn below the text.
+int guiDrawMsgText(const char *text);
+// Draws text already wrapped by fntWrapText, one centred line at a time. Returns the last line's y.
+int guiDrawWrappedLines(const char *wrapped, int lines);
 
 
 int guiGameShowRemoveSettings(config_set_t *configSet, config_set_t *configGame);

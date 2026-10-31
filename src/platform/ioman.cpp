@@ -325,45 +325,6 @@ int IoQueue::putUnlessWaiting(int type, void *data)
     return result;
 }
 
-int IoQueue::removeAll(int type)
-{
-    // lock the deletion sema and the queue end sema as well
-    WaitSema(procSema_);
-    WaitSema(endSema_);
-
-    int count = 0;
-    Request *req = head_;
-    Request *last = NULL;
-
-    while (req) {
-        if (req->type == type) {
-            Request *next = req->next;
-
-            if (last)
-                last->next = next;
-
-            if (req == head_)
-                head_ = next;
-
-            if (req == tail_)
-                tail_ = last;
-
-            count++;
-            free(req);
-
-            req = next;
-        } else {
-            last = req;
-            req = req->next;
-        }
-    }
-
-    SignalSema(endSema_);
-    SignalSema(procSema_);
-
-    return count;
-}
-
 void IoQueue::stop()
 {
     // termination requested flag
@@ -438,11 +399,6 @@ int ioGetPending(int type)
     return gQueue.pending(type);
 }
 
-unsigned int ioGetTotal(int type)
-{
-    return gQueue.total(type);
-}
-
 int ioRegisterHandler(int type, io_request_handler_t handler)
 {
     return gQueue.registerHandler(type, handler);
@@ -461,11 +417,6 @@ int ioPutRequest(int type, void *data)
 int ioPutRequestUnlessWaiting(int type, void *data)
 {
     return gQueue.putUnlessWaiting(type, data);
-}
-
-int ioRemoveRequests(int type)
-{
-    return gQueue.removeAll(type);
 }
 
 void ioEnd(void)

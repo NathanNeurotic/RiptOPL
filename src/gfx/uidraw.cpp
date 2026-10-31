@@ -56,32 +56,6 @@ int guiDrawIconAndLiteralText(int iconId, const char *text, int font, int x, int
     return x;
 }
 
-int guiAlignMenuHints(menu_hint_item_t *hint, int font, int width)
-{
-    int screenWidth, screenHeight;
-    rmGetScreenExtents(&screenWidth, &screenHeight);
-    int x = screenWidth;
-    int w;
-
-    for (; hint; hint = hint->next) {
-        GSTEXTURE *iconTex = thmGetTexture(hint->icon_id);
-        // A disk theme with use_default=0 that omits circle.png/cross.png leaves this texture NULL
-        // (thmGetTexture's documented contract); guiDrawIconAndText in this same file already guards.
-        w = iconTex ? (iconTex->Width * 20) / iconTex->Height : 20;
-        char *text = _l(hint->text_id);
-
-        x -= rmWideScale(w) + 2;
-        x -= rmUnScaleX(fntCalcDimensions(font, text));
-        if (hint->next != NULL)
-            x -= width;
-    }
-
-    // align center
-    x /= 2;
-
-    return x;
-}
-
 int guiAlignSubMenuHints(int hintCount, int *textID, int *iconID, int font, int width, int align)
 {
     int screenWidth, screenHeight;

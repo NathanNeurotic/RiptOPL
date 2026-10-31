@@ -182,7 +182,7 @@ assert 'int gFontSize = FONT_SIZE_DEFAULT;' in opl, 'the autolaunch path never s
 assert 'spacingH += fntScaleFontSize(FNTSYS_DEFAULT_SIZE) - FNTSYS_DEFAULT_SIZE;' in function(dia, 'void diaRenderUI(')
 updater = function(guisettings, 'static int guiSettingsDisplayUpdater(')
 assert 'UICFG_FONT_SIZE' in updater and updater.count('guiUpdateScreenScale();') >= 3
-for page in ('static int guiSettingsShowInterface(', 'void guiShowUIConfig('):
+for page in ('static int guiSettingsShowInterface(',):
     body = function(guisettings, page)
     assert 'diaSetEnum(' in body and 'UICFG_FONT_SIZE, fontSizeNames' in body, page
     assert re.search(r'diaGetInt\(\w+, UICFG_FONT_SIZE, &gFontSize\)', body), page

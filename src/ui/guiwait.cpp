@@ -210,7 +210,7 @@ void guiRenderTextScreen(const char *message)
     // background); the video-mode, remove-settings and cheat-selection screens went opaque too.
     rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColBlack);
 
-    fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, gTheme->usedHeight >> 1, ALIGN_CENTER, 0, 0, message, gTheme->textColor);
+    guiDrawMsgText(message);
 
     guiDrawOverlays();
 

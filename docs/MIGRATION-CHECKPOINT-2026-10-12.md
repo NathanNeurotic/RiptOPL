@@ -5,7 +5,7 @@
 #74 merged as `15c440a5` after exact `72118cb5` head passed 46 checks/statuses,
 the expected PR publication skip, completed CodeRabbit coverage and manual
 source review. No actionable inline comments or unresolved review threads;
-techwritescode reviewer request verified. This branch is based on that merge.
+[techwritescode](https://github.com/techwritescode) reviewer request verified. This branch is based on that merge.
 
 Adapt original #1013 / `5aa7e0df` through C++ `HddSource::launch`: resolve an
 unnamed autolaunch row's data LBA through the existing read-only HDL listing
@@ -34,7 +34,7 @@ remain open, together with SDK MMCE EOF status and console issue #63.
 `374e2d72` had 48 successful checks/statuses and the expected publication skip.
 Manual review verified installer idempotency, Mode 6 exclusion, failure cleanup
 and missing-patch-only scanning. No unresolved review threads or objections;
-techwritescode was requested. CodeRabbit was rate-limited and did not review
+[techwritescode](https://github.com/techwritescode) was requested. CodeRabbit was rate-limited and did not review
 #73. The repository has no required-review rule; the manual review and tests
 established readiness, correcting older comments that treated bot quota as a gate.
 
@@ -346,7 +346,7 @@ No SDK deficiency or physical-console/RE4 causal acceptance is claimed.
 Base: IGR lifetime PR #42 merged at `9dc339bdc62021c54dfa295c6783af8673cb5ecb`.
 Its candidate compiler/host/32 configurations/three kits pass and all 35
 candidate packages verify. CodeRabbit completed review with no actionable
-comments; techwritescode reviewer request was verified, no human approval claimed.
+comments; [techwritescode](https://github.com/techwritescode) reviewer request was verified, no human approval claimed.
 Merged-source CI/package evidence belongs in issue #20.
 
 Adapt merged original #952 (`0cf08cc1`) through C++ menu navigation: page keys
@@ -412,7 +412,7 @@ Original production refreshed to `c5800e4ff026018c6bd10cca64fc2720a0e9eaad`.
 New QA credits and preserved RE4/VMC/IGR diagnostic evidence remain to adapt,
 alongside merged freeze diagnostics/About changes. Full RA commands/browser/
 ORBIT/HTTPS, peer verification, overlay changes, cache recovery, CJK/type labels,
-distribution and console acceptance remain open. Tag techwritescode with
+distribution and console acceptance remain open. Tag [techwritescode](https://github.com/techwritescode) with
 versions/reproduction/logs whenever a confirmed ps2build deficiency is found.
 
 ## Historical continuation: RA watch-list transfer integrity

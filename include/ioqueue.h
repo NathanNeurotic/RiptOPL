@@ -27,7 +27,6 @@ public:
     int put(int type, void *data);
     // As put(), but does nothing (and returns IO_OK) when an identical type+data request is waiting.
     int putUnlessWaiting(int type, void *data);
-    int removeAll(int type);
     int pendingCount();
     bool hasPending() const { return head_ != NULL; }
     int pending(int type) const;
