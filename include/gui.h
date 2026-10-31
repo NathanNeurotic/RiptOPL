@@ -223,6 +223,11 @@ void guiSetBootStatusSticky(const char *label);
 void guiSetBootStatusStickyCopy(const char *label);
 
 void guiWarning(const char *text, int count);
+// Word-wraps `text` to the message box width and draws it centred between the message rules.
+// Returns the y of the last line, for anything drawn below the text.
+int guiDrawMsgText(const char *text);
+// Draws text already wrapped by fntWrapText, one centred line at a time. Returns the last line's y.
+int guiDrawWrappedLines(const char *wrapped, int lines);
 
 
 int guiGameShowRemoveSettings(config_set_t *configSet, config_set_t *configGame);
