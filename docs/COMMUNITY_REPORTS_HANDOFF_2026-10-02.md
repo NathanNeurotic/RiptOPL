@@ -1,7 +1,7 @@
 # Community reports handoff — October 2, 2026
 
 This handoff collects the RiptOPL reports from TwistedZeon, FifthFox,
-eliminator1403, Aislinn, and zackcage6. It is a triage and implementation
+eliminator1403, Aislinn, and [zackcage6](https://github.com/zackcage6). It is a triage and implementation
 guide, not a claim that the reported behavior has been reproduced or fixed.
 
 > **Source citations.** This handoff was written against the legacy C tree of
@@ -81,7 +81,7 @@ next work in practical order.
 | I3 | FifthFox tried a custom text-only theme to keep memory available but did not gain a repeatable launch; an AI suggested disabling Coverflow, and FifthFox could not find an option. Native OPL launches with individual modes seem robust in their tests. | Launch teardown already stops art requests and releases menu resources. Coverflow is theme-defined; the built-in `<OPL>` theme is an alternate view. | Active theme, its declared elements, memory measurements before/after teardown, and controlled same-game native/Neutrino comparisons. |
 | I4 | FifthFox says RiptOPL removes `-logo` from custom Neutrino arguments, sees two logo controls in launcher settings but none in the game menu, and wants the full effective Neutrino argv visible per game. | Current source has a per-game **Neutrino Launch Args → Logo** toggle and passes global/per-game active `-logo` tokens to its argv builder; iLink is not in the automatic logo-suppression list. User-supplied tail arguments may be dropped if the 256-byte launch pool is full. | Which field was edited, the saved `$NeutrinoArgs`/global `neutrino_args` values, whether the UI merely moved `-logo` from Extra to its checkbox, and the final argv on the tester's build. |
 | V1 | TwistedZeon reports that a PAL game is "flipping" on an NTSC interlaced CRT under Neutrino and explicitly asks for 480i. | The clip shows the video picker, not game output. A later screenshot confirms the field-flip picker is disabled while Video is Default. Upstream parses `-gsm=:1` but does not enable GSM without a forced video mode; it exposes no forced NTSC 480i. | Exact game, cable/CRT, what "flipping" looks like during gameplay (roll, field shake, or periodic loss), and whether native OPL-core GSM works for that title. |
-| T1 | zackcage6 says the font in the pictured RiptOPL settings view looks "sluggish" and is hard to read on the CRT; they suggest changing the font or rendering it for interlace. | The main RiptOPL interface already offers NTSC/PAL interlaced `FLICKER-FREE` modes, and themes can load alternate fonts. Neither has been tested for this report. | Exact build, theme/font, interface video mode, CRT/cable, whether "sluggish" means visual flicker/blur or slow UI response, and whether the alternate mode improves legibility. |
+| T1 | [zackcage6](https://github.com/zackcage6) says the font in the pictured RiptOPL settings view looks "sluggish" and is hard to read on the CRT; they suggest changing the font or rendering it for interlace. | The main RiptOPL interface already offers NTSC/PAL interlaced `FLICKER-FREE` modes, and themes can load alternate fonts. Neither has been tested for this report. | Exact build, theme/font, interface video mode, CRT/cable, whether "sluggish" means visual flicker/blur or slow UI response, and whether the alternate mode improves legibility. |
 | A1 | eliminator1403 reports slow art in Beta 3420 Korium and names 3248 as the last good build. | September 27 build history points to PR #770 head `f83e6f9f` as the revision-3248 source line; Beta 3420 Korium names source `1a663941`. PR #773 reverted the active-art priority tier between them. | Identify whether the visibly late texture is COV, ICO, or BG; compare the two source paths and validate a narrow fix on hardware. |
 | P1 | Aislinn wants a useful error when PS1 prerequisites are missing. | Launch paths already show several missing POPSTARTER/Ember/BIOS messages; missing Ember core can remove Ember rows at scan time. | Which missing item and path produced the reported lack of guidance, and whether the title was a VCD or Ember folder. |
 | P2 | Aislinn mistook PS1 007 entries for PS2 titles without cover art, then could not open the expected PS2 game/VMC menu. | PS1 rows intentionally open a different Triangle menu. PR #826 merged a PS1 row label and save-card guidance there. | Console legibility in each theme/view and what save-card workflow the tester expected. |
@@ -242,9 +242,9 @@ than the standard-definition 480i/576i signal their CRT needs. The available
 
 The October 2 [follow-up screenshot](./community-report-evidence/2026-10-02/neutrino-default-field-flip.png)
 adds a concrete UI reproduction. TwistedZeon
-said that leaving **Neutrino Video** on **Default** disables **Neutrino GSM
+said that leaving **[Neutrino](https://github.com/rickgaiser/neutrino) Video** on **Default** disables **Neutrino GSM
 Compatibility**, so they cannot select a field-flipping type without changing
-video mode; they checked again and confirmed this. darkladark said Luna selects
+video mode; they checked again and confirmed this. [darkladark](https://github.com/dnunezx) said Luna selects
 `fp2` (480p/576p) when compatibility is enabled from Default. This is a report
 about Luna's behavior, not a tested fix for TwistedZeon's interlaced CRT.
 
@@ -274,14 +274,14 @@ that cannot sync to 480p should not be asked to test 480p/1080i as a fix.
 
 ## T1 — CRT font legibility and perceived sluggishness
 
-In the [font report screenshot](./community-report-evidence/2026-10-02/crt-font-report.png), zackcage6 describes the **font** in the pictured
+In the [font report screenshot](./community-report-evidence/2026-10-02/crt-font-report.png), [zackcage6](https://github.com/zackcage6) describes the **font** in the pictured
 settings view as "sluggish + not easily view-able" and asks whether the font
 should change or be rendered for interlace. The screenshot shows text on a CRT,
 but does not identify the build, theme, selected RiptOPL interface video mode,
 connection, or whether "sluggish" refers to motion/response time versus
 flicker, ghosting, or soft glyph edges. Keep this report separate from
 TwistedZeon's PAL-game output problem; a menu font change cannot establish a
-Neutrino PAL-to-NTSC fix.
+[Neutrino](https://github.com/rickgaiser/neutrino) PAL-to-NTSC fix.
 
 The **Interface → Video Mode** picker already exposes NTSC/PAL 640-wide
 interlaced `FLICKER-FREE` entries (`src/gui.c:2839`), distinct from the
@@ -397,7 +397,7 @@ path, not a request to reconfigure the tester's setup.
 October 3 A/B follow-up: the [ART770 run](https://github.com/NathanNeurotic/Open-PS2-Loader/actions/runs/37143757153)
 restores PR #770 scheduling on the Korium base; the [ART773 run](https://github.com/NathanNeurotic/Open-PS2-Loader/actions/runs/37143714039)
 uses the same Korium runtime source without that change. Both OFFICIALROLLING
-builds passed CI. zackcage6 reported similar core behavior in both and said
+builds passed CI. [zackcage6](https://github.com/zackcage6) reported similar core behavior in both and said
 ordinary loose artwork (not ART.TAR) appeared about one second slower than the
 Inception theme, with artwork toggles tried both ways. That observation weakens
 PR #770 scheduling as the cause of *their* difference, but compares themes and

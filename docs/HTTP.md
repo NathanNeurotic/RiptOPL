@@ -43,7 +43,7 @@ until that changes.
 ## Setting it up
 
 On the PC, run an HTTP server meeting the profile above, with your ISOs under its document root,
-and put a `games.csv` beside them. Docmine17's `http_server.py` does exactly this and defaults to
+and put a `games.csv` beside them. [Docmine17](https://github.com/Docmine17)'s `http_server.py` does exactly this and defaults to
 port **1100**.
 
 On the console, set **Network Connectivity** to **Manual** or **Auto** in **Game Sources**, then open **Settings → Network**:

@@ -242,8 +242,8 @@ POPSTARTER also needs Sony's PS1 emulator in the same `POPS` folder: `POPS_IOX.P
 `POPS.PAK` or `POPS.ELF` with `IOPRP252.IMG`. They come from your own console's software and are in
 no PS2 ROM, so RiptOPL cannot make them. Without them the game is a black screen, then the browser.
 
-Before a PS1 launch from USB, MX4SIO, iLink, an exFAT HDD or MMCE, RiptOPL checks for them. *(From RIPPS2 builds 85, 89
-and 115, akilluminati47.)*
+Before a PS1 launch from USB, MX4SIO, iLink, an exFAT HDD or MMCE, RiptOPL checks for them. *(From [RIPPS2](https://github.com/akilluminati47/RIPPS2) builds 85, 89
+and 115, [akilluminati47](https://github.com/akilluminati47).)*
 
 - **Another started drive has a full set.** RiptOPL offers to copy them over. It looks at the drives it
   has already started: other BDM drives, both MMCE cards, and the internal HDD's `__common/POPS`
@@ -400,8 +400,8 @@ inherited `udpfs:` backend; UDPBD and UDPFS IMG are outside this POPSTARTER feat
 POPS UDPFS RA is unsupported. Physical-console gameplay and save acceptance must
 be established separately from passing host checks and target builds.
 
-Credit goes to Okeanos, israpps, krHACKen, ps2max32 / rickgaiser, pcm720,
-Gageformer and PS2SDK contributors. Unmodified upstream instructions, license
+Credit goes to [Okeanos](https://github.com/Okeanos86), [israpps](https://github.com/israpps), [krHACKen](https://www.psx-place.com/members/krhacken.98/), ps2max32 / [rickgaiser](https://github.com/rickgaiser), [pcm720](https://github.com/pcm720),
+[Gageformer](https://github.com/Gageformer) and PS2SDK contributors. Unmodified upstream instructions, license
 notices and verified hashes are in `POPS/UDPFS-NOTICES/`.
 
 ## 6. PS1 over SMB — POPSTARTER network settings
