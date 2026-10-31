@@ -7,6 +7,7 @@
 #include "include/opl.h"
 #include "include/gui.h"
 #include "include/guiint.h"
+#include "include/guiruntime.h"
 #include "include/guisplash.h"
 #include "include/guiscreens.h"
 #include "include/renderman.h"
@@ -189,6 +190,11 @@ void BootSplash::run()
         guiEndFrame();
 
         gScreens.dispatchInput();
+
+        // While the greeting waits for the saved theme, run the menu update hook as the main loop would: a drive that
+        // comes up late is only picked up there (BdmGeneration), so without it the hold could never see the theme.
+        if (themeHold)
+            gGui.runFrameHook();
     }
     active_ = false;
 }

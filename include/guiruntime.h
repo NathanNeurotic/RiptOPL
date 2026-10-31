@@ -28,6 +28,11 @@ public:
 
     void mainLoop();
     void setFrameHook(gui_callback_t hook) { frameHook_ = hook; }
+    void runFrameHook()
+    {
+        if (frameHook_)
+            frameHook_();
+    }
 
     // Deferred ops: queued from any thread, applied by the GUI thread once a frame.
     int defer(struct gui_update_t *op);
