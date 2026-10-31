@@ -270,6 +270,26 @@ int Renderer::setMode(int force)
             gsKit_hires_init_screen(gsGlobal, rm_mode_table[vmode_].passes);
             gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
         } else {
+#ifdef __OPLDIAG
+            // Issue #132 test: 224p only looks right after a cold boot, and official OPL does the
+            // same, so the suspect is video output state that SetGsCrt leaves behind from the mode
+            // before. Put the output back into the state the console boots in (interlaced, field
+            // mode, same TV standard as the target) and let it run for a few frames before the
+            // normal setup below programs the real mode.
+            if (gsGlobal->Mode == GS_MODE_NTSC || gsGlobal->Mode == GS_MODE_PAL) {
+                GS_RESET();
+                __asm__("sync.p; nop;");
+                *GS_CSR = 0x00000000;
+                GsPutIMR(0x00007F00);
+                SetGsCrt(GS_INTERLACED, gsGlobal->Mode, GS_FIELD);
+                for (int vs = 0; vs < 4; vs++) {
+                    *GS_CSR = *GS_CSR & 8;
+                    for (int spin = 0; spin < 4000000 && !(*GS_CSR & 8); spin++)
+                        ;
+                }
+                LOG("RENDERMAN #132 boot-state bounce done (mode %d)\n", gsGlobal->Mode);
+            }
+#endif
             gsKit_init_screen(gsGlobal);
             gsKit_mode_switch(gsGlobal, GS_ONESHOT);
         }
