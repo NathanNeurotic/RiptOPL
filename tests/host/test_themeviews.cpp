@@ -218,6 +218,17 @@ int main()
         CHECK(configGetStr(on, "coverflow.main0_default", &v) && strcmp(v, "bg_top") == 0); // view blocks too
         configFree(on);
 
+        // No Background block: the one added at load ("bg") takes the top-level alt=; its own bg_alt= wins.
+        config_set_t *nobg = parse("alt=bg_top\nmain0:\n\ttype=StaticImage\n\tdefault=logo\n");
+        CHECK(thmApplyAltBackground(nobg, 1) == 1 && configGetStr(nobg, "bg_default", &v) && strcmp(v, "bg_top") == 0);
+        configFree(nobg);
+        nobg = parse("alt=bg_top\nbg_alt=bg_own\n");
+        CHECK(thmApplyAltBackground(nobg, 1) == 1 && configGetStr(nobg, "bg_default", &v) && strcmp(v, "bg_own") == 0);
+        configFree(nobg);
+        nobg = parse("alt=bg_top\n");
+        CHECK(thmApplyAltBackground(nobg, 0) == 1 && !configGetStr(nobg, "bg_default", &v));
+        configFree(nobg);
+
         // A Background without default= gets one (the plasma is replaced by the picture).
         config_set_t *plasma = parse("main0:\n\ttype=Background\n\talt=bg_night\n");
         CHECK(thmApplyAltBackground(plasma, 1) == 1 && configGetStr(plasma, "main0_default", &v) && strcmp(v, "bg_night") == 0);
