@@ -221,7 +221,14 @@ def _locals_after_globals(elf):
 
 
 def needs_symtab_repair(library):
-    return any(_locals_after_globals(obj) for obj in _archive_objects(Path(library).read_bytes()))
+    """True unless every member could be read and none has the fault: a library this cannot read (a cut-short
+    member, a thin or BSD archive, no ELF members at all) is rewritten anyway, as before this check existed.
+    llvm-objcopy leaves a clean library as it was."""
+    try:
+        objects = list(_archive_objects(Path(library).read_bytes()))
+        return not objects or any(_locals_after_globals(obj) for obj in objects)
+    except (ValueError, struct.error, IndexError):
+        return True
 
 
 def repair_llvm_symtabs(sdk):

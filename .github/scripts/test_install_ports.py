@@ -271,6 +271,8 @@ class SymtabRepairTests(unittest.TestCase):
         source.write_text("static int hidden(int x) { return x + 1; }\nint shown(int x) { return hidden(x); }\n")
         obj = directory / "a.o"
         subprocess.run(["cc", "-c", "-O0", str(source), "-o", str(obj)], check=True)
+        if obj.read_bytes()[:4] != b"\x7fELF":
+            self.skipTest("host cc does not make ELF objects")
         if broken:
             elf = bytearray(obj.read_bytes())
             is64, end = elf[4] == 2, "<" if elf[5] == 1 else ">"
