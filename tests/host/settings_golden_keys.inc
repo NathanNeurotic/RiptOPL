@@ -21,6 +21,7 @@
     CONFIG_OPL_WIDESCREEN,
     CONFIG_OPL_FONT_SIZE,
     CONFIG_OPL_GLYPH_SET, // added with the RIPPS2 glyph sets (build 90)
+    CONFIG_OPL_THEME_ALT_BG, // added with the theme alt= background
     CONFIG_OPL_VMODE,
     CONFIG_OPL_XOFF,
     CONFIG_OPL_YOFF,

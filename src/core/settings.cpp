@@ -76,6 +76,8 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_WIDESCREEN, &gWideScreen, 0), // fresh configurations use 4:3; a saved choice overrides
     intSetting(CONFIG_OPL_FONT_SIZE, &gFontSize, FONT_SIZE_DEFAULT),
     intSetting(CONFIG_OPL_GLYPH_SET, &gGlyphSet, 0), // GLYPH_SET_THEME: the theme's own (RIPPS2 build 90)
+    // Off: the theme's default= pictures (KrahJohlito's alt= idea, themeviews.h).
+    intSetting(CONFIG_OPL_THEME_ALT_BG, &gThemeAltBackground, 0),
     intSetting(CONFIG_OPL_VMODE, &gVMode, 0, /*loadPlain=*/false),
     intSetting(CONFIG_OPL_XOFF, &gXOff, 0),
     intSetting(CONFIG_OPL_YOFF, &gYOff, 0),
