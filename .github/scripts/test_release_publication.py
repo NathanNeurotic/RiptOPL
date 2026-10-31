@@ -82,6 +82,51 @@ class PublicationTests(unittest.TestCase):
             self.assertFalse(publisher.publication_allowed(dict(environment, **{key: value}), "abc123"))
         self.assertFalse(publisher.publication_allowed({}, "abc123"))
 
+    def test_overtaken_run_finds_the_newer_heads_run(self):
+        head = "c" * 40
+
+        def fake_gh(*args, retry=True):
+            if args[1].endswith("/branches/rebuild/main"):
+                return json.dumps({"commit": {"sha": head}})
+            self.assertIn("head_sha=" + head, args[1])
+            return json.dumps({"workflow_runs": runs})
+
+        with patch.object(publisher, "gh", side_effect=fake_gh), patch.object(publisher.time, "sleep"):
+            for run, expected in (
+                ({"event": "push", "conclusion": None, "html_url": "u1"}, "u1"),
+                ({"event": "workflow_dispatch", "conclusion": "success", "html_url": "u2"}, "u2"),
+                ({"event": "push", "conclusion": "failure", "html_url": "u3"}, None),
+                ({"event": "push", "conclusion": "cancelled", "html_url": "u4"}, None),
+                ({"event": "pull_request", "conclusion": None, "html_url": "u5"}, None),
+            ):
+                runs = [run]
+                self.assertEqual(expected, publisher.successor_run("NathanNeurotic/RiptOPL", polls=(0, 0)))
+            runs = []
+            self.assertIsNone(publisher.successor_run("NathanNeurotic/RiptOPL", polls=(0,)))
+
+    def test_overtaken_run_publishes_nothing_and_fails_only_without_a_successor(self):
+        sha, head = "a" * 40, "c" * 40
+        environment = {"GITHUB_REPOSITORY": "NathanNeurotic/RiptOPL", "GITHUB_EVENT_NAME": "push",
+                       "GITHUB_REF": "refs/heads/rebuild/main", "GITHUB_SHA": sha}
+        for successor in ("https://example/run", None):
+            with patch.object(sys, "argv", ["publish_editions.py", "dist"]), \
+                    patch.dict(publisher.os.environ, environment, clear=True), \
+                    patch.object(publisher, "git", return_value=sha), \
+                    patch.object(publisher, "bundle_configurations"), \
+                    patch.object(publisher, "verify", return_value=[]), \
+                    patch.object(publisher, "fold_companions", return_value=[]), \
+                    patch.object(publisher, "release_version", return_value="v1"), \
+                    patch.object(publisher, "name_assets"), \
+                    patch.object(publisher, "gh", return_value=json.dumps({"commit": {"sha": head}})), \
+                    patch.object(publisher, "successor_run", return_value=successor), \
+                    patch.object(publisher, "upload_verified") as upload:
+                if successor:
+                    publisher.main()
+                else:
+                    with self.assertRaises(ValueError):
+                        publisher.main()
+                upload.assert_not_called()
+
     def test_only_incebtion_is_designated_latest(self):
         self.assertEqual(set(publisher.EDITIONS), {"korium", "ra", "incebtion", "ra_incebtion"})
         for edition in publisher.EDITIONS:

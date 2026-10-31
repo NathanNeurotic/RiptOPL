@@ -357,6 +357,30 @@ def refresh_release_date(repo, tag, flags):
         print(f"{tag}: release date refreshed {before} -> {state['publishedAt']}")
 
 
+# How long a run whose head was overtaken waits for the newer head's own Rolling Release run to show
+# up. A push starts one at once; a GITHUB_TOKEN push (Ember Watch) dispatches one a few seconds later.
+SUCCESSOR_POLLS = (0, 20, 40, 60)
+
+
+def successor_run(repo, polls=SUCCESSOR_POLLS):
+    """URL of a publishing Rolling Release run for the current rebuild/main head, or None.
+
+    When several merges land together, the release concurrency group lets one run finish while the
+    newest push waits, so an older run can find the branch has moved on. Its build is stale and must
+    not publish, but neither is anything wrong: the head's run publishes. A queued, running or
+    successful push/dispatch run for the head counts. Nothing found after the polls means nothing
+    will publish the head, and the caller fails as before."""
+    for delay in polls:
+        time.sleep(delay)
+        head = json.loads(gh("api", f"repos/{repo}/branches/rebuild/main"))["commit"]["sha"]
+        runs = json.loads(gh("api", f"repos/{repo}/actions/workflows/rolling-release.yml/runs"
+                                    f"?branch=rebuild/main&head_sha={head}&per_page=20"))["workflow_runs"]
+        for run in runs:
+            if run["event"] in ("push", "workflow_dispatch") and run["conclusion"] in (None, "success"):
+                return run["html_url"]
+    return None
+
+
 def latest_release_arg(edition):
     """Only IncebtIon is presented as GitHub's Latest release."""
     return "--latest=" + ("true" if edition == "incebtion" else "false")
@@ -380,7 +404,13 @@ def main():
         raise ValueError("publication requires an integration push or explicit dispatch at rebuild/main")
     current = json.loads(gh("api", f"repos/{repo}/branches/rebuild/main"))["commit"]["sha"]
     if current != sha:
-        raise ValueError("integration branch advanced during this run; publish its new tested head")
+        successor = successor_run(repo)
+        if successor is None:
+            raise ValueError("integration branch advanced during this run; publish its new tested head")
+        # Not a failure: this build is no longer the head, and the head's own run publishes instead.
+        print(f"::notice::rebuild/main moved on from {sha[:8]} during this run; nothing published. "
+              f"The newer head publishes from {successor}")
+        return
     for edition, options, path, sums in candidates:
         tag = options["tag"]
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
