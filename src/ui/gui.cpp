@@ -25,6 +25,7 @@
 #include "include/themes.h"
 #include "include/favsupport.h" // gFAVStartMode -- Favourites Start Mode row
 #include "include/pad.h"
+#include "include/vmodetest.h" // vmodeTestFrame: the diagnostic video mode round-trip self-test
 #include "include/menuwatch.h" // menuWatchStep: where the frame is, for the diagnostic freeze report
 #include "include/sound.h" // sfxGetPlayDiag/sfxGetDropDiag -- SFX RPC cost + silent-drop counters for the debug HUD
 #include "include/util.h"
@@ -361,6 +362,7 @@ void Gui::mainLoop()
 
         menuWatchStep(MENUWATCH_FRAME_END);
         endFrame();
+        vmodeTestFrame(); // diagnostic builds with a VMODETEST file: capture the frame just shown
 
         // if not transiting, handle input
         // done here so we can use renderman if needed

@@ -1279,6 +1279,34 @@ void fntUpdateAspectRatio()
     gFonts.updateAspectRatio();
 }
 
+#ifdef __OPLDIAG
+int FontSystem::diagDescribe(char *out, int size)
+{
+    int n = 0;
+
+    out[0] = '\0';
+    lock();
+    for (int i = 0; i < FNT_MAX_COUNT && n < size - 1; i++) {
+        font_t *f = &fonts_[i];
+        if (!f->isValid)
+            continue;
+        FT_Size fs = f->face ? f->face->size : NULL;
+        int r = snprintf(out + n, size - n, " f%d:size %d->%d ppem %dx%d embolden %d", i, f->fontSize, fntScaleFontSize(f->fontSize),
+                         fs ? fs->metrics.x_ppem : -1, fs ? fs->metrics.y_ppem : -1, f->embolden);
+        if (r < 0)
+            break;
+        n += (r < size - n) ? r : size - 1 - n;
+    }
+    unlock();
+    return n;
+}
+
+int fntDiagDescribe(char *out, int size)
+{
+    return gFonts.diagDescribe(out, size);
+}
+#endif
+
 int fntRenderString(int id, int x, int y, short aligned, size_t width, size_t height, const char *string, u64 colour)
 {
     return gFonts.renderString(id, x, y, aligned, width, height, string, colour);
