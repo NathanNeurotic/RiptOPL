@@ -39,7 +39,7 @@ List** (one page with the games of every started device; see [Game library](GAME
 It works with every view and is the same `all_games` setting as **Game Sources → All Games List**.
 
 **Alternate Background**, under Library, shows the theme's second background when its author gave one
-(`alt=` in `conf_theme.cfg`; idea: KrahJohlito), so one theme can ship two looks. It is Off on fresh
+(`alt=` in `conf_theme.cfg`; idea: [KrahJohlito](https://github.com/KrahJohlito)), so one theme can ship two looks. It is Off on fresh
 configurations and saved as `theme_alt_bg=1`. A theme without `alt=` looks the same either way, and only
 a theme with `alt=` is reloaded when the setting changes. Per-game background art still wins over the
 theme's picture while a game is selected. See
@@ -50,7 +50,7 @@ change sources. R3 remains Favorite, and info/settings screens keep their normal
 **Coverflow Settings** tunes the `Coverflow` renderer; PSBBN Flow uses its fixed layout and
 25-frame glide. All four views share the editable palette, artwork and audio settings.
 Theme authors declare views with `views=` and `<view>.` blocks; see the
-[Theme Engine reference](THEME_ENGINE.md#views-multi-view-themes--this-fork). Idea and design: KrahJohlito.
+[Theme Engine reference](THEME_ENGINE.md#views-multi-view-themes--this-fork). Idea and design: [KrahJohlito](https://github.com/KrahJohlito).
 **NOT TESTED on hardware.**
 
 ---
