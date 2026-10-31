@@ -265,9 +265,6 @@ int guiGameResolveEffectiveCore(config_set_t *configSet, item_list_t *support, i
         core = key == 0 ? 0 : 1;
     else if (support != NULL && libListRowView(support, id) == LIB_VIEW_PS1)
         core = 0;
-    // SMB: Neutrino only from the game's own Neutrino key; "Default" is the OPL core (ethTryNeutrino).
-    else if (sourceMode == ETH_MODE)
-        core = key == 1 ? 1 : 0;
     return core;
 }
 
@@ -1561,9 +1558,6 @@ static int coreNeverNeutrino = 0;
 // UDPBD (UDPBD and UDPFS block) games: the Loader row's "Default" means Neutrino, whatever the global
 // core is (bdmNetBlockCoreLoader). Set once per dialog entry, like coreNeverNeutrino.
 static int coreDefaultNeutrino = 0;
-// SMB games: the Loader row's "Default" means the OPL core, whatever the global core is; only the
-// game's own Neutrino choice launches Neutrino (ethTryNeutrino). Set once per dialog entry.
-static int coreDefaultOpl = 0;
 // The core whose title defaults filled the compatibility checkboxes in guiGameLoadConfig. Saving compares
 // against that core's defaults: the Loader row can change afterwards without refilling the checkboxes.
 static int compatShownNeutrino = 0;
@@ -1637,9 +1631,6 @@ static int guiGameDialogCoreIsNeutrino(int sourceMode, item_list_t *support, int
     // (bdmNetBlockCoreLoader).
     if (sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode))
         return coreChoice != 0;
-    // SMB: "Default" means the OPL core there (ethTryNeutrino).
-    if (sourceMode == ETH_MODE)
-        return coreChoice == 1;
     return (coreChoice == 1) || (coreChoice == 2 && gDefaultCoreLoader == 1);
 }
 
@@ -1650,7 +1641,7 @@ static void guiGameSetCoreAwareState(void)
     // COMPAT_LOADER: 0=<OPL>, 1=Neutrino, 2=Default(follow global). The effective core is Neutrino
     // iff explicitly Neutrino, OR "Default" while the global gDefaultCoreLoader is Neutrino -- so the
     // Neutrino-only rows grey correctly even when the game defers its core to the global setting.
-    neutrino = (coreChoice == 1) || (coreChoice == 2 && !coreDefaultOpl && (gDefaultCoreLoader == 1 || coreDefaultNeutrino));
+    neutrino = (coreChoice == 1) || (coreChoice == 2 && (gDefaultCoreLoader == 1 || coreDefaultNeutrino));
     if (coreNeverNeutrino)
         neutrino = 0; // VCD (POPSTARTER-only): keep all Neutrino-only rows greyed regardless of the global
     diaGetInt(diaCompatConfig, COMPAT_NEUTRINO_VIDEO, &neutrinoVideo);
@@ -1731,9 +1722,8 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
     // VCD games launch through POPSTARTER only, so the Loader Core is inert for them -- keep every
     // Neutrino-only row greyed even under a Neutrino global default (guiGameSetCoreAwareState reads
     // this). HTTP likewise has no Neutrino launch leg. CF too: external Neutrino cannot restore the CF
-    // bus. SMB has one now (ethTryNeutrino), taken only from the game's own Neutrino choice.
+    // bus. SMB follows the global core with per-game overrides (ethTryNeutrino).
     coreNeverNeutrino = (support != NULL && ((libViewActive(support->mode) == LIB_VIEW_PS1) || sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode)));
-    coreDefaultOpl = support != NULL && sourceMode == ETH_MODE;
 
     // UDPFS (Files: UDPFS_MODE, also for a Favourite that points back to it) and the UDP block device
     // (UDPBD and UDPFS IMG: bdmSupportIsUDPBD for its page, bdmModeIsUDPBD for a Favourite of it) boot
