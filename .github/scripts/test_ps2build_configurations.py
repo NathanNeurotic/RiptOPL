@@ -18,6 +18,21 @@ import publish_editions
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_every_edition_embeds_the_fixed_mx4sio_variant(self):
+        for edition in editions.EDITIONS:
+            for configuration in editions.CONFIGURATIONS:
+                if editions.EDITIONS[edition]["ra"] and configuration == "ingamediag":
+                    continue
+                targets = self.targets(edition, configuration)
+                full = "debug" in configuration
+                name = "mx4sio_bd_full_fork" if full else "mx4sio_bd_mini_fork"
+                embedded = [v for v in targets["riptopl"]["embed_irx"] if "mx4sio" in v]
+                self.assertEqual(embedded, [name + ":mx4sio_bd"])
+                driver = targets[name]
+                self.assertEqual("MINI_DRIVER" in driver.get("defines", []), not full)
+                self.assertIn("modules/mx4sio_bd/src/spi_sdcard_driver.c", driver["sources"])
+                self.assertEqual(driver["imports_lst"], "modules/mx4sio_bd/src/imports.lst")
+
     def targets(self, edition, configuration):
         return {t["name"]: t for t in editions.definition(edition, configuration)["targets"]}
 

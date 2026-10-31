@@ -48,14 +48,15 @@ assert mmce.index('sbEnsureIgrUsbDrivers(compatmask);\n\n        // VMC -> neutr
 # never turns into a saved value for both cores.
 # Compared with the core whose defaults filled the checkboxes: the Loader row can change after loading.
 assert 'if (compatMode == sbTitleCompatDefault(configSet, compatShownNeutrino))' in src['src/ui/guigame.cpp']
-assert 'compatShownNeutrino = guiGameDialogCoreIsNeutrino(support, neverNeutrino);' in src['src/ui/guigame.cpp']
+assert 'compatShownNeutrino = guiGameDialogCoreIsNeutrino(sourceMode, support, neverNeutrino);' in src['src/ui/guigame.cpp']
 
 # The screen resolves the Loader row as the launch does: on UDPFS (Files and IMG) and UDPBD "Default"
-# means Neutrino, so a core-limited default shown there matches the launch.
+# means Neutrino, so a core-limited default shown there matches the launch. A Favourite follows the
+# source it points back to.
 gui = src['src/ui/guigame.cpp']
 helper = gui[gui.index('static int guiGameDialogCoreIsNeutrino('):]
 helper = helper[:helper.index('\n}\n')]
-assert 'support->mode == UDPFS_MODE' in helper
-assert 'if (support != NULL && (support->mode == UDPFS_MODE || bdmSupportIsUDPBD(support)))\n        return coreChoice != 0;' in helper
+assert 'if (sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode))\n        return coreChoice != 0;' in helper
+assert 'support->mode == FAV_MODE ? favGetItemSourceMode(id) :' in gui[gui.index('void guiGameLoadConfig('):]
 
 print('PASS: title compat defaults are evidence-backed and routed per core')

@@ -67,6 +67,7 @@ def apply_configuration(config, configuration):
         })
         add(main, "embed_irx", "freezediag")
     if "debug" in configuration:
+        main["embed_irx"] = ["mx4sio_bd_full_fork:mx4sio_bd" if v == "mx4sio_bd_mini_fork:mx4sio_bd" else v for v in main["embed_irx"]]
         uart = configuration.endswith("_uart")
         add(main, "defines", "__DEBUG", "__OPLDIAG", "TTY_PPC_UART" if uart else "TTY_UDP")
         add(main, "sources", "src/platform/debug.cpp")
