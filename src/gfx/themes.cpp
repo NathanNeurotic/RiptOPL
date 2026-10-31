@@ -40,6 +40,8 @@ theme_t *gTheme;
 // default when the theme does not offer it.
 int gThemeViewRequest = -1;
 
+static unsigned int thmLoadCount; // theme_t::artGeneration of the last load
+
 // Parse-time only: the "<view>" block prefix of the view thmLoad is building, "" for the base blocks.
 static const char *thmParseViewPrefix = "";
 static int thmParseViewInherit = 1; // 0 for a <view>.inherit=0 view: no fallback to the base blocks
@@ -1347,6 +1349,7 @@ static int thmLoad(const char *themePath)
     newT->favsAppsInfoElems.last = NULL;
     newT->parsingFavKindFamily = 0;
     newT->gameCacheCount = 0;
+    newT->artGeneration = ++thmLoadCount;
     newT->itemsList = NULL;
     newT->gamesItemsList = NULL;
     newT->appsItemsList = NULL;

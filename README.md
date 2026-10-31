@@ -432,6 +432,8 @@ and then, still holding them, press the second half:
 
 The console's own power button works too: **one press** powers off, **two presses** reset.
 
+**In-Game Menu (beta)** (*Settings -> Game Launching*, off by default; from [akilluminati47](https://github.com/akilluminati47)'s [RIPPS2](https://github.com/akilluminati47/RIPPS2)): with it on, the reset combination pauses an OPL-core game under a panel with **Resume**, **Cheats** (switch the game's cheats on or off while playing), **Achievements** (RetroAchievements editions), **Exit Game** and **Power Off**. The pause is silent and Resume gives back the exact picture. PCSX2 and games the menu cannot draw on keep the plain combination. NOT TESTED on hardware; see [docs/IGR.md](docs/IGR.md#the-in-game-menu-beta).
+
 Three cases where the combinations do nothing, all expected: before the game has opened a controller
 (the hook patches the game's own pad-open call - `scePadPortOpen` or `scePad2CreateSocket`), when
 per-game compatibility **Mode 6 - Disable
@@ -953,10 +955,7 @@ nuno6573, zackcage6, Blade1984 and Aislinn🏳️‍⚧️**.
 before the project existed, and it stuck. Every release, every build, every thread carries a name
 he thought of first.
 
-### Financial support (this fork)
-
-Heartfelt thanks to **Akilluminati47** for generously **funding this fork's development** — a
-kindness that keeps the rolling builds coming and is deeply appreciated.
+### The upstream project
 
 If you want the canonical, actively-maintained project, it lives at
 **[ps2homebrew/Open-PS2-Loader](https://github.com/ps2homebrew/Open-PS2-Loader)** — please

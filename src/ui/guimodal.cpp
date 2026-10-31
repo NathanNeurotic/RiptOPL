@@ -83,6 +83,42 @@ int MessageBoxScreen::wrapText(const char *text, int innerW, char *out, int outS
     return fntWrapText(gTheme->fonts[0], text, innerW, out, outSize);
 }
 
+// Render the wrapped lines ONE AT A TIME: ALIGN_CENTER centres on the measured width of the
+// WHOLE string, so handing it a multi-line buffer would centre it as a single long run and leave
+// every line off-centre. The block is vertically centred on the old single-line position, so a
+// one-line message stays where it was.
+int guiDrawWrappedLines(const char *wrapped, int lines)
+{
+    int lineH = MENU_ITEM_HEIGHT;
+    int ly = (gTheme->usedHeight >> 1) - ((lines - 1) * lineH) / 2;
+    int lastY = ly;
+    const char *ls = wrapped;
+    while (ls != NULL) {
+        const char *eol = strchr(ls, '\n');
+        char line[192];
+        int n = eol ? (int)(eol - ls) : (int)strlen(ls);
+        if (n > (int)sizeof(line) - 1)
+            n = (int)sizeof(line) - 1;
+        memcpy(line, ls, n);
+        line[n] = '\0';
+        fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, ly, ALIGN_CENTER, 0, 0, line, gTheme->textColor);
+        lastY = ly;
+        ly += lineH;
+        ls = eol ? eol + 1 : NULL;
+    }
+    return lastY;
+}
+
+// The message box width for the screens that drew their text as one unbounded line (text screen,
+// warning, video-mode confirmation, remove-settings prompt): a long translation ran past the rules
+// and off the screen. Ported from YAOPL 6a091fc (Roman Kelesidis).
+int guiDrawMsgText(const char *text)
+{
+    char wrapped[512];
+    int lines = fntWrapText(gTheme->fonts[0], text, gGuiScreenWidth - 120, wrapped, sizeof(wrapped));
+    return guiDrawWrappedLines(wrapped, lines);
+}
+
 MessageBoxScreen::MessageBoxScreen(const char *text, int addAccept, struct UIItem *ui)
     : addAccept_(addAccept), ui_(ui)
 {
@@ -112,26 +148,7 @@ void MessageBoxScreen::draw()
     rmDrawLine(50, 75, gGuiScreenWidth - 50, 75, gColWhite);
     rmDrawLine(50, 410, gGuiScreenWidth - 50, 410, gColWhite);
 
-    // Render the wrapped lines ONE AT A TIME: ALIGN_CENTER centres on the measured width of the
-    // WHOLE string, so handing it a multi-line buffer would centre it as a single long run and
-    // leave every line off-centre. Block is vertically centred on the old single-line position.
-    {
-        int lineH = MENU_ITEM_HEIGHT;
-        int ly = (gTheme->usedHeight >> 1) - ((lines_ - 1) * lineH) / 2;
-        const char *ls = wrapped_;
-        while (ls != NULL) {
-            const char *eol = strchr(ls, '\n');
-            char line[192];
-            int n = eol ? (int)(eol - ls) : (int)strlen(ls);
-            if (n > (int)sizeof(line) - 1)
-                n = (int)sizeof(line) - 1;
-            memcpy(line, ls, n);
-            line[n] = '\0';
-            fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, ly, ALIGN_CENTER, 0, 0, line, gTheme->textColor);
-            ly += lineH;
-            ls = eol ? eol + 1 : NULL;
-        }
-    }
+    guiDrawWrappedLines(wrapped_, lines_);
     guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? CROSS_ICON : CIRCLE_ICON, _STR_BACK, gTheme->fonts[0], 500, 417, gTheme->textColor);
     if (addAccept_)
         guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? CIRCLE_ICON : CROSS_ICON, _STR_ACCEPT, gTheme->fonts[0], 70, 417, gTheme->textColor);
@@ -263,7 +280,7 @@ void guiWarning(const char *text, int count)
     rmDrawLine(50, 75, gGuiScreenWidth - 50, 75, gColWhite);
     rmDrawLine(50, 410, gGuiScreenWidth - 50, 410, gColWhite);
 
-    fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, gTheme->usedHeight >> 1, ALIGN_CENTER, gGuiScreenWidth, gGuiScreenHeight, text, gTheme->textColor);
+    guiDrawMsgText(text);
 
     guiEndFrame();
 
@@ -294,7 +311,7 @@ void RemoveSettingsPrompt::draw()
     rmDrawLine(50, 75, gGuiScreenWidth - 50, 75, gColWhite);
     rmDrawLine(50, 410, gGuiScreenWidth - 50, 410, gColWhite);
 
-    fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, gTheme->usedHeight >> 1, ALIGN_CENTER, 0, 0, _l(_STR_GAME_SETTINGS_PROMPT), gTheme->textColor);
+    guiDrawMsgText(_l(_STR_GAME_SETTINGS_PROMPT));
 
     guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? CROSS_ICON : CIRCLE_ICON, _STR_BACK, gTheme->fonts[0], 500, 417, gTheme->textColor);
     guiDrawIconAndText(SQUARE_ICON, _STR_GLOBAL_SETTINGS, gTheme->fonts[0], 213, 417, gTheme->textColor);
