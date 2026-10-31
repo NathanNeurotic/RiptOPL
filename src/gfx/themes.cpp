@@ -2054,14 +2054,17 @@ int thmFindGuiID(const char *theme)
     return gCatalog.findGuiID(theme);
 }
 
-// The saved theme is a disk theme (by name, not a built-in "<...>") that no drive has offered yet: its drive is still
-// coming up, or is gone. The boot greeting waits a bounded time for it (RIPPS2 build 125, AK).
+// The saved theme is a disk theme (not one of the built-in names) that is not on screen yet: its drive is still coming
+// up, its theme is still loading, or the drive is gone. The boot greeting waits a bounded time for it (RIPPS2 build
+// 125, AK). Only the built-in names are skipped, so a disk theme whose folder name starts with '<' still waits.
 int thmSavedThemePending(void)
 {
     const char *temp = NULL;
-    if (!configGetStr(configGetByType(CONFIG_OPL), CONFIG_OPL_THEME, &temp) || temp == NULL || temp[0] == '\0' || temp[0] == '<')
+    if (!configGetStr(configGetByType(CONFIG_OPL), CONFIG_OPL_THEME, &temp) || temp == NULL || temp[0] == '\0' ||
+        strcasecmp(temp, "<OPL>") == 0 || strcasecmp(temp, "<Coverflow>") == 0 || strcasecmp(temp, "<PSBBN Flow>") == 0)
         return 0;
-    return thmFindGuiID(temp) == 0;
+    const int id = thmFindGuiID(temp);
+    return id == 0 || thmGetGuiValue() != id;
 }
 
 const char **thmGetGuiList(void)

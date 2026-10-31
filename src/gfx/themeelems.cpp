@@ -1012,15 +1012,18 @@ static GSTEXTURE *holdLastBackground(mutable_image_t *gameImage, struct menu_lis
         return texture;
     }
 
-    // Art switched off (or BG art off): nothing is coming, so nothing is held either
-    if (!gEnableArt || item->isFolder || (cache->suffix() != NULL && strcmp(cache->suffix(), "BG") == 0 && !gEnableBGArt))
-        return texture;
-
+    // Art switched off (or BG art off), a folder, or art known to be absent: nothing is coming, so nothing is held. The
+    // default is what is on screen now, so the kept entry is dropped too: the next pending game must not bring back an
+    // older game's art.
     const item_list_t *list = (const item_list_t *)menu->item->userdata;
     const int state = item->cache_id[userId];
     const int pending = state >= 0 || (state == -1 && list != NULL && guiInactiveFrames <= list->delay + BG_HOLD_GRACE_FRAMES);
-    if (!pending)
+    if (!gEnableArt || item->isFolder || (cache->suffix() != NULL && strcmp(cache->suffix(), "BG") == 0 && !gEnableBGArt) ||
+        !pending) {
+        gameImage->lastCacheId = -1;
+        gameImage->lastUid = -1;
         return texture;
+    }
 
     int lastId = gameImage->lastCacheId, lastUid = gameImage->lastUid;
     GSTEXTURE *last = cacheLookupTexture(cache, &lastId, &lastUid);
