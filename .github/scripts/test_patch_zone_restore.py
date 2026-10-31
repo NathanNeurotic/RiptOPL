@@ -210,6 +210,7 @@ def statement_start(code, pos):
 
 
 LEGS = (('src/sources/bdmlaunch.cpp', 'void BdmLauncher::launch('), ('src/sources/ethsupport.cpp', 'void EthSource::launch('),
+        ('src/sources/ethsupport.cpp', 'static int ethTryNeutrino('),
         ('src/sources/hddsupport.cpp', 'void HddSource::launch('), ('src/sources/httpsupport.cpp', 'void HttpSource::launch('),
         ('src/sources/mmcesupport.cpp', 'void MmceSource::launch('), ('src/sources/udpfssupport.cpp', 'void UdpfsSource::launch('))
 
@@ -249,9 +250,9 @@ for path, signature in LEGS:
     lead = code[max(code.rfind(c, start, prep) for c in ';{}') + 1:prep]
     assigned = re.fullmatch(r'\s*(\w+) = ', lead)
     if assigned:
-        guard = re.match(r';\s*if \(' + assigned.group(1) + r' < 0\)\s*(?:\{\s*)?return;', code[after:])
+        guard = re.match(r';\s*if \(' + assigned.group(1) + r' < 0\)\s*(?:\{\s*)?return(?: \d+)?;', code[after:])
     else:
-        guard = re.match(r' < 0\)\s*(?:\{\s*)?return;', code[after:]) if re.fullmatch(r'\s*if \(', lead) else None
+        guard = re.match(r' < 0\)\s*(?:\{\s*)?return(?: \d+)?;', code[after:]) if re.fullmatch(r'\s*if \(', lead) else None
     if guard is None:
         failures.append('%s: check sbPrepare\'s result (< 0) and return before `%s` is used' % (line(prep), index))
         guarded = after
