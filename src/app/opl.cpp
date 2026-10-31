@@ -253,6 +253,8 @@ int gEnableLogoArt;
 int gWideScreen;
 int gFontSize = FONT_SIZE_DEFAULT;
 int gGlyphSet = 0; // GLYPH_SET_THEME
+// Alternate Background: the theme's alt= pictures instead of its default= ones (themeviews.h).
+int gThemeAltBackground;
 int gVMode; // 0 - Auto, 1 - PAL, 2 - NTSC
 int gXOff;
 int gYOff;

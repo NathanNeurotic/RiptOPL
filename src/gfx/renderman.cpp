@@ -126,6 +126,14 @@ void Renderer::endFrame(void)
         gsKit_finish();
 
         if (!gsGlobal->FirstFrame) {
+            // A VSync that fired while this frame was still being drawn has already queued a wakeup,
+            // and sleeping on it would return at once and flip in the middle of the scanout. Drop it
+            // (with interrupts off, so a VSync can't land between the two steps and be lost) and wait
+            // for the next one. A slow frame then shows one field late instead of torn.
+            DIntr();
+            wakeCount_ = 0;
+            CancelWakeupThread(guiThreadID);
+            EIntr();
             SleepThread();
             wakeCount_ = 0;
 
@@ -536,10 +544,20 @@ void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned
 
 void Renderer::drawRect(int x, int y, int w, int h, u64 color)
 {
-    float fx = scaleX(x) + renderXOff_;
-    float fy = scaleY(y) + renderYOff_;
-    float fw = scaleX(w);
-    float fh = scaleY(h);
+    // Scale both edges instead of the size, so neighbouring rects line up, and keep anything with a
+    // size at least one display pixel: on a 224-448 line framebuffer a 1 or 2 high rect (frame
+    // borders, separators, PSBBN Flow's stars) otherwise scaled to 0 and was not drawn at all.
+    int x0 = scaleX(x), x1 = scaleX(x + w);
+    int y0 = scaleY(y), y1 = scaleY(y + h);
+    if (w > 0 && x1 <= x0)
+        x1 = x0 + 1;
+    if (h > 0 && y1 <= y0)
+        y1 = y0 + 1;
+
+    float fx = x0 + renderXOff_;
+    float fy = y0 + renderYOff_;
+    float fw = x1 - x0;
+    float fh = y1 - y0;
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
     gsKit_prim_sprite(gsGlobal, fx, fy, fx + fw, fy + fh, order_, color);

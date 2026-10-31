@@ -22,6 +22,7 @@ CHECK(gEnableLogoArt == (1));
 CHECK(gWideScreen == (0));
 CHECK(gFontSize == (FONT_SIZE_DEFAULT));
 CHECK(gGlyphSet == (0)); // GLYPH_SET_THEME
+CHECK(gThemeAltBackground == (0)); // the theme's default= pictures
 CHECK(gVMode == (0));
 CHECK(gXOff == (0));
 CHECK(gYOff == (0));

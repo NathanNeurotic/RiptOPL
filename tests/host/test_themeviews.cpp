@@ -198,6 +198,60 @@ int main()
         CHECK(thmApplyDisplayLayout(only, 1) == 1 && configGetStr(only, "main6_type", &v) && strcmp(v, "StaticText") == 0);
         configFree(only);
 
+        // ---- Alternate background (alt=) ---------------------------------------------------------------
+        static const char *alts = "alt=bg_top\n"
+                                  "main0:\n\ttype=Background\n\tdefault=bg\n\talt=bg_night\n"
+                                  "main1:\n\ttype=Background\n\tdefault=bg2\n"
+                                  "main2:\n\ttype=StaticImage\n\tdefault=logo\n"
+                                  "coverflow.main0:\n\ttype=Background\n\tdefault=cf\n";
+        config_set_t *off = parse(alts);
+        CHECK(thmApplyAltBackground(off, 0) == 1); // declared, but the setting is off: nothing changes
+        CHECK(configGetStr(off, "main0_default", &v) && strcmp(v, "bg") == 0);
+        CHECK(configGetStr(off, "main1_default", &v) && strcmp(v, "bg2") == 0);
+        configFree(off);
+
+        config_set_t *on = parse(alts);
+        CHECK(thmApplyAltBackground(on, 1) == 1);
+        CHECK(configGetStr(on, "main0_default", &v) && strcmp(v, "bg_night") == 0);         // its own alt= wins
+        CHECK(configGetStr(on, "main1_default", &v) && strcmp(v, "bg_top") == 0);           // the top-level alt=
+        CHECK(configGetStr(on, "main2_default", &v) && strcmp(v, "logo") == 0);             // not a Background
+        CHECK(configGetStr(on, "coverflow.main0_default", &v) && strcmp(v, "bg_top") == 0); // view blocks too
+        configFree(on);
+
+        // No Background block: the one added at load ("bg") takes the top-level alt=; its own bg_alt= wins.
+        config_set_t *nobg = parse("alt=bg_top\nmain0:\n\ttype=StaticImage\n\tdefault=logo\n");
+        CHECK(thmApplyAltBackground(nobg, 1) == 1 && configGetStr(nobg, "bg_default", &v) && strcmp(v, "bg_top") == 0);
+        configFree(nobg);
+        nobg = parse("alt=bg_top\nbg_alt=bg_own\n");
+        CHECK(thmApplyAltBackground(nobg, 1) == 1 && configGetStr(nobg, "bg_default", &v) && strcmp(v, "bg_own") == 0);
+        configFree(nobg);
+        nobg = parse("alt=bg_top\n");
+        CHECK(thmApplyAltBackground(nobg, 0) == 1 && !configGetStr(nobg, "bg_default", &v));
+        configFree(nobg);
+
+        // A Background without default= gets one (the plasma is replaced by the picture).
+        config_set_t *plasma = parse("main0:\n\ttype=Background\n\talt=bg_night\n");
+        CHECK(thmApplyAltBackground(plasma, 1) == 1 && configGetStr(plasma, "main0_default", &v) && strcmp(v, "bg_night") == 0);
+        configFree(plasma);
+
+        // alt_hd= resolves through the SD/HD pass first.
+        config_set_t *althd = parse("main0:\n\ttype=Background\n\tdefault=bg\n\talt=night\n\talt_hd=night_wide\n");
+        thmApplyDisplayLayout(althd, 1);
+        CHECK(thmApplyAltBackground(althd, 1) == 1 && configGetStr(althd, "main0_default", &v) && strcmp(v, "night_wide") == 0);
+        configFree(althd);
+
+        // A theme without alt keys reports none and is left exactly as read, whatever the setting.
+        config_set_t *plain = parse("main0:\n\ttype=Background\n\tdefault=bg\nmain1:\n\ttype=StaticImage\n\tx=12\n");
+        before = after = 0;
+        for (const config_value_t *it = plain->entries(); it; it = it->next)
+            before++;
+        CHECK(thmApplyAltBackground(plain, 1) == 0);
+        for (const config_value_t *it = plain->entries(); it; it = it->next)
+            after++;
+        CHECK(before == after && configGetStr(plain, "main0_default", &v) && strcmp(v, "bg") == 0);
+        configFree(plain);
+        CHECK(thmApplyAltBackground(NULL, 1) == 0);
+
         // hd_autofit: the 4:3 layout scaled by 3/4 about the centre; centre, edges and gaps keep their shape.
         CHECK(thmLayoutAutoFitX(320, 640) == 320);
         CHECK(thmLayoutAutoFitX(0, 640) == 80);

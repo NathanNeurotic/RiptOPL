@@ -11,6 +11,7 @@ installation folder can still discover settings on another device.
 | Theme | Built-in `<OPL>` | Settings → Interface → Theme |
 | Theme View | Default (List for `<OPL>`); Coverflow (3), Coverflow (5), PSBBN Flow and Grid are optional views | Settings → Interface → Theme View, or hold L3 |
 | Library | Pages (All Games List off) | Settings → Interface → Library, or Game Sources → All Games List |
+| Alternate Background | Off (the theme's `default=` background) | Settings → Interface → Alternate Background |
 | Cover and disc artwork | On | Settings → Interface → Artwork Settings |
 | Per-game background art | Off in Korium and RetroAchievements (as the original's Korium); On in IncebtIon | Settings → Interface → Artwork Settings |
 | Notifications | On | Settings → Interface |
