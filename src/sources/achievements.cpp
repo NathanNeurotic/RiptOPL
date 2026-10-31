@@ -18,6 +18,7 @@
 #include "include/ethsupport.h"
 #include "include/discsupport.h"
 #include "include/rahash.h"
+#include "include/rahunt.h"       /* RA/<startup>.ach for the in-game menu's LEFT TO HUNT */
 #include "include/udpfssupport.h" /* udpfsGetModulesLoaded: the UDPFS share */
 
 static volatile int busy;
@@ -27,7 +28,11 @@ static unsigned int serial;
 static char requestKind;
 static int requestPage, requestFilter;
 static char requestTarget[33];
-static char imagePath[256], imageStartup[16];
+static char imagePath[256], imageStartup[16], imagePrefix[256];
+/* The game whose set is saved as <huntPrefix>RA/<huntStartup>.ach: the last ISO image opened from its card.
+   Select refetches it by id, after the image fields are gone (xeraSaveHunt). */
+static char huntStartup[16], huntPrefix[256];
+static int huntId;
 static int imageIsVcd;
 /* Empty fields are significant; strtok would merge them. */
 static char *field(char **cursor, char separator)
@@ -534,11 +539,44 @@ static int hashImage(char *hash)
     return raHashIsoDirect(imagePath, imageStartup, hash);
 }
 
+/* The set just read, as RA/<startup>.ach beside the game's watch list, so the game's next launch takes what is
+   left to hunt into the in-game menu (supportbase.cpp, rahunt.cpp). Nothing when the game's device takes no
+   writes: the page itself does not depend on it. */
+static void xeraSaveHunt(void)
+{
+    char file[300], line[RA_HUNT_TITLE + RA_HUNT_DESC + 16];
+    FILE *f;
+    int i, ok = 1;
+
+    if (!huntPrefix[0] || !huntStartup[0] ||
+        snprintf(file, sizeof(file), "%sRA", huntPrefix) >= (int)sizeof(file))
+        return;
+    mkdir(file, 0777);
+    snprintf(file, sizeof(file), "%sRA/%s.ach", huntPrefix, huntStartup);
+    if (xeraCount <= 0) {
+        unlink(file); /* an empty set: drop the one saved for an earlier read */
+        return;
+    }
+    if ((f = fopen(file, "wb")) == NULL) {
+        LOG("RA: could not write %s\n", file);
+        return;
+    }
+    ok = fputs("RIPPS2 ACH 1\n", f) >= 0;
+    for (i = 0; ok && i < xeraCount; i++) {
+        const achievement_entry_t *a = &xeraList[i];
+        ok = raHuntLine(line, sizeof(line), a->earned, a->points, a->title, a->description) > 0 && fputs(line, f) >= 0;
+    }
+    if (fclose(f) != 0 || !ok) {
+        LOG("RA: short write: %s\n", file);
+        unlink(file); /* a cut list would show a game as nearly done */
+    }
+}
+
 static void loadXerabora(void)
 {
     char hash[33], title[57];
     unsigned int host;
-    int count, id, rc;
+    int count, id, rc, fresh;
 
     if (imagePath[0]) {
         if (hashImage(hash) != 0)
@@ -597,11 +635,22 @@ static void loadXerabora(void)
             return; /* ACH_ERROR */
     }
 fetch:
+    fresh = xeraStale || !xeraList || xeraKind != requestKind || xeraId != id;
     if ((rc = xeraFetch(host, requestKind, id)) != 1) {
         result.state = xeraState(rc);
         return;
     }
     achievementsXeraboraPage(&result, requestKind, requestPage, requestFilter);
+    if (imagePath[0] && requestKind == 'A') {
+        /* A startup that names a folder would put the file outside RA/. */
+        int saved = !imageIsVcd && imagePrefix[0] && imageStartup[0] && !strpbrk(imageStartup, "/\\");
+        huntId = saved ? id : 0;
+        snprintf(huntStartup, sizeof(huntStartup), "%s", saved ? imageStartup : "");
+        snprintf(huntPrefix, sizeof(huntPrefix), "%s", saved ? imagePrefix : "");
+        fresh = 1;
+    }
+    if (fresh && requestKind == 'A' && huntId > 0 && id == huntId)
+        xeraSaveHunt();
 }
 
 void achievementsForget(void)
@@ -703,32 +752,34 @@ int achievementsRequest(char kind, int page, int filter, const char *target)
     }
     return 1;
 }
-static int requestImage(const char *path, const char *startup, int isVcd)
+static int requestImage(const char *path, const char *startup, const char *prefix, int isVcd)
 {
     if (busy || sbHashGameBusy() || discCheckBusy() || !path || !*path || !startup ||
-        strlen(path) >= sizeof(imagePath) || strlen(startup) >= sizeof(imageStartup))
+        strlen(path) >= sizeof(imagePath) || strlen(startup) >= sizeof(imageStartup) ||
+        (prefix && strlen(prefix) >= sizeof(imagePrefix)))
         return 0;
     requestKind = 'A';
     requestPage = 0;
     imageIsVcd = isVcd;
     snprintf(imagePath, sizeof(imagePath), "%s", path);
     snprintf(imageStartup, sizeof(imageStartup), "%s", startup);
+    snprintf(imagePrefix, sizeof(imagePrefix), "%s", prefix ? prefix : "");
     busy = 1;
     serial++;
     if (ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&loadPage)) != IO_OK) {
         busy = 0;
-        imagePath[0] = imageStartup[0] = 0;
+        imagePath[0] = imageStartup[0] = imagePrefix[0] = 0;
         return 0;
     }
     return 1;
 }
-int achievementsRequestImage(const char *path, const char *startup)
+int achievementsRequestImage(const char *path, const char *startup, const char *prefix)
 {
-    return requestImage(path, startup, 0);
+    return requestImage(path, startup, prefix, 0);
 }
 int achievementsRequestVcd(const char *path)
 {
-    return requestImage(path, "", 1);
+    return requestImage(path, "", NULL, 1);
 }
 void achievementsSnapshot(achievement_page_t *out)
 {

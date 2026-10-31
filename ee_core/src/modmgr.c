@@ -189,13 +189,16 @@ int LoadOPLModule(int id, int mode, int arg_len, const char *args)
                     DBGCOL(0x00FFDC, MODMGR, "IRX loading error (from MODLOAD)");
                     delay(3);
                 }
-                // The freeze report writer and raudp are optional: they must never trap the game in the OOM loop.
+                // The freeze report writer, raudp and igrmbox are optional: they must never trap the game in the OOM loop.
                 if (result == -400
 #ifdef RETROACHIEVEMENTS
                     && id != OPL_MODULE_ID_RAUDP
 #endif
 #ifdef INGAMEDIAG
                     && id != OPL_MODULE_ID_FREEZEDIAG
+#endif
+#ifdef IGR_MENU
+                    && id != OPL_MODULE_ID_IGRMBOX // no room: the menu just stays as loud as before
 #endif
                 ) {
                     DBGCOL_BLNK(1, 0x0000FF, true, MODMGR, "MODLOAD: out of IOP Memory"); // yellow blinking

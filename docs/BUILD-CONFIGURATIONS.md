@@ -46,7 +46,7 @@ version. Nonstandard version strings also name their configuration.
 | `eesio_debug` | EE serial logging via the installed SIOCookie package, plus the menu debug resources. |
 | `ingame_debug_uart` | PPC UART menu/in-game debug modules and CDVDMAN diagnostics. |
 | `iopcore_debug_uart` | Also enable memory-card module diagnostics. |
-| `ingamediag` | In-game freeze report: after a freeze, the IGR combo writes `mc0:/RIPTFRZ.TXT`. Refused with RetroAchievements. |
+| `ingamediag` | In-game freeze report: after a freeze (the IGR combo, a power-button tap, or 15 s with no controller data) the report shows on the TV, then a power-button tap writes `mc0:/RIPTFRZ.TXT`, including the game's IOP allocations and 0xFF overrun runs. Refused with RetroAchievements. |
 
 Menu/core transport flags agree (`TTY_PPC_UART` versus `TTY_PPC` is the existing
 interface between those components). In-game debug removes SMSTCPIP's reduced

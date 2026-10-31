@@ -719,9 +719,12 @@ void rmStartFrame(void)
     gRenderer.startFrame();
 }
 
+volatile unsigned int rmFramesDrawn;
+
 void rmEndFrame(void)
 {
     gRenderer.endFrame();
+    rmFramesDrawn++;
 }
 
 void rmInit()

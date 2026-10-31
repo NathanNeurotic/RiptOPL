@@ -390,3 +390,10 @@ devices = (root / 'src/sources/bdmdevices.cpp').read_text()
 assert 'if (gAllGames && bdmTransportEnabled(pDeviceData->bdmDeviceType) != 0)\n            loadFavourites();' in devices, \
     'a reappearing slot rejoins All Games, unless its transport is Off'
 print('ok   a BDM page hidden for a switched-off transport, or shown again, rebuilds All Games')
+
+gui = (root / 'src/ui/guisettings.cpp').read_text()
+apply = function(gui, 'static void guiApplyAllGamesChange(void)')
+assert apply.index('host::app().initSupport(favGetObject(0), FAV_MODE, 0);') < apply.index('favList->owner'), \
+    'the All Games page must be started or hidden before it is selected'
+assert gui.count('guiApplyAllGamesChange();') >= 4, 'Game Sources and Interface (Library) both apply the change'
+print('ok   Library under Interface starts or hides the All Games page like Game Sources does')

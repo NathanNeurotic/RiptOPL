@@ -131,7 +131,11 @@ class ConfigurationTests(unittest.TestCase):
             for compiler in ("gcc", "llvm"):
                 for configuration in ("standard", "extras", "extras_ds5", "debug"):
                     targets = {t["name"]: t for t in editions.definition(edition, configuration, compiler)["targets"]}
-                    wanted = "-Oz" if compiler == "llvm" and configuration in ("extras", "extras_ds5") else "-Os"
+                    # LLVM shrinks a core with IGS or the in-game menu (silent pause, held frame) to fit its stack
+                    sized = {"IGS", "IGR_MENU"} & set(targets["eecore"]["defines"])
+                    wanted = "-Oz" if compiler == "llvm" and sized else "-Os"
+                    if compiler == "llvm" and configuration in ("extras", "extras_ds5"):
+                        self.assertEqual(targets["eecore"]["opt"], "-Oz")
                     self.assertEqual(targets["eecore"]["opt"], wanted)
                     self.assertEqual(targets["eecore"]["linkfile"], "ee_core/linkfile")
 

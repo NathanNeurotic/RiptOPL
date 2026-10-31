@@ -17,6 +17,7 @@
 #include "include/ranet.h"
 #include "modules/network/common/ra_snap.h"
 #include "include/ra_features.h"
+#include "include/supportbase.h" // sbGetRaHunt: the in-game menu's LEFT TO HUNT
 #endif
 
 namespace
@@ -239,6 +240,17 @@ public:
         (void)at;
         (void)room;
         return 0;
+#endif
+    }
+
+    const unsigned char *igrRaHunt(const char *file, int *count, int *bytes, int *total, int *unlocked) override
+    {
+#ifdef RETROACHIEVEMENTS
+        return sbGetRaHunt(file, count, bytes, total, unlocked);
+#else
+        (void)file;
+        *count = *bytes = *total = *unlocked = 0;
+        return NULL;
 #endif
     }
 

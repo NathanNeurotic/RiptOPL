@@ -32,7 +32,8 @@ def apply_configuration(config, configuration):
         # (IGS overflows it; the report would leave the stack about 4 KB; eesio_debug with LLVM 1 KB): these keep
         # the plain IGR combo and no In-Game Menu row.
         for target in (main, core):
-            target["defines"] = [v for v in target.get("defines", []) if v != "IGR_MENU"]
+            target["defines"] = [v for v in target.get("defines", []) if v not in ("IGR_MENU", "IGR_OVERLAY")]
+        main["embed_irx"] = [v for v in main["embed_irx"] if v not in ("igrmbox", "igrovl")]
     if configuration in ("extras", "extras_ds5"):
         add(main, "defines", "__RTL", "IGS")
         add(core, "defines", "IGS")
@@ -51,7 +52,10 @@ def apply_configuration(config, configuration):
         for target in config["targets"]:
             if target["name"] in ("riptopl", "eecore", "cdvdfsv") or target["name"].endswith("_cdvdman"):
                 add(target, "defines", "INGAMEDIAG")
-        add(core, "sources", "ee_core/src/freeze_diag.c")
+            if target["name"].endswith("_cdvdman"):
+                # The IOP heap record ee_core reads for the report (modules/iopcore/common/heap_diag.h).
+                add(target, "sources", "modules/iopcore/cdvdman/heapdiag.c")
+        add(core, "sources", "ee_core/src/freeze_diag.c", "ee_core/src/freeze_diag_screen.c")
         # The formatter is ee_core's, shared so the host test covers what runs on the IOP.
         config["targets"].append({
             "name": "freezediag", "type": "iop",

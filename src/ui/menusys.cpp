@@ -934,7 +934,7 @@ void menuSaveSettingsAndRestart(void)
    main menu. The I/O thread fetches; this screen draws the latest snapshot. */
 static int achFromCard, achKind, achPage, achLibraryPage, achFilter, achSelected, achNeedsPage;
 static int achImageVcd, achReturnScreen; // the card's image is a PS1 VCD; the menu it was opened from
-static char achTarget[33], achImagePath[256], achImageStartup[16];
+static char achTarget[33], achImagePath[256], achImageStartup[16], achImagePrefix[256];
 static image_cache_t *achIcons;
 static int achIconIds[ACH_PAGE_SIZE] = {-1, -1, -1}, achIconUids[ACH_PAGE_SIZE];
 
@@ -1101,7 +1101,7 @@ void menuHandleInputAchievements()
             if (achImageVcd)
                 achievementsRequestVcd(achImagePath);
             else
-                achievementsRequestImage(achImagePath, achImageStartup);
+                achievementsRequestImage(achImagePath, achImageStartup, achImagePrefix);
         } else {
             achievementsForget();
             achievementReload();
@@ -2476,7 +2476,7 @@ static int menuPageIsGrid(void)
 
 // L1/R1 on a Grid page turn a whole page of covers, the cursor keeping its place on the page (RIPPS2 build
 // 98, akilluminati47). Through the list's own paging they moved one cover: the grid's items list is one row
-// high. Past either end they wrap, as L1/R1 do in the list.
+// high. Past either end they wrap, as L1/R1 do in the list; on a single page they do nothing.
 static void menuGridPage(int dir)
 {
     submenu_list_t *cur = selected_item->item->current, *walk;
@@ -2488,7 +2488,7 @@ static void menuGridPage(int dir)
     }
     int target = cur != NULL ? gridPageStep(count, index, gTheme->gridRows, gTheme->gridColumns, dir) : -1;
     if (target < 0) {
-        if (count > 1) {
+        if (count > gTheme->gridRows * gTheme->gridColumns) { // a single page has nowhere to wrap to
             if (dir < 0)
                 menuLastPage();
             else
@@ -3010,10 +3010,12 @@ void menuHandleInputGameMenu()
                 guiShowRANotice(_l(_STR_CAD_HASH_UNSUPPORTED), NULL);
             else {
                 char path[256];
+                const char *save = (support->flags & MODE_FLAG_READ_ONLY) ? "" : prefix; // no .ach write on a read-only device
                 sbCreatePath(g, path, prefix, "/", 0);
-                if (achievementsRequestImage(path, g->startup)) {
+                if (achievementsRequestImage(path, g->startup, save)) {
                     snprintf(achImagePath, sizeof(achImagePath), "%s", path);
                     snprintf(achImageStartup, sizeof(achImageStartup), "%s", g->startup);
+                    snprintf(achImagePrefix, sizeof(achImagePrefix), "%s", save);
                     menuOpenAchievements("image");
                 } else
                     guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);

@@ -113,6 +113,9 @@ public:
     // the file is packed at 'at' (room bytes); returns the bytes used (0: none). fillCoreConfig then hands it to
     // ee_core. Always 0 in builds without IGR_MENU.
     virtual unsigned int igrCheatsPlace(void *at, unsigned int room) = 0;
+    // The menu's ACHIEVEMENTS page: what the launch read from RA/<file>.ach, packed for the menu (supportbase
+    // sbGetRaHunt); NULL when there was none for this file. Always NULL outside RetroAchievements builds.
+    virtual const unsigned char *igrRaHunt(const char *file, int *count, int *bytes, int *total, int *unlocked) = 0;
     virtual bool discCheckBusy() = 0;
 };
 

@@ -2164,19 +2164,6 @@ gui_strings:
   label: THEME_VIEW
   string: Theme View
 
-- comment: Interface setting under Theme View. Its choices are LIBRARY_PAGES and ALL_GAMES_LIST.
-  label: LIBRARY
-  string: Library
-
-- comment: Library choice. Every device keeps its own page (tab).
-  label: LIBRARY_PAGES
-  string: Pages
-
-- comment: Hint of Library.
-  label: HINT_LIBRARY
-  string: "Pages gives every device its own tab. All Games List puts the games of every started device, PS2, PS1 and apps, on one page. Same setting as All Games List under Game Sources."
-
-
 - label: ERR_VMC_FRAGMENTS_CONTINUE
   comment: Native BDM VMC refusal. Arguments are card name, fragment count and physical memory-card slot. Keep this order.
   string: "VMC %s is in %d fragments. Continue with Memory Card in slot %d?"
@@ -2193,7 +2180,7 @@ gui_strings:
   comment: Game menu VMC entry on a UDPBD/UDPFS IMG server that does not keep what is written. The game then uses the real memory card.
   string: "This UDPBD/UDPFS server is read-only, so no VMC can be used on it. The game saves to the real memory card."
 
-- comment: Game Launching setting. The in-game menu, ported from RIPPS2 (by akilluminati47). Not in RetroAchievements editions.
+- comment: Game Launching setting. The in-game menu, ported from RIPPS2 (by akilluminati47).
   label: IGR_MENU
   string: In-Game Menu (Beta)
 
@@ -2210,3 +2197,15 @@ gui_strings:
 - comment: Grid Layout's smallest covers, shown as "6 x 3 Compact".
   label: GRID_COMPACT
   string: Compact
+
+- comment: Interface setting under Theme View. Its choices are LIBRARY_PAGES and ALL_GAMES_LIST.
+  label: LIBRARY
+  string: Library
+
+- comment: Library choice. Every device keeps its own page (tab).
+  label: LIBRARY_PAGES
+  string: Pages
+
+- comment: Hint of Library.
+  label: HINT_LIBRARY
+  string: "Pages gives every device its own tab. All Games List puts the games of every started device, PS2, PS1 and apps, on one page. Same setting as All Games List under Game Sources."

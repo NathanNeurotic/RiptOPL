@@ -43,13 +43,17 @@ def definition(edition, configuration="standard", toolchain="gcc"):
     if options["ra"]:
         for target in (main, core):
             add(target, "defines", "RETROACHIEVEMENTS")
-        # The in-game menu does not fit beside RA in ee_core's ram84 (it would leave the stack under 1 KB):
-        # RA editions keep the plain IGR combo, and the launcher has no In-Game Menu row.
+        # The in-game menu does not fit beside RA in ee_core's ram84 (about 5.7 KB short): RA editions run it as
+        # igrovl.elf, an overlay the launcher puts at the top of the module storage only with In-Game Menu on
+        # (ee_core/include/igrovl.h). ee_core keeps the stub that calls it.
         for target in (main, core):
-            target["defines"] = [v for v in target["defines"] if v != "IGR_MENU"]
+            add(target, "defines", "IGR_OVERLAY")
+        core["sources"] = [v for v in core["sources"] if v not in ("ee_core/src/igrmenu.c", "ee_core/src/igrmbox.c")]
+        add(core, "sources", "ee_core/src/igrovl_stub.c")
+        main["embed_irx"].insert(main["embed_irx"].index("eecore") + 1, "igrovl")
         add(main, "sources", "src/platform/md5.c", *[
             f"src/sources/{name}.cpp" for name in ("rawatch", "rahash", "ranet", "rabadge", "discsupport", "achievements",
-                                                   "rapopslaunch")])
+                                                   "rahunt", "rapopslaunch")])
         # USB PS1 under POPStarter: rapops is written as POPS/MODULE_9.IRX and starts the network
         # modules the loader copies into it, then rapull, which reads the game's RAM from the IOP.
         headers = targets["raudp"]["headers"]
@@ -84,8 +88,20 @@ def definition(edition, configuration="standard", toolchain="gcc"):
     apply_configuration(config, configuration)
     # IGS makes LLVM -Os leave only 2,712 bytes for the core's stack. -Oz leaves
     # 6,040 with the same 3 KB linker guard and fixed memory regions; GCC stays -Os.
-    if toolchain == "llvm" and "IGS" in core["defines"]:
+    # The in-game menu's silent pause and held frame leave LLVM -Os 2,136 bytes, so it takes -Oz too.
+    # LLVM builds are CI's compiler check only: every released ee_core is GCC -Os.
+    if toolchain == "llvm" and ("IGS" in core["defines"] or "IGR_MENU" in core["defines"]):
         core["opt"] = "-Oz"
+    if "IGR_OVERLAY" in core["defines"]:
+        # Built from the finished core (configuration defines, -Oz): the overlay shares its headers and config layout.
+        config["targets"].insert(config["targets"].index(core) + 1, {
+            "name": "igrovl", "type": "ee",
+            "sources": ["ee_core/igrovl/igrovl_main.c", "ee_core/src/igrmenu.c", "ee_core/src/igrmbox.c"],
+            "include_dirs": list(core["include_dirs"]), "headers": list(core["headers"]),
+            "defines": [*core["defines"], "IGR_OVERLAY_SIDE"], "libs": ["gcc"],
+            "linkfile": "ee_core/igrovl/linkfile", "opt": core["opt"],
+            "cflags": ["-G0", "-ffunction-sections", "-fdata-sections"],
+            "ldflags": ["-nostartfiles", "-nostdlib", "-Wl,--gc-sections", "-Wl,-Map,igrovl.map"]})
     return config
 
 

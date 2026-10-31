@@ -6,6 +6,7 @@
 
 #include "include/settings.h"
 #include "include/diaglog.h" // the hardware log, DIAG.TXT (RIPPS2 build 115)
+#include "include/menuwatch.h"
 #include "include/oplint.h"
 #include "include/opl.h"
 #include "include/cfgtitle.h"
@@ -1931,6 +1932,7 @@ int main(int argc, char *argv[])
     // reset, load modules
     reset();
     ResetDeckardXParams();
+    menuWatchStart(); // diagnostic builds: report a menu that stops drawing (needs the IOP that reset() set up)
 
     // Settings live in the boot directory (cwd). Resolve it once, before any config init -- the
     // autolaunch path below calls miniInit() -> configInit(). argv[0] is the launcher's boot path;
