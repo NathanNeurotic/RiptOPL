@@ -38,6 +38,9 @@ jobs:
           python3 .github/scripts/test_foreground_settings_config.py
           python3 .github/scripts/test_config_prefetch_generation.py
           python3 .github/scripts/test_release_publication.py
+          python3 .github/scripts/test_game_size_fallback.py
+          python3 .github/scripts/test_ps1_duplicates.py
+          python3 .github/scripts/test_menu_crash_catcher.py
           python3 .github/scripts/test_config_save_integrity.py
           python3 .github/scripts/test_bdm_empty_literal_slot.py
           python3 .github/scripts/test_mx4sio_host_boot.py
@@ -125,6 +128,10 @@ jobs:
         run: python3 .github/scripts/test_vmode_safe_area.py
       - name: Check that the flicker-filtered HIRES modes blend each line with the next in the merge circuit
         run: python3 .github/scripts/test_hires_line_blend.py
+      - name: Check the intro waits for the saved theme only as long as Boot Theme Wait says (off by default)
+        run: python3 .github/scripts/test_boot_theme_wait.py
+      - name: Check that a missing settings file is opened once, not twice
+        run: python3 .github/scripts/test_config_missing_open_once.py
       - name: Check Back on a Settings page keeps its edits and only a real change reconnects SMB
         run: python3 .github/scripts/test_settings_back_keeps_edits.py
       - name: Check Settings pages fit before they scroll, BDM rows indent, and RiptOPL's plasma

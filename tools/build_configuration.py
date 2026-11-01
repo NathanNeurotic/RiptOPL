@@ -44,6 +44,10 @@ def apply_configuration(config, configuration):
         main["embed_irx"] = ["udnl-t300:udnl" if v == "udnl" else v for v in main["embed_irx"]]
     if configuration == "diag":
         add(main, "defines", "__OPLDIAG")
+    if configuration == "diag" or "debug" in configuration:
+        # __OPLDIAG builds: the menu crash catcher (src/ui/menuwatch.cpp) takes EE exceptions via libeedebug.
+        add(main, "headers", "eedebug")
+        add(main, "libs", "eedebug")
     if configuration == "ingamediag":
         # In-game freeze report: the IGR combo after a freeze writes mc0:/RIPTFRZ.TXT (see
         # ee_core/src/freeze_diag.c). RA runs IGR from VBLANK, so the two cannot be combined.

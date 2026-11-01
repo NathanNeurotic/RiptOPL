@@ -13,10 +13,14 @@ cue = (root / 'src/sources/cuesupport.cpp').read_text(encoding='utf-8')
 
 program = r'''
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-typedef struct { int tag; } base_game_info_t;
+#include <strings.h>
+typedef struct { int tag; char name[64]; } base_game_info_t; /* name: the PS1 Duplicates twin check reads it */
+enum { PS1_DUP_BOTH = 0, PS1_DUP_EMBER, PS1_DUP_POPSTARTER };
+static int gPs1Duplicates;
 static int gAutosort, vc, cc, oom;
 #define LOG(...) ((void)0)
 static int ps1RowCmp(const void *a,const void *b) { (void)a;(void)b;return 0; }

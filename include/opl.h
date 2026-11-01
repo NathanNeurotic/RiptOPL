@@ -211,7 +211,12 @@ extern int gAllGames;
 // Show Hidden Games (RIPPS2 Hide Game): list hidden games anyway. Defined in gamemanage.cpp; CONFIG_OPL_SHOW_HIDDEN.
 extern int gShowHidden;
 extern int gCfgTitlesInLists; // default-off presentation; identity always stays source-owned
-extern int gGameTypeLabels;   // optional [PS1]/[PS2] prefixes in game lists; default off
+// Interface > PS1 Duplicates: a PS1 game that is both a POPSTARTER VCD and an Ember image (RIPPS2 build 126).
+enum { PS1_DUP_BOTH = 0,
+       PS1_DUP_EMBER,
+       PS1_DUP_POPSTARTER };
+extern int gPs1Duplicates;
+extern int gGameTypeLabels; // optional [PS1]/[PS2] prefixes in game lists; default off
 // Ember's own settings, brought into the settings.txt files Ember reads when a game launches
 // (cueApplySettings). Each one is EMBER_SETTING_UNSET until the user CHANGES it in RiptOPL: an unset
 // setting is never written or removed, so a settings.txt somebody wrote by hand keeps working.
@@ -383,6 +388,7 @@ extern int gWideScreen;
 extern int gFontSize;           // FONT_SIZE_* (fntsys.h)
 extern int gGlyphSet;           // GLYPH_SET_* (themes.h); GLYPH_SET_THEME follows the theme
 extern int gThemeAltBackground; // Alternate Background: the theme's alt= pictures (thmApplyAltBackground)
+extern int gBootThemeWait;      // Boot Theme Wait: seconds the intro holds for the saved theme (0 = off)
 extern int gVMode;              // 0 - Auto, 1 - PAL, 2 - NTSC
 extern int gXOff;
 extern int gYOff;

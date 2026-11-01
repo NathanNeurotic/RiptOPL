@@ -2431,6 +2431,7 @@ static int guiSettingsShowInterface(void)
     guiSetAppsViewPicker(ui);
     guiSetThemeViewPicker(ui);
     diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
+    diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
     guiSetLibraryPicker(ui);
     diaSetEnum(ui, UICFG_VMODE, vmodeNames);
     diaSetInt(ui, UICFG_THEME, thmGetGuiValue());
@@ -2440,6 +2441,9 @@ static int guiSettingsShowInterface(void)
     diaSetInt(ui, UICFG_AUTOREFRESH, gAutoRefresh);
     diaSetInt(ui, UICFG_NOTIFICATIONS, gEnableNotifications);
     diaSetInt(ui, UICFG_CFG_TITLES, gCfgTitlesInLists);
+    const char *ps1DupNames[] = {_l(_STR_PS1_DUPLICATES_BOTH), "Ember", "POPSTARTER", NULL};
+    diaSetEnum(ui, UICFG_PS1_DUPLICATES, ps1DupNames);
+    diaSetInt(ui, UICFG_PS1_DUPLICATES, gPs1Duplicates);
     diaSetInt(ui, UICFG_GAME_TYPE_LABELS, gGameTypeLabels);
     // Keep the editor reachable even when the current theme has no active Coverflow view; users
     // need to be able to configure it before enabling or switching to a Coverflow-capable theme.
@@ -2491,15 +2495,20 @@ reshow_interface:
         diaGetInt(ui, UICFG_AUTOSORT, &gAutosort);
         diaGetInt(ui, UICFG_AUTOREFRESH, &gAutoRefresh);
         diaGetInt(ui, UICFG_NOTIFICATIONS, &gEnableNotifications);
-        int previousCfgTitles = gCfgTitlesInLists;
+        int previousCfgTitles = gCfgTitlesInLists, previousPs1Dup = gPs1Duplicates;
         diaGetInt(ui, UICFG_CFG_TITLES, &gCfgTitlesInLists);
+        diaGetInt(ui, UICFG_PS1_DUPLICATES, &gPs1Duplicates);
         // A new sort needs the rows rebuilt: Last played ranks are resolved as each row is built.
-        int cfgTitlesChanged = previousCfgTitles != gCfgTitlesInLists || previousSort != gAutosort;
+        // A PS1 Duplicates change rebuilds them the same way.
+        int cfgTitlesChanged = previousCfgTitles != gCfgTitlesInLists || previousSort != gAutosort || previousPs1Dup != gPs1Duplicates;
+        if (previousPs1Dup != gPs1Duplicates)
+            hddVcdInvalidateCache(); // the HDD PS1 list applies the setting when it is built
         diaGetInt(ui, UICFG_GAME_TYPE_LABELS, &gGameTypeLabels);
         gameViewChanged = guiReadGameViewPicker(ui);
         appsViewChanged = guiReadAppsViewPicker(ui);
         themeViewRequest = guiReadThemeViewPicker(ui);
         diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
+        diaGetInt(ui, UICFG_BOOT_THEME_WAIT, &gBootThemeWait);
         // With a view change pending, the alt change waits for that reload so the theme loads once.
         viewPending = themeViewRequest != gThemeViewRequest;
         if (!viewPending)
@@ -2524,6 +2533,10 @@ reshow_interface:
         if (previousVMode != gVMode)
             guiFadeCurrentScreenToBlack();
         applyConfig(themeID, -1, 1);
+        // A theme picked here is the user's choice, even the built-in one, so the save writes it although a saved
+        // disk theme is still waiting for its drive (_saveConfig keeps the saved name only while nothing was picked).
+        if (previousTheme != themeID)
+            configSetStr(configGetByType(CONFIG_OPL), CONFIG_OPL_THEME, thmGetValue());
         if (viewPending) {
             gThemeAltBackground = altBackgroundRequest;
             if (!thmSetView(themeViewRequest)) // reloads only when the theme now shows a different view

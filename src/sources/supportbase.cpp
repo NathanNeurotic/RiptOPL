@@ -1309,13 +1309,31 @@ int sbConfigStatSizeEnabled(void)
     return gSupportBase.configStatSizeEnabled();
 }
 
+// A game image's size in MiB. stat() first; when a driver's stat reports no size (RIPPS2 build 126 found MMCE
+// showing "0 MiB"), open the file and ask for its end instead. lseek64 so images over 2 GiB do not wrap. Returns 0
+// when neither works, which leaves the caller's "not measured" state as it was.
+static int sbFileSizeMB(const char *path)
+{
+    struct stat st;
+    int fd;
+    s64 end;
+
+    if (stat(path, &st) == 0 && st.st_size > 0)
+        return (int)(st.st_size >> 20);
+    fd = open(path, O_RDONLY);
+    if (fd < 0)
+        return 0;
+    end = lseek64(fd, 0, SEEK_END);
+    close(fd);
+    return end > 0 ? (int)(end >> 20) : 0;
+}
+
 // Info-screen #Size for a PS1 row. sbPopulateConfig never stats one: its prefix is the OPL config
 // root, while PS1 games live under the device's PS1 root (POPS/<name>.VCD or EMBER/games/<name>/).
 // ps1Root ends in its separator. No-op off the info path, for non-PS1 rows, or once sizeMB is cached.
 void sbResolvePs1Size(base_game_info_t *game, const char *ps1Root, config_set_t *config)
 {
     char gamepath[256];
-    struct stat st;
 
     if (!gSupportBase.configStatSizeEnabled() || game == NULL || ps1Root == NULL || config == NULL || game->sizeMB != 0)
         return;
@@ -1324,8 +1342,7 @@ void sbResolvePs1Size(base_game_info_t *game, const char *ps1Root, config_set_t 
         int len = (int)strlen(ps1Root);
         snprintf(gamepath, sizeof(gamepath), "%s%s%c%s%s", ps1Root, POPS_FOLDER,
                  (len > 0 && ps1Root[len - 1] == '\\') ? '\\' : '/', game->name, game->extension);
-        if (stat(gamepath, &st) == 0)
-            game->sizeMB = st.st_size >> 20;
+        game->sizeMB = sbFileSizeMB(gamepath);
     } else if (cueIsCueEntry(game))
         game->sizeMB = cueGameSizeMB(ps1Root, game->name);
     else
@@ -1458,13 +1475,11 @@ config_set_t *sbPopulateConfigIn(base_game_info_t *game, const char *prefix, con
         if (game->format == GAME_FORMAT_ISO) {
             snprintf(gamepath, sizeof(gamepath), "%s%s%s%s%s%s%s", prefix, sep, game->media == SCECdPS2CD ? "CD" : "DVD", sep, subseg, game->name, game->extension);
 
-            if (stat(gamepath, &st) == 0)
-                game->sizeMB = st.st_size >> 20;
+            game->sizeMB = sbFileSizeMB(gamepath);
         } else if (game->format == GAME_FORMAT_OLD_ISO) {
             snprintf(gamepath, sizeof(gamepath), "%s%s%s%s%s%s.%s%s", prefix, sep, game->media == SCECdPS2CD ? "CD" : "DVD", sep, subseg, game->startup, game->name, game->extension);
 
-            if (stat(gamepath, &st) == 0)
-                game->sizeMB = st.st_size >> 20;
+            game->sizeMB = sbFileSizeMB(gamepath);
         } else if (game->format == GAME_FORMAT_USBLD) {
             // Calculate total size for multi-part USBLD games
             int part;

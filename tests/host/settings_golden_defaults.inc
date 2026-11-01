@@ -23,6 +23,7 @@ CHECK(gWideScreen == (0));
 CHECK(gFontSize == (FONT_SIZE_DEFAULT));
 CHECK(gGlyphSet == (0)); // GLYPH_SET_THEME
 CHECK(gThemeAltBackground == (0)); // the theme's default= pictures
+CHECK(gBootThemeWait == (0)); // off: the intro does not wait for the saved theme
 CHECK(gVMode == (0));
 CHECK(gXOff == (0));
 CHECK(gYOff == (0));
@@ -65,6 +66,7 @@ CHECK(gApplyGameID == (0));
 CHECK(gDefaultGameView == (GAME_VIEW_BOTH));
 CHECK(gAppsDisplay == (APPS_DISPLAY_MIXED));
 CHECK(gCfgTitlesInLists == (0));
+CHECK(gPs1Duplicates == (PS1_DUP_BOTH));
 CHECK(gPopstarterPath[0] == '\0');
 CHECK(gBdmaSource == (VCD_BDMA_SRC_USB));
 CHECK(gBdmaApplyOnLaunch == (1));
