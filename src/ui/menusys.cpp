@@ -3175,7 +3175,9 @@ void menuRenderAppMenu()
 
 void menuHandleInputAppMenu()
 {
-    if (!appMenu) {
+    // Same guard as the render path: the app list can be reread between frames, and the actions below
+    // dereference the selected row.
+    if (!appMenu || selected_item == NULL || selected_item->item == NULL || selected_item->item->current == NULL) {
         guiSwitchScreen(GUI_SCREEN_MAIN);
         return;
     }
