@@ -1408,7 +1408,7 @@ void resolveBootDirToMass(void)
         // reads defaults for now and its first successful save lands on mmce once item 1 makes the
         // driver real. Cost is the ~10 x delay(1) poll on an MMCE boot only.
         mmceLoadModules();
-        diagLog("settings: MMCE driver loaded for %s", gBootDir);
+        diagLog("settings: MMCE driver load requested for %s", gBootDir);
         char devRoot[8];
         const char *colon = strchr(gBootDir, ':');
         size_t rootLen = colon ? (size_t)(colon - gBootDir) + 1 : 0;
@@ -1553,12 +1553,12 @@ void _loadConfig()
     lngRefreshBootLanguages(-1);
     diagLog("settings: languages scanned");
     int result = configReadMulti(lscstatus);
-    diagLog("settings: read 0x%x of 0x%x from %s", result, lscstatus, configGetDir());
+    diagLog("settings: read 0x%x of 0x%x from %s", result, lscstatus, configGetLoadDir());
 
     if (lscstatus & CONFIG_OPL) {
         if (!(result & CONFIG_OPL)) {
             result = tryAlternateDevice(lscstatus);
-            diagLog("settings: other devices tried, now 0x%x from %s", result, configGetDir());
+            diagLog("settings: other devices tried, now 0x%x from %s", result, configGetLoadDir());
         }
 
         if (result & CONFIG_OPL) {
