@@ -23,7 +23,7 @@ that every hit is history.
 | Website RetroAchievements body | `docs/RETROACHIEVEMENTS.md`, rendered by `site_sync.py --ra-md` |
 | Website ps2sdk notes, game formats, launch diagnostics, defaults and game library bodies | `docs/PS2SDK-NOTES.md`, `docs/GAME-FORMATS.md`, `docs/LAUNCH-DIAGNOSTICS.md`, `docs/DEFAULTS.md`, `docs/GAME-LIBRARY.md`, rendered by `site_sync.py --md-page` |
 | Website search | Page content, then regenerate `data/search-index.json`; curated entry titles/categories are preserved |
-| Wiki maps, homepage, aliases and conversion | `.github/scripts/wiki_sync.py`; generated pages are published to the separate wiki repository |
+| Wiki maps, homepage, aliases and conversion | `.github/scripts/wiki_sync.py`; `.github/workflows/wiki-publish.yml` publishes the generated pages to the separate wiki repository |
 | Language install and translation coverage | `docs/LANGUAGES.md`, `tools/audit_translations.py`; copy the user instructions to `gh-pages/languages.html` and regenerate the wiki |
 
 `docs-sync.yml` runs on every push to `rebuild/main` and daily, and pushes the generated pages to
@@ -65,8 +65,21 @@ may return 404 when viewed without sign-in. Check run/artifact metadata before c
 ## Wiki publication
 
 GitHub wikis have a separate Git history and cannot receive normal repository PRs. Review the
-builder changes in the source PR and the guide changes in the Pages PR. Merge both before
-generation so every generated link names a published revision:
+builder changes in the source PR and the guide changes in the Pages PR; the wiki is then rebuilt
+from the merged branches, so every generated link names a published revision.
+
+`.github/workflows/wiki-publish.yml` publishes it from GitHub Actions, so no local push is needed.
+It runs `wiki_sync.py` against the current `rebuild/main` and `gh-pages` and pushes the result to
+the wiki with the workflow's token, fast-forward only, and commits nothing when nothing changed. It
+starts when `docs-sync.yml` finishes on `rebuild/main` (so after every push there), daily at 05:17
+UTC, and by hand from the Actions tab (**Publish Wiki**, with a dry-run option). A change merged only
+to `gh-pages` therefore reaches the wiki with the next `rebuild/main` push or the daily run. Before
+building, the workflow deletes the pages the previous run generated (listed in the wiki's
+`_tools/manifest.json`), after checking each one's SHA-256; a page edited on the wiki, or a page the
+builder does not own, stops the run, so port such an edit into `docs/` or `gh-pages` first or it
+would be lost.
+
+To check a build locally, use separate checkouts as above:
 
 ```sh
 python .github/scripts/wiki_sync.py --source . --site ../site --wiki ../wiki
@@ -77,10 +90,8 @@ git -C ../wiki diff --stat
 Run generation twice with unchanged inputs and confirm no second diff. The builder validates
 internal wiki links/anchors and preserves text, tables and code examples when importing guides.
 Overlapping reference pages become small source-section indexes, preserving old wiki URLs and
-anchors; unique references remain full pages. Review and commit the wiki, then push normally.
-Reconcile concurrent wiki edits before retrying a rejected push. No automatic wiki publication
-or credential is configured: the wiki is pushed by hand, from a machine with a normal GitHub
-login.
+anchors; unique references remain full pages. A local build is for review; leave publishing to
+the workflow.
 
 ## Language-guide publication order
 

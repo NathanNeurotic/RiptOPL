@@ -99,7 +99,7 @@ edition is merged, including the RA browser, client and ORBIT integration; see t
 - **HTTP:** implemented and host-tested, but not yet tested on PS2 hardware. ISO only; no VMC, Neutrino or PS1. DVD9 probing is implemented but unproven. [HTTP guide](docs/HTTP.md).
 - **RetroAchievements:** a separate development package; the console integration has not been hardware-tested. It requires [xeRAbora v1.0.1](https://github.com/hacan359/xerabora/releases/tag/v1.0.1) (alpha.17 or later) on a PC and OPL-core launching. The RA build includes main-menu actions to check and launch a physical PS2 disc with achievements; this path also needs hardware validation. Keep games you play with achievements on a local device — upstream reports on hardware that a game with an achievement set stops loading about a minute in from a network share. [RA guide](docs/RETROACHIEVEMENTS.md).
 - **iLink:** revision 2692 passed Ember on the tested SCPH-39001 but failed native OPL, Neutrino and POPSTARTER handoffs. The Neutrino `-qb` correction is implemented; a passing retest is still needed.
-- **Core switching is source-dependent:** SMB and HTTP use OPL; UDPFS (Files and IMG) and UDPBD default to Neutrino and can use OPL per game. See the [source table](#introduction).
+- **Core switching is source-dependent:** HTTP uses OPL; SMB uses OPL unless a game is set to the Neutrino core (experimental, see [SMB through Neutrino](docs/NEUTRINO.md#smb-through-neutrino-experimental)); UDPFS (Files and IMG) and UDPBD default to Neutrino and can use OPL per game. See the [source table](#introduction).
 
 ## Introduction
 Open PS2 Loader (OPL) is a 100% Open source game and application loader for
@@ -110,7 +110,7 @@ the PS2 and supported backward-compatible PS3 units (see [PS3 BC](#ps3-bc)). Rip
 | USB / MX4SIO / MMCE / ATA exFAT | OPL or Neutrino for ISO | ISO; OPL also handles ZSO and UL split images | Supported; Neutrino cards must be on the game's device |
 | iLink | OPL or Neutrino paths implemented | Local files | Launch remains pending hardware retest; see [iLink status](#usbmmcemx4sioilink) |
 | Internal HDD, APA | OPL or Neutrino | HDLoader partitions | OPL supports VMC; Neutrino drops APA/PFS VMC with a warning |
-| SMB | OPL | ISO, ZSO, UL | Server must permit writes for VMC saves |
+| SMB | OPL; Neutrino per game or by global Loader Core (experimental: latest Neutrino nightly, SMB 3.0 server on port 445) | ISO, ZSO, UL (Neutrino: plain ISO only) | Server must permit writes for VMC saves; a game with a VMC stays on OPL |
 | UDPFS Files / IMG and UDPBD | Neutrino (`<OPL>` per game) | Files under `CD/` / `DVD/`, or a served FAT/exFAT disk image | Depends on backend and write access; see [Neutrino](docs/NEUTRINO.md) |
 | HTTP | OPL | ISO listed in `games.csv`; compressed images refuse to launch | No VMC; use physical memory cards |
 | PC CARD CF (experimental, off by default) | OPL only | ISO on MBR FAT32/exFAT CF, same `CD/`/`DVD/` layout; read-only | CF VMCs refused; use a physical memory card. Japanese SCPH-10000/15000/18000 only; see [PC CARD CF](docs/PC-CARD-CF.md) |
@@ -214,7 +214,9 @@ This build layers several features on top of upstream OPL:
 > that folder — `config/bsd-udpfsbd.toml`, because Neutrino ships `udpfs_bd.irx` without a matching
 > `-bsd` token and RiptOPL launches UDPFS as `-bsd=udpfsbd` — and replace its i.LINK pair
 > (`modules/IEEE1394_bd_mini.irx` and `modules/iLinkman.irx`) with RiptOPL's builds of the same ps2sdk modules, which keep the login
-> across an IOP reset ([details](docs/NEUTRINO.md)). Nothing else of [rickgaiser](https://github.com/rickgaiser)'s is altered or
+> across an IOP reset ([details](docs/NEUTRINO.md)). Launching an SMB game on Neutrino also writes the
+> menu's network and share settings into that folder's `config/bsd-smb.toml` on your device, the only
+> place Neutrino reads them from ([details](docs/NEUTRINO.md#smb-through-neutrino-experimental)). Nothing else of [rickgaiser](https://github.com/rickgaiser)'s is altered or
 > removed. RiptOPL is one of several front-ends built on Neutrino, alongside
 > **[LUNA](https://github.com/dnunezx/LUNA)** by **[darkladark](https://github.com/dnunezx)** (our #1
 > recommended alternative, for lightweight, customized Neutrino gameplay), **NHDDL**, **XEB+
@@ -246,7 +248,7 @@ This build layers several features on top of upstream OPL:
   **Protocol** (**SMB / UDPFS / UDPBD / HTTP**) indented under it; the same **Protocol** row is on
   **Network** too, and changing it on either page changes both. Setting Connectivity to **Off** keeps
   your protocol: turning it back on brings the same one back. **Network** also holds
-  **SMB Version** (SMBv1 / SMB2, live only while Protocol is SMB),
+  **SMB Version** (shown while Protocol is SMB; this edition offers SMBv1 only, see [SMB](#smb)),
   and **Access** (Files / IMG — locked to Files
   for SMB/HTTP and to IMG for UDPBD, free only for UDPFS). **Default Menu → ETH Games** opens
   whichever page that protocol's games are on (for UDPBD / UDPFS IMG, the network drive's page if it
@@ -417,7 +419,7 @@ This build layers several features on top of upstream OPL:
 
 Full button reference: **[docs/CONTROLS.md](docs/CONTROLS.md)**. In-Game Reset in detail:
 **[docs/IGR.md](docs/IGR.md)**. DualShock 3/4 emulation: **[docs/PADEMU.md](docs/PADEMU.md)**.
-Folder browsing, the parental lock and the audio system: **[docs/INTERFACE.md](docs/INTERFACE.md)**.
+Menu video modes, folder browsing, the parental lock and the audio system: **[docs/INTERFACE.md](docs/INTERFACE.md)**.
 
 ### Leaving a running game (In-Game Reset)
 
@@ -556,11 +558,10 @@ For loading games by SMB protocol, you need to share a folder (ex: PS2SMB)
 on the host machine or NAS device and grant read access for game loading. Write access is also needed for VMC saves and changes to files stored on the share. USB Advance/Extreme format is optional - \*.ISO images
 are supported using the folder structure above.
 
-> **SMB version:** the **Network** page has an **SMB Version** row (SMBv1 / SMB2) directly under
-> **Protocol**, live only while **Protocol** is **SMB** (greyed out otherwise). It defaults to
-> **SMBv1**; setting it to **SMB2** switches *both* sides — browsing loads the SMB2 driver instead
-> of the SMBv1 one, and so does the in-game reader — so the server must speak SMB2 for the whole
-> session.
+> **SMB version:** this C++ edition speaks **SMBv1** only, for browsing and in game. The **Network**
+> page's **SMB Version** row shows **SMBv1** and stays greyed: the SMB2 driver that builds before the
+> rebuild carried has not been re-added yet, and a saved SMB2 choice from those builds is ignored. Use a server that
+> answers SMBv1 (PS2-Servers' SMBv1 card, or Samba with `min protocol = NT1`).
 >
 > **RiptOPL network defaults:** the network protocol selector defaults to **Off** — under
 > **Game Sources** set **Network Connectivity** to **Manual** or **Auto** and **Protocol** (under it,
@@ -568,14 +569,22 @@ are supported using the folder structure above.
 > ships static defaults (PS2 `192.168.1.10`, PC `192.168.1.100`, share `games`, user `guest`);
 > adjust them to your LAN. The default **SMB Port is `1111`** — a non-privileged port (>1024), so a server
 > binds it without admin/root. The **Network** page opens with **Advanced Options** on, so
-> the **Port** field (and ETH link mode) are editable immediately. If Windows 10/11 has
-> disabled SMB1/NTLMv1, set **SMB Version** to **SMB2**; the
-> **[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one launcher remains the
-> fallback for SMBv1-only setups. Choose its SMBv1 server, then set RiptOPL's
-> IP, port, share and credentials to the values the launcher displays. Its documented custom SMBv1
-> port is **1111**, matching RiptOPL’s default. Windows’ built-in server or a NAS may use a different
-> port; enter the value that server actually listens on. Release packages
-> include **`PS2-Servers.url`** as a direct shortcut to the repository.
+> the **Port** field (and ETH link mode) are editable immediately. Windows 10/11 has SMB1 turned off,
+> so on Windows use the **[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one
+> launcher instead of Windows' own sharing. Choose its SMBv1 server, then set RiptOPL's
+> IP, port, share and credentials to the values the launcher displays. Its Desktop SMBv1 card
+> defaults to port **1025** and its Core/standalone server to **1111** (RiptOPL's default), so copy
+> the port the running card shows ([PS2-Servers SMB setup](https://github.com/NathanNeurotic/PS2-Servers/blob/main/docs/SMB.md)).
+> Windows’ built-in server or a NAS may use a different port; enter the value that server actually
+> listens on. Release packages include **`PS2-Servers.url`** as a direct shortcut to the repository.
+>
+> **SMB on the Neutrino core (experimental):** a game whose Loader Core is Neutrino (or Default while
+> the global Loader Core is Neutrino) launches from the share through Neutrino's own SMB driver, by
+> [Ronnie Sahlberg](https://github.com/sahlberg) ([usmb2](https://github.com/sahlberg/usmb2)). It
+> needs the complete latest Neutrino nightly and a server that offers SMB 3.0 on port **445**, such
+> as PS2-Servers' SMBv3 card; **SMB Version** does not apply to it. A game with a VMC, a ZSO or UL
+> image, or any other unmet requirement launches on the OPL core with a warning. See
+> [SMB through Neutrino](docs/NEUTRINO.md#smb-through-neutrino-experimental). NOT TESTED on hardware.
 
 ## HDD
 	
