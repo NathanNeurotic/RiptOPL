@@ -32,8 +32,12 @@ typedef struct fds_page
 void freeze_diag_screen_compose(const freeze_diag_report_t *r, const heap_diag_snapshot_t *h, fds_page_t *p, int saving);
 
 #ifndef FREEZE_DIAG_SCREEN_HOST_TEST
-// Draws the page in a frame of its own and waits for a tap of the power button.
+// Draws the page in a frame of its own, and returns.
+void FreezeDiag_ScreenShow(const freeze_diag_report_t *r, const heap_diag_snapshot_t *h);
+// Draws the page again and waits for a tap of the power button.
 void FreezeDiag_Screen(const freeze_diag_report_t *r, const heap_diag_snapshot_t *h);
+// From the VBLANK handler, the moment a report is asked for: the whole picture turns one colour.
+void FreezeDiag_ScreenMark(void);
 #endif
 
 #endif

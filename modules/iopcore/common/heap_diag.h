@@ -75,12 +75,14 @@ typedef struct heap_diag_iop
 // What ee_core keeps after reading the record: the record and, per block, the 0xFF run after it.
 typedef struct heap_diag_snapshot
 {
-    unsigned int found;    // 1: a record was found in IOP RAM
+    unsigned int found;    // 1: a record was found in IOP RAM; HEAP_DIAG_READING while the EE is still reading it
     unsigned int found_at; // its IOP address
     unsigned int reserved[2];
     unsigned short tail_ff[HEAP_DIAG_BLOCKS]; // 0xFF bytes right after blocks[i] (up to HEAP_DIAG_TAIL_SCAN)
     heap_diag_iop_t iop;
 } heap_diag_snapshot_t;
+
+#define HEAP_DIAG_READING 0x52454144u // "READ": the page was drawn before the IOP RAM scan returned
 
 #define HEAP_DIAG_SNAPSHOT_SIZE (16 + 2 * HEAP_DIAG_BLOCKS + HEAP_DIAG_IOP_SIZE)
 

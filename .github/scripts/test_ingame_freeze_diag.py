@@ -196,9 +196,9 @@ check(re.search(r"#define TEXT_CAP 16384\b", irx) is not None and "static char o
 cd = read("modules/iopcore/cdvdman/cdvdman.c")
 thr = cd[cd.index("static void cdvdman_cdread_Thread(void *args)"):]
 thr = thr[:thr.index("\n}\n")]
-check(thr.index("diag_stream_read = cdvdman_stat.StreamingData.StIsReading") < thr.index("cdvdman_read(cdvdman_stat.cdread_lba"),
-      "a stream fill is told apart from a game read before the read runs (its callback clears StIsReading)")
-check("FREEZE_DIAG_EV_DONE_STREAM" in thr and "FREEZE_DIAG_EV_DONE_CB" in thr, "the read thread logs which callback a game read got")
+check(thr.index("for_stream = cdread_for_stream") < thr.index("cdvdman_read(cdvdman_stat.cdread_lba"),
+      "a stream fill is told apart from a game read before the read runs (#236)")
+check("if (!for_stream)" in thr and "FREEZE_DIAG_EV_DONE_CB" in thr, "the read thread logs which callback a game read got")
 
 # 5. The formatter's host test.
 with tempfile.TemporaryDirectory() as tmp:
@@ -214,8 +214,9 @@ with tempfile.TemporaryDirectory() as tmp:
 # 6. The TV page: drawn before anything asks the IOP, and its composer's host test.
 begin = core[core.index("void FreezeDiag_Begin("):]
 begin = begin[:begin.index("\n}\n")]
-check(begin.index("heap_snapshot();") < begin.index("FreezeDiag_Screen(&report, HEAP_SNAPSHOT);"),
-      "the TV page shows the heap snapshot, taken first")
+check(begin.index("FreezeDiag_ScreenShow(&report, HEAP_SNAPSHOT);") < begin.index("heap_snapshot();") < begin.index("FreezeDiag_Screen(&report, HEAP_SNAPSHOT);"),
+      "the TV page goes up before IOP RAM is read (an EE load from a bus-locked IOP never returns), then again with the snapshot")
+check("FreezeDiag_ScreenMark();" in read("ee_core/src/padhook.c"), "the VBLANK handler marks the screen the moment a report is asked for")
 screen = read("ee_core/src/freeze_diag_screen.c")
 check("Sif" not in screen, "the TV page asks nothing of the IOP")
 pad = read("ee_core/src/padhook.c")

@@ -143,6 +143,11 @@ void FreezeDiag_Begin(unsigned int libpad, unsigned int pad_state, unsigned int 
         }
     }
 
+    // The page goes up first, with only what the EE knows. The scan below reads IOP RAM straight over the SBUS; if
+    // the IOP holds its bus, that load never returns, and the page then says so instead of never appearing.
+    HEAP_SNAPSHOT->found = HEAP_DIAG_READING;
+    FreezeDiag_ScreenShow(&report, HEAP_SNAPSHOT);
+
     heap_snapshot();
 
     report_armed = 1;
