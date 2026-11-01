@@ -25,6 +25,9 @@ public:
     // Bounded post-GameID settle for cross-device launches sharing SIO2 with the MMCE (MX4SIO, S7):
     // 0 = settled, -1 = expired. Never blocks the launch.
     int gameIdSettle(int timeoutMs);
+    // MMCE-hosted launches only: wait, bounded and on screen, until the slot the last send targeted
+    // answers and is not swapping. Nothing to do when no send was made this launch.
+    void waitSwapDone(const char *why);
     // Reset present MMCE cards to the default channel and clear GameID. NOT named reset(): that
     // collides with the free opl.cpp reset() the coupling analyzer matches by name.
     int resetCards();
