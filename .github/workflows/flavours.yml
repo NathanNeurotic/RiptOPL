@@ -38,6 +38,9 @@ jobs:
           python3 .github/scripts/test_foreground_settings_config.py
           python3 .github/scripts/test_config_prefetch_generation.py
           python3 .github/scripts/test_release_publication.py
+          python3 .github/scripts/test_game_size_fallback.py
+          python3 .github/scripts/test_ps1_duplicates.py
+          python3 .github/scripts/test_menu_crash_catcher.py
           python3 .github/scripts/test_config_save_integrity.py
           python3 .github/scripts/test_bdm_empty_literal_slot.py
           python3 .github/scripts/test_mx4sio_host_boot.py
