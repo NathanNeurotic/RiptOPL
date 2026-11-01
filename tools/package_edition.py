@@ -21,6 +21,9 @@ spec.loader.exec_module(app)
 
 
 ORBIT_PIN = ROOT / "third_party/orbit-neutrino/release.json"
+# Every RiptOPL ELF embeds the smb2man driver over libsmb2 (LGPL-2.1), so its licence text travels
+# with every kit, bundle and standalone loader download, the way the RA kit carries mbedTLS's.
+LIBSMB2_LICENCE = ROOT / "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt"
 
 
 def stage_orbit(archive, destination, pin):
@@ -182,6 +185,7 @@ def package(edition, neutrino_archive, orbit_archive=None):
             shutil.copyfile(ROOT / name, kit / name)
         if options["ra"]:  # the RA ELF links mbedTLS (Apache-2.0): its licence travels with it
             shutil.copyfile(ROOT / "third_party/mbedtls/LICENSE", kit / "LICENSE-MBEDTLS.txt")
+        shutil.copyfile(LIBSMB2_LICENCE, kit / "LICENSE-LIBSMB2.txt")
         manifest["kit_files"] = {p.relative_to(kit).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(kit.rglob("*")) if p.is_file()}
         (kit / "BUILD-MANIFEST.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         archive = out / f"RIPTOPL-{options['title']}.zip"
@@ -198,6 +202,7 @@ def package(edition, neutrino_archive, orbit_archive=None):
         shutil.copyfile(kit / (app_name + ".psu"), out / (app_name + ".psu"))
         shutil.copyfile(kit / "BUILD-MANIFEST.json", out / "BUILD-MANIFEST.json")
     shutil.copyfile(elf, out / elf_name)
+    shutil.copyfile(LIBSMB2_LICENCE, out / "LICENSE-LIBSMB2.txt")  # beside the standalone ELF download
     subprocess.run(["git", "archive", "--format=zip", "--output=" + str(out / "RIPTOPL-src.zip"), manifest["source_commit"]], cwd=ROOT, check=True)
     language_pack(out / "RIPTOPL-LANGS.zip", manifest["version"].split('"')[1])
     sums = "".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n" for p in sorted(out.iterdir()) if p.is_file())

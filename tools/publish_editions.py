@@ -105,6 +105,8 @@ def bundle_configurations(root, expected_sha):
                     bundle.writestr(f"{configuration}/{elf_name}", elf)
                     bundle.writestr(f"{configuration}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
                 bundle.writestr("README.txt", BUNDLE_README.format(title=EDITIONS[edition]["title"], elf=elf_name))
+                # Each loader embeds libsmb2 (LGPL-2.1): the bundle carries the licence the kit ships.
+                bundle.writestr("LICENSE-LIBSMB2.txt", (path / "LICENSE-LIBSMB2.txt").read_bytes())
             add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
 
 
@@ -132,7 +134,8 @@ def verify(root, expected_sha):
         actual = {p.name for p in path.iterdir() if p.is_file()}
         elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
         psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
-        required = {elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", f"RIPTOPL-{options['title']}.zip"}
+        required = {elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", f"RIPTOPL-{options['title']}.zip",
+                    "LICENSE-LIBSMB2.txt"}
         required |= {f"RIPTOPL-{name}.zip" for name, _, _ in bundles(options)}
         if set(sums) != required or actual != required | {"SHA256SUMS.txt"}:
             raise ValueError(f"unexpected release inventory: {edition}")
@@ -147,6 +150,8 @@ def verify(root, expected_sha):
             app_name = "APP_RIPTOPL-RA" if options["ra"] else "APP_RIPTOPL"
             if kit.read(f"APPS/{app_name}/{elf}") != (path / elf).read_bytes() or kit.read(psu) != (path / psu).read_bytes():
                 raise ValueError("standalone assets differ from the verified install kit")
+            if kit.read("LICENSE-LIBSMB2.txt") != (path / "LICENSE-LIBSMB2.txt").read_bytes():
+                raise ValueError("install kit carries a different libsmb2 licence than the standalone download")
         candidates.append((edition, options, path, sums))
     if any(suite != suites[0] for suite in suites[1:]):
         raise ValueError("editions resolved different SDK suites; rebuild them together before publication")
