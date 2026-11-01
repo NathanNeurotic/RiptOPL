@@ -22,6 +22,7 @@ splash = (root / 'src/ui/guisplash.cpp').read_text(encoding='utf-8').replace('\r
 settings = (root / 'src/core/settings.cpp').read_text(encoding='utf-8')
 guisettings = (root / 'src/ui/guisettings.cpp').read_text(encoding='utf-8')
 dialogs = (root / 'src/ui/dialogs.cpp').read_text(encoding='utf-8')
+settingsio = (root / 'src/app/settingsio.cpp').read_text(encoding='utf-8')
 
 failures = []
 
@@ -35,6 +36,8 @@ if not re.search(r'themeHold\s*=\s*[^;]*themeHoldMs\(\)\s*>\s*0\s*&&\s*thmSavedT
     failures.append('the hold condition does not require themeHoldMs() > 0 before waiting for the saved theme')
 if 'intSetting(CONFIG_OPL_BOOT_THEME_WAIT, &gBootThemeWait, 0)' not in settings:
     failures.append('boot_theme_wait does not default to 0 (off)')
+if 'if (gBootThemeWait < 0 || gBootThemeWait > 10)' not in settingsio:
+    failures.append('a hand-edited boot_theme_wait is not clamped to 0..10 when the config loads')
 if 'diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait)' not in guisettings:
     failures.append('the Interface page does not show the current Boot Theme Wait')
 if 'diaGetInt(ui, UICFG_BOOT_THEME_WAIT, &gBootThemeWait)' not in guisettings:

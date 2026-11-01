@@ -1562,6 +1562,8 @@ void _loadConfig()
                 gAutosort = AUTOSORT_AZ; // older builds stored any non-zero as "on"
             gAllGames = gAllGames != 0;
             gShowHidden = gShowHidden != 0;
+            if (gBootThemeWait < 0 || gBootThemeWait > 10)
+                gBootThemeWait = gBootThemeWait < 0 ? 0 : 10; // a hand-edited value: show and save what the intro uses
             configReadRA(configOPL);
 
 
