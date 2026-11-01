@@ -257,6 +257,8 @@ class PublisherTests(unittest.TestCase):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-DEBUG.zip") as bundle:
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 10)
                     self.assertEqual(bundle.read("LICENSE-LIBSMB2.txt"), b"synthetic-lgpl")
+                    self.assertIn("libsmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\nGNU LGPL-2.1; "
+                                  "its licence is LICENSE-LIBSMB2.txt", bundle.read("README.txt").decode())
             for edition in ("ra", "ra_incebtion"):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")

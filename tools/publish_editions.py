@@ -35,7 +35,9 @@ def bundles(options):
 
 BUNDLE_README = ("RiptOPL {title} configuration builds. Each folder holds one {elf} and the manifest it was\n"
                  "built from; replace the ELF of an existing {title} install to use one. What each configuration\n"
-                 "changes: https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md\n")
+                 "changes: https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md\n"
+                 "Every loader embeds libsmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\n"
+                 "GNU LGPL-2.1; its licence is LICENSE-LIBSMB2.txt beside this file.\n")
 
 
 # GitHub's release API intermittently answers 5xx. Calls are retried unless retry=False: a create that
