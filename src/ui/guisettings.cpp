@@ -2426,6 +2426,9 @@ static int guiSettingsShowInterface(void)
     diaSetInt(ui, UICFG_AUTOREFRESH, gAutoRefresh);
     diaSetInt(ui, UICFG_NOTIFICATIONS, gEnableNotifications);
     diaSetInt(ui, UICFG_CFG_TITLES, gCfgTitlesInLists);
+    const char *ps1DupNames[] = {_l(_STR_PS1_DUPLICATES_BOTH), "Ember", "POPSTARTER", NULL};
+    diaSetEnum(ui, UICFG_PS1_DUPLICATES, ps1DupNames);
+    diaSetInt(ui, UICFG_PS1_DUPLICATES, gPs1Duplicates);
     diaSetInt(ui, UICFG_GAME_TYPE_LABELS, gGameTypeLabels);
     // Keep the editor reachable even when the current theme has no active Coverflow view; users
     // need to be able to configure it before enabling or switching to a Coverflow-capable theme.
@@ -2477,10 +2480,14 @@ reshow_interface:
         diaGetInt(ui, UICFG_AUTOSORT, &gAutosort);
         diaGetInt(ui, UICFG_AUTOREFRESH, &gAutoRefresh);
         diaGetInt(ui, UICFG_NOTIFICATIONS, &gEnableNotifications);
-        int previousCfgTitles = gCfgTitlesInLists;
+        int previousCfgTitles = gCfgTitlesInLists, previousPs1Dup = gPs1Duplicates;
         diaGetInt(ui, UICFG_CFG_TITLES, &gCfgTitlesInLists);
+        diaGetInt(ui, UICFG_PS1_DUPLICATES, &gPs1Duplicates);
         // A new sort needs the rows rebuilt: Last played ranks are resolved as each row is built.
-        int cfgTitlesChanged = previousCfgTitles != gCfgTitlesInLists || previousSort != gAutosort;
+        // A PS1 Duplicates change rebuilds them the same way.
+        int cfgTitlesChanged = previousCfgTitles != gCfgTitlesInLists || previousSort != gAutosort || previousPs1Dup != gPs1Duplicates;
+        if (previousPs1Dup != gPs1Duplicates)
+            hddVcdInvalidateCache(); // the HDD PS1 list applies the setting when it is built
         diaGetInt(ui, UICFG_GAME_TYPE_LABELS, &gGameTypeLabels);
         gameViewChanged = guiReadGameViewPicker(ui);
         appsViewChanged = guiReadAppsViewPicker(ui);

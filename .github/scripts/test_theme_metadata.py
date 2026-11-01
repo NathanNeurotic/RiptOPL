@@ -17,6 +17,7 @@ program = r'''
 #include <string.h>
 #include <assert.h>
 #define CONFIG_ITEM_NAME "#Name"
+#define CONFIG_ITEM_SIZE "#Size"
 #define SIZING_WRAP 1
 #define DISPLAY_NEVER 0
 #define DISPLAY_ALWAYS 1
