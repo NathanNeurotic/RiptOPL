@@ -100,12 +100,9 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, const char *title)
         'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '~', '.'};
     const char *keyb = keyb0;
 
-    char *commands[KEYB_HEIGHT] = {_l(_STR_BACKSPACE), _l(_STR_SPACE), _l(_STR_ENTER), _l(_STR_MODE)};
+    // Looked up inside every locked frame below: a language or theme swap frees what they point at.
+    char *commands[KEYB_HEIGHT];
     GSTEXTURE *cmdicons[KEYB_HEIGHT];
-    cmdicons[0] = thmGetTexture(SQUARE_ICON);
-    cmdicons[1] = thmGetTexture(TRIANGLE_ICON);
-    cmdicons[2] = thmGetTexture(START_ICON);
-    cmdicons[3] = thmGetTexture(SELECT_ICON);
 
     rmGetScreenExtents(&diaScreenWidth, &diaScreenHeight);
 
@@ -126,6 +123,18 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, const char *title)
         readPads();
         caretFrame++;
 
+        // The IO thread swaps a theme or language found on a device, and frees the old one, under the GUI
+        // lock (thmAddElements, lngAddLanguages); this loop never took it, so a frame could draw freed
+        // strings, icons and font slots. Draw under it, as guiStartFrame/guiEndFrame do (YAOPL ce6323f).
+        guiLock();
+        commands[0] = _l(_STR_BACKSPACE);
+        commands[1] = _l(_STR_SPACE);
+        commands[2] = _l(_STR_ENTER);
+        commands[3] = _l(_STR_MODE);
+        cmdicons[0] = thmGetTexture(SQUARE_ICON);
+        cmdicons[1] = thmGetTexture(TRIANGLE_ICON);
+        cmdicons[2] = thmGetTexture(START_ICON);
+        cmdicons[3] = thmGetTexture(SELECT_ICON);
         rmStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
@@ -225,6 +234,7 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, const char *title)
         guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? CROSS_ICON : CIRCLE_ICON, _STR_CANCEL, gTheme->fonts[0], 500, 417, gTheme->textColor);
 
         rmEndFrame();
+        guiUnlock(); // input handling and the dialog updaters run unlocked, as before
 
         if (getKey(KEY_L1)) { // caret left
             if (caret > 0) {
@@ -403,6 +413,7 @@ int diaShowNumPad(char *text, int maxLen, int minv, int maxv)
     while (1) {
         readPads();
 
+        guiLock(); // as in the keyboard: the IO thread frees a replaced theme or language under this lock
         rmStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
@@ -435,6 +446,7 @@ int diaShowNumPad(char *text, int maxLen, int minv, int maxv)
         guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? CROSS_ICON : CIRCLE_ICON, _STR_CANCEL, gTheme->fonts[0], 500, 417, gTheme->textColor);
 
         rmEndFrame();
+        guiUnlock();
 
         // Wrap within the row on left/right and within the column on up/down: on a 3-wide pad the
         // alternative is walking the cursor off 9 to reach 1.
@@ -515,6 +527,7 @@ int diaShowColSel(unsigned char *r, unsigned char *g, unsigned char *b)
     while (1) {
         readPads();
 
+        guiLock(); // as in the keyboard: the IO thread frees a replaced theme or language under this lock
         rmStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
@@ -557,6 +570,7 @@ int diaShowColSel(unsigned char *r, unsigned char *g, unsigned char *b)
         guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? CROSS_ICON : CIRCLE_ICON, _STR_CANCEL, gTheme->fonts[0], 500, 417, gTheme->textColor);
 
         rmEndFrame();
+        guiUnlock();
 
         /*
           Confirm/cancel are tested FIRST, and outside the direction chain.
