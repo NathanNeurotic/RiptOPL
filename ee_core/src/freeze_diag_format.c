@@ -475,7 +475,7 @@ int freeze_diag_format_heap(const heap_diag_snapshot_t *h, char *out, int cap)
     b.len = 0;
 
     if (h == 0 || !h->found || h->iop.version != HEAP_DIAG_VERSION) {
-        put_str(&b, "heap=none (no IOP heap record found in IOP RAM)\n");
+        put_str(&b, "heap=none (the IOP did not send its heap record)\n");
         out[b.len] = '\0';
         return b.len;
     }

@@ -153,11 +153,13 @@ extern u32 mediaLsnCount;
 #ifdef INGAMEDIAG
 // In-game freeze report (INGAMEDIAG flavour): see ../common/freeze_diag.h.
 #include "freeze_diag.h"
+#include "heap_diag.h"
 
 extern freeze_diag_iop_t g_freeze_diag;
 
 // IOP heap record for ee_core's freeze report: see heapdiag.c and ../common/heap_diag.h.
 void heap_diag_install(void);
+extern heap_diag_iop_t g_heap_diag; // handed to CDVDFSV through sceCdSC(CDSC_GET_HEAP_DIAG)
 
 // Disc command history (cdvdman.c). Both are safe from interrupts.
 #define FREEZE_DIAG_ST_FILL         1 // a stream fill read was queued

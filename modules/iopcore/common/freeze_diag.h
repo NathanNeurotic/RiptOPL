@@ -20,8 +20,9 @@
 #define FREEZE_DIAG_MAGIC   0x5A524644 // "DFRZ"
 #define FREEZE_DIAG_VERSION 2
 
-// IGR RPC function number for "send the record" (1 is the shutdown request).
-#define FREEZE_DIAG_RPC_FNO 2
+// IGR RPC function numbers: "send the record" and "send the heap snapshot" (1 is the shutdown request).
+#define FREEZE_DIAG_RPC_FNO      2
+#define FREEZE_DIAG_HEAP_RPC_FNO 3 // answers with a heap_diag_snapshot_t (heap_diag.h)
 
 #define FREEZE_DIAG_IOP_TICKS_PER_MS 36864
 

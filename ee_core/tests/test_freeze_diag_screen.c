@@ -63,10 +63,10 @@ int main(void)
     CHECK(find("IOP HEAP RECORD: NOT FOUND", &colour) > 0 && colour == FDS_C_WARN, "a missing record said so");
     CHECK(find("TAP POWER ONCE TO SAVE RIPTFRZ.TXT", NULL) == FDS_LINES - 1, "the footer at the bottom");
 
-    // Drawn before the IOP RAM scan returned.
+    // Drawn before the IOP answered the heap request.
     h.found = HEAP_DIAG_READING;
     freeze_diag_screen_compose(&r, &h, &p, 0);
-    CHECK(find("READING IOP RAM...", &colour) > 0 && colour == FDS_C_WARN, "the page says the IOP RAM read has not returned");
+    CHECK(find("ASKING THE IOP FOR ITS RECORDS", &colour) > 0 && colour == FDS_C_WARN, "the page says the IOP has not answered yet");
     CHECK(find("IOP HEAP RECORD: NOT FOUND", NULL) < 0, "and does not call the record missing");
     h.found = 0;
 

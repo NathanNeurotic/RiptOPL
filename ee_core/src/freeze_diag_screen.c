@@ -7,7 +7,8 @@
   reset the GS), the font of the in-game menu at twice its size, uploaded through GIF PATH3. The player takes a photo
   of the screen, then taps the power button to go on to the memory-card report as before.
 
-  Everything shown is read from EE memory and IOP RAM (KSEG1), never asked of the IOP.
+  The first page shows only what the EE knows; the IOP's records are asked for afterwards (freeze_diag.c),
+  with a deadline, and the page is drawn again with them. Nothing here touches the SIF or IOP RAM.
 
   FREEZE_DIAG_SCREEN_HOST_TEST builds only the page composer, for tests/.
 */
@@ -152,8 +153,8 @@ void freeze_diag_screen_compose(const freeze_diag_report_t *r, const heap_diag_s
     fds_put(p, row++, FDS_C_TEXT, l.s);
 
     if (h->found == HEAP_DIAG_READING) {
-        fds_put(p, row++, FDS_C_WARN, "READING IOP RAM... IF THIS STAYS, THE IOP");
-        fds_put(p, row++, FDS_C_WARN, "HAS LOCKED ITS BUS. PHOTO THIS PAGE.");
+        fds_put(p, row++, FDS_C_WARN, "ASKING THE IOP FOR ITS RECORDS (2 S)...");
+        fds_put(p, row++, FDS_C_WARN, "IF THIS STAYS, PHOTO THIS PAGE.");
     } else if (!h->found || h->iop.version != HEAP_DIAG_VERSION) {
         fds_put(p, row++, FDS_C_WARN, "IOP HEAP RECORD: NOT FOUND");
     } else {

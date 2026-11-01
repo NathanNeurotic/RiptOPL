@@ -148,7 +148,7 @@ check("SifBindRpc(&igr_cd, IGR_RPC_SERVER, SIF_RPC_M_NOWAIT)" in core, "the bind
 check(re.search(r"SifCallRpc\([^;]*SIF_RPC_M_NOWAIT", core) is not None, "the call does not block on a stuck IOP")
 for match in re.finditer(r"while \(SifCheckStatRpc\(&(?:igr_cd|shutdown_cd)\)\) \{(.*?)\n    \}", core, re.S):
     check("budget_spent(start)" in match.group(1), "every RPC wait has a deadline")
-check(len(re.findall(r"while \(SifCheckStatRpc", core)) == 3, "three RPC waits (bind, record, shutdown), all bounded")
+check(len(re.findall(r"while \(SifCheckStatRpc", core)) == 4, "four RPC waits (bind, record, heap, shutdown), all bounded")
 fas = core[core.index("void FreezeDiag_FetchAndShutdown(void)"):]
 fas = fas[:fas.index("\n}\n")]
 check(re.search(r"if \(!report_armed\) \{\n\s*oplIGRShutdown\(0\);\n\s*return;", fas) is not None,
@@ -214,14 +214,25 @@ with tempfile.TemporaryDirectory() as tmp:
 # 6. The TV page: drawn before anything asks the IOP, and its composer's host test.
 begin = core[core.index("void FreezeDiag_Begin("):]
 begin = begin[:begin.index("\n}\n")]
-check(begin.index("FreezeDiag_ScreenShow(&report, HEAP_SNAPSHOT);") < begin.index("heap_snapshot();") < begin.index("FreezeDiag_Screen(&report, HEAP_SNAPSHOT);"),
-      "the TV page goes up before IOP RAM is read (an EE load from a bus-locked IOP never returns), then again with the snapshot")
+check("FreezeDiag_ScreenShow(&report, HEAP_SNAPSHOT);" in begin and "heap_snapshot" not in begin and "Sif" not in begin,
+      "the TV page goes up in FreezeDiag_Begin with nothing asked of the IOP")
+check("0xBC000000" not in core and "IOP_RAM_EE" not in core,
+      "the EE never reads IOP RAM over the SBUS: on a real console that scan never returned (#185, Test 0)")
+fetch = core[core.index("void FreezeDiag_Fetch(void)"):]
+fetch = fetch[:fetch.index("\n}\n")]
+check(fetch.index("fetch_iop();") < fetch.index("fetch_heap();") < fetch.index("FreezeDiag_Screen(&report, HEAP_SNAPSHOT);"),
+      "FreezeDiag_Fetch asks the IOP for both records, then draws the page again and waits for the power tap")
+check("budget_spent(start)" in core[core.index("static void fetch_heap(void)"):core.index("void FreezeDiag_Fetch(void)")],
+      "the heap request has the same deadline as the read record")
+check("FREEZE_DIAG_HEAP_RPC_FNO" in read("modules/iopcore/cdvdfsv/cdvdfsv.c") and "heap_diag_snapshot_take" in read("modules/iopcore/cdvdfsv/cdvdfsv.c"),
+      "CDVDFSV answers the heap request with the snapshot, 0xFF runs measured on the IOP")
 check("FreezeDiag_ScreenMark();" in read("ee_core/src/padhook.c"), "the VBLANK handler marks the screen the moment a report is asked for")
 screen = read("ee_core/src/freeze_diag_screen.c")
 check("Sif" not in screen, "the TV page asks nothing of the IOP")
 pad = read("ee_core/src/padhook.c")
 thread = pad[pad.index("static void IGR_Thread(void *arg)"):]
-check(thread.index("FreezeDiag_Begin(") < thread.index("SifInitRpc(0);"), "the report (and its TV page) comes before the first SIF call")
+check(thread.index("FreezeDiag_Begin(") < thread.index("SifInitRpc(0);") < thread.index("FreezeDiag_Fetch();") < thread.index("FreezeDiag_FetchAndShutdown();"),
+      "the report (and its TV page) comes before the first SIF call; the IOP is asked after it, and before the shutdown")
 check("FREEZE_DIAG_STALL_VBLANKS" in pad and "Freeze_Stall_Fired = 1;" in pad, "the pad-data watchdog takes the report on its own")
 with tempfile.TemporaryDirectory() as tmp:
     exe = Path(tmp) / "test_freeze_diag_screen"

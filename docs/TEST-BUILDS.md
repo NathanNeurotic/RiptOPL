@@ -49,8 +49,8 @@ Its `hint=` line says which of those looks stuck.
 
 Since report v2 it also lists the game's IOP memory: CDVDMAN notes every block the game's IOP
 modules allocate and free, the allocations that failed, the lowest free IOP memory and the loaded
-modules. ee_core reads that record straight from IOP RAM, so it is there even when the I/O
-processor stopped answering. Each block line has `ff_after=`, the number of 0xFF bytes right
+modules. CDVDFSV sends that record over the IGR RPC with a 2-second deadline (report v4 read it
+straight from IOP RAM, which never returned on a real console). Each block line has `ff_after=`, the number of 0xFF bytes right
 after the block. Some games write past their own IOP buffers and fill the overrun with 0xFF
 (.hack//Infection, SLUS_202.67, per neutrino issue #92); a long run is marked `OVERRUN?` and its
 length is the guard a per-game fix needs. `heap_hint=` sums it up. The hooks pass every call

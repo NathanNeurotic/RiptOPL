@@ -466,6 +466,12 @@ static void IGR_Thread(void *arg)
     // Re-Init RPC & CMD
     SifInitRpc(0);
 
+#ifdef INGAMEDIAG
+    // Freeze report: ask the IOP for its records (each with a deadline), redraw the TV page with them, then wait
+    // for the power tap. The first page went up in FreezeDiag_Begin, before this first SIF call.
+    FreezeDiag_Fetch();
+#endif
+
     // If Pad Combo is Start + Select then Return to Home, else if Pad Combo is UP then take IGS
     if ((Pad_Data.combo_type == IGR_COMBO_START_SELECT)
 #ifdef IGS

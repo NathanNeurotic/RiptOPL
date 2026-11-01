@@ -954,6 +954,10 @@ int sceCdSC(int code, int *param)
             result = 1;
             break;
         }
+        case CDSC_GET_HEAP_DIAG:
+            *param = (int)&g_heap_diag;
+            result = 1;
+            break;
 #endif
         default:
             DPRINTF("sceCdSC unknown, code=0x%X param=0x%X \n", code, *param);
