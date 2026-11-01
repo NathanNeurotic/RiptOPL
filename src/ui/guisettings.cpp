@@ -2416,6 +2416,7 @@ static int guiSettingsShowInterface(void)
     guiSetAppsViewPicker(ui);
     guiSetThemeViewPicker(ui);
     diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
+    diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
     guiSetLibraryPicker(ui);
     diaSetEnum(ui, UICFG_VMODE, vmodeNames);
     diaSetInt(ui, UICFG_THEME, thmGetGuiValue());
@@ -2485,6 +2486,7 @@ reshow_interface:
         appsViewChanged = guiReadAppsViewPicker(ui);
         themeViewRequest = guiReadThemeViewPicker(ui);
         diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
+        diaGetInt(ui, UICFG_BOOT_THEME_WAIT, &gBootThemeWait);
         // With a view change pending, the alt change waits for that reload so the theme loads once.
         viewPending = themeViewRequest != gThemeViewRequest;
         if (!viewPending)
