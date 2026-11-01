@@ -1164,10 +1164,15 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
     // okay, we have the first selectable item
     // we can proceed with rendering etc. etc.
     while (1) {
+        // The IO thread swaps a theme or language found on a device, and frees the old one, under the GUI
+        // lock (thmAddElements, lngAddLanguages); this loop never took it, so a frame could draw freed
+        // strings, icons and font slots. Draw under it, as guiStartFrame/guiEndFrame do (YAOPL ce6323f).
+        guiLock();
         rmStartFrame();
         diaRenderUI(ui, inMenu, cur, haveFocus);
         // NOTE(rebuild): the Debug-Colors HUD line returns with checklist item 46.
         rmEndFrame();
+        guiUnlock(); // the input handling and the updater below run unlocked: they may open dialogs and do IO
 
         readPads();
 
