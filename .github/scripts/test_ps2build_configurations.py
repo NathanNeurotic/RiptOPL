@@ -193,7 +193,7 @@ def unpacked_elf(offset=0x80, vaddr=0x00100000):
     header = bytearray(b"\x7fELF\x01\x01\x01" + bytes(9))
     header += struct.pack("<HHIIIIIHHHHHH", 2, 8, 1, vaddr, 52, 0, 0, 52, 32, 1, 40, 0, 0)
     header += struct.pack("<8I", 1, offset, vaddr, vaddr, 16, 16, 7, 0x80)
-    return bytes(header) + bytes(16)
+    return bytes(header).ljust(offset, b"\0") + bytes(16)  # the segment's 16 bytes sit at its offset
 
 
 class PublisherTests(unittest.TestCase):
@@ -309,6 +309,7 @@ class PublisherTests(unittest.TestCase):
         packed = unpacked_elf(offset=0x60, vaddr=0x01D00000)
         padded = unpacked_elf(offset=0x10000)
         for bad, message in (({"unpacked": packed}, "packed or not linked"), ({"unpacked": padded}, "packed or not linked"),
+                             ({"unpacked": unpacked_elf()[:-1]}, "truncated"),
                              ({"unpacked": b"MZ" + bytes(60)}, "not a 32-bit"),
                              ({"diag": {"unpacked_elf_sha256": "0" * 64}}, "invalid bug-report build")):
             with self.subTest(message=message), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:

@@ -63,6 +63,8 @@ def check_unpacked_layout(elf):
     if len(loads) != 1 or loads[0][1] != 0x80 or loads[0][2] != 0x00100000:
         raise ValueError("bug-report build is packed or not linked with -zmax-page-size=128: "
                          + ", ".join(f"offset {h[1]:#x} at {h[2]:#010x}" for h in loads))
+    if loads[0][1] + loads[0][4] > len(elf):
+        raise ValueError("bug-report build is truncated: its program runs past the end of the file")
 
 
 BUNDLE_README = ("RiptOPL {title} configuration builds. Each folder holds one {elf} and the manifest it was\n"
