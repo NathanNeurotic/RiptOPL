@@ -163,7 +163,7 @@ targets:
     include_dirs: [modules/network/smb2man/, modules/network/smb2man/libsmb2/include, modules/network/smb2man/libsmb2/include/smb2, modules/network/smb2man/libsmb2/lib]
     headers: *iop_headers
     defines: [HAVE_CONFIG_H, HAVE_SYS_FCNTL_H, NEED_BE64TOH, NEED_GETLOGIN_R, NEED_GETPID, NEED_POLL, NEED_RANDOM, NEED_READV, NEED_SRANDOM, NEED_STRDUP, NEED_WRITEV, PS2, __PS2__, _IOP, __ps2sdk_iop__]
-    cflags: [-Os, -fno-builtin, -msoft-float, -mno-explicit-relocs, -Wno-unused-function, -Wno-unused-variable]
+    cflags: [-Wno-unused-function, -Wno-unused-variable]
     libs: [gcc]
     imports_lst: modules/network/smb2man/imports.lst
 
