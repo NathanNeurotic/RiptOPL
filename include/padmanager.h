@@ -22,10 +22,15 @@ struct pad_data_t
 
     char actAlign[6];
     int actuators;
-    int actAligned;  // padSetActAlign confirmed; see padRumbleRealign()
-    int needsInit;   // reconnect-edge re-init pending; runs once the verified-idle gate opens (see readPads)
-    int readOk;      // the last native read delivered a sample (rightStick trusts no older one)
-    u32 sampleTicks; // cpu_ticks() of the last delivered sample (see PAD_MISS_HOLD_TICKS)
+    int actAligned;    // padSetActAlign confirmed; see padRumbleRealign()
+    int needsInit;     // reconnect-edge re-init pending; runs once the verified-idle gate opens (see readPads)
+    int readOk;        // the last native read delivered a sample (rightStick trusts no older one)
+    u32 sampleTicks;   // cpu_ticks() of the last delivered sample (see PAD_MISS_HOLD_TICKS)
+    int locked;        // our DualShock + LOCK request is confirmed on this pad (see PAD_LOCK_TRIES)
+    int lockPending;   // a padSetMainMode(LOCK) we sent has not finished yet
+    int lockTries;     // lock requests since the last reconnect or ANALOG press
+    u32 lockSentTicks; // cpu_ticks() when that request went out
+    int modeClass;     // high nibble of the last sample's mode byte (4 digital, 7 analog), 0 unknown
 };
 
 class PadManager
@@ -64,6 +69,9 @@ private:
     void pademuStopAll(void);
     u32 pollElapsedMs(void);
     void advanceRepeatTimers(u32 elapsedMs);
+    void lockRequested(struct pad_data_t *pad);
+    void lockCheck(struct pad_data_t *pad);
+    int lockRelock(struct pad_data_t *pad);
     void unloadOne(struct pad_data_t *pad);
     int startOne(struct pad_data_t *pad);
 
