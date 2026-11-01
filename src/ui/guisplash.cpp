@@ -142,6 +142,7 @@ void BootSplash::run()
     // For the DIAG.TXT line at the end: how long the greeting waited for the saved theme and the boot sound.
     clock_t tHoldLast = 0;
     clock_t tHoldStart = 0; // first frame the hold was active: the DIAG duration counts only the hold itself
+    int tHoldSeen = 0;      // a hold happened (clock() can in principle read 0, so the timestamps cannot say it)
     int fadeDelayLogMs = 0;
 
     // oplIsBootInProgress() can become false while background startup work is still queued. That
@@ -184,8 +185,10 @@ void BootSplash::run()
         const bool themeHold = greetingAlpha == 0x80 && tInitSeen && thmSavedThemePending() &&
                                (clock() - tInitDone) < (clock_t)THEME_HOLD_MS * (CLOCKS_PER_SEC / 1000);
         if (themeHold) {
-            if (!tHoldLast)
+            if (!tHoldSeen) {
                 tHoldStart = clock();
+                tHoldSeen = 1;
+            }
             tHoldLast = clock();
         }
 
@@ -214,7 +217,7 @@ void BootSplash::run()
     }
     active_ = false;
     diagLog("boot: intro done; held %d ms for the saved theme, boot sound %s, fade delay %d ms",
-            tHoldLast ? (int)((tHoldLast - tHoldStart) / (CLOCKS_PER_SEC / 1000)) : 0, gEnableBootSND ? "on" : "off",
+            tHoldSeen ? (int)((tHoldLast - tHoldStart) / (CLOCKS_PER_SEC / 1000)) : 0, gEnableBootSND ? "on" : "off",
             fadeDelayLogMs);
 }
 
