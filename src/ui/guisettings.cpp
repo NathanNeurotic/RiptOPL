@@ -2786,6 +2786,7 @@ void SettingsShell::readSourceState(SourceState *state)
     state->enableMX4SIO = gEnableMX4SIO;
     state->enableBdmHDD = gEnableBdmHDD;
     state->networkProtocol = gNetworkProtocol;
+    state->smbDialect = gSMBDialect;
     state->netStartMode = gNetStartMode;
     state->netProtocolPick = gNetProtocolPick;
     state->ethStartMode = gETHStartMode;
@@ -2834,6 +2835,7 @@ void SettingsShell::restoreSourceState()
     gEnableMX4SIO = sourceState_.enableMX4SIO;
     gEnableBdmHDD = sourceState_.enableBdmHDD;
     gNetworkProtocol = sourceState_.networkProtocol;
+    gSMBDialect = sourceState_.smbDialect;
     gNetStartMode = sourceState_.netStartMode;
     gNetProtocolPick = sourceState_.netProtocolPick;
     gETHStartMode = sourceState_.ethStartMode;
