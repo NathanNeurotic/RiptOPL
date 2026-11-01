@@ -233,7 +233,9 @@ static void reset(int aligned)
     pm.padData_[0].state = PAD_STATE_STABLE;
     pm.padData_[0].actuators = 2;
     pm.padData_[0].actAligned = aligned;
+#ifdef PAD_HAS_LOCK /* an older padmanager.h (--ref) has no lock fields */
     pm.padData_[0].locked = 1; /* the ANALOG lock is test_pad_mode_lock.py's subject, not this one's */
+#endif
     pm.padData_[1].port = 1;
     pm.padData_[1].state = PAD_STATE_DISCONN;
     for (int i = 0; i < 16; i++)
@@ -389,6 +391,8 @@ if not failures:
         source = (HARNESS.replace('@TABLE@', key_table.group(0))
                   .replace('@CONSTANTS@', constants)
                   .replace('@FUNCTIONS@', functions))
+        if re.search(r'\bint locked;', header):
+            source = '#define PAD_HAS_LOCK 1\n' + source
         (tmp / 'pad_missed_read.cpp').write_text('#include <new>\n' + source, encoding='utf-8')
         exe = tmp / 'pad_missed_read'
         build = subprocess.run(['g++', '-std=c++17', '-Wall', '-Wno-unused-function', '-I', str(tmp),
