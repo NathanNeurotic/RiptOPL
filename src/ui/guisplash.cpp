@@ -213,8 +213,9 @@ void BootSplash::run()
         }
     }
     active_ = false;
-    diagLog("boot: intro done; held %d ms for the saved theme, boot sound fade delay %d ms (0 = boot sound off)",
-            tHoldLast ? (int)((tHoldLast - tHoldStart) / (CLOCKS_PER_SEC / 1000)) : 0, fadeDelayLogMs);
+    diagLog("boot: intro done; held %d ms for the saved theme, boot sound %s, fade delay %d ms",
+            tHoldLast ? (int)((tHoldLast - tHoldStart) / (CLOCKS_PER_SEC / 1000)) : 0, gEnableBootSND ? "on" : "off",
+            fadeDelayLogMs);
 }
 
 // The C-style entry points other files use.
