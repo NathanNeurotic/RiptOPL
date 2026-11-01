@@ -10,6 +10,7 @@
 4. Wiring: hidden rows leave the page build and the All Games gather; the delete asks twice; a
    changed list rebuilds its page and Favourites.
 """
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -200,5 +201,18 @@ refresh = menu[menu.index('static void hiddenRefresh('):menu.index('static int m
 assert 'libViewMarkDirty(source->mode);' in refresh and 'loadFavourites();' in refresh
 deleteGame = menu[menu.index('static void menuDeleteGame('):]
 deleteGame = deleteGame[:deleteGame.index('\n}\n')]
-assert deleteGame.index('menuDeleteEverything(submenu, support)') < deleteGame.index('_STR_DELETE_WARNING')
+assert deleteGame.index('menuDeleteEverything(submenu, &row)') < deleteGame.index('_STR_DELETE_WARNING')
+def last_gate(body, call):
+    # the last `if (...)` whose condition makes the call: the write must stay behind it
+    gates = [m.start() for m in re.finditer(r'\bif\s*\([^\n]*' + re.escape(call), body)]
+    assert gates, call + ' must gate the write, not just run before it'
+    return gates[-1]
+
+# The list can be rebuilt while a dialog is up: each write checks the row is still the same game first.
+assert deleteGame.index('_STR_DELETE_WARNING') < last_gate(deleteGame, 'menuRowBeginEdit(&row)') < deleteGame.index('deleteGame(support, row.id)')
+assert everything.index('_STR_DELETE_GAME_LAST_CHECK') < last_gate(everything, 'menuRowBeginEdit(row)') < everything.index('gs->deleteGame(support, id);')
+rename = menu[menu.index('static void menuRenameGame('):]
+rename = rename[:rename.index('\n}\n')]
+assert rename.index('guiShowKeyboard(') < last_gate(rename, 'menuRowBeginEdit(&row)') < rename.index('->rename(support, row.id, newName)')
+assert 'selected_item' not in rename + deleteGame + everything + hide, 'the actions work from their copy of the row'
 print('ok   wiring: hidden rows leave the page and the All Games gather; delete asks twice, parts first')
