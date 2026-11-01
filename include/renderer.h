@@ -50,6 +50,7 @@ private:
     void setupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, short scaled, u64 color, rm_quad_t *q);
     void drawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float botV);
     int interlacedFrameMode();
+    void applyLineBlend(void);
 
     // 640x480 virtual -> display pixels (after overscan).
     template <typename T>
