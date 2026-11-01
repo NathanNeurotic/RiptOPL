@@ -41,6 +41,8 @@ jobs:
           python3 .github/scripts/test_config_save_integrity.py
           python3 .github/scripts/test_bdm_empty_literal_slot.py
           python3 .github/scripts/test_mx4sio_host_boot.py
+          python3 .github/scripts/test_mx4sio_retry.py
+          python3 .github/scripts/test_vmc_write_result.py
           python3 .github/scripts/test_neutrino_dvr_contract.py
           python3 .github/scripts/test_package_orbit_neutrino.py
           python3 .github/scripts/test_orbit_neutrino_watch.py
