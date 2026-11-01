@@ -28,6 +28,8 @@ public:
     // MMCE-hosted launches only: wait, bounded and on screen, until the slot the last send targeted
     // answers and is not swapping. Nothing to do when no send was made this launch.
     void waitSwapDone(const char *why);
+    // After the OSD history write: wait out the card's own folder switch on the game's slot (bounded).
+    void waitHistorySwitch(const char *device, const char *why);
     // Reset present MMCE cards to the default channel and clear GameID. NOT named reset(): that
     // collides with the free opl.cpp reset() the coupling analyzer matches by name.
     int resetCards();
@@ -86,6 +88,7 @@ public:
     int waitCardReady(const char *device);
     int modLoaded = 0;               // latched by loadModules; read by sendGameID's arm check
     char gameIdTarget[8] = {0};      // last device a GameID 0x8 switch was SENT to (gameIdSettle polls it)
+    int gameIdSwitchSeen = 0;        // sendGameID saw the card switch for its send: the history write will not switch it again
     base_game_info_t emptyGame = {}; // sentinel returned for stale/invalid ids (never launched)
 };
 
