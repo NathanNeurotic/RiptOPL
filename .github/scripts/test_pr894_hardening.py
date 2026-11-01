@@ -13,6 +13,7 @@ cue = (root / 'src/sources/cuesupport.cpp').read_text(encoding='utf-8')
 
 program = r'''
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

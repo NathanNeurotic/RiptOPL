@@ -1274,6 +1274,7 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     fntEnd();
     thmEnd();
     rmEnd();
+    menuWatchStop(); // diagnostic builds: no VBlank handler or exception hooks survive the handoff
     configEnd();
     if (gLaunchDiag)
         launchDiagMark(8); // deinitEx finished -- sysLaunchNeutrino runs next
@@ -1352,6 +1353,7 @@ void deinit(int exception, int modeSelected)
     fntEnd();
     thmEnd();
     rmEnd();
+    menuWatchStop(); // diagnostic builds: no VBlank handler or exception hooks survive the handoff
     configEnd();
 }
 
