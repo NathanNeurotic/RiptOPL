@@ -41,6 +41,12 @@ def bundles(options):
 BUGREPORT = "BUGREPORT"
 BUGREPORT_README = Path(__file__).resolve().parent / "BUGREPORT-README.txt"
 ISSUES = "https://github.com/NathanNeurotic/RiptOPL/issues"
+ROOT = Path(__file__).resolve().parents[1]
+# What the bug-report zip carries besides the ELF: RiptOPL's own licence and credits, and the licence of
+# libsmb2 (LGPL-2.1), which the embedded smb2man driver is built on and which asks to travel with a binary.
+BUGREPORT_LICENCES = {"LICENSE": "LICENSE", "CREDITS": "CREDITS",
+                      "licenses/libsmb2/LICENCE-LGPL-2.1.txt": "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt",
+                      "licenses/libsmb2/VENDORED.txt": "modules/network/smb2man/libsmb2/VENDORED.txt"}
 
 
 def archives(options):
@@ -167,6 +173,8 @@ def bundle_bug_report(root, edition, expected_sha):
         bundle.writestr("RIPTOPL-BUGREPORT.ELF", elf)
         bundle.writestr("BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
         bundle.writestr("README.txt", readme.replace("\n", "\r\n"))
+        for name, source in BUGREPORT_LICENCES.items():
+            bundle.writestr(name, (ROOT / source).read_bytes())
     add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
 
 

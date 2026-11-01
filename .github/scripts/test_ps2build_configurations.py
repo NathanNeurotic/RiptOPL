@@ -296,7 +296,10 @@ class PublisherTests(unittest.TestCase):
             publish_editions.verify(root, self.sha)
             for edition in ("korium", "incebtion"):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-BUGREPORT.zip") as bundle:
-                    self.assertEqual(sorted(bundle.namelist()), ["BUILD-MANIFEST.json", "README.txt", "RIPTOPL-BUGREPORT.ELF"])
+                    self.assertEqual(sorted(bundle.namelist()), [
+                        "BUILD-MANIFEST.json", "CREDITS", "LICENSE", "README.txt", "RIPTOPL-BUGREPORT.ELF",
+                        "licenses/libsmb2/LICENCE-LGPL-2.1.txt", "licenses/libsmb2/VENDORED.txt"])
+                    self.assertIn(b"GNU LESSER GENERAL PUBLIC LICENSE", bundle.read("licenses/libsmb2/LICENCE-LGPL-2.1.txt"))
                     self.assertEqual(bundle.read("RIPTOPL-BUGREPORT.ELF"), unpacked_elf())
                     self.assertEqual(json.loads(bundle.read("BUILD-MANIFEST.json"))["configuration"], "diag")
                     readme = bundle.read("README.txt").decode()
