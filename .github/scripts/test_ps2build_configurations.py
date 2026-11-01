@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import struct
 import sys
 import tempfile
 import unittest
@@ -187,6 +188,14 @@ class LanguagePackTests(unittest.TestCase):
                 self.assertEqual(pack.read("Serbian-1.0/font_Serbian.ttf"), b"croatian")
 
 
+def unpacked_elf(offset=0x80, vaddr=0x00100000):
+    """A minimal MIPS ELF32 header with one PT_LOAD, laid out as the bug-report check expects by default."""
+    header = bytearray(b"\x7fELF\x01\x01\x01" + bytes(9))
+    header += struct.pack("<HHIIIIIHHHHHH", 2, 8, 1, vaddr, 52, 0, 0, 52, 32, 1, 40, 0, 0)
+    header += struct.pack("<8I", 1, offset, vaddr, vaddr, 16, 16, 7, 0x80)
+    return bytes(header).ljust(offset, b"\0") + bytes(16)  # the segment's 16 bytes sit at its offset
+
+
 class PublisherTests(unittest.TestCase):
     """Small synthetic kits exercise manifest/provenance checks, not PS2 acceptance."""
     sha = "1234567890abcdef" * 2 + "12345678"
@@ -214,7 +223,7 @@ class PublisherTests(unittest.TestCase):
                 source_zip.writestr("README.md", "synthetic source")
             with zipfile.ZipFile(path / "RIPTOPL-LANGS.zip", "w") as langs:
                 langs.writestr("README.txt", "synthetic")
-            for name, _, _ in publish_editions.bundles(options):
+            for name in publish_editions.archives(options):
                 (path / f"RIPTOPL-{name}.zip").write_bytes(b"synthetic-bundle")
             with zipfile.ZipFile(path / f"RIPTOPL-{options['title']}.zip", "w") as kit:
                 kit.writestr("BUILD-MANIFEST.json", json.dumps(manifest))
@@ -233,6 +242,11 @@ class PublisherTests(unittest.TestCase):
                             "configuration": configuration, "ps2build_version": "test", "components": {}, "ports": {},
                             "elf_sha256": hashlib.sha256(payload).hexdigest(), **changes.get(configuration, {})}
                 (stage / "RIPTOPL.ELF").write_bytes(payload)
+                if configuration == "diag":
+                    unpacked = changes.get("unpacked", unpacked_elf())
+                    (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
+                    manifest.setdefault("unpacked_elf_sha256", hashlib.sha256(unpacked).hexdigest())
+                    manifest.setdefault("version", f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-GCC-DIAG"')
                 (stage / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
 
     def test_configuration_bundles(self):
@@ -240,7 +254,7 @@ class PublisherTests(unittest.TestCase):
             root = Path(directory)
             self.kit(root)
             for edition, options in publish_editions.EDITIONS.items():
-                for name, _, _ in publish_editions.bundles(options):
+                for name in publish_editions.archives(options):
                     (root / f"release-{edition}" / f"RIPTOPL-{name}.zip").unlink()
                     listing = root / f"release-{edition}/SHA256SUMS.txt"
                     listing.write_text("".join(l + "\n" for l in listing.read_text().splitlines() if not l.endswith(f"  RIPTOPL-{name}.zip")))
@@ -265,6 +279,47 @@ class PublisherTests(unittest.TestCase):
                 self.kit(root)
                 self.variants(root, **bad)
                 with self.assertRaisesRegex(ValueError, "invalid configuration build"):
+                    publish_editions.bundle_configurations(root, self.sha)
+
+    def test_bug_report_build(self):
+        """Each standard theme gets RIPTOPL-BUGREPORT.zip: diag unpacked, its manifest, a README. RA gets none."""
+        with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
+            root = Path(directory)
+            self.kit(root)
+            for edition, options in publish_editions.EDITIONS.items():
+                for name in publish_editions.archives(options):
+                    (root / f"release-{edition}" / f"RIPTOPL-{name}.zip").unlink()
+                    listing = root / f"release-{edition}/SHA256SUMS.txt"
+                    listing.write_text("".join(l + "\n" for l in listing.read_text().splitlines() if not l.endswith(f"  RIPTOPL-{name}.zip")))
+            self.variants(root)
+            publish_editions.bundle_configurations(root, self.sha)
+            publish_editions.verify(root, self.sha)
+            for edition in ("korium", "incebtion"):
+                with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-BUGREPORT.zip") as bundle:
+                    self.assertEqual(sorted(bundle.namelist()), [
+                        "BUILD-MANIFEST.json", "CREDITS", "LICENSE", "README.txt", "RIPTOPL-BUGREPORT.ELF",
+                        "licenses/libsmb2/LICENCE-LGPL-2.1.txt", "licenses/libsmb2/VENDORED.txt"])
+                    self.assertIn(b"GNU LESSER GENERAL PUBLIC LICENSE", bundle.read("licenses/libsmb2/LICENCE-LGPL-2.1.txt"))
+                    self.assertEqual(bundle.read("RIPTOPL-BUGREPORT.ELF"), unpacked_elf())
+                    self.assertEqual(json.loads(bundle.read("BUILD-MANIFEST.json"))["configuration"], "diag")
+                    readme = bundle.read("README.txt").decode()
+                    self.assertIn(f"RiptOPL bug-report build, v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-GCC-DIAG\r\n====", readme)
+                    self.assertIn("DIAG.TXT", readme)
+                    self.assertIn("https://github.com/NathanNeurotic/RiptOPL/issues", readme)
+                    self.assertNotIn("{", readme)
+            for edition in ("ra", "ra_incebtion"):
+                self.assertFalse((root / f"release-{edition}/RIPTOPL-BUGREPORT.zip").exists())
+        packed = unpacked_elf(offset=0x60, vaddr=0x01D00000)
+        padded = unpacked_elf(offset=0x10000)
+        for bad, message in (({"unpacked": packed}, "packed or not linked"), ({"unpacked": padded}, "packed or not linked"),
+                             ({"unpacked": unpacked_elf()[:-1]}, "truncated"),
+                             ({"unpacked": b"MZ" + bytes(60)}, "not a 32-bit"),
+                             ({"diag": {"unpacked_elf_sha256": "0" * 64}}, "invalid bug-report build")):
+            with self.subTest(message=message), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
+                root = Path(directory)
+                self.kit(root)
+                self.variants(root, **bad)
+                with self.assertRaisesRegex(ValueError, message):
                     publish_editions.bundle_configurations(root, self.sha)
 
     def test_valid_standard_and_self_consistent_invalid_manifests(self):

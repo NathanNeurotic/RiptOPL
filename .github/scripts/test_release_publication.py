@@ -43,7 +43,12 @@ class PublicationTests(unittest.TestCase):
                 for name in ("RIPTOPL-RetroAchievements-IncebtIon-v1.2.0-Beta-3925.zip", "RIPTOPL-RA-IncebtIon.ELF",
                              "APP_RIPTOPL-RA-IncebtIon.psu", "RIPTOPL-RA-VARIANTS-IncebtIon-v1.2.0-Beta-3925.zip"):
                     self.assertIn(f"/releases/download/rolling-ra/{name})", body)
-            self.assertEqual({"rolling-ra": 5}.get(options["tag"], 6), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
+            if not options["ra"]:  # the bug-report build sits right under the kit
+                self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-BUGREPORT-v1.2.0-Beta-3925.zip)", body)
+                self.assertLess(body.index("[Bug-report build]"), body.index("[Loader ELF]"))
+            else:
+                self.assertNotIn("BUGREPORT", body)
+            self.assertEqual({"rolling-ra": 5}.get(options["tag"], 7), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
                 self.assertIn("Included build: ORBIT-v1.0.2 -- [ORBIT Neutrino RA runtime v1.0.2]"
                               "(https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2)", body)
@@ -262,14 +267,14 @@ class PublicationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary)
             names = ["RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip",
-                     "RIPTOPL-Korium.zip", "RIPTOPL-VARIANTS.zip", "RIPTOPL-DEBUG.zip"]
+                     "RIPTOPL-Korium.zip", "RIPTOPL-VARIANTS.zip", "RIPTOPL-DEBUG.zip", "RIPTOPL-BUGREPORT.zip"]
             sums = "".join(f"{hashlib.sha256(n.encode()).hexdigest()}  {n}\n" for n in names)
             for name in names:
                 (path / name).write_bytes(name.encode())
             (path / "SHA256SUMS.txt").write_text(sums)
             publisher.name_assets([("korium", publisher.EDITIONS["korium"], path, {})], version)
             expected = {"RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "SHA256SUMS.txt",
-                        *(f"RIPTOPL-{k}-{version}.zip" for k in ("src", "LANGS", "Korium", "VARIANTS", "DEBUG"))}
+                        *(f"RIPTOPL-{k}-{version}.zip" for k in ("src", "LANGS", "Korium", "VARIANTS", "DEBUG", "BUGREPORT"))}
             self.assertEqual({p.name for p in path.iterdir()}, expected)
             for line in (path / "SHA256SUMS.txt").read_text().splitlines():
                 digest, name = line.split("  ", 1)

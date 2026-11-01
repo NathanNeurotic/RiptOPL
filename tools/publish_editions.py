@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import struct
 from pathlib import Path
 import subprocess
 import sys
@@ -31,6 +32,45 @@ ORBIT_PIN = Path(__file__).resolve().parents[1] / "third_party/orbit-neutrino/re
 
 def bundles(options):
     return RA_BUNDLES if options["ra"] else STANDARD_BUNDLES
+
+
+# The bug-report build: each theme's diag configuration, unpacked, in RIPTOPL-BUGREPORT-<version>.zip
+# with a README on what to send (asked for by Volventura, 2026-11-01). Her console starts the unpacked
+# legacy boot-trace ELF from uLaunchELF -> MMCE0 where every packed RiptOPL build gave a black screen.
+# The RA editions build no diag configuration, so their channel has none.
+BUGREPORT = "BUGREPORT"
+BUGREPORT_README = Path(__file__).resolve().parent / "BUGREPORT-README.txt"
+ISSUES = "https://github.com/NathanNeurotic/RiptOPL/issues"
+ROOT = Path(__file__).resolve().parents[1]
+# What the bug-report zip carries besides the ELF: RiptOPL's own licence and credits, and the licence of
+# libsmb2 (LGPL-2.1), which the embedded smb2man driver is built on and which asks to travel with a binary.
+BUGREPORT_LICENCES = {"LICENSE": "LICENSE", "CREDITS": "CREDITS",
+                      "licenses/libsmb2/LICENCE-LGPL-2.1.txt": "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt",
+                      "licenses/libsmb2/VENDORED.txt": "modules/network/smb2man/libsmb2/VENDORED.txt"}
+
+
+def archives(options):
+    """Every configuration archive a channel's kit carries beside its install kit and languages."""
+    return [name for name, _, _ in bundles(options)] + ([] if options["ra"] else [BUGREPORT])
+
+
+def check_unpacked_layout(elf):
+    """Refuse a bug-report ELF that is packed or not laid out like a ps2sdk link: one loadable
+    segment at 0x00100000, 0x80 bytes into the file (-zmax-page-size=128, ps2.yaml)."""
+    if len(elf) < 52 or elf[:4] != b"\x7fELF" or elf[4] != 1 or elf[5] != 1:
+        raise ValueError("bug-report build is not a 32-bit little-endian ELF")
+    machine, = struct.unpack_from("<H", elf, 18)
+    phoff, = struct.unpack_from("<I", elf, 28)
+    phentsize, phnum = struct.unpack_from("<HH", elf, 42)
+    if machine != 8 or phentsize != 32 or phoff + phnum * 32 > len(elf):
+        raise ValueError("bug-report build is not a MIPS executable")
+    loads = [struct.unpack_from("<8I", elf, phoff + i * 32) for i in range(phnum)]
+    loads = [h for h in loads if h[0] == 1]
+    if len(loads) != 1 or loads[0][1] != 0x80 or loads[0][2] != 0x00100000:
+        raise ValueError("bug-report build is packed or not linked with -zmax-page-size=128: "
+                         + ", ".join(f"offset {h[1]:#x} at {h[2]:#010x}" for h in loads))
+    if loads[0][1] + loads[0][4] > len(elf):
+        raise ValueError("bug-report build is truncated: its program runs past the end of the file")
 
 
 BUNDLE_README = ("RiptOPL {title} configuration builds. Each folder holds one {elf} and the manifest it was\n"
@@ -106,6 +146,36 @@ def bundle_configurations(root, expected_sha):
                     bundle.writestr(f"{configuration}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
                 bundle.writestr("README.txt", BUNDLE_README.format(title=EDITIONS[edition]["title"], elf=elf_name))
             add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
+        if BUGREPORT in archives(options):
+            bundle_bug_report(root, edition, expected_sha)
+
+
+def bundle_bug_report(root, edition, expected_sha):
+    """RIPTOPL-BUGREPORT.zip: the theme's diag build, unpacked, its manifest and a README on what to send."""
+    path = root / ("release-" + edition)
+    kit = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
+    stage = root / f"variant-{edition}-diag"
+    manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
+    elf = (stage / "RIPTOPL-UNPACKED.ELF").read_bytes()
+    if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
+            or manifest["compiler"] != "gcc" or manifest["configuration"] != "diag"
+            or manifest["ps2build_version"] != kit["ps2build_version"]
+            or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
+            or manifest.get("unpacked_elf_sha256") != hashlib.sha256(elf).hexdigest()):
+        raise ValueError(f"invalid bug-report build: {edition}")
+    check_unpacked_layout(elf)
+    version = manifest["version"].split('"')[1]  # the build's full version, as its screen shows it
+    readme = BUGREPORT_README.read_text(encoding="utf-8").format(
+        version=version, underline="=" * len("RiptOPL bug-report build, " + version), build=EDITIONS[edition]["title"],
+        elf="RIPTOPL.ELF", issues=ISSUES)
+    archive = path / f"RIPTOPL-{BUGREPORT}.zip"
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("RIPTOPL-BUGREPORT.ELF", elf)
+        bundle.writestr("BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+        bundle.writestr("README.txt", readme.replace("\n", "\r\n"))
+        for name, source in BUGREPORT_LICENCES.items():
+            bundle.writestr(name, (ROOT / source).read_bytes())
+    add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
 
 
 def verify(root, expected_sha):
@@ -133,7 +203,7 @@ def verify(root, expected_sha):
         elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
         psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
         required = {elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", f"RIPTOPL-{options['title']}.zip"}
-        required |= {f"RIPTOPL-{name}.zip" for name, _, _ in bundles(options)}
+        required |= {f"RIPTOPL-{name}.zip" for name in archives(options)}
         if set(sums) != required or actual != required | {"SHA256SUMS.txt"}:
             raise ValueError(f"unexpected release inventory: {edition}")
         if sums[elf] != manifest["elf_sha256"]:
@@ -161,7 +231,7 @@ def companion_assets(options):
     label = options["label"]
     return {f"RIPTOPL-{options['title']}.zip": f"RIPTOPL-{options['title']}.zip",
             elf: elf.replace(".ELF", f"-{label}.ELF"), psu: psu.replace(".psu", f"-{label}.psu"),
-            **{f"RIPTOPL-{name}.zip": f"RIPTOPL-{name}-{label}.zip" for name, _, _ in bundles(options)}}
+            **{f"RIPTOPL-{name}.zip": f"RIPTOPL-{name}-{label}.zip" for name in archives(options)}}
 
 
 def fold_companions(candidates):
@@ -254,7 +324,10 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
         + f"\n\n[Full history]({base}/commits/{sha})\n\n"
         "## Downloads\n\n"
         f"- [Full install kit]({downloads}/RIPTOPL-{options['title']}-{version}.zip) - loader and companions.\n"
-        f"- [Loader ELF]({downloads}/{elf}) - update an existing installation.\n"
+        + (f"- [Bug-report build]({downloads}/RIPTOPL-{BUGREPORT}-{version}.zip) - RiptOPL will not start or freezes? "
+           "This build shows each start-up step on screen and writes a report; its README says what to send.\n"
+           if BUGREPORT in archives(options) else "")
+        + f"- [Loader ELF]({downloads}/{elf}) - update an existing installation.\n"
         f"- [Memory-card app]({downloads}/{psu}) - PSU import.\n"
         f"- [Languages]({downloads}/RIPTOPL-LANGS-{version}.zip) - translations and their fonts.\n"
         + "".join(f"- [{name.replace('-', ' ').title().replace('Ra ', 'RA ')}]({downloads}/RIPTOPL-{name}-{version}.zip) - {what}.\n"
