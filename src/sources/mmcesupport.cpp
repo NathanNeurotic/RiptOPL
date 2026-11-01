@@ -329,11 +329,6 @@ void MmceSupport::waitSwapDone(const char *why)
     diagLog("mmce %s: card silent for %d ms; launching anyway", why, silent * 200);
 }
 
-void mmceWaitSwapDone(const char *why)
-{
-    gMmceSupport.waitSwapDone(why);
-}
-
 // After the OSD history write on an MMCE-hosted launch: watch the game's slot for the card's own folder
 // switch (see the launch) and wait it out on screen. Nothing to watch when our Game ID send already
 // switched the card (it is on that folder), or when the firmware has no busy query (presence answers
@@ -1274,8 +1269,7 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
             char historyName[32];
             if (configGetStrCopy(configSet, CONFIG_ITEM_ALTSTARTUP, historyName, sizeof(historyName)) == 0)
                 strcpy(historyName, game->startup);
-            sysAddHistoryRecord(historyName);
-            {
+            if (sysAddHistoryRecord(historyName)) { // no record (debug builds): nothing for the card to react to
                 char historyDevice[8];
                 gMmceSupport.getDeviceRoot(historyDevice, sizeof(historyDevice));
                 gMmceSupport.waitHistorySwitch(historyDevice, "history write");
@@ -1534,6 +1528,9 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         // OUR mmceman mount and its config/modules from the neutrino.elf device (-cwd) before its own
         // IOP reset -- keep BOTH mounted. An MC-hosted neutrino needs no exception (-1 second slot).
         int neutrinoDevMode = host::app().pathToMode(neutrinoPath);
+        // Last look before the handoff, as on the native leg: a switch the firmware deferred must not be in
+        // flight when Neutrino's mmceman takes the card over. ~0 ms on an idle card.
+        gMmceSupport.waitSwapDone("before handoff");
         host::app().deinitEx(sbNeutrinoDeinitException(neutrinoPath), itemList->mode, neutrinoDevMode);
         sysLaunchNeutrino("mmce", mmcePartname, mmceStartup, compatmask, EnablePS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0 /* #11: mmce is fileid, no fs layer */, -1, &neutrinoVmc);
         return;
