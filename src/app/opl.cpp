@@ -236,6 +236,7 @@ int gNetBootProtocol; // NET_BOOT_UDPBD | NET_BOOT_UDPFS (legacy shadow, derived
 int gNetworkProtocol; // enum NETWORK_PROTOCOL -- authoritative backend selector (Off/SMB/UDPBD/UDPFSBD/UDPFS)
 int gNetProtocolPick; // last protocol chosen, never OFF (see opl.h)
 int gUdpfsAccessMode; // UDPFS Files/IMG preference, independent of UDPBD
+int gSMBDialect;      // SMB_DIALECT_V1 / SMB_DIALECT_V2
 int gNetStartMode;    // START_MODE_* -- the Off/Manual/Auto network start row (see the 3-row Network setting)
 int gAutosort;
 int gAutoRefresh;
@@ -256,6 +257,8 @@ int gFontSize = FONT_SIZE_DEFAULT;
 int gGlyphSet = 0; // GLYPH_SET_THEME
 // Alternate Background: the theme's alt= pictures instead of its default= ones (themeviews.h).
 int gThemeAltBackground;
+// Boot Theme Wait: seconds the intro holds for a saved disk theme whose drive is not up yet (guisplash.cpp).
+int gBootThemeWait;
 int gVMode; // 0 - Auto, 1 - PAL, 2 - NTSC
 int gXOff;
 int gYOff;
@@ -1499,6 +1502,7 @@ static void setDefaults(void)
     gNetStartMode = START_MODE_DISABLED; // Off in the 3-row Network setting; migration reconciles old configs
     gNetProtocolPick = NET_PROTO_SMB;
     gUdpfsAccessMode = 0; // UDPFS Files; never inherit UDPBD's forced IMG
+    gSMBDialect = SMB_DIALECT_V1;
 
     frameCounter = 0;
 

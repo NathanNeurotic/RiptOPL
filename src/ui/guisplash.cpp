@@ -120,8 +120,19 @@ void BootSplash::renderScreen()
     guiEndFrame();
 }
 
-// The longest the greeting waits for the drive that holds the saved theme (RIPPS2 build 125 uses 6 s)
-#define THEME_HOLD_MS 6000
+// The longest the greeting waits for the drive that holds the saved theme: the Boot Theme Wait setting, in seconds
+// (Settings > Interface; RIPPS2 build 125 used 6 s). Off (0) by default: the menu opens straight away and the saved
+// theme replaces the built-in one as soon as its drive is up. Clamped so a hand-edited config cannot park the intro.
+#define THEME_HOLD_MAX_S 10
+static int themeHoldMs(void)
+{
+    int s = gBootThemeWait;
+    if (s <= 0)
+        return 0;
+    if (s > THEME_HOLD_MAX_S)
+        s = THEME_HOLD_MAX_S;
+    return s * 1000;
+}
 
 void BootSplash::run()
 {
@@ -136,7 +147,7 @@ void BootSplash::run()
     clock_t tFadeDelay = 0;
     int tFadeArmed = 0;
     // RIPPS2 build 125 (AK): a saved disk theme whose drive is not up yet keeps the greeting on screen, so the built-in
-    // theme does not show for a moment before the saved one replaces it. Bounded: at most THEME_HOLD_MS after init.
+    // theme does not show for a moment before the saved one replaces it. Bounded: at most Boot Theme Wait seconds after init, and off by default.
     clock_t tInitDone = 0;
     int tInitSeen = 0;
     // For the DIAG.TXT line at the end: how long the greeting waited for the saved theme and the boot sound.
@@ -182,8 +193,8 @@ void BootSplash::run()
             tInitSeen = 1;
             diagLog("boot: devices started");
         }
-        const bool themeHold = greetingAlpha == 0x80 && tInitSeen && thmSavedThemePending() &&
-                               (clock() - tInitDone) < (clock_t)THEME_HOLD_MS * (CLOCKS_PER_SEC / 1000);
+        const bool themeHold = greetingAlpha == 0x80 && tInitSeen && themeHoldMs() > 0 && thmSavedThemePending() &&
+                               (clock() - tInitDone) < (clock_t)themeHoldMs() * (CLOCKS_PER_SEC / 1000);
         if (themeHold) {
             if (!tHoldSeen) {
                 tHoldStart = clock();

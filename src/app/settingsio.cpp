@@ -1571,6 +1571,8 @@ void _loadConfig()
                 gAutosort = AUTOSORT_AZ; // older builds stored any non-zero as "on"
             gAllGames = gAllGames != 0;
             gShowHidden = gShowHidden != 0;
+            if (gBootThemeWait < 0 || gBootThemeWait > 10)
+                gBootThemeWait = gBootThemeWait < 0 ? 0 : 10; // a hand-edited value: show and save what the intro uses
             configReadRA(configOPL);
 
 
@@ -1754,8 +1756,11 @@ void _loadConfig()
             // (ethsupport start path, system.c getDeviceName, bdmsupport) stay consistent no matter which
             // config format was loaded. SMB keeps its prior Auto/Manual start-mode; a fresh SMB pick that
             // had eth_mode=0 gets Manual. Any non-SMB protocol forces SMB off (preserves UDPBD-wins).
-            // NOTE(rebuild): the fork also loads the SMB dialect (gSMBDialect, SMBv1/SMB2) here --
-            // that returns with checklist item 4; until then the rebuild speaks SMBv1 unconditionally.
+            // SMB dialect. A missing key is SMBv1 (every config written before the row existed), and
+            // anything that is not exactly SMB2 falls back to SMBv1 too: losing SMB2 is recoverable,
+            // selecting a driver this build does not have is not.
+            if (!configGetInt(configOPL, CONFIG_OPL_SMB_DIALECT, &gSMBDialect) || gSMBDialect != SMB_DIALECT_V2)
+                gSMBDialect = SMB_DIALECT_V1;
             gEnableUDPBD = (gNetworkProtocol == NET_PROTO_UDPBD || gNetworkProtocol == NET_PROTO_UDPFSBD);
             gNetBootProtocol = (gNetworkProtocol == NET_PROTO_UDPFSBD) ? NET_BOOT_UDPFS : NET_BOOT_UDPBD;
             if (gNetworkProtocol == NET_PROTO_SMB) {
@@ -2201,7 +2206,11 @@ static void _saveConfig()
         snprintf(temp, sizeof(temp), "%d.%d.%d.%d", gRAHostIp[0], gRAHostIp[1], gRAHostIp[2], gRAHostIp[3]);
         configSetStr(configOPL, CONFIG_OPL_RA_HOST_IP, temp);
 #endif
-        configSetStr(configOPL, CONFIG_OPL_THEME, thmGetValue());
+        // Keep the saved disk theme while its drive has not offered it yet. Boot Theme Wait is off by default, so the
+        // menu (and a settings save) can come before that, and writing the built-in fallback on screen would lose the
+        // user's theme for good. An explicit pick on the Interface page writes the key itself (guiShowInterfaceConfig).
+        if (!thmSavedThemePending())
+            configSetStr(configOPL, CONFIG_OPL_THEME, thmGetValue());
         if (gThemeViewRequest >= 0)
             configSetStr(configOPL, CONFIG_OPL_THEME_VIEW, thmViewName(gThemeViewRequest));
         else
@@ -2222,8 +2231,8 @@ static void _saveConfig()
         configSetInt(configOPL, CONFIG_OPL_ENABLE_UDPBD, gEnableUDPBD);
         // Dual-write: the authoritative unified selector PLUS the three legacy keys (derived shadows),
         // so a config saved by this build still boots correctly on an older OPL that only reads the legacy keys.
-        // NOTE(rebuild): the fork also persists the SMB dialect here (item 4).
         configSetInt(configOPL, CONFIG_OPL_NETWORK_PROTOCOL, gNetworkProtocol);
+        configSetInt(configOPL, CONFIG_OPL_SMB_DIALECT, gSMBDialect);
         configSetInt(configOPL, CONFIG_OPL_NET_START_MODE, gNetStartMode);
         configSetInt(configOPL, CONFIG_OPL_NET_PROTOCOL_PICK, gNetProtocolPick);
         configSetInt(configOPL, CONFIG_OPL_UDPFS_ACCESS, gUdpfsAccessMode);
