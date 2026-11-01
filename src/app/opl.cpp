@@ -545,6 +545,8 @@ void initAllSupport(int force_reinit)
     if (gBootInProgress)
         guiRenderGreetingScreen();
     bdmEnumerateDevices();
+    if (gBootInProgress)
+        diagLog("boot: BDM devices enumerated");
 
     guiSetBootStatus(_l(_STR_BOOT_SCANNING_NET));
     if (gBootInProgress)
@@ -556,6 +558,8 @@ void initAllSupport(int force_reinit)
     // HTTP shares that same NIC and the same one-tab-at-a-time rule: its start-mode gate is live
     // only when gNetworkProtocol == NET_PROTO_HTTP.
     initSupport(httpGetObject(0), HTTP_MODE, force_reinit);
+    if (gBootInProgress)
+        diagLog("boot: network started");
 
     guiSetBootStatus(_l(_STR_BOOT_SCANNING_HDD));
     if (gBootInProgress)
@@ -563,6 +567,8 @@ void initAllSupport(int force_reinit)
     initSupport(hddGetObject(0), HDD_MODE, force_reinit);
     initSupport(appGetObject(0), APP_MODE, force_reinit);
     initSupport(favGetObject(0), FAV_MODE, force_reinit);
+    if (gBootInProgress)
+        diagLog("boot: HDD, apps and favourites started");
 
     guiSetBootStatus(_l(_STR_BOOT_SCANNING_MC));
     if (gBootInProgress)
@@ -570,6 +576,8 @@ void initAllSupport(int force_reinit)
     LOG("BOOT scan: MMCE initSupport begin\n");
     initSupport(mmceGetObject(0), MMCE_MODE, force_reinit);
     LOG("BOOT scan: MMCE initSupport done\n");
+    if (gBootInProgress)
+        diagLog("boot: MMCE started");
 
     // Arm the MMCE GameID transport at boot and on every settings apply -- instead
     // of deferring it to itemLaunchMMCE.
