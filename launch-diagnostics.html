@@ -195,6 +195,27 @@ hung). The launch now waits up to 2 seconds to see the card go busy, then shows
 <strong>START</strong> launches at once. A failed busy query never counts as ready; three in a row end the wait
 unconfirmed, and the launch goes ahead. Ported from RIPPS2 by <a href="https://github.com/akilluminati47">akilluminati47</a>. NOT TESTED on
 hardware: it needs an SD2PSX with sd2psXtd firmware.</p>
+<h2 id="bug-report-build">Bug-report build</h2>
+<p>The Korium and IncebtIon releases carry <code>RIPTOPL-BUGREPORT-&lt;version&gt;.zip</code>. It holds
+<code>RIPTOPL-BUGREPORT.ELF</code>, the release's <code>diag</code> build, a README on what to send, and the licences
+(<code>LICENSE</code>, <code>CREDITS</code>, <code>licenses/libsmb2/</code> for the embedded smb2man driver). Use it when
+RiptOPL will not start, stops on a black screen or freezes in the menu:</p>
+<ul>
+<li>each start-up step up to the video setup is printed on screen as a numbered line, so a start-up
+that stops leaves its last step on screen until the watchdog fires 20 seconds later and
+replaces it with the stage colour, so the tester photographs it promptly; from the video setup
+on, a start-up that never reaches the menu turns the screen one colour per stage;</li>
+<li>a menu that stops drawing writes <code>RIPTOPL-FREEZE.TXT</code>, and a crash writes <code>RIPTOPL-CRASH.TXT</code>, to
+<code>mc0:</code> (<code>mc1:</code> if that fails); the screen turns green once the file is written (orange if no
+card took it), and the README tells the tester to wait for that before restarting;</li>
+<li>Drive Status and DIAG.TXT work as in the normal build.</li>
+</ul>
+<p>The ELF is not compressed and its program starts 0x80 bytes into the file, like a standard ps2sdk
+link. Volventura's console starts that layout from uLaunchELF on <code>mmce0:</code> where the compressed
+builds showed a black screen; the bug-report build has the same layout but has not been tried
+there yet, so its README asks the tester to say if it does not start. Copy it next to the normal
+<code>RIPTOPL.ELF</code>; both share settings. The RetroAchievements channel has none: RA builds have no
+<code>diag</code> configuration. Requested by Volventura on 2026-11-01. NOT TESTED on hardware.</p>
 <h2 id="drive-status-and-diagtxt">Drive Status and DIAG.TXT</h2>
 <p><strong>Drive Status</strong> in the main menu (above About) lists, without changing anything:</p>
 <ul>
