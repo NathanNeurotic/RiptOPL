@@ -122,6 +122,7 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_DEFAULT_GAME_VIEW, &gDefaultGameView, GAME_VIEW_BOTH),
     intSetting(CONFIG_OPL_APPS_DISPLAY, &gAppsDisplay, APPS_DISPLAY_MIXED),
     intSetting(CONFIG_OPL_CFG_TITLES, &gCfgTitlesInLists, 0),
+    intSetting(CONFIG_OPL_PS1_DUPLICATES, &gPs1Duplicates, PS1_DUP_BOTH), // both rows, as before the setting existed
     intSetting(CONFIG_OPL_GAME_TYPE_LABELS, &gGameTypeLabels, 0),
     strSetting(CONFIG_OPL_POPSTARTER_PATH, gPopstarterPath),
     intSetting(CONFIG_OPL_BDMA_SOURCE, &gBdmaSource, VCD_BDMA_SRC_USB),

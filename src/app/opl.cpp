@@ -198,6 +198,7 @@ int gNeutrinoElfArg;         // default-on (settings key only, no UI): auto-emit
 int gDefaultGameView;
 int gAppsDisplay;
 int gCfgTitlesInLists;
+int gPs1Duplicates; // PS1_DUP_*: a game both as a POPSTARTER VCD and an Ember image shows once or twice
 int gGameTypeLabels;
 int gEmberDisplay;
 int gEmberTiming;
