@@ -35,6 +35,10 @@ program = r'''
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#define lseek64 lseek
+typedef long long s64;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 #define POPS_FOLDER "POPS"
@@ -50,7 +54,7 @@ static void configSetInt(config_set_t *c, const char *, int v) { c->size = v; }
 static int cueIsCueEntry(const base_game_info_t *g) { return g && !strcasecmp(g->extension, CUE_ROW_EXTENSION); }
 ''' + "\n".join(function(cue, s) for s in ("static char cueSep(", "static const char *cueEmberFolder(",
                                             "static void cueBuildGamesDir(", "unsigned int cueGameSizeMB(")) \
-    + "\n" + function(base, "void sbResolvePs1Size(") + r'''
+    + "\n" + function(base, "static int sbFileSizeMB(") + "\n" + function(base, "void sbResolvePs1Size(") + r'''
 int main(int argc, char **argv) {
     char rootDir[512];
     snprintf(rootDir, sizeof(rootDir), "%s/", argv[1]);
