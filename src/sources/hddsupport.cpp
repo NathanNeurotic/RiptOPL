@@ -1649,6 +1649,8 @@ int HddSupport::buildVcdGameList()
 
     hddFreePopsPartitionList(&parts);
 
+    int vcdRows = total; // rows before here are VCD (and PP one-game) rows; Ember rows follow
+
     // ---- second phase: EMBER --------------------------------------------------------------------
     // ONE list, BOTH cores -- the APA restatement of what ps1FillGameList does for every other
     // device. The rows land in the SAME arrays, so the PS1 view, Favourites resolution, art lookup
@@ -1763,6 +1765,9 @@ int HddSupport::buildVcdGameList()
 
     // A first-ever incomplete scan may still expose the entries it proved readable, but it is never
     // latched as complete. A fully successful zero/nonzero scan is latched unless invalidated mid-run.
+    // Interface > PS1 Duplicates, as on every other device. The partition array moves with its rows.
+    // (An Ember folder named exactly like a VCD is already skipped above: launches resolve by name.)
+    total = ps1DropTwins(newGames, newParts, sizeof(*newParts), vcdRows, total - vcdRows, gPs1Duplicates);
     publishVcdGameList(newGames, newParts, total, !scanIncomplete && (genAtEntry == vcdCacheGen));
     return total;
 }

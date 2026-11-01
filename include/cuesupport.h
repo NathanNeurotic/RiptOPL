@@ -211,6 +211,9 @@ int cueFillGameList(const char *devPrefix, base_game_info_t **outGames);
 // games prefix, is the right home for them.
 int ps1GameListNeedsRetry(void);
 int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames);
+/* Interface > PS1 Duplicates over rows = vcdCount VCD rows then cueCount Ember rows (PS1_DUP_*).
+   Returns the rows kept, packed in order; `parallel` (stride bytes per row, or NULL) follows them. */
+int ps1DropTwins(base_game_info_t *rows, void *parallel, size_t stride, int vcdCount, int cueCount, int prefer);
 
 // The CUE support instance (defined in src/sources/cuesupport.cpp). The module is deliberately
 // stateless -- every helper works on its parameters and the published lists live in the callers.

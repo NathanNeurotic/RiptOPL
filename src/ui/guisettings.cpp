@@ -2485,6 +2485,8 @@ reshow_interface:
         // A new sort needs the rows rebuilt: Last played ranks are resolved as each row is built.
         // A PS1 Duplicates change rebuilds them the same way.
         int cfgTitlesChanged = previousCfgTitles != gCfgTitlesInLists || previousSort != gAutosort || previousPs1Dup != gPs1Duplicates;
+        if (previousPs1Dup != gPs1Duplicates)
+            hddVcdInvalidateCache(); // the HDD PS1 list applies the setting when it is built
         diaGetInt(ui, UICFG_GAME_TYPE_LABELS, &gGameTypeLabels);
         gameViewChanged = guiReadGameViewPicker(ui);
         appsViewChanged = guiReadAppsViewPicker(ui);
