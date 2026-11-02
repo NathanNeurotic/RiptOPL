@@ -19,7 +19,6 @@
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
 #include "include/themeviews.h"
 #include "include/sema_lock.h"
-#include "include/supportbase.h"
 #ifdef RETROACHIEVEMENTS
 #include "include/rabadge.h" // RA: mark over the cover
 #endif
@@ -1856,7 +1855,7 @@ void thmInit(void)
     LOG("THEMES Init\n");
     gTheme = NULL;
     if (thmSwitchSema < 0)
-        thmSwitchSema = sbCreateSemaphore();
+        thmSwitchSema = semaCreateBinary();
 
     thmReloadScreenExtents();
 

@@ -9,7 +9,6 @@
 #include "include/config.h"
 #include "include/gui.h" // guiLock/guiUnlock -- serialize the language name-list rebuild
 #include "include/sema_lock.h"
-#include "include/supportbase.h"
 #include <dirent.h>
 #include <limits.h>
 
@@ -443,7 +442,7 @@ void lngInitFallbackFont(void)
 void lngInit(void)
 {
     if (lngSwitchSema < 0)
-        lngSwitchSema = sbCreateSemaphore();
+        lngSwitchSema = semaCreateBinary();
     fntInit();
 
     lngAddLanguages(gBaseMCDir, "/", -1);
