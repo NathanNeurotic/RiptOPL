@@ -141,6 +141,13 @@ int sysLoadModuleBuffer(void *buffer, int size, int argc, char *argv)
 
     int i, id, ret, index = 0;
 
+    // A RiptOPLite build leaves the IRX of every other device out of the ELF; their symbols are
+    // zero-sized stubs (tools/lite_devices.py). Refuse them here so a stray load fails cleanly.
+    if (buffer == NULL || size <= 0) {
+        LOG("sysLoadModuleBuffer: module not in this build (size %d)\n", size);
+        return -1;
+    }
+
     raii::SemaLock lock(sysLoadModuleLock);
 
     // check we have not reached MAX_MODULES

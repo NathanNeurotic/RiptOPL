@@ -7,6 +7,7 @@
 #include "include/gui.h"
 #include "include/supportbase.h"
 #include "include/hddsupport.h"
+#include "include/riptlite.h" // LITE_HAS_*: a RiptOPLite build without this device
 #include "include/hddint.h"
 #include "include/cuesupport.h" // Ember rows share the HDD PS1 list with the VCD ones
 #include "include/saveicon.h"   // saveIconPs1Directory
@@ -596,6 +597,15 @@ int HddSupport::loadModules()
     int retStatus = HDD_LOADMODULES_STATUS_UNK;
 
     LOG("[HDD STARTUP DIAG] hddLoadModules entry count=%u loaded=%u\n", modulesLoadCount, modulesLoaded);
+
+#if !(LITE_HAS_APA || LITE_HAS_BDMHDD)
+    // A RiptOPLite build for another device carries no HDD drivers (include/riptlite.h).
+    (void)retLoadModule;
+    (void)retBdmModule;
+    (void)retXhddModule;
+    (void)retStatus;
+    return HDD_LOADMODULES_STATUS_ERROR;
+#endif
 
     // The ATA modules are resident for the lifetime of this IOP generation. A readiness
     // probe is NOT a new DEV9 owner: all HDD entry points share the one sysInitDev9()
