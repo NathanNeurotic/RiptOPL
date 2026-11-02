@@ -43,7 +43,12 @@ class PublicationTests(unittest.TestCase):
                 for name in ("RIPTOPL-RetroAchievements-IncebtIon-v1.2.0-Beta-3925.zip", "RIPTOPL-RA-IncebtIon.ELF",
                              "APP_RIPTOPL-RA-IncebtIon.psu", "RIPTOPL-RA-VARIANTS-IncebtIon-v1.2.0-Beta-3925.zip"):
                     self.assertIn(f"/releases/download/rolling-ra/{name})", body)
-            self.assertEqual({"rolling-ra": 5}.get(options["tag"], 6), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
+            if not options["ra"]:  # the bug-report build sits right under the kit
+                self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-BUGREPORT-v1.2.0-Beta-3925.zip)", body)
+                self.assertLess(body.index("[Bug-report build]"), body.index("[Loader ELF]"))
+            else:
+                self.assertNotIn("BUGREPORT", body)
+            self.assertEqual({"rolling-ra": 5}.get(options["tag"], 7), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
                 self.assertIn("Included build: ORBIT-v1.0.2 -- [ORBIT Neutrino RA runtime v1.0.2]"
                               "(https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2)", body)
@@ -262,14 +267,14 @@ class PublicationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary)
             names = ["RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip",
-                     "RIPTOPL-Korium.zip", "RIPTOPL-VARIANTS.zip", "RIPTOPL-DEBUG.zip"]
+                     "RIPTOPL-Korium.zip", "RIPTOPL-VARIANTS.zip", "RIPTOPL-DEBUG.zip", "RIPTOPL-BUGREPORT.zip"]
             sums = "".join(f"{hashlib.sha256(n.encode()).hexdigest()}  {n}\n" for n in names)
             for name in names:
                 (path / name).write_bytes(name.encode())
             (path / "SHA256SUMS.txt").write_text(sums)
             publisher.name_assets([("korium", publisher.EDITIONS["korium"], path, {})], version)
             expected = {"RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "SHA256SUMS.txt",
-                        *(f"RIPTOPL-{k}-{version}.zip" for k in ("src", "LANGS", "Korium", "VARIANTS", "DEBUG"))}
+                        *(f"RIPTOPL-{k}-{version}.zip" for k in ("src", "LANGS", "Korium", "VARIANTS", "DEBUG", "BUGREPORT"))}
             self.assertEqual({p.name for p in path.iterdir()}, expected)
             for line in (path / "SHA256SUMS.txt").read_text().splitlines():
                 digest, name = line.split("  ", 1)
@@ -352,6 +357,24 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('shutil.copyfile(ROOT / "third_party/mbedtls/LICENSE", kit / "LICENSE-MBEDTLS.txt")', package)
         self.assertIn('required.add("LICENSE-MBEDTLS.txt")', app)
         self.assertIn('elif "LICENSE-MBEDTLS.txt" in all_names:', app)
+
+    def test_every_kit_bundle_and_standalone_download_ships_the_libsmb2_licence(self):
+        # Every RiptOPL ELF embeds smb2man over libsmb2 (LGPL-2.1), so the licence text must travel
+        # with the install kits, the VARIANTS/DEBUG bundles and the standalone ELF download.
+        licence = ROOT / "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt"
+        self.assertIn("GNU LESSER GENERAL PUBLIC LICENSE", licence.read_text(encoding="utf-8"))
+        package = (ROOT / "tools/package_edition.py").read_text(encoding="utf-8")
+        self.assertIn('LIBSMB2_LICENCE = ROOT / "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt"', package)
+        self.assertIn('shutil.copyfile(LIBSMB2_LICENCE, kit / "LICENSE-LIBSMB2.txt")', package)
+        self.assertIn('shutil.copyfile(LIBSMB2_LICENCE, out / "LICENSE-LIBSMB2.txt")', package)
+        self.assertLess(package.index('if options["ra"]:  # the RA ELF links mbedTLS'), package.index('kit / "LICENSE-LIBSMB2.txt"'))
+        publish = (ROOT / "tools/publish_editions.py").read_text(encoding="utf-8")
+        self.assertIn('bundle.writestr("LICENSE-LIBSMB2.txt", (path / "LICENSE-LIBSMB2.txt").read_bytes())', publish)
+        self.assertIn('"LICENSE-LIBSMB2.txt"}', publish)
+        self.assertIn('kit.read("LICENSE-LIBSMB2.txt") != (path / "LICENSE-LIBSMB2.txt").read_bytes()', publish)
+        app = (ROOT / ".github/scripts/package_release_app.py").read_text(encoding="utf-8")
+        self.assertIn('"LICENSE-LIBSMB2.txt",  # every loader embeds libsmb2 (LGPL-2.1)', app)
+
 
 if __name__ == "__main__":
     unittest.main()
