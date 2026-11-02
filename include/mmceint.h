@@ -25,6 +25,13 @@ public:
     // Bounded post-GameID settle for cross-device launches sharing SIO2 with the MMCE (MX4SIO, S7):
     // 0 = settled, -1 = expired. Never blocks the launch.
     int gameIdSettle(int timeoutMs);
+    // MMCE-hosted launches only: wait, bounded and on screen, until the slot the last send targeted
+    // answers and is not swapping. Nothing to do when no send was made this launch.
+    void waitSwapDone(const char *why);
+    void waitSwapDoneOn(const char *device, const char *why); // the same wait on a given slot
+    void waitBeforeHandoff(void);                             // last look before the IOP handoff
+    // After the OSD history write: wait out the card's own folder switch on the game's slot (bounded).
+    int waitHistorySwitch(const char *device, const char *why); // 1 when the card's own switch was waited out
     // Reset present MMCE cards to the default channel and clear GameID. NOT named reset(): that
     // collides with the free opl.cpp reset() the coupling analyzer matches by name.
     int resetCards();
@@ -83,6 +90,7 @@ public:
     int waitCardReady(const char *device);
     int modLoaded = 0;               // latched by loadModules; read by sendGameID's arm check
     char gameIdTarget[8] = {0};      // last device a GameID 0x8 switch was SENT to (gameIdSettle polls it)
+    int gameIdSwitchSeen = 0;        // sendGameID saw the card switch for its send: the history write will not switch it again
     base_game_info_t emptyGame = {}; // sentinel returned for stale/invalid ids (never launched)
 };
 
