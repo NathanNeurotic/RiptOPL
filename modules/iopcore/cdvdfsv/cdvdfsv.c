@@ -7,6 +7,7 @@
 #include "cdvdfsv-internal.h"
 #ifdef INGAMEDIAG
 #include "freeze_diag.h"
+#include "heap_diag.h"
 #endif
 
 #define MODNAME "cdvd_ee_driver"
@@ -221,6 +222,44 @@ static void *cbrpc_S596(int fno, void *buf, int size)
     return buf;
 }
 
+#ifdef INGAMEDIAG
+// The IOP heap record (heap_diag.h) for the EE's freeze report, with the 0xFF run after each live block
+// measured here, in the IOP's own RAM. Report v4 had the EE scan IOP RAM over the SBUS for it; that never
+// returned on a real console (#185, Test 0).
+static void *heap_diag_snapshot_take(void)
+{
+    static heap_diag_snapshot_t snap __attribute__((aligned(16)));
+    const heap_diag_iop_t *rec;
+    int record = 0;
+    unsigned int i;
+
+    sceCdSC(CDSC_GET_HEAP_DIAG, &record);
+    rec = (const heap_diag_iop_t *)record;
+    snap.found = 0;
+    snap.found_at = 0;
+    snap.reserved[0] = snap.reserved[1] = 0;
+    for (i = 0; i < HEAP_DIAG_BLOCKS; i++)
+        snap.tail_ff[i] = 0;
+    if (rec == NULL || rec->magic != HEAP_DIAG_MAGIC || rec->check != HEAP_DIAG_CHECK)
+        return &snap;
+
+    for (i = 0; i < HEAP_DIAG_IOP_SIZE / 4; i++)
+        ((unsigned int *)&snap.iop)[i] = ((const unsigned int *)rec)[i];
+    for (i = 0; i < HEAP_DIAG_BLOCKS; i++) {
+        unsigned int end = snap.iop.blocks[i].addr + snap.iop.blocks[i].size, n = 0;
+
+        if (snap.iop.blocks[i].addr != 0 && end < HEAP_DIAG_IOP_RAM_SIZE) {
+            while (n < HEAP_DIAG_TAIL_SCAN && end + n < HEAP_DIAG_IOP_RAM_SIZE && *(volatile const unsigned char *)(end + n) == 0xFF)
+                n++;
+        }
+        snap.tail_ff[i] = (unsigned short)n;
+    }
+    snap.found_at = (unsigned int)rec;
+    snap.found = 1;
+    return &snap;
+}
+#endif
+
 //--------------------------------------------------------------
 static void *cbrpc_shutdown(int fno, void *buf, int size)
 {
@@ -236,6 +275,8 @@ static void *cbrpc_shutdown(int fno, void *buf, int size)
         sceCdSC(CDSC_GET_FREEZE_DIAG, &record);
         return record != 0 ? (void *)record : (void *)&none;
     }
+    if (fno == FREEZE_DIAG_HEAP_RPC_FNO)
+        return heap_diag_snapshot_take();
 #endif
 
     if (fno == 1) {

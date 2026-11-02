@@ -47,6 +47,7 @@
 #ifdef INGAMEDIAG
 #include "freeze_diag_core.h"
 #include "freeze_diag_report.h"
+#include "freeze_diag_screen.h"
 #endif
 
 /* scePadPortOpen & scePad2CreateSocket prototypes */
@@ -465,6 +466,12 @@ static void IGR_Thread(void *arg)
     // Re-Init RPC & CMD
     SifInitRpc(0);
 
+#ifdef INGAMEDIAG
+    // Freeze report: ask the IOP for its records (each with a deadline), redraw the TV page with them, then wait
+    // for the power tap. The first page went up in FreezeDiag_Begin, before this first SIF call.
+    FreezeDiag_Fetch();
+#endif
+
     // If Pad Combo is Start + Select then Return to Home, else if Pad Combo is UP then take IGS
     if ((Pad_Data.combo_type == IGR_COMBO_START_SELECT)
 #ifdef IGS
@@ -657,7 +664,15 @@ static int IGR_Intc_Handler(int cause)
     // Suspend and Change priority of all threads other then our IGR thread
     // Wakeup and Change priority of our IGR thread
     if (Pad_Data.combo_type != 0x00) {
+#ifdef INGAMEDIAG
+        if (Pad_Data.combo_type == IGR_COMBO_START_SELECT)
+            FreezeDiag_ScreenMark(); // the report was asked for and this handler runs: see freeze_diag_screen.c
+#endif
         IGR_StopDmaAndGs();
+#ifdef INGAMEDIAG
+        if (Pad_Data.combo_type == IGR_COMBO_START_SELECT)
+            FreezeDiag_ScreenMark(); // again: the GS reset may have cleared it
+#endif
 
         // Disable interrupts & reset some peripherals, back to a standard state.
         // Call ResetEE(0x7F) from an interrupt handler.

@@ -7,7 +7,8 @@
   reset the GS), the font of the in-game menu at twice its size, uploaded through GIF PATH3. The player takes a photo
   of the screen, then taps the power button to go on to the memory-card report as before.
 
-  Everything shown is read from EE memory and IOP RAM (KSEG1), never asked of the IOP.
+  The first page shows only what the EE knows; the IOP's records are asked for afterwards (freeze_diag.c),
+  with a deadline, and the page is drawn again with them. Nothing here touches the SIF or IOP RAM.
 
   FREEZE_DIAG_SCREEN_HOST_TEST builds only the page composer, for tests/.
 */
@@ -151,7 +152,10 @@ void freeze_diag_screen_compose(const freeze_diag_report_t *r, const heap_diag_s
     ln_dec(&l, r->cheats);
     fds_put(p, row++, FDS_C_TEXT, l.s);
 
-    if (!h->found || h->iop.version != HEAP_DIAG_VERSION) {
+    if (h->found == HEAP_DIAG_READING) {
+        fds_put(p, row++, FDS_C_WARN, "ASKING THE IOP FOR ITS RECORDS (2 S)...");
+        fds_put(p, row++, FDS_C_WARN, "IF THIS STAYS, PHOTO THIS PAGE.");
+    } else if (!h->found || h->iop.version != HEAP_DIAG_VERSION) {
         fds_put(p, row++, FDS_C_WARN, "IOP HEAP RECORD: NOT FOUND");
     } else {
         const heap_diag_iop_t *iop = &h->iop;
@@ -367,10 +371,9 @@ static int fds_power_pending(void)
 
 // From the IGR thread, after FreezeDiag_Begin and before anything asks the IOP. The VBLANK handler has stopped DMA,
 // reset the GS and run ResetEE(0x7F): nothing of the game's can draw over this.
-void FreezeDiag_Screen(const freeze_diag_report_t *r, const heap_diag_snapshot_t *h)
+void FreezeDiag_ScreenShow(const freeze_diag_report_t *r, const heap_diag_snapshot_t *h)
 {
     fds_page_t *p = FDS_PAGE;
-    int latched;
 
     freeze_diag_screen_compose(r, h, p, 0);
 
@@ -386,6 +389,22 @@ void FreezeDiag_Screen(const freeze_diag_report_t *r, const heap_diag_snapshot_t
     *GS_DISPLAY1 = 652 | (u64)50 << 12 | (u64)3 << 23 | (u64)(FDS_W * 4 - 1) << 32 | (u64)(FDS_H - 1) << 44;
     *GS_BGCOLOR = 0;
     fds_draw(p, 0, FDS_H / FDS_CELL_H);
+}
+
+// Magenta, from interrupt context: no syscall, no DMA. Whether a picture survives the GS reset that follows depends on
+// the video mode the game left, so a magenta screen proves the handler ran, and its absence proves nothing.
+void FreezeDiag_ScreenMark(void)
+{
+    *GS_BGCOLOR = 0xff00ff;
+    *GS_PMODE = 0; // both read circuits off: the merge circuit outputs BGCOLOR alone
+}
+
+void FreezeDiag_Screen(const freeze_diag_report_t *r, const heap_diag_snapshot_t *h)
+{
+    fds_page_t *p = FDS_PAGE;
+    int latched;
+
+    FreezeDiag_ScreenShow(r, h);
 
     // The press that took the report may still be latched; a new one goes on.
     latched = fds_power_pending();

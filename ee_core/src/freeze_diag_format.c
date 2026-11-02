@@ -138,10 +138,85 @@ static const char *vmc_op_name(unsigned int op)
     return op == FREEZE_DIAG_VMC_WRITE ? "write" : "read";
 }
 
+// One history entry. ms_ago assumes the entry is less than one low-word wrap (116 s) old.
+static void put_event(fd_buf_t *b, const freeze_diag_event_t *e, unsigned int now_lo)
+{
+    unsigned int code = e->code_sectors >> 24, sectors = e->code_sectors & 0xFFFFFF;
+
+    put_str(b, "ev -");
+    put_dec(b, (now_lo - e->tick_lo) / FREEZE_DIAG_IOP_TICKS_PER_MS);
+    put_str(b, "ms ");
+    if (code >= 'A' && code <= 'Z')
+        put_char(b, (char)code);
+    else
+        put_char(b, '?');
+    switch (code) {
+        case FREEZE_DIAG_EV_READ:
+            put_str(b, " read");
+            put_field(b, "lsn", e->lsn);
+            put_field(b, "sectors", sectors);
+            if (e->arg & 1)
+                put_str(b, " from-interrupt");
+            if (e->arg & 2)
+                put_str(b, " sync");
+            break;
+        case FREEZE_DIAG_EV_BUSY:
+            put_str(b, " read-refused-drive-busy");
+            put_field(b, "lsn", e->lsn);
+            put_field(b, "sectors", sectors);
+            put_field(b, "times", e->arg);
+            break;
+        case FREEZE_DIAG_EV_DONE_CB:
+        case FREEZE_DIAG_EV_DONE_NOCB:
+        case FREEZE_DIAG_EV_DONE_STREAM:
+            put_str(b, code == FREEZE_DIAG_EV_DONE_CB ? " done game-callback" : code == FREEZE_DIAG_EV_DONE_NOCB ? " done no-callback" :
+                                                                                                                   " done stream-callback-instead-of-game");
+            put_field(b, "lsn", e->lsn);
+            put_field(b, "sectors", sectors);
+            put_field(b, "ms", e->arg);
+            break;
+        case FREEZE_DIAG_EV_ERROR:
+            put_str(b, " read-error");
+            put_field(b, "lsn", e->lsn);
+            put_field(b, "sectors", sectors);
+            put_str(b, " err=");
+            put_hex(b, e->arg);
+            break;
+        case FREEZE_DIAG_EV_ST_START:
+            put_str(b, " stream-start");
+            put_field(b, "lsn", e->lsn);
+            put_field(b, "buf", sectors);
+            put_field(b, "bank", e->arg);
+            break;
+        case FREEZE_DIAG_EV_ST_STOP:
+        case FREEZE_DIAG_EV_ST_PAUSE:
+        case FREEZE_DIAG_EV_ST_RESUME:
+            put_str(b, code == FREEZE_DIAG_EV_ST_STOP ? " stream-stop" : code == FREEZE_DIAG_EV_ST_PAUSE ? " stream-pause" :
+                                                                                                           " stream-resume");
+            put_field(b, "lsn", e->lsn);
+            put_field(b, "was_started", e->arg);
+            break;
+        case FREEZE_DIAG_EV_ST_RUN:
+            put_str(b, " stream-run");
+            put_field(b, "lsn", e->lsn);
+            put_field(b, "fills", sectors & 0xFFF);
+            put_field(b, "fills_refused", sectors >> 12);
+            put_field(b, "st_reads", e->arg >> 16);
+            put_field(b, "short", e->arg & 0xFFFF);
+            break;
+        default:
+            put_field(b, "lsn", e->lsn);
+            put_field(b, "sectors", sectors);
+            put_field(b, "arg", e->arg);
+            break;
+    }
+    put_char(b, '\n');
+}
+
 int freeze_diag_format(const freeze_diag_report_t *r, const char *build, char *out, int cap)
 {
     fd_buf_t b;
-    unsigned int i, iop_status, busy_ms = 0, vmc_busy_ms = 0;
+    unsigned int i, iop_status, busy_ms = 0, vmc_busy_ms = 0, st_wait_ms = 0;
     const freeze_diag_iop_t *iop = &r->iop;
 
     if (out == 0 || cap <= 0)
@@ -154,7 +229,7 @@ int freeze_diag_format(const freeze_diag_report_t *r, const char *build, char *o
     if (iop_status == FREEZE_DIAG_IOP_ANSWERED && (iop->magic != FREEZE_DIAG_MAGIC || iop->version != FREEZE_DIAG_VERSION))
         iop_status = FREEZE_DIAG_IOP_BAD_RECORD;
 
-    put_str(&b, "RiptOPL in-game freeze report v2\n");
+    put_str(&b, "RiptOPL in-game freeze report v3\n");
     put_str(&b, "build=");
     put_str(&b, build != 0 ? build : "?");
     put_char(&b, '\n');
@@ -199,6 +274,8 @@ int freeze_diag_format(const freeze_diag_report_t *r, const char *build, char *o
             busy_ms = elapsed_ms(iop->busy_start_hi, iop->busy_start_lo, iop->now_hi, iop->now_lo);
         if (iop->vmc_busy)
             vmc_busy_ms = elapsed_ms(iop->vmc_busy_start_hi, iop->vmc_busy_start_lo, iop->now_hi, iop->now_lo);
+        if (iop->st_read_waiting)
+            st_wait_ms = elapsed_ms(iop->st_wait_start_hi, iop->st_wait_start_lo, iop->now_hi, iop->now_lo);
 
         put_str(&b, "disc_reads=");
         put_dec(&b, iop->reads);
@@ -239,6 +316,45 @@ int freeze_diag_format(const freeze_diag_report_t *r, const char *build, char *o
             put_field(&b, "vmc_busy_ms", vmc_busy_ms);
         }
         put_char(&b, '\n');
+
+        put_str(&b, "drive_held=");
+        put_dec(&b, iop->sync_flag);
+        put_field(&b, "cd_status", iop->cd_status);
+        put_str(&b, " game_cb=");
+        put_hex(&b, iop->user_cb);
+        put_field(&b, "sync_waiting", iop->sync_waiting);
+        put_field(&b, "busy_refusals", iop->busy_refusals);
+        put_field(&b, "cb_runs", iop->cb_runs);
+        put_field(&b, "cb_to_stream", iop->cb_to_stream);
+        put_char(&b, '\n');
+
+        put_str(&b, "stream=");
+        put_dec(&b, iop->st_stat);
+        put_field(&b, "stm0_cb", iop->st_stm0_cb);
+        put_field(&b, "filling", iop->st_is_reading);
+        put_field(&b, "lsn", iop->st_lsn);
+        put_field(&b, "buf", iop->st_bufmax);
+        put_field(&b, "bank", iop->st_banksize);
+        put_field(&b, "buffered", iop->st_streamed);
+        put_field(&b, "wr", iop->st_wr);
+        put_field(&b, "rd", iop->st_rd);
+        put_char(&b, '\n');
+        put_str(&b, "stream_starts=");
+        put_dec(&b, iop->st_starts);
+        put_field(&b, "stops", iop->st_stops);
+        put_field(&b, "pauses", iop->st_pauses);
+        put_field(&b, "resumes", iop->st_resumes);
+        put_field(&b, "fills", iop->st_fills);
+        put_field(&b, "fills_refused", iop->st_fill_refused);
+        put_field(&b, "st_reads", iop->st_reads);
+        put_field(&b, "st_reads_ee", iop->st_reads_ee);
+        put_field(&b, "short_reads", iop->st_short_reads);
+        put_char(&b, '\n');
+        put_str(&b, "stream_read_waiting=");
+        put_dec(&b, iop->st_read_waiting);
+        if (iop->st_read_waiting)
+            put_field(&b, "wait_ms", st_wait_ms);
+        put_char(&b, '\n');
     }
 
     // One line a person can act on. Most specific first.
@@ -257,6 +373,15 @@ int freeze_diag_format(const freeze_diag_report_t *r, const char *build, char *o
         put_str(&b, " ms ago and never returned");
     } else if (r->shutdown_status == FREEZE_DIAG_SHUTDOWN_TIMEOUT) {
         put_str(&b, "the IOP answered, but OPL's shutdown on it never finished (a device or lock is held)");
+    } else if (iop->st_read_waiting && st_wait_ms >= 1000) {
+        put_str(&b, "a stream read (sceCdStRead) has waited ");
+        put_dec(&b, st_wait_ms);
+        put_str(&b, " ms for stream data");
+    } else if (iop->sync_flag) {
+        put_str(&b, "the drive is still held with no read running: a finished read never released it");
+    } else if (iop->cb_to_stream != 0) {
+        put_dec(&b, iop->cb_to_stream);
+        put_str(&b, " game reads finished while streaming was on, and the game's read callback did not run for them");
     } else if (iop->read_errors != 0) {
         put_str(&b, "disc reads failed");
     } else if (iop->eom_hits != 0) {
@@ -265,6 +390,18 @@ int freeze_diag_format(const freeze_diag_report_t *r, const char *build, char *o
         put_str(&b, "disc and VMC idle: the game is stuck on the EE side (see threads)");
     }
     put_char(&b, '\n');
+
+    if (iop_status == FREEZE_DIAG_IOP_ANSWERED && iop->trace_count != 0) {
+        unsigned int n = iop->trace_count < FREEZE_DIAG_TRACE ? iop->trace_count : FREEZE_DIAG_TRACE;
+
+        put_str(&b, "history (oldest first, ms before the report):\n");
+        for (i = iop->trace_count - n; i < iop->trace_count; i++) {
+            const freeze_diag_event_t *e = &iop->trace[i % FREEZE_DIAG_TRACE];
+
+            if (e->code_sectors != 0)
+                put_event(&b, e, iop->now_lo);
+        }
+    }
 
     for (i = 0; i < r->thread_count && i < FREEZE_DIAG_MAX_THREADS; i++) {
         const freeze_diag_thread_t *t = &r->threads[i];
@@ -338,7 +475,7 @@ int freeze_diag_format_heap(const heap_diag_snapshot_t *h, char *out, int cap)
     b.len = 0;
 
     if (h == 0 || !h->found || h->iop.version != HEAP_DIAG_VERSION) {
-        put_str(&b, "heap=none (no IOP heap record found in IOP RAM)\n");
+        put_str(&b, "heap=none (the IOP did not send its heap record)\n");
         out[b.len] = '\0';
         return b.len;
     }

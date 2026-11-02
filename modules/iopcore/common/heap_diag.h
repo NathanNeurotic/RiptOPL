@@ -8,10 +8,13 @@
   overrun with 0xFF; neutrino issue #92), and how far past each block's end the 0xFF run reaches is
   the size of the guard a per-game fix needs.
 
-  ee_core reads this record straight from IOP RAM (KSEG1 0xBC000000), so it also works when the IOP
-  is dead: it scans for magic + check + self. check is written at run time, so the module's file
-  image, which the IOP may still hold, never contains the pair. Shared by CDVDMAN, ee_core and the
-  formatter, so it uses plain C types only.
+  CDVDFSV sends this record, with the 0xFF run after each live block, to ee_core over the IGR RPC
+  (freeze_diag.h, FREEZE_DIAG_HEAP_RPC_FNO) with a deadline on the EE side. Report v4 had ee_core
+  read it straight from IOP RAM over the SBUS (KSEG1 0xBC000000) so that a dead IOP would still
+  yield it; on a real console that scan never returned even with a healthy IOP (#185, Test 0), so
+  the TV page is drawn before the ask instead. check is written at run time, so the module's file
+  image never contains the magic + check pair. Shared by CDVDMAN, CDVDFSV, ee_core and the formatter,
+  so it uses plain C types only.
 */
 
 #ifndef HEAP_DIAG_H
@@ -75,12 +78,14 @@ typedef struct heap_diag_iop
 // What ee_core keeps after reading the record: the record and, per block, the 0xFF run after it.
 typedef struct heap_diag_snapshot
 {
-    unsigned int found;    // 1: a record was found in IOP RAM
-    unsigned int found_at; // its IOP address
+    unsigned int found;    // 1: CDVDFSV sent the record; HEAP_DIAG_READING while the EE is still asking for it
+    unsigned int found_at; // the record's IOP address
     unsigned int reserved[2];
     unsigned short tail_ff[HEAP_DIAG_BLOCKS]; // 0xFF bytes right after blocks[i] (up to HEAP_DIAG_TAIL_SCAN)
     heap_diag_iop_t iop;
 } heap_diag_snapshot_t;
+
+#define HEAP_DIAG_READING 0x52454144u // "READ": the page was drawn before the IOP answered the heap request
 
 #define HEAP_DIAG_SNAPSHOT_SIZE (16 + 2 * HEAP_DIAG_BLOCKS + HEAP_DIAG_IOP_SIZE)
 

@@ -19,7 +19,7 @@ static int failures = 0;
         }                                                   \
     } while (0)
 
-static char out[16384];
+static char out[16384]; // freezediag.irx formats into TEXT_CAP (16384) bytes
 
 static void base_report(freeze_diag_report_t *r)
 {
@@ -71,7 +71,7 @@ int main(void)
     r.threads[1].prio = 30;
     len = freeze_diag_format(&r, "v1.2.0-Beta-1-abc-OFFICIALROLLING-FREEZEDIAG", out, sizeof(out));
     CHECK(len > 0 && len == (int)strlen(out), "returns the string length");
-    CHECK(contains("RiptOPL in-game freeze report v2"), "title");
+    CHECK(contains("RiptOPL in-game freeze report v3"), "title");
     CHECK(contains("build=v1.2.0-Beta-1-abc-OFFICIALROLLING-FREEZEDIAG"), "build line");
     CHECK(contains("game=SLUS_210.00"), "game id");
     CHECK(contains("compat=0x0000000A"), "compat mask in hex");
@@ -177,6 +177,123 @@ int main(void)
     r.threads_total = FREEZE_DIAG_MAX_THREADS + 5;
     freeze_diag_format(&r, "b", out, sizeof(out));
     CHECK(contains("threads_not_listed=5"), "thread overflow count");
+
+    // Version 2: drive lock, callback and stream state, and the command history.
+    base_report(&r);
+    r.iop.user_cb = 0x000A1230;
+    r.iop.cb_runs = 40;
+    r.iop.cb_to_stream = 3;
+    r.iop.busy_refusals = 7;
+    r.iop.st_stat = 1;
+    r.iop.st_stm0_cb = 1;
+    r.iop.st_lsn = 5000;
+    r.iop.st_bufmax = 80;
+    r.iop.st_banksize = 16;
+    r.iop.st_streamed = 32;
+    r.iop.st_fills = 12;
+    r.iop.st_reads = 30;
+    r.iop.now_hi = 0;
+    r.iop.now_lo = 10u * FREEZE_DIAG_IOP_TICKS_PER_MS * 1000u;
+    {
+        static const struct
+        {
+            unsigned int code, lsn, sectors, arg, ms_ago;
+        } ev[] = {
+            {FREEZE_DIAG_EV_ST_START, 5000, 80, 16, 9000},
+            {FREEZE_DIAG_EV_ST_RUN, 5032, (2u << 12) | 5u, (9u << 16) | 1u, 8000},
+            {FREEZE_DIAG_EV_READ, 300, 4, 1, 7000},
+            {FREEZE_DIAG_EV_DONE_STREAM, 300, 4, 3, 6990},
+            {FREEZE_DIAG_EV_BUSY, 301, 2, 12, 6000},
+            {0, 0, 0, 0, 5000}, // an emptied slot is skipped
+            {FREEZE_DIAG_EV_READ, 302, 2, 2, 4000},
+            {FREEZE_DIAG_EV_DONE_CB, 302, 2, 1, 3990},
+            {FREEZE_DIAG_EV_ERROR, 303, 1, 0x30, 3000},
+            {FREEZE_DIAG_EV_ST_PAUSE, 5032, 0, 1, 2000},
+        };
+        unsigned int k;
+
+        r.iop.trace_count = 20 + sizeof(ev) / sizeof(ev[0]); // the ring wrapped: only the last 16 are kept
+        for (k = 0; k < FREEZE_DIAG_TRACE; k++)
+            r.iop.trace[k].code_sectors = ((unsigned int)FREEZE_DIAG_EV_ST_STOP << 24);
+        for (k = 0; k < sizeof(ev) / sizeof(ev[0]); k++) {
+            freeze_diag_event_t *e = &r.iop.trace[(20 + k) % FREEZE_DIAG_TRACE];
+            e->tick_lo = r.iop.now_lo - ev[k].ms_ago * FREEZE_DIAG_IOP_TICKS_PER_MS;
+            e->lsn = ev[k].lsn;
+            e->code_sectors = (ev[k].code << 24) | ev[k].sectors;
+            e->arg = ev[k].arg;
+        }
+    }
+    freeze_diag_format(&r, "b", out, sizeof(out));
+    CHECK(contains("drive_held=0 cd_status=0 game_cb=0x000A1230 sync_waiting=0 busy_refusals=7 cb_runs=40 cb_to_stream=3"), "drive and callback line");
+    CHECK(contains("stream=1 stm0_cb=1 filling=0 lsn=5000 buf=80 bank=16 buffered=32"), "stream state line");
+    CHECK(contains("fills=12 fills_refused=0 st_reads=30"), "stream counters");
+    CHECK(contains("hint=3 game reads finished while streaming was on"), "callback-to-stream hint");
+    CHECK(contains("history (oldest first"), "history header");
+    CHECK(contains("ev -9000ms S stream-start lsn=5000 buf=80 bank=16"), "stream start event");
+    CHECK(contains("ev -8000ms F stream-run lsn=5032 fills=5 fills_refused=2 st_reads=9 short=1"), "merged stream run");
+    CHECK(contains("ev -7000ms R read lsn=300 sectors=4 from-interrupt"), "game read from an interrupt");
+    CHECK(contains("ev -6990ms M done stream-callback-instead-of-game lsn=300 sectors=4 ms=3"), "read finished under streaming");
+    CHECK(contains("ev -6000ms B read-refused-drive-busy lsn=301 sectors=2 times=12"), "refusals merged");
+    CHECK(!contains("ev -5000ms"), "empty slot skipped");
+    CHECK(contains("ev -4000ms R read lsn=302 sectors=2 sync"), "synchronous read");
+    CHECK(contains("ev -3990ms C done game-callback lsn=302 sectors=2 ms=1"), "read finished with the game callback");
+    CHECK(contains("ev -3000ms E read-error lsn=303 sectors=1 err=0x00000030"), "read error event");
+    CHECK(contains("ev -2000ms P stream-pause lsn=5032 was_started=1"), "stream pause event");
+    {
+        const char *first = strstr(out, "ev -9000ms"), *last = strstr(out, "ev -2000ms");
+        CHECK(first != NULL && last != NULL && first < last, "history is oldest first");
+    }
+    // Six older entries of the wrapped ring are still shown before the newest ten.
+    {
+        int stops = 0;
+        const char *p = out;
+        while ((p = strstr(p, " T stream-stop")) != NULL) {
+            stops++;
+            p++;
+        }
+        CHECK(stops == 6, "only the last FREEZE_DIAG_TRACE entries are printed");
+    }
+
+    // A stream read blocked for data outranks the callback count.
+    r.iop.st_read_waiting = 1;
+    r.iop.st_wait_start_hi = 0;
+    r.iop.st_wait_start_lo = r.iop.now_lo - 4000u * FREEZE_DIAG_IOP_TICKS_PER_MS;
+    freeze_diag_format(&r, "b", out, sizeof(out));
+    CHECK(contains("stream_read_waiting=1 wait_ms=4000"), "stream wait line");
+    CHECK(contains("hint=a stream read (sceCdStRead) has waited 4000 ms for stream data"), "stream-wait hint");
+
+    // The drive held with no read running.
+    r.iop.st_read_waiting = 0;
+    r.iop.sync_flag = 1;
+    freeze_diag_format(&r, "b", out, sizeof(out));
+    CHECK(contains("hint=the drive is still held with no read running"), "held-drive hint");
+
+    // The largest report (every thread, a full history) fits freezediag's buffer untruncated.
+    {
+        unsigned int k;
+
+        r.thread_count = FREEZE_DIAG_MAX_THREADS;
+        r.threads_total = 200;
+        for (k = 0; k < FREEZE_DIAG_MAX_THREADS; k++) {
+            r.threads[k].id = 100 + k;
+            r.threads[k].status = 0x0C;
+            r.threads[k].prio = 127;
+            r.threads[k].wait_type = 2;
+            r.threads[k].wait_id = 4000000000u;
+            r.threads[k].wakeup = 4000000000u;
+            r.threads[k].entry = 0x00FFFFFF;
+        }
+        r.iop.trace_count = 4000000000u;
+        for (k = 0; k < FREEZE_DIAG_TRACE; k++) {
+            r.iop.trace[k].code_sectors = ((unsigned int)FREEZE_DIAG_EV_ST_RUN << 24) | 0xFFFFFF;
+            r.iop.trace[k].lsn = 4000000000u;
+            r.iop.trace[k].arg = 0xFFFFFFFF;
+            r.iop.trace[k].tick_lo = r.iop.now_lo + 1; // the most digits ms_ago can print
+        }
+        len = freeze_diag_format(&r, "v1.2.0-Beta-99999-abcdefg-OFFICIALROLLING-FREEZEDIAG", out, sizeof(out));
+        CHECK(len < (int)sizeof(out) - 1, "largest report fits TEXT_CAP");
+        CHECK(contains("threads_not_listed="), "largest report reaches its last line");
+    }
 
     // Truncation: never writes past cap, always terminates.
     {

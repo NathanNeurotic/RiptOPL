@@ -63,6 +63,13 @@ int main(void)
     CHECK(find("IOP HEAP RECORD: NOT FOUND", &colour) > 0 && colour == FDS_C_WARN, "a missing record said so");
     CHECK(find("TAP POWER ONCE TO SAVE RIPTFRZ.TXT", NULL) == FDS_LINES - 1, "the footer at the bottom");
 
+    // Drawn before the IOP answered the heap request.
+    h.found = HEAP_DIAG_READING;
+    freeze_diag_screen_compose(&r, &h, &p, 0);
+    CHECK(find("ASKING THE IOP FOR ITS RECORDS", &colour) > 0 && colour == FDS_C_WARN, "the page says the IOP has not answered yet");
+    CHECK(find("IOP HEAP RECORD: NOT FOUND", NULL) < 0, "and does not call the record missing");
+    h.found = 0;
+
     // A record: two overruns, one short run, one failed allocation, a module list.
     h.found = 1;
     h.iop.version = HEAP_DIAG_VERSION;

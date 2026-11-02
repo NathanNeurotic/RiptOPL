@@ -4,8 +4,9 @@
   When a game freezes, the player presses the IGR combo or the power button, or the pad data
   stops (padhook.c's watchdog: the IOP stopped sending it). If the IGR thread still gets to run,
   this records what the console was doing -- the game's threads, the IOP's heap, disc and VMC
-  activity -- draws it on the TV (freeze_diag_screen.c), then writes it to the memory card as
-  plain text and lets IGR exit as usual. The TV page needs nothing from the IOP; the file does.
+  activity -- draws it on the TV (freeze_diag_screen.c), asks the IOP for its records with a
+  deadline and draws the page again with them, then writes it to the memory card as plain text
+  and lets IGR exit as usual. The first TV page needs nothing from the IOP; the rest does.
 
   Nothing here exists in other builds: the whole file is only compiled with INGAMEDIAG=1.
 */
@@ -25,9 +26,6 @@
 
 #define IGR_RPC_SERVER 0x80000598
 
-// IOP RAM as the EE sees it (uncached). Readable even when the IOP itself is stuck.
-#define IOP_RAM_EE 0xBC000000
-
 // The IOP heap snapshot sits in the game's memory, which IGR is about to drop: ram84 has no room
 // for it (see ee_core/linkfile), and module storage must stay intact for the reboot that writes
 // the report. Below 16 MB nothing of ee_core's or the launcher's lives there.
@@ -43,6 +41,7 @@ unsigned int g_freeze_diag_reset_failures;
 
 static freeze_diag_report_t report __attribute__((aligned(64)));
 static int report_armed;
+static int report_fetched; // FreezeDiag_Fetch asked the IOP already
 
 static freeze_diag_iop_t iop_rx __attribute__((aligned(64)));
 static SifRpcClientData_t igr_cd __attribute__((aligned(64)));
@@ -62,42 +61,6 @@ static inline u32 ee_ticks(void)
 static int budget_spent(u32 start)
 {
     return (u32)(ee_ticks() - start) >= (u32)FREEZE_DIAG_IOP_BUDGET_MS * EE_TICKS_PER_MS;
-}
-
-// Find CDVDMAN's heap record (heap_diag.h) in IOP RAM and copy it, with the 0xFF run after each
-// live block. Straight memory reads: it needs nothing from the IOP, so it also works when the IOP
-// is stuck and the RPC below gets no answer.
-static void heap_snapshot(void)
-{
-    heap_diag_snapshot_t *h = HEAP_SNAPSHOT;
-    volatile const u32 *rec = NULL;
-    unsigned int a, i;
-
-    h->found = 0;
-    for (a = 0x800; a <= HEAP_DIAG_IOP_RAM_SIZE - HEAP_DIAG_IOP_SIZE; a += 16) {
-        volatile const u32 *p = (volatile const u32 *)(IOP_RAM_EE + a);
-
-        if (p[0] == HEAP_DIAG_MAGIC && p[1] == HEAP_DIAG_CHECK && p[2] == a) {
-            rec = p;
-            break;
-        }
-    }
-    if (rec == NULL)
-        return;
-
-    for (i = 0; i < HEAP_DIAG_IOP_SIZE / 4; i++)
-        ((u32 *)&h->iop)[i] = rec[i];
-    for (i = 0; i < HEAP_DIAG_BLOCKS; i++) {
-        unsigned int end = h->iop.blocks[i].addr + h->iop.blocks[i].size, n = 0;
-
-        if (h->iop.blocks[i].addr != 0) {
-            while (n < HEAP_DIAG_TAIL_SCAN && end + n < HEAP_DIAG_IOP_RAM_SIZE && *(volatile const u8 *)(IOP_RAM_EE + end + n) == 0xFF)
-                n++;
-        }
-        h->tail_ff[i] = (unsigned short)n;
-    }
-    h->found_at = a;
-    h->found = 1;
 }
 
 void FreezeDiag_Begin(unsigned int libpad, unsigned int pad_state, unsigned int pad_frame, unsigned int trigger)
@@ -143,12 +106,14 @@ void FreezeDiag_Begin(unsigned int libpad, unsigned int pad_state, unsigned int 
         }
     }
 
-    heap_snapshot();
+    // The page goes up first, with only what the EE knows: a stuck IOP answers none of what follows. Report v4
+    // read the IOP heap record straight from IOP RAM over the SBUS here; on a real console that never returned
+    // even with a healthy IOP (#185, Test 0), so FreezeDiag_Fetch asks CDVDFSV for it instead, with a deadline.
+    HEAP_SNAPSHOT->found = HEAP_DIAG_READING;
+    FreezeDiag_ScreenShow(&report, HEAP_SNAPSHOT);
 
     report_armed = 1;
-
-    // A stuck IOP answers none of what follows: the TV gets the report first.
-    FreezeDiag_Screen(&report, HEAP_SNAPSHOT);
+    report_fetched = 0;
 }
 
 // Ask CDVDFSV for CDVDMAN's record over the IGR RPC, with a deadline: a stuck IOP must not hang
@@ -202,6 +167,48 @@ static int fetch_iop(void)
     return 1;
 }
 
+// Ask CDVDFSV for the IOP heap snapshot (heap_diag.h), straight into HEAP_SNAPSHOT, on the client fetch_iop bound.
+// Same deadline: an IOP that answered the first request but not this one leaves the heap part empty.
+static void fetch_heap(void)
+{
+    heap_diag_snapshot_t *h = HEAP_SNAPSHOT;
+    u32 start;
+
+    h->found = 0;
+    if (report.iop_status == FREEZE_DIAG_IOP_NO_BIND)
+        return;
+
+    start = ee_ticks();
+    FlushCache(0); // nothing of the snapshot may sit dirty in the cache while the SIF writes it
+    *(s32 *)UNCACHED_SEG(&rpc_arg) = 0;
+    if (SifCallRpc(&igr_cd, FREEZE_DIAG_HEAP_RPC_FNO, SIF_RPC_M_NOWAIT | SIF_RPC_M_NOWBDC, &rpc_arg, sizeof(rpc_arg), h, sizeof(heap_diag_snapshot_t), NULL, NULL) < 0)
+        return;
+    while (SifCheckStatRpc(&igr_cd)) {
+        if (budget_spent(start)) {
+            *(volatile u32 *)UNCACHED_SEG(&h->found) = 0;
+            return;
+        }
+        nopdelay();
+    }
+    // The SIF wrote memory behind the cache, which FlushCache(0) emptied of this buffer; it holds nothing stale.
+    if (*(volatile u32 *)UNCACHED_SEG(&h->found) != 1)
+        *(volatile u32 *)UNCACHED_SEG(&h->found) = 0;
+}
+
+// From the IGR thread once SIF RPC is up: ask the IOP for both records (each with a deadline), draw the page
+// again with what came back, then wait for the power tap that goes on to the memory-card report.
+void FreezeDiag_Fetch(void)
+{
+    if (!report_armed)
+        return;
+
+    fetch_iop();
+    fetch_heap();
+    report_fetched = 1;
+
+    FreezeDiag_Screen(&report, HEAP_SNAPSHOT);
+}
+
 // OPL's IGR shutdown request (the same RPC oplIGRShutdown(0) sends), with a deadline. CDVDMAN's
 // shutdown waits for its device: behind a stalled read it would never return, and IGR would
 // never reach the point where the report is written.
@@ -236,7 +243,11 @@ void FreezeDiag_FetchAndShutdown(void)
         return;
     }
 
-    fetch_iop();
+    if (!report_fetched) { // FreezeDiag_Fetch was skipped: still take what the IOP gives before it is reset
+        fetch_iop();
+        fetch_heap();
+        report_fetched = 1;
+    }
     if (report.iop_status == FREEZE_DIAG_IOP_NO_BIND) {
         // No server was bound; a shutdown call cannot be issued.
         report.shutdown_status = FREEZE_DIAG_SHUTDOWN_SKIPPED;

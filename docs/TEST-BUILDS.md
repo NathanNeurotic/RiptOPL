@@ -49,13 +49,18 @@ Its `hint=` line says which of those looks stuck.
 
 Since report v2 it also lists the game's IOP memory: CDVDMAN notes every block the game's IOP
 modules allocate and free, the allocations that failed, the lowest free IOP memory and the loaded
-modules. ee_core reads that record straight from IOP RAM, so it is there even when the I/O
-processor stopped answering. Each block line has `ff_after=`, the number of 0xFF bytes right
+modules. CDVDFSV sends that record over the IGR RPC with a 2-second deadline (report v4 read it
+straight from IOP RAM, which never returned on a real console). Each block line has `ff_after=`, the number of 0xFF bytes right
 after the block. Some games write past their own IOP buffers and fill the overrun with 0xFF
 (.hack//Infection, SLUS_202.67, per neutrino issue #92); a long run is marked `OVERRUN?` and its
 length is the guard a per-game fix needs. `heap_hint=` sums it up. The hooks pass every call
 through unchanged, but CDVDMAN is about 2 KB larger in this build, which shifts where the game's
 blocks land, so a freeze that stops happening in this build is a result worth reporting too.
+
+Since report v3 it also records whether a read still holds the drive, the game's read callback,
+the CD streaming state (`stream=`), and a `history` of the last 16 disc commands: the game's reads,
+refusals, which callback each finished read got, and stream start/stop/pause/resume, with each
+run of streaming work merged into one line. `hint=` also says when one of those looks stuck.
 
 You do not always need the combo. If the game stops sending controller data for about 15 seconds
 (18 on PAL), which is what a stuck I/O processor looks like, the build takes the report on its own.
