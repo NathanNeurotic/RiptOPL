@@ -33,12 +33,20 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+# What differs between the repositories that carry a copy of this watch (RiptOPL, Launchstation and
+# ssb-decomp-re). Keep everything below this block identical in all three.
+PROJECT = "RiptOPL"
+PROJECT_URL = "https://github.com/NathanNeurotic/RiptOPL"
+DEFAULT_BRANCH = "rebuild/main"
+BUILDS = "ps2build, ps2build-configurations, build-flavours and Rolling Release (no publishing)"
+WARMED = "once per toolchain"
+
 ROOT = Path(__file__).resolve().parents[2]
 PIN = ROOT / ".github/ps2build-sdk.env"
 OFFICIAL = os.environ.get("PS2BUILD_SDK_OFFICIAL_URL") or "https://git.techwritescode.dev"
 MIRROR_API = os.environ.get("PS2BUILD_SDK_MIRROR_API_URL") or "https://api.github.com"
-# The same identifier as tools/install_ports.py, so tech can tell our requests apart in his logs.
-USER_AGENT = "RiptOPL-build/1.0 (ps2build SDK Watch; +https://github.com/NathanNeurotic/RiptOPL)"
+# The identifier our SDK downloads send too, so tech can tell our requests apart in his logs.
+USER_AGENT = f"{PROJECT}-build/1.0 (ps2build SDK Watch; +{PROJECT_URL})"
 VERSION = re.compile(r"^[A-Za-z0-9._+-]+$")  # what tools/ps2build_sdk.sh accepts from the release API
 ASSIGNMENT = re.compile(r"^([A-Z][A-Z0-9_]*)=(.*)$")
 RETRY_DELAYS = (10, 30)  # one try plus two retries, never more: this runs against someone else's server
@@ -254,16 +262,15 @@ def describe(changes, holds, mirror, mirror_note):
         body += ["Held in `PS2BUILD_SDK_HOLD`, not checked: " + ", ".join(f"`{name}`" for name in sorted(holds)) + ".", ""]
     body += [
         "Before marking this ready:",
-        "- the build checks on this branch must pass. The watch started ps2build, ps2build-configurations, "
-        "build-flavours and Rolling Release (no publishing) here itself, because a push made by GitHub Actions "
-        "starts no workflow on its own.",
+        f"- the build checks on this branch must pass. The watch started {BUILDS} here itself, because a push "
+        "made by GitHub Actions starts no workflow on its own.",
         "- read the upstream release notes linked above.",
         "",
-        "The watch already installed and cached this SDK on rebuild/main, once per toolchain, so the checks here "
-        "and on rebuild/main after the merge restore it from the GitHub cache instead of downloading it from "
+        f"The watch already installed and cached this SDK on {DEFAULT_BRANCH}, {WARMED}, so the checks here and on "
+        f"{DEFAULT_BRANCH} after the merge restore it from the GitHub cache instead of downloading it from "
         "git.techwritescode.dev again.",
         "",
-        "To stay on a release, add its name to `PS2BUILD_SDK_HOLD` in `.github/ps2build-sdk.env` on rebuild/main: "
+        f"To stay on a release, add its name to `PS2BUILD_SDK_HOLD` in `.github/ps2build-sdk.env` on {DEFAULT_BRANCH}: "
         "the next run leaves it alone. Closing this pull request without that makes the next run propose the "
         "update again.",
         "",

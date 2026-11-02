@@ -209,7 +209,7 @@ class WatchTests(unittest.TestCase):
             self.assertEqual(watch.latest_official("sdk-core"), "v9")
         self.assertEqual(len(calls), 3)  # one try and two retries, never more
         self.assertEqual([c.args[0] for c in slept.call_args_list], list(watch.RETRY_DELAYS))
-        self.assertTrue(calls[0].get_header("User-agent").startswith("RiptOPL-build/1.0"))
+        self.assertTrue(calls[0].get_header("User-agent").startswith(watch.PROJECT + "-build/1.0 "))
         self.assertTrue(calls[0].full_url.endswith("/api/v1/repos/ps2/sdk-core/releases/latest"))
 
         calls.clear()
