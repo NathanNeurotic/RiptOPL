@@ -485,7 +485,9 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     pass_word[sizeof(pass_word) - 1] = '\0';
 
     server_addr.s_addr = pinet_addr(SMBServerIP);
-    server_port = (u16)SMBServerPort;
+    // Port 0 is port 445, as in the menu's logon: smb2man.c then names the server without a port,
+    // and libsmb2 connects to 445. Connecting to port 0 would retry here forever.
+    server_port = (u16)(SMBServerPort > 0 ? SMBServerPort : 445);
     *capabilities = 0;
 
     // The SPN the logon names the server by, as the menu's does: libsmb2 sends "cifs/" and the
@@ -613,17 +615,17 @@ int smb_SessionSetupAndX(u32 capabilities)
       CHALLENGE's length + 400 bytes, so the two can end a list at different pairs; but neither
       limit is reached by a list accepted here that has one EOL, at its end, in a CHALLENGE whose
       fields do not overlap.
+      The logon is refused where libsmb2 refuses it (it then has no AV pairs to send back): when
+      TargetInfo is not empty but no pair of it is kept, and when it is empty and its offset is the
+      end of the CHALLENGE.
       The server's timestamp is taken from any MsvAvTimestamp pair kept.
     */
     tilen = 0;
-    inlen = 0;
-    if (seclen >= 48) {
-        inlen = rd16(tok + 40);
-        tioff = rd32(tok + 44);
-        if (inlen > SMB2_TI_MAX || tioff > seclen || (u32)inlen > seclen - tioff)
-            return -1000;
-        tok += tioff;
-    }
+    inlen = rd16(tok + 40);
+    tioff = rd32(tok + 44);
+    if (inlen > SMB2_TI_MAX || tioff > seclen || (u32)inlen > seclen - tioff || (inlen == 0 && tioff == seclen))
+        return -1000;
+    tok += tioff;
     for (off = 0; off + 4 <= inlen;) {
         int id = rd16(tok + off), avlen = rd16(tok + off + 2);
 
@@ -646,6 +648,8 @@ int smb_SessionSetupAndX(u32 capabilities)
         tilen += 4 + avlen;
         off += 4 + avlen;
     }
+    if (inlen > 0 && tilen == 0)
+        return -1000;
     if (!has_timestamp)
         memset(timestamp, 0, sizeof(timestamp)); // no clock on the IOP; servers that check send one
 
