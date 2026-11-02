@@ -22,9 +22,9 @@ the optional `font_CJK.ttf` is user-provided and not in any artifact.
 
 Extract the ZIP and read `BUILD-MANIFEST.json` for the source commit, edition, configuration,
 compiler and ps2build components. Launch the ELF requested in the test instructions. A
-configuration artifact holds only a loader build, its manifest, its licences and `CREDITS`, so keep
-the complete companion installation from a `release-*` kit for Neutrino, Ember, POPSTARTER and
-artwork.
+configuration artifact holds a loader build with its manifest, licences and `CREDITS`, not a
+companion installation, so keep the complete companion installation from a `release-*` kit for
+Neutrino, Ember, POPSTARTER and artwork.
 
 Replacing only RIPTOPL.ELF does not update companion cores or modules. Use the full install kit
 when its notes announce such updates; back up configuration and save cards first.
