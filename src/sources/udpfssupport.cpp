@@ -22,6 +22,7 @@
 #include "include/extern_irx.h"
 #include "include/cheatman.h"
 #include "include/gamesource.h"
+#include "include/riptlite.h" // LITE_HAS_*: a RiptOPLite build without this device
 #include "include/ethsupport.h"  // ethGetModulesLoaded() for the UDPFS<->SMB NIC interlock
 #include "include/bdmsupport.h"  // bdmIsUDPBDLoaded() for the UDPFS<->UDPBD NIC interlock
 #include "include/mmcesupport.h" // mmceSendGameID() cross-device game-id (#261)
@@ -84,6 +85,11 @@ static void udpfsLoadModules(void)
 
     LOG("UDPFSSUPPORT LoadModules\n");
 
+#if defined(RIPTOPLITE) && !LITE_HAS_UDPFS
+    // A RiptOPLite build for another device carries no UDPFS drivers (include/riptlite.h).
+    (void)ipArg;
+    return;
+#endif
     if (udpfsIomanModLoaded)
         return;
     if (udpfsNicClaimed) {
