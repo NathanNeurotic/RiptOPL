@@ -1,8 +1,9 @@
-# Sourced by run.sh, after its other cases: a game launched with the longest file name the menu lists.
+# Sourced by run.sh, after its other cases: games launched with the longest file names the menu
+# lists and the lengths around the old 160-byte limit, and an image that is not there.
 #
 # longname.c compiles modules/iopcore/cdvdman/device-smb.c whole, with the real cdvd_config.h and the
 # in-game reader of either module: smb2.c (smb2_cdvdman) or smb.c (smb_cdvdman, SMB1). It fills the
-# settings block as EthSource::launch does, for an image name of ISO_GAME_NAME_MAX bytes
+# settings block as the EE's launch does, for an image name of ISO_GAME_NAME_MAX bytes
 # (include/supportbase.h), and of the lengths either side of each one the old 160-byte field cut,
 # with the longest prefix the block holds and with none, then mounts and reads the image the way the
 # in-game reader does: DeviceFSInit builds the path from the block and opens it, DeviceReadSectors

@@ -2,7 +2,7 @@
 
    The menu lists an image whose name is up to ISO_GAME_NAME_MAX bytes (include/supportbase.h) with a
    four-byte extension, and in the old format with a startup and a dot in front ("SLUS_209.46.Name.iso").
-   EthSource::launch (src/sources/ethsupport.cpp) writes that file name into the settings block,
+   The EE's SMB launch (in its ethsupport source) writes that file name into the settings block,
    cdvdman_settings_smb.filename. In the game, modules/iopcore/cdvdman/device-smb.c builds
    "\<prefix>\DVD\<file name>" from the block, opens it and reads the image through it. device-smb.c is
    compiled here whole, with the real cdvd_config.h and either smb2.c (smb2_cdvdman) or, built with
@@ -243,7 +243,7 @@ int main(int argc, char **argv)
     }
     name[len] = '\0';
 
-    // The file name, and the settings block as EthSource::launch fills it for each format.
+    // The file name, and the settings block as the EE's launch fills it for each format.
     memset(&cdvdman_settings, 0, sizeof(cdvdman_settings));
     cdvdman_settings.common.NumParts = usbld ? 2 : 1; // sbPrepare: game->parts
     cdvdman_settings.common.media = 0x14;             // a DVD: device-smb.c opens it in DVD

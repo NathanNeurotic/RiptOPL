@@ -1,7 +1,7 @@
 /* Host check, no server: the in-game SMB reader opens every image name the menu can launch whole.
 
-   EthSource::launch (src/sources/ethsupport.cpp) writes the image's file name into the settings block,
-   cdvdman_settings_smb.filename, with snprintf, and modules/iopcore/cdvdman/device-smb.c builds the
+   The EE's SMB launch (in its ethsupport source) writes the image's file name into the settings
+   block, cdvdman_settings_smb.filename, with snprintf, and modules/iopcore/cdvdman/device-smb.c builds the
    path it opens from that block: "\<prefix>\DVD\<file name>" (CD for a CD), or for a USBExtreme game
    "\<prefix>\<file name>.00" and on. This compiles device-smb.c whole, with the real cdvd_config.h and
    an SMB layer that only records the paths it is asked to open, then for each format, name length
@@ -156,7 +156,7 @@ static void launch(int format, int namelen, const char *prefix, int media)
     memset(&cdvdman_settings, 0, sizeof(cdvdman_settings));
     cdvdman_settings.common.NumParts = (u8)parts;
     cdvdman_settings.common.media = (u8)media;
-    // EthSource::launch, case by case (game->startup, game->name, game->extension):
+    // The EE's launch, case by case (game->startup, game->name, game->extension):
     switch (format) {
         case OLD_ISO:
             snprintf(file, sizeof(file), "%s.%s%s", startup, name, extension);
