@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install the newest ps2build SDK (unless already present) plus the two port packages it does not ship
+# Install the pinned ps2build SDK (unless already present) plus the two port packages it does not ship
 # (ogg, vorbis/vorbisfile). Versions come from .github/ps2build-sdk.env (in CI, the versions the SDK step
 # resolved, through PS2BUILD_SDK_PIN); PS2BUILD_TOOLCHAIN selects gcc
 # (default), llvm, or all for the port packages.
