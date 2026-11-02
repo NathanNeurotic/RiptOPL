@@ -1,7 +1,9 @@
 """Test publication authorization and first-release/existing-tag transitions."""
 from pathlib import Path
 import hashlib
+import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -400,6 +402,60 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('licence = os.path.join(directory, "LICENSE-LIBSMB2.txt")', release)
         self.assertIn('"modules", "network", "smb2man", "libsmb2", "LICENCE-LGPL-2.1.txt"', release)
         self.assertIn('run("zip", "-j", package, licence)', release)
+
+    def test_local_release_zip_takes_whichever_changelog_make_changelog_leaves(self):
+        # In a full clone make_changelog.sh writes DETAILED_CHANGELOG and deletes its header file; in a
+        # git worktree, a source archive or a shallow clone it leaves only the header file. The zip must
+        # be built in both cases, never from a DETAILED_CHANGELOG an earlier run left behind.
+        spec = importlib.util.spec_from_file_location("riptopl_assets", ROOT / "tools/assets.py")
+        cwd = os.getcwd()
+        assets = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(assets)  # chdirs to the repository root
+        finally:
+            os.chdir(cwd)
+
+        def release(outcome):
+            with tempfile.TemporaryDirectory() as directory:
+                tree = Path(directory)
+                (tree / "build/bin").mkdir(parents=True)
+                (tree / "build/bin/riptopl-packed.elf").write_bytes(b"\x7fELF")
+                libsmb2 = tree / "modules/network/smb2man/libsmb2"
+                libsmb2.mkdir(parents=True)
+                (libsmb2 / "LICENCE-LGPL-2.1.txt").write_text("LGPL-2.1 text", encoding="utf-8")
+                (tree / "DETAILED_CHANGELOG").write_text("stale", encoding="utf-8")
+                header = tree / "header"
+                zipped = {}
+
+                def run(*cmd, **kw):
+                    if cmd == ("sh", "tools/make_changelog.sh"):
+                        if outcome == "full":
+                            (tree / "DETAILED_CHANGELOG").write_text("header and history", encoding="utf-8")
+                        elif outcome == "header":
+                            header.write_text("header", encoding="utf-8")
+                        return
+                    self.assertEqual(cmd[:2], ("zip", "-r") if not zipped else ("zip", "-j"), cmd)
+                    for name in cmd[3:]:
+                        path = tree / name
+                        zipped[path.name] = path.read_text(encoding="utf-8") if name.endswith(("CHANGELOG", ".txt")) else ""
+
+                os.chdir(tree)
+                try:
+                    with patch.object(assets, "run", run), patch.object(assets, "opl_version", return_value="v0"), \
+                            patch.object(assets, "CHANGELOG_HEADER", str(header)):
+                        assets.release()
+                finally:
+                    os.chdir(cwd)
+                return zipped
+
+        for outcome, changelog in (("full", "header and history"), ("header", "header")):
+            zipped = release(outcome)
+            self.assertEqual(zipped["DETAILED_CHANGELOG"], changelog, outcome)
+            self.assertEqual(zipped["LICENSE-LIBSMB2.txt"], "LGPL-2.1 text", outcome)
+            self.assertEqual(set(zipped), {"RIPTOPL-v0.ELF", "DETAILED_CHANGELOG", "CREDITS", "LICENSE", "README.md",
+                                           "LICENSE-LIBSMB2.txt"}, outcome)
+        with self.assertRaisesRegex(SystemExit, "wrote no DETAILED_CHANGELOG"):
+            release("nothing")
 
 
 if __name__ == "__main__":

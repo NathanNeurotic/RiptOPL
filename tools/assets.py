@@ -218,6 +218,9 @@ def version():
 
 
 # ------------------------------------------------------------------ release
+CHANGELOG_HEADER = "/tmp/DETAILED_CHANGELOG"  # where tools/make_changelog.sh writes its header first
+
+
 def release():
     v = opl_version()
     packed = os.path.join("build", "bin", "riptopl-packed.elf")
@@ -225,8 +228,17 @@ def release():
         sys.exit(f"{packed} missing: run `ps2build build` first")
     elf = f"RIPTOPL-{v}.ELF"
     shutil.copyfile(packed, elf)
+    # In a full clone make_changelog.sh writes DETAILED_CHANGELOG and deletes its header file. With
+    # no .git directory (a git worktree, a source archive) or a short history (a shallow clone, where
+    # its git log fails) it stops after the header, which is then the whole changelog. A
+    # DETAILED_CHANGELOG left by an earlier run must not stand in for either.
+    if os.path.exists("DETAILED_CHANGELOG"):
+        os.remove("DETAILED_CHANGELOG")
     run("sh", "tools/make_changelog.sh")
-    shutil.copyfile("/tmp/DETAILED_CHANGELOG", "DETAILED_CHANGELOG")
+    if os.path.isfile(CHANGELOG_HEADER):
+        shutil.copyfile(CHANGELOG_HEADER, "DETAILED_CHANGELOG")
+    elif not os.path.isfile("DETAILED_CHANGELOG"):
+        sys.exit("tools/make_changelog.sh wrote no DETAILED_CHANGELOG")
     package = f"RIPTOPL-{v}.ZIP"
     run("zip", "-r", package, elf, "DETAILED_CHANGELOG", "CREDITS", "LICENSE", "README.md")
     # The ELF embeds smb2man over libsmb2 (LGPL-2.1): its licence goes with it, as in every release.
