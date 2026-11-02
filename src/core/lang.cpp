@@ -441,8 +441,15 @@ void lngInitFallbackFont(void)
 
 void lngInit(void)
 {
-    if (lngSwitchSema < 0)
-        lngSwitchSema = semaCreateBinary();
+    if (lngSwitchSema < 0) {
+        // A binary semaphore, made the way sbCreateSemaphore makes one. This layer may not call into supportbase
+        // (tools/analyze_coupling.py), so it uses the kernel call, as bgm does.
+        ee_sema_t sema;
+        sema.option = sema.attr = 0;
+        sema.init_count = 1;
+        sema.max_count = 1;
+        lngSwitchSema = CreateSema(&sema);
+    }
     fntInit();
 
     lngAddLanguages(gBaseMCDir, "/", -1);

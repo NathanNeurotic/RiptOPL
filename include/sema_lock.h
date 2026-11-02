@@ -37,16 +37,4 @@ private:
 
 } // namespace raii
 
-// A binary semaphore (one holder at a time), made the way sbCreateSemaphore makes one. For code below the device
-// layer, which may not call into supportbase (tools/analyze_coupling.py).
-static inline int semaCreateBinary(void)
-{
-    ee_sema_t sema;
-
-    sema.option = sema.attr = 0;
-    sema.init_count = 1;
-    sema.max_count = 1;
-    return CreateSema(&sema);
-}
-
 #endif // SEMA_LOCK_H

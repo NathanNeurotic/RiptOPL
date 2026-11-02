@@ -1854,8 +1854,15 @@ void thmInit(void)
 {
     LOG("THEMES Init\n");
     gTheme = NULL;
-    if (thmSwitchSema < 0)
-        thmSwitchSema = semaCreateBinary();
+    if (thmSwitchSema < 0) {
+        // A binary semaphore, made the way sbCreateSemaphore makes one. This layer may not call into supportbase
+        // (tools/analyze_coupling.py), so it uses the kernel call, as fntsys and saveicon do.
+        ee_sema_t sema;
+        sema.option = sema.attr = 0;
+        sema.init_count = 1;
+        sema.max_count = 1;
+        thmSwitchSema = CreateSema(&sema);
+    }
 
     thmReloadScreenExtents();
 
