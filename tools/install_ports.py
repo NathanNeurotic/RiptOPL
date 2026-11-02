@@ -82,6 +82,8 @@ def mirror_file(repo, release, name):
             base = os.environ.get("PS2BUILD_SDK_MIRROR_URL") or f"https://github.com/{repo}/releases/download/{release}"
         return f"{base}/{name}", download(f"{base}/{name}")
     api = os.environ.get("PS2BUILD_SDK_MIRROR_API_URL") or "https://api.github.com"
+    if not api.startswith("https://"):
+        raise ValueError("the mirror token is sent over HTTPS only")
     path = "latest" if release == "latest" else "tags/" + urllib.parse.quote(release, safe="")
     info = json.loads(download(f"{api}/repos/{repo}/releases/{path}", token, "application/vnd.github+json"))
     ids = [asset.get("id") for asset in info.get("assets", []) if asset.get("name") == name]
