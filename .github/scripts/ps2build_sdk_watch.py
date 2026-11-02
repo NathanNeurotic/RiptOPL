@@ -2,8 +2,9 @@
 """ps2build SDK Watch: compare the pinned ps2build SDK with the newest official releases.
 
 .github/ps2build-sdk.env pins every version of the SDK, so build jobs never ask git.techwritescode.dev
-which release is newest. Unpinned, that cost 11 release-API requests in every matrix job: about 70 jobs
-per push, 20k to 70k requests a day on tech's server. This script is now the only place that asks.
+which release is newest. Unpinned, every build job asked once per package, 9 to 11 requests; with RiptOPL's
+~70 jobs per push that came to 20k to 70k requests a day on tech's server. This script is now the only
+place that asks.
 .github/workflows/ps2build-sdk-watch.yml runs it once a week: one request for each pinned name (the SDK
 components, llvm-toolchain and the extra packages) and none for the names in PS2BUILD_SDK_HOLD.
 

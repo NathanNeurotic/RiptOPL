@@ -103,7 +103,9 @@ class WatchTests(unittest.TestCase):
         # A bare name or "latest" would send every build job back to the release API.
         values = watch.read_pin((ROOT / ".github/ps2build-sdk.env").read_text())
         self.assertEqual(watch.problems(values), [])
-        self.assertEqual([name for name, _ in watch.entries(values)][-3:], ["llvm-toolchain", "ogg", "vorbis"])
+        names = [name for name, _ in watch.entries(values)]
+        self.assertIn("llvm-toolchain", names)
+        self.assertEqual(names[-2:], ["ogg", "vorbis"])  # RiptOPL also pins the ports it adds
         self.assertEqual(watch.main(["--check"]), 0)
 
     def test_problems_name_unpinned_versions_and_a_half_mirror_pin(self):
