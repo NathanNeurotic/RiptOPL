@@ -8,12 +8,20 @@
 #include "include/sound.h"
 #include "include/config.h"
 #include "include/gui.h" // guiLock/guiUnlock -- serialize the language name-list rebuild
+#include "include/sema_lock.h"
 #include <dirent.h>
 #include <limits.h>
 
 static int guiLangID = 0;
 static char **lang_strs = internalEnglish;
 static int nValidEntries = LANG_STR_COUNT;
+
+// One language switch at a time. The IO thread switches language when a device with the saved language comes up,
+// or for a queued settings load, and the GUI thread does for the settings. lngLoadFromFile reads the current strings
+// before it takes the GUI lock to swap, so two switches at once would both free that one table, and guiLangID and
+// nValidEntries must describe the table that is published. lngSetGuiValue holds this lock from before that read until
+// the id is committed. Lock order: language switch, theme switch, GUI lock. lngInit creates it before the IO thread.
+static int lngSwitchSema = -1;
 
 static int nLanguages = 0;
 static int languageCapacity = 0;
@@ -185,11 +193,16 @@ static int lngLoadFromFile(char *path, char *name)
             newL[strId] = internalEnglish[strId];
             strId++;
         }
+        // The GUI thread draws these strings under the GUI lock, and lngAddLanguages runs this on the IO thread when
+        // a device with the saved language comes up: publish the new strings and free the old ones under the same
+        // lock (YAOPL b45a592d, Roman Kelesidis). lngFreeFromFile still sees the old guiLangID and nValidEntries.
+        // The caller (lngSetGuiValue) holds lngSwitchSema, so curL is still the published table here.
+        host::ui().lock();
         lang_strs = newL;
         lngFreeFromFile(curL);
-
         // remember how many entries were read from the file (for the free later)
         nValidEntries = newEntries;
+        host::ui().unlock();
 
         // "lang_" + language name + ".lng": parent path can exceed 128 bytes.
         size_t dirLen = strlen(path) - strlen(name) - 9;
@@ -428,6 +441,15 @@ void lngInitFallbackFont(void)
 
 void lngInit(void)
 {
+    if (lngSwitchSema < 0) {
+        // A binary semaphore, made the way sbCreateSemaphore makes one. This layer may not call into supportbase
+        // (tools/analyze_coupling.py), so it uses the kernel call, as bgm does.
+        ee_sema_t sema;
+        sema.option = sema.attr = 0;
+        sema.init_count = 1;
+        sema.max_count = 1;
+        lngSwitchSema = CreateSema(&sema);
+    }
     fntInit();
 
     lngAddLanguages(gBaseMCDir, "/", -1);
@@ -451,6 +473,7 @@ void lngEnd(void)
 
 int lngSetGuiValue(int langID)
 {
+    raii::SemaLock lock(lngSwitchSema);
     if (langID >= 0 && langID <= nLanguages) {
         if (guiLangID != langID) {
             bgmMute();
@@ -466,22 +489,26 @@ int lngSetGuiValue(int langID)
                 free(path);
                 if (loaded) {
                     guiLangID = langID;
-                    thmSetGuiValue(thmGetGuiValue(), 1);
+                    thmReload();
                     bgmUnMute();
                     return 1;
                 }
             }
-            /* Free the previously-loaded foreign lang_strs before switching to
-               internalEnglish. guiLangID is still non-zero here so lngFreeFromFile's
-               guard correctly allows the free; nValidEntries still holds the old
+            /* Switch to internalEnglish and free the previously-loaded foreign lang_strs, under the GUI lock as in
+               lngLoadFromFile (lngPublishLanguages reaches this on the IO thread too). English is published
+               before the old table is freed, so a frame never finds a freed table. guiLangID is still non-zero
+               here so lngFreeFromFile's guard correctly allows the free; nValidEntries still holds the old
                file-entry count so the per-entry loop is correctly bounded. */
-            lngFreeFromFile(lang_strs);
+            host::ui().lock();
+            char **oldL = lang_strs;
             lang_strs = internalEnglish;
+            lngFreeFromFile(oldL);
             guiLangID = 0;
             nValidEntries = LANG_STR_COUNT;
+            host::ui().unlock();
             // lang switched back to internalEnglish, reload default font
             fntLoadDefault(NULL);
-            thmSetGuiValue(thmGetGuiValue(), 1);
+            thmReload();
             bgmUnMute();
             return 1;
         }
