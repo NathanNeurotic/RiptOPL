@@ -1,7 +1,9 @@
 """Test publication authorization and first-release/existing-tag transitions."""
 from pathlib import Path
 import hashlib
+import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -35,6 +37,11 @@ class PublicationTests(unittest.TestCase):
             self.assertIn(f"/{elf})", body)
             self.assertIn(f"/{psu})", body)
             self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-LANGS-v1.2.0-Beta-3925.zip)", body)
+            # The standalone ELF and PSU have no CREDITS beside them: the notes name libsmb2 and its licence.
+            self.assertIn(f"- [libsmb2 licence](https://github.com/NathanNeurotic/RiptOPL/releases/download/{options['tag']}"
+                          "/LICENSE-LIBSMB2.txt) - every loader embeds [libsmb2](https://github.com/sahlberg/libsmb2) by "
+                          "[Ronnie Sahlberg](https://github.com/sahlberg), used under the GNU LGPL-2.1.\n", body)
+            self.assertLess(body.index(f"/{psu})"), body.index("/LICENSE-LIBSMB2.txt)"))
             # Every archive link ends with the version; the ELF and PSU links never change.
             for link in re.findall(r"\]\((\S+?)\)", body.split("## Downloads", 1)[1]):
                 if link.endswith(".zip"):
@@ -48,7 +55,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertLess(body.index("[Bug-report build]"), body.index("[Loader ELF]"))
             else:
                 self.assertNotIn("BUGREPORT", body)
-            self.assertEqual({"rolling-ra": 5}.get(options["tag"], 7), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
+            self.assertEqual({"rolling-ra": 6}.get(options["tag"], 8), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
                 self.assertIn("Included build: ORBIT-v1.0.2 -- [ORBIT Neutrino RA runtime v1.0.2]"
                               "(https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2)", body)
@@ -58,7 +65,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertNotIn("ORBIT", body)
             self.assertNotIn("Release compiler", body)
             self.assertNotIn("Imported production documentation", body)
-            self.assertLess(len(body), 2200)  # the RA notes link eight versioned downloads and ORBIT
+            self.assertLess(len(body), 2400)  # the RA notes link eight versioned downloads, ORBIT and the libsmb2 licence
 
     def test_ra_notes_refuse_a_runtime_other_than_the_pin(self):
         with patch.object(publisher, "git", return_value="b" * 40 + "\x00Fix"), self.assertRaises(ValueError):
@@ -374,6 +381,119 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('kit.read("LICENSE-LIBSMB2.txt") != (path / "LICENSE-LIBSMB2.txt").read_bytes()', publish)
         app = (ROOT / ".github/scripts/package_release_app.py").read_text(encoding="utf-8")
         self.assertIn('"LICENSE-LIBSMB2.txt",  # every loader embeds libsmb2 (LGPL-2.1)', app)
+
+    def test_credits_say_every_loader_uses_libsmb2_under_the_lgpl(self):
+        # CREDITS is the LGPL-2.1 section 6 notice that travels with the licence: it names libsmb2, says every
+        # loader embeds it, that it is used under the LGPL-2.1 and where that licence text is.
+        credits = (ROOT / "CREDITS").read_text(encoding="utf-8")
+        entry = credits[credits.index("  - libsmb2, by Ronnie Sahlberg"):]
+        entry = " ".join(entry[:entry.index("\n\n")].split())
+        for phrase in ("https://github.com/sahlberg/libsmb2", "every loader embeds", "used under the LGPL-2.1 licence",
+                       "LICENSE-LIBSMB2.txt"):
+            self.assertIn(phrase, entry)
+
+    def assert_copied_before_upload(self, workflow, artifact, copies, listed):
+        # The copies run in the job that uploads the artifact, before the upload and whenever it runs: no
+        # condition but success() and no continue-on-error, so a later edit cannot quietly drop the licence.
+        import yaml
+
+        allowed = ("${{ success() }}", "success()")
+        jobs = yaml.safe_load((ROOT / ".github/workflows" / workflow).read_text(encoding="utf-8"))["jobs"]
+        uploads = [(job["steps"], index) for job in jobs.values() for index, step in enumerate(job.get("steps", []))
+                   if "actions/upload-artifact@" in step.get("uses", "") and step.get("with", {}).get("name") == artifact]
+        self.assertEqual(len(uploads), 1, artifact)
+        steps, upload = uploads[0]
+        self.assertEqual(steps[upload]["with"]["path"].split(), listed, artifact)
+        self.assertIn(steps[upload].get("if", allowed[0]), allowed, artifact)
+        for copy in copies:
+            found = [step for step in steps[:upload]
+                     if copy in [line.strip() for line in str(step.get("run", "")).splitlines()]]
+            self.assertEqual(len(found), 1, (artifact, copy))
+            self.assertIn(found[0].get("if", allowed[0]), allowed, (artifact, copy))
+            self.assertNotIn("continue-on-error", found[0], (artifact, copy))
+
+    def test_every_actions_test_build_carries_the_libsmb2_licence(self):
+        # Testers also download loaders straight from Actions runs, so those artifacts carry the licence and
+        # CREDITS, which says the loader uses libsmb2 under it.
+        libsmb2 = ROOT / "modules/network/smb2man/libsmb2"
+        for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):
+            self.assertTrue((libsmb2 / filename).is_file(), filename)
+        self.assertTrue((ROOT / "CREDITS").is_file())
+        build = (ROOT / "tools/build_edition.py").read_text(encoding="utf-8")
+        staging = build[build.index('if args.configuration != "standard":'):build.index("print(f\"Built ")]
+        self.assertIn('for filename in ("LICENSE", "CREDITS"):', staging)
+        self.assertIn('destination = stage / "licenses" / "libsmb2"', staging)
+        self.assertIn('for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):', staging)
+        self.assertIn('shutil.copyfile(ROOT / "modules/network/smb2man/libsmb2" / filename, destination / filename)', staging)
+        self.assert_copied_before_upload(
+            "ps2build.yml", "riptopl-ps2build-${{ matrix.toolchain }}",
+            ["cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt build/bin/LICENSE-LIBSMB2.txt",
+             "cp -f CREDITS build/bin/CREDITS"],
+            ["build/bin/riptopl-packed.elf", "build/bin/LICENSE-LIBSMB2.txt", "build/bin/CREDITS"])
+        self.assert_copied_before_upload(
+            "flavours.yml", "OPL-PS2BUILD",
+            ["cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt LICENSE-LIBSMB2.txt"],
+            ["build/bin/riptopl-packed.elf", "BUILD-MANIFEST.txt", "LICENSE-LIBSMB2.txt", "CREDITS"])
+        # The local `tools/assets.py release` zip is a loader download too.
+        assets = (ROOT / "tools/assets.py").read_text(encoding="utf-8")
+        release = assets[assets.index("def release():"):assets.index("COMMANDS = {")]
+        self.assertIn('licence = os.path.join(directory, "LICENSE-LIBSMB2.txt")', release)
+        self.assertIn('"modules", "network", "smb2man", "libsmb2", "LICENCE-LGPL-2.1.txt"', release)
+        self.assertIn('run("zip", "-j", package, licence)', release)
+
+    def test_local_release_zip_takes_whichever_changelog_make_changelog_leaves(self):
+        # In a full clone make_changelog.sh writes DETAILED_CHANGELOG and deletes its header file; in a
+        # git worktree, a source archive or a shallow clone it leaves only the header file. The zip must
+        # be built in both cases, never from a DETAILED_CHANGELOG an earlier run left behind.
+        spec = importlib.util.spec_from_file_location("riptopl_assets", ROOT / "tools/assets.py")
+        cwd = os.getcwd()
+        assets = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(assets)  # chdirs to the repository root
+        finally:
+            os.chdir(cwd)
+
+        def release(outcome):
+            with tempfile.TemporaryDirectory() as directory:
+                tree = Path(directory)
+                (tree / "build/bin").mkdir(parents=True)
+                (tree / "build/bin/riptopl-packed.elf").write_bytes(b"\x7fELF")
+                libsmb2 = tree / "modules/network/smb2man/libsmb2"
+                libsmb2.mkdir(parents=True)
+                (libsmb2 / "LICENCE-LGPL-2.1.txt").write_text("LGPL-2.1 text", encoding="utf-8")
+                (tree / "DETAILED_CHANGELOG").write_text("stale", encoding="utf-8")
+                header = tree / "header"
+                zipped = {}
+
+                def run(*cmd, **kw):
+                    if cmd == ("sh", "tools/make_changelog.sh"):
+                        if outcome == "full":
+                            (tree / "DETAILED_CHANGELOG").write_text("header and history", encoding="utf-8")
+                        elif outcome == "header":
+                            header.write_text("header", encoding="utf-8")
+                        return
+                    self.assertEqual(cmd[:2], ("zip", "-r") if not zipped else ("zip", "-j"), cmd)
+                    for name in cmd[3:]:
+                        path = tree / name
+                        zipped[path.name] = path.read_text(encoding="utf-8") if name.endswith(("CHANGELOG", ".txt")) else ""
+
+                os.chdir(tree)
+                try:
+                    with patch.object(assets, "run", run), patch.object(assets, "opl_version", return_value="v0"), \
+                            patch.object(assets, "CHANGELOG_HEADER", str(header)):
+                        assets.release()
+                finally:
+                    os.chdir(cwd)
+                return zipped
+
+        for outcome, changelog in (("full", "header and history"), ("header", "header")):
+            zipped = release(outcome)
+            self.assertEqual(zipped["DETAILED_CHANGELOG"], changelog, outcome)
+            self.assertEqual(zipped["LICENSE-LIBSMB2.txt"], "LGPL-2.1 text", outcome)
+            self.assertEqual(set(zipped), {"RIPTOPL-v0.ELF", "DETAILED_CHANGELOG", "CREDITS", "LICENSE", "README.md",
+                                           "LICENSE-LIBSMB2.txt"}, outcome)
+        with self.assertRaisesRegex(SystemExit, "wrote no DETAILED_CHANGELOG"):
+            release("nothing")
 
 
 if __name__ == "__main__":
