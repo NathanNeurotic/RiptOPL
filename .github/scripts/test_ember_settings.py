@@ -316,7 +316,7 @@ for row, var in (('CFG_EMBER_DISPLAY', 'gEmberDisplay'), ('CFG_EMBER_TIMING', 'g
                  ('CFG_EMBER_CONTROLLER', 'gEmberController')):
     if f'{{UI_ENUM, {row},' not in dialogs_c:
         failures.append(f'src/dialogs.c: no {row} row on the PS1 page')
-    if page and f'diaSetEnum(ui, {row},' not in page:
+    if page and f'diaSetEnum(ui, {row},' not in page and f'diaSetEnumIds(ui, {row},' not in page:
         failures.append(f'src/ui/guisettings.cpp: {row} gets no enum list on the composed page')
     if page and f'emberSettingFromRow(ui, {row},' not in page:
         failures.append(f'src/ui/guisettings.cpp: {row} is not read back through emberSettingFromRow')
@@ -636,6 +636,8 @@ if apply_fn and save_game_fn:
 # while the displayed Default row is 0: comparing those raw values used to rewrite an untouched game.
 EDITOR_HARNESS = APPLY_HARNESS.split('@FUNCTIONS@', 1)[0] + r'''
 #define _l(x) "label"
+/* the editor's translated entries are string ids (diaSetEnumIds) */
+enum { _STR_DEFAULT = 1, _STR_AUTO, _STR_ON, _STR_OFF, _STR_EMBER_SHADING_24 };
 #define CFG_EMBER_TIMING 0
 #define CFG_EMBER_DITHER 1
 #define CFG_EMBER_SHADING 2
@@ -647,6 +649,7 @@ static int rows[4], changedRow = -1, changedValue, dialogResult = 1;
 static int cfgWrites, gameWrites, cfgWriteResult = 1;
 static config_set_t *gameMenuLoadConfig(void *unused) { (void)unused; return &editorCfg; }
 static void diaSetEnum(int ui, int row, const char **values) { (void)ui; (void)row; (void)values; }
+static void diaSetEnumIds(int ui, int row, const char **values, const int *ids) { (void)ui; (void)row; (void)values; (void)ids; }
 static void diaSetInt(int ui, int row, int value) { (void)ui; rows[row] = value; }
 static int diaExecuteDialog(int ui, int a, int b, void *c) { (void)ui; (void)a; (void)b; (void)c; return dialogResult; }
 static void diaGetInt(int ui, int row, int *value) { (void)ui; *value = row == changedRow ? changedValue : rows[row]; }

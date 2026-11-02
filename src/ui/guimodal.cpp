@@ -269,6 +269,9 @@ void guiWarning(const char *text, int count)
         return;
     }
 
+    // A copy taken before guiStartFrame, which can wait for the I/O thread: a language switch there frees an _l() string.
+    char message[512]; // as much as guiDrawMsgText wraps
+    snprintf(message, sizeof(message), "%s", text);
     guiStartFrame();
 
     guiShow();
@@ -280,7 +283,7 @@ void guiWarning(const char *text, int count)
     rmDrawLine(50, 75, gGuiScreenWidth - 50, 75, gColWhite);
     rmDrawLine(50, 410, gGuiScreenWidth - 50, 410, gColWhite);
 
-    guiDrawMsgText(text);
+    guiDrawMsgText(message);
 
     guiEndFrame();
 

@@ -33,6 +33,10 @@ program = r'''
 @DEFINITIONS@
 #define CONFIG_GAME 1
 #define _l(id) "label"
+/* the page's translated entries are string ids (diaSetEnumIds) */
+enum { _STR_LANGUAGE_JAPANESE = 1, _STR_LANGUAGE_ENGLISH, _STR_LANGUAGE_FRENCH, _STR_LANGUAGE_SPANISH, _STR_LANGUAGE_GERMAN,
+       _STR_LANGUAGE_ITALIAN, _STR_LANGUAGE_DUTCH, _STR_LANGUAGE_PORTUGUESE, _STR_SYSTEM_DEFAULT, _STR_GLOBAL_SETTINGS,
+       _STR_PERGAME_SETTINGS, _STR_FULL_SCREEN };
 struct UIItem { int unused; };
 static struct UIItem diaOSDConfig[1];
 typedef struct { int value[5]; } config_set_t;
@@ -59,7 +63,14 @@ static config_set_t *gameMenuLoadConfig(struct UIItem *ui) { (void)ui; return &g
 static void diaSetInt(struct UIItem *ui, int id, int value) { (void)ui; assert(id < 1024); rows[id] = value; }
 static void diaGetInt(struct UIItem *ui, int id, int *value) { (void)ui; assert(id < 1024); *value = rows[id]; }
 static void diaSetEnabled(struct UIItem *ui, int id, int enabled) { (void)ui; (void)id; (void)enabled; }
-static void diaSetEnum(struct UIItem *ui, int id, const char **names) { (void)ui; (void)id; (void)names; }
+/* System Default stays the last choice of the language, aspect and video rows: the values match OSDConfig's. */
+static void diaSetEnumIds(struct UIItem *ui, int id, const char **names, const int *ids) {
+    int n = 0;
+    (void)ui;
+    while (names[n] != NULL) n++;
+    assert(n > 0);
+    if (id != OSD_LANGUAGE_SOURCE) assert(ids[n - 1] == _STR_SYSTEM_DEFAULT);
+}
 static int diaExecuteDialog(struct UIItem *ui, int id, short menu, int (*updater)(int)) {
     assert(ui == diaOSDConfig && id == -1 && menu);
     if (nextLanguage >= 0) {

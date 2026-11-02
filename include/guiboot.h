@@ -21,7 +21,7 @@ private:
     bool active_ = false;
     // Single aligned pointer: atomic load/store on the EE, so no lock is needed across threads.
     const char *volatile sticky_ = NULL;
-    char copy_[2][64] = {{0}, {0}};
+    char copy_[2][128] = {{0}, {0}}; // a translated step label is up to 94 bytes (Laotian BOOT_LOADING_USB)
 };
 
 #endif

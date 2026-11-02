@@ -1133,7 +1133,7 @@ static int bdmLoadUsbMassBd(void)
     // Localized boot step, restored with the move into bdmLoadCoreModules. USBMASS_BD is the prime
     // suspect for a real exFAT/USB boot wedge, so it is the last step a stalled console should be
     // naming -- losing this left a wedge here reading as a stall in the PREVIOUS step (BDMFS_FATFS).
-    host::ui().bootStatusSticky(_l(_STR_BOOT_LOADING_USB));
+    host::ui().bootStatusStickyCopy(_l(_STR_BOOT_LOADING_USB));
     bdmDiagBootStageBegin("USBMASS_BD");
     result = bdmLoadOptionalModule("USBMASS_BD", &usbmass_bd_irx, size_usbmass_bd_irx);
     bdmDiagBootStageEnd("USBMASS_BD", result);
@@ -1222,7 +1222,7 @@ void bdmLoadBlockDeviceModules(void)
     // Boot-step localizer: this runs on the IO thread and can wedge on a real drive with no timeout,
     // freezing the splash. Publish the step so a hang here names it instead of the main thread's "Ready.".
     // (brenotomaz exFAT-USB boot hang investigation.)
-    host::ui().bootStatusSticky(_l(_STR_BOOT_LOADING_DRIVERS));
+    host::ui().bootStatusStickyCopy(_l(_STR_BOOT_LOADING_DRIVERS));
 
     WaitSema(bdmLoadModuleLock);
 
@@ -1233,7 +1233,7 @@ void bdmLoadBlockDeviceModules(void)
     // Retry a synchronous bdmLoadCoreModules failure via the generation/worker path. Gated on the
     // setting for the same reason as the core load above: an off source must not become resident.
     if (gEnableUSB && !iUSBModLoaded) {
-        host::ui().bootStatusSticky(_l(_STR_BOOT_LOADING_USB));
+        host::ui().bootStatusStickyCopy(_l(_STR_BOOT_LOADING_USB));
         bdmLoadUsbMassBd();
     }
 

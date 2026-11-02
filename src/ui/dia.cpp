@@ -179,6 +179,18 @@ static int diaWrapExtra(struct UIItem *item, int wrapRoom)
     return (diaWrapLines(diaLabelText(item), wrapRoom) - 1) * MENU_ITEM_HEIGHT;
 }
 
+// The text of entry `index` of an enum: the string of its id, looked up now, in the frame that draws or measures it
+// (diaSetEnumIds), or its enumvalues entry when it has no id. Every read of an entry's text goes through here: a
+// translated string kept from an earlier frame may have been freed by a language switch since.
+static const char *diaEnumEntryText(const struct UIItem *item, int index)
+{
+    const int *ids = item->intvalue.enumids;
+
+    if (ids != NULL && ids[index] >= 0)
+        return _l(ids[index]);
+    return item->intvalue.enumvalues[index];
+}
+
 // The text an enum shows. A corrupt/out-of-range stored index (e.g. a hand-edited cfg) shows the first option:
 // count the NULL-terminated options, then index with a clamped copy so we never read past the array.
 static const char *diaEnumText(const struct UIItem *item)
@@ -191,7 +203,7 @@ static const char *diaEnumText(const struct UIItem *item)
         eidx = 0;
     if (ecount == 0 || item->intvalue.enumvalues[eidx] == NULL)
         return _l(_STR_NO_ITEMS);
-    return item->intvalue.enumvalues[eidx];
+    return diaEnumEntryText(item, eidx);
 }
 
 // A value that fits itself to whatever room is left (an enum, a string, a button) asks a label in front of it for

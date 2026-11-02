@@ -554,7 +554,7 @@ void MmceSupport::armGameIDTransport(void)
     if (!gMMCEEnableGameID || modLoaded)
         return;
 
-    host::ui().bootStatusSticky(_l(_STR_BOOT_ARMING_MMCE)); // boot-step localizer (IO thread) -- see gui.c
+    host::ui().bootStatusStickyCopy(_l(_STR_BOOT_ARMING_MMCE)); // boot-step localizer (IO thread), a copy -- see gui.c
     loadModules();
     // Post-load marker (#254): the boot arm runs right after GUI_INIT_DONE; a serial log that
     // shows the arm begin without this completion line localizes a wedge to the mmceman load.

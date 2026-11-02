@@ -66,6 +66,7 @@ functions = ''.join(function(dia, sig) for sig in (
     'static int diaWrapRoom(',
     'static int diaWrapLines(',
     'static int diaWrapExtra(',
+    'static const char *diaEnumEntryText(',
     'static const char *diaEnumText(',
     'static int diaRowTailWidth(',
     'static int diaItemHeight(',

@@ -303,7 +303,10 @@ static void fmFill(void)
     for (i = 0; i < fmCount; i++)
         marks += fmMarked[i];
 
-    diaSetLabel(diaFileManager, FM_PATH, fmInFolder() ? fmDir : _l(_STR_FM_DRIVES));
+    if (fmInFolder())
+        diaSetLabel(diaFileManager, FM_PATH, fmDir);
+    else
+        diaSetLabelId(diaFileManager, FM_PATH, _STR_FM_DRIVES); // looked up in each frame
     clip[0] = marked[0] = '\0';
     if (fmClipCount > 0)
         snprintf(clip, sizeof(clip), _l(fmClipCut ? _STR_FM_CLIP_CUT : _STR_FM_CLIP_COPY), fmClipCount);
@@ -574,7 +577,7 @@ static void fmActions(int e)
     diaSetLabel(diaFileActions, FMA_TITLE, f->name);
     diaSetVisible(diaFileActions, FMA_OPEN, f->isDir);
     diaSetVisible(diaFileActions, FMA_RUN, isElf);
-    diaSetLabel(diaFileActions, FMA_MARK, _l(fmMarked[e] ? _STR_FM_UNMARK : _STR_FM_MARK));
+    diaSetLabelId(diaFileActions, FMA_MARK, fmMarked[e] ? _STR_FM_UNMARK : _STR_FM_MARK);
     diaSetVisible(diaFileActions, FMA_UNPACK, isPsu);
     diaSetEnabled(diaFileActions, FMA_CUT, gEnableWrite);
     diaSetEnabled(diaFileActions, FMA_RENAME, gEnableWrite);

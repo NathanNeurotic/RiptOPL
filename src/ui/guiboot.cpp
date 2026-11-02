@@ -4,8 +4,9 @@
 // freeze the splash, while the MAIN thread races ahead setting "Ready." -- the frozen screen would then
 // show a useless "Ready." instead of the stuck step. An IO-thread step publishes its label via
 // setSticky(); line() PREFERS it over the main-thread text, so whichever ordering wins the STUCK STEP is
-// what stays on screen. Cross-thread state is a single aligned POINTER to a static _l() string -- no
-// shared buffer, so no data race. Cleared by set(NULL).
+// what stays on screen. Cross-thread state is a single aligned POINTER -- to a string literal
+// (setSticky), or to one of two owned buffers (setStickyCopy, which the translated step labels use: a
+// language switch frees an _l() string) -- so no data race. Cleared by set(NULL).
 
 #include "include/guiboot.h"
 

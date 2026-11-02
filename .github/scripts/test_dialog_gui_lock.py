@@ -34,6 +34,11 @@ Checks, on the source:
    locks exist before the IO thread starts. A reload of the current theme reads the id under the lock
    (thmReload), never as thmSetGuiValue(thmGetGuiValue(), 1), which can reload a theme the IO thread has
    just replaced. Theme code never switches language, so the lock order stays language, theme, GUI.
+6. A row keeps the string id of translated text and looks the string up in the frame that draws it: a language switch
+   frees the strings of the language it leaves, on the Language page or on the IO thread between two frames. No enum
+   list handed to diaSetEnum or diaSetEnumIds holds an _l() pointer, in its initializer or filled in at run time, and
+   a list with ids has one per entry: "" with an id, any other entry with -1. No diaSetLabel call is handed an _l()
+   pointer, directly or through a variable. The Settings Index keeps its labels as ids (static const int labels[]).
 """
 from pathlib import Path
 import re
@@ -54,6 +59,7 @@ KEYB_FILE = 'src/ui/diaeditors.cpp' if CPP else 'src/dia.c'
 GUI_FILE = 'src/ui/gui.cpp' if CPP else 'src/gui.c'
 THEMES_FILE = 'src/gfx/themes.cpp' if CPP else 'src/themes.c'
 LANG_FILE = 'src/core/lang.cpp' if CPP else 'src/lang.c'
+SETTINGS_FILE = 'src/ui/guisettings.cpp'
 
 CALL = re.compile(r'\b(guiLock|guiUnlock|rmStartFrame|rmEndFrame|readPads|getKey)\s*\(')
 # Both spellings take the same semaphore (RiptOPL's host::ui().lock() calls guiLock()).
@@ -350,6 +356,125 @@ class SwitchLock:
         return None
 
 
+ENUM_SETTER = re.compile(r'\bdiaSetEnum(Ids)?\s*\(')
+LABEL_SETTER = re.compile(r'\bdiaSetLabel\s*\(')
+NOT_NAMES = {'NULL', 'const', 'char', 'int', 'static', 'struct', 'nullptr'}
+
+
+def initializer(code, at):
+    """The text between the braces of the initializer whose '{' is the first one at or after at."""
+    start = code.find('{', at)
+    depth = 0
+    for i in range(start, len(code)):
+        if code[i] == '{':
+            depth += 1
+        elif code[i] == '}':
+            depth -= 1
+            if depth == 0:
+                return code[start + 1:i]
+    return ''
+
+
+def top_level_items(text):
+    items, depth, cur = [], 0, ''
+    for c in text:
+        if c in '({[':
+            depth += 1
+        elif c in ')}]':
+            depth -= 1
+        if c == ',' and depth == 0:
+            items.append(cur.strip())
+            cur = ''
+        else:
+            cur += c
+    if cur.strip():
+        items.append(cur.strip())
+    return items
+
+
+def check_translated_rows():
+    for path in sorted((root / 'src').rglob('*')):
+        if path.suffix not in ('.c', '.cpp'):
+            continue
+        rel = str(path.relative_to(root))
+        # Literals blanked (quotes kept), so a comma or brace inside a string is not read as code.
+        code = blank_literals(strip_comments(path.read_text(encoding='utf-8', errors='replace').replace('\r\n', '\n')))
+        where = lambda pos: '%s:%d' % (rel, code.count('\n', 0, pos) + 1)
+        for call in ENUM_SETTER.finditer(code):
+            line_start = code.rfind('\n', 0, call.start()) + 1
+            if re.match(r'\s*int\s', code[line_start:call.start()]):
+                continue  # the definition
+            args = call_args(code, call.end() - 1)
+            if len(args) != (4 if call.group(1) else 3):
+                failures.append('%s %s with %d arguments' % (where(call.start()), call.group(0).strip('( '), len(args)))
+                continue
+            setter = call.group(0).strip('( ')
+            for expr in args[2:]:
+                if '_l(' in expr:
+                    failures.append('%s %s is handed an _l() pointer' % (where(call.start()), setter))
+                for name in set(re.findall(r'\b([A-Za-z_]\w*)\b', expr)) - NOT_NAMES:
+                    # its initializer, and every store into it or to it, in this file
+                    for m in re.finditer(r'\b%s\s*(?:\[[^\]\n]*\])*\s*=\s*([^;]*);' % re.escape(name), code):
+                        if m.group(1).startswith('='):
+                            continue  # ==
+                        if '_l(' in m.group(1):
+                            failures.append('%s %s gets an _l() pointer, and %s draws it in later frames: give the '
+                                            'entry a string id (diaSetEnumIds)'
+                                            % (where(m.start()), name, where(call.start())))
+            if call.group(1):
+                vals = re.fullmatch(r'\w+', args[2])
+                ids = re.fullmatch(r'\w+', args[3])
+                if not vals or not ids:
+                    continue
+                vals_m = re.search(r'\b%s\s*\[[^\]\n]*\]\s*=\s*\{' % args[2], code)
+                ids_m = re.search(r'\b%s\s*\[[^\]\n]*\]\s*=\s*\{' % args[3], code)
+                if not vals_m or not ids_m:
+                    continue  # filled in at run time
+                body = initializer(code, vals_m.end() - 1)
+                if '#' in body:
+                    continue  # entries under #ifdef
+                entries = top_level_items(body)
+                if entries and entries[-1] == 'NULL':
+                    entries = entries[:-1]
+                id_list = top_level_items(initializer(code, ids_m.end() - 1))
+                if len(id_list) != len(entries):
+                    failures.append('%s %s has %d entries and %s %d ids: one id per entry'
+                                    % (where(call.start()), args[2], len(entries), args[3], len(id_list)))
+                    continue
+                for entry, sid in zip(entries, id_list):
+                    if (entry == '""') != (sid != '-1'):
+                        failures.append('%s %s: an entry with an id is "", any other has -1 (%s / %s)'
+                                        % (where(call.start()), args[2], entry, sid))
+        for call in LABEL_SETTER.finditer(code):
+            line_start = code.rfind('\n', 0, call.start()) + 1
+            if re.match(r'\s*int\s', code[line_start:call.start()]):
+                continue  # the definition
+            args = call_args(code, call.end() - 1)
+            text = args[2] if len(args) == 3 else ''
+            if '_l(' in text:
+                failures.append('%s diaSetLabel is handed an _l() pointer: use diaSetLabelId' % where(call.start()))
+            elif re.fullmatch(r'[A-Za-z_]\w*', text):
+                # a variable set from _l() earlier in the function
+                fn_starts = [m.start() for m in re.finditer(r'^\S[^\n]*\)\s*\n\{', code[:call.start()], re.M)]
+                fn_start = max(fn_starts, default=0)
+                for m in re.finditer(r'\b%s\s*=\s*([^;=][^;]*);' % re.escape(text), code[fn_start:call.start()]):
+                    if '_l(' in m.group(1):
+                        failures.append('%s diaSetLabel is handed %s, an _l() pointer: use diaSetLabelId'
+                                        % (where(call.start()), text))
+
+    if not CPP:
+        return  # the C edition keeps its own copy of this test, which checks its Index
+    settings = blank_literals(strip_comments(read(SETTINGS_FILE)))
+    index = function_body(settings, 'int SettingsShell::showIndex(')
+    if index is None:
+        failures.append('the Settings Index not found in ' + SETTINGS_FILE)
+        return
+    m = re.search(r'([^;{}\n]*)\blabels\[SETTINGS_PAGE_COUNT \+ 1\]\s*=\s*\{', index)
+    if not m or m.group(1).strip() != 'static const int' or '_l(' in initializer(index, m.end() - 1):
+        failures.append('%s: the Settings Index must keep its labels as string ids (static const int labels[]), '
+                        'looked up in each frame' % SETTINGS_FILE)
+
+
 def check_switch_lock(lock, takers, locked_only):
     for name in takers:
         f = lock.body(name)
@@ -408,16 +533,19 @@ def check_switch_locks():
         lang = SwitchLock(LANG_FILE, 'raii::SemaLock lock(lngSwitchSema);', 'lock.unlock();', True)
         theme_takers = ('addElements', 'reinit', 'setGuiValue', 'thmSetView', 'thmCycleView',
                         'thmRefreshDisplayLayout', 'thmRefreshGridLayout', 'thmReload', 'thmInit')
-        lang_locked = ('lngLoadFromFile',)
+        # lngPublishLanguages checks the user's pick and applies the saved language under one hold.
+        lang_locked = ('lngLoadFromFile', 'lngSetGuiValueLocked')
+        lang_takers = ('lngSetGuiValue', 'lngSetUserPicked', 'lngPublishLanguages')
     else:
         theme = SwitchLock(THEMES_FILE, 'thmSwitchLock();', 'thmSwitchUnlock();', False)
         lang = SwitchLock(LANG_FILE, 'lngSwitchLock();', 'lngSwitchUnlock();', False)
         theme_takers = ('thmAddElements', 'thmReinit', 'thmSetGuiValue', 'thmSetView', 'thmCycleView',
                         'thmRefreshDisplayLayout', 'thmRefreshGridLayout', 'thmReload', 'thmInit')
         lang_locked = ('lngLoadFromFile', 'lngSetGuiValueLocked')
+        lang_takers = ('lngSetGuiValue',)
     check_switch_lock(theme, theme_takers, ('thmLoad', 'setGuiValueLocked', 'thmSetGuiValueLocked',
                                             'thmSetViewLocked', 'thmCycleViewLocked'))
-    check_switch_lock(lang, ('lngSetGuiValue',), lang_locked)
+    check_switch_lock(lang, lang_takers, lang_locked)
     for name in ('thmLoad', 'lngLoadFromFile'):
         lock = theme if name == 'thmLoad' else lang
         if not list(lock.calls(name)):
@@ -452,9 +580,10 @@ check_keyboard()
 check_deferred()
 check_swap(THEMES_FILE, 'static int thmLoad(', 'gTheme = newT;', 'thmFree(curT);')
 check_swap(LANG_FILE, 'static int lngLoadFromFile(', 'lang_strs = newL;', 'lngFreeFromFile(curL);')
-check_swap(LANG_FILE, 'int lngSetGuiValue(' if CPP else 'static int lngSetGuiValueLocked(', 'lang_strs = internalEnglish;',
-           'lngFreeFromFile(oldL);')
+check_swap(LANG_FILE, 'static int lngSetGuiValueLocked(int langID)\n{' if CPP else 'static int lngSetGuiValueLocked(',
+           'lang_strs = internalEnglish;', 'lngFreeFromFile(oldL);')
 check_switch_locks()
+check_translated_rows()
 
 if failures:
     print('\n'.join(failures))

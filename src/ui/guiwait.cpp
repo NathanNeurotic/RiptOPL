@@ -46,6 +46,11 @@
 
 #include "include/guiwait.h"
 
+void DeferredIoWait::copyMessage(const char *message)
+{
+    snprintf(message_, sizeof(message_), "%s", message != nullptr ? message : "");
+}
+
 void DeferredIoWait::runWithMessage()
 {
     // Neither of these loops calls readPads(), so the rumble decay is frozen for the whole wait.
@@ -140,7 +145,7 @@ void DeferredIoWait::runWithDialog()
 
 void DeferredIoWait::run()
 {
-    if (message_ != nullptr)
+    if (hasMessage_)
         runWithMessage();
     else
         runWithDialog();
@@ -181,13 +186,16 @@ void guiFadeCurrentScreenToBlack(void)
 
 void guiFadeOutForHandoff(const char *message)
 {
+    // Drawn over eight frames: a copy, as the I/O thread may switch the language (freeing an _l() string) meanwhile.
+    char text[512]; // as much as guiDrawMsgText wraps
+    snprintf(text, sizeof(text), "%s", message);
     int frame;
     for (frame = 1; frame <= 8; ++frame) {
         guiStartFrame();
         rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColBlack);
         fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1,
                         gTheme->usedHeight >> 1, ALIGN_CENTER, 0, 0,
-                        message, gTheme->textColor);
+                        text, gTheme->textColor);
         rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight,
                    GS_SETREG_RGBA(0, 0, 0, (frame * 0x80) / 8));
         guiEndFrame();
@@ -196,6 +204,9 @@ void guiFadeOutForHandoff(const char *message)
 
 void guiRenderTextScreen(const char *message)
 {
+    // A copy taken before guiStartFrame, which can wait for the I/O thread: a language switch there frees an _l() string.
+    char text[512]; // as much as guiDrawMsgText wraps
+    snprintf(text, sizeof(text), "%s", message);
     guiStartFrame();
 
     guiShow();
@@ -210,7 +221,7 @@ void guiRenderTextScreen(const char *message)
     // background); the video-mode, remove-settings and cheat-selection screens went opaque too.
     rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColBlack);
 
-    guiDrawMsgText(message);
+    guiDrawMsgText(text);
 
     guiDrawOverlays();
 

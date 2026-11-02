@@ -7,8 +7,17 @@ import hostmap  # noqa: F401  (maps host::ui()/app() calls back to the names the
 
 root = Path(__file__).resolve().parents[2]
 source = (root / 'src/core/lang.cpp').read_text(encoding='utf-8')
-start = source.index('int lngSetGuiValue(int langID)\n{')
-function = source[start:source.index('\n}', start) + 2]
+
+
+def extract(signature):
+    start = source.index(signature)
+    return source[start:source.index('\n}', start) + 2]
+
+
+# lngSetGuiValue takes the switch lock and switches in lngSetGuiValueLocked, which lngPublishLanguages also calls
+# under its own hold of the lock.
+function = (extract('static int lngSetGuiValueLocked(int langID)\n{') + '\n' +
+            extract('int lngSetGuiValue(int langID)\n{'))
 sema = (root / 'include/sema_lock.h').read_text(encoding='utf-8')
 sema_lock = sema[sema.index('namespace raii'):sema.index('} // namespace raii') + len('} // namespace raii')]
 harness = r'''

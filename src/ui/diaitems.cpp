@@ -195,6 +195,8 @@ int diaSetU64Color(struct UIItem *ui, int id, u64 col)
     return 1;
 }
 
+// The label shows `text` from now on, whatever string id it had: the last of diaSetLabel and diaSetLabelId wins, so a
+// row that alternates between a translated string and a formatted one (the VMC status) shows the one set last.
 int diaSetLabel(struct UIItem *ui, int id, const char *text)
 {
     struct UIItem *item = diaFindByID(ui, id);
@@ -204,18 +206,40 @@ int diaSetLabel(struct UIItem *ui, int id, const char *text)
 
     if ((item->type == UI_LABEL) || (item->type == UI_BUTTON) || (item->type == UI_HEADER)) {
         item->label.text = text;
+        item->label.stringId = -1;
         return 1;
     }
 
     return 0;
 }
 
-// LIFETIME CONTRACT: this stores enumvals' RAW POINTER -- no copy. The array must outlive every
-// render of the dialog (dialog structs are also reused across openings). A block-scoped array is
-// a dangling pointer the moment its brace closes (issue #154: the DMA row rendered the Neutrino
-// video-mode list). Use static arrays for pure literals; _l()-localized arrays must stay
-// function-scope in the function that executes the dialog (static would freeze the first language).
-int diaSetEnum(struct UIItem *ui, int id, const char **enumvals)
+// A translated label keeps its id and looks the string up in each frame it draws (diaGetLocalisedText), never an _l()
+// pointer: a language switch frees the strings of the language it leaves, and the IO thread can switch between two
+// frames when a device with the saved language comes up.
+int diaSetLabelId(struct UIItem *ui, int id, int stringId)
+{
+    struct UIItem *item = diaFindByID(ui, id);
+
+    if (!item)
+        return 0;
+
+    if ((item->type == UI_LABEL) || (item->type == UI_BUTTON) || (item->type == UI_HEADER)) {
+        item->label.stringId = stringId;
+        return 1;
+    }
+
+    return 0;
+}
+
+// LIFETIME CONTRACT: this stores enumvals' RAW POINTER -- no copy -- and enumids' too. Both arrays
+// must outlive every render of the dialog (dialog structs are also reused across openings, and a
+// Settings page can be drawn again after the function that set it returns). A block-scoped array
+// is a dangling pointer the moment its brace closes (issue #154: the DMA row rendered the Neutrino
+// video-mode list), so use static arrays. Never put an _l() pointer in enumvals: the strings of a
+// language are freed when the menu switches away from it -- on the Language page, or on the IO
+// thread between two frames -- while the dialog still draws them. A translated entry is "" in
+// enumvals and its _STR_ id in enumids, and the rows look the id up in the frame that draws them.
+int diaSetEnumIds(struct UIItem *ui, int id, const char **enumvals, const int *enumids)
 {
     struct UIItem *item = diaFindByID(ui, id);
 
@@ -226,5 +250,12 @@ int diaSetEnum(struct UIItem *ui, int id, const char **enumvals)
         return 0;
 
     item->intvalue.enumvalues = enumvals;
+    item->intvalue.enumids = enumids;
     return 1;
+}
+
+// An enum of untranslated entries (literals, file names, a copied name list): no ids.
+int diaSetEnum(struct UIItem *ui, int id, const char **enumvals)
+{
+    return diaSetEnumIds(ui, id, enumvals, NULL);
 }

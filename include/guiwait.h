@@ -9,33 +9,39 @@ class DeferredIoWait
 {
 public:
     // Wait behind a text screen showing `message`; timeoutMs > 0 bounds the wait (sets gLastDeferredTimedOut on expiry).
+    // The text is copied here: it is often an _l() string, and the I/O thread can switch the language (freeing that
+    // string) while the wait is drawn.
     DeferredIoWait(int *flag, const char *message, int type, void *data, int timeoutMs)
         : flag_(flag)
-        , message_(message)
+        , hasMessage_(message != nullptr)
         , ui_(nullptr)
         , type_(type)
         , data_(data)
         , timeoutMs_(timeoutMs)
     {
+        copyMessage(message);
     }
     // Wait behind a dialog (or the current screen when `ui` is NULL); unbounded.
     DeferredIoWait(int *flag, struct UIItem *ui, int type, void *data)
         : flag_(flag)
-        , message_(nullptr)
+        , hasMessage_(false)
         , ui_(ui)
         , type_(type)
         , data_(data)
         , timeoutMs_(0)
     {
+        message_[0] = '\0';
     }
     void run();
 
 private:
+    void copyMessage(const char *message);
     void runWithMessage();
     void runWithDialog();
 
     int *flag_;
-    const char *message_;
+    bool hasMessage_;
+    char message_[512]; // as much as guiDrawMsgText wraps
     struct UIItem *ui_;
     int type_;
     void *data_;

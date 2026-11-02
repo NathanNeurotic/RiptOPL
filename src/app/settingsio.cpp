@@ -1610,8 +1610,12 @@ void _loadConfig()
             if (configGetStr(configOPL, CONFIG_OPL_THEME_VIEW, &temp))
                 gThemeViewRequest = thmViewFromName(temp);
 
-            if (configGetStr(configOPL, CONFIG_OPL_LANGUAGE, &temp))
+            if (configGetStr(configOPL, CONFIG_OPL_LANGUAGE, &temp)) {
                 langID = lngFindGuiID(temp);
+                // These settings name the language now: a device that comes up with its file applies it, even over
+                // a pick made on the Language page before this load.
+                lngSetUserPicked(0);
+            }
 
             if (configGetInt(configOPL, CONFIG_OPL_SWAP_SEL_BUTTON, &value))
                 gSelectButton = value == 0 ? KEY_CIRCLE : KEY_CROSS;

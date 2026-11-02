@@ -22,6 +22,10 @@ static int nValidEntries = LANG_STR_COUNT;
 // nValidEntries must describe the table that is published. lngSetGuiValue holds this lock from before that read until
 // the id is committed. Lock order: language switch, theme switch, GUI lock. lngInit creates it before the IO thread.
 static int lngSwitchSema = -1;
+// 1 once the user picks a language on the Language page: language_text still names the saved language until the
+// settings are saved, and lngPublishLanguages must not switch back to it when a device comes up. A settings load that
+// names a language clears it, so that language is applied when its file comes up. Read and written under lngSwitchSema.
+static int lngUserPicked = 0;
 
 static int nLanguages = 0;
 static int languageCapacity = 0;
@@ -389,17 +393,24 @@ static int lngScanBootDirectory(void)
     return added;
 }
 
+static int lngSetGuiValueLocked(int langID);
+
 static void lngPublishLanguages(int mode)
 {
     host::ui().lock();
     lngRebuildLangNames();
     host::ui().unlock();
 
+    // The saved language, once its file is found (a device that mounts after boot), unless the user picked one since:
+    // the pick is checked and the saved language applied under one hold of the switch lock, so a pick cannot land in
+    // between and be undone.
+    raii::SemaLock lock(lngSwitchSema);
     const char *saved;
-    if (configGetStr(configGetByType(CONFIG_OPL), "language_text", &saved)) {
-        if (lngSetGuiValue(lngFindGuiID(saved)))
-            host::app().moduleUpdateMenu(mode, 0, 1);
-    }
+    int changed = !lngUserPicked && configGetStr(configGetByType(CONFIG_OPL), "language_text", &saved) &&
+                  lngSetGuiValueLocked(lngFindGuiID(saved));
+    lock.unlock();
+    if (changed)
+        host::app().moduleUpdateMenu(mode, 0, 1);
 }
 
 void lngRefreshBootLanguages(int mode)
@@ -471,9 +482,9 @@ void lngEnd(void)
     languageCapacity = nLanguages = 0;
 }
 
-int lngSetGuiValue(int langID)
+// The caller holds lngSwitchSema.
+static int lngSetGuiValueLocked(int langID)
 {
-    raii::SemaLock lock(lngSwitchSema);
     if (langID >= 0 && langID <= nLanguages) {
         if (guiLangID != langID) {
             bgmMute();
@@ -514,6 +525,18 @@ int lngSetGuiValue(int langID)
         }
     }
     return 0;
+}
+
+int lngSetGuiValue(int langID)
+{
+    raii::SemaLock lock(lngSwitchSema);
+    return lngSetGuiValueLocked(langID);
+}
+
+void lngSetUserPicked(int picked)
+{
+    raii::SemaLock lock(lngSwitchSema);
+    lngUserPicked = picked;
 }
 
 int lngGetGuiValue(void)

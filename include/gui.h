@@ -212,7 +212,8 @@ int guiRenderProbeFrame(void);
 void guiRenderGreetingScreen(void);
 // Boot-splash status line (main thread); NULL clears both the line and the sticky label.
 void guiSetBootStatus(const char *status);
-// Boot-step localizer for deferred IO-thread steps; label must be a static/_l() string.
+// Boot-step localizer for deferred IO-thread steps; label must be a string literal (only the pointer is kept). Not an
+// _l() string, which a language switch frees: translated steps use guiSetBootStatusStickyCopy.
 void guiSetBootStatusSticky(const char *label);
 // Diagnostic boot-step setter for dynamic text. Copies into an internal double buffer before
 // publishing, so an IO-thread caller may safely pass a stack-formatted message.

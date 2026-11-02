@@ -141,6 +141,8 @@ jobs:
         run: python3 .github/scripts/test_dia_text_room.py
       - name: Check dialogs draw under the GUI lock and IO-thread list operations run under it
         run: python3 .github/scripts/test_dialog_gui_lock.py
+      - name: Check Settings rows draw the live language after a switch, and an unsaved pick survives a device coming up
+        run: python3 .github/scripts/test_language_swap_rows.py
       - name: Check the in-game USBD pad pool and lwIP fragment settings fit the pads and the MTU
         run: python3 .github/scripts/test_usbd_pad_pool.py
       - name: Check Settings and its prompts follow the user's confirm button

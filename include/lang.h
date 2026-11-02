@@ -25,6 +25,9 @@ void lngEnd(void);
 
 // Indices are shifted in GUI, as we add the internal english language at 0
 int lngSetGuiValue(int langID);
+// picked 1: the user picked a language on the Language page (call it before applying the pick), so a device that comes
+// up later does not switch back to the saved language. picked 0: a settings load named the language to use.
+void lngSetUserPicked(int picked);
 int lngGetGuiValue(void);
 int lngFindGuiID(const char *lang);
 char **lngGetGuiList(void);

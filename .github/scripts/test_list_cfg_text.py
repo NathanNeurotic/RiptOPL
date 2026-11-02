@@ -269,7 +269,10 @@ dialogs = read("src/dialogs.c", "src/ui/dialogs.cpp")
 assert re.search(r"\{UI_LABEL, 0, 1, 1, -1, -40, 0, \{\.label = \{NULL, _STR_LIST_CFG_TEXT\}\}\},\s*\{UI_SPACER\},\s*"
                  r"\{UI_ENUM, UICFG_LIST_CFG_TEXT, 1, 1, _STR_HINT_LIST_CFG_TEXT,", dialogs), "Settings > Interface row"
 gui = read("src/gui.c", "src/ui/guisettings.cpp")
-assert "{_l(_STR_THEME), _l(_STR_ON), _l(_STR_OFF), NULL}" in gui, "the choices in LIST_CFG_TEXT_* order"
+# The choices by string id (a language switch frees translated strings), in LIST_CFG_TEXT_* order.
+choices = re.search(r"static const int (\w+)\[\] = \{_STR_THEME, _STR_ON, _STR_OFF\};", gui)
+assert choices, "the choices in LIST_CFG_TEXT_* order"
+assert re.search(r"diaSetEnumIds\(\w+, UICFG_LIST_CFG_TEXT, \w+, %s\);" % choices.group(1), gui), "the row shows them"
 assert re.search(r"diaSetInt\(\w+, UICFG_LIST_CFG_TEXT, gListCfgText\)", gui)
 assert re.search(r"diaGetInt\(\w+, UICFG_LIST_CFG_TEXT, &gListCfgText\)", gui)
 

@@ -243,8 +243,9 @@ void guiSetBootStatus(const char *status)
 }
 
 // Boot-step localizer setter, called from the deferred IO-thread boot steps. `label` MUST be a
-// static string (an _l() lang entry or literal): only a POINTER to it is stored. If a step wedges,
-// its label stays on the splash.
+// string literal: only a POINTER to it is stored. Not an _l() string: a language switch frees it
+// while the splash may still draw it (guiSetBootStatusStickyCopy copies). If a step wedges, its
+// label stays on the splash.
 void guiSetBootStatusSticky(const char *label)
 {
     gSplash.status.setSticky(label);

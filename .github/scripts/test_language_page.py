@@ -61,7 +61,7 @@ order = [n.strip() for n in enum.group(1).split(",") if n.strip()] if enum else 
 if order[:3] != ["SETTINGS_SOURCES = 0", "SETTINGS_GENERAL", "SETTINGS_LANGUAGE"] or order[-1] != "SETTINGS_PAGE_COUNT":
     failures.append("Language must be the third Settings page")
 labels = function(gui, "int SettingsShell::showIndex(")
-if labels.find("_l(_STR_GENERAL_SYSTEM),\n        _l(_STR_LANGUAGE),") < 0:
+if labels.find("_STR_GENERAL_SYSTEM,\n        _STR_LANGUAGE,") < 0:  # string ids, looked up in each frame
     failures.append("the Settings index must list Language after General & System")
 if not re.search(r"case SETTINGS_LANGUAGE:\s*result = guiSettingsShowLanguage\(\);", gui):
     failures.append("the Settings shell must dispatch the Language page")

@@ -43,8 +43,14 @@ def main():
     for word in ('"NONE"', '"BOTH"', '"OFF"', '"ON"'):
         if word in gui:
             failures.append('%s still offers the fixed English choice %s' % (GUI.name, word))
-    for line in ('deviceIGRSlots[0] = _l(_STR_OFF);', 'deviceIGRSlots[3] = _l(_STR_BOTH);',
-                 'deviceOnOff[0] = _l(_STR_OFF);', 'deviceOnOff[1] = _l(_STR_ON);'):
+    # By string id, looked up in each frame (a language switch frees translated strings): entry 0 of the IGR slots
+    # is Off and entry 3 Both, and the alarm row is Off / On.
+    for line in ('static const char *deviceIGRSlots[] = {"", "0", "1", "", NULL};',
+                 'static const int deviceIGRSlotIds[] = {_STR_OFF, -1, -1, _STR_BOTH};',
+                 'diaSetEnumIds(ui, CFG_MMCEIGRSLOT, deviceIGRSlots, deviceIGRSlotIds);',
+                 'static const char *deviceOnOff[] = {"", "", NULL};',
+                 'static const int deviceOnOffIds[] = {_STR_OFF, _STR_ON};',
+                 'diaSetEnumIds(ui, CFG_MMCE_USE_ALARMS, deviceOnOff, deviceOnOffIds);'):
         if line not in gui:
             failures.append('%s does not set %s' % (GUI.name, line))
 
