@@ -191,6 +191,10 @@ denied() { # the logon must be refused cleanly: exit 3 after the refusal, no han
     [ $rc -eq 3 ] && grep -q 'session setup -1000' denied.txt
 }
 browse() {
+    # The share list is the first request to need smbd's RPC helpers (samba-dcerpcd, rpcd_*), which
+    # smbd starts on demand. Start them first, so that check does not also time their start-up:
+    # seconds on a loaded machine, against libsmb2's 15 s request timeout.
+    timeout 60 smbclient -s "$conf" -p "$port" -L 127.0.0.1 -U ps2%secret >/dev/null 2>&1 || true
     timeout 120 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso "$u8name"
 }
 keepalive() {
