@@ -604,7 +604,10 @@ targets:
     headers: [kernel, cdvd, filexio, mc, poweroff, patches, vux, ps2ips, ps2ip, pad, netman, gskit, dmakit, freetype, png, jpeg, z, audio, audsrv-compat, ogg, vorbis, elf-loader-nocolour, debug]
     defines: [GSM_1080P, PADEMU, IGR_MENU]
     cflags: [-fno-exceptions, -Wmissing-declarations, -fsingle-precision-constant, -Wno-format-truncation, -Wno-stringop-truncation, -fdata-sections, -ffunction-sections, -include, opl_version.h]
-    ldflags: [-fdata-sections, -ffunction-sections, "-Wl,--gc-sections", "-Wl,-Map,opl.map", -lpadx]
+    # -zmax-page-size=128: the ps2sdk Makefile default (samples/Makefile.eeglobal), and what elfldr already uses. Without
+    # it the linker pads the one PT_LOAD to file offset 0x10000; the unpacked ELF with that layout did not start from
+    # uLaunchELF -> MMCE0 on an SCPH-30005R while the same chain started a 0x80-aligned build.
+    ldflags: [-fdata-sections, -ffunction-sections, "-Wl,--gc-sections", "-Wl,-zmax-page-size=128", "-Wl,-Map,opl.map", -lpadx]
     libs: [gskit, dmakit, poweroff, filexio, patches, png, jpeg, z, mc, freetype, vux, cdvd, netman, ps2ips, audsrv-compat, vorbisfile, vorbis, ogg, pad, elf-loader-nocolour, ds34usb_ee, ds34bt_ee, debug]
     pack: true
     embed_irx: [isofs, bdmevent, genvmc, nbns, httpclient, imgdrv, resetspu, igrmbox, apemodpatch, cleareffects, f2techioppatch, iremsndpatch, cdvdfsv, smbinit, SMSUTILS:smsutils, SMSTCPIP:ingame_smstcpip, smap_ingame, xhdd, smap_udpbd, udpfs_smap, udpfs_ministack, udpfs_bd, udpfs_ioman, udpfs_fhi, lwnbdsvr, ps2ips_fork:ps2ips, bdm_drv:bdm, usbd_mini_fork:usbd, ata_bd:ps2atad, ps2hdd_osd:ps2hdd, hdd_cdvdman, hdd_hdpro_cdvdman, smb_cdvdman, smb2_cdvdman, http_cdvdman, bdm_cdvdman, bdm_ata_cdvdman, bdm_udp_cdvdman, udpfs_cdvdman, pccf_cdvdman, mmce_cdvdman, hdd_mcemu, smb_mcemu, bdm_mcemu, mmce_mcemu, udpfs_mcemu, usb_pademu, bt_pademu, ds34usb, ds34bt, pvrdrv:dvrdrv, dvrfile, eecore, elfldr, smbman_ra:smbman, smb2man, usbhdfsd, libsd, audio:audsrv, bdmfs_fatfs_fork:bdmfs_fatfs, iLinkman_fork:iLinkman, IEEE1394_bd_mini_fork:IEEE1394_bd, usbmass_bd_mini:usbmass_bd, mx4sio_bd_mini_fork:mx4sio_bd, pccf_bd, pccf_game, hdpro_atad, poweroff, dev9:ps2dev9, ps2ip-nm:ps2ip, smap, netman, iomanx, filexio, sio2man, padman, mcman, mcserv, mmceman_fork:mmceman, mmcedrv, mmceigr, fs-osd:ps2fs, eesync-nano:eesync, udnl]
