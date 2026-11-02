@@ -1857,7 +1857,7 @@ static void guiShowCoverflowConfig(void)
         if (diaGetInt(diaCoverflowConfig, COVERFLOW_CFG_GRID_LAYOUT, &value))
             gGridLayout = (value >= 0 && value <= GRID_LAYOUTS) ? value : 0;
         // A new layout changes how many covers a page holds, and so the cover cache: the theme loads again.
-        if (gGridLayout != keepLayout && gTheme != NULL && gTheme->grid != NULL && !thmSetGuiValue(thmGetGuiValue(), 1))
+        if (gGridLayout != keepLayout && !thmRefreshGridLayout())
             gGridLayout = keepLayout; // abandoned load: the old grid is still on screen, keep the setting with it
     }
 }
@@ -2459,6 +2459,9 @@ static int guiSettingsShowInterface(void)
     diaSetEnum(ui, UICFG_PS1_DUPLICATES, ps1DupNames);
     diaSetInt(ui, UICFG_PS1_DUPLICATES, gPs1Duplicates);
     diaSetInt(ui, UICFG_GAME_TYPE_LABELS, gGameTypeLabels);
+    const char *listCfgNames[] = {_l(_STR_THEME), _l(_STR_ON), _l(_STR_OFF), NULL};
+    diaSetEnum(ui, UICFG_LIST_CFG_TEXT, listCfgNames);
+    diaSetInt(ui, UICFG_LIST_CFG_TEXT, gListCfgText);
     // Keep the editor reachable even when the current theme has no active Coverflow view; users
     // need to be able to configure it before enabling or switching to a Coverflow-capable theme.
     diaSetVisible(ui, UICFG_COVERFLOW_BUTTON, 1);
@@ -2518,6 +2521,7 @@ reshow_interface:
         if (previousPs1Dup != gPs1Duplicates)
             hddVcdInvalidateCache(); // the HDD PS1 list applies the setting when it is built
         diaGetInt(ui, UICFG_GAME_TYPE_LABELS, &gGameTypeLabels);
+        diaGetInt(ui, UICFG_LIST_CFG_TEXT, &gListCfgText); // read as each frame draws: nothing to rebuild
         gameViewChanged = guiReadGameViewPicker(ui);
         appsViewChanged = guiReadAppsViewPicker(ui);
         themeViewRequest = guiReadThemeViewPicker(ui);

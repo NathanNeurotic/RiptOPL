@@ -17,6 +17,9 @@ ROOT = Path(__file__).resolve().parents[2]
 FLOW = (ROOT / 'src/gfx/psbbnflow.cpp').read_text(encoding='utf-8')
 COVERFLOW = (ROOT / 'src/gfx/coverflow.cpp').read_text(encoding='utf-8')
 THEMES = (ROOT / 'src/gfx/themes.cpp').read_text(encoding='utf-8')
+SEMA = (ROOT / 'include/sema_lock.h').read_text(encoding='utf-8')
+# The real raii::SemaLock, built on the WaitSema/SignalSema stubs each harness defines.
+SEMA_LOCK = SEMA[SEMA.index('namespace raii'):SEMA.index('} // namespace raii') + len('} // namespace raii')]
 
 
 def function(source, signature):
@@ -264,6 +267,7 @@ catalog_class = header[header.index('class ThemeCatalog'):header.index('\n};', h
 methods = '\n'.join([
     function(THEMES, s) for s in ('void ThemeCatalog::rebuildNames(', 'int ThemeCatalog::addElements(',
                                   'void ThemeCatalog::reinit(', 'int ThemeCatalog::setGuiValue(',
+                                  'int ThemeCatalog::setGuiValueLocked(',
                                   'int ThemeCatalog::findGuiID(', 'char *ThemeCatalog::filePath(',
                                   'int ThemeCatalog::guiValue(', 'const char **ThemeCatalog::guiList(')])
 registry = r'''
@@ -278,6 +282,11 @@ constexpr int THM_MAX_FILES = 16;
 #define MODE_COUNT 0
 typedef struct {char *name,*filePath;} theme_file_t;
 static int loads,loaded,colors,failLoad,locks,gTheme;
+// The theme switch lock (thmSwitchSema): a scan, a removal and every theme load hold it. It is not recursive.
+static int thmSwitchSema=5,switchDepth;
+static void WaitSema(int id) {assert(id==thmSwitchSema && !switchDepth);switchDepth++;}
+static void SignalSema(int id) {assert(id==thmSwitchSema && switchDepth);switchDepth--;}
+@SEMALOCK@
 static int configGetByType(int t) {return t;}
 static int configGetStr(int,const char *,const char **) {return 0;}
 struct Ui { void lock() {assert(!locks);locks++;} void unlock() {assert(locks);locks--;} };
@@ -288,6 +297,7 @@ static int thmLoad(const char *path);
 @CLASS@
 static ThemeCatalog gCatalog;
 static int thmLoad(const char *path) {
+ assert(switchDepth==1 && !locks); // one theme switch at a time; thmLoad takes the GUI lock itself, for the swap
  loads++;loaded=path?3:0;
  return failLoad?-1:0;
 }
@@ -326,12 +336,13 @@ int main(void) {
  c.reinit("mass1:");assert(c.guiValue()==1 && loads==oldLoads);
  c.reinit("mass0:");assert(c.count()==0 && c.guiValue()==0 && loads==oldLoads+1 && loaded==0);
  assert(!c.setGuiValue(99,0) && !c.setGuiValue(1,0) && c.guiValue()==0);
+ assert(!switchDepth && !locks);
  puts("Theme catalog: <OPL> + disk themes, legacy names, palette, failed-load rollback and discovery/removal passed");
 }
 '''
 # The test seeds the theme table the scanner would fill, so it reaches the private members.
 registry = (registry.replace('@CLASS@', catalog_class.replace('private:', 'public:'))
-            .replace('@METHODS@', methods))
+            .replace('@METHODS@', methods).replace('@SEMALOCK@', SEMA_LOCK))
 run('psbbn_registry', registry)
 
 # The built-in config, embedded asset and wiring.
@@ -367,7 +378,13 @@ static theme_t theme;
 static theme_t *gTheme = &theme;
 static int gCoverflowCount = 3;
 static int loads, failLoad, loadedCovers;
-static int thmSetView(int v) {
+static int thmSwitchSema = 5, switchDepth;
+static void WaitSema(int id) { assert(id == thmSwitchSema && !switchDepth); switchDepth++; }
+static void SignalSema(int id) { assert(id == thmSwitchSema && switchDepth); switchDepth--; }
+@SEMALOCK@
+// thmCycleView holds the theme switch lock across its look at gTheme and the reload.
+static int thmSetViewLocked(int v) {
+ assert(switchDepth == 1);
  loads++;
  if (failLoad) return 0;
  loadedCovers = gCoverflowCount;
@@ -394,7 +411,9 @@ int main(void) {
  // An abandoned load keeps the old view and its count.
  theme.viewMask = (1u << THM_VIEW_LIST) | (1u << THM_VIEW_COVERFLOW); theme.view = THM_VIEW_LIST; gCoverflowCount = 5; failLoad = 1;
  assert(thmCycleView() == 0 && theme.view == THM_VIEW_LIST && gCoverflowCount == 5 && loads == 5);
+ assert(!switchDepth);
  puts("L3 cycle: Coverflow (3)/(5) toggle without a reload, view changes load, a failed load keeps the count");
 }
 '''
-run('psbbn_cycle', cycle.replace('@PICKS@', picks).replace('@CYCLE@', function(THEMES, 'int thmCycleView(void)')))
+run('psbbn_cycle', cycle.replace('@PICKS@', picks).replace('@SEMALOCK@', SEMA_LOCK)
+    .replace('@CYCLE@', function(THEMES, 'int thmCycleView(void)')))
