@@ -454,6 +454,9 @@ extern char gCustomSettingsPath[64];
 extern int gEnableDebug;
 
 extern int gPS2Logo;
+#define APP_HANDOFF_LEGACY 0 // argv[0] = mass<N>:/..., every device, as always
+#define APP_HANDOFF_TYPED  1 // argv[0] = usb0:/ ata0:/ ilink0:/ mx4sio0:/...; the load path stays mass<N>:
+extern int gAppHandoffPath;  // APP_HANDOFF_LEGACY (mass<N>:, default) or APP_HANDOFF_TYPED (usb0:/ata0:/...) in an app's argv[0]
 
 // Default device
 extern int gDefaultDevice;

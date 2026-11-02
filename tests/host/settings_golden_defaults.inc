@@ -101,3 +101,4 @@ CHECK(gBGMVolume == (90));
 CHECK(gDefaultBGMPath[0] == '\0');
 CHECK(gXSensitivity == (1));
 CHECK(gYSensitivity == (1));
+CHECK(gAppHandoffPath == (0));
