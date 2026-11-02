@@ -6,7 +6,8 @@
     tools/assets.py lang       .lng files, src/core/lang_internal.c, include/lang_autogen.h
     tools/assets.py embed      asm/*.c from gfx/audio/misc/font/IOPRP.img via bin2c
     tools/assets.py version    asm/opl_version.h (force-included by ps2.yaml)
-    tools/assets.py release    zip RIPTOPL-<ver>.ZIP from the packed ELF (after `ps2build build`)
+    tools/assets.py release    zip RIPTOPL-<ver>.ZIP from the packed ELF (after `ps2build build`),
+                               with the licences, LICENSE-LIBSMB2.txt included
     tools/assets.py version-string   print OPL_VERSION
 
 Environment: REVISION, RELEASE_CHANNEL, LOCALVERSION (same meaning as the old Makefile),
@@ -19,6 +20,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -225,8 +227,14 @@ def release():
     shutil.copyfile(packed, elf)
     run("sh", "tools/make_changelog.sh")
     shutil.copyfile("/tmp/DETAILED_CHANGELOG", "DETAILED_CHANGELOG")
-    run("zip", "-r", f"RIPTOPL-{v}.ZIP", elf, "DETAILED_CHANGELOG", "CREDITS", "LICENSE", "README.md")
-    print(f"Package Complete: RIPTOPL-{v}.ZIP")
+    package = f"RIPTOPL-{v}.ZIP"
+    run("zip", "-r", package, elf, "DETAILED_CHANGELOG", "CREDITS", "LICENSE", "README.md")
+    # The ELF embeds smb2man over libsmb2 (LGPL-2.1): its licence goes with it, as in every release.
+    with tempfile.TemporaryDirectory() as directory:
+        licence = os.path.join(directory, "LICENSE-LIBSMB2.txt")
+        shutil.copyfile(os.path.join("modules", "network", "smb2man", "libsmb2", "LICENCE-LGPL-2.1.txt"), licence)
+        run("zip", "-j", package, licence)
+    print(f"Package Complete: {package}")
 
 
 COMMANDS = {"fetch": fetch, "lang": lang, "embed": embed, "version": version, "release": release,

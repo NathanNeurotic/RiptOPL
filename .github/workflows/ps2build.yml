@@ -63,7 +63,12 @@ jobs:
         run: tools/warning_gate.py build.log --check
       - name: Coupling gate (no new upward dependencies between layers)
         run: tools/analyze_coupling.py --check
+      - name: Put the libsmb2 licence beside the loader
+        # The loader embeds smb2man over libsmb2 (LGPL-2.1), so its licence travels with the artifact.
+        run: cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt build/bin/LICENSE-LIBSMB2.txt
       - uses: actions/upload-artifact@v4
         with:
           name: riptopl-ps2build-${{ matrix.toolchain }}
-          path: build/bin/riptopl-packed.elf
+          path: |
+            build/bin/riptopl-packed.elf
+            build/bin/LICENSE-LIBSMB2.txt

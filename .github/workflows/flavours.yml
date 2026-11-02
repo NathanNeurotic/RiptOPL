@@ -378,6 +378,11 @@ jobs:
           } > BUILD-MANIFEST.txt 2>/dev/null || true
           cat BUILD-MANIFEST.txt || true
 
+      # The loader embeds smb2man over libsmb2 (LGPL-2.1), so its licence travels with the artifact.
+      - name: Put the libsmb2 licence beside the loader
+        if: ${{ success() }}
+        run: cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt LICENSE-LIBSMB2.txt
+
       - name: Upload ELF
         if: ${{ success() }}
         uses: actions/upload-artifact@v6
@@ -389,5 +394,6 @@ jobs:
           path: |
             build/bin/riptopl-packed.elf
             BUILD-MANIFEST.txt
+            LICENSE-LIBSMB2.txt
           if-no-files-found: error
           retention-days: 14

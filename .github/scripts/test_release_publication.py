@@ -375,6 +375,32 @@ class PublicationTests(unittest.TestCase):
         app = (ROOT / ".github/scripts/package_release_app.py").read_text(encoding="utf-8")
         self.assertIn('"LICENSE-LIBSMB2.txt",  # every loader embeds libsmb2 (LGPL-2.1)', app)
 
+    def test_every_actions_test_build_carries_the_libsmb2_licence(self):
+        # Testers also download loaders straight from Actions runs, so those artifacts carry the licence.
+        libsmb2 = ROOT / "modules/network/smb2man/libsmb2"
+        for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):
+            self.assertTrue((libsmb2 / filename).is_file(), filename)
+        build = (ROOT / "tools/build_edition.py").read_text(encoding="utf-8")
+        staging = build[build.index('if args.configuration != "standard":'):build.index("print(f\"Built ")]
+        self.assertIn('destination = stage / "licenses" / "libsmb2"', staging)
+        self.assertIn('for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):', staging)
+        self.assertIn('shutil.copyfile(ROOT / "modules/network/smb2man/libsmb2" / filename, destination / filename)', staging)
+        for workflow, copy, listed in (
+                ("ps2build.yml", "cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt build/bin/LICENSE-LIBSMB2.txt",
+                 "          path: |\n            build/bin/riptopl-packed.elf\n            build/bin/LICENSE-LIBSMB2.txt\n"),
+                ("flavours.yml", "cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt LICENSE-LIBSMB2.txt",
+                 "            build/bin/riptopl-packed.elf\n            BUILD-MANIFEST.txt\n            LICENSE-LIBSMB2.txt\n")):
+            text = (ROOT / ".github/workflows" / workflow).read_text(encoding="utf-8")
+            self.assertIn(copy, text, workflow)
+            self.assertIn(listed, text, workflow)
+            self.assertLess(text.index(copy), text.index(listed), workflow)
+        # The local `tools/assets.py release` zip is a loader download too.
+        assets = (ROOT / "tools/assets.py").read_text(encoding="utf-8")
+        release = assets[assets.index("def release():"):assets.index("COMMANDS = {")]
+        self.assertIn('licence = os.path.join(directory, "LICENSE-LIBSMB2.txt")', release)
+        self.assertIn('"modules", "network", "smb2man", "libsmb2", "LICENCE-LGPL-2.1.txt"', release)
+        self.assertIn('run("zip", "-j", package, licence)', release)
+
 
 if __name__ == "__main__":
     unittest.main()
