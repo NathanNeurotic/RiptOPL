@@ -244,6 +244,36 @@ class InstallPortsTests(unittest.TestCase):
                              ["https://latest.test/pin.env", "https://mirror.test/SHA256SUMS", "https://mirror.test/ogg-v1-gcc.zip"])
             self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")
 
+    def test_an_older_mirror_package_is_never_cached_under_the_pins(self):
+        # With no mirror release pinned, an outage takes the newest mirror release's own package. When that is not
+        # the pinned version, CI must not cache it under the pins: every build job restoring that cache would ask
+        # the official host for the pinned package again, and an exact cache entry is never replaced.
+        import hashlib
+        data = archive()
+        sums = f"{hashlib.sha256(data).hexdigest()}  ogg-v1-gcc.zip\n".encode()
+        pin = (f"PS2BUILD_SDK_TAG=sdk-v1-abcd\nPS2BUILD_SDK_SUMS_SHA256={hashlib.sha256(sums).hexdigest()}\n"
+               "OGG_VERSION=v1\n").encode()
+        outage = ports.urllib.error.HTTPError(ports.HOST + "/api", 521, "origin down", None, None)
+        with tempfile.TemporaryDirectory() as directory:
+            github_env = Path(directory) / "github_env"
+            github_env.write_text("")
+            env = {"OGG_VERSION": "v2", "PS2BUILD_SDK_TAG": "", "PS2BUILD_SDK_SUMS_SHA256": "",
+                   "PS2BUILD_SDK_MIRROR_LATEST_URL": "https://latest.test", "PS2BUILD_SDK_MIRROR_URL": "https://mirror.test",
+                   "PS2BUILD_SDK_MIRROR_TOKEN": "", "GITHUB_ENV": str(github_env)}
+            sdk = Path(directory) / "older"
+            with patch.dict(ports.os.environ, env), patch.object(ports, "download", side_effect=[outage, pin, sums, data]):
+                ports.install(sdk, "ogg", "gcc")
+            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")  # the build goes on with it
+            self.assertEqual(github_env.read_text(), "PS2BUILD_SDK_STALE=true\n")  # but CI does not cache it
+            # The pinned package from the pinned mirror release is the right one, so it may be cached.
+            github_env.write_text("")
+            sdk = Path(directory) / "pinned"
+            with patch.dict(ports.os.environ, self.mirror_env(sums, GITHUB_ENV=str(github_env))), \
+                    patch.object(ports, "download", side_effect=[outage, sums, data]):
+                ports.install(sdk, "ogg", "gcc")
+            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")
+            self.assertEqual(github_env.read_text(), "")
+
     def test_private_mirror_is_read_through_the_api_with_the_token(self):
         import hashlib
         data = archive()
