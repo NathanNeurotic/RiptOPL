@@ -5,6 +5,7 @@ on:
   push:
     branches: [ps2build, rebuild/main, "claude/**"]
   pull_request:
+  workflow_dispatch: # ps2build-sdk-watch.yml starts it on its pull request's branch
 
 jobs:
   build:
@@ -25,11 +26,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # The newest ps2build SDK: the latest versions come from git.techwritescode.dev's release API (or,
-      # when it is down, the newest NathanNeurotic/ps2build-mirror release). The SDK cached under them is
-      # restored, else an older cached SDK is updated in place, else it is installed; then it is cached. A
-      # mirror fallback older than the latest is never cached under the latest versions.
-      - name: Resolve the latest ps2build SDK
+      # The ps2build SDK pinned in .github/ps2build-sdk.env (bumped by ps2build-sdk-watch.yml once a week):
+      # resolving it makes no network call. The SDK cached under those versions is restored, else an older
+      # cached SDK is updated in place, else it is installed: from git.techwritescode.dev, or when that fails
+      # from the pinned NathanNeurotic/ps2build-mirror release. Then it is cached. A mirror fallback that does
+      # not hold the pinned versions is never cached under them.
+      - name: Resolve the pinned ps2build SDK
         env:
           PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         id: sdk
@@ -69,7 +71,16 @@ jobs:
         run: tools/warning_gate.py build.log --check
       - name: Coupling gate (no new upward dependencies between layers)
         run: tools/analyze_coupling.py --check
+      - name: Put the libsmb2 licence and the credits beside the loader
+        # The loader embeds smb2man over libsmb2 (LGPL-2.1), so its licence travels with the artifact, with
+        # CREDITS, which says the loader uses libsmb2 under that licence (LGPL-2.1 section 6).
+        run: |
+          cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt build/bin/LICENSE-LIBSMB2.txt
+          cp -f CREDITS build/bin/CREDITS
       - uses: actions/upload-artifact@v4
         with:
           name: riptopl-ps2build-${{ matrix.toolchain }}
-          path: build/bin/riptopl-packed.elf
+          path: |
+            build/bin/riptopl-packed.elf
+            build/bin/LICENSE-LIBSMB2.txt
+            build/bin/CREDITS

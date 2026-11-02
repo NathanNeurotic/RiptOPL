@@ -14,6 +14,7 @@ import yaml
 
 from build import build
 from build_configuration import CONFIGURATIONS, apply_configuration
+from lite_devices import DEVICES as LITE_DEVICES, apply_lite, elf_name
 from install_ports import LIBRARIES
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,14 +26,31 @@ EDITIONS = {
     "ra_incebtion": {"title": "RetroAchievements-IncebtIon", "tag": "rolling-ra", "theme": "incebtion", "ra": True,
                      "into": "ra", "label": "IncebtIon"},
 }
+# RiptOPLite: the Korium edition with one game device's drivers per ELF (tools/lite_devices.py). Built
+# with `lite --device <device>`; kept out of EDITIONS because it has no install kit, bundles or
+# configurations -- its channel is only the RIPTOPLITE-<DEVICE>.ELF files (publish_editions.py).
+# lite_ra is the same over the RetroAchievements edition (RIPTOPLITE-RA-<DEVICE>.ELF): Korium theme, RA on,
+# and the in-game network RA needs kept for every device. Both publish into the one rolling-lite channel.
+LITE = "lite"
+LITE_RA = "lite_ra"
+LITES = {
+    LITE: {"title": "Lite", "tag": "rolling-lite", "theme": "korium", "ra": False, "base": "korium"},
+    LITE_RA: {"title": "Lite-RA", "tag": "rolling-lite", "theme": "korium", "ra": True, "base": "ra"},
+}
+
+
+def edition_options(edition):
+    return LITES[edition] if edition in LITES else EDITIONS[edition]
 
 
 def add(target, field, *values):
     target.setdefault(field, []).extend(v for v in values if v not in target.get(field, []))
 
 
-def definition(edition, configuration="standard", toolchain="gcc"):
-    options = EDITIONS[edition]
+def definition(edition, configuration="standard", toolchain="gcc", device=None):
+    options = edition_options(edition)
+    if edition in LITES and configuration != "standard":
+        raise ValueError("the lite edition is built in the standard configuration only")
     config = yaml.safe_load((ROOT / "ps2.yaml").read_text(encoding="utf-8"))
     # YAML aliases share lists. Mutating one target must not change another.
     config["targets"] = [copy.deepcopy(t) for t in config["targets"]]
@@ -85,6 +103,10 @@ def definition(edition, configuration="standard", toolchain="gcc"):
         for name in ("bdm_cdvdman", "mmce_cdvdman"):
             add(targets[name], "defines", "__USE_DEV9")
             add(targets[name], "sources", "modules/iopcore/cdvdman/dev9.c")
+    if edition in LITES:
+        apply_lite(config, device, ROOT, options["ra"])
+    elif device is not None:
+        raise ValueError("--device is for the lite edition only")
     apply_configuration(config, configuration)
     # IGS makes LLVM -Os leave only 2,712 bytes for the core's stack. -Oz leaves
     # 6,040 with the same 3 KB linker guard and fixed memory regions; GCC stays -Os.
@@ -105,7 +127,10 @@ def definition(edition, configuration="standard", toolchain="gcc"):
     return config
 
 
-def build_paths(edition, toolchain, configuration):
+def build_paths(edition, toolchain, configuration, device=None):
+    if edition in LITES:
+        name = (f"ra-{device}" if edition == LITE_RA else device) + ("" if configuration == "standard" else f"-{configuration}")
+        return Path("build/lite") / f"{name}-{toolchain}", ROOT / "dist/lite" / f"{name}-{toolchain}"
     if configuration == "standard":
         return Path("build/editions") / f"{edition}-{toolchain}", ROOT / "dist/editions" / edition
     # Compiler/configuration checks cannot overwrite a publishable edition stage.
@@ -119,25 +144,29 @@ def git(*args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("edition", choices=EDITIONS)
+    parser.add_argument("edition", choices=[*EDITIONS, *LITES])
     parser.add_argument("--toolchain", choices=("gcc", "llvm"), default="gcc")
     parser.add_argument("--configuration", choices=CONFIGURATIONS, default="standard")
+    parser.add_argument("--device", choices=LITE_DEVICES, help="the lite edition's one game device")
     args = parser.parse_args()
+    if (args.edition in LITES) != (args.device is not None):
+        parser.error("--device goes with the lite edition, and the lite edition needs it")
     os.chdir(ROOT)
     source = git("rev-parse", "HEAD")
     dirty = bool(git("status", "--porcelain"))
-    options = EDITIONS[args.edition]
+    options = edition_options(args.edition)
     os.environ["RIPTOPL_THEME"] = options["theme"]
     os.environ["RIPTOPL_RA"] = "1" if options["ra"] else "0"
     suffix = "" if args.configuration == "standard" else f"-{args.configuration.upper()}"
-    os.environ["LOCALVERSION"] = f"PS2BUILD-{options['title']}-{args.toolchain.upper()}{suffix}"
+    title = options["title"] if args.device is None else f"{options['title']}-{LITE_DEVICES[args.device]['title']}"
+    os.environ["LOCALVERSION"] = f"PS2BUILD-{title}-{args.toolchain.upper()}{suffix}"
     # Each edition regenerates blobs, so sequential local builds cannot inherit
     # a previous edition's RA mark, theme graphics, or displayed version.
     subprocess.run([sys.executable, "tools/assets.py", "embed"], check=True)
     subprocess.run([sys.executable, "tools/assets.py", "version"], check=True)
-    config = definition(args.edition, args.configuration, args.toolchain)
+    config = definition(args.edition, args.configuration, args.toolchain, args.device)
     canonical = yaml.safe_dump(config, sort_keys=False)
-    output, stage = build_paths(args.edition, args.toolchain, args.configuration)
+    output, stage = build_paths(args.edition, args.toolchain, args.configuration, args.device)
     result = build(args.toolchain, str(output), config)
     if result:
         return result
@@ -147,23 +176,16 @@ def main():
     if git("rev-parse", "HEAD") != source or bool(git("status", "--porcelain")) != dirty:
         raise ValueError("source checkout changed during build")
     stage.mkdir(parents=True, exist_ok=True)
+    if args.device is not None:
+        return stage_lite(args, options, source, dirty, canonical, elf, output, stage)
     shutil.copyfile(elf, stage / "RIPTOPL.ELF")
     # The i.LINK pair the ELF embeds also replaces the Neutrino bundle's copies (package_edition.py).
     shutil.copyfile(output / "bin/IEEE1394_bd_mini_fork.irx", stage / "IEEE1394_bd_mini.irx")
     shutil.copyfile(output / "bin/iLinkman_fork.irx", stage / "iLinkman.irx")
-    sdk = Path(os.environ.get("PS2BUILD_HOME", shutil.which("ps2build") or "")).resolve()
-    if sdk.is_file():
-        sdk = sdk.parent
-    world = sdk / ("packages-llvm" if args.toolchain == "llvm" else "packages") / "world"
     manifest = {
         "repository": "NathanNeurotic/RiptOPL", "source_commit": source, "dirty": dirty,
         "edition": args.edition, **options, "sdk": "ps2build", "compiler": args.toolchain,
-        "configuration": args.configuration,
-        "ps2build_version": subprocess.check_output(["ps2build", "--version"], text=True).strip(),
-        "components": yaml.safe_load((sdk / "versions.yaml").read_text()) if (sdk / "versions.yaml").exists() else {},
-        # install_ports.py may keep a cached ogg/vorbis through a host outage; record which one was linked.
-        "ports": {package: hashlib.sha256(b"".join((world / package / "lib" / lib).read_bytes() for lib in libraries)).hexdigest()
-                  for package, libraries in LIBRARIES.items() if (world / package).is_dir()},
+        "configuration": args.configuration, **sdk_suite(args.toolchain),
         "definition_sha256": hashlib.sha256(canonical.encode()).hexdigest(),
         "elf_sha256": hashlib.sha256(elf.read_bytes()).hexdigest(),
         "ilink_bd_sha256": hashlib.sha256((stage / "IEEE1394_bd_mini.irx").read_bytes()).hexdigest(),
@@ -189,7 +211,55 @@ def main():
             destination.mkdir(parents=True, exist_ok=True)
             for filename in ("LICENSE", "UPSTREAM"):
                 shutil.copyfile(ROOT / "third_party" / component / filename, destination / filename)
+        # Every loader embeds smb2man over libsmb2 (LGPL-2.1), so every configuration build carries its licence.
+        destination = stage / "licenses" / "libsmb2"
+        destination.mkdir(parents=True, exist_ok=True)
+        for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):
+            shutil.copyfile(ROOT / "modules/network/smb2man/libsmb2" / filename, destination / filename)
     print(f"Built {options['title']}: {manifest['elf_sha256']}")
+    return 0
+
+
+def sdk_suite(toolchain):
+    """The SDK a build linked: ps2build's version, its component versions and the linked ports.
+    publish_editions.py and publish_lite.py refuse builds whose suite differs from the full kits'."""
+    sdk = Path(os.environ.get("PS2BUILD_HOME", shutil.which("ps2build") or "")).resolve()
+    if sdk.is_file():
+        sdk = sdk.parent
+    world = sdk / ("packages-llvm" if toolchain == "llvm" else "packages") / "world"
+    return {
+        "ps2build_version": subprocess.check_output(["ps2build", "--version"], text=True).strip(),
+        "components": yaml.safe_load((sdk / "versions.yaml").read_text()) if (sdk / "versions.yaml").exists() else {},
+        # install_ports.py may keep a cached ogg/vorbis through a host outage; record which one was linked.
+        "ports": {package: hashlib.sha256(b"".join((world / package / "lib" / lib).read_bytes() for lib in libraries)).hexdigest()
+                  for package, libraries in LIBRARIES.items() if (world / package).is_dir()},
+    }
+
+
+def stage_lite(args, options, source, dirty, canonical, elf, output, stage):
+    """One RIPTOPLITE-<DEVICE>.ELF, its manifest and resolved definition (publish_editions.py collects them)."""
+    title = LITE_DEVICES[args.device]["title"]
+    name = elf_name(args.device, options["ra"])
+    shutil.copyfile(elf, stage / name)
+    main = next(t for t in yaml.safe_load(canonical)["targets"] if t["name"] == "riptopl")
+    embedded = {entry.partition(":")[0] for entry in main["embed_irx"]}
+    manifest = {
+        "repository": "NathanNeurotic/RiptOPL", "source_commit": source, "dirty": dirty,
+        "edition": args.edition, **options, "device": args.device, "device_title": title, "elf": name,
+        "sdk": "ps2build", "compiler": args.toolchain, "configuration": args.configuration,
+        **sdk_suite(args.toolchain),
+        "definition_sha256": hashlib.sha256(canonical.encode()).hexdigest(),
+        "elf_sha256": hashlib.sha256(elf.read_bytes()).hexdigest(),
+        "elf_size": elf.stat().st_size,
+        "unpacked_elf_size": (output / "bin/riptopl.elf").stat().st_size,
+        "embedded_irx": sorted(embedded),
+        "version": (ROOT / "asm/opl_version.h").read_text().strip(),
+        "run_url": os.environ.get("GITHUB_SERVER_URL", "https://github.com") + "/" +
+            os.environ.get("GITHUB_REPOSITORY", "NathanNeurotic/RiptOPL") + "/actions/runs/" + os.environ.get("GITHUB_RUN_ID", "local"),
+    }
+    (stage / "BUILD-MANIFEST.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (stage / "ps2.resolved.yaml").write_text(canonical, encoding="utf-8")
+    print(f"Built {name}: {manifest['elf_size']} bytes, {manifest['elf_sha256']}")
     return 0
 
 
