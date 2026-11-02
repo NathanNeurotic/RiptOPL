@@ -1,23 +1,37 @@
-"""The in-game SMB2 reader logs on with the same user name, domain and password as the menu.
+"""The in-game SMB2 reader logs on with the same user name, domain, password and AV pairs as the menu.
 
 A server recomputes NTOWFv2 from the user name and the domain the client sends (MS-NLMP 3.3.2). If
 the game's logon sends another user name or domain than the menu's, or hashes another one, a
 password that works in the menu can fail at game start, and only on some servers: Samba, which the
-live harness uses, accepts several domains for one account.
+live harness uses, accepts several domains for one account. The AV pairs in the NTLMv2 blob are the
+CHALLENGE's TargetInfo as the client sends it back, and libsmb2 puts an MsvAvTargetName that names
+the server in front of its MsvAvEOL: "cifs/<ip>", or "cifs/<ip>:<port>" off port 445. A server set
+to check it (on Windows, "Server SPN target name validation level") can refuse a logon without it.
 
-This builds both clients on the host and runs each against a fake SMB2 server that sends one fixed
-CHALLENGE, then compares the AUTHENTICATE messages they send: UserName, DomainName, and the user,
-domain and password their NTLMv2 proofs are computed from. The CHALLENGE's TargetName, ParityDom, is
-in mixed case and differs from its MsvAvNbDomainName AV pair, so a logon that changes the domain's
-case or takes it from the AV pair fails. The rest of the two messages is not compared, and differs:
-the menu's NTLMv2 blob also names the server (MsvAvTargetName), its LM response is empty where the
-game's is 24 zero bytes, and the flags differ. None of these is an input to the proof.
+This builds both clients on the host and runs them against one fake SMB2 server, on one port, that
+sends both the same CHALLENGE, then compares the AUTHENTICATE messages they send: UserName,
+DomainName, the user, domain and password their NTLMv2 proofs are computed from, and the AV pairs
+of their NTLMv2 blobs, byte for byte. The CHALLENGE's TargetName, ParityDom, is in mixed case and
+differs from its MsvAvNbDomainName AV pair, so a logon that changes the domain's case or takes it
+from the AV pair fails. The menu's AV pairs are also checked against with_target_name() below, so a
+libsmb2 that rewrites TargetInfo another way fails here as well. The AV pairs are compared with
+both clients pointed at the fake server's port, which goes into the name, and at port 445, which
+does not: for that, both are linked with connect() wrapped so that a connect to port 445 reaches
+the fake server's port instead, and no privileged port has to be opened. They are also compared for
+TargetInfo lists that break MS-NLMP's rules (no EOL, pairs after the EOL, two EOLs, an EOL that
+claims a value, a pair that overruns the list, a stray byte), which both must send back the same way.
+The rest of the two messages is not compared, and differs: the menu's LM response is empty where
+the game's has 24 bytes and the flags differ, neither of them an input to the proof; and each blob
+has its own client challenge and timestamp.
 - The game: tests/smb2-live/ingame.c around the real modules/iopcore/cdvdman/smb2.c.
 - The menu: the vendored libsmb2, set up the way smb2man_new_context() sets it up and connected the
   way smb2man.c connects. getlogin_r() fails as it does in libsmb2's IOP build, so a blank user is
   libsmb2's default, "Guest". smb2man.c itself needs the PS2SDK to build, so its calls are checked
-  in its source (comments and the contents of literals ignored): the same setters as here, the
-  password set once and always, no user and no domain set, and a blank user passed as NULL.
+  in its source (comments ignored, and the contents of literals but for the server's formats): the
+  same setters as here, the password set once and always, no user and no domain set, the server
+  named as here and passed to every connect, and a blank user passed as NULL.
+The EE (its ethsupport source) gives smb2man's LOGON and the game the same address, as
+"%u.%u.%u.%u", and the same port; this check does not look at that.
 This is a host check, not a console test. tests/smb2-live/run.sh runs both against a real Samba.
 """
 from pathlib import Path
@@ -44,10 +58,10 @@ def check(cond, what):
         failures.append(what)
 
 
-def strip_comments(src):
-    """C source with each comment replaced by a space (its newlines kept) and the contents of each
-    string and character literal dropped, so neither can pass for code. Lines that end in a
-    backslash are joined first, as C joins them before it removes comments."""
+def strip_comments(src, keep_literals=False):
+    """C source with each comment replaced by a space (its newlines kept) and, unless keep_literals,
+    the contents of each string and character literal dropped, so neither can pass for code. Lines
+    that end in a backslash are joined first, as C joins them before it removes comments."""
     src = src.replace('\\\n', '')
     out, i, n = [], 0, len(src)
     while i < n:
@@ -64,7 +78,7 @@ def strip_comments(src):
             j = i + 1
             while j < n and src[j] != src[i]:
                 j += 2 if src[j] == '\\' else 1
-            out.append(src[i] * 2)
+            out.append(src[i:j + 1] if keep_literals else src[i] * 2)
             i = j + 1
         else:
             out.append(src[i])
@@ -80,7 +94,8 @@ def function_body(src, name):
 
 
 # ---- smb2man.c sets libsmb2 up and connects as the menu logon below does ---------------------------
-smb2man = strip_comments((root / 'modules/network/smb2man/smb2man.c').read_text(encoding='utf-8').replace('\r\n', '\n'))
+smb2man_src = (root / 'modules/network/smb2man/smb2man.c').read_text(encoding='utf-8').replace('\r\n', '\n')
+smb2man = strip_comments(smb2man_src)
 setup = function_body(smb2man, 'smb2man_new_context')
 check(sorted(set(re.findall(r'\b(smb2_set_\w+)\s*\(', setup))) ==
       ['smb2_set_password', 'smb2_set_security_mode', 'smb2_set_timeout', 'smb2_set_version'] and
@@ -102,6 +117,21 @@ check(re.search(r'\bsmb2_set_(user|domain)\b', smb2man) is None,
 connects = re.findall(r'\bsmb2_connect_share(?:_async)?\s*\(([^;]*)', smb2man)
 check(len(connects) > 0 and all(re.search(r',\s*conn_user\[0\]\s*\?\s*conn_user\s*:\s*NULL\s*\)', c) for c in connects),
       'smb2man.c changed how it passes the user to smb2_connect_share(): make the menu logon in this check do the same')
+# The server libsmb2 connects to is the one it names in the NTLMv2 blob ("cifs/" and the server).
+# smb2man.c's LOGON writes it, "<ip>", or "<ip>:<port>" off port 445, nothing else writes it, and
+# every connect passes it.
+logon_case = re.search(r'\bcase\s+SMB_DEVCTL_LOGON\s*:(.*?)\bcase\s+SMB_DEVCTL_\w+\s*:',
+                       strip_comments(smb2man_src, keep_literals=True), re.S)
+check(logon_case is not None and re.search(
+    r'\bif\s*\(\s*logon->serverPort\s*>\s*0\s*&&\s*logon->serverPort\s*!=\s*445\s*\)\s*'
+    r'sprintf\(\s*conn_server\s*,\s*"%\.15s:%d"\s*,\s*logon->serverIP\s*,\s*logon->serverPort\s*\)\s*;\s*'
+    r'else\s+sprintf\(\s*conn_server\s*,\s*"%\.15s"\s*,\s*logon->serverIP\s*\)\s*;', logon_case.group(1)) is not None,
+    'smb2man.c\'s LOGON names the server another way than "<ip>", or "<ip>:<port>" off port 445: make the menu '
+    "logon in this check and smb2.c's spn do the same")
+check(len(re.findall(r'\bconn_server\b', smb2man)) == 3 + len(connects) and
+      all(re.match(r'\s*\w+\s*,\s*conn_server\s*,', c) for c in connects),
+      'smb2man.c now writes conn_server elsewhere, or connects to another server: make the menu logon in this check '
+      "and smb2.c's spn do the same")
 
 
 # ---- MD4 (RFC 1320): hashlib has none under OpenSSL 3 ---------------------------------------------
@@ -147,6 +177,49 @@ def u16(s):
     return s.encode('utf-16-le')
 
 
+# ---- AV pairs (MS-NLMP 2.2.2.1) --------------------------------------------------------------------
+MSV_AV_EOL, MSV_AV_TIMESTAMP, MSV_AV_TARGET_NAME = 0, 7, 9
+
+
+def av(code, value):
+    return struct.pack('<HH', code, len(value)) + value
+
+
+def with_target_name(ti, spn):
+    """The AV pairs libsmb2 sends for a CHALLENGE's TargetInfo (lib/ntlmssp.c,
+    ntlm_decode_challenge_message()): each pair copied, and in front of each MsvAvEOL an
+    MsvAvTargetName that names the server by spn, in UTF-16LE. An EOL is copied without a value, and
+    what it claims as one is read as pairs; the walk ends at a pair that overruns the list, which is
+    dropped with whatever follows. (libsmb2 also stops at the end of its buffer, the CHALLENGE's
+    length + 400 bytes, which the lists here are far from.)"""
+    out, off = b'', 0
+    while off + 4 <= len(ti):
+        code, length = struct.unpack_from('<HH', ti, off)
+        if off + 4 + length > len(ti):
+            break
+        if code == MSV_AV_EOL:
+            out += av(MSV_AV_TARGET_NAME, u16(spn)) + av(MSV_AV_EOL, b'')
+            off += 4
+        else:
+            out += ti[off:off + 4 + length]
+            off += 4 + length
+    return out
+
+
+def pairs(avs):
+    """AV pairs as AvId=value, names decoded from UTF-16LE, then any bytes left over."""
+    out, off = [], 0
+    while off + 4 <= len(avs):
+        code, length = struct.unpack_from('<HH', avs, off)
+        value = avs[off + 4:off + 4 + length]
+        out.append('%d=%s' % (code, ascii(value.decode('utf-16-le', 'replace')) if code in (1, 2, 3, 4, 5, 9) else
+                              value.hex()))
+        off += 4 + length
+    if off < len(avs):
+        out.append('then ' + avs[off:].hex())
+    return '[' + ', '.join(out) + ']'
+
+
 # ---- the fake server -------------------------------------------------------------------------------
 TARGET_NAME = 'ParityDom'  # mixed case: a logon that changes the domain's case must fail
 SERVER_CHALLENGE = bytes.fromhex('0123456789abcdef')
@@ -154,6 +227,24 @@ TIMESTAMP = struct.pack('<Q', 133000000000000000)
 STATUS_SUCCESS, STATUS_MORE_PROCESSING_REQUIRED = 0, 0xC0000016
 STATUS_ACCESS_DENIED, STATUS_NOT_SUPPORTED = 0xC0000022, 0xC00000BB
 NTLMSSP_NEGOTIATE_ANONYMOUS = 0x00000800
+
+# MsvAvNbDomainName (2) differs from TargetName on purpose: both logons must take the domain from
+# TargetName, and a logon that read it from this AV pair would otherwise pass.
+PAIRS = (av(2, u16('PARITYNB')) + av(1, u16('FAKESRV')) + av(4, u16('paritydom.test')) +
+         av(3, u16('fakesrv.paritydom.test')) + av(MSV_AV_TIMESTAMP, TIMESTAMP))
+EOL = av(MSV_AV_EOL, b'')
+TARGET_INFO = PAIRS + EOL  # as servers send it
+# TargetInfo lists that break MS-NLMP 2.2.2.1. Both logons must send them back the same way.
+ODD_TARGET_INFO = [
+    ('without an EOL', PAIRS),
+    ('of only an EOL', EOL),
+    ('with a pair after the EOL', TARGET_INFO + av(5, u16('paritydom.test'))),
+    ('with two EOLs', av(2, u16('PARITYNB')) + EOL + av(1, u16('FAKESRV')) + av(MSV_AV_TIMESTAMP, TIMESTAMP) + EOL),
+    ('with an EOL that claims a value', PAIRS + struct.pack('<HH', MSV_AV_EOL, 8) + av(1, u16('XY'))),
+    ('with a pair that overruns the list and the EOL', PAIRS + struct.pack('<HH', 1, 50) + u16('short') + EOL),
+    ('with a pair that overruns the list after the EOL', TARGET_INFO + struct.pack('<HH', 1, 50) + u16('short')),
+    ('with a stray byte after the EOL', TARGET_INFO + b'\x01'),
+]
 
 
 def recv_exact(conn, n):
@@ -195,15 +286,8 @@ def error_body():
     return struct.pack('<H', 9) + b'\0' * 7
 
 
-def challenge_message():
+def challenge_message(ti):
     tn = u16(TARGET_NAME)
-    av = b''
-    # MsvAvNbDomainName (2) differs from TargetName on purpose: both logons must take the domain from
-    # TargetName, and a logon that read it from this AV pair would otherwise pass.
-    for code, val in [(2, u16('PARITYNB')), (1, u16('FAKESRV')), (4, u16('paritydom.test')),
-                      (3, u16('fakesrv.paritydom.test')), (7, TIMESTAMP)]:
-        av += struct.pack('<HH', code, len(val)) + val
-    av += struct.pack('<HH', 0, 0)
     # UNICODE, REQUEST_TARGET, SIGN, NTLM, ALWAYS_SIGN, TARGET_TYPE_DOMAIN, EXTENDED_SESSIONSECURITY,
     # TARGET_INFO, VERSION, 128, 56
     flags = 0x00000001 | 0x00000004 | 0x00000010 | 0x00000200 | 0x00008000 | 0x00010000 | 0x00080000 | \
@@ -211,15 +295,16 @@ def challenge_message():
     m = b'NTLMSSP\0' + struct.pack('<I', 2)
     m += struct.pack('<HHI', len(tn), len(tn), 56)
     m += struct.pack('<I', flags) + SERVER_CHALLENGE + b'\0' * 8
-    m += struct.pack('<HHI', len(av), len(av), 56 + len(tn))
+    m += struct.pack('<HHI', len(ti), len(ti), 56 + len(tn))
     m += bytes([6, 1]) + struct.pack('<H', 7600) + b'\0\0\0\x0f'
     assert len(m) == 56
-    return m + tn + av
+    return m + tn + ti
 
 
-def serve_one(sock, record):
-    """Answer one client: NEGOTIATE (2.1 when offered), the two SESSION_SETUP legs, and a TREE_CONNECT
-    that is refused, which ends both clients. Records the AUTHENTICATE_MESSAGE's fields."""
+def serve_one(sock, ti, record):
+    """Answer one client: NEGOTIATE (2.1 when offered), the two SESSION_SETUP legs, with this
+    TargetInfo in the CHALLENGE, and a TREE_CONNECT that is refused, which ends both clients.
+    Records the AUTHENTICATE_MESSAGE's fields."""
     try:
         sock.settimeout(60)
         conn, _ = sock.accept()
@@ -255,7 +340,7 @@ def serve_one(sock, record):
                 tok = tok[i:]
                 mtype = struct.unpack_from('<I', tok, 8)[0]
                 if mtype == 1:
-                    ch = challenge_message()
+                    ch = challenge_message(ti)
                     send_msg(conn, reply(req, STATUS_MORE_PROCESSING_REQUIRED, struct.pack('<HHHH', 9, 0, 72, len(ch)) + ch,
                                          session_id))
                 elif mtype == 3:
@@ -276,27 +361,6 @@ def serve_one(sock, record):
         conn.close()
 
 
-def logon(client):
-    """Run one client (a function of the port) against a fresh fake server; return the AUTHENTICATE
-    fields and the client's output."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind(('127.0.0.1', 0))
-    sock.listen(1)
-    record = {}
-    server = threading.Thread(target=serve_one, args=(sock, record), daemon=True)
-    server.start()
-    env = dict(os.environ)
-    env.pop('NTLM_USER_FILE', None)  # libsmb2 on the host would read a password from it
-    try:
-        p = subprocess.run(client(sock.getsockname()[1]), capture_output=True, text=True, timeout=60, env=env)
-        record['out'], record['rc'] = p.stdout + p.stderr, p.returncode
-    except subprocess.TimeoutExpired:
-        record['out'], record['rc'] = 'timed out', None
-    server.join(10)
-    sock.close()
-    return record
-
-
 def proof_inputs(rec, password, user_upper, domain):
     """Whether the client's NTProofStr was computed from this password, upper-cased user and domain."""
     nt = rec.get('nt', b'')
@@ -304,6 +368,12 @@ def proof_inputs(rec, password, user_upper, domain):
         return False
     ntowf = hmac_md5(md4(u16(password)), u16(user_upper) + domain)
     return hmac_md5(ntowf, SERVER_CHALLENGE + nt[16:]) == nt[:16]
+
+
+def av_pairs(rec):
+    """The AV pairs of the client's NTLMv2 blob: NtChallengeResponse is NTProofStr (16 bytes), the
+    blob's 28-byte header, the AV pairs and Z(4)."""
+    return rec['nt'][16 + 28:len(rec['nt']) - 4]
 
 
 # NTOWFv2 hashes UPPER(user). Both logons upper-case only ASCII letters today; what matters is that
@@ -314,10 +384,12 @@ UPPER = [('full Unicode', str.upper), ('ASCII only', lambda s: ''.join(c.upper()
 MENU = r'''
 /* The menu's logon: libsmb2 set up as smb2man_new_context() sets it up (signing enabled, SMB 2.0.2
    and 2.1, a timeout, the password always set, no user and no domain set) and connected as
-   smb2man.c connects (a blank user is passed as NULL). */
+   smb2man.c connects: to the server as its LOGON names it, "<ip>", or "<ip>:<port>" off port 445,
+   with a blank user passed as NULL. */
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <smb2/smb2.h>
 #include <smb2/libsmb2.h>
@@ -332,20 +404,49 @@ int getlogin_r(char *buf, size_t size)
 
 int main(int argc, char **argv)
 {
-    /* argv: server (ip:port) share user password */
+    /* argv: ip port share user password */
     struct smb2_context *ctx;
-    int rc;
+    char server[64];
+    int rc, port;
 
-    if (argc < 5 || (ctx = smb2_init_context()) == NULL)
+    if (argc < 6 || (ctx = smb2_init_context()) == NULL)
         return 2;
+    port = atoi(argv[2]);
+    if (port > 0 && port != 445)
+        sprintf(server, "%.15s:%d", argv[1], port);
+    else
+        sprintf(server, "%.15s", argv[1]);
     smb2_set_security_mode(ctx, SMB2_NEGOTIATE_SIGNING_ENABLED);
     smb2_set_version(ctx, SMB2_VERSION_ANY2);
     smb2_set_timeout(ctx, 10);
-    smb2_set_password(ctx, argv[4]);
-    rc = smb2_connect_share(ctx, argv[1], argv[2], argv[3][0] ? argv[3] : NULL);
+    smb2_set_password(ctx, argv[5]);
+    rc = smb2_connect_share(ctx, server, argv[3], argv[4][0] ? argv[4] : NULL);
     printf("connect %d: %s\n", rc, smb2_get_error(ctx));
     smb2_destroy_context(ctx);
     return 0;
+}
+'''
+
+# Linked into both clients with -Wl,--wrap=connect: a connect to port 445 goes to the fake server's
+# port (PORT445_TO) instead, so a client can be told port 445 without anything listening on it.
+WRAP = r'''
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+
+int __real_connect(int fd, const struct sockaddr *sa, socklen_t len);
+
+int __wrap_connect(int fd, const struct sockaddr *sa, socklen_t len)
+{
+    const char *to = getenv("PORT445_TO");
+
+    if (to != NULL && sa->sa_family == AF_INET && ntohs(((const struct sockaddr_in *)sa)->sin_port) == 445) {
+        struct sockaddr_in a = *(const struct sockaddr_in *)sa;
+
+        a.sin_port = htons((unsigned short)atoi(to));
+        return __real_connect(fd, (const struct sockaddr *)&a, sizeof(a));
+    }
+    return __real_connect(fd, sa, len);
 }
 '''
 
@@ -368,10 +469,12 @@ def cc(args, what):
 
 with tempfile.TemporaryDirectory() as tmp:
     tmp = Path(tmp)
+    (tmp / 'wrap.c').write_text(WRAP)
+    wrap = [str(tmp / 'wrap.c'), '-Wl,--wrap=connect']
     game = tmp / 'ingame'
     cc(SAN + ['-Wall', '-Wno-unused-parameter', '-I', str(live / 'inc-ingame'), '-I', str(cdvdman), '-I',
               str(root / 'modules/iopcore/common'), str(live / 'ingame.c'), str(cdvdman / 'smb2.c'),
-              str(cdvdman / 'smb2auth.c'), '-o', str(game)], 'the in-game reader (smb2.c)')
+              str(cdvdman / 'smb2auth.c')] + wrap + ['-o', str(game)], 'the in-game reader (smb2.c)')
     objs = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 2) as pool:
         jobs = []
@@ -385,20 +488,43 @@ with tempfile.TemporaryDirectory() as tmp:
             job.result()
     (tmp / 'menu.c').write_text(MENU)
     menu = tmp / 'menu'
-    cc(SAN + ['-Wall', '-I', str(lib / 'include'), str(tmp / 'menu.c')] + objs + ['-o', str(menu)],
+    cc(SAN + ['-Wall', '-I', str(lib / 'include'), str(tmp / 'menu.c')] + objs + wrap + ['-o', str(menu)],
        "the menu's logon (libsmb2)")
+
+    def logon(ti, user, password, port445):
+        """Run the game's logon, then the menu's, against one fake server (one port, so both name the
+        same server) that sends both this TargetInfo. With port445, both are told port 445, and the
+        wrapped connect() takes them to the fake server. Returns the port the clients were told and
+        each client's AUTHENTICATE fields and output."""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(('127.0.0.1', 0))
+        sock.listen(2)
+        port = 445 if port445 else sock.getsockname()[1]
+        env = dict(os.environ)
+        env.pop('NTLM_USER_FILE', None)  # libsmb2 on the host would read a password from it
+        env['PORT445_TO'] = str(sock.getsockname()[1])
+        u8, p8 = user.encode('utf-8'), password.encode('utf-8')
+        records = []
+        for argv in ([str(game), '127.0.0.1', str(port), u8, p8, 'PS2SMB', '\\DVD\\TEST.iso', '\\VMC\\card.bin'],
+                     [str(menu), '127.0.0.1', str(port), 'PS2SMB', u8, p8]):
+            record = {}
+            server = threading.Thread(target=serve_one, args=(sock, ti, record), daemon=True)
+            server.start()
+            try:
+                p = subprocess.run(argv, capture_output=True, text=True, timeout=60, env=env)
+                record['out'], record['rc'] = p.stdout + p.stderr, p.returncode
+            except subprocess.TimeoutExpired:
+                record['out'], record['rc'] = 'timed out', None
+            server.join(10)
+            records.append(record)
+        sock.close()
+        return port, records[0], records[1]
 
     def name_of(field):
         return ascii(field.decode('utf-16-le', 'replace'))
 
-    # (user, password) as configured on the console. Mixed case: the proof hashes UPPER(user), the
-    # message sends it as typed. Blank: both log on as "Guest" (with the password, or an empty one).
-    for user, password in [('ps2', 'secret'), ('MixedCase', 'Pass word'), ('José', 'Café'), ('', 'secret'),
-                           ('', '')]:
-        label = 'user %s, password %s' % (ascii(user), ascii(password))
-        u8, p8 = user.encode('utf-8'), password.encode('utf-8')
-        g = logon(lambda port: [str(game), '127.0.0.1', str(port), u8, p8, 'PS2SMB', '\\DVD\\TEST.iso', '\\VMC\\card.bin'])
-        m = logon(lambda port: [str(menu), '127.0.0.1:%d' % port, 'PS2SMB', u8, p8])
+    def run(label, user='ps2', password='secret', ti=TARGET_INFO, port445=False):
+        port, g, m = logon(ti, user, password, port445)
         for name, rec in [('in-game', g), ('menu', m)]:
             check('error' not in rec, '%s, %s logon: %s' % (label, name, rec.get('error')))
             check('Sanitizer' not in rec['out'] and 'runtime error' not in rec['out'],
@@ -406,7 +532,7 @@ with tempfile.TemporaryDirectory() as tmp:
             check('nt' in rec, '%s, %s logon: no AUTHENTICATE_MESSAGE reached the server (exit %s):\n%s' %
                   (label, name, rec['rc'], rec['out']))
         if 'nt' not in g or 'nt' not in m:
-            continue
+            return
         want_user, domain = user or 'Guest', u16(TARGET_NAME)
         check(m['user'] == u16(want_user) and m['domain'] == domain,
               '%s: the menu (libsmb2) sends UserName %s and DomainName %s; this check expects %s and %s: '
@@ -431,12 +557,35 @@ with tempfile.TemporaryDirectory() as tmp:
               'NTOWFv2(password, UPPER(%s), %s) upper-cased %s, the game\'s %s' %
               (label, ascii(want_user), ascii(TARGET_NAME), ' or '.join(menu_upper) or 'no way',
                ' or '.join(game_upper) or 'no way'))
+        # The AV pairs, byte for byte: the menu's are the CHALLENGE's TargetInfo with the server named
+        # as smb2man.c names it, and the game's are the menu's.
+        for name, rec in [('in-game', g), ('menu', m)]:
+            check(len(rec['nt']) >= 16 + 28 + 4 and rec['nt'][-4:] == bytes(4),
+                  '%s: the %s NTLMv2 blob does not end in Z(4)' % (label, name))
+        want = with_target_name(ti, 'cifs/127.0.0.1' if port == 445 else 'cifs/127.0.0.1:%d' % port)
+        check(av_pairs(m) == want,
+              '%s: the menu (libsmb2) sends the AV pairs %s; this check expects %s: libsmb2 or smb2man changed, '
+              'update this check and smb2.c together' % (label, pairs(av_pairs(m)), pairs(want)))
+        check(av_pairs(g) == av_pairs(m), '%s: the in-game logon sends the AV pairs %s, the menu sends %s' %
+              (label, pairs(av_pairs(g)), pairs(av_pairs(m))))
         check('session setup 1' in g['out'], '%s: the in-game reader did not finish the logon:\n%s' % (label, g['out']))
+
+    # (user, password) as configured on the console. Mixed case: the proof hashes UPPER(user), the
+    # message sends it as typed. Blank: both log on as "Guest" (with the password, or an empty one).
+    for user, password in [('ps2', 'secret'), ('MixedCase', 'Pass word'), ('José', 'Café'), ('', 'secret'),
+                           ('', '')]:
+        run('user %s, password %s' % (ascii(user), ascii(password)), user, password)
+    # On port 445 both name the server without the port.
+    run('port 445', port445=True)
+    for what, ti in ODD_TARGET_INFO:
+        run('TargetInfo ' + what, ti=ti)
 
 if failures:
     print('SMB2 logon parity checks FAILED:')
     for failure in failures:
         print('  ' + failure)
     sys.exit(1)
-print('smb2 logon parity: the in-game reader and the menu send the same UserName and DomainName, and compute '
-      'their NTLMv2 proofs from the same user, domain and password (named, mixed-case, non-ASCII and blank users)')
+print('smb2 logon parity: the in-game reader and the menu send the same UserName, DomainName and NTLMv2 AV pairs '
+      '(the server named on its port and on 445, and TargetInfo lists that break the rules sent back alike), and '
+      'compute their NTLMv2 proofs from the same user, domain and password (named, mixed-case, non-ASCII and blank '
+      'users)')
