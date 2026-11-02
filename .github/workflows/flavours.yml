@@ -29,6 +29,7 @@ jobs:
           python3 .github/scripts/test_release_editions.py
           python3 .github/scripts/test_ps2build_configurations.py
           python3 .github/scripts/test_install_ports.py
+          python3 .github/scripts/test_ps2build_sdk_watch.py
           python3 .github/scripts/test_reset_failure_lifecycle.py
           python3 .github/scripts/test_iop_pad.py
           python3 .github/scripts/test_igr_pad_lifetime.py
@@ -40,6 +41,7 @@ jobs:
           python3 .github/scripts/test_release_publication.py
           python3 .github/scripts/test_game_size_fallback.py
           python3 .github/scripts/test_ps1_duplicates.py
+          python3 .github/scripts/test_list_cfg_text.py
           python3 .github/scripts/test_menu_crash_catcher.py
           python3 .github/scripts/test_config_save_integrity.py
           python3 .github/scripts/test_bdm_empty_literal_slot.py
@@ -342,11 +344,12 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      # The newest ps2build SDK: the latest versions come from git.techwritescode.dev's release API (or,
-      # when it is down, the newest NathanNeurotic/ps2build-mirror release). The SDK cached under them is
-      # restored, else an older cached SDK is updated in place, else it is installed; then it is cached. A
-      # mirror fallback older than the latest is never cached under the latest versions.
-      - name: Resolve the latest ps2build SDK
+      # The ps2build SDK pinned in .github/ps2build-sdk.env (bumped by ps2build-sdk-watch.yml once a week):
+      # resolving it makes no network call. The SDK cached under those versions is restored, else an older
+      # cached SDK is updated in place, else it is installed: from git.techwritescode.dev, or when that fails
+      # from the pinned NathanNeurotic/ps2build-mirror release. Then it is cached. A mirror fallback that does
+      # not hold the pinned versions is never cached under them.
+      - name: Resolve the pinned ps2build SDK
         env:
           PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         id: sdk
