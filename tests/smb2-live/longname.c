@@ -9,13 +9,17 @@
    LONGNAME_SMB1, smb.c (smb_cdvdman), and runs against a live SMB server: a block that cut the name
    sends the server looking for a file that does not exist, and no sector of the image can be read.
 
-   argv: ip port user pass share local_share_root format prefix
-     format  old (startup.name.iso), iso (name.iso, with UTF-8 in the name: SMB2 only, as smb.c sends
-             each byte as one UTF-16 unit) or ul (a USBExtreme game in two parts, opened as
-             "\<prefix>\<file name>.00" and ".01")
-     prefix  prefix (the longest one the settings block holds) or none
+   argv: ip port user pass share local_share_root format prefix [name_length]
+     format       old (startup.name.iso), plain (name.iso), utf8 (name.iso, with UTF-8 in the name:
+                  SMB2 only, as smb.c sends each byte as one UTF-16 unit), ul (a USBExtreme game in two
+                  parts, opened as "\<prefix>\<file name>.00" and ".01") or missing (an old-format
+                  name with no image behind it: the read must fail, not return what its buffer held)
+     prefix       prefix (the longest one the settings block holds) or none
+     name_length  the name's length in bytes, ISO_GAME_NAME_MAX if left out
    The image files are created under local_share_root, which the server shares, before the launch.
-   Built and run by longname.sh, which run.sh sources. */
+   Built and run by longname.sh, which run.sh sources. tests/smb2-live/launchname.c checks every
+   format and boundary length without a server, and .github/scripts/test_smb_launch_name.py that the
+   snprintf calls below are the EE's. */
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -181,21 +185,41 @@ static int read_back(u32 lsn, int seed)
     return 0;
 }
 
+// Reads the first sectors of an image that does not exist: the open failed, and the read must too.
+static int read_missing(void)
+{
+    static u8 buf[SECTORS * 2048];
+    int rv = DeviceReadSectors(0, buf, SECTORS);
+
+    if (rv == SCECdErNO) {
+        printf("FAIL: a read from the missing image reports success\n");
+        return 1;
+    }
+    printf("read from the missing image fails: error 0x%x\n", rv);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     static const char startup[] = "SLUS_209.46"; // the scan takes an old-format name's first 11 bytes
     static const char ext[] = ".iso";
     char name[ISO_GAME_NAME_MAX + 1], prefix[sizeof(cdvdman_settings.smb_prefix)];
     char file[512], dir[1024], path[1600];
-    int i, len, parts = 1, fails = 0;
+    int i, len, namelen, parts = 1, fails = 0;
 
     setvbuf(stdout, NULL, _IOLBF, 0); // so a sanitizer report, which exits at once, keeps the lines before it
-    if (argc != 9) {
-        fprintf(stderr, "usage: longname ip port user pass share local_share_root old|iso|ul prefix|none\n");
+    if (argc != 9 && argc != 10) {
+        fprintf(stderr, "usage: longname ip port user pass share local_share_root old|plain|utf8|ul|missing prefix|none [name_length]\n");
         return 2;
     }
     const char *root = argv[6], *format = argv[7];
-    const int usbld = strcmp(format, "ul") == 0;
+    const int usbld = strcmp(format, "ul") == 0, missing = strcmp(format, "missing") == 0;
+    const int plain = strcmp(format, "plain") == 0 || strcmp(format, "utf8") == 0;
+    namelen = argc == 10 ? atoi(argv[9]) : ISO_GAME_NAME_MAX;
+    if (namelen < 1 || namelen > ISO_GAME_NAME_MAX || (!plain && !usbld && !missing && strcmp(format, "old") != 0)) {
+        fprintf(stderr, "longname: bad format or name length\n");
+        return 2;
+    }
 
     // The longest prefix the settings block holds (gETHPrefix is as long), or none.
     memset(prefix, 0, sizeof(prefix));
@@ -204,16 +228,16 @@ int main(int argc, char **argv)
             prefix[i] = "PS2-Games-"[i % 10];
     }
 
-    // An ISO_GAME_NAME_MAX-byte name: for the plain format with two-byte UTF-8 characters in it, as the
-    // menu stores a name like "Cafe" with an acute e that smb2man listed.
+    // A namelen-byte name: for utf8 with two-byte UTF-8 characters in it, as the menu stores a name like
+    // "Cafe" with an acute e that smb2man listed.
     len = 0;
-    if (strcmp(format, "iso") == 0) {
-        while (len + 6 <= ISO_GAME_NAME_MAX) {
+    if (strcmp(format, "utf8") == 0) {
+        while (len + 6 <= namelen) {
             memcpy(name + len, "Caf\xC3\xA9 ", 6);
             len += 6;
         }
     }
-    while (len < ISO_GAME_NAME_MAX) {
+    while (len < namelen) {
         name[len] = (len % 10 == 4) ? ' ' : (char)('a' + (len * 7) % 26);
         len++;
     }
@@ -223,10 +247,10 @@ int main(int argc, char **argv)
     memset(&cdvdman_settings, 0, sizeof(cdvdman_settings));
     cdvdman_settings.common.NumParts = usbld ? 2 : 1; // sbPrepare: game->parts
     cdvdman_settings.common.media = 0x14;             // a DVD: device-smb.c opens it in DVD
-    if (strcmp(format, "old") == 0) {
+    if (!plain && !usbld) {
         snprintf(file, sizeof(file), "%s.%s%s", startup, name, ext);
         snprintf(cdvdman_settings.filename, sizeof(cdvdman_settings.filename), "%s.%s%s", startup, name, ext);
-    } else if (!usbld) {
+    } else if (plain) {
         snprintf(file, sizeof(file), "%s%s", name, ext);
         snprintf(cdvdman_settings.filename, sizeof(cdvdman_settings.filename), "%s%s", name, ext);
     } else {
@@ -251,13 +275,14 @@ int main(int argc, char **argv)
 
     // The image where the server shares it: <root>[/<prefix>]/DVD/<file name>, or the parts of a
     // USBExtreme game, <root>[/<prefix>]/<file name>.00 and .01, which device-smb.c opens without DVD.
+    // A missing image has its directory, but no file in it.
     snprintf(dir, sizeof(dir), "%s%s%s%s", root, prefix[0] ? "/" : "", prefix, usbld ? "" : "/DVD");
     if (prefix[0]) {
         snprintf(path, sizeof(path), "%s/%s", root, prefix);
         mkdir(path, 0755);
     }
     mkdir(dir, 0755);
-    for (i = 0; i < parts; i++) {
+    for (i = 0; i < parts && !missing; i++) {
         if (usbld)
             snprintf(path, sizeof(path), "%s/%s.%02x", dir, file, i);
         else
@@ -269,7 +294,9 @@ int main(int argc, char **argv)
     // The launch, as the IOP runs it: negotiate, then mount (logon, tree connect, open), then read.
     smb_NegotiateProt(hash_cb);
     DeviceFSInit();
-    for (i = 0; i < parts; i++)
+    if (missing)
+        fails += read_missing();
+    for (i = 0; i < parts && !missing; i++)
         fails += read_back((u32)i * 0x80000, i); // part i holds the sectors from i * 0x80000 on
     DeviceUnmount();
 

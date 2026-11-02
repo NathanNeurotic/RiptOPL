@@ -17,8 +17,10 @@
 #             frees every handle and directory listing.
 #   longname.c  compiles device-smb.c whole, with smb2.c and again with smb.c (SMB1), and launches
 #             a game the way the IOP does, from a settings block filled as the EE fills it, for the
-#             longest file names the menu lists (longname.sh, sourced at the end; the SMB1 cases run
-#             against the same server with NT1 allowed).
+#             longest file names the menu lists and the lengths either side of each one the old
+#             160-byte field cut, and for an image that is not there, whose read must fail
+#             (longname.sh, sourced at the end; the SMB1 cases run against the same server with NT1
+#             allowed). launchname.c checks the same names without a server, in CI.
 #
 # All are built with AddressSanitizer and UBSan; a sanitizer report, a leak included, fails the case
 # (it exits 86, so not even a case that expects a refusal takes one for it).
