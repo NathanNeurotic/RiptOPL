@@ -91,9 +91,10 @@ def write_manifest(path, **fields):
 
 class ChannelTests(unittest.TestCase):
     VERSION = '#define OPL_VERSION "v1.2.0-Beta-4000-abcdef0-PS2BUILD-Korium-GCC"\n'
+    SUITE = {"ps2build_version": "ps2build 1", "components": {"ps2sdk": "abc"}, "ports": {"libogg": "def"}}
 
     def make_root(self, root, sha, tamper=None):
-        kit = {"ps2build_version": "ps2build 1", "version": self.VERSION}
+        kit = {**self.SUITE, "version": self.VERSION}
         write_manifest(root / "release-korium", **kit)
         (root / "release-korium" / "LICENSE-LIBSMB2.txt").write_text("lgpl", encoding="utf-8")
         write_manifest(root / "release-ra", **kit)
@@ -110,10 +111,16 @@ class ChannelTests(unittest.TestCase):
                 stage = root / f"{edition}-{device}"
                 manifest = {"repository": "NathanNeurotic/RiptOPL", "source_commit": sha, "dirty": False,
                             "edition": edition, "device": device, "compiler": "gcc", "configuration": "standard",
-                            "theme": "korium", "ra": options["ra"], "ps2build_version": "ps2build 1", "elf": name,
-                            "elf_sha256": hashlib.sha256(elf).hexdigest(), "version": self.VERSION}
+                            "theme": "korium", "ra": options["ra"], **self.SUITE, "elf": name,
+                            "elf_sha256": hashlib.sha256(elf).hexdigest(),
+                            # Each build names its edition and device in LOCALVERSION (build_edition.py).
+                            "version": self.VERSION.replace("Korium-GCC", f"{options['title']}-{lite.DEVICES[device]['title']}-GCC")}
                 if tamper == (edition, device):
                     manifest["source_commit"] = "b" * 40
+                elif tamper == ("ports", edition, device):
+                    manifest["ports"] = {"libogg": "cached"}
+                elif tamper == ("version", edition, device):
+                    manifest["version"] = manifest["version"].replace("4000", "4001")
                 write_manifest(stage, **manifest)
                 (stage / name).write_bytes(elf)
 
@@ -142,6 +149,20 @@ class ChannelTests(unittest.TestCase):
             root = Path(temp)
             self.make_root(root, "a" * 40, tamper=("lite_ra", "hdd"))
             with self.assertRaises(ValueError):
+                publish_lite.assemble(root, "a" * 40)
+
+    def test_a_build_with_another_sdk_suite_is_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.make_root(root, "a" * 40, tamper=("ports", "lite", "usb"))
+            with self.assertRaisesRegex(ValueError, "invalid lite build: lite/usb"):
+                publish_lite.assemble(root, "a" * 40)
+
+    def test_a_build_with_another_version_is_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.make_root(root, "a" * 40, tamper=("version", "lite_ra", "smb"))
+            with self.assertRaisesRegex(ValueError, "different versions"):
                 publish_lite.assemble(root, "a" * 40)
 
     def test_notes_link_every_download(self):

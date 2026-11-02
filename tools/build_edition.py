@@ -182,19 +182,10 @@ def main():
     # The i.LINK pair the ELF embeds also replaces the Neutrino bundle's copies (package_edition.py).
     shutil.copyfile(output / "bin/IEEE1394_bd_mini_fork.irx", stage / "IEEE1394_bd_mini.irx")
     shutil.copyfile(output / "bin/iLinkman_fork.irx", stage / "iLinkman.irx")
-    sdk = Path(os.environ.get("PS2BUILD_HOME", shutil.which("ps2build") or "")).resolve()
-    if sdk.is_file():
-        sdk = sdk.parent
-    world = sdk / ("packages-llvm" if args.toolchain == "llvm" else "packages") / "world"
     manifest = {
         "repository": "NathanNeurotic/RiptOPL", "source_commit": source, "dirty": dirty,
         "edition": args.edition, **options, "sdk": "ps2build", "compiler": args.toolchain,
-        "configuration": args.configuration,
-        "ps2build_version": subprocess.check_output(["ps2build", "--version"], text=True).strip(),
-        "components": yaml.safe_load((sdk / "versions.yaml").read_text()) if (sdk / "versions.yaml").exists() else {},
-        # install_ports.py may keep a cached ogg/vorbis through a host outage; record which one was linked.
-        "ports": {package: hashlib.sha256(b"".join((world / package / "lib" / lib).read_bytes() for lib in libraries)).hexdigest()
-                  for package, libraries in LIBRARIES.items() if (world / package).is_dir()},
+        "configuration": args.configuration, **sdk_suite(args.toolchain),
         "definition_sha256": hashlib.sha256(canonical.encode()).hexdigest(),
         "elf_sha256": hashlib.sha256(elf.read_bytes()).hexdigest(),
         "ilink_bd_sha256": hashlib.sha256((stage / "IEEE1394_bd_mini.irx").read_bytes()).hexdigest(),
@@ -224,6 +215,22 @@ def main():
     return 0
 
 
+def sdk_suite(toolchain):
+    """The SDK a build linked: ps2build's version, its component versions and the linked ports.
+    publish_editions.py and publish_lite.py refuse builds whose suite differs from the full kits'."""
+    sdk = Path(os.environ.get("PS2BUILD_HOME", shutil.which("ps2build") or "")).resolve()
+    if sdk.is_file():
+        sdk = sdk.parent
+    world = sdk / ("packages-llvm" if toolchain == "llvm" else "packages") / "world"
+    return {
+        "ps2build_version": subprocess.check_output(["ps2build", "--version"], text=True).strip(),
+        "components": yaml.safe_load((sdk / "versions.yaml").read_text()) if (sdk / "versions.yaml").exists() else {},
+        # install_ports.py may keep a cached ogg/vorbis through a host outage; record which one was linked.
+        "ports": {package: hashlib.sha256(b"".join((world / package / "lib" / lib).read_bytes() for lib in libraries)).hexdigest()
+                  for package, libraries in LIBRARIES.items() if (world / package).is_dir()},
+    }
+
+
 def stage_lite(args, options, source, dirty, canonical, elf, output, stage):
     """One RIPTOPLITE-<DEVICE>.ELF, its manifest and resolved definition (publish_editions.py collects them)."""
     title = LITE_DEVICES[args.device]["title"]
@@ -235,7 +242,7 @@ def stage_lite(args, options, source, dirty, canonical, elf, output, stage):
         "repository": "NathanNeurotic/RiptOPL", "source_commit": source, "dirty": dirty,
         "edition": args.edition, **options, "device": args.device, "device_title": title, "elf": name,
         "sdk": "ps2build", "compiler": args.toolchain, "configuration": args.configuration,
-        "ps2build_version": subprocess.check_output(["ps2build", "--version"], text=True).strip(),
+        **sdk_suite(args.toolchain),
         "definition_sha256": hashlib.sha256(canonical.encode()).hexdigest(),
         "elf_sha256": hashlib.sha256(elf.read_bytes()).hexdigest(),
         "elf_size": elf.stat().st_size,

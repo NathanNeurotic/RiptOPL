@@ -55,14 +55,26 @@ def _check(manifest, edition, device, sha, kit, elf_bytes):
             or manifest.get("dirty") or manifest.get("edition") != edition or manifest.get("device") != device
             or manifest.get("compiler") != "gcc" or manifest.get("configuration") != "standard"
             or manifest.get("theme") != "korium" or manifest.get("ra") != LITES[edition]["ra"]
-            or manifest.get("ps2build_version") != kit["ps2build_version"]
+            or any(manifest.get(field) != kit.get(field) for field in SDK_SUITE)
             or manifest.get("elf") != elf_name(device, LITES[edition]["ra"])
             or manifest.get("elf_sha256") != hashlib.sha256(elf_bytes).hexdigest()):
         raise ValueError(f"invalid lite build: {edition}/{device}")
 
 
+# The SDK suite every lite build must share with the full kits (build_edition.sdk_suite).
+SDK_SUITE = ("ps2build_version", "components", "ports")
+
+
 def _version(manifest):
     return manifest["version"].split('"')[1]
+
+
+def _common_version(manifest):
+    """The version without its LOCALVERSION, which names the edition and device (build_edition.py)."""
+    version, marker, _ = _version(manifest).partition("-PS2BUILD-")
+    if not marker:
+        raise ValueError(f"not a ps2build version: {_version(manifest)}")
+    return version
 
 
 def assemble(root, sha):
@@ -106,7 +118,7 @@ def assemble(root, sha):
                 for entry in (*runtime, *RA_KIT_FILES):
                     bundle.writestr(entry, kit.read(entry))
             manifests[archive.name] = manifest
-    versions = {_version(m) for m in manifests.values()} | {_version(korium)}
+    versions = {_common_version(m) for m in manifests.values()} | {_common_version(korium)}
     if len(versions) != 1:
         raise ValueError(f"lite builds carry different versions: {sorted(versions)}")
     (path / "LICENSE-LIBSMB2.txt").write_bytes((root / "release-korium" / "LICENSE-LIBSMB2.txt").read_bytes())
