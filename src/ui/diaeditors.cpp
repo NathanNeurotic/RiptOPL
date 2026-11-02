@@ -67,7 +67,7 @@ static int diaKeybPrevChar(const char *text, int i)
     return i;
 }
 
-int diaShowKeyb(char *text, int maxLen, int hide_text, const char *title)
+int diaShowKeyb(char *text, int maxLen, int hide_text, int titleId)
 {
     int i, j, len = strlen(text), selkeyb = 0, x, w;
     int selchar = 0, selcommand = -1;
@@ -100,7 +100,9 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, const char *title)
         'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '~', '.'};
     const char *keyb = keyb0;
 
-    // Looked up inside every locked frame below: a language or theme swap frees what they point at.
+    // Looked up inside every locked frame below: a language or theme swap frees what they point at. The title
+    // too, so it comes in as a string id, not as a translated pointer kept for as long as the keyboard is open.
+    const char *title;
     char *commands[KEYB_HEIGHT];
     GSTEXTURE *cmdicons[KEYB_HEIGHT];
 
@@ -124,9 +126,10 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, const char *title)
         caretFrame++;
 
         // The IO thread swaps a theme or language found on a device, and frees the old one, under the GUI
-        // lock (thmAddElements, lngAddLanguages); this loop never took it, so a frame could draw freed
+        // lock (thmLoad, lngLoadFromFile); this loop never took it, so a frame could draw freed
         // strings, icons and font slots. Draw under it, as guiStartFrame/guiEndFrame do (YAOPL ce6323f).
         guiLock();
+        title = titleId >= 0 ? _l(titleId) : NULL;
         commands[0] = _l(_STR_BACKSPACE);
         commands[1] = _l(_STR_SPACE);
         commands[2] = _l(_STR_ENTER);

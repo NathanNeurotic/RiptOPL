@@ -940,7 +940,7 @@ static int diaHandleInput(struct UIItem *item, int *modified)
                 item->stringvalue.text[sizeof(item->stringvalue.text) - 1] = '\0';
             }
         } else {
-            if (diaShowKeyb(tmp, sizeof(tmp), item->type == UI_PASSWORD, NULL)) {
+            if (diaShowKeyb(tmp, sizeof(tmp), item->type == UI_PASSWORD, -1)) {
                 strncpy(item->stringvalue.text, tmp, sizeof(item->stringvalue.text));
                 item->stringvalue.text[sizeof(item->stringvalue.text) - 1] = '\0';
             }
