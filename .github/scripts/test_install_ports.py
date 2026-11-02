@@ -296,6 +296,14 @@ class InstallPortsTests(unittest.TestCase):
         self.assertEqual(got, b"data")
         self.assertEqual(seen, {"/asset": "Bearer sekrit", "/storage": None})
 
+    def test_token_download_refuses_a_redirect_from_https_to_http(self):
+        handler = ports.NoDowngradeRedirects()
+        request = ports.urllib.request.Request("https://api.github.com/repos/o/r/releases/assets/1")
+        with self.assertRaises(ports.urllib.error.HTTPError):
+            handler.redirect_request(request, None, 302, "Found", {}, "http://storage.example/asset")
+        followed = handler.redirect_request(request, None, 302, "Found", {}, "https://storage.example/asset")
+        self.assertEqual(followed.full_url, "https://storage.example/asset")
+
     def test_mirror_is_not_used_for_a_missing_release_or_when_it_fails_verification(self):
         import hashlib
         data = archive()

@@ -23,6 +23,15 @@ HOST = "https://git.techwritescode.dev"
 LIBRARIES = {"ogg": ("libogg.a",), "vorbis": ("libvorbis.a", "libvorbisfile.a")}
 
 
+class NoDowngradeRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect from an HTTPS request only to another HTTPS URL."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urllib.parse.urlsplit(req.full_url).scheme == "https" and urllib.parse.urlsplit(newurl).scheme != "https":
+            raise urllib.error.HTTPError(newurl, code, "redirect from HTTPS to a non-HTTPS URL refused", headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def download(url, token=None, accept=None):
     request = urllib.request.Request(url, headers={"User-Agent": "RiptOPL-build/1.0"})
     if accept:
@@ -32,7 +41,9 @@ def download(url, token=None, accept=None):
         request.add_unredirected_header("Authorization", f"Bearer {token}")
     for attempt in range(5):
         try:
-            with urllib.request.urlopen(request, timeout=60) as response:
+            # A private mirror's asset must not be sent on over plain HTTP either.
+            opener = urllib.request.build_opener(NoDowngradeRedirects).open if token else urllib.request.urlopen
+            with opener(request, timeout=60) as response:
                 return response.read()
         except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead) as error:
             # Any 5xx is transient here, including Cloudflare's 520-524 when the origin is briefly down.
