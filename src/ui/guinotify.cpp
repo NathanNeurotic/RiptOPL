@@ -44,14 +44,35 @@ void Notifications::reset()
     popupArmed_ = false;
 }
 
-void Notifications::render(const char *string, int y)
+int Notifications::render(const char *string, int y, int yadd)
 {
-    int x;
+    // Right-aligned with nothing to stop it, a notice wider than the screen started off its left edge: the UDPBD
+    // static-IP note is about 1020 wide on the 640 grid, the CF notice from the game menu about 890. Size the box to
+    // the text but never wider than the screen less its margins, and wrap a longer notice onto more lines, the way
+    // the settings hint box does (diaDrawHint). A notice that fits is drawn exactly as before.
+    int textW = rmUnScaleX(fntCalcDimensions(gTheme->fonts[0], string));
+    int boxW = textW + 10;
+    if (boxW > gGuiScreenWidth - 20)
+        boxW = gGuiScreenWidth - 20;
+    int x = gGuiScreenWidth - boxW - 10;
+    int innerW = boxW - 10;
 
-    x = gGuiScreenWidth - rmUnScaleX(fntCalcDimensions(gTheme->fonts[0], string)) - 10;
+    if (textW <= innerW) {
+        rmDrawRect(x, y, boxW, MENU_ITEM_HEIGHT + 10, gColDarker);
+        fntRenderString(gTheme->fonts[0], x + 5, y + 5, ALIGN_NONE, 0, 0, string, gTheme->textColor);
+        return y + yadd;
+    }
 
-    rmDrawRect(x - 10, y, gGuiScreenWidth - x, MENU_ITEM_HEIGHT + 10, gColDarker);
-    fntRenderString(gTheme->fonts[0], x - 5, y + 5, ALIGN_NONE, 0, 0, string, gTheme->textColor);
+    // fntRenderString does not wrap; it breaks a line only at '\n', and only when given a width. The clip gets the
+    // box's 5 px right padding as slack, so a glyph drawn a little past its advance at a line's end is not dropped.
+    char wrapped[512];
+    int lines = fntWrapText(gTheme->fonts[0], string, innerW, wrapped, sizeof(wrapped));
+    if (lines < 1)
+        lines = 1;
+    int boxH = lines * MENU_ITEM_HEIGHT + 10;
+    rmDrawRect(x, y, boxW, boxH, gColDarker);
+    fntRenderString(gTheme->fonts[0], x + 5, y + 5, ALIGN_NONE, innerW + 5, boxH - 5, wrapped, gTheme->textColor);
+    return y + yadd + (lines - 1) * MENU_ITEM_HEIGHT;
 }
 
 void Notifications::setToast(const char *text)
@@ -69,7 +90,7 @@ void Notifications::drawToast()
         toast_[0] = '\0';
         return;
     }
-    render(toast_, 10);
+    render(toast_, 10, 0);
 }
 
 void Notifications::show()
@@ -91,8 +112,7 @@ void Notifications::show()
             col_pos++;
 
             snprintf(notification, sizeof(notification), _l(_STR_PARTITION_NOTIFICATION), col_pos);
-            render(notification, y);
-            y += yadd;
+            y = render(notification, y, yadd);
         }
 
         if (showCfgPopup) {
@@ -100,8 +120,7 @@ void Notifications::show()
             if ((col_pos = strchr(notification, ':')) != NULL)
                 *(col_pos + 1) = '\0';
 
-            render(notification, y);
-            y += yadd;
+            y = render(notification, y, yadd);
         }
 
         if (showTheme_) {
@@ -109,8 +128,7 @@ void Notifications::show()
             if ((col_pos = strchr(notification, ':')) != NULL)
                 *(col_pos + 1) = '\0';
 
-            render(notification, y);
-            y += yadd;
+            y = render(notification, y, yadd);
         }
 
         if (showLang_) {
@@ -118,15 +136,13 @@ void Notifications::show()
             if ((col_pos = strchr(notification, ':')) != NULL)
                 *(col_pos + 1) = '\0';
 
-            render(notification, y);
-            y += yadd;
+            y = render(notification, y, yadd);
         }
 
         // One-time network notice set at config load: UDP transports always use the saved static PS2
         // IP fields. If DHCP is the preserved SMB/HTTP preference, remind the user which address UDP uses.
         if (showNetDhcpPopup) {
-            render(_l(_STR_UDPBD_NEEDS_STATIC_IP), y);
-            y += yadd;
+            y = render(_l(_STR_UDPBD_NEEDS_STATIC_IP), y, yadd);
         }
 
         if ((clock() - popupStart_) >= (clock_t)5000 * (CLOCKS_PER_SEC / 1000)) {
@@ -165,8 +181,7 @@ int Notifications::renderRA(int y, int yadd)
     }
 
     for (i = 0; i < raNoticeLines_; i++) {
-        render(raNotice_[i], y);
-        y += yadd;
+        y = render(raNotice_[i], y, yadd);
     }
 
     if (clock() >= raNoticeTimer_) {

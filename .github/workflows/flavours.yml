@@ -39,6 +39,7 @@ jobs:
           python3 .github/scripts/test_foreground_settings_config.py
           python3 .github/scripts/test_config_prefetch_generation.py
           python3 .github/scripts/test_release_publication.py
+          python3 .github/scripts/test_riptoplite.py
           python3 .github/scripts/test_game_size_fallback.py
           python3 .github/scripts/test_ps1_duplicates.py
           python3 .github/scripts/test_list_cfg_text.py
@@ -48,6 +49,7 @@ jobs:
           python3 .github/scripts/test_mx4sio_host_boot.py
           python3 .github/scripts/test_mx4sio_retry.py
           python3 .github/scripts/test_vmc_write_result.py
+          python3 .github/scripts/test_mmce_read_recovery.py
           python3 .github/scripts/test_neutrino_dvr_contract.py
           python3 .github/scripts/test_package_orbit_neutrino.py
           python3 .github/scripts/test_orbit_neutrino_watch.py
@@ -166,6 +168,10 @@ jobs:
         run: python3 .github/scripts/test_theme_text_room.py
       - name: Check the GameCountText follows the list count, not only the selected game
         run: python3 .github/scripts/test_game_count_refresh.py
+      - name: Check menu notices wrap on screen and long game titles and cheat names fit
+        run: python3 .github/scripts/test_menu_text_fit.py
+      - name: Check In-Game Menu room and resets (no-room grey, the PC's RA reset leaves, watch block before cheats)
+        run: python3 .github/scripts/test_igr_menu_no_room.py
       - name: Check Favorites failure feedback, persistence ordering, first-run view and title layout
         run: python3 .github/scripts/test_favorites_parity.py
       - name: Refuse Favorites edits after unreadable or incomplete stores and check IO failures

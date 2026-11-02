@@ -30,6 +30,7 @@ Review the LICENSE file for further details.<br><br>
 [![Korium](https://img.shields.io/badge/Release-Korium-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium)
 [![RetroAchievements](https://img.shields.io/badge/Release-RetroAchievements-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra)
 [![IncebtIon](https://img.shields.io/badge/Release-IncebtIon-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion)
+[![RiptOPLite](https://img.shields.io/badge/Release-RiptOPLite-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite)
 
 [![License](https://img.shields.io/github/license/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=opensourceinitiative&logoColor=white&label=License)](LICENSE)
 ![Written in C++](https://img.shields.io/badge/Written%20in-C%2B%2B-skyblue?style=flat&logo=cplusplus&logoColor=white&labelColor=navy)

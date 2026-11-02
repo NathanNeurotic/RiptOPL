@@ -32,6 +32,7 @@
 #endif
 #include "include/config.h"
 #include "include/util.h"
+#include "include/riptlite.h"
 #include "include/extern_irx.h"
 
 #include "include/supportbase.h"
@@ -1561,6 +1562,8 @@ void _loadConfig()
             result = tryAlternateDevice(lscstatus);
             diagLog("settings: other devices tried, now 0x%x from %s", result, configGetLoadDir());
         }
+        // RiptOPLite: the file's source settings are the full build's; keep them to write back (riptlite.cpp).
+        liteRememberDeviceKeys((result & CONFIG_OPL) ? configGetByType(CONFIG_OPL) : NULL);
 
         if (result & CONFIG_OPL) {
             config_set_t *configOPL = configGetByType(CONFIG_OPL);
@@ -1892,6 +1895,9 @@ void _loadConfig()
             gBDMStartMode = START_MODE_AUTO;
             configSetInt(configGetByType(CONFIG_OPL), CONFIG_OPL_BDM_MODE, gBDMStartMode);
         }
+
+        // RiptOPLite holds the sources it does not carry off and starts the one it does, whatever the file said.
+        liteApplyDeviceMask();
     }
 
     if (lscstatus & CONFIG_NETWORK) {
@@ -2240,6 +2246,8 @@ static void _saveConfig()
         configSetInt(configOPL, CONFIG_OPL_UDPFS_ACCESS, gUdpfsAccessMode);
 
         configSetInt(configOPL, CONFIG_OPL_SWAP_SEL_BUTTON, gSelectButton == KEY_CIRCLE ? 0 : 1);
+        // RiptOPLite forced its source settings: write the full build's back over them.
+        liteRestoreDeviceKeys(configOPL);
     }
 
     // Fold in each page's current L3 position. Doing it at WRITE time is what keeps L3 itself free:
@@ -2467,6 +2475,8 @@ void applyConfig(int themeID, int langID, int skipDeviceRefresh)
     // the row back to Apps before the value was ever written to the config: the whole feature was
     // dead with its picker entry, its enum value and its config key all present. Data half without
     // the code half, again.
+    // RiptOPLite: a settings page cannot turn on a source this build does not carry (riptlite.cpp).
+    liteApplyDeviceMask();
     if (gDefaultDevice < 0 || gDefaultDevice > FAV_MODE)
         gDefaultDevice = MMCE_MODE;
     // Favourites is a valid startup page only while the FAV tab is enabled; otherwise a stale
