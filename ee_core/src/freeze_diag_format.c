@@ -196,6 +196,14 @@ static void put_event(fd_buf_t *b, const freeze_diag_event_t *e, unsigned int no
             put_field(b, "lsn", e->lsn);
             put_field(b, "was_started", e->arg);
             break;
+        case FREEZE_DIAG_EV_BREAK:
+            put_str(b, e->arg ? " break-accepted" : " break-refused");
+            if (sectors != 0) {
+                put_field(b, "read_lsn", e->lsn);
+                put_field(b, "read_sectors", sectors);
+            } else
+                put_str(b, " no-read-in-flight");
+            break;
         case FREEZE_DIAG_EV_ST_RUN:
             put_str(b, " stream-run");
             put_field(b, "lsn", e->lsn);

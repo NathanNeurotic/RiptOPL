@@ -124,13 +124,25 @@ int sceCdBreak(void)
 {
     DPRINTF("sceCdBreak\n");
 
-    if (sync_flag) // a read is in flight: stop it (Tales of the Abyss, #185) instead of refusing the break
+    if (sync_flag) { // a read is in flight: stop it (Tales of the Abyss, #185) instead of refusing the break
+#ifdef INGAMEDIAG
+        u32 lsn = cdvdman_stat.cdread_lba, sectors = cdvdman_stat.cdread_sectors;
+        int result = cdvdman_BreakRead();
+
+        freeze_diag_event(FREEZE_DIAG_EV_BREAK, lsn, sectors, (unsigned int)result);
+        return result;
+#else
         return cdvdman_BreakRead();
+#endif
+    }
 
     cdvdman_stat.status = SCECdStatPause;
 
     cdvdman_stat.err = SCECdErABRT;
     cdvdfsv_break = 1; // an EE read between two of its chunks stops too (cdvdfsv)
+#ifdef INGAMEDIAG
+    freeze_diag_event(FREEZE_DIAG_EV_BREAK, 0, 0, 1);
+#endif
     cdvdman_cb_event(SCECdFuncBreak);
 
     return 1;

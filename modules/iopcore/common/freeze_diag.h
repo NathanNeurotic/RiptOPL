@@ -41,6 +41,7 @@
 #define FREEZE_DIAG_EV_ST_STOP     'T' // sceCdStStop
 #define FREEZE_DIAG_EV_ST_PAUSE    'P' // sceCdStPause
 #define FREEZE_DIAG_EV_ST_RESUME   'U' // sceCdStResume
+#define FREEZE_DIAG_EV_BREAK       'K' // sceCdBreak. lsn/sectors = the read in flight (0 if none), arg = 1 accepted, 0 refused
 // A run of streaming work, merged into one entry. sectors = fills (low 12 bits) and fills refused
 // because the drive was busy (high 12 bits); arg = sceCdStRead calls (high 16 bits) and calls that
 // got fewer sectors than asked (low 16 bits).
