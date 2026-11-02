@@ -314,6 +314,7 @@ def verify(args: argparse.Namespace) -> None:
             "OrbitPS2-Manager.url",
             "OPL-PS1-AIO-Converter-GUI.url",
             "PS2RD-CHT-Manager.url",
+            "LICENSE-LIBSMB2.txt",  # every loader embeds libsmb2 (LGPL-2.1)
         }
         required.update(f"APPS/{args.app_name}/{name}" for name in APP_COMPANIONS)
         required.update(f"ART/{args.elf_name}_{suffix}.png" for suffix in ART_SUFFIXES)

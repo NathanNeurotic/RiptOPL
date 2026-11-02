@@ -75,5 +75,6 @@ enum CDIOC_CODE {
 #define CDSC_OPL_SHUTDOWN     0x00000001 //Shutdown OPL
 #define CDSC_GET_FREEZE_DIAG  0xFFFFFFEF //INGAMEDIAG flavour only: get the in-game freeze record (freeze_diag.h).
 #define CDSC_GET_HEAP_DIAG    0xFFFFFFEE //INGAMEDIAG flavour only: get the IOP heap record (heap_diag.h).
+#define CDSC_GET_BREAK_FLAG   0xFFFFFFED //Get the address of the flag sceCdBreak sets. CDVDFSV clears it when it starts an EE read.
 
 #endif

@@ -30,10 +30,38 @@ int sceCdSync(int mode)
 }
 
 //-------------------------------------------------------------------------
-int sceCdRead(u32 lsn, u32 sectors, void *buf, sceCdRMode *mode)
+// Queue a read for the read thread, or run it in the caller's thread with Mode 1 (IOPCORE_COMPAT_ALT_READ).
+static int cdvdman_IssueRead(u32 lsn, u32 sectors, u16 sector_size, void *buf, int breakable)
 {
     int result;
 
+    if ((!(cdvdman_settings.common.flags & IOPCORE_COMPAT_ALT_READ)) || QueryIntrContext()) {
+#ifdef INGAMEDIAG
+        // Logged before the read is queued, so it precedes its own completion in the history.
+        freeze_diag_event(FREEZE_DIAG_EV_READ, lsn, sectors, QueryIntrContext() ? 1 : 0);
+#endif
+        result = cdvdman_AsyncRead(lsn, sectors, sector_size, buf, breakable);
+#ifdef INGAMEDIAG
+        if (!result)
+            freeze_diag_refused(lsn, sectors);
+#endif
+    } else {
+#ifdef INGAMEDIAG
+        freeze_diag_event(FREEZE_DIAG_EV_READ, lsn, sectors, 2);
+#endif
+        result = cdvdman_SyncRead(lsn, sectors, sector_size, buf, breakable);
+#ifdef INGAMEDIAG
+        if (!result)
+            freeze_diag_refused(lsn, sectors);
+#endif
+    }
+
+    return result;
+}
+
+//-------------------------------------------------------------------------
+int sceCdRead(u32 lsn, u32 sectors, void *buf, sceCdRMode *mode)
+{
     u16 sector_size = 2048;
 
     // Is is NULL in our emulated cdvdman routines so check if valid.
@@ -48,28 +76,19 @@ int sceCdRead(u32 lsn, u32 sectors, void *buf, sceCdRMode *mode)
 
     DPRINTF("sceCdRead lsn=%d sectors=%d sector_size=%d buf=%08x\n", (int)lsn, (int)sectors, (int)sector_size, (int)buf);
 
-    if ((!(cdvdman_settings.common.flags & IOPCORE_COMPAT_ALT_READ)) || QueryIntrContext()) {
-#ifdef INGAMEDIAG
-        // Logged before the read is queued, so it precedes its own completion in the history.
-        freeze_diag_event(FREEZE_DIAG_EV_READ, lsn, sectors, QueryIntrContext() ? 1 : 0);
-#endif
-        result = cdvdman_AsyncRead(lsn, sectors, sector_size, buf);
-#ifdef INGAMEDIAG
-        if (!result)
-            freeze_diag_refused(lsn, sectors);
-#endif
-    } else {
-#ifdef INGAMEDIAG
-        freeze_diag_event(FREEZE_DIAG_EV_READ, lsn, sectors, 2);
-#endif
-        result = cdvdman_SyncRead(lsn, sectors, sector_size, buf);
-#ifdef INGAMEDIAG
-        if (!result)
-            freeze_diag_refused(lsn, sectors);
-#endif
-    }
+    // A read through the export (the game's own, or cdvdfsv's for the EE): sceCdBreak can stop it (cdvdman_BreakRead).
+    return cdvdman_IssueRead(lsn, sectors, sector_size, buf, 1);
+}
 
-    return result;
+//-------------------------------------------------------------------------
+/* cdvdman's own reads for cdrom0: files (ioops.c) and sceCdSearchFile (searchfile.c). sceCdBreak leaves these alone,
+   as it left every read before: their callers do not check for an aborted read, so a read cut short would reach them
+   as file data or directory records. */
+int cdvdman_FsRead(u32 lsn, u32 sectors, void *buf)
+{
+    DPRINTF("cdvdman_FsRead lsn=%d sectors=%d buf=%08x\n", (int)lsn, (int)sectors, (int)buf);
+
+    return cdvdman_IssueRead(lsn, sectors, 2048, buf, 0);
 }
 
 //-------------------------------------------------------------------------

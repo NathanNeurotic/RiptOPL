@@ -138,6 +138,8 @@ jobs:
         run: python3 .github/scripts/test_settings_fit.py
       - name: Check settings text stays on screen (long notes wrap, labels leave room, values fit)
         run: python3 .github/scripts/test_dia_text_room.py
+      - name: Check the in-game USBD pad pool and lwIP fragment settings fit the pads and the MTU
+        run: python3 .github/scripts/test_usbd_pad_pool.py
       - name: Check Settings and its prompts follow the user's confirm button
         run: python3 .github/scripts/test_confirm_button.py
       - name: Check that a broken cheat file is never reported as a missing one
@@ -158,6 +160,8 @@ jobs:
         run: python3 .github/scripts/test_net_protocol_pick.py
       - name: Check that long theme text stops at the next element and scrolls instead of overlapping
         run: python3 .github/scripts/test_theme_text_room.py
+      - name: Check the GameCountText follows the list count, not only the selected game
+        run: python3 .github/scripts/test_game_count_refresh.py
       - name: Check Favorites failure feedback, persistence ordering, first-run view and title layout
         run: python3 .github/scripts/test_favorites_parity.py
       - name: Refuse Favorites edits after unreadable or incomplete stores and check IO failures
@@ -334,6 +338,8 @@ jobs:
       # restored, else an older cached SDK is updated in place, else it is installed; then it is cached. A
       # mirror fallback older than the latest is never cached under the latest versions.
       - name: Resolve the latest ps2build SDK
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         id: sdk
         run: sh tools/ps2build_sdk.sh --resolve "$RUNNER_TEMP/ps2build-sdk.env"
       - name: Restore the ps2build SDK
@@ -344,9 +350,13 @@ jobs:
           key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
           restore-keys: ps2build-sdk-${{ runner.os }}-gcc-
       - name: Install the ps2build SDK
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         run: sh tools/ps2build_sdk.sh "$PS2BUILD_HOME"
 
       - name: Install the ogg/vorbis packages (not shipped by the SDK)
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         run: tools/install_ps2build.sh
       - name: Cache the ps2build SDK
         if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
