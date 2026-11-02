@@ -1128,6 +1128,11 @@ struct UIItem diaLaunchConfig[] = {
     {UI_BOOL, CFG_PS2LOGO, 1, 1, _STR_HINT_PS2LOGO, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_APP_HANDOFF_PATH}}},
+    {UI_SPACER},
+    {UI_ENUM, CFG_APP_HANDOFF_PATH, 1, 1, _STR_HINT_APP_HANDOFF_PATH, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_DEFAULT_CORE}}},
     {UI_SPACER},
     {UI_ENUM, CFG_DEFAULT_CORE, 1, 1, _STR_HINT_DEFAULT_CORE, 0, 0, {.intvalue = {0, 0}}},

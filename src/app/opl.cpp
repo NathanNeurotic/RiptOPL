@@ -293,6 +293,7 @@ char gExitPath[256];
 char gCustomSettingsPath[64];
 int gEnableDebug;
 int gPS2Logo;
+int gAppHandoffPath; // the device spelling ELF apps are handed; the mounts themselves never change
 int gDefaultDevice;
 int gEnableWrite;
 char gBDMPrefix[32];

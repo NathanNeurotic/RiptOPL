@@ -2620,6 +2620,9 @@ static int guiSettingsShowLaunch(void)
     diaSetInt(ui, CFG_IGR_MENU, gIgrMenu);
 #endif
     diaSetInt(ui, CFG_PS2LOGO, gPS2Logo);
+    const char *appHandoffStrs[] = {_l(_STR_APP_HANDOFF_LEGACY), _l(_STR_APP_HANDOFF_TYPED), NULL};
+    diaSetEnum(ui, CFG_APP_HANDOFF_PATH, appHandoffStrs);
+    diaSetInt(ui, CFG_APP_HANDOFF_PATH, gAppHandoffPath);
     guiCorePathBegin(ui, CFG_NEUTRINO_PATH, neutrinoPathEdit, sizeof(neutrinoPathEdit), gNeutrinoPath);
     diaSetEnum(ui, CFG_NEUTRINO_VIDEO, neutrinoVideoDefStrs);
     diaSetInt(ui, CFG_NEUTRINO_VIDEO, gNeutrinoVideoDefault);
@@ -2650,6 +2653,7 @@ reshow_launch:
         diaGetInt(ui, CFG_IGR_MENU, &gIgrMenu);
 #endif
         diaGetInt(ui, CFG_PS2LOGO, &gPS2Logo);
+        diaGetInt(ui, CFG_APP_HANDOFF_PATH, &gAppHandoffPath);
         if (strcmp(gNeutrinoPath, neutrinoPathEdit) != 0)
             gNeutrinoDevice = NEUTRINO_DEV_AUTO;
         snprintf(gNeutrinoPath, sizeof(gNeutrinoPath), "%s", neutrinoPathEdit);
