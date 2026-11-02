@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Each channel's kit, plus the configurations for every theme's VARIANTS, DEBUG and RA-VARIANTS bundles.
+        # Each channel's kit, plus the configurations for every theme's VARIANTS, DEBUG, BUGREPORT (diag, unpacked) and RA-VARIANTS bundles.
         target:
           - {edition: korium, configuration: standard}
           - {edition: ra, configuration: standard}
