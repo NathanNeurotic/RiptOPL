@@ -18,6 +18,8 @@
 #include "include/vcdsupport.h" // vcdDisplayName -- display-only VCD game-ID prefix hide
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
 #include "include/themeviews.h"
+#include "include/sema_lock.h"
+#include "include/supportbase.h"
 #ifdef RETROACHIEVEMENTS
 #include "include/rabadge.h" // RA: mark over the cover
 #endif
@@ -49,6 +51,14 @@ static int thmParseViewInherit = 1; // 0 for a <view>.inherit=0 view: no fallbac
 static int thmParseAutoFit = 0;
 
 static ThemeCatalog gCatalog;
+
+// One theme switch at a time. The IO thread loads themes (a device with the saved theme comes up or goes away, a
+// queued settings load) and so does the GUI thread (settings, the view switch, a language change). thmLoad reads the
+// current theme before it takes the GUI lock to swap, so two loads at once would both free that one theme. The
+// catalog's list and selected id change with the loads, so this lock covers them too, from before that read until the
+// id is committed. Lock order: language switch, theme switch, GUI lock; a frame never takes it. thmInit creates it
+// before the IO thread exists.
+static int thmSwitchSema = -1;
 
 int gThmScreenWidth;
 int gThmScreenHeight;
@@ -1307,6 +1317,7 @@ static void thmReadViewTemplate(config_set_t *cfg, int view)
         configReadBuffer(cfg, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
 }
 
+// The caller holds thmSwitchSema.
 static int thmLoad(const char *themePath)
 {
     LOG("THEMES Load theme path=%s\n", themePath);
@@ -1748,7 +1759,8 @@ static int thmLoad(const char *themePath)
     // runs this on the IO thread when a device with the saved theme comes up: publish the new theme and free the
     // old one under the same lock (YAOPL b45a592d, Roman Kelesidis). The lock is not recursive, so no caller may
     // hold it: thmAddElements, thmReinit and lngSetGuiValue release theirs first, the settings pages and the view
-    // switch run between frames, and the first load comes before guiInit, when the lock is a no-op.
+    // switch run between frames, and the first load comes before guiInit, when the lock is a no-op. Every caller
+    // holds thmSwitchSema, though, so curT is still the published theme here: no other load has freed it meanwhile.
     host::ui().lock();
     gTheme = newT;
     loadedFontSize = gFontSize;
@@ -1813,6 +1825,8 @@ int ThemeCatalog::addElements(char *path, const char *separator, int forceRefres
 {
     int result, i;
 
+    // The scan appends at count_, which a device removal (reinit) on the other thread would move under it.
+    raii::SemaLock lock(thmSwitchSema);
     result = listDir(path, separator, THM_MAX_FILES - count_, &readEntryCallback);
     count_ += result;
     // Appends above only fill NEW themes_[] slots (the published name list references old slots
@@ -1821,13 +1835,17 @@ int ThemeCatalog::addElements(char *path, const char *separator, int forceRefres
     rebuildNames();
     host::ui().unlock();
 
+    int changed = 0;
     const char *temp;
     if (configGetStr(configGetByType(CONFIG_OPL), "theme", &temp)) {
         LOG("THEMES Trying to set again theme: %s\n", temp);
-        if (setGuiValue(findGuiID(temp), 0) && forceRefresh) {
-            for (i = 0; i < MODE_COUNT; i++)
-                host::app().moduleUpdateMenu(i, 1, 0);
-        }
+        changed = setGuiValueLocked(findGuiID(temp), 0);
+    }
+    lock.unlock(); // the menu refresh below does not touch the theme
+
+    if (changed && forceRefresh) {
+        for (i = 0; i < MODE_COUNT; i++)
+            host::app().moduleUpdateMenu(i, 1, 0);
     }
 
     return result;
@@ -1837,11 +1855,16 @@ void thmInit(void)
 {
     LOG("THEMES Init\n");
     gTheme = NULL;
+    if (thmSwitchSema < 0)
+        thmSwitchSema = sbCreateSemaphore();
 
     thmReloadScreenExtents();
 
     // initialize default internal
-    thmLoad(NULL);
+    {
+        raii::SemaLock lock(thmSwitchSema);
+        thmLoad(NULL);
+    }
 
     gCatalog.addElements(gBaseMCDir, "/", 0);
 }
@@ -1856,6 +1879,8 @@ void ThemeCatalog::reinit(const char *path)
     // wrote the transient "<OPL>" over the user's saved theme name -- reverting it PERMANENTLY.
     // Only fall back to the default when the active theme actually lives on the removed device;
     // otherwise keep it and just re-index (the removal loop reshuffles ids, so re-find by name).
+    // The removal, the reload and the id fix-up are one theme switch.
+    raii::SemaLock lock(thmSwitchSema);
     char activeName[64] = "";
     int activeOnDevice = 0;
     if (themeId_ >= 1 && themeId_ <= count_) {
@@ -1909,6 +1934,12 @@ const char *ThemeCatalog::currentName() const
 }
 
 int ThemeCatalog::setGuiValue(int themeID, int reload)
+{
+    raii::SemaLock lock(thmSwitchSema);
+    return setGuiValueLocked(themeID, reload);
+}
+
+int ThemeCatalog::setGuiValueLocked(int themeID, int reload)
 {
     if (themeID >= 0 && themeID <= count_) {
         if (themeId_ != themeID || reload) {
@@ -2008,7 +2039,9 @@ int thmSetGuiValue(int themeID, int reload)
     return gCatalog.setGuiValue(themeID, reload);
 }
 
-int thmSetView(int view)
+// The view functions below read gTheme to decide on a reload. Only a theme switch replaces gTheme, so they hold
+// thmSwitchSema across the read and the reload, and reload the id selected at that moment.
+static int thmSetViewLocked(int view)
 {
     if (view < 0 || view >= THM_VIEW_COUNT)
         view = -1;
@@ -2021,26 +2054,48 @@ int thmSetView(int view)
     int target = (view >= 0 && (gTheme->viewMask & (1u << view))) ? view : gTheme->defaultView;
     if (target == gTheme->view)
         return 0;
-    if (!gCatalog.setGuiValue(gCatalog.guiValue(), 1)) {
+    if (!gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1)) {
         gThemeViewRequest = previous; // abandoned load (#120): the old view is still on screen
         return 0;
     }
     return 1;
 }
 
+int thmSetView(int view)
+{
+    raii::SemaLock lock(thmSwitchSema);
+    return thmSetViewLocked(view);
+}
+
 int thmRefreshDisplayLayout(void)
 {
+    raii::SemaLock lock(thmSwitchSema);
     if (gTheme == NULL)
         return 0;
     int wideChanged = gTheme->layoutDependsOnWide && gTheme->layoutWide != rmIsWideDisplay();
     int altChanged = gTheme->altDeclared && gTheme->altBackground != (gThemeAltBackground != 0);
     if (!wideChanged && !altChanged)
         return 0;
-    return gCatalog.setGuiValue(gCatalog.guiValue(), 1);
+    return gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1);
+}
+
+int thmRefreshGridLayout(void)
+{
+    raii::SemaLock lock(thmSwitchSema);
+    if (gTheme == NULL || gTheme->grid == NULL)
+        return 1; // no grid on screen: nothing to rebuild
+    return gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1);
+}
+
+int thmReload(void)
+{
+    raii::SemaLock lock(thmSwitchSema);
+    return gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1);
 }
 
 int thmCycleView(void)
 {
+    raii::SemaLock lock(thmSwitchSema);
     if (gTheme == NULL)
         return 0;
     // Coverflow (3) and Coverflow (5) are two stops of one theme view: the count is read at draw time, so
@@ -2055,7 +2110,7 @@ int thmCycleView(void)
     }
     int previousCovers = gCoverflowCount;
     gCoverflowCount = covers;
-    if (!thmSetView(v) && gTheme->view != v) {
+    if (!thmSetViewLocked(v) && gTheme->view != v) {
         gCoverflowCount = previousCovers; // abandoned load: the old view is still on screen
         return 0;
     }

@@ -7,7 +7,8 @@
 // forward to it.
 //
 // Locking: the name list is published to the GUI thread. Rebuilds and removals must hold guiLock (see
-// rebuildNames in themes.cpp); the class does not lock by itself.
+// rebuildNames in themes.cpp); the class does not take guiLock by itself. addElements, reinit and setGuiValue take
+// the theme switch lock (thmSwitchSema in themes.cpp), so a scan, a removal and a theme load never overlap.
 
 #include "themes.h"
 
@@ -27,6 +28,8 @@ public:
     const char *currentName() const;
     int guiValue() const;
     int setGuiValue(int themeID, int reload);
+    // setGuiValue for a caller that already holds the theme switch lock (it is not recursive).
+    int setGuiValueLocked(int themeID, int reload);
     int findGuiID(const char *theme) const;
     const char **guiList() const;
     // On-disk folder of a disk theme, NULL for <OPL> and out-of-range ids.
