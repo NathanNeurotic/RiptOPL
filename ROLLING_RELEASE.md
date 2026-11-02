@@ -11,6 +11,10 @@ This repository uses **one SDK: ps2build**. Its three release editions are:
 The RetroAchievements channel also carries the same kit built with the IncebtIon theme
 (edition `ra_incebtion`), as the legacy edition's RA release carries one kit per theme.
 
+A fourth channel, `rolling-lite` (RiptOPLite), carries one Korium loader per game device:
+`RIPTOPLITE-<DEVICE>.ELF`, and `RIPTOPLITE-RA-<DEVICE>.zip` for RetroAchievements (a ZIP because RA
+needs ORBIT's Neutrino runtime beside the loader). It has no install kit. See [RiptOPLite](docs/RIPTOPLITE.md).
+
 GCC is the release compiler. GCC and LLVM are both validated by `ps2build.yml`;
 they are compiler choices within ps2build, not separate SDK release flavours.
 The old ps2dev/official pinned and rolling container releases are legacy-edition

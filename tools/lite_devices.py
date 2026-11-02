@@ -1,0 +1,113 @@
+"""RiptOPLite: one ELF per game device (include/riptlite.h).
+
+A lite build is the Korium edition with every other device's IRX left out. What it keeps:
+
+* COMMON -- every embedded module that is not device-specific, plus three groups kept on purpose:
+  - MMCE's modules (Game ID and the IGR boot-card switch use them whatever the game device);
+  - the menu's network stack and the NBD server (netman, SMAP, ps2ip, ata_bd + lwnbdsvr);
+  - the BDM core and the USB block driver, so a lite ELF started from a USB stick can still read its
+    settings there (the boot resolver, bdmLoadCoreModules(forceUsb)), and ata_bd (NBD) has its bdm.
+* DEVICES[device] -- that device's own drivers, cdvdman and mcemu.
+
+Everything in DEVICE_SPECIFIC that the device does not keep is dropped from embed_irx. Its
+`<sym>_irx` / `size_<sym>_irx` symbols are then defined by a generated stub file with size 0;
+sysLoadModuleBuffer refuses a zero-sized module, so a load that slips past the C guards fails
+instead of starting garbage.
+"""
+from pathlib import Path
+
+# Kept by the device builds below; every name is an embed_irx target name (before any ':').
+BDM_GAME = ("bdm_cdvdman", "bdm_mcemu")
+
+DEVICES = {
+    "usb": {"title": "USB", "define": "RIPTOPLITE_USB", "keep": BDM_GAME},
+    "mx4sio": {"title": "MX4SIO", "define": "RIPTOPLITE_MX4SIO", "keep": BDM_GAME + ("mx4sio_bd_mini_fork",)},
+    "ilink": {"title": "ILINK", "define": "RIPTOPLITE_ILINK",
+              "keep": BDM_GAME + ("iLinkman_fork", "IEEE1394_bd_mini_fork")},
+    # The internal drive in both formats (APA/PFS and exFAT) and DESR DVR ISOs.
+    "hdd": {"title": "HDD", "define": "RIPTOPLITE_HDD",
+            "keep": BDM_GAME + ("bdm_ata_cdvdman", "xhdd", "hdpro_atad", "ps2hdd_osd", "fs-osd", "hdd_cdvdman",
+                                "hdd_hdpro_cdvdman", "hdd_mcemu", "pvrdrv", "dvrfile")},
+    "smb": {"title": "SMB", "define": "RIPTOPLITE_SMB",
+            "keep": ("nbns", "smbman_ra", "smb2man", "smb_cdvdman", "smb2_cdvdman", "smb_mcemu", "smbinit",
+                     "SMSTCPIP", "smap_ingame")},
+    "udpbd": {"title": "UDPBD", "define": "RIPTOPLITE_UDPBD", "keep": BDM_GAME + ("smap_udpbd", "bdm_udp_cdvdman")},
+    # Both UDPFS accesses: Files (udpfs_ioman/fhi + udpfs_cdvdman) and IMG (udpfs_bd on BDM). The Files
+    # launch borrows smb_cdvdman's buffer to prepare the game (udpfssupport.cpp), so it stays too.
+    "udpfs": {"title": "UDPFS", "define": "RIPTOPLITE_UDPFS",
+              "keep": BDM_GAME + ("udpfs_smap", "udpfs_ministack", "udpfs_bd", "udpfs_ioman", "udpfs_fhi",
+                                  "udpfs_cdvdman", "udpfs_mcemu", "bdm_udp_cdvdman", "smb_cdvdman")},
+    # MMCE's modules are in every build; this one adds the MMCE games page.
+    "mmce": {"title": "MMCE", "define": "RIPTOPLITE_MMCE", "keep": ()},
+}
+
+# The modules only some device needs. HTTP and PC Card CF have no lite build: their modules go everywhere.
+DEVICE_SPECIFIC = frozenset(name for options in DEVICES.values() for name in options["keep"]) | {
+    "http_cdvdman", "pccf_cdvdman", "pccf_bd", "pccf_game"}
+
+# Never dropped, whatever DEVICE_SPECIFIC says (see the module docstring).
+ALWAYS = frozenset({
+    "mmceman_fork", "mmcedrv", "mmceigr", "mmce_cdvdman", "mmce_mcemu",
+    "netman", "smap", "ps2ip-nm", "ps2ips_fork", "SMSUTILS", "httpclient", "lwnbdsvr", "ata_bd",
+    "bdm_drv", "bdmfs_fatfs_fork", "bdmevent", "usbmass_bd_mini", "usbd_mini_fork", "dev9"})
+assert not DEVICE_SPECIFIC & ALWAYS
+
+# What RetroAchievements uses whatever the game device, so an RA lite build keeps it for every device:
+# - the in-game SMAP + SMSTCPIP pair: RA's telemetry travels in the module table of every RA launch
+#   (sendIrxKernelRAM) and into POPStarter's MODULE_9.IRX (rapopslaunch.cpp);
+# - the menu's SMB filesystem driver (both dialects, smb2man falls back to smbman) and NBNS: the
+#   achievements page reads ART/CADUCEUS.KEY and the badge images from the SMB share even when the
+#   games come from elsewhere (achievements.cpp cadSharePrefix -> ethEnsureSMBShareConnected).
+# RA's own modules (raudp, rapull, rapops, igrovl) and the Disc page are not device modules: they stay.
+RA_ALWAYS = frozenset({"SMSTCPIP", "smap_ingame", "smbman_ra", "smb2man", "nbns"})
+RA_MODULES = frozenset({"raudp", "rapull", "rapops", "igrovl"})
+
+
+def split(entry):
+    """`target[:symbol]` -> (target, symbol); the symbol is what extern_irx.h names `<symbol>_irx`."""
+    target, _, symbol = entry.partition(":")
+    return target, symbol or target
+
+
+def dropped(embed_irx, device, ra=False):
+    keep = set(DEVICES[device]["keep"]) | (RA_ALWAYS if ra else set())
+    return [entry for entry in embed_irx if split(entry)[0] in DEVICE_SPECIFIC and split(entry)[0] not in keep]
+
+
+def elf_name(device, ra=False):
+    return f"RIPTOPLITE-{'RA-' if ra else ''}{DEVICES[device]['title']}.ELF"
+
+
+def stub_source(entries, device, ra=False):
+    lines = [f"/* Generated by tools/lite_devices.py for {elf_name(device, ra)}: the IRX this",
+             " * build leaves out. size 0 makes sysLoadModuleBuffer refuse them (src/platform/system.cpp). */", ""]
+    for entry in entries:
+        symbol = split(entry)[1]
+        lines.append(f"unsigned char {symbol}_irx[16] __attribute__((aligned(16)));")
+        lines.append(f"int size_{symbol}_irx = 0;")
+    return "\n".join(lines) + "\n"
+
+
+def apply_lite(config, device, root, ra=False):
+    """Turn a resolved Korium (or RA) definition into the RIPTOPLITE[-RA]-<device> one. Writes the stub
+    file under build/."""
+    if device not in DEVICES:
+        raise ValueError(f"unknown lite device: {device}")
+    targets = {t["name"]: t for t in config["targets"]}
+    main = targets["riptopl"]
+    embed = main["embed_irx"]
+    names = {split(entry)[0] for entry in embed}
+    missing = (DEVICE_SPECIFIC | ALWAYS | (RA_MODULES if ra else set())) - names
+    if missing:
+        # A renamed or removed module must be classified again, not silently kept or dropped.
+        raise ValueError(f"lite_devices.py names modules ps2.yaml does not embed: {sorted(missing)}")
+    drop = dropped(embed, device, ra)
+    main["embed_irx"] = [entry for entry in embed if entry not in drop]
+    for define in ("RIPTOPLITE", DEVICES[device]["define"]):
+        if define not in main.setdefault("defines", []):
+            main["defines"].append(define)
+    stub = Path("build") / "lite" / (f"ra-{device}" if ra else device) / "lite_irx_stubs.c"
+    (Path(root) / stub).parent.mkdir(parents=True, exist_ok=True)
+    (Path(root) / stub).write_text(stub_source(drop, device, ra), encoding="utf-8")
+    main["sources"] = [*main["sources"], stub.as_posix()]
+    return drop

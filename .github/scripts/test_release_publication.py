@@ -127,6 +127,7 @@ class PublicationTests(unittest.TestCase):
                     patch.object(publisher, "bundle_configurations"), \
                     patch.object(publisher, "verify", return_value=[]), \
                     patch.object(publisher, "fold_companions", return_value=[]), \
+                    patch.object(publisher, "lite_candidates", return_value=[]), \
                     patch.object(publisher, "release_version", return_value="v1"), \
                     patch.object(publisher, "name_assets"), \
                     patch.object(publisher, "gh", return_value=json.dumps({"commit": {"sha": head}})), \
