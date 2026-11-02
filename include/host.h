@@ -116,6 +116,10 @@ public:
     // The menu's ACHIEVEMENTS page: what the launch read from RA/<file>.ach, packed for the menu (supportbase
     // sbGetRaHunt); NULL when there was none for this file. Always NULL outside RetroAchievements builds.
     virtual const unsigned char *igrRaHunt(const char *file, int *count, int *bytes, int *total, int *unlocked) = 0;
+    // The user's .pad USB pad profiles (padprofiles.cpp, RIPPS2 build 129): the PAD_BLOCK_SIZE block sbPrepare packed
+    // for this launch, which system.cpp puts after the modules for PADEMU; NULL when there is none. Always NULL in
+    // builds without PADEMU.
+    virtual const unsigned char *padProfilesBlock() = 0;
     virtual bool discCheckBusy() = 0;
 };
 

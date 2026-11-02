@@ -59,6 +59,12 @@ constexpr int SYS_DISC_NODISC_MS = 2000;
 #ifdef PADEMU
 #include <libds34bt.h>
 #include <libds34usb.h>
+#include "include/padfile.h" // PAD_BLOCK_SIZE; the block itself comes from host::launch() (src/core/padprofiles.cpp)
+
+// ee_core loads PADEMU with 8 + 180 bytes when PadEmuArgs is set (ee_core/src/iopmgr.c): the block's size is frozen
+static_assert(PAD_BLOCK_SIZE == 180, "ee_core/src/iopmgr.c hands PADEMU 8 + 180 bytes");
+// PADEMU's 8 settings bytes and the block, in whole 64-byte lines of module storage
+#define PADEMU_ARGS_ROOM ((8 + PAD_BLOCK_SIZE + 0x3F) & ~0x3F)
 #endif
 
 #define NEWLIB_PORT_AWARE
@@ -1092,6 +1098,7 @@ static void sysPrintEECoreConfig(struct EECoreConfig_t *config)
     LOG("GSM = %s\n", config->EnableGSMOp == 0 ? "Disabled" : "Enabled");
 
     LOG("PADEMU = %s\n", config->EnablePadEmuOp == 0 ? "Disabled" : "Enabled");
+    LOG("PADEMU arguments = 0x%08X\n", (u32)config->PadEmuArgs);
 
     LOG("enforceLanguage = %s\n", config->enforceLanguage == 0 ? "Disabled" : "Enabled");
 
@@ -1334,7 +1341,40 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
             raHuntCount = 0;
     } else
         raHuntTotal = 0;
+#endif
 
+#ifdef PADEMU
+    /* PADEMU's arguments with the user's USB pad profiles (padprofiles.cpp, from RIPPS2 build 129 by akilluminati47;
+       RIPPS2 contributors, AFL-3.0): 8 bytes ee_core fills with the settings, then the block sbPrepare packed, after
+       everything above, for the whole game. padprofiles.cpp is in a layer above this one, so host::launch() hands the
+       block down. Only for the USB PADEMU (the only one that reads it), only at the default address, and below the
+       in-game menu's overlay when that goes in below (0xD0000 otherwise, the cheats page's rule). No block or no room:
+       PadEmuArgs stays NULL and PADEMU gets its 8 bytes exactly as before. */
+    char *padEmuArgs = NULL;
+    const unsigned char *padBlock = host::launch().padProfilesBlock();
+    if (padBlock != NULL && !discMode && gEnablePadEmu && !(gPadEmuSettings & 0xFF)) {
+        u32 at = ((u32)ModuleStorage + ModuleStorageSize + 0x3F) & ~0x3F, top = 0xD0000;
+#ifdef IGR_OVERLAY
+        if (gIgrMenu && !(compatflags & COMPAT_MODE_6) && ModuleStorage == (void *)OPL_MOD_STORAGE &&
+            (u32)ModuleStorage + ModuleStorageSize <= IGROVL_BASE)
+            top = IGROVL_BASE; // the overlay test below: the profiles must not cost the menu its place
+#endif
+        if (ModuleStorage == (void *)OPL_MOD_STORAGE && at + PADEMU_ARGS_ROOM <= top) {
+            padEmuArgs = (char *)at;
+            memset(padEmuArgs, 0, 8);
+            memcpy(padEmuArgs + 8, padBlock, PAD_BLOCK_SIZE);
+            ModuleStorageSize = at + PADEMU_ARGS_ROOM - (u32)ModuleStorage;
+            LOG("PADEMU: the pad profiles at %p\n", (void *)padEmuArgs);
+            diagLog("launch: PADEMU gets the pad profiles at %p", (void *)padEmuArgs);
+        } else {
+            void *end = (u8 *)ModuleStorage + ModuleStorageSize;
+            LOG("PADEMU: no room below 0x%x for the pad profiles (storage %p-%p); PADEMU starts without them\n", top, ModuleStorage, end);
+            diagLog("launch: no room below 0x%x for the pad profiles (storage %p-%p); PADEMU starts without them", top, ModuleStorage, end);
+        }
+    }
+#endif
+
+#ifdef IGR_OVERLAY
     /* RA editions: the menu itself is igrovl.elf (ee_core/include/igrovl.h), linked at the top of the module storage
        region. It goes in only with the menu on, only at the default address and only when the modules (and the
        cheats above) end below it; the storage then runs to its end so the kernel's erase leaves it alone. Without
@@ -1347,6 +1387,16 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
         ModuleStorageSize = IGROVL_BASE + IGROVL_SIZE - (u32)ModuleStorage;
         LOG("IGR menu overlay at 0x%x\n", IGROVL_BASE);
     }
+#ifdef PADEMU
+    // The menu is off for this launch (config->IgrMenu below), so say why: the USB PADEMU, bigger with the .pad profiles'
+    // code (RIPPS2 build 129), moves the end of the module storage up by about 3 KB, with a PADS folder or without
+    if (!igrOvlPlaced && gIgrMenu && !(compatflags & COMPAT_MODE_6) && ModuleStorage == (void *)OPL_MOD_STORAGE &&
+        (u32)ModuleStorage + ModuleStorageSize > IGROVL_BASE) {
+        void *end = (u8 *)ModuleStorage + ModuleStorageSize;
+        LOG("IGR menu off: the module storage ends at %p, above its overlay at 0x%x\n", end, IGROVL_BASE);
+        diagLog("launch: IGR menu off, the module storage ends at %p, above its overlay at 0x%x", end, IGROVL_BASE);
+    }
+#endif
 #endif
 
     ModuleStorageEnd = (void *)((u8 *)ModuleStorage + ModuleStorageSize);
@@ -1434,6 +1484,7 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     config->EnablePadEmuOp = !discMode && gEnablePadEmu;
     config->PadEmuSettings = (unsigned int)(gPadEmuSettings >> 8);
     config->PadMacroSettings = (unsigned int)(gPadMacroSettings);
+    config->PadEmuArgs = padEmuArgs; // NULL (no profiles, or no room): PADEMU gets its 8 bytes as before
 #endif
 
     config->CustomOSDConfigParam.spdifMode = PARAM.spdifMode;

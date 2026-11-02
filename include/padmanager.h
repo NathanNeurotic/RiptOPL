@@ -56,6 +56,9 @@ public:
     void freezeEdgeBaseline(int freeze);
     void rumble(int durationMs, int large);
     void rumbleFlush(void);
+#ifdef PADEMU
+    int readyWithoutProfile(void); // padReadyWithoutProfile (pad.h)
+#endif
 
 private:
     int waitReady(struct pad_data_t *pad);

@@ -19,6 +19,9 @@
 #include "include/ra_features.h"
 #include "include/supportbase.h" // sbGetRaHunt: the in-game menu's LEFT TO HUNT
 #endif
+#ifdef PADEMU
+#include "include/padprofiles.h" // the launch's .pad block, for system.cpp
+#endif
 
 namespace
 {
@@ -250,6 +253,15 @@ public:
 #else
         (void)file;
         *count = *bytes = *total = *unlocked = 0;
+        return NULL;
+#endif
+    }
+
+    const unsigned char *padProfilesBlock() override
+    {
+#ifdef PADEMU
+        return ::padProfilesBlock();
+#else
         return NULL;
 #endif
     }

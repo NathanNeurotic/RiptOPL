@@ -64,6 +64,7 @@
 #ifdef PADEMU
 #include <libds34bt.h>
 #include <libds34usb.h>
+#include "include/padprofiles.h" // padProfilesMenuResend: the menu's pad profiles after the IOP reset
 #endif
 
 
@@ -218,6 +219,9 @@ static void unloadLwnbdSvr(void)
     unloadPads();
 
     reset();
+#ifdef PADEMU
+    padProfilesMenuResend(); // the reset reloaded ds34usb.irx without the user's pad profiles: readPads sends them again
+#endif
 
     LOG_INIT();
     LOG_ENABLE();

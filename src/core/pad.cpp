@@ -17,6 +17,7 @@
 #ifdef PADEMU
 #include <libds34bt.h>
 #include <libds34usb.h>
+#include "include/padprofiles.h" // padProfilesMenuTick: the user's USB pad profiles to the menu's driver
 #endif
 
 
@@ -676,6 +677,23 @@ void PadManager::pademuStopAll(void)
             ds34usb_set_rumble(padData_[i].port, 0, 0);
     }
 }
+
+#define PAD_DS34USB_GENERIC 4 // the menu driver's type for a HID pad that a .pad profile drives (ds34usb/iop/ds34usb.h)
+
+int PadManager::readyWithoutProfile(void)
+{
+    unsigned char raw[72];
+    int i;
+
+    for (i = 0; i < padCount_; ++i) {
+        if (isPadReadyState(padData_[i].state) || (ds34bt_get_status(padData_[i].port) & DS34BT_STATE_RUNNING))
+            return 1;
+        if ((ds34usb_get_status(padData_[i].port) & DS34USB_STATE_RUNNING) && ds34usb_get_raw(padData_[i].port, raw) &&
+            raw[1] != PAD_DS34USB_GENERIC)
+            return 1;
+    }
+    return 0;
+}
 #endif
 
 void PadManager::rumbleFlush(void)
@@ -1257,8 +1275,18 @@ void padGetActuatorDiag(int *act0, int *aligned0, int *act1, int *aligned1)
 
 int readPads()
 {
+#ifdef PADEMU
+    padProfilesMenuTick(); // RIPPS2 build 129: profiles read since the last frame go to the menu's USB pad driver
+#endif
     return gPads.read();
 }
+
+#ifdef PADEMU
+int padReadyWithoutProfile(void)
+{
+    return gPads.readyWithoutProfile();
+}
+#endif
 
 int getKey(int id)
 {
