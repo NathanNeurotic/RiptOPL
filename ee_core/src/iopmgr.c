@@ -20,6 +20,10 @@
 #include "igrmbox.h"
 #endif
 #include "reset_arg_bounds.h"
+#ifdef PADEMU
+#include "../../include/padfile.h"
+_Static_assert(PAD_BLOCK_SIZE == 180, "New_Reset_Iop hands PADEMU 8 + 180 bytes");
+#endif
 #ifdef INGAMEDIAG
 #include "freeze_diag_core.h"
 #endif
@@ -446,19 +450,20 @@ int New_Reset_Iop(const char *arg, int arglen)
     if (iop_reboot_count >= 2) {
 #ifdef PADEMU
         config->PadEmuSettings |= (LoadOPLModule(OPL_MODULE_ID_MCEMU, 0, 0, NULL) > 0) << 24;
+        if (config->EnablePadEmuOp) {
+            char *args = (char *)&config->PadEmuSettings;
+            int size = 8;
+            if (config->PadEmuArgs != NULL) {
+                memcpy(config->PadEmuArgs, args, 8);
+                args = config->PadEmuArgs;
+                size += PAD_BLOCK_SIZE;
+            }
+            LoadOPLModule(OPL_MODULE_ID_PADEMU, 0, size, args);
+        }
 #else
         LoadOPLModule(OPL_MODULE_ID_MCEMU, 0, 0, NULL);
 #endif
     }
-
-#ifdef PADEMU
-    if (iop_reboot_count >= 2 && config->EnablePadEmuOp) {
-        char args_for_pademu[8];
-        memcpy(args_for_pademu, &config->PadEmuSettings, 4);
-        memcpy(args_for_pademu + 4, &config->PadMacroSettings, 4);
-        LoadOPLModule(OPL_MODULE_ID_PADEMU, 0, sizeof(args_for_pademu), args_for_pademu);
-    }
-#endif
 
     reset_ok = 1;
 reset_finished:
