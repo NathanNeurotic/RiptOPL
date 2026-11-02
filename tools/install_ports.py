@@ -23,11 +23,27 @@ HOST = "https://git.techwritescode.dev"
 LIBRARIES = {"ogg": ("libogg.a",), "vorbis": ("libvorbis.a", "libvorbisfile.a")}
 
 
-def download(url):
+class NoDowngradeRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect from an HTTPS request only to another HTTPS URL."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urllib.parse.urlsplit(req.full_url).scheme == "https" and urllib.parse.urlsplit(newurl).scheme != "https":
+            raise urllib.error.HTTPError(newurl, code, "redirect from HTTPS to a non-HTTPS URL refused", headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def download(url, token=None, accept=None):
     request = urllib.request.Request(url, headers={"User-Agent": "RiptOPL-build/1.0"})
+    if accept:
+        request.add_header("Accept", accept)
+    if token:
+        # Not copied to a redirect: GitHub sends asset downloads on to a storage host that refuses it.
+        request.add_unredirected_header("Authorization", f"Bearer {token}")
     for attempt in range(5):
         try:
-            with urllib.request.urlopen(request, timeout=60) as response:
+            # A private mirror's asset must not be sent on over plain HTTP either.
+            opener = urllib.request.build_opener(NoDowngradeRedirects).open if token else urllib.request.urlopen
+            with opener(request, timeout=60) as response:
                 return response.read()
         except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead) as error:
             # Any 5xx is transient here, including Cloudflare's 520-524 when the origin is briefly down.
@@ -63,11 +79,35 @@ def unpack(data, destination, package):
         archive.extractall(destination)
 
 
+def mirror_file(repo, release, name):
+    """(url, bytes) of one file of a ps2build-mirror release, release being "latest" or a tag.
+
+    The mirror may be a private repository, whose download links need a login. With
+    PS2BUILD_SDK_MIRROR_TOKEN set (a token that can read the mirror's contents, from a CI secret) the file
+    comes through the GitHub API; without it, from the public download link."""
+    token = os.environ.get("PS2BUILD_SDK_MIRROR_TOKEN")
+    if not token:
+        if release == "latest":
+            base = os.environ.get("PS2BUILD_SDK_MIRROR_LATEST_URL") or f"https://github.com/{repo}/releases/latest/download"
+        else:
+            base = os.environ.get("PS2BUILD_SDK_MIRROR_URL") or f"https://github.com/{repo}/releases/download/{release}"
+        return f"{base}/{name}", download(f"{base}/{name}")
+    api = os.environ.get("PS2BUILD_SDK_MIRROR_API_URL") or "https://api.github.com"
+    if not api.startswith("https://"):
+        raise ValueError("the mirror token is sent over HTTPS only")
+    path = "latest" if release == "latest" else "tags/" + urllib.parse.quote(release, safe="")
+    info = json.loads(download(f"{api}/repos/{repo}/releases/{path}", token, "application/vnd.github+json"))
+    ids = [asset.get("id") for asset in info.get("assets", []) if asset.get("name") == name]
+    if len(ids) != 1 or not isinstance(ids[0], int):
+        raise ValueError(f"ps2build-mirror release {release} has no single asset named {name}")
+    url = f"{api}/repos/{repo}/releases/assets/{ids[0]}"
+    return url, download(url, token, "application/octet-stream")
+
+
 def mirror_pin(repo):
     """TAG, SHA256SUMS hash and versions of the newest ps2build-mirror release, from its pin.env."""
-    base = os.environ.get("PS2BUILD_SDK_MIRROR_LATEST_URL") or f"https://github.com/{repo}/releases/latest/download"
     values = {}
-    for line in download(f"{base}/pin.env").decode().splitlines():
+    for line in mirror_file(repo, "latest", "pin.env")[1].decode().splitlines():
         name, _, value = line.partition("=")
         if value:
             values[name.strip()] = value.strip().strip('"')
@@ -94,21 +134,20 @@ def mirror_archive(package, version, toolchain):
             version = mirrored
         if version == "latest":
             return None
-        base = os.environ.get("PS2BUILD_SDK_MIRROR_URL") or f"https://github.com/{repo}/releases/download/{tag}"
         name = f"{package}-{version}-{toolchain}.zip"
-        sums = download(f"{base}/SHA256SUMS")
+        sums = mirror_file(repo, tag, "SHA256SUMS")[1]
         if hashlib.sha256(sums).hexdigest() != sums_sha:
             raise ValueError("SHA256SUMS does not match the pinned hash")
         expected = [line.split()[0] for line in sums.decode().splitlines() if line.endswith("  " + name)]
         if len(expected) != 1:
             raise ValueError(f"SHA256SUMS does not list {name}")
-        data = download(f"{base}/{name}")
+        url, data = mirror_file(repo, tag, name)
         if hashlib.sha256(data).hexdigest() != expected[0]:
             raise ValueError(f"{name} does not match SHA256SUMS")
     except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead, ValueError) as error:
         print(f"warning: the ps2build-mirror fallback failed for {package} ({error})", flush=True)
         return None
-    return f"{base}/{name}", data, version
+    return url, data, version
 
 
 def install(sdk, package, toolchain):

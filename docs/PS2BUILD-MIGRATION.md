@@ -84,6 +84,10 @@ CI (GitHub Actions):
   and is not cached under the latest versions. `tools/install_ps2build.sh` adds the ogg/vorbis packages the same way.
   `PS2BUILD_HOME`/`PS2DEV_INSTALL_DIR` point at `$GITHUB_WORKSPACE/.ps2dev`. To hold a component back after a broken
   upstream release, write `name=version` for it in `.github/ps2build-sdk.env`.
+- The mirror may be a private repository. The SDK and ports steps then read it through the GitHub API with the
+  `PS2BUILD_MIRROR_TOKEN` repository secret (a fine-grained token with read-only Contents access to the mirror only),
+  passed as `PS2BUILD_SDK_MIRROR_TOKEN`. Without the secret (pull requests from forks never get it) they use the public
+  download links, so a private mirror is then unreachable and only the official server is used.
 - `flavours.yml` builds the main flavour only; the PS2DEV/OFFICIAL x PINNED/ROLLING container matrix, DIAG and RA are gone until
   `ps2.yaml` can express them. A transient HTTP/2 stream error while downloading the toolchain was seen once (re-run fixed it).
 - `check-format.yml` (clang-format 12 on `.h`/`.c`): `tests/host` is ignored; headers must be formatted with clang-format 12.

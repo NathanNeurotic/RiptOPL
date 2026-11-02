@@ -196,7 +196,7 @@ class InstallPortsTests(unittest.TestCase):
     def mirror_env(self, sums, **extra):
         import hashlib
         return {"OGG_VERSION": "v1", "PS2BUILD_SDK_TAG": "sdk-v1-abcd", "PS2BUILD_SDK_MIRROR_URL": "https://mirror.test",
-                "PS2BUILD_SDK_SUMS_SHA256": hashlib.sha256(sums).hexdigest(), **extra}
+                "PS2BUILD_SDK_SUMS_SHA256": hashlib.sha256(sums).hexdigest(), "PS2BUILD_SDK_MIRROR_TOKEN": "", **extra}
 
     def test_pinned_package_comes_from_the_official_host_first(self):
         import hashlib
@@ -234,7 +234,8 @@ class InstallPortsTests(unittest.TestCase):
                "OGG_VERSION=v1\n").encode()
         outage = ports.urllib.error.HTTPError(ports.HOST + "/api", 521, "origin down", None, None)
         env = {"OGG_VERSION": "latest", "PS2BUILD_SDK_TAG": "", "PS2BUILD_SDK_SUMS_SHA256": "",
-               "PS2BUILD_SDK_MIRROR_LATEST_URL": "https://latest.test", "PS2BUILD_SDK_MIRROR_URL": "https://mirror.test"}
+               "PS2BUILD_SDK_MIRROR_LATEST_URL": "https://latest.test", "PS2BUILD_SDK_MIRROR_URL": "https://mirror.test",
+               "PS2BUILD_SDK_MIRROR_TOKEN": ""}
         with tempfile.TemporaryDirectory() as directory, patch.dict(ports.os.environ, env):
             sdk = Path(directory)
             with patch.object(ports, "download", side_effect=[outage, pin, sums, data]) as fetched:
@@ -242,6 +243,66 @@ class InstallPortsTests(unittest.TestCase):
             self.assertEqual([c.args[0] for c in fetched.call_args_list][1:],
                              ["https://latest.test/pin.env", "https://mirror.test/SHA256SUMS", "https://mirror.test/ogg-v1-gcc.zip"])
             self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")
+
+    def test_private_mirror_is_read_through_the_api_with_the_token(self):
+        import hashlib
+        data = archive()
+        sums = f"{hashlib.sha256(data).hexdigest()}  ogg-v1-gcc.zip\n".encode()
+        info = json.dumps({"tag_name": "sdk-v1-abcd", "assets": [{"id": 7, "name": "SHA256SUMS"},
+                                                                {"id": 8, "name": "ogg-v1-gcc.zip"}]}).encode()
+        outage = ports.urllib.error.HTTPError(ports.HOST + "/api", 521, "origin down", None, None)
+        env = self.mirror_env(sums, PS2BUILD_SDK_MIRROR_TOKEN="sekrit", PS2BUILD_SDK_MIRROR="o/m",
+                              PS2BUILD_SDK_MIRROR_API_URL="https://api.test")
+        with tempfile.TemporaryDirectory() as directory, patch.dict(ports.os.environ, env):
+            sdk = Path(directory)
+            with patch.object(ports, "download", side_effect=[outage, info, sums, info, data]) as fetched:
+                ports.install(sdk, "ogg", "gcc")
+            calls = fetched.call_args_list[1:]
+            self.assertEqual([c.args[0] for c in calls],
+                             ["https://api.test/repos/o/m/releases/tags/sdk-v1-abcd", "https://api.test/repos/o/m/releases/assets/7",
+                              "https://api.test/repos/o/m/releases/tags/sdk-v1-abcd", "https://api.test/repos/o/m/releases/assets/8"])
+            self.assertTrue(all(c.args[1] == "sekrit" for c in calls))
+            self.assertEqual((sdk / "packages/world/ogg/lib/libogg.a").read_bytes(), b"new archive")
+
+    def test_mirror_token_is_not_sent_on_to_a_redirect(self):
+        import http.server
+        import threading
+        seen = {}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                seen[self.path] = self.headers.get("Authorization")
+                if self.path == "/asset":
+                    self.send_response(302)
+                    self.send_header("Location", "/storage")
+                    self.end_headers()
+                    return
+                self.send_response(200)
+                self.send_header("Content-Length", "4")
+                self.end_headers()
+                self.wfile.write(b"data")
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with patch.dict(ports.os.environ, {"NO_PROXY": "127.0.0.1", "no_proxy": "127.0.0.1"}):
+                got = ports.download(f"http://127.0.0.1:{server.server_port}/asset", "sekrit", "application/octet-stream")
+        finally:
+            server.shutdown()
+        self.assertEqual(got, b"data")
+        self.assertEqual(seen, {"/asset": "Bearer sekrit", "/storage": None})
+
+    def test_token_download_refuses_a_redirect_from_https_to_http(self):
+        handler = ports.NoDowngradeRedirects()
+        request = ports.urllib.request.Request("https://api.github.com/repos/o/r/releases/assets/1")
+        with self.assertRaises(ports.urllib.error.HTTPError):
+            handler.redirect_request(request, None, 302, "Found", {}, "http://storage.example/asset")
+        followed = handler.redirect_request(request, None, 302, "Found", {}, "https://storage.example/asset")
+        self.assertEqual(followed.full_url, "https://storage.example/asset")
 
     def test_mirror_is_not_used_for_a_missing_release_or_when_it_fails_verification(self):
         import hashlib
