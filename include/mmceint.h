@@ -28,8 +28,10 @@ public:
     // MMCE-hosted launches only: wait, bounded and on screen, until the slot the last send targeted
     // answers and is not swapping. Nothing to do when no send was made this launch.
     void waitSwapDone(const char *why);
-    int waitSwapDoneOn(const char *device, const char *why); // the same wait on a given slot; 1 when a swap was waited out
-    int waitBeforeHandoff(void);                             // last look before the IOP handoff; 1 when a swap was waited out
+    // The same wait on a given slot; 1 when a swap was waited out. *start carries a START press across the looks
+    // of one wait (waitBeforeHandoff's two slots); NULL for a single look.
+    int waitSwapDoneOn(const char *device, const char *why, int *start);
+    int waitBeforeHandoff(void); // last look before the IOP handoff; 1 when a swap was waited out
     // After the OSD history write: wait out the card's own folder switch on the game's slot (bounded).
     int waitHistorySwitch(const char *device, const char *why); // 1 when the card's own switch was waited out
     // Reset present MMCE cards to the default channel and clear GameID. NOT named reset(): that
@@ -87,7 +89,8 @@ public:
     // budget only for a card we have already seen -- a console with genuinely no MMCE must not pay
     // ~1.6s of devctl timeouts on every 2s refresh.
     unsigned char everResolved = 0;
-    int waitCardReady(const char *device);
+    // *start: see waitSwapDoneOn; NULL for a single look.
+    int waitCardReady(const char *device, int *start);
     int modLoaded = 0;               // latched by loadModules; read by sendGameID's arm check
     char gameIdTarget[8] = {0};      // last device a GameID 0x8 switch was SENT to (gameIdSettle polls it)
     int gameIdSwitchSeen = 0;        // sendGameID saw the card switch for its send: the history write will not switch it again
