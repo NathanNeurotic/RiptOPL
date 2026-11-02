@@ -59,6 +59,8 @@ jobs:
       # restored, else an older cached SDK is updated in place, else it is installed; then it is cached. A
       # mirror fallback older than the latest is never cached under the latest versions.
       - name: Resolve the latest ps2build SDK
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         id: sdk
         run: sh tools/ps2build_sdk.sh --resolve ${{ matrix.toolchain == 'llvm' && '--llvm' || '' }} "$RUNNER_TEMP/ps2build-sdk.env"
       - name: Restore the ps2build SDK
@@ -69,8 +71,12 @@ jobs:
           key: ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-${{ steps.sdk.outputs.key }}
           restore-keys: ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-
       - name: Install the ps2build SDK
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         run: sh tools/ps2build_sdk.sh ${{ matrix.toolchain == 'llvm' && '--llvm' || '' }} "$PS2BUILD_HOME"
       - name: Install matching ports and prepare assets
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         run: |
           sh tools/install_ps2build.sh
           python tools/assets.py fetch
