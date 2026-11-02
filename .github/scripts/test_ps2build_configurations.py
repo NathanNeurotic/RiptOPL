@@ -217,6 +217,7 @@ class PublisherTests(unittest.TestCase):
                                              "sha256": "0" * 64}}
             (path / elf).write_bytes(payload)
             (path / psu).write_bytes(b"synthetic-psu")
+            (path / "LICENSE-LIBSMB2.txt").write_bytes(b"synthetic-lgpl")
             (path / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
             with zipfile.ZipFile(path / "RIPTOPL-src.zip", "w") as source_zip:
                 source_zip.comment = (source or self.sha).encode()
@@ -229,6 +230,7 @@ class PublisherTests(unittest.TestCase):
                 kit.writestr("BUILD-MANIFEST.json", json.dumps(manifest))
                 kit.writestr(f"APPS/{app}/{elf}", payload)
                 kit.writestr(psu, b"synthetic-psu")
+                kit.writestr("LICENSE-LIBSMB2.txt", b"synthetic-lgpl")
             sums = "".join(hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name + "\n" for p in sorted(path.iterdir()))
             (path / "SHA256SUMS.txt").write_text(sums)
 
@@ -268,6 +270,9 @@ class PublisherTests(unittest.TestCase):
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 4)
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-DEBUG.zip") as bundle:
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 10)
+                    self.assertEqual(bundle.read("LICENSE-LIBSMB2.txt"), b"synthetic-lgpl")
+                    self.assertIn("libsmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\nGNU LGPL-2.1; "
+                                  "its licence is LICENSE-LIBSMB2.txt", bundle.read("README.txt").decode())
             for edition in ("ra", "ra_incebtion"):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")
