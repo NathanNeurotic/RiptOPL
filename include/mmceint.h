@@ -28,8 +28,8 @@ public:
     // MMCE-hosted launches only: wait, bounded and on screen, until the slot the last send targeted
     // answers and is not swapping. Nothing to do when no send was made this launch.
     void waitSwapDone(const char *why);
-    void waitSwapDoneOn(const char *device, const char *why); // the same wait on a given slot
-    void waitBeforeHandoff(void);                             // last look before the IOP handoff
+    int waitSwapDoneOn(const char *device, const char *why); // the same wait on a given slot; 1 when a swap was waited out
+    int waitBeforeHandoff(void);                             // last look before the IOP handoff; 1 when a swap was waited out
     // After the OSD history write: wait out the card's own folder switch on the game's slot (bounded).
     int waitHistorySwitch(const char *device, const char *why); // 1 when the card's own switch was waited out
     // Reset present MMCE cards to the default channel and clear GameID. NOT named reset(): that
