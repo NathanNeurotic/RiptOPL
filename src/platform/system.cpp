@@ -1376,7 +1376,8 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     if (igrOvlPlaced) {
         ModuleStorageSize = IGROVL_BASE + IGROVL_SIZE - (u32)ModuleStorage;
         LOG("IGR menu overlay at 0x%x\n", IGROVL_BASE);
-    }
+    } else if (gIgrMenu && !(compatflags & COMPAT_MODE_6))
+        LOG("IGR menu overlay not placed, module storage %p-%p\n", ModuleStorage, (u8 *)ModuleStorage + ModuleStorageSize);
 #endif
 
     ModuleStorageEnd = (void *)((u8 *)ModuleStorage + ModuleStorageSize);
@@ -1491,8 +1492,11 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
         config->IgrMenu = 0;
 #endif
 #ifdef IGR_OVERLAY
-    if (!igrOvlPlaced) // no overlay for this launch: the combo leaves the game, as with the menu off
+    if (!igrOvlPlaced) { // no overlay for this launch: the combo leaves the game, as with the menu off
+        // With the menu still on here (not Mode 6) that was a lack of room: Debug Colors shows it at the combo
+        config->IgrMenuNoRoom = config->IgrMenu;
         config->IgrMenu = 0;
+    }
     config->IgrRaHunt = raHunt;
     config->IgrRaHuntCount = raHunt != NULL ? raHuntCount : 0;
     config->IgrRaTotal = raHuntTotal;

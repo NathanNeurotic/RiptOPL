@@ -301,7 +301,8 @@ AFL-3.0): it checks the GIF and display state before it draws, which does not pr
 are safe. **Cards may flicker or freeze a game; if one does, turn the setting off. NOT TESTED on
 hardware.** POPStarter PS1 unlocks stay on the companion.
 
-The PC can also send **RAR1**, which leaves the game for the menu exactly as the IGR combo does.
+The PC can also send **RAR1**, which leaves the game for the menu exactly as the IGR combo does with
+the [In-Game Menu](IGR.md#the-in-game-menu-beta) off. With it on, RAR1 still leaves at once and does not open it.
 Under Compatibility Mode 6, which has no IGR, the request is ignored.
 
 ### Achievement browser
