@@ -75,15 +75,23 @@ Emulator-tested through the C++ conversion (builds up to IoQueue/ArtQueue confir
 Sources under src/ are now C++ (see CPP-CONVERSION-PLAN.md), so the Makefile can no longer build them.
 
 CI (GitHub Actions):
-- Every ps2build job builds with the newest SDK. `tools/ps2build_sdk.sh --resolve` asks git.techwritescode.dev's release
-  API for the latest version of each component listed in `.github/ps2build-sdk.env` (when the API is down, the newest
-  [NathanNeurotic/ps2build-mirror](https://github.com/NathanNeurotic/ps2build-mirror) release decides). The SDK cached
-  under those versions is restored; an older cached SDK is updated in place (`ps2build update <component> --version <tag>`
-  for what changed); with nothing cached it is installed from the official server. Only when that host fails is the
-  newest mirror release installed, checked against its `SHA256SUMS`; a mirror copy older than the latest gets a warning
-  and is not cached under the latest versions. `tools/install_ps2build.sh` adds the ogg/vorbis packages the same way.
-  `PS2BUILD_HOME`/`PS2DEV_INSTALL_DIR` point at `$GITHUB_WORKSPACE/.ps2dev`. To hold a component back after a broken
-  upstream release, write `name=version` for it in `.github/ps2build-sdk.env`.
+- Every ps2build job builds with the SDK pinned in `.github/ps2build-sdk.env`: every component, llvm-toolchain and
+  the ogg/vorbis packages at an exact release, so `tools/ps2build_sdk.sh --resolve` makes no network call. (Until
+  November 2026 each job asked git.techwritescode.dev's release API for the newest version of 11 packages: about 70
+  jobs per push, 20k to 70k requests a day on tech's server.) The SDK cached under the pinned versions is restored; an
+  older cached SDK is updated in place (`ps2build update <component> --version <tag>` for what changed); with nothing
+  cached it is installed from the official server. Only when that host fails is the
+  [NathanNeurotic/ps2build-mirror](https://github.com/NathanNeurotic/ps2build-mirror) release named by
+  `PS2BUILD_SDK_TAG` installed, checked against its `SHA256SUMS` (whose own hash is pinned too). With no mirror
+  release pinned, the newest one is taken; when it does not hold the pinned versions it gets a warning and is not
+  cached under them. `tools/install_ps2build.sh` adds the ogg/vorbis packages the same way.
+  `PS2BUILD_HOME`/`PS2DEV_INSTALL_DIR` point at `$GITHUB_WORKSPACE/.ps2dev`.
+- `ps2build-sdk-watch.yml` is the only job that asks the release API: once a week (Mondays, 16:17 UTC), one request
+  per package. When something is newer it caches the new SDK on rebuild/main (one install per toolchain, so the ~70
+  build jobs restore it instead of downloading it), pushes the bumped pins with the matching mirror release to the
+  `ci/ps2build-sdk-watch` branch, opens a draft pull request and starts the four SDK workflows on that branch. It
+  never merges. To stay on a release after a broken upstream one, name the package in `PS2BUILD_SDK_HOLD`.
+  `.github/scripts/test_ps2build_sdk_watch.py` fails when a version in the pin file is left unpinned.
 - The mirror may be a private repository. The SDK and ports steps then read it through the GitHub API with the
   `PS2BUILD_MIRROR_TOKEN` repository secret (a fine-grained token with read-only Contents access to the mirror only),
   passed as `PS2BUILD_SDK_MIRROR_TOKEN`. Without the secret (pull requests from forks never get it) they use the public
