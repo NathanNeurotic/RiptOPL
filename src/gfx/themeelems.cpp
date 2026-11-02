@@ -213,6 +213,7 @@ static mutable_text_t *initMutableText(const char *themePath, config_set_t *them
     mutableText->currentValue = NULL;
     mutableText->wrappedValue = NULL;
     mutableText->alias = NULL;
+    mutableText->cfgText = 0; // initAttributeText sets it
 
     char elemProp[64];
 
@@ -521,11 +522,29 @@ void initGameCountText(const char *themePath, config_set_t *themeConfig, theme_t
 
 // AttributeText ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static int thmElemIsInfo(theme_element_t *elem); // the info-page families, defined with the cover redirect below
+
+// Settings > Interface > List Title and Description (RIPPS2 build 126). Theme follows the theme's list_cfg_text key.
+static int thmListCfgTextShown(int mode, int themeHides)
+{
+    return mode == LIST_CFG_TEXT_ON || (mode == LIST_CFG_TEXT_THEME && !themeHides);
+}
+
+// A list page's AttributeText of the CFG's Title or Description while that setting hides them. The info page
+// always shows them. Asked as the element draws: its family is set after initAttributeText returns.
+static int thmCfgTextHidden(theme_element_t *elem)
+{
+    const mutable_text_t *text = (const mutable_text_t *)elem->extended;
+    return text->cfgText && !thmListCfgTextShown(gListCfgText, gTheme->hideListCfgText) && !thmElemIsInfo(elem);
+}
+
 static void drawAttributeText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     // No current item (e.g. the last favourite was removed -> empty list): clear, don't redraw the
     // stale cached value. Mirrors drawGameImage's `if (item)` guard so the description clears (#48).
     if (item == NULL)
+        return;
+    if (thmCfgTextHidden(elem)) // List Title and Description set to hide it here (RIPPS2 build 126)
         return;
     mutable_text_t *mutableText = (mutable_text_t *)elem->extended;
     if (config) {
@@ -600,6 +619,8 @@ void initAttributeText(const char *themePath, config_set_t *themeConfig, theme_t
         elem->extended = initMutableText(themePath, themeConfig, theme, name, ELEM_TYPE_ATTRIBUTE_TEXT, elem, attribute, NULL, DISPLAY_ALWAYS, SIZING_NONE);
         elem->endElem = &endMutableText;
         elem->drawElem = &drawAttributeText;
+        // The game CFG's Title or Description, which List Title and Description can hide on a list page
+        ((mutable_text_t *)elem->extended)->cfgText = !strcmp(attribute, "Title") || !strcmp(attribute, "Description");
     } else
         LOG("THEMES AttributeText %s: NO attribute, elem disabled !!\n", name);
 }

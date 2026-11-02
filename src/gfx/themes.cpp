@@ -1501,6 +1501,10 @@ static int thmLoad(const char *themePath)
         newT->coverflowCoverOffset = intValue;
     }
 
+    // list_cfg_text=0 (RIPPS2 build 126): the list pages leave out the CFG Title and Description, the info page
+    // keeps them. Settings > Interface > List Title and Description follows it on Theme, else overrides it.
+    newT->hideListCfgText = thmViewGetInt(themeConfig, viewPrefix, "list_cfg_text", &intValue) && intValue == 0;
+
     // before loading the element definitions, we have to have the fonts prepared
     // for that, we load the fonts and a translation table
     if (themePath)

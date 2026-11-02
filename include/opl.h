@@ -217,6 +217,12 @@ enum { PS1_DUP_BOTH = 0,
        PS1_DUP_POPSTARTER };
 extern int gPs1Duplicates;
 extern int gGameTypeLabels; // optional [PS1]/[PS2] prefixes in game lists; default off
+// Interface > List Title and Description (RIPPS2 build 126): the Title and Description from a game's CFG that a
+// theme shows on its list pages. Theme: as its list_cfg_text key says. The info page always shows them.
+enum { LIST_CFG_TEXT_THEME = 0,
+       LIST_CFG_TEXT_ON,
+       LIST_CFG_TEXT_OFF };
+extern int gListCfgText;
 // Ember's own settings, brought into the settings.txt files Ember reads when a game launches
 // (cueApplySettings). Each one is EMBER_SETTING_UNSET until the user CHANGES it in RiptOPL: an unset
 // setting is never written or removed, so a settings.txt somebody wrote by hand keeps working.
