@@ -598,7 +598,7 @@ int HddSupport::loadModules()
 
     LOG("[HDD STARTUP DIAG] hddLoadModules entry count=%u loaded=%u\n", modulesLoadCount, modulesLoaded);
 
-#if !(LITE_HAS_APA || LITE_HAS_BDMHDD)
+#if defined(RIPTOPLITE) && !(LITE_HAS_APA || LITE_HAS_BDMHDD)
     // A RiptOPLite build for another device carries no HDD drivers (include/riptlite.h).
     (void)retLoadModule;
     (void)retBdmModule;

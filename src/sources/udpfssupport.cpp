@@ -85,7 +85,7 @@ static void udpfsLoadModules(void)
 
     LOG("UDPFSSUPPORT LoadModules\n");
 
-#if !LITE_HAS_UDPFS
+#if defined(RIPTOPLITE) && !LITE_HAS_UDPFS
     // A RiptOPLite build for another device carries no UDPFS drivers (include/riptlite.h).
     (void)ipArg;
     return;
