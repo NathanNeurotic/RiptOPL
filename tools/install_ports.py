@@ -150,6 +150,17 @@ def mirror_archive(package, version, toolchain):
     return url, data, version
 
 
+def mark_stale():
+    """Tell later CI steps that a package is not the pinned one, so they do not cache the SDK under the pins.
+
+    tools/ps2build_sdk.sh sets the same flag for an older SDK. Saved under the pins, an older package would send
+    every build job that restores that cache to the official host for the pinned one, and an exact cache entry is
+    never replaced."""
+    if os.environ.get("GITHUB_ENV"):
+        with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+            env.write("PS2BUILD_SDK_STALE=true\n")
+
+
 def install(sdk, package, toolchain):
     version = os.environ.get(f"{package.upper()}_VERSION", "latest")
     release_path = "latest" if version == "latest" else "tags/" + urllib.parse.quote(version, safe="")
@@ -174,6 +185,8 @@ def install(sdk, package, toolchain):
             print(f"warning: {HOST} unreachable ({error}); using the ps2build-mirror copy", flush=True)
             url, data, mirrored_version = mirrored
             release = {"tag_name": mirrored_version}
+            if version != "latest" and mirrored_version != version:
+                mark_stale()
         # A complete package restored from the SDK cache is the one a previous run installed, so build
         # with it rather than fail; a pinned version is never substituted.
         elif version != "latest" or client_error \

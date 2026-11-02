@@ -189,6 +189,11 @@ def main():
             destination.mkdir(parents=True, exist_ok=True)
             for filename in ("LICENSE", "UPSTREAM"):
                 shutil.copyfile(ROOT / "third_party" / component / filename, destination / filename)
+        # Every loader embeds smb2man over libsmb2 (LGPL-2.1), so every configuration build carries its licence.
+        destination = stage / "licenses" / "libsmb2"
+        destination.mkdir(parents=True, exist_ok=True)
+        for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):
+            shutil.copyfile(ROOT / "modules/network/smb2man/libsmb2" / filename, destination / filename)
     print(f"Built {options['title']}: {manifest['elf_sha256']}")
     return 0
 
