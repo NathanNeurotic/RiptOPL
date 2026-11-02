@@ -2,9 +2,13 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from unittest import mock
 import urllib.error
@@ -313,6 +317,39 @@ class WorkflowTests(unittest.TestCase):
         stale = warm.split("if: ${{ env.PS2BUILD_SDK_STALE == 'true' }}", 1)
         self.assertEqual(len(stale), 2)
         self.assertIn("exit 1", stale[1].split("- name:", 1)[0])
+
+    @unittest.skipUnless(shutil.which("bash"), "runs the workflow step with bash")
+    def test_warm_caches_only_the_pinned_ogg_and_vorbis(self):
+        # With the official host down and no mirror release pinned yet, tools/install_ports.py takes the newest
+        # mirror release's own ogg/vorbis, which can be older. Cached under the new pins, it would send every build
+        # job restoring that cache to the official host for the pinned package; an exact cache entry is never
+        # replaced. So warm checks the installed packages after installing them, and before it saves anything.
+        warm = (WORKFLOWS / "ps2build-sdk-watch.yml").read_text().split("\n  warm:\n", 1)[1].split("\n  pr:\n", 1)[0]
+        name = "- name: Stop unless the pinned ogg/vorbis packages were installed"
+        self.assertLess(warm.index("run: sh tools/install_ps2build.sh"), warm.index(name))
+        self.assertLess(warm.index(name), warm.index("- name: Cache the ps2build SDK"))
+        step = warm.split(name, 1)[1].split("- name:", 1)[0]
+        self.assertNotIn("if:", step)
+        script = textwrap.dedent(step.split("run: |\n", 1)[1])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".github").mkdir()
+            (root / ".github/ps2build-sdk.env").write_text("OGG_VERSION=v2\nVORBIS_VERSION=v3\n")
+
+            def check(toolchain, world, ogg, vorbis):
+                shutil.rmtree(root / "sdk", ignore_errors=True)
+                for package, version in (("ogg", ogg), ("vorbis", vorbis)):
+                    if version:
+                        (root / "sdk" / world / "world" / package).mkdir(parents=True)
+                        (root / "sdk" / world / "world" / package / ".release").write_text(version + "\n")
+                env = {**os.environ, "PS2DEV_INSTALL_DIR": str(root / "sdk"), "PS2BUILD_TOOLCHAIN": toolchain}
+                return subprocess.run(["bash", "-e", "-c", script], cwd=root, env=env, capture_output=True).returncode
+
+            self.assertEqual(check("gcc", "packages", "v2", "v3"), 0)
+            self.assertNotEqual(check("gcc", "packages", "v1", "v3"), 0)  # the older mirror ogg
+            self.assertNotEqual(check("gcc", "packages", "v2", None), 0)
+            self.assertEqual(check("llvm", "packages-llvm", "v2", "v3"), 0)
+            self.assertNotEqual(check("llvm", "packages", "v2", "v3"), 0)  # llvm reads its own packages
 
 
 if __name__ == "__main__":

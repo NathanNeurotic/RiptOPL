@@ -112,6 +112,24 @@ jobs:
         env:
           PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         run: sh tools/install_ps2build.sh
+      - name: Stop unless the pinned ogg/vorbis packages were installed
+        # The SDK can come from the cache while ogg/vorbis are new. If the official host fails then and the new pins
+        # name no ps2build-mirror release yet, tools/install_ports.py takes the newest mirror release's own package,
+        # which can be older. Saved under the new pins, it would send every build job that restores this cache to
+        # the official host for the pinned package, and an exact cache entry is never replaced. So nothing is saved,
+        # and the pull request waits for the next run, unless the installed packages are the pinned ones.
+        run: |
+          . .github/ps2build-sdk.env
+          case "$PS2BUILD_TOOLCHAIN" in llvm) world=packages-llvm/world ;; *) world=packages/world ;; esac
+          for package in ogg vorbis; do
+            case "$package" in ogg) pinned=$OGG_VERSION ;; *) pinned=$VORBIS_VERSION ;; esac
+            installed=$(cat "$PS2DEV_INSTALL_DIR/$world/$package/.release" 2>/dev/null || true)
+            if [ -z "$pinned" ] || [ "$installed" != "$pinned" ]; then
+              echo "::error::$package ${installed:-(none)} is installed, not the pinned ${pinned:-(none)} (the official host probably failed, and no ps2build-mirror release holds it yet), so the SDK is not cached. The pull request waits for the next run."
+              exit 1
+            fi
+          done
+          echo "ogg $OGG_VERSION and vorbis $VORBIS_VERSION are installed, as pinned."
       - name: Cache the ps2build SDK
         if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
         uses: actions/cache/save@v4
