@@ -78,6 +78,8 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_GLYPH_SET, &gGlyphSet, 0), // GLYPH_SET_THEME: the theme's own (RIPPS2 build 90)
     // Off: the theme's default= pictures (KrahJohlito's alt= idea, themeviews.h).
     intSetting(CONFIG_OPL_THEME_ALT_BG, &gThemeAltBackground, 0),
+    // Off: the menu opens without waiting, and the saved theme replaces the built-in one once its drive is up.
+    intSetting(CONFIG_OPL_BOOT_THEME_WAIT, &gBootThemeWait, 0),
     intSetting(CONFIG_OPL_VMODE, &gVMode, 0, /*loadPlain=*/false),
     intSetting(CONFIG_OPL_XOFF, &gXOff, 0),
     intSetting(CONFIG_OPL_YOFF, &gYOff, 0),

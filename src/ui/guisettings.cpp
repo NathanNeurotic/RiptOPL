@@ -171,6 +171,16 @@ int guiNetProtocolNeedsRestart(void)
     if (resident == NET_PROTO_OFF)
         return 0;
 
+    // smbman and smb2man both register the "smb" device and neither unloads, so a change of SMB
+    // dialect while one of them is resident is a restart too, exactly like a protocol change. The
+    // comparison is with the dialect the load ASKED for: after an SMB2 -> SMBv1 fallback the saved
+    // SMB2 choice is unchanged, and a restart would only fail the same way again.
+    if (resident == NET_PROTO_SMB && gNetworkProtocol == NET_PROTO_SMB) {
+        int requestedDialect = ethGetRequestedSmbDialect();
+        if (requestedDialect >= 0 && requestedDialect != gSMBDialect)
+            return 1;
+    }
+
     return gNetworkProtocol != resident;
 }
 
@@ -704,9 +714,8 @@ static int netConfigUpdater(int modified)
         // Protocol: lock Access to Files for SMB and to IMG for UDPBD (only UDPFS offers the free
         // toggle) -- snap the value so a stale IMG left over from UDPFS can never mis-derive to
         // UDPFSBD under SMB, AND grey the control so the lock is visible.
-        // NOTE(rebuild): the SMB Version row stays greyed at SMBv1 until item 4 lands (the fork
-        // enables it while SMB is the selected protocol).
-        diaSetEnabled(diaNetConfig, CFG_SMBDIALECT, 0);
+        // The SMB Version row is live only while SMB is the picked protocol.
+        diaSetEnabled(diaNetConfig, CFG_SMBDIALECT, isSMB);
         diaSetVisible(diaNetConfig, CFG_SMBDIALECT, isSMB);
         if (netProto == 0 || netProto == 3) { // SMB and HTTP -> Files, locked
             diaSetInt(diaNetConfig, CFG_UDPFSMODE, 0);
@@ -728,7 +737,7 @@ static int netConfigUpdater(int modified)
 // struct, so bytes past a terminator can never read as a change.
 typedef struct
 {
-    int dhcp, ps2Ip[4], netmask[4], gateway[4], dns[4], pcIp[4], pcPort, pcNetBIOS, opMode, protocol;
+    int dhcp, ps2Ip[4], netmask[4], gateway[4], dns[4], pcIp[4], pcPort, pcNetBIOS, opMode, protocol, smbDialect;
     char pcNBAddress[17], shareName[32], userName[32], password[32];
 } gui_smb_link_t;
 
@@ -745,6 +754,7 @@ static void guiSmbLinkCapture(gui_smb_link_t *link)
     link->pcNetBIOS = gPCShareAddressIsNetBIOS;
     link->opMode = gETHOpMode;
     link->protocol = gNetworkProtocol;
+    link->smbDialect = gSMBDialect;
     snprintf(link->pcNBAddress, sizeof(link->pcNBAddress), "%s", gPCShareNBAddress);
     snprintf(link->shareName, sizeof(link->shareName), "%s", gPCShareName);
     snprintf(link->userName, sizeof(link->userName), "%s", gPCUserName);
@@ -775,9 +785,8 @@ int guiShowNetConfig(void)
     const char *addrConfModes[] = {_l(_STR_ADDR_TYPE_IP), _l(_STR_ADDR_TYPE_NETBIOS), NULL};
     const char *ipAddrConfModes[] = {_l(_STR_IP_ADDRESS_TYPE_STATIC), _l(_STR_IP_ADDRESS_TYPE_DHCP), NULL};
     const char *udpfsModes[] = {"Files", "IMG", NULL}; // Access: Files=udpfs_ioman filesystem, IMG=udpfs_bd block
-    // NOTE(rebuild): SMBv1 only until item 4 re-adds the SMB2 dialect; the row shows the active
-    // dialect and stays greyed (netConfigUpdater keeps it disabled).
-    const char *smbDialects[] = {"SMBv1", NULL};
+    // Index == enum SMB_DIALECT. Protocol names, not translated.
+    const char *smbDialects[] = {"SMBv1", "SMB2", NULL};
     diaSetEnum(diaNetConfig, NETCFG_PS2_IP_ADDR_TYPE, ipAddrConfModes);
     diaSetEnum(diaNetConfig, NETCFG_SHARE_ADDR_TYPE, addrConfModes);
     diaSetEnum(diaNetConfig, NETCFG_ETHOPMODE, ethOpModes);
@@ -851,11 +860,11 @@ int guiShowNetConfig(void)
     diaSetString(diaNetConfig, NETCFG_HTTP_BASE, gHttpBasePath);
     diaSetInt(diaNetConfig, CFG_NETPROTOCOL, netProtoVal);
     diaSetInt(diaNetConfig, CFG_UDPFSMODE, netAccessVal);
-    diaSetInt(diaNetConfig, CFG_SMBDIALECT, 0); // SMBv1 -- the only dialect until item 4
+    diaSetInt(diaNetConfig, CFG_SMBDIALECT, gSMBDialect);
     // Seed the initial grey/lock: diaExecuteDialog renders the FIRST frame before it calls
     // netConfigUpdater, so without this the first frame flashes every row enabled.
     diaSetEnabled(diaNetConfig, CFG_UDPFSMODE, netProtoVal == 1);
-    diaSetEnabled(diaNetConfig, CFG_SMBDIALECT, 0); // NOTE(rebuild): greyed until item 4
+    diaSetEnabled(diaNetConfig, CFG_SMBDIALECT, netProtoVal == 0);
     netConfigDhcpPreference = ps2_ip_use_dhcp;
     netConfigUdpfsAccess = gUdpfsAccessMode;
     netConfigLastProtocol = -1;
@@ -954,7 +963,10 @@ reshow_network:
         // mis-derive. The Game Sources "Network Start Mode" row decides whether the stack runs at
         // all: Start=Off -> OFF regardless of the protocol picked here. Then re-derive the legacy
         // shadows (gEnableUDPBD / gNetBootProtocol / gETHStartMode) downstream consumers read.
-        // NOTE(rebuild): the fork also reads the SMB dialect row back here (item 4).
+        int smbDialectWas = gSMBDialect;
+        diaGetInt(diaNetConfig, CFG_SMBDIALECT, &gSMBDialect);
+        if (gSMBDialect != SMB_DIALECT_V2)
+            gSMBDialect = SMB_DIALECT_V1;
         int netProtocolWas = gNetworkProtocol;
         guiNetProtocolStore(netProtoVal2, netAccessVal2);
         if (netProtoVal2 != 1)
@@ -962,7 +974,10 @@ reshow_network:
         guiNetProtocolApplied(netProtocolWas);
         // OK is this page's apply button. A protocol change made on Game Sources (or declined here
         // earlier) is still waiting on a restart, so OK offers it again rather than doing nothing.
-        if (gNetworkProtocol == netProtocolWas && (result == NETCFG_OK || result == NETCFG_RECONNECT) &&
+        // A changed SMB dialect is offered the same restart the moment it is applied, on any exit:
+        // the resident driver cannot be swapped live.
+        if (gNetworkProtocol == netProtocolWas &&
+            (result == NETCFG_OK || result == NETCFG_RECONNECT || gSMBDialect != smbDialectWas) &&
             guiNetProtocolNeedsRestart())
             guiNetProtocolOfferRestart();
 
@@ -2416,6 +2431,7 @@ static int guiSettingsShowInterface(void)
     guiSetAppsViewPicker(ui);
     guiSetThemeViewPicker(ui);
     diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
+    diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
     guiSetLibraryPicker(ui);
     diaSetEnum(ui, UICFG_VMODE, vmodeNames);
     diaSetInt(ui, UICFG_THEME, thmGetGuiValue());
@@ -2492,6 +2508,7 @@ reshow_interface:
         appsViewChanged = guiReadAppsViewPicker(ui);
         themeViewRequest = guiReadThemeViewPicker(ui);
         diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
+        diaGetInt(ui, UICFG_BOOT_THEME_WAIT, &gBootThemeWait);
         // With a view change pending, the alt change waits for that reload so the theme loads once.
         viewPending = themeViewRequest != gThemeViewRequest;
         if (!viewPending)
@@ -2516,6 +2533,10 @@ reshow_interface:
         if (previousVMode != gVMode)
             guiFadeCurrentScreenToBlack();
         applyConfig(themeID, -1, 1);
+        // A theme picked here is the user's choice, even the built-in one, so the save writes it although a saved
+        // disk theme is still waiting for its drive (_saveConfig keeps the saved name only while nothing was picked).
+        if (previousTheme != themeID)
+            configSetStr(configGetByType(CONFIG_OPL), CONFIG_OPL_THEME, thmGetValue());
         if (viewPending) {
             gThemeAltBackground = altBackgroundRequest;
             if (!thmSetView(themeViewRequest)) // reloads only when the theme now shows a different view
@@ -2780,6 +2801,7 @@ void SettingsShell::readSourceState(SourceState *state)
     state->enableMX4SIO = gEnableMX4SIO;
     state->enableBdmHDD = gEnableBdmHDD;
     state->networkProtocol = gNetworkProtocol;
+    state->smbDialect = gSMBDialect;
     state->netStartMode = gNetStartMode;
     state->netProtocolPick = gNetProtocolPick;
     state->ethStartMode = gETHStartMode;
@@ -2828,6 +2850,7 @@ void SettingsShell::restoreSourceState()
     gEnableMX4SIO = sourceState_.enableMX4SIO;
     gEnableBdmHDD = sourceState_.enableBdmHDD;
     gNetworkProtocol = sourceState_.networkProtocol;
+    gSMBDialect = sourceState_.smbDialect;
     gNetStartMode = sourceState_.netStartMode;
     gNetProtocolPick = sourceState_.netProtocolPick;
     gETHStartMode = sourceState_.ethStartMode;

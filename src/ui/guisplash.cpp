@@ -14,6 +14,7 @@
 #include "include/fntsys.h"
 #include "include/themes.h"
 #include "include/sound.h"
+#include "include/diaglog.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -119,8 +120,19 @@ void BootSplash::renderScreen()
     guiEndFrame();
 }
 
-// The longest the greeting waits for the drive that holds the saved theme (RIPPS2 build 125 uses 6 s)
-#define THEME_HOLD_MS 6000
+// The longest the greeting waits for the drive that holds the saved theme: the Boot Theme Wait setting, in seconds
+// (Settings > Interface; RIPPS2 build 125 used 6 s). Off (0) by default: the menu opens straight away and the saved
+// theme replaces the built-in one as soon as its drive is up. Clamped so a hand-edited config cannot park the intro.
+#define THEME_HOLD_MAX_S 10
+static int themeHoldMs(void)
+{
+    int s = gBootThemeWait;
+    if (s <= 0)
+        return 0;
+    if (s > THEME_HOLD_MAX_S)
+        s = THEME_HOLD_MAX_S;
+    return s * 1000;
+}
 
 void BootSplash::run()
 {
@@ -135,9 +147,14 @@ void BootSplash::run()
     clock_t tFadeDelay = 0;
     int tFadeArmed = 0;
     // RIPPS2 build 125 (AK): a saved disk theme whose drive is not up yet keeps the greeting on screen, so the built-in
-    // theme does not show for a moment before the saved one replaces it. Bounded: at most THEME_HOLD_MS after init.
+    // theme does not show for a moment before the saved one replaces it. Bounded: at most Boot Theme Wait seconds after init, and off by default.
     clock_t tInitDone = 0;
     int tInitSeen = 0;
+    // For the DIAG.TXT line at the end: how long the greeting waited for the saved theme and the boot sound.
+    clock_t tHoldLast = 0;
+    clock_t tHoldStart = 0; // first frame the hold was active: the DIAG duration counts only the hold itself
+    int tHoldSeen = 0;      // a hold happened (clock() can in principle read 0, so the timestamps cannot say it)
+    int fadeDelayLogMs = 0;
 
     // oplIsBootInProgress() can become false while background startup work is still queued. That
     // is correct for runtime overlays, but the animated greeting owns the entire intro lifecycle.
@@ -166,6 +183,7 @@ void BootSplash::run()
             int fadeDelayMs = sfxGetSoundDuration(SFX_BOOT) - fadeDuration;
             if (fadeDelayMs < 0)
                 fadeDelayMs = 0;
+            fadeDelayLogMs = fadeDelayMs;
             tFadeDelay = (clock_t)fadeDelayMs * (CLOCKS_PER_SEC / 1000);
             tFadeArmed = 1;
         }
@@ -173,12 +191,23 @@ void BootSplash::run()
         if (guiInitComplete() && !tInitSeen) {
             tInitDone = clock();
             tInitSeen = 1;
+            diagLog("boot: devices started");
         }
-        const bool themeHold = greetingAlpha == 0x80 && tInitSeen && thmSavedThemePending() &&
-                               (clock() - tInitDone) < (clock_t)THEME_HOLD_MS * (CLOCKS_PER_SEC / 1000);
+        const bool themeHold = greetingAlpha == 0x80 && tInitSeen && themeHoldMs() > 0 && thmSavedThemePending() &&
+                               (clock() - tInitDone) < (clock_t)themeHoldMs() * (CLOCKS_PER_SEC / 1000);
+        if (themeHold) {
+            if (!tHoldSeen) {
+                tHoldStart = clock();
+                tHoldSeen = 1;
+            }
+            tHoldLast = clock();
+        }
 
-        if (guiInitComplete() && (clock() - tFadeStart) >= tFadeDelay && !themeHold)
+        if (guiInitComplete() && (clock() - tFadeStart) >= tFadeDelay && !themeHold) {
+            if (greetingAlpha == 0x80)
+                diagLog("boot: intro fading out");
             greetingAlpha -= 2;
+        }
 
         if (greetingAlpha <= 0)
             ended_ = true;
@@ -201,6 +230,9 @@ void BootSplash::run()
         }
     }
     active_ = false;
+    diagLog("boot: intro done; held %d ms for the saved theme, boot sound %s, fade delay %d ms",
+            tHoldSeen ? (int)((tHoldLast - tHoldStart) / (CLOCKS_PER_SEC / 1000)) : 0, gEnableBootSND ? "on" : "off",
+            fadeDelayLogMs);
 }
 
 // The C-style entry points other files use.
