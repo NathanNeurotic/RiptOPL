@@ -206,8 +206,12 @@ keepalive() {
 }
 browse_refused() { # SMB 3-only: the menu must not list a server the in-game reader cannot reach
     rc=0
-    timeout 60 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso || rc=$?
-    [ $rc -eq 1 ] # its checks failed; not 0 (it listed the server), 124 (a hang) or 86 (a sanitizer report)
+    timeout 60 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso >refused.txt 2>&1 || rc=$?
+    cat refused.txt
+    # its checks failed, not 0 (it listed the server), 124 (a hang) or 86 (a sanitizer report); and the
+    # ones that failed are the share list and opening the share, not some unrelated check
+    [ $rc -eq 1 ] && grep -q '^FAIL: share list' refused.txt && grep -q '^FAIL: openshare PS2SMB' refused.txt &&
+        ! grep -q '^ok: share list' refused.txt && ! grep -q '^ok: openshare PS2SMB' refused.txt
 }
 
 run "in-game reader: UTF-8 names to UTF-16 (put_utf16)" ./utf16
