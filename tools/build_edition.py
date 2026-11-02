@@ -172,6 +172,12 @@ def main():
         "run_url": os.environ.get("GITHUB_SERVER_URL", "https://github.com") + "/" +
             os.environ.get("GITHUB_REPOSITORY", "NathanNeurotic/RiptOPL") + "/actions/runs/" + os.environ.get("GITHUB_RUN_ID", "local"),
     }
+    if args.configuration == "diag":
+        # The bug-report build (publish_editions.py) ships diag before compression: the unpacked ELF
+        # started from a launch path where every packed build showed a black screen.
+        unpacked = output / "bin/riptopl.elf"
+        shutil.copyfile(unpacked, stage / "RIPTOPL-UNPACKED.ELF")
+        manifest["unpacked_elf_sha256"] = hashlib.sha256(unpacked.read_bytes()).hexdigest()
     (stage / "BUILD-MANIFEST.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     (stage / "ps2.resolved.yaml").write_text(canonical, encoding="utf-8")
     if args.configuration != "standard":
