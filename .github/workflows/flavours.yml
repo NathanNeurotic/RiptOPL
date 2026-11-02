@@ -342,6 +342,8 @@ jobs:
       # restored, else an older cached SDK is updated in place, else it is installed; then it is cached. A
       # mirror fallback older than the latest is never cached under the latest versions.
       - name: Resolve the latest ps2build SDK
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         id: sdk
         run: sh tools/ps2build_sdk.sh --resolve "$RUNNER_TEMP/ps2build-sdk.env"
       - name: Restore the ps2build SDK
@@ -352,9 +354,13 @@ jobs:
           key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
           restore-keys: ps2build-sdk-${{ runner.os }}-gcc-
       - name: Install the ps2build SDK
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         run: sh tools/ps2build_sdk.sh "$PS2BUILD_HOME"
 
       - name: Install the ogg/vorbis packages (not shipped by the SDK)
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         run: tools/install_ps2build.sh
       - name: Cache the ps2build SDK
         if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}

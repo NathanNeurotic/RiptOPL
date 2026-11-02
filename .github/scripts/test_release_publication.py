@@ -358,5 +358,23 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('required.add("LICENSE-MBEDTLS.txt")', app)
         self.assertIn('elif "LICENSE-MBEDTLS.txt" in all_names:', app)
 
+    def test_every_kit_bundle_and_standalone_download_ships_the_libsmb2_licence(self):
+        # Every RiptOPL ELF embeds smb2man over libsmb2 (LGPL-2.1), so the licence text must travel
+        # with the install kits, the VARIANTS/DEBUG bundles and the standalone ELF download.
+        licence = ROOT / "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt"
+        self.assertIn("GNU LESSER GENERAL PUBLIC LICENSE", licence.read_text(encoding="utf-8"))
+        package = (ROOT / "tools/package_edition.py").read_text(encoding="utf-8")
+        self.assertIn('LIBSMB2_LICENCE = ROOT / "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt"', package)
+        self.assertIn('shutil.copyfile(LIBSMB2_LICENCE, kit / "LICENSE-LIBSMB2.txt")', package)
+        self.assertIn('shutil.copyfile(LIBSMB2_LICENCE, out / "LICENSE-LIBSMB2.txt")', package)
+        self.assertLess(package.index('if options["ra"]:  # the RA ELF links mbedTLS'), package.index('kit / "LICENSE-LIBSMB2.txt"'))
+        publish = (ROOT / "tools/publish_editions.py").read_text(encoding="utf-8")
+        self.assertIn('bundle.writestr("LICENSE-LIBSMB2.txt", (path / "LICENSE-LIBSMB2.txt").read_bytes())', publish)
+        self.assertIn('"LICENSE-LIBSMB2.txt"}', publish)
+        self.assertIn('kit.read("LICENSE-LIBSMB2.txt") != (path / "LICENSE-LIBSMB2.txt").read_bytes()', publish)
+        app = (ROOT / ".github/scripts/package_release_app.py").read_text(encoding="utf-8")
+        self.assertIn('"LICENSE-LIBSMB2.txt",  # every loader embeds libsmb2 (LGPL-2.1)', app)
+
+
 if __name__ == "__main__":
     unittest.main()
