@@ -33,6 +33,7 @@
 #endif
 #include "include/config.h"
 #include "include/util.h"
+#include "include/riptlite.h"
 #include "include/extern_irx.h"
 
 #include "include/supportbase.h"
@@ -1780,10 +1781,11 @@ void miniInit(int mode)
         // normally overrides from the saved config) had nothing to override it here: configReadMulti
         // runs AFTER bdmLoadModules(). bdmLoadBlockDeviceModules gates the USB load on the flag, so
         // an argv autolaunch from a USB stick loaded no USB block driver at all.
-        gEnableUSB = 1;
-        gEnableILK = 1; // iLink will break pcsx2 however.
-        gEnableMX4SIO = 1;
-        gEnableBdmHDD = 1;
+        // A RiptOPLite build loads only the transport it carries (include/riptlite.h).
+        gEnableUSB = LITE_HAS_USB;
+        gEnableILK = LITE_HAS_ILINK; // iLink will break pcsx2 however.
+        gEnableMX4SIO = LITE_HAS_MX4SIO;
+        gEnableBdmHDD = LITE_HAS_BDMHDD;
         bdmLoadModules();
     } else if (mode == HDD_MODE) {
         hddLoadModules();
