@@ -37,6 +37,11 @@ class PublicationTests(unittest.TestCase):
             self.assertIn(f"/{elf})", body)
             self.assertIn(f"/{psu})", body)
             self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-LANGS-v1.2.0-Beta-3925.zip)", body)
+            # The standalone ELF and PSU have no CREDITS beside them: the notes name libsmb2 and its licence.
+            self.assertIn(f"- [libsmb2 licence](https://github.com/NathanNeurotic/RiptOPL/releases/download/{options['tag']}"
+                          "/LICENSE-LIBSMB2.txt) - every loader embeds [libsmb2](https://github.com/sahlberg/libsmb2) by "
+                          "[Ronnie Sahlberg](https://github.com/sahlberg), used under the GNU LGPL-2.1.\n", body)
+            self.assertLess(body.index(f"/{psu})"), body.index("/LICENSE-LIBSMB2.txt)"))
             # Every archive link ends with the version; the ELF and PSU links never change.
             for link in re.findall(r"\]\((\S+?)\)", body.split("## Downloads", 1)[1]):
                 if link.endswith(".zip"):
@@ -50,7 +55,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertLess(body.index("[Bug-report build]"), body.index("[Loader ELF]"))
             else:
                 self.assertNotIn("BUGREPORT", body)
-            self.assertEqual({"rolling-ra": 5}.get(options["tag"], 7), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
+            self.assertEqual({"rolling-ra": 6}.get(options["tag"], 8), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
                 self.assertIn("Included build: ORBIT-v1.0.2 -- [ORBIT Neutrino RA runtime v1.0.2]"
                               "(https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2)", body)
@@ -60,7 +65,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertNotIn("ORBIT", body)
             self.assertNotIn("Release compiler", body)
             self.assertNotIn("Imported production documentation", body)
-            self.assertLess(len(body), 2200)  # the RA notes link eight versioned downloads and ORBIT
+            self.assertLess(len(body), 2400)  # the RA notes link eight versioned downloads, ORBIT and the libsmb2 licence
 
     def test_ra_notes_refuse_a_runtime_other_than_the_pin(self):
         with patch.object(publisher, "git", return_value="b" * 40 + "\x00Fix"), self.assertRaises(ValueError):
