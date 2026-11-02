@@ -1639,6 +1639,8 @@ void _loadConfig()
             gCfgTitlesInLists = gCfgTitlesInLists ? 1 : 0;
             if (gPs1Duplicates < PS1_DUP_BOTH || gPs1Duplicates > PS1_DUP_POPSTARTER)
                 gPs1Duplicates = PS1_DUP_BOTH;
+            if (gListCfgText < LIST_CFG_TEXT_THEME || gListCfgText > LIST_CFG_TEXT_OFF)
+                gListCfgText = LIST_CFG_TEXT_THEME;
             if (gDefaultGameView < GAME_VIEW_BOTH || gDefaultGameView > GAME_VIEW_MIXED)
                 gDefaultGameView = GAME_VIEW_BOTH;
             if (gAppsDisplay < APPS_DISPLAY_MIXED || gAppsDisplay > APPS_DISPLAY_SPLIT)
