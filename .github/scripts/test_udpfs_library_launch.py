@@ -151,6 +151,8 @@ static int vcdFillGameList(const char*, base_game_info_t **out) { return scan(po
 static int cueFillGameListUnsorted(const char*, base_game_info_t **out) { return scan(emberResult, out); }
 static void *memalign(size_t, size_t size) { return malloc(size); }
 static int ps1RowCmp(const void*, const void*) { return 0; }
+static int gPs1Duplicates; // PS1 Duplicates off (Both): its filter is tested in test_ps1_duplicates.py
+static int ps1DropTwins(base_game_info_t*, void*, size_t, int vcdCount, int cueCount, int) { return vcdCount + cueCount; }
 ''' + function(cue, "int ps1GameListNeedsRetry(") + "\n" + function(cue, "int ps1FillGameList(") + r'''
 int main() {
     auto *old = static_cast<base_game_info_t*>(malloc(sizeof(base_game_info_t)));

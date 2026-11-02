@@ -17,7 +17,7 @@ def body(source, signature):
     return source[start:source.index("\n}\n", start) + 3]
 
 
-check = body(menusys, "static void menuCheckSelectedGameSupport(")
+check = body(menusys, "static void menuCheckSelectedGameSupportLocked(")
 assert "UDPFS_MODE" not in check and "_STR_RA_NA_UDPFS" not in check, "UDPFS games are still refused"
 assert "gameMenuCoreIsNeutrino" not in check and "_STR_RA_NA_NEUTRINO" not in check, "Neutrino games are still refused"
 generic = check.index("gsOf(support)->hasGame() && gsOf(support)->hasPrefix()")

@@ -198,6 +198,7 @@ int gNeutrinoElfArg;         // default-on (settings key only, no UI): auto-emit
 int gDefaultGameView;
 int gAppsDisplay;
 int gCfgTitlesInLists;
+int gPs1Duplicates; // PS1_DUP_*: a game both as a POPSTARTER VCD and an Ember image shows once or twice
 int gGameTypeLabels;
 int gEmberDisplay;
 int gEmberTiming;
@@ -235,6 +236,7 @@ int gNetBootProtocol; // NET_BOOT_UDPBD | NET_BOOT_UDPFS (legacy shadow, derived
 int gNetworkProtocol; // enum NETWORK_PROTOCOL -- authoritative backend selector (Off/SMB/UDPBD/UDPFSBD/UDPFS)
 int gNetProtocolPick; // last protocol chosen, never OFF (see opl.h)
 int gUdpfsAccessMode; // UDPFS Files/IMG preference, independent of UDPBD
+int gSMBDialect;      // SMB_DIALECT_V1 / SMB_DIALECT_V2
 int gNetStartMode;    // START_MODE_* -- the Off/Manual/Auto network start row (see the 3-row Network setting)
 int gAutosort;
 int gAutoRefresh;
@@ -255,6 +257,8 @@ int gFontSize = FONT_SIZE_DEFAULT;
 int gGlyphSet = 0; // GLYPH_SET_THEME
 // Alternate Background: the theme's alt= pictures instead of its default= ones (themeviews.h).
 int gThemeAltBackground;
+// Boot Theme Wait: seconds the intro holds for a saved disk theme whose drive is not up yet (guisplash.cpp).
+int gBootThemeWait;
 int gVMode; // 0 - Auto, 1 - PAL, 2 - NTSC
 int gXOff;
 int gYOff;
@@ -545,6 +549,8 @@ void initAllSupport(int force_reinit)
     if (gBootInProgress)
         guiRenderGreetingScreen();
     bdmEnumerateDevices();
+    if (gBootInProgress)
+        diagLog("boot: BDM start stage done (enabled drivers may still be loading in the background)");
 
     guiSetBootStatus(_l(_STR_BOOT_SCANNING_NET));
     if (gBootInProgress)
@@ -556,6 +562,8 @@ void initAllSupport(int force_reinit)
     // HTTP shares that same NIC and the same one-tab-at-a-time rule: its start-mode gate is live
     // only when gNetworkProtocol == NET_PROTO_HTTP.
     initSupport(httpGetObject(0), HTTP_MODE, force_reinit);
+    if (gBootInProgress)
+        diagLog("boot: network start stage done (enabled drivers may still be loading in the background)");
 
     guiSetBootStatus(_l(_STR_BOOT_SCANNING_HDD));
     if (gBootInProgress)
@@ -563,6 +571,8 @@ void initAllSupport(int force_reinit)
     initSupport(hddGetObject(0), HDD_MODE, force_reinit);
     initSupport(appGetObject(0), APP_MODE, force_reinit);
     initSupport(favGetObject(0), FAV_MODE, force_reinit);
+    if (gBootInProgress)
+        diagLog("boot: HDD, apps and favourites start stage done (enabled drivers may still be loading in the background)");
 
     guiSetBootStatus(_l(_STR_BOOT_SCANNING_MC));
     if (gBootInProgress)
@@ -570,6 +580,8 @@ void initAllSupport(int force_reinit)
     LOG("BOOT scan: MMCE initSupport begin\n");
     initSupport(mmceGetObject(0), MMCE_MODE, force_reinit);
     LOG("BOOT scan: MMCE initSupport done\n");
+    if (gBootInProgress)
+        diagLog("boot: MMCE start stage done (enabled drivers may still be loading in the background)");
 
     // Arm the MMCE GameID transport at boot and on every settings apply -- instead
     // of deferring it to itemLaunchMMCE.
@@ -1273,6 +1285,7 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     fntEnd();
     thmEnd();
     rmEnd();
+    menuWatchStop(); // diagnostic builds: no VBlank handler or exception hooks survive the handoff
     configEnd();
     if (gLaunchDiag)
         launchDiagMark(8); // deinitEx finished -- sysLaunchNeutrino runs next
@@ -1351,6 +1364,7 @@ void deinit(int exception, int modeSelected)
     fntEnd();
     thmEnd();
     rmEnd();
+    menuWatchStop(); // diagnostic builds: no VBlank handler or exception hooks survive the handoff
     configEnd();
 }
 
@@ -1488,6 +1502,7 @@ static void setDefaults(void)
     gNetStartMode = START_MODE_DISABLED; // Off in the 3-row Network setting; migration reconciles old configs
     gNetProtocolPick = NET_PROTO_SMB;
     gUdpfsAccessMode = 0; // UDPFS Files; never inherit UDPBD's forced IMG
+    gSMBDialect = SMB_DIALECT_V1;
 
     frameCounter = 0;
 

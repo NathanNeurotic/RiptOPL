@@ -211,7 +211,12 @@ extern int gAllGames;
 // Show Hidden Games (RIPPS2 Hide Game): list hidden games anyway. Defined in gamemanage.cpp; CONFIG_OPL_SHOW_HIDDEN.
 extern int gShowHidden;
 extern int gCfgTitlesInLists; // default-off presentation; identity always stays source-owned
-extern int gGameTypeLabels;   // optional [PS1]/[PS2] prefixes in game lists; default off
+// Interface > PS1 Duplicates: a PS1 game that is both a POPSTARTER VCD and an Ember image (RIPPS2 build 126).
+enum { PS1_DUP_BOTH = 0,
+       PS1_DUP_EMBER,
+       PS1_DUP_POPSTARTER };
+extern int gPs1Duplicates;
+extern int gGameTypeLabels; // optional [PS1]/[PS2] prefixes in game lists; default off
 // Ember's own settings, brought into the settings.txt files Ember reads when a game launches
 // (cueApplySettings). Each one is EMBER_SETTING_UNSET until the user CHANGES it in RiptOPL: an unset
 // setting is never written or removed, so a settings.txt somebody wrote by hand keeps working.
@@ -319,9 +324,8 @@ extern int gNetBootProtocol; // NET_BOOT_UDPBD | NET_BOOT_UDPFS (legacy shadow, 
 // protocol serves both (only one IOP backend can bind port 0xF5F6 per boot). UDPBD (SUDPBDv2) is a
 // SEPARATE, wire-incompatible protocol (its own server, port 0xBDBD) and stays first-class so users on
 // the older udpbd-server are never stranded -- it is neither hidden nor auto-migrated.
-// NOTE(rebuild): the fork pairs this with an SMB dialect sub-row (SMBv1/SMB2, gSMBDialect); that
-// returns with checklist item 4 -- until then the rebuild speaks SMBv1 only and the dialect row
-// stays greyed at SMBv1.
+// SMB has a dialect sub-row (SMBv1/SMB2, gSMBDialect below): it picks the browse driver (smbman or
+// smb2man) and the in-game reader (smb_cdvdman or smb2_cdvdman). SMBv1 stays the default.
 enum NETWORK_PROTOCOL {
     NET_PROTO_OFF = 0,     // no NIC device (SMAP idle) -- fork default
     NET_PROTO_SMB = 1,     // SMB/ETH stack (== legacy gETHStartMode > DISABLED)
@@ -339,6 +343,15 @@ extern int gNetStartMode;    // START_MODE_* -- network start row (Off/Manual/Au
 // turning Connectivity back on restores.
 extern int gNetProtocolPick;
 extern int gUdpfsAccessMode; // UDPFS Files(0)/IMG(1) preference, independent of UDPBD
+
+// SMB dialect, Network page "SMB Version" row. Only these two values ever exist: the config
+// loader clamps anything else to SMBv1, so a hand-edited or future value can never select a
+// driver this build does not have.
+enum SMB_DIALECT {
+    SMB_DIALECT_V1 = 0, // smbman (menu) + smb_cdvdman (in game). Default.
+    SMB_DIALECT_V2 = 1, // smb2man (menu, libsmb2) + smb2_cdvdman (in game, SMB 2.0.2/2.1)
+};
+extern int gSMBDialect;
 
 extern int gAutosort; // AUTOSORT_*
 enum AUTOSORT_MODES {
@@ -375,6 +388,7 @@ extern int gWideScreen;
 extern int gFontSize;           // FONT_SIZE_* (fntsys.h)
 extern int gGlyphSet;           // GLYPH_SET_* (themes.h); GLYPH_SET_THEME follows the theme
 extern int gThemeAltBackground; // Alternate Background: the theme's alt= pictures (thmApplyAltBackground)
+extern int gBootThemeWait;      // Boot Theme Wait: seconds the intro holds for the saved theme (0 = off)
 extern int gVMode;              // 0 - Auto, 1 - PAL, 2 - NTSC
 extern int gXOff;
 extern int gYOff;

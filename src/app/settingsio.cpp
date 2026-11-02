@@ -1408,6 +1408,7 @@ void resolveBootDirToMass(void)
         // reads defaults for now and its first successful save lands on mmce once item 1 makes the
         // driver real. Cost is the ~10 x delay(1) poll on an MMCE boot only.
         mmceLoadModules();
+        diagLog("settings: MMCE driver load requested for %s", gBootDir);
         char devRoot[8];
         const char *colon = strchr(gBootDir, ':');
         size_t rootLen = colon ? (size_t)(colon - gBootDir) + 1 : 0;
@@ -1418,10 +1419,12 @@ void resolveBootDirToMass(void)
                 DIR *dir = opendir(devRoot);
                 if (dir != NULL) {
                     closedir(dir);
+                    diagLog("settings: %s readable after %d retries", devRoot, tries);
                     return; // mounted -- the boot dir is readable as-is
                 }
                 delay(1);
             }
+            diagLog("settings: %s not readable after 10 tries, keeping it as the settings home", devRoot);
         }
         // Card still settling after the wait. It served this very ELF milliseconds ago, so it IS present
         // -- it just has not re-registered its mmceman filesystem yet. Do NOT blank gBootDir and re-home
@@ -1543,14 +1546,20 @@ void _loadConfig()
 {
     int value, themeID = -1, langID = -1;
     const char *temp;
+    // The diagLog lines through this function time each step of the settings load in DIAG.TXT
+    // (every line is timestamped), so a slow boot shows which step the seconds went to.
     resolveBootDirToMass(); // usb0:/ata0:/mx4sio0:/APPS -> mass0:/APPS (boot-device massN:) before the first read
+    diagLog("settings: boot dir %s", gBootDir);
     // Discover the resolved CWD (and CWD/LNG) before restoring the saved language.
     lngRefreshBootLanguages(-1);
+    diagLog("settings: languages scanned");
     int result = configReadMulti(lscstatus);
+    diagLog("settings: read 0x%x of 0x%x from %s", result, lscstatus, configGetLoadDir());
 
     if (lscstatus & CONFIG_OPL) {
         if (!(result & CONFIG_OPL)) {
             result = tryAlternateDevice(lscstatus);
+            diagLog("settings: other devices tried, now 0x%x from %s", result, configGetLoadDir());
         }
 
         if (result & CONFIG_OPL) {
@@ -1562,6 +1571,8 @@ void _loadConfig()
                 gAutosort = AUTOSORT_AZ; // older builds stored any non-zero as "on"
             gAllGames = gAllGames != 0;
             gShowHidden = gShowHidden != 0;
+            if (gBootThemeWait < 0 || gBootThemeWait > 10)
+                gBootThemeWait = gBootThemeWait < 0 ? 0 : 10; // a hand-edited value: show and save what the intro uses
             configReadRA(configOPL);
 
 
@@ -1626,6 +1637,8 @@ void _loadConfig()
                 }
             }
             gCfgTitlesInLists = gCfgTitlesInLists ? 1 : 0;
+            if (gPs1Duplicates < PS1_DUP_BOTH || gPs1Duplicates > PS1_DUP_POPSTARTER)
+                gPs1Duplicates = PS1_DUP_BOTH;
             if (gDefaultGameView < GAME_VIEW_BOTH || gDefaultGameView > GAME_VIEW_MIXED)
                 gDefaultGameView = GAME_VIEW_BOTH;
             if (gAppsDisplay < APPS_DISPLAY_MIXED || gAppsDisplay > APPS_DISPLAY_SPLIT)
@@ -1743,8 +1756,11 @@ void _loadConfig()
             // (ethsupport start path, system.c getDeviceName, bdmsupport) stay consistent no matter which
             // config format was loaded. SMB keeps its prior Auto/Manual start-mode; a fresh SMB pick that
             // had eth_mode=0 gets Manual. Any non-SMB protocol forces SMB off (preserves UDPBD-wins).
-            // NOTE(rebuild): the fork also loads the SMB dialect (gSMBDialect, SMBv1/SMB2) here --
-            // that returns with checklist item 4; until then the rebuild speaks SMBv1 unconditionally.
+            // SMB dialect. A missing key is SMBv1 (every config written before the row existed), and
+            // anything that is not exactly SMB2 falls back to SMBv1 too: losing SMB2 is recoverable,
+            // selecting a driver this build does not have is not.
+            if (!configGetInt(configOPL, CONFIG_OPL_SMB_DIALECT, &gSMBDialect) || gSMBDialect != SMB_DIALECT_V2)
+                gSMBDialect = SMB_DIALECT_V1;
             gEnableUDPBD = (gNetworkProtocol == NET_PROTO_UDPBD || gNetworkProtocol == NET_PROTO_UDPFSBD);
             gNetBootProtocol = (gNetworkProtocol == NET_PROTO_UDPFSBD) ? NET_BOOT_UDPFS : NET_BOOT_UDPBD;
             if (gNetworkProtocol == NET_PROTO_SMB) {
@@ -1930,7 +1946,9 @@ void _loadConfig()
                         (gNetworkProtocol == NET_PROTO_UDPFS || gNetworkProtocol == NET_PROTO_UDPFSBD ||
                          gNetworkProtocol == NET_PROTO_UDPBD));
 
+    diagLog("settings: applying (theme, language, device start-up)");
     applyConfig(themeID, langID, 0);
+    diagLog("settings: applied");
     // applyConfig reloads only a CHANGED theme; the default <OPL> theme loaded at boot still shows its
     // default view. This reloads it once when the saved view differs.
     thmSetView(gThemeViewRequest);
@@ -2188,7 +2206,11 @@ static void _saveConfig()
         snprintf(temp, sizeof(temp), "%d.%d.%d.%d", gRAHostIp[0], gRAHostIp[1], gRAHostIp[2], gRAHostIp[3]);
         configSetStr(configOPL, CONFIG_OPL_RA_HOST_IP, temp);
 #endif
-        configSetStr(configOPL, CONFIG_OPL_THEME, thmGetValue());
+        // Keep the saved disk theme while its drive has not offered it yet. Boot Theme Wait is off by default, so the
+        // menu (and a settings save) can come before that, and writing the built-in fallback on screen would lose the
+        // user's theme for good. An explicit pick on the Interface page writes the key itself (guiShowInterfaceConfig).
+        if (!thmSavedThemePending())
+            configSetStr(configOPL, CONFIG_OPL_THEME, thmGetValue());
         if (gThemeViewRequest >= 0)
             configSetStr(configOPL, CONFIG_OPL_THEME_VIEW, thmViewName(gThemeViewRequest));
         else
@@ -2209,8 +2231,8 @@ static void _saveConfig()
         configSetInt(configOPL, CONFIG_OPL_ENABLE_UDPBD, gEnableUDPBD);
         // Dual-write: the authoritative unified selector PLUS the three legacy keys (derived shadows),
         // so a config saved by this build still boots correctly on an older OPL that only reads the legacy keys.
-        // NOTE(rebuild): the fork also persists the SMB dialect here (item 4).
         configSetInt(configOPL, CONFIG_OPL_NETWORK_PROTOCOL, gNetworkProtocol);
+        configSetInt(configOPL, CONFIG_OPL_SMB_DIALECT, gSMBDialect);
         configSetInt(configOPL, CONFIG_OPL_NET_START_MODE, gNetStartMode);
         configSetInt(configOPL, CONFIG_OPL_NET_PROTOCOL_PICK, gNetProtocolPick);
         configSetInt(configOPL, CONFIG_OPL_UDPFS_ACCESS, gUdpfsAccessMode);
