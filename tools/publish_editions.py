@@ -336,6 +336,11 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
            if BUGREPORT in archives(options) else "")
         + f"- [Loader ELF]({downloads}/{elf}) - update an existing installation.\n"
         f"- [Memory-card app]({downloads}/{psu}) - PSU import.\n"
+        # The standalone ELF and PSU go out as single files: this line is their notice that the loader uses
+        # libsmb2 under the LGPL-2.1 (section 6), and it links the licence published beside them.
+        f"- [libsmb2 licence]({downloads}/LICENSE-LIBSMB2.txt) - every loader embeds "
+        "[libsmb2](https://github.com/sahlberg/libsmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
+        "used under the GNU LGPL-2.1.\n"
         f"- [Languages]({downloads}/RIPTOPL-LANGS-{version}.zip) - translations and their fonts.\n"
         + "".join(f"- [{name.replace('-', ' ').title().replace('Ra ', 'RA ')}]({downloads}/RIPTOPL-{name}-{version}.zip) - {what}.\n"
                   for name, _, what in bundles(options))
