@@ -74,7 +74,7 @@ Hardware results in the feature documentation were measured on the legacy C edit
 page says otherwise; each still needs a retest on this C++/ps2build edition. The parity port with the legacy
 edition is merged, including the RA browser, client and ORBIT integration; see the
 [parity ledger](docs/UPSTREAM-PARITY-2026-10-12.md) and the
-[fork-gap status](docs/FORK-GAP-STATUS-2026-10-28.md), which also covers the [RIPPS2](https://github.com/akilluminati47/RIPPS2) audit by
+[fork-gap status](docs/FORK-GAP-STATUS-2026-11-01.md); the [October 28 status](docs/FORK-GAP-STATUS-2026-10-28.md) also covers the [RIPPS2](https://github.com/akilluminati47/RIPPS2) audit by
 [akilluminati47](https://github.com/akilluminati47) and what is still not tested on hardware.
 
 ## Quick Start
