@@ -24,7 +24,8 @@ public:
 #endif
 
 private:
-    static void render(const char *string, int y);
+    // Draw one notice whose box starts at y; returns the y for the next one (yadd lower, plus any wrapped lines).
+    static int render(const char *string, int y, int yadd);
 
     bool showPart_ = false;
     bool showTheme_ = false;
@@ -34,10 +35,12 @@ private:
     // wrap. The (clock() - start) ELAPSED form is correct across one wrap by ordinary unsigned arithmetic.
     clock_t popupStart_ = 0;
     bool popupArmed_ = false;
-    char toast_[128] = {0};
+    // Room for the longest translated notice: a toast carries a game name (a HIDDEN_NAME_MAX buffer) in its message,
+    // and 96 bytes cut the English CF notice mid-sentence. test_menu_text_fit.py checks every language against these.
+    char toast_[384] = {0};
     clock_t toastStart_ = 0;
 #ifdef RETROACHIEVEMENTS
-    char raNotice_[2][96] = {{0}, {0}};
+    char raNotice_[2][256] = {{0}, {0}};
     int raNoticeLines_ = 0;
     clock_t raNoticeTimer_ = 0;
     int renderRA(int y, int yadd);
