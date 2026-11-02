@@ -84,6 +84,13 @@ jobs:
           python3 .github/scripts/test_ilink_readiness.py
           python3 .github/scripts/test_ps2_logo_validation.py
           python3 .github/scripts/test_bdm_read_alignment.py
+      - name: Check both i.LINK drivers (bus reset, LOGIN, retries, status matching, SCSI) and the POPStarter pair
+        run: |
+          for t in .github/scripts/test_ilink_*.py .github/scripts/test_bdma_stale_pair.py \
+                   .github/scripts/test_vcd_doc_ilink_hash.py; do
+            echo "== $t"
+            python3 "$t"
+          done
       - name: Check image cache, menu allocation and queue lifetime failures
         run: |
           python3 .github/scripts/test_cache_allocation.py
