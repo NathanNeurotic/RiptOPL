@@ -48,13 +48,13 @@ int main() {
         markerMode=mode;assert(!vcdBdmaEnvironmentValid(mode));
     }
     /* Every older iLink driver loses its login after the IOP reset: a card holding one re-equips. */
-    const int staleIlink[]={21609,23452,21977,22025,22185,27081,27145,27129};
+    const int staleIlink[]={21609,23452,21977,22025,22185,27081,27145,27129,27641};
     for(int stale:staleIlink) {
         pairSize[0]=48500;pairSize[1]=stale;markerMode=VCD_BDMA_ILINK;markerExists=true;
         assert(!vcdBdmaEnvironmentValid(VCD_BDMA_ILINK));
         markerExists=false;assert(!vcdBdmaManualPairMatches(VCD_BDMA_ILINK));
     }
-    assert(!vcdBdmaPairMatches(-1,48500,27641)&&!vcdBdmaPairMatches(7,48500,27641));
+    assert(!vcdBdmaPairMatches(-1,48500,27705)&&!vcdBdmaPairMatches(7,48500,27705));
     pairSize[0]=pairSize[1]=-1;assert(vcdBdmaEnvironmentValid(0));
     pairSize[0]=48500;assert(!vcdBdmaEnvironmentValid(0));
     /* No POPSTARTER folder: no external pair, which is exactly the FAT32 environment (and reading never makes one). */

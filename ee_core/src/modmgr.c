@@ -180,8 +180,6 @@ int LoadOPLModule(int id, int mode, int arg_len, const char *args)
         if (size > 0) {
             moduleStartResult = -1;
             result = LoadMemModule(mode, pointer, size, arg_len, args);
-            if (IsRequiredTransport(id) && (result < 1 || moduleStartResult != 0))
-                RequiredTransportFailed();
 #ifdef RETROACHIEVEMENTS
             // raudp declines to stay resident when it cannot run; its caller frees the snapshot then.
             if (id == OPL_MODULE_ID_RAUDP && result > 0 && moduleStartResult != 0)
@@ -214,11 +212,14 @@ int LoadOPLModule(int id, int mode, int arg_len, const char *args)
                 DBGCOL(0xDCFF00, MODMGR, "IRX size is 0 or less");
                 delay(3);
             }
-            if (IsRequiredTransport(id))
-                RequiredTransportFailed();
         }
-    } else if (IsRequiredTransport(id))
-        RequiredTransportFailed(); // the menu did not pack it
+    }
+
+    // One check covers every way a required transport fails: the menu did not pack it (-1), it is empty (0),
+    // MODLOAD refused it (< 0), or it loaded and declined to stay resident. One check, not one per path: the
+    // stack is what ee_core leaves above .bss, and the LLVM build has almost none of it to spare.
+    if (IsRequiredTransport(id) && (result < 1 || moduleStartResult != 0))
+        RequiredTransportFailed();
 
     BGCOLND(0x000000);
     return result;
