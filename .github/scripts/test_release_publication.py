@@ -377,25 +377,58 @@ class PublicationTests(unittest.TestCase):
         app = (ROOT / ".github/scripts/package_release_app.py").read_text(encoding="utf-8")
         self.assertIn('"LICENSE-LIBSMB2.txt",  # every loader embeds libsmb2 (LGPL-2.1)', app)
 
+    def test_credits_say_every_loader_uses_libsmb2_under_the_lgpl(self):
+        # CREDITS is the LGPL-2.1 section 6 notice that travels with the licence: it names libsmb2, says every
+        # loader embeds it, that it is used under the LGPL-2.1 and where that licence text is.
+        credits = (ROOT / "CREDITS").read_text(encoding="utf-8")
+        entry = credits[credits.index("  - libsmb2, by Ronnie Sahlberg"):]
+        entry = " ".join(entry[:entry.index("\n\n")].split())
+        for phrase in ("https://github.com/sahlberg/libsmb2", "every loader embeds", "used under the LGPL-2.1 licence",
+                       "LICENSE-LIBSMB2.txt"):
+            self.assertIn(phrase, entry)
+
+    def assert_copied_before_upload(self, workflow, artifact, copies, listed):
+        # The copies run in the job that uploads the artifact, before the upload and whenever it runs: no
+        # condition but success() and no continue-on-error, so a later edit cannot quietly drop the licence.
+        import yaml
+
+        allowed = ("${{ success() }}", "success()")
+        jobs = yaml.safe_load((ROOT / ".github/workflows" / workflow).read_text(encoding="utf-8"))["jobs"]
+        uploads = [(job["steps"], index) for job in jobs.values() for index, step in enumerate(job.get("steps", []))
+                   if "actions/upload-artifact@" in step.get("uses", "") and step.get("with", {}).get("name") == artifact]
+        self.assertEqual(len(uploads), 1, artifact)
+        steps, upload = uploads[0]
+        self.assertEqual(steps[upload]["with"]["path"].split(), listed, artifact)
+        self.assertIn(steps[upload].get("if", allowed[0]), allowed, artifact)
+        for copy in copies:
+            found = [step for step in steps[:upload]
+                     if copy in [line.strip() for line in str(step.get("run", "")).splitlines()]]
+            self.assertEqual(len(found), 1, (artifact, copy))
+            self.assertIn(found[0].get("if", allowed[0]), allowed, (artifact, copy))
+            self.assertNotIn("continue-on-error", found[0], (artifact, copy))
+
     def test_every_actions_test_build_carries_the_libsmb2_licence(self):
-        # Testers also download loaders straight from Actions runs, so those artifacts carry the licence.
+        # Testers also download loaders straight from Actions runs, so those artifacts carry the licence and
+        # CREDITS, which says the loader uses libsmb2 under it.
         libsmb2 = ROOT / "modules/network/smb2man/libsmb2"
         for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):
             self.assertTrue((libsmb2 / filename).is_file(), filename)
+        self.assertTrue((ROOT / "CREDITS").is_file())
         build = (ROOT / "tools/build_edition.py").read_text(encoding="utf-8")
         staging = build[build.index('if args.configuration != "standard":'):build.index("print(f\"Built ")]
+        self.assertIn('for filename in ("LICENSE", "CREDITS"):', staging)
         self.assertIn('destination = stage / "licenses" / "libsmb2"', staging)
         self.assertIn('for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):', staging)
         self.assertIn('shutil.copyfile(ROOT / "modules/network/smb2man/libsmb2" / filename, destination / filename)', staging)
-        for workflow, copy, listed in (
-                ("ps2build.yml", "cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt build/bin/LICENSE-LIBSMB2.txt",
-                 "          path: |\n            build/bin/riptopl-packed.elf\n            build/bin/LICENSE-LIBSMB2.txt\n"),
-                ("flavours.yml", "cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt LICENSE-LIBSMB2.txt",
-                 "            build/bin/riptopl-packed.elf\n            BUILD-MANIFEST.txt\n            LICENSE-LIBSMB2.txt\n")):
-            text = (ROOT / ".github/workflows" / workflow).read_text(encoding="utf-8")
-            self.assertIn(copy, text, workflow)
-            self.assertIn(listed, text, workflow)
-            self.assertLess(text.index(copy), text.index(listed), workflow)
+        self.assert_copied_before_upload(
+            "ps2build.yml", "riptopl-ps2build-${{ matrix.toolchain }}",
+            ["cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt build/bin/LICENSE-LIBSMB2.txt",
+             "cp -f CREDITS build/bin/CREDITS"],
+            ["build/bin/riptopl-packed.elf", "build/bin/LICENSE-LIBSMB2.txt", "build/bin/CREDITS"])
+        self.assert_copied_before_upload(
+            "flavours.yml", "OPL-PS2BUILD",
+            ["cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt LICENSE-LIBSMB2.txt"],
+            ["build/bin/riptopl-packed.elf", "BUILD-MANIFEST.txt", "LICENSE-LIBSMB2.txt", "CREDITS"])
         # The local `tools/assets.py release` zip is a loader download too.
         assets = (ROOT / "tools/assets.py").read_text(encoding="utf-8")
         release = assets[assets.index("def release():"):assets.index("COMMANDS = {")]

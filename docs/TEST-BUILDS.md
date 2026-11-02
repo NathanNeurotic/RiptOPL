@@ -9,12 +9,12 @@ sign into GitHub, then download the requested ZIP from Artifacts. Expired artifa
 | Rolling Release | `release-korium`, `release-ra`, `release-incebtion`, `release-ra_incebtion` | The complete install kit and every channel asset for that edition (the last is the IncebtIon-theme RA kit) |
 | Rolling Release | `variant-<edition>-<configuration>` | One configuration build (ELF, manifest and licences); the VARIANTS, DEBUG, BUGREPORT and RA-VARIANTS release zips are made from these |
 | ps2build-configurations | `configuration-<edition>-<configuration>-<gcc or llvm>` | One configuration build per compiler, with its manifest, resolved definition and licences |
-| ps2build | `riptopl-ps2build-gcc`, `riptopl-ps2build-llvm` | The bare packed loader from the compiler gate, with `LICENSE-LIBSMB2.txt` |
+| ps2build | `riptopl-ps2build-gcc`, `riptopl-ps2build-llvm` | The bare packed loader from the compiler gate, with `LICENSE-LIBSMB2.txt` and `CREDITS` |
 
 Every loader embeds [libsmb2](https://github.com/sahlberg/libsmb2), by
 [Ronnie Sahlberg](https://github.com/sahlberg), used under the GNU LGPL-2.1, so every artifact
-that holds a loader also holds that licence: `LICENSE-LIBSMB2.txt`, or `licenses/libsmb2/` in a
-configuration build.
+that holds a loader also holds that licence (`LICENSE-LIBSMB2.txt`, or `licenses/libsmb2/` in a
+configuration build) and `CREDITS`, which says so.
 
 Each configuration is described in [Build configurations](BUILD-CONFIGURATIONS.md). For
 Japanese/Unicode game-name font fallback, see [Unicode Game Titles](UNICODE-GAME-TITLES.md);
@@ -22,8 +22,9 @@ the optional `font_CJK.ttf` is user-provided and not in any artifact.
 
 Extract the ZIP and read `BUILD-MANIFEST.json` for the source commit, edition, configuration,
 compiler and ps2build components. Launch the ELF requested in the test instructions. A
-configuration artifact holds only a loader build, its manifest and its licences, so keep the
-complete companion installation from a `release-*` kit for Neutrino, Ember, POPSTARTER and artwork.
+configuration artifact holds only a loader build, its manifest, its licences and `CREDITS`, so keep
+the complete companion installation from a `release-*` kit for Neutrino, Ember, POPSTARTER and
+artwork.
 
 Replacing only RIPTOPL.ELF does not update companion cores or modules. Use the full install kit
 when its notes announce such updates; back up configuration and save cards first.
