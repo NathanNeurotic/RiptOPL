@@ -277,6 +277,7 @@ registry = r'''
 #include <string.h>
 #include <strings.h>
 #define LOG(...) ((void)0)
+#define THEME_BOOT_TRACE(...) ((void)0) // non-diagnostic builds compile out theme breadcrumbs
 constexpr int THM_MAX_FILES = 16;
 #define CONFIG_OPL 0
 #define MODE_COUNT 0
