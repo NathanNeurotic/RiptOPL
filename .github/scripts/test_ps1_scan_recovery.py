@@ -127,13 +127,19 @@ int main() {
         // A responsive server with an unreadable half must eventually stop full list rebuilds.
         for (int full = 0; full < 2; full++) {
             dirty = 1; assert(retryUdp(&list));
-            scanResult = full ? -1 : 1; incomplete = 1;
-            publishUdp(1);
-            for (int i = 1; i < UDPFS_PS1_SCAN_RETRY_MAX; i++) {
-                assert(retryUdp(&list)); publishUdp(1);
-            }
             auto lastRows = gUdpfsSupport.ps1Games_;
             int lastCount = gUdpfsSupport.ps1GameCount_;
+            scanResult = full ? -1 : 1; incomplete = 1;
+            publishUdp(1);
+            if (full) assert(gUdpfsSupport.ps1Games_ == lastRows && gUdpfsSupport.ps1GameCount_ == lastCount);
+            for (int i = 1; i < UDPFS_PS1_SCAN_RETRY_MAX; i++) {
+                assert(retryUdp(&list)); publishUdp(1);
+                if (full) assert(gUdpfsSupport.ps1Games_ == lastRows && gUdpfsSupport.ps1GameCount_ == lastCount);
+            }
+            if (!full) {
+                lastRows = gUdpfsSupport.ps1Games_;
+                lastCount = gUdpfsSupport.ps1GameCount_;
+            }
             for (int i = 0; i < 30; i++) assert(!retryUdp(&list));
             assert(gUdpfsSupport.ps1Games_ == lastRows && gUdpfsSupport.ps1GameCount_ == lastCount);
             dirty = 1; assert(retryUdp(&list) && !udpfsPs1ScanRetries);

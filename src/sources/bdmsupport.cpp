@@ -1763,7 +1763,7 @@ int BdmSource::needsUpdate(item_list_t *itemList)
     // both). SELECT, L3, a replug or a Game Sources apply is the retry.
     // Device changes use the normal presence/identity path. Retry existing visible PS1 pages
     // before the unchanged-generation cache, without reloading modules or resetting the budget.
-    if (pDeviceData->bdmDeviceTick != BdmGeneration) {
+    if (pDeviceData->bdmDeviceTick < 0 || (unsigned int)pDeviceData->bdmDeviceTick != BdmGeneration) {
         pDeviceData->ps1ScanRetries = 0;
     } else if (pOwner != NULL && pOwner->menuItem.visible && bdmTransportEnabled(pDeviceData->bdmDeviceType) != 0 &&
                pDeviceData->ps1ScanFailed && pDeviceData->ps1ScanRetries < BDM_PS1_SCAN_RETRY_MAX &&
@@ -1772,7 +1772,7 @@ int BdmSource::needsUpdate(item_list_t *itemList)
         pDeviceData->ps1ScanRetries++;
         return 1;
     }
-    if (pDeviceData->bdmDeviceTick == BdmGeneration && pDeviceData->bdmULSizePrev != -2) {
+    if (pDeviceData->bdmDeviceTick >= 0 && (unsigned int)pDeviceData->bdmDeviceTick == BdmGeneration && pDeviceData->bdmULSizePrev != -2) {
         if (pOwner != NULL && pOwner->menuItem.visible == 0)
             return 0;
         // While a network page is inside its disconnect grace window (bdmMissCount > 0, set by the
