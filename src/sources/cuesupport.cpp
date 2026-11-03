@@ -1195,6 +1195,12 @@ int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames, int prev
     vcdCount = vcdFillGameList(devPrefix, &vcdGames);
     cueCount = cueFillGameListUnsorted(devPrefix, &cueGames);
     ps1ScanIncomplete = vcdCount < 0 || cueCount < 0;
+    if (vcdCount < 0 && cueCount < 0) {
+        // No new data from either core; do not churn the old allocation.
+        free(vcdGames);
+        free(cueGames);
+        return -1;
+    }
 
     // Each caller already owns the published row count. Reuse ONLY the failed core's last-good
     // rows; a successful (even empty) scan replaces that core. Do not keep another full library
