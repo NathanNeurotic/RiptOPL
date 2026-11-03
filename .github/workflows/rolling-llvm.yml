@@ -116,6 +116,13 @@ jobs:
           device=()
           if [ -n '${{ matrix.target.device }}' ]; then device=(--device '${{ matrix.target.device }}'); fi
           python tools/build_edition.py '${{ matrix.target.edition }}' --configuration '${{ matrix.target.configuration }}' --toolchain llvm "${device[@]}" 2>&1 | tee build/edition.log
+      - name: Reject mixed GCC and LLVM objects in the linked loader
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t linked < <(find build -type f -path '*/obj/riptopl/riptopl.unstripped.elf')
+          test "${#linked[@]}" -eq 1
+          python tools/check_llvm_purity.py "$PS2BUILD_HOME/llvm-toolchain/llvm/bin/llvm-readobj" "${linked[0]}"
       - name: Retain configuration build
         if: matrix.target.configuration != 'standard'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
