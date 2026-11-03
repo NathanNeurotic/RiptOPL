@@ -1006,7 +1006,9 @@ int ThemeCatalog::readEntry(int index, const char *path, const char *separator, 
     if (!isDir && strncasecmp(name, "thm_", 4) == 0) {
         char probe[256];
         snprintf(probe, sizeof(probe), "%s%s%s", path, separator, name);
+        THEME_BOOT_TRACE("theme dirent: probing candidate %s", probe);
         DIR *pd = opendir(probe);
+        THEME_BOOT_TRACE("theme dirent: probe finished %s (%s)", probe, pd != NULL ? "directory" : "unavailable");
         if (pd != NULL) {
             closedir(pd);
             isDir = 1;
