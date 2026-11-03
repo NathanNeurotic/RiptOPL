@@ -232,7 +232,8 @@ def statement_start(code, pos):
 LEGS = (('src/sources/bdmlaunch.cpp', 'void BdmLauncher::launch('), ('src/sources/ethsupport.cpp', 'void EthSource::launch('),
         ('src/sources/ethsupport.cpp', 'static int ethTryNeutrino('),
         ('src/sources/hddsupport.cpp', 'void HddSource::launch('), ('src/sources/httpsupport.cpp', 'void HttpSource::launch('),
-        ('src/sources/mmcesupport.cpp', 'void MmceSource::launch('), ('src/sources/udpfssupport.cpp', 'void UdpfsSource::launch('))
+        ('src/sources/mmcesupport.cpp', 'void MmceSource::launch('), ('src/sources/udpfssupport.cpp', 'static void udpfsLaunchOplCore('),
+        ('src/sources/udpfssupport.cpp', 'void UdpfsSource::launch('))
 
 for path, signature in LEGS:
     source = text(path)
