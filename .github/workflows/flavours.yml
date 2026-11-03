@@ -189,6 +189,8 @@ jobs:
         run: python3 .github/scripts/test_game_count_refresh.py
       - name: Check native console i.LINK ID parsing and launch isolation
         run: python3 .github/scripts/test_console_ilink_id.py
+      - name: Check native launch patch-zone restore and consecutive console IDs
+        run: python3 .github/scripts/test_patch_zone_restore.py
       - name: Check menu notices wrap on screen and long game titles and cheat names fit
         run: python3 .github/scripts/test_menu_text_fit.py
       - name: Check In-Game Menu room and resets (no-room grey, the PC's RA reset leaves, watch block before cheats)
