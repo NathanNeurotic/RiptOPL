@@ -291,13 +291,14 @@ class WorkflowTests(unittest.TestCase):
         warm = (WORKFLOWS / "ps2build-sdk-watch.yml").read_text()
         key = "ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-${{ steps.sdk.outputs.key }}"
         self.assertIn(key, warm)
-        for name in ("ps2build.yml", "configurations.yml", "flavours.yml", "rolling-release.yml"):
+        for name in ("ps2build.yml", "configurations.yml", "flavours.yml", "rolling-release.yml", "rolling-llvm.yml"):
             text = (WORKFLOWS / name).read_text()
             self.assertIn("sh tools/ps2build_sdk.sh --resolve", text, name)
             self.assertIn("path: ${{ github.workspace }}/.ps2dev", text, name)
             self.assertIn("workflow_dispatch:", text, name)  # the watch starts it on its branch
             self.assertNotIn("PS2BUILD_SDK_PIN:", text, name)
-            self.assertTrue(key in text or key.replace("${{ matrix.toolchain }}", "gcc") in text, name)
+            self.assertTrue(any(value in text for value in (key, key.replace("${{ matrix.toolchain }}", "gcc"),
+                                                           key.replace("${{ matrix.toolchain }}", "llvm"))), name)
 
     def test_the_watch_never_publishes_and_pushes_only_its_own_branch(self):
         text = (WORKFLOWS / "ps2build-sdk-watch.yml").read_text()
