@@ -108,6 +108,7 @@ DOCS = {
     "docs/EXFAT.md": ("EXFAT-Reference", "exFAT and APA-Jail reference"),
     "docs/PC-CARD-CF.md": ("PC-CARD-CF-Reference", "PC CARD CF implementation reference"),
     "docs/DESR-DVR.md": ("DESR-DVR-Reference", "DESR DVR implementation reference"),
+    "docs/CONSOLE-ILINK-ID.md": ("Console-iLINK-ID", "Per-game console i.LINK ID"),
     "docs/PARENTAL-LOCK.md": ("Parental-Lock", "Per-game parental lock"),
     "docs/SIO2MAN-COMPATIBILITY.md": ("SIO2MAN-Compatibility", "SIO2MAN hook compatibility"),
     "docs/DEFAULTS.md": ("Fresh-Start-Defaults", "Fresh-start defaults and saved settings"),
