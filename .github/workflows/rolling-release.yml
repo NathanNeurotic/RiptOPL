@@ -1,6 +1,6 @@
 name: Rolling Release
 
-# PRs are previews. Integration pushes publish all three verified channels.
+# PRs are previews. Integration pushes publish all four verified channels (rolling-lite: RiptOPLite).
 on:
   push:
     branches: [rebuild/main]
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish the three verified release channels
+        description: Publish the four verified release channels
         type: boolean
         default: false
 
@@ -61,6 +61,23 @@ jobs:
           - {edition: incebtion, configuration: iopcore_debug_uart}
           - {edition: incebtion, configuration: ingamediag}
           - {edition: ra_incebtion, configuration: pademu0}
+          # rolling-lite: one RiptOPLite build per game device, Korium and RetroAchievements (tools/lite_devices.py).
+          - {edition: lite, configuration: standard, device: usb}
+          - {edition: lite, configuration: standard, device: mx4sio}
+          - {edition: lite, configuration: standard, device: ilink}
+          - {edition: lite, configuration: standard, device: hdd}
+          - {edition: lite, configuration: standard, device: smb}
+          - {edition: lite, configuration: standard, device: udpbd}
+          - {edition: lite, configuration: standard, device: udpfs}
+          - {edition: lite, configuration: standard, device: mmce}
+          - {edition: lite_ra, configuration: standard, device: usb}
+          - {edition: lite_ra, configuration: standard, device: mx4sio}
+          - {edition: lite_ra, configuration: standard, device: ilink}
+          - {edition: lite_ra, configuration: standard, device: hdd}
+          - {edition: lite_ra, configuration: standard, device: smb}
+          - {edition: lite_ra, configuration: standard, device: udpbd}
+          - {edition: lite_ra, configuration: standard, device: udpfs}
+          - {edition: lite_ra, configuration: standard, device: mmce}
     env:
       PS2BUILD_HOME: ${{ github.workspace }}/.ps2dev
       PS2DEV_INSTALL_DIR: ${{ github.workspace }}/.ps2dev
@@ -76,11 +93,12 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      # The newest ps2build SDK: the latest versions come from git.techwritescode.dev's release API (or,
-      # when it is down, the newest NathanNeurotic/ps2build-mirror release). The SDK cached under them is
-      # restored, else an older cached SDK is updated in place, else it is installed; then it is cached. A
-      # mirror fallback older than the latest is never cached under the latest versions.
-      - name: Resolve the latest ps2build SDK
+      # The ps2build SDK pinned in .github/ps2build-sdk.env (bumped by ps2build-sdk-watch.yml once a week):
+      # resolving it makes no network call. The SDK cached under those versions is restored, else an older
+      # cached SDK is updated in place, else it is installed: from git.techwritescode.dev, or when that fails
+      # from the pinned NathanNeurotic/ps2build-mirror release. Then it is cached. A mirror fallback that does
+      # not hold the pinned versions is never cached under them.
+      - name: Resolve the pinned ps2build SDK
         env:
           PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         id: sdk
@@ -113,7 +131,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p build
-          python tools/build_edition.py '${{ matrix.target.edition }}' --configuration '${{ matrix.target.configuration }}' 2>&1 | tee build/edition.log
+          device=()
+          if [ -n '${{ matrix.target.device }}' ]; then device=(--device '${{ matrix.target.device }}'); fi
+          python tools/build_edition.py '${{ matrix.target.edition }}' --configuration '${{ matrix.target.configuration }}' "${device[@]}" 2>&1 | tee build/edition.log
       - name: Retain the configuration build
         if: matrix.target.configuration != 'standard'
         uses: actions/upload-artifact@v4
@@ -122,8 +142,16 @@ jobs:
           path: dist/configurations/${{ matrix.target.edition }}-${{ matrix.target.configuration }}-gcc/
           if-no-files-found: error
           retention-days: 14
+      - name: Retain the RiptOPLite build
+        if: matrix.target.device
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target.edition }}-${{ matrix.target.device }}
+          path: dist/lite/${{ matrix.target.edition == 'lite_ra' && 'ra-' || '' }}${{ matrix.target.device }}-gcc/
+          if-no-files-found: error
+          retention-days: 14
       - name: Download the official companion core
-        if: matrix.target.configuration == 'standard'
+        if: matrix.target.configuration == 'standard' && !matrix.target.device
         shell: bash
         run: |
           sudo apt-get update -qq
@@ -131,14 +159,14 @@ jobs:
           mkdir -p build/companion
           gh release download latest --repo ps2max32/neutrino --dir build/companion --pattern '*.7z'
       - name: Package and verify the full install kit
-        if: matrix.target.configuration == 'standard'
+        if: matrix.target.configuration == 'standard' && !matrix.target.device
         shell: bash
         run: |
           mapfile -t cores < <(find build/companion -maxdepth 1 -name 'neutrino_*.7z' -type f)
           test "${#cores[@]}" -eq 1
           python tools/package_edition.py '${{ matrix.target.edition }}' --neutrino-archive "${cores[0]}"
       - name: Retain verified release candidate
-        if: matrix.target.configuration == 'standard'
+        if: matrix.target.configuration == 'standard' && !matrix.target.device
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.target.edition }}
@@ -149,7 +177,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-log-${{ matrix.target.edition }}-${{ matrix.target.configuration }}
+          name: release-log-${{ matrix.target.edition }}-${{ matrix.target.configuration }}${{ matrix.target.device && format('-{0}', matrix.target.device) || '' }}
           path: build/edition.log
 
   publish:
@@ -178,5 +206,9 @@ jobs:
         with:
           pattern: variant-*
           path: dist/downloaded
-      - name: Verify and publish the three channels
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lite*-*
+          path: dist/downloaded
+      - name: Verify and publish the four channels
         run: python tools/publish_editions.py dist/downloaded

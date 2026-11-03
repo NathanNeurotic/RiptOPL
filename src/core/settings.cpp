@@ -177,6 +177,7 @@ constexpr Setting kSettings[] = {
     strSetting(CONFIG_OPL_DEFAULT_BGM_PATH, gDefaultBGMPath),
     intSetting(CONFIG_OPL_XSENSITIVITY, &gXSensitivity, 1),
     intSetting(CONFIG_OPL_YSENSITIVITY, &gYSensitivity, 1),
+    intSetting(CONFIG_OPL_APP_HANDOFF_PATH, &gAppHandoffPath, APP_HANDOFF_LEGACY), // mass<N>: in argv[0], as always; Typed is opt-in
 };
 
 } // namespace

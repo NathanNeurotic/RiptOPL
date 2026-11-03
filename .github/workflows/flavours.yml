@@ -29,6 +29,7 @@ jobs:
           python3 .github/scripts/test_release_editions.py
           python3 .github/scripts/test_ps2build_configurations.py
           python3 .github/scripts/test_install_ports.py
+          python3 .github/scripts/test_ps2build_sdk_watch.py
           python3 .github/scripts/test_reset_failure_lifecycle.py
           python3 .github/scripts/test_iop_pad.py
           python3 .github/scripts/test_igr_pad_lifetime.py
@@ -38,6 +39,7 @@ jobs:
           python3 .github/scripts/test_foreground_settings_config.py
           python3 .github/scripts/test_config_prefetch_generation.py
           python3 .github/scripts/test_release_publication.py
+          python3 .github/scripts/test_riptoplite.py
           python3 .github/scripts/test_game_size_fallback.py
           python3 .github/scripts/test_ps1_duplicates.py
           python3 .github/scripts/test_list_cfg_text.py
@@ -47,6 +49,7 @@ jobs:
           python3 .github/scripts/test_mx4sio_host_boot.py
           python3 .github/scripts/test_mx4sio_retry.py
           python3 .github/scripts/test_vmc_write_result.py
+          python3 .github/scripts/test_mmce_read_recovery.py
           python3 .github/scripts/test_neutrino_dvr_contract.py
           python3 .github/scripts/test_package_orbit_neutrino.py
           python3 .github/scripts/test_orbit_neutrino_watch.py
@@ -85,6 +88,13 @@ jobs:
           python3 .github/scripts/test_ilink_readiness.py
           python3 .github/scripts/test_ps2_logo_validation.py
           python3 .github/scripts/test_bdm_read_alignment.py
+      - name: Check both i.LINK drivers (bus reset, LOGIN, retries, status matching, SCSI) and the POPStarter pair
+        run: |
+          for t in .github/scripts/test_ilink_*.py .github/scripts/test_bdma_stale_pair.py \
+                   .github/scripts/test_vcd_doc_ilink_hash.py; do
+            echo "== $t"
+            python3 "$t"
+          done
       - name: Check image cache, menu allocation and queue lifetime failures
         run: |
           python3 .github/scripts/test_cache_allocation.py
@@ -153,6 +163,18 @@ jobs:
         run: python3 .github/scripts/test_neutrino_bsdfs.py
       - name: Check Neutrino SMB writes bsd-smb.toml safely and falls back to the OPL core
         run: python3 .github/scripts/test_neutrino_smb.py
+      - name: Check the in-game SMB2 reader's hashes and NTLMv2 logon
+        run: python3 .github/scripts/test_smb2_auth.py
+      - name: Check the in-game SMB2 logon sends the menu's user, domain and NTLMv2 AV pairs, the server's target name included, and computes its proof from the same credentials (fake server)
+        run: python3 .github/scripts/test_smb2_logon_parity.py
+      - name: Check the in-game SMB2 reader's UTF-8 to UTF-16 conversion (tests/smb2-live/utf16.c)
+        run: |
+          cc -fsanitize=address,undefined -fno-sanitize-recover=undefined -g -O1 -Wall -Wno-unused-parameter \
+            -Wno-unused-function -I tests/smb2-live/inc-ingame -I modules/iopcore/cdvdman -I modules/iopcore/common \
+            tests/smb2-live/utf16.c modules/iopcore/cdvdman/smb2auth.c -o "$RUNNER_TEMP/utf16"
+          "$RUNNER_TEMP/utf16"
+      - name: Check an SMB game launch keeps the image's whole file name, from the EE's settings block to the path the game opens (tests/smb2-live/launchname.c)
+        run: python3 .github/scripts/test_smb_launch_name.py
       - name: Check Neutrino argument editing preserves full values and rejects overlong saves
         run: python3 .github/scripts/test_neutrino_args_editor.py
       - name: Check Neutrino launch arguments fit before teardown without dropping tokens
@@ -165,6 +187,10 @@ jobs:
         run: python3 .github/scripts/test_theme_text_room.py
       - name: Check the GameCountText follows the list count, not only the selected game
         run: python3 .github/scripts/test_game_count_refresh.py
+      - name: Check menu notices wrap on screen and long game titles and cheat names fit
+        run: python3 .github/scripts/test_menu_text_fit.py
+      - name: Check In-Game Menu room and resets (no-room grey, the PC's RA reset leaves, watch block before cheats)
+        run: python3 .github/scripts/test_igr_menu_no_room.py
       - name: Check Favorites failure feedback, persistence ordering, first-run view and title layout
         run: python3 .github/scripts/test_favorites_parity.py
       - name: Refuse Favorites edits after unreadable or incomplete stores and check IO failures
@@ -336,11 +362,12 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      # The newest ps2build SDK: the latest versions come from git.techwritescode.dev's release API (or,
-      # when it is down, the newest NathanNeurotic/ps2build-mirror release). The SDK cached under them is
-      # restored, else an older cached SDK is updated in place, else it is installed; then it is cached. A
-      # mirror fallback older than the latest is never cached under the latest versions.
-      - name: Resolve the latest ps2build SDK
+      # The ps2build SDK pinned in .github/ps2build-sdk.env (bumped by ps2build-sdk-watch.yml once a week):
+      # resolving it makes no network call. The SDK cached under those versions is restored, else an older
+      # cached SDK is updated in place, else it is installed: from git.techwritescode.dev, or when that fails
+      # from the pinned NathanNeurotic/ps2build-mirror release. Then it is cached. A mirror fallback that does
+      # not hold the pinned versions is never cached under them.
+      - name: Resolve the pinned ps2build SDK
         env:
           PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         id: sdk

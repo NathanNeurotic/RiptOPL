@@ -94,6 +94,15 @@ static int IGR_Intc_ID = -1;
 #ifdef RETROACHIEVEMENTS
 static int RA_Intc_ID = -1;
 #endif
+#if defined(RETROACHIEVEMENTS) && defined(IGR_MENU)
+/* Set by IGR_RequestReset: the PC asked to leave the game (RAR1). That leaves at once, past In-Game Menu, and Debug
+   Colors does not take it for the combo. It lasts only as long as the request: the handler clears it once no request
+   is left, and a new IGR worker starts without it. */
+static volatile int IGR_PcReset = 0;
+#define IGR_FROM_PC IGR_PcReset
+#else
+#define IGR_FROM_PC 0
+#endif
 
 /* IGR thread stack & stack size */
 #define IGR_STACK_SIZE (4 * 1024)
@@ -446,6 +455,13 @@ static void IGR_Thread(void *arg)
     while (Pad_Data.combo_type == 0x00)
         SleepThread();
 #endif
+#ifdef IGR_OVERLAY
+    // The combo with In-Game Menu on, in a launch that had no room for the menu (coreconfig.h IgrMenuNoRoom): the
+    // grey of a menu that was not there to run, before the reset goes on (docs/IGR.md). The PC's reset is not the combo
+    if (EnableDebug && config->IgrMenuNoRoom && Pad_Data.combo_type == IGR_COMBO_START_SELECT && !Power_Button.press &&
+        !IGR_FROM_PC)
+        DBGCOL_BLNK(3, 0x808080, 0, IGR, "In-Game Menu on, but this launch had no room for it");
+#endif
 
     DPRINTF("IGR thread woken up!\n");
 
@@ -644,8 +660,8 @@ static int IGR_Intc_Handler(int cause)
 
 #ifdef IGR_MENU
     // With In-Game Menu on, the reset combo pauses the game under the menu (igrmenu.c) instead. The power
-    // button pressed twice still leaves at once.
-    if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && !Power_Button.press) {
+    // button pressed twice, and the PC's reset (RAR1), still leave at once.
+    if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && !Power_Button.press && !IGR_FROM_PC) {
         Pad_Data.combo_type = 0x00;
         if (IGR_MenuRearm && !IGR_MenuOpen) { // once per press: a menu closed at once must not reopen
             IGR_MenuOpen = 1;
@@ -654,8 +670,13 @@ static int IGR_Intc_Handler(int cause)
             iChangeThreadPriority(IGR_Thread_ID, 0);
             iWakeupThread(IGR_Thread_ID);
         }
-    } else if (Pad_Data.combo_type == 0x00)
+    } else if (Pad_Data.combo_type == 0x00) {
         IGR_MenuRearm = 1;
+#ifdef RETROACHIEVEMENTS
+        // No request left, so no PC mark: in disc mode the pad's R3 + L3 can replace the PC's request and be dropped
+        IGR_PcReset = 0;
+#endif
+    }
 #endif
 
     // If power button or combo is press
@@ -756,6 +777,9 @@ void Install_IGR(void)
         Pad_Data.vb_count = 0;
         Pad_Data.combo_type = 0x00;
         Pad_Data.prev_frame = 0x00;
+#if defined(RETROACHIEVEMENTS) && defined(IGR_MENU)
+        IGR_PcReset = 0; // no request, so no PC mark
+#endif
 
         // Create and start IGR thread
         thread_param.gp_reg = &_gp;
@@ -805,9 +829,14 @@ static int RA_Intc_Handler(int cause)
 void IGR_RequestReset(void)
 {
     /* The VBLANK handler acts on combo_type right after RA_OnVblank returns.
-       Mode 6 has no IGR thread to wake, and a reset already asked for stays. */
-    if (IGR_Thread_ID >= 0 && Pad_Data.combo_type == 0x00)
+       Mode 6 has no IGR thread to wake, and a reset already asked for stays.
+       IGR_PcReset takes it past In-Game Menu: the PC asked to leave. */
+    if (IGR_Thread_ID >= 0 && Pad_Data.combo_type == 0x00) {
+#ifdef IGR_MENU
+        IGR_PcReset = 1;
+#endif
         Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+    }
 }
 
 void Install_RA_Vblank(void)
