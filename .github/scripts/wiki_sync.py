@@ -396,7 +396,7 @@ The 12 sample titles are non-bootable placeholders with matching cover artwork.
 
 | Korium | IncebtIon |
 | --- | --- |
-| ![Game information with matching screenshot artwork — Korium]({media}/info-okami.png) | ![Game information with matching screenshot artwork — IncebtIon]({media}/incebtion/info-okami.png) |
+| ![Okami game information with matching screenshot artwork — Korium]({media}/info-okami.png) | ![Okami game information with matching screenshot artwork — IncebtIon]({media}/incebtion/info-okami.png) |
 
 <details>
 <summary>Watch the library views in motion (24-second GIF)</summary>
