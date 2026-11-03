@@ -50,10 +50,10 @@ Problems: {issues}
 """
 
 
-def _check(manifest, edition, device, sha, kit, elf_bytes):
+def _check(manifest, edition, device, sha, kit, elf_bytes, compiler="gcc"):
     if (manifest.get("repository") != "NathanNeurotic/RiptOPL" or manifest.get("source_commit") != sha
             or manifest.get("dirty") or manifest.get("edition") != edition or manifest.get("device") != device
-            or manifest.get("compiler") != "gcc" or manifest.get("configuration") != "standard"
+            or manifest.get("compiler") != compiler or manifest.get("configuration") != "standard"
             or manifest.get("theme") != "korium" or manifest.get("ra") != LITES[edition]["ra"]
             or any(manifest.get(field) != kit.get(field) for field in SDK_SUITE)
             or manifest.get("elf") != elf_name(device, LITES[edition]["ra"])
@@ -77,7 +77,7 @@ def _common_version(manifest):
     return version
 
 
-def assemble(root, sha):
+def assemble(root, sha, compiler="gcc"):
     """Build root/release-lite from the lite-* and lite_ra-* artifacts. Returns (path, sums)."""
     korium = json.loads((root / "release-korium" / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     ra_kit_manifest = json.loads((root / "release-ra" / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
@@ -98,7 +98,7 @@ def assemble(root, sha):
             name = elf_name(device)
             elf = (stage / name).read_bytes()
             manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-            _check(manifest, LITE, device, sha, korium, elf)
+            _check(manifest, LITE, device, sha, korium, elf, compiler)
             (path / name).write_bytes(elf)
             manifests[name] = manifest
 
@@ -106,7 +106,7 @@ def assemble(root, sha):
             name = elf_name(device, ra=True)
             elf = (stage / name).read_bytes()
             manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-            _check(manifest, LITE_RA, device, sha, ra_kit_manifest, elf)
+            _check(manifest, LITE_RA, device, sha, ra_kit_manifest, elf, compiler)
             version = _version(manifest)
             readme = RA_README.format(title=options["title"], version=version, elf=name, issues=ISSUES,
                                       underline="=" * len(f"RiptOPLite RetroAchievements {options['title']}, {version}"))
