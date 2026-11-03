@@ -13,6 +13,11 @@ root = Path(__file__).resolve().parents[2]
 cue = (root / 'src/sources/cuesupport.cpp').read_text(encoding='utf-8')
 mmce = (root / 'src/sources/mmcesupport.cpp').read_text(encoding='utf-8')
 
+# Source reinitialization must not inherit a completed scan or exhausted retry budget.
+mmce_init = mmce[mmce.index('void MmceSource::init('):mmce.index('item_list_t *mmceGetObject(', mmce.index('void MmceSource::init('))]
+for state in ('ps1Scanned', 'ps1ScanFailed', 'ps1ScanRetries'):
+    assert f'gMmceSupport.{state} = 0;' in mmce_init
+
 # Exercise the caller as well as the merge: a positive count can still need recovery.
 start = mmce.index('        int r = ps1FillGameList(ps1Root, &gMmceSupport.ps1Games);')
 publish = mmce[start:mmce.index('        result += gMmceSupport.ps1GameCount;', start)]
