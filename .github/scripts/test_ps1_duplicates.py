@@ -86,11 +86,12 @@ int main(void) {
     free(rows);
 
     /* The HDD list keeps each row's partition in a parallel array: it moves with its row. */
-    base_game_info_t hdd[3] = {{"SLUS_005.94.Crash Bandicoot", 0}, {"Only VCD", 0}, {"Crash Bandicoot", 1}};
+    base_game_info_t hdd[3] = {{"SLUS_005.94.Crash Bandicoot", ".VCD", 0}, {"Only VCD", ".VCD", 0}, {"Crash Bandicoot", ".CUE", 1}};
     char parts[3][33] = {"__.POPS", "__.POPS1", "__.EMBER"};
     assert(ps1DropTwins(hdd, parts, sizeof(parts[0]), 2, 1, PS1_DUP_EMBER) == 2);
     assert(!strcmp(hdd[0].name, "Only VCD") && !strcmp(parts[0], "__.POPS1"));
     assert(!strcmp(hdd[1].name, "Crash Bandicoot") && !strcmp(parts[1], "__.EMBER"));
+    assert(cueIsCueEntry(&hdd[1]) && hdd[1].ember == 1);
     puts("PASS: PS1 Duplicates keeps both, the Ember twin or the VCD twin; a POPSTARTER prefix, a real disc ID and case are ignored");
     return 0;
 }
