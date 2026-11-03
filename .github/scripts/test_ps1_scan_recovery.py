@@ -49,7 +49,8 @@ static char gPCShareName[16] = "games";
 @LIMIT@
 @SESSION@
 EthSupport gEthSupport;
-static int ps1FillGameList(const char*, base_game_info_t **rows) {
+static int ps1FillGameList(const char*, base_game_info_t **rows, int previousCount) {
+    (void)previousCount;
     static base_game_info_t data[2];
     if (scanResult >= 0) *rows = scanResult ? data : nullptr;
     return scanResult;
