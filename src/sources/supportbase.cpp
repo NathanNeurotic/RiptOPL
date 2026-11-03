@@ -1001,7 +1001,7 @@ void SupportBase::ensureIgrUsbDrivers(int compatmask)
     }
 }
 
-int sbPrepare(base_game_info_t *game, config_set_t *configSet, int size_cdvdman, void **cdvdman_irx, int *patchindex)
+int sbPrepare(base_game_info_t *game, config_set_t *configSet, int size_cdvdman, void **cdvdman_irx, int *patchindex, int nativeLaunch)
 {
     int i;
     struct cdvdman_settings_common *settings;
@@ -1114,10 +1114,12 @@ int sbPrepare(base_game_info_t *game, config_set_t *configSet, int size_cdvdman,
 
     *patchindex = i;
 
-    const char *consoleID = NULL;
-    configGetStr(configSet, CONFIG_ITEM_ILINK_ID, &consoleID);
-    if (oplParseILinkID(consoleID, settings->ilink_id) < 0)
-        diagLog("launch: invalid $ILinkID; using the real console ID");
+    if (nativeLaunch) {
+        const char *consoleID = NULL;
+        configGetStr(configSet, CONFIG_ITEM_ILINK_ID, &consoleID);
+        if (oplParseILinkID(consoleID, settings->ilink_id) < 0)
+            diagLog("launch: invalid $ILinkID; using the real console ID");
+    }
 
     // game id
     memcpy(settings->DiscID, gameid, sizeof(settings->DiscID));
