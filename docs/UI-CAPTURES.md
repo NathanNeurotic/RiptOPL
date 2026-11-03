@@ -1,7 +1,75 @@
 # RiptOPL interface captures
 
 These screenshots and clips show the real RiptOPL menu running in **RIPPCSX2**.
-The first set focuses on the README, documentation home page and wiki home.
+The collection covers library views, per-game controls and settings.
+
+## Browse the collection
+
+The showcase uses a virtual USB disk containing 12 **non-bootable placeholder files**.
+RiptOPL scans the files and renders the matching art through its normal UI. No games
+are distributed or launched in the published media.
+
+### Five-cover carousel
+
+![Five-cover carousel with Okami selected](assets/ui/coverflow-five.png)
+
+### Three-cover carousel
+
+![Three-cover carousel](assets/ui/coverflow-three.png)
+
+### PSBBN Flow
+
+![PSBBN Flow with Okami selected](assets/ui/psbbn-flow.png)
+
+### Classic list
+
+![Classic list with matching Final Fantasy X cover](assets/ui/list.png)
+
+### Library in motion
+
+<details>
+<summary>Watch the 24-second library tour</summary>
+
+![List, three-cover, five-cover and PSBBN Flow navigation](assets/ui/library-tour.gif)
+
+</details>
+
+[Silent MP4](assets/ui/library-tour.mp4). Four authentic browsing takes joined with
+straight cuts. PNGs preserve the complete 796 x 448 aspect-correct emulator output.
+The video is scaled to 960 x 540 at 20 fps; the GIF is 640 x 360 at 8 fps.
+The underlying interface is standard definition, not native HD.
+
+### Per-game controls
+
+![Per-game options for Okami](assets/ui/game-options.png)
+
+![Virtual memory card settings](assets/ui/vmc-settings.png)
+
+![Game compatibility and loader settings](assets/ui/game-settings.png)
+
+![GSM display settings](assets/ui/gsm-settings.png)
+
+![Controller emulation](assets/ui/controller-emulation.png)
+
+![Controller macros](assets/ui/controller-macros.png)
+
+![Cheat settings](assets/ui/cheat-settings.png)
+
+These settings are capture examples, not compatibility recommendations for these games.
+
+### Artwork and quality
+
+Covers come from [xlenore/ps2-covers](https://github.com/xlenore/ps2-covers), matched
+by serial against PCSX2's GameIndex. The original cover files remain in the local lab;
+256-pixel-wide Lanczos textures retain more detail than the displayed SD covers need
+while keeping a complete sample collection loaded. Published PNGs are not retouched.
+Artwork belongs to its respective owners.
+
+The [showcase manifest](assets/ui/showcase-manifest.json) records source cover URLs,
+hashes, build identity, sample titles and exact capture steps. A grid take with a
+visible edge artifact and an unfinished Info page were excluded from the published
+set. Only completed screens are used in the showcase; empty panels are not
+used as promotional screenshots.
 
 ## Settings overview
 
@@ -42,7 +110,7 @@ five frames per second. The PNGs retain the unmodified 640 x 480 emulator frames
 
 - **Build:** Korium v1.2.0-Beta-4045, source `22c319f72c046a583917fb73852f7de1d359bd8d`.
 - **Emulator:** RIPPCSX2 2.9.96-rippcsx2.2.
-- **Display:** Auto/NTSC, 4:3. These images show the standard-definition interface.
+- **Display:** Auto/NTSC; 16:9 library and per-game captures, 4:3 settings captures.
 - **Captured:** November 3, 2026.
 - **Evidence:** menu rendering and navigation in an emulator. These captures do not establish
   physical-console, storage-device or gameplay acceptance.

@@ -386,15 +386,16 @@ and translation maintenance are covered under {link('Languages', 'Languages')}.
 
 ## See the interface
 
-![RiptOPL Settings overview]({media}/settings-overview.png)
+![RiptOPL five-cover sample library]({media}/coverflow-five.png)
 
-Korium v1.2.0-Beta-4045, captured in RIPPCSX2 at 4:3.
+Korium v1.2.0-Beta-4045, captured in RIPPCSX2 with a widescreen sample library.
+The 12 sample titles are non-bootable placeholders with matching cover artwork.
 {link('More screenshots and capture notes', 'UI-Captures')}.
 
 <details>
-<summary>Watch the settings walkthrough (14-second GIF, 2.3 MB)</summary>
+<summary>Watch the library views in motion (24-second GIF)</summary>
 
-![RiptOPL Settings, Game Sources and Interface navigation]({media}/settings-navigation.gif)
+![List, three-cover, five-cover and PSBBN Flow browsing]({media}/library-tour.gif)
 
 </details>
 

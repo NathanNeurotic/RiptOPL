@@ -60,19 +60,22 @@ Review the LICENSE file for further details.<br><br>
 
 ## See RiptOPL
 
-![RiptOPL Settings overview, captured from the Korium release in RIPPCSX2](docs/assets/ui/settings-overview.png)
+![RiptOPL five-cover library with matching game artwork](docs/assets/ui/coverflow-five.png)
 
-**One settings menu for your game sources, interface, controllers and launch options.**
-Captured from **Korium v1.2.0-Beta-4045** in RIPPCSX2, at the standard 4:3 display ratio.
-[Game Sources](docs/assets/ui/game-sources.png) | [Interface settings](docs/assets/ui/interface-settings.png) ?
-[Capture notes and repeatable workflow](docs/UI-CAPTURES.md).
+**Your collection, your view.** Browse a classic list, three- or five-cover carousel,
+or PSBBN Flow. Real **Korium v1.2.0-Beta-4045** menus captured in RIPPCSX2 with a
+12-title sample library and matching artwork. Sample files are non-bootable placeholders.
+
+[List](docs/assets/ui/list.png) | [Three covers](docs/assets/ui/coverflow-three.png) |
+[PSBBN Flow](docs/assets/ui/psbbn-flow.png) | [Per-game options](docs/assets/ui/game-options.png) |
+[All captures and recording notes](docs/UI-CAPTURES.md).
 
 <details>
-<summary>Watch the 14-second settings walkthrough (animated GIF, 2.3 MB)</summary>
+<summary>Watch the library views in motion (24-second GIF)</summary>
 
-![Navigate from Settings to Game Sources and Interface in RiptOPL](docs/assets/ui/settings-navigation.gif)
+![Browse List, three-cover, five-cover and PSBBN Flow views](docs/assets/ui/library-tour.gif)
 
-[Smaller MP4 version](docs/assets/ui/settings-navigation.mp4) (315 KB).
+[Smaller, smoother MP4](docs/assets/ui/library-tour.mp4).
 
 </details>
 
