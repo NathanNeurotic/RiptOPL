@@ -104,7 +104,7 @@ jobs:
   apa-safety-host-tests:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Check the APA table write fence, driver write policy and raw hdd0 paths
@@ -215,7 +215,7 @@ jobs:
   release-notes-tests:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Check compact release notes and changelog
@@ -224,7 +224,7 @@ jobs:
   ra-host-tests:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Check disc hashing, disc key lock, history names, font wrap and SYSTEM.CNF parsing
@@ -240,7 +240,7 @@ jobs:
   bdm-host-tests:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Check the games.bin cache answers as before without O(n^2) work per scan
@@ -357,7 +357,7 @@ jobs:
       # h2 stream that gets reset.
       GODEBUG: http2client=0
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
           fetch-depth: 0
