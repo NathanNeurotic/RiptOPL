@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build one release edition with ps2build; GCC/LLVM are compiler checks, not editions."""
+"""Build one RiptOPL edition with GCC or LLVM using ps2build."""
 import argparse
 import copy
 import hashlib
@@ -111,7 +111,7 @@ def definition(edition, configuration="standard", toolchain="gcc", device=None):
     # IGS makes LLVM -Os leave only 2,712 bytes for the core's stack. -Oz leaves
     # 6,040 with the same 3 KB linker guard and fixed memory regions; GCC stays -Os.
     # The in-game menu's silent pause and held frame leave LLVM -Os 2,136 bytes, so it takes -Oz too.
-    # LLVM builds are CI's compiler check only: every released ee_core is GCC -Os.
+    # LLVM and GCC release channels retain compiler-specific stack-safe flags.
     if toolchain == "llvm" and ("IGS" in core["defines"] or "IGR_MENU" in core["defines"]):
         core["opt"] = "-Oz"
     if "IGR_OVERLAY" in core["defines"]:
