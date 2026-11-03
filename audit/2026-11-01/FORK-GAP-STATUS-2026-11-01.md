@@ -1,6 +1,6 @@
 # Fork-gap status - November 1, 2026
 
-This refresh re-reads every record of the [October 29 register](FORK-GAP-FULL-REFRESH-2026-10-29.md) against the code as it stands today, rechecks every tracked upstream head, and names the wins taken since. It supersedes the availability conclusions of the October 29 refresh; the October 29 document stays as dated evidence and its 301 records keep their IDs. Differences are comparison opportunities with shared work credited; they are not promised ports or a defect count.
+This refresh re-reads every record of the [October 29 register](../2026-10-29-refresh/FULL-REFRESH.md) against the code as it stands today, rechecks every tracked upstream head, and names the wins taken since. It supersedes the availability conclusions of the October 29 refresh; the October 29 document stays as dated evidence and its 301 records keep their IDs. Differences are comparison opportunities with shared work credited; they are not promised ports or a defect count.
 
 ## Implementation checkpoint - November 2 evening, 2026 (November 3 UTC)
 
@@ -64,7 +64,7 @@ Each record's November 2 status and note are the `nov2_status` and `nov2_note` f
 | RiptOPL C++/ps2build | [rebuild/main 96852359](https://github.com/NathanNeurotic/RiptOPL/commit/96852359da353a5de5a3244c2fdc611c7b3bd30a) | Boot Theme Wait (#256) and start-up timing (#254) merged the same day |
 | Open-PS2-Loader legacy C | [rebuild/main b2d6b3b1](https://github.com/NathanNeurotic/Open-PS2-Loader/commit/b2d6b3b1) | tandem of the above (#1218, #1216) |
 
-Everything marked **NOT TESTED** is merged in both editions and has had no console run; source presence is not acceptance.
+For the merged work listed at the November 1 baseline, **NOT TESTED** means no console acceptance was recorded. Draft entries in the later checkpoint and update remain unmerged even when marked **NOT TESTED**; source presence is not acceptance.
 
 ## Status vocabulary
 
@@ -131,7 +131,7 @@ All **141 tracked identities** were rechecked with `git ls-remote` on November 1
 | [OPL-DualSense-BT](https://github.com/rodrigoGalvanDev/OPL-DualSense-BT) ([rodrigoGalvanDev](https://github.com/rodrigoGalvanDev)) | 7188a53, tag 1.2 | 8bb581a adds DS4 clones, RTL8761B, multi-pad, a Controller Setup page and multitap. **DT6** (an October 29 record; this is its code, counted again as new until the November 2 correction): in-game IOP memory relief for KH2 over SMB (lwIP IP_REASSEMBLY/IP_FRAG off, about 7.3 KB; USBD pool trim when only PADEMU loads, about 28 KB). MISSING; turning IP fragmentation off changes behaviour on large-MTU SMB paths, so it needs a decision before any port. |
 | [DKWDRV](https://github.com/DKWDRV/DKWDRV) | 1.7.6v | Documentation and release only. |
 | [OPL-JUMP](https://github.com/juankyt505/OPL-JUMP) | 5e103b9 | Content unchanged; JUMP1 filename filter stays PARTIAL (product call). |
-| [OrbitPS2-Manager](https://github.com/Luden02/OrbitPS2-Manager) | moved | Desktop companion; INTENTIONAL DIFFERENCE. |
+| [OrbitPS2-Manager](https://github.com/Luden02/OrbitPS2-Manager) | moved | Desktop companion; moved-head assessment UNKNOWN because this checkpoint does not document inspection. Prior OM1?OM2 desktop migration/batch-ZSO gaps are not reclassified here. |
 | [neutrino](https://github.com/rickgaiser/neutrino) | 1bff25b | The SMB work is already taken (NV2). |
 | ps2homebrew/Open-PS2-Loader | unchanged | No new upstream master commits to compare. |
 
@@ -154,4 +154,4 @@ Work owned by other threads and deliberately left alone here: SMB2 restore (#257
 
 Per-record verdicts come from reading the current source of both editions, not from PR titles. The head recheck is `git ls-remote --heads --tags --symref` from the cloud container, compared with the October 29 heads file; a moved head was inspected only where this document says so. Rolling release assets can change without a tag; release metadata was not re-pulled. No console code ran.
 
-Evidence set: [FORK-GAP-STATUS-2026-11-01.md](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/FORK-GAP-STATUS-2026-11-01.md) Â· [id-status.json](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/id-status.json) Â· [repository-heads.json](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/repository-heads.json) Â· [recheck-2026-11-02.json](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/recheck-2026-11-02.json). The searchable register stays at [fork-gaps.html#at-a-glance](https://nathanneurotic.github.io/RiptOPL/fork-gaps.html#at-a-glance).
+Evidence set: [FORK-GAP-STATUS-2026-11-01.md](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/FORK-GAP-STATUS-2026-11-01.md) · [id-status.json](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/id-status.json) · [repository-heads.json](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/repository-heads.json) · [recheck-2026-11-02.json](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/recheck-2026-11-02.json). The searchable register stays at [fork-gaps.html#at-a-glance](https://nathanneurotic.github.io/RiptOPL/fork-gaps.html#at-a-glance).
