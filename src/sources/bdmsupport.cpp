@@ -1628,6 +1628,8 @@ void BdmSource::init(item_list_t *itemList)
     pDeviceData->bdmGames = NULL;
     pDeviceData->bdmPs1GameCount = 0; // #120: separate VCD store (see bdm_device_data_t)
     pDeviceData->bdmPs1Games = NULL;
+    pDeviceData->ps1ScanFailed = 0;
+    pDeviceData->ps1ScanRetries = 0;
     pDeviceData->FoldersCreated = 0;
     pDeviceData->bdmDeviceType = BDM_TYPE_UNKNOWN;
     pDeviceData->bdmHddIsLBA48 = -1;
@@ -1713,6 +1715,7 @@ int BdmSource::needsUpdate(item_list_t *itemList)
     // Check for forced refresh from deleting or renaming a game.
     if (pDeviceData->ForceRefresh != 0) {
         pDeviceData->ForceRefresh = 0;
+        pDeviceData->ps1ScanRetries = 0;
         return 1;
     }
 
@@ -1736,8 +1739,10 @@ int BdmSource::needsUpdate(item_list_t *itemList)
     // mmceNeedsUpdate checks it first). Otherwise a device already scanned this BdmGeneration -- which
     // every USB stick is, the moment its ISO list loads -- short-circuits at the gate and never
     // rescans, leaving the VCD (PS1/POPSTARTER) list permanently empty on USB/BDM while MMCE worked.
-    if (host::library().consumeDirty(itemList->mode))
+    if (host::library().consumeDirty(itemList->mode)) {
+        pDeviceData->ps1ScanRetries = 0;
         return 1;
+    }
 
     // Folder browsing: a descend/ascend marks the mode dirty but bumps nothing the tick gate below
     // watches, so consume it here (same discipline as libViewConsumeDirty) or the deeper/shallower list
@@ -1756,6 +1761,16 @@ int BdmSource::needsUpdate(item_list_t *itemList)
     // EVERY idle poll, forever, and each pass also rebuilt APPS and Favourites through
     // menuDeferredUpdate -- so every L3, on every page, queued behind it (FifthFox: USB and MX4SIO
     // both). SELECT, L3, a replug or a Game Sources apply is the retry.
+    // Device changes use the normal presence/identity path. Retry existing visible PS1 pages
+    // before the unchanged-generation cache, without reloading modules or resetting the budget.
+    if (pDeviceData->bdmDeviceTick != BdmGeneration) {
+        pDeviceData->ps1ScanRetries = 0;
+    } else if (pOwner != NULL && pOwner->menuItem.visible && bdmTransportEnabled(pDeviceData->bdmDeviceType) != 0 &&
+               pDeviceData->ps1ScanFailed && pDeviceData->ps1ScanRetries < BDM_PS1_SCAN_RETRY_MAX &&
+               (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
+        pDeviceData->ps1ScanRetries++;
+        return 1;
+    }
     if (pDeviceData->bdmDeviceTick == BdmGeneration && pDeviceData->bdmULSizePrev != -2) {
         if (pOwner != NULL && pOwner->menuItem.visible == 0)
             return 0;
@@ -1883,6 +1898,10 @@ int BdmSource::update(item_list_t *itemList)
                     ps1FillGameList(ps1Prefix, &pDeviceData->bdmPs1Games);
         if (r >= 0) // r < 0: transient scan failure -> keep THIS view's last-good (empty if never scanned)
             pDeviceData->bdmPs1GameCount = r;
+        // UDPBD scans Ember alone; ignore the union scanner's previous-device retry flag.
+        pDeviceData->ps1ScanFailed = r < 0 || (pDeviceData->bdmDeviceType != BDM_TYPE_UDPBD && ps1GameListNeedsRetry());
+        if (!pDeviceData->ps1ScanFailed)
+            pDeviceData->ps1ScanRetries = 0;
         result += pDeviceData->bdmPs1GameCount;
     }
     if (view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) {

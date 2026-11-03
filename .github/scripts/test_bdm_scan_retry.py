@@ -73,6 +73,7 @@ HARNESS = r'''
 #define BDM_TYPE_UDPBD 5
 #define BDM_TYPE_PCCF 6
 #define BDM_DEVICE_ROOT_MAX 16
+#define BDM_PS1_SCAN_RETRY_MAX 15
 #define _STR_BDM_PS2_FOLDERS_UNREADABLE 4242
 
 typedef struct base_game_info base_game_info_t;
@@ -112,6 +113,7 @@ typedef struct
     int bdmGameCount;
     base_game_info_t *bdmPs1Games;
     int bdmPs1GameCount;
+    int ps1ScanFailed, ps1ScanRetries;
 } bdm_device_data_t;
 
 static int bdmDeviceModeStarted;
@@ -125,6 +127,7 @@ static int deviceResults[64];  /* what bdmUpdateDeviceData returns, pass by pass
 static int deviceResultCount, deviceCalls;
 static int scanFails = 1;      /* sbReadList: 1 = neither CD nor DVD opens (keeps -2), 0 = success */
 static int scans, messages, lastMessageError;
+static int ps1Result, ps1Incomplete, ps1Scans, cueResult;
 static char lastMessagePath[64];
 
 static int bdmEffectiveStartMode(void) { return START_MODE_AUTO; }
@@ -155,8 +158,9 @@ static int sbIsSameSize(const char *prefix, int prev) { (void)prefix; return pre
 static int thmAddElements(const char *p, const char *s, int m) { (void)p; (void)s; (void)m; return 0; }
 static int lngAddLanguages(const char *p, const char *s, int m) { (void)p; (void)s; (void)m; return 0; }
 static void bdmBuildPs1Prefix(char *t, int n, int slot) { snprintf(t, n, "mass%d:/", slot); }
-static int ps1FillGameList(const char *p, base_game_info_t **g) { (void)p; (void)g; return 0; }
-static int cueFillGameList(const char *p, base_game_info_t **g) { (void)p; (void)g; return 0; }
+static int ps1FillGameList(const char *p, base_game_info_t **g) { (void)p; (void)g; ps1Scans++; return ps1Result; }
+static int ps1GameListNeedsRetry(void) { return ps1Incomplete; }
+static int cueFillGameList(const char *p, base_game_info_t **g) { (void)p; (void)g; ps1Scans++; return cueResult; }
 static const char *folderGetSub(int mode) { (void)mode; return browseSub; }
 static int sbReadList(base_game_info_t **list, const char *prefix, const char *sub, int *fsize, int *count)
 {
@@ -199,6 +203,7 @@ static void reset(void)
     deviceResultCount = deviceCalls = 0;
     scanFails = 1;
     scans = messages = lastMessageError = 0;
+    ps1Result = ps1Incomplete = ps1Scans = cueResult = 0;
     lastMessagePath[0] = '\0';
 }
 
@@ -309,6 +314,51 @@ static void subfolderAndPs1AreQuiet(void)
     CHECK(scans == 0 && messages == 0, "PS1 view: %d PS2 scans / %d messages, want 0 / 0", scans, messages);
 }
 
+static void ps1Recovery(void)
+{
+    for (int mixed = 0; mixed < 2; mixed++) {
+        reset(); scanFails = 0;
+        view = mixed ? LIB_VIEW_MIXED : LIB_VIEW_PS1;
+        ps1Result = 1; ps1Incomplete = 1;
+        connectDevice();
+        CHECK(dev.bdmPs1GameCount == 1 && dev.ps1ScanFailed, "partial list must retain the retry flag");
+        pass();
+        CHECK(ps1Scans == 2 && dev.ps1ScanRetries == 1, "cached generation must not swallow retry");
+        ps1Result = 2; ps1Incomplete = 0; pass();
+        CHECK(dev.bdmPs1GameCount == 2 && !dev.ps1ScanFailed && !dev.ps1ScanRetries, "retry must restore both cores");
+        int previous = ps1Scans; pass();
+        CHECK(ps1Scans == previous, "complete scan must settle");
+
+        dirty = 1; ps1Incomplete = 1; pass();
+        for (int i = 0; i < BDM_PS1_SCAN_RETRY_MAX; i++) pass();
+        previous = ps1Scans;
+        for (int i = 0; i < 30; i++) pass();
+        CHECK(ps1Scans == previous && dev.ps1ScanRetries == BDM_PS1_SCAN_RETRY_MAX, "partial failures must exhaust the budget");
+        dirty = 1; pass();
+        CHECK(!dev.ps1ScanRetries, "explicit refresh must re-arm retries");
+        ps1Result = -1; pass();
+        CHECK(dev.bdmPs1GameCount == 2, "full failure must preserve last-good count");
+        for (int i = 0; i < BDM_PS1_SCAN_RETRY_MAX + 3; i++) pass();
+        CHECK(dev.ps1ScanRetries == BDM_PS1_SCAN_RETRY_MAX, "full failures must exhaust the budget");
+        BdmGeneration++; pass();
+        CHECK(dev.ps1ScanFailed && !dev.ps1ScanRetries, "device change must re-arm recovery without losing the failed scan");
+        previous = ps1Scans; pass();
+        CHECK(ps1Scans == previous + 1, "unrelated hotplug must not lose pending recovery");
+    }
+    reset(); view = LIB_VIEW_PS1; connectDevice();
+    dev.bdmDeviceType = BDM_TYPE_UDPBD;
+    ps1Incomplete = 1; cueResult = 3; dirty = 1; pass();
+    CHECK(dev.bdmPs1GameCount == 3 && !dev.ps1ScanFailed, "UDPBD must ignore stale union retry state");
+    cueResult = -1; dirty = 1; pass();
+    CHECK(dev.ps1ScanFailed && dev.bdmPs1GameCount == 3, "UDPBD Ember failure must preserve rows and retry");
+    cueResult = 3; pass();
+    CHECK(!dev.ps1ScanFailed, "UDPBD Ember retry must recover");
+    dev.ps1ScanFailed = 1; owner.menuItem.visible = 0;
+    int previous = ps1Scans; pass();
+    CHECK(ps1Scans == previous, "hidden page must not retry");
+    printf("BDM PS1 recovery: partial/full failures, budget, refresh, generation, mixed view and UDPBD checked\n");
+}
+
 int main(void)
 {
     failedScanRunsOnce();
@@ -317,6 +367,7 @@ int main(void)
     identityWaitStillPolls();
     successIsQuiet();
     subfolderAndPs1AreQuiet();
+    ps1Recovery();
     if (!failed)
         printf("bdm scan retry: all cases passed\n");
     return failed;

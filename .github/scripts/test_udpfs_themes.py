@@ -249,7 +249,7 @@ if update:
     if "udpfsSetWaitingForServer(!answeredBefore || (!reached && !udpfsServerAnswers()));" not in update:
         failures.append("a scan that started before the server answered must keep polling")
 
-    if "if (answeredBefore && r >= 0 && !ps1GameListNeedsRetry()) // only a complete server-backed scan counts\n            udpfsPs1Scanned = 1;" not in update:
+    if "udpfsPs1Scanned = answeredBefore && r >= 0 && !ps1GameListNeedsRetry();" not in update:
         failures.append("the PS1 first-scan latch must only be set by a scan that reached the server and succeeded")
 
 # A remembered PS1 page gets its first scan from UDPFS itself (as MMCE and BDM do), NOT from marking

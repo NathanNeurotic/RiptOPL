@@ -594,6 +594,8 @@ int UdpfsSource::needsUpdate(item_list_t *itemList)
     // build that first list the same way (mmcePs1Scanned; bdmNeedsUpdate's connect pass).
     if (host::library().listViewActive(itemList) == LIB_VIEW_PS1)
         return !udpfsPs1Scanned;
+    if (host::library().listViewActive(itemList) == LIB_VIEW_MIXED && !udpfsPs1Scanned)
+        return 1;
 
     if (!gUdpfsSupport.isoScanned_)
         result = 1;
@@ -659,8 +661,8 @@ int UdpfsSource::update(item_list_t *itemList)
     if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
         // Ember inherits this mount; POPSTARTER restores networking through the UDPFS BDMA pair.
         int r = ps1FillGameList(udpfsPrefix, &gUdpfsSupport.ps1Games_);
-        if (answeredBefore && r >= 0 && !ps1GameListNeedsRetry()) // only a complete server-backed scan counts
-            udpfsPs1Scanned = 1;
+        // Clear an earlier success too: an explicit refresh can discover a new partial failure.
+        udpfsPs1Scanned = answeredBefore && r >= 0 && !ps1GameListNeedsRetry();
         if (r >= 0) // r < 0: transient scan failure -> preserve the last-good list
             gUdpfsSupport.ps1GameCount_ = r;
     }
