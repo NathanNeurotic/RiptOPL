@@ -460,9 +460,9 @@ extern char gCustomSettingsPath[64];
 extern int gEnableDebug;
 
 extern int gPS2Logo;
-#define APP_HANDOFF_LEGACY 0 // argv[0] = mass<N>:/..., every device, as always
-#define APP_HANDOFF_TYPED  1 // argv[0] = usb0:/ ata0:/ ilink0:/ mx4sio0:/...; the load path stays mass<N>:
-extern int gAppHandoffPath;  // APP_HANDOFF_LEGACY (mass<N>:, default) or APP_HANDOFF_TYPED (usb0:/ata0:/...) in an app's argv[0]
+#define APP_HANDOFF_LEGACY 0 // BDM ELF app argv[0] keeps its shared mass<N>:/... path; other sources unaffected
+#define APP_HANDOFF_TYPED  1 // eligible BDM ELF app argv[0] uses usbN:/ataN:/ilinkN:/mx4sioN:/...; ELF load remains mass<N>:
+extern int gAppHandoffPath;  // global BDM ELF-app argv[0] spelling; Legacy default, Typed opt-in; not a global filesystem alias
 
 // Default device
 extern int gDefaultDevice;
