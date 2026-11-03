@@ -9,7 +9,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import tempfile
@@ -184,7 +183,7 @@ def release_notes(version, sha):
     history = git("log", "--no-merges", "-10", "--format=%h%x00%s", sha, "--")
     for line in history.splitlines():
         commit, title = line.split("\x00", 1)
-        title = re.sub(r"([\\\x60*_\\[\\]<>])", r"\\\1", title)
+        title = "".join("\\" + ch if ch in "\\*_[]<>" + chr(96) else ch for ch in title)
         lines.append(f"- {title} ([{commit}]({base}/commit/{commit}))")
     if not history:
         raise ValueError("release commit has no changelog entries")
