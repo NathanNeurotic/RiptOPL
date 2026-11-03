@@ -158,7 +158,7 @@ static int sbIsSameSize(const char *prefix, int prev) { (void)prefix; return pre
 static int thmAddElements(const char *p, const char *s, int m) { (void)p; (void)s; (void)m; return 0; }
 static int lngAddLanguages(const char *p, const char *s, int m) { (void)p; (void)s; (void)m; return 0; }
 static void bdmBuildPs1Prefix(char *t, int n, int slot) { snprintf(t, n, "mass%d:/", slot); }
-static int ps1FillGameList(const char *p, base_game_info_t **g) { (void)p; (void)g; ps1Scans++; return ps1Result; }
+static int ps1FillGameList(const char *p, base_game_info_t **g, int previousCount) { (void)p; (void)g; (void)previousCount; ps1Scans++; return ps1Result; }
 static int ps1GameListNeedsRetry(void) { return ps1Incomplete; }
 static int cueFillGameList(const char *p, base_game_info_t **g) { (void)p; (void)g; ps1Scans++; return cueResult; }
 static const char *folderGetSub(int mode) { (void)mode; return browseSub; }
