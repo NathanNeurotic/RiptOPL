@@ -847,6 +847,11 @@ void MmceSource::init(item_list_t *itemList)
     gMmceSupport.games = NULL;
     gMmceSupport.ps1GameCount = 0;
     gMmceSupport.ps1Games = NULL;
+    // A settings re-apply rebuilds the library: never carry a completed/failed PS1 latch
+    // or exhausted retry budget into the new MMCE session.
+    gMmceSupport.ps1Scanned = 0;
+    gMmceSupport.ps1ScanFailed = 0;
+    gMmceSupport.ps1ScanRetries = 0;
     gMmceSupport.resolvedDevice = -1; // re-detect the Auto slot on a fresh init (tab re-enable / settings apply)
     gMmceSupport.foldersCreatedFor[0] = '\0';
     gMmceSupport.folderRetries = 0;
