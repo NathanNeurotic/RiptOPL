@@ -670,7 +670,7 @@ int UdpfsSource::update(item_list_t *itemList)
 
     if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
         // Ember inherits this mount; POPSTARTER restores networking through the UDPFS BDMA pair.
-        int r = ps1FillGameList(udpfsPrefix, &gUdpfsSupport.ps1Games_);
+        int r = ps1FillGameList(udpfsPrefix, &gUdpfsSupport.ps1Games_, gUdpfsSupport.ps1GameCount_);
         // Clear an earlier success too: an explicit refresh can discover a new partial failure.
         udpfsPs1Scanned = answeredBefore && r >= 0 && !ps1GameListNeedsRetry();
         if (udpfsPs1Scanned)
