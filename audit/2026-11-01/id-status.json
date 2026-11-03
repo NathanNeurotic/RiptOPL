@@ -1465,7 +1465,7 @@
   },
   {
    "id": "OM2",
-   "feature": "Local bulk ISO ↔ ZSO compression/decompression and conversion jobs",
+   "feature": "Local bulk ISO \u00e2\u2020\u201d ZSO compression/decompression and conversion jobs",
    "project": "OrbitPS2 Manager",
    "oct29_status": "Companion / separate scope",
    "nov1_status": "INTENTIONAL DIFFERENCE",
@@ -3163,5 +3163,24 @@
    "nov2_status": "PRESENT",
    "nov2_note": ""
   }
- ]
+ ],
+ "implementation_checkpoint_2026_11_03": {
+  "scope": "Focused source/PR refresh; previous full-register counts remain dated",
+  "source_heads": {
+   "RiptOPL": "22c319f72c046a583917fb73852f7de1d359bd8d",
+   "Open-PS2-Loader": "dfa28822d324ae23b653a2a7585815eaac0cb671"
+  },
+  "source_present": [
+   "YA-21",
+   "YA-22",
+   "YA-25",
+   "DT6",
+   "RI54"
+  ],
+  "draft_only": [
+   "RI55"
+  ],
+  "console_acceptance": "unestablished by this checkpoint",
+  "published": "not claimed for pending drafts"
+ }
 }

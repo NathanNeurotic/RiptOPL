@@ -86,7 +86,7 @@
 <div class="fork-gap-metric"><strong>153</strong><span>Linked projects and related services in the A–Z directory</span></div>
 <div class="fork-gap-metric"><strong>72</strong><span>PRESENT records; merged source is not console acceptance</span></div>
 </div>
-<nav aria-label="Fork feature gaps shortcuts" class="fork-gap-nav"><a href="#nov1-status">Current status (November 2)</a>
+<nav aria-label="Fork feature gaps shortcuts" class="fork-gap-nav"><a href="#implementation-checkpoint">Current status (November 2 evening)</a>
 <a href="#oct29-ecosystem">Previous October 29 ecosystem audit</a>
 <a href="#at-a-glance">Search feature IDs</a>
 <a href="#oct29-focused">Historical October 29 focused findings</a>
@@ -106,6 +106,71 @@
 </nav>
 <p class="lead">Current status: November 1, 2026, updated November 2. 311 records (301 from October 29 plus 10 new) under seven statuses, each re-read against the C++ and legacy baselines of November 1; 141 upstream heads rechecked then, and the 13 that matter most again on November 2. The October 29 full refresh and older snapshots remain dated evidence.</p>
 <div class="callout info"><div class="h">Evidence and scope</div>Records include overlap, alternatives, tools and experiments. They are not a roadmap or a defect count. Source presence, target builds, emulator observations and physical-console acceptance are different evidence levels. This documentation audit ran no console code.</div>
+<section class="fork-gap-section" aria-labelledby="implementation-checkpoint"><h2 id="implementation-checkpoint">Implementation checkpoint - November 2 evening, 2026 (November 3 UTC)</h2>
+<p>This checkpoint supersedes implementation-status claims in the dated snapshots below. Default source heads checked: RiptOPL <code>22c319f72c046a583917fb73852f7de1d359bd8d</code>; legacy Open-PS2-Loader <code>dfa28822d324ae23b653a2a7585815eaac0cb671</code>. A pushed draft is implemented branch work, not merged source, a published release or console acceptance. This documentation/site update itself remains a draft until merged and published.</p>
+<table>
+<thead>
+<tr>
+<th>Work</th>
+<th>Source and review state</th>
+<th>Acceptance limits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>YA-21 / YA-22 / YA-25 GUI locks</td>
+<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/264">RiptOPL #264</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1225">legacy #1225</a>. PRESENT in source.</td>
+<td>Language-swap WIP branches remain separate, unmerged and outside this implementation approval.</td>
+</tr>
+<tr>
+<td>DT6 IOP memory relief</td>
+<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/270">RiptOPL #270</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1231">legacy #1231</a>. PRESENT in source.</td>
+<td>Builds and host checks do not establish console/game acceptance.</td>
+</tr>
+<tr>
+<td>RI54 List Title / Description</td>
+<td>Feature merged in #276/#1235. Follow-up <a href="https://github.com/NathanNeurotic/RiptOPL/pull/283">#283</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1242">#1242</a> remains draft: production-reader coverage and a stale-pointer guard, not a second feature implementation. Refreshed host fixture passes 288 draw cases in each edition.</td>
+<td>Console acceptance remains separate.</td>
+</tr>
+<tr>
+<td>RI55 pad profiles</td>
+<td><a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1243">legacy #1243</a> is an implemented, held draft. RiptOPL has preserved WIP only. <a href="https://github.com/akilluminati47/RIPPS2/releases/tag/v1.2.9-beta">RIPPS2 v1.2.9-beta</a>, build 129, was published November 1; the old wait-for-b129 condition is obsolete.</td>
+<td>Current-base conflicts and controller/console acceptance remain. No extra pad behavior was ported here.</td>
+</tr>
+<tr>
+<td>Counter #287</td>
+<td><a href="https://github.com/NathanNeurotic/RiptOPL/pull/288">RiptOPL #288</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1247">legacy #1247</a> fix an allocation-failure buffer defect. The reported Beta-4045 manifests already contain #271's refresh fix.</td>
+<td>Host simulated counts and allocation failures pass; actual first-boot discovery, theme, return lifecycle and reporter retest remain unproven.</td>
+</tr>
+<tr>
+<td>Console i.LINK ID</td>
+<td><a href="https://github.com/NathanNeurotic/RiptOPL/pull/290">RiptOPL #290</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1248">legacy #1248</a>: implemented native-engine drafts, focused host checks and target builds passed. Optional per-game <code>$ILinkID</code>: 16 hex digits, uppercase on save; empty/zero uses hardware. Neutrino/RA external runtimes are unchanged.</td>
+<td>Console-bound content and gameplay NOT TESTED. This is not an established Tales of Rebirth fix.</td>
+</tr>
+<tr>
+<td>Tales source candidates</td>
+<td><a href="https://github.com/NathanNeurotic/RiptOPL/pull/268">#268</a>/<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1229">#1229</a> and <a href="https://github.com/NathanNeurotic/RiptOPL/pull/262">#262</a>/<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1222">#1222</a> retain their holds after mechanical base refreshes. Stream hardening is separate from the Abyss freeze.</td>
+<td>#250 is a held test-build package, not a merge candidate. Rebirth #285/#1246 lacks an exact failing build, core, backend, image identity and useful good/bad comparison.</td>
+</tr>
+<tr>
+<td>ShanWan identity</td>
+<td><a href="https://github.com/NathanNeurotic/RiptOPL/pull/244">#244</a>/<a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1206">#1206</a> refreshed; C/header token comparison confirms comments only.</td>
+<td>No remapping or controller acceptance claim.</td>
+</tr>
+<tr>
+<td>Launchstation Move</td>
+<td><a href="https://github.com/NathanNeurotic/Launchstation/pull/270">Launchstation #270</a>, implemented draft at <code>8bb2915</code>: bounded 256 KiB Move-only manifest; uncertain directory completeness retains the source. Focused failure fixtures and pinned LLVM build passed.</td>
+<td>No filesystem transaction/rollback claim and no console acceptance. Launchstation's earlier paste WIP has the same complete tree as master; no recovery patch is needed.</td>
+</tr>
+<tr>
+<td>Volventura startup</td>
+<td>New <a href="https://github.com/NathanNeurotic/RiptOPL/issues/289">#289</a> records reporter success with the special 4017 DODGE-RAM ELF from MASS0/MMCE0, with/without USB. The downloaded artifact's zero-filled hole covers the reported bad-read window.</td>
+<td>Address-sensitive failure remains under investigation. Physical RAM failure versus boot-chain/modchip interference is unresolved; this does not validate #259's different alignment experiment or current nightly gameplay. HDD paste versus launch failure is ambiguous.</td>
+</tr>
+</tbody>
+</table>
+<p>Release evidence: the inspected Beta-4045 rolling manifests identify source <code>22c319f</code>. This establishes their source identity, not that these draft changes have been published. Historical register totals below remain dated; no full 311-record re-audit is claimed by this focused checkpoint.</p>
+</section>
 <section aria-labelledby="nov1-status" class="fork-gap-section"><h2 id="nov1-status">Current status - November 1, 2026, updated November 2</h2><p class="callout info">Every October 29 record re-read against current code (RiptOPL rebuild/main 96852359, legacy rebuild/main b2d6b3b1) and given one of seven statuses. Merged source is still <strong>NOT TESTED</strong> on a console unless a record says otherwise. The November 2 update below removes one duplicate record, adds one missed YAOPL fix and lists the ports opened since; those are drafts, not merges.</p>
 <p>This refresh re-reads every record of the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/FORK-GAP-FULL-REFRESH-2026-10-29.md">October 29 register</a> against the code as it stands today, rechecks every tracked upstream head, and names the wins taken since. It supersedes the availability conclusions of the October 29 refresh; the October 29 document stays as dated evidence and its 301 records keep their IDs. Differences are comparison opportunities with shared work credited; they are not promised ports or a defect count.</p>
 <h3 id="nov1-update---november-2-2026">Update - November 2, 2026</h3>
