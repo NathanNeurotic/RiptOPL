@@ -1896,7 +1896,7 @@ int BdmSource::update(item_list_t *itemList)
         // the live mount. A listed row must never be a title this transport cannot launch.
         int r = (pDeviceData->bdmDeviceType == BDM_TYPE_UDPBD) ?
                     cueFillGameList(ps1Prefix, &pDeviceData->bdmPs1Games) :
-                    ps1FillGameList(ps1Prefix, &pDeviceData->bdmPs1Games);
+                    ps1FillGameList(ps1Prefix, &pDeviceData->bdmPs1Games, pDeviceData->bdmPs1GameCount);
         if (r >= 0) // r < 0: transient scan failure -> keep THIS view's last-good (empty if never scanned)
             pDeviceData->bdmPs1GameCount = r;
         // UDPBD scans Ember alone; ignore the union scanner's previous-device retry flag.
