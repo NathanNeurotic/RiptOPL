@@ -927,13 +927,12 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     if (folderConsumeDirty(itemList->mode))
         return 1;
     if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1 || host::library().viewActive(itemList->mode) == LIB_VIEW_MIXED) {
-        if (!gMmceSupport.ps1Scanned) {
+        if (!gMmceSupport.ps1Scanned && !gMmceSupport.ps1ScanFailed) {
             (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
-        // A contended scan left the VCD page empty (S6): keep the ~2s refresh alive until a scan
-        // succeeds or the bounded budget runs out (no endless bus churn -- #246 doctrine). Also
-        // revives the manual-refresh button in the failed state.
+        // Retry failed or partial scans: a readable POPS half must not strand missing Ember rows.
+        // Failed first scans use this same budget, rather than the unscanned path above.
         if (gMmceSupport.ps1ScanFailed && gMmceSupport.ps1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
             gMmceSupport.ps1ScanRetries++;
             (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
@@ -1057,8 +1056,11 @@ int MmceSource::update(item_list_t *itemList)
         if (r >= 0) { // r < 0: transient scan failure (contended bus) -> keep the last-good VCD list
             gMmceSupport.ps1Scanned = 1;
             gMmceSupport.ps1GameCount = r;
-            gMmceSupport.ps1ScanFailed = 0;
-            gMmceSupport.ps1ScanRetries = 0;
+            // A positive result can contain only one core's rows after the other scan failed.
+            // Keep those rows visible while retrying the missing half within the existing budget.
+            gMmceSupport.ps1ScanFailed = ps1GameListNeedsRetry();
+            if (!gMmceSupport.ps1ScanFailed)
+                gMmceSupport.ps1ScanRetries = 0;
         } else {
             gMmceSupport.ps1Scanned = 0;
             gMmceSupport.ps1ScanFailed = 1; // arm needsUpdate's bounded retry (S6)
