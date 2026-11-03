@@ -196,17 +196,19 @@ no BIOS, memory-card image, game image or account information.
 2. Put the edition's released `RIPTOPL.ELF` in the lab's program directory. This set
    uses `vmode=0` and `wide_screen=0` in that directory's `settings_riptopl.cfg`.
 3. Bind the pad keys expected by the [RIPPS2 background driver](https://github.com/akilluminati47/RIPPS2/blob/f4679198071ebc6d57461111f5a70ba3e268c2e0/tools/dev/ps2bg.ps1).
-   Bind Screenshot to F8 and ToggleVideoCapture to F11. Select the emulator's
+   The pinned driver hard-codes `$lab` to `B:\Emulation\PlayStation\PCSX2\ripps2-lab`.
+   Update `$lab` in your copy to your isolated lab directory; the driver expects
+   `pcsx2-qt.exe` there. Bind Screenshot to F8 and ToggleVideoCapture to F11. Select the emulator's
    internal screenshot resolution and 640 x 480 video output.
 4. Run the sequence recorded in the manifest. Use Windows-native backslash paths
    for the ELF on Windows. F8 captures the emulator output directly; F11 records it.
 5. Inspect every screenshot and the full clip. Keep PNG frames unchanged; trim and
-   encode the clip for web delivery. Refresh the build label and hashes whenever
-   the captured build changes.
+   encode the clip for web delivery. Refresh media byte sizes and SHA-256 hashes
+   in the corresponding manifest after every capture refresh, even when the build
+   is unchanged. Update the build identity and binary hashes when the build changes.
 6. Keep `docs/assets/ui/` and the site's `assets/ui/` copies identical. Update captions,
    then regenerate the site's search index. The wiki home and repository guide use
    the same captures through the wiki builder.
 
-Future sets can show a populated library, Coverflow, PSBBN Flow and per-game
-settings once a suitable, repeatable local library is prepared. Avoid presenting
-placeholder files as working game installations.
+The library, flow views, per-game settings and Info pages above use a repeatable
+sample library. Keep its placeholder status explicit when refreshing those sets.
