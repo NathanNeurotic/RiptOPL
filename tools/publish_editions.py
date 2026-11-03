@@ -15,7 +15,8 @@ import time
 import zipfile
 
 from build_configuration import CONFIGURATIONS
-from build_edition import EDITIONS, git
+from build_edition import EDITIONS, LITES, LITE, git
+import publish_lite
 
 # The original's VARIANTS and DEBUG zips and its RA nopademu loader, published for every theme beside
 # its edition's kit: configurations are never channels of their own.
@@ -336,6 +337,11 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
            if BUGREPORT in archives(options) else "")
         + f"- [Loader ELF]({downloads}/{elf}) - update an existing installation.\n"
         f"- [Memory-card app]({downloads}/{psu}) - PSU import.\n"
+        # The standalone ELF and PSU go out as single files: this line is their notice that the loader uses
+        # libsmb2 under the LGPL-2.1 (section 6), and it links the licence published beside them.
+        f"- [libsmb2 licence]({downloads}/LICENSE-LIBSMB2.txt) - every loader embeds "
+        "[libsmb2](https://github.com/sahlberg/libsmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
+        "used under the GNU LGPL-2.1.\n"
         f"- [Languages]({downloads}/RIPTOPL-LANGS-{version}.zip) - translations and their fonts.\n"
         + "".join(f"- [{name.replace('-', ' ').title().replace('Ra ', 'RA ')}]({downloads}/RIPTOPL-{name}-{version}.zip) - {what}.\n"
                   for name, _, what in bundles(options))
@@ -397,7 +403,7 @@ def remove_stale_archives(repo, tag, published):
         print(f"could not list {tag} to remove the previous build's archives", file=sys.stderr)
         return
     for name in sorted(current - set(published)):
-        if name.startswith("RIPTOPL-") and name.endswith(".zip"):
+        if name.startswith(("RIPTOPL-", "RIPTOPLITE-")) and name.endswith(".zip"):
             try:
                 gh("release", "delete-asset", tag, name, "--repo", repo, "--yes")
             except subprocess.CalledProcessError:
@@ -461,8 +467,14 @@ def successor_run(repo, polls=SUCCESSOR_POLLS):
     return None
 
 
+def lite_candidates(root, sha):
+    """rolling-lite: the RiptOPLite ELFs and RA ZIPs, checked against the same commit and SDK as the kits."""
+    path, _ = publish_lite.assemble(root, sha)
+    return [(LITE, LITES[LITE], path, publish_lite.verify(path))]
+
+
 def latest_release_arg(edition):
-    """Only IncebtIon is presented as GitHub's Latest release."""
+    """Only IncebtIon is presented as GitHub's Latest release (never rolling-lite)."""
     return "--latest=" + ("true" if edition == "incebtion" else "false")
 
 
@@ -473,11 +485,11 @@ def main():
     args = parser.parse_args()
     sha = git("rev-parse", "HEAD")
     bundle_configurations(args.artifacts, sha)
-    candidates = fold_companions(verify(args.artifacts, sha))
+    candidates = fold_companions(verify(args.artifacts, sha)) + lite_candidates(args.artifacts, sha)
     version = release_version(candidates)
     name_assets(candidates, version)
     if args.check:
-        print(f"Verified all three channels at {sha} ({version})")
+        print(f"Verified all channels at {sha} ({version})")
         return
     repo = "NathanNeurotic/RiptOPL"
     if not publication_allowed(os.environ, sha):
@@ -494,17 +506,21 @@ def main():
     for edition, options, path, sums in candidates:
         tag = options["tag"]
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-        notes = release_notes(options, sha, bundled_neutrino(manifest), version, repo)
+        if edition == LITE:
+            notes = publish_lite.release_notes(sha, version, git, repo)
+        else:
+            notes = release_notes(options, sha, bundled_neutrino(manifest), version, repo)
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".md", delete=False) as stream:
             stream.write(notes)
             notes_path = Path(stream.name)
         try:
             exists = subprocess.run(["gh", "release", "view", tag, "--repo", repo], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
             assets = [str(p) for p in sorted(path.iterdir()) if p.is_file()]
-            upload_verified(repo, tag, sha, options["title"], notes_path, assets, exists)
+            upload_verified(repo, tag, sha, "RiptOPLite" if edition == LITE else options["title"], notes_path, assets, exists)
             update_tag(repo, tag, sha)
             flags = ("--prerelease=false", latest_release_arg(edition))
-            gh("release", "edit", tag, "--repo", repo, "--title", options["title"], "--notes-file", str(notes_path),
+            title = "RiptOPLite" if edition == LITE else options["title"]
+            gh("release", "edit", tag, "--repo", repo, "--title", title, "--notes-file", str(notes_path),
                "--draft=false", *flags)
             if exists:  # a first publication is already dated now
                 refresh_release_date(repo, tag, flags)
