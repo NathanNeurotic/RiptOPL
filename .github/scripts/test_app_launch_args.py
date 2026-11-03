@@ -14,6 +14,15 @@ import hostmap  # noqa: F401  (maps host::ui()/app()/library() calls back to the
 
 
 root = Path(__file__).resolve().parents[2]
+# The UI help must describe the same BDM-only argv[0] conversion the
+# executable handoff regression below tests. Other transports are not massN:.
+base_language = (root / "lng/tmpl/_base.yml").read_text()
+hint = base_language.split("- label: HINT_APP_HANDOFF_PATH\\n  string: ", 1)[1].split("\\n", 1)[0]
+assert "BDM apps receive massN:/..." in hint
+assert "other devices keep their normal launch paths" in hint
+assert "Only the path passed to the app changes" in hint
+assert "(all devices)" not in hint and "/APPS/" not in hint
+
 source = root / "src/sources/appsupport.cpp"
 if len(sys.argv) == 3 and sys.argv[1] == "--baseline":
     source = Path(sys.argv[2])
