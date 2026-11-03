@@ -23,7 +23,7 @@ jobs:
       # h2 stream that gets reset.
       GODEBUG: http2client=0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
       # The ps2build SDK pinned in .github/ps2build-sdk.env (bumped by ps2build-sdk-watch.yml once a week):
