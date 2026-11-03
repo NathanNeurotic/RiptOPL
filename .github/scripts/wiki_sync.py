@@ -101,6 +101,7 @@ SITE_GROUPS = {
 DOCS = {
     "docs/GAME-FORMATS.md": ("Game-Formats-Reference", "Game image formats reference"),
     "docs/README.md": ("Documentation-Index", "Documentation index"),
+    "docs/UI-CAPTURES.md": ("UI-Captures", "Interface screenshots and capture workflow"),
     "docs/TEST-BUILDS.md": ("Test-Builds", "Test builds and diagnostics"),
     "docs/LAUNCH-DIAGNOSTICS.md": ("Launch-Diagnostics", "Launch diagnostics by package, core and transport"),
     "docs/FORK-COLLABORATION.md": ("Fork-Collaboration", "Learning across PS2 loader projects"),
@@ -354,7 +355,8 @@ def link(label, page):
     return f"[{label}]({WIKI}{page})"
 
 
-def home():
+def home(source_sha):
+    media = f"{REPO}/raw/{source_sha}/docs/assets/ui"
     text = f"""> [!NOTE]
 > This is the wiki of **RiptOPL**, the C++ edition built with ps2build, where RiptOPL is developed.
 > The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader).
@@ -376,6 +378,20 @@ and this wiki offer complementary ways to read the project guides. The wiki incl
 the website's task guides and unique repository references. Overlapping source references are linked
 as section indexes, so each subject has one main wiki reading page. Language support
 and translation maintenance are covered under {link('Languages', 'Languages')}.
+
+## See the interface
+
+![RiptOPL Settings overview]({media}/settings-overview.png)
+
+Korium v1.2.0-Beta-4045, captured in RIPPCSX2 at 4:3.
+{link('More screenshots and capture notes', 'UI-Captures')}.
+
+<details>
+<summary>Watch the settings walkthrough (14-second GIF, 2.3 MB)</summary>
+
+![RiptOPL Settings, Game Sources and Interface navigation]({media}/settings-navigation.gif)
+
+</details>
 
 ## Choose a starting point
 
@@ -598,7 +614,7 @@ def main():
         if partners:
             text += "\n**Related guide:** " + " · ".join(link(p.replace("-", " "), p) for p in partners) + ".\n"
         add(page, text, "source", origin, source_sha)
-    add("Home", home(), "wiki", None, None)
+    add("Home", home(source_sha), "wiki", None, None)
     add("_Sidebar", sidebar(), "wiki", None, None)
     add("_Footer", f"{link('Wiki home', 'Home')} · [Documentation website]({SITE}) · [Repository]({REPO}) · {link('Wiki maintenance', 'Wiki-Maintenance')}\n", "wiki", None, None)
     add("Wiki-Maintenance", maintenance(source_sha, site_sha), "wiki", None, None)

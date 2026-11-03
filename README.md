@@ -58,6 +58,24 @@ Review the LICENSE file for further details.<br><br>
 
 > 📖 **Full documentation & guides:** **<https://nathanneurotic.github.io/RiptOPL/>** — searchable setup and reference guides covering storage backends, the Neutrino core, PS1/VCD, the Theme Engine (with worked examples and an annotated sample theme), a full settings reference, and troubleshooting.
 
+## See RiptOPL
+
+![RiptOPL Settings overview, captured from the Korium release in RIPPCSX2](docs/assets/ui/settings-overview.png)
+
+**One settings menu for your game sources, interface, controllers and launch options.**
+Captured from **Korium v1.2.0-Beta-4045** in RIPPCSX2, at the standard 4:3 display ratio.
+[Game Sources](docs/assets/ui/game-sources.png) | [Interface settings](docs/assets/ui/interface-settings.png) ?
+[Capture notes and repeatable workflow](docs/UI-CAPTURES.md).
+
+<details>
+<summary>Watch the 14-second settings walkthrough (animated GIF, 2.3 MB)</summary>
+
+![Navigate from Settings to Game Sources and Interface in RiptOPL](docs/assets/ui/settings-navigation.gif)
+
+[Smaller MP4 version](docs/assets/ui/settings-navigation.mp4) (315 KB).
+
+</details>
+
 ## Releases
 
 This repository builds **Korium**, **RetroAchievements** and **IncebtIon** on the
