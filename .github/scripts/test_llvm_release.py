@@ -115,6 +115,19 @@ class RiptOPLLVMTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "checksum"):
                 llvm.verify(stage, VERSION, SHA)
 
+    def test_release_notes_link_to_llvm_assets_and_escape_untrusted_titles(self):
+        from unittest.mock import patch
+        record = "b" * 8 + "\x00" + "Fix [something] *safely*"
+        with patch.object(llvm, "git", return_value=record):
+            notes = llvm.release_notes(VERSION, SHA)
+        self.assertIn("RiptOPLLVM", notes)
+        self.assertIn("/releases/download/rolling-llvm/RIPTOPL-Korium-" + VERSION + ".zip", notes)
+        self.assertIn("/releases/download/rolling-llvm/RIPTOPL-RetroAchievements-" + VERSION + ".zip", notes)
+        self.assertIn("Fix \\[something\\] \\*safely\\*", notes)
+        for device in DEVICES:
+            self.assertIn(elf_name(device), notes)
+            self.assertIn(elf_name(device, ra=True).replace(".ELF", "-" + VERSION + ".zip"), notes)
+
     def test_llvm_channel_does_not_take_over_latest_or_gcc_tags(self):
         workflow = (ROOT / ".github/workflows/rolling-llvm.yml").read_text()
         publisher = (ROOT / "tools/publish_llvm.py").read_text()
