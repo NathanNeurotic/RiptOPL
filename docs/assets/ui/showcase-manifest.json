@@ -1,0 +1,294 @@
+{
+  "captured_on": "2026-11-03",
+  "edition": "Korium",
+  "release": "v1.2.0-Beta-4045",
+  "source_commit": "22c319f72c046a583917fb73852f7de1d359bd8d",
+  "elf_sha256": "50857f375a3a3ac8671f44737eb28bbfb5f426be4be589fc9ccf52f460ff56ec",
+  "emulator": "RIPPCSX2 2.9.96-rippcsx2.2",
+  "emulator_sha256": "10caa1405cb4b18495ff765a92693a9b26dcc7221335635ade38b4c83e6a6b85",
+  "helper_source": "https://github.com/akilluminati47/RIPPS2/blob/f4679198071ebc6d57461111f5a70ba3e268c2e0/tools/dev/ps2bg.ps1",
+  "scope": "Emulated menu navigation. No physical-console, transport or gameplay acceptance. No BIOS, memory cards or disc images included.",
+  "capture_mode": "Auto NTSC, widescreen UI; native aspect-correct PNG 796x448; SD UI, not native HD",
+  "config": "vmode=0; wide_screen=1; USB FAT32 virtual disk; default built-in views",
+  "library": {
+    "kind": "non-bootable documentation placeholders",
+    "artwork_repository": "https://github.com/xlenore/ps2-covers",
+    "entries": [
+      {
+        "title": "Shadow of the Colossus",
+        "serial": "SCUS-97472",
+        "key": "SCUS_974.72",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97472.jpg",
+        "cover_sha256": "e9845bbb667ba059716d9c4bc6d41af15916ecc967f33a7395e17ae01298e1cb",
+        "display_cover_sha256": "6079e8eeeec66a5c65e25e5d496bf6e539aee8001ac368e213e9d3617b7cb423"
+      },
+      {
+        "title": "God of War II",
+        "serial": "SCUS-97481",
+        "key": "SCUS_974.81",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97481.jpg",
+        "cover_sha256": "84b5e736b9fdeb022af5f2737df287bf82d2cea6f229a050ba11a697347f48b5",
+        "display_cover_sha256": "6a3cc87642b7d785c8516fe031fe5bdeb58debf4c3ada4cf8d17cdbdbf1c45e3"
+      },
+      {
+        "title": "Gran Turismo 4",
+        "serial": "SCUS-97328",
+        "key": "SCUS_973.28",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97328.jpg",
+        "cover_sha256": "972cc1c509049272c2fbcd0a44805daf5460ab7b787f476c216f1f8a7e21bfa3",
+        "display_cover_sha256": "97b91529523d89437cdb9771a60da31eea4be22f3fcb36404a138a0c8404f879"
+      },
+      {
+        "title": "Final Fantasy X",
+        "serial": "SLUS-20312",
+        "key": "SLUS_203.12",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20312.jpg",
+        "cover_sha256": "98facb34d509679f501a454a31c27af09f57862eccd85a5903928112c8b92faf",
+        "display_cover_sha256": "d7c247d8293205f9841e35288714741254414a456b6296825094b60662f135b8"
+      },
+      {
+        "title": "Kingdom Hearts II",
+        "serial": "SLUS-21005",
+        "key": "SLUS_210.05",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21005.jpg",
+        "cover_sha256": "d76d6fed63066cdb15a7b867e16a382ebbd29d76f4f037f8056c6a948b66c108",
+        "display_cover_sha256": "04455506d13317552eae0b4c1fc5cf362250e96e62a39975beaf7ec58b6d3e87"
+      },
+      {
+        "title": "Katamari Damacy",
+        "serial": "SLUS-21008",
+        "key": "SLUS_210.08",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21008.jpg",
+        "cover_sha256": "463cc1bd6c414d72e15d7ec5996e4ceb9a4b4cb785bed82004b8b2d22545f707",
+        "display_cover_sha256": "59b850222f6346e7df117a5151184150ddccbb2b0ea1e3f199871069eabec148"
+      },
+      {
+        "title": "Okami",
+        "serial": "SLUS-21115",
+        "key": "SLUS_211.15",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21115.jpg",
+        "cover_sha256": "9ef47846398ef01f9daa051ac8d1327af52160d80d2befdfdd8302d1a80bb366",
+        "display_cover_sha256": "48dce869cfbed31ae02292cb997f17d81d45cd5384ddb9e8d07e9589aba6aad1"
+      },
+      {
+        "title": "Metal Gear Solid 3 - Snake Eater",
+        "serial": "SLUS-20915",
+        "key": "SLUS_209.15",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20915.jpg",
+        "cover_sha256": "011fe99f803d2ac28ffbd1712d3e13ae0c689a6099ffe546cd4302bb1a1ed838",
+        "display_cover_sha256": "7229c3ef520ed0ce0a9bbbcb556686b65e20c8a884fe5889064ffcdbd0824f11"
+      },
+      {
+        "title": "Silent Hill 2",
+        "serial": "SLUS-20228",
+        "key": "SLUS_202.28",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20228.jpg",
+        "cover_sha256": "a3a663efdc01a25a9b550dddc6da60a4b9c45e2e1e412224c1c405cfa4f59d78",
+        "display_cover_sha256": "bbd1e5faf8046ee3c78d5a808581273a17581178b42eb2fbc155ca46117ecc9e"
+      },
+      {
+        "title": "Persona 4",
+        "serial": "SLUS-21782",
+        "key": "SLUS_217.82",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21782.jpg",
+        "cover_sha256": "ded407eee7bf1934a68ed9f997da266a9a5a047de966b65d956a9051b3946cc0",
+        "display_cover_sha256": "f71f323bae97bbd340d7727480877299d17a5767c97b3b09204742249ded6c88"
+      },
+      {
+        "title": "Ratchet and Clank - Up Your Arsenal",
+        "serial": "SCUS-97353",
+        "key": "SCUS_973.53",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97353.jpg",
+        "cover_sha256": "11ad626176cc01c11262c6fd3acc677ec758052b0a7681b85b2b91cc04eb0244",
+        "display_cover_sha256": "fa5455b470a789e02f7ef18b94e66beb4617889078f22f8c548fc3e40c5ad318"
+      },
+      {
+        "title": "ICO",
+        "serial": "SCUS-97113",
+        "key": "SCUS_971.13",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97113.jpg",
+        "cover_sha256": "7b1e1a3e62d44dc283e56a5e9281e6e609557b82354c16918b2e04433719a80e",
+        "display_cover_sha256": "352b1828d30d7aed943791397197d4cbfb65762206272ec7a5aa7be5fd31d4b5"
+      }
+    ]
+  },
+  "takes": [
+    {
+      "take": "list",
+      "view": "list",
+      "cover_count": 5,
+      "steps": "wait:23,shot,rec,down,wait:1,down,wait:1,down,wait:1,down,wait:1,down,wait:1,down,wait:1,down,wait:1,shot,rec,wait:2",
+      "shots": [
+        "RIPTOPL [_]_RIPTOPL_20261103083158.png",
+        "RIPTOPL [_]_RIPTOPL_20261103083209.png"
+      ],
+      "videos": [
+        "RIPTOPL [_]_RIPTOPL_20261103083200.mp4"
+      ],
+      "exit_code": 0
+    },
+    {
+      "take": "coverflow-three",
+      "view": "coverflow",
+      "cover_count": 3,
+      "steps": "wait:23,right,right,right,right,right,right,right,wait:6,shot,rec,right,wait:1,right,wait:1,right,wait:1,left,wait:1,left,wait:2,shot,rec,wait:2",
+      "shots": [
+        "RIPTOPL [_]_RIPTOPL_20261103083247.png",
+        "RIPTOPL [_]_RIPTOPL_20261103083256.png"
+      ],
+      "videos": [
+        "RIPTOPL [_]_RIPTOPL_20261103083248.mp4"
+      ],
+      "exit_code": 0
+    },
+    {
+      "take": "coverflow-five",
+      "view": "coverflow",
+      "cover_count": 5,
+      "steps": "wait:23,right,right,right,right,right,right,right,wait:6,shot,rec,right,wait:1,right,wait:1,right,wait:1,left,wait:1,left,wait:2,shot,rec,wait:2",
+      "shots": [
+        "RIPTOPL [_]_RIPTOPL_20261103083333.png",
+        "RIPTOPL [_]_RIPTOPL_20261103083343.png"
+      ],
+      "videos": [
+        "RIPTOPL [_]_RIPTOPL_20261103083335.mp4"
+      ],
+      "exit_code": 0
+    },
+    {
+      "take": "psbbn-flow",
+      "view": "psbbn",
+      "cover_count": 5,
+      "steps": "wait:23,right,right,right,right,right,right,right,wait:6,shot,rec,right,wait:1,right,wait:1,left,wait:1,left,wait:2,shot,rec,wait:2",
+      "shots": [
+        "RIPTOPL [_]_RIPTOPL_20261103083420.png",
+        "RIPTOPL [_]_RIPTOPL_20261103083428.png"
+      ],
+      "videos": [
+        "RIPTOPL [_]_RIPTOPL_20261103083422.mp4"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "processing": "PNGs unmodified. Four actual browsing takes, six seconds each, joined with straight cuts. Silent H.264 960x540 20fps; GIF 640x360 8fps 128 colors. Video scaling does not add native UI detail.",
+  "metadata_sources": [
+    "https://www.capcom.sg/licensing/detail_08.html",
+    "https://www.bunka.go.jp/j-mediaarts-festival/en/award/single/okami/index-2.html"
+  ],
+  "excluded": "Grid capture has a visible edge artifact. Completed Info pages are recorded separately in info-manifest.json.",
+  "assets": [
+    {
+      "file": "cheat-settings.png",
+      "bytes": 88390,
+      "sha256": "bb8759e4c9d373cf49538930f60f4ad52c3aec94b86ace280fc1da2e1ce5cc6f"
+    },
+    {
+      "file": "controller-emulation.png",
+      "bytes": 84958,
+      "sha256": "74c61e679f6365f16f435dc7469267633ac11a47ac18ea93c0b88e5542a15ce8"
+    },
+    {
+      "file": "controller-macros.png",
+      "bytes": 97999,
+      "sha256": "af37ffbf6d91a26e306e70debbe2457acc672d6b8e3a80d3c4437a809dec5312"
+    },
+    {
+      "file": "coverflow-five.png",
+      "bytes": 317281,
+      "sha256": "56b071fdde5a24966704dd8073db655565d56e78d9b8651de8508ec98b616444"
+    },
+    {
+      "file": "coverflow-three.png",
+      "bytes": 392548,
+      "sha256": "1ac1a88e5faf08f001bc959d29ee30ffcb73bd933dad6096f7f1638d8452e9f7"
+    },
+    {
+      "file": "game-options.png",
+      "bytes": 97923,
+      "sha256": "9b3aba1d58d05ed742d347628b177820b18e69e4f9c3999900ad682d5616f943"
+    },
+    {
+      "file": "game-settings.png",
+      "bytes": 123634,
+      "sha256": "43203eef884dddcdedd4e171c84d84f0dfb10e12d4913de855cf0935b3935ab9"
+    },
+    {
+      "file": "gsm-settings.png",
+      "bytes": 84575,
+      "sha256": "b26bee3e48a0bd8c5304f83c34405b88bccf21231a60dc445c32bd5a691b5f56"
+    },
+    {
+      "file": "library-tour.gif",
+      "bytes": 5140259,
+      "sha256": "761592b12b278d9283ab16024bf4c4e0182ea676b4440d0abcdc25ce7226bb81"
+    },
+    {
+      "file": "library-tour.mp4",
+      "bytes": 1831481,
+      "sha256": "f40ffa5461093f80fdf879eb67760cb163ba022f64cb7815fff0f85124ca121e"
+    },
+    {
+      "file": "list.png",
+      "bytes": 301890,
+      "sha256": "9644e40039a0852944bf6605ac87928f5c6894c4d5a53131a3be28e68fb33e8e"
+    },
+    {
+      "file": "psbbn-flow.png",
+      "bytes": 184270,
+      "sha256": "ae13784da1070003bfee0bf81c1e3593f104a88da39ec0c9624a7a65ec4048bd"
+    },
+    {
+      "file": "vmc-settings.png",
+      "bytes": 87665,
+      "sha256": "679969e9be19b99ae739fe213abf20b8bfdfab16943715f7463395c3dfb5cc47"
+    }
+  ],
+  "additional_takes": {
+    "game-options.log": [
+      "press right",
+      "press right",
+      "press right",
+      "press right",
+      "press right",
+      "press right",
+      "press right",
+      "press triangle",
+      "shot RIPTOPL [_]_RIPTOPL_20261103083922.png (97923 bytes)",
+      "press down",
+      "press cross",
+      "shot RIPTOPL [_]_RIPTOPL_20261103083928.png (88390 bytes)",
+      "press circle",
+      "press down",
+      "press down",
+      "press cross",
+      "shot RIPTOPL [_]_RIPTOPL_20261103083938.png (87665 bytes)",
+      "press circle",
+      "press down",
+      "press cross",
+      "shot RIPTOPL [_]_RIPTOPL_20261103083947.png (84958 bytes)"
+    ],
+    "game-settings.log": [
+      "press right",
+      "press right",
+      "press right",
+      "press right",
+      "press right",
+      "press right",
+      "press right",
+      "press triangle",
+      "press cross",
+      "shot RIPTOPL [_]_RIPTOPL_20261103084040.png (123634 bytes)",
+      "press circle",
+      "press down",
+      "press down",
+      "press cross",
+      "shot RIPTOPL [_]_RIPTOPL_20261103084049.png (84575 bytes)",
+      "press circle",
+      "press down",
+      "press down",
+      "press down",
+      "press cross",
+      "shot RIPTOPL [_]_RIPTOPL_20261103084057.png (97999 bytes)"
+    ]
+  }
+}

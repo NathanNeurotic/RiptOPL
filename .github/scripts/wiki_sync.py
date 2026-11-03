@@ -101,6 +101,7 @@ SITE_GROUPS = {
 DOCS = {
     "docs/GAME-FORMATS.md": ("Game-Formats-Reference", "Game image formats reference"),
     "docs/README.md": ("Documentation-Index", "Documentation index"),
+    "docs/UI-CAPTURES.md": ("UI-Captures", "Interface screenshots and capture workflow"),
     "docs/TEST-BUILDS.md": ("Test-Builds", "Test builds and diagnostics"),
     "docs/LAUNCH-DIAGNOSTICS.md": ("Launch-Diagnostics", "Launch diagnostics by package, core and transport"),
     "docs/FORK-COLLABORATION.md": ("Fork-Collaboration", "Learning across PS2 loader projects"),
@@ -252,6 +253,11 @@ class Converter(MarkdownConverter):
     def convert_summary(self, el, text, parent_tags):
         return "\n\n**" + text.strip() + "**\n\n"
 
+    def convert_video(self, el, text, parent_tags):
+        # The wiki cannot play HTML video. Preserve its readable fallback link; markdownify's
+        # default synthesizes a poster/link combination that changes the visible page text.
+        return "\n\n" + text.strip() + "\n\n"
+
     def convert_div(self, el, text, parent_tags):
         if "h" in el.get("class", []):
             return "\n\n**" + text.strip() + "**\n\n"
@@ -354,7 +360,8 @@ def link(label, page):
     return f"[{label}]({WIKI}{page})"
 
 
-def home():
+def home(source_sha):
+    media = f"{REPO}/raw/{source_sha}/docs/assets/ui"
     text = f"""> [!NOTE]
 > This is the wiki of **RiptOPL**, the C++ edition built with ps2build, where RiptOPL is developed.
 > The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader).
@@ -376,6 +383,23 @@ and this wiki offer complementary ways to read the project guides. The wiki incl
 the website's task guides and unique repository references. Overlapping source references are linked
 as section indexes, so each subject has one main wiki reading page. Language support
 and translation maintenance are covered under {link('Languages', 'Languages')}.
+
+## See the interface
+
+![RiptOPL five-cover sample library]({media}/coverflow-five.png)
+
+Korium v1.2.0-Beta-4045, captured in RIPPCSX2 with a widescreen sample library.
+The 12 sample titles are non-bootable placeholders with matching cover artwork.
+{link('More screenshots and capture notes', 'UI-Captures')}.
+
+![Game information with matching screenshot artwork]({media}/info-okami.png)
+
+<details>
+<summary>Watch the library views in motion (24-second GIF)</summary>
+
+![List, three-cover, five-cover and PSBBN Flow browsing]({media}/library-tour.gif)
+
+</details>
 
 ## Choose a starting point
 
@@ -598,7 +622,7 @@ def main():
         if partners:
             text += "\n**Related guide:** " + " · ".join(link(p.replace("-", " "), p) for p in partners) + ".\n"
         add(page, text, "source", origin, source_sha)
-    add("Home", home(), "wiki", None, None)
+    add("Home", home(source_sha), "wiki", None, None)
     add("_Sidebar", sidebar(), "wiki", None, None)
     add("_Footer", f"{link('Wiki home', 'Home')} · [Documentation website]({SITE}) · [Repository]({REPO}) · {link('Wiki maintenance', 'Wiki-Maintenance')}\n", "wiki", None, None)
     add("Wiki-Maintenance", maintenance(source_sha, site_sha), "wiki", None, None)
