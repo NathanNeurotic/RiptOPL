@@ -336,7 +336,7 @@ jobs:
           exit $status
       - name: Upload the built driver
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: popstarter-usbhdfsd-irx-ilink
           path: modules/bdmassault/ilink_bd_assault/ilink_bd_assault.irx
@@ -374,7 +374,7 @@ jobs:
         run: sh tools/ps2build_sdk.sh --resolve "$RUNNER_TEMP/ps2build-sdk.env"
       - name: Restore the ps2build SDK
         id: sdk-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
           key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
@@ -390,7 +390,7 @@ jobs:
         run: tools/install_ps2build.sh
       - name: Cache the ps2build SDK
         if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
           key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
@@ -426,7 +426,7 @@ jobs:
 
       - name: Upload ELF
         if: ${{ success() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         # The upload is a debugging convenience, not the gate: a full artifact-storage quota
         # must not turn a green compile red.
         continue-on-error: true
@@ -438,4 +438,3 @@ jobs:
             LICENSE-LIBSMB2.txt
             CREDITS
           if-no-files-found: error
-          retention-days: 14

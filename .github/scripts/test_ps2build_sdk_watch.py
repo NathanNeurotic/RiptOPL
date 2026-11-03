@@ -376,7 +376,7 @@ class WorkflowTests(unittest.TestCase):
         def field(step, name):
             return [line.strip() for line in step.splitlines() if line.strip().startswith(name + ":")]
 
-        self.assertEqual(field(lookup, "uses"), ["uses: actions/cache/restore@v4"])
+        self.assertEqual(field(lookup, "uses"), ["uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0"])
         self.assertEqual(field(lookup, "lookup-only"), ["lookup-only: true"])
         self.assertEqual(field(lookup, "restore-keys"), [])  # the exact key only
         self.assertEqual(field(lookup, "if"), [])  # after a cache hit too, when nothing was saved
