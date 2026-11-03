@@ -19,7 +19,7 @@ for state in ('ps1Scanned', 'ps1ScanFailed', 'ps1ScanRetries'):
     assert f'gMmceSupport.{state} = 0;' in mmce_init
 
 # Exercise the caller as well as the merge: a positive count can still need recovery.
-start = mmce.index('        int r = ps1FillGameList(ps1Root, &gMmceSupport.ps1Games);')
+start = mmce.index('        int r = ps1FillGameList(ps1Root, &gMmceSupport.ps1Games, gMmceSupport.ps1GameCount);')
 publish = mmce[start:mmce.index('        result += gMmceSupport.ps1GameCount;', start)]
 start = mmce.index('        if (!gMmceSupport.ps1Scanned')
 retry = mmce[start:mmce.index('        if (host::library().viewActive', start)]
@@ -32,19 +32,22 @@ program = r'''
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-typedef struct { int tag; char name[64]; } base_game_info_t; /* name: the PS1 Duplicates twin check reads it */
+typedef struct { int tag; char name[64]; char extension[8]; } base_game_info_t;
+#define CUE_ROW_EXTENSION ".CUE"
 enum { PS1_DUP_BOTH = 0, PS1_DUP_EMBER, PS1_DUP_POPSTARTER };
 static int gPs1Duplicates;
 static int gAutosort, vc, cc, oom;
 #define LOG(...) ((void)0)
 static int ps1RowCmp(const void *a,const void *b) { (void)a;(void)b;return 0; }
 static void *memalign(int a,size_t n) { (void)a;return oom ? NULL : malloc(n); }
-static int half(int count,base_game_info_t **out) {
-    *out=count>0 ? (base_game_info_t *)calloc(count,sizeof(**out)) : NULL; return count;
+static int half(int count,base_game_info_t **out,int tag,const char *ext) {
+    *out=count>0 ? (base_game_info_t *)calloc(count,sizeof(**out)) : NULL;
+    for (int i=0;i<count;i++) { (*out)[i].tag=tag; snprintf((*out)[i].name,sizeof((*out)[i].name),"game %d",tag); snprintf((*out)[i].extension,sizeof((*out)[i].extension),"%s",ext); }
+    return count;
 }
-static int vcdFillGameList(const char *p,base_game_info_t **out) { (void)p;return half(vc,out); }
-static int cueFillGameListUnsorted(const char *p,base_game_info_t **out) { (void)p;return half(cc,out); }
-''' + cue[cue.index('static int ps1ScanIncomplete;'):] + '''
+static int vcdFillGameList(const char *p,base_game_info_t **out) { (void)p;return half(vc,out,11,".VCD"); }
+static int cueFillGameListUnsorted(const char *p,base_game_info_t **out) { (void)p;return half(cc,out,22,".CUE"); }
+''' + cue[cue.index('int cueIsCueEntry('):cue.index('\n}', cue.index('int cueIsCueEntry(')) + 2] + '\n' + cue[cue.index('static int ps1ScanIncomplete;'):] + '''
 struct {
     base_game_info_t *ps1Games;
     int ps1GameCount, ps1Scanned, ps1ScanFailed, ps1ScanRetries;
@@ -66,7 +69,7 @@ static int retryMmce(void) {
 int main(void) {
     for(vc=-1;vc<=1;vc++) for(cc=-1;cc<=1;cc++) {
         base_game_info_t *rows=(base_game_info_t *)malloc(sizeof(*rows)), *old=rows; rows->tag=123;
-        int got=ps1FillGameList("mass0:/",&rows);
+        int got=ps1FillGameList("mass0:/",&rows,0);
         assert(ps1GameListNeedsRetry()==(vc<0 || cc<0));
         if((vc<0 && cc<=0)||(cc<0 && vc<=0)) assert(got==-1 && rows==old && rows->tag==123);
         else if(vc==0 && cc==0) assert(got==0 && rows==NULL);
@@ -75,7 +78,7 @@ int main(void) {
     }
     base_game_info_t *rows=(base_game_info_t *)malloc(sizeof(*rows)), *old=rows;
     vc=cc=1;oom=1;
-    assert(ps1FillGameList("mass0:/",&rows)==-1 && rows==old);free(rows);
+    assert(ps1FillGameList("mass0:/",&rows,0)==-1 && rows==old);free(rows);
     puts("PASS: failed/empty merge retains old rows; nonempty half publishes; OOM preserves ownership");
 
     oom=0;
@@ -83,13 +86,16 @@ int main(void) {
     assert(gMmceSupport.ps1ScanRetries==0);
     vc=1; cc=-1; publishMmce();
     assert(gMmceSupport.ps1GameCount==1 && retryMmce());
-    vc=cc=1; publishMmce(); // the automatic retry restores the Ember half
+    vc=-1; cc=1; publishMmce(); // opposite core fails, but POPS from prior pass remains visible
+    assert(gMmceSupport.ps1GameCount==2 && gMmceSupport.ps1ScanFailed);
+    assert(gMmceSupport.ps1Games[0].tag==11 && gMmceSupport.ps1Games[1].tag==22);
+    vc=cc=1; publishMmce(); // the automatic retry restores a complete scan
     assert(gMmceSupport.ps1GameCount==2 && !gMmceSupport.ps1ScanFailed);
     assert(gMmceSupport.ps1ScanRetries==0 && !retryMmce());
     for(int failedCore=0;failedCore<2;failedCore++) {
         vc=failedCore ? -1 : 1; cc=failedCore ? 1 : -1;
         publishMmce();
-        assert(gMmceSupport.ps1GameCount==1 && gMmceSupport.ps1ScanFailed);
+        assert(gMmceSupport.ps1GameCount==2 && gMmceSupport.ps1ScanFailed);
         for(int i=0;i<MMCE_VCD_SCAN_RETRY_MAX;i++) {
             assert(retryMmce());
             assert(gMmceSupport.ps1ScanRetries==i+1);
@@ -100,6 +106,11 @@ int main(void) {
         assert(gMmceSupport.ps1GameCount==2 && !gMmceSupport.ps1ScanFailed);
         assert(gMmceSupport.ps1ScanRetries==0 && !retryMmce());
     }
+    // A real empty POPS scan replaces POPS, while a failed Ember scan keeps Ember only.
+    vc=0; cc=-1; publishMmce();
+    assert(gMmceSupport.ps1GameCount==1 && gMmceSupport.ps1Games[0].tag==22);
+    vc=cc=1; publishMmce(); // a complete scan restores both cores
+    assert(gMmceSupport.ps1GameCount==2);
     base_game_info_t *lastGood=gMmceSupport.ps1Games;
     vc=cc=-1; publishMmce();
     assert(gMmceSupport.ps1Games==lastGood && gMmceSupport.ps1GameCount==2);
