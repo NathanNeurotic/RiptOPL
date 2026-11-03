@@ -1,0 +1,43 @@
+{
+  "captured_on": "2026-11-03",
+  "edition": "Korium",
+  "release": "v1.2.0-Beta-4045",
+  "source_commit": "22c319f72c046a583917fb73852f7de1d359bd8d",
+  "elf_sha256": "50857f375a3a3ac8671f44737eb28bbfb5f426be4be589fc9ccf52f460ff56ec",
+  "emulator": "RIPPCSX2 2.9.96-rippcsx2.2",
+  "emulator_sha256": "10caa1405cb4b18495ff765a92693a9b26dcc7221335635ade38b4c83e6a6b85",
+  "capture_mode": "Auto NTSC, 4:3, native 640x480 emulator output",
+  "config": "vmode=0; wide_screen=0; other choices are lab configuration, not recommended defaults",
+  "input_steps": "wait:16,start,wait:1,down,down,cross,wait:2,shot,rec,wait:1,cross,wait:2,shot,wait:1,circle,wait:1,down,down,down,down,cross,wait:2,shot,wait:1,circle,wait:1,rec,wait:3",
+  "helper_source": "https://github.com/akilluminati47/RIPPS2/blob/f4679198071ebc6d57461111f5a70ba3e268c2e0/tools/dev/ps2bg.ps1",
+  "processing": "PNG frames unmodified; video 14.45 seconds, silent H.264 20fps at 640x480; GIF same interval at 480x360, 5fps/64 colors",
+  "scope": "Emulated menu navigation. No physical-console, transport or gameplay acceptance. No BIOS, memory cards or disc images included.",
+  "assets": [
+    {
+      "file": "game-sources.png",
+      "bytes": 125220,
+      "sha256": "d8df9f17b906f57a7d51f453f91e77f07fbfd069880e01c3e3227adc8810ef0e"
+    },
+    {
+      "file": "interface-settings.png",
+      "bytes": 146514,
+      "sha256": "c805524063666505bc54fef31739b6d6fc119176b58f9d324c1b9a619948dc7e"
+    },
+    {
+      "file": "settings-navigation.gif",
+      "bytes": 2262917,
+      "sha256": "b2305caf3f73f3446e7d9100792feb50653dfb23c8fb0730be0b54936ec00b35"
+    },
+    {
+      "file": "settings-navigation.mp4",
+      "bytes": 314882,
+      "sha256": "83f29d4d72ff62b47f8c467435ca5245858c501253e02d48e89572a75002e0b2"
+    },
+    {
+      "file": "settings-overview.png",
+      "bytes": 90049,
+      "sha256": "70bc70d8a8c9db7e11e60ad65d8b413d86aa7eff6fdc8359776fd157e4a5558d"
+    }
+  ],
+  "video_duration_seconds": 14.45
+}
