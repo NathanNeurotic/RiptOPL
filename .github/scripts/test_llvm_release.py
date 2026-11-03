@@ -11,6 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 import publish_llvm as llvm
+import check_llvm_purity as purity
 from build_configuration import CONFIGURATIONS
 from lite_devices import DEVICES, elf_name
 
@@ -127,6 +128,22 @@ class RiptOPLLVMTests(unittest.TestCase):
         for device in DEVICES:
             self.assertIn(elf_name(device), notes)
             self.assertIn(elf_name(device, ra=True).replace(".ELF", "-" + VERSION + ".zip"), notes)
+
+    def test_compiler_producer_gate_rejects_mixed_linkage(self):
+        from unittest.mock import patch
+        clang = "String dump of section .comment:\n[ 0] clang version 20.0.0\n"
+        with patch.object(purity.subprocess, "check_output", return_value=clang):
+            purity.check("llvm-readobj", "loader.unstripped.elf")
+        with patch.object(purity.subprocess, "check_output",
+                          return_value=clang + "[ 2] GCC: (GNU) 14.1\n"):
+            with self.assertRaisesRegex(ValueError, "GCC objects"):
+                purity.check("llvm-readobj", "loader.unstripped.elf")
+        with patch.object(purity.subprocess, "check_output", return_value=""):
+            with self.assertRaisesRegex(ValueError, "missing Clang"):
+                purity.check("llvm-readobj", "loader.unstripped.elf")
+        workflow = (ROOT / ".github/workflows/rolling-llvm.yml").read_text()
+        self.assertIn("tools/check_llvm_purity.py", workflow)
+        self.assertIn("riptopl.unstripped.elf", workflow)
 
     def test_llvm_channel_does_not_take_over_latest_or_gcc_tags(self):
         workflow = (ROOT / ".github/workflows/rolling-llvm.yml").read_text()
