@@ -126,6 +126,7 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_CFG_TITLES, &gCfgTitlesInLists, 0),
     intSetting(CONFIG_OPL_PS1_DUPLICATES, &gPs1Duplicates, PS1_DUP_BOTH), // both rows, as before the setting existed
     intSetting(CONFIG_OPL_GAME_TYPE_LABELS, &gGameTypeLabels, 0),
+    intSetting(CONFIG_OPL_LIST_CFG_TEXT, &gListCfgText, LIST_CFG_TEXT_THEME), // the theme's, as before the setting existed
     strSetting(CONFIG_OPL_POPSTARTER_PATH, gPopstarterPath),
     intSetting(CONFIG_OPL_BDMA_SOURCE, &gBdmaSource, VCD_BDMA_SRC_USB),
     intSetting(CONFIG_OPL_BDMA_APPLY, &gBdmaApplyOnLaunch, 1),               // auto-equip on launch by default
@@ -176,6 +177,7 @@ constexpr Setting kSettings[] = {
     strSetting(CONFIG_OPL_DEFAULT_BGM_PATH, gDefaultBGMPath),
     intSetting(CONFIG_OPL_XSENSITIVITY, &gXSensitivity, 1),
     intSetting(CONFIG_OPL_YSENSITIVITY, &gYSensitivity, 1),
+    intSetting(CONFIG_OPL_APP_HANDOFF_PATH, &gAppHandoffPath, APP_HANDOFF_LEGACY), // mass<N>: in argv[0], as always; Typed is opt-in
 };
 
 } // namespace

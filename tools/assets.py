@@ -6,7 +6,8 @@
     tools/assets.py lang       .lng files, src/core/lang_internal.c, include/lang_autogen.h
     tools/assets.py embed      asm/*.c from gfx/audio/misc/font/IOPRP.img via bin2c
     tools/assets.py version    asm/opl_version.h (force-included by ps2.yaml)
-    tools/assets.py release    zip RIPTOPL-<ver>.ZIP from the packed ELF (after `ps2build build`)
+    tools/assets.py release    zip RIPTOPL-<ver>.ZIP from the packed ELF (after `ps2build build`),
+                               with the licences, LICENSE-LIBSMB2.txt included
     tools/assets.py version-string   print OPL_VERSION
 
 Environment: REVISION, RELEASE_CHANNEL, LOCALVERSION (same meaning as the old Makefile),
@@ -19,6 +20,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -216,6 +218,9 @@ def version():
 
 
 # ------------------------------------------------------------------ release
+CHANGELOG_HEADER = "/tmp/DETAILED_CHANGELOG"  # where tools/make_changelog.sh writes its header first
+
+
 def release():
     v = opl_version()
     packed = os.path.join("build", "bin", "riptopl-packed.elf")
@@ -223,10 +228,25 @@ def release():
         sys.exit(f"{packed} missing: run `ps2build build` first")
     elf = f"RIPTOPL-{v}.ELF"
     shutil.copyfile(packed, elf)
+    # In a full clone make_changelog.sh writes DETAILED_CHANGELOG and deletes its header file. With
+    # no .git directory (a git worktree, a source archive) or a short history (a shallow clone, where
+    # its git log fails) it stops after the header, which is then the whole changelog. A
+    # DETAILED_CHANGELOG left by an earlier run must not stand in for either.
+    if os.path.exists("DETAILED_CHANGELOG"):
+        os.remove("DETAILED_CHANGELOG")
     run("sh", "tools/make_changelog.sh")
-    shutil.copyfile("/tmp/DETAILED_CHANGELOG", "DETAILED_CHANGELOG")
-    run("zip", "-r", f"RIPTOPL-{v}.ZIP", elf, "DETAILED_CHANGELOG", "CREDITS", "LICENSE", "README.md")
-    print(f"Package Complete: RIPTOPL-{v}.ZIP")
+    if os.path.isfile(CHANGELOG_HEADER):
+        shutil.copyfile(CHANGELOG_HEADER, "DETAILED_CHANGELOG")
+    elif not os.path.isfile("DETAILED_CHANGELOG"):
+        sys.exit("tools/make_changelog.sh wrote no DETAILED_CHANGELOG")
+    package = f"RIPTOPL-{v}.ZIP"
+    run("zip", "-r", package, elf, "DETAILED_CHANGELOG", "CREDITS", "LICENSE", "README.md")
+    # The ELF embeds smb2man over libsmb2 (LGPL-2.1): its licence goes with it, as in every release.
+    with tempfile.TemporaryDirectory() as directory:
+        licence = os.path.join(directory, "LICENSE-LIBSMB2.txt")
+        shutil.copyfile(os.path.join("modules", "network", "smb2man", "libsmb2", "LICENCE-LGPL-2.1.txt"), licence)
+        run("zip", "-j", package, licence)
+    print(f"Package Complete: {package}")
 
 
 COMMANDS = {"fetch": fetch, "lang": lang, "embed": embed, "version": version, "release": release,

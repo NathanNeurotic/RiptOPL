@@ -173,7 +173,7 @@ int Gui::showKeyboard(char *value, int maxLength)
     char tmp[maxLength];
     strncpy(tmp, value, maxLength);
 
-    int result = diaShowKeyb(tmp, maxLength, 0, NULL);
+    int result = diaShowKeyb(tmp, maxLength, 0, -1);
     if (result) {
         strncpy(value, tmp, maxLength);
         value[maxLength - 1] = '\0';

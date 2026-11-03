@@ -206,7 +206,8 @@ int main() {
 ''')
 
 notify = read("src/ui/guinotify.cpp")
-run("fav_toast", r'''
+toast_bytes = int(re.search(r"char toast_\[(\d+)\]", read("include/guinotify.h")).group(1))
+run("fav_toast", "#define TOAST_SIZE %d\n" % toast_bytes + r'''
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -218,8 +219,9 @@ static uint32_t tick;
 class Notifications {
 public:
     void setToast(const char*); void drawToast();
-    char toast_[128] = {0}; uint32_t toastStart_ = 0;
-    static void render(const char *text, int y) { assert(text[0] && y == 10); ++draws; }
+    char toast_[TOAST_SIZE] = {0}; uint32_t toastStart_ = 0;
+    // The toast is drawn alone at the top: nothing stacks below it, so no y advance.
+    static int render(const char *text, int y, int yadd) { assert(text[0] && y == 10 && yadd == 0); ++draws; return y + yadd; }
     static int draws;
 };
 int Notifications::draws;
@@ -232,8 +234,8 @@ int main() {
         tick = start + 2999999; n.drawToast(); assert(n.draws == before + 1);
         tick = start + 3000000; n.drawToast(); assert(n.draws == before + 1 && !n.toast_[0]);
     }
-    char longText[300]; memset(longText, 'x', sizeof(longText) - 1); longText[299] = 0;
-    n.setToast(longText); assert(strlen(n.toast_) == 127);
+    char longText[TOAST_SIZE + 100]; memset(longText, 'x', sizeof(longText) - 1); longText[sizeof(longText) - 1] = 0;
+    n.setToast(longText); assert(strlen(n.toast_) == TOAST_SIZE - 1);
     n.setToast(nullptr); n.drawToast(); assert(!n.toast_[0]);
 }
 ''')

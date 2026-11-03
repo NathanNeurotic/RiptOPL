@@ -33,6 +33,7 @@
 #endif
 #include "include/config.h"
 #include "include/util.h"
+#include "include/riptlite.h"
 #include "include/extern_irx.h"
 
 #include "include/supportbase.h"
@@ -200,6 +201,7 @@ int gAppsDisplay;
 int gCfgTitlesInLists;
 int gPs1Duplicates; // PS1_DUP_*: a game both as a POPSTARTER VCD and an Ember image shows once or twice
 int gGameTypeLabels;
+int gListCfgText; // LIST_CFG_TEXT_*: the CFG Title and Description on list pages, the theme's way by default
 int gEmberDisplay;
 int gEmberTiming;
 int gEmberDither;
@@ -291,6 +293,7 @@ char gExitPath[256];
 char gCustomSettingsPath[64];
 int gEnableDebug;
 int gPS2Logo;
+int gAppHandoffPath; // the device spelling ELF apps are handed; the mounts themselves never change
 int gDefaultDevice;
 int gEnableWrite;
 char gBDMPrefix[32];
@@ -675,7 +678,12 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
 {
     int viewTransition;
 
+    // This runs on the IO thread while the GUI thread draws the menu through the same rows under
+    // guiLock (guiStartFrame..guiEndFrame). The queued list operations change those rows, so they run
+    // under the lock here too; menuRowBeginEdit already does the same (YAOPL 4c713a3).
+    guiLock();
     guiExecDeferredOps();
+    guiUnlock();
 
     // Remember where the cursor was, so a rebuild does not dump the user back at the top of
     // the list (#589). Keyed on the game's startup id, not its row index: a rescan is exactly
@@ -890,7 +898,9 @@ void menuDeferredUpdate(void *data)
         // A device can reject a scan before it consumes the view-dirty flag (for example, MMCE with
         // no card inserted). Still retire the old rows and commit the retained destination so input
         // does not remain locked and the next successful device scan uses the user's chosen view.
+        guiLock(); // IO thread: see updateMenuFromGameList
         guiExecDeferredOps();
+        guiUnlock();
         clearMenuGameList(mod);
         libViewCommitPending(mod->support->mode);
         libViewFinishPending(mod->support->mode);
@@ -1772,10 +1782,11 @@ void miniInit(int mode)
         // normally overrides from the saved config) had nothing to override it here: configReadMulti
         // runs AFTER bdmLoadModules(). bdmLoadBlockDeviceModules gates the USB load on the flag, so
         // an argv autolaunch from a USB stick loaded no USB block driver at all.
-        gEnableUSB = 1;
-        gEnableILK = 1; // iLink will break pcsx2 however.
-        gEnableMX4SIO = 1;
-        gEnableBdmHDD = 1;
+        // A RiptOPLite build loads only the transport it carries (include/riptlite.h).
+        gEnableUSB = LITE_HAS_USB;
+        gEnableILK = LITE_HAS_ILINK; // iLink will break pcsx2 however.
+        gEnableMX4SIO = LITE_HAS_MX4SIO;
+        gEnableBdmHDD = LITE_HAS_BDMHDD;
         bdmLoadModules();
     } else if (mode == HDD_MODE) {
         hddLoadModules();
