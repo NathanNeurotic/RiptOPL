@@ -193,19 +193,27 @@ no BIOS, memory-card image, game image or account information.
 
 1. Prepare an isolated portable RIPPCSX2 lab with its own settings, card and output
    folders. Keep it separate from an everyday emulator installation.
-2. Put the edition's released `RIPTOPL.ELF` in the lab's program directory. This set
-   uses `vmode=0` and `wide_screen=0` in that directory's `settings_riptopl.cfg`.
+2. Put the edition's released `RIPTOPL.ELF` in the lab's program directory. In that
+   directory's `settings_riptopl.cfg`, use `vmode=0` and `wide_screen=0` for the 4:3
+   Settings captures; use `vmode=0` and `wide_screen=1` for the 16:9 library,
+   Coverflow, PSBBN Flow, per-game and Info captures. These are lab settings, not
+   recommended defaults.
 3. Bind the pad keys expected by the [RIPPS2 background driver](https://github.com/akilluminati47/RIPPS2/blob/f4679198071ebc6d57461111f5a70ba3e268c2e0/tools/dev/ps2bg.ps1).
    The pinned driver hard-codes `$lab` to `B:\Emulation\PlayStation\PCSX2\ripps2-lab`.
    Update `$lab` in your copy to your isolated lab directory; the driver expects
-   `pcsx2-qt.exe` there. Bind Screenshot to F8 and ToggleVideoCapture to F11. Select the emulator's
-   internal screenshot resolution and 640 x 480 video output.
+   `pcsx2-qt.exe` there. Bind Screenshot to F8 and ToggleVideoCapture to F11.
+   Capture the native emulator output: 640 x 480 for 4:3 Settings or 796 x 448 for
+   16:9 views. The Settings MP4 remains 640 x 480; the widescreen library and Info
+   MP4s are scaled to 960 x 540 for delivery, not captured as native HD.
 4. Run the sequence recorded in the manifest. Use Windows-native backslash paths
    for the ELF on Windows. F8 captures the emulator output directly; F11 records it.
 5. Inspect every screenshot and the full clip. Keep PNG frames unchanged; trim and
    encode the clip for web delivery. Refresh media byte sizes and SHA-256 hashes
    in the corresponding manifest after every capture refresh, even when the build
-   is unchanged. Update the build identity and binary hashes when the build changes.
+   is unchanged. Refresh `release`, `source_commit` and `elf_sha256` when the
+   RiptOPL build changes; independently refresh `emulator` and `emulator_sha256`
+   whenever the RIPPCSX2 binary changes. Do not assume a matching loader build
+   means the emulator is unchanged.
 6. Keep `docs/assets/ui/` and the site's `assets/ui/` copies identical. Update captions,
    then regenerate the site's search index. The wiki home and repository guide use
    the same captures through the wiki builder.
