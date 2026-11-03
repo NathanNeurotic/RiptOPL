@@ -1057,7 +1057,7 @@ int MmceSource::update(item_list_t *itemList)
         // ONE list, BOTH cores -- POPS/*.VCD unioned with EMBER/games/*, both at the card root.
         char ps1Root[sizeof(gMmceSupport.prefix)];
         gMmceSupport.getDeviceRoot(ps1Root, sizeof(ps1Root));
-        int r = ps1FillGameList(ps1Root, &gMmceSupport.ps1Games);
+        int r = ps1FillGameList(ps1Root, &gMmceSupport.ps1Games, gMmceSupport.ps1GameCount);
         if (r >= 0) { // r < 0: transient scan failure (contended bus) -> keep the last-good VCD list
             gMmceSupport.ps1Scanned = 1;
             gMmceSupport.ps1GameCount = r;
