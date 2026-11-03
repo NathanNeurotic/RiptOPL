@@ -255,7 +255,7 @@ if update:
 # A remembered PS1 page gets its first scan from UDPFS itself (as MMCE and BDM do), NOT from marking
 # every restored page dirty in libview -- that forced a scan of every empty BDM slot at boot and raised
 # "Could not open the CD or DVD folder in (error 5)" on every boot (zackcage6, Beta-3335).
-if needs and "if (libListViewActive(itemList) == LIB_VIEW_PS1)\n        return !udpfsPs1Scanned;" not in needs:
+if needs and "if (libListViewActive(itemList) == LIB_VIEW_PS1)\n        return !udpfsPs1Scanned && udpfsPs1ScanRetries < UDPFS_PS1_SCAN_RETRY_MAX;" not in needs:
     failures.append("udpfsNeedsUpdate must give a remembered PS1 page its first scan")
 if init and "udpfsPs1Scanned = 0;" not in init:
     failures.append("udpfsInit must re-arm the PS1 first scan")

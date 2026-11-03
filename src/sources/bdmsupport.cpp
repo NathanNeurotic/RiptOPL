@@ -1767,6 +1767,7 @@ int BdmSource::needsUpdate(item_list_t *itemList)
         pDeviceData->ps1ScanRetries = 0;
     } else if (pOwner != NULL && pOwner->menuItem.visible && bdmTransportEnabled(pDeviceData->bdmDeviceType) != 0 &&
                pDeviceData->ps1ScanFailed && pDeviceData->ps1ScanRetries < BDM_PS1_SCAN_RETRY_MAX &&
+               pDeviceData->bdmMissCount == 0 &&
                (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
         pDeviceData->ps1ScanRetries++;
         return 1;

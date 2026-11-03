@@ -353,6 +353,13 @@ static void ps1Recovery(void)
     CHECK(dev.ps1ScanFailed && dev.bdmPs1GameCount == 3, "UDPBD Ember failure must preserve rows and retry");
     cueResult = 3; pass();
     CHECK(!dev.ps1ScanFailed, "UDPBD Ember retry must recover");
+    dev.ps1ScanFailed = 1; dev.bdmMissCount = 1;
+    int polls = deviceCalls, retryCount = dev.ps1ScanRetries;
+    pass();
+    CHECK(deviceCalls == polls + 1 && dev.ps1ScanRetries == retryCount, "active disconnect debounce must poll before PS1 recovery");
+    dev.bdmMissCount = 0;
+    int beforeRetry = ps1Scans; pass();
+    CHECK(ps1Scans == beforeRetry + 1, "PS1 retry must resume when presence recovers");
     dev.ps1ScanFailed = 1; owner.menuItem.visible = 0;
     int previous = ps1Scans; pass();
     CHECK(ps1Scans == previous, "hidden page must not retry");

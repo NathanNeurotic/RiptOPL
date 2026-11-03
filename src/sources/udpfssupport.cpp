@@ -54,6 +54,8 @@ static int udpfsWaitingForServer = 0; // the last scan got no answer from the se
 static int udpfsThemesScanned = 0;    // THM is registered once per active UDPFS session, after THM opens
 static int udpfsLanguagesScanned = 0; // LNG uses the shared registry once its directory becomes readable
 static int udpfsPs1Scanned = 0;       // a PS1-view scan has reached the server this session; see udpfsNeedsUpdate
+static int udpfsPs1ScanRetries = 0;
+constexpr int UDPFS_PS1_SCAN_RETRY_MAX = 15;
 // The share's spelling of ART: a case-sensitive server keeps "art" and "ART" apart. Resolved once per
 // session by udpfsDiscoverArtFolder, never per image.
 static const char *const udpfsArtCaseNames[8] = {
@@ -324,6 +326,7 @@ void UdpfsSource::init(item_list_t *itemList)
     udpfsThemesScanned = 0;
     udpfsLanguagesScanned = 0;
     udpfsPs1Scanned = 0;
+    udpfsPs1ScanRetries = 0;
     udpfsArtCaseIndex = 0;
     udpfsArtCaseChecked = 0;
     // The games live directly at the device root; no share/prefix to prepend (unlike SMB).
@@ -579,22 +582,29 @@ int UdpfsSource::needsUpdate(item_list_t *itemList)
     udpfsDiscoverArtFolder();
 
     // PS1/Ember view: force a rescan once on toggle, then refresh on toggle only (skip disc heuristics).
-    if (host::library().consumeDirty(itemList->mode))
+    if (host::library().consumeDirty(itemList->mode)) {
+        udpfsPs1ScanRetries = 0;
         return 1;
+    }
     // Folder browsing: descend/ascend forces one rescan.
     if (folderConsumeDirty(itemList->mode))
         return 1;
     // Waiting for the server: rescan only once it answers, so an unreachable server costs one failed stat
     // per poll instead of an empty rebuild every two seconds. Ahead of the PS1 early-out so Ember heals too.
-    if (udpfsWaitingForServer)
-        return udpfsServerAnswers();
+    if (udpfsWaitingForServer) {
+        if (!udpfsServerAnswers())
+            return 0;
+        udpfsPs1ScanRetries = 0; // a returning server gets a fresh recovery budget
+        return 1;
+    }
     // The PS1 view refreshes on L3 / SELECT only -- but it must still get its FIRST scan. A page
     // restored onto a remembered PS1 view (Remember Last Played on an Ember title) otherwise returned
     // here forever and stayed blank until the user toggled L3 (TwistedZeon, 09-29). MMCE and BDM
     // build that first list the same way (mmcePs1Scanned; bdmNeedsUpdate's connect pass).
     if (host::library().listViewActive(itemList) == LIB_VIEW_PS1)
-        return !udpfsPs1Scanned;
-    if (host::library().listViewActive(itemList) == LIB_VIEW_MIXED && !udpfsPs1Scanned)
+        return !udpfsPs1Scanned && udpfsPs1ScanRetries < UDPFS_PS1_SCAN_RETRY_MAX;
+    if (host::library().listViewActive(itemList) == LIB_VIEW_MIXED && !udpfsPs1Scanned &&
+        udpfsPs1ScanRetries < UDPFS_PS1_SCAN_RETRY_MAX)
         return 1;
 
     if (!gUdpfsSupport.isoScanned_)
@@ -663,6 +673,10 @@ int UdpfsSource::update(item_list_t *itemList)
         int r = ps1FillGameList(udpfsPrefix, &gUdpfsSupport.ps1Games_);
         // Clear an earlier success too: an explicit refresh can discover a new partial failure.
         udpfsPs1Scanned = answeredBefore && r >= 0 && !ps1GameListNeedsRetry();
+        if (udpfsPs1Scanned)
+            udpfsPs1ScanRetries = 0;
+        else if (answeredBefore && udpfsPs1ScanRetries < UDPFS_PS1_SCAN_RETRY_MAX)
+            udpfsPs1ScanRetries++;
         if (r >= 0) // r < 0: transient scan failure -> preserve the last-good list
             gUdpfsSupport.ps1GameCount_ = r;
     }

@@ -25,7 +25,7 @@ start = eth.index('            int r = ps1FillGameList(')
 publish = eth[start:eth.index('            // NULL sub', start)]
 start = udp.index('        int r = ps1FillGameList(')
 udp_publish = udp[start:udp.index('\n    }', start)]
-start = udp.index('    if (host::library().listViewActive(itemList) == LIB_VIEW_PS1)', udp.index('int UdpfsSource::needsUpdate('))
+start = udp.index('    if (host::library().consumeDirty(itemList->mode))', udp.index('int UdpfsSource::needsUpdate('))
 udp_retry = udp[start:udp.index('\n    if (!gUdpfsSupport.isoScanned_)', start)]
 # Use the real session declaration, including its default initialization and accessors.
 session = header[header.index('class EthSupport\n'):header.index('extern EthSupport')]
@@ -68,6 +68,10 @@ static void publishEth() {
 @PUBLISH@
 }
 static int udpfsPs1Scanned;
+static int udpfsPs1ScanRetries, udpfsWaitingForServer, serverAnswers = 1;
+@UDP_LIMIT@
+static int folderConsumeDirty(int) { return 0; }
+static int udpfsServerAnswers() { return serverAnswers; }
 struct { base_game_info_t *ps1Games_; int ps1GameCount_; } gUdpfsSupport;
 static const char *udpfsPrefix = "udpfs:/";
 static void publishUdp(int answeredBefore) {
@@ -120,12 +124,34 @@ int main() {
         scanResult = 2; incomplete = 0; publishUdp(1);
         assert(udpfsPs1Scanned && !retryUdp(&list));
         publishUdp(0); assert(!udpfsPs1Scanned && retryUdp(&list));
+        // A responsive server with an unreadable half must eventually stop full list rebuilds.
+        for (int full = 0; full < 2; full++) {
+            dirty = 1; assert(retryUdp(&list));
+            scanResult = full ? -1 : 1; incomplete = 1;
+            publishUdp(1);
+            for (int i = 1; i < UDPFS_PS1_SCAN_RETRY_MAX; i++) {
+                assert(retryUdp(&list)); publishUdp(1);
+            }
+            auto lastRows = gUdpfsSupport.ps1Games_;
+            int lastCount = gUdpfsSupport.ps1GameCount_;
+            for (int i = 0; i < 30; i++) assert(!retryUdp(&list));
+            assert(gUdpfsSupport.ps1Games_ == lastRows && gUdpfsSupport.ps1GameCount_ == lastCount);
+            dirty = 1; assert(retryUdp(&list) && !udpfsPs1ScanRetries);
+            scanResult = 2; incomplete = 0; publishUdp(1);
+            assert(!retryUdp(&list) && !udpfsPs1ScanRetries);
+        }
+        udpfsPs1ScanRetries = UDPFS_PS1_SCAN_RETRY_MAX;
+        udpfsWaitingForServer = 1; serverAnswers = 0;
+        assert(!retryUdp(&list));
+        serverAnswers = 1; assert(retryUdp(&list) && !udpfsPs1ScanRetries);
+        udpfsWaitingForServer = 0;
     }
     puts("PASS: SMB partial/full scan recovery, retry limits, refresh and session/view guards; UDPFS rescans after prior success in PS1 and mixed views");
 }
 '''
 for key, value in {'LIMIT': limit, 'SESSION': session, 'NEEDS': needs, 'PUBLISH': publish,
-                   'UDP_PUBLISH': udp_publish, 'UDP_RETRY': udp_retry}.items():
+                   'UDP_PUBLISH': udp_publish, 'UDP_RETRY': udp_retry,
+                   'UDP_LIMIT': re.search(r'constexpr int UDPFS_PS1_SCAN_RETRY_MAX = \d+;', udp).group(0)}.items():
     program = program.replace('@' + key + '@', value)
 with tempfile.TemporaryDirectory(prefix='ps1-recovery-') as tmp:
     source, executable = Path(tmp) / 'recovery.cpp', Path(tmp) / 'recovery'
