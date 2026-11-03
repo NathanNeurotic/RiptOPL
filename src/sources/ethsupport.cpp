@@ -624,7 +624,7 @@ int EthSource::update(item_list_t *itemList)
 
         if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
             // One list, both cores. Keep readable rows while retrying an incomplete scan.
-            int r = ps1FillGameList(gEthSupport.prefix(), &gEthSupport.ps1Games());
+            int r = ps1FillGameList(gEthSupport.prefix(), &gEthSupport.ps1Games(), gEthSupport.ps1GameCount());
             if (r >= 0) // r < 0: transient scan failure -> preserve the last-good list
                 gEthSupport.ps1GameCount() = r;
             gEthSupport.ps1ScanFailed() = r < 0 || ps1GameListNeedsRetry();
