@@ -59,10 +59,11 @@ timeout, retry loop, or boot ordering change is proposed by this investigation.
 ### Recovery without data loss
 
 Holding **START** during boot activates the existing safe-boot path, which skips
-loading saved configuration. If the pad is detected and the menu opens, restore
-the built-in theme in Interface settings and save, keeping the original backup.
-If START is not effective, edit **only** the `theme=` line in a backed-up copy
-of the active `settings_riptopl.cfg` to `theme=<OPL>`, or remove that key.
+loading saved configuration. **Do not save settings from this safe-boot session:**
+the rest of the saved settings were not loaded and a save could replace them with defaults.
+For persistent recovery, edit **only** the `theme=` line in a backed-up copy
+of the original active `settings_riptopl.cfg` to `theme=<OPL>`, or remove that key,
+then replace the active file while retaining an untouched backup.
 Do not delete game libraries, VMC saves, the theme folder, or the entire
 settings file. A successful fallback is a useful isolation result, not a cause.
 
