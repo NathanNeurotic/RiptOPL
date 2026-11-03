@@ -1183,10 +1183,10 @@ int ps1GameListNeedsRetry(void)
     return ps1ScanIncomplete;
 }
 
-int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames)
+int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames, int previousCount)
 {
     base_game_info_t *vcdGames = NULL, *cueGames = NULL, *merged = NULL;
-    int vcdCount, cueCount, total;
+    int vcdCount, cueCount, retainedVcd = 0, retainedCue = 0, total, i;
 
     ps1ScanIncomplete = 0;
     if (outGames == NULL)
@@ -1196,38 +1196,45 @@ int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames)
     cueCount = cueFillGameListUnsorted(devPrefix, &cueGames);
     ps1ScanIncomplete = vcdCount < 0 || cueCount < 0;
 
-    // An error plus an empty half cannot prove the device has no PS1 titles. This used to fail the whole scan
-    // when EITHER half did, on the reasoning that publishing half a list looks like a user's titles
-    // disappearing. That reasoning was wrong in the direction that matters: one half failing then
-    // hid the OTHER half too, so a device holding a perfectly readable POPS library showed NOTHING
-    // because its (absent) Ember half reported a failure. Hardware-reported on iLink.
-    //
-    // A successful nonempty half is still published. The serialized caller can query
-    // ps1GameListNeedsRetry immediately afterward to schedule bounded recovery.
-    if ((vcdCount < 0 && cueCount <= 0) || (cueCount < 0 && vcdCount <= 0)) {
+    // Each caller already owns the published row count. Reuse ONLY the failed core's last-good
+    // rows; a successful (even empty) scan replaces that core. Do not keep another full library
+    // cache, which wastes EE RAM and risks mixing rows from different devices.
+    if (*outGames != NULL && previousCount > 0 && ps1ScanIncomplete) {
+        for (i = 0; i < previousCount; i++) {
+            if (cueIsCueEntry(&(*outGames)[i])) {
+                if (cueCount < 0)
+                    retainedCue++;
+            } else if (vcdCount < 0)
+                retainedVcd++;
+        }
+    }
+
+    // A failed half with no retained rows and an empty other half cannot prove the device empty.
+    // Keep the entire last-good list as before. A readable nonempty half is still published on
+    // first boot, and subsequent alternating failures can combine both previously seen halves.
+    if ((vcdCount < 0 && cueCount <= 0 && retainedVcd == 0) ||
+        (cueCount < 0 && vcdCount <= 0 && retainedCue == 0)) {
         free(vcdGames);
         free(cueGames);
         LOG("[PS1] incomplete empty scan -- keeping last-good list\n");
         return -1;
     }
     if (vcdCount < 0) {
-        LOG("[PS1] POPS scan failed -- publishing the Ember half alone this pass\n");
+        LOG("[PS1] POPS scan failed -- retaining last-good POPS rows\n");
         free(vcdGames);
         vcdGames = NULL;
         vcdCount = 0;
     }
     if (cueCount < 0) {
-        LOG("[PS1] EMBER scan failed -- publishing the POPSTARTER half alone this pass\n");
+        LOG("[PS1] EMBER scan failed -- retaining last-good Ember rows\n");
         free(cueGames);
         cueGames = NULL;
         cueCount = 0;
     }
 
-    total = vcdCount + cueCount;
-
+    total = vcdCount + cueCount + retainedVcd + retainedCue;
     if (total == 0) {
-        // Both scans reached the device and it genuinely holds no PS1 titles: publishing empty is
-        // the correct answer, so release the old list here.
+        // Both cores scanned successfully and neither has PS1 titles.
         free(*outGames);
         *outGames = NULL;
         free(vcdGames);
@@ -1235,11 +1242,8 @@ int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames)
         return 0;
     }
 
-    // ALLOCATE BEFORE RELEASING. Freeing the published list first and then failing to allocate its
-    // replacement turns a transient out-of-memory into a permanently blank PS1 page -- the caller is
-    // told 0 ("readable, nothing here") and has nothing left to fall back on. Failing to allocate is
-    // exactly the case where the last-good list is most worth keeping, so report it like any other
-    // scan failure and leave *outGames untouched.
+    // Allocate the replacement before releasing any published rows. If allocation fails, keep
+    // the old list and report a retryable scan failure instead of turning an OOM into an empty page.
     merged = (base_game_info_t *)memalign(64, total * sizeof(base_game_info_t));
     if (merged == NULL) {
         free(vcdGames);
@@ -1248,22 +1252,28 @@ int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames)
         return -1;
     }
 
-    // The replacement exists: only NOW is it safe to drop the old one.
-    free(*outGames);
-    *outGames = NULL;
-
+    int vcdTotal = vcdCount, cueTotal = cueCount;
     if (vcdCount > 0)
         memcpy(merged, vcdGames, vcdCount * sizeof(base_game_info_t));
+    if (retainedVcd > 0) {
+        for (i = 0; i < previousCount; i++)
+            if (!cueIsCueEntry(&(*outGames)[i]))
+                merged[vcdTotal++] = (*outGames)[i];
+    }
     if (cueCount > 0)
-        memcpy(merged + vcdCount, cueGames, cueCount * sizeof(base_game_info_t));
-
+        memcpy(merged + vcdTotal, cueGames, cueCount * sizeof(base_game_info_t));
+    if (retainedCue > 0) {
+        for (i = 0; i < previousCount; i++)
+            if (cueIsCueEntry(&(*outGames)[i]))
+                merged[vcdTotal + cueTotal++] = (*outGames)[i];
+    }
     free(vcdGames);
     free(cueGames);
+    free(*outGames);
 
-    total = ps1DropTwins(merged, NULL, 0, vcdCount, cueCount, gPs1Duplicates);
+    total = ps1DropTwins(merged, NULL, 0, vcdTotal, cueTotal, gPs1Duplicates);
 
-    // Gated on the same Automatic Sorting switch every other list honours. With it off the halves
-    // stay concatenated in scan order, which is the "raw directory order" the setting promises.
+    // As before, keep the two cores' scan order when sorting is disabled.
     if (gAutosort && total > 1)
         qsort(merged, total, sizeof(base_game_info_t), &ps1RowCmp);
 
