@@ -727,19 +727,22 @@ whichever answer you give.
 
 ### App Handoff Path (how the device is spelled for the app)
 
-RiptOPL mounts every USB, iLink, MX4SIO and exFAT-HDD volume as `massN:` and keeps doing so. Some apps,
-however, read a `mass` path as "this is a USB stick" and only load a USB driver, so when they are started
-from an exFAT HDD or an SD card they never find their own folder. **Settings → Game Launching → App
-Handoff Path** chooses what an ordinary app receives as its own path (argv[0]):
+For **BDM-backed apps** (USB, i.LINK, MX4SIO and exFAT/ATA volumes), RiptOPL loads the ELF
+through its shared `massN:` mount. Some apps misinterpret `mass` as "USB" and then initialize the wrong
+driver when started from ATA, i.LINK or SD storage. **Settings → Game Launching → App Handoff Path**
+controls the device spelling in an eligible app's launch argument (`argv[0]`), not its actual filesystem
+or the location of the ELF:
 
-| Choice | argv[0] the app receives | Notes |
-| ------ | ------------------------ | ----- |
-| **Legacy (mass)** (default) | `mass0:/APPS/MYAPP.ELF` | Exactly what RiptOPL has always handed over. |
-| **Typed (usb0:, ata0:)** | `usb0:/APPS/MYAPP.ELF`, `ata0:/...`, `ilink0:/...`, `mx4sio0:/...` | The names newer ps2sdk builds register next to `massN:`; numbered the way the SDK numbers them (second USB stick = `usb1:`). |
+| Choice | Example argv[0] for a BDM app | Notes |
+| ------ | -------------------------------- | ----- |
+| **Legacy (mass)** (default) | `mass0:/tools/MYAPP.ELF` | Preserve the shared BDM mount spelling. This does **not** rewrite other devices to `massN:`. |
+| **Typed (usb0:, ata0:)** | `usb0:/tools/MYAPP.ELF`, `ata0:/...`, `ilink0:/...`, `mx4sio0:/...` | Use the recognized BDM device type and its SDK-assigned index, when available. |
 
-Only the string handed to the app changes. The ELF is still read through RiptOPL's own `massN:` mount
-before any IOP reset, POPSTARTER keeps its bare `mass:` selector, HDD apps keep `hddN:...:pfs:/`, and a
-device with no typed name (UDPBD, PC CARD CF) falls back to the legacy spelling. Typed is only for apps
+The directory is not fixed: `/tools/` and `/APPS/` are merely examples. Only the path string passed to
+an eligible app changes. The ELF is still read through RiptOPL's own `massN:` mount before any IOP reset.
+Memory-card, MMCE, SMB and APA HDD applications keep their normal launch conventions; POPSTARTER keeps
+its own PS1 selector, while a BDM device with no usable typed name (UDPBD, PC CARD CF or unidentified slots)
+retains the legacy `massN:` spelling. Typed is only for apps
 built on a ps2sdk from February 26, 2026 or later: an older app does not register `usb0:`/`ata0:` at all, so
 if it opens its own folder through argv[0] it finds nothing, and nothing detects that or falls back to
 `massN:` after the handoff. Leave such apps on Legacy. To override the setting for one app, add
