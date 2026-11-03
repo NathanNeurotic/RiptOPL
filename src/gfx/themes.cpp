@@ -1392,6 +1392,7 @@ static int thmLoad(const char *themePath)
         free(newT);
         return -1;
     }
+    THEME_BOOT_TRACE("theme load: MMCE art drain complete; config preparation begins");
 
     config_set_t *themeConfig = NULL;
     // The built-in <OPL> theme offers its List, Coverflow, PSBBN Flow and Grid looks as views (Coverflow and
@@ -1413,6 +1414,7 @@ static int thmLoad(const char *themePath)
     } else {
         snprintf(path, sizeof(path), "%sconf_theme.cfg", themePath);
         themeConfig = configAlloc(0, NULL, path);
+        THEME_BOOT_TRACE("theme load: disk config read begin %s", path);
         configRead(themeConfig); // try to load the theme config file. If it does not exist, defaults will be used.
     }
 
