@@ -6,6 +6,7 @@
 ./src/platform/md5.c
 ./include/md5.h
 ./modules/network/smbman-ra
+./modules/mx4sio_bd
 ./modules/usb/usbd-ra
 ./modules/bdmassault
 ./modules/ilink/iLinkman
@@ -14,3 +15,4 @@
 ./modules/ilink/IEEE1394_bd
 ./modules/mmce/mmceman
 ./.github/scripts/fixtures
+./modules/network/smb2man/libsmb2

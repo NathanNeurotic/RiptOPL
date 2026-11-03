@@ -419,7 +419,10 @@ void CheatScreen::draw()
             rmDrawFramedRect(boxX, boxY + 3, boxWidth, boxHeight, 2, gTheme->textColor, gTheme->selTextColor);
 
         u32 textColour = (i == selected_) ? gTheme->selTextColor : gTheme->textColor;
-        fntRenderString(gTheme->fonts[0], boxX + 35, boxY + 3, ALIGN_LEFT, 0, 0, gCheats[i].name, textColour);
+        // A cheat name runs to 128 characters and nothing stopped it at the right-hand rule. The selected one
+        // scrolls through the whole name; the others end in "...".
+        int textX = boxX + 35;
+        fntRenderStringFit(gTheme->fonts[0], textX, boxY + 3, ALIGN_LEFT, gGuiScreenWidth - 50 - textX, gCheats[i].name, textColour, i == selected_);
 
         renderedCheats++;
     }

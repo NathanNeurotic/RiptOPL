@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import struct
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,21 @@ import publish_editions
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_every_edition_embeds_the_fixed_mx4sio_variant(self):
+        for edition in editions.EDITIONS:
+            for configuration in editions.CONFIGURATIONS:
+                if editions.EDITIONS[edition]["ra"] and configuration == "ingamediag":
+                    continue
+                targets = self.targets(edition, configuration)
+                full = "debug" in configuration
+                name = "mx4sio_bd_full_fork" if full else "mx4sio_bd_mini_fork"
+                embedded = [v for v in targets["riptopl"]["embed_irx"] if "mx4sio" in v]
+                self.assertEqual(embedded, [name + ":mx4sio_bd"])
+                driver = targets[name]
+                self.assertEqual("MINI_DRIVER" in driver.get("defines", []), not full)
+                self.assertIn("modules/mx4sio_bd/src/spi_sdcard_driver.c", driver["sources"])
+                self.assertEqual(driver["imports_lst"], "modules/mx4sio_bd/src/imports.lst")
+
     def targets(self, edition, configuration):
         return {t["name"]: t for t in editions.definition(edition, configuration)["targets"]}
 
@@ -172,6 +188,14 @@ class LanguagePackTests(unittest.TestCase):
                 self.assertEqual(pack.read("Serbian-1.0/font_Serbian.ttf"), b"croatian")
 
 
+def unpacked_elf(offset=0x80, vaddr=0x00100000):
+    """A minimal MIPS ELF32 header with one PT_LOAD, laid out as the bug-report check expects by default."""
+    header = bytearray(b"\x7fELF\x01\x01\x01" + bytes(9))
+    header += struct.pack("<HHIIIIIHHHHHH", 2, 8, 1, vaddr, 52, 0, 0, 52, 32, 1, 40, 0, 0)
+    header += struct.pack("<8I", 1, offset, vaddr, vaddr, 16, 16, 7, 0x80)
+    return bytes(header).ljust(offset, b"\0") + bytes(16)  # the segment's 16 bytes sit at its offset
+
+
 class PublisherTests(unittest.TestCase):
     """Small synthetic kits exercise manifest/provenance checks, not PS2 acceptance."""
     sha = "1234567890abcdef" * 2 + "12345678"
@@ -193,18 +217,20 @@ class PublisherTests(unittest.TestCase):
                                              "sha256": "0" * 64}}
             (path / elf).write_bytes(payload)
             (path / psu).write_bytes(b"synthetic-psu")
+            (path / "LICENSE-LIBSMB2.txt").write_bytes(b"synthetic-lgpl")
             (path / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
             with zipfile.ZipFile(path / "RIPTOPL-src.zip", "w") as source_zip:
                 source_zip.comment = (source or self.sha).encode()
                 source_zip.writestr("README.md", "synthetic source")
             with zipfile.ZipFile(path / "RIPTOPL-LANGS.zip", "w") as langs:
                 langs.writestr("README.txt", "synthetic")
-            for name, _, _ in publish_editions.bundles(options):
+            for name in publish_editions.archives(options):
                 (path / f"RIPTOPL-{name}.zip").write_bytes(b"synthetic-bundle")
             with zipfile.ZipFile(path / f"RIPTOPL-{options['title']}.zip", "w") as kit:
                 kit.writestr("BUILD-MANIFEST.json", json.dumps(manifest))
                 kit.writestr(f"APPS/{app}/{elf}", payload)
                 kit.writestr(psu, b"synthetic-psu")
+                kit.writestr("LICENSE-LIBSMB2.txt", b"synthetic-lgpl")
             sums = "".join(hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name + "\n" for p in sorted(path.iterdir()))
             (path / "SHA256SUMS.txt").write_text(sums)
 
@@ -218,6 +244,11 @@ class PublisherTests(unittest.TestCase):
                             "configuration": configuration, "ps2build_version": "test", "components": {}, "ports": {},
                             "elf_sha256": hashlib.sha256(payload).hexdigest(), **changes.get(configuration, {})}
                 (stage / "RIPTOPL.ELF").write_bytes(payload)
+                if configuration == "diag":
+                    unpacked = changes.get("unpacked", unpacked_elf())
+                    (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
+                    manifest.setdefault("unpacked_elf_sha256", hashlib.sha256(unpacked).hexdigest())
+                    manifest.setdefault("version", f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-GCC-DIAG"')
                 (stage / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
 
     def test_configuration_bundles(self):
@@ -225,7 +256,7 @@ class PublisherTests(unittest.TestCase):
             root = Path(directory)
             self.kit(root)
             for edition, options in publish_editions.EDITIONS.items():
-                for name, _, _ in publish_editions.bundles(options):
+                for name in publish_editions.archives(options):
                     (root / f"release-{edition}" / f"RIPTOPL-{name}.zip").unlink()
                     listing = root / f"release-{edition}/SHA256SUMS.txt"
                     listing.write_text("".join(l + "\n" for l in listing.read_text().splitlines() if not l.endswith(f"  RIPTOPL-{name}.zip")))
@@ -237,12 +268,17 @@ class PublisherTests(unittest.TestCase):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("ds5/RIPTOPL.ELF"), b"\x7fELFds5")
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 4)
+                    self.assertEqual(bundle.read("LICENSE-LIBSMB2.txt"), b"synthetic-lgpl")
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-DEBUG.zip") as bundle:
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 10)
+                    self.assertEqual(bundle.read("LICENSE-LIBSMB2.txt"), b"synthetic-lgpl")
+                    self.assertIn("libsmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\nGNU LGPL-2.1; "
+                                  "its licence is LICENSE-LIBSMB2.txt", bundle.read("README.txt").decode())
             for edition in ("ra", "ra_incebtion"):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")
                     self.assertIn("RIPTOPL-RA.ELF", bundle.read("README.txt").decode())
+                    self.assertEqual(bundle.read("LICENSE-LIBSMB2.txt"), b"synthetic-lgpl")
         for bad in ({"ds5": {"configuration": "extras"}}, {"debug": {"source_commit": "0" * 40}},
                     {"dtl": {"elf_sha256": "0" * 64}}, {"diag": {"ps2build_version": "other"}}):
             with self.subTest(bad=bad), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
@@ -250,6 +286,47 @@ class PublisherTests(unittest.TestCase):
                 self.kit(root)
                 self.variants(root, **bad)
                 with self.assertRaisesRegex(ValueError, "invalid configuration build"):
+                    publish_editions.bundle_configurations(root, self.sha)
+
+    def test_bug_report_build(self):
+        """Each standard theme gets RIPTOPL-BUGREPORT.zip: diag unpacked, its manifest, a README. RA gets none."""
+        with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
+            root = Path(directory)
+            self.kit(root)
+            for edition, options in publish_editions.EDITIONS.items():
+                for name in publish_editions.archives(options):
+                    (root / f"release-{edition}" / f"RIPTOPL-{name}.zip").unlink()
+                    listing = root / f"release-{edition}/SHA256SUMS.txt"
+                    listing.write_text("".join(l + "\n" for l in listing.read_text().splitlines() if not l.endswith(f"  RIPTOPL-{name}.zip")))
+            self.variants(root)
+            publish_editions.bundle_configurations(root, self.sha)
+            publish_editions.verify(root, self.sha)
+            for edition in ("korium", "incebtion"):
+                with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-BUGREPORT.zip") as bundle:
+                    self.assertEqual(sorted(bundle.namelist()), [
+                        "BUILD-MANIFEST.json", "CREDITS", "LICENSE", "README.txt", "RIPTOPL-BUGREPORT.ELF",
+                        "licenses/libsmb2/LICENCE-LGPL-2.1.txt", "licenses/libsmb2/VENDORED.txt"])
+                    self.assertIn(b"GNU LESSER GENERAL PUBLIC LICENSE", bundle.read("licenses/libsmb2/LICENCE-LGPL-2.1.txt"))
+                    self.assertEqual(bundle.read("RIPTOPL-BUGREPORT.ELF"), unpacked_elf())
+                    self.assertEqual(json.loads(bundle.read("BUILD-MANIFEST.json"))["configuration"], "diag")
+                    readme = bundle.read("README.txt").decode()
+                    self.assertIn(f"RiptOPL bug-report build, v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-GCC-DIAG\r\n====", readme)
+                    self.assertIn("DIAG.TXT", readme)
+                    self.assertIn("https://github.com/NathanNeurotic/RiptOPL/issues", readme)
+                    self.assertNotIn("{", readme)
+            for edition in ("ra", "ra_incebtion"):
+                self.assertFalse((root / f"release-{edition}/RIPTOPL-BUGREPORT.zip").exists())
+        packed = unpacked_elf(offset=0x60, vaddr=0x01D00000)
+        padded = unpacked_elf(offset=0x10000)
+        for bad, message in (({"unpacked": packed}, "packed or not linked"), ({"unpacked": padded}, "packed or not linked"),
+                             ({"unpacked": unpacked_elf()[:-1]}, "truncated"),
+                             ({"unpacked": b"MZ" + bytes(60)}, "not a 32-bit"),
+                             ({"diag": {"unpacked_elf_sha256": "0" * 64}}, "invalid bug-report build")):
+            with self.subTest(message=message), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
+                root = Path(directory)
+                self.kit(root)
+                self.variants(root, **bad)
+                with self.assertRaisesRegex(ValueError, message):
                     publish_editions.bundle_configurations(root, self.sha)
 
     def test_valid_standard_and_self_consistent_invalid_manifests(self):
@@ -262,6 +339,27 @@ class PublisherTests(unittest.TestCase):
                         publish_editions.verify(root, self.sha)
                 else:
                     self.assertEqual(len(publish_editions.verify(root, self.sha)), 4)
+
+    def test_a_channel_without_the_libsmb2_licence_or_with_another_copy_is_refused(self):
+        for change, message in (("missing", "unexpected release inventory"), ("different", "different libsmb2 licence")):
+            with self.subTest(change=change), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
+                root = Path(directory)
+                self.kit(root)
+                path = root / "release-korium"
+                if change == "missing":
+                    (path / "LICENSE-LIBSMB2.txt").unlink()
+                else:
+                    (path / "LICENSE-LIBSMB2.txt").write_bytes(b"another-lgpl")
+                # Checksums that match what is there, so the licence check itself must refuse it.
+                (path / "SHA256SUMS.txt").write_text("".join(
+                    hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name + "\n"
+                    for p in sorted(path.iterdir()) if p.name != "SHA256SUMS.txt"))
+                with self.assertRaisesRegex(ValueError, message):
+                    publish_editions.verify(root, self.sha)
+
+    def test_licence_and_standalone_names_never_take_the_version(self):
+        for name in ("LICENSE-LIBSMB2.txt", "RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "SHA256SUMS.txt"):
+            self.assertEqual(publish_editions.versioned(name, "v1.2.0-Beta-4032"), name)
 
     def test_unpinned_ra_runtime_is_refused_before_publication(self):
         with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:

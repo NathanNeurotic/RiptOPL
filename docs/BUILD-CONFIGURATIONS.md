@@ -11,11 +11,18 @@ and `RIPTOPL-DEBUG-<version>.zip` (every other nonstandard configuration), built
 theme, one folder per configuration with its GCC `RIPTOPL.ELF` and build manifest; the
 RetroAchievements channel publishes `RIPTOPL-RA-VARIANTS-<version>.zip` (`pademu0`, as `RIPTOPL-RA.ELF`)
 and `RIPTOPL-RA-VARIANTS-IncebtIon-<version>.zip` for its IncebtIon-theme kit. The
-publisher packs them only from builds of the released commit and SDK suite. Every channel
-also publishes `RIPTOPL-LANGS-<version>.zip`, the translations and their fonts. Every archive
+publisher packs them only from builds of the released commit and SDK suite. The Korium and
+IncebtIon channels also publish `RIPTOPL-BUGREPORT-<version>.zip`: their `diag` build before
+compression, as `RIPTOPL-BUGREPORT.ELF`, with a README on what to send (see
+[Launch diagnostics](LAUNCH-DIAGNOSTICS.md#bug-report-build)). The publisher refuses one that is
+packed or whose program does not start 0x80 bytes into the file. Every channel
+also publishes `RIPTOPL-LANGS-<version>.zip`, the translations and their fonts, and
+`LICENSE-LIBSMB2.txt`, the GNU LGPL-2.1 licence of [libsmb2](https://github.com/sahlberg/libsmb2),
+by [Ronnie Sahlberg](https://github.com/sahlberg), which every loader embeds; every kit and
+configuration zip carries the same text. Every archive
 name ends with the build version, for example `RIPTOPL-Korium-v1.2.0-Beta-3925.zip`; the
-loader ELFs, PSUs, `BUILD-MANIFEST.json` and `SHA256SUMS.txt` keep fixed names, so their download
-links never change. The release notes name the version at the top.
+loader ELFs, PSUs, `LICENSE-LIBSMB2.txt`, `BUILD-MANIFEST.json` and `SHA256SUMS.txt` keep fixed
+names, so their download links never change. The release notes name the version at the top.
 
 Prepare the SDK/ports and assets as described in [PS2BUILD-MIGRATION.md](PS2BUILD-MIGRATION.md),
 then use the existing builder:
@@ -64,7 +71,8 @@ Compilation alone does not establish working serial output on a console.
 Nonstandard object trees are isolated under
 `build/configurations/<edition>-<configuration>-<compiler>/`. Candidate ELF,
 resolved definition and build manifest are staged under the matching
-`dist/configurations/` directory, with the EE core map and applicable license/
+`dist/configurations/` directory, with the EE core map, RiptOPL's `LICENSE` and `CREDITS`,
+`licenses/libsmb2/` (every loader embeds libsmb2) and any other applicable license/
 provenance files. They never write `dist/editions/`, which is
 reserved for standard release packaging. Both the packager and publisher reject
 a manifest naming a nonstandard configuration, even if its checksums are valid.

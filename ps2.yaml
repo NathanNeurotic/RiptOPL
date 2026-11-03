@@ -153,6 +153,20 @@ targets:
     libs: [gcc]
     imports_lst: modules/network/smbman-ra/imports.lst
 
+  # smb2man: the SMB2/SMB3 browse driver, built only for players who pick SMB2 in Network Settings.
+  # Front end smb2man.c (OPL's ps2smb.h devctls) over libsmb2 vendored from upstream c6e4997
+  # (see modules/network/smb2man/libsmb2/VENDORED.txt). The defines are the ones upstream's own
+  # PS2 IOP CMake build passes; LGPL-2.1, like libsmb2.
+  - name: smb2man
+    type: iop
+    sources: [modules/network/smb2man/smb2man.c, modules/network/smb2man/libsmb2/lib/aes.c, modules/network/smb2man/libsmb2/lib/aes128ccm.c, modules/network/smb2man/libsmb2/lib/aes_reference.c, modules/network/smb2man/libsmb2/lib/alloc.c, modules/network/smb2man/libsmb2/lib/asn1-ber.c, modules/network/smb2man/libsmb2/lib/compat.c, modules/network/smb2man/libsmb2/lib/errors.c, modules/network/smb2man/libsmb2/lib/hmac-md5.c, modules/network/smb2man/libsmb2/lib/hmac.c, modules/network/smb2man/libsmb2/lib/init.c, modules/network/smb2man/libsmb2/lib/libsmb2.c, modules/network/smb2man/libsmb2/lib/md4c.c, modules/network/smb2man/libsmb2/lib/md5.c, modules/network/smb2man/libsmb2/lib/ntlmssp.c, modules/network/smb2man/libsmb2/lib/pdu.c, modules/network/smb2man/libsmb2/lib/quic.c, modules/network/smb2man/libsmb2/lib/sha1.c, modules/network/smb2man/libsmb2/lib/sha224-256.c, modules/network/smb2man/libsmb2/lib/sha384-512.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-cancel.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-close.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-create.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-echo.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-error.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-flush.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-ioctl.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-lock.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-logoff.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-negotiate.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-notify-change.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-oplock-break.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-query-directory.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-query-info.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-read.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-session-setup.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-set-info.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-tree-connect.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-tree-disconnect.c, modules/network/smb2man/libsmb2/lib/smb2-cmd-write.c, modules/network/smb2man/libsmb2/lib/smb2-data-file-info.c, modules/network/smb2man/libsmb2/lib/smb2-data-filesystem-info.c, modules/network/smb2man/libsmb2/lib/smb2-data-reparse-point.c, modules/network/smb2man/libsmb2/lib/smb2-data-security-descriptor.c, modules/network/smb2man/libsmb2/lib/smb2-share-enum.c, modules/network/smb2man/libsmb2/lib/smb2-signing.c, modules/network/smb2man/libsmb2/lib/smb3-seal.c, modules/network/smb2man/libsmb2/lib/smbdirect.c, modules/network/smb2man/libsmb2/lib/socket.c, modules/network/smb2man/libsmb2/lib/spnego-wrapper.c, modules/network/smb2man/libsmb2/lib/sync.c, modules/network/smb2man/libsmb2/lib/timestamps.c, modules/network/smb2man/libsmb2/lib/unicode.c, modules/network/smb2man/libsmb2/lib/usha.c]
+    include_dirs: [modules/network/smb2man/, modules/network/smb2man/libsmb2/include, modules/network/smb2man/libsmb2/include/smb2, modules/network/smb2man/libsmb2/lib]
+    headers: *iop_headers
+    defines: [HAVE_CONFIG_H, HAVE_SYS_FCNTL_H, NEED_BE64TOH, NEED_GETLOGIN_R, NEED_GETPID, NEED_POLL, NEED_RANDOM, NEED_READV, NEED_SRANDOM, NEED_STRDUP, NEED_WRITEV, PS2, __PS2__, _IOP, __ps2sdk_iop__]
+    cflags: [-Wno-unused-function, -Wno-unused-variable]
+    libs: [gcc]
+    imports_lst: modules/network/smb2man/imports.lst
+
   - name: smap_ingame
     type: iop
     sources: [modules/network/smap-ingame/main.c, modules/network/smap-ingame/smap.c, modules/network/smap-ingame/xfer.c]
@@ -309,6 +323,23 @@ targets:
     defines: [IOMANX_OLD_NAME_COMPATIBILITY=0, IOMANX_OLD_NAME_ADDDELDRV=0]
     imports_lst: modules/mmce/mmceman/src/imports.lst
 
+  - name: mx4sio_bd_full_fork
+    type: iop
+    sources: [modules/mx4sio_bd/src/spi_sdcard_crc7.c, modules/mx4sio_bd/src/spi_sdcard_driver.c, modules/mx4sio_bd/src/crc16.c, modules/mx4sio_bd/src/ioplib.c, modules/mx4sio_bd/src/sio2man_hook.c, modules/mx4sio_bd/src/mx4sio.c]
+    include_dirs: [modules/mx4sio_bd/src]
+    headers: *iop_headers
+    libs: [gcc]
+    imports_lst: modules/mx4sio_bd/src/imports.lst
+
+  - name: mx4sio_bd_mini_fork
+    type: iop
+    sources: [modules/mx4sio_bd/src/spi_sdcard_crc7.c, modules/mx4sio_bd/src/spi_sdcard_driver.c, modules/mx4sio_bd/src/crc16.c, modules/mx4sio_bd/src/ioplib.c, modules/mx4sio_bd/src/sio2man_hook.c, modules/mx4sio_bd/src/mx4sio.c]
+    include_dirs: [modules/mx4sio_bd/src]
+    headers: *iop_headers
+    libs: [gcc]
+    imports_lst: modules/mx4sio_bd/src/imports.lst
+    defines: [MINI_DRIVER]
+
   - name: bdm_fork
     type: iop_lib
     sources: [modules/bdm/libbdm/src/bd_defrag.c, modules/bdm/libbdm/src/bd_cache.c]
@@ -348,6 +379,18 @@ targets:
   - name: smb_cdvdman
     type: iop
     sources: [modules/iopcore/cdvdman/cdvdman.c, modules/iopcore/cdvdman/ioops.c, modules/iopcore/cdvdman/ncmd.c, modules/iopcore/cdvdman/scmd.c, modules/iopcore/cdvdman/searchfile.c, modules/iopcore/cdvdman/streaming.c, modules/iopcore/cdvdman/ioplib_util.c, modules/iopcore/cdvdman/smsutils.S, modules/iopcore/cdvdman/device-smb.c, modules/iopcore/cdvdman/smb.c, modules/iopcore/cdvdman/dev9.c, modules/isofs/zso.c, modules/isofs/lz4.c]
+    include_dirs: [modules/iopcore/cdvdman/, modules/iopcore/common, modules/network/common]
+    headers: *iop_headers
+    defines: [SMB_DRIVER, __USE_DEV9]
+    imports_lst: modules/iopcore/cdvdman/imports.lst
+    exports_tab: modules/iopcore/cdvdman/exports.tab
+
+  # smb2_cdvdman: smb_cdvdman with the SMB1 client (smb.c) swapped for the SMB 2.0.2/2.1 one (smb2.c).
+  # Same settings block and exports, so smb_mcemu serves VMCs for either. Launched when the resident
+  # browse driver is smb2man (Settings > Network > SMB Version = SMB2).
+  - name: smb2_cdvdman
+    type: iop
+    sources: [modules/iopcore/cdvdman/cdvdman.c, modules/iopcore/cdvdman/ioops.c, modules/iopcore/cdvdman/ncmd.c, modules/iopcore/cdvdman/scmd.c, modules/iopcore/cdvdman/searchfile.c, modules/iopcore/cdvdman/streaming.c, modules/iopcore/cdvdman/ioplib_util.c, modules/iopcore/cdvdman/smsutils.S, modules/iopcore/cdvdman/device-smb.c, modules/iopcore/cdvdman/smb2.c, modules/iopcore/cdvdman/smb2auth.c, modules/iopcore/cdvdman/dev9.c, modules/isofs/zso.c, modules/isofs/lz4.c]
     include_dirs: [modules/iopcore/cdvdman/, modules/iopcore/common, modules/network/common]
     headers: *iop_headers
     defines: [SMB_DRIVER, __USE_DEV9]
@@ -556,13 +599,16 @@ targets:
   # ---- main loader ----
   - name: riptopl
     type: ee
-    sources: [src/platform/diaglog.cpp, src/ui/menuwatch.cpp, src/core/pad.cpp, src/core/xparam.cpp, src/gfx/fntsys.cpp, src/gfx/textshape.cpp, src/core/diagsave.cpp, src/ui/drivestatus.cpp, src/core/filemgr.cpp, src/ui/guifilemgr.cpp, src/gfx/renderman.cpp, src/ui/menusys.cpp, src/core/OSDHistory.cpp, src/platform/system.cpp, src/platform/sysvmc.cpp, src/platform/sysneutrino.cpp, src/platform/sysdisc.cpp, src/platform/elfldr_noreset.cpp, src/core/lang.cpp, src/core/lang_internal.c, src/core/config.cpp, src/platform/hdd.cpp, src/ui/dialogs.cpp, src/sources/favsupport.cpp, src/sources/gamemanage.cpp, src/ui/dia.cpp, src/ui/diaeditors.cpp, src/ui/diaitems.cpp, src/platform/ioman.cpp, src/gfx/texcache.cpp, src/gfx/artload.cpp, src/gfx/artqueue.cpp, src/gfx/artworker.cpp, src/gfx/themes.cpp, src/gfx/themeviews.cpp, src/gfx/themeelems.cpp, src/gfx/coverflow.cpp, src/gfx/psbbnflow.cpp, src/gfx/grid.cpp, src/gfx/saveicon.cpp, src/sources/supportbase.cpp, src/sources/bdmsupport.cpp, src/sources/bdmlaunch.cpp, src/sources/bdmdevices.cpp, src/sources/bdmboot.cpp, src/sources/netsupport.cpp, src/sources/ethsupport.cpp, src/platform/httpcatalog.cpp, src/sources/httpsupport.cpp, src/sources/gamesource.cpp, src/sources/udpfssupport.cpp, src/sources/hddsupport.cpp, src/sources/vmcrebuild.cpp, src/platform/zso.c, src/platform/lz4.c, src/platform/launchdiag.cpp, src/sources/appsupport.cpp, src/sources/mmcesupport.cpp, src/gfx/artindex.cpp, src/sources/vcdsupport.cpp, src/sources/cuesupport.cpp, src/ui/libview.cpp, src/ui/cfgtitle.cpp, src/sources/retrogem.cpp, src/sources/folderbrowse.cpp, src/ui/gui.cpp, src/ui/guisettings.cpp, src/ui/guiqueue.cpp, src/ui/guiboot.cpp, src/ui/guinotify.cpp, src/ui/guiscreens.cpp, src/ui/guiframe.cpp, src/ui/guioverlay.cpp, src/ui/guisplash.cpp, src/ui/guimodal.cpp, src/ui/guiwait.cpp, src/ui/guigameid.cpp, src/gfx/plasma.cpp, src/gfx/uidraw.cpp, src/ui/guigame.cpp, src/core/vmc_groups.cpp, src/core/vmcsaves.cpp, src/gfx/textures.cpp, src/platform/new.cpp, src/app/opl.cpp, src/ui/menuitems.cpp, src/sources/appscan.cpp, src/app/settingsio.cpp, src/app/lwnbdctl.cpp, src/app/autolaunch.cpp, src/core/settings.cpp, src/app/host.cpp, src/gfx/atlas.cpp, src/platform/nbns.cpp, src/platform/httpclient.cpp, src/core/gsm.cpp, src/core/cheatman.cpp, src/core/cheatconfig.cpp, src/core/sound.cpp, src/core/sfx.cpp, src/core/bgm.cpp, src/platform/ps2cnf.cpp, src/platform/tar.cpp, src/platform/ioprp.cpp, src/platform/util.cpp, "asm/*.c"]
+    sources: [src/platform/diaglog.cpp, src/ui/menuwatch.cpp, src/core/pad.cpp, src/core/xparam.cpp, src/gfx/fntsys.cpp, src/gfx/textshape.cpp, src/core/diagsave.cpp, src/ui/drivestatus.cpp, src/core/filemgr.cpp, src/ui/guifilemgr.cpp, src/gfx/renderman.cpp, src/ui/menusys.cpp, src/core/OSDHistory.cpp, src/platform/system.cpp, src/platform/sysvmc.cpp, src/platform/sysneutrino.cpp, src/platform/sysdisc.cpp, src/platform/elfldr_noreset.cpp, src/core/lang.cpp, src/core/lang_internal.c, src/core/config.cpp, src/platform/hdd.cpp, src/ui/dialogs.cpp, src/sources/favsupport.cpp, src/sources/gamemanage.cpp, src/ui/dia.cpp, src/ui/diaeditors.cpp, src/ui/diaitems.cpp, src/platform/ioman.cpp, src/gfx/texcache.cpp, src/gfx/artload.cpp, src/gfx/artqueue.cpp, src/gfx/artworker.cpp, src/gfx/themes.cpp, src/gfx/themeviews.cpp, src/gfx/themeelems.cpp, src/gfx/coverflow.cpp, src/gfx/psbbnflow.cpp, src/gfx/grid.cpp, src/gfx/saveicon.cpp, src/sources/supportbase.cpp, src/sources/bdmsupport.cpp, src/sources/bdmlaunch.cpp, src/sources/bdmdevices.cpp, src/sources/bdmboot.cpp, src/sources/netsupport.cpp, src/sources/ethsupport.cpp, src/platform/httpcatalog.cpp, src/sources/httpsupport.cpp, src/sources/gamesource.cpp, src/sources/udpfssupport.cpp, src/sources/hddsupport.cpp, src/sources/vmcrebuild.cpp, src/platform/zso.c, src/platform/lz4.c, src/platform/launchdiag.cpp, src/sources/appsupport.cpp, src/sources/mmcesupport.cpp, src/gfx/artindex.cpp, src/sources/vcdsupport.cpp, src/sources/cuesupport.cpp, src/ui/libview.cpp, src/ui/cfgtitle.cpp, src/sources/retrogem.cpp, src/sources/folderbrowse.cpp, src/ui/gui.cpp, src/ui/guisettings.cpp, src/ui/guiqueue.cpp, src/ui/guiboot.cpp, src/ui/guinotify.cpp, src/ui/guiscreens.cpp, src/ui/guiframe.cpp, src/ui/guioverlay.cpp, src/ui/guisplash.cpp, src/ui/guimodal.cpp, src/ui/guiwait.cpp, src/ui/guigameid.cpp, src/gfx/plasma.cpp, src/gfx/uidraw.cpp, src/ui/guigame.cpp, src/core/vmc_groups.cpp, src/core/vmcsaves.cpp, src/gfx/textures.cpp, src/platform/new.cpp, src/app/opl.cpp, src/ui/menuitems.cpp, src/sources/appscan.cpp, src/app/settingsio.cpp, src/app/lwnbdctl.cpp, src/app/autolaunch.cpp, src/core/settings.cpp, src/core/riptlite.cpp, src/app/host.cpp, src/gfx/atlas.cpp, src/platform/nbns.cpp, src/platform/httpclient.cpp, src/core/gsm.cpp, src/core/cheatman.cpp, src/core/cheatconfig.cpp, src/core/sound.cpp, src/core/sfx.cpp, src/core/bgm.cpp, src/platform/ps2cnf.cpp, src/platform/tar.cpp, src/platform/ioprp.cpp, src/platform/util.cpp, "asm/*.c"]
     include_dirs: [., asm, include, modules/iopcore/common, modules/network/common, modules/hdd/common, modules/ds34bt/ee, modules/ds34usb/ee]
     headers: [kernel, cdvd, filexio, mc, poweroff, patches, vux, ps2ips, ps2ip, pad, netman, gskit, dmakit, freetype, png, jpeg, z, audio, audsrv-compat, ogg, vorbis, elf-loader-nocolour, debug]
     defines: [GSM_1080P, PADEMU, IGR_MENU]
     cflags: [-fno-exceptions, -Wmissing-declarations, -fsingle-precision-constant, -Wno-format-truncation, -Wno-stringop-truncation, -fdata-sections, -ffunction-sections, -include, opl_version.h]
-    ldflags: [-fdata-sections, -ffunction-sections, "-Wl,--gc-sections", "-Wl,-Map,opl.map", -lpadx]
+    # -zmax-page-size=128: the ps2sdk Makefile default (samples/Makefile.eeglobal), and what elfldr already uses. Without
+    # it the linker pads the one PT_LOAD to file offset 0x10000; the unpacked ELF with that layout did not start from
+    # uLaunchELF -> MMCE0 on an SCPH-30005R while the same chain started a 0x80-aligned build.
+    ldflags: [-fdata-sections, -ffunction-sections, "-Wl,--gc-sections", "-Wl,-zmax-page-size=128", "-Wl,-Map,opl.map", -lpadx]
     libs: [gskit, dmakit, poweroff, filexio, patches, png, jpeg, z, mc, freetype, vux, cdvd, netman, ps2ips, audsrv-compat, vorbisfile, vorbis, ogg, pad, elf-loader-nocolour, ds34usb_ee, ds34bt_ee, debug]
     pack: true
-    embed_irx: [isofs, bdmevent, genvmc, nbns, httpclient, imgdrv, resetspu, igrmbox, apemodpatch, cleareffects, f2techioppatch, iremsndpatch, cdvdfsv, smbinit, SMSUTILS:smsutils, SMSTCPIP:ingame_smstcpip, smap_ingame, xhdd, smap_udpbd, udpfs_smap, udpfs_ministack, udpfs_bd, udpfs_ioman, udpfs_fhi, lwnbdsvr, ps2ips_fork:ps2ips, bdm_drv:bdm, usbd_mini_fork:usbd, ata_bd:ps2atad, ps2hdd_osd:ps2hdd, hdd_cdvdman, hdd_hdpro_cdvdman, smb_cdvdman, http_cdvdman, bdm_cdvdman, bdm_ata_cdvdman, bdm_udp_cdvdman, udpfs_cdvdman, pccf_cdvdman, mmce_cdvdman, hdd_mcemu, smb_mcemu, bdm_mcemu, mmce_mcemu, udpfs_mcemu, usb_pademu, bt_pademu, ds34usb, ds34bt, pvrdrv:dvrdrv, dvrfile, eecore, elfldr, smbman_ra:smbman, usbhdfsd, libsd, audio:audsrv, bdmfs_fatfs_fork:bdmfs_fatfs, iLinkman_fork:iLinkman, IEEE1394_bd_mini_fork:IEEE1394_bd, usbmass_bd_mini:usbmass_bd, mx4sio_bd_mini:mx4sio_bd, pccf_bd, pccf_game, hdpro_atad, poweroff, dev9:ps2dev9, ps2ip-nm:ps2ip, smap, netman, iomanx, filexio, sio2man, padman, mcman, mcserv, mmceman_fork:mmceman, mmcedrv, mmceigr, fs-osd:ps2fs, eesync-nano:eesync, udnl]
+    embed_irx: [isofs, bdmevent, genvmc, nbns, httpclient, imgdrv, resetspu, igrmbox, apemodpatch, cleareffects, f2techioppatch, iremsndpatch, cdvdfsv, smbinit, SMSUTILS:smsutils, SMSTCPIP:ingame_smstcpip, smap_ingame, xhdd, smap_udpbd, udpfs_smap, udpfs_ministack, udpfs_bd, udpfs_ioman, udpfs_fhi, lwnbdsvr, ps2ips_fork:ps2ips, bdm_drv:bdm, usbd_mini_fork:usbd, ata_bd:ps2atad, ps2hdd_osd:ps2hdd, hdd_cdvdman, hdd_hdpro_cdvdman, smb_cdvdman, smb2_cdvdman, http_cdvdman, bdm_cdvdman, bdm_ata_cdvdman, bdm_udp_cdvdman, udpfs_cdvdman, pccf_cdvdman, mmce_cdvdman, hdd_mcemu, smb_mcemu, bdm_mcemu, mmce_mcemu, udpfs_mcemu, usb_pademu, bt_pademu, ds34usb, ds34bt, pvrdrv:dvrdrv, dvrfile, eecore, elfldr, smbman_ra:smbman, smb2man, usbhdfsd, libsd, audio:audsrv, bdmfs_fatfs_fork:bdmfs_fatfs, iLinkman_fork:iLinkman, IEEE1394_bd_mini_fork:IEEE1394_bd, usbmass_bd_mini:usbmass_bd, mx4sio_bd_mini_fork:mx4sio_bd, pccf_bd, pccf_game, hdpro_atad, poweroff, dev9:ps2dev9, ps2ip-nm:ps2ip, smap, netman, iomanx, filexio, sio2man, padman, mcman, mcserv, mmceman_fork:mmceman, mmcedrv, mmceigr, fs-osd:ps2fs, eesync-nano:eesync, udnl]
 

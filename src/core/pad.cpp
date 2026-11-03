@@ -145,6 +145,26 @@ constexpr int PAD_IDLE_MAX_CLEAN_GAP_MS = 100;
 // (akilluminati47).
 constexpr u32 PAD_MISS_HOLD_TICKS = 300u * 294912u;
 
+// The menu keeps a DualShock in analog mode with its ANALOG button LOCKED, as upstream OPL does. An unlocked
+// pad is not harmless: every ANALOG press changes the pad's mode, and freepad answers a mode change by
+// re-reading the whole pad (enter config, model, actuators, modes, alignment, exit config) -- 240-260 ms
+// with no samples at all (EXECCMD in zackcage6's trace). Pressed again and again, it never finishes, and
+// scrolling stops for as long as the button is played with (zackcage6 on #133, Beta-4010: OFF then ON
+// hangs the scrolling, spamming it pauses it for over 5 s). Locked, the button does nothing.
+//
+// The lock used to be sent once and trusted. Three ways left the pad unlocked for the rest of the session:
+// - freepad forgets it on every reconnect (its re-query sets mode 0 and lock 0), and the reconnect re-init
+//   is skipped when the pad is already back in analog mode (rebuild-131), e.g. after an ANALOG press;
+// - padSetMainMode is refused while another request runs, and nothing looked at its return;
+// - the request can fail inside freepad (PAD_RSTAT_FAILED), and nothing looked at that either.
+// So the lock is now confirmed (lockCheck) and re-sent in a verified-quiet second when it is missing or
+// when the pad's mode changed without us asking, which proves the button is live (lockRelock). The request
+// is fire-and-forget: no wait on this thread. PAD_LOCK_TRIES bounds the retries for a pad that refuses.
+constexpr int PAD_LOCK_TRIES = 3;
+// A request's reqState reaches the EE with the next DMA'd frame, so the old value can still read COMPLETE
+// right after the call. Nothing is judged before this much real time has passed (three frames).
+constexpr u32 PAD_LOCK_SETTLE_TICKS = 50u * 294912u;
+
 /*
  * waitReady()
  */
@@ -180,6 +200,8 @@ int PadManager::initialize(struct pad_data_t *pad)
     // here would suppress the realign retry and every send would drive actuator index 0xFF.
     pad->actuators = 0;
     pad->actAligned = 0;
+    pad->locked = 0;
+    pad->lockPending = 0;
 
     // is there any device connected to that port?
     if (waitReady(pad) == PAD_STATE_DISCONN) {
@@ -236,8 +258,10 @@ int PadManager::initialize(struct pad_data_t *pad)
 
     LOG("PAD Enabling dual shock functions\n");
 
-    // When using MMODE_LOCK, user cant change mode with Select button
-    padSetMainMode(pad->port, pad->slot, PAD_MMODE_DUALSHOCK, PAD_MMODE_LOCK);
+    // When using MMODE_LOCK, user cant change mode with Select button. Refused (another request is
+    // running) or failed later, lockRelock() sends it again in a quiet second (see PAD_LOCK_TRIES).
+    if (padSetMainMode(pad->port, pad->slot, PAD_MMODE_DUALSHOCK, PAD_MMODE_LOCK))
+        lockRequested(pad);
 
     waitReady(pad);
     tmp = padInfoPressMode(pad->port, pad->slot);
@@ -366,10 +390,18 @@ int PadManager::readOne(struct pad_data_t *pad, int *pollClean)
         // edge poll itself -- the edge is a state transition, which restarts the quiet clock).
         LOG("PAD pad %d,%d connected\n", pad->port, pad->slot);
         pad->needsInit = 1;
+        // freepad's re-query after a disconnect sets mode 0 and lock 0: whatever we locked is gone.
+        pad->locked = 0;
+        pad->lockPending = 0;
+        pad->lockTries = 0;
+        pad->modeClass = 0;
     }
     // The pad may transit from any state to disconnected. So check only for the disconnected state.
     else if ((oldState != PAD_STATE_DISCONN) && (pad->state == PAD_STATE_DISCONN)) {
         LOG("PAD pad %d,%d disconnected\n", pad->port, pad->slot);
+        pad->locked = 0;
+        pad->lockPending = 0;
+        pad->modeClass = 0;
     }
 
     // A tracked-state transition proves nothing about the user: the gate must restart its count.
@@ -390,6 +422,18 @@ int PadManager::readOne(struct pad_data_t *pad, int *pollClean)
         if (ret != 0) {
             newpdata = 0xffff ^ pad->buttons.btns;
             padsRead++;
+
+            // Digital (0x4_) <-> analog (0x7_) with no request of ours in flight: the ANALOG button
+            // changed it, so the pad is not locked (see PAD_LOCK_TRIES). 0x73 <-> 0x79 (pressure mode)
+            // is the same class and proves nothing.
+            int modeClass = pad->buttons.mode >> 4;
+            if (pad->modeClass != 0 && modeClass != pad->modeClass && !pad->lockPending) {
+                if (pad->locked || pad->lockTries)
+                    diagLog("pad: port %d mode changed by its ANALOG button; re-locking when idle", pad->port);
+                pad->locked = 0;
+                pad->lockTries = 0;
+            }
+            pad->modeClass = modeClass;
         } else {
             // An attempted read that FAILED is unknown, never idle -- these misses are exactly what
             // clusters with the reconnect flaps under IOP load. Native-only on purpose: the init
@@ -785,6 +829,61 @@ void PadManager::advanceRepeatTimers(u32 elapsedMs)
     }
 }
 
+// A padSetMainMode(DUALSHOCK, LOCK) was accepted: lockCheck() confirms it once freepad has run it.
+void PadManager::lockRequested(struct pad_data_t *pad)
+{
+    pad->lockPending = 1;
+    pad->lockSentTicks = cpu_ticks();
+    pad->lockTries++;
+}
+
+// Every poll, EE-local reads only. Confirms or drops a pending lock request (see PAD_LOCK_TRIES).
+void PadManager::lockCheck(struct pad_data_t *pad)
+{
+    int req;
+
+    if (!pad->lockPending)
+        return;
+    if (pad->state == PAD_STATE_DISCONN) {
+        pad->lockPending = 0;
+        return;
+    }
+    if ((u32)(cpu_ticks() - pad->lockSentTicks) < PAD_LOCK_SETTLE_TICKS)
+        return;
+    if (!isPadReadyState(padGetState(pad->port, pad->slot)))
+        return;
+    req = padGetReqState(pad->port, pad->slot);
+    if (req == PAD_RSTAT_BUSY)
+        return;
+
+    pad->lockPending = 0;
+    if (req == PAD_RSTAT_COMPLETE && padInfoMode(pad->port, pad->slot, PAD_MODECURID, 0) == PAD_TYPE_DUALSHOCK) {
+        pad->locked = 1;
+        pad->lockTries = 0;
+    } else
+        diagLog("pad: port %d lock request did not take (req %d)", pad->port, req);
+}
+
+// From read()'s verified-quiet gate only. Sends the lock to a DualShock-capable pad that is not locked.
+// Returns 1 when it used the quiet second (a request went out, or was refused and counted).
+int PadManager::lockRelock(struct pad_data_t *pad)
+{
+    if (pad->needsInit || pad->locked || pad->lockPending || pad->lockTries >= PAD_LOCK_TRIES)
+        return 0;
+    if (pad->state != PAD_STATE_STABLE || padGetState(pad->port, pad->slot) != PAD_STATE_STABLE ||
+        padGetReqState(pad->port, pad->slot) == PAD_RSTAT_BUSY)
+        return 0;
+    // No DualShock modes (a digital pad, a guitar): nothing to lock.
+    if (padInfoMode(pad->port, pad->slot, PAD_MODECUREXID, 0) == 0)
+        return 0;
+
+    if (padSetMainMode(pad->port, pad->slot, PAD_MMODE_DUALSHOCK, PAD_MMODE_LOCK))
+        lockRequested(pad);
+    else
+        pad->lockTries++;
+    return 1;
+}
+
 /** polling method. Call every frame. */
 int PadManager::read()
 {
@@ -802,6 +901,7 @@ int PadManager::read()
 
     for (i = 0; i < padCount_; ++i) {
         rslt |= readOne(&padData_[i], &pollClean);
+        lockCheck(&padData_[i]);
     }
 
     // Idle clock for the reconnect-edge self-heal gate (see PAD_SELF_HEAL_IDLE_MS). Only a clean,
@@ -846,11 +946,23 @@ int PadManager::read()
             }
         }
 
+        // The ANALOG lock, when it is missing (see PAD_LOCK_TRIES). One request per quiet run, after any
+        // pending re-init has had its turn; a pad skipped above as "already DualShock" is still unlocked.
+        if (!quietUsed) {
+            for (i = 0; i < padCount_; ++i) {
+                if (lockRelock(&padData_[i])) {
+                    padIdleMs_ = 0;
+                    quietUsed = 1;
+                    break;
+                }
+            }
+        }
+
         // Rumble alignment, in the same quiet second and never in the middle of input (see
         // rumbleRealign). One request per quiet run, after any pending re-init has had its turn.
         if (!quietUsed && gEnableRumble) {
             for (i = 0; i < padCount_; ++i) {
-                if (!padData_[i].needsInit && !padData_[i].actAligned && isPadReadyState(padData_[i].state)) {
+                if (!padData_[i].needsInit && !padData_[i].lockPending && !padData_[i].actAligned && isPadReadyState(padData_[i].state)) {
                     padIdleMs_ = 0;
                     rumbleRealign(&padData_[i]);
                     break;
@@ -1066,6 +1178,8 @@ int PadManager::start()
             cpad->slot = slot;
             cpad->state = PAD_STATE_DISCONN;
             cpad->needsInit = 0;
+            cpad->lockTries = 0;
+            cpad->modeClass = 0;
 
             if (startOne(cpad))
                 ++padCount_;

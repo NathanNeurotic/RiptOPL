@@ -91,6 +91,8 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_THEME                      "theme"
 #define CONFIG_OPL_THEME_VIEW                 "theme_view"   // list/coverflow/psbbn/grid; absent = the theme's default view
 #define CONFIG_OPL_THEME_ALT_BG               "theme_alt_bg" // 1 = the theme's alt= background (themeviews.h); absent = its default=
+// Boot Theme Wait: seconds the intro waits for the saved theme; 0 = off
+#define CONFIG_OPL_BOOT_THEME_WAIT            "boot_theme_wait"
 #define CONFIG_OPL_LANGUAGE                   "language_text"
 #define CONFIG_OPL_SCROLLING                  "scrolling"
 #define CONFIG_OPL_BGCOLOR                    "bg_color"
@@ -114,7 +116,9 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_DEFAULT_GAME_VIEW          "default_game_view"
 #define CONFIG_OPL_APPS_DISPLAY               "apps_display"
 #define CONFIG_OPL_CFG_TITLES                 "cfg_titles_in_lists"
+#define CONFIG_OPL_PS1_DUPLICATES             "ps1_duplicates"   // PS1_DUP_*: VCD + Ember twins shown once or twice; default both
 #define CONFIG_OPL_GAME_TYPE_LABELS           "game_type_labels" // show [PS1]/[PS2] prefixes in game lists; default off
+#define CONFIG_OPL_LIST_CFG_TEXT              "list_cfg_text"    // LIST_CFG_TEXT_*: CFG Title/Description on list pages; default the theme's
 // Remembered L3 position, one character per IO mode -- see libViewStoreToConfig in src/libview.c.
 // Two keys because the Both/Favorites/APPS ring and the device Mixed ring keep separate positions.
 // These live in the LAST set, beside "last_played": both are browse position rather than settings,
@@ -133,6 +137,7 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_OVERSCAN                   "overscan"
 #define CONFIG_OPL_DISABLE_DEBUG              "disable_debug"
 #define CONFIG_OPL_PS2LOGO                    "ps2logo"
+#define CONFIG_OPL_APP_HANDOFF_PATH           "app_handoff_path"          // APP_HANDOFF_*: the device spelling in the argv[0] handed to ELF apps
 #define CONFIG_OPL_DEFAULT_CORE               "default_core"              // global default Loader Core (0=<OPL>, 1=Neutrino); a game's per-game "$CoreLoader" overrides it, absent = follow this
 #define CONFIG_OPL_NEUTRINO_VIDEO             "neutrino_video_default"    // global default Neutrino -gsm video mode (0=Off..5=1080i x3); per-game "$NeutrinoVideo" overrides, absent = follow this
 #define CONFIG_OPL_NEUTRINO_GSMCOMP           "neutrino_gsm_comp_default" // global default -gsm ":c" field-flip half (0=off, 1-3=type); per-game "$NeutrinoGsmComp" overrides, absent = follow this

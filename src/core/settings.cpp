@@ -78,6 +78,8 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_GLYPH_SET, &gGlyphSet, 0), // GLYPH_SET_THEME: the theme's own (RIPPS2 build 90)
     // Off: the theme's default= pictures (KrahJohlito's alt= idea, themeviews.h).
     intSetting(CONFIG_OPL_THEME_ALT_BG, &gThemeAltBackground, 0),
+    // Off: the menu opens without waiting, and the saved theme replaces the built-in one once its drive is up.
+    intSetting(CONFIG_OPL_BOOT_THEME_WAIT, &gBootThemeWait, 0),
     intSetting(CONFIG_OPL_VMODE, &gVMode, 0, /*loadPlain=*/false),
     intSetting(CONFIG_OPL_XOFF, &gXOff, 0),
     intSetting(CONFIG_OPL_YOFF, &gYOff, 0),
@@ -122,7 +124,9 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_DEFAULT_GAME_VIEW, &gDefaultGameView, GAME_VIEW_BOTH),
     intSetting(CONFIG_OPL_APPS_DISPLAY, &gAppsDisplay, APPS_DISPLAY_MIXED),
     intSetting(CONFIG_OPL_CFG_TITLES, &gCfgTitlesInLists, 0),
+    intSetting(CONFIG_OPL_PS1_DUPLICATES, &gPs1Duplicates, PS1_DUP_BOTH), // both rows, as before the setting existed
     intSetting(CONFIG_OPL_GAME_TYPE_LABELS, &gGameTypeLabels, 0),
+    intSetting(CONFIG_OPL_LIST_CFG_TEXT, &gListCfgText, LIST_CFG_TEXT_THEME), // the theme's, as before the setting existed
     strSetting(CONFIG_OPL_POPSTARTER_PATH, gPopstarterPath),
     intSetting(CONFIG_OPL_BDMA_SOURCE, &gBdmaSource, VCD_BDMA_SRC_USB),
     intSetting(CONFIG_OPL_BDMA_APPLY, &gBdmaApplyOnLaunch, 1),               // auto-equip on launch by default
@@ -173,6 +177,7 @@ constexpr Setting kSettings[] = {
     strSetting(CONFIG_OPL_DEFAULT_BGM_PATH, gDefaultBGMPath),
     intSetting(CONFIG_OPL_XSENSITIVITY, &gXSensitivity, 1),
     intSetting(CONFIG_OPL_YSENSITIVITY, &gYSensitivity, 1),
+    intSetting(CONFIG_OPL_APP_HANDOFF_PATH, &gAppHandoffPath, APP_HANDOFF_LEGACY), // mass<N>: in argv[0], as always; Typed is opt-in
 };
 
 } // namespace
@@ -241,7 +246,7 @@ const char *settingsKeyAt(unsigned index)
 // The screen position for each video mode, so 1080i and 480i each keep their own centring (RIPPS2 build 124,
 // akilluminati47). A mode never set takes the shared xoff/yoff/overscan, which are still written as the mode in
 // use's, so an older build reads what it always did.
-#define SCREEN_POS_MODES 17
+#define SCREEN_POS_MODES 20
 static int gPosX[SCREEN_POS_MODES], gPosY[SCREEN_POS_MODES], gPosOver[SCREEN_POS_MODES];
 static unsigned char gPosSet[SCREEN_POS_MODES];
 

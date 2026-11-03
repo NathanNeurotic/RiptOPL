@@ -52,10 +52,11 @@ pad = read_source('src/core/pad.cpp')
 header = read_source('include/padmanager.h')
 
 
-def function_text(source, signature):
+def function_text(source, signature, optional=False):
     match = re.search(r'^' + re.escape(signature) + r'[^;{]*\)\s*\{', source, re.M)
     if match is None:
-        failures.append('src/core/pad.cpp: %s...) not found' % signature)
+        if not optional:
+            failures.append('src/core/pad.cpp: %s...) not found' % signature)
         return ''
     end = source.index('\n}', match.start())
     return source[match.start():end] + '\n}\n'
@@ -82,6 +83,11 @@ functions = ''.join(function_text(pad, sig) for sig in (
     'int PadManager::key(',
     'int PadManager::keyOn(',
     'int PadManager::keyPressed(',
+)) + ''.join(function_text(pad, sig, optional=True) for sig in (
+    # The ANALOG lock (test_pad_mode_lock.py covers it); optional so --ref still runs older sources.
+    'void PadManager::lockRequested(',
+    'void PadManager::lockCheck(',
+    'int PadManager::lockRelock(',
 ))
 
 LIBPAD = r'''
@@ -106,6 +112,8 @@ struct padButtonStatus {
 #define PAD_MODECUREXID 2
 #define PAD_MODETABLE 4
 #define PAD_TYPE_DUALSHOCK 7
+#define PAD_MMODE_DUALSHOCK 1
+#define PAD_MMODE_LOCK 3
 #define PAD_LEFT 0x0080
 #define PAD_DOWN 0x0040
 #define PAD_RIGHT 0x0020
@@ -129,6 +137,7 @@ int padInfoMode(int port, int slot, int infoMode, int index);
 int padInfoAct(int port, int slot, int actuator, int cmd);
 int padSetActAlign(int port, int slot, const char *actAlign);
 int padSetActDirect(int port, int slot, const char *actAlign);
+int padSetMainMode(int port, int slot, int mode, int lock);
 '''
 
 HARNESS = r'''
@@ -197,6 +206,7 @@ int padSetActDirect(int, int, const char *)
     directCalls++;
     return 1;
 }
+int padSetMainMode(int, int, int, int) { return 1; }
 
 static int initCalls;
 int PadManager::initialize(struct pad_data_t *)
@@ -223,6 +233,9 @@ static void reset(int aligned)
     pm.padData_[0].state = PAD_STATE_STABLE;
     pm.padData_[0].actuators = 2;
     pm.padData_[0].actAligned = aligned;
+#ifdef PAD_HAS_LOCK /* an older padmanager.h (--ref) has no lock fields */
+    pm.padData_[0].locked = 1; /* the ANALOG lock is test_pad_mode_lock.py's subject, not this one's */
+#endif
     pm.padData_[1].port = 1;
     pm.padData_[1].state = PAD_STATE_DISCONN;
     for (int i = 0; i < 16; i++)
@@ -378,6 +391,8 @@ if not failures:
         source = (HARNESS.replace('@TABLE@', key_table.group(0))
                   .replace('@CONSTANTS@', constants)
                   .replace('@FUNCTIONS@', functions))
+        if re.search(r'\bint locked;', header):
+            source = '#define PAD_HAS_LOCK 1\n' + source
         (tmp / 'pad_missed_read.cpp').write_text('#include <new>\n' + source, encoding='utf-8')
         exe = tmp / 'pad_missed_read'
         build = subprocess.run(['g++', '-std=c++17', '-Wall', '-Wno-unused-function', '-I', str(tmp),

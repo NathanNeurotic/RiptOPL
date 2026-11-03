@@ -33,6 +33,7 @@
 #endif
 #include "include/config.h"
 #include "include/util.h"
+#include "include/riptlite.h"
 #include "include/extern_irx.h"
 
 #include "include/supportbase.h"
@@ -198,7 +199,9 @@ int gNeutrinoElfArg;         // default-on (settings key only, no UI): auto-emit
 int gDefaultGameView;
 int gAppsDisplay;
 int gCfgTitlesInLists;
+int gPs1Duplicates; // PS1_DUP_*: a game both as a POPSTARTER VCD and an Ember image shows once or twice
 int gGameTypeLabels;
+int gListCfgText; // LIST_CFG_TEXT_*: the CFG Title and Description on list pages, the theme's way by default
 int gEmberDisplay;
 int gEmberTiming;
 int gEmberDither;
@@ -235,6 +238,7 @@ int gNetBootProtocol; // NET_BOOT_UDPBD | NET_BOOT_UDPFS (legacy shadow, derived
 int gNetworkProtocol; // enum NETWORK_PROTOCOL -- authoritative backend selector (Off/SMB/UDPBD/UDPFSBD/UDPFS)
 int gNetProtocolPick; // last protocol chosen, never OFF (see opl.h)
 int gUdpfsAccessMode; // UDPFS Files/IMG preference, independent of UDPBD
+int gSMBDialect;      // SMB_DIALECT_V1 / SMB_DIALECT_V2
 int gNetStartMode;    // START_MODE_* -- the Off/Manual/Auto network start row (see the 3-row Network setting)
 int gAutosort;
 int gAutoRefresh;
@@ -255,6 +259,8 @@ int gFontSize = FONT_SIZE_DEFAULT;
 int gGlyphSet = 0; // GLYPH_SET_THEME
 // Alternate Background: the theme's alt= pictures instead of its default= ones (themeviews.h).
 int gThemeAltBackground;
+// Boot Theme Wait: seconds the intro holds for a saved disk theme whose drive is not up yet (guisplash.cpp).
+int gBootThemeWait;
 int gVMode; // 0 - Auto, 1 - PAL, 2 - NTSC
 int gXOff;
 int gYOff;
@@ -287,6 +293,7 @@ char gExitPath[256];
 char gCustomSettingsPath[64];
 int gEnableDebug;
 int gPS2Logo;
+int gAppHandoffPath; // the device spelling ELF apps are handed; the mounts themselves never change
 int gDefaultDevice;
 int gEnableWrite;
 char gBDMPrefix[32];
@@ -545,6 +552,8 @@ void initAllSupport(int force_reinit)
     if (gBootInProgress)
         guiRenderGreetingScreen();
     bdmEnumerateDevices();
+    if (gBootInProgress)
+        diagLog("boot: BDM start stage done (enabled drivers may still be loading in the background)");
 
     guiSetBootStatus(_l(_STR_BOOT_SCANNING_NET));
     if (gBootInProgress)
@@ -556,6 +565,8 @@ void initAllSupport(int force_reinit)
     // HTTP shares that same NIC and the same one-tab-at-a-time rule: its start-mode gate is live
     // only when gNetworkProtocol == NET_PROTO_HTTP.
     initSupport(httpGetObject(0), HTTP_MODE, force_reinit);
+    if (gBootInProgress)
+        diagLog("boot: network start stage done (enabled drivers may still be loading in the background)");
 
     guiSetBootStatus(_l(_STR_BOOT_SCANNING_HDD));
     if (gBootInProgress)
@@ -563,6 +574,8 @@ void initAllSupport(int force_reinit)
     initSupport(hddGetObject(0), HDD_MODE, force_reinit);
     initSupport(appGetObject(0), APP_MODE, force_reinit);
     initSupport(favGetObject(0), FAV_MODE, force_reinit);
+    if (gBootInProgress)
+        diagLog("boot: HDD, apps and favourites start stage done (enabled drivers may still be loading in the background)");
 
     guiSetBootStatus(_l(_STR_BOOT_SCANNING_MC));
     if (gBootInProgress)
@@ -570,6 +583,8 @@ void initAllSupport(int force_reinit)
     LOG("BOOT scan: MMCE initSupport begin\n");
     initSupport(mmceGetObject(0), MMCE_MODE, force_reinit);
     LOG("BOOT scan: MMCE initSupport done\n");
+    if (gBootInProgress)
+        diagLog("boot: MMCE start stage done (enabled drivers may still be loading in the background)");
 
     // Arm the MMCE GameID transport at boot and on every settings apply -- instead
     // of deferring it to itemLaunchMMCE.
@@ -663,7 +678,12 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
 {
     int viewTransition;
 
+    // This runs on the IO thread while the GUI thread draws the menu through the same rows under
+    // guiLock (guiStartFrame..guiEndFrame). The queued list operations change those rows, so they run
+    // under the lock here too; menuRowBeginEdit already does the same (YAOPL 4c713a3).
+    guiLock();
     guiExecDeferredOps();
+    guiUnlock();
 
     // Remember where the cursor was, so a rebuild does not dump the user back at the top of
     // the list (#589). Keyed on the game's startup id, not its row index: a rescan is exactly
@@ -878,7 +898,9 @@ void menuDeferredUpdate(void *data)
         // A device can reject a scan before it consumes the view-dirty flag (for example, MMCE with
         // no card inserted). Still retire the old rows and commit the retained destination so input
         // does not remain locked and the next successful device scan uses the user's chosen view.
+        guiLock(); // IO thread: see updateMenuFromGameList
         guiExecDeferredOps();
+        guiUnlock();
         clearMenuGameList(mod);
         libViewCommitPending(mod->support->mode);
         libViewFinishPending(mod->support->mode);
@@ -1273,6 +1295,7 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     fntEnd();
     thmEnd();
     rmEnd();
+    menuWatchStop(); // diagnostic builds: no VBlank handler or exception hooks survive the handoff
     configEnd();
     if (gLaunchDiag)
         launchDiagMark(8); // deinitEx finished -- sysLaunchNeutrino runs next
@@ -1351,6 +1374,7 @@ void deinit(int exception, int modeSelected)
     fntEnd();
     thmEnd();
     rmEnd();
+    menuWatchStop(); // diagnostic builds: no VBlank handler or exception hooks survive the handoff
     configEnd();
 }
 
@@ -1488,6 +1512,7 @@ static void setDefaults(void)
     gNetStartMode = START_MODE_DISABLED; // Off in the 3-row Network setting; migration reconciles old configs
     gNetProtocolPick = NET_PROTO_SMB;
     gUdpfsAccessMode = 0; // UDPFS Files; never inherit UDPBD's forced IMG
+    gSMBDialect = SMB_DIALECT_V1;
 
     frameCounter = 0;
 
@@ -1757,10 +1782,11 @@ void miniInit(int mode)
         // normally overrides from the saved config) had nothing to override it here: configReadMulti
         // runs AFTER bdmLoadModules(). bdmLoadBlockDeviceModules gates the USB load on the flag, so
         // an argv autolaunch from a USB stick loaded no USB block driver at all.
-        gEnableUSB = 1;
-        gEnableILK = 1; // iLink will break pcsx2 however.
-        gEnableMX4SIO = 1;
-        gEnableBdmHDD = 1;
+        // A RiptOPLite build loads only the transport it carries (include/riptlite.h).
+        gEnableUSB = LITE_HAS_USB;
+        gEnableILK = LITE_HAS_ILINK; // iLink will break pcsx2 however.
+        gEnableMX4SIO = LITE_HAS_MX4SIO;
+        gEnableBdmHDD = LITE_HAS_BDMHDD;
         bdmLoadModules();
     } else if (mode == HDD_MODE) {
         hddLoadModules();

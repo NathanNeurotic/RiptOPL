@@ -150,7 +150,7 @@ VCD carries its own reader into POPStarter (see [PS1 through USB POPStarter](#ps
 ### Neutrino in the RA edition
 
 The RetroAchievements kit's `neutrino/` is **[ORBIT v1.0.2](https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2)**'s
-RA-Neutrino by **Daniel / [danielnuld](https://github.com/danielnuld)**, based on [Neutrino](https://github.com/rickgaiser/neutrino) by **[Maximus32](https://github.com/rickgaiser)**, with an achievement agent
+RA-Neutrino by **Daniel / [danielnuld](https://github.com/danielnuld)**, based on [Neutrino](https://github.com/ps2max32/neutrino) by **[Maximus32](https://github.com/rickgaiser)**, with an achievement agent
 (`raagent.irx`) that speaks **[hacan359](https://github.com/hacan359) / [xeRAbora](https://github.com/hacan359/xerabora)**'s protocol. Its AFL-3.0 licence, source commit and
 archive SHA-256 ship beside it (`neutrino/ORBIT-RA.json`). Standard kits keep ordinary upstream Neutrino,
 and an ELF-only update does not install this runtime: copy the RA kit's whole `neutrino/` folder.
@@ -301,7 +301,8 @@ AFL-3.0): it checks the GIF and display state before it draws, which does not pr
 are safe. **Cards may flicker or freeze a game; if one does, turn the setting off. NOT TESTED on
 hardware.** POPStarter PS1 unlocks stay on the companion.
 
-The PC can also send **RAR1**, which leaves the game for the menu exactly as the IGR combo does.
+The PC can also send **RAR1**, which leaves the game for the menu exactly as the IGR combo does with
+the [In-Game Menu](IGR.md#the-in-game-menu-beta) off. With it on, RAR1 still leaves at once and does not open it.
 Under Compatibility Mode 6, which has no IGR, the request is ignored.
 
 ### Achievement browser

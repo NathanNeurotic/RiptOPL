@@ -44,6 +44,16 @@ def apply_configuration(config, configuration):
         main["embed_irx"] = ["udnl-t300:udnl" if v == "udnl" else v for v in main["embed_irx"]]
     if configuration == "diag":
         add(main, "defines", "__OPLDIAG")
+        # The bug-report build ships this ELF unpacked (publish_editions.py). ps2sdk links every EE program
+        # with -zmax-page-size=128, so its one PT_LOAD sits 0x80 bytes into the file; ps2build's default
+        # pads it to 0x10000, and an SCPH-30005R launching from uLaunchELF on MMCE0 started the 0x80 layout
+        # but not the 0x10000 one (Volventura, 2026-11-01). The packed ELF is unaffected (ps2-packer writes
+        # its own layout), so the standard kits keep theirs until ps2.yaml takes the flag for every build.
+        add(main, "ldflags", "-Wl,-zmax-page-size=128")
+    if configuration == "diag" or "debug" in configuration:
+        # __OPLDIAG builds: the menu crash catcher (src/ui/menuwatch.cpp) takes EE exceptions via libeedebug.
+        add(main, "headers", "eedebug")
+        add(main, "libs", "eedebug")
     if configuration == "ingamediag":
         # In-game freeze report: the IGR combo after a freeze writes mc0:/RIPTFRZ.TXT (see
         # ee_core/src/freeze_diag.c). RA runs IGR from VBLANK, so the two cannot be combined.
@@ -67,6 +77,7 @@ def apply_configuration(config, configuration):
         })
         add(main, "embed_irx", "freezediag")
     if "debug" in configuration:
+        main["embed_irx"] = ["mx4sio_bd_full_fork:mx4sio_bd" if v == "mx4sio_bd_mini_fork:mx4sio_bd" else v for v in main["embed_irx"]]
         uart = configuration.endswith("_uart")
         add(main, "defines", "__DEBUG", "__OPLDIAG", "TTY_PPC_UART" if uart else "TTY_UDP")
         add(main, "sources", "src/platform/debug.cpp")

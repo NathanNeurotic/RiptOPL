@@ -180,16 +180,102 @@ void menuHintsUnlock(void)
 static s32 menuListSemaId = -1;
 static ee_sema_t menuSema;
 
-static void menuRenameGame(submenu_list_t **submenu)
+// The selected row, for the Apps and Game menu actions (Rename, Delete, Hide).
+//
+// The IO thread can rebuild a device's game list at any time: clearMenuGameList frees the rows under
+// guiLock, the source's update then rewrites its own game array outside it, and the new rows arrive
+// later as deferred GUI ops. These actions open dialogs that stay up for seconds, so a rebuild can
+// land in the middle of one. Reading selected_item->item->current after a dialog then reads a freed
+// row, and an id read before the dialog can name a different game after it (a rescan renumbers rows).
+//
+// So an action copies the row first (menuRowCopy) and works from the copy. Before it reads the
+// device's list or writes anything it calls menuRowBeginEdit, which pauses the IO thread and checks
+// the row is still the same game. No lock is held across a dialog: guiLock is not recursive and a
+// dialog renders frames, which take it.
+typedef struct
 {
-    if (!selected_item->item->current) {
-        return;
+    item_list_t *support;
+    int id;
+    int favourited;
+    int isFolder;
+    char text[256];
+} menu_row_t;
+
+// Caller holds guiLock.
+static int menuRowMatches(const menu_row_t *row)
+{
+    if (selected_item == NULL || selected_item->item == NULL || selected_item->item->current == NULL)
+        return 0;
+    submenu_item_t *item = &selected_item->item->current->item;
+    return static_cast<item_list_t *>(selected_item->item->userdata) == row->support && item->id == row->id &&
+           strncmp(item->text != NULL ? item->text : "", row->text, sizeof(row->text) - 1) == 0;
+}
+
+// Copy the selected row. 0 when there is none, e.g. while its list is being rebuilt.
+static int menuRowCopy(menu_row_t *row)
+{
+    int ok = 0;
+
+    guiLock();
+    if (selected_item != NULL && selected_item->item != NULL && selected_item->item->current != NULL) {
+        submenu_item_t *item = &selected_item->item->current->item;
+        row->support = static_cast<item_list_t *>(selected_item->item->userdata);
+        row->id = item->id;
+        row->favourited = item->favourited;
+        row->isFolder = item->isFolder;
+        snprintf(row->text, sizeof(row->text), "%s", item->text != NULL ? item->text : "");
+        ok = 1;
+    }
+    guiUnlock();
+    return ok;
+}
+
+// Pause the IO thread and check the row is still the one the action started on. On 1 the caller may
+// read the device's list and write to the device, then must call menuRowEndEdit -- before queueing
+// any IO work, which is refused while the thread is paused. On 0 nothing is paused, and the user has
+// been told why unless they cancelled the wait themselves.
+static int menuRowBeginEdit(const menu_row_t *row)
+{
+    int ok;
+
+    // Refuse new IO work from here, then let what is already queued finish. ioBlockOps(1) would wait
+    // with the screen frozen; this waits a frame at a time with the busy spinner, and Cancel gives up
+    // instead of hanging on a device that stopped answering.
+    ioBlockOpsTimed(1, 0);
+    while (ioHasPendingRequests()) {
+        if (guiRenderProbeFrame()) {
+            ioBlockOps(0);
+            return 0;
+        }
     }
 
-    if (!gEnableWrite)
+    // A rebuild that just finished has queued its new rows: put them in first, as the frame loop
+    // would, so a rescan that kept the game where it was does not cancel the action.
+    guiLock();
+    guiExecDeferredOps();
+    ok = menuRowMatches(row);
+    guiUnlock();
+    if (ok)
+        return 1;
+
+    ioBlockOps(0);
+    guiMsgBox(_l(_STR_MENU_ROW_CHANGED), 0, NULL);
+    return 0;
+}
+
+static void menuRowEndEdit(void)
+{
+    ioBlockOps(0);
+}
+
+static void menuRenameGame(submenu_list_t **submenu)
+{
+    menu_row_t row;
+
+    if (!gEnableWrite || !menuRowCopy(&row))
         return;
 
-    item_list_t *support = static_cast<item_list_t *>(selected_item->item->userdata);
+    item_list_t *support = row.support;
 
     if (support && support->mode == FAV_MODE) {
         char text[128];
@@ -197,7 +283,7 @@ static void menuRenameGame(submenu_list_t **submenu)
         guiMsgBox(text, 0, NULL);
         return;
     }
-    if (selected_item->item->current->item.favourited) {
+    if (row.favourited) {
         char text[128];
         snprintf(text, sizeof(text), _l(_STR_FAV_PERSISTENCE_MSG), _l(_STR_RENAME));
         guiMsgBox(text, 0, NULL);
@@ -207,17 +293,24 @@ static void menuRenameGame(submenu_list_t **submenu)
     if (support) {
         if (menuCheckParentalLock() == 0) {
             sfxPlay(SFX_MESSAGE);
-            int nameLength = gsOf(support)->nameLength(support, selected_item->item->current->item.id);
+            if (!menuRowBeginEdit(&row)) // the name length comes from the device's list
+                return;
+            int nameLength = gsOf(support)->nameLength(support, row.id);
+            menuRowEndEdit();
+            if (nameLength <= 0)
+                return;
             char newName[nameLength];
-            strncpy(newName, selected_item->item->current->item.text, nameLength);
+            memset(newName, 0, nameLength);
+            strncpy(newName, row.text, nameLength - 1);
             if (guiShowKeyboard(newName, nameLength)) {
                 guiSwitchScreen(GUI_SCREEN_MAIN);
                 submenuDestroy(submenu);
 
                 // Only rename the file if the name changed; trying to rename a file with a file name that hasn't changed can cause the file
                 // to be deleted on certain file systems.
-                if (strcmp(newName, selected_item->item->current->item.text) != 0) {
-                    gsOf(support)->rename(support, selected_item->item->current->item.id, newName);
+                if (strcmp(newName, row.text) != 0 && menuRowBeginEdit(&row)) {
+                    gsOf(support)->rename(support, row.id, newName);
+                    menuRowEndEdit();
                     ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
                 }
             }
@@ -309,11 +402,21 @@ static void menuHideGame(submenu_list_t **submenu)
     char name[HIDDEN_NAME_MAX], msg[512];
     item_list_t *source;
     const char *rowName;
-    int ps1, hidden;
+    int ps1, found, hidden;
+    menu_row_t row;
 
-    if (!menuHiddenState(&source, &ps1, &rowName, &hidden))
+    if (!gEnableWrite || !menuRowCopy(&row) || row.support == NULL || row.isFolder)
         return;
-    snprintf(name, sizeof(name), "%s", rowName); // the row goes when its page is rebuilt
+    if (!menuRowBeginEdit(&row)) // hiddenRowSource reads the device's list
+        return;
+    found = hiddenRowSource(row.support, row.id, &source, &ps1, &rowName);
+    if (found)
+        snprintf(name, sizeof(name), "%s", rowName); // the row goes when its page is rebuilt
+    menuRowEndEdit();
+    if (!found)
+        return;
+    // From here the game is its name, so the dialog below cannot point this at another one.
+    hidden = hiddenHas(source, ps1, name);
     if (!hidden) {
         snprintf(msg, sizeof(msg), _l(_STR_HIDE_GAME_CONFIRM), name);
         if (guiMsgBox(msg, 1, NULL) != 1)
@@ -336,15 +439,22 @@ static void menuHideGame(submenu_list_t **submenu)
 // Delete everything: two questions, then the game's parts and its CFG, art and cheats unless another
 // copy uses them. VMC saves stay. Returns 0 when the row is not a game this can delete, so the caller
 // keeps the plain delete.
-static int menuDeleteEverything(submenu_list_t **submenu, item_list_t *support)
+static int menuDeleteEverything(submenu_list_t **submenu, const menu_row_t *row)
 {
     char name[HIDDEN_NAME_MAX], prefix[256], partPath[256], sepStr[2], msg[700];
-    int id = selected_item->item->current->item.id;
+    item_list_t *support = row->support;
+    int id = row->id;
     gm_delete_plan_t *plan = static_cast<gm_delete_plan_t *>(malloc(sizeof(*plan)));
 
     if (plan == NULL)
         return 0;
+    // The plan, the name and the copies below all read the device's list.
+    if (!menuRowBeginEdit(row)) {
+        free(plan);
+        return 1; // the row is gone or the wait was cancelled: the plain delete must not run either
+    }
     if (!gmPlanDelete(support, id, plan)) {
+        menuRowEndEdit();
         free(plan);
         return 0;
     }
@@ -356,6 +466,7 @@ static int menuDeleteEverything(submenu_list_t **submenu, item_list_t *support)
     // a copy of the row and its prefix: the delete rebuilds the list they live in
     base_game_info_t game = *static_cast<base_game_info_t *>(gs->game(support, id));
     snprintf(prefix, sizeof(prefix), "%s", gs->prefix(support));
+    menuRowEndEdit();
 
     snprintf(msg, sizeof(msg), _l(_STR_DELETE_GAME_PLAN), name, plan->parts, plan->cfg, plan->art, plan->cht);
     if (plan->shared)
@@ -372,7 +483,13 @@ static int menuDeleteEverything(submenu_list_t **submenu, item_list_t *support)
 
     guiSwitchScreen(GUI_SCREEN_MAIN);
     submenuDestroy(submenu);
+    // The list may have been rebuilt while the questions were up: the id must still be this game.
+    if (!menuRowBeginEdit(row)) {
+        free(plan);
+        return 1;
+    }
     gs->deleteGame(support, id); // every part, and a UL game's ul.cfg made again
+    menuRowEndEdit();
     // every part has to be gone before the CFG, art and cheats go: a part left behind keeps them
     int partLeft = 0, part, fd;
     for (part = 0; part < game.parts && !partLeft; part++) {
@@ -399,13 +516,12 @@ static int menuDeleteEverything(submenu_list_t **submenu, item_list_t *support)
 
 static void menuDeleteGame(submenu_list_t **submenu)
 {
-    if (!selected_item->item->current)
+    menu_row_t row;
+
+    if (!gEnableWrite || !menuRowCopy(&row))
         return;
 
-    if (!gEnableWrite)
-        return;
-
-    item_list_t *support = static_cast<item_list_t *>(selected_item->item->userdata);
+    item_list_t *support = row.support;
 
     if (support && support->mode == FAV_MODE) {
         char text[128];
@@ -413,7 +529,7 @@ static void menuDeleteGame(submenu_list_t **submenu)
         guiMsgBox(text, 0, NULL);
         return;
     }
-    if (selected_item->item->current->item.favourited) {
+    if (row.favourited) {
         char text[128];
         snprintf(text, sizeof(text), _l(_STR_FAV_PERSISTENCE_MSG), _l(_STR_DELETE));
         guiMsgBox(text, 0, NULL);
@@ -423,13 +539,16 @@ static void menuDeleteGame(submenu_list_t **submenu)
     if (support) {
         if (gsOf(support)->hasDelete()) {
             if (menuCheckParentalLock() == 0) {
-                if (support->mode != APP_MODE && menuDeleteEverything(submenu, support))
+                if (support->mode != APP_MODE && menuDeleteEverything(submenu, &row))
                     return;
                 if (guiMsgBox(_l(_STR_DELETE_WARNING), 1, NULL)) {
                     guiSwitchScreen(GUI_SCREEN_MAIN);
                     submenuDestroy(submenu);
-                    gsOf(support)->deleteGame(support, selected_item->item->current->item.id);
-                    ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
+                    if (menuRowBeginEdit(&row)) {
+                        gsOf(support)->deleteGame(support, row.id);
+                        menuRowEndEdit();
+                        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
+                    }
                 }
             }
         }
@@ -2110,7 +2229,7 @@ static int menuPromptParentalLockPassword(const char *parentalLockPassword)
     int result;
 
     password[0] = '\0';
-    if (diaShowKeyb(password, CONFIG_KEY_VALUE_LEN, 1, _l(_STR_PARENLOCK_ENTER_PASSWORD_TITLE))) {
+    if (diaShowKeyb(password, CONFIG_KEY_VALUE_LEN, 1, _STR_PARENLOCK_ENTER_PASSWORD_TITLE)) {
         if (strncmp(parentalLockPassword, password, CONFIG_KEY_VALUE_LEN) == 0) {
             result = 0;
         } else if (strncmp(OPL_PARENTAL_LOCK_MASTER_PASS, password, CONFIG_KEY_VALUE_LEN) == 0) {
@@ -2815,8 +2934,9 @@ void menuRenderGameMenu()
     int y = (gTheme->usedHeight >> 1) - (spacing * (count >> 1));
     int cp = 0; // current position
 
-    // game title
-    fntRenderString(gTheme->fonts[0], 320, 20, ALIGN_CENTER, 0, 0, cfgTitleDisplayName((item_list_t *)selected_item->item->userdata, selected_item->item->current->item.id, submenuItemGetText(&selected_item->item->current->item)), gTheme->selTextColor);
+    // game title: a name can run to 160 characters, about twice the screen, and nothing stopped it at either edge.
+    // Scroll a long one through the same 600 the PS1 note below the app menu's title gets.
+    fntRenderStringFit(gTheme->fonts[0], 320, 20, ALIGN_CENTER, 600, cfgTitleDisplayName((item_list_t *)selected_item->item->userdata, selected_item->item->current->item.id, submenuItemGetText(&selected_item->item->current->item)), gTheme->selTextColor, 1);
 
     // config source
     char *cfgSource = gameConfigSource();
@@ -2843,11 +2963,12 @@ static int gameMenuCoreIsNeutrino(void)
     int coreLoader = gDefaultCoreLoader; // no per-game $CoreLoader key -> follow the global default core
     if (itemConfig != NULL)
         configGetInt(itemConfig, CONFIG_ITEM_CORE_LOADER, &coreLoader);
+    if (coreLoader == 2)
+        coreLoader = gDefaultCoreLoader;
     // VCD (PS1) games launch ONLY via POPSTARTER -- never Neutrino -- so a keyless VCD must not
     // inherit a Neutrino global default here, or its Cheats/GSM/OSD menu entries get blocked with
-    // the wrong "not available under Neutrino" message. SMB takes Neutrino only from the game's own
-    // key (ethTryNeutrino): "Default" is the <OPL> core there, so a Neutrino global default must not
-    // block its panels, while a game set to Neutrino gets the Neutrino answers.
+    // the wrong "not available under Neutrino" message. SMB follows the global core with
+    // per-game overrides, just like its launch leg (ethTryNeutrino).
     // HTTP and CF are native-only too; UDPFS (Files and IMG) and UDPBD are Neutrino unless the game's own
     // key says <OPL>.
     // Favorites follow the device that owns the row.
@@ -2857,12 +2978,6 @@ static int gameMenuCoreIsNeutrino(void)
             int sourceMode = menuConfigSourceMode(support);
             if (menuSelectedRowView(support) == LIB_VIEW_PS1 || sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode))
                 return 0;
-            if (sourceMode == ETH_MODE) {
-                int key = 2;
-                if (itemConfig != NULL)
-                    configGetInt(itemConfig, CONFIG_ITEM_CORE_LOADER, &key);
-                return key == 1;
-            }
             if (sourceMode == UDPFS_MODE || bdmModeIsUDPBD(sourceMode))
                 return bdmNetBlockCoreLoader(itemConfig);
         }
@@ -2871,7 +2986,12 @@ static int gameMenuCoreIsNeutrino(void)
 }
 
 #ifdef RETROACHIEVEMENTS
-static void menuCheckSelectedGameSupport(void)
+// The RA actions read the selected row and its device's list, then copy what they need into the
+// hash or achievements request. They run under guiLock with the row present: the IO thread clears a
+// device's rows under that lock before it rereads the device, and the new rows only arrive once the
+// reread is done, so the list cannot change under them. Nothing they call takes guiLock or opens a
+// dialog.
+static void menuCheckSelectedGameSupportLocked(void)
 {
     /* RA: hash the selected image, on demand. Hashing every image during the scan would
        hold the console on the splash screen: the scan runs before the menu appears and
@@ -2947,8 +3067,18 @@ static void menuCheckSelectedGameSupport(void)
     }
 }
 
+static void menuCheckSelectedGameSupport(void)
+{
+    guiLock();
+    if (selected_item != NULL && selected_item->item != NULL && selected_item->item->current != NULL &&
+        selected_item->item->userdata != NULL)
+        menuCheckSelectedGameSupportLocked();
+    guiUnlock();
+}
+
 // A USB VCD's set, from the PS1 menu (or a VCD favourite). Other PS1 rows cannot be tracked.
-static void menuOpenSelectedVcdAchievements(void)
+// Under guiLock, as menuCheckSelectedGameSupportLocked.
+static void menuOpenSelectedVcdAchievementsLocked(void)
 {
     item_list_t *support = static_cast<item_list_t *>(selected_item->item->userdata);
     int gid = selected_item->item->current->item.id;
@@ -2973,6 +3103,15 @@ static void menuOpenSelectedVcdAchievements(void)
         achReturnScreen = GUI_SCREEN_APP_MENU;
     } else
         guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);
+}
+
+static void menuOpenSelectedVcdAchievements(void)
+{
+    guiLock();
+    if (selected_item != NULL && selected_item->item != NULL && selected_item->item->current != NULL &&
+        selected_item->item->userdata != NULL)
+        menuOpenSelectedVcdAchievementsLocked();
+    guiUnlock();
 }
 #endif
 
@@ -3012,15 +3151,21 @@ void menuHandleInputGameMenu()
             menuCheckSelectedGameSupport();
         } else if (menuID == GAME_RA_ACHIEVEMENTS) {
             // A whole ISO hashes; HDLoader entries and PS1 rows have no image to read here.
-            item_list_t *support = static_cast<item_list_t *>(selected_item->item->userdata);
+            // Under guiLock with the row present, as menuCheckSelectedGameSupport.
+            guiLock();
+            item_list_t *support = NULL;
             base_game_info_t *g = NULL;
             const char *prefix = NULL;
-            if (menuSelectedRowView(support) != LIB_VIEW_PS1 && support->mode != HDD_MODE && gsOf(support)->hasGame() &&
-                gsOf(support)->hasPrefix()) {
+            if (selected_item != NULL && selected_item->item != NULL && selected_item->item->current != NULL)
+                support = static_cast<item_list_t *>(selected_item->item->userdata);
+            if (support != NULL && menuSelectedRowView(support) != LIB_VIEW_PS1 && support->mode != HDD_MODE &&
+                gsOf(support)->hasGame() && gsOf(support)->hasPrefix()) {
                 g = (base_game_info_t *)gsOf(support)->game(support, selected_item->item->current->item.id);
                 prefix = gsOf(support)->prefix(support);
             }
-            if (g == NULL || prefix == NULL)
+            if (support == NULL) {
+                // no row: its list is being rebuilt
+            } else if (g == NULL || prefix == NULL)
                 guiShowRANotice(_l(gRAMode == RA_MODE_CADUCEUS ? _STR_CAD_USE_LIBRARY : _STR_XERA_USE_LIBRARY), NULL);
             else if (g->format != GAME_FORMAT_ISO && g->format != GAME_FORMAT_OLD_ISO)
                 guiShowRANotice(_l(_STR_CAD_HASH_UNSUPPORTED), NULL);
@@ -3036,6 +3181,7 @@ void menuHandleInputGameMenu()
                 } else
                     guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);
             }
+            guiUnlock();
         } else if (menuID == GAME_RA_TEST) {
             sbTestPCLinkDeferred();
             guiShowRANotice(_l(_STR_RA_LOOKING_FOR_PC), NULL);
@@ -3123,8 +3269,18 @@ void menuRenderAppMenu()
     if (guiDrawBGSettings() == 0)
         guiDrawBGPlasma();
 
-    if (!appMenu)
+    if (!appMenu) {
+        guiSwitchScreen(GUI_SCREEN_MAIN);
         return;
+    }
+
+    // The IO thread clears the apps list when it rereads it (a device plugged in, SMB coming up, a refresh), so
+    // the app this menu was opened for is gone. Go back to the list, as the game menu does when its device goes
+    // away, instead of dereferencing NULL here. (YAOPL c6fc06f, Roman Kelesidis)
+    if (selected_item == NULL || selected_item->item == NULL || selected_item->item->current == NULL) {
+        guiSwitchScreen(GUI_SCREEN_MAIN);
+        return;
+    }
 
     // draw the animated menu
     if (!appMenuCurrent)
@@ -3144,8 +3300,8 @@ void menuRenderAppMenu()
     int y = (gTheme->usedHeight >> 1) - (spacing * (count >> 1));
     int cp = 0; // current position
 
-    // app title
-    fntRenderString(gTheme->fonts[0], 320, 20, ALIGN_CENTER, 0, 0, cfgTitleDisplayName((item_list_t *)selected_item->item->userdata, selected_item->item->current->item.id, submenuItemGetText(&selected_item->item->current->item)), gTheme->selTextColor);
+    // app title, scrolled when it is wider than the screen, like the game menu's
+    fntRenderStringFit(gTheme->fonts[0], 320, 20, ALIGN_CENTER, 600, cfgTitleDisplayName((item_list_t *)selected_item->item->userdata, selected_item->item->current->item.id, submenuItemGetText(&selected_item->item->current->item)), gTheme->selTextColor, 1);
 
     // A PS1 row opens this smaller menu, not the PS2 VMC editor. Say why the missing PS2 control
     // is intentional without claiming that Ember and POPSTARTER store their cards identically.
@@ -3165,8 +3321,13 @@ void menuRenderAppMenu()
 
 void menuHandleInputAppMenu()
 {
-    if (!appMenu)
+    // Same guard as the render path: the app list can be reread between frames. The actions below take
+    // their own copy of the row and check it again before they act on it (menuRowCopy).
+    menu_row_t row;
+    if (!appMenu || !menuRowCopy(&row)) {
+        guiSwitchScreen(GUI_SCREEN_MAIN);
         return;
+    }
 
     if (!appMenuCurrent)
         appMenuCurrent = appMenu;

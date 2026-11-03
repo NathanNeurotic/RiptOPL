@@ -210,9 +210,11 @@ static mutable_text_t *initMutableText(const char *themePath, config_set_t *them
 {
     mutable_text_t *mutableText = (mutable_text_t *)malloc(sizeof(mutable_text_t));
     mutableText->currentConfigId = 0;
+    mutableText->currentCount = -1;
     mutableText->currentValue = NULL;
     mutableText->wrappedValue = NULL;
     mutableText->alias = NULL;
+    mutableText->cfgText = 0; // initAttributeText sets it
 
     char elemProp[64];
 
@@ -482,15 +484,17 @@ static int getGameCount(void *support)
 static void drawGameCountText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     mutable_text_t *mutableText = (mutable_text_t *)elem->extended;
+    // The number can change without the selected game changing: a device whose scan lands after the first
+    // frame (a cold boot, before a USB drive has settled), the PS1 half of a Mixed view, a rescan that adds
+    // or drops rows. Refreshing only on a new game config left the first boot's count on screen until the
+    // cursor moved (zackcage6, 2026-11-01), so the count itself is compared every frame: two int reads.
+    int count = getGameCount(menu->item->userdata);
+    u32 uid = config ? config->uid() : mutableText->currentConfigId;
 
-    if (config) {
-        if (mutableText->currentConfigId != config->uid()) {
-            // force refresh
-            mutableText->currentConfigId = config->uid();
-
-            int count = getGameCount(menu->item->userdata);
-            snprintf(mutableText->value, sizeof(char) * 60, _l(_STR_FILE_COUNT), count);
-        }
+    if (count != mutableText->currentCount || uid != mutableText->currentConfigId) {
+        mutableText->currentConfigId = uid;
+        mutableText->currentCount = count;
+        snprintf(mutableText->value, sizeof(char) * 60, _l(_STR_FILE_COUNT), count);
     }
 
     thmDrawElemText(elem, SIZING_NONE, mutableText->value, 1);
@@ -521,11 +525,29 @@ void initGameCountText(const char *themePath, config_set_t *themeConfig, theme_t
 
 // AttributeText ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static int thmElemIsInfo(theme_element_t *elem); // the info-page families, defined with the cover redirect below
+
+// Settings > Interface > List Title and Description (RIPPS2 build 126). Theme follows the theme's list_cfg_text key.
+static int thmListCfgTextShown(int mode, int themeHides)
+{
+    return mode == LIST_CFG_TEXT_ON || (mode == LIST_CFG_TEXT_THEME && !themeHides);
+}
+
+// A list page's AttributeText of the CFG's Title or Description while that setting hides them. The info page
+// always shows them. Asked as the element draws: its family is set after initAttributeText returns.
+static int thmCfgTextHidden(theme_element_t *elem)
+{
+    const mutable_text_t *text = (const mutable_text_t *)elem->extended;
+    return text->cfgText && !thmListCfgTextShown(gListCfgText, gTheme->hideListCfgText) && !thmElemIsInfo(elem);
+}
+
 static void drawAttributeText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     // No current item (e.g. the last favourite was removed -> empty list): clear, don't redraw the
     // stale cached value. Mirrors drawGameImage's `if (item)` guard so the description clears (#48).
     if (item == NULL)
+        return;
+    if (thmCfgTextHidden(elem)) // List Title and Description set to hide it here (RIPPS2 build 126)
         return;
     mutable_text_t *mutableText = (mutable_text_t *)elem->extended;
     if (config) {
@@ -561,6 +583,11 @@ static void drawAttributeText(struct menu_list *menu, struct submenu_list *item,
                 }
             }
         }
+        // A size of 0 means "not measured" (size reading off, a device that gave none, a row with no image
+        // file): show nothing rather than a wrong "0 MiB" (from RIPPS2 build 126).
+        if (mutableText->currentValue && !strcmp(mutableText->value, CONFIG_ITEM_SIZE) &&
+        (!strcmp(mutableText->currentValue, "0") || !strcmp(mutableText->currentValue, "0.00")))
+            return;
         if (mutableText->currentValue) {
             char result[300];
             if (mutableText->displayMode == DISPLAY_NEVER) {
@@ -595,6 +622,8 @@ void initAttributeText(const char *themePath, config_set_t *themeConfig, theme_t
         elem->extended = initMutableText(themePath, themeConfig, theme, name, ELEM_TYPE_ATTRIBUTE_TEXT, elem, attribute, NULL, DISPLAY_ALWAYS, SIZING_NONE);
         elem->endElem = &endMutableText;
         elem->drawElem = &drawAttributeText;
+        // The game CFG's Title or Description, which List Title and Description can hide on a list page
+        ((mutable_text_t *)elem->extended)->cfgText = !strcmp(attribute, "Title") || !strcmp(attribute, "Description");
     } else
         LOG("THEMES AttributeText %s: NO attribute, elem disabled !!\n", name);
 }
