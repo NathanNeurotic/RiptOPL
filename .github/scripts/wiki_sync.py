@@ -253,6 +253,11 @@ class Converter(MarkdownConverter):
     def convert_summary(self, el, text, parent_tags):
         return "\n\n**" + text.strip() + "**\n\n"
 
+    def convert_video(self, el, text, parent_tags):
+        # The wiki cannot play HTML video. Preserve its readable fallback link; markdownify's
+        # default synthesizes a poster/link combination that changes the visible page text.
+        return "\n\n" + text.strip() + "\n\n"
+
     def convert_div(self, el, text, parent_tags):
         if "h" in el.get("class", []):
             return "\n\n**" + text.strip() + "**\n\n"
