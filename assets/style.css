@@ -1868,12 +1868,12 @@ footer {
 }
 
 /* Real emulator captures: preserve the whole UI and load motion only on request. */
-.ui-capture-overview { max-width: 640px; margin: 20px auto; }
+.ui-capture-overview { max-width: 796px; margin: 20px auto; }
 .ui-capture-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin: 20px 0; }
 .ui-capture-grid figure { margin: 0; min-width: 0; }
 .ui-capture-overview img, .ui-capture-grid img, .ui-capture-video { display: block; width: 100%; height: auto; border: 1px solid var(--line2); }
 .ui-capture-overview figcaption, .ui-capture-grid figcaption { margin-top: 8px; font-size: 0.9em; line-height: 1.5; }
-.ui-capture-video { max-width: 640px; margin: 16px auto; }
+.ui-capture-video { max-width: 960px; margin: 16px auto; }
 @media (max-width: 680px) { .ui-capture-grid { grid-template-columns: 1fr; } }
 
 #interface-preview { scroll-margin-top: 80px; }
