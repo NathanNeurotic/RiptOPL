@@ -386,18 +386,24 @@ and translation maintenance are covered under {link('Languages', 'Languages')}.
 
 ## See the interface
 
-![RiptOPL five-cover sample library]({media}/coverflow-five.png)
+| Korium | IncebtIon |
+| --- | --- |
+| ![RiptOPL five-cover sample library — Korium]({media}/coverflow-five.png) | ![RiptOPL five-cover sample library — IncebtIon]({media}/incebtion/coverflow-five.png) |
 
-Korium v1.2.0-Beta-4045, captured in RIPPCSX2 with a widescreen sample library.
+Korium and IncebtIon v1.2.0-Beta-4052, captured in RIPPCSX2 with a widescreen sample library.
 The 12 sample titles are non-bootable placeholders with matching cover artwork.
 {link('More screenshots and capture notes', 'UI-Captures')}.
 
-![Game information with matching screenshot artwork]({media}/info-okami.png)
+| Korium | IncebtIon |
+| --- | --- |
+| ![Game information with matching screenshot artwork — Korium]({media}/info-okami.png) | ![Game information with matching screenshot artwork — IncebtIon]({media}/incebtion/info-okami.png) |
 
 <details>
 <summary>Watch the library views in motion (24-second GIF)</summary>
 
-![List, three-cover, five-cover and PSBBN Flow browsing]({media}/library-tour.gif)
+| Korium | IncebtIon |
+| --- | --- |
+| ![List, three-cover, five-cover and PSBBN Flow browsing — Korium]({media}/library-tour.gif) | ![List, three-cover, five-cover and PSBBN Flow browsing — IncebtIon]({media}/incebtion/library-tour.gif) |
 
 </details>
 
