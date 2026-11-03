@@ -39,6 +39,76 @@ straight cuts. PNGs preserve the complete 796 x 448 aspect-correct emulator outp
 The video is scaled to 960 x 540 at 20 fps; the GIF is 640 x 360 at 8 fps.
 The underlying interface is standard definition, not native HD.
 
+### Game information
+
+Each sample title has a completed Info page with title, genre, North American
+release year, developer, an original description, video badges and two matching
+screenshot-art panels. These are real loader captures. Screenshot artwork is
+pre-existing OPL artwork displayed inside RiptOPL; no game was launched to capture it.
+
+![Okami game information with both artwork panels populated](assets/ui/info-okami.png)
+
+<details>
+<summary>See all 12 completed Info pages</summary>
+
+**Final Fantasy X**
+
+![Final Fantasy X information and matching screenshot artwork](assets/ui/info-final-fantasy-x.png)
+
+**God of War II**
+
+![God of War II information and matching screenshot artwork](assets/ui/info-god-of-war-ii.png)
+
+**Gran Turismo 4**
+
+![Gran Turismo 4 information and matching screenshot artwork](assets/ui/info-gran-turismo-4.png)
+
+**ICO**
+
+![ICO information and matching screenshot artwork](assets/ui/info-ico.png)
+
+**Katamari Damacy**
+
+![Katamari Damacy information and matching screenshot artwork](assets/ui/info-katamari-damacy.png)
+
+**Kingdom Hearts II**
+
+![Kingdom Hearts II information and matching screenshot artwork](assets/ui/info-kingdom-hearts-ii.png)
+
+**Metal Gear Solid 3 - Snake Eater**
+
+![Metal Gear Solid 3 - Snake Eater information and matching screenshot artwork](assets/ui/info-metal-gear-solid-3-snake-eater.png)
+
+**Persona 4**
+
+![Persona 4 information and matching screenshot artwork](assets/ui/info-persona-4.png)
+
+**Ratchet and Clank - Up Your Arsenal**
+
+![Ratchet and Clank - Up Your Arsenal information and matching screenshot artwork](assets/ui/info-ratchet-and-clank-up-your-arsenal.png)
+
+**Shadow of the Colossus**
+
+![Shadow of the Colossus information and matching screenshot artwork](assets/ui/info-shadow-of-the-colossus.png)
+
+**Silent Hill 2**
+
+![Silent Hill 2 information and matching screenshot artwork](assets/ui/info-silent-hill-2.png)
+
+</details>
+
+<details>
+<summary>Watch Info navigation (20-second GIF)</summary>
+
+![Navigate between completed game information pages](assets/ui/info-navigation.gif)
+
+</details>
+
+[30-second MP4](assets/ui/info-navigation.mp4) | [Info capture and artwork manifest](assets/ui/info-manifest.json).
+Release years use the North American PS2 releases. The video badges describe the
+staged 4:3/480i metadata, not every mode a game supports. Unmeasured file sizes and
+unassigned review ratings are not fabricated.
+
 ### Per-game controls
 
 ![Per-game options for Okami](assets/ui/game-options.png)
@@ -66,10 +136,10 @@ while keeping a complete sample collection loaded. Published PNGs are not retouc
 Artwork belongs to its respective owners.
 
 The [showcase manifest](assets/ui/showcase-manifest.json) records source cover URLs,
-hashes, build identity, sample titles and exact capture steps. A grid take with a
-visible edge artifact and an unfinished Info page were excluded from the published
-set. Only completed screens are used in the showcase; empty panels are not
-used as promotional screenshots.
+hashes, build identity, sample titles and exact capture steps. The Info screenshots
+use matching assets from the [OPL Manager artwork archive](https://github.com/Luden02/psx-ps2-opl-art-database),
+pinned to a specific commit in the Info manifest. A grid take with a visible edge
+artifact is excluded; all 12 Info pages are complete and included.
 
 ## Settings overview
 

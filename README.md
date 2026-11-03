@@ -68,6 +68,7 @@ or PSBBN Flow. Real **Korium v1.2.0-Beta-4045** menus captured in RIPPCSX2 with 
 
 [List](docs/assets/ui/list.png) | [Three covers](docs/assets/ui/coverflow-three.png) |
 [PSBBN Flow](docs/assets/ui/psbbn-flow.png) | [Per-game options](docs/assets/ui/game-options.png) |
+[Game information](docs/assets/ui/info-okami.png) |
 [All captures and recording notes](docs/UI-CAPTURES.md).
 
 <details>
@@ -76,6 +77,15 @@ or PSBBN Flow. Real **Korium v1.2.0-Beta-4045** menus captured in RIPPCSX2 with 
 ![Browse List, three-cover, five-cover and PSBBN Flow views](docs/assets/ui/library-tour.gif)
 
 [Smaller, smoother MP4](docs/assets/ui/library-tour.mp4).
+
+</details>
+
+<details>
+<summary>See the game information panel</summary>
+
+![Okami information with developer, description and two screenshot-art panels](docs/assets/ui/info-okami.png)
+
+[All 12 Info pages and navigation clips](docs/UI-CAPTURES.md#game-information).
 
 </details>
 

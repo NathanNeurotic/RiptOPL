@@ -392,6 +392,8 @@ Korium v1.2.0-Beta-4045, captured in RIPPCSX2 with a widescreen sample library.
 The 12 sample titles are non-bootable placeholders with matching cover artwork.
 {link('More screenshots and capture notes', 'UI-Captures')}.
 
+![Game information with matching screenshot artwork]({media}/info-okami.png)
+
 <details>
 <summary>Watch the library views in motion (24-second GIF)</summary>
 

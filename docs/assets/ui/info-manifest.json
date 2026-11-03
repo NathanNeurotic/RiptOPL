@@ -1,0 +1,601 @@
+{
+  "source_commit": "22c319f72c046a583917fb73852f7de1d359bd8d",
+  "release": "Korium v1.2.0-Beta-4045",
+  "emulator": "RIPPCSX2 2.9.96-rippcsx2.2",
+  "captured_on": "2026-11-03",
+  "capture_mode": "Auto NTSC, widescreen UI; native aspect-correct PNGs 796x448",
+  "scope": "All 12 Info pages rendered in the actual loader. Non-bootable sample files; no game launch or gameplay capture. Screenshot artwork is sourced existing artwork shown inside the loader, not a capture of a running game in this session.",
+  "artwork": {
+    "repository": "Luden02/psx-ps2-opl-art-database",
+    "commit": "e14b9abce3cc42a06bb4ad2e4056e289c8872a07",
+    "entries": [
+      {
+        "key": "SCUS_974.72",
+        "title": "Shadow of the Colossus",
+        "art": [
+          {
+            "file": "SCUS_974.72_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_974.72/SCUS_974.72_SCR_00.png",
+            "sha256": "4abbcca53c4030fd2f9259e71801397791a9f3f79cbca94ef53813d48e8ada0e"
+          },
+          {
+            "file": "SCUS_974.72_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_974.72/SCUS_974.72_SCR_01.png",
+            "sha256": "3f7d0d4bea104a80639c072be5068ebcb577ba185e9fe669448f638833767edb"
+          }
+        ]
+      },
+      {
+        "key": "SCUS_974.81",
+        "title": "God of War II",
+        "art": [
+          {
+            "file": "SCUS_974.81_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_974.81/SCUS_974.81_SCR_00.png",
+            "sha256": "f434029ac290bb671f7bf165ae15b6415cc265779a917c9743cecb7ac9918544"
+          },
+          {
+            "file": "SCUS_974.81_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_974.81/SCUS_974.81_SCR_01.png",
+            "sha256": "6ced579b5b9e4088f3741c644d4ea6a5023752c775cc76dd72dbcc3977c60367"
+          }
+        ]
+      },
+      {
+        "key": "SCUS_973.28",
+        "title": "Gran Turismo 4",
+        "art": [
+          {
+            "file": "SCUS_973.28_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_973.28/SCUS_973.28_SCR_00.png",
+            "sha256": "72b9a041568dc9070a28c9257cf912c447482b16db553d70323ac7b7cea7595c"
+          },
+          {
+            "file": "SCUS_973.28_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_973.28/SCUS_973.28_SCR_01.png",
+            "sha256": "2b1571e4c021733d0703ff388f3ca1d88abddfeef31bb2d8ad1738d8f5e4c4bb"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_203.12",
+        "title": "Final Fantasy X",
+        "art": [
+          {
+            "file": "SLUS_203.12_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_203.12/SLUS_203.12_SCR_00.png",
+            "sha256": "9522158e43450d3e8a54bf7cabfc668b83f18807c2b4a150d9c66b17c466705f"
+          },
+          {
+            "file": "SLUS_203.12_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_203.12/SLUS_203.12_SCR_01.png",
+            "sha256": "fbddfe4499d3bdde6d7742283148f1b0c9fef75b6d764f7720a59e6b1a442b6d"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_210.05",
+        "title": "Kingdom Hearts II",
+        "art": [
+          {
+            "file": "SLUS_210.05_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_210.05/SLUS_210.05_SCR_00.png",
+            "sha256": "573afccbd669b4a11ecba3b9c4754c3926b092fdfaf1b40f6069b90022e36af1"
+          },
+          {
+            "file": "SLUS_210.05_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_210.05/SLUS_210.05_SCR_01.png",
+            "sha256": "376eeb6aad2fa9ba5889aaac918aa2565193695d8afe498a6a46b0a426469f80"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_210.08",
+        "title": "Katamari Damacy",
+        "art": [
+          {
+            "file": "SLUS_210.08_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_210.08/SLUS_210.08_SCR_00.png",
+            "sha256": "ebc6905560ca5cbd8eabbb566e7cf84c61bf7d7aa495d92fe57f6840b9dd927d"
+          },
+          {
+            "file": "SLUS_210.08_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_210.08/SLUS_210.08_SCR_01.png",
+            "sha256": "36541b4648d2d9dd316fc1cd9ad353aa8a198c94b1d99cbb9a676a1deeb549b7"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_211.15",
+        "title": "Okami",
+        "art": [
+          {
+            "file": "SLUS_211.15_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_211.15/SLUS_211.15_SCR_00.png",
+            "sha256": "dc9710cb1e129c36db138b6198f6cdc21ccc2a0776200a9d51851ec926c82645"
+          },
+          {
+            "file": "SLUS_211.15_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_211.15/SLUS_211.15_SCR_01.png",
+            "sha256": "a420e9c4c1887b4969a2c176964b6919a11d7497b9ae651c7454fae165357284"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_209.15",
+        "title": "Metal Gear Solid 3 - Snake Eater",
+        "art": [
+          {
+            "file": "SLUS_209.15_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_209.15/SLUS_209.15_SCR_00.png",
+            "sha256": "4af79f6ea2ef8465adca70e7bd9c60036ed67d21246beecba881a0c70095dda1"
+          },
+          {
+            "file": "SLUS_209.15_SCR_03.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_209.15/SLUS_209.15_SCR_03.png",
+            "sha256": "1c95ce84b3a9408e21181e248caf7c7f79dcf90f530d41bc0c64fcbed7346ee5"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_202.28",
+        "title": "Silent Hill 2",
+        "art": [
+          {
+            "file": "SLUS_202.28_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_202.28/SLUS_202.28_SCR_00.png",
+            "sha256": "d6da7089efe442305de3a0f48059b315167f255fa9c77cdf91346eb657abdd63"
+          },
+          {
+            "file": "SLUS_202.28_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_202.28/SLUS_202.28_SCR_01.png",
+            "sha256": "9d4f3cfcdd63544529d589f5075ecae4c213883944e9351629063568a72c100a"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_217.82",
+        "title": "Persona 4",
+        "art": [
+          {
+            "file": "SLUS_217.82_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_217.82/SLUS_217.82_SCR_00.png",
+            "sha256": "c92969b8d61bdcea1909486f934caf27368b693f64832d375da378d84d167f25"
+          },
+          {
+            "file": "SLUS_217.82_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_217.82/SLUS_217.82_SCR_01.png",
+            "sha256": "0ebf4ab461a1bbfcba8ab8ed13dfe14401edaab848ae03fbb0c1f01d29c370a3"
+          }
+        ]
+      },
+      {
+        "key": "SCUS_973.53",
+        "title": "Ratchet and Clank - Up Your Arsenal",
+        "art": [
+          {
+            "file": "SCUS_973.53_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_973.53/SCUS_973.53_SCR_00.png",
+            "sha256": "4c2e34842700ef0260b9dc15acd5ce949abbc421ad3142950b19162b4ac494cf"
+          },
+          {
+            "file": "SCUS_973.53_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_973.53/SCUS_973.53_SCR_01.png",
+            "sha256": "7b9c00a205c43991ffc0cbf9a2ef125ac5afc24e44f9408ffde0ab8e71cb345e"
+          }
+        ]
+      },
+      {
+        "key": "SCUS_971.13",
+        "title": "ICO",
+        "art": [
+          {
+            "file": "SCUS_971.13_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_971.13/SCUS_971.13_SCR_00.png",
+            "sha256": "f1a6dfc565b820d167ddce573a4f0e7b5a02e21b5f17e4c164a0c4782744a586"
+          },
+          {
+            "file": "SCUS_971.13_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_971.13/SCUS_971.13_SCR_01.png",
+            "sha256": "64cc355d5d91d16e6abffa5a16a6480d2fe49d21b458d956eeca1fdb958a6c7c"
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "release_year_region": "North America",
+    "descriptions": "Original editorial summaries",
+    "entries": [
+      {
+        "title": "Shadow of the Colossus",
+        "serial": "SCUS-97472",
+        "key": "SCUS_974.72",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97472.jpg",
+        "cover_sha256": "e9845bbb667ba059716d9c4bc6d41af15916ecc967f33a7395e17ae01298e1cb",
+        "display_cover_sha256": "6079e8eeeec66a5c65e25e5d496bf6e539aee8001ac368e213e9d3617b7cb423",
+        "metadata": {
+          "Title": "Shadow of the Colossus",
+          "Developer": "Team Ico",
+          "Genre": "Action adventure",
+          "Release": "2005",
+          "Description": "Travel a forbidden land and face towering colossi in a quest to save a young woman.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "God of War II",
+        "serial": "SCUS-97481",
+        "key": "SCUS_974.81",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97481.jpg",
+        "cover_sha256": "84b5e736b9fdeb022af5f2737df287bf82d2cea6f229a050ba11a697347f48b5",
+        "display_cover_sha256": "6a3cc87642b7d785c8516fe031fe5bdeb58debf4c3ada4cf8d17cdbdbf1c45e3",
+        "metadata": {
+          "Title": "God of War II",
+          "Developer": "Santa Monica Studio",
+          "Genre": "Action adventure",
+          "Release": "2007",
+          "Description": "Guide Kratos through a mythological quest against the gods and the Sisters of Fate.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Gran Turismo 4",
+        "serial": "SCUS-97328",
+        "key": "SCUS_973.28",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97328.jpg",
+        "cover_sha256": "972cc1c509049272c2fbcd0a44805daf5460ab7b787f476c216f1f8a7e21bfa3",
+        "display_cover_sha256": "97b91529523d89437cdb9771a60da31eea4be22f3fcb36404a138a0c8404f879",
+        "metadata": {
+          "Title": "Gran Turismo 4",
+          "Developer": "Polyphony Digital",
+          "Genre": "Racing simulation",
+          "Release": "2005",
+          "Description": "Build a garage, earn licenses and compete across an extensive collection of racing events.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Final Fantasy X",
+        "serial": "SLUS-20312",
+        "key": "SLUS_203.12",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20312.jpg",
+        "cover_sha256": "98facb34d509679f501a454a31c27af09f57862eccd85a5903928112c8b92faf",
+        "display_cover_sha256": "d7c247d8293205f9841e35288714741254414a456b6296825094b60662f135b8",
+        "metadata": {
+          "Title": "Final Fantasy X",
+          "Developer": "Square",
+          "Genre": "Role-playing",
+          "Release": "2001",
+          "Description": "Join Tidus and Yuna on a pilgrimage across Spira, with turn-based battles and the Sphere Grid.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Kingdom Hearts II",
+        "serial": "SLUS-21005",
+        "key": "SLUS_210.05",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21005.jpg",
+        "cover_sha256": "d76d6fed63066cdb15a7b867e16a382ebbd29d76f4f037f8056c6a948b66c108",
+        "display_cover_sha256": "04455506d13317552eae0b4c1fc5cf362250e96e62a39975beaf7ec58b6d3e87",
+        "metadata": {
+          "Title": "Kingdom Hearts II",
+          "Developer": "Square Enix",
+          "Genre": "Action role-playing",
+          "Release": "2006",
+          "Description": "Travel with Sora, Donald and Goofy through Disney worlds and confront Organization XIII.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Katamari Damacy",
+        "serial": "SLUS-21008",
+        "key": "SLUS_210.08",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21008.jpg",
+        "cover_sha256": "463cc1bd6c414d72e15d7ec5996e4ceb9a4b4cb785bed82004b8b2d22545f707",
+        "display_cover_sha256": "59b850222f6346e7df117a5151184150ddccbb2b0ea1e3f199871069eabec148",
+        "metadata": {
+          "Title": "Katamari Damacy",
+          "Developer": "Namco",
+          "Genre": "Puzzle action",
+          "Release": "2004",
+          "Description": "Roll up everyday objects into an ever-growing katamari to rebuild the stars.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Okami",
+        "serial": "SLUS-21115",
+        "key": "SLUS_211.15",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21115.jpg",
+        "cover_sha256": "9ef47846398ef01f9daa051ac8d1327af52160d80d2befdfdd8302d1a80bb366",
+        "display_cover_sha256": "48dce869cfbed31ae02292cb997f17d81d45cd5384ddb9e8d07e9589aba6aad1",
+        "metadata": {
+          "Title": "Okami",
+          "Developer": "Clover Studio",
+          "Genre": "Action adventure",
+          "Release": "2006",
+          "Description": "Guide Amaterasu through a world inspired by Japanese folklore and restore life to the land.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Metal Gear Solid 3 - Snake Eater",
+        "serial": "SLUS-20915",
+        "key": "SLUS_209.15",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20915.jpg",
+        "cover_sha256": "011fe99f803d2ac28ffbd1712d3e13ae0c689a6099ffe546cd4302bb1a1ed838",
+        "display_cover_sha256": "7229c3ef520ed0ce0a9bbbcb556686b65e20c8a884fe5889064ffcdbd0824f11",
+        "metadata": {
+          "Title": "Metal Gear Solid 3 - Snake Eater",
+          "Developer": "Konami Computer Entertainment Japan",
+          "Genre": "Stealth action",
+          "Release": "2004",
+          "Description": "Infiltrate a Cold War jungle as Naked Snake, using camouflage, survival skills and stealth.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Silent Hill 2",
+        "serial": "SLUS-20228",
+        "key": "SLUS_202.28",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20228.jpg",
+        "cover_sha256": "a3a663efdc01a25a9b550dddc6da60a4b9c45e2e1e412224c1c405cfa4f59d78",
+        "display_cover_sha256": "bbd1e5faf8046ee3c78d5a808581273a17581178b42eb2fbc155ca46117ecc9e",
+        "metadata": {
+          "Title": "Silent Hill 2",
+          "Developer": "Team Silent",
+          "Genre": "Survival horror",
+          "Release": "2001",
+          "Description": "Follow James Sunderland into the fog-covered town of Silent Hill after a mysterious letter.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Persona 4",
+        "serial": "SLUS-21782",
+        "key": "SLUS_217.82",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21782.jpg",
+        "cover_sha256": "ded407eee7bf1934a68ed9f997da266a9a5a047de966b65d956a9051b3946cc0",
+        "display_cover_sha256": "f71f323bae97bbd340d7727480877299d17a5767c97b3b09204742249ded6c88",
+        "metadata": {
+          "Title": "Persona 4",
+          "Developer": "Atlus",
+          "Genre": "Role-playing",
+          "Release": "2008",
+          "Description": "Balance school life in Inaba with an investigation into a mysterious world inside the television.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Ratchet and Clank - Up Your Arsenal",
+        "serial": "SCUS-97353",
+        "key": "SCUS_973.53",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97353.jpg",
+        "cover_sha256": "11ad626176cc01c11262c6fd3acc677ec758052b0a7681b85b2b91cc04eb0244",
+        "display_cover_sha256": "fa5455b470a789e02f7ef18b94e66beb4617889078f22f8c548fc3e40c5ad318",
+        "metadata": {
+          "Title": "Ratchet and Clank - Up Your Arsenal",
+          "Developer": "Insomniac Games",
+          "Genre": "Action platformer",
+          "Release": "2004",
+          "Description": "Take Ratchet and Clank across the galaxy with an arsenal of unusual weapons and gadgets.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "ICO",
+        "serial": "SCUS-97113",
+        "key": "SCUS_971.13",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97113.jpg",
+        "cover_sha256": "7b1e1a3e62d44dc283e56a5e9281e6e609557b82354c16918b2e04433719a80e",
+        "display_cover_sha256": "352b1828d30d7aed943791397197d4cbfb65762206272ec7a5aa7be5fd31d4b5",
+        "metadata": {
+          "Title": "ICO",
+          "Developer": "Team Ico",
+          "Genre": "Puzzle adventure",
+          "Release": "2001",
+          "Description": "Help Ico and Yorda escape a vast castle through exploration, cooperation and environmental puzzles.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      }
+    ]
+  },
+  "take": {
+    "steps": "wait:23,rec,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,rec,wait:2",
+    "entries": [
+      {
+        "title": "Final Fantasy X",
+        "key": "SLUS_203.12",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085051.png",
+        "file": "info-final-fantasy-x.png"
+      },
+      {
+        "title": "God of War II",
+        "key": "SCUS_974.81",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085103.png",
+        "file": "info-god-of-war-ii.png"
+      },
+      {
+        "title": "Gran Turismo 4",
+        "key": "SCUS_973.28",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085114.png",
+        "file": "info-gran-turismo-4.png"
+      },
+      {
+        "title": "ICO",
+        "key": "SCUS_971.13",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085126.png",
+        "file": "info-ico.png"
+      },
+      {
+        "title": "Katamari Damacy",
+        "key": "SLUS_210.08",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085137.png",
+        "file": "info-katamari-damacy.png"
+      },
+      {
+        "title": "Kingdom Hearts II",
+        "key": "SLUS_210.05",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085149.png",
+        "file": "info-kingdom-hearts-ii.png"
+      },
+      {
+        "title": "Metal Gear Solid 3 - Snake Eater",
+        "key": "SLUS_209.15",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085200.png",
+        "file": "info-metal-gear-solid-3-snake-eater.png"
+      },
+      {
+        "title": "Okami",
+        "key": "SLUS_211.15",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085212.png",
+        "file": "info-okami.png"
+      },
+      {
+        "title": "Persona 4",
+        "key": "SLUS_217.82",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085223.png",
+        "file": "info-persona-4.png"
+      },
+      {
+        "title": "Ratchet and Clank - Up Your Arsenal",
+        "key": "SCUS_973.53",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085235.png",
+        "file": "info-ratchet-and-clank-up-your-arsenal.png"
+      },
+      {
+        "title": "Shadow of the Colossus",
+        "key": "SCUS_974.72",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085246.png",
+        "file": "info-shadow-of-the-colossus.png"
+      },
+      {
+        "title": "Silent Hill 2",
+        "key": "SLUS_202.28",
+        "shot": "RIPTOPL [_]_RIPTOPL_20261103085258.png",
+        "file": "info-silent-hill-2.png"
+      }
+    ],
+    "videos": [
+      "RIPTOPL [_]_RIPTOPL_20261103085047.mp4"
+    ],
+    "exit_code": 0
+  },
+  "processing": "PNGs unmodified. MP4 is first 30 seconds of real navigation, scaled 960x540 20fps. GIF is first 20 seconds at 640x360 6fps/128 colors.",
+  "notes": "Release years refer to North American PS2 releases. Descriptions are original editorial summaries. Video badges describe staged NTSC 4:3/480i metadata, not the full set of modes supported by each game. No invented file sizes or review ratings.",
+  "metadata_sources": [
+    "https://na.finalfantasy.com/en/titles/finalfantasy10/",
+    "https://www.capcom.sg/licensing/detail_08.html",
+    "https://sony.mediaroom.com/2005-10-18-Larger-Than-Life-Shadow-of-the-Colossus-Provides-an-Emotional-Artistic-Adventure-Available-Exclusively-for-PlayStation-2",
+    "https://www.konami.com/mg/history/jp/ja/mgs3"
+  ],
+  "assets": [
+    {
+      "file": "info-final-fantasy-x.png",
+      "bytes": 241577,
+      "sha256": "3fd0affd3aaa9d0af050fb4bc2977f40bfed2ef4c8edfc8185ef91333ac25eee"
+    },
+    {
+      "file": "info-god-of-war-ii.png",
+      "bytes": 228999,
+      "sha256": "d4d3f8321af95a7c1bf8062dc7456890e5d07bf8f3477af6a309ea93cc293b96"
+    },
+    {
+      "file": "info-gran-turismo-4.png",
+      "bytes": 235106,
+      "sha256": "93a60924785335f1f71b40a5ffa0ff5980efa444e71fc77a32ce0ee2ce034599"
+    },
+    {
+      "file": "info-ico.png",
+      "bytes": 234829,
+      "sha256": "f04be6bc57b52c93b10293f6ba8240e5d7f4830440c69c0bb3aae33d56f3134e"
+    },
+    {
+      "file": "info-katamari-damacy.png",
+      "bytes": 226852,
+      "sha256": "505f7c522c51ef8c439a02f144b7fc0f4bab9487bdd64b6553a7a1764dc788cb"
+    },
+    {
+      "file": "info-kingdom-hearts-ii.png",
+      "bytes": 240139,
+      "sha256": "8b78dd41ff9d0e87ef9a87aa0ec7d32bc32f35cd5d55b8d4ca2aedfe2736ba95"
+    },
+    {
+      "file": "info-metal-gear-solid-3-snake-eater.png",
+      "bytes": 231168,
+      "sha256": "d7feb9fbe91ea02a3b577acac7b407a3ac2b113d87cc1b48d3ee0ef027c1f8c3"
+    },
+    {
+      "file": "info-navigation.gif",
+      "bytes": 4082224,
+      "sha256": "ce52c6ed688349869e59412f40597a93bb612b07d27c760e333876b95788d3c3"
+    },
+    {
+      "file": "info-navigation.mp4",
+      "bytes": 1421972,
+      "sha256": "f00aa3377e7593e9338232077554caa2bc6763e33d2ac898d5b6d5b019766d0f"
+    },
+    {
+      "file": "info-okami.png",
+      "bytes": 241180,
+      "sha256": "a6d4f67bc476c29cc15268c1fdbf42ac06d0ccb46b21273750a40b1dfb35da53"
+    },
+    {
+      "file": "info-persona-4.png",
+      "bytes": 235792,
+      "sha256": "79c3127b341c36f26b6cf58dbe87ed413567708519eebe8fec048cb94b8a69c7"
+    },
+    {
+      "file": "info-ratchet-and-clank-up-your-arsenal.png",
+      "bytes": 244969,
+      "sha256": "ff786714b080941f2c66cba3c6b3ca6a3eb78b31125ec5d49dc0df3f658adc7d"
+    },
+    {
+      "file": "info-shadow-of-the-colossus.png",
+      "bytes": 223728,
+      "sha256": "a73188c557973fa1bb9d7920ba9253654128e2b78f7d880e8b2c9b87ed8e6eb2"
+    },
+    {
+      "file": "info-silent-hill-2.png",
+      "bytes": 215850,
+      "sha256": "8f776a86d0b652f03cc0b8de8309c13af69524eb33a52d97f2abd8ef88908238"
+    }
+  ]
+}
