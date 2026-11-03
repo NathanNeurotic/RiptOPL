@@ -175,7 +175,7 @@
     "https://www.capcom.sg/licensing/detail_08.html",
     "https://www.bunka.go.jp/j-mediaarts-festival/en/award/single/okami/index-2.html"
   ],
-  "excluded": "Grid capture has a visible edge artifact; unfinished Info page and blank launch frames are excluded.",
+  "excluded": "Grid capture has a visible edge artifact. Completed Info pages are recorded separately in info-manifest.json.",
   "assets": [
     {
       "file": "cheat-settings.png",
