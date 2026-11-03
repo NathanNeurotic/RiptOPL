@@ -1119,7 +1119,7 @@ int sbPrepare(base_game_info_t *game, config_set_t *configSet, int size_cdvdman,
         configGetStr(configSet, CONFIG_ITEM_ILINK_ID, &consoleID);
         if (oplParseILinkID(consoleID, settings->ilink_id) < 0) {
             diagLog("launch: invalid $ILinkID; using the real console ID");
-            host::ui().msgBox(_l(_STR_INVALID_CONSOLE_ILINK_ID), 0, NULL);
+            host::ui().msgBox(_l(_STR_LAUNCH_CONSOLE_ILINK_ID_FALLBACK), 0, NULL);
         }
     }
 
