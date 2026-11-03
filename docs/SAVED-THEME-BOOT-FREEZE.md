@@ -70,7 +70,9 @@ settings file. A successful fallback is a useful isolation result, not a cause.
 
 - The last `boot theme: saved ...` line proves the saved name was parsed, but
   does not prove its on-disk folder was discovered yet.
-- `theme scan: begin` without `theme scan: end` isolates a directory read.
+- `theme scan: begin` without `theme scan: end` isolates a directory traversal. The additional `theme fs:` checkpoints now distinguish `checkFile` probing, the initial `opendir`, early `readdir` calls, and `closedir`. Missing `opendir returned` after `opendir begin` suggests the directory-open RPC stalled; missing `readdir finished` suggests directory enumeration, a nested `theme dirent: probing candidate` call, or their respective drivers. The last trace line is a clue, not a guaranteed stack frame.
+- Different results with the **same theme copied to MC versus USB/ATA/MMCE** isolate storage/driver timing from the theme's own configuration. Keep settings and enabled sources unchanged when making this comparison.
+- A disk theme that loads manually after startup but stalls on reboot is consistent with a late device mount and theme discovery through the IO worker. That is not evidence that missing PNGs caused the hang. The existing font-rendering lock has already been hardened against a known, similar boot-stage freeze; check thread and semaphore states before reworking locks.
 - `theme scan: applying saved theme` and `theme load:` checkpoints narrow the
   work to pre-read drain, config, fonts, layout/elements, textures, or GUI swap.
 - `theme load: waiting for GUI publish` without `published` warrants checking
