@@ -68,7 +68,7 @@ For the merged work listed at the November 1 baseline, **NOT TESTED** means no c
 
 ## Status vocabulary
 
-Every record now carries one of seven statuses: **PRESENT**, **PARTIAL**, **MISSING**, **REGRESSED**, **INTENTIONAL DIFFERENCE**, **BLOCKED**, **UNKNOWN**. The October 29 classification buckets map onto them as follows; the per-record result, with the records re-read by hand called out, is in [`id-status.json`](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/id-status.json).
+Every record in the November 2 snapshot carries one of seven statuses: **PRESENT**, **PARTIAL**, **MISSING**, **REGRESSED**, **INTENTIONAL DIFFERENCE**, **BLOCKED**, **UNKNOWN**. The October 29 classification buckets map onto them as follows; the per-record result, with the records re-read by hand called out, is in [`id-status.json`](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/id-status.json).
 
 | October 29 bucket | November 1 status |
 | --- | --- |
