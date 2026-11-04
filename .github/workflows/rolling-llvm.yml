@@ -78,7 +78,6 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
-      - run: python -m pip install -r requirements.txt
       - name: Resolve the pinned LLVM ps2build SDK
         id: sdk
         env:
@@ -230,4 +229,5 @@ jobs:
       - name: Publish RiptOPLLVM (no GCC assets or tags touched)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python tools/publish_llvm.py dist/downloaded
+        # The publisher uses only the standard library; do not load installed site packages with this token.
+        run: python -S tools/publish_llvm.py dist/downloaded

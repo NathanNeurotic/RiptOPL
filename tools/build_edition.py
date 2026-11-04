@@ -10,9 +10,6 @@ import shutil
 import subprocess
 import sys
 
-import yaml
-
-from build import build
 from build_configuration import CONFIGURATIONS, apply_configuration
 from lite_devices import DEVICES as LITE_DEVICES, apply_lite, elf_name
 from install_ports import LIBRARIES
@@ -48,6 +45,8 @@ def add(target, field, *values):
 
 
 def definition(edition, configuration="standard", toolchain="gcc", device=None):
+    import yaml
+
     options = edition_options(edition)
     if edition in LITES and configuration != "standard":
         raise ValueError("the lite edition is built in the standard configuration only")
@@ -143,6 +142,9 @@ def git(*args):
 
 
 def main():
+    import yaml
+    from build import build
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("edition", choices=[*EDITIONS, *LITES])
     parser.add_argument("--toolchain", choices=("gcc", "llvm"), default="gcc")
@@ -221,6 +223,8 @@ def main():
 
 
 def sdk_suite(toolchain):
+    import yaml
+
     """The SDK a build linked: ps2build's version, its component versions and the linked ports.
     publish_editions.py and publish_lite.py refuse builds whose suite differs from the full kits'."""
     sdk = Path(os.environ.get("PS2BUILD_HOME", shutil.which("ps2build") or "")).resolve()
@@ -237,6 +241,8 @@ def sdk_suite(toolchain):
 
 
 def stage_lite(args, options, source, dirty, canonical, elf, output, stage):
+    import yaml
+
     """One RIPTOPLITE-<DEVICE>.ELF, its manifest and resolved definition (publish_editions.py collects them)."""
     title = LITE_DEVICES[args.device]["title"]
     name = elf_name(args.device, options["ra"])

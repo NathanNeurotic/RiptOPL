@@ -65,6 +65,12 @@ def candidates(root, compiler="llvm", altered_lite=None):
 
 
 class RiptOPLLVMTests(unittest.TestCase):
+    def test_publisher_imports_without_installed_packages(self):
+        import subprocess
+
+        subprocess.run([sys.executable, "-S", str(ROOT / "tools/publish_llvm.py"), "--help"],
+                       check=True, capture_output=True, text=True)
+
     def test_unpacked_lld_layout_accounts_for_non_loadable_mips_headers(self):
         import struct
         from test_ps2build_configurations import unpacked_elf
@@ -95,7 +101,7 @@ class RiptOPLLVMTests(unittest.TestCase):
         self.assertNotIn("GH_TOKEN", publish.get("env", {}))
         token_steps = [step for step in publish["steps"] if "GH_TOKEN" in step.get("env", {})]
         self.assertEqual(len(token_steps), 1)
-        self.assertEqual(token_steps[0]["run"], "python tools/publish_llvm.py dist/downloaded")
+        self.assertEqual(token_steps[0]["run"], "python -S tools/publish_llvm.py dist/downloaded")
         self.assertIn("needs", llvm_flow["jobs"]["publish"])
         self.assertIn("--compiler llvm", (ROOT / ".github/workflows/rolling-llvm.yml").read_text())
         self.assertIn("compiler=COMPILER", (ROOT / "tools/publish_llvm.py").read_text())
