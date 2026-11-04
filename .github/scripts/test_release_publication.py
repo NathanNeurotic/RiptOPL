@@ -285,6 +285,42 @@ class PublicationTests(unittest.TestCase):
             self.assertFalse(any(c[:2] == ("release", "upload") and str(folder) not in c[-1] for c in calls))
             self.assertFalse(any(call[:2] in (("release", "edit"), ("release", "create")) for call in calls))
 
+    def test_rollback_continues_to_delete_new_assets_if_restore_gets_502(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            assets = self.release(folder, ["stable.ELF", "new.zip"])
+            old = b"old-elf"
+            old_item = dict(name="stable.ELF", size=len(old),
+                            digest="sha256:" + hashlib.sha256(old).hexdigest())
+            remote = {"stable.ELF": old_item}
+            attempts = []
+
+            def fake(*args, retry=True):
+                attempts.append(args)
+                if args[:2] == ("release", "view"):
+                    return json.dumps(dict(id=1, assets=list(remote.values())))
+                if args[:2] == ("release", "download"):
+                    (Path(args[args.index("--dir") + 1]) / "stable.ELF").write_bytes(old)
+                if args[:2] == ("release", "upload"):
+                    file = Path(args[-1])
+                    if file.name == "stable.ELF":
+                        raise subprocess.CalledProcessError(1, "gh", stderr="HTTP 502")
+                    contents = file.read_bytes()
+                    remote[file.name] = dict(name=file.name, size=len(contents),
+                                             digest="sha256:" + hashlib.sha256(contents).hexdigest())
+                if args[:2] == ("release", "delete-asset"):
+                    remote.pop(args[3], None)
+                return ""
+
+            with patch.object(publisher, "gh", side_effect=fake), self.assertRaises(subprocess.CalledProcessError):
+                publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40,
+                                          "RA", Path("notes"), assets, True)
+            self.assertEqual(remote, {"stable.ELF": old_item})
+            self.assertIn(("release", "delete-asset", "rolling-ra", "new.zip",
+                           "--repo", "owner/repo", "--yes"), attempts)
+            self.assertEqual(len([args for args in attempts if args[:2] == ("release", "upload")
+                                  and Path(args[-1]).name == "stable.ELF"]), 2)
+
     def test_unretained_asset_restores_and_new_drafts_need_no_restore(self):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
