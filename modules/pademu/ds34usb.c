@@ -171,7 +171,7 @@ int usb_connect(int devId)
 
     } while (epCount--);
 
-    // The clone is never sent an output report, so it needs only its input endpoint.
+    // ShanWan is input-only, so it needs only its input endpoint.
     if (ds34pad[pad].interruptEndp < 0 || (ds34pad[pad].outEndp < 0 && ds34pad[pad].type != SHANWAN)) {
         usb_release(pad);
         return 1;
