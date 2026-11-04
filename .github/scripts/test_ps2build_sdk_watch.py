@@ -297,8 +297,9 @@ class WorkflowTests(unittest.TestCase):
             self.assertIn("path: ${{ github.workspace }}/.ps2dev", text, name)
             self.assertIn("workflow_dispatch:", text, name)  # the watch starts it on its branch
             self.assertNotIn("PS2BUILD_SDK_PIN:", text, name)
-            self.assertTrue(any(value in text for value in (key, key.replace("${{ matrix.toolchain }}", "gcc"),
-                                                           key.replace("${{ matrix.toolchain }}", "llvm"))), name)
+            compiler = "llvm" if name == "rolling-llvm.yml" else "gcc" if name == "rolling-release.yml" else "${{ matrix.toolchain }}"
+            expected = key.replace("${{ matrix.toolchain }}", compiler)
+            self.assertGreaterEqual(text.count("key: " + expected), 2, name)
 
     def test_the_watch_never_publishes_and_pushes_only_its_own_branch(self):
         text = (WORKFLOWS / "ps2build-sdk-watch.yml").read_text()
