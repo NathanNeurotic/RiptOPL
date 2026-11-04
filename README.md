@@ -60,30 +60,35 @@ Review the LICENSE file for further details.<br><br>
 
 ## See RiptOPL
 
-![RiptOPL five-cover library with matching game artwork](docs/assets/ui/coverflow-five.png)
+| Korium | IncebtIon |
+| --- | --- |
+| ![RiptOPL five-cover library with matching game artwork — Korium](docs/assets/ui/coverflow-five.png) | ![RiptOPL five-cover library with matching game artwork — IncebtIon](docs/assets/ui/incebtion/coverflow-five.png) |
 
 **Your collection, your view.** Browse a classic list, three- or five-cover carousel,
-or PSBBN Flow. Real **Korium v1.2.0-Beta-4045** menus captured in RIPPCSX2 with a
+or PSBBN Flow. Real **Korium and IncebtIon v1.2.0-Beta-4052** menus captured in RIPPCSX2 with a
 12-title sample library and matching artwork. Sample files are non-bootable placeholders.
 
-[List](docs/assets/ui/list.png) | [Three covers](docs/assets/ui/coverflow-three.png) |
-[PSBBN Flow](docs/assets/ui/psbbn-flow.png) | [Per-game options](docs/assets/ui/game-options.png) |
-[Game information](docs/assets/ui/info-okami.png) |
-[All captures and recording notes](docs/UI-CAPTURES.md).
+[Paired screenshots and recording notes](docs/UI-CAPTURES.md) /
+[Korium MP4](docs/assets/ui/library-tour.mp4) /
+[IncebtIon MP4](docs/assets/ui/incebtion/library-tour.mp4).
 
 <details>
 <summary>Watch the library views in motion (24-second GIF)</summary>
 
-![Browse List, three-cover, five-cover and PSBBN Flow views](docs/assets/ui/library-tour.gif)
+| Korium | IncebtIon |
+| --- | --- |
+| ![Browse List, three-cover, five-cover and PSBBN Flow views — Korium](docs/assets/ui/library-tour.gif) | ![Browse List, three-cover, five-cover and PSBBN Flow views — IncebtIon](docs/assets/ui/incebtion/library-tour.gif) |
 
-[Smaller, smoother MP4](docs/assets/ui/library-tour.mp4).
+[Korium MP4](docs/assets/ui/library-tour.mp4) / [IncebtIon MP4](docs/assets/ui/incebtion/library-tour.mp4).
 
 </details>
 
 <details>
 <summary>See the game information panel</summary>
 
-![Okami information with developer, description and two screenshot-art panels](docs/assets/ui/info-okami.png)
+| Korium | IncebtIon |
+| --- | --- |
+| ![Okami information with developer, description and two screenshot-art panels — Korium](docs/assets/ui/info-okami.png) | ![Okami information with developer, description and two screenshot-art panels — IncebtIon](docs/assets/ui/incebtion/info-okami.png) |
 
 [All 12 Info pages and navigation clips](docs/UI-CAPTURES.md#game-information).
 

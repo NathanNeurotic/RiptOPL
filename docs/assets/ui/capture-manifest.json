@@ -1,43 +1,1174 @@
 {
   "captured_on": "2026-11-03",
   "edition": "Korium",
-  "release": "v1.2.0-Beta-4045",
-  "source_commit": "22c319f72c046a583917fb73852f7de1d359bd8d",
-  "elf_sha256": "50857f375a3a3ac8671f44737eb28bbfb5f426be4be589fc9ccf52f460ff56ec",
+  "release": "v1.2.0-Beta-4052",
+  "source_commit": "a64f1b92a632a0c00ffdb9f67cbbd047b49dbaf0",
+  "elf_sha256": "13799b3c171275a22a24f24b928362beea9519bd4e35732157498b66d8de14bd",
+  "build": {
+    "repository": "NathanNeurotic/RiptOPL",
+    "source_commit": "a64f1b92a632a0c00ffdb9f67cbbd047b49dbaf0",
+    "dirty": false,
+    "edition": "korium",
+    "title": "Korium",
+    "tag": "rolling-korium",
+    "theme": "korium",
+    "ra": false,
+    "sdk": "ps2build",
+    "compiler": "gcc",
+    "configuration": "standard",
+    "ps2build_version": "ps2build v2026.10.15\nThird-party licenses: see licenses/ in the source repository (git.techwritescode.dev/ps2/ps2build).",
+    "components": {
+      "suite": "",
+      "components": {
+        "cmake": "v2026.10.12",
+        "ninja": "v1.13.2",
+        "sdk-core": "v2026.10.13.1",
+        "sdk-world": "v2026.10.28",
+        "toolchain": "v2026.09.27",
+        "tools": "v2026.09.29.1",
+        "vcl": "v2026.10.07"
+      }
+    },
+    "ports": {
+      "ogg": "f5f0fb01b596ec78510bf152e851b3edd96a92f4bd4776148eb500d0f6f1f5fd",
+      "vorbis": "007ed7b9664090af18a9d1c84aab17d77e16897d3cc3e8d0414b762017708afc"
+    },
+    "definition_sha256": "50fb922e5fde67bff78a5630f6f10b718d38e0586c70161fc44aced5eca557be",
+    "elf_sha256": "13799b3c171275a22a24f24b928362beea9519bd4e35732157498b66d8de14bd",
+    "ilink_bd_sha256": "958325d36a10cc6c4d33db60c9bee522085df9b5f88054eeae4b21f8245d9beb",
+    "ilink_manager_sha256": "1b0b27ea7f65b550dafac38a38c806f0e84227b244300701f41c69c8afb85ffc",
+    "version": "#define OPL_VERSION \"v1.2.0-Beta-4052-1693273-PS2BUILD-Korium-GCC\"",
+    "run_url": "https://github.com/NathanNeurotic/RiptOPL/actions/runs/41700972433",
+    "neutrino_archive": {
+      "filename": "neutrino_v1.8.0-61-g7be8de2.7z",
+      "sha256": "fcec9c78c8cfd844a298d16341ae6885e0ae47835070ce84e374da006c024d12"
+    },
+    "kit_files": {
+      "APPS/APP_RIPTOPL/APPINFO.PBT": "dc7ebb915eba61888361e435a5bc7666d0b417fefeae9725e0c5a18bca9a4848",
+      "APPS/APP_RIPTOPL/RIPTOPL.ELF": "13799b3c171275a22a24f24b928362beea9519bd4e35732157498b66d8de14bd",
+      "APPS/APP_RIPTOPL/bgm.ogg": "703fc312ba65d13b79fa0cacdd4aac6d791c5c2624eeb51e01c641e14de0086e",
+      "APPS/APP_RIPTOPL/copy.icn": "72412c17b76d457f3871e399c6227a35b3b8ada576cbecf5f7646bda716bd1e1",
+      "APPS/APP_RIPTOPL/del.icn": "72412c17b76d457f3871e399c6227a35b3b8ada576cbecf5f7646bda716bd1e1",
+      "APPS/APP_RIPTOPL/icon.sys": "e6dbcb88e5e2e0bff6c44e9c624cf6a49460473e9d1b993963bd083487bb6781",
+      "APPS/APP_RIPTOPL/list.icn": "72412c17b76d457f3871e399c6227a35b3b8ada576cbecf5f7646bda716bd1e1",
+      "APPS/APP_RIPTOPL/title.cfg": "f339de6ea2baccce388249911dd65e389528eb303ed2b5a25fd60c7909f3a060",
+      "APP_RIPTOPL.psu": "73c8b2cb716c1586b13956d75291ed1ab4709820cea9e5e7239c6b05ffad4353",
+      "ART/RIPTOPL.ELF_BG.png": "df851c4dec8d85a77125bfe3a794cb23e10afb181adb452e25349c8004f4028b",
+      "ART/RIPTOPL.ELF_COV.png": "05db8bf395142f0d185d5aef52c509933dea29b948d3dbeea69fc5b1c82cd71c",
+      "ART/RIPTOPL.ELF_COV2.png": "be356955caccb1e6a62b5b8395efbca436d9b3d18de444694ce47622f8be180e",
+      "ART/RIPTOPL.ELF_ICO.png": "7c66237d102b3f8d6e728bdf519e498d49965c256cabf5952c83fd5470c85659",
+      "ART/RIPTOPL.ELF_LAB.png": "24191dd21a3b59af2a992bbaa77e7543156e7bc91749395e71dccc9740fb63ab",
+      "ART/RIPTOPL.ELF_LGO.png": "0d844a567035656b91f97a74596efe4d7dee7699a24b0e72cc1b1fea46866572",
+      "ART/RIPTOPL.ELF_SCR.png": "80b03388892e61779b44a136b51c0e87f841256239a23e8209e2485e128c9db3",
+      "ART/RIPTOPL.ELF_SCR2.png": "58d041d95bf002332084e8a1cce4e398de7ab91393073ba0dec6a3f267724dee",
+      "CREDITS": "be279d231de2cda9112f861f485a17d62dd239e331abd3e8ea29dda2a9a2c6e3",
+      "EMBER/Ember Official Webpage.url": "c8252c37ebcaaa7cc817305c25310c4b76e583eb95883645ba5ce31f5455cf92",
+      "EMBER/LICENSE-BETA.txt": "15ecbb3e77e0624e4c364aa10c92352bdd1017b102eeb53f7c9d6599ec40d522",
+      "EMBER/ember.elf": "94f8b2576010405e2f7b90c4a1adde073ddaebe2d0aec34e0bc2be7951d34295",
+      "EMBER/games/Per-Game-Folder/GAME FILES": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "EMBER/games/this file can be deleted": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "EMBER/you must place a ps1 bios file here for ember to work": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "LICENSE": "71bfb9b29521f95eef45edcec8b6e5c76131888e0507d09f782f21068e5fbfbb",
+      "LICENSE-LIBSMB2.txt": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "OPL-PS1-AIO-Converter-GUI.url": "b25b77b041ac598ddc50765c105aa3465f367dfe0efebb84857496a8a459c6eb",
+      "OrbitPS2-Manager.url": "b0dacb440ded66f26b7e6d8d4e9a3c5e2d27894b854cf1235cef91a8f86b6b3d",
+      "POPS/CHEATS.TXT": "a7a7fa71de34585f4d59fe668bc0b75d2d2c5350f4a17f6f47247a3ad7e930f4",
+      "POPS/IGR_BG.TM2": "522821f982fd7962f00642cff508cb49d2c9c60ba4f1016195e2190e5562fdaa",
+      "POPS/IGR_NO.TM2": "87b14a500b0e0abb61d60af05156e62d5f71c31893ed460efbf2e4fe2eeb14bd",
+      "POPS/IGR_YES.TM2": "7c6538fb967b479d019fac3a0c1f1c325d109e8b6b9974009a9160c81dec9521",
+      "POPS/IPCONFIG.DAT": "e04a68aa2107131f04bf6000c24f97154782b8631c422a536feb8295609e9d92",
+      "POPS/PATCH_5.BIN": "55a60ea7e0da08d615e1dcd77c4a8da546603ee4d1a5ff5564259405c0b40d42",
+      "POPS/POPSTARTER VERSIONS/DEBUG/POPSTARTER.ELF": "3ec327085eccd62578a453e3deedf3ba35f19cd7d332aedaffdc7926c73876b8",
+      "POPS/POPSTARTER VERSIONS/MAIN/POPSTARTER.ELF": "734c813e8e8ec2c6729ec5e15dd46ab696e90deeade8d0b2ca3ad03782781aa1",
+      "POPS/POPSTARTER VERSIONS/USBDELAY/POPSTARTER.ELF": "613b16e1823a154d0e468e0a686aad02823fea9d876d91d86131382fa6d42d01",
+      "POPS/POPSTARTER VERSIONS/USBDELAY_DEBUG/POPSTARTER.ELF": "9bab715aa17f39981af2ad68c107b74d79817336bde79afaf72f22e0f6812e0e",
+      "POPS/POPSTARTER VERSIONS/USBDELAY_LONGER_DEBUG/POPSTARTER.ELF": "bb697bea1d7ede1a8e4d211442d8bb762fff42372a94f03ccd61a960f4845a18",
+      "POPS/POPSTARTER.ELF": "3ec327085eccd62578a453e3deedf3ba35f19cd7d332aedaffdc7926c73876b8",
+      "POPS/POPSTARTER.KELF": "c91fb9a3707a299c072cfa00a650be59d3b3bf4f339aeca0cacdef2870f25892",
+      "POPS/SMSUTILS.irx": "91daae46a300138218bfd6a876a1b5012594412b71c2eebf6eadfb70fde38e1b",
+      "POPS/TROJAN_7.BIN": "0a491847423521d1894278c6d4664ba5b37f853d5356d14508964859d8ae1840",
+      "POPS/UDPFS-NOTICES/AFL-2.0.txt": "1ecee940922a6886baccddd9133d17f1ce677d32c5a954fac8e48224f2766fe8",
+      "POPS/UDPFS-NOTICES/AFL-3.0.txt": "65b4868007fb11b77aebc617ede4dd61d0806feb13e8e8c2c387640af7843746",
+      "POPS/UDPFS-NOTICES/LICENSE": "1ecee940922a6886baccddd9133d17f1ce677d32c5a954fac8e48224f2766fe8",
+      "POPS/UDPFS-NOTICES/PROVENANCE.json": "357cf722e5cb7a9417b3c027348f707c69267c46e7d00fdf061b1a2e1421c059",
+      "POPS/UDPFS-NOTICES/README.md": "afd0e6cdf9153ac105e6a8f5c818368af05204af4210543cdca169a182614404",
+      "POPS/UDPFS-NOTICES/README_CONFIG.txt": "46d850fc7180220e7694aabbe5b65f9515f4a783e6148fc487a24236ff32a877",
+      "POPS/UDPFS-NOTICES/THIRD_PARTY_NOTICES.md": "03494e22785546eac7c67e2f042fb0ceadbd751dba95bc1b69dd68fc0c6c5d4e",
+      "POPS/UDPFS-NOTICES/UPSTREAM-README.md": "787c90f8fd71f40985f3b0590ef642a9769e58f171e25613b616db02ddc1f40f",
+      "POPS/UDPFSCONFIG.DAT": "ba174c4ad6e1ba64027c884edea2697bb0b02f88513d275b199a995f57bf7cae",
+      "POPS/del.icn": "c381028728d8a0212f6c219fe210411d03fb3104f8204608563307c7bfd36e1e",
+      "POPS/icon.sys": "63d235ab174c1997b67d6b884b65246d478fdfa22d5a903967b043258a7dfa63",
+      "POPS/list.icn": "df374ea77c4f775165ca70ff4efe8548fbd970a1fc5078a6d7b130ee3be93774",
+      "POPS/poweroff.irx": "573863a0f9b213b6f53f2eeaf074745b27b9c4d52dfddeaff8f0b112632cb504",
+      "POPS/ps2dev9.irx": "e2b83bb01a5904b3f4360e23fd7cfc07a2a11eaa413c1808961432dced80119c",
+      "POPS/ps2ip.irx": "1bf99ca297dcca410bccce14b8efa00f5efc536359e3e34be50edf0043c867b9",
+      "POPS/ps2smap.irx": "671fe9e3c5e0e735fb3ea3b81a8ea39898bd0fafbdacbf9ca7fa11fff391df8d",
+      "POPS/smbman.irx": "000296a2f03073dffd2f87a6f3eae249a1f83c2213ffb0ae25bad67b970ebed0",
+      "POPS/usbd.irx.ata": "4e1d39365854747117a08f8a8d843937614590ea072cf2b70f6e4c2ebbf3c6ee",
+      "POPS/usbd.irx.ilink": "5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369",
+      "POPS/usbd.irx.mmce": "0fed25d9eecdd263d4617ad5c8eeb2c5307c799aa97962b62b40a0e63e3adac8",
+      "POPS/usbd.irx.mx4sio": "5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369",
+      "POPS/usbd.irx.udpfs": "24e272996a6ea4af5ef20cb5d89a29aa615d8b828087032e75bc2b05aaac583e",
+      "POPS/usbd.irx.usbexfat": "5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369",
+      "POPS/usbhdfsd.irx.ata": "1cc865cd09997bd708e9e102c0f0f1f17f352b7844b282fcfa6a00f38609db9c",
+      "POPS/usbhdfsd.irx.ilink": "9cd849ea7f06d72f3ee6015032dfd91d6fcb1332e87d5acde306cb42b5d4313d",
+      "POPS/usbhdfsd.irx.mmce": "9f7b77848935f0d8e9bd792b997910777352f8d480dc32d99a04e6e8653779ab",
+      "POPS/usbhdfsd.irx.mx4sio": "61525fab3b340aaef467eb3a08ce16e35aca98fe742982a7a151c5c7e1ffa00a",
+      "POPS/usbhdfsd.irx.udpfs": "70a369e47745e7f995fa771edbbfed086727b759fba915a7070c0fbcf061dd34",
+      "POPS/usbhdfsd.irx.usbexfat": "70a369e47745e7f995fa771edbbfed086727b759fba915a7070c0fbcf061dd34",
+      "PS2-Servers.url": "cb7e3854210b8060fec7d7bd61bdfad01f5c22dc84e0592f8b4d7bef6d866801",
+      "PS2RD-CHT-Manager.url": "30082f886351f1461e6192da7cdd3a76209144c47e1b4fb29e82579ab0f16aeb",
+      "README.md": "5831017d3d2e8357b2302ee32d444f411f9ab2299d39b88e2b69833c66ea2735",
+      "android-udpfs-server.url": "58a894d3dded49d4662c64746eef1b246ce8d5e9fa3b1f2b765c5e8a84773cf3",
+      "neutrino/README.md": "bfa1338c10a4f12757df94531786e348f6e2e46f6995ed26b16f25e45aa20f8a",
+      "neutrino/config/bsd-ata-net.toml": "6bd692bfb8456bce5e60ae65bb575d941a2261e15cd619e4d576b1beb2ab4514",
+      "neutrino/config/bsd-ata.toml": "e6e281ead0963d8e9cffd036de964da8a44266523b929edb6895fcacb8290d7a",
+      "neutrino/config/bsd-ilink.toml": "e4837f5725519dd23dd8fa8272592be9a133ac92a1ef419580725c5c13a74aba",
+      "neutrino/config/bsd-mmce.toml": "8062709ee5a79a609dfb5335ab2f816049bdee68d5eb763018feb38877c72cef",
+      "neutrino/config/bsd-mx4sio.toml": "83ed7fa94c62ca1c6ccccf0098e35b99f50efc054329c7314e783c9abeff8554",
+      "neutrino/config/bsd-udpbd-hdd.toml": "548a2c3dc4bc7d66bde4ea4e54ae11444d7ad298a5e42e84b22eaec08396a04f",
+      "neutrino/config/bsd-udpbd.toml": "5c02eb8a47934b3fce1ab0dee83fd6a6d3992a452d68aa359d68bea5bc474f8e",
+      "neutrino/config/bsd-udpfs-hdd.toml": "268959f2647db4689d841c6e105b70d60322bf2d38a7fcce743bc2b239c0ac8a",
+      "neutrino/config/bsd-udpfs.toml": "30d0ef19be73c233960efb2ec9749b1cadc009c9962afe269530d14d2226e032",
+      "neutrino/config/bsd-udpfsbd.toml": "d07773032f29ce7c0c29fa4c788462269ac5ded0ecfe205c59e25cbe08247ee1",
+      "neutrino/config/bsd-usb-debug.toml": "89a238475616ace25599790b72167059966d543e9fbd86c8db4e4db44e7b1af8",
+      "neutrino/config/bsd-usb.toml": "3592f38e34f34bea279d87f7c7f560ab605bffa320221232f710fe12fc31239b",
+      "neutrino/config/bsdfs-bd.toml": "fb279b2f0a1005c088bce90f65978ccbaccba843faa3cc540f7b193edc51a332",
+      "neutrino/config/bsdfs-exfat.toml": "423cc09d8cc8d2748677ac20ac60bb01ac9752c8b27e7e7b77b3c0dafd79110b",
+      "neutrino/config/bsdfs-hdl.toml": "685ce06ab44e8de1502b78ff19ad31354531c181cee521a99b2e688f4f00f764",
+      "neutrino/config/compat.toml": "7b4cef4ba54213ac0eef551abc607874ef6446aa396688ab874632961caf8560",
+      "neutrino/config/emu-ata-file.toml": "d23e06f05c20d920cbff47880439560138d6135207d4b34edb43d34b7dccf816",
+      "neutrino/config/emu-dvd-esr.toml": "d9e45ee4cc8ecaf78abd4d5ba1d0ce40f94055ff4a5e18eaf1996cc0bd7e1bf1",
+      "neutrino/config/emu-dvd-file.toml": "5f6527a033b8458c61dc48667b055aaddd02d501936f1e7dc368270e925d43c7",
+      "neutrino/config/emu-mc-file.toml": "7ce2b0a7c95537da5b0533a667a6c27968ac9cc892efa07933ac13ce74b17b7b",
+      "neutrino/config/i_bdm.toml": "f31c99bb361261bf228ff3b8810b7699a5d88ef1996beae912168c31b0608760",
+      "neutrino/config/i_dev9_hidden.toml": "66456311841acec37bc784322933273e308c155e04042aa86fc1244e95c8792d",
+      "neutrino/config/i_dev9_ns.toml": "a62fa77478c5cfe4a5e7ae7f1fbee575f72fb84299a12cdbccd5c2a5adc98aed",
+      "neutrino/config/p-freemem.toml": "94ecdc7e09f64f588da2eaf4aff47a73efaa1dc3c291bc10285a58e531359524",
+      "neutrino/config/p-membo.toml": "9ad01c77f84a92bbdbdc38fb4163c1b22bf4f595f7ebfd2078259047cd27dffe",
+      "neutrino/config/p-membo2k.toml": "331cdfff771221555ea8410495ba0b162f6d6af6d48c243fec3e9ddf468d2a5e",
+      "neutrino/config/p-steeldr.toml": "9342c668892d174eda47519849575032d291d0d9c8e9a6f5aae593d7df44914a",
+      "neutrino/config/p-uya.toml": "0073d36c667914e90680ecdeed962e23689b5005341c6872c82ca4926a94b522",
+      "neutrino/config/system.toml": "11a72db89bad13e84ced7fd9b79988d669e7d6e54b51b377131ec27d96ab6eb1",
+      "neutrino/modules/IEEE1394_bd_mini.irx": "958325d36a10cc6c4d33db60c9bee522085df9b5f88054eeae4b21f8245d9beb",
+      "neutrino/modules/ata_bd.irx": "1754a427b5ff332af47fe87e981588bbca1dddbaf0a48d7edb251b9c159d4733",
+      "neutrino/modules/atad_emu.irx": "255e14974916ac52b4e47ded08c9d4ac196040e02428b8b0ff7feac0943e527f",
+      "neutrino/modules/bdfs.irx": "2a9a4970680eeb6fa553e665669985815c0b466d60f88b9c99b42088edb873ac",
+      "neutrino/modules/bdm.irx": "dc3f4a074745568a30dc07450510e23dfafc6a4b2b1897ee0dde275f8b90ebf0",
+      "neutrino/modules/bdmfs_fatfs.irx": "a3161d83fd4716f7bcb5edf4fca92cd7210c32035913091a2a926a5f686a38f2",
+      "neutrino/modules/cdvdfsv.irx": "5cf2a670a33d946b8dd684ab7a04ba595b448fcd96042b8eae5d388eaf63b2a5",
+      "neutrino/modules/cdvdman_emu.irx": "d26ae5dcb9ac397c3efa21f0946f88bcbc188099bc949bc53d211135bcd681de",
+      "neutrino/modules/cdvdman_esr1.irx": "6ba277891b9804e898cbead17ac7e3ed590058e3a3db81987a3ceaf023a68dca",
+      "neutrino/modules/cdvdman_esr2.irx": "d8c12ad8a7c022f17304f6ccc2122877d55947f079eefcf7b95e95390cdfdb3e",
+      "neutrino/modules/dev9_hidden.irx": "3f2801f900cb13b6c88b4acac27a38cfb11823a13ed51a9249aadb7a76ca7b36",
+      "neutrino/modules/dev9_ns.irx": "5cdd4539464a2fe92d95d93692239c2bc80b9a99f0d7644d18ae66b756c68201",
+      "neutrino/modules/ee_core.elf": "3e547a15939702e99111ce6e6f7ee84629a52d5243d48bfca3f611aefef5abcf",
+      "neutrino/modules/eesync.irx": "c31b23ead73a77004b081973e1e8cab0bc617b1ab34471b02f38dcf937ed60e2",
+      "neutrino/modules/fakemod.irx": "4f584dcc47fb3973fbf2676b828cae7dfd401607c59f7c6c8254fac949722da8",
+      "neutrino/modules/fhi_bd.irx": "747c226beab121e980570034e29ae09177702ff97146ba07c836fc9675481fc5",
+      "neutrino/modules/fileXio.irx": "6109d36dd2098f89e9b734e4f52d443ebd0b21394194ce30e113994fdecac07e",
+      "neutrino/modules/hdlfs.irx": "5220d68059714f39d6f04e4de9d006102083997eb05f9f32f9c9f53f6eebd108",
+      "neutrino/modules/iLinkman.irx": "1b0b27ea7f65b550dafac38a38c806f0e84227b244300701f41c69c8afb85ffc",
+      "neutrino/modules/imgdrv.irx": "801c7ebbd4e00783475474b174dc4393b18b2e33440fc770477de77422d0fff5",
+      "neutrino/modules/iomanX.irx": "9e58ceb35871880a20f283defaffee41c530c26ac471110927d16b41f3db3f32",
+      "neutrino/modules/mc_emu.irx": "cadf95092331d878403753a4cb58a0734f4f51233b47ab01bcd8090c94f4d77a",
+      "neutrino/modules/ministack.irx": "854060627190264dd5cf647cf3468535a7ea3aa4f3544bf30f654bb25d8b8280",
+      "neutrino/modules/mmcefhi.irx": "93be021b68edb2ffcb5a7fb9df985d10ddb4dd534e90815e88b226d868300fbf",
+      "neutrino/modules/mmceman.irx": "29732d6b1d069f7a2a5ceca4caea647219db30536ef0b4cb2de600ff96b4fcfd",
+      "neutrino/modules/mx4sio_bd_mini.irx": "b1903a3f09e6d1ef4a8362b743f69691048519bc61dea04c2fef8379f327bb8f",
+      "neutrino/modules/patch_freemem.irx": "1b25beeb412ec2e3d8ba969f59e9916d4d90ca45370d50a8b180ba91734fb6f3",
+      "neutrino/modules/patch_membo.irx": "5f573a4e06b9e564bf114ff6e9c2bbd33688974748649fa5d6b78f5540325d85",
+      "neutrino/modules/patch_rc_uya.irx": "69a575e6696bf16b746f233ce44ca3827351953c54fe8094f558c7b091ea8d8c",
+      "neutrino/modules/ps2hdd-bdm.irx": "2e83b26d45c6b9c80aef9954b44ba80a3b7e5ba09eff4a56fa416da52cdabdca",
+      "neutrino/modules/smap.irx": "4b81d9bf0c176d3291258eb97f6188a2bb935a69ae4cba13546b51d603ee1a09",
+      "neutrino/modules/udnl-t300.irx": "9fa81b08a24181eaa913e030da32c222f9ee415e7a5e0355c81ee3eace9a3461",
+      "neutrino/modules/udnl.irx": "cce12140564770055d68dca2efd70493ad30f6a5b51f2225e696dac7741038e6",
+      "neutrino/modules/udpbd.irx": "1b0d5cceb804e91a81d9a283f9337b3beaed2c81c6b9b8c6d106c2c23a8d90b8",
+      "neutrino/modules/udpfs_bd.irx": "04f3517f0b37a002482350d75aac04b41bc221737e7a4e46c6c8446d0ecf359e",
+      "neutrino/modules/udpfs_fhi.irx": "cca1ea131dda6aa6cfec7df8e1b0d7e1008df94c0372675ddc019281ef788f40",
+      "neutrino/modules/udpfs_ioman.irx": "85faad5631fa7b2e57548ea35fe752c368163ffc4074eb6c3e9742187501c242",
+      "neutrino/modules/usbd_mini.irx": "e2463f7bde271691579ef40b37eb3e211e65dbc2518b46227beec6729893a53c",
+      "neutrino/modules/usbmass_bd_mini.irx": "765ee67c37a90a6c1e3642a298cdc212dd2fe1bf666ed996a836ea1d22f89722",
+      "neutrino/neutrino.elf": "240517c0568edd8d267bb17d8fff0457abc7d8e61a9f2cd06eba31207de1c511",
+      "neutrino/udpfs_server/compressed_iso/__init__.py": "c0bcce2b67275501f1839fb92daedbb580a63cc1fda252b7f047d39029e19e2a",
+      "neutrino/udpfs_server/compressed_iso/base.py": "bcc74ae2f79d27c46c5a3a44013119f5e7e7b7f80691e1d51dfe0567044ed272",
+      "neutrino/udpfs_server/compressed_iso/chd.py": "1d7c887edaa675de582c6ebb21670f855108d6fb233ee1634420056833b1e973",
+      "neutrino/udpfs_server/compressed_iso/cso.py": "e29d5a095e94e97b462ec858772b9de6ac5303c0d604b0cf29b2c5c75fe09af7",
+      "neutrino/udpfs_server/compressed_iso/zso.py": "4b810c378ca5675e3c0ba0affe548f5fc13cd73574fe1a24a9e59a68ee52a2dd",
+      "neutrino/udpfs_server/udpfs_server.py": "efe7aae51253efaab70f572a10915a9d2df97b0252da16d7da884c7b27c0f642",
+      "neutrino/version.txt": "efe59df33ab16c77b01deedd64d1666429b61e0ddeaee8ebf1e7c939b9934c6d"
+    }
+  },
   "emulator": "RIPPCSX2 2.9.96-rippcsx2.2",
   "emulator_sha256": "10caa1405cb4b18495ff765a92693a9b26dcc7221335635ade38b4c83e6a6b85",
-  "capture_mode": "Auto NTSC, 4:3, native 640x480 emulator output",
-  "config": "vmode=0; wide_screen=0; other choices are lab configuration, not recommended defaults",
-  "input_steps": "wait:16,start,wait:1,down,down,cross,wait:2,shot,rec,wait:1,cross,wait:2,shot,wait:1,circle,wait:1,down,down,down,down,cross,wait:2,shot,wait:1,circle,wait:1,rec,wait:3",
-  "helper_source": "https://github.com/akilluminati47/RIPPS2/blob/f4679198071ebc6d57461111f5a70ba3e268c2e0/tools/dev/ps2bg.ps1",
-  "processing": "PNG frames unmodified; video 14.45 seconds, silent H.264 20fps at 640x480; GIF same interval at 480x360, 5fps/64 colors",
-  "scope": "Emulated menu navigation. No physical-console, transport or gameplay acceptance. No BIOS, memory cards or disc images included.",
+  "scope": "Authentic menu rendering and navigation with nonbootable sample files. No gameplay or physical-console acceptance. No BIOS, memory cards or disc images included. Both editions use the same sample library, artwork and configuration.",
+  "config": "Auto NTSC; wide_screen=1 and emulator 16:9 for library/per-game/Info (796x448 PNG); wide_screen=0 and emulator 4:3 for settings (640x480 PNG). Other lab choices are not recommended defaults.",
+  "processing": "PNG frames unmodified. Library MP4 joins six seconds from each of four actual view takes (24 seconds, 960x540 20fps). Info MP4 first 30 seconds at 960x540 20fps; GIF first 20 seconds at 640x360 6fps/128 colors. Settings MP4 complete take, 640x480 20fps; GIF 480x360 5fps/64 colors. Library GIF 640x360 8fps/128 colors. Silent web delivery scaling does not add native UI detail.",
+  "takes": [
+    {
+      "edition": "korium",
+      "take": "list",
+      "wide_screen": 1,
+      "view": "list",
+      "cover_count": 5,
+      "steps": "wait:23,shot,rec,down,wait:1,down,wait:1,down,wait:1,down,wait:1,down,wait:1,down,wait:1,down,wait:1,shot,rec,wait:2",
+      "captures": [
+        {
+          "label": "list",
+          "shot": "KORIUM [_]_KORIUM_20261103114126.png"
+        },
+        {
+          "label": "list-browse",
+          "shot": "KORIUM [_]_KORIUM_20261103114137.png"
+        }
+      ],
+      "videos": [
+        "KORIUM [_]_KORIUM_20261103114128.mp4"
+      ],
+      "exit_code": 0
+    },
+    {
+      "edition": "korium",
+      "take": "coverflow-three",
+      "wide_screen": 1,
+      "view": "coverflow",
+      "cover_count": 3,
+      "steps": "wait:23,right,right,right,right,right,right,right,wait:6,shot,rec,right,wait:1,right,wait:1,right,wait:1,left,wait:1,left,wait:2,shot,rec,wait:2",
+      "captures": [
+        {
+          "label": "coverflow-three",
+          "shot": "KORIUM [_]_KORIUM_20261103114215.png"
+        },
+        {
+          "label": "coverflow-three-browse",
+          "shot": "KORIUM [_]_KORIUM_20261103114224.png"
+        }
+      ],
+      "videos": [
+        "KORIUM [_]_KORIUM_20261103114216.mp4"
+      ],
+      "exit_code": 0
+    },
+    {
+      "edition": "korium",
+      "take": "coverflow-five",
+      "wide_screen": 1,
+      "view": "coverflow",
+      "cover_count": 5,
+      "steps": "wait:23,right,right,right,right,right,right,right,wait:6,shot,rec,right,wait:1,right,wait:1,right,wait:1,left,wait:1,left,wait:2,shot,rec,wait:2",
+      "captures": [
+        {
+          "label": "coverflow-five",
+          "shot": "KORIUM [_]_KORIUM_20261103114302.png"
+        },
+        {
+          "label": "coverflow-five-browse",
+          "shot": "KORIUM [_]_KORIUM_20261103114311.png"
+        }
+      ],
+      "videos": [
+        "KORIUM [_]_KORIUM_20261103114303.mp4"
+      ],
+      "exit_code": 0
+    },
+    {
+      "edition": "korium",
+      "take": "psbbn-flow",
+      "wide_screen": 1,
+      "view": "psbbn",
+      "cover_count": 5,
+      "steps": "wait:23,right,right,right,right,right,right,right,wait:6,shot,rec,right,wait:1,right,wait:1,left,wait:1,left,wait:2,shot,rec,wait:2",
+      "captures": [
+        {
+          "label": "psbbn-flow",
+          "shot": "KORIUM [_]_KORIUM_20261103114349.png"
+        },
+        {
+          "label": "psbbn-flow-browse",
+          "shot": "KORIUM [_]_KORIUM_20261103114357.png"
+        }
+      ],
+      "videos": [
+        "KORIUM [_]_KORIUM_20261103114350.mp4"
+      ],
+      "exit_code": 0
+    },
+    {
+      "edition": "korium",
+      "take": "game-controls",
+      "wide_screen": 1,
+      "view": "coverflow",
+      "cover_count": 5,
+      "steps": "wait:23,right,right,right,right,right,right,right,wait:5,triangle,wait:3,shot,cross,wait:3,shot,circle,wait:3,down,cross,wait:3,shot,circle,wait:3,down,cross,wait:3,shot,circle,wait:3,down,cross,wait:3,shot,circle,wait:3,down,cross,wait:3,shot,circle,wait:3,down,cross,wait:3,shot,circle,wait:3",
+      "captures": [
+        {
+          "label": "game-options",
+          "shot": "KORIUM [_]_KORIUM_20261103114437.png"
+        },
+        {
+          "label": "game-settings",
+          "shot": "KORIUM [_]_KORIUM_20261103114442.png"
+        },
+        {
+          "label": "cheat-settings",
+          "shot": "KORIUM [_]_KORIUM_20261103114450.png"
+        },
+        {
+          "label": "gsm-settings",
+          "shot": "KORIUM [_]_KORIUM_20261103114458.png"
+        },
+        {
+          "label": "vmc-settings",
+          "shot": "KORIUM [_]_KORIUM_20261103114506.png"
+        },
+        {
+          "label": "controller-emulation",
+          "shot": "KORIUM [_]_KORIUM_20261103114515.png"
+        },
+        {
+          "label": "controller-macros",
+          "shot": "KORIUM [_]_KORIUM_20261103114523.png"
+        }
+      ],
+      "videos": [],
+      "exit_code": 0
+    },
+    {
+      "edition": "korium",
+      "take": "information",
+      "wide_screen": 1,
+      "view": "coverflow",
+      "cover_count": 5,
+      "steps": "wait:23,rec,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,right,wait:2,square,wait:4,shot,wait:1,circle,wait:2,rec,wait:2",
+      "captures": [
+        {
+          "label": "info-final-fantasy-x",
+          "shot": "KORIUM [_]_KORIUM_20261103114558.png"
+        },
+        {
+          "label": "info-god-of-war-ii",
+          "shot": "KORIUM [_]_KORIUM_20261103114610.png"
+        },
+        {
+          "label": "info-gran-turismo-4",
+          "shot": "KORIUM [_]_KORIUM_20261103114621.png"
+        },
+        {
+          "label": "info-ico",
+          "shot": "KORIUM [_]_KORIUM_20261103114633.png"
+        },
+        {
+          "label": "info-katamari-damacy",
+          "shot": "KORIUM [_]_KORIUM_20261103114644.png"
+        },
+        {
+          "label": "info-kingdom-hearts-ii",
+          "shot": "KORIUM [_]_KORIUM_20261103114656.png"
+        },
+        {
+          "label": "info-metal-gear-solid-3-snake-eater",
+          "shot": "KORIUM [_]_KORIUM_20261103114707.png"
+        },
+        {
+          "label": "info-okami",
+          "shot": "KORIUM [_]_KORIUM_20261103114719.png"
+        },
+        {
+          "label": "info-persona-4",
+          "shot": "KORIUM [_]_KORIUM_20261103114730.png"
+        },
+        {
+          "label": "info-ratchet-and-clank-up-your-arsenal",
+          "shot": "KORIUM [_]_KORIUM_20261103114742.png"
+        },
+        {
+          "label": "info-shadow-of-the-colossus",
+          "shot": "KORIUM [_]_KORIUM_20261103114753.png"
+        },
+        {
+          "label": "info-silent-hill-2",
+          "shot": "KORIUM [_]_KORIUM_20261103114805.png"
+        }
+      ],
+      "videos": [
+        "KORIUM [_]_KORIUM_20261103114554.mp4"
+      ],
+      "exit_code": 0
+    },
+    {
+      "edition": "korium",
+      "take": "settings",
+      "wide_screen": 0,
+      "view": "list",
+      "cover_count": 5,
+      "steps": "wait:23,start,wait:1,down,down,cross,wait:2,shot,rec,wait:1,cross,wait:2,shot,wait:1,circle,wait:1,down,down,down,down,cross,wait:2,shot,wait:1,circle,wait:1,rec,wait:3",
+      "captures": [
+        {
+          "label": "settings-overview",
+          "shot": "KORIUM [_]_KORIUM_20261103114842.png"
+        },
+        {
+          "label": "game-sources",
+          "shot": "KORIUM [_]_KORIUM_20261103114847.png"
+        },
+        {
+          "label": "interface-settings",
+          "shot": "KORIUM [_]_KORIUM_20261103114854.png"
+        }
+      ],
+      "videos": [
+        "KORIUM [_]_KORIUM_20261103114843.mp4"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "library": {
+    "kind": "non-bootable documentation placeholders",
+    "artwork_repository": "https://github.com/xlenore/ps2-covers",
+    "entries": [
+      {
+        "title": "Shadow of the Colossus",
+        "serial": "SCUS-97472",
+        "key": "SCUS_974.72",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97472.jpg",
+        "cover_sha256": "e9845bbb667ba059716d9c4bc6d41af15916ecc967f33a7395e17ae01298e1cb",
+        "display_cover_sha256": "6079e8eeeec66a5c65e25e5d496bf6e539aee8001ac368e213e9d3617b7cb423"
+      },
+      {
+        "title": "God of War II",
+        "serial": "SCUS-97481",
+        "key": "SCUS_974.81",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97481.jpg",
+        "cover_sha256": "84b5e736b9fdeb022af5f2737df287bf82d2cea6f229a050ba11a697347f48b5",
+        "display_cover_sha256": "6a3cc87642b7d785c8516fe031fe5bdeb58debf4c3ada4cf8d17cdbdbf1c45e3"
+      },
+      {
+        "title": "Gran Turismo 4",
+        "serial": "SCUS-97328",
+        "key": "SCUS_973.28",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97328.jpg",
+        "cover_sha256": "972cc1c509049272c2fbcd0a44805daf5460ab7b787f476c216f1f8a7e21bfa3",
+        "display_cover_sha256": "97b91529523d89437cdb9771a60da31eea4be22f3fcb36404a138a0c8404f879"
+      },
+      {
+        "title": "Final Fantasy X",
+        "serial": "SLUS-20312",
+        "key": "SLUS_203.12",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20312.jpg",
+        "cover_sha256": "98facb34d509679f501a454a31c27af09f57862eccd85a5903928112c8b92faf",
+        "display_cover_sha256": "d7c247d8293205f9841e35288714741254414a456b6296825094b60662f135b8"
+      },
+      {
+        "title": "Kingdom Hearts II",
+        "serial": "SLUS-21005",
+        "key": "SLUS_210.05",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21005.jpg",
+        "cover_sha256": "d76d6fed63066cdb15a7b867e16a382ebbd29d76f4f037f8056c6a948b66c108",
+        "display_cover_sha256": "04455506d13317552eae0b4c1fc5cf362250e96e62a39975beaf7ec58b6d3e87"
+      },
+      {
+        "title": "Katamari Damacy",
+        "serial": "SLUS-21008",
+        "key": "SLUS_210.08",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21008.jpg",
+        "cover_sha256": "463cc1bd6c414d72e15d7ec5996e4ceb9a4b4cb785bed82004b8b2d22545f707",
+        "display_cover_sha256": "59b850222f6346e7df117a5151184150ddccbb2b0ea1e3f199871069eabec148"
+      },
+      {
+        "title": "Okami",
+        "serial": "SLUS-21115",
+        "key": "SLUS_211.15",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21115.jpg",
+        "cover_sha256": "9ef47846398ef01f9daa051ac8d1327af52160d80d2befdfdd8302d1a80bb366",
+        "display_cover_sha256": "48dce869cfbed31ae02292cb997f17d81d45cd5384ddb9e8d07e9589aba6aad1"
+      },
+      {
+        "title": "Metal Gear Solid 3 - Snake Eater",
+        "serial": "SLUS-20915",
+        "key": "SLUS_209.15",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20915.jpg",
+        "cover_sha256": "011fe99f803d2ac28ffbd1712d3e13ae0c689a6099ffe546cd4302bb1a1ed838",
+        "display_cover_sha256": "7229c3ef520ed0ce0a9bbbcb556686b65e20c8a884fe5889064ffcdbd0824f11"
+      },
+      {
+        "title": "Silent Hill 2",
+        "serial": "SLUS-20228",
+        "key": "SLUS_202.28",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20228.jpg",
+        "cover_sha256": "a3a663efdc01a25a9b550dddc6da60a4b9c45e2e1e412224c1c405cfa4f59d78",
+        "display_cover_sha256": "bbd1e5faf8046ee3c78d5a808581273a17581178b42eb2fbc155ca46117ecc9e"
+      },
+      {
+        "title": "Persona 4",
+        "serial": "SLUS-21782",
+        "key": "SLUS_217.82",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21782.jpg",
+        "cover_sha256": "ded407eee7bf1934a68ed9f997da266a9a5a047de966b65d956a9051b3946cc0",
+        "display_cover_sha256": "f71f323bae97bbd340d7727480877299d17a5767c97b3b09204742249ded6c88"
+      },
+      {
+        "title": "Ratchet and Clank - Up Your Arsenal",
+        "serial": "SCUS-97353",
+        "key": "SCUS_973.53",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97353.jpg",
+        "cover_sha256": "11ad626176cc01c11262c6fd3acc677ec758052b0a7681b85b2b91cc04eb0244",
+        "display_cover_sha256": "fa5455b470a789e02f7ef18b94e66beb4617889078f22f8c548fc3e40c5ad318"
+      },
+      {
+        "title": "ICO",
+        "serial": "SCUS-97113",
+        "key": "SCUS_971.13",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97113.jpg",
+        "cover_sha256": "7b1e1a3e62d44dc283e56a5e9281e6e609557b82354c16918b2e04433719a80e",
+        "display_cover_sha256": "352b1828d30d7aed943791397197d4cbfb65762206272ec7a5aa7be5fd31d4b5"
+      }
+    ]
+  },
+  "metadata": {
+    "release_year_region": "North America",
+    "descriptions": "Original editorial summaries",
+    "entries": [
+      {
+        "title": "Shadow of the Colossus",
+        "serial": "SCUS-97472",
+        "key": "SCUS_974.72",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97472.jpg",
+        "cover_sha256": "e9845bbb667ba059716d9c4bc6d41af15916ecc967f33a7395e17ae01298e1cb",
+        "display_cover_sha256": "6079e8eeeec66a5c65e25e5d496bf6e539aee8001ac368e213e9d3617b7cb423",
+        "metadata": {
+          "Title": "Shadow of the Colossus",
+          "Developer": "Team Ico",
+          "Genre": "Action adventure",
+          "Release": "2005",
+          "Description": "Travel a forbidden land and face towering colossi in a quest to save a young woman.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "God of War II",
+        "serial": "SCUS-97481",
+        "key": "SCUS_974.81",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97481.jpg",
+        "cover_sha256": "84b5e736b9fdeb022af5f2737df287bf82d2cea6f229a050ba11a697347f48b5",
+        "display_cover_sha256": "6a3cc87642b7d785c8516fe031fe5bdeb58debf4c3ada4cf8d17cdbdbf1c45e3",
+        "metadata": {
+          "Title": "God of War II",
+          "Developer": "Santa Monica Studio",
+          "Genre": "Action adventure",
+          "Release": "2007",
+          "Description": "Guide Kratos through a mythological quest against the gods and the Sisters of Fate.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Gran Turismo 4",
+        "serial": "SCUS-97328",
+        "key": "SCUS_973.28",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97328.jpg",
+        "cover_sha256": "972cc1c509049272c2fbcd0a44805daf5460ab7b787f476c216f1f8a7e21bfa3",
+        "display_cover_sha256": "97b91529523d89437cdb9771a60da31eea4be22f3fcb36404a138a0c8404f879",
+        "metadata": {
+          "Title": "Gran Turismo 4",
+          "Developer": "Polyphony Digital",
+          "Genre": "Racing simulation",
+          "Release": "2005",
+          "Description": "Build a garage, earn licenses and compete across an extensive collection of racing events.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Final Fantasy X",
+        "serial": "SLUS-20312",
+        "key": "SLUS_203.12",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20312.jpg",
+        "cover_sha256": "98facb34d509679f501a454a31c27af09f57862eccd85a5903928112c8b92faf",
+        "display_cover_sha256": "d7c247d8293205f9841e35288714741254414a456b6296825094b60662f135b8",
+        "metadata": {
+          "Title": "Final Fantasy X",
+          "Developer": "Square",
+          "Genre": "Role-playing",
+          "Release": "2001",
+          "Description": "Join Tidus and Yuna on a pilgrimage across Spira, with turn-based battles and the Sphere Grid.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Kingdom Hearts II",
+        "serial": "SLUS-21005",
+        "key": "SLUS_210.05",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21005.jpg",
+        "cover_sha256": "d76d6fed63066cdb15a7b867e16a382ebbd29d76f4f037f8056c6a948b66c108",
+        "display_cover_sha256": "04455506d13317552eae0b4c1fc5cf362250e96e62a39975beaf7ec58b6d3e87",
+        "metadata": {
+          "Title": "Kingdom Hearts II",
+          "Developer": "Square Enix",
+          "Genre": "Action role-playing",
+          "Release": "2006",
+          "Description": "Travel with Sora, Donald and Goofy through Disney worlds and confront Organization XIII.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Katamari Damacy",
+        "serial": "SLUS-21008",
+        "key": "SLUS_210.08",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21008.jpg",
+        "cover_sha256": "463cc1bd6c414d72e15d7ec5996e4ceb9a4b4cb785bed82004b8b2d22545f707",
+        "display_cover_sha256": "59b850222f6346e7df117a5151184150ddccbb2b0ea1e3f199871069eabec148",
+        "metadata": {
+          "Title": "Katamari Damacy",
+          "Developer": "Namco",
+          "Genre": "Puzzle action",
+          "Release": "2004",
+          "Description": "Roll up everyday objects into an ever-growing katamari to rebuild the stars.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Okami",
+        "serial": "SLUS-21115",
+        "key": "SLUS_211.15",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21115.jpg",
+        "cover_sha256": "9ef47846398ef01f9daa051ac8d1327af52160d80d2befdfdd8302d1a80bb366",
+        "display_cover_sha256": "48dce869cfbed31ae02292cb997f17d81d45cd5384ddb9e8d07e9589aba6aad1",
+        "metadata": {
+          "Title": "Okami",
+          "Developer": "Clover Studio",
+          "Genre": "Action adventure",
+          "Release": "2006",
+          "Description": "Guide Amaterasu through a world inspired by Japanese folklore and restore life to the land.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Metal Gear Solid 3 - Snake Eater",
+        "serial": "SLUS-20915",
+        "key": "SLUS_209.15",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20915.jpg",
+        "cover_sha256": "011fe99f803d2ac28ffbd1712d3e13ae0c689a6099ffe546cd4302bb1a1ed838",
+        "display_cover_sha256": "7229c3ef520ed0ce0a9bbbcb556686b65e20c8a884fe5889064ffcdbd0824f11",
+        "metadata": {
+          "Title": "Metal Gear Solid 3 - Snake Eater",
+          "Developer": "Konami Computer Entertainment Japan",
+          "Genre": "Stealth action",
+          "Release": "2004",
+          "Description": "Infiltrate a Cold War jungle as Naked Snake, using camouflage, survival skills and stealth.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Silent Hill 2",
+        "serial": "SLUS-20228",
+        "key": "SLUS_202.28",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-20228.jpg",
+        "cover_sha256": "a3a663efdc01a25a9b550dddc6da60a4b9c45e2e1e412224c1c405cfa4f59d78",
+        "display_cover_sha256": "bbd1e5faf8046ee3c78d5a808581273a17581178b42eb2fbc155ca46117ecc9e",
+        "metadata": {
+          "Title": "Silent Hill 2",
+          "Developer": "Team Silent",
+          "Genre": "Survival horror",
+          "Release": "2001",
+          "Description": "Follow James Sunderland into the fog-covered town of Silent Hill after a mysterious letter.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Persona 4",
+        "serial": "SLUS-21782",
+        "key": "SLUS_217.82",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SLUS-21782.jpg",
+        "cover_sha256": "ded407eee7bf1934a68ed9f997da266a9a5a047de966b65d956a9051b3946cc0",
+        "display_cover_sha256": "f71f323bae97bbd340d7727480877299d17a5767c97b3b09204742249ded6c88",
+        "metadata": {
+          "Title": "Persona 4",
+          "Developer": "Atlus",
+          "Genre": "Role-playing",
+          "Release": "2008",
+          "Description": "Balance school life in Inaba with an investigation into a mysterious world inside the television.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "Ratchet and Clank - Up Your Arsenal",
+        "serial": "SCUS-97353",
+        "key": "SCUS_973.53",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97353.jpg",
+        "cover_sha256": "11ad626176cc01c11262c6fd3acc677ec758052b0a7681b85b2b91cc04eb0244",
+        "display_cover_sha256": "fa5455b470a789e02f7ef18b94e66beb4617889078f22f8c548fc3e40c5ad318",
+        "metadata": {
+          "Title": "Ratchet and Clank - Up Your Arsenal",
+          "Developer": "Insomniac Games",
+          "Genre": "Action platformer",
+          "Release": "2004",
+          "Description": "Take Ratchet and Clank across the galaxy with an arsenal of unusual weapons and gadgets.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      },
+      {
+        "title": "ICO",
+        "serial": "SCUS-97113",
+        "key": "SCUS_971.13",
+        "cover_url": "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/SCUS-97113.jpg",
+        "cover_sha256": "7b1e1a3e62d44dc283e56a5e9281e6e609557b82354c16918b2e04433719a80e",
+        "display_cover_sha256": "352b1828d30d7aed943791397197d4cbfb65762206272ec7a5aa7be5fd31d4b5",
+        "metadata": {
+          "Title": "ICO",
+          "Developer": "Team Ico",
+          "Genre": "Puzzle adventure",
+          "Release": "2001",
+          "Description": "Help Ico and Yorda escape a vast castle through exploration, cooperation and environmental puzzles.",
+          "Vmode": "NTSC/ntsc",
+          "Aspect": "4:3/s",
+          "Scan": "480i/480i",
+          "Players": "1"
+        }
+      }
+    ]
+  },
+  "screenshot_artwork": {
+    "repository": "Luden02/psx-ps2-opl-art-database",
+    "commit": "e14b9abce3cc42a06bb4ad2e4056e289c8872a07",
+    "entries": [
+      {
+        "key": "SCUS_974.72",
+        "title": "Shadow of the Colossus",
+        "art": [
+          {
+            "file": "SCUS_974.72_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_974.72/SCUS_974.72_SCR_00.png",
+            "sha256": "4abbcca53c4030fd2f9259e71801397791a9f3f79cbca94ef53813d48e8ada0e"
+          },
+          {
+            "file": "SCUS_974.72_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_974.72/SCUS_974.72_SCR_01.png",
+            "sha256": "3f7d0d4bea104a80639c072be5068ebcb577ba185e9fe669448f638833767edb"
+          }
+        ]
+      },
+      {
+        "key": "SCUS_974.81",
+        "title": "God of War II",
+        "art": [
+          {
+            "file": "SCUS_974.81_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_974.81/SCUS_974.81_SCR_00.png",
+            "sha256": "f434029ac290bb671f7bf165ae15b6415cc265779a917c9743cecb7ac9918544"
+          },
+          {
+            "file": "SCUS_974.81_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_974.81/SCUS_974.81_SCR_01.png",
+            "sha256": "6ced579b5b9e4088f3741c644d4ea6a5023752c775cc76dd72dbcc3977c60367"
+          }
+        ]
+      },
+      {
+        "key": "SCUS_973.28",
+        "title": "Gran Turismo 4",
+        "art": [
+          {
+            "file": "SCUS_973.28_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_973.28/SCUS_973.28_SCR_00.png",
+            "sha256": "72b9a041568dc9070a28c9257cf912c447482b16db553d70323ac7b7cea7595c"
+          },
+          {
+            "file": "SCUS_973.28_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_973.28/SCUS_973.28_SCR_01.png",
+            "sha256": "2b1571e4c021733d0703ff388f3ca1d88abddfeef31bb2d8ad1738d8f5e4c4bb"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_203.12",
+        "title": "Final Fantasy X",
+        "art": [
+          {
+            "file": "SLUS_203.12_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_203.12/SLUS_203.12_SCR_00.png",
+            "sha256": "9522158e43450d3e8a54bf7cabfc668b83f18807c2b4a150d9c66b17c466705f"
+          },
+          {
+            "file": "SLUS_203.12_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_203.12/SLUS_203.12_SCR_01.png",
+            "sha256": "fbddfe4499d3bdde6d7742283148f1b0c9fef75b6d764f7720a59e6b1a442b6d"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_210.05",
+        "title": "Kingdom Hearts II",
+        "art": [
+          {
+            "file": "SLUS_210.05_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_210.05/SLUS_210.05_SCR_00.png",
+            "sha256": "573afccbd669b4a11ecba3b9c4754c3926b092fdfaf1b40f6069b90022e36af1"
+          },
+          {
+            "file": "SLUS_210.05_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_210.05/SLUS_210.05_SCR_01.png",
+            "sha256": "376eeb6aad2fa9ba5889aaac918aa2565193695d8afe498a6a46b0a426469f80"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_210.08",
+        "title": "Katamari Damacy",
+        "art": [
+          {
+            "file": "SLUS_210.08_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_210.08/SLUS_210.08_SCR_00.png",
+            "sha256": "ebc6905560ca5cbd8eabbb566e7cf84c61bf7d7aa495d92fe57f6840b9dd927d"
+          },
+          {
+            "file": "SLUS_210.08_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_210.08/SLUS_210.08_SCR_01.png",
+            "sha256": "36541b4648d2d9dd316fc1cd9ad353aa8a198c94b1d99cbb9a676a1deeb549b7"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_211.15",
+        "title": "Okami",
+        "art": [
+          {
+            "file": "SLUS_211.15_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_211.15/SLUS_211.15_SCR_00.png",
+            "sha256": "dc9710cb1e129c36db138b6198f6cdc21ccc2a0776200a9d51851ec926c82645"
+          },
+          {
+            "file": "SLUS_211.15_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_211.15/SLUS_211.15_SCR_01.png",
+            "sha256": "a420e9c4c1887b4969a2c176964b6919a11d7497b9ae651c7454fae165357284"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_209.15",
+        "title": "Metal Gear Solid 3 - Snake Eater",
+        "art": [
+          {
+            "file": "SLUS_209.15_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_209.15/SLUS_209.15_SCR_00.png",
+            "sha256": "4af79f6ea2ef8465adca70e7bd9c60036ed67d21246beecba881a0c70095dda1"
+          },
+          {
+            "file": "SLUS_209.15_SCR_03.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_209.15/SLUS_209.15_SCR_03.png",
+            "sha256": "1c95ce84b3a9408e21181e248caf7c7f79dcf90f530d41bc0c64fcbed7346ee5"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_202.28",
+        "title": "Silent Hill 2",
+        "art": [
+          {
+            "file": "SLUS_202.28_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_202.28/SLUS_202.28_SCR_00.png",
+            "sha256": "d6da7089efe442305de3a0f48059b315167f255fa9c77cdf91346eb657abdd63"
+          },
+          {
+            "file": "SLUS_202.28_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_202.28/SLUS_202.28_SCR_01.png",
+            "sha256": "9d4f3cfcdd63544529d589f5075ecae4c213883944e9351629063568a72c100a"
+          }
+        ]
+      },
+      {
+        "key": "SLUS_217.82",
+        "title": "Persona 4",
+        "art": [
+          {
+            "file": "SLUS_217.82_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_217.82/SLUS_217.82_SCR_00.png",
+            "sha256": "c92969b8d61bdcea1909486f934caf27368b693f64832d375da378d84d167f25"
+          },
+          {
+            "file": "SLUS_217.82_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SLUS_217.82/SLUS_217.82_SCR_01.png",
+            "sha256": "0ebf4ab461a1bbfcba8ab8ed13dfe14401edaab848ae03fbb0c1f01d29c370a3"
+          }
+        ]
+      },
+      {
+        "key": "SCUS_973.53",
+        "title": "Ratchet and Clank - Up Your Arsenal",
+        "art": [
+          {
+            "file": "SCUS_973.53_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_973.53/SCUS_973.53_SCR_00.png",
+            "sha256": "4c2e34842700ef0260b9dc15acd5ce949abbc421ad3142950b19162b4ac494cf"
+          },
+          {
+            "file": "SCUS_973.53_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_973.53/SCUS_973.53_SCR_01.png",
+            "sha256": "7b9c00a205c43991ffc0cbf9a2ef125ac5afc24e44f9408ffde0ab8e71cb345e"
+          }
+        ]
+      },
+      {
+        "key": "SCUS_971.13",
+        "title": "ICO",
+        "art": [
+          {
+            "file": "SCUS_971.13_SCR_00.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_971.13/SCUS_971.13_SCR_00.png",
+            "sha256": "f1a6dfc565b820d167ddce573a4f0e7b5a02e21b5f17e4c164a0c4782744a586"
+          },
+          {
+            "file": "SCUS_971.13_SCR_01.png",
+            "url": "https://raw.githubusercontent.com/Luden02/psx-ps2-opl-art-database/e14b9abce3cc42a06bb4ad2e4056e289c8872a07/PS2/SCUS_971.13/SCUS_971.13_SCR_01.png",
+            "sha256": "64cc355d5d91d16e6abffa5a16a6480d2fe49d21b458d956eeca1fdb958a6c7c"
+          }
+        ]
+      }
+    ]
+  },
+  "notes": "North American PS2 release years; original descriptions. Video badges describe staged NTSC 4:3/480i metadata, not all supported game modes. No invented ratings or file sizes.",
   "assets": [
     {
+      "file": "cheat-settings.png",
+      "bytes": 85815,
+      "sha256": "1178cfa67c34957b9906a412435418192e186395180aff7d68c37626996e6162",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "controller-emulation.png",
+      "bytes": 98340,
+      "sha256": "684ac42fbdc7f258b1bf62d443e757dee7166abbdd1c8737217f4948e1f111cc",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "controller-macros.png",
+      "bytes": 101009,
+      "sha256": "2f182e0a28c837cc8cc1ef626477242d662abee9dedb6510b2e033abd9402239",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "coverflow-five.png",
+      "bytes": 317281,
+      "sha256": "56b071fdde5a24966704dd8073db655565d56e78d9b8651de8508ec98b616444",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "coverflow-three.png",
+      "bytes": 392548,
+      "sha256": "1ac1a88e5faf08f001bc959d29ee30ffcb73bd933dad6096f7f1638d8452e9f7",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "game-options.png",
+      "bytes": 85298,
+      "sha256": "b0a93452ac388e9efdfc9b58ef504b6a82627cfa395c83991d026a831061f1dd",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "game-settings.png",
+      "bytes": 110937,
+      "sha256": "8204f466d54f3a39b8cfc5e1afa3d3292a4915722e3fd6e6723a1ed533a0aae6",
+      "width": 796,
+      "height": 448
+    },
+    {
       "file": "game-sources.png",
-      "bytes": 125220,
-      "sha256": "d8df9f17b906f57a7d51f453f91e77f07fbfd069880e01c3e3227adc8810ef0e"
+      "bytes": 126127,
+      "sha256": "fdde881e3e6edbe39008b05e2e20a2d142ec778da5d72303d6a3f49c7c14617a",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "file": "gsm-settings.png",
+      "bytes": 83548,
+      "sha256": "138f6b97160914dfdda30b22dc753e84481c14798663791967b8d50f9a3e4184",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-final-fantasy-x.png",
+      "bytes": 241391,
+      "sha256": "0b6476f8525f15d5804efcc635479b9c6934114115a05300e214c4193af06944",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-god-of-war-ii.png",
+      "bytes": 228868,
+      "sha256": "4b8cd9131c08d341223e51f89c0937d085458dd0855b6444b475806e8651be04",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-gran-turismo-4.png",
+      "bytes": 235425,
+      "sha256": "15e2f81d3f5ce7e8e2cef2446ca8a667fb6c13504cafc64b93942fe8b4491848",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-ico.png",
+      "bytes": 235394,
+      "sha256": "68d8abae3ea4c2c3cfca6bc3da36a738b98833adc4a2900d40870afb498e98c5",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-katamari-damacy.png",
+      "bytes": 226795,
+      "sha256": "61f2bf7b2aea1525854d29d9fc9538c156c1f167496d8a2e9274a415635c6e94",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-kingdom-hearts-ii.png",
+      "bytes": 240350,
+      "sha256": "5c8993e49f3805d180d42ffff44b5b6f7d9107b05b988c7a73b9dcd6485836e3",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-metal-gear-solid-3-snake-eater.png",
+      "bytes": 230688,
+      "sha256": "b241b8b284086d06953f4b50f2dae5267ce874d6168398de010c167a3dc27c80",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-navigation.gif",
+      "bytes": 4118381,
+      "sha256": "d7e8994f3b3f863169a5a2a8f6c91b7b7901057e20098df0329d1684b3a87a0d"
+    },
+    {
+      "file": "info-navigation.mp4",
+      "bytes": 1432036,
+      "sha256": "543cef0244c6f77a7ccdf99d2855671a237ea88cfa0caa8c4560aef1dc2db95f"
+    },
+    {
+      "file": "info-okami.png",
+      "bytes": 241111,
+      "sha256": "f785829594fc35ce9f382ad3ea4979ae4b686b0b5b99f165deea8b9a7566f290",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-persona-4.png",
+      "bytes": 235826,
+      "sha256": "ea97c643e6db41c19eb373e869a7070eaa6a5021ec6468b4b895de38faa600ae",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-ratchet-and-clank-up-your-arsenal.png",
+      "bytes": 245233,
+      "sha256": "00e4f79ddd05fe40dbaab47080074c89f88f1c406fc3c3495c2d6892c38c975c",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-shadow-of-the-colossus.png",
+      "bytes": 223122,
+      "sha256": "56cbcb093cc5ea62370ac9343ee34767c7756263fc68a28b79bb0865b776549a",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "info-silent-hill-2.png",
+      "bytes": 215727,
+      "sha256": "4810ec7aa9a6056f5adad87e91d229d03ae72ea5fb7ebd3994c8c3a2c0a1d676",
+      "width": 796,
+      "height": 448
     },
     {
       "file": "interface-settings.png",
-      "bytes": 146514,
-      "sha256": "c805524063666505bc54fef31739b6d6fc119176b58f9d324c1b9a619948dc7e"
+      "bytes": 158463,
+      "sha256": "0eda5cb475f53071d02b36b1ca8a29d4fec982aa4359ec8d6786f21b76e8016f",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "file": "library-tour.gif",
+      "bytes": 5190414,
+      "sha256": "45440b5148e039e120036fd2a69188de9e47a4841c2fcca7390f5eaf747f034f"
+    },
+    {
+      "file": "library-tour.mp4",
+      "bytes": 1839615,
+      "sha256": "7bfc8ac4915e25a13d1e2775c6dd678b2475741a8382bb54809d004d0c924cff"
+    },
+    {
+      "file": "list.png",
+      "bytes": 302135,
+      "sha256": "ff50fade375a83c718d676f0e29a80dd0bf6c6c936d317d3c75054dde5edf984",
+      "width": 796,
+      "height": 448
+    },
+    {
+      "file": "psbbn-flow.png",
+      "bytes": 184270,
+      "sha256": "ae13784da1070003bfee0bf81c1e3593f104a88da39ec0c9624a7a65ec4048bd",
+      "width": 796,
+      "height": 448
     },
     {
       "file": "settings-navigation.gif",
-      "bytes": 2262917,
-      "sha256": "b2305caf3f73f3446e7d9100792feb50653dfb23c8fb0730be0b54936ec00b35"
+      "bytes": 3544316,
+      "sha256": "4f247ec4d8b1c200591736e80158dbbe04468e329234a9f3eca835b71744655f"
     },
     {
       "file": "settings-navigation.mp4",
-      "bytes": 314882,
-      "sha256": "83f29d4d72ff62b47f8c467435ca5245858c501253e02d48e89572a75002e0b2"
+      "bytes": 607841,
+      "sha256": "c6640becd544da1214d46b7363f3df0d68fa5b935526030f520355a8f5bcacee"
     },
     {
       "file": "settings-overview.png",
-      "bytes": 90049,
-      "sha256": "70bc70d8a8c9db7e11e60ad65d8b413d86aa7eff6fdc8359776fd157e4a5558d"
+      "bytes": 94334,
+      "sha256": "ac6cb9673077f1e1b9061bdfbafdec96e7bc686ec3927c0aabc17dee88bce95c",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "file": "vmc-settings.png",
+      "bytes": 85394,
+      "sha256": "917db3fd464492f85d1b926f1c35ba061dec31bc98be4752ba16612965ad8b46",
+      "width": 796,
+      "height": 448
     }
-  ],
-  "video_duration_seconds": 14.45
+  ]
 }
