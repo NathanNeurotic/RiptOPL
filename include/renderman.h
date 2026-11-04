@@ -126,6 +126,10 @@ void rmStartFrame(void);
 /** Ends the frame - last to call every frame */
 void rmEndFrame(void);
 
+/** Retire the previous HIRES command queue before freeing its texture buffers.
+ * Call between frames while holding the GUI lock. Other video modes are already drained by rmEndFrame. */
+void rmDiscardFrame(void);
+
 /** Frames finished by rmEndFrame, from every render loop (the menu's and each dialog's own). */
 extern volatile unsigned int rmFramesDrawn;
 
