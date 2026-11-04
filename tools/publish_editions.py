@@ -400,16 +400,26 @@ def upload_verified(repo, tag, sha, title, notes_path, assets, exists):
             if exists:
                 for file in pending:
                     attempted.append(file.name)  # may have been deleted/uploaded before a 502
-                    try:
-                        gh("release", "upload", tag, "--repo", repo, "--clobber", str(file))
-                    except subprocess.CalledProcessError:
-                        # GitHub may have committed the upload and then failed the HTTP response.
-                        # Confirm before repeating or rolling back a successful replacement.
-                        state = {asset["name"]: asset for asset in
-                                 json.loads(gh("release", "view", tag, "--repo", repo,
-                                               "--json", "assets"))["assets"]}
-                        if not same_release_asset(state.get(file.name), file):
-                            raise
+                    # One CLI attempt per retry. gh release upload --clobber deletes the old
+                    # asset before uploading, so re-issuing the whole command after a 502 can
+                    # delete an upload GitHub actually committed. Verify the remote digest after
+                    # each failure and retry only when the upload did not arrive.
+                    for delay in (*RETRY_DELAYS, None):
+                        try:
+                            gh("release", "upload", tag, "--repo", repo, "--clobber", str(file), retry=False)
+                            break
+                        except subprocess.CalledProcessError:
+                            # GitHub may have committed the upload and then failed the HTTP response.
+                            # Confirm before repeating or rolling back a successful replacement.
+                            state = {asset["name"]: asset for asset in
+                                     json.loads(gh("release", "view", tag, "--repo", repo,
+                                                   "--json", "assets"))["assets"]}
+                            if same_release_asset(state.get(file.name), file):
+                                break
+                            if delay is None:
+                                raise
+                            print(f"{tag}: {file.name} upload failed; retrying in {delay}s", file=sys.stderr)
+                            time.sleep(delay)
             else:
                 gh("release", "create", tag, "--repo", repo, "--target", sha, "--draft", "--title", title,
                    "--notes-file", str(notes_path), *assets, retry=False)

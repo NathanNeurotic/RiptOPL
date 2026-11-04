@@ -261,6 +261,39 @@ class PublicationTests(unittest.TestCase):
                                           "RA", Path("notes"), assets, True)
             self.assertEqual(uploads, ["changed.txt"])  # no needless second delete
 
+    def test_genuinely_failed_upload_retries_bounded_times_then_rolls_back(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            assets = self.release(folder, ["changed.txt"])
+            old = b"old"
+            remote = {"changed.txt": dict(name="changed.txt", size=len(old),
+                                          digest="sha256:" + hashlib.sha256(old).hexdigest())}
+            uploads, restores, sleeps = [], [], []
+
+            def fake(*args, retry=True):
+                if args[:2] == ("release", "view"):
+                    return json.dumps(dict(id=1, assets=list(remote.values())))
+                if args[:2] == ("release", "download"):
+                    (Path(args[args.index("--dir") + 1]) / "changed.txt").write_bytes(old)
+                if args[:2] == ("release", "upload"):
+                    file = Path(args[-1])
+                    if str(folder) in str(file):
+                        uploads.append(file.name)
+                        raise subprocess.CalledProcessError(1, "gh", stderr="HTTP 502")
+                    restores.append(file.name)  # the rollback re-uploading its backup
+                return ""
+
+            with patch.object(publisher, "gh", side_effect=fake), \
+                    patch.object(publisher.time, "sleep", side_effect=sleeps.append), \
+                    self.assertRaises(subprocess.CalledProcessError):
+                publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40,
+                                          "RA", Path("notes"), assets, True)
+            # one initial attempt plus every bounded retry, each miss sleeping its delay
+            self.assertEqual(uploads, ["changed.txt"] * (1 + len(publisher.RETRY_DELAYS)))
+            self.assertEqual(sleeps, list(publisher.RETRY_DELAYS))
+            # the caller's rollback restored the backed-up original exactly once
+            self.assertEqual(restores, ["changed.txt"])
+
     def test_failed_upload_does_not_touch_unattempted_assets(self):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
@@ -278,7 +311,9 @@ class PublicationTests(unittest.TestCase):
                     raise subprocess.CalledProcessError(1, "gh")
                 return ""
 
-            with patch.object(publisher, "gh", side_effect=fake), self.assertRaises(subprocess.CalledProcessError):
+            with patch.object(publisher, "gh", side_effect=fake), \
+                    patch.object(publisher.time, "sleep"), \
+                    self.assertRaises(subprocess.CalledProcessError):
                 publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40, "RA", Path("notes"), assets, True)
             self.assertEqual(calls[-1], ("release", "delete-asset", "rolling-ra",
                                          "APP_RIPTOPL-RA.psu", "--repo", "owner/repo", "--yes"))
@@ -312,14 +347,18 @@ class PublicationTests(unittest.TestCase):
                     remote.pop(args[3], None)
                 return ""
 
-            with patch.object(publisher, "gh", side_effect=fake), self.assertRaises(subprocess.CalledProcessError):
+            with patch.object(publisher, "gh", side_effect=fake), \
+                    patch.object(publisher.time, "sleep"), \
+                    self.assertRaises(subprocess.CalledProcessError):
                 publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40,
                                           "RA", Path("notes"), assets, True)
             self.assertEqual(remote, {"stable.ELF": old_item})
             self.assertIn(("release", "delete-asset", "rolling-ra", "new.zip",
                            "--repo", "owner/repo", "--yes"), attempts)
+            # the failed upload burned its one initial attempt plus every bounded retry,
+            # and the rollback then made exactly one restore attempt
             self.assertEqual(len([args for args in attempts if args[:2] == ("release", "upload")
-                                  and Path(args[-1]).name == "stable.ELF"]), 2)
+                                  and Path(args[-1]).name == "stable.ELF"]), 1 + len(publisher.RETRY_DELAYS) + 1)
 
     def test_unretained_asset_restores_and_new_drafts_need_no_restore(self):
         with tempfile.TemporaryDirectory() as temporary:
