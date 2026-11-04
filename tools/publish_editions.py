@@ -85,9 +85,10 @@ BUNDLE_README = ("RiptOPL {title} configuration builds. Each folder holds one {e
                  "GNU LGPL-2.1; its licence is LICENSE-LIBSMB2.txt beside this file.\n")
 
 
-# GitHub's release API intermittently answers 5xx. Calls are retried unless retry=False: a create that
-# failed part-way has already made the release, so repeating it can only fail.
-RETRY_DELAYS = (5, 15)
+# GitHub's release API intermittently answers 5xx for longer than a few seconds. Retries are
+# bounded; we never report a release as published without verifying every remote checksum.
+# A create that failed part-way may already have made the release, so it is not blindly retried.
+RETRY_DELAYS = (5, 15, 30, 60, 120)
 REPUBLISH_DELAY = 60
 
 
@@ -362,40 +363,121 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
     )
 
 
+def same_release_asset(remote, file):
+    """An asset can be left in place only when GitHub confirms its actual SHA-256 and size."""
+    return (remote is not None
+            and remote.get("size") == file.stat().st_size
+            and remote.get("digest") == "sha256:" + hashlib.sha256(file.read_bytes()).hexdigest())
+
+
 def upload_verified(repo, tag, sha, title, notes_path, assets, exists):
-    """Upload a channel's assets and confirm GitHub kept them. A published channel that fails part-way
-    gets every clobbered file back and loses the files it added, so its downloads never mix two builds
-    under the old tag."""
+    """Publish only missing/changed assets, then verify the *whole* release.
+
+    gh release upload --clobber deletes the old asset before uploading its replacement.
+    Re-uploading every asset on each rolling build unnecessarily hits GitHub's release-asset
+    DELETE endpoint, resets download counts, and makes a single transient 502 replay the
+    entire batch. Upload one changed asset at a time so retries never re-delete successful
+    earlier uploads. Keep backups of assets that may be replaced, for failure rollback.
+    """
+    files = [Path(asset) for asset in assets]
     with tempfile.TemporaryDirectory() as backup:
-        replaced, added = [], []
+        remote = {}
+        pending = files
+        replaced, added, attempted = [], [], []
         if exists:
-            current = {a["name"] for a in json.loads(gh("release", "view", tag, "--repo", repo, "--json", "assets"))["assets"]}
-            replaced = sorted(current & {Path(a).name for a in assets})
-            added = sorted({Path(a).name for a in assets} - current)
+            remote = {asset["name"]: asset for asset in
+                      json.loads(gh("release", "view", tag, "--repo", repo, "--json", "assets"))["assets"]}
+            pending = [file for file in files if not same_release_asset(remote.get(file.name), file)]
+            replaced = sorted(file.name for file in pending if file.name in remote)
+            added = sorted(file.name for file in pending if file.name not in remote)
             for name in replaced:
                 gh("release", "download", tag, "--repo", repo, "--pattern", name, "--dir", backup, "--clobber")
+            # A backup must byte-match the asset it may have to put back. Verify
+            # before ANY upload: a torn download must not meet a destructive
+            # --clobber with nothing valid to restore (the release would be left
+            # without the original when the upload then fails).
+            for name in replaced:
+                original = remote.get(name)
+                if (original is None or original.get("digest") is None
+                        or original["digest"] != "sha256:" + hashlib.sha256((Path(backup) / name).read_bytes()).hexdigest()):
+                    raise ValueError(f"backup of {name} does not match the recorded original; aborting before any upload")
+
+            # Upload immutable/versioned .zip archives before stable ELF/PSU/manifest
+            # names, reducing the time a published channel can contain mixed versions.
+            # The .zip suffix decides, not remote presence: a missing stable name is an
+            # addition and a stale archive is a replacement, and presence alone could
+            # interleave them.
+            pending.sort(key=lambda file: not file.name.endswith(".zip"))
         try:
             if exists:
-                gh("release", "upload", tag, "--repo", repo, "--clobber", *assets)
+                for file in pending:
+                    attempted.append(file.name)  # may have been deleted/uploaded before a 502
+                    # One CLI attempt per retry. gh release upload --clobber deletes the old
+                    # asset before uploading, so re-issuing the whole command after a 502 can
+                    # delete an upload GitHub actually committed. Verify the remote digest after
+                    # each failure and retry only when the upload did not arrive.
+                    for delay in (*RETRY_DELAYS, None):
+                        try:
+                            gh("release", "upload", tag, "--repo", repo, "--clobber", str(file), retry=False)
+                            break
+                        except subprocess.CalledProcessError:
+                            # GitHub may have committed the upload and then failed the HTTP response.
+                            # Confirm before repeating or rolling back a successful replacement.
+                            state = {asset["name"]: asset for asset in
+                                     json.loads(gh("release", "view", tag, "--repo", repo,
+                                                   "--json", "assets"))["assets"]}
+                            if same_release_asset(state.get(file.name), file):
+                                break
+                            if delay is None:
+                                raise
+                            print(f"{tag}: {file.name} upload failed; retrying in {delay}s", file=sys.stderr)
+                            time.sleep(delay)
             else:
                 gh("release", "create", tag, "--repo", repo, "--target", sha, "--draft", "--title", title,
                    "--notes-file", str(notes_path), *assets, retry=False)
+
             release = json.loads(gh("release", "view", tag, "--repo", repo, "--json", "id,assets"))
-            remote = {a["name"]: a for a in release["assets"]}
-            for asset in assets:
-                file = Path(asset)
-                digest = hashlib.sha256(file.read_bytes()).hexdigest()
-                item = remote.get(file.name, {})
-                if item.get("size") != file.stat().st_size or item.get("digest") != "sha256:" + digest:
+            current = {asset["name"]: asset for asset in release["assets"]}
+            for file in files:
+                if not same_release_asset(current.get(file.name), file):
                     raise ValueError(f"GitHub did not retain the verified asset: {tag}/{file.name}")
         except (subprocess.CalledProcessError, ValueError):
-            if replaced:
-                gh("release", "upload", tag, "--repo", repo, "--clobber", *(str(Path(backup) / n) for n in replaced))
-            for name in added:  # new to this channel: not part of the build it still serves
+            # Restore only the files this attempt could have touched, not every old asset.
+            touched = set(attempted)
+            restore = sorted(touched.intersection(replaced))
+            for name in restore:
+                backup_file = Path(backup) / name
+                # Never upload a backup that is not byte-identical to the asset it replaces: a torn
+                # download would corrupt the channel under the guise of a rollback.
+                original = remote.get(name)
+                if (original is None or original.get("digest") is None
+                        or original["digest"] != "sha256:" + hashlib.sha256(backup_file.read_bytes()).hexdigest()):
+                    print(f"{tag}: backup of {name} cannot be verified against the original; "
+                          "leaving the remote asset untouched", file=sys.stderr)
+                    continue
+                try:
+                    gh("release", "upload", tag, "--repo", repo, "--clobber", str(backup_file))
+                except subprocess.CalledProcessError as error:
+                    # GitHub may also be returning 502s while we roll back. Check whether the
+                    # restore actually landed before reporting it as lost; attempt the rest of
+                    # the cleanup and preserve the original publication failure.
+                    try:
+                        state = {asset["name"]: asset for asset in
+                                 json.loads(gh("release", "view", tag, "--repo", repo, "--json", "assets"))["assets"]}
+                        intact = same_release_asset(state.get(name), backup_file)
+                    except subprocess.CalledProcessError:
+                        intact = None
+                    if intact:
+                        print(f"{tag}: restore of {name} failed, but the original is still in place", file=sys.stderr)
+                    elif intact is False:
+                        print(f"{tag}: could not restore {name}: {error} (the original is LOST from the channel)", file=sys.stderr)
+                    else:
+                        print(f"{tag}: could not restore {name}: {error} (remote state unknown)", file=sys.stderr)
+            for name in sorted(touched.intersection(added)):
                 try:
                     gh("release", "delete-asset", tag, name, "--repo", repo, "--yes")
-                except subprocess.CalledProcessError:
-                    pass  # best effort: the original failure is the one to report
+                except subprocess.CalledProcessError as error:
+                    print(f"{tag}: could not remove added {name}: {error}", file=sys.stderr)
             raise
 
 
