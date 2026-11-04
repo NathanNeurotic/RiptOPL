@@ -85,9 +85,10 @@ BUNDLE_README = ("RiptOPL {title} configuration builds. Each folder holds one {e
                  "GNU LGPL-2.1; its licence is LICENSE-LIBSMB2.txt beside this file.\n")
 
 
-# GitHub's release API intermittently answers 5xx. Calls are retried unless retry=False: a create that
-# failed part-way has already made the release, so repeating it can only fail.
-RETRY_DELAYS = (5, 15)
+# GitHub's release API intermittently answers 5xx for longer than a few seconds. Retries are
+# bounded; we never report a release as published without verifying every remote checksum.
+# A create that failed part-way may already have made the release, so it is not blindly retried.
+RETRY_DELAYS = (5, 15, 30, 60, 120)
 REPUBLISH_DELAY = 60
 
 
@@ -362,40 +363,74 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
     )
 
 
+def same_release_asset(remote, file):
+    """An asset can be left in place only when GitHub confirms its actual SHA-256 and size."""
+    return (remote is not None
+            and remote.get("size") == file.stat().st_size
+            and remote.get("digest") == "sha256:" + hashlib.sha256(file.read_bytes()).hexdigest())
+
+
 def upload_verified(repo, tag, sha, title, notes_path, assets, exists):
-    """Upload a channel's assets and confirm GitHub kept them. A published channel that fails part-way
-    gets every clobbered file back and loses the files it added, so its downloads never mix two builds
-    under the old tag."""
+    """Publish only missing/changed assets, then verify the *whole* release.
+
+    gh release upload --clobber deletes the old asset before uploading its replacement.
+    Re-uploading every asset on each rolling build unnecessarily hits GitHub's release-asset
+    DELETE endpoint, resets download counts, and makes a single transient 502 replay the
+    entire batch. Upload one changed asset at a time so retries never re-delete successful
+    earlier uploads. Keep backups of assets that may be replaced, for failure rollback.
+    """
+    files = [Path(asset) for asset in assets]
     with tempfile.TemporaryDirectory() as backup:
-        replaced, added = [], []
+        remote = {}
+        pending = files
+        replaced, added, attempted = [], [], []
         if exists:
-            current = {a["name"] for a in json.loads(gh("release", "view", tag, "--repo", repo, "--json", "assets"))["assets"]}
-            replaced = sorted(current & {Path(a).name for a in assets})
-            added = sorted({Path(a).name for a in assets} - current)
+            remote = {asset["name"]: asset for asset in
+                      json.loads(gh("release", "view", tag, "--repo", repo, "--json", "assets"))["assets"]}
+            pending = [file for file in files if not same_release_asset(remote.get(file.name), file)]
+            replaced = sorted(file.name for file in pending if file.name in remote)
+            added = sorted(file.name for file in pending if file.name not in remote)
             for name in replaced:
                 gh("release", "download", tag, "--repo", repo, "--pattern", name, "--dir", backup, "--clobber")
+
+            # Upload immutable/versioned new archives before replacing stable ELF/PSU/manifest
+            # names, reducing the time a published channel can contain mixed versions.
+            pending.sort(key=lambda file: file.name in remote)
         try:
             if exists:
-                gh("release", "upload", tag, "--repo", repo, "--clobber", *assets)
+                for file in pending:
+                    attempted.append(file.name)  # may have been deleted/uploaded before a 502
+                    try:
+                        gh("release", "upload", tag, "--repo", repo, "--clobber", str(file))
+                    except subprocess.CalledProcessError:
+                        # GitHub may have committed the upload and then failed the HTTP response.
+                        # Confirm before repeating or rolling back a successful replacement.
+                        state = {asset["name"]: asset for asset in
+                                 json.loads(gh("release", "view", tag, "--repo", repo,
+                                               "--json", "assets"))["assets"]}
+                        if not same_release_asset(state.get(file.name), file):
+                            raise
             else:
                 gh("release", "create", tag, "--repo", repo, "--target", sha, "--draft", "--title", title,
                    "--notes-file", str(notes_path), *assets, retry=False)
+
             release = json.loads(gh("release", "view", tag, "--repo", repo, "--json", "id,assets"))
-            remote = {a["name"]: a for a in release["assets"]}
-            for asset in assets:
-                file = Path(asset)
-                digest = hashlib.sha256(file.read_bytes()).hexdigest()
-                item = remote.get(file.name, {})
-                if item.get("size") != file.stat().st_size or item.get("digest") != "sha256:" + digest:
+            current = {asset["name"]: asset for asset in release["assets"]}
+            for file in files:
+                if not same_release_asset(current.get(file.name), file):
                     raise ValueError(f"GitHub did not retain the verified asset: {tag}/{file.name}")
         except (subprocess.CalledProcessError, ValueError):
-            if replaced:
-                gh("release", "upload", tag, "--repo", repo, "--clobber", *(str(Path(backup) / n) for n in replaced))
-            for name in added:  # new to this channel: not part of the build it still serves
+            # Restore only the files this attempt could have touched, not every old asset.
+            touched = set(attempted)
+            restore = sorted(touched.intersection(replaced))
+            if restore:
+                gh("release", "upload", tag, "--repo", repo, "--clobber",
+                   *(str(Path(backup) / name) for name in restore))
+            for name in sorted(touched.intersection(added)):
                 try:
                     gh("release", "delete-asset", tag, name, "--repo", repo, "--yes")
                 except subprocess.CalledProcessError:
-                    pass  # best effort: the original failure is the one to report
+                    pass  # best effort; do not conceal the publication failure
             raise
 
 
