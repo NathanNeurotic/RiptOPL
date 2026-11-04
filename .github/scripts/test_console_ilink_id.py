@@ -21,6 +21,10 @@ test_launch = function(gui, 'void guiGameTestSettings(')
 validation = test_launch[:test_launch.index('configClone(')]
 assert 'if (guiGameReadILinkID(consoleID) < 0)' in validation
 assert 'guiMsgBox(_l(_STR_INVALID_CONSOLE_ILINK_ID), 0, NULL);\n        return;' in validation
+load = function(gui, 'void guiGameLoadConfig(')
+stored_id = load[load.index('char consoleID[32]'):load.index('diaSetString(diaCompatConfig, COMPAT_ILINK_ID, consoleID);')]
+assert 'configGetStrCopy(configSet, CONFIG_ITEM_ILINK_ID, consoleID, sizeof(consoleID));' in stored_id
+assert 'oplParseILinkID' not in stored_id and "consoleID[0]" not in stored_id
 reset = function(gui, 'void guiGameRemoveSettings(')
 assert 'configRemoveKey(configSet, CONFIG_ITEM_ILINK_ID)' in reset
 assert 'COMPAT_ILINK_ID, !neutrino && ilinkIdNativeCapable' in gui

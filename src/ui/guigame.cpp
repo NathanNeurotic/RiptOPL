@@ -2547,10 +2547,8 @@ void guiGameLoadConfig(int id, item_list_t *support, config_set_t *configSet)
     configGetStrCopy(configSet, CONFIG_ITEM_DNAS, hexid, sizeof(hexid));
     diaSetString(diaCompatConfig, COMPAT_GAMEID, hexid);
     char consoleID[32] = "";
-    u8 consoleIDBytes[8];
     configGetStrCopy(configSet, CONFIG_ITEM_ILINK_ID, consoleID, sizeof(consoleID));
-    if (oplParseILinkID(consoleID, consoleIDBytes) < 0)
-        consoleID[0] = '\0';
+    // Keep malformed stored text visible so Save/Test validate it instead of silently clearing the key.
     diaSetString(diaCompatConfig, COMPAT_ILINK_ID, consoleID);
 
 
