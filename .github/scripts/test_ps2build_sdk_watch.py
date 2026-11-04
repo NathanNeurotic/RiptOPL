@@ -300,6 +300,7 @@ class WorkflowTests(unittest.TestCase):
             compiler = "llvm" if name == "rolling-llvm.yml" else "gcc" if name in ("rolling-release.yml", "flavours.yml") else "${{ matrix.toolchain }}"
             expected = key.replace("${{ matrix.toolchain }}", compiler)
             self.assertGreaterEqual(text.count("key: " + expected), 2, name)
+            self.assertIn("restore-keys: " + expected.removesuffix("${{ steps.sdk.outputs.key }}"), text, name)
 
     def test_the_watch_never_publishes_and_pushes_only_its_own_branch(self):
         text = (WORKFLOWS / "ps2build-sdk-watch.yml").read_text()
