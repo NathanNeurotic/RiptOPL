@@ -419,9 +419,13 @@ class SymtabRepairTests(unittest.TestCase):
             lib_dir.mkdir(parents=True)
             library = self.make_library(lib_dir, broken=True)
             objcopy = self.fake_objcopy(sdk)
-            with patch.object(ports.subprocess, "run") as run:
+            with patch.dict(ports.os.environ, {"PS2BUILD_SDK_MIRROR_TOKEN": "test-mirror-token"}), \
+                    patch.object(ports.subprocess, "run") as run:
+                expected_env = ports.os.environ.copy()
+                expected_env.pop("PS2BUILD_SDK_MIRROR_TOKEN")
                 ports.repair_llvm_symtabs(sdk)
-            run.assert_called_once_with([str(objcopy), str(library)], check=True)
+                self.assertEqual(ports.os.environ["PS2BUILD_SDK_MIRROR_TOKEN"], "test-mirror-token")
+            run.assert_called_once_with([str(objcopy), str(library)], check=True, env=expected_env)
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ A heartfelt thank you to developers who have contributed pull requests directly 
 
 # RiptOPL
 
-> **C++ / ps2build edition:** This repository is RiptOPL's main line. The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader). It uses **one SDK: ps2build**, with **Korium**, **RetroAchievements** and **IncebtIon** release editions. GCC builds release kits; GCC and LLVM are both validated in CI. See the [release contract](ROLLING_RELEASE.md), [migration checkpoint](docs/MIGRATION-CHECKPOINT-2026-10-12.md), [parity ledger](docs/UPSTREAM-PARITY-2026-10-12.md), [documentation site](https://nathanneurotic.github.io/RiptOPL/) and [wiki](https://github.com/NathanNeurotic/RiptOPL/wiki). A passing build does not establish hardware acceptance; test the exact edition and commit on your console.
+> **C++ / ps2build edition:** This repository is RiptOPL's main line. The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader). It uses **one SDK: ps2build**, with **Korium**, **RetroAchievements** and **IncebtIon** release editions. The standard rolling channels ship GCC builds, and a separate **RiptOPLLVM** channel packages LLVM-built Korium, Korium RetroAchievements and RiptOPLite; GCC and LLVM are both validated in CI. See the [release contract](ROLLING_RELEASE.md), [migration checkpoint](docs/MIGRATION-CHECKPOINT-2026-10-12.md), [parity ledger](docs/UPSTREAM-PARITY-2026-10-12.md), [documentation site](https://nathanneurotic.github.io/RiptOPL/) and [wiki](https://github.com/NathanNeurotic/RiptOPL/wiki). A passing build does not establish hardware acceptance; test the exact edition and commit on your console.
 
 **An opinionated [Open PS2 Loader](https://github.com/ps2homebrew/Open-PS2-Loader) fork — aiming to be the "definitive build."**
 <br>
@@ -31,6 +31,7 @@ Review the LICENSE file for further details.<br><br>
 [![RetroAchievements](https://img.shields.io/badge/Release-RetroAchievements-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra)
 [![IncebtIon](https://img.shields.io/badge/Release-IncebtIon-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion)
 [![RiptOPLite](https://img.shields.io/badge/Release-RiptOPLite-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite)
+[![RiptOPLLVM](https://img.shields.io/badge/Release-RiptOPLLVM-purple)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm)
 
 [![License](https://img.shields.io/github/license/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=opensourceinitiative&logoColor=white&label=License)](LICENSE)
 ![Written in C++](https://img.shields.io/badge/Written%20in-C%2B%2B-skyblue?style=flat&logo=cplusplus&logoColor=white&labelColor=navy)
@@ -99,13 +100,18 @@ or PSBBN Flow. Real **Korium and IncebtIon v1.2.0-Beta-4052** menus captured in 
 This repository builds **Korium**, **RetroAchievements** and **IncebtIon** on the
 single **ps2build SDK**. Korium and IncebtIon are standard loaders with distinct
 built-in themes; RetroAchievements uses Korium and enables the RA runtime.
-GCC produces release kits, while GCC and LLVM are both compiler validation gates.
+The four standard release channels ship GCC builds. **RiptOPLLVM** is a separate, pre-release
+LLVM/Clang channel for Korium, Korium RetroAchievements, and all Korium-based RiptOPLite
+builds (standard and RA). It does not replace GCC downloads or publish IncebtIon.
+Both compilers remain mandatory CI validation gates.
 
 The [Rolling Release workflow](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml)
 builds full install ZIPs, standalone loaders, app PSU saves, exact source snapshots,
-build manifests and checksums for all three editions. Channels are published only
-by an explicit dispatch after verification; unpublished builds are available as
-Actions artifacts. See [release channels and packaging](ROLLING_RELEASE.md).
+build manifests and checksums for all three editions. Channels publish only from verified integration pushes or an explicit dispatch
+with publication enabled; pull-request builds remain Actions artifacts. The
+[RiptOPLLVM workflow](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-llvm.yml)
+checks every LLVM configuration and publishes to its own
+[RiptOPLLVM release](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm). See [release channels and packaging](ROLLING_RELEASE.md).
 
 Hardware results in the feature documentation were measured on the legacy C edition unless a
 page says otherwise; each still needs a retest on this C++/ps2build edition. The parity port with the legacy

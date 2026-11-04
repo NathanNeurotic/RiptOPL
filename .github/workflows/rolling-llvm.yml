@@ -1,0 +1,233 @@
+name: RiptOPLLVM
+
+# Independent LLVM release of Korium, Korium RA, and both RiptOPLite sets.
+# The GCC rolling channels remain in rolling-release.yml.
+on:
+  push:
+    branches: [rebuild/main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the verified LLVM channel (default is a dry run)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ript-llvm-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: LLVM / ${{ matrix.target.edition }} / ${{ matrix.target.configuration }}${{ matrix.target.device && format(' / {0}', matrix.target.device) || '' }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        target:
+          - {edition: korium, configuration: standard}
+          - {edition: ra, configuration: standard}
+          # The same Korium configuration/variant inventory as the GCC rolling release.
+          - {edition: korium, configuration: pademu0}
+          - {edition: korium, configuration: ds5}
+          - {edition: korium, configuration: extras}
+          - {edition: korium, configuration: extras_ds5}
+          - {edition: korium, configuration: dtl}
+          - {edition: korium, configuration: diag}
+          - {edition: korium, configuration: debug}
+          - {edition: korium, configuration: debug_uart}
+          - {edition: korium, configuration: ingame_debug}
+          - {edition: korium, configuration: iopcore_debug}
+          - {edition: korium, configuration: eesio_debug}
+          - {edition: korium, configuration: ingame_debug_uart}
+          - {edition: korium, configuration: iopcore_debug_uart}
+          - {edition: korium, configuration: ingamediag}
+          - {edition: ra, configuration: pademu0}
+          # Full device matrix for standard and RetroAchievements RiptOPLite.
+          - {edition: lite, configuration: standard, device: usb}
+          - {edition: lite, configuration: standard, device: mx4sio}
+          - {edition: lite, configuration: standard, device: ilink}
+          - {edition: lite, configuration: standard, device: hdd}
+          - {edition: lite, configuration: standard, device: smb}
+          - {edition: lite, configuration: standard, device: udpbd}
+          - {edition: lite, configuration: standard, device: udpfs}
+          - {edition: lite, configuration: standard, device: mmce}
+          - {edition: lite_ra, configuration: standard, device: usb}
+          - {edition: lite_ra, configuration: standard, device: mx4sio}
+          - {edition: lite_ra, configuration: standard, device: ilink}
+          - {edition: lite_ra, configuration: standard, device: hdd}
+          - {edition: lite_ra, configuration: standard, device: smb}
+          - {edition: lite_ra, configuration: standard, device: udpbd}
+          - {edition: lite_ra, configuration: standard, device: udpfs}
+          - {edition: lite_ra, configuration: standard, device: mmce}
+    env:
+      PS2BUILD_HOME: ${{ github.workspace }}/.ps2dev
+      PS2DEV_INSTALL_DIR: ${{ github.workspace }}/.ps2dev
+      PS2BUILD_TOOLCHAIN: llvm
+      GODEBUG: http2client=0
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Resolve the pinned LLVM ps2build SDK
+        id: sdk
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
+        run: sh tools/ps2build_sdk.sh --resolve --llvm "$RUNNER_TEMP/ps2build-sdk.env"
+      - name: Restore LLVM SDK cache
+        id: sdk-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.ps2dev
+          key: ps2build-sdk-${{ runner.os }}-llvm-${{ steps.sdk.outputs.key }}
+          restore-keys: ps2build-sdk-${{ runner.os }}-llvm-
+      - name: Install LLVM ps2build SDK
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
+        run: sh tools/ps2build_sdk.sh --llvm "$PS2BUILD_HOME"
+      - name: Install matching LLVM ports and prepare assets
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
+        run: |
+          sh tools/install_ps2build.sh
+          python tools/assets.py fetch
+          python tools/assets.py lang
+      - name: Save LLVM SDK cache
+        if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.ps2dev
+          key: ps2build-sdk-${{ runner.os }}-llvm-${{ steps.sdk.outputs.key }}
+      - name: Build LLVM edition
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          device=()
+          if [ -n '${{ matrix.target.device }}' ]; then device=(--device '${{ matrix.target.device }}'); fi
+          python tools/build_edition.py '${{ matrix.target.edition }}' --configuration '${{ matrix.target.configuration }}' --toolchain llvm "${device[@]}" 2>&1 | tee build/edition.log
+      - name: Reject mixed GCC and LLVM objects in the linked loader
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t linked < <(find build -type f -path '*/obj/riptopl/riptopl.unstripped.elf')
+          test "${#linked[@]}" -eq 1
+          python tools/check_llvm_purity.py "$PS2BUILD_HOME/llvm-toolchain/llvm/bin/llvm-readobj" "${linked[0]}"
+      - name: Retain configuration build
+        if: matrix.target.configuration != 'standard'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: variant-${{ matrix.target.edition }}-${{ matrix.target.configuration }}
+          path: dist/configurations/${{ matrix.target.edition }}-${{ matrix.target.configuration }}-llvm/
+          if-no-files-found: error
+      - name: Retain RiptOPLite LLVM build
+        if: matrix.target.device
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.target.edition }}-${{ matrix.target.device }}
+          path: dist/lite/${{ matrix.target.edition == 'lite_ra' && 'ra-' || '' }}${{ matrix.target.device }}-llvm/
+          if-no-files-found: error
+      - name: Download official companion core
+        if: matrix.target.configuration == 'standard' && !matrix.target.device
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq p7zip-full
+          mkdir -p build/companion
+          gh release download latest --repo ps2max32/neutrino --dir build/companion --pattern '*.7z'
+      - name: Package and verify the full LLVM install kit
+        if: matrix.target.configuration == 'standard' && !matrix.target.device
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t cores < <(find build/companion -maxdepth 1 -name 'neutrino_*.7z' -type f)
+          test "${#cores[@]}" -eq 1
+          python tools/package_edition.py '${{ matrix.target.edition }}' --neutrino-archive "${cores[0]}" --compiler llvm
+      - name: Retain full LLVM kit
+        if: matrix.target.configuration == 'standard' && !matrix.target.device
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ matrix.target.edition }}
+          path: dist/releases/${{ matrix.target.edition }}/
+          if-no-files-found: error
+      - name: Retain compiler log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: llvm-log-${{ matrix.target.edition }}-${{ matrix.target.configuration }}${{ matrix.target.device && format('-{0}', matrix.target.device) || '' }}
+          path: build/edition.log
+
+  verify:
+    name: Verify all RiptOPLLVM assets (never publishes)
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-*
+          path: dist/downloaded
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: variant-*
+          path: dist/downloaded
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: lite*-*
+          path: dist/downloaded
+      - name: Check LLVM provenance, edition parity, checksum inventory and archive integrity
+        run: python -S tools/publish_llvm.py dist/downloaded --check
+
+  publish:
+    name: Publish only the verified integration-head RiptOPLLVM release
+    needs: [build, verify]
+    if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)) && github.ref == 'refs/heads/rebuild/main' && github.repository == 'NathanNeurotic/RiptOPL'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-*
+          path: dist/downloaded
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: variant-*
+          path: dist/downloaded
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: lite*-*
+          path: dist/downloaded
+      - name: Publish RiptOPLLVM (no GCC assets or tags touched)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # The publisher uses only the standard library; do not load installed site packages with this token.
+        run: python -S tools/publish_llvm.py dist/downloaded

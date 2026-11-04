@@ -57,7 +57,9 @@ def archives(options):
 
 def check_unpacked_layout(elf):
     """Refuse a bug-report ELF that is packed or not laid out like a ps2sdk link: one loadable
-    segment at 0x00100000, 0x80 bytes into the file (-zmax-page-size=128, ps2.yaml)."""
+    segment at 0x00100000, immediately after the headers on a 128-byte boundary.
+    LLD emits additional non-loadable MIPS headers, so its first segment starts
+    at 0x100 rather than GNU ld's 0x80 with the same max-page-size flag."""
     if len(elf) < 52 or elf[:4] != b"\x7fELF" or elf[4] != 1 or elf[5] != 1:
         raise ValueError("bug-report build is not a 32-bit little-endian ELF")
     machine, = struct.unpack_from("<H", elf, 18)
@@ -67,7 +69,9 @@ def check_unpacked_layout(elf):
         raise ValueError("bug-report build is not a MIPS executable")
     loads = [struct.unpack_from("<8I", elf, phoff + i * 32) for i in range(phnum)]
     loads = [h for h in loads if h[0] == 1]
-    if len(loads) != 1 or loads[0][1] != 0x80 or loads[0][2] != 0x00100000:
+    segment_offset = (max(52, phoff + phnum * 32) + 127) & ~127
+    if (len(loads) != 1 or loads[0][1] != segment_offset or loads[0][2] != 0x00100000
+            or loads[0][7] != 128):
         raise ValueError("bug-report build is packed or not linked with -zmax-page-size=128: "
                          + ", ".join(f"offset {h[1]:#x} at {h[2]:#010x}" for h in loads))
     if loads[0][1] + loads[0][4] > len(elf):
@@ -126,9 +130,10 @@ def add_sum(path, name, digest):
     sums.write_text("".join(f"{line}\n" for line in [*lines, f"{digest}  {name}"]), encoding="utf-8")
 
 
-def bundle_configurations(root, expected_sha):
-    """Pack the configuration builds into their edition's release and add them to its checksums."""
-    for edition, options in EDITIONS.items():
+def bundle_configurations(root, expected_sha, *, editions=None, compiler="gcc"):
+    """Pack the requested compiler's configuration builds into verified edition releases."""
+    for edition in (EDITIONS if editions is None else editions):
+        options = EDITIONS[edition]
         for name, configurations, _ in bundles(options):
             path = root / ("release-" + edition)
             kit = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
@@ -140,7 +145,7 @@ def bundle_configurations(root, expected_sha):
                     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
                     elf = (stage / "RIPTOPL.ELF").read_bytes()
                     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
-                            or manifest["compiler"] != "gcc" or manifest["configuration"] != configuration
+                            or manifest["compiler"] != compiler or manifest["configuration"] != configuration
                             or manifest["ps2build_version"] != kit["ps2build_version"]
                             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
                             or manifest["elf_sha256"] != hashlib.sha256(elf).hexdigest()):
@@ -152,10 +157,10 @@ def bundle_configurations(root, expected_sha):
                 bundle.writestr("LICENSE-LIBSMB2.txt", (path / "LICENSE-LIBSMB2.txt").read_bytes())
             add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
         if BUGREPORT in archives(options):
-            bundle_bug_report(root, edition, expected_sha)
+            bundle_bug_report(root, edition, expected_sha, compiler=compiler)
 
 
-def bundle_bug_report(root, edition, expected_sha):
+def bundle_bug_report(root, edition, expected_sha, compiler="gcc"):
     """RIPTOPL-BUGREPORT.zip: the theme's diag build, unpacked, its manifest and a README on what to send."""
     path = root / ("release-" + edition)
     kit = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
@@ -163,7 +168,7 @@ def bundle_bug_report(root, edition, expected_sha):
     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     elf = (stage / "RIPTOPL-UNPACKED.ELF").read_bytes()
     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
-            or manifest["compiler"] != "gcc" or manifest["configuration"] != "diag"
+            or manifest["compiler"] != compiler or manifest["configuration"] != "diag"
             or manifest["ps2build_version"] != kit["ps2build_version"]
             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
             or manifest.get("unpacked_elf_sha256") != hashlib.sha256(elf).hexdigest()):
@@ -183,14 +188,15 @@ def bundle_bug_report(root, edition, expected_sha):
     add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
 
 
-def verify(root, expected_sha):
+def verify(root, expected_sha, *, editions=None, compiler="gcc"):
     candidates = []
     suites = []
-    for edition, options in EDITIONS.items():
+    for edition in (EDITIONS if editions is None else editions):
+        options = EDITIONS[edition]
         path = root / ("release-" + edition)
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
         if (manifest["repository"] != "NathanNeurotic/RiptOPL" or manifest["source_commit"] != expected_sha
-                or manifest["dirty"] or manifest["edition"] != edition or manifest["compiler"] != "gcc"
+                or manifest["dirty"] or manifest["edition"] != edition or manifest["compiler"] != compiler
                 or manifest["sdk"] != "ps2build" or manifest["ra"] != options["ra"]
                 or manifest.get("configuration", "standard") != "standard"):
             raise ValueError(f"invalid source/edition manifest for {edition}")
@@ -448,7 +454,7 @@ def refresh_release_date(repo, tag, flags):
 SUCCESSOR_POLLS = (0, 20, 40, 60)
 
 
-def successor_run(repo, polls=SUCCESSOR_POLLS):
+def successor_run(repo, polls=SUCCESSOR_POLLS, workflow="rolling-release.yml"):
     """URL of a publishing Rolling Release run for the current rebuild/main head, or None.
 
     When several merges land together, the release concurrency group lets one run finish while the
@@ -459,7 +465,7 @@ def successor_run(repo, polls=SUCCESSOR_POLLS):
     for delay in polls:
         time.sleep(delay)
         head = json.loads(gh("api", f"repos/{repo}/branches/rebuild/main"))["commit"]["sha"]
-        runs = json.loads(gh("api", f"repos/{repo}/actions/workflows/rolling-release.yml/runs"
+        runs = json.loads(gh("api", f"repos/{repo}/actions/workflows/{workflow}/runs"
                                     f"?branch=rebuild/main&head_sha={head}&per_page=20"))["workflow_runs"]
         for run in runs:
             if run["event"] in ("push", "workflow_dispatch") and run["conclusion"] in (None, "success"):
@@ -467,9 +473,9 @@ def successor_run(repo, polls=SUCCESSOR_POLLS):
     return None
 
 
-def lite_candidates(root, sha):
+def lite_candidates(root, sha, compiler="gcc"):
     """rolling-lite: the RiptOPLite ELFs and RA ZIPs, checked against the same commit and SDK as the kits."""
-    path, _ = publish_lite.assemble(root, sha)
+    path, _ = publish_lite.assemble(root, sha, compiler=compiler)
     return [(LITE, LITES[LITE], path, publish_lite.verify(path))]
 
 

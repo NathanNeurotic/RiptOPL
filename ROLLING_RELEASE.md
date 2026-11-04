@@ -15,8 +15,31 @@ A fourth channel, `rolling-lite` (RiptOPLite), carries one Korium loader per gam
 `RIPTOPLITE-<DEVICE>.ELF`, and `RIPTOPLITE-RA-<DEVICE>.zip` for RetroAchievements (a ZIP because RA
 needs ORBIT's Neutrino runtime beside the loader). It has no install kit. See [RiptOPLite](docs/RIPTOPLITE.md).
 
-GCC is the release compiler. GCC and LLVM are both validated by `ps2build.yml`;
-they are compiler choices within ps2build, not separate SDK release flavours.
+GCC is the compiler for the four traditional rolling releases. GCC and LLVM are both validated
+by `ps2build.yml`; they are compiler choices within the same ps2build SDK, not separate SDK flavours.
+
+### RiptOPLLVM — independent LLVM release
+
+A fifth rolling release named **[RiptOPLLVM](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm)**
+(tag `rolling-llvm`) builds and publishes with the **LLVM/Clang** PS2BUILD toolchain and matching
+`packages-llvm` dependencies, using the *same* `rebuild/main` commit and SDK pin as the GCC pipeline.
+It includes Korium and Korium RetroAchievements full kits, standalone loader ELFs and PSUs,
+all Korium configuration bundles (VARIANTS, DEBUG and BUGREPORT), the RA `pademu0` variant,
+and **all eight RiptOPLite devices in both standard and RA configurations**. IncebtIon is not
+included. Its public files and checksums remain under the separate `rolling-llvm` tag;
+no normal GCC release asset or tag is overwritten. The release is marked prerelease, never Latest.
+
+RiptOPLLVM retains the normal in-kit installation names. Its download ZIPs are versioned,
+and the combined release also ships a single `BUILD-MANIFEST.json` for all LLVM components,
+`SHA256SUMS.txt`, separate Korium/RA language packs and a source snapshot. Each RA Lite ZIP
+contains its required verified ORBIT RA runtime. Same-source and same-SDK validation runs before
+publication, and every LLVM build manifest must prove `compiler: llvm`. Both workflows run on
+integration pushes and can be manually verified using `workflow_dispatch`; publishing by manual
+dispatch requires `publish=true`. Pull requests build and verify without publishing. An older
+job never deliberately replaces the newer integration head. Hardware equivalence with GCC
+must still be established separately.
+
+[Inspect the LLVM workflow](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-llvm.yml).
 The old ps2dev/official pinned and rolling container releases are legacy-edition
 history, not build targets here. No Makefile is used by the release workflow.
 
@@ -38,8 +61,9 @@ python tools/build_edition.py ra_incebtion
 Local edition builds must run sequentially: generated assets and the version
 header are shared. Object files are isolated under `build/editions/<edition>-gcc`.
 Each build regenerates its complete asset set, removing any prior edition's RA
-mark or theme blobs. An LLVM candidate can use `--toolchain llvm` after
-`ps2build update llvm-toolchain`; publishable kits require GCC.
+mark or theme blobs. The LLVM channel builds with `--toolchain llvm` using
+`tools/ps2build_sdk.sh --llvm`; its kits are packaged with `--compiler llvm`.
+The standard release pipeline retains the GCC default.
 
 Korium assets/configs retain their exact upstream revision, original credits,
 license and per-file hashes under `third_party/korium`. The RA-only socket glue
@@ -107,7 +131,7 @@ integration pushes and manual dispatch. It uploads candidates as Actions
 artifacts without publishing; see [Test builds](docs/TEST-BUILDS.md) for
 downloading one.
 
-Publication requires manual dispatch with `publish=true` from `rebuild/main` in
+Publication requires a verified integration push or manual dispatch with `publish=true` from `rebuild/main` in
 `NathanNeurotic/RiptOPL`. All three builds must pass. The publisher verifies
 source SHA, clean state, SDK consistency, exact file inventory, source ZIP
 commit, installed ELF/PSU bytes and all checksums before touching GitHub.
