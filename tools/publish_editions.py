@@ -423,14 +423,19 @@ def upload_verified(repo, tag, sha, title, notes_path, assets, exists):
             # Restore only the files this attempt could have touched, not every old asset.
             touched = set(attempted)
             restore = sorted(touched.intersection(replaced))
-            if restore:
-                gh("release", "upload", tag, "--repo", repo, "--clobber",
-                   *(str(Path(backup) / name) for name in restore))
+            for name in restore:
+                try:
+                    gh("release", "upload", tag, "--repo", repo, "--clobber",
+                       str(Path(backup) / name))
+                except subprocess.CalledProcessError as error:
+                    # GitHub may also be returning 502s while we roll back. Attempt the
+                    # rest of the cleanup and preserve the original publication failure.
+                    print(f"{tag}: could not restore {name}: {error}", file=sys.stderr)
             for name in sorted(touched.intersection(added)):
                 try:
                     gh("release", "delete-asset", tag, name, "--repo", repo, "--yes")
-                except subprocess.CalledProcessError:
-                    pass  # best effort; do not conceal the publication failure
+                except subprocess.CalledProcessError as error:
+                    print(f"{tag}: could not remove added {name}: {error}", file=sys.stderr)
             raise
 
 
