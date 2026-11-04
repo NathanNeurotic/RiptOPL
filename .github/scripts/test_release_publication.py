@@ -333,6 +333,44 @@ class PublicationTests(unittest.TestCase):
                            "--repo", "owner/repo", "--yes"), attempts)
             self.assertEqual(remote, {"stable.ELF": remote["stable.ELF"]})
 
+    def test_backup_without_recorded_digest_is_never_restored(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            assets = self.release(folder, ["stable.ELF", "new.zip"])
+            old = b"old-elf"
+            # GitHub did not report a digest for the original asset: nothing can verify a backup.
+            remote = {"stable.ELF": dict(name="stable.ELF", size=len(old))}
+            attempts = []
+
+            def fake(*args, retry=True):
+                attempts.append(args)
+                if args[:2] == ("release", "view"):
+                    return json.dumps(dict(id=1, assets=list(remote.values())))
+                if args[:2] == ("release", "download"):
+                    (Path(args[args.index("--dir") + 1]) / "stable.ELF").write_bytes(old)
+                if args[:2] == ("release", "upload"):
+                    file = Path(args[-1])
+                    if file.name == "stable.ELF":
+                        raise subprocess.CalledProcessError(1, "gh", stderr="HTTP 502")
+                    contents = file.read_bytes()
+                    remote[file.name] = dict(name=file.name, size=len(contents),
+                                             digest="sha256:" + hashlib.sha256(contents).hexdigest())
+                if args[:2] == ("release", "delete-asset"):
+                    remote.pop(args[3], None)
+                return ""
+
+            with patch.object(publisher, "gh", side_effect=fake), \
+                    patch.object(publisher.time, "sleep"), \
+                    self.assertRaises(subprocess.CalledProcessError):
+                publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40,
+                                          "RA", Path("notes"), assets, True)
+            # an unverifiable backup is left alone; the added archive is still removed
+            self.assertFalse(any(a[:2] == ("release", "upload") and str(folder) not in str(a[-1])
+                                 for a in attempts))
+            self.assertIn(("release", "delete-asset", "rolling-ra", "new.zip",
+                           "--repo", "owner/repo", "--yes"), attempts)
+            self.assertEqual(remote, {"stable.ELF": remote["stable.ELF"]})
+
     def test_failed_upload_does_not_touch_unattempted_assets(self):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)

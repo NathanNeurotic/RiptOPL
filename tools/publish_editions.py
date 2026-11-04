@@ -438,9 +438,10 @@ def upload_verified(repo, tag, sha, title, notes_path, assets, exists):
                 # Never upload a backup that is not byte-identical to the asset it replaces: a torn
                 # download would corrupt the channel under the guise of a rollback.
                 original = remote.get(name)
-                if (original is not None and original.get("digest") is not None
-                        and original["digest"] != "sha256:" + hashlib.sha256(backup_file.read_bytes()).hexdigest()):
-                    print(f"{tag}: backup of {name} is incomplete; leaving the remote asset untouched", file=sys.stderr)
+                if (original is None or original.get("digest") is None
+                        or original["digest"] != "sha256:" + hashlib.sha256(backup_file.read_bytes()).hexdigest()):
+                    print(f"{tag}: backup of {name} cannot be verified against the original; "
+                          "leaving the remote asset untouched", file=sys.stderr)
                     continue
                 try:
                     gh("release", "upload", tag, "--repo", repo, "--clobber", str(backup_file))
