@@ -17,6 +17,10 @@ def function(source, signature):
 
 save = function(gui, 'int guiGameSaveConfig(')
 assert save.index('guiGameReadILinkID') < save.index('guiGamePrepareParentalLock') < save.index('guiGameApplyConfig')
+test_launch = function(gui, 'void guiGameTestSettings(')
+validation = test_launch[:test_launch.index('configClone(')]
+assert 'if (guiGameReadILinkID(consoleID) < 0)' in validation
+assert 'guiMsgBox(_l(_STR_INVALID_CONSOLE_ILINK_ID), 0, NULL);\n        return;' in validation
 reset = function(gui, 'void guiGameRemoveSettings(')
 assert 'configRemoveKey(configSet, CONFIG_ITEM_ILINK_ID)' in reset
 assert 'COMPAT_ILINK_ID, !neutrino && ilinkIdNativeCapable' in gui

@@ -2158,6 +2158,11 @@ void guiGameRemoveSettings(config_set_t *configSet)
 
 void guiGameTestSettings(int id, item_list_t *support, config_set_t *configSet)
 {
+    char consoleID[17];
+    if (guiGameReadILinkID(consoleID) < 0) {
+        guiMsgBox(_l(_STR_INVALID_CONSOLE_ILINK_ID), 0, NULL);
+        return;
+    }
 #ifdef RETROACHIEVEMENTS
     if (achievementsBusy()) { // a browser page still owns the network and the share
         guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);
