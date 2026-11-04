@@ -98,6 +98,9 @@ class RiptOPLLVMTests(unittest.TestCase):
         self.assertEqual(llvm_flow["jobs"]["publish"]["permissions"]["contents"], "write")
         self.assertEqual(llvm_flow["jobs"]["verify"]["permissions"]["contents"], "read")
         publish = llvm_flow["jobs"]["publish"]
+        install = "python -m pip install -r requirements.txt"
+        self.assertIn(install, [step.get("run") for step in llvm_flow["jobs"]["build"]["steps"]])
+        self.assertNotIn(install, [step.get("run") for step in publish["steps"]])
         self.assertNotIn("GH_TOKEN", publish.get("env", {}))
         token_steps = [step for step in publish["steps"] if "GH_TOKEN" in step.get("env", {})]
         self.assertEqual(len(token_steps), 1)
