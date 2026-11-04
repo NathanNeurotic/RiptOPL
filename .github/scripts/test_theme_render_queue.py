@@ -13,6 +13,7 @@ root = Path(__file__).resolve().parents[2]
 renderer = (root / 'src/gfx/renderman.cpp').read_text()
 themes = (root / 'src/gfx/themes.cpp').read_text()
 retire = re.search(r'^void Renderer::discardFrame\(void\)\n\{.*?^\}', renderer, re.M | re.S).group(0)
+wrapper = re.search(r'^void rmDiscardFrame\(void\)\n\{.*?^\}', renderer, re.M | re.S).group(0)
 load = themes[themes.index('static int thmLoad('):themes.index('int thmRefreshFontSize(')]
 publish = load[load.rindex('    host::ui().lock();'):load.rindex('    return 0;')]
 assert publish.index('rmDiscardFrame();') < publish.index('thmFree(curT);') < publish.index('host::ui().unlock();')
@@ -43,7 +44,7 @@ static void gsKit_hires_flip(void *) {
     replayed=nullptr; ++flips;
 }
 @RETIRE@
-static void rmDiscardFrame() { gRenderer.discardFrame(); }
+@WRAPPER@
 static void psbbnFlowReset() { assert(locked); }
 static void thmFree(Theme *old) {
     assert(locked);
@@ -72,7 +73,7 @@ with tempfile.TemporaryDirectory(prefix='theme-render-queue-') as folder:
     folder = Path(folder)
     for name, tail, expected in [('fixed', publish, 0), ('before', publish.replace('rmDiscardFrame();', '(void)0;'), 3)]:
         # Before control retains the old publish/free sequence while omitting only the fix.
-        source = fixture.replace('@RETIRE@', retire).replace('@PUBLISH@', tail)
+        source = fixture.replace('@RETIRE@', retire).replace('@WRAPPER@', wrapper).replace('@PUBLISH@', tail)
         if name == 'before':
             source = source.replace('assert(syncs==(hires && !first) && flips==syncs);', '')
         cpp = folder / (name + '.cpp')
