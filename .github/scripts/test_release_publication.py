@@ -183,7 +183,7 @@ class PublicationTests(unittest.TestCase):
                 patch.object(publisher.time, "sleep") as sleep:
             self.assertEqual(publisher.gh("release", "view", "rolling-ra"), "ok")
         self.assertEqual(len(calls), 3)
-        self.assertEqual([c.args[0] for c in sleep.call_args_list], list(publisher.RETRY_DELAYS))
+        self.assertEqual([c.args[0] for c in sleep.call_args_list], list(publisher.RETRY_DELAYS[:2]))
         with patch.object(publisher.subprocess, "check_output", side_effect=subprocess.CalledProcessError(1, "gh")), \
                 patch.object(publisher.time, "sleep"), self.assertRaises(subprocess.CalledProcessError):
             publisher.gh("release", "upload", "rolling-ra", "x")
@@ -195,7 +195,73 @@ class PublicationTests(unittest.TestCase):
             assets.append(str(folder / name))
         return assets
 
-    def test_failed_upload_to_a_published_channel_restores_every_clobbered_asset(self):
+    def test_existing_release_skips_unchanged_assets_and_uploads_changes_individually(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            assets = self.release(folder, ["unchanged.txt", "changed.txt", "new.zip"])
+            original = b"previous-release"
+            names = {
+                "unchanged.txt": (folder / "unchanged.txt").read_bytes(),
+                "changed.txt": original,
+            }
+
+            def remote_item(name, contents):
+                return dict(name=name, size=len(contents),
+                            digest="sha256:" + hashlib.sha256(contents).hexdigest())
+
+            remote = {name: remote_item(name, contents) for name, contents in names.items()}
+            uploads, downloads = [], []
+
+            def fake(*args, retry=True):
+                if args[:2] == ("release", "view"):
+                    return json.dumps(dict(id=1, assets=list(remote.values())))
+                if args[:2] == ("release", "download"):
+                    name = args[args.index("--pattern") + 1]
+                    downloads.append(name)
+                    (Path(args[args.index("--dir") + 1]) / name).write_bytes(names[name])
+                elif args[:2] == ("release", "upload"):
+                    self.assertEqual(len(args[args.index("--clobber") + 1:]), 1)
+                    file = Path(args[-1])
+                    uploads.append(file.name)
+                    remote[file.name] = remote_item(file.name, file.read_bytes())
+                return ""
+
+            with patch.object(publisher, "gh", side_effect=fake):
+                publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40,
+                                          "RA", Path("notes"), assets, True)
+            self.assertEqual(uploads, ["new.zip", "changed.txt"])
+            self.assertEqual(downloads, ["changed.txt"])
+            self.assertNotIn("unchanged.txt", uploads)
+
+    def test_successful_remote_upload_after_http_error_is_verified_not_redeleted(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            assets = self.release(folder, ["changed.txt"])
+            old = b"old"
+            remote = {"changed.txt": dict(name="changed.txt", size=len(old),
+                                          digest="sha256:" + hashlib.sha256(old).hexdigest())}
+            uploads = []
+
+            def fake(*args, retry=True):
+                if args[:2] == ("release", "view"):
+                    return json.dumps(dict(id=1, assets=list(remote.values())))
+                if args[:2] == ("release", "download"):
+                    (Path(args[args.index("--dir") + 1]) / "changed.txt").write_bytes(old)
+                if args[:2] == ("release", "upload"):
+                    file = Path(args[-1])
+                    uploads.append(file.name)
+                    new = file.read_bytes()
+                    remote[file.name] = dict(name=file.name, size=len(new),
+                                             digest="sha256:" + hashlib.sha256(new).hexdigest())
+                    raise subprocess.CalledProcessError(1, "gh", stderr="HTTP 502")
+                return ""
+
+            with patch.object(publisher, "gh", side_effect=fake):
+                publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40,
+                                          "RA", Path("notes"), assets, True)
+            self.assertEqual(uploads, ["changed.txt"])  # no needless second delete
+
+    def test_failed_upload_does_not_touch_unattempted_assets(self):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
             assets = self.release(folder, ["RIPTOPL-RA.ELF", "APP_RIPTOPL-RA.psu", "RIPTOPL-RA.zip"])
@@ -204,7 +270,8 @@ class PublicationTests(unittest.TestCase):
             def fake(*args, retry=True):
                 calls.append(args)
                 if args[:2] == ("release", "view"):
-                    return json.dumps(dict(assets=[{"name": "RIPTOPL-RA.ELF"}, {"name": "RIPTOPL-RA.zip"}, {"name": "old.txt"}]))
+                    return json.dumps(dict(assets=[{"name": "RIPTOPL-RA.ELF"},
+                                                   {"name": "RIPTOPL-RA.zip"}, {"name": "old.txt"}]))
                 if args[:2] == ("release", "download"):
                     (Path(args[args.index("--dir") + 1]) / args[args.index("--pattern") + 1]).write_bytes(b"old")
                 elif args[:2] == ("release", "upload") and str(folder) in args[-1]:
@@ -213,11 +280,9 @@ class PublicationTests(unittest.TestCase):
 
             with patch.object(publisher, "gh", side_effect=fake), self.assertRaises(subprocess.CalledProcessError):
                 publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40, "RA", Path("notes"), assets, True)
-            restore, delete = calls[-2:]
-            self.assertEqual(restore[:5], ("release", "upload", "rolling-ra", "--repo", "owner/repo"))
-            self.assertEqual(sorted(Path(name).name for name in restore[6:]), ["RIPTOPL-RA.ELF", "RIPTOPL-RA.zip"])
-            # An asset the channel did not have before is removed again, not left beside the old build.
-            self.assertEqual(delete, ("release", "delete-asset", "rolling-ra", "APP_RIPTOPL-RA.psu", "--repo", "owner/repo", "--yes"))
+            self.assertEqual(calls[-1], ("release", "delete-asset", "rolling-ra",
+                                         "APP_RIPTOPL-RA.psu", "--repo", "owner/repo", "--yes"))
+            self.assertFalse(any(c[:2] == ("release", "upload") and str(folder) not in c[-1] for c in calls))
             self.assertFalse(any(call[:2] in (("release", "edit"), ("release", "create")) for call in calls))
 
     def test_unretained_asset_restores_and_new_drafts_need_no_restore(self):
