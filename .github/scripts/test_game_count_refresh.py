@@ -122,7 +122,9 @@ int main(void)
             mutable_text_t *m=(mutable_text_t *)fresh.extended;
             assert(m && m->currentCount==-1 && !m->value[0] && live_allocs==2 && value_alloc_size>=60);
             list.n=123456;
+            int alloc_calls_before_draw=alloc_call;
             drawGameCountText(&menu,NULL,NULL,&fresh);
+            assert(alloc_call==alloc_calls_before_draw);
             assert(!strcmp(drawn,"Files found: 123456"));
             test_free(m->value);test_free(m);
             assert(!live_allocs);
