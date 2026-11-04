@@ -393,9 +393,12 @@ def upload_verified(repo, tag, sha, title, notes_path, assets, exists):
             for name in replaced:
                 gh("release", "download", tag, "--repo", repo, "--pattern", name, "--dir", backup, "--clobber")
 
-            # Upload immutable/versioned new archives before replacing stable ELF/PSU/manifest
+            # Upload immutable/versioned .zip archives before stable ELF/PSU/manifest
             # names, reducing the time a published channel can contain mixed versions.
-            pending.sort(key=lambda file: file.name in remote)
+            # The .zip suffix decides, not remote presence: a missing stable name is an
+            # addition and a stale archive is a replacement, and presence alone could
+            # interleave them.
+            pending.sort(key=lambda file: not file.name.endswith(".zip"))
         try:
             if exists:
                 for file in pending:
