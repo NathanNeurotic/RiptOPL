@@ -392,6 +392,15 @@ def upload_verified(repo, tag, sha, title, notes_path, assets, exists):
             added = sorted(file.name for file in pending if file.name not in remote)
             for name in replaced:
                 gh("release", "download", tag, "--repo", repo, "--pattern", name, "--dir", backup, "--clobber")
+            # A backup must byte-match the asset it may have to put back. Verify
+            # before ANY upload: a torn download must not meet a destructive
+            # --clobber with nothing valid to restore (the release would be left
+            # without the original when the upload then fails).
+            for name in replaced:
+                original = remote.get(name)
+                if (original is None or original.get("digest") is None
+                        or original["digest"] != "sha256:" + hashlib.sha256((Path(backup) / name).read_bytes()).hexdigest()):
+                    raise ValueError(f"backup of {name} does not match the recorded original; aborting before any upload")
 
             # Upload immutable/versioned .zip archives before stable ELF/PSU/manifest
             # names, reducing the time a published channel can contain mixed versions.

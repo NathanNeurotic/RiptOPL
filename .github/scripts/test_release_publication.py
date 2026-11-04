@@ -294,59 +294,14 @@ class PublicationTests(unittest.TestCase):
             # the caller's rollback restored the backed-up original exactly once
             self.assertEqual(restores, ["changed.txt"])
 
-    def test_torn_backup_is_not_restored_over_the_channel(self):
-        for remove_original in (False, True):
-            with self.subTest(clobber_removed_original=remove_original), tempfile.TemporaryDirectory() as temporary:
-                folder = Path(temporary)
-                assets = self.release(folder, ["stable.ELF", "new.zip"])
-                old = b"old-elf"
-                original = dict(name="stable.ELF", size=len(old),
-                                digest="sha256:" + hashlib.sha256(old).hexdigest())
-                remote = {"stable.ELF": original}
-                attempts = []
-
-                def fake(*args, retry=True):
-                    attempts.append(args)
-                    if args[:2] == ("release", "view"):
-                        return json.dumps(dict(id=1, assets=list(remote.values())))
-                    if args[:2] == ("release", "download"):
-                        # a torn backup: the download does not match the recorded original digest
-                        (Path(args[args.index("--dir") + 1]) / "stable.ELF").write_bytes(b"torn")
-                    if args[:2] == ("release", "upload"):
-                        file = Path(args[-1])
-                        if file.name == "stable.ELF":
-                            if remove_original:
-                                remote.pop("stable.ELF", None)  # --clobber deleted it first
-                            raise subprocess.CalledProcessError(1, "gh", stderr="HTTP 502")
-                        contents = file.read_bytes()
-                        remote[file.name] = dict(name=file.name, size=len(contents),
-                                                 digest="sha256:" + hashlib.sha256(contents).hexdigest())
-                    if args[:2] == ("release", "delete-asset"):
-                        remote.pop(args[3], None)
-                    return ""
-
-                with patch.object(publisher, "gh", side_effect=fake), \
-                        patch.object(publisher.time, "sleep"), \
-                        self.assertRaises(subprocess.CalledProcessError):
-                    publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40,
-                                              "RA", Path("notes"), assets, True)
-                # the corrupt backup was never uploaded and the missing original was never
-                # deleted by the rollback; the added archive was still removed
-                self.assertFalse(any(a[:2] == ("release", "upload") and str(folder) not in str(a[-1])
-                                     for a in attempts))
-                self.assertFalse(any(a[:2] == ("release", "delete-asset") and a[3] == "stable.ELF"
-                                     for a in attempts))
-                self.assertIn(("release", "delete-asset", "rolling-ra", "new.zip",
-                               "--repo", "owner/repo", "--yes"), attempts)
-                self.assertEqual(remote, {} if remove_original else {"stable.ELF": original})
-
-    def test_backup_without_recorded_digest_is_never_restored(self):
+    def test_torn_backup_aborts_before_any_upload(self):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
             assets = self.release(folder, ["stable.ELF", "new.zip"])
             old = b"old-elf"
-            # GitHub did not report a digest for the original asset: nothing can verify a backup.
-            remote = {"stable.ELF": dict(name="stable.ELF", size=len(old))}
+            original = dict(name="stable.ELF", size=len(old),
+                            digest="sha256:" + hashlib.sha256(old).hexdigest())
+            remote = {"stable.ELF": original}
             attempts = []
 
             def fake(*args, retry=True):
@@ -354,29 +309,22 @@ class PublicationTests(unittest.TestCase):
                 if args[:2] == ("release", "view"):
                     return json.dumps(dict(id=1, assets=list(remote.values())))
                 if args[:2] == ("release", "download"):
-                    (Path(args[args.index("--dir") + 1]) / "stable.ELF").write_bytes(old)
+                    # a torn backup: the download does not match the recorded original digest
+                    (Path(args[args.index("--dir") + 1]) / "stable.ELF").write_bytes(b"torn")
                 if args[:2] == ("release", "upload"):
                     file = Path(args[-1])
-                    if file.name == "stable.ELF":
-                        raise subprocess.CalledProcessError(1, "gh", stderr="HTTP 502")
                     contents = file.read_bytes()
                     remote[file.name] = dict(name=file.name, size=len(contents),
                                              digest="sha256:" + hashlib.sha256(contents).hexdigest())
-                if args[:2] == ("release", "delete-asset"):
-                    remote.pop(args[3], None)
                 return ""
 
-            with patch.object(publisher, "gh", side_effect=fake), \
-                    patch.object(publisher.time, "sleep"), \
-                    self.assertRaises(subprocess.CalledProcessError):
+            with patch.object(publisher, "gh", side_effect=fake),                     patch.object(publisher.time, "sleep"),                     self.assertRaisesRegex(ValueError, "aborting before any upload"):
                 publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40,
                                           "RA", Path("notes"), assets, True)
-            # an unverifiable backup is left alone; the added archive is still removed
-            self.assertFalse(any(a[:2] == ("release", "upload") and str(folder) not in str(a[-1])
-                                 for a in attempts))
-            self.assertIn(("release", "delete-asset", "rolling-ra", "new.zip",
-                           "--repo", "owner/repo", "--yes"), attempts)
-            self.assertEqual(remote, {"stable.ELF": remote["stable.ELF"]})
+            # preflight abort: no upload or delete ever ran, and the release is untouched
+            self.assertFalse(any(a[:2] == ("release", "upload") for a in attempts))
+            self.assertFalse(any(a[:2] == ("release", "delete-asset") for a in attempts))
+            self.assertEqual(remote, {"stable.ELF": original})
 
     def test_failed_upload_does_not_touch_unattempted_assets(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -387,8 +335,11 @@ class PublicationTests(unittest.TestCase):
             def fake(*args, retry=True):
                 calls.append(args)
                 if args[:2] == ("release", "view"):
-                    return json.dumps(dict(assets=[{"name": "RIPTOPL-RA.ELF"},
-                                                   {"name": "RIPTOPL-RA.zip"}, {"name": "old.txt"}]))
+                    return json.dumps(dict(assets=[{"name": "RIPTOPL-RA.ELF", "size": 3,
+                                                    "digest": "sha256:" + hashlib.sha256(b"old").hexdigest()},
+                                                   {"name": "RIPTOPL-RA.zip", "size": 3,
+                                                    "digest": "sha256:" + hashlib.sha256(b"old").hexdigest()},
+                                                   {"name": "old.txt"}]))
                 if args[:2] == ("release", "download"):
                     (Path(args[args.index("--dir") + 1]) / args[args.index("--pattern") + 1]).write_bytes(b"old")
                 elif args[:2] == ("release", "upload") and str(folder) in args[-1]:
@@ -399,13 +350,13 @@ class PublicationTests(unittest.TestCase):
                     patch.object(publisher.time, "sleep"), \
                     self.assertRaises(subprocess.CalledProcessError):
                 publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40, "RA", Path("notes"), assets, True)
-            # archives upload first now: the .zip is the only attempted asset, and neither
-            # unattempted asset is uploaded, deleted, or edited; the unverifiable backup
-            # (no recorded digest) is not restored either
-            uploads = [c for c in calls if c[:2] == ("release", "upload")]
-            self.assertTrue(uploads and all(Path(c[-1]).name == "RIPTOPL-RA.zip" for c in uploads))
+            # archives upload first: only the .zip is attempted, it is rolled back from
+            # its verified backup, and neither unattempted asset is deleted or edited
+            attempted = {Path(c[-1]).name for c in calls
+                         if c[:2] == ("release", "upload") and str(folder) in str(c[-1])}
+            self.assertEqual(attempted, {"RIPTOPL-RA.zip"})
+            self.assertEqual(Path(calls[-1][-1]).name, "RIPTOPL-RA.zip")
             self.assertFalse(any(c[:2] == ("release", "delete-asset") for c in calls))
-            self.assertFalse(any(c[:2] == ("release", "upload") and str(folder) not in c[-1] for c in calls))
             self.assertFalse(any(call[:2] in (("release", "edit"), ("release", "create")) for call in calls))
 
     def test_rollback_continues_to_delete_new_assets_if_restore_gets_502(self):
@@ -477,6 +428,36 @@ class PublicationTests(unittest.TestCase):
                 self.assertEqual(bool(restores), restored)
                 if not exists:
                     self.assertIn("--draft", next(c for c in calls if c[:2] == ("release", "create")))
+
+    def test_backup_without_recorded_digest_aborts_before_any_upload(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            assets = self.release(folder, ["stable.ELF", "new.zip"])
+            old = b"old-elf"
+            # GitHub did not report a digest for the original asset: the backup
+            # cannot be verified, so the publish must fail closed before any upload.
+            remote = {"stable.ELF": dict(name="stable.ELF", size=len(old))}
+            attempts = []
+
+            def fake(*args, retry=True):
+                attempts.append(args)
+                if args[:2] == ("release", "view"):
+                    return json.dumps(dict(id=1, assets=list(remote.values())))
+                if args[:2] == ("release", "download"):
+                    (Path(args[args.index("--dir") + 1]) / "stable.ELF").write_bytes(old)
+                if args[:2] == ("release", "upload"):
+                    file = Path(args[-1])
+                    contents = file.read_bytes()
+                    remote[file.name] = dict(name=file.name, size=len(contents),
+                                             digest="sha256:" + hashlib.sha256(contents).hexdigest())
+                return ""
+
+            with patch.object(publisher, "gh", side_effect=fake),                     patch.object(publisher.time, "sleep"),                     self.assertRaisesRegex(ValueError, "aborting before any upload"):
+                publisher.upload_verified("owner/repo", "rolling-ra", "a" * 40,
+                                          "RA", Path("notes"), assets, True)
+            self.assertFalse(any(a[:2] == ("release", "upload") for a in attempts))
+            self.assertFalse(any(a[:2] == ("release", "delete-asset") for a in attempts))
+            self.assertEqual(remote, {"stable.ELF": remote["stable.ELF"]})
 
     def candidates(self, root, versions):
         found = []
