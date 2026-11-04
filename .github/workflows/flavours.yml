@@ -50,6 +50,9 @@ jobs:
           python3 .github/scripts/test_mx4sio_retry.py
           python3 .github/scripts/test_vmc_write_result.py
           python3 .github/scripts/test_mmce_read_recovery.py
+          python3 .github/scripts/test_pr894_hardening.py
+          python3 .github/scripts/test_bdm_scan_retry.py
+          python3 .github/scripts/test_ps1_scan_recovery.py
           python3 .github/scripts/test_neutrino_dvr_contract.py
           python3 .github/scripts/test_package_orbit_neutrino.py
           python3 .github/scripts/test_orbit_neutrino_watch.py
