@@ -4,7 +4,7 @@ In a PS2 game's Compatibility settings, **Console i.LINK ID** optionally replace
 
 The per-game CFG key is `$ILinkID`. Existing CFG files need no migration. Invalid input is rejected before settings are applied. An invalid manually edited value shows a localized launch warning explaining the ignored override and real-console-ID fallback, records a diagnostic, and uses the real console ID. Each launch initializes all eight bytes, preventing inheritance from the previous game.
 
-This setting is available only for native OPL PS2 launches. It is disabled for Neutrino and PS1/POPSTARTER launches. The separately pinned RA/ORBIT runtime is unchanged. It does not change the existing Disc ID/DNAS setting, a storage drive's identity, firmware, or IEEE-1394 bus configuration.
+The field is editable for PS2 ISO rows, including when Neutrino is selected: MMCE can fall back to native OPL for an unsupported format or missing runtime. Only an actual native OPL launch applies the ID; Neutrino ignores it. The field is disabled for PS1/POPSTARTER and ELF/Apps rows. The separately pinned RA/ORBIT runtime is unchanged. It does not change the existing Disc ID/DNAS setting, a storage drive's identity, firmware, or IEEE-1394 bus configuration.
 
 The requester proposes using this for console-bound game content. Source and host checks verify the ID response; content decryption and game compatibility are NOT TESTED on hardware. This is not a demonstrated fix for Tales of Rebirth.
 

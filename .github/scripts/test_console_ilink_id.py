@@ -27,10 +27,10 @@ assert 'configGetStrCopy(configSet, CONFIG_ITEM_ILINK_ID, consoleID, sizeof(cons
 assert 'oplParseILinkID' not in stored_id and "consoleID[0]" not in stored_id
 reset = function(gui, 'void guiGameRemoveSettings(')
 assert 'configRemoveKey(configSet, CONFIG_ITEM_ILINK_ID)' in reset
-assert 'COMPAT_ILINK_ID, guiGameILinkIDEnabled()' in gui
+assert 'COMPAT_ILINK_ID, ilinkIdNativeCapable' in gui
 apply = function(gui, 'static int guiGameApplyConfig(')
-assert 'if (guiGameILinkIDEnabled()) {\n        char consoleID[17];' in apply
-assert 'ilinkIdNativeCapable = support == NULL || (support->mode != APP_MODE && libListRowView(support, id) == LIB_VIEW_ISO)' in gui
+assert 'if (ilinkIdNativeCapable) {\n        char consoleID[17];' in apply
+assert 'ilinkIdNativeCapable = support == NULL || (support->mode != APP_MODE && libListRowView(support, id) == LIB_VIEW_ISO)' in load
 assert 'oplParseILinkID(consoleID, settings->ilink_id)' in function(support, 'int sbPrepare(')
 assert 'sizeof(struct cdvdman_settings_common)' in function(support, 'void sbUnprepare(')
 
@@ -42,10 +42,8 @@ code = r'''
 #include <ilinkid.h>
 #include <cdvd_config.h>
 #define COMPAT_ILINK_ID 280
-#define COMPAT_LOADER 281
 static int diaCompatConfig;
-static int ilinkIdNativeCapable=1, coreNeverNeutrino, coreDefaultNeutrino, gDefaultCoreLoader, coreChoice, reads;
-static void diaGetInt(int d,int id,int *out){(void)d;assert(id==COMPAT_LOADER);*out=coreChoice;}
+static int ilinkIdNativeCapable=1, reads;
 static const char *edit;
 static void diaGetString(int d,int id,char *out,int n){(void)d;assert(id==COMPAT_ILINK_ID);reads++;snprintf(out,n,"%s",edit);}
 static struct {struct cdvdman_settings_common common;} cdvdman_settings;
@@ -66,8 +64,9 @@ static int selected_view, row_queries;
 static int libListRowView(item_list_t *list,int id){assert(list&&id==7);row_queries++;return selected_view;}
 static int native_capability(item_list_t *support,int id){int ilinkIdNativeCapable;
 """ + assignment + "return ilinkIdNativeCapable;}\n"
-code += function(gui, 'static int guiGameILinkIDEnabled(')
-code += function(gui, 'static int guiGameReadILinkID(')
+reader = function(gui, 'static int guiGameReadILinkID(')
+assert 'COMPAT_LOADER' not in reader
+code += reader
 code += function(scmd, 'int sceCdRI(')
 # readID uses sceCdRI; compile after its declaration as in the production header.
 code += function(scmd, 'int cdvdman_readID(')
@@ -95,11 +94,7 @@ int main(void){
  edit="";assert(guiGameReadILinkID(normalized)==0&&!normalized[0]);
  edit="bad";reads=0;
  ilinkIdNativeCapable=0;assert(guiGameReadILinkID(normalized)==0&&!reads);
- ilinkIdNativeCapable=1;coreChoice=1;assert(guiGameReadILinkID(normalized)==0&&!reads);
- coreChoice=2;gDefaultCoreLoader=1;assert(guiGameReadILinkID(normalized)==0&&!reads);
- gDefaultCoreLoader=0;coreDefaultNeutrino=1;assert(guiGameReadILinkID(normalized)==0&&!reads);
- coreNeverNeutrino=1;assert(guiGameReadILinkID(normalized)==-1&&reads==1);
- coreNeverNeutrino=coreDefaultNeutrino=0;coreChoice=0;
+ ilinkIdNativeCapable=1;assert(guiGameReadILinkID(normalized)==-1&&reads==1);
  /* The real module's zero/default path forwards the hardware status and bytes. */
  memset(&cdvdman_settings,0,sizeof(cdvdman_settings));assert(sceCdRI(out,&status)==1&&status==0x25&&hardware_calls==1&&out[0]==0x10&&out[7]==0x17);
  assert(sceCdRI(out,NULL)==1&&hardware_calls==2);
