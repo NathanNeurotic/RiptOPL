@@ -176,7 +176,7 @@ with tempfile.TemporaryDirectory(dir=ROOT / 'build') as temp:
     subprocess.run([str(exe)], cwd=path, check=True)
 
 udpfs = (ROOT/'src/sources/udpfssupport.cpp').read_text(encoding='utf-8')
-assert 'ps1FillGameList(udpfsPrefix, &gUdpfsSupport.ps1Games_)' in udpfs
+assert 'ps1FillGameList(udpfsPrefix, &gUdpfsSupport.ps1Games_, gUdpfsSupport.ps1GameCount_)' in udpfs
 assert 'GameSource::CAP_LAUNCH_VCD' in udpfs
 start = udpfs.index('void UdpfsSource::launchVcd(')
 launch = udpfs[start:udpfs.index('\n}', start) + 2]

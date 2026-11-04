@@ -2457,7 +2457,7 @@ gui_strings:
   label: APP_HANDOFF_PATH
   string: App Handoff Path
 - label: HINT_APP_HANDOFF_PATH
-  string: "Legacy hands apps massN:/APPS/... (all devices). Typed hands usb0:, ata0:, ilink0: or mx4sio0: so an app that treats mass as USB finds a HDD or SD card. Per app: HANDOFFPATH=LEGACY or TYPED in its cfg. Loading is unchanged."
+  string: "Legacy: BDM apps receive massN:/...; other devices keep their normal launch paths. Typed: supported BDM apps receive usbN:/..., ataN:/..., ilinkN:/... or mx4sioN:/... when identified, otherwise massN:. Only the path passed to the app changes; ELF loading is unchanged. Per-app cfg: HANDOFFPATH=LEGACY or TYPED."
 - comment: App Handoff Path choice, today's spelling.
   label: APP_HANDOFF_LEGACY
   string: Legacy (mass)

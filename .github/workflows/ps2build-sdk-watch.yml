@@ -40,7 +40,7 @@ jobs:
     outputs:
       status: ${{ steps.watch.outputs.status }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Compare the pinned SDK with the newest official releases
@@ -55,12 +55,11 @@ jobs:
           if [ "$STATUS" = changed ]; then
             cat "$RUNNER_TEMP/watch/body.md" >> "$GITHUB_STEP_SUMMARY"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: steps.watch.outputs.status == 'changed'
         with:
           name: ps2build-sdk-watch
           path: ${{ runner.temp }}/watch/
-          retention-days: 7
 
   warm:
     needs: check
@@ -78,10 +77,10 @@ jobs:
       PS2BUILD_TOOLCHAIN: ${{ matrix.toolchain }}
       GODEBUG: http2client=0
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ps2build-sdk-watch
           path: ${{ runner.temp }}/watch
@@ -92,7 +91,7 @@ jobs:
         run: sh tools/ps2build_sdk.sh --resolve ${{ matrix.toolchain == 'llvm' && '--llvm' || '' }} "$RUNNER_TEMP/ps2build-sdk.env"
       - name: Restore the ps2build SDK
         id: sdk-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
           key: ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-${{ steps.sdk.outputs.key }}
@@ -134,7 +133,7 @@ jobs:
           echo "ogg $OGG_VERSION and vorbis $VORBIS_VERSION are installed, as pinned."
       - name: Cache the ps2build SDK
         if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
           key: ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-${{ steps.sdk.outputs.key }}
@@ -144,7 +143,7 @@ jobs:
         # for the new SDK. So warm looks the exact key up, with the same path (the cache version hashes it), and the
         # next step fails unless the cache holds it; the next run tries again.
         id: sdk-saved
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
           key: ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-${{ steps.sdk.outputs.key }}
@@ -174,11 +173,11 @@ jobs:
       ISSUE_TITLE: ps2build SDK update ready
       CHECKED: ${{ github.sha }}  # the commit check read the pins at; github.sha is the same in every job of a run
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: rebuild/main
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ps2build-sdk-watch
           path: ${{ runner.temp }}/watch

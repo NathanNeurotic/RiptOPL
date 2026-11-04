@@ -10,6 +10,19 @@ import wiki_sync
 
 
 class WikiConversionTests(unittest.TestCase):
+    def test_video_preserves_download_fallback_without_synthesizing_poster_text(self):
+        html = '''<main class="content"><h1>Preview</h1>
+<video controls poster="assets/ui/menu.png"><source src="assets/ui/menu.mp4" type="video/mp4">
+<a href="assets/ui/menu.mp4">Download the walkthrough</a>.</video></main>'''
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "index.html"
+            path.write_text(html)
+            result = wiki_sync.convert_site(path, "abc123")
+        rendered = BeautifulSoup(wiki_sync.MD.render(result), "html.parser")
+        self.assertEqual(rendered.get_text().strip(), "Preview\nDownload the walkthrough.")
+        self.assertEqual(rendered.select_one("a[href]")["href"], wiki_sync.SITE + "assets/ui/menu.mp4")
+        self.assertIsNone(rendered.select_one("img"))
+
     def test_table_row_and_cell_bookmarks_preserve_table_and_code(self):
         html = '''<main class="content"><h1>Directory</h1>
 <table id="directory"><thead><tr><th>Project</th><th>Example</th></tr></thead>

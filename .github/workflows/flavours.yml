@@ -50,6 +50,9 @@ jobs:
           python3 .github/scripts/test_mx4sio_retry.py
           python3 .github/scripts/test_vmc_write_result.py
           python3 .github/scripts/test_mmce_read_recovery.py
+          python3 .github/scripts/test_pr894_hardening.py
+          python3 .github/scripts/test_bdm_scan_retry.py
+          python3 .github/scripts/test_ps1_scan_recovery.py
           python3 .github/scripts/test_neutrino_dvr_contract.py
           python3 .github/scripts/test_package_orbit_neutrino.py
           python3 .github/scripts/test_orbit_neutrino_watch.py
@@ -104,7 +107,7 @@ jobs:
   apa-safety-host-tests:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Check the APA table write fence, driver write policy and raw hdd0 paths
@@ -215,7 +218,7 @@ jobs:
   release-notes-tests:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Check compact release notes and changelog
@@ -224,7 +227,7 @@ jobs:
   ra-host-tests:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Check disc hashing, disc key lock, history names, font wrap and SYSTEM.CNF parsing
@@ -240,7 +243,7 @@ jobs:
   bdm-host-tests:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Check the games.bin cache answers as before without O(n^2) work per scan
@@ -336,7 +339,7 @@ jobs:
           exit $status
       - name: Upload the built driver
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: popstarter-usbhdfsd-irx-ilink
           path: modules/bdmassault/ilink_bd_assault/ilink_bd_assault.irx
@@ -357,7 +360,7 @@ jobs:
       # h2 stream that gets reset.
       GODEBUG: http2client=0
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -374,7 +377,7 @@ jobs:
         run: sh tools/ps2build_sdk.sh --resolve "$RUNNER_TEMP/ps2build-sdk.env"
       - name: Restore the ps2build SDK
         id: sdk-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
           key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
@@ -390,7 +393,7 @@ jobs:
         run: tools/install_ps2build.sh
       - name: Cache the ps2build SDK
         if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
           key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
@@ -426,7 +429,7 @@ jobs:
 
       - name: Upload ELF
         if: ${{ success() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         # The upload is a debugging convenience, not the gate: a full artifact-storage quota
         # must not turn a green compile red.
         continue-on-error: true
@@ -438,4 +441,3 @@ jobs:
             LICENSE-LIBSMB2.txt
             CREDITS
           if-no-files-found: error
-          retention-days: 14
