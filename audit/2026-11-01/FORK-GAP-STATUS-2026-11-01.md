@@ -28,10 +28,10 @@ Two corrections to the November 1 snapshot, the ports opened since, and a second
 **Corrections.**
 
 - **DT6 was counted twice.** The October 29 register already carries it (KH2 SMB+PADEMU memory-footprint correction, from [OPL-DS4RTBT](https://github.com/MiguelQueiroz010/OPL-DS4RTBT), the downstream fork by [Miguel Queiroz (MiguelQueiroz010)](https://github.com/MiguelQueiroz010)); the November 1 refresh added the same change again as a new record when it found it upstream in [OPL-DualSense-BT](https://github.com/rodrigoGalvanDev/OPL-DualSense-BT) [8bb581a](https://github.com/rodrigoGalvanDev/OPL-DualSense-BT/commit/8bb581ada8cfb7a08f96f6e82091b5a43f1125a4). The duplicate is gone: November 1 had 310 records (301 carried + 9 new) and 113 MISSING, not 311 and 114.
-- **[YAOPL](https://github.com/yaopl/yaopl) was not fully taken.** A third lock fix by [Roman Kelesidis (belomaxorka)](https://github.com/belomaxorka), [b45a592d](https://github.com/yaopl/yaopl/commit/b45a592d), was still open: a theme or language that the IO thread loads was published, and the old one freed, without the GUI lock. It is new record **YA-25**, ported in the same drafts as YA-21 and YA-22, together with one theme switch and one language switch at a time.
+- **[YAOPL](https://github.com/yaopl/yaopl) was not fully taken.** A third lock fix by [Roman Kelesidis (belomaxorka)](https://github.com/belomaxorka), [b45a592d](https://github.com/yaopl/yaopl/commit/b45a592d), was still open at the November 2 upstream recheck: a theme or language that the IO thread loads was published, and the old one freed, without the GUI lock. It is new record **YA-25**, included in the merged RiptOPL #264 / legacy #1225 port with YA-21 and YA-22, together with one theme switch and one language switch at a time.
 - **Three ports merged on November 2 (evening), after this update was drafted.** YA-21 / YA-22 / YA-25 ([RiptOPL #264](https://github.com/NathanNeurotic/RiptOPL/pull/264) / [legacy #1225](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1225)), DT6 ([RiptOPL #270](https://github.com/NathanNeurotic/RiptOPL/pull/270) / [legacy #1231](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1231)) and RI54 ([RiptOPL #276](https://github.com/NathanNeurotic/RiptOPL/pull/276) / [legacy #1235](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1235)) merged in both maintained editions. The ports table below keeps its pre-merge snapshot state; the implementation checkpoint at the top carries the merged state. Console acceptance remains unestablished for all three.
 
-**Ports opened since November 1.** As drafted on November 2, all were draft tandem PRs, NOT TESTED on hardware (the three merges noted above came later that evening):
+**Ports opened since November 1.** As drafted on November 2, the three tandem ports (YA-21/YA-22/YA-25, DT6 and RI54) were draft PRs and RI55 had no open PR; all NOT TESTED on hardware (the three merges noted above came later that evening):
 
 | Record | November 2 status | Where |
 | --- | --- | --- |
@@ -42,7 +42,7 @@ Two corrections to the November 1 snapshot, the ports opened since, and a second
 
 **Upstream recheck.** On November 2 at UTC 14:16, `git ls-remote` of the 11 tracked repositories that carry open records ([RIPPS2](https://github.com/akilluminati47/RIPPS2), YAOPL as [yaopl/yaopl](https://github.com/yaopl/yaopl) and [belomaxorka/yaopl](https://github.com/belomaxorka/yaopl), [LUNA](https://github.com/dnunezx/LUNA), [OPL-DualSense-BT](https://github.com/rodrigoGalvanDev/OPL-DualSense-BT), [OPL-DS4RTBT](https://github.com/MiguelQueiroz010/OPL-DS4RTBT), [DKWDRV](https://github.com/DKWDRV/DKWDRV), [OPL-JUMP](https://github.com/juankyt505/OPL-JUMP), [BDMAssault](https://github.com/Okeanos86/BDMAssault), [neutrino](https://github.com/rickgaiser/neutrino) and upstream [Open-PS2-Loader](https://github.com/ps2homebrew/Open-PS2-Loader)) and 2 untracked ones; the result is [`recheck-2026-11-02.json`](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/recheck-2026-11-02.json).
 
-- [RIPPS2](https://github.com/akilluminati47/RIPPS2) ([akilluminati47](https://github.com/akilluminati47)) is the only tracked default-branch head that moved; newly added or removed branch/tag refs are listed separately, while an existing ref that kept its name but changed object ID (a force-push or a retag) was not compared v1.2.9-beta (build 129) came out on November 1, after the November 1 recheck, so RI55 is released work now. main is at f9d33c2 with build 130 in testing (long videos open, VIDEO.TXT, PS1 names read from the game's drive, START rows, memory card copies and listing). The listed tests do not cover pad behavior, so pad impact remains unassessed; it will be compared once it is released.
+- [RIPPS2](https://github.com/akilluminati47/RIPPS2) ([akilluminati47](https://github.com/akilluminati47)) is the only tracked default-branch head that moved. The November 2 recheck lists only new and removed refs and compares no object IDs for existing non-default branches or tags, so a moved existing ref such as b129 (a force-push or a retag) would not appear in it. v1.2.9-beta (build 129) came out on November 1, after the November 1 recheck, so RI55 is released work now. main is at f9d33c2 with build 130 in testing (long videos open, VIDEO.TXT, PS1 names read from the game's drive, START rows, memory card copies and listing). The listed tests do not cover pad behavior, so pad impact remains unassessed; it will be compared once it is released.
 - [LUNA](https://github.com/dnunezx/LUNA) ([dnunezx](https://github.com/dnunezx)) gained a build-3.1.3-slovak branch, a translation build.
 - [ELFWD](https://github.com/Okeanos86/ELFWD) by [Okeanos86](https://github.com/Okeanos86) (v2.0.0) is not in the register: a generic ELF forwarder that can disguise argv[0], reset the IOP and load IRX modules, and apply RAM patches from ELFWD.CFG. A companion tool; no record. [sd2cloud](https://github.com/oMrRexD/sd2cloud), the other untracked one, has not moved since it was last looked at (main 0216488).
 
@@ -69,7 +69,7 @@ For the merged work listed at the November 1 baseline, **NOT TESTED** means no c
 
 ## Status vocabulary
 
-Every record in the November 2 snapshot carries one of seven statuses: **PRESENT**, **PARTIAL**, **MISSING**, **REGRESSED**, **INTENTIONAL DIFFERENCE**, **BLOCKED**, **UNKNOWN**. The October 29 classification buckets map onto them as follows; the per-record result, with the records re-read by hand called out, is in [`id-status.json`](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/id-status.json).
+Every record in the corrected November 1 snapshot carries one of seven statuses: **PRESENT**, **PARTIAL**, **MISSING**, **REGRESSED**, **INTENTIONAL DIFFERENCE**, **BLOCKED**, **UNKNOWN**. The October 29 classification buckets map onto them as follows; the per-record result, with the records re-read by hand called out, is in [`id-status.json`](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/id-status.json).
 
 | October 29 bucket | November 1 status |
 | --- | --- |
@@ -80,7 +80,7 @@ Every record in the November 2 snapshot carries one of seven statuses: **PRESENT
 | Known upstream limitation | BLOCKED |
 | Experimental source / unvalidated | UNKNOWN |
 
-| Status | Records (310: 301 carried + 9 new; corrected November 2) |
+| Status | Records (310: 301 carried + 9 new; corrected November 1 snapshot; the November 2 update counts 311: 301 + 10) |
 | --- | --- |
 | PRESENT | 72 |
 | PARTIAL | 37 |
