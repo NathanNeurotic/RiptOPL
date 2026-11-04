@@ -49,7 +49,8 @@
  },
  "corrections": [
   "November 2: DT6 was listed twice (the October 29 record and a new copy for OPL-DualSense-BT 8bb581a); the copy is removed, so November 1 had 310 records and 113 MISSING.",
-  "November 2: YA-25 (YAOPL b45a592d) added; November 1 missed it."
+  "November 2: YA-25 (YAOPL b45a592d) added; November 1 missed it.",
+ "November 4: YA-21/YA-22/YA-25 (RiptOPL #264 / legacy #1225), DT6 (#270 / #1231) and RI54 (#276 / #1235) merged on November 2 evening in both maintained editions; the nov2_status fields above remain the pre-merge snapshot, and the implementation checkpoint records the merged (PRESENT) state. Console acceptance remains unestablished for all three."
  ],
  "recheck_2026_11_02": "recheck-2026-11-02.json",
  "records": [

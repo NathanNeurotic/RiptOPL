@@ -1,6 +1,7 @@
 {
  "checked_at": "2026-11-02T14:16:41Z",
  "method": "git ls-remote --heads --tags from the cloud container, for the 11 tracked repositories that carry open records plus 2 untracked ones; heads compared with audit/2026-11-01/repository-heads.json. Peeled tag lines (^{}) are not compared. An untracked repository lists every ref as new.",
+ "limitations": "Comparison is default-branch head movement plus added and removed ref names only. An existing ref that kept its name but changed object ID (a force-pushed branch, a retagged release) is not detected.",
  "moved": [
   "akilluminati47/RIPPS2"
  ],
