@@ -249,13 +249,13 @@ if update:
     if "udpfsSetWaitingForServer(!answeredBefore || (!reached && !udpfsServerAnswers()));" not in update:
         failures.append("a scan that started before the server answered must keep polling")
 
-    if "if (answeredBefore && r >= 0 && !ps1GameListNeedsRetry()) // only a complete server-backed scan counts\n            udpfsPs1Scanned = 1;" not in update:
+    if "udpfsPs1Scanned = answeredBefore && r >= 0 && !ps1GameListNeedsRetry();" not in update:
         failures.append("the PS1 first-scan latch must only be set by a scan that reached the server and succeeded")
 
 # A remembered PS1 page gets its first scan from UDPFS itself (as MMCE and BDM do), NOT from marking
 # every restored page dirty in libview -- that forced a scan of every empty BDM slot at boot and raised
 # "Could not open the CD or DVD folder in (error 5)" on every boot (zackcage6, Beta-3335).
-if needs and "if (libListViewActive(itemList) == LIB_VIEW_PS1)\n        return !udpfsPs1Scanned;" not in needs:
+if needs and "if (libListViewActive(itemList) == LIB_VIEW_PS1)\n        return !udpfsPs1Scanned && udpfsPs1ScanRetries < UDPFS_PS1_SCAN_RETRY_MAX;" not in needs:
     failures.append("udpfsNeedsUpdate must give a remembered PS1 page its first scan")
 if init and "udpfsPs1Scanned = 0;" not in init:
     failures.append("udpfsInit must re-arm the PS1 first scan")

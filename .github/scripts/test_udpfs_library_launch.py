@@ -140,15 +140,17 @@ run("partial_ps1", r'''
 #include <cstdlib>
 #include <cstring>
 #define LOG(...) ((void)0)
-struct base_game_info_t { int id; };
+struct base_game_info_t { int id; char extension[8]; };
 static int popsResult, emberResult, ps1ScanIncomplete;
 static bool gAutosort;
-static int scan(int count, base_game_info_t **out) {
+static int scan(int count, base_game_info_t **out, const char *ext) {
     *out = count > 0 ? static_cast<base_game_info_t*>(calloc(count, sizeof(base_game_info_t))) : nullptr;
+    for (int i = 0; i < count; i++) strcpy((*out)[i].extension, ext);
     return count;
 }
-static int vcdFillGameList(const char*, base_game_info_t **out) { return scan(popsResult, out); }
-static int cueFillGameListUnsorted(const char*, base_game_info_t **out) { return scan(emberResult, out); }
+static int vcdFillGameList(const char*, base_game_info_t **out) { return scan(popsResult, out, ".VCD"); }
+static int cueFillGameListUnsorted(const char*, base_game_info_t **out) { return scan(emberResult, out, ".CUE"); }
+static int cueIsCueEntry(const base_game_info_t *g) { return g && strcmp(g->extension, ".CUE") == 0; }
 static void *memalign(size_t, size_t size) { return malloc(size); }
 static int ps1RowCmp(const void*, const void*) { return 0; }
 static int gPs1Duplicates; // PS1 Duplicates off (Both): its filter is tested in test_ps1_duplicates.py
@@ -158,15 +160,15 @@ int main() {
     auto *old = static_cast<base_game_info_t*>(malloc(sizeof(base_game_info_t)));
     base_game_info_t *list = old;
     popsResult = -1; emberResult = 0;
-    assert(ps1FillGameList("udpfs:/", &list) == -1 && list == old && ps1GameListNeedsRetry());
+    assert(ps1FillGameList("udpfs:/", &list, 0) == -1 && list == old && ps1GameListNeedsRetry());
     popsResult = 0; emberResult = -1;
-    assert(ps1FillGameList("udpfs:/", &list) == -1 && list == old && ps1GameListNeedsRetry());
+    assert(ps1FillGameList("udpfs:/", &list, 0) == -1 && list == old && ps1GameListNeedsRetry());
     popsResult = 1; emberResult = -1;
-    assert(ps1FillGameList("udpfs:/", &list) == 1 && list && ps1GameListNeedsRetry());
+    assert(ps1FillGameList("udpfs:/", &list, 0) == 1 && list && ps1GameListNeedsRetry());
     emberResult = 1;
-    assert(ps1FillGameList("udpfs:/", &list) == 2 && list && !ps1GameListNeedsRetry());
+    assert(ps1FillGameList("udpfs:/", &list, 1) == 2 && list && !ps1GameListNeedsRetry());
     popsResult = emberResult = 0;
-    assert(ps1FillGameList("udpfs:/", &list) == 0 && !list && !ps1GameListNeedsRetry());
+    assert(ps1FillGameList("udpfs:/", &list, 2) == 0 && !list && !ps1GameListNeedsRetry());
 }
 ''')
 

@@ -29,7 +29,7 @@ def function(source, signature):
 
 cue = read("src/cuesupport.c", "src/sources/cuesupport.cpp")
 pieces = "\n".join(function(cue, sig) for sig in (
-    "static const char *ps1TwinKey(", "int ps1DropTwins(", "int ps1FillGameList("))
+    "int cueIsCueEntry(", "static const char *ps1TwinKey(", "int ps1DropTwins(", "int ps1FillGameList("))
 program = r'''
 #include <assert.h>
 #include <ctype.h>
@@ -37,7 +37,8 @@ program = r'''
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-typedef struct { char name[64]; int ember; } base_game_info_t;
+typedef struct { char name[64]; char extension[8]; int ember; } base_game_info_t;
+#define CUE_ROW_EXTENSION ".CUE"
 enum { PS1_DUP_BOTH = 0, PS1_DUP_EMBER, PS1_DUP_POPSTARTER };
 static int gPs1Duplicates, gAutosort, ps1ScanIncomplete;
 #define LOG(...) ((void)0)
@@ -49,7 +50,7 @@ static int half(const char **names, int ember, base_game_info_t **out) {
     int n = 0;
     while (names[n]) n++;
     *out = (base_game_info_t *)calloc(n, sizeof(**out));
-    for (int i = 0; i < n; i++) { snprintf((*out)[i].name, sizeof((*out)[i].name), "%s", names[i]); (*out)[i].ember = ember; }
+    for (int i = 0; i < n; i++) { snprintf((*out)[i].name, sizeof((*out)[i].name), "%s", names[i]); (*out)[i].ember = ember; snprintf((*out)[i].extension, sizeof((*out)[i].extension), "%s", ember ? ".CUE" : ".VCD"); }
     return n;
 }
 static int vcdFillGameList(const char *p, base_game_info_t **out) { (void)p; return half(vcdNames, 0, out); }
@@ -63,10 +64,10 @@ static int has(base_game_info_t *rows, int n, const char *name, int ember) {
 int main(void) {
     base_game_info_t *rows = NULL;
     gPs1Duplicates = PS1_DUP_BOTH;
-    int n;
-    assert(ps1FillGameList("mass0:/", &rows) == 13);
+    int n = 0;
+    assert((n = ps1FillGameList("mass0:/", &rows, n)) == 13);
     gPs1Duplicates = PS1_DUP_EMBER;
-    assert((n = ps1FillGameList("mass0:/", &rows)) == 9);
+    assert((n = ps1FillGameList("mass0:/", &rows, n)) == 9);
     assert(has(rows, n, "Ape Escape", 1) && has(rows, n, "MediEvil", 1) && !has(rows, n, "XX.SCUS_944.26.Ape Escape", 0));
     assert(has(rows, n, "crash bandicoot", 1) && has(rows, n, "Spyro the Dragon", 1) && has(rows, n, "SPYRO THE DRAGON", 1));
     assert(has(rows, n, "Only VCD", 0) && has(rows, n, "Only Ember", 1));
@@ -74,7 +75,7 @@ int main(void) {
     /* Not a disc ID ("00X" is not three digits): the name is kept whole, so no twin. */
     assert(has(rows, n, "SLUS_00X.94.Weird", 0) && has(rows, n, "Weird", 1));
     gPs1Duplicates = PS1_DUP_POPSTARTER;
-    assert((n = ps1FillGameList("mass0:/", &rows)) == 8);
+    assert((n = ps1FillGameList("mass0:/", &rows, n)) == 8);
     assert(has(rows, n, "XX.SCUS_944.26.Ape Escape", 0) && has(rows, n, "SLES_123.45-Medievil", 0) && !has(rows, n, "MediEvil", 1));
     assert(has(rows, n, "SLUS_005.94.Crash Bandicoot", 0) && has(rows, n, "Spyro the Dragon", 0));
     /* Every Ember copy of a VCD goes, not only the first. */
@@ -85,11 +86,12 @@ int main(void) {
     free(rows);
 
     /* The HDD list keeps each row's partition in a parallel array: it moves with its row. */
-    base_game_info_t hdd[3] = {{"SLUS_005.94.Crash Bandicoot", 0}, {"Only VCD", 0}, {"Crash Bandicoot", 1}};
+    base_game_info_t hdd[3] = {{"SLUS_005.94.Crash Bandicoot", ".VCD", 0}, {"Only VCD", ".VCD", 0}, {"Crash Bandicoot", ".CUE", 1}};
     char parts[3][33] = {"__.POPS", "__.POPS1", "__.EMBER"};
     assert(ps1DropTwins(hdd, parts, sizeof(parts[0]), 2, 1, PS1_DUP_EMBER) == 2);
     assert(!strcmp(hdd[0].name, "Only VCD") && !strcmp(parts[0], "__.POPS1"));
     assert(!strcmp(hdd[1].name, "Crash Bandicoot") && !strcmp(parts[1], "__.EMBER"));
+    assert(cueIsCueEntry(&hdd[1]) && hdd[1].ember == 1);
     puts("PASS: PS1 Duplicates keeps both, the Ember twin or the VCD twin; a POPSTARTER prefix, a real disc ID and case are ignored");
     return 0;
 }
