@@ -434,13 +434,32 @@ def upload_verified(repo, tag, sha, title, notes_path, assets, exists):
             touched = set(attempted)
             restore = sorted(touched.intersection(replaced))
             for name in restore:
+                backup_file = Path(backup) / name
+                # Never upload a backup that is not byte-identical to the asset it replaces: a torn
+                # download would corrupt the channel under the guise of a rollback.
+                original = remote.get(name)
+                if (original is not None and original.get("digest") is not None
+                        and original["digest"] != "sha256:" + hashlib.sha256(backup_file.read_bytes()).hexdigest()):
+                    print(f"{tag}: backup of {name} is incomplete; leaving the remote asset untouched", file=sys.stderr)
+                    continue
                 try:
-                    gh("release", "upload", tag, "--repo", repo, "--clobber",
-                       str(Path(backup) / name))
+                    gh("release", "upload", tag, "--repo", repo, "--clobber", str(backup_file))
                 except subprocess.CalledProcessError as error:
-                    # GitHub may also be returning 502s while we roll back. Attempt the
-                    # rest of the cleanup and preserve the original publication failure.
-                    print(f"{tag}: could not restore {name}: {error}", file=sys.stderr)
+                    # GitHub may also be returning 502s while we roll back. Check whether the
+                    # restore actually landed before reporting it as lost; attempt the rest of
+                    # the cleanup and preserve the original publication failure.
+                    try:
+                        state = {asset["name"]: asset for asset in
+                                 json.loads(gh("release", "view", tag, "--repo", repo, "--json", "assets"))["assets"]}
+                        intact = same_release_asset(state.get(name), backup_file)
+                    except subprocess.CalledProcessError:
+                        intact = None
+                    if intact:
+                        print(f"{tag}: restore of {name} failed, but the original is still in place", file=sys.stderr)
+                    elif intact is False:
+                        print(f"{tag}: could not restore {name}: {error} (the original is LOST from the channel)", file=sys.stderr)
+                    else:
+                        print(f"{tag}: could not restore {name}: {error} (remote state unknown)", file=sys.stderr)
             for name in sorted(touched.intersection(added)):
                 try:
                     gh("release", "delete-asset", tag, name, "--repo", repo, "--yes")
