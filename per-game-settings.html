@@ -83,6 +83,9 @@ and the loader core independently for each game — without touching any other t
 
 <h2 id="open-game-settings">Opening Game Settings</h2>
 <p>Highlight a game in any list and press the <b>Triangle</b> button. A small menu drops down with these entries:</p>
+<p class="muted">Paired emulator captures: Korium and IncebtIon Beta-4052, using the same non-bootable documentation samples. <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UI-CAPTURES.md">Capture notes and artwork credits</a>.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/game-options.png"><img src="assets/ui/game-options.png" width="796" height="448" loading="lazy" decoding="async" alt="Per-game options — Korium"></a><figcaption>Per-game options — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/game-options.png"><img src="assets/ui/incebtion/game-options.png" width="796" height="448" loading="lazy" decoding="async" alt="Per-game options — IncebtIon"></a><figcaption>Per-game options — IncebtIon</figcaption></figure></div>
+
 <ul class="checklist">
   <li><b>Game Settings</b> — Loader Core, DMA Mode, Game ID, Custom ELF, compatibility modes, Neutrino args &amp; video</li>
   <li><b>Cheat Settings</b> — enable/disable PS2RD cheats for this title</li>
@@ -105,6 +108,8 @@ RiptOPL / OPL / wOPL builds that read from the same device; only the master sett
 
 <h2 id="compatibility-settings">Game Settings</h2>
 <p>The <b>Game Settings</b> screen, the first entry in the Triangle menu, is the main per-game workhorse. It is split into several sections.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/game-settings.png"><img src="assets/ui/game-settings.png" width="796" height="448" loading="lazy" decoding="async" alt="Game Settings — Korium"></a><figcaption>Game Settings — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/game-settings.png"><img src="assets/ui/incebtion/game-settings.png" width="796" height="448" loading="lazy" decoding="async" alt="Game Settings — IncebtIon"></a><figcaption>Game Settings — IncebtIon</figcaption></figure></div>
+
 
 <h3 id="loader-core">Loader Core</h3>
 <p>The <b>Loader Core</b> picker selects which engine launches this title:</p>
@@ -261,6 +266,8 @@ on-screen editor.</p>
 <p>The <b>VMC</b> screen assigns a Virtual Memory Card image to each of the two memory-card slots for
 this title. Native OPL can activate both slots; the <a href="vmc.html#neutrino-vmc">Neutrino runtime has slot/geometry limits</a>. HTTP, PC CARD CF and DESR DVR do not support VMCs. VMC images are <code>.bin</code> files in the
 <code>VMC/</code> folder; they can range from 8 MB to 64 MB.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/vmc-settings.png"><img src="assets/ui/vmc-settings.png" width="796" height="448" loading="lazy" decoding="async" alt="Virtual memory card settings — Korium"></a><figcaption>Virtual memory card settings — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/vmc-settings.png"><img src="assets/ui/incebtion/vmc-settings.png" width="796" height="448" loading="lazy" decoding="async" alt="Virtual memory card settings — IncebtIon"></a><figcaption>Virtual memory card settings — IncebtIon</figcaption></figure></div>
+
 <p>For each slot you can:</p>
 <ul class="checklist">
   <li>Select an existing VMC image by name.</li>
@@ -283,6 +290,8 @@ stay within the supported editor limit rather than relying on longer hand-edited
 <code>.cht</code> file in the <code>CHT/</code> folder. It works on <b>both cores</b>: OPL's built-in core applies
 the codes itself, and a Neutrino game gets them handed over in <code>riptopl-cheats.toml</code>. With the
 Neutrino core only the <b>PS2RD Cheat Image</b> row is greyed &mdash; Neutrino has no cheat-image support.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/cheat-settings.png"><img src="assets/ui/cheat-settings.png" width="796" height="448" loading="lazy" decoding="async" alt="Cheat Settings — Korium"></a><figcaption>Cheat Settings — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/cheat-settings.png"><img src="assets/ui/incebtion/cheat-settings.png" width="796" height="448" loading="lazy" decoding="async" alt="Cheat Settings — IncebtIon"></a><figcaption>Cheat Settings — IncebtIon</figcaption></figure></div>
+
 <p>In <b>Select Game Cheats</b> mode the cheats you pick are remembered for that game, by name, and are already
 ticked the next time it launches, on either core.</p>
 <p>For the cheat file format and a full how-to, see <a href="cheats.html">Cheats</a> and the
@@ -292,6 +301,8 @@ ticked the next time it launches, on either core.</p>
 <p><b>GSM</b> (Game Screen Mode) forces a specific video output mode for a game — useful for titles that
 output an unusual or unsupported signal. The per-game GSM screen is an <b>OPL core feature</b>; it is not
 available under Neutrino.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/gsm-settings.png"><img src="assets/ui/gsm-settings.png" width="796" height="448" loading="lazy" decoding="async" alt="Configure GSM — Korium"></a><figcaption>Configure GSM — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/gsm-settings.png"><img src="assets/ui/incebtion/gsm-settings.png" width="796" height="448" loading="lazy" decoding="async" alt="Configure GSM — IncebtIon"></a><figcaption>Configure GSM — IncebtIon</figcaption></figure></div>
+
 <p>If the game's Loader Core is set to Neutrino, opening Configure GSM displays the message
 <em>"This setting is not used with the Neutrino core."</em> Use the <b>Neutrino Video</b> picker on the
 Game Settings screen instead.</p>
@@ -302,6 +313,10 @@ Flipping, and how to recover a game that loses the picture.</p>
 <h2 id="pademu">Controller Emulation</h2>
 <p><b>PADEMU</b> enables DualShock 3 and DualShock 4 controller emulation for a game. It is an
 <b>OPL core feature</b> and is not available under Neutrino.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/controller-emulation.png"><img src="assets/ui/controller-emulation.png" width="796" height="448" loading="lazy" decoding="async" alt="Controller Emulation — Korium"></a><figcaption>Controller Emulation — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/controller-emulation.png"><img src="assets/ui/incebtion/controller-emulation.png" width="796" height="448" loading="lazy" decoding="async" alt="Controller Emulation — IncebtIon"></a><figcaption>Controller Emulation — IncebtIon</figcaption></figure></div>
+
+<div class="ui-capture-grid"><figure><a href="assets/ui/controller-macros.png"><img src="assets/ui/controller-macros.png" width="796" height="448" loading="lazy" decoding="async" alt="Controller Macros — Korium"></a><figcaption>Controller Macros — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/controller-macros.png"><img src="assets/ui/incebtion/controller-macros.png" width="796" height="448" loading="lazy" decoding="async" alt="Controller Macros — IncebtIon"></a><figcaption>Controller Macros — IncebtIon</figcaption></figure></div>
+
 <p>If the game's Loader Core is set to Neutrino, opening Controller Emulation displays the message
 <em>"This setting is not used with the Neutrino core."</em></p>
 <p>DualSense / DualShock 5 (USB) support is off in the default builds, but you do not have to build it
