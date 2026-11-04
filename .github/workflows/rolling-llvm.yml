@@ -196,7 +196,7 @@ jobs:
           pattern: lite*-*
           path: dist/downloaded
       - name: Check LLVM provenance, edition parity, checksum inventory and archive integrity
-        run: python tools/publish_llvm.py dist/downloaded --check
+        run: python -S tools/publish_llvm.py dist/downloaded --check
 
   publish:
     name: Publish only the verified integration-head RiptOPLLVM release
