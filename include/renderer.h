@@ -17,6 +17,7 @@ public:
     void unloadTexture(GSTEXTURE *txt);
     void startFrame(void);
     void endFrame(void);
+    void discardFrame(void);
     void init();
     int setMode(int force);
     void getScreenExtentsNative(int *w, int *h);

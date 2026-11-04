@@ -145,6 +145,8 @@ jobs:
         run: python3 .github/scripts/test_hires_line_blend.py
       - name: Check the intro waits for the saved theme only as long as Boot Theme Wait says (off by default)
         run: python3 .github/scripts/test_boot_theme_wait.py
+      - name: Check theme replacement retires HIRES texture references before freeing them
+        run: python3 .github/scripts/test_theme_render_queue.py
       - name: Check that a missing settings file is opened once, not twice
         run: python3 .github/scripts/test_config_missing_open_once.py
       - name: Check Back on a Settings page keeps its edits and only a real change reconnects SMB
