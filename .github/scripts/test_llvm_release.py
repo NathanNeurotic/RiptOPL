@@ -65,6 +65,19 @@ def candidates(root, compiler="llvm", altered_lite=None):
 
 
 class RiptOPLLVMTests(unittest.TestCase):
+    def test_unpacked_lld_layout_accounts_for_non_loadable_mips_headers(self):
+        import struct
+        from test_ps2build_configurations import unpacked_elf
+
+        elf = bytearray(unpacked_elf(offset=0x100))
+        struct.pack_into("<H", elf, 44, 3)  # PT_LOAD, PT_MIPS_REGINFO and PT_MIPS_ABIFLAGS
+        llvm.common.check_unpacked_layout(elf)
+        for bad_offset in (0x80, 0x10000):
+            bad = bytearray(elf)
+            struct.pack_into("<I", bad, 56, bad_offset)
+            with self.assertRaisesRegex(ValueError, "packed or not linked"):
+                llvm.common.check_unpacked_layout(bad)
+
     def test_parallel_workflow_tracks_the_gcc_korium_matrix(self):
         llvm_flow = yaml.safe_load((ROOT / ".github/workflows/rolling-llvm.yml").read_text())
         gcc_flow = yaml.safe_load((ROOT / ".github/workflows/rolling-release.yml").read_text())
@@ -78,6 +91,11 @@ class RiptOPLLVMTests(unittest.TestCase):
         self.assertEqual(llvm_flow["jobs"]["build"]["env"]["PS2BUILD_TOOLCHAIN"], "llvm")
         self.assertEqual(llvm_flow["jobs"]["publish"]["permissions"]["contents"], "write")
         self.assertEqual(llvm_flow["jobs"]["verify"]["permissions"]["contents"], "read")
+        publish = llvm_flow["jobs"]["publish"]
+        self.assertNotIn("GH_TOKEN", publish.get("env", {}))
+        token_steps = [step for step in publish["steps"] if "GH_TOKEN" in step.get("env", {})]
+        self.assertEqual(len(token_steps), 1)
+        self.assertEqual(token_steps[0]["run"], "python tools/publish_llvm.py dist/downloaded")
         self.assertIn("needs", llvm_flow["jobs"]["publish"])
         self.assertIn("--compiler llvm", (ROOT / ".github/workflows/rolling-llvm.yml").read_text())
         self.assertIn("compiler=COMPILER", (ROOT / "tools/publish_llvm.py").read_text())

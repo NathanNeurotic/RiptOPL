@@ -57,7 +57,9 @@ def archives(options):
 
 def check_unpacked_layout(elf):
     """Refuse a bug-report ELF that is packed or not laid out like a ps2sdk link: one loadable
-    segment at 0x00100000, 0x80 bytes into the file (-zmax-page-size=128, ps2.yaml)."""
+    segment at 0x00100000, immediately after the headers on a 128-byte boundary.
+    LLD emits additional non-loadable MIPS headers, so its first segment starts
+    at 0x100 rather than GNU ld's 0x80 with the same max-page-size flag."""
     if len(elf) < 52 or elf[:4] != b"\x7fELF" or elf[4] != 1 or elf[5] != 1:
         raise ValueError("bug-report build is not a 32-bit little-endian ELF")
     machine, = struct.unpack_from("<H", elf, 18)
@@ -67,7 +69,9 @@ def check_unpacked_layout(elf):
         raise ValueError("bug-report build is not a MIPS executable")
     loads = [struct.unpack_from("<8I", elf, phoff + i * 32) for i in range(phnum)]
     loads = [h for h in loads if h[0] == 1]
-    if len(loads) != 1 or loads[0][1] != 0x80 or loads[0][2] != 0x00100000:
+    segment_offset = (max(52, phoff + phnum * 32) + 127) & ~127
+    if (len(loads) != 1 or loads[0][1] != segment_offset or loads[0][2] != 0x00100000
+            or loads[0][7] != 128):
         raise ValueError("bug-report build is packed or not linked with -zmax-page-size=128: "
                          + ", ".join(f"offset {h[1]:#x} at {h[2]:#010x}" for h in loads))
     if loads[0][1] + loads[0][4] > len(elf):
