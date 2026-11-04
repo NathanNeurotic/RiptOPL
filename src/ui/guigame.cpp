@@ -1655,6 +1655,15 @@ static int guiGameDialogCoreIsNeutrino(int sourceMode, item_list_t *support, int
     return (coreChoice == 1) || (coreChoice == 2 && gDefaultCoreLoader == 1);
 }
 
+static int guiGameILinkIDEnabled(void)
+{
+    int coreChoice = 0;
+    diaGetInt(diaCompatConfig, COMPAT_LOADER, &coreChoice);
+    int neutrino = !coreNeverNeutrino &&
+                   (coreChoice == 1 || (coreChoice == 2 && (gDefaultCoreLoader == 1 || coreDefaultNeutrino)));
+    return ilinkIdNativeCapable && !neutrino;
+}
+
 /* Read before changing any configuration; an invalid edit must not be saved. */
 static int guiGameReadILinkID(char normalized[17])
 {
@@ -1662,8 +1671,10 @@ static int guiGameReadILinkID(char normalized[17])
     char text[32];
     u8 id[8];
     int i, result;
-    diaGetString(diaCompatConfig, COMPAT_ILINK_ID, text, sizeof(text));
     normalized[0] = '\0';
+    if (!guiGameILinkIDEnabled())
+        return 0;
+    diaGetString(diaCompatConfig, COMPAT_ILINK_ID, text, sizeof(text));
     result = oplParseILinkID(text, id);
     if (result > 0) {
         for (i = 0; i < 8; i++) {
@@ -1691,7 +1702,7 @@ static void guiGameSetCoreAwareState(void)
     if (neutrinoVideo == NEUTRINO_VIDEO_DEFAULT_IDX)
         neutrinoVideo = gNeutrinoVideoDefault;
 
-    diaSetEnabled(diaCompatConfig, COMPAT_ILINK_ID, !neutrino && ilinkIdNativeCapable);
+    diaSetEnabled(diaCompatConfig, COMPAT_ILINK_ID, guiGameILinkIDEnabled());
     diaSetEnabled(diaCompatConfig, COMPAT_NEUTRINO_ARGS, neutrino);  // Neutrino-only field
     diaSetEnabled(diaCompatConfig, COMPAT_NEUTRINO_VIDEO, neutrino); // Neutrino-only -gsm video mode
     // The ":c" comp half is only ever emitted alongside a video mode (-gsm=v:c grammar), so it also
@@ -1973,11 +1984,13 @@ static int guiGameApplyConfig(config_set_t *configSet, item_list_t *support)
     guiGameSavePadMacroGlobalConfig(configGame);
 #endif
 
-    char consoleID[17];
-    if (guiGameReadILinkID(consoleID) > 0)
-        result = configSetStr(configSet, CONFIG_ITEM_ILINK_ID, consoleID);
-    else
-        configRemoveKey(configSet, CONFIG_ITEM_ILINK_ID);
+    if (guiGameILinkIDEnabled()) {
+        char consoleID[17];
+        if (guiGameReadILinkID(consoleID) > 0)
+            result = configSetStr(configSet, CONFIG_ITEM_ILINK_ID, consoleID);
+        else
+            configRemoveKey(configSet, CONFIG_ITEM_ILINK_ID);
+    }
 
     diaGetString(diaCompatConfig, COMPAT_GAMEID, hexid, sizeof(hexid));
     if (hexid[0] != '\0')
