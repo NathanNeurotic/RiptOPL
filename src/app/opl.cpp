@@ -119,6 +119,7 @@ static unsigned int lastSeenBdmGeneration;
 
 static char errorMessage[256];
 static int errorMessageStringId = -1;
+static volatile unsigned int errorMessageGeneration = 0;
 
 // The page table itself lives in gSourceRegistry (include/sourceregistry.h). list_support stays as
 // a NAME in this file, a constant-initialized pointer at the table's first slot: the body of
@@ -1051,10 +1052,15 @@ void clearErrorMessage(void)
     guiSetFrameHook(&menuUpdateHook);
 }
 
+// The message box copies its text when it opens, and the IO worker may set or append a message
+// while it is up. Each writer bumps the generation after the text is complete; a box that closed
+// on stale text leaves the hook installed, so the next frame shows what was written since.
 static void errorMessageHook()
 {
+    unsigned int shown = errorMessageGeneration;
     guiMsgBox(errorMessage, 0, NULL);
-    clearErrorMessage();
+    if (shown == errorMessageGeneration)
+        clearErrorMessage();
 }
 
 // Language strings can choose the order of the supported substitutions, but are never handed to
@@ -1107,11 +1113,19 @@ static void formatErrorMessage(const char *format, const char *path, int error, 
     errorMessage[used] = '\0';
 }
 
+// Called once the text in errorMessage is complete. The generation bump is what tells an open
+// message box that it showed stale text (see errorMessageHook).
+static void publishErrorMessage(int strId)
+{
+    errorMessageStringId = strId;
+    errorMessageGeneration++;
+    guiSetFrameHook(&errorMessageHook);
+}
+
 void setErrorMessageWithCode(int strId, int error)
 {
     formatErrorMessage(_l(strId), NULL, error, 0, 1);
-    errorMessageStringId = strId;
-    guiSetFrameHook(&errorMessageHook);
+    publishErrorMessage(strId);
 }
 
 // The detail suffix is an internal enum name ("PS2FS_LOAD_FAILURE"), untranslated by construction,
@@ -1131,15 +1145,13 @@ void setErrorMessageWithCodeAndDetail(int strId, int error, const char *detail)
     if (detail != NULL && detail[0] != '\0' && used < sizeof(errorMessage) - 1)
         snprintf(&errorMessage[used], sizeof(errorMessage) - used, "\nDiagnostic reason: %s", detail);
 #endif
-    errorMessageStringId = strId;
-    guiSetFrameHook(&errorMessageHook);
+    publishErrorMessage(strId);
 }
 
 void setErrorMessagePathCode(int strId, const char *path, int error)
 {
     formatErrorMessage(_l(strId), path, error, 1, 1);
-    errorMessageStringId = strId;
-    guiSetFrameHook(&errorMessageHook);
+    publishErrorMessage(strId);
 }
 
 // Adds a second message below one that is already pending instead of replacing it, so a secondary
@@ -1162,7 +1174,7 @@ void appendErrorMessageWithCode(int strId, int error)
     strncpy(added, errorMessage, sizeof(added) - 1);
     added[sizeof(added) - 1] = '\0';
     snprintf(errorMessage, sizeof(errorMessage), "%s\n%s", pending, added);
-    guiSetFrameHook(&errorMessageHook);
+    publishErrorMessage(errorMessageStringId);
 }
 
 void clearErrorMessageIf(int strId)

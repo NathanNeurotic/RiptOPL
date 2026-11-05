@@ -263,7 +263,7 @@ void bd_cache_destroy(struct block_device *cbd)
 {
     M_DEBUG("%s\n", __FUNCTION__);
 
-    _release_slot();
     FreeSysMemory(cbd->priv);
     FreeSysMemory(cbd);
+    _release_slot(); // after the frees, so a device connecting meanwhile cannot hold a third cache alongside this one
 }
