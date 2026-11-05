@@ -22,6 +22,7 @@ fixture = r'''
 #include <cassert>
 #include <cstdio>
 #include <stdexcept>
+#define THEME_BOOT_TRACE(...) ((void)0)
 struct Theme { int pixels; };
 static Theme *gTheme;
 static Theme *replayed;
