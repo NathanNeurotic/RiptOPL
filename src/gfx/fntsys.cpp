@@ -121,8 +121,9 @@ void FontSystem::unlock(void)
    draw (gsKit_TexManager_bind), and a frame's inline uploads reference the atlas pixels until that
    frame -- under HIRES, its replay -- is retired. Dropping them from the IO worker under the font lock
    alone (a saved disk theme found while the splash draws, the case the note above describes) races
-   the GUI thread inside gsKit and can leave it spinning in a corrupted block list with the GUI lock
-   held: the splash freezes on its last status line. So a flush is frame work, done the way thmLoad
+   the GUI thread inside gsKit and could leave it spinning in a corrupted block list with the GUI lock
+   held -- a plausible, not console-confirmed, way for the splash to freeze on its last status line.
+   Either way the race is real, so a flush is frame work, done the way thmLoad
    publishes a theme: GUI lock, retire the in-flight frame, then the font lock -- the order
    renderString establishes (frame lock first, font lock inside). Entry points that may flush take
    one of these; their callers (thmLoadFonts, lngSetGuiValue, Gui::updateScreenScale) hold no GUI lock.

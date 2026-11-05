@@ -7,7 +7,9 @@ that in thmLoad: GUI lock, rmDiscardFrame(), then free. The font loaders did not
 fntLoadDefault, fntSetWeight and fntUpdateAspectRatio flushed EVERY font's atlases
 (updateAspectRatioLocked -> cacheFlush -> Atlas::destroy -> rmUnloadTexture + free) under the
 font lock alone. A saved disk theme found by the IO worker while the boot splash is drawing is
-exactly that path, so the splash's own text atlases were torn down under the GUI thread.
+exactly that path, so the splash's own text atlases were torn down under the GUI thread. That is
+a plausible, not console-confirmed, mechanism for the reported saved-theme freeze; this test
+verifies the lock contract, not the cause of the report.
 
 Compile the production FontSystem loaders against a stub GUI/renderer that models the contract:
  - a texture may leave the texture manager only under the GUI lock, after the in-flight frame was

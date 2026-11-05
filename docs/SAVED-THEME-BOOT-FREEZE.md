@@ -1,7 +1,7 @@
 # Saved disk theme stalls on restart — investigation and fix (2026-11-03/04)
 
-**Status: a source-confirmed invariant violation on the reported path is fixed
-(2026-11-04); hardware confirmation is still open.** The hardware report is from
+**Status: a source-level glyph-atlas ownership violation on the boot path is guarded
+(2026-11-04); whether it causes the reported freeze is still open.** The hardware report is from
 HollywoodScotty in the PS2 Scene discussion, using a configuration associated with
 Berion. A disk theme can be selected successfully through the running RiptOPL
 Interface settings menu, but after reboot the console remains on the splash near
@@ -15,7 +15,7 @@ and whether the GUI is frozen or only the boot worker is stalled remain unknown.
 The diagnostic breadcrumbs below stay in the `__OPLDIAG` builds so a report can
 still confirm or refute the fix on a console.
 
-## Cause found in the source, and the fix
+## Suspected source-level cause and guard
 
 The boot path for a saved disk theme is: the splash draws on the GUI thread
 every frame; the IO worker brings a storage device up, `bdmNeedsUpdate` ->
