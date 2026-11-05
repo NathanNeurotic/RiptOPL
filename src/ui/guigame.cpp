@@ -3,6 +3,7 @@
  PADEMU by belek666
 */
 
+#include "include/ilinkid.h"
 #include "include/opl.h"
 #include "include/gui.h"
 #include "include/ioman.h"
@@ -1553,6 +1554,7 @@ static unsigned char gameEffectiveFlags(item_list_t *support)
 // updater re-runs guiGameSetCoreAwareState on EVERY dialog change with no device handle -- a
 // one-shot diaSetEnabled here would be clobbered (same pattern as the UDPBD loader lock).
 static int bsdfsDeviceCapable = 1;
+static int ilinkIdNativeCapable = 1;
 // VCD (PS1) view: launches ONLY via POPSTARTER -- never OPL's core nor Neutrino. Set once per dialog
 // entry (same one-shot pattern as bsdfsDeviceCapable) so the core-aware grey keeps every Neutrino-only
 // row greyed for a VCD game even when the global default core is Neutrino (the locked "Default" row
@@ -1653,6 +1655,28 @@ static int guiGameDialogCoreIsNeutrino(int sourceMode, item_list_t *support, int
     return (coreChoice == 1) || (coreChoice == 2 && gDefaultCoreLoader == 1);
 }
 
+/* Read before changing any configuration; an invalid edit must not be saved. */
+static int guiGameReadILinkID(char normalized[17])
+{
+    static const char hex[] = "0123456789ABCDEF";
+    char text[32];
+    u8 id[8];
+    int i, result;
+    normalized[0] = '\0';
+    if (!ilinkIdNativeCapable)
+        return 0;
+    diaGetString(diaCompatConfig, COMPAT_ILINK_ID, text, sizeof(text));
+    result = oplParseILinkID(text, id);
+    if (result > 0) {
+        for (i = 0; i < 8; i++) {
+            normalized[i * 2] = hex[id[i] >> 4];
+            normalized[i * 2 + 1] = hex[id[i] & 15];
+        }
+        normalized[16] = '\0';
+    }
+    return result;
+}
+
 static void guiGameSetCoreAwareState(void)
 {
     int coreChoice = 0, neutrino = 0, neutrinoVideo = 0;
@@ -1669,6 +1693,7 @@ static void guiGameSetCoreAwareState(void)
     if (neutrinoVideo == NEUTRINO_VIDEO_DEFAULT_IDX)
         neutrinoVideo = gNeutrinoVideoDefault;
 
+    diaSetEnabled(diaCompatConfig, COMPAT_ILINK_ID, ilinkIdNativeCapable);
     diaSetEnabled(diaCompatConfig, COMPAT_NEUTRINO_ARGS, neutrino);  // Neutrino-only field
     diaSetEnabled(diaCompatConfig, COMPAT_NEUTRINO_VIDEO, neutrino); // Neutrino-only -gsm video mode
     // The ":c" comp half is only ever emitted alongside a video mode (-gsm=v:c grammar), so it also
@@ -1742,6 +1767,7 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
     // Neutrino-only row greyed even under a Neutrino global default (guiGameSetCoreAwareState reads
     // this). HTTP likewise has no Neutrino launch leg. CF too: external Neutrino cannot restore the CF
     // bus. SMB follows the global core with per-game overrides (ethTryNeutrino).
+    ilinkIdNativeCapable = support == NULL || (support->mode != APP_MODE && libListRowView(support, id) == LIB_VIEW_ISO);
     coreNeverNeutrino = (support != NULL && ((libViewActive(support->mode) == LIB_VIEW_PS1) || sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode)));
 
     // UDPFS (Files: UDPFS_MODE, also for a Favourite that points back to it) and the UDP block device
@@ -1949,6 +1975,14 @@ static int guiGameApplyConfig(config_set_t *configSet, item_list_t *support)
     guiGameSavePadMacroGlobalConfig(configGame);
 #endif
 
+    if (ilinkIdNativeCapable) {
+        char consoleID[17];
+        if (guiGameReadILinkID(consoleID) > 0)
+            result = configSetStr(configSet, CONFIG_ITEM_ILINK_ID, consoleID);
+        else
+            configRemoveKey(configSet, CONFIG_ITEM_ILINK_ID);
+    }
+
     diaGetString(diaCompatConfig, COMPAT_GAMEID, hexid, sizeof(hexid));
     if (hexid[0] != '\0')
         result = configSetStr(configSet, CONFIG_ITEM_DNAS, hexid);
@@ -2022,6 +2056,12 @@ int guiGameSaveConfig(config_set_t *configSet, item_list_t *support)
     if (configSet == NULL)
         return -1;
 
+    char consoleID[17];
+    if (guiGameReadILinkID(consoleID) < 0) {
+        guiMsgBox(_l(_STR_INVALID_CONSOLE_ILINK_ID), 0, NULL);
+        return -1;
+    }
+
     int parentalLock = 0;
     diaGetInt(diaCompatConfig, COMPAT_PARENTAL_LOCK, &parentalLock);
     // Authorize removal before any live/global configuration is changed.
@@ -2076,6 +2116,7 @@ void guiGameRemoveSettings(config_set_t *configSet)
         configRemoveKey(configSet, CONFIG_ITEM_DMA);
         configRemoveKey(configSet, CONFIG_ITEM_CORE_LOADER);
         configRemoveKey(configSet, CONFIG_ITEM_COMPAT);
+        configRemoveKey(configSet, CONFIG_ITEM_ILINK_ID);
         configRemoveKey(configSet, CONFIG_ITEM_DNAS);
         configRemoveKey(configSet, CONFIG_ITEM_ALTSTARTUP);
         configRemoveKey(configSet, CONFIG_ITEM_PARENTAL_LOCK);
@@ -2121,6 +2162,11 @@ void guiGameRemoveSettings(config_set_t *configSet)
 
 void guiGameTestSettings(int id, item_list_t *support, config_set_t *configSet)
 {
+    char consoleID[17];
+    if (guiGameReadILinkID(consoleID) < 0) {
+        guiMsgBox(_l(_STR_INVALID_CONSOLE_ILINK_ID), 0, NULL);
+        return;
+    }
 #ifdef RETROACHIEVEMENTS
     if (achievementsBusy()) { // a browser page still owns the network and the share
         guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);
@@ -2460,6 +2506,9 @@ void guiGameLoadConfig(int id, item_list_t *support, config_set_t *configSet)
     if (configSet == NULL)
         return;
 
+    // Save/Test also reach this without opening Compatibility: never inherit the previous row's capability.
+    ilinkIdNativeCapable = support == NULL || (support->mode != APP_MODE && libListRowView(support, id) == LIB_VIEW_ISO);
+
     configSource[0] = '\0';
     configSourceID = CONFIG_SOURCE_DEFAULT;
     configGetInt(configSet, CONFIG_ITEM_CONFIGSOURCE, &configSourceID);
@@ -2504,6 +2553,11 @@ void guiGameLoadConfig(int id, item_list_t *support, config_set_t *configSet)
     hexid[0] = '\0';
     configGetStrCopy(configSet, CONFIG_ITEM_DNAS, hexid, sizeof(hexid));
     diaSetString(diaCompatConfig, COMPAT_GAMEID, hexid);
+    char consoleID[32] = "";
+    configGetStrCopy(configSet, CONFIG_ITEM_ILINK_ID, consoleID, sizeof(consoleID));
+    // Keep malformed stored text visible so Save/Test validate it instead of silently clearing the key.
+    diaSetString(diaCompatConfig, COMPAT_ILINK_ID, consoleID);
+
 
     altStartup[0] = '\0';
     configGetStrCopy(configSet, CONFIG_ITEM_ALTSTARTUP, altStartup, sizeof(altStartup));

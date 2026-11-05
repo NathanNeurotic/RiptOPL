@@ -67,7 +67,8 @@ int sbTitleCompatDefault(config_set_t *configSet, int neutrino);
 int sbGetCompatModes(config_set_t *configSet, int neutrino);
 
 void sbEnsureIgrUsbDrivers(int compatmask);
-int sbPrepare(base_game_info_t *game, config_set_t *configSet, int size_cdvdman, void **cdvdman_irx, int *patchindex);
+// nativeLaunch is 0 only for external-Neutrino scratch preparation; no console-ID config is consumed there.
+int sbPrepare(base_game_info_t *game, config_set_t *configSet, int size_cdvdman, void **cdvdman_irx, int *patchindex, int nativeLaunch);
 void sbUnprepare(void *pCommon);
 void sbCreatePath(const base_game_info_t *game, char *path, const char *prefix, const char *sep, int part);
 void sbDelete(base_game_info_t **list, const char *prefix, const char *sep, int gamecount, int id);
