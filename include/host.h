@@ -69,6 +69,7 @@ public:
     virtual int pathToMode(const char *path) = 0;
 
     virtual void setError(int strId, int error) = 0;
+    virtual void appendError(int strId, int error) = 0;
     virtual void setErrorDetail(int strId, int error, const char *detail) = 0;
     virtual void setErrorPath(int strId, const char *path, int error) = 0;
     virtual void clearErrorIf(int strId) = 0;
