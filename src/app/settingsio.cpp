@@ -1604,6 +1604,9 @@ void _loadConfig()
             int legacyView = -1;
             if (configGetStr(configOPL, CONFIG_OPL_THEME, &temp)) {
                 themeID = thmFindGuiID(temp);
+#ifdef __OPLDIAG
+                diagLog("boot theme: saved '%s' resolved to catalog id %d", temp, themeID);
+#endif
                 legacyView = thmViewFromLegacyTheme(temp); // <Coverflow>/<PSBBN Flow> -> <OPL> + that view
             }
 
