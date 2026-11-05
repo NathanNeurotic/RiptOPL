@@ -1,6 +1,7 @@
-# Saved disk theme stalls on restart — investigation (2026-11-03)
+# Saved disk theme stalls on restart — investigation and fix (2026-11-03/04)
 
-**Status: cause unconfirmed; diagnostic-only PR.** The hardware report is from
+**Status: a source-confirmed invariant violation on the reported path is fixed
+(2026-11-04); hardware confirmation is still open.** The hardware report is from
 HollywoodScotty in the PS2 Scene discussion, using a configuration associated with
 Berion. A disk theme can be selected successfully through the running RiptOPL
 Interface settings menu, but after reboot the console remains on the splash near
@@ -11,6 +12,71 @@ several themes, not one broken asset pack.
 These details are the report, **not** a verified local reproduction. The exact
 edition/build, theme files, settings-home device, device source settings, model,
 and whether the GUI is frozen or only the boot worker is stalled remain unknown.
+The diagnostic breadcrumbs below stay in the `__OPLDIAG` builds so a report can
+still confirm or refute the fix on a console.
+
+## Cause found in the source, and the fix
+
+The boot path for a saved disk theme is: the splash draws on the GUI thread
+every frame; the IO worker brings a storage device up, `bdmNeedsUpdate` ->
+`thmAddElements(path, "/", 1)` finds the saved theme and runs `thmLoad` on the
+IO thread; `thmLoadFonts` calls `fntLoadFile` (and `fntSetWeight`) for each
+theme font. Every font load ends in `FontSystem::updateAspectRatioLocked`, which
+flushes **every** font's glyph cache and atlases -- including the font the splash
+is drawing its status line with.
+
+A glyph atlas is a GS texture. Its flush (`cacheFlush` -> `Atlas::destroy` ->
+`rmUnloadTexture` + `free`) does two things that are GUI-frame work everywhere
+else in the tree:
+
+- `rmUnloadTexture` -> `gsKit_TexManager_free` unlinks and frees nodes of
+  gsKit's **one global, unlocked** VRAM block list (`gsTexManager.c`). The GUI
+  thread walks and splits that same list on every textured draw
+  (`gsKit_TexManager_bind`, inside `rmDrawQuad`/`rmDrawPixmap`). The GUI thread
+  runs at priority 31 and the IO worker at 32, so a VSync wakeup preempts the
+  worker at any instruction inside that list surgery. A walk over a half-unlinked
+  or freed node can leave `_blockAlloc` spinning with the GUI lock held, which
+  matches the frozen splash; the worker then blocks on the GUI lock, so the
+  "Loading ..." label never advances.
+- `free(surface_.Mem)` releases pixels that the frame in flight still references
+  through its inline upload tags (and, under HIRES, that the DMA thread replays
+  until the next flip).
+
+The font lock added for the earlier, random form of this freeze (the long note at
+`src/gfx/fntsys.cpp` `FontSystem::lock`) covers the CPU side only: the atlas
+pointers and glyph cache. It does not serialise against gsKit's list or the GS.
+`texcache.cpp` ("GUI thread: gsKit contact is correct here"), `themes.cpp`
+`thmGlyphSetLoad` ("VRAM copies to drop ... only ever done on the GUI thread")
+and `thmLoad`'s publish tail (GUI lock, `rmDiscardFrame()`, then `thmFree`, from
+#302) all state the rule the font loaders were breaking. Selecting the same theme
+in Settings works because that load runs on the GUI thread between frames.
+
+Ruled out from the source: a GUI/theme lock-order inversion (every
+`thmSwitchSema` taker on the GUI thread runs outside the GUI lock); the heap
+(`malloc`/`free` are semaphore-locked in ps2sdk's libcglue); IO-thread stack;
+`gsKit_hires_sync` (a plain VSync semaphore wait).
+
+**Fix (`src/gfx/fntsys.cpp`):** a `FontFrameScope` -- GUI lock, `rmDiscardFrame()`,
+released at scope exit -- wraps the locked section of the four entry points that
+can flush atlases: `loadFile`, `loadDefault`, `setWeight`, `updateAspectRatio`.
+Lock order is the one `renderString` already establishes (frame lock, then font
+lock). The slow file read stays outside both locks, so the splash keeps drawing
+while a font is read from a slow device. `release()` is deliberately not wrapped:
+`thmFree` calls it already holding the GUI lock after its own `rmDiscardFrame`.
+Before `guiInit` the GUI lock is a no-op and `rmDiscardFrame` has nothing to
+retire, so `lngInit`/`thmInit` are unaffected.
+
+**Regression test:** `.github/scripts/test_font_flush_frame_lock.py` compiles
+the production loaders against a stub GUI/renderer that models the contract; its
+control build (the same code with only the scope removed) trips on "glyph atlas
+left the texture manager outside the GUI lock", the fixed build passes.
+
+**What this does not prove:** the fix is reasoned from the source and a host
+model of the ownership contract. It has not been run on the reporter's console or
+theme. If a saved-theme boot still stalls on hardware with this build, the
+watchdog report described below is the next piece of evidence; a last PC inside
+`gsKit_TexManager_bind`/`_blockAlloc` or `FontSystem::cacheFlush` would confirm
+this mechanism, anything else points past it.
 
 ## Why this needs a startup-specific test
 

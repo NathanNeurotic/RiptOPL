@@ -6,6 +6,7 @@
 
 #include "include/opl.h"
 #include "include/fntsys.h"
+#include "include/host.h"
 #include "include/renderman.h"
 #include "include/ioman.h"
 #include "include/utf8.h"
@@ -114,6 +115,30 @@ void FontSystem::unlock(void)
 {
     SignalSema(semaId_);
 }
+
+/* The font lock covers the CPU side only. The atlases a flush destroys are GS textures: gsKit's
+   texture manager keeps every texture in one unlocked global list that the GUI thread walks on each
+   draw (gsKit_TexManager_bind), and a frame's inline uploads reference the atlas pixels until that
+   frame -- under HIRES, its replay -- is retired. Dropping them from the IO worker under the font lock
+   alone (a saved disk theme found while the splash draws, the case the note above describes) races
+   the GUI thread inside gsKit and can leave it spinning in a corrupted block list with the GUI lock
+   held: the splash freezes on its last status line. So a flush is frame work, done the way thmLoad
+   publishes a theme: GUI lock, retire the in-flight frame, then the font lock -- the order
+   renderString establishes (frame lock first, font lock inside). Entry points that may flush take
+   one of these; their callers (thmLoadFonts, lngSetGuiValue, Gui::updateScreenScale) hold no GUI lock.
+   release() does not: thmFree calls it already under the lock, after its own rmDiscardFrame. Before
+   guiInit the GUI lock is a no-op and the renderer has nothing in flight. */
+struct FontFrameScope
+{
+    FontFrameScope()
+    {
+        host::ui().lock();
+        rmDiscardFrame();
+    }
+    ~FontFrameScope() { host::ui().unlock(); }
+    FontFrameScope(const FontFrameScope &) = delete;
+    FontFrameScope &operator=(const FontFrameScope &) = delete;
+};
 
 
 static inline bool glyphPageOk(const font_t *font, int page)
@@ -328,6 +353,7 @@ void FontSystem::setWeight(int id, int weight)
 {
     if (id <= FNT_DEFAULT || id >= FNT_MAX_COUNT)
         return;
+    FontFrameScope frame;
     lock();
     font_t *font = &fonts_[id];
     if (font->isValid && font->face != NULL && font->weight != weight) {
@@ -437,16 +463,19 @@ int FontSystem::loadFile(char *path, int fontSize)
     if (buffer == NULL)
         return FNT_ERROR;
 
-    lock();
-    for (i = 1; i < FNT_MAX_COUNT; i++) {
-        if (!fonts_[i].isValid) {
-            if (loadSlotLocked(&fonts_[i], buffer, bufferSize, owned, fontSize) != FNT_ERROR)
-                result = i;
-            owned = 0; // the slot owns (or already freed) it either way
-            break;
+    {
+        FontFrameScope frame; // loadSlotLocked flushes every font's atlases
+        lock();
+        for (i = 1; i < FNT_MAX_COUNT; i++) {
+            if (!fonts_[i].isValid) {
+                if (loadSlotLocked(&fonts_[i], buffer, bufferSize, owned, fontSize) != FNT_ERROR)
+                    result = i;
+                owned = 0; // the slot owns (or already freed) it either way
+                break;
+            }
         }
+        unlock();
     }
-    unlock();
 
     if (owned) // no free slot
         free(buffer);
@@ -465,6 +494,7 @@ int FontSystem::loadDefault(char *path)
 
     // The swap and the delete of the old font happen under the same lock the renderers hold, so no
     // draw can be using the old face, cache or atlases when they go.
+    FontFrameScope frame;
     lock();
     if (loadSlotLocked(&newFont, buffer, bufferSize, owned, FNTSYS_DEFAULT_SIZE) != FNT_ERROR) {
         memcpy(&oldFont, &fonts_[FNT_DEFAULT], sizeof(font_t));
@@ -606,6 +636,7 @@ fnt_glyph_cache_entry_t *FontSystem::cacheGlyph(font_t *font, uint32_t gid)
 
 void FontSystem::updateAspectRatio()
 {
+    FontFrameScope frame;
     lock();
     updateAspectRatioLocked();
     unlock();
