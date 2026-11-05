@@ -1638,7 +1638,7 @@ gui_strings:
 - label: HINT_UDPFS_ACCESS
   string: "UDPFS only. Files reads loose ISOs from the server's games folder; IMG reads a disk image as a drive. SMB and HTTP always use Files, UDPBD always IMG."
 - label: HINT_SMB_VERSION
-  string: "Which SMB version to speak to the PC share."
+  string: "Which SMB version to speak to the PC share. SMBv1: PS2 Servers' SMBv1 card. SMB2: PS2 Servers' SMBv2 or SMBv3 card, Windows, Samba; games read over SMB 2.0.2/2.1 on the OPL core, SMB 3.0 with Neutrino."
 - label: HINT_NET_ADVANCED
   string: "Unlocks Ethernet Link Mode and the SMB Port for editing."
 - label: HINT_ETH_LINK_MODE
@@ -1658,7 +1658,7 @@ gui_strings:
 - label: HINT_SMB_ADDRESS
   string: "The PC sharing your games: its IP address, or its computer name when Address Type is NetBIOS."
 - label: HINT_SMB_PORT
-  string: "SMB port. It must match the PC: PS2 Servers uses 1111, Windows and Samba shares use 445."
+  string: "SMB port. It must match the PC: PS2 Servers' SMBv1 card uses 1025, its SMBv2/SMBv3 cards 1445 (445 with Take port 445), Windows and Samba shares use 445."
 - label: HINT_SMB_USER
   string: "SMB user name. guest works for most shares."
 - label: HINT_HTTP_SERVER
