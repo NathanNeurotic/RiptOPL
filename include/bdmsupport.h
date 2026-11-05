@@ -4,6 +4,7 @@
 #include "include/iosupport.h"
 
 #define BDM_MODE_UPDATE_DELAY MENU_UPD_DELAY_GENREFRESH
+constexpr int BDM_PS1_SCAN_RETRY_MAX = 15;
 
 #include "include/mcemu.h"
 
@@ -53,6 +54,8 @@ typedef struct
     // so it can never resurrect the other view's contents. Mirrors mmceGames/mmceVcdGames.
     int bdmPs1GameCount;
     base_game_info_t *bdmPs1Games;
+    int ps1ScanFailed;
+    int ps1ScanRetries;
     char bdmDriver[32];
     int bdmDeviceType;      // Type of BDM device, see BDM_TYPE_* above
     int bdmDeviceTick;      // Used alongside BdmGeneration to tell if device data needs to be refreshed

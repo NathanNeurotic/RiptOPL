@@ -182,6 +182,16 @@ void Renderer::endFrame(void)
     gsKit_TexManager_nextFrame(gsGlobal);
 }
 
+void Renderer::discardFrame(void)
+{
+    if (hires_) {
+        // HIRES replays the last frame on its DMA thread. Between frames the current draw queue is
+        // empty: flip to it, waiting out the old DMA, before its referenced pixel buffers are freed.
+        gsKit_hires_sync(gsGlobal);
+        gsKit_hires_flip(gsGlobal);
+    }
+}
+
 void Renderer::onVSync()
 {
     if (wakeCount_ == 0) {
@@ -827,6 +837,11 @@ void rmEndFrame(void)
 {
     gRenderer.endFrame();
     rmFramesDrawn++;
+}
+
+void rmDiscardFrame(void)
+{
+    gRenderer.discardFrame();
 }
 
 void rmInit()

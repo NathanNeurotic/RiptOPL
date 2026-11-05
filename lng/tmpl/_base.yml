@@ -2457,10 +2457,19 @@ gui_strings:
   label: APP_HANDOFF_PATH
   string: App Handoff Path
 - label: HINT_APP_HANDOFF_PATH
-  string: "Legacy hands apps massN:/APPS/... (all devices). Typed hands usb0:, ata0:, ilink0: or mx4sio0: so an app that treats mass as USB finds a HDD or SD card. Per app: HANDOFFPATH=LEGACY or TYPED in its cfg. Loading is unchanged."
+  string: "Legacy: BDM apps receive massN:/...; other devices keep their normal launch paths. Typed: supported BDM apps receive usbN:/..., ataN:/..., ilinkN:/... or mx4sioN:/... when identified, otherwise massN:. Only the path passed to the app changes; ELF loading is unchanged. Per-app cfg: HANDOFFPATH=LEGACY or TYPED."
 - comment: App Handoff Path choice, today's spelling.
   label: APP_HANDOFF_LEGACY
   string: Legacy (mass)
 - comment: App Handoff Path choice, the typed spelling.
   label: APP_HANDOFF_TYPED
   string: "Typed (usb0:, ata0:)"
+- comment: Optional native OPL core console identity override, separate from Disc ID.
+  label: CONSOLE_ILINK_ID
+  string: Console i.LINK ID
+- label: HINT_CONSOLE_ILINK_ID
+  string: "Native OPL core only; Neutrino ignores it. Enter 16 hexadecimal digits in byte order. Empty or all zeros uses this console's ID. This does not change i.LINK storage hardware."
+- label: INVALID_CONSOLE_ILINK_ID
+  string: "Console i.LINK ID must be empty or exactly 16 hexadecimal digits (0-9, A-F). Settings were not saved."
+- label: LAUNCH_CONSOLE_ILINK_ID_FALLBACK
+  string: "The stored Console i.LINK ID is invalid and was ignored. This game will use the real console ID."

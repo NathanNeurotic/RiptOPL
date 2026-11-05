@@ -9,6 +9,9 @@
 #include "include/util.h"
 #include "include/ioman.h"
 #include "include/system.h"
+#ifdef __OPLDIAG
+#include "include/diaglog.h"
+#endif
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -354,17 +357,58 @@ int listDir(char *path, const char *separator, int maxElem,
 {
     int index = 0;
 
+#ifdef __OPLDIAG
+    // #297: disk themes are discovered on the device-update worker, sometimes
+    // while the storage modules are still mounting. Split a frozen theme scan
+    // into checkFile/opendir/readdir/close stages in the existing RAM trace.
+    // This is diagnostic-only: normal builds keep the original I/O sequence.
+    const int traceThemeDir = path != NULL && (strstr(path, "THM") || strstr(path, "thm"));
+    if (traceThemeDir)
+        diagLog("theme fs: checkFile begin %s", path);
+#endif
     if (checkFile(path, O_RDONLY)) {
+#ifdef __OPLDIAG
+        if (traceThemeDir)
+            diagLog("theme fs: checkFile complete; opendir begin %s", path);
+#endif
         DIR *dir = opendir(path);
         struct dirent *dirent;
+#ifdef __OPLDIAG
+        if (traceThemeDir)
+            diagLog("theme fs: opendir returned %s", dir != NULL ? "open" : "failed");
+        int readCount = 0;
+#endif
         if (dir != NULL) {
-            while (index < maxElem && (dirent = readdir(dir)) != NULL) {
+            while (index < maxElem) {
+#ifdef __OPLDIAG
+                // Only the first few reads are recorded: readdir can block,
+                // while logging every entry could evict the useful boot trace.
+                if (traceThemeDir && readCount < 4)
+                    diagLog("theme fs: readdir begin item=%d", readCount);
+#endif
+                dirent = readdir(dir);
+                if (dirent == NULL)
+                    break;
+#ifdef __OPLDIAG
+                readCount++;
+#endif
                 index = readEntry(index, path, separator, dirent->d_name, dirent->d_type);
             }
-
+#ifdef __OPLDIAG
+            if (traceThemeDir)
+                diagLog("theme fs: readdir finished; closedir begin, themes=%d", index);
+#endif
             closedir(dir);
+#ifdef __OPLDIAG
+            if (traceThemeDir)
+                diagLog("theme fs: closedir finished");
+#endif
         }
     }
+#ifdef __OPLDIAG
+    else if (traceThemeDir)
+        diagLog("theme fs: checkFile did not open %s", path);
+#endif
     return index;
 }
 

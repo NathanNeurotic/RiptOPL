@@ -4,6 +4,10 @@ This repository has one SDK and three release editions: Korium, RetroAchievement
 and IncebtIon. `--configuration` selects optional controller, diagnostic or debug
 settings within an edition. GCC and LLVM select compilers. Configuration
 candidates are not extra release channels and cannot replace standard release kits.
+The separate [RiptOPLLVM channel](../ROLLING_RELEASE.md#riptopllvm--independent-llvm-release)
+publishes the same Korium configuration bundles plus Korium RA and RiptOPLite
+from LLVM builds; its compiler-specific manifests, artifacts, checksums and tag
+remain isolated from the GCC release channels.
 
 Releases carry them for every theme, as the original did: the Korium and IncebtIon
 channels each publish `RIPTOPL-VARIANTS-<version>.zip` (`pademu0`, `ds5`, `extras`, `extras_ds5`)
@@ -11,7 +15,8 @@ and `RIPTOPL-DEBUG-<version>.zip` (every other nonstandard configuration), built
 theme, one folder per configuration with its GCC `RIPTOPL.ELF` and build manifest; the
 RetroAchievements channel publishes `RIPTOPL-RA-VARIANTS-<version>.zip` (`pademu0`, as `RIPTOPL-RA.ELF`)
 and `RIPTOPL-RA-VARIANTS-IncebtIon-<version>.zip` for its IncebtIon-theme kit. The
-publisher packs them only from builds of the released commit and SDK suite. The Korium and
+publisher packs them only from builds of the released commit and SDK suite. RiptOPLLVM enforces
+the same checks against the LLVM SDK suite and publishes its own verified bundles. The Korium and
 IncebtIon channels also publish `RIPTOPL-BUGREPORT-<version>.zip`: their `diag` build before
 compression, as `RIPTOPL-BUGREPORT.ELF`, with a README on what to send (see
 [Launch diagnostics](LAUNCH-DIAGNOSTICS.md#bug-report-build)). The publisher refuses one that is

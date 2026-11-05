@@ -847,6 +847,11 @@ void MmceSource::init(item_list_t *itemList)
     gMmceSupport.games = NULL;
     gMmceSupport.ps1GameCount = 0;
     gMmceSupport.ps1Games = NULL;
+    // A settings re-apply rebuilds the library: never carry a completed/failed PS1 latch
+    // or exhausted retry budget into the new MMCE session.
+    gMmceSupport.ps1Scanned = 0;
+    gMmceSupport.ps1ScanFailed = 0;
+    gMmceSupport.ps1ScanRetries = 0;
     gMmceSupport.resolvedDevice = -1; // re-detect the Auto slot on a fresh init (tab re-enable / settings apply)
     gMmceSupport.foldersCreatedFor[0] = '\0';
     gMmceSupport.folderRetries = 0;
@@ -927,13 +932,12 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     if (folderConsumeDirty(itemList->mode))
         return 1;
     if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1 || host::library().viewActive(itemList->mode) == LIB_VIEW_MIXED) {
-        if (!gMmceSupport.ps1Scanned) {
+        if (!gMmceSupport.ps1Scanned && !gMmceSupport.ps1ScanFailed) {
             (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
-        // A contended scan left the VCD page empty (S6): keep the ~2s refresh alive until a scan
-        // succeeds or the bounded budget runs out (no endless bus churn -- #246 doctrine). Also
-        // revives the manual-refresh button in the failed state.
+        // Retry failed or partial scans: a readable POPS half must not strand missing Ember rows.
+        // Failed first scans use this same budget, rather than the unscanned path above.
         if (gMmceSupport.ps1ScanFailed && gMmceSupport.ps1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
             gMmceSupport.ps1ScanRetries++;
             (*mmceInstance()).updateDelay = MMCE_MODE_UPDATE_DELAY;
@@ -1053,12 +1057,15 @@ int MmceSource::update(item_list_t *itemList)
         // ONE list, BOTH cores -- POPS/*.VCD unioned with EMBER/games/*, both at the card root.
         char ps1Root[sizeof(gMmceSupport.prefix)];
         gMmceSupport.getDeviceRoot(ps1Root, sizeof(ps1Root));
-        int r = ps1FillGameList(ps1Root, &gMmceSupport.ps1Games);
+        int r = ps1FillGameList(ps1Root, &gMmceSupport.ps1Games, gMmceSupport.ps1GameCount);
         if (r >= 0) { // r < 0: transient scan failure (contended bus) -> keep the last-good VCD list
             gMmceSupport.ps1Scanned = 1;
             gMmceSupport.ps1GameCount = r;
-            gMmceSupport.ps1ScanFailed = 0;
-            gMmceSupport.ps1ScanRetries = 0;
+            // A positive result can contain only one core's rows after the other scan failed.
+            // Keep those rows visible while retrying the missing half within the existing budget.
+            gMmceSupport.ps1ScanFailed = ps1GameListNeedsRetry();
+            if (!gMmceSupport.ps1ScanFailed)
+                gMmceSupport.ps1ScanRetries = 0;
         } else {
             gMmceSupport.ps1Scanned = 0;
             gMmceSupport.ps1ScanFailed = 1; // arm needsUpdate's bounded retry (S6)
@@ -1337,23 +1344,6 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         return;
     }
 
-    // (The MMCE art quiesce runs ABOVE the VCD handoff now -- both launch paths are covered by the
-    // single guard before any card IO.)
-    void *irx = &mmce_cdvdman_irx;
-    int irx_size = size_mmce_cdvdman_irx;
-    compatmask = sbPrepare(game, configSet, irx_size, static_cast<void **>(irx), &index);
-    if (compatmask < 0) // sbPrepare failed (patch zone not found): `index` is unset -- bail before using
-        return;         // it. (The old `if (settings == NULL)` guard was dead: irx + index is never NULL.)
-    settings = (struct cdvdman_settings_mmce *)((u8 *)irx + index);
-
-    // Persist last-played BEFORE any card switch below: on an FMCB-on-MMCE setup this write goes to
-    // the card's mcN: surface, and after a GameID switch it would land inside the per-game virtual
-    // card instead of the boot card (adversarial review of the native-send re-land).
-    if (gRememberLastPlayed) {
-        configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
-        host::app().saveConfig(CONFIG_LAST, 0);
-    }
-
     // The core this launch runs. A Neutrino setting falls back to the OPL core when Neutrino cannot run the game
     // (USBLD parts, a ZSO image) or no complete neutrino.elf is found. That is decided HERE, before the OPL core's
     // preparation below, so a launch that falls back gets all of it, in the same order as one set to the OPL core:
@@ -1376,6 +1366,23 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
             host::ui().warning(_l(_STR_NEUTRINO_NOT_FOUND), 6);
             coreLoader = 0;
         }
+    }
+
+    // (The MMCE art quiesce runs ABOVE the VCD handoff now -- both launch paths are covered by the
+    // single guard before any card IO.)
+    void *irx = &mmce_cdvdman_irx;
+    int irx_size = size_mmce_cdvdman_irx;
+    compatmask = sbPrepare(game, configSet, irx_size, static_cast<void **>(irx), &index, !coreLoader);
+    if (compatmask < 0) // sbPrepare failed (patch zone not found): `index` is unset -- bail before using
+        return;         // it. (The old `if (settings == NULL)` guard was dead: irx + index is never NULL.)
+    settings = (struct cdvdman_settings_mmce *)((u8 *)irx + index);
+
+    // Persist last-played BEFORE any card switch below: on an FMCB-on-MMCE setup this write goes to
+    // the card's mcN: surface, and after a GameID switch it would land inside the per-game virtual
+    // card instead of the boot card (adversarial review of the native-send re-land).
+    if (gRememberLastPlayed) {
+        configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
+        host::app().saveConfig(CONFIG_LAST, 0);
     }
 
     // Native-core GameID (AndrewBento, Gen2: with PS2 Logo off nothing ever names the game to the

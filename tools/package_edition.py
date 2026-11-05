@@ -103,7 +103,7 @@ def language_pack(destination, version):
         pack.writestr("README.txt", LANGS_README)
 
 
-def package(edition, neutrino_archive, orbit_archive=None):
+def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
     options = EDITIONS[edition]
     built = ROOT / "dist/editions" / edition
     manifest = json.loads((built / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
@@ -116,8 +116,8 @@ def package(edition, neutrino_archive, orbit_archive=None):
         raise ValueError("release packaging requires a clean source checkout and build")
     if manifest["elf_sha256"] != hashlib.sha256(elf.read_bytes()).hexdigest():
         raise ValueError("ELF no longer matches its build manifest")
-    if manifest["compiler"] != "gcc":
-        raise ValueError("published kits use GCC; LLVM artifacts are validation candidates")
+    if manifest["compiler"] != compiler:
+        raise ValueError(f"expected {compiler} release artifact, found {manifest['compiler']}")
     out = ROOT / "dist/releases" / edition
     if out.exists() and any(out.iterdir()):
         raise ValueError(f"output is not empty: {out}; use a fresh build workspace")
@@ -215,8 +215,9 @@ if __name__ == "__main__":
     parser.add_argument("edition", choices=EDITIONS)
     parser.add_argument("--neutrino-archive", required=True, type=Path, help="standard kits: the upstream Neutrino .7z (unused for RA)")
     parser.add_argument("--orbit-archive", type=Path, help="RA only: the pinned ORBIT ZIP (else downloaded)")
+    parser.add_argument("--compiler", choices=("gcc", "llvm"), default="gcc", help="required compiler provenance")
     args = parser.parse_args()
     try:
-        package(args.edition, args.neutrino_archive.resolve(), args.orbit_archive and args.orbit_archive.resolve())
+        package(args.edition, args.neutrino_archive.resolve(), args.orbit_archive and args.orbit_archive.resolve(), compiler=args.compiler)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         sys.exit(str(error))

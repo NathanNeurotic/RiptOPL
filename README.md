@@ -16,7 +16,7 @@ A heartfelt thank you to developers who have contributed pull requests directly 
 
 # RiptOPL
 
-> **C++ / ps2build edition:** This repository is RiptOPL's main line. The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader). It uses **one SDK: ps2build**, with **Korium**, **RetroAchievements** and **IncebtIon** release editions. GCC builds release kits; GCC and LLVM are both validated in CI. See the [release contract](ROLLING_RELEASE.md), [migration checkpoint](docs/MIGRATION-CHECKPOINT-2026-10-12.md), [parity ledger](docs/UPSTREAM-PARITY-2026-10-12.md), [documentation site](https://nathanneurotic.github.io/RiptOPL/) and [wiki](https://github.com/NathanNeurotic/RiptOPL/wiki). A passing build does not establish hardware acceptance; test the exact edition and commit on your console.
+> **C++ / ps2build edition:** This repository is RiptOPL's main line. The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader). It uses **one SDK: ps2build**, with **Korium**, **RetroAchievements** and **IncebtIon** release editions. The standard rolling channels ship GCC builds, and a separate **RiptOPLLVM** channel packages LLVM-built Korium, Korium RetroAchievements and RiptOPLite; GCC and LLVM are both validated in CI. See the [release contract](ROLLING_RELEASE.md), [migration checkpoint](docs/MIGRATION-CHECKPOINT-2026-10-12.md), [parity ledger](docs/UPSTREAM-PARITY-2026-10-12.md), [documentation site](https://nathanneurotic.github.io/RiptOPL/) and [wiki](https://github.com/NathanNeurotic/RiptOPL/wiki). A passing build does not establish hardware acceptance; test the exact edition and commit on your console.
 
 **An opinionated [Open PS2 Loader](https://github.com/ps2homebrew/Open-PS2-Loader) fork — aiming to be the "definitive build."**
 <br>
@@ -31,6 +31,7 @@ Review the LICENSE file for further details.<br><br>
 [![RetroAchievements](https://img.shields.io/badge/Release-RetroAchievements-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra)
 [![IncebtIon](https://img.shields.io/badge/Release-IncebtIon-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion)
 [![RiptOPLite](https://img.shields.io/badge/Release-RiptOPLite-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite)
+[![RiptOPLLVM](https://img.shields.io/badge/Release-RiptOPLLVM-purple)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm)
 
 [![License](https://img.shields.io/github/license/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=opensourceinitiative&logoColor=white&label=License)](LICENSE)
 ![Written in C++](https://img.shields.io/badge/Written%20in-C%2B%2B-skyblue?style=flat&logo=cplusplus&logoColor=white&labelColor=navy)
@@ -58,18 +59,59 @@ Review the LICENSE file for further details.<br><br>
 
 > 📖 **Full documentation & guides:** **<https://nathanneurotic.github.io/RiptOPL/>** — searchable setup and reference guides covering storage backends, the Neutrino core, PS1/VCD, the Theme Engine (with worked examples and an annotated sample theme), a full settings reference, and troubleshooting.
 
+## See RiptOPL
+
+| Korium | IncebtIon |
+| --- | --- |
+| ![RiptOPL five-cover library with matching game artwork — Korium](docs/assets/ui/coverflow-five.png) | ![RiptOPL five-cover library with matching game artwork — IncebtIon](docs/assets/ui/incebtion/coverflow-five.png) |
+
+**Your collection, your view.** Browse a classic list, three- or five-cover carousel,
+or PSBBN Flow. Real **Korium and IncebtIon v1.2.0-Beta-4052** menus captured in RIPPCSX2 with a
+12-title sample library and matching artwork. Sample files are non-bootable placeholders.
+
+[Paired screenshots and recording notes](docs/UI-CAPTURES.md) /
+[Korium MP4](docs/assets/ui/library-tour.mp4) /
+[IncebtIon MP4](docs/assets/ui/incebtion/library-tour.mp4).
+
+<details>
+<summary>Watch the library views in motion (24-second GIF)</summary>
+
+| Korium | IncebtIon |
+| --- | --- |
+| ![Browse List, three-cover, five-cover and PSBBN Flow views — Korium](docs/assets/ui/library-tour.gif) | ![Browse List, three-cover, five-cover and PSBBN Flow views — IncebtIon](docs/assets/ui/incebtion/library-tour.gif) |
+
+[Korium MP4](docs/assets/ui/library-tour.mp4) / [IncebtIon MP4](docs/assets/ui/incebtion/library-tour.mp4).
+
+</details>
+
+<details>
+<summary>See the game information panel</summary>
+
+| Korium | IncebtIon |
+| --- | --- |
+| ![Okami information with developer, description and two screenshot-art panels — Korium](docs/assets/ui/info-okami.png) | ![Okami information with developer, description and two screenshot-art panels — IncebtIon](docs/assets/ui/incebtion/info-okami.png) |
+
+[All 12 Info pages and navigation clips](docs/UI-CAPTURES.md#game-information).
+
+</details>
+
 ## Releases
 
 This repository builds **Korium**, **RetroAchievements** and **IncebtIon** on the
 single **ps2build SDK**. Korium and IncebtIon are standard loaders with distinct
 built-in themes; RetroAchievements uses Korium and enables the RA runtime.
-GCC produces release kits, while GCC and LLVM are both compiler validation gates.
+The four standard release channels ship GCC builds. **RiptOPLLVM** is a separate, pre-release
+LLVM/Clang channel for Korium, Korium RetroAchievements, and all Korium-based RiptOPLite
+builds (standard and RA). It does not replace GCC downloads or publish IncebtIon.
+Both compilers remain mandatory CI validation gates.
 
 The [Rolling Release workflow](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml)
 builds full install ZIPs, standalone loaders, app PSU saves, exact source snapshots,
-build manifests and checksums for all three editions. Channels are published only
-by an explicit dispatch after verification; unpublished builds are available as
-Actions artifacts. See [release channels and packaging](ROLLING_RELEASE.md).
+build manifests and checksums for all three editions. Channels publish only from verified integration pushes or an explicit dispatch
+with publication enabled; pull-request builds remain Actions artifacts. The
+[RiptOPLLVM workflow](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-llvm.yml)
+checks every LLVM configuration and publishes to its own
+[RiptOPLLVM release](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm). See [release channels and packaging](ROLLING_RELEASE.md).
 
 Hardware results in the feature documentation were measured on the legacy C edition unless a
 page says otherwise; each still needs a retest on this C++/ps2build edition. The parity port with the legacy
@@ -696,19 +738,22 @@ whichever answer you give.
 
 ### App Handoff Path (how the device is spelled for the app)
 
-RiptOPL mounts every USB, iLink, MX4SIO and exFAT-HDD volume as `massN:` and keeps doing so. Some apps,
-however, read a `mass` path as "this is a USB stick" and only load a USB driver, so when they are started
-from an exFAT HDD or an SD card they never find their own folder. **Settings → Game Launching → App
-Handoff Path** chooses what an ordinary app receives as its own path (argv[0]):
+For **BDM-backed apps** (USB, i.LINK, MX4SIO and exFAT/ATA volumes), RiptOPL loads the ELF
+through its shared `massN:` mount. Some apps misinterpret `mass` as "USB" and then initialize the wrong
+driver when started from ATA, i.LINK or SD storage. **Settings → Game Launching → App Handoff Path**
+controls the device spelling in an eligible app's launch argument (`argv[0]`), not its actual filesystem
+or the location of the ELF:
 
-| Choice | argv[0] the app receives | Notes |
-| ------ | ------------------------ | ----- |
-| **Legacy (mass)** (default) | `mass0:/APPS/MYAPP.ELF` | Exactly what RiptOPL has always handed over. |
-| **Typed (usb0:, ata0:)** | `usb0:/APPS/MYAPP.ELF`, `ata0:/...`, `ilink0:/...`, `mx4sio0:/...` | The names newer ps2sdk builds register next to `massN:`; numbered the way the SDK numbers them (second USB stick = `usb1:`). |
+| Choice | Example argv[0] for a BDM app | Notes |
+| ------ | -------------------------------- | ----- |
+| **Legacy (mass)** (default) | `mass0:/tools/MYAPP.ELF` | Preserve the shared BDM mount spelling. This does **not** rewrite other devices to `massN:`. |
+| **Typed (usb0:, ata0:)** | `usb0:/tools/MYAPP.ELF`, `ata0:/...`, `ilink0:/...`, `mx4sio0:/...` | Use the recognized BDM device type and its SDK-assigned index, when available. |
 
-Only the string handed to the app changes. The ELF is still read through RiptOPL's own `massN:` mount
-before any IOP reset, POPSTARTER keeps its bare `mass:` selector, HDD apps keep `hddN:...:pfs:/`, and a
-device with no typed name (UDPBD, PC CARD CF) falls back to the legacy spelling. Typed is only for apps
+The directory is not fixed: `/tools/` and `/APPS/` are merely examples. Only the path string passed to
+an eligible app changes. The ELF is still read through RiptOPL's own `massN:` mount before any IOP reset.
+Memory-card, MMCE, SMB and APA HDD applications keep their normal launch conventions; POPSTARTER keeps
+its own PS1 selector, while a BDM device with no usable typed name (UDPBD, PC CARD CF or unidentified slots)
+retains the legacy `massN:` spelling. Typed is only for apps
 built on a ps2sdk from February 26, 2026 or later: an older app does not register `usb0:`/`ata0:` at all, so
 if it opens its own folder through argv[0] it finds nothing, and nothing detects that or falls back to
 `massN:` after the handoff. Leave such apps on Legacy. To override the setting for one app, add
