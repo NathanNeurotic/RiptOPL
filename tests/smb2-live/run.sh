@@ -206,7 +206,7 @@ keepalive() {
     timeout 120 ./keepalive 127.0.0.1 "$port" ps2 secret PS2SMB
 }
 browse_smb3only() { # SMB 3-only: the menu must list and open it, negotiating an SMB 3.x dialect
-    ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso >smb3only.txt 2>&1 &&
+    timeout 120 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso >smb3only.txt 2>&1 &&
         grep -q '^ok: negotiated dialect 0x03' smb3only.txt
 }
 

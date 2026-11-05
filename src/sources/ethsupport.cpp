@@ -956,9 +956,16 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
         return 0;
     }
     // usmb2 offers only the 3.0 dialect; a server that negotiated lower cannot serve a launch.
-    if (gEthSupport.smbNegotiatedDialect() > 0 && gEthSupport.smbNegotiatedDialect() < 0x0300) {
-        host::ui().warning(_l(_STR_NEUTRINO_SMB_DIALECT), 6);
-        return 0;
+    // Ask the driver for the live dialect (a keepalive reconnect can have renegotiated), and fall
+    // back to the cached value only when the driver cannot answer (smbman: -EINVAL; session lost).
+    {
+        int dialect = fileXioDevctl(gEthSupport.base(), SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0);
+        if (dialect <= 0)
+            dialect = gEthSupport.smbNegotiatedDialect();
+        if (dialect > 0 && dialect < 0x0300) {
+            host::ui().warning(_l(_STR_NEUTRINO_SMB_DIALECT), 6);
+            return 0;
+        }
     }
     // smb_ioman/smb_fhi are read-only: a VMC on the share cannot be written. An enabled VMC keeps the game
     // on the OPL core, whose smb_mcemu writes it.

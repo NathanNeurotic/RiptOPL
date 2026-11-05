@@ -606,15 +606,15 @@ are supported using the folder structure above.
 > switches *both* sides (browsing loads the SMB2 driver instead of the SMBv1 one, and the in-game
 > reader follows). The SMB2 browse driver offers every dialect it has, SMB 2.0.2 through 3.1.1, so
 > it lists any server -- including one set to SMB 3 only, which browsing used to refuse -- and it
-> reports the dialect negotiated. The in-game reader still speaks only 2.0.2/2.1, so a game
-> launched on a share that settled below 3.0 works (the OPL core reads 2.x), while a game set to
-> the Neutrino core, which reads SMB 3.0 only, warns before launch and falls back to the OPL core
-> when the share negotiated below 3.0. One negotiate cannot reveal a 3.x-only server's minimum, so
-> keep such a server at 2.0.2/2.1 for OPL-core games. SMB2 logs on with NTLMv2 and signs requests
-> when the server requires it. If the SMB2 driver cannot load (it loads last, into the IOP memory
-> the other drivers leave), a message says so and browsing falls back to SMBv1 until the next
-> start. Changing the version while an SMB driver is loaded offers a restart. For SMBv1 use
-> PS2-Servers' SMBv1 card, or Samba with `min protocol = NT1`.
+> reports the dialect negotiated. The in-game reader opens its own connection and speaks only
+> 2.0.2/2.1: the server must *offer* one of those, while the menu's negotiation settling at 3.x does
+> not affect it. A game set to the Neutrino core, which reads SMB 3.0 only, warns before launch and
+> falls back to the OPL core when the share negotiated below 3.0. One negotiate cannot reveal a
+> 3.x-only server's minimum, so keep such a server at 2.0.2/2.1 for OPL-core games. SMB2 logs on
+> with NTLMv2 and signs requests when the server requires it. If the SMB2 driver cannot load (it
+> loads last, into the IOP memory the other drivers leave), a message says so and browsing falls
+> back to SMBv1 until the next start. Changing the version while an SMB driver is loaded offers a
+> restart. For SMBv1 use PS2-Servers' SMBv1 card, or Samba with `min protocol = NT1`.
 >
 > **RiptOPL network defaults:** the network protocol selector defaults to **Off** — under
 > **Game Sources** set **Network Connectivity** to **Manual** or **Auto** and **Protocol** (under it,
