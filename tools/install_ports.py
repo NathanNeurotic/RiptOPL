@@ -299,7 +299,9 @@ def repair_llvm_symtabs(sdk):
         if objcopy is None:
             print(f"warning: no llvm-objcopy; {library} keeps symbol tables ld.lld rejects", flush=True)
             return
-        subprocess.run([objcopy, str(library)], check=True)
+        repair_env = os.environ.copy()
+        repair_env.pop("PS2BUILD_SDK_MIRROR_TOKEN", None)
+        subprocess.run([objcopy, str(library)], check=True, env=repair_env)
         print(f"repaired symbol tables in {library}")
 
 

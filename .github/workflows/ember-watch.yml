@@ -167,40 +167,53 @@ jobs:
           done
           echo "Bundled Ember $TAG ($SHA) on rebuild/main."
 
-      # A GITHUB_TOKEN push does not trigger push workflows. Retry a missing or
-      # failed release on later ticks, but never resurrect legacy
-      # Korium branches. One run builds all three editions from one revision.
-      - name: Ensure the current bundled Ember has a three-edition release
+      # GITHUB_TOKEN pushes do not trigger push workflows. Check each compiler channel
+      # independently so a failed LLVM run never causes repeated GCC republication.
+      - name: Ensure current bundled Ember has GCC and LLVM rolling releases
         run: |
           set -eu
           R="$GITHUB_REPOSITORY"
           git fetch -q origin rebuild/main
           CURRENT_HEAD="$(git rev-parse origin/rebuild/main)"
-          # Only published, non-draft releases at this exact head prove coverage.
-          # A green publish=false verification run must never mask a missing release.
-          COVERED=yes
+          # Verification-only runs do not count; require a non-draft release tag at this head.
+          GCC_COVERED=yes
           for CHANNEL in rolling-korium rolling-ra rolling-incebtion; do
             TAG_HEAD="$(gh api "repos/$R/git/ref/tags/$CHANNEL" --jq '.object.sha' 2>/dev/null || true)"
             IS_DRAFT="$(gh release view "$CHANNEL" --repo "$R" --json isDraft --jq '.isDraft' 2>/dev/null || true)"
             if [ "$TAG_HEAD" != "$CURRENT_HEAD" ] || [ "$IS_DRAFT" != false ]; then
-              COVERED=no
+              GCC_COVERED=no
               break
             fi
           done
-          if [ "$COVERED" = yes ]; then
-            echo "All three published release tags cover $CURRENT_HEAD."
+          LLVM_COVERED=yes
+          TAG_HEAD="$(gh api "repos/$R/git/ref/tags/rolling-llvm" --jq '.object.sha' 2>/dev/null || true)"
+          IS_DRAFT="$(gh release view rolling-llvm --repo "$R" --json isDraft --jq '.isDraft' 2>/dev/null || true)"
+          if [ "$TAG_HEAD" != "$CURRENT_HEAD" ] || [ "$IS_DRAFT" != false ]; then
+            LLVM_COVERED=no
+          fi
+          if [ "$GCC_COVERED" = yes ] && [ "$LLVM_COVERED" = yes ]; then
+            echo "GCC and LLVM rolling releases cover $CURRENT_HEAD."
             exit 0
           fi
-
-          # Pushes to rebuild/main always publish; avoid duplicating one still
-          # running. Do NOT count manual verification-only dispatches as active
-          # publication (their publish job is deliberately skipped).
-          ACTIVE_PUSH="$(gh run list --repo "$R" --workflow rolling-release.yml --branch rebuild/main --limit 50 \
-            --json headSha,status,event,databaseId \
-            --jq ".[] | select(.headSha == \"$CURRENT_HEAD\" and .event == \"push\" and .status != \"completed\") | .databaseId")"
-          if [ -n "$ACTIVE_PUSH" ]; then
-            echo "An integration push is still publishing $CURRENT_HEAD."
-          else
-            echo "Publishing Korium, RetroAchievements and IncebtIon at rebuild/main."
-            gh workflow run rolling-release.yml --repo "$R" --ref rebuild/main -f publish=true
+          # A push run already in progress will publish; a verification-only
+          # dispatch must not mask a missing public release.
+          ensure_workflow() {
+            WORKFLOW="$1"
+            ACTIVE_PUSH="$(gh run list --repo "$R" --workflow "$WORKFLOW" --branch rebuild/main --limit 50 \
+              --json headSha,status,event,databaseId \
+              --jq ".[] | select(.headSha == \"$CURRENT_HEAD\" and .event == \"push\" and .status != \"completed\") | .databaseId")"
+            if [ -n "$ACTIVE_PUSH" ]; then
+              echo "$WORKFLOW is still publishing $CURRENT_HEAD."
+            else
+              echo "Dispatching $WORKFLOW at $CURRENT_HEAD."
+              gh workflow run "$WORKFLOW" --repo "$R" --ref rebuild/main -f publish=true
+            fi
+          }
+          FAILED=no
+          if [ "$GCC_COVERED" = no ]; then
+            ensure_workflow rolling-release.yml || FAILED=yes
           fi
+          if [ "$LLVM_COVERED" = no ]; then
+            ensure_workflow rolling-llvm.yml || FAILED=yes
+          fi
+          [ "$FAILED" = no ] || exit 1

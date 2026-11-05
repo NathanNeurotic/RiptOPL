@@ -11,7 +11,7 @@ name: ps2build SDK Watch
 #          downloaded, on top of the cached SDK). Pull requests and later rebuild/main runs then restore it
 #          instead of each of ~70 jobs downloading it again.
 #   pr     pushes the bumped pin file to the ci/ps2build-sdk-watch branch and opens (or refreshes) a draft
-#          pull request. A push made by GitHub Actions starts no workflow, so it starts the four SDK
+#          pull request. A push made by GitHub Actions starts no workflow, so it starts the five SDK
 #          workflows on that branch itself (Rolling Release with publish=false), and a later run starts any
 #          of them that has not run on the branch head. It proposes nothing when the pins on rebuild/main
 #          changed after check read them, never merges anything, and leaves a branch someone else has
@@ -271,6 +271,7 @@ jobs:
           dispatch configurations.yml
           dispatch flavours.yml
           dispatch rolling-release.yml -f publish=false
+          dispatch rolling-llvm.yml -f publish=false
           if [ -n "$FAILED" ]; then
             echo "::error::Could not start$FAILED on $BRANCH. The next run starts whatever has not run there."
             exit 1

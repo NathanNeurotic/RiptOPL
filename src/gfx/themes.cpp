@@ -1786,6 +1786,10 @@ static int thmLoad(const char *themePath)
     // holds thmSwitchSema, though, so curT is still the published theme here: no other load has freed it meanwhile.
     THEME_BOOT_TRACE("theme load: waiting for GUI publish");
     host::ui().lock();
+    // The GUI lock excludes CPU drawing, but HIRES still replays the previous frame's inline
+    // texture uploads. Retire that queue before freeing the theme whose buffers it references.
+    if (curT != NULL)
+        rmDiscardFrame();
     gTheme = newT;
     loadedFontSize = gFontSize;
     psbbnFlowReset();

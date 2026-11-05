@@ -171,7 +171,7 @@ int usb_connect(int devId)
 
     } while (epCount--);
 
-    // The clone is never sent an output report, so it needs only its input endpoint.
+    // ShanWan is input-only, so it needs only its input endpoint.
     if (ds34pad[pad].interruptEndp < 0 || (ds34pad[pad].outEndp < 0 && ds34pad[pad].type != SHANWAN)) {
         usb_release(pad);
         return 1;
@@ -303,7 +303,7 @@ static void readReport(u8 *data, int pad_idx)
     }
     if (pad->type == SHANWAN) { // no report ID: data[0] is a button byte and can be 0
         translate_pad_shanwan(data, &pad->ds2);
-        padMacroPerform(&pad->ds2, 0); // its PS/Home bit is not mapped yet
+        padMacroPerform(&pad->ds2, 0); // The tested unit reports ANALOG as a mode button; no PS/Home input is established for it
         return;
     }
     if (data[0]) {
