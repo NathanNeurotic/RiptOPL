@@ -81,6 +81,9 @@ public:
     // Session predicates and the public cross-module entry points (bodies; the ethXxx free
     // functions in ethsupport.cpp forward here).
     bool smbShareConnected() const;
+    // The SMB dialect the open share negotiated (0x0202 .. 0x0311), or 0 when unknown: no share
+    // open, or the smbman (SMBv1) driver, which does not report one.
+    int smbNegotiatedDialect() const { return smbNegotiatedDialect_; }
     int ensureShareConnected();
     void requestReconnect();
     void requestCheckedRefresh();
@@ -112,6 +115,7 @@ private:
     int ps1ScanFailed_ = 0;
     int ps1ScanRetries_ = 0;
     unsigned char smbModuleLoaded_ = 0;
+    int smbNegotiatedDialect_ = 0;
     unsigned char reconnectQueued_ = 0;
     unsigned char reconnectRequested_ = 0; // settings reconnect upgrades a pending checked Refresh
 };

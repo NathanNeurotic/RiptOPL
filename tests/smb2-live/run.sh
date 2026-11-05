@@ -26,8 +26,9 @@
 # All are built with AddressSanitizer and UBSan; a sanitizer report, a leak included, fails the case
 # (it exits 86, so not even a case that expects a refusal takes one for it).
 # The server is started on a private port with NTLMv2 only, run once with signing mandatory and once
-# with signing off, once capped at SMB 2.0.2, and once SMB 3-only, which the browse driver must
-# refuse; longname.sh's SMB1 cases restart it with signing off and NT1 and NTLM allowed, as smb.c
+# with signing off, once capped at SMB 2.0.2, and once SMB 3-only, where the browse driver must
+# connect and report an SMB 3.x dialect (it offers 2.0.2 through 3.1.1, so any server is reachable);
+# longname.sh's SMB1 cases restart it with signing off and NT1 and NTLM allowed, as smb.c
 # needs. Guest logons (an unknown user, and a blank user name) are checked against a guest-ok share;
 # a blank user name is also checked against a server where only a real "Guest" account gets in,
 # since it logs on as "Guest" as the menu does, not anonymously.
@@ -161,7 +162,7 @@ done
 cc $san -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$lib/include" -I"$lib/include/smb2" \
     -Dmalloc=iop_malloc -Dfree=iop_free -Dcalloc=iop_calloc -Drealloc=iop_realloc -D_start=smb2man_start \
     -c "$root/modules/network/smb2man/smb2man.c" -o "$work/smb2man.o"
-cc $san -Wall -I"$here/inc-browse" -I"$work/inc" "$here/browse.c" "$work/smb2man.o" "$work"/lib/*.o -o "$work/browse"
+cc $san -Wall -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" "$here/browse.c" "$work/smb2man.o" "$work"/lib/*.o -o "$work/browse"
 cc $san -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$lib/include" -I"$lib/include/smb2" \
     -I"$root/modules/network/smb2man" -Dmalloc=iop_malloc -Dfree=iop_free -Dcalloc=iop_calloc -Drealloc=iop_realloc \
     -D_start=smb2man_start "$here/keepalive.c" "$work"/lib/*.o -o "$work/keepalive"
@@ -204,14 +205,9 @@ browse() {
 keepalive() {
     timeout 120 ./keepalive 127.0.0.1 "$port" ps2 secret PS2SMB
 }
-browse_refused() { # SMB 3-only: the menu must not list a server the in-game reader cannot reach
-    rc=0
-    timeout 60 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso >refused.txt 2>&1 || rc=$?
-    cat refused.txt
-    # its checks failed, not 0 (it listed the server), 124 (a hang) or 86 (a sanitizer report); and the
-    # ones that failed are the share list and opening the share, not some unrelated check
-    [ $rc -eq 1 ] && grep -q '^FAIL: share list' refused.txt && grep -q '^FAIL: openshare PS2SMB' refused.txt &&
-        ! grep -q '^ok: share list' refused.txt && ! grep -q '^ok: openshare PS2SMB' refused.txt
+browse_smb3only() { # SMB 3-only: the menu must list and open it, negotiating an SMB 3.x dialect
+    ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso >smb3only.txt 2>&1 &&
+        grep -q '^ok: negotiated dialect 0x03' smb3only.txt
 }
 
 run "in-game reader: UTF-8 names to UTF-16 (put_utf16)" ./utf16
@@ -239,7 +235,7 @@ run "in-game reader, SMB 2.0.2 only, signing mandatory" ingame ps2 secret
 run "browse driver, SMB 2.0.2 only" browse
 write_conf mandatory "server min protocol = SMB3"
 start_smbd
-run "browse driver refuses an SMB 3-only server" browse_refused
+run "browse driver reaches an SMB 3-only server" browse_smb3only
 . "$here/longname.sh"
 
 [ $fails -eq 0 ] && echo "smb2-live: all passed" || echo "smb2-live: $fails failed"

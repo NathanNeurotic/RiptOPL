@@ -6,6 +6,7 @@
 #include <errno.h>
 #include "iomanX.h"
 #include "ps2smb.h"
+#include "smb2man_devctl.h"
 
 static iop_device_t *dev;
 int AddDrv(iop_device_t *d)
@@ -90,6 +91,8 @@ int main(int argc, char **argv)
         printf("   share %s (%s)\n", shares[i].ShareName, shares[i].ShareComment);
 
     CHECK(openshare(share) == 0, "openshare %s", share);
+    int dialect = OPS->devctl(NULL, "", SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0);
+    CHECK(dialect >= 0x0202 && dialect <= 0x0311, "negotiated dialect 0x%04x in 2.0.2..3.1.1", dialect);
     CHECK(OPS->devctl(NULL, "", SMB_DEVCTL_ECHO, NULL, 0, NULL, 0) == 0, "echo with the share open is a real round trip");
 
     iop_file_t f = {0}, d = {0};
@@ -198,9 +201,11 @@ int main(int argc, char **argv)
 
     /* close share and reopen (the menu's reconnect) */
     CHECK(OPS->devctl(NULL, "", SMB_DEVCTL_CLOSESHARE, NULL, 0, NULL, 0) == 0, "closeshare");
+    CHECK(OPS->devctl(NULL, "", SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0) == -ENODEV, "dialect gone with the share");
     CHECK(OPS->devctl(NULL, "", SMB_DEVCTL_ECHO, NULL, 0, NULL, 0) == 0, "echo after closeshare: logged on, nothing lost");
     CHECK(OPS->open(&f, iso, FIO_O_RDONLY, 0) < 0, "open after closeshare fails");
     CHECK(openshare(share) == 0, "reopen share");
+    CHECK(OPS->devctl(NULL, "", SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0) >= 0x0202, "dialect back with the reopened share");
     fd = OPS->open(&f, iso, FIO_O_RDONLY, 0);
     CHECK(fd >= 0 && OPS->read(&f, a, 2048) == 2048, "read after reconnect");
     OPS->close(&f);
@@ -208,6 +213,7 @@ int main(int argc, char **argv)
     fd = OPS->open(&f, iso, FIO_O_RDONLY, 0);
     CHECK(OPS->devctl(NULL, "", SMB_DEVCTL_LOGOFF, NULL, 0, NULL, 0) == 0, "logoff with a handle open");
     CHECK(OPS->devctl(NULL, "", SMB_DEVCTL_ECHO, NULL, 0, NULL, 0) == -ENODEV, "echo after logoff reports no session");
+    CHECK(OPS->devctl(NULL, "", SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0) == -ENODEV, "dialect gone with the session");
     CHECK(OPS->read(&f, a, 16) < 0, "stale handle after logoff is refused");
     /* ...and stays refused once a new session reuses its slot for another open */
     CHECK(logon(ip, port, user, pw) == 0 && openshare(share) == 0, "logon + openshare after logoff");
