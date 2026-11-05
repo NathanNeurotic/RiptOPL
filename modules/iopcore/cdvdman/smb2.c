@@ -44,6 +44,18 @@
 #define SMB2_TI_MAX      512   // NTLM target info we keep for the AUTHENTICATE message
 #define SMB2_MAX_FILES   (ISO_MAX_PARTS + 4)
 
+/* SMSTCPIP has no SO_RCVTIMEO and its lwip_select is a stub, so a blocking plwip_recv waits
+   forever -- and at boot RecvData runs inside smbinit's synchronous module load, where one
+   reply that never arrives wedges the whole launch on a black screen. Poll with MSG_DONTWAIT
+   instead and give up on a connection that stays silent, so the negotiate caller's retry
+   loop reconnects. The flag is 0x40 as in SMSTCPIP's lwip/sockets.h (smstcpip.h declares the
+   imports but not the flag); it matches the host's MSG_DONTWAIT in the live harness too. */
+#ifndef MSG_DONTWAIT
+#define MSG_DONTWAIT 0x40
+#endif
+
+#define SMB2_RECV_TIMEOUT_MS 10000 // longest wire silence tolerated before the connection is declared dead
+
 #define SMB2_HDR_SIZE 64
 
 #define SMB2_NEGOTIATE     0x0000
@@ -245,14 +257,22 @@ static int SendData(int sock, const void *buf, int size)
 static int RecvData(int sock, void *buf, int size)
 {
     u8 *ptr = (u8 *)buf;
-    int remaining = size, result;
+    int remaining = size, result, waited = 0;
 
     while (remaining > 0) {
-        result = plwip_recv(sock, ptr, remaining, 0);
-        if (result <= 0)
+        result = plwip_recv(sock, ptr, remaining, MSG_DONTWAIT);
+        if (result > 0) {
+            ptr += result;
+            remaining -= result;
+            waited = 0;
+            continue;
+        }
+        // 0: closed by the peer. < 0 after SMB2_RECV_TIMEOUT_MS of silence: declared dead
+        // (would-block and harder errors alike -- the caller reconnects either way).
+        if (result == 0 || waited >= SMB2_RECV_TIMEOUT_MS)
             return -1;
-        ptr += result;
-        remaining -= result;
+        DelayThread(1000); // 1 ms
+        waited++;
     }
 
     return size;
