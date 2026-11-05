@@ -411,10 +411,11 @@ void EthSupport::loadModules(void)
             LOG("SMBSUPPORT Modules loaded\n");
             // The player picked SMB2 and is about to browse on SMBv1 without having changed
             // anything. Say so: a server set up for SMB2 will just reject the SMB1 negotiate,
-            // and nothing else on screen explains why.
-            if (smb2LoadError < 0)
-                host::app().setError(_STR_NETWORK_SMB2_FALLBACK, smb2LoadError);
+            // and nothing else on screen explains why. Goes after initSmb() and is appended
+            // to any SMB1 error that raised, so the cause is not lost under the symptom.
             initSmb();
+            if (smb2LoadError < 0)
+                host::app().appendError(_STR_NETWORK_SMB2_FALLBACK, smb2LoadError);
             return;
         }
     }

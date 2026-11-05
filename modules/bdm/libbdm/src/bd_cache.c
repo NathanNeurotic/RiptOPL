@@ -1,4 +1,5 @@
 #include <bd_cache.h>
+#include <intrman.h>
 #include <string.h>
 #include <sysmem.h>
 
@@ -16,7 +17,30 @@
 // cached devices; later ones mount uncached, the same path as an allocation failure.
 #define CACHED_DEVICES_MAX 2
 
+// Devices connect from their own threads (USB, MX4SIO, iLink, ATA) and BDM has no lock around
+// bdm_connect_bd, so a slot is taken and given back with interrupts off.
 static int cached_devices;
+
+static int _reserve_slot(void)
+{
+    int state, ok;
+
+    CpuSuspendIntr(&state);
+    ok = cached_devices < CACHED_DEVICES_MAX;
+    if (ok)
+        cached_devices++;
+    CpuResumeIntr(state);
+    return ok;
+}
+
+static void _release_slot(void)
+{
+    int state;
+
+    CpuSuspendIntr(&state);
+    cached_devices--;
+    CpuResumeIntr(state);
+}
 
 struct bd_cache
 {
@@ -185,7 +209,7 @@ struct block_device *bd_cache_create(struct block_device *bd)
     // the NULL. In both cases return NULL: BDM then mounts the device uncached.
     if (bd->sectorSize != 512)
         return NULL;
-    if (cached_devices >= CACHED_DEVICES_MAX)
+    if (!_reserve_slot())
         return NULL;
 
     // Create new block device
@@ -198,12 +222,12 @@ struct block_device *bd_cache_create(struct block_device *bd)
             FreeSysMemory(cbd);
         if (c != NULL)
             FreeSysMemory(c);
+        _release_slot();
         return NULL;
     }
 
     M_DEBUG("%s\n", __FUNCTION__);
 
-    cached_devices++;
     c->bd = bd;
     for (blkidx = 0; blkidx < BLOCK_COUNT; blkidx++) {
         c->weight[blkidx] = 0;
@@ -239,7 +263,7 @@ void bd_cache_destroy(struct block_device *cbd)
 {
     M_DEBUG("%s\n", __FUNCTION__);
 
-    cached_devices--;
+    _release_slot();
     FreeSysMemory(cbd->priv);
     FreeSysMemory(cbd);
 }

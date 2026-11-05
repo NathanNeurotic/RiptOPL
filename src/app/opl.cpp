@@ -1142,6 +1142,29 @@ void setErrorMessagePathCode(int strId, const char *path, int error)
     guiSetFrameHook(&errorMessageHook);
 }
 
+// Adds a second message below one that is already pending instead of replacing it, so a secondary
+// cause (the SMB2 driver did not load) survives the primary failure (SMB1 connect) that follows it.
+// With nothing pending it behaves exactly like setErrorMessageWithCode. The pending message keeps
+// ownership of errorMessageStringId so clearErrorMessageIf still matches the primary caller.
+void appendErrorMessageWithCode(int strId, int error)
+{
+    char pending[sizeof(errorMessage)];
+    char added[sizeof(errorMessage)];
+
+    if (errorMessageStringId == -1) {
+        setErrorMessageWithCode(strId, error);
+        return;
+    }
+
+    strncpy(pending, errorMessage, sizeof(pending) - 1);
+    pending[sizeof(pending) - 1] = '\0';
+    formatErrorMessage(_l(strId), NULL, error, 0, 1);
+    strncpy(added, errorMessage, sizeof(added) - 1);
+    added[sizeof(added) - 1] = '\0';
+    snprintf(errorMessage, sizeof(errorMessage), "%s\n%s", pending, added);
+    guiSetFrameHook(&errorMessageHook);
+}
+
 void clearErrorMessageIf(int strId)
 {
     if (errorMessageStringId == strId)
