@@ -2426,6 +2426,9 @@ gui_strings:
 - comment: SMB game set to Neutrino, but the SMB port is not 445, the only one Neutrino uses.
   label: NEUTRINO_SMB_PORT
   string: Neutrino reaches SMB on port 445 only -- launching with the OPL core.
+- comment: SMB game set to Neutrino, but the share negotiated a dialect below 3.0, the only one Neutrino speaks.
+  label: NEUTRINO_SMB_DIALECT
+  string: This server does not offer SMB 3.0, which Neutrino needs -- launching with the OPL core.
 - comment: SMB game set to Neutrino, but it has a VMC on the share, which Neutrino cannot write.
   label: NEUTRINO_SMB_VMC
   string: Neutrino cannot write a VMC on the SMB share -- launching with the OPL core.

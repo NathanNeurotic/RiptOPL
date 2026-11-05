@@ -180,14 +180,13 @@ smb2_get_real_credit_charge_for_one_pdu(struct smb2_context *smb2, struct smb2_h
 static int
 smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        int credits = 0;
-
-        while (pdu) {
-                credits += smb2_get_real_credit_charge_for_one_pdu(smb2, &pdu->header);
-                pdu = pdu->next_compound;
-        }
-
-        return credits;
+        /* Only the first request of a compound carries a charge that counts:
+         * the send path deducts just this one (smb2_write_to_socket), and
+         * [MS-SMB2] 3.2.4.1.1 has the server ignore the rest. Summing every
+         * chained request here stalls a compound behind a server that grants
+         * a small credit window: smb2_which_events never arms POLLOUT, so the
+         * request is never sent and never answered. */
+        return smb2_get_real_credit_charge_for_one_pdu(smb2, &pdu->header);
 }
 
 int

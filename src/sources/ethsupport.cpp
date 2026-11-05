@@ -24,6 +24,7 @@
 #include "include/mmcesupport.h"  // mmceSendGameID() cross-device game-id (#261)
 #include "include/ps2sdkapi_compat.h"
 #include "modules/iopcore/common/cdvd_config.h"
+#include "modules/network/smb2man/smb2man_devctl.h" // SMB2_DEVCTL_GETDIALECT
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDevctl(dev, SMB_***)
@@ -111,6 +112,10 @@ void EthSupport::smbConnect(void)
                 if (fileXioDevctl(base_, SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0) >= 0) {
                     // everything is ok
                     gNetworkStartup = 0;
+                    // smb2man reports the dialect; smbman rejects the command, which leaves 0 (unknown).
+                    int dialect = fileXioDevctl(base_, SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0);
+                    smbNegotiatedDialect_ = dialect > 0 ? dialect : 0;
+                    LOG("ETHSUPPORT share open, SMB dialect 0x%04x\n", smbNegotiatedDialect_);
                 }
             }
         } else {
@@ -128,6 +133,7 @@ int EthSupport::smbDisconnect(void)
     // Always attempt both halves. CLOSESHARE legitimately fails after a connection/logon error or
     // when LOGON succeeded but OPENSHARE did not; returning early there used to leave that partial
     // session alive, so the next explicit reconnect was not actually a clean retry.
+    smbNegotiatedDialect_ = 0;
     shareRet = fileXioDevctl(base_, SMB_DEVCTL_CLOSESHARE, NULL, 0, NULL, 0);
     logoffRet = fileXioDevctl(base_, SMB_DEVCTL_LOGOFF, NULL, 0, NULL, 0);
     if (shareRet < 0)
@@ -948,6 +954,18 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
     if (gPCPort != NEUTRINO_SMB_PORT) {
         host::ui().warning(_l(_STR_NEUTRINO_SMB_PORT), 6);
         return 0;
+    }
+    // usmb2 offers only the 3.0 dialect; a server that negotiated lower cannot serve a launch.
+    // Ask the driver for the live dialect (a keepalive reconnect can have renegotiated), and fall
+    // back to the cached value only when the driver cannot answer (smbman: -EINVAL; session lost).
+    {
+        int dialect = fileXioDevctl(gEthSupport.base(), SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0);
+        if (dialect <= 0)
+            dialect = gEthSupport.smbNegotiatedDialect();
+        if (dialect > 0 && dialect < 0x0300) {
+            host::ui().warning(_l(_STR_NEUTRINO_SMB_DIALECT), 6);
+            return 0;
+        }
     }
     // smb_ioman/smb_fhi are read-only: a VMC on the share cannot be written. An enabled VMC keeps the game
     // on the OPL core, whose smb_mcemu writes it.

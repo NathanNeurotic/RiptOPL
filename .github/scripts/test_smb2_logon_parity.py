@@ -117,7 +117,7 @@ setup = function_body(smb2man, 'smb2man_new_context')
 check(sorted(set(re.findall(r'\b(smb2_set_\w+)\s*\(', setup))) ==
       ['smb2_set_password', 'smb2_set_security_mode', 'smb2_set_timeout', 'smb2_set_version'] and
       re.search(r'\bsmb2_set_security_mode\(\s*ctx\s*,\s*SMB2_NEGOTIATE_SIGNING_ENABLED\s*\)\s*;', setup) and
-      re.search(r'\bsmb2_set_version\(\s*ctx\s*,\s*SMB2_VERSION_ANY2\s*\)\s*;', setup),
+      re.search(r'\bsmb2_set_version\(\s*ctx\s*,\s*SMB2_VERSION_ANY\s*\)\s*;', setup),
       'smb2man_new_context() sets libsmb2 up differently: make the menu logon in this check do the same')
 # The password is set once in all of smb2man.c: in smb2man_new_context(), at its top level, and the
 # only return before it is the one for a failed allocation (without a password libsmb2 logs on
@@ -426,7 +426,7 @@ UPPER = [('full Unicode', str.upper), ('ASCII only', lambda s: ''.join(c.upper()
 
 MENU = r'''
 /* The menu's logon: libsmb2 set up as smb2man_new_context() sets it up (signing enabled, SMB 2.0.2
-   and 2.1, a timeout, the password always set, no user and no domain set) and connected as
+   through 3.1.1, a timeout, the password always set, no user and no domain set) and connected as
    smb2man.c connects: to the server as its LOGON names it, "<ip>", or "<ip>:<port>" off port 445,
    with a blank user passed as NULL. */
 #include <errno.h>
@@ -460,7 +460,7 @@ int main(int argc, char **argv)
     else
         sprintf(server, "%.15s", argv[1]);
     smb2_set_security_mode(ctx, SMB2_NEGOTIATE_SIGNING_ENABLED);
-    smb2_set_version(ctx, SMB2_VERSION_ANY2);
+    smb2_set_version(ctx, SMB2_VERSION_ANY);
     smb2_set_timeout(ctx, 10);
     smb2_set_password(ctx, argv[5]);
     rc = smb2_connect_share(ctx, server, argv[3], argv[4][0] ? argv[4] : NULL);
