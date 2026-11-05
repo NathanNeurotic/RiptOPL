@@ -9,6 +9,15 @@
 #define BLOCK_COUNT         32  // 32 * 4KiB = 128KiB
 #define BLOCK_WEIGHT_FACTOR 256 // Fixed point math (24.8)
 
+// RiptOPL: every physical BDM device gets its own 128 KiB cache, and they are all allocated before
+// the network drivers load. On a console with an HDD, an MX4SIO card and two USB sticks that is
+// 512 KiB of the 2 MiB IOP, and the largest free block left for the SMB2 driver (163 KB staged
+// plus 149 KB resident) was 274 KB: it failed with -400 and the menu fell back to SMBv1. Cap the
+// cached devices; later ones mount uncached, the same path as an allocation failure.
+#define CACHED_DEVICES_MAX 2
+
+static int cached_devices;
+
 struct bd_cache
 {
     struct block_device *bd;
@@ -176,6 +185,8 @@ struct block_device *bd_cache_create(struct block_device *bd)
     // the NULL. In both cases return NULL: BDM then mounts the device uncached.
     if (bd->sectorSize != 512)
         return NULL;
+    if (cached_devices >= CACHED_DEVICES_MAX)
+        return NULL;
 
     // Create new block device
     struct block_device *cbd = AllocSysMemory(ALLOC_FIRST, sizeof(struct block_device), NULL);
@@ -192,6 +203,7 @@ struct block_device *bd_cache_create(struct block_device *bd)
 
     M_DEBUG("%s\n", __FUNCTION__);
 
+    cached_devices++;
     c->bd = bd;
     for (blkidx = 0; blkidx < BLOCK_COUNT; blkidx++) {
         c->weight[blkidx] = 0;
@@ -227,6 +239,7 @@ void bd_cache_destroy(struct block_device *cbd)
 {
     M_DEBUG("%s\n", __FUNCTION__);
 
+    cached_devices--;
     FreeSysMemory(cbd->priv);
     FreeSysMemory(cbd);
 }

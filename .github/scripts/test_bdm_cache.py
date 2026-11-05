@@ -164,6 +164,16 @@ int main(void)
     memset(disk + 200 * 512, 200 * 7 + 1, 512); /* restore the pattern on disk ... */
     assert(bd->read(bd, 200, buf, 1) == 1 && is_sector(buf, 200)); /* ... and the cache must not mask it */
 
+    /* At most two devices are cached (IOP memory for the SMB2 driver); a third mounts uncached, and
+       disconnecting a cached device frees its slot. */
+    struct block_device *bd2 = bd_cache_create(&raw);
+    assert(bd2 != NULL);
+    assert(bd_cache_create(&raw) == NULL);
+    bd_cache_destroy(bd2);
+    bd2 = bd_cache_create(&raw);
+    assert(bd2 != NULL);
+    bd_cache_destroy(bd2);
+
     bd_cache_destroy(bd);
     puts("bd_cache: all cases passed");
     return 0;
