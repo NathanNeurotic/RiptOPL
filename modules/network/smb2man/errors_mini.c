@@ -5,7 +5,7 @@
  * smb2man only ever prints into smb2_set_error() messages. On the IOP that
  * table decides whether smb2man.irx fits into the memory left after the
  * network and BDM stacks are loaded, so it is replaced by a hex formatter.
- * nterror_to_errno() below is upstream's mapping, copied unchanged (LGPL-2.1,
+ * nterror_to_errno() below is upstream's mapping, copied as is, clang-formatted (LGPL-2.1,
  * Copyright (C) 2016 by Ronnie Sahlberg <ronniesahlberg@gmail.com>).
  */
 
@@ -22,22 +22,24 @@
 #include "smb2.h"
 #include "libsmb2.h"
 
-const char *nterror_to_str(uint32_t status) {
-        static char buf[16];
+const char *nterror_to_str(uint32_t status)
+{
+    static char buf[16];
 
-        sprintf(buf, "0x%08x", (unsigned int)status);
-        return buf;
+    sprintf(buf, "0x%08x", (unsigned int)status);
+    return buf;
 }
 
-int nterror_to_errno(uint32_t status) {
-        switch (status) {
+int nterror_to_errno(uint32_t status)
+{
+    switch (status) {
         case SMB2_STATUS_SUCCESS:
         case SMB2_STATUS_END_OF_FILE:
-                return 0;
+            return 0;
         case SMB2_STATUS_PENDING:
-                return EAGAIN;
+            return EAGAIN;
         case SMB2_STATUS_SHUTDOWN:
-                return -(int)SMB2_STATUS_SHUTDOWN;
+            return -(int)SMB2_STATUS_SHUTDOWN;
         case SMB2_STATUS_NO_SUCH_FILE:
         case SMB2_STATUS_NO_SUCH_DEVICE:
         case SMB2_STATUS_BAD_NETWORK_NAME:
@@ -49,23 +51,23 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_DELETE_PENDING:
         case SMB2_STATUS_REDIRECTOR_NOT_STARTED:
         case SMB2_STATUS_NOT_FOUND:
-                return ENOENT;
+            return ENOENT;
         case SMB2_STATUS_SMB_BAD_FID:
         case SMB2_STATUS_INVALID_HANDLE:
         case SMB2_STATUS_OBJECT_TYPE_MISMATCH:
         case SMB2_STATUS_PORT_DISCONNECTED:
         case SMB2_STATUS_INVALID_PORT_HANDLE:
         case SMB2_STATUS_HANDLE_NOT_CLOSABLE:
-                return EBADF;
+            return EBADF;
         case SMB2_STATUS_MORE_PROCESSING_REQUIRED:
-                return EAGAIN;
+            return EAGAIN;
         case SMB2_STATUS_ACCESS_DENIED:
         case SMB2_STATUS_NETWORK_ACCESS_DENIED:
         case SMB2_STATUS_ACCOUNT_RESTRICTION:
         case SMB2_STATUS_INVALID_LOGON_HOURS:
         case SMB2_STATUS_PASSWORD_EXPIRED:
         case SMB2_STATUS_ACCOUNT_DISABLED:
-                return EACCES;
+            return EACCES;
         case SMB2_STATUS_INVALID_LOCK_SEQUENCE:
         case SMB2_STATUS_INVALID_VIEW_SIZE:
         case SMB2_STATUS_ALREADY_COMMITTED:
@@ -77,15 +79,15 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_PROCESS_IS_TERMINATING:
         case SMB2_STATUS_CANNOT_DELETE:
         case SMB2_STATUS_FILE_DELETED:
-                return EPERM;
+            return EPERM;
         case SMB2_STATUS_DIRECTORY_NOT_EMPTY:
-                return ENOTEMPTY;
+            return ENOTEMPTY;
         case SMB2_STATUS_NO_MORE_FILES:
-                return ENODATA;
+            return ENODATA;
         case SMB2_STATUS_LOGON_FAILURE:
-                return ECONNREFUSED;
+            return ECONNREFUSED;
         case SMB2_STATUS_NOT_A_DIRECTORY:
-                return ENOTDIR;
+            return ENOTDIR;
         case SMB2_STATUS_NOT_IMPLEMENTED:
         case SMB2_STATUS_INVALID_DEVICE_REQUEST:
         case SMB2_STATUS_ILLEGAL_FUNCTION:
@@ -95,42 +97,42 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_IO_REPARSE_TAG_INVALID:
         case SMB2_STATUS_IO_REPARSE_TAG_MISMATCH:
         case SMB2_STATUS_IO_REPARSE_DATA_INVALID:
-                return EINVAL;
+            return EINVAL;
         case SMB2_STATUS_IO_REPARSE_TAG_NOT_HANDLED:
         case SMB2_STATUS_REPARSE_POINT_NOT_RESOLVED:
-                return ENOLINK;
+            return ENOLINK;
         case SMB2_STATUS_DIRECTORY_IS_A_REPARSE_POINT:
-                return EISDIR;
+            return EISDIR;
         case SMB2_STATUS_STOPPED_ON_SYMLINK:
-                return ENOLINK;
+            return ENOLINK;
         case SMB2_STATUS_TOO_MANY_OPENED_FILES:
-                return EMFILE;
+            return EMFILE;
         case SMB2_STATUS_SECTION_TOO_BIG:
         case SMB2_STATUS_TOO_MANY_PAGING_FILES:
         case SMB2_STATUS_INSUFF_SERVER_RESOURCES:
-                return ENOMEM;
+            return ENOMEM;
         case SMB2_STATUS_NOT_SAME_DEVICE:
-                return EXDEV;
+            return EXDEV;
         case SMB2_STATUS_SHARING_VIOLATION:
-                return ETXTBSY;
+            return ETXTBSY;
         case SMB2_STATUS_FILE_LOCK_CONFLICT:
         case SMB2_STATUS_LOCK_NOT_GRANTED:
-                return EDEADLK;
+            return EDEADLK;
         case SMB2_STATUS_OBJECT_NAME_COLLISION:
-                return EEXIST;
+            return EEXIST;
         case SMB2_STATUS_PIPE_DISCONNECTED:
-                return EPIPE;
+            return EPIPE;
         case SMB2_STATUS_MEDIA_WRITE_PROTECTED:
-                return EROFS;
+            return EROFS;
         case SMB2_STATUS_NO_MEDIA_IN_DEVICE:
-                return ENODEV;
+            return ENODEV;
         case SMB2_STATUS_DATA_ERROR:
         case SMB2_STATUS_CRC_ERROR:
         case SMB2_STATUS_DEVICE_DATA_ERROR:
         case SMB2_STATUS_IO_DEVICE_ERROR:
-                return EIO;
+            return EIO;
         case SMB2_STATUS_DISK_FULL:
-                return ENOSPC;
+            return ENOSPC;
         case SMB2_STATUS_CANCELLED:
         case SMB2_STATUS_FILE_CLOSED:
         case SMB2_STATUS_VOLUME_DISMOUNTED:
@@ -140,25 +142,25 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_CONNECTION_ABORTED:
         case SMB2_STATUS_NETWORK_NAME_DELETED:
         case SMB2_STATUS_INVALID_NETWORK_RESPONSE:
-                /* 
+            /* 
                 ** We return this errno with the intention that caller can
                 ** retry when any of these are received.
                 */
-                return ENETRESET;
+            return ENETRESET;
         case SMB2_STATUS_PATH_NOT_COVERED:
-                /* 
+            /* 
                 ** We do not have an errno which can be an equivalent of this
                 ** NT_STATUS code. To handle this, return a code which will not
                 ** be used as we are operating over a network.
                 */
-                return ENOEXEC;
+            return ENOEXEC;
         case SMB2_STATUS_IO_TIMEOUT:
-                return ETIMEDOUT;
+            return ETIMEDOUT;
         case SMB2_STATUS_INSUFFICIENT_RESOURCES:
-                return EBUSY;
+            return EBUSY;
         case SMB2_STATUS_INTERNAL_ERROR:
-                /* Fall through. */
+            /* Fall through. */
         default:
-                return EIO;
-        }
+            return EIO;
+    }
 }
