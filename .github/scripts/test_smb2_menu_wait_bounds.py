@@ -571,10 +571,15 @@ def run(compiler: str, suffix: str, source: str) -> None:
         src = Path(temp) / ("case." + suffix)
         exe = Path(temp) / "case"
         src.write_text(source, encoding="utf-8")
-        subprocess.run(
+        compile_result = subprocess.run(
             [compiler, "-O0", "-Wall", "-Wextra", "-Wno-unused-parameter",
-             str(src), "-o", str(exe)], check=True,
+             str(src), "-o", str(exe)], capture_output=True, text=True,
         )
+        if compile_result.returncode:
+            # The aggregated host runner retains only a short tail. Put all
+            # diagnostics on one line so the actual failure is not concealed.
+            raise RuntimeError("Host test compile failed: " +
+                               compile_result.stderr.replace("\\n", " | ")[:6000])
         subprocess.run([str(exe)], check=True, timeout=15)
 
 
