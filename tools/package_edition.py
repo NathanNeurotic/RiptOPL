@@ -104,7 +104,14 @@ def language_pack(destination, version):
 
 
 def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
+    """Build and verify one release kit, using a pinned ORBIT runtime for RA editions.
+
+    Standard editions require an upstream Neutrino archive; RA editions must not
+    depend on that unused download. Both retain per-file and archive provenance.
+    """
     options = EDITIONS[edition]
+    if not options["ra"] and neutrino_archive is None:
+        raise ValueError("standard kit requires --neutrino-archive")
     built = ROOT / "dist/editions" / edition
     manifest = json.loads((built / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     if manifest.get("configuration", "standard") != "standard":
@@ -210,14 +217,20 @@ def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
     print(f"Verified {options['title']} release assets: {out}")
 
 
-if __name__ == "__main__":
+def main(argv=None):
+    """Parse the release-kit command line and require a stock archive only for non-RA kits."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("edition", choices=EDITIONS)
-    parser.add_argument("--neutrino-archive", required=True, type=Path, help="standard kits: the upstream Neutrino .7z (unused for RA)")
+    parser.add_argument("--neutrino-archive", type=Path, help="required for non-RA kits: the upstream Neutrino .7z")
     parser.add_argument("--orbit-archive", type=Path, help="RA only: the pinned ORBIT ZIP (else downloaded)")
     parser.add_argument("--compiler", choices=("gcc", "llvm"), default="gcc", help="required compiler provenance")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
-        package(args.edition, args.neutrino_archive.resolve(), args.orbit_archive and args.orbit_archive.resolve(), compiler=args.compiler)
+        package(args.edition, args.neutrino_archive.resolve() if args.neutrino_archive else None,
+                args.orbit_archive.resolve() if args.orbit_archive else None, compiler=args.compiler)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         sys.exit(str(error))
+
+
+if __name__ == "__main__":
+    main()

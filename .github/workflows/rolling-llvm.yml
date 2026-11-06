@@ -138,22 +138,34 @@ jobs:
           path: dist/lite/${{ matrix.target.edition == 'lite_ra' && 'ra-' || '' }}${{ matrix.target.device }}-llvm/
           if-no-files-found: error
       - name: Download official companion core
-        if: matrix.target.configuration == 'standard' && !matrix.target.device
+        # RA packaging uses its pinned ORBIT ZIP; the upstream .7z is not read.
+        if: matrix.target.configuration == 'standard' && !matrix.target.device && !startsWith(matrix.target.edition, 'ra')
+        timeout-minutes: 7
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq p7zip-full
+          if ! command -v 7z >/dev/null 2>&1 && ! command -v 7za >/dev/null 2>&1; then
+            echo "Installing 7-Zip (missing from runner)"
+            timeout 120s sudo apt-get update -qq
+            timeout 120s sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq p7zip-full
+          fi
           mkdir -p build/companion
-          gh release download latest --repo ps2max32/neutrino --dir build/companion --pattern '*.7z'
+          echo "Downloading upstream Neutrino core"
+          timeout 120s gh release download latest --repo ps2max32/neutrino --dir build/companion --pattern '*.7z'
       - name: Package and verify the full LLVM install kit
         if: matrix.target.configuration == 'standard' && !matrix.target.device
+        timeout-minutes: 8
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t cores < <(find build/companion -maxdepth 1 -name 'neutrino_*.7z' -type f)
-          test "${#cores[@]}" -eq 1
-          python tools/package_edition.py '${{ matrix.target.edition }}' --neutrino-archive "${cores[0]}" --compiler llvm
+          if [[ '${{ matrix.target.edition }}' == ra* ]]; then
+            # The RA kit independently downloads and verifies the pinned ORBIT runtime.
+            python tools/package_edition.py '${{ matrix.target.edition }}' --compiler llvm
+          else
+            mapfile -t cores < <(find build/companion -maxdepth 1 -name 'neutrino_*.7z' -type f)
+            test "${#cores[@]}" -eq 1
+            python tools/package_edition.py '${{ matrix.target.edition }}' --neutrino-archive "${cores[0]}" --compiler llvm
+          fi
       - name: Retain full LLVM kit
         if: matrix.target.configuration == 'standard' && !matrix.target.device
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
