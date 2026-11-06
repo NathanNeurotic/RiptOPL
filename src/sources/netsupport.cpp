@@ -107,12 +107,23 @@ int NetSupport::initApplyConfig()
 {
     LOG("NETSUPPORT ApplyConfig\n");
 
-    do {
+    // A link can be up while NetMan refuses the requested PHY mode.
+    // Do not hold the network initialization semaphore indefinitely.
+    const int kMaxLinkModeAttempts = 3;
+    for (int attempt = 0; attempt < kMaxLinkModeAttempts; attempt++) {
         if (waitValidLinkState() != 0) {
             gNetworkStartup = ERROR_ETH_LINK_FAIL;
             return ERROR_ETH_LINK_FAIL;
         }
-    } while (applyNetifConfig() != 0);
+        int modeResult = applyNetifConfig();
+        if (modeResult == 0)
+            break;
+        LOG("NETSUPPORT: link mode apply failed (%d), attempt %d/%d\n", modeResult, attempt + 1, kMaxLinkModeAttempts);
+        if (attempt + 1 == kMaxLinkModeAttempts) {
+            gNetworkStartup = ERROR_ETH_LINK_FAIL;
+            return ERROR_ETH_LINK_FAIL;
+        }
+    }
 
     // Wait for the link to re-establish after applying the NIF link-mode setting.
     if (waitValidLinkState() != 0) {
