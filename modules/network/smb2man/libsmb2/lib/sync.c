@@ -62,12 +62,17 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
-static int pdu_on_list(struct smb2_pdu *list, struct smb2_pdu *pdu)
+/* A failed synchronous caller owns and frees its PDU. Unlink it first,
+ * otherwise a subsequent context teardown can visit the freed queue node. */
+static int unlink_pending_pdu(struct smb2_pdu **list, struct smb2_pdu *pdu)
 {
-        for (; list; list = list->next) {
-                if (list == pdu) {
+        while (*list != NULL) {
+                if (*list == pdu) {
+                        *list = pdu->next;
+                        pdu->next = NULL;
                         return 1;
                 }
+                list = &(*list)->next;
         }
         return 0;
 }
@@ -92,8 +97,10 @@ static void sync_free_pending_pdu(struct smb2_context *smb2,
                 smb2->next_pdu = NULL;
                 pending = 1;
         }
-        if (pdu_on_list(smb2->outqueue, pdu) ||
-            pdu_on_list(smb2->waitqueue, pdu)) {
+        if (unlink_pending_pdu(&smb2->outqueue, pdu)) {
+                pending = 1;
+        }
+        if (unlink_pending_pdu(&smb2->waitqueue, pdu)) {
                 pending = 1;
         }
         if (pending && pdu->cb) {
