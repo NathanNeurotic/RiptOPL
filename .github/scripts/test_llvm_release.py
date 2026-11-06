@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import publish_llvm as llvm
 import check_llvm_purity as purity
 from build_configuration import CONFIGURATIONS
+from build_edition import EDITIONS
 from lite_devices import DEVICES, elf_name
 
 
@@ -121,15 +122,20 @@ class RiptOPLLVMTests(unittest.TestCase):
                 steps = flow["jobs"]["build"]["steps"]
                 download = next(step for step in steps if "official companion core" in step.get("name", ""))
                 package = next(step for step in steps if step.get("name", "").startswith("Package and verify the full"))
-                self.assertIn("matrix.target.edition != 'ra'", download["if"])
+                self.assertIn("!startsWith(matrix.target.edition, 'ra')", download["if"])
                 self.assertEqual(download["timeout-minutes"], 7)
                 for command in ("command -v 7z", "command -v 7za", "timeout 120s sudo apt-get update",
                                 "timeout 120s sudo env", "timeout 120s gh release download"):
                     self.assertIn(command, download["run"])
                 self.assertEqual(package["timeout-minutes"], 8)
-                self.assertIn("if [ '${{ matrix.target.edition }}' = 'ra' ]; then", package["run"])
-                self.assertIn("python tools/package_edition.py ra", package["run"])
+                self.assertIn("if [[ '${{ matrix.target.edition }}' == ra* ]]; then", package["run"])
+                self.assertIn("python tools/package_edition.py '${{ matrix.target.edition }}'", package["run"])
                 self.assertIn("--neutrino-archive", package["run"])
+                # The edition-name predicate must stay aligned with the actual packaging semantics.
+                for target in flow["jobs"]["build"]["strategy"]["matrix"]["target"]:
+                    if target["configuration"] == "standard" and not target.get("device"):
+                        self.assertEqual(target["edition"].startswith("ra"),
+                                         EDITIONS[target["edition"]]["ra"])
 
         # A missing archive must still fail promptly for standard kits.
         import subprocess
