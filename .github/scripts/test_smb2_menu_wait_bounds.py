@@ -19,8 +19,14 @@ def function(source: Path, start: str, next_decl: str) -> str:
     return code[first:last]
 
 
+sync_source = ROOT / "modules/network/smb2man/libsmb2/lib/sync.c"
+pending_helpers = function(
+    sync_source,
+    "static int unlink_pending_pdu(",
+    "static int wait_for_reply(",
+)
 sync = function(
-    ROOT / "modules/network/smb2man/libsmb2/lib/sync.c",
+    sync_source,
     "static int wait_for_reply(",
     "static void sync_connect_cb(",
 )
@@ -31,12 +37,30 @@ sync_harness = r'''
 #include <string.h>
 #include <time.h>
 
-struct smb2_context { int fd; int timeout; };
+struct smb2_context;
+struct smb2_pdu {
+    struct smb2_pdu *next;
+    void (*cb)(struct smb2_context *, int, void *, void *);
+    void *cb_data;
+};
+struct smb2_context {
+    int fd;
+    int timeout;
+    struct smb2_pdu *pdu, *next_pdu, *outqueue, *waitqueue;
+};
+#define SMB2_STATUS_SHUTDOWN (-999)
 struct sync_cb_data { int is_finished; };
 struct pollfd { int fd; short events, revents; };
 #define SMB2_VALID_SOCKET(fd) ((fd) >= 0)
 
 static int tick, closes, mode, close_saw_timeout_error;
+static int pending_callback_count, pending_freed_count;
+static void smb2_free_pdu(struct smb2_context *ctx, struct smb2_pdu *pdu)
+{
+    (void)ctx;
+    (void)pdu;
+    pending_freed_count++;
+}
 static char error_message[128];
 static struct sync_cb_data *active_callback;
 
@@ -89,6 +113,46 @@ static void smb2_close_context(struct smb2_context *ctx)
 '''
 
 sync_main = r'''
+static void pending_cb(struct smb2_context *ctx, int status, void *data, void *private_data)
+{
+    (void)ctx;
+    (void)data;
+    (void)private_data;
+    assert(status == SMB2_STATUS_SHUTDOWN);
+    pending_callback_count++;
+}
+
+static void test_pending_pdu_unlink(void)
+{
+    struct smb2_context ctx = {0};
+    struct smb2_pdu target = {0}, first = {0}, last = {0};
+    target.cb = pending_cb;
+    pending_callback_count = pending_freed_count = 0;
+
+    /* Remove an outqueue head without losing its successor. */
+    ctx.outqueue = &target;
+    target.next = &last;
+    sync_free_pending_pdu(&ctx, &target);
+    assert(ctx.outqueue == &last && target.next == NULL);
+    assert(pending_callback_count == 1 && pending_freed_count == 1);
+
+    /* Remove a middle waitqueue node without leaving a freed link. */
+    ctx.outqueue = NULL;
+    ctx.waitqueue = &first;
+    first.next = &target;
+    target.next = &last;
+    sync_free_pending_pdu(&ctx, &target);
+    assert(ctx.waitqueue == &first && first.next == &last && target.next == NULL);
+    assert(pending_callback_count == 2 && pending_freed_count == 2);
+
+    /* A partially received active PDU is also detached before freeing. */
+    ctx.waitqueue = NULL;
+    ctx.pdu = &target;
+    sync_free_pending_pdu(&ctx, &target);
+    assert(ctx.pdu == NULL);
+    assert(pending_callback_count == 3 && pending_freed_count == 3);
+}
+
 static void scenario(int kind, int expected_result, int expected_closes, int expected_tick)
 {
     struct smb2_context context = { .fd = 3, .timeout = 5 };
@@ -107,6 +171,7 @@ static void scenario(int kind, int expected_result, int expected_closes, int exp
 }
 int main(void)
 {
+    test_pending_pdu_unlink();
     scenario(0, -1, 1, 5);  /* Valid socket, no events: active PDU absent from timeout queues */
     scenario(1, 0, 0, 1);   /* Reply completes normally */
     scenario(2, 0, 0, 3);   /* Existing PDU timeout callback completes the request */
@@ -180,6 +245,6 @@ def run(compiler: str, suffix: str, source: str) -> None:
         subprocess.run([str(exe)], check=True, timeout=15)
 
 
-run(os.environ.get("CC", "cc"), "c", sync_harness + sync + sync_main)
+run(os.environ.get("CC", "cc"), "c", sync_harness + pending_helpers + sync + sync_main)
 run(os.environ.get("CXX", "c++"), "cpp", net_harness + net + net_main)
 print("smb2 menu wait bounds: all passed")
