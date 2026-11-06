@@ -36,7 +36,7 @@ struct sync_cb_data { int is_finished; };
 struct pollfd { int fd; short events, revents; };
 #define SMB2_VALID_SOCKET(fd) ((fd) >= 0)
 
-static int tick, closes, mode;
+static int tick, closes, mode, close_saw_timeout_error;
 static char error_message[128];
 static struct sync_cb_data *active_callback;
 
@@ -80,6 +80,7 @@ static void smb2_set_error(struct smb2_context *ctx, const char *message, ...)
 }
 static void smb2_close_context(struct smb2_context *ctx)
 {
+    close_saw_timeout_error = strstr(error_message, "timed out") != NULL;
     closes++;
     ctx->fd = -1;
 }
@@ -88,26 +89,28 @@ static void smb2_close_context(struct smb2_context *ctx)
 '''
 
 sync_main = r'''
-static void scenario(int kind, int expected_result, int expected_closes)
+static void scenario(int kind, int expected_result, int expected_closes, int expected_tick)
 {
     struct smb2_context context = { .fd = 3, .timeout = 5 };
     struct sync_cb_data callback = { .is_finished = 0 };
-    tick = closes = 0;
+    tick = closes = close_saw_timeout_error = 0;
     mode = kind;
     active_callback = &callback;
     error_message[0] = 0;
     assert(wait_for_reply(&context, &callback) == expected_result);
     assert(closes == expected_closes);
-    assert(tick <= 6);
+    /* Exact boundary catches changing >= to > in the production timeout. */
+    assert(tick == expected_tick);
+    assert(close_saw_timeout_error == expected_closes);
     if (expected_closes)
         assert(strstr(error_message, "timed out") != NULL);
 }
 int main(void)
 {
-    scenario(0, -1, 1);  /* Valid socket, no events: active PDU absent from timeout queues */
-    scenario(1, 0, 0);   /* Reply completes normally */
-    scenario(2, 0, 0);   /* Existing PDU timeout callback completes the request */
-    scenario(3, -1, 1);  /* Readable socket, but active reply never completes */
+    scenario(0, -1, 1, 5);  /* Valid socket, no events: active PDU absent from timeout queues */
+    scenario(1, 0, 0, 1);   /* Reply completes normally */
+    scenario(2, 0, 0, 3);   /* Existing PDU timeout callback completes the request */
+    scenario(3, -1, 1, 5);  /* Readable socket, but active reply never completes */
     puts("smb2 sync deadline: PASS");
     return 0;
 }
