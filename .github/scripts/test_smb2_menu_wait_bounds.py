@@ -481,7 +481,7 @@ def run(compiler: str, suffix: str, source: str) -> None:
 
 run(os.environ.get("CC", "cc"), "c",
     sync_harness + pending_helpers + sync + copy_stubs +
-    "#define free tracked_copy_free\\n" + copy_callback + copy_wrappers +
-    "#undef free\\n" + copy_tests + sync_main)
+    "#define free tracked_copy_free\n" + copy_callback + copy_wrappers +
+    "#undef free\n" + copy_tests + sync_main)
 run(os.environ.get("CXX", "c++"), "cpp", net_harness + net + net_main)
 print("smb2 menu wait bounds: all passed")
