@@ -113,6 +113,31 @@ class RiptOPLLVMTests(unittest.TestCase):
         self.assertIn("--compiler llvm", (ROOT / ".github/workflows/rolling-llvm.yml").read_text())
         self.assertIn("compiler=COMPILER", (ROOT / "tools/publish_llvm.py").read_text())
 
+    def test_companion_core_is_ra_optional_and_network_bounded(self):
+        # Both release channels must avoid downloading an unused upstream .7z for RA.
+        for filename in ("rolling-release.yml", "rolling-llvm.yml"):
+            with self.subTest(workflow=filename):
+                flow = yaml.safe_load((ROOT / ".github/workflows" / filename).read_text())
+                steps = flow["jobs"]["build"]["steps"]
+                download = next(step for step in steps if "official companion core" in step.get("name", ""))
+                package = next(step for step in steps if step.get("name", "").startswith("Package and verify the full"))
+                self.assertIn("matrix.target.edition != 'ra'", download["if"])
+                self.assertEqual(download["timeout-minutes"], 7)
+                for command in ("command -v 7z", "command -v 7za", "timeout 120s sudo apt-get update",
+                                "timeout 120s sudo env", "timeout 120s gh release download"):
+                    self.assertIn(command, download["run"])
+                self.assertEqual(package["timeout-minutes"], 8)
+                self.assertIn("if [ '${{ matrix.target.edition }}' = 'ra' ]; then", package["run"])
+                self.assertIn("python tools/package_edition.py ra", package["run"])
+                self.assertIn("--neutrino-archive", package["run"])
+
+        # A missing archive must still fail promptly for standard kits.
+        import subprocess
+        result = subprocess.run([sys.executable, str(ROOT / "tools/package_edition.py"), "korium"],
+                                cwd=ROOT, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("standard kit requires --neutrino-archive", result.stderr)
+
     def test_all_three_editions_form_one_separate_llvm_release(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
