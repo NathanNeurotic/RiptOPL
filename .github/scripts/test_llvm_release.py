@@ -162,7 +162,7 @@ class RiptOPLLVMTests(unittest.TestCase):
             with self.subTest(edition=edition, compiler=compiler), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 (root / "build").mkdir()
-                for folder in ("ship/POPS", "ship/EMBER", "lng", "tools/pc",
+                for folder in ("ship/POPS", "ship/EMBER", "ship/neutrino", "lng", "tools/pc",
                                "third_party/mbedtls", "dist/editions/" + edition):
                     (root / folder).mkdir(parents=True, exist_ok=True)
 
@@ -184,6 +184,7 @@ class RiptOPLLVMTests(unittest.TestCase):
                     (root / name).write_text("test", encoding="utf-8")
                 (root / "third_party/mbedtls/LICENSE").write_text("Apache-2.0", encoding="utf-8")
                 (root / "lng/lang_English.lng").write_text("test", encoding="utf-8")
+                (root / "ship/neutrino/bsd-udpfsbd.toml").write_text("bdm = 1", encoding="utf-8")
                 licence = root / "LICENSE-LIBSMB2.txt"
                 licence.write_text("LGPL-2.1", encoding="utf-8")
 
