@@ -120,11 +120,20 @@ static int wait_for_reply(struct smb2_context *smb2,
                 if (smb2->timeout) {
                         smb2_timeout_pdus(smb2);
                 }
-		if (!SMB2_VALID_SOCKET(smb2->fd) && ((time(NULL) - t) > (smb2->timeout)))
-		{
-			smb2_set_error(smb2, "Timeout expired and no connection exists\n");
-			return -1;
-		}
+                /* The active reply can leave waitqueue while its payload is
+                 * still arriving. The PDU timeout scan does not cover it.
+                 * Apply the operation deadline even while the socket is open. */
+                if (cb_data->is_finished) {
+                        break;
+                }
+                if (smb2->timeout > 0 &&
+                    (time(NULL) - t) >= smb2->timeout) {
+                        smb2_set_error(smb2, "SMB2 synchronous reply timed out");
+                        /* An incomplete frame must not be reused as a new
+                         * response. The owner will tear down pending PDUs. */
+                        smb2_close_context(smb2);
+                        return -1;
+                }
                 if (pfd.revents == 0) {
                         continue;
                 }
