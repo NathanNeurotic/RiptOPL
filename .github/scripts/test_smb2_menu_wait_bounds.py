@@ -122,6 +122,67 @@ static void pending_cb(struct smb2_context *ctx, int status, void *data, void *p
     pending_callback_count++;
 }
 
+/* Model the queue traversal performed by smb2_destroy_context. This is
+ * deliberately separate from smb2_close_context, which only closes a socket. */
+static void destroy_queued_pdus(struct smb2_context *ctx)
+{
+    while (ctx->outqueue != NULL) {
+        struct smb2_pdu *pdu = ctx->outqueue;
+        ctx->outqueue = pdu->next;
+        if (pdu->cb)
+            pdu->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
+        smb2_free_pdu(ctx, pdu);
+    }
+    while (ctx->waitqueue != NULL) {
+        struct smb2_pdu *pdu = ctx->waitqueue;
+        ctx->waitqueue = pdu->next;
+        if (pdu->cb)
+            pdu->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
+        smb2_free_pdu(ctx, pdu);
+    }
+    if (ctx->pdu != NULL) {
+        struct smb2_pdu *pdu = ctx->pdu;
+        ctx->pdu = NULL;
+        if (pdu->cb)
+            pdu->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
+        smb2_free_pdu(ctx, pdu);
+    }
+}
+
+static void test_timeout_then_destroy(void)
+{
+    struct smb2_context ctx = { .fd = 3, .timeout = 5 };
+    struct sync_cb_data callback = { .is_finished = 0 };
+    struct smb2_pdu timed_out = {0}, another = {0};
+
+    timed_out.cb = pending_cb;
+    another.cb = pending_cb;
+    ctx.outqueue = &timed_out;
+    timed_out.next = &another;
+
+    tick = closes = close_saw_timeout_error = 0;
+    mode = 0;
+    active_callback = &callback;
+    error_message[0] = 0;
+    pending_callback_count = pending_freed_count = 0;
+
+    assert(wait_for_reply(&ctx, &callback) == -1);
+    assert(tick == 5 && closes == 1 && ctx.fd == -1);
+    /* Close alone must not drain or free either queued request. */
+    assert(pending_callback_count == 0 && pending_freed_count == 0);
+    assert(ctx.outqueue == &timed_out);
+
+    /* The synchronous caller owns only its own request. */
+    sync_free_pending_pdu(&ctx, &timed_out);
+    assert(ctx.outqueue == &another);
+    assert(pending_callback_count == 1 && pending_freed_count == 1);
+
+    /* Later destruction must visit just the other, still-queued request. */
+    destroy_queued_pdus(&ctx);
+    assert(ctx.outqueue == NULL);
+    assert(pending_callback_count == 2 && pending_freed_count == 2);
+}
+
 static void test_pending_pdu_unlink(void)
 {
     struct smb2_context ctx = {0};
@@ -172,6 +233,7 @@ static void scenario(int kind, int expected_result, int expected_closes, int exp
 int main(void)
 {
     test_pending_pdu_unlink();
+    test_timeout_then_destroy();
     scenario(0, -1, 1, 5);  /* Valid socket, no events: active PDU absent from timeout queues */
     scenario(1, 0, 0, 1);   /* Reply completes normally */
     scenario(2, 0, 0, 3);   /* Existing PDU timeout callback completes the request */
