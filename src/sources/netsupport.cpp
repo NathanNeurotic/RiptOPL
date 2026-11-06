@@ -78,7 +78,11 @@ int NetSupport::waitValidState(int (*checkingFunction)(void))
         return SemaID;
 
     for (retry_cycles = 0; checkingFunction() == 0; retry_cycles++) {
-        SetAlarm(1000 * rmGetHsync(), &NetStatusCheckCb, &SemaID);
+        // If the EE alarm table is full, do not wait on an unsignaled semaphore.
+        if (SetAlarm(1000 * rmGetHsync(), &NetStatusCheckCb, &SemaID) < 0) {
+            DeleteSema(SemaID);
+            return -1;
+        }
         WaitSema(SemaID);
 
         if (retry_cycles >= 30) // 30s = 30*1000ms
