@@ -139,7 +139,7 @@ jobs:
           if-no-files-found: error
       - name: Download official companion core
         # RA packaging uses its pinned ORBIT ZIP; the upstream .7z is not read.
-        if: matrix.target.configuration == 'standard' && !matrix.target.device && matrix.target.edition != 'ra'
+        if: matrix.target.configuration == 'standard' && !matrix.target.device && !startsWith(matrix.target.edition, 'ra')
         timeout-minutes: 7
         shell: bash
         run: |
@@ -158,9 +158,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ '${{ matrix.target.edition }}' = 'ra' ]; then
+          if [[ '${{ matrix.target.edition }}' == ra* ]]; then
             # The RA kit independently downloads and verifies the pinned ORBIT runtime.
-            python tools/package_edition.py ra --compiler llvm
+            python tools/package_edition.py '${{ matrix.target.edition }}' --compiler llvm
           else
             mapfile -t cores < <(find build/companion -maxdepth 1 -name 'neutrino_*.7z' -type f)
             test "${#cores[@]}" -eq 1
