@@ -35,6 +35,7 @@ copy_wrappers = function(sync_source, "int smb2_request_resume_key(", "static vo
 
 sync_harness = r'''
 #include <assert.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
