@@ -126,7 +126,7 @@ struct smb2_srv_copychunk_reply { int unused; };
 typedef void (*copy_cb_t)(struct smb2_context *, int, void *, void *);
 static copy_cb_t pending_copy_callback;
 static void *pending_copy_state;
-static int copy_state_frees;
+static int copy_state_frees, copy_result_frees;
 
 static void tracked_copy_free(void *pointer)
 {
@@ -164,6 +164,8 @@ static int smb2_server_side_copy_async(struct smb2_context *ctx, uint32_t ctl,
 static void smb2_free_data(struct smb2_context *ctx, void *ptr)
 {
     (void)ctx;
+    if (ptr != NULL)
+        copy_result_frees++;
     free(ptr);
 }
 '''
@@ -181,7 +183,7 @@ static void test_copy_callback_lifetime(void)
         struct smb2_context ctx = { .fd = 3, .timeout = 2 };
         pending_copy_callback = NULL;
         pending_copy_state = NULL;
-        copy_state_frees = closes = tick = 0;
+        copy_state_frees = copy_result_frees = closes = tick = 0;
         error_message[0] = 0;
         mode = 0;
 
@@ -195,8 +197,13 @@ static void test_copy_callback_lifetime(void)
         assert(rc == -1 && closes == 1 && tick == 2);
         assert(pending_copy_callback && pending_copy_state);
         assert(copy_state_frees == 0); /* no free while callback is pending */
-        pending_copy_callback(&ctx, SMB2_STATUS_SHUTDOWN, NULL, pending_copy_state);
-        assert(copy_state_frees == 1 && pending_copy_state == NULL);
+        /* A late successful reply still owns allocator-backed output.
+         * The cancelled callback must release both the output and itself. */
+        void *late_data = malloc(32);
+        assert(late_data != NULL);
+        pending_copy_callback(&ctx, 0, late_data, pending_copy_state);
+        assert(copy_state_frees == 1 && copy_result_frees == 1);
+        assert(pending_copy_state == NULL);
     }
 }
 '''
