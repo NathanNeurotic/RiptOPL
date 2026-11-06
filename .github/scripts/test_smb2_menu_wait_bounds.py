@@ -416,6 +416,11 @@ for operation, following in (
     assert "return rc;" in failure_branch
     assert "goto out;" not in failure_branch
 
+net_wait = function(
+    ROOT / "src/sources/netsupport.cpp",
+    "int NetSupport::waitValidState(",
+    "int NetSupport::waitValidLinkState()",
+)
 net = function(
     ROOT / "src/sources/netsupport.cpp",
     "int NetSupport::initApplyConfig()",
@@ -431,7 +436,24 @@ net_harness = r'''
 
 static int gNetworkStartup, ps2_ip_use_dhcp;
 static int attempts, failures_left;
+typedef int s32;
+typedef unsigned short u16;
+struct ee_sema_t { int option, attr, init_count, max_count; };
+static int alarm_fail, alarm_registrations, wait_calls, deleted_semas;
+static int CreateSema(ee_sema_t *) { return 4; }
+static int DeleteSema(int) { deleted_semas++; return 0; }
+static int rmGetHsync() { return 15; }
+static void NetStatusCheckCb(s32, u16, void *) {}
+static int SetAlarm(unsigned int, void (*)(s32, u16, void *), void *)
+{
+    alarm_registrations++;
+    return alarm_fail ? -1 : 7;
+}
+static int WaitSema(int) { wait_calls++; return 0; }
+static int link_always_down() { return 0; }
+
 struct NetSupport {
+    int waitValidState(int (*checkingFunction)(void));
     int initApplyConfig();
     int waitValidLinkState() { return 0; }
     int applyNetifConfig() {
@@ -448,6 +470,11 @@ net_main = r'''
 int main()
 {
     NetSupport support;
+    /* If SetAlarm fails, the real waitValidState must not enter WaitSema. */
+    alarm_fail = 1;
+    alarm_registrations = wait_calls = deleted_semas = 0;
+    assert(support.waitValidState(&link_always_down) == -1);
+    assert(alarm_registrations == 1 && wait_calls == 0 && deleted_semas == 1);
     gNetworkStartup = attempts = 0;
     failures_left = 100;
     assert(support.initApplyConfig() == ERROR_ETH_LINK_FAIL);
@@ -484,5 +511,5 @@ run(os.environ.get("CC", "cc"), "c",
     sync_harness + pending_helpers + sync + copy_stubs +
     "#define free tracked_copy_free\n" + copy_callback + copy_wrappers +
     "#undef free\n" + copy_tests + sync_main)
-run(os.environ.get("CXX", "c++"), "cpp", net_harness + net + net_main)
+run(os.environ.get("CXX", "c++"), "cpp", net_harness + net_wait + net + net_main)
 print("smb2 menu wait bounds: all passed")
