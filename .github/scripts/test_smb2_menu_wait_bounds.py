@@ -30,9 +30,13 @@ sync = function(
     "static int wait_for_reply(",
     "static void sync_connect_cb(",
 )
+copy_callback = function(sync_source, "static void sync_copy_ioctl_cb(", "int smb2_request_resume_key(")
+copy_wrappers = function(sync_source, "int smb2_request_resume_key(", "static void sync_echo_cb(")
 
 sync_harness = r'''
 #include <assert.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -49,7 +53,8 @@ struct smb2_context {
     struct smb2_pdu *pdu, *next_pdu, *outqueue, *waitqueue;
 };
 #define SMB2_STATUS_SHUTDOWN (-999)
-struct sync_cb_data { int is_finished; };
+#define SMB2_STATUS_CANCELLED (-998)
+struct sync_cb_data { int is_finished, status; void *ptr; };
 struct pollfd { int fd; short events, revents; };
 #define SMB2_VALID_SOCKET(fd) ((fd) >= 0)
 
@@ -110,6 +115,89 @@ static void smb2_close_context(struct smb2_context *ctx)
 }
 #define time fake_time
 #define poll fake_poll
+'''
+
+copy_stubs = r'''
+struct smb2fh { int unused; };
+struct smb2_srv_copychunk_resume_key { unsigned char bytes[24]; };
+struct smb2_srv_copychunk { int unused; };
+struct smb2_srv_copychunk_reply { int unused; };
+typedef void (*copy_cb_t)(struct smb2_context *, int, void *, void *);
+static copy_cb_t pending_copy_callback;
+static void *pending_copy_state;
+static int copy_state_frees;
+
+static void tracked_copy_free(void *pointer)
+{
+    assert(pointer == pending_copy_state);
+    copy_state_frees++;
+    pending_copy_state = NULL;
+    free(pointer);
+}
+static int smb2_request_resume_key_async(struct smb2_context *ctx,
+        struct smb2fh *fh, copy_cb_t cb, void *user)
+{
+    (void)ctx; (void)fh;
+    pending_copy_callback = cb;
+    pending_copy_state = user;
+    return 0;
+}
+static int smb2_copychunk_async(struct smb2_context *ctx, uint32_t ctl,
+        const struct smb2_srv_copychunk_resume_key *key, struct smb2fh *fh,
+        const struct smb2_srv_copychunk *chunks, uint32_t n, copy_cb_t cb, void *user)
+{
+    (void)ctx; (void)ctl; (void)key; (void)fh; (void)chunks; (void)n;
+    pending_copy_callback = cb;
+    pending_copy_state = user;
+    return 0;
+}
+static int smb2_server_side_copy_async(struct smb2_context *ctx, uint32_t ctl,
+        struct smb2fh *src, struct smb2fh *dst,
+        const struct smb2_srv_copychunk *chunks, uint32_t n, copy_cb_t cb, void *user)
+{
+    (void)ctx; (void)ctl; (void)src; (void)dst; (void)chunks; (void)n;
+    pending_copy_callback = cb;
+    pending_copy_state = user;
+    return 0;
+}
+static void smb2_free_data(struct smb2_context *ctx, void *ptr)
+{
+    (void)ctx;
+    free(ptr);
+}
+'''
+
+copy_tests = r'''
+static void test_copy_callback_lifetime(void)
+{
+    struct smb2fh fh = {0};
+    struct smb2_srv_copychunk_resume_key key = {0};
+    struct smb2_srv_copychunk_reply reply = {0};
+    struct smb2_srv_copychunk chunk = {0};
+    int which, rc;
+
+    for (which = 0; which < 3; ++which) {
+        struct smb2_context ctx = { .fd = 3, .timeout = 2 };
+        pending_copy_callback = NULL;
+        pending_copy_state = NULL;
+        copy_state_frees = closes = tick = 0;
+        error_message[0] = 0;
+        mode = 0;
+
+        if (which == 0)
+            rc = smb2_request_resume_key(&ctx, &fh, &key);
+        else if (which == 1)
+            rc = smb2_copychunk(&ctx, 0, &key, &fh, &chunk, 1, &reply);
+        else
+            rc = smb2_server_side_copy(&ctx, 0, &fh, &fh, &chunk, 1, &reply);
+
+        assert(rc == -1 && closes == 1 && tick == 2);
+        assert(pending_copy_callback && pending_copy_state);
+        assert(copy_state_frees == 0); /* no free while callback is pending */
+        pending_copy_callback(&ctx, SMB2_STATUS_SHUTDOWN, NULL, pending_copy_state);
+        assert(copy_state_frees == 1 && pending_copy_state == NULL);
+    }
+}
 '''
 
 sync_main = r'''
@@ -300,6 +388,7 @@ int main(void)
     test_timeout_then_destroy();
     test_destroy_next_and_requeued();
     test_destroy_compound();
+    test_copy_callback_lifetime();
     scenario(0, -1, 1, 5);  /* Valid socket, no events: active PDU absent from timeout queues */
     scenario(1, 0, 0, 1);   /* Reply completes normally */
     scenario(2, 0, 0, 3);   /* Existing PDU timeout callback completes the request */
@@ -390,6 +479,9 @@ def run(compiler: str, suffix: str, source: str) -> None:
         subprocess.run([str(exe)], check=True, timeout=15)
 
 
-run(os.environ.get("CC", "cc"), "c", sync_harness + pending_helpers + sync + sync_main)
+run(os.environ.get("CC", "cc"), "c",
+    sync_harness + pending_helpers + sync + copy_stubs +
+    "#define free tracked_copy_free\\n" + copy_callback + copy_wrappers +
+    "#undef free\\n" + copy_tests + sync_main)
 run(os.environ.get("CXX", "c++"), "cpp", net_harness + net + net_main)
 print("smb2 menu wait bounds: all passed")
