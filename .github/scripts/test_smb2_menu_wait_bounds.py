@@ -39,7 +39,7 @@ sync_harness = r'''
 
 struct smb2_context;
 struct smb2_pdu {
-    struct smb2_pdu *next;
+    struct smb2_pdu *next, *next_compound;
     void (*cb)(struct smb2_context *, int, void *, void *);
     void *cb_data;
 };
@@ -122,31 +122,89 @@ static void pending_cb(struct smb2_context *ctx, int status, void *data, void *p
     pending_callback_count++;
 }
 
-/* Model the queue traversal performed by smb2_destroy_context. This is
- * deliberately separate from smb2_close_context, which only closes a socket. */
+/* Model the production queue traversal in smb2_destroy_context. Closing a
+ * socket must not drain the queued requests. Shutdown callbacks may queue
+ * additional work, so the outer loop must revisit each queue. */
 static void destroy_queued_pdus(struct smb2_context *ctx)
 {
-    while (ctx->outqueue != NULL) {
-        struct smb2_pdu *pdu = ctx->outqueue;
-        ctx->outqueue = pdu->next;
-        if (pdu->cb)
-            pdu->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
-        smb2_free_pdu(ctx, pdu);
+    while (ctx->outqueue || ctx->pdu || ctx->next_pdu || ctx->waitqueue) {
+        while (ctx->outqueue) {
+            struct smb2_pdu *pdu = ctx->outqueue, *part;
+            ctx->outqueue = pdu->next;
+            for (part = pdu; part; part = part->next_compound)
+                if (part->cb)
+                    part->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, part->cb_data);
+            smb2_free_pdu(ctx, pdu);
+        }
+        if (ctx->pdu) {
+            struct smb2_pdu *pdu = ctx->pdu;
+            ctx->pdu = NULL;
+            if (pdu->cb)
+                pdu->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
+            smb2_free_pdu(ctx, pdu);
+        }
+        if (ctx->next_pdu) {
+            struct smb2_pdu *pdu = ctx->next_pdu;
+            ctx->next_pdu = NULL;
+            if (pdu->cb)
+                pdu->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
+            smb2_free_pdu(ctx, pdu);
+        }
+        while (ctx->waitqueue) {
+            struct smb2_pdu *pdu = ctx->waitqueue;
+            ctx->waitqueue = pdu->next;
+            if (pdu->cb)
+                pdu->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
+            if (pdu == ctx->pdu)
+                ctx->pdu = NULL;
+            smb2_free_pdu(ctx, pdu);
+        }
     }
-    while (ctx->waitqueue != NULL) {
-        struct smb2_pdu *pdu = ctx->waitqueue;
-        ctx->waitqueue = pdu->next;
-        if (pdu->cb)
-            pdu->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
-        smb2_free_pdu(ctx, pdu);
-    }
-    if (ctx->pdu != NULL) {
-        struct smb2_pdu *pdu = ctx->pdu;
-        ctx->pdu = NULL;
-        if (pdu->cb)
-            pdu->cb(ctx, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
-        smb2_free_pdu(ctx, pdu);
-    }
+}
+
+static struct smb2_pdu *enqueue_on_shutdown;
+static void pending_cb_requeue(struct smb2_context *ctx, int status,
+                               void *data, void *private_data)
+{
+    pending_cb(ctx, status, data, private_data);
+    assert(enqueue_on_shutdown && ctx->outqueue == NULL);
+    ctx->outqueue = enqueue_on_shutdown;
+    enqueue_on_shutdown = NULL;
+}
+
+/* Verify that active partial reception, next_pdu and waitqueue are drained,
+ * including a new request queued by a shutdown callback after outqueue ran. */
+static void test_destroy_next_and_requeued(void)
+{
+    struct smb2_context ctx = {0};
+    struct smb2_pdu active = {0}, next = {0}, waiting = {0}, late = {0};
+    active.cb = next.cb = late.cb = pending_cb;
+    waiting.cb = pending_cb_requeue;
+    ctx.pdu = &active;
+    ctx.next_pdu = &next;
+    ctx.waitqueue = &waiting;
+    enqueue_on_shutdown = &late;
+    pending_callback_count = pending_freed_count = 0;
+    destroy_queued_pdus(&ctx);
+    assert(ctx.pdu == NULL && ctx.next_pdu == NULL);
+    assert(ctx.waitqueue == NULL && ctx.outqueue == NULL);
+    assert(enqueue_on_shutdown == NULL);
+    assert(pending_callback_count == 4 && pending_freed_count == 4);
+}
+
+/* Unsent compound request: all callbacks run, but the entire compound is
+ * freed once by smb2_free_pdu at the compound head. */
+static void test_destroy_compound(void)
+{
+    struct smb2_context ctx = {0};
+    struct smb2_pdu head = {0}, part = {0};
+    head.cb = part.cb = pending_cb;
+    head.next_compound = &part;
+    ctx.outqueue = &head;
+    pending_callback_count = pending_freed_count = 0;
+    destroy_queued_pdus(&ctx);
+    assert(ctx.outqueue == NULL);
+    assert(pending_callback_count == 2 && pending_freed_count == 1);
 }
 
 static void test_timeout_then_destroy(void)
@@ -212,6 +270,12 @@ static void test_pending_pdu_unlink(void)
     sync_free_pending_pdu(&ctx, &target);
     assert(ctx.pdu == NULL);
     assert(pending_callback_count == 3 && pending_freed_count == 3);
+
+    /* A partially decoded second PDU must also be detached. */
+    ctx.next_pdu = &target;
+    sync_free_pending_pdu(&ctx, &target);
+    assert(ctx.next_pdu == NULL);
+    assert(pending_callback_count == 4 && pending_freed_count == 4);
 }
 
 static void scenario(int kind, int expected_result, int expected_closes, int expected_tick)
@@ -234,6 +298,8 @@ int main(void)
 {
     test_pending_pdu_unlink();
     test_timeout_then_destroy();
+    test_destroy_next_and_requeued();
+    test_destroy_compound();
     scenario(0, -1, 1, 5);  /* Valid socket, no events: active PDU absent from timeout queues */
     scenario(1, 0, 0, 1);   /* Reply completes normally */
     scenario(2, 0, 0, 3);   /* Existing PDU timeout callback completes the request */
@@ -242,6 +308,23 @@ int main(void)
     return 0;
 }
 '''
+
+# Protect the three vendor sync copy wrappers: a timeout leaves a queued
+# callback owning its cb_data until reply completion or context teardown.
+# Both the cancellation path and callback's final free are required.
+vendor_source = sync_source.read_text(encoding="utf-8")
+for operation, following in (
+    ("smb2_request_resume_key", "smb2_copychunk"),
+    ("smb2_copychunk", "smb2_server_side_copy"),
+    ("smb2_server_side_copy", "sync_echo_cb"),
+):
+    segment_start = vendor_source.index("int " + operation + "(")
+    segment_end = vendor_source.index(following, segment_start + len(operation))
+    operation_body = vendor_source[segment_start:segment_end]
+    failure_branch = operation_body.split("rc = wait_for_reply(smb2, cb_data);", 1)[1].split("rc = cb_data->status;", 1)[0]
+    assert "cb_data->status = SMB2_STATUS_CANCELLED;" in failure_branch
+    assert "return rc;" in failure_branch
+    assert "goto out;" not in failure_branch
 
 net = function(
     ROOT / "src/sources/netsupport.cpp",
