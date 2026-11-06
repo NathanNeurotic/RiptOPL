@@ -242,6 +242,13 @@ static void sync_opendir_cb(struct smb2_context *smb2, int status,
 {
         struct sync_cb_data *cb_data = private_data;
 
+        if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                /* A completed CREATE can have queued a later QUERY/CLOSE. */
+                if (status == SMB2_STATUS_SUCCESS && command_data)
+                        smb2_closedir(smb2, command_data);
+                free(cb_data);
+                return;
+        }
         if (status == SMB2_STATUS_SHUTDOWN) {
                 return;
         }
@@ -272,8 +279,10 @@ struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
 	}
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
+                /* A chained request can outlive the original CREATE PDU.
+                 * Its final callback owns this state after the timeout. */
+                cb_data->status = SMB2_STATUS_CANCELLED;
                 sync_free_pending_pdu(smb2, pdu);
-                free(cb_data);
                 return NULL;
         }
 
@@ -296,6 +305,11 @@ static void sync_open_cb(struct smb2_context *smb2, int status,
 {
         struct sync_cb_data *cb_data = private_data;
 
+        if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                /* A symlink retry can outlive the original CREATE PDU. */
+                free(cb_data);
+                return;
+        }
         cb_data->is_finished = 1;
         cb_data->ptr = command_data;
 }
@@ -320,8 +334,10 @@ struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags)
 	}
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
+                /* A chained request can outlive the original CREATE PDU.
+                 * Its final callback owns this state after the timeout. */
+                cb_data->status = SMB2_STATUS_CANCELLED;
                 sync_free_pending_pdu(smb2, pdu);
-                free(cb_data);
                 return NULL;
         }
 
