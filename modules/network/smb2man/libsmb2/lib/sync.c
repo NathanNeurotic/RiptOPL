@@ -987,6 +987,9 @@ static void sync_copy_ioctl_cb(struct smb2_context *smb2, int status,
         struct sync_cb_data *cb_data = private_data;
 
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                /* The caller returned on timeout; it cannot consume the
+                 * reply, so release any late output with the library allocator. */
+                smb2_free_data(smb2, command_data);
                 free(cb_data);
                 return;
         }
