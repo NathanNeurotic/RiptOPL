@@ -32,6 +32,9 @@ sync = function(
 )
 copy_callback = function(sync_source, "static void sync_copy_ioctl_cb(", "int smb2_request_resume_key(")
 copy_wrappers = function(sync_source, "int smb2_request_resume_key(", "static void sync_echo_cb(")
+open_callback = function(sync_source, "static void sync_open_cb(", "struct smb2fh *smb2_open(")
+opendir_callback = function(sync_source, "static void sync_opendir_cb(", "struct smb2dir *smb2_opendir(")
+
 
 sync_harness = r'''
 #include <assert.h>
@@ -205,6 +208,55 @@ static void test_copy_callback_lifetime(void)
         assert(copy_state_frees == 1 && copy_result_frees == 1);
         assert(pending_copy_state == NULL);
     }
+}
+'''
+
+chain_callback_stubs = r'''
+static int callback_state_frees, late_dir_closed;
+static void *pending_chain_state;
+static void tracked_chain_free(void *ptr)
+{
+    assert(ptr == pending_chain_state);
+    callback_state_frees++;
+    pending_chain_state = NULL;
+    free(ptr);
+}
+static void smb2_closedir(struct smb2_context *ctx, void *dir)
+{
+    (void)ctx;
+    assert(dir != NULL);
+    late_dir_closed++;
+}
+'''
+
+chain_callback_tests = r'''
+static void test_chained_callback_lifetime(void)
+{
+    struct smb2_context ctx = {0};
+    struct sync_cb_data *state;
+    int fake_dir = 7;
+
+    callback_state_frees = late_dir_closed = 0;
+    state = calloc(1, sizeof(*state));
+    assert(state != NULL);
+    pending_chain_state = state;
+    state->status = SMB2_STATUS_CANCELLED;
+    sync_open_cb(&ctx, SMB2_STATUS_SHUTDOWN, NULL, state);
+    assert(callback_state_frees == 1 && pending_chain_state == NULL);
+
+    state = calloc(1, sizeof(*state));
+    assert(state != NULL);
+    pending_chain_state = state;
+    state->status = SMB2_STATUS_CANCELLED;
+    sync_opendir_cb(&ctx, SMB2_STATUS_SHUTDOWN, NULL, state);
+    assert(callback_state_frees == 2 && late_dir_closed == 0);
+
+    state = calloc(1, sizeof(*state));
+    assert(state != NULL);
+    pending_chain_state = state;
+    state->status = SMB2_STATUS_CANCELLED;
+    sync_opendir_cb(&ctx, 0, &fake_dir, state);
+    assert(callback_state_frees == 3 && late_dir_closed == 1);
 }
 '''
 
@@ -397,6 +449,7 @@ int main(void)
     test_destroy_next_and_requeued();
     test_destroy_compound();
     test_copy_callback_lifetime();
+    test_chained_callback_lifetime();
     scenario(0, -1, 1, 5);  /* Valid socket, no events: active PDU absent from timeout queues */
     scenario(1, 0, 0, 1);   /* Reply completes normally */
     scenario(2, 0, 0, 3);   /* Existing PDU timeout callback completes the request */
@@ -422,6 +475,17 @@ for operation, following in (
     assert "cb_data->status = SMB2_STATUS_CANCELLED;" in failure_branch
     assert "return rc;" in failure_branch
     assert "goto out;" not in failure_branch
+
+for function_name, next_name in (
+    ("smb2_opendir", "static void sync_open_cb("),
+    ("smb2_open", "static void sync_close_cb("),
+):
+    result_type = "struct smb2dir *" if function_name == "smb2_opendir" else "struct smb2fh *"
+    body = vendor_source.split(result_type + function_name + "(", 1)[1].split(next_name, 1)[0]
+    failed_wait = body.split("if (wait_for_reply(smb2, cb_data) < 0)", 1)[1].split("return NULL;", 1)[0]
+    assert "cb_data->status = SMB2_STATUS_CANCELLED" in failed_wait
+    assert "sync_free_pending_pdu(smb2, pdu)" in failed_wait
+    assert "free(cb_data)" not in failed_wait
 
 net_wait = function(
     ROOT / "src/sources/netsupport.cpp",
@@ -517,6 +581,9 @@ def run(compiler: str, suffix: str, source: str) -> None:
 run(os.environ.get("CC", "cc"), "c",
     sync_harness + pending_helpers + sync + copy_stubs +
     "#define free tracked_copy_free\n" + copy_callback + copy_wrappers +
-    "#undef free\n" + copy_tests + sync_main)
+    "#undef free\n" + copy_tests +
+    chain_callback_stubs + "#define free tracked_chain_free\n" +
+    open_callback + opendir_callback + "#undef free\n" +
+    chain_callback_tests + sync_main)
 run(os.environ.get("CXX", "c++"), "cpp", net_harness + net_wait + net + net_main)
 print("smb2 menu wait bounds: all passed")
