@@ -1017,7 +1017,8 @@ int smb2_request_resume_key(struct smb2_context *smb2, struct smb2fh *fh,
         rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                /* The pending callback retains ownership until completion or teardown. */
+                return rc;
         }
 
         rc = cb_data->status;
@@ -1060,7 +1061,8 @@ int smb2_copychunk(struct smb2_context *smb2,
         rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                /* The pending callback retains ownership until completion or teardown. */
+                return rc;
         }
 
         rc = cb_data->status;
@@ -1103,7 +1105,8 @@ int smb2_server_side_copy(struct smb2_context *smb2,
         rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                /* The pending callback retains ownership until completion or teardown. */
+                return rc;
         }
 
         rc = cb_data->status;
