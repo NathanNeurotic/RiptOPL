@@ -52,6 +52,7 @@ typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
 typedef struct { u32 lo, hi; } iop_sys_clock_t;
+static iop_sys_clock_t smb_reply_start;
 typedef struct { u8 data[32]; } SMBHeader_t;
 #define SMB_REPLY_TIMEOUT_TICKS 368640000U
 #ifndef MSG_DONTWAIT
