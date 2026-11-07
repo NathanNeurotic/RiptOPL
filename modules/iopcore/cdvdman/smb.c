@@ -124,7 +124,7 @@ static u8 nb_GetPacketType(void) // Read Session Service header type.
 int OpenTCPSession(struct in_addr dst_IP, u16 dst_port)
 {
     register int sock, ret;
-    int opt, attempt;
+    int opt;
     struct sockaddr_in sock_addr;
 
     // Creating socket
@@ -140,16 +140,15 @@ int OpenTCPSession(struct in_addr dst_IP, u16 dst_port)
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_port = htons(dst_port);
 
-    // This bounds repeated failures; a single blocking connect still depends on PS2IP.
-    for (attempt = 0; attempt < 100; attempt++) {
-        ret = plwip_connect(sock, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
-        if (ret >= 0)
-            return sock;
-        DelayThread(100000);
+    // SMSTCPIP retransmits SYN and wakes connect on TCP_SYNMAXRTX (tcp_slowtmr).
+    // Repeating a failed connect here adds full TCP timeouts on the same socket.
+    ret = plwip_connect(sock, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
+    if (ret < 0) {
+        plwip_close(sock);
+        return -1;
     }
 
-    plwip_close(sock);
-    return -1;
+    return sock;
 }
 
 //-------------------------------------------------------------------------
@@ -172,22 +171,54 @@ static int SendData(int sock, char *buf, int size)
     return size;
 }
 
+// SMSTCPIP exports no select/ioctl and does not implement socket read timeouts.
+// Its recvfrom(MSG_DONTWAIT) is supported, including the SMB-specific split-buffer path.
+#ifndef MSG_DONTWAIT
+#define MSG_DONTWAIT 0x40 // SMSTCPIP/include/lwip/sockets.h, not menu ps2ip's value
+#endif
+#define SMB_REPLY_TIMEOUT_TICKS 368640000U // 10 seconds at the IOP 36.864 MHz clock
+
+static iop_sys_clock_t smb_reply_start;
+
+static void smb_BeginReply(void)
+{
+    GetSystemTime(&smb_reply_start);
+}
+
+static int smb_ReplyExpired(void)
+{
+    iop_sys_clock_t now;
+    GetSystemTime(&now);
+    return (u32)(now.lo - smb_reply_start.lo) >= SMB_REPLY_TIMEOUT_TICKS;
+}
+
+// Every piece of one SMB response shares the same deadline, including keep-alives
+// and partial TCP segments. The custom header/payload receive path is preserved.
+static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int plen)
+{
+    int result;
+    for (;;) {
+        if (smb_ReplyExpired())
+            return -2;
+        result = plwip_recvfrom(sock, header, hlen, payload, plen, MSG_DONTWAIT, NULL, NULL);
+        if (result >= 0)
+            return result;
+        DelayThread(1000);
+    }
+}
+
 static int RecvData(int sock, char *buf, int size)
 {
-    int remaining, result;
-    char *ptr;
+    int remaining = size, result;
+    char *ptr = buf;
 
-    ptr = buf;
-    remaining = size;
     while (remaining > 0) {
-        result = plwip_recv(sock, ptr, remaining, 0);
+        result = smb_RecvTimed(sock, NULL, 0, ptr, remaining);
         if (result <= 0)
             return result;
-
         ptr += result;
         remaining -= result;
     }
-
     return size;
 }
 
@@ -196,6 +227,7 @@ static int GetSMBServerReply(int shdrlen, void *spayload, int rhdrlen)
 {
     int rcv_size, totalpkt_size, size;
 
+    smb_BeginReply();
     totalpkt_size = nb_GetSessionMessageLength() + 4;
 
     if (shdrlen == 0) {
@@ -643,7 +675,7 @@ static int smb_RecvReplyRest(int *rcv_size, int size)
     int r;
 
     while (*rcv_size < size) {
-        r = plwip_recvfrom(main_socket, NULL, 0, &((u8 *)&SMB_buf)[*rcv_size], size - *rcv_size, 0, NULL, NULL);
+        r = smb_RecvTimed(main_socket, NULL, 0, &((u8 *)&SMB_buf)[*rcv_size], size - *rcv_size);
         if (r <= 0)
             return -2;
         *rcv_size += r;
@@ -663,7 +695,7 @@ static int smb_DrainReply(int rcv_size, int size)
         n = size - rcv_size;
         if (n > (int)sizeof(SMB_buf))
             n = (int)sizeof(SMB_buf);
-        r = plwip_recvfrom(main_socket, NULL, 0, &SMB_buf, n, 0, NULL, NULL);
+        r = smb_RecvTimed(main_socket, NULL, 0, &SMB_buf, n);
         if (r <= 0)
             return -2;
         rcv_size += r;
@@ -701,6 +733,7 @@ static int smb_ReadAndX(u16 FID, u32 offsetlow, u32 offsethigh, void *readbuf, i
     RR->MaxCountHigh = (u16)(nbytes >> 16);
 
     nb_SetSessionMessage(sizeof(ReadAndXRequest_t));
+    smb_BeginReply();
 
 #ifdef USE_CUSTOM_RECV
     //Send the whole message, including the 4-byte direct transport packet header.
@@ -711,7 +744,7 @@ static int smb_ReadAndX(u16 FID, u32 offsetlow, u32 offsethigh, void *readbuf, i
     //offset 49 is the offset of the DataOffset field within the ReadAndXResponse structure.
     //recvfrom() is a custom function that will receive the reply.
     do {
-        rcv_size = plwip_recvfrom(main_socket, &SMB_buf, 49, readbuf, nbytes, 0, NULL, NULL);
+        rcv_size = smb_RecvTimed(main_socket, &SMB_buf, 49, readbuf, nbytes);
         if (rcv_size <= 0)
             return -2;
     } while (nb_GetPacketType() != 0); // dropping NBSS Session Keep alive
@@ -749,7 +782,7 @@ static int smb_ReadAndX(u16 FID, u32 offsetlow, u32 offsethigh, void *readbuf, i
 
     // Handle fragmented packets
     while (rcv_size < expected_size) {
-        r = plwip_recvfrom(main_socket, NULL, 0, &((u8 *)readbuf)[rcv_size - RRsp->DataOffset - 4], expected_size - rcv_size, 0, NULL, NULL); // - rcv_size
+        r = smb_RecvTimed(main_socket, NULL, 0, &((u8 *)readbuf)[rcv_size - RRsp->DataOffset - 4], expected_size - rcv_size);
         // 0: the connection is closed, < 0: an error
         if (r <= 0)
             return -2;
