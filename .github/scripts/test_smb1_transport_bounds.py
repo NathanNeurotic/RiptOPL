@@ -62,7 +62,7 @@ typedef struct { u8 data[32]; } SMBHeader_t;
 static uint64_t virtual_us;
 static int socket_calls, connect_calls, close_calls, recv_calls, body_calls, send_calls;
 static int socket_fails, connect_fails, receive_mode;
-enum { SILENT, CHUNKS, DRIP, CLOSED, KEEPALIVES, GOOD_REPLY, OVERSIZE_REPLY };
+enum { SILENT, CHUNKS, DRIP, CLOSED, KEEPALIVES, GOOD_REPLY, OVERSIZE_REPLY, SHORT_REPLY };
 static struct {
     u32 sessionHeader;
     union { u8 bytes[1024]; } smb;
@@ -148,7 +148,7 @@ static int fake_recvfrom(int fd, void *h, int hlen, void *payload,
 }
 static int nb_GetSessionMessageLength(void)
 {
-    return receive_mode == OVERSIZE_REPLY ? 2048 : 32;
+    return receive_mode == OVERSIZE_REPLY ? 2048 : receive_mode == SHORT_REPLY ? 16 : 32;
 }
 static u8 nb_GetPacketType(void) { return (u8)(SMB_buf.sessionHeader & 0xff); }
 static int SendData(int fd, char *data, int bytes)
@@ -229,7 +229,12 @@ int main(void)
 
     reset(OVERSIZE_REPLY);
     assert(GetSMBServerReply(0, NULL, 0) == -2);
-    assert(body_calls == 0); /* Reject overlong NBSS body before copying. */
+    assert(body_calls == 0 && main_socket == -1 && close_calls == 1);
+    /* Reject an overlong NBSS body and discard the unsynchronized stream. */
+
+    reset(SHORT_REPLY);
+    assert(GetSMBServerReply(0, NULL, 0) == -2);
+    assert(body_calls == 0 && main_socket == -1 && close_calls == 1);
 
     puts("SMB1 TCP/reply bounds: PASS");
     return 0;
