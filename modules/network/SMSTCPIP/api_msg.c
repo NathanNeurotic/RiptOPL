@@ -480,6 +480,7 @@ do_connected(void *arg, struct tcp_pcb *pcb, err_t err)
 }
 #endif
 
+/* Connect asynchronously; an immediate SYN-enqueue failure must wake the waiting caller. */
 static void
 do_connect(struct api_msg_msg *msg)
 {
