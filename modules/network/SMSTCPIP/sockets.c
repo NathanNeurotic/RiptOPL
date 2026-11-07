@@ -251,6 +251,7 @@ int lwip_bind(int s, struct sockaddr *name, socklen_t namelen)
 int lwip_close(int s)
 {
     struct lwip_socket *sock;
+    err_t err;
 
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_close(%d)\n", s));
     if (!socksem)
@@ -266,7 +267,14 @@ int lwip_close(int s)
         return -1;
     }
 
-    netconn_delete(sock->conn);
+    err = netconn_delete(sock->conn);
+    if (err != ERR_OK) {
+        // netconn_delete can fail before posting its IOP API message.
+        // Preserve the socket and its PCB so the caller can retry closing.
+        sock_set_errno(sock, err_to_errno(err));
+        sys_sem_signal(socksem);
+        return -1;
+    }
     if (sock->lastdata) {
         netbuf_delete(sock->lastdata);
     }
@@ -1260,7 +1268,12 @@ int lwip_setsockopt(int s, int level, int optname, const void *optval, socklen_t
         return -1;
     }
 
-
+    // A failed TCP connect may have freed its PCB while leaving this
+    // socket descriptor open. Every supported set option below needs a PCB.
+    if (sock->conn->pcb.tcp == NULL) {
+        sock_set_errno(sock, ENOTCONN);
+        return -1;
+    }
 
     /* Now do the actual option processing */
 
