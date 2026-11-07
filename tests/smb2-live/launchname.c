@@ -72,7 +72,7 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     (void)hash_callback;
     *capabilities = 0;
     negotiate_calls++;
-    return 1;
+    return failure_mode == 7 ? -1 : 1;
 }
 
 int smb_SessionSetupAndX(u32 capabilities)
@@ -271,6 +271,34 @@ static void failed_mount_case(int mode)
     }
 }
 
+/* Failed negotiation must latch the device unusable before CDVDMAN tries
+   session setup, tree connect, or filesystem parsing. */
+static void failed_negotiation_case(void)
+{
+    char sector[2048];
+    int previous_sessions = session_calls;
+    int previous_trees = tree_calls;
+    int previous_opens = nopened;
+
+    failure_mode = 7;
+    negotiate_calls = 0;
+    DeviceInit();
+    if (smb_NegotiateProt(NULL) >= 0 || negotiate_calls != 1 ||
+        DeviceReady() != SCECdNotReady ||
+        DeviceReadSectors(0, sector, 1) != SCECdErREAD) {
+        puts("FAIL: failed negotiation did not mark the device unavailable");
+        fails++;
+    }
+    DeviceFSInit();
+    if (session_calls != previous_sessions || tree_calls != previous_trees ||
+        nopened != previous_opens) {
+        puts("FAIL: failed negotiation proceeded to mount");
+        fails++;
+    }
+    DeviceUnmount();
+    failure_mode = 0;
+}
+
 /* No registered ps2ip module: never dereference uninitialized export pointers
    or enter session setup after the launch negotiation failed. */
 static void missing_ps2ip_case(void)
@@ -318,6 +346,7 @@ int main(void)
                     launch(f, lengths[l], prefixes[p], m ? 0x12 : 0x14);
     for (f = 1; f <= 6; ++f)
         failed_mount_case(f);
+    failed_negotiation_case();
     missing_ps2ip_case();
     printf("%d launches, %d failed (settings block %d bytes, file name field %d bytes)\n", cases, fails, (int)sizeof(cdvdman_settings),
            (int)sizeof(cdvdman_settings.filename));
