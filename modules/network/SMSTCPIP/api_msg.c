@@ -553,12 +553,23 @@ do_connect(struct api_msg_msg *msg)
             break;
 #endif
 #if LWIP_TCP
-        case NETCONN_TCP:
-            /*    tcp_arg(msg->conn->pcb.tcp, msg->conn);*/
+        case NETCONN_TCP: {
+            err_t err;
             setup_tcp(msg->conn);
-            tcp_connect(msg->conn->pcb.tcp, msg->msg.bc.ipaddr, msg->msg.bc.port,
-                        do_connected);
-/*tcp_output(msg->conn->pcb.tcp);*/
+            err = tcp_connect(msg->conn->pcb.tcp, msg->msg.bc.ipaddr, msg->msg.bc.port,
+                              do_connected);
+            if (err != ERR_OK) {
+                // A failed SYN enqueue has no completion callback. Wake netconn_connect
+                // and free the SYN_SENT PCB instead of waiting for an ACK that cannot arrive.
+                if (msg->conn->pcb.tcp->state == SYN_SENT) {
+                    tcp_close(msg->conn->pcb.tcp);
+                    msg->conn->pcb.tcp = NULL;
+                }
+                msg->conn->err = err;
+                TCPIP_APIMSG_ACK(msg->conn->mbox);
+            }
+            break;
+        }
 #endif
 
         default:
