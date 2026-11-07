@@ -697,14 +697,14 @@ int main(void)
     reset_poll();
     pfd = (struct pollfd){3, POLLIN, 0};
     assert(poll(&pfd, 1, 25) == 0);
-    assert(select_calls == 4 && delay_calls == 3 && delayed_us == 25000);
+    assert(select_calls == 6 && delay_calls == 5 && delayed_us == 25000);
 
     reset_poll();
     ready_on_call = 2;
     ready_read_mask = 1u << 3;
     pfd = (struct pollfd){3, POLLIN, 0};
     assert(poll(&pfd, 1, 1000) == 1);
-    assert(pfd.revents == POLLIN && select_calls == 2 && delayed_us == 10000);
+    assert(pfd.revents == POLLIN && select_calls == 2 && delayed_us == 5000);
 
     reset_poll();
     ready_on_call = 1;
@@ -723,7 +723,7 @@ int main(void)
     ready_read_mask = 1u << 5;
     pfd = (struct pollfd){5, POLLIN, 0};
     assert(poll(&pfd, 1, -1) == 1);
-    assert(pfd.revents == POLLIN && select_calls == 3 && delayed_us == 20000);
+    assert(pfd.revents == POLLIN && select_calls == 3 && delayed_us == 10000);
 
     reset_poll();
     pfd = (struct pollfd){-1, POLLIN, 0};
