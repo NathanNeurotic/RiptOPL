@@ -213,7 +213,11 @@ static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int pl
         }
         if (result > 0)
             return result;
-        DelayThread(1000);
+        if (DelayThread(1000) < 0) {
+            // Never busy-spin in the CDVD thread when the IOP cannot sleep.
+            smb_Disconnect();
+            return -2;
+        }
     }
 }
 
