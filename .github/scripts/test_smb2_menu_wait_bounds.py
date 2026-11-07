@@ -623,11 +623,18 @@ poll_harness = r'''
 
 typedef struct { unsigned int bits; } fd_set;
 #define FD_ZERO(set) ((set)->bits = 0u)
-#define FD_SET(fd, set) do { \\
-    assert((fd) >= 0 && (fd) < FD_SETSIZE); \\
-    (set)->bits |= (1u << (fd)); \\
-} while (0)
-#define FD_ISSET(fd, set) (((set)->bits & (1u << (fd))) != 0u)
+static void test_fd_set(int fd, fd_set *set)
+{
+    assert(fd >= 0 && fd < FD_SETSIZE);
+    set->bits |= (1u << fd);
+}
+static int test_fd_isset(int fd, const fd_set *set)
+{
+    assert(fd >= 0 && fd < FD_SETSIZE);
+    return (set->bits & (1u << fd)) != 0u;
+}
+#define FD_SET(fd, set) test_fd_set((fd), (set))
+#define FD_ISSET(fd, set) test_fd_isset((fd), (set))
 
 struct timeval { long tv_sec; long tv_usec; };
 struct pollfd { int fd; short events; short revents; };
