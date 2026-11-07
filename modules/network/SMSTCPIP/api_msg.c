@@ -369,7 +369,12 @@ do_delconn(struct api_msg_msg *msg)
 #endif /* LWIP_UDP */
 #if LWIP_TCP
             case NETCONN_TCP:
-                if (msg->conn->pcb.tcp->state == LISTEN) {
+                if (msg->conn->pcb.tcp->state == CLOSED) {
+                    // New TCP sockets already own a PCB. Closing before connect
+                    // must release it: tcp_close(CLOSED) intentionally does not.
+                    memp_free(MEMP_TCP_PCB, msg->conn->pcb.tcp);
+                    msg->conn->pcb.tcp = NULL;
+                } else if (msg->conn->pcb.tcp->state == LISTEN) {
                     tcp_arg(msg->conn->pcb.tcp, NULL);
                     tcp_accept(msg->conn->pcb.tcp, NULL);
                     tcp_close(msg->conn->pcb.tcp);
