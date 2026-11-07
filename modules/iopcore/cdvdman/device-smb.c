@@ -4,6 +4,8 @@
   Review Open PS2 Loader README & LICENSE files for further details.
 */
 
+#include <stdio.h>
+
 #include "smstcpip.h"
 #include "internal.h"
 
@@ -74,11 +76,18 @@ void DeviceFSInit(void)
     char tmp_str[CDVDMAN_SMB_PATH_MAX];
 
     // open a session
-    smb_SessionSetupAndX(ServerCapabilities);
+    if (smb_SessionSetupAndX(ServerCapabilities) < 0) {
+        printf("DeviceFSInit: session setup failed\n");
+        return;
+    }
 
     // Then tree connect on the share resource
     sprintf(tmp_str, "\\\\%s\\%s", cdvdman_settings.smb_ip, cdvdman_settings.smb_share);
-    smb_TreeConnectAndX(tmp_str);
+    if (smb_TreeConnectAndX(tmp_str) < 0) {
+        printf("DeviceFSInit: tree connect failed\n");
+        smb_Disconnect();
+        return;
+    }
 
     if (!(cdvdman_settings.common.flags & IOPCORE_SMB_FORMAT_USBLD)) {
         if (cdvdman_settings.smb_prefix[0]) {
