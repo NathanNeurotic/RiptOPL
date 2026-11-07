@@ -124,7 +124,7 @@ static u8 nb_GetPacketType(void) // Read Session Service header type.
 int OpenTCPSession(struct in_addr dst_IP, u16 dst_port)
 {
     register int sock, ret;
-    int opt;
+    int opt, attempt;
     struct sockaddr_in sock_addr;
 
     // Creating socket
@@ -140,14 +140,16 @@ int OpenTCPSession(struct in_addr dst_IP, u16 dst_port)
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_port = htons(dst_port);
 
-    while (1) {
+    // This bounds repeated failures; a single blocking connect still depends on PS2IP.
+    for (attempt = 0; attempt < 100; attempt++) {
         ret = plwip_connect(sock, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
         if (ret >= 0)
-            break;
-        DelayThread(500);
+            return sock;
+        DelayThread(100000);
     }
 
-    return sock;
+    plwip_close(sock);
+    return -1;
 }
 
 //-------------------------------------------------------------------------
@@ -223,8 +225,11 @@ static int GetSMBServerReply(int shdrlen, void *spayload, int rhdrlen)
 
     totalpkt_size = nb_GetSessionMessageLength();
 
-    //If rhdrlen is not specified, retrieve the whole packet. Otherwise, retrieve only the headers (caller will retrieve the payload separately).
+    // Only READ_ANDX receives a partial header here; its payload is read separately.
+    // Reject untrusted NBSS lengths before writing into this fixed IOP buffer.
     size = (rhdrlen == 0) ? totalpkt_size : rhdrlen;
+    if (totalpkt_size < (int)sizeof(SMBHeader_t) || size > (int)sizeof(SMB_buf.smb) || size > totalpkt_size)
+        return -2;
     rcv_size = RecvData(main_socket, (char *)&SMB_buf.smb, size);
     if (rcv_size <= 0)
         return -2;
@@ -273,6 +278,7 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     NegotiateProtocolRequest_t *NPR = &SMB_buf.smb.negotiateProtocolRequest;
     NegotiateProtocolResponse_t *NPRsp = &SMB_buf.smb.negotiateProtocolResponse;
     register int length;
+    int reply_len;
     struct in_addr dst_addr;
     iop_sema_t smp;
 
@@ -281,13 +287,15 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     smp.option = 0;
     smp.attr = 1;
     smb_io_sema = CreateSema(&smp);
+    if (smb_io_sema < 0)
+        return -1;
 
     dst_addr.s_addr = pinet_addr(SMBServerIP);
 
     // Opening TCP session
     main_socket = OpenTCPSession(dst_addr, SMBServerPort);
-
-negotiate_retry:
+    if (main_socket < 0)
+        goto negotiate_failed;
 
     ZERO_PKT_ALIGNED(NPR, sizeof(NegotiateProtocolRequest_t));
 
@@ -301,18 +309,13 @@ negotiate_retry:
     strcpy(NPR->DialectName, dialect);
 
     nb_SetSessionMessage(sizeof(NegotiateProtocolRequest_t) + length + 1);
-    GetSMBServerReply(0, NULL, 0);
-
-    // check sanity of SMB header
-    if (NPRsp->smbH.Magic != SMB_MAGIC)
-        goto negotiate_retry;
-
-    // check there's no error
-    if (NPRsp->smbH.Eclass != STATUS_SUCCESS)
-        goto negotiate_retry;
-
-    if (NPRsp->smbWordcount != 17)
-        goto negotiate_retry;
+    reply_len = GetSMBServerReply(0, NULL, 0);
+    if (reply_len < (int)sizeof(NegotiateProtocolResponse_t) ||
+        NPRsp->smbH.Magic != SMB_MAGIC || NPRsp->smbH.Eclass != STATUS_SUCCESS ||
+        NPRsp->smbWordcount != 17 || NPRsp->KeyLength > sizeof(server_specs.EncryptionKey) ||
+        NPRsp->ByteCount < NPRsp->KeyLength ||
+        reply_len < (int)sizeof(NegotiateProtocolResponse_t) + NPRsp->ByteCount)
+        goto negotiate_failed;
 
     *capabilities = NPRsp->Capabilities & (CLIENT_CAP_LARGE_WRITEX | CLIENT_CAP_LARGE_READX | CLIENT_CAP_UNICODE | CLIENT_CAP_LARGE_FILES | CLIENT_CAP_STATUS32);
 
@@ -325,7 +328,13 @@ negotiate_retry:
     server_specs.MaxMpxCount = NPRsp->MaxMpxCount;
     server_specs.SessionKey = NPRsp->SessionKey;
     memcpy(server_specs.EncryptionKey, &NPRsp->ByteField[0], NPRsp->KeyLength);
-    memcpy(server_specs.PrimaryDomainServerName, &NPRsp->ByteField[NPRsp->KeyLength], sizeof(server_specs.PrimaryDomainServerName));
+    memset(server_specs.PrimaryDomainServerName, 0, sizeof(server_specs.PrimaryDomainServerName));
+    {
+        unsigned int domain_len = NPRsp->ByteCount - NPRsp->KeyLength;
+        if (domain_len >= sizeof(server_specs.PrimaryDomainServerName))
+            domain_len = sizeof(server_specs.PrimaryDomainServerName) - 1;
+        memcpy(server_specs.PrimaryDomainServerName, &NPRsp->ByteField[NPRsp->KeyLength], domain_len);
+    }
     strncpy(server_specs.Username, Username, sizeof(server_specs.Username));
     server_specs.Username[sizeof(server_specs.Username) - 1] = '\0';
     strncpy(server_specs.Password, Password, sizeof(server_specs.Password));
@@ -336,6 +345,12 @@ negotiate_retry:
     hash_callback(&server_specs);
 
     return 1;
+
+negotiate_failed:
+    smb_Disconnect();
+    DeleteSema(smb_io_sema);
+    smb_io_sema = -1;
+    return -1;
 }
 
 //-------------------------------------------------------------------------
@@ -346,6 +361,7 @@ int smb_SessionSetupAndX(u32 capabilities)
     register int offset, useUnicode;
     int AuthType = NTLM_AUTH;
     int password_len = 0;
+    int reply_len;
 
 lbl_session_setup:
     ZERO_PKT_ALIGNED(SSR, sizeof(SessionSetupAndXRequest_t));
@@ -411,7 +427,9 @@ lbl_session_setup:
     SSR->ByteCount = offset;
 
     nb_SetSessionMessage(sizeof(SessionSetupAndXRequest_t) + offset);
-    GetSMBServerReply(0, NULL, 0);
+    reply_len = GetSMBServerReply(0, NULL, 0);
+    if (reply_len < (int)sizeof(SMBHeader_t))
+        return -2;
 
     // check sanity of SMB header
     if (SSRsp->smbH.Magic != SMB_MAGIC)
@@ -427,6 +445,9 @@ lbl_session_setup:
     if ((SSRsp->smbH.Eclass | SSRsp->smbH.Ecode) != STATUS_SUCCESS)
         return -1000;
 
+    if (reply_len < (int)sizeof(SessionSetupAndXResponse_t))
+        return -1;
+
     // keep UID
     UID = SSRsp->smbH.UID;
 
@@ -441,6 +462,7 @@ int smb_TreeConnectAndX(char *ShareName)
     register int offset;
     int AuthType = NTLM_AUTH;
     int password_len = 0;
+    int reply_len;
 
     ZERO_PKT_ALIGNED(TCR, sizeof(TreeConnectAndXRequest_t));
 
@@ -480,7 +502,9 @@ int smb_TreeConnectAndX(char *ShareName)
     TCR->ByteCount = offset;
 
     nb_SetSessionMessage(sizeof(TreeConnectAndXRequest_t) + offset);
-    GetSMBServerReply(0, NULL, 0);
+    reply_len = GetSMBServerReply(0, NULL, 0);
+    if (reply_len < (int)sizeof(SMBHeader_t))
+        return -2;
 
     // check sanity of SMB header
     if (TCRsp->smbH.Magic != SMB_MAGIC)
@@ -489,6 +513,9 @@ int smb_TreeConnectAndX(char *ShareName)
     // check there's no error (NT STATUS error type!)
     if ((TCRsp->smbH.Eclass | TCRsp->smbH.Ecode) != STATUS_SUCCESS)
         return -1000;
+
+    if (reply_len < (int)sizeof(TreeConnectAndXResponse_t))
+        return -1;
 
     // keep TID
     TID = TCRsp->smbH.TID;
@@ -502,6 +529,7 @@ int smb_OpenAndX(char *filename, u8 *FID, int Write)
     OpenAndXRequest_t *OR = &SMB_buf.smb.openAndXRequest;
     OpenAndXResponse_t *ORsp = &SMB_buf.smb.openAndXResponse;
     register int offset;
+    int reply_len;
 
     WAITIOSEMA(smb_io_sema);
 
@@ -532,7 +560,11 @@ int smb_OpenAndX(char *filename, u8 *FID, int Write)
     OR->ByteCount = offset;
 
     nb_SetSessionMessage(sizeof(OpenAndXRequest_t) + offset + 1);
-    GetSMBServerReply(0, NULL, 0);
+    reply_len = GetSMBServerReply(0, NULL, 0);
+    if (reply_len < (int)sizeof(SMBHeader_t)) {
+        SIGNALIOSEMA(smb_io_sema);
+        return -2;
+    }
 
     // check sanity of SMB header
     if (ORsp->smbH.Magic != SMB_MAGIC) {
@@ -546,6 +578,10 @@ int smb_OpenAndX(char *filename, u8 *FID, int Write)
         return -1000;
     }
 
+    if (reply_len < (int)sizeof(OpenAndXResponse_t)) {
+        SIGNALIOSEMA(smb_io_sema);
+        return -1;
+    }
     memcpy(FID, &ORsp->FID, 2);
 
     SIGNALIOSEMA(smb_io_sema);
