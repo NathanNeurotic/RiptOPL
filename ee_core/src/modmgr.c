@@ -155,12 +155,20 @@ int GetOPLModInfo(int id, void **pointer, unsigned int *size)
 // a blinking red screen instead, as an out-of-IOP-memory failure does. A module that loads but
 // declines to stay resident (bad ip=, no adapter) counts as not started. iLinkman and IEEE1394_bd
 // are the i.LINK pair: iopmgr.c already skips IEEE1394_bd when iLinkman fails, but nothing said why,
-// and the game then sat on a black screen waiting for a drive that could never attach.
+// and the game then sat on a black screen waiting for a drive that could never attach. smbinit is
+// also required in ETH mode: it returns MODULE_NO_RESIDENT_END on success, but a negative start
+// result means SMB negotiation failed and the filesystem cannot be used.
 static int IsRequiredTransport(int id)
 {
     return id == OPL_MODULE_ID_PCCF || id == OPL_MODULE_ID_SMAP_UDPBD || id == OPL_MODULE_ID_UDPFS_SMAP ||
            id == OPL_MODULE_ID_UDPFS_MINISTACK || id == OPL_MODULE_ID_UDPFS_BD || id == OPL_MODULE_ID_UDPFS_FHI ||
-           id == OPL_MODULE_ID_ILINK || id == OPL_MODULE_ID_ILINKBD;
+           id == OPL_MODULE_ID_ILINK || id == OPL_MODULE_ID_ILINKBD || id == OPL_MODULE_ID_SMBINIT;
+}
+
+/* A successful smbinit is intentionally non-resident; other transports must stay resident. */
+static int RequiredTransportStartFailed(int id)
+{
+    return id == OPL_MODULE_ID_SMBINIT ? moduleStartResult < 0 : moduleStartResult != 0;
 }
 
 static void RequiredTransportFailed(void)
@@ -215,10 +223,10 @@ int LoadOPLModule(int id, int mode, int arg_len, const char *args)
         }
     }
 
-    // One check covers every way a required transport fails: the menu did not pack it (-1), it is empty (0),
-    // MODLOAD refused it (< 0), or it loaded and declined to stay resident. One check, not one per path: the
-    // stack is what ee_core leaves above .bss, and the LLVM build has almost none of it to spare.
-    if (IsRequiredTransport(id) && (result < 1 || moduleStartResult != 0))
+    // One check covers a required module that was not packed, is empty, failed MODLOAD, or failed its
+    // start contract. The one-shot smbinit contract is handled by RequiredTransportStartFailed(): its
+    // successful MODULE_NO_RESIDENT_END is expected, while a negative start result means negotiation failed.
+    if (IsRequiredTransport(id) && (result < 1 || RequiredTransportStartFailed(id)))
         RequiredTransportFailed();
 
     BGCOLND(0x000000);

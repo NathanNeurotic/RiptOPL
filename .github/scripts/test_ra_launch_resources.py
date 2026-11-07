@@ -27,6 +27,7 @@ load_end = special_reset.rindex("\n#endif")
 load_body = special_reset[load_begin:load_end]
 module_loader = function(mod, "int LoadOPLModule(int id, int mode, int arg_len, const char *args)")
 transport = (function(mod, "static int IsRequiredTransport(int id)") + "\n" +
+             function(mod, "static int RequiredTransportStartFailed(int id)") + "\n" +
              function(mod, "static void RequiredTransportFailed(void)"))
 
 harness = r"""
@@ -49,6 +50,7 @@ harness = r"""
 #define OPL_MODULE_ID_UDPFS_FHI 65
 #define OPL_MODULE_ID_ILINK 66
 #define OPL_MODULE_ID_ILINKBD 67
+#define OPL_MODULE_ID_SMBINIT 13
 #define MODMGR 0
 #define BGCOLND(...) ((void)0)
 #define DBGCOL(...) ((void)0)

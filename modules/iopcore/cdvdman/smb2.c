@@ -6,10 +6,10 @@
   the Network page's SMB Version row; nothing in the settings block changes.
 
   What it speaks, and why
-  - SMB 2.0.2 and 2.1 only. Every SMB2-capable server still offers them (Windows cannot turn them
-    off without turning SMB3 off too; Samba's default floor is 2.0.2), and they keep signing to
-    HMAC-SHA256. SMB 3.x would add AES-CMAC and secure-negotiate code to IOP RAM for no gain here:
-    this client never encrypts.
+  - SMB 2.0.2 and 2.1 by default, with an unsigned SMB 3.0 / 3.0.2 fallback when a server refuses
+    2.x with STATUS_NOT_SUPPORTED (such as PS2-Servers' SMBv3 mode or Samba with min protocol =
+    SMB3_00). Offering 2.0.2 and 2.1 first keeps servers that support 2.1 with mandatory signing
+    (Windows 11 24H2) on HMAC-SHA256 instead of SMB 3.x AES-CMAC.
   - NTLMv2 logon, computed here. smbinit's hash callback is deliberately not used: it computes
     SMB1 LM/NTLMv1 responses, which modern servers refuse, and smbinit is unloaded by the time the
     session is set up. Raw NTLMSSP tokens are sent without SPNEGO, which Windows and Samba accept.
@@ -47,14 +47,18 @@
 /* SMSTCPIP has no SO_RCVTIMEO and its lwip_select is a stub, so a blocking plwip_recv waits
    forever -- and at boot RecvData runs inside smbinit's synchronous module load, where one
    reply that never arrives wedges the whole launch on a black screen. Poll with MSG_DONTWAIT
-   instead and give up on a connection that stays silent, so the negotiate caller's retry
-   loop reconnects. The flag is 0x40 as in SMSTCPIP's lwip/sockets.h (smstcpip.h declares the
-   imports but not the flag); it matches the host's MSG_DONTWAIT in the live harness too. */
+   instead and give up on a connection that stays silent. The flag is 0x40 as in
+   SMSTCPIP's lwip/sockets.h (smstcpip.h declares the imports but not the flag); it matches
+   the host's MSG_DONTWAIT in the live harness too. The negotiate retry count is also bounded:
+   reconnecting forever would still hold the synchronous module load open forever. */
 #ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0x40
 #endif
 
-#define SMB2_RECV_TIMEOUT_MS 10000 // longest wire silence tolerated before the connection is declared dead
+#define SMB2_RECV_TIMEOUT_MS          10000      // longest wire silence tolerated before the connection is declared dead
+#define SMB2_NEGOTIATE_TIMEOUT_TICKS  368640000U // ten seconds at the IOP's 36.864 MHz system clock
+#define SMB2_NEGOTIATE_MAX_ATTEMPTS   3
+#define SMB2_NEGOTIATE_RETRY_DELAY_US 500000
 
 #define SMB2_HDR_SIZE 64
 
@@ -74,6 +78,7 @@
 #define STATUS_PENDING                  0x00000103
 #define STATUS_MORE_PROCESSING_REQUIRED 0xC0000016
 #define STATUS_END_OF_FILE              0xC0000011
+#define STATUS_NOT_SUPPORTED            0xC00000BB
 
 #define SMB2_NEGOTIATE_SIGNING_ENABLED  0x0001
 #define SMB2_NEGOTIATE_SIGNING_REQUIRED 0x0002
@@ -110,6 +115,8 @@ extern struct cdvdman_settings_smb cdvdman_settings;
 static int main_socket = -1;
 static struct in_addr server_addr;
 static u16 server_port;
+static iop_sys_clock_t negotiate_start;
+static int negotiate_deadline_active;
 
 static u64 next_msg_id;
 static u64 session_id;
@@ -254,12 +261,32 @@ static int SendData(int sock, const void *buf, int size)
     return size;
 }
 
+/** Return nonzero after the active negotiation attempt exceeds its 10-second budget. */
+static int NegotiateTimedOut(void)
+{
+    iop_sys_clock_t now;
+
+    if (!negotiate_deadline_active)
+        return 0;
+
+    GetSystemTime(&now);
+    // Unsigned low-word subtraction remains valid across the IOP clock's low-word wrap.
+    return (u32)(now.lo - negotiate_start.lo) >= SMB2_NEGOTIATE_TIMEOUT_TICKS;
+}
+
+/**
+ * Read exactly size bytes, returning -1 if the peer closes, stays silent, or
+ * the active negotiation attempt reaches its deadline.
+ */
 static int RecvData(int sock, void *buf, int size)
 {
     u8 *ptr = (u8 *)buf;
     int remaining = size, result, waited = 0;
 
     while (remaining > 0) {
+        // A stream of keep-alives or STATUS_PENDING replies must not reset the attempt budget.
+        if (NegotiateTimedOut())
+            return -1;
         result = plwip_recv(sock, ptr, remaining, MSG_DONTWAIT);
         if (result > 0) {
             ptr += result;
@@ -450,7 +477,7 @@ static u32 ReplyStatus(void)
 }
 
 //-------------------------------------------------------------------------
-static int Negotiate(void)
+static int NegotiateDialect(u16 d0, u16 d1)
 {
     static const u8 client_guid[16] = {'O', 'P', 'L', '-', 'S', 'M', 'B', '2', 'P', 'S', '2', 'I', 'O', 'P', 'v', '1'};
     int len;
@@ -467,29 +494,63 @@ static int Negotiate(void)
     wr16(BODY + 2, 2);                              // DialectCount
     wr16(BODY + 4, SMB2_NEGOTIATE_SIGNING_ENABLED); // SecurityMode
     memcpy(BODY + 12, client_guid, 16);
-    wr16(BODY + 36, 0x0202);
-    wr16(BODY + 38, 0x0210);
+    wr16(BODY + 36, d0);
+    wr16(BODY + 38, d1);
 
     len = Transact(40);
     if (len < 0)
         return -1;
+    if (ReplyStatus() == STATUS_NOT_SUPPORTED)
+        return -2;
     if (ReplyStatus() != STATUS_SUCCESS || len < 64 || rd16(BODY) != 65)
         return -1000;
 
     dialect = rd16(BODY + 4);
-    if (dialect != 0x0202 && dialect != 0x0210)
+    if (dialect != d0 && dialect != d1)
         return -1000;
 
     sign_required = (rd16(BODY + 2) & SMB2_NEGOTIATE_SIGNING_REQUIRED) ? 1 : 0;
+    if (dialect >= 0x0300 && sign_required)
+        return -1000;
     max_read = rd32(BODY + 32);
     max_write = rd32(BODY + 36);
 
     return 1;
 }
 
+static int Negotiate(void)
+{
+    int ret = NegotiateDialect(0x0202, 0x0210);
+
+    if (ret != -2)
+        return ret;
+    plwip_close(main_socket);
+    main_socket = OpenTCPSession();
+    if (main_socket < 0)
+        return -1;
+    ret = NegotiateDialect(0x0300, 0x0302);
+    return (ret == -2) ? -1000 : ret;
+}
+
+/** Release the I/O semaphore before returning a failed negotiation result. */
+static int NegotiateFailed(int result)
+{
+    if (smb_io_sema >= 0) {
+        DeleteSema(smb_io_sema);
+        smb_io_sema = -1;
+    }
+    return result;
+}
+
+/**
+ * Negotiate SMB2 with the configured server. Transient connection/receive
+ * failures get at most three attempts; an unusable response fails immediately.
+ * Returns 1 on success or a negative value on failure.
+ */
 int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, char *Password, u32 *capabilities, OplSmbPwHashFunc_t hash_callback)
 {
     iop_sema_t smp;
+    int attempt;
 
     (void)hash_callback; // SMB1-only; see the top of this file
 
@@ -498,6 +559,8 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     smp.option = 0;
     smp.attr = 1;
     smb_io_sema = CreateSema(&smp);
+    if (smb_io_sema < 0)
+        return -1;
 
     strncpy(user_name, Username, sizeof(user_name) - 1);
     user_name[sizeof(user_name) - 1] = '\0';
@@ -509,22 +572,45 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     // and libsmb2 connects to 445. Connecting to port 0 would retry here forever.
     server_port = (u16)(SMBServerPort > 0 ? SMBServerPort : 445);
     *capabilities = 0;
+    if (main_socket >= 0) {
+        plwip_close(main_socket);
+        main_socket = -1;
+    }
 
     // The SPN the logon names the server by, as the menu's does: libsmb2 sends "cifs/" and the
     // server as smb2man.c passes it to smb2_connect_share(), "<ip>", or "<ip>:<port>" off port 445.
     sprintf(spn, (SMBServerPort > 0 && SMBServerPort != 445) ? "cifs/%.15s:%d" : "cifs/%.15s", SMBServerIP, SMBServerPort);
 
-    // As smb.c: keep trying until the server answers. Without it there is no game to boot.
-    for (;;) {
+    /* A failed or incompatible server must not keep smbinit's synchronous module load
+       blocked forever. Retry transient connection/receive failures a few times, but a
+       completed response that rejects SMB2.x is permanent for this request. */
+    for (attempt = 0; attempt < SMB2_NEGOTIATE_MAX_ATTEMPTS; attempt++) {
+        // Start the budget before opening the socket. In this SMSTCPIP build,
+        // lwip_connect initiates TCP and returns before SYN retries finish; the
+        // check below catches time spent in socket setup or waiting for the core lock.
+        GetSystemTime(&negotiate_start);
+        negotiate_deadline_active = 1;
         main_socket = OpenTCPSession();
         if (main_socket >= 0) {
-            if (Negotiate() > 0)
+            int result = NegotiateTimedOut() ? -1 : Negotiate();
+
+            negotiate_deadline_active = 0;
+            if (result > 0)
                 return 1;
-            plwip_close(main_socket);
-            main_socket = -1;
+            if (main_socket >= 0) {
+                plwip_close(main_socket);
+                main_socket = -1;
+            }
+            if (result == -1000)
+                return NegotiateFailed(result);
+        } else {
+            negotiate_deadline_active = 0;
         }
-        DelayThread(500 * 1000);
+        if (attempt + 1 < SMB2_NEGOTIATE_MAX_ATTEMPTS)
+            DelayThread(SMB2_NEGOTIATE_RETRY_DELAY_US);
     }
+
+    return NegotiateFailed(-1);
 }
 
 //-------------------------------------------------------------------------
