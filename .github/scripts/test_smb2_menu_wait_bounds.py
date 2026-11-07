@@ -56,6 +56,7 @@ struct smb2_context {
     int timeout;
     struct smb2_pdu *pdu, *next_pdu, *outqueue, *waitqueue;
 };
+#define SMB2_STATUS_SUCCESS 0
 #define SMB2_STATUS_SHUTDOWN (-999)
 #define SMB2_STATUS_CANCELLED (-998)
 struct sync_cb_data { int is_finished, status; void *ptr; };
