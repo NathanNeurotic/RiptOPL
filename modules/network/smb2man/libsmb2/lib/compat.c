@@ -640,6 +640,91 @@ int poll(struct pollfd *fds, nfds_t nfds, int timo)
 int poll(struct pollfd *fds, unsigned int nfds, int timo)
 #endif
 {
+#ifdef _IOP
+        /*
+         * PS2IP's sys_arch_sem_wait() uses PollSema for a 1 ms wait. Longer
+         * timed waits allocate an IOP alarm but do not check SetAlarm() before
+         * WaitSema(). A failed alarm allocation can therefore strand this
+         * thread inside lwip_select(), bypassing libsmb2's whole-call timeout.
+         * Keep each select probe at 1 ms and use DelayThread() for the longer
+         * poll interval so the SMB2 deadline always gets control back.
+         */
+        int elapsed_ms = 0;
+
+        for (;;) {
+                struct timeval timeout;
+                fd_set ifds, ofds, efds, *ip, *op;
+                unsigned int i, maxfd = 0;
+                int rc;
+
+                FD_ZERO(&ifds);
+                FD_ZERO(&ofds);
+                FD_ZERO(&efds);
+                op = ip = 0;
+
+                for (i = 0; i < nfds; ++i) {
+                        int fd = fds[i].fd;
+                        fds[i].revents = 0;
+                        /* poll() ignores negative descriptors. */
+                        if (!SMB2_VALID_SOCKET(fd))
+                                continue;
+#ifdef FD_SETSIZE
+                        if (fd >= FD_SETSIZE)
+                                return -1;
+#endif
+                        if (fds[i].events & (POLLIN | POLLPRI)) {
+                                ip = &ifds;
+                                FD_SET(fd, ip);
+                        }
+                        if (fds[i].events & POLLOUT) {
+                                op = &ofds;
+                                FD_SET(fd, op);
+                        }
+                        FD_SET(fd, &efds);
+                        if ((unsigned int)fd > maxfd)
+                                maxfd = (unsigned int)fd;
+                }
+
+                /* 1 ms selects take PS2IP's PollSema path; they do not need
+                 * the alarm-backed timed semaphore wait. */
+                timeout.tv_sec = 0;
+                timeout.tv_usec = 1000;
+                rc = select(maxfd + 1, ip, op, &efds, &timeout);
+                if (rc < 0)
+                        return rc;
+
+                rc = 0;
+                for (i = 0; i < nfds; ++i) {
+                        int fd = fds[i].fd;
+                        if (!SMB2_VALID_SOCKET(fd))
+                                continue;
+                        if ((fds[i].events & (POLLIN | POLLPRI)) && FD_ISSET(fd, &ifds))
+                                fds[i].revents |= POLLIN;
+                        if ((fds[i].events & POLLOUT) && FD_ISSET(fd, &ofds))
+                                fds[i].revents |= POLLOUT;
+                        if (FD_ISSET(fd, &efds))
+                                fds[i].revents |= POLLHUP;
+                        if (fds[i].revents)
+                                ++rc;
+                }
+                if (rc > 0)
+                        return rc;
+                if (timo == 0 || (timo > 0 && elapsed_ms >= timo))
+                        return 0;
+
+                {
+                        int sleep_ms = 5;
+                        if (timo > 0 && sleep_ms > timo - elapsed_ms)
+                                sleep_ms = timo - elapsed_ms;
+                        if (sleep_ms <= 0)
+                                return 0;
+                        if (DelayThread((unsigned int)sleep_ms * 1000U) < 0)
+                                return -1;
+                        if (timo > 0)
+                                elapsed_ms += sleep_ms;
+                }
+        }
+#else
         struct timeval timeout, *toptr;
         fd_set ifds, ofds, efds, *ip, *op;
         unsigned int i, maxfd = 0;
@@ -747,9 +832,10 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         }
 #endif
         return rc;
+
+#endif
 }
 #endif
-
 #ifdef NEED_STRDUP
 char *strdup(const char *s)
 {
