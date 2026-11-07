@@ -97,6 +97,7 @@ static int DelayThread(unsigned int usec)
     + ''.join(packed_struct(smb_h, name) for name in ('SMBHeader_t', 'ReadAndXRequest_t', 'ReadAndXResponse_t')) + r'''
 static u16 UID, TID;
 static int main_socket = 3;
+static int smb_Disconnect(void) { main_socket = -1; return 1; }
 static struct
 {
     u32 sessionHeader;
