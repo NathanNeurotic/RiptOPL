@@ -38,6 +38,7 @@ def extract(source, marker):
 
 functions = "\n\n".join((
     extract(SOCKETS, "int lwip_setsockopt(int s,"),
+    extract(SOCKETS, "int lwip_close(int s)"),
     extract(API, "static void\ndo_delconn(struct api_msg_msg *msg)"),
 ))
 
@@ -53,7 +54,10 @@ typedef uint32_t u32_t;
 typedef uint16_t u16_t;
 typedef int socklen_t;
 typedef int err_t;
+typedef int sys_sem_t;
 #define ERR_OK 0
+#define ERR_MEM -1
+#define err_to_errno(e) ((e) == ERR_MEM ? ENOMEM : EIO)
 #define LWIP_TCP 1
 #define LWIP_RAW 0
 #define LWIP_UDP 0
@@ -92,16 +96,38 @@ struct netconn {
     void (*callback)(struct netconn *, int, u16_t);
 };
 struct api_msg_msg { struct netconn *conn; };
-struct lwip_socket { struct netconn *conn; int err; };
+struct netbuf { int marker; };
+struct lwip_socket { struct netconn *conn; struct netbuf *lastdata; u16_t lastoffset; int err; };
 
 static struct tcp_pcb pcb;
 static struct netconn conn;
 static struct lwip_socket sock;
 static int live, freed, close_calls, abort_calls, acks, callbacks;
+static int delete_fail, deleted, netbuf_deletes, sem_waits, sem_signals;
+static sys_sem_t socksem;
+static void do_delconn(struct api_msg_msg *msg);
+static sys_sem_t sys_sem_new(int count) { assert(count == 1); return 1; }
+static void sys_sem_wait(sys_sem_t sem) { assert(sem == 1); sem_waits++; }
+static void sys_sem_signal(sys_sem_t sem) { assert(sem == 1); sem_signals++; }
+static err_t netconn_delete(struct netconn *c)
+{
+    assert(c == &conn);
+    deleted++;
+    if (delete_fail)
+        return ERR_MEM;
+    struct api_msg_msg message = {c};
+    do_delconn(&message);
+    return ERR_OK;
+}
+static void netbuf_delete(struct netbuf *b)
+{
+    assert(b);
+    netbuf_deletes++;
+}
 static int last_errno;
 static struct lwip_socket *get_socket(int s)
 {
-    return s == 7 ? &sock : NULL;
+    return s == 7 && sock.conn ? &sock : NULL;
 }
 #define set_errno(e) (last_errno = (e))
 #define sock_set_errno(sk, e) do { (sk)->err = (e); last_errno = (e); } while (0)
@@ -158,6 +184,8 @@ static void begin(int state)
     conn.callback = notify;
     sock.conn = &conn;
     sock.err = 0;
+    sock.lastdata = NULL;
+    sock.lastoffset = 0;
 }
 int main(void)
 {
@@ -210,7 +238,24 @@ int main(void)
     assert(!live && close_calls == 1 && abort_calls == 0);
     assert(acks == 101);
 
-    puts("SMSTCPIP null-PCB options and early socket close: PASS");
+    /* If netconn_delete cannot allocate its API message, closing must fail
+       without losing the socket/PCB or its unread data; retry can reclaim it. */
+    struct netbuf packet = {123};
+    begin(CLOSED);
+    sock.lastdata = &packet;
+    sock.lastoffset = 17;
+    delete_fail = 1;
+    assert(lwip_close(7) == -1);
+    assert(sock.err == ENOMEM && live && sock.conn == &conn);
+    assert(sock.lastdata == &packet && sock.lastoffset == 17);
+    assert(netbuf_deletes == 0 && sem_waits == sem_signals);
+    delete_fail = 0;
+    assert(lwip_close(7) == 0);
+    assert(!live && sock.conn == NULL && sock.lastdata == NULL);
+    assert(sock.lastoffset == 0 && netbuf_deletes == 1);
+    assert(deleted == 2 && sem_waits == sem_signals);
+
+    puts("SMSTCPIP null-PCB options and socket failure lifecycle: PASS");
     return 0;
 }
 '''
