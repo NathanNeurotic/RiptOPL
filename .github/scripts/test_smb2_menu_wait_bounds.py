@@ -579,7 +579,7 @@ def run(compiler: str, suffix: str, source: str) -> None:
             # The aggregated host runner retains only a short tail. Put all
             # diagnostics on one line so the actual failure is not concealed.
             raise RuntimeError("Host test compile failed: " +
-                               compile_result.stderr.replace("\\n", " | ")[:6000])
+                               compile_result.stderr.replace("\n", " | ")[:6000])
         subprocess.run([str(exe)], check=True, timeout=15)
 
 
