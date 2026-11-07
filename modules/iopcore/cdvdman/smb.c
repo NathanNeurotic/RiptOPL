@@ -266,8 +266,10 @@ static int GetSMBServerReply(int shdrlen, void *spayload, int rhdrlen)
     // Only READ_ANDX receives a partial header here; its payload is read separately.
     // Reject untrusted NBSS lengths before writing into this fixed IOP buffer.
     size = (rhdrlen == 0) ? totalpkt_size : rhdrlen;
-    if (totalpkt_size < (int)sizeof(SMBHeader_t) || size > (int)sizeof(SMB_buf.smb) || size > totalpkt_size)
+    if (totalpkt_size < (int)sizeof(SMBHeader_t) || size > (int)sizeof(SMB_buf.smb) || size > totalpkt_size) {
+        smb_Disconnect(); // The invalid frame cannot be left on a reusable stream.
         return -2;
+    }
     rcv_size = RecvData(main_socket, (char *)&SMB_buf.smb, size);
     if (rcv_size <= 0)
         return -2;
