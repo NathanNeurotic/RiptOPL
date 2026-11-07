@@ -490,8 +490,10 @@ static int cdvdman_read_sectors(u32 lsn, unsigned int sectors, void *buf)
 
     if (probed == 0) { // Probe for ZSO before first read
         // check for ZSO
-        if (!ProbeZSO(buf)) // we need to pass the buffer so we have somewhere to read the first sector to identify ZSO before allocating any extra RAM
+        if (!ProbeZSO(buf)) { // The failed probe did not produce a readable first sector.
+            cdvdman_stat.err = SCECdErREAD;
             return 1;
+        }
     }
 
     cdvdman_stat.err = SCECdErNO;
