@@ -105,6 +105,14 @@ static int fake_close(int fd)
     close_calls++;
     return 0;
 }
+static int smb_Disconnect(void)
+{
+    if (main_socket >= 0) {
+        fake_close(main_socket);
+        main_socket = -1;
+    }
+    return 1;
+}
 static int fake_recvfrom(int fd, void *h, int hlen, void *payload,
                          int plen, unsigned int flags, struct sockaddr *from,
                          socklen_t *fromlen)
@@ -160,6 +168,7 @@ tests = r'''
 static void reset(int mode)
 {
     virtual_us = 0;
+    main_socket = 7;
     socket_calls = connect_calls = close_calls = recv_calls = body_calls = send_calls = 0;
     socket_fails = connect_fails = 0;
     receive_mode = mode;
@@ -187,12 +196,14 @@ int main(void)
     smb_BeginReply();
     assert(RecvData(7, buf, 10) == -2);
     assert(virtual_us == 10000000ULL && recv_calls > 1);
+    assert(main_socket == -1 && close_calls == 1);
 
     reset(DRIP);
     smb_BeginReply();
     assert(RecvData(7, buf, 30) == -2);
     assert(virtual_us >= 10000000ULL && virtual_us < 12000000ULL);
     assert(recv_calls <= 9); /* Progress does not reset the reply deadline. */
+    assert(main_socket == -1 && close_calls == 1);
 
     reset(CHUNKS);
     smb_BeginReply();
