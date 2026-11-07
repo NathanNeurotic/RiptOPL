@@ -19,4 +19,9 @@ static inline int SignalSema(int s)
     (void)s;
     return 0;
 }
+static inline int DeleteSema(int s)
+{
+    (void)s;
+    return 0;
+}
 #endif

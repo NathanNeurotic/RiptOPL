@@ -166,10 +166,13 @@ check('config->GameMode != BDM_UDP_MODE &&\n        config->GameMode != BDM_UFS_
 
 modmgr = read('ee_core/src/modmgr.c')
 required = function(modmgr, 'static int IsRequiredTransport(int id)', 'ee_core/src/modmgr.c')
+start_failed = function(modmgr, 'static int RequiredTransportStartFailed(int id)', 'ee_core/src/modmgr.c')
 check(all(m in required for m in ('OPL_MODULE_ID_PCCF', 'OPL_MODULE_ID_SMAP_UDPBD', 'OPL_MODULE_ID_UDPFS_SMAP',
-                                  'OPL_MODULE_ID_UDPFS_MINISTACK', 'OPL_MODULE_ID_UDPFS_BD')),
-      'modmgr.c: every network block module is a required transport')
-check('\n    if (IsRequiredTransport(id) && (result < 1 || moduleStartResult != 0))\n        RequiredTransportFailed();' in modmgr,
+                                  'OPL_MODULE_ID_UDPFS_MINISTACK', 'OPL_MODULE_ID_UDPFS_BD', 'OPL_MODULE_ID_SMBINIT')),
+      'modmgr.c: required network-block and SMB startup modules are classified')
+check('return id == OPL_MODULE_ID_SMBINIT ? moduleStartResult < 0 : moduleStartResult != 0;' in start_failed,
+      'modmgr.c: successful non-resident smbinit is accepted, but a negative start result fails')
+check('\n    if (IsRequiredTransport(id) && (result < 1 || RequiredTransportStartFailed(id)))\n        RequiredTransportFailed();' in modmgr,
       'modmgr.c: a required transport that loads but does not stay resident halts visibly')
 check(modmgr.count('RequiredTransportFailed();') == 1,
       'modmgr.c: one check halts failed, empty, unpacked and non-resident required transports '

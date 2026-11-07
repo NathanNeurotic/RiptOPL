@@ -46,10 +46,11 @@ static void ps2ip_init(void)
     pinet_addr = info.exports[24];
 }
 
-void smb_NegotiateProt(OplSmbPwHashFunc_t hash_callback)
+/** Negotiate with cdvdman's saved server settings and return the result to smbinit. */
+int smb_NegotiateProt(OplSmbPwHashFunc_t hash_callback)
 {
     ps2ip_init();
-    smb_NegotiateProtocol(cdvdman_settings.smb_ip, cdvdman_settings.smb_port, cdvdman_settings.smb_user, cdvdman_settings.smb_password, &ServerCapabilities, hash_callback);
+    return smb_NegotiateProtocol(cdvdman_settings.smb_ip, cdvdman_settings.smb_port, cdvdman_settings.smb_user, cdvdman_settings.smb_password, &ServerCapabilities, hash_callback);
 }
 
 void DeviceInit(void)

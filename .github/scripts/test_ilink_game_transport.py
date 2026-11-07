@@ -44,11 +44,12 @@ check('if (LoadOPLModule(OPL_MODULE_ID_ILINK, 0, 0, NULL) > 0)\n                
       'iopmgr.c: IEEE1394_bd starts only after iLinkman started')
 
 required = function(modmgr, 'static int IsRequiredTransport(int id)', 'ee_core/src/modmgr.c')
-for module in ('OPL_MODULE_ID_ILINK', 'OPL_MODULE_ID_ILINKBD'):
+for module in ('OPL_MODULE_ID_ILINK', 'OPL_MODULE_ID_ILINKBD', 'OPL_MODULE_ID_SMBINIT'):
     check(re.search(r'\bid == %s\b' % module, required) is not None,
           'modmgr.c: %s is a required transport, so a failed start is a red screen, not a black one' % module)
 
 parts = '\n\n'.join((required,
+                     function(modmgr, 'static int RequiredTransportStartFailed(int id)', 'ee_core/src/modmgr.c'),
                      function(modmgr, 'static void RequiredTransportFailed(void)', 'ee_core/src/modmgr.c'),
                      function(modmgr, 'int LoadOPLModule(int id, int mode, int arg_len, const char *args)',
                               'ee_core/src/modmgr.c')))
@@ -59,6 +60,7 @@ HARNESS = r"""
 #include <stdio.h>
 #include <string.h>
 #include "modules.h"
+#define MODULE_NO_RESIDENT_END 1
 #define MODMGR 0
 #define DBGCOL(...) ((void)0)
 #define BGCOLND(...) ((void)0)
@@ -104,7 +106,7 @@ int main(void)
 {
     static const int transports[] = {OPL_MODULE_ID_ILINK, OPL_MODULE_ID_ILINKBD, OPL_MODULE_ID_PCCF, OPL_MODULE_ID_SMAP_UDPBD,
                                      OPL_MODULE_ID_UDPFS_SMAP, OPL_MODULE_ID_UDPFS_MINISTACK, OPL_MODULE_ID_UDPFS_BD,
-                                     OPL_MODULE_ID_UDPFS_FHI};
+                                     OPL_MODULE_ID_UDPFS_FHI, OPL_MODULE_ID_SMBINIT};
     static const int others[] = {OPL_MODULE_ID_USBD, OPL_MODULE_ID_USBMASSBD, OPL_MODULE_ID_MCEMU, OPL_MODULE_ID_PADEMU};
     int i, debug, r, got;
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -116,9 +118,17 @@ int main(void)
             CHECK(play(id, 1, 0, 0, 0, &r) == TRANSPORT_HALT && !loads, "module %d: an empty required transport halts", id);
             CHECK(play(id, 1, 8, -200, 0, &r) == TRANSPORT_HALT, "module %d: a required transport MODLOAD refused halts", id);
             CHECK(play(id, 1, 8, -400, 0, &r) != RETURNS, "module %d: a required transport without IOP memory halts", id);
-            CHECK(play(id, 1, 8, 1, 1, &r) == TRANSPORT_HALT, "module %d: a required transport that declines to stay resident halts", id);
-            got = play(id, 1, 8, 1, 0, &r);
-            CHECK(got == RETURNS && r == 1 && loads == 1, "module %d: a required transport that stays resident boots on", id);
+            if (id == OPL_MODULE_ID_SMBINIT) {
+                CHECK(play(id, 1, 8, 1, -1, &r) == TRANSPORT_HALT,
+                      "smbinit: failed SMB negotiation halts visibly");
+                got = play(id, 1, 8, 1, MODULE_NO_RESIDENT_END, &r);
+                CHECK(got == RETURNS && r == 1 && loads == 1,
+                      "smbinit: successful non-resident negotiation proceeds");
+            } else {
+                CHECK(play(id, 1, 8, 1, 1, &r) == TRANSPORT_HALT, "module %d: a required transport that declines to stay resident halts", id);
+                got = play(id, 1, 8, 1, 0, &r);
+                CHECK(got == RETURNS && r == 1 && loads == 1, "module %d: a required transport that stays resident boots on", id);
+            }
         }
         for (i = 0; i < (int)(sizeof(others) / sizeof(others[0])); i++) {
             int id = others[i];
@@ -156,4 +166,4 @@ with tempfile.TemporaryDirectory() as directory:
 
 if failures:
     sys.exit(1)
-print('i.LINK game transport: iLinkman before IEEE1394_bd, and every failed start of a required transport halts visibly')
+print('game transport lifecycle: required transports and failed smbinit negotiations halt visibly; successful smbinit proceeds')
