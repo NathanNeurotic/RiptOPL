@@ -128,10 +128,12 @@ static err_t recv_tcp(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
             } else
                 len = 0;
 
+            // The socket callback advertises readability. Publish the data first,
+            // or MSG_DONTWAIT receivers can block waiting for a not-yet-posted pbuf.
+            sys_mbox_post(recvmbox, p);
+
             if (callback)
                 callback(conn, NETCONN_EVT_RCVPLUS, len);
-
-            sys_mbox_post(recvmbox, p);
 
         } /* end if */
 
@@ -190,10 +192,10 @@ err_tcp(void *arg, err_t err)
 
     conn->err = err;
     if (conn->recvmbox != SYS_MBOX_NULL) {
-        /* Register event with callback */
+        // Publish EOF before making the socket readable for a waiting receiver.
+        sys_mbox_post(conn->recvmbox, NULL);
         if (conn->callback)
             (*conn->callback)(conn, NETCONN_EVT_RCVPLUS, 0);
-        sys_mbox_post(conn->recvmbox, NULL);
     }
     if (conn->mbox != SYS_MBOX_NULL) {
         TCPIP_APIMSG_ACK(conn->mbox);
