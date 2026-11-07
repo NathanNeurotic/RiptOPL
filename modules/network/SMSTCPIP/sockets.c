@@ -271,8 +271,8 @@ int lwip_close(int s)
     if (err != ERR_OK) {
         // netconn_delete can fail before posting its IOP API message.
         // Preserve the socket and its PCB so the caller can retry closing.
-        sys_sem_signal(socksem);
         sock_set_errno(sock, err_to_errno(err));
+        sys_sem_signal(socksem);
         return -1;
     }
     if (sock->lastdata) {
