@@ -642,12 +642,11 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
 {
 #ifdef _IOP
         /*
-         * PS2IP's sys_arch_sem_wait() uses PollSema for a 1 ms wait. Longer
-         * timed waits allocate an IOP alarm but do not check SetAlarm() before
-         * WaitSema(). A failed alarm allocation can therefore strand this
-         * thread inside lwip_select(), bypassing libsmb2's whole-call timeout.
-         * Keep each select probe at 1 ms and use DelayThread() for the longer
-         * poll interval so the SMB2 deadline always gets control back.
+         * A blocking PS2IP select can strand the caller in an alarm-backed
+         * semaphore wait when SetAlarm fails, bypassing libsmb2's deadline.
+         * A zero-timeout select takes lwIP's immediate readiness path without
+         * creating a temporary wait semaphore. DelayThread below supplies the
+         * bounded sleep; no alarm or per-probe semaphore is needed.
          */
         iop_sys_clock_t start, now, delta;
 
@@ -688,10 +687,10 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                                 maxfd = (unsigned int)fd;
                 }
 
-                /* 1 ms selects take PS2IP's PollSema path; they do not need
-                 * the alarm-backed timed semaphore wait. */
+                /* Poll readiness without allocating a timed-wait semaphore.
+                 * DelayThread below controls polling frequency and deadline. */
                 timeout.tv_sec = 0;
-                timeout.tv_usec = 1000;
+                timeout.tv_usec = 0;
                 rc = select(maxfd + 1, ip, op, &efds, &timeout);
                 if (rc < 0)
                         return rc;
