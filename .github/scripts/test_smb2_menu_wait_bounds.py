@@ -617,6 +617,7 @@ iop_poll = c_function(
 poll_harness = r'''
 #include <assert.h>
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #define _IOP 1
 #define FD_SETSIZE 32
@@ -645,6 +646,23 @@ struct pollfd { int fd; short events; short revents; };
 #define POLLHUP 0x0010
 #define SMB2_VALID_SOCKET(fd) ((fd) >= 0)
 
+typedef uint32_t u32;
+typedef struct { u32 lo, hi; } iop_sys_clock_t;
+static uint64_t virtual_us;
+static unsigned int select_cost_us;
+static void GetSystemTime(iop_sys_clock_t *now)
+{
+    uint64_t ticks = virtual_us * 36864ULL / 1000ULL;
+    now->lo = (u32)ticks;
+    now->hi = (u32)(ticks >> 32);
+}
+static void SysClock2USec(iop_sys_clock_t *clock, u32 *sec, u32 *usec)
+{
+    uint64_t ticks = ((uint64_t)clock->hi << 32) | clock->lo;
+    *sec = (u32)(ticks / 36864000ULL);
+    *usec = (u32)((ticks % 36864000ULL) * 1000000ULL / 36864000ULL);
+}
+
 static int select_calls, delay_calls, delayed_us;
 static int ready_on_call, select_error;
 static unsigned int ready_read_mask, ready_write_mask, ready_except_mask;
@@ -655,6 +673,7 @@ static int fake_select(int nfds, fd_set *readfds, fd_set *writefds,
     assert(nfds >= 0);
     assert(timeout != NULL && timeout->tv_sec == 0 && timeout->tv_usec == 1000);
     select_calls++;
+    virtual_us += select_cost_us;
     if (select_error)
         return -1;
     if (select_calls != ready_on_call) {
@@ -676,6 +695,7 @@ static int DelayThread(unsigned int usec)
     assert(usec > 0);
     delay_calls++;
     delayed_us += (int)usec;
+    virtual_us += usec;
     return 0;
 }
 
@@ -686,6 +706,7 @@ poll_main = r'''
 static void reset_poll(void)
 {
     select_calls = delay_calls = delayed_us = 0;
+    virtual_us = select_cost_us = 0;
     ready_on_call = select_error = 0;
     ready_read_mask = ready_write_mask = ready_except_mask = 0;
 }
@@ -698,6 +719,26 @@ int main(void)
     pfd = (struct pollfd){3, POLLIN, 0};
     assert(poll(&pfd, 1, 25) == 0);
     assert(select_calls == 6 && delay_calls == 5 && delayed_us == 25000);
+
+    /* Slow select probes count against the real timeout, not just DelayThread. */
+    reset_poll();
+    select_cost_us = 1000;
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 25) == 0);
+    assert(select_calls == 5 && delay_calls == 4 && virtual_us == 25000);
+
+    /* A slower-than-expected probe still advances the deadline. */
+    reset_poll();
+    select_cost_us = 3000;
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 25) == 0);
+    assert(select_calls == 4 && delay_calls == 3 && virtual_us == 27000);
+
+    reset_poll();
+    select_cost_us = 1000;
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 1) == 0);
+    assert(select_calls == 1 && delay_calls == 0 && virtual_us == 1000);
 
     reset_poll();
     ready_on_call = 2;

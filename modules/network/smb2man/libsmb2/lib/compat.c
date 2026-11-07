@@ -649,7 +649,10 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
          * Keep each select probe at 1 ms and use DelayThread() for the longer
          * poll interval so the SMB2 deadline always gets control back.
          */
-        int elapsed_ms = 0;
+        iop_sys_clock_t start, now, delta;
+
+        if (timo > 0)
+                GetSystemTime(&start);
 
         for (;;) {
                 struct timeval timeout;
@@ -709,19 +712,29 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                 }
                 if (rc > 0)
                         return rc;
-                if (timo == 0 || (timo > 0 && elapsed_ms >= timo))
+                if (timo == 0)
                         return 0;
 
                 {
                         int sleep_ms = 5;
-                        if (timo > 0 && sleep_ms > timo - elapsed_ms)
-                                sleep_ms = timo - elapsed_ms;
+                        if (timo > 0) {
+                                u32 sec, usec, elapsed_ms;
+                                GetSystemTime(&now);
+                                delta.lo = now.lo - start.lo;
+                                delta.hi = now.hi - start.hi - (now.lo < start.lo);
+                                SysClock2USec(&delta, &sec, &usec);
+                                if (sec > (u32)timo / 1000U ||
+                                    (sec == (u32)timo / 1000U &&
+                                     usec >= (u32)(timo % 1000) * 1000U))
+                                        return 0;
+                                elapsed_ms = sec * 1000U + usec / 1000U;
+                                if (sleep_ms > timo - (int)elapsed_ms)
+                                        sleep_ms = timo - (int)elapsed_ms;
+                        }
                         if (sleep_ms <= 0)
                                 return 0;
                         if (DelayThread((unsigned int)sleep_ms * 1000U) < 0)
                                 return -1;
-                        if (timo > 0)
-                                elapsed_ms += sleep_ms;
                 }
         }
 #else
