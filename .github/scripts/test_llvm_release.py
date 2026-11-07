@@ -28,7 +28,10 @@ def put(path, name, content=b"ELF"):
     target = path / name
     if name.endswith(".zip"):
         with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr("payload.txt", content)
+            # Stable fixtures across second boundaries: shared editions must have identical archives.
+            entry = zipfile.ZipInfo("payload.txt", (2020, 1, 1, 0, 0, 0))
+            entry.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(entry, content)
     else:
         target.write_bytes(content)
 

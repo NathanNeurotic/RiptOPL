@@ -91,12 +91,10 @@ int cdvdman_fs_init(void)
 
     DeviceFSInit();
 
-#ifdef SMB_DRIVER
     if (DeviceReady() != SCECdComplete) {
         cdvdman_stat.err = SCECdErREAD;
         return 0;
     }
-#endif
 
     memset(&cdvdman_fdhandles[0], 0, MAX_FDHANDLES * sizeof(FHANDLE));
 
