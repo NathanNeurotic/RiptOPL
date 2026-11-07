@@ -671,7 +671,8 @@ static int fake_select(int nfds, fd_set *readfds, fd_set *writefds,
                        fd_set *exceptfds, struct timeval *timeout)
 {
     assert(nfds >= 0);
-    assert(timeout != NULL && timeout->tv_sec == 0 && timeout->tv_usec == 1000);
+    // Every production probe must take the immediate non-allocating lwIP path.
+    assert(timeout != NULL && timeout->tv_sec == 0 && timeout->tv_usec == 0);
     select_calls++;
     virtual_us += select_cost_us;
     if (select_error)
