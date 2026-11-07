@@ -197,9 +197,15 @@ static int smb_ReplyExpired(void)
 static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int plen)
 {
     int result;
+    if (sock < 0)
+        return -2;
     for (;;) {
-        if (smb_ReplyExpired())
+        if (smb_ReplyExpired()) {
+            // An incomplete SMB reply leaves the stream desynchronized. Do not
+            // let another request mistake a late fragment for its own response.
+            smb_Disconnect();
             return -2;
+        }
         result = plwip_recvfrom(sock, header, hlen, payload, plen, MSG_DONTWAIT, NULL, NULL);
         if (result >= 0)
             return result;
