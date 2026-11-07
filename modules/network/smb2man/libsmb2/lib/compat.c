@@ -640,70 +640,7 @@ int poll(struct pollfd *fds, nfds_t nfds, int timo)
 int poll(struct pollfd *fds, unsigned int nfds, int timo)
 #endif
 {
-#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
-        struct timeval timeout, *toptr;
-        fd_set ifds, ofds, efds, *ip, *op;
-        unsigned int i, maxfd = 0;
-        int rc;
-
-        FD_ZERO(&ifds);
-        FD_ZERO(&ofds);
-        FD_ZERO(&efds);
-        op = ip = 0;
-        for (i = 0; i < nfds; ++i) {
-                int fd = fds[i].fd;
-                fds[i].revents = 0;
-                if (!SMB2_VALID_SOCKET(fd))
-                        continue;
-                if (fds[i].events & (POLLIN | POLLPRI)) {
-                        ip = &ifds;
-                        FD_SET(fd, ip);
-                }
-                if (fds[i].events & POLLOUT) {
-                        op = &ofds;
-                        FD_SET(fd, op);
-                }
-                FD_SET(fd, &efds);
-                if ((unsigned int)fd > maxfd)
-                        maxfd = (unsigned int)fd;
-        }
-
-        if (timo >= 0) {
-                toptr = &timeout;
-                timeout.tv_sec = (unsigned int)timo / 1000;
-                timeout.tv_usec = ((unsigned int)timo % 1000) * 1000;
-        } else {
-                toptr = NULL;
-        }
-
-        rc = select(maxfd + 1, ip, op, &efds, toptr);
-        if (rc <= 0)
-                return rc;
-
-        rc = 0;
-        for (i = 0; i < nfds; ++i) {
-                int fd = fds[i].fd;
-                short events = fds[i].events;
-                short revents = 0;
-                if (!SMB2_VALID_SOCKET(fd))
-                        continue;
-                if ((events & (POLLIN | POLLPRI)) && FD_ISSET(fd, &ifds))
-                        revents |= POLLIN;
-                if ((events & POLLOUT) && FD_ISSET(fd, &ofds))
-                        revents |= POLLOUT;
-                /* On BSD-style stacks the except set signals out-of-band
-                 * data, not hang-up. Hang-up shows up as readable with
-                 * recv() returning 0.
-                 */
-                if ((events & POLLPRI) && FD_ISSET(fd, &efds))
-                        revents |= POLLPRI;
-                if (revents) {
-                        fds[i].revents = revents;
-                        ++rc;
-                }
-        }
-        return rc;
-#elif defined(_IOP)
+#ifdef _IOP
         /*
          * PS2IP's sys_arch_sem_wait() uses PollSema for a 1 ms wait. Longer
          * timed waits allocate an IOP alarm but do not check SetAlarm() before
@@ -728,6 +665,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                 for (i = 0; i < nfds; ++i) {
                         int fd = fds[i].fd;
                         fds[i].revents = 0;
+                        /* poll() ignores negative descriptors. */
                         if (!SMB2_VALID_SOCKET(fd))
                                 continue;
 #ifdef FD_SETSIZE
@@ -790,60 +728,111 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         struct timeval timeout, *toptr;
         fd_set ifds, ofds, efds, *ip, *op;
         unsigned int i, maxfd = 0;
-        int rc;
+        int  rc;
 
         FD_ZERO(&ifds);
         FD_ZERO(&ofds);
         FD_ZERO(&efds);
-        for (i = 0, op = ip = 0; i < nfds; ++i) {
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        op = ip = 0;
+        for (i = 0; i < nfds; ++i) {
                 int fd = fds[i].fd;
                 fds[i].revents = 0;
                 if (!SMB2_VALID_SOCKET(fd))
                         continue;
-#ifdef FD_SETSIZE
-                if (fd >= FD_SETSIZE)
-                        return -1;
-#endif
-                if (fds[i].events & (POLLIN | POLLPRI)) {
+                if(fds[i].events & (POLLIN|POLLPRI)) {
                         ip = &ifds;
                         FD_SET(fd, ip);
                 }
-                if (fds[i].events & POLLOUT) {
+                if(fds[i].events & POLLOUT)  {
                         op = &ofds;
                         FD_SET(fd, op);
                 }
                 FD_SET(fd, &efds);
-                if ((unsigned int)fd > maxfd)
-                        maxfd = (unsigned int)fd;
+                if (fd > maxfd) {
+                        maxfd = fd;
+                }
+        }
+#else
+        for (i = 0, op = ip = 0; i < nfds; ++i) {
+                fds[i].revents = 0;
+                if(fds[i].events & (POLLIN|POLLPRI)) {
+                        ip = &ifds;
+                        FD_SET(fds[i].fd, ip);
+                }
+                if(fds[i].events & POLLOUT)  {
+                        op = &ofds;
+                        FD_SET(fds[i].fd, op);
+                }
+                FD_SET(fds[i].fd, &efds);
+                if (fds[i].fd > (int)maxfd) {
+                    maxfd = fds[i].fd;
+		}
+        } 
+#endif
+
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        if(timo >= 0) {
+                toptr = &timeout;
+                timeout.tv_sec = (unsigned)timo / 1000;
+                timeout.tv_usec = ((unsigned)timo % 1000) * 1000;
+        } else {
+                toptr = NULL;
         }
 
-        if (timo < 0) {
+#else
+        if(timo < 0) {
                 toptr = NULL;
         } else {
                 toptr = &timeout;
                 timeout.tv_sec = timo / 1000;
-                timeout.tv_usec = (timo - timeout.tv_sec * 1000) * 1000;
+                timeout.tv_usec = (timo - timeout.tv_sec * 1000) * 1000;       
         }
+#endif
 
         rc = select(maxfd + 1, ip, op, &efds, toptr);
-        if (rc <= 0)
+
+        if(rc <= 0)
                 return rc;
 
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
         rc = 0;
         for (i = 0; i < nfds; ++i) {
                 int fd = fds[i].fd;
+                short events = fds[i].events;
+                short revents = 0;
                 if (!SMB2_VALID_SOCKET(fd))
                         continue;
-                if ((fds[i].events & (POLLIN | POLLPRI)) && FD_ISSET(fd, &ifds))
-                        fds[i].revents |= POLLIN;
-                if ((fds[i].events & POLLOUT) && FD_ISSET(fd, &ofds))
-                        fds[i].revents |= POLLOUT;
-                if (FD_ISSET(fd, &efds))
-                        fds[i].revents |= POLLHUP;
-                if (fds[i].revents)
-                        ++rc;
+                if(events & (POLLIN|POLLPRI) && FD_ISSET(fd, &ifds))
+                        revents |= POLLIN;
+                if(events & POLLOUT && FD_ISSET(fd, &ofds))
+                        revents |= POLLOUT;
+                /* On BSD-style stacks the except set signals out-of-band
+                 * data, not hang-up. Hang-up shows up as readable with
+                 * recv() returning 0.
+                 */
+                if(events & POLLPRI && FD_ISSET(fd, &efds))
+                        revents |= POLLPRI;
+                if (revents) {
+                        fds[i].revents = revents;
+                        rc++;
+                }
         }
+#else
+        if(rc > 0)  {
+                for (i = 0; i < nfds; ++i) {
+                        int fd = fds[i].fd;
+                        if(fds[i].events & (POLLIN|POLLPRI) && FD_ISSET(fd, &ifds))
+                                fds[i].revents |= POLLIN;
+                        if(fds[i].events & POLLOUT && FD_ISSET(fd, &ofds))
+                                fds[i].revents |= POLLOUT;
+                        if(FD_ISSET(fd, &efds))
+                                fds[i].revents |= POLLHUP;
+                }
+        }
+#endif
         return rc;
+
 #endif
 }
 #endif
