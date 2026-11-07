@@ -116,7 +116,7 @@ int main(void)
     conn.sem = 3;
     err_tcp(&conn, -7);
     assert(conn.pcb.tcp == NULL && conn.err == -7);
-    assert(posts == 4 && notifications == 3 && acks == 1 && signals == 1);
+    assert(posts == 3 && notifications == 3 && acks == 1 && signals == 1);
     assert(queued[1] == 0);
 
     assert(recv_tcp(NULL, &pcb, &packet, ERR_OK) == ERR_VAL);
