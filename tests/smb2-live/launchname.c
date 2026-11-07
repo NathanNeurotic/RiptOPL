@@ -41,11 +41,15 @@ void cdvdman_vmc_io_end(void)
 {
 }
 
+static int ps2ip_missing;
+
 int getModInfo(char *modname, modinfo_t *info)
 {
     static void *exports[32];
 
     (void)modname;
+    if (ps2ip_missing)
+        return 0;
     info->version = 0x0100;
     info->exports = exports;
     return 1;
@@ -53,6 +57,7 @@ int getModInfo(char *modname, modinfo_t *info)
 
 // The SMB layer (smb.c or smb2.c in the game): it records the paths device-smb.c opens.
 int smb_io_sema = -1;
+static int negotiate_calls;
 static char opened[ISO_MAX_PARTS + 1][1024];
 static int nopened;
 static int failure_mode, fail_open_at = -1;
@@ -66,6 +71,7 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     (void)Password;
     (void)hash_callback;
     *capabilities = 0;
+    negotiate_calls++;
     return 1;
 }
 
@@ -265,6 +271,32 @@ static void failed_mount_case(int mode)
     }
 }
 
+/* No registered ps2ip module: never dereference uninitialized export pointers
+   or enter session setup after the launch negotiation failed. */
+static void missing_ps2ip_case(void)
+{
+    char sector[2048];
+    int previous_sessions = session_calls;
+    int previous_opens = nopened;
+
+    ps2ip_missing = 1;
+    negotiate_calls = 0;
+    DeviceInit();
+    if (smb_NegotiateProt(NULL) >= 0 ||
+        negotiate_calls != 0 || DeviceReady() != SCECdNotReady ||
+        DeviceReadSectors(0, sector, 1) != SCECdErREAD) {
+        puts("FAIL: absent ps2ip library was not rejected");
+        fails++;
+    }
+    DeviceFSInit();
+    if (session_calls != previous_sessions || nopened != previous_opens) {
+        puts("FAIL: absent ps2ip library proceeded to mount");
+        fails++;
+    }
+    DeviceUnmount();
+    ps2ip_missing = 0;
+}
+
 int main(void)
 {
     // 1, either side of each length the old 160-byte field cut (old format from 144, plain from 156),
@@ -286,6 +318,7 @@ int main(void)
                     launch(f, lengths[l], prefixes[p], m ? 0x12 : 0x14);
     for (f = 1; f <= 6; ++f)
         failed_mount_case(f);
+    missing_ps2ip_case();
     printf("%d launches, %d failed (settings block %d bytes, file name field %d bytes)\n", cases, fails, (int)sizeof(cdvdman_settings),
            (int)sizeof(cdvdman_settings.filename));
     return fails ? 1 : 0;
