@@ -213,6 +213,7 @@ int main(void)
     reset(CLOSED);
     smb_BeginReply();
     assert(RecvData(7, buf, 10) == 0 && recv_calls == 1);
+    assert(main_socket == -1 && close_calls == 1);
 
     reset(CHUNKS);
     smb_BeginReply();
