@@ -567,6 +567,11 @@ do_connect(struct api_msg_msg *msg)
                 if (msg->conn->pcb.tcp->state == SYN_SENT) {
                     tcp_close(msg->conn->pcb.tcp);
                     msg->conn->pcb.tcp = NULL;
+                } else if (msg->conn->pcb.tcp->state == CLOSED) {
+                    // tcp_connect() rejected the address before registering this PCB.
+                    // tcp_close(CLOSED) does not free it; return it directly to the pool.
+                    memp_free(MEMP_TCP_PCB, msg->conn->pcb.tcp);
+                    msg->conn->pcb.tcp = NULL;
                 }
                 msg->conn->err = err;
                 TCPIP_APIMSG_ACK(msg->conn->mbox);
