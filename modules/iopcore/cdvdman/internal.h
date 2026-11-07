@@ -125,8 +125,8 @@ extern void cdvdman_vmc_io_end(void);
 // Resets the USB host controller if it is still running (OHCI UsbOperational). See cdvdman.c.
 extern void cdvdman_usb_host_stop(void);
 
-extern void cdvdman_init(void);
-extern void cdvdman_fs_init(void);
+extern int cdvdman_init(void);
+extern int cdvdman_fs_init(void);
 extern void cdvdman_searchfile_init(void);
 extern void cdvdman_initdev(void);
 

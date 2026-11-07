@@ -184,6 +184,7 @@ static void launch(int format, int namelen, const char *prefix, int media)
     }
 
     nopened = 0;
+    DeviceInit(); // Each launch is a new IOP instance on real hardware.
     smb_NegotiateProt(NULL);
     DeviceFSInit();
     if (nopened != parts) {

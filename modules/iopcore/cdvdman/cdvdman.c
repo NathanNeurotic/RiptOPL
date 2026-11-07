@@ -291,7 +291,7 @@ static void cdvdman_poff_thread(void *arg)
 }
 #endif
 
-void cdvdman_init(void)
+int cdvdman_init(void)
 {
 #ifdef __USE_DEV9
     iop_thread_t ThreadData;
@@ -300,7 +300,8 @@ void cdvdman_init(void)
     if (!cdvdman_cdinited) {
         cdvdman_stat.err = SCECdErNO;
 
-        cdvdman_fs_init();
+        if (!cdvdman_fs_init())
+            return 0;
 
 #ifdef __USE_DEV9
         if (cdvdman_settings.common.flags & IOPCORE_ENABLE_POFF) {
@@ -315,12 +316,12 @@ void cdvdman_init(void)
 
         cdvdman_cdinited = 1;
     }
+    return 1;
 }
 
 int sceCdInit(int init_mode)
 {
-    cdvdman_init();
-    return 1;
+    return cdvdman_init();
 }
 
 //-------------------------------------------------------------------------

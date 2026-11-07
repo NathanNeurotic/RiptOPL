@@ -31,6 +31,8 @@ int (*plwip_setsockopt)(int s, int level, int optname, const void *optval, sockl
 u32 (*pinet_addr)(const char *cp);                                                                                                         // #24
 
 static u32 ServerCapabilities;
+// 0 = not attempted, 1 = all image files opened, -1 = failed/unmounted.
+static int smb_mount_state;
 
 static void ps2ip_init(void)
 {
@@ -57,6 +59,7 @@ int smb_NegotiateProt(OplSmbPwHashFunc_t hash_callback)
 
 void DeviceInit(void)
 {
+    smb_mount_state = 0;
     RegisterLibraryEntries(&_exp_oplsmb);
 }
 
@@ -67,33 +70,37 @@ void DeviceDeinit(void)
 
 int DeviceReady(void)
 {
-    return SCECdComplete;
+    return smb_mount_state < 0 ? SCECdNotReady : SCECdComplete;
 }
 
 /**
- * Prepare an SMB session, connect the configured share, and open the game image paths.
- * On a failed session setup or share connection it returns without the filesystem being
- * ready, so callers must check the device state rather than continuing into reads.
+ * Open the complete image before allowing CDVDMAN to initialize the ISO filesystem.
+ * A failed attempt is terminal until a fresh IOP/device initialization: the FIDs
+ * overlay the server settings, so a blind same-IOP reconnect is not safe.
  */
 void DeviceFSInit(void)
 {
     int i = 0;
     char tmp_str[CDVDMAN_SMB_PATH_MAX];
 
-    // open a session
-    /** Prepare the SMB session and make the configured share ready for file opens. */
-    if (smb_SessionSetupAndX(ServerCapabilities) < 0) {
-        printf("DeviceFSInit: session setup failed\n");
-        smb_Disconnect();
+    if (smb_mount_state != 0)
         return;
+    smb_mount_state = -1;
+
+    if (cdvdman_settings.common.NumParts == 0 || cdvdman_settings.common.NumParts > ISO_MAX_PARTS) {
+        printf("DeviceFSInit: invalid part count\n");
+        goto failed;
     }
 
-    // Then tree connect on the share resource
+    if (smb_SessionSetupAndX(ServerCapabilities) < 0) {
+        printf("DeviceFSInit: session setup failed\n");
+        goto failed;
+    }
+
     sprintf(tmp_str, "\\\\%s\\%s", cdvdman_settings.smb_ip, cdvdman_settings.smb_share);
     if (smb_TreeConnectAndX(tmp_str) < 0) {
         printf("DeviceFSInit: tree connect failed\n");
-        smb_Disconnect();
-        return;
+        goto failed;
     }
 
     if (!(cdvdman_settings.common.flags & IOPCORE_SMB_FORMAT_USBLD)) {
@@ -103,7 +110,10 @@ void DeviceFSInit(void)
             sprintf(tmp_str, "\\%s\\%s", cdvdman_settings.common.media == 0x12 ? "CD" : "DVD", cdvdman_settings.filename);
         }
 
-        smb_OpenAndX(tmp_str, (u8 *)&cdvdman_settings.FIDs[i++], 0);
+        if (smb_OpenAndX(tmp_str, (u8 *)&cdvdman_settings.FIDs[i++], 0) <= 0) {
+            printf("DeviceFSInit: image open failed\n");
+            goto failed;
+        }
     } else {
         // Open all parts files
         for (i = 0; i < cdvdman_settings.common.NumParts; i++) {
@@ -112,9 +122,20 @@ void DeviceFSInit(void)
             else
                 sprintf(tmp_str, "\\%s.%02x", cdvdman_settings.filename, i);
 
-            smb_OpenAndX(tmp_str, (u8 *)&cdvdman_settings.FIDs[i], 0);
+            if (smb_OpenAndX(tmp_str, (u8 *)&cdvdman_settings.FIDs[i], 0) <= 0) {
+                printf("DeviceFSInit: image part %d open failed\n", i);
+                goto failed;
+            }
         }
     }
+
+    smb_mount_state = 1;
+    return;
+
+failed:
+    // Closing the session also releases earlier successful opens on the server.
+    // Do not inspect FIDs on partial failure: they alias IP/share/credentials.
+    smb_Disconnect();
 }
 
 void DeviceLock(void)
@@ -124,8 +145,10 @@ void DeviceLock(void)
 
 void DeviceUnmount(void)
 {
-    smb_CloseAll();
+    if (smb_mount_state == 1)
+        smb_CloseAll();
     smb_Disconnect();
+    smb_mount_state = -1;
 }
 
 void DeviceStop(void)
@@ -138,6 +161,9 @@ int DeviceReadSectors(u64 lsn, void *buffer, unsigned int sectors)
     register int i, esc_flag = 0;
     u8 *p = (u8 *)buffer;
     int rv = SCECdErNO;
+
+    if (smb_mount_state != 1)
+        return SCECdErREAD;
 
     lbound = 0;
     ubound = (cdvdman_settings.common.NumParts > 1) ? 0x80000 : 0xFFFFFFFF;
