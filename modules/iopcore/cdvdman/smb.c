@@ -227,7 +227,6 @@ static int GetSMBServerReply(int shdrlen, void *spayload, int rhdrlen)
 {
     int rcv_size, totalpkt_size, size;
 
-    smb_BeginReply();
     totalpkt_size = nb_GetSessionMessageLength() + 4;
 
     if (shdrlen == 0) {
@@ -248,6 +247,7 @@ static int GetSMBServerReply(int shdrlen, void *spayload, int rhdrlen)
             return -1;
     }
 
+    smb_BeginReply(); // A slow request send must not consume the response budget.
     //Read NetBIOS session message header. Drop NBSS Session Keep alive messages (type == 0x85, with no body), but process session messages (type == 0x00).
     do {
         rcv_size = RecvData(main_socket, (char *)&SMB_buf.sessionHeader, sizeof(SMB_buf.sessionHeader));
@@ -733,13 +733,13 @@ static int smb_ReadAndX(u16 FID, u32 offsetlow, u32 offsethigh, void *readbuf, i
     RR->MaxCountHigh = (u16)(nbytes >> 16);
 
     nb_SetSessionMessage(sizeof(ReadAndXRequest_t));
-    smb_BeginReply();
 
 #ifdef USE_CUSTOM_RECV
     //Send the whole message, including the 4-byte direct transport packet header.
     r = SendData(main_socket, (char *)&SMB_buf, sizeof(ReadAndXRequest_t) + 4);
     if (r <= 0)
         return -1;
+    smb_BeginReply();
 
     //offset 49 is the offset of the DataOffset field within the ReadAndXResponse structure.
     //recvfrom() is a custom function that will receive the reply.
