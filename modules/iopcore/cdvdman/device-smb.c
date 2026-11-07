@@ -57,11 +57,15 @@ static int ps2ip_init(void)
 /** Negotiate with cdvdman's saved server settings and return the result to smbinit. */
 int smb_NegotiateProt(OplSmbPwHashFunc_t hash_callback)
 {
+    int ret;
     if (!ps2ip_init()) {
         smb_mount_state = -1;
         return -1;
     }
-    return smb_NegotiateProtocol(cdvdman_settings.smb_ip, cdvdman_settings.smb_port, cdvdman_settings.smb_user, cdvdman_settings.smb_password, &ServerCapabilities, hash_callback);
+    ret = smb_NegotiateProtocol(cdvdman_settings.smb_ip, cdvdman_settings.smb_port, cdvdman_settings.smb_user, cdvdman_settings.smb_password, &ServerCapabilities, hash_callback);
+    if (ret <= 0)
+        smb_mount_state = -1;
+    return ret;
 }
 
 void DeviceInit(void)
