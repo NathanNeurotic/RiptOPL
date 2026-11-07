@@ -70,14 +70,21 @@ int DeviceReady(void)
     return SCECdComplete;
 }
 
+/**
+ * Prepare an SMB session, connect the configured share, and open the game image paths.
+ * On a failed session setup or share connection it returns without the filesystem being
+ * ready, so callers must check the device state rather than continuing into reads.
+ */
 void DeviceFSInit(void)
 {
     int i = 0;
     char tmp_str[CDVDMAN_SMB_PATH_MAX];
 
     // open a session
+    /** Prepare the SMB session and make the configured share ready for file opens. */
     if (smb_SessionSetupAndX(ServerCapabilities) < 0) {
         printf("DeviceFSInit: session setup failed\n");
+        smb_Disconnect();
         return;
     }
 
