@@ -207,7 +207,11 @@ static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int pl
             return -2;
         }
         result = plwip_recvfrom(sock, header, hlen, payload, plen, MSG_DONTWAIT, NULL, NULL);
-        if (result >= 0)
+        if (result == 0) {
+            smb_Disconnect(); // EOF: do not leave a dead socket in service.
+            return 0;
+        }
+        if (result > 0)
             return result;
         DelayThread(1000);
     }
