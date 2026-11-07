@@ -17,7 +17,7 @@ extern struct irx_export_table _exp_oplsmb;
 
 extern int smb_io_sema;
 
-static void ps2ip_init(void);
+static int ps2ip_init(void);
 
 // !!! ps2ip exports functions pointers !!!
 // Note: recvfrom() used here is not a standard recvfrom() function.
@@ -34,10 +34,13 @@ static u32 ServerCapabilities;
 // 0 = not attempted, 1 = all image files opened, -1 = failed/unmounted.
 static int smb_mount_state;
 
-static void ps2ip_init(void)
+static int ps2ip_init(void)
 {
     modinfo_t info;
-    getModInfo("ps2ip\0\0\0", &info);
+    // getModInfo leaves info.exports undefined when the library is absent.
+    // Never dereference a stale loadcore pointer after an IOP module failure.
+    if (!getModInfo("ps2ip\0\0\0", &info) || !info.exports)
+        return 0;
 
     // Set functions pointers here
     plwip_close = info.exports[6];
@@ -48,12 +51,16 @@ static void ps2ip_init(void)
     plwip_socket = info.exports[13];
     plwip_setsockopt = info.exports[19];
     pinet_addr = info.exports[24];
+    return 1;
 }
 
 /** Negotiate with cdvdman's saved server settings and return the result to smbinit. */
 int smb_NegotiateProt(OplSmbPwHashFunc_t hash_callback)
 {
-    ps2ip_init();
+    if (!ps2ip_init()) {
+        smb_mount_state = -1;
+        return -1;
+    }
     return smb_NegotiateProtocol(cdvdman_settings.smb_ip, cdvdman_settings.smb_port, cdvdman_settings.smb_user, cdvdman_settings.smb_password, &ServerCapabilities, hash_callback);
 }
 
