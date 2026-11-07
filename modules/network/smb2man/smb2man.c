@@ -448,6 +448,10 @@ static int smb2man_open(iop_file_t *f, const char *filename, int flags, int mode
     fh = smb2_open(smb2, path, oflags);
     if (fh == NULL) {
         rv = smb2man_errno(-ENOENT);
+        /* A timed-out partial reply closes the socket; discard the stale
+         * context and handles, but preserve a valid session on ENOENT. */
+        if (smb2_get_fd(smb2) < 0)
+            smb2man_drop_session();
         UNLOCK();
         return rv;
     }
@@ -691,6 +695,8 @@ static int smb2man_dopen(iop_file_t *f, const char *dirname)
     if (d->dir == NULL) {
         rv = smb2man_errno(-ENOENT);
         free(d);
+        if (smb2_get_fd(smb2) < 0)
+            smb2man_drop_session();
         UNLOCK();
         return rv;
     }
@@ -1192,6 +1198,10 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
             conn_share[sizeof(conn_share) - 1] = '\0';
             rv = smb2_connect_share(smb2, conn_server, conn_share, conn_user[0] ? conn_user : NULL);
             if (rv < 0) {
+                /* Closing a socket is not enough: destroy pending connection
+                 * state (including connecting_fds) before the next attempt. */
+                smb2_destroy_context(smb2);
+                smb2 = NULL;
                 UNLOCK();
                 return -SMB_DEVCTL_LOGON_ERR_LOGON;
             }

@@ -7,11 +7,16 @@ Commit:    c6e4997fcbdbb0e2f1fe7a0c74483b4533859b52
 Licence:   LGPL-2.1 (see COPYING / LICENCE-LGPL-2.1.txt)
 
 What is here
-- lib/*.c: the SMB2_CORE_SOURCES list from upstream lib/CMakeLists.txt. One
-  deliberate change from upstream: in socket.c, smb2_get_credit_charge() counts
-  only the head request of a compound, matching the send path and [MS-SMB2]
-  3.2.4.1.1; upstream sums every chained request, which stalls a compound behind
-  a server that grants a small credit window. See the comment there.
+- lib/*.c: the SMB2_CORE_SOURCES list from upstream lib/CMakeLists.txt.
+  Local deviations from upstream:
+  - socket.c: smb2_get_credit_charge() counts only the head request of a
+    compound, matching the send path and [MS-SMB2] 3.2.4.1.1; upstream sums
+    every chained request, which stalls a compound when the server grants a
+    small credit window.
+  - sync.c: wait_for_reply() enforces the configured deadline even while a
+    socket is connected and a reply PDU has been removed from waitqueue for
+    partial reception. On expiry it closes the session, since the remainder
+    of that response cannot be safely parsed as a new SMB frame.
 - lib/*.h, include/: upstream headers, unmodified.
 - lib/config.h: the config.h that upstream's own CMake generates for the PS2 IOP
   target (cmake -DCMAKE_TOOLCHAIN_FILE=$PS2DEV/share/ps2dev_iop.cmake -DBUILD_IRX=1),
