@@ -611,7 +611,7 @@ run(os.environ.get("CC", "cc"), "c",
 compat_source = ROOT / "modules/network/smb2man/libsmb2/lib/compat.c"
 iop_poll = c_function(
     compat_source,
-    "int poll(struct pollfd *fds, unsigned int nfds, int timo)",
+    "#ifdef SMB2_HAVE_OGC_POLL_H\nint poll(struct pollfd *fds, nfds_t nfds, int timo)",
 )
 
 poll_harness = r'''
