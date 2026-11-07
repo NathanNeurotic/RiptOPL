@@ -50,6 +50,7 @@ harness = r'''
 #define NETCONN_TCP 1
 #define SYN_SENT 4
 #define CLOSED 0
+#define MEMP_TCP_PCB 3
 
 typedef int err_t;
 struct ip_addr { int dummy; };
@@ -66,14 +67,17 @@ struct api_msg_msg {
 };
 static struct tcp_pcb pcb;
 static int scenario, allocation_failure, new_calls, connect_calls, close_calls, ack_calls, setup_calls;
+static int free_calls, pcb_live;
 static void ack(int mailbox) { assert(mailbox == 7); ack_calls++; }
 #define TCPIP_APIMSG_ACK(mailbox) ack(mailbox)
 
 static struct tcp_pcb *tcp_new(void)
 {
     new_calls++;
-    if (allocation_failure)
+    // Model the PS2's finite PCB pool: a leaked CLOSED block prevents reuse.
+    if (allocation_failure || pcb_live)
         return NULL;
+    pcb_live = 1;
     pcb.state = CLOSED;
     return &pcb;
 }
@@ -92,26 +96,36 @@ static err_t do_connected(void *arg, struct tcp_pcb *pc, err_t err)
 static err_t tcp_connect(struct tcp_pcb *pc, struct ip_addr *ip, unsigned short port,
                          err_t (*callback)(void *, struct tcp_pcb *, err_t))
 {
-    assert(pc == &pcb && ip && port == 445 && callback == do_connected);
+    assert(pc == &pcb && pcb_live && port == 445 && callback == do_connected);
     connect_calls++;
-    if (scenario == ERR_MEM)
-        pc->state = SYN_SENT;
+    if (!ip)
+        return ERR_VAL; /* Actual tcp_connect rejects NULL before SYN registration. */
+    pc->state = SYN_SENT;
     return scenario;
 }
 static err_t tcp_close(struct tcp_pcb *pc)
 {
-    assert(pc == &pcb && pc->state == SYN_SENT);
+    assert(pc == &pcb && pcb_live && pc->state == SYN_SENT);
     close_calls++;
+    pcb_live = 0;
     pc->state = CLOSED;
     return ERR_OK;
+}
+static void memp_free(int pool, void *ptr)
+{
+    assert(pool == MEMP_TCP_PCB && ptr == &pcb);
+    assert(pcb_live && pcb.state == CLOSED);
+    free_calls++;
+    pcb_live = 0;
 }
 '''
 tests = r'''
 static void reset(int result, int fail_alloc)
 {
+    assert(!pcb_live); /* Failures and simulated successful cleanup must release the PCB. */
     scenario = result;
     allocation_failure = fail_alloc;
-    new_calls = connect_calls = close_calls = ack_calls = setup_calls = 0;
+    new_calls = connect_calls = close_calls = ack_calls = setup_calls = free_calls = 0;
     pcb.state = CLOSED;
 }
 int main(void)
@@ -130,25 +144,32 @@ int main(void)
     reset(ERR_OK, 0);
     do_connect(&message);
     assert(new_calls == 1 && connect_calls == 1 && setup_calls == 1);
-    assert(ack_calls == 0 && close_calls == 0 && conn.pcb.tcp == &pcb);
+    assert(ack_calls == 0 && close_calls == 0 && free_calls == 0);
+    assert(conn.pcb.tcp == &pcb && pcb_live == 1);
     /* An ordinary connect remains pending until the real TCP callback. */
-
+    assert(tcp_close(conn.pcb.tcp) == ERR_OK); /* Simulate successful socket teardown. */
     conn.pcb.tcp = NULL;
     conn.err = ERR_OK;
     reset(ERR_MEM, 0);
     do_connect(&message);
     assert(new_calls == 1 && connect_calls == 1 && setup_calls == 1);
-    assert(ack_calls == 1 && close_calls == 1);
-    assert(conn.pcb.tcp == NULL && conn.err == ERR_MEM);
+    assert(ack_calls == 1 && close_calls == 1 && free_calls == 0);
+    assert(conn.pcb.tcp == NULL && conn.err == ERR_MEM && pcb_live == 0);
     /* A SYN allocation failure closes the registered PCB and releases the waiter. */
 
     conn.pcb.tcp = NULL;
     conn.err = ERR_OK;
-    reset(ERR_VAL, 0);
-    do_connect(&message);
-    assert(ack_calls == 1 && close_calls == 0);
-    assert(conn.pcb.tcp == &pcb && conn.err == ERR_VAL);
-    /* A pre-SYN error ACKs but does not free a PCB not registered in the active list. */
+    reset(ERR_OK, 0);
+    message.msg.bc.ipaddr = NULL;
+    for (int i = 0; i < 100; ++i) {
+        conn.err = ERR_OK;
+        do_connect(&message);
+        assert(conn.err == ERR_VAL && conn.pcb.tcp == NULL && pcb_live == 0);
+    }
+    assert(new_calls == 100 && connect_calls == 100 && ack_calls == 100);
+    assert(free_calls == 100 && close_calls == 0);
+    /* Repeated pre-registration errors cannot exhaust the one-PCB pool. */
+    message.msg.bc.ipaddr = &ip;
 
     conn.pcb.tcp = NULL;
     conn.err = ERR_OK;
@@ -156,6 +177,7 @@ int main(void)
     do_connect(&message);
     assert(new_calls == 1 && connect_calls == 0 && close_calls == 0);
     assert(ack_calls == 1 && conn.pcb.tcp == NULL && conn.err == ERR_MEM);
+    assert(free_calls == 0 && pcb_live == 0);
     /* Failure to allocate the initial PCB also releases the waiter. */
 
     puts("SMSTCPIP immediate TCP connect failure completion: PASS");
