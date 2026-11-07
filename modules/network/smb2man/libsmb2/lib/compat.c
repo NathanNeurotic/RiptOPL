@@ -713,7 +713,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                         return 0;
 
                 {
-                        int sleep_ms = 10;
+                        int sleep_ms = 5;
                         if (timo > 0 && sleep_ms > timo - elapsed_ms)
                                 sleep_ms = timo - elapsed_ms;
                         if (sleep_ms <= 0)
