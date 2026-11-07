@@ -4,6 +4,8 @@
   Review Open PS2 Loader README & LICENSE files for further details.
 */
 
+#include <stdio.h>
+
 #include "smstcpip.h"
 #include "internal.h"
 
@@ -68,17 +70,31 @@ int DeviceReady(void)
     return SCECdComplete;
 }
 
+/**
+ * Prepare an SMB session, connect the configured share, and open the game image paths.
+ * On a failed session setup or share connection it returns without the filesystem being
+ * ready, so callers must check the device state rather than continuing into reads.
+ */
 void DeviceFSInit(void)
 {
     int i = 0;
     char tmp_str[CDVDMAN_SMB_PATH_MAX];
 
     // open a session
-    smb_SessionSetupAndX(ServerCapabilities);
+    /** Prepare the SMB session and make the configured share ready for file opens. */
+    if (smb_SessionSetupAndX(ServerCapabilities) < 0) {
+        printf("DeviceFSInit: session setup failed\n");
+        smb_Disconnect();
+        return;
+    }
 
     // Then tree connect on the share resource
     sprintf(tmp_str, "\\\\%s\\%s", cdvdman_settings.smb_ip, cdvdman_settings.smb_share);
-    smb_TreeConnectAndX(tmp_str);
+    if (smb_TreeConnectAndX(tmp_str) < 0) {
+        printf("DeviceFSInit: tree connect failed\n");
+        smb_Disconnect();
+        return;
+    }
 
     if (!(cdvdman_settings.common.flags & IOPCORE_SMB_FORMAT_USBLD)) {
         if (cdvdman_settings.smb_prefix[0]) {
