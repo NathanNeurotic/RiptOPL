@@ -55,6 +55,8 @@ int getModInfo(char *modname, modinfo_t *info)
 int smb_io_sema = -1;
 static char opened[ISO_MAX_PARTS + 1][1024];
 static int nopened;
+static int failure_mode, fail_open_at = -1;
+static int session_calls, tree_calls, disconnect_calls, close_all_calls, read_calls;
 
 int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, char *Password, u32 *capabilities, OplSmbPwHashFunc_t hash_callback)
 {
@@ -70,18 +72,22 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
 int smb_SessionSetupAndX(u32 capabilities)
 {
     (void)capabilities;
-    return 1;
+    session_calls++;
+    return failure_mode == 1 ? -1 : 1;
 }
 
 int smb_TreeConnectAndX(char *ShareName)
 {
     (void)ShareName;
-    return 1;
+    tree_calls++;
+    return failure_mode == 2 ? -1 : 1;
 }
 
 int smb_OpenAndX(char *filename, u8 *FID, int Write)
 {
     (void)Write;
+    if (nopened == fail_open_at)
+        return -1;
     if (nopened <= ISO_MAX_PARTS)
         snprintf(opened[nopened], sizeof(opened[nopened]), "%s", filename);
     FID[0] = (u8)nopened++;
@@ -91,10 +97,12 @@ int smb_OpenAndX(char *filename, u8 *FID, int Write)
 
 void smb_CloseAll(void)
 {
+    close_all_calls++;
 }
 
 int smb_Disconnect(void)
 {
+    disconnect_calls++;
     return 0;
 }
 
@@ -103,6 +111,7 @@ int smb_ReadCD(unsigned int lsn, unsigned int nsectors, void *buf, int part_num)
     (void)lsn;
     (void)buf;
     (void)part_num;
+    read_calls++;
     return (int)nsectors * 2048;
 }
 
@@ -184,6 +193,8 @@ static void launch(int format, int namelen, const char *prefix, int media)
     }
 
     nopened = 0;
+    failure_mode = 0;
+    fail_open_at = -1;
     DeviceInit(); // Each launch is a new IOP instance on real hardware.
     smb_NegotiateProt(NULL);
     DeviceFSInit();
@@ -202,6 +213,56 @@ static void launch(int format, int namelen, const char *prefix, int media)
         }
     }
     DeviceUnmount();
+}
+
+/* Failed SMB mounts must never expose aliased configuration bytes as open FIDs,
+   parse a PVD, silently re-enter a dead socket, or close unknown file handles. */
+static void failed_mount_case(int mode)
+{
+    char sector[2048];
+    int prior_sessions, prior_trees, prior_opens;
+
+    memset(&cdvdman_settings, 0, sizeof(cdvdman_settings));
+    cdvdman_settings.common.NumParts = (mode == 4) ? 2 : 1;
+    cdvdman_settings.common.flags = (mode == 4) ? IOPCORE_SMB_FORMAT_USBLD : 0;
+    if (mode == 5)
+        cdvdman_settings.common.NumParts = 0;
+    if (mode == 6)
+        cdvdman_settings.common.NumParts = ISO_MAX_PARTS + 1;
+    strcpy(cdvdman_settings.filename, "TEST.iso");
+    strcpy(cdvdman_settings.smb_ip, "192.168.0.2");
+    strcpy(cdvdman_settings.smb_share, "PS2SMB");
+
+    failure_mode = mode;
+    fail_open_at = (mode == 3) ? 0 : (mode == 4 ? 1 : -1);
+    nopened = session_calls = tree_calls = disconnect_calls = close_all_calls = read_calls = 0;
+    DeviceInit();
+    DeviceFSInit();
+
+    if (DeviceReady() != SCECdNotReady || disconnect_calls != 1 ||
+        close_all_calls != 0 || session_calls != (mode >= 5 ? 0 : 1) ||
+        tree_calls != ((mode == 1 || mode >= 5) ? 0 : 1) ||
+        nopened != (mode == 4 ? 1 : 0) ||
+        DeviceReadSectors(0, sector, 1) != SCECdErREAD || read_calls != 0) {
+        printf("FAIL: mount failure mode %d did not fail closed\n", mode);
+        fails++;
+    }
+
+    prior_sessions = session_calls;
+    prior_trees = tree_calls;
+    prior_opens = nopened;
+    DeviceFSInit(); // Must not attempt to reuse a disconnected partial session.
+    if (session_calls != prior_sessions || tree_calls != prior_trees ||
+        nopened != prior_opens) {
+        printf("FAIL: mount failure mode %d retried a dead session\n", mode);
+        fails++;
+    }
+
+    DeviceUnmount();
+    if (close_all_calls != 0) {
+        printf("FAIL: mount failure mode %d closed invalid FIDs\n", mode);
+        fails++;
+    }
 }
 
 int main(void)
@@ -223,6 +284,8 @@ int main(void)
             for (p = 0; p < 2; p++)
                 for (m = 0; m < 2; m++, cases++)
                     launch(f, lengths[l], prefixes[p], m ? 0x12 : 0x14);
+    for (f = 1; f <= 6; ++f)
+        failed_mount_case(f);
     printf("%d launches, %d failed (settings block %d bytes, file name field %d bytes)\n", cases, fails, (int)sizeof(cdvdman_settings),
            (int)sizeof(cdvdman_settings.filename));
     return fails ? 1 : 0;
