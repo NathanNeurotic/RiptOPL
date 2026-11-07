@@ -1260,7 +1260,12 @@ int lwip_setsockopt(int s, int level, int optname, const void *optval, socklen_t
         return -1;
     }
 
-
+    // A failed TCP connect may have freed its PCB while leaving this
+    // socket descriptor open. Every supported set option below needs a PCB.
+    if (sock->conn->pcb.tcp == NULL) {
+        sock_set_errno(sock, ENOTCONN);
+        return -1;
+    }
 
     /* Now do the actual option processing */
 
