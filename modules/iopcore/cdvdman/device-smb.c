@@ -140,7 +140,9 @@ failed:
 
 void DeviceLock(void)
 {
-    WaitSema(smb_io_sema);
+    // Negotiation may fail before the SMB I/O semaphore is created.
+    if (smb_io_sema >= 0)
+        WaitSema(smb_io_sema);
 }
 
 void DeviceUnmount(void)
