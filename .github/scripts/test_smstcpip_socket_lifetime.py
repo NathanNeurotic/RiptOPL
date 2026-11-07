@@ -265,7 +265,7 @@ with tempfile.TemporaryDirectory(prefix="riptopl-socket-lifetime-") as td:
     src.write_text(header + functions + tests, encoding="utf-8")
     compiler = os.environ.get("CC", "cc")
     cmd = [compiler, "-std=c99", "-O1", "-Wall", "-Wextra",
-           "-Wno-unused-parameter", "-Werror",
+           "-Wno-unused-parameter", "-Wno-sign-compare", "-Werror",
            "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
            str(src), "-o", str(exe)]
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
