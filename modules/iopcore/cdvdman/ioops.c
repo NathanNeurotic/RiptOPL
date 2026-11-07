@@ -98,7 +98,10 @@ int cdvdman_fs_init(void)
 
     memset(&cdvdman_fdhandles[0], 0, MAX_FDHANDLES * sizeof(FHANDLE));
 
-    cdvdman_searchfile_init();
+    if (!cdvdman_searchfile_init()) {
+        cdvdman_stat.err = SCECdErREAD;
+        return 0;
+    }
 
     fs_inited = 1;
     return 1;

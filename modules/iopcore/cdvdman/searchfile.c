@@ -253,11 +253,14 @@ int sceCdLayerSearchFile(sceCdlFILE *fp, const char *name, int layer)
     return cdvdman_findfile(fp, name, layer);
 }
 
-void cdvdman_searchfile_init(void)
+int cdvdman_searchfile_init(void)
 {
-    // Read the volume descriptor
-    sceCdRead(16, 1, cdvdman_buf, NULL);
+    // Do not parse the previous PVD buffer after a failed initial disc read.
+    if (!sceCdRead(16, 1, cdvdman_buf, NULL))
+        return 0;
     sceCdSync(0);
+    if (sceCdGetError() != SCECdErNO)
+        return 0;
 
     struct dirTocEntry *tocEntryPointer = (struct dirTocEntry *)&cdvdman_buf[0x9c];
     layer_info[0].rootDirtocLBA = tocEntryPointer->fileLBA;
@@ -276,8 +279,11 @@ void cdvdman_searchfile_init(void)
             u32 lsn0 = mediaLsnCount;
             // So that CdRead below can read more than first layer.
             mediaLsnCount = 0;
-            sceCdRead(layer1_start + 16, 1, cdvdman_buf, NULL);
+            if (!sceCdRead(layer1_start + 16, 1, cdvdman_buf, NULL))
+                return 0;
             sceCdSync(0);
+            if (sceCdGetError() != SCECdErNO)
+                return 0;
             tocEntryPointer = (struct dirTocEntry *)&cdvdman_buf[0x9c];
             layer_info[1].rootDirtocLBA = layer1_start + tocEntryPointer->fileLBA;
             layer_info[1].rootDirtocLength = tocEntryPointer->fileSize;
@@ -298,4 +304,5 @@ void cdvdman_searchfile_init(void)
         mediaLsnCount = cdvdman_settings.common.mediaLsnCount;
         DPRINTF("cdvdman_searchfile_init loader-provided mediaLsnCount=%d\n", mediaLsnCount);
     }
+    return 1;
 }
