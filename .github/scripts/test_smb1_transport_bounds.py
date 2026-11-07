@@ -61,7 +61,7 @@ typedef struct { u8 data[32]; } SMBHeader_t;
 
 static uint64_t virtual_us;
 static int socket_calls, connect_calls, close_calls, recv_calls, body_calls, send_calls;
-static int socket_fails, connect_fails, receive_mode;
+static int socket_fails, connect_fails, delay_fails, receive_mode;
 enum { SILENT, CHUNKS, DRIP, CLOSED, KEEPALIVES, GOOD_REPLY, OVERSIZE_REPLY, SHORT_REPLY };
 static struct {
     u32 sessionHeader;
@@ -78,6 +78,8 @@ static void GetSystemTime(iop_sys_clock_t *clock)
 static int DelayThread(unsigned int micros)
 {
     assert(micros == 1000);
+    if (delay_fails)
+        return -1;
     virtual_us += micros;
     return 0;
 }
@@ -170,7 +172,7 @@ static void reset(int mode)
     virtual_us = 0;
     main_socket = 7;
     socket_calls = connect_calls = close_calls = recv_calls = body_calls = send_calls = 0;
-    socket_fails = connect_fails = 0;
+    socket_fails = connect_fails = delay_fails = 0;
     receive_mode = mode;
     memset(&SMB_buf, 0, sizeof(SMB_buf));
 }
@@ -197,6 +199,13 @@ int main(void)
     assert(RecvData(7, buf, 10) == -2);
     assert(virtual_us == 10000000ULL && recv_calls > 1);
     assert(main_socket == -1 && close_calls == 1);
+
+    reset(SILENT);
+    delay_fails = 1;
+    smb_BeginReply();
+    assert(RecvData(7, buf, 10) == -2);
+    assert(main_socket == -1 && close_calls == 1);
+    assert(virtual_us == 0 && recv_calls == 1);
 
     reset(DRIP);
     smb_BeginReply();
