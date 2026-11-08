@@ -1,8 +1,9 @@
-"""Exercise the production SMB2 sync wait and network link-mode init against stalled stubs.
+"""Exercise SMB2 sync waits, the IOP poll adapter, and network init against stalled stubs.
 
-The host harness extracts the actual two functions; the tests fail if a future
-refactor removes the hard reply deadline or restores unlimited link retries.
-A real console/server test is still required to verify the PS2 socket behavior.
+The host harness extracts production functions; tests fail if a refactor removes
+the hard reply deadline, restores unlimited link retries, or reintroduces an
+alarm-backed blocking select in the IOP socket poll path. A real console/server
+test is still required to verify the complete PS2 networking stack.
 """
 from pathlib import Path
 import os
@@ -17,6 +18,22 @@ def function(source: Path, start: str, next_decl: str) -> str:
     first = code.index(start)
     last = code.index(next_decl, first + len(start))
     return code[first:last]
+
+
+def c_function(source: Path, signature: str) -> str:
+    """Extract one C function by balancing its braces."""
+    code = source.read_text(encoding="utf-8")
+    first = code.index(signature)
+    opening = code.index("{", first)
+    depth = 0
+    for position in range(opening, len(code)):
+        if code[position] == "{":
+            depth += 1
+        elif code[position] == "}":
+            depth -= 1
+            if depth == 0:
+                return code[first:position + 1]
+    raise ValueError(f"Unterminated C function: {signature}")
 
 
 sync_source = ROOT / "modules/network/smb2man/libsmb2/lib/sync.c"
@@ -591,5 +608,185 @@ run(os.environ.get("CC", "cc"), "c",
     chain_callback_stubs + "#define free tracked_chain_free\n" +
     open_callback + opendir_callback + "#undef free\n" +
     chain_callback_tests + sync_main)
-run(os.environ.get("CXX", "c++"), "cpp", net_harness + net_wait + net + net_main)
+compat_source = ROOT / "modules/network/smb2man/libsmb2/lib/compat.c"
+iop_poll = c_function(
+    compat_source,
+    "#ifdef SMB2_HAVE_OGC_POLL_H\nint poll(struct pollfd *fds, nfds_t nfds, int timo)",
+)
+
+poll_harness = r'''
+#include <assert.h>
+#include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#define _IOP 1
+#define FD_SETSIZE 32
+
+typedef struct { unsigned int bits; } fd_set;
+#define FD_ZERO(set) ((set)->bits = 0u)
+static void test_fd_set(int fd, fd_set *set)
+{
+    assert(fd >= 0 && fd < FD_SETSIZE);
+    set->bits |= (1u << fd);
+}
+static int test_fd_isset(int fd, const fd_set *set)
+{
+    assert(fd >= 0 && fd < FD_SETSIZE);
+    return (set->bits & (1u << fd)) != 0u;
+}
+#define FD_SET(fd, set) test_fd_set((fd), (set))
+#define FD_ISSET(fd, set) test_fd_isset((fd), (set))
+
+struct timeval { long tv_sec; long tv_usec; };
+struct pollfd { int fd; short events; short revents; };
+
+#define POLLIN 0x0001
+#define POLLPRI 0x0002
+#define POLLOUT 0x0004
+#define POLLHUP 0x0010
+#define SMB2_VALID_SOCKET(fd) ((fd) >= 0)
+
+typedef uint32_t u32;
+typedef struct { u32 lo, hi; } iop_sys_clock_t;
+static uint64_t virtual_us;
+static unsigned int select_cost_us;
+static void GetSystemTime(iop_sys_clock_t *now)
+{
+    uint64_t ticks = virtual_us * 36864ULL / 1000ULL;
+    now->lo = (u32)ticks;
+    now->hi = (u32)(ticks >> 32);
+}
+static void SysClock2USec(iop_sys_clock_t *clock, u32 *sec, u32 *usec)
+{
+    uint64_t ticks = ((uint64_t)clock->hi << 32) | clock->lo;
+    *sec = (u32)(ticks / 36864000ULL);
+    *usec = (u32)((ticks % 36864000ULL) * 1000000ULL / 36864000ULL);
+}
+
+static int select_calls, delay_calls, delayed_us;
+static int ready_on_call, select_error;
+static unsigned int ready_read_mask, ready_write_mask, ready_except_mask;
+
+static int fake_select(int nfds, fd_set *readfds, fd_set *writefds,
+                       fd_set *exceptfds, struct timeval *timeout)
+{
+    assert(nfds >= 0);
+    // Every production probe must take the immediate non-allocating lwIP path.
+    assert(timeout != NULL && timeout->tv_sec == 0 && timeout->tv_usec == 0);
+    select_calls++;
+    virtual_us += select_cost_us;
+    if (select_error)
+        return -1;
+    if (select_calls != ready_on_call) {
+        if (readfds) readfds->bits = 0;
+        if (writefds) writefds->bits = 0;
+        if (exceptfds) exceptfds->bits = 0;
+        return 0;
+    }
+    if (readfds) readfds->bits &= ready_read_mask;
+    if (writefds) writefds->bits &= ready_write_mask;
+    if (exceptfds) exceptfds->bits &= ready_except_mask;
+    return !!((readfds && readfds->bits) ||
+              (writefds && writefds->bits) ||
+              (exceptfds && exceptfds->bits));
+}
+
+static int DelayThread(unsigned int usec)
+{
+    assert(usec > 0);
+    delay_calls++;
+    delayed_us += (int)usec;
+    virtual_us += usec;
+    return 0;
+}
+
+#define select fake_select
+'''
+
+poll_main = r'''
+static void reset_poll(void)
+{
+    select_calls = delay_calls = delayed_us = 0;
+    virtual_us = select_cost_us = 0;
+    ready_on_call = select_error = 0;
+    ready_read_mask = ready_write_mask = ready_except_mask = 0;
+}
+
+int main(void)
+{
+    struct pollfd pfd;
+
+    reset_poll();
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 25) == 0);
+    assert(select_calls == 6 && delay_calls == 5 && delayed_us == 25000);
+
+    /* Slow select probes count against the real timeout, not just DelayThread. */
+    reset_poll();
+    select_cost_us = 1000;
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 25) == 0);
+    assert(select_calls == 5 && delay_calls == 4 && virtual_us == 25000);
+
+    /* A slower-than-expected probe still advances the deadline. */
+    reset_poll();
+    select_cost_us = 3000;
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 25) == 0);
+    assert(select_calls == 4 && delay_calls == 3 && virtual_us == 27000);
+
+    reset_poll();
+    select_cost_us = 1000;
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 1) == 0);
+    assert(select_calls == 1 && delay_calls == 0 && virtual_us == 1000);
+
+    reset_poll();
+    ready_on_call = 2;
+    ready_read_mask = 1u << 3;
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 1000) == 1);
+    assert(pfd.revents == POLLIN && select_calls == 2 && delayed_us == 5000);
+
+    reset_poll();
+    ready_on_call = 1;
+    ready_write_mask = 1u << 4;
+    pfd = (struct pollfd){4, POLLOUT, 0};
+    assert(poll(&pfd, 1, 1000) == 1);
+    assert(pfd.revents == POLLOUT && select_calls == 1 && delay_calls == 0);
+
+    reset_poll();
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 0) == 0);
+    assert(select_calls == 1 && delay_calls == 0);
+
+    reset_poll();
+    ready_on_call = 3;
+    ready_read_mask = 1u << 5;
+    pfd = (struct pollfd){5, POLLIN, 0};
+    assert(poll(&pfd, 1, -1) == 1);
+    assert(pfd.revents == POLLIN && select_calls == 3 && delayed_us == 10000);
+
+    reset_poll();
+    pfd = (struct pollfd){-1, POLLIN, 0};
+    assert(poll(&pfd, 1, 0) == 0);
+    assert(select_calls == 1);
+
+    reset_poll();
+    pfd = (struct pollfd){FD_SETSIZE, POLLIN, 0};
+    assert(poll(&pfd, 1, 0) == -1);
+    assert(select_calls == 0);
+
+    reset_poll();
+    select_error = 1;
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 1000) == -1);
+    assert(select_calls == 1 && delay_calls == 0);
+
+    puts("SMB2 IOP poll bounds: PASS");
+    return 0;
+}
+'''
+
+run(os.environ.get("CC", "cc"), "c", poll_harness + iop_poll + poll_main)
 print("smb2 menu wait bounds: all passed")

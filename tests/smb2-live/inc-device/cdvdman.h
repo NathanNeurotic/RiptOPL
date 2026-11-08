@@ -7,5 +7,6 @@ enum {
 };
 enum {
     SCECdComplete = 0x02,
+    SCECdNotReady = 0x06,
 };
 #endif

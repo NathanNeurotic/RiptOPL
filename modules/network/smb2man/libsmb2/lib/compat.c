@@ -640,6 +640,103 @@ int poll(struct pollfd *fds, nfds_t nfds, int timo)
 int poll(struct pollfd *fds, unsigned int nfds, int timo)
 #endif
 {
+#ifdef _IOP
+        /*
+         * A blocking PS2IP select can strand the caller in an alarm-backed
+         * semaphore wait when SetAlarm fails, bypassing libsmb2's deadline.
+         * A zero-timeout select takes lwIP's immediate readiness path without
+         * creating a temporary wait semaphore. DelayThread below supplies the
+         * bounded sleep; no alarm or per-probe semaphore is needed.
+         */
+        iop_sys_clock_t start, now, delta;
+
+        if (timo > 0)
+                GetSystemTime(&start);
+
+        for (;;) {
+                struct timeval timeout;
+                fd_set ifds, ofds, efds, *ip, *op;
+                unsigned int i, maxfd = 0;
+                int rc;
+
+                FD_ZERO(&ifds);
+                FD_ZERO(&ofds);
+                FD_ZERO(&efds);
+                op = ip = 0;
+
+                for (i = 0; i < nfds; ++i) {
+                        int fd = fds[i].fd;
+                        fds[i].revents = 0;
+                        /* poll() ignores negative descriptors. */
+                        if (!SMB2_VALID_SOCKET(fd))
+                                continue;
+#ifdef FD_SETSIZE
+                        if (fd >= FD_SETSIZE)
+                                return -1;
+#endif
+                        if (fds[i].events & (POLLIN | POLLPRI)) {
+                                ip = &ifds;
+                                FD_SET(fd, ip);
+                        }
+                        if (fds[i].events & POLLOUT) {
+                                op = &ofds;
+                                FD_SET(fd, op);
+                        }
+                        FD_SET(fd, &efds);
+                        if ((unsigned int)fd > maxfd)
+                                maxfd = (unsigned int)fd;
+                }
+
+                /* Poll readiness without allocating a timed-wait semaphore.
+                 * DelayThread below controls polling frequency and deadline. */
+                timeout.tv_sec = 0;
+                timeout.tv_usec = 0;
+                rc = select(maxfd + 1, ip, op, &efds, &timeout);
+                if (rc < 0)
+                        return rc;
+
+                rc = 0;
+                for (i = 0; i < nfds; ++i) {
+                        int fd = fds[i].fd;
+                        if (!SMB2_VALID_SOCKET(fd))
+                                continue;
+                        if ((fds[i].events & (POLLIN | POLLPRI)) && FD_ISSET(fd, &ifds))
+                                fds[i].revents |= POLLIN;
+                        if ((fds[i].events & POLLOUT) && FD_ISSET(fd, &ofds))
+                                fds[i].revents |= POLLOUT;
+                        if (FD_ISSET(fd, &efds))
+                                fds[i].revents |= POLLHUP;
+                        if (fds[i].revents)
+                                ++rc;
+                }
+                if (rc > 0)
+                        return rc;
+                if (timo == 0)
+                        return 0;
+
+                {
+                        int sleep_ms = 5;
+                        if (timo > 0) {
+                                u32 sec, usec, elapsed_ms;
+                                GetSystemTime(&now);
+                                delta.lo = now.lo - start.lo;
+                                delta.hi = now.hi - start.hi - (now.lo < start.lo);
+                                SysClock2USec(&delta, &sec, &usec);
+                                if (sec > (u32)timo / 1000U ||
+                                    (sec == (u32)timo / 1000U &&
+                                     usec >= (u32)(timo % 1000) * 1000U))
+                                        return 0;
+                                elapsed_ms = sec * 1000U + usec / 1000U;
+                                if (sleep_ms > timo - (int)elapsed_ms)
+                                        sleep_ms = timo - (int)elapsed_ms;
+                        }
+                        if (sleep_ms <= 0)
+                                return 0;
+                        if (DelayThread((unsigned int)sleep_ms * 1000U) < 0)
+                                return -1;
+                }
+        }
+#else
         struct timeval timeout, *toptr;
         fd_set ifds, ofds, efds, *ip, *op;
         unsigned int i, maxfd = 0;
@@ -747,9 +844,10 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         }
 #endif
         return rc;
+
+#endif
 }
 #endif
-
 #ifdef NEED_STRDUP
 char *strdup(const char *s)
 {
