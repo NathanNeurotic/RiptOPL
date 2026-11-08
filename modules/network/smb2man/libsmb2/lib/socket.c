@@ -1465,7 +1465,7 @@ smb2_service(struct smb2_context *smb2, int revents)
         }
 }
 
-static void
+static int
 set_nonblocking(t_socket fd)
 {
 #if defined(WIN32) || defined(_XBOX)
@@ -1479,6 +1479,13 @@ set_nonblocking(t_socket fd)
          * EE has no ioctl(): the call ps2sdk's glue does have takes FIONBIO */
         int one = 1;
         _ps2sdk_ioctl(fd, FIONBIO, &one);
+#elif defined(__PS2__) && defined(_IOP)
+        /* The IOP must never enter connect() on a blocking socket:
+         * libsmb2's poll deadline cannot interrupt a blocked connect.
+         * Check both fcntl calls instead of silently ignoring failure. */
+        int flags = fcntl(fd, F_GETFL, 0);
+        if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+                return -1;
 #elif defined(__wii__) || defined(__gamecube__)
         /* net_fcntl(F_SETFL, O_NONBLOCK) is a dead end on this platform:
          * IOS's SO_FCNTL only recognises its own internal IOS_O_NONBLOCK
@@ -1498,6 +1505,7 @@ set_nonblocking(t_socket fd)
         v = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, v | O_NONBLOCK);
 #endif
+        return 0;
 }
 
 static int
@@ -1594,7 +1602,11 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         }
 #endif
 
-        set_nonblocking(fd);
+        if (set_nonblocking(fd) < 0) {
+                smb2_set_error(smb2, "IOP socket nonblocking setup failed");
+                close(fd);
+                return -EIO;
+        }
 #ifdef HAVE_LIBQUIC
         if (!smb2->quic)
 #endif
