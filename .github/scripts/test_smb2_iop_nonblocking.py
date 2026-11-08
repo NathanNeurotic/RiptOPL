@@ -29,7 +29,12 @@ def extract_function(signature: str) -> str:
 
 
 helper = extract_function("static int\nset_nonblocking(t_socket fd)")
-connector = extract_function("static int\nconnect_async_ai(")
+# The platform-specific connect condition has alternative #if arms that each
+# contain a '{' token; only one arm compiles, so a raw brace counter cannot
+# extract that full function. Inspect its source range without rewriting it.
+connector = SOCKET_SOURCE.split("static int\nconnect_async_ai(", 1)[1].split(
+    "static int\nsmb2_connect_async_next_addr(", 1
+)[0]
 guard = 'if (set_nonblocking(fd) < 0) {'
 assert guard in connector
 failed = connector.split(guard, 1)[1].split("}", 1)[0]
