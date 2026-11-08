@@ -16,6 +16,7 @@
 #include "include/themes.h"
 #include "include/textures.h"
 #include "include/ioman.h"
+#include "include/diaglog.h" // SMB2 initialization breadcrumbs in diagnostic freeze reports
 #include "include/system.h"
 #include "include/extern_irx.h"
 #include "include/cheatman.h"
@@ -89,7 +90,12 @@ void EthSupport::smbConnect(void)
         openshare.PasswordType = NO_PASSWORD;
     }
 
-    if ((result = fileXioDevctl(base_, SMB_DEVCTL_LOGON, (void *)&logon, sizeof(logon), NULL, 0)) >= 0) {
+    if (gSMBDialect == SMB_DIALECT_V2)
+        diagLog("SMB2 init: LOGON devctl enter");
+    result = fileXioDevctl(base_, SMB_DEVCTL_LOGON, (void *)&logon, sizeof(logon), NULL, 0);
+    if (gSMBDialect == SMB_DIALECT_V2)
+        diagLog("SMB2 init: LOGON devctl returned %d", result);
+    if (result >= 0) {
         // SMB server alive test
         strcpy(echo.echo, "ALIVE ECHO TEST");
         echo.len = strlen("ALIVE ECHO TEST");
@@ -102,14 +108,24 @@ void EthSupport::smbConnect(void)
             pc_ip[3] = share_ip_address[3];
         }
 
-        if (fileXioDevctl(base_, SMB_DEVCTL_ECHO, (void *)&echo, sizeof(echo), NULL, 0) >= 0) {
+        if (gSMBDialect == SMB_DIALECT_V2)
+            diagLog("SMB2 init: ECHO devctl enter");
+        int echoResult = fileXioDevctl(base_, SMB_DEVCTL_ECHO, (void *)&echo, sizeof(echo), NULL, 0);
+        if (gSMBDialect == SMB_DIALECT_V2)
+            diagLog("SMB2 init: ECHO devctl returned %d", echoResult);
+        if (echoResult >= 0) {
             gNetworkStartup = ERROR_ETH_SMB_OPENSHARE;
 
             if (gPCShareName[0]) {
                 // connect to the share
                 strcpy(openshare.ShareName, gPCShareName);
 
-                if (fileXioDevctl(base_, SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0) >= 0) {
+                if (gSMBDialect == SMB_DIALECT_V2)
+                    diagLog("SMB2 init: OPENSHARE devctl enter");
+                int shareResult = fileXioDevctl(base_, SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0);
+                if (gSMBDialect == SMB_DIALECT_V2)
+                    diagLog("SMB2 init: OPENSHARE devctl returned %d", shareResult);
+                if (shareResult >= 0) {
                     // everything is ok
                     gNetworkStartup = 0;
                     // smb2man reports the dialect; smbman rejects the command, which leaves 0 (unknown).
@@ -229,7 +245,11 @@ void EthSupport::initSmb(void)
 {
     int ret;
 
+    if (gSMBDialect == SMB_DIALECT_V2)
+        diagLog("SMB2 init: network configuration enter");
     ret = netApplyConfig();
+    if (gSMBDialect == SMB_DIALECT_V2)
+        diagLog("SMB2 init: network configuration returned %d", ret);
 
     if (ret != 0) {
         displayErrorStatus();
@@ -374,7 +394,11 @@ void EthSupport::loadModules(void)
 
     LOG("SMBSUPPORT LoadModules\n");
 
+    if (gSMBDialect == SMB_DIALECT_V2)
+        diagLog("SMB2 init: network module loading enter");
     ret = netEnsureModules();
+    if (gSMBDialect == SMB_DIALECT_V2)
+        diagLog("SMB2 init: network module loading returned %d", ret);
 
     if (ret == 0) {
         gNetworkStartup = ERROR_ETH_MODULE_SMBMAN_FAILURE;
@@ -395,7 +419,9 @@ void EthSupport::loadModules(void)
         int smb2LoadError = 0;
         if (dialect == SMB_DIALECT_V2) {
             LOG("[SMB2MAN]:\n");
+            diagLog("SMB2 init: smb2man load enter (%u bytes)", (unsigned)size_smb2man_irx);
             loaded = sysLoadModuleBuffer((void *)&smb2man_irx, size_smb2man_irx, 0, NULL);
+            diagLog("SMB2 init: smb2man load returned %d", loaded);
             if (loaded < 0) { // e.g. not enough IOP RAM for libsmb2 (-400): keep the menu usable on SMBv1
                 LOG("[SMB2MAN]: load failed (%d), falling back to smbman\n", loaded);
                 smb2LoadError = loaded;
@@ -413,6 +439,8 @@ void EthSupport::loadModules(void)
             LOG("[NBNS]:\n");
             sysLoadModuleBuffer(&nbns_irx, size_nbns_irx, 0, NULL);
             nbnsInit();
+            if (gSMBDialect == SMB_DIALECT_V2)
+                diagLog("SMB2 init: browse driver and NBNS ready");
 
             LOG("SMBSUPPORT Modules loaded\n");
             // The player picked SMB2 and is about to browse on SMBv1 without having changed
