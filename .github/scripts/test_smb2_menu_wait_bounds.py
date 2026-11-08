@@ -608,6 +608,9 @@ run(os.environ.get("CC", "cc"), "c",
     chain_callback_stubs + "#define free tracked_chain_free\n" +
     open_callback + opendir_callback + "#undef free\n" +
     chain_callback_tests + sync_main)
+# Exercise the production C++ link-state alarm guard and three-attempt
+# network configuration retry limit, alongside the IOP poll deadline harness.
+run(os.environ.get("CXX", "c++"), "cpp", net_harness + net_wait + net + net_main)
 compat_source = ROOT / "modules/network/smb2man/libsmb2/lib/compat.c"
 iop_poll = c_function(
     compat_source,
