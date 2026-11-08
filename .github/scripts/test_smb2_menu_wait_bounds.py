@@ -721,6 +721,15 @@ int main(void)
     assert(poll(&pfd, 1, 25) == 0);
     assert(select_calls == 6 && delay_calls == 5 && delayed_us == 25000);
 
+    /* The low IOP clock word wraps during this wait: subtraction must borrow
+       from the high word without changing the actual 25 ms deadline. */
+    reset_poll();
+    virtual_us = 116508000ULL;
+    pfd = (struct pollfd){3, POLLIN, 0};
+    assert(poll(&pfd, 1, 25) == 0);
+    assert(select_calls == 6 && delay_calls == 5 && delayed_us == 25000);
+    assert(virtual_us == 116533000ULL);
+
     /* Slow select probes count against the real timeout, not just DelayThread. */
     reset_poll();
     select_cost_us = 1000;
