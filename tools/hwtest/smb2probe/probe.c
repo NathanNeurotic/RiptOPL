@@ -47,7 +47,7 @@
 #include "probe_rpc.h"
 #include "modules/network/smb2man/smb2man_devctl.h"
 
-#define IRX(name)                    \
+#define IRX(name)                      \
     extern unsigned char name##_irx[]; \
     extern unsigned int size_##name##_irx
 IRX(iomanx);
@@ -65,10 +65,10 @@ IRX(httpclient);
 IRX(smb2man);
 IRX(smb2probe_iop);
 
-#define LOG_PATH       "/SMB2PROBE.TXT"
-#define OPENSHARE_MS   30000
-#define WATCHDOG_SEC   60
-#define SAMPLE_MS      500
+#define LOG_PATH     "/SMB2PROBE.TXT"
+#define OPENSHARE_MS 30000
+#define WATCHDOG_SEC 60
+#define SAMPLE_MS    500
 
 static char logbuf[24 * 1024];
 static int loglen;
