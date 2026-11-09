@@ -897,16 +897,22 @@ struct UIItem diaUIConfig[] = {
     {UI_BOOL, UICFG_THEME_ALT_BG, 1, 1, _STR_HINT_ALT_BACKGROUND, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
+    // Seconds the start-up screen waits for a saved theme whose drive is still coming up (RIPPS2 build 125 used 6). 0 = off.
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_BOOT_THEME_WAIT}}},
+    {UI_SPACER},
+    {UI_INT, UICFG_BOOT_THEME_WAIT, 1, 1, _STR_HINT_BOOT_THEME_WAIT, 0, 0, {.intvalue = {0, 0, 0, 10}}},
+    {UI_BREAK},
+
     // wallpaper.png from the settings folder behind the main pages, whatever the theme (Berion's request).
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_WALLPAPER}}},
     {UI_SPACER},
     {UI_BOOL, UICFG_WALLPAPER, 1, 1, _STR_HINT_WALLPAPER, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
-    // Seconds the start-up screen waits for a saved theme whose drive is still coming up (RIPPS2 build 125 used 6). 0 = off.
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_BOOT_THEME_WAIT}}},
+    // The button legend at the bottom of the menu and the info page, in every theme (Berion's request).
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SHOW_LEGEND}}},
     {UI_SPACER},
-    {UI_INT, UICFG_BOOT_THEME_WAIT, 1, 1, _STR_HINT_BOOT_THEME_WAIT, 0, 0, {.intvalue = {0, 0, 0, 10}}},
+    {UI_BOOL, UICFG_SHOW_LEGEND, 1, 1, _STR_HINT_SHOW_LEGEND, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_FONT_SIZE}}},
@@ -917,12 +923,6 @@ struct UIItem diaUIConfig[] = {
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLYPH_SET}}},
     {UI_SPACER},
     {UI_ENUM, UICFG_GLYPH_SET, 1, 1, _STR_HINT_GLYPH_SET, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    // The button legend at the bottom of the menu and the info page, in every theme (Berion's request).
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SHOW_LEGEND}}},
-    {UI_SPACER},
-    {UI_BOOL, UICFG_SHOW_LEGEND, 1, 1, _STR_HINT_SHOW_LEGEND, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
     // Theme-specific presentation controls stay together.

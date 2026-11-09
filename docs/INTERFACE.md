@@ -45,7 +45,12 @@ a theme with `alt=` is reloaded when the setting changes. Per-game background ar
 theme's picture while a game is selected. See
 [THEME_ENGINE.md, Alternate background](THEME_ENGINE.md#alternate-background-alt--this-fork).
 
-**User Wallpaper**, under Alternate Background, draws your own picture behind the main pages (games, apps,
+**Boot Theme Wait**, under Alternate Background, is how many seconds (0 to 10) the start-up screen waits
+for your saved theme while the drive that holds it is still starting up, so the built-in theme does not show
+for a moment first. It is Off (0) on fresh configurations: the menu opens right away and the saved theme
+replaces the built-in one as soon as its drive is up. Saved as `boot_theme_wait`; 6 is the old fixed wait.
+
+**User Wallpaper**, under Boot Theme Wait, draws your own picture behind the main pages (games, apps,
 PS1 and Favourites) in any theme, the built-in one included (requested by Berion). Put it beside
 `settings_riptopl.cfg`, in the folder your settings are saved in, named `wallpaper.png` (for example
 `mc0:/OPL/wallpaper.png`). It must be a PNG of at most 512 x 512 pixels with an 8-bit (256 colour) palette; it is
@@ -53,11 +58,6 @@ stretched to the screen like a theme background. Anything else, or no file, keep
 and a message says why. The info pages keep the theme's own background, and per-game background art
 (Background Art) still wins while a game is selected. It is Off on fresh configurations and saved as
 `wallpaper=1`; changing it reloads the theme. *Not yet tested on hardware.*
-
-**Boot Theme Wait**, under User Wallpaper, is how many seconds (0 to 10) the start-up screen waits
-for your saved theme while the drive that holds it is still starting up, so the built-in theme does not show
-for a moment first. It is Off (0) on fresh configurations: the menu opens right away and the saved theme
-replaces the built-in one as soon as its drive is up. Saved as `boot_theme_wait`; 6 is the old fixed wait.
 
 Both flow views rotate navigation on the main game list: Left/Right browse covers and Up/Down
 change sources. R3 remains Favorite, and info/settings screens keep their normal controls.
@@ -96,7 +96,7 @@ themes. The change shows on the next frame and is saved with your settings. Them
 
 ## Show Legend
 
-**Settings → Interface → Show Legend**, under Button Glyphs (requested by Berion). **Off** hides the button
+**Settings → Interface → Show Legend**, under User Wallpaper (requested by Berion). **Off** hides the button
 legend at the bottom of the menu and of the game info page in every theme; the buttons keep working. **On**,
 the default, draws it as the theme lays it out (its `hints_*` keys). The change shows on the next frame and is
 saved as `show_legend=0`. *Not yet tested on hardware.*
