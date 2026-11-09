@@ -6,6 +6,7 @@ PS2 toolchain is required; hardware validation remains a separate requirement.
 """
 from pathlib import Path
 import os
+import re
 import subprocess
 import tempfile
 
@@ -28,7 +29,7 @@ def extract(signature):
 
 
 assert "#define MSG_DONTWAIT 0x40" in SOURCE
-assert "#define SMB_REPLY_TIMEOUT_TICKS 368640000U" in SOURCE
+assert re.search(r"^#define SMB_REPLY_TIMEOUT_TICKS\s+368640000U", SOURCE, re.M)
 
 # The receive deadline, the reply-stream tracking and smb_Resync, as one block of smb.c.
 STREAM = SOURCE[SOURCE.index("static iop_sys_clock_t smb_reply_start;"):SOURCE.index("static int RecvData(int sock,")]
