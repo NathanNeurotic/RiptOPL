@@ -32,6 +32,7 @@
 #include <libmc.h>
 #include <netman.h>
 #include <ps2ips.h>
+#include <lwip/ip_addr.h> // struct ip4_addr, IP4_ADDR: ps2ip.h no longer pulls them in
 #include <ps2ip.h>
 #include <ps2smb.h>
 #include <debug.h>
@@ -337,11 +338,11 @@ static int setup_ip(int argc, char *argv[])
         info.dhcp_enabled = 1;
     } else {
         parse_ip(arg_val(argc, argv, "ip", "192.168.1.10"), &a);
-        ip_addr_set((struct ip4_addr *)&info.ipaddr, &a);
+        memcpy(&info.ipaddr, &a, sizeof(a));
         parse_ip(arg_val(argc, argv, "mask", "255.255.255.0"), &a);
-        ip_addr_set((struct ip4_addr *)&info.netmask, &a);
+        memcpy(&info.netmask, &a, sizeof(a));
         parse_ip(arg_val(argc, argv, "gw", "192.168.1.1"), &a);
-        ip_addr_set((struct ip4_addr *)&info.gw, &a);
+        memcpy(&info.gw, &a, sizeof(a));
         info.dhcp_enabled = 0;
     }
     if (ps2ip_setconfig(&info) < 0)
