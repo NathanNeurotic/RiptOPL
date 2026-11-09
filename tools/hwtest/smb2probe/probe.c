@@ -105,6 +105,18 @@ static int mc_wait(int ms, int *result)
     }
 }
 
+// mcman refuses file calls on a card it has not detected (sceMcResFailDetect, -12) until a
+// mcGetInfo has run; -1 (new card) and -2 (unformatted) still count as detected.
+static int mc_detect(void)
+{
+    static int type, free_clusters, format; // written by the RPC, possibly after a timeout
+    int r;
+
+    if (mcGetInfo(0, 0, &type, &free_clusters, &format) != 0 || mc_wait(3000, &r) < 0)
+        return -1;
+    return r;
+}
+
 // Rewrite the whole log file. Each write is bounded, so a stuck IOP only loses the file, not the run.
 static void log_flush(void)
 {
@@ -118,8 +130,10 @@ static void log_flush(void)
     mcOpen(0, 0, LOG_PATH, sceMcFileAttrWriteable | sceMcFileCreateFile); // mcman flags, not newlib O_*
     if (mc_wait(2000, &fd) < 0)
         goto stuck;
-    if (fd < 0)
+    if (fd < 0) {
+        scr_printf("(memory card open %d; log not saved)\n", fd);
         return;
+    }
     mcWrite(fd, logbuf, loglen);
     if (mc_wait(5000, &r) < 0)
         goto stuck;
@@ -334,6 +348,7 @@ static void dump(void)
         printf("smb2probe dump: mcInit failed\n");
         SleepThread();
     }
+    printf("smb2probe dump: memory card detect %d\n", mc_detect());
     mcOpen(0, 0, LOG_PATH, sceMcFileAttrReadable); // newlib O_RDONLY is 0: mcman then denies every read
     if (mc_wait(3000, &fd) == 0 && fd >= 0) {
         mcRead(fd, buf, sizeof(buf) - 1);
@@ -448,6 +463,8 @@ int main(int argc, char *argv[])
     load("mcman", mcman_irx, size_mcman_irx);
     load("mcserv", mcserv_irx, size_mcserv_irx);
     mc_ready = mcInit(MC_TYPE_XMC) >= 0;
+    if (mc_ready)
+        plog("memory card detect %d\n", mc_detect());
     if (load("smb2probe", smb2probe_iop_irx, size_smb2probe_iop_irx) == 0) {
         int tries;
         for (tries = 0; tries < 100 && !probe_bound; tries++) {

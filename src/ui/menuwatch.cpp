@@ -246,8 +246,12 @@ static int mcStuck; // a libmc call timed out: the IOP side is not answering
 // Returns 1 written, 0 refused or failed, -1 timed out (mcStuck is then set).
 static int writeReportMc(int port, const char *name, int len)
 {
+    static int type, freeClusters, format; // written by the RPC, possibly after a timeout
     int fd, r, ok, w;
 
+    // mcman refuses file calls (sceMcResFailDetect) on a card no mcGetInfo has detected yet.
+    if (mcGetInfo(port, 0, &type, &freeClusters, &format) == 0 && mcWaitBounded(2000, &r) == -2)
+        return mcStuck = 1, -1;
     if (mcDelete(port, 0, name) == 0 && mcWaitBounded(2000, &r) == -2) // a missing file is fine
         return mcStuck = 1, -1;
     if (mcOpen(port, 0, name, sceMcFileAttrWriteable | sceMcFileCreateFile) != 0)
