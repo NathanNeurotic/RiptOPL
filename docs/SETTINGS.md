@@ -17,9 +17,10 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 * A page's changes take effect when you leave it with OK. They are written to the memory card or
   device only by **Save Changes**. Leaving the hub with unsaved changes asks whether to save, exit
   without saving (which restores the game sources you started with), or keep editing.
-* One exception: **OK** in POPSTARTER Network Settings writes POPSTARTER's own `IPCONFIG.DAT` and
-  `SMBCONFIG.DAT` to the memory card at once. Save Changes is not needed for them, and leaving the
-  hub without saving does not undo them.
+* Two exceptions write to the memory card at once on **OK**: POPSTARTER Network Settings
+  (POPSTARTER's own `IPCONFIG.DAT` and `SMBCONFIG.DAT`) and its POPS UDPFS Network Settings
+  sub-page (`SYS-CONF/IPCONFIG.DAT` and `UDPFSCONFIG.DAT`). Save Changes is not needed for them,
+  and leaving the hub without saving does not undo them.
 * Each setting has one row in one place. A button marked *Modify* opens a sub-page and returns to
   the page that opened it.
 * Some rows exist only in some editions: RiptOPLite carries one game source, the
