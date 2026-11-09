@@ -1,0 +1,28 @@
+usmb2 (vendored subset)
+=======================
+
+Upstream:  https://github.com/sahlberg/usmb2 (Ronnie Sahlberg, https://github.com/sahlberg)
+Commit:    7171d08b52f0427f018e23ab0c9282d3b4ca0b6e
+           2026-11-01 "ps2iop-compat: calloc of a failed allocation, strdup one byte too many"
+Licence:   MIT (see LICENSE)
+
+What is here
+- usmb2.c/h, ntlm.c/h, md4c.c, md4.h, hmac-md5.c/h, md5.c/h, unicode.c/h, README, LICENSE.
+- riptopl.patch: the local changes to usmb2.c, usmb2.h and unicode.c, applied in this copy
+  (git apply -p1 riptopl.patch on a clean upstream checkout):
+  - USMB2_SIZE 1024 (512 upstream), and CREATE's NameLength and FileRenameInformation's
+    FileNameLength written as 16 bits (one byte upstream): names up to 440 bytes, not 127.
+  - username/password 64 bytes each (32 upstream).
+  - usmb2_context.status: the NT status of the last reply, so the driver can map errors.
+  - usmb2_build_request() drops an interim STATUS_PENDING reply ([MS-SMB2] 3.3.4.2) and
+    reads the final one; upstream returned the interim status and desynchronised.
+  - unicode.c l1() takes an unsigned char: with a signed char every UTF-8 byte >= 0x80 was a
+    left shift of a negative value (undefined behaviour).
+
+What is omitted
+- ps2iop-device.c, ps2smb2.h, ps2-usmb2-cat.c: upstream's own PS2 driver (the ps2smb2.h
+  devctls). RiptOPL's front end is ../smb2man.c, which speaks the ps2smb.h devctl interface
+  OPL's network menu already uses, and adds the connect, NEGOTIATE (2.0.2 to 3.0.2), ECHO,
+  directory listing and socket timeouts it needs.
+- ps2iop-compat.c/h: replaced by ../ps2iop-compat.h (the allocator lives in smb2man.c).
+- z80/, Makefiles, the capture file.

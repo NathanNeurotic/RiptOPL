@@ -19,3 +19,5 @@ static inline int FreeSysMemory(void *p)
     return 0;
 }
 static inline int QueryBlockSize(void *p) { return (int)((size_t *)((char *)p - 16))[0]; }
+static inline unsigned int QueryTotalFreeMemSize(void) { return 2u * 1024 * 1024; }
+static inline unsigned int QueryMaxFreeMemSize(void) { return 1024u * 1024; }

@@ -86,13 +86,11 @@ int main(int argc, char **argv)
     static ShareEntry_t shares[8] __attribute__((aligned(64)));
     smbGetShareList_in_t gl = {shares, 8};
     int ns = OPS->devctl(NULL, "", SMB_DEVCTL_GETSHARELIST, &gl, sizeof(gl), NULL, 0);
-    CHECK(ns >= 1, "share list: %d", ns);
-    for (int i = 0; i < ns; i++)
-        printf("   share %s (%s)\n", shares[i].ShareName, shares[i].ShareComment);
+    CHECK(ns == -ENOTSUP, "no share list: the share name comes from Network Settings (%d)", ns);
 
     CHECK(openshare(share) == 0, "openshare %s", share);
     int dialect = OPS->devctl(NULL, "", SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0);
-    CHECK(dialect >= 0x0202 && dialect <= 0x0311, "negotiated dialect 0x%04x in 2.0.2..3.1.1", dialect);
+    CHECK(dialect >= 0x0202 && dialect <= 0x0302, "negotiated dialect 0x%04x in 2.0.2..3.0.2", dialect);
     CHECK(OPS->devctl(NULL, "", SMB_DEVCTL_ECHO, NULL, 0, NULL, 0) == 0, "echo with the share open is a real round trip");
 
     iop_file_t f = {0}, d = {0};
@@ -129,7 +127,7 @@ int main(int argc, char **argv)
     CHECK(OPS->getstat(&f, "\\DVD\\TEST.iso", &st) == 0 && st.size == 5244114, "getstat size %u", st.size);
     CHECK(OPS->getstat(&f, "\\DVD\\NOPE.iso", &st) < 0, "getstat missing file fails");
 
-    /* read-only open, read in 100000-byte calls (crosses libsmb2's per-call cap), compare */
+    /* read-only open, read in 300000-byte calls (crosses the 64 KB per-request cap), compare */
     int fd = OPS->open(&f, iso, FIO_O_RDONLY, 0);
     CHECK(fd >= 0, "open read-only %d", fd);
     FILE *ref = fopen(local, "rb");
@@ -192,6 +190,34 @@ int main(int argc, char **argv)
     CHECK(OPS->remove(&f, "\\CFGTEST\\renamed.bin") == 0, "remove");
     CHECK(OPS->rmdir(&f, "\\CFGTEST") == 0, "rmdir");
     CHECK(OPS->open(&f, "\\DVD\\NOPE.iso", FIO_O_RDONLY, 0) < 0, "open missing file fails (%d)", OPS->open(&f, "\\DVD\\NOPE.iso", FIO_O_RDONLY, 0));
+
+    /* Paths past usmb2's upstream 127-character limit, up to the driver's 440 bytes: a 200-character
+       folder holding a 204-character name, a 410-character path (each part under Linux's 255) */
+    {
+        char ldir[220], ln[220], lp[480], lp2[480];
+        memset(ldir, 0, sizeof(ldir));
+        memset(ln, 0, sizeof(ln));
+        strcpy(ldir, "\\DVD\\");
+        memset(ldir + 5, 'd', 200);
+        memset(ln, 'n', 200);
+        strcpy(ln + 200, ".iso");
+        snprintf(lp, sizeof(lp), "%s\\%s", ldir, ln);
+        CHECK(OPS->mkdir(&f, ldir, 0) == 0, "mkdir a 200-character folder");
+        fd = OPS->open(&f, lp, FIO_O_WRONLY | FIO_O_CREAT | FIO_O_TRUNC, 0666);
+        CHECK(fd >= 0 && OPS->write(&f, "long", 4) == 4, "create a file at a %d-character path (%d)", (int)strlen(lp), fd);
+        OPS->close(&f);
+        CHECK(OPS->getstat(&f, lp, &st) == 0 && st.size == 4, "getstat the long path");
+        int sawlong = 0;
+        CHECK(OPS->dopen(&d, ldir) == 0, "dopen the long folder");
+        while (OPS->dread(&d, &de) > 0)
+            if (!strcmp(de.name, ln) && de.stat.size == 4)
+                sawlong = 1;
+        OPS->dclose(&d);
+        CHECK(sawlong, "the listing returns the 204-character name whole");
+        snprintf(lp2, sizeof(lp2), "%s\\%.200s.bak", ldir, ln);
+        CHECK(OPS->rename(&f, lp, lp2) == 0 && OPS->remove(&f, lp2) == 0 && OPS->rmdir(&f, ldir) == 0,
+              "rename and remove at the long path, then the folder");
+    }
 
     char longp[700];
     memset(longp, 'a', 699);
