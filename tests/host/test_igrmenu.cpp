@@ -11,6 +11,15 @@
 #include "../../src/sources/rahunt.cpp"
 #include "check.h"
 
+u64 GSMSourceGSRegs[11]; // what the GS write tracker recorded, as each frame test sets it
+u16 GSMSourceSetGsCrt[3];
+
+static u64 dispfb(u32 fbp, u32 fbw, u32 psm) { return (u64)fbp | (u64)fbw << 9 | (u64)psm << 15; }
+static u64 display(u32 dx, u32 dy, u32 magh, u32 magv, u32 dw, u32 dh)
+{
+    return (u64)dx | (u64)dy << 12 | (u64)magh << 23 | (u64)magv << 27 | (u64)dw << 32 | (u64)dh << 44;
+}
+
 static void put_ppm(const char *name, const u8 *rgb, int w, int h)
 {
     const char *dir = getenv("IGRMENU_PPM");
@@ -199,6 +208,31 @@ int main()
     in.huntCount = 0;
     igrmTestPage(&in, 0, 2, 0, 1, 1, rgb); // all of them
     CHECK(count_colour(rgb, PW * PH, C_GOLD) > 10);
+
+    // ---- the frame: nothing recorded (an interrupt-handler flip, PCSX2) opens on a frame of the menu's own
+    memset(GSMSourceGSRegs, 0, sizeof(GSMSourceGSRegs));
+    memset(GSMSourceSetGsCrt, 0, sizeof(GSMSourceSetGsCrt));
+    CHECK(igrmFindFrame() == 2);
+    CHECK(igrmBp == 0 && igrmBw == 10 && igrmPsm == 0 && igrmBpp == 4);
+    CHECK(igrmSx == 2 && igrmSy == 1); // 640 x 224: room for twice the panel's width, not its height
+    CHECK(igrmX == (640 - PW * 2) / 2 && igrmY == (224 - PH) / 2);
+    // a DISPLAY the game wrote from its own code still sizes that frame: 512 x 448 shown, the panel at scale 2
+    GSMSourceGSRegs[SRC_PMODE] = 1;
+    GSMSourceGSRegs[SRC_DISPLAY1] = display(636, 50, 4, 0, 2559, 447);
+    CHECK(igrmFindFrame() == 2);
+    CHECK(igrmSx == 2 && igrmSy == 2);
+    CHECK(igrmX == (512 - PW * 2) / 2 && igrmY == (448 - PH * 2) / 2);
+    // a recorded DISPFB is the game's own: used as it is, no frame of our own
+    GSMSourceGSRegs[SRC_DISPFB1] = dispfb(70, 8, 2); // 512 wide CT16 at page 70
+    CHECK(igrmFindFrame() == 1);
+    CHECK(igrmBp == 70 * 32 && igrmBw == 8 && igrmPsm == 2 && igrmBpp == 2);
+    // a format the panel cannot draw in (PSMT8) still leaves at once
+    GSMSourceGSRegs[SRC_DISPFB1] = dispfb(0, 10, 0x13);
+    CHECK(igrmFindFrame() == 0);
+    // circuit 1 on top with only circuit 2 recorded: its format is unknown, so it leaves at once
+    GSMSourceGSRegs[SRC_DISPFB1] = 0;
+    GSMSourceGSRegs[SRC_DISPFB2] = dispfb(0, 10, 0);
+    CHECK(igrmFindFrame() == 0);
 
     TEST_DONE("igrmenu");
 }
