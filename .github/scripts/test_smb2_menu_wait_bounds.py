@@ -68,17 +68,16 @@ int main(void)
     assert(write(sv[1], "abc", 3) == 3);
     assert(smb2man_sock_read(sv[0], buf, sizeof(buf)) == 3 && memcmp(buf, "abc", 3) == 0);
 
-    /* A peer that never reads: once its buffer is full the write gives up at the deadline. */
+    /* A peer that never reads: once its buffer is full the write gives up at the deadline.
+       Fill its buffer without the driver, then time one call. */
     fcntl(sv[0], F_SETFL, O_NONBLOCK);
     memset(buf, 0x5a, sizeof(buf));
+    while (write(sv[0], buf, sizeof(buf)) > 0)
+        ;
     clock_gettime(CLOCK_MONOTONIC, &t0);
-    for (;;) {
-        int n = smb2man_sock_write(sv[0], buf, sizeof(buf));
-        if (n == -1 && elapsed_ms(&t0) >= 250)
-            break;
-        assert(elapsed_ms(&t0) < 10000);
-    }
-    assert(elapsed_ms(&t0) < 10000);
+    assert(smb2man_sock_write(sv[0], buf, sizeof(buf)) == -1);
+    ms = elapsed_ms(&t0);
+    assert(ms >= 250 && ms < 3000);
 
     /* A closed or never-opened socket fails without waiting. */
     clock_gettime(CLOCK_MONOTONIC, &t0);

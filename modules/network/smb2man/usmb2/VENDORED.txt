@@ -24,6 +24,13 @@ What is here
   - Signing hook: usmb2_context.signing/session_key, ntlm.c keeps the NTLMv2 session base key,
     and usmb2_build_request() calls USMB2_SIGN (defined by smb2man.c: HMAC-SHA256, SMB 2.x) on
     every request after SESSION_SETUP when signing is on. Upstream does not sign.
+  - ntlm.c checks the CHALLENGE's security buffer, TargetName and TargetInfo against the reply
+    (usmb2_context.reply_len), walks TargetInfo only within its length (ending it, as the in-game
+    reader does, where it ends without an EndOfList or before a pair that overruns it), and refuses
+    an AUTHENTICATE that would not fit in buf; usmb2_sessionsetup() fails on that. Upstream trusted
+    the server's offsets and lengths and scanned for the EndOfList without a bound.
+  - TREE_CONNECT's PathLength written as 16 bits; usmb2_init_context() refuses credentials that
+    do not fit. ntlm.c's hashing calls take unsigned bytes (no -Wpointer-sign).
   - ntlm.c writes the user name's UTF-16 bytes as two separate stores; upstream read and
     incremented the index in one unsequenced expression (undefined behaviour, harmless as built).
 
