@@ -16,6 +16,7 @@ Use the references below for implementation details, exact limits and contributo
 | Choose an edition, configuration or package | [Release reference](../ROLLING_RELEASE.md) · [Build configurations](BUILD-CONFIGURATIONS.md) |
 | Test a PR artifact or collect freeze diagnostics | [Test builds](TEST-BUILDS.md) |
 | Understand defaults and saved settings | [Fresh-start defaults](DEFAULTS.md) |
+| Find which Settings page holds a setting, and its saved key | [Where every setting lives](SETTINGS.md) |
 | Diagnose setup or a failed launch | [Setup questions](SETUP-QUESTIONS.md) · [Troubleshooting](https://nathanneurotic.github.io/RiptOPL/troubleshooting.html) |
 | Separate package, core, transport and launch-stage failures | [Launch diagnostics](LAUNCH-DIAGNOSTICS.md) |
 | Recover a failed VMC creation | [VMC creation and recovery](VMC.md) · [Automatic VMC](AUTOMATIC-VMC.md) |

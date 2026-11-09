@@ -911,12 +911,6 @@ reshow_network:
         guiMsgBox(httpTestMessage, 0, NULL);
         goto reshow_network;
     }
-    if (result == NETCFG_POPSTARTER_BUTTON) {
-        // This is the shared POPSTARTER network editor. It owns IPCONFIG.DAT / SMBCONFIG.DAT;
-        // the Network page only provides a second entry point and never mirrors that state.
-        guiShowPopsNetConfig();
-        goto reshow_network;
-    }
     if (result && !gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL)) {
         // Seeded with what the page showed: a RiptOPLite page has no Protocol row, and only UDPFS has Access.
         int netProtoVal2 = netProtoVal, netAccessVal2 = netAccessVal;
@@ -2188,13 +2182,7 @@ static int guiSettingsShowGeneral(void)
     guiSetAdvancedSettings(ui);
     gSettingsShell.beginDialog(ui);
 
-reshow_general:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsGeneralUpdater);
-    if (result == GENERAL_GSM_DEFAULTS_BUTTON) {
-        if (guiGameShowGSConfig(1))
-            gSettingsShell.markSavePending();
-        goto reshow_general;
-    }
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);
@@ -2405,8 +2393,7 @@ static int guiSettingsDisplayUpdater(int modified)
 
 static int guiSettingsShowInterface(void)
 {
-    const struct UIItem *parts[] = {diaUIConfig, diaDisplayConfig};
-    const int skipIDs[] = {UICFG_VMODE};
+    const struct UIItem *parts[] = {diaUIConfig};
     const char *vmodeNames[] = {_l(_STR_AUTO), "PAL 640x512i @50Hz 24bit", "NTSC 640x448i @60Hz 24bit",
                                 "EDTV 640x448p @60Hz 24bit", "EDTV 640x512p @50Hz 24bit", "VGA 640x480p @60Hz 24bit",
                                 "PAL 704x576i @50Hz 24bit (HIRES)", "NTSC 704x480i @60Hz 24bit (HIRES)",
@@ -2417,9 +2404,7 @@ static int guiSettingsShowInterface(void)
                                 "NTSC 704x480i @60Hz 24bit (HIRES, 448 lines)",
                                 "PAL 704x576i @50Hz 24bit (HIRES, FLICKER FILTER)", "NTSC 704x480i @60Hz 24bit (HIRES, FLICKER FILTER)",
                                 "NTSC 704x480i @60Hz 24bit (HIRES, 448 lines, FLICKER FILTER)", NULL};
-    // Video Mode stays in diaDisplayConfig for the legacy standalone Display editor, but the
-    // composed Interface page supplies its one copy at the top of diaUIConfig.
-    struct UIItem *ui = gSettingsShell.compose(parts, 2, skipIDs, 1, 1, 1);
+    struct UIItem *ui = gSettingsShell.compose(parts, 1, NULL, 0, -1, 1);
     const char **themeNamesSnap = NULL;
     int themeID, previousTheme, previousVMode, result;
     int gameViewChanged = 0;
@@ -2493,15 +2478,6 @@ reshow_interface:
     }
     if (result == UICFG_COLORS_BUTTON) {
         guiShowColorsConfig();
-        goto reshow_interface;
-    }
-    if (result == UICFG_GAME_LIST_BUTTON) {
-        guiShowVcdListConfig();
-        goto reshow_interface;
-    }
-    if (result == DISPLAY_GSM_DEFAULTS_BUTTON) {
-        if (guiGameShowGSConfig(1))
-            gSettingsShell.markSavePending();
         goto reshow_interface;
     }
 
@@ -2740,7 +2716,6 @@ static int guiSettingsShowPopstarter(void)
     diaSetInt(ui, CFG_EMBER_SHADING, emberShadingShown);
     diaSetEnum(ui, CFG_EMBER_CONTROLLER, emberControllerStrs);
     diaSetInt(ui, CFG_EMBER_CONTROLLER, emberControllerShown);
-    guiSetGameViewPicker(ui);
 
     guiCorePathBegin(ui, CFG_POPSTARTER_PATH, popstarterPathEdit, sizeof(popstarterPathEdit), gPopstarterPath);
     diaSetInt(ui, CFG_POPSTARTER_RETROGEM_GAMEID, gPopstarterRetroGemGameID);
@@ -2754,15 +2729,12 @@ reshow_popstarter:
         goto reshow_popstarter;
     }
     if (result == VCD_LIST_BUTTON) {
-        // Reuse the exact same static editor as Interface. It owns the VCD-list globals and
-        // returns to the caller, so Circle naturally resumes the parent that launched it.
+        // The VCD-list editor owns its globals and returns to the caller, so Circle resumes this page.
         guiShowVcdListConfig();
         goto reshow_popstarter;
     }
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, popstarterPathEdit, gPopstarterPath)) {
-        int gameViewChanged = guiReadGameViewPicker(ui);
-
         diaGetInt(ui, CFG_POPSTARTER_RETROGEM_GAMEID, &gPopstarterRetroGemGameID);
         int emberDisplay = emberSettingFromRow(ui, CFG_EMBER_DISPLAY, emberDisplayShown, gEmberDisplay);
         // 480p is the one choice that can blank the screen (composite shows nothing): ask first, and
@@ -2791,8 +2763,6 @@ reshow_popstarter:
         gPopstarterDevice = (gPopstarterPath[0] != '\0') ? POPS_DEV_CUSTOM : POPS_DEV_DEFAULT;
         guiSaveBdmaSettings(ui);
         applyConfig(-1, -1, 0);
-        if (gameViewChanged)
-            guiRefreshGameViews();
         menuReinitMainMenu();
     }
 
