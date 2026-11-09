@@ -542,32 +542,7 @@ static void igrmRenderLine(u8 *d, int y)
     }
 }
 
-#ifdef IGR_MENU_HOST_TEST
-// tests/: a page as RGB rows at the scale given; returns its height. page 0: the menu, 1: the CHEATS page (sel the
-// cursor, armed the top row, -1 armed: the FULL hint)
-int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, int sy, u8 *rgb)
-{
-    static igrm_line_t lines[IGRM_LINES];
-    int y;
-
-    igrmLine = lines;
-    igrmSx = sx;
-    igrmSy = sy;
-    igrmBpp = 3;
-    igrmListItems(in);
-    if (page == 1)
-        igrmComposeCheats(in, armed < 0 ? 0 : armed, sel, armed < 0);
-    else if (page == 2)
-        igrmComposeHunt(in, sel);
-    else
-        igrmCompose(in, sel, armed);
-    for (y = 0; y < PH * sy; y++)
-        igrmRenderLine(rgb + y * PW * sx * 3, y);
-    return PH * sy;
-}
-#else
-
-// ---- on the console
+// ---- the frame the game shows: on the console, and in tests/ (which sets GSMSourceGSRegs itself)
 
 // the game's own GS writes as GSM recorded them (gsm_engine.S, gsm_defines.h Source_*): 0 = none seen
 #ifndef IGR_OVERLAY_SIDE
@@ -581,56 +556,11 @@ extern u16 GSMSourceSetGsCrt[3]; // the game's last SetGsCrt: interlace, mode, f
 #define SRC_DISPFB2  9
 #define SRC_DISPLAY2 10
 
-#define IGRM_D1_CHCR   ((vu32 *)0x10009000)
-#define IGRM_D1_MADR   ((vu32 *)0x10009010)
-#define IGRM_D1_QWC    ((vu32 *)0x10009020)
-#define IGRM_D1_TADR   ((vu32 *)0x10009030)
-#define IGRM_D2_CHCR   ((vu32 *)0x1000a000)
-#define IGRM_D_STAT    ((vu32 *)0x1000e010)
-#define IGRM_GIF_STAT  ((vu32 *)0x10003020)
-#define IGRM_VIF1_STAT ((vu32 *)0x10003c00)
-#define CHCR_STR       0x100
-#define VIF_FQC        0x1f000000
-#define VIF_STALLED    0x00800f00 // FDR (the FIFO turned towards the EE), VSS, VFS, VIS, INT
-#define GIF_BUSY       0x1f000c00 // FQC and APATH
-
-#define VIF_NOP                       0
-#define VIF_FLUSHA                    (0x13 << 24)
-#define VIF_DIRECT(n)                 ((0x50 << 24) | (n))
-#define GIFTAG(nloop, eop, flg, nreg) ((u64)(nloop) | (u64)(eop) << 15 | (u64)(flg) << 58 | (u64)(nreg) << 60)
-#define GIF_AD                        0xe
-#define GS_BITBLTBUF                  0x50
-#define GS_TRXPOS                     0x51
-#define GS_TRXREG                     0x52
-#define GS_TRXDIR                     0x53
-
-#define PAD_START  0x0008
-#define PAD_UP     0x0010
-#define PAD_DOWN   0x0040
-#define PAD_CIRCLE 0x2000
-#define PAD_CROSS  0x4000
-
-#define IGRM_SECOND 294912000u // COP0 Count ticks: the EE's clock
-
 static u32 igrmBp, igrmBw, igrmPsm, igrmX, igrmY;
-static int igrmPending; // ticks the engine has not taken yet (CheatLiveApply was busy): tried again at every open
-
-static inline u32 igrmCount(void)
-{
-    u32 c;
-    __asm__ __volatile__("mfc0 %0, $9"
-                         : "=r"(c));
-    return c;
-}
-
-static int igrmWaitClear(vu32 *reg, u32 bits) // bounded: a stuck path must not hold the pause forever
-{
-    int i;
-    for (i = 0; i < 10000000; i++)
-        if (!(*reg & bits))
-            return 1;
-    return 0;
-}
+// igrmFindFrame saw no DISPFB write: the menu shows a frame of its own (IGR_MenuRun), FBP 0, FBW 10 (640 wide),
+// PSMCT32, DBX = DBY = 0
+static int igrmOwnFrame;
+#define IGRM_OWN_DISPFB ((u64)10 << 9)
 
 // The frame the PCRTC shows, from the game's own PMODE, SMODE2, DISPFB and DISPLAY writes (RIPPS2's rsFrame), and
 // where the panel goes in it
@@ -646,18 +576,18 @@ static int igrmFindFrame(void)
     u64 fb = c1 ? fb1 : fb2, disp = regs[c1 ? SRC_DISPLAY1 : SRC_DISPLAY2];
     u32 w, h, x, y;
 
-#ifdef IGR_MENU_TEST
-    // PCSX2 has no data breakpoints, so GSM never sees a DISPFB there: show a frame of our own, FBP 0 as
-    // 640 wide CT32 on both circuits. The game's next flip puts its own back
-    if (fb1 == 0 && fb2 == 0) {
-        fb = (u64)10 << 9;
-        disp = 0;
-        *(vu64 *)0x12000070 = fb; // DISPFB1
-        *(vu64 *)0x12000090 = fb; // DISPFB2
-    }
-#endif
+    // No DISPFB write recorded. The tracker's breakpoint (BPC 0x20280000: DUE, DKE, no DXE) does not trap a store
+    // made with EXL set, so a game that flips its buffers from a VSync / INTC handler is never seen; nor is one that
+    // turned the breakpoint off, nor any game in PCSX2 (no data breakpoints). Rather than leave at once, show a frame
+    // of our own: FBP 0 (the first buffer of nearly every game) as 640 wide CT32, the panel drawn in that same format,
+    // so it reads whatever the game kept there. A DISPLAY the game wrote from its own code still sizes it.
+    // IGR_MenuRun writes DISPFB1/2 once the breakpoint is off; the game's next flip after RESUME puts its own
+    // display back (it flips, or the tracker would have seen it).
+    igrmOwnFrame = fb1 == 0 && fb2 == 0;
+    if (igrmOwnFrame)
+        fb = IGRM_OWN_DISPFB;
     if (fb == 0)
-        return 0; // no DISPFB write seen (the game turned the breakpoint off, or wrote it some other way)
+        return 0; // circuit on top has no DISPFB recorded although the other has: its format is unknown
     igrmPsm = (fb >> 15) & 0x1f;
     igrmBpp = igrmPsm == 0 ? 4 : igrmPsm == 1                ? 3 :
                              (igrmPsm == 2 || igrmPsm == 10) ? 2 :
@@ -691,6 +621,82 @@ static int igrmFindFrame(void)
     igrmX = x + (w - PW * igrmSx) / 2;
     igrmY = y + (h - PH * igrmSy) / 2;
     return 1;
+}
+
+#ifdef IGR_MENU_HOST_TEST
+// tests/: a page as RGB rows at the scale given; returns its height. page 0: the menu, 1: the CHEATS page (sel the
+// cursor, armed the top row, -1 armed: the FULL hint)
+int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, int sy, u8 *rgb)
+{
+    static igrm_line_t lines[IGRM_LINES];
+    int y;
+
+    igrmLine = lines;
+    igrmSx = sx;
+    igrmSy = sy;
+    igrmBpp = 3;
+    igrmListItems(in);
+    if (page == 1)
+        igrmComposeCheats(in, armed < 0 ? 0 : armed, sel, armed < 0);
+    else if (page == 2)
+        igrmComposeHunt(in, sel);
+    else
+        igrmCompose(in, sel, armed);
+    for (y = 0; y < PH * sy; y++)
+        igrmRenderLine(rgb + y * PW * sx * 3, y);
+    return PH * sy;
+}
+#else
+
+// ---- on the console
+
+#define IGRM_D1_CHCR   ((vu32 *)0x10009000)
+#define IGRM_D1_MADR   ((vu32 *)0x10009010)
+#define IGRM_D1_QWC    ((vu32 *)0x10009020)
+#define IGRM_D1_TADR   ((vu32 *)0x10009030)
+#define IGRM_D2_CHCR   ((vu32 *)0x1000a000)
+#define IGRM_D_STAT    ((vu32 *)0x1000e010)
+#define IGRM_GIF_STAT  ((vu32 *)0x10003020)
+#define IGRM_VIF1_STAT ((vu32 *)0x10003c00)
+#define CHCR_STR       0x100
+#define VIF_FQC        0x1f000000
+#define VIF_STALLED    0x00800f00 // FDR (the FIFO turned towards the EE), VSS, VFS, VIS, INT
+#define GIF_BUSY       0x1f000c00 // FQC and APATH
+
+#define VIF_NOP                       0
+#define VIF_FLUSHA                    (0x13 << 24)
+#define VIF_DIRECT(n)                 ((0x50 << 24) | (n))
+#define GIFTAG(nloop, eop, flg, nreg) ((u64)(nloop) | (u64)(eop) << 15 | (u64)(flg) << 58 | (u64)(nreg) << 60)
+#define GIF_AD                        0xe
+#define GS_BITBLTBUF                  0x50
+#define GS_TRXPOS                     0x51
+#define GS_TRXREG                     0x52
+#define GS_TRXDIR                     0x53
+
+#define PAD_START  0x0008
+#define PAD_UP     0x0010
+#define PAD_DOWN   0x0040
+#define PAD_CIRCLE 0x2000
+#define PAD_CROSS  0x4000
+
+#define IGRM_SECOND    294912000u // COP0 Count ticks: the EE's clock
+static int igrmPending; // ticks the engine has not taken yet (CheatLiveApply was busy): tried again at every open
+
+static inline u32 igrmCount(void)
+{
+    u32 c;
+    __asm__ __volatile__("mfc0 %0, $9"
+                         : "=r"(c));
+    return c;
+}
+
+static int igrmWaitClear(vu32 *reg, u32 bits) // bounded: a stuck path must not hold the pause forever
+{
+    int i;
+    for (i = 0; i < 10000000; i++)
+        if (!(*reg & bits))
+            return 1;
+    return 0;
 }
 
 // One line into the frame from the pixels at pkt + 28: VIF codes, the GIF A+D setup of a host -> local transfer
@@ -917,6 +923,11 @@ int IGR_MenuRun(u16 (*buttons)(void))
     if (!igrmWaitClear(IGRM_D1_CHCR, CHCR_STR) || !igrmWaitClear(IGRM_D2_CHCR, CHCR_STR) || (*IGRM_VIF1_STAT & VIF_STALLED))
         return IGR_MENU_GS_BUSY;
     bpc = igrmBpcOff();
+    // after the breakpoint is off, so the tracker does not record our own frame as the game's
+    if (igrmOwnFrame) {
+        *(vu64 *)0x12000070 = IGRM_OWN_DISPFB; // DISPFB1
+        *(vu64 *)0x12000090 = IGRM_OWN_DISPFB; // DISPFB2
+    }
     gameDone = *IGRM_D_STAT & 2; // a channel 1 completion the game has not handled yet stays for its handler
     d1chcr = *IGRM_D1_CHCR;
     d1madr = *IGRM_D1_MADR;
