@@ -216,8 +216,8 @@ static int buildReport(int stalledFor, int frameAge, int frame)
     return len;
 }
 
-// Wait at most ms for the libmc call just issued. libmc's own wait (mcSync(MC_WAIT)) never returns
-// if the IOP stops answering.
+// Wait at most ms for the libmc call just issued: 0 done, -1 refused, -2 out of time. libmc's own
+// wait (mcSync(MC_WAIT)) never returns if the IOP stops answering.
 static int mcWaitBounded(int ms, int *result)
 {
     clock_t end = clock() + (clock_t)ms * (CLOCKS_PER_SEC / 1000);
@@ -227,29 +227,42 @@ static int mcWaitBounded(int ms, int *result)
         int st = mcSync(MC_NOWAIT, &cmd, result);
         if (st == 1)
             return 0;
-        if (st < 0 || clock() >= end) // nothing pending (the call was refused), or out of time
+        if (st < 0) // nothing pending: the call was refused
             return -1;
+        if (clock() >= end)
+            return -2;
         DelayThread(5 * 1000);
     }
 }
+
+static int mcStuck; // a libmc call timed out: the IOP side is not answering
 
 // Write through mcserv's own SIF RPC channel. newlib open() goes through fileXio, and in the
 // leading SMB2 freeze (an smb2man devctl holding fileXio's only RPC thread) that write would block
 // like everything else, so the report would never reach the card. libmc returns non-zero at once
 // when it is not initialised or another call is in flight, and every wait here is bounded.
+// libmc is not thread-safe: a call from another thread that starts in the same instant as this one
+// can still race on libmc's shared state. Accepted, as this runs only in diagnostic builds.
+// Returns 1 written, 0 refused or failed, -1 timed out (mcStuck is then set).
 static int writeReportMc(int port, const char *name, int len)
 {
-    int fd, r, ok;
+    int fd, r, ok, w;
 
-    if (mcDelete(port, 0, name) == 0) // a missing file is fine: the result is not checked
-        mcWaitBounded(2000, &r);
-    if (mcOpen(port, 0, name, O_WRONLY | O_CREAT) != 0 || mcWaitBounded(2000, &fd) < 0 || fd < 0)
+    if (mcDelete(port, 0, name) == 0 && mcWaitBounded(2000, &r) == -2) // a missing file is fine
+        return mcStuck = 1, -1;
+    if (mcOpen(port, 0, name, O_WRONLY | O_CREAT) != 0)
         return 0;
-    if (mcWrite(fd, report, len) != 0 || mcWaitBounded(5000, &r) < 0)
-        return 0; // the file stays open: closing it would need the same stuck channel
+    if ((w = mcWaitBounded(2000, &fd)) < 0 || fd < 0)
+        return w == -2 ? (mcStuck = 1, -1) : 0;
+    if (mcWrite(fd, report, len) != 0)
+        return 0;
+    if ((w = mcWaitBounded(5000, &r)) < 0) // the file stays open: closing it needs the stuck channel
+        return w == -2 ? (mcStuck = 1, -1) : 0;
     ok = r == len;
-    if (mcClose(fd) != 0 || mcWaitBounded(2000, &r) < 0 || r < 0) // the card commits on close
-        ok = 0;
+    if (mcClose(fd) != 0)
+        return 0;
+    if ((w = mcWaitBounded(2000, &r)) < 0 || r < 0) // the card commits on close
+        return w == -2 ? (mcStuck = 1, -1) : 0;
     return ok;
 }
 
@@ -257,10 +270,15 @@ static int writeReport(const char *path, int len)
 {
     int fd, ok;
 
-    // "mcN:/NAME": libmc first, then newlib as before (it reaches devices libmc does not).
-    if (strncmp(path, "mc", 2) == 0 && (path[2] == '0' || path[2] == '1') && path[3] == ':' &&
-        writeReportMc(path[2] - '0', path + 4, len))
-        return 1;
+    // "mcN:/NAME": libmc first, then newlib as before (it reaches devices libmc does not). Once a
+    // libmc call has timed out the card's IOP side is stuck and newlib would block forever in
+    // the same place, so give up and let the screen turn orange.
+    if (strncmp(path, "mc", 2) == 0 && (path[2] == '0' || path[2] == '1') && path[3] == ':') {
+        if (!mcStuck && writeReportMc(path[2] - '0', path + 4, len) > 0)
+            return 1;
+        if (mcStuck)
+            return 0;
+    }
     if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
         return 0;
     ok = write(fd, report, len) == len;
