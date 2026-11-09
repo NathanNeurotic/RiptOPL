@@ -561,8 +561,10 @@ def anchors_and_links(text):
     return anchors, links
 
 
-def validate(pages):
+def validate(pages, stubs=()):
+    # stubs: pages known to exist whose text is not at hand (their anchors go unchecked).
     parsed = {page: anchors_and_links(text) for page, text in pages.items()}
+    parsed.update({page: (None, []) for page in stubs if page not in parsed})
     errors, checked = [], 0
     for page, (_, links) in parsed.items():
         for url in links:
@@ -576,7 +578,7 @@ def validate(pages):
             checked += 1
             if target not in parsed:
                 errors.append(f"{page}: missing wiki page {url}")
-            elif parts.fragment and unquote(parts.fragment) not in parsed[target][0]:
+            elif parts.fragment and parsed[target][0] is not None and unquote(parts.fragment) not in parsed[target][0]:
                 errors.append(f"{page}: missing anchor {url}")
     if errors:
         raise ValueError("\n".join(errors))
