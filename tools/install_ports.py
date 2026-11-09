@@ -152,7 +152,7 @@ def mirror_archive(package, version, toolchain):
     except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead, ValueError) as error:
         print(f"warning: the ps2build-mirror fallback failed for {package} ({error})", flush=True)
         return None
-    return url, data, version
+    return url, data, version, tag
 
 
 def mark_stale():
@@ -171,12 +171,17 @@ def install(sdk, package, toolchain):
     release_path = "latest" if version == "latest" else "tags/" + urllib.parse.quote(version, safe="")
     world = sdk / ("packages-llvm" if toolchain == "llvm" else "packages") / "world"
     installed = world / package
-    # A pinned package an SDK cache restore already holds needs no download at all.
-    if version != "latest" and (installed / ".release").is_file() \
-            and (installed / ".release").read_text().strip() == version \
+    # A pinned package an SDK cache restore already holds needs no download at all. .release is "version source",
+    # source "official" or the mirror release it came from; with PS2BUILD_EXTRAS_TAG set, a copy from any other
+    # mirror release (or of unrecorded source) is replaced, so re-pinning the extras release takes effect.
+    extras_tag = os.environ.get("PS2BUILD_EXTRAS_TAG")
+    recorded = (installed / ".release").read_text().split() if (installed / ".release").is_file() else []
+    if version != "latest" and recorded[:1] == [version] \
+            and (not extras_tag or recorded[1:] in (["official"], [extras_tag])) \
             and all((installed / name).is_file() for name in ("package.yaml", *(f"lib/{lib}" for lib in LIBRARIES[package]))):
         print(f"{package} {version} ({toolchain}) already installed")
         return
+    source = "official"
     try:
         release = json.loads(download(f"{HOST}/{package}/releases/{release_path}", accept="application/vnd.github+json"))
         url = select_asset(release, package, toolchain)
@@ -191,7 +196,7 @@ def install(sdk, package, toolchain):
         mirrored = None if client_error else mirror_archive(package, version, toolchain)
         if mirrored:
             print(f"warning: no official {package} {version} ({error}); using the ps2build-mirror copy", flush=True)
-            url, data, mirrored_version = mirrored
+            url, data, mirrored_version, source = mirrored
             release = {"tag_name": mirrored_version}
             if version != "latest" and mirrored_version != version:
                 mark_stale()
@@ -217,7 +222,7 @@ def install(sdk, package, toolchain):
             raise ValueError("package staging directory escaped the SDK packages root")
         staged.mkdir()
         unpack(data, staged, package)
-        (staged / ".release").write_text(release["tag_name"] + "\n")
+        (staged / ".release").write_text(f"{release['tag_name']} {source}\n")
         if target.exists():
             target.rename(backup)
         try:
@@ -239,7 +244,7 @@ def install(sdk, package, toolchain):
 # global one, under a .symtab sh_info that says otherwise. GNU ld accepts that; ld.lld rejects every such object
 # ("symbol (N) has invalid binding: 0"), so the LLVM link of riptopl failed as soon as JPG art pulled libjpeg in.
 # The official sdk-world v2026.10.28 ships a clean LLVM jpeg (checked 2026-10-31: 0 of 101 members bad), but an
-# older SDK can still arrive (a cached one, or the NathanNeurotic/ps2build-mirror fallback, last built from
+# older SDK can still arrive (a cached one, or the NathanNeurotic/old-ps2build-mirror fallback, from
 # v2026.10.15). So each library is checked first and llvm-objcopy rewrites it (locals first; no code or data
 # changes) only when it really has the fault. Remove this once no pinned SDK can arrive with the fault.
 LLVM_REPAIRS = ("jpeg/lib/libjpeg.a", "jpeg_ps2_addons/lib/libjpeg_ps2_addons.a")

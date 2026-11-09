@@ -208,9 +208,34 @@ class InstallPortsTests(unittest.TestCase):
             with patch.object(ports, "download", side_effect=[metadata, data]) as fetched:
                 ports.install(sdk, "ogg", "gcc")
             self.assertTrue(all(c.args[0].startswith(("https://example.com/", ports.HOST)) for c in fetched.call_args_list))
-            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")
+            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1 official\n")
             with patch.object(ports, "download") as fetched:
                 ports.install(sdk, "ogg", "gcc")  # the cached pinned package needs no download
+            fetched.assert_not_called()
+
+    def test_a_cached_package_from_another_extras_release_is_replaced(self):
+        # Re-pinning PS2BUILD_EXTRAS_TAG (same version, rebuilt with a newer toolchain) must reach every job that
+        # restores an SDK cache holding the old copy.
+        import hashlib
+        data = archive()
+        sums = f"{hashlib.sha256(data).hexdigest()}  ogg-v1-gcc.zip\n".encode()
+        missing = ports.urllib.error.HTTPError(ports.HOST + "/api", 404, "Not Found", None, None)
+        env = self.mirror_env(b"", PS2BUILD_EXTRAS_TAG="sdk-v2-extras",
+                              PS2BUILD_EXTRAS_SUMS_SHA256=hashlib.sha256(sums).hexdigest())
+        with tempfile.TemporaryDirectory() as directory, patch.dict(ports.os.environ, env):
+            sdk = Path(directory)
+            for recorded in ("v1\n", "v1 sdk-v1-abcd\n"):  # unrecorded source, then the previous extras release
+                installed = sdk / "packages/world/ogg"
+                (installed / "lib").mkdir(parents=True, exist_ok=True)
+                (installed / "package.yaml").write_text("name: ogg\n")
+                (installed / "lib/libogg.a").write_bytes(b"old")
+                (installed / ".release").write_text(recorded)
+                with patch.object(ports, "download", side_effect=[missing, sums, data]):
+                    ports.install(sdk, "ogg", "gcc")
+                self.assertEqual((installed / ".release").read_text(), "v1 sdk-v2-extras\n")
+                self.assertEqual((installed / "lib/libogg.a").read_bytes(), b"new archive")
+            with patch.object(ports, "download") as fetched:
+                ports.install(sdk, "ogg", "gcc")  # the copy from the pinned extras release is kept
             fetched.assert_not_called()
 
     def test_official_outage_falls_back_to_the_checksummed_mirror(self):
@@ -242,7 +267,7 @@ class InstallPortsTests(unittest.TestCase):
                 ports.install(sdk, "ogg", "gcc")
             self.assertEqual([c.args[0] for c in fetched.call_args_list][1:],
                              ["https://latest.test/pin.env", "https://mirror.test/SHA256SUMS", "https://mirror.test/ogg-v1-gcc.zip"])
-            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")
+            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1 sdk-v1-abcd\n")
 
     def test_an_older_mirror_package_is_never_cached_under_the_pins(self):
         # With no mirror release pinned, an outage takes the newest mirror release's own package. When that is not
@@ -263,7 +288,7 @@ class InstallPortsTests(unittest.TestCase):
             sdk = Path(directory) / "older"
             with patch.dict(ports.os.environ, env), patch.object(ports, "download", side_effect=[outage, pin, sums, data]):
                 ports.install(sdk, "ogg", "gcc")
-            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")  # the build goes on with it
+            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1 sdk-v1-abcd\n")  # the build goes on with it
             self.assertEqual(github_env.read_text(), "PS2BUILD_SDK_STALE=true\n")  # but CI does not cache it
             # The pinned package from the pinned mirror release is the right one, so it may be cached.
             github_env.write_text("")
@@ -271,7 +296,7 @@ class InstallPortsTests(unittest.TestCase):
             with patch.dict(ports.os.environ, self.mirror_env(sums, GITHUB_ENV=str(github_env))), \
                     patch.object(ports, "download", side_effect=[outage, sums, data]):
                 ports.install(sdk, "ogg", "gcc")
-            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1\n")
+            self.assertEqual((sdk / "packages/world/ogg/.release").read_text(), "v1 sdk-v1-abcd\n")
             self.assertEqual(github_env.read_text(), "")
 
     def test_private_mirror_is_read_through_the_api_with_the_token(self):
