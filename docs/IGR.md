@@ -174,8 +174,10 @@ into the picture the game is showing, which it finds through the same GS write b
 * When the breakpoint saw no picture (a game that flips its buffers from an interrupt handler, one that
   turns the breakpoint off, and every game in PCSX2, which has no data breakpoints), the menu shows the
   game's first buffer instead and draws on it. The background behind the panel may look wrong until you
-  resume; the game's next frame puts its own picture back. (A game that turned the breakpoint off and never
-  changes its picture again could keep that wrong background after you resume; *Exit game* is still there.)
+  resume; the game's next frame puts its own picture back. The game's own setting cannot be read back, so a
+  game that never sets its picture again (one that set it only once, from an interrupt handler or with the
+  breakpoint off) keeps the menu's picture after you resume, possibly at the wrong width or colours, until you
+  leave the game. Before, the combo reset at once in that game.
 * A game whose picture is in a format the menu cannot draw leaves at once, as before. Nothing is lost
   compared with the menu off.
 * **The game goes quiet while the menu is open** and its sound goes on where it stopped when you resume:
