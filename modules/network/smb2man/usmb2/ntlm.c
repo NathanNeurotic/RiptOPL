@@ -57,7 +57,7 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
 
         sec_off = le16toh(*(uint16_t *)&usmb2->buf[4]);
         sec_len = le16toh(*(uint16_t *)&usmb2->buf[6]);
-        if (sec_off < 64 + 8 || sec_len < 48 || usmb2->reply_len > sizeof(usmb2->buf) ||
+        if (sec_off < 64 + 8 || (sec_off & 3) || sec_len < 48 || usmb2->reply_len > sizeof(usmb2->buf) ||
             sec_off - 64 + sec_len > usmb2->reply_len) {
                 return -1;
         }
@@ -75,7 +75,7 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
         ti_len = le16toh(*(uint16_t *)&usmb2->buf[ntlmssp_in_offset + 40]);
         ti_off = le32toh(*(uint32_t *)&usmb2->buf[ntlmssp_in_offset + 44]);
         /* ... and aligned as servers send them: the IOP faults on a misaligned halfword or word */
-        if ((sec_off & 3) || (dn_off & 1) || (ti_off & 1) || (domain_name_len & 1) ||
+        if ((dn_off & 1) || (ti_off & 1) || (domain_name_len & 1) ||
             dn_off > sec_len || domain_name_len > sec_len - dn_off || ti_off > sec_len || ti_len > sec_len - ti_off) {
                 return -1;
         }
