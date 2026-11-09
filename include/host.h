@@ -50,6 +50,8 @@ public:
     // The GUI-wide lock (no-op before the GUI exists).
     // The animated plasma behind the menu (a theme can ask for it as its background).
     virtual void drawBackgroundPlasma() = 0;
+    // A short message at the bottom of the screen for a few seconds (the theme loader's User Wallpaper notices).
+    virtual void toastId(int strId) = 0;
     virtual void lock() = 0;
     virtual void unlock() = 0;
 };

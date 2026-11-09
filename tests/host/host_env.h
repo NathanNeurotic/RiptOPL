@@ -53,6 +53,7 @@ struct NullUi final: UiServices
     int active() override { return 0; }
     int confirmId(int, const char *) override { return 0; }
     void drawBackgroundPlasma() override {}
+    void toastId(int) override {}
     void lock() override {}
     void unlock() override {}
 } gNullUi;

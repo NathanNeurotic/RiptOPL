@@ -476,6 +476,7 @@ void guiStartFrame(void) { gGui.startFrame(); }
 void guiEndFrame(void) { gGui.endFrame(); }
 void guiShow() { gGui.show(); }
 void guiShowToast(const char *text) { gGui.showToast(text); }
+void guiDrawToast(void) { gNotifications.drawToast(); }
 void guiDrawBGPlasma() { gGui.drawBackground(); }
 void guiReloadScreenExtents() { gGui.reloadScreenExtents(); }
 void guiMainLoop(void) { gGui.mainLoop(); }

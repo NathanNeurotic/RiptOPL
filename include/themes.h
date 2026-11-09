@@ -56,6 +56,13 @@ typedef struct
     // Background: the cache entry of the last game art it drew, kept on screen while the next game's art loads
     int lastCacheId;
     int lastUid;
+
+    // Background of a main page with User Wallpaper on: the theme's picture, drawn instead of defaultTexture (and
+    // of the plasma). Owned by the theme (theme_t::wallpaper), never freed here.
+    image_texture_t *wallpaper;
+    // The built-in theme's full-screen StaticImage straight after such a Background (its inceBtion layer): part of
+    // the backdrop, so it is skipped on frames where the Background drew the wallpaper. Over game art it draws.
+    int backdropLayer;
 } mutable_image_t;
 
 typedef struct
@@ -242,6 +249,10 @@ typedef struct theme
     // with, and whether it declares any alt= key -- then a change of the setting reloads it too.
     int altBackground;
     int altDeclared;
+    // User Wallpaper: the setting this theme was built with (a change reloads it), and the picture it loaded from
+    // the settings folder, NULL when off or when the file was missing or not allowed (thmWallpaperLoad).
+    int wallpaperWanted;
+    image_texture_t *wallpaper;
 
     theme_element_t *coverflow;
     theme_element_t *psbbnFlow; // first PSBBNFlow element (also sets coverflow: same navigation)

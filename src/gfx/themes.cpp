@@ -965,6 +965,7 @@ static void thmFree(theme_t *theme)
         freeGUIElems(&theme->favsVcdInfoElems);
         freeGUIElems(&theme->favsAppsMainElems);
         freeGUIElems(&theme->favsAppsInfoElems);
+        thmWallpaperFree(theme->wallpaper); // after the elements: only they draw it
 
         // free textures
         GSTEXTURE *texture;
@@ -1044,7 +1045,9 @@ static int thmLoadResource(GSTEXTURE *texture, int texId, const char *themePath,
     if (themePath != NULL)
         success = texDiscoverLoad(texture, themePath, texId); // only set success here
 
-    if ((success < 0) && useDefault)
+    // use_default=0 keeps a theme to its own pictures, except the ones stock OPL had no name for: a theme without
+    // them gets the built-in ones, so an old theme still shows an icon on the MMCE, UDPBD, UDPFS and Favourites pages.
+    if (texUseBuiltIn(success, useDefault, texId))
         texLoadInternal(texture, texId); // we don't mind the result of "default"
 
     return success;
@@ -1372,6 +1375,8 @@ static int thmLoad(const char *themePath)
     newT->parsingFavKindFamily = 0;
     newT->gameCacheCount = 0;
     newT->artGeneration = ++thmLoadCount;
+    newT->wallpaperWanted = gThemeWallpaper != 0;
+    newT->wallpaper = NULL;
     newT->itemsList = NULL;
     newT->gamesItemsList = NULL;
     newT->appsItemsList = NULL;
@@ -1621,6 +1626,15 @@ static int thmLoad(const char *themePath)
 
     validateGUIElems(themePath, themeConfig, newT);
     THEME_BOOT_TRACE("theme load: elements ready");
+
+    // User Wallpaper: behind the main pages of any theme, the built-in one included. The info pages keep the
+    // theme's own background, which is often drawn for the panels on them.
+    if (newT->wallpaperWanted && (newT->wallpaper = thmWallpaperLoad()) != NULL) {
+        theme_elems_t *mains[6] = {&newT->mainElems, &newT->appsMainElems, &newT->favsMainElems, &newT->vcdMainElems,
+                                   &newT->favsVcdMainElems, &newT->favsAppsMainElems};
+        for (i = 0; i < 6; i++)
+            thmWallpaperApply(mains[i], newT->wallpaper, themePath == NULL);
+    }
 
     newT->itemsList = newT->gamesItemsList;
 
@@ -2115,7 +2129,8 @@ int thmRefreshDisplayLayout(void)
         return 0;
     int wideChanged = gTheme->layoutDependsOnWide && gTheme->layoutWide != rmIsWideDisplay();
     int altChanged = gTheme->altDeclared && gTheme->altBackground != (gThemeAltBackground != 0);
-    if (!wideChanged && !altChanged)
+    int wallpaperChanged = gTheme->wallpaperWanted != (gThemeWallpaper != 0);
+    if (!wideChanged && !altChanged && !wallpaperChanged)
         return 0;
     return gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1);
 }

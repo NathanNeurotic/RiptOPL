@@ -50,6 +50,17 @@ for your saved theme while the drive that holds it is still starting up, so the 
 for a moment first. It is Off (0) on fresh configurations: the menu opens right away and the saved theme
 replaces the built-in one as soon as its drive is up. Saved as `boot_theme_wait`; 6 is the old fixed wait.
 
+**User Wallpaper**, under Boot Theme Wait, draws your own picture behind the main pages (games, apps,
+PS1 and Favourites) in any theme, the built-in one included (requested by Berion). Put it beside
+`settings_riptopl.cfg`, in the folder your settings are saved in, named `wallpaper.png` (for example
+`mc0:/OPL/wallpaper.png`). It must be a PNG of at most 512 x 512 pixels with an 8-bit (256 colour) palette; it is
+stretched to the screen like a theme background. In the built-in theme the full-screen inceBtion picture over
+the background is left out while the wallpaper shows. Disk themes keep all their pictures, so one that lays an
+opaque full-screen picture over its background still hides the wallpaper. Anything else, or no file, keeps the theme's background
+and a message says why. The info pages keep the theme's own background, and per-game background art
+(Background Art) still wins while a game is selected. It is Off on fresh configurations and saved as
+`wallpaper=1`; changing it reloads the theme. *Not yet tested on hardware.*
+
 Both flow views rotate navigation on the main game list: Left/Right browse covers and Up/Down
 change sources. R3 remains Favorite, and info/settings screens keep their normal controls.
 **Coverflow Settings** tunes the `Coverflow` renderer; PSBBN Flow uses its fixed layout and
@@ -82,6 +93,15 @@ themes. The change shows on the next frame and is saved with your settings. Them
 `glyph_set` key and the hint bar keys in the [Theme Engine reference](THEME_ENGINE.md#button-hints-and-glyphs).
 
 *Not yet tested on hardware.*
+
+---
+
+## Show Legend
+
+**Settings → Interface → Show Legend**, under User Wallpaper (requested by Berion). **Off** hides the button
+legend at the bottom of the menu and of the game info page in every theme; the buttons keep working. **On**,
+the default, draws it as the theme lays it out (its `hints_*` keys). The change shows on the next frame and is
+saved as `show_legend=0`. *Not yet tested on hardware.*
 
 ---
 

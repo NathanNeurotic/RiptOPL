@@ -118,6 +118,8 @@ Settings**.
 | Library | Pages or All Games. Same setting as Game Sources → All Games List. | `all_games` |
 | Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
 | Boot Theme Wait | Seconds the start-up screen waits for a saved theme's drive. | `boot_theme_wait` |
+| User Wallpaper | Draws `wallpaper.png` from the settings folder behind the menu pages, in any theme (512x512 at most, 8-bit palette). See [INTERFACE.md](INTERFACE.md). | `wallpaper` |
+| Show Legend | Shows the button legend on the menu and info pages; off hides it in every theme. | `show_legend` |
 | Font Size | Small, Default or Large. | `font_size` |
 | Button Glyphs | The theme's glyphs or a built-in set. | `glyph_set` |
 | Coverflow Settings *(Modify)* | Center scale, animation speed, side-cover dimming, grid layout. | `coverflow_scale`, `coverflow_anim`, `coverflow_dim`, `grid_layout` |
