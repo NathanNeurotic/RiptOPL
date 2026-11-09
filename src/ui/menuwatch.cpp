@@ -243,15 +243,19 @@ static int mcStuck; // a libmc call timed out: the IOP side is not answering
 // when it is not initialised or another call is in flight, and every wait here is bounded.
 // libmc is not thread-safe: a call from another thread that starts in the same instant as this one
 // can still race on libmc's shared state. Accepted, as this runs only in diagnostic builds.
-// Returns 1 written, 0 refused or failed, -1 timed out (mcStuck is then set).
+// Returns 1 written, 0 refused or failed, -1 timed out (mcStuck is then set), -2 no card there.
 static int writeReportMc(int port, const char *name, int len)
 {
     static int type, freeClusters, format; // written by the RPC, possibly after a timeout
     int fd, r, ok, w;
 
     // mcman refuses file calls (sceMcResFailDetect) on a card no mcGetInfo has detected yet.
-    if (mcGetInfo(port, 0, &type, &freeClusters, &format) == 0 && mcWaitBounded(2000, &r) == -2)
-        return mcStuck = 1, -1;
+    if (mcGetInfo(port, 0, &type, &freeClusters, &format) == 0) {
+        if ((w = mcWaitBounded(2000, &r)) == -2)
+            return mcStuck = 1, -1;
+        if (w == 0 && r < -2) // not 0, -1 (new card) or -2 (unformatted): the slot is empty
+            return -2;
+    }
     if (mcDelete(port, 0, name) == 0 && mcWaitBounded(2000, &r) == -2) // a missing file is fine
         return mcStuck = 1, -1;
     if (mcOpen(port, 0, name, sceMcFileAttrWriteable | sceMcFileCreateFile) != 0)
@@ -278,9 +282,10 @@ static int writeReport(const char *path, int len)
     // libmc call has timed out the card's IOP side is stuck and newlib would block forever in
     // the same place, so give up and let the screen turn orange.
     if (strncmp(path, "mc", 2) == 0 && (path[2] == '0' || path[2] == '1') && path[3] == ':') {
-        if (!mcStuck && writeReportMc(path[2] - '0', path + 4, len) > 0)
+        int r = mcStuck ? 0 : writeReportMc(path[2] - '0', path + 4, len);
+        if (r > 0)
             return 1;
-        if (mcStuck)
+        if (mcStuck || r == -2) // newlib would block (F1) or find no card either
             return 0;
     }
     if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
