@@ -823,6 +823,7 @@ mutable_image_t *initMutableImage(const char *themePath, config_set_t *themeConf
     mutableImage->overlayTexture2 = NULL;
     mutableImage->overlayTexture2Linked = 0;
     mutableImage->wallpaper = NULL; // set after validation by thmWallpaperApply
+    mutableImage->backdropLayer = 0;
 #ifdef RETROACHIEVEMENTS
     mutableImage->raIsCover = 0; // set in initGameImage, which knows the pattern
 #endif
@@ -916,9 +917,17 @@ static image_texture_t *bgPicture(const mutable_image_t *image)
     return image->wallpaper != NULL ? image->wallpaper : image->defaultTexture;
 }
 
+// Whether this frame's Background drew the wallpaper (not game art). The Background is first in every family, so it is
+// set before the backdrop layers that read it.
+static int sWallpaperShown;
+
 static void drawStaticImage(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     mutable_image_t *staticImage = (mutable_image_t *)elem->extended;
+    if (staticImage->wallpaper != NULL)
+        sWallpaperShown = 1; // the Background of a main page in place of the theme picture or the plasma
+    else if (staticImage->backdropLayer && sWallpaperShown)
+        return;
     if (staticImage->overlayTexture) {
         rmDrawOverlayPixmap(&staticImage->overlayTexture->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol,
                             &staticImage->defaultTexture->source, staticImage->overlayTexture->upperLeft_x, staticImage->overlayTexture->upperLeft_y, staticImage->overlayTexture->upperRight_x, staticImage->overlayTexture->upperRight_y,
@@ -1222,8 +1231,10 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
         GSTEXTURE *texture;
         int coverflowCoverSettled = 1;
 
-        if (isBackground)
+        if (isBackground) {
             keepLastBackground(gameImage);
+            sWallpaperShown = 0; // until the fallback below draws it instead of game art
+        }
 
         if (isBackground) {
             // Prioritize the highlighted game's cover before the background so the small cover
@@ -1282,9 +1293,11 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
         if (!texture || !texture->Mem) {
             // Keep the configured/default cover visible when art is absent. This is also the
             // placeholder path for Favorites, so all list views keep the same no-art affordance.
-            if (bgPicture(gameImage))
+            if (bgPicture(gameImage)) {
                 texture = &bgPicture(gameImage)->source;
-            else {
+                if (isBackground)
+                    sWallpaperShown = gameImage->wallpaper != NULL;
+            } else {
                 if (elem->type == ELEM_TYPE_BACKGROUND)
                     host::ui().drawBackgroundPlasma();
                 return;
@@ -1313,6 +1326,7 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
         // back art from before this page.
         gameImage->lastCacheId = -1;
         gameImage->lastUid = -1;
+        sWallpaperShown = gameImage->wallpaper != NULL;
         if (bgPicture(gameImage))
             rmDrawPixmap(&bgPicture(gameImage)->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
         else
@@ -1770,6 +1784,15 @@ void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper)
     ((mutable_image_t *)bg->extended)->wallpaper = wallpaper;
     if (bg->drawElem == &drawBackground)
         bg->drawElem = &drawStaticImage; // the plasma's place; drawStaticImage draws bgPicture
+
+    // Full-screen StaticImages straight after it are the rest of the theme's backdrop (the built-in theme lays its
+    // ~85% opaque inceBtion picture there) and would hide the wallpaper. They are skipped while it shows.
+    for (theme_element_t *e = bg->next; e != NULL && e->type == ELEM_TYPE_STATIC_IMAGE && e->extended != NULL; e = e->next) {
+        int originX = e->aligned ? gThmScreenWidth / 2 : 0, originY = e->aligned ? gThmScreenHeight / 2 : 0;
+        if (e->posX != originX || e->posY != originY || e->width < gThmScreenWidth || e->height < gThmScreenHeight)
+            break;
+        ((mutable_image_t *)e->extended)->backdropLayer = 1;
+    }
 }
 
 void thmWallpaperFree(image_texture_t *wallpaper)

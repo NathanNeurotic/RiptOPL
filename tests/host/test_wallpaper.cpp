@@ -73,5 +73,16 @@ int main()
     for (int id : stock)
         CHECK(!texNewerThanStockOpl(id));
 
+    // thmLoadResource's rule (texUseBuiltIn): the theme's own picture always wins; a missing one falls back to the
+    // built-in picture with use_default=1, and with use_default=0 only for the pictures stock OPL never had.
+    CHECK(!texUseBuiltIn(0, 0, MMCE_ICON)); // the theme ships it
+    CHECK(!texUseBuiltIn(0, 1, BDM_ICON));
+    CHECK(texUseBuiltIn(-1, 0, MMCE_ICON)); // missing, newer: built-in even with use_default=0
+    CHECK(texUseBuiltIn(-1, 0, FAV_MARK));
+    CHECK(!texUseBuiltIn(-1, 0, BDM_ICON)); // missing, stock: use_default=0 keeps it empty
+    CHECK(!texUseBuiltIn(-1, 0, LOGO_PICTURE));
+    CHECK(texUseBuiltIn(-1, 1, BDM_ICON)); // missing, use_default=1: built-in as before
+    CHECK(texUseBuiltIn(-1, 1, MMCE_ICON));
+
     TEST_DONE("wallpaper");
 }

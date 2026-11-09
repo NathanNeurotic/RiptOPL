@@ -60,6 +60,9 @@ typedef struct
     // Background of a main page with User Wallpaper on: the theme's picture, drawn instead of defaultTexture (and
     // of the plasma). Owned by the theme (theme_t::wallpaper), never freed here.
     image_texture_t *wallpaper;
+    // A full-screen StaticImage straight after such a Background (the built-in theme's inceBtion layer): part of the
+    // theme's backdrop, so it is skipped on frames where the Background drew the wallpaper. Over game art it draws.
+    int backdropLayer;
 } mutable_image_t;
 
 typedef struct

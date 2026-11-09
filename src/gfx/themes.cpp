@@ -1047,7 +1047,7 @@ static int thmLoadResource(GSTEXTURE *texture, int texId, const char *themePath,
 
     // use_default=0 keeps a theme to its own pictures, except the ones stock OPL had no name for: a theme without
     // them gets the built-in ones, so an old theme still shows an icon on the MMCE, UDPBD, UDPFS and Favourites pages.
-    if ((success < 0) && (useDefault || texNewerThanStockOpl(texId)))
+    if (texUseBuiltIn(success, useDefault, texId))
         texLoadInternal(texture, texId); // we don't mind the result of "default"
 
     return success;

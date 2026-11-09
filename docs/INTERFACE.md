@@ -54,7 +54,8 @@ replaces the built-in one as soon as its drive is up. Saved as `boot_theme_wait`
 PS1 and Favourites) in any theme, the built-in one included (requested by Berion). Put it beside
 `settings_riptopl.cfg`, in the folder your settings are saved in, named `wallpaper.png` (for example
 `mc0:/OPL/wallpaper.png`). It must be a PNG of at most 512 x 512 pixels with an 8-bit (256 colour) palette; it is
-stretched to the screen like a theme background. Anything else, or no file, keeps the theme's background
+stretched to the screen like a theme background, and a full-screen picture the theme lays straight over its
+background (the built-in theme's inceBtion layer) is left out while the wallpaper shows. Anything else, or no file, keeps the theme's background
 and a message says why. The info pages keep the theme's own background, and per-game background art
 (Background Art) still wins while a game is selected. It is Off on fresh configurations and saved as
 `wallpaper=1`; changing it reloads the theme. *Not yet tested on hardware.*

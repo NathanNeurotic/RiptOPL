@@ -171,6 +171,13 @@ static inline int texNewerThanStockOpl(int texId)
     }
 }
 
+// thmLoadResource's whole rule: after the theme's own picture failed to load (themeLoad < 0), load the built-in one
+// when the theme allows it (use_default) or when the picture is one stock OPL never had.
+static inline int texUseBuiltIn(int themeLoad, int useDefault, int texId)
+{
+    return themeLoad < 0 && (useDefault || texNewerThanStockOpl(texId));
+}
+
 // The first bytes of a PNG file (signature, then the IHDR chunk: 29 bytes) describe a picture of at most maxSide
 // pixels on each side with an 8-bit palette, i.e. one that loads as GS_PSM_T8 (User Wallpaper). Checked before
 // the picture is decoded, so a too large one never costs the memory to decode it.
