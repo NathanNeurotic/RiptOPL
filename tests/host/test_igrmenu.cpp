@@ -212,28 +212,27 @@ int main()
     // ---- the frame: nothing recorded (an interrupt-handler flip, PCSX2) opens on a frame of the menu's own
     memset(GSMSourceGSRegs, 0, sizeof(GSMSourceGSRegs));
     memset(GSMSourceSetGsCrt, 0, sizeof(GSMSourceSetGsCrt));
-    CHECK(igrmFindFrame() == 1);
-    CHECK(igrmOwnFrame == 1);
+    CHECK(igrmFindFrame() == 2);
     CHECK(igrmBp == 0 && igrmBw == 10 && igrmPsm == 0 && igrmBpp == 4);
     CHECK(igrmSx == 2 && igrmSy == 1); // 640 x 224: room for twice the panel's width, not its height
     CHECK(igrmX == (640 - PW * 2) / 2 && igrmY == (224 - PH) / 2);
     // a DISPLAY the game wrote from its own code still sizes that frame: 512 x 448 shown, the panel at scale 2
     GSMSourceGSRegs[SRC_PMODE] = 1;
     GSMSourceGSRegs[SRC_DISPLAY1] = display(636, 50, 4, 0, 2559, 447);
-    CHECK(igrmFindFrame() == 1 && igrmOwnFrame == 1);
+    CHECK(igrmFindFrame() == 2);
     CHECK(igrmSx == 2 && igrmSy == 2);
     CHECK(igrmX == (512 - PW * 2) / 2 && igrmY == (448 - PH * 2) / 2);
     // a recorded DISPFB is the game's own: used as it is, no frame of our own
     GSMSourceGSRegs[SRC_DISPFB1] = dispfb(70, 8, 2); // 512 wide CT16 at page 70
-    CHECK(igrmFindFrame() == 1 && igrmOwnFrame == 0);
+    CHECK(igrmFindFrame() == 1);
     CHECK(igrmBp == 70 * 32 && igrmBw == 8 && igrmPsm == 2 && igrmBpp == 2);
     // a format the panel cannot draw in (PSMT8) still leaves at once
     GSMSourceGSRegs[SRC_DISPFB1] = dispfb(0, 10, 0x13);
-    CHECK(igrmFindFrame() == 0 && igrmOwnFrame == 0);
+    CHECK(igrmFindFrame() == 0);
     // circuit 1 on top with only circuit 2 recorded: its format is unknown, so it leaves at once
     GSMSourceGSRegs[SRC_DISPFB1] = 0;
     GSMSourceGSRegs[SRC_DISPFB2] = dispfb(0, 10, 0);
-    CHECK(igrmFindFrame() == 0 && igrmOwnFrame == 0);
+    CHECK(igrmFindFrame() == 0);
 
     TEST_DONE("igrmenu");
 }

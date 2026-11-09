@@ -557,13 +557,28 @@ extern u16 GSMSourceSetGsCrt[3]; // the game's last SetGsCrt: interlace, mode, f
 #define SRC_DISPLAY2 10
 
 static u32 igrmBp, igrmBw, igrmPsm, igrmX, igrmY;
-// igrmFindFrame saw no DISPFB write: the menu shows a frame of its own (IGR_MenuRun), FBP 0, FBW 10 (640 wide),
-// PSMCT32, DBX = DBY = 0
-static int igrmOwnFrame;
+// the menu's own frame, when igrmFindFrame saw no DISPFB write: FBP 0, FBW 10 (640 wide), PSMCT32, DBX = DBY = 0
 #define IGRM_OWN_DISPFB ((u64)10 << 9)
 
+// a / b without the compiler's divide-by-zero trap (b is never 0 here): the trap code and the HI/LO juggling round it
+// cost clang more than 60 bytes, which Korium's LLVM ee_core does not have to spare (its stack starts above .bss)
+static inline u32 igrmDiv(u32 a, u32 b)
+{
+#ifdef IGR_MENU_HOST_TEST
+    return a / b;
+#else
+    u32 q;
+    __asm__("divu $zero, %1, %2\n\tmflo %0"
+            : "=r"(q)
+            : "r"(a), "r"(b)
+            : "hi", "lo");
+    return q;
+#endif
+}
+
 // The frame the PCRTC shows, from the game's own PMODE, SMODE2, DISPFB and DISPLAY writes (RIPPS2's rsFrame), and
-// where the panel goes in it
+// where the panel goes in it. Returns 0: no frame the panel can use, 1: the game's, 2: the menu's own (IGR_MenuRun
+// shows it)
 static int igrmFindFrame(void)
 {
     const u64 *regs = GSMSourceGSRegs;
@@ -575,6 +590,7 @@ static int igrmFindFrame(void)
     int c1 = (pmode & 1) || (!(pmode & 2) && fb1 != 0); // circuit 1 is on top
     u64 fb = c1 ? fb1 : fb2, disp = regs[c1 ? SRC_DISPLAY1 : SRC_DISPLAY2];
     u32 w, h, x, y;
+    int own = fb1 == 0 && fb2 == 0;
 
     // No DISPFB write recorded. The tracker's breakpoint (BPC 0x20280000: DUE, DKE, no DXE) does not trap a store
     // made with EXL set, so a game that flips its buffers from a VSync / INTC handler is never seen; nor is one that
@@ -583,8 +599,7 @@ static int igrmFindFrame(void)
     // so it reads whatever the game kept there. A DISPLAY the game wrote from its own code still sizes it.
     // IGR_MenuRun writes DISPFB1/2 once the breakpoint is off; the game's next flip after RESUME puts its own
     // display back (it flips, or the tracker would have seen it).
-    igrmOwnFrame = fb1 == 0 && fb2 == 0;
-    if (igrmOwnFrame)
+    if (own)
         fb = IGRM_OWN_DISPFB;
     if (fb == 0)
         return 0; // circuit on top has no DISPFB recorded although the other has: its format is unknown
@@ -599,8 +614,8 @@ static int igrmFindFrame(void)
     w = igrmBw * 64;
     h = 224;
     if (disp) { // shown size: DW over MAGH, DH over MAGV (u32: a u64 divide pulls in libgcc)
-        u32 dw = (((u32)(disp >> 32) & 0xfff) + 1) / (((u32)(disp >> 23) & 0xf) + 1);
-        u32 dh = (((u32)(disp >> 44) & 0x7ff) + 1) / (((u32)(disp >> 27) & 3) + 1);
+        u32 dw = igrmDiv(((u32)(disp >> 32) & 0xfff) + 1, ((u32)(disp >> 23) & 0xf) + 1);
+        u32 dh = igrmDiv(((u32)(disp >> 44) & 0x7ff) + 1, ((u32)(disp >> 27) & 3) + 1);
         if (dw > 0 && dw < w)
             w = dw;
         // interlaced, the TV shows its raster and no more, whatever DH asks (a game writing DH 959 shows 480 lines on
@@ -620,7 +635,7 @@ static int igrmFindFrame(void)
     igrmSy = h >= PH * 2 + 16 ? 2 : 1;
     igrmX = x + (w - PW * igrmSx) / 2;
     igrmY = y + (h - PH * igrmSy) / 2;
-    return 1;
+    return 1 + own;
 }
 
 #ifdef IGR_MENU_HOST_TEST
@@ -917,14 +932,16 @@ int IGR_MenuRun(u16 (*buttons)(void))
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
-    if (!igrmFindFrame())
+    // frameHeld, until igrmHoldSave sets it: 2 when the menu shows a frame of its own
+    frameHeld = igrmFindFrame();
+    if (!frameHeld)
         return IGR_MENU_NO_FRAME;
     // the game's own transfers finish first; a VIF1 stalled on an interrupt the pause holds cannot take ours
     if (!igrmWaitClear(IGRM_D1_CHCR, CHCR_STR) || !igrmWaitClear(IGRM_D2_CHCR, CHCR_STR) || (*IGRM_VIF1_STAT & VIF_STALLED))
         return IGR_MENU_GS_BUSY;
     bpc = igrmBpcOff();
-    // after the breakpoint is off, so the tracker does not record our own frame as the game's
-    if (igrmOwnFrame) {
+    // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
+    if (frameHeld == 2) {
         *(vu64 *)0x12000070 = IGRM_OWN_DISPFB; // DISPFB1
         *(vu64 *)0x12000090 = IGRM_OWN_DISPFB; // DISPFB2
     }
