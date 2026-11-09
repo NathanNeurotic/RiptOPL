@@ -23,9 +23,12 @@ def fail(msg):
 
 
 def const(text, name):
-    m = re.search(r"(?:constexpr int %s = |#define %s\s+)(\d+)" % (name, name), text)
+    # The whole value must be one integer literal (ending the line or the statement): a partial match of an
+    # expression such as "10 / 2" would read 10 and let an overlap through.
+    n = re.escape(name)
+    m = re.search(r"(?:constexpr int {0} = |#define {0}[ \t]+)(\d+)[ \t]*(?:;|//|/\*|$)".format(n), text, re.M)
     if not m:
-        fail(f"{name} not declared")
+        fail(f"{name} not declared as a plain integer")
     return int(m.group(1))
 
 
