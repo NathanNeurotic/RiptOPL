@@ -4,6 +4,8 @@
   Review Open PS2 Loader README & LICENSE files for further details.
 */
 
+#include <stdio.h>
+
 #include "smstcpip.h"
 #include "internal.h"
 
@@ -15,7 +17,7 @@ extern struct irx_export_table _exp_oplsmb;
 
 extern int smb_io_sema;
 
-static void ps2ip_init(void);
+static int ps2ip_init(void);
 
 // !!! ps2ip exports functions pointers !!!
 // Note: recvfrom() used here is not a standard recvfrom() function.
@@ -29,11 +31,16 @@ int (*plwip_setsockopt)(int s, int level, int optname, const void *optval, sockl
 u32 (*pinet_addr)(const char *cp);                                                                                                         // #24
 
 static u32 ServerCapabilities;
+// 0 = not attempted, 1 = all image files opened, -1 = failed/unmounted.
+static int smb_mount_state;
 
-static void ps2ip_init(void)
+static int ps2ip_init(void)
 {
     modinfo_t info;
-    getModInfo("ps2ip\0\0\0", &info);
+    // getModInfo leaves info.exports undefined when the library is absent.
+    // Never dereference a stale loadcore pointer after an IOP module failure.
+    if (!getModInfo("ps2ip\0\0\0", &info) || !info.exports)
+        return 0;
 
     // Set functions pointers here
     plwip_close = info.exports[6];
@@ -44,17 +51,26 @@ static void ps2ip_init(void)
     plwip_socket = info.exports[13];
     plwip_setsockopt = info.exports[19];
     pinet_addr = info.exports[24];
+    return 1;
 }
 
 /** Negotiate with cdvdman's saved server settings and return the result to smbinit. */
 int smb_NegotiateProt(OplSmbPwHashFunc_t hash_callback)
 {
-    ps2ip_init();
-    return smb_NegotiateProtocol(cdvdman_settings.smb_ip, cdvdman_settings.smb_port, cdvdman_settings.smb_user, cdvdman_settings.smb_password, &ServerCapabilities, hash_callback);
+    int ret;
+    if (!ps2ip_init()) {
+        smb_mount_state = -1;
+        return -1;
+    }
+    ret = smb_NegotiateProtocol(cdvdman_settings.smb_ip, cdvdman_settings.smb_port, cdvdman_settings.smb_user, cdvdman_settings.smb_password, &ServerCapabilities, hash_callback);
+    if (ret <= 0)
+        smb_mount_state = -1;
+    return ret;
 }
 
 void DeviceInit(void)
 {
+    smb_mount_state = 0;
     RegisterLibraryEntries(&_exp_oplsmb);
 }
 
@@ -65,20 +81,38 @@ void DeviceDeinit(void)
 
 int DeviceReady(void)
 {
-    return SCECdComplete;
+    return smb_mount_state < 0 ? SCECdNotReady : SCECdComplete;
 }
 
+/**
+ * Open the complete image before allowing CDVDMAN to initialize the ISO filesystem.
+ * A failed attempt is terminal until a fresh IOP/device initialization: the FIDs
+ * overlay the server settings, so a blind same-IOP reconnect is not safe.
+ */
 void DeviceFSInit(void)
 {
     int i = 0;
     char tmp_str[CDVDMAN_SMB_PATH_MAX];
 
-    // open a session
-    smb_SessionSetupAndX(ServerCapabilities);
+    if (smb_mount_state != 0)
+        return;
+    smb_mount_state = -1;
 
-    // Then tree connect on the share resource
+    if (cdvdman_settings.common.NumParts == 0 || cdvdman_settings.common.NumParts > ISO_MAX_PARTS) {
+        printf("DeviceFSInit: invalid part count\n");
+        goto failed;
+    }
+
+    if (smb_SessionSetupAndX(ServerCapabilities) < 0) {
+        printf("DeviceFSInit: session setup failed\n");
+        goto failed;
+    }
+
     sprintf(tmp_str, "\\\\%s\\%s", cdvdman_settings.smb_ip, cdvdman_settings.smb_share);
-    smb_TreeConnectAndX(tmp_str);
+    if (smb_TreeConnectAndX(tmp_str) < 0) {
+        printf("DeviceFSInit: tree connect failed\n");
+        goto failed;
+    }
 
     if (!(cdvdman_settings.common.flags & IOPCORE_SMB_FORMAT_USBLD)) {
         if (cdvdman_settings.smb_prefix[0]) {
@@ -87,7 +121,10 @@ void DeviceFSInit(void)
             sprintf(tmp_str, "\\%s\\%s", cdvdman_settings.common.media == 0x12 ? "CD" : "DVD", cdvdman_settings.filename);
         }
 
-        smb_OpenAndX(tmp_str, (u8 *)&cdvdman_settings.FIDs[i++], 0);
+        if (smb_OpenAndX(tmp_str, (u8 *)&cdvdman_settings.FIDs[i++], 0) <= 0) {
+            printf("DeviceFSInit: image open failed\n");
+            goto failed;
+        }
     } else {
         // Open all parts files
         for (i = 0; i < cdvdman_settings.common.NumParts; i++) {
@@ -96,20 +133,35 @@ void DeviceFSInit(void)
             else
                 sprintf(tmp_str, "\\%s.%02x", cdvdman_settings.filename, i);
 
-            smb_OpenAndX(tmp_str, (u8 *)&cdvdman_settings.FIDs[i], 0);
+            if (smb_OpenAndX(tmp_str, (u8 *)&cdvdman_settings.FIDs[i], 0) <= 0) {
+                printf("DeviceFSInit: image part %d open failed\n", i);
+                goto failed;
+            }
         }
     }
+
+    smb_mount_state = 1;
+    return;
+
+failed:
+    // Closing the session also releases earlier successful opens on the server.
+    // Do not inspect FIDs on partial failure: they alias IP/share/credentials.
+    smb_Disconnect();
 }
 
 void DeviceLock(void)
 {
-    WaitSema(smb_io_sema);
+    // Negotiation may fail before the SMB I/O semaphore is created.
+    if (smb_io_sema >= 0)
+        WaitSema(smb_io_sema);
 }
 
 void DeviceUnmount(void)
 {
-    smb_CloseAll();
+    if (smb_mount_state == 1)
+        smb_CloseAll();
     smb_Disconnect();
+    smb_mount_state = -1;
 }
 
 void DeviceStop(void)
@@ -122,6 +174,9 @@ int DeviceReadSectors(u64 lsn, void *buffer, unsigned int sectors)
     register int i, esc_flag = 0;
     u8 *p = (u8 *)buffer;
     int rv = SCECdErNO;
+
+    if (smb_mount_state != 1)
+        return SCECdErREAD;
 
     lbound = 0;
     ubound = (cdvdman_settings.common.NumParts > 1) ? 0x80000 : 0xFFFFFFFF;

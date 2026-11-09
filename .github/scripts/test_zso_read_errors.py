@@ -151,6 +151,7 @@ SMB_DEVICE = r'''
 #define WAITIOSEMA(x) ((void)(x))
 #define SIGNALIOSEMA(x) ((void)(x))
 static int smb_io_sema;
+static int smb_mount_state = 1; /* Extracted DeviceReadSectors is tested after a successful mount. */
 static struct { struct { int NumParts; } common; u16 FIDs[4]; } cdvdman_settings = {{1}, {0}};
 
 /* The server answers SMB1 READ_ANDX from the file: what it holds from the offset, up to the request,
@@ -160,6 +161,8 @@ static struct { struct { int NumParts; } common; u16 FIDs[4]; } cdvdman_settings
 #define PART_BYTES (0x80000ull * 2048)
 static int inject;
 static u8 partByte(u16 FID, u64 off) { return (u8)(FID * 13 + (off >> 11) * 7 + off); }
+/* smb.c sends a read again only after its reply timed out; this server answers every one. */
+static int smb_RetryRequest(int attempt) { (void)attempt; return 0; }
 static int smb_ReadAndX(u16 FID, u32 offsetlow, u32 offsethigh, void *readbuf, int nbytes)
 {
     u64 off = ((u64)offsethigh << 32) | offsetlow;

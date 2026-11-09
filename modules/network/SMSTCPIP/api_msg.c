@@ -128,10 +128,12 @@ static err_t recv_tcp(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
             } else
                 len = 0;
 
+            // The socket callback advertises readability. Publish the data first,
+            // or MSG_DONTWAIT receivers can block waiting for a not-yet-posted pbuf.
+            sys_mbox_post(recvmbox, p);
+
             if (callback)
                 callback(conn, NETCONN_EVT_RCVPLUS, len);
-
-            sys_mbox_post(recvmbox, p);
 
         } /* end if */
 
@@ -190,10 +192,10 @@ err_tcp(void *arg, err_t err)
 
     conn->err = err;
     if (conn->recvmbox != SYS_MBOX_NULL) {
-        /* Register event with callback */
+        // Publish EOF before making the socket readable for a waiting receiver.
+        sys_mbox_post(conn->recvmbox, NULL);
         if (conn->callback)
             (*conn->callback)(conn, NETCONN_EVT_RCVPLUS, 0);
-        sys_mbox_post(conn->recvmbox, NULL);
     }
     if (conn->mbox != SYS_MBOX_NULL) {
         TCPIP_APIMSG_ACK(conn->mbox);
@@ -367,7 +369,12 @@ do_delconn(struct api_msg_msg *msg)
 #endif /* LWIP_UDP */
 #if LWIP_TCP
             case NETCONN_TCP:
-                if (msg->conn->pcb.tcp->state == LISTEN) {
+                if (msg->conn->pcb.tcp->state == CLOSED) {
+                    // New TCP sockets already own a PCB. Closing before connect
+                    // must release it: tcp_close(CLOSED) intentionally does not.
+                    memp_free(MEMP_TCP_PCB, msg->conn->pcb.tcp);
+                    msg->conn->pcb.tcp = NULL;
+                } else if (msg->conn->pcb.tcp->state == LISTEN) {
                     tcp_arg(msg->conn->pcb.tcp, NULL);
                     tcp_accept(msg->conn->pcb.tcp, NULL);
                     tcp_close(msg->conn->pcb.tcp);
@@ -480,6 +487,7 @@ do_connected(void *arg, struct tcp_pcb *pcb, err_t err)
 }
 #endif
 
+/** Connect asynchronously; an immediate SYN-enqueue failure must wake the caller. */
 static void
 do_connect(struct api_msg_msg *msg)
 {
@@ -553,12 +561,28 @@ do_connect(struct api_msg_msg *msg)
             break;
 #endif
 #if LWIP_TCP
-        case NETCONN_TCP:
-            /*    tcp_arg(msg->conn->pcb.tcp, msg->conn);*/
+        case NETCONN_TCP: {
+            err_t err;
             setup_tcp(msg->conn);
-            tcp_connect(msg->conn->pcb.tcp, msg->msg.bc.ipaddr, msg->msg.bc.port,
-                        do_connected);
-/*tcp_output(msg->conn->pcb.tcp);*/
+            err = tcp_connect(msg->conn->pcb.tcp, msg->msg.bc.ipaddr, msg->msg.bc.port,
+                              do_connected);
+            if (err != ERR_OK) {
+                // A failed SYN enqueue has no completion callback. Wake netconn_connect
+                // and free the SYN_SENT PCB instead of waiting for an ACK that cannot arrive.
+                if (msg->conn->pcb.tcp->state == SYN_SENT) {
+                    tcp_close(msg->conn->pcb.tcp);
+                    msg->conn->pcb.tcp = NULL;
+                } else if (msg->conn->pcb.tcp->state == CLOSED) {
+                    // tcp_connect() rejected the address before registering this PCB.
+                    // tcp_close(CLOSED) does not free it; return it directly to the pool.
+                    memp_free(MEMP_TCP_PCB, msg->conn->pcb.tcp);
+                    msg->conn->pcb.tcp = NULL;
+                }
+                msg->conn->err = err;
+                TCPIP_APIMSG_ACK(msg->conn->mbox);
+            }
+            break;
+        }
 #endif
 
         default:
