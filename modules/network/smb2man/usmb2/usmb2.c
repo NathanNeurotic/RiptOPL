@@ -323,6 +323,9 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         }
         spl = ntohl(spl);
         if (spl < 64) {
+#ifndef USMB2_FEATURE_TINY_TCP
+                socket_failed(usmb2); /* RiptOPL: the stream is out of step; close it */
+#endif
                 goto failed; /* RiptOPL: not an SMB2 reply */
         }
 
@@ -426,7 +429,7 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         return status;
 
  failed:
-        /* RiptOPL: a failed socket call closed the socket (socket_failed()) */
+        /* RiptOPL: every path here has closed the socket (socket_failed()) */
         usmb2->status = STATUS_CONNECTION_DISCONNECTED;
         return STATUS_CONNECTION_DISCONNECTED;
 }
