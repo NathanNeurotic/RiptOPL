@@ -14,10 +14,12 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 * The hub lists nine pages and **Save Changes**, and shows the running RiptOPL version under its
   title. Up and Down pick a page; Cross (or Circle, if swapped) opens it; L1 and R1 move between
   pages while one is open.
-* Most changes take effect when you leave the page with OK, Back or L1/R1 (Back or L1/R1 off a page
-  you did not change applies nothing). Audio rows and the Interface page's screen position,
-  overscan and widescreen rows apply as you change them. Nothing is written to the memory card or
-  device until **Save Changes**, except the cases in the next point.
+* Most changes take effect when you leave the page with OK, Back or L1/R1. On Game Sources,
+  General & System, Network, Game Launching and PS Emulation Settings, Back or L1/R1 off the page
+  without changing a row applies nothing; the other pages re-apply their rows even then. Audio rows
+  and the Interface page's screen position, overscan and widescreen rows apply as you change them.
+  Nothing is written to the memory card or device until **Save Changes**, except the cases in the
+  next point.
 * Leaving the hub with unsaved changes asks whether to save, exit without saving, or keep editing.
   Exit without saving restores the game-source choices (default device, start modes, source
   switches, All Games List and Show Hidden Games, network protocol and SMB Version, MMCE options)
