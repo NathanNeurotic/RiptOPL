@@ -2410,7 +2410,7 @@ static int guiSettingsShowInterface(void)
     int gameViewChanged = 0;
     int appsViewChanged = 0;
     int themeViewRequest = gThemeViewRequest;
-    int altBackgroundRequest = gThemeAltBackground, viewPending = 0;
+    int altBackgroundRequest = gThemeAltBackground, wallpaperRequest = gThemeWallpaper, viewPending = 0;
     int allGamesChanged = 0;
 
     if (ui == NULL)
@@ -2430,6 +2430,8 @@ static int guiSettingsShowInterface(void)
     guiSetAppsViewPicker(ui);
     guiSetThemeViewPicker(ui);
     diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
+    diaSetInt(ui, UICFG_WALLPAPER, gThemeWallpaper);
+    diaSetInt(ui, UICFG_SHOW_LEGEND, gShowLegend);
     diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
     guiSetLibraryPicker(ui);
     diaSetEnum(ui, UICFG_VMODE, vmodeNames);
@@ -2502,11 +2504,15 @@ reshow_interface:
         appsViewChanged = guiReadAppsViewPicker(ui);
         themeViewRequest = guiReadThemeViewPicker(ui);
         diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
+        diaGetInt(ui, UICFG_WALLPAPER, &wallpaperRequest);
+        diaGetInt(ui, UICFG_SHOW_LEGEND, &gShowLegend); // read as each frame draws: nothing to rebuild
         diaGetInt(ui, UICFG_BOOT_THEME_WAIT, &gBootThemeWait);
         // With a view change pending, the alt change waits for that reload so the theme loads once.
         viewPending = themeViewRequest != gThemeViewRequest;
-        if (!viewPending)
+        if (!viewPending) {
             gThemeAltBackground = altBackgroundRequest; // applyConfig reloads a theme with alt= keys
+            gThemeWallpaper = wallpaperRequest;         // and any theme when User Wallpaper changes
+        }
         allGamesChanged = guiReadLibraryPicker(ui);
         diaGetInt(ui, UICFG_VMODE, &gVMode);
         diaGetInt(ui, UICFG_WIDESCREEN, &gWideScreen);
@@ -2533,8 +2539,9 @@ reshow_interface:
             configSetStr(configGetByType(CONFIG_OPL), CONFIG_OPL_THEME, thmGetValue());
         if (viewPending) {
             gThemeAltBackground = altBackgroundRequest;
+            gThemeWallpaper = wallpaperRequest;
             if (!thmSetView(themeViewRequest)) // reloads only when the theme now shows a different view
-                thmRefreshDisplayLayout();     // same view: the alt change still needs its reload
+                thmRefreshDisplayLayout();     // same view: the alt or wallpaper change still needs its reload
         }
         if (allGamesChanged) {
             guiApplyAllGamesChange(); // rebuilds every game list too

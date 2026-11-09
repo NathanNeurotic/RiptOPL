@@ -266,6 +266,10 @@ int gGlyphSet = 0; // GLYPH_SET_THEME
 int gThemeAltBackground;
 // Boot Theme Wait: seconds the intro holds for a saved disk theme whose drive is not up yet (guisplash.cpp).
 int gBootThemeWait;
+// Show Legend (Berion's request): 0 hides the button legend of every theme.
+int gShowLegend = 1;
+// User Wallpaper (Berion's request): wallpaper.png from the settings folder instead of the theme's background.
+int gThemeWallpaper;
 int gVMode; // 0 - Auto, 1 - PAL, 2 - NTSC
 int gXOff;
 int gYOff;
