@@ -37,6 +37,7 @@ static int script_len, script_pos;
 static uint32_t flags;
 static unsigned int (*alarm_cb)(void *);
 static void *alarm_arg;
+static int alarm_fail; /* SetAlarm refuses, as on an exhausted IOP kernel heap */
 
 static udp_socket_t bound_socket;
 static uint8_t frame[64];
@@ -64,7 +65,8 @@ static void check(const char *what, int ok)
 
 static void run_script(int n, const script_ev_t *evs)
 {
-    memcpy(script, evs, n * sizeof(*evs));
+    if (n > 0)
+        memcpy(script, evs, n * sizeof(*evs));
     script_len = n;
     script_pos = 0;
 }
@@ -180,6 +182,8 @@ void USec2SysClock(uint32_t usec, iop_sys_clock_t *clock)
 int SetAlarm(iop_sys_clock_t *clock, unsigned int (*cb)(void *), void *arg)
 {
     (void)clock;
+    if (alarm_fail)
+        return -400; /* KE_NO_MEMORY */
     alarm_cb = cb;
     alarm_arg = arg;
     return 0;
@@ -314,6 +318,32 @@ int main(void)
     check("split send with stale ACK completes", udprdma_send_ll(s, req, 4, req, sizeof(req)) == UDPRDMA_OK);
     check("split send does not retry on stale ACK", count_requests(mark) == 1);
     check("split send consumes covering ACK", script_pos == script_len);
+
+    /* SetAlarm fails: every wait must end as a timeout, never block. An empty script makes a
+     * wait that is not ended by the transport itself fail the test instead of hanging. */
+    alarm_fail = 1;
+    mark = sent_len;
+    run_script(0, NULL);
+    check("split send with no alarm gives up", udprdma_send_ll(s, req, 4, req, sizeof(req)) == UDPRDMA_ERR_NACK);
+    check("split send with no alarm still makes four tries", count_requests(mark) == 4);
+
+    alarm_fail = 0;
+    run_script(1, connect);
+    check("rediscovery after split send connects", udprdma_discover(s, 2000) == UDPRDMA_OK);
+    alarm_fail = 1;
+    run_script(0, NULL);
+    check("receive with no alarm times out", udprdma_recv(s, reply, sizeof(reply), 1000) == UDPRDMA_ERR_TIMEOUT);
+
+    alarm_fail = 0;
+    run_script(1, connect);
+    check("rediscovery after receive connects", udprdma_discover(s, 2000) == UDPRDMA_OK);
+    alarm_fail = 1;
+    mark = sent_len;
+    run_script(0, NULL);
+    check("send with no alarm gives up", udprdma_send(s, req, sizeof(req)) == UDPRDMA_ERR_NACK);
+    check("send with no alarm still makes four tries", count_requests(mark) == 4);
+    check("discovery with no alarm times out", udprdma_discover(s, 2000) == UDPRDMA_ERR_TIMEOUT);
+    alarm_fail = 0;
 
     if (failures) {
         fprintf(stderr, "%d check(s) failed\n", failures);

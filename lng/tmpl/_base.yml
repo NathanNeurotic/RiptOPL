@@ -2547,3 +2547,19 @@ gui_strings:
 - comment: General & System, Advanced section.
   label: ADV_SMB_CACHE
   string: SMB Cache
+- comment: Interface setting under User Wallpaper (Berion's request). Off hides the button legend of every theme.
+  label: SHOW_LEGEND
+  string: Show Legend
+- label: HINT_SHOW_LEGEND
+  string: "Shows the button legend at the bottom of the menu and the info page. Off hides it in every theme; the buttons still work."
+- comment: Interface setting under Boot Theme Wait (Berion's request). On draws wallpaper.png from the settings folder.
+  label: WALLPAPER
+  string: User Wallpaper
+- label: HINT_WALLPAPER
+  string: "Draws wallpaper.png from the folder your settings are saved in behind the menu pages, in any theme. 512x512 at most, 8-bit (256 colour) palette."
+- comment: Toast when User Wallpaper is on and the file is not there.
+  label: WALLPAPER_MISSING
+  string: "User Wallpaper: no wallpaper.png in the settings folder. The theme's background is shown."
+- comment: Toast when wallpaper.png is too large or not an 8-bit palette picture.
+  label: WALLPAPER_REJECTED
+  string: "User Wallpaper: wallpaper.png must be 512x512 at most with an 8-bit (256 colour) palette. The theme's background is shown."

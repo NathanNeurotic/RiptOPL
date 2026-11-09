@@ -80,6 +80,8 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_THEME_ALT_BG, &gThemeAltBackground, 0),
     // Off: the menu opens without waiting, and the saved theme replaces the built-in one once its drive is up.
     intSetting(CONFIG_OPL_BOOT_THEME_WAIT, &gBootThemeWait, 0),
+    intSetting(CONFIG_OPL_SHOW_LEGEND, &gShowLegend, 1), // On: the theme's button legend, as before
+    intSetting(CONFIG_OPL_WALLPAPER, &gThemeWallpaper, 0), // Off: the theme's own background
     intSetting(CONFIG_OPL_VMODE, &gVMode, 0, /*loadPlain=*/false),
     intSetting(CONFIG_OPL_XOFF, &gXOff, 0),
     intSetting(CONFIG_OPL_YOFF, &gYOff, 0),

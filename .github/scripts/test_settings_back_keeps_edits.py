@@ -266,7 +266,31 @@ SOURCE_FIELDS = (
     'gNetworkProtocol', 'gNetStartMode', 'gNetProtocolPick', 'gETHStartMode',
     'gEnableUDPBD', 'gNetBootProtocol', 'gMMCESlot', 'gMMCEIGRSlot',
     'gMMCEEnableGameID', 'gMMCEAckWaitCycles', 'gMMCEUseAlarms', 'gMMCEPrefix',
+    'gEnablePCCF', 'gEnableDVR', 'gUdpfsAccessMode', 'gAllGames', 'gShowHidden',
 )
+
+# Every global the Game Sources page (and the MMCE child and network-row helpers it calls) writes
+# must be in the snapshot. A hand list alone let PC CARD CF and DESR DVR slip through: their rows
+# applied live, and Exit without saving left them flipped. Derive the set from the page source.
+SOURCES_WRITERS = (
+    'static int guiSettingsShowSources(',
+    'static int guiShowMmceConfig(',
+    'static void guiSourcesNetRowsRead(',
+    'static void guiNetProtocolStore(',
+    'static void guiNetProtocolApplied(',
+)
+NOT_SOURCE_STATE = {'gSettingsShell'}
+written = set()
+for signature in SOURCES_WRITERS:
+    body = function_text(gui_c, 'src/ui/guisettings.cpp', signature)
+    written.update(re.findall(r'diaGet(?:Int|String)\(\s*ui\s*,\s*\w+\s*,\s*&?(g[A-Z]\w*)', body))
+    written.update(re.findall(r'(?<![\w.>])(g[A-Z]\w*)\s*=(?!=)', body))
+for field in sorted(written - NOT_SOURCE_STATE):
+    if field not in SOURCE_FIELDS:
+        failures.append('Game Sources writes %s but the Exit-without-saving snapshot does not cover it' % field)
+if written and not {'gEnablePCCF', 'gEnableDVR', 'gUdpfsAccessMode'} <= written:
+    failures.append('Game Sources writer scan no longer sees PC CARD CF / DESR DVR / UDPFS Access; fix the scan')
+
 for field in SOURCE_FIELDS:
     if read_source and field not in read_source:
         failures.append('guiSettingsReadSourceState: missing %s' % field)
@@ -285,6 +309,8 @@ if restore:
     for needle in ('bdmForceDeviceRefresh();', 'applyConfig(-1, -1, 0);', 'menuReinitMainMenu();'):
         if needle not in restore:
             failures.append('SettingsShell::restoreSourceState: missing %s' % needle)
+    if not re.search(r'if \(previousEnablePCCF != gEnablePCCF\)\s*bdmRequestPccfProbe\(\);', restore):
+        failures.append('SettingsShell::restoreSourceState: restoring PC CARD CF must re-request its probe')
 if index:
     exit_pos = index.find('promptResult == SETTINGS_PROMPT_EXIT')
     restore_pos = index.find('restoreSourceState();', exit_pos)

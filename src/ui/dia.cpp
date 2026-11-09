@@ -1170,6 +1170,7 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
         guiLock();
         rmStartFrame();
         diaRenderUI(ui, inMenu, cur, haveFocus);
+        guiDrawToast(); // a toast raised from a settings page (e.g. User Wallpaper) stays up for its three seconds
         // NOTE(rebuild): the Debug-Colors HUD line returns with checklist item 46.
         rmEndFrame();
         guiUnlock(); // the input handling and the updater below run unlocked: they may open dialogs and do IO

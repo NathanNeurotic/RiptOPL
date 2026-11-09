@@ -1114,8 +1114,6 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
 
     (void)f;
     (void)name;
-    (void)buf;
-    (void)buflen;
 
     switch (cmd) {
         case SMB_DEVCTL_GETPASSWORDHASHES:
@@ -1220,6 +1218,14 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
             rv = (smb2 != NULL && share_open) ? (int)smb2_get_dialect(smb2) : -ENODEV;
             UNLOCK();
             return rv;
+
+        case SMB2_DEVCTL_GETIOPFREE:
+            // IOP RAM left for libsmb2 and lwIP. Kernel queries only, no LOCK().
+            if (buf == NULL || buflen < 2 * sizeof(u32))
+                return -EINVAL;
+            ((u32 *)buf)[0] = QueryTotalFreeMemSize();
+            ((u32 *)buf)[1] = QueryMaxFreeMemSize();
+            return 0;
 
         case SMB_DEVCTL_CLOSESHARE:
             LOCK();
