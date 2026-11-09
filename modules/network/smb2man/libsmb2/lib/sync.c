@@ -62,12 +62,17 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
-static int pdu_on_list(struct smb2_pdu *list, struct smb2_pdu *pdu)
+/* A failed synchronous caller owns and frees its PDU. Unlink it first,
+ * otherwise a subsequent context teardown can visit the freed queue node. */
+static int unlink_pending_pdu(struct smb2_pdu **list, struct smb2_pdu *pdu)
 {
-        for (; list; list = list->next) {
-                if (list == pdu) {
+        while (*list != NULL) {
+                if (*list == pdu) {
+                        *list = pdu->next;
+                        pdu->next = NULL;
                         return 1;
                 }
+                list = &(*list)->next;
         }
         return 0;
 }
@@ -92,8 +97,10 @@ static void sync_free_pending_pdu(struct smb2_context *smb2,
                 smb2->next_pdu = NULL;
                 pending = 1;
         }
-        if (pdu_on_list(smb2->outqueue, pdu) ||
-            pdu_on_list(smb2->waitqueue, pdu)) {
+        if (unlink_pending_pdu(&smb2->outqueue, pdu)) {
+                pending = 1;
+        }
+        if (unlink_pending_pdu(&smb2->waitqueue, pdu)) {
                 pending = 1;
         }
         if (pending && pdu->cb) {
@@ -120,11 +127,20 @@ static int wait_for_reply(struct smb2_context *smb2,
                 if (smb2->timeout) {
                         smb2_timeout_pdus(smb2);
                 }
-		if (!SMB2_VALID_SOCKET(smb2->fd) && ((time(NULL) - t) > (smb2->timeout)))
-		{
-			smb2_set_error(smb2, "Timeout expired and no connection exists\n");
-			return -1;
-		}
+                /* The active reply can leave waitqueue while its payload is
+                 * still arriving. The PDU timeout scan does not cover it.
+                 * Apply the operation deadline even while the socket is open. */
+                if (cb_data->is_finished) {
+                        break;
+                }
+                if (smb2->timeout > 0 &&
+                    (time(NULL) - t) >= smb2->timeout) {
+                        smb2_set_error(smb2, "SMB2 synchronous reply timed out");
+                        /* An incomplete frame must not be reused as a new
+                         * response. The owner will tear down pending PDUs. */
+                        smb2_close_context(smb2);
+                        return -1;
+                }
                 if (pfd.revents == 0) {
                         continue;
                 }
@@ -226,6 +242,13 @@ static void sync_opendir_cb(struct smb2_context *smb2, int status,
 {
         struct sync_cb_data *cb_data = private_data;
 
+        if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                /* A completed CREATE can have queued a later QUERY/CLOSE. */
+                if (status == SMB2_STATUS_SUCCESS && command_data)
+                        smb2_closedir(smb2, command_data);
+                free(cb_data);
+                return;
+        }
         if (status == SMB2_STATUS_SHUTDOWN) {
                 return;
         }
@@ -256,8 +279,10 @@ struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
 	}
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
+                /* A chained request can outlive the original CREATE PDU.
+                 * Its final callback owns this state after the timeout. */
+                cb_data->status = SMB2_STATUS_CANCELLED;
                 sync_free_pending_pdu(smb2, pdu);
-                free(cb_data);
                 return NULL;
         }
 
@@ -280,6 +305,11 @@ static void sync_open_cb(struct smb2_context *smb2, int status,
 {
         struct sync_cb_data *cb_data = private_data;
 
+        if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                /* A symlink retry can outlive the original CREATE PDU. */
+                free(cb_data);
+                return;
+        }
         cb_data->is_finished = 1;
         cb_data->ptr = command_data;
 }
@@ -304,8 +334,10 @@ struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags)
 	}
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
+                /* A chained request can outlive the original CREATE PDU.
+                 * Its final callback owns this state after the timeout. */
+                cb_data->status = SMB2_STATUS_CANCELLED;
                 sync_free_pending_pdu(smb2, pdu);
-                free(cb_data);
                 return NULL;
         }
 
@@ -971,6 +1003,9 @@ static void sync_copy_ioctl_cb(struct smb2_context *smb2, int status,
         struct sync_cb_data *cb_data = private_data;
 
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                /* The caller returned on timeout; it cannot consume the
+                 * reply, so release any late output with the library allocator. */
+                smb2_free_data(smb2, command_data);
                 free(cb_data);
                 return;
         }
@@ -1001,7 +1036,8 @@ int smb2_request_resume_key(struct smb2_context *smb2, struct smb2fh *fh,
         rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                /* The pending callback retains ownership until completion or teardown. */
+                return rc;
         }
 
         rc = cb_data->status;
@@ -1044,7 +1080,8 @@ int smb2_copychunk(struct smb2_context *smb2,
         rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                /* The pending callback retains ownership until completion or teardown. */
+                return rc;
         }
 
         rc = cb_data->status;
@@ -1087,7 +1124,8 @@ int smb2_server_side_copy(struct smb2_context *smb2,
         rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                /* The pending callback retains ownership until completion or teardown. */
+                return rc;
         }
 
         rc = cb_data->status;

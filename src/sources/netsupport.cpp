@@ -78,7 +78,11 @@ int NetSupport::waitValidState(int (*checkingFunction)(void))
         return SemaID;
 
     for (retry_cycles = 0; checkingFunction() == 0; retry_cycles++) {
-        SetAlarm(1000 * rmGetHsync(), &NetStatusCheckCb, &SemaID);
+        // If the EE alarm table is full, do not wait on an unsignaled semaphore.
+        if (SetAlarm(1000 * rmGetHsync(), &NetStatusCheckCb, &SemaID) < 0) {
+            DeleteSema(SemaID);
+            return -1;
+        }
         WaitSema(SemaID);
 
         if (retry_cycles >= 30) // 30s = 30*1000ms
@@ -107,12 +111,23 @@ int NetSupport::initApplyConfig()
 {
     LOG("NETSUPPORT ApplyConfig\n");
 
-    do {
+    // A link can be up while NetMan refuses the requested PHY mode.
+    // Do not hold the network initialization semaphore indefinitely.
+    const int kMaxLinkModeAttempts = 3;
+    for (int attempt = 0; attempt < kMaxLinkModeAttempts; attempt++) {
         if (waitValidLinkState() != 0) {
             gNetworkStartup = ERROR_ETH_LINK_FAIL;
             return ERROR_ETH_LINK_FAIL;
         }
-    } while (applyNetifConfig() != 0);
+        int modeResult = applyNetifConfig();
+        if (modeResult == 0)
+            break;
+        LOG("NETSUPPORT: link mode apply failed (%d), attempt %d/%d\n", modeResult, attempt + 1, kMaxLinkModeAttempts);
+        if (attempt + 1 == kMaxLinkModeAttempts) {
+            gNetworkStartup = ERROR_ETH_LINK_FAIL;
+            return ERROR_ETH_LINK_FAIL;
+        }
+    }
 
     // Wait for the link to re-establish after applying the NIF link-mode setting.
     if (waitValidLinkState() != 0) {

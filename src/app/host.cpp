@@ -83,6 +83,7 @@ public:
     int pathToMode(const char *path) override { return oplPath2Mode(path); }
 
     void setError(int strId, int error) override { setErrorMessageWithCode(strId, error); }
+    void appendError(int strId, int error) override { appendErrorMessageWithCode(strId, error); }
     void setErrorDetail(int strId, int error, const char *detail) override { setErrorMessageWithCodeAndDetail(strId, error, detail); }
     void setErrorPath(int strId, const char *path, int error) override { setErrorMessagePathCode(strId, path, error); }
     void clearErrorIf(int strId) override { clearErrorMessageIf(strId); }

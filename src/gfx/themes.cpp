@@ -19,6 +19,7 @@
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
 #include "include/themeviews.h"
 #include "include/sema_lock.h"
+#include "include/diaglog.h"
 #ifdef RETROACHIEVEMENTS
 #include "include/rabadge.h" // RA: mark over the cover
 #endif
@@ -50,6 +51,14 @@ static int thmParseViewInherit = 1; // 0 for a <view>.inherit=0 view: no fallbac
 static int thmParseAutoFit = 0;
 
 static ThemeCatalog gCatalog;
+
+// The existing diagnostic watchdog writes diagLog to RIPTOPL-FREEZE/CRASH.TXT.
+// Keep these boot/theme breadcrumbs entirely out of shipping builds.
+#ifdef __OPLDIAG
+#define THEME_BOOT_TRACE(...) diagLog(__VA_ARGS__)
+#else
+#define THEME_BOOT_TRACE(...) ((void)0)
+#endif
 
 // One theme switch at a time. The IO thread loads themes (a device with the saved theme comes up or goes away, a
 // queued settings load) and so does the GUI thread (settings, the view switch, a language change). thmLoad reads the
@@ -997,7 +1006,9 @@ int ThemeCatalog::readEntry(int index, const char *path, const char *separator, 
     if (!isDir && strncasecmp(name, "thm_", 4) == 0) {
         char probe[256];
         snprintf(probe, sizeof(probe), "%s%s%s", path, separator, name);
+        THEME_BOOT_TRACE("theme dirent: probing candidate %s", probe);
         DIR *pd = opendir(probe);
+        THEME_BOOT_TRACE("theme dirent: probe finished %s (%s)", probe, pd != NULL ? "directory" : "unavailable");
         if (pd != NULL) {
             closedir(pd);
             isDir = 1;
@@ -1320,6 +1331,7 @@ static void thmReadViewTemplate(config_set_t *cfg, int view)
 static int thmLoad(const char *themePath)
 {
     LOG("THEMES Load theme path=%s\n", themePath);
+    THEME_BOOT_TRACE("theme load: begin %s", themePath ? themePath : "<OPL>");
     char path[256];
     theme_t *curT = gTheme;
     theme_t *newT = (theme_t *)malloc(sizeof(theme_t));
@@ -1374,11 +1386,13 @@ static int thmLoad(const char *themePath)
 
     // Do not begin blocking theme reads while an MMCE art read still owns the
     // shared fileXio channel. Keep the current theme if it will not drain.
+    THEME_BOOT_TRACE("theme load: draining MMCE art before read");
     if (!cacheAbortMmceImageLoadsTimed(THM_MMCE_ART_ABORT_WAIT_TICKS) && curT != NULL) {
         LOG("THEMES Load: MMCE art worker wedged -- keeping the current theme (retry later)\n");
         free(newT);
         return -1;
     }
+    THEME_BOOT_TRACE("theme load: MMCE art drain complete; config preparation begins");
 
     config_set_t *themeConfig = NULL;
     // The built-in <OPL> theme offers its List, Coverflow, PSBBN Flow and Grid looks as views (Coverflow and
@@ -1400,8 +1414,11 @@ static int thmLoad(const char *themePath)
     } else {
         snprintf(path, sizeof(path), "%sconf_theme.cfg", themePath);
         themeConfig = configAlloc(0, NULL, path);
+        THEME_BOOT_TRACE("theme load: disk config read begin %s", path);
         configRead(themeConfig); // try to load the theme config file. If it does not exist, defaults will be used.
     }
+
+    THEME_BOOT_TRACE("theme load: config read %s", themePath ? themePath : "<OPL>");
 
     // SD/HD layouts: copy the _sd or _hd variants (and uOPL/wOPL _wsX) over their plain keys before anything
     // reads the cfg, so the rest of the load sees one layout. Themes without them are untouched.
@@ -1519,6 +1536,7 @@ static int thmLoad(const char *themePath)
     // for that, we load the fonts and a translation table
     if (themePath)
         thmLoadFonts(themeConfig, themePath, newT);
+    THEME_BOOT_TRACE("theme load: fonts ready");
 
     // Every family resolves block j through its fallback chain, the active view's "<view>." blocks first
     // (thmViewResolveSlot). The chains are the ones these families always used.
@@ -1602,6 +1620,7 @@ static int thmLoad(const char *themePath)
     thmParseAutoFit = 0;
 
     validateGUIElems(themePath, themeConfig, newT);
+    THEME_BOOT_TRACE("theme load: elements ready");
 
     newT->itemsList = newT->gamesItemsList;
 
@@ -1746,6 +1765,7 @@ static int thmLoad(const char *themePath)
     }
 
     configFree(themeConfig); // all themeConfig reads are done now (last was use_settings_bg above)
+    THEME_BOOT_TRACE("theme load: textures ready");
 
     // The old theme cannot be freed while its caches are still referenced by the
     // worker. Keep it if the bounded drain does not complete.
@@ -1764,12 +1784,18 @@ static int thmLoad(const char *themePath)
     // hold it: thmAddElements, thmReinit and lngSetGuiValue release theirs first, the settings pages and the view
     // switch run between frames, and the first load comes before guiInit, when the lock is a no-op. Every caller
     // holds thmSwitchSema, though, so curT is still the published theme here: no other load has freed it meanwhile.
+    THEME_BOOT_TRACE("theme load: waiting for GUI publish");
     host::ui().lock();
+    // The GUI lock excludes CPU drawing, but HIRES still replays the previous frame's inline
+    // texture uploads. Retire that queue before freeing the theme whose buffers it references.
+    if (curT != NULL)
+        rmDiscardFrame();
     gTheme = newT;
     loadedFontSize = gFontSize;
     psbbnFlowReset();
     thmFree(curT);
     host::ui().unlock();
+    THEME_BOOT_TRACE("theme load: published");
     return 0;
 }
 
@@ -1830,8 +1856,10 @@ int ThemeCatalog::addElements(char *path, const char *separator, int forceRefres
 
     // The scan appends at count_, which a device removal (reinit) on the other thread would move under it.
     raii::SemaLock lock(thmSwitchSema);
+    THEME_BOOT_TRACE("theme scan: begin %s", path);
     result = listDir(path, separator, THM_MAX_FILES - count_, &readEntryCallback);
     count_ += result;
+    THEME_BOOT_TRACE("theme scan: end %s, found=%d, total=%d", path, result, count_);
     // Appends above only fill NEW themes_[] slots (the published name list references old slots
     // untouched); the rebuild's free+swap is what must be serialized against the GUI's readers.
     host::ui().lock();
@@ -1842,7 +1870,10 @@ int ThemeCatalog::addElements(char *path, const char *separator, int forceRefres
     const char *temp;
     if (configGetStr(configGetByType(CONFIG_OPL), "theme", &temp)) {
         LOG("THEMES Trying to set again theme: %s\n", temp);
-        changed = setGuiValueLocked(findGuiID(temp), 0);
+        int savedThemeID = findGuiID(temp);
+        THEME_BOOT_TRACE("theme scan: applying saved theme %s (id=%d)", temp, savedThemeID);
+        changed = setGuiValueLocked(savedThemeID, 0);
+        THEME_BOOT_TRACE("theme scan: saved theme apply finished (changed=%d)", changed);
     }
     lock.unlock(); // the menu refresh below does not touch the theme
 

@@ -210,7 +210,9 @@ int cueFillGameList(const char *devPrefix, base_game_info_t **outGames);
 // device class. See the note at the top of this header for why the root, and not a configurable
 // games prefix, is the right home for them.
 int ps1GameListNeedsRetry(void);
-int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames);
+// previousCount belongs to *outGames on this exact device; needed to retain the failed core's
+// already-visible rows without introducing a second, permanent per-core cache.
+int ps1FillGameList(const char *devPrefix, base_game_info_t **outGames, int previousCount);
 /* Interface > PS1 Duplicates over rows = vcdCount VCD rows then cueCount Ember rows (PS1_DUP_*).
    Returns the rows kept, packed in order; `parallel` (stride bytes per row, or NULL) follows them. */
 int ps1DropTwins(base_game_info_t *rows, void *parallel, size_t stride, int vcdCount, int cueCount, int prefer);

@@ -24,6 +24,7 @@
 #include "include/mmcesupport.h"  // mmceSendGameID() cross-device game-id (#261)
 #include "include/ps2sdkapi_compat.h"
 #include "modules/iopcore/common/cdvd_config.h"
+#include "modules/network/smb2man/smb2man_devctl.h" // SMB2_DEVCTL_GETDIALECT
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDevctl(dev, SMB_***)
@@ -111,6 +112,10 @@ void EthSupport::smbConnect(void)
                 if (fileXioDevctl(base_, SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0) >= 0) {
                     // everything is ok
                     gNetworkStartup = 0;
+                    // smb2man reports the dialect; smbman rejects the command, which leaves 0 (unknown).
+                    int dialect = fileXioDevctl(base_, SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0);
+                    smbNegotiatedDialect_ = dialect > 0 ? dialect : 0;
+                    LOG("ETHSUPPORT share open, SMB dialect 0x%04x\n", smbNegotiatedDialect_);
                 }
             }
         } else {
@@ -128,6 +133,7 @@ int EthSupport::smbDisconnect(void)
     // Always attempt both halves. CLOSESHARE legitimately fails after a connection/logon error or
     // when LOGON succeeded but OPENSHARE did not; returning early there used to leave that partial
     // session alive, so the next explicit reconnect was not actually a clean retry.
+    smbNegotiatedDialect_ = 0;
     shareRet = fileXioDevctl(base_, SMB_DEVCTL_CLOSESHARE, NULL, 0, NULL, 0);
     logoffRet = fileXioDevctl(base_, SMB_DEVCTL_LOGOFF, NULL, 0, NULL, 0);
     if (shareRet < 0)
@@ -386,11 +392,13 @@ void EthSupport::loadModules(void)
         int dialect = (gSMBDialect == SMB_DIALECT_V2) ? SMB_DIALECT_V2 : SMB_DIALECT_V1;
         int requested = dialect;
         int loaded;
+        int smb2LoadError = 0;
         if (dialect == SMB_DIALECT_V2) {
             LOG("[SMB2MAN]:\n");
             loaded = sysLoadModuleBuffer((void *)&smb2man_irx, size_smb2man_irx, 0, NULL);
-            if (loaded < 0) { // e.g. not enough IOP RAM for libsmb2: keep the menu usable on SMBv1
+            if (loaded < 0) { // e.g. not enough IOP RAM for libsmb2 (-400): keep the menu usable on SMBv1
                 LOG("[SMB2MAN]: load failed (%d), falling back to smbman\n", loaded);
+                smb2LoadError = loaded;
                 dialect = SMB_DIALECT_V1;
             }
         }
@@ -407,7 +415,13 @@ void EthSupport::loadModules(void)
             nbnsInit();
 
             LOG("SMBSUPPORT Modules loaded\n");
+            // The player picked SMB2 and is about to browse on SMBv1 without having changed
+            // anything. Say so: a server set up for SMB2 will just reject the SMB1 negotiate,
+            // and nothing else on screen explains why. Goes after initSmb() and is appended
+            // to any SMB1 error that raised, so the cause is not lost under the symptom.
             initSmb();
+            if (smb2LoadError < 0)
+                host::app().appendError(_STR_NETWORK_SMB2_FALLBACK, smb2LoadError);
             return;
         }
     }
@@ -432,6 +446,8 @@ void EthSupport::reconnectSmb(void)
     modifiedDVDPrev_ = 0;
     gameCount_ = 0;
     ps1GameCount_ = 0;
+    ps1ScanFailed_ = 0;
+    ps1ScanRetries_ = 0;
     gNetworkStartup = ERROR_ETH_NOT_STARTED;
 
     if (!netGetModulesLoaded() || !smbModuleLoaded_)
@@ -530,6 +546,8 @@ void ethRequestReconnect(void)
 
 void EthSource::init(item_list_t *itemList)
 {
+    gEthSupport.ps1ScanFailed() = 0;
+    gEthSupport.ps1ScanRetries() = 0;
     if (netInitSema() < 0)
         return;
 
@@ -566,10 +584,17 @@ int EthSource::needsUpdate(item_list_t *itemList)
 
     result = 0;
 
-    // VCD view: force a rescan once on toggle; once a share is selected, the VCD list refreshes on
-    // toggle only (skip disc heuristics). With no share yet, fall through so the share list updates.
-    if (host::library().consumeDirty(itemList->mode))
+    // Explicit refresh/view changes re-arm recovery; failed background scans keep their budget.
+    if (host::library().consumeDirty(itemList->mode)) {
+        gEthSupport.ps1ScanRetries() = 0;
         return 1;
+    }
+    if (gPCShareName[0] && gNetworkStartup == 0 && gEthSupport.ps1ScanFailed() &&
+        gEthSupport.ps1ScanRetries() < ETH_PS1_SCAN_RETRY_MAX &&
+        (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
+        gEthSupport.ps1ScanRetries()++;
+        return 1;
+    }
     if (gPCShareName[0] && (host::library().listViewActive(itemList) == LIB_VIEW_PS1))
         return 0;
 
@@ -612,23 +637,13 @@ int EthSource::update(item_list_t *itemList)
             return 0;
 
         if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
-            // One list, both cores -- the same union every other device page builds.
-            //
-            // This used to be POPSTARTER-only, on the reasoning that RiptOPL composes SMB paths
-            // with '\' while Ember composes its own with '/', that smbman's tolerance for that was
-            // untested, and that listing rows which then fail to open is worse than listing none.
-            // The first half of that is now handled -- cuesupport builds every path with
-            // cueSep(devPrefix), so a share prefix produces backslashes throughout.
-            //
-            // The second half was already handled and we had not noticed: cueScanDir opens
-            // EMBER/ember.elf for real before it lists anything, and returns 0 rows if that open
-            // fails. So the bad outcome the old comment guarded against cannot occur here. If SMB
-            // path composition does not work on a given server, the Ember half contributes nothing
-            // and the POPSTARTER half is untouched -- which is exactly the "no half lists" rule it
-            // wanted. The feature gates itself on a real file open.
-            int r = ps1FillGameList(gEthSupport.prefix(), &gEthSupport.ps1Games());
+            // One list, both cores. Keep readable rows while retrying an incomplete scan.
+            int r = ps1FillGameList(gEthSupport.prefix(), &gEthSupport.ps1Games(), gEthSupport.ps1GameCount());
             if (r >= 0) // r < 0: transient scan failure -> preserve the last-good list
                 gEthSupport.ps1GameCount() = r;
+            gEthSupport.ps1ScanFailed() = r < 0 || ps1GameListNeedsRetry();
+            if (!gEthSupport.ps1ScanFailed())
+                gEthSupport.ps1ScanRetries() = 0;
             // NULL sub opts SMB/ETH out of folder-row collection: it uses a "\\" separator and does not
             // participate in folder browsing (see the folderlist gate in sbReadList).
         }
@@ -940,6 +955,18 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
         host::ui().warning(_l(_STR_NEUTRINO_SMB_PORT), 6);
         return 0;
     }
+    // usmb2 offers only the 3.0 dialect; a server that negotiated lower cannot serve a launch.
+    // Ask the driver for the live dialect (a keepalive reconnect can have renegotiated), and fall
+    // back to the cached value only when the driver cannot answer (smbman: -EINVAL; session lost).
+    {
+        int dialect = fileXioDevctl(gEthSupport.base(), SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0);
+        if (dialect <= 0)
+            dialect = gEthSupport.smbNegotiatedDialect();
+        if (dialect > 0 && dialect < 0x0300) {
+            host::ui().warning(_l(_STR_NEUTRINO_SMB_DIALECT), 6);
+            return 0;
+        }
+    }
     // smb_ioman/smb_fhi are read-only: a VMC on the share cannot be written. An enabled VMC keeps the game
     // on the OPL core, whose smb_mcemu writes it.
     sbBuildVmcNeutrinoArgs(configSet, gEthSupport.prefix(), &neutrinoVmc);
@@ -1000,7 +1027,7 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
 
     // The compat modes, as the udpfs leg resolves them: sbPrepare needs a patch zone, smb_cdvdman_irx is
     // the scratch target, and it is restored before anything below can return.
-    compatmask = sbPrepare(game, configSet, size_smb_cdvdman_irx, smb_cdvdman_irx, &index);
+    compatmask = sbPrepare(game, configSet, size_smb_cdvdman_irx, smb_cdvdman_irx, &index, 0);
     if (compatmask < 0)
         return 1;
     compatmask = sbGetCompatModes(configSet, 1);
@@ -1080,6 +1107,8 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         gEthSupport.ulSizePrev() = -2;
         gEthSupport.gameCount() = 0;
         gEthSupport.ps1GameCount() = 0;
+        gEthSupport.ps1ScanFailed() = 0;
+        gEthSupport.ps1ScanRetries() = 0;
         ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode); // clear the share list
         ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&ethInitSMB));
         ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode); // reload the game list
@@ -1147,7 +1176,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     int cdvdmanSize = (launchDialect == SMB_DIALECT_V2) ? size_smb2_cdvdman_irx : size_smb_cdvdman_irx;
     LOG("ETH launch: in-game reader %s\n", (launchDialect == SMB_DIALECT_V2) ? "smb2_cdvdman" : "smb_cdvdman");
 
-    compatmask = sbPrepare(game, configSet, cdvdmanSize, cdvdmanIrx, &i);
+    compatmask = sbPrepare(game, configSet, cdvdmanSize, cdvdmanIrx, &i, 1);
     if (compatmask < 0) // sbPrepare failed (patch zone not found) and never set `i`: it still holds the
         return;         // VMC loop's counter, so every settings write below would land at a wrong offset.
     sbEnsureIgrUsbDrivers(compatmask);

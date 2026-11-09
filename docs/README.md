@@ -32,6 +32,7 @@ Use the references below for implementation details, exact limits and contributo
 | Internal HDD | [APA/exFAT guide](https://nathanneurotic.github.io/RiptOPL/hdd.html) · [exFAT and APA-Jail](EXFAT.md) |
 | SMB / UDPFS / UDPBD | [SMB](https://nathanneurotic.github.io/RiptOPL/smb.html) · [Network boot](https://nathanneurotic.github.io/RiptOPL/network-boot.html) |
 | HTTP | [HTTP profile and limits](HTTP.md) · [Host conformance tools](../tools/pc/http/README.md) |
+| Console i.LINK ID | [Optional per-game native-core identity](CONSOLE-ILINK-ID.md) |
 | Neutrino | [Installation, core selection, arguments, cheats and VMC](NEUTRINO.md) |
 | PS1 | [POPSTARTER and Ember](VCD.md), including POPS UDPFS and device/core restrictions |
 | RetroAchievements | [RA setup and runtime limits](RETROACHIEVEMENTS.md); requires its separate kit |

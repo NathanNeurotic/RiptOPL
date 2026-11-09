@@ -85,7 +85,7 @@ jobs:
       GODEBUG: http2client=0
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -95,8 +95,8 @@ jobs:
       - run: python -m pip install -r requirements.txt
       # The ps2build SDK pinned in .github/ps2build-sdk.env (bumped by ps2build-sdk-watch.yml once a week):
       # resolving it makes no network call. The SDK cached under those versions is restored, else an older
-      # cached SDK is updated in place, else it is installed: from git.techwritescode.dev, or when that fails
-      # from the pinned NathanNeurotic/ps2build-mirror release. Then it is cached. A mirror fallback that does
+      # cached SDK is updated in place, else it is installed: from the official GitHub releases, or when they fail
+      # from the pinned NathanNeurotic/old-ps2build-mirror release. Then it is cached. A mirror fallback that does
       # not hold the pinned versions is never cached under them.
       - name: Resolve the pinned ps2build SDK
         env:
@@ -105,7 +105,7 @@ jobs:
         run: sh tools/ps2build_sdk.sh --resolve "$RUNNER_TEMP/ps2build-sdk.env"
       - name: Restore the ps2build SDK
         id: sdk-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
           key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
@@ -123,7 +123,7 @@ jobs:
           python tools/assets.py lang
       - name: Cache the ps2build SDK
         if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
           key: ps2build-sdk-${{ runner.os }}-gcc-${{ steps.sdk.outputs.key }}
@@ -136,46 +136,57 @@ jobs:
           python tools/build_edition.py '${{ matrix.target.edition }}' --configuration '${{ matrix.target.configuration }}' "${device[@]}" 2>&1 | tee build/edition.log
       - name: Retain the configuration build
         if: matrix.target.configuration != 'standard'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: variant-${{ matrix.target.edition }}-${{ matrix.target.configuration }}
           path: dist/configurations/${{ matrix.target.edition }}-${{ matrix.target.configuration }}-gcc/
           if-no-files-found: error
-          retention-days: 14
       - name: Retain the RiptOPLite build
         if: matrix.target.device
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.target.edition }}-${{ matrix.target.device }}
           path: dist/lite/${{ matrix.target.edition == 'lite_ra' && 'ra-' || '' }}${{ matrix.target.device }}-gcc/
           if-no-files-found: error
-          retention-days: 14
       - name: Download the official companion core
-        if: matrix.target.configuration == 'standard' && !matrix.target.device
+        # RA packaging uses its pinned ORBIT ZIP; the upstream .7z is not read.
+        if: matrix.target.configuration == 'standard' && !matrix.target.device && !startsWith(matrix.target.edition, 'ra')
+        timeout-minutes: 7
         shell: bash
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq p7zip-full
+          set -euo pipefail
+          if ! command -v 7z >/dev/null 2>&1 && ! command -v 7za >/dev/null 2>&1; then
+            echo "Installing 7-Zip (missing from runner)"
+            timeout 120s sudo apt-get update -qq
+            timeout 120s sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq p7zip-full
+          fi
           mkdir -p build/companion
-          gh release download latest --repo ps2max32/neutrino --dir build/companion --pattern '*.7z'
+          echo "Downloading upstream Neutrino core"
+          timeout 120s gh release download latest --repo ps2max32/neutrino --dir build/companion --pattern '*.7z'
       - name: Package and verify the full install kit
         if: matrix.target.configuration == 'standard' && !matrix.target.device
+        timeout-minutes: 8
         shell: bash
         run: |
-          mapfile -t cores < <(find build/companion -maxdepth 1 -name 'neutrino_*.7z' -type f)
-          test "${#cores[@]}" -eq 1
-          python tools/package_edition.py '${{ matrix.target.edition }}' --neutrino-archive "${cores[0]}"
+          set -euo pipefail
+          if [[ '${{ matrix.target.edition }}' == ra* ]]; then
+            # The RA kit independently downloads and verifies the pinned ORBIT runtime.
+            python tools/package_edition.py '${{ matrix.target.edition }}'
+          else
+            mapfile -t cores < <(find build/companion -maxdepth 1 -name 'neutrino_*.7z' -type f)
+            test "${#cores[@]}" -eq 1
+            python tools/package_edition.py '${{ matrix.target.edition }}' --neutrino-archive "${cores[0]}"
+          fi
       - name: Retain verified release candidate
         if: matrix.target.configuration == 'standard' && !matrix.target.device
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ matrix.target.edition }}
           path: dist/releases/${{ matrix.target.edition }}/
           if-no-files-found: error
-          retention-days: 14
       - name: Retain compiler log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-log-${{ matrix.target.edition }}-${{ matrix.target.configuration }}${{ matrix.target.device && format('-{0}', matrix.target.device) || '' }}
           path: build/edition.log
@@ -190,7 +201,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -198,15 +209,15 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
           path: dist/downloaded
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: variant-*
           path: dist/downloaded
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: lite*-*
           path: dist/downloaded

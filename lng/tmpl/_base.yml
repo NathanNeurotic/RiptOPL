@@ -1638,7 +1638,7 @@ gui_strings:
 - label: HINT_UDPFS_ACCESS
   string: "UDPFS only. Files reads loose ISOs from the server's games folder; IMG reads a disk image as a drive. SMB and HTTP always use Files, UDPBD always IMG."
 - label: HINT_SMB_VERSION
-  string: "Which SMB version to speak to the PC share."
+  string: "Which SMB version to speak to the PC share. SMBv1: PS2 Servers' SMBv1 card. SMB2: PS2 Servers' SMBv2 card for games on the OPL core (reads SMB 2.0.2/2.1), its SMBv3 card for games on Neutrino (needs SMB 3.0), Windows or Samba."
 - label: HINT_NET_ADVANCED
   string: "Unlocks Ethernet Link Mode and the SMB Port for editing."
 - label: HINT_ETH_LINK_MODE
@@ -1658,7 +1658,7 @@ gui_strings:
 - label: HINT_SMB_ADDRESS
   string: "The PC sharing your games: its IP address, or its computer name when Address Type is NetBIOS."
 - label: HINT_SMB_PORT
-  string: "SMB port. It must match the PC: PS2 Servers uses 1111, Windows and Samba shares use 445."
+  string: "SMB port. It must match the PC: PS2 Servers' SMBv1 card uses 1025, its SMBv2/SMBv3 cards 1445 (445 with Take port 445), Windows and Samba shares use 445."
 - label: HINT_SMB_USER
   string: "SMB user name. guest works for most shares."
 - label: HINT_HTTP_SERVER
@@ -2426,6 +2426,9 @@ gui_strings:
 - comment: SMB game set to Neutrino, but the SMB port is not 445, the only one Neutrino uses.
   label: NEUTRINO_SMB_PORT
   string: Neutrino reaches SMB on port 445 only -- launching with the OPL core.
+- comment: SMB game set to Neutrino, but the share negotiated a dialect below 3.0, the only one Neutrino speaks.
+  label: NEUTRINO_SMB_DIALECT
+  string: This server does not offer SMB 3.0, which Neutrino needs -- launching with the OPL core.
 - comment: SMB game set to Neutrino, but it has a VMC on the share, which Neutrino cannot write.
   label: NEUTRINO_SMB_VMC
   string: Neutrino cannot write a VMC on the SMB share -- launching with the OPL core.
@@ -2457,10 +2460,21 @@ gui_strings:
   label: APP_HANDOFF_PATH
   string: App Handoff Path
 - label: HINT_APP_HANDOFF_PATH
-  string: "Legacy hands apps massN:/APPS/... (all devices). Typed hands usb0:, ata0:, ilink0: or mx4sio0: so an app that treats mass as USB finds a HDD or SD card. Per app: HANDOFFPATH=LEGACY or TYPED in its cfg. Loading is unchanged."
+  string: "Legacy: BDM apps receive massN:/...; other devices keep their normal launch paths. Typed: supported BDM apps receive usbN:/..., ataN:/..., ilinkN:/... or mx4sioN:/... when identified, otherwise massN:. Only the path passed to the app changes; ELF loading is unchanged. Per-app cfg: HANDOFFPATH=LEGACY or TYPED."
 - comment: App Handoff Path choice, today's spelling.
   label: APP_HANDOFF_LEGACY
   string: Legacy (mass)
 - comment: App Handoff Path choice, the typed spelling.
   label: APP_HANDOFF_TYPED
   string: "Typed (usb0:, ata0:)"
+- comment: Optional native OPL core console identity override, separate from Disc ID.
+  label: CONSOLE_ILINK_ID
+  string: Console i.LINK ID
+- label: HINT_CONSOLE_ILINK_ID
+  string: "Native OPL core only; Neutrino ignores it. Enter 16 hexadecimal digits in byte order. Empty or all zeros uses this console's ID. This does not change i.LINK storage hardware."
+- label: INVALID_CONSOLE_ILINK_ID
+  string: "Console i.LINK ID must be empty or exactly 16 hexadecimal digits (0-9, A-F). Settings were not saved."
+- label: LAUNCH_CONSOLE_ILINK_ID_FALLBACK
+  string: "The stored Console i.LINK ID is invalid and was ignored. This game will use the real console ID."
+- label: NETWORK_SMB2_FALLBACK
+  string: '%d: The SMB2 driver did not load. Browsing with SMBv1 instead until the next start.'

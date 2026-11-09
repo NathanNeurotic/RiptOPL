@@ -7,10 +7,11 @@
   side only chooses which of the two modules to load. Only one of them is ever resident.
 
   The protocol work is Ronnie Sahlberg's libsmb2, vendored unmodified under libsmb2/ (see
-  libsmb2/VENDORED.txt for the commit). libsmb2 can negotiate up to SMB 3.1.1, but this driver offers
-  only 2.0.2 and 2.1, the dialects the in-game reader speaks (smb2man_new_context). It does NTLMv2
-  and signs when the server asks for it. This file is only the iomanX/devctl front end, and the
-  allocator libsmb2 needs on the IOP.
+  libsmb2/VENDORED.txt for the commit). This driver offers SMB 2.0.2 through 3.1.1 so that it reaches
+  any server either in-game reader can use (the OPL core speaks 2.0.2/2.1, the Neutrino core 3.0),
+  and reports the negotiated dialect through SMB2_DEVCTL_GETDIALECT (smb2man_devctl.h). It does
+  NTLMv2 and signs when the server asks for it. This file is only the iomanX/devctl front end, and
+  the allocator libsmb2 needs on the IOP.
 
   It follows the earlier Open-PS2-Loader master implementation (modules/network/smb2man/smb2man.c,
   OPL PRs #278/#286/#291) with these changes: libsmb2 is current upstream built with its own IOP
@@ -39,6 +40,7 @@
 #include <thsemap.h>
 
 #include <ps2smb.h>
+#include "smb2man_devctl.h"
 
 #include <smb2/smb2.h>
 #include <smb2/libsmb2.h>
@@ -446,6 +448,10 @@ static int smb2man_open(iop_file_t *f, const char *filename, int flags, int mode
     fh = smb2_open(smb2, path, oflags);
     if (fh == NULL) {
         rv = smb2man_errno(-ENOENT);
+        /* A timed-out partial reply closes the socket; discard the stale
+         * context and handles, but preserve a valid session on ENOENT. */
+        if (smb2_get_fd(smb2) < 0)
+            smb2man_drop_session();
         UNLOCK();
         return rv;
     }
@@ -689,6 +695,8 @@ static int smb2man_dopen(iop_file_t *f, const char *dirname)
     if (d->dir == NULL) {
         rv = smb2man_errno(-ENOENT);
         free(d);
+        if (smb2_get_fd(smb2) < 0)
+            smb2man_drop_session();
         UNLOCK();
         return rv;
     }
@@ -942,11 +950,13 @@ static struct smb2_context *smb2man_new_context(void)
     if (ctx == NULL)
         return NULL;
 
-    // Sign when the server asks for it. Offer SMB 2.0.2 and 2.1 only: those are the dialects the
-    // in-game reader (smb2_cdvdman) speaks, so a server the menu can list is one a game can load
-    // from. An SMB 3-only server fails here, at browse, instead of hanging at game start.
+    // Sign when the server asks for it. Offer every dialect libsmb2 has (2.0.2 through 3.1.1): the
+    // two in-game readers need different ones -- the OPL core's smb2_cdvdman speaks 2.0.2/2.1, the
+    // Neutrino core's usmb2 speaks 3.0 only -- so the menu must reach any server either can use,
+    // and reports what was negotiated (SMB2_DEVCTL_GETDIALECT) so the EE can warn before a launch
+    // the chosen core cannot complete.
     smb2_set_security_mode(ctx, SMB2_NEGOTIATE_SIGNING_ENABLED);
-    smb2_set_version(ctx, SMB2_VERSION_ANY2);
+    smb2_set_version(ctx, SMB2_VERSION_ANY);
     smb2_set_timeout(ctx, SMB2MAN_TIMEOUT_SECONDS);
     smb2_set_password(ctx, conn_password);
 
@@ -1188,14 +1198,28 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
             conn_share[sizeof(conn_share) - 1] = '\0';
             rv = smb2_connect_share(smb2, conn_server, conn_share, conn_user[0] ? conn_user : NULL);
             if (rv < 0) {
+                /* Closing a socket is not enough: destroy pending connection
+                 * state (including connecting_fds) before the next attempt. */
+                smb2_destroy_context(smb2);
+                smb2 = NULL;
                 UNLOCK();
                 return -SMB_DEVCTL_LOGON_ERR_LOGON;
             }
 
             share_open = 1;
+            printf("smb2man: share %s open, SMB dialect 0x%04x\n", conn_share, smb2_get_dialect(smb2));
             UNLOCK();
             return 0;
         }
+
+        case SMB2_DEVCTL_GETDIALECT:
+            // The dialect negotiated for the open share (0x0202 .. 0x0311); -ENODEV without one.
+            if (!conn_valid)
+                return -ENODEV;
+            LOCK();
+            rv = (smb2 != NULL && share_open) ? (int)smb2_get_dialect(smb2) : -ENODEV;
+            UNLOCK();
+            return rv;
 
         case SMB_DEVCTL_CLOSESHARE:
             LOCK();

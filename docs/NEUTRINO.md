@@ -314,10 +314,13 @@ kept for users still running the `udpbd-server`. Both appear in OPL as their own
 covers and per-game settings — and boot via the external [Neutrino](https://github.com/ps2max32/neutrino) core. **SMB** uses
 a mounted SMB file share served by OPL's **own** core (Neutrino only per game, experimental: see below), and it keeps its own address /
 port / share / credentials fields plus an **SMB Version** row (**SMBv1** default, or **SMB2**).
-SMB2 changes **both** browsing and in-game reading, so the server must speak SMB 2.0.2 or 2.1 for
-the whole session; PS2-Servers' SMBv1 card lists no games with it (use its SMBv2 card, Samba or
-Windows). Changing the version while an SMB driver is already loaded offers the usual restart. If
-the SMB2 driver cannot load, browsing falls back to SMBv1.
+SMB2 changes **both** browsing and in-game reading. The SMB2 browse driver offers 2.0.2 through
+3.1.1, so it lists any server; the in-game reader on the OPL core then opens its **own** connection
+and speaks only 2.0.2/2.1, so what that connection needs is for the server to *offer* 2.0.2 or
+2.1 -- the menu's own negotiation may settle at 3.x without affecting it (PS2-Servers' SMBv2 card,
+Samba or Windows all do). A Neutrino-core game warns and falls back to the OPL core below 3.0.
+Changing the version while an SMB driver is already loaded offers the usual restart. If the SMB2
+driver cannot load, browsing falls back to SMBv1.
 
 | Choice | Wire protocol | On the PS2 | Core | PC server |
 |---|---|---|---|---|
@@ -327,10 +330,14 @@ the SMB2 driver cannot load, browsing falls back to SMBv1.
 | **UDPBD** | SUDPBDv2 | a served disk image mounted as `massN:` | Neutrino by default, `<OPL>` per game | [PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers) (recommended) / [`udpbd-server`](https://github.com/israpps/udpbd-server) |
 | **HTTP** | HTTP byte ranges | a `games.csv` catalog and ISO streams | OPL's own core | [Docmine17's server](https://github.com/Docmine17/Open-PS2-Loader-HTTP) or a server meeting the [HTTP profile](HTTP.md) |
 
-> **SMB2 means SMB 2.0.2 and 2.1.** OPL's own core logs on with NTLMv2 and signs its requests when
-> the server requires signing (Windows 11 24H2 does by default). It does not offer SMB 3.x, so a
-> server set to SMB 3 only is not reached (browsing it fails). Leave the picker on
-> **SMBv1** for PS2-Servers' SMBv1 card. Neutrino's own SMB path is separate and always SMB 3.0.
+> **SMB2 means the menu offers SMB 2.0.2 through 3.1.1.** OPL's own core logs on with NTLMv2 and signs its requests when
+> the server requires signing (Windows 11 24H2 does by default). The in-game reader opens its own
+> connection and speaks only 2.0.2/2.1: the server must *offer* one of those, while the menu's own
+> negotiation may settle at 3.x without affecting it, so there is no need to cap the server at 2.x.
+> The menu warns before a Neutrino-core launch below 3.0 and falls back to the OPL core, since
+> Neutrino reads SMB 3.0 only. A server set to SMB 3 only is now listed and browsed (it used to be
+> refused). Leave the picker on **SMBv1** for PS2-Servers' SMBv1 card, or match the card to the
+> core: its SMBv2 card for OPL-core games, its SMBv3 card (port 445) for Neutrino.
 
 Because the PS2 has a **single** network adapter, only ONE of these is active per session — the
 selector is exclusive *by construction* (the old separate ETH start-mode + "Network Boot" toggle +

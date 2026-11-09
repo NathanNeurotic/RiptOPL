@@ -1,0 +1,6 @@
+{
+  "capture_manifest": "capture-manifest.json",
+  "edition": "Korium",
+  "release": "v1.2.0-Beta-4052",
+  "note": "Build, artwork, recipes and all asset hashes are consolidated in the capture manifest."
+}

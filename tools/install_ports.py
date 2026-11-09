@@ -19,7 +19,8 @@ import urllib.request
 import zipfile
 
 
-HOST = "https://git.techwritescode.dev"
+# The official ps2build releases on GitHub (their API; unauthenticated, as ps2build itself asks).
+HOST = "https://api.github.com/repos/ps2build"
 LIBRARIES = {"ogg": ("libogg.a",), "vorbis": ("libvorbis.a", "libvorbisfile.a")}
 
 
@@ -115,13 +116,17 @@ def mirror_pin(repo):
 
 
 def mirror_archive(package, version, toolchain):
-    """The package from a ps2build-mirror release, or None. Used only when the official host fails.
+    """The package from a ps2build-mirror release, or None. Used only when the official releases fail.
 
-    The release is the one the SDK step resolved (PS2BUILD_SDK_TAG), else the newest one, whose own
-    version of the package is taken when it is older. The archive must match that release's SHA256SUMS,
-    and SHA256SUMS the hash its pin names."""
-    tag, sums_sha = os.environ.get("PS2BUILD_SDK_TAG"), os.environ.get("PS2BUILD_SDK_SUMS_SHA256")
-    repo = os.environ.get("PS2BUILD_SDK_MIRROR") or "NathanNeurotic/ps2build-mirror"
+    The release is PS2BUILD_EXTRAS_TAG when the pin file names one (a release that holds the packages when
+    the SDK's own release does not), else the one the SDK step resolved (PS2BUILD_SDK_TAG), else the newest
+    one, whose own version of the package is taken when it is older. The archive must match that release's
+    SHA256SUMS, and SHA256SUMS the hash its pin names."""
+    if os.environ.get("PS2BUILD_EXTRAS_TAG"):
+        tag, sums_sha = os.environ.get("PS2BUILD_EXTRAS_TAG"), os.environ.get("PS2BUILD_EXTRAS_SUMS_SHA256")
+    else:
+        tag, sums_sha = os.environ.get("PS2BUILD_SDK_TAG"), os.environ.get("PS2BUILD_SDK_SUMS_SHA256")
+    repo = os.environ.get("PS2BUILD_SDK_MIRROR") or "NathanNeurotic/old-ps2build-mirror"
     try:
         if not tag or not sums_sha:
             pin = mirror_pin(repo)
@@ -147,7 +152,7 @@ def mirror_archive(package, version, toolchain):
     except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead, ValueError) as error:
         print(f"warning: the ps2build-mirror fallback failed for {package} ({error})", flush=True)
         return None
-    return url, data, version
+    return url, data, version, tag
 
 
 def mark_stale():
@@ -166,24 +171,32 @@ def install(sdk, package, toolchain):
     release_path = "latest" if version == "latest" else "tags/" + urllib.parse.quote(version, safe="")
     world = sdk / ("packages-llvm" if toolchain == "llvm" else "packages") / "world"
     installed = world / package
-    # A pinned package an SDK cache restore already holds needs no download at all.
-    if version != "latest" and (installed / ".release").is_file() \
-            and (installed / ".release").read_text().strip() == version \
+    # A pinned package an SDK cache restore already holds needs no download at all. .release is "version source",
+    # source "official" or the mirror release it came from; with PS2BUILD_EXTRAS_TAG set, a copy from any other
+    # mirror release (or of unrecorded source) is replaced, so re-pinning the extras release takes effect.
+    extras_tag = os.environ.get("PS2BUILD_EXTRAS_TAG")
+    recorded = (installed / ".release").read_text().split() if (installed / ".release").is_file() else []
+    if version != "latest" and recorded[:1] == [version] \
+            and (not extras_tag or recorded[1:] in (["official"], [extras_tag])) \
             and all((installed / name).is_file() for name in ("package.yaml", *(f"lib/{lib}" for lib in LIBRARIES[package]))):
         print(f"{package} {version} ({toolchain}) already installed")
         return
+    source = "official"
     try:
-        release = json.loads(download(f"{HOST}/api/v1/repos/ps2/{package}/releases/{release_path}"))
+        release = json.loads(download(f"{HOST}/{package}/releases/{release_path}", accept="application/vnd.github+json"))
         url = select_asset(release, package, toolchain)
         data = download(url)
     except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead) as error:
-        # The official host has outages of several minutes. A missing release (4xx) is a real error;
-        # otherwise take the same pinned package from the ps2build-mirror release.
-        client_error = isinstance(error, urllib.error.HTTPError) and error.code < 500
+        # An outage (or GitHub's 403 rate limit) takes the same package from the ps2build-mirror release. So does
+        # a pinned version GitHub has no release of (ogg and vorbis publish tags only), from the pinned mirror
+        # release. Any other client error, or a missing unpinned release, is a real error.
+        code = error.code if isinstance(error, urllib.error.HTTPError) else 500
+        pinned_mirror = version != "latest" and (os.environ.get("PS2BUILD_EXTRAS_TAG") or os.environ.get("PS2BUILD_SDK_TAG"))
+        client_error = code < 500 and code not in (403, 408, 429) and not (code == 404 and pinned_mirror)
         mirrored = None if client_error else mirror_archive(package, version, toolchain)
         if mirrored:
-            print(f"warning: {HOST} unreachable ({error}); using the ps2build-mirror copy", flush=True)
-            url, data, mirrored_version = mirrored
+            print(f"warning: no official {package} {version} ({error}); using the ps2build-mirror copy", flush=True)
+            url, data, mirrored_version, source = mirrored
             release = {"tag_name": mirrored_version}
             if version != "latest" and mirrored_version != version:
                 mark_stale()
@@ -193,7 +206,7 @@ def install(sdk, package, toolchain):
                 or not all((installed / name).is_file() for name in ("package.yaml", *(f"lib/{lib}" for lib in LIBRARIES[package]))):
             raise
         else:
-            print(f"warning: {HOST} unreachable ({error}); keeping the installed {package} ({toolchain})", flush=True)
+            print(f"warning: no official {package} ({error}); keeping the installed {package} ({toolchain})", flush=True)
             return
     world.mkdir(parents=True, exist_ok=True)
     world = world.resolve()
@@ -209,7 +222,7 @@ def install(sdk, package, toolchain):
             raise ValueError("package staging directory escaped the SDK packages root")
         staged.mkdir()
         unpack(data, staged, package)
-        (staged / ".release").write_text(release["tag_name"] + "\n")
+        (staged / ".release").write_text(f"{release['tag_name']} {source}\n")
         if target.exists():
             target.rename(backup)
         try:
@@ -231,9 +244,9 @@ def install(sdk, package, toolchain):
 # global one, under a .symtab sh_info that says otherwise. GNU ld accepts that; ld.lld rejects every such object
 # ("symbol (N) has invalid binding: 0"), so the LLVM link of riptopl failed as soon as JPG art pulled libjpeg in.
 # The official sdk-world v2026.10.28 ships a clean LLVM jpeg (checked 2026-10-31: 0 of 101 members bad), but an
-# older SDK can still arrive (a cached one, or the NathanNeurotic/ps2build-mirror fallback, last built from
+# older SDK can still arrive (a cached one, or the NathanNeurotic/old-ps2build-mirror fallback, from
 # v2026.10.15). So each library is checked first and llvm-objcopy rewrites it (locals first; no code or data
-# changes) only when it really has the fault. Remove this once the mirror carries a fixed world as well.
+# changes) only when it really has the fault. Remove this once no pinned SDK can arrive with the fault.
 LLVM_REPAIRS = ("jpeg/lib/libjpeg.a", "jpeg_ps2_addons/lib/libjpeg_ps2_addons.a")
 
 
@@ -299,7 +312,9 @@ def repair_llvm_symtabs(sdk):
         if objcopy is None:
             print(f"warning: no llvm-objcopy; {library} keeps symbol tables ld.lld rejects", flush=True)
             return
-        subprocess.run([objcopy, str(library)], check=True)
+        repair_env = os.environ.copy()
+        repair_env.pop("PS2BUILD_SDK_MIRROR_TOKEN", None)
+        subprocess.run([objcopy, str(library)], check=True, env=repair_env)
         print(f"repaired symbol tables in {library}")
 
 
