@@ -30,6 +30,20 @@ static void ticks_while_waiting(void)
         smb2man_keepalive_alarm(NULL);
 }
 #define SMB2MAN_AFTER_WAIT() ticks_while_waiting()
+/* Replies on a signed session: the driver's SMB2MAN_VERIFY_HOOK sees each one before it is verified.
+   unsigned_left > 0 makes that many of the next replies to unsigned_cmd look unsigned (SMB2_FLAGS_SIGNED
+   cleared), as a server that left them unsigned would send them; -1 makes all of them look so. */
+static int verified_replies, unsigned_cmd = -1, unsigned_left;
+static void verify_hook(uint8_t *hdr)
+{
+    verified_replies++;
+    if (unsigned_left != 0 && hdr[12] == unsigned_cmd) { // the header's Command (low byte)
+        hdr[16] &= ~0x08;
+        if (unsigned_left > 0)
+            unsigned_left--;
+    }
+}
+#define SMB2MAN_VERIFY_HOOK(hdr) verify_hook(hdr)
 #include "smb2man.c"
 
 int AddDrv(iop_device_t *d)
@@ -136,23 +150,24 @@ static int lost(void)
 
 int main(int argc, char **argv)
 {
-    /* argv: ip port user password share */
+    /* argv: ip port user password share [mandatory: the server requires signing] */
     const char *ip, *user, *pw, *share;
     unsigned char buf[64];
     iox_dirent_t de;
     iop_file_t f = {0}, f2 = {0}, d = {0}, d2 = {0};
     int server_port;
     u32 retry;
-    int port = 0, i, attempts;
+    int port = 0, i, attempts, signing_mandatory;
 
     if (argc < 6) {
-        fprintf(stderr, "usage: keepalive ip port user password share\n");
+        fprintf(stderr, "usage: keepalive ip port user password share [mandatory]\n");
         return 2;
     }
     ip = argv[1];
     user = argv[3];
     pw = argv[4];
     share = argv[5];
+    signing_mandatory = argc > 6 && strcmp(argv[6], "mandatory") == 0;
     for (i = 0; argv[2][i] >= '0' && argv[2][i] <= '9'; i++)
         port = port * 10 + (argv[2][i] - '0');
     signal(SIGPIPE, SIG_IGN);         // a write on the cut socket must fail, not end the process
@@ -330,6 +345,48 @@ int main(int argc, char **argv)
         CHECK(OPS->devctl(NULL, "", SMB_DEVCTL_LOGOFF, NULL, 0, NULL, 0) == 0 &&
                   OPS->devctl(NULL, "", SMB2_DEVCTL_CONNECTSTATE, NULL, 0, NULL, 0) == -ENODEV,
               "logoff clears the connect state");
+    }
+
+    /* Signed session (run.sh passes signing mandatory): every reply is verified but ECHO's, which
+       carries no data (a server that left it unsigned would otherwise drop the session at every
+       keepalive). A reply the server sent unsigned, as it may STATUS_NETWORK_SESSION_EXPIRED for a
+       session it has dropped, fails its request and drops the session; the next tick builds a
+       fresh one, and that one is kept: one drop, not a reconnect loop. */
+    if (signing_mandatory) {
+        int n;
+
+        CHECK(logon(ip, port, user, pw) == 0 && openshare(share) == 0 && smb2 != NULL && smb2->signing,
+              "signed session: logon + openshare");
+        n = verified_replies;
+        CHECK(OPS->open(&f, "\\DVD\\TEST.iso", FIO_O_RDONLY, 0) >= 0 && OPS->read(&f, buf, 16) == 16 &&
+                  OPS->close(&f) == 0 && verified_replies == n + 3,
+              "CREATE, READ and CLOSE replies are each verified (%d)", verified_replies - n);
+        n = verified_replies;
+        last_use_tick = keepalive_ticks - 2;
+        tick();
+        CHECK(smb2 != NULL && share_open && !session_lost && verified_replies == n,
+              "the keepalive ECHO keeps the session, its reply not checked");
+
+        unsigned_cmd = 0x08; // READ
+        unsigned_left = 1;
+        CHECK(OPS->open(&f, "\\DVD\\TEST.iso", FIO_O_RDONLY, 0) >= 0 && OPS->read(&f, buf, 16) == -EIO && lost() &&
+                  unsigned_left == 0,
+              "an unsigned READ reply fails the read, its data unused, and drops the session");
+        n = verified_replies;
+        tick();
+        CHECK(smb2 != NULL && share_open && !session_lost && verified_replies > n,
+              "reconnected on the next tick, the reconnect's replies verified");
+        for (i = 0; i < 20; i++)
+            tick();
+        CHECK(smb2 != NULL && share_open && !session_lost, "then kept for 20 idle ticks of keepalive ECHOs: no reconnect loop");
+        n = verified_replies;
+        CHECK(OPS->open(&f, "\\DVD\\TEST.iso", FIO_O_RDONLY, 0) >= 0 && OPS->read(&f, buf, 16) == 16 &&
+                  OPS->close(&f) == 0 && verified_replies == n + 3,
+              "reads verify again");
+        unsigned_cmd = -1;
+        CHECK(OPS->devctl(NULL, "", SMB_DEVCTL_LOGOFF, NULL, 0, NULL, 0) == 0, "logoff");
+    } else {
+        CHECK(verified_replies == 0, "no reply is verified when the server does not require signing");
     }
 
     printf("%s (%d failures)\n", fails ? "FAILED" : "ALL PASSED", fails);

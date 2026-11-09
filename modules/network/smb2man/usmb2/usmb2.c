@@ -54,6 +54,7 @@
 #define CMD_CLOSE               6
 #define CMD_READ                8
 #define CMD_WRITE               9
+#define CMD_ECHO               13 /* RiptOPL: smb2man's keepalive */
 #define CMD_QUERYDIR           14
 #define CMD_QUERYINFO          16
 #define CMD_SETINFO            17
@@ -392,9 +393,12 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
 
 #ifdef USMB2_VERIFY_BEGIN
         /* RiptOPL: a signed session's replies must carry the server's signature, over every byte read
-         * below (the interim reply above is unsigned, as [MS-SMB2] 3.3.4.1.1 has it).
+         * below (the interim reply above is unsigned, as [MS-SMB2] 3.3.4.1.1 has it). ECHO's reply is
+         * not checked: it carries no data, and a server that left it unsigned would otherwise drop
+         * the session at every keepalive.
          */
-        verify = usmb2->signing && command != CMD_NEGOTIATE_PROTOCOL && command != CMD_SESSION_SETUP;
+        verify = usmb2->signing && command != CMD_NEGOTIATE_PROTOCOL && command != CMD_SESSION_SETUP &&
+                 command != CMD_ECHO;
         if (verify && USMB2_VERIFY_BEGIN(usmb2, &usmb2->buf[0])) {
                 socket_failed(usmb2);
                 goto failed;

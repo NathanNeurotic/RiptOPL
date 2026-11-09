@@ -16,8 +16,10 @@
 
   Compared with the libsmb2-based driver it replaces (about 150 KB resident, this is a small
   fraction of that): SMB 2.x message signing when the server requires it (Windows 11 24H2 by
-  default, Samba with "server signing = mandatory"): requests are signed and replies verified, and a
-  3.x server that requires signing is refused; no share list (the share
+  default, Samba with "server signing = mandatory"): requests are signed and every reply but ECHO's
+  verified, file data included, so menu-side I/O is fully verified when signing is on (the in-game
+  reader, cdvdman's smb2.c, verifies nothing); a 3.x server that requires signing is refused; no
+  share list (the share
   name must be set in Network Settings); the server must be given as an IP address (the menu
   resolves NetBIOS names itself); names on the share up to 440 bytes.
 
@@ -170,10 +172,16 @@ static void smb2man_sign(const uint8_t *key, uint8_t *hdr, int hdrlen, const uin
 }
 #define USMB2_SIGN(u, hdr, hdrlen, data, datalen) smb2man_sign((u)->session_key, hdr, hdrlen, data, datalen)
 
+// tests/smb2-live/keepalive.c sees each verified reply here, and can make one look unsigned.
+#ifndef SMB2MAN_VERIFY_HOOK
+#define SMB2MAN_VERIFY_HOOK(hdr)
+#endif
+
 // A reply on a signed session: refused unless it is signed (SMB2_FLAGS_SIGNED), then its 64-byte header,
 // signature zeroed, starts the HMAC that usmb2_build_request() feeds every byte it reads after it.
 static int smb2man_verify_begin(const uint8_t *key, uint8_t *hdr)
 {
+    SMB2MAN_VERIFY_HOOK(hdr);
     if (!(hdr[16] & 0x08))
         return -1;
     memcpy(smb2man_reply_sig, hdr + 48, 16);
@@ -210,7 +218,6 @@ _Static_assert(offsetof(struct usmb2_context, buf) % 8 == 0, "usmb2_context.buf 
 #undef write
 #undef close
 
-#define CMD_ECHO                     13
 #define STATUS_NO_MORE_FILES         0x80000006
 #define STATUS_NO_SUCH_FILE          0xC000000F
 #define STATUS_OBJECT_NAME_INVALID   0xC0000033

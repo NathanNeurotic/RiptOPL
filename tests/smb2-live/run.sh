@@ -15,7 +15,8 @@
 #             socket cut) under open files and directories, by a failed ECHO, read or write, the
 #             reconnect on the next tick, the backoff after a refused reconnect, LOGOFF and
 #             CLOSESHARE while lost, and the leak check that a dropped session or a share change
-#             frees every handle and directory listing.
+#             frees every handle and directory listing. With signing mandatory: every reply verified
+#             but ECHO's, and a reply that comes unsigned costing one drop and one reconnect, not a loop.
 #   longname.c  compiles device-smb.c whole, with smb2.c and again with smb.c (SMB1), and launches
 #             a game the way the IOP does, from a settings block filled as the EE fills it, for the
 #             longest file names the menu lists and the lengths either side of each one the old
@@ -204,8 +205,8 @@ denied() { # the logon must be refused cleanly: exit 3 after the refusal, no han
 browse() {
     timeout 120 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso "$u8name"
 }
-keepalive() {
-    timeout 120 ./keepalive 127.0.0.1 "$port" ps2 secret PS2SMB
+keepalive() { # $1 the server's signing setting
+    timeout 120 ./keepalive 127.0.0.1 "$port" ps2 secret PS2SMB "$1"
 }
 browse_refused() { # the share must be refused cleanly: no hang, crash or sanitizer report
     rc=0
@@ -229,7 +230,7 @@ for signing in mandatory disabled; do
     run "in-game reader, signing $signing, blank user and password, guest-ok share" ingame '' ''
     run "in-game reader, signing $signing, wrong password refused" denied
     run "browse driver, signing $signing" browse
-    run "browse driver keepalive: lost session, reconnect, backoff, async open, no leaks, signing $signing" keepalive
+    run "browse driver keepalive: lost session, reconnect, backoff, async open, no leaks, signing $signing" keepalive "$signing"
 done
 # A blank user name logs on as "Guest" with the password, as the menu does, not anonymously: here
 # "Guest" is a real account (mapped to ps2) and there is no guest or anonymous access to the share.
