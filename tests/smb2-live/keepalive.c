@@ -106,6 +106,7 @@ static void cut(void)
 {
     if (smb2 != NULL)
         shutdown(smb2->fd, SHUT_RDWR);
+    last_use_tick = keepalive_ticks - 2; // ... while idle: the next tick's pass sends its ECHO
 }
 
 /* Requests still go out, and their replies never come. The session's socket is swapped for one end
@@ -167,6 +168,12 @@ int main(int argc, char **argv)
     /* Lost with a file and a directory open */
     CHECK(OPS->open(&f, "\\DVD\\TEST.iso", FIO_O_RDONLY, 0) >= 0 && OPS->read(&f, buf, 16) == 16, "open + read");
     CHECK(OPS->dopen(&d, "\\DVD") == 0 && OPS->dread(&d, &de) == 1, "dopen + one dread");
+    /* No ECHO right after a request: the request has just shown the session is alive */
+    if (smb2 != NULL)
+        shutdown(smb2->fd, SHUT_RDWR);
+    last_use_tick = keepalive_ticks;
+    tick();
+    CHECK(smb2 != NULL && share_open, "no keepalive echo in the tick after a request");
     cut();
     tick();
     CHECK(lost(), "a failed keepalive echo drops the session");

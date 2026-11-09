@@ -277,14 +277,18 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         /*
          * Write the request to the socket
          */
-        write_to_socket(usmb2, &usmb2->buf[0], 4 + 64 + commandoutcount);
+        if (write_to_socket(usmb2, &usmb2->buf[0], 4 + 64 + commandoutcount)) {
+                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
+        }
         spl -= 64 + commandoutcount;
         
         /*
          * Write payload data to the socket
          */
         if (outdata) {
-                write_to_socket(usmb2, outdata, outdatacount);
+                if (write_to_socket(usmb2, outdata, outdatacount)) {
+                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
+                }
                 spl -= outdatacount;
         }
 
@@ -292,7 +296,9 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
          * Write padding
          */
         if (spl) {
-                write_to_socket(usmb2, &usmb2->buf[0], (int)spl);
+                if (write_to_socket(usmb2, &usmb2->buf[0], (int)spl)) {
+                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
+                }
         }
 
 #ifdef USMB2_FEATURE_TINY_TCP
@@ -312,13 +318,20 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
          * Read SPL, SMB2 header and command reply header (and file info blob) from socket
          */
  next_reply:
-        read_from_socket(usmb2, (uint8_t *)&spl, 4);
+        if (read_from_socket(usmb2, (uint8_t *)&spl, 4)) {
+                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
+        }
         spl = ntohl(spl);
+        if (spl < 64) {
+                goto failed; /* RiptOPL: not an SMB2 reply */
+        }
 
         /*
          * Read SMB2 header
          */
-        read_from_socket(usmb2, &usmb2->buf[0], 64);
+        if (read_from_socket(usmb2, &usmb2->buf[0], 64)) {
+                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
+        }
         spl -= 64;
 
         if (command == CMD_SESSION_SETUP) {
@@ -348,7 +361,9 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
                         if (n > spl) {
                                 n = spl;
                         }
-                        read_from_socket(usmb2, &usmb2->buf[0], (int)n);
+                        if (read_from_socket(usmb2, &usmb2->buf[0], (int)n)) {
+                                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
+                        }
                         spl -= n;
                 }
 #ifndef USMB2_FEATURE_TINY_TCP
@@ -366,7 +381,9 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         if (commandincount > spl) {
                 commandincount = spl;
         }
-        read_from_socket(usmb2, &usmb2->buf[0], commandincount);
+        if (read_from_socket(usmb2, &usmb2->buf[0], commandincount)) {
+                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
+        }
         spl -= commandincount;
 
         /*
@@ -376,7 +393,9 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
                 if (indatacount > spl) {
                         indatacount = spl;
                 }
-                read_from_socket(usmb2, indata, indatacount);
+                if (read_from_socket(usmb2, indata, indatacount)) {
+                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
+                }
                 spl -= indatacount;
         }
         
@@ -391,7 +410,9 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
                 if (n > spl) {
                         n = spl;
                 }
-                read_from_socket(usmb2, &usmb2->buf[commandincount], (int)n);
+                if (read_from_socket(usmb2, &usmb2->buf[commandincount], (int)n)) {
+                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
+                }
                 spl -= n;
         }
 
@@ -402,6 +423,11 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
 #endif
         usmb2->status = status;
         return status;
+
+ failed:
+        /* RiptOPL: a failed socket call closed the socket (socket_failed()) */
+        usmb2->status = STATUS_CONNECTION_DISCONNECTED;
+        return STATUS_CONNECTION_DISCONNECTED;
 }
 
 /* NEGOTIATE PROTOCOL */

@@ -1,0 +1,237 @@
+--- a/usmb2.c
++++ b/usmb2.c
+@@ -59,6 +59,7 @@
+ #define CMD_SETINFO            17
+ 
+ #define STATUS_SUCCESS          0x00000000
++#define STATUS_PENDING          0x00000103
+ #define STATUS_MORE_PROCESSING  0xc0000016
+ #define STATUS_CONNECTION_DISCONNECTED 0xc000020c
+ 
+@@ -267,17 +268,27 @@
+         buf += 24; /* 16 byte signature is all zero */
+ 
+ 
++#ifdef USMB2_SIGN
++        /* RiptOPL: the caller's signing (SMB2_FLAGS_SIGNED, then the signature at 48) */
++        if (usmb2->signing && command != CMD_NEGOTIATE_PROTOCOL && command != CMD_SESSION_SETUP) {
++                USMB2_SIGN(usmb2, &usmb2->buf[4], 64 + commandoutcount, outdata, outdatacount);
++        }
++#endif
+         /*
+          * Write the request to the socket
+          */
+-        write_to_socket(usmb2, &usmb2->buf[0], 4 + 64 + commandoutcount);
++        if (write_to_socket(usmb2, &usmb2->buf[0], 4 + 64 + commandoutcount)) {
++                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
++        }
+         spl -= 64 + commandoutcount;
+         
+         /*
+          * Write payload data to the socket
+          */
+         if (outdata) {
+-                write_to_socket(usmb2, outdata, outdatacount);
++                if (write_to_socket(usmb2, outdata, outdatacount)) {
++                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
++                }
+                 spl -= outdatacount;
+         }
+ 
+@@ -285,7 +296,9 @@
+          * Write padding
+          */
+         if (spl) {
+-                write_to_socket(usmb2, &usmb2->buf[0], (int)spl);
++                if (write_to_socket(usmb2, &usmb2->buf[0], (int)spl)) {
++                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
++                }
+         }
+ 
+ #ifdef USMB2_FEATURE_TINY_TCP
+@@ -304,13 +317,21 @@
+         /*
+          * Read SPL, SMB2 header and command reply header (and file info blob) from socket
+          */
+-        read_from_socket(usmb2, (uint8_t *)&spl, 4);
++ next_reply:
++        if (read_from_socket(usmb2, (uint8_t *)&spl, 4)) {
++                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
++        }
+         spl = ntohl(spl);
++        if (spl < 64) {
++                goto failed; /* RiptOPL: not an SMB2 reply */
++        }
+ 
+         /*
+          * Read SMB2 header
+          */
+-        read_from_socket(usmb2, &usmb2->buf[0], 64);
++        if (read_from_socket(usmb2, &usmb2->buf[0], 64)) {
++                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
++        }
+         spl -= 64;
+ 
+         if (command == CMD_SESSION_SETUP) {
+@@ -330,12 +351,39 @@
+         status = le32toh(*(uint32_t *)&usmb2->buf[8]);
+ 
+         /*
++         * RiptOPL: an interim reply (STATUS_PENDING with SMB2_FLAGS_ASYNC_COMMAND,
++         * [MS-SMB2] 3.3.4.2) says the real one comes later: drop it and read that one.
++         */
++        if (status == STATUS_PENDING && (le32toh(*(uint32_t *)&usmb2->buf[16]) & 2)) {
++                while (spl) {
++                        uint32_t n = sizeof(usmb2->buf);
++
++                        if (n > spl) {
++                                n = spl;
++                        }
++                        if (read_from_socket(usmb2, &usmb2->buf[0], (int)n)) {
++                                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
++                        }
++                        spl -= n;
++                }
++#ifndef USMB2_FEATURE_TINY_TCP
++                if (usmb2->fd < 0) {
++                        usmb2->status = STATUS_CONNECTION_DISCONNECTED;
++                        return STATUS_CONNECTION_DISCONNECTED;
++                }
++#endif
++                goto next_reply;
++        }
++
++        /*
+          * Read command header
+          */
+         if (commandincount > spl) {
+                 commandincount = spl;
+         }
+-        read_from_socket(usmb2, &usmb2->buf[0], commandincount);
++        if (read_from_socket(usmb2, &usmb2->buf[0], commandincount)) {
++                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
++        }
+         spl -= commandincount;
+ 
+         /*
+@@ -345,7 +393,9 @@
+                 if (indatacount > spl) {
+                         indatacount = spl;
+                 }
+-                read_from_socket(usmb2, indata, indatacount);
++                if (read_from_socket(usmb2, indata, indatacount)) {
++                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
++                }
+                 spl -= indatacount;
+         }
+         
+@@ -360,16 +410,24 @@
+                 if (n > spl) {
+                         n = spl;
+                 }
+-                read_from_socket(usmb2, &usmb2->buf[commandincount], (int)n);
++                if (read_from_socket(usmb2, &usmb2->buf[commandincount], (int)n)) {
++                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
++                }
+                 spl -= n;
+         }
+ 
+ #ifndef USMB2_FEATURE_TINY_TCP
+         if (usmb2->fd < 0) {
+-                return STATUS_CONNECTION_DISCONNECTED;
++                status = STATUS_CONNECTION_DISCONNECTED;
+         }
+ #endif
++        usmb2->status = status;
+         return status;
++
++ failed:
++        /* RiptOPL: a failed socket call closed the socket (socket_failed()) */
++        usmb2->status = STATUS_CONNECTION_DISCONNECTED;
++        return STATUS_CONNECTION_DISCONNECTED;
+ }
+ 
+ /* NEGOTIATE PROTOCOL */
+@@ -566,7 +624,7 @@
+         usmb2->buf[4 + 64 + 44] = 0x78;
+         len = usmb2_put_name(&usmb2->buf[4 + 0x78], name);
+         /* name length in bytes. i.e. 2 times the number of ucs2 characters */
+-        usmb2->buf[4 + 64 + 46] = len;
++        *(uint16_t *)&usmb2->buf[4 + 64 + 46] = htole16(len); /* RiptOPL: all 16 bits */
+ 
+         if (usmb2_build_request(usmb2,
+                                 CMD_CREATE, 0x38 + len + 8, 88,
+@@ -833,7 +891,7 @@
+ 
+         /* FileRenameInformation: ReplaceIfExists=0, RootDirectory=0, then the new name */
+         len = usmb2_put_name(&usmb2->buf[4 + 0x60 + 20], newname);
+-        usmb2->buf[4 + 0x60 + 16] = len;
++        *(uint16_t *)&usmb2->buf[4 + 0x60 + 16] = htole16(len); /* RiptOPL: all 16 bits */
+         /* buffer length */
+         *(uint16_t *)&usmb2->buf[4 + 64 + 4] = htole16(20 + len);
+ 
+--- a/usmb2.h
++++ b/usmb2.h
+@@ -45,15 +45,18 @@
+  *  56 bytes CREATE request header
+  * ... and the remaining bytes for the filename being opened.
+  */
+-#define USMB2_SIZE 512
++#define USMB2_SIZE 1024 /* RiptOPL: 512 upstream; room for long names (see VENDORED.txt) */
+ 
+ struct usmb2_context {
+         int fd;
+-        char username[32];
+-        char password[32];
++        char username[64]; /* RiptOPL: 32 upstream */
++        char password[64]; /* RiptOPL: 32 upstream */
+         uint64_t message_id;
+         uint64_t session_id;
+         uint32_t tree_id;
++        uint32_t status;   /* RiptOPL: the NT status of the last reply */
++        uint8_t signing;   /* RiptOPL: sign requests with session_key (USMB2_SIGN) */
++        uint8_t session_key[16]; /* RiptOPL: NTLMv2 session base key */
+         uint8_t buf[USMB2_SIZE];
+ };
+ 
+--- a/unicode.c
++++ b/unicode.c
+@@ -28,7 +28,7 @@
+ 
+ /* Count number of leading 1 bits in the char */
+ static int
+-l1(char c)
++l1(unsigned char c) /* RiptOPL: char upstream; a signed char made bytes >= 0x80 shift a negative value */
+ {
+         int i = 0;
+         while (c & 0x80) {
+--- a/ntlm.c
++++ b/ntlm.c
+@@ -150,9 +150,10 @@
+         /*
+          * User name
+          */
+-        for(at_type = 0; at_type < user_name_len;) {
+-                usmb2->buf[4 + 64 + 24 + user_name_offset + at_type++] = username[at_type >> 1];
+-                usmb2->buf[4 + 64 + 24 + user_name_offset + at_type++] = 0;
++        /* RiptOPL: two separate stores; upstream read and incremented at_type unsequenced */
++        for(at_type = 0; at_type < user_name_len; at_type += 2) {
++                usmb2->buf[4 + 64 + 24 + user_name_offset + at_type] = username[at_type >> 1];
++                usmb2->buf[4 + 64 + 24 + user_name_offset + at_type + 1] = 0;
+         }
+         *(uint16_t *)&usmb2->buf[ntlmssp_out_offset + 36] = htole16(user_name_len);
+         *(uint16_t *)&usmb2->buf[ntlmssp_out_offset + 38] = htole16(user_name_len);
+@@ -210,6 +211,13 @@
+                  NULL, 0,
+                  NTOWFv2, 16, &usmb2->buf[4 + 64 + 24 + ntlm_response_offset]);
+ 
++        /* RiptOPL: the session base key, HMAC_MD5(NTOWFv2, NTProofStr), which signs (no KEY_EXCH) */
++        hmac_md5((struct MD5Context *)&usmb2->buf[0],
++                 NULL,
++                 &usmb2->buf[4 + 64 + 24 + ntlm_response_offset], 16,
++                 NULL, 0,
++                 NTOWFv2, 16, usmb2->session_key);
++
+ 
+         /* Fill in the first 20 bytes of the NTLMSSP buffer */
+         memset(&usmb2->buf[4 + 64 + 24 + 8], 0, 12);
