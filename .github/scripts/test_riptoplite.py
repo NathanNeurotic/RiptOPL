@@ -96,7 +96,7 @@ class ChannelTests(unittest.TestCase):
     def make_root(self, root, sha, tamper=None):
         kit = {**self.SUITE, "version": self.VERSION}
         write_manifest(root / "release-korium", **kit)
-        (root / "release-korium" / "LICENSE-LIBSMB2.txt").write_text("lgpl", encoding="utf-8")
+        (root / "release-korium" / "LICENSE-USMB2.txt").write_text("lgpl", encoding="utf-8")
         write_manifest(root / "release-ra", **kit)
         with zipfile.ZipFile(root / "release-ra" / "RIPTOPL-RetroAchievements.zip", "w") as z:
             z.writestr("BUILD-MANIFEST.json", json.dumps(kit))

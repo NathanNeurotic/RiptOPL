@@ -62,7 +62,7 @@ def candidates(root, compiler="llvm", altered_lite=None):
                 for prefix in ("RIPTOPL-RetroAchievements", "RIPTOPL-RA-VARIANTS",
                                "RIPTOPL-LANGS", "RIPTOPL-src"):
                     put(path, prefix + "-" + VERSION + ".zip")
-        put(path, "LICENSE-LIBSMB2.txt", b"LGPL")
+        put(path, "LICENSE-USMB2.txt", b"LGPL")
         (path / "BUILD-MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
         out.append((edition, {}, path, {}))
     return out
@@ -185,8 +185,8 @@ class RiptOPLLVMTests(unittest.TestCase):
                 (root / "third_party/mbedtls/LICENSE").write_text("Apache-2.0", encoding="utf-8")
                 (root / "lng/lang_English.lng").write_text("test", encoding="utf-8")
                 (root / "ship/neutrino/bsd-udpfsbd.toml").write_text("bdm = 1", encoding="utf-8")
-                licence = root / "LICENSE-LIBSMB2.txt"
-                licence.write_text("LGPL-2.1", encoding="utf-8")
+                licence = root / "LICENSE-USMB2.txt"
+                licence.write_text("MIT", encoding="utf-8")
 
                 built = root / "dist/editions" / edition
                 elf = built / "RIPTOPL.ELF"
@@ -239,7 +239,7 @@ class RiptOPLLVMTests(unittest.TestCase):
 
                 with (mock.patch.object(package_edition, "ROOT", root),
                       mock.patch.object(package_edition, "ORBIT_PIN", pin_path),
-                      mock.patch.object(package_edition, "LIBSMB2_LICENCE", licence),
+                      mock.patch.object(package_edition, "USMB2_LICENCE", licence),
                       mock.patch.object(package_edition, "git", side_effect=git_ref),
                       mock.patch.object(package_edition.app, "EXAMPLE", example),
                       mock.patch.object(package_edition.app, "stage", side_effect=stage_app),

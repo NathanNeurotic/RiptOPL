@@ -6,11 +6,11 @@
 #             device-smb.c and smb_mcemu do: negotiate, NTLMv2 logon, tree connect, a whole 5 MB
 #             image read back and compared byte for byte, end-of-file short counts, VMC page
 #             writes and read-back, a 100 KB write across the 64 KB chunk, error paths.
-#   browse.c  drives modules/network/smb2man/smb2man.c (the menu's browse driver) over libsmb2,
-#             vendored at modules/network/smb2man/libsmb2: LOGON/OPENSHARE/GETSHARELIST devctls,
-#             directory listing, stat, read/write/seek (seeks past 4 GiB in a sparse 7 GiB image
-#             too), create/truncate/exclusive opens, mkdir, rename, remove, reconnect, and handles
-#             left open across LOGOFF.
+#   browse.c  drives modules/network/smb2man/smb2man.c (the menu's browse driver) over usmb2,
+#             vendored at modules/network/smb2man/usmb2: LOGON/OPENSHARE devctls (GETSHARELIST is
+#             refused: no share list), directory listing, stat, read/write/seek (seeks past 4 GiB in
+#             a sparse 7 GiB image too), create/truncate/exclusive opens, mkdir, rename, remove,
+#             paths past 127 characters, reconnect, and handles left open across LOGOFF.
 #   keepalive.c  includes smb2man.c and runs its keepalive passes by hand: a session lost (the
 #             socket cut) under open files and directories, by a failed ECHO, read or write, the
 #             reconnect on the next tick, the backoff after a refused reconnect, LOGOFF and
@@ -26,9 +26,10 @@
 # All are built with AddressSanitizer and UBSan; a sanitizer report, a leak included, fails the case
 # (it exits 86, so not even a case that expects a refusal takes one for it).
 # The server is started on a private port with NTLMv2 only, run once with signing mandatory and once
-# with signing off, once capped at SMB 2.0.2, and once SMB 3-only, where the browse driver must
-# connect and report an SMB 3.x dialect (it offers 2.0.2 through 3.1.1, so any server is reachable);
-# longname.sh's SMB1 cases restart it with signing off and NT1 and NTLM allowed, as smb.c
+# with signing off, once capped at SMB 2.0.2, and once SMB 3.0-and-up, where the browse driver must
+# connect and report an SMB 3.x dialect (it offers 2.0.2 and 2.1, then 3.0 and 3.0.2). Both readers
+# sign SMB 2.x with HMAC-SHA256 when the server requires it; an SMB 3.x server that requires signing
+# must be refused cleanly; longname.sh's SMB1 cases restart it with signing off and NT1 and NTLM allowed, as smb.c
 # needs. Guest logons (an unknown user, and a blank user name) are checked against a guest-ok share;
 # a blank user name is also checked against a server where only a real "Guest" account gets in,
 # since it logs on as "Guest" as the menu does, not anonymously.
@@ -147,24 +148,29 @@ cc $san -Wall -Wno-unused-parameter -I"$here/inc-ingame" -I"$root/modules/iopcor
 cc $san -Wall -Wno-unused-parameter -Wno-unused-function -I"$here/inc-ingame" -I"$root/modules/iopcore/cdvdman" \
     -I"$root/modules/iopcore/common" "$here/utf16.c" "$root/modules/iopcore/cdvdman/smb2auth.c" -o "$work/utf16"
 
-lib="$root/modules/network/smb2man/libsmb2"
-# libsmb2 for the host, from the vendored sources, with the configuration its CMake build finds on Linux.
-hostcfg="-DHAVE_ARPA_INET_H -DHAVE_FCNTL_H -DHAVE_INTTYPES_H -DHAVE_NETDB_H -DHAVE_NETINET_IN_H -DHAVE_NETINET_TCP_H \
- -DHAVE_POLL_H -DHAVE_SOCKADDR_STORAGE -DHAVE_LINGER -DHAVE_STDINT_H -DHAVE_STDIO_H -DHAVE_STDLIB_H -DHAVE_STRINGS_H \
- -DHAVE_STRING_H -DHAVE_SYS_IOCTL_H -DHAVE_SYS_POLL_H -DHAVE_SYS_SOCKET_H -DHAVE_SYS_STAT_H -DHAVE_SYS_TYPES_H \
- -DHAVE_SYS_UIO_H -DHAVE_TIME_H -DHAVE_SYS_TIME_H -DHAVE_UNISTD_H -DHAVE_ERRNO_H -DSTDC_HEADERS -DHAVE_GETRANDOM -DHAVE_SYS_RANDOM_H \
- -D_FILE_OFFSET_BITS=64 -D_U_=__attribute__((unused))"
+u2="$root/modules/network/smb2man/usmb2"
+# The menu driver's build: smb2man.c compiles usmb2.c into itself; usmb2's NTLM and UTF-16 helpers
+# are separate objects, with the features ps2.yaml turns on.
+feat="-DUSMB2_FEATURE_WRITE -DUSMB2_FEATURE_NTLM -DUSMB2_FEATURE_UNICODE -DUSMB2_FEATURE_STAT -DUSMB2_FEATURE_MKDIR \
+ -DUSMB2_FEATURE_UNLINK -DUSMB2_FEATURE_RENAME"
+alloc="-Dmalloc=iop_malloc -Dfree=iop_free -Dcalloc=iop_calloc"
+# usmb2 stores 64-bit header fields at 4-byte-aligned offsets of its buffer, which the IOP (32-bit
+# MIPS, two word stores) takes and UBSan's alignment check does not: that one check is off for the
+# driver's own code. Every offset is 4-aligned (usmb2_context.buf starts 8-aligned).
+drvsan="$san -fno-sanitize=alignment"
 mkdir -p "$work/lib"
-for f in "$lib"/lib/*.c; do
+for f in ntlm md4c hmac-md5 md5 unicode; do
     # shellcheck disable=SC2086
-    cc $san -w $hostcfg -I"$lib/include" -I"$lib/include/smb2" -I"$lib/lib" -c "$f" -o "$work/lib/$(basename "$f" .c).o"
+    cc $drvsan -w $feat $alloc -c "$u2/$f.c" -o "$work/lib/$f.o"
 done
-cc $san -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$lib/include" -I"$lib/include/smb2" \
-    -Dmalloc=iop_malloc -Dfree=iop_free -Dcalloc=iop_calloc -Drealloc=iop_realloc -D_start=smb2man_start \
-    -c "$root/modules/network/smb2man/smb2man.c" -o "$work/smb2man.o"
+# Signing: the in-game reader's hashing, as ps2.yaml builds it into smb2man.
+cc $drvsan -Wall -I"$here/inc-browse" -c "$root/modules/iopcore/cdvdman/smb2auth.c" -o "$work/lib/smb2auth.o"
+# shellcheck disable=SC2086
+cc $drvsan -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" -I"$root/modules/iopcore/cdvdman" $feat $alloc \
+    -D_start=smb2man_start -c "$root/modules/network/smb2man/smb2man.c" -o "$work/smb2man.o"
 cc $san -Wall -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" "$here/browse.c" "$work/smb2man.o" "$work"/lib/*.o -o "$work/browse"
-cc $san -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$lib/include" -I"$lib/include/smb2" \
-    -I"$root/modules/network/smb2man" -Dmalloc=iop_malloc -Dfree=iop_free -Dcalloc=iop_calloc -Drealloc=iop_realloc \
+# shellcheck disable=SC2086
+cc $drvsan -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" -I"$root/modules/iopcore/cdvdman" $feat $alloc \
     -D_start=smb2man_start "$here/keepalive.c" "$work"/lib/*.o -o "$work/keepalive"
 
 id ps2 >/dev/null 2>&1 || useradd -M ps2
@@ -196,18 +202,21 @@ denied() { # the logon must be refused cleanly: exit 3 after the refusal, no han
     [ $rc -eq 3 ] && grep -q 'session setup -1000' denied.txt
 }
 browse() {
-    # The share list is the first request to need smbd's RPC helpers (samba-dcerpcd, rpcd_*), which
-    # smbd starts on demand. Start them first, so that check does not also time their start-up:
-    # seconds on a loaded machine, against libsmb2's 15 s request timeout.
-    timeout 60 smbclient -s "$conf" -p "$port" -L 127.0.0.1 -U ps2%secret >/dev/null 2>&1 || true
     timeout 120 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso "$u8name"
 }
 keepalive() {
     timeout 120 ./keepalive 127.0.0.1 "$port" ps2 secret PS2SMB
 }
-browse_smb3only() { # SMB 3-only: the menu must list and open it, negotiating an SMB 3.x dialect
+browse_refused() { # the share must be refused cleanly: no hang, crash or sanitizer report
+    rc=0
+    timeout 120 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso >refused.txt 2>&1 || rc=$?
+    cat refused.txt
+    [ $rc -eq 1 ] && grep -q '^FAIL: openshare PS2SMB' refused.txt && ! grep -q 'Sanitizer' refused.txt
+}
+browse_smb3only() { # SMB 3.0 and up only: the menu must list and open it, negotiating 3.0 or 3.0.2
+    # ("SMB3" alone means 3.1.1 to Samba, which the driver does not offer: it has no 3.1.1 contexts)
     timeout 120 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso >smb3only.txt 2>&1 &&
-        grep -q '^ok: negotiated dialect 0x03' smb3only.txt
+        grep -q '^ok: negotiated dialect 0x03' smb3only.txt || { cat smb3only.txt; false; }
 }
 
 run "in-game reader: UTF-8 names to UTF-16 (put_utf16)" ./utf16
@@ -220,7 +229,7 @@ for signing in mandatory disabled; do
     run "in-game reader, signing $signing, blank user and password, guest-ok share" ingame '' ''
     run "in-game reader, signing $signing, wrong password refused" denied
     run "browse driver, signing $signing" browse
-    run "browse driver keepalive: lost session, reconnect, backoff, no leaks, signing $signing" keepalive
+    run "browse driver keepalive: lost session, reconnect, backoff, async open, no leaks, signing $signing" keepalive
 done
 # A blank user name logs on as "Guest" with the password, as the menu does, not anonymously: here
 # "Guest" is a real account (mapped to ps2) and there is no guest or anonymous access to the share.
@@ -232,10 +241,16 @@ run "in-game reader, blank user logs on as Guest (no guest or anonymous access)"
 write_conf mandatory "server max protocol = SMB2_02"
 start_smbd
 run "in-game reader, SMB 2.0.2 only, signing mandatory" ingame ps2 secret
-run "browse driver, SMB 2.0.2 only" browse
-write_conf mandatory "server min protocol = SMB3"
+write_conf mandatory "server max protocol = SMB2_02"
 start_smbd
-run "browse driver reaches an SMB 3-only server" browse_smb3only
+run "browse driver, SMB 2.0.2 only, signing mandatory" browse
+# 3.x signs with AES-CMAC, which neither reader implements: such a server must be refused cleanly.
+write_conf mandatory "server min protocol = SMB3_00"
+start_smbd
+run "browse driver refuses SMB 3.0-and-up with signing mandatory, cleanly" browse_refused
+write_conf disabled "server min protocol = SMB3_00"
+start_smbd
+run "browse driver reaches an SMB 3.0-and-up server" browse_smb3only
 . "$here/longname.sh"
 
 [ $fails -eq 0 ] && echo "smb2-live: all passed" || echo "smb2-live: $fails failed"

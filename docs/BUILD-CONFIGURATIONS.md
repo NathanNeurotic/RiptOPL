@@ -22,11 +22,11 @@ compression, as `RIPTOPL-BUGREPORT.ELF`, with a README on what to send (see
 [Launch diagnostics](LAUNCH-DIAGNOSTICS.md#bug-report-build)). The publisher refuses one that is
 packed or whose program does not start 0x80 bytes into the file. Every channel
 also publishes `RIPTOPL-LANGS-<version>.zip`, the translations and their fonts, and
-`LICENSE-LIBSMB2.txt`, the GNU LGPL-2.1 licence of [libsmb2](https://github.com/sahlberg/libsmb2),
+`LICENSE-USMB2.txt`, the MIT licence of [usmb2](https://github.com/sahlberg/usmb2),
 by [Ronnie Sahlberg](https://github.com/sahlberg), which every loader embeds; every kit and
 configuration zip carries the same text. Every archive
 name ends with the build version, for example `RIPTOPL-Korium-v1.2.0-Beta-3925.zip`; the
-loader ELFs, PSUs, `LICENSE-LIBSMB2.txt`, `BUILD-MANIFEST.json` and `SHA256SUMS.txt` keep fixed
+loader ELFs, PSUs, `LICENSE-USMB2.txt`, `BUILD-MANIFEST.json` and `SHA256SUMS.txt` keep fixed
 names, so their download links never change. The release notes name the version at the top.
 
 Prepare the SDK/ports and assets as described in [PS2BUILD-MIGRATION.md](PS2BUILD-MIGRATION.md),
@@ -77,7 +77,7 @@ Nonstandard object trees are isolated under
 `build/configurations/<edition>-<configuration>-<compiler>/`. Candidate ELF,
 resolved definition and build manifest are staged under the matching
 `dist/configurations/` directory, with the EE core map, RiptOPL's `LICENSE` and `CREDITS`,
-`licenses/libsmb2/` (every loader embeds libsmb2) and any other applicable license/
+`licenses/usmb2/` (every loader embeds usmb2) and any other applicable license/
 provenance files. They never write `dist/editions/`, which is
 reserved for standard release packaging. Both the packager and publisher reject
 a manifest naming a nonstandard configuration, even if its checksums are valid.
