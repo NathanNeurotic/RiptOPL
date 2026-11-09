@@ -175,7 +175,8 @@ into the picture the game is showing, which it finds through the same GS write b
   turns the breakpoint off), the menu shows the game's first buffer instead and draws a smaller panel on it,
   sized to fit even a narrow picture. The background behind the panel may look wrong until you resume. The
   game's own picture comes back only when the game sets it again, which a game that flips its buffers does
-  every frame. The old setting cannot be read back, so a game that never sets its picture again (one that set
+  every frame. The menu sets both of the GS's two picture circuits, so a game that shows both but flips only
+  one gets back only that one. The old setting cannot be read back, so a game that never sets its picture again (one that set
   it only once, from an interrupt handler or with the breakpoint off) keeps the menu's picture after you
   resume, possibly at the wrong width or colours, until you leave the game. If the menu cannot keep a copy of
   what it covers in that buffer, or cannot put it all back on RESUME, the combo resets the game instead, as it
