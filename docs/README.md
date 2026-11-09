@@ -1,6 +1,6 @@
 # RiptOPL documentation
 
-Current comparison: [Fork-gap status - November 1, 2026](FORK-GAP-STATUS-2026-11-01.md) (310 records on November 1; 311 records on November 2 under seven statuses; every October 29 record re-read against current code). The [October 29 full refresh](FORK-GAP-FULL-REFRESH-2026-10-29.md) (301 provenance records; 152 stable families) is its dated evidence base. Source/branch/release evidence and console acceptance are recorded separately.
+Current comparison: [Fork-gap status - November 1, 2026](FORK-GAP-STATUS-2026-11-01.md) (310 records on November 1; 311 records on November 2 under seven statuses; every October 29 record re-read against current code; implementation checkpoint of November 9). The [October 29 full refresh](FORK-GAP-FULL-REFRESH-2026-10-29.md) (301 provenance records; 152 stable families) is its dated evidence base. Source/branch/release evidence and console acceptance are recorded separately.
 
 Start with [installation and first boot](https://nathanneurotic.github.io/RiptOPL/install.html)
 and [your first game](https://nathanneurotic.github.io/RiptOPL/getting-started.html).
