@@ -18,6 +18,9 @@ What is here
     reads the final one; upstream returned the interim status and desynchronised.
   - unicode.c l1() takes an unsigned char: with a signed char every UTF-8 byte >= 0x80 was a
     left shift of a negative value (undefined behaviour).
+  - usmb2_build_request() checks every socket read and write and returns
+    STATUS_CONNECTION_DISCONNECTED at the first failure, and refuses an SPL shorter than the SMB2
+    header; upstream counted on, and a failed read wrapped the remaining length to ~4 GB.
   - Signing hook: usmb2_context.signing/session_key, ntlm.c keeps the NTLMv2 session base key,
     and usmb2_build_request() calls USMB2_SIGN (defined by smb2man.c: HMAC-SHA256, SMB 2.x) on
     every request after SESSION_SETUP when signing is on. Upstream does not sign.

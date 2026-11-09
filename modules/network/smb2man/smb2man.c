@@ -74,8 +74,8 @@ IRX_ID(MODNAME, 2, 0);
 #define MAX_PATH_LEN       512
 // Longest name on the share, in UTF-8 bytes: CREATE carries it as UTF-16 in usmb2's 1 KB buffer.
 #define SMB2MAN_NAME_MAX   440
-// How long the driver waits for the server: a connect, then each reply (a keepalive ECHO waits
-// less). Every wait is bounded, so a dead server can never hold the driver lock for good.
+// How long the driver waits for the server: a connect, then any wait with no data moving (a
+// keepalive ECHO waits less). Every wait is bounded, so a dead server can never hold the driver lock for good.
 #define SMB2MAN_CONNECT_MS 5000
 #define SMB2MAN_REPLY_MS   15000
 #define SMB2MAN_ECHO_MS    5000
@@ -104,18 +104,41 @@ static int smb2man_wait(int fd, int for_write, int ms)
     return select(fd + 1, for_write ? NULL : &set, for_write ? &set : NULL, &err, &tv);
 }
 
+/*
+  The socket stays non-blocking after the connect, so a recv() or send() never waits inside the
+  stack: each call moves what it can, and the wait for more is the bounded select() above. A peer
+  that stops sending, or stops taking data (no ACKs), fails the call after smb2man_wait_ms of no
+  progress. A recv()/send() that fails right after select() said ready is retried a few times
+  (a spurious wake-up), then taken as a dead socket.
+*/
+#define SMB2MAN_SOCK_RETRIES 8
+
 static int smb2man_sock_read(int fd, void *buf, int len)
 {
-    if (fd < 0 || smb2man_wait(fd, 0, smb2man_wait_ms) <= 0)
-        return -1;
-    return recv(fd, buf, len, 0);
+    int n, tries;
+
+    for (tries = 0; fd >= 0 && tries < SMB2MAN_SOCK_RETRIES; tries++) {
+        if (smb2man_wait(fd, 0, smb2man_wait_ms) <= 0)
+            return -1;
+        n = recv(fd, buf, len, 0);
+        if (n >= 0)
+            return n; // 0: the peer closed
+    }
+    return -1;
 }
 
 static int smb2man_sock_write(int fd, const void *buf, int len)
 {
-    if (fd < 0 || smb2man_wait(fd, 1, smb2man_wait_ms) <= 0)
-        return -1;
-    return send(fd, (void *)buf, len, 0);
+    int n, tries;
+
+    for (tries = 0; fd >= 0 && tries < SMB2MAN_SOCK_RETRIES; tries++) {
+        if (smb2man_wait(fd, 1, smb2man_wait_ms) <= 0)
+            return -1;
+        n = send(fd, (void *)buf, len, 0);
+        if (n > 0)
+            return n;
+    }
+    return -1;
 }
 
 static int smb2man_sock_close(int fd)
@@ -215,6 +238,7 @@ static int keepalive_tid = -1;
 static iop_sys_clock_t keepalive_clock;
 static u32 keepalive_ticks = 0;    // alarm ticks since start, for the retry backoff
 static u32 keepalive_retry_at = 0; // tick at which the next reconnect may be tried
+static u32 last_use_tick = 0;      // tick of the last call that used the share (no ECHO right after)
 
 struct smb2man_file
 {
@@ -514,7 +538,7 @@ static int smb2man_tcp_connect(void)
             return -1;
         }
     }
-    SMB2MAN_IOCTL(fd, FIONBIO, &off);
+    (void)off; // stays non-blocking: see smb2man_sock_read()
 
     return fd;
 }
@@ -663,7 +687,8 @@ static int smb2man_init(iop_device_t *dev)
     if (keepalive_sema >= 0 && keepalive_tid >= 0 && StartThread(keepalive_tid, NULL) == 0) {
         worker_ok = 1;
         USec2SysClock(KEEPALIVE_SECONDS * 1000 * 1000, &keepalive_clock);
-        SetAlarm(&keepalive_clock, smb2man_keepalive_alarm, NULL);
+        if (SetAlarm(&keepalive_clock, smb2man_keepalive_alarm, NULL) != 0)
+            printf("smb2man: no keepalive alarm; sessions are checked only when used\n");
     } else {
         printf("smb2man: no worker thread (sema %d, thread %d)\n", keepalive_sema, keepalive_tid);
     }
@@ -715,10 +740,17 @@ static int smb2man_lock_share(void)
     if (worker_busy)
         return -EBUSY;
     LOCK();
+    // The worker marks itself busy before it takes the lock for a connect: a call that got here
+    // just before that must not then run on (or wait out) a session being replaced.
+    if (worker_busy) {
+        UNLOCK();
+        return -EBUSY;
+    }
     if (smb2 == NULL || !share_open) {
         UNLOCK();
         return -ENODEV;
     }
+    last_use_tick = keepalive_ticks;
     return 0;
 }
 
@@ -1392,7 +1424,7 @@ static void smb2man_keepalive_pass(void)
 {
     int rv;
 
-    if (connect_requested) {
+    if (connect_requested) { // worker_busy was set by OPENSHARE_ASYNC, before this pass
         LOCK();
         smb2man_teardown();
         strcpy(conn_share, pending_share);
@@ -1404,6 +1436,29 @@ static void smb2man_keepalive_pass(void)
         return;
     }
 
+    // A reconnect is decided without the lock and marked busy before taking it, so callers get
+    // -EBUSY at once instead of waiting out the connect behind the lock.
+    if (!(smb2 != NULL && share_open) && session_lost && conn_valid &&
+        (int)(keepalive_ticks - keepalive_retry_at) >= 0) {
+        worker_busy = 1;
+        LOCK();
+        if (!(smb2 != NULL && share_open) && session_lost && conn_valid) {
+            if (smb2man_open_share() == 0) {
+                printf("smb2man: reconnected %s\n", conn_share);
+            } else {
+                // Counted from now, the end of the attempt, which may have waited out the timeouts.
+                keepalive_retry_at = keepalive_ticks + KEEPALIVE_RETRY_SECONDS / KEEPALIVE_SECONDS;
+            }
+        }
+        worker_busy = 0;
+        UNLOCK();
+        return;
+    }
+
+    // The ECHO: only on an idle session. A request in the last tick has just shown it is alive,
+    // and an ECHO then would only make the next request wait behind it.
+    if (smb2 == NULL || !share_open || (int)(keepalive_ticks - last_use_tick) < 2)
+        return;
     LOCK();
     if (smb2 != NULL && share_open) {
         if (smb2man_echo() < 0) {
@@ -1416,15 +1471,6 @@ static void smb2man_keepalive_pass(void)
                 keepalive_retry_at = keepalive_ticks + 1;
             }
         }
-    } else if (session_lost && conn_valid && (int)(keepalive_ticks - keepalive_retry_at) >= 0) {
-        worker_busy = 1;
-        if (smb2man_open_share() == 0) {
-            printf("smb2man: reconnected %s\n", conn_share);
-        } else {
-            // Counted from now, the end of the attempt, which may have waited out the timeouts.
-            keepalive_retry_at = keepalive_ticks + KEEPALIVE_RETRY_SECONDS / KEEPALIVE_SECONDS;
-        }
-        worker_busy = 0;
     }
     UNLOCK();
 }

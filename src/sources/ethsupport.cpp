@@ -61,7 +61,7 @@ static int smbOpenShare(const char *base, smbOpenShare_in_t *openshare)
     if (ethGetLoadedSmbDialect() == SMB_DIALECT_V2) {
         int rv = fileXioDevctl(base, SMB2_DEVCTL_OPENSHARE_ASYNC, (void *)openshare, sizeof(*openshare), NULL, 0);
         if (rv == 0) {
-            // Every step on the IOP is time-bounded (5 s connect, 15 s per reply), so this cap
+            // Every wait on the IOP is time-bounded (5 s connect, 15 s with no data moving), so this cap
             // only guards against a driver that stops answering at all.
             for (int i = 0; i < 900; i++) {
                 rv = fileXioDevctl(base, SMB2_DEVCTL_CONNECTSTATE, NULL, 0, NULL, 0);

@@ -287,7 +287,7 @@ def challenge_message(ti, tn_last=False):
     return m + (ti + tn if tn_last else tn + ti)
 
 
-def serve_one(sock, ti, tn_last, record):
+def serve_one(sock, ti, tn_last, record, sign=False):
     """Answer one client: NEGOTIATE (2.1 when offered), the two SESSION_SETUP legs, with this
     TargetInfo in the CHALLENGE (before TargetName with tn_last), and a TREE_CONNECT that is refused,
     which ends both clients. Records the AUTHENTICATE_MESSAGE's fields."""
@@ -311,7 +311,8 @@ def serve_one(sock, ti, tn_last, record):
                 count = struct.unpack_from('<H', body, 2)[0]
                 dialects = [struct.unpack_from('<H', body, 36 + 2 * i)[0] for i in range(count)]
                 r = bytearray(65)
-                struct.pack_into('<HHH', r, 0, 65, 0x01, 0x0210 if 0x0210 in dialects else 0x0202)
+                # SecurityMode: signing enabled, and required with sign
+                struct.pack_into('<HHH', r, 0, 65, 0x03 if sign else 0x01, 0x0210 if 0x0210 in dialects else 0x0202)
                 r[8:24] = b'FAKESMB2SERVER!!'
                 struct.pack_into('<IIIQ', r, 28, 65536, 65536, 65536, 133000000000000000)
                 struct.pack_into('<HH', r, 56, 128, 0)
@@ -337,6 +338,7 @@ def serve_one(sock, ti, tn_last, record):
                                   flags=struct.unpack_from('<I', tok, 60)[0])
                     send_msg(conn, reply(req, STATUS_SUCCESS, struct.pack('<HHHH', 9, 0, 72, 0), session_id))
             elif cmd == 3:  # TREE_CONNECT
+                record['tree_connect'] = req
                 send_msg(conn, reply(req, STATUS_ACCESS_DENIED, error_body(), session_id))
                 return
             else:
@@ -498,7 +500,7 @@ with tempfile.TemporaryDirectory() as tmp:
     menu = tmp / 'menu'
     cc(SAN + ['-Wall'] + inc + [str(tmp / 'menu.c')] + objs + wrap + ['-o', str(menu)], "the menu's logon (smb2man)")
 
-    def logon(ti, user, password, ip, port, tn_last, game_only):
+    def logon(ti, user, password, ip, port, tn_last, game_only, sign=False):
         """Run the game's logon, then the menu's (unless game_only), against one fake server (one
         port, so both name the same server) that sends both this TargetInfo. Both are told this
         address and port (the fake server's own port if None), and the wrapped connect() takes them
@@ -517,7 +519,7 @@ with tempfile.TemporaryDirectory() as tmp:
             argvs.append([str(menu), ip, str(port), 'PS2SMB', u8, p8])
         for argv in argvs:
             record = {}
-            server = threading.Thread(target=serve_one, args=(sock, ti, tn_last, record), daemon=True)
+            server = threading.Thread(target=serve_one, args=(sock, ti, tn_last, record, sign), daemon=True)
             server.start()
             try:
                 p = subprocess.run(argv, capture_output=True, text=True, timeout=60, env=env)
@@ -571,8 +573,27 @@ with tempfile.TemporaryDirectory() as tmp:
                   'LMv2 over the blob\'s client challenge %s, and no timestamp' %
                   (label, lm.hex(), blob[8:16].hex(), blob[16:24].hex()))
 
-    def run(label, user='ps2', password='secret', ti=TARGET_INFO, ip='127.0.0.1', port=None, tn_last=False):
-        port, g, m = logon(ti, user, password, ip, port, tn_last, False)
+    def signed_checks(label, rec, name, password, user_upper):
+        """With signing required, the TREE_CONNECT that follows the logon is signed: SMB2_FLAGS_SIGNED and
+        HMAC-SHA256 over the message with the signature zeroed, keyed by the session base key
+        HMAC_MD5(NTOWFv2, NTProofStr) (no KEY_EXCH), which is what the server checks."""
+        tc = rec.get('tree_connect')
+        check(tc is not None, '%s: the %s logon sent no TREE_CONNECT' % (label, name))
+        if tc is None:
+            return
+        ntowf = hmac_md5(md4(u16(password)), u16(user_upper) + u16(TARGET_NAME))
+        key = hmac_md5(ntowf, rec['nt'][:16])
+        msg = bytearray(tc)
+        msg[48:64] = bytes(16)
+        want = hmac.new(key, bytes(msg), 'sha256').digest()[:16]
+        flags = struct.unpack_from('<I', tc, 16)[0]
+        check(flags & 0x08 and tc[48:64] == want,
+              '%s: the %s TREE_CONNECT is not signed with the session base key (flags 0x%x, signature %s, want %s)' %
+              (label, name, flags, tc[48:64].hex(), want.hex()))
+
+    def run(label, user='ps2', password='secret', ti=TARGET_INFO, ip='127.0.0.1', port=None, tn_last=False,
+            sign=False):
+        port, g, m = logon(ti, user, password, ip, port, tn_last, False, sign)
         common_checks(label, ip, port, [('in-game', g), ('menu', m)])
         for name, rec in [('in-game', g), ('menu', m)]:
             check('nt' in rec, '%s, %s logon: no AUTHENTICATE_MESSAGE reached the server (exit %s):\n%s' %
@@ -612,6 +633,9 @@ with tempfile.TemporaryDirectory() as tmp:
         check('connect 0' in m['out'] or 'connect -' in m['out'], '%s: the menu did not finish:\n%s' % (label, m['out']))
         if game_upper:
             lm_and_timestamp(label, g, password, dict(UPPER)[game_upper[0]](want_user))
+        if sign and game_upper and menu_upper:
+            signed_checks(label, g, 'in-game', password, dict(UPPER)[game_upper[0]](want_user))
+            signed_checks(label, m, 'menu', password, dict(UPPER)[menu_upper[0]](want_user))
         check('session setup 1' in g['out'], '%s: the in-game reader did not finish the logon:\n%s' % (label, g['out']))
 
     def refused(label, ti, tn_last=False):
@@ -646,6 +670,10 @@ with tempfile.TemporaryDirectory() as tmp:
     run('port 445', port=445)
     run('port 0', port=0)
     run('port 1111', port=1111)
+    # Signing required: both sign the TREE_CONNECT with the key the server derives.
+    run('signing required', sign=True)
+    run('signing required, user %s, password %s' % (ascii('Jos\u00e9'), ascii('Caf\u00e9')), 'Jos\u00e9', 'Caf\u00e9',
+        sign=True)
     run('192.168.100.200 on port 65535', ip='192.168.100.200', port=65535)
     for what, ti in ODD_TARGET_INFO:
         run('TargetInfo ' + what, ti=ti)
@@ -665,5 +693,5 @@ if failures:
     sys.exit(1)
 print('smb2 logon parity: the in-game reader and the menu connect to the same server, send the same UserName '
       'and DomainName and compute their NTLMv2 proofs from the same user, domain and password (named, mixed-case, '
-      'non-ASCII and blank users); the game names the server in its AV pairs, keeps within SMB2_TI_MAX and sends '
+      'non-ASCII and blank users); both sign as a server requiring it checks; the game names the server in its AV pairs, keeps within SMB2_TI_MAX and sends '
       'its LM response and timestamp as MS-NLMP asks; the menu survives every TargetInfo list cleanly')
