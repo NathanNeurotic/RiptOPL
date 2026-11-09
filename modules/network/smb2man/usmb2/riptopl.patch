@@ -49,7 +49,7 @@
          }
  
  #ifdef USMB2_FEATURE_TINY_TCP
-@@ -304,13 +317,21 @@
+@@ -304,14 +317,23 @@
          /*
           * Read SPL, SMB2 header and command reply header (and file info blob) from socket
           */
@@ -71,9 +71,11 @@
 +                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
 +        }
          spl -= 64;
++        usmb2->reply_len = spl;
  
          if (command == CMD_SESSION_SETUP) {
-@@ -330,12 +351,39 @@
+                 usmb2->session_id = *(uint64_t *)&usmb2->buf[0x28];
+@@ -330,12 +352,39 @@
          status = le32toh(*(uint32_t *)&usmb2->buf[8]);
  
          /*
@@ -114,7 +116,7 @@
          spl -= commandincount;
  
          /*
-@@ -345,7 +393,9 @@
+@@ -345,7 +394,9 @@
                  if (indatacount > spl) {
                          indatacount = spl;
                  }
@@ -125,7 +127,7 @@
                  spl -= indatacount;
          }
          
-@@ -360,16 +410,24 @@
+@@ -360,16 +411,24 @@
                  if (n > spl) {
                          n = spl;
                  }
@@ -152,7 +154,26 @@
  }
  
  /* NEGOTIATE PROTOCOL */
-@@ -566,7 +624,7 @@
+@@ -444,6 +503,9 @@
+ #ifdef USMB2_FEATURE_NTLM
+         if (cmd == 3) {
+                 len = ntlm_generate_auth(usmb2, usmb2->username, usmb2->password);
++                if (len < 0) {
++                        return -1; /* RiptOPL: a CHALLENGE that does not fit, or lies */
++                }
+                 memset(usmb2->buf, 0, 4 + 64 + 24);
+         } else {
+                 memset(usmb2->buf, 0, sizeof(usmb2->buf));
+@@ -497,7 +559,7 @@
+         /* unc offset */
+         usmb2->buf[4 + 64 + 4] = 0x48;
+         /* unc length in bytes. i.e. 2 times the number of ucs2 characters */
+-        usmb2->buf[4 + 64 + 6] = len;
++        *(uint16_t *)&usmb2->buf[4 + 64 + 6] = htole16(len); /* RiptOPL: all 16 bits */
+ 
+ 
+         ptr = &usmb2->buf[4 + 0x48];
+@@ -566,7 +628,7 @@
          usmb2->buf[4 + 64 + 44] = 0x78;
          len = usmb2_put_name(&usmb2->buf[4 + 0x78], name);
          /* name length in bytes. i.e. 2 times the number of ucs2 characters */
@@ -161,7 +182,7 @@
  
          if (usmb2_build_request(usmb2,
                                  CMD_CREATE, 0x38 + len + 8, 88,
-@@ -833,7 +891,7 @@
+@@ -833,7 +895,7 @@
  
          /* FileRenameInformation: ReplaceIfExists=0, RootDirectory=0, then the new name */
          len = usmb2_put_name(&usmb2->buf[4 + 0x60 + 20], newname);
@@ -170,9 +191,19 @@
          /* buffer length */
          *(uint16_t *)&usmb2->buf[4 + 64 + 4] = htole16(20 + len);
  
+@@ -917,6 +979,9 @@
+         }
+ #endif
+ 
++        if (strlen(username) >= sizeof(usmb2->username) || strlen(password) >= sizeof(usmb2->password)) {
++                goto failed; /* RiptOPL: would not fit */
++        }
+         strcpy(usmb2->username, username);
+         strcpy(usmb2->password, password);
+ 
 --- a/usmb2.h
 +++ b/usmb2.h
-@@ -45,15 +45,18 @@
+@@ -45,15 +45,19 @@
   *  56 bytes CREATE request header
   * ... and the remaining bytes for the filename being opened.
   */
@@ -189,6 +220,7 @@
          uint64_t session_id;
          uint32_t tree_id;
 +        uint32_t status;   /* RiptOPL: the NT status of the last reply */
++        uint32_t reply_len; /* RiptOPL: bytes after the SMB2 header in the last reply */
 +        uint8_t signing;   /* RiptOPL: sign requests with session_key (USMB2_SIGN) */
 +        uint8_t session_key[16]; /* RiptOPL: NTLMv2 session base key */
          uint8_t buf[USMB2_SIZE];
@@ -207,7 +239,85 @@
          while (c & 0x80) {
 --- a/ntlm.c
 +++ b/ntlm.c
-@@ -150,9 +150,10 @@
+@@ -45,16 +45,25 @@
+                        char *username,
+                        char *password)
+ {
+-        char NTOWFv2[16], z = 0;
++        uint8_t NTOWFv2[16], z = 0;
+         uint16_t ntlmssp_in_offset, ntlmssp_out_offset, offset;
+         uint16_t domain_name_offset, domain_name_len; char *domain_name;
+         uint16_t user_name_offset, user_name_len;
+         uint16_t ntlm_response_offset;
+         uint16_t at_type, at_len, out_pdu_size, target_info_len;
+         char *target_info;
++        /* RiptOPL: the CHALLENGE's fields are bounded by what it holds before anything is read or written */
++        uint32_t sec_off, sec_len, dn_off, ti_off, ti_len;
++
++        sec_off = le16toh(*(uint16_t *)&usmb2->buf[4]);
++        sec_len = le16toh(*(uint16_t *)&usmb2->buf[6]);
++        if (sec_off < 64 + 8 || sec_len < 48 || usmb2->reply_len > sizeof(usmb2->buf) ||
++            sec_off - 64 + sec_len > usmb2->reply_len) {
++                return -1;
++        }
+ 
+         /* Set offset to start of ntlmssp blob */
+-        ntlmssp_in_offset = le16toh(*(uint16_t *)&usmb2->buf[4]) - 64;
++        ntlmssp_in_offset = sec_off - 64;
+         ntlmssp_out_offset = 4 + 64 + 24;
+  
+         /* Get offset to start of TargetName */
+@@ -62,7 +71,13 @@
+ 
+         /* Grab Target/Domain name from the challenge buffer */
+         domain_name_len = le16toh(*(uint16_t *)&usmb2->buf[offset]);
+-        domain_name = (char *)&usmb2->buf[ntlmssp_in_offset + le32toh(*(uint32_t *)&usmb2->buf[offset + 4])];
++        dn_off = le32toh(*(uint32_t *)&usmb2->buf[offset + 4]);
++        ti_len = le16toh(*(uint16_t *)&usmb2->buf[ntlmssp_in_offset + 40]);
++        ti_off = le32toh(*(uint32_t *)&usmb2->buf[ntlmssp_in_offset + 44]);
++        if (dn_off > sec_len || domain_name_len > sec_len - dn_off || ti_off > sec_len || ti_len > sec_len - ti_off) {
++                return -1;
++        }
++        domain_name = (char *)&usmb2->buf[ntlmssp_in_offset + dn_off];
+         domain_name_offset = 72; /* This is where AUTH ends on pre-2003 */
+         user_name_len = strlen(username) * 2;
+         user_name_offset = domain_name_len + domain_name_offset;
+@@ -79,20 +94,32 @@
+          * In the AUTH we are building the LmChallengeResponse data often ends up laid
+          * your starting at offset ~110 and the AvPairs are laid out another 16 + 28 bytes into that.
+          */
+-        target_info = (char *)&usmb2->buf[ntlmssp_in_offset + le32toh(*(uint32_t *)&usmb2->buf[ntlmssp_in_offset + 44])];
++        target_info = (char *)&usmb2->buf[ntlmssp_in_offset + ti_off];
+ 
+         /* Copy everything except the trailing EndOfList.
+          * The length does not fit in a char: servers in a domain send 130+ bytes.
++         * RiptOPL: only within TargetInfoLen. The list also ends where it does without an
++         * EndOfList, and before a pair that overruns it, as the in-game reader ends it.
+          */
+         target_info_len = 0;
+         while(1) {
++                if ((uint32_t)target_info_len + 4 > ti_len) {
++                        break;
++                }
+                 at_type = le16toh(*(uint16_t *)&target_info[target_info_len]);
+                 at_len = le16toh(*(uint16_t *)&target_info[target_info_len + 2]);
+-                if (at_type == 0) {
++                if (at_type == 0 || at_len > ti_len - target_info_len - 4) {
+                         break;
+                 }
+                 target_info_len += 4 + at_len;
+         }
++        /* RiptOPL: the AUTHENTICATE, padded as usmb2_sessionsetup pads it, must fit in buf
++         * (computed wide: the 16-bit offsets below would wrap first).
++         */
++        if (4 + 64 + 24 + 7 + (uint32_t)ntlm_response_offset + 16 + 28 + target_info_len + 4 + 10 + domain_name_len + 8 >
++            sizeof(usmb2->buf)) {
++                return -1;
++        }
+         offset = 4 + 64 + 24 + ntlm_response_offset + 16 + 28; // AvPairs
+         /* The new place overlaps the old one when the TargetInfo is longer than
+          * about 144 + user_name_len bytes, so memmove and not memcpy.
+@@ -150,9 +177,10 @@
          /*
           * User name
           */
@@ -221,7 +331,28 @@
          }
          *(uint16_t *)&usmb2->buf[ntlmssp_out_offset + 36] = htole16(user_name_len);
          *(uint16_t *)&usmb2->buf[ntlmssp_out_offset + 38] = htole16(user_name_len);
-@@ -210,6 +211,13 @@
+@@ -178,7 +206,7 @@
+         MD4Init((MD4_CTX *)&usmb2->buf[0]);
+         z = 0;
+         while (*password) {
+-                MD4Update((MD4_CTX *)&usmb2->buf[0], password++, 1);
++                MD4Update((MD4_CTX *)&usmb2->buf[0], (unsigned char *)password++, 1);
+                 MD4Update((MD4_CTX *)&usmb2->buf[0], &z, 1);
+         }
+         MD4Final(&usmb2->buf[4 + 64 + 24 + 4], (MD4_CTX *)&usmb2->buf[0]);
+@@ -186,9 +214,9 @@
+         /* Compute NTOWFv2 */
+         /* We don't have enough scratch area to store NTOWFv2 too :-( */
+         hmac_md5((struct MD5Context *)&usmb2->buf[0],
+-                 username,
++                 (uint8_t *)username,
+                  NULL, 0,
+-                 domain_name, domain_name_len,
++                 (uint8_t *)domain_name, domain_name_len,
+                  &usmb2->buf[4 + 64 + 24 + 4], 16, NTOWFv2);
+ 
+         /*
+@@ -210,6 +238,13 @@
                   NULL, 0,
                   NTOWFv2, 16, &usmb2->buf[4 + 64 + 24 + ntlm_response_offset]);
  

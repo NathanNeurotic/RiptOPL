@@ -333,6 +333,7 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
                 goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
         }
         spl -= 64;
+        usmb2->reply_len = spl;
 
         if (command == CMD_SESSION_SETUP) {
                 usmb2->session_id = *(uint64_t *)&usmb2->buf[0x28];
@@ -502,6 +503,9 @@ int usmb2_sessionsetup(struct usmb2_context *usmb2)
 #ifdef USMB2_FEATURE_NTLM
         if (cmd == 3) {
                 len = ntlm_generate_auth(usmb2, usmb2->username, usmb2->password);
+                if (len < 0) {
+                        return -1; /* RiptOPL: a CHALLENGE that does not fit, or lies */
+                }
                 memset(usmb2->buf, 0, 4 + 64 + 24);
         } else {
                 memset(usmb2->buf, 0, sizeof(usmb2->buf));
@@ -555,7 +559,7 @@ int usmb2_treeconnect(struct usmb2_context *usmb2, const char *unc)
         /* unc offset */
         usmb2->buf[4 + 64 + 4] = 0x48;
         /* unc length in bytes. i.e. 2 times the number of ucs2 characters */
-        usmb2->buf[4 + 64 + 6] = len;
+        *(uint16_t *)&usmb2->buf[4 + 64 + 6] = htole16(len); /* RiptOPL: all 16 bits */
 
 
         ptr = &usmb2->buf[4 + 0x48];
@@ -975,6 +979,9 @@ struct usmb2_context *usmb2_init_context(uint32_t ip, char *username, char *pass
         }
 #endif
 
+        if (strlen(username) >= sizeof(usmb2->username) || strlen(password) >= sizeof(usmb2->password)) {
+                goto failed; /* RiptOPL: would not fit */
+        }
         strcpy(usmb2->username, username);
         strcpy(usmb2->password, password);
 

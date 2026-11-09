@@ -734,18 +734,26 @@ static int smb2man_slot(iop_file_t *f)
     return (int)slot;
 }
 
-// Take the lock for a call that needs the share, or say why not. Returns 0 with the lock held.
-static int smb2man_lock_share(void)
+// Take the lock while the worker is not connecting. Returns 0 with the lock held, else -EBUSY.
+// The worker marks itself busy before it takes the lock for a connect: a call that got here just
+// before that must not then run on (or wait out) a session being replaced.
+static int smb2man_lock_idle(void)
 {
     if (worker_busy)
         return -EBUSY;
     LOCK();
-    // The worker marks itself busy before it takes the lock for a connect: a call that got here
-    // just before that must not then run on (or wait out) a session being replaced.
     if (worker_busy) {
         UNLOCK();
         return -EBUSY;
     }
+    return 0;
+}
+
+// Take the lock for a call that needs the share, or say why not. Returns 0 with the lock held.
+static int smb2man_lock_share(void)
+{
+    if (smb2man_lock_idle() < 0)
+        return -EBUSY;
     if (smb2 == NULL || !share_open) {
         UNLOCK();
         return -ENODEV;
@@ -1504,10 +1512,8 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
 
             if (arg == NULL || arglen < sizeof(smbLogOn_in_t))
                 return -EINVAL;
-            if (worker_busy)
+            if (smb2man_lock_idle() < 0)
                 return -EBUSY;
-
-            LOCK();
             smb2man_teardown();
             conn_valid = 0;
             session_lost = 0;
@@ -1538,9 +1544,8 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
         }
 
         case SMB_DEVCTL_LOGOFF:
-            if (worker_busy)
+            if (smb2man_lock_idle() < 0)
                 return -EBUSY;
-            LOCK();
             smb2man_teardown();
             conn_valid = 0;
             session_lost = 0;
@@ -1553,10 +1558,8 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
 
             if (arg == NULL || arglen < sizeof(smbOpenShare_in_t))
                 return -EINVAL;
-            if (worker_busy)
+            if (smb2man_lock_idle() < 0)
                 return -EBUSY;
-
-            LOCK();
             if (!conn_valid) {
                 UNLOCK();
                 return -ENODEV;
@@ -1610,9 +1613,8 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
             return 0;
 
         case SMB_DEVCTL_CLOSESHARE:
-            if (worker_busy)
+            if (smb2man_lock_idle() < 0)
                 return -EBUSY;
-            LOCK();
             smb2man_teardown(); // keeps the logon: a later OPENSHARE connects from it
             session_lost = 0;
             UNLOCK();
@@ -1628,9 +1630,8 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
             */
             if (!conn_valid)
                 return -ENODEV;
-            if (worker_busy)
+            if (smb2man_lock_idle() < 0)
                 return session_lost ? -EIO : -EBUSY;
-            LOCK();
             if (smb2 != NULL && share_open) {
                 rv = 0;
                 if (smb2man_echo() < 0) {

@@ -45,16 +45,25 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
                        char *username,
                        char *password)
 {
-        char NTOWFv2[16], z = 0;
+        uint8_t NTOWFv2[16], z = 0;
         uint16_t ntlmssp_in_offset, ntlmssp_out_offset, offset;
         uint16_t domain_name_offset, domain_name_len; char *domain_name;
         uint16_t user_name_offset, user_name_len;
         uint16_t ntlm_response_offset;
         uint16_t at_type, at_len, out_pdu_size, target_info_len;
         char *target_info;
+        /* RiptOPL: the CHALLENGE's fields are bounded by what it holds before anything is read or written */
+        uint32_t sec_off, sec_len, dn_off, ti_off, ti_len;
+
+        sec_off = le16toh(*(uint16_t *)&usmb2->buf[4]);
+        sec_len = le16toh(*(uint16_t *)&usmb2->buf[6]);
+        if (sec_off < 64 + 8 || sec_len < 48 || usmb2->reply_len > sizeof(usmb2->buf) ||
+            sec_off - 64 + sec_len > usmb2->reply_len) {
+                return -1;
+        }
 
         /* Set offset to start of ntlmssp blob */
-        ntlmssp_in_offset = le16toh(*(uint16_t *)&usmb2->buf[4]) - 64;
+        ntlmssp_in_offset = sec_off - 64;
         ntlmssp_out_offset = 4 + 64 + 24;
  
         /* Get offset to start of TargetName */
@@ -62,7 +71,13 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
 
         /* Grab Target/Domain name from the challenge buffer */
         domain_name_len = le16toh(*(uint16_t *)&usmb2->buf[offset]);
-        domain_name = (char *)&usmb2->buf[ntlmssp_in_offset + le32toh(*(uint32_t *)&usmb2->buf[offset + 4])];
+        dn_off = le32toh(*(uint32_t *)&usmb2->buf[offset + 4]);
+        ti_len = le16toh(*(uint16_t *)&usmb2->buf[ntlmssp_in_offset + 40]);
+        ti_off = le32toh(*(uint32_t *)&usmb2->buf[ntlmssp_in_offset + 44]);
+        if (dn_off > sec_len || domain_name_len > sec_len - dn_off || ti_off > sec_len || ti_len > sec_len - ti_off) {
+                return -1;
+        }
+        domain_name = (char *)&usmb2->buf[ntlmssp_in_offset + dn_off];
         domain_name_offset = 72; /* This is where AUTH ends on pre-2003 */
         user_name_len = strlen(username) * 2;
         user_name_offset = domain_name_len + domain_name_offset;
@@ -79,19 +94,31 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
          * In the AUTH we are building the LmChallengeResponse data often ends up laid
          * your starting at offset ~110 and the AvPairs are laid out another 16 + 28 bytes into that.
          */
-        target_info = (char *)&usmb2->buf[ntlmssp_in_offset + le32toh(*(uint32_t *)&usmb2->buf[ntlmssp_in_offset + 44])];
+        target_info = (char *)&usmb2->buf[ntlmssp_in_offset + ti_off];
 
         /* Copy everything except the trailing EndOfList.
          * The length does not fit in a char: servers in a domain send 130+ bytes.
+         * RiptOPL: only within TargetInfoLen. The list also ends where it does without an
+         * EndOfList, and before a pair that overruns it, as the in-game reader ends it.
          */
         target_info_len = 0;
         while(1) {
+                if ((uint32_t)target_info_len + 4 > ti_len) {
+                        break;
+                }
                 at_type = le16toh(*(uint16_t *)&target_info[target_info_len]);
                 at_len = le16toh(*(uint16_t *)&target_info[target_info_len + 2]);
-                if (at_type == 0) {
+                if (at_type == 0 || at_len > ti_len - target_info_len - 4) {
                         break;
                 }
                 target_info_len += 4 + at_len;
+        }
+        /* RiptOPL: the AUTHENTICATE, padded as usmb2_sessionsetup pads it, must fit in buf
+         * (computed wide: the 16-bit offsets below would wrap first).
+         */
+        if (4 + 64 + 24 + 7 + (uint32_t)ntlm_response_offset + 16 + 28 + target_info_len + 4 + 10 + domain_name_len + 8 >
+            sizeof(usmb2->buf)) {
+                return -1;
         }
         offset = 4 + 64 + 24 + ntlm_response_offset + 16 + 28; // AvPairs
         /* The new place overlaps the old one when the TargetInfo is longer than
@@ -179,7 +206,7 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
         MD4Init((MD4_CTX *)&usmb2->buf[0]);
         z = 0;
         while (*password) {
-                MD4Update((MD4_CTX *)&usmb2->buf[0], password++, 1);
+                MD4Update((MD4_CTX *)&usmb2->buf[0], (unsigned char *)password++, 1);
                 MD4Update((MD4_CTX *)&usmb2->buf[0], &z, 1);
         }
         MD4Final(&usmb2->buf[4 + 64 + 24 + 4], (MD4_CTX *)&usmb2->buf[0]);
@@ -187,9 +214,9 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
         /* Compute NTOWFv2 */
         /* We don't have enough scratch area to store NTOWFv2 too :-( */
         hmac_md5((struct MD5Context *)&usmb2->buf[0],
-                 username,
+                 (uint8_t *)username,
                  NULL, 0,
-                 domain_name, domain_name_len,
+                 (uint8_t *)domain_name, domain_name_len,
                  &usmb2->buf[4 + 64 + 24 + 4], 16, NTOWFv2);
 
         /*
