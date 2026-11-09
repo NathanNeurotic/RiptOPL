@@ -1057,8 +1057,11 @@ static void keepLastBackground(mutable_image_t *gameImage)
 static GSTEXTURE *holdLastBackground(mutable_image_t *gameImage, struct menu_list *menu, struct submenu_item *item, GSTEXTURE *texture, int requestDeferred)
 {
     image_cache_t *cache = gameImage->cache;
+    // cache_count, not only the theme's cache count: the fetches return before the row's pairs are grown when Art is
+    // off or the art type is hidden, so right after a List -> Grid switch the row can still hold the shorter pairs of
+    // the list view, and the state read below would land past them (#211).
     if (cache == NULL || cache->userId() < 0 || gTheme == NULL || cache->userId() >= gTheme->gameCacheCount ||
-        item->cache_id == NULL || item->cache_uid == NULL)
+        cache->userId() >= item->cache_count || item->cache_id == NULL || item->cache_uid == NULL)
         return texture;
 
     const int userId = cache->userId();
