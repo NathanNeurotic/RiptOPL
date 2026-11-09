@@ -81,6 +81,13 @@ extern int gThmScreenHeight;
 
 mutable_image_t *initMutableImage(const char *themePath, config_set_t *themeConfig, theme_t *theme, const char *name, int type, const char *cachePattern, int cacheCount, const char *defaultTexture, const char *overlayTexture);
 void endMutableImage(struct theme_element *elem);
+// User Wallpaper (Settings > Interface): <settings folder>/wallpaper.png, NULL when the file is missing or is not an
+// 8-bit palettised PNG of at most THM_WALLPAPER_MAX_SIDE pixels a side (a toast says why). thmWallpaperApply puts it
+// behind a family's Background; thmWallpaperFree frees it once no element can draw it.
+#define THM_WALLPAPER_MAX_SIDE 512
+image_texture_t *thmWallpaperLoad(void);
+void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper);
+void thmWallpaperFree(image_texture_t *wallpaper);
 GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct submenu_item *item, int isPriority);
 GSTEXTURE *getGameImageTexture(image_cache_t *cache, void *support, struct submenu_item *item);
 int isHiddenArtworkCache(const image_cache_t *cache);

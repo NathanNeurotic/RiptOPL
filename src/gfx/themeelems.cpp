@@ -822,6 +822,7 @@ mutable_image_t *initMutableImage(const char *themePath, config_set_t *themeConf
     mutableImage->overlayTextureLinked = 0;
     mutableImage->overlayTexture2 = NULL;
     mutableImage->overlayTexture2Linked = 0;
+    mutableImage->wallpaper = NULL; // set after validation by thmWallpaperApply
 #ifdef RETROACHIEVEMENTS
     mutableImage->raIsCover = 0; // set in initGameImage, which knows the pattern
 #endif
@@ -908,6 +909,13 @@ mutable_image_t *initMutableImage(const char *themePath, config_set_t *themeConf
 
 // StaticImage //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// The picture a Background shows when no game art is: the user's wallpaper on a main page with User Wallpaper on,
+// otherwise the theme's own (NULL for the plasma). Any other image has no wallpaper and gets its defaultTexture.
+static image_texture_t *bgPicture(const mutable_image_t *image)
+{
+    return image->wallpaper != NULL ? image->wallpaper : image->defaultTexture;
+}
+
 static void drawStaticImage(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     mutable_image_t *staticImage = (mutable_image_t *)elem->extended;
@@ -918,7 +926,7 @@ static void drawStaticImage(struct menu_list *menu, struct submenu_list *item, c
         if (staticImage->overlayTexture2)
             rmDrawPixmap(&staticImage->overlayTexture2->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
     } else
-        rmDrawPixmap(&staticImage->defaultTexture->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
+        rmDrawPixmap(&bgPicture(staticImage)->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
 }
 
 void initStaticImage(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, const char *imageName)
@@ -1271,8 +1279,8 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
         if (!texture || !texture->Mem) {
             // Keep the configured/default cover visible when art is absent. This is also the
             // placeholder path for Favorites, so all list views keep the same no-art affordance.
-            if (gameImage->defaultTexture)
-                texture = &gameImage->defaultTexture->source;
+            if (bgPicture(gameImage))
+                texture = &bgPicture(gameImage)->source;
             else {
                 if (elem->type == ELEM_TYPE_BACKGROUND)
                     host::ui().drawBackgroundPlasma();
@@ -1302,8 +1310,8 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
         // back art from before this page.
         gameImage->lastCacheId = -1;
         gameImage->lastUid = -1;
-        if (gameImage->defaultTexture)
-            rmDrawPixmap(&gameImage->defaultTexture->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
+        if (bgPicture(gameImage))
+            rmDrawPixmap(&bgPicture(gameImage)->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
         else
             host::ui().drawBackgroundPlasma();
     }
@@ -1711,6 +1719,59 @@ void initBackground(const char *themePath, config_set_t *themeConfig, theme_t *t
         elem->drawElem = &drawStaticImage;
     else
         elem->drawElem = &drawBackground;
+}
+
+image_texture_t *thmWallpaperLoad(void)
+{
+    const char *home = configGetHomePath();
+    if (home == NULL || home[0] == '\0')
+        return NULL;
+    size_t len = strlen(home);
+    char path[256]; // without ".png": texDiscoverLoad adds it
+    snprintf(path, sizeof(path), "%s%swallpaper", home, (home[len - 1] == '/' || home[len - 1] == ':') ? "" : "/");
+
+    // Read the header first, so a picture that is too large is turned away without being decoded.
+    char file[sizeof(path) + 4];
+    unsigned char header[TEX_PNG_HEADER_LEN];
+    snprintf(file, sizeof(file), "%s.png", path);
+    int fd = open(file, O_RDONLY);
+    if (fd < 0) {
+        guiShowToast(_l(_STR_WALLPAPER_MISSING));
+        return NULL;
+    }
+    int got = read(fd, header, sizeof(header));
+    close(fd);
+    if (!texPngHeaderIsSmallT8(header, got, THM_WALLPAPER_MAX_SIDE)) {
+        guiShowToast(_l(_STR_WALLPAPER_REJECTED));
+        return NULL;
+    }
+
+    image_texture_t *wallpaper = (image_texture_t *)calloc(1, sizeof(image_texture_t));
+    if (wallpaper == NULL)
+        return NULL;
+    if (texDiscoverLoad(&wallpaper->source, path, -1) < 0 || wallpaper->source.PSM != GS_PSM_T8) {
+        freeImageTexture(wallpaper); // frees what a partial load left
+        guiShowToast(_l(_STR_WALLPAPER_REJECTED));
+        return NULL;
+    }
+    return wallpaper;
+}
+
+void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper)
+{
+    // Validation put a Background first in every main family that has elements. Per-game BG art (Background Art)
+    // still wins while a game is selected: drawGameImage draws the wallpaper only where it drew the theme's picture.
+    theme_element_t *bg = family->first;
+    if (wallpaper == NULL || bg == NULL || bg->type != ELEM_TYPE_BACKGROUND || bg->extended == NULL)
+        return;
+    ((mutable_image_t *)bg->extended)->wallpaper = wallpaper;
+    if (bg->drawElem == &drawBackground)
+        bg->drawElem = &drawStaticImage; // the plasma's place; drawStaticImage draws bgPicture
+}
+
+void thmWallpaperFree(image_texture_t *wallpaper)
+{
+    freeImageTexture(wallpaper);
 }
 
 void drawMenuIcon(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
@@ -2173,7 +2234,9 @@ static int hintEntryWidth(const menu_hint_item_t *hint, int labels, int font)
 
 void drawHintText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
-    if (thmElemSkipsDevice(elem, menu->item->icon_id))
+    // Settings > Interface > Show Legend off: no legend in any theme. The user's choice wins over the theme's hints_*
+    // keys, which still shape the legend when it is on.
+    if (!gShowLegend || thmElemSkipsDevice(elem, menu->item->icon_id))
         return; // devices= filter: not this page's element
 
     /* HELD ACROSS BOTH WALKS, not just the draw loop. guiAlignMenuHints() traverses the list too, so
@@ -2231,6 +2294,8 @@ void drawHintText(struct menu_list *menu, struct submenu_list *item, config_set_
 
 void drawInfoHintText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
+    if (!gShowLegend)
+        return; // Show Legend off: the info page's Run/Back legend goes too (the buttons still work)
     int infoHints[2] = {_STR_RUN, _STR_BACK};
     int infoIcons[2] = {CIRCLE_ICON, CROSS_ICON};
     int x = elem->posX;

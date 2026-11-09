@@ -396,6 +396,8 @@ extern int gFontSize;           // FONT_SIZE_* (fntsys.h)
 extern int gGlyphSet;           // GLYPH_SET_* (themes.h); GLYPH_SET_THEME follows the theme
 extern int gThemeAltBackground; // Alternate Background: the theme's alt= pictures (thmApplyAltBackground)
 extern int gBootThemeWait;      // Boot Theme Wait: seconds the intro holds for the saved theme (0 = off)
+extern int gShowLegend;         // Show Legend: 0 hides the theme's button legend (HintText, InfoHintText)
+extern int gThemeWallpaper;     // User Wallpaper: wallpaper.png from the settings folder behind the main pages
 extern int gVMode;              // 0 - Auto, 1 - PAL, 2 - NTSC
 extern int gXOff;
 extern int gYOff;
