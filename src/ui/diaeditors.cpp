@@ -44,22 +44,31 @@ void diaDrawBoundingBox(int x, int y, int w, int h, int focus)
 // One on-screen keyboard key, drawn as a keycap the way Launchstation's keyboard draws its keys: a faint
 // cap behind every key so a tiny glyph ('.', ',', '`', '\'') still has a visible key around it, the
 // glyph centred in the cap in the theme's text colour (not uiTextColor, the dim blue that sank into the
-// darkened background), and the selected key as a filled cap with an edge rather than a box sized to
+// darkened background), and the selected key as a filled cap rather than a box sized to
 // the glyph, which for '.' was a sliver (zackcage6, 2026-11-09). The glyph is drawn twice, one unit
 // apart, so its vertical strokes are two pixels wide and survive 480i on a CRT.
 constexpr int KEYB_PITCH = 31; // key to key, as before
 constexpr int KEYB_CAP_W = 27;
 constexpr int KEYB_CAP_H = 22;
 
+// The selected glyph's colour: black on a light selection colour, white on a dark one, so the glyph never
+// sinks into the selected cap whatever the theme's text and selection colours are (a #484848 text colour on a
+// white selection read as grey on grey). A key drawn dimmed (any colour but the text colour: the number pad's
+// '-' where negatives are not allowed) stays dimmed when selected, at half the alpha.
+static u64 diaKeyCapSelGlyph(u64 colour)
+{
+    u64 sel = gTheme->selTextColor;
+    int luma = ((int)(sel & 0xFF) * 299 + (int)((sel >> 8) & 0xFF) * 587 + (int)((sel >> 16) & 0xFF) * 114) / 1000;
+    int alpha = colour == gTheme->textColor ? 0x80 : 0x40;
+    return luma >= 0x80 ? GS_SETREG_RGBA(0, 0, 0, alpha) : GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, alpha);
+}
+
 static void diaDrawKeyCap(int x, int y, const char *label, int selected, u64 colour)
 {
     if (selected) {
-        u64 edge = gTheme->selTextColor | GS_SETREG_RGBA(0, 0, 0, 0x80);
-        rmDrawRect(x, y, KEYB_CAP_W, KEYB_CAP_H, (gTheme->selTextColor & ~GS_SETREG_RGBA(0, 0, 0, 0xFF)) | GS_SETREG_RGBA(0, 0, 0, 0x48));
-        rmDrawLine(x, y, x + KEYB_CAP_W, y, edge);
-        rmDrawLine(x, y + KEYB_CAP_H, x + KEYB_CAP_W, y + KEYB_CAP_H, edge);
-        rmDrawLine(x, y, x, y + KEYB_CAP_H, edge);
-        rmDrawLine(x + KEYB_CAP_W, y, x + KEYB_CAP_W, y + KEYB_CAP_H, edge);
+        // An opaque cap in the selection colour: the glyph contrasts with it alone, not with whatever is behind
+        rmDrawRect(x, y, KEYB_CAP_W, KEYB_CAP_H, (gTheme->selTextColor & ~GS_SETREG_RGBA(0, 0, 0, 0xFF)) | GS_SETREG_RGBA(0, 0, 0, 0x80));
+        colour = diaKeyCapSelGlyph(colour);
     } else
         rmDrawRect(x, y, KEYB_CAP_W, KEYB_CAP_H, GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x16));
 

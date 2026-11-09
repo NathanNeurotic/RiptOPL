@@ -51,6 +51,14 @@ def main():
         fail("key glyph is not drawn twice in the colour it is given")
     if "ALIGN_HCENTER" not in body:
         fail("key glyph is not centred in its cap")
+    # The selected glyph must contrast with the selected cap on any palette: an opaque cap in the selection
+    # colour, the glyph switched to black or white by that colour's luminance (not left in the text colour).
+    sel = re.search(r"if \(selected\) \{(.*?)\n    \}", body, re.S)
+    if not sel or "colour = diaKeyCapSelGlyph(colour);" not in sel.group(1) or "0x80)" not in sel.group(1):
+        fail("the selected key does not switch its glyph to a colour that contrasts with an opaque cap")
+    pick = re.search(r"static u64 diaKeyCapSelGlyph\(u64 colour\)\n\{(.*?)\n\}\n", text, re.S)
+    if not pick or "luma >= 0x80 ? GS_SETREG_RGBA(0, 0, 0, alpha) : GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, alpha)" not in pick.group(1):
+        fail("diaKeyCapSelGlyph does not pick black or white by the selection colour's luminance")
 
     keyb = re.search(r"int diaShowKeyb\(.*?\n}\n", text, re.S).group(0)
     grid = re.search(r"for \(j = 0; j < KEYB_HEIGHT; j\+\+\) \{(.*?)\n        \}\n", keyb, re.S)
