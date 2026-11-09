@@ -32,13 +32,17 @@ static void ticks_while_waiting(void)
 #define SMB2MAN_AFTER_WAIT() ticks_while_waiting()
 /* Replies on a signed session: the driver's SMB2MAN_VERIFY_HOOK sees each one before it is verified.
    unsigned_left > 0 makes that many of the next replies to unsigned_cmd look unsigned (SMB2_FLAGS_SIGNED
-   cleared), as a server that left them unsigned would send them; -1 makes all of them look so. */
-static int verified_replies, unsigned_cmd = -1, unsigned_left;
+   cleared), as a server that left them unsigned would send them; -1 makes all of them look so. With
+   bad_signature set they keep the flag and get a wrong signature instead, as a forged reply would. */
+static int verified_replies, unsigned_cmd = -1, unsigned_left, bad_signature;
 static void verify_hook(uint8_t *hdr)
 {
     verified_replies++;
     if (unsigned_left != 0 && hdr[12] == unsigned_cmd) { // the header's Command (low byte)
-        hdr[16] &= ~0x08;
+        if (bad_signature)
+            hdr[48] ^= 0x01;
+        else
+            hdr[16] &= ~0x08;
         if (unsigned_left > 0)
             unsigned_left--;
     }
@@ -379,6 +383,15 @@ int main(int argc, char **argv)
         for (i = 0; i < 20; i++)
             tick();
         CHECK(smb2 != NULL && share_open && !session_lost, "then kept for 20 idle ticks of keepalive ECHOs: no reconnect loop");
+
+        unsigned_left = 1;
+        bad_signature = 1;
+        CHECK(OPS->open(&f, "\\DVD\\TEST.iso", FIO_O_RDONLY, 0) >= 0 && OPS->read(&f, buf, 16) == -EIO && lost() &&
+                  unsigned_left == 0,
+              "a READ reply with a wrong signature fails the read and drops the session");
+        bad_signature = 0;
+        tick();
+        CHECK(smb2 != NULL && share_open && !session_lost, "reconnected on the next tick");
         n = verified_replies;
         CHECK(OPS->open(&f, "\\DVD\\TEST.iso", FIO_O_RDONLY, 0) >= 0 && OPS->read(&f, buf, 16) == 16 &&
                   OPS->close(&f) == 0 && verified_replies == n + 3,
