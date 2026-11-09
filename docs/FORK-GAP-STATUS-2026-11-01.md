@@ -72,7 +72,7 @@ Two corrections to the November 1 snapshot, the ports opened since, and a second
 | BLOCKED | 4 | 4 |
 | UNKNOWN | 40 | 40 |
 
-Each record's November 2 status and note are the `nov2_status` and `nov2_note` fields of [`id-status.json`](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/id-status.json). Of the November 1 list of what is worth a look, DT6 and RI54 are now drafts and RI55 is being ported; **RI38 Recent Games capacity** leads what is left.
+Each record's November 2 status and note are the `nov2_status` and `nov2_note` fields of [`id-status.json`](https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/id-status.json). Of the November 1 list of what is worth a look, DT6 and RI54 were drafts and RI55 was being ported as of November 2 (DT6 and RI54 have since merged; see the checkpoints above); **RI38 Recent Games capacity** leads what is left.
 
 ## Baselines
 
