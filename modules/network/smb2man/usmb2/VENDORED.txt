@@ -15,7 +15,8 @@ What is here
   - username/password 64 bytes each (32 upstream).
   - usmb2_context.status: the NT status of the last reply, so the driver can map errors.
   - usmb2_build_request() drops an interim STATUS_PENDING reply ([MS-SMB2] 3.3.4.2) and
-    reads the final one; upstream returned the interim status and desynchronised.
+    reads the final one (more than 8 for one request close the socket); upstream returned the
+    interim status and desynchronised.
   - unicode.c l1() takes an unsigned char: with a signed char every UTF-8 byte >= 0x80 was a
     left shift of a negative value (undefined behaviour).
   - usmb2_build_request() checks every socket read and write and returns

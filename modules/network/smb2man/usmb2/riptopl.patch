@@ -8,7 +8,15 @@
  #define STATUS_MORE_PROCESSING  0xc0000016
  #define STATUS_CONNECTION_DISCONNECTED 0xc000020c
  
-@@ -267,17 +268,27 @@
+@@ -222,6 +223,7 @@
+         uint32_t spl, current_mid;
+         uint8_t *buf = &usmb2->buf[0];
+         uint32_t status;
++        int interim = 0; /* RiptOPL: interim replies dropped for this request */
+ 
+         /*
+          * SPL
+@@ -267,17 +269,27 @@
          buf += 24; /* 16 byte signature is all zero */
  
  
@@ -38,7 +46,7 @@
                  spl -= outdatacount;
          }
  
-@@ -285,7 +296,9 @@
+@@ -285,7 +297,9 @@
           * Write padding
           */
          if (spl) {
@@ -49,7 +57,7 @@
          }
  
  #ifdef USMB2_FEATURE_TINY_TCP
-@@ -304,14 +317,26 @@
+@@ -304,14 +318,26 @@
          /*
           * Read SPL, SMB2 header and command reply header (and file info blob) from socket
           */
@@ -78,7 +86,7 @@
  
          if (command == CMD_SESSION_SETUP) {
                  usmb2->session_id = *(uint64_t *)&usmb2->buf[0x28];
-@@ -330,12 +355,39 @@
+@@ -330,12 +356,46 @@
          status = le32toh(*(uint32_t *)&usmb2->buf[8]);
  
          /*
@@ -86,6 +94,13 @@
 +         * [MS-SMB2] 3.3.4.2) says the real one comes later: drop it and read that one.
 +         */
 +        if (status == STATUS_PENDING && (le32toh(*(uint32_t *)&usmb2->buf[16]) & 2)) {
++                /* A server sends one; one that keeps sending them must not hold the caller forever */
++                if (++interim > 8) {
++#ifndef USMB2_FEATURE_TINY_TCP
++                        socket_failed(usmb2);
++#endif
++                        goto failed;
++                }
 +                while (spl) {
 +                        uint32_t n = sizeof(usmb2->buf);
 +
@@ -119,7 +134,7 @@
          spl -= commandincount;
  
          /*
-@@ -345,7 +397,9 @@
+@@ -345,7 +405,9 @@
                  if (indatacount > spl) {
                          indatacount = spl;
                  }
@@ -130,7 +145,7 @@
                  spl -= indatacount;
          }
          
-@@ -360,16 +414,24 @@
+@@ -360,16 +422,24 @@
                  if (n > spl) {
                          n = spl;
                  }
@@ -157,7 +172,7 @@
  }
  
  /* NEGOTIATE PROTOCOL */
-@@ -444,6 +506,9 @@
+@@ -444,6 +514,9 @@
  #ifdef USMB2_FEATURE_NTLM
          if (cmd == 3) {
                  len = ntlm_generate_auth(usmb2, usmb2->username, usmb2->password);
@@ -167,7 +182,7 @@
                  memset(usmb2->buf, 0, 4 + 64 + 24);
          } else {
                  memset(usmb2->buf, 0, sizeof(usmb2->buf));
-@@ -497,7 +562,7 @@
+@@ -497,7 +570,7 @@
          /* unc offset */
          usmb2->buf[4 + 64 + 4] = 0x48;
          /* unc length in bytes. i.e. 2 times the number of ucs2 characters */
@@ -176,7 +191,7 @@
  
  
          ptr = &usmb2->buf[4 + 0x48];
-@@ -566,7 +631,7 @@
+@@ -566,7 +639,7 @@
          usmb2->buf[4 + 64 + 44] = 0x78;
          len = usmb2_put_name(&usmb2->buf[4 + 0x78], name);
          /* name length in bytes. i.e. 2 times the number of ucs2 characters */
@@ -185,7 +200,7 @@
  
          if (usmb2_build_request(usmb2,
                                  CMD_CREATE, 0x38 + len + 8, 88,
-@@ -833,7 +898,7 @@
+@@ -833,7 +906,7 @@
  
          /* FileRenameInformation: ReplaceIfExists=0, RootDirectory=0, then the new name */
          len = usmb2_put_name(&usmb2->buf[4 + 0x60 + 20], newname);
@@ -194,7 +209,7 @@
          /* buffer length */
          *(uint16_t *)&usmb2->buf[4 + 64 + 4] = htole16(20 + len);
  
-@@ -917,6 +982,9 @@
+@@ -917,6 +990,9 @@
          }
  #endif
  

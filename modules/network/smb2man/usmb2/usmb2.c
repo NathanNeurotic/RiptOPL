@@ -223,6 +223,7 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         uint32_t spl, current_mid;
         uint8_t *buf = &usmb2->buf[0];
         uint32_t status;
+        int interim = 0; /* RiptOPL: interim replies dropped for this request */
 
         /*
          * SPL
@@ -359,6 +360,13 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
          * [MS-SMB2] 3.3.4.2) says the real one comes later: drop it and read that one.
          */
         if (status == STATUS_PENDING && (le32toh(*(uint32_t *)&usmb2->buf[16]) & 2)) {
+                /* A server sends one; one that keeps sending them must not hold the caller forever */
+                if (++interim > 8) {
+#ifndef USMB2_FEATURE_TINY_TCP
+                        socket_failed(usmb2);
+#endif
+                        goto failed;
+                }
                 while (spl) {
                         uint32_t n = sizeof(usmb2->buf);
 
