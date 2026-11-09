@@ -2,7 +2,9 @@
 
 These defaults describe this C++/ps2build repository when no saved master
 configuration is loaded. Updating the ELF does not reset saved settings. A new
-installation folder can still discover settings on another device.
+installation folder can still discover settings on another device. For every
+Settings row, the page it is on and the key it is saved under, see
+[Where every setting lives](SETTINGS.md).
 
 | Setting | Fresh default | Where to change it |
 | --- | --- | --- |

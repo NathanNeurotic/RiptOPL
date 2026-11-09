@@ -142,6 +142,7 @@ DOCS = {
     "docs/CFG-TITLES.md": ("CFG-Titles", "CFG titles in game lists"),
     "docs/RA-RUNTIME-BUDGETS.md": ("RA-Runtime-Budgets", "RA watch-list and snapshot budgets"),
     "docs/MAINTAINING-DOCS.md": ("Maintaining-Docs", "Maintaining the documentation"),
+    "docs/SETTINGS.md": ("Settings-Map", "Where every setting lives"),
 }
 PAIRS = {
     "Game-Formats": "docs/GAME-FORMATS.md",
@@ -315,7 +316,7 @@ def convert_site(path, sha):
     return output
 
 
-LINK = re.compile(r"(!?\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]\()([^\s<>]+(?:\([^\n()]*\)[^\s<>]*)?)(\s+\"[^\"\n]*\")?(\))")
+LINK = re.compile(r"(!?\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]\()((?:[^\s<>()]|\([^\n()]*\))+)(\s+\"[^\"\n]*\")?(\))")
 
 
 def convert_doc(path, origin, sha):
