@@ -2798,11 +2798,14 @@ void SettingsShell::readSourceState(SourceState *state)
     state->enableUSB = gEnableUSB;
     state->enableILK = gEnableILK;
     state->enableMX4SIO = gEnableMX4SIO;
+    state->enablePCCF = gEnablePCCF;
+    state->enableDVR = gEnableDVR;
     state->enableBdmHDD = gEnableBdmHDD;
     state->networkProtocol = gNetworkProtocol;
     state->smbDialect = gSMBDialect;
     state->netStartMode = gNetStartMode;
     state->netProtocolPick = gNetProtocolPick;
+    state->udpfsAccessMode = gUdpfsAccessMode;
     state->ethStartMode = gETHStartMode;
     state->enableUDPBD = gEnableUDPBD;
     state->netBootProtocol = gNetBootProtocol;
@@ -2847,11 +2850,15 @@ void SettingsShell::restoreSourceState()
     gEnableUSB = sourceState_.enableUSB;
     gEnableILK = sourceState_.enableILK;
     gEnableMX4SIO = sourceState_.enableMX4SIO;
+    int previousEnablePCCF = gEnablePCCF;
+    gEnablePCCF = sourceState_.enablePCCF;
+    gEnableDVR = sourceState_.enableDVR;
     gEnableBdmHDD = sourceState_.enableBdmHDD;
     gNetworkProtocol = sourceState_.networkProtocol;
     gSMBDialect = sourceState_.smbDialect;
     gNetStartMode = sourceState_.netStartMode;
     gNetProtocolPick = sourceState_.netProtocolPick;
+    gUdpfsAccessMode = sourceState_.udpfsAccessMode;
     gETHStartMode = sourceState_.ethStartMode;
     gEnableUDPBD = sourceState_.enableUDPBD;
     gNetBootProtocol = sourceState_.netBootProtocol;
@@ -2867,6 +2874,9 @@ void SettingsShell::restoreSourceState()
     // the list/menu state matches the values we just restored. This is the programmatic equivalent
     // of the X press zackcage6 needed to recover the blank page, but it restores the original source
     // instead of merely starting whichever page happens to be selected.
+    // Switching PC CARD CF back on asks for a fresh probe, exactly as the Game Sources apply does.
+    if (previousEnablePCCF != gEnablePCCF)
+        bdmRequestPccfProbe();
     bdmForceDeviceRefresh();
     applyConfig(-1, -1, 0);
     menuReinitMainMenu();
