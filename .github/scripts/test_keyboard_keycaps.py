@@ -23,13 +23,19 @@ def fail(msg):
 
 
 def const(text, name):
-    # The whole value must be one integer literal (ending the line or the statement): a partial match of an
-    # expression such as "10 / 2" would read 10 and let an overlap through.
+    # The whole value must be one integer literal: take the rest of the declaration line, drop comments (block
+    # comments anywhere in it, then a line comment) and a closing ";", and require nothing but digits to be left.
+    # A partial read of an expression such as "10 / 2" or "10 /* c */ / 2" would give 10 and let an overlap through.
     n = re.escape(name)
-    m = re.search(r"(?:constexpr int {0} = |#define {0}[ \t]+)(\d+)[ \t]*(?:;|//|/\*|$)".format(n), text, re.M)
+    m = re.search(r"^[ \t]*(?:constexpr int {0}[ \t]*=|#define {0}(?=[ \t]))(.*)$".format(n), text, re.M)
     if not m:
-        fail(f"{name} not declared as a plain integer")
-    return int(m.group(1))
+        fail(f"{name} not declared")
+    value = re.sub(r"/\*.*?\*/", " ", m.group(1)).split("//", 1)[0].strip()
+    if value.endswith(";"):
+        value = value[:-1].strip()
+    if not re.fullmatch(r"\d+", value):
+        fail(f"{name} not declared as a plain integer (value {value!r})")
+    return int(value)
 
 
 def main():
