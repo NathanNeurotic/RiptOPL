@@ -17,6 +17,9 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 * A page's changes take effect when you leave it with OK. They are written to the memory card or
   device only by **Save Changes**. Leaving the hub with unsaved changes asks whether to save, exit
   without saving (which restores the game sources you started with), or keep editing.
+* One exception: **OK** in POPSTARTER Network Settings writes POPSTARTER's own `IPCONFIG.DAT` and
+  `SMBCONFIG.DAT` to the memory card at once. Save Changes is not needed for them, and leaving the
+  hub without saving does not undo them.
 * Each setting has one row in one place. A button marked *Modify* opens a sub-page and returns to
   the page that opened it.
 * Some rows exist only in some editions: RiptOPLite carries one game source, the
@@ -153,7 +156,7 @@ Settings**.
 | --- | --- | --- |
 | POPSTARTER.ELF Path | A full path to POPSTARTER.ELF, or empty for the default places. | `popstarter_path` |
 | RetroGEM Game ID | Sends the PS1 game ID to RetroGEM. Same value as the PS1 half of Show GameID Barcode on Interface. | `popstarter_retrogem_gameid` |
-| Ember Display Mode, Ember Timing, Ember Dithering, Ember Shading, Ember Controller | Global Ember defaults; a game's own Ember settings override them. | `ember_display_mode`, `ember_timing`, `ember_dither`, `ember_shading`, `ember_controller` |
+| Ember Display Mode, Ember Timing, Ember Dithering, Ember Shading, Ember Controller | Global Ember defaults. A game's own Ember settings can override Timing, Dithering, Shading and Controller; Display Mode is global only. | `ember_display_mode`, `ember_timing`, `ember_dither`, `ember_shading`, `ember_controller` |
 | BDMA rows | Apply on Launch, BDMA source, BDMA mode, USB BDMA. | `bdma_apply_launch`, `bdma_source`, `vcd_usb_bdma` |
 | VCD Games List Settings *(Modify)* | Hide the PS1 game ID, first disc only, list `PP.<ID>.POPS` HDD partitions. | `vcd_hide_gameid`, `vcd_first_disc_only`, `vcd_show_pp_pops` |
 | POPSTARTER Network Settings *(Modify)* | POPSTARTER's own `IPCONFIG.DAT` and `SMBCONFIG.DAT` on the memory card. See [VCD.md](VCD.md) §6. | (POPSTARTER's files) |
