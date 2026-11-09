@@ -15,8 +15,8 @@ struct SourceState
 {
     int defaultDevice;
     int bdmStartMode, hddStartMode, appStartMode, mmceStartMode, favStartMode, allGames, showHidden;
-    int enableUSB, enableILK, enableMX4SIO, enableBdmHDD;
-    int networkProtocol, netStartMode, netProtocolPick, smbDialect;
+    int enableUSB, enableILK, enableMX4SIO, enablePCCF, enableDVR, enableBdmHDD;
+    int networkProtocol, netStartMode, netProtocolPick, smbDialect, udpfsAccessMode;
     int ethStartMode, enableUDPBD, netBootProtocol;
     int mmceSlot, mmceIgrSlot, mmceEnableGameID, mmceAckWaitCycles, mmceUseAlarms;
     char mmcePrefix[sizeof(gMMCEPrefix)];
