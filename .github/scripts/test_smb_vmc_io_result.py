@@ -143,6 +143,9 @@ static int SignalSema(int id)
 
 @DEFINES@
 
+/* smb.c sends a request again only after its reply timed out; these servers answer every one. */
+static int smb_RetryRequest(int attempt) { (void)attempt; return 0; }
+
 /* Scripted transport: each AndX call returns the next scripted result; FULL (or an exhausted script)
    transfers the whole chunk. */
 #define FULL 0x7fffffff
@@ -425,6 +428,9 @@ static int SignalSema(int id)
 }
 
 @DEFINES@
+
+/* smb.c sends a request again only after its reply timed out; these servers answer every one. */
+static int smb_RetryRequest(int attempt) { (void)attempt; return 0; }
 
 static u16 UID = 0x0801, TID = 0x0802;
 static struct

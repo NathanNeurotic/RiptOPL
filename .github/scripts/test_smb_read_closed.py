@@ -79,7 +79,6 @@ typedef int socklen_t;
 #define USE_CUSTOM_RECV 1
 #define MSG_DONTWAIT 0x40
 #define SMB_REPLY_TIMEOUT_TICKS 368640000U
-static iop_sys_clock_t smb_reply_start;
 static unsigned long long fake_us;
 static void GetSystemTime(iop_sys_clock_t *clock)
 {
@@ -161,8 +160,8 @@ static int recv_stub(int s, void *mem, int hlen, void *payload, int plen, unsign
     return copylen;
 }
 static int (*plwip_recvfrom)(int s, void *mem, int hlen, void *payload, int plen, unsigned int flags, struct sockaddr *from, socklen_t *fromlen) = recv_stub;
-''' + function(smb, 'static void smb_BeginReply(') + function(smb, 'static int smb_ReplyExpired(') \
-    + function(smb, 'static int smb_RecvTimed(') + function(smb, 'static int smb_RecvReplyRest(') \
+''' + smb[smb.index('static iop_sys_clock_t smb_reply_start;'):smb.index('static int RecvData(int sock,')] \
+    + function(smb, 'static int smb_RecvReplyRest(') \
     + function(smb, 'static int smb_DrainReply(') + read_andx + r'''
 int main(int argc, char **argv)
 {
