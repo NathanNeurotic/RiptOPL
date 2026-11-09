@@ -63,13 +63,14 @@ int main()
     CHECK(!texPngHeaderIsSmallT8(NULL, sizeof(h), 512));
 
     // Old-theme fallback: only the pictures stock OPL never loaded.
-    const int newer[] = {MMCE_ICON, UDP_ICON, UDPFS_ICON, FAV_ICON, FAV_MARK, L1_ICON, R1_ICON, L3_ICON, R3_ICON};
+    const int newer[] = {MMCE_ICON, UDP_ICON, UDPFS_ICON, FAV_ICON, FAV_MARK};
     for (int id : newer)
         CHECK(texNewerThanStockOpl(id));
     // Stock OPL's own device pages, glyphs and pictures keep use_default=0's meaning.
     const int stock[] = {BDM_ICON, USB_ICON, ILINK_ICON, MX4SIO_ICON, HDD_BD_ICON, HDD_ICON, ETH_ICON, APP_ICON,
                          INDEX_0, LEFT_ICON, RIGHT_ICON, CROSS_ICON, TRIANGLE_ICON, CIRCLE_ICON, SQUARE_ICON,
-                         SELECT_ICON, START_ICON, LOAD0_ICON, LOAD7_ICON, SETTINGS_BG, COVER_DEFAULT, LOGO_PICTURE};
+                         SELECT_ICON, START_ICON, LOAD0_ICON, LOAD7_ICON, SETTINGS_BG, COVER_DEFAULT, LOGO_PICTURE,
+                         L1_ICON, L3_ICON, R1_ICON, R3_ICON}; // shoulder glyphs: stock since v1.1.0
     for (int id : stock)
         CHECK(!texNewerThanStockOpl(id));
 
@@ -81,6 +82,7 @@ int main()
     CHECK(texUseBuiltIn(-1, 0, FAV_MARK));
     CHECK(!texUseBuiltIn(-1, 0, BDM_ICON)); // missing, stock: use_default=0 keeps it empty
     CHECK(!texUseBuiltIn(-1, 0, LOGO_PICTURE));
+    CHECK(!texUseBuiltIn(-1, 0, L1_ICON)); // a stock theme without L1.png keeps showing no L1 glyph
     CHECK(texUseBuiltIn(-1, 1, BDM_ICON)); // missing, use_default=1: built-in as before
     CHECK(texUseBuiltIn(-1, 1, MMCE_ICON));
 

@@ -2478,12 +2478,12 @@ gui_strings:
   string: "The stored Console i.LINK ID is invalid and was ignored. This game will use the real console ID."
 - label: NETWORK_SMB2_FALLBACK
   string: '%d: The SMB2 driver did not load. Browsing with SMBv1 instead until the next start.'
-- comment: Interface setting beside Button Glyphs (Berion's request). Off hides the button legend of every theme.
+- comment: Interface setting under User Wallpaper (Berion's request). Off hides the button legend of every theme.
   label: SHOW_LEGEND
   string: Show Legend
 - label: HINT_SHOW_LEGEND
   string: "Shows the button legend at the bottom of the menu and the info page. Off hides it in every theme; the buttons still work."
-- comment: Interface setting under Alternate Background (Berion's request). On draws wallpaper.png from the settings folder.
+- comment: Interface setting under Boot Theme Wait (Berion's request). On draws wallpaper.png from the settings folder.
   label: WALLPAPER
   string: User Wallpaper
 - label: HINT_WALLPAPER

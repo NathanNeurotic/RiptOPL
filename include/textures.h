@@ -150,7 +150,8 @@ enum INTERNAL_TEXTURE {
     TEXTURES_COUNT
 };
 
-// The pictures RiptOPL draws that stock OPL never loaded. A theme made for stock OPL cannot ship them, so its
+// The pictures RiptOPL draws that stock OPL never loaded (checked against upstream src/textures.c, v1.1.0 and master;
+// the L1/L2/L3/R1/R2/R3 glyphs are stock). A theme made for stock OPL cannot ship them, so its
 // use_default=0 ("only my own pictures") cannot mean "no picture" for these: thmLoadResource gives it the built-in
 // ones (Berion's old-theme fallback). Host test: tests/host/test_wallpaper.cpp.
 static inline int texNewerThanStockOpl(int texId)
@@ -161,10 +162,6 @@ static inline int texNewerThanStockOpl(int texId)
         case UDPFS_ICON:
         case FAV_ICON:
         case FAV_MARK:
-        case L1_ICON:
-        case R1_ICON:
-        case L3_ICON:
-        case R3_ICON:
             return 1;
         default:
             return 0;
