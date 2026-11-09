@@ -284,6 +284,34 @@ void *calloc(size_t nmemb, size_t size)
 }
 
 //-------------------------------------------------------------------------
+/*
+  A user name or password from the EE (UTF-8) as usmb2's NTLM code takes it: one byte per UTF-16
+  code unit, so Latin-1. Characters above U+00FF, malformed UTF-8 and anything that does not fit
+  fail: the logon is refused rather than sent with credentials the server would not recognise.
+*/
+static int smb2man_latin1(char *dst, const char *src, unsigned size)
+{
+    const unsigned char *s = (const unsigned char *)src;
+    unsigned n = 0;
+
+    while (*s) {
+        unsigned c = *s++;
+
+        if (c >= 0x80) {
+            if ((c & 0xe0) != 0xc0 || (*s & 0xc0) != 0x80)
+                return -1;
+            c = ((c & 0x1f) << 6) | (*s++ & 0x3f);
+            if (c < 0x80 || c > 0xff)
+                return -1;
+        }
+        if (n + 1 >= size)
+            return -1;
+        dst[n++] = (char)c;
+    }
+    dst[n] = '\0';
+    return (int)n;
+}
+
 static uint16_t rd16(const uint8_t *p)
 {
     return (uint16_t)(p[0] | (p[1] << 8));
@@ -1449,18 +1477,14 @@ static int smb2man_devctl(iop_file_t *f, const char *name, int cmd, void *arg, u
             strcpy(conn_ipstr, ip);
             conn_port = (logon->serverPort > 0 && logon->serverPort < 65536) ? logon->serverPort : 445;
 
-            // usmb2 keeps up to 63 bytes of each. On the no-password path the menu leaves
-            // logon->Password uninitialised.
-            if (strlen(logon->User) >= sizeof(conn_user) ||
-                (logon->PasswordType == PLAINTEXT_PASSWORD && strlen(logon->Password) >= sizeof(conn_password))) {
+            // usmb2 keeps up to 63 bytes of each, one byte per UTF-16 unit: Latin-1. On the
+            // no-password path the menu leaves logon->Password uninitialised.
+            if (smb2man_latin1(conn_user, logon->User, sizeof(conn_user)) < 0 ||
+                smb2man_latin1(conn_password, logon->PasswordType == PLAINTEXT_PASSWORD ? logon->Password : "",
+                               sizeof(conn_password)) < 0) {
                 UNLOCK();
                 return -SMB_DEVCTL_LOGON_ERR_LOGON;
             }
-            strcpy(conn_user, logon->User);
-            if (logon->PasswordType == PLAINTEXT_PASSWORD)
-                strcpy(conn_password, logon->Password);
-            else
-                conn_password[0] = '\0';
 
             conn_valid = 1;
             UNLOCK();
