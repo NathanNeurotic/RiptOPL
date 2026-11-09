@@ -72,15 +72,32 @@ source = r'''
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
+typedef struct { u32 lo, hi; } iop_sys_clock_t;
 typedef short s16;
 struct sockaddr;
 typedef int socklen_t;
 #define USE_CUSTOM_RECV 1
+#define MSG_DONTWAIT 0x40
+#define SMB_REPLY_TIMEOUT_TICKS 368640000U
+static iop_sys_clock_t smb_reply_start;
+static unsigned long long fake_us;
+static void GetSystemTime(iop_sys_clock_t *clock)
+{
+    unsigned long long ticks = fake_us * 36864ULL / 1000ULL;
+    clock->lo = (u32)ticks;
+    clock->hi = (u32)(ticks >> 32);
+}
+static int DelayThread(unsigned int usec)
+{
+    fake_us += (unsigned long long)usec * 1000ULL; /* Speed up virtual silence in this host test. */
+    return 0;
+}
 ''' + ''.join(define(smb_h, name, SMB_H) for name in ('SMB_MAGIC', 'SMB_FLAGS2_32BIT_STATUS', 'SMB_COM_READ_ANDX', 'SMB_COM_NONE', 'STATUS_SUCCESS')) \
     + define(smb, 'ZERO_PKT_ALIGNED', SMB) + define(smb, 'SMB_STATUS', SMB) \
     + ''.join(packed_struct(smb_h, name) for name in ('SMBHeader_t', 'ReadAndXRequest_t', 'ReadAndXResponse_t')) + r'''
 static u16 UID, TID;
 static int main_socket = 3;
+static int smb_Disconnect(void) { main_socket = -1; return 1; }
 static struct
 {
     u32 sessionHeader;
@@ -144,7 +161,9 @@ static int recv_stub(int s, void *mem, int hlen, void *payload, int plen, unsign
     return copylen;
 }
 static int (*plwip_recvfrom)(int s, void *mem, int hlen, void *payload, int plen, unsigned int flags, struct sockaddr *from, socklen_t *fromlen) = recv_stub;
-''' + function(smb, 'static int smb_RecvReplyRest(') + function(smb, 'static int smb_DrainReply(') + read_andx + r'''
+''' + function(smb, 'static void smb_BeginReply(') + function(smb, 'static int smb_ReplyExpired(') \
+    + function(smb, 'static int smb_RecvTimed(') + function(smb, 'static int smb_RecvReplyRest(') \
+    + function(smb, 'static int smb_DrainReply(') + read_andx + r'''
 int main(int argc, char **argv)
 {
     /* argv: want status data_offset keepalive end_code segment sizes... (0 sizes: one segment) */

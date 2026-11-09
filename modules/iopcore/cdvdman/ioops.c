@@ -82,20 +82,29 @@ static iop_ext_device_t cdrom_dev = {
 static unsigned char fs_inited = 0;
 
 //--------------------------------------------------------------
-void cdvdman_fs_init(void)
+int cdvdman_fs_init(void)
 {
     if (fs_inited)
-        return;
+        return 1;
 
     DPRINTF("cdvdman_fs_init\n");
 
     DeviceFSInit();
 
+    if (DeviceReady() != SCECdComplete) {
+        cdvdman_stat.err = SCECdErREAD;
+        return 0;
+    }
+
     memset(&cdvdman_fdhandles[0], 0, MAX_FDHANDLES * sizeof(FHANDLE));
 
-    cdvdman_searchfile_init();
+    if (!cdvdman_searchfile_init()) {
+        cdvdman_stat.err = SCECdErREAD;
+        return 0;
+    }
 
     fs_inited = 1;
+    return 1;
 }
 
 //--------------------------------------------------------------
@@ -123,7 +132,10 @@ static int cdvdman_open(iop_file_t *f, const char *filename, int mode)
     WaitSema(cdrom_io_sema);
     WaitEventFlag(cdvdman_stat.intr_ef, 1, WEF_AND, NULL);
 
-    cdvdman_init();
+    if (!cdvdman_init()) {
+        SignalSema(cdrom_io_sema);
+        return -EIO;
+    }
 
     if (f->unit < 2) {
         fh = cdvdman_getfilefreeslot();
