@@ -9,4 +9,8 @@
 // 0x0300, 0x0302 or 0x0311), or -ENODEV when no share is open. smbman does not answer it.
 #define SMB2_DEVCTL_GETDIALECT 0xC0DE0009
 
+// Writes two u32 into buf: total free IOP RAM and the largest free block, in bytes. Never takes
+// the driver lock, so it answers while a share is still being opened. smbman does not answer it.
+#define SMB2_DEVCTL_GETIOPFREE 0xC0DE000A
+
 #endif
