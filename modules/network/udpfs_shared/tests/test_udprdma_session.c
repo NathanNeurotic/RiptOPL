@@ -65,7 +65,8 @@ static void check(const char *what, int ok)
 
 static void run_script(int n, const script_ev_t *evs)
 {
-    memcpy(script, evs, n * sizeof(*evs));
+    if (n > 0)
+        memcpy(script, evs, n * sizeof(*evs));
     script_len = n;
     script_pos = 0;
 }
@@ -320,6 +321,22 @@ int main(void)
 
     /* SetAlarm fails: every wait must end as a timeout, never block. An empty script makes a
      * wait that is not ended by the transport itself fail the test instead of hanging. */
+    alarm_fail = 1;
+    mark = sent_len;
+    run_script(0, NULL);
+    check("split send with no alarm gives up", udprdma_send_ll(s, req, 4, req, sizeof(req)) == UDPRDMA_ERR_NACK);
+    check("split send with no alarm still makes four tries", count_requests(mark) == 4);
+
+    alarm_fail = 0;
+    run_script(1, connect);
+    check("rediscovery after split send connects", udprdma_discover(s, 2000) == UDPRDMA_OK);
+    alarm_fail = 1;
+    run_script(0, NULL);
+    check("receive with no alarm times out", udprdma_recv(s, reply, sizeof(reply), 1000) == UDPRDMA_ERR_TIMEOUT);
+
+    alarm_fail = 0;
+    run_script(1, connect);
+    check("rediscovery after receive connects", udprdma_discover(s, 2000) == UDPRDMA_OK);
     alarm_fail = 1;
     mark = sent_len;
     run_script(0, NULL);
