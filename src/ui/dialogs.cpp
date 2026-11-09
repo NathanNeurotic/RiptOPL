@@ -890,6 +890,18 @@ struct UIItem diaUIConfig[] = {
     {UI_INT, UICFG_BOOT_THEME_WAIT, 1, 1, _STR_HINT_BOOT_THEME_WAIT, 0, 0, {.intvalue = {0, 0, 0, 10}}},
     {UI_BREAK},
 
+    // wallpaper.png from the settings folder behind the main pages, whatever the theme (Berion's request).
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_WALLPAPER}}},
+    {UI_SPACER},
+    {UI_BOOL, UICFG_WALLPAPER, 1, 1, _STR_HINT_WALLPAPER, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    // The button legend at the bottom of the menu and the info page, in every theme (Berion's request).
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SHOW_LEGEND}}},
+    {UI_SPACER},
+    {UI_BOOL, UICFG_SHOW_LEGEND, 1, 1, _STR_HINT_SHOW_LEGEND, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_FONT_SIZE}}},
     {UI_SPACER},
     {UI_ENUM, UICFG_FONT_SIZE, 1, 1, _STR_HINT_FONT_SIZE, 0, 0, {.intvalue = {0, 0}}},
