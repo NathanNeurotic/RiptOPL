@@ -500,8 +500,10 @@ with tempfile.TemporaryDirectory() as tmp:
         card.fat[card.fat[jump] & 0x7FFFFFFF] = 0x7FFFFFFF
     (tmp / 'bad.bin').write_bytes(damaged(free_mid_chain))
     got = run('card', tmp / 'bad.bin', 'SLUS-20062')
-    if not (got.startswith('NONE') or got.startswith('FOUND verts=1044')):
-        failures.append('a chain running into a free cluster: %r' % got)
+    old_nv = struct.unpack_from('<I', old_icon, 16)[0]
+    # The damaged chain is the newer save's icon: refuse it, or fall back to the older save, never read it.
+    if not (got.startswith('NONE') or got.startswith('FOUND verts=%d ' % old_nv)):
+        failures.append('a chain running into a free cluster: %r (want NONE or the older save, %d vertices)' % (got, old_nv))
 
     big = bytearray(image)
     struct.pack_into('<I', big, ALLOC * CS + 4, 0x7FFFFFFF)  # root "." claims 2^31 entries
