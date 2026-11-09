@@ -256,11 +256,15 @@ int sceCdLayerSearchFile(sceCdlFILE *fp, const char *name, int layer)
 int cdvdman_searchfile_init(void)
 {
     // Do not parse the previous PVD buffer after a failed initial disc read.
-    if (!sceCdRead(16, 1, cdvdman_buf, NULL))
+    int pvd_read = sceCdRead(16, 1, cdvdman_buf, NULL);
+    if (pvd_read)
+        sceCdSync(0);
+    if (!pvd_read || sceCdGetError() != SCECdErNO) {
+        // Direct sceCdRead calls still run after a failed init: keep them bounded when the loader measured the image.
+        if (cdvdman_settings.common.mediaLsnCount)
+            mediaLsnCount = cdvdman_settings.common.mediaLsnCount;
         return 0;
-    sceCdSync(0);
-    if (sceCdGetError() != SCECdErNO)
-        return 0;
+    }
 
     struct dirTocEntry *tocEntryPointer = (struct dirTocEntry *)&cdvdman_buf[0x9c];
     layer_info[0].rootDirtocLBA = tocEntryPointer->fileLBA;
@@ -279,11 +283,15 @@ int cdvdman_searchfile_init(void)
             u32 lsn0 = mediaLsnCount;
             // So that CdRead below can read more than first layer.
             mediaLsnCount = 0;
-            if (!sceCdRead(layer1_start + 16, 1, cdvdman_buf, NULL))
+            int layer1_read = sceCdRead(layer1_start + 16, 1, cdvdman_buf, NULL);
+            if (layer1_read)
+                sceCdSync(0);
+            if (!layer1_read || sceCdGetError() != SCECdErNO) {
+                // A failed init must not leave the read bound at 0 (no end-of-media check):
+                // direct sceCdRead calls still run after it. Put back the bound the PVD or loader gave.
+                mediaLsnCount = cdvdman_settings.common.mediaLsnCount ? cdvdman_settings.common.mediaLsnCount : lsn0;
                 return 0;
-            sceCdSync(0);
-            if (sceCdGetError() != SCECdErNO)
-                return 0;
+            }
             tocEntryPointer = (struct dirTocEntry *)&cdvdman_buf[0x9c];
             layer_info[1].rootDirtocLBA = layer1_start + tocEntryPointer->fileLBA;
             layer_info[1].rootDirtocLength = tocEntryPointer->fileSize;
