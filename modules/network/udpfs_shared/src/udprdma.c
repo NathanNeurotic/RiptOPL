@@ -102,16 +102,16 @@ static unsigned int _timeout_cb(void *arg)
  * stale alarm still registered for this socket) would make it wait forever. Raise EF_TIMEOUT
  * at once instead: the caller counts one timed-out attempt and its retry bound still holds.
  */
-static void _arm_timeout(struct udprdma_socket *s, u32 usec)
+static void _arm_timeout(struct udprdma_socket *socket, u32 usec)
 {
     iop_sys_clock_t clock;
     int ret;
 
     USec2SysClock(usec, &clock);
-    ret = SetAlarm(&clock, _timeout_cb, s);
+    ret = SetAlarm(&clock, _timeout_cb, socket);
     if (ret != 0) {
         M_PRINTF("SetAlarm failed (%d), treating the wait as timed out\n", ret);
-        SetEventFlag(s->event_flag, EF_TIMEOUT);
+        SetEventFlag(socket->event_flag, EF_TIMEOUT);
     }
 }
 
