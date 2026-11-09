@@ -27,8 +27,10 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
   home-folder pick. It does not restore
   the PC CARD CF and DESR DVR ISOs switches, or any other setting: those stay in effect for this
   session and are included in a later save.
-* Three things write to the memory card at once, without Save Changes, and leaving the hub
+* Four things write to the memory card at once, without Save Changes, and leaving the hub
   without saving does not undo them:
+  * accepting the restart offered after a network protocol or SMB Version change that needs one:
+    this saves every setting, including other unsaved changes, then restarts RiptOPL;
   * POPSTARTER Network Settings, on **OK** (POPSTARTER's own `IPCONFIG.DAT` and `SMBCONFIG.DAT`);
   * its POPS UDPFS Network Settings sub-page, on **OK** (`SYS-CONF/IPCONFIG.DAT` and
     `UDPFSCONFIG.DAT`);
