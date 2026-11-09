@@ -1774,7 +1774,7 @@ image_texture_t *thmWallpaperLoad(void)
     return wallpaper;
 }
 
-void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper)
+void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper, int builtInTheme)
 {
     // Validation put a Background first in every main family that has elements. Per-game BG art (Background Art)
     // still wins while a game is selected: drawGameImage draws the wallpaper only where it drew the theme's picture.
@@ -1785,8 +1785,11 @@ void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper)
     if (bg->drawElem == &drawBackground)
         bg->drawElem = &drawStaticImage; // the plasma's place; drawStaticImage draws bgPicture
 
-    // Full-screen StaticImages straight after it are the rest of the theme's backdrop (the built-in theme lays its
-    // ~85% opaque inceBtion picture there) and would hide the wallpaper. They are skipped while it shows.
+    // The built-in theme lays its ~85% opaque inceBtion picture full screen straight after the Background, which would
+    // hide the wallpaper, so that layer is skipped while it shows. A disk theme's full-screen picture there may be
+    // foreground art (panels, labels), so disk themes keep every layer.
+    if (!builtInTheme)
+        return;
     for (theme_element_t *e = bg->next; e != NULL && e->type == ELEM_TYPE_STATIC_IMAGE && e->extended != NULL; e = e->next) {
         int originX = e->aligned ? gThmScreenWidth / 2 : 0, originY = e->aligned ? gThmScreenHeight / 2 : 0;
         if (e->posX != originX || e->posY != originY || e->width < gThmScreenWidth || e->height < gThmScreenHeight)

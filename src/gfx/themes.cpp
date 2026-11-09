@@ -1633,7 +1633,7 @@ static int thmLoad(const char *themePath)
         theme_elems_t *mains[6] = {&newT->mainElems, &newT->appsMainElems, &newT->favsMainElems, &newT->vcdMainElems,
                                    &newT->favsVcdMainElems, &newT->favsAppsMainElems};
         for (i = 0; i < 6; i++)
-            thmWallpaperApply(mains[i], newT->wallpaper);
+            thmWallpaperApply(mains[i], newT->wallpaper, themePath == NULL);
     }
 
     newT->itemsList = newT->gamesItemsList;

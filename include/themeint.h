@@ -86,7 +86,7 @@ void endMutableImage(struct theme_element *elem);
 // behind a family's Background; thmWallpaperFree frees it once no element can draw it.
 #define THM_WALLPAPER_MAX_SIDE 512
 image_texture_t *thmWallpaperLoad(void);
-void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper);
+void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper, int builtInTheme);
 void thmWallpaperFree(image_texture_t *wallpaper);
 GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct submenu_item *item, int isPriority);
 GSTEXTURE *getGameImageTexture(image_cache_t *cache, void *support, struct submenu_item *item);
