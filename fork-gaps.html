@@ -155,7 +155,7 @@
 </tr>
 <tr>
 <td>Build and release infrastructure</td>
-<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/315">RiptOPL #315</a> (November 6) and <a href="https://github.com/NathanNeurotic/RiptOPL/pull/321">#321</a> (November 9: <a href="https://github.com/ps2build">ps2build</a> installed from its GitHub organization, October SDK pins kept).</td>
+<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/315">RiptOPL #315</a> (November 6) and <a href="https://github.com/NathanNeurotic/RiptOPL/pull/321">#321</a> (November 9: <a href="https://github.com/ps2build">ps2build</a> installed from its GitHub organization's releases first, with our private SDK mirror as the fallback; October SDK pins kept).</td>
 <td>CI only; the loader is unchanged.</td>
 </tr>
 <tr>
@@ -496,7 +496,7 @@
 </ul>
 <p>A host test now checks both invariants on the source in CI. NOT TESTED on hardware.</p>
 <h3 id="nov1-upstream-heads-rechecked">Upstream heads rechecked</h3>
-<p>All <strong>141 tracked identities</strong> were rechecked with <code>git ls-remote</code> on November 1 (UTC 17:00): <strong>20 tracked heads moved, 25 identities gained or changed refs, and 66 other identities only lost refs outside <code>refs/heads/</code> and <code>refs/tags/</code> (for example, Based-Skid/iLaunchELF); none were unavailable</strong>. The full result is <a href="https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/repository-heads.json"><code>repository-heads.json</code></a>. What moved that matters:</p>
+<p>All <strong>141 tracked identities</strong> were rechecked with <code>git ls-remote</code> on November 1 (UTC 17:00): <strong>20 tracked heads moved, 25 identities gained or changed refs, and 66 other identities differed only in refs outside <code>refs/heads/</code> and <code>refs/tags/</code> (for example, Based-Skid/iLaunchELF); none were unavailable</strong>. The November 1 query asked only for heads and tags while the October 29 baseline held more refs, so those 66 differences do not show the refs were removed upstream. The full result is <a href="https://nathanneurotic.github.io/RiptOPL/audit/2026-11-01/repository-heads.json"><code>repository-heads.json</code></a>. What moved that matters:</p>
 <table>
 <thead>
 <tr>
