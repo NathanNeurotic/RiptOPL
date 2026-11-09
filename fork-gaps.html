@@ -86,7 +86,8 @@
 <div class="fork-gap-metric"><strong>153</strong><span>Linked projects and related services in the A–Z directory</span></div>
 <div class="fork-gap-metric"><strong>77</strong><span>PRESENT records after the focused checkpoint; source is not console acceptance</span></div>
 </div>
-<nav aria-label="Fork feature gaps shortcuts" class="fork-gap-nav"><a href="#implementation-checkpoint">Current status (November 2 evening)</a>
+<nav aria-label="Fork feature gaps shortcuts" class="fork-gap-nav"><a href="#implementation-checkpoint-nov9">Current status (November 9)</a>
+<a href="#implementation-checkpoint">November 2 evening checkpoint</a>
 <a href="#oct29-full-refresh">Previous October 29 ecosystem audit</a>
 <a href="#at-a-glance">Search feature IDs</a>
 <a href="#oct29-focused">Historical October 29 focused findings</a>
@@ -104,8 +105,67 @@
 <a href="#audit-method">Audit methodology</a>
 <a href="#notes">Retired IDs</a>
 </nav>
-<p class="lead">Full-register snapshot: November 1, 2026, updated November 2. The implementation checkpoint below records the later source and draft state. 311 records (301 from October 29 plus 10 new) under seven statuses, each re-read against the C++ and legacy baselines of November 1; 141 upstream heads rechecked then, and the 13 that matter most again on November 2. The October 29 full refresh and older snapshots remain dated evidence.</p>
+<p class="lead">Full-register snapshot: November 1, 2026, updated November 2. The implementation checkpoints below (November 9 and November 2 evening) record the later source and draft state. 311 records (301 from October 29 plus 10 new) under seven statuses, each re-read against the C++ and legacy baselines of November 1; 141 upstream heads rechecked then, and the 13 that matter most again on November 2. The October 29 full refresh and older snapshots remain dated evidence.</p>
 <div class="callout info"><div class="h">Evidence and scope</div>Records include overlap, alternatives, tools and experiments. They are not a roadmap or a defect count. Source presence, target builds, emulator observations and physical-console acceptance are different evidence levels. This documentation audit ran no console code.</div>
+<section class="fork-gap-section" aria-labelledby="implementation-checkpoint-nov9"><h2 id="implementation-checkpoint-nov9">Implementation checkpoint - November 9, 2026</h2>
+<p>This checkpoint supersedes the November 2 evening checkpoint below where they differ. Default source heads checked: RiptOPL <code>a168ff1827b6e4ffb8188d783e7b24747cd49156</code>; legacy Open-PS2-Loader <code>1253093</code>. Merged means merged into <code>rebuild/main</code>; it is not a published release or console acceptance. Record counts are not recounted here: the November 2 totals below still stand.</p>
+<table>
+<thead>
+<tr>
+<th>Work</th>
+<th>Source state on November 9</th>
+<th>Acceptance limits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RI54 List Title / Description follow-up</td>
+<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/283">RiptOPL #283</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1242">legacy #1242</a>, November 4. RI54 is PRESENT with its production-reader coverage and stale-pointer guard.</td>
+<td>Console acceptance remains separate.</td>
+</tr>
+<tr>
+<td>Counter #287</td>
+<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/288">RiptOPL #288</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1247">legacy #1247</a>, November 4.</td>
+<td>Host checks only; the reporter's first-boot retest remains.</td>
+</tr>
+<tr>
+<td>Console i.LINK ID</td>
+<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/290">RiptOPL #290</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1248">legacy #1248</a>, November 4.</td>
+<td>Console-bound content and gameplay NOT TESTED. Not an established Tales of Rebirth fix (<a href="https://github.com/NathanNeurotic/RiptOPL/issues/285">#285</a> open).</td>
+</tr>
+<tr>
+<td>ShanWan identity</td>
+<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/244">RiptOPL #244</a> (November 3) / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1206">legacy #1206</a> (November 4). Comments only.</td>
+<td>No remapping or controller acceptance claim.</td>
+</tr>
+<tr>
+<td>CD stream hardening</td>
+<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/262">RiptOPL #262</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1222">legacy #1222</a>, November 4.</td>
+<td>Not the Tales of the Abyss freeze fix (#185); NOT TESTED on hardware. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/268">#268</a> / <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1229">#1229</a> stay held drafts.</td>
+</tr>
+<tr>
+<td>RI55 pad profiles</td>
+<td>Unchanged: <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1243">legacy #1243</a> is a held draft; RiptOPL has preserved WIP only.</td>
+<td>Controller and console acceptance remain.</td>
+</tr>
+<tr>
+<td>SMB2 series (not fork-gap records)</td>
+<td>Merged in RiptOPL only: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/305">#305</a> (browse driver fits IOP memory), <a href="https://github.com/NathanNeurotic/RiptOPL/pull/307">#307</a> (SMB 2.0.2 to 3.1.1 in the menu), <a href="https://github.com/NathanNeurotic/RiptOPL/pull/308">#308</a> (hints), <a href="https://github.com/NathanNeurotic/RiptOPL/pull/312">#312</a> (bounded menu waits) and <a href="https://github.com/NathanNeurotic/RiptOPL/pull/310">#310</a> (bounded in-game negotiate, SMB 3.0/3.0.2 fallback), November 4 to 6. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/320">#320</a> (SMB reliability) is <strong>open, hardware-blocked</strong>: on a real console, enabling SMB2 froze the whole menu (owner report, November 7).</td>
+<td>Legacy Open-PS2-Loader has no counterpart of #305 to #320 yet; the tandem waits for the freeze's root cause and a green hardware row.</td>
+</tr>
+<tr>
+<td>Build and release infrastructure</td>
+<td>Merged: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/315">RiptOPL #315</a> (November 6) and <a href="https://github.com/NathanNeurotic/RiptOPL/pull/321">#321</a> (November 9: <a href="https://github.com/ps2build">ps2build</a> installed from its GitHub organization, October SDK pins kept).</td>
+<td>CI only; the loader is unchanged.</td>
+</tr>
+<tr>
+<td>Volventura startup</td>
+<td><a href="https://github.com/NathanNeurotic/RiptOPL/issues/289">#289</a> was closed by the owner on November 4.</td>
+<td>This checkpoint does not re-read how it was resolved.</td>
+</tr>
+</tbody>
+</table>
+</section>
 <section class="fork-gap-section" aria-labelledby="implementation-checkpoint"><h2 id="implementation-checkpoint">Implementation checkpoint - November 2 evening, 2026 (November 3 UTC)</h2>
 <p>This checkpoint supersedes implementation-status claims in the dated snapshots below. Default source heads checked: RiptOPL <code>22c319f72c046a583917fb73852f7de1d359bd8d</code>; legacy Open-PS2-Loader <code>dfa28822d324ae23b653a2a7585815eaac0cb671</code>. A pushed draft is implemented branch work, not merged source, a published release or console acceptance. This documentation/site update itself remains a draft until merged and published.</p>
 <table>
