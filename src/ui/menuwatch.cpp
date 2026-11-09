@@ -216,10 +216,51 @@ static int buildReport(int stalledFor, int frameAge, int frame)
     return len;
 }
 
+// Wait at most ms for the libmc call just issued. libmc's own wait (mcSync(MC_WAIT)) never returns
+// if the IOP stops answering.
+static int mcWaitBounded(int ms, int *result)
+{
+    clock_t end = clock() + (clock_t)ms * (CLOCKS_PER_SEC / 1000);
+    int cmd;
+
+    for (;;) {
+        int st = mcSync(MC_NOWAIT, &cmd, result);
+        if (st == 1)
+            return 0;
+        if (st < 0 || clock() >= end) // nothing pending (the call was refused), or out of time
+            return -1;
+        DelayThread(5 * 1000);
+    }
+}
+
+// Write through mcserv's own SIF RPC channel. newlib open() goes through fileXio, and in the
+// leading SMB2 freeze (an smb2man devctl holding fileXio's only RPC thread) that write would block
+// like everything else, so the report would never reach the card. libmc returns non-zero at once
+// when it is not initialised or another call is in flight, and every wait here is bounded.
+static int writeReportMc(int port, const char *name, int len)
+{
+    int fd, r, ok;
+
+    if (mcDelete(port, 0, name) == 0) // a missing file is fine: the result is not checked
+        mcWaitBounded(2000, &r);
+    if (mcOpen(port, 0, name, O_WRONLY | O_CREAT) != 0 || mcWaitBounded(2000, &fd) < 0 || fd < 0)
+        return 0;
+    if (mcWrite(fd, report, len) != 0 || mcWaitBounded(5000, &r) < 0)
+        return 0; // the file stays open: closing it would need the same stuck channel
+    ok = r == len;
+    if (mcClose(fd) != 0 || mcWaitBounded(2000, &r) < 0 || r < 0) // the card commits on close
+        ok = 0;
+    return ok;
+}
+
 static int writeReport(const char *path, int len)
 {
     int fd, ok;
 
+    // "mcN:/NAME": libmc first, then newlib as before (it reaches devices libmc does not).
+    if (strncmp(path, "mc", 2) == 0 && (path[2] == '0' || path[2] == '1') && path[3] == ':' &&
+        writeReportMc(path[2] - '0', path + 4, len))
+        return 1;
     if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
         return 0;
     ok = write(fd, report, len) == len;
