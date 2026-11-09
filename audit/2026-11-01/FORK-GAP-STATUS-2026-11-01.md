@@ -154,13 +154,13 @@ All **141 tracked identities** were rechecked with `git ls-remote` on November 1
 
 Our own repositories (RiptOPL, Open-PS2-Loader, Launchstation, launcHER, POPSLoader, PS2-Servers, PS2SP) account for seven of the twenty moved heads.
 
-## Still MISSING and worth a look
+## Still open and worth a look
 
 In rough order of value; none is claimed by another thread:
 
 1. **RI38 Recent Games capacity**: ours holds 10 entries, RIPPS2 holds 99. PARTIAL, small.
 2. **DT6 in-game IOP memory relief** (above): needs the MTU decision first.
-3. **RI54 List Title / Description** and **RI55 .pad profiles**: RIPPS2 feature work, product calls.
+3. **RI54 List Title / Description** and **RI55 .pad profiles**: RIPPS2 feature work, product calls. RI54 has since merged (PRESENT; see the November 9 checkpoint).
 4. **RI10 / RI37** persistent library snapshot with Trust Cache: large; stays a comparison.
 5. **O8 VRAM texture budget clamp, BL2 bounded artwork prefetch, LU37 / LU41 budgeted and direction-aware cover loading**: artwork pipeline comparisons, medium.
 6. **RI25 / 27 / 29 / 34 / 39 / 40 / 41 / 42 / 43 / 45 / 46, NV1, H14**: unchanged source comparison candidates from October 29.
