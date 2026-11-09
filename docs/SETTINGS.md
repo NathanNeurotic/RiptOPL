@@ -20,7 +20,7 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
   device until **Save Changes**, except the cases in the next point.
 * Leaving the hub with unsaved changes asks whether to save, exit without saving, or keep editing.
   Exit without saving restores the game-source choices (default device, start modes, source
-  switches, network protocol, MMCE options) as they were when the hub opened or at the last Save
+  switches, network protocol and SMB Version, MMCE options) as they were when the hub opened or at the last Save
   Changes inside it, and drops an unsaved HDD home-folder pick. It does not restore the PC CARD CF
   and DESR DVR ISOs switches, or any other setting: those stay in effect for this session and are
   included in a later save.
