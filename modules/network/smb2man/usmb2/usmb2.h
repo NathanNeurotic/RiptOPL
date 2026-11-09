@@ -55,6 +55,8 @@ struct usmb2_context {
         uint64_t session_id;
         uint32_t tree_id;
         uint32_t status;   /* RiptOPL: the NT status of the last reply */
+        uint8_t signing;   /* RiptOPL: sign requests with session_key (USMB2_SIGN) */
+        uint8_t session_key[16]; /* RiptOPL: NTLMv2 session base key */
         uint8_t buf[USMB2_SIZE];
 };
 

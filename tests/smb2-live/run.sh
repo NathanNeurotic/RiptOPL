@@ -27,9 +27,9 @@
 # (it exits 86, so not even a case that expects a refusal takes one for it).
 # The server is started on a private port with NTLMv2 only, run once with signing mandatory and once
 # with signing off, once capped at SMB 2.0.2, and once SMB 3.0-and-up, where the browse driver must
-# connect and report an SMB 3.x dialect (it offers 2.0.2 through 3.0.2). The browse driver does not
-# sign, so against signing mandatory it must refuse the share cleanly, and its other cases run with
-# signing off; longname.sh's SMB1 cases restart it with signing off and NT1 and NTLM allowed, as smb.c
+# connect and report an SMB 3.x dialect (it offers 2.0.2 and 2.1, then 3.0 and 3.0.2). Both readers
+# sign SMB 2.x with HMAC-SHA256 when the server requires it; an SMB 3.x server that requires signing
+# must be refused cleanly; longname.sh's SMB1 cases restart it with signing off and NT1 and NTLM allowed, as smb.c
 # needs. Guest logons (an unknown user, and a blank user name) are checked against a guest-ok share;
 # a blank user name is also checked against a server where only a real "Guest" account gets in,
 # since it logs on as "Guest" as the menu does, not anonymously.
@@ -163,12 +163,14 @@ for f in ntlm md4c hmac-md5 md5 unicode; do
     # shellcheck disable=SC2086
     cc $drvsan -w $feat $alloc -c "$u2/$f.c" -o "$work/lib/$f.o"
 done
+# Signing: the in-game reader's hashing, as ps2.yaml builds it into smb2man.
+cc $drvsan -Wall -I"$here/inc-browse" -c "$root/modules/iopcore/cdvdman/smb2auth.c" -o "$work/lib/smb2auth.o"
 # shellcheck disable=SC2086
-cc $drvsan -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" $feat $alloc \
+cc $drvsan -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" -I"$root/modules/iopcore/cdvdman" $feat $alloc \
     -D_start=smb2man_start -c "$root/modules/network/smb2man/smb2man.c" -o "$work/smb2man.o"
 cc $san -Wall -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" "$here/browse.c" "$work/smb2man.o" "$work"/lib/*.o -o "$work/browse"
 # shellcheck disable=SC2086
-cc $drvsan -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" $feat $alloc \
+cc $drvsan -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" -I"$root/modules/iopcore/cdvdman" $feat $alloc \
     -D_start=smb2man_start "$here/keepalive.c" "$work"/lib/*.o -o "$work/keepalive"
 
 id ps2 >/dev/null 2>&1 || useradd -M ps2
@@ -226,13 +228,8 @@ for signing in mandatory disabled; do
     run "in-game reader, signing $signing, guest" ingame nobody x
     run "in-game reader, signing $signing, blank user and password, guest-ok share" ingame '' ''
     run "in-game reader, signing $signing, wrong password refused" denied
-    if [ "$signing" = disabled ]; then
-        run "browse driver, signing $signing" browse
-        run "browse driver keepalive: lost session, reconnect, backoff, async open, no leaks, signing $signing" keepalive
-    else
-        # usmb2 does not sign: a server that requires signing must refuse the share, not hang it.
-        run "browse driver refuses a server that requires signing, cleanly" browse_refused
-    fi
+    run "browse driver, signing $signing" browse
+    run "browse driver keepalive: lost session, reconnect, backoff, async open, no leaks, signing $signing" keepalive
 done
 # A blank user name logs on as "Guest" with the password, as the menu does, not anonymously: here
 # "Guest" is a real account (mapped to ps2) and there is no guest or anonymous access to the share.
@@ -244,9 +241,13 @@ run "in-game reader, blank user logs on as Guest (no guest or anonymous access)"
 write_conf mandatory "server max protocol = SMB2_02"
 start_smbd
 run "in-game reader, SMB 2.0.2 only, signing mandatory" ingame ps2 secret
-write_conf disabled "server max protocol = SMB2_02"
+write_conf mandatory "server max protocol = SMB2_02"
 start_smbd
-run "browse driver, SMB 2.0.2 only" browse
+run "browse driver, SMB 2.0.2 only, signing mandatory" browse
+# 3.x signs with AES-CMAC, which neither reader implements: such a server must be refused cleanly.
+write_conf mandatory "server min protocol = SMB3_00"
+start_smbd
+run "browse driver refuses SMB 3.0-and-up with signing mandatory, cleanly" browse_refused
 write_conf disabled "server min protocol = SMB3_00"
 start_smbd
 run "browse driver reaches an SMB 3.0-and-up server" browse_smb3only

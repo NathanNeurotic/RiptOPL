@@ -42,6 +42,7 @@
 
 #include <ps2smb.h>
 #include "smb2man_devctl.h"
+#include "smb2auth.h" // modules/iopcore/cdvdman: MD4/MD5/SHA-256 and HMAC, shared with the in-game reader
 
 #ifdef _IOP
 #include <ps2ip.h>
@@ -69,19 +70,19 @@
 #define MODNAME "smb2man"
 IRX_ID(MODNAME, 2, 0);
 
-#define MAX_OPEN_FILES 8
-#define MAX_PATH_LEN   512
+#define MAX_OPEN_FILES     8
+#define MAX_PATH_LEN       512
 // Longest name on the share, in UTF-8 bytes: CREATE carries it as UTF-16 in usmb2's 1 KB buffer.
-#define SMB2MAN_NAME_MAX 440
+#define SMB2MAN_NAME_MAX   440
 // How long the driver waits for the server: a connect, then each reply (a keepalive ECHO waits
 // less). Every wait is bounded, so a dead server can never hold the driver lock for good.
 #define SMB2MAN_CONNECT_MS 5000
 #define SMB2MAN_REPLY_MS   15000
 #define SMB2MAN_ECHO_MS    5000
 // One READ or WRITE moves at most this much (64 KB is the most a single credit covers).
-#define SMB2MAN_IO_MAX 65536
+#define SMB2MAN_IO_MAX     65536
 // Directory listing bytes fetched per QUERY_DIRECTORY, kept with the open directory.
-#define SMB2MAN_DIRBUF 4096
+#define SMB2MAN_DIRBUF     4096
 
 //-------------------------------------------------------------------------
 // Socket calls for usmb2, bounded by smb2man_wait_ms. usmb2 reads and writes the socket with
@@ -122,6 +123,24 @@ static int smb2man_sock_close(int fd)
     return SMB2MAN_CLOSE(fd);
 }
 
+// SMB 2.x request signing (HMAC-SHA256 over the message, keyed by the session base key), with the
+// in-game reader's hashing. Called from usmb2_build_request() under the driver lock.
+static void smb2man_sign(const uint8_t *key, uint8_t *hdr, int hdrlen, const uint8_t *data, int datalen)
+{
+    static smb2auth_hmac_t mac;
+    static u8 digest[32];
+
+    hdr[16] |= 0x08; // SMB2_FLAGS_SIGNED
+    memset(hdr + 48, 0, 16);
+    smb2auth_hmac_init(&mac, SMB2AUTH_SHA256, key, 16);
+    smb2auth_hmac_update(&mac, hdr, hdrlen);
+    if (data != NULL && datalen > 0)
+        smb2auth_hmac_update(&mac, data, datalen);
+    smb2auth_hmac_final(&mac, digest);
+    memcpy(hdr + 48, digest, 16);
+}
+#define USMB2_SIGN(u, hdr, hdrlen, data, datalen) smb2man_sign((u)->session_key, hdr, hdrlen, data, datalen)
+
 #undef read
 #undef write
 #undef close
@@ -151,12 +170,12 @@ static int smb2man_sock_close(int fd)
 //-------------------------------------------------------------------------
 static struct usmb2_context *smb2 = NULL; // the open share's session, or NULL
 static int smb2_sema = -1;
-static int smb2_dialect = 0;              // negotiated for the open share
+static int smb2_dialect = 0; // negotiated for the open share
 static uint32_t io_read_max = SMB2MAN_IO_MAX, io_write_max = SMB2MAN_IO_MAX;
-static unsigned session_gen = 0;          // bumped whenever a session ends; open directories keep it
+static unsigned session_gen = 0; // bumped whenever a session ends; open directories keep it
 
 // LOGON only records the server and credentials: the logon happens when a share is opened.
-static uint32_t conn_ip;     // network order
+static uint32_t conn_ip; // network order
 static int conn_port = 445;
 static char conn_ipstr[16];
 static char conn_user[64];
@@ -177,7 +196,7 @@ static int session_lost = 0;
   that needs the session returns -EBUSY at once instead of queueing behind it.
 */
 static volatile int connect_state = -ENODEV; // SMB2_CONNECT_PENDING, 0, or the OPENSHARE error
-static volatile int worker_busy = 0;          // the worker is connecting
+static volatile int worker_busy = 0;         // the worker is connecting
 static volatile int connect_requested = 0;
 static char pending_share[256];
 static int worker_ok = 0;
@@ -265,6 +284,11 @@ void *calloc(size_t nmemb, size_t size)
 }
 
 //-------------------------------------------------------------------------
+static uint16_t rd16(const uint8_t *p)
+{
+    return (uint16_t)(p[0] | (p[1] << 8));
+}
+
 static uint32_t rd32(const uint8_t *p)
 {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
@@ -391,34 +415,50 @@ static void smb2man_teardown(void)
 }
 
 //-------------------------------------------------------------------------
-// NEGOTIATE offering 2.0.2, 2.1, 3.0 and 3.0.2 (usmb2 offers 3.0 only). Returns the dialect.
-static int smb2man_negotiate(struct usmb2_context *u)
+/*
+  NEGOTIATE offering two dialects, as the in-game reader does: 2.0.2 and 2.1 first, then 3.0 and
+  3.0.2 on a new connection when a server refuses 2.x. 2.x signs with HMAC-SHA256, which is all
+  smb2man implements, so a server that requires signing (Windows 11 24H2) stays on 2.1. Returns the
+  dialect, -2 when the server does not support either, or -1. *sign_required: the server's ask.
+*/
+static int smb2man_negotiate(struct usmb2_context *u, uint16_t d0, uint16_t d1, int *sign_required)
 {
-    static const uint16_t dialects[] = {0x0202, 0x0210, 0x0300, 0x0302};
     uint8_t *p = &u->buf[4 + 64];
-    unsigned i;
+    int dialect;
 
+    u->message_id = 0;
+    u->session_id = 0;
+    u->tree_id = 0;
+    u->signing = 0;
     memset(u->buf, 0, sizeof(u->buf));
-    // StructureSize 36, DialectCount; SecurityMode and Capabilities 0 (no signing, no extras)
-    *(uint32_t *)p = htole32(0x00000024 | (sizeof(dialects) / sizeof(dialects[0])) << 16);
+    // StructureSize 36, DialectCount 2, SecurityMode SIGNING_ENABLED, no capabilities
+    *(uint32_t *)p = htole32(0x00020024);
+    p[4] = 0x01;
     p[12] = 0xaa; // ClientGuid, as usmb2's
     p[27] = 0xbb;
-    for (i = 0; i < sizeof(dialects) / sizeof(dialects[0]); i++) {
-        p[36 + 2 * i] = (uint8_t)dialects[i];
-        p[37 + 2 * i] = (uint8_t)(dialects[i] >> 8);
+    p[36] = (uint8_t)d0;
+    p[37] = (uint8_t)(d0 >> 8);
+    p[38] = (uint8_t)d1;
+    p[39] = (uint8_t)(d1 >> 8);
+
+    if (usmb2_build_request(u, CMD_NEGOTIATE_PROTOCOL, 40, 64, NULL, 0, NULL, 0)) {
+        if (u->fd >= 0 && u->status == 0xC00000BB) // STATUS_NOT_SUPPORTED
+            return -2;
+        return -1;
     }
 
-    if (usmb2_build_request(u, CMD_NEGOTIATE_PROTOCOL, 36 + 2 * i, 64, NULL, 0, NULL, 0))
+    dialect = u->buf[4] | (u->buf[5] << 8);
+    if (dialect != d0 && dialect != d1)
         return -1;
-
-    io_read_max = rd32(&u->buf[28]);
-    io_write_max = rd32(&u->buf[32]);
+    *sign_required = (u->buf[2] & 0x02) ? 1 : 0; // SMB2_NEGOTIATE_SIGNING_REQUIRED
+    io_read_max = rd32(&u->buf[32]);
+    io_write_max = rd32(&u->buf[36]);
     if (io_read_max == 0 || io_read_max > SMB2MAN_IO_MAX)
         io_read_max = SMB2MAN_IO_MAX;
     if (io_write_max == 0 || io_write_max > SMB2MAN_IO_MAX)
         io_write_max = SMB2MAN_IO_MAX;
 
-    return u->buf[4] | (u->buf[5] << 8);
+    return dialect;
 }
 
 // TCP connect with a deadline: non-blocking connect, then wait until the socket is writable.
@@ -461,7 +501,7 @@ static struct usmb2_context *smb2man_connect(int *dialect)
 {
     struct usmb2_context *u;
     char unc[2 + sizeof(conn_ipstr) + 1 + sizeof(conn_share)];
-    int rv;
+    int rv, sign_required = 0;
 
     if (strlen(conn_ipstr) + strlen(conn_share) + 3 > 127) // TREE_CONNECT's path length is one byte
         return NULL;
@@ -480,8 +520,24 @@ static struct usmb2_context *smb2man_connect(int *dialect)
     strcpy(u->username, conn_user[0] ? conn_user : "Guest");
     strcpy(u->password, conn_password);
 
-    rv = smb2man_negotiate(u);
-    if (rv < 0 || usmb2_sessionsetup(u) != 0 || usmb2_treeconnect(u, unc) != 0) {
+    rv = smb2man_negotiate(u, 0x0202, 0x0210, &sign_required);
+    if (rv == -2) {
+        smb2man_sock_close(u->fd);
+        u->fd = smb2man_tcp_connect();
+        rv = u->fd < 0 ? -1 : smb2man_negotiate(u, 0x0300, 0x0302, &sign_required);
+    }
+    // 3.x signs with AES-CMAC, which smb2man does not implement: refuse rather than send unsigned.
+    if (rv >= 0x0300 && sign_required)
+        rv = -1;
+    if (rv >= 0 && usmb2_sessionsetup(u) == 0) {
+        // A guest or null session has no key to sign with; servers do not require it of them.
+        u->signing = (sign_required && !(rd16(&u->buf[2]) & 0x0003)) ? 1 : 0;
+        if (usmb2_treeconnect(u, unc) != 0)
+            rv = -1;
+    } else {
+        rv = -1;
+    }
+    if (rv < 0) {
         if (u->fd >= 0)
             smb2man_sock_close(u->fd);
         free(u);
@@ -646,7 +702,7 @@ static uint8_t smb2man_disposition(int flags)
 {
     if (flags & FIO_O_CREAT) {
         if (flags & FIO_O_EXCL)
-            return 0x02; // FILE_CREATE
+            return 0x02;                            // FILE_CREATE
         return (flags & FIO_O_TRUNC) ? 0x05 : 0x03; // FILE_OVERWRITE_IF : FILE_OPEN_IF
     }
     return (flags & FIO_O_TRUNC) ? 0x04 : 0x01; // FILE_OVERWRITE : FILE_OPEN
@@ -975,7 +1031,9 @@ static void smb2man_name_utf8(char *out, int outmax, const uint8_t *in, int unit
         }
         if (c >= 0xd800 && c < 0xe000)
             c = 0xfffd;
-        n = (c < 0x80) ? 1 : (c < 0x800) ? 2 : (c < 0x10000) ? 3 : 4;
+        n = (c < 0x80) ? 1 : (c < 0x800) ? 2 :
+                         (c < 0x10000)   ? 3 :
+                                           4;
         if (o + n >= outmax)
             break;
         if (n == 1) {
@@ -1078,8 +1136,8 @@ static int smb2man_querydir(struct smb2man_dir *d)
     memset(smb2->buf, 0, sizeof(smb2->buf));
     *(uint32_t *)p = htole32(0x00010021); // StructureSize 33, FileDirectoryInformation, no flags
     memcpy(p + 8, d->fid, 16);
-    p[24] = 0x60;                        // FileNameOffset
-    p[26] = 0x02;                        // FileNameLength: "*" in UTF-16
+    p[24] = 0x60; // FileNameOffset
+    p[26] = 0x02; // FileNameLength: "*" in UTF-16
     *(uint32_t *)(p + 28) = htole32(SMB2MAN_DIRBUF);
     p[32] = '*';
 

@@ -268,6 +268,12 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         buf += 24; /* 16 byte signature is all zero */
 
 
+#ifdef USMB2_SIGN
+        /* RiptOPL: the caller's signing (SMB2_FLAGS_SIGNED, then the signature at 48) */
+        if (usmb2->signing && command != CMD_NEGOTIATE_PROTOCOL && command != CMD_SESSION_SETUP) {
+                USMB2_SIGN(usmb2, &usmb2->buf[4], 64 + commandoutcount, outdata, outdatacount);
+        }
+#endif
         /*
          * Write the request to the socket
          */

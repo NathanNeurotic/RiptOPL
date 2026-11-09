@@ -211,6 +211,13 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
                  NULL, 0,
                  NTOWFv2, 16, &usmb2->buf[4 + 64 + 24 + ntlm_response_offset]);
 
+        /* RiptOPL: the session base key, HMAC_MD5(NTOWFv2, NTProofStr), which signs (no KEY_EXCH) */
+        hmac_md5((struct MD5Context *)&usmb2->buf[0],
+                 NULL,
+                 &usmb2->buf[4 + 64 + 24 + ntlm_response_offset], 16,
+                 NULL, 0,
+                 NTOWFv2, 16, usmb2->session_key);
+
 
         /* Fill in the first 20 bytes of the NTLMSSP buffer */
         memset(&usmb2->buf[4 + 64 + 24 + 8], 0, 12);
