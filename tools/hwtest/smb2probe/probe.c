@@ -37,6 +37,7 @@
 #include <ps2smb.h>
 #include <debug.h>
 #include <elf-loader.h>
+#include <hdd-ioctl.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,6 +79,8 @@ static char back_path[256];
 static SifRpcClientData_t probe_cd __attribute__((aligned(64)));
 static u32 probe_buf[16] __attribute__((aligned(64)));
 static int probe_bound;
+static int net_loaded; // DEV9 is up: power it off before any IOP reset
+static int fx_pending; // a no-wait fileXio call is outstanding
 
 static unsigned int ms_now(void)
 {
@@ -141,6 +144,8 @@ static void plog(const char *fmt, ...)
         return;
     if (n >= (int)sizeof(line))
         n = sizeof(line) - 1;
+    if (scr_getY() > 24) // the debug screen does not scroll: start a new page
+        scr_clear();
     scr_printf("%s", line);
     if (loglen + n < (int)sizeof(logbuf)) {
         memcpy(logbuf + loglen, line, n);
@@ -182,7 +187,36 @@ static int load(const char *name, void *irx, unsigned int size)
     plog("load %-10s id %d ret %d\n", name, id, ret);
     if (probe_bound)
         probe_sample(name);
+    log_flush();                           // a hang after this module still leaves its line on the card
     return (id >= 0 && ret != 1) ? 0 : -1; // ret 1 = MODULE_NO_RESIDENT_END
+}
+
+// Power DEV9 off before the IOP reset, as sysShutdownDev9 does: SMAP left running through a reset
+// can wedge the next IOP boot. Skipped when fileXio is still held or the IOP no longer answers.
+static void dev9_off(void)
+{
+    int rv = -1;
+    unsigned int start;
+
+    if (!net_loaded)
+        return;
+    if (fx_pending || probe_call(PROBE_ALIVE, 0, 1000) < 0) {
+        plog("DEV9 left on: %s\n", fx_pending ? "fileXio still busy" : "IOP not answering");
+        return;
+    }
+    NetManDeinit();
+    fileXioSetBlockMode(FXIO_NOWAIT);
+    fileXioDevctl("dev9x:", DDIOC_OFF, NULL, 0, NULL, 0);
+    start = ms_now();
+    while (fileXioWaitAsync(FXIO_NOWAIT, &rv) != FXIO_COMPLETE) {
+        if ((int)(ms_now() - start) > 2000) {
+            plog("DEV9 off did not answer in 2 s\n");
+            return; // fileXio is now held: leave it in no-wait mode
+        }
+        DelayThread(10 * 1000);
+    }
+    fileXioSetBlockMode(FXIO_WAIT);
+    plog("DEV9 off -> %d\n", rv);
 }
 
 static void go_back(void)
@@ -190,12 +224,14 @@ static void go_back(void)
     char *argv[1];
     unsigned int start;
 
-    log_flush();
     if (back_path[0] == '\0') {
         plog("no back= path: power-cycle the console\n");
+        log_flush();
         SleepThread();
     }
     plog("returning to %s\n", back_path);
+    dev9_off();
+    log_flush(); // the last write: libmc is not re-bound after the reset below
     // fileXio may still be held by a stuck smb2man call, so reset the IOP before reading the ELF,
     // and bound the wait: an IOP that never comes back means a manual reset.
     fileXioExit();
@@ -222,6 +258,8 @@ static void go_back(void)
     SifExecModuleBuffer(mcserv_irx, size_mcserv_irx, 0, NULL, NULL);
     argv[0] = back_path;
     LoadELFFromFile(back_path, 1, argv); // resets the IOP again and starts the ELF; returns only on failure
+    scr_printf("embedded loader could not start %s; trying the BIOS loader\n", back_path);
+    LoadExecPS2(back_path, 0, NULL); // does not return on success
     scr_printf("could not start %s: power-cycle the console\n", back_path);
     SleepThread();
 dead:
@@ -424,7 +462,8 @@ int main(int argc, char *argv[])
     log_flush();
 
     // The menu's network order (src/sources/netsupport.cpp loadModules).
-    if (load("ps2dev9", ps2dev9_irx, size_ps2dev9_irx) < 0 || load("netman", netman_irx, size_netman_irx) < 0)
+    net_loaded = load("ps2dev9", ps2dev9_irx, size_ps2dev9_irx) == 0;
+    if (!net_loaded || load("netman", netman_irx, size_netman_irx) < 0)
         goto out;
     NetManInit();
     load("smsutils", smsutils_irx, size_smsutils_irx);
@@ -433,9 +472,12 @@ int main(int argc, char *argv[])
     load("ps2ips", ps2ips_irx, size_ps2ips_irx);
     load("httpclient", httpclient_irx, size_httpclient_irx);
     ps2ip_init();
+    plog("ps2ip_init done\n");
+    log_flush();
     if (setup_ip(argc, argv) < 0)
         goto out;
     probe_sample("network up");
+    log_flush();
     if (load("smb2man", smb2man_irx, size_smb2man_irx) < 0) {
         plog("smb2man did not load: the menu would fall back to SMB1 here\n");
         goto out;
@@ -459,9 +501,11 @@ int main(int argc, char *argv[])
     strncpy(share.Password, logon.Password, sizeof(share.Password) - 1);
     share.PasswordType = logon.PasswordType;
 
+    fx_pending = 1; // from here the watchdog may interrupt main inside a blocking fileXio call
     rv = fileXioDevctl("smb0:", SMB2_DEVCTL_GETIOPFREE, NULL, 0, mem, sizeof(mem));
     plog("smb2man GETIOPFREE %d: free %u B, largest %u B\n", rv, rv == 0 ? mem[0] : 0, rv == 0 ? mem[1] : 0);
     rv = fileXioDevctl("smb0:", SMB_DEVCTL_LOGON, &logon, sizeof(logon), NULL, 0);
+    fx_pending = 0;
     plog("LOGON %s:%d user '%s' -> %d\n", logon.serverIP, logon.serverPort, logon.User, rv);
     log_flush();
     if (rv < 0)
@@ -472,6 +516,7 @@ int main(int argc, char *argv[])
     log_flush();
     fileXioSetBlockMode(FXIO_NOWAIT);
     fileXioDevctl("smb0:", SMB_DEVCTL_OPENSHARE, &share, sizeof(share), NULL, 0);
+    fx_pending = 1;
     start = ms_now();
     next = start;
     done = 0;
@@ -491,7 +536,9 @@ int main(int argc, char *argv[])
     if (done) {
         fileXioSetBlockMode(FXIO_WAIT);
         plog("OPENSHARE returned %d after %u ms\n", ret, ms_now() - start);
+        log_flush();
         rv = fileXioDevctl("smb0:", SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0);
+        fx_pending = 0;
         plog("dialect 0x%04x\n", rv > 0 ? rv : 0);
         probe_sample("after OPENSHARE");
         plog("VERDICT: OPENSHARE completes here (%s). The freeze needs something only the menu has.\n",
@@ -506,6 +553,7 @@ int main(int argc, char *argv[])
 
 out:
     plog("end at %u ms\n", ms_now());
+    log_flush();
     if (!dog_fired) {
         TerminateThread(dog_tid);
         go_back();

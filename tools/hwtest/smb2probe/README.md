@@ -33,8 +33,13 @@ The probe resets the IOP, so ps2link stops answering during the run.
 - **On screen and on the memory card.** The probe writes everything to the screen and to
   `mc0:/SMB2PROBE.TXT`. The file goes through mcserv's own RPC channel, so it is written even while
   fileXio is stuck.
-- **Back to ps2link.** At the end, `back=` resets the IOP again and starts that ELF. A 120 s EE
-  watchdog does the same whatever state the run is in.
+- **Back to ps2link.** At the end, `back=` powers DEV9 off (as the menu's `sysShutdownDev9` does),
+  resets the IOP and starts that ELF, falling back to the BIOS loader if the embedded one returns.
+  A 120 s EE watchdog does the same whatever state the run is in; it leaves DEV9 on when fileXio is
+  still held, since powering it off would block behind the stuck call.
+- **Checkpoints.** The card copy is rewritten after every module load, after the network comes up,
+  after `OPENSHARE` returns and before the return reset, so a hang leaves its last step on the card.
+  The screen starts a new page when full, since the debug screen does not scroll.
 - **When a reset is needed.** If the IOP does not come back from reset (a true M2), the screen says
   so, and the console needs a power cycle.
 
