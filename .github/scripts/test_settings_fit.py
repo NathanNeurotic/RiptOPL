@@ -4,8 +4,8 @@
   hint bar. diaSettingsFitGap shrinks the gap between rows just enough to fit, never below
   UI_SETTINGS_MIN_GAP, and leaves a page that already fits untouched. Compiled and run below against
   pages of 16 to 30 rows, with the real diaItemHeight / break rules.
-- dialogs.c: Internal HDD (exFAT), USB, MX4SIO and iLink are indented under BDM Devices Start Mode, the
-  way Protocol sits under Network Connectivity.
+- dialogs.c + _base.yml: Internal HDD (exFAT), USB, MX4SIO and iLink are indented under BDM Devices Start
+  Mode, the way Protocol sits under Network Connectivity (six leading spaces in the English string).
 - opl.c/opl.h: the default plasma is near-black to deep blue, and a config that still holds exactly the
   old official-OPL pair (0x28C5F9 over black) is treated as never customised.
 """
@@ -160,9 +160,14 @@ if render:
 
 # --- BDM transports indented under BDM ----------------------------------------------------------------
 
-for label in ('Internal HDD (exFAT)', 'USB', 'MX4SIO', 'iLink'):
-    if '{.label = {"      %s", -1}}' % label not in dialogs_c:
-        failures.append('dialogs.c: "%s" must be indented under BDM Devices Start Mode' % label)
+# The rows' text lives in lng/tmpl/_base.yml (translatable); the six leading spaces are the indent.
+base_yml = read('lng/tmpl/_base.yml')
+for sid, label in (('SOURCE_BDM_HDD', 'Internal HDD (exFAT)'), ('SOURCE_USB', 'USB'),
+                   ('SOURCE_MX4SIO', 'MX4SIO'), ('SOURCE_ILINK', 'iLink')):
+    if '{.label = {NULL, _STR_%s}}' % sid not in dialogs_c:
+        failures.append('dialogs.c: the "%s" row must use _STR_%s' % (label, sid))
+    if '  label: %s\n  string: "      %s"\n' % (sid, label) not in base_yml:
+        failures.append('_base.yml: %s must be "      %s", indented under BDM Devices Start Mode' % (sid, label))
 
 # --- plasma defaults and the old-pair migration ----------------------------------------------------
 
