@@ -186,6 +186,19 @@ jobs:
           "$RUNNER_TEMP/utf16"
       - name: Check an SMB game launch keeps the image's whole file name, from the EE's settings block to the path the game opens (tests/smb2-live/launchname.c)
         run: python3 .github/scripts/test_smb_launch_name.py
+      - name: Check the in-game SMB1 reader's TCP and reply bounds, cut-off reads and ZSO error paths
+        run: |
+          python3 .github/scripts/test_smb1_transport_bounds.py
+          python3 .github/scripts/test_smb_read_closed.py
+          python3 .github/scripts/test_zso_read_errors.py
+      - name: Check in-game SMSTCPIP connect completion, startup failures, receive ordering and socket lifetimes
+        run: |
+          python3 .github/scripts/test_smstcpip_connect_completion.py
+          python3 .github/scripts/test_smstcpip_full_lwip_safety.py
+          python3 .github/scripts/test_smstcpip_netconn_init_failures.py
+          python3 .github/scripts/test_smstcpip_recv_notification_order.py
+          python3 .github/scripts/test_smstcpip_socket_bounds.py
+          python3 .github/scripts/test_smstcpip_socket_lifetime.py
       - name: Check Neutrino argument editing preserves full values and rejects overlong saves
         run: python3 .github/scripts/test_neutrino_args_editor.py
       - name: Check Neutrino launch arguments fit before teardown without dropping tokens
