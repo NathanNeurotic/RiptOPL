@@ -13,7 +13,8 @@ SMB2 share handshake. The mechanisms are described in the campaign RCA (`P0_SMB2
 ## Build
 
 `ps2build` builds the `smb2probe_iop` and `smb2probe` targets with the rest of `ps2.yaml`. CI
-uploads `build/bin/smb2probe*.elf` with the `riptopl-ps2build-*` artifact.
+uploads `build/bin/smb2probe*.elf` as the separate `smb2probe-gcc` and `smb2probe-llvm`
+artifacts. The probe is not part of the `riptopl-ps2build-*` artifacts.
 
 ## Run it (ps2link)
 
@@ -32,7 +33,7 @@ The probe resets the IOP, so ps2link stops answering during the run.
 - **On screen and on the memory card.** The probe writes everything to the screen and to
   `mc0:/SMB2PROBE.TXT`. The file goes through mcserv's own RPC channel, so it is written even while
   fileXio is stuck.
-- **Back to ps2link.** At the end, `back=` resets the IOP again and starts that ELF. A 60 s EE
+- **Back to ps2link.** At the end, `back=` resets the IOP again and starts that ELF. A 120 s EE
   watchdog does the same whatever state the run is in.
 - **When a reset is needed.** If the IOP does not come back from reset (a true M2), the screen says
   so, and the console needs a power cycle.

@@ -17,7 +17,7 @@
 
   Output: the screen, and mc0:/SMB2PROBE.TXT (written through mcserv's own RPC channel, so it still
   works while fileXio is held by smb2man). The IOP is reset first, so ps2link's own stdout is gone
-  for the run; "back=" reloads ps2link at the end, and a watchdog does it after 60 s whatever happens.
+  for the run; "back=" reloads ps2link at the end, and a watchdog does it after 120 s whatever happens.
 */
 
 #define NEWLIB_PORT_AWARE // fileXio is used only for its devctl and no-wait mode
@@ -67,7 +67,7 @@ IRX(smb2probe_iop);
 
 #define LOG_PATH     "/SMB2PROBE.TXT"
 #define OPENSHARE_MS 30000
-#define WATCHDOG_SEC 60
+#define WATCHDOG_SEC 120 // above reset + loads + 15 s link + 15 s DHCP + 30 s OPENSHARE
 #define SAMPLE_MS    500
 
 static char logbuf[24 * 1024];
