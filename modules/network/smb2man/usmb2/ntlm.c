@@ -74,7 +74,9 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
         dn_off = le32toh(*(uint32_t *)&usmb2->buf[offset + 4]);
         ti_len = le16toh(*(uint16_t *)&usmb2->buf[ntlmssp_in_offset + 40]);
         ti_off = le32toh(*(uint32_t *)&usmb2->buf[ntlmssp_in_offset + 44]);
-        if (dn_off > sec_len || domain_name_len > sec_len - dn_off || ti_off > sec_len || ti_len > sec_len - ti_off) {
+        /* ... and aligned as servers send them: the IOP faults on a misaligned halfword or word */
+        if ((sec_off & 3) || (dn_off & 1) || (ti_off & 1) || (domain_name_len & 1) ||
+            dn_off > sec_len || domain_name_len > sec_len - dn_off || ti_off > sec_len || ti_len > sec_len - ti_off) {
                 return -1;
         }
         domain_name = (char *)&usmb2->buf[ntlmssp_in_offset + dn_off];
@@ -99,7 +101,8 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
         /* Copy everything except the trailing EndOfList.
          * The length does not fit in a char: servers in a domain send 130+ bytes.
          * RiptOPL: only within TargetInfoLen. The list also ends where it does without an
-         * EndOfList, and before a pair that overruns it, as the in-game reader ends it.
+         * EndOfList, and before a pair that overruns it, as the in-game reader ends it, or that
+         * has an odd length (the next pair would be misaligned).
          */
         target_info_len = 0;
         while(1) {
@@ -108,7 +111,7 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
                 }
                 at_type = le16toh(*(uint16_t *)&target_info[target_info_len]);
                 at_len = le16toh(*(uint16_t *)&target_info[target_info_len + 2]);
-                if (at_type == 0 || at_len > ti_len - target_info_len - 4) {
+                if (at_type == 0 || (at_len & 1) || at_len > ti_len - target_info_len - 4) {
                         break;
                 }
                 target_info_len += 4 + at_len;

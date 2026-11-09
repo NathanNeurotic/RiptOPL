@@ -28,7 +28,8 @@ What is here
     every request after SESSION_SETUP when signing is on. Upstream does not sign.
   - ntlm.c checks the CHALLENGE's security buffer, TargetName and TargetInfo against the reply
     (usmb2_context.reply_len), walks TargetInfo only within its length (ending it, as the in-game
-    reader does, where it ends without an EndOfList or before a pair that overruns it), and refuses
+    reader does, where it ends without an EndOfList or before a pair that overruns it or has an
+    odd length), refuses misaligned CHALLENGE offsets (the IOP faults on them), and refuses
     an AUTHENTICATE that would not fit in buf; usmb2_sessionsetup() fails on that. Upstream trusted
     the server's offsets and lengths and scanned for the EndOfList without a bound.
   - TREE_CONNECT's PathLength written as 16 bits; usmb2_init_context() refuses credentials that

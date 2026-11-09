@@ -270,7 +270,7 @@
          ntlmssp_out_offset = 4 + 64 + 24;
   
          /* Get offset to start of TargetName */
-@@ -62,7 +71,13 @@
+@@ -62,7 +71,15 @@
  
          /* Grab Target/Domain name from the challenge buffer */
          domain_name_len = le16toh(*(uint16_t *)&usmb2->buf[offset]);
@@ -278,14 +278,16 @@
 +        dn_off = le32toh(*(uint32_t *)&usmb2->buf[offset + 4]);
 +        ti_len = le16toh(*(uint16_t *)&usmb2->buf[ntlmssp_in_offset + 40]);
 +        ti_off = le32toh(*(uint32_t *)&usmb2->buf[ntlmssp_in_offset + 44]);
-+        if (dn_off > sec_len || domain_name_len > sec_len - dn_off || ti_off > sec_len || ti_len > sec_len - ti_off) {
++        /* ... and aligned as servers send them: the IOP faults on a misaligned halfword or word */
++        if ((sec_off & 3) || (dn_off & 1) || (ti_off & 1) || (domain_name_len & 1) ||
++            dn_off > sec_len || domain_name_len > sec_len - dn_off || ti_off > sec_len || ti_len > sec_len - ti_off) {
 +                return -1;
 +        }
 +        domain_name = (char *)&usmb2->buf[ntlmssp_in_offset + dn_off];
          domain_name_offset = 72; /* This is where AUTH ends on pre-2003 */
          user_name_len = strlen(username) * 2;
          user_name_offset = domain_name_len + domain_name_offset;
-@@ -79,20 +94,32 @@
+@@ -79,20 +96,33 @@
           * In the AUTH we are building the LmChallengeResponse data often ends up laid
           * your starting at offset ~110 and the AvPairs are laid out another 16 + 28 bytes into that.
           */
@@ -295,7 +297,8 @@
          /* Copy everything except the trailing EndOfList.
           * The length does not fit in a char: servers in a domain send 130+ bytes.
 +         * RiptOPL: only within TargetInfoLen. The list also ends where it does without an
-+         * EndOfList, and before a pair that overruns it, as the in-game reader ends it.
++         * EndOfList, and before a pair that overruns it, as the in-game reader ends it, or that
++         * has an odd length (the next pair would be misaligned).
           */
          target_info_len = 0;
          while(1) {
@@ -305,7 +308,7 @@
                  at_type = le16toh(*(uint16_t *)&target_info[target_info_len]);
                  at_len = le16toh(*(uint16_t *)&target_info[target_info_len + 2]);
 -                if (at_type == 0) {
-+                if (at_type == 0 || at_len > ti_len - target_info_len - 4) {
++                if (at_type == 0 || (at_len & 1) || at_len > ti_len - target_info_len - 4) {
                          break;
                  }
                  target_info_len += 4 + at_len;
@@ -320,7 +323,7 @@
          offset = 4 + 64 + 24 + ntlm_response_offset + 16 + 28; // AvPairs
          /* The new place overlaps the old one when the TargetInfo is longer than
           * about 144 + user_name_len bytes, so memmove and not memcpy.
-@@ -150,9 +177,10 @@
+@@ -150,9 +180,10 @@
          /*
           * User name
           */
@@ -334,7 +337,7 @@
          }
          *(uint16_t *)&usmb2->buf[ntlmssp_out_offset + 36] = htole16(user_name_len);
          *(uint16_t *)&usmb2->buf[ntlmssp_out_offset + 38] = htole16(user_name_len);
-@@ -178,7 +206,7 @@
+@@ -178,7 +209,7 @@
          MD4Init((MD4_CTX *)&usmb2->buf[0]);
          z = 0;
          while (*password) {
@@ -343,7 +346,7 @@
                  MD4Update((MD4_CTX *)&usmb2->buf[0], &z, 1);
          }
          MD4Final(&usmb2->buf[4 + 64 + 24 + 4], (MD4_CTX *)&usmb2->buf[0]);
-@@ -186,9 +214,9 @@
+@@ -186,9 +217,9 @@
          /* Compute NTOWFv2 */
          /* We don't have enough scratch area to store NTOWFv2 too :-( */
          hmac_md5((struct MD5Context *)&usmb2->buf[0],
@@ -355,7 +358,7 @@
                   &usmb2->buf[4 + 64 + 24 + 4], 16, NTOWFv2);
  
          /*
-@@ -210,6 +238,13 @@
+@@ -210,6 +241,13 @@
                   NULL, 0,
                   NTOWFv2, 16, &usmb2->buf[4 + 64 + 24 + ntlm_response_offset]);
  
