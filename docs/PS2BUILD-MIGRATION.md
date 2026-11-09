@@ -80,11 +80,13 @@ CI (GitHub Actions):
   November 2026 each job asked git.techwritescode.dev's release API for the newest version of 11 packages: about 70
   jobs per push, 20k to 70k requests a day on tech's server.) The SDK cached under the pinned versions is restored; an
   older cached SDK is updated in place (`ps2build update <component> --version <tag>` for what changed); with nothing
-  cached it is installed from the official server. Only when that host fails is the
-  [NathanNeurotic/ps2build-mirror](https://github.com/NathanNeurotic/ps2build-mirror) release named by
+  cached it is installed from the official GitHub releases ([github.com/ps2build](https://github.com/ps2build); the
+  old host git.techwritescode.dev is gone since November 2026). Only when they fail is the private
+  [NathanNeurotic/old-ps2build-mirror](https://github.com/NathanNeurotic/old-ps2build-mirror) release named by
   `PS2BUILD_SDK_TAG` installed, checked against its `SHA256SUMS` (whose own hash is pinned too). With no mirror
   release pinned, the newest one is taken; when it does not hold the pinned versions it gets a warning and is not
-  cached under them. `tools/install_ps2build.sh` adds the ogg/vorbis packages the same way.
+  cached under them. `tools/install_ps2build.sh` adds the ogg/vorbis packages the same way; GitHub has tags but no
+  releases for them, so they come from the mirror release named by `PS2BUILD_EXTRAS_TAG` (else `PS2BUILD_SDK_TAG`).
   `PS2BUILD_HOME`/`PS2DEV_INSTALL_DIR` point at `$GITHUB_WORKSPACE/.ps2dev`.
 - `ps2build-sdk-watch.yml` is the only job that asks the release API: once a week (Mondays, 16:17 UTC), one request
   per package. When something is newer it caches the new SDK on rebuild/main (one install per toolchain, so the ~70
@@ -132,7 +134,7 @@ cdvdfsv, udnl, udnl-t300, smbman, mmceman/mmcedrv/mmceigr, ioptrap, siocookie, g
 freetype, png, z, elf-loader-nocolour, `audio` (+ `audsrv-compat`).
 
 GAPS (must be vendored or built in-repo):
-- `libvorbis`, `libvorbisfile`, `libogg`: not in the SDK, but released at git.techwritescode.dev/ps2/{ogg,vorbis} and mirrored with the SDK; `tools/install_ps2build.sh` installs the newest versions into packages/world.
+- `libvorbis`, `libvorbisfile`, `libogg`: not in the SDK. Once released at git.techwritescode.dev/ps2/{ogg,vorbis}; on GitHub ([ps2build/ogg](https://github.com/ps2build/ogg), [ps2build/vorbis](https://github.com/ps2build/vorbis)) they are tags only, so the mirror carries the packages; `tools/install_ps2build.sh` installs the pinned versions into packages/world.
 - `libwnbdsvr` / lwNBD and `lwnbdsvr.irx`: already fetched by `tools/download_lwNBD.sh`. Pin it
   and build it as in-repo targets.
 - `libaudsrv`: use `audsrv-compat` + `embed_irx: ["audio:audsrv"]`. The SDK audsrv is a different

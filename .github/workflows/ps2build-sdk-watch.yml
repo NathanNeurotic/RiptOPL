@@ -1,11 +1,12 @@
 name: ps2build SDK Watch
 
-# Every build job installs the ps2build SDK pinned in .github/ps2build-sdk.env, so no build job asks
-# git.techwritescode.dev which release is newest. Unpinned, that was 11 release-API requests per matrix job,
-# about 70 jobs per push: 20k to 70k requests a day on tech's server. This watch asks instead, once a week.
+# Every build job installs the ps2build SDK pinned in .github/ps2build-sdk.env, so no build job asks the
+# official ps2build releases (github.com/ps2build) which release is newest. Unpinned, that was 11 release-API
+# requests per matrix job, about 70 jobs per push. This watch asks instead, once a week.
 #
-#   check  .github/scripts/ps2build_sdk_watch.py: one request per pinned name (none for PS2BUILD_SDK_HOLD),
-#          plus a look through the private NathanNeurotic/ps2build-mirror for the release that holds exactly
+#   check  .github/scripts/ps2build_sdk_watch.py: ps2build's release manifest, plus one release-API request per
+#          extra package (none for PS2BUILD_SDK_HOLD), plus a look through the private
+#          NathanNeurotic/old-ps2build-mirror for the release that holds exactly
 #          the newest versions. Nothing newer: the run ends here.
 #   warm   installs the new SDK once per toolchain and caches it on rebuild/main (only what changed is
 #          downloaded, on top of the cached SDK). Pull requests and later rebuild/main runs then restore it

@@ -334,12 +334,32 @@ class InstallPortsTests(unittest.TestCase):
         followed = handler.redirect_request(request, None, 302, "Found", {}, "https://storage.example/asset")
         self.assertEqual(followed.full_url, "https://storage.example/asset")
 
-    def test_mirror_is_not_used_for_a_missing_release_or_when_it_fails_verification(self):
+    def test_a_pinned_package_without_an_official_release_comes_from_the_pinned_mirror_release(self):
+        # ps2build/ogg and ps2build/vorbis publish tags but no GitHub releases.
+        import hashlib
+        data = archive()
+        sums = f"{hashlib.sha256(data).hexdigest()}  ogg-v1-gcc.zip\n".encode()
+        missing = ports.urllib.error.HTTPError(ports.HOST + "/ogg", 404, "missing", None, None)
+        with tempfile.TemporaryDirectory() as directory, patch.dict(ports.os.environ, self.mirror_env(sums)):
+            with patch.object(ports, "download", side_effect=[missing, sums, data]) as fetched:
+                ports.install(Path(directory), "ogg", "gcc")
+            self.assertEqual(fetched.call_args_list[0].args[0], "https://api.github.com/repos/ps2build/ogg/releases/tags/v1")
+        # PS2BUILD_EXTRAS_TAG names the release that holds the packages, ahead of the SDK's own release.
+        extras = self.mirror_env(sums, PS2BUILD_SDK_TAG="sdk-without-packages", PS2BUILD_SDK_SUMS_SHA256="0" * 64,
+                                 PS2BUILD_EXTRAS_TAG="sdk-v1-abcd", PS2BUILD_EXTRAS_SUMS_SHA256=hashlib.sha256(sums).hexdigest(),
+                                 PS2BUILD_SDK_MIRROR_URL="")
+        with tempfile.TemporaryDirectory() as directory, patch.dict(ports.os.environ, extras):
+            with patch.object(ports, "download", side_effect=[missing, sums, data]) as fetched:
+                ports.install(Path(directory), "ogg", "gcc")
+            self.assertTrue(fetched.call_args_list[1].args[0].endswith("/releases/download/sdk-v1-abcd/SHA256SUMS"))
+
+    def test_mirror_is_not_used_for_a_missing_unpinned_release_or_when_it_fails_verification(self):
         import hashlib
         data = archive()
         missing = ports.urllib.error.HTTPError(ports.HOST + "/api", 404, "missing", None, None)
         with tempfile.TemporaryDirectory() as directory, \
-                patch.dict(ports.os.environ, self.mirror_env(f"{hashlib.sha256(data).hexdigest()}  ogg-v1-gcc.zip\n".encode())):
+                patch.dict(ports.os.environ, self.mirror_env(f"{hashlib.sha256(data).hexdigest()}  ogg-v1-gcc.zip\n".encode(),
+                                                             OGG_VERSION="latest")):
             with patch.object(ports, "download", side_effect=[missing]), self.assertRaises(ports.urllib.error.HTTPError):
                 ports.install(Path(directory), "ogg", "gcc")
         outage = ports.urllib.error.HTTPError(ports.HOST + "/api", 521, "origin down", None, None)

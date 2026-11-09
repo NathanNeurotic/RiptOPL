@@ -10,7 +10,7 @@ PIN="${PS2BUILD_SDK_PIN:-$ROOT/.github/ps2build-sdk.env}"
 
 # shellcheck disable=SC1090
 . "$PIN"
-export PS2BUILD_SDK_MIRROR PS2BUILD_SDK_TAG PS2BUILD_SDK_SUMS_SHA256
+export PS2BUILD_SDK_MIRROR PS2BUILD_SDK_TAG PS2BUILD_SDK_SUMS_SHA256 PS2BUILD_EXTRAS_TAG PS2BUILD_EXTRAS_SUMS_SHA256
 export OGG_VERSION VORBIS_VERSION
 
 # CI installs the SDK with tools/ps2build_sdk.sh first. Locally, only bootstrap a missing SDK:
