@@ -27,6 +27,7 @@
 #define _GNU_SOURCE
 #endif
 #include <stdint.h>
+#include <stddef.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -171,6 +172,8 @@ static void smb2man_sign(const uint8_t *key, uint8_t *hdr, int hdrlen, const uin
 #define write(a, b, c) smb2man_sock_write(a, b, c)
 #define close(a)       smb2man_sock_close(a)
 #include "usmb2/usmb2.c"
+// The IOP faults on misaligned word and halfword access, which usmb2 makes all over buf.
+_Static_assert(offsetof(struct usmb2_context, buf) % 8 == 0, "usmb2_context.buf must stay aligned");
 #undef read
 #undef write
 #undef close
