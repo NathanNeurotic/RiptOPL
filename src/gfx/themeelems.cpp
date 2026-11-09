@@ -1739,13 +1739,13 @@ image_texture_t *thmWallpaperLoad(void)
     snprintf(file, sizeof(file), "%s.png", path);
     int fd = open(file, O_RDONLY);
     if (fd < 0) {
-        guiShowToast(_l(_STR_WALLPAPER_MISSING));
+        host::ui().toastId(_STR_WALLPAPER_MISSING);
         return NULL;
     }
     int got = read(fd, header, sizeof(header));
     close(fd);
     if (!texPngHeaderIsSmallT8(header, got, THM_WALLPAPER_MAX_SIDE)) {
-        guiShowToast(_l(_STR_WALLPAPER_REJECTED));
+        host::ui().toastId(_STR_WALLPAPER_REJECTED);
         return NULL;
     }
 
@@ -1754,7 +1754,7 @@ image_texture_t *thmWallpaperLoad(void)
         return NULL;
     if (texDiscoverLoad(&wallpaper->source, path, -1) < 0 || wallpaper->source.PSM != GS_PSM_T8) {
         freeImageTexture(wallpaper); // frees what a partial load left
-        guiShowToast(_l(_STR_WALLPAPER_REJECTED));
+        host::ui().toastId(_STR_WALLPAPER_REJECTED);
         return NULL;
     }
     return wallpaper;

@@ -66,6 +66,7 @@ public:
         return guiMsgBox(text, 1, NULL);
     }
     void drawBackgroundPlasma() override { guiDrawBGPlasma(); }
+    void toastId(int strId) override { guiShowToast(_l(strId)); }
     void lock() override { guiLock(); }
     void unlock() override { guiUnlock(); }
 };
