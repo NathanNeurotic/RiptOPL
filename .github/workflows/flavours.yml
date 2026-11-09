@@ -92,6 +92,7 @@ jobs:
           python3 .github/scripts/test_bdm_private_allocation.py
           python3 .github/scripts/test_ilink_readiness.py
           python3 .github/scripts/test_ps2_logo_validation.py
+          python3 .github/scripts/test_save_icon_set.py
           python3 .github/scripts/test_bdm_read_alignment.py
       - name: Check both i.LINK drivers (bus reset, LOGIN, retries, status matching, SCSI) and the POPStarter pair
         run: |
