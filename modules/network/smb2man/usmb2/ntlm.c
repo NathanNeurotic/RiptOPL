@@ -150,9 +150,10 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
         /*
          * User name
          */
-        for(at_type = 0; at_type < user_name_len;) {
-                usmb2->buf[4 + 64 + 24 + user_name_offset + at_type++] = username[at_type >> 1];
-                usmb2->buf[4 + 64 + 24 + user_name_offset + at_type++] = 0;
+        /* RiptOPL: two separate stores; upstream read and incremented at_type unsequenced */
+        for(at_type = 0; at_type < user_name_len; at_type += 2) {
+                usmb2->buf[4 + 64 + 24 + user_name_offset + at_type] = username[at_type >> 1];
+                usmb2->buf[4 + 64 + 24 + user_name_offset + at_type + 1] = 0;
         }
         *(uint16_t *)&usmb2->buf[ntlmssp_out_offset + 36] = htole16(user_name_len);
         *(uint16_t *)&usmb2->buf[ntlmssp_out_offset + 38] = htole16(user_name_len);

@@ -8,7 +8,7 @@ Licence:   MIT (see LICENSE)
 
 What is here
 - usmb2.c/h, ntlm.c/h, md4c.c, md4.h, hmac-md5.c/h, md5.c/h, unicode.c/h, README, LICENSE.
-- riptopl.patch: the local changes to usmb2.c, usmb2.h and unicode.c, applied in this copy
+- riptopl.patch: the local changes to usmb2.c, usmb2.h, unicode.c and ntlm.c, applied in this copy
   (git apply -p1 riptopl.patch on a clean upstream checkout):
   - USMB2_SIZE 1024 (512 upstream), and CREATE's NameLength and FileRenameInformation's
     FileNameLength written as 16 bits (one byte upstream): names up to 440 bytes, not 127.
@@ -18,6 +18,8 @@ What is here
     reads the final one; upstream returned the interim status and desynchronised.
   - unicode.c l1() takes an unsigned char: with a signed char every UTF-8 byte >= 0x80 was a
     left shift of a negative value (undefined behaviour).
+  - ntlm.c writes the user name's UTF-16 bytes as two separate stores; upstream read and
+    incremented the index in one unsequenced expression (undefined behaviour, harmless as built).
 
 What is omitted
 - ps2iop-device.c, ps2smb2.h, ps2-usmb2-cat.c: upstream's own PS2 driver (the ps2smb2.h
