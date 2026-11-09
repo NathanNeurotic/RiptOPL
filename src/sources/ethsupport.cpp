@@ -25,7 +25,7 @@
 #include "include/mmcesupport.h"  // mmceSendGameID() cross-device game-id (#261)
 #include "include/ps2sdkapi_compat.h"
 #include "modules/iopcore/common/cdvd_config.h"
-#include "modules/network/smb2man/smb2man_devctl.h" // SMB2_DEVCTL_GETDIALECT
+#include "modules/network/smb2man/smb2man_devctl.h" // SMB2_DEVCTL_GETDIALECT, SMB2_DEVCTL_GETIOPFREE
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDevctl(dev, SMB_***)
@@ -35,6 +35,18 @@
 #include "httpclient.h"
 
 EthSupport gEthSupport;
+
+// Breadcrumb: IOP RAM left when the SMB2 handshake starts and when the share answers. libsmb2 and
+// lwIP allocate per request; a short heap is the leading suspect for the SMB2 menu freeze.
+static void smb2LogIopFree(const char *base, const char *stage)
+{
+    u32 mem[2] = {0, 0};
+    int rv = fileXioDevctl(base, SMB2_DEVCTL_GETIOPFREE, NULL, 0, mem, sizeof(mem));
+    if (rv == 0)
+        diagLog("SMB2 init: IOP free %u B, largest block %u B (%s)", (unsigned)mem[0], (unsigned)mem[1], stage);
+    else
+        diagLog("SMB2 init: IOP free query returned %d (%s)", rv, stage);
+}
 
 void EthSupport::smbConnect(void)
 {
@@ -90,8 +102,10 @@ void EthSupport::smbConnect(void)
         openshare.PasswordType = NO_PASSWORD;
     }
 
-    if (gSMBDialect == SMB_DIALECT_V2)
+    if (gSMBDialect == SMB_DIALECT_V2) {
+        smb2LogIopFree(base_, "before LOGON");
         diagLog("SMB2 init: LOGON devctl enter");
+    }
     result = fileXioDevctl(base_, SMB_DEVCTL_LOGON, (void *)&logon, sizeof(logon), NULL, 0);
     if (gSMBDialect == SMB_DIALECT_V2)
         diagLog("SMB2 init: LOGON devctl returned %d", result);
@@ -123,8 +137,10 @@ void EthSupport::smbConnect(void)
                 if (gSMBDialect == SMB_DIALECT_V2)
                     diagLog("SMB2 init: OPENSHARE devctl enter");
                 int shareResult = fileXioDevctl(base_, SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0);
-                if (gSMBDialect == SMB_DIALECT_V2)
+                if (gSMBDialect == SMB_DIALECT_V2) {
                     diagLog("SMB2 init: OPENSHARE devctl returned %d", shareResult);
+                    smb2LogIopFree(base_, "after OPENSHARE");
+                }
                 if (shareResult >= 0) {
                     // everything is ok
                     gNetworkStartup = 0;
