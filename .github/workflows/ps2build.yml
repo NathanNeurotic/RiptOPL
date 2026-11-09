@@ -6,6 +6,11 @@ on:
     branches: [ps2build, rebuild/main, "claude/**"]
   pull_request:
   workflow_dispatch: # ps2build-sdk-watch.yml starts it on its pull request's branch
+    inputs:
+      mirror-drill:
+        description: Install without the SDK cache and with the official host unreachable, to prove the mirror fallback
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -37,6 +42,7 @@ jobs:
         id: sdk
         run: sh tools/ps2build_sdk.sh --resolve ${{ matrix.toolchain == 'llvm' && '--llvm' || '' }} "$RUNNER_TEMP/ps2build-sdk.env"
       - name: Restore the ps2build SDK
+        if: ${{ !inputs.mirror-drill }}
         id: sdk-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -46,13 +52,15 @@ jobs:
       - name: Install the ps2build SDK
         env:
           PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
+          # The drill sends the CLI download to a closed port, so the official attempt fails and the mirror installs.
+          PS2BUILD_SDK_OFFICIAL_URL: ${{ inputs.mirror-drill && 'https://127.0.0.1:9' || '' }}
         run: sh tools/ps2build_sdk.sh ${{ matrix.toolchain == 'llvm' && '--llvm' || '' }} "$PS2BUILD_HOME"
       - name: Install matching ogg/vorbis packages (not shipped by the SDK)
         env:
           PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
         run: tools/install_ps2build.sh
       - name: Cache the ps2build SDK
-        if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
+        if: ${{ !inputs.mirror-drill && steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
