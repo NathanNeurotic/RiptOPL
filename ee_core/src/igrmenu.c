@@ -594,11 +594,11 @@ static int igrmFindFrame(void)
 
     // No DISPFB write recorded. The tracker's breakpoint (BPC 0x20280000: DUE, DKE, no DXE) does not trap a store
     // made with EXL set, so a game that flips its buffers from a VSync / INTC handler is never seen; nor is one that
-    // turned the breakpoint off, nor any game in PCSX2 (no data breakpoints). Rather than leave at once, show a frame
+    // turned the breakpoint off. Rather than leave at once, show a frame
     // of our own: FBP 0 (the first buffer of nearly every game) as 640 wide CT32, the panel drawn in that same format,
     // so it reads whatever the game kept there. A DISPLAY the game wrote from its own code still sizes it.
-    // IGR_MenuRun writes DISPFB1/2 once the breakpoint is off; the game's next flip after RESUME puts its own
-    // display back (it flips, or the tracker would have seen it).
+    // IGR_MenuRun writes DISPFB1/2 once the breakpoint is off. Its own setting comes back only when the game writes
+    // DISPFB again after RESUME (a game that flips does so every frame); the old value cannot be read back.
     if (own)
         fb = IGRM_OWN_DISPFB;
     if (fb == 0)
@@ -624,6 +624,9 @@ static int igrmFindFrame(void)
             dh = (((u32)(disp >> 12) & 0x7ff) >= 64) ? 576 : 480;
         if (dh > 0 && dh <= 1024)
             h = dh;
+    } else if (own) {
+        // how wide the game shows its frame is unknown: a panel that fits a 320 wide picture fits any
+        w = 320;
     }
     if ((smode2 & 3) == 3) // interlaced FRAME mode: the buffer holds one field
         h /= 2;
@@ -855,8 +858,8 @@ static int igrmHoldSave(u32 *pkt)
     return 1;
 }
 
-// The held pixels back over the panel, then the buffer back to the module
-static void igrmHoldBack(u32 *pkt)
+// The held pixels back over the panel, then the buffer back to the module. Returns 0 when a line did not go back
+static int igrmHoldBack(u32 *pkt)
 {
     u32 lb = PW * igrmSx * igrmBpp, h = PH * igrmSy, y;
 
@@ -864,6 +867,7 @@ static void igrmHoldBack(u32 *pkt)
         if (IGR_MboxSend(y * lb, pkt + 28, lb) != (int)lb || !igrmSendLine(pkt, y))
             break;
     IGR_MboxEnd();
+    return y == h;
 }
 
 // GSM's data breakpoint (the passive tracker, or GSM itself) traps stores to GS registers. While the game is paused
@@ -932,7 +936,7 @@ int IGR_MenuRun(u16 (*buttons)(void))
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
-    // frameHeld, until igrmHoldSave sets it: 2 when the menu shows a frame of its own
+    // frameHeld: 1 the game's frame, 2 the menu's own; 0 once igrmHoldSave found no copy of the game's to keep
     frameHeld = igrmFindFrame();
     if (!frameHeld)
         return IGR_MENU_NO_FRAME;
@@ -957,7 +961,14 @@ int IGR_MenuRun(u16 (*buttons)(void))
 
     // silence first, then the pixels the panel will cover, so RESUME gives back the frame and the sound as they were
     IGR_MboxHush();
-    frameHeld = igrmHoldSave(pkt);
+    if (!igrmHoldSave(pkt)) {
+        // the menu's own frame may lie over what the game keeps there (textures): no drawing without a copy to give back
+        if (frameHeld == 2) {
+            result = IGR_MENU_NO_FRAME;
+            goto done;
+        }
+        frameHeld = 0;
+    }
 
     config->ExitPath[CORE_EXIT_PATH_MAX_LEN - 1] = '\0';
     info.confirmCircle = config->IgrConfirmCircle;
@@ -1100,8 +1111,9 @@ int IGR_MenuRun(u16 (*buttons)(void))
         t = igrmCount();
         while (buttons() && igrmCount() - t < 3 * IGRM_SECOND)
             ;
-        if (frameHeld) // the frame as it was, then the sound, as the game goes on
-            igrmHoldBack(pkt);
+        // the frame as it was, then the sound, as the game goes on; the menu's own frame not given back whole resets
+        if (frameHeld && !igrmHoldBack(pkt) && frameHeld == 2)
+            result = IGR_MENU_DRAW_FAILED;
         IGR_MboxWake();
     }
 

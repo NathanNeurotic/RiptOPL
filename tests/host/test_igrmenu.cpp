@@ -209,13 +209,13 @@ int main()
     igrmTestPage(&in, 0, 2, 0, 1, 1, rgb); // all of them
     CHECK(count_colour(rgb, PW * PH, C_GOLD) > 10);
 
-    // ---- the frame: nothing recorded (an interrupt-handler flip, PCSX2) opens on a frame of the menu's own
+    // ---- the frame: nothing recorded (an interrupt-handler flip) opens on a frame of the menu's own
     memset(GSMSourceGSRegs, 0, sizeof(GSMSourceGSRegs));
     memset(GSMSourceSetGsCrt, 0, sizeof(GSMSourceSetGsCrt));
     CHECK(igrmFindFrame() == 2);
     CHECK(igrmBp == 0 && igrmBw == 10 && igrmPsm == 0 && igrmBpp == 4);
-    CHECK(igrmSx == 2 && igrmSy == 1); // 640 x 224: room for twice the panel's width, not its height
-    CHECK(igrmX == (640 - PW * 2) / 2 && igrmY == (224 - PH) / 2);
+    CHECK(igrmSx == 1 && igrmSy == 1); // shown width unknown: the panel fits a 320 wide picture
+    CHECK(igrmX == (320 - PW) / 2 && igrmY == (224 - PH) / 2);
     // a DISPLAY the game wrote from its own code still sizes that frame: 512 x 448 shown, the panel at scale 2
     GSMSourceGSRegs[SRC_PMODE] = 1;
     GSMSourceGSRegs[SRC_DISPLAY1] = display(636, 50, 4, 0, 2559, 447);
