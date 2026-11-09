@@ -95,16 +95,16 @@ Each channel carries exactly these assets (the app/ELF names differ for RA):
 
 - `RIPTOPL-<edition>.zip`: full install kit, including APPS, matching ART, app
   PSU, POPS/BDMA variants, licensed Ember, official Neutrino plus the UDPFS IMG
-  config, external-tool shortcuts, license, credits, the libsmb2 licence and manifest.
+  config, external-tool shortcuts, license, credits, the usmb2 licence and manifest.
 - `RIPTOPL.ELF` / `RIPTOPL-RA.ELF`: the exact packed loader used in that kit.
 - `APP_RIPTOPL.psu` / `APP_RIPTOPL-RA.psu`: only the app's direct files, with
   deterministic SAS timestamps and metadata matching the packaged ELF.
 - `RIPTOPL-src.zip`: Git's source archive of the exact built commit.
 - `RIPTOPL-LANGS.zip`: every translation and the font its script needs, one folder per language.
-- `LICENSE-LIBSMB2.txt`: the GNU LGPL-2.1 licence of [libsmb2](https://github.com/sahlberg/libsmb2),
+- `LICENSE-USMB2.txt`: the MIT licence of [usmb2](https://github.com/sahlberg/usmb2),
   by [Ronnie Sahlberg](https://github.com/sahlberg), which every loader embeds for SMB2 browsing.
   The kit and the VARIANTS, DEBUG and RA-VARIANTS zips carry the same file; the bug-report zip
-  carries the same text under `licenses/libsmb2/`.
+  carries the same text under `licenses/usmb2/`.
 - `BUILD-MANIFEST.json` and `SHA256SUMS.txt`: build identity and asset checksums.
 
 The Korium and IncebtIon channels also carry `RIPTOPL-VARIANTS.zip` (pademu0, ds5, extras, extras_ds5)

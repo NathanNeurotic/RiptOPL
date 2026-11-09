@@ -22,7 +22,7 @@ CHANNEL = "release-lite"
 TAG = LITES[LITE]["tag"]
 assert LITES[LITE_RA]["tag"] == TAG
 # The RA kit entries an RA lite ZIP takes (everything under neutrino/, plus these).
-RA_KIT_FILES = ("xeRAbora.url", "LICENSE-MBEDTLS.txt", "LICENSE-LIBSMB2.txt", "LICENSE", "CREDITS")
+RA_KIT_FILES = ("xeRAbora.url", "LICENSE-MBEDTLS.txt", "LICENSE-USMB2.txt", "LICENSE", "CREDITS")
 ISSUES = "https://github.com/NathanNeurotic/RiptOPL/issues"
 
 RA_README = """RiptOPLite RetroAchievements {title}, {version}
@@ -40,7 +40,7 @@ What is in this ZIP
   RetroAchievements install kit puts it.
 - xeRAbora.url: the PC companion RetroAchievements reports to.
 - LICENSE, CREDITS and the LICENSE-*.txt files: the licences of RiptOPL and of the code this loader
-  embeds (mbedTLS, libsmb2) and ORBIT's runtime (neutrino/LICENSE).
+  embeds (mbedTLS, usmb2) and ORBIT's runtime (neutrino/LICENSE).
 
 This build carries no drivers for other devices. It reads its settings where the full loader keeps
 them, unless that is a device it has no drivers for; a memory card or a USB stick always works. It
@@ -121,7 +121,7 @@ def assemble(root, sha, compiler="gcc"):
     versions = {_common_version(m) for m in manifests.values()} | {_common_version(korium)}
     if len(versions) != 1:
         raise ValueError(f"lite builds carry different versions: {sorted(versions)}")
-    (path / "LICENSE-LIBSMB2.txt").write_bytes((root / "release-korium" / "LICENSE-LIBSMB2.txt").read_bytes())
+    (path / "LICENSE-USMB2.txt").write_bytes((root / "release-korium" / "LICENSE-USMB2.txt").read_bytes())
     channel = {"repository": "NathanNeurotic/RiptOPL", "source_commit": sha, "edition": "lite",
                "version": korium["version"], "ps2build_version": korium["ps2build_version"], "builds": manifests}
     (path / "BUILD-MANIFEST.json").write_text(json.dumps(channel, indent=2) + "\n", encoding="utf-8")
@@ -131,7 +131,7 @@ def assemble(root, sha, compiler="gcc"):
 
 
 def expected_assets():
-    names = {"BUILD-MANIFEST.json", "LICENSE-LIBSMB2.txt"}
+    names = {"BUILD-MANIFEST.json", "LICENSE-USMB2.txt"}
     for device in DEVICES:
         names |= {elf_name(device), elf_name(device, ra=True).replace(".ELF", ".zip")}
     return names

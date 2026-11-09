@@ -434,11 +434,11 @@ jobs:
           } > BUILD-MANIFEST.txt 2>/dev/null || true
           cat BUILD-MANIFEST.txt || true
 
-      # The loader embeds smb2man over libsmb2 (LGPL-2.1), so its licence travels with the artifact, with
-      # CREDITS, which says the loader uses libsmb2 under that licence (LGPL-2.1 section 6).
-      - name: Put the libsmb2 licence beside the loader
+      # The loader embeds smb2man over usmb2 (MIT), so its licence travels with the artifact, with
+      # CREDITS, which says the loader uses usmb2 under that licence (MIT asks for its notice in every copy).
+      - name: Put the usmb2 licence beside the loader
         if: ${{ success() }}
-        run: cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt LICENSE-LIBSMB2.txt
+        run: cp -f modules/network/smb2man/usmb2/LICENSE LICENSE-USMB2.txt
 
       - name: Upload ELF
         if: ${{ success() }}
@@ -451,6 +451,6 @@ jobs:
           path: |
             build/bin/riptopl-packed.elf
             BUILD-MANIFEST.txt
-            LICENSE-LIBSMB2.txt
+            LICENSE-USMB2.txt
             CREDITS
           if-no-files-found: error

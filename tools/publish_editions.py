@@ -44,10 +44,10 @@ BUGREPORT_README = Path(__file__).resolve().parent / "BUGREPORT-README.txt"
 ISSUES = "https://github.com/NathanNeurotic/RiptOPL/issues"
 ROOT = Path(__file__).resolve().parents[1]
 # What the bug-report zip carries besides the ELF: RiptOPL's own licence and credits, and the licence of
-# libsmb2 (LGPL-2.1), which the embedded smb2man driver is built on and which asks to travel with a binary.
+# usmb2 (MIT), which the embedded smb2man driver is built on and which asks to travel with a binary.
 BUGREPORT_LICENCES = {"LICENSE": "LICENSE", "CREDITS": "CREDITS",
-                      "licenses/libsmb2/LICENCE-LGPL-2.1.txt": "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt",
-                      "licenses/libsmb2/VENDORED.txt": "modules/network/smb2man/libsmb2/VENDORED.txt"}
+                      "licenses/usmb2/LICENSE": "modules/network/smb2man/usmb2/LICENSE",
+                      "licenses/usmb2/VENDORED.txt": "modules/network/smb2man/usmb2/VENDORED.txt"}
 
 
 def archives(options):
@@ -81,8 +81,8 @@ def check_unpacked_layout(elf):
 BUNDLE_README = ("RiptOPL {title} configuration builds. Each folder holds one {elf} and the manifest it was\n"
                  "built from; replace the ELF of an existing {title} install to use one. What each configuration\n"
                  "changes: https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md\n"
-                 "Every loader embeds libsmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\n"
-                 "GNU LGPL-2.1; its licence is LICENSE-LIBSMB2.txt beside this file.\n")
+                 "Every loader embeds usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\n"
+                 "MIT licence; its licence is LICENSE-USMB2.txt beside this file.\n")
 
 
 # GitHub's release API intermittently answers 5xx for longer than a few seconds. Retries are
@@ -154,8 +154,8 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler="gcc"):
                     bundle.writestr(f"{configuration}/{elf_name}", elf)
                     bundle.writestr(f"{configuration}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
                 bundle.writestr("README.txt", BUNDLE_README.format(title=EDITIONS[edition]["title"], elf=elf_name))
-                # Each loader embeds libsmb2 (LGPL-2.1): the bundle carries the licence the kit ships.
-                bundle.writestr("LICENSE-LIBSMB2.txt", (path / "LICENSE-LIBSMB2.txt").read_bytes())
+                # Each loader embeds usmb2 (MIT): the bundle carries the licence the kit ships.
+                bundle.writestr("LICENSE-USMB2.txt", (path / "LICENSE-USMB2.txt").read_bytes())
             add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
         if BUGREPORT in archives(options):
             bundle_bug_report(root, edition, expected_sha, compiler=compiler)
@@ -215,7 +215,7 @@ def verify(root, expected_sha, *, editions=None, compiler="gcc"):
         elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
         psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
         required = {elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", f"RIPTOPL-{options['title']}.zip",
-                    "LICENSE-LIBSMB2.txt"}
+                    "LICENSE-USMB2.txt"}
         required |= {f"RIPTOPL-{name}.zip" for name in archives(options)}
         if set(sums) != required or actual != required | {"SHA256SUMS.txt"}:
             raise ValueError(f"unexpected release inventory: {edition}")
@@ -230,8 +230,8 @@ def verify(root, expected_sha, *, editions=None, compiler="gcc"):
             app_name = "APP_RIPTOPL-RA" if options["ra"] else "APP_RIPTOPL"
             if kit.read(f"APPS/{app_name}/{elf}") != (path / elf).read_bytes() or kit.read(psu) != (path / psu).read_bytes():
                 raise ValueError("standalone assets differ from the verified install kit")
-            if kit.read("LICENSE-LIBSMB2.txt") != (path / "LICENSE-LIBSMB2.txt").read_bytes():
-                raise ValueError("install kit carries a different libsmb2 licence than the standalone download")
+            if kit.read("LICENSE-USMB2.txt") != (path / "LICENSE-USMB2.txt").read_bytes():
+                raise ValueError("install kit carries a different usmb2 licence than the standalone download")
         candidates.append((edition, options, path, sums))
     if any(suite != suites[0] for suite in suites[1:]):
         raise ValueError("editions resolved different SDK suites; rebuild them together before publication")
@@ -345,10 +345,10 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
         + f"- [Loader ELF]({downloads}/{elf}) - update an existing installation.\n"
         f"- [Memory-card app]({downloads}/{psu}) - PSU import.\n"
         # The standalone ELF and PSU go out as single files: this line is their notice that the loader uses
-        # libsmb2 under the LGPL-2.1 (section 6), and it links the licence published beside them.
-        f"- [libsmb2 licence]({downloads}/LICENSE-LIBSMB2.txt) - every loader embeds "
-        "[libsmb2](https://github.com/sahlberg/libsmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
-        "used under the GNU LGPL-2.1.\n"
+        # usmb2 under the MIT licence, whose notice must travel with copies, and it links the licence published beside them.
+        f"- [usmb2 licence]({downloads}/LICENSE-USMB2.txt) - every loader embeds "
+        "[usmb2](https://github.com/sahlberg/usmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
+        "used under the MIT licence.\n"
         f"- [Languages]({downloads}/RIPTOPL-LANGS-{version}.zip) - translations and their fonts.\n"
         + "".join(f"- [{name.replace('-', ' ').title().replace('Ra ', 'RA ')}]({downloads}/RIPTOPL-{name}-{version}.zip) - {what}.\n"
                   for name, _, what in bundles(options))
