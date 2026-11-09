@@ -15,8 +15,9 @@
   single RPC thread is never held for a network handshake).
 
   Compared with the libsmb2-based driver it replaces (about 150 KB resident, this is a small
-  fraction of that): no message signing, so a server that requires signing (Windows 11 24H2 by
-  default, Samba with "server signing = mandatory") refuses the share; no share list (the share
+  fraction of that): SMB 2.x message signing when the server requires it (Windows 11 24H2 by
+  default, Samba with "server signing = mandatory"): requests are signed and replies verified, and a
+  3.x server that requires signing is refused; no share list (the share
   name must be set in Network Settings); the server must be given as an IP address (the menu
   resolves NetBIOS names itself); names on the share up to 440 bytes.
 
@@ -147,23 +148,54 @@ static int smb2man_sock_close(int fd)
     return SMB2MAN_CLOSE(fd);
 }
 
-// SMB 2.x request signing (HMAC-SHA256 over the message, keyed by the session base key), with the
-// in-game reader's hashing. Called from usmb2_build_request() under the driver lock.
+// SMB 2.x signing (HMAC-SHA256 over the message, keyed by the session base key), with the in-game
+// reader's hashing. Called from usmb2_build_request() under the driver lock: a request is signed
+// whole before its reply is read, so the two share one context.
+static smb2auth_hmac_t smb2man_mac;
+static u8 smb2man_digest[32], smb2man_reply_sig[16];
+
 static void smb2man_sign(const uint8_t *key, uint8_t *hdr, int hdrlen, const uint8_t *data, int datalen)
 {
-    static smb2auth_hmac_t mac;
-    static u8 digest[32];
+    smb2auth_hmac_t *mac = &smb2man_mac;
+    u8 *digest = smb2man_digest;
 
     hdr[16] |= 0x08; // SMB2_FLAGS_SIGNED
     memset(hdr + 48, 0, 16);
-    smb2auth_hmac_init(&mac, SMB2AUTH_SHA256, key, 16);
-    smb2auth_hmac_update(&mac, hdr, hdrlen);
+    smb2auth_hmac_init(mac, SMB2AUTH_SHA256, key, 16);
+    smb2auth_hmac_update(mac, hdr, hdrlen);
     if (data != NULL && datalen > 0)
-        smb2auth_hmac_update(&mac, data, datalen);
-    smb2auth_hmac_final(&mac, digest);
+        smb2auth_hmac_update(mac, data, datalen);
+    smb2auth_hmac_final(mac, digest);
     memcpy(hdr + 48, digest, 16);
 }
 #define USMB2_SIGN(u, hdr, hdrlen, data, datalen) smb2man_sign((u)->session_key, hdr, hdrlen, data, datalen)
+
+// A reply on a signed session: refused unless it is signed (SMB2_FLAGS_SIGNED), then its 64-byte header,
+// signature zeroed, starts the HMAC that usmb2_build_request() feeds every byte it reads after it.
+static int smb2man_verify_begin(const uint8_t *key, uint8_t *hdr)
+{
+    if (!(hdr[16] & 0x08))
+        return -1;
+    memcpy(smb2man_reply_sig, hdr + 48, 16);
+    memset(hdr + 48, 0, 16);
+    smb2auth_hmac_init(&smb2man_mac, SMB2AUTH_SHA256, key, 16);
+    smb2auth_hmac_update(&smb2man_mac, hdr, 64);
+    return 0;
+}
+
+static int smb2man_verify_end(void)
+{
+    u8 diff = 0;
+    int i;
+
+    smb2auth_hmac_final(&smb2man_mac, smb2man_digest);
+    for (i = 0; i < 16; i++)
+        diff |= smb2man_digest[i] ^ smb2man_reply_sig[i];
+    return diff ? -1 : 0;
+}
+#define USMB2_VERIFY_BEGIN(u, hdr) smb2man_verify_begin((u)->session_key, hdr)
+#define USMB2_VERIFY_UPDATE(p, n)  smb2auth_hmac_update(&smb2man_mac, p, n)
+#define USMB2_VERIFY_END()         smb2man_verify_end()
 
 #undef read
 #undef write

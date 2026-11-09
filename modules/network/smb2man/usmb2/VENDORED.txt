@@ -26,7 +26,9 @@ What is here
   - Signing hook: usmb2_context.signing (32 bits, so buf stays aligned: the IOP faults on a
     misaligned access; smb2man.c asserts it)/session_key, ntlm.c keeps the NTLMv2 session base key,
     and usmb2_build_request() calls USMB2_SIGN (defined by smb2man.c: HMAC-SHA256, SMB 2.x) on
-    every request after SESSION_SETUP when signing is on. Upstream does not sign.
+    every request after SESSION_SETUP when signing is on, and USMB2_VERIFY_BEGIN/UPDATE/END on
+    every reply to one: a reply without SMB2_FLAGS_SIGNED, or whose HMAC over every byte read does
+    not match, closes the socket and fails the request. Upstream does not sign.
   - ntlm.c checks the CHALLENGE's security buffer, TargetName and TargetInfo against the reply
     (usmb2_context.reply_len), walks TargetInfo only within its length (ending it, as the in-game
     reader does, where it ends without an EndOfList or before a pair that overruns it or has an

@@ -224,6 +224,9 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         uint8_t *buf = &usmb2->buf[0];
         uint32_t status;
         int interim = 0; /* RiptOPL: interim replies dropped for this request */
+#ifdef USMB2_VERIFY_BEGIN
+        int verify = 0;  /* RiptOPL: the reply's signature is checked as it is read */
+#endif
 
         /*
          * SPL
@@ -387,6 +390,20 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
                 goto next_reply;
         }
 
+#ifdef USMB2_VERIFY_BEGIN
+        /* RiptOPL: a signed session's replies must carry the server's signature, over every byte read
+         * below (the interim reply above is unsigned, as [MS-SMB2] 3.3.4.1.1 has it).
+         */
+        verify = usmb2->signing && command != CMD_NEGOTIATE_PROTOCOL && command != CMD_SESSION_SETUP;
+        if (verify && USMB2_VERIFY_BEGIN(usmb2, &usmb2->buf[0])) {
+                socket_failed(usmb2);
+                goto failed;
+        }
+#define VERIFY_UPDATE(p, n) do { if (verify) USMB2_VERIFY_UPDATE(p, n); } while (0)
+#else
+#define VERIFY_UPDATE(p, n) do { } while (0)
+#endif
+
         /*
          * Read command header
          */
@@ -396,6 +413,7 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         if (read_from_socket(usmb2, &usmb2->buf[0], commandincount)) {
                 goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
         }
+        VERIFY_UPDATE(&usmb2->buf[0], commandincount);
         spl -= commandincount;
 
         /*
@@ -408,6 +426,7 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
                 if (read_from_socket(usmb2, indata, indatacount)) {
                         goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
                 }
+                VERIFY_UPDATE(indata, indatacount);
                 spl -= indatacount;
         }
         
@@ -425,8 +444,16 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
                 if (read_from_socket(usmb2, &usmb2->buf[commandincount], (int)n)) {
                         goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
                 }
+                VERIFY_UPDATE(&usmb2->buf[commandincount], n);
                 spl -= n;
         }
+#undef VERIFY_UPDATE
+#ifdef USMB2_VERIFY_BEGIN
+        if (verify && USMB2_VERIFY_END()) {
+                socket_failed(usmb2); /* RiptOPL: not what the server signed */
+                goto failed;
+        }
+#endif
 
 #ifndef USMB2_FEATURE_TINY_TCP
         if (usmb2->fd < 0) {

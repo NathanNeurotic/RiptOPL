@@ -8,15 +8,18 @@
  #define STATUS_MORE_PROCESSING  0xc0000016
  #define STATUS_CONNECTION_DISCONNECTED 0xc000020c
  
-@@ -222,6 +223,7 @@
+@@ -222,6 +223,10 @@
          uint32_t spl, current_mid;
          uint8_t *buf = &usmb2->buf[0];
          uint32_t status;
 +        int interim = 0; /* RiptOPL: interim replies dropped for this request */
++#ifdef USMB2_VERIFY_BEGIN
++        int verify = 0;  /* RiptOPL: the reply's signature is checked as it is read */
++#endif
  
          /*
           * SPL
-@@ -267,17 +269,27 @@
+@@ -267,17 +272,27 @@
          buf += 24; /* 16 byte signature is all zero */
  
  
@@ -46,7 +49,7 @@
                  spl -= outdatacount;
          }
  
-@@ -285,7 +297,9 @@
+@@ -285,7 +300,9 @@
           * Write padding
           */
          if (spl) {
@@ -57,7 +60,7 @@
          }
  
  #ifdef USMB2_FEATURE_TINY_TCP
-@@ -304,14 +318,26 @@
+@@ -304,14 +321,26 @@
          /*
           * Read SPL, SMB2 header and command reply header (and file info blob) from socket
           */
@@ -86,7 +89,7 @@
  
          if (command == CMD_SESSION_SETUP) {
                  usmb2->session_id = *(uint64_t *)&usmb2->buf[0x28];
-@@ -330,12 +356,46 @@
+@@ -330,12 +359,61 @@
          status = le32toh(*(uint32_t *)&usmb2->buf[8]);
  
          /*
@@ -121,6 +124,20 @@
 +                goto next_reply;
 +        }
 +
++#ifdef USMB2_VERIFY_BEGIN
++        /* RiptOPL: a signed session's replies must carry the server's signature, over every byte read
++         * below (the interim reply above is unsigned, as [MS-SMB2] 3.3.4.1.1 has it).
++         */
++        verify = usmb2->signing && command != CMD_NEGOTIATE_PROTOCOL && command != CMD_SESSION_SETUP;
++        if (verify && USMB2_VERIFY_BEGIN(usmb2, &usmb2->buf[0])) {
++                socket_failed(usmb2);
++                goto failed;
++        }
++#define VERIFY_UPDATE(p, n) do { if (verify) USMB2_VERIFY_UPDATE(p, n); } while (0)
++#else
++#define VERIFY_UPDATE(p, n) do { } while (0)
++#endif
++
 +        /*
           * Read command header
           */
@@ -131,10 +148,11 @@
 +        if (read_from_socket(usmb2, &usmb2->buf[0], commandincount)) {
 +                goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
 +        }
++        VERIFY_UPDATE(&usmb2->buf[0], commandincount);
          spl -= commandincount;
  
          /*
-@@ -345,7 +405,9 @@
+@@ -345,7 +423,10 @@
                  if (indatacount > spl) {
                          indatacount = spl;
                  }
@@ -142,10 +160,11 @@
 +                if (read_from_socket(usmb2, indata, indatacount)) {
 +                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
 +                }
++                VERIFY_UPDATE(indata, indatacount);
                  spl -= indatacount;
          }
          
-@@ -360,16 +422,24 @@
+@@ -360,16 +441,32 @@
                  if (n > spl) {
                          n = spl;
                  }
@@ -153,8 +172,16 @@
 +                if (read_from_socket(usmb2, &usmb2->buf[commandincount], (int)n)) {
 +                        goto failed; /* RiptOPL: the socket is closed; stop, do not count on */
 +                }
++                VERIFY_UPDATE(&usmb2->buf[commandincount], n);
                  spl -= n;
          }
++#undef VERIFY_UPDATE
++#ifdef USMB2_VERIFY_BEGIN
++        if (verify && USMB2_VERIFY_END()) {
++                socket_failed(usmb2); /* RiptOPL: not what the server signed */
++                goto failed;
++        }
++#endif
  
  #ifndef USMB2_FEATURE_TINY_TCP
          if (usmb2->fd < 0) {
@@ -172,7 +199,7 @@
  }
  
  /* NEGOTIATE PROTOCOL */
-@@ -444,6 +514,9 @@
+@@ -444,6 +541,9 @@
  #ifdef USMB2_FEATURE_NTLM
          if (cmd == 3) {
                  len = ntlm_generate_auth(usmb2, usmb2->username, usmb2->password);
@@ -182,7 +209,7 @@
                  memset(usmb2->buf, 0, 4 + 64 + 24);
          } else {
                  memset(usmb2->buf, 0, sizeof(usmb2->buf));
-@@ -497,7 +570,7 @@
+@@ -497,7 +597,7 @@
          /* unc offset */
          usmb2->buf[4 + 64 + 4] = 0x48;
          /* unc length in bytes. i.e. 2 times the number of ucs2 characters */
@@ -191,7 +218,7 @@
  
  
          ptr = &usmb2->buf[4 + 0x48];
-@@ -566,7 +639,7 @@
+@@ -566,7 +666,7 @@
          usmb2->buf[4 + 64 + 44] = 0x78;
          len = usmb2_put_name(&usmb2->buf[4 + 0x78], name);
          /* name length in bytes. i.e. 2 times the number of ucs2 characters */
@@ -200,7 +227,7 @@
  
          if (usmb2_build_request(usmb2,
                                  CMD_CREATE, 0x38 + len + 8, 88,
-@@ -833,7 +906,7 @@
+@@ -833,7 +933,7 @@
  
          /* FileRenameInformation: ReplaceIfExists=0, RootDirectory=0, then the new name */
          len = usmb2_put_name(&usmb2->buf[4 + 0x60 + 20], newname);
@@ -209,7 +236,7 @@
          /* buffer length */
          *(uint16_t *)&usmb2->buf[4 + 64 + 4] = htole16(20 + len);
  
-@@ -917,6 +990,9 @@
+@@ -917,6 +1017,9 @@
          }
  #endif
  
