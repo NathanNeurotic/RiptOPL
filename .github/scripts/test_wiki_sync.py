@@ -77,11 +77,21 @@ and restart Samba.</td></tr>
         # PR CI never runs Publish Wiki, so convert every mapped document here; a
         # conversion that changes visible text raises, as it does on publish.
         root = Path(__file__).resolve().parents[2]
-        for origin, (page, _) in wiki_sync.DOCS.items():
-            if page in wiki_sync.REFERENCE_GUIDES:
-                continue  # published as an index of the source, not converted
+        pages = {}
+        for origin, (page, title) in wiki_sync.DOCS.items():
             with self.subTest(origin=origin):
-                wiki_sync.convert_doc(root / origin, origin, "abc123")
+                pages[page] = (wiki_sync.reference_index(origin, page, title, root, "abc123")
+                               if page in wiki_sync.REFERENCE_GUIDES
+                               else wiki_sync.convert_doc(root / origin, origin, "abc123"))
+        # A link the converter fails to rewrite stays a bare relative path and fails here, in PR
+        # CI, instead of in Publish Wiki after merge. Website pages are built from the gh-pages
+        # checkout, which PR CI does not have, so they count as existing with unchecked anchors.
+        stubs = set(wiki_sync.SITE_MAP.values()) | {"Home", "_Sidebar", "_Footer", "Wiki-Maintenance"}
+        wiki_sync.validate(pages, stubs)
+
+    def test_validate_rejects_a_link_the_converter_left_relative(self):
+        with self.assertRaisesRegex(ValueError, "missing wiki page"):
+            wiki_sync.validate({"Page": "[Broken](a_(b_(c)).md)\n"})
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,13 +14,18 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 * The hub lists nine pages and **Save Changes**, and shows the running RiptOPL version under its
   title. Up and Down pick a page; Cross (or Circle, if swapped) opens it; L1 and R1 move between
   pages while one is open.
-* A page's changes take effect when you leave it with OK. They are written to the memory card or
-  device only by **Save Changes**. Leaving the hub with unsaved changes asks whether to save, exit
-  without saving (which restores the game sources you started with), or keep editing.
-* Two exceptions write to the memory card at once on **OK**: POPSTARTER Network Settings
-  (POPSTARTER's own `IPCONFIG.DAT` and `SMBCONFIG.DAT`) and its POPS UDPFS Network Settings
-  sub-page (`SYS-CONF/IPCONFIG.DAT` and `UDPFSCONFIG.DAT`). Save Changes is not needed for them,
-  and leaving the hub without saving does not undo them.
+* A page's changes take effect when you leave it with OK, Back or L1/R1 (leaving a page you did
+  not change applies nothing). They are written to the memory card or device only by **Save
+  Changes**. Leaving the hub with unsaved changes asks whether to save, exit without saving (which
+  restores the game sources you started with), or keep editing.
+* Three things write to the memory card at once, without Save Changes, and leaving the hub
+  without saving does not undo them:
+  * POPSTARTER Network Settings, on **OK** (POPSTARTER's own `IPCONFIG.DAT` and `SMBCONFIG.DAT`);
+  * its POPS UDPFS Network Settings sub-page, on **OK** (`SYS-CONF/IPCONFIG.DAT` and
+    `UDPFSCONFIG.DAT`);
+  * PS Emulation Settings, when you leave it (OK, Back or L1/R1) with a changed BDMA Mode, or a
+    changed BDMA Source while the mode is not FAT32: this equips or removes the BDMA driver files
+    on the card.
 * Each setting has one row in one place. A button marked *Modify* opens a sub-page and returns to
   the page that opened it.
 * Some rows exist only in some editions: RiptOPLite carries one game source, the
