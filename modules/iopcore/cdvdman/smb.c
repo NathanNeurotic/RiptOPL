@@ -140,8 +140,8 @@ int OpenTCPSession(struct in_addr dst_IP, u16 dst_port)
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_port = htons(dst_port);
 
-    // SMSTCPIP retransmits SYN and wakes connect on TCP_SYNMAXRTX (tcp_slowtmr).
-    // Repeating a failed connect here adds full TCP timeouts on the same socket.
+    // With LWIP_TCPIP_CORE_LOCKING (the shipped SMSTCPIP), connect returns once the SYN is queued;
+    // lwIP retransmits a lost SYN. smb_NegotiateProtocol opens a fresh socket when no reply comes.
     ret = plwip_connect(sock, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
     if (ret < 0) {
         plwip_close(sock);
@@ -177,12 +177,42 @@ static int SendData(int sock, char *buf, int size)
 #define MSG_DONTWAIT 0x40 // SMSTCPIP/include/lwip/sockets.h, not menu ps2ip's value
 #endif
 #define SMB_REPLY_TIMEOUT_TICKS 368640000U // 10 seconds at the IOP 36.864 MHz clock
+// Negotiation at launch: up to 4 attempts of 10 s, 1 s apart (about 43 s) before smbinit fails.
+#define SMB_CONNECT_ATTEMPTS       4
+#define SMB_CONNECT_RETRY_DELAY_US 1000000
 
 static iop_sys_clock_t smb_reply_start;
 
-static void smb_BeginReply(void)
+// Where the socket stands in the reply stream. A reply that misses its deadline is not a dead
+// session: the server is often only slow (a disk spinning up). So a timeout keeps the session, and
+// the next request first takes the rest of that late reply off the socket (smb_Resync), instead
+// of closing the session and failing every read and VMC write until the next launch.
+static struct
+{
+    u8 hdr[4];     // NBSS header of the message being received
+    int hdr_got;   // bytes of hdr received (0 to 4)
+    int body_left; // with hdr_got == 4: body bytes of that message still on the socket
+    int open;      // the last request's reply (an NBSS session message) is not fully received
+    int timed_out; // the last receive stopped at its deadline, with the session still up
+    int idle;      // drains in a row that timed out without one byte arriving
+} smb_rx;
+
+#define SMB_DRAIN_IDLE_LIMIT 3 // a server silent for three drain deadlines in a row is gone
+
+static void smb_StartDeadline(void)
 {
     GetSystemTime(&smb_reply_start);
+}
+
+static void smb_BeginReply(void)
+{
+    smb_StartDeadline();
+    smb_rx.open = 1;
+}
+
+static void smb_ResetStream(void)
+{
+    memset(&smb_rx, 0, sizeof(smb_rx));
 }
 
 static int smb_ReplyExpired(void)
@@ -190,6 +220,56 @@ static int smb_ReplyExpired(void)
     iop_sys_clock_t now;
     GetSystemTime(&now);
     return (u32)(now.lo - smb_reply_start.lo) >= SMB_REPLY_TIMEOUT_TICKS;
+}
+
+// Byte j of the n bytes one recvfrom() call took off the stream, or -1 when it was not stored.
+// With hlen == 0 they are all in payload. The split call (lwip_recvfrom in SMSTCPIP sockets.c)
+// puts a segment shorter than 63 bytes, or one whose data starts past its end, into header whole.
+// Otherwise header gets the first 63 bytes and payload the bytes from header[hlen] + 4 on.
+static int smb_StreamByte(const u8 *header, int hlen, const u8 *payload, int n, int j)
+{
+    int index;
+
+    if (hlen == 0)
+        return payload[j];
+    if (n < 63)
+        return header[j];
+    index = header[hlen] + 4;
+    if (index > n)
+        return header[j];
+    if (j >= index)
+        return payload[j - index];
+    return j < 63 ? header[j] : -1;
+}
+
+// Follow the NBSS messages in n received bytes, so that a late reply can be taken off whole.
+static int smb_TrackStream(const u8 *header, int hlen, const u8 *payload, int n)
+{
+    int pos = 0, b, take;
+
+    while (pos < n) {
+        if (smb_rx.hdr_got < 4) {
+            b = smb_StreamByte(header, hlen, payload, n, pos);
+            if (b < 0)
+                return -1;
+            smb_rx.hdr[smb_rx.hdr_got++] = (u8)b;
+            pos++;
+            if (smb_rx.hdr_got < 4)
+                continue;
+            // Raw TCP transport: a 24-bit length, as nb_GetSessionMessageLength reads it.
+            smb_rx.body_left = (smb_rx.hdr[1] << 16) | (smb_rx.hdr[2] << 8) | smb_rx.hdr[3];
+        } else {
+            take = n - pos < smb_rx.body_left ? n - pos : smb_rx.body_left;
+            pos += take;
+            smb_rx.body_left -= take;
+        }
+        if (smb_rx.body_left == 0) {
+            smb_rx.hdr_got = 0;
+            if (smb_rx.hdr[0] == 0) // a session message; keep-alives (0x85) are not the reply
+                smb_rx.open = 0;
+        }
+    }
+    return 0;
 }
 
 // Every piece of one SMB response shares the same deadline, including keep-alives
@@ -201,9 +281,8 @@ static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int pl
         return -2;
     for (;;) {
         if (smb_ReplyExpired()) {
-            // An incomplete SMB reply leaves the stream desynchronized. Do not
-            // let another request mistake a late fragment for its own response.
-            smb_Disconnect();
+            // The stream position is kept: the next request takes the late reply off first.
+            smb_rx.timed_out = 1;
             return -2;
         }
         result = plwip_recvfrom(sock, header, hlen, payload, plen, MSG_DONTWAIT, NULL, NULL);
@@ -211,14 +290,67 @@ static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int pl
             smb_Disconnect(); // EOF: do not leave a dead socket in service.
             return 0;
         }
-        if (result > 0)
+        if (result > 0) {
+            if (smb_TrackStream(header, hlen, payload, result) < 0) {
+                smb_Disconnect(); // A message boundary that cannot be followed: the stream is lost.
+                return -2;
+            }
             return result;
+        }
         if (DelayThread(1000) < 0) {
             // Never busy-spin in the CDVD thread when the IOP cannot sleep.
             smb_Disconnect();
             return -2;
         }
     }
+}
+
+static int smb_InStep(void)
+{
+    return !smb_rx.open && smb_rx.hdr_got == 0 && smb_rx.body_left == 0;
+}
+
+// Before a request is sent: take the rest of any late reply off the socket, so that this request
+// reads its own reply. Returns 0 when in step, or < 0 (the request must not be sent).
+static int smb_Resync(void)
+{
+    static u8 scratch[256]; // SMB_buf may already hold the request being sent
+    int n, got = 0, r;
+
+    smb_rx.timed_out = 0;
+    if (main_socket < 0)
+        return -1;
+    if (smb_InStep())
+        return 0;
+
+    smb_StartDeadline();
+    while (!smb_InStep()) {
+        // Ask for no more than the late message holds, so that nothing after it is taken.
+        if (smb_rx.hdr_got < 4)
+            n = 4 - smb_rx.hdr_got;
+        else
+            n = smb_rx.body_left < (int)sizeof(scratch) ? smb_rx.body_left : (int)sizeof(scratch);
+        r = smb_RecvTimed(main_socket, NULL, 0, scratch, n);
+        if (r <= 0) {
+            if (smb_rx.timed_out && !got && ++smb_rx.idle >= SMB_DRAIN_IDLE_LIMIT) {
+                smb_Disconnect(); // Bounded: a reply that never comes cannot stall every request.
+                smb_rx.timed_out = 0;
+            }
+            return -2;
+        }
+        got += r;
+    }
+    smb_rx.idle = 0;
+    return 0;
+}
+
+// A request whose reply missed its deadline, on a session that is still up, is sent again: the late
+// reply is taken off first. SMB reads, writes at an offset, opens and session/tree setups can repeat.
+#define SMB_REQUEST_ATTEMPTS 3
+
+static int smb_RetryRequest(int attempt)
+{
+    return smb_rx.timed_out && main_socket >= 0 && attempt + 1 < SMB_REQUEST_ATTEMPTS;
 }
 
 static int RecvData(int sock, char *buf, int size)
@@ -240,6 +372,9 @@ static int RecvData(int sock, char *buf, int size)
 static int GetSMBServerReply(int shdrlen, void *spayload, int rhdrlen)
 {
     int rcv_size, totalpkt_size, size;
+
+    if (smb_Resync() < 0)
+        return -2;
 
     totalpkt_size = nb_GetSessionMessageLength() + 4;
 
@@ -326,7 +461,7 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     NegotiateProtocolRequest_t *NPR = &SMB_buf.smb.negotiateProtocolRequest;
     NegotiateProtocolResponse_t *NPRsp = &SMB_buf.smb.negotiateProtocolResponse;
     register int length;
-    int reply_len;
+    int reply_len, attempt;
     struct in_addr dst_addr;
     iop_sema_t smp;
 
@@ -340,30 +475,41 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
 
     dst_addr.s_addr = pinet_addr(SMBServerIP);
 
-    // Opening TCP session
-    main_socket = OpenTCPSession(dst_addr, SMBServerPort);
-    if (main_socket < 0)
-        goto negotiate_failed;
+    // The first SYN to a host not yet in the ARP cache is dropped (ARP_QUEUEING is off), and the
+    // server may still be waking up. A lost packet must not end the launch on the red screen, so
+    // each attempt uses a fresh socket (and a fresh SYN) with its own reply deadline.
+    for (attempt = 0;; attempt++) {
+        if (attempt) {
+            smb_Disconnect();
+            if (attempt >= SMB_CONNECT_ATTEMPTS)
+                goto negotiate_failed;
+            DelayThread(SMB_CONNECT_RETRY_DELAY_US);
+        }
 
-    ZERO_PKT_ALIGNED(NPR, sizeof(NegotiateProtocolRequest_t));
+        main_socket = OpenTCPSession(dst_addr, SMBServerPort);
+        if (main_socket < 0)
+            continue;
 
-    NPR->smbH.Magic = SMB_MAGIC;
-    NPR->smbH.Cmd = SMB_COM_NEGOTIATE;
-    NPR->smbH.Flags = SMB_FLAGS_CASELESS_PATHNAMES;
-    NPR->smbH.Flags2 = SMB_FLAGS2_KNOWS_LONG_NAMES;
-    length = strlen(dialect);
-    NPR->ByteCount = length + 2;
-    NPR->DialectFormat = 0x02;
-    strcpy(NPR->DialectName, dialect);
+        ZERO_PKT_ALIGNED(NPR, sizeof(NegotiateProtocolRequest_t));
 
-    nb_SetSessionMessage(sizeof(NegotiateProtocolRequest_t) + length + 1);
-    reply_len = GetSMBServerReply(0, NULL, 0);
-    if (reply_len < (int)sizeof(NegotiateProtocolResponse_t) ||
-        NPRsp->smbH.Magic != SMB_MAGIC || NPRsp->smbH.Eclass != STATUS_SUCCESS ||
-        NPRsp->smbWordcount != 17 || NPRsp->KeyLength > sizeof(server_specs.EncryptionKey) ||
-        NPRsp->ByteCount < NPRsp->KeyLength ||
-        reply_len < (int)sizeof(NegotiateProtocolResponse_t) + NPRsp->ByteCount)
-        goto negotiate_failed;
+        NPR->smbH.Magic = SMB_MAGIC;
+        NPR->smbH.Cmd = SMB_COM_NEGOTIATE;
+        NPR->smbH.Flags = SMB_FLAGS_CASELESS_PATHNAMES;
+        NPR->smbH.Flags2 = SMB_FLAGS2_KNOWS_LONG_NAMES;
+        length = strlen(dialect);
+        NPR->ByteCount = length + 2;
+        NPR->DialectFormat = 0x02;
+        strcpy(NPR->DialectName, dialect);
+
+        nb_SetSessionMessage(sizeof(NegotiateProtocolRequest_t) + length + 1);
+        reply_len = GetSMBServerReply(0, NULL, 0);
+        if (reply_len >= (int)sizeof(NegotiateProtocolResponse_t) &&
+            NPRsp->smbH.Magic == SMB_MAGIC && NPRsp->smbH.Eclass == STATUS_SUCCESS &&
+            NPRsp->smbWordcount == 17 && NPRsp->KeyLength <= sizeof(server_specs.EncryptionKey) &&
+            NPRsp->ByteCount >= NPRsp->KeyLength &&
+            reply_len >= (int)sizeof(NegotiateProtocolResponse_t) + NPRsp->ByteCount)
+            break;
+    }
 
     *capabilities = NPRsp->Capabilities & (CLIENT_CAP_LARGE_WRITEX | CLIENT_CAP_LARGE_READX | CLIENT_CAP_UNICODE | CLIENT_CAP_LARGE_FILES | CLIENT_CAP_STATUS32);
 
@@ -402,7 +548,7 @@ negotiate_failed:
 }
 
 //-------------------------------------------------------------------------
-int smb_SessionSetupAndX(u32 capabilities)
+static int smb_SessionSetupAndXOnce(u32 capabilities)
 {
     SessionSetupAndXRequest_t *SSR = &SMB_buf.smb.sessionSetupAndXRequest;
     SessionSetupAndXResponse_t *SSRsp = &SMB_buf.smb.sessionSetupAndXResponse;
@@ -503,7 +649,7 @@ lbl_session_setup:
 }
 
 //-------------------------------------------------------------------------
-int smb_TreeConnectAndX(char *ShareName)
+static int smb_TreeConnectAndXOnce(char *ShareName)
 {
     TreeConnectAndXRequest_t *TCR = &SMB_buf.smb.treeConnectAndXRequest;
     TreeConnectAndXResponse_t *TCRsp = &SMB_buf.smb.treeConnectAndXResponse;
@@ -572,14 +718,36 @@ int smb_TreeConnectAndX(char *ShareName)
 }
 
 //-------------------------------------------------------------------------
-int smb_OpenAndX(char *filename, u8 *FID, int Write)
+int smb_SessionSetupAndX(u32 capabilities)
+{
+    int result, attempt;
+
+    for (attempt = 0;; attempt++) {
+        result = smb_SessionSetupAndXOnce(capabilities);
+        if (result > 0 || !smb_RetryRequest(attempt))
+            return result;
+    }
+}
+
+int smb_TreeConnectAndX(char *ShareName)
+{
+    int result, attempt;
+
+    for (attempt = 0;; attempt++) {
+        result = smb_TreeConnectAndXOnce(ShareName);
+        if (result > 0 || !smb_RetryRequest(attempt))
+            return result;
+    }
+}
+
+//-------------------------------------------------------------------------
+// Called with smb_io_sema held.
+static int smb_OpenAndXOnce(char *filename, u8 *FID, int Write)
 {
     OpenAndXRequest_t *OR = &SMB_buf.smb.openAndXRequest;
     OpenAndXResponse_t *ORsp = &SMB_buf.smb.openAndXResponse;
     register int offset;
     int reply_len;
-
-    WAITIOSEMA(smb_io_sema);
 
     ZERO_PKT_ALIGNED(OR, sizeof(OpenAndXRequest_t));
 
@@ -609,32 +777,37 @@ int smb_OpenAndX(char *filename, u8 *FID, int Write)
 
     nb_SetSessionMessage(sizeof(OpenAndXRequest_t) + offset + 1);
     reply_len = GetSMBServerReply(0, NULL, 0);
-    if (reply_len < (int)sizeof(SMBHeader_t)) {
-        SIGNALIOSEMA(smb_io_sema);
+    if (reply_len < (int)sizeof(SMBHeader_t))
         return -2;
-    }
 
     // check sanity of SMB header
-    if (ORsp->smbH.Magic != SMB_MAGIC) {
-        SIGNALIOSEMA(smb_io_sema);
+    if (ORsp->smbH.Magic != SMB_MAGIC)
         return -1;
-    }
 
     // check there's no error
-    if (ORsp->smbH.Eclass != STATUS_SUCCESS) {
-        SIGNALIOSEMA(smb_io_sema);
+    if (ORsp->smbH.Eclass != STATUS_SUCCESS)
         return -1000;
-    }
 
-    if (reply_len < (int)sizeof(OpenAndXResponse_t)) {
-        SIGNALIOSEMA(smb_io_sema);
+    if (reply_len < (int)sizeof(OpenAndXResponse_t))
         return -1;
-    }
     memcpy(FID, &ORsp->FID, 2);
 
+    return 1;
+}
+
+int smb_OpenAndX(char *filename, u8 *FID, int Write)
+{
+    int result, attempt;
+
+    WAITIOSEMA(smb_io_sema);
+    for (attempt = 0;; attempt++) {
+        result = smb_OpenAndXOnce(filename, FID, Write);
+        if (result > 0 || !smb_RetryRequest(attempt))
+            break;
+    }
     SIGNALIOSEMA(smb_io_sema);
 
-    return 1;
+    return result;
 }
 
 //-------------------------------------------------------------------------
@@ -657,6 +830,13 @@ int smb_Close(int FID)
     CR->smbH.TID = (u16)TID;
     CR->smbWordcount = 3;
     CR->FID = (u16)FID;
+
+    // Closing runs at shutdown and IGR: do not wait out a late reply for it. Ending the session
+    // closes the files on the server too.
+    if (!smb_InStep()) {
+        smb_Disconnect();
+        return -EIO;
+    }
 
     nb_SetSessionMessage(sizeof(CloseRequest_t));
     r = GetSMBServerReply(0, NULL, 0);
@@ -751,6 +931,8 @@ static int smb_ReadAndX(u16 FID, u32 offsetlow, u32 offsethigh, void *readbuf, i
     nb_SetSessionMessage(sizeof(ReadAndXRequest_t));
 
 #ifdef USE_CUSTOM_RECV
+    if (smb_Resync() < 0)
+        return -2;
     //Send the whole message, including the 4-byte direct transport packet header.
     r = SendData(main_socket, (char *)&SMB_buf, sizeof(ReadAndXRequest_t) + 4);
     if (r <= 0)
@@ -834,7 +1016,7 @@ static int smb_ReadAndX(u16 FID, u32 offsetlow, u32 offsethigh, void *readbuf, i
 
 int smb_ReadFile(u16 FID, u32 offsetlow, u32 offsethigh, void *readbuf, int nbytes)
 {
-    int result, remaining, toRead;
+    int result, remaining, toRead, attempt;
     char *ptr;
 
     remaining = nbytes;
@@ -845,7 +1027,11 @@ int smb_ReadFile(u16 FID, u32 offsetlow, u32 offsethigh, void *readbuf, int nbyt
     while (remaining > 0) {
         toRead = remaining > CLIENT_MAX_RECV_SIZE ? CLIENT_MAX_RECV_SIZE : remaining;
 
-        result = smb_ReadAndX(FID, offsetlow, offsethigh, ptr, toRead);
+        for (attempt = 0;; attempt++) {
+            result = smb_ReadAndX(FID, offsetlow, offsethigh, ptr, toRead);
+            if (result >= 0 || !smb_RetryRequest(attempt))
+                break;
+        }
         if (result <= 0) {
             SIGNALIOSEMA(smb_io_sema);
             // Zero bytes means the read reached the end of the file (MS-CIFS 3.3.5.36). Return the
@@ -917,7 +1103,7 @@ static int smb_WriteAndX(u16 FID, u32 offsetlow, u32 offsethigh, void *writebuf,
 
 int smb_WriteFile(u16 FID, u32 offsetlow, u32 offsethigh, void *writebuf, int nbytes)
 {
-    int result, remaining, toWrite;
+    int result, remaining, toWrite, attempt;
     char *ptr;
 
     remaining = nbytes;
@@ -928,7 +1114,11 @@ int smb_WriteFile(u16 FID, u32 offsetlow, u32 offsethigh, void *writebuf, int nb
     while (remaining > 0) {
         toWrite = remaining > CLIENT_MAX_XMIT_SIZE ? CLIENT_MAX_XMIT_SIZE : remaining;
 
-        result = smb_WriteAndX(FID, offsetlow, offsethigh, ptr, toWrite);
+        for (attempt = 0;; attempt++) {
+            result = smb_WriteAndX(FID, offsetlow, offsethigh, ptr, toWrite);
+            if (result > 0 || !smb_RetryRequest(attempt))
+                break;
+        }
         if (result <= 0) {
             SIGNALIOSEMA(smb_io_sema);
             return result;
@@ -973,6 +1163,7 @@ int smb_Disconnect(void)
         plwip_close(main_socket);
         main_socket = -1;
     }
+    smb_ResetStream();
 
     return 1;
 }

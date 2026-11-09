@@ -30,14 +30,13 @@ def extract(signature):
 assert "#define MSG_DONTWAIT 0x40" in SOURCE
 assert "#define SMB_REPLY_TIMEOUT_TICKS 368640000U" in SOURCE
 
-functions = "\n\n".join(extract(signature) for signature in (
-    "int OpenTCPSession(struct in_addr",
-    "static void smb_BeginReply(void)",
-    "static int smb_ReplyExpired(void)",
-    "static int smb_RecvTimed(int sock,",
-    "static int RecvData(int sock,",
-    "static int GetSMBServerReply(int shdrlen,",
-))
+# The receive deadline, the reply-stream tracking and smb_Resync, as one block of smb.c.
+STREAM = SOURCE[SOURCE.index("static iop_sys_clock_t smb_reply_start;"):SOURCE.index("static int RecvData(int sock,")]
+functions = extract("int OpenTCPSession(struct in_addr") + "\n\n" + STREAM + "\n\n" + "\n\n".join(
+    extract(signature) for signature in (
+        "static int RecvData(int sock,",
+        "static int GetSMBServerReply(int shdrlen,",
+    ))
 
 header = r'''
 #include <assert.h>
@@ -52,7 +51,6 @@ typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
 typedef struct { u32 lo, hi; } iop_sys_clock_t;
-static iop_sys_clock_t smb_reply_start;
 typedef struct { u8 data[32]; } SMBHeader_t;
 #define SMB_REPLY_TIMEOUT_TICKS 368640000U
 #ifndef MSG_DONTWAIT
@@ -107,8 +105,10 @@ static int fake_close(int fd)
     close_calls++;
     return 0;
 }
+static void smb_ResetStream(void);
 static int smb_Disconnect(void)
 {
+    smb_ResetStream();
     if (main_socket >= 0) {
         fake_close(main_socket);
         main_socket = -1;
@@ -139,7 +139,13 @@ static int fake_recvfrom(int fd, void *h, int hlen, void *payload,
         return n;
     }
     if (plen == 4) {
-        *(u32 *)payload = receive_mode == KEEPALIVES ? 0x85 : 0;
+        /* An NBSS header: type, then the 24-bit length nb_GetSessionMessageLength() reports. */
+        u8 *nbss = payload;
+        int length = receive_mode == KEEPALIVES ? 0 : receive_mode == OVERSIZE_REPLY ? 2048 : receive_mode == SHORT_REPLY ? 16 : 32;
+        nbss[0] = receive_mode == KEEPALIVES ? 0x85 : 0;
+        nbss[1] = (u8)(length >> 16);
+        nbss[2] = (u8)(length >> 8);
+        nbss[3] = (u8)length;
         if (receive_mode == KEEPALIVES)
             virtual_us += 2000000;
         return 4;
@@ -175,6 +181,7 @@ static void reset(int mode)
     socket_fails = connect_fails = delay_fails = 0;
     receive_mode = mode;
     memset(&SMB_buf, 0, sizeof(SMB_buf));
+    smb_ResetStream();
 }
 int main(void)
 {
@@ -198,7 +205,8 @@ int main(void)
     smb_BeginReply();
     assert(RecvData(7, buf, 10) == -2);
     assert(virtual_us == 10000000ULL && recv_calls > 1);
-    assert(main_socket == -1 && close_calls == 1);
+    /* A missed deadline keeps the session: the late reply is taken off before the next request. */
+    assert(main_socket == 7 && close_calls == 0 && smb_rx.timed_out && smb_rx.open);
 
     reset(SILENT);
     delay_fails = 1;
@@ -212,7 +220,7 @@ int main(void)
     assert(RecvData(7, buf, 30) == -2);
     assert(virtual_us >= 10000000ULL && virtual_us < 12000000ULL);
     assert(recv_calls <= 9); /* Progress does not reset the reply deadline. */
-    assert(main_socket == -1 && close_calls == 1);
+    assert(main_socket == 7 && close_calls == 0 && smb_rx.timed_out);
 
     reset(CHUNKS);
     smb_BeginReply();
@@ -258,7 +266,7 @@ with tempfile.TemporaryDirectory(prefix="riptopl-smb1-transport-") as tmp:
     compiler = os.environ.get("CC", "cc")
     build = subprocess.run(
         [compiler, "-std=c99", "-O1", "-g", "-Wall", "-Wextra",
-         "-Werror", "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
+         "-Werror", "-Wno-unused-function", "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
          str(source), "-o", str(executable)],
         capture_output=True, text=True,
     )

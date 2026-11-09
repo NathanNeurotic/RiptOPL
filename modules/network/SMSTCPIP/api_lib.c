@@ -161,9 +161,6 @@ struct
     conn->recv_avail = 0;
 
     if ((msg = memp_malloc(MEMP_API_MSG)) == NULL) {
-#if !LWIP_TCPIP_CORE_LOCKING
-        sys_mbox_free(conn->mbox);
-#endif
         memp_free(MEMP_NETCONN, conn);
         return NULL;
     }
@@ -175,9 +172,6 @@ struct
     memp_free(MEMP_API_MSG, msg);
 
     if (conn->err != ERR_OK) {
-#if !LWIP_TCPIP_CORE_LOCKING
-        sys_mbox_free(conn->mbox);
-#endif
         memp_free(MEMP_NETCONN, conn);
         return NULL;
     }
