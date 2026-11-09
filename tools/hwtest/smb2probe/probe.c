@@ -115,7 +115,7 @@ static void log_flush(void)
     mcDelete(0, 0, LOG_PATH);
     if (mc_wait(2000, &r) < 0)
         goto stuck;
-    mcOpen(0, 0, LOG_PATH, O_WRONLY | O_CREAT);
+    mcOpen(0, 0, LOG_PATH, sceMcFileAttrWriteable | sceMcFileCreateFile); // mcman flags, not newlib O_*
     if (mc_wait(2000, &fd) < 0)
         goto stuck;
     if (fd < 0)
@@ -324,7 +324,7 @@ static int has_arg(int argc, char *argv[], const char *flag)
 static void dump(void)
 {
     static char buf[sizeof(logbuf) + 1];
-    int fd, n = 0, r;
+    int fd = -1, n = 0, r;
 
     SifInitRpc(0);
     SifLoadModule("rom0:XSIO2MAN", 0, NULL);
@@ -334,16 +334,16 @@ static void dump(void)
         printf("smb2probe dump: mcInit failed\n");
         SleepThread();
     }
-    mcOpen(0, 0, LOG_PATH, O_RDONLY);
+    mcOpen(0, 0, LOG_PATH, sceMcFileAttrReadable); // newlib O_RDONLY is 0: mcman then denies every read
     if (mc_wait(3000, &fd) == 0 && fd >= 0) {
         mcRead(fd, buf, sizeof(buf) - 1);
-        if (mc_wait(5000, &n) < 0 || n < 0)
-            n = 0;
+        if (mc_wait(5000, &n) < 0)
+            n = -999; // no answer in 5 s
         mcClose(fd);
         mc_wait(2000, &r);
     }
-    buf[n] = '\0';
-    printf("----- mc0:%s (%d bytes) -----\n%s\n----- end -----\n", LOG_PATH, n, buf);
+    buf[n > 0 ? n : 0] = '\0';
+    printf("----- mc0:%s (open %d, read %d) -----\n%s\n----- end -----\n", LOG_PATH, fd, n, buf);
     SleepThread();
 }
 

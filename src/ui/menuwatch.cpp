@@ -250,7 +250,7 @@ static int writeReportMc(int port, const char *name, int len)
 
     if (mcDelete(port, 0, name) == 0 && mcWaitBounded(2000, &r) == -2) // a missing file is fine
         return mcStuck = 1, -1;
-    if (mcOpen(port, 0, name, O_WRONLY | O_CREAT) != 0)
+    if (mcOpen(port, 0, name, sceMcFileAttrWriteable | sceMcFileCreateFile) != 0)
         return 0;
     if ((w = mcWaitBounded(2000, &fd)) < 0 || fd < 0)
         return w == -2 ? (mcStuck = 1, -1) : 0;
