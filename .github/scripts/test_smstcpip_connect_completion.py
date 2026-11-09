@@ -7,6 +7,7 @@ and the original successful asynchronous-completion path.
 """
 from pathlib import Path
 import os
+import re
 import subprocess
 import tempfile
 
@@ -22,8 +23,11 @@ assert tcp.index("TCP_REG(&tcp_active_pcbs, pcb);") < tcp.index(
 assert "case SYN_SENT:" in tcp and "tcp_pcb_remove(&tcp_active_pcbs, pcb);" in tcp
 assert "tcp_segs_free(queue);" in tcp_out
 
-def c_function(signature):
-    start = source.index(signature)
+def c_function(pattern):
+    match = re.search(pattern, source)
+    if not match:
+        raise ValueError("do_connect not found")
+    start = match.start()
     brace = source.index("{", start)
     depth = 0
     for pos in range(brace, len(source)):
@@ -35,7 +39,7 @@ def c_function(signature):
                 return source[start:pos + 1]
     raise ValueError("Unterminated do_connect")
 
-target = c_function("static void\ndo_connect(struct api_msg_msg *msg)")
+target = c_function(r"static\s+void\s+do_connect\s*\(\s*struct\s+api_msg_msg\s*\*\s*msg\s*\)")
 harness = r'''
 #include <assert.h>
 #include <stdio.h>

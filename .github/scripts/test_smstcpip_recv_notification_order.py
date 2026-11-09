@@ -110,6 +110,8 @@ int main(void)
     assert(recv_tcp(&conn, &pcb, NULL, ERR_OK) == ERR_OK);
     assert(posts == 2 && notifications == 2 && queued[1] == 0);
     assert(last_item == NULL);
+    // The EOF marker carries no data, so it must not change the advertised byte count.
+    assert(conn.recv_avail == 512);
 
     // Error delivery must likewise queue EOF before advertising readiness.
     conn.mbox = 2;
