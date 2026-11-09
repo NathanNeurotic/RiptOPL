@@ -14,10 +14,12 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 * The hub lists nine pages and **Save Changes**, and shows the running RiptOPL version under its
   title. Up and Down pick a page; Cross (or Circle, if swapped) opens it; L1 and R1 move between
   pages while one is open.
-* A page's changes take effect when you leave it with OK, Back or L1/R1 (leaving a page you did
-  not change applies nothing). They are written to the memory card or device only by **Save
-  Changes**. Leaving the hub with unsaved changes asks whether to save, exit without saving (which
-  restores the game sources you started with), or keep editing.
+* A page's changes take effect when you leave it with OK, Back or L1/R1 (Back or L1/R1 off a page
+  you did not change applies nothing). They are written to the memory card or device only by
+  **Save Changes**. Leaving the hub with unsaved changes asks whether to save, exit without saving,
+  or keep editing. Exit without saving restores only the game sources, as they were when the hub
+  opened or at the last Save Changes inside it. Other changes, such as a volume, stay in effect
+  for this session and are included in a later save.
 * Three things write to the memory card at once, without Save Changes, and leaving the hub
   without saving does not undo them:
   * POPSTARTER Network Settings, on **OK** (POPSTARTER's own `IPCONFIG.DAT` and `SMBCONFIG.DAT`);
@@ -25,7 +27,8 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
     `UDPFSCONFIG.DAT`);
   * PS Emulation Settings, when you leave it (OK, Back or L1/R1) with a changed BDMA Mode, or a
     changed BDMA Source while the mode is not FAT32: this equips or removes the BDMA driver files
-    on the card.
+    on the card. Equipping UDPFS also copies `IPCONFIG.DAT` and `UDPFSCONFIG.DAT` into `SYS-CONF`
+    from the driver's POPS folder when the card has none.
 * Each setting has one row in one place. A button marked *Modify* opens a sub-page and returns to
   the page that opened it.
 * Some rows exist only in some editions: RiptOPLite carries one game source, the
