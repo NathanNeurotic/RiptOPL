@@ -151,6 +151,7 @@ SMB_DEVICE = r'''
 #define WAITIOSEMA(x) ((void)(x))
 #define SIGNALIOSEMA(x) ((void)(x))
 static int smb_io_sema;
+static int smb_mount_state = 1; /* Extracted DeviceReadSectors is tested after a successful mount. */
 static struct { struct { int NumParts; } common; u16 FIDs[4]; } cdvdman_settings = {{1}, {0}};
 
 /* The server answers SMB1 READ_ANDX from the file: what it holds from the offset, up to the request,
