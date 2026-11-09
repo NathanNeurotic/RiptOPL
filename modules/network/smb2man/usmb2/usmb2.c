@@ -395,11 +395,13 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         /* RiptOPL: a signed session's replies must carry the server's signature, over every byte read
          * below (the interim reply above is unsigned, as [MS-SMB2] 3.3.4.1.1 has it). ECHO's reply is
          * not checked: it carries no data, and a server that left it unsigned would otherwise drop
-         * the session at every keepalive.
+         * the session at every keepalive. A verified reply must also answer this request (its
+         * MessageId), so an earlier signed reply played back in its place is refused.
          */
         verify = usmb2->signing && command != CMD_NEGOTIATE_PROTOCOL && command != CMD_SESSION_SETUP &&
                  command != CMD_ECHO;
-        if (verify && USMB2_VERIFY_BEGIN(usmb2, &usmb2->buf[0])) {
+        if (verify && (le32toh(*(uint32_t *)&usmb2->buf[24]) != current_mid || *(uint32_t *)&usmb2->buf[28] != 0 ||
+                       USMB2_VERIFY_BEGIN(usmb2, &usmb2->buf[0]))) {
                 socket_failed(usmb2);
                 goto failed;
         }
