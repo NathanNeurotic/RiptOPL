@@ -580,7 +580,7 @@ class PublicationTests(unittest.TestCase):
         # Every RiptOPL ELF embeds smb2man over usmb2 (MIT), so the licence text must travel
         # with the install kits, the VARIANTS/DEBUG bundles and the standalone ELF download.
         licence = ROOT / "modules/network/smb2man/usmb2/LICENSE"
-        self.assertIn("GNU LESSER GENERAL PUBLIC LICENSE", licence.read_text(encoding="utf-8"))
+        self.assertIn("Permission is hereby granted", licence.read_text(encoding="utf-8"))
         package = (ROOT / "tools/package_edition.py").read_text(encoding="utf-8")
         self.assertIn('USMB2_LICENCE = ROOT / "modules/network/smb2man/usmb2/LICENSE"', package)
         self.assertIn('shutil.copyfile(USMB2_LICENCE, kit / "LICENSE-USMB2.txt")', package)

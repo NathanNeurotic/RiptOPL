@@ -21,13 +21,14 @@ def function(source: Path, start: str, next_decl: str) -> str:
 
 
 smb2man_source = ROOT / "modules/network/smb2man/smb2man.c"
-socket_calls = function(smb2man_source, "static int smb2man_wait_ms", "#undef read")
+socket_calls = function(smb2man_source, "static int smb2man_wait_ms", "// SMB 2.x request signing")
 assert "#include \"usmb2/usmb2.c\"" in smb2man_source.read_text(encoding="utf-8")
 assert "#define read(a, b, c)  smb2man_sock_read(a, b, c)" in smb2man_source.read_text(encoding="utf-8")
 
 sock_harness = r'''
 #include <assert.h>
 #include <errno.h>
+#include <stdint.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
