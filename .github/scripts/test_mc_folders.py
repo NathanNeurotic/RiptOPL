@@ -384,7 +384,8 @@ if not (0 <= smb.find('vcd_popsnet_ensure_t ens = vcdEnsurePopstarterSmbConfig(&
 for src in ('src/sources/ethsupport.cpp', 'src/sources/appsupport.cpp'):
     body = text(src)
     at = body.find('vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(')
-    if not (0 <= at < body.find('if (ens == VCD_POPSNET_CANCELLED)', at) < body.find('if (ens == VCD_POPSNET_SMB_MISSING)', at)):
+    cancel = re.compile(r'if \(ens == VCD_POPSNET_CANCELLED\)\s*return;').search(body, at) if at >= 0 else None
+    if not (cancel and cancel.end() < body.find('if (ens == VCD_POPSNET_SMB_MISSING)', at)):
         failures.append(src + ': return without launching when the SMBv1 notice is cancelled')
 net = function(vcd, 'int vcdWritePopstarterNetFiles(')
 if not (0 <= net.find('vcdEnsurePopstarterNetDir(dir)') < net.find('vcdStampPopstarterIcons(dir, NULL);') < net.find('vcdSafeWriteFile(')):
