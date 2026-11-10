@@ -11,6 +11,7 @@
 #include "include/ioman.h"
 #include "include/utf8.h"
 #include "include/util.h"
+#include "include/tar.h"
 #include "include/atlas.h"
 #include "include/fontsystem.h"
 #include "include/textshape.h"
@@ -378,7 +379,8 @@ static void *fntReadData(char *path, int *bufferSize, int *owned)
         return &poeveticanew_raw;
     }
 
-    buffer = readFile(path, -1, bufferSize);
+    if (tarThemeRead(path, &buffer, bufferSize) == 0) // a theme's font in its .tar, else the file
+        buffer = readFile(path, -1, bufferSize);
     if (!buffer) {
         LOG("FNTSYS Font file loading failed: %s\n", path);
         return NULL;

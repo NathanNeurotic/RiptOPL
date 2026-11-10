@@ -20,6 +20,7 @@
 #include "include/themeviews.h"
 #include "include/sema_lock.h"
 #include "include/diaglog.h"
+#include "include/tar.h"
 #ifdef RETROACHIEVEMENTS
 #include "include/rabadge.h" // RA: mark over the cover
 #endif
@@ -1003,8 +1004,11 @@ int ThemeCatalog::readEntry(int index, const char *path, const char *separator, 
     //
     // The prefix matches in ANY case: a PC share on a case-sensitive server keeps "THM_Name" exactly as
     // typed, and the name after it is used as-is.
+    // A theme can also be one archive, thm_<Name>.tar (tar.h tarTheme*): its path then runs through the archive.
+    size_t nameLen = strlen(name);
+    int isTar = d_type != DT_DIR && nameLen > 8 && !strcasecmp(name + nameLen - 4, ".tar"); // thm_ checked below
     int isDir = (d_type == DT_DIR);
-    if (!isDir && strncasecmp(name, "thm_", 4) == 0) {
+    if (!isDir && !isTar && strncasecmp(name, "thm_", 4) == 0) {
         char probe[256];
         snprintf(probe, sizeof(probe), "%s%s%s", path, separator, name);
         THEME_BOOT_TRACE("theme dirent: probing candidate %s", probe);
@@ -1018,15 +1022,31 @@ int ThemeCatalog::readEntry(int index, const char *path, const char *separator, 
 
     // strncmp, not upstream's strstr: the name parse below assumes the prefix is at the START
     // (name + 4), so a mid-string "thm_" match always produced a garbage theme name anyway.
-    if (isDir && strncasecmp(name, "thm_", 4) == 0) {
+    if ((isDir || isTar) && strncasecmp(name, "thm_", 4) == 0) {
         theme_file_t *currTheme = &themes_[count_ + index];
+        int length = (int)nameLen - 4 - (isTar ? 4 : 0);
 
-        int length = strlen(name) - 4 + 1;
-        currTheme->name = (char *)malloc(length * sizeof(char));
+        // The folder and the archive of one name in this THM folder are one theme, and the folder wins: a theme
+        // being edited, or an older setup, keeps working exactly as it did.
+        for (int k = count_; k < count_ + index; k++) {
+            theme_file_t *other = &themes_[k];
+            int otherTar = tarThemePath(other->filePath);
+            if ((!isTar && !otherTar) || strncasecmp(other->name, name + 4, length) != 0 || other->name[length] != '\0')
+                continue; // two folders are two themes, as they always were
+            if (isTar)
+                return index;  // a theme of this name is listed already
+            free(other->name); // the archive listed first gives its place to the folder
+            free(other->filePath);
+            currTheme = other;
+            index--;
+            break;
+        }
+
+        currTheme->name = (char *)malloc(length + 1);
         memcpy(currTheme->name, name + 4, length);
-        currTheme->name[length - 1] = '\0';
+        currTheme->name[length] = '\0';
 
-        length = strlen(path) + 1 + strlen(name) + 1 + 1;
+        length = strlen(path) + 1 + nameLen + 1 + 1;
         currTheme->filePath = (char *)malloc(length * sizeof(char));
         sprintf(currTheme->filePath, "%s%s%s%s", path, separator, name, separator);
 
@@ -1420,7 +1440,18 @@ static int thmLoad(const char *themePath)
         snprintf(path, sizeof(path), "%sconf_theme.cfg", themePath);
         themeConfig = configAlloc(0, NULL, path);
         THEME_BOOT_TRACE("theme load: disk config read begin %s", path);
-        configRead(themeConfig); // try to load the theme config file. If it does not exist, defaults will be used.
+        void *cfgBuf;
+        int cfgSize;
+        int inTar = tarThemeRead(path, &cfgBuf, &cfgSize);
+        if (inTar < 0) { // an archive has no carry-over to look for; the wOPL name is the one other name read
+            snprintf(path, sizeof(path), "%swopl_theme.cfg", themePath);
+            inTar = tarThemeRead(path, &cfgBuf, &cfgSize);
+        }
+        if (inTar > 0)
+            configReadBuffer(themeConfig, cfgBuf, cfgSize);
+        else if (inTar == 0)
+            configRead(themeConfig); // try to load the theme config file. If it does not exist, defaults will be used.
+        free(cfgBuf);
     }
 
     THEME_BOOT_TRACE("theme load: config read %s", themePath ? themePath : "<OPL>");
@@ -1903,6 +1934,7 @@ void thmInit(void)
 {
     LOG("THEMES Init\n");
     gTheme = NULL;
+    tarThemeInit();
     if (thmSwitchSema < 0) {
         // A binary semaphore, made the way sbCreateSemaphore makes one. This layer may not call into supportbase
         // (tools/analyze_coupling.py), so it uses the kernel call, as fntsys and saveicon do.

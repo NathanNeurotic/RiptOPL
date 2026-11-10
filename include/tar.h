@@ -66,6 +66,7 @@ typedef enum {
     TAR_KIND_ART = 0,
     TAR_KIND_CFG = 1,
     TAR_KIND_CHT = 2,
+    TAR_KIND_THM = 3, // the active theme's archive (tarTheme* below); entries are TarEntryArt-sized
     TAR_KIND_MAX
 } TarKind;
 
@@ -82,5 +83,19 @@ u32 tarRead(TarKind kind, const TarEntryBase *entry, void *dst, u32 dstSize);
 void tarInvalidate(TarKind kind);
 
 const char *tarGetDevicePrefix(TarKind kind);
+
+// A theme packed as one archive, THM/thm_<Name>.tar: the files of its folder at the top (an enclosing thm_<Name>/
+// folder is accepted too). Its files are named by paths that run through the archive, e.g.
+// "mass0:/THM/thm_Name.tar/sound/bgm.ogg", so the loaders build paths as for a folder and ask here first. The index
+// is read once per archive (no sidecar cache: one cache name would be shared by every theme of a THM folder) and is
+// not capped at MAX_FILE_SIZE, so a long bgm.ogg can stream from its place in the archive. Names are up to 47 chars.
+void tarThemeInit(void); // once, before any thread loads a theme file (the index is shared by them)
+// 1 when path runs through a theme archive, else 0.
+int tarThemePath(const char *path);
+// 0: path does not run through a theme archive (open it as usual). 1: *buf holds the member (memalign 64, a NUL
+// after its last byte, the caller frees it) and *size its length. -1: the archive lacks it or cannot be read.
+int tarThemeRead(const char *path, void **buf, int *size);
+// The same answers; on 1 the member's place: the archive's own path, the offset of its first byte, its length.
+int tarThemeSpan(const char *path, char *tarPath, int tarPathSize, u64 *offset, u32 *size);
 
 #endif

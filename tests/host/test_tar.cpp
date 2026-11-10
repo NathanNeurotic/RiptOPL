@@ -8,6 +8,7 @@
 #include <vector>
 #include "../../src/platform/tar.cpp"
 #include "check.h"
+#include "kernel.h"
 
 static std::string put(const char *name, const std::string &data, char type = '0', const char *prefix = "", long long fakeSize = -1)
 {
@@ -107,7 +108,46 @@ int main()
     write_file(dir + "short.tar", std::string(100, 'x'));
     CHECK(tarLoadFile(TAR_KIND_CHT, (dir + "short.tar").c_str()) != 0);
 
-    tarClose(TAR_KIND_ART); tarClose(TAR_KIND_CFG); tarClose(TAR_KIND_CHT);
+    // THM: a theme packed as one archive, reached through paths that run through it.
+    tarThemeInit();
+    std::string bgm(5 * 1024 * 1024, 'M'); // over MAX_FILE_SIZE: still indexed, so it can stream from its place
+    std::string theme =
+        put("conf_theme.cfg", cfg) + put("sound/", "", '5') + put("sound/bgm.ogg", bgm) + put("sound/cursor.adp", "adp") + eof();
+    write_file(dir + "thm_Test.tar", theme);
+    write_file(dir + "thm_Wrap.tar", put("thm_Wrap/", "", '5') + put("thm_Wrap/bg.png", "png") + eof()); // tar of the folder
+    std::string thm = dir + "thm_Test.tar/";
+    CHECK(tarThemePath((thm + "conf_theme.cfg").c_str()) == 1);
+    CHECK(tarThemePath((dir + "thm_Test/conf_theme.cfg").c_str()) == 0); // a folder theme
+    CHECK(tarThemePath((dir + "ART/art.tar").c_str()) == 0);              // the art archive itself
+    CHECK(tarThemePath((dir + "x.tar/conf_theme.cfg").c_str()) == 0);     // only a thm_ archive
+    CHECK(tarThemePath("mass0:THM_Test.TAR\\sound") == 1);                 // any case, either separator
+    void *mem = (void *)1;
+    int len = 0;
+    CHECK(tarThemeRead((dir + "thm_Test/conf_theme.cfg").c_str(), &mem, &len) == 0 && mem == NULL); // not ours
+    CHECK(tarThemeRead((thm + "conf_theme.cfg").c_str(), &mem, &len) == 1);
+    CHECK(mem && len == (int)cfg.size() && ((char *)mem)[len] == '\0');
+    if (mem)
+        CHECK_STR((char *)mem, cfg.c_str());
+    free(mem);
+    CHECK(tarThemeRead((thm + "SOUND\\Cursor.adp").c_str(), &mem, &len) == 1 && len == 3); // case, backslash
+    free(mem);
+    CHECK(tarThemeRead((thm + "missing.png").c_str(), &mem, &len) == -1 && mem == NULL);    // no device fallback
+    CHECK(tarThemeRead((thm + "sound/bgm.ogg").c_str(), &mem, &len) == -1);                // too big to read whole
+    char tp[256];
+    u64 off = 0;
+    u32 sz = 0;
+    CHECK(tarThemeSpan((thm + "sound/bgm.ogg").c_str(), tp, sizeof(tp), &off, &sz) == 1);
+    std::string tpWant = dir + "thm_Test.tar";
+    CHECK_STR(tp, tpWant.c_str());
+    CHECK(sz == bgm.size() && off == 512 + 512 + cfg.size() / 512 * 512 + 512 + 512); // after cfg header+body, dir, own header
+    CHECK(tarThemeSpan((dir + "thm_Test/bg.png").c_str(), tp, sizeof(tp), &off, &sz) == 0);
+    CHECK(tarThemeRead((dir + "thm_Wrap.tar/bg.png").c_str(), &mem, &len) == 1 && len == 3); // enclosing folder dropped
+    free(mem);
+    CHECK(tarThemeRead((dir + "thm_None.tar/bg.png").c_str(), &mem, &len) == -1);         // archive missing
+    CHECK(stat((dir + "thm_cache.bin").c_str(), &st) != 0 && stat((dir + "_cache.bin").c_str(), &st) != 0); // no sidecar
+    CHECK(g_semaDepth[0] == 0); // every lookup released the lock
+
+    tarClose(TAR_KIND_ART); tarClose(TAR_KIND_CFG); tarClose(TAR_KIND_CHT); tarClose(TAR_KIND_THM);
     std::string rm = "rm -rf " + std::string(dirbuf);
     (void)!system(rm.c_str());
     TEST_DONE("tar");

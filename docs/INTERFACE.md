@@ -20,7 +20,8 @@ hides them. Back and L1/R1 keep edits for the session; **Save Changes** keeps th
 
 ## Theme selection
 
-**Settings → Interface → Theme** picks the theme: `<OPL>` or a disk theme from `THM/`.
+**Settings → Interface → Theme** picks the theme: `<OPL>` or a disk theme from `THM/`, a `thm_<Name>` folder
+or one `thm_<Name>.tar` file (see [Theme engine](THEME_ENGINE.md), one-file themes).
 **Theme View** picks how it draws your games: **List**, **Coverflow (3)** or **Coverflow (5)** (the
 centered carousel with 3 or 5 covers), **PSBBN Flow** (the PSBBN Definitive Project Game Collection look) or **Grid** (rows and columns of
 covers; Up/Down move one row). `<OPL>` offers all of them; a disk
