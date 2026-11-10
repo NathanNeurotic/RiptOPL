@@ -1355,8 +1355,6 @@ static int thmLoad(const char *themePath)
 {
     LOG("THEMES Load theme path=%s\n", themePath);
     THEME_BOOT_TRACE("theme load: begin %s", themePath ? themePath : "<OPL>");
-    if (themePath != NULL)
-        tarThemeReset(); // an archive replaced since the last load is read again, as a folder's files are
     char path[256];
     theme_t *curT = gTheme;
     theme_t *newT = (theme_t *)malloc(sizeof(theme_t));
@@ -1420,6 +1418,8 @@ static int thmLoad(const char *themePath)
         return -1;
     }
     THEME_BOOT_TRACE("theme load: MMCE art drain complete; config preparation begins");
+    if (themePath != NULL)
+        tarThemeReset(); // after the drain: an archive replaced since the last load is read again, as a folder's files are
 
     config_set_t *themeConfig = NULL;
     // The built-in <OPL> theme offers its List, Coverflow, PSBBN Flow and Grid looks as views (Coverflow and
