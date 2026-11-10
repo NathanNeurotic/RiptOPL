@@ -189,9 +189,9 @@ static int bytes_equal(const u8 *a, const u8 *b, int n)
 
 /*
   UTF-8 to UTF-16LE, optionally upper-cased; returns the byte length written (no terminator).
-  Upper-casing is ASCII only, the way libsmb2 upper-cases the user name for the menu's logon. The
-  names come from the menu, which got them from smb2man's directory listing, and libsmb2 returns
-  those as UTF-8: a file called "Café.iso" must be requested as the same UTF-16 the server listed
+  Upper-casing covers ASCII and Latin-1, as smb2man upper-cases the user name for the menu's logon
+  (it refuses one past U+00FF). The names come from the menu, which got them from smb2man's
+  directory listing, and libsmb2 returns those as UTF-8: a file called "Café.iso" must be requested as the same UTF-16 the server listed
   it under. A byte that is not valid UTF-8 is passed through as Latin-1, so an 8-bit name from an
   old config still makes a request of the same length.
 */
@@ -224,8 +224,12 @@ static int put_utf16(u8 *out, const char *in, int upper)
                 c = (u8)in[-1]; // not UTF-8: the lead byte alone, as Latin-1
         }
 
-        if (upper && c >= 'a' && c <= 'z')
-            c -= 'a' - 'A';
+        // Latin-1 letters too (a-grave..thorn, y-diaeresis), as Windows, Samba and the menu's
+        // smb2man upper-case them; U+00B5 and U+00DF have no single upper case and stay.
+        if (upper && ((c >= 'a' && c <= 'z') || (c >= 0xE0 && c <= 0xFE && c != 0xF7)))
+            c -= 0x20;
+        else if (upper && c == 0xFF)
+            c = 0x178;
 
         if (c >= 0x10000) { // a surrogate pair
             c -= 0x10000;

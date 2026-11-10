@@ -58,7 +58,6 @@ I_strncpy
 I_strcmp
 I_strlen
 I_sprintf
-I_toupper
 sysclib_IMPORTS_end
 
 stdio_IMPORTS_start

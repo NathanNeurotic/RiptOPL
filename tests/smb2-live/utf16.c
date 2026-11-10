@@ -53,7 +53,11 @@ int main(void)
 {
     CHECK("ASCII", "a.iso", 0, 'a', '.', 'i', 's', 'o');
     CHECK("ASCII upper-cased (NTOWFv2)", "ps2user", 1, 'P', 'S', '2', 'U', 'S', 'E', 'R');
-    CHECK("upper-casing leaves non-ASCII alone", "\xC3\xA9", 1, 0x00E9);
+    CHECK("Latin-1 letters upper-cased as Windows does (NTOWFv2)", "jos\xC3\xA9 \xC3\xBE\xC3\xBF", 1, 'J', 'O', 'S', 0x00C9,
+          ' ', 0x00DE, 0x0178);
+    CHECK("upper-casing leaves the division sign, micro sign and sharp s alone", "\xC3\xB7\xC2\xB5\xC3\x9F", 1, 0x00F7,
+          0x00B5, 0x00DF);
+    CHECK("upper-casing stops at U+00FF", "\xC4\x81", 1, 0x0101);
     CHECK("two-byte", "Caf\xC3\xA9", 0, 'C', 'a', 'f', 0x00E9);
     CHECK("three-byte", "\xE2\x82\xAC", 0, 0x20AC);
     CHECK("four-byte: a surrogate pair", "\xF0\x9F\x8E\xAE", 0, 0xD83C, 0xDFAE);

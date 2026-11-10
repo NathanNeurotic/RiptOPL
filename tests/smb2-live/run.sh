@@ -65,6 +65,7 @@ cleanup() {
         i=$((i + 1))
         sleep 0.1
     done
+    [ -f "$work/made-jose" ] && userdel 'josé' 2>/dev/null || true
     rm -rf "$work"
 }
 # EXIT cleans up; INT/TERM exit (so the script does not resume with $work gone), which runs it.
@@ -210,8 +211,8 @@ denied() { # the logon must be refused cleanly: exit 3 after the refusal, no han
     cat denied.txt
     [ $rc -eq 3 ] && grep -q 'session setup -1000' denied.txt
 }
-browse() {
-    timeout 120 ./browse 127.0.0.1 "$port" ps2 secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso "$u8name"
+browse() { # $1 user (default ps2)
+    timeout 120 ./browse 127.0.0.1 "$port" "${1:-ps2}" secret PS2SMB '\DVD\TEST.iso' share/DVD/TEST.iso "$u8name"
 }
 keepalive() { # $1 the server's signing setting
     timeout 120 ./keepalive 127.0.0.1 "$port" ps2 secret PS2SMB "$1"
@@ -241,6 +242,15 @@ for signing in mandatory disabled; do
     run "browse driver, signing $signing" browse
     run "browse driver keepalive: lost session, reconnect, backoff, async open, no leaks, signing $signing" keepalive "$signing"
 done
+# NTOWFv2 hashes the user name upper-cased as the server does it, Latin-1 letters included: a user
+# name with one was refused while only ASCII was upper-cased.
+if ! id 'josé' >/dev/null 2>&1; then
+    useradd -M 'josé' 2>/dev/null || useradd --badname -M 'josé'
+    : >"$work/made-jose" # removed again on exit
+fi
+printf 'secret\nsecret\n' | smbpasswd -c "$conf" -s -a 'josé' >/dev/null
+run "in-game reader, user name with a Latin-1 letter (josé)" ingame 'josé' secret
+run "browse driver, user name with a Latin-1 letter (josé)" browse 'josé'
 # A blank user name logs on as "Guest" with the password, as the menu does, not anonymously: here
 # "Guest" is a real account (mapped to ps2) and there is no guest or anonymous access to the share.
 printf 'ps2 = Guest\n' >"$work/usermap"
