@@ -39,6 +39,7 @@ static uint32_t flags;
 static unsigned int (*alarm_cb)(void *);
 static void *alarm_arg;
 static int alarm_fail; /* SetAlarm refuses, as on an exhausted IOP kernel heap */
+static int alarms_set; /* SetAlarm calls that armed an alarm */
 
 static udp_socket_t bound_socket;
 static uint8_t frame[64];
@@ -192,6 +193,7 @@ int SetAlarm(iop_sys_clock_t *clock, unsigned int (*cb)(void *), void *arg)
         return -400; /* KE_NO_MEMORY */
     alarm_cb = cb;
     alarm_arg = arg;
+    alarms_set++;
     return 0;
 }
 int CancelAlarm(unsigned int (*cb)(void *), void *arg)
@@ -393,6 +395,25 @@ int main(void)
     check("send with no alarm still makes four tries", count_requests(mark) == 4);
     check("discovery with no alarm times out", udprdma_discover(s, 2000) == UDPRDMA_ERR_TIMEOUT);
     alarm_fail = 0;
+
+    /* A transfer that stops making progress must still time out. Resent copies of packets already
+     * received wake recv to ACK them; they must not restart its timeout, or a server that keeps
+     * resending would hold recv, and every read behind it, forever. */
+    run_script(1, connect);
+    check("rediscovery before the stalled stream connects", udprdma_discover(s, 2000) == UDPRDMA_OK);
+    n = 0;
+    for (idx = 0; idx < 6; idx++)
+        stream[n++] = (script_ev_t) {EV_DATA, idx}; /* progress: the timeout restarts once */
+    for (burst = 0; burst < 3; burst++)
+        for (idx = 0; idx < 6; idx++)
+            stream[n++] = (script_ev_t) {EV_DATA, idx}; /* copies: no progress */
+    stream[n++] = (script_ev_t) {EV_TIMEOUT, 0};
+    udprdma_set_rx_buffer(s, bulk, sizeof(bulk));
+    run_script(n, stream);
+    mark = alarms_set;
+    check("stalled stream times out", udprdma_recv(s, bulk, sizeof(bulk), 1000) == UDPRDMA_ERR_TIMEOUT);
+    check("stalled stream consumes the whole script", script_pos == script_len);
+    check("resent copies do not restart the receive timeout", alarms_set - mark == 2);
 
     if (failures) {
         fprintf(stderr, "%d check(s) failed\n", failures);

@@ -631,6 +631,7 @@ int udprdma_send_ll(udprdma_socket_t *socket,
 int udprdma_recv(udprdma_socket_t *socket, void *buffer, uint32_t size, uint32_t timeout_ms)
 {
     u32 evf_bits;
+    uint32_t armed_at;
 
     if (socket == NULL || buffer == NULL)
         return UDPRDMA_ERR_INVAL;
@@ -651,15 +652,24 @@ int udprdma_recv(udprdma_socket_t *socket, void *buffer, uint32_t size, uint32_t
         socket->rx_received = 0;
     }
 
-    /* Wait for FIN/buffer full, NACK (out-of-order), or timeout */
+    /* Wait for FIN/buffer full, NACK (out-of-order), or timeout. The timeout restarts only when data
+     * arrives: resent copies of packets already received wake this loop to ACK them, and must not keep
+     * a transfer that makes no progress from ever timing out. */
+    armed_at = (uint32_t)-1;
     while (1) {
-        _arm_timeout(socket, timeout_ms * 1000);
+        if (socket->rx_received != armed_at) {
+            CancelAlarm(_timeout_cb, socket);
+            ClearEventFlag(socket->event_flag, ~EF_TIMEOUT);
+            _arm_timeout(socket, timeout_ms * 1000);
+            armed_at = socket->rx_received;
+        }
 
         WaitEventFlag(socket->event_flag,
                       EF_RX_FIN | EF_RX_NACK | EF_RX_WINDOW | EF_TIMEOUT,
                       WEF_OR | WEF_CLEAR, &evf_bits);
 
-        CancelAlarm(_timeout_cb, socket);
+        if (evf_bits & (EF_RX_FIN | EF_TIMEOUT))
+            CancelAlarm(_timeout_cb, socket);
 
         if (evf_bits & EF_RX_FIN) {
             _send_ack(socket, 1);
