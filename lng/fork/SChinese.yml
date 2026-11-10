@@ -461,7 +461,6 @@ translations:
   HINT_DNS: DNS 服务器地址。通常与网关相同。
   HINT_SMB_ADDR_TYPE: 通过 IP 地址还是 NetBIOS 名称（计算机名）访问电脑。
   HINT_SMB_ADDRESS: 共享你游戏的电脑：它的 IP 地址；地址类型为 NetBIOS 时为计算机名。
-  HINT_SMB_PORT: SMB 端口。必须与电脑一致：PS2 Servers 使用 1111，Windows 和 Samba 共享使用 445。
   HINT_SMB_USER: SMB 用户名。大多数共享可用 guest。
   HINT_HTTP_SERVER: HTTP 游戏服务器的 IP 地址。
   HINT_HTTP_PORT: HTTP 游戏服务器监听的端口。

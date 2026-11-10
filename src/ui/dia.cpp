@@ -72,7 +72,7 @@ static int diaShouldBreakLineAfter(struct UIItem *ui)
     return (ui->type == UI_SPLITTER);
 }
 
-static void diaDrawHint(int text_id)
+static void diaDrawHint(int text_id, int selBottom)
 {
     char *text = _l(text_id);
 
@@ -95,8 +95,10 @@ static void diaDrawHint(int text_id)
 
     int boxH = lines * MENU_ITEM_HEIGHT + 10;
     int y = gTheme->usedHeight - 32 - boxH;
+    // Bottom of the screen, unless that covers the row it describes (a long page's last rows): then the top.
+    if (selBottom > y)
+        y = 10;
 
-    // render hint on the lower side of the screen.
     rmDrawRect(x, y, boxW, boxH, gColDarker);
     fntRenderString(gTheme->fonts[0], x + 5, y + 5, ALIGN_NONE, innerW, boxH - 5, wrapped, gTheme->textColor);
 }
@@ -776,7 +778,7 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
     }
 
     if ((cur != NULL) && (!haveFocus) && (cur->hintId != -1)) {
-        diaDrawHint(cur->hintId);
+        diaDrawHint(cur->hintId, curBot);
     }
 
     /* A focused int accepts Triangle for direct entry, and nothing on screen would otherwise say so:

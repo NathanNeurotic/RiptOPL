@@ -476,7 +476,6 @@ translations:
   HINT_DNS: DNS-serverens adresse. Som regel den samme som gatewayen.
   HINT_SMB_ADDR_TYPE: Nå pc'en via dens IP-adresse eller dens NetBIOS-navn (computernavn).
   HINT_SMB_ADDRESS: 'Pc''en, der deler dine spil: dens IP-adresse, eller dens computernavn, når Adressetype er NetBIOS.'
-  HINT_SMB_PORT: 'SMB-port. Den skal passe til pc''en: PS2 Servers bruger 1111, Windows- og Samba-delinger bruger 445.'
   HINT_SMB_USER: SMB-brugernavn. guest virker til de fleste delinger.
   HINT_HTTP_SERVER: HTTP-spilserverens IP-adresse.
   HINT_HTTP_PORT: Porten, HTTP-spilserveren lytter på.

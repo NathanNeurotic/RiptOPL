@@ -808,8 +808,7 @@ int guiShowNetConfig(void)
     // Open the Network Config with advanced options ON so SMB Port + ETH op-mode are immediately
     // editable. Forcing 0 here contradicted the row's own def=1 in dialogs.c AND overwrote it:
     // diaSetInt writes both `def` and `current`, so even diaResetValue restored the 0. It matters
-    // because this fork defaults the SMB port to 1111 -- anyone pointing at a normal 445 server hit
-    // a greyed field first.
+    // because a PS2-Servers card listens on its own port, not 445 -- such a user hit a greyed field first.
     diaSetInt(diaNetConfig, NETCFG_SHOW_ADVANCED_OPTS, 1);
     diaSetEnabled(diaNetConfig, NETCFG_ETHOPMODE, 1);
     diaSetEnabled(diaNetConfig, NETCFG_SHARE_PORT, 1);
@@ -1009,6 +1008,9 @@ reshow_network:
     }
 
     gSettingsShell.endDialog();
+    // OK or Reconnect on a page left as it opened still reconnects above, but has nothing to save.
+    if (!gSettingsShell.isShellResult(result) && !diaHasChanges(diaNetConfig))
+        result = UIID_BTN_CANCEL;
     return gSettingsShell.pageResult(result);
 }
 

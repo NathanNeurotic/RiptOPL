@@ -485,7 +485,6 @@ translations:
   HINT_DNS: Alamat server DNS. Biasanya sama dengan gateway.
   HINT_SMB_ADDR_TYPE: Menjangkau PC lewat alamat IP-nya atau nama NetBIOS (komputer)-nya.
   HINT_SMB_ADDRESS: 'PC yang membagikan game-gamemu: alamat IP-nya, atau nama komputernya saat Tipe Alamat adalah NetBIOS.'
-  HINT_SMB_PORT: 'Port SMB. Harus sama dengan PC: PS2 Servers memakai 1111, share Windows dan Samba memakai 445.'
   HINT_SMB_USER: Nama pengguna SMB. guest bisa dipakai untuk kebanyakan share.
   HINT_HTTP_SERVER: Alamat IP server game HTTP.
   HINT_HTTP_PORT: Port yang didengarkan server game HTTP.

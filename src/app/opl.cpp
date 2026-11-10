@@ -1513,9 +1513,7 @@ static void setDefaults(void)
     ps2_dns[1] = 168;
     ps2_dns[2] = 1;
     ps2_dns[3] = 1;
-    gPCPort = 1111; // RiptOPL default SMB port (was 445): matches the bundled PC server tooling
-    // 1100 is Docmine17's PC server default, and his unmodified server is the compatibility
-    // baseline. Any other port works; this is only what an unconfigured install tries first.
+    gPCPort = 445; // the SMB standard: Windows, Samba, a NAS and Neutrino's usmb2 all use it
     gHttpServerIp[0] = 192;
     gHttpServerIp[1] = 168;
     gHttpServerIp[2] = 0;

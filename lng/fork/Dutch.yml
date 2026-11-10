@@ -524,7 +524,6 @@ translations:
   HINT_DNS: Adres van de DNS-server. Meestal hetzelfde als de gateway.
   HINT_SMB_ADDR_TYPE: De pc bereiken via zijn IP-adres of via zijn NetBIOS-naam (computernaam).
   HINT_SMB_ADDRESS: 'De pc die je games deelt: zijn IP-adres, of zijn computernaam als Adrestype NetBIOS is.'
-  HINT_SMB_PORT: 'SMB-poort. Moet overeenkomen met de pc: PS2 Servers gebruikt 1111, Windows- en Samba-shares gebruiken 445.'
   HINT_SMB_USER: SMB-gebruikersnaam. guest werkt voor de meeste shares.
   HINT_HTTP_SERVER: IP-adres van de HTTP-gameserver.
   HINT_HTTP_PORT: Poort waarop de HTTP-gameserver luistert.

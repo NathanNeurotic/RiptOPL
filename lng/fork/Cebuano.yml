@@ -206,7 +206,6 @@ translations:
   "NEUTRINO_TOML_SYNC_FAILED": "Nawala o dili masulatan ang Neutrino network config (bsd toml) -- giabort ang launch, susiha ang neutrino folder."
   "NEUTRINO_TOO_FRAGMENTED": "Sobra ka fragmented para sa Neutrino (%d fragments, limit %d apil ang VMCs) -- gisulayan hinuon ang OPL core."
   "NEUTRINO_TOO_FRAGMENTED_NET": "Sobra ka fragmented para sa Neutrino (%d fragments, limit %d apil ang VMCs) -- i-defragment sa PC; giabort ang launch."
-  "NEUTRINO_GSM_COMP": "Neutrino GSM Compatibility"
   "HINT_NEUTRINO_GSM_COMP": "Field-flipping nga ayo para sa mga dula nga nag-uyog o nag-gisi ubos sa usa ka pinugos nga Neutrino Video mode. Nagkinahanglan og gi-set nga Neutrino Video mode."
   "NARGS_DBC": "Mga Kolor sa Debug (-dbc)"
   "NARGS_LOGO": "PS2 Logo (-logo)"
@@ -489,7 +488,6 @@ translations:
   HINT_DNS: Address sa DNS server. Kasagaran pareho sa gateway.
   HINT_SMB_ADDR_TYPE: Abton ang PC pinaagi sa IP address niini o sa NetBIOS (computer) name niini.
   HINT_SMB_ADDRESS: 'Ang PC nga nagpaambit sa imong mga dula: ang IP address niini, o ang computer name niini kung NetBIOS ang Address Type.'
-  HINT_SMB_PORT: 'SMB port. Kinahanglan motugma sa PC: 1111 ang gamit sa PS2 Servers, 445 ang gamit sa Windows ug Samba share.'
   HINT_SMB_USER: SMB user name. Molihok ang guest sa kadaghanan sa share.
   HINT_HTTP_SERVER: IP address sa HTTP game server.
   HINT_HTTP_PORT: Port nga gipaminawan sa HTTP game server.
