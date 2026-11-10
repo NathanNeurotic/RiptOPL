@@ -61,7 +61,12 @@ struct UIString
 };
 
 // The union initializer of a text row whose storage is the struct UIString named store.
-#define DIA_STRING(store, handler) {.stringvalue = {(store).def, (store).text, (handler)}}
+#define DIA_STRING(store, handler)    \
+    {                                 \
+        .stringvalue = {(store).def,  \
+                        (store).text, \
+                        (handler) }   \
+    }
 
 // UI item definition (for dialogues)
 struct UIItem
