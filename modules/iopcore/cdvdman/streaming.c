@@ -10,31 +10,40 @@ static int AllocBank(void **pointer);
 static int ReadSectors(int maxcount, void *buffer);
 static int StFillStreamBuffer(void);
 static void StStartFillStreamBuffer(void);
+static void StScheduleFill(void);
 
 static unsigned int StmScheduleCb(void *arg)
 {
     return ((StFillStreamBuffer() >= 0) ? 0 : 0x00704000);
 }
 
-static void StmCallback(void)
+static void StmCallback(int failed)
 {
     int OldState;
 
-    // Runs only for a finished stream fill (cdvdman_cdread_Thread), so StIsReading here means that fill has been read.
+    // Runs only for a finished stream fill (cdvdman_cdread_Thread), so StIsReading here means that fill has ended.
     if (cdvdman_stat.StreamingData.StIsReading) {
         CpuSuspendIntr(&OldState);
-        cdvdman_stat.StreamingData.Stlsn += cdvdman_stat.StreamingData.StBanksize;
-        cdvdman_stat.StreamingData.StStreamed += cdvdman_stat.StreamingData.StBanksize;
-        cdvdman_stat.StreamingData.StWritePtr += cdvdman_stat.StreamingData.StBanksize;
-        if (cdvdman_stat.StreamingData.StWritePtr >= cdvdman_stat.StreamingData.StBufmax)
-            cdvdman_stat.StreamingData.StWritePtr = 0;
+        /* A fill whose read failed holds no new data. Counting it as read handed the game the bank's old contents
+           as the next sectors, so the stream stays where it is and the same bank is read again. */
+        if (!failed) {
+            cdvdman_stat.StreamingData.Stlsn += cdvdman_stat.StreamingData.StBanksize;
+            cdvdman_stat.StreamingData.StStreamed += cdvdman_stat.StreamingData.StBanksize;
+            cdvdman_stat.StreamingData.StWritePtr += cdvdman_stat.StreamingData.StBanksize;
+            if (cdvdman_stat.StreamingData.StWritePtr >= cdvdman_stat.StreamingData.StBufmax)
+                cdvdman_stat.StreamingData.StWritePtr = 0;
+        }
         cdvdman_stat.StreamingData.StIsReading = 0;
         CpuResumeIntr(OldState);
     }
 
     DPRINTF("StmCallback: %08lx, wr: %u, rd: %u, streamed: %u\n", cdvdman_stat.StreamingData.Stlsn, cdvdman_stat.StreamingData.StWritePtr, cdvdman_stat.StreamingData.StReadPtr, cdvdman_stat.StreamingData.StStreamed);
 
-    StStartFillStreamBuffer();
+    // After a failure, retry on the alarm rather than at once: a device that fails fast would loop here.
+    if (failed)
+        StScheduleFill();
+    else
+        StStartFillStreamBuffer();
 }
 
 static void StReset(void)
@@ -87,16 +96,20 @@ static int StFillStreamBuffer(void)
     return result;
 }
 
-static void StStartFillStreamBuffer(void)
+static void StScheduleFill(void)
 {
     iop_sys_clock_t StmScheduleClock;
 
-    if (StFillStreamBuffer() < 0) {
-        DPRINTF("StmCallback: Rescheduling read.\n");
-        StmScheduleClock.lo = 0x00704000;
-        StmScheduleClock.hi = 0;
-        SetAlarm(&StmScheduleClock, &StmScheduleCb, &cdvdman_stat.StreamingData);
-    }
+    DPRINTF("StmCallback: Rescheduling read.\n");
+    StmScheduleClock.lo = 0x00704000;
+    StmScheduleClock.hi = 0;
+    SetAlarm(&StmScheduleClock, &StmScheduleCb, &cdvdman_stat.StreamingData);
+}
+
+static void StStartFillStreamBuffer(void)
+{
+    if (StFillStreamBuffer() < 0)
+        StScheduleFill();
 }
 
 // After a game read ends during streaming: restart a fill the game's read held off. StFillStreamBuffer does nothing

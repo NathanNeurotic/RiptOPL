@@ -23,6 +23,8 @@ enum {
     EV_INFORM,
     EV_ACK,
     EV_DATA_FIN,
+    EV_DATA,         /* reply data packet without FIN */
+    EV_DATA_TIMEOUT, /* a reply data packet and the alarm, both before the transport wakes */
 };
 
 typedef struct
@@ -31,13 +33,14 @@ typedef struct
     int arg;
 } script_ev_t;
 
-static script_ev_t script[32];
+static script_ev_t script[64];
 static int script_len, script_pos;
 
 static uint32_t flags;
 static unsigned int (*alarm_cb)(void *);
 static void *alarm_arg;
 static int alarm_fail; /* SetAlarm refuses, as on an exhausted IOP kernel heap */
+static int alarms_set; /* SetAlarm calls that armed an alarm */
 
 static udp_socket_t bound_socket;
 static uint8_t frame[64];
@@ -48,6 +51,8 @@ typedef struct
     int seq;
     int seq_nr_ack;
     int payload;
+    int flags;
+    int event; /* index of the script event that was being delivered, -1 outside a script */
 } sent_t;
 
 static sent_t sent[64];
@@ -133,6 +138,17 @@ static void step(void)
         case EV_DATA_FIN:
             inject_data(ev.arg, 0, UDPRDMA_DF_FIN, 4);
             break;
+        case EV_DATA:
+            inject_data(ev.arg, 0, 0, 4);
+            break;
+        case EV_DATA_TIMEOUT:
+            inject_data(ev.arg, 0, 0, 4);
+            if (alarm_cb == NULL) {
+                fprintf(stderr, "FAIL: timeout scripted with no alarm armed\n");
+                exit(1);
+            }
+            alarm_cb(alarm_arg);
+            break;
     }
 }
 
@@ -186,6 +202,7 @@ int SetAlarm(iop_sys_clock_t *clock, unsigned int (*cb)(void *), void *arg)
         return -400; /* KE_NO_MEMORY */
     alarm_cb = cb;
     alarm_arg = arg;
+    alarms_set++;
     return 0;
 }
 int CancelAlarm(unsigned int (*cb)(void *), void *arg)
@@ -230,6 +247,8 @@ int udp_packet_send_ll(udp_socket_t *socket, udp_packet_t *pkt, uint16_t pktdata
         sent[sent_len].seq = p->hdr.seq_nr;
         sent[sent_len].seq_nr_ack = p->hdr.packet_type == UDPRDMA_PT_DATA ? (int)p->data.seq_nr_ack : -1;
         sent[sent_len].payload = datasize;
+        sent[sent_len].flags = p->hdr.packet_type == UDPRDMA_PT_DATA ? (int)p->data.flags : -1;
+        sent[sent_len].event = script_pos - 1;
         sent_len++;
     }
     return 0;
@@ -242,6 +261,23 @@ static int count_requests(int from)
         if (sent[i].type == UDPRDMA_PT_DATA && sent[i].payload > 0)
             n++;
     return n;
+}
+
+/* An ACK or NACK sent while script events first..last were delivered that tells the
+ * server every packet up to and including `last_seq` arrived. */
+static int answered_up_to(int from, int first, int last, int last_seq)
+{
+    int i;
+    for (i = from; i < sent_len; i++) {
+        if (sent[i].type != UDPRDMA_PT_DATA || sent[i].payload != 0)
+            continue;
+        if (sent[i].event < first || sent[i].event > last)
+            continue;
+        if ((sent[i].flags & UDPRDMA_DF_ACK) ? sent[i].seq_nr_ack == last_seq :
+                                               sent[i].seq_nr_ack == ((last_seq + 1) & 0xFFF))
+            return 1;
+    }
+    return 0;
 }
 
 static int first_request(int from)
@@ -262,7 +298,9 @@ int main(void)
     static const script_ev_t dead[] = {{EV_TIMEOUT, 0}, {EV_TIMEOUT, 0}, {EV_TIMEOUT, 0}, {EV_TIMEOUT, 0}};
     static const script_ev_t ack0[] = {{EV_ACK, 0}};
     static const script_ev_t timeout_then_ack0[] = {{EV_TIMEOUT, 0}, {EV_ACK, 0}};
-    uint8_t req[16] = {0}, reply[16];
+    script_ev_t stream[40];
+    uint8_t req[16] = {0}, reply[16], bulk[64];
+    int n, burst;
     udprdma_socket_t *s;
     int mark, idx;
 
@@ -319,6 +357,28 @@ int main(void)
     check("split send does not retry on stale ACK", count_requests(mark) == 1);
     check("split send consumes covering ACK", script_pos == script_len);
 
+    /* A lost window ACK. The server has sent its whole window (8 packets) and they all
+     * arrived, but the ACK sent after the sixth was lost, so the server times out and sends
+     * the window again. The receiver must answer every such copy: when its first answer is
+     * lost too, nothing else can move the transfer. The server retransmits stale copies for
+     * 20 s and aborts, and the console sits in recv for 30 s, then reconnects. */
+    n = 0;
+    for (idx = 0; idx < 8; idx++)
+        stream[n++] = (script_ev_t) {EV_DATA, idx}; /* 0..7; the ACK after 5 is lost */
+    for (burst = 0; burst < 2; burst++)
+        for (idx = 0; idx < 8; idx++)
+            stream[n++] = (script_ev_t) {EV_DATA, idx}; /* server timeout: 0..7 again */
+    for (idx = 8; idx < 15; idx++)
+        stream[n++] = (script_ev_t) {EV_DATA, idx};
+    stream[n++] = (script_ev_t) {EV_DATA_FIN, 15};
+    mark = sent_len;
+    udprdma_set_rx_buffer(s, bulk, sizeof(bulk));
+    run_script(n, stream);
+    check("stream with a lost window ACK completes", udprdma_recv(s, bulk, sizeof(bulk), 1000) == (int)sizeof(bulk));
+    check("stream consumes the whole script", script_pos == script_len);
+    check("first resent window is answered", answered_up_to(mark, 8, 15, 7));
+    check("second resent window is answered after the first answer was lost", answered_up_to(mark, 16, 23, 7));
+
     /* SetAlarm fails: every wait must end as a timeout, never block. An empty script makes a
      * wait that is not ended by the transport itself fail the test instead of hanging. */
     alarm_fail = 1;
@@ -344,6 +404,38 @@ int main(void)
     check("send with no alarm still makes four tries", count_requests(mark) == 4);
     check("discovery with no alarm times out", udprdma_discover(s, 2000) == UDPRDMA_ERR_TIMEOUT);
     alarm_fail = 0;
+
+    /* A transfer that stops making progress must still time out. Resent copies of packets already
+     * received wake recv to ACK them; they must not restart its timeout, or a server that keeps
+     * resending would hold recv, and every read behind it, forever. */
+    run_script(1, connect);
+    check("rediscovery before the stalled stream connects", udprdma_discover(s, 2000) == UDPRDMA_OK);
+    n = 0;
+    for (idx = 0; idx < 6; idx++)
+        stream[n++] = (script_ev_t) {EV_DATA, idx}; /* progress: the timeout restarts once */
+    for (burst = 0; burst < 3; burst++)
+        for (idx = 0; idx < 6; idx++)
+            stream[n++] = (script_ev_t) {EV_DATA, idx}; /* copies: no progress */
+    stream[n++] = (script_ev_t) {EV_TIMEOUT, 0};
+    udprdma_set_rx_buffer(s, bulk, sizeof(bulk));
+    run_script(n, stream);
+    mark = alarms_set;
+    check("stalled stream times out", udprdma_recv(s, bulk, sizeof(bulk), 1000) == UDPRDMA_ERR_TIMEOUT);
+    check("stalled stream consumes the whole script", script_pos == script_len);
+    check("resent copies do not restart the receive timeout", alarms_set - mark == 2);
+
+    /* The alarm fires in the same wakeup as a resent copy. The ACK for the copy must not hide the
+     * timeout: the alarm is spent, so nothing else would end this receive. An empty rest of script
+     * makes a wait past this point fail the test instead of hanging. */
+    run_script(1, connect);
+    check("rediscovery before the coalesced timeout connects", udprdma_discover(s, 2000) == UDPRDMA_OK);
+    n = 0;
+    for (idx = 0; idx < 6; idx++)
+        stream[n++] = (script_ev_t) {EV_DATA, idx};
+    stream[n++] = (script_ev_t) {EV_DATA_TIMEOUT, 0}; /* copy of 0 plus the alarm */
+    udprdma_set_rx_buffer(s, bulk, sizeof(bulk));
+    run_script(n, stream);
+    check("timeout coalesced with a resent copy ends the receive", udprdma_recv(s, bulk, sizeof(bulk), 1000) == UDPRDMA_ERR_TIMEOUT);
 
     if (failures) {
         fprintf(stderr, "%d check(s) failed\n", failures);

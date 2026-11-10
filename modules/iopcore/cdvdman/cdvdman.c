@@ -506,6 +506,7 @@ static int cdvdman_read_sectors(u32 lsn, unsigned int sectors, void *buf)
     unsigned int remaining;
     void *ptr;
     int endOfMedia = 0;
+    int err = SCECdErNO;
 
     DPRINTF("cdvdman_read lsn=%lu sectors=%u buf=%p\n", lsn, sectors, buf);
 
@@ -524,7 +525,7 @@ static int cdvdman_read_sectors(u32 lsn, unsigned int sectors, void *buf)
 #ifdef INGAMEDIAG
             g_freeze_diag.eom_hits++;
 #endif
-            return 1;
+            return SCECdErIPI;
         }
 
         // As per PS2 mecha code continue to read what you can and then signal end of media error.
@@ -543,7 +544,7 @@ static int cdvdman_read_sectors(u32 lsn, unsigned int sectors, void *buf)
         // check for ZSO
         if (!ProbeZSO(buf)) { // The failed probe did not produce a readable first sector.
             cdvdman_stat.err = SCECdErREAD;
-            return 1;
+            return SCECdErREAD;
         }
     }
 
@@ -567,11 +568,12 @@ static int cdvdman_read_sectors(u32 lsn, unsigned int sectors, void *buf)
 #ifdef INGAMEDIAG
         freeze_diag_read_begin(lsn, SectorsToRead);
 #endif
-        cdvdman_stat.err = DeviceReadSectorsPtr(lsn, ptr, SectorsToRead);
+        // Kept in a local too: another thread can change cdvdman_stat.err while this one waits on the device.
+        cdvdman_stat.err = err = DeviceReadSectorsPtr(lsn, ptr, SectorsToRead);
 #ifdef INGAMEDIAG
-        freeze_diag_read_end(cdvdman_stat.err);
+        freeze_diag_read_end(err);
 #endif
-        if (cdvdman_stat.err != SCECdErNO) {
+        if (err != SCECdErNO) {
             if (cdvdman_settings.common.flags & IOPCORE_COMPAT_ACCU_READS)
                 CancelAlarm(&cdvdemu_read_end_cb, NULL);
             break;
@@ -608,15 +610,18 @@ static int cdvdman_read_sectors(u32 lsn, unsigned int sectors, void *buf)
     }
 
     // If we had a read that went past the end of media, after reading what we can, set the end of media error.
-    if (endOfMedia) {
-        cdvdman_stat.err = SCECdErEOM;
+    // A device error while reading what we can is kept: it says those sectors were not read.
+    if (endOfMedia && err == SCECdErNO) {
+        cdvdman_stat.err = err = SCECdErEOM;
     }
 
-    return (cdvdman_stat.err == SCECdErNO ? 0 : 1);
+    return err;
 }
 
 static int cdvdman_read(u32 lsn, u32 sectors, u16 sector_size, void *buf)
 {
+    int err = SCECdErNO, chunk_err;
+
     cdvdman_stat.status = SCECdStatRead;
     buf = (void *)PHYSADDR(buf);
 
@@ -643,7 +648,10 @@ static int cdvdman_read(u32 lsn, u32 sectors, u16 sector_size, void *buf)
             if (sector_size != 2048)
                 nsectors = 1;
 
-            cdvdman_read_sectors(rpos, nsectors, cdvdman_buf);
+            // The first error stands: a later chunk that reads fine does not undo it.
+            chunk_err = cdvdman_read_sectors(rpos, nsectors, cdvdman_buf);
+            if (err == SCECdErNO)
+                err = chunk_err;
 
             rpos += nsectors;
             sectors -= nsectors;
@@ -681,14 +689,15 @@ static int cdvdman_read(u32 lsn, u32 sectors, u16 sector_size, void *buf)
             buf = (void *)((u8 *)buf + nbytes);
         }
         SignalSema(cdvdman_searchfilesema);
+        cdvdman_stat.err = err;
     } else
-        cdvdman_read_sectors(lsn, sectors, buf);
+        err = cdvdman_read_sectors(lsn, sectors, buf);
 
     ReadPos = 0; /* Reset the buffer offset indicator. */
 
     cdvdman_stat.status = SCECdStatPause;
 
-    return 1;
+    return err; // SCECdErNO, or the read's error
 }
 
 //-------------------------------------------------------------------------
@@ -1026,7 +1035,7 @@ static void cdvdman_signal_read_end_intr(void)
 static void cdvdman_cdread_Thread(void *args)
 {
     while (1) {
-        int for_stream;
+        int for_stream, failed;
 
         WaitSema(cdrom_rthread_sema);
 
@@ -1042,7 +1051,8 @@ static void cdvdman_cdread_Thread(void *args)
         // Set with the drive lock held, so it still describes this read: the next one cannot be queued before it ends.
         for_stream = cdread_job == CDREAD_JOB_STREAM;
 
-        cdvdman_read(cdvdman_stat.cdread_lba, cdvdman_stat.cdread_sectors, cdvdman_stat.sector_size, cdvdman_stat.cdread_buf);
+        /* The read's own result, not cdvdman_stat.err: a game read or sceCdStRead can change that one meanwhile. */
+        failed = (cdvdman_read(cdvdman_stat.cdread_lba, cdvdman_stat.cdread_sectors, cdvdman_stat.sector_size, cdvdman_stat.cdread_buf) == SCECdErREAD);
 
         if (cdread_job == CDREAD_JOB_SYNC) { // cdvdman_SyncRead completes the read and still holds the drive lock
             ChangeThreadPriority(TH_SELF, CDREAD_THREAD_PRIORITY);
@@ -1059,7 +1069,7 @@ static void cdvdman_cdread_Thread(void *args)
             /* Check that the streaming callback was not cleared, as this pointer may get changed between function calls.
                As per the original semantics, once it is cleared, then it should not be called. */
             if (Stm0Callback != NULL)
-                Stm0Callback();
+                Stm0Callback(failed);
         } else {
             /* A game read gets the game's callback even while a stream is open. Before, the stream callback took it
                instead (StmCallback's "BUG!" note), so a game waiting on sceCdCallback for that read never heard back. */
