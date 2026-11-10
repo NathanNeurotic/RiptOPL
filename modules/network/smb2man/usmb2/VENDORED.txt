@@ -40,6 +40,8 @@ What is here
     the server's offsets and lengths and scanned for the EndOfList without a bound.
   - TREE_CONNECT's PathLength written as 16 bits; usmb2_init_context() refuses credentials that
     do not fit. ntlm.c's hashing calls take unsigned bytes (no -Wpointer-sign).
+  - ntlm.c saves the CHALLENGE's Server Challenge before moving TargetInfo, which can land on it
+    when the server puts the security buffer far into the reply.
   - ntlm.c writes the user name's UTF-16 bytes as two separate stores; upstream read and
     incremented the index in one unsequenced expression (undefined behaviour, harmless as built).
 

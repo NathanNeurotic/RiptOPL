@@ -45,7 +45,7 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
                        char *username,
                        char *password)
 {
-        uint8_t NTOWFv2[16], z = 0;
+        uint8_t NTOWFv2[16], server_challenge[8], z = 0;
         uint16_t ntlmssp_in_offset, ntlmssp_out_offset, offset;
         uint16_t domain_name_offset, domain_name_len; char *domain_name;
         uint16_t user_name_offset, user_name_len;
@@ -123,6 +123,10 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
             sizeof(usmb2->buf)) {
                 return -1;
         }
+        /* RiptOPL: the Server Challenge, saved before the TargetInfo moves: where a server puts
+         * the CHALLENGE's security buffer far into the reply, the move lands on it.
+         */
+        memcpy(server_challenge, &usmb2->buf[ntlmssp_in_offset + 24], 8);
         offset = 4 + 64 + 24 + ntlm_response_offset + 16 + 28; // AvPairs
         /* The new place overlaps the old one when the TargetInfo is longer than
          * about 144 + user_name_len bytes, so memmove and not memcpy.
@@ -134,7 +138,7 @@ int ntlm_generate_auth(struct usmb2_context *usmb2,
            Only now that the TargetInfo is out of the way: this lands in it when it is
            longer than about 108 + user_name_len bytes.
          */
-        memcpy(&usmb2->buf[4 + 64 + 24 + ntlm_response_offset + 8], &usmb2->buf[ntlmssp_in_offset + 24], 8);
+        memcpy(&usmb2->buf[4 + 64 + 24 + ntlm_response_offset + 8], server_challenge, 8);
         
         /* Add TargetName Av entry to the end */
         offset += target_info_len;
