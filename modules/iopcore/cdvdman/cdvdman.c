@@ -94,9 +94,11 @@ static struct cdvdman_cb_data cb_data;
 
 int cdrom_io_sema;
 static int cdrom_rthread_sema;
-/* Device I/O never runs on the caller's stack. The caller can be the game's own module loader, whose thread has a
-   2 KB stack (God of War II): an SMB logon with the TCP/IP stack and SMAP under it needs more than that, and the kernel
-   halts the IOP on the overflow. cdvdman_cdread_Thread does the work on its own 4 KB stack and the caller waits. */
+/* Device I/O never runs on the caller's stack. The caller can be MODLOAD's module-start thread, which has a 2 KB
+   stack: when a game resets the IOP with its own IOPRP image, UDNL starts there and its read of that image is the
+   first disc access of the boot. An SMB2 logon with the TCP/IP stack and SMAP under it needs more than 2 KB, and the
+   kernel halts the IOP on the overflow. cdvdman_cdread_Thread does the work on its own 4 KB stack and the caller
+   waits. */
 enum {
     CDREAD_JOB_GAME = 0, // the game's sceCdRead: completion goes to the game's sceCdCallback
     CDREAD_JOB_STREAM,   // a stream fill (cdvdman_StreamRead)

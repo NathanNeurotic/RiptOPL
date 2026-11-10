@@ -1,9 +1,10 @@
-"""cdvdman must not run device I/O on its caller's stack (God of War II over SMB2: black screen at boot).
+"""cdvdman must not run device I/O on its caller's stack (games over SMB2: PS2 logo, then a black screen).
 
-The first disc access after the game's own IOP image is up comes from the game's module loader. Its thread has a
-2 KB stack. The device mount (for SMB: logon, tree connect and image open, with the TCP/IP stack and SMAP below)
-ran on that stack, overflowed it, and the kernel halted the IOP. The mount and the synchronous (Mode 2) read now
-run on cdvdman_cdread_Thread, which has a 4 KB stack of its own.
+When a game resets the IOP with its own IOPRP image, UDNL is started on MODLOAD's module-start thread, which has
+a 2 KB stack, and its read of that image is the first disc access of the boot. The device mount (for SMB2: logon,
+tree connect and image open, with the TCP/IP stack and SMAP below) ran on that stack, overflowed it, and the
+kernel halted the IOP. The mount and the synchronous (Mode 2) read now run on cdvdman_cdread_Thread, which has a
+4 KB stack of its own.
 
 This is a source contract, not a run: it fails when a later change moves that work back into the caller.
 """
