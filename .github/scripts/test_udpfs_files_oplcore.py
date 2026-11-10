@@ -3,9 +3,10 @@
 The menu opens the ISO on udpfs_ioman, keeps it open across the IOP reset and hands cdvdman the server's
 handle for it (ioctl2 0x80). After the reset the EE core loads udpfs_smap, udpfs_ministack and udpfs_fhi,
 and udpfs_cdvdman reads the disc through udpfs_fhi's "udpfsfhi" exports. A game's VMCs are opened
-read-write and kept open the same way; udpfs_mcemu moves their pages through udpfs_cdvdman's
-udpfs_vmc_read/udpfs_vmc_write. This checks that wiring in the sources and runs the real in-game reader
-and VMC exports (device-udpfs.c) against a stub udpfs_fhi.
+read-write and kept open the same way; mmce_mcemu (the MMCE build, which UDPFS shares) moves their pages
+through udpfs_cdvdman's udpfs_vmc_read/udpfs_vmc_write, exported at the oplutils ordinals of MMCE's own
+page calls. This checks that wiring in the sources and runs the real in-game reader and VMC exports
+(device-udpfs.c) against a stub udpfs_fhi.
 """
 from pathlib import Path
 import re
@@ -58,7 +59,7 @@ mcemu_h = read('modules/mcemu/mcemu.h')
 mcemu_utils = read('modules/mcemu/mcemu_utils.h')
 mcemu_imports = read('modules/mcemu/imports.lst')
 mcemu_make = read('modules/mcemu/Makefile')
-mcemu_dev = read('modules/mcemu/device-udpfs.c')
+mcemu_dev = read('modules/mcemu/device-mmce.c')
 udpfs_h = read('include/udpfssupport.h')
 
 # 1. The launch: Neutrino by default, the OPL core from the game's own <OPL> key or when Neutrino cannot run it.
@@ -86,12 +87,12 @@ order = ['sbPrepare(game, configSet, irx_size, static_cast<void **>(irx), &index
          'fileXioIoctl2(iso_file, 0x80, NULL, 0, NULL, 0)',
          'settings->iso_handle = iso_handle;',
          'vmc_files[vmc_id] = fileXioOpen(vmc_path, 0x3, 0666);',
-         'nativeVmcSlotWord(&udpfs_mcemu_irx, size_udpfs_mcemu_irx, vmc_id, udpfsMcemuSlots, sizeof(udpfs_vmc_infos_t))',
+         'nativeVmcSlotWord(&mmce_mcemu_irx, size_mmce_mcemu_irx, vmc_id, mmceMcemuSlots, sizeof(udpfs_vmc_infos_t))',
          'mmceSendGameID(game->startup, NULL, vmcMask);',
          'host::app().deinit(NO_EXCEPTION, itemList->mode);',
          'settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_DEV9;',
          'settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_SMAP;',
-         'sysLaunchLoaderElf(filename, "UDPFS_MODE", irx_size, static_cast<void **>(irx), size_mcemu_irx, udpfs_mcemu_irx, EnablePS2Logo, compatmask);']
+         'sysLaunchLoaderElf(filename, "UDPFS_MODE", irx_size, static_cast<void **>(irx), size_mcemu_irx, mmce_mcemu_irx, EnablePS2Logo, compatmask);']
 at = [leg.find(s) for s in order]
 check(all(a >= 0 for a in at) and at == sorted(at),
       'udpfsLaunchOplCore: prepare, size, layer 1, cheats, open the ISO and the VMCs last, keep their handles, tear down, launch UDPFS_MODE '
@@ -112,8 +113,8 @@ check(after.count('fileXioClose') == 1 and after.count('udpfsCloseFiles(') == 1,
 pre = leg[:leg.find('compatmask = sbPrepare(')]
 check('sysCheckVMC(udpfsPrefix, "/", vmc_name[vmc_id], 0, &vmc_superblock) > 0' in pre and '_STR_ERR_VMC_CONTINUE' in pre,
       'udpfsLaunchOplCore: VMCs are checked before anything is prepared')
-check('static int udpfsMcemuSlots[2] = {-2, -2};' in udpfs and 'if (vmc_infos[vmc_id].active)\n                size_mcemu_irx = size_udpfs_mcemu_irx;' in leg,
-      'udpfsLaunchOplCore: mcemu goes only with an active card, slots found once')
+check('static_assert(sizeof(udpfs_vmc_infos_t) == sizeof(mmce_vmc_infos_t)' in udpfs and 'if (vmc_infos[vmc_id].active)\n                size_mcemu_irx = size_mmce_mcemu_irx;' in leg,
+      'udpfsLaunchOplCore: mcemu goes only with an active card, slots found once (shared with MMCE)')
 cleanup = function(udpfs, 'void UdpfsSource::cleanUp(', 'udpfssupport.cpp')
 check('udpfsIomanModLoaded = 0' not in cleanup and 'fileXioUmount' not in cleanup,
       'UdpfsSource::cleanUp leaves the udpfs_ioman chain (and the open ISO) alone')
@@ -122,7 +123,7 @@ check('udpfsIomanModLoaded = 0' not in cleanup and 'fileXioUmount' not in cleanu
 check('if (backing->mode == UDPFS_MODE || bdmSupportIsUDPBD(backing) || bdmModeIsUDPBD(backing->mode))\n        loader = bdmNetBlockCoreLoader(configSet);' in guigame,
       'guiGameAutoCreateVmc: UDPFS Files takes its core from the picker')
 check('backing->mode == UDPFS_MODE && loader == 0' not in guigame,
-      'guiGameAutoCreateVmc: a UDPFS Files game on the OPL core gets its automatic VMC too (udpfs_mcemu)')
+      'guiGameAutoCreateVmc: a UDPFS Files game on the OPL core gets its automatic VMC too (mmce_mcemu)')
 check('coreDefaultNeutrino = sourceMode == UDPFS_MODE ||' in guigame, 'compat dialog: UDPFS Files "Default" means Neutrino')
 check('} else if (sourceMode == UDPFS_MODE) {' not in guigame, 'compat dialog: the UDPFS Files Loader row is no longer locked')
 check('if (sourceMode == UDPFS_MODE || bdmModeIsUDPBD(sourceMode))\n                return bdmNetBlockCoreLoader(itemConfig);' in menusys,
@@ -186,30 +187,26 @@ write_fn = function(fhi, 'int udpfs_fhi_write(', 'udpfs_fhi.c')
 check('WaitSema(g_sema);' in write_fn and 'udpfs_core_bwrite(handle, (uint64_t)sector, buffer, count, 512)' in write_fn,
       'udpfs_fhi_write: locked 512-byte BWRITE of the caller\'s handle')
 
-# The VMC path: cdvdman exports the page calls at the oplutils ordinals udpfs_mcemu imports.
+# The VMC path: udpfs_cdvdman exports its page calls at the oplutils ordinals mmce_cdvdman uses for its
+# own, which is what lets UDPFS run mmce_mcemu: an IRX imports by ordinal, never by name.
 oplutils = cdvd_exports[cdvd_exports.find('DECLARE_EXPORT_TABLE(oplutils, 1, 2)'):]
 oplutils = oplutils[:oplutils.find('END_EXPORT_TABLE')]
-check('#ifdef UDPFS_DRIVER\n\tDECLARE_EXPORT(udpfs_vmc_read)' in oplutils and 'DECLARE_EXPORT(udpfs_vmc_write)' in oplutils,
-      'cdvdman exports.tab: oplutils [6] udpfs_vmc_read, [7] udpfs_vmc_write under UDPFS_DRIVER')
-check('#define I_udpfs_vmc_read DECLARE_IMPORT(6, udpfs_vmc_read)' in mcemu_utils and
-      '#define I_udpfs_vmc_write DECLARE_IMPORT(7, udpfs_vmc_write)' in mcemu_utils and
-      '#ifdef UDPFS_DRIVER\nI_udpfs_vmc_read\nI_udpfs_vmc_write\n#endif' in mcemu_imports,
-      'mcemu: imports udpfs_vmc_read/write at the ordinals cdvdman exports')
-check('#if defined(MMCE_DRIVER) || defined(UDPFS_DRIVER)\n    int fd;' in mcemu_h, 'mcemu.h: the UDPFS card carries the server handle as fd')
+check('#ifdef MMCE_DRIVER\n\tDECLARE_EXPORT(mmce_read_offset)\n\tDECLARE_EXPORT(mmce_write_offset)\n#endif\n'
+      '#ifdef UDPFS_DRIVER\n\tDECLARE_EXPORT(udpfs_vmc_read)' in oplutils and 'DECLARE_EXPORT(udpfs_vmc_write)' in oplutils
+      and oplutils.find('#ifdef MMCE_DRIVER') > oplutils.find('#endif') > oplutils.find('#ifdef BDM_DRIVER'),
+      'cdvdman exports.tab: oplutils [6]/[7] are mmce_read_offset/mmce_write_offset with MMCE and udpfs_vmc_read/write with UDPFS')
+check('#define I_mmce_read_offset DECLARE_IMPORT(6, mmce_read_offset)' in mcemu_utils and
+      '#define I_mmce_write_offset DECLARE_IMPORT(7, mmce_write_offset)' in mcemu_utils and
+      '#ifdef MMCE_DRIVER\nI_mmce_read_offset\nI_mmce_write_offset\n#endif' in mcemu_imports and 'UDPFS_DRIVER' not in mcemu_imports,
+      'mcemu: imports the page calls at the ordinals both cdvdman builds export')
+check('#ifdef MMCE_DRIVER\n    int fd;' in mcemu_h, 'mcemu.h: the card carries fd (MMCE) or the server handle (UDPFS)')
 check(re.search(r'typedef struct\n\{\n\s*int active;[^\n]*\n\s*int fd;[^\n]*\n\s*int flags;[^\n]*\n\s*vmc_spec_t specs;[^\n]*\n\} udpfs_vmc_infos_t;', udpfs_h) is not None,
       'udpfssupport.h: udpfs_vmc_infos_t matches McImageSpec with UDPFS_DRIVER (active, fd, flags, spec)')
-check('udpfs_vmc_write(vmc_fd, offset, vmcSpec[mc_num].cspec.PageSize, buf)' in mcemu_dev and
-      'udpfs_vmc_read(vmc_fd, offset, vmcSpec[mc_num].cspec.PageSize, buf)' in mcemu_dev, 'mcemu device-udpfs.c: pages go through the UDPFS imports')
-variant = mcemu_make[mcemu_make.find('ifeq ($(USE_UDPFS),1)'):]
-variant = variant[:variant.find('endif')]
-check('IOP_BIN  = udpfs_mcemu.irx' in variant and '-DUDPFS_DRIVER' in variant and 'device-udpfs.o' in variant,
-      'mcemu Makefile: USE_UDPFS builds udpfs_mcemu')
-target = ps2yaml[ps2yaml.find('  - name: udpfs_mcemu\n'):]
-target = target[:target.find('\n\n')]
-check('defines: [UDPFS_DRIVER, PADEMU]' in target and 'modules/mcemu/device-udpfs.c' in target and
-      'mmce_mcemu, udpfs_mcemu,' in ps2yaml, 'ps2.yaml: udpfs_mcemu is built and embedded')
-check('IMPORT_BIN2C(udpfs_mcemu_irx);' in extern_irx and 'udpfs_mcemu.o' in root_make and 'USE_UDPFS=1 -C $< all' in root_make,
-      'udpfs_mcemu: declared, and made by the legacy build')
+check('mmce_write_offset(vmc_fd, offset, vmcSpec[mc_num].cspec.PageSize, buf)' in mcemu_dev and
+      'mmce_read_offset(vmc_fd, offset, vmcSpec[mc_num].cspec.PageSize, buf)' in mcemu_dev, 'mcemu device-mmce.c: pages go through oplutils [6]/[7]')
+check('USE_UDPFS' not in mcemu_make and not (root / 'modules/mcemu/device-udpfs.c').exists() and
+      '  - name: udpfs_mcemu\n' not in ps2yaml and 'udpfs_mcemu' not in extern_irx and 'udpfs_mcemu' not in root_make,
+      'mcemu: no separate UDPFS build; mmce_mcemu serves UDPFS')
 check(fhi_main.find('udpfs_fhi_init() < 0') < fhi_main.find('RegisterLibraryEntries(&_exp_udpfsfhi)') < fhi_main.find('udpfs_fhi_start();'),
       'udpfs_fhi main.c: create, register, then connect')
 start_fn = function(fhi, 'void udpfs_fhi_start(', 'udpfs_fhi.c')

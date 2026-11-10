@@ -6,7 +6,7 @@
 #include "include/supportbase.h" // base_game_info_t
 
 #include "include/mcemu.h"
-// A VMC for udpfs_mcemu on the OPL core (modules/mcemu/mcemu.h McImageSpec with UDPFS_DRIVER): fd is
+// A VMC for mmce_mcemu on the OPL core (modules/mcemu/mcemu.h McImageSpec with MMCE_DRIVER): fd is
 // the server's handle for the .bin, opened read-write by the menu and kept open across the IOP reset.
 typedef struct
 {
