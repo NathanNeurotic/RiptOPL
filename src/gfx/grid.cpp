@@ -585,7 +585,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
         char counter[32];
         snprintf(counter, sizeof(counter), "%d/%d", index + 1, count);
         counterWidth = rmUnScaleX(fntCalcDimensions(elem->font, counter));
-        fntRenderString(elem->font, gridRight - counterWidth, below, ALIGN_LEFT, counterWidth, 0, counter, gTheme->textColor);
+        fntRenderString(elem->font, gridRight - counterWidth, below, ALIGN_LEFT, 0, 0, counter, gTheme->textColor);
     }
 
     // The selected title on a line of its own under the grid (<block>_title=1), as RIPPS2's RIPGRID shows it;
