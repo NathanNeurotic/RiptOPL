@@ -187,6 +187,10 @@ int main(int argc, char **argv)
     CHECK(OPS->getstat(&f, "\\CFGTEST\\new.bin", &st) == 0 && st.size == 5, "rewrite left no old tail (size %u)", st.size);
     CHECK(OPS->open(&f, "\\CFGTEST\\new.bin", FIO_O_WRONLY | FIO_O_CREAT | FIO_O_EXCL, 0) < 0, "O_EXCL on an existing file fails");
     CHECK(OPS->rename(&f, "\\CFGTEST\\new.bin", "\\CFGTEST\\renamed.bin") == 0, "rename");
+    /* Samba takes DELETE_ON_CLOSE on a folder that is not empty and keeps it at CLOSE, no error */
+    r = OPS->rmdir(&f, "\\CFGTEST");
+    CHECK(r == -ENOTEMPTY && OPS->getstat(&f, "\\CFGTEST\\renamed.bin", &st) == 0,
+          "rmdir of a folder that is not empty: -ENOTEMPTY (%d), nothing removed", r);
     CHECK(OPS->remove(&f, "\\CFGTEST\\renamed.bin") == 0, "remove");
     CHECK(OPS->rmdir(&f, "\\CFGTEST") == 0, "rmdir");
     CHECK(OPS->open(&f, "\\DVD\\NOPE.iso", FIO_O_RDONLY, 0) < 0, "open missing file fails (%d)", OPS->open(&f, "\\DVD\\NOPE.iso", FIO_O_RDONLY, 0));

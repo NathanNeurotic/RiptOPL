@@ -364,9 +364,14 @@ def av_pairs(rec):
     return rec['nt'][16 + 28:len(rec['nt']) - 4]
 
 
-# NTOWFv2 hashes UPPER(user). Both logons upper-case only ASCII letters today; what matters is that
-# they do the same.
-UPPER = [('full Unicode', str.upper), ('ASCII only', lambda s: ''.join(c.upper() if c < '\x80' else c for c in s))]
+# NTOWFv2 hashes UPPER(user), upper-cased as Windows and Samba do it: within Latin-1 (all the menu
+# accepts) every letter that has a single upper case, y-diaeresis to U+0178; micro sign and sharp s
+# stay. Both logons must do exactly that (an ASCII-only upper case was refused for "José").
+def latin1_upper(s):
+    return ''.join(c if c in '\u00b5\u00df' else c.upper() if c <= '\u00ff' else c for c in s)
+
+
+UPPER = [('as Windows', latin1_upper)]
 
 
 MENU = r'''
@@ -662,7 +667,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     # (user, password) as configured on the console. Mixed case: the proof hashes UPPER(user), the
     # message sends it as typed. Blank: both log on as "Guest" (with the password, or an empty one).
-    for user, password in [('ps2', 'secret'), ('MixedCase', 'Pass word'), ('José', 'Café'), ('', 'secret'),
+    for user, password in [('ps2', 'secret'), ('MixedCase', 'Pass word'), ('José', 'Café'), ('zo\u00eb\u00ff', 'x'), ('', 'secret'),
                            ('', '')]:
         run('user %s, password %s' % (ascii(user), ascii(password)), user, password)
     # The server as the EE can give it: on port 445 and port 0 (which both take as 445) both name it
