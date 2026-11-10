@@ -2216,16 +2216,18 @@ void drawItemText(struct menu_list *menu, struct submenu_list *item, config_set_
             if (startup != NULL) {
                 // VCD view (#380): the caption shows the resolved disc ID, not the title -- the same
                 // thing the PS2 page shows from this element (g->startup), and 11 chars cannot
-                // overflow into the cover art the way "SLUS_123.45.Final Fantasy VII" did. Memo-read
-                // ONLY (vcdDisplayIdCached): the id is resolved off the render thread
-                // (vcdRequestDisplayId, menusys.c), so a slow device never blocks here; until it
-                // lands, the filename's own id prefix is shown, then the title as before.
+                // overflow into the cover art the way "SLUS_123.45.Final Fantasy VII" did. An Ember row
+                // reads its own (CUE) memo entry, the one its cover art keys off. Memo-read ONLY
+                // (ps1RowIdCached): the id is resolved off the render thread (vcdRequestDisplayId,
+                // menusys.c), so a slow device never blocks here; until it lands, the name's own id
+                // prefix is shown, then the title as before.
                 if (libListRowView(support, item->item.id) == LIB_VIEW_PS1) {
                     char vcdId[VCD_ID_MAX];
                     char labelledText[256];
                     const char *text = vcdDisplayNameForRow(support, item->item.id, startup);
-                    if (vcdDisplayIdCached(startup, vcdId, sizeof(vcdId)) ||
-                        vcdExtractGameId(startup, vcdId, sizeof(vcdId)))
+                    int ember = 0;
+                    gsOf(support)->ps1RowKind(support, item->item.id, &ember);
+                    if (ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD, vcdId, sizeof(vcdId)))
                         text = vcdId;
                     snprintf(labelledText, sizeof(labelledText), "[PS1] %s", text);
                     thmDrawElemText(elem, SIZING_NONE, labelledText, 1);

@@ -1410,58 +1410,34 @@ config_set_t *sbPopulateConfigIn(base_game_info_t *game, const char *prefix, con
         }
     }
 
-    // Compatibility only: filename remains the VCD identity, but an existing disc-ID config may be
-    // loaded when the primary filename config is absent. Keep the primary object if both miss so a
-    // future save creates CFG/<filename>.cfg rather than inventing an ID-keyed file.
-    if (!configLoaded && isVcd) {
-        char fallbackKey[VCD_ID_MAX];
-        if (vcdExtractGameId(game->name, fallbackKey, sizeof(fallbackKey))) {
-            snprintf(path, sizeof(path), "%sCFG%s%s.cfg", prefix, sep, fallbackKey);
-            config_set_t *fallback = configAlloc(0, NULL, path);
-            if (fallback != NULL) {
-                if (configRead(fallback)) {
-                    configMerge(config, fallback);
-                    config->clearModified();
-                }
-                configFree(fallback);
-            }
-        }
-    }
-
-    // PS1 metadata fallback (both cores), TITLE ONLY (original #1049): an installer-written
-    // CFG/<RetroGEM id>.cfg may carry Title (the CFG Titles list override) for every row of the same
-    // game, whatever the row is called. Title only -- a settings key never crosses from an id-keyed
-    // file; read-only -- CFG/<name>.cfg stays the save target; zero disc IO -- the memo answers from
-    // the free filename parse or an id the art path already verified in the background, which
-    // keeps the CFG Titles all-rows pass from opening disc images. It runs even when the name cfg
-    // exists without a Title: a settings file must not silence display metadata.
+    // PS1 rows (both cores): CFG/<title id>.cfg, keyed by the same id the cover art uses (original
+    // #1049), so an installer-written or PSBBN/RetroGEM-style per-game CFG applies whatever the row is
+    // called. CFG/<name>.cfg stays the identity and the only save target: its own values always win,
+    // and the id file is never written -- the first save copies what it supplied into the name cfg.
+    // Without a name cfg the id file supplies settings too (what the VCD-only filename-id fallback
+    // did); beside one it fills only the display metadata the name cfg lacks (plain keys: Title,
+    // Description, Genre, ...), so a settings key never crosses into a cfg the user already saved.
+    // Zero disc IO: the memo answers from the free filename parse or an id the art path already
+    // verified in the background, which keeps the CFG Titles all-rows pass from opening disc images.
     if (isPs1) {
-        const char *title = NULL;
-        char metaKey[VCD_ID_MAX];
-        int haveMetaKey = 0;
-
-        if (!configGetStr(config, "Title", &title) || title == NULL || title[0] == '\0') {
-            haveMetaKey = ps1RowIdCached(game->name, isVcd ? PS1_ROW_VCD : PS1_ROW_CUE, metaKey, sizeof(metaKey));
-            if (haveMetaKey && isVcd && !configLoaded) {
-                // The compatibility fallback above already read this parsed-id CFG. A different
-                // verified id can still supply Title when that fallback had none.
-                char fallbackKey[VCD_ID_MAX];
-                if (vcdExtractGameId(game->name, fallbackKey, sizeof(fallbackKey)) && !strcmp(metaKey, fallbackKey))
-                    haveMetaKey = 0;
-            }
-        }
-        if (haveMetaKey) {
-            snprintf(path, sizeof(path), "%sCFG%s%s.cfg", prefix, sep, metaKey);
-            config_set_t *meta = configAlloc(0, NULL, path);
-            if (meta != NULL) {
-                const char *metaTitle = NULL;
-                if (configRead(meta) && configGetStr(meta, "Title", &metaTitle) && metaTitle != NULL && metaTitle[0] != '\0') {
+        char idKey[VCD_ID_MAX];
+        if (ps1RowIdCached(game->name, isVcd ? PS1_ROW_VCD : PS1_ROW_CUE, idKey, sizeof(idKey)) && strcmp(idKey, cfgKey) != 0) {
+            snprintf(path, sizeof(path), "%sCFG%s%s.cfg", prefix, sep, idKey);
+            config_set_t *byId = configAlloc(0, NULL, path);
+            if (byId != NULL) {
+                if (configRead(byId)) {
                     bool wasModified = config->modified();
-                    configSetStr(config, "Title", metaTitle);
+                    for (const config_value_t *v = byId->entries(); v != NULL; v = v->next) {
+                        const char *have = NULL;
+                        if (v->key[0] == '#' || (configLoaded && v->key[0] == '$') ||
+                            (configGetStr(config, v->key, &have) && have != NULL && have[0] != '\0'))
+                            continue;
+                        configSetStr(config, v->key, v->val);
+                    }
                     if (!wasModified)
-                        config->clearModified(); // metadata only: never dirties the name cfg
+                        config->clearModified(); // loaded data only: never dirties the name cfg
                 }
-                configFree(meta);
+                configFree(byId);
             }
         }
     }

@@ -77,6 +77,8 @@ public:
     // disc-verified, or the free filename parse until the queued background verify lands. 0 for
     // PS2 rows, Favourites and Apps. Never device IO on the calling (render) thread.
     int ps1ArtId(item_list_t *itemList, int id, const char *startup, char *out, int outSize);
+    // 1 and *ember for the PS1 row behind id (an Ember .CUE row or a POPSTARTER .VCD row), else 0.
+    int ps1RowKind(item_list_t *itemList, int id, int *ember);
 
     bool hasPrefix() const { return !(caps_ & OMIT_PREFIX); }
     bool hasGame() const { return !(caps_ & OMIT_GAME); }
@@ -91,8 +93,6 @@ public:
 
 protected:
     ~GameSource() = default; // sources are static objects; never deleted through the base
-    // 1 and *ember for the PS1 row behind id (an Ember .CUE row or a POPSTARTER .VCD row), else 0.
-    int ps1RowKind(item_list_t *itemList, int id, int *ember);
 
 private:
     unsigned caps_;
