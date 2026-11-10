@@ -124,7 +124,8 @@ Things to know:
 * Auto Select runs every cheat in the file. Almost every file holds only the master code and the
   widescreen code, but a few hold more (Midnight Club 3: Dub Edition `SLUS_213.55` also has a
   "Max Cash" cheat). To pick on one of those titles, set its own **Settings Mode** to Per Game
-  first, then **Select Game Cheats**; changing the mode while on Global changes it for every game.
+  first, then **PS2RD Cheat Engine** to On and **Select Game Cheats**; changing the mode while on
+  Global changes it for every game.
 * The cheat engine holds 250 codes at once. Two files in the pack have more, Ratchet & Clank
   `SCES_509.16` (337) and Ratchet & Clank 3 `SCES_524.56` (374), and the codes past the limit are
   dropped, so their widescreen fix may be incomplete there.
