@@ -2447,13 +2447,16 @@ static void menuRenderElements(theme_elems_t *elems)
         _menuRequestConfig();
 
     // Deep VCD ID inspection is cosmetic and must be explicit-theme-demand only. ItemText is
-    // the sole render element that consumes vcdDisplayIdCached(), so a family without ItemText does
+    // the sole render element that consumes the caption id, so a family without ItemText does
     // zero .VCD opens/seeks here. The resolver itself is opportunistic and yields to art/BGM.
     if (elems->needsVcdDisplayId && list != NULL && menuSelectedRowView(list) == LIB_VIEW_PS1 &&
         selected_item->item->current != NULL) {
-        char *vcdName = gsOf(list)->startup(list, selected_item->item->current->item.id);
-        if (vcdName != NULL)
-            vcdRequestDisplayId(vcdName);
+        int id = selected_item->item->current->item.id, ember = 0;
+        char *vcdName = gsOf(list)->startup(list, id);
+        if (vcdName != NULL) {
+            gsOf(list)->ps1RowKind(list, id, &ember); // Ember rows ask for their own (CUE) entry
+            vcdRequestDisplayId(vcdName, ember ? PS1_ROW_CUE : PS1_ROW_VCD);
+        }
     }
 
     WaitSema(menuSemaId);

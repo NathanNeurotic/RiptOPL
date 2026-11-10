@@ -485,33 +485,13 @@ int VcdSupport::resolveRowId(const char *name, int kind, char *idOut, int idSize
 //
 //   menuRenderElements (settled row, GUI thread) -> vcdRequestDisplayId -> one-slot request
 //   -> ioman worker (IO_CUSTOM_SIMPLEACTION) -> VcdSupport::resolveRowId (the IO) -> the memo
-//   -> next frame's drawItemText -> vcdDisplayIdCached (memo only, NO IO) -> the id on screen.
+//   -> next frame's drawItemText -> ps1RowIdCached (memo only, NO IO) -> the id on screen.
 //
 // This is deliberately NOT the per-game config path: that path is gated on the theme having
 // config-consuming elements (rebuild-155's CFG-storm gate, menusys.c), which stays exactly as it
 // is -- and on the reporter's themes the VCD main page has none, so a resolve riding the config
 // path would never fire for him. One queued resolve per settled VCD row per session; the memo's
 // state dedupes everything after, so merely holding a direction costs one strcmp walk per frame.
-
-// Memo-read half for the render thread: returns the id ONLY if it is already resolved. Never
-// touches the device, never queues anything -- a miss means "not yet", and the caller falls back.
-int VcdSupport::displayIdCached(const char *name, char *idOut, int idSize)
-{
-    if (name == NULL || idOut == NULL || idSize <= 0)
-        return 0;
-    idOut[0] = '\0';
-
-    vcd_id_memo_t *m = idMemoFind(name, PS1_ROW_VCD);
-    if (m == NULL || m->state != VCD_ID_RESOLVED || m->id[0] == '\0')
-        return 0;
-    snprintf(idOut, idSize, "%s", m->id);
-    return 1;
-}
-
-int vcdDisplayIdCached(const char *name, char *idOut, int idSize)
-{
-    return gVcdSupport.displayIdCached(name, idOut, idSize);
-}
 
 // One outstanding resolve request (idReqName_/idReqPending_): the GUI writes it, the io worker
 // reads and clears it. Both bracket with DIntr/EIntr -- EE thread preemption requires an
@@ -600,9 +580,9 @@ void VcdSupport::requestRowId(const char *name, int kind, int verifyParsedName)
     }
 }
 
-void vcdRequestDisplayId(const char *name)
+void vcdRequestDisplayId(const char *name, int kind)
 {
-    gVcdSupport.requestRowId(name, PS1_ROW_VCD, 0);
+    gVcdSupport.requestRowId(name, kind, 0);
 }
 
 void ps1RowIdRequest(const char *name, int kind)

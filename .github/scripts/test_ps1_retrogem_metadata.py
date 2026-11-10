@@ -1,7 +1,9 @@
-"""Execute the PS1 RetroGEM id memo, the id-keyed cover-art probe and check the Title-only CFG merge.
+"""Execute the PS1 RetroGEM id memo, the id-keyed cover-art probe and the id-keyed CFG merge.
 
 PS1 rows (POPStarter .VCD and Ember .CUE) look up ART/<RetroGEM id>_*.png first and fall back to the
-row name, and an installer-written CFG/<id>.cfg may supply Title (original #1049). The id comes from
+row name (original #1049). CFG/<id>.cfg applies the same way: the whole file when the row has no
+CFG/<name>.cfg, only the display metadata the name cfg lacks beside one; the id file is never the save
+target. The ItemText caption shows the id for both cores. The id comes from
 one session memo, keyed by (row name, core): a disc-verified id beats the filename parse, an Ember
 row resolves disc 1 the way the launch barcode does (discs.txt first), and nothing does device IO
 on the render or CFG paths.
@@ -72,12 +74,13 @@ static const char *cached(const char *name, int kind) { static char id[VCD_ID_MA
 int main(void)
 {
     char id[VCD_ID_MAX];
+    int calls;
     /* Free filename parse answers before any disc read: provisional, zero IO. */
     gVcdSupport.noteScanDir("SLUS_999.99.Crash", "mass0:/POPS");
     assert(!strcmp(cached("SLUS_999.99.Crash", PS1_ROW_VCD), "SLUS_999.99") && discReads == 0);
     assert(cached("Crash", PS1_ROW_VCD) == NULL);
     /* The caption keeps its zero-IO contract for well-named rows; metadata still verifies them. */
-    vcdRequestDisplayId("SLUS_999.99.Crash");
+    vcdRequestDisplayId("SLUS_999.99.Crash", PS1_ROW_VCD);
     assert(ioCalls == 0);
     ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_VCD);
     assert(ioCalls == 1);
@@ -87,7 +90,7 @@ int main(void)
     assert(!strcmp(lastPath, "mass0:/POPS/SLUS_999.99.Crash.VCD"));
     /* The disc beats the name, canonicalized to the caption's one shape. */
     assert(!strcmp(cached("SLUS_999.99.Crash", PS1_ROW_VCD), "SLUS_012.34"));
-    assert(vcdDisplayIdCached("SLUS_999.99.Crash", id, sizeof(id)) && !strcmp(id, "SLUS_012.34"));
+    assert(ps1RowIdCached("SLUS_999.99.Crash", PS1_ROW_VCD, id, sizeof(id)) && !strcmp(id, "SLUS_012.34"));
     ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_VCD); /* resolved: never read again */
     assert(ioCalls == 1);
 
@@ -99,7 +102,20 @@ int main(void)
     assert(cueReads == 1 && !strcmp(lastPath, "mass0:/EMBER/games/SLUS_999.99.Crash/Disc 1.cue"));
     assert(!strcmp(cached("SLUS_999.99.Crash", PS1_ROW_CUE), "SCES_000.02"));
     assert(!strcmp(cached("SLUS_999.99.Crash", PS1_ROW_VCD), "SLUS_012.34"));
-    assert(!vcdDisplayIdCached("Never", id, sizeof(id)));
+    assert(!ps1RowIdCached("Never", PS1_ROW_VCD, id, sizeof(id)));
+
+    /* The caption asks for an Ember row's own (CUE) entry: a folder without an id in its name is
+       read from disc 1 once, and a well-named folder costs nothing. */
+    gVcdSupport.noteScanDir("Ape Escape (USA)", "mass0:/", PS1_ROW_CUE);
+    assert(cached("Ape Escape (USA)", PS1_ROW_CUE) == NULL);
+    calls = ioCalls;
+    vcdRequestDisplayId("SLUS_999.99.Crash", PS1_ROW_CUE);
+    assert(ioCalls == calls);
+    vcdRequestDisplayId("Ape Escape (USA)", PS1_ROW_CUE);
+    assert(ioCalls == calls + 1);
+    run();
+    assert(!strcmp(cached("Ape Escape (USA)", PS1_ROW_CUE), "SCES_000.02"));
+    assert(cached("Ape Escape (USA)", PS1_ROW_VCD) == NULL);
 
     /* Busy art/BGM IO defers (no read), throttled by frame, then resolves. */
     gVcdSupport.noteScanDir("Spyro", "pfs0:/", PS1_ROW_VCD);
@@ -141,7 +157,7 @@ int main(void)
     /* A failed enqueue throttles instead of spinning. */
     ioFails = 1;
     gVcdSupport.noteScanDir("Retry", "mass0:/POPS");
-    int calls = ioCalls;
+    calls = ioCalls;
     ps1RowIdRequest("Retry", PS1_ROW_VCD);
     ps1RowIdRequest("Retry", PS1_ROW_VCD);
     assert(ioCalls == calls + 1);
@@ -336,9 +352,103 @@ assert consumer.index('ps1ArtId(') < consumer.index('cacheGetTextureIdOrName(') 
 fill = function(cue, 'cueFillGameListUnsorted(') if 'cueFillGameListUnsorted(' in cue else cue
 assert 'gVcdSupport.noteScanDir(entries[i].name, devPrefix, PS1_ROW_CUE);' in fill
 assert 'cueReadDiscList(' in function(cue, 'int cueResolveFirstDiscImage(')
-# CFG metadata: Title only, read-only, never dirties the name cfg, zero disc IO (cached id only).
-meta = supportbase[supportbase.index('PS1 metadata fallback'):supportbase.index('Get game size if not already set')]
+# The caption reads the row's own core entry; the old VCD-only caption reader is gone.
+caption = function(elems, 'void drawItemText(')
+assert 'ps1RowKind(' in caption and 'ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD' in caption
+assert 'vcdDisplayIdCached' not in vcd + vcd_h + elems
+
+# CFG/<id>.cfg: executed against a fake config set. Zero disc IO (cached id only), never written.
+meta = supportbase[supportbase.index('    if (isPs1) {\n        char idKey'):supportbase.index('    // Get game size if not already set')]
 assert 'ps1RowIdCached(' in meta and 'ps1RowIdRequest(' not in meta and 'retrogem' not in meta
-assert re.findall(r'configSetStr\(config, "(\w+)"', meta) == ['Title']
-assert 'configWrite' not in meta and 'clearModified()' in meta and 'configFree(meta)' in meta
-print('PASS: art/CFG consumers -- PS1-only id path, key-owned slots, Title-only read-only CFG merge')
+assert 'configWrite' not in meta and 'configFree(byId)' in meta
+
+CFG_HARNESS = r"""
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include <map>
+#include <string>
+constexpr int VCD_ID_MAX = 16;
+enum { PS1_ROW_VCD = 0, PS1_ROW_CUE };
+struct config_value_t { char key[48]; char val[256]; config_value_t *next; };
+static std::map<std::string, std::map<std::string, std::string>> disk;
+static int writes;
+struct config_set_t {
+    std::string file; std::map<std::string, std::string> kv; bool mod = false; config_value_t *head = nullptr;
+    bool modified() const { return mod; }
+    void clearModified() { mod = false; }
+    const config_value_t *entries()
+    {
+        static config_value_t pool[16];
+        int n = 0;
+        head = nullptr;
+        for (auto &e : kv) {
+            snprintf(pool[n].key, 48, "%s", e.first.c_str());
+            snprintf(pool[n].val, 256, "%s", e.second.c_str());
+            pool[n].next = head, head = &pool[n++];
+        }
+        return head;
+    }
+};
+static config_set_t sets[4];
+static int used;
+static config_set_t *configAlloc(int, void *, const char *f) { config_set_t *c = &sets[used++]; *c = config_set_t(); c->file = f; return c; }
+static int configRead(config_set_t *c) { auto it = disk.find(c->file); if (it == disk.end()) return 0; c->kv = it->second; return 1; }
+static void configFree(config_set_t *) {}
+static int configGetStr(config_set_t *c, const char *k, const char **v) { auto it = c->kv.find(k); if (it == c->kv.end()) return 0; *v = it->second.c_str(); return 1; }
+static int configSetStr(config_set_t *c, const char *k, const char *v) { c->kv[k] = v; if (k[0] != '#') c->mod = true; return 1; }
+static const char *rowId = "SLUS_012.34";
+static int ps1RowIdCached(const char *, int, char *out, int size) { if (!rowId) return 0; snprintf(out, size, "%s", rowId); return 1; }
+struct game_t { char name[64]; };
+static config_set_t *populate(const char *name, int isVcd, int dirty)
+{
+    game_t g, *game = &g;
+    snprintf(g.name, sizeof(g.name), "%s", name);
+    const char *prefix = "mass0:/", *sep = "/", *cfgKey = game->name;
+    const int isPs1 = 1;
+    char path[256];
+    used = 0;
+    snprintf(path, sizeof(path), "%sCFG%s%s.cfg", prefix, sep, cfgKey);
+    config_set_t *config = configAlloc(0, NULL, path);
+    int configLoaded = configRead(config);
+    if (dirty)
+        config->mod = true;
+@META@
+    return config;
+}
+static const char *get(config_set_t *c, const char *k) { const char *v = NULL; return configGetStr(c, k, &v) ? v : NULL; }
+int main(void)
+{
+    disk["mass0:/CFG/SLUS_012.34.cfg"] = {{"Title", "Crash Bandicoot"}, {"Description", "A bandicoot."}, {"Genre", "Platform"},
+                                          {"$EmberTiming", "2"}, {"#Size", "9"}};
+    /* No name cfg (Ember and VCD alike): the id file applies whole, runtime keys excepted, unmodified. */
+    for (int vcd = 0; vcd < 2; vcd++) {
+        config_set_t *c = populate("Crash (USA)", vcd, 0);
+        assert(!strcmp(get(c, "Title"), "Crash Bandicoot") && !strcmp(get(c, "Genre"), "Platform"));
+        assert(!strcmp(get(c, "$EmberTiming"), "2") && get(c, "#Size") == NULL);
+        assert(!c->modified() && c->file == "mass0:/CFG/Crash (USA).cfg"); /* the save target is the name cfg */
+    }
+    /* Beside a name cfg: its own values win, missing metadata fills in, settings never cross. */
+    disk["mass0:/CFG/Crash (USA).cfg"] = {{"Title", "My Crash"}, {"Description", ""}, {"$VMC_0", "card"}};
+    config_set_t *c = populate("Crash (USA)", 0, 0);
+    assert(!strcmp(get(c, "Title"), "My Crash") && !strcmp(get(c, "Description"), "A bandicoot."));
+    assert(!strcmp(get(c, "Genre"), "Platform") && get(c, "$EmberTiming") == NULL && !strcmp(get(c, "$VMC_0"), "card"));
+    assert(!c->modified());
+    /* A pending edit stays pending. */
+    assert(populate("Crash (USA)", 0, 1)->modified());
+    /* No id, or a row already named by its id: nothing else is read. */
+    rowId = NULL;
+    assert(get(populate("Crash (USA)", 0, 0), "Genre") == NULL);
+    rowId = "Crash (USA)";
+    assert(get(populate("Crash (USA)", 0, 0), "Genre") == NULL && used == 1);
+    puts("PASS: CFG/<id>.cfg -- whole without a name cfg, metadata-only beside one, never the save target");
+    return 0;
+}
+"""
+with tempfile.TemporaryDirectory() as directory:
+    cfile = Path(directory) / 'cfg.cpp'
+    cfile.write_text(CFG_HARNESS.replace('@META@', meta))
+    subprocess.run(['g++', '-std=gnu++17', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', '-Wno-unused-parameter',
+                    '-Wno-unused-variable', '-Wno-unused-but-set-variable', str(cfile), '-o', str(Path(directory) / 'cfg')], check=True)
+    subprocess.run([str(Path(directory) / 'cfg')], check=True, timeout=15)
+print('PASS: art/CFG consumers -- PS1-only id path, key-owned slots, both-core caption, id-keyed CFG merge')

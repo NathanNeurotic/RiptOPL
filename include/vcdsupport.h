@@ -64,14 +64,11 @@ enum {
 int ps1RowIdCached(const char *name, int kind, char *idOut, int idSize);
 void ps1RowIdRequest(const char *name, int kind);
 
-// Render-thread half of the caption id (#380): returns the ALREADY-resolved id from the session
-// memo, 0 if not yet resolved. Never touches the device, never queues -- safe to call every frame.
-int vcdDisplayIdCached(const char *name, char *idOut, int idSize);
-
-// Ask for a settled VCD row's id to be resolved off-thread (one queued resolve per row per
-// session, memo-deduped, only under explicit ItemText demand). Called per frame from the
-// menu render path; a cold memo with a request already in flight is a no-op.
-void vcdRequestDisplayId(const char *name);
+// Ask for a settled PS1 row's id (kind: PS1_ROW_*) to be resolved off-thread for the caption (one
+// queued resolve per row per session, memo-deduped, only under explicit ItemText demand; a name that
+// already parses as an id costs nothing). Called per frame from the menu render path; the caption
+// reads the answer back with ps1RowIdCached.
+void vcdRequestDisplayId(const char *name, int kind);
 
 // Forget every remembered id and scan directory, so swapped media is not described by the previous
 // disc. Cheap: ids re-resolve lazily as rows are settled on.
@@ -330,7 +327,6 @@ public:
     void invalidateGameIds();
     // Render-thread half: returns the ALREADY-resolved id from the memo, 0 if not yet resolved.
     // Never touches the device, never queues -- safe to call every frame.
-    int displayIdCached(const char *name, char *idOut, int idSize);
     // Ask for a row's id to be resolved off-thread (one queued resolve per row per session,
     // memo-deduped). A cold memo with a request already in flight is a no-op. verifyParsedName=0
     // keeps the caption's zero-IO contract for well-named rows; the metadata path passes 1.
