@@ -261,8 +261,7 @@ This build layers several features on top of upstream OPL:
 > menu's network and share settings into that folder's `config/bsd-smb.toml` on your device, the only
 > place Neutrino reads them from ([details](docs/NEUTRINO.md#smb-through-neutrino-experimental)). Nothing else of [rickgaiser](https://github.com/rickgaiser)'s is altered or
 > removed. RiptOPL is one of several front-ends built on Neutrino, alongside
-> **[LUNA](https://github.com/dnunezx/LUNA)** by **[darkladark](https://github.com/dnunezx)** (our #1
-> recommended alternative, for lightweight, customized Neutrino gameplay), **NHDDL**, **XEB+
+> **[LUNA](https://github.com/dnunezx/LUNA)** by **[darkladark](https://github.com/dnunezx)**, **NHDDL**, **XEB+
 > Plugin**, **RETROLauncher**, **OSD-XMB** and **PSBBN/BBNL**. Please report *launching* problems to
 > **us** — the argument building and hand-off are ours — and genuine Neutrino bugs upstream.
 
@@ -933,8 +932,7 @@ RiptOPL is intended to work with these maintained companion tools:
 - **[PS2-Servers](https://github.com/NathanNeurotic/PS2-Servers)** by **[Ripto](https://github.com/NathanNeurotic)** — all-in-one PC server launcher for **SMB, UDPFS, UDPBD and HTTP**.
 - **[udpfs-server](https://github.com/YouKnow-sys/udpfs-server)** by **[YouKnow-sys](https://github.com/YouKnow-sys)** — the same idea **from a phone**: an Android app that shares folders and disk images to the PS2 over **UDPFS**, found by broadcast so there is no server address to type in on the console. Works over a router or a direct cable. Built on **[udpfsd](https://github.com/pcm720/udpfsd)** by **[pcm720](https://github.com/pcm720)**; MIT licensed. An `android-udpfs-server.url` shortcut ships in installable packages.
 - **[OrbitPS2 Manager](https://github.com/Luden02/OrbitPS2-Manager)** by **[Luden](https://github.com/Luden02)** — cross-platform PC library manager for importing discs, artwork/screenshots, ZSO compression, per-game settings and VMC management.
-- **[LUNA](https://github.com/dnunezx/LUNA)** by **[darkladark](https://github.com/dnunezx)** — *Lightweight Unified Neutrino Access*, a visual PS2 loader built on [NHDDL](https://github.com/pcm720/nhddl) and [Neutrino](https://github.com/ps2max32/neutrino), and our **#1 recommended alternative** if RiptOPL is more loader than you need. darkladark also contributes to RiptOPL: the PSBBN Flow theme adapts LUNA's Collection display (#733), keeping the normal R3 favorite action.
-- **[RIPPS2](https://github.com/akilluminati47/RIPPS2)** by **[Akilluminati47](https://github.com/akilluminati47)** — a PS2-inspired front end developed in collaboration with RiptOPL, with a **web-theme beta** at **[akilluminati47.github.io/RIPPS2](https://akilluminati47.github.io/RIPPS2/)**. It now offers a downloadable PS2 ELF; consult its own releases and compatibility notes for current builds.
+- **[RIPPS2](https://github.com/akilluminati47/RIPPS2)** by **[Akilluminati47](https://github.com/akilluminati47)** — a PS2 front end and loader developed in collaboration with RiptOPL, with its own interface, game libraries, Memory Files browser and save tools. Built on the RiptOPL legacy C tree; see its [releases](https://github.com/akilluminati47/RIPPS2/releases) for current PS2 builds.
 - **[OPL PS1 AIO Converter GUI](https://github.com/shaanhomebrew-cloud/OPL-PS1-AIO-Converter-GUI)** by **[shaan](https://github.com/shaanhomebrew-cloud)** — Windows all-in-one PS1/POPStarter preparation tool for converting BIN/CUE backups to VCDs and installing them to USB, MX4SIO, MMCE, iLink, exFAT HDD, SMB and APA internal HDD.
 - **[xeRAbora](https://github.com/hacan359/xerabora)** by **[hacan359](https://github.com/hacan359)** — the PC client for **RetroAchievements** on real PS2 hardware. Required client: **[v1.0.1](https://github.com/hacan359/xerabora/releases/tag/v1.0.1)** (alpha.17 or later). RiptOPL's RA build is paired with and requires **xeRAbora v1.0.1** (alpha.17 or later) and its snapshot-only Mode 6 behavior. xeRAbora runs rcheevos, talks to the RetroAchievements servers and unlocks the achievements. It also builds the per-game watch list the console needs. Shipped as a shortcut inside `RIPTOPL-RetroAchievements-<version>.zip`; MIT licensed. RiptOPL’s RA stabilization on real hardware was driven by **[oMrRexD](https://github.com/oMrRexD)**, whose PRs #702–#705 fixed the ee_core stack squeeze, MMCE DEV9 path, cold-launch networking and settings placement.
 - **[OPL HTTP PC server](https://github.com/Docmine17/Open-PS2-Loader-HTTP)** by **[Docmine17](https://github.com/Docmine17)** — the PC side of RiptOPL’s **HTTP** protocol: a small static HTTP server with byte-range support that serves your `games.csv` catalog and streams the ISOs themselves. RiptOPL works with it **unmodified** — no new API, no catalog conversion, no changed folder layout — with host conformance checks against the upstream server. PS2 hardware validation is still pending.
@@ -1005,8 +1003,7 @@ With special and sincere thanks to:
   narrow, well-tested, and explicitly kept from contaminating normal build behavior.
 - **[darkladark](https://github.com/dnunezx)** — creator of **[LUNA](https://github.com/dnunezx/LUNA)**
   (*Lightweight Unified Neutrino Access*), his own visual loader built on [NHDDL](https://github.com/pcm720/nhddl) and [Neutrino](https://github.com/ps2max32/neutrino), with a
-  PS2-inspired glass interface and four switchable library views. LUNA is **our #1 recommended
-  alternative to RiptOPL** for lightweight, customized Neutrino gameplay. He also contributes to
+  PS2-inspired glass interface and four switchable library views. He also contributes to
   RiptOPL directly: his [#733](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/733) brings
   LUNA's Collection cover-art screen to RiptOPL's renderer. Thank you for sharing your work with us.
 - **[saildot4k](https://github.com/saildot4k)** — for **BDMA-ATA** (exFAT internal-HDD block-device support), and the fixes,
