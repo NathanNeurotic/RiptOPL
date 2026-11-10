@@ -9,6 +9,9 @@ cases that used to hang:
 2. A blocking stream read (mode 1) that empties a full buffer without getting all it asked for. The fill chain
    stops while the buffer is full, so the read must restart it before it waits. The fake event flag fails the
    test if the read waits while no fill is queued and no retry alarm is set.
+3. A stream fill whose device read fails (SCECdErREAD, for example a network read that gave up). It must not
+   be counted as read: that handed the game the bank's old contents. The same sectors are read again from the
+   retry alarm.
 """
 from pathlib import Path
 import shutil
@@ -59,6 +62,7 @@ typedef struct
 } cdvdman_status_t;
 
 #define SCECdErNO 0
+#define SCECdErREAD 0x32
 #define SCECdStatPause 0x0A
 #define WEF_AND 0
 #define DPRINTF(...)
@@ -94,7 +98,9 @@ cdvdman_status_t cdvdman_stat;
 static int intr_off, sif_queue_full, retries_with_intr_off, alarm_set;
 static u32 ef_bits;
 static StmCallback_t stm0;
-static int fill_pending;
+static int fill_pending, fill_fail;
+static unsigned int (*alarm_cb)(void *);
+static void *alarm_arg;
 static u32 fill_lsn, fill_sectors;
 static u8 *fill_buf;
 
@@ -130,7 +136,7 @@ int DelayThread(int usec)
     return 0;
 }
 
-int SetAlarm(iop_sys_clock_t *clock, unsigned int (*cb)(void *), void *arg) { (void)clock; (void)cb; (void)arg; alarm_set = 1; return 0; }
+int SetAlarm(iop_sys_clock_t *clock, unsigned int (*cb)(void *), void *arg) { (void)clock; alarm_cb = cb; alarm_arg = arg; alarm_set = 1; return 0; }
 int CancelAlarm(unsigned int (*cb)(void *), void *arg) { (void)cb; (void)arg; alarm_set = 0; return 0; }
 int SetEventFlag(int ef, u32 bits) { (void)ef; ef_bits |= bits; return 0; }
 int ClearEventFlag(int ef, u32 bits) { (void)ef; ef_bits &= bits; return 0; }
@@ -155,8 +161,11 @@ static void complete_fill(void)
 {
     u32 i;
     fill_pending = 0;
-    for (i = 0; i < fill_sectors; i++)
-        memset(fill_buf + i * 2048, (int)((fill_lsn + i) & 0xFF), 2048);
+    /* cdvdman_read sets the error for the read it just did; a failed read leaves the buffer as it was. */
+    cdvdman_stat.err = fill_fail ? SCECdErREAD : SCECdErNO;
+    if (!fill_fail)
+        for (i = 0; i < fill_sectors; i++)
+            memset(fill_buf + i * 2048, (int)((fill_lsn + i) & 0xFF), 2048);
     ef_bits |= 9;
     if (stm0 != NULL)
         stm0();
@@ -230,6 +239,34 @@ int main(void)
     for (i = 0; i < 40; i++)
         if (iop_dest[i * 2048] != (u8)((2000 + i) & 0xFF))
             fail("blocking stream read returned sectors out of order");
+
+    sceCdStStop();
+    fill_pending = 0;
+
+    /* Case 3: a stream fill whose read fails. */
+    memset(iop_stream_buf, 0xEE, 32 * 2048); /* old contents a wrongly counted fill would hand out */
+    sceCdStInit(32, 4, iop_stream_buf);
+    sceCdStStart(3000, NULL);
+    if (!fill_pending || fill_lsn != 3000)
+        fail("setup: first fill not queued");
+    fill_fail = 1;
+    complete_fill();
+    fill_fail = 0;
+    if (cdvdman_stat.StreamingData.StStreamed != 0 || cdvdman_stat.StreamingData.Stlsn != 3000)
+        fail("a stream fill whose read failed was counted as read (the game gets stale sectors)");
+    if (fill_pending || !alarm_set)
+        fail("a failed stream fill must be retried from the alarm, not at once");
+    alarm_set = 0;
+    alarm_cb(alarm_arg);
+    if (!fill_pending || fill_lsn != 3000)
+        fail("the retry did not read the failed sectors again");
+    complete_fill();
+    got = sceCdStRead(8, (u32 *)iop_dest, 0, &err);
+    if (got != 8)
+        fail("stream read after a retried fill returned the wrong sector count");
+    for (i = 0; i < 8; i++)
+        if (iop_dest[i * 2048] != (u8)((3000 + i) & 0xFF))
+            fail("stream read after a retried fill returned the wrong sectors");
 
     printf("OK\n");
     return 0;
