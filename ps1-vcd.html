@@ -303,14 +303,14 @@ not reset the IOP, so it needs no BDMA equip and no memory-card driver pair on a
     <tr><td><code>ember.elf</code></td><td>Ember itself, shipped in the release's <code>EMBER/</code> folder</td></tr>
     <tr><td><code>bios.bin</code></td><td><b>Your own</b> 512 KB PS1 BIOS; never shipped</td></tr>
     <tr><td><code>settings.txt</code></td><td>Ember's global settings; RiptOPL writes the PS Emulation Settings rows here</td></tr>
-    <tr><td><code>games/&lt;Game Name&gt;/</code></td><td>One folder per game holding its <code>*.cue</code>, <code>*.exe</code> or <code>*.bin</code> (top level only, no subfolders). The folder name is the title, art key and settings key</td></tr>
+    <tr><td><code>games/&lt;Game Name&gt;/</code></td><td>One folder per game holding its <code>*.cue</code>, <code>*.exe</code> or <code>*.bin</code> (top level only, no subfolders). The folder name is the title and the settings key; artwork tries the disc ID first, then the folder name</td></tr>
     <tr><td><code>games/&lt;Game Name&gt;/discs.txt</code></td><td>Optional: the CUE files of a multi-disc game, in disc order</td></tr>
     <tr><td><code>games/&lt;Game Name&gt;/settings.txt</code></td><td>Per-game Ember settings, written by <b>Ember Game Settings</b></td></tr>
     <tr><td><code>games/&lt;Game Name&gt;/MC1.vmc</code>, <code>MC2.vmc</code></td><td>The game's memory cards, created by Ember, so the device must be writable</td></tr>
   </tbody>
 </table>
-<p>A folder with no <code>.cue</code>, <code>.exe</code> or <code>.bin</code> at its top level is not listed. Ember game names
-longer than 180 characters are refused at launch. CF (PC CARD) does not list PS1 games.</p>
+<p>A folder with no <code>.cue</code>, <code>.exe</code> or <code>.bin</code> at its top level is not listed, and neither is a
+folder name longer than 160 bytes. CF (PC CARD) does not list PS1 games.</p>
 
 <div class="callout info"><div class="h">Cover art and per-game config by disc ID</div>
 If a VCD's filename follows the PS1 disc-ID pattern <code>SXXX_NNN.NN.Title.VCD</code>, RiptOPL
