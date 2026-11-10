@@ -19,7 +19,6 @@
 #include <thbase.h>
 #include <thevent.h>
 #include <intrman.h>
-#include <kerr.h>
 #include <ioman.h>
 #include <thsemap.h>
 #include <errno.h>

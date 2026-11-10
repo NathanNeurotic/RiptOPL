@@ -5,6 +5,7 @@
 */
 
 #include "internal.h"
+#include <kerr.h>
 #include "../../isofs/zso.h"
 
 #define MODNAME "cdvd_driver"
