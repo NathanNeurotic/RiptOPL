@@ -63,6 +63,7 @@
 #define STATUS_PENDING          0x00000103
 #define STATUS_MORE_PROCESSING  0xc0000016
 #define STATUS_CONNECTION_DISCONNECTED 0xc000020c
+#define STATUS_INVALID_NETWORK_RESPONSE 0xc00000c3 /* RiptOPL: a READ reply that does not add up */
 
 /* Amount of QUERY_DIR payload to store in the directory handle */
 #define MAX_DIR_SIZE 256
@@ -421,6 +422,30 @@ static uint32_t usmb2_build_request(struct usmb2_context *usmb2,
         }
         VERIFY_UPDATE(&usmb2->buf[0], commandincount);
         spl -= commandincount;
+
+        /*
+         * RiptOPL: a READ reply's data starts at its DataOffset ([MS-SMB2] 2.2.20), not
+         * straight after the 16-byte body; read any padding before it into buf (at most
+         * 255 - 80 bytes) so it neither lands in the caller's buffer nor escapes the signature.
+         */
+        if (command == CMD_READ && indata && status == STATUS_SUCCESS) {
+                uint32_t pad = usmb2->buf[2];
+
+                if (commandincount < 16 || pad < 64 + 16 || pad - (64 + 16) > spl) {
+#ifndef USMB2_FEATURE_TINY_TCP
+                        socket_failed(usmb2);
+#endif
+                        goto failed;
+                }
+                pad -= 64 + 16;
+                if (pad) {
+                        if (read_from_socket(usmb2, &usmb2->buf[commandincount], (int)pad)) {
+                                goto failed;
+                        }
+                        VERIFY_UPDATE(&usmb2->buf[commandincount], pad);
+                        spl -= pad;
+                }
+        }
 
         /*
          * Read data
@@ -832,6 +857,16 @@ int32_t usmb2_prw(struct usmb2_context *usmb2, int cmd, uint8_t *fid, uint8_t *r
 
         /* number of bytes returned */
         u32 = le32toh(*(uint32_t *)&usmb2->buf[4]);
+
+        /*
+         * RiptOPL: a READ reply may not claim more than was asked for, or more than its
+         * frame carried after DataOffset (checked above to lie inside the frame): those
+         * bytes were never copied into rbuf.
+         */
+        if (cmd == CMD_READ && (u32 > (uint32_t)count || u32 > usmb2->reply_len - (usmb2->buf[2] - 64u))) {
+                usmb2->status = STATUS_INVALID_NETWORK_RESPONSE;
+                return (int32_t)STATUS_INVALID_NETWORK_RESPONSE;
+        }
 
         return u32;
 }

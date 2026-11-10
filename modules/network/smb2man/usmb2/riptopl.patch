@@ -1,6 +1,6 @@
 --- a/usmb2.c
 +++ b/usmb2.c
-@@ -54,11 +54,13 @@
+@@ -54,13 +54,16 @@
  #define CMD_CLOSE               6
  #define CMD_READ                8
  #define CMD_WRITE               9
@@ -13,8 +13,11 @@
 +#define STATUS_PENDING          0x00000103
  #define STATUS_MORE_PROCESSING  0xc0000016
  #define STATUS_CONNECTION_DISCONNECTED 0xc000020c
++#define STATUS_INVALID_NETWORK_RESPONSE 0xc00000c3 /* RiptOPL: a READ reply that does not add up */
  
-@@ -222,6 +224,10 @@
+ /* Amount of QUERY_DIR payload to store in the directory handle */
+ #define MAX_DIR_SIZE 256
+@@ -222,6 +225,10 @@
          uint32_t spl, current_mid;
          uint8_t *buf = &usmb2->buf[0];
          uint32_t status;
@@ -25,7 +28,7 @@
  
          /*
           * SPL
-@@ -267,17 +273,27 @@
+@@ -267,17 +274,27 @@
          buf += 24; /* 16 byte signature is all zero */
  
  
@@ -55,7 +58,7 @@
                  spl -= outdatacount;
          }
  
-@@ -285,7 +301,9 @@
+@@ -285,7 +302,9 @@
           * Write padding
           */
          if (spl) {
@@ -66,7 +69,7 @@
          }
  
  #ifdef USMB2_FEATURE_TINY_TCP
-@@ -304,14 +322,26 @@
+@@ -304,14 +323,26 @@
          /*
           * Read SPL, SMB2 header and command reply header (and file info blob) from socket
           */
@@ -95,7 +98,7 @@
  
          if (command == CMD_SESSION_SETUP) {
                  usmb2->session_id = *(uint64_t *)&usmb2->buf[0x28];
-@@ -330,12 +360,66 @@
+@@ -330,22 +361,103 @@
          status = le32toh(*(uint32_t *)&usmb2->buf[8]);
  
          /*
@@ -163,7 +166,33 @@
          spl -= commandincount;
  
          /*
-@@ -345,7 +429,10 @@
++         * RiptOPL: a READ reply's data starts at its DataOffset ([MS-SMB2] 2.2.20), not
++         * straight after the 16-byte body; read any padding before it into buf (at most
++         * 255 - 80 bytes) so it neither lands in the caller's buffer nor escapes the signature.
++         */
++        if (command == CMD_READ && indata && status == STATUS_SUCCESS) {
++                uint32_t pad = usmb2->buf[2];
++
++                if (commandincount < 16 || pad < 64 + 16 || pad - (64 + 16) > spl) {
++#ifndef USMB2_FEATURE_TINY_TCP
++                        socket_failed(usmb2);
++#endif
++                        goto failed;
++                }
++                pad -= 64 + 16;
++                if (pad) {
++                        if (read_from_socket(usmb2, &usmb2->buf[commandincount], (int)pad)) {
++                                goto failed;
++                        }
++                        VERIFY_UPDATE(&usmb2->buf[commandincount], pad);
++                        spl -= pad;
++                }
++        }
++
++        /*
+          * Read data
+          */
+         if (indata) {
                  if (indatacount > spl) {
                          indatacount = spl;
                  }
@@ -175,7 +204,7 @@
                  spl -= indatacount;
          }
          
-@@ -360,16 +447,32 @@
+@@ -360,16 +472,32 @@
                  if (n > spl) {
                          n = spl;
                  }
@@ -210,7 +239,7 @@
  }
  
  /* NEGOTIATE PROTOCOL */
-@@ -444,6 +547,9 @@
+@@ -444,6 +572,9 @@
  #ifdef USMB2_FEATURE_NTLM
          if (cmd == 3) {
                  len = ntlm_generate_auth(usmb2, usmb2->username, usmb2->password);
@@ -220,7 +249,7 @@
                  memset(usmb2->buf, 0, 4 + 64 + 24);
          } else {
                  memset(usmb2->buf, 0, sizeof(usmb2->buf));
-@@ -497,7 +603,7 @@
+@@ -497,7 +628,7 @@
          /* unc offset */
          usmb2->buf[4 + 64 + 4] = 0x48;
          /* unc length in bytes. i.e. 2 times the number of ucs2 characters */
@@ -229,7 +258,7 @@
  
  
          ptr = &usmb2->buf[4 + 0x48];
-@@ -566,7 +672,7 @@
+@@ -566,7 +697,7 @@
          usmb2->buf[4 + 64 + 44] = 0x78;
          len = usmb2_put_name(&usmb2->buf[4 + 0x78], name);
          /* name length in bytes. i.e. 2 times the number of ucs2 characters */
@@ -238,7 +267,24 @@
  
          if (usmb2_build_request(usmb2,
                                  CMD_CREATE, 0x38 + len + 8, 88,
-@@ -833,7 +939,7 @@
+@@ -727,6 +858,16 @@
+         /* number of bytes returned */
+         u32 = le32toh(*(uint32_t *)&usmb2->buf[4]);
+ 
++        /*
++         * RiptOPL: a READ reply may not claim more than was asked for, or more than its
++         * frame carried after DataOffset (checked above to lie inside the frame): those
++         * bytes were never copied into rbuf.
++         */
++        if (cmd == CMD_READ && (u32 > (uint32_t)count || u32 > usmb2->reply_len - (usmb2->buf[2] - 64u))) {
++                usmb2->status = STATUS_INVALID_NETWORK_RESPONSE;
++                return (int32_t)STATUS_INVALID_NETWORK_RESPONSE;
++        }
++
+         return u32;
+ }
+ 
+@@ -833,7 +974,7 @@
  
          /* FileRenameInformation: ReplaceIfExists=0, RootDirectory=0, then the new name */
          len = usmb2_put_name(&usmb2->buf[4 + 0x60 + 20], newname);
@@ -247,7 +293,7 @@
          /* buffer length */
          *(uint16_t *)&usmb2->buf[4 + 64 + 4] = htole16(20 + len);
  
-@@ -917,6 +1023,9 @@
+@@ -917,6 +1058,9 @@
          }
  #endif
  

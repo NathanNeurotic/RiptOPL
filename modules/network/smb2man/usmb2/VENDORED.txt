@@ -42,6 +42,10 @@ What is here
     do not fit. ntlm.c's hashing calls take unsigned bytes (no -Wpointer-sign).
   - ntlm.c saves the CHALLENGE's Server Challenge before moving TargetInfo, which can land on it
     when the server puts the security buffer far into the reply.
+  - A READ reply's data is read from its DataOffset ([MS-SMB2] 2.2.20): padding before it goes
+    to buf (and into the signature), not to the caller. A DataOffset outside the frame closes the
+    socket; a DataLength larger than the frame carried or than was asked for fails the read
+    (STATUS_INVALID_NETWORK_RESPONSE). tests/smb2-live/readreply.c covers each case.
   - ntlm.c writes the user name's UTF-16 bytes as two separate stores; upstream read and
     incremented the index in one unsequenced expression (undefined behaviour, harmless as built).
 
