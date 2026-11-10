@@ -23,6 +23,7 @@ enum {
     EV_INFORM,
     EV_ACK,
     EV_DATA_FIN,
+    EV_DATA, /* reply data packet without FIN */
 };
 
 typedef struct
@@ -31,7 +32,7 @@ typedef struct
     int arg;
 } script_ev_t;
 
-static script_ev_t script[32];
+static script_ev_t script[64];
 static int script_len, script_pos;
 
 static uint32_t flags;
@@ -48,6 +49,8 @@ typedef struct
     int seq;
     int seq_nr_ack;
     int payload;
+    int flags;
+    int event; /* index of the script event that was being delivered, -1 outside a script */
 } sent_t;
 
 static sent_t sent[64];
@@ -132,6 +135,9 @@ static void step(void)
             break;
         case EV_DATA_FIN:
             inject_data(ev.arg, 0, UDPRDMA_DF_FIN, 4);
+            break;
+        case EV_DATA:
+            inject_data(ev.arg, 0, 0, 4);
             break;
     }
 }
@@ -230,6 +236,8 @@ int udp_packet_send_ll(udp_socket_t *socket, udp_packet_t *pkt, uint16_t pktdata
         sent[sent_len].seq = p->hdr.seq_nr;
         sent[sent_len].seq_nr_ack = p->hdr.packet_type == UDPRDMA_PT_DATA ? (int)p->data.seq_nr_ack : -1;
         sent[sent_len].payload = datasize;
+        sent[sent_len].flags = p->hdr.packet_type == UDPRDMA_PT_DATA ? (int)p->data.flags : -1;
+        sent[sent_len].event = script_pos - 1;
         sent_len++;
     }
     return 0;
@@ -242,6 +250,23 @@ static int count_requests(int from)
         if (sent[i].type == UDPRDMA_PT_DATA && sent[i].payload > 0)
             n++;
     return n;
+}
+
+/* An ACK or NACK sent while script events first..last were delivered that tells the
+ * server every packet up to and including `last_seq` arrived. */
+static int answered_up_to(int from, int first, int last, int last_seq)
+{
+    int i;
+    for (i = from; i < sent_len; i++) {
+        if (sent[i].type != UDPRDMA_PT_DATA || sent[i].payload != 0)
+            continue;
+        if (sent[i].event < first || sent[i].event > last)
+            continue;
+        if ((sent[i].flags & UDPRDMA_DF_ACK) ? sent[i].seq_nr_ack == last_seq :
+                                               sent[i].seq_nr_ack == ((last_seq + 1) & 0xFFF))
+            return 1;
+    }
+    return 0;
 }
 
 static int first_request(int from)
@@ -262,7 +287,9 @@ int main(void)
     static const script_ev_t dead[] = {{EV_TIMEOUT, 0}, {EV_TIMEOUT, 0}, {EV_TIMEOUT, 0}, {EV_TIMEOUT, 0}};
     static const script_ev_t ack0[] = {{EV_ACK, 0}};
     static const script_ev_t timeout_then_ack0[] = {{EV_TIMEOUT, 0}, {EV_ACK, 0}};
-    uint8_t req[16] = {0}, reply[16];
+    script_ev_t stream[40];
+    uint8_t req[16] = {0}, reply[16], bulk[64];
+    int n, burst;
     udprdma_socket_t *s;
     int mark, idx;
 
@@ -318,6 +345,28 @@ int main(void)
     check("split send with stale ACK completes", udprdma_send_ll(s, req, 4, req, sizeof(req)) == UDPRDMA_OK);
     check("split send does not retry on stale ACK", count_requests(mark) == 1);
     check("split send consumes covering ACK", script_pos == script_len);
+
+    /* A lost window ACK. The server has sent its whole window (8 packets) and they all
+     * arrived, but the ACK sent after the sixth was lost, so the server times out and sends
+     * the window again. The receiver must answer every such copy: when its first answer is
+     * lost too, nothing else can move the transfer. The server retransmits stale copies for
+     * 20 s and aborts, and the console sits in recv for 30 s, then reconnects. */
+    n = 0;
+    for (idx = 0; idx < 8; idx++)
+        stream[n++] = (script_ev_t) {EV_DATA, idx}; /* 0..7; the ACK after 5 is lost */
+    for (burst = 0; burst < 2; burst++)
+        for (idx = 0; idx < 8; idx++)
+            stream[n++] = (script_ev_t) {EV_DATA, idx}; /* server timeout: 0..7 again */
+    for (idx = 8; idx < 15; idx++)
+        stream[n++] = (script_ev_t) {EV_DATA, idx};
+    stream[n++] = (script_ev_t) {EV_DATA_FIN, 15};
+    mark = sent_len;
+    udprdma_set_rx_buffer(s, bulk, sizeof(bulk));
+    run_script(n, stream);
+    check("stream with a lost window ACK completes", udprdma_recv(s, bulk, sizeof(bulk), 1000) == (int)sizeof(bulk));
+    check("stream consumes the whole script", script_pos == script_len);
+    check("first resent window is answered", answered_up_to(mark, 8, 15, 7));
+    check("second resent window is answered after the first answer was lost", answered_up_to(mark, 16, 23, 7));
 
     /* SetAlarm fails: every wait must end as a timeout, never block. An empty script makes a
      * wait that is not ended by the transport itself fail the test instead of hanging. */

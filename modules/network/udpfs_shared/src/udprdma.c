@@ -25,7 +25,7 @@
 #define EF_RX_NACK   (1 << 3) /* Received NACK / out-of-order */
 #define EF_TIMEOUT   (1 << 6) /* Timeout occurred - bit 6 avoids WEF_CLEAR(0x10) overlap */
 #define EF_RX_FIN    (1 << 5) /* Receive complete (FIN or buffer full) */
-#define EF_RX_WINDOW (1 << 7) /* Window ACK needed (every N packets) */
+#define EF_RX_WINDOW (1 << 7) /* Cumulative ACK needed (every N packets, or a resent copy) */
 
 /* Flow control: PS2 ACKs every RX_ACK_WINDOW packets,
  * server sends at most SEND_WINDOW packets ahead */
@@ -224,11 +224,20 @@ static int _ist(udp_socket_t *udp_socket, void *arg, const uint8_t *hdr, uint16_
                             s->rx_window_count = 0;
                             SetEventFlag(s->event_flag, EF_RX_WINDOW);
                         }
+                    } else if (((s->rx_seq_nr_expected - base_hdr.seq_nr) & 0xFFF) < 2048) {
+                        /* A copy of a packet already received: the server did not
+                         * get our ACK and is sending its window again. Answer every
+                         * copy with a cumulative ACK. If this answered only once, like
+                         * the NACK below, losing that one answer left the server
+                         * resending copies until it aborted, and recv waiting out its
+                         * timeout and reconnecting. */
+                        SetEventFlag(s->event_flag, EF_RX_WINDOW);
                     } else {
                         /* Out of order - send one NACK per missing seq_nr.
                          * The server discards all in-flight packets after the
                          * gap, so they all trigger this path, but the server
-                         * only needs one NACK to know what to retransmit. */
+                         * only needs one NACK to know what to retransmit. If it
+                         * is lost, the server's timeout resends from the gap. */
                         if (!s->rx_nack_sent) {
                             s->rx_nack_sent = 1;
                             SetEventFlag(s->event_flag, EF_RX_NACK);
