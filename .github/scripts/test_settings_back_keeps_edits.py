@@ -152,7 +152,7 @@ PAGES = ('static int guiSettingsShowGeneral(', 'static int guiSettingsShowSource
 DEVICE_PAGES = {
     'static int guiSettingsShowGeneral(': 'if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath))',
     'static int guiSettingsShowSources(': 'if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, NULL, NULL))',
-    'int guiShowNetConfig(': 'if (result && !gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL))',
+    'int guiShowNetConfig(': 'if (result && (!gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL) ||',
     'static int guiSettingsShowLaunch(': 'if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, neutrinoPathEdit, gNeutrinoPath))',
     'static int guiSettingsShowPopstarter(': 'if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, popstarterPathEdit, gPopstarterPath))',
 }

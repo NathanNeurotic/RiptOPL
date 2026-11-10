@@ -911,7 +911,10 @@ reshow_network:
         guiMsgBox(httpTestMessage, 0, NULL);
         goto reshow_network;
     }
-    if (result && !gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL)) {
+    // The updater snaps the Access and IP Address Type rows (def too) on a protocol switch, so a pending
+    // UDPFS Access or DHCP choice made before switching back is invisible to diaHasChanges: check it here.
+    if (result && (!gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL) ||
+                   netConfigUdpfsAccess != gUdpfsAccessMode || netConfigDhcpPreference != ps2_ip_use_dhcp)) {
         // Seeded with what the page showed: a RiptOPLite page has no Protocol row, and only UDPFS has Access.
         int netProtoVal2 = netProtoVal, netAccessVal2 = netAccessVal;
         diaGetInt(diaNetConfig, CFG_NETPROTOCOL, &netProtoVal2);
