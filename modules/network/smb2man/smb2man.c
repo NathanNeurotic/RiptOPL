@@ -1402,8 +1402,8 @@ static int smb2man_rmdir(iop_file_t *f, const char *dirname)
     } else if (rv == 0 && usmb2_stat(smb2, path, st) == 0) {
         rv = -ENOTEMPTY;
     } else if (rv == 0) {
-        // The folder gone (-ENOENT) is the success; the socket lost under the check is -EIO.
-        rv = smb2man_errno(0);
+        // Only the folder gone (-ENOENT) is the success; any other failed check is its error.
+        rv = smb2man_errno(-EIO);
         if (rv == -ENOENT)
             rv = 0;
         smb2man_check_session();
