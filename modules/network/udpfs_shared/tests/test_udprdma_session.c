@@ -23,7 +23,8 @@ enum {
     EV_INFORM,
     EV_ACK,
     EV_DATA_FIN,
-    EV_DATA, /* reply data packet without FIN */
+    EV_DATA,         /* reply data packet without FIN */
+    EV_DATA_TIMEOUT, /* a reply data packet and the alarm, both before the transport wakes */
 };
 
 typedef struct
@@ -139,6 +140,14 @@ static void step(void)
             break;
         case EV_DATA:
             inject_data(ev.arg, 0, 0, 4);
+            break;
+        case EV_DATA_TIMEOUT:
+            inject_data(ev.arg, 0, 0, 4);
+            if (alarm_cb == NULL) {
+                fprintf(stderr, "FAIL: timeout scripted with no alarm armed\n");
+                exit(1);
+            }
+            alarm_cb(alarm_arg);
             break;
     }
 }
@@ -414,6 +423,19 @@ int main(void)
     check("stalled stream times out", udprdma_recv(s, bulk, sizeof(bulk), 1000) == UDPRDMA_ERR_TIMEOUT);
     check("stalled stream consumes the whole script", script_pos == script_len);
     check("resent copies do not restart the receive timeout", alarms_set - mark == 2);
+
+    /* The alarm fires in the same wakeup as a resent copy. The ACK for the copy must not hide the
+     * timeout: the alarm is spent, so nothing else would end this receive. An empty rest of script
+     * makes a wait past this point fail the test instead of hanging. */
+    run_script(1, connect);
+    check("rediscovery before the coalesced timeout connects", udprdma_discover(s, 2000) == UDPRDMA_OK);
+    n = 0;
+    for (idx = 0; idx < 6; idx++)
+        stream[n++] = (script_ev_t) {EV_DATA, idx};
+    stream[n++] = (script_ev_t) {EV_DATA_TIMEOUT, 0}; /* copy of 0 plus the alarm */
+    udprdma_set_rx_buffer(s, bulk, sizeof(bulk));
+    run_script(n, stream);
+    check("timeout coalesced with a resent copy ends the receive", udprdma_recv(s, bulk, sizeof(bulk), 1000) == UDPRDMA_ERR_TIMEOUT);
 
     if (failures) {
         fprintf(stderr, "%d check(s) failed\n", failures);

@@ -679,6 +679,18 @@ int udprdma_recv(udprdma_socket_t *socket, void *buffer, uint32_t size, uint32_t
             return result;
         }
 
+        /* Before the ACK cases: a timeout that arrived with a resent copy in the same wakeup still ends a
+         * receive that made no progress, or the alarm, already spent, would never fire again. With
+         * progress the timeout is stale, and the next pass arms a fresh one. */
+        if ((evf_bits & EF_TIMEOUT) && socket->rx_received == armed_at) {
+            M_PRINTF("recv: timeout, received=%d/%d\n",
+                     socket->rx_received, socket->rx_buffer_size);
+            socket->rx_buffer = NULL;
+            socket->rx_hdr_buffer = NULL;
+            socket->state = STATE_DISCONNECTED;
+            return UDPRDMA_ERR_TIMEOUT;
+        }
+
         if (evf_bits & EF_RX_NACK) {
             _send_ack(socket, 0);
             continue;
@@ -687,15 +699,6 @@ int udprdma_recv(udprdma_socket_t *socket, void *buffer, uint32_t size, uint32_t
         if (evf_bits & EF_RX_WINDOW) {
             _send_ack(socket, 1);
             continue;
-        }
-
-        if (evf_bits & EF_TIMEOUT) {
-            M_PRINTF("recv: timeout, received=%d/%d\n",
-                     socket->rx_received, socket->rx_buffer_size);
-            socket->rx_buffer = NULL;
-            socket->rx_hdr_buffer = NULL;
-            socket->state = STATE_DISCONNECTED;
-            return UDPRDMA_ERR_TIMEOUT;
         }
     }
 }
