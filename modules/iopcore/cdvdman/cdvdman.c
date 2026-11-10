@@ -973,7 +973,7 @@ static void cdvdman_signal_read_end_intr(void)
 static void cdvdman_cdread_Thread(void *args)
 {
     while (1) {
-        int for_stream;
+        int for_stream, failed;
 
         WaitSema(cdrom_rthread_sema);
 
@@ -981,6 +981,8 @@ static void cdvdman_cdread_Thread(void *args)
         for_stream = cdread_for_stream;
 
         cdvdman_read(cdvdman_stat.cdread_lba, cdvdman_stat.cdread_sectors, cdvdman_stat.sector_size, cdvdman_stat.cdread_buf);
+        /* Taken before the read end frees the drive: after that, a game read or sceCdStRead can change the error. */
+        failed = (cdvdman_stat.err == SCECdErREAD);
 
         /* This streaming callback is not compatible with the original SONY stream channel 0 (IOP) callback's design.
        The original is run from the interrupt handler, but we want it to run
@@ -991,7 +993,7 @@ static void cdvdman_cdread_Thread(void *args)
             /* Check that the streaming callback was not cleared, as this pointer may get changed between function calls.
                As per the original semantics, once it is cleared, then it should not be called. */
             if (Stm0Callback != NULL)
-                Stm0Callback();
+                Stm0Callback(failed);
         } else {
             /* A game read gets the game's callback even while a stream is open. Before, the stream callback took it
                instead (StmCallback's "BUG!" note), so a game waiting on sceCdCallback for that read never heard back. */

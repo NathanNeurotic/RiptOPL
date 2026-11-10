@@ -17,18 +17,16 @@ static unsigned int StmScheduleCb(void *arg)
     return ((StFillStreamBuffer() >= 0) ? 0 : 0x00704000);
 }
 
-static void StmCallback(void)
+static void StmCallback(int failed)
 {
-    int OldState, failed = 0;
+    int OldState;
 
     // Runs only for a finished stream fill (cdvdman_cdread_Thread), so StIsReading here means that fill has ended.
     if (cdvdman_stat.StreamingData.StIsReading) {
         CpuSuspendIntr(&OldState);
         /* A fill whose read failed holds no new data. Counting it as read handed the game the bank's old contents
            as the next sectors, so the stream stays where it is and the same bank is read again. */
-        if (cdvdman_stat.err == SCECdErREAD) {
-            failed = 1;
-        } else {
+        if (!failed) {
             cdvdman_stat.StreamingData.Stlsn += cdvdman_stat.StreamingData.StBanksize;
             cdvdman_stat.StreamingData.StStreamed += cdvdman_stat.StreamingData.StBanksize;
             cdvdman_stat.StreamingData.StWritePtr += cdvdman_stat.StreamingData.StBanksize;

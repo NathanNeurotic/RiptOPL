@@ -37,7 +37,7 @@ typedef uint8_t u8;
 typedef struct { u32 hi, lo; } iop_sys_clock_t;
 typedef struct { void *src, *dest; int size, attr; } SifDmaTransfer_t;
 typedef struct { u8 trycount, spindlctrl, datapattern, pad; } sceCdRMode;
-typedef void (*StmCallback_t)(void);
+typedef void (*StmCallback_t)(int failed);
 
 struct SteamingData
 {
@@ -161,14 +161,16 @@ static void complete_fill(void)
 {
     u32 i;
     fill_pending = 0;
-    /* cdvdman_read sets the error for the read it just did; a failed read leaves the buffer as it was. */
-    cdvdman_stat.err = fill_fail ? SCECdErREAD : SCECdErNO;
+    /* The shared error is the opposite of the fill's own result, as when a game read or sceCdStRead changes it
+       after the drive is freed: only the result the read thread passes may decide. A failed read leaves the
+       buffer as it was. */
+    cdvdman_stat.err = fill_fail ? SCECdErNO : SCECdErREAD;
     if (!fill_fail)
         for (i = 0; i < fill_sectors; i++)
             memset(fill_buf + i * 2048, (int)((fill_lsn + i) & 0xFF), 2048);
     ef_bits |= 9;
     if (stm0 != NULL)
-        stm0();
+        stm0(fill_fail);
 }
 
 int WaitEventFlag(int ef, u32 bits, int mode, u32 *res)

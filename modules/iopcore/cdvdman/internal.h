@@ -107,7 +107,7 @@ struct dirTocEntry
     char filename[128];  // 33
 } __attribute__((packed));
 
-typedef void (*StmCallback_t)(void);
+typedef void (*StmCallback_t)(int failed); // failed: the fill's read ended in SCECdErREAD
 
 // Internal (common) function prototypes
 extern void SetStm0Callback(StmCallback_t callback);
