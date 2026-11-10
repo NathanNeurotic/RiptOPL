@@ -59,7 +59,7 @@ class ConfigurationTests(unittest.TestCase):
                         self.assertEqual("RETROACHIEVEMENTS" in targets[name]["defines"], ra)
                         self.assertEqual("PADEMU" in targets[name]["defines"], configuration != "pademu0")
                         self.assertIn("GSM_1080P", targets[name]["defines"])
-                    for name in ("bdm_mcemu", "mmce_mcemu", "hdd_mcemu", "smb_mcemu", "udpfs_mcemu"):
+                    for name in ("bdm_mcemu", "mmce_mcemu", "hdd_mcemu", "smb_mcemu"):
                         self.assertEqual("PADEMU" in targets[name]["defines"], configuration != "pademu0")
                     loader = targets["riptopl"]
                     self.assertEqual("BUILTIN_KORIUM" in loader["defines"], editions.EDITIONS[edition]["theme"] == "korium")

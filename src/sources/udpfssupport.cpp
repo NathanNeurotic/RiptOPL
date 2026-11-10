@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <new>
 #include "include/host.h"
 #include "include/opl.h"
@@ -25,8 +26,8 @@
 #include "include/riptlite.h" // LITE_HAS_*: a RiptOPLite build without this device
 #include "include/ethsupport.h"  // ethGetModulesLoaded() for the UDPFS<->SMB NIC interlock
 #include "include/bdmsupport.h"  // bdmIsUDPBDLoaded() for the UDPFS<->UDPBD NIC interlock
-#include "include/mmcesupport.h" // mmceSendGameID() cross-device game-id (#261)
-#include "include/nativevmc.h"   // nativeVmcSlotWord: udpfs_mcemu VMC slots
+#include "include/mmcesupport.h" // mmceSendGameID() cross-device game-id (#261), mmceMcemuSlots
+#include "include/nativevmc.h"   // nativeVmcSlotWord: mmce_mcemu VMC slots
 #include "modules/iopcore/common/cdvd_config.h"
 
 #include "include/ps2sdkapi_compat.h"
@@ -870,9 +871,15 @@ void UdpfsSource::launchCue(item_list_t *itemList, const char *cueName, config_s
 // handle for it. After the reset the EE core loads udpfs_smap, udpfs_ministack and udpfs_fhi; udpfs_fhi
 // re-discovers the server, which keeps a peer's open handles across a re-discovery (udpfsd
 // Connection.ResetPeer), and reads the disc by that handle. This is how Neutrino's own udpfs_fhi boots
-// these games. A game's VMCs are kept open read-write the same way, and udpfs_mcemu reads and writes
-// their pages through udpfs_fhi, so saves land on the server.
-static int udpfsMcemuSlots[2] = {-2, -2};
+// these games. A game's VMCs are kept open read-write the same way, and mcemu reads and writes their
+// pages through udpfs_fhi, so saves land on the server. That mcemu is mmce_mcemu: udpfs_cdvdman exports
+// its VMC page calls at the oplutils ordinals mmce_cdvdman uses, so one image serves both devices, and
+// the VMC slot cache (mmceMcemuSlots) is shared with the MMCE launch.
+static_assert(sizeof(udpfs_vmc_infos_t) == sizeof(mmce_vmc_infos_t), "UDPFS and MMCE share mmce_mcemu's VMC slots");
+static_assert(offsetof(udpfs_vmc_infos_t, fd) == offsetof(mmce_vmc_infos_t, fd) &&
+                  offsetof(udpfs_vmc_infos_t, flags) == offsetof(mmce_vmc_infos_t, flags) &&
+                  offsetof(udpfs_vmc_infos_t, specs) == offsetof(mmce_vmc_infos_t, specs),
+              "UDPFS and MMCE VMC slot fields sit at the same offsets");
 
 // Close what the launch opened when it goes back to the menu (a launch that goes on keeps them open).
 static void udpfsCloseFiles(int isoFile, const int *vmcFiles)
@@ -982,7 +989,7 @@ static void udpfsLaunchOplCore(item_list_t *itemList, base_game_info_t *game, co
     }
     settings->iso_handle = iso_handle;
 
-    // Each VMC is opened read-write (iomanX FIO_O_RDWR) and kept open the same way, so udpfs_mcemu can
+    // Each VMC is opened read-write (iomanX FIO_O_RDWR) and kept open the same way, so mmce_mcemu can
     // write saves to it in game. udpfsd refuses a write open on a read-only share or a file already
     // open elsewhere: that card is then offered to be skipped, as a bad card is above.
     for (vmc_id = 0; vmc_id < 2; vmc_id++) {
@@ -1009,11 +1016,11 @@ static void udpfsLaunchOplCore(item_list_t *itemList, base_game_info_t *game, co
         }
 
         // This write covers the slot's marker, so its position is found once and reused with a full-payload bound.
-        int slotWord = nativeVmcSlotWord(&udpfs_mcemu_irx, size_udpfs_mcemu_irx, vmc_id, udpfsMcemuSlots, sizeof(udpfs_vmc_infos_t));
+        int slotWord = nativeVmcSlotWord(&mmce_mcemu_irx, size_mmce_mcemu_irx, vmc_id, mmceMcemuSlots, sizeof(udpfs_vmc_infos_t));
         if (slotWord >= 0) {
             if (vmc_infos[vmc_id].active)
-                size_mcemu_irx = size_udpfs_mcemu_irx;
-            memcpy(&((u32 *)&udpfs_mcemu_irx)[slotWord], &vmc_infos[vmc_id], sizeof(udpfs_vmc_infos_t));
+                size_mcemu_irx = size_mmce_mcemu_irx;
+            memcpy(&((u32 *)&mmce_mcemu_irx)[slotWord], &vmc_infos[vmc_id], sizeof(udpfs_vmc_infos_t));
         }
     }
 
@@ -1026,7 +1033,7 @@ static void udpfsLaunchOplCore(item_list_t *itemList, base_game_info_t *game, co
     // udpfs_fhi owns the network adapter in game: the game's own DEV9 and SMAP are faked, as for UDPBD.
     settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_DEV9;
     settings->common.fakemodule_flags |= FAKE_MODULE_FLAG_SMAP;
-    sysLaunchLoaderElf(filename, "UDPFS_MODE", irx_size, static_cast<void **>(irx), size_mcemu_irx, udpfs_mcemu_irx, EnablePS2Logo, compatmask);
+    sysLaunchLoaderElf(filename, "UDPFS_MODE", irx_size, static_cast<void **>(irx), size_mcemu_irx, mmce_mcemu_irx, EnablePS2Logo, compatmask);
 }
 
 void UdpfsSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
@@ -1058,7 +1065,7 @@ void UdpfsSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // Neutrino by default; the OPL core when the game's own Loader Core is <OPL> (bdmNetBlockCoreLoader),
     // or when Neutrino cannot run it (no neutrino.elf, a .zso image), as on the udp BDM device and MMCE.
     // NB: Neutrino's VMC emulation is emitted as discrete -mcN args (sbBuildVmcNeutrinoArgs below); the
-    // OPL core leg uses udpfs_mcemu (udpfsLaunchOplCore).
+    // OPL core leg uses mmce_mcemu (udpfsLaunchOplCore).
 
     if (gRememberLastPlayed) {
         configSetStr(configGetByType(CONFIG_LAST), "last_played", game->startup);
