@@ -31,6 +31,11 @@ class PublicationTests(unittest.TestCase):
             self.assertIn("/commit/" + "b" * 40, body)
             self.assertIn("/commits/" + sha, body)
             self.assertIn(f"**RiptOPL {options['title']}** `v1.2.0-Beta-3925`", body)
+            # The standard full kit leads the notes, before the changelog.
+            kit = f"RIPTOPL-{options['title']}-v1.2.0-Beta-3925.zip"
+            self.assertIn(f"**Recommended download:** [{kit}](https://github.com/NathanNeurotic/RiptOPL/releases/download/"
+                          f"{options['tag']}/{kit}) - the standard full install kit.", body)
+            self.assertLess(body.index("**Recommended download:**"), body.index("## Changes"))
             self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-{options['title']}-v1.2.0-Beta-3925.zip)", body)
             elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
             psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
@@ -65,7 +70,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertNotIn("ORBIT", body)
             self.assertNotIn("Release compiler", body)
             self.assertNotIn("Imported production documentation", body)
-            self.assertLess(len(body), 2400)  # the RA notes link eight versioned downloads, ORBIT and the usmb2 licence
+            self.assertLess(len(body), 2600)  # the RA notes link eight versioned downloads, ORBIT, the usmb2 licence and the recommended kit
 
     def test_ra_notes_refuse_a_runtime_other_than_the_pin(self):
         with patch.object(publisher, "git", return_value="b" * 40 + "\x00Fix"), self.assertRaises(ValueError):
