@@ -12,7 +12,7 @@ TargetName, ParityDom, is in mixed case and differs from its MsvAvNbDomainName A
 that changes the domain's case or takes it from the AV pair fails.
 Both clients are linked with connect() wrapped: every IPv4 connect goes to the fake server, and the
 address and port it was meant for are printed, and checked. So the clients can be told any server:
-the fake server's own port; port 445; port 1111, the menu's default; port 0, which both take as 445;
+the fake server's own port; port 445; port 1111, a custom port; port 0, which both take as 445;
 and 192.168.100.200 on port 65535.
 The AV pairs of the game's NTLMv2 blob are checked byte for byte: the CHALLENGE's TargetInfo with an
 MsvAvTargetName "cifs/<ip>" ("cifs/<ip>:<port>" off port 445) in front of the MsvAvEOL, which a
@@ -671,7 +671,7 @@ with tempfile.TemporaryDirectory() as tmp:
                            ('', '')]:
         run('user %s, password %s' % (ascii(user), ascii(password)), user, password)
     # The server as the EE can give it: on port 445 and port 0 (which both take as 445) both name it
-    # without the port; 1111 is the menu's default; 192.168.100.200:65535 is the longest name.
+    # without the port; 1111 is a non-default port; 192.168.100.200:65535 is the longest name.
     run('port 445', port=445)
     run('port 0', port=0)
     run('port 1111', port=1111)

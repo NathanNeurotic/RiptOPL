@@ -164,7 +164,7 @@ if render:
 base_yml = read('lng/tmpl/_base.yml')
 for sid, label in (('SOURCE_BDM_HDD', 'Internal HDD (exFAT)'), ('SOURCE_USB', 'USB'),
                    ('SOURCE_MX4SIO', 'MX4SIO'), ('SOURCE_PCCF', 'PC CARD CF (experimental)'),
-                   ('SOURCE_DVR', 'DESR DVR ISOs (experimental)'), ('SOURCE_ILINK', 'iLink')):
+                   ('SOURCE_DVR', 'DESR DVR (experimental)'), ('SOURCE_ILINK', 'iLink')):
     if '{.label = {NULL, _STR_%s}}' % sid not in dialogs_c:
         failures.append('dialogs.c: the "%s" row must use _STR_%s' % (label, sid))
     if '  label: %s\n  string: "      %s"\n' % (sid, label) not in base_yml:

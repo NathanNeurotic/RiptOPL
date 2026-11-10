@@ -215,7 +215,7 @@ settings:
 | `-gc=<modes>` | only if the game has OPL compatibility modes set |
 | `-dbc` | only if **Debug Colors** is enabled |
 | `-logo` | only if **PS2 Logo** is enabled — and never on mmce or the UDPFS legs: rom0:PS2LOGO's extra IOP reboot drops the resident backend stack (issue #56 class), so the global toggle is suppressed there. A hand-typed `-logo` in the global/per-game args still passes through |
-| `-gsm=<mode>[:<comp>]` | only if a **Neutrino Video** mode resolves for the game (per-game picker, or the global **Settings → Game Launching → Neutrino Video** default when the per-game picker is "Default"). The `:<comp>` half is appended only when a **Neutrino GSM Compatibility** type is set — it is never emitted on its own |
+| `-gsm=<mode>[:<comp>]` | only if a **Neutrino Video** mode resolves for the game (per-game picker, or the global **Settings → Game Launching → Neutrino Video** default when the per-game picker is "Default"). The `:<comp>` half is appended only when a **Neutrino GSM Fix** type is set — it is never emitted on its own |
 
 > **Revision 2692 iLink result:** Neutrino failed on an SCPH-39001 from iLink in all four SDK
 > flavours. That build emitted the documented `-bsd=ilink` token but, unlike its USB handoff, did not
@@ -272,7 +272,7 @@ path still have to agree, and a missing VMC file can prevent boot.
 |---|---|
 | `-bsd`, `-dvd` | Derived from the selected game source and image; an override can be entered in either Extra Args field. |
 | `-bsdfs` | Per-game **Neutrino Filesystem** picker, or either Extra Args field for a global/default or a custom value. |
-| `-gsm` | Global **Neutrino Video** and **Neutrino GSM Compatibility** defaults; per-game pickers override them. |
+| `-gsm` | Global **Neutrino Video** and **Neutrino GSM Fix** defaults; per-game pickers override them. |
 | `-gc` | Per-game compatibility switches; either Extra Args field can also carry a manual value. |
 | `-mc0`, `-mc1` | Per-game VMC controls; either Extra Args field can carry a manual path. |
 | `-elf`, `-cwd`, `-cfg`, `-ata0`, `-ata0id`, `-ata1`, `-qb`, `-dbc`, `-logo` | Named controls in both Advanced Arguments screens. Automatic `-elf` also has a global toggle. |
@@ -499,7 +499,7 @@ When a game's core is **Neutrino**:
   no PSS/BIK video-skip), so OPL never forwards them. Modes 1/2/3/5 *do* map to `-gc`, and a Neutrino-only
   **mode 7** (greyed under the OPL core — the inverse of 4/6) maps to `-gc=7` (fix games that overrun
   an IOP buffer).
-- **Neutrino GSM Compatibility** (Compatibility screen, beside Neutrino Video) — **Off / Type 1
+- **Neutrino GSM Fix** (Compatibility screen, beside Neutrino Video) — **Off / Type 1
   (GSM/OPL) / Type 2 / Type 3 / Default** — supplies the `:<comp>` half of `-gsm=<mode>:<comp>`,
   a field-flipping fix for shake/tear. The comp half is **never** emitted without a video mode (a
   bare `:<comp>` aborts Neutrino's boot), so the row greys out while the effective video mode is

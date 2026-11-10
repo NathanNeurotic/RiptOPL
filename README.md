@@ -608,16 +608,16 @@ are supported using the folder structure above.
 > **Game Sources** set **Network Connectivity** to **Manual** or **Auto** and **Protocol** (under it,
 > or on **Network**) to **SMB**, before the **NET Games** tab appears. The Network page
 > ships static defaults (PS2 `192.168.1.10`, PC `192.168.1.100`, share `games`, user `guest`);
-> adjust them to your LAN. The default **SMB Port is `1111`** — a non-privileged port (>1024), so a server
-> binds it without admin/root. The **Network** page opens with **Advanced Options** on, so
+> adjust them to your LAN. The default **SMB Port is `445`**, the standard port Windows, Samba, a NAS and
+> the Neutrino core use. The **Network** page opens with **Advanced Options** on, so
 > the **Port** field (and ETH link mode) are editable immediately. Windows 10/11 has SMB1 turned off:
 > either set **SMB Version** to **SMB2**, or use the **[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one
 > launcher instead of Windows' own sharing. Choose its SMBv1 server (or its SMBv2 card with **SMB2**), then set RiptOPL's
-> IP, port, share and credentials to the values the launcher displays. Its Desktop SMBv1 card
-> defaults to port **1025** and its Core/standalone server to **1111** (RiptOPL's default), so copy
+> IP, port, share and credentials to the values the launcher displays. Its cards listen on their own
+> ports (SMBv1 **1025**, SMBv2/SMBv3 **1445**, or 445 with **Take port 445**), so copy
 > the port the running card shows ([PS2-Servers SMB setup](https://github.com/NathanNeurotic/PS2-Servers/blob/main/docs/SMB.md)).
-> Windows’ built-in server or a NAS may use a different port; enter the value that server actually
-> listens on. Release packages include **`PS2-Servers.url`** as a direct shortcut to the repository.
+> A server set to another port needs that port entered here. To type a port, select the row, then
+> press Triangle. Release packages include **`PS2-Servers.url`** as a direct shortcut to the repository.
 >
 > **SMB on the Neutrino core (experimental):** a game whose Loader Core is Neutrino (or Default while
 > the global Loader Core is Neutrino) launches from the share through Neutrino's own SMB driver, by

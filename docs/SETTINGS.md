@@ -57,7 +57,7 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 | &nbsp;&nbsp;USB | Lists games from USB mass storage. | `enable_usb` |
 | &nbsp;&nbsp;MX4SIO | Lists games from an MX4SIO SD adapter. | `enable_mx4sio` |
 | &nbsp;&nbsp;PC CARD CF (experimental) | Lists games from a CompactFlash card in a PC Card adapter. | `enable_pccf` |
-| &nbsp;&nbsp;DESR DVR ISOs (experimental) | Lists ISOs on a PSX DESR's DVR partition. | `enable_dvr` |
+| &nbsp;&nbsp;DESR DVR (experimental) | Lists ISOs on a PSX DESR's DVR partition. | `enable_dvr` |
 | &nbsp;&nbsp;iLink | Lists games from an i.LINK (FireWire) drive. | `enable_ilink` |
 | Network Connectivity | When the network page starts: Off, Manual or Auto. | `net_start_mode` |
 | &nbsp;&nbsp;Protocol | The same setting as Protocol on the Network page, shown here beside the start mode. | `network_protocol`, `net_protocol_pick` |
@@ -166,7 +166,7 @@ Settings**.
 | GSM Defaults (All Games) *(Modify)* | The video mode games launch in unless a game has its own. See [GSM.md](GSM.md). | `$EnableGSM`, `$GSMVMode`, `$GSMXOffset`, `$GSMYOffset`, `$GSMFIELDFix` (global game config) |
 | Neutrino Path | Where `neutrino.elf` is. See [NEUTRINO.md](NEUTRINO.md). | `neutrino_path` |
 | Neutrino Video | Default video mode for Neutrino games. | `neutrino_video_default` |
-| Neutrino GSM Compatibility | Default GSM type for Neutrino games (when Neutrino Video is on). | `neutrino_gsm_comp_default` |
+| Neutrino GSM Fix | Default GSM type for Neutrino games (when Neutrino Video is on). | `neutrino_gsm_comp_default` |
 | Neutrino Auto ELF, Show Neutrino Arguments | Neutrino launch options. | `neutrino_elf_arg`, `neutrino_show_args` |
 | Neutrino Advanced Arguments *(Modify)* | Extra Neutrino arguments for every game. | `neutrino_args` |
 

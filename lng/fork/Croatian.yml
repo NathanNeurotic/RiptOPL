@@ -481,7 +481,6 @@ translations:
   HINT_DNS: Adresa DNS poslužitelja. Obično ista kao pristupnik.
   HINT_SMB_ADDR_TYPE: Pristup računalu preko njegove IP adrese ili NetBIOS naziva (naziva računala).
   HINT_SMB_ADDRESS: 'Računalo koje dijeli tvoje igre: njegova IP adresa ili naziv računala kad je Vrsta adrese NetBIOS.'
-  HINT_SMB_PORT: 'SMB priključak. Mora odgovarati računalu: PS2 Servers koristi 1111, Windows i Samba dijeljenja koriste 445.'
   HINT_SMB_USER: SMB korisničko ime. guest radi za većinu dijeljenja.
   HINT_HTTP_SERVER: IP adresa HTTP poslužitelja igara.
   HINT_HTTP_PORT: Priključak na kojem HTTP poslužitelj igara sluša.
