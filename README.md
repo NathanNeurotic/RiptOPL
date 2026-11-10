@@ -261,8 +261,7 @@ This build layers several features on top of upstream OPL:
 > menu's network and share settings into that folder's `config/bsd-smb.toml` on your device, the only
 > place Neutrino reads them from ([details](docs/NEUTRINO.md#smb-through-neutrino-experimental)). Nothing else of [rickgaiser](https://github.com/rickgaiser)'s is altered or
 > removed. RiptOPL is one of several front-ends built on Neutrino, alongside
-> **[LUNA](https://github.com/dnunezx/LUNA)** by **[darkladark](https://github.com/dnunezx)** (our #1
-> recommended alternative, for lightweight, customized Neutrino gameplay), **NHDDL**, **XEB+
+> **[LUNA](https://github.com/dnunezx/LUNA)** by **[darkladark](https://github.com/dnunezx)**, **NHDDL**, **XEB+
 > Plugin**, **RETROLauncher**, **OSD-XMB** and **PSBBN/BBNL**. Please report *launching* problems to
 > **us** — the argument building and hand-off are ours — and genuine Neutrino bugs upstream.
 
@@ -1004,8 +1003,7 @@ With special and sincere thanks to:
   narrow, well-tested, and explicitly kept from contaminating normal build behavior.
 - **[darkladark](https://github.com/dnunezx)** — creator of **[LUNA](https://github.com/dnunezx/LUNA)**
   (*Lightweight Unified Neutrino Access*), his own visual loader built on [NHDDL](https://github.com/pcm720/nhddl) and [Neutrino](https://github.com/ps2max32/neutrino), with a
-  PS2-inspired glass interface and four switchable library views. LUNA is **our #1 recommended
-  alternative to RiptOPL** for lightweight, customized Neutrino gameplay. He also contributes to
+  PS2-inspired glass interface and four switchable library views. He also contributes to
   RiptOPL directly: his [#733](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/733) brings
   LUNA's Collection cover-art screen to RiptOPL's renderer. Thank you for sharing your work with us.
 - **[saildot4k](https://github.com/saildot4k)** — for **BDMA-ATA** (exFAT internal-HDD block-device support), and the fixes,
