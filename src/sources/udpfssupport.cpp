@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <new>
 #include "include/host.h"
 #include "include/opl.h"
@@ -875,6 +876,10 @@ void UdpfsSource::launchCue(item_list_t *itemList, const char *cueName, config_s
 // its VMC page calls at the oplutils ordinals mmce_cdvdman uses, so one image serves both devices, and
 // the VMC slot cache (mmceMcemuSlots) is shared with the MMCE launch.
 static_assert(sizeof(udpfs_vmc_infos_t) == sizeof(mmce_vmc_infos_t), "UDPFS and MMCE share mmce_mcemu's VMC slots");
+static_assert(offsetof(udpfs_vmc_infos_t, fd) == offsetof(mmce_vmc_infos_t, fd) &&
+                  offsetof(udpfs_vmc_infos_t, flags) == offsetof(mmce_vmc_infos_t, flags) &&
+                  offsetof(udpfs_vmc_infos_t, specs) == offsetof(mmce_vmc_infos_t, specs),
+              "UDPFS and MMCE VMC slot fields sit at the same offsets");
 
 // Close what the launch opened when it goes back to the menu (a launch that goes on keeps them open).
 static void udpfsCloseFiles(int isoFile, const int *vmcFiles)
