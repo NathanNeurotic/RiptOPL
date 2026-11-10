@@ -198,13 +198,14 @@ jobs:
           python3 .github/scripts/test_zso_read_errors.py
           python3 .github/scripts/test_searchfile_init_bounds.py
           python3 .github/scripts/test_smb1_reply_resync.py
-      - name: Check in-game SMSTCPIP connect completion, receive ordering and socket lifetimes
+      - name: Check in-game SMSTCPIP connect completion, receive ordering, socket lifetimes and SYN retry timing
         run: |
           python3 .github/scripts/test_smstcpip_connect_completion.py
           python3 .github/scripts/test_smstcpip_full_lwip_safety.py
           python3 .github/scripts/test_smstcpip_recv_notification_order.py
           python3 .github/scripts/test_smstcpip_socket_bounds.py
           python3 .github/scripts/test_smstcpip_socket_lifetime.py
+          python3 .github/scripts/test_smstcpip_syn_retry.py
       - name: Check Neutrino argument editing preserves full values and rejects overlong saves
         run: python3 .github/scripts/test_neutrino_args_editor.py
       - name: Check Neutrino launch arguments fit before teardown without dropping tokens

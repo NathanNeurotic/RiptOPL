@@ -528,6 +528,8 @@ err_t tcp_connect(struct tcp_pcb *pcb, struct ip_addr *ipaddr, u16_t port,
     pcb->cwnd = 1;
     pcb->ssthresh = pcb->mss * 10;
     pcb->state = SYN_SENT;
+    /* Retry the first SYN after about 1 s instead of 3 s (see TCP_SYN_RTO_FIRST). */
+    pcb->rto = TCP_SYN_RTO_FIRST;
 #if LWIP_CALLBACK_API
     pcb->connected = connected;
 #endif /* LWIP_CALLBACK_API */
@@ -596,6 +598,9 @@ void tcp_slowtmr(void)
                  * connect to somebody (i.e., we are in SYN_SENT). */
                 if (pcb->state != SYN_SENT) {
                     pcb->rto = ((pcb->sa >> 3) + pcb->sv) << tcp_backoff[pcb->nrtx];
+                } else {
+                    /* Only the first SYN retry is early; the rest keep the 3 s spacing. */
+                    pcb->rto = (pcb->sa >> 3) + pcb->sv;
                 }
                 tcp_rexmit(pcb);
                 /* Reduce congestion window and ssthresh. */

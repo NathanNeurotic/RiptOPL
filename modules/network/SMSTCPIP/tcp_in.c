@@ -530,6 +530,8 @@ tcp_process(struct tcp_pcb *pcb)
                 pcb->snd_wl1 = seqno - 1; /* initialise to seqno - 1 to force window update */
                 pcb->state = ESTABLISHED;
                 pcb->cwnd = pcb->mss;
+                /* Drop the early first-SYN timeout so data retransmits start from 3 s as before. */
+                pcb->rto = (pcb->sa >> 3) + pcb->sv;
                 --pcb->snd_queuelen;
                 LWIP_DEBUGF(TCP_QLEN_DEBUG, ("tcp_process: SYN-SENT --queuelen %u\n", (unsigned int)pcb->snd_queuelen));
                 rseg = pcb->unacked;
