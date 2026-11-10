@@ -53,7 +53,7 @@ def define(source, name):
 
 # The premise of the change: the in-game build does not queue packets during ARP.
 assert re.search(r"#define\s+ARP_QUEUEING\s+0", OPTS), "ARP_QUEUEING is no longer 0"
-for name in ("TCP_TMR_INTERVAL", "TCP_SLOW_INTERVAL", "TCP_SYNMAXRTX", "TCP_MAXRTX"):
+for name in ("TCP_TMR_INTERVAL", "TCP_SLOW_INTERVAL", "TCP_SYN_RTO_FIRST", "TCP_SYNMAXRTX", "TCP_MAXRTX"):
     assert not re.search(r"#define\s+" + name + r"\b", OPTS), name + " is overridden in lwipopts.h; recheck the timeline"
 
 tcp_alloc = extract(TCP, r"struct tcp_pcb \*\s*\ntcp_alloc\(u8_t prio\)")
