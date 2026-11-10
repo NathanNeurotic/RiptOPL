@@ -83,6 +83,7 @@ jobs:
       - name: Check POPS UDPFS configuration and multi-volume rollback failures
         run: |
           python3 .github/scripts/test_pops_udpfs.py
+          python3 .github/scripts/test_pops_pathmap.py
           python3 .github/scripts/test_udpfs_library_launch.py
           python3 .github/scripts/test_ul_scan_integrity.py
       - name: Check VMC preservation and BDM allocation recovery

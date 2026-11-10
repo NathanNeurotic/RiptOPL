@@ -270,7 +270,7 @@ assert "gUdpfsSupport.invalidateIsoScan();" in function(udpfs, "void UdpfsSource
 assert "gUdpfsSupport.invalidateIsoScan();" in function(udpfs, "void UdpfsSource::rename(")
 
 provenance = json.loads(read("ship/POPS/UDPFS-NOTICES/PROVENANCE.json"))
-assert provenance["archive_sha256"] == "225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f"
+assert provenance["archive_sha256"] == "cd87f94b6981ff7435193ced699d30a0ba4345dfb9acfa25f996b95b93df52fd"
 for filename, expected in provenance["files"].items():
     assert hashlib.sha256((ROOT / "ship/POPS" / filename).read_bytes()).hexdigest() == expected["sha256"], filename
 print("UDPFS: ISO-only/cache preservation, partial PS1 recovery, launch gates and pinned payloads passed")

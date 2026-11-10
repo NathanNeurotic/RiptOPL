@@ -322,7 +322,7 @@ def verify(args: argparse.Namespace) -> None:
         required.update({"POPS/IPCONFIG.DAT", "POPS/UDPFSCONFIG.DAT"})
         required.update("POPS/UDPFS-NOTICES/" + name for name in (
             "LICENSE", "AFL-2.0.txt", "AFL-3.0.txt", "README.md", "README_CONFIG.txt",
-            "THIRD_PARTY_NOTICES.md", "UPSTREAM-README.md", "PROVENANCE.json"))
+            "THIRD_PARTY_NOTICES.md", "UPSTREAM-README.md", "PROVENANCE.json", "PATHMAP.INI"))
         if args.ra:
             required.add("xeRAbora.url")
             required.add("LICENSE-MBEDTLS.txt")
