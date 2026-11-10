@@ -50,14 +50,14 @@ def main():
     if "diaDrawBoldText(" not in body or "label, colour)" not in body:
         fail("key glyph is not drawn bold in the colour it is given")
 
-    # Bold for a CRT (zackcage6, 2026-11-10): four copies, one display pixel right and one display line down, the
+    # Bold for a CRT (zackcage6, 2026-11-10): two copies, the second one display pixel right and one display line down, the
     # step worked out from the display extents so that it is one line whether the frame is 224 or 448 lines tall.
     bold = re.search(r"static int diaDrawBoldText\(.*?\n}\n", text, re.S)
     if not bold:
         fail("diaDrawBoldText missing")
     b = bold.group(0)
-    if b.count("fntRenderString(gTheme->fonts[0], ") != 4 or "x + dx, y + dy" not in b or "x, y + dy" not in b or "x + dx, y," not in b:
-        fail("diaDrawBoldText does not draw the text four times, offset right, down and both")
+    if b.count("fntRenderString(gTheme->fonts[0], ") != 2 or "x + dx, y + dy" not in b or "(gTheme->fonts[0], x, y," not in b:
+        fail("diaDrawBoldText does not draw the text twice, in place and offset right and down")
     if "diaBoldStep(x, rmScaleX)" not in b or "diaBoldStep(y, rmScaleY)" not in b:
         fail("the bold offsets are not found at the position drawn, through rmScaleX/rmScaleY")
     step = re.search(r"static int diaBoldStep\(int at, int \(\*scale\)\(int\)\)\n\{(.*?)\n\}\n", text, re.S)
