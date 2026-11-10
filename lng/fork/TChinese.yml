@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: IGR 時，切換開機卡指令將發送至所選插槽
   MMCE_ADVANCED: 進階
   MMCE_SETTINGS: MMCE 設定
+  SOURCE_MMCE_SETTINGS: "      MMCE 設定"
   MMCE_SEMA: 鎖定 Sema 排隊方式
   HINT_MMCE_SEMA: THFIFO 可能提升相容性，但會降低效能
   MMCE_WAIT_CYCLES: /ACK 低電位後等待週期數

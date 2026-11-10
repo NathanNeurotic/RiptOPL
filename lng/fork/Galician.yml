@@ -207,6 +207,7 @@ translations:
   MMCE_GAMES: Xogos MMCE
   MMCE_ADVANCED: Avanzado
   MMCE_SETTINGS: Configuración de MMCE
+  SOURCE_MMCE_SETTINGS: "      Configuración de MMCE"
   MMCE_SEMA: Método de bloqueo da cola de semáforos
   HINT_MMCE_SEMA: THFIFO pode axudar á compatibilidade pero empeorar o rendemento
   WRITE_POPSTARTER_NET: Escribir a configuración de rede de POPSTARTER

@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: IGR 時、選択したスロットにブートカードコマンドが送信されます
   MMCE_ADVANCED: 詳細
   MMCE_SETTINGS: MMCE 設定
+  SOURCE_MMCE_SETTINGS: "      MMCE 設定"
   MMCE_SEMA: ロックセマフォのエンキューメソッド
   HINT_MMCE_SEMA: THFIFO は互換性向上に役立つ場合がありますが、パフォーマンスが低下することがあります
   MMCE_WAIT_CYCLES: /ACK ロー後の待機サイクル

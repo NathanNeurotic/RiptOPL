@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: La commande de basculement vers la bootcard sera envoyée au(x) slot(s) sélectionné(s) lors d'un IGR
   MMCE_ADVANCED: Avancé
   MMCE_SETTINGS: Paramètres MMCE
+  SOURCE_MMCE_SETTINGS: "      Paramètres MMCE"
   MMCE_SEMA: Méthode de file d'attente du sémaphore
   HINT_MMCE_SEMA: THFIFO peut améliorer la compatibilité mais dégrader les performances
   MMCE_WAIT_CYCLES: Cycles d'attente après /ACK bas

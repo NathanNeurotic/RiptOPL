@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Ang switch to bootcard cmd ipadala sa piniling slot(s) sa IGR
   MMCE_ADVANCED: Advanced
   MMCE_SETTINGS: MMCE Settings
+  SOURCE_MMCE_SETTINGS: "      MMCE Settings"
   MMCE_SEMA: Lock Sema Enqueuing Method
   HINT_MMCE_SEMA: Ang THFIFO mahimong makatulong sa compatibility apan makahubad sa performance
   MMCE_WAIT_CYCLES: Wait cycles human sa /ACK low

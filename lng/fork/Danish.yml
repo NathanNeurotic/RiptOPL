@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Skift til bootcard-kommando sendes til det/de valgte slot(s) ved IGR
   MMCE_ADVANCED: Avanceret
   MMCE_SETTINGS: MMCE-indstillinger
+  SOURCE_MMCE_SETTINGS: "      MMCE-indstillinger"
   MMCE_SEMA: Lås sema-kømetode
   HINT_MMCE_SEMA: THFIFO kan hjælpe kompatibilitet, men forringe ydeevne
   MMCE_WAIT_CYCLES: Ventetakter efter /ACK lav

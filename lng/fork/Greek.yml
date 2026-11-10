@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Η εντολή εναλλαγής σε bootcard θα αποσταλεί στις επιλεγμένες υποδοχές κατά το IGR
   MMCE_ADVANCED: Για Προχωρημένους
   MMCE_SETTINGS: Ρυθμίσεις MMCE
+  SOURCE_MMCE_SETTINGS: "      Ρυθμίσεις MMCE"
   MMCE_SEMA: Μέθοδος Ουράς Κλειδώματος Sema
   HINT_MMCE_SEMA: Το THFIFO μπορεί να βοηθήσει τη συμβατότητα αλλά να μειώσει την απόδοση
   MMCE_WAIT_CYCLES: Κύκλοι αναμονής μετά το /ACK low

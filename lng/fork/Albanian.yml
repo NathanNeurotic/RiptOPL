@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Komanda e kalimit në kartë do t'i dërgohet folejeve të zgjedhura gjatë IGR
   MMCE_ADVANCED: Të Avancuara
   MMCE_SETTINGS: Cilësimet MMCE
+  SOURCE_MMCE_SETTINGS: "      Cilësimet MMCE"
   MMCE_SEMA: Metoda e Radhës së Bllokimit Sema
   HINT_MMCE_SEMA: THFIFO mund të ndihmojë me përputhshmërinë por të përkeqësojë performancën
   MMCE_WAIT_CYCLES: Ciklet e pritjes pas /ACK të ulët

@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: IGR'de seçili yuvalara önyükleme kartı komutu gönderilir
   MMCE_ADVANCED: Gelişmiş
   MMCE_SETTINGS: MMCE Ayarları
+  SOURCE_MMCE_SETTINGS: "      MMCE Ayarları"
   MMCE_SEMA: Kilit Sema Sıralama Yöntemi
   HINT_MMCE_SEMA: THFIFO uyumluluğu artırabilir ancak performansı düşürebilir
   MMCE_WAIT_CYCLES: /ACK düşüşünden sonra bekleme döngüleri

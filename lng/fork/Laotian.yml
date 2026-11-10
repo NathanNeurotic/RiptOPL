@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: ຄຳສັ່ງສະລັບ bootcard ຈະຖືກສົ່ງໄປຍັງຊ່ອງທີ່ເລືອກເມື່ອ IGR
   MMCE_ADVANCED: ຂັ້ນສູງ
   MMCE_SETTINGS: ການຕັ້ງຄ່າ MMCE
+  SOURCE_MMCE_SETTINGS: "      ການຕັ້ງຄ່າ MMCE"
   MMCE_SEMA: ວິທີ Lock Sema Enqueuing
   HINT_MMCE_SEMA: THFIFO ອາດຊ່ວຍຄວາມເຂົ້າກັນໄດ້ແຕ່ຫຼຸດປະສິດທິພາບ
   MMCE_WAIT_CYCLES: Wait cycles ຫຼັງ /ACK ຕ່ຳ

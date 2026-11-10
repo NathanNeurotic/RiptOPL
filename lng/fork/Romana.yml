@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Comanda de comutare la bootcard va fi trimisă la slotul(urile) selectat(e) la IGR
   MMCE_ADVANCED: Avansat
   MMCE_SETTINGS: Setări MMCE
+  SOURCE_MMCE_SETTINGS: "      Setări MMCE"
   MMCE_SEMA: Metodă Blocare Coadă Sema
   HINT_MMCE_SEMA: THFIFO poate ajuta compatibilitatea dar poate reduce performanța
   MMCE_WAIT_CYCLES: Cicluri de așteptare după /ACK jos
