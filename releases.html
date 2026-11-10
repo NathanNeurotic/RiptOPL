@@ -77,13 +77,14 @@
   </nav>
   <main class="content">
 <h1>Releases and packages</h1>
-<p class="lead">Three editions and five release channels, one SDK: ps2build. Every channel is rebuilt from the same
-<code>rebuild/main</code> commit and verified before it is published. GCC builds the Korium, RetroAchievements, IncebtIon and
+<p class="lead">Three editions and five release channels, one SDK: ps2build. Every channel is rebuilt from
+<code>rebuild/main</code> and verified before it is published; channels can briefly differ while builds run, so match source commits from each
+release's notes or <code>BUILD-MANIFEST.json</code>. GCC builds the Korium, RetroAchievements, IncebtIon and
 RiptOPLite channels; RiptOPLLVM is a separate LLVM/Clang pre-release.</p>
 
 <div class="callout info" id="recommended"><div class="h">Which download do I want?</div><p>Take the <b>full install kit</b> of one edition:
 <a href="#how-to-pull"><code>RIPTOPL-Korium-&lt;version&gt;.zip</code></a>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code> or, for achievements,
-<code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>. Each channel's release notes open with a <b>Recommended download</b> line
+<code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>. The Korium, RetroAchievements and IncebtIon release notes open with a <b>Recommended download</b> line
 that links that kit. Everything else on a release is optional: a loader ELF to update an existing install, a memory-card PSU,
 variant, debug and bug-report builds, RiptOPLite single-device loaders and the LLVM pre-release.</p></div>
 
@@ -159,7 +160,7 @@ it has not been shown to behave the same as GCC on hardware.</p>
 <h2 id="identity">Identify a tested build</h2><p>Report the edition, source commit, SDK component versions and compiler from <code>BUILD-MANIFEST.json</code>, plus your hardware, storage backend and relevant settings. Verify downloads against <code>SHA256SUMS.txt</code>. The in-loader version names the edition, and any nonstandard configuration. The older ps2dev/official pinned and rolling SDK flavours belong to the <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/releases">legacy Open-PS2-Loader edition's release history</a>; they are not built here.</p>
 
 <h2 id="how-to-pull">Stable download links</h2>
-<p>Every ZIP name ends with the build version, for example <code>RIPTOPL-Korium-v1.2.0-Beta-4226.zip</code>, and the release notes name that version at the top, so a download always says which build it is. The loader ELF, the app <code>.psu</code>, <code>LICENSE-USMB2.txt</code>, <code>BUILD-MANIFEST.json</code> and <code>SHA256SUMS.txt</code> keep fixed names, so these links always fetch the newest published build of that edition:</p>
+<p>Every ZIP name ends with the build version, for example <code>RIPTOPL-Korium-v1.2.0-Beta-4229.zip</code>, and the release notes name that version at the top, so a download always says which build it is. The loader ELF, the app <code>.psu</code>, <code>LICENSE-USMB2.txt</code>, <code>BUILD-MANIFEST.json</code> and <code>SHA256SUMS.txt</code> keep fixed names, so these links always fetch the newest published build of that edition:</p>
 <table><thead><tr><th>Edition</th><th>Install kit</th><th>Loader only</th></tr></thead><tbody>
 <tr><td>Korium</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium"><code>rolling-korium</code></a> &rarr; <code>RIPTOPL-Korium-&lt;version&gt;.zip</code></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-korium/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a></td></tr>
 <tr><td>IncebtIon</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion"><code>rolling-incebtion</code></a> &rarr; <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-incebtion/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a></td></tr>
