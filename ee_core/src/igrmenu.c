@@ -858,8 +858,8 @@ static int igrmHoldSave(u32 *pkt)
     return 1;
 }
 
-// The held pixels back over the panel, then the buffer back to the module. Returns 0 when a line did not go back
-static int igrmHoldBack(u32 *pkt)
+// The held pixels back over the panel, then the buffer back to the module
+static void igrmHoldBack(u32 *pkt)
 {
     u32 lb = PW * igrmSx * igrmBpp, h = PH * igrmSy, y;
 
@@ -867,7 +867,6 @@ static int igrmHoldBack(u32 *pkt)
         if (IGR_MboxSend(y * lb, pkt + 28, lb) != (int)lb || !igrmSendLine(pkt, y))
             break;
     IGR_MboxEnd();
-    return y == h;
 }
 
 // GSM's data breakpoint (the passive tracker, or GSM itself) traps stores to GS registers. While the game is paused
@@ -936,7 +935,7 @@ int IGR_MenuRun(u16 (*buttons)(void))
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
-    // frameHeld: 1 the game's frame, 2 the menu's own; 0 once igrmHoldSave found no copy of the game's to keep
+    // frameHeld: 1 the game's frame, 2 the menu's own; 0 once igrmHoldSave found no copy of it to keep
     frameHeld = igrmFindFrame();
     if (!frameHeld)
         return IGR_MENU_NO_FRAME;
@@ -961,14 +960,10 @@ int IGR_MenuRun(u16 (*buttons)(void))
 
     // silence first, then the pixels the panel will cover, so RESUME gives back the frame and the sound as they were
     IGR_MboxHush();
-    if (!igrmHoldSave(pkt)) {
-        // the menu's own frame may lie over what the game keeps there (textures): no drawing without a copy to give back
-        if (frameHeld == 2) {
-            result = IGR_MENU_NO_FRAME;
-            goto done;
-        }
+    // No copy (no IOP memory to spare, or the GS did not read back): the menu still opens; RESUME then leaves the
+    // panel's pixels to the game's next frame. FBP 0, the own frame, is the first buffer of nearly every game
+    if (!igrmHoldSave(pkt))
         frameHeld = 0;
-    }
 
     config->ExitPath[CORE_EXIT_PATH_MAX_LEN - 1] = '\0';
     info.confirmCircle = config->IgrConfirmCircle;
@@ -1111,9 +1106,9 @@ int IGR_MenuRun(u16 (*buttons)(void))
         t = igrmCount();
         while (buttons() && igrmCount() - t < 3 * IGRM_SECOND)
             ;
-        // the frame as it was, then the sound, as the game goes on; the menu's own frame not given back whole resets
-        if (frameHeld && !igrmHoldBack(pkt) && frameHeld == 2)
-            result = IGR_MENU_DRAW_FAILED;
+        // the frame as it was (a line that did not go back is the game's to redraw), then the sound
+        if (frameHeld)
+            igrmHoldBack(pkt);
         IGR_MboxWake();
     }
 
