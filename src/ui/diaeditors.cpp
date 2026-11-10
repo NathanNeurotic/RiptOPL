@@ -53,18 +53,19 @@ constexpr int KEYB_CAP_H = 22;
 // The selected glyph's colour: black on a light selection colour, white on a dark one, so the glyph never
 // sinks into the selected cap whatever the theme's text and selection colours are (a #484848 text colour on a
 // white selection read as grey on grey). A key drawn dimmed (any colour but the text colour: the number pad's
-// '-' where negatives are not allowed) stays dimmed when selected: at a quarter of the alpha, because the glyph is
-// drawn four times over itself (diaDrawBoldText) and four half-alpha copies build up to nearly opaque.
+// '-' where negatives are not allowed) stays dimmed when selected: at half the alpha, because the glyph is
+// drawn twice over itself (diaDrawBoldText): where the copies overlap two half-alpha layers build up to 3/4.
 static u64 diaKeyCapSelGlyph(u64 colour)
 {
     u64 sel = gTheme->selTextColor;
     int luma = ((int)(sel & 0xFF) * 299 + (int)((sel >> 8) & 0xFF) * 587 + (int)((sel >> 16) & 0xFF) * 114) / 1000;
-    int alpha = colour == gTheme->textColor ? 0x80 : 0x20;
+    int alpha = colour == gTheme->textColor ? 0x80 : 0x40;
     return luma >= 0x80 ? GS_SETREG_RGBA(0, 0, 0, alpha) : GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, alpha);
 }
 
-// Text drawn heavier for a CRT (zackcage6 types the IGR path on one, 2026-11-10): the string four times, one
-// display pixel right and one display line down, so every stroke is two pixels wide and two lines tall. On an
+// Text drawn heavier for a CRT (zackcage6 types the IGR path on one, 2026-11-10): the string twice, the second copy
+// one display pixel right AND one display line down, so every stroke is two pixels wide and two lines tall (the two
+// off-diagonal pixels of each 2x2 step stay unpainted, so stroke ends come out notched rather than square). On an
 // interlaced picture a one-line horizontal stroke ('.', '-', '_', the bar of an 'e') sits in one field only, so it
 // flickers at half rate and reads faint or not at all; two lines put it in both fields. Text is placed in 640x480
 // units and scaled down with a floor (rmScaleX/rmScaleY), so a fixed step in units gives one line at one y and none
@@ -83,8 +84,6 @@ static int diaDrawBoldText(int x, int y, short aligned, size_t width, size_t hei
     int dx = diaBoldStep(x, rmScaleX), dy = diaBoldStep(y, rmScaleY);
 
     fntRenderString(gTheme->fonts[0], x + dx, y + dy, aligned, width, height, text, colour);
-    fntRenderString(gTheme->fonts[0], x, y + dy, aligned, width, height, text, colour);
-    fntRenderString(gTheme->fonts[0], x + dx, y, aligned, width, height, text, colour);
     return fntRenderString(gTheme->fonts[0], x, y, aligned, width, height, text, colour);
 }
 
