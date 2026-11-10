@@ -8,8 +8,8 @@ Licence:   MIT (see LICENSE)
 
 What is here
 - usmb2.c/h, ntlm.c/h, md4c.c, md4.h, hmac-md5.c/h, md5.c/h, unicode.c/h, README, LICENSE.
-- riptopl.patch: the local changes to usmb2.c, usmb2.h, unicode.c and ntlm.c, applied in this copy
-  (git apply -p1 riptopl.patch on a clean upstream checkout):
+- riptopl.patch: the local changes to usmb2.c, usmb2.h, unicode.c, ntlm.c and hmac-md5.c, applied
+  in this copy (git apply -p1 riptopl.patch on a clean upstream checkout):
   - USMB2_SIZE 1024 (512 upstream), and CREATE's NameLength and FileRenameInformation's
     FileNameLength written as 16 bits (one byte upstream): names up to 440 bytes, not 127.
   - username/password 64 bytes each (32 upstream).
@@ -17,6 +17,9 @@ What is here
   - usmb2_build_request() drops an interim STATUS_PENDING reply ([MS-SMB2] 3.3.4.2) and
     reads the final one (more than 8 for one request close the socket); upstream returned the
     interim status and desynchronised.
+  - hmac-md5.c upper-cases the user name for NTOWFv2 as Windows and Samba do within Latin-1
+    (a-grave..thorn less the division sign, y-diaeresis to U+0178); upstream's toupper() left them,
+    so a user name such as "josé" was refused.
   - unicode.c l1() takes an unsigned char: with a signed char every UTF-8 byte >= 0x80 was a
     left shift of a negative value (undefined behaviour).
   - usmb2_build_request() checks every socket read and write and returns
