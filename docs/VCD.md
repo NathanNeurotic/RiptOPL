@@ -250,7 +250,8 @@ IOP, so it needs no BDMA equip and no memory-card driver pair on any device.
 | Device | Location |
 | --- | --- |
 | USB / MMCE / MX4SIO / iLink / exFAT HDD | an **`EMBER`** folder at the device root, beside `POPS` |
-| SMB / UDPFS Files / UDPFS IMG / UDPBD | an **`EMBER`** folder in the share's game folder (UDPBD and UDPFS IMG: at the served disk image's root), beside `CD`/`DVD`. UDPBD and UDPFS IMG list Ember games only |
+| SMB / UDPFS Files | an **`EMBER`** folder in the share's game folder, beside `CD`/`DVD` |
+| UDPBD / UDPFS IMG | an **`EMBER`** folder at the served disk image's root, even when a BDM prefix puts `CD`/`DVD` in a subfolder. These two list Ember games only |
 | Internal HDD (APA/PFS) | an exact **`__.EMBER`**, `__.EMBER0` … `__.EMBER9` partition holding an `EMBER` folder |
 
 Inside `EMBER/`:
@@ -463,7 +464,7 @@ Work down this ladder; each step isolates a different stage (from the #154 foren
    modes; choose **PS1** when you want the PS1 library without an L3 action.
 4. **VCDs are scanned from `<device-root>:/POPS/*.VCD`** — the game-folder prefix
    (`usb_prefix` etc.) is deliberately **not** applied, because POPSTARTER itself only reads
-   `/POPS` at the root. A `POPS` folder inside your games subfolder will never be found. Ember games
+   `/POPS` at the root. On local devices a `POPS` folder inside your games subfolder will never be found. Ember games
    follow the same rule on local devices: `<device-root>:/EMBER/games/<Game Name>/`. On SMB both
    `POPS` and `EMBER` sit in the share's game folder, under the ETH prefix if one is set.
 5. **Name rules:** basenames longer than **160 characters** and the reserved name
