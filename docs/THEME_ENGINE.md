@@ -212,6 +212,15 @@ main0:                    ; an element block
 Internally, a block property `foo` under block `main0` is read as the key `main0_foo`. You'll
 mostly just write the indented form above.
 
+### One-file themes (`thm_<Name>.tar`) — *this fork*
+
+A theme can also ship as one uncompressed tar in `THM/`: `THM/thm_<Name>.tar` lists as `<Name>`, exactly like the
+folder `THM/thm_<Name>`. Put the folder's files at the top of the archive (`conf_theme.cfg`, the pictures, the fonts,
+`sound/`); an archive of the folder itself (`tar cf thm_Name.tar thm_Name`) works too. Everything is read from the
+archive with no unpacking, and `sound/bgm.ogg` streams from its place in it. When a folder and an archive of the same
+name sit in one `THM/` folder, the folder wins, so a theme you are editing keeps working. Names inside the archive are
+limited to 47 characters; a compressed archive (`.tar.gz`) is not read.
+
 ### Block families
 
 Element names carry a **family prefix** + an index (`<family>Main<N>` / `<family>Info<N>`). Each

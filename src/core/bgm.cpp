@@ -15,6 +15,7 @@
 #include "include/opl.h"
 #include "include/ioman.h"
 #include "include/themes.h"
+#include "include/tar.h"
 #include "include/pad.h"
 
 /*--    Theme Sound Effects    ----------------------------------------------------------------------------------------------
@@ -305,6 +306,7 @@ typedef struct
     FILE *f;
     long pos;  // where the decoder believes it is
     long size; // -1 when the size could not be read
+    long base; // where the stream starts in the file: 0, or its offset in a theme's .tar
     char path[256];
     struct bgm_fix *fix; // a stream with a top-bit serial (bgmFixedRead); NULL for every other file
 } bgm_source_t;
@@ -316,7 +318,7 @@ static int bgmSourceReopen(bgm_source_t *src)
     for (tries = 0; tries < BGM_REOPEN_TRIES; tries++) {
         FILE *f = fopen(src->path, "rb");
         if (f != NULL) {
-            if (fseek(f, src->pos, SEEK_SET) == 0) {
+            if (fseek(f, src->base + src->pos, SEEK_SET) == 0) {
                 // Only now close the dead handle: the open above left the card's descriptor state
                 // whole, so this close reaches the right file instead of leaking it.
                 fclose(src->f);
@@ -462,6 +464,11 @@ static size_t bgmSourceRawRead(void *ptr, size_t size, size_t nmemb, void *datas
 
     if (size == 0 || nmemb == 0)
         return 0;
+    // Never past the end of the stream: in a theme's .tar the next file follows it.
+    if (src->size >= 0 && src->pos + (long)(size * nmemb) > src->size)
+        nmemb = src->pos < src->size ? (size_t)(src->size - src->pos) / size : 0;
+    if (nmemb == 0)
+        return 0;
     while (1) {
         size_t r = fread(ptr, size, nmemb, src->f);
         if (r > 0) {
@@ -511,7 +518,7 @@ static int bgmSourceSeek(void *datasource, ogg_int64_t offset, int whence)
     if (target < 0)
         return -1;
 
-    if (fseek(src->f, target, SEEK_SET) != 0) {
+    if (fseek(src->f, src->base + target, SEEK_SET) != 0) {
         keep = src->pos;
         src->pos = target;
         if (!bgmSourceReopen(src)) {
@@ -547,7 +554,12 @@ static ov_callbacks bgmSourceCallbacks = {
 int BgmPlayer::tryLoadPath(const char *bgmPath, const char *source)
 {
     bgm_source_t *src;
-    FILE *bgmFile = fopen(bgmPath, "rb");
+    char tarPath[256];
+    u64 base = 0;
+    u32 length = 0;
+    // A theme packed as one .tar: the music streams from its place in the archive.
+    int inTar = tarThemeSpan(bgmPath, tarPath, sizeof(tarPath), &base, &length);
+    FILE *bgmFile = inTar < 0 ? NULL : fopen(inTar ? tarPath : bgmPath, "rb");
 
     if (bgmFile == NULL) {
         LOG("BGM: %s BGM not found: %s\n", source, bgmPath);
@@ -561,18 +573,19 @@ int BgmPlayer::tryLoadPath(const char *bgmPath, const char *source)
     }
     src->f = bgmFile;
     src->pos = 0;
-    snprintf(src->path, sizeof(src->path), "%s", bgmPath);
-    src->size = -1;
+    snprintf(src->path, sizeof(src->path), "%s", inTar ? tarPath : bgmPath);
+    src->size = inTar ? (long)length : -1;
+    src->base = (long)base;
     src->fix = NULL;
-    if (fseek(bgmFile, 0, SEEK_END) == 0)
+    if (!inTar && fseek(bgmFile, 0, SEEK_END) == 0)
         src->size = ftell(bgmFile);
-    if (fseek(bgmFile, 0, SEEK_SET) != 0) {
+    if (fseek(bgmFile, src->base, SEEK_SET) != 0) {
         bgmSourceClose(src);
         return 0;
     }
 
     src->fix = bgmFixFor(bgmFile, bgmPath); // RIPPS2 build 98: a top-bit serial
-    if (fseek(bgmFile, 0, SEEK_SET) != 0) {
+    if (fseek(bgmFile, src->base, SEEK_SET) != 0) {
         bgmSourceClose(src);
         return 0;
     }
