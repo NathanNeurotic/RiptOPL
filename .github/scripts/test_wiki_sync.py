@@ -88,6 +88,19 @@ and restart Samba.</td></tr>
         self.assertIn("[Escaped](", out)
         wiki_sync.validate({"Page": out})
 
+    def test_paren_edge_cases_keep_text_and_link_end(self):
+        # Spaces make these plain text in Markdown, at either nesting level; a non-ASCII
+        # space is allowed in a destination, so that one is still a link.
+        line = "[A](a_(b c).md) [B](a_(b_(c d)).md) [N](a_(b c).md)"
+        self.assertEqual([m[2] for m in wiki_sync.LINK.finditer(line)], ["a_(b c).md"])
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = Path(tmp) / "DOC.md"
+            doc.write_text("[A](a_(b c).md) and [B](a_(b_(c d)).md)\n\n[Q](GUIDE.md?q=\\)) end.\n",
+                           encoding="utf-8")
+            out = wiki_sync.convert_doc(doc, "docs/DOC.md", "abc123")
+        self.assertIn("[A](a_(b c).md) and [B](a_(b_(c d)).md)", out)
+        self.assertIn("[Q](" + wiki_sync.REPO + "/blob/abc123/docs/GUIDE.md?q=\\)) end.", out)
+
     def test_every_published_doc_converts_without_changing_visible_text(self):
         # PR CI never runs Publish Wiki, so convert every mapped document here; a
         # conversion that changes visible text raises, as it does on publish.
