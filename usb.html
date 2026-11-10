@@ -146,8 +146,9 @@ format tool. Choosing a non-default cluster size can cause compatibility issues.
 <p>OPL expects the following directory structure at the root of the drive (or inside the optional
 <a href="#prefix">BDM Prefix</a> subfolder). OPL creates most of these folders for you the first time it
 initialises the device <em>after you have enabled it in Game Sources</em> — not on first boot, and never
-for a device you have not turned on. <code>POPS/</code> is the exception: OPL never creates it, so make it
-yourself if you want PS1/VCD games.</p>
+for a device you have not turned on. It never creates <code>EMBER/</code>: copy the release's <code>EMBER/</code>
+folder to the device root and add your own BIOS. <code>POPS/</code> and <code>EMBER/</code> are read from the
+<b>device root</b> even when you use a BDM Prefix.</p>
 
 <pre>
 DVD/        PS2 DVD5/DVD9 ISO and ZSO images (also supports &gt;4 GB on exFAT)
@@ -164,10 +165,11 @@ EMBER/      Ember PS1 emulator, BIOS, settings, and game folders
 </pre>
 
 <div class="callout info"><div class="h">i PS1 games on USB / MX4SIO / iLink</div>
-Put your <code>*.VCD</code> files in the <code>POPS/</code> folder. <b>PS2/PS1 Game Display</b> can show
+Put your <code>*.VCD</code> files in the <code>POPS/</code> folder, and Ember games in
+<code>EMBER/games/&lt;Game Name&gt;/</code>. <b>PS2/PS1 Game Display</b> can show
 separate PS2 / PS1 pages, a combined list, or one locked type; L3 is available only in <b>Both (L3)</b>
-and <b>Mixed</b>. See <a href="ps1-vcd.html">PS1 Games (VCD)</a> for the full setup — you will
-also need POPSTARTER on the same device. For iLink, keep the loose
+and <b>Mixed</b>. See <a href="ps1-vcd.html">PS1 Games (VCD)</a> for the full setup — VCD games
+also need POPSTARTER on the same device (Ember games launch through <code>ember.elf</code> instead). For iLink, keep the loose
 <code>usbd.irx.ilink</code> + <code>usbhdfsd.irx.ilink</code> pair in that <code>POPS/</code>
 folder; RiptOPL strips <code>.ilink</code> only when copying the pair to the memory card and launches
 with the normal <code>mass:/POPS/XX.&lt;game&gt;.ELF</code> selector.</div>

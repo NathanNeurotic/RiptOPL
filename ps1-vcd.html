@@ -274,7 +274,7 @@ Ember rows, and every ordinary device's POPSTARTER library lists exactly as befo
   <tbody>
     <tr>
       <td>USB / MMCE / MX4SIO / iLink / SMB</td>
-      <td>A <code>POPS/</code> folder at the device root, containing <code>POPSTARTER.ELF</code> and your <code>*.VCD</code> files.</td>
+      <td>A <code>POPS/</code> folder at the device root, containing <code>POPSTARTER.ELF</code> and your <code>*.VCD</code> files (on SMB, beside <code>CD/</code> and <code>DVD/</code> in the share's game folder).</td>
     </tr>
     <tr>
       <td>Internal HDD (APA/PFS)</td>
@@ -286,6 +286,33 @@ Ember rows, and every ordinary device's POPSTARTER library lists exactly as befo
     </tr>
   </tbody>
 </table>
+
+<h3 id="ember-layout">Where to put your Ember games</h3>
+<p>Ember's library is an <code>EMBER/</code> folder, the peer of <code>POPS/</code>, found the same way. Ember does
+not reset the IOP, so it needs no BDMA equip and no memory-card driver pair on any device.</p>
+<table data-sortable>
+  <thead><tr><th>Device</th><th>Location</th></tr></thead>
+  <tbody>
+    <tr><td>USB / MMCE / MX4SIO / iLink / exFAT HDD</td><td>An <code>EMBER/</code> folder at the device root, beside <code>POPS/</code>.</td></tr>
+    <tr><td>SMB / UDPFS Files</td><td>An <code>EMBER/</code> folder in the share's game folder, beside <code>CD/</code> and <code>DVD/</code>.</td></tr>
+    <tr><td>UDPBD / UDPFS IMG</td><td>An <code>EMBER/</code> folder at the served disk image's root, even when a BDM prefix puts <code>CD/</code> and <code>DVD/</code> in a subfolder. For PS1 games, these two list Ember games only.</td></tr>
+    <tr><td>Internal HDD (APA/PFS)</td><td>An exact <code>__.EMBER</code>, <code>__.EMBER0</code> … <code>__.EMBER9</code> partition holding an <code>EMBER/</code> folder.</td></tr>
+  </tbody>
+</table>
+<table>
+  <thead><tr><th>Inside <code>EMBER/</code></th><th>What it is</th></tr></thead>
+  <tbody>
+    <tr><td><code>ember.elf</code></td><td>Ember itself, shipped in the release's <code>EMBER/</code> folder</td></tr>
+    <tr><td><code>bios.bin</code></td><td><b>Your own</b> 512 KB PS1 BIOS; never shipped</td></tr>
+    <tr><td><code>settings.txt</code></td><td>Ember's global settings; RiptOPL writes the PS Emulation Settings rows here</td></tr>
+    <tr><td><code>games/&lt;Game Name&gt;/</code></td><td>One folder per game holding its <code>*.cue</code>, <code>*.exe</code> or <code>*.bin</code> (top level only, no subfolders). The folder name is the title and the settings key; artwork tries the disc ID first, then the folder name</td></tr>
+    <tr><td><code>games/&lt;Game Name&gt;/discs.txt</code></td><td>Optional: the CUE files of a multi-disc game, in disc order</td></tr>
+    <tr><td><code>games/&lt;Game Name&gt;/settings.txt</code></td><td>Per-game Ember settings, written by <b>Ember Game Settings</b></td></tr>
+    <tr><td><code>games/&lt;Game Name&gt;/MC1.vmc</code>, <code>MC2.vmc</code></td><td>The game's memory cards, created by Ember, so the device must be writable</td></tr>
+  </tbody>
+</table>
+<p>A folder with no <code>.cue</code>, <code>.exe</code> or <code>.bin</code> at its top level is not listed, and neither is a
+folder name longer than 160 bytes. CF (PC CARD) does not list PS1 games.</p>
 
 <div class="callout info"><div class="h">Cover art and per-game config by disc ID</div>
 If a VCD's filename follows the PS1 disc-ID pattern <code>SXXX_NNN.NN.Title.VCD</code>, RiptOPL
