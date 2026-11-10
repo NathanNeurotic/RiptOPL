@@ -102,6 +102,34 @@ draws. A 640-wide game (most of them) is doubled to 1280 pixels, which is slight
 4:3 (1440). A 512-wide game is tripled to 1536, which is slightly wider. Mode 29 triples a 640-wide
 game to the full 1920, which is the stretch this mode avoids. Widescreen games should stay on mode 29.
 
+### Widescreen cheats instead of bars
+
+A 4:3 game can also fill a 16:9 picture with a widescreen cheat: a code that widens the game's own
+field of view. The community pack for this is
+[PS2-Widescreen/OPL-Widescreen-Cheats](https://github.com/PS2-Widescreen/OPL-Widescreen-Cheats)
+(maintained by El_isra; its README says it is no longer maintained). RiptOPL reads the pack as it
+is, with no conversion and nothing to install but the files:
+
+1. Download the pack from that repository's **Latest** release and put its `CHT/` folder where your
+   `ART/` and `CFG/` folders are: the root of a USB, MX4SIO, MMCE or SMB device, or the OPL data
+   partition on an HDD. A `CHT/cht.tar` of the same files also works.
+2. On any game, open **Cheat Settings**, set **Settings Mode** to Global, **PS2RD Cheat Engine** to
+   On and **PS2RD Cheat Engine Mode** to **Auto Select Cheats**. Every game without its own cheat
+   settings then loads its file when it has one, and launches normally when it has none.
+
+Things to know:
+
+* Auto Select runs every cheat in the file. Almost every file holds only the master code and the
+  widescreen code, but a few hold more (Midnight Club 3: Dub Edition `SLUS_213.55` also has a
+  "Max Cash" cheat). Use **Select Game Cheats** on those titles to pick.
+* The cheat engine holds 250 codes at once. Two files in the pack have more, Ratchet & Clank
+  `SCES_509.16` (337) and Ratchet & Clank 3 `SCES_524.56` (374), and the codes past the limit are
+  dropped, so their widescreen fix may be incomplete there.
+* Widescreen cheats change how the game draws, and some games misbehave with them: the 1080p 4:3
+  report (issue #80) names Persona 3 FES battle animations. Mode 30 above is the alternative that
+  leaves the game untouched.
+* The pack has no licence file, so RiptOPL links to it rather than shipping it.
+
 ---
 
 ## When a game loses the picture
