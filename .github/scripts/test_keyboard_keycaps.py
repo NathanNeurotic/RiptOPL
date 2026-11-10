@@ -6,7 +6,7 @@ zackcage6 (2026-11-09): the rename / IGR-path keyboard's letters and specials co
 blue under the darkened background) with a selection box only as wide as the glyph.
 
 This checks the source, not a console: every key of the grid goes through diaDrawKeyCap, the key
-glyphs use the theme's text colour, and the cap geometry the source declares keeps caps inside the
+glyphs use the theme's text colour drawn bold, and the cap geometry the source declares keeps caps inside the
 grid (no overlap between neighbours or rows, the last column clear of the command icons at x=436).
 """
 import re
@@ -47,8 +47,30 @@ def main():
     body = helper.group(0)
     if "uiTextColor" in body:
         fail("key glyphs must not use uiTextColor")
-    if body.count("label, colour)") < 2:
-        fail("key glyph is not drawn twice in the colour it is given")
+    if "diaDrawBoldText(" not in body or "label, colour)" not in body:
+        fail("key glyph is not drawn bold in the colour it is given")
+
+    # Bold for a CRT (zackcage6, 2026-11-10): four copies, one display pixel right and one display line down, the
+    # step worked out from the display extents so that it is one line whether the frame is 224 or 448 lines tall.
+    bold = re.search(r"static int diaDrawBoldText\(.*?\n}\n", text, re.S)
+    if not bold:
+        fail("diaDrawBoldText missing")
+    b = bold.group(0)
+    if b.count("fntRenderString(gTheme->fonts[0], ") != 4 or "x + dx, y + dy" not in b or "x, y + dy" not in b or "x + dx, y," not in b:
+        fail("diaDrawBoldText does not draw the text four times, offset right, down and both")
+    if "rmGetScreenExtentsNative(&wn, &hn)" not in b or "diaBoldStep(h, hn)" not in b or "diaBoldStep(w, wn)" not in b:
+        fail("the bold offsets are not worked out from the display extents")
+    step = re.search(r"static int diaBoldStep\(int units, int native\)\n\{(.*?)\n\}\n", text, re.S)
+    if not step or "(units + native / 2) / native" not in step.group(1) or "step < 1 ? 1 : step" not in step.group(1):
+        fail("diaBoldStep is not round(units / native) with a floor of 1")
+
+    def bold_step(units, native):  # the same sum, to check the steps it gives for the modes RiptOPL has
+        st = (units + native // 2) // native if native > 0 else 1
+        return max(st, 1)
+    for units, native, want in ((480, 448, 1), (480, 480, 1), (480, 512, 1), (480, 224, 2), (480, 256, 2),
+                                (480, 1080, 1), (640, 640, 1), (640, 512, 1), (640, 1920, 1)):
+        if bold_step(units, native) != want:
+            fail(f"bold step for {units} units on {native} display pixels is {bold_step(units, native)}, not {want}")
     if "ALIGN_HCENTER" not in body:
         fail("key glyph is not centred in its cap")
     # The selected glyph must contrast with the selected cap on any palette: an opaque cap in the selection
@@ -61,6 +83,8 @@ def main():
         fail("diaKeyCapSelGlyph does not pick black or white by the selection colour's luminance")
 
     keyb = re.search(r"int diaShowKeyb\(.*?\n}\n", text, re.S).group(0)
+    if "diaDrawBoldText(50, 120, ALIGN_NONE, KEYB_TEXT_W, 20, shown + view, gTheme->textColor);" not in keyb:
+        fail("the text being typed is not drawn bold")
     grid = re.search(r"for \(j = 0; j < KEYB_HEIGHT; j\+\+\) \{(.*?)\n        \}\n", keyb, re.S)
     if not grid:
         fail("keyboard grid loop not found")
