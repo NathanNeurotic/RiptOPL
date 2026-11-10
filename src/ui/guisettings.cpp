@@ -609,6 +609,19 @@ static int netConfigDhcpPreference;
 static int netConfigLastProtocol = -1;
 static int netConfigUdpfsAccess; // pending UDPFS Files/IMG preference, not UDPBD's forced IMG
 
+// The HTTP base row holds only UI_STRING_SIZE - 1 characters of the HTTP_BASE_PATH_MAX path: a longer saved
+// path whose preview is unchanged stays whole, for the Test button and on apply alike.
+static void netConfigHttpBase(char *out)
+{
+    char row[UI_STRING_SIZE];
+    diaGetString(diaNetConfig, NETCFG_HTTP_BASE, row, sizeof(row));
+    if (strlen(gHttpBasePath) < UI_STRING_SIZE || strncmp(row, gHttpBasePath, UI_STRING_SIZE - 1) != 0)
+        snprintf(out, HTTP_BASE_PATH_MAX, "%s", row);
+    else if (out != gHttpBasePath)
+        snprintf(out, HTTP_BASE_PATH_MAX, "%s", gHttpBasePath);
+    httpNormalizeBasePath(out, HTTP_BASE_PATH_MAX);
+}
+
 static void httpTestWorker(void)
 {
     httpTestServer(httpTestIp, httpTestPort, httpTestBase, httpTestMessage, sizeof(httpTestMessage));
@@ -808,8 +821,7 @@ int guiShowNetConfig(void)
     // Open the Network Config with advanced options ON so SMB Port + ETH op-mode are immediately
     // editable. Forcing 0 here contradicted the row's own def=1 in dialogs.c AND overwrote it:
     // diaSetInt writes both `def` and `current`, so even diaResetValue restored the 0. It matters
-    // because this fork defaults the SMB port to 1111 -- anyone pointing at a normal 445 server hit
-    // a greyed field first.
+    // because a PS2-Servers card listens on its own port, not 445 -- such a user hit a greyed field first.
     diaSetInt(diaNetConfig, NETCFG_SHOW_ADVANCED_OPTS, 1);
     diaSetEnabled(diaNetConfig, NETCFG_ETHOPMODE, 1);
     diaSetEnabled(diaNetConfig, NETCFG_SHARE_PORT, 1);
@@ -879,7 +891,8 @@ int guiShowNetConfig(void)
     diaSetEnabled(diaNetConfig, CFG_UDPFSMODE, netProtoVal == 1);
     diaSetEnabled(diaNetConfig, CFG_SMBDIALECT, netProtoVal == 0 || (!LITE_HAS_NET_SOURCE && LITE_HAS_SMB_SHARE));
     netConfigDhcpPreference = ps2_ip_use_dhcp;
-    netConfigUdpfsAccess = gUdpfsAccessMode;
+    const int udpfsAccessBefore = gUdpfsAccessMode;
+    netConfigUdpfsAccess = udpfsAccessBefore;
     netConfigLastProtocol = -1;
     netConfigUpdater(1);
 
@@ -903,15 +916,17 @@ reshow_network:
         for (i = 0; i < 4; ++i)
             diaGetInt(diaNetConfig, NETCFG_HTTP_IP_0 + i, &httpTestIp[i]);
         diaGetInt(diaNetConfig, NETCFG_HTTP_PORT, &httpTestPort);
-        diaGetString(diaNetConfig, NETCFG_HTTP_BASE, httpTestBase, sizeof(httpTestBase));
-        httpNormalizeBasePath(httpTestBase, sizeof(httpTestBase));
+        netConfigHttpBase(httpTestBase);
         snprintf(httpTestMessage, sizeof(httpTestMessage), "%s", _l(_STR_HTTP_ERR_CONNECT));
         httpTestBusy = 1;
         guiHandleDeferedIO(&httpTestBusy, _l(_STR_HTTP_TEST), IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&httpTestWorker), 0);
         guiMsgBox(httpTestMessage, 0, NULL);
         goto reshow_network;
     }
-    if (result && !gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL)) {
+    // The updater snaps the Access and IP Address Type rows (def too) on a protocol switch, so a pending
+    // UDPFS Access or DHCP choice made before switching back is invisible to diaHasChanges: check it here.
+    if (result && (!gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL) ||
+                   netConfigUdpfsAccess != gUdpfsAccessMode || netConfigDhcpPreference != ps2_ip_use_dhcp)) {
         // Seeded with what the page showed: a RiptOPLite page has no Protocol row, and only UDPFS has Access.
         int netProtoVal2 = netProtoVal, netAccessVal2 = netAccessVal;
         diaGetInt(diaNetConfig, CFG_NETPROTOCOL, &netProtoVal2);
@@ -960,8 +975,7 @@ reshow_network:
         for (i = 0; i < 4; ++i)
             diaGetInt(diaNetConfig, NETCFG_HTTP_IP_0 + i, &gHttpServerIp[i]);
         diaGetInt(diaNetConfig, NETCFG_HTTP_PORT, &gHttpPort);
-        diaGetString(diaNetConfig, NETCFG_HTTP_BASE, gHttpBasePath, sizeof(gHttpBasePath));
-        httpNormalizeBasePath(gHttpBasePath, sizeof(gHttpBasePath));
+        netConfigHttpBase(gHttpBasePath);
         diaGetString(diaNetConfig, NETCFG_SHARE_NAME, gPCShareName, sizeof(gPCShareName));
         diaGetString(diaNetConfig, NETCFG_SHARE_USERNAME, gPCUserName, sizeof(gPCUserName));
         diaGetString(diaNetConfig, NETCFG_SHARE_PASSWORD, gPCPassword, sizeof(gPCPassword));
@@ -1009,6 +1023,11 @@ reshow_network:
     }
 
     gSettingsShell.endDialog();
+    // OK or Reconnect on a page left as it opened still reconnects above, but has nothing to save. The
+    // updater rewrites some rows (Access, IP Address Type), so the applied values are compared too.
+    if (!gSettingsShell.isShellResult(result) && !diaHasChanges(diaNetConfig) && !guiSmbLinkChanged(&smbBefore) &&
+        gUdpfsAccessMode == udpfsAccessBefore)
+        result = UIID_BTN_CANCEL;
     return gSettingsShell.pageResult(result);
 }
 

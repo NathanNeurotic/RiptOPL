@@ -514,7 +514,6 @@ translations:
   HINT_DNS: عنوان خادم DNS. عادةً هو نفسه عنوان البوابة.
   HINT_SMB_ADDR_TYPE: الوصول إلى الحاسوب عبر عنوان IP الخاص به أو اسم NetBIOS (اسم الحاسوب).
   HINT_SMB_ADDRESS: 'الحاسوب الذي يشارك ألعابك: عنوان IP الخاص به، أو اسم الحاسوب عندما يكون نوع العنوان NetBIOS.'
-  HINT_SMB_PORT: 'منفذ SMB. يجب أن يطابق الحاسوب: يستخدم PS2 Servers المنفذ 1111، وتستخدم مشاركات Windows وSamba المنفذ 445.'
   HINT_SMB_USER: اسم مستخدم SMB. يعمل guest مع معظم المشاركات.
   HINT_HTTP_SERVER: عنوان IP لخادم ألعاب HTTP.
   HINT_HTTP_PORT: المنفذ الذي يستمع عليه خادم ألعاب HTTP.

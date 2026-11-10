@@ -40,7 +40,7 @@ FMVs and card removal must still be verified on actual early consoles.
 
 ## DESR DVR switch
 
-**DESR DVR ISOs (experimental)** is also off by default. Enable it and the HDD
+**DESR DVR (experimental)** is also off by default. Enable it and the HDD
 source to permit the existing read-only DESR scanner. Hardware detection remains
 mandatory; the toggle cannot make a normal PS2 a DESR. Launch still requires the
 external DVR-capable Neutrino described in DESR-DVR.md.

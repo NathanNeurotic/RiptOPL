@@ -465,7 +465,6 @@ translations:
   HINT_DNS: DNS sunucusu adresi. Genellikle ağ geçidiyle aynıdır.
   HINT_SMB_ADDR_TYPE: PC'ye IP adresiyle mi yoksa NetBIOS (bilgisayar) adıyla mı ulaşılacağı.
   HINT_SMB_ADDRESS: 'Oyunlarınızı paylaşan PC: IP adresi, ya da Adres Türü NetBIOS iken bilgisayar adı.'
-  HINT_SMB_PORT: 'SMB bağlantı noktası. PC ile eşleşmelidir: PS2 Servers 1111, Windows ve Samba paylaşımları 445 kullanır.'
   HINT_SMB_USER: SMB kullanıcı adı. Çoğu paylaşımda guest çalışır.
   HINT_HTTP_SERVER: HTTP oyun sunucusunun IP adresi.
   HINT_HTTP_PORT: HTTP oyun sunucusunun dinlediği bağlantı noktası.

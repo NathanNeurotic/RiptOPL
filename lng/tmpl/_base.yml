@@ -882,7 +882,7 @@ gui_strings:
 - label: NEUTRINO_DEVICE
   string: Neutrino Device
 - label: NEUTRINO_GSM_COMP
-  string: Neutrino GSM Compatibility
+  string: Neutrino GSM Fix
 - label: NEUTRINO_VIDEO
   string: Neutrino Video
 - label: OSD_DEFAULTS
@@ -1648,7 +1648,7 @@ gui_strings:
 - label: HINT_UDPFS_ACCESS
   string: "UDPFS only. Files reads loose ISOs from the server's games folder; IMG reads a disk image as a drive. SMB and HTTP always use Files, UDPBD always IMG."
 - label: HINT_SMB_VERSION
-  string: "Which SMB version to speak to the PC share. SMBv1: PS2 Servers' SMBv1 card. SMB2: PS2 Servers' SMBv2 card for games on the OPL core (reads SMB 2.0.2/2.1), its SMBv3 card for games on Neutrino (needs SMB 3.0), Windows or Samba."
+  string: "SMB2 for Windows, Samba, a NAS or PS2 Servers' SMBv2/SMBv3 cards (it moves up to SMB 3 when the server needs it). SMBv1 for PS2 Servers' SMBv1 card or an old server."
 - label: HINT_NET_ADVANCED
   string: "Unlocks Ethernet Link Mode and the SMB Port for editing."
 - label: HINT_ETH_LINK_MODE
@@ -1668,7 +1668,7 @@ gui_strings:
 - label: HINT_SMB_ADDRESS
   string: "The PC sharing your games: its IP address, or its computer name when Address Type is NetBIOS."
 - label: HINT_SMB_PORT
-  string: "SMB port. It must match the PC: PS2 Servers' SMBv1 card uses 1025, its SMBv2/SMBv3 cards 1445 (445 with Take port 445), Windows and Samba shares use 445."
+  string: "The PC's SMB port. Windows, Samba and a NAS use 445. PS2 Servers: the port its card shows. Select it, then press Triangle to type the number."
 - label: HINT_SMB_USER
   string: "SMB user name. guest works for most shares."
 - label: HINT_HTTP_SERVER
@@ -2514,7 +2514,7 @@ gui_strings:
   string: "      PC CARD CF (experimental)"
 - comment: Game Sources row indented under BDM Devices Start Mode. Keep the six leading spaces.
   label: SOURCE_DVR
-  string: "      DESR DVR ISOs (experimental)"
+  string: "      DESR DVR (experimental)"
 - comment: Game Sources row indented under BDM Devices Start Mode. Keep the six leading spaces.
   label: SOURCE_ILINK
   string: "      iLink"

@@ -530,7 +530,6 @@ translations:
   HINT_DNS: ທີ່ຢູ່ ເຊີບເວີ DNS. ປົກກະຕິ ຄືກັບ gateway.
   HINT_SMB_ADDR_TYPE: ເຂົ້າເຖິງ PC ດ້ວຍທີ່ຢູ່ IP ຂອງມັນ ຫຼື ຊື່ NetBIOS (ຊື່ຄອມພິວເຕີ).
   HINT_SMB_ADDRESS: 'PC ທີ່ແບ່ງປັນເກມຂອງທ່ານ: ທີ່ຢູ່ IP ຂອງມັນ, ຫຼື ຊື່ຄອມພິວເຕີ ເມື່ອ ປະເພດທີ່ຢູ່ ແມ່ນ NetBIOS.'
-  HINT_SMB_PORT: 'ພອດ SMB. ຕ້ອງກົງກັບ PC: PS2 Servers ໃຊ້ 1111, ແຊ Windows ແລະ Samba ໃຊ້ 445.'
   HINT_SMB_USER: ຊື່ຜູ້ໃຊ້ SMB. guest ໃຊ້ໄດ້ ກັບແຊສ່ວນໃຫຍ່.
   HINT_HTTP_SERVER: ທີ່ຢູ່ IP ຂອງ ເຊີບເວີເກມ HTTP.
   HINT_HTTP_PORT: ພອດ ທີ່ເຊີບເວີເກມ HTTP ຮັບຟັງ.

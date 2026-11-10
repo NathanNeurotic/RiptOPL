@@ -483,7 +483,6 @@ translations:
   HINT_DNS: Adresa e serverit DNS. Zakonisht e njëjtë me portën e kalimit.
   HINT_SMB_ADDR_TYPE: Arrij kompjuterin me adresën e tij IP ose me emrin e tij NetBIOS (emri i kompjuterit).
   HINT_SMB_ADDRESS: 'Kompjuteri që ndan lojërat e tua: adresa e tij IP, ose emri i kompjuterit kur Lloji i adresës është NetBIOS.'
-  HINT_SMB_PORT: 'Porta SMB. Duhet të përputhet me kompjuterin: PS2 Servers përdor 1111, dosjet e ndara Windows dhe Samba përdorin 445.'
   HINT_SMB_USER: Emri i përdoruesit SMB. guest punon për shumicën e dosjeve të ndara.
   HINT_HTTP_SERVER: Adresa IP e serverit HTTP të lojërave.
   HINT_HTTP_PORT: Porta ku dëgjon serveri HTTP i lojërave.

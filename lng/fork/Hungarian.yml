@@ -470,7 +470,6 @@ translations:
   HINT_DNS: A DNS szerver címe. Általában ugyanaz, mint az átjáró.
   HINT_SMB_ADDR_TYPE: A PC elérése az IP-címével vagy a NetBIOS (számítógép-) nevével.
   HINT_SMB_ADDRESS: 'A játékaidat megosztó PC: az IP-címe, vagy a számítógép neve, ha a Címtípus NetBIOS.'
-  HINT_SMB_PORT: 'SMB port. Egyeznie kell a PC-vel: a PS2 Servers 1111-et, a Windows és Samba megosztások 445-öt használnak.'
   HINT_SMB_USER: SMB felhasználónév. A legtöbb megosztásnál a guest működik.
   HINT_HTTP_SERVER: A HTTP játékszerver IP-címe.
   HINT_HTTP_PORT: A port, amelyen a HTTP játékszerver figyel.

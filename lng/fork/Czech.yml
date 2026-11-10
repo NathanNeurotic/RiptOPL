@@ -459,7 +459,6 @@ translations:
   HINT_DNS: Adresa serveru DNS. Obvykle stejná jako brána.
   HINT_SMB_ADDR_TYPE: Připojit se k PC přes jeho IP adresu, nebo přes jméno NetBIOS (název počítače).
   HINT_SMB_ADDRESS: 'PC, které sdílí vaše hry: jeho IP adresa, nebo název počítače, když je Typ adresy NetBIOS.'
-  HINT_SMB_PORT: 'Port SMB. Musí odpovídat PC: PS2 Servers používá 1111, sdílení Windows a Samba používá 445.'
   HINT_SMB_USER: Uživatelské jméno SMB. Pro většinu sdílení funguje guest.
   HINT_HTTP_SERVER: IP adresa herního serveru HTTP.
   HINT_HTTP_PORT: Port, na kterém herní server HTTP naslouchá.

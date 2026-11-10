@@ -505,7 +505,6 @@ translations:
   HINT_DNS: Địa chỉ máy chủ DNS. Thường giống cổng mạng.
   HINT_SMB_ADDR_TYPE: Kết nối PC qua địa chỉ IP hay qua tên NetBIOS (tên máy tính).
   HINT_SMB_ADDRESS: 'PC chia sẻ trò chơi của bạn: địa chỉ IP của nó, hoặc tên máy tính khi Kiểu địa chỉ là NetBIOS.'
-  HINT_SMB_PORT: 'Cổng SMB. Phải khớp với PC: PS2 Servers dùng 1111, thư mục chia sẻ Windows và Samba dùng 445.'
   HINT_SMB_USER: Tên người dùng SMB. guest dùng được cho hầu hết thư mục chia sẻ.
   HINT_HTTP_SERVER: Địa chỉ IP của máy chủ trò chơi HTTP.
   HINT_HTTP_PORT: Cổng mà máy chủ trò chơi HTTP lắng nghe.
