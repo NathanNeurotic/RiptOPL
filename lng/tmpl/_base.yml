@@ -1432,9 +1432,9 @@ gui_strings:
 
 - comment: UDPFS Assault PATHMAP.INI option hints (POPS UDPFS page). Keep the file and key names.
   label: HINT_POPS_GAMEID_DIR
-  string: "Name each game's save folder after its disc ID, e.g. POPS/SLUS_123.45/."
+  string: "Name each game's save folder after its disc ID, e.g. POPS/SLUS_123.45/. Copy its SLOT0/SLOT1.VMC there first."
 - label: HINT_POPS_DISCS_DIR
-  string: "One save folder for all discs of a game, from POPS/DISCS_DIR.TXT on the server."
+  string: "One save folder for all discs of a game, from POPS/DISCS_DIR.TXT on the server. Copy its SLOT0/SLOT1.VMC there first."
 - label: HINT_POPS_CHEATS_WS
   string: "Read CHEATS_WS.TXT instead of CHEATS.TXT when the game folder has one."
 - label: POPS_PATHMAP_ERR

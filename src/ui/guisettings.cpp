@@ -1404,12 +1404,10 @@ static void guiShowPopsUdpfsConfig(void)
         diaSetInt(diaPopsUdpfsConfig, NETCFG_POPS_GW_0 + i, original.gateway[i]);
         diaSetInt(diaPopsUdpfsConfig, NETCFG_POPS_SMB_IP_0 + i, original.server[i]);
     }
-    // An unreadable PATHMAP.INI shows as all off; its writer refuses to touch it.
+    // An unreadable PATHMAP.INI (< 0) shows as all off and is never written from this page.
     int pathmap = vcdReadPopsPathmap();
-    if (pathmap < 0)
-        pathmap = 0;
     for (int i = 0; i < VCD_PATHMAP_KEYS; i++)
-        diaSetInt(diaPopsUdpfsConfig, NETCFG_POPS_PATHMAP_0 + i, (pathmap >> i) & 1);
+        diaSetInt(diaPopsUdpfsConfig, NETCFG_POPS_PATHMAP_0 + i, pathmap > 0 && ((pathmap >> i) & 1));
     for (;;) {
         if (diaExecuteDialog(diaPopsUdpfsConfig, -1, 1, NULL) != UIID_BTN_OK)
             return;
@@ -1447,10 +1445,11 @@ static void guiShowPopsUdpfsConfig(void)
             original.invalid = 0;
         }
         // Only a change the user made is written, so an untouched page never creates the file.
-        if (bits != pathmap) {
-            if (vcdWritePopsPathmap(bits) != 0) {
-                // A failed restore can change what the driver reads; unreadable (< 0) never equals bits, so OK retries.
-                pathmap = vcdReadPopsPathmap();
+        if (bits != (pathmap < 0 ? 0 : pathmap)) {
+            if (pathmap < 0 || vcdWritePopsPathmap(bits) != 0) {
+                // A failed restore can change what the driver reads, so read it again.
+                if (pathmap >= 0)
+                    pathmap = vcdReadPopsPathmap();
                 guiMsgBox(_l(_STR_POPS_PATHMAP_ERR), 0, NULL);
                 continue;
             }

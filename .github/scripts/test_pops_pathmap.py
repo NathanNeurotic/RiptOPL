@@ -150,13 +150,20 @@ for i, key in enumerate(('GAMEID_DIR', 'DISCS_DIR', 'CHEATS_WS')):
 assert 'label: POPS_PATHMAP_ERR\n' in base
 page = function(gui, 'static void guiShowPopsUdpfsConfig(void)')
 assert page.index('vcdReadPopsPathmap()') < page.index('diaExecuteDialog(diaPopsUdpfsConfig')
-assert 'if (bits != pathmap) {' in page and page.index('if (bits != pathmap) {') < page.index('vcdWritePopsPathmap(bits)')
+cmp = 'if (bits != (pathmap < 0 ? 0 : pathmap)) {'
+assert cmp in page and page.index(cmp) < page.index('vcdWritePopsPathmap(bits)')
+# An unreadable file (< 0) shows as all off, a network-only edit still returns, and it is never written.
+assert 'pathmap > 0 && ((pathmap >> i) & 1)' in page
+assert 'if (pathmap < 0 || vcdWritePopsPathmap(bits) != 0) {' in page
 assert page.index('vcdWritePopsUdpfsNet(&cfg)') < page.index('vcdWritePopsPathmap(bits)')
 # After a failed write the baseline is re-read, so undoing the switches cannot skip a needed write.
-fail = page[page.index('if (vcdWritePopsPathmap(bits) != 0) {'):]
+fail = page[page.index('if (pathmap < 0 || vcdWritePopsPathmap(bits) != 0) {'):]
 assert fail.index('vcdReadPopsPathmap()') < fail.index('_STR_POPS_PATHMAP_ERR')
-# An unreadable file (< 0) is stored as is: it never equals the switch bits (0..7), so OK writes again.
-assert 'pathmap = vcdReadPopsPathmap();' in fail[:fail.index('_STR_POPS_PATHMAP_ERR')]
+# Only a readable baseline is re-read: a file that became readable must not take switches shown as off.
+assert 'if (pathmap >= 0)\n                    pathmap = vcdReadPopsPathmap();' in fail[:fail.index('_STR_POPS_PATHMAP_ERR')]
+for key in ('GAMEID_DIR', 'DISCS_DIR'):
+    hint = base[base.index('label: HINT_POPS_%s\n' % key):]
+    assert 'SLOT0/SLOT1.VMC' in hint[:hint.index('\n- label:')]
 # ee_core never sees it: the options live in the menu only.
 assert 'PATHMAP' not in ''.join(p.read_text(encoding='utf-8', errors='ignore') for p in (ROOT / 'ee_core').rglob('*.[ch]'))
 print('PATHMAP.INI: POPS UDPFS page wiring passed')
