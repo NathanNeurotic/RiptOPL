@@ -291,7 +291,7 @@ static void cdvdman_poff_thread(void *arg)
 }
 #endif
 
-void cdvdman_init(void)
+int cdvdman_init(void)
 {
 #ifdef __USE_DEV9
     iop_thread_t ThreadData;
@@ -300,7 +300,8 @@ void cdvdman_init(void)
     if (!cdvdman_cdinited) {
         cdvdman_stat.err = SCECdErNO;
 
-        cdvdman_fs_init();
+        if (!cdvdman_fs_init())
+            return 0;
 
 #ifdef __USE_DEV9
         if (cdvdman_settings.common.flags & IOPCORE_ENABLE_POFF) {
@@ -315,12 +316,12 @@ void cdvdman_init(void)
 
         cdvdman_cdinited = 1;
     }
+    return 1;
 }
 
 int sceCdInit(int init_mode)
 {
-    cdvdman_init();
-    return 1;
+    return cdvdman_init();
 }
 
 //-------------------------------------------------------------------------
@@ -489,8 +490,10 @@ static int cdvdman_read_sectors(u32 lsn, unsigned int sectors, void *buf)
 
     if (probed == 0) { // Probe for ZSO before first read
         // check for ZSO
-        if (!ProbeZSO(buf)) // we need to pass the buffer so we have somewhere to read the first sector to identify ZSO before allocating any extra RAM
+        if (!ProbeZSO(buf)) { // The failed probe did not produce a readable first sector.
+            cdvdman_stat.err = SCECdErREAD;
             return 1;
+        }
     }
 
     cdvdman_stat.err = SCECdErNO;

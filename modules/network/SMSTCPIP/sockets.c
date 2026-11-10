@@ -115,7 +115,7 @@ get_socket(int s)
 {
     struct lwip_socket *sock;
 
-    if ((s < 0) || (s > NUM_SOCKETS)) {
+    if ((s < 0) || (s >= NUM_SOCKETS)) {
         LWIP_DEBUGF(SOCKETS_DEBUG, ("get_socket(%d): invalid\n", s));
         set_errno(EBADF);
         return NULL;
@@ -251,6 +251,7 @@ int lwip_bind(int s, struct sockaddr *name, socklen_t namelen)
 int lwip_close(int s)
 {
     struct lwip_socket *sock;
+    err_t err;
 
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_close(%d)\n", s));
     if (!socksem)
@@ -266,7 +267,14 @@ int lwip_close(int s)
         return -1;
     }
 
-    netconn_delete(sock->conn);
+    err = netconn_delete(sock->conn);
+    if (err != ERR_OK) {
+        // netconn_delete can fail before posting its IOP API message.
+        // Preserve the socket and its PCB so the caller can retry closing.
+        sock_set_errno(sock, err_to_errno(err));
+        sys_sem_signal(socksem);
+        return -1;
+    }
     if (sock->lastdata) {
         netbuf_delete(sock->lastdata);
     }
@@ -906,7 +914,10 @@ int lwip_getpeername(int s, struct sockaddr *name, socklen_t *namelen)
     sin.sin_family = AF_INET;
 
     /* get the IP address and port of the remote host */
-    netconn_peer(sock->conn, &naddr, &sin.sin_port);
+    if (netconn_peer(sock->conn, &naddr, &sin.sin_port) != ERR_OK) {
+        sock_set_errno(sock, ENOTCONN);
+        return -1;
+    }
 
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getpeername(%d, addr=", s));
     ip_addr_debug_print(SOCKETS_DEBUG, &naddr);
@@ -932,6 +943,12 @@ int lwip_getsockname(int s, struct sockaddr *name, socklen_t *namelen)
     sock = get_socket(s);
     if (!sock) {
         set_errno(EBADF);
+        return -1;
+    }
+
+    // Failed connects may free the PCB but leave the descriptor open.
+    if (sock->conn->pcb.tcp == NULL) {
+        sock_set_errno(sock, ENOTCONN);
         return -1;
     }
 
@@ -1063,6 +1080,14 @@ int lwip_getsockopt(int s, int level, int optname, void *optval, socklen_t *optl
     }
 
 
+
+    // SO_ERROR and SO_TYPE remain available after a failed connect.
+    // All other supported options access a live PCB.
+    if (sock->conn->pcb.tcp == NULL &&
+        !(level == SOL_SOCKET && (optname == SO_ERROR || optname == SO_TYPE))) {
+        sock_set_errno(sock, ENOTCONN);
+        return -1;
+    }
 
     /* Now do the actual option processing */
 
@@ -1260,7 +1285,12 @@ int lwip_setsockopt(int s, int level, int optname, const void *optval, socklen_t
         return -1;
     }
 
-
+    // A failed TCP connect may have freed its PCB while leaving this
+    // socket descriptor open. Every supported set option below needs a PCB.
+    if (sock->conn->pcb.tcp == NULL) {
+        sock_set_errno(sock, ENOTCONN);
+        return -1;
+    }
 
     /* Now do the actual option processing */
 

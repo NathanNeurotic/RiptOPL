@@ -171,9 +171,18 @@ loader (*View achievements* in the game's menu) and the set it reads from the xe
 UDPBD/UDPFS). Neutrino has no IGR at all, and PS1 games use POPStarter's or Ember's own. The menu draws
 into the picture the game is showing, which it finds through the same GS write breakpoint GSM uses:
 
-* **PCSX2 cannot show it** (it has no data breakpoints), so there the combo leaves the game as before.
-* A game that shows its picture in a way the menu cannot see, or in a format it cannot draw, also
-  leaves at once, as before. Nothing is lost compared with the menu off.
+* When the breakpoint saw no picture (a game that flips its buffers from an interrupt handler, or one that
+  turns the breakpoint off), the menu shows the game's first buffer instead and draws a smaller panel on it,
+  sized to fit even a narrow picture. The background behind the panel may look wrong until you resume. The
+  game's own picture comes back only when the game sets it again, which a game that flips its buffers does
+  every frame. The menu sets both of the GS's two picture circuits, so a game that shows both but flips only
+  one gets back only that one. The old setting cannot be read back, so a game that never sets its picture again (one that set
+  it only once, from an interrupt handler or with the breakpoint off) keeps the menu's picture after you
+  resume, possibly at the wrong width or colours, until you leave the game. If the menu cannot keep a copy of
+  what it covers in that buffer, or cannot put it all back on RESUME, the combo resets the game instead, as it
+  did before.
+* A game whose picture is in a format the menu cannot draw leaves at once, as before. Nothing is lost
+  compared with the menu off.
 * **The game goes quiet while the menu is open** and its sound goes on where it stopped when you resume:
   a small IOP module (`igrmbox.irx`) turns the SPU2's volume down and holds every voice. It cannot hold a
   game that streams PCM straight to the sound cores; that stream keeps running, silently, while you are paused.
@@ -229,7 +238,7 @@ the usual reset colours:
 
 | Blink | Meaning |
 |---|---|
-| **Purple** | No frame was seen: the game set its display in a way the GS write tracker did not record, or in a format or size the panel cannot use |
+| **Purple** | The game's picture is in a format or size the panel cannot use |
 | **Yellow** | The game's VIF1 or GIF transfers never went idle while paused, or VIF1 was stalled: the menu will not draw over a transfer in flight |
 | **Mint green** | The first page was composed but VIF1 did not take it |
 | **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above) |

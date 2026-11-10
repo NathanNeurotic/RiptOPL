@@ -1,0 +1,205 @@
+"""Compile the production SMSTCPIP do_connect() against SYN-enqueue failures.
+
+The old do_connect() ignored tcp_connect() errors. When tcp_enqueue() could not
+allocate a SYN, no asynchronous callback would acknowledge the waiting netconn
+API message, leaving lwip_connect blocked. The test checks one ACK, no leaked PCB,
+and the original successful asynchronous-completion path.
+"""
+from pathlib import Path
+import os
+import re
+import subprocess
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[2]
+source = (ROOT / "modules/network/SMSTCPIP/api_msg.c").read_text(encoding="utf-8")
+tcp = (ROOT / "modules/network/SMSTCPIP/tcp.c").read_text(encoding="utf-8")
+tcp_out = (ROOT / "modules/network/SMSTCPIP/tcp_out.c").read_text(encoding="utf-8")
+
+# Keep the test tied to the actual lwIP ownership contract.
+assert tcp.index("TCP_REG(&tcp_active_pcbs, pcb);") < tcp.index(
+    "ret = tcp_enqueue(pcb, NULL, 0, TCP_SYN"
+)
+assert "case SYN_SENT:" in tcp and "tcp_pcb_remove(&tcp_active_pcbs, pcb);" in tcp
+assert "tcp_segs_free(queue);" in tcp_out
+
+def c_function(pattern):
+    match = re.search(pattern, source)
+    if not match:
+        raise ValueError("do_connect not found")
+    start = match.start()
+    brace = source.index("{", start)
+    depth = 0
+    for pos in range(brace, len(source)):
+        if source[pos] == "{":
+            depth += 1
+        elif source[pos] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[start:pos + 1]
+    raise ValueError("Unterminated do_connect")
+
+target = c_function(r"static\s+void\s+do_connect\s*\(\s*struct\s+api_msg_msg\s*\*\s*msg\s*\)")
+harness = r'''
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+
+#define LWIP_RAW 0
+#define LWIP_UDP 0
+#define LWIP_TCP 1
+#define ERR_OK 0
+#define ERR_MEM -1
+#define ERR_VAL -2
+#define NETCONN_TCP 1
+#define SYN_SENT 4
+#define CLOSED 0
+#define MEMP_TCP_PCB 3
+
+typedef int err_t;
+struct ip_addr { int dummy; };
+struct tcp_pcb { int state; };
+struct netconn {
+    int type;
+    union { struct tcp_pcb *tcp; } pcb;
+    err_t err;
+    int mbox;
+};
+struct api_msg_msg {
+    struct netconn *conn;
+    struct { struct { struct ip_addr *ipaddr; unsigned short port; } bc; } msg;
+};
+static struct tcp_pcb pcb;
+static int scenario, allocation_failure, new_calls, connect_calls, close_calls, ack_calls, setup_calls;
+static int free_calls, pcb_live;
+static void ack(int mailbox) { assert(mailbox == 7); ack_calls++; }
+#define TCPIP_APIMSG_ACK(mailbox) ack(mailbox)
+
+static struct tcp_pcb *tcp_new(void)
+{
+    new_calls++;
+    // Model the PS2's finite PCB pool: a leaked CLOSED block prevents reuse.
+    if (allocation_failure || pcb_live)
+        return NULL;
+    pcb_live = 1;
+    pcb.state = CLOSED;
+    return &pcb;
+}
+static void setup_tcp(struct netconn *conn)
+{
+    assert(conn && conn->pcb.tcp);
+    setup_calls++;
+}
+static err_t do_connected(void *arg, struct tcp_pcb *pc, err_t err)
+{
+    (void)arg;
+    assert(pc == &pcb);
+    assert(err == ERR_OK);
+    return ERR_OK;
+}
+static err_t tcp_connect(struct tcp_pcb *pc, struct ip_addr *ip, unsigned short port,
+                         err_t (*callback)(void *, struct tcp_pcb *, err_t))
+{
+    assert(pc == &pcb && pcb_live && port == 445 && callback == do_connected);
+    connect_calls++;
+    if (!ip)
+        return ERR_VAL; /* Actual tcp_connect rejects NULL before SYN registration. */
+    pc->state = SYN_SENT;
+    return scenario;
+}
+static err_t tcp_close(struct tcp_pcb *pc)
+{
+    assert(pc == &pcb && pcb_live && pc->state == SYN_SENT);
+    close_calls++;
+    pcb_live = 0;
+    pc->state = CLOSED;
+    return ERR_OK;
+}
+static void memp_free(int pool, void *ptr)
+{
+    assert(pool == MEMP_TCP_PCB && ptr == &pcb);
+    assert(pcb_live && pcb.state == CLOSED);
+    free_calls++;
+    pcb_live = 0;
+}
+'''
+tests = r'''
+static void reset(int result, int fail_alloc)
+{
+    assert(!pcb_live); /* Failures and simulated successful cleanup must release the PCB. */
+    scenario = result;
+    allocation_failure = fail_alloc;
+    new_calls = connect_calls = close_calls = ack_calls = setup_calls = free_calls = 0;
+    pcb.state = CLOSED;
+}
+int main(void)
+{
+    struct netconn conn;
+    struct ip_addr ip = {0};
+    struct api_msg_msg message;
+
+    memset(&conn, 0, sizeof(conn));
+    conn.type = NETCONN_TCP;
+    conn.mbox = 7;
+    message.conn = &conn;
+    message.msg.bc.ipaddr = &ip;
+    message.msg.bc.port = 445;
+
+    reset(ERR_OK, 0);
+    do_connect(&message);
+    assert(new_calls == 1 && connect_calls == 1 && setup_calls == 1);
+    assert(ack_calls == 0 && close_calls == 0 && free_calls == 0);
+    assert(conn.pcb.tcp == &pcb && pcb_live == 1);
+    /* An ordinary connect remains pending until the real TCP callback. */
+    assert(tcp_close(conn.pcb.tcp) == ERR_OK); /* Simulate successful socket teardown. */
+    conn.pcb.tcp = NULL;
+    conn.err = ERR_OK;
+    reset(ERR_MEM, 0);
+    do_connect(&message);
+    assert(new_calls == 1 && connect_calls == 1 && setup_calls == 1);
+    assert(ack_calls == 1 && close_calls == 1 && free_calls == 0);
+    assert(conn.pcb.tcp == NULL && conn.err == ERR_MEM && pcb_live == 0);
+    /* A SYN allocation failure closes the registered PCB and releases the waiter. */
+
+    conn.pcb.tcp = NULL;
+    conn.err = ERR_OK;
+    reset(ERR_OK, 0);
+    message.msg.bc.ipaddr = NULL;
+    for (int i = 0; i < 100; ++i) {
+        conn.err = ERR_OK;
+        do_connect(&message);
+        assert(conn.err == ERR_VAL && conn.pcb.tcp == NULL && pcb_live == 0);
+    }
+    assert(new_calls == 100 && connect_calls == 100 && ack_calls == 100);
+    assert(free_calls == 100 && close_calls == 0);
+    /* Repeated pre-registration errors cannot exhaust the one-PCB pool. */
+    message.msg.bc.ipaddr = &ip;
+
+    conn.pcb.tcp = NULL;
+    conn.err = ERR_OK;
+    reset(ERR_OK, 1);
+    do_connect(&message);
+    assert(new_calls == 1 && connect_calls == 0 && close_calls == 0);
+    assert(ack_calls == 1 && conn.pcb.tcp == NULL && conn.err == ERR_MEM);
+    assert(free_calls == 0 && pcb_live == 0);
+    /* Failure to allocate the initial PCB also releases the waiter. */
+
+    puts("SMSTCPIP immediate TCP connect failure completion: PASS");
+    return 0;
+}
+'''
+
+with tempfile.TemporaryDirectory(prefix="riptopl-smstcpip-connect-") as temp:
+    cfile = Path(temp) / "test.c"
+    binary = Path(temp) / "test"
+    cfile.write_text(harness + target + tests, encoding="utf-8")
+    compiler = os.environ.get("CC", "cc")
+    result = subprocess.run(
+        [compiler, "-std=c99", "-O1", "-Wall", "-Wextra", "-Werror",
+         "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
+         str(cfile), "-o", str(binary)],
+        capture_output=True, text=True,
+    )
+    if result.returncode:
+        raise RuntimeError("Transport host compile failed:\n" + result.stderr)
+    subprocess.run([str(binary)], check=True, timeout=15)

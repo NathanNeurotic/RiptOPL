@@ -542,6 +542,105 @@ static void igrmRenderLine(u8 *d, int y)
     }
 }
 
+// ---- the frame the game shows: on the console, and in tests/ (which sets GSMSourceGSRegs itself)
+
+// the game's own GS writes as GSM recorded them (gsm_engine.S, gsm_defines.h Source_*): 0 = none seen
+#ifndef IGR_OVERLAY_SIDE
+extern u64 GSMSourceGSRegs[11];
+extern u16 GSMSourceSetGsCrt[3]; // the game's last SetGsCrt: interlace, mode, ffmd (Hook_SetGsCrt records it always)
+#endif
+#define SRC_PMODE    0
+#define SRC_SMODE2   2
+#define SRC_DISPFB1  7
+#define SRC_DISPLAY1 8
+#define SRC_DISPFB2  9
+#define SRC_DISPLAY2 10
+
+static u32 igrmBp, igrmBw, igrmPsm, igrmX, igrmY;
+// the menu's own frame, when igrmFindFrame saw no DISPFB write: FBP 0, FBW 10 (640 wide), PSMCT32, DBX = DBY = 0
+#define IGRM_OWN_DISPFB ((u64)10 << 9)
+
+// a / b without the compiler's divide-by-zero trap (b is never 0 here): the trap code and the HI/LO juggling round it
+// cost clang more than 60 bytes, which Korium's LLVM ee_core does not have to spare (its stack starts above .bss)
+static inline u32 igrmDiv(u32 a, u32 b)
+{
+#ifdef IGR_MENU_HOST_TEST
+    return a / b;
+#else
+    u32 q;
+    __asm__("divu $zero, %1, %2\n\tmflo %0"
+            : "=r"(q)
+            : "r"(a), "r"(b)
+            : "hi", "lo");
+    return q;
+#endif
+}
+
+// The frame the PCRTC shows, from the game's own PMODE, SMODE2, DISPFB and DISPLAY writes (RIPPS2's rsFrame), and
+// where the panel goes in it. Returns 0: no frame the panel can use, 1: the game's, 2: the menu's own (IGR_MenuRun
+// shows it)
+static int igrmFindFrame(void)
+{
+    const u64 *regs = GSMSourceGSRegs;
+    // SMODE2 INT (bit 0) and FFMD (bit 1): the game's own write, or else its SetGsCrt call, which sets the same
+    u32 smode2 = (u32)regs[SRC_SMODE2];
+    if (!smode2)
+        smode2 = (GSMSourceSetGsCrt[0] & 1) | ((GSMSourceSetGsCrt[2] & 1) << 1);
+    u64 pmode = regs[SRC_PMODE], fb1 = regs[SRC_DISPFB1], fb2 = regs[SRC_DISPFB2];
+    int c1 = (pmode & 1) || (!(pmode & 2) && fb1 != 0); // circuit 1 is on top
+    u64 fb = c1 ? fb1 : fb2, disp = regs[c1 ? SRC_DISPLAY1 : SRC_DISPLAY2];
+    u32 w, h, x, y;
+    int own = fb1 == 0 && fb2 == 0;
+
+    // No DISPFB write recorded. The tracker's breakpoint (BPC 0x20280000: DUE, DKE, no DXE) does not trap a store
+    // made with EXL set, so a game that flips its buffers from a VSync / INTC handler is never seen; nor is one that
+    // turned the breakpoint off. Rather than leave at once, show a frame
+    // of our own: FBP 0 (the first buffer of nearly every game) as 640 wide CT32, the panel drawn in that same format,
+    // so it reads whatever the game kept there. A DISPLAY the game wrote from its own code still sizes it.
+    // IGR_MenuRun writes DISPFB1/2 once the breakpoint is off. Its own setting comes back only when the game writes
+    // DISPFB again after RESUME (a game that flips does so every frame); the old value cannot be read back.
+    if (own)
+        fb = IGRM_OWN_DISPFB;
+    if (fb == 0)
+        return 0; // circuit on top has no DISPFB recorded although the other has: its format is unknown
+    igrmPsm = (fb >> 15) & 0x1f;
+    igrmBpp = igrmPsm == 0 ? 4 : igrmPsm == 1                ? 3 :
+                             (igrmPsm == 2 || igrmPsm == 10) ? 2 :
+                                                               0;
+    igrmBw = (fb >> 9) & 0x3f;
+    if (!igrmBpp || !igrmBw)
+        return 0;
+    igrmBp = (fb & 0x1ff) * 32; // pages of 2048 words, in BITBLTBUF's 64-word blocks
+    w = igrmBw * 64;
+    h = 224;
+    if (disp) { // shown size: DW over MAGH, DH over MAGV (u32: a u64 divide pulls in libgcc)
+        u32 dw = igrmDiv(((u32)(disp >> 32) & 0xfff) + 1, ((u32)(disp >> 23) & 0xf) + 1);
+        u32 dh = igrmDiv(((u32)(disp >> 44) & 0x7ff) + 1, ((u32)(disp >> 27) & 3) + 1);
+        if (dw > 0 && dw < w)
+            w = dw;
+        // interlaced, the TV shows its raster and no more, whatever DH asks (a game writing DH 959 shows 480 lines on
+        // NTSC); a PAL picture starts lower (DY 72 against NTSC's 50)
+        if ((smode2 & 1) && dh > ((((u32)(disp >> 12) & 0x7ff) >= 64) ? 576u : 480u))
+            dh = (((u32)(disp >> 12) & 0x7ff) >= 64) ? 576 : 480;
+        if (dh > 0 && dh <= 1024)
+            h = dh;
+    } else if (own) {
+        // how wide the game shows its frame is unknown: a panel that fits a 320 wide picture fits any
+        w = 320;
+    }
+    if ((smode2 & 3) == 3) // interlaced FRAME mode: the buffer holds one field
+        h /= 2;
+    x = (fb >> 32) & 0x7ff;
+    y = (fb >> 43) & 0x7ff;
+    if (w < PW + 8 || h < PH + 4)
+        return 0;
+    igrmSx = w >= PW * 2 + 16 ? 2 : 1;
+    igrmSy = h >= PH * 2 + 16 ? 2 : 1;
+    igrmX = x + (w - PW * igrmSx) / 2;
+    igrmY = y + (h - PH * igrmSy) / 2;
+    return 1 + own;
+}
+
 #ifdef IGR_MENU_HOST_TEST
 // tests/: a page as RGB rows at the scale given; returns its height. page 0: the menu, 1: the CHEATS page (sel the
 // cursor, armed the top row, -1 armed: the FULL hint)
@@ -568,18 +667,6 @@ int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, in
 #else
 
 // ---- on the console
-
-// the game's own GS writes as GSM recorded them (gsm_engine.S, gsm_defines.h Source_*): 0 = none seen
-#ifndef IGR_OVERLAY_SIDE
-extern u64 GSMSourceGSRegs[11];
-extern u16 GSMSourceSetGsCrt[3]; // the game's last SetGsCrt: interlace, mode, ffmd (Hook_SetGsCrt records it always)
-#endif
-#define SRC_PMODE    0
-#define SRC_SMODE2   2
-#define SRC_DISPFB1  7
-#define SRC_DISPLAY1 8
-#define SRC_DISPFB2  9
-#define SRC_DISPLAY2 10
 
 #define IGRM_D1_CHCR   ((vu32 *)0x10009000)
 #define IGRM_D1_MADR   ((vu32 *)0x10009010)
@@ -610,9 +697,7 @@ extern u16 GSMSourceSetGsCrt[3]; // the game's last SetGsCrt: interlace, mode, f
 #define PAD_CIRCLE 0x2000
 #define PAD_CROSS  0x4000
 
-#define IGRM_SECOND 294912000u // COP0 Count ticks: the EE's clock
-
-static u32 igrmBp, igrmBw, igrmPsm, igrmX, igrmY;
+#define IGRM_SECOND    294912000u // COP0 Count ticks: the EE's clock
 static int igrmPending; // ticks the engine has not taken yet (CheatLiveApply was busy): tried again at every open
 
 static inline u32 igrmCount(void)
@@ -630,67 +715,6 @@ static int igrmWaitClear(vu32 *reg, u32 bits) // bounded: a stuck path must not 
         if (!(*reg & bits))
             return 1;
     return 0;
-}
-
-// The frame the PCRTC shows, from the game's own PMODE, SMODE2, DISPFB and DISPLAY writes (RIPPS2's rsFrame), and
-// where the panel goes in it
-static int igrmFindFrame(void)
-{
-    const u64 *regs = GSMSourceGSRegs;
-    // SMODE2 INT (bit 0) and FFMD (bit 1): the game's own write, or else its SetGsCrt call, which sets the same
-    u32 smode2 = (u32)regs[SRC_SMODE2];
-    if (!smode2)
-        smode2 = (GSMSourceSetGsCrt[0] & 1) | ((GSMSourceSetGsCrt[2] & 1) << 1);
-    u64 pmode = regs[SRC_PMODE], fb1 = regs[SRC_DISPFB1], fb2 = regs[SRC_DISPFB2];
-    int c1 = (pmode & 1) || (!(pmode & 2) && fb1 != 0); // circuit 1 is on top
-    u64 fb = c1 ? fb1 : fb2, disp = regs[c1 ? SRC_DISPLAY1 : SRC_DISPLAY2];
-    u32 w, h, x, y;
-
-#ifdef IGR_MENU_TEST
-    // PCSX2 has no data breakpoints, so GSM never sees a DISPFB there: show a frame of our own, FBP 0 as
-    // 640 wide CT32 on both circuits. The game's next flip puts its own back
-    if (fb1 == 0 && fb2 == 0) {
-        fb = (u64)10 << 9;
-        disp = 0;
-        *(vu64 *)0x12000070 = fb; // DISPFB1
-        *(vu64 *)0x12000090 = fb; // DISPFB2
-    }
-#endif
-    if (fb == 0)
-        return 0; // no DISPFB write seen (the game turned the breakpoint off, or wrote it some other way)
-    igrmPsm = (fb >> 15) & 0x1f;
-    igrmBpp = igrmPsm == 0 ? 4 : igrmPsm == 1                ? 3 :
-                             (igrmPsm == 2 || igrmPsm == 10) ? 2 :
-                                                               0;
-    igrmBw = (fb >> 9) & 0x3f;
-    if (!igrmBpp || !igrmBw)
-        return 0;
-    igrmBp = (fb & 0x1ff) * 32; // pages of 2048 words, in BITBLTBUF's 64-word blocks
-    w = igrmBw * 64;
-    h = 224;
-    if (disp) { // shown size: DW over MAGH, DH over MAGV (u32: a u64 divide pulls in libgcc)
-        u32 dw = (((u32)(disp >> 32) & 0xfff) + 1) / (((u32)(disp >> 23) & 0xf) + 1);
-        u32 dh = (((u32)(disp >> 44) & 0x7ff) + 1) / (((u32)(disp >> 27) & 3) + 1);
-        if (dw > 0 && dw < w)
-            w = dw;
-        // interlaced, the TV shows its raster and no more, whatever DH asks (a game writing DH 959 shows 480 lines on
-        // NTSC); a PAL picture starts lower (DY 72 against NTSC's 50)
-        if ((smode2 & 1) && dh > ((((u32)(disp >> 12) & 0x7ff) >= 64) ? 576u : 480u))
-            dh = (((u32)(disp >> 12) & 0x7ff) >= 64) ? 576 : 480;
-        if (dh > 0 && dh <= 1024)
-            h = dh;
-    }
-    if ((smode2 & 3) == 3) // interlaced FRAME mode: the buffer holds one field
-        h /= 2;
-    x = (fb >> 32) & 0x7ff;
-    y = (fb >> 43) & 0x7ff;
-    if (w < PW + 8 || h < PH + 4)
-        return 0;
-    igrmSx = w >= PW * 2 + 16 ? 2 : 1;
-    igrmSy = h >= PH * 2 + 16 ? 2 : 1;
-    igrmX = x + (w - PW * igrmSx) / 2;
-    igrmY = y + (h - PH * igrmSy) / 2;
-    return 1;
 }
 
 // One line into the frame from the pixels at pkt + 28: VIF codes, the GIF A+D setup of a host -> local transfer
@@ -834,8 +858,8 @@ static int igrmHoldSave(u32 *pkt)
     return 1;
 }
 
-// The held pixels back over the panel, then the buffer back to the module
-static void igrmHoldBack(u32 *pkt)
+// The held pixels back over the panel, then the buffer back to the module. Returns 0 when a line did not go back
+static int igrmHoldBack(u32 *pkt)
 {
     u32 lb = PW * igrmSx * igrmBpp, h = PH * igrmSy, y;
 
@@ -843,6 +867,7 @@ static void igrmHoldBack(u32 *pkt)
         if (IGR_MboxSend(y * lb, pkt + 28, lb) != (int)lb || !igrmSendLine(pkt, y))
             break;
     IGR_MboxEnd();
+    return y == h;
 }
 
 // GSM's data breakpoint (the passive tracker, or GSM itself) traps stores to GS registers. While the game is paused
@@ -911,12 +936,19 @@ int IGR_MenuRun(u16 (*buttons)(void))
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
-    if (!igrmFindFrame())
+    // frameHeld: 1 the game's frame, 2 the menu's own; 0 once igrmHoldSave found no copy of the game's to keep
+    frameHeld = igrmFindFrame();
+    if (!frameHeld)
         return IGR_MENU_NO_FRAME;
     // the game's own transfers finish first; a VIF1 stalled on an interrupt the pause holds cannot take ours
     if (!igrmWaitClear(IGRM_D1_CHCR, CHCR_STR) || !igrmWaitClear(IGRM_D2_CHCR, CHCR_STR) || (*IGRM_VIF1_STAT & VIF_STALLED))
         return IGR_MENU_GS_BUSY;
     bpc = igrmBpcOff();
+    // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
+    if (frameHeld == 2) {
+        *(vu64 *)0x12000070 = IGRM_OWN_DISPFB; // DISPFB1
+        *(vu64 *)0x12000090 = IGRM_OWN_DISPFB; // DISPFB2
+    }
     gameDone = *IGRM_D_STAT & 2; // a channel 1 completion the game has not handled yet stays for its handler
     d1chcr = *IGRM_D1_CHCR;
     d1madr = *IGRM_D1_MADR;
@@ -929,7 +961,14 @@ int IGR_MenuRun(u16 (*buttons)(void))
 
     // silence first, then the pixels the panel will cover, so RESUME gives back the frame and the sound as they were
     IGR_MboxHush();
-    frameHeld = igrmHoldSave(pkt);
+    if (!igrmHoldSave(pkt)) {
+        // the menu's own frame may lie over what the game keeps there (textures): no drawing without a copy to give back
+        if (frameHeld == 2) {
+            result = IGR_MENU_NO_FRAME;
+            goto done;
+        }
+        frameHeld = 0;
+    }
 
     config->ExitPath[CORE_EXIT_PATH_MAX_LEN - 1] = '\0';
     info.confirmCircle = config->IgrConfirmCircle;
@@ -1072,8 +1111,9 @@ int IGR_MenuRun(u16 (*buttons)(void))
         t = igrmCount();
         while (buttons() && igrmCount() - t < 3 * IGRM_SECOND)
             ;
-        if (frameHeld) // the frame as it was, then the sound, as the game goes on
-            igrmHoldBack(pkt);
+        // the frame as it was, then the sound, as the game goes on; the menu's own frame not given back whole resets
+        if (frameHeld && !igrmHoldBack(pkt) && frameHeld == 2)
+            result = IGR_MENU_DRAW_FAILED;
         IGR_MboxWake();
     }
 
