@@ -760,6 +760,13 @@ int cdvdman_StreamRead(u32 lsn, u32 sectors, u16 sector_size, void *buf)
    Thread context only (sceCdRead queues an interrupt-context read as a game read). */
 int cdvdman_SyncRead(u32 lsn, u32 sectors, u16 sector_size, void *buf)
 {
+    int OldState;
+
+    // A caller that has interrupts disabled cannot wait for the read: queue it as a game read instead.
+    if (CpuSuspendIntr(&OldState) == KE_CPUDI)
+        return cdvdman_AsyncRead(lsn, sectors, sector_size, buf);
+    CpuResumeIntr(OldState);
+
     if (!cdvdman_QueueRead(lsn, sectors, sector_size, buf, CDREAD_JOB_SYNC)) {
         DPRINTF("cdvdman_SyncRead: exiting (sync_flag)...\n");
         return 0;

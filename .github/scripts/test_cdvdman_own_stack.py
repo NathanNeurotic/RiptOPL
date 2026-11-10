@@ -73,6 +73,9 @@ check(re.search(r'smp\.max = 2;[^\n]*\n\s*cdrom_rthread_sema = CreateSema', sema
 check('cdvdman_read(' not in sync_read, 'cdvdman_SyncRead must not read on the caller\'s stack')
 check('CDREAD_JOB_SYNC' in sync_read and 'WaitSema(cdvdman_syncsema)' in sync_read,
       'cdvdman_SyncRead must queue the read and wait for the reading thread')
+check(re.search(r'if \(CpuSuspendIntr\(&OldState\) == KE_CPUDI\)\s*return cdvdman_AsyncRead\(', sync_read) is not None
+      and sync_read.index('KE_CPUDI') < sync_read.index('CDREAD_JOB_SYNC'),
+      'cdvdman_SyncRead must not queue a read it cannot wait for (interrupts disabled)')
 check(sync_read.index('WaitSema(cdvdman_syncsema)') < sync_read.index('cdvdman_cb_event(SCECdFuncRead)'),
       'the game\'s callback must still follow the data in cdvdman_SyncRead')
 check(re.search(r'if \(cdread_job == CDREAD_JOB_SYNC\) \{[^}]*SignalSema\(cdvdman_syncsema\);\s*continue;', thread)
