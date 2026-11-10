@@ -215,7 +215,7 @@ The session does not negotiate between SMBv1 and SMB2. Under <b>SMB2</b>, an SMB
 
 <div class="callout amber"><div class="h">What SMB2 on OPL's core speaks, and its limits</div>
 <ul>
-  <li><b>Dialects:</b> SMB 2.0.2 and 2.1 first; if the server refuses those, SMB 3.0 and 3.0.2, unsigned. A server that accepts only SMB 3.1.1 is not reached, and neither is an SMB 3.x server that requires signing (SMB 3.x signs with AES-CMAC, which RiptOPL does not implement): browsing fails to log on. Windows, Samba and the PS2 Servers SMBv2 card all still offer 2.x, and over 2.x a server that requires signing (Windows 11 24H2) is signed for.</li>
+  <li><b>Dialects:</b> SMB 2.0.2 and 2.1 first; if the server refuses those, SMB 3.0 and 3.0.2, unsigned. A server that accepts only SMB 3.1.1 is not reached, and neither is a server that refuses 2.x and requires signing on SMB 3.x (SMB 3.x signs with AES-CMAC, which RiptOPL does not implement): browsing fails to log on. Windows, Samba and the PS2 Servers SMBv2 card all still offer 2.x, and over 2.x a server that requires signing (Windows 11 24H2) is signed for.</li>
   <li><b>Server address:</b> the driver connects to an IPv4 address. A NetBIOS name (Address Type) still works, because the menu looks it up before connecting; DNS host names are not supported.</li>
   <li><b>No share list:</b> SMB2 cannot list the server's shares, so the <b>Share</b> name must be typed in on the Network page.</li>
   <li><b>User name and password:</b> Latin-1 characters only (nothing above U+00FF); a credential with other characters is refused at logon rather than sent wrongly. The Network page keeps up to 31 bytes of each.</li>
