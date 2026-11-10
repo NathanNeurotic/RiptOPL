@@ -1,11 +1,11 @@
 {
-  "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST",
-  "archive_url": "https://github.com/Okeanos86/BDMAssault/releases/download/UDPFS_TEST/UDPFS_Assault_TEST.zip",
-  "archive_sha256": "225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f",
+  "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1",
+  "archive_url": "https://github.com/Okeanos86/BDMAssault/releases/download/1.0.1/UDPFS_Assault.zip",
+  "archive_sha256": "cd87f94b6981ff7435193ced699d30a0ba4345dfb9acfa25f996b95b93df52fd",
   "files": {
     "usbd.irx.udpfs": {
       "archive_member": "udp_fs_assault.irx",
-      "sha256": "24e272996a6ea4af5ef20cb5d89a29aa615d8b828087032e75bc2b05aaac583e"
+      "sha256": "d1d5502454fbc9ca7c1fd039b65bbc143f8b87ffdfc0e275ce13dca4b191a738"
     },
     "usbhdfsd.irx.udpfs": {
       "archive_member": "usbd_bd_assault.irx",
@@ -33,21 +33,32 @@
     },
     "UDPFS-NOTICES/README_CONFIG.txt": {
       "archive_member": "docs/README_CONFIG.txt",
-      "sha256": "46d850fc7180220e7694aabbe5b65f9515f4a783e6148fc487a24236ff32a877"
+      "sha256": "7e48ebb1a9de4226b401023dc48ef4aeac9faf70cc34256ecce9a33f86005325"
     },
     "UDPFS-NOTICES/THIRD_PARTY_NOTICES.md": {
       "archive_member": "docs/THIRD_PARTY_NOTICES.md",
-      "sha256": "03494e22785546eac7c67e2f042fb0ceadbd751dba95bc1b69dd68fc0c6c5d4e"
+      "sha256": "74f3c03bb0d936a98523c66bf03dba9913f648dec5f9dc016a78eabec15c3b94"
     },
     "UDPFS-NOTICES/UPSTREAM-README.md": {
       "archive_member": "README.MD",
-      "sha256": "787c90f8fd71f40985f3b0590ef642a9769e58f171e25613b616db02ddc1f40f"
+      "sha256": "5476ad520c4c9b121c2022bb5582ec968e22429002fc72b29e4f746baa23574b"
+    },
+    "UDPFS-NOTICES/PATHMAP.INI": {
+      "archive_member": "config_examples/PATHMAP.INI",
+      "sha256": "e0cc55bf70f7db94e4351145852f6f1f0aebadbca59717a2cb49770ba64ec237"
     }
   },
-  "prerelease": true,
-  "superseded": {
-    "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0",
-    "archive_sha256": "a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e",
-    "usbd.irx.udpfs_sha256": "f6bda124c58f1eb770f4278d6366bb99c8c568fea94a06968c50c265d6f6cba7"
-  }
+  "prerelease": false,
+  "superseded": [
+    {
+      "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST",
+      "archive_sha256": "225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f",
+      "usbd.irx.udpfs_sha256": "24e272996a6ea4af5ef20cb5d89a29aa615d8b828087032e75bc2b05aaac583e"
+    },
+    {
+      "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0",
+      "archive_sha256": "a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e",
+      "usbd.irx.udpfs_sha256": "f6bda124c58f1eb770f4278d6366bb99c8c568fea94a06968c50c265d6f6cba7"
+    }
+  ]
 }

@@ -1723,7 +1723,7 @@ static const bdma_pair_sig_t vcdBdmaPairSig[VCD_BDMA_MODE_COUNT] = {
     {11841, 19733}, // mmce
     {42749, 21837}, // ata
     {48500, 27769}, // iLink (27129 before the bring-up retry fix, 27145 before the SBP-2 status decode fix, 21609 before #1018/#1042)
-    {51029, 34508}  // UDPFS Assault TEST 2026-10-28 (network read/write, BIN/CUE)
+    {61949, 34508}  // UDPFS Assault 1.0.1 2026-11-08 (network read/write, BIN/CUE, PATHMAP.INI)
 };
 
 // Size-based, as before; it does not authenticate a module. Only the CURRENT pair matches: every
