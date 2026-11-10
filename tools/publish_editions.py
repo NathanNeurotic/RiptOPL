@@ -335,6 +335,9 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
     downloads = f"{base}/releases/download/{options['tag']}"
     return (
         f"**RiptOPL {options['title']}** `{version}` - Development build [{sha[:8]}]({base}/commit/{sha}).\n\n"
+        # First, so a reader can take the standard kit without reading on (jolek, 2026-11-10).
+        f"**Recommended download:** [RIPTOPL-{options['title']}-{version}.zip]({downloads}/RIPTOPL-{options['title']}-{version}.zip)"
+        " - the standard full install kit. Everything below is optional.\n\n"
         "## Changes\n\n" + "\n".join(changes)
         + f"\n\n[Full history]({base}/commits/{sha})\n\n"
         "## Downloads\n\n"

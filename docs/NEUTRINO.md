@@ -24,8 +24,7 @@ files. Nothing else of [rickgaiser](https://github.com/rickgaiser)'s is altered 
 
 [Neutrino](https://github.com/ps2max32/neutrino) is deliberately **UI-agnostic**: it has no interface of its own, and that is exactly what
 makes a front-end like this one possible. RiptOPL is one of several — **[LUNA](https://github.com/dnunezx/LUNA)**
-by **[darkladark](https://github.com/dnunezx)** (our #1 recommended alternative, for lightweight,
-customized Neutrino gameplay), **[NHDDL](https://github.com/pcm720/nhddl)**, **XEB+ Plugin**, **RETROLauncher**, **OSD-XMB** and
+by **[darkladark](https://github.com/dnunezx)**, **[NHDDL](https://github.com/pcm720/nhddl)**, **XEB+ Plugin**, **RETROLauncher**, **OSD-XMB** and
 **PSBBN/BBNL** all drive the same core.
 
 Report *launching* problems here — building the arguments and handing off are ours. Genuine [Neutrino](https://github.com/ps2max32/neutrino)
