@@ -18,6 +18,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit
 
 from bs4 import BeautifulSoup
 from markdown_it import MarkdownIt
+from markdown_it.helpers import parseLinkDestination
 from markdownify import MarkdownConverter
 
 REPO = "https://github.com/NathanNeurotic/RiptOPL"
@@ -316,7 +317,41 @@ def convert_site(path, sha):
     return output
 
 
-LINK = re.compile(r"(!?\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]\()((?:[^\s<>()]|\([^\n()]*\))+)(\s+\"[^\"\n]*\")?(\))")
+LINK_LABEL = re.compile(r"!?\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]\(")
+LINK_TAIL = re.compile(r"(\s+\"[^\"\n]*\")?\)")
+
+
+def find_links(line):
+    """Yield (start, end, label, raw destination, decoded destination, tail) for each inline link.
+
+    The destination is read by markdown-it's own parser, so escapes, entities and nesting
+    match what the page renders; a label whose "[" is backslash-escaped is plain text."""
+    pos = 0
+    while (label := LINK_LABEL.search(line, pos)):
+        start = label.start()
+        bracket = start + (line[start] == "!")
+        slashes = len(line[:bracket]) - len(line[:bracket].rstrip("\\"))
+        if slashes % 2 and bracket == start:
+            pos = start + 1
+            continue
+        if slashes % 2:  # "\![x](y)" is a literal "!" before a plain link
+            start = bracket
+        dest = parseLinkDestination(line, label.end(), len(line))
+        tail = LINK_TAIL.match(line, dest.pos) if dest.ok else None
+        if not tail:
+            pos = label.start() + 1
+            continue
+        yield start, tail.end(), line[start:label.end()], line[label.end():dest.pos], dest.str, tail[0]
+        pos = tail.end()
+
+
+def link_destination(url):
+    """Serialize url as a Markdown destination that markdown-it reads back unchanged."""
+    out = re.sub(r"([()\\&<>])", r"\\\1", url)
+    back = parseLinkDestination(out, 0, len(out))
+    if not back.ok or back.pos != len(out) or back.str != url:
+        raise ValueError(f"Cannot write link destination: {url!r}")
+    return out
 
 
 def convert_doc(path, origin, sha):
@@ -332,11 +367,15 @@ def convert_doc(path, origin, sha):
         # A code span can be a link label; protect a match only when the link
         # itself starts inside code, not when its label contains code.
         spans = [m.span() for m in re.finditer(r"(`+)(.+?)\1", line)]
-        def replace_link(match):
-            if any(start <= match.start() < end for start, end in spans):
-                return match[0]
-            return match[1] + rewrite_url(match[2], "source", origin, sha, match[1].startswith("!")) + (match[3] or "") + match[4]
-        line = LINK.sub(replace_link, line)
+        out, last = [], 0
+        for start, stop, label, raw, url, tail in find_links(line):
+            if any(begin <= start < finish for begin, finish in spans):
+                continue
+            new = rewrite_url(url, "source", origin, sha, label.startswith("!"))
+            # A destination that is not rewritten keeps its original spelling and escapes.
+            out += [line[last:start], label, raw if new == url else link_destination(new), tail]
+            last = stop
+        line = "".join(out) + line[last:]
         line = re.sub(r'(?P<attr>href|src)="(?P<url>[^"\n]+)"',
                       lambda m: m["attr"] + '="' + rewrite_url(m["url"], "source", origin, sha, m["attr"] == "src") + '"', line)
         line = re.sub(r"^(\s*\[[^\]]+\]:\s*)(\S+)",

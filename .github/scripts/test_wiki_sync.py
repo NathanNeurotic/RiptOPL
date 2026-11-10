@@ -70,8 +70,61 @@ and restart Samba.</td></tr>
 
     def test_link_followed_by_closing_paren_keeps_the_paren_outside_the_url(self):
         line = "See ([Guide](GUIDE.md)), then [Other](a_(b).md), [Two](a_(b)_(c).md) and [Lead]((guide).md)."
-        urls = [m[2] for m in wiki_sync.LINK.finditer(line)]
+        urls = [link[3] for link in wiki_sync.find_links(line)]
         self.assertEqual(urls, ["GUIDE.md", "a_(b).md", "a_(b)_(c).md", "(guide).md"])
+
+    def test_nested_and_escaped_parens_resolve_to_the_intended_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = Path(tmp) / "DOC.md"
+            doc.write_text("[Nested](a_(b_(c)).md), [Escaped](a\\).md), [Ext](https://example.com/x\\)y) "
+                           "and [Guide](GUIDE.md).\n", encoding="utf-8")
+            out = wiki_sync.convert_doc(doc, "docs/DOC.md", "abc123")
+        urls = [link[3] for link in wiki_sync.find_links(out)]
+        self.assertEqual(urls, [wiki_sync.REPO + "/blob/abc123/docs/a_%28b_%28c%29%29.md",
+                                wiki_sync.REPO + "/blob/abc123/docs/a%29.md",
+                                "https://example.com/x\\)y",
+                                wiki_sync.REPO + "/blob/abc123/docs/GUIDE.md"])
+        self.assertIn("[Nested](", out)
+        self.assertIn("[Escaped](", out)
+        wiki_sync.validate({"Page": out})
+
+    def test_paren_edge_cases_keep_text_and_link_end(self):
+        # Spaces make these plain text in Markdown, at either nesting level; a non-ASCII
+        # space is allowed in a destination, so that one is still a link.
+        line = "[A](a_(b c).md) [B](a_(b_(c d)).md) [N](a_(b c).md)"
+        self.assertEqual([link[3] for link in wiki_sync.find_links(line)], ["a_(b c).md"])
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = Path(tmp) / "DOC.md"
+            doc.write_text("[A](a_(b c).md) and [B](a_(b_(c d)).md)\n\n[Q](GUIDE.md?q=\\)) end.\n",
+                           encoding="utf-8")
+            out = wiki_sync.convert_doc(doc, "docs/DOC.md", "abc123")
+        self.assertIn("[A](a_(b c).md) and [B](a_(b_(c d)).md)", out)
+        self.assertIn("[Q](" + wiki_sync.REPO + "/blob/abc123/docs/GUIDE.md?q=\\)) end.", out)
+
+    def test_backslash_edge_cases_keep_text_and_link_end(self):
+        # A backslash before a space is literal and the space ends the destination, so that is
+        # plain text; an escaped backslash before "(" must stay escaped after the rewrite.
+        self.assertEqual([link[3] for link in wiki_sync.find_links("[x](foo\\ bar.md)")], [])
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = Path(tmp) / "DOC.md"
+            doc.write_text("[x](foo\\ bar.md) and [Q](GUIDE.md?q=\\\\(a)) end.\n", encoding="utf-8")
+            out = wiki_sync.convert_doc(doc, "docs/DOC.md", "abc123")
+        self.assertIn("[x](foo\\ bar.md)", out)
+        self.assertIn("[Q](" + wiki_sync.REPO + "/blob/abc123/docs/GUIDE.md?q=\\\\\\(a\\)) end.", out)
+
+    def test_parser_matches_markdown_it_for_escapes_entities_and_spaces(self):
+        # The destination is read by markdown-it's parser: an escaped "[" is plain text,
+        # entities decode before the path resolves, a non-breaking space is part of the path,
+        # and a rewritten destination reads back to exactly the rewritten URL.
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = Path(tmp) / "DOC.md"
+            doc.write_text("\\[x](a_(b_(c)).md) [E](Foo&amp;Bar.md) [N](Guide\u00a0name.md) "
+                           "[Q](GUIDE.md?x=\\&amp;) end.\n", encoding="utf-8")
+            out = wiki_sync.convert_doc(doc, "docs/DOC.md", "abc123")
+        self.assertTrue(out.startswith("\\[x](a_(b_(c)).md) "))
+        blob = wiki_sync.REPO + "/blob/abc123/docs/"
+        self.assertEqual([link[4] for link in wiki_sync.find_links(out)],
+                         [blob + "Foo%26Bar.md", blob + "Guide%C2%A0name.md", blob + "GUIDE.md?x=&amp;"])
 
     def test_every_published_doc_converts_without_changing_visible_text(self):
         # PR CI never runs Publish Wiki, so convert every mapped document here; a
