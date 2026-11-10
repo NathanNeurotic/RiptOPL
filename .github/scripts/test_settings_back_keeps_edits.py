@@ -167,6 +167,16 @@ for sig in PAGES:
         failures.append('%s...): its rows must apply for every result except Cancel' % sig)
     if 'gSettingsShell.pageResult(result)' not in body:
         failures.append('%s...): must return through gSettingsShell.pageResult(result)' % sig)
+# The Network updater snaps the Access and IP Address Type rows (def too) on a protocol switch, so a
+# pending UDPFS Access or DHCP choice leaves no changed row: the apply guard must check both itself.
+net = function_text(gui_c, 'src/ui/gui.cpp', 'int guiShowNetConfig(')
+if net:
+    for pending in ('netConfigUdpfsAccess != gUdpfsAccessMode', 'netConfigDhcpPreference != ps2_ip_use_dhcp'):
+        if pending not in net:
+            failures.append('guiShowNetConfig: the apply guard must also check %s' % pending)
+    # The HTTP base row shows only 31 characters of a 64-byte path: an unchanged preview keeps it whole.
+    if 'strncmp(httpBaseRow, gHttpBasePath, UI_STRING_SIZE - 1) != 0' not in net:
+        failures.append('guiShowNetConfig: an unchanged HTTP base preview must not cut the saved path')
 audio = function_text(gui_c, 'src/ui/gui.cpp', 'static int guiShowAudioConfig(')
 if audio and 'gSettingsShell.pageResult(result)' not in audio:
     failures.append('guiShowAudioConfig: must return through gSettingsShell.pageResult(result)')

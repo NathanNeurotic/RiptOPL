@@ -963,8 +963,13 @@ reshow_network:
         for (i = 0; i < 4; ++i)
             diaGetInt(diaNetConfig, NETCFG_HTTP_IP_0 + i, &gHttpServerIp[i]);
         diaGetInt(diaNetConfig, NETCFG_HTTP_PORT, &gHttpPort);
-        diaGetString(diaNetConfig, NETCFG_HTTP_BASE, gHttpBasePath, sizeof(gHttpBasePath));
-        httpNormalizeBasePath(gHttpBasePath, sizeof(gHttpBasePath));
+        // The row holds only UI_STRING_SIZE - 1 characters: a longer saved path whose preview is unchanged stays whole.
+        char httpBaseRow[UI_STRING_SIZE];
+        diaGetString(diaNetConfig, NETCFG_HTTP_BASE, httpBaseRow, sizeof(httpBaseRow));
+        if (strlen(gHttpBasePath) < UI_STRING_SIZE || strncmp(httpBaseRow, gHttpBasePath, UI_STRING_SIZE - 1) != 0) {
+            snprintf(gHttpBasePath, sizeof(gHttpBasePath), "%s", httpBaseRow);
+            httpNormalizeBasePath(gHttpBasePath, sizeof(gHttpBasePath));
+        }
         diaGetString(diaNetConfig, NETCFG_SHARE_NAME, gPCShareName, sizeof(gPCShareName));
         diaGetString(diaNetConfig, NETCFG_SHARE_USERNAME, gPCUserName, sizeof(gPCUserName));
         diaGetString(diaNetConfig, NETCFG_SHARE_PASSWORD, gPCPassword, sizeof(gPCPassword));
