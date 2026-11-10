@@ -316,7 +316,11 @@ def convert_site(path, sha):
     return output
 
 
-LINK = re.compile(r"(!?\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]\()((?:[^\s<>()]|\([^\n()]*\))+)(\s+\"[^\"\n]*\")?(\))")
+# Destination: backslash escapes, and parentheses balanced up to two levels deep.
+LINK = re.compile(r"(!?\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]\()"
+                  r"((?:\\[^\n]|[^\s<>()\\]|\((?:\\[^\n]|[^\n()\\]|\((?:\\[^\n]|[^\n()\\])*\))*\))+)"
+                  r"(\s+\"[^\"\n]*\")?(\))")
+MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
 
 def convert_doc(path, origin, sha):
@@ -335,7 +339,10 @@ def convert_doc(path, origin, sha):
         def replace_link(match):
             if any(start <= match.start() < end for start, end in spans):
                 return match[0]
-            return match[1] + rewrite_url(match[2], "source", origin, sha, match[1].startswith("!")) + (match[3] or "") + match[4]
+            # Resolve the unescaped destination; an external URL that is not rewritten keeps its escapes.
+            url = MD_ESCAPE.sub(r"\1", match[2])
+            new = rewrite_url(url, "source", origin, sha, match[1].startswith("!"))
+            return match[1] + (match[2] if new == url else new) + (match[3] or "") + match[4]
         line = LINK.sub(replace_link, line)
         line = re.sub(r'(?P<attr>href|src)="(?P<url>[^"\n]+)"',
                       lambda m: m["attr"] + '="' + rewrite_url(m["url"], "source", origin, sha, m["attr"] == "src") + '"', line)

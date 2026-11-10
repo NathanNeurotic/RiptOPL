@@ -73,6 +73,21 @@ and restart Samba.</td></tr>
         urls = [m[2] for m in wiki_sync.LINK.finditer(line)]
         self.assertEqual(urls, ["GUIDE.md", "a_(b).md", "a_(b)_(c).md", "(guide).md"])
 
+    def test_nested_and_escaped_parens_resolve_to_the_intended_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = Path(tmp) / "DOC.md"
+            doc.write_text("[Nested](a_(b_(c)).md), [Escaped](a\\).md), [Ext](https://example.com/x\\)y) "
+                           "and [Guide](GUIDE.md).\n", encoding="utf-8")
+            out = wiki_sync.convert_doc(doc, "docs/DOC.md", "abc123")
+        urls = [m[2] for m in wiki_sync.LINK.finditer(out)]
+        self.assertEqual(urls, [wiki_sync.REPO + "/blob/abc123/docs/a_%28b_%28c%29%29.md",
+                                wiki_sync.REPO + "/blob/abc123/docs/a%29.md",
+                                "https://example.com/x\\)y",
+                                wiki_sync.REPO + "/blob/abc123/docs/GUIDE.md"])
+        self.assertIn("[Nested](", out)
+        self.assertIn("[Escaped](", out)
+        wiki_sync.validate({"Page": out})
+
     def test_every_published_doc_converts_without_changing_visible_text(self):
         # PR CI never runs Publish Wiki, so convert every mapped document here; a
         # conversion that changes visible text raises, as it does on publish.
