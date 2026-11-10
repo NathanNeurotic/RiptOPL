@@ -19,7 +19,8 @@
 #             but ECHO's, and a reply that comes unsigned costing one drop and one reconnect, not a loop.
 #   readreply.c  includes usmb2.c and feeds usmb2_pread hand-built READ replies on a socketpair:
 #             data at DataOffset with padding before it, and replies claiming more bytes than they
-#             carried, or than were asked for, or a DataOffset outside the frame, all refused.
+#             carried, or than were asked for, or a DataOffset outside the frame, all refused; signed,
+#             a padded reply verifies and one whose padding or data changed after signing is refused.
 #   longname.c  compiles device-smb.c whole, with smb2.c and again with smb.c (SMB1), and launches
 #             a game the way the IOP does, from a settings block filled as the EE fills it, for the
 #             longest file names the menu lists and the lengths either side of each one the old
@@ -176,8 +177,10 @@ cc $san -Wall -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2ma
 # shellcheck disable=SC2086
 cc $drvsan -Wall -Wno-unused-function -I"$here/inc-browse" -I"$work/inc" -I"$root/modules/network/smb2man" -I"$root/modules/iopcore/cdvdman" $feat $alloc \
     -D_start=smb2man_start "$here/keepalive.c" "$work"/lib/*.o -o "$work/keepalive"
-# usmb2's READ reply framing, against hand-built replies (no server)
-cc $drvsan -Wall -Wno-unused-function -I"$u2" -DUSMB2_FEATURE_WRITE "$here/readreply.c" -o "$work/readreply"
+# usmb2's READ reply framing, signed and not, against hand-built replies (no server)
+# shellcheck disable=SC2086
+cc $drvsan -Wall -Wno-unused-function -I"$here/inc-browse" -I"$u2" -I"$root/modules/iopcore/cdvdman" -DUSMB2_FEATURE_WRITE \
+    "$here/readreply.c" "$root/modules/iopcore/cdvdman/smb2auth.c" -o "$work/readreply"
 
 id ps2 >/dev/null 2>&1 || useradd -M ps2
 fails=0
@@ -226,7 +229,7 @@ browse_smb3only() { # SMB 3.0 and up only: the menu must list and open it, negot
 }
 
 run "in-game reader: UTF-8 names to UTF-16 (put_utf16)" ./utf16
-run "browse driver: READ data at DataOffset, short or oversized READ replies refused" ./readreply
+run "browse driver: READ data at DataOffset (signed and not), short or oversized READ replies refused" ./readreply
 for signing in mandatory disabled; do
     write_conf "$signing" ""
     printf 'secret\nsecret\n' | smbpasswd -c "$conf" -s -a ps2 >/dev/null

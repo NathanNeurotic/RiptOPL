@@ -45,7 +45,8 @@ What is here
   - A READ reply's data is read from its DataOffset ([MS-SMB2] 2.2.20): padding before it goes
     to buf (and into the signature), not to the caller. A DataOffset outside the frame closes the
     socket; a DataLength larger than the frame carried or than was asked for fails the read
-    (STATUS_INVALID_NETWORK_RESPONSE). tests/smb2-live/readreply.c covers each case.
+    (STATUS_INVALID_NETWORK_RESPONSE). tests/smb2-live/readreply.c covers each case, and a
+    signed padded reply, which verifies, and its padding or data changed after signing, refused.
   - ntlm.c writes the user name's UTF-16 bytes as two separate stores; upstream read and
     incremented the index in one unsequenced expression (undefined behaviour, harmless as built).
 
