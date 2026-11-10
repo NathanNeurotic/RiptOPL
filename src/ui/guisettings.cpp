@@ -878,7 +878,8 @@ int guiShowNetConfig(void)
     diaSetEnabled(diaNetConfig, CFG_UDPFSMODE, netProtoVal == 1);
     diaSetEnabled(diaNetConfig, CFG_SMBDIALECT, netProtoVal == 0 || (!LITE_HAS_NET_SOURCE && LITE_HAS_SMB_SHARE));
     netConfigDhcpPreference = ps2_ip_use_dhcp;
-    netConfigUdpfsAccess = gUdpfsAccessMode;
+    const int udpfsAccessBefore = gUdpfsAccessMode; // the updater rewrites the Access row, so diaHasChanges misses it
+    netConfigUdpfsAccess = udpfsAccessBefore;
     netConfigLastProtocol = -1;
     netConfigUpdater(1);
 
@@ -1009,7 +1010,7 @@ reshow_network:
 
     gSettingsShell.endDialog();
     // OK or Reconnect on a page left as it opened still reconnects above, but has nothing to save.
-    if (!gSettingsShell.isShellResult(result) && !diaHasChanges(diaNetConfig))
+    if (!gSettingsShell.isShellResult(result) && !diaHasChanges(diaNetConfig) && gUdpfsAccessMode == udpfsAccessBefore)
         result = UIID_BTN_CANCEL;
     return gSettingsShell.pageResult(result);
 }
