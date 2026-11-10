@@ -634,8 +634,8 @@ your protocol: turning it back on brings the same one back. **Network** also hol
 and **Access** (Files / IMG — locked to Files
 for SMB/HTTP and to IMG for UDPBD, free only for UDPFS). **Default Menu → ETH Games** opens
 whichever page that protocol's games are on (for UDPBD / UDPFS IMG, the network drive's page if it
-has attached by the time the menu appears). UDPFS launches via `-bsd=udpfsbd` with a
-bundled `bsd-udpfsbd.toml`. Use the
+has attached by the time the menu appears). UDPFS Files launches with Neutrino's stock `-bsd=udpfs`; UDPFS IMG launches with
+`-bsd=udpfsbd` and the bundled `bsd-udpfsbd.toml`. Use the
 **[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one PC launcher for UDPFS,
 SMB and UDPBD; advanced users can run **[pcm720/udpfsd](https://github.com/pcm720/udpfsd)** directly.
 Same static-IP and SMB-exclusivity rules as UDPBD.
