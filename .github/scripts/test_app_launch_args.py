@@ -78,8 +78,10 @@ STUBS = r'''
 typedef int item_list_t;
 typedef struct { const char *path; const char *arg; } config_set_t;
 typedef int vcd_popsnet_ensure_t;
-enum { VCD_POPSNET_SMB_MISSING, VCD_POPSNET_NEED_STATIC,
-       VCD_POPSNET_IO_ERROR, VCD_POPSNET_INVALID, VCD_POPSNET_CANCELLED };
+// Same values as include/vcdsupport.h.
+enum { VCD_POPSNET_READY, VCD_POPSNET_NEED_STATIC, VCD_POPSNET_IO_ERROR,
+       VCD_POPSNET_INVALID, VCD_POPSNET_SMB_MISSING, VCD_POPSNET_CANCELLED };
+static int pops_smb, pops_smb_prep;
 static struct { const char *title; } appsList[] = {{"launcHER"}};
 static char gOPLPart[128];
 #define SYS_LOAD_ELF_RESET_ROM0_MC 2
@@ -104,10 +106,10 @@ static int mock_close(int fd) { return 0; }
 #define open mock_open
 #define close mock_close
 static int oplPath2Mode(const char *path)
-{ return !strncmp(path, "pfs", 3) ? HDD_MODE : !strncmp(path, "mass", 4) ? BDM_MODE : APP_MODE; }
-static int appIsPopstarterSmb(const char *path) { return 0; }
+{ return !strncmp(path, "pfs", 3) ? HDD_MODE : !strncmp(path, "mass", 4) ? BDM_MODE : !strncmp(path, "smb", 3) ? ETH_MODE : APP_MODE; }
+static int appIsPopstarterSmb(const char *path) { return pops_smb; }
 static const char *ethGetSMBPrefix(void) { return "smb0:"; }
-static int vcdPreparePopstarterSmbLaunch(const char *path) { return -1; }
+static int vcdPreparePopstarterSmbLaunch(const char *path) { return pops_smb_prep; }
 static int appIsPopstarterElf(const char *path, const char *title) { return is_pops; }
 static int appGetRebootIopConfig(config_set_t *c) { return reset_iop; }
 static int appGetHandoffPathConfig(config_set_t *c) { return per_app_handoff; }
@@ -263,6 +265,18 @@ int main(void)
         run(apa, arg, 0, 1);
         assert(errors == 1 && !torn_down && !launched && !sdk_launch);
     }
+    // POPSTARTER SB.*.ELF over SMB: Back on the SMBv1 notice cancels quietly, with no error,
+    // teardown or launch; a missing module still reports its error before any teardown.
+    pops_smb = 1;
+    pops_smb_prep = VCD_POPSNET_CANCELLED;
+    run("smb0:/POPS/SB.GAME.ELF", NULL, 0, 1);
+    assert(!errors && !torn_down && !launched);
+    pops_smb_prep = VCD_POPSNET_SMB_MISSING;
+    run("smb0:/POPS/SB.GAME.ELF", NULL, 0, 1);
+    assert(errors == 1 && !torn_down && !launched);
+    pops_smb = 0;
+    pops_smb_prep = VCD_POPSNET_READY;
+
     // OPLDIAG must expose open() failure evidence without relying on DEBUG/LOG.
     mock_fd = -1;
     mock_errno = EIO;
