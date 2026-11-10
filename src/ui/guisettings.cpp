@@ -1449,6 +1449,9 @@ static void guiShowPopsUdpfsConfig(void)
         // Only a change the user made is written, so an untouched page never creates the file.
         if (bits != pathmap) {
             if (vcdWritePopsPathmap(bits) != 0) {
+                int now = vcdReadPopsPathmap(); // a failed restore can change what the driver reads
+                if (now >= 0)
+                    pathmap = now;
                 guiMsgBox(_l(_STR_POPS_PATHMAP_ERR), 0, NULL);
                 continue;
             }

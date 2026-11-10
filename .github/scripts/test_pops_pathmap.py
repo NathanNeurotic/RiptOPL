@@ -152,6 +152,9 @@ page = function(gui, 'static void guiShowPopsUdpfsConfig(void)')
 assert page.index('vcdReadPopsPathmap()') < page.index('diaExecuteDialog(diaPopsUdpfsConfig')
 assert 'if (bits != pathmap) {' in page and page.index('if (bits != pathmap) {') < page.index('vcdWritePopsPathmap(bits)')
 assert page.index('vcdWritePopsUdpfsNet(&cfg)') < page.index('vcdWritePopsPathmap(bits)')
+# After a failed write the baseline is re-read, so undoing the switches cannot skip a needed write.
+fail = page[page.index('if (vcdWritePopsPathmap(bits) != 0) {'):]
+assert fail.index('vcdReadPopsPathmap()') < fail.index('_STR_POPS_PATHMAP_ERR')
 # ee_core never sees it: the options live in the menu only.
 assert 'PATHMAP' not in ''.join(p.read_text(encoding='utf-8', errors='ignore') for p in (ROOT / 'ee_core').rglob('*.[ch]'))
 print('PATHMAP.INI: POPS UDPFS page wiring passed')
