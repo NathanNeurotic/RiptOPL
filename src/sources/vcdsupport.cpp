@@ -3037,7 +3037,11 @@ vcd_popsnet_ensure_t vcdPreparePopstarterSmbLaunch(const char *smbPrefix)
             return VCD_POPSNET_IO_ERROR;
         return VCD_POPSNET_SMB_MISSING;
     }
-    return vcdEnsurePopstarterSmbConfig(&cfg);
+    vcd_popsnet_ensure_t ens = vcdEnsurePopstarterSmbConfig(&cfg);
+    // POPSTARTER brings up its own SMBv1 module; the list came over SMB2, so say so before the launch.
+    if (ens == VCD_POPSNET_READY && ethGetLoadedSmbDialect() == SMB_DIALECT_V2)
+        host::ui().msgBox(_l(_STR_POPSTARTER_SMB_V1), 0, NULL);
+    return ens;
 }
 
 void vcdPrepareRetroGemBarcode(const char *vcdPath)

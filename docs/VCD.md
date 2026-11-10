@@ -482,7 +482,8 @@ complete static IP is entered. The SMB modules themselves ship in the release's 
 hanging.
 
 POPSTARTER's SMB module speaks **SMBv1 only**, whatever RiptOPL's **SMB Version** row says (a new
-install browses with **SMB2**). PS1 games over SMB therefore need a server that also accepts SMBv1
+install browses with **SMB2**). PS1 games still list over SMB2, and with SMB2 in use a box says
+so before each launch. PS1 games over SMB therefore need a server that also accepts SMBv1
 at the address and port in `SMBCONFIG.DAT`: PS2 Servers' SMBv1 card, or Samba/Windows with SMB1
 enabled. A first setup copies RiptOPL's server, port and share into `SMBCONFIG.DAT`, so if RiptOPL
 points at an SMB2-only server (for example PS2 Servers' SMBv2 card), set POPSTARTER Network Settings
