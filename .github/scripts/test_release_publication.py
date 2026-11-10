@@ -37,11 +37,11 @@ class PublicationTests(unittest.TestCase):
             self.assertIn(f"/{elf})", body)
             self.assertIn(f"/{psu})", body)
             self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-LANGS-v1.2.0-Beta-3925.zip)", body)
-            # The standalone ELF and PSU have no CREDITS beside them: the notes name libsmb2 and its licence.
-            self.assertIn(f"- [libsmb2 licence](https://github.com/NathanNeurotic/RiptOPL/releases/download/{options['tag']}"
-                          "/LICENSE-LIBSMB2.txt) - every loader embeds [libsmb2](https://github.com/sahlberg/libsmb2) by "
-                          "[Ronnie Sahlberg](https://github.com/sahlberg), used under the GNU LGPL-2.1.\n", body)
-            self.assertLess(body.index(f"/{psu})"), body.index("/LICENSE-LIBSMB2.txt)"))
+            # The standalone ELF and PSU have no CREDITS beside them: the notes name usmb2 and its licence.
+            self.assertIn(f"- [usmb2 licence](https://github.com/NathanNeurotic/RiptOPL/releases/download/{options['tag']}"
+                          "/LICENSE-USMB2.txt) - every loader embeds [usmb2](https://github.com/sahlberg/usmb2) by "
+                          "[Ronnie Sahlberg](https://github.com/sahlberg), used under the MIT licence.\n", body)
+            self.assertLess(body.index(f"/{psu})"), body.index("/LICENSE-USMB2.txt)"))
             # Every archive link ends with the version; the ELF and PSU links never change.
             for link in re.findall(r"\]\((\S+?)\)", body.split("## Downloads", 1)[1]):
                 if link.endswith(".zip"):
@@ -65,7 +65,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertNotIn("ORBIT", body)
             self.assertNotIn("Release compiler", body)
             self.assertNotIn("Imported production documentation", body)
-            self.assertLess(len(body), 2400)  # the RA notes link eight versioned downloads, ORBIT and the libsmb2 licence
+            self.assertLess(len(body), 2400)  # the RA notes link eight versioned downloads, ORBIT and the usmb2 licence
 
     def test_ra_notes_refuse_a_runtime_other_than_the_pin(self):
         with patch.object(publisher, "git", return_value="b" * 40 + "\x00Fix"), self.assertRaises(ValueError):
@@ -576,31 +576,31 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('required.add("LICENSE-MBEDTLS.txt")', app)
         self.assertIn('elif "LICENSE-MBEDTLS.txt" in all_names:', app)
 
-    def test_every_kit_bundle_and_standalone_download_ships_the_libsmb2_licence(self):
-        # Every RiptOPL ELF embeds smb2man over libsmb2 (LGPL-2.1), so the licence text must travel
+    def test_every_kit_bundle_and_standalone_download_ships_the_usmb2_licence(self):
+        # Every RiptOPL ELF embeds smb2man over usmb2 (MIT), so the licence text must travel
         # with the install kits, the VARIANTS/DEBUG bundles and the standalone ELF download.
-        licence = ROOT / "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt"
-        self.assertIn("GNU LESSER GENERAL PUBLIC LICENSE", licence.read_text(encoding="utf-8"))
+        licence = ROOT / "modules/network/smb2man/usmb2/LICENSE"
+        self.assertIn("Permission is hereby granted", licence.read_text(encoding="utf-8"))
         package = (ROOT / "tools/package_edition.py").read_text(encoding="utf-8")
-        self.assertIn('LIBSMB2_LICENCE = ROOT / "modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt"', package)
-        self.assertIn('shutil.copyfile(LIBSMB2_LICENCE, kit / "LICENSE-LIBSMB2.txt")', package)
-        self.assertIn('shutil.copyfile(LIBSMB2_LICENCE, out / "LICENSE-LIBSMB2.txt")', package)
-        self.assertLess(package.index('if options["ra"]:  # the RA ELF links mbedTLS'), package.index('kit / "LICENSE-LIBSMB2.txt"'))
+        self.assertIn('USMB2_LICENCE = ROOT / "modules/network/smb2man/usmb2/LICENSE"', package)
+        self.assertIn('shutil.copyfile(USMB2_LICENCE, kit / "LICENSE-USMB2.txt")', package)
+        self.assertIn('shutil.copyfile(USMB2_LICENCE, out / "LICENSE-USMB2.txt")', package)
+        self.assertLess(package.index('if options["ra"]:  # the RA ELF links mbedTLS'), package.index('kit / "LICENSE-USMB2.txt"'))
         publish = (ROOT / "tools/publish_editions.py").read_text(encoding="utf-8")
-        self.assertIn('bundle.writestr("LICENSE-LIBSMB2.txt", (path / "LICENSE-LIBSMB2.txt").read_bytes())', publish)
-        self.assertIn('"LICENSE-LIBSMB2.txt"}', publish)
-        self.assertIn('kit.read("LICENSE-LIBSMB2.txt") != (path / "LICENSE-LIBSMB2.txt").read_bytes()', publish)
+        self.assertIn('bundle.writestr("LICENSE-USMB2.txt", (path / "LICENSE-USMB2.txt").read_bytes())', publish)
+        self.assertIn('"LICENSE-USMB2.txt"}', publish)
+        self.assertIn('kit.read("LICENSE-USMB2.txt") != (path / "LICENSE-USMB2.txt").read_bytes()', publish)
         app = (ROOT / ".github/scripts/package_release_app.py").read_text(encoding="utf-8")
-        self.assertIn('"LICENSE-LIBSMB2.txt",  # every loader embeds libsmb2 (LGPL-2.1)', app)
+        self.assertIn('"LICENSE-USMB2.txt",  # every loader embeds usmb2 (MIT)', app)
 
-    def test_credits_say_every_loader_uses_libsmb2_under_the_lgpl(self):
-        # CREDITS is the LGPL-2.1 section 6 notice that travels with the licence: it names libsmb2, says every
-        # loader embeds it, that it is used under the LGPL-2.1 and where that licence text is.
+    def test_credits_say_every_loader_uses_usmb2_under_the_mit_licence(self):
+        # CREDITS is the copyright notice that travels with the licence: it names usmb2, says every
+        # loader embeds it, that it is used under the MIT licence and where that licence text is.
         credits = (ROOT / "CREDITS").read_text(encoding="utf-8")
-        entry = credits[credits.index("  - libsmb2, by Ronnie Sahlberg"):]
+        entry = credits[credits.index("  - usmb2, by Ronnie Sahlberg"):]
         entry = " ".join(entry[:entry.index("\n\n")].split())
-        for phrase in ("https://github.com/sahlberg/libsmb2", "every loader embeds", "used under the LGPL-2.1 licence",
-                       "LICENSE-LIBSMB2.txt"):
+        for phrase in ("https://github.com/sahlberg/usmb2", "every loader embeds", "used under the MIT licence",
+                       "LICENSE-USMB2.txt"):
             self.assertIn(phrase, entry)
 
     def assert_copied_before_upload(self, workflow, artifact, copies, listed):
@@ -623,33 +623,33 @@ class PublicationTests(unittest.TestCase):
             self.assertIn(found[0].get("if", allowed[0]), allowed, (artifact, copy))
             self.assertNotIn("continue-on-error", found[0], (artifact, copy))
 
-    def test_every_actions_test_build_carries_the_libsmb2_licence(self):
+    def test_every_actions_test_build_carries_the_usmb2_licence(self):
         # Testers also download loaders straight from Actions runs, so those artifacts carry the licence and
-        # CREDITS, which says the loader uses libsmb2 under it.
-        libsmb2 = ROOT / "modules/network/smb2man/libsmb2"
-        for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):
-            self.assertTrue((libsmb2 / filename).is_file(), filename)
+        # CREDITS, which says the loader uses usmb2 under it.
+        usmb2 = ROOT / "modules/network/smb2man/usmb2"
+        for filename in ("LICENSE", "VENDORED.txt"):
+            self.assertTrue((usmb2 / filename).is_file(), filename)
         self.assertTrue((ROOT / "CREDITS").is_file())
         build = (ROOT / "tools/build_edition.py").read_text(encoding="utf-8")
         staging = build[build.index('if args.configuration != "standard":'):build.index("print(f\"Built ")]
         self.assertIn('for filename in ("LICENSE", "CREDITS"):', staging)
-        self.assertIn('destination = stage / "licenses" / "libsmb2"', staging)
-        self.assertIn('for filename in ("LICENCE-LGPL-2.1.txt", "VENDORED.txt"):', staging)
-        self.assertIn('shutil.copyfile(ROOT / "modules/network/smb2man/libsmb2" / filename, destination / filename)', staging)
+        self.assertIn('destination = stage / "licenses" / "usmb2"', staging)
+        self.assertIn('for filename in ("LICENSE", "VENDORED.txt"):', staging)
+        self.assertIn('shutil.copyfile(ROOT / "modules/network/smb2man/usmb2" / filename, destination / filename)', staging)
         self.assert_copied_before_upload(
             "ps2build.yml", "riptopl-ps2build-${{ matrix.toolchain }}",
-            ["cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt build/bin/LICENSE-LIBSMB2.txt",
+            ["cp -f modules/network/smb2man/usmb2/LICENSE build/bin/LICENSE-USMB2.txt",
              "cp -f CREDITS build/bin/CREDITS"],
-            ["build/bin/riptopl-packed.elf", "build/bin/LICENSE-LIBSMB2.txt", "build/bin/CREDITS"])
+            ["build/bin/riptopl-packed.elf", "build/bin/LICENSE-USMB2.txt", "build/bin/CREDITS"])
         self.assert_copied_before_upload(
             "flavours.yml", "OPL-PS2BUILD",
-            ["cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt LICENSE-LIBSMB2.txt"],
-            ["build/bin/riptopl-packed.elf", "BUILD-MANIFEST.txt", "LICENSE-LIBSMB2.txt", "CREDITS"])
+            ["cp -f modules/network/smb2man/usmb2/LICENSE LICENSE-USMB2.txt"],
+            ["build/bin/riptopl-packed.elf", "BUILD-MANIFEST.txt", "LICENSE-USMB2.txt", "CREDITS"])
         # The local `tools/assets.py release` zip is a loader download too.
         assets = (ROOT / "tools/assets.py").read_text(encoding="utf-8")
         release = assets[assets.index("def release():"):assets.index("COMMANDS = {")]
-        self.assertIn('licence = os.path.join(directory, "LICENSE-LIBSMB2.txt")', release)
-        self.assertIn('"modules", "network", "smb2man", "libsmb2", "LICENCE-LGPL-2.1.txt"', release)
+        self.assertIn('licence = os.path.join(directory, "LICENSE-USMB2.txt")', release)
+        self.assertIn('"modules", "network", "smb2man", "usmb2", "LICENSE"', release)
         self.assertIn('run("zip", "-j", package, licence)', release)
 
     def test_local_release_zip_takes_whichever_changelog_make_changelog_leaves(self):
@@ -669,9 +669,9 @@ class PublicationTests(unittest.TestCase):
                 tree = Path(directory)
                 (tree / "build/bin").mkdir(parents=True)
                 (tree / "build/bin/riptopl-packed.elf").write_bytes(b"\x7fELF")
-                libsmb2 = tree / "modules/network/smb2man/libsmb2"
-                libsmb2.mkdir(parents=True)
-                (libsmb2 / "LICENCE-LGPL-2.1.txt").write_text("LGPL-2.1 text", encoding="utf-8")
+                usmb2 = tree / "modules/network/smb2man/usmb2"
+                usmb2.mkdir(parents=True)
+                (usmb2 / "LICENSE").write_text("MIT text", encoding="utf-8")
                 (tree / "DETAILED_CHANGELOG").write_text("stale", encoding="utf-8")
                 header = tree / "header"
                 zipped = {}
@@ -700,9 +700,9 @@ class PublicationTests(unittest.TestCase):
         for outcome, changelog in (("full", "header and history"), ("header", "header")):
             zipped = release(outcome)
             self.assertEqual(zipped["DETAILED_CHANGELOG"], changelog, outcome)
-            self.assertEqual(zipped["LICENSE-LIBSMB2.txt"], "LGPL-2.1 text", outcome)
+            self.assertEqual(zipped["LICENSE-USMB2.txt"], "MIT text", outcome)
             self.assertEqual(set(zipped), {"RIPTOPL-v0.ELF", "DETAILED_CHANGELOG", "CREDITS", "LICENSE", "README.md",
-                                           "LICENSE-LIBSMB2.txt"}, outcome)
+                                           "LICENSE-USMB2.txt"}, outcome)
         with self.assertRaisesRegex(SystemExit, "wrote no DETAILED_CHANGELOG"):
             release("nothing")
 

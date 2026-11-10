@@ -36,7 +36,7 @@ def expected_files(version):
     names = {
         "RIPTOPL.ELF", "RIPTOPL-RA.ELF",
         "APP_RIPTOPL.psu", "APP_RIPTOPL-RA.psu",
-        "BUILD-MANIFEST.json", "LICENSE-LIBSMB2.txt",
+        "BUILD-MANIFEST.json", "LICENSE-USMB2.txt",
         "RIPTOPL-Korium" + suffix,
         "RIPTOPL-RetroAchievements" + suffix,
         "RIPTOPL-VARIANTS" + suffix, "RIPTOPL-DEBUG" + suffix,
@@ -79,7 +79,7 @@ def assemble(root, candidates, sha, version):
                 name = name.replace("RIPTOPL-LANGS-", "RIPTOPL-RA-LANGS-", 1)
             destination = stage / name
             if destination.exists():
-                if name != "LICENSE-LIBSMB2.txt" and not name.startswith("RIPTOPL-src-"):
+                if name != "LICENSE-USMB2.txt" and not name.startswith("RIPTOPL-src-"):
                     raise ValueError(f"duplicate LLVM release filename: {name}")
                 if checksum(destination) != checksum(source):
                     raise ValueError(f"mismatched shared LLVM asset: {name}")
@@ -175,7 +175,7 @@ def release_notes(version, sha):
         link("Source snapshot", "RIPTOPL-src" + suffix),
         link("Build provenance for all editions", "BUILD-MANIFEST.json"),
         link("SHA-256 checksums", "SHA256SUMS.txt"),
-        link("libsmb2 licence", "LICENSE-LIBSMB2.txt"),
+        link("usmb2 licence", "LICENSE-USMB2.txt"),
         "",
         "## Recent changes",
         "",

@@ -79,18 +79,18 @@ jobs:
         run: tools/warning_gate.py build.log --check
       - name: Coupling gate (no new upward dependencies between layers)
         run: tools/analyze_coupling.py --check
-      - name: Put the libsmb2 licence and the credits beside the loader
-        # The loader embeds smb2man over libsmb2 (LGPL-2.1), so its licence travels with the artifact, with
-        # CREDITS, which says the loader uses libsmb2 under that licence (LGPL-2.1 section 6).
+      - name: Put the usmb2 licence and the credits beside the loader
+        # The loader embeds smb2man over usmb2 (MIT), so its licence travels with the artifact, with
+        # CREDITS, which says the loader uses usmb2 under that licence (MIT asks for its notice in every copy).
         run: |
-          cp -f modules/network/smb2man/libsmb2/LICENCE-LGPL-2.1.txt build/bin/LICENSE-LIBSMB2.txt
+          cp -f modules/network/smb2man/usmb2/LICENSE build/bin/LICENSE-USMB2.txt
           cp -f CREDITS build/bin/CREDITS
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: riptopl-ps2build-${{ matrix.toolchain }}
           path: |
             build/bin/riptopl-packed.elf
-            build/bin/LICENSE-LIBSMB2.txt
+            build/bin/LICENSE-USMB2.txt
             build/bin/CREDITS
       - name: Upload the SMB2 hardware probe (tools/hwtest/smb2probe, not part of any release)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -98,5 +98,5 @@ jobs:
           name: smb2probe-${{ matrix.toolchain }}
           path: |
             build/bin/smb2probe*.elf
-            build/bin/LICENSE-LIBSMB2.txt
+            build/bin/LICENSE-USMB2.txt
           if-no-files-found: error

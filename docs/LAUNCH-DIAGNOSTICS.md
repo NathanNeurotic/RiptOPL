@@ -58,7 +58,7 @@ hardware: it needs an SD2PSX with sd2psXtd firmware.
 
 The Korium and IncebtIon releases carry `RIPTOPL-BUGREPORT-<version>.zip`. It holds
 `RIPTOPL-BUGREPORT.ELF`, the release's `diag` build, a README on what to send, and the licences
-(`LICENSE`, `CREDITS`, `licenses/libsmb2/` for the embedded smb2man driver). Use it when
+(`LICENSE`, `CREDITS`, `licenses/usmb2/` for the embedded smb2man driver). Use it when
 RiptOPL will not start, stops on a black screen or freezes in the menu:
 
 - each start-up step up to the video setup is printed on screen as a numbered line, so a start-up
