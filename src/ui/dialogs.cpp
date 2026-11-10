@@ -10,6 +10,36 @@
 
 #include <stdio.h>
 
+// Storage of the text rows below (struct UIString, include/dia.h): only these rows carry string space.
+static struct UIString diaStr_NETCFG_SHARE_NB_ADDR __attribute__((unused)) = {};
+static struct UIString diaStr_NETCFG_SHARE_NAME __attribute__((unused)) = {"PS2SMB", "PS2SMB"};
+static struct UIString diaStr_NETCFG_SHARE_USERNAME __attribute__((unused)) = {"GUEST", "GUEST"};
+static struct UIString diaStr_NETCFG_SHARE_PASSWORD __attribute__((unused)) = {};
+static struct UIString diaStr_NETCFG_HTTP_BASE __attribute__((unused)) = {"/", "/"};
+static struct UIString diaStr_NETCFG_POPS_SMB_SHARE __attribute__((unused)) = {};
+static struct UIString diaStr_NETCFG_POPS_SMB_USER __attribute__((unused)) = {};
+static struct UIString diaStr_NETCFG_POPS_SMB_PASS __attribute__((unused)) = {};
+static struct UIString diaStr_CFG_EXITTO __attribute__((unused)) = {};
+static struct UIString diaStr_CFG_CUSTOMCFGPATH __attribute__((unused)) = {};
+static struct UIString diaStr_CFG_POPSTARTER_PATH __attribute__((unused)) = {};
+static struct UIString diaStr_CFG_MMCEPREFIX __attribute__((unused)) = {};
+static struct UIString diaStr_CFG_NEUTRINO_PATH __attribute__((unused)) = {};
+static struct UIString diaStr_CFG_PARENLOCK_PASSWORD __attribute__((unused)) = {};
+static struct UIString diaStr_CFG_BDMPREFIX __attribute__((unused)) = {};
+static struct UIString diaStr_CFG_ETHPREFIX __attribute__((unused)) = {};
+static struct UIString diaStr_COMPAT_GAMEID __attribute__((unused)) = {};
+static struct UIString diaStr_COMPAT_ILINK_ID __attribute__((unused)) = {};
+static struct UIString diaStr_COMPAT_ALTSTARTUP __attribute__((unused)) = {};
+static struct UIString diaStr_VMC_NAME __attribute__((unused)) = {};
+static struct UIString diaStr_CFG_DEFAULT_BGM_PATH __attribute__((unused)) = {};
+static struct UIString diaStr_NARGS_CWD __attribute__((unused)) = {};
+static struct UIString diaStr_NARGS_CFG __attribute__((unused)) = {};
+static struct UIString diaStr_NARGS_ELF __attribute__((unused)) = {};
+static struct UIString diaStr_NARGS_ATA0 __attribute__((unused)) = {};
+static struct UIString diaStr_NARGS_ATA0ID __attribute__((unused)) = {};
+static struct UIString diaStr_NARGS_ATA1 __attribute__((unused)) = {};
+static struct UIString diaStr_NARGS_EXTRA __attribute__((unused)) = {};
+
 // Network page (settings-layout restructure): POPSTARTER's shared editor entry plus the
 // OPL/Neutrino transport and SMB fields live here. The POPSTARTER network state itself remains
 // owned by diaPopsNetConfig.
@@ -117,7 +147,7 @@ struct UIItem diaNetConfig[] = {
 
     {UI_LABEL, NETCFG_LBL_SHARE_ADDRESS, 1, 1, -1, -40, 0, {.label = {NULL, _STR_ADDRESS}}},
     {UI_SPACER},
-    {UI_STRING, NETCFG_SHARE_NB_ADDR, 1, 0, _STR_HINT_SMB_ADDRESS, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, NETCFG_SHARE_NB_ADDR, 1, 0, _STR_HINT_SMB_ADDRESS, 0, 0, DIA_STRING(diaStr_NETCFG_SHARE_NB_ADDR, NULL)},
     {UI_INT, NETCFG_SHARE_IP_ADDR_0, 1, 1, _STR_HINT_SMB_ADDRESS, 0, 0, {.intvalue = {192, 192, 0, 255}}},
     {UI_LABEL, NETCFG_SHARE_IP_ADDR_DOT_0, 1, 1, -1, 0, 0, {.label = {".", -1}}},
     {UI_INT, NETCFG_SHARE_IP_ADDR_1, 1, 1, _STR_HINT_SMB_ADDRESS, 0, 0, {.intvalue = {168, 168, 0, 255}}},
@@ -135,17 +165,17 @@ struct UIItem diaNetConfig[] = {
     //  ---- SMB share name ----
     {UI_LABEL, NETCFG_LBL_SHARE_NAME, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SHARE}}},
     {UI_SPACER},
-    {UI_STRING, NETCFG_SHARE_NAME, 1, 1, _STR_HINT_SHARENAME, 0, 0, {.stringvalue = {"PS2SMB", "PS2SMB", NULL}}},
+    {UI_STRING, NETCFG_SHARE_NAME, 1, 1, _STR_HINT_SHARENAME, 0, 0, DIA_STRING(diaStr_NETCFG_SHARE_NAME, NULL)},
     {UI_BREAK},
 
     {UI_LABEL, NETCFG_LBL_SHARE_USER, 1, 1, -1, -40, 0, {.label = {NULL, _STR_USER}}},
     {UI_SPACER},
-    {UI_STRING, NETCFG_SHARE_USERNAME, 1, 1, _STR_HINT_SMB_USER, 0, 0, {.stringvalue = {"GUEST", "GUEST", NULL}}},
+    {UI_STRING, NETCFG_SHARE_USERNAME, 1, 1, _STR_HINT_SMB_USER, 0, 0, DIA_STRING(diaStr_NETCFG_SHARE_USERNAME, NULL)},
     {UI_BREAK},
 
     {UI_LABEL, NETCFG_LBL_SHARE_PASSWORD, 1, 1, -1, -40, 0, {.label = {NULL, _STR_PASSWORD}}},
     {UI_SPACER},
-    {UI_PASSWORD, NETCFG_SHARE_PASSWORD, 1, 1, _STR_HINT_GUEST, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_PASSWORD, NETCFG_SHARE_PASSWORD, 1, 1, _STR_HINT_GUEST, 0, 0, DIA_STRING(diaStr_NETCFG_SHARE_PASSWORD, NULL)},
     {UI_BREAK},
 
     //  ---- HTTP endpoint. Its own fields, never SMB's: pointing HTTP at another box must not
@@ -171,7 +201,7 @@ struct UIItem diaNetConfig[] = {
 
     {UI_LABEL, NETCFG_LBL_HTTP_BASE, 1, 1, -1, -40, 0, {.label = {NULL, _STR_HTTP_BASE_PATH}}},
     {UI_SPACER},
-    {UI_STRING, NETCFG_HTTP_BASE, 1, 1, _STR_HINT_HTTP_BASE, 0, 0, {.stringvalue = {"/", "/", NULL}}},
+    {UI_STRING, NETCFG_HTTP_BASE, 1, 1, _STR_HINT_HTTP_BASE, 0, 0, DIA_STRING(diaStr_NETCFG_HTTP_BASE, NULL)},
     {UI_BREAK},
 
     {UI_LABEL, NETCFG_LBL_HTTP_TEST, 1, 1, -1, -40, 0, {.label = {NULL, _STR_HTTP_TEST}}},
@@ -363,17 +393,17 @@ struct UIItem diaPopsNetConfig[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SHARE}}},
     {UI_SPACER},
-    {UI_STRING, NETCFG_POPS_SMB_SHARE, 1, 1, _STR_HINT_POPS_SMB_SHARE, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, NETCFG_POPS_SMB_SHARE, 1, 1, _STR_HINT_POPS_SMB_SHARE, 0, 0, DIA_STRING(diaStr_NETCFG_POPS_SMB_SHARE, NULL)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_USER}}},
     {UI_SPACER},
-    {UI_STRING, NETCFG_POPS_SMB_USER, 1, 1, _STR_HINT_GUEST, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, NETCFG_POPS_SMB_USER, 1, 1, _STR_HINT_GUEST, 0, 0, DIA_STRING(diaStr_NETCFG_POPS_SMB_USER, NULL)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_PASSWORD}}},
     {UI_SPACER},
-    {UI_PASSWORD, NETCFG_POPS_SMB_PASS, 1, 1, _STR_HINT_GUEST, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_PASSWORD, NETCFG_POPS_SMB_PASS, 1, 1, _STR_HINT_GUEST, 0, 0, DIA_STRING(diaStr_NETCFG_POPS_SMB_PASS, NULL)},
     {UI_BREAK},
 
     // buttons
@@ -405,12 +435,12 @@ struct UIItem diaConfig[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_EXITTO}}},
     {UI_SPACER},
-    {UI_STRING, CFG_EXITTO, 1, 1, _STR_HINT_EXITPATH, 0, 0, {.stringvalue = {"", "", &guiExitPathHandler}}},
+    {UI_STRING, CFG_EXITTO, 1, 1, _STR_HINT_EXITPATH, 0, 0, DIA_STRING(diaStr_CFG_EXITTO, &guiExitPathHandler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_CUSTOM_SETTINGS_PATH}}},
     {UI_SPACER},
-    {UI_STRING, CFG_CUSTOMCFGPATH, 1, 1, _STR_HINT_CUSTOM_SETTINGS_PATH, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, CFG_CUSTOMCFGPATH, 1, 1, _STR_HINT_CUSTOM_SETTINGS_PATH, 0, 0, DIA_STRING(diaStr_CFG_CUSTOMCFGPATH, NULL)},
     {UI_BREAK},
 
     // buttons
@@ -543,7 +573,7 @@ struct UIItem diaVcdConfig[] = {
 
     {UI_LABEL, CFG_LBL_POPSTARTER_PATH, 1, 1, -1, -40, 0, {.label = {NULL, _STR_POPSTARTER_PATH}}},
     {UI_SPACER},
-    {UI_STRING, CFG_POPSTARTER_PATH, 1, 1, _STR_HINT_POPSTARTER_PATH, 0, 0, {.stringvalue = {"", "", &guiPopstarterPathHandler}}},
+    {UI_STRING, CFG_POPSTARTER_PATH, 1, 1, _STR_HINT_POPSTARTER_PATH, 0, 0, DIA_STRING(diaStr_CFG_POPSTARTER_PATH, &guiPopstarterPathHandler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_POPSTARTER_RETROGEM_GAMEID}}},
@@ -828,7 +858,7 @@ struct UIItem diaMmcePathConfig[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_MMCE_PREFIX}}},
     {UI_SPACER},
-    {UI_STRING, CFG_MMCEPREFIX, 1, 1, _STR_HINT_MMCE_PREFIX, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, CFG_MMCEPREFIX, 1, 1, _STR_HINT_MMCE_PREFIX, 0, 0, DIA_STRING(diaStr_CFG_MMCEPREFIX, NULL)},
     {UI_BREAK},
 
     // buttons
@@ -1146,7 +1176,7 @@ struct UIItem diaNeutrinoDefaults[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NEUTRINO_PATH}}},
     {UI_SPACER},
-    {UI_STRING, CFG_NEUTRINO_PATH, 1, 1, _STR_HINT_NEUTRINO_PATH, 0, 0, {.stringvalue = {"", "", &guiNeutrinoPathHandler}}},
+    {UI_STRING, CFG_NEUTRINO_PATH, 1, 1, _STR_HINT_NEUTRINO_PATH, 0, 0, DIA_STRING(diaStr_CFG_NEUTRINO_PATH, &guiNeutrinoPathHandler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NEUTRINO_VIDEO}}},
@@ -1197,7 +1227,7 @@ struct UIItem diaSecurityConfig[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_PARENLOCK_PASSWORD}}},
     {UI_SPACER},
-    {UI_PASSWORD, CFG_PARENLOCK_PASSWORD, 1, 1, _STR_PARENLOCK_PASSWORD_HINT, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_PASSWORD, CFG_PARENLOCK_PASSWORD, 1, 1, _STR_PARENLOCK_PASSWORD_HINT, 0, 0, DIA_STRING(diaStr_CFG_PARENLOCK_PASSWORD, NULL)},
     {UI_BREAK},
 
     // buttons
@@ -1222,11 +1252,11 @@ struct UIItem diaAdvancedConfig[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_BDM_PREFIX}}},
     {UI_SPACER},
-    {UI_STRING, CFG_BDMPREFIX, 1, 1, _STR_HINT_BDMPREFIX, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, CFG_BDMPREFIX, 1, 1, _STR_HINT_BDMPREFIX, 0, 0, DIA_STRING(diaStr_CFG_BDMPREFIX, NULL)},
     {UI_BREAK},
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_ETH_PREFIX}}},
     {UI_SPACER},
-    {UI_STRING, CFG_ETHPREFIX, 1, 1, _STR_HINT_ETHPREFIX, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, CFG_ETHPREFIX, 1, 1, _STR_HINT_ETHPREFIX, 0, 0, DIA_STRING(diaStr_CFG_ETHPREFIX, NULL)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_ADV_HDD_SPINDOWN}}},
@@ -1281,19 +1311,19 @@ struct UIItem diaCompatConfig[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -30, 0, {.label = {NULL, _STR_DNAS_ID}}},
     {UI_SPACER},
-    {UI_STRING, COMPAT_GAMEID, 1, 1, _STR_HINT_DNAS_GAMEID, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, COMPAT_GAMEID, 1, 1, _STR_HINT_DNAS_GAMEID, 0, 0, DIA_STRING(diaStr_COMPAT_GAMEID, NULL)},
     {UI_SPACER},
     {UI_BUTTON, COMPAT_LOADFROMDISC, 1, 1, _STR_HINT_LOAD_FROM_DISC, 0, 0, {.label = {NULL, _STR_LOAD_FROM_DISC}}},
     {UI_SPLITTER},
 
     {UI_LABEL, 0, 1, 1, -1, -30, 0, {.label = {NULL, _STR_CONSOLE_ILINK_ID}}},
     {UI_SPACER},
-    {UI_STRING, COMPAT_ILINK_ID, 1, 1, _STR_HINT_CONSOLE_ILINK_ID, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, COMPAT_ILINK_ID, 1, 1, _STR_HINT_CONSOLE_ILINK_ID, 0, 0, DIA_STRING(diaStr_COMPAT_ILINK_ID, NULL)},
     {UI_SPLITTER},
 
     {UI_LABEL, 0, 1, 1, -1, -30, 0, {.label = {NULL, _STR_ALTSTARTUP}}},
     {UI_SPACER},
-    {UI_STRING, COMPAT_ALTSTARTUP, 1, 1, _STR_HINT_ALTSTARTUP, 0, 0, {.stringvalue = {"", "", &guiGameAltStartupNameHandler}}},
+    {UI_STRING, COMPAT_ALTSTARTUP, 1, 1, _STR_HINT_ALTSTARTUP, 0, 0, DIA_STRING(diaStr_COMPAT_ALTSTARTUP, &guiGameAltStartupNameHandler)},
     {UI_SPLITTER},
     {UI_LABEL, 0, 1, 1, -1, -30, 0, {.label = {NULL, _STR_PARENLOCK_GAME}}},
     {UI_SPACER},
@@ -1403,7 +1433,7 @@ struct UIItem diaVMC[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -20, 0, {.label = {NULL, _STR_VMC_NAME}}},
     {UI_SPACER},
-    {UI_STRING, VMC_NAME, 1, 1, _STR_HINT_VMC_NAME, 0, 0, {.stringvalue = {"", "", &guiGameVmcNameHandler}}},
+    {UI_STRING, VMC_NAME, 1, 1, _STR_HINT_VMC_NAME, 0, 0, DIA_STRING(diaStr_VMC_NAME, &guiGameVmcNameHandler)},
     {UI_BREAK},
 
     // Who shares the card, from its name: the game's series, the game alone, or every generic user.
@@ -2119,7 +2149,7 @@ struct UIItem diaAudioConfig[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_DEF_BGM_PATH}}},
     {UI_SPACER},
-    {UI_STRING, CFG_DEFAULT_BGM_PATH, 1, 1, _STR_DEF_BGM_PATH_HINT, 0, 0, {.stringvalue = {"", "", NULL}}},
+    {UI_STRING, CFG_DEFAULT_BGM_PATH, 1, 1, _STR_DEF_BGM_PATH_HINT, 0, 0, DIA_STRING(diaStr_CFG_DEFAULT_BGM_PATH, NULL)},
     {UI_BREAK},
 
     // buttons
@@ -2227,37 +2257,37 @@ struct UIItem diaNeutrinoArgs[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NARGS_CWD}}},
     {UI_SPACER},
-    {UI_STRING, NARGS_CWD, 1, 1, _STR_HINT_NARGS_CWD, 0, 0, {.stringvalue = {"", "", &guiNeutrinoArgsCwdHandler}}},
+    {UI_STRING, NARGS_CWD, 1, 1, _STR_HINT_NARGS_CWD, 0, 0, DIA_STRING(diaStr_NARGS_CWD, &guiNeutrinoArgsCwdHandler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NARGS_CFG}}},
     {UI_SPACER},
-    {UI_STRING, NARGS_CFG, 1, 1, _STR_HINT_NARGS_CFG, 0, 0, {.stringvalue = {"", "", &guiNeutrinoArgsCfgHandler}}},
+    {UI_STRING, NARGS_CFG, 1, 1, _STR_HINT_NARGS_CFG, 0, 0, DIA_STRING(diaStr_NARGS_CFG, &guiNeutrinoArgsCfgHandler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NARGS_ELF}}},
     {UI_SPACER},
-    {UI_STRING, NARGS_ELF, 1, 1, _STR_HINT_NARGS_ELF, 0, 0, {.stringvalue = {"", "", &guiNeutrinoArgsElfHandler}}},
+    {UI_STRING, NARGS_ELF, 1, 1, _STR_HINT_NARGS_ELF, 0, 0, DIA_STRING(diaStr_NARGS_ELF, &guiNeutrinoArgsElfHandler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NARGS_ATA0}}},
     {UI_SPACER},
-    {UI_STRING, NARGS_ATA0, 1, 1, _STR_HINT_NARGS_ATA0, 0, 0, {.stringvalue = {"", "", &guiNeutrinoArgsAta0Handler}}},
+    {UI_STRING, NARGS_ATA0, 1, 1, _STR_HINT_NARGS_ATA0, 0, 0, DIA_STRING(diaStr_NARGS_ATA0, &guiNeutrinoArgsAta0Handler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NARGS_ATA0ID}}},
     {UI_SPACER},
-    {UI_STRING, NARGS_ATA0ID, 1, 1, _STR_HINT_NARGS_ATA0ID, 0, 0, {.stringvalue = {"", "", &guiNeutrinoArgsAta0idHandler}}},
+    {UI_STRING, NARGS_ATA0ID, 1, 1, _STR_HINT_NARGS_ATA0ID, 0, 0, DIA_STRING(diaStr_NARGS_ATA0ID, &guiNeutrinoArgsAta0idHandler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NARGS_ATA1}}},
     {UI_SPACER},
-    {UI_STRING, NARGS_ATA1, 1, 1, _STR_HINT_NARGS_ATA1, 0, 0, {.stringvalue = {"", "", &guiNeutrinoArgsAta1Handler}}},
+    {UI_STRING, NARGS_ATA1, 1, 1, _STR_HINT_NARGS_ATA1, 0, 0, DIA_STRING(diaStr_NARGS_ATA1, &guiNeutrinoArgsAta1Handler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NARGS_EXTRA}}},
     {UI_SPACER},
-    {UI_STRING, NARGS_EXTRA, 1, 1, _STR_HINT_NARGS_EXTRA, 0, 0, {.stringvalue = {"", "", &guiNeutrinoArgsExtraHandler}}},
+    {UI_STRING, NARGS_EXTRA, 1, 1, _STR_HINT_NARGS_EXTRA, 0, 0, DIA_STRING(diaStr_NARGS_EXTRA, &guiNeutrinoArgsExtraHandler)},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NARGS_AUTO_NOTE}}},

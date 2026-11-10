@@ -194,6 +194,7 @@ CHANGES_HARNESS = r'''
 
 static int fails;
 static struct UIItem ui[5];
+static struct UIString store;
 static void reset(void)
 {
     memset(ui, 0, sizeof(ui));
@@ -203,6 +204,8 @@ static void reset(void)
     ui[2].type = UI_ENUM;
     ui[2].intvalue.def = ui[2].intvalue.current = 3;
     ui[3].type = UI_STRING;
+    ui[3].stringvalue.def = store.def;
+    ui[3].stringvalue.text = store.text;
     strcpy(ui[3].stringvalue.def, "mass:/");
     strcpy(ui[3].stringvalue.text, "mass:/");
     ui[4].type = UI_TERMINATOR;
@@ -248,7 +251,9 @@ has_changes = function_text(read('src/ui/diaitems.cpp'), 'src/ui/diaitems.cpp', 
 if item_enum is None or item_struct is None:
     failures.append('include/dia.h: UIItemType / struct UIItem not found')
 elif has_changes:
-    types = 'typedef unsigned long long u64;\n' + item_enum.group(0) + '\n' + item_struct.group(0)
+    string_store = re.search(r'^#define UI_STRING_SIZE \d+\nstruct UIString\s*\{.*?^\};', dia_h, re.M | re.S)
+    types = ('typedef unsigned long long u64;\n' + item_enum.group(0) + '\n' +
+             (string_store.group(0) if string_store else '') + '\n' + item_struct.group(0))
     compile_and_run('dia_has_changes', CHANGES_HARNESS.replace('@TYPES@', types).replace('@FUNCTIONS@', has_changes))
 
 # --- Exit without saving: restore the source state captured at Settings entry --------------------
