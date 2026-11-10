@@ -1291,9 +1291,11 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
             }
 
             // see what key events we have
-            if (diaPeek && getKeyOn(guiConfirmKey())) {
-                diaPeek = 0; // after a peek the first confirm brings the cursor's row back into view
-            } else if (getKeyOn(guiConfirmKey())) {
+            // A confirm always acts on the cursor's row and ends a peek, bringing that row back into view. A right
+            // stick resting past the 24 dead zone re-enters peek on every frame, before this check; when the first
+            // confirm after a peek only ended it, no press ever reached a row on a page long enough to scroll.
+            if (getKeyOn(guiConfirmKey())) {
+                diaPeek = 0;
                 haveFocus = 1;
                 sfxPlay(SFX_CONFIRM);
 

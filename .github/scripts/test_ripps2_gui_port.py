@@ -140,7 +140,10 @@ def check_wiring(dia, pad):
     assert 'diaReturnRemember(ui, cur->id);' in exe[i:i + 200], 'a button remembers itself'
     assert '(sy > 24 || sy < -24) && diaScrollRange > 0' in exe and 'diaScrollRange = maxScroll;' in ui, 'a page that fits never enters peek'
     assert 'padGetRightStick(&sx, &sy);' in exe and 'diaPeek = 0; // the view follows the cursor again' in exe, 'peek input'
-    assert 'if (diaPeek && getKeyOn(guiConfirmKey()))' in exe, 'the first confirm after a peek only brings the row back'
+    assert 'if (diaPeek && getKeyOn(guiConfirmKey()))' not in exe, 'a confirm mid-peek is never swallowed'
+    i = exe.index('if (getKeyOn(guiConfirmKey())) {')
+    assert exe[i:i + 120].split('{', 1)[1].lstrip().startswith('diaPeek = 0;\n                haveFocus = 1;'), \
+        'a confirm ends the peek and acts on the row'
     assert 'pad->readOk = ret != 0;' in pad, 'a failed read is never a fresh stick'
     assert "(pad->buttons.mode >> 4) != 0x07 || !pad->readOk" in pad, 'analog mode, fresh sample only'
     print('wiring ok')
