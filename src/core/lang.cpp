@@ -22,6 +22,7 @@ static int nValidEntries = LANG_STR_COUNT;
 // nValidEntries must describe the table that is published. lngSetGuiValue holds this lock from before that read until
 // the id is committed. Lock order: language switch, theme switch, GUI lock. lngInit creates it before the IO thread.
 static int lngSwitchSema = -1;
+static int lngPickHeld; // lngHoldPick; read and set under lngSwitchSema
 
 static int nLanguages = 0;
 static int languageCapacity = 0;
@@ -397,7 +398,7 @@ static void lngPublishLanguages(int mode)
 
     const char *saved;
     if (configGetStr(configGetByType(CONFIG_OPL), "language_text", &saved)) {
-        if (lngSetGuiValue(lngFindGuiID(saved)))
+        if (lngSetGuiValue(lngFindGuiID(saved), 1))
             host::app().moduleUpdateMenu(mode, 0, 1);
     }
 }
@@ -471,9 +472,17 @@ void lngEnd(void)
     languageCapacity = nLanguages = 0;
 }
 
-int lngSetGuiValue(int langID)
+void lngHoldPick(void)
 {
     raii::SemaLock lock(lngSwitchSema);
+    lngPickHeld = 1;
+}
+
+int lngSetGuiValue(int langID, int fromDevice)
+{
+    raii::SemaLock lock(lngSwitchSema);
+    if (fromDevice && lngPickHeld)
+        return 0; // keep the user's pick, and the strings the Settings rows point into
     if (langID >= 0 && langID <= nLanguages) {
         if (guiLangID != langID) {
             bgmMute();
