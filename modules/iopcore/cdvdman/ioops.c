@@ -89,7 +89,7 @@ int cdvdman_fs_init(void)
 
     DPRINTF("cdvdman_fs_init\n");
 
-    DeviceFSInit();
+    cdvdman_mount_device();
 
     if (DeviceReady() != SCECdComplete) {
         cdvdman_stat.err = SCECdErREAD;
