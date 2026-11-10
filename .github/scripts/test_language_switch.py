@@ -9,6 +9,8 @@ root = Path(__file__).resolve().parents[2]
 source = (root / 'src/core/lang.cpp').read_text(encoding='utf-8')
 start = source.index('int lngSetGuiValue(int langID, int fromDevice)\n{')
 function = source[start:source.index('\n}', start) + 2]
+hold_start = source.index('void lngHoldPick(void)\n{')
+hold = source[hold_start:source.index('\n}', hold_start) + 2]
 sema = (root / 'include/sema_lock.h').read_text(encoding='utf-8')
 sema_lock = sema[sema.index('namespace raii'):sema.index('} // namespace raii') + len('} // namespace raii')]
 harness = r'''
@@ -50,7 +52,7 @@ int thmReload(void) { assert(switchDepth == 1 && guiLockDepth == 0); themes++; r
 void fntLoadDefault(void *path) {}
 int lngSetGuiValue(int langID, int fromDevice = 0); /* as include/lang.h */
 '''
-harness += function + r'''
+harness += hold + function + r'''
 int main(void) {
     assert(lngSetGuiValue(0) == 0);
     assert(lngSetGuiValue(1) == 1 && guiLangID == 1);
@@ -64,7 +66,8 @@ int main(void) {
     /* A device publishing the saved language switches until the Language page picks; after that it is
        refused, so the picked table is never freed under an open Settings page. */
     assert(lngSetGuiValue(1, 1) == 1 && guiLangID == 1);
-    lngPickHeld = 1;
+    lngHoldPick();
+    assert(lngPickHeld == 1 && switchDepth == 0);
     assert(lngSetGuiValue(0, 1) == 0 && guiLangID == 1 && lang_strs == foreign);
     assert(lngSetGuiValue(0) == 1 && guiLangID == 0);
     assert(switchDepth == 0 && guiLockDepth == 0);
