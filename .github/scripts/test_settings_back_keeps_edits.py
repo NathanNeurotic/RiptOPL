@@ -175,8 +175,59 @@ if net:
         if pending not in net:
             failures.append('guiShowNetConfig: the apply guard must also check %s' % pending)
     # The HTTP base row shows only 31 characters of a 64-byte path: an unchanged preview keeps it whole.
-    if net.count('netConfigHttpBase(') != 2 or 'strncmp(row, gHttpBasePath, UI_STRING_SIZE - 1) != 0' not in gui_c:
-        failures.append('guiShowNetConfig: apply and HTTP Test must both keep an unchanged long HTTP base path whole')
+    if net.count('netConfigHttpBase(') != 2:
+        failures.append('guiShowNetConfig: apply and HTTP Test must both read the HTTP base through netConfigHttpBase')
+
+# Run netConfigHttpBase: an unchanged preview of a long saved path keeps it whole (Test and apply), an
+# edited row or a short path takes the row.
+HTTP_BASE_HARNESS = r'''
+#include <stdio.h>
+#include <string.h>
+#define UI_STRING_SIZE 32
+#define HTTP_BASE_PATH_MAX 64
+#define NETCFG_HTTP_BASE 1
+static int *diaNetConfig;
+static char gHttpBasePath[HTTP_BASE_PATH_MAX], rowText[UI_STRING_SIZE];
+static int diaGetString(int *ui, int id, char *value, int length)
+{
+    (void)ui; (void)id;
+    snprintf(value, length, "%s", rowText);
+    return 1;
+}
+@NORMALIZE@
+@HELPER@
+static int fails;
+static void check(const char *saved, const char *row, const char *want)
+{
+    char test[HTTP_BASE_PATH_MAX];
+    snprintf(gHttpBasePath, sizeof(gHttpBasePath), "%s", saved);
+    snprintf(rowText, sizeof(rowText), "%s", row);
+    netConfigHttpBase(test);
+    netConfigHttpBase(gHttpBasePath);
+    if (strcmp(test, want) || strcmp(gHttpBasePath, want)) {
+        printf("FAIL netConfigHttpBase saved=%s row=%s: test=%s apply=%s want=%s\n", saved, row, test, gHttpBasePath, want);
+        fails++;
+    }
+}
+int main(void)
+{
+    const char *longPath = "/games/ps2/collection/disc-images/usa";
+    char preview[UI_STRING_SIZE];
+    memcpy(preview, longPath, UI_STRING_SIZE - 1); // what the row keeps of it
+    preview[UI_STRING_SIZE - 1] = '\0';
+    check(longPath, preview, longPath);           // untouched long path stays whole
+    check(longPath, "/other", "/other");          // an edit applies
+    check("/short", "/short", "/short");          // a short path round-trips
+    check("/short", "edited/", "/edited");        // and an edit is normalised
+    if (!fails)
+        printf("settings back: an unchanged long HTTP base path stays whole for Test and apply\n");
+    return fails != 0;
+}
+'''
+normalize = function_text(read('src/sources/httpsupport.cpp'), 'src/sources/httpsupport.cpp', 'void httpNormalizeBasePath(')
+helper = function_text(gui_c, 'src/ui/guisettings.cpp', 'static void netConfigHttpBase(')
+if normalize and helper:
+    compile_and_run('http_base', HTTP_BASE_HARNESS.replace('@NORMALIZE@', normalize).replace('@HELPER@', helper))
 audio = function_text(gui_c, 'src/ui/gui.cpp', 'static int guiShowAudioConfig(')
 if audio and 'gSettingsShell.pageResult(result)' not in audio:
     failures.append('guiShowAudioConfig: must return through gSettingsShell.pageResult(result)')
