@@ -256,10 +256,11 @@ for row in rows:
 
 # A text row holds pointers to its storage (struct UIString): a UI_STRING / UI_PASSWORD row without
 # DIA_STRING would leave them NULL, and the first draw or edit would dereference NULL.
-for row in re.findall(r'\{UI_(?:STRING|PASSWORD), [^\n]*', dialogs):
-    if not re.search(r'DIA_STRING\(diaStr_(\w+), [^)]*\)\}', row) or \
-            'static struct UIString diaStr_%s ' % re.search(r'DIA_STRING\(diaStr_(\w+)', row).group(1) not in dialogs:
-        failures.append('dialogs.cpp: a text row must use DIA_STRING with its own struct UIString: ' + row.strip())
+# Each row runs from its {UI_STRING / {UI_PASSWORD to the next row's {UI_, so a row split over lines is scanned whole.
+for row in re.findall(r'\{UI_(?:STRING|PASSWORD)\s*,[\s\S]*?(?=\{UI_|\Z)', dialogs):
+    store = re.search(r'DIA_STRING\(\s*diaStr_(\w+)\s*,[^)]*\)\s*\}', row)
+    if not store or 'static struct UIString diaStr_%s ' % store.group(1) not in dialogs:
+        failures.append('dialogs.cpp: a text row must use DIA_STRING with its own struct UIString: ' + ' '.join(row.split()))
 stores = re.findall(r'DIA_STRING\(diaStr_(\w+),', dialogs)
 if len(stores) != len(set(stores)):
     failures.append('dialogs.cpp: two text rows share one struct UIString')
