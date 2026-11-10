@@ -392,7 +392,8 @@ The old Alpha USB `mass:/POPS/` runtime configuration is no longer used.
 and patches in `POPS/<VCD name>/`, so each disc of a multi-disc game gets its own memory cards.
 The driver can send those paths to another folder on the server; POPSTARTER does not notice, and
 the VCDs themselves stay where they are, so RiptOPL's game list is unchanged. The options live in
-`mc0:/POPSTARTER/PATHMAP.INI` (or `mc1:`; at most 512 bytes), `KEY=1` lines. Set them on the
+`mc0:/POPSTARTER/PATHMAP.INI`, at most 512 bytes, `KEY=1` lines. `mc1:/POPSTARTER/PATHMAP.INI` is
+read only when mc0 has no such file: an mc0 file with every option off still hides mc1's. Set them on the
 **POPS UDPFS Network Settings** page, under `mc?:/POPSTARTER/PATHMAP.INI`, or write the file yourself:
 
 | Key | Effect |
@@ -405,16 +406,19 @@ All three are off without the file, which is POPSTARTER's own behaviour. The pag
 driver reads (mc0's, else mc1's, else a new one in the existing POPSTARTER folder) on **OK**, and
 only when a switch changed: it rewrites the three keys' lines and keeps every other line as it was.
 A file over 512 bytes, which the driver ignores, shows as all off and is never rewritten. Upstream's example is in `POPS/UDPFS-NOTICES/PATHMAP.INI` and its full rules are in
-`POPS/UDPFS-NOTICES/README_CONFIG.txt`. Turning an option on moves a game to a new folder: copy
+`POPS/UDPFS-NOTICES/README_CONFIG.txt`. The folder is chosen once, by the first VCD opened: changing discs during a game keeps that
+folder, so with `GAMEID_DIR` alone each disc has its own folder only when the game is started from
+that disc. Turning an option on moves a game to a new folder: copy
 its old `SLOT0.VMC`/`SLOT1.VMC` across or it starts with empty cards. Ready-made `DISCS_DIR.TXT`
 lists are in [Okeanos's popstarter-dir-lists](https://github.com/Okeanos86/popstarter-dir-lists).
 These options work only with this UDPFS driver: the USB, MX4SIO, MMCE, iLink and HDD BDMA
 drivers do not read `PATHMAP.INI`.
 
 **CHD games.** The driver does not read `.chd`. A server that shows a CHD as a virtual `.cue` +
-`.bin` pair ([PS2-Servers](https://github.com/NathanNeurotic/PS2-Servers) with CHD support
-enabled does) makes the game appear in the list and launch as a BIN/CUE game above, with the
-same track limits.
+`.bin` pair makes the game appear in the list and launch as a BIN/CUE game above, with the same
+track limits. [PS2-Servers](https://github.com/NathanNeurotic/PS2-Servers) does this from build
+`main-305-462db2c` (PS2-Servers #288) with CHD support (libchdr) available; no numbered release has
+it yet, and v0.9.1 and older show a CHD only as `.iso`, which the POPS list does not show.
 
 **POPS UDPFS Network Settings** edits these effective MC files with explicit
 replacement confirmation. The screen shows their MC locations. Each MC0 file
