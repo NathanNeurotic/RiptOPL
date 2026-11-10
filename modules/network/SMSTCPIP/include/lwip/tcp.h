@@ -144,6 +144,16 @@ void tcp_rexmit(struct tcp_pcb *pcb);
                                    milliseconds */
 #endif                                           /* TCP_SLOW_INTERVAL */
 
+/* Retransmission timeout for the first SYN of an active open, in slow-timer
+   ticks (1000 / 320 = 3 ticks, about 1 s, as RFC 6298 recommends). The stack
+   is built with ARP_QUEUEING 0, so after every IOP reset the first SYN is
+   dropped while ARP resolves the server. Only that first retry uses this value:
+   later SYN retries and everything after the connection opens go back to
+   (sa >> 3) + sv, which still starts at 3 s. */
+#ifndef TCP_SYN_RTO_FIRST
+#define TCP_SYN_RTO_FIRST (1000 / TCP_SLOW_INTERVAL)
+#endif /* TCP_SYN_RTO_FIRST */
+
 #define TCP_FIN_WAIT_TIMEOUT 20000 /* milliseconds */
 #define TCP_SYN_RCVD_TIMEOUT 20000 /* milliseconds */
 
