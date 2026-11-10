@@ -190,7 +190,8 @@ namespace alongside any USB/MX4SIO devices.</p>
 <code>DVD/</code> or <code>CD/</code> folder, just like a USB drive.</li>
 <li><b>MBR up to 2 TB; GPT can address larger disks</b> — if your drive is larger than 2 TB, GPT breaks the APA ceiling.</li>
 <li><b>PS1 VCDs on the same drive</b> — put <code>*.VCD</code> files in the <code>POPS/</code> folder and they list
-under L3 PS1 view exactly like a USB drive (with the BDMA equip for POPSTARTER — see below).</li>
+under L3 PS1 view exactly like a USB drive (with the BDMA equip for POPSTARTER — see below). Ember games in
+<code>EMBER/games/&lt;Game Name&gt;/</code> list the same way and need no BDMA equip.</li>
 </ul>
 
 <h3 id="exfat-format">Formatting and partition table</h3>
@@ -235,6 +236,7 @@ to a USB drive.</p></div>
 <tr><td><code>DVD/</code></td><td>PS2 DVD-format game ISOs / ZSOs</td></tr>
 <tr><td><code>CD/</code></td><td>PS2 CD-format game ISOs / ZSOs</td></tr>
 <tr><td><code>POPS/</code></td><td>PS1 <code>*.VCD</code> files + <code>POPSTARTER.ELF</code></td></tr>
+<tr><td><code>EMBER/</code></td><td>Ember PS1 core: <code>ember.elf</code>, your <code>bios.bin</code>, <code>settings.txt</code> and <code>games/&lt;Game Name&gt;/</code> folders (see <a href="ps1-vcd.html#ember-layout">Ember layout</a>)</td></tr>
 <tr><td><code>ART/</code></td><td>Cover art images</td></tr>
 <tr><td><code>CFG/</code></td><td>Per-game config files</td></tr>
 <tr><td><code>VMC/</code></td><td>Virtual memory card images</td></tr>
@@ -397,7 +399,7 @@ HDD and network boot at the same time.</li>
 <li><strong>Fragmentation still matters:</strong> native OPL shares a bounded 64-entry fragment table across image parts. Neutrino's BDM mapping budget includes the ISO and VMCs together. Copy files sequentially with adequate free space; a fresh copy can help, but deleting and recopying is not guaranteed to make a file contiguous.</li>
 <li><strong>VMCs have additional write constraints:</strong> native OPL's FAT32/exFAT VMC backing must be contiguous. Neutrino supports multiple extents within its shared budget. Back up cards containing saves before attempting repairs. See <a href="vmc.html">VMC creation and recovery</a>.</li>
 <li><strong>Booting and loading games are different:</strong> support for an exFAT game disk does not make that disk a FreeHDBoot/APA boot installation. Launch RiptOPL using an available boot method, then use its BDM list.</li>
-<li><strong>PS1 uses a separate runtime:</strong> place VCDs in <code>POPS/</code> and use the matching BDMA exFAT setup for POPSTARTER. PS2 exFAT support alone does not install that runtime. See <a href="ps1-vcd.html">VCD setup</a>.</li>
+<li><strong>PS1 uses a separate runtime:</strong> place VCDs in <code>POPS/</code> and use the matching BDMA exFAT setup for POPSTARTER. PS2 exFAT support alone does not install that runtime. Ember games go in <code>EMBER/games/&lt;Game Name&gt;/</code> at the volume root, with <code>EMBER/ember.elf</code> and your <code>EMBER/bios.bin</code>; Ember needs no BDMA setup. See <a href="ps1-vcd.html">VCD setup</a>.</li>
 </ul>
 <h2 id="guide-apa-jail-apapfs-and-exfat-on-the-same-disk">APA-Jail: APA/PFS and exFAT on the same disk</h2>
 <p><strong>APA-Jail is a hybrid layout, not another filesystem or an option you enable in RiptOPL.</strong> It lets APA/PFS storage for PSBBN/system data coexist with an exFAT area for game files and homebrew. The <a href="https://github.com/CosmicScale/PSBBN-Definitive-Project">PSBBN Definitive Project</a> uses APA-Jail, developed by <a href="https://www.psx-place.com/members/berion.1431">Berion</a>. Use that project's installation tools and instructions to create or maintain its layout; ordinary PC repartitioning can destroy the APA side.</p>
@@ -435,7 +437,7 @@ HDD and network boot at the same time.</li>
 </table>
 <p>The last row is an <strong>APA-driver limitation, not a ban on GPT</strong>. The current APA build uses the traditional APA journal/error-sector layout; a GPT-aware APA build needs a different layout. Its APA stack is skipped on GPT media, leaving BDM's GPT driver enabled. Do not remove that separation merely to force the APA page to open a GPT disk.</p>
 <h3 id="guide-games-and-settings-on-apa-jail">Games and settings on APA-Jail</h3>
-<p>Games stored as files on the exFAT side belong in its <code>DVD/</code>, <code>CD/</code> and <code>POPS/</code> folders and appear through <strong>BDM → Internal HDD (exFAT)</strong>. The <strong>HDD (APA)</strong> list is for HDLoader game partitions; it does not list those exFAT files. RiptOPL may itself be launched from the APA side without moving the game files there.</p>
+<p>Games stored as files on the exFAT side belong in its <code>DVD/</code>, <code>CD/</code>, <code>POPS/</code> and <code>EMBER/</code> folders and appear through <strong>BDM → Internal HDD (exFAT)</strong>. The <strong>HDD (APA)</strong> list is for HDLoader game partitions; it does not list those exFAT files. RiptOPL may itself be launched from the APA side without moving the game files there.</p>
 <p>For an APA launch on a recognized hybrid, RiptOPL normally adopts the mounted exFAT volume as its settings home:</p>
 <ul>
 <li>Existing RiptOPL settings on exFAT are preferred first.</li>
@@ -452,7 +454,7 @@ HDD and network boot at the same time.</li>
 <ol>
 <li>Verify you are viewing the <strong>BDM HDD (exFAT)</strong> source, rather than the APA HDD source. Both use an HDD icon.</li>
 <li>Check BDM start mode, the internal-HDD transport toggle, and <strong>BDM Prefix Path</strong>. An old configuration can point at a subfolder even when your files are at the root.</li>
-<li>Check the actual <code>DVD/</code> and <code>CD/</code> contents, image names/extensions, and the selected PS2/PS1 view. A VCD in <code>POPS/</code> belongs in the PS1 view.</li>
+<li>Check the actual <code>DVD/</code> and <code>CD/</code> contents, image names/extensions, and the selected PS2/PS1 view. A VCD in <code>POPS/</code> or an Ember game in <code>EMBER/games/</code> belongs in the PS1 view.</li>
 <li>Refresh the source after applying settings. If the disk does not mount at all, check its partition/filesystem and sector size separately from game enumeration.</li>
 <li>Record the exact build suffix, core, settings and unchanged disk layout when comparing builds. Back up your settings before trying a clean configuration; deleting all settings loses useful evidence and is not a required installation step.</li>
 </ol>
