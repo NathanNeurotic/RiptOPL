@@ -2576,3 +2576,6 @@ gui_strings:
 - comment: Game Sources row indented under MMCE Start Mode. Keep the six leading spaces.
   label: SOURCE_MMCE_SETTINGS
   string: "      MMCE Settings"
+- comment: Shown before a PS1 game over SMB starts while SMB2 is in use. POPSTARTER only speaks SMBv1.
+  label: POPSTARTER_SMB_V1
+  string: "POPSTARTER connects with SMBv1 for this game. The server in POPSTARTER Network Settings must accept SMBv1."

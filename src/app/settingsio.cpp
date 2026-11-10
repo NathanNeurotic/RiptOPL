@@ -1764,9 +1764,10 @@ void _loadConfig()
             // (ethsupport start path, system.c getDeviceName, bdmsupport) stay consistent no matter which
             // config format was loaded. SMB keeps its prior Auto/Manual start-mode; a fresh SMB pick that
             // had eth_mode=0 gets Manual. Any non-SMB protocol forces SMB off (preserves UDPBD-wins).
-            // SMB dialect. A missing key is SMBv1 (every config written before the row existed), and
-            // anything that is not exactly SMB2 falls back to SMBv1 too: losing SMB2 is recoverable,
-            // selecting a driver this build does not have is not.
+            // SMB dialect. A new install starts on SMB2 (opl.cpp); a saved config keeps its choice. A missing
+            // key stays SMBv1, since every config written before the row existed ran SMBv1, and anything
+            // that is not exactly SMB2 falls back to SMBv1 too: losing SMB2 is recoverable, selecting a
+            // driver this build does not have is not.
             if (!configGetInt(configOPL, CONFIG_OPL_SMB_DIALECT, &gSMBDialect) || gSMBDialect != SMB_DIALECT_V2)
                 gSMBDialect = SMB_DIALECT_V1;
             gEnableUDPBD = (gNetworkProtocol == NET_PROTO_UDPBD || gNetworkProtocol == NET_PROTO_UDPFSBD);

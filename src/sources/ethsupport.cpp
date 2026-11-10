@@ -452,7 +452,7 @@ void EthSupport::loadModules(void)
           iomanX device name ("smb", hence the "smb0:" paths everywhere), so only one may ever be
           resident -- and every path in OPL stays identical whichever one it is.
 
-            smbman  -- PS2SDK's SMB1 driver, consumed prebuilt. Unchanged, still the default.
+            smbman  -- PS2SDK's SMB1 driver, consumed prebuilt. Unchanged; the choice for a config from before the SMB Version row.
             smb2man -- our SMB2/3 (2.0.2 to 3.0.2) driver over vendored usmb2 (modules/network/smb2man).
 
           Anything other than an explicit SMB2 selection falls back to smbman: losing SMB2 is
@@ -909,6 +909,8 @@ void EthSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set
     }
     {
         vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(gEthSupport.prefix());
+        if (ens == VCD_POPSNET_CANCELLED)
+            return;
         if (ens == VCD_POPSNET_SMB_MISSING) {
             host::ui().msgBox(_l(_STR_POPSTARTER_SMB_MISSING), 0, NULL);
             return;

@@ -471,7 +471,7 @@ notices and verified hashes are in `POPS/UDPFS-NOTICES/`.
 
 ## 6. PS1 over SMB — POPSTARTER network settings
 
-PS1 games on an SMB share need POPSTARTER's own network config (`IPCONFIG.DAT` +
+POPSTARTER games on an SMB share need POPSTARTER's own network config (`IPCONFIG.DAT` +
 `SMBCONFIG.DAT`) on the memory card, plus its SMB modules. Edit those files from
 **POPSTARTER Network Settings**, on **Settings → PS Emulation Settings**.
 The screen shows what the card's files already contain, can import both from the connected share's
@@ -480,6 +480,17 @@ with neither file on the card, saving the SMB values writes `IPCONFIG.DAT` too, 
 complete static IP is entered. The SMB modules themselves ship in the release's `POPS/` folder
 (copy them to `mc?:/POPSTARTER/`); if they're missing, an SMB VCD launch warns rather than
 hanging.
+
+POPSTARTER's SMB module speaks **SMBv1 only**, whatever RiptOPL's **SMB Version** row says (a new
+install browses with **SMB2**). This applies to POPSTARTER launches only: an Ember (`.cue`) launch
+reads through the browse driver that is already connected and needs no SMBv1. PS1 games still list
+over SMB2, and with SMB2 in use a box says so before each POPSTARTER launch; **Back** on that box
+cancels the launch. POPSTARTER games over SMB therefore need a server that also accepts SMBv1 at
+the address and port in `SMBCONFIG.DAT` (PS2 Servers' SMBv1 card, or Samba/Windows with SMB1
+enabled), and that SMBv1 share must hold each game as `POPS/<name>.VCD` under the same file name
+as on the share RiptOPL browses. A first setup copies RiptOPL's server, port and share into
+`SMBCONFIG.DAT`, so if RiptOPL points at an SMB2-only server (for example PS2 Servers' SMBv2 card),
+set POPSTARTER Network Settings to the SMBv1 server instead.
 
 ## 7. Troubleshooting — "my VCDs don't show up"
 

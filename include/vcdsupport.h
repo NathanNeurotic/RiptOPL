@@ -287,7 +287,8 @@ typedef enum {
     VCD_POPSNET_NEED_STATIC = 1, // missing file requires static PS2 IP / mask / gateway or resolved SMB IP
     VCD_POPSNET_IO_ERROR = 2,    // MC full (-2) or IO error (-3) - partial removed
     VCD_POPSNET_INVALID = 3,     // SMB share/IP etc invalid and not derivable
-    VCD_POPSNET_SMB_MISSING = 4  // required SMB IRX modules not present on MC
+    VCD_POPSNET_SMB_MISSING = 4, // required SMB IRX modules not present on MC
+    VCD_POPSNET_CANCELLED = 5    // the user backed out of the SMBv1 notice; no launch, no further box
 } vcd_popsnet_ensure_t;
 
 // Shared SMB POPSTARTER preparation for both ETH VCD and APPS SB.*.ELF launches.

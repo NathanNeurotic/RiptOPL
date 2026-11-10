@@ -1142,6 +1142,8 @@ void AppSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         // Uses shared helper vcdPreparePopstarterSmbLaunch(ethPrefix).
         if (mode == ETH_MODE && appIsPopstarterSmb(filename)) {
             vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(ethGetSMBPrefix());
+            if (ens == VCD_POPSNET_CANCELLED)
+                return;
             if (ens == VCD_POPSNET_SMB_MISSING) {
                 host::ui().msgBox(_l(_STR_POPSTARTER_SMB_MISSING), 0, NULL);
                 return;

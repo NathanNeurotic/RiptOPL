@@ -1567,7 +1567,7 @@ static void setDefaults(void)
     gNetStartMode = START_MODE_DISABLED; // Off in the 3-row Network setting; migration reconciles old configs
     gNetProtocolPick = NET_PROTO_SMB;
     gUdpfsAccessMode = 0; // UDPFS Files; never inherit UDPBD's forced IMG
-    gSMBDialect = SMB_DIALECT_V1;
+    gSMBDialect = SMB_DIALECT_V2; // Windows 10/11 ship without SMBv1; a saved choice still wins
 
     frameCounter = 0;
 

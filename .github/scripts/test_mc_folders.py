@@ -375,6 +375,18 @@ if not (0 <= smb.find('else if (errno == ENOENT && !vcdPopstarterModulesAt(smbPr
         smb.find('vcdEnsurePopstarterNetDir(cfg.home)') < smb.find('vcdInstallPopstarterMcAt(smbPrefix, cfg.home)') <
         smb.find('vcdStampPopstarterIcons(cfg.home, NULL);')):
     failures.append('vcdsupport.cpp vcdPreparePopstarterSmbLaunch: no folder when the share has no modules for it; icons on the one it makes')
+# POPSTARTER speaks SMBv1 only: with SMB2 in use the list stays, and a ready launch says the game connects with SMBv1.
+if not (0 <= smb.find('vcd_popsnet_ensure_t ens = vcdEnsurePopstarterSmbConfig(&cfg);') <
+        smb.find('if (ens == VCD_POPSNET_READY && ethGetLoadedSmbDialect() == SMB_DIALECT_V2 && !host::ui().msgBox(_l(_STR_POPSTARTER_SMB_V1), 1, NULL))\n        return VCD_POPSNET_CANCELLED;') <
+        smb.find('return ens;')):
+    failures.append('vcdsupport.cpp vcdPreparePopstarterSmbLaunch: on SMB2, warn that POPSTARTER connects with SMBv1 once the launch is ready; Back cancels')
+# Both POPSTARTER-over-SMB callers stop quietly when the user backs out of that box.
+for src in ('src/sources/ethsupport.cpp', 'src/sources/appsupport.cpp'):
+    body = text(src)
+    at = body.find('vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(')
+    cancel = re.compile(r'if \(ens == VCD_POPSNET_CANCELLED\)\s*return;').search(body, at) if at >= 0 else None
+    if not (cancel and cancel.end() < body.find('if (ens == VCD_POPSNET_SMB_MISSING)', at)):
+        failures.append(src + ': return without launching when the SMBv1 notice is cancelled')
 net = function(vcd, 'int vcdWritePopstarterNetFiles(')
 if not (0 <= net.find('vcdEnsurePopstarterNetDir(dir)') < net.find('vcdStampPopstarterIcons(dir, NULL);') < net.find('vcdSafeWriteFile(')):
     failures.append('vcdsupport.cpp vcdWritePopstarterNetFiles: the folder it makes must get icons before the config files')
