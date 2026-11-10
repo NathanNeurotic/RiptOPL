@@ -15,6 +15,7 @@
 #include "include/opl.h"
 #include "include/ioman.h"
 #include "include/themes.h"
+#include "include/tar.h"
 #include "include/pad.h"
 
 /*--    Theme Sound Effects    ----------------------------------------------------------------------------------------------
@@ -91,34 +92,39 @@ int SoundEffects::readFile(const char *full_path, struct sfxEffect *sfx)
 
     LOG("SFX: readFile('%s')\n", full_path);
 
-    adpcm = open(full_path, O_RDONLY);
-    if (adpcm < 0) {
-        LOG("SFX: %s: Failed to open adpcm file %s\n", __FUNCTION__, full_path);
+    ret = tarThemeRead(full_path, &buffer, &size); // a theme packed as one .tar: its sound/ files are in there
+    if (ret < 0)
         return -ENOENT;
-    }
+    if (ret == 0) {
+        adpcm = open(full_path, O_RDONLY);
+        if (adpcm < 0) {
+            LOG("SFX: %s: Failed to open adpcm file %s\n", __FUNCTION__, full_path);
+            return -ENOENT;
+        }
 
-    size = lseek(adpcm, 0, SEEK_END);
-    if (size <= 0) {
-        LOG("SFX: lseek failed or empty file: %s\n", full_path);
+        size = lseek(adpcm, 0, SEEK_END);
+        if (size <= 0) {
+            LOG("SFX: lseek failed or empty file: %s\n", full_path);
+            close(adpcm);
+            return -EIO;
+        }
+        lseek(adpcm, 0L, SEEK_SET);
+
+        buffer = memalign(64, size);
+        if (buffer == NULL) {
+            LOG("SFX: Failed to allocate memory for SFX\n");
+            close(adpcm);
+            return -ENOMEM;
+        }
+
+        ret = read(adpcm, buffer, size);
         close(adpcm);
-        return -EIO;
-    }
-    lseek(adpcm, 0L, SEEK_SET);
 
-    buffer = memalign(64, size);
-    if (buffer == NULL) {
-        LOG("SFX: Failed to allocate memory for SFX\n");
-        close(adpcm);
-        return -ENOMEM;
-    }
-
-    ret = read(adpcm, buffer, size);
-    close(adpcm);
-
-    if (ret != size) {
-        LOG("SFX: Failed to read SFX: %d (expected %d)\n", ret, size);
-        free(buffer);
-        return -EIO;
+        if (ret != size) {
+            LOG("SFX: Failed to read SFX: %d (expected %d)\n", ret, size);
+            free(buffer);
+            return -EIO;
+        }
     }
 
     sfx->buffer = buffer;
@@ -212,8 +218,9 @@ int SoundEffects::init(int bootSnd)
         // Get theme path for adpcm_
         snprintf(sound_path, sizeof(sound_path), "%ssound", thmPath);
 
-        // Check for custom adpcm_ folder
-        DIR *dir = opendir(sound_path);
+        // Check for custom adpcm_ folder (a theme archive is looked into file by file, in RAM)
+        thmSfxEnabled = tarThemePath(sound_path);
+        DIR *dir = thmSfxEnabled ? NULL : opendir(sound_path);
         if (dir != NULL) {
             thmSfxEnabled = 1;
             closedir(dir);

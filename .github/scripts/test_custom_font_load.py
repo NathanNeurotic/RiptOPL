@@ -46,6 +46,15 @@ static void *readFile(char *path, int align, int *size)
     return fake_font;
 }
 
+// A folder theme's font: not in a theme .tar, so fntReadData goes on to readFile().
+static int tarThemeRead(const char *path, void **buf, int *size)
+{
+    (void)path;
+    (void)size;
+    *buf = NULL;
+    return 0;
+}
+
 @FUNCTION@
 
 int main(void)
