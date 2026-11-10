@@ -109,6 +109,9 @@ void sysLaunchEmber(const char *emberElf, const char *gameFolder);
 
 // Ordinary APPS variant. cleanupHdd requests the wLaunchELF_R3Z post-load PFS/HDD/DEV9 teardown;
 // dedicated Ember/Neutrino/POPSTARTER paths keep using their existing handoff functions.
+// resetIop: 0 keeps the IOP, 1 resets it after the load, SYS_LOAD_ELF_RESET_ROM0_MC also loads
+// rom0:SIO2MAN/MCMAN/MCSERV after that reset (the SDK elf-loader's behaviour, kept for POPSTARTER Apps rows).
+#define SYS_LOAD_ELF_RESET_ROM0_MC 2
 int sysLoadELFApp(const char *filename, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd);
 int sysLoadELFKeepIOP(const char *filename, const char *partition, int argc, char *argv[]);
 void sysPowerOff(void);

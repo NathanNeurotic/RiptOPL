@@ -17,6 +17,7 @@
 #include <kernel.h>
 #include "include/ioman.h"      // LOG (kernel argv-budget refusal trace)
 #include "include/launchdiag.h" // UDPBD hang-triage stage markers (keep-IOP handoffs only)
+#include "include/system.h"     // SYS_LOAD_ELF_RESET_ROM0_MC
 #include <sifrpc.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioOpen/fileXioDopen: the probe's second opinion (the child's own route)
@@ -153,7 +154,10 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
     void *pdata;
     int i;
     int diag = !resetIop && gLaunchDiag;
-    const char *loaderArg = cleanupHdd ? (resetIop ? "-la=RH" : "-la=H") : (resetIop ? "-reset-iop" : NULL);
+    const char *loaderArg = cleanupHdd                             ? (resetIop ? "-la=RH" : "-la=H") :
+                            resetIop == SYS_LOAD_ELF_RESET_ROM0_MC ? "-la=RM" :
+                            resetIop                               ? "-reset-iop" :
+                                                                     NULL;
     int extra_args = loaderArg != NULL ? 1 : 0;
 
     // The child loads through filename's live mount. Any portable APA path is already present in

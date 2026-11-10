@@ -334,13 +334,22 @@ static int loadElfViaFileXio(const char *path, u32 *entry, u32 *gp)
     return 0;
 }
 
-static void resetIOP(void)
+// rom0_mc ("-la=RM", POPSTARTER Apps rows): after the reset, load the card modules from ROM, as the
+// SDK elf-loader those rows used to go through did.
+static void resetIOP(int rom0_mc)
 {
     while (!SifIopReset("", 0))
         ;
     while (!SifIopSync())
         ;
     SifInitRpc(0);
+    if (rom0_mc) {
+        SifLoadFileInit();
+        SifLoadModule("rom0:SIO2MAN", 0, NULL);
+        SifLoadModule("rom0:MCMAN", 0, NULL);
+        SifLoadModule("rom0:MCSERV", 0, NULL);
+        SifLoadFileExit();
+    }
 }
 
 // wLaunchELF_R3Z HDD-app parity. The target ELF is already in EE RAM when this runs, so the
@@ -373,7 +382,8 @@ static void cleanupHddForLaunch(void)
 // The ExecPS2 syscall marshals the strings, so wiping user memory is safe.
 //
 // An optional trailing "-reset-iop" (or "-la=AR" wLaunchELF flag) requests a clean SifIopReset()
-// after the target ELF has been loaded into user memory, matching wLaunchELF_R3Z parity.
+// after the target ELF has been loaded into user memory, matching wLaunchELF_R3Z parity. In "-la=",
+// H adds the HDD cleanup and M loads rom0:SIO2MAN/MCMAN/MCSERV after the reset.
 int main(int argc, char *argv[])
 {
     static t_ExecData elfdata;
@@ -381,6 +391,7 @@ int main(int argc, char *argv[])
     int ret;
     int reset_iop = 0;
     int cleanup_hdd = 0;
+    int rom0_mc = 0;
 
     LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_UP); // stage 12: child is on the air
 
@@ -396,6 +407,8 @@ int main(int argc, char *argv[])
                 reset_iop = 1;
             if (strchr(argv[argc - 1] + 4, 'H') != NULL)
                 cleanup_hdd = 1;
+            if (strchr(argv[argc - 1] + 4, 'M') != NULL)
+                rom0_mc = 1;
             argc--;
         }
     }
@@ -435,7 +448,7 @@ int main(int argc, char *argv[])
         if (cleanup_hdd)
             cleanupHddForLaunch();
         if (reset_iop)
-            resetIOP();
+            resetIOP(rom0_mc);
         SifExitRpc();
         FlushCache(0);
         FlushCache(2);
@@ -449,7 +462,7 @@ int main(int argc, char *argv[])
         if (cleanup_hdd)
             cleanupHddForLaunch();
         if (reset_iop)
-            resetIOP();
+            resetIOP(rom0_mc);
         SifExitRpc();
         FlushCache(0);
         FlushCache(2);

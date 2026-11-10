@@ -82,6 +82,7 @@ enum { VCD_POPSNET_SMB_MISSING, VCD_POPSNET_NEED_STATIC,
        VCD_POPSNET_IO_ERROR, VCD_POPSNET_INVALID };
 static struct { const char *title; } appsList[] = {{"launcHER"}};
 static char gOPLPart[128];
+#define SYS_LOAD_ELF_RESET_ROM0_MC 2
 static int is_pops, reset_iop, errors, torn_down, launched, sdk_launch;
 static int per_app_handoff = -1, gAppHandoffPath, typed_root_known = 1, typed_calls;
 static int got_argc, got_reset, got_cleanup, mock_fd = 1, mock_errno;
@@ -142,24 +143,17 @@ static int captureLoad(const char *path, const char *partition, int argc, char *
     got_argc = argc;
     got_reset = reset;
     got_cleanup = cleanup;
+    if (reset == SYS_LOAD_ELF_RESET_ROM0_MC)
+        sdk_launch++; // the POPSTARTER handoff: the old SDK elf-loader contract on our child loader
     snprintf(got_path, sizeof(got_path), "%s", path);
     snprintf(got_partition, sizeof(got_partition), "%s", partition);
     for (int i = 0; i < argc; i++)
         snprintf(got_argv[i], sizeof(got_argv[i]), "%s", argv[i]);
     return 0;
 }
-static int sysLoadELF(const char *path, const char *partition, int argc, char **argv, int reset)
-{
-    return captureLoad(path, partition, argc, argv, reset, 0);
-}
 int sysLoadELFApp(const char *path, const char *partition, int argc, char **argv, int reset, int cleanup)
 {
     return captureLoad(path, partition, argc, argv, reset, cleanup);
-}
-static void LoadELFFromFileWithPartition(const char *path, const char *partition, int argc, char **argv)
-{
-    sdk_launch++;
-    sysLoadELF(path, partition, argc, argv, 1);
 }
 '''
 
@@ -238,14 +232,37 @@ int main(void)
     strcpy(gOPLPart, "hdd0:CustomApps");
     run(apa, NULL, 1, 0);
     assert(!strcmp(got_argv[0], "hdd0:CustomApps:pfs:/APPS/Ember/launcHER.elf"));
+    // POPSTARTER: what the SDK elf-loader did -- raw load path, argv[0] = partition + path (POPSTARTER
+    // string-parses it), argv[1] = AltStartup when set, IOP reset + rom0 card modules, no HDD cleanup.
     run(apa, "game", 0, 1);
-    assert(sdk_launch == 1 && got_argc == 1);
+    assert(sdk_launch == 1 && got_argc == 2 && got_cleanup == 0);
     assert(!strcmp(got_path, apa) && !strcmp(got_partition, "hdd0:CustomApps:"));
-    assert(!strcmp(got_argv[0], "game"));
+    assert(!strcmp(got_argv[0], "hdd0:CustomApps:pfs0:/APPS/Ember/launcHER.elf") && !strcmp(got_argv[1], "game"));
     run(apa, "", 0, 1);
-    assert(sdk_launch == 1 && got_argc == 1 && got_argv[0][0] == 0);
-    run(apa, NULL, 0, 1);
-    assert(sdk_launch == 1 && got_argc == 0);
+    assert(sdk_launch == 1 && got_argc == 2 && got_argv[1][0] == 0);
+    run(apa, NULL, 1, 1);
+    assert(sdk_launch == 1 && got_argc == 1 && got_cleanup == 0);
+    {
+        // Over the kernel's 256-byte argument pool: refused with a dialog before the teardown.
+        char longPops[200];
+        memset(longPops, 'a', sizeof(longPops));
+        memcpy(longPops, "mass0:/POPS/", 12);
+        strcpy(longPops + sizeof(longPops) - 5, ".ELF");
+        run(longPops, NULL, 0, 1);
+        assert(errors == 1 && !torn_down && !launched);
+
+        // Both sides of the pool with AltStartup counted: 256 bytes launches, 257 is refused.
+        size_t fixed = strlen(apa) + 1 + strlen("hdd0:CustomApps:") + strlen(apa) + 1 + sizeof("-la=RM");
+        char arg[256];
+        memset(arg, 'a', sizeof(arg));
+        arg[256 - fixed - 1] = 0;
+        run(apa, arg, 0, 1);
+        assert(launched == 1 && sdk_launch == 1 && !errors && !strcmp(got_argv[1], arg));
+        arg[256 - fixed - 1] = 'a';
+        arg[256 - fixed] = 0;
+        run(apa, arg, 0, 1);
+        assert(errors == 1 && !torn_down && !launched && !sdk_launch);
+    }
     // OPLDIAG must expose open() failure evidence without relying on DEBUG/LOG.
     mock_fd = -1;
     mock_errno = EIO;
@@ -281,8 +298,8 @@ int main(void)
     assert(!typed_calls && !strcmp(got_argv[0], "mc0:/BOOT/launcHER.elf"));
     run(apa, NULL, 0, 0); // HDD apps keep the APA spelling
     assert(!typed_calls && !strcmp(got_argv[0], "hdd0:CustomApps:pfs:/APPS/Ember/launcHER.elf"));
-    run(massApp, "game", 0, 1); // POPSTARTER keeps its selector argv
-    assert(sdk_launch == 1 && !typed_calls && !strcmp(got_argv[0], "game"));
+    run(massApp, "game", 0, 1); // POPSTARTER keeps its own argv[0]: never the typed spelling
+    assert(sdk_launch == 1 && !typed_calls && !strcmp(got_argv[0], massApp) && !strcmp(got_argv[1], "game"));
     gAppHandoffPath = APP_HANDOFF_LEGACY;
     per_app_handoff = APP_HANDOFF_TYPED; // per-app Typed under a Legacy global
     run(massApp, NULL, 0, 0);

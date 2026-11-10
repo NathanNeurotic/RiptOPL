@@ -21,7 +21,6 @@
 #include "include/gamesource.h"
 #include "include/appsource.h"
 
-#include <elf-loader.h>
 #include <errno.h>
 
 // forward declaration (stays a free helper: update() hands it the temporary discovery list)
@@ -1207,9 +1206,9 @@ void AppSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 #ifdef __OPLDIAG
         // ---- Ember Phase 0 probe (docs/EMBER-INTEGRATION-PLAN.md Part 8) --------------------
         // An APPS entry whose boot path names an ember.elf is handed over with the KEEP-IOP loader
-        // instead of the resetting SDK one below, passing argv1 through as the bare game-folder
+        // instead of the resetting one below, passing argv1 through as the bare game-folder
         // name. Ember performs no IOP reset of its own, so it needs the launcher's live driver
-        // stack; LoadELFFromFileWithPartition() a few lines down resets the IOP and is therefore
+        // stack; the ordinary Apps handoff a few lines down (Reboot IOP on) resets it and is therefore
         // the CONTROL CASE -- the identical entry on a release build is expected to fail, and that
         // contrast is the measurement this probe exists to make.
         //
@@ -1236,14 +1235,20 @@ void AppSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 #endif
 
         if (isPops) {
-            host::app().deinit(UNMOUNT_EXCEPTION, mode); // CAREFUL: deinit will call appCleanUp, which frees appsList, appArtLookupTable, and configApps
-            char *pops_argv[1];
-            int pops_argc = 0;
-            if (target_argc > 1) {
-                pops_argv[0] = altStartup;
-                pops_argc = 1;
+            // POPSTARTER rows keep the contract of the SDK elf-loader they used to go through, now on our
+            // own child loader: load the ELF by its raw path through the live mount, then reset the IOP and
+            // load rom0:SIO2MAN/MCMAN/MCSERV (SYS_LOAD_ELF_RESET_ROM0_MC). argv[0] is the partition
+            // prefix glued to that path ("hdd0:+OPL:pfs0:/..." on HDD, the bare path elsewhere) because
+            // POPSTARTER string-parses it to pick its route; argv[1] is AltStartup when set. No HDD cleanup:
+            // the SDK loader did none.
+            snprintf(appArgv0, sizeof(appArgv0), "%s%s", partition, filename);
+            target_argv[0] = appArgv0;
+            if (strlen(filename) + 1 + strlen(appArgv0) + 1 + (target_argc > 1 ? strlen(altStartup) + 1 : 0) + sizeof("-la=RM") > 256) {
+                host::ui().msgBox(_l(_STR_ERR_FILE_INVALID), 0, NULL);
+                return;
             }
-            LoadELFFromFileWithPartition(filename, partition, pops_argc, pops_argv);
+            host::app().deinit(UNMOUNT_EXCEPTION, mode); // CAREFUL: deinit will call appCleanUp, which frees appsList, appArtLookupTable, and configApps
+            sysLoadELFApp(filename, partition, target_argc, target_argv, SYS_LOAD_ELF_RESET_ROM0_MC, 0);
         } else {
             // HDD Apps have two different paths at handoff:
             //   load path:   pfsN:/... (the live OPL mount used to read the ELF)
