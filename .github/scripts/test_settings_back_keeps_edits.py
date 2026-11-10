@@ -175,8 +175,8 @@ if net:
         if pending not in net:
             failures.append('guiShowNetConfig: the apply guard must also check %s' % pending)
     # The HTTP base row shows only 31 characters of a 64-byte path: an unchanged preview keeps it whole.
-    if 'strncmp(httpBaseRow, gHttpBasePath, UI_STRING_SIZE - 1) != 0' not in net:
-        failures.append('guiShowNetConfig: an unchanged HTTP base preview must not cut the saved path')
+    if net.count('netConfigHttpBase(') != 2 or 'strncmp(row, gHttpBasePath, UI_STRING_SIZE - 1) != 0' not in gui_c:
+        failures.append('guiShowNetConfig: apply and HTTP Test must both keep an unchanged long HTTP base path whole')
 audio = function_text(gui_c, 'src/ui/gui.cpp', 'static int guiShowAudioConfig(')
 if audio and 'gSettingsShell.pageResult(result)' not in audio:
     failures.append('guiShowAudioConfig: must return through gSettingsShell.pageResult(result)')
