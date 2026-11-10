@@ -619,6 +619,8 @@ are supported using the folder structure above.
 > A server set to another port needs that port entered here. To type a port, select the row, then
 > press Triangle. Release packages include **`PS2-Servers.url`** as a direct shortcut to the repository.
 >
+> **Video intros over SMB:** a game's intro or cutscene video can stutter over SMB (SMB2 sends many small packets), while gameplay runs normally. The same video from HDD, USB or UDPFS does not.
+>
 > **SMB on the Neutrino core (experimental):** a game whose Loader Core is Neutrino (or Default while
 > the global Loader Core is Neutrino) launches from the share through Neutrino's own SMB driver, by
 > [Ronnie Sahlberg](https://github.com/sahlberg) ([usmb2](https://github.com/sahlberg/usmb2)). It
