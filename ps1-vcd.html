@@ -294,7 +294,8 @@ not reset the IOP, so it needs no BDMA equip and no memory-card driver pair on a
   <thead><tr><th>Device</th><th>Location</th></tr></thead>
   <tbody>
     <tr><td>USB / MMCE / MX4SIO / iLink / exFAT HDD</td><td>An <code>EMBER/</code> folder at the device root, beside <code>POPS/</code>.</td></tr>
-    <tr><td>SMB / UDPFS Files / UDPFS IMG / UDPBD</td><td>An <code>EMBER/</code> folder in the share's game folder, beside <code>CD/</code> and <code>DVD/</code> (UDPBD and UDPFS IMG: at the served disk image's root). UDPBD and UDPFS IMG list Ember games only.</td></tr>
+    <tr><td>SMB / UDPFS Files</td><td>An <code>EMBER/</code> folder in the share's game folder, beside <code>CD/</code> and <code>DVD/</code>.</td></tr>
+    <tr><td>UDPBD / UDPFS IMG</td><td>An <code>EMBER/</code> folder at the served disk image's root, even when a BDM prefix puts <code>CD/</code> and <code>DVD/</code> in a subfolder. These two list Ember games only.</td></tr>
     <tr><td>Internal HDD (APA/PFS)</td><td>An exact <code>__.EMBER</code>, <code>__.EMBER0</code> … <code>__.EMBER9</code> partition holding an <code>EMBER/</code> folder.</td></tr>
   </tbody>
 </table>
