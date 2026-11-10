@@ -1811,7 +1811,7 @@ static void deferredAudioInit(void)
 
 void miniInit(int mode)
 {
-    int ret;
+    int ret, value;
 #ifdef __OPLDIAG
     int initialRet;
     char initialHome[256];
@@ -1853,7 +1853,7 @@ void miniInit(int mode)
     // Resolve the settings home and its recovery policy for every launch mode, as _loadConfig does.
     // The launcher directory can differ from the game's device and from the saved settings home.
     resolveBootDirToMass();
-    InitConsoleRegionData();
+    gSelectButton = (InitConsoleRegionData() == CONSOLE_REGION_JAPAN) ? KEY_CIRCLE : KEY_CROSS; // as init() does
 
 #ifdef __OPLDIAG
     configStart = clock();
@@ -1886,6 +1886,11 @@ void miniInit(int mode)
             // args as an interactive launch, or it silently boots a different/stale core without flags.
             configReadNeutrinoGlobals(configOPL);
             configReadRA(configOPL); // or an auto-launched game is never tracked
+            // The in-game menu is opt in: without these an argv launch always ran with it off, and its
+            // confirm button on the region default instead of the saved swap (host.cpp passes both).
+            configGetInt(configOPL, CONFIG_OPL_IGR_MENU, &gIgrMenu);
+            if (configGetInt(configOPL, CONFIG_OPL_SWAP_SEL_BUTTON, &value))
+                gSelectButton = value == 0 ? KEY_CIRCLE : KEY_CROSS;
             if (mode == BDM_MODE) {
                 configGetStrCopy(configOPL, CONFIG_OPL_BDM_PREFIX, gBDMPrefix, sizeof(gBDMPrefix));
                 sanitizePrefix(gBDMPrefix);
