@@ -2,6 +2,7 @@
 #include "include/textures.h"
 #include "include/artindex.h"
 #include "include/util.h"
+#include "include/tar.h"
 #include "include/ioman.h"
 #include "include/sound.h" // gBgmInRead -- BGM bypasses ioman but shares the fileXio channel
 #include <errno.h>         // errno/ENOENT in the staging-arm open classifier (transitively via opl.h, but be explicit)
@@ -1113,9 +1114,18 @@ static int texLoadAll(GSTEXTURE *texture, const char *filePath, int texId, const
     return texEnd(pngPtr, infoPtr, pFileBuffer, fd, result);
 }
 
+// A picture of a theme packed as one .tar comes from the archive (tar.h tarThemeRead), never the device path.
 static int texLoad(GSTEXTURE *texture, const char *filePath)
 {
-    return texLoadAll(texture, filePath, -1, NULL, 0);
+    void *buf;
+    int size, result;
+    int inTar = tarThemeRead(filePath, &buf, &size);
+
+    if (inTar == 0)
+        return texLoadAll(texture, filePath, -1, NULL, 0);
+    result = inTar > 0 ? texLoadAll(texture, NULL, -1, buf, size) : ERR_BAD_FILE;
+    free(buf);
+    return result;
 }
 
 int texLoadInternal(GSTEXTURE *texture, int texId)
@@ -1305,6 +1315,15 @@ static int texLoadArtFile(GSTEXTURE *texture, const char *filePath)
     if (dot != NULL && slash != NULL && dot < slash)
         dot = NULL; // a dot in a folder name is not an extension
     int bg = texArtIsBackground(dot != NULL ? dot : filePath + strlen(filePath), filePath);
+
+    void *buf;
+    int size;
+    int inTar = tarThemeRead(filePath, &buf, &size); // a theme's attribute picture in its .tar (texLoad)
+    if (inTar != 0) {
+        result = inTar > 0 ? texLoadArtFromMemory(texture, buf, size, bg) : ERR_BAD_FILE;
+        free(buf);
+        return result;
+    }
 
     if (dot == NULL || !strcasecmp(dot, ".png")) {
         result = texLoad(texture, filePath);

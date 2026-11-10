@@ -18,6 +18,7 @@
 
 #include "include/tar.h"
 #include "include/raii.h"
+#include "include/sema_lock.h"
 #include "include/ioman.h" // LOG -- this engine shipped with ZERO tracing, which made every "art.tar
                            // doesn't work" report unfalsifiable (the CHT path announces its hit at
                            // supportbase.c; ART said nothing at all).
@@ -58,7 +59,8 @@ static const TarDevice gDevices[] = {
 static const TarKindInfo gTarInfo[TAR_KIND_MAX] = {
     {"ART/art.tar", "art_cache.bin", sizeof(TarEntryArt)},
     {"CFG/cfg.tar", "cfg_cache.bin", sizeof(TarEntryCfg)},
-    {"CHT/cht.tar", "cht_cache.bin", sizeof(TarEntryCht)}};
+    {"CHT/cht.tar", "cht_cache.bin", sizeof(TarEntryCht)},
+    {NULL, NULL, sizeof(TarEntryArt)}}; // THM: loaded by path only (tarLoadFile), no cache
 
 static void *s_index[TAR_KIND_MAX] = {NULL, NULL, NULL};
 static u32 s_count[TAR_KIND_MAX] = {0, 0, 0};
@@ -102,8 +104,8 @@ static void tarCloseInternal(TarKind kind)
 
 static int buildTarPath(const TarDevice *dev, TarKind kind, char *out, int outSize)
 {
-    if (dev == NULL) // s_dev is NULL if a kind was populated via tarLoadFile (no re-open device); refuse rather than deref
-        return -1;
+    if (dev == NULL || gTarInfo[kind].relPath == NULL) // s_dev is NULL if a kind was populated via tarLoadFile (no
+        return -1;                                     // re-open device); THM has no per-device archive
 
     int len = snprintf(out, outSize, "%s%s", dev->mountRoot, gTarInfo[kind].relPath);
 
@@ -216,9 +218,10 @@ static int tarParseFile(TarKind kind, const char *path)
         }
 
     char fullCachePath[256];
-    snprintf(fullCachePath, sizeof(fullCachePath), "%s%s", dirPath, gTarInfo[kind].cacheName);
+    const char *cacheName = gTarInfo[kind].cacheName;
+    snprintf(fullCachePath, sizeof(fullCachePath), "%s%s", dirPath, cacheName ? cacheName : "");
 
-    if (tarReadCache(fullCachePath, path, kind) == 0)
+    if (cacheName && tarReadCache(fullCachePath, path, kind) == 0)
         return 0;
 
     raii::UniqueFd fd(open(path, O_RDONLY));
@@ -274,7 +277,8 @@ static int tarParseFile(TarKind kind, const char *path)
         char typeflag = (char)header[156];
         u64 rawSize = parseOctal((char *)header + 124, 12);
         u64 paddedSize = ((rawSize + 511) / 512) * 512;
-        int oversized = (rawSize > MAX_FILE_SIZE); // too big to serve (rawSize/paddedSize are u32) -> don't index it
+        // too big to serve -> don't index it. A theme's bgm.ogg streams from the archive, so THM keeps any u32 size.
+        int oversized = (rawSize > (kind == TAR_KIND_THM ? 0xFFFFFFFFull : (u64)MAX_FILE_SIZE));
 
         if (typeflag != '\0' && typeflag != '0') {
             // Skip directory or non-file entries (e.g. typeflag '5')
@@ -343,6 +347,9 @@ static int tarParseFile(TarKind kind, const char *path)
             cleanName += 2;
         if (!strncasecmp(cleanName, "ART/", 4) || !strncasecmp(cleanName, "CFG/", 4) || !strncasecmp(cleanName, "CHT/", 4))
             cleanName += 4;
+        // A theme archive made from the folder itself ("tar cf thm_X.tar thm_X"): its files as if at the top.
+        if (kind == TAR_KIND_THM && !strncasecmp(cleanName, "thm_", 4) && strchr(cleanName, '/') != NULL)
+            cleanName = strchr(cleanName, '/') + 1;
 
         char *fname = entry + sizeof(TarEntryBase);
         strncpy(fname, cleanName, nameMax);
@@ -356,7 +363,8 @@ static int tarParseFile(TarKind kind, const char *path)
 
     indexed = true;
     fd.reset();
-    tarWriteCache(fullCachePath, path, kind);
+    if (cacheName)
+        tarWriteCache(fullCachePath, path, kind);
     return 0;
 }
 
@@ -604,4 +612,101 @@ void tarInvalidate(TarKind kind)
 const char *tarGetDevicePrefix(TarKind kind)
 {
     return s_dev[kind] ? s_dev[kind]->prefix : NULL;
+}
+
+// ---- Theme archives (THM/thm_<Name>.tar) ----
+// The theme loader, the art worker (a theme's attribute pictures), the sound effects and the music all look up the
+// one THM index, and loading another theme's archive frees it: the lookup and the read happen under this lock.
+static int s_thmSema = -1;
+
+void tarThemeInit(void)
+{
+    if (s_thmSema < 0) {
+        ee_sema_t sema;
+        sema.option = sema.attr = 0;
+        sema.init_count = 1;
+        sema.max_count = 1;
+        s_thmSema = CreateSema(&sema);
+    }
+}
+
+// Length of the archive part of path ("...THM/thm_X.tar"), 0 when path does not run through a theme archive.
+static int tarThemeSplit(const char *path)
+{
+    for (const char *p = path ? strchr(path, '.') : NULL; p != NULL; p = strchr(p + 1, '.')) {
+        if (strncasecmp(p, ".tar", 4) != 0 || (p[4] != '/' && p[4] != '\\'))
+            continue;
+        const char *name = p;
+        while (name > path && name[-1] != '/' && name[-1] != '\\' && name[-1] != ':')
+            name--;
+        if (!strncasecmp(name, "thm_", 4))
+            return (int)(p + 4 - path);
+    }
+    return 0;
+}
+
+void tarThemeReset(void)
+{
+    raii::SemaLock lock(s_thmSema);
+    tarCloseInternal(TAR_KIND_THM);
+}
+
+int tarThemePath(const char *path)
+{
+    return tarThemeSplit(path) != 0;
+}
+
+// Lock held. The member path names (index loaded once per archive), or NULL; tarPath gets the archive's path.
+static TarEntryBase *tarThemeFind(const char *path, int split, char *tarPath, int tarPathSize)
+{
+    char member[64];
+
+    if (split >= tarPathSize || snprintf(member, sizeof(member), "%s", path + split + 1) >= (int)sizeof(member))
+        return NULL;
+    memcpy(tarPath, path, split);
+    tarPath[split] = '\0';
+    for (char *c = member; *c != '\0'; c++)
+        if (*c == '\\')
+            *c = '/';
+    if (tarLoadFile(TAR_KIND_THM, tarPath) < 0)
+        return NULL;
+    return tarFindExact(TAR_KIND_THM, member);
+}
+
+int tarThemeRead(const char *path, void **buf, int *size)
+{
+    int split = tarThemeSplit(path);
+    char tarPath[256];
+
+    *buf = NULL;
+    if (split == 0)
+        return 0;
+
+    raii::SemaLock lock(s_thmSema);
+    TarEntryBase *e = tarThemeFind(path, split, tarPath, sizeof(tarPath));
+    if (e == NULL || e->rawSize == 0 || e->rawSize > MAX_FILE_SIZE)
+        return -1;
+    raii::UniqueMalloc<void> data(memalign(64, e->rawSize + 1));
+    if (!data || tarRead(TAR_KIND_THM, e, data.get(), e->rawSize) != e->rawSize)
+        return -1;
+    ((char *)data.get())[e->rawSize] = '\0';
+    *size = (int)e->rawSize;
+    *buf = data.release();
+    return 1;
+}
+
+int tarThemeSpan(const char *path, char *tarPath, int tarPathSize, u64 *offset, u32 *size)
+{
+    int split = tarThemeSplit(path);
+
+    if (split == 0)
+        return 0;
+
+    raii::SemaLock lock(s_thmSema);
+    TarEntryBase *e = tarThemeFind(path, split, tarPath, tarPathSize);
+    if (e == NULL)
+        return -1;
+    *offset = e->offset;
+    *size = e->rawSize;
+    return 1;
 }
