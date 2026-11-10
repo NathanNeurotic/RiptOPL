@@ -29,6 +29,8 @@
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDevctl(dev, SMB_***)
+#include <delaythread.h>
+#include <errno.h>
 
 #include "include/nbns.h"
 #include "include/gamesource.h"
@@ -36,8 +38,8 @@
 
 EthSupport gEthSupport;
 
-// Breadcrumb: IOP RAM left when the SMB2 handshake starts and when the share answers. libsmb2 and
-// lwIP allocate per request; a short heap is the leading suspect for the SMB2 menu freeze.
+// Breadcrumb: IOP RAM left when the SMB2 handshake starts and when the share answers. smb2man and
+// lwIP allocate per request, so a short heap shows up here first.
 static void smb2LogIopFree(const char *base, const char *stage)
 {
     u32 mem[2] = {0, 0};
@@ -46,6 +48,33 @@ static void smb2LogIopFree(const char *base, const char *stage)
         diagLog("SMB2 init: IOP free %u B, largest block %u B (%s)", (unsigned)mem[0], (unsigned)mem[1], stage);
     else
         diagLog("SMB2 init: IOP free query returned %d (%s)", rv, stage);
+}
+
+/*
+  Opens the share. On smb2man the connect runs on the driver's own thread: OPENSHARE_ASYNC returns
+  at once and the menu polls CONNECTSTATE, so fileXio's single RPC channel is free between polls
+  and the rest of the menu (pads, other devices) keeps working while the server answers. smbman,
+  or an smb2man too old for it, takes the original blocking OPENSHARE.
+*/
+static int smbOpenShare(const char *base, smbOpenShare_in_t *openshare)
+{
+    if (ethGetLoadedSmbDialect() == SMB_DIALECT_V2) {
+        int rv = fileXioDevctl(base, SMB2_DEVCTL_OPENSHARE_ASYNC, (void *)openshare, sizeof(*openshare), NULL, 0);
+        if (rv == 0) {
+            // Every wait on the IOP is time-bounded (5 s connect, 15 s with no data moving), so this cap
+            // only guards against a driver that stops answering at all.
+            for (int i = 0; i < 900; i++) {
+                rv = fileXioDevctl(base, SMB2_DEVCTL_CONNECTSTATE, NULL, 0, NULL, 0);
+                if (rv != SMB2_CONNECT_PENDING)
+                    return rv;
+                DelayThread(100 * 1000);
+            }
+            return -ETIMEDOUT;
+        }
+        if (rv != -EINVAL && rv != -ENOSYS)
+            return rv;
+    }
+    return fileXioDevctl(base, SMB_DEVCTL_OPENSHARE, (void *)openshare, sizeof(*openshare), NULL, 0);
 }
 
 void EthSupport::smbConnect(void)
@@ -136,7 +165,7 @@ void EthSupport::smbConnect(void)
 
                 if (gSMBDialect == SMB_DIALECT_V2)
                     diagLog("SMB2 init: OPENSHARE devctl enter");
-                int shareResult = fileXioDevctl(base_, SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0);
+                int shareResult = smbOpenShare(base_, &openshare);
                 if (gSMBDialect == SMB_DIALECT_V2) {
                     diagLog("SMB2 init: OPENSHARE devctl returned %d", shareResult);
                     smb2LogIopFree(base_, "after OPENSHARE");
@@ -424,7 +453,7 @@ void EthSupport::loadModules(void)
           resident -- and every path in OPL stays identical whichever one it is.
 
             smbman  -- PS2SDK's SMB1 driver, consumed prebuilt. Unchanged, still the default.
-            smb2man -- our SMB2 (2.0.2/2.1) driver over vendored libsmb2 (modules/network/smb2man).
+            smb2man -- our SMB2/3 (2.0.2 to 3.0.2) driver over vendored usmb2 (modules/network/smb2man).
 
           Anything other than an explicit SMB2 selection falls back to smbman: losing SMB2 is
           recoverable, booting with no filesystem driver at all is not.
@@ -438,7 +467,7 @@ void EthSupport::loadModules(void)
             diagLog("SMB2 init: smb2man load enter (%u bytes)", (unsigned)size_smb2man_irx);
             loaded = sysLoadModuleBuffer((void *)&smb2man_irx, size_smb2man_irx, 0, NULL);
             diagLog("SMB2 init: smb2man load returned %d", loaded);
-            if (loaded < 0) { // e.g. not enough IOP RAM for libsmb2 (-400): keep the menu usable on SMBv1
+            if (loaded < 0) { // e.g. not enough IOP RAM (-400): keep the menu usable on SMBv1
                 LOG("[SMB2MAN]: load failed (%d), falling back to smbman\n", loaded);
                 smb2LoadError = loaded;
                 dialect = SMB_DIALECT_V1;

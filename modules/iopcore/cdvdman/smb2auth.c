@@ -5,7 +5,9 @@
 
 #include "smb2auth.h"
 
-#ifdef _IOP
+#if defined(_IOP) && defined(SMB2AUTH_SYSCLIB)
+#include <sysclib.h> // smb2man: the menu's IOP has sysclib, not the in-game smsutils
+#elif defined(_IOP)
 #include "smsutils.h"
 #else
 #include <string.h>

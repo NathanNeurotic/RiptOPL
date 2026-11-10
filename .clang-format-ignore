@@ -15,4 +15,4 @@
 ./modules/ilink/IEEE1394_bd
 ./modules/mmce/mmceman
 ./.github/scripts/fixtures
-./modules/network/smb2man/libsmb2
+./modules/network/smb2man/usmb2
