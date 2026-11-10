@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Bij IGR wordt de schakelaarcommand naar het/de geselecteerde slot(s) gestuurd
   MMCE_ADVANCED: Geavanceerd
   MMCE_SETTINGS: MMCE-instellingen
+  SOURCE_MMCE_SETTINGS: "      MMCE-instellingen"
   MMCE_SEMA: Vergrendeling Sema-wachtrijmethode
   HINT_MMCE_SEMA: THFIFO kan de compatibiliteit verbeteren maar de prestaties verslechteren
   MMCE_WAIT_CYCLES: Wachtcycli na /ACK laag

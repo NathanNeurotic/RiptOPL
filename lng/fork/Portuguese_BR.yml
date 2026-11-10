@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: O comando de troca para bootcard será enviado ao(s) slot(s) selecionado(s) no IGR
   MMCE_ADVANCED: Avançado
   MMCE_SETTINGS: Configurações MMCE
+  SOURCE_MMCE_SETTINGS: "      Configurações MMCE"
   MMCE_SEMA: Método de Enfileiramento do Sema de Bloqueio
   HINT_MMCE_SEMA: THFIFO pode ajudar na compatibilidade, mas piorar o desempenho
   MMCE_WAIT_CYCLES: Ciclos de espera após /ACK baixo

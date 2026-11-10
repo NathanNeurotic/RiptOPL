@@ -493,7 +493,12 @@ struct UIItem diaDeviceConfig[] = {
     {UI_BREAK},
 #endif
 
+    // Indented under MMCE Start Mode, like the BDM transports below. RiptOPLite has no MMCE Start Mode row.
+#if !defined(RIPTOPLITE)
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_MMCE_SETTINGS}}},
+#else
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_MMCE_SETTINGS}}},
+#endif
     {UI_SPACER},
     {UI_BUTTON, MMCE_SETTINGS_BUTTON, 1, 1, _STR_HINT_MMCE_SETTINGS_BUTTON, 0, 0, {.label = {NULL, _STR_MODIFY}}},
     {UI_BREAK},

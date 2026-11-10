@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Lệnh chuyển sang bootcard sẽ được gửi đến khe đã chọn khi IGR
   MMCE_ADVANCED: Nâng cao
   MMCE_SETTINGS: Cài đặt MMCE
+  SOURCE_MMCE_SETTINGS: "      Cài đặt MMCE"
   MMCE_SEMA: Phương thức xếp hàng Lock Sema
   HINT_MMCE_SEMA: THFIFO có thể cải thiện tương thích nhưng giảm hiệu năng
   MMCE_WAIT_CYCLES: Chu kỳ chờ sau /ACK thấp

@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Naredba za prelaz na bootcard šalje se odabranom utoru/utorima pri IGR
   MMCE_ADVANCED: Napredno
   MMCE_SETTINGS: MMCE Postavke
+  SOURCE_MMCE_SETTINGS: "      MMCE Postavke"
   MMCE_SEMA: Metoda zaključavanja Sema reda
   HINT_MMCE_SEMA: THFIFO može poboljšati kompatibilnost ali narušiti performanse
   MMCE_WAIT_CYCLES: Ciklusi čekanja nakon /ACK low

@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: 触发 IGR 时，切换到启动卡的命令将发送至所选卡槽
   MMCE_ADVANCED: 高级
   MMCE_SETTINGS: MMCE 设置
+  SOURCE_MMCE_SETTINGS: "      MMCE 设置"
   MMCE_SEMA: 锁信号量排队方式
   HINT_MMCE_SEMA: THFIFO 可能提升兼容性，但会降低性能
   MMCE_WAIT_CYCLES: /ACK 低电平后等待周期数

@@ -196,6 +196,7 @@ translations:
   MMCE_GAMES: MMCE igre
   MMCE_ADVANCED: Napredno
   MMCE_SETTINGS: MMCE podešavanja
+  SOURCE_MMCE_SETTINGS: "      MMCE podešavanja"
   MMCE_SEMA: Način zaključavanja reda semafora
   HINT_MMCE_SEMA: THFIFO može da pomogne kompatibilnosti, ali pogoršava performanse
   WRITE_POPSTARTER_NET: Upiši POPSTARTER mrežnu konfiguraciju

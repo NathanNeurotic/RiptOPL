@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Kommandot att byta till startkort skickas till vald(a) slot(s) vid IGR
   MMCE_ADVANCED: Avancerat
   MMCE_SETTINGS: MMCE Inställningar
+  SOURCE_MMCE_SETTINGS: "      MMCE Inställningar"
   MMCE_SEMA: Lås Sema-kömetod
   HINT_MMCE_SEMA: THFIFO kan förbättra kompatibilitet men försämra prestanda
   MMCE_WAIT_CYCLES: Vänta cykler efter /ACK låg

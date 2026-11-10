@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Perintah beralih ke bootcard akan dikirim ke slot yang dipilih saat IGR
   MMCE_ADVANCED: Lanjutan
   MMCE_SETTINGS: Pengaturan MMCE
+  SOURCE_MMCE_SETTINGS: "      Pengaturan MMCE"
   MMCE_SEMA: Metode Antrian Kunci Sema
   HINT_MMCE_SEMA: THFIFO dapat membantu kompatibilitas tetapi menurunkan performa
   MMCE_WAIT_CYCLES: Siklus tunggu setelah /ACK rendah

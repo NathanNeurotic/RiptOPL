@@ -51,7 +51,7 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 | Default Menu | The page the menu opens on. | `default_device` |
 | HDD (APA) Start Mode | When the internal HDD (APA/PFS) page starts: Off, Manual or Auto. | `hdd_mode` |
 | MMCE Start Mode | When the MMCE (SD2PSX, MemCard PRO2) page starts. | `mmce_mode` |
-| MMCE Settings *(Modify)* | MMCE slot, IGR slot, Send GameID on Launch, communication and path settings (below). | |
+| &nbsp;&nbsp;MMCE Settings *(Modify)* | MMCE slot, IGR slot, Send GameID on Launch, communication and path settings (below). | |
 | BDM Devices Start Mode | When the block-device pages (the indented rows below) start. | `usb_mode` |
 | &nbsp;&nbsp;Internal HDD (exFAT) | Lists games from an exFAT internal HDD. | `enable_bdm_hdd` |
 | &nbsp;&nbsp;USB | Lists games from USB mass storage. | `enable_usb` |

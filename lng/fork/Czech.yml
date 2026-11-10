@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Příkaz přepnutí na bootcard bude odeslán do vybraného slotu při IGR
   MMCE_ADVANCED: Pokročilé
   MMCE_SETTINGS: MMCE Nastavení
+  SOURCE_MMCE_SETTINGS: "      MMCE Nastavení"
   MMCE_SEMA: Metoda zámku Sema fronty
   HINT_MMCE_SEMA: THFIFO může pomoci s kompatibilitou, ale zhoršit výkon
   MMCE_WAIT_CYCLES: Čekací cykly po /ACK low

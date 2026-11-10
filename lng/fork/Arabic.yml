@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: سيتم إرسال أمر التبديل إلى بطاقة البدء للفتحة (الفتحات) المحددة عند IGR
   MMCE_ADVANCED: متقدم
   MMCE_SETTINGS: إعدادات MMCE
+  SOURCE_MMCE_SETTINGS: "      إعدادات MMCE"
   MMCE_SEMA: طريقة قائمة انتظار Lock Sema
   HINT_MMCE_SEMA: قد يساعد THFIFO في التوافق لكنه قد يضعف الأداء
   MMCE_WAIT_CYCLES: دورات الانتظار بعد /ACK منخفض

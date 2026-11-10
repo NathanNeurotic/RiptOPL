@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: A rendszerkártya-váltás parancs a kiválasztott foglalat(ok)ra kerül elküldésre IGR-kor
   MMCE_ADVANCED: Speciális
   MMCE_SETTINGS: MMCE beállítások
+  SOURCE_MMCE_SETTINGS: "      MMCE beállítások"
   MMCE_SEMA: Szemafor sorba állítási módszer zárolása
   HINT_MMCE_SEMA: A THFIFO javíthatja a kompatibilitást, de ronthatja a teljesítményt
   MMCE_WAIT_CYCLES: Várakozási ciklusok /ACK alacsony után

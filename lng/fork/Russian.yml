@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Команда переключения на загрузочную карту будет отправлена в выбранный слот(ы) при IGR
   MMCE_ADVANCED: Дополнительно
   MMCE_SETTINGS: Настройки MMCE
+  SOURCE_MMCE_SETTINGS: "      Настройки MMCE"
   MMCE_SEMA: Метод блокировки очереди семафора
   HINT_MMCE_SEMA: THFIFO может улучшить совместимость, но снизить производительность
   MMCE_WAIT_CYCLES: Циклы ожидания после /ACK low
