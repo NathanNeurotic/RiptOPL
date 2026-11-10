@@ -187,9 +187,9 @@ struct UIItem diaNetConfig[] = {
     {UI_LABEL, NETCFG_HTTP_DOT_0, 1, 1, -1, 0, 0, {.label = {".", -1}}},
     {UI_INT, NETCFG_HTTP_IP_1, 1, 1, _STR_HINT_HTTP_SERVER, 0, 0, {.intvalue = {168, 168, 0, 255}}},
     {UI_LABEL, NETCFG_HTTP_DOT_1, 1, 1, -1, 0, 0, {.label = {".", -1}}},
-    {UI_INT, NETCFG_HTTP_IP_2, 1, 1, _STR_HINT_HTTP_SERVER, 0, 0, {.intvalue = {0, 0, 0, 255}}},
+    {UI_INT, NETCFG_HTTP_IP_2, 1, 1, _STR_HINT_HTTP_SERVER, 0, 0, {.intvalue = {1, 1, 0, 255}}},
     {UI_LABEL, NETCFG_HTTP_DOT_2, 1, 1, -1, 0, 0, {.label = {".", -1}}},
-    {UI_INT, NETCFG_HTTP_IP_3, 1, 1, _STR_HINT_HTTP_SERVER, 0, 0, {.intvalue = {10, 10, 0, 255}}},
+    {UI_INT, NETCFG_HTTP_IP_3, 1, 1, _STR_HINT_HTTP_SERVER, 0, 0, {.intvalue = {100, 100, 0, 255}}},
     {UI_BREAK},
 
     // 1100 is Docmine17's PC server default and therefore what an unconfigured install should try

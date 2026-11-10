@@ -51,7 +51,7 @@ On the console, set **Network Connectivity** to **Manual** or **Auto** in **Game
 | Row | What it is |
 | --- | --- |
 | Protocol | choose **HTTP** |
-| HTTP server | the PC's IPv4 address |
+| HTTP server | the PC's IPv4 address (a new install starts on `192.168.1.100`, the same PC default as SMB) |
 | HTTP port | **1100** by default; anything valid works, 80 and 8080 included |
 | HTTP base path | `/` unless your catalog and images live in a subfolder |
 | Test HTTP server | fetches the catalog, parses it, and reads one real byte range |

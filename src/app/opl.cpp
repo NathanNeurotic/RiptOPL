@@ -1516,8 +1516,8 @@ static void setDefaults(void)
     gPCPort = 445; // the SMB standard: Windows, Samba, a NAS and Neutrino's usmb2 all use it
     gHttpServerIp[0] = 192;
     gHttpServerIp[1] = 168;
-    gHttpServerIp[2] = 0;
-    gHttpServerIp[3] = 10;
+    gHttpServerIp[2] = 1;
+    gHttpServerIp[3] = 100; // the PC default above; .10 is the PS2's own default address
     gHttpPort = 1100;
     strcpy(gHttpBasePath, "/");
     // Fork's opinionated first-boot defaults: the overwhelmingly common SMB setup is a share named
