@@ -324,7 +324,7 @@ driver cannot load, browsing falls back to SMBv1.
 | Choice | Wire protocol | On the PS2 | Core | PC server |
 |---|---|---|---|---|
 | **Network Connectivity: Off** | — | no network device (default) | — | — |
-| **SMB** | SMBv1 (OPL core); SMB 3.0 on port 445 (Neutrino core) | a mounted file share | OPL's *own* core; Neutrino per game (experimental) | [PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers) (recommended: SMBv1 card for OPL, SMBv3 card for Neutrino) / Samba |
+| **SMB** | SMB 2.0.2/2.1 with **SMB2** (new installs) or SMBv1 (OPL core); SMB 3.0 on port 445 (Neutrino core) | a mounted file share | OPL's *own* core; Neutrino per game (experimental) | [PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers) (recommended: SMBv2 card for OPL on SMB2, SMBv1 card on SMBv1, SMBv3 card for Neutrino) / Samba |
 | **UDPFS** | UDPRDMA | a games source served over UDP (see **UDPFS Access** below) | Files and Image: Neutrino by default, `<OPL>` per game | [PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers) (recommended, PC) / [udpfs-server](https://github.com/YouKnow-sys/udpfs-server) (Android) / [`udpfsd`](https://github.com/pcm720/udpfsd) |
 | **UDPBD** | SUDPBDv2 | a served disk image mounted as `massN:` | Neutrino by default, `<OPL>` per game | [PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers) (recommended) / [`udpbd-server`](https://github.com/israpps/udpbd-server) |
 | **HTTP** | HTTP byte ranges | a `games.csv` catalog and ISO streams | OPL's own core | [Docmine17's server](https://github.com/Docmine17/Open-PS2-Loader-HTTP) or a server meeting the [HTTP profile](HTTP.md) |
