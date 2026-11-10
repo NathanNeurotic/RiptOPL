@@ -22,7 +22,9 @@ failures = []
 def body(source, signature):
     """The text of the function whose definition starts with `signature`."""
     match = re.search(re.escape(signature) + r'[^;{]*\{', source)  # skips a forward declaration
-    assert match, 'no definition of ' + signature
+    if not match:
+        failures.append('no definition of ' + signature)
+        return ''
     brace = match.end() - 1
     depth = 0
     for i in range(brace, len(source)):
@@ -32,7 +34,8 @@ def body(source, signature):
             depth -= 1
             if depth == 0:
                 return source[brace:i + 1]
-    raise AssertionError('unterminated function: ' + signature)
+    failures.append('unterminated function: ' + signature)
+    return ''
 
 
 def check(condition, message):
@@ -48,6 +51,17 @@ semaphores = body(cdvdman, 'static void cdvdman_create_semaphores(void)')
 start_threads = body(cdvdman, 'static void cdvdman_startThreads(void)')
 fs_init = body(ioops, 'int cdvdman_fs_init(void)')
 
+
+def report():
+    if failures:
+        print('cdvdman own-stack contract failed:')
+        for failure in failures:
+            print(' - ' + failure)
+        sys.exit(1)
+
+
+report()  # the checks below index into these bodies, so a missing one is reported here
+
 # The mount: only the reading thread calls DeviceFSInit.
 check(len(re.findall(r'\bDeviceFSInit\s*\(\s*\)\s*;', cdvdman + ioops)) == 1 and 'DeviceFSInit();' in thread,
       'DeviceFSInit must be called from cdvdman_cdread_Thread and nowhere else in cdvdman.c / ioops.c')
@@ -62,7 +76,8 @@ check(re.search(r'if \(WaitSema\(cdvdman_initsema\) != 0\)\s*return 0;', init) i
       'cdvdman_init must give up when it cannot take cdvdman_initsema')
 check(init.index('WaitSema(cdvdman_initsema)') < init.index('cdvdman_fs_init()'),
       'cdvdman_init must hold cdvdman_initsema around cdvdman_fs_init')
-check(init.count('return') == 3 and init.rstrip().endswith('SignalSema(cdvdman_initsema);\n    return result;\n}'),
+check(len(re.findall(r'\breturn\b', init)) == 3
+      and re.search(r'SignalSema\(cdvdman_initsema\);\s*return\s+result;\s*\}\s*$', init) is not None,
       'every path of cdvdman_init past the lock must release cdvdman_initsema')
 
 # A mount request and a queued read each have a signal, so neither is lost.
@@ -84,9 +99,5 @@ check(re.search(r'if \(cdread_job == CDREAD_JOB_SYNC\) \{[^}]*SignalSema\(cdvdma
 # The stack that work now runs on.
 check('thread_param.stacksize = 0x1000;' in start_threads, 'the reading thread keeps its 4 KB stack')
 
-if failures:
-    print('cdvdman own-stack contract failed:')
-    for failure in failures:
-        print(' - ' + failure)
-    sys.exit(1)
+report()
 print('cdvdman own-stack contract: ok')
