@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Network Boot (SMB/UDP) · RiptOPL Docs</title>
+<title>Network (SMB / UDPFS / UDPBD) · RiptOPL Docs</title>
 <meta name="description" content="Stream games from a PC over the LAN with Network Connectivity (Off / Manual / Auto) in Game Sources, then Protocol (SMB / UDPFS / UDPBD / HTTP), SMB Version and Access (Files / IMG) on the Network page.">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <meta property="og:site_name" content="RiptOPL Docs">
@@ -36,11 +36,10 @@
     <h4>Game sources</h4>
     <a href="usb.html"><span class="icon icon-usb"></span>USB / MX4SIO / iLink</a>
     <a href="mmce.html"><span class="icon icon-mmce"></span>MMCE</a>
-    <a href="smb.html"><span class="icon icon-smb"></span>SMB (network share)</a>
     <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
     <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
     <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
-    <a href="network-boot.html" class="active"><span class="icon icon-netboot"></span>Network Boot (UDPBD/UDPFS)</a>
+    <a href="network-boot.html" class="active"><span class="icon icon-netboot"></span>Network (SMB/UDPFS/UDPBD)</a>
     <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
     <h4>Features</h4>
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
@@ -76,8 +75,8 @@
     <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
   </nav>
   <main class="content">
-<h1>Network Boot (SMB / UDP)</h1>
-<p class="lead">UDPFS and UDPBD stream PS2 games from a PC. They launch through Neutrino by default; UDPBD and UDPFS games (Files and IMG) can also run on OPL's own core, per game. Set <b>Network Connectivity</b> (Off / Manual / Auto) in <b>Game Sources</b> and choose the <b>Protocol</b> indented under it (the same row is on the <b>Network</b> page). The picker contains SMB / UDPFS / UDPBD / HTTP. SMB and <a href="http.html">HTTP</a> use OPL's own core; HTTP has separate setup and limits.</p>
+<h1>Network (SMB / UDPFS / UDPBD)</h1>
+<p class="lead">Every network protocol is on this page: <a href="#smb">SMB</a> shares, and UDPFS and UDPBD, which stream PS2 games from a PC. They launch through Neutrino by default; UDPBD and UDPFS games (Files and IMG) can also run on OPL's own core, per game. Set <b>Network Connectivity</b> (Off / Manual / Auto) in <b>Game Sources</b> and choose the <b>Protocol</b> indented under it (the same row is on the <b>Network</b> page). The picker contains SMB / UDPFS / UDPBD / HTTP. SMB and <a href="http.html">HTTP</a> use OPL's own core; HTTP has separate setup and limits.</p>
 
 <div class="callout info"><div class="h">Four rows, Off by default</div>
 The old <b>Network Boot</b> ON/OFF toggle and the separate <b>Net Boot Protocol</b> picker are retired
@@ -110,7 +109,7 @@ PC-side server. Pick a protocol only when you have those pieces in place. Local 
   <td>SMBv1 or SMB2 on OPL's core (Network &rarr; SMB Version; default SMBv1); SMB 3.0 on TCP 445 on the Neutrino core</td>
   <td>a mounted file share</td>
   <td><a href="https://github.com/NathanNeurotic/PS2-Servers">PS2 Servers</a> (recommended) / Samba</td>
-  <td>OPL's <b>own</b> core; Neutrino per game or by global Loader Core (experimental, <a href="smb.html#smb-neutrino">SMB through Neutrino</a>)</td>
+  <td>OPL's <b>own</b> core; Neutrino per game or by global Loader Core (experimental, <a href="#smb-neutrino">SMB through Neutrino</a>)</td>
 </tr>
 <tr>
   <td><b>UDPFS</b></td>
@@ -164,9 +163,9 @@ game's <b>Neutrino Filesystem</b> on <b>Auto</b>: <code>bd</code> treats the who
 which only fits a server exporting a single raw ISO.
 </div>
 
-<h2 id="smb-version">SMB Version</h2>
+<h2 id="smb-version-row">SMB Version</h2>
 
-<p>When <b>Protocol</b> = <b>SMB</b>, the <b>SMB Version</b> row selects the dialect OPL's core speaks: <b>SMBv1</b> (the default) or <b>SMB2</b> (SMB 2.0.2 or 2.1, with an unsigned SMB 3.0 fallback). It applies to <b>both</b> halves of SMB, browsing the share from the menu and reading the game in game. The row is greyed unless Protocol is SMB, and its value is kept while greyed. SMB 3.x is not a separate choice: under SMB2, SMB 3.0 is tried only when the server refuses 2.x, and a server that accepts only SMB 3.1.1, or refuses 2.x and requires signing on SMB 3.x, is not reached. The server must speak the dialect you pick: an SMBv1-only server lists nothing under SMB2, and an SMB2/3-only server lists nothing under SMBv1. A game on the Neutrino core does not use this row: Neutrino logs in with its own SMB 3.0 client on TCP 445 (see <a href="smb.html#smb-neutrino">SMB through Neutrino</a>).</p>
+<p>When <b>Protocol</b> = <b>SMB</b>, the <b>SMB Version</b> row selects the dialect OPL's core speaks: <b>SMBv1</b> (the default) or <b>SMB2</b> (SMB 2.0.2 or 2.1, with an unsigned SMB 3.0 fallback). It applies to <b>both</b> halves of SMB, browsing the share from the menu and reading the game in game. The row is greyed unless Protocol is SMB, and its value is kept while greyed. SMB 3.x is not a separate choice: under SMB2, SMB 3.0 is tried only when the server refuses 2.x, and a server that accepts only SMB 3.1.1, or refuses 2.x and requires signing on SMB 3.x, is not reached. The server must speak the dialect you pick: an SMBv1-only server lists nothing under SMB2, and an SMB2/3-only server lists nothing under SMBv1. A game on the Neutrino core does not use this row: Neutrino logs in with its own SMB 3.0 client on TCP 445 (see <a href="#smb-neutrino">SMB through Neutrino</a>).</p>
 
 <h2 id="saved-protocol-switching">Switching protocols with saved settings</h2>
 <p>UDPFS remembers its own Files/IMG choice independently of UDPBD, which always uses IMG. Switching to UDPBD and back should restore your previous UDPFS choice; a fresh configuration defaults to Files. Set Access on the Network page and make sure the PC server serves the matching folder or disk image.</p>
@@ -377,7 +376,7 @@ game runs, the game cannot reopen its files; restart the game (Neutrino has the 
 <b>Not tested on hardware yet.</b></p>
 
 <p><b>SMB is different:</b> it is served by OPL's own core, needs no Neutrino, and behaves like the
-classic OPL network share. See <a href="smb.html">SMB (network share)</a>.</p>
+classic OPL network share. See <a href="#smb">SMB (network share)</a>.</p>
 
 <div class="callout info"><div class="h">Per-game settings still work</div>
 UDPFS games support the full per-game settings screen in its Neutrino-aware mode:
@@ -513,8 +512,326 @@ server-dependent virtual ISO exposure (see the format limits below).</p>
 </table>
 
 <p>For further reading see <a href="neutrino.html">Neutrino Core</a> (per-game settings,
-launch args) and <a href="smb.html">SMB (network share)</a> (the SMB protocol in depth, which uses
-the OPL built-in core and does not require Neutrino).</p>
+launch args).</p>
+
+<h2 id="smb">SMB (network share)</h2>
+<p>Load PS2 (and PS1) games directly from a shared folder on a Windows PC, Linux Samba server, or NAS over your local network. RiptOPL's own core speaks <b>SMBv1</b> by default and can be switched to <b>SMB2</b> with the <b>SMB Version</b> row in Network; a game on the Neutrino core can instead use Neutrino's experimental SMB 3.0 client. No USB drive required — the PS2 mounts the share and reads ISOs straight off it.</p>
+
+<div class="callout info"><div class="h">SMB and Network Boot share the same adapter</div>
+The PS2 has one Ethernet port and one network driver. <b>SMB (ETH) and Network Boot (UDPBD/UDPFS) are mutually exclusive</b> — selecting one in <b>Game Sources</b> excludes the others. If you switch, you must save and restart for the change to take effect. See <a href="#single-nic">One NIC, one transport</a> for how the rows interlock.</div>
+
+<h2 id="smb-requirements">What you need</h2>
+<ul class="checklist">
+  <li>A PS2 with a network adapter (PS2 HDD adaptor with Ethernet, or a compatible third-party adapter).</li>
+  <li>A PC, NAS, or Linux/macOS box that serves the share in the dialect you select on OPL's core, <b>SMBv1</b> (the default) or <b>SMB2</b> (the experimental <a href="#smb-neutrino">Neutrino SMB path</a> needs SMB 3.0 on port 445 instead). On Windows, the recommended path is the <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2 Servers</a> all-in-one launcher; Samba and compatible NAS shares remain supported.</li>
+  <li>Both devices on the same local network (wired is strongly recommended — Wi-Fi via a media bridge is possible but adds latency).</li>
+  <li>A static IP address for the PS2, <em>or</em> DHCP with a known/stable lease. A static IP is far simpler and avoids reconnection surprises.</li>
+</ul>
+
+<div class="callout info"><div class="h">Recommended on Windows: PS2 Servers</div>
+RiptOPL no longer embeds a PC SMB server. Open <code>PS2-Servers.url</code> from the release package or
+visit <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2 Servers</a>, choose its SMBv1 server,
+select your games folder and follow the protocol-specific IP, port, share and credential values the
+launcher displays. It implements the OPL-compatible SMBv1 subset directly and does not require you
+to enable Windows' built-in SMB1 feature. Use its SMBv1 card with <b>SMB Version</b> on <b>SMBv1</b>, or its SMBv2 card (SMB up to 2.1) with
+<b>SMB2</b>. With <b>SMB2</b> OPL's core falls back to SMB 3.0 when a server refuses 2.x, so an SMBv3 card that does not require
+signing answers too; its SMBv3 card on port 445 is also what the Neutrino SMB path needs. Samba/NAS users may need
+<code>min protocol = NT1</code> if their server defaults have been tightened.</div>
+
+<h2 id="share-setup">1. Set up the SMB server and share</h2>
+
+<p><b>PS2 Servers:</b> download its packaged app, choose the <b>SMBv1 server</b> card, select your games
+folder and click <b>Start</b>. Use the exact connection settings shown by the launcher. The manual share instructions below are for Samba, a NAS, or
+another already-configured SMB server.</p>
+
+<div class="steps">
+  <div class="step">
+    <h3>Create a folder</h3>
+    <p>Create a folder to act as the OPL root — e.g. <code>C:\PS2SMB</code> on Windows or <code>/srv/ps2smb</code> on Linux. Give it the standard OPL subfolder layout (OPL will create missing folders automatically on first connect, but it helps to have them ready):</p>
+    <pre>PS2SMB\
+  CD\       ← PS2 CD-ROM games (blue-bottom discs, &lt;700 MB ISOs)
+  DVD\      ← PS2 DVD5 / DVD9 ISOs
+  POPS\     ← PS1 *.VCD files + POPSTARTER.ELF (for PS1 games)
+  ART\      ← cover art
+  CFG\      ← per-game config files
+  VMC\      ← Virtual Memory Card images
+  THM\      ← themes
+  CHT\      ← cheat files
+  APPS\     ← homebrew ELFs</pre>
+  </div>
+  <div class="step">
+    <h3>Grant the access your features need</h3>
+    <p>Read access is required for game loading. Write access is also needed to create support folders, save configuration changes or save to VMCs on the share. Copy the endpoint and credentials shown by your server.</p>
+    <p><b>Linux / Samba:</b> add a share block to <code>/etc/samba/smb.conf</code> — for example:</p>
+    <pre>[PS2SMB]
+   path = /srv/ps2smb
+   browseable = yes
+   writable = yes
+   guest ok = yes
+   min protocol = NT1</pre>
+    <p>Then run <code>sudo systemctl restart smbd</code>. If you use a password, set up a Samba user with <code>sudo smbpasswd -a &lt;username&gt;</code> instead of using <code>guest ok = yes</code>.</p>
+    <p>The <code>min protocol = NT1</code> line above is there to let a modern Samba still answer <b>SMBv1</b>, which OPL's core needs on <b>SMBv1</b>. With <b>SMB Version</b> on <b>SMB2</b>, drop that line. The Neutrino SMB path uses SMB 3.0 on port 445, which Samba offers by default.</p>
+  </div>
+  <div class="step">
+    <h3>Place your game ISOs</h3>
+    <p>Copy PS2 ISOs into <code>DVD\</code> (for DVD games) or <code>CD\</code> (for CD-ROM games). USBExtreme/USB Advance split-format games (<code>ul.*</code>) work too, but single-file ISOs are simpler over a network. There is no per-file size limit on the SMB path — DVD9 dual-layer ISOs (~8 GB) are fine.</p>
+  </div>
+</div>
+
+<h2 id="network-settings">2. Configure the Network page in OPL</h2>
+
+<p>In RiptOPL, go to <b>Settings → Network</b>. The page has two sections: the PS2's own network identity, and the share address.</p>
+
+<h3 id="ps2-ip">PS2 IP address</h3>
+
+<table data-sortable>
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><b>IP address type</b></td><td><b>Static</b> or <b>DHCP</b>. Static is recommended — it avoids re-needing to update the settings when your router assigns a different lease.</td></tr>
+    <tr><td><b>IP Address</b></td><td>The PS2's IP address (e.g. <code>192.168.0.10</code>). Grayed out when DHCP is selected.</td></tr>
+    <tr><td><b>Mask</b></td><td>Typically <code>255.255.255.0</code> for a home /24 network.</td></tr>
+    <tr><td><b>Gateway</b></td><td>Your router's IP (e.g. <code>192.168.0.1</code>).</td></tr>
+    <tr><td><b>DNS Server</b></td><td>Usually the same as the gateway, or your ISP/public DNS. Not required for SMB itself (which connects by IP), but needed if DHCP negotiation touches DNS.</td></tr>
+    <tr><td><b>Ethernet Link Mode</b></td><td>Leave on <b>Auto</b> unless your switch forces a specific speed/duplex. Options: Auto, 100Mbps Full-Duplex, 100Mbps Half-Duplex, 10Mbps Full-Duplex, 10Mbps Half-Duplex.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="share-address">Share address and credentials</h3>
+
+<table data-sortable>
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><b>Address Type</b></td><td><b>IP Address</b> or <b>NetBIOS</b>. For most setups use IP address — it connects directly without name resolution. NetBIOS lets you type a Windows machine name (e.g. <code>MYPC</code>) but requires the PS2 to resolve the name first; if the name lookup fails, OPL cannot connect at all.</td></tr>
+    <tr><td><b>Address</b></td><td>Either the server's IPv4 address (e.g. <code>192.168.0.5</code>) or its NetBIOS name (up to 15 characters, e.g. <code>MYPC</code>), depending on Address Type.</td></tr>
+    <tr><td><b>Port</b></td><td>RiptOPL defaults to <b>1111</b>, but the client and server must match. <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2 Servers</a> defaults to <b>1025</b> on its Desktop SMBv1 card and <b>1111</b> on its Core/standalone server (<a href="https://github.com/NathanNeurotic/PS2-Servers/blob/main/docs/SMB.md">its SMB setup</a>); enter the port the running card displays. Standard Samba/native SMB commonly uses port 445. The Network page opens with Advanced Options on, so the Port field is editable straight away.</td></tr>
+    <tr><td><b>Share</b></td><td>The share name, e.g. <code>PS2SMB</code>. This is the name you gave the share on the server — not a path. A fresh RiptOPL install defaults to <code>games</code>.</td></tr>
+    <tr><td><b>User</b></td><td>The username to log on with. A fresh install defaults to <code>guest</code>. For a guest/public share leave this as-is. For a password-protected share enter the correct account name.</td></tr>
+    <tr><td><b>Password</b></td><td>Leave empty for no-password shares. For password-protected shares OPL first asks the loaded SMB driver to pre-hash the password. The SMBv1 driver does that and sends the hash; the SMB2 driver declines, because its NTLMv2 exchange needs the password as typed, so OPL hands it over and the driver still sends only an NTLMv2 response, never the password itself. For the Neutrino SMB path the password is written in plain text into <code>config/bsd-smb.toml</code> in the Neutrino folder, so keep that device private.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout info"><div class="h">Subfolder prefix (ETH Prefix)</div>
+If your share contains more than one OPL layout — for example you have multiple consoles sharing one NAS share — you can point OPL at a subfolder inside the share. Set <b>ETH Prefix Path</b> on <b>Settings → Game Sources</b> (config key <code>eth_prefix</code>) to the subfolder name. OPL will prepend that path to every read/write inside the share. Leave it empty to use the share root directly.</div>
+
+<h3 id="save-connect">Saving and connecting</h3>
+
+<p>After filling in the fields, press <b>OK</b> to save. The dialog also has a <b>Reconnect</b> button: it saves and immediately retries the SMB connection without a full restart. If anything changed on the server (new files, credentials updated), Reconnect refreshes the game list without rebooting.</p>
+
+<h2 id="enable-smb">3. Enable SMB in Game Sources</h2>
+
+<p>The <b>Network</b> page stores the <em>how</em>: protocol, address and credentials. <b>Game Sources</b> stores the <em>whether</em>. For SMB, set <b>Network Connectivity</b> on Game Sources to Manual or Auto and the <b>Protocol</b> under it to SMB, then on the Network page set <b>SMB Version</b> to the dialect your server speaks:</p>
+
+<table data-sortable>
+  <thead><tr><th>Row</th><th>Values</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><b>Network Connectivity</b> (Game Sources)</td><td>Off / Manual / Auto</td><td>The network <em>start mode</em>, using the same three options as every other device. <b>Off</b> loads no network transport at all. <b>Manual</b> registers the <b>ETH Games</b> tab and connects when you navigate into it — boot stays fast and you only pay the connection cost on entry. <b>Auto</b> brings the stack up during startup instead.</td></tr>
+    <tr><td><b>Protocol</b> (Game Sources, under Network Connectivity, and Network)</td><td>SMB / UDPFS / UDPBD / HTTP</td><td>Which transport owns the single Ethernet adapter. One setting shown on both pages. <b>SMB</b> is the network-share client documented on this page; UDPFS and UDPBD select Network Boot instead — see <a href="network-boot.html">Network Boot</a>.</td></tr>
+    <tr><td><b>SMB Version</b> (Network)</td><td>SMBv1 / SMB2</td><td>Which SMB dialect to speak. <b>SMBv1</b> is the default. Live only while <b>Protocol</b> is SMB, and greyed out otherwise, but the value is kept. See <a href="#smb-version">SMB Version</a> below.</td></tr>
+    <tr><td><b>Access</b> (Network)</td><td>Files / IMG</td><td>Only meaningful for UDPFS. Under <b>SMB</b> it is locked to <b>Files</b> and greyed out; under UDPBD it is locked to <b>IMG</b>. You never need to touch it for an SMB setup.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout info"><div class="h">SMB is interlocked with Network Boot</div>
+Because <b>Protocol</b> is one exclusive picker, SMB and Network Boot (UDPBD/UDPFS) are mutually exclusive by construction: selecting <b>SMB</b> rules out UDPBD/UDPFS, and selecting either UDP transport rules out SMB. Both require the PS2's single Ethernet adapter; only one can be active at a time. The interlock is enforced both in the UI and at runtime in <code>ethsupport.c</code>, which refuses to bring up the SMB stack while UDPBD holds the adapter.</div>
+
+<h3 id="smb-version">SMB Version</h3>
+
+<p>The <b>SMB Version</b> row picks the dialect for the whole SMB session on OPL's core. Selecting <b>SMB2</b> swaps <em>both</em> halves of the SMB path:</p>
+
+<table data-sortable>
+  <thead><tr><th>Half</th><th>SMBv1 (default)</th><th>SMB2</th></tr></thead>
+  <tbody>
+    <tr><td>Browsing the share in the menu (the <b>ETH Games</b> tab)</td><td>PS2SDK's <code>smbman.irx</code></td><td>RiptOPL's <code>smb2man.irx</code>, built on <a href="https://github.com/sahlberg/usmb2">usmb2</a> by <a href="https://github.com/sahlberg">Ronnie Sahlberg</a> (MIT; see <a href="credits.html#license">License</a>)</td></tr>
+    <tr><td>Reading the disc image in game</td><td>The SMB1 reader inside <code>cdvdman</code></td><td>RiptOPL's own SMB2 reader inside <code>cdvdman</code></td></tr>
+  </tbody>
+</table>
+
+<p>Both drivers register the same <code>smb0:</code> device, so the folder layout, the ETH prefix and the config keys are the same whichever one is loaded. Only one is resident at a time, and the game always uses the dialect the menu is browsing with. If the SMB2 driver cannot load, browsing falls back to SMBv1. SMB2 logs on with NTLMv2 (guest and anonymous logons work too) and signs its requests when the server requires signing, as Windows 11 24H2 does by default. <b>Not tested on hardware.</b></p>
+
+<div class="callout amber"><div class="h">Your server must speak the dialect you pick</div>
+The session does not negotiate between SMBv1 and SMB2. Under <b>SMB2</b>, an SMBv1-only server (such as the <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2 Servers</a> SMBv1 card) lists no games; under <b>SMBv1</b>, a server with SMB1 turned off lists none. Put the row on the dialect your server answers.</div>
+
+<div class="callout amber"><div class="h">What SMB2 on OPL's core speaks, and its limits</div>
+<ul>
+  <li><b>Dialects:</b> SMB 2.0.2 and 2.1 first; if the server refuses those, SMB 3.0 and 3.0.2, unsigned. A server that accepts only SMB 3.1.1 is not reached, and neither is a server that refuses 2.x and requires signing on SMB 3.x (SMB 3.x signs with AES-CMAC, which RiptOPL does not implement): browsing fails to log on. Windows, Samba and the PS2 Servers SMBv2 card all still offer 2.x, and over 2.x a server that requires signing (Windows 11 24H2) is signed for.</li>
+  <li><b>Server address:</b> the driver connects to an IPv4 address. A NetBIOS name (Address Type) still works, because the menu looks it up before connecting; DNS host names are not supported.</li>
+  <li><b>No share list:</b> SMB2 cannot list the server's shares, so the <b>Share</b> name must be typed in on the Network page.</li>
+  <li><b>User name and password:</b> Latin-1 characters only (nothing above U+00FF); a credential with other characters is refused at logon rather than sent wrongly. The Network page keeps up to 31 bytes of each.</li>
+</ul></div>
+
+<div class="callout amber"><div class="h">Changing the dialect needs a restart if an SMB driver is loaded</div>
+Each network transport loads its modules once per boot. If an SMB driver is already loaded this session, changing <b>SMB Version</b> offers a restart, as a protocol change does. From a cold boot the new dialect applies straight away.</div>
+
+<h3 id="smb-neutrino">SMB through Neutrino (experimental)</h3>
+
+<p>A game whose <b>Loader Core</b> is <b>Neutrino</b>, or <b>Default</b> while the global Loader Core is Neutrino, launches from the share through Neutrino's own SMB driver instead: the backend <a href="https://github.com/sahlberg">Ronnie Sahlberg</a> added to Neutrino (<a href="https://github.com/ps2max32/neutrino/pull/236">ps2max32/neutrino PR #236</a>, merged 2026-10-31), built on his <a href="https://github.com/sahlberg/usmb2">usmb2</a> client. At launch RiptOPL writes the menu's network, server and share settings into <code>config/bsd-smb.toml</code> in the Neutrino folder, closes its own SMB session and starts Neutrino with <code>-bsd=smb</code>.</p>
+
+<ul>
+  <li>Install the <b>complete latest Neutrino nightly</b> (with <code>config/bsd-smb.toml</code> and both SMB modules) on a memory card or USB, not on the share.</li>
+  <li>The server must offer <b>SMB 3.0</b> on TCP <b>445</b> with NTLM login and no signing or encryption, such as the PS2 Servers <b>SMBv3</b> card on port 445. The <b>SMB Version</b> row does not apply.</li>
+  <li>Use plain ASCII user names and passwords of at most 31 characters.</li>
+  <li>A game with a VMC, a ZSO or UL image, a port other than 445, or a Neutrino folder without the SMB files launches on OPL's core with a warning instead.</li>
+  <li>The RetroAchievements kit's ORBIT runtime does not have this backend yet.</li>
+</ul>
+
+<p>Full setup and limits: <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/NEUTRINO.md#smb-through-neutrino-experimental">SMB through Neutrino</a>. <b>Not tested on hardware.</b></p>
+
+<h2 id="smb-folder-layout">4. Game and folder layout</h2>
+
+<p>OPL uses the same folder structure on an SMB share as on USB or MMCE:</p>
+
+<table data-sortable>
+  <thead><tr><th>Folder</th><th>Contents</th></tr></thead>
+  <tbody>
+    <tr><td><code>CD\</code></td><td>PS2 CD-ROM games (ISOs under ~700 MB — blue-bottom discs)</td></tr>
+    <tr><td><code>DVD\</code></td><td>PS2 DVD5 and DVD9 ISOs (up to ~8.5 GB — FAT32 4 GB limit does not apply over SMB)</td></tr>
+    <tr><td><code>POPS\</code></td><td>PS1 <code>*.VCD</code> files + <code>POPSTARTER.ELF</code> (see <a href="#ps1-smb">PS1 over SMB</a> below)</td></tr>
+    <tr><td><code>EMBER\</code></td><td>Ember PS1 core: <code>ember.elf</code>, your <code>bios.bin</code>, <code>settings.txt</code> and <code>games\&lt;Game Name&gt;\</code> folders (see <a href="ps1-vcd.html#ember-layout">Ember layout</a>)</td></tr>
+    <tr><td><code>ART\</code></td><td>Cover art images</td></tr>
+    <tr><td><code>CFG\</code></td><td>Per-game configuration files</td></tr>
+    <tr><td><code>VMC\</code></td><td>Virtual Memory Card images (<code>.bin</code>)</td></tr>
+    <tr><td><code>THM\</code></td><td>Themes</td></tr>
+    <tr><td><code>CHT\</code></td><td>PS2RD cheat files</td></tr>
+    <tr><td><code>APPS\</code></td><td>Homebrew ELFs</td></tr>
+  </tbody>
+</table>
+
+<p>Note that SMB paths use backslashes (<code>\</code>) internally — OPL handles this automatically; your folder names on the server should just be plain ASCII without special characters.</p>
+
+<h2 id="ps1-smb">5. PS1 games over SMB</h2>
+
+<p>The L3 PS1 view works on SMB just like USB: press <b>L3</b> on the ETH Games page to toggle between your PS2 disc list and your PS1 <code>*.VCD</code> list. Place your VCDs (and <code>POPSTARTER.ELF</code>) in the <code>POPS\</code> subfolder of the share. Ember games go in <code>EMBER\games\&lt;Game Name&gt;\</code> beside it and need none of the memory-card setup below.</p>
+
+<p>Launching a PS1 game over SMB has one extra requirement: POPSTARTER needs its own copy of the network configuration and its SMB modules on the memory card — it cannot read them from the share at launch time.</p>
+
+<div class="steps">
+  <div class="step">
+    <h3>Copy the SMB modules to the memory card</h3>
+    <p>The release package's canonical <code>POPS/</code> folder contains the four network IRX modules POPSTARTER needs for SMB: <code>smbman.irx</code>, <code>ps2ip.irx</code>, <code>ps2smap.irx</code>, and <code>ps2dev9.irx</code>. They must end up in <code>mc0:/POPSTARTER/</code> (or <code>mc1:/POPSTARTER/</code>). If the share's own <code>POPS/</code> folder holds them, an SMB VCD launch copies any that are missing to the card for you; it never replaces a file already on the card, and it refuses a copy that would fill the card. Otherwise copy them yourself. OPL checks for all four on one card before an SMB VCD launch and warns you rather than hanging if any are missing.</p>
+  </div>
+  <div class="step">
+    <h3>Set up the POPSTARTER network config</h3>
+    <p>Open <b>POPSTARTER Network Settings</b>, from <b>Settings → Network</b> or <b>Settings → PS Emulation Settings</b>. It edits POPSTARTER's own <code>mc?:/POPSTARTER/IPCONFIG.DAT</code> and <code>SMBCONFIG.DAT</code> in the format POPSTARTER expects, so you do not need to edit those files by hand.</p>
+    <p>The screen shows what those files already contain, or says none were found. <b>Import from SMB POPS Directory</b> copies both from the connected share's <code>POPS</code> folder. On OK, only the values you changed are written, to the card the existing files came from, and replacing an existing configuration asks first. On a first setup, with neither file on the card, saving the SMB values writes <code>IPCONFIG.DAT</code> too, as DHCP unless a complete static IP is entered. If writing fails, OPL shows an error message.</p>
+  </div>
+</div>
+
+<div class="callout amber"><div class="h">The PS1 leg is SMBv1 regardless of the SMB Version row</div>
+POPSTARTER uses its own SMBv1 modules (the module set OPL checks for on the memory card is <code>smbman.irx</code>) and reads its own <code>SMBCONFIG.DAT</code>, not OPL's dialect choice. So a PS1 VCD launched over SMB needs a server that answers <b>SMBv1</b>, even with OPL set to SMB2 for PS2 games. An SMBv3 card on port 445 that serves Neutrino games does not serve PS1 VCDs.</div>
+
+<p>For deeper PS1 coverage — cover art by PS1 disc ID, the four <b>PS2/PS1 Game Display</b> modes, and BDMA module equipping for block devices — see <a href="ps1-vcd.html">PS1 Games (VCD)</a>.</p>
+
+<details class="deep"><summary>Does the BDMA exFAT equip apply to SMB?</summary>
+<p>No. The BDMA equip copies block-device driver modules for POPSTARTER to use when reading an exFAT drive. SMB is a pure network path — there is no block device involved. The BDMA Mode and BDMA Source settings on PS Emulation Settings have no effect on an SMB VCD launch. The only prerequisite for PS1 over SMB is the four network IRX modules above plus the POPSTARTER network config files.</p>
+</details>
+
+<h2 id="nic-exclusive">6. SMB vs. Network Boot — the NIC interlock</h2>
+
+<p>The PS2's DEV9 expansion bay contains the Ethernet adapter (SMAP). There is only one, and only one network driver stack can own it at a time.</p>
+
+<ul class="checklist">
+  <li><b>SMB active:</b> OPL loads its own network stack (NETMAN + SMAP + PS2IP) and connects to the share. UDPBD/UDPFS cannot load.</li>
+  <li><b>Network Boot active:</b> Neutrino's UDPBD or UDPFS driver owns the adapter. The SMB stack will not load (enforced both in the Game Sources UI and by a runtime guard in <code>ethsupport.c</code>).</li>
+</ul>
+
+<p>To switch from SMB to Network Boot (or vice versa), go to <b>Game Sources</b>, change the <b>Protocol</b> row, save, and restart OPL. You do not need to change any hardware.</p>
+
+<p>The two approaches serve different use cases: SMB lets any device on the LAN (NAS, always-on PC, server) host your library with no special server software beyond a standard file share; Network Boot via UDPBD/UDPFS requires a dedicated server process running on a PC during play but streams the disc image at block-device level (Neutrino handles the disc emulation, not OPL's loader core). See <a href="network-boot.html">Network Boot (UDPBD/UDPFS)</a> for details.</p>
+
+<h2 id="troubleshooting-smb">7. Common problems</h2>
+
+<table data-sortable>
+  <thead><tr><th>Symptom</th><th>Likely cause &amp; fix</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>OPL shows "Network startup error: CONN" or similar</td>
+      <td>The PS2 cannot reach the server. Check: server IP is correct, server is on and reachable, the server answers the dialect selected in <b>SMB Version</b>, no firewall is blocking the configured port, and the PS2 IP is valid. With PS2 Servers, copy the protocol-specific IP and port shown by its launcher rather than assuming RiptOPL's default 1111.</td>
+    </tr>
+    <tr>
+      <td>ETH Games tab lists nothing at all after switching to SMB2</td>
+      <td>Usually a dialect mismatch: the server speaks only SMBv1, or only SMB 3.1.1, or refuses SMB 2.x and requires signing on SMB 3.x. The session does not negotiate between SMBv1 and SMB2. Set <b>Network &rarr; SMB Version</b> back to <b>SMBv1</b> (needed for the PS2 Servers SMBv1 card), or use a server that offers SMB 2.0.2 or 2.1, such as the PS2 Servers SMBv2 card. If an SMB driver was already loaded when you changed the row, accept the restart.</td>
+    </tr>
+    <tr>
+      <td>OPL shows "LOGON" error</td>
+      <td>Wrong username or password. Try <code>GUEST</code> / empty password for a guest share, or confirm the account credentials. Check that the Samba user (if Linux) has been added with <code>smbpasswd</code>.</td>
+    </tr>
+    <tr>
+      <td>OPL shows "SHARE" error (open share failed)</td>
+      <td>The share name does not match. Verify the exact share name on the server (case-sensitive on Linux). RiptOPL's default share name is <code>games</code> (stock OPL uses <code>PS2SMB</code>).</td>
+    </tr>
+    <tr>
+      <td>Game list is empty even after connecting</td>
+      <td>Check that ISOs are in the correct subfolder (<code>DVD\</code> or <code>CD\</code>) and that the user has read access to those folders. On Windows, NTFS permissions and share permissions are separate — verify both.</td>
+    </tr>
+    <tr>
+      <td>Games load slowly or stutter</td>
+      <td>Wired Ethernet is strongly recommended. If using a media bridge or powerline adapter, test with a direct cable run first. Neither dialect compresses or caches on OPL's side; all disc reads go across the wire in real time.</td>
+    </tr>
+    <tr>
+      <td>DHCP fails / no IP assigned</td>
+      <td>OPL waits up to 30 seconds for a valid DHCP lease. If it times out, it logs "Unable to get valid IP address via DHCP." Switch to a static IP if your DHCP server is slow or if the PS2's MAC is not being offered a lease.</td>
+    </tr>
+    <tr>
+      <td>PS1 VCD launch fails or hangs</td>
+      <td>Check that the four SMB IRX modules (<code>smbman.irx</code>, <code>ps2ip.irx</code>, <code>ps2smap.irx</code>, <code>ps2dev9.irx</code>) are present in <code>mc?:/POPSTARTER/</code>, and that the network config files (<code>IPCONFIG.DAT</code>, <code>SMBCONFIG.DAT</code>) have been written. Set them up from <b>POPSTARTER Network Settings</b> on <b>Settings → Network</b>. Note that this leg is SMBv1 whatever <b>SMB Version</b> is set to, so the server must still answer SMBv1 for PS1 VCDs.</td>
+    </tr>
+    <tr id="smb-idle-freeze">
+      <td>A game freezes at its next disc read after the console sat idle (paused, or waiting on a menu)</td>
+      <td>Samba sends a NetBIOS keepalive every few minutes. While the game reads nothing, each one waits in the in-game network stack's small buffer pool (8 buffers). After about eight of them the PS2 stops answering, and Samba closes the connection. Turn those keepalives off and let TCP keep the connection alive: in the <code>[global]</code> section of <code>smb.conf</code> set
+        <pre>keepalive = 0
+socket options = SO_KEEPALIVE=1 TCP_NODELAY=1</pre>
+        and restart Samba. A reporter measured the eight keepalives with Wireshark and found these settings held for three hours; this is not yet verified on our side. A read cut off this way now fails instead of locking the game up for good, but the game still cannot continue, so the server settings are the real fix. Diagnosis and workaround documented by <a href="https://github.com/belomaxorka">belomaxorka</a> / <a href="https://github.com/yaopl/yaopl">YAOPL</a> (36e07200).</td>
+    </tr>
+    <tr>
+      <td>Windows: share works from PC but PS2 cannot connect</td>
+      <td>Use <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2 Servers</a> instead of enabling Windows' built-in SMB1 feature, and match the IP, port, share and credentials shown by its launcher. Confirm its firewall rule allows the selected SMB port on your private LAN.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="smb-config-keys">8. Config file keys</h2>
+
+<p>The PS2's network identity and the share address are stored in <code>conf_network.cfg</code> (saved alongside <code>settings_riptopl.cfg</code>). You can edit it directly for values the on-screen number-spinner makes tedious to enter:</p>
+
+<table data-sortable>
+  <thead><tr><th>Key</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>ps2_ip_use_dhcp</code></td><td><code>0</code> = static, <code>1</code> = DHCP</td></tr>
+    <tr><td><code>ps2_ip_addr</code></td><td>PS2 static IP address</td></tr>
+    <tr><td><code>ps2_netmask</code></td><td>Subnet mask</td></tr>
+    <tr><td><code>ps2_gateway</code></td><td>Default gateway</td></tr>
+    <tr><td><code>ps2_dns</code></td><td>DNS server</td></tr>
+    <tr><td><code>eth_linkmode</code></td><td><code>0</code> = Auto, <code>1</code>–<code>4</code> = 100M FDX / 100M HDX / 10M FDX / 10M HDX</td></tr>
+    <tr><td><code>smb_share_use_nbns</code></td><td><code>0</code> = IP address mode, <code>1</code> = NetBIOS name mode</td></tr>
+    <tr><td><code>smb_share_nb_addr</code></td><td>NetBIOS name of the server (used when <code>smb_share_use_nbns=1</code>)</td></tr>
+    <tr><td><code>smb_ip</code></td><td>Server IP address (used when <code>smb_share_use_nbns=0</code>)</td></tr>
+    <tr><td><code>smb_port</code></td><td>SMB TCP port (default <code>1111</code>)</td></tr>
+    <tr><td><code>smb_share</code></td><td>Share name (default <code>games</code>)</td></tr>
+    <tr><td><code>smb_user</code></td><td>Login username (default <code>guest</code>)</td></tr>
+    <tr><td><code>smb_pass</code></td><td>Password (empty for no-password shares)</td></tr>
+  </tbody>
+</table>
+
+<p>Two more keys affect SMB but live in <code>settings_riptopl.cfg</code> rather than <code>conf_network.cfg</code>, because they belong to OPL's own settings rather than to the share address:</p>
+
+<table data-sortable>
+  <thead><tr><th>Key</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>smb_dialect</code></td><td>The <b>SMB Version</b> row. <code>0</code> = SMBv1 (default), <code>1</code> = SMB2. Any other value loads as SMBv1.</td></tr>
+    <tr><td><code>eth_prefix</code></td><td>The <b>ETH Prefix Path</b> subfolder inside the share — see below.</td></tr>
+  </tbody>
+</table>
+
+<details class="deep"><summary>What about eth_prefix / ETH Prefix?</summary>
+<p>The <code>eth_prefix</code> key (set via <b>Settings → Game Sources → ETH Prefix Path</b>) is stored in <code>settings_riptopl.cfg</code>, not in <code>conf_network.cfg</code>. When non-empty, OPL appends it (plus a backslash) between the share root and every path it constructs — so <code>smb0:PS2\DVD\game.iso</code> instead of <code>smb0:DVD\game.iso</code>. Use this if the share hosts multiple setups and OPL's root is not the share root.</p>
+</details>
+
+<h2 id="see-also">See also</h2>
+<div class="grid">
+  <a class="tile" href="ps1-vcd.html"><span class="icon icon-ps1"></span><b>PS1 Games (VCD)</b><span>PS1 view, POPSTARTER config, BDMA equip</span></a>
+  <a class="tile" href="neutrino.html"><span class="icon icon-neutrino"></span><b>Neutrino Core</b><span>External loader core — per-game device &amp; args</span></a>
+  <a class="tile" href="nbd.html"><span class="icon icon-nbd"></span><b>NBD Server</b><span>Expose the internal HDD to a PC over the network</span></a>
+</div>
 </main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
