@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Командата за превключване към зареждащата карта ще бъде изпратена до избрания(те) слот(ове) при IGR
   MMCE_ADVANCED: Разширени
   MMCE_SETTINGS: Настройки на MMCE
+  SOURCE_MMCE_SETTINGS: "      Настройки на MMCE"
   MMCE_SEMA: Метод на заключване на семафорната опашка
   HINT_MMCE_SEMA: THFIFO може да подобри съвместимостта, но да влоши производителността
   MMCE_WAIT_CYCLES: Изчакващи цикли след /ACK ниско

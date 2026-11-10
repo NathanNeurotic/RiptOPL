@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Polecenie przełączenia na kartę startową zostanie wysłane do wybranych gniazd przy IGR
   MMCE_ADVANCED: Zaawansowane
   MMCE_SETTINGS: Ustawienia MMCE
+  SOURCE_MMCE_SETTINGS: "      Ustawienia MMCE"
   MMCE_SEMA: Metoda kolejkowania blokady semaforów
   HINT_MMCE_SEMA: THFIFO może poprawić zgodność, ale pogorszyć wydajność
   MMCE_WAIT_CYCLES: Cykle oczekiwania po /ACK niskim

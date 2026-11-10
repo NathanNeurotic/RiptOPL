@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: El comando de cambio a tarjeta de arranque se enviará a la(s) ranura(s) seleccionada(s) en IGR
   MMCE_ADVANCED: Avanzado
   MMCE_SETTINGS: Configuración MMCE
+  SOURCE_MMCE_SETTINGS: "      Configuración MMCE"
   MMCE_SEMA: Método de encolado de semáforo de bloqueo
   HINT_MMCE_SEMA: THFIFO puede mejorar la compatibilidad pero empeorar el rendimiento
   MMCE_WAIT_CYCLES: Ciclos de espera tras /ACK bajo

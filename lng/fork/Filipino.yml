@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: Ang utos na lumipat sa bootcard ay ipapadala sa napiling slot(s) sa IGR
   MMCE_ADVANCED: Advanced
   MMCE_SETTINGS: MMCE Settings
+  SOURCE_MMCE_SETTINGS: "      MMCE Settings"
   MMCE_SEMA: Lock Sema Enqueuing Method
   HINT_MMCE_SEMA: Maaaring makatulong ang THFIFO sa compatibility ngunit makakapagpabagal ng performance
   MMCE_WAIT_CYCLES: Maghintay ng cycles pagkatapos ng /ACK low

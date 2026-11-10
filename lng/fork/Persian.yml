@@ -25,6 +25,7 @@ translations:
   HINT_MMCEIGR_SLOT: دستور سوییچ به کارت بوت در IGR به اسلات(های) انتخاب‌شده ارسال می‌شود
   MMCE_ADVANCED: پیشرفته
   MMCE_SETTINGS: تنظیمات MMCE
+  SOURCE_MMCE_SETTINGS: "      تنظیمات MMCE"
   MMCE_SEMA: روش صف‌بندی قفل Sema
   HINT_MMCE_SEMA: THFIFO ممکن است سازگاری را بهبود دهد اما عملکرد را کاهش دهد
   MMCE_WAIT_CYCLES: چرخه‌های انتظار پس از پایین آمدن /ACK
