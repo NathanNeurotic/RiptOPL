@@ -3039,8 +3039,8 @@ vcd_popsnet_ensure_t vcdPreparePopstarterSmbLaunch(const char *smbPrefix)
     }
     vcd_popsnet_ensure_t ens = vcdEnsurePopstarterSmbConfig(&cfg);
     // POPSTARTER brings up its own SMBv1 module; the list came over SMB2, so say so before the launch.
-    if (ens == VCD_POPSNET_READY && ethGetLoadedSmbDialect() == SMB_DIALECT_V2)
-        host::ui().msgBox(_l(_STR_POPSTARTER_SMB_V1), 0, NULL);
+    if (ens == VCD_POPSNET_READY && ethGetLoadedSmbDialect() == SMB_DIALECT_V2 && !host::ui().msgBox(_l(_STR_POPSTARTER_SMB_V1), 1, NULL))
+        return VCD_POPSNET_CANCELLED;
     return ens;
 }
 

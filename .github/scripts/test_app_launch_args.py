@@ -79,7 +79,7 @@ typedef int item_list_t;
 typedef struct { const char *path; const char *arg; } config_set_t;
 typedef int vcd_popsnet_ensure_t;
 enum { VCD_POPSNET_SMB_MISSING, VCD_POPSNET_NEED_STATIC,
-       VCD_POPSNET_IO_ERROR, VCD_POPSNET_INVALID };
+       VCD_POPSNET_IO_ERROR, VCD_POPSNET_INVALID, VCD_POPSNET_CANCELLED };
 static struct { const char *title; } appsList[] = {{"launcHER"}};
 static char gOPLPart[128];
 #define SYS_LOAD_ELF_RESET_ROM0_MC 2

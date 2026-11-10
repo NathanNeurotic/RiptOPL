@@ -909,6 +909,8 @@ void EthSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set
     }
     {
         vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(gEthSupport.prefix());
+        if (ens == VCD_POPSNET_CANCELLED)
+            return;
         if (ens == VCD_POPSNET_SMB_MISSING) {
             host::ui().msgBox(_l(_STR_POPSTARTER_SMB_MISSING), 0, NULL);
             return;
