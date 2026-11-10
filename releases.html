@@ -36,11 +36,10 @@
     <h4>Game sources</h4>
     <a href="usb.html"><span class="icon icon-usb"></span>USB / MX4SIO / iLink</a>
     <a href="mmce.html"><span class="icon icon-mmce"></span>MMCE</a>
-    <a href="smb.html"><span class="icon icon-smb"></span>SMB (network share)</a>
     <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
     <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
     <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
-    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network Boot (UDPBD/UDPFS)</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/UDPFS/UDPBD)</a>
     <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
     <h4>Features</h4>
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
@@ -96,7 +95,7 @@ Each edition has its own release channel, rebuilt from <code>rebuild/main</code>
 <tr><td><code>APP_RIPTOPL.psu</code> (<code>APP_RIPTOPL-RA.psu</code>)</td><td>The app's own files as one memory-card save, for a PS2 save manager.</td></tr>
 <tr><td><code>RIPTOPL-LANGS-&lt;version&gt;.zip</code></td><td>Every translation and the font its script needs, one folder per language. See <a href="languages.html">Languages</a>.</td></tr>
 <tr><td><code>RIPTOPL-src-&lt;version&gt;.zip</code></td><td>Git's source archive of the exact built commit.</td></tr>
-<tr><td><code>LICENSE-USMB2.txt</code></td><td>The MIT licence of <a href="https://github.com/sahlberg/usmb2">usmb2</a>, by <a href="https://github.com/sahlberg">Ronnie Sahlberg</a>, which every loader embeds for SMB2 browsing (see <a href="smb.html">SMB</a>). The kit and every bundle zip below carry the same text. A <code>LICENSE-LIBSMB2.txt</code> still listed on a release is left over from builds before the switch to usmb2; the current loader does not contain libsmb2.</td></tr>
+<tr><td><code>LICENSE-USMB2.txt</code></td><td>The MIT licence of <a href="https://github.com/sahlberg/usmb2">usmb2</a>, by <a href="https://github.com/sahlberg">Ronnie Sahlberg</a>, which every loader embeds for SMB2 browsing (see <a href="network-boot.html#smb">SMB</a>). The kit and every bundle zip below carry the same text. A <code>LICENSE-LIBSMB2.txt</code> still listed on a release is left over from builds before the switch to usmb2; the current loader does not contain libsmb2.</td></tr>
 <tr><td><code>BUILD-MANIFEST.json</code>, <code>SHA256SUMS.txt</code></td><td>Build identity and asset checksums.</td></tr>
 </tbody></table>
 
