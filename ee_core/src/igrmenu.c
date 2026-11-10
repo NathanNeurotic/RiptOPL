@@ -858,15 +858,21 @@ static int igrmHoldSave(u32 *pkt)
     return 1;
 }
 
-// The held pixels back over the panel, then the buffer back to the module
-static void igrmHoldBack(u32 *pkt)
+// The held pixels back over the panel, then the buffer back to the module. A line the mailbox did not give back is
+// the game's to redraw; returns 0 only when VIF1 did not take a line (the transfer is stopped, as igrmDraw does)
+static int igrmHoldBack(u32 *pkt)
 {
     u32 lb = PW * igrmSx * igrmBpp, h = PH * igrmSy, y;
+    int ok = 1;
 
-    for (y = 0; y < h; y++)
-        if (IGR_MboxSend(y * lb, pkt + 28, lb) != (int)lb || !igrmSendLine(pkt, y))
+    for (y = 0; y < h && IGR_MboxSend(y * lb, pkt + 28, lb) == (int)lb; y++)
+        if (!igrmSendLine(pkt, y)) {
+            *IGRM_D1_CHCR = 0;
+            ok = 0;
             break;
+        }
     IGR_MboxEnd();
+    return ok;
 }
 
 // GSM's data breakpoint (the passive tracker, or GSM itself) traps stores to GS registers. While the game is paused
@@ -1106,9 +1112,9 @@ int IGR_MenuRun(u16 (*buttons)(void))
         t = igrmCount();
         while (buttons() && igrmCount() - t < 3 * IGRM_SECOND)
             ;
-        // the frame as it was (a line that did not go back is the game's to redraw), then the sound
-        if (frameHeld)
-            igrmHoldBack(pkt);
+        // the frame as it was, then the sound; a VIF1 that stopped taking lines leaves, as the first page does
+        if (frameHeld && !igrmHoldBack(pkt))
+            result = IGR_MENU_DRAW_FAILED;
         IGR_MboxWake();
     }
 
