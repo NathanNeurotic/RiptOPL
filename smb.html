@@ -96,7 +96,8 @@ visit <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2 Servers</a>, c
 select your games folder and follow the protocol-specific IP, port, share and credential values the
 launcher displays. It implements the OPL-compatible SMBv1 subset directly and does not require you
 to enable Windows' built-in SMB1 feature. Use its SMBv1 card with <b>SMB Version</b> on <b>SMBv1</b>, or its SMBv2 card (SMB up to 2.1) with
-<b>SMB2</b>; its SMBv3 card is for the Neutrino SMB path. Samba/NAS users may need
+<b>SMB2</b>. With <b>SMB2</b> OPL's core falls back to SMB 3.0 when a server refuses 2.x, so an SMBv3 card that does not require
+signing answers too; its SMBv3 card on port 445 is also what the Neutrino SMB path needs. Samba/NAS users may need
 <code>min protocol = NT1</code> if their server defaults have been tightened.</div>
 
 <h2 id="share-setup">1. Set up the SMB server and share</h2>
@@ -202,8 +203,8 @@ Because <b>Protocol</b> is one exclusive picker, SMB and Network Boot (UDPBD/UDP
 <table data-sortable>
   <thead><tr><th>Half</th><th>SMBv1 (default)</th><th>SMB2</th></tr></thead>
   <tbody>
-    <tr><td>Browsing the share in the menu (the <b>ETH Games</b> tab)</td><td>PS2SDK's <code>smbman.irx</code></td><td>RiptOPL's <code>smb2man.irx</code>, built on <a href="https://github.com/sahlberg/libsmb2">libsmb2</a> by <a href="https://github.com/sahlberg">Ronnie Sahlberg</a></td></tr>
-    <tr><td>Reading the disc image in game</td><td>The SMB1 reader inside <code>cdvdman</code></td><td>The SMB2 reader inside <code>cdvdman</code> (SMB 2.0.2 and 2.1)</td></tr>
+    <tr><td>Browsing the share in the menu (the <b>ETH Games</b> tab)</td><td>PS2SDK's <code>smbman.irx</code></td><td>RiptOPL's <code>smb2man.irx</code>, built on <a href="https://github.com/sahlberg/usmb2">usmb2</a> by <a href="https://github.com/sahlberg">Ronnie Sahlberg</a> (MIT; see <a href="credits.html#license">License</a>)</td></tr>
+    <tr><td>Reading the disc image in game</td><td>The SMB1 reader inside <code>cdvdman</code></td><td>RiptOPL's own SMB2 reader inside <code>cdvdman</code></td></tr>
   </tbody>
 </table>
 
@@ -212,8 +213,13 @@ Because <b>Protocol</b> is one exclusive picker, SMB and Network Boot (UDPBD/UDP
 <div class="callout amber"><div class="h">Your server must speak the dialect you pick</div>
 The session does not negotiate between SMBv1 and SMB2. Under <b>SMB2</b>, an SMBv1-only server (such as the <a href="https://github.com/NathanNeurotic/PS2-Servers">PS2 Servers</a> SMBv1 card) lists no games; under <b>SMBv1</b>, a server with SMB1 turned off lists none. Put the row on the dialect your server answers.</div>
 
-<div class="callout amber"><div class="h">SMB 3.x is not offered on OPL's core</div>
-SMB2 here means SMB 2.0.2 and 2.1. A server set to accept SMB 3 only is not reached: browsing fails to log on, and a game launched against it keeps retrying. Windows, Samba and the PS2 Servers SMBv2 card all still offer 2.x.</div>
+<div class="callout amber"><div class="h">What SMB2 on OPL's core speaks, and its limits</div>
+<ul>
+  <li><b>Dialects:</b> SMB 2.0.2 and 2.1 first; if the server refuses those, SMB 3.0 and 3.0.2, unsigned. A server that accepts only SMB 3.1.1 is not reached, and neither is a server that refuses 2.x and requires signing on SMB 3.x (SMB 3.x signs with AES-CMAC, which RiptOPL does not implement): browsing fails to log on. Windows, Samba and the PS2 Servers SMBv2 card all still offer 2.x, and over 2.x a server that requires signing (Windows 11 24H2) is signed for.</li>
+  <li><b>Server address:</b> the driver connects to an IPv4 address. A NetBIOS name (Address Type) still works, because the menu looks it up before connecting; DNS host names are not supported.</li>
+  <li><b>No share list:</b> SMB2 cannot list the server's shares, so the <b>Share</b> name must be typed in on the Network page.</li>
+  <li><b>User name and password:</b> Latin-1 characters only (nothing above U+00FF); a credential with other characters is refused at logon rather than sent wrongly. The Network page keeps up to 31 bytes of each.</li>
+</ul></div>
 
 <div class="callout amber"><div class="h">Changing the dialect needs a restart if an SMB driver is loaded</div>
 Each network transport loads its modules once per boot. If an SMB driver is already loaded this session, changing <b>SMB Version</b> offers a restart, as a protocol change does. From a cold boot the new dialect applies straight away.</div>
@@ -304,7 +310,7 @@ POPSTARTER uses its own SMBv1 modules (the module set OPL checks for on the memo
     </tr>
     <tr>
       <td>ETH Games tab lists nothing at all after switching to SMB2</td>
-      <td>Usually a dialect mismatch: the server speaks only SMBv1, or only SMB 3. The session does not negotiate between them. Set <b>Network &rarr; SMB Version</b> back to <b>SMBv1</b> (needed for the PS2 Servers SMBv1 card), or use a server that offers SMB 2.0.2 or 2.1, such as the PS2 Servers SMBv2 card. If an SMB driver was already loaded when you changed the row, accept the restart.</td>
+      <td>Usually a dialect mismatch: the server speaks only SMBv1, or only SMB 3.1.1, or refuses SMB 2.x and requires signing on SMB 3.x. The session does not negotiate between SMBv1 and SMB2. Set <b>Network &rarr; SMB Version</b> back to <b>SMBv1</b> (needed for the PS2 Servers SMBv1 card), or use a server that offers SMB 2.0.2 or 2.1, such as the PS2 Servers SMBv2 card. If an SMB driver was already loaded when you changed the row, accept the restart.</td>
     </tr>
     <tr>
       <td>OPL shows "LOGON" error</td>
