@@ -45,8 +45,7 @@ void diaDrawBoundingBox(int x, int y, int w, int h, int focus)
 // cap behind every key so a tiny glyph ('.', ',', '`', '\'') still has a visible key around it, the
 // glyph centred in the cap in the theme's text colour (not uiTextColor, the dim blue that sank into the
 // darkened background), and the selected key as a filled cap rather than a box sized to
-// the glyph, which for '.' was a sliver (zackcage6, 2026-11-09). The glyph is drawn twice, one unit
-// apart, so its vertical strokes are two pixels wide and survive 480i on a CRT.
+// the glyph, which for '.' was a sliver (zackcage6, 2026-11-09). The glyph is drawn bold (diaDrawBoldText).
 constexpr int KEYB_PITCH = 31; // key to key, as before
 constexpr int KEYB_CAP_W = 27;
 constexpr int KEYB_CAP_H = 22;
@@ -54,13 +53,39 @@ constexpr int KEYB_CAP_H = 22;
 // The selected glyph's colour: black on a light selection colour, white on a dark one, so the glyph never
 // sinks into the selected cap whatever the theme's text and selection colours are (a #484848 text colour on a
 // white selection read as grey on grey). A key drawn dimmed (any colour but the text colour: the number pad's
-// '-' where negatives are not allowed) stays dimmed when selected, at half the alpha.
+// '-' where negatives are not allowed) stays dimmed when selected: at a quarter of the alpha, because the glyph is
+// drawn four times over itself (diaDrawBoldText) and four half-alpha copies build up to nearly opaque.
 static u64 diaKeyCapSelGlyph(u64 colour)
 {
     u64 sel = gTheme->selTextColor;
     int luma = ((int)(sel & 0xFF) * 299 + (int)((sel >> 8) & 0xFF) * 587 + (int)((sel >> 16) & 0xFF) * 114) / 1000;
-    int alpha = colour == gTheme->textColor ? 0x80 : 0x40;
+    int alpha = colour == gTheme->textColor ? 0x80 : 0x20;
     return luma >= 0x80 ? GS_SETREG_RGBA(0, 0, 0, alpha) : GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, alpha);
+}
+
+// Text drawn heavier for a CRT (zackcage6 types the IGR path on one, 2026-11-10): the string four times, one
+// display pixel right and one display line down, so every stroke is two pixels wide and two lines tall. On an
+// interlaced picture a one-line horizontal stroke ('.', '-', '_', the bar of an 'e') sits in one field only, so it
+// flickers at half rate and reads faint or not at all; two lines put it in both fields. Text is placed in 640x480
+// units and scaled down with a floor (rmScaleX/rmScaleY), so a fixed step in units gives one line at one y and none
+// at the next: the step is the smallest one that moves THIS position by a display pixel or line. The theme's own
+// font stays: this thickens whatever face the theme or language loaded.
+static int diaBoldStep(int at, int (*scale)(int))
+{
+    int step = 1;
+    while (step < 8 && scale(at + step) == scale(at))
+        step++;
+    return step;
+}
+
+static int diaDrawBoldText(int x, int y, short aligned, size_t width, size_t height, const char *text, u64 colour)
+{
+    int dx = diaBoldStep(x, rmScaleX), dy = diaBoldStep(y, rmScaleY);
+
+    fntRenderString(gTheme->fonts[0], x + dx, y + dy, aligned, width, height, text, colour);
+    fntRenderString(gTheme->fonts[0], x, y + dy, aligned, width, height, text, colour);
+    fntRenderString(gTheme->fonts[0], x + dx, y, aligned, width, height, text, colour);
+    return fntRenderString(gTheme->fonts[0], x, y, aligned, width, height, text, colour);
 }
 
 static void diaDrawKeyCap(int x, int y, const char *label, int selected, u64 colour)
@@ -72,9 +97,7 @@ static void diaDrawKeyCap(int x, int y, const char *label, int selected, u64 col
     } else
         rmDrawRect(x, y, KEYB_CAP_W, KEYB_CAP_H, GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x16));
 
-    int cx = x + KEYB_CAP_W / 2;
-    fntRenderString(gTheme->fonts[0], cx, y + 1, ALIGN_HCENTER, 0, 0, label, colour);
-    fntRenderString(gTheme->fonts[0], cx + 1, y + 1, ALIGN_HCENTER, 0, 0, label, colour);
+    diaDrawBoldText(x + KEYB_CAP_W / 2, y + 1, ALIGN_HCENTER, 0, 0, label, colour);
 }
 
 // Rendered width of text[from..to), in the same 640-wide units the caret has always been placed in.
@@ -207,7 +230,7 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, int titleId)
                     break;
                 view = prev;
             }
-            fntRenderString(gTheme->fonts[0], 50, 120, ALIGN_NONE, KEYB_TEXT_W, 20, shown + view, gTheme->textColor);
+            diaDrawBoldText(50, 120, ALIGN_NONE, KEYB_TEXT_W, 20, shown + view, gTheme->textColor);
 
             // Caret. Measured from the substring to its LEFT rather than assuming a character width,
             // because the theme font is proportional. Full row height -- UI_SPACING_H is HALF a row,
@@ -458,7 +481,7 @@ int diaShowNumPad(char *text, int maxLen, int minv, int maxv)
 
         // The entry so far, with the accepted range beside it. An octet and a port look identical
         // on screen otherwise, and guessing which one you are in is how you end up with 255 ports.
-        fntRenderString(gTheme->fonts[0], 50, 120, ALIGN_NONE, 0, 0, text, gTheme->textColor);
+        diaDrawBoldText(50, 120, ALIGN_NONE, 0, 0, text, gTheme->textColor);
         fntRenderString(gTheme->fonts[0], 400, 120, ALIGN_NONE, 0, 0, range, gTheme->uiTextColor);
         rmDrawLine(25, 138, 615, 138, gColWhite);
 

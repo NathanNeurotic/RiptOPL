@@ -6,7 +6,7 @@ zackcage6 (2026-11-09): the rename / IGR-path keyboard's letters and specials co
 blue under the darkened background) with a selection box only as wide as the glyph.
 
 This checks the source, not a console: every key of the grid goes through diaDrawKeyCap, the key
-glyphs use the theme's text colour, and the cap geometry the source declares keeps caps inside the
+glyphs use the theme's text colour drawn bold, and the cap geometry the source declares keeps caps inside the
 grid (no overlap between neighbours or rows, the last column clear of the command icons at x=436).
 """
 import re
@@ -47,20 +47,44 @@ def main():
     body = helper.group(0)
     if "uiTextColor" in body:
         fail("key glyphs must not use uiTextColor")
-    if body.count("label, colour)") < 2:
-        fail("key glyph is not drawn twice in the colour it is given")
-    if "ALIGN_HCENTER" not in body:
-        fail("key glyph is not centred in its cap")
-    # The selected glyph must contrast with the selected cap on any palette: an opaque cap in the selection
-    # colour, the glyph switched to black or white by that colour's luminance (not left in the text colour).
-    sel = re.search(r"if \(selected\) \{(.*?)\n    \}", body, re.S)
-    if not sel or "colour = diaKeyCapSelGlyph(colour);" not in sel.group(1) or "0x80)" not in sel.group(1):
-        fail("the selected key does not switch its glyph to a colour that contrasts with an opaque cap")
-    pick = re.search(r"static u64 diaKeyCapSelGlyph\(u64 colour\)\n\{(.*?)\n\}\n", text, re.S)
-    if not pick or "luma >= 0x80 ? GS_SETREG_RGBA(0, 0, 0, alpha) : GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, alpha)" not in pick.group(1):
-        fail("diaKeyCapSelGlyph does not pick black or white by the selection colour's luminance")
+    if "diaDrawBoldText(" not in body or "label, colour)" not in body:
+        fail("key glyph is not drawn bold in the colour it is given")
+
+    # Bold for a CRT (zackcage6, 2026-11-10): four copies, one display pixel right and one display line down, the
+    # step worked out from the display extents so that it is one line whether the frame is 224 or 448 lines tall.
+    bold = re.search(r"static int diaDrawBoldText\(.*?\n}\n", text, re.S)
+    if not bold:
+        fail("diaDrawBoldText missing")
+    b = bold.group(0)
+    if b.count("fntRenderString(gTheme->fonts[0], ") != 4 or "x + dx, y + dy" not in b or "x, y + dy" not in b or "x + dx, y," not in b:
+        fail("diaDrawBoldText does not draw the text four times, offset right, down and both")
+    if "diaBoldStep(x, rmScaleX)" not in b or "diaBoldStep(y, rmScaleY)" not in b:
+        fail("the bold offsets are not found at the position drawn, through rmScaleX/rmScaleY")
+    step = re.search(r"static int diaBoldStep\(int at, int \(\*scale\)\(int\)\)\n\{(.*?)\n\}\n", text, re.S)
+    if not step or "while (step < 8 && scale(at + step) == scale(at))" not in step.group(1):
+        fail("diaBoldStep does not search for the smallest step that moves the position")
+
+    # The renderer places text with a floor, v * display / virtual (renderman scaleX/scaleY). With the search, the
+    # bold copy is one display pixel or line away (one unit where a unit is larger) at every position, every display size and every
+    # overscan; a fixed step in 640x480 units gave none at some rows (zero offset, no thickening).
+    def bold_offset(at, display, virtual):
+        scale = lambda v: v * display // virtual
+        st = 1
+        while st < 8 and scale(at + st) == scale(at):
+            st += 1
+        return scale(at + st) - scale(at)
+    for virtual, displays in ((480, range(200, 1081)), (640, range(500, 1921))):
+        for display in displays:
+            for at in range(0, virtual):
+                off = bold_offset(at, display, virtual)
+                # one pixel or line where a unit is at most one; where a unit is bigger, the one unit it takes
+                want_max = 1 if display <= virtual else -(-display // virtual)
+                if not 1 <= off <= want_max:
+                    fail(f"bold offset at {at} of {virtual} on {display} display pixels is {off}, not 1..{want_max}")
 
     keyb = re.search(r"int diaShowKeyb\(.*?\n}\n", text, re.S).group(0)
+    if "diaDrawBoldText(50, 120, ALIGN_NONE, KEYB_TEXT_W, 20, shown + view, gTheme->textColor);" not in keyb:
+        fail("the text being typed is not drawn bold")
     grid = re.search(r"for \(j = 0; j < KEYB_HEIGHT; j\+\+\) \{(.*?)\n        \}\n", keyb, re.S)
     if not grid:
         fail("keyboard grid loop not found")

@@ -5,6 +5,7 @@
 */
 
 #include "internal.h"
+#include <kerr.h>
 #include "../../isofs/zso.h"
 
 #define MODNAME "cdvd_driver"
@@ -94,7 +95,23 @@ static struct cdvdman_cb_data cb_data;
 
 int cdrom_io_sema;
 static int cdrom_rthread_sema;
-static unsigned char cdread_for_stream; // the read queued for cdvdman_cdread_Thread is a stream fill (cdvdman_StreamRead)
+/* Device I/O never runs on the caller's stack. The caller can be MODLOAD's module-start thread, which has a 2 KB
+   stack: when a game resets the IOP with its own IOPRP image, UDNL starts there and its read of that image is the
+   first disc access of the boot. An SMB2 logon with the TCP/IP stack and SMAP under it needs more than 2 KB, and the
+   kernel halts the IOP on the overflow. cdvdman_cdread_Thread does the work on its own 4 KB stack and the caller
+   waits. */
+enum {
+    CDREAD_JOB_GAME = 0, // the game's sceCdRead: completion goes to the game's sceCdCallback
+    CDREAD_JOB_STREAM,   // a stream fill (cdvdman_StreamRead)
+    CDREAD_JOB_SYNC,     // cdvdman_SyncRead: the caller waits for the data and completes the read itself
+};
+#define CDREAD_THREAD_PRIORITY 0x0f
+
+static unsigned char cdread_job;   // which CDREAD_JOB_* is queued for cdvdman_cdread_Thread
+static unsigned char cdread_mount; // cdvdman_cdread_Thread is asked to run DeviceFSInit
+static int cdvdman_initsema;       // one thread at a time in cdvdman_init
+static int cdvdman_mountsema;      // DeviceFSInit has returned
+static int cdvdman_syncsema;       // the CDREAD_JOB_SYNC read has its data
 static int cdvdman_scmdsema;
 int cdvdman_searchfilesema;
 static int cdvdman_ReadingThreadID;
@@ -291,17 +308,48 @@ static void cdvdman_poff_thread(void *arg)
 }
 #endif
 
+/* The caller has queued work for cdvdman_cdread_Thread and is about to wait for it: let that thread work at the
+   caller's priority when it is the higher one, as the work did while it still ran in the caller's thread. A thread
+   of higher priority cannot have been overtaken by the work it queued, and the thread drops back when it is done. */
+static void cdvdman_lend_priority(void)
+{
+    iop_thread_info_t info;
+
+    if (ReferThreadStatus(TH_SELF, &info) == 0 && info.currentPriority < CDREAD_THREAD_PRIORITY)
+        ChangeThreadPriority(cdvdman_ReadingThreadID, info.currentPriority);
+}
+
+/* Mount the device (network logon, image open) on cdvdman's own stack. Called with cdvdman_initsema held. */
+void cdvdman_mount_device(void)
+{
+    cdread_mount = 1;
+    SignalSema(cdrom_rthread_sema);
+    cdvdman_lend_priority();
+    WaitSema(cdvdman_mountsema);
+}
+
 int cdvdman_init(void)
 {
+    int result;
 #ifdef __USE_DEV9
     iop_thread_t ThreadData;
 #endif
 
+    if (cdvdman_cdinited)
+        return 1;
+
+    // Also refuses a caller that cannot wait (interrupts disabled), before anything is queued for it.
+    if (WaitSema(cdvdman_initsema) != 0)
+        return 0;
+
+    result = 1;
     if (!cdvdman_cdinited) {
         cdvdman_stat.err = SCECdErNO;
 
-        if (!cdvdman_fs_init())
-            return 0;
+        if (!cdvdman_fs_init()) {
+            result = 0;
+            goto out;
+        }
 
 #ifdef __USE_DEV9
         if (cdvdman_settings.common.flags & IOPCORE_ENABLE_POFF) {
@@ -316,7 +364,10 @@ int cdvdman_init(void)
 
         cdvdman_cdinited = 1;
     }
-    return 1;
+
+out:
+    SignalSema(cdvdman_initsema);
+    return result;
 }
 
 int sceCdInit(int init_mode)
@@ -664,7 +715,7 @@ static int cdvdman_common_lock(int IntrContext)
     return 1;
 }
 
-static int cdvdman_QueueRead(u32 lsn, u32 sectors, u16 sector_size, void *buf, int for_stream)
+static int cdvdman_QueueRead(u32 lsn, u32 sectors, u16 sector_size, void *buf, int job)
 {
     int IsIntrContext, OldState;
 
@@ -678,7 +729,7 @@ static int cdvdman_QueueRead(u32 lsn, u32 sectors, u16 sector_size, void *buf, i
         return 0;
     }
 
-    cdread_for_stream = for_stream ? 1 : 0;
+    cdread_job = job;
     cdvdman_stat.cdread_lba = lsn;
     cdvdman_stat.cdread_sectors = sectors;
     cdvdman_stat.sector_size = sector_size;
@@ -697,32 +748,34 @@ static int cdvdman_QueueRead(u32 lsn, u32 sectors, u16 sector_size, void *buf, i
 // The game's sceCdRead: its completion goes to the game's sceCdCallback.
 int cdvdman_AsyncRead(u32 lsn, u32 sectors, u16 sector_size, void *buf)
 {
-    return cdvdman_QueueRead(lsn, sectors, sector_size, buf, 0);
+    return cdvdman_QueueRead(lsn, sectors, sector_size, buf, CDREAD_JOB_GAME);
 }
 
 // A stream fill (streaming.c): its completion goes to the stream channel's callback.
 int cdvdman_StreamRead(u32 lsn, u32 sectors, u16 sector_size, void *buf)
 {
-    return cdvdman_QueueRead(lsn, sectors, sector_size, buf, 1);
+    return cdvdman_QueueRead(lsn, sectors, sector_size, buf, CDREAD_JOB_STREAM);
 }
 
+/* Compatibility Mode 2: the data is there when sceCdRead returns, and the game's callback follows the return.
+   Thread context only (sceCdRead queues an interrupt-context read as a game read). */
 int cdvdman_SyncRead(u32 lsn, u32 sectors, u16 sector_size, void *buf)
 {
-    int IsIntrContext, OldState;
+    int OldState;
 
-    IsIntrContext = QueryIntrContext();
+    // A caller that has interrupts disabled cannot wait for the read: queue it as a game read instead.
+    if (CpuSuspendIntr(&OldState) == KE_CPUDI)
+        return cdvdman_AsyncRead(lsn, sectors, sector_size, buf);
+    CpuResumeIntr(OldState);
 
-    CpuSuspendIntr(&OldState);
-
-    if (!cdvdman_common_lock(IsIntrContext)) {
-        CpuResumeIntr(OldState);
+    if (!cdvdman_QueueRead(lsn, sectors, sector_size, buf, CDREAD_JOB_SYNC)) {
         DPRINTF("cdvdman_SyncRead: exiting (sync_flag)...\n");
         return 0;
     }
 
-    CpuResumeIntr(OldState);
+    cdvdman_lend_priority();
 
-    cdvdman_read(lsn, sectors, sector_size, buf);
+    WaitSema(cdvdman_syncsema); // signalled once per sync read, and only the holder of the drive lock waits here
 
     cdvdman_cb_event(SCECdFuncRead);
     sync_flag = 0;
@@ -977,10 +1030,25 @@ static void cdvdman_cdread_Thread(void *args)
 
         WaitSema(cdrom_rthread_sema);
 
+        // A mount has its own signal on cdrom_rthread_sema (max 2), so a read queued next to it is not lost.
+        if (cdread_mount) {
+            cdread_mount = 0;
+            DeviceFSInit();
+            ChangeThreadPriority(TH_SELF, CDREAD_THREAD_PRIORITY);
+            SignalSema(cdvdman_mountsema);
+            continue;
+        }
+
         // Set with the drive lock held, so it still describes this read: the next one cannot be queued before it ends.
-        for_stream = cdread_for_stream;
+        for_stream = cdread_job == CDREAD_JOB_STREAM;
 
         cdvdman_read(cdvdman_stat.cdread_lba, cdvdman_stat.cdread_sectors, cdvdman_stat.sector_size, cdvdman_stat.cdread_buf);
+
+        if (cdread_job == CDREAD_JOB_SYNC) { // cdvdman_SyncRead completes the read and still holds the drive lock
+            ChangeThreadPriority(TH_SELF, CDREAD_THREAD_PRIORITY);
+            SignalSema(cdvdman_syncsema);
+            continue;
+        }
 
         /* This streaming callback is not compatible with the original SONY stream channel 0 (IOP) callback's design.
        The original is run from the interrupt handler, but we want it to run
@@ -1017,7 +1085,7 @@ static void cdvdman_startThreads(void)
 
     thread_param.thread = &cdvdman_cdread_Thread;
     thread_param.stacksize = 0x1000;
-    thread_param.priority = 0x0f;
+    thread_param.priority = CDREAD_THREAD_PRIORITY;
     thread_param.attr = TH_C;
     thread_param.option = 0xABCD0000;
 
@@ -1036,7 +1104,11 @@ static void cdvdman_create_semaphores(void)
     smp.option = 0;
 
     cdvdman_scmdsema = CreateSema(&smp);
+    cdvdman_initsema = CreateSema(&smp);
     smp.initial = 0;
+    cdvdman_mountsema = CreateSema(&smp);
+    cdvdman_syncsema = CreateSema(&smp);
+    smp.max = 2; // one queued read and one mount request
     cdrom_rthread_sema = CreateSema(&smp);
 }
 

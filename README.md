@@ -992,8 +992,8 @@ With special and sincere thanks to:
   LUNA's Collection cover-art screen to RiptOPL's renderer. Thank you for sharing your work with us.
 - **[saildot4k](https://github.com/saildot4k)** — for **BDMA-ATA** (exFAT internal-HDD block-device support), and the fixes,
   feedback, and oversight that shaped this fork's block-device work. A big piece of getting it right.
-- **[Ronnie Sahlberg](https://github.com/sahlberg)** — for **[libsmb2](https://github.com/sahlberg/libsmb2)**,
-  the base of the fork's SMB2 driver, and for **[usmb2](https://github.com/sahlberg/usmb2)** and the SMB backend he
+- **[Ronnie Sahlberg](https://github.com/sahlberg)** — for **[usmb2](https://github.com/sahlberg/usmb2)**,
+  the base of the fork's SMB2 driver (built on **[libsmb2](https://github.com/sahlberg/libsmb2)** before it), and for the SMB backend he
   added to [Neutrino](https://github.com/ps2max32/neutrino) ([ps2max32/neutrino PR #236](https://github.com/ps2max32/neutrino/pull/236)),
   which lets this loader launch SMB games on the Neutrino core.
 - **[techwritescode](https://git.techwritescode.dev/techwritescode/PSUManager)** — for

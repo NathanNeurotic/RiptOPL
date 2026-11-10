@@ -127,6 +127,7 @@ extern void cdvdman_usb_host_stop(void);
 
 extern int cdvdman_init(void);
 extern int cdvdman_fs_init(void);
+extern void cdvdman_mount_device(void);
 extern int cdvdman_searchfile_init(void);
 extern void cdvdman_initdev(void);
 

@@ -65,6 +65,8 @@ thsemap_IMPORTS_end
 thbase_IMPORTS_start
 I_CreateThread
 I_StartThread
+I_ChangeThreadPriority
+I_ReferThreadStatus
 I_DelayThread
 I_SetAlarm
 I_iSetAlarm

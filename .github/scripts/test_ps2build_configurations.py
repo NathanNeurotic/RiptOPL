@@ -217,7 +217,7 @@ class PublisherTests(unittest.TestCase):
                                              "sha256": "0" * 64}}
             (path / elf).write_bytes(payload)
             (path / psu).write_bytes(b"synthetic-psu")
-            (path / "LICENSE-LIBSMB2.txt").write_bytes(b"synthetic-lgpl")
+            (path / "LICENSE-USMB2.txt").write_bytes(b"synthetic-lgpl")
             (path / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
             with zipfile.ZipFile(path / "RIPTOPL-src.zip", "w") as source_zip:
                 source_zip.comment = (source or self.sha).encode()
@@ -230,7 +230,7 @@ class PublisherTests(unittest.TestCase):
                 kit.writestr("BUILD-MANIFEST.json", json.dumps(manifest))
                 kit.writestr(f"APPS/{app}/{elf}", payload)
                 kit.writestr(psu, b"synthetic-psu")
-                kit.writestr("LICENSE-LIBSMB2.txt", b"synthetic-lgpl")
+                kit.writestr("LICENSE-USMB2.txt", b"synthetic-lgpl")
             sums = "".join(hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name + "\n" for p in sorted(path.iterdir()))
             (path / "SHA256SUMS.txt").write_text(sums)
 
@@ -268,17 +268,17 @@ class PublisherTests(unittest.TestCase):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("ds5/RIPTOPL.ELF"), b"\x7fELFds5")
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 4)
-                    self.assertEqual(bundle.read("LICENSE-LIBSMB2.txt"), b"synthetic-lgpl")
+                    self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-DEBUG.zip") as bundle:
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 10)
-                    self.assertEqual(bundle.read("LICENSE-LIBSMB2.txt"), b"synthetic-lgpl")
-                    self.assertIn("libsmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\nGNU LGPL-2.1; "
-                                  "its licence is LICENSE-LIBSMB2.txt", bundle.read("README.txt").decode())
+                    self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
+                    self.assertIn("usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\nMIT licence; "
+                                  "its licence is LICENSE-USMB2.txt", bundle.read("README.txt").decode())
             for edition in ("ra", "ra_incebtion"):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")
                     self.assertIn("RIPTOPL-RA.ELF", bundle.read("README.txt").decode())
-                    self.assertEqual(bundle.read("LICENSE-LIBSMB2.txt"), b"synthetic-lgpl")
+                    self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
         for bad in ({"ds5": {"configuration": "extras"}}, {"debug": {"source_commit": "0" * 40}},
                     {"dtl": {"elf_sha256": "0" * 64}}, {"diag": {"ps2build_version": "other"}}):
             with self.subTest(bad=bad), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
@@ -305,8 +305,8 @@ class PublisherTests(unittest.TestCase):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-BUGREPORT.zip") as bundle:
                     self.assertEqual(sorted(bundle.namelist()), [
                         "BUILD-MANIFEST.json", "CREDITS", "LICENSE", "README.txt", "RIPTOPL-BUGREPORT.ELF",
-                        "licenses/libsmb2/LICENCE-LGPL-2.1.txt", "licenses/libsmb2/VENDORED.txt"])
-                    self.assertIn(b"GNU LESSER GENERAL PUBLIC LICENSE", bundle.read("licenses/libsmb2/LICENCE-LGPL-2.1.txt"))
+                        "licenses/usmb2/LICENSE", "licenses/usmb2/VENDORED.txt"])
+                    self.assertIn(b"Permission is hereby granted", bundle.read("licenses/usmb2/LICENSE"))
                     self.assertEqual(bundle.read("RIPTOPL-BUGREPORT.ELF"), unpacked_elf())
                     self.assertEqual(json.loads(bundle.read("BUILD-MANIFEST.json"))["configuration"], "diag")
                     readme = bundle.read("README.txt").decode()
@@ -340,16 +340,16 @@ class PublisherTests(unittest.TestCase):
                 else:
                     self.assertEqual(len(publish_editions.verify(root, self.sha)), 4)
 
-    def test_a_channel_without_the_libsmb2_licence_or_with_another_copy_is_refused(self):
-        for change, message in (("missing", "unexpected release inventory"), ("different", "different libsmb2 licence")):
+    def test_a_channel_without_the_usmb2_licence_or_with_another_copy_is_refused(self):
+        for change, message in (("missing", "unexpected release inventory"), ("different", "different usmb2 licence")):
             with self.subTest(change=change), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
                 root = Path(directory)
                 self.kit(root)
                 path = root / "release-korium"
                 if change == "missing":
-                    (path / "LICENSE-LIBSMB2.txt").unlink()
+                    (path / "LICENSE-USMB2.txt").unlink()
                 else:
-                    (path / "LICENSE-LIBSMB2.txt").write_bytes(b"another-lgpl")
+                    (path / "LICENSE-USMB2.txt").write_bytes(b"another-lgpl")
                 # Checksums that match what is there, so the licence check itself must refuse it.
                 (path / "SHA256SUMS.txt").write_text("".join(
                     hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name + "\n"
@@ -358,7 +358,7 @@ class PublisherTests(unittest.TestCase):
                     publish_editions.verify(root, self.sha)
 
     def test_licence_and_standalone_names_never_take_the_version(self):
-        for name in ("LICENSE-LIBSMB2.txt", "RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "SHA256SUMS.txt"):
+        for name in ("LICENSE-USMB2.txt", "RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "SHA256SUMS.txt"):
             self.assertEqual(publish_editions.versioned(name, "v1.2.0-Beta-4032"), name)
 
     def test_unpinned_ra_runtime_is_refused_before_publication(self):

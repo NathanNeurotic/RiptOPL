@@ -26,8 +26,8 @@ compressed build showed a black screen; this build has not been tried on that co
 does not start for you either, say so when you report.
 
 RiptOPL is licensed under the Academic Free License 3.0 (LICENSE; contributors in CREDITS). The ELF
-embeds the smb2man driver, built on libsmb2 by Ronnie Sahlberg (https://github.com/sahlberg/libsmb2),
-LGPL-2.1: its licence and the vendored commit are in licenses/libsmb2/.
+embeds the smb2man driver, built on usmb2 by Ronnie Sahlberg (https://github.com/sahlberg/usmb2),
+MIT: its licence and the vendored commit are in licenses/usmb2/.
 
 How to use it
 -------------
