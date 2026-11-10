@@ -36,7 +36,7 @@ DEVICES = {
     # launch borrows smb_cdvdman's buffer to prepare the game (udpfssupport.cpp), so it stays too.
     "udpfs": {"title": "UDPFS", "define": "RIPTOPLITE_UDPFS",
               "keep": BDM_GAME + ("udpfs_smap", "udpfs_ministack", "udpfs_bd", "udpfs_ioman", "udpfs_fhi",
-                                  "udpfs_cdvdman", "udpfs_mcemu", "bdm_udp_cdvdman", "smb_cdvdman")},
+                                  "udpfs_cdvdman", "bdm_udp_cdvdman", "smb_cdvdman")},
     # MMCE's modules are in every build; this one adds the MMCE games page.
     "mmce": {"title": "MMCE", "define": "RIPTOPLITE_MMCE", "keep": ()},
 }

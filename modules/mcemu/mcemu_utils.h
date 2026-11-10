@@ -49,23 +49,15 @@ int bdm_writeSector(u64 lba, unsigned short int nsectors, const unsigned char *b
 
 #endif
 
-/* MMCE Transfer Imports: 1 when the seek and all size bytes succeeded, 0 otherwise */
+/* MMCE Transfer Imports: 1 when the seek and all size bytes succeeded, 0 otherwise. The same mmce_mcemu
+   also runs UDPFS games: udpfs_cdvdman exports udpfs_vmc_read/udpfs_vmc_write at these two oplutils
+   ordinals with the same contract (fd is then the server's handle; offset and size are multiples of 512). */
 #ifdef MMCE_DRIVER
 int mmce_read_offset(int fd, unsigned int offset, unsigned int size, unsigned char *buffer);
 #define I_mmce_read_offset DECLARE_IMPORT(6, mmce_read_offset)
 
 int mmce_write_offset(int fd, unsigned int offset, unsigned int size, const unsigned char *buffer);
 #define I_mmce_write_offset DECLARE_IMPORT(7, mmce_write_offset)
-#endif
-
-/* UDPFS Transfer Imports: 1 when every byte was transferred, 0 otherwise. offset and size are byte
-   counts into the VMC's server handle, both multiples of 512 (the handle is read in 512-byte sectors). */
-#ifdef UDPFS_DRIVER
-int udpfs_vmc_read(int handle, unsigned int offset, unsigned int size, unsigned char *buffer);
-#define I_udpfs_vmc_read DECLARE_IMPORT(6, udpfs_vmc_read)
-
-int udpfs_vmc_write(int handle, unsigned int offset, unsigned int size, const unsigned char *buffer);
-#define I_udpfs_vmc_write DECLARE_IMPORT(7, udpfs_vmc_write)
 #endif
 
 /* ATAD Transfer Imports */

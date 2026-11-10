@@ -28,6 +28,10 @@ void mmceIopWasReset(void); // forget the module latch after an in-menu IOP rese
 // vmcSlotMask bit N = "a -mcN Neutrino VMC arg is set for this launch": that slot's MC comes from
 // the VMC FILE, so its physical card is NOT switched (pass 0 on OPL-core paths -- mcemu, unchanged).
 int mmceSendGameID(const char *startup, const char *protectMcPath, int vmcSlotMask);
+// Word offsets of the two VMC slots in mmce_mcemu_irx (nativeVmcSlotWord cache). MMCE and UDPFS share
+// that image, so they share this cache: a launch writes over a slot's marker, and a later launch from
+// the other device must still find the slot.
+extern int mmceMcemuSlots[2];
 // Bounded post-GameID settle for cross-device launches sharing SIO2 with the MMCE (MX4SIO, batch S7).
 // Polls the device the last send targeted; 0 = settled, -1 = expired. Caller warns + proceeds.
 int mmceGameIdSettle(int timeoutMs);

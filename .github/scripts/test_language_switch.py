@@ -7,8 +7,10 @@ import hostmap  # noqa: F401  (maps host::ui()/app() calls back to the names the
 
 root = Path(__file__).resolve().parents[2]
 source = (root / 'src/core/lang.cpp').read_text(encoding='utf-8')
-start = source.index('int lngSetGuiValue(int langID)\n{')
+start = source.index('int lngSetGuiValue(int langID, int fromDevice)\n{')
 function = source[start:source.index('\n}', start) + 2]
+hold_start = source.index('void lngHoldPick(void)\n{')
+hold = source[hold_start:source.index('\n}', hold_start) + 2]
 sema = (root / 'include/sema_lock.h').read_text(encoding='utf-8')
 sema_lock = sema[sema.index('namespace raii'):sema.index('} // namespace raii') + len('} // namespace raii')]
 harness = r'''
@@ -24,7 +26,7 @@ static int lngSwitchSema = 5, switchDepth;
 void WaitSema(int id) { assert(id == lngSwitchSema && switchDepth == 0); switchDepth++; }
 void SignalSema(int id) { assert(id == lngSwitchSema && switchDepth == 1); switchDepth--; }
 ''' + sema_lock + r'''
-static int guiLangID, nLanguages = 1, nValidEntries, frees, themes, muted, loads, fail, guiLockDepth;
+static int lngPickHeld, guiLangID, nLanguages = 1, nValidEntries, frees, themes, muted, loads, fail, guiLockDepth;
 static char *internalEnglish[1], *foreign[1], **lang_strs = internalEnglish;
 #define LANG_STR_COUNT 1
 /* The IO worker may replace the registry's path meanwhile: it is copied under the GUI lock, and the
@@ -48,8 +50,9 @@ void lngFreeFromFile(char **strings) { if (guiLangID) { assert(strings == foreig
 /* The theme reload reads the selected theme id under the theme switch lock itself. */
 int thmReload(void) { assert(switchDepth == 1 && guiLockDepth == 0); themes++; return 1; }
 void fntLoadDefault(void *path) {}
+int lngSetGuiValue(int langID, int fromDevice = 0); /* as include/lang.h */
 '''
-harness += function + r'''
+harness += hold + function + r'''
 int main(void) {
     assert(lngSetGuiValue(0) == 0);
     assert(lngSetGuiValue(1) == 1 && guiLangID == 1);
@@ -59,6 +62,14 @@ int main(void) {
     assert(lngSetGuiValue(-1) == 0 && lngSetGuiValue(2) == 0);
     fail = 1;
     assert(lngSetGuiValue(1) == 1 && guiLangID == 0 && muted == 0);
+    fail = 0;
+    /* A device publishing the saved language switches until the Language page picks; after that it is
+       refused, so the picked table is never freed under an open Settings page. */
+    assert(lngSetGuiValue(1, 1) == 1 && guiLangID == 1);
+    lngHoldPick();
+    assert(lngPickHeld == 1 && switchDepth == 0);
+    assert(lngSetGuiValue(0, 1) == 0 && guiLangID == 1 && lang_strs == foreign);
+    assert(lngSetGuiValue(0) == 1 && guiLangID == 0);
     assert(switchDepth == 0 && guiLockDepth == 0);
     return 0;
 }

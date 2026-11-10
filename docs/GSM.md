@@ -102,6 +102,46 @@ draws. A 640-wide game (most of them) is doubled to 1280 pixels, which is slight
 4:3 (1440). A 512-wide game is tripled to 1536, which is slightly wider. Mode 29 triples a 640-wide
 game to the full 1920, which is the stretch this mode avoids. Widescreen games should stay on mode 29.
 
+### Widescreen cheats instead of bars
+
+A 4:3 game can also fill a 16:9 picture with a widescreen cheat: a code that widens the game's own
+field of view. The community pack for this is
+[PS2-Widescreen/OPL-Widescreen-Cheats](https://github.com/PS2-Widescreen/OPL-Widescreen-Cheats)
+(maintained by El_isra; its README says it is no longer maintained). RiptOPL reads the pack as it
+is, with no conversion and nothing to install but the files:
+
+1. Download the pack from that repository's **Latest** release and put its `CHT/` folder where your
+   `ART/` and `CFG/` folders are: the root of a USB, MX4SIO, MMCE or SMB device, or the OPL data
+   partition on an HDD. A `CHT/cht.tar` of the same files also works.
+2. On any game, open **Cheat Settings**, set **Settings Mode** to Global, **PS2RD Cheat Engine** to
+   On and **PS2RD Cheat Engine Mode** to **Auto Select Cheats**. Every game without its own cheat
+   settings then loads its file when it has one, and launches normally when it has none.
+3. If you use GSM 1080p, give these games mode 29, not mode 30: the cheat already makes the picture
+   16:9, and mode 30 would add bars to it.
+
+Things to know:
+
+* Auto Select runs every cheat in the file. Almost every file holds only the master code and the
+  widescreen code, but a few hold more (Midnight Club 3: Dub Edition `SLUS_213.55` also has a
+  "Max Cash" cheat). To pick on one of those titles, set its own **Settings Mode** to Per Game
+  first, then **PS2RD Cheat Engine** to On and **Select Game Cheats**; changing the mode while on
+  Global changes it for every game.
+* The cheat engine holds 250 codes at once. Two files in the pack have more, Ratchet & Clank
+  `SCES_509.16` (337) and Ratchet & Clank 3 `SCES_524.56` (374), and the codes past the limit are
+  dropped, so their widescreen fix may be incomplete there.
+* The engine also holds at most 5 hook codes (the `9xxxxxxx` lines of a master code) and stops
+  reading the list at the sixth. Sega Classics Collection `SLUS_210.09` has 9 in its master code,
+  so with the in-game menu off (the default) none of its widescreen codes run, and picking cheats
+  cannot help because all 9 are in that one entry. With the in-game menu on, RiptOPL keeps the
+  first 5 hooks and adds the codes, so they may run, but with 4 hooks missing; that case is not
+  tested. Either way, the reliable choice for this title is mode 30: set its own cheat
+  **Settings Mode** to Per Game with **PS2RD Cheat Engine** Off, then use mode 30.
+* Widescreen cheats change how the game draws, and some games misbehave with them: the 1080p 4:3
+  report (issue #80) names Persona 3 FES battle animations. For such a game, set its own cheat
+  **Settings Mode** to Per Game with **PS2RD Cheat Engine** Off, and use mode 30 above instead:
+  mode 30 alone does not turn the cheat off.
+* The pack has no licence file, so RiptOPL links to it rather than shipping it.
+
 ---
 
 ## When a game loses the picture

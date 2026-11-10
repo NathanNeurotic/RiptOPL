@@ -50,6 +50,24 @@ typedef enum {
     UI_COLOUR
 } UIItemType;
 
+// The storage of a UI_STRING / UI_PASSWORD row: a fixed 32-character string (including the NUL terminator)
+// and its default. A row points at its own (DIA_STRING); a composed Settings page copies the row, and with
+// it the pointers, so the copy edits the same storage (each text row is on one page only).
+#define UI_STRING_SIZE 32
+struct UIString
+{
+    char def[UI_STRING_SIZE];
+    char text[UI_STRING_SIZE];
+};
+
+// The union initializer of a text row whose storage is the struct UIString named store.
+#define DIA_STRING(store, handler)    \
+    {                                 \
+        .stringvalue = {(store).def,  \
+                        (store).text, \
+                        (handler) }   \
+    }
+
 // UI item definition (for dialogues)
 struct UIItem
 {
@@ -81,10 +99,10 @@ struct UIItem
         } intvalue;
 
         struct
-        { // fixed 32 character string (including NULL terminator)
+        { // UI_STRING / UI_PASSWORD: the row's struct UIString (DIA_STRING), so only text rows carry its 64 bytes
             // default value
-            char def[32];
-            char text[32];
+            char *def;
+            char *text;
             int (*handler)(char *text, int maxLen);
         } stringvalue;
 
