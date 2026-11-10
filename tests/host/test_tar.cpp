@@ -144,6 +144,15 @@ int main()
     CHECK(tarThemeRead((dir + "thm_Wrap.tar/bg.png").c_str(), &mem, &len) == 1 && len == 3); // enclosing folder dropped
     free(mem);
     CHECK(tarThemeRead((dir + "thm_None.tar/bg.png").c_str(), &mem, &len) == -1);         // archive missing
+    // An archive replaced in place is read again after a reset (each theme load), not served from old offsets.
+    CHECK(tarThemeRead((thm + "sound/cursor.adp").c_str(), &mem, &len) == 1 && len == 3);
+    free(mem);
+    write_file(dir + "thm_Test.tar", put("sound/cursor.adp", "fresh") + eof());
+    tarThemeReset();
+    CHECK(tarThemeRead((thm + "sound/cursor.adp").c_str(), &mem, &len) == 1 && len == 5);
+    if (mem)
+        CHECK(memcmp(mem, "fresh", 5) == 0);
+    free(mem);
     CHECK(stat((dir + "thm_cache.bin").c_str(), &st) != 0 && stat((dir + "_cache.bin").c_str(), &st) != 0); // no sidecar
     CHECK(g_semaDepth[0] == 0); // every lookup released the lock
 

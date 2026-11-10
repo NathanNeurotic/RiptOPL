@@ -1355,6 +1355,8 @@ static int thmLoad(const char *themePath)
 {
     LOG("THEMES Load theme path=%s\n", themePath);
     THEME_BOOT_TRACE("theme load: begin %s", themePath ? themePath : "<OPL>");
+    if (themePath != NULL)
+        tarThemeReset(); // an archive replaced since the last load is read again, as a folder's files are
     char path[256];
     theme_t *curT = gTheme;
     theme_t *newT = (theme_t *)malloc(sizeof(theme_t));

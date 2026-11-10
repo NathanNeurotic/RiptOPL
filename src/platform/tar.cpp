@@ -645,6 +645,12 @@ static int tarThemeSplit(const char *path)
     return 0;
 }
 
+void tarThemeReset(void)
+{
+    raii::SemaLock lock(s_thmSema);
+    tarCloseInternal(TAR_KIND_THM);
+}
+
 int tarThemePath(const char *path)
 {
     return tarThemeSplit(path) != 0;

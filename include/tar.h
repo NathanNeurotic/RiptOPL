@@ -89,7 +89,8 @@ const char *tarGetDevicePrefix(TarKind kind);
 // "mass0:/THM/thm_Name.tar/sound/bgm.ogg", so the loaders build paths as for a folder and ask here first. The index
 // is read once per archive (no sidecar cache: one cache name would be shared by every theme of a THM folder) and is
 // not capped at MAX_FILE_SIZE, so a long bgm.ogg can stream from its place in the archive. Names are up to 47 chars.
-void tarThemeInit(void); // once, before any thread loads a theme file (the index is shared by them)
+void tarThemeInit(void);  // once, before any thread loads a theme file (the index is shared by them)
+void tarThemeReset(void); // drop the index: the next lookup reads the archive's headers again (a theme load)
 // 1 when path runs through a theme archive, else 0.
 int tarThemePath(const char *path);
 // 0: path does not run through a theme archive (open it as usual). 1: *buf holds the member (memalign 64, a NUL
