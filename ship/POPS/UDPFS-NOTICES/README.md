@@ -12,8 +12,8 @@ The driver reads `IPCONFIG.DAT` and `UDPFSCONFIG.DAT` from `mc0:/SYS-CONF/`, the
 At launch RiptOPL copies either file from the server's `POPS/` folder only when no card has it;
 existing card files are never overwritten.
 
-`PATHMAP.INI` here is upstream's example (every option off). RiptOPL never copies or writes it:
-to use the options, edit it and place it at `mc0:/POPSTARTER/PATHMAP.INI` yourself.
+`PATHMAP.INI` here is upstream's example (every option off). RiptOPL never copies it; the POPS
+UDPFS Network Settings page sets the three options in `mc?:/POPSTARTER/PATHMAP.INI` for you.
 
 See [the POPS UDPFS setup guide](https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/VCD.md#pops-udpfs-with-bdm-udpfs-assault).
 The upstream README and config guide are preserved verbatim for reference; their relative

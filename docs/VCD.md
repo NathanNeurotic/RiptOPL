@@ -391,8 +391,9 @@ The old Alpha USB `mass:/POPS/` runtime configuration is no longer used.
 **One save folder for the discs of a game (optional).** POPSTARTER keeps a game's VMCs, cheats
 and patches in `POPS/<VCD name>/`, so each disc of a multi-disc game gets its own memory cards.
 The driver can send those paths to another folder on the server; POPSTARTER does not notice, and
-the VCDs themselves stay where they are, so RiptOPL's game list is unchanged. Put
-`mc0:/POPSTARTER/PATHMAP.INI` (or `mc1:`; at most 512 bytes) on the card with `KEY=1` lines:
+the VCDs themselves stay where they are, so RiptOPL's game list is unchanged. The options live in
+`mc0:/POPSTARTER/PATHMAP.INI` (or `mc1:`; at most 512 bytes), `KEY=1` lines. Set them on the
+**POPS UDPFS Network Settings** page, under `mc?:/POPSTARTER/PATHMAP.INI`, or write the file yourself:
 
 | Key | Effect |
 | --- | --- |
@@ -400,8 +401,10 @@ the VCDs themselves stay where they are, so RiptOPL's game list is unchanged. Pu
 | `DISCS_DIR=1` | the folder is the value of the ID's line in `POPS/DISCS_DIR.TXT` on the server (`ID=Folder` or `ID1,ID2=Folder`), so every disc of a game shares it; wins over `GAMEID_DIR` |
 | `CHEATS_WS=1` | `CHEATS_WS.TXT` in the game folder is read instead of `CHEATS.TXT` when it exists |
 
-All three are off without the file, which is POPSTARTER's own behaviour. RiptOPL never writes
-`PATHMAP.INI`; upstream's example is in `POPS/UDPFS-NOTICES/PATHMAP.INI` and its full rules are in
+All three are off without the file, which is POPSTARTER's own behaviour. The page edits the file the
+driver reads (mc0's, else mc1's, else a new one in the existing POPSTARTER folder) on **OK**, and
+only when a switch changed: it rewrites the three keys' lines and keeps every other line as it was.
+A file over 512 bytes, which the driver ignores, shows as all off and is never rewritten. Upstream's example is in `POPS/UDPFS-NOTICES/PATHMAP.INI` and its full rules are in
 `POPS/UDPFS-NOTICES/README_CONFIG.txt`. Turning an option on moves a game to a new folder: copy
 its old `SLOT0.VMC`/`SLOT1.VMC` across or it starts with empty cards. Ready-made `DISCS_DIR.TXT`
 lists are in [Okeanos's popstarter-dir-lists](https://github.com/Okeanos86/popstarter-dir-lists).

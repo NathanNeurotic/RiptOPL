@@ -1430,6 +1430,16 @@ gui_strings:
 - label: POPS_UDPFS_INCOMPLETE_SUFFIX
   string: " (incomplete)"
 
+- comment: UDPFS Assault PATHMAP.INI option hints (POPS UDPFS page). Keep the file and key names.
+  label: HINT_POPS_GAMEID_DIR
+  string: "Name each game's save folder after its disc ID, e.g. POPS/SLUS_123.45/."
+- label: HINT_POPS_DISCS_DIR
+  string: "One save folder for all discs of a game, from POPS/DISCS_DIR.TXT on the server."
+- label: HINT_POPS_CHEATS_WS
+  string: "Read CHEATS_WS.TXT instead of CHEATS.TXT when the game folder has one."
+- label: POPS_PATHMAP_ERR
+  string: "Couldn't write mc?:/POPSTARTER/PATHMAP.INI (needs a POPSTARTER folder, at most 512 bytes)."
+
 - label: POPS_UDPFS_DRIVER_NOT_READY
   string: "POPS UDPFS needs the selected .udpfs pair on the memory card. Equip it manually or enable BDMA Apply on Launch."
 
