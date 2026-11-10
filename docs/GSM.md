@@ -116,18 +116,22 @@ is, with no conversion and nothing to install but the files:
 2. On any game, open **Cheat Settings**, set **Settings Mode** to Global, **PS2RD Cheat Engine** to
    On and **PS2RD Cheat Engine Mode** to **Auto Select Cheats**. Every game without its own cheat
    settings then loads its file when it has one, and launches normally when it has none.
+3. If you use GSM 1080p, give these games mode 29, not mode 30: the cheat already makes the picture
+   16:9, and mode 30 would add bars to it.
 
 Things to know:
 
 * Auto Select runs every cheat in the file. Almost every file holds only the master code and the
   widescreen code, but a few hold more (Midnight Club 3: Dub Edition `SLUS_213.55` also has a
-  "Max Cash" cheat). Use **Select Game Cheats** on those titles to pick.
+  "Max Cash" cheat). To pick on one of those titles, set its own **Settings Mode** to Per Game
+  first, then **Select Game Cheats**; changing the mode while on Global changes it for every game.
 * The cheat engine holds 250 codes at once. Two files in the pack have more, Ratchet & Clank
   `SCES_509.16` (337) and Ratchet & Clank 3 `SCES_524.56` (374), and the codes past the limit are
   dropped, so their widescreen fix may be incomplete there.
 * Widescreen cheats change how the game draws, and some games misbehave with them: the 1080p 4:3
-  report (issue #80) names Persona 3 FES battle animations. Mode 30 above is the alternative that
-  leaves the game untouched.
+  report (issue #80) names Persona 3 FES battle animations. For such a game, set its own cheat
+  **Settings Mode** to Per Game with **PS2RD Cheat Engine** Off, and use mode 30 above instead:
+  mode 30 alone does not turn the cheat off.
 * The pack has no licence file, so RiptOPL links to it rather than shipping it.
 
 ---
