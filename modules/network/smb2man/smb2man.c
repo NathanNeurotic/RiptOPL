@@ -1377,7 +1377,8 @@ static int smb2man_mkdir(iop_file_t *f, const char *dirname, int mode)
 
 /*
   A server takes DELETE_ON_CLOSE on a folder that is not empty and then keeps the folder at CLOSE
-  without an error (Samba does), so a folder still there after the rmdir is -ENOTEMPTY.
+  without an error (Samba does), so a folder still there after the rmdir is -ENOTEMPTY, and a
+  check that could not be made is its error, not a success.
 */
 static int smb2man_rmdir(iop_file_t *f, const char *dirname)
 {
@@ -1400,6 +1401,12 @@ static int smb2man_rmdir(iop_file_t *f, const char *dirname)
         smb2man_check_session();
     } else if (rv == 0 && usmb2_stat(smb2, path, st) == 0) {
         rv = -ENOTEMPTY;
+    } else if (rv == 0) {
+        // The folder gone (-ENOENT) is the success; the socket lost under the check is -EIO.
+        rv = smb2man_errno(0);
+        if (rv == -ENOENT)
+            rv = 0;
+        smb2man_check_session();
     }
 
     UNLOCK();
