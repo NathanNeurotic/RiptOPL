@@ -462,7 +462,7 @@ Work down this ladder; each step isolates a different stage (from the #154 foren
 3. **Check PS2/PS1 Game Display.** **Both (L3)** switches between separate libraries and **Mixed**
    cycles Mixed/PS2/PS1. L3 is intentionally absent and inert in the locked **PS2** and **PS1**
    modes; choose **PS1** when you want the PS1 library without an L3 action.
-4. **VCDs are scanned from `<device-root>:/POPS/*.VCD`** — the game-folder prefix
+4. **On local devices, VCDs are scanned from `<device-root>:/POPS/*.VCD`** — the game-folder prefix
    (`usb_prefix` etc.) is deliberately **not** applied, because POPSTARTER itself only reads
    `/POPS` at the root. On local devices a `POPS` folder inside your games subfolder will never be found. Ember games
    follow the same rule on local devices: `<device-root>:/EMBER/games/<Game Name>/`. On SMB both
