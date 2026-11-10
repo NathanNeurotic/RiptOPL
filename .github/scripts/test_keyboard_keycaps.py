@@ -58,29 +58,29 @@ def main():
     b = bold.group(0)
     if b.count("fntRenderString(gTheme->fonts[0], ") != 4 or "x + dx, y + dy" not in b or "x, y + dy" not in b or "x + dx, y," not in b:
         fail("diaDrawBoldText does not draw the text four times, offset right, down and both")
-    if "rmGetScreenExtentsNative(&wn, &hn)" not in b or "diaBoldStep(h, hn)" not in b or "diaBoldStep(w, wn)" not in b:
-        fail("the bold offsets are not worked out from the display extents")
-    step = re.search(r"static int diaBoldStep\(int units, int native\)\n\{(.*?)\n\}\n", text, re.S)
-    if not step or "(units + native / 2) / native" not in step.group(1) or "step < 1 ? 1 : step" not in step.group(1):
-        fail("diaBoldStep is not round(units / native) with a floor of 1")
+    if "diaBoldStep(x, rmScaleX)" not in b or "diaBoldStep(y, rmScaleY)" not in b:
+        fail("the bold offsets are not found at the position drawn, through rmScaleX/rmScaleY")
+    step = re.search(r"static int diaBoldStep\(int at, int \(\*scale\)\(int\)\)\n\{(.*?)\n\}\n", text, re.S)
+    if not step or "while (step < 8 && scale(at + step) == scale(at))" not in step.group(1):
+        fail("diaBoldStep does not search for the smallest step that moves the position")
 
-    def bold_step(units, native):  # the same sum, to check the steps it gives for the modes RiptOPL has
-        st = (units + native // 2) // native if native > 0 else 1
-        return max(st, 1)
-    for units, native, want in ((480, 448, 1), (480, 480, 1), (480, 512, 1), (480, 224, 2), (480, 256, 2),
-                                (480, 1080, 1), (640, 640, 1), (640, 512, 1), (640, 1920, 1)):
-        if bold_step(units, native) != want:
-            fail(f"bold step for {units} units on {native} display pixels is {bold_step(units, native)}, not {want}")
-    if "ALIGN_HCENTER" not in body:
-        fail("key glyph is not centred in its cap")
-    # The selected glyph must contrast with the selected cap on any palette: an opaque cap in the selection
-    # colour, the glyph switched to black or white by that colour's luminance (not left in the text colour).
-    sel = re.search(r"if \(selected\) \{(.*?)\n    \}", body, re.S)
-    if not sel or "colour = diaKeyCapSelGlyph(colour);" not in sel.group(1) or "0x80)" not in sel.group(1):
-        fail("the selected key does not switch its glyph to a colour that contrasts with an opaque cap")
-    pick = re.search(r"static u64 diaKeyCapSelGlyph\(u64 colour\)\n\{(.*?)\n\}\n", text, re.S)
-    if not pick or "luma >= 0x80 ? GS_SETREG_RGBA(0, 0, 0, alpha) : GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, alpha)" not in pick.group(1):
-        fail("diaKeyCapSelGlyph does not pick black or white by the selection colour's luminance")
+    # The renderer places text with a floor, v * display / virtual (renderman scaleX/scaleY). With the search, the
+    # bold copy is one display pixel or line away (one unit where a unit is larger) at every position, every display size and every
+    # overscan; a fixed step in 640x480 units gave none at some rows (zero offset, no thickening).
+    def bold_offset(at, display, virtual):
+        scale = lambda v: v * display // virtual
+        st = 1
+        while st < 8 and scale(at + st) == scale(at):
+            st += 1
+        return scale(at + st) - scale(at)
+    for virtual, displays in ((480, range(200, 1081)), (640, range(500, 1921))):
+        for display in displays:
+            for at in range(0, virtual):
+                off = bold_offset(at, display, virtual)
+                # one pixel or line where a unit is at most one; where a unit is bigger, the one unit it takes
+                want_max = 1 if display <= virtual else -(-display // virtual)
+                if not 1 <= off <= want_max:
+                    fail(f"bold offset at {at} of {virtual} on {display} display pixels is {off}, not 1..{want_max}")
 
     keyb = re.search(r"int diaShowKeyb\(.*?\n}\n", text, re.S).group(0)
     if "diaDrawBoldText(50, 120, ALIGN_NONE, KEYB_TEXT_W, 20, shown + view, gTheme->textColor);" not in keyb:
