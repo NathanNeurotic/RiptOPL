@@ -178,9 +178,10 @@ into the picture the game is showing, which it finds through the same GS write b
   every frame. The menu sets both of the GS's two picture circuits, so a game that shows both but flips only
   one gets back only that one. The old setting cannot be read back, so a game that never sets its picture again (one that set
   it only once, from an interrupt handler or with the breakpoint off) keeps the menu's picture after you
-  resume, possibly at the wrong width or colours, until you leave the game. If the menu cannot keep a copy of
-  what it covers in that buffer, or cannot put it all back on RESUME, the combo resets the game instead, as it
-  did before.
+  resume, possibly at the wrong width or colours, until you leave the game. The menu keeps a copy of what its
+  panel covers in a buffer it borrows from the IOP while it is open. When there is none to spare (a game that
+  uses all of the IOP's memory), the menu still opens, and after RESUME the panel's area shows what the menu
+  drew there until the game draws that part of the picture again.
 * A game whose picture is in a format the menu cannot draw leaves at once, as before. Nothing is lost
   compared with the menu off.
 * **The game goes quiet while the menu is open** and its sound goes on where it stopped when you resume:
