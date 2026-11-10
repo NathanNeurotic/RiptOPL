@@ -68,7 +68,7 @@ int diaHasChanges(struct UIItem *ui)
                 break;
             case UI_STRING:
             case UI_PASSWORD:
-                if (strncmp(ui->stringvalue.text, ui->stringvalue.def, sizeof(ui->stringvalue.text)) != 0)
+                if (strncmp(ui->stringvalue.text, ui->stringvalue.def, UI_STRING_SIZE) != 0)
                     return 1;
                 break;
             default:
@@ -135,10 +135,10 @@ int diaSetString(struct UIItem *ui, int id, const char *text)
         return 0;
 
     if ((item->type == UI_STRING) || (item->type == UI_PASSWORD)) {
-        strncpy(item->stringvalue.def, text, sizeof(item->stringvalue.def));
-        item->stringvalue.def[sizeof(item->stringvalue.def) - 1] = '\0';
-        strncpy(item->stringvalue.text, text, sizeof(item->stringvalue.text));
-        item->stringvalue.text[sizeof(item->stringvalue.text) - 1] = '\0';
+        strncpy(item->stringvalue.def, text, UI_STRING_SIZE);
+        item->stringvalue.def[UI_STRING_SIZE - 1] = '\0';
+        strncpy(item->stringvalue.text, text, UI_STRING_SIZE);
+        item->stringvalue.text[UI_STRING_SIZE - 1] = '\0';
         return 1;
     }
 

@@ -100,7 +100,7 @@ for leg, image, cache, info, fn in (
     call = 'nativeVmcSlotWord(&%s, size_%s, vmc_id, %s, sizeof(%s_t))' % (image, image, cache, info)
     if launch.count(call) != 1:
         failures.append('%s: the VMC slot must be found through %s' % (leg, call))
-    if 'static int %s[2] = {-2, -2};' % cache not in body:
+    if ('static int %s[2] = {-2, -2};' if cache != 'mmceMcemuSlots' else 'int %s[2] = {-2, -2};') % cache not in body:
         failures.append('%s: %s must start unsearched (-2, -2)' % (leg, cache))
     if '0xC0DEFAC0' in launch:
         failures.append('%s: the launch must not search for the marker itself -- it is gone after the first launch' % leg)
@@ -110,11 +110,16 @@ for leg, image, cache, info, fn in (
 
 udpfs_body = text('src/sources/udpfssupport.cpp')
 udpfs = function(udpfs_body, 'static void udpfsLaunchOplCore(')
-if udpfs.count('nativeVmcSlotWord(&udpfs_mcemu_irx, size_udpfs_mcemu_irx, vmc_id, udpfsMcemuSlots, sizeof(udpfs_vmc_infos_t))') != 1 \
-        or 'static int udpfsMcemuSlots[2] = {-2, -2};' not in udpfs_body or '0xC0DEFAC0' in udpfs \
-        or not re.search(r'if \(slotWord >= 0\) \{\s*if \(vmc_infos\[vmc_id\]\.active\)\s*size_mcemu_irx = size_udpfs_mcemu_irx;\s*'
-                         r'memcpy\(&\(\(u32 \*\)&udpfs_mcemu_irx\)\[slotWord\]', udpfs):
-    failures.append('udpfssupport.cpp: the UDPFS OPL core leg must use the cached, bounded slot like the other legs')
+# UDPFS runs mmce_mcemu (udpfs_cdvdman exports the same oplutils ordinals), so it shares MMCE's image and
+# slot cache: with its own cache, a launch on one device that came back to the menu would leave the other
+# searching for a marker that is already gone.
+if udpfs.count('nativeVmcSlotWord(&mmce_mcemu_irx, size_mmce_mcemu_irx, vmc_id, mmceMcemuSlots, sizeof(udpfs_vmc_infos_t))') != 1 \
+        or 'McemuSlots[2] = {' in udpfs_body or '0xC0DEFAC0' in udpfs \
+        or 'extern int mmceMcemuSlots[2];' not in text('include/mmcesupport.h') \
+        or 'static_assert(sizeof(udpfs_vmc_infos_t) == sizeof(mmce_vmc_infos_t)' not in udpfs_body \
+        or not re.search(r'if \(slotWord >= 0\) \{\s*if \(vmc_infos\[vmc_id\]\.active\)\s*size_mcemu_irx = size_mmce_mcemu_irx;\s*'
+                         r'memcpy\(&\(\(u32 \*\)&mmce_mcemu_irx\)\[slotWord\]', udpfs):
+    failures.append('udpfssupport.cpp: the UDPFS OPL core leg must use mmce_mcemu with the shared, cached, bounded slot')
 
 hdd = function(text('src/sources/hddsupport.cpp'), 'void HddSource::launch(')
 loop = hdd[hdd.index('for (vmc_id = 0; vmc_id < 2; vmc_id++) {'):]

@@ -1286,7 +1286,8 @@ void MmceSource::launchVcd(item_list_t *itemList, const char *vcdName, config_se
     sysLaunchPopstarter(vcdElf, vcdSelector);
 }
 
-static int mmceMcemuSlots[2] = {-2, -2};
+// Shared with udpfssupport.cpp: both write their VMC slots into the one mmce_mcemu image.
+int mmceMcemuSlots[2] = {-2, -2};
 
 void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {

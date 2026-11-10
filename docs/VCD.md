@@ -235,12 +235,39 @@ resolver selects. RiptOPL never chooses a build for you and never rewrites that 
 
 | Device | Location |
 | --- | --- |
-| USB / MMCE / MX4SIO / iLink / SMB | a **`POPS`** folder at the device root, holding `POPSTARTER.ELF` + your `*.VCD` files |
+| USB / MMCE / MX4SIO / iLink / SMB | a **`POPS`** folder at the device root, holding `POPSTARTER.ELF` + your `*.VCD` files (on SMB, beside `CD`/`DVD` in the share's game folder) |
 | Internal HDD (APA/PFS) | two layouts, both listed: an exact **`__.POPS`, `__.POPS0` … `__.POPS9`** store partition (many `*.VCD` on its root, named per file), and/or **`PP.<name>`** (visible) / **`__.<name>`** (hidden-label) one-game partitions. A one-game candidate is listed only when its root contains the exact file **`IMAGE0.VCD`**, which prevents similarly named HDD apps from appearing as games; it is shown as `<name>`. `POPSTARTER.ELF` is loaded from the canonical **`__common/POPS`** location unless a custom full path is configured. |
 
 > The HDD's `XX.*` (BDMA/exFAT) and `SB.*` (SMBv1) launcher partitions point at VCDs that live on
 > an exFAT device or an SMB share — those games appear under the **USB/MX4SIO/MMCE** or **SMB** VCD
 > views, not the internal-HDD one.
+
+### Where to put your Ember games
+
+Ember's library is an **`EMBER`** folder, the peer of `POPS` and found the same way. Ember does not reset the
+IOP, so it needs no BDMA equip and no memory-card driver pair on any device.
+
+| Device | Location |
+| --- | --- |
+| USB / MMCE / MX4SIO / iLink / exFAT HDD | an **`EMBER`** folder at the device root, beside `POPS` |
+| SMB / UDPFS Files | an **`EMBER`** folder in the share's game folder, beside `CD`/`DVD` |
+| UDPBD / UDPFS IMG | an **`EMBER`** folder at the served disk image's root, even when a BDM prefix puts `CD`/`DVD` in a subfolder. These two list Ember games only |
+| Internal HDD (APA/PFS) | an exact **`__.EMBER`**, `__.EMBER0` … `__.EMBER9` partition holding an `EMBER` folder |
+
+Inside `EMBER/`:
+
+| Item | What it is |
+| --- | --- |
+| `ember.elf` | Ember itself, shipped in the release's `EMBER/` folder |
+| `bios.bin` | **your own** 512 KB PS1 BIOS; never shipped |
+| `settings.txt` | Ember's global settings; RiptOPL writes the PS Emulation Settings rows here |
+| `games/<Game Name>/` | one folder per game holding its `*.cue`, `*.exe` or `*.bin` (one level only, no subfolders). The folder name is the title and the settings key; artwork tries the [disc ID](#retrogem--psbbn-disc-ids-for-artwork-and-titles) first, then the folder name |
+| `games/<Game Name>/discs.txt` | optional: the CUE files of a multi-disc game, in disc order |
+| `games/<Game Name>/settings.txt` | per-game Ember settings, written by **Ember Game Settings** |
+| `games/<Game Name>/MC1.vmc`, `MC2.vmc` | the game's memory cards, created by Ember, so the device must be writable |
+
+A folder with no `.cue`, `.exe` or `.bin` at its top level is not listed, and neither is a folder name longer
+than 160 bytes. CF (PC CARD) does not list PS1 games.
 
 ### Sony's POPS files
 
@@ -337,8 +364,8 @@ so POPSTARTER itself can read them off the exFAT volume.
 
 ### POPS UDPFS with BDM-UDPFS Assault
 
-RiptOPL uses [Okeanos's UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST) pre-release (2026-10-28; it
-replaces [1.0.0](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0))
+RiptOPL uses [Okeanos's UDPFS Assault 1.0.1](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1) (2026-11-08; it
+replaces the 2026-10-28 TEST pre-release and [1.0.0](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0))
 as its sole POPSTARTER UDPFS BDMA driver. It serves every `mass:` request from the
 UDPFS server, including POPS dependencies and VMC writes. **USB is not required.**
 The older Alpha and USB-first fallback driver are no longer bundled or selected.
@@ -346,11 +373,11 @@ This runtime starts again after POPSTARTER resets the IOP, independently of
 RiptOPL's mounted UDPFS connection.
 
 The existing **BDMA Mode -> UDPFS** uses `POPS/usbd.irx.udpfs` (the unmodified
-51,029-byte `udp_fs_assault.irx`) and `POPS/usbhdfsd.irx.udpfs` (the 34,508-byte
+61,949-byte `udp_fs_assault.irx`) and `POPS/usbhdfsd.irx.udpfs` (the 34,508-byte
 `usbd_bd_assault.irx`). They install as `mc?:/POPSTARTER/usbd.irx` and
 `usbhdfsd.irx`. The mode ID and `udpfs` marker remain unchanged. With **VCD BDMA
 Apply on Launch** enabled, a UDPFS game equips this pair automatically; matching
-installed/manual pairs skip copying, while 1.0.0, Alpha and USB-first pairs are stale and
+installed/manual pairs skip copying, while TEST, 1.0.0, Alpha and USB-first pairs are stale and
 are replaced.
 With automatic equip disabled, equip **UDPFS** manually before launching.
 
@@ -368,7 +395,7 @@ wins, and the list shows that game once. One `.bin` per disc or one per track (R
 Upstream limits: track 1 must be MODE2/2352, no PREGAP/POSTGAP, every track needs INDEX 01,
 `.bin` sizes must be multiples of 2352, cue sheets up to 16 KiB and 99 tracks, images under
 4 GiB. The driver opens each `.bin` once at start (about 10 ms per file) and uses about 46 KB more
-IOP RAM than 1.0.0. A cue game's disc ID is not read from the image in the list or for the
+IOP RAM than 1.0.0; the 1.0.1 module file is also 10,920 bytes larger than the TEST one. A cue game's disc ID is not read from the image in the list or for the
 RetroGEM barcode; name the file `SLUS_123.45.Title.cue` if you want the ID shown.
 
 | Optional file in the game's POPS folder | MC destination | Contents |
@@ -387,6 +414,38 @@ The driver looks up each config at `mc0:/SYS-CONF/`, then `mc1:/SYS-CONF/`.
 Without configuration it uses PS2 `192.168.1.10/24` and server discovery. The
 server must be on the PS2's subnet: the driver does not route through the gateway.
 The old Alpha USB `mass:/POPS/` runtime configuration is no longer used.
+
+**One save folder for the discs of a game (optional).** POPSTARTER keeps a game's VMCs, cheats
+and patches in `POPS/<VCD name>/`, so each disc of a multi-disc game gets its own memory cards.
+The driver can send those paths to another folder on the server; POPSTARTER does not notice, and
+the VCDs themselves stay where they are, so RiptOPL's game list is unchanged. The options live in
+`mc0:/POPSTARTER/PATHMAP.INI`, at most 512 bytes, `KEY=1` lines. `mc1:/POPSTARTER/PATHMAP.INI` is
+read only when mc0 has no such file: an mc0 file with every option off still hides mc1's. Set them on the
+**POPS UDPFS Network Settings** page, under `mc?:/POPSTARTER/PATHMAP.INI`, or write the file yourself:
+
+| Key | Effect |
+| --- | --- |
+| `GAMEID_DIR=1` | the folder is the disc ID read from the image, e.g. `POPS/SLUS_123.45/` |
+| `DISCS_DIR=1` | the folder is the value of the ID's line in `POPS/DISCS_DIR.TXT` on the server (`ID=Folder` or `ID1,ID2=Folder`), so every disc of a game shares it; wins over `GAMEID_DIR` |
+| `CHEATS_WS=1` | `CHEATS_WS.TXT` in the game folder is read instead of `CHEATS.TXT` when it exists |
+
+All three are off without the file, which is POPSTARTER's own behaviour. The page edits the file the
+driver reads (mc0's, else mc1's, else a new one in the existing POPSTARTER folder) on **OK**, and
+only when a switch changed: it rewrites the three keys' lines and keeps every other line as it was.
+A file over 512 bytes, which the driver ignores, shows as all off and is never rewritten. Upstream's example is in `POPS/UDPFS-NOTICES/PATHMAP.INI` and its full rules are in
+`POPS/UDPFS-NOTICES/README_CONFIG.txt`. The folder is chosen once, by the first VCD opened: changing discs during a game keeps that
+folder, so with `GAMEID_DIR` alone each disc has its own folder only when the game is started from
+that disc. Turning an option on moves a game to a new folder: copy
+its old `SLOT0.VMC`/`SLOT1.VMC` across or it starts with empty cards. Ready-made `DISCS_DIR.TXT`
+lists are in [Okeanos's popstarter-dir-lists](https://github.com/Okeanos86/popstarter-dir-lists).
+These options work only with this UDPFS driver: the USB, MX4SIO, MMCE, iLink and HDD BDMA
+drivers do not read `PATHMAP.INI`.
+
+**CHD games.** The driver does not read `.chd`. A server that shows a CHD as a virtual `.cue` +
+`.bin` pair makes the game appear in the list and launch as a BIN/CUE game above, with the same
+track limits. [PS2-Servers](https://github.com/NathanNeurotic/PS2-Servers) does this from build
+`main-305-462db2c` (PS2-Servers #288) with CHD support (libchdr) available; no numbered release has
+it yet, and v0.9.1 and older show a CHD only as `.iso`, which the POPS list does not show.
 
 **POPS UDPFS Network Settings** edits these effective MC files with explicit
 replacement confirmation. The screen shows their MC locations. Each MC0 file
@@ -435,9 +494,11 @@ Work down this ladder; each step isolates a different stage (from the #154 foren
 3. **Check PS2/PS1 Game Display.** **Both (L3)** switches between separate libraries and **Mixed**
    cycles Mixed/PS2/PS1. L3 is intentionally absent and inert in the locked **PS2** and **PS1**
    modes; choose **PS1** when you want the PS1 library without an L3 action.
-4. **VCDs are scanned from `<device-root>:/POPS/*.VCD`** — the game-folder prefix
+4. **On local devices, VCDs are scanned from `<device-root>:/POPS/*.VCD`** — the game-folder prefix
    (`usb_prefix` etc.) is deliberately **not** applied, because POPSTARTER itself only reads
-   `/POPS` at the root. A `POPS` folder inside your games subfolder will never be found.
+   `/POPS` at the root. On local devices a `POPS` folder inside your games subfolder will never be found. Ember games
+   follow the same rule on local devices: `<device-root>:/EMBER/games/<Game Name>/`. On SMB both
+   `POPS` and `EMBER` sit in the share's game folder, under the ETH prefix if one is set.
 5. **Name rules:** basenames longer than **160 characters** and the reserved name
    **`POPSTARTER.VCD`** are skipped at scan (the debug log says so) — previously they listed but
    could never launch (a dead ✕ button). Rename the file.

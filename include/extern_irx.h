@@ -86,7 +86,6 @@ IMPORT_BIN2C(mcserv_irx);
 IMPORT_BIN2C(mmce_cdvdman_irx);
 
 IMPORT_BIN2C(mmce_mcemu_irx);
-IMPORT_BIN2C(udpfs_mcemu_irx);
 
 IMPORT_BIN2C(mmceman_irx);
 
