@@ -1,4 +1,4 @@
-"""Exercise production UDPFS Assault TEST DAT population/editor code with host IO and MC faults.
+"""Exercise production UDPFS Assault DAT population/editor code with host IO and MC faults.
 
 Ported from the original (#1057). The launch order itself is driven in test_udpfs_library_launch.py.
 """
@@ -193,15 +193,15 @@ equip = function('int VcdSupport::equipBdma(int source, int mode, char *diag, in
 assert 'An explicit game-device POPS source is authoritative.' in equip
 assert 'if (found || popsDir != NULL) {' in equip
 assert equip.index('vcdWriteBdmaMarker(mcDir, mode);') < equip.index('return vcdInstallPopsUdpfsNet(sourcePops);')
-assert '{51029, 34508}  // UDPFS Assault TEST 2026-10-28' in source
+assert '{61949, 34508}  // UDPFS Assault 1.0.1 2026-11-08' in source
 assert 'if (strcmp(buf, "udpfsnet") == 0)' in function('int vcdReadBdmaMode(')
 
 provenance = json.loads((ROOT/'ship/POPS/UDPFS-NOTICES/PROVENANCE.json').read_text(encoding='utf-8'))
-assert provenance['release'].endswith('/tag/UDPFS_TEST') and provenance['prerelease'] is True
-assert provenance['archive_sha256'] == '225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f'
+assert provenance['release'].endswith('/tag/1.0.1') and provenance['prerelease'] is False
+assert provenance['archive_sha256'] == 'cd87f94b6981ff7435193ced699d30a0ba4345dfb9acfa25f996b95b93df52fd'
 for name, expected in provenance['files'].items():
     assert hashlib.sha256((ROOT/'ship/POPS'/name).read_bytes()).hexdigest() == expected['sha256'], name
-assert (ROOT/'ship/POPS/usbd.irx.udpfs').stat().st_size == 51029
+assert (ROOT/'ship/POPS/usbd.irx.udpfs').stat().st_size == 61949
 
 # The TEST driver presents POPS/<game>.cue (or .CUE) as a VCD: the UDPFS scan lists it once and the
 # launch accepts it when no .VCD exists. Other devices still list only .VCD.
@@ -263,4 +263,4 @@ with tempfile.TemporaryDirectory() as tmp:
     src.write_text(SCAN, encoding='utf-8')
     subprocess.run(['g++', '-std=c++17', '-Wall', '-Werror', '-Wno-unused-function', str(src), '-o', str(exe)], check=True)
     subprocess.run([str(exe)], check=True)
-print('POPS UDPFS: game-device equip, launch wiring, cue rows and pinned TEST payload passed')
+print('POPS UDPFS: game-device equip, launch wiring, cue rows and pinned 1.0.1 payload passed')

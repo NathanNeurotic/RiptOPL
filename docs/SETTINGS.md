@@ -32,7 +32,7 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
     this saves every setting, including other unsaved changes, then restarts RiptOPL;
   * POPSTARTER Network Settings, on **OK** (POPSTARTER's own `IPCONFIG.DAT` and `SMBCONFIG.DAT`);
   * its POPS UDPFS Network Settings sub-page, on **OK** (`SYS-CONF/IPCONFIG.DAT` and
-    `UDPFSCONFIG.DAT`);
+    `UDPFSCONFIG.DAT`, and `POPSTARTER/PATHMAP.INI` when one of its three switches changed);
   * PS Emulation Settings, when you leave it (OK, Back or L1/R1) with a changed BDMA Mode, or a
     changed BDMA Source while the mode is not FAT32: this equips or removes the BDMA driver files
     on the card. Equipping UDPFS also copies `IPCONFIG.DAT` and `UDPFSCONFIG.DAT` into `SYS-CONF`

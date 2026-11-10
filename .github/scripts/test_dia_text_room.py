@@ -173,7 +173,8 @@ int main(void)
     assert(diaRowTailWidth(&page[0]) == 52);
     page[2].visible = 1;
     page[2].type = UI_STRING;
-    strcpy(page[2].stringvalue.text, "A string far wider than 100");
+    static char wide[32] = "A string far wider than 100";
+    page[2].stringvalue.text = wide;
     assert(diaRowTailWidth(&page[0]) == 52 + DIA_TAIL_VALUE_W + 2);
 
     /* a hidden label wraps nothing and takes no height */
@@ -252,6 +253,17 @@ if not [row for row in rows if ' - ' in row]:
 for row in rows:
     if ' - ' in row and len(row) > 64:
         failures.append('diaAbout: coder row too long for 4:3 SD (%d characters): %s' % (len(row), row))
+
+# A text row holds pointers to its storage (struct UIString): a UI_STRING / UI_PASSWORD row without
+# DIA_STRING would leave them NULL, and the first draw or edit would dereference NULL.
+# Each row runs from its {UI_STRING / {UI_PASSWORD to the next row's {UI_, so a row split over lines is scanned whole.
+for row in re.findall(r'\{UI_(?:STRING|PASSWORD)\s*,[\s\S]*?(?=\{UI_|\Z)', dialogs):
+    store = re.search(r'DIA_STRING\(\s*diaStr_(\w+)\s*,[^)]*\)\s*\}', row)
+    if not store or 'static struct UIString diaStr_%s ' % store.group(1) not in dialogs:
+        failures.append('dialogs.cpp: a text row must use DIA_STRING with its own struct UIString: ' + ' '.join(row.split()))
+stores = re.findall(r'DIA_STRING\(diaStr_(\w+),', dialogs)
+if len(stores) != len(set(stores)):
+    failures.append('dialogs.cpp: two text rows share one struct UIString')
 
 if failures:
     print('dia text room checks FAILED:')

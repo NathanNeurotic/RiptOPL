@@ -143,7 +143,7 @@ IOP_OBJS =	iomanx.o filexio.o ps2fs.o usbd.o usbhdfsd.o bdmevent.o \
 		ps2dev9.o smsutils.o ps2ip.o smap.o smap_udpbd.o udpfs_smap.o udpfs_ministack.o udpfs_bd.o udpfs_ioman.o udpfs_fhi.o isofs.o nbns-iop.o \
 		sio2man.o padman.o mcman.o mcserv.o mmceman.o mmcedrv.o mmceigr.o \
 		httpclient-iop.o netman.o ps2ips.o \
-		bdm_mcemu.o mmce_mcemu.o hdd_mcemu.o smb_mcemu.o udpfs_mcemu.o \
+		bdm_mcemu.o mmce_mcemu.o hdd_mcemu.o smb_mcemu.o \
 		iremsndpatch.o apemodpatch.o f2techioppatch.o cleareffects.o resetspu.o \
 		libsd.o audsrv.o
 
@@ -489,7 +489,6 @@ clean:	download_lwNBD
 	$(MAKE) -C modules/mcemu USE_MMCE=1 clean
 	$(MAKE) -C modules/mcemu USE_HDD=1 clean
 	$(MAKE) -C modules/mcemu USE_SMB=1 clean
-	$(MAKE) -C modules/mcemu USE_UDPFS=1 clean
 	echo " -genvmc"
 	$(MAKE) -C modules/vmc/genvmc clean
 	echo " -lwnbdsvr"
@@ -720,12 +719,6 @@ modules/mcemu/mmce_mcemu.irx: modules/mcemu
 	$(MAKE) $(MCEMU_DEBUG_FLAGS) $(PADEMU_FLAGS) USE_MMCE=1 -C $< all
 
 $(EE_ASM_DIR)mmce_mcemu.c: modules/mcemu/mmce_mcemu.irx
-	$(BIN2C) $< $@ $(*F)_irx
-
-modules/mcemu/udpfs_mcemu.irx: modules/mcemu
-	$(MAKE) $(MCEMU_DEBUG_FLAGS) $(PADEMU_FLAGS) USE_UDPFS=1 -C $< all
-
-$(EE_ASM_DIR)udpfs_mcemu.c: modules/mcemu/udpfs_mcemu.irx
 	$(BIN2C) $< $@ $(*F)_irx
 
 modules/mcemu/hdd_mcemu.irx: modules/mcemu

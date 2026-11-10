@@ -34,7 +34,7 @@ The internal exFAT HDD mounts into the shared `massN:` namespace. `mass0:` does 
 - **Fragmentation still matters:** native OPL shares a bounded 64-entry fragment table across image parts. Neutrino's BDM mapping budget includes the ISO and VMCs together. Copy files sequentially with adequate free space; a fresh copy can help, but deleting and recopying is not guaranteed to make a file contiguous.
 - **VMCs have additional write constraints:** native OPL's FAT32/exFAT VMC backing must be contiguous. Neutrino supports multiple extents within its shared budget. Back up cards containing saves before attempting repairs. See [VMC creation and recovery](VMC.md).
 - **Booting and loading games are different:** support for an exFAT game disk does not make that disk a FreeHDBoot/APA boot installation. Launch RiptOPL using an available boot method, then use its BDM list.
-- **PS1 uses a separate runtime:** place VCDs in `POPS/` and use the matching BDMA exFAT setup for POPSTARTER. PS2 exFAT support alone does not install that runtime. See [VCD setup](VCD.md).
+- **PS1 uses a separate runtime:** place VCDs in `POPS/` and use the matching BDMA exFAT setup for POPSTARTER. PS2 exFAT support alone does not install that runtime. Ember games go in `EMBER/games/<Game Name>/` at the volume root with `EMBER/ember.elf` and your `EMBER/bios.bin`; Ember needs no BDMA setup. See [VCD setup](VCD.md).
 
 ## APA-Jail: APA/PFS and exFAT on the same disk
 
@@ -53,7 +53,7 @@ The last row is an **APA-driver limitation, not a ban on GPT**. The current APA 
 
 ### Games and settings on APA-Jail
 
-Games stored as files on the exFAT side belong in its `DVD/`, `CD/` and `POPS/` folders and appear through **BDM → Internal HDD (exFAT)**. The **HDD (APA)** list is for HDLoader game partitions; it does not list those exFAT files. RiptOPL may itself be launched from the APA side without moving the game files there.
+Games stored as files on the exFAT side belong in its `DVD/`, `CD/`, `POPS/` and `EMBER/` folders and appear through **BDM → Internal HDD (exFAT)**. The **HDD (APA)** list is for HDLoader game partitions; it does not list those exFAT files. RiptOPL may itself be launched from the APA side without moving the game files there.
 
 For an APA launch on a recognized hybrid, RiptOPL normally adopts the mounted exFAT volume as its settings home:
 
@@ -76,7 +76,7 @@ Check the game list and path before changing the disk:
 
 1. Verify you are viewing the **BDM HDD (exFAT)** source, rather than the APA HDD source. Both use an HDD icon.
 2. Check BDM start mode, the internal-HDD transport toggle, and **BDM Prefix Path**. An old configuration can point at a subfolder even when your files are at the root.
-3. Check the actual `DVD/` and `CD/` contents, image names/extensions, and the selected PS2/PS1 view. A VCD in `POPS/` belongs in the PS1 view.
+3. Check the actual `DVD/` and `CD/` contents, image names/extensions, and the selected PS2/PS1 view. A VCD in `POPS/` or an Ember game in `EMBER/games/` belongs in the PS1 view.
 4. Refresh the source after applying settings. If the disk does not mount at all, check its partition/filesystem and sector size separately from game enumeration.
 5. Record the exact build suffix, core, settings and unchanged disk layout when comparing builds. Back up your settings before trying a clean configuration; deleting all settings loses useful evidence and is not a required installation step.
 
