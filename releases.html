@@ -94,7 +94,7 @@ variant, debug and bug-report builds, RiptOPLite single-device loaders and the L
 <tr><td>RetroAchievements</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra">rolling-ra</a></td><td>Korium theme with the RetroAchievements runtime, the <a href="https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2">ORBIT Neutrino RA runtime v1.0.2</a> (in place of upstream Neutrino) and the xeRAbora client shortcut, plus the same kit built with the IncebtIon theme.</td></tr>
 <tr><td>IncebtIon</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion">rolling-incebtion</a></td><td>Standard loader with the IncebtIon built-in theme. Also carries the variant and debug builds. GitHub marks this channel as Latest.</td></tr>
 <tr><td>RiptOPLite</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite">rolling-lite</a></td><td>One Korium loader per game device (USB, MX4SIO, iLink, HDD, SMB, UDPBD, UDPFS, MMCE), smaller and with less to load at start-up, plus a RetroAchievements ZIP per device. No install kit: it goes onto an existing Korium or RetroAchievements install. See <a href="#riptoplite">RiptOPLite</a>.</td></tr>
-<tr><td>RiptOPLLVM</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm">rolling-llvm</a></td><td>The same commit built with the LLVM/Clang toolchain: Korium and Korium RetroAchievements kits, their ELFs, PSUs, variant, debug and bug-report builds, and every RiptOPLite build. No IncebtIon. Marked pre-release, never Latest. See <a href="#riptopllvm">RiptOPLLVM</a>.</td></tr>
+<tr><td>RiptOPLLVM</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm">rolling-llvm</a></td><td>rebuild/main built with the LLVM/Clang toolchain: Korium and Korium RetroAchievements kits, their ELFs, PSUs, variant, debug and bug-report builds, and every RiptOPLite build. No IncebtIon. Marked pre-release, never Latest. See <a href="#riptopllvm">RiptOPLLVM</a>.</td></tr>
 </tbody></table>
 <div class="callout amber"><div class="h">Development builds</div><p>Every channel is a development build. Publication checks the source commit, clean state, SDK consistency, file inventory and checksums, but a passing build does not mean it has been tested on your console, storage and settings. Check the release notes for the exact commit. Builds that are not published yet are in the <a href="https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml">Rolling Release</a> runs as workflow artifacts.</p></div>
 
@@ -146,8 +146,8 @@ on its own device, a memory card or a USB stick. The channel also carries <code>
 <code>LICENSE-USMB2.txt</code>. See <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/RIPTOPLITE.md">RIPTOPLITE.md</a>.</p>
 
 <h2 id="riptopllvm">RiptOPLLVM: the LLVM pre-release</h2>
-<p><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm">rolling-llvm</a> builds the same <code>rebuild/main</code> commit and SDK pin as the GCC channels with
-the pinned ps2build LLVM/Clang toolchain and matching LLVM ports. It carries <code>RIPTOPL-Korium-&lt;version&gt;.zip</code>,
+<p><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm">rolling-llvm</a> builds <code>rebuild/main</code> with the GCC channels' SDK pin, using
+the pinned ps2build LLVM/Clang toolchain and matching LLVM ports; its notes name the commit it was built from. It carries <code>RIPTOPL-Korium-&lt;version&gt;.zip</code>,
 <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>, <code>RIPTOPL.ELF</code>, <code>RIPTOPL-RA.ELF</code>, both PSUs,
 <code>RIPTOPL-VARIANTS</code>, <code>RIPTOPL-DEBUG</code>, <code>RIPTOPL-BUGREPORT</code> and <code>RIPTOPL-RA-VARIANTS</code> zips,
 all sixteen RiptOPLite builds, separate Korium and RetroAchievements language packs (<code>RIPTOPL-LANGS</code>, <code>RIPTOPL-RA-LANGS</code>),
