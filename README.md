@@ -534,7 +534,7 @@ home; it does not open these folders on the server. Availability also depends on
 
 ¹ **Folder-based devices** — USB, MMCE, MX4SIO, iLink, SMB, and the **exFAT** (BDM) HDD — keep games as files in the `CD`/`DVD` folders. The **APA/PFS** HDD instead stores games as HDLoader partitions (no `CD`/`DVD` folders), while still using `CFG`/`ART`/`VMC`/`THM`/`CHT`/`LNG`/`APPS` on the configured OPL data partition (`+OPL` root by default, or `__common/OPL/` for the legacy layout).
 
-² **PS1 folders** — `POPS` and `EMBER` sit at the **device root** on USB, MMCE, MX4SIO, iLink and the exFAT HDD, even when PS2 games use a prefix subfolder. On SMB and UDPFS they sit beside `CD`/`DVD` in the share's game folder. The APA/PFS HDD uses partitions instead: `__.POPS`/`__.POPS0`…`__.POPS9` for VCDs and `__.EMBER`/`__.EMBER0`…`__.EMBER9` for Ember, each holding an `EMBER/` folder. UDPBD and UDPFS IMG list Ember games only. See [PS1/VCD](docs/VCD.md).
+² **PS1 folders** — `POPS` and `EMBER` sit at the **device root** on USB, MMCE, MX4SIO, iLink and the exFAT HDD, even when PS2 games use a prefix subfolder. On SMB and UDPFS they sit beside `CD`/`DVD` in the share's game folder. The APA/PFS HDD uses partitions instead: `__.POPS`/`__.POPS0`…`__.POPS9` hold VCDs at their root, and `__.EMBER`/`__.EMBER0`…`__.EMBER9` each hold an `EMBER/` folder. UDPBD and UDPFS IMG list Ember games only. See [PS1/VCD](docs/VCD.md).
 
 Per-game settings are stored per title in the `CFG` context. Typical use cases include compatibility toggles, video options (GSM), cheat toggles, and assigning a VMC file from the `VMC` folder to that game.
 

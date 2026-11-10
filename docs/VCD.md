@@ -260,13 +260,13 @@ Inside `EMBER/`:
 | `ember.elf` | Ember itself, shipped in the release's `EMBER/` folder |
 | `bios.bin` | **your own** 512 KB PS1 BIOS; never shipped |
 | `settings.txt` | Ember's global settings; RiptOPL writes the PS Emulation Settings rows here |
-| `games/<Game Name>/` | one folder per game holding its `*.cue`, `*.exe` or `*.bin` (one level only, no subfolders). The folder name is the title, art key and settings key |
+| `games/<Game Name>/` | one folder per game holding its `*.cue`, `*.exe` or `*.bin` (one level only, no subfolders). The folder name is the title and the settings key; artwork tries the [disc ID](#retrogem--psbbn-disc-ids-for-artwork-and-titles) first, then the folder name |
 | `games/<Game Name>/discs.txt` | optional: the CUE files of a multi-disc game, in disc order |
 | `games/<Game Name>/settings.txt` | per-game Ember settings, written by **Ember Game Settings** |
 | `games/<Game Name>/MC1.vmc`, `MC2.vmc` | the game's memory cards, created by Ember, so the device must be writable |
 
-A folder with no `.cue`, `.exe` or `.bin` at its top level is not listed. Ember game names longer than 180
-characters are refused at launch. CF (PC CARD) does not list PS1 games.
+A folder with no `.cue`, `.exe` or `.bin` at its top level is not listed, and neither is a folder name longer
+than 160 bytes. CF (PC CARD) does not list PS1 games.
 
 ### Sony's POPS files
 
@@ -464,7 +464,8 @@ Work down this ladder; each step isolates a different stage (from the #154 foren
 4. **VCDs are scanned from `<device-root>:/POPS/*.VCD`** — the game-folder prefix
    (`usb_prefix` etc.) is deliberately **not** applied, because POPSTARTER itself only reads
    `/POPS` at the root. A `POPS` folder inside your games subfolder will never be found. Ember games
-   follow the same rule: `<device-root>:/EMBER/games/<Game Name>/`, never inside the games subfolder.
+   follow the same rule on local devices: `<device-root>:/EMBER/games/<Game Name>/`. On SMB both
+   `POPS` and `EMBER` sit in the share's game folder, under the ETH prefix if one is set.
 5. **Name rules:** basenames longer than **160 characters** and the reserved name
    **`POPSTARTER.VCD`** are skipped at scan (the debug log says so) — previously they listed but
    could never launch (a dead ✕ button). Rename the file.
