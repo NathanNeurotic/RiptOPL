@@ -2239,6 +2239,7 @@ reshow_language:
     if (result != UIID_BTN_CANCEL && result != -1) {
         diaGetInt(ui, UICFG_LANG, &langID);
         if (langID != lngGetGuiValue()) {
+            lngHoldPick(); // before the switch, so a device publish already waiting cannot undo it
             applyConfig(-1, langID, 1);
             menuReinitMainMenu();
         }
