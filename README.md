@@ -269,37 +269,16 @@ This build layers several features on top of upstream OPL:
 - **Neutrino external core (per-game):** hand a game off to an external `neutrino.elf`
   instead of OPL's built-in core, chosen per title, with custom launch flags you can set
   globally and per-game. See **[docs/NEUTRINO.md](docs/NEUTRINO.md)**.
-- **UDPBD network boot (Neutrino, or the OPL core per game):** stream games from a PC over the LAN as a network block
-  device — they show up as a **UDPBD Games** list with full covers and per-game settings, just
-  like a local drive. UDPBD launches via Neutrino unless a game's Loader Core is `<OPL>`, is mutually exclusive with SMB (they share
-  the one network adapter), and needs a static PS2 IP (the default is `192.168.1.10`); the
-  fork's **network protocol defaults to Off** — pick UDPFS or UDPBD in **Network** and it
-  loads live (a restart is only needed to *switch away* from a protocol already loaded). Confirming
-  Network Settings applies the current values and reconnects immediately; if the first connection
-  fails, press **Select / Refresh** on the failed network page to retry it. Run it from the
-  **[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one PC launcher. Confirmed
-  on a real PS2 (Kingdom Hearts, 2026-09-26) with every Neutrino setting left at its default. See the
-  network-boot section of **[docs/NEUTRINO.md](docs/NEUTRINO.md#4-network-boot--the-network-protocol-selector)**.
+
 - **HTTP library (new):** point RiptOPL at a server meeting the [HTTP client response profile](docs/HTTP.md), and it reads a `games.csv` catalog and streams the ISOs straight off it
   through OPL’s own core. The PC side is **[Docmine17](https://github.com/Docmine17)’s**
   **[HTTP server](https://github.com/Docmine17/Open-PS2-Loader-HTTP)**, used **unmodified** — existing catalogs and folder layouts need no conversion. Pick **HTTP** under
   **Network → Protocol**, set the address, port (default **1100**) and base path, then use **Test HTTP
   server**. No VMC, no [Neutrino](https://github.com/ps2max32/neutrino) and no PS1 over HTTP, and it has **not been hardware-tested yet**.
   See **[docs/HTTP.md](docs/HTTP.md)**.
-- **UDPFS network boot (Neutrino):** a newer network transport (Neutrino's UDPRDMA) offered
-  alongside UDPBD. **Game Sources** holds the **Network Connectivity** row (Off / Manual / Auto) with
-  **Protocol** (**SMB / UDPFS / UDPBD / HTTP**) indented under it; the same **Protocol** row is on
-  **Network** too, and changing it on either page changes both. Setting Connectivity to **Off** keeps
-  your protocol: turning it back on brings the same one back. **Network** also holds
-  **SMB Version** (SMBv1 / SMB2, live only while Protocol is SMB, see [SMB](#smb)),
-  and **Access** (Files / IMG — locked to Files
-  for SMB/HTTP and to IMG for UDPBD, free only for UDPFS). **Default Menu → ETH Games** opens
-  whichever page that protocol's games are on (for UDPBD / UDPFS IMG, the network drive's page if it
-  has attached by the time the menu appears). UDPFS launches via `-bsd=udpfsbd` with a
-  bundled `bsd-udpfsbd.toml`. Use the
-  **[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one PC launcher for UDPFS,
-  SMB and UDPBD; advanced users can run **[pcm720/udpfsd](https://github.com/pcm720/udpfsd)** directly.
-  Same static-IP and SMB-exclusivity rules as UDPBD.
+- **Network loading (SMB, UDPFS, UDPBD):** load games from a PC or NAS over the LAN. Setup for all
+  three protocols is in **[Network](#network)**.
+
 <a name="ps1-games-two-cores-one-list"></a>
 - **PS1 games — two cores, one list:** RiptOPL plays PS1 titles through **two** cores, and both appear
   together in a single **PS1** library. **PS2/PS1 Game Display** decides whether a device presents
@@ -599,7 +578,14 @@ If you choose to use the FAT32 file system, games larger than 4gb must use USBEx
 If a fragment-limit error is reported, first try a fresh sequential copy with enough free space.
 Back up all data before considering a reformat; a screen colour alone does not diagnose fragmentation.
 
-## SMB
+<a name="smb"></a>
+
+## Network
+
+RiptOPL loads games over the LAN with **SMB**, **UDPFS** and **UDPBD**; pick one with **Network
+Connectivity** and **Protocol** under **Game Sources**. HTTP has its own guide in [docs/HTTP.md](docs/HTTP.md).
+
+### SMB
 
 For loading games by SMB protocol, you need to share a folder (ex: PS2SMB)
 on the host machine or NAS device and grant read access for game loading. Write access is also needed for VMC saves and changes to files stored on the share. USB Advance/Extreme format is optional - \*.ISO images
@@ -608,14 +594,12 @@ are supported using the folder structure above.
 > **SMB version:** the **Network** page has an **SMB Version** row (**SMBv1** / **SMB2**) directly
 > under **Protocol**, live only while **Protocol** is **SMB**. It defaults to **SMBv1**. **SMB2**
 > switches *both* sides (browsing loads the SMB2 driver instead of the SMBv1 one, and the in-game
-> reader follows). The SMB2 browse driver offers every dialect it has, SMB 2.0.2 through 3.1.1, so
-> it lists any server -- including one set to SMB 3 only, which browsing used to refuse -- and it
-> reports the dialect negotiated. The in-game reader opens its own connection and speaks only
-> 2.0.2/2.1: the server must *offer* one of those, while the menu's negotiation settling at 3.x does
-> not affect it. A game set to the Neutrino core, which reads SMB 3.0 only, warns before launch and
-> falls back to the OPL core when the share negotiated below 3.0. One negotiate cannot reveal a
-> 3.x-only server's minimum, so keep such a server at 2.0.2/2.1 for OPL-core games. SMB2 logs on
-> with NTLMv2 and signs requests when the server requires it. If the SMB2 driver cannot load (it
+> reader follows). Both offer SMB 2.0.2 and 2.1 first and try SMB 3.0/3.0.2 only when the server
+> refuses 2.x; SMB 3.1.1 is never offered, and a server that refuses 2.x and requires signing on 3.x
+> is refused, because 3.x signing (AES-CMAC) is not implemented. So a server that accepts only SMB 3.1.1
+> is not reached. A game set to the Neutrino core, which reads SMB 3.0 only, warns before launch and
+> falls back to the OPL core when the share negotiated below 3.0. SMB2 logs on with NTLMv2 and
+> signs requests when the server requires it. If the SMB2 driver cannot load (it
 > loads last, into the IOP memory the other drivers leave), a message says so and browsing falls
 > back to SMBv1 until the next start. Changing the version while an SMB driver is loaded offers a
 > restart. For SMBv1 use PS2-Servers' SMBv1 card, or Samba with `min protocol = NT1`.
@@ -642,6 +626,37 @@ are supported using the folder structure above.
 > as PS2-Servers' SMBv3 card; **SMB Version** does not apply to it. A game with a VMC, a ZSO or UL
 > image, or any other unmet requirement launches on the OPL core with a warning. See
 > [SMB through Neutrino](docs/NEUTRINO.md#smb-through-neutrino-experimental). NOT TESTED on hardware.
+
+### UDPFS (Neutrino, or the OPL core per game)
+
+UDPFS is a newer network transport (Neutrino's UDPRDMA) offered
+alongside UDPBD. **Game Sources** holds the **Network Connectivity** row (Off / Manual / Auto) with
+**Protocol** (**SMB / UDPFS / UDPBD / HTTP**) indented under it; the same **Protocol** row is on
+**Network** too, and changing it on either page changes both. Setting Connectivity to **Off** keeps
+your protocol: turning it back on brings the same one back. **Network** also holds
+**SMB Version** (SMBv1 / SMB2, live only while Protocol is SMB, see [SMB](#smb)),
+and **Access** (Files / IMG — locked to Files
+for SMB/HTTP and to IMG for UDPBD, free only for UDPFS). **Default Menu → ETH Games** opens
+whichever page that protocol's games are on (for UDPBD / UDPFS IMG, the network drive's page if it
+has attached by the time the menu appears). UDPFS Files launches with Neutrino's stock `-bsd=udpfs`; UDPFS IMG launches with
+`-bsd=udpfsbd` and the bundled `bsd-udpfsbd.toml`. Use the
+**[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one PC launcher for UDPFS,
+SMB and UDPBD; advanced users can run **[pcm720/udpfsd](https://github.com/pcm720/udpfsd)** directly.
+Same static-IP and SMB-exclusivity rules as UDPBD.
+
+### UDPBD (Neutrino, or the OPL core per game)
+
+UDPBD streams games from a PC over the LAN as a network block
+device — they show up as a **UDPBD Games** list with full covers and per-game settings, just
+like a local drive. UDPBD launches via Neutrino unless a game's Loader Core is `<OPL>`, is mutually exclusive with SMB (they share
+the one network adapter), and needs a static PS2 IP (the default is `192.168.1.10`); the
+fork's **network protocol defaults to Off** — pick UDPFS or UDPBD in **Network** and it
+loads live (a restart is only needed to *switch away* from a protocol already loaded). Confirming
+Network Settings applies the current values and reconnects immediately; if the first connection
+fails, press **Select / Refresh** on the failed network page to retry it. Run it from the
+**[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one PC launcher. Confirmed
+on a real PS2 (Kingdom Hearts, 2026-09-26) with every Neutrino setting left at its default. See the
+network-boot section of **[docs/NEUTRINO.md](docs/NEUTRINO.md#4-network-boot--the-network-protocol-selector)**.
 
 ## HDD
 	
