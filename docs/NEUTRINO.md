@@ -313,7 +313,7 @@ network-boot protocol ([Rick Gaiser](https://github.com/rickgaiser)'s **UDPRDMA*
 kept for users still running the `udpbd-server`. Both appear in OPL as their own games list — with
 covers and per-game settings — and boot via the external [Neutrino](https://github.com/ps2max32/neutrino) core. **SMB** uses
 a mounted SMB file share served by OPL's **own** core (Neutrino only per game, experimental: see below), and it keeps its own address /
-port / share / credentials fields plus an **SMB Version** row (**SMBv1** default, or **SMB2**).
+port / share / credentials fields plus an **SMB Version** row (**SMB2** on a new install, or **SMBv1**).
 SMB2 changes **both** browsing and in-game reading. The SMB2 browse driver and the in-game reader
 on the OPL core each offer 2.0.2 and 2.1 first and try 3.0/3.0.2 only when the server refuses 2.x;
 neither ever offers 3.1.1, and a server that refuses 2.x and requires signing on 3.x is refused

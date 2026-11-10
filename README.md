@@ -592,7 +592,8 @@ on the host machine or NAS device and grant read access for game loading. Write 
 are supported using the folder structure above.
 
 > **SMB version:** the **Network** page has an **SMB Version** row (**SMBv1** / **SMB2**) directly
-> under **Protocol**, live only while **Protocol** is **SMB**. It defaults to **SMBv1**. **SMB2**
+> under **Protocol**, live only while **Protocol** is **SMB**. A new install starts on **SMB2**; a saved setting is kept
+> (a settings file from before this row counts as **SMBv1**). **SMB2**
 > switches *both* sides (browsing loads the SMB2 driver instead of the SMBv1 one, and the in-game
 > reader follows). Both offer SMB 2.0.2 and 2.1 first and try SMB 3.0/3.0.2 only when the server
 > refuses 2.x; SMB 3.1.1 is never offered, and a server that refuses 2.x and requires signing on 3.x

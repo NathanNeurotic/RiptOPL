@@ -355,8 +355,8 @@ extern int gUdpfsAccessMode; // UDPFS Files(0)/IMG(1) preference, independent of
 // loader clamps anything else to SMBv1, so a hand-edited or future value can never select a
 // driver this build does not have.
 enum SMB_DIALECT {
-    SMB_DIALECT_V1 = 0, // smbman (menu) + smb_cdvdman (in game). Default.
-    SMB_DIALECT_V2 = 1, // smb2man (menu, libsmb2) + smb2_cdvdman (in game, SMB 2.0.2/2.1)
+    SMB_DIALECT_V1 = 0, // smbman (menu) + smb_cdvdman (in game). A config from before the row.
+    SMB_DIALECT_V2 = 1, // smb2man (menu, usmb2) + smb2_cdvdman (in game, SMB 2.0.2/2.1). New installs.
 };
 extern int gSMBDialect;
 
