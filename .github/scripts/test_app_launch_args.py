@@ -250,6 +250,18 @@ int main(void)
         strcpy(longPops + sizeof(longPops) - 5, ".ELF");
         run(longPops, NULL, 0, 1);
         assert(errors == 1 && !torn_down && !launched);
+
+        // Both sides of the pool with AltStartup counted: 256 bytes launches, 257 is refused.
+        size_t fixed = strlen(apa) + 1 + strlen("hdd0:CustomApps:") + strlen(apa) + 1 + sizeof("-la=RM");
+        char arg[256];
+        memset(arg, 'a', sizeof(arg));
+        arg[256 - fixed - 1] = 0;
+        run(apa, arg, 0, 1);
+        assert(launched == 1 && sdk_launch == 1 && !errors && !strcmp(got_argv[1], arg));
+        arg[256 - fixed - 1] = 'a';
+        arg[256 - fixed] = 0;
+        run(apa, arg, 0, 1);
+        assert(errors == 1 && !torn_down && !launched && !sdk_launch);
     }
     // OPLDIAG must expose open() failure evidence without relying on DEBUG/LOG.
     mock_fd = -1;
