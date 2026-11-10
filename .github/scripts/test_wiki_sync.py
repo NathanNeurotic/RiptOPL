@@ -101,6 +101,17 @@ and restart Samba.</td></tr>
         self.assertIn("[A](a_(b c).md) and [B](a_(b_(c d)).md)", out)
         self.assertIn("[Q](" + wiki_sync.REPO + "/blob/abc123/docs/GUIDE.md?q=\\)) end.", out)
 
+    def test_backslash_edge_cases_keep_text_and_link_end(self):
+        # A backslash before a space is literal and the space ends the destination, so that is
+        # plain text; an escaped backslash before "(" must stay escaped after the rewrite.
+        self.assertEqual([m[2] for m in wiki_sync.LINK.finditer("[x](foo\\ bar.md)")], [])
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = Path(tmp) / "DOC.md"
+            doc.write_text("[x](foo\\ bar.md) and [Q](GUIDE.md?q=\\\\(a)) end.\n", encoding="utf-8")
+            out = wiki_sync.convert_doc(doc, "docs/DOC.md", "abc123")
+        self.assertIn("[x](foo\\ bar.md)", out)
+        self.assertIn("[Q](" + wiki_sync.REPO + "/blob/abc123/docs/GUIDE.md?q=\\\\\\(a\\)) end.", out)
+
     def test_every_published_doc_converts_without_changing_visible_text(self):
         # PR CI never runs Publish Wiki, so convert every mapped document here; a
         # conversion that changes visible text raises, as it does on publish.

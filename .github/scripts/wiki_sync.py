@@ -316,9 +316,9 @@ def convert_site(path, sha):
     return output
 
 
-# Destination: backslash escapes, and parentheses balanced up to two levels deep.
+# Destination: backslash escapes (a backslash never escapes whitespace), and parentheses balanced up to two levels deep.
 LINK = re.compile(r"(!?\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]\()"
-                  r"((?:\\[^\n]|[^\s<>()\\]|\((?:\\[^\n]|[^ \t\n()\\]|\((?:\\[^\n]|[^ \t\n()\\])*\))*\))+)"
+                  r"((?:\\[^\s]|[^\s<>()\\]|\((?:\\[^\s]|[^ \t\n()\\]|\((?:\\[^\s]|[^ \t\n()\\])*\))*\))+)"
                   r"(\s+\"[^\"\n]*\")?(\))")
 MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
@@ -342,8 +342,8 @@ def convert_doc(path, origin, sha):
             # Resolve the unescaped destination; an external URL that is not rewritten keeps its escapes.
             url = MD_ESCAPE.sub(r"\1", match[2])
             new = rewrite_url(url, "source", origin, sha, match[1].startswith("!"))
-            # Re-escape parentheses so one decoded from \) cannot close the link early.
-            new = match[2] if new == url else re.sub(r"([()])", r"\\\1", new)
+            # Re-escape backslashes and parentheses so a decoded \) or \\( cannot end the link early.
+            new = match[2] if new == url else re.sub(r"([()\\])", r"\\\1", new)
             return match[1] + new + (match[3] or "") + match[4]
         line = LINK.sub(replace_link, line)
         line = re.sub(r'(?P<attr>href|src)="(?P<url>[^"\n]+)"',
