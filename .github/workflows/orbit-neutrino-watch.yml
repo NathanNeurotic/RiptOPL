@@ -1,6 +1,6 @@
 name: ORBIT Neutrino RA Watch
 
-# The RetroAchievements edition's Neutrino is ORBIT's fork (danielnuld/ps2-launcher), pinned by tag and
+# The RetroAchievements edition's Neutrino is ORBIT's fork (danielnuld/nuld; ORBIT is NULD since v1.2), pinned by tag and
 # archive SHA-256 in third_party/orbit-neutrino/release.json. Unlike Neutrino Watch and Ember Watch, this
 # one never updates anything: tools/package_edition.py refuses any archive but the pinned one, and a new
 # ORBIT runtime can change the -ra= handoff, the one-packet snapshot limit or pointer-chain support, so
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      ORBIT_REPO: danielnuld/ps2-launcher
+      ORBIT_REPO: danielnuld/nuld
       ISSUE_TITLE: ORBIT Neutrino RA runtime update
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
