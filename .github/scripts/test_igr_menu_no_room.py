@@ -146,6 +146,10 @@ for needle, why in (
     if needle not in worker:
         failures.append('padhook.c IGR_Thread: ' + why)
 
+# VIF1_STAT.INT stays set until the game clears it and stalls nothing: it must not keep the menu from opening
+if not re.search(r'\(\*\(vu32 \*\)0x10003c00 & ~0x800\)', padhook):
+    failures.append('padhook.c IGR_HoldGs: VIF1_STAT.INT (0x800) must be left out of the idle check')
+
 # --- 5. the RA watch block before the menu's cheats --------------------------------------------------------------
 if LAYOUT['host'] is not None:
     order = ('host::launch().raWorkBytes(', 'host::launch().igrCheatsPlace(at, room)', 'u8 *at = (u8 *)ModuleStorage + ModuleStorageSize;')
