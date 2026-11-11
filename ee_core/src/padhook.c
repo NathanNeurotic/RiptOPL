@@ -120,7 +120,10 @@ extern void *_end;
   pad buffer the menu reads. RESUME gives everything back; any other way out goes on to the IGR below, as before.
 */
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
-#define IGR_INTC_SBUS 1
+// Never held: SBUS (1), and VIF1 (5). A VIF1 stopped on a VIF code's interrupt bit waits for the game's own VIF1
+// handler (FBRST.STC), so holding it left the game's transfer in flight forever and the menu refused (yellow). The
+// menu's own VIF codes carry no interrupt bit, so that handler only runs for the game's chain the pause interrupted
+#define IGR_INTC_KEPT 0x22
 static volatile int IGR_MenuOpen = 0;
 static int IGR_MenuRearm = 1;
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
@@ -146,9 +149,9 @@ static void IGR_HoldInterrupts(void)
 {
     int i;
 
-    IGR_HeldIntc = *IGR_I_MASK;
+    IGR_HeldIntc = *IGR_I_MASK & ~IGR_INTC_KEPT;
     for (i = 0; i <= 14; i++)
-        if (i != IGR_INTC_SBUS && (IGR_HeldIntc & (1 << i)))
+        if (IGR_HeldIntc & (1 << i))
             iDisableIntc(i);
     IGR_HeldDmac = (*R_EE_D_STAT >> 16) & 0x3ff;
     for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
@@ -181,7 +184,7 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
         if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
             EnableDmac(IGR_DmacHeld[i]);
     for (i = 0; i <= 14; i++)
-        if (i != IGR_INTC_SBUS && (IGR_HeldIntc & (1 << i)))
+        if (IGR_HeldIntc & (1 << i))
             EnableIntc(i);
     for (i = 1; i < 256; i++)
         if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
