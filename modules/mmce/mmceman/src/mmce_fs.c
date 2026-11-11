@@ -835,7 +835,7 @@ int mmce_fs_dread(iomanX_iop_file_t *file, iox_dirent_t *dirent)
     mmce_sio2_unlock();
 
     // 1, not the card's iterator fd: iomanX reads 0 as end of directory, and the card hands out its
-    // lowest free descriptor, which is 0 if the folder was opened while fd 0 was busy (mmceman #11).
+    // lowest free descriptor, which is 0 if the folder was opened while fd 0 was busy (upstream mmceman PR 11).
     return 1;
 }
 
@@ -939,10 +939,8 @@ int mmce_fs_getstat(iomanX_iop_file_t *file, const char *name, iox_stat_t *stat)
     stat->hisize |= rdbuf[0x28];
 
     if (rdbuf[0x29] != 0) {
-        // -ENOENT, not -1: the card answers 1 only when it could not open the path; timeouts and
-        // garbled replies above stay -1 (ps2-mmce/mmceman #11).
         DPRINTF("Got bad return: %i\n", rdbuf[0x29]);
-        return -ENOENT;
+        return -1;
     } else {
         DPRINTF("Got good return\n");
     }

@@ -3,8 +3,8 @@
 1. Provenance: reversing patches/ on the vendored mmce_fs.c gives the pinned commit's file, and the
    other vendored files are that commit's files unchanged.
 2. Behaviour: the real open/close/dopen/dclose/dread are compiled over a scripted SIO2 wire. The
-   card's own status replies must come back as ENOENT (open/dopen/getstat) and end of directory
-   (dread), a listed entry must be 1 whatever the card's iterator fd, bus timeouts must stay -1,
+   card's own status replies must come back as ENOENT (open/dopen) and end of directory (dread),
+   a listed entry must be 1 whatever the card's iterator fd, bus timeouts must stay -1,
    and failed closes must still free their handle slot.
 """
 from pathlib import Path
@@ -17,7 +17,7 @@ root = Path(__file__).resolve().parents[2]
 tree = root / 'modules/mmce/mmceman'
 PATCHES = ['mmceman-fs-close-fd-leak.patch', 'mmceman-fs-open-enoent.patch',
            'mmceman-fs-dopen-enoent.patch', 'mmceman-fs-dread-eof.patch',
-           'mmceman-fs-dread-getstat-returns.patch']
+           'mmceman-fs-dread-entry.patch']
 # sha256 of ps2-mmce/mmceman @ de28936f (mmce_fs.c and mmce_cmds.h are unchanged since db3e93f0)
 PINNED = {
     'src/mmce_fs.c': '0f6ffa10a03dcdd3a453ae65b99426e126d30570ebe8cffaaa489896384efdc9',
@@ -55,7 +55,6 @@ cmds = '\n'.join(line for line in (tree / 'include/mmce_cmds.h').read_text().spl
 functions = ''.join(function(s) for s in (
     'static int *mmce_fs_find_free_handle(', 'static int mmce_fs_update_unit(', 'int mmce_fs_open(',
     'int mmce_fs_close(', 'int mmce_fs_dopen(', 'int mmce_fs_dclose(', 'int mmce_fs_dread(',
-    'int mmce_fs_getstat(',
 ))
 
 program = r'''
@@ -78,7 +77,7 @@ static int mmce_fs_fds[MMCE_FS_MAX_FD];
 static int last_unit = -1, locked;
 
 /* The wire: each transfer takes the next scripted reply. TIMEOUT is a missing /ACK. */
-enum {TIMEOUT = -1, ACK = 0, STATUS = 1, FD = 2, STAT_RV = 3};
+enum {TIMEOUT = -1, ACK = 0, STATUS = 1, FD = 2};
 static struct {int kind, value;} script[16];
 static int step, steps;
 static void wire(int n, ...) {
@@ -103,7 +102,6 @@ static int mmce_sio2_tx_rx_pio(u8 tx, u8 rx, const void *out, u8 *in, iop_sys_cl
     if (kind == STATUS) {in[1] = MMCE_REPLY_CONST; in[4] = (u8)value;}
     if (kind == ACK && in != NULL) in[1] = MMCE_REPLY_CONST;
     if (kind == FD) in[1] = (u8)value;
-    if (kind == STAT_RV) in[0x29] = (u8)value;
     return 0;
 }
 @FUNCTIONS@
@@ -145,14 +143,6 @@ int main(void) {
         mmce_fs_close(&f);
     }
     check(freeSlots() == 16, "close: 20 timed-out closes leave all 16 slots free");
-
-    iox_stat_t st;
-    wire(3, ACK, 0, ACK, 0, STAT_RV, 1);
-    check(mmce_fs_getstat(&f, "/missing", &st) == -ENOENT && !locked, "getstat: card could not open the path -> -ENOENT");
-    wire(3, ACK, 0, ACK, 0, STAT_RV, 0);
-    check(mmce_fs_getstat(&f, "/x", &st) == 0 && !locked, "getstat: found -> 0");
-    wire(1, TIMEOUT, 0);
-    check(mmce_fs_getstat(&f, "/x", &st) == -1 && !locked, "getstat: bus timeout stays -1");
     return failures != 0;
 }
 '''
