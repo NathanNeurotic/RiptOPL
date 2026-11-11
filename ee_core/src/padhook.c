@@ -178,16 +178,16 @@ static void IGR_PauseThreads(void)
 // The game's own transfers finish before the menu takes channel 1 and the GS. A VIF1 stopped on a VIF code's interrupt
 // bit waits for the game's VIF1 handler (FBRST.STC), a GS stopped on a second SIGNAL for its GS handler (CSR.SIGNAL):
 // held from the start, that transfer never finished and the menu refused (yellow). So both are held only here, once
-// channels 1 and 2 are idle, the VIF1 FIFO is empty and not stalled, and the GIF holds nothing (FQC, APATH): a DMA can
-// end with its last data still queued in front of a SIGNAL. Returns 1 when they did not get there within the wait.
+// channels 1 and 2 are idle, the VIF1 FIFO is empty and not stalled, and the GIF holds nothing (FQC, APATH, OPH):
+// a DMA can end with its last data still queued in front of a SIGNAL. Returns 1 when they did not get there in time.
 // They are checked with both already held, so neither handler can start a transfer after the check
 static int IGR_HoldGs(void)
 {
     int n = 0x1000000;                       // about as long as igrmenu.c's own waits
     u32 gifs = IGR_HeldIntc & IGR_INTC_GIFS; // a 1 toggles: GS and VIF1 off, those the game had on
 
-    while (*IGR_I_MASK = gifs, --n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x1f800f00) |
-                                       (*(vu32 *)0x10003020 & 0x1f000c00)))
+    while (*IGR_I_MASK = gifs, --n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) |
+                                       ((*(vu32 *)0x10003c00 | *(vu32 *)0x10003020) & 0x1f800f00)))
         *IGR_I_MASK = gifs; // on again while busy: the transfer may still need its handler
     return !n;
 }
