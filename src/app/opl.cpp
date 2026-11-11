@@ -1290,15 +1290,17 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     // Fade the menu out first (issue #85), so a launch no longer cuts hard from the game list to the
     // status screen. Eight frames, the same fade the video-mode switch uses; guiRenderTextScreen()
     // right below already redraws the menu here, so drawing it eight more times touches nothing new.
+    //
+    // Give up on the covers still QUEUED before draining. The drain waits on the ioman LIST, and the
+    // worker keeps servicing it regardless of isIOBlocked, so without this the handoff pays for every
+    // queued cover to be read off the game device first -- for a menu guiEnd() is about to destroy.
+    // Done BEFORE the fade: the latch makes the worker drop any cover the fade's frames ask for
+    // without touching the device, so the extra frames cannot start a new read.
+    cacheShutdownArtLoads();
     guiFadeCurrentScreenToBlack();
     guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
     if (gLaunchDiag)
         launchDiagMark(5); // "Please Wait" is up -- the io/art drain below runs next
-
-    // Give up on the covers still QUEUED before draining. The drain waits on the ioman LIST, and the
-    // worker keeps servicing it regardless of isIOBlocked, so without this the handoff pays for every
-    // queued cover to be read off the game device first -- for a menu guiEnd() is about to destroy.
-    cacheShutdownArtLoads();
 
     // JOIN the art worker before anything unmounts a device under it. cacheShutdownArtLoads
     // above only drops the QUEUE and flags the in-flight request; the thread itself may still
@@ -1381,15 +1383,17 @@ void deinit(int exception, int modeSelected)
     // Fade the menu out first (issue #85), so a launch no longer cuts hard from the game list to the
     // status screen. Eight frames, the same fade the video-mode switch uses; guiRenderTextScreen()
     // right below already redraws the menu here, so drawing it eight more times touches nothing new.
+    //
+    // Give up on the covers still QUEUED before draining. The drain waits on the ioman LIST, and the
+    // worker keeps servicing it regardless of isIOBlocked, so without this the handoff pays for every
+    // queued cover to be read off the game device first -- for a menu guiEnd() is about to destroy.
+    // Done BEFORE the fade: the latch makes the worker drop any cover the fade's frames ask for
+    // without touching the device, so the extra frames cannot start a new read.
+    cacheShutdownArtLoads();
     guiFadeCurrentScreenToBlack();
     guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
     if (gLaunchDiag)
         launchDiagMark(5); // "Please Wait" is up -- the io/art drain below runs next
-
-    // Give up on the covers still QUEUED before draining. The drain waits on the ioman LIST, and the
-    // worker keeps servicing it regardless of isIOBlocked, so without this the handoff pays for every
-    // queued cover to be read off the game device first -- for a menu guiEnd() is about to destroy.
-    cacheShutdownArtLoads();
 
     // JOIN the art worker before anything unmounts a device under it. cacheShutdownArtLoads
     // above only drops the QUEUE and flags the in-flight request; the thread itself may still
