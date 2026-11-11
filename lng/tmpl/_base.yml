@@ -78,7 +78,7 @@ gui_strings:
 - label: CONFIRMATION_POFF
   string: The system will be powered off.
 - label: CONFIRMATION_EXIT
-  string: Exit RiptOPL?
+  string: Exit to Browser?
 - label: CONFIRMATION_CANCEL_UPDATE
   string: Cancel updating?
 - label: HDD_NOT_CONNECTED_ERROR
@@ -2593,3 +2593,6 @@ gui_strings:
 - comment: Exit To choice. OSDSYS asked for the Browser, skipping the memory card system update.
   label: EXIT_MENU_BROWSER_SKIPMC
   string: PS2 Browser (Skip Card Update)
+- comment: Main menu Exit prompt (issue 370). Replaces CONFIRMATION_EXIT, whose "Browser" was wrong when Exit To is Console Menu.
+  label: CONFIRMATION_EXIT_APP
+  string: Exit RiptOPL?

@@ -2370,7 +2370,7 @@ void menuHandleInputMenu()
         } else if (id == MENU_SAVE_CHANGES) {
             menuSaveSettings();
         } else if (id == MENU_EXIT) {
-            if (guiMsgBox(_l(_STR_CONFIRMATION_EXIT), 1, NULL))
+            if (guiMsgBox(_l(_STR_CONFIRMATION_EXIT_APP), 1, NULL))
                 sysExecExit(1);
         } else if (id == MENU_POWER_OFF) {
             if (guiMsgBox(_l(_STR_CONFIRMATION_POFF), 1, NULL))
