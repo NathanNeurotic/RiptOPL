@@ -88,6 +88,7 @@ public:
     // Launch/exit only: from here on pop() starts nothing, while every queued request stays valid
     // (the menu's last frames may still reference them). Cleared only by reset().
     void holdStarts() { holdStarts_ = 1; }
+    bool holding() const { return holdStarts_ != 0; }
 
 private:
     load_image_request_t *head_ = NULL;
