@@ -120,10 +120,8 @@ extern void *_end;
   pad buffer the menu reads. RESUME gives everything back; any other way out goes on to the IGR below, as before.
 */
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
-// Never held: SBUS (1), and VIF1 (5). A VIF1 stopped on a VIF code's interrupt bit waits for the game's own VIF1
-// handler (FBRST.STC), so holding it left the game's transfer in flight forever and the menu refused (yellow). The
-// menu's own VIF codes carry no interrupt bit, so that handler only runs for the game's chain the pause interrupted
-#define IGR_INTC_KEPT 0x22
+#define IGR_INTC_SBUS 1
+#define IGR_INTC_VIF1 5
 static volatile int IGR_MenuOpen = 0;
 static int IGR_MenuRearm = 1;
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
@@ -149,9 +147,9 @@ static void IGR_HoldInterrupts(void)
 {
     int i;
 
-    IGR_HeldIntc = *IGR_I_MASK & ~IGR_INTC_KEPT;
+    IGR_HeldIntc = *IGR_I_MASK & ~(1 << IGR_INTC_SBUS);
     for (i = 0; i <= 14; i++)
-        if (IGR_HeldIntc & (1 << i))
+        if (i != IGR_INTC_VIF1 && (IGR_HeldIntc & (1 << i))) // VIF1: IGR_HoldGs
             iDisableIntc(i);
     IGR_HeldDmac = (*R_EE_D_STAT >> 16) & 0x3ff;
     for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
@@ -174,6 +172,21 @@ static void IGR_PauseThreads(void)
         if (SuspendThread(i) >= 0)
             IGR_PausedThreads[i / 32] |= 1u << (i % 32);
     }
+}
+
+// The game's own transfers finish before the menu takes channel 1 and the GS. A VIF1 stopped on a VIF code's interrupt
+// bit waits for the game's VIF1 handler (FBRST.STC): held from the start, that transfer never finished and the menu
+// refused (yellow). So VIF1's interrupt is held only here, once channel 1 and 2 are idle and the VIF1 FIFO is empty
+// and not stalled. Returns 1 when they did not get there within the wait: a VIF1 stalled otherwise, or still busy
+static int IGR_HoldGs(void)
+{
+    int n = 10000000;
+
+    while (n-- && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x1f800f00)))
+        ;
+    if (IGR_HeldIntc & (1 << IGR_INTC_VIF1))
+        DisableIntc(IGR_INTC_VIF1);
+    return n < 0;
 }
 
 static void IGR_ResumeGame(void) // the pause, undone in reverse
@@ -434,7 +447,7 @@ static void IGR_Thread(void *arg)
             break; // the power button, or the plain combo: the handler stopped DMA/GS and the game
 
         IGR_PauseThreads();
-        choice = IGR_MenuRun(IGR_PadButtons);
+        choice = IGR_HoldGs() ? IGR_MENU_GS_BUSY : IGR_MenuRun(IGR_PadButtons);
         if (choice == IGR_MENU_RESUME) {
             IGR_ResumeGame();
             IGR_MenuOpen = 0;
