@@ -121,7 +121,8 @@ extern void *_end;
 */
 #define IGR_I_MASK     ((vu32 *)0x1000f010)
 #define IGR_INTC_SBUS  1
-#define IGR_INTC_GIFS  ((1 << 0) | (1 << 5))                  // GS and VIF1: held in IGR_HoldGs
+#define IGR_INTC_VIF1  5
+#define IGR_INTC_GIFS  ((1 << 0) | (1 << IGR_INTC_VIF1))      // GS and VIF1: held in IGR_HoldGs
 #define IGR_INTC_LATER ((1 << IGR_INTC_SBUS) | IGR_INTC_GIFS) // SBUS is never held
 static volatile int IGR_MenuOpen = 0;
 static int IGR_MenuRearm = 1;
@@ -183,12 +184,15 @@ static void IGR_PauseThreads(void)
 // They are checked with both already held, so neither handler can start a transfer after the check
 static int IGR_HoldGs(void)
 {
-    int n = 0x1000000;                       // about as long as igrmenu.c's own waits
-    u32 gifs = IGR_HeldIntc & IGR_INTC_GIFS; // a 1 toggles: GS and VIF1 off, those the game had on
+    int n = 0x1000000; // about as long as igrmenu.c's own waits
+    u32 on;
 
-    while (*IGR_I_MASK = gifs, --n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) |
-                                       ((*(vu32 *)0x10003c00 | *(vu32 *)0x10003020) & 0x1f800f00)))
-        *IGR_I_MASK = gifs; // on again while busy: the transfer may still need its handler
+    // DisableIntc is atomic and says whether each was on: a game handler may turn its own interrupt off (or on) while it
+    // runs here, so what is held is read at every check, and only that is let go again or turned back on at resume
+    while (on = DisableIntc(0) | DisableIntc(IGR_INTC_VIF1) << IGR_INTC_VIF1,
+           --n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | ((*(vu32 *)0x10003c00 | *(vu32 *)0x10003020) & 0x1f800f00)))
+        *IGR_I_MASK = on; // on again while busy (a 1 toggles): the transfer may still need its handler
+    IGR_HeldIntc = (IGR_HeldIntc & ~IGR_INTC_GIFS) | on;
     return !n;
 }
 
@@ -199,8 +203,8 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
     for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
         if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
             EnableDmac(IGR_DmacHeld[i]);
-    // every interrupt the game had on is off now but SBUS, never held, and nothing else turns one on or off: a 1 in
-    // I_MASK toggles, so one store turns them all back on, and no handler can run between a read and the write
+    // every interrupt in IGR_HeldIntc but SBUS (never held) is off now, and nothing runs that turns one on or off: a 1
+    // in I_MASK toggles, so one store turns them all back on, and no handler can run between a read and the write
     *IGR_I_MASK = IGR_HeldIntc & ~(1 << IGR_INTC_SBUS);
     for (i = 1; i < 256; i++)
         if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
