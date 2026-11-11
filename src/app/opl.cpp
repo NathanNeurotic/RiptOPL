@@ -1286,6 +1286,11 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     // so a per-launch-leg banner would have to be repeated in each and would still miss some. The
     // frame flips and then persists on its own -- nothing draws again until the handoff -- so one
     // call covers the entire wait.
+    //
+    // Fade the menu out first (issue #85), so a launch no longer cuts hard from the game list to the
+    // status screen. Eight frames, the same fade the video-mode switch uses; guiRenderTextScreen()
+    // right below already redraws the menu here, so drawing it eight more times touches nothing new.
+    guiFadeCurrentScreenToBlack();
     guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
     if (gLaunchDiag)
         launchDiagMark(5); // "Please Wait" is up -- the io/art drain below runs next
@@ -1372,6 +1377,11 @@ void deinit(int exception, int modeSelected)
     // so a per-launch-leg banner would have to be repeated in each and would still miss some. The
     // frame flips and then persists on its own -- nothing draws again until the handoff -- so one
     // call covers the entire wait.
+    //
+    // Fade the menu out first (issue #85), so a launch no longer cuts hard from the game list to the
+    // status screen. Eight frames, the same fade the video-mode switch uses; guiRenderTextScreen()
+    // right below already redraws the menu here, so drawing it eight more times touches nothing new.
+    guiFadeCurrentScreenToBlack();
     guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
     if (gLaunchDiag)
         launchDiagMark(5); // "Please Wait" is up -- the io/art drain below runs next
