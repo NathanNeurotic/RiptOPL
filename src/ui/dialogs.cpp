@@ -455,6 +455,11 @@ struct UIItem diaConfig[] = {
     {UI_STRING, CFG_EXITTO, 1, 1, _STR_HINT_EXITPATH, 0, 0, DIA_STRING(diaStr_CFG_EXITTO, &guiExitPathHandler)},
     {UI_BREAK},
 
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_EXIT_MENU}}},
+    {UI_SPACER},
+    {UI_ENUM, CFG_EXITMENU, 1, 1, _STR_HINT_EXIT_MENU, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_CUSTOM_SETTINGS_PATH}}},
     {UI_SPACER},
     {UI_STRING, CFG_CUSTOMCFGPATH, 1, 1, _STR_HINT_CUSTOM_SETTINGS_PATH, 0, 0, DIA_STRING(diaStr_CFG_CUSTOMCFGPATH, NULL)},

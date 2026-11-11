@@ -217,6 +217,13 @@ enum { PS1_DUP_BOTH = 0,
        PS1_DUP_EMBER,
        PS1_DUP_POPSTARTER };
 extern int gPs1Duplicates;
+// Where the main menu's Exit goes (issue #370). CONSOLE: the console's own exit, as before.
+// BROWSER: ask OSDSYS for the Browser (a card update such as FMCB still runs first).
+// BROWSER_SKIPMC: the Browser without the card update (its menu entries are gone until power-off).
+enum { EXIT_MENU_CONSOLE = 0,
+       EXIT_MENU_BROWSER,
+       EXIT_MENU_BROWSER_SKIPMC };
+extern int gExitMenu;
 extern int gGameTypeLabels; // optional [PS1]/[PS2] prefixes in game lists; default off
 // Interface > List Title and Description (RIPPS2 build 126): the Title and Description from a game's CFG that a
 // theme shows on its list pages. Theme: as its list_cfg_text key says. The info page always shows them.

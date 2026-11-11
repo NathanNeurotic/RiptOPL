@@ -105,3 +105,4 @@ CHECK(gDefaultBGMPath[0] == '\0');
 CHECK(gXSensitivity == (1));
 CHECK(gYSensitivity == (1));
 CHECK(gAppHandoffPath == (0));
+CHECK(gExitMenu == (0));

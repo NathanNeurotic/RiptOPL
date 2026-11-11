@@ -299,6 +299,7 @@ int gPadMacroSettings;
 #endif
 int gScrollSpeed;
 char gExitPath[256];
+int gExitMenu; // EXIT_MENU_*: where the main menu's Exit goes
 char gCustomSettingsPath[64];
 int gEnableDebug;
 int gPS2Logo;
