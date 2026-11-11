@@ -17,7 +17,8 @@ int sysIsPccfOwned(void);
 void sysReleasePccf(void);
 void sysShutdownDev9(void);
 void sysReset(int modload_mask);
-void sysExecExit(void);
+// toMenuChoice 1: the main menu's Exit, which honours Settings > Exit To (gExitMenu). Restarts pass 0.
+void sysExecExit(int toMenuChoice);
 // Boot the physical PS2 disc in the drive; <0 (stays in OPL) on failure. `progress` is called once
 // per poll while waiting on the drive -- pass guiRenderProbeFrame from the GUI thread so the menu
 // keeps drawing, or NULL to sleep instead. Bounded by SYS_DISC_DETECT_MS + SYS_DISC_REDETECT_MS.

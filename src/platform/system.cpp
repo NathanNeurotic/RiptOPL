@@ -544,10 +544,16 @@ int sysGetDiscID(char *hexDiscID)
     return 1;
 }
 
-void sysExecExit(void)
+void sysExecExit(int toMenuChoice)
 {
     // Deinitialize without shutting down active devices.
     host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+    // Issue #370: the console's own exit opens its menu (or a card update such as FMCB), not the
+    // Browser. These ask OSDSYS for the Browser, as Launchstation's PS2 system browser rows do.
+    if (toMenuChoice && gExitMenu != EXIT_MENU_CONSOLE) {
+        char *args[2] = {(char *)"BootBrowser", (char *)"SkipMc"};
+        ExecOSD(gExitMenu == EXIT_MENU_BROWSER_SKIPMC ? 2 : 1, args);
+    }
     exit(0);
 }
 

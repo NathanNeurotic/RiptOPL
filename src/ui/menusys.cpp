@@ -1033,7 +1033,7 @@ int menuSaveSettings(void)
     // start while either of the others is resident, and each loads its IOP chain once per boot.
     // Once a stack is up, a changed protocol applies after a restart.
     if (result > 0 && guiNetProtocolNeedsRestart() && guiMsgBox(_l(_STR_NETBOOT_RESTART), 1, NULL))
-        sysExecExit();
+        sysExecExit(0);
 
     return result;
 }
@@ -1046,7 +1046,7 @@ void menuSaveSettingsAndRestart(void)
         return;
 
     if (menuSaveAllSettings() > 0)
-        sysExecExit();
+        sysExecExit(0);
 }
 
 #ifdef RETROACHIEVEMENTS
@@ -2371,7 +2371,7 @@ void menuHandleInputMenu()
             menuSaveSettings();
         } else if (id == MENU_EXIT) {
             if (guiMsgBox(_l(_STR_CONFIRMATION_EXIT), 1, NULL))
-                sysExecExit();
+                sysExecExit(1);
         } else if (id == MENU_POWER_OFF) {
             if (guiMsgBox(_l(_STR_CONFIRMATION_POFF), 1, NULL))
                 sysPowerOff();

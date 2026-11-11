@@ -162,6 +162,7 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_VCD_SHOW_PP_POPS     "vcd_show_pp_pops"    // enumeration-only: list strict PP.<ID>.POPS.<name> one-game HDD partitions as VCDs
 #define CONFIG_OPL_HDD_GAME_LIST_CACHE  "hdd_game_list_cache"
 #define CONFIG_OPL_EXIT_PATH            "exit_path"
+#define CONFIG_OPL_EXIT_MENU            "exit_menu" // EXIT_MENU_*; default the console's own exit
 // Opt-in user override for WHERE settings are stored. Empty = the normal boot-dir/discovery home.
 // Bootstrapped by the cwd "config.path" redirect, because this key lives INSIDE the config that
 // the path points at -- see readConfigPathRedirect() in opl.c.

@@ -2212,6 +2212,9 @@ static int guiSettingsShowGeneral(void)
         return 0;
 
     guiExitPathBegin(ui);
+    const char *exitMenuNames[] = {_l(_STR_EXIT_MENU_CONSOLE), _l(_STR_EXIT_MENU_BROWSER), _l(_STR_EXIT_MENU_BROWSER_SKIPMC), NULL};
+    diaSetEnum(ui, CFG_EXITMENU, exitMenuNames);
+    diaSetInt(ui, CFG_EXITMENU, gExitMenu);
     diaSetShowDefaultWhenEmpty(ui, CFG_CUSTOMCFGPATH, 1);
     diaSetString(ui, CFG_CUSTOMCFGPATH, gCustomSettingsPath);
     diaSetInt(ui, CFG_LASTPLAYED, gRememberLastPlayed);
@@ -2229,6 +2232,7 @@ static int guiSettingsShowGeneral(void)
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);
+        diaGetInt(ui, CFG_EXITMENU, &gExitMenu);
         diaGetString(ui, CFG_CUSTOMCFGPATH, gCustomSettingsPath, sizeof(gCustomSettingsPath));
         diaGetInt(ui, CFG_LASTPLAYED, &gRememberLastPlayed);
         diaGetInt(ui, CFG_FOLDERNAV, &gEnableFolderNav);

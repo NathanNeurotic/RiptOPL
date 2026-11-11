@@ -78,7 +78,7 @@ gui_strings:
 - label: CONFIRMATION_POFF
   string: The system will be powered off.
 - label: CONFIRMATION_EXIT
-  string: Exit to Browser?
+  string: Exit RiptOPL?
 - label: CONFIRMATION_CANCEL_UPDATE
   string: Cancel updating?
 - label: HDD_NOT_CONNECTED_ERROR
@@ -2579,3 +2579,17 @@ gui_strings:
 - comment: Shown before a PS1 game over SMB starts while SMB2 is in use. POPSTARTER only speaks SMBv1.
   label: POPSTARTER_SMB_V1
   string: "POPSTARTER connects with SMBv1 for this game. The server in POPSTARTER Network Settings must accept SMBv1."
+- comment: Settings > General. Where the main menu's Exit goes (issue 370).
+  label: EXIT_MENU
+  string: Exit To
+- label: HINT_EXIT_MENU
+  string: "Console Menu: the console's own exit (FMCB or OSDMenu if installed). PS2 Browser: asks for the Browser; a card menu program may open first. Skip Card Update: the Browser without the card's menu program, whose entries return at the next power-on."
+- comment: Exit To choice. The console's own exit, as before the setting existed.
+  label: EXIT_MENU_CONSOLE
+  string: Console Menu
+- comment: Exit To choice. OSDSYS asked for the Browser.
+  label: EXIT_MENU_BROWSER
+  string: PS2 Browser
+- comment: Exit To choice. OSDSYS asked for the Browser, skipping the memory card system update.
+  label: EXIT_MENU_BROWSER_SKIPMC
+  string: PS2 Browser (Skip Card Update)
