@@ -393,6 +393,11 @@ static void artReleaseRequest(load_image_request_t *req, int completed)
     free(req);
 }
 
+void cacheHoldArtStarts(void)
+{
+    gArtQ.holdStarts();
+}
+
 void cacheShutdownArtLoads(void)
 {
     load_image_request_t *drop;
@@ -787,7 +792,10 @@ static void cacheArtWorkerThread(void *arg)
             // flight, but while BGM's decoded reserve is critical do not START the next PNG open.
             // The request remains owned by this worker and cacheLoadImage re-checks stale/abort state
             // after the wait, so scrolling can still make this work evaporate before it touches disk.
-            while (!gArtW.terminate && !req->abortRequested && !bgmDiscretionaryIoAllowed())
+            // The launch hold (cacheHoldArtStarts) parks a request popped just before it here too, so
+            // it cannot start its read during the fade; cacheShutdownArtLoads() sets abortRequested
+            // after the last menu frame and cacheLoadImage then releases it without device I/O.
+            while (!gArtW.terminate && !req->abortRequested && (!bgmDiscretionaryIoAllowed() || gArtQ.holding()))
                 DelayThread(10 * 1000);
 
             cacheLoadImage(req);

@@ -85,7 +85,7 @@ load_image_request_t *ArtQueue::pop()
         //
         // Head-of-line blocking is accepted deliberately: a page is almost always one device, and
         // a skip-scan would make this pop O(n) inside the interrupts-off bracket.
-        if (req->sio2 && navActive_) {
+        if (holdStarts_ || (req->sio2 && navActive_)) {
             EIntr();
             return NULL;
         }
@@ -151,4 +151,5 @@ void ArtQueue::reset()
     queued_ = 0;
     active_ = 0;
     navActive_ = 0;
+    holdStarts_ = 0;
 }
