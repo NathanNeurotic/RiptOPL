@@ -240,7 +240,7 @@ the usual reset colours:
 | Blink | Meaning |
 |---|---|
 | **Purple** | The game's picture is in a format or size the panel cannot use |
-| **Yellow** | The game's VIF1 or GIF transfers never went idle while paused, or VIF1 was stalled: the menu will not draw over a transfer in flight |
+| **Yellow** | The game's VIF1 or GIF transfers never went idle while paused, or VIF1 was stalled: the menu will not draw over a transfer in flight. The game's VIF1 interrupt is held only once its transfers are idle and the VIF1 FIFO is empty, so a transfer that stops on a VIF code's interrupt bit still finishes first |
 | **Mint green** | The first page was composed but VIF1 did not take it |
 | **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above) |
 
