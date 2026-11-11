@@ -178,14 +178,15 @@ static void IGR_PauseThreads(void)
 // The game's own transfers finish before the menu takes channel 1 and the GS. A VIF1 stopped on a VIF code's interrupt
 // bit waits for the game's VIF1 handler (FBRST.STC): held from the start, that transfer never finished and the menu
 // refused (yellow). So VIF1's interrupt is held only here, once channels 1 and 2 are idle and the VIF1 FIFO is empty
-// and not stalled. Returns 1 when they did not get there within the wait: a VIF1 stalled otherwise, or still busy
+// and not stalled. Returns 1 when they did not get there within the wait: a VIF1 stalled otherwise, or still busy.
+// They are checked with VIF1 already held, so its handler cannot start a transfer after the check
 static int IGR_HoldGs(void)
 {
-    int n = 0x1000000; // about as long as igrmenu.c's own waits
+    int n = 0x1000000;                              // about as long as igrmenu.c's own waits
+    u32 vif1 = IGR_HeldIntc & (1 << IGR_INTC_VIF1); // a 1 toggles: VIF1 off, if the game had it on
 
-    while (--n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x1f800f00)))
-        ;
-    *IGR_I_MASK = IGR_HeldIntc & (1 << IGR_INTC_VIF1); // a 1 toggles: VIF1 off, if the game had it on
+    while (*IGR_I_MASK = vif1, --n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x1f800f00)))
+        *IGR_I_MASK = vif1; // on again while busy: the transfer may still need its handler
     return !n;
 }
 
