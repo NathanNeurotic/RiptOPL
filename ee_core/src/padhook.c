@@ -177,9 +177,10 @@ static void IGR_PauseThreads(void)
 // The game's own transfers finish before the menu takes channel 1 and the GS. A VIF1 stopped on a VIF code's interrupt
 // bit waits for the game's VIF1 handler (FBRST.STC), a GS stopped on a second SIGNAL for its GS handler (CSR.SIGNAL):
 // held from the start, that transfer never finished and the menu refused (yellow). So both are held only here, once
-// channels 1 and 2 are idle, the VIF1 FIFO is empty and not stalled, and the GIF holds nothing (FQC, APATH, OPH):
-// a DMA can end with its last data still queued in front of a SIGNAL. Returns 1 when they did not get there in time.
-// They are checked with both already held, so neither handler can start a transfer after the check
+// channels 1 and 2 are idle, the VIF1 FIFO is empty and not stalled, the GIF holds nothing (FQC, APATH, OPH) and the
+// GS's own FIFO is empty (CSR.FIFO 01): a DMA can end with its last data still queued in front of a SIGNAL.
+// Returns 1 when they did not get there in time. They are checked with both held, so neither handler can start a
+// transfer after the check
 static int IGR_HoldGs(void)
 {
     int n = 0x1000000; // about as long as igrmenu.c's own waits
@@ -188,7 +189,8 @@ static int IGR_HoldGs(void)
     // DisableIntc is atomic and says whether each was on: a game handler may turn its own interrupt off (or on) while it
     // runs here, so what is held is read at every check, and only that is let go again or turned back on at resume
     while (on = DisableIntc(0) | DisableIntc(IGR_INTC_VIF1) << IGR_INTC_VIF1,
-           --n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | ((*(vu32 *)0x10003c00 | *(vu32 *)0x10003020) & 0x1f800f00)))
+           --n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | ((*(vu32 *)0x10003c00 | *(vu32 *)0x10003020) & 0x1f800f00) |
+                   ((*(vu32 *)0x12001000 & 0xc000) ^ 0x4000)))
         *IGR_I_MASK = on; // on again while busy (a 1 toggles): the transfer may still need its handler
     IGR_HeldIntc = (IGR_HeldIntc & ~IGR_INTC_GIFS) | on;
     return !n;
