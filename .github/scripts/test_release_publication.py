@@ -24,7 +24,7 @@ class PublicationTests(unittest.TestCase):
             if "into" in options:
                 continue  # a companion's links are in its parent's notes
             with patch.object(publisher, "git", return_value=history) as git:
-                body = publisher.release_notes(options, sha, "ORBIT-v1.0.2" if options["ra"] else "v1.8.0", "v1.2.0-Beta-3925")
+                body = publisher.release_notes(options, sha, "NULD-v1.2.12" if options["ra"] else "v1.8.0", "v1.2.0-Beta-3925")
             git.assert_called_once_with("log", "--no-merges", "-10", "--format=%H%x00%s", sha, "--")
             self.assertIn("## Changes\n\n", body)
             self.assertIn(r"Fix \[launch\] \<edge\>", body)
@@ -62,8 +62,8 @@ class PublicationTests(unittest.TestCase):
                 self.assertNotIn("BUGREPORT", body)
             self.assertEqual({"rolling-ra": 6}.get(options["tag"], 8), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
-                self.assertIn("Included build: ORBIT-v1.0.2 -- [ORBIT Neutrino RA runtime v1.0.2]"
-                              "(https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2)", body)
+                self.assertIn("Included build: NULD-v1.2.12 -- [ORBIT Neutrino RA runtime v1.2.12]"
+                              "(https://github.com/danielnuld/nuld/releases/tag/v1.2.12)", body)
                 self.assertIn("by [danielnuld](https://github.com/danielnuld)", body)
             else:
                 self.assertIn("Included build: v1.8.0 -- Neutrino.", body)

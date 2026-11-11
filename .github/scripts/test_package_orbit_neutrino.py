@@ -87,9 +87,9 @@ class OrbitStagingTests(unittest.TestCase):
             self.assertFalse(self.destination.exists())
 
     def test_pin_is_the_reviewed_release(self):
-        self.assertEqual(self.pin["repository"], "danielnuld/ps2-launcher")
-        self.assertEqual(self.pin["tag"], "v1.0.2")
-        self.assertEqual(self.pin["sha256"], "a5cf88e2f27d3745b01c93d6d691b162972749b35452a38461046a02b3f178a5")
+        self.assertEqual(self.pin["repository"], "danielnuld/nuld")
+        self.assertEqual(self.pin["tag"], "v1.2.12")
+        self.assertEqual(self.pin["sha256"], "2d06857af13647cba8ea93b9548e47cb79534781b14e21398fc2194a5bac9523")
 
 
 if __name__ == "__main__":

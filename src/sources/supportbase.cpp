@@ -1876,7 +1876,7 @@ int sbNeutrinoLoadCheats(const char *prefix, const char *startup, config_set_t *
 }
 
 #ifdef RETROACHIEVEMENTS
-#define RA_ORBIT_SNAPSHOT_MAX 1216 // ORBIT v1.0.2's one-packet snapshot (third_party/orbit-neutrino)
+#define RA_ORBIT_SNAPSHOT_MAX 1216 // ORBIT/NULD v1.2.12's one-packet snapshot (third_party/orbit-neutrino)
 
 void sbNeutrinoPrepareRA(const char *prefix, const char *startup, const char *driver, const char *neutrinoPath, const char *extraArgs)
 {

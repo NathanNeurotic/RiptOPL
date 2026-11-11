@@ -200,7 +200,7 @@ class PublisherTests(unittest.TestCase):
     """Small synthetic kits exercise manifest/provenance checks, not PS2 acceptance."""
     sha = "1234567890abcdef" * 2 + "12345678"
 
-    def kit(self, root, configuration="standard", dirty=False, source=None, ra_neutrino="ORBIT-v1.0.2.zip"):
+    def kit(self, root, configuration="standard", dirty=False, source=None, ra_neutrino="NULD-v1.2.12.zip"):
         for edition, options in editions.EDITIONS.items():
             path = root / ("release-" + edition)
             path.mkdir()
