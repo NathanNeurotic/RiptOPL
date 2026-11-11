@@ -4,7 +4,8 @@
    other vendored files are that commit's files unchanged.
 2. Behaviour: the real open/close/dopen/dclose/dread are compiled over a scripted SIO2 wire. The
    card's own status replies must come back as ENOENT (open/dopen) and end of directory (dread),
-   bus timeouts must stay -1, and failed closes must still free their handle slot.
+   a listed entry must be 1 whatever the card's iterator fd, bus timeouts must stay -1,
+   and failed closes must still free their handle slot.
 """
 from pathlib import Path
 import hashlib
@@ -15,7 +16,8 @@ import tempfile
 root = Path(__file__).resolve().parents[2]
 tree = root / 'modules/mmce/mmceman'
 PATCHES = ['mmceman-fs-close-fd-leak.patch', 'mmceman-fs-open-enoent.patch',
-           'mmceman-fs-dopen-enoent.patch', 'mmceman-fs-dread-eof.patch']
+           'mmceman-fs-dopen-enoent.patch', 'mmceman-fs-dread-eof.patch',
+           'mmceman-fs-dread-entry.patch']
 # sha256 of ps2-mmce/mmceman @ de28936f (mmce_fs.c and mmce_cmds.h are unchanged since db3e93f0)
 PINNED = {
     'src/mmce_fs.c': '0f6ffa10a03dcdd3a453ae65b99426e126d30570ebe8cffaaa489896384efdc9',
@@ -38,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix='mmceman-') as temp:
         subprocess.run(['git', 'apply', '-R', str(patch)], cwd=work, check=True)
     assert sha(target.read_bytes()) == PINNED['src/mmce_fs.c'], 'mmce_fs.c is not the pin plus patches/'
     assert sha((tree / 'include/mmce_cmds.h').read_bytes()) == PINNED['include/mmce_cmds.h']
-print('ok   mmce_fs.c is the pinned file plus the four patches')
+print('ok   mmce_fs.c is the pinned file plus the five patches')
 
 driver = (tree / 'src/mmce_fs.c').read_text()
 
@@ -123,6 +125,10 @@ int main(void) {
 
     wire(3, ACK, 0, ACK, 0, FD, 3);
     check(mmce_fs_dopen(&f, "/EMBER") == 0 && freeSlots() == 15, "dopen: folder opens");
+    wire(4, STATUS, 0, ACK, 0, ACK, 0, FD, 0);
+    check(mmce_fs_dread(&f, &d) == 1 && !locked, "dread: entry whose card iterator fd is 0 -> 1, not end of directory");
+    wire(4, STATUS, 0, ACK, 0, ACK, 0, FD, 5);
+    check(mmce_fs_dread(&f, &d) == 1 && !locked, "dread: entry -> 1 whatever the iterator fd");
     wire(1, STATUS, 1);
     check(mmce_fs_dread(&f, &d) == 0 && !locked, "dread: card status at end of listing -> 0 (end of directory)");
     wire(1, TIMEOUT, 0);
@@ -149,4 +155,4 @@ with tempfile.TemporaryDirectory(prefix='mmceman-') as temp:
     subprocess.run([cc, '-std=gnu99', '-O2', '-Wall', '-Werror', '-Wno-unused-function',
                     '-Wno-pointer-sign', str(c), '-o', str(exe)], check=True)
     subprocess.run([str(exe)], check=True, timeout=30)
-print('mmceman fork: card status replies are ENOENT / end of directory, timeouts stay -1, slots are freed')
+print('mmceman fork: card status replies are ENOENT / end of directory, entries are 1, timeouts stay -1, slots are freed')

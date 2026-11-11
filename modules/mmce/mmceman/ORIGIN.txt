@@ -16,6 +16,12 @@ of the fixes below. patches/ holds them, already applied to src/mmce_fs.c in thi
   -ENOENT, not -1, so callers can tell an absent file or folder from a failed read.
 - mmceman-fs-dread-eof.patch: the card's status reply to DREAD is end of directory (0), not -1, so
   a completed listing is no longer reported as a read error (original #1005).
+- mmceman-fs-dread-entry.patch: DREAD returns 1 for an entry instead of the card's iterator
+  descriptor, which is 0 when the card's descriptor 0 was free (iomanX reads 0 as end of
+  directory, so such a listing came back empty). The DREAD half of upstream ps2-mmce/mmceman
+  PR 11 (AKuHAK, 2b05e61, open and unmerged on 2026-11-11); its end-of-directory part was
+  already here. Its GETSTAT -ENOENT part is not taken: the card answers 1 for any failed open,
+  including a full file table, so an existing path could read as missing.
 Timeouts and garbled replies still return -1.
 
 test_mmceman_fork.py checks the tree against the commit and exercises the patched functions.
