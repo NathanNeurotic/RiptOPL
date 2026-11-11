@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """ORBIT Neutrino Watch: compare ORBIT's latest stable release with the RA edition's pinned runtime.
 
-The RA kit's Neutrino comes from danielnuld/ps2-launcher, pinned by tag and archive SHA-256 in
+The RA kit's Neutrino comes from danielnuld/nuld (ORBIT was renamed NULD at v1.2; the repository was
+danielnuld/ps2-launcher), pinned by tag and archive SHA-256 in
 third_party/orbit-neutrino/release.json. The packer refuses any other archive, so a new ORBIT release
 never reaches a kit on its own: someone has to review it and move the pin. This script decides
 whether that review is due and writes the issue body that asks for it. It never edits the pin.
 
 Inputs are files, so the decision is testable offline:
-  --release      JSON of GET /repos/danielnuld/ps2-launcher/releases/latest
+  --release      JSON of GET /repos/danielnuld/nuld/releases/latest
   --pin          third_party/orbit-neutrino/release.json
   --tag-commit   commit the latest tag points at (optional, for the suggested pin)
   --asset-sha256 SHA-256 of the downloaded asset, used when GitHub reports no digest
@@ -22,6 +23,7 @@ status is one of:
 import argparse
 import json
 from pathlib import Path
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -33,9 +35,19 @@ LIMIT_SITES = (
 )
 
 
+# ORBIT was renamed NULD at v1.2: the archive is NULD-<tag>.zip from then on.
+ARCHIVE_PREFIXES = ("ORBIT-", "NULD-")
+
+
 def orbit_assets(release):
     return [a for a in release.get("assets", [])
-            if a.get("name", "").startswith("ORBIT-") and a.get("name", "").endswith(".zip")]
+            if a.get("name", "").startswith(ARCHIVE_PREFIXES) and a.get("name", "").endswith(".zip")]
+
+
+def release_repository(release, fallback):
+    """owner/name the release lives in now, read from its page address (the pin may name an old one)."""
+    match = re.match(r"https://github\.com/([^/]+/[^/]+)/releases/", release.get("html_url") or "")
+    return match.group(1) if match else fallback
 
 
 def digest_of(asset):
@@ -72,9 +84,10 @@ def limit_sites(root):
 def issue_body(release, pin, reason, asset, tag_commit="", asset_sha256="", root=ROOT):
     digest = asset_sha256.lower() or (digest_of(asset) if asset else "")
     suggested = dict(pin)
-    suggested.update({"tag": release.get("tag_name", "?"),
+    suggested.update({"repository": release_repository(release, pin["repository"]),
+                      "tag": release.get("tag_name", "?"),
                       "source_commit": tag_commit or "<commit the tag points at>",
-                      "asset": asset["name"] if asset else "<ORBIT-*.zip>",
+                      "asset": asset["name"] if asset else "<NULD-*.zip>",
                       "sha256": digest or "<sha256 of the archive>"})
     out = [
         "An upstream ORBIT release differs from our pinned RA-only Neutrino runtime.",

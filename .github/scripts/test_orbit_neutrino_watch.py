@@ -54,6 +54,23 @@ class OrbitWatchTests(unittest.TestCase):
         self.assertEqual(suggested["snapshot_bytes_max"], self.pin["snapshot_bytes_max"])
         self.assertIn("ordinary kits keep the upstream Neutrino", issue)
 
+    def test_renamed_project_archive_and_repository_are_recognised(self):
+        # ORBIT became NULD at v1.2: NULD-<tag>.zip in danielnuld/nuld.
+        release = self.release("v1.2.12", "NULD-v1.2.12.zip", "sha256:" + "cd" * 32,
+                               html_url="https://github.com/danielnuld/nuld/releases/tag/v1.2.12")
+        status, issue = self.run_watch(release)
+        self.assertEqual(status, "changed")
+        self.assertIn("`NULD-v1.2.12.zip`", issue)
+        self.assertNotIn("not reported", issue)
+        suggested = json.loads(re.search(r"```json\n(.*?)\n```", issue, re.S).group(1))
+        self.assertEqual((suggested["repository"], suggested["asset"], suggested["sha256"]),
+                         ("danielnuld/nuld", "NULD-v1.2.12.zip", "cd" * 32))
+
+    def test_suggested_repository_falls_back_to_the_pin(self):
+        _, issue = self.run_watch(self.release("v9.9"))
+        suggested = json.loads(re.search(r"```json\n(.*?)\n```", issue, re.S).group(1))
+        self.assertEqual(suggested["repository"], self.pin["repository"])
+
     def test_replaced_archive_under_the_same_tag_is_a_change(self):
         status, issue = self.run_watch(self.release(digest="sha256:" + "00" * 32))
         self.assertEqual(status, "changed")
@@ -99,6 +116,7 @@ class OrbitWatchWorkflowTests(unittest.TestCase):
     def test_uses_the_script_and_stable_releases(self):
         self.assertIn(".github/scripts/orbit_neutrino_watch.py", self.text)
         self.assertIn("releases/latest", self.text)
+        self.assertIn("ORBIT_REPO: danielnuld/nuld\n", self.text)
 
 
 if __name__ == "__main__":
