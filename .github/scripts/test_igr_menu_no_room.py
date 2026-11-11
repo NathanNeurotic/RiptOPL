@@ -132,6 +132,19 @@ install = re.search(r'\nvoid Install_IGR\(void\)\n\{\n(?:.*\n)*?\}\n', padhook)
 if install is None:
     failures.append('padhook.c: Install_IGR was not found')
 install = install.group(0) if install else ''
+tries = re.search(r'^#define IGR_TRIES +\d+', padhook, re.M)
+if not tries:
+    failures.append('padhook.c: IGR_TRIES, the pauses one press of the combo may take, was not found')
+tries = tries.group(0) if tries else ''
+# The pauses of one press: IGR_Thread gives the game back while any is left, zeroes the count once the menu opens, and
+# only the last busy pause goes on to the reset
+worker = padhook[igr_thread:] if igr_thread >= 0 else ''
+for needle, why in (
+        ('choice = IGR_MenuRearm ? IGR_MENU_RESUME : IGR_MENU_GS_BUSY;',
+         'a busy pause with pauses left gives the game back; only the last one is the yellow reset'),
+        ('IGR_MenuRearm = 0; // once per press', 'a menu that opened takes the rest of the press\'s pauses')):
+    if needle not in worker:
+        failures.append('padhook.c IGR_Thread: ' + why)
 
 # --- 5. the RA watch block before the menu's cheats --------------------------------------------------------------
 if LAYOUT['host'] is not None:
@@ -295,7 +308,8 @@ static int EnableIntc(int cause) { (void)cause; return 0; }
 @INSTALL@
 #ifdef IGR_MENU
 static volatile int IGR_MenuOpen;
-static int IGR_MenuRearm = 1, held, wakes;
+@TRIES@
+static int IGR_MenuRearm = IGR_TRIES, held, wakes;
 static struct { int IgrMenu; } g_config, *config = &g_config;
 static void IGR_HoldInterrupts(void) { held++; }
 static void iChangeThreadPriority(int id, int prio) { (void)id; (void)prio; }
@@ -336,7 +350,7 @@ int main(void)
         Power_Button.press = frames[i].power;
         Pad_Data.combo_type = frames[i].combo;
         IGR_MenuOpen = 0;
-        IGR_MenuRearm = 1;
+        IGR_MenuRearm = IGR_TRIES;
         wakes = held = 0;
 #ifdef HAS_PC_FLAG
         IGR_PcReset = 0;
@@ -354,6 +368,45 @@ int main(void)
               "it next (mark %d)", i, IGR_PcReset);
 #endif
     }
+    {
+        int pauses = 0;
+
+        // One press of the combo: a pause that found the game's transfers busy gives the game back (IGR_Thread clears
+        // IGR_MenuOpen) and the next VBLANK pauses it again, IGR_TRIES times in all. Then nothing more until the combo
+        // is let go
+        g_config.IgrMenu = 1;
+        Power_Button.press = 0;
+        IGR_MenuOpen = 0;
+        IGR_MenuRearm = IGR_TRIES;
+        wakes = held = 0;
+#ifdef HAS_PC_FLAG
+        IGR_PcReset = 0;
+#endif
+        for (i = 0; i < IGR_TRIES + 3; i++) {
+            Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+            CHECK(!handler(), "a held combo with the menu on must never reach the reset from the handler");
+            pauses += IGR_MenuOpen;
+            IGR_MenuOpen = 0;
+        }
+        CHECK(pauses == IGR_TRIES && wakes == IGR_TRIES && held == IGR_TRIES && IGR_MenuRearm == 0,
+              "one press pauses the game %d times at most (%d pauses, %d wakes, %d left)", IGR_TRIES, pauses, wakes,
+              IGR_MenuRearm);
+        Pad_Data.combo_type = 0; // let go
+        handler();
+        CHECK(IGR_MenuRearm == IGR_TRIES, "letting the combo go gives the next press all its pauses back");
+        // A pause that opened the menu: IGR_Thread zeroes the count, so the combo still held at RESUME does not reopen it
+        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+        handler();
+        CHECK(IGR_MenuOpen && IGR_MenuRearm == IGR_TRIES - 1, "the first pause of a press takes one of its pauses");
+        IGR_MenuRearm = 0;
+        IGR_MenuOpen = 0;
+        wakes = 0;
+        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+        handler();
+        CHECK(!IGR_MenuOpen && !wakes, "a menu that opened must not reopen while the combo is still held");
+        Pad_Data.combo_type = 0;
+        handler();
+    }
 #ifdef HAS_PC_FLAG
     {
         int reset;
@@ -363,7 +416,7 @@ int main(void)
         g_config.IgrMenu = 1;
         Power_Button.press = 0;
         IGR_MenuOpen = 0;
-        IGR_MenuRearm = 1;
+        IGR_MenuRearm = IGR_TRIES;
         wakes = held = 0;
         Pad_Data.combo_type = 0;
         IGR_PcReset = 0;
@@ -456,7 +509,7 @@ if launcher and thread and not failures:
     build_and_run('no room', HARNESS.replace('@GREY@', grey).replace('@PRE@', LAYOUT['pre'])
                   .replace('@LAUNCHER@', launcher).replace('@THREAD@', thread))
 
-if flag and request and gate and install and not failures:
+if flag and request and gate and install and tries and not failures:
     for name, defines, req in (
             ('RA build with the menu: the combo opens it, the PC\'s reset leaves past it',
              '#define RETROACHIEVEMENTS\n#define IGR_MENU', request),
@@ -464,6 +517,7 @@ if flag and request and gate and install and not failures:
             ('menu build without RA: no PC flag, the combo opens the menu', '#define IGR_MENU', '')):
         build_and_run(name, GATE_HARNESS.replace('@DEFINES@', defines).replace('@FLAG@', flag)
                       .replace('@REQUEST@', req).replace('@INSTALL@', install).replace('@GATE@', gate)
+                      .replace('@TRIES@', tries)
                       .replace('@NAME@', name))
 
 if failures:
