@@ -171,6 +171,16 @@ static void IGR_PauseThreads(void)
     }
 }
 
+// The DMA completions in mask (D_STAT's mask half), turned on or off one channel at a time by the kernel's own call
+static void IGR_Dmac(u32 mask, s32 (*call)(s32 channel))
+{
+    int i;
+
+    for (i = 0; i < 10; i++)
+        if (mask & (0x10000u << i))
+            call(i);
+}
+
 // The game's own transfers finish before the menu takes channel 1 and the GS. A VIF1 stopped on a VIF code's interrupt
 // bit waits for the game's VIF1 handler (FBRST.STC), a GS stopped on a second SIGNAL for its GS handler (CSR.SIGNAL),
 // and a list sent in parts, a masked PATH3 or a stalled channel for the DMA completion handler that sends what comes
@@ -179,6 +189,7 @@ static void IGR_PauseThreads(void)
 // and the GS's own FIFO is empty (CSR.FIFO 01): a DMA can end with its last data still queued in front of a SIGNAL.
 // Returns non-zero when they did not get there within the wait (COP0 Count ticks). They are checked with all of them
 // held, so no handler can start a transfer after the check
+
 static u32 IGR_HoldGs(u32 wait)
 {
     u32 on = 0, dmac = 0, busy, t, now;
@@ -187,14 +198,15 @@ static u32 IGR_HoldGs(u32 wait)
                  : "=r"(t));
 
     // A game handler may turn its own interrupt off (or on) while it runs here, so what is held is read at every check,
-    // with interrupts off between the read and the write, and only that is let go again or turned back on at resume.
-    // D_STAT's mask half toggles as I_MASK does; its status half is written 0, which clears no completion
+    // with interrupts off between the read and the write, and only that is let go again or turned back on at resume
     do {
+        DIntr();
         *IGR_I_MASK = on; // on again while busy (a 1 toggles; 0 the first time): the transfer may still need its handler
-        *R_EE_D_STAT = dmac;
+        IGR_Dmac(dmac, _EnableDmac);
+        EIntr();
         DIntr();
         *IGR_I_MASK = on = *IGR_I_MASK & IGR_INTC_GIFS; // those of GS and VIF1 that are on: off
-        *R_EE_D_STAT = dmac = *R_EE_D_STAT & IGR_DMAC_HELD;
+        IGR_Dmac(dmac = *R_EE_D_STAT & IGR_DMAC_HELD, _DisableDmac);
         EIntr();
         busy = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | ((*(vu32 *)0x10003c00 | *(vu32 *)0x10003020) & 0x1f800f00) |
                ((*(vu32 *)0x12001000 & 0xc000) ^ 0x4000);
@@ -211,9 +223,9 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
     int i;
 
     // every interrupt in IGR_HeldDmac and IGR_HeldIntc is off now (the SIF's are in neither), and nothing runs that
-    // turns one on or off: a 1 in either mask toggles, so one store each turns them all back on, and no handler can
-    // run between a read and the write
-    *R_EE_D_STAT = IGR_HeldDmac;
+    // turns one on or off: the kernel's call turns each DMA completion back on, a 1 in I_MASK toggles, so one store
+    // turns those all back on, and no handler can run between a read and the write
+    IGR_Dmac(IGR_HeldDmac, _EnableDmac);
     *IGR_I_MASK = IGR_HeldIntc;
     for (i = 1; i < 256; i++)
         if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
