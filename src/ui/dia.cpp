@@ -522,6 +522,7 @@ static int diaPeek = 0;
 static float diaPeekPos = 0.0f;
 static int diaScrollRange = 0; // how far the page can scroll, from the last frame drawn
 #define DIA_PEEK_SPEED 720.0f  // pixels a second at full tilt
+#define DIA_PEEK_STICK 64      // how far of 128 the right stick leans to slide a page: past a resting DualShock 2
 #define DIA_BAR_W      4
 
 // A row whose controls are all hidden takes no line (RIPPS2 build 91, akilluminati47). Its label and value go,
@@ -1232,7 +1233,7 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
                 if (dt > 0.1f)
                     dt = 0.1f;
                 padGetRightStick(&sx, &sy);
-                if ((sy > 24 || sy < -24) && diaScrollRange > 0) { // a page that fits has nothing to slide
+                if ((sy > DIA_PEEK_STICK || sy < -DIA_PEEK_STICK) && diaScrollRange > 0) { // a page that fits has nothing to slide
                     if (!diaPeek) {
                         diaPeek = 1;
                         diaPeekPos = (float)diaScrollOffset;
@@ -1292,7 +1293,7 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
 
             // see what key events we have
             // A confirm always acts on the cursor's row and ends a peek, bringing that row back into view. A right
-            // stick resting past the 24 dead zone re-enters peek on every frame, before this check; when the first
+            // stick resting past DIA_PEEK_STICK re-enters peek on every frame, before this check; when the first
             // confirm after a peek only ended it, no press ever reached a row on a page long enough to scroll.
             if (getKeyOn(guiConfirmKey())) {
                 diaPeek = 0;
