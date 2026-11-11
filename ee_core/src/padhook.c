@@ -150,9 +150,7 @@ static void IGR_HoldInterrupts(void)
     int i;
 
     IGR_HeldIntc = *IGR_I_MASK;
-    for (i = 0; i <= 14; i++)
-        if (IGR_HeldIntc & ~IGR_INTC_LATER & (1 << i))
-            iDisableIntc(i);
+    *IGR_I_MASK = IGR_HeldIntc & ~IGR_INTC_LATER; // a 1 toggles: those off. No other handler runs between read and write
     IGR_HeldDmac = (*R_EE_D_STAT >> 16) & 0x3ff;
     for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
         if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
