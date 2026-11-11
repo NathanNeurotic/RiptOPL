@@ -186,13 +186,15 @@ static int IGR_HoldGs(void)
     int n = 0x1000000; // about as long as igrmenu.c's own waits
     u32 on = 0;
 
-    // DisableIntc is atomic and says whether each was on: a game handler may turn its own interrupt off (or on) while it
-    // runs here, so what is held is read at every check, and only that is let go again or turned back on at resume
-    do
+    // A game handler may turn its own interrupt off (or on) while it runs here, so what is held is read at every check,
+    // with interrupts off between the read and the write, and only that is let go again or turned back on at resume
+    do {
         *IGR_I_MASK = on; // on again while busy (a 1 toggles; 0 the first time): the transfer may still need its handler
-    while (on = DisableIntc(0) | DisableIntc(IGR_INTC_VIF1) << IGR_INTC_VIF1,
-           --n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | ((*(vu32 *)0x10003c00 | *(vu32 *)0x10003020) & 0x1f800f00) |
-                   ((*(vu32 *)0x12001000 & 0xc000) ^ 0x4000)));
+        DIntr();
+        *IGR_I_MASK = on = *IGR_I_MASK & IGR_INTC_GIFS; // those of GS and VIF1 that are on: off
+        EIntr();
+    } while (--n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | ((*(vu32 *)0x10003c00 | *(vu32 *)0x10003020) & 0x1f800f00) |
+                     ((*(vu32 *)0x12001000 & 0xc000) ^ 0x4000)));
     IGR_HeldIntc |= on;
     return !n;
 }
