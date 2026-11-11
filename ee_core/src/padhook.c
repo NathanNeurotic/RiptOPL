@@ -199,9 +199,9 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
     for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
         if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
             EnableDmac(IGR_DmacHeld[i]);
-    for (i = 0; i <= 14; i++) // SBUS was never held: EnableIntc leaves an enabled one as it is
-        if (IGR_HeldIntc & (1 << i))
-            EnableIntc(i);
+    // every interrupt the game had on is off now but SBUS, never held, and nothing else turns one on or off: a 1 in
+    // I_MASK toggles, so one store turns them all back on, and no handler can run between a read and the write
+    *IGR_I_MASK = IGR_HeldIntc & ~(1 << IGR_INTC_SBUS);
     for (i = 1; i < 256; i++)
         if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
             ResumeThread(i);
