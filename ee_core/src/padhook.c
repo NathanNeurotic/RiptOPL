@@ -122,7 +122,8 @@ extern void *_end;
 #define IGR_I_MASK     ((vu32 *)0x1000f010)
 #define IGR_INTC_SBUS  1
 #define IGR_INTC_VIF1  5
-#define IGR_INTC_LATER ((1 << IGR_INTC_SBUS) | (1 << IGR_INTC_VIF1)) // never held / held in IGR_HoldGs
+#define IGR_INTC_GIFS  ((1 << 0) | (1 << IGR_INTC_VIF1))      // GS and VIF1: held in IGR_HoldGs
+#define IGR_INTC_LATER ((1 << IGR_INTC_SBUS) | IGR_INTC_GIFS) // SBUS is never held
 static volatile int IGR_MenuOpen = 0;
 static int IGR_MenuRearm = 1;
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
@@ -148,10 +149,8 @@ static void IGR_HoldInterrupts(void)
 {
     int i;
 
-    IGR_HeldIntc = *IGR_I_MASK;
-    for (i = 0; i <= 14; i++)
-        if (IGR_HeldIntc & ~IGR_INTC_LATER & (1 << i))
-            iDisableIntc(i);
+    IGR_HeldIntc = *IGR_I_MASK & ~IGR_INTC_LATER; // what is held: IGR_HoldGs adds the GS and VIF1 it holds
+    *IGR_I_MASK = IGR_HeldIntc;                   // a 1 toggles: those off. No other handler runs between read and write
     IGR_HeldDmac = (*R_EE_D_STAT >> 16) & 0x3ff;
     for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
         if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
@@ -176,17 +175,27 @@ static void IGR_PauseThreads(void)
 }
 
 // The game's own transfers finish before the menu takes channel 1 and the GS. A VIF1 stopped on a VIF code's interrupt
-// bit waits for the game's VIF1 handler (FBRST.STC): held from the start, that transfer never finished and the menu
-// refused (yellow). So VIF1's interrupt is held only here, once channels 1 and 2 are idle and the VIF1 FIFO is empty
-// and not stalled. Returns 1 when they did not get there within the wait: a VIF1 stalled otherwise, or still busy.
-// They are checked with VIF1 already held, so its handler cannot start a transfer after the check
+// bit waits for the game's VIF1 handler (FBRST.STC), a GS stopped on a second SIGNAL for its GS handler (CSR.SIGNAL):
+// held from the start, that transfer never finished and the menu refused (yellow). So both are held only here, once
+// channels 1 and 2 are idle, the VIF1 FIFO is empty and not stalled, the GIF holds nothing (FQC, APATH, OPH) and the
+// GS's own FIFO is empty (CSR.FIFO 01): a DMA can end with its last data still queued in front of a SIGNAL.
+// Returns 1 when they did not get there in time. They are checked with both held, so neither handler can start a
+// transfer after the check
 static int IGR_HoldGs(void)
 {
-    int n = 0x1000000;                              // about as long as igrmenu.c's own waits
-    u32 vif1 = IGR_HeldIntc & (1 << IGR_INTC_VIF1); // a 1 toggles: VIF1 off, if the game had it on
+    int n = 0x1000000; // about as long as igrmenu.c's own waits
+    u32 on = 0;
 
-    while (*IGR_I_MASK = vif1, --n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x1f800f00)))
-        *IGR_I_MASK = vif1; // on again while busy: the transfer may still need its handler
+    // A game handler may turn its own interrupt off (or on) while it runs here, so what is held is read at every check,
+    // with interrupts off between the read and the write, and only that is let go again or turned back on at resume
+    do {
+        *IGR_I_MASK = on; // on again while busy (a 1 toggles; 0 the first time): the transfer may still need its handler
+        DIntr();
+        *IGR_I_MASK = on = *IGR_I_MASK & IGR_INTC_GIFS; // those of GS and VIF1 that are on: off
+        EIntr();
+    } while (--n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | ((*(vu32 *)0x10003c00 | *(vu32 *)0x10003020) & 0x1f800f00) |
+                     ((*(vu32 *)0x12001000 & 0xc000) ^ 0x4000)));
+    IGR_HeldIntc |= on;
     return !n;
 }
 
@@ -197,9 +206,9 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
     for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
         if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
             EnableDmac(IGR_DmacHeld[i]);
-    for (i = 0; i <= 14; i++) // SBUS was never held: EnableIntc leaves an enabled one as it is
-        if (IGR_HeldIntc & (1 << i))
-            EnableIntc(i);
+    // every interrupt in IGR_HeldIntc is off now (SBUS is never in it), and nothing runs that turns one on or off: a 1
+    // in I_MASK toggles, so one store turns them all back on, and no handler can run between a read and the write
+    *IGR_I_MASK = IGR_HeldIntc;
     for (i = 1; i < 256; i++)
         if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
             ResumeThread(i);
