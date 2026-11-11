@@ -119,9 +119,10 @@ extern void *_end;
   interrupts are held, and nothing is reset. The SIF stays up (SBUS, DMA channels 5-7), so padman keeps filling the
   pad buffer the menu reads. RESUME gives everything back; any other way out goes on to the IGR below, as before.
 */
-#define IGR_I_MASK    ((vu32 *)0x1000f010)
-#define IGR_INTC_SBUS 1
-#define IGR_INTC_VIF1 5
+#define IGR_I_MASK     ((vu32 *)0x1000f010)
+#define IGR_INTC_SBUS  1
+#define IGR_INTC_VIF1  5
+#define IGR_INTC_LATER ((1 << IGR_INTC_SBUS) | (1 << IGR_INTC_VIF1)) // never held / held in IGR_HoldGs
 static volatile int IGR_MenuOpen = 0;
 static int IGR_MenuRearm = 1;
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
@@ -147,9 +148,9 @@ static void IGR_HoldInterrupts(void)
 {
     int i;
 
-    IGR_HeldIntc = *IGR_I_MASK & ~(1 << IGR_INTC_SBUS);
+    IGR_HeldIntc = *IGR_I_MASK;
     for (i = 0; i <= 14; i++)
-        if (i != IGR_INTC_VIF1 && (IGR_HeldIntc & (1 << i))) // VIF1: IGR_HoldGs
+        if (IGR_HeldIntc & ~IGR_INTC_LATER & (1 << i))
             iDisableIntc(i);
     IGR_HeldDmac = (*R_EE_D_STAT >> 16) & 0x3ff;
     for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
@@ -176,17 +177,16 @@ static void IGR_PauseThreads(void)
 
 // The game's own transfers finish before the menu takes channel 1 and the GS. A VIF1 stopped on a VIF code's interrupt
 // bit waits for the game's VIF1 handler (FBRST.STC): held from the start, that transfer never finished and the menu
-// refused (yellow). So VIF1's interrupt is held only here, once channel 1 and 2 are idle and the VIF1 FIFO is empty
+// refused (yellow). So VIF1's interrupt is held only here, once channels 1 and 2 are idle and the VIF1 FIFO is empty
 // and not stalled. Returns 1 when they did not get there within the wait: a VIF1 stalled otherwise, or still busy
 static int IGR_HoldGs(void)
 {
-    int n = 10000000;
+    int n = 0x1000000; // about as long as igrmenu.c's own waits
 
-    while (n-- && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x1f800f00)))
+    while (--n && (((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x1f800f00)))
         ;
-    if (IGR_HeldIntc & (1 << IGR_INTC_VIF1))
-        DisableIntc(IGR_INTC_VIF1);
-    return n < 0;
+    *IGR_I_MASK = IGR_HeldIntc & (1 << IGR_INTC_VIF1); // a 1 toggles: VIF1 off, if the game had it on
+    return !n;
 }
 
 static void IGR_ResumeGame(void) // the pause, undone in reverse
@@ -196,7 +196,7 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
     for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
         if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
             EnableDmac(IGR_DmacHeld[i]);
-    for (i = 0; i <= 14; i++)
+    for (i = 0; i <= 14; i++) // SBUS was never held: EnableIntc leaves an enabled one as it is
         if (IGR_HeldIntc & (1 << i))
             EnableIntc(i);
     for (i = 1; i < 256; i++)
