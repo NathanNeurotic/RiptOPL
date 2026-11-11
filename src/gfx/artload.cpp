@@ -393,6 +393,11 @@ static void artReleaseRequest(load_image_request_t *req, int completed)
     free(req);
 }
 
+void cacheHoldArtStarts(void)
+{
+    gArtQ.holdStarts();
+}
+
 void cacheShutdownArtLoads(void)
 {
     load_image_request_t *drop;

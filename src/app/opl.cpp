@@ -1290,6 +1290,9 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     // Fade the menu out first (issue #85), so a launch no longer cuts hard from the game list to the
     // status screen. Eight frames, the same fade the video-mode switch uses; guiRenderTextScreen()
     // right below already redraws the menu here, so drawing it eight more times touches nothing new.
+    // The art worker stops STARTING reads first, so the fade's frames cannot let a queued cover hit
+    // the device; nothing is released until cacheShutdownArtLoads() below, after the last menu frame.
+    cacheHoldArtStarts();
     guiFadeCurrentScreenToBlack();
     guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
     if (gLaunchDiag)
@@ -1381,6 +1384,9 @@ void deinit(int exception, int modeSelected)
     // Fade the menu out first (issue #85), so a launch no longer cuts hard from the game list to the
     // status screen. Eight frames, the same fade the video-mode switch uses; guiRenderTextScreen()
     // right below already redraws the menu here, so drawing it eight more times touches nothing new.
+    // The art worker stops STARTING reads first, so the fade's frames cannot let a queued cover hit
+    // the device; nothing is released until cacheShutdownArtLoads() below, after the last menu frame.
+    cacheHoldArtStarts();
     guiFadeCurrentScreenToBlack();
     guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
     if (gLaunchDiag)

@@ -85,6 +85,9 @@ public:
     int active() const { return active_; }
     bool navActive() const { return navActive_ != 0; }
     void setNavActive(bool held) { navActive_ = held ? 1 : 0; }
+    // Launch/exit only: from here on pop() starts nothing, while every queued request stays valid
+    // (the menu's last frames may still reference them). Cleared only by reset().
+    void holdStarts() { holdStarts_ = 1; }
 
 private:
     load_image_request_t *head_ = NULL;
@@ -97,6 +100,7 @@ private:
     volatile int queued_ = 0;
     volatile int active_ = 0;
     volatile int navActive_ = 0;
+    volatile int holdStarts_ = 0;
 };
 
 #endif

@@ -272,4 +272,9 @@ void cacheDropQueuedArt(void);
 // that DOES return to a live menu must not call this.
 void cacheShutdownArtLoads(void);
 
+// First half of the same handoff, for the launch fade (issue #85): the worker starts no new read,
+// but nothing is released, so the fade's menu frames still see valid requests. deinit()/deinitEx()
+// call it before the fade and cacheShutdownArtLoads() after the last menu frame.
+void cacheHoldArtStarts(void);
+
 #endif
