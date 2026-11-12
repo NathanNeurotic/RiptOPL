@@ -168,7 +168,7 @@ def release_notes(version, sha):
         lines.append(f"| {options['title']} | [{standard}]({url}/{standard}) | [{ra}]({url}/{ra}) |")
     lines.extend([
         "",
-        "RA Lite ZIPs include the verified ORBIT Neutrino RA runtime and their required licences. The standalone Lite ELFs require an existing Korium installation.",
+        "RA Lite ZIPs include the verified NULD (formerly ORBIT) Neutrino RA runtime and their required licences. The standalone Lite ELFs require an existing Korium installation.",
         "",
         link("Korium translations", "RIPTOPL-LANGS" + suffix),
         link("RetroAchievements translations", "RIPTOPL-RA-LANGS" + suffix),

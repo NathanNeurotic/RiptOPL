@@ -307,14 +307,14 @@ def bundled_neutrino(manifest):
 
 
 def included_neutrino(options, neutrino):
-    """The "Included build:" line (Neutrino Watch reads its first word). An RA kit names ORBIT's runtime."""
+    """The "Included build:" line (Neutrino Watch reads its first word). An RA kit names the NULD (formerly ORBIT) runtime."""
     if not options["ra"]:
         return f"Included build: {neutrino} -- Neutrino.\n\n"
     pin = json.loads(ORBIT_PIN.read_text(encoding="utf-8"))
     if neutrino != Path(pin["asset"]).stem:
-        raise ValueError(f"RA kit carries {neutrino}, not the pinned ORBIT {pin['asset']}")
+        raise ValueError(f"RA kit carries {neutrino}, not the pinned NULD {pin['asset']}")
     owner = pin["repository"].split("/", 1)[0]
-    return (f"Included build: {neutrino} -- [ORBIT Neutrino RA runtime {pin['tag']}]"
+    return (f"Included build: {neutrino} -- [NULD (formerly ORBIT) Neutrino RA runtime {pin['tag']}]"
             f"(https://github.com/{pin['repository']}/releases/tag/{pin['tag']}) by [{owner}](https://github.com/{owner}), "
             "based on Neutrino v1.8.0; it replaces upstream Neutrino in the RA kits.\n\n")
 

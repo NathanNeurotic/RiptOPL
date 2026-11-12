@@ -9,7 +9,7 @@ Neutrino, POPStarter, Ember or an achievements runtime on that transport.
 | Installation | What to preserve and check |
 | --- | --- |
 | Standard complete kit | Keep its supplied `neutrino/`, `EMBER/`, POPS support files and notices together. The loose loader ELF alone does not refresh them |
-| RetroAchievements complete kit | Use its paired companion and pinned ORBIT Neutrino runtime; see [RA setup](RETROACHIEVEMENTS.md). A newer companion release is not automatically the tested pairing |
+| RetroAchievements complete kit | Use its paired companion and pinned NULD (formerly ORBIT) Neutrino runtime; see [RA setup](RETROACHIEVEMENTS.md). A newer companion release is not automatically the tested pairing |
 | PR/Actions artifact | Record PR, commit, workflow, edition, configuration and artifact name. Read the artifact's contents rather than assuming it is a full install kit; see [test builds](TEST-BUILDS.md) |
 | External or older runtime | Record the runtime version and actual path. RiptOPL's argument-length checks do not establish that an arbitrary runtime recognizes every option |
 

@@ -120,7 +120,7 @@ still `APP_RIPTOPL-RA`.
 See [Build configurations](docs/BUILD-CONFIGURATIONS.md).
 
 Standard kits reject RA resources. The RA kit adds the xeRAbora client shortcut
-and replaces upstream Neutrino with ORBIT's RA runtime (see
+and replaces upstream Neutrino with NULD's (formerly ORBIT) RA runtime (see
 [RetroAchievements](docs/RETROACHIEVEMENTS.md#neutrino-in-the-ra-edition)). No BIOS is
 redistributed.
 
