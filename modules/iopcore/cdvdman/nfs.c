@@ -186,6 +186,7 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     (void)Password;
     (void)hash_callback;
 
+    nfs.fd = -1; // before smb_io_sema, which smb_Disconnect reads as "nfs.fd is set"
     smp.initial = 1;
     smp.max = 1;
     smp.option = 0;
@@ -201,7 +202,6 @@ int smb_NegotiateProtocol(char *SMBServerIP, int SMBServerPort, char *Username, 
     GetSystemTime(&clk);
     nfs.xid = clk.lo;
     local_port = (u16)clk.lo;
-    nfs.fd = -1;
 
     for (attempt = 0; attempt < NFS_CONNECT_ATTEMPTS; attempt++) {
         if (nfs_connect() == 0)
