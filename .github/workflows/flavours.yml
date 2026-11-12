@@ -286,6 +286,10 @@ jobs:
         run: python3 .github/scripts/test_bdm_cache.py
       - name: Check BDM partition I/O bounds and sector-size refusal
         run: python3 .github/scripts/test_bdm_partitions.py
+      - name: Check VMCs past 2 TiB are created and reach the right sector on the internal drive
+        run: |
+          python3 .github/scripts/test_vmc_contiguous_create.py
+          python3 .github/scripts/test_vmc_past_2tb_ata.py
       - name: Check the game-list sort keeps the old order in O(n log n)
         run: python3 .github/scripts/test_menu_sort.py
       - name: Check a failed first PS2 scan runs once and names the folder
