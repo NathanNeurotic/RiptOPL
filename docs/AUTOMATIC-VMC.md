@@ -58,7 +58,7 @@ When the effective core is native OPL, a new card on BDM storage (USB, i.LINK, M
 the VMC dialog, automatic creation or Favorites) is created only if the bundled FAT driver reserves
 the whole card in one extent first. genvmc asks the driver for its versioned capability before
 opening anything, creates the file exclusively (a file that appears meanwhile is kept), reserves,
-formats, then verifies one synced extent inside the native 32-bit sector range. An old driver, a
+formats, then verifies one synced extent. An old driver, a
 card with no free run large enough, or a failed verify or close is reported as a failure, and only
 this job's new file is removed. Neutrino cards and other sources allocate as before. Existing cards
 are never relocated. Any failure after the formatter opened a card it owns removes the partial file.
@@ -72,7 +72,7 @@ Rebuild asks for confirmation, then:
 
 1. Refuses to start if `VMC/<name>.bak` or `VMC/<name>.new` already exists (absence is proven by reading the folder). Either may hold saves, so neither is ever overwritten; move it away on a PC and try again.
 2. genvmc creates `VMC/<name>.new` exclusively, with the same reservation a new card gets: on BDM the whole card as one extent through the versioned driver API (no room means the job stops at once); on the HDD every zone in one PIOCALLOC request, and here a refusal also stops the job.
-3. genvmc copies every byte of the card into the copy, then reads both back and compares them byte for byte. On BDM the driver then confirms one extent within the 32-bit sector range.
+3. genvmc copies every byte of the card into the copy, then reads both back and compares them byte for byte. On BDM the driver then confirms one extent.
 4. The loader runs the launch's own layout check on the copy (BDM: one extent covering the card; HDD: the PFS map fits).
 5. Only then two renames swap them: the card becomes `VMC/<name>.bak`, the copy becomes `VMC/<name>.bin`. On the HDD the PFS cache is committed after the renames.
 

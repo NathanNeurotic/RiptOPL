@@ -562,7 +562,18 @@ void bdmLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
 
 static int bdmMcemuSlots[2] = {-2, -2};
 
-int bdmCheckNativeVmcLayout(int iop_fd, int size_mb, u64 *start_lba, int *fragments)
+// mcemu and every in-game block driver take 64-bit sector numbers (UDPBD and SD cards cannot hold 2 TiB). The
+// core's ATA driver sends 28-bit commands, which wrap past 128 GiB, when the drive's LBA48 is not confirmed.
+static u64 bdmNativeVmcLimit(bdm_device_data_t *pDeviceData)
+{
+    if (!bdmDriverIsATA(pDeviceData->bdmDriver))
+        return (u64)-1;
+    if (pDeviceData->bdmHddIsLBA48 < 0 || pDeviceData->ataHighestUDMAMode < 0)
+        bdmResolveLBA_UDMA(pDeviceData);
+    return pDeviceData->bdmHddIsLBA48 ? (u64)-1 : 1ULL << 28;
+}
+
+int bdmCheckNativeVmcLayout(int iop_fd, int size_mb, u64 limit, u64 *start_lba, int *fragments)
 {
     *start_lba = (u64)-1;
     *fragments = -1;
@@ -581,9 +592,9 @@ int bdmCheckNativeVmcLayout(int iop_fd, int size_mb, u64 *start_lba, int *fragme
     if (*fragments <= 0)
         return NATIVE_VMC_LAYOUT_UNKNOWN;
 
-    // mcemu's sector address is 32 bits. Check the last sector without wrapping.
+    // The whole card below the first sector the core cannot reach, checked without wrapping.
     u64 sectors = (u64)size_mb * ((1024 * 1024) / 512);
-    if (*start_lba > 0xffffffffULL || sectors - 1 > 0xffffffffULL - *start_lba)
+    if (*start_lba >= limit || sectors > limit - *start_lba)
         return NATIVE_VMC_LBA_RANGE;
 
     if (*fragments == 1 && (extent.sector != *start_lba || extent.count < sectors))
@@ -707,7 +718,7 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
                 if (fd >= 0) {
                     iop_fd = ps2sdk_get_iop_fd(fd);
                     u64 startingLBA;
-                    have_error = bdmCheckNativeVmcLayout(iop_fd, vmcSizeInMb, &startingLBA, &vmc_fragments);
+                    have_error = bdmCheckNativeVmcLayout(iop_fd, vmcSizeInMb, bdmNativeVmcLimit(pDeviceData), &startingLBA, &vmc_fragments);
                     LOG("BDMSUPPORT VMC slot %d layout: reason=%d fragments=%d start=0x%08x%08x\n",
                         vmc_id, have_error, vmc_fragments, (u32)(startingLBA >> 32), (u32)startingLBA);
                     if (have_error == NATIVE_VMC_OK) {

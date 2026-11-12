@@ -11,6 +11,8 @@ bdm = (root / 'src/sources/bdmlaunch.cpp').read_text(encoding='utf-8')
 hdd = (root / 'src/sources/hddsupport.cpp').read_text(encoding='utf-8')
 start = bdm.index('int bdmCheckNativeVmcLayout(int iop_fd')
 helper = bdm[start:bdm.index('\n}\n', start) + 3]
+start = bdm.index('static u64 bdmNativeVmcLimit(')
+limit = bdm[start:bdm.index('\n}\n', start) + 3]
 start = bdm.index('    char vmc_name[32], vmc_path[256];', bdm.index('void bdmLaunchGame('))
 bdm_slots = bdm[start:bdm.index('    void *irx = NULL;', start)]
 start = hdd.index('    if (part_valid) {', hdd.index('void HddSource::launch('))
@@ -46,8 +48,12 @@ typedef struct { int active, flags; specs_t specs; u64 start_sector; } bdm_vmc_i
 typedef struct { int active, flags; specs_t specs; pfs_blockinfo_t blocks[11]; } hdd_vmc_infos_t;
 typedef struct { int mc_flag, page_size, pages_per_block, pages_per_cluster, clusters_per_card; } vmc_superblock_t;
 typedef struct { int unused; } config_set_t;
-typedef struct { int bdmDeviceType; const char *bdmPrefix; } device_t;
-static device_t device = {0, "mass0:/"};
+typedef struct { int bdmDeviceType; const char *bdmPrefix; const char *bdmDriver; int bdmHddIsLBA48, ataHighestUDMAMode; } device_t;
+typedef device_t bdm_device_data_t;
+static device_t device = {0, "mass0:/", "usb", -1, -1};
+static int resolves, lba48_answer;
+static int bdmDriverIsATA(const char *driver) { return !strcmp(driver, "ata"); }
+static void bdmResolveLBA_UDMA(device_t *d) { resolves++; d->bdmHddIsLBA48 = lba48_answer; d->ataHighestUDMAMode = 4; }
 static config_set_t config;
 static u32 bdm_mcemu_irx[128], hdd_mcemu_irx[128];
 static int bdmMcemuSlots[2], hddMcemuSlots[2];
@@ -104,6 +110,7 @@ static int hddGetFileBlockInfo(const char *path, void *parts, pfs_blockinfo_t *b
 }
 static int hddSyncForVMCMap(void) { syncs++; return synced_ok; }
 @CLASSIFY@
+@LIMIT@
 @HELPER@
 static void run_bdm(void) {
     int fd, iop_fd;
@@ -129,6 +136,7 @@ static void reset(void) {
     memset(opens,0,sizeof(opens)); memset(closes,0,sizeof(closes)); memset(messages,0,sizeof(messages));
     for(int i=0;i<2;i++) { sizes[i]=8; open_result[i]=10+i; lba_result[i]=0; write_lba[i]=write_extent[i]=1; short_extent[i]=wrong_extent[i]=0; frags[i]=1; lbas[i]=100; maps[i]=2; }
     finished=prompts=syncs=0; accept=synced_ok=1; gAutoLaunchGame=gAutoLaunchBDMGame=NULL;
+    device.bdmDriver="usb"; device.bdmHddIsLBA48=device.ataHighestUDMAMode=-1; resolves=0; lba48_answer=1;
 }
 int main(void) {
     reset(); run_bdm(); assert(finished && prompts==0 && bdm_slot(0).active && !bdm_slot(1).active);
@@ -143,17 +151,26 @@ int main(void) {
     reset(); write_extent[0]=0; run_bdm(); assert(!bdm_slot(0).active && strstr(messages[0],"unknown"));
     reset(); short_extent[0]=1; run_bdm(); assert(!bdm_slot(0).active && strstr(messages[0],"unknown"));
     reset(); wrong_extent[0]=1; run_bdm(); assert(!bdm_slot(0).active && strstr(messages[0],"unknown"));
-    reset(); lbas[0]=0x100000000ULL; run_bdm(); assert(!bdm_slot(0).active && strstr(messages[0],"range"));
-    reset(); lbas[0]=0x100000000ULL-8*2048; run_bdm(); assert(bdm_slot(0).active && prompts==0);
-    reset(); lbas[0]=0x100000000ULL-8*2048+1; run_bdm(); assert(!bdm_slot(0).active && strstr(messages[0],"range"));
-    reset(); sizes[0]=INT_MAX; run_bdm(); assert(!bdm_slot(0).active && strstr(messages[0],"range"));
+    /* past 2 TiB: mcemu and the in-game drivers take 64-bit sectors; nothing asked of a non-ATA drive */
+    reset(); lbas[0]=0x100000000ULL-8*2048+1; run_bdm(); assert(bdm_slot(0).active && prompts==0 && resolves==0);
+    reset(); lbas[0]=1ULL<<44; run_bdm(); assert(bdm_slot(0).active && bdm_slot(0).start_sector==1ULL<<44 && prompts==0);
+    reset(); lbas[0]=(u64)-2; run_bdm(); assert(!bdm_slot(0).active && strstr(messages[0],"range")); /* no wrap */
+    reset(); sizes[0]=INT_MAX; run_bdm(); assert(!bdm_slot(0).active && strstr(messages[0],"unknown")); /* extent too short */
+    /* internal drive: 48-bit confirmed (asked once), or 28-bit commands that wrap past 128 GiB */
+    reset(); device.bdmDriver="ata"; lbas[0]=1ULL<<40; run_bdm(); assert(bdm_slot(0).active && resolves==1 && prompts==0);
+    reset(); device.bdmDriver="ata"; device.bdmHddIsLBA48=1; device.ataHighestUDMAMode=4; lbas[0]=1ULL<<40; run_bdm();
+    assert(bdm_slot(0).active && resolves==0);
+    reset(); device.bdmDriver="ata"; lba48_answer=0; lbas[0]=(1ULL<<28)-8*2048; run_bdm(); assert(bdm_slot(0).active && resolves==1);
+    reset(); device.bdmDriver="ata"; lba48_answer=0; lbas[0]=(1ULL<<28)-8*2048+1; run_bdm();
+    assert(!bdm_slot(0).active && strstr(messages[0],"range"));
+    reset(); device.bdmDriver="ata"; lba48_answer=0; lbas[0]=1ULL<<28; run_bdm(); assert(!bdm_slot(0).active && strstr(messages[0],"range"));
     reset(); sizes[0]=0; run_bdm(); assert(!bdm_slot(0).active && opens[0]==0 && strstr(messages[0],"invalid"));
     reset(); open_result[0]=-1; run_bdm(); assert(!bdm_slot(0).active && closes[0]==0);
     reset(); frags[0]=2; accept=0; run_bdm(); assert(!finished && prompts==2 && closes[0]==1 && strstr(messages[1],"never delete your only copy"));
     reset(); frags[0]=2; strcpy(names[1],"card1"); run_bdm(); assert(prompts==1 && !bdm_slot(0).active && bdm_slot(1).active && closes[1]==1);
     names[0][0]=names[1][0]=0; run_bdm(); assert(!bdm_slot(0).active && !bdm_slot(1).active);
     reset(); frags[0]=2; gAutoLaunchBDMGame=&config; run_bdm(); assert(finished && prompts==0 && !bdm_slot(0).active);
-    reset(); frags[0]=5; lbas[0]=0x100000000ULL; accept=0; run_bdm();
+    reset(); frags[0]=5; device.bdmDriver="ata"; lba48_answer=0; lbas[0]=1ULL<<28; accept=0; run_bdm();
     assert(!finished && prompts==1 && strstr(messages[0],"range")); // range wins over fragmentation; no defrag hint
     reset(); frags[0]=INT_MAX; run_bdm();
     assert(finished && !bdm_slot(0).active && prompts==1 && strstr(messages[0],"2147483647 fragments slot 1"));
@@ -186,7 +203,7 @@ int main(void) {
     puts("native VMC: verified layouts, precise refusals, both slots, cancel and autolaunch pass");
     return 0;
 }
-'''.replace('@CLASSIFY@', classify).replace('@HELPER@', helper).replace('@BDM_SLOTS@', bdm_slots).replace('@HDD_SLOTS@', hdd_slots)
+'''.replace('@CLASSIFY@', classify).replace('@LIMIT@', limit).replace('@HELPER@', helper).replace('@BDM_SLOTS@', bdm_slots).replace('@HDD_SLOTS@', hdd_slots)
 
 labels = re.findall(r"^- label: (\w+)", (root / 'lng/tmpl/_base.yml').read_text(encoding='utf-8'), re.M)
 # External .lng files are positional: these shipped as one appended run; later labels go after them.

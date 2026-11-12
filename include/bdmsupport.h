@@ -141,8 +141,8 @@ int bdmIsReadOnlyPath(const char *path);           // 1 if a "massN:..." path is
 // Core of a UDPBD / UDPFS game (block device, or UDPFS Files): 1 = Neutrino (its default), 0 = the OPL
 // core (only its own <OPL> key).
 int bdmNetBlockCoreLoader(config_set_t *configSet);
-// Native-core verdict (NATIVE_VMC_*) on an open VMC: one extent covering the card, inside 32-bit LBAs.
-int bdmCheckNativeVmcLayout(int iop_fd, int size_mb, u64 *start_lba, int *fragments);
+// Native-core verdict (NATIVE_VMC_*) on an open VMC: one extent covering the card, below sector `limit`.
+int bdmCheckNativeVmcLayout(int iop_fd, int size_mb, u64 limit, u64 *start_lba, int *fragments);
 
 // Re-evaluate every BDM device's presence + page visibility on the next refresh (bumps the latch
 // generation). Call after a device-enable toggle so a latched-hidden tab re-shows without a replug.

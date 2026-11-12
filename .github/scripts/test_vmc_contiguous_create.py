@@ -95,10 +95,11 @@ int main(void) {
     reset();fragments=2;assert(vmc_allocate_contiguous(&file,&req,1)==-EIO);
     reset();count--;assert(vmc_allocate_contiguous(&file,&req,1)==-EOVERFLOW);
     reset();sector=UINT32_MAX-count+1;assert(vmc_allocate_contiguous(&file,&req,1)==VMC_ALLOC_V1);
-    reset();sector=UINT32_MAX-count+2;assert(vmc_allocate_contiguous(&file,&req,1)==-EOVERFLOW);
+    reset();sector=UINT32_MAX-count+2;assert(vmc_allocate_contiguous(&file,&req,1)==VMC_ALLOC_V1); /* past 2 TiB */
+    reset();sector=(1ULL<<44)+5;assert(vmc_allocate_contiguous(&file,&req,1)==VMC_ALLOC_V1); /* 8 TiB in */
     reset();req.version=0;assert(vmc_allocate_contiguous(&file,&req,1)==-EINVAL&&!expands);
     reset();req.version=VMC_ALLOC_V1;req.bytes=1;assert(vmc_allocate_contiguous(&file,&req,1)==-EINVAL&&!expands);
-    puts("VMC reservation: capability, exclusive create, both filesystems, errors, layout and range guards pass");
+    puts("VMC reservation: capability, exclusive create, both filesystems, errors, layout guard, no 2 TiB limit pass");
 }
 '''.replace('@ALLOCATION@', allocation).replace('@OPENER@', opener)
 with tempfile.TemporaryDirectory() as temp:
