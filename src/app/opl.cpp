@@ -170,6 +170,8 @@ int gPCPort;
 int gHttpServerIp[4];
 int gHttpPort;
 char gHttpBasePath[HTTP_BASE_PATH_MAX];
+char gNfsExport[NFS_EXPORT_MAX];
+int gNfsWrites;
 char gPCShareNBAddress[17];
 char gPCShareName[32];
 char gPCUserName[32];
@@ -640,7 +642,7 @@ int oplPath2Mode(const char *path)
     // Neutrino/POPSTARTER on a device whose games tab is disabled.
     if (!strncasecmp(path, "mmce", 4))
         return MMCE_MODE;
-    if (!strncasecmp(path, "smb", 3))
+    if (!strncasecmp(path, "smb", 3) || !strncasecmp(path, "nfs:", 4))
         return ETH_MODE;
     if (!strncasecmp(path, "udpfs:", 6))
         return UDPFS_MODE;
@@ -1537,6 +1539,8 @@ static void setDefaults(void)
     gHttpServerIp[3] = 100; // the PC default above; .10 is the PS2's own default address
     gHttpPort = 1100;
     strcpy(gHttpBasePath, "/");
+    strcpy(gNfsExport, "/"); // PS2-Servers' NFS card exports its folder as "/"
+    gNfsWrites = 0;
     // Fork's opinionated first-boot defaults: the overwhelmingly common SMB setup is a share named
     // "games" with guest access, so a fresh install can connect after typing only the host IP.
     // A loaded config still overwrites both.

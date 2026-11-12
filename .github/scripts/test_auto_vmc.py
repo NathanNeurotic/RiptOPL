@@ -74,6 +74,7 @@ static int libListRowView(item_list_t*,int) {return rowView;}
 [[maybe_unused]] static int bdmModeIsPCCF(int) {return 0;}
 static int readOnlyMode;
 static int bdmModeIsReadOnly(int m) {return m==readOnlyMode;}
+static int ethIsReadOnly() {return 0;}
 static int guiIsActive() {return active;}
 static void configGetInt(config_set_t *c,int,int *out) {*out=c->loader;}
 [[maybe_unused]] static int bdmNetBlockCoreLoader(config_set_t *c) {return c->loader==0?0:1;}

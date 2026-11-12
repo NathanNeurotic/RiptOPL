@@ -82,7 +82,8 @@ BUNDLE_README = ("RiptOPL {title} configuration builds. Each folder holds one {e
                  "built from; replace the ELF of an existing {title} install to use one. What each configuration\n"
                  "changes: https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md\n"
                  "Every loader embeds usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\n"
-                 "MIT licence; its licence is LICENSE-USMB2.txt beside this file.\n")
+                 "MIT licence; its licence is LICENSE-USMB2.txt beside this file. They also embed his unfs4,\n"
+                 "used under the BSD 2-Clause licence, reproduced in CREDITS beside this file.\n")
 
 
 # GitHub's release API intermittently answers 5xx for longer than a few seconds. Retries are
@@ -154,8 +155,10 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler="gcc"):
                     bundle.writestr(f"{configuration}/{elf_name}", elf)
                     bundle.writestr(f"{configuration}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
                 bundle.writestr("README.txt", BUNDLE_README.format(title=EDITIONS[edition]["title"], elf=elf_name))
-                # Each loader embeds usmb2 (MIT): the bundle carries the licence the kit ships.
+                # Each loader embeds usmb2 (MIT) and unfs4 (BSD 2-Clause, its notice in CREDITS): the bundle
+                # carries the licences the kit ships.
                 bundle.writestr("LICENSE-USMB2.txt", (path / "LICENSE-USMB2.txt").read_bytes())
+                bundle.writestr("CREDITS", (ROOT / "CREDITS").read_bytes())
             add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
         if BUGREPORT in archives(options):
             bundle_bug_report(root, edition, expected_sha, compiler=compiler)

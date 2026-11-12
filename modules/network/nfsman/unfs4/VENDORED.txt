@@ -1,0 +1,25 @@
+unfs4 (vendored)
+================
+
+Upstream:  https://github.com/sahlberg/unfs4 (Ronnie Sahlberg, https://github.com/sahlberg)
+Commit:    449ba4e9ace1f1abc16abe715a6236fd56a5a431
+           "unfs4: bound what the server's replies say against what we received"
+           The same commit Launchstation's nfsman (pull request 366) uses. Neutrino's NFS modules
+           (ps2max32/neutrino pull request 240) are separate code and pin their own commit.
+Licence:   BSD 2-Clause (see LICENSE)
+
+What is here
+- unfs4.h and LICENSE, unchanged.
+- unfs4.c with riptopl-fixes.patch applied, two fixes that are not upstream yet:
+  1. put_fh(): a filehandle whose length is not a multiple of 4 is sent with its XDR padding
+     (the next operation used to start unaligned, and the server refused the request).
+  2. unfs4_open() with O_CREAT | O_EXCL creates GUARDED, so the server refuses a file that is
+     there already, whoever made it (it was always UNCHECKED, which opens that file).
+  Drop the patch once both are upstream.
+  ../nfsman.c compiles unfs4.c into itself with read(), write() and close() mapped to its
+  bounded socket calls, and the features it uses defined. So does the in-game reader,
+  modules/iopcore/cdvdman/nfs.c, over SMSTCPIP's calls, with no malloc.
+
+What is omitted
+- unfs4-test.c, host/unfs4-cat-host.c (the tiny TCP/IP build, for Neutrino), the Makefile and
+  the README.

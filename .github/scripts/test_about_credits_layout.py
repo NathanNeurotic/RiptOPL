@@ -32,7 +32,7 @@ print("PASS: About dialog layout has testers under QA, no financial section, and
 
 # 4. NathanNeurotic is credited among the coders, on a fifth row; Network update shares one row with its name so the
 #    dialog keeps its height
-assert '"NathanNeurotic - techwritescode"' in dia_about, "NathanNeurotic should be credited in diaAbout"
+assert '"NathanNeurotic - sahlberg - techwritescode"' in dia_about, "NathanNeurotic and sahlberg should be credited in diaAbout"
 assert '"Akilluminati47 - belomaxorka - darkladark - mihhru"' in dia_about
 net = dia_about.find("_STR_NET_UPDATE")
 assert net != -1, "Network update row is present"

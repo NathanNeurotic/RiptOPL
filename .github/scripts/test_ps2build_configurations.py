@@ -274,6 +274,9 @@ class PublisherTests(unittest.TestCase):
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                     self.assertIn("usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\nMIT licence; "
                                   "its licence is LICENSE-USMB2.txt", bundle.read("README.txt").decode())
+                    self.assertIn(b"unfs4, by Ronnie Sahlberg", bundle.read("CREDITS"))  # nfsman's BSD notice
+                    self.assertIn("unfs4,\nused under the BSD 2-Clause licence, reproduced in CREDITS",
+                                  bundle.read("README.txt").decode())
             for edition in ("ra", "ra_incebtion"):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")

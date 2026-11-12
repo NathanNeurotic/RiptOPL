@@ -222,6 +222,9 @@ if native is None or "if (vmc_name[0] && itemList != NULL && (itemList->flags & 
 vmc_menu = function(GUIGAME, 'void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)\n{', 'VMC menu')
 before(vmc_menu, 'if (bdmModeIsReadOnly(sourceMode)) {\n        guiMsgBox(_l(_STR_NET_READ_ONLY_VMC), 0, NULL);\n        return;',
        '// show dialog', 'guiGameShowVMCMenu: a read-only device shows the message instead of the VMC dialog')
+# NFS with NFS Writes Off keeps nothing either, with its own message.
+before(vmc_menu, 'if (sourceMode == ETH_MODE && ethIsReadOnly()) { // NFS with NFS Writes Off\n        guiMsgBox(_l(_STR_NFS_READ_ONLY_VMC), 0, NULL);\n        return;',
+       '// show dialog', 'guiGameShowVMCMenu: NFS with NFS Writes Off shows the message instead of the VMC dialog')
 game_menu = function(MENUSYS, 'void menuInitGameMenu(item_list_t *support)\n{', 'game menu')
 if 'int readOnly = support != NULL && !fav && (support->flags & MODE_FLAG_READ_ONLY);' not in game_menu or \
         len(re.findall(r'&& !readOnly\)\)\n\s+submenuAppendItem\(&gameMenu, -1, NULL, GAME_(RENAME|DELETE)_GAME', game_menu)) != 2:

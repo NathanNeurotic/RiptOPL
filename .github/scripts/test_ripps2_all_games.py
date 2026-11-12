@@ -71,6 +71,7 @@ static Source *gsOf(const item_list_t *) { return &source; }
 
 static int gAPPStartMode = 1, armed, adds, removes, saveOk = 1;
 static char gPCShareName[32] = "games";
+static int ethShareChosen() { return gPCShareName[0] != 0; }
 static item_list_t *modules[MODE_COUNT];
 static opl_io_module_t mods[MODE_COUNT];
 static int gone[MODE_COUNT]; /* the page is hidden: device removed or its start mode switched Off */
@@ -222,6 +223,8 @@ struct item_list_t { int mode, enabled; };
 struct menu_item_t { int visible; void *userdata; };
 static int gAllGames;
 static char gPCShareName[32];
+enum { NET_PROTO_SMB = 1, NET_PROTO_NFS = 6 };
+static int gNetworkProtocol = NET_PROTO_SMB;
 ''' + function(themeelems, 'int menuItemShown(const menu_item_t *item)') + r'''
 int main(void)
 {
@@ -235,6 +238,9 @@ int main(void)
     assert(!menuItemShown(&tApps));                                /* started apps are on the list too */
     assert(menuItemShown(&tFav) && menuItemShown(&tManual) && menuItemShown(&tManualApps));
     assert(menuItemShown(&tEth));                                  /* share picker stays */
+    gNetworkProtocol = NET_PROTO_NFS;
+    assert(!menuItemShown(&tEth));                                 /* an NFS export lists games */
+    gNetworkProtocol = NET_PROTO_SMB;
     gPCShareName[0] = 'g';
     assert(!menuItemShown(&tEth) && !menuItemShown(&gone));
     gAllGames = 0;                                                 /* switched off: every tab is back */
@@ -267,6 +273,8 @@ struct menu_item_t { int visible; void *userdata; };
 struct menu_list_t { menu_item_t *item; menu_list_t *next, *prev; };
 static int gAllGames, gDefaultDevice = HDD_MODE;
 static char gPCShareName[32];
+enum { NET_PROTO_SMB = 1, NET_PROTO_NFS = 6 };
+static int gNetworkProtocol = NET_PROTO_SMB;
 static menu_list_t *menu, *selected_item;
 """ + function(themeelems, 'int menuItemShown(const menu_item_t *item)') + \
     function(menusys, 'static int menuIsFavPage(const menu_list_t *page)') + \

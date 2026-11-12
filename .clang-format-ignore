@@ -17,3 +17,4 @@
 ./modules/mmce/mmceman
 ./.github/scripts/fixtures
 ./modules/network/smb2man/usmb2
+./modules/network/nfsman/unfs4

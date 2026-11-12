@@ -16,6 +16,7 @@ static struct UIString diaStr_NETCFG_SHARE_NAME __attribute__((unused)) = {"PS2S
 static struct UIString diaStr_NETCFG_SHARE_USERNAME __attribute__((unused)) = {"GUEST", "GUEST"};
 static struct UIString diaStr_NETCFG_SHARE_PASSWORD __attribute__((unused)) = {};
 static struct UIString diaStr_NETCFG_HTTP_BASE __attribute__((unused)) = {"/", "/"};
+static struct UIString diaStr_NETCFG_NFS_EXPORT __attribute__((unused)) = {"/", "/"};
 static struct UIString diaStr_NETCFG_POPS_SMB_SHARE __attribute__((unused)) = {};
 static struct UIString diaStr_NETCFG_POPS_SMB_USER __attribute__((unused)) = {};
 static struct UIString diaStr_NETCFG_POPS_SMB_PASS __attribute__((unused)) = {};
@@ -176,6 +177,18 @@ struct UIItem diaNetConfig[] = {
     {UI_LABEL, NETCFG_LBL_SHARE_PASSWORD, 1, 1, -1, -40, 0, {.label = {NULL, _STR_PASSWORD}}},
     {UI_SPACER},
     {UI_PASSWORD, NETCFG_SHARE_PASSWORD, 1, 1, _STR_HINT_GUEST, 0, 0, DIA_STRING(diaStr_NETCFG_SHARE_PASSWORD, NULL)},
+    {UI_BREAK},
+
+    //  ---- NFS: the server is the address row above; the export and NFS Writes are NFS's own
+    //  settings, so switching protocols never rewrites SMB's share. Hidden unless the protocol is NFS.
+    {UI_LABEL, NETCFG_LBL_NFS_EXPORT, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NFS_EXPORT}}},
+    {UI_SPACER},
+    {UI_STRING, NETCFG_NFS_EXPORT, 1, 1, _STR_HINT_NFS_EXPORT, 0, 0, DIA_STRING(diaStr_NETCFG_NFS_EXPORT, &guiNfsExportHandler)},
+    {UI_BREAK},
+
+    {UI_LABEL, NETCFG_LBL_NFS_WRITES, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NFS_WRITES}}},
+    {UI_SPACER},
+    {UI_BOOL, NETCFG_NFS_WRITES, 1, 1, _STR_HINT_NFS_WRITES, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
     //  ---- HTTP endpoint. Its own fields, never SMB's: pointing HTTP at another box must not
@@ -2123,7 +2136,8 @@ struct UIItem diaAbout[] = {
     {UI_SPACER},
     // NathanNeurotic (maintainer). A fifth coder row: the rows above are full, and the dialog's height is
     // kept by putting Network update and its name on one row below, as Build Options and the forum are.
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - techwritescode", -1}}},
+    // sahlberg (Ronnie Sahlberg) wrote usmb2 and unfs4, under the SMB2 and NFS drivers; CREDITS has the detail.
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - sahlberg - techwritescode", -1}}},
     {UI_BREAK},
 
     // Quality Assurance

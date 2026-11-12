@@ -4,6 +4,7 @@
 #include <time.h>
 #include "include/iosupport.h"
 #include "include/supportbase.h" // base_game_info_t
+#include "include/riptlite.h"    // LITE_HAS_NFS
 
 constexpr int ETH_MODE_UPDATE_DELAY = 300;
 constexpr int ETH_PS1_SCAN_RETRY_MAX = 15;
@@ -50,6 +51,13 @@ item_list_t *ethGetObject(int initOnly);
 // is showing VCDs. Read-only; never changes the visible ETH list or L3 view.
 int ethResolveIsoFavourite(int id, const char *name, int *outId);
 const char *ethGetSMBPrefix(void);
+// 1 while the ETH page reads an NFS export (Network Protocol NFS) instead of an SMB share. NFS games
+// run on either core, as SMB ones do (the OPL core's in-game reader is nfs_cdvdman); there is no PS1 launch.
+int ethIsNfs(void);
+// 1 while the ETH page is MODE_FLAG_READ_ONLY: NFS with NFS Writes Off, which keeps nothing (no VMC).
+int ethIsReadOnly(void);
+// 1 when the ETH page lists games: an NFS export, or a chosen SMB share. 0 while it is a share picker.
+int ethShareChosen(void);
 
 // The SMB-over-Ethernet session (src/sources/ethsupport.cpp): the smb0: base device and game prefix,
 // the SMB filesystem-driver latch, the reconnect-in-flight flag and the ISO/PS1 backing lists the ETH
@@ -81,6 +89,9 @@ public:
     // Session predicates and the public cross-module entry points (bodies; the ethXxx free
     // functions in ethsupport.cpp forward here).
     bool smbShareConnected() const;
+    // The browse driver is nfsman (NFS) rather than smbman/smb2man. Latched with the driver.
+    bool nfs() const { return LITE_HAS_NFS && nfs_; }
+    bool shareChosen() const;
     // The SMB dialect the open share negotiated (0x0202 .. 0x0311), or 0 when unknown: no share
     // open, or the smbman (SMBv1) driver, which does not report one.
     int smbNegotiatedDialect() const { return smbNegotiatedDialect_; }
@@ -93,7 +104,10 @@ public:
     base_game_info_t *gameForView(item_list_t *itemList, int id);
 
     // Session lifecycle (the IO trampolines forward here).
+    void selectDriver();
+    bool protocolLive() const;
     void smbConnect();
+    void nfsConnect();
     int smbDisconnect();
     void initSmb();
     void loadModules();
@@ -103,7 +117,7 @@ public:
     void checkedRefreshSmb();
 
 private:
-    char prefix_[40] = {}; // Contains the full path to the folder where all the games are.
+    char prefix_[48] = {}; // Contains the full path to the folder where all the games are ("nfs:/NFS/" + 31 + "\\").
     char *base_ = NULL;
     int ulSizePrev_ = -2;
     time_t modifiedCDPrev_ = 0;
@@ -115,6 +129,7 @@ private:
     int ps1ScanFailed_ = 0;
     int ps1ScanRetries_ = 0;
     unsigned char smbModuleLoaded_ = 0;
+    unsigned char nfs_ = 0; // selectDriver(): which driver smbModuleLoaded_ is about
     int smbNegotiatedDialect_ = 0;
     unsigned char reconnectQueued_ = 0;
     unsigned char reconnectRequested_ = 0; // settings reconnect upgrades a pending checked Refresh

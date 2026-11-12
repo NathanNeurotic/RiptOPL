@@ -32,7 +32,7 @@ int netGetResidentProtocol(void);
 // Bring the stack up WITHOUT applying the network configuration. Only for a protocol that applies
 // it later as part of its own connect sequence, which is what SMB does. Everything else wants
 // netLoadInitModules().
-int netEnsureModules(void);
+int netEnsureModules(int protocol); // SMB or NFS: the protocol the stack is resident for
 
 // 1 once the stack is resident, whichever protocol asked for it. This is the interlock predicate:
 // UDPBD and the UDPFS filesystem must not load on top of it. It says nothing about whether any
@@ -75,7 +75,7 @@ public:
     int residentProtocol() const { return residentProtocol_; }
     void deinitModules(void (*protocolTeardown)(void));
     int loadInitModules(int protocol);
-    int ensureModules();
+    int ensureModules(int protocol);
     int getConfig(u8 *ip_address, u8 *netmask, u8 *gateway);
     int dhcpStatus();
 

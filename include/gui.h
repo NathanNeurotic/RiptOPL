@@ -144,6 +144,7 @@ int guiDrawBGSettings(void);
 int guiNeutrinoPathHandler(char *text, int maxLen);
 int guiPopstarterPathHandler(char *text, int maxLen);
 int guiExitPathHandler(char *text, int maxLen);
+int guiNfsExportHandler(char *text, int maxLen);
 int guiShowNeutrinoArgsConfig(char *argsBuf, int bufSize); // 1 when the saved args changed
 int guiNeutrinoArgsCwdHandler(char *text, int maxLen);
 int guiNeutrinoArgsCfgHandler(char *text, int maxLen);

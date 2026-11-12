@@ -257,6 +257,8 @@ enum CONFIG_INDEX {
 #define CONFIG_NET_HTTP_IP_ADDR       "http_ip"
 #define CONFIG_NET_HTTP_PORT          "http_port"
 #define CONFIG_NET_HTTP_BASE_PATH     "http_base_path"
+#define CONFIG_NET_NFS_EXPORT         "nfs_export"
+#define CONFIG_NET_NFS_WRITES         "nfs_writes"
 #define CONFIG_NET_NBD_DEFAULT_EXPORT "nbd_default_export"
 
 // 48, not OPL's 32: a multi-view theme prefixes blocks with a view name (coverflow.main2_type), and the

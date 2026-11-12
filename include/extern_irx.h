@@ -156,12 +156,14 @@ IMPORT_BIN2C(smb_mcemu_irx);
 
 IMPORT_BIN2C(smb_cdvdman_irx);
 IMPORT_BIN2C(smb2_cdvdman_irx);
+IMPORT_BIN2C(nfs_cdvdman_irx);
 IMPORT_BIN2C(http_cdvdman_irx);
 
 IMPORT_BIN2C(smbinit_irx);
 
 IMPORT_BIN2C(smbman_irx);
 IMPORT_BIN2C(smb2man_irx);
+IMPORT_BIN2C(nfsman_irx);
 
 IMPORT_BIN2C(smsutils_irx);
 

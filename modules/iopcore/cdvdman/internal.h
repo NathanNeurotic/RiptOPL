@@ -42,6 +42,9 @@
 #ifdef HDD_DRIVER
 #define CDVDMAN_SETTINGS_TYPE                    cdvdman_settings_hdd
 #define CDVDMAN_SETTINGS_DEFAULT_DEVICE_SETTINGS CDVDMAN_SETTINGS_DEFAULT_HDD,
+#elif NFS_DRIVER // before SMB_DRIVER, which nfs_cdvdman defines too (device-smb.c, the SMB exports)
+#define CDVDMAN_SETTINGS_TYPE                    cdvdman_settings_nfs
+#define CDVDMAN_SETTINGS_DEFAULT_DEVICE_SETTINGS CDVDMAN_SETTINGS_DEFAULT_SMB,
 #elif SMB_DRIVER
 #define CDVDMAN_SETTINGS_TYPE                    cdvdman_settings_smb
 #define CDVDMAN_SETTINGS_DEFAULT_DEVICE_SETTINGS CDVDMAN_SETTINGS_DEFAULT_SMB,

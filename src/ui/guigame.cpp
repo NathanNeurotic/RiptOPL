@@ -673,7 +673,7 @@ int guiGameAutoCreateVmc(item_list_t *support, int id, config_set_t *configSet)
         return 1;
     // A read-only server launches without a VMC, so there is nothing to create.
     if (backing == NULL || !backing->enabled || !gsOf(backing)->hasCheckVmc() || backing->mode == HTTP_MODE || bdmModeIsPCCF(backing->mode) ||
-        bdmModeIsReadOnly(backing->mode))
+        bdmModeIsReadOnly(backing->mode) || (backing->mode == ETH_MODE && ethIsReadOnly()))
         return 1;
     int loader = gDefaultCoreLoader;
     configGetInt(configSet, CONFIG_ITEM_CORE_LOADER, &loader);
@@ -809,6 +809,10 @@ void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)
     // A VMC is a file on the game's device: none can be created or used on a read-only server (YAOPL 9f556b55).
     if (bdmModeIsReadOnly(sourceMode)) {
         guiMsgBox(_l(_STR_NET_READ_ONLY_VMC), 0, NULL);
+        return;
+    }
+    if (sourceMode == ETH_MODE && ethIsReadOnly()) { // NFS with NFS Writes Off
+        guiMsgBox(_l(_STR_NFS_READ_ONLY_VMC), 0, NULL);
         return;
     }
 

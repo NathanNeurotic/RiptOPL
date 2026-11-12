@@ -1140,6 +1140,10 @@ void AppSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         // POPSTARTER SMB via APPS: only an ETH/SMB SB.<game>.ELF receives the same preparation
         // as an ETH VCD. A local SB.* tool is an ordinary app, never an SMB launch by filename alone.
         // Uses shared helper vcdPreparePopstarterSmbLaunch(ethPrefix).
+        if (mode == ETH_MODE && appIsPopstarterSmb(filename) && ethIsNfs()) { // POPSTARTER reaches SMB only
+            host::ui().msgBox(_l(_STR_NFS_NO_PS1), 0, NULL);
+            return;
+        }
         if (mode == ETH_MODE && appIsPopstarterSmb(filename)) {
             vcd_popsnet_ensure_t ens = vcdPreparePopstarterSmbLaunch(ethGetSMBPrefix());
             if (ens == VCD_POPSNET_CANCELLED)
