@@ -1290,9 +1290,9 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     u32 layer1_start, layer1_offset;
     unsigned short int layer1_part;
 
-    // PS1 view (SMB): the row carries its own core, so dispatch on the ROW, not on the view.
-    // A .cue row is Ember's; anything else on this list is a POPSTARTER .VCD.
-    if (gPCShareName[0] && game != NULL && (rowView(itemList, id) == LIB_VIEW_PS1)) {
+    // PS1 view (SMB or NFS): the row carries its own core, so dispatch on the ROW, not on the view.
+    // A .cue row is Ember's; anything else on this list is a POPSTARTER .VCD (SMB only).
+    if (gEthSupport.shareChosen() && game != NULL && (rowView(itemList, id) == LIB_VIEW_PS1)) {
         if (cueIsCueEntry(game))
             launchCue(itemList, game->name, configSet);
         else
