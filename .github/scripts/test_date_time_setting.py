@@ -86,7 +86,9 @@ if 'configGetTimezone() - 540 + (configIsDaylightSavingEnabled() ? 60 : 0)' not 
     failures.append('guiClockLocalOffset must be configGetTimezone() - 540 (+60 with daylight saving)')
 # The write rebuilds the request on each try (the reply overwrites it) and checks the command error bit.
 show = function_text(settings, 'static void guiSettingsShowDateTime(')
-if 'sceCdWriteClock(&clk) && !(clk.stat & CdlRTCStatCommandError)' not in show or show.find('memset(&clk') > show.find('sceCdWriteClock'):
+retry = re.search(r'for \(i = 0; ok && i < 2; i\+\+\) \{(.*?)\n        \}', show, re.S)
+body = retry.group(1) if retry else ''
+if 'sceCdWriteClock(&clk) && !(clk.stat & CdlRTCStatCommandError)' not in body or not 0 <= body.find('memset(&clk') < body.find('sceCdWriteClock'):
     failures.append('guiSettingsShowDateTime: rebuild clk before each sceCdWriteClock and check CdlRTCStatCommandError')
 if 'clk.month & 0x7F' not in show:
     failures.append('guiSettingsShowDateTime: mask the month century bit when reading')
