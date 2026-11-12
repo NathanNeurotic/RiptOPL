@@ -171,6 +171,24 @@ static void IGR_PauseThreads(void)
     }
 }
 
+#ifndef __clang__
+// TEST COPY ONLY (not for main): which of the busy conditions held at the last check, four octal digits, blinked by
+// IGR_Thread after the yellow. The conditions are those IGR_HoldGs tests, split up:
+// digit 1: 1 channel 1 running, 2 channel 2 running, 4 GS FIFO not empty
+// digit 2: 1 VIF1 stopped (VSS, VFS or VIS), 2 VIF1 reading back (FDR), 4 VIF1 FIFO not empty
+// digit 3: 1 GIF busy (P1Q, OPH or APATH), 2 GIF FIFO not empty
+// digit 4: 1 a ring buffer set in D_CTRL (MFD), 2 stall control set in D_CTRL (STS or STD)
+static u32 IGR_BusyWhy;
+
+static u32 IGR_BusyDigits(u32 d1, u32 d2, u32 vif, u32 gif, u32 csr, u32 ctrl)
+{
+    return (((d1 & 0x100) != 0) | (((d2 & 0x100) != 0) << 1) | ((((csr & 0xc000) ^ 0x4000) != 0) << 2)) << 9 |
+           (((vif & 0x700) != 0) | (((vif & 0x800000) != 0) << 1) | (((vif & 0x1f000000) != 0) << 2)) << 6 |
+           (((gif & 0xf00) != 0) | (((gif & 0x1f000000) != 0) << 1)) << 3 |
+           (((ctrl & 0xc) != 0) | (((ctrl & 0xf0) != 0) << 1));
+}
+#endif
+
 // The game's own transfers finish before the menu takes channel 1 and the GS. A VIF1 stopped on a VIF code's interrupt
 // bit waits for the game's VIF1 handler (FBRST.STC), a GS stopped on a second SIGNAL for its GS handler (CSR.SIGNAL),
 // and a list sent in parts, a masked PATH3 or a stalled channel for the DMA completion handler that sends what comes
@@ -205,6 +223,11 @@ static u32 IGR_HoldGs(u32 wait)
     } while (busy && now - t < wait);
     IGR_HeldIntc |= on;
     IGR_HeldDmac = dmac;
+#ifndef __clang__
+    if (busy)
+        IGR_BusyWhy = IGR_BusyDigits(*R_EE_D1_CHCR, *R_EE_D2_CHCR, *(vu32 *)0x10003c00, *(vu32 *)0x10003020, *(vu32 *)0x12001000,
+                                     *R_EE_D_CTRL);
+#endif
     return busy;
 }
 
@@ -494,6 +517,19 @@ static void IGR_Thread(void *arg)
             // GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and growing it costs the stack
             static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x00FFFF, 0x80FF00}; // grey, purple, yellow, mint
             DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, yellow = GS busy, mint = first page failed, grey = no menu");
+#ifndef __clang__
+            if (choice == IGR_MENU_GS_BUSY) { // TEST COPY ONLY: red, green, blue, white = digits 1 to 4, each shown as digit + 1 blinks
+                int rep;
+
+                for (rep = 0; rep < 2; rep++) {
+                    BlinkColour(0, 0, 0); // a longer gap
+                    BlinkColour(((IGR_BusyWhy >> 9) & 7) + 1, 0x0000FF, 0);
+                    BlinkColour(((IGR_BusyWhy >> 6) & 7) + 1, 0x00FF00, 0);
+                    BlinkColour(((IGR_BusyWhy >> 3) & 7) + 1, 0xFF0000, 0);
+                    BlinkColour((IGR_BusyWhy & 7) + 1, 0xFFFFFF, 0);
+                }
+            }
+#endif
         }
         Pad_Data.combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
         break;
