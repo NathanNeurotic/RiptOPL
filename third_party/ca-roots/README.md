@@ -15,8 +15,8 @@ Mozilla root store.
 | `sectigo-e46.der` | Sectigo Public Server Authentication Root E46 | `c90f26f0fb1b4018b22227519b5ca2b53e2ca5b3be5cf18efe1bef47380c5383` | 2046-03-21 | Launchstation `res/WLE-UPDATE-CA.PEM` (Sectigo) |
 | `sectigo-r46.der` | Sectigo Public Server Authentication Root R46 | `7bb647a62aeeac88bf257aa522d01ffea395e0ab45c73f93f65654ec38f25a06` | 2046-03-21 | Launchstation `res/WLE-UPDATE-CA.PEM` (Sectigo) |
 
-Each file was downloaded from the issuer on 2026-10-13 (copied from the original's vendored set, then
-checked again on 2026-10-27): its fingerprint is in the Mozilla root store (certifi 2026.10.18). The
+The Google and ISRG files were downloaded from the issuer on 2026-10-13 (copied from the original's vendored set, then
+checked again on 2026-10-27): each fingerprint is in the Mozilla root store (certifi 2026.10.18). The
 original also trusts **GTS Root R2**, which that store no longer carries (it was still in certifi
 2026.02.25), so RiptOPL leaves it out. `.github/scripts/test_mbedtls_vendor.py` pins the same fingerprints
 in its own source. `tools/assets.py embed` turns each file into `asm/ratls_root_<name>.c` with

@@ -79,8 +79,9 @@ static const int SU_MC_NAME_MAX = 31;          /* a memory card entry name */
 
 static int suBusy;
 static int suResult;
-static int suError;     /* the RATLS_ERR_* behind SU_ERR_GITHUB */
-static int suRemoteRev; /* the release's build number */
+static int suError;        /* the RATLS_ERR_* behind SU_ERR_GITHUB */
+static int suRemoteRev;    /* the release's build number */
+static int suInstalledRev; /* a build installed this session: the running ELF is older than the file */
 static unsigned char suSha[32];
 static char suMessage[96]; /* the wait screen's text, rewritten by the I/O worker as the download runs */
 
@@ -101,6 +102,8 @@ struct SuFile
     int fd;
     int written;
     int lastKb;
+    int headLen; /* the first bytes, held until the ELF header can be checked */
+    unsigned char head[20];
     mbedtls_sha256_context sha;
 };
 
@@ -161,8 +164,23 @@ static int suSumsSink(void *ctx, const char *data, int len)
 static int suFileSink(void *ctx, const char *data, int len)
 {
     SuFile *f = static_cast<SuFile *>(ctx);
-    if (f->written == 0 && !suLooksLikeElf(reinterpret_cast<const unsigned char *>(data), len))
-        return -1; /* not an ELF: stop before writing anything */
+    if (f->written == 0) { /* hold the header until it is whole: the first piece can be short */
+        int take = len < (int)sizeof(f->head) - f->headLen ? len : (int)sizeof(f->head) - f->headLen;
+        memcpy(f->head + f->headLen, data, take);
+        f->headLen += take;
+        data += take;
+        len -= take;
+        if (f->headLen < (int)sizeof(f->head))
+            return 0;
+        if (!suLooksLikeElf(f->head, f->headLen))
+            return -1; /* not an ELF: stop before writing anything */
+        if (write(f->fd, f->head, f->headLen) != f->headLen)
+            return -1;
+        mbedtls_sha256_update(&f->sha, f->head, f->headLen);
+        f->written = f->headLen;
+        if (len == 0)
+            return 0;
+    }
     if (write(f->fd, data, len) != len)
         return -1;
     mbedtls_sha256_update(&f->sha, reinterpret_cast<const unsigned char *>(data), len);
@@ -206,7 +224,7 @@ static void suCheckWorker(void)
         else if (suParseSums(sums.text, sums.len, RIPTOPL_UPDATE_ELF, suSha, &suRemoteRev) != 0)
             suResult = suFromTls(RATLS_ERR_HTTP);
         else
-            suResult = suRemoteRev > suRevision(OPL_VERSION) ? SU_OK : SU_NEWEST;
+            suResult = suRemoteRev > suRevision(OPL_VERSION) && suRemoteRev > suInstalledRev ? SU_OK : SU_NEWEST;
     }
     free(sums.text);
     free(b);
@@ -262,6 +280,7 @@ static void suInstallWorker(void)
         goto done;
     f.written = 0;
     f.lastKb = 0;
+    f.headLen = 0;
     mbedtls_sha256_init(&f.sha);
     mbedtls_sha256_starts(&f.sha, 0);
     {
@@ -270,6 +289,8 @@ static void suInstallWorker(void)
         int closed = close(f.fd);
         mbedtls_sha256_finish(&f.sha, sha);
         mbedtls_sha256_free(&f.sha);
+        if (rc >= 0 && f.written == 0)
+            rc = RATLS_ERR_SINK; /* shorter than an ELF header */
         if (rc < 0 || closed < 0) {
             unlink(fresh);
             suResult = rc < 0 ? suFromTls(rc) : SU_ERR_WRITE;
@@ -285,6 +306,10 @@ static void suInstallWorker(void)
     suResult = SU_ERR_SWAP;
     unlink(bak); /* the previous update's backup */
     if (suRename(cur, bak, bakName) != 0) {
+        if (!suExists(cur) && suRename(bak, cur, gBootElfName) != 0) {
+            suResult = SU_ERR_RESTORE; /* the old ELF is <name>.BAK: keep every file */
+            goto done;
+        }
         unlink(fresh);
         goto done;
     }
@@ -298,6 +323,7 @@ static void suInstallWorker(void)
     }
     if (suIsMc(cur))
         unlink(bak);
+    suInstalledRev = suRemoteRev;
     suResult = SU_OK;
 done:
     free(b);
@@ -357,6 +383,8 @@ void selfUpdateMenu(void)
         guiMsgBox(_l(_STR_UPDATE_ERR_UNVERSIONED), 0, NULL);
         return;
     }
+    if (suInstalledRev > local)
+        local = suInstalledRev; /* the file on the device is already that build */
     suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
     if (suResult == SU_NEWEST) {
         snprintf(text, sizeof(text), _l(_STR_UPDATE_NEWEST), local);

@@ -1,8 +1,8 @@
 # mbedTLS 3.6.7 (vendored subset)
 
 TLS for the RiptOPL **RetroAchievements edition** (the HTTPS game-ID lookup on retroachievements.org
-that ORBIT also performs) and for **Check for Updates** in the other standard builds. Lite, debug and
-variant builds do not compile or link it.
+that ORBIT also performs, in every RA build including RA Lite, debug and variants) and for **Check for
+Updates** in the other standard builds. Non-RA Lite, debug and variant builds do not compile or link it.
 
 - Upstream: <https://github.com/Mbed-TLS/mbedtls>, release **mbedtls-3.6.7** (3.6 LTS), 2026-07-07.
 - Source: the release archive `mbedtls-3.6.7.tar.bz2`, not the git tag, because only the archive
