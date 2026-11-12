@@ -2596,3 +2596,16 @@ gui_strings:
 - comment: Main menu Exit prompt (issue 370). Replaces CONFIRMATION_EXIT, whose "Browser" was wrong when Exit To is Console Menu.
   label: CONFIRMATION_EXIT_APP
   string: Exit RiptOPL?
+- comment: "General & System row and dialog title. Sets the console's own clock (Launchstation issue 346 request)."
+  label: DATE_TIME
+  string: Date and Time
+- label: HINT_DATE_TIME
+  string: "Sets the console's clock, in the time zone chosen in the console's System Configuration."
+- comment: Date and Time dialog row (year - month - day).
+  label: DATE
+  string: Date
+- comment: "Date and Time dialog row (hour, minute; 24-hour)."
+  label: TIME
+  string: Time
+- label: DATE_TIME_ERROR
+  string: The clock was not set. Check the date and try again.
