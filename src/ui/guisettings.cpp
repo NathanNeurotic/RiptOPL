@@ -809,7 +809,7 @@ int guiShowNetConfig(void)
     const char *ipAddrConfModes[] = {_l(_STR_IP_ADDRESS_TYPE_STATIC), _l(_STR_IP_ADDRESS_TYPE_DHCP), NULL};
     const char *udpfsModes[] = {"Files", "IMG", NULL}; // Access: Files=udpfs_ioman filesystem, IMG=udpfs_bd block
     // Index == enum SMB_DIALECT. Protocol names, not translated.
-    const char *smbDialects[] = {"SMBv1", "SMB2", NULL};
+    const char *smbDialects[] = {"SMBv1", "SMB2/3", NULL};
     diaSetEnum(diaNetConfig, NETCFG_PS2_IP_ADDR_TYPE, ipAddrConfModes);
     diaSetEnum(diaNetConfig, NETCFG_SHARE_ADDR_TYPE, addrConfModes);
     diaSetEnum(diaNetConfig, NETCFG_ETHOPMODE, ethOpModes);

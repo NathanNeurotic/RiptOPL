@@ -1738,7 +1738,9 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
     // Index 0/1 == the stored $CoreLoader value (0=<OPL>, 1=Neutrino); index 2 "Default" = no per-game
     // key -> follow the global gDefaultCoreLoader. Keeping 0/1 aligned with the stored ints means the
     // UDPFS Files lock (index 1) and the launch-side value semantics are untouched -- only "Default" is new.
-    const char *loaders[] = {"<OPL>", "Neutrino", _l(_STR_DEFAULT), NULL};
+    // "Default" names the core it resolves to here, filled in once coreDefaultNeutrino is known below.
+    static char loaderDefault[48];
+    const char *loaders[] = {"<OPL>", "Neutrino", loaderDefault, NULL};
     diaSetEnum(diaCompatConfig, COMPAT_LOADER, loaders);
 
     // Indices map 1:1 onto system.c's gsmVideoTokens (fp1/fp2/1080ix1/ix2/ix3) -- old configs
@@ -1775,6 +1777,11 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
     // either core; their selector stays open and its "Default" row means Neutrino. Every other device
     // re-enables the row too (the dialog struct is reused across games).
     coreDefaultNeutrino = sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode);
+    if (support != NULL && libViewActive(support->mode) == LIB_VIEW_PS1) // POPSTARTER: neither core
+        snprintf(loaderDefault, sizeof(loaderDefault), "%s", _l(_STR_DEFAULT));
+    else
+        snprintf(loaderDefault, sizeof(loaderDefault), "%s (%s)", _l(_STR_DEFAULT),
+                 !coreNeverNeutrino && (coreDefaultNeutrino || gDefaultCoreLoader == 1) ? "Neutrino" : "<OPL>");
     if (support != NULL && (libViewActive(support->mode) == LIB_VIEW_PS1)) {
         // VCD (PS1) games launch ONLY via POPSTARTER -- neither OPL's core nor Neutrino is used, so the
         // Loader Core choice is meaningless. Pin it to the inert "Default" row (index 2 -> no per-game
