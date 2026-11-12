@@ -8,6 +8,7 @@
 ./modules/network/smbman-ra
 ./modules/mx4sio_bd
 ./modules/usb/usbd-ra
+./modules/usb/usbmass_bd
 ./modules/bdmassault
 ./modules/ilink/iLinkman
 ./tests/host
