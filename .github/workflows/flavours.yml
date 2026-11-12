@@ -204,6 +204,13 @@ jobs:
           python3 .github/scripts/test_zso_read_errors.py
           python3 .github/scripts/test_searchfile_init_bounds.py
           python3 .github/scripts/test_smb1_reply_resync.py
+      - name: Check the in-game NFS reader against PS2-Servers' NFS server, writes allowed and refused, and NFS launches through device-smb.c (tests/nfs-live)
+        run: |
+          # PS2-Servers v0.9.3 (its NFS server, PR 303), outside the workspace so no tree scan sees it.
+          git init -q "$RUNNER_TEMP/PS2-Servers"
+          git -C "$RUNNER_TEMP/PS2-Servers" fetch -q --depth 1 https://github.com/NathanNeurotic/PS2-Servers e27df805b87ef5d697dab250190cb9bbc1851404
+          git -C "$RUNNER_TEMP/PS2-Servers" checkout -q FETCH_HEAD
+          PS2_SERVERS="$RUNNER_TEMP/PS2-Servers" sh tests/nfs-live/run.sh
       - name: Check in-game SMSTCPIP connect completion, receive ordering, socket lifetimes and SYN retry timing
         run: |
           python3 .github/scripts/test_smstcpip_connect_completion.py

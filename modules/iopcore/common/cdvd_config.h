@@ -45,30 +45,45 @@ struct cdvdman_settings_hdd
     u32 lba_start;
 } __attribute__((packed));
 
+// The image's file name, which device-smb.c opens. It must hold the longest one the menu lists
+// whole, the old format "<startup>.<name><extension>": GAME_STARTUP_MAX + 1 + ISO_GAME_NAME_MAX +
+// ISO_GAME_EXTENSION_MAX + 1 for the NUL (include/supportbase.h). The scan keeps at most
+// GAME_STARTUP_MAX - 1 characters of an old-format startup, so the longest name is 176 bytes and
+// one byte is spare. A name cut short opens a file that does not exist.
+// src/sources/ethsupport.cpp checks this size when it is built.
+// Please keep the string lengths in-sync with the limits within the UI.
+// SMB and NFS (below) share these fields, which device-smb.c reads; the FIDs overlay the server
+// strings once the image is open.
+#define CDVDMAN_SETTINGS_SMB_FIELDS        \
+    struct cdvdman_settings_common common; \
+    char filename[12 + 1 + 160 + 4 + 1];   \
+    union                                  \
+    {                                      \
+        struct                             \
+        {                                  \
+            char smb_ip[16];               \
+            u16 smb_port;                  \
+            char smb_share[32];            \
+            char smb_prefix[32];           \
+            char smb_user[32];             \
+            char smb_password[32];         \
+        };                                 \
+        u16 FIDs[ISO_MAX_PARTS];           \
+    };
+
 struct cdvdman_settings_smb
 {
-    struct cdvdman_settings_common common;
-    // The image's file name, which device-smb.c opens. It must hold the longest one the menu lists
-    // whole, the old format "<startup>.<name><extension>": GAME_STARTUP_MAX + 1 + ISO_GAME_NAME_MAX +
-    // ISO_GAME_EXTENSION_MAX + 1 for the NUL (include/supportbase.h). The scan keeps at most
-    // GAME_STARTUP_MAX - 1 characters of an old-format startup, so the longest name is 176 bytes and
-    // one byte is spare. A name cut short opens a file that does not exist.
-    // src/sources/ethsupport.cpp checks this size when it is built.
-    char filename[12 + 1 + 160 + 4 + 1];
-    union
-    {
-        struct
-        {
-            // Please keep the string lengths in-sync with the limits within the UI.
-            char smb_ip[16];
-            u16 smb_port;
-            char smb_share[32];
-            char smb_prefix[32];
-            char smb_user[32];
-            char smb_password[32];
-        };
-        u16 FIDs[ISO_MAX_PARTS];
-    };
+    CDVDMAN_SETTINGS_SMB_FIELDS
+} __attribute__((packed));
+
+// nfs_cdvdman (nfs.c in place of smb.c): smb_ip, smb_port (2049) and smb_prefix as for SMB, then the
+// export, which does not fit in smb_share; the share, user and password are not used. The export sits
+// after the union, so the FIDs never overlay it. Up to 127 characters, as the menu's NFS Export.
+#define CDVDMAN_NFS_EXPORT_MAX 128
+struct cdvdman_settings_nfs
+{
+    CDVDMAN_SETTINGS_SMB_FIELDS
+    char nfs_export[CDVDMAN_NFS_EXPORT_MAX];
 } __attribute__((packed));
 
 // device-smb.c builds the paths it opens from the block above in a buffer of this size. The longest,
@@ -103,6 +118,8 @@ typedef char cdvdmanSettingsHttpAssertUri[(offsetof(struct cdvdman_settings_http
 typedef char cdvdmanSettingsHttpAssertSizeLo[(offsetof(struct cdvdman_settings_http, size_lo) == 816) ? 1 : -1];
 typedef char cdvdmanSettingsHttpAssertSizeHi[(offsetof(struct cdvdman_settings_http, size_hi) == 820) ? 1 : -1];
 typedef char cdvdmanSettingsHttpAssertTotalSize[(sizeof(struct cdvdman_settings_http) == 824) ? 1 : -1];
+// The EE fills an NFS block through struct cdvdman_settings_smb, then the export after it.
+typedef char cdvdmanSettingsNfsAssertExport[(offsetof(struct cdvdman_settings_nfs, nfs_export) == sizeof(struct cdvdman_settings_smb)) ? 1 : -1];
 
 #define BDM_MAX_FILES 1  // ISO
 #define BDM_MAX_FRAGS 64 // 64 * 8bytes = 512bytes

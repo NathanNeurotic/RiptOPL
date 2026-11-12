@@ -8,6 +8,8 @@
    compiled here whole, with the real cdvd_config.h and either smb2.c (smb2_cdvdman) or, built with
    LONGNAME_SMB1, smb.c (smb_cdvdman), and runs against a live SMB server: a block that cut the name
    sends the server looking for a file that does not exist, and no sector of the image can be read.
+   Built with NFS_DRIVER and nfs.c (nfs_cdvdman), by tests/nfs-live/run.sh, it reads the same images from
+   an NFS server instead: share is then the export.
 
    argv: ip port user pass share local_share_root format prefix [name_length]
      format       old (startup.name.iso), plain (name.iso), utf8 (name.iso, with UTF-8 in the name:
@@ -36,7 +38,11 @@
 #define SECTORS 8 // per image file
 
 // cdvdman.c's patch zone, which the EE fills before the IOP reset.
+#ifdef NFS_DRIVER
+struct cdvdman_settings_nfs cdvdman_settings;
+#else
 struct cdvdman_settings_smb cdvdman_settings;
+#endif
 
 // What device-smb.c needs from the rest of cdvdman and from the IOP kernel.
 struct irx_export_table _exp_oplsmb;
@@ -59,6 +65,7 @@ void cdvdman_vmc_io_end(void)
 // ps2ip's exports, in the slots device-smb.c's ps2ip_init() takes them from.
 static int h_close(int s) { return close(s); }
 static int h_connect(int s, struct sockaddr *n, socklen_t l) { return connect(s, n, l); }
+static int h_bind(int s, struct sockaddr *n, socklen_t l) { return bind(s, n, l); }
 static int h_recv(int s, void *m, int l, unsigned int f) { return (int)recv(s, m, l, f); }
 static int h_send(int s, void *d, int l, unsigned int f) { return (int)send(s, d, l, f); }
 static int h_socket(int d, int t, int p) { return socket(d, t, p); }
@@ -116,6 +123,7 @@ int getModInfo(char *modname, modinfo_t *info)
     if (strcmp(modname, "ps2ip") != 0)
         return 0;
     exports[6] = (void *)h_close;
+    exports[5] = (void *)h_bind;
     exports[7] = (void *)h_connect;
     exports[9] = (void *)h_recv;
     exports[10] = (void *)h_recvfrom;
@@ -266,6 +274,9 @@ int main(int argc, char **argv)
     snprintf(cdvdman_settings.smb_prefix, sizeof(cdvdman_settings.smb_prefix), "%s", prefix);
     snprintf(cdvdman_settings.smb_user, sizeof(cdvdman_settings.smb_user), "%s", argv[3]);
     snprintf(cdvdman_settings.smb_password, sizeof(cdvdman_settings.smb_password), "%s", argv[4]);
+#ifdef NFS_DRIVER
+    snprintf(cdvdman_settings.nfs_export, sizeof(cdvdman_settings.nfs_export), "%s", argv[5]);
+#endif
 
     printf("file name %d bytes, prefix %d bytes, settings block %d bytes\n", (int)strlen(file), (int)strlen(prefix),
            (int)sizeof(cdvdman_settings));

@@ -43,7 +43,7 @@ DEVICES = {
 
 # The modules only some device needs. HTTP, PC Card CF and NFS have no lite build: their modules go everywhere.
 DEVICE_SPECIFIC = frozenset(name for options in DEVICES.values() for name in options["keep"]) | {
-    "http_cdvdman", "pccf_cdvdman", "pccf_bd", "pccf_game", "nfsman"}
+    "http_cdvdman", "pccf_cdvdman", "pccf_bd", "pccf_game", "nfsman", "nfs_cdvdman"}
 
 # Never dropped, whatever DEVICE_SPECIFIC says (see the module docstring).
 ALWAYS = frozenset({

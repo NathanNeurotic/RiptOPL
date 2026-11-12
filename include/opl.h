@@ -358,7 +358,7 @@ enum NETWORK_PROTOCOL {
     // Plain LAN HTTP: a games.csv catalog plus byte-range reads of the ISO, over the same menu
     // TCP/IP stack SMB uses. Appended, so every value above keeps the number it was persisted with.
     NET_PROTO_HTTP = 5,
-    // NFS 4.0 (nfsman over unfs4) on the menu TCP/IP stack, games through Neutrino -bsd=nfs. It
+    // NFS 4.0 (nfsman over unfs4) on the menu TCP/IP stack, games through nfs_cdvdman or Neutrino -bsd=nfs. It
     // shares the Network game device (ETH_MODE) with SMB; only the file driver differs. Appended.
     NET_PROTO_NFS = 6,
 };

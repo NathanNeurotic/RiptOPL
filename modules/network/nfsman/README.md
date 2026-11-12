@@ -12,5 +12,6 @@ Network Protocol is NFS. RiptOPL connects one export, as `nfs:/NFS/`. Built by `
 
 TCP port 2049, NFSv4.0 only, no MOUNT protocol or portmapper. While Settings > Network > NFS
 Writes is Off, the menu connects with `?ro`, so nothing in RiptOPL can change the share whatever
-the server allows. Games go to Neutrino (`-bsd=nfs`), which reads the export with its own
-read-only modules.
+the server allows. Games run on either core, as SMB ones do: the OPL core's in-game reader,
+`nfs_cdvdman` (`modules/iopcore/cdvdman/nfs.c`), compiles this unfs4 too, and Neutrino (`-bsd=nfs`)
+reads the export with its own read-only modules.

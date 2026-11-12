@@ -52,9 +52,10 @@ item_list_t *ethGetObject(int initOnly);
 int ethResolveIsoFavourite(int id, const char *name, int *outId);
 const char *ethGetSMBPrefix(void);
 // 1 while the ETH page reads an NFS export (Network Protocol NFS) instead of an SMB share. NFS games
-// run on Neutrino only, there is no PS1 launch and no VMC, and while NFS Writes is Off the page is
-// MODE_FLAG_READ_ONLY.
+// run on either core, as SMB ones do (the OPL core's in-game reader is nfs_cdvdman); there is no PS1 launch.
 int ethIsNfs(void);
+// 1 while the ETH page is MODE_FLAG_READ_ONLY: NFS with NFS Writes Off, which keeps nothing (no VMC).
+int ethIsReadOnly(void);
 // 1 when the ETH page lists games: an NFS export, or a chosen SMB share. 0 while it is a share picker.
 int ethShareChosen(void);
 

@@ -80,7 +80,6 @@ static int gDefaultCoreLoader, view, favMode, udpbd, pccf;
 static int menuSelectedRowView(item_list_t *) { return view; }
 static int favGetItemSourceMode(int) { return favMode; }
 static int bdmModeIsUDPBD(int mode) { return mode == BDM_MODE && udpbd; }
-static int ethIsNfs() { return 0; }
 static int bdmNetBlockCoreLoader(config_set_t *c) { return !(c && c->core_present && c->core == 0); }
 static int bdmModeIsPCCF(int mode) { return mode == BDM_MODE && pccf; }
 @WARNING@

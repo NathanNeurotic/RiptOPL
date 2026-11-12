@@ -17,7 +17,8 @@ What is here
      there already, whoever made it (it was always UNCHECKED, which opens that file).
   Drop the patch once both are upstream.
   ../nfsman.c compiles unfs4.c into itself with read(), write() and close() mapped to its
-  bounded socket calls, and the features it uses defined.
+  bounded socket calls, and the features it uses defined. So does the in-game reader,
+  modules/iopcore/cdvdman/nfs.c, over SMSTCPIP's calls, with no malloc.
 
 What is omitted
 - unfs4-test.c, host/unfs4-cat-host.c (the tiny TCP/IP build, for Neutrino), the Makefile and

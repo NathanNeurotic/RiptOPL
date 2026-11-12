@@ -291,13 +291,25 @@ if "if (ethTryNeutrino(itemList, game, configSet))\n        return;" not in laun
     failures.append("EthSource::launch must try the Neutrino leg before the OPL core")
 if launch.index("ethTryNeutrino(") > launch.index("sbPrepare("):
     failures.append("the Neutrino leg must run before the OPL core prepares smb_cdvdman")
-# NFS has no OPL core: a game the Neutrino leg did not launch stops there.
-nfs_stop = "if (gEthSupport.nfs())\n        return;"
-if nfs_stop not in launch or launch.index(nfs_stop) > launch.index("sbPrepare(") or \
-        launch.index(nfs_stop) < launch.index("ethTryNeutrino("):
-    failures.append("EthSource::launch: NFS ends after the Neutrino leg, before the OPL core")
-if 'const char *driver = nfs ? "nfs" : "smb";' not in leg or "if (!nfs && !ethSmbNeutrinoRequested(configSet))" not in leg:
-    failures.append("ethTryNeutrino: NFS takes the leg whatever the core, as driver nfs")
+# NFS runs on either core, as SMB does: the leg takes a game only when its core is Neutrino, and a miss goes
+# on to the OPL core's nfs_cdvdman, whose settings block carries the export.
+if "if (gEthSupport.nfs())\n        return;" in launch:
+    failures.append("EthSource::launch: an NFS game the Neutrino leg did not take goes on to the OPL core")
+if 'const char *driver = nfs ? "nfs" : "smb";' not in leg or "if (!ethSmbNeutrinoRequested(configSet))\n        return 0;" not in leg:
+    failures.append("ethTryNeutrino: SMB and NFS take the leg only when the game's core is Neutrino, as driver smb or nfs")
+if "void **cdvdmanIrx = nfs ? nfs_cdvdman_irx :" not in launch or "int cdvdmanSize = nfs ? size_nfs_cdvdman_irx :" not in launch:
+    failures.append("EthSource::launch: an NFS game launches nfs_cdvdman")
+nfs_fill = "strcpy(((struct cdvdman_settings_nfs *)settings)->nfs_export, gNfsExport);"
+if nfs_fill not in launch or launch.index(nfs_fill) > launch.index("sysLaunchLoaderElf("):
+    failures.append("EthSource::launch: the NFS settings block carries the export")
+# NFS Writes Off (the page is MODE_FLAG_READ_ONLY): no VMC on either core, the game uses the real card.
+if not re.search(r'if \(itemList->flags & MODE_FLAG_READ_ONLY\)\n[^\n]*\n\s+else\n'
+                 r'\s+sbBuildVmcNeutrinoArgs\(configSet, gEthSupport.prefix\(\), &neutrinoVmc\);', leg):
+    failures.append("ethTryNeutrino: no -mc VMC args while NFS Writes is Off")
+native = re.search(r'configGetVMC\(configSet, vmc_name, sizeof\(vmc_name\), vmc_id\);\n(.*?)\n\s+if \(vmc_name\[0\]\) \{', launch, re.S)
+if native is None or "if (vmc_name[0] && (itemList->flags & MODE_FLAG_READ_ONLY))" not in native.group(1) \
+        or "vmc_name[0] = '\\0';" not in native.group(1):
+    failures.append("EthSource::launch: a VMC named for a game is dropped before sysCheckVMC while NFS Writes is Off")
 if "sysNeutrinoSmbPreflight(neutrinoPath, &smb, nfs ? nfsExport : NULL)" not in leg:
     failures.append("ethTryNeutrino: the NFS leg preflights bsd-nfs.toml with the export")
 # Execute the launch policy with missing, explicit and legacy Default keys.

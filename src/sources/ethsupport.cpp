@@ -351,6 +351,11 @@ int ethIsNfs(void)
     return gEthSupport.nfs();
 }
 
+int ethIsReadOnly(void)
+{
+    return (ethInstance()->flags & MODE_FLAG_READ_ONLY) != 0;
+}
+
 int ethShareChosen(void)
 {
     return gEthSupport.shareChosen();
@@ -1093,8 +1098,8 @@ void EthSource::launchCue(item_list_t *itemList, const char *cueName, config_set
 // does not (port 445, SMB 3.0 dialect only, read-only, no VMC on the share). Each limit
 // is checked here, before anything is prepared, and a miss says why and returns 0: the caller goes on
 // with the OPL core. 1 = handled (handed off to Neutrino, or the user backed out of a dialog).
-// NFS (-bsd=nfs -dvd=nfs:<path>, ps2max32/neutrino PR #240) has no OPL core: every game takes this leg,
-// whatever its core, and a miss says why and returns 0, which EthSource::launch then ends the launch on.
+// NFS (-bsd=nfs -dvd=nfs:<path>, ps2max32/neutrino PR #240) is the same, with nfs_cdvdman as its OPL core.
+// While NFS Writes is Off no VMC is used on either core: the game saves to the real memory card.
 static int ethSmbNeutrinoRequested(config_set_t *configSet)
 {
     int coreLoader = gDefaultCoreLoader;
@@ -1114,19 +1119,19 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
     const int nfs = gEthSupport.nfs();
     const char *driver = nfs ? "nfs" : "smb";
 
-    if (!nfs && !ethSmbNeutrinoRequested(configSet))
+    if (!ethSmbNeutrinoRequested(configSet))
         return 0;
 
     // Neutrino reads one plain ISO: no USBExtreme parts and no ZSO.
     if (game->format == GAME_FORMAT_USBLD || !strcasecmp(game->extension, ".zso")) {
-        host::ui().warning(_l(nfs ? _STR_NFS_BAD_FORMAT : _STR_NEUTRINO_BAD_FORMAT), 6);
+        host::ui().warning(_l(_STR_NEUTRINO_BAD_FORMAT), 6);
         return 0;
     }
     // neutrino.elf, its config/ and its modules/ must be on a device that outlives the SMB teardown, so
     // the share itself is not searched (NULL), and a custom path pointing at it is refused.
     const char *neutrinoPath = sbResolveNeutrinoPath(NULL);
     if (neutrinoPath == NULL || !strncmp(neutrinoPath, "smb", 3) || !strncmp(neutrinoPath, "nfs", 3)) {
-        host::ui().warning(_l(nfs ? _STR_NFS_NEUTRINO_NOT_FOUND : _STR_NEUTRINO_NOT_FOUND), 6);
+        host::ui().warning(_l(_STR_NEUTRINO_NOT_FOUND), 6);
         return 0;
     }
     // usmb2 always dials port 445.
@@ -1146,11 +1151,14 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
             return 0;
         }
     }
-    // smb_ioman/smb_fhi are read-only: a VMC on the share cannot be written. An enabled VMC keeps the game
-    // on the OPL core, whose smb_mcemu writes it.
-    sbBuildVmcNeutrinoArgs(configSet, gEthSupport.prefix(), &neutrinoVmc);
+    // smb_ioman/smb_fhi (nfs_ioman/nfs_fhi) are read-only: a VMC on the share cannot be written. An enabled
+    // VMC keeps the game on the OPL core, whose smb_mcemu writes it. With NFS Writes Off there is none to keep.
+    if (itemList->flags & MODE_FLAG_READ_ONLY)
+        LOG("[NEUTRINO] VMC not used: NFS Writes is Off\n");
+    else
+        sbBuildVmcNeutrinoArgs(configSet, gEthSupport.prefix(), &neutrinoVmc);
     if (neutrinoVmc.arg[0][0] || neutrinoVmc.arg[1][0]) {
-        host::ui().warning(_l(nfs ? _STR_NFS_NO_VMC : _STR_NEUTRINO_SMB_VMC), 6);
+        host::ui().warning(_l(nfs ? _STR_NEUTRINO_NFS_VMC : _STR_NEUTRINO_SMB_VMC), 6);
         return 0;
     }
 
@@ -1202,7 +1210,7 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
     }
 
     // Before any preparation: this Neutrino build must carry the SMB (NFS) modules, and bsd-smb.toml
-    // (bsd-nfs.toml) must take this game's values. Either miss leaves the OPL core to run an SMB game.
+    // (bsd-nfs.toml) must take this game's values. Either miss leaves the OPL core to run the game.
     result = sysNeutrinoSmbPreflight(neutrinoPath, &smb, nfs ? nfsExport : NULL);
     if (result < 0) {
         host::ui().warning(_l(result == -2 ? _STR_NEUTRINO_TOML_SYNC_FAILED : nfs ? _STR_NFS_NEUTRINO_UNSUPPORTED : _STR_NEUTRINO_SMB_UNSUPPORTED), 6);
@@ -1310,9 +1318,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // otherwise, and for every game on "Default" or <OPL>, the OPL core below.
     if (ethTryNeutrino(itemList, game, configSet))
         return;
-    // NFS has no OPL core leg (no in-game NFS reader): ethTryNeutrino has said why it did not launch.
-    if (gEthSupport.nfs())
-        return;
+    const int nfs = gEthSupport.nfs();
 
     char vmc_name[32];
     int vmc_id, size_mcemu_irx = 0;
@@ -1322,6 +1328,11 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     for (vmc_id = 0; vmc_id < 2; vmc_id++) {
         memset(&smb_vmc_infos, 0, sizeof(smb_vmc_infos_t));
         configGetVMC(configSet, vmc_name, sizeof(vmc_name), vmc_id);
+        // NFS Writes Off: the export keeps nothing, so the game uses the real memory card (as BDM's read-only devices).
+        if (vmc_name[0] && (itemList->flags & MODE_FLAG_READ_ONLY)) {
+            LOG("ETH VMC %s not used: NFS Writes is Off\n", vmc_name);
+            vmc_name[0] = '\0';
+        }
         if (vmc_name[0]) {
             if (sysCheckVMC(gEthSupport.prefix(), "\\", vmc_name, 0, &vmc_superblock) > 0) {
                 smb_vmc_infos.flags = vmc_superblock.mc_flag & 0xFF;
@@ -1360,15 +1371,16 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     /*
       The in-game reader follows the browse driver that is actually resident, not the saved row:
       a dialect changed without the restart is still browsing on the old driver, and that is the
-      one known to reach this server. smb2_cdvdman is smb_cdvdman with smb.c swapped for smb2.c
-      (same settings block, same exports for smb_mcemu), so everything below is unchanged.
+      one known to reach this server. smb2_cdvdman and nfs_cdvdman are smb_cdvdman with smb.c
+      swapped for smb2.c or nfs.c (same settings block, same exports for smb_mcemu; NFS adds its
+      export after the block), so everything below is unchanged.
     */
     int launchDialect = ethGetLoadedSmbDialect();
     if (launchDialect < 0)
         launchDialect = gSMBDialect;
-    void **cdvdmanIrx = (launchDialect == SMB_DIALECT_V2) ? smb2_cdvdman_irx : smb_cdvdman_irx;
-    int cdvdmanSize = (launchDialect == SMB_DIALECT_V2) ? size_smb2_cdvdman_irx : size_smb_cdvdman_irx;
-    LOG("ETH launch: in-game reader %s\n", (launchDialect == SMB_DIALECT_V2) ? "smb2_cdvdman" : "smb_cdvdman");
+    void **cdvdmanIrx = nfs ? nfs_cdvdman_irx : (launchDialect == SMB_DIALECT_V2) ? smb2_cdvdman_irx : smb_cdvdman_irx;
+    int cdvdmanSize = nfs ? size_nfs_cdvdman_irx : (launchDialect == SMB_DIALECT_V2) ? size_smb2_cdvdman_irx : size_smb_cdvdman_irx;
+    LOG("ETH launch: in-game reader %s\n", nfs ? "nfs_cdvdman" : (launchDialect == SMB_DIALECT_V2) ? "smb2_cdvdman" : "smb_cdvdman");
 
     compatmask = sbPrepare(game, configSet, cdvdmanSize, cdvdmanIrx, &i, 1);
     if (compatmask < 0) // sbPrepare failed (patch zone not found) and never set `i`: it still holds the
@@ -1418,11 +1430,19 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // both modules read the block as this file writes it, from the same cdvd_config.h.
 
     sprintf(settings->smb_ip, "%u.%u.%u.%u", pc_ip[0], pc_ip[1], pc_ip[2], pc_ip[3]);
-    settings->smb_port = gPCPort;
-    strcpy(settings->smb_share, gPCShareName);
     strcpy(settings->smb_prefix, gETHPrefix);
-    strcpy(settings->smb_user, gPCUserName);
-    strcpy(settings->smb_password, gPCPassword);
+    if (nfs) {
+        // nfs.c dials 2049, as nfsman does, and mounts the export; it takes no share or login.
+        static_assert(sizeof(((struct cdvdman_settings_nfs *)0)->nfs_export) >= sizeof(gNfsExport),
+                      "cdvdman_settings_nfs.nfs_export (cdvd_config.h) must hold NFS Export");
+        settings->smb_port = 2049;
+        strcpy(((struct cdvdman_settings_nfs *)settings)->nfs_export, gNfsExport);
+    } else {
+        settings->smb_port = gPCPort;
+        strcpy(settings->smb_share, gPCShareName);
+        strcpy(settings->smb_user, gPCUserName);
+        strcpy(settings->smb_password, gPCPassword);
+    }
 
     // Sum the size of all parts, for CDVDMAN's out-of-bounds read emulation (upstream OPL #1763).
     // One part that cannot be opened or sized makes the whole size unknown: a partial total would be

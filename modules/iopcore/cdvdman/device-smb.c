@@ -11,8 +11,6 @@
 
 #include "device.h"
 
-extern struct cdvdman_settings_smb cdvdman_settings;
-
 extern struct irx_export_table _exp_oplsmb;
 
 extern int smb_io_sema;
@@ -29,6 +27,9 @@ int (*plwip_send)(int s, void *dataptr, int size, unsigned int flags);          
 int (*plwip_socket)(int domain, int type, int protocol);                                                                                   // #13
 int (*plwip_setsockopt)(int s, int level, int optname, const void *optval, socklen_t optlen);                                              // #19
 u32 (*pinet_addr)(const char *cp);                                                                                                         // #24
+#ifdef NFS_DRIVER
+int (*plwip_bind)(int s, struct sockaddr *name, socklen_t namelen); // #5, for nfs.c's port below 1024
+#endif
 
 static u32 ServerCapabilities;
 // 0 = not attempted, 1 = all image files opened, -1 = failed/unmounted.
@@ -51,6 +52,9 @@ static int ps2ip_init(void)
     plwip_socket = info.exports[13];
     plwip_setsockopt = info.exports[19];
     pinet_addr = info.exports[24];
+#ifdef NFS_DRIVER
+    plwip_bind = info.exports[5];
+#endif
     return 1;
 }
 

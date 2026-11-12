@@ -266,8 +266,6 @@ int guiGameResolveEffectiveCore(config_set_t *configSet, item_list_t *support, i
         core = key == 0 ? 0 : 1;
     else if (support != NULL && libListRowView(support, id) == LIB_VIEW_PS1)
         core = 0;
-    else if (sourceMode == ETH_MODE && ethIsNfs())
-        core = 1; // NFS has no OPL core leg (ethTryNeutrino)
     return core;
 }
 
@@ -675,7 +673,7 @@ int guiGameAutoCreateVmc(item_list_t *support, int id, config_set_t *configSet)
         return 1;
     // A read-only server launches without a VMC, so there is nothing to create.
     if (backing == NULL || !backing->enabled || !gsOf(backing)->hasCheckVmc() || backing->mode == HTTP_MODE || bdmModeIsPCCF(backing->mode) ||
-        bdmModeIsReadOnly(backing->mode) || (backing->mode == ETH_MODE && ethIsNfs()))
+        bdmModeIsReadOnly(backing->mode) || (backing->mode == ETH_MODE && ethIsReadOnly()))
         return 1;
     int loader = gDefaultCoreLoader;
     configGetInt(configSet, CONFIG_ITEM_CORE_LOADER, &loader);
@@ -804,13 +802,6 @@ void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)
         guiMsgBox(_l(_STR_HTTP_NO_VMC), 0, NULL);
         return;
     }
-    // NFS games run on Neutrino only, which takes no VMC from the export (ethTryNeutrino). One assigned
-    // already (on SMB) can still be reset or disabled, or the game would never launch.
-    int nfs = sourceMode == ETH_MODE && ethIsNfs();
-    if (nfs && !vmc1[0] && !vmc2[0]) {
-        guiMsgBox(_l(_STR_NFS_NO_VMC), 0, NULL);
-        return;
-    }
     if (bdmModeIsPCCF(sourceMode)) {
         guiMsgBox(_l(_STR_PCCF_UNSUPPORTED_GAME), 0, NULL);
         return;
@@ -818,6 +809,10 @@ void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)
     // A VMC is a file on the game's device: none can be created or used on a read-only server (YAOPL 9f556b55).
     if (bdmModeIsReadOnly(sourceMode)) {
         guiMsgBox(_l(_STR_NET_READ_ONLY_VMC), 0, NULL);
+        return;
+    }
+    if (sourceMode == ETH_MODE && ethIsReadOnly()) { // NFS with NFS Writes Off
+        guiMsgBox(_l(_STR_NFS_READ_ONLY_VMC), 0, NULL);
         return;
     }
 
@@ -843,10 +838,7 @@ void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)
         // UI_BOOL state persists across the button-driven do/while re-entries; read it back each pass
         diaGetInt(diaVMCConfig, COMPAT_VMC1_DISABLE, &vmc1Disabled);
         diaGetInt(diaVMCConfig, COMPAT_VMC2_DISABLE, &vmc2Disabled);
-        if (nfs && (result == COMPAT_VMC1_DEFINE || result == COMPAT_VMC2_DEFINE || (result == COMPAT_VMC1_ACTION && !vmc1[0]) ||
-                    (result == COMPAT_VMC2_ACTION && !vmc2[0]))) {
-            guiMsgBox(_l(_STR_NFS_NO_VMC), 0, NULL); // no Create, no Use Generic
-        } else if (result == COMPAT_VMC1_DEFINE) {
+        if (result == COMPAT_VMC1_DEFINE) {
             if (menuCheckParentalLock() == 0) {
                 if (guiGameShowVMCConfig(id, support, configSet, vmc1, 0, 0))
                     diaGetString(diaVMC, VMC_NAME, vmc1, sizeof(vmc1));
@@ -873,8 +865,6 @@ void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)
         }
     } while (result >= COMPAT_NOEXIT);
 
-    if (nfs) // Reset and disable only: validating would make a missing card on the export
-        return;
     guiGameShowVMCConfig(id, support, configSet, vmc1, 0, 1);
     guiGameShowVMCConfig(id, support, configSet, vmc2, 1, 1);
 }
@@ -1666,8 +1656,6 @@ static int guiGameDialogCoreIsNeutrino(int sourceMode, item_list_t *support, int
     // (bdmNetBlockCoreLoader).
     if (sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode))
         return coreChoice != 0;
-    if (sourceMode == ETH_MODE && ethIsNfs())
-        return 1; // NFS: Neutrino only, the row is pinned
     return (coreChoice == 1) || (coreChoice == 2 && gDefaultCoreLoader == 1);
 }
 
@@ -1792,8 +1780,7 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
     // (UDPBD and UDPFS IMG: bdmSupportIsUDPBD for its page, bdmModeIsUDPBD for a Favourite of it) boot
     // either core; their selector stays open and its "Default" row means Neutrino. Every other device
     // re-enables the row too (the dialog struct is reused across games).
-    const int nfsSource = sourceMode == ETH_MODE && ethIsNfs(); // Neutrino only (ethTryNeutrino)
-    coreDefaultNeutrino = sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode) || nfsSource;
+    coreDefaultNeutrino = sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode);
     if (support != NULL && libListRowView(support, id) == LIB_VIEW_PS1) // POPSTARTER: neither core
         snprintf(loaderDefault, sizeof(loaderDefault), "%s", _l(_STR_DEFAULT));
     else
@@ -1806,12 +1793,11 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
         // could run under a different core.
         diaSetInt(diaCompatConfig, COMPAT_LOADER, 2);
         diaSetEnabled(diaCompatConfig, COMPAT_LOADER, 0);
-    } else if (support != NULL && (sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode) || nfsSource)) {
+    } else if (support != NULL && (sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode))) {
         // HTTP and CF have no Neutrino launch leg (external Neutrino cannot restore the CF bus) --
         // the effective core is ALWAYS <OPL>. Pin the row to the inert "Default" (index 2: saving removes any
         // stale $CoreLoader key, self-healing old Neutrino selections) and lock it. Launch-time
         // honesty for keys set elsewhere (e.g. via Favourites) is the toast in the HTTP launch.
-        // NFS is the reverse, Neutrino ALWAYS: the same pinned "Default", which reads "Default (Neutrino)" there.
         diaSetInt(diaCompatConfig, COMPAT_LOADER, 2);
         diaSetEnabled(diaCompatConfig, COMPAT_LOADER, 0);
     } else {
