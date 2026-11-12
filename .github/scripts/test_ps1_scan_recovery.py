@@ -21,7 +21,7 @@ def function(source, signature):
 
 
 needs = function(eth, 'int EthSource::needsUpdate(').replace('EthSource::needsUpdate', 'ethNeedsUpdate')
-start = eth.index('            int r = ps1FillGameList(')
+start = eth.index('            const int nfs = gEthSupport.nfs();')
 publish = eth[start:eth.index('            // NULL sub', start)]
 start = udp.index('        int r = ps1FillGameList(')
 udp_publish = udp[start:udp.index('\n    }', start)]
@@ -58,6 +58,8 @@ static int ps1FillGameList(const char*, base_game_info_t **rows, int previousCou
     return scanResult;
 }
 static int ps1GameListNeedsRetry() { return incomplete; }
+// NFS lists Ember only (cueFillGameList); the SMB session under test takes the union scanner.
+static int cueFillGameList(const char*, base_game_info_t **) { assert(!"NFS scan on an SMB session"); return -1; }
 struct Library {
     int consumeDirty(int) { int value = dirty; dirty = 0; return value; }
     int listViewActive(item_list_t*) { return view; }

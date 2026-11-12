@@ -805,13 +805,15 @@ int EthSource::update(item_list_t *itemList)
         if (gNetworkStartup != 0)
             return 0;
 
-        // PS1 games are SMB's: POPSTARTER and Ember reach them through SMB, so over NFS the PS1 list stays empty.
-        if (!gEthSupport.nfs() && (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED)) {
-            // One list, both cores. Keep readable rows while retrying an incomplete scan.
-            int r = ps1FillGameList(gEthSupport.prefix(), &gEthSupport.ps1Games(), gEthSupport.ps1GameCount());
+        if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
+            // SMB: one list, both cores. NFS lists Ember ONLY, as UDPBD does: POPSTARTER resets the IOP and
+            // dials SMB itself, while Ember keeps the live nfs: mount. Keep readable rows while retrying.
+            const int nfs = gEthSupport.nfs();
+            int r = nfs ? cueFillGameList(gEthSupport.prefix(), &gEthSupport.ps1Games()) :
+                          ps1FillGameList(gEthSupport.prefix(), &gEthSupport.ps1Games(), gEthSupport.ps1GameCount());
             if (r >= 0) // r < 0: transient scan failure -> preserve the last-good list
                 gEthSupport.ps1GameCount() = r;
-            gEthSupport.ps1ScanFailed() = r < 0 || ps1GameListNeedsRetry();
+            gEthSupport.ps1ScanFailed() = r < 0 || (!nfs && ps1GameListNeedsRetry());
             if (!gEthSupport.ps1ScanFailed())
                 gEthSupport.ps1ScanRetries() = 0;
             // NULL sub opts SMB/ETH out of folder-row collection: it uses a "\\" separator and does not
@@ -1042,18 +1044,15 @@ void EthSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set
     sysLaunchPopstarter(vcdElf, vcdSelector);
 }
 
-// Ember (*.cue) launch over SMB. Mirrors bdmLaunchCue; the only SMB-specific part is that the
-// prefix already ends with its own separator, which cuesupport honours via cueSep().
+// Ember (*.cue) launch over SMB or NFS. Mirrors bdmLaunchCue; the only SMB-specific part is that the
+// prefix already ends with its own separator, which cuesupport honours via cueSep(). NFS's prefix is
+// nfs:/NFS/[ETH prefix\\], read through the same live nfsman mount the list came from.
 void EthSource::launchCue(item_list_t *itemList, const char *cueName, config_set_t *configSet)
 {
     char emberElf[256], biosPath[288];
     char launchName[CUE_NAME_MAX];
 
-    if (gEthSupport.nfs()) {
-        host::ui().msgBox(_l(_STR_NFS_NO_PS1), 0, NULL);
-        return;
-    }
-    if (!gPCShareName[0] || cueName == NULL || cueName[0] == '\0')
+    if (!gEthSupport.shareChosen() || cueName == NULL || cueName[0] == '\0')
         return;
 
     // Refuse what Ember itself would refuse, while a dialog can still be drawn.
@@ -1087,8 +1086,8 @@ void EthSource::launchCue(item_list_t *itemList, const char *cueName, config_set
     // and the GUI are still live. A miss never blocks the launch.
     cuePrepareRetroGemBarcode(gEthSupport.prefix(), cueName);
 
-    // UNMOUNT_EXCEPTION is load-bearing: Ember reads its game through the SMB mount that is live
-    // right now, so that mount must survive the teardown.
+    // UNMOUNT_EXCEPTION is load-bearing: Ember reads its game through the SMB or NFS mount that is
+    // live right now, so that mount must survive the teardown.
     host::app().deinit(UNMOUNT_EXCEPTION, itemList->mode);
     sysLaunchEmber(emberElf, launchName);
 }
@@ -1651,12 +1650,12 @@ int EthSource::ps1SaveDir(item_list_t *itemList, int id, const char *name, int *
     if (!ps1RowKind(itemList, id, ember))
         return 0;
     partition[0] = '\0';
-    return !gEthSupport.nfs() && gPCShareName[0] && saveIconPs1Directory(gEthSupport.prefix(), name, *ember, directory, directorySize);
+    return gEthSupport.shareChosen() && saveIconPs1Directory(gEthSupport.prefix(), name, *ember, directory, directorySize);
 }
 
 int EthSource::saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet)
 {
     (void)itemList;
     (void)id;
-    return !gEthSupport.nfs() && gPCShareName[0] && cueSaveGameSettings(gEthSupport.prefix(), name, configSet);
+    return gEthSupport.shareChosen() && !ethIsReadOnly() && cueSaveGameSettings(gEthSupport.prefix(), name, configSet);
 }

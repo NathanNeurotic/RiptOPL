@@ -52,7 +52,8 @@ item_list_t *ethGetObject(int initOnly);
 int ethResolveIsoFavourite(int id, const char *name, int *outId);
 const char *ethGetSMBPrefix(void);
 // 1 while the ETH page reads an NFS export (Network Protocol NFS) instead of an SMB share. NFS games
-// run on either core, as SMB ones do (the OPL core's in-game reader is nfs_cdvdman); there is no PS1 launch.
+// run on either core, as SMB ones do (the OPL core's in-game reader is nfs_cdvdman). PS1 is Ember only: it
+// keeps the live nfs: mount, while POPSTARTER resets the IOP and reaches only SMB.
 int ethIsNfs(void);
 // 1 while the ETH page is MODE_FLAG_READ_ONLY: NFS with NFS Writes Off, which keeps nothing (no VMC).
 int ethIsReadOnly(void);

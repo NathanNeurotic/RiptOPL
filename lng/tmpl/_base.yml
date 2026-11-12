@@ -2689,5 +2689,6 @@ gui_strings:
 - comment: Game menu VMC entry for an NFS game while NFS Writes is Off. The game then uses the real memory card.
   label: NFS_READ_ONLY_VMC
   string: "NFS Writes is Off, so no VMC can be used on the export. The game saves to the real memory card."
-- label: NFS_NO_PS1
-  string: PS1 games cannot be launched over NFS. Use SMB for them.
+- comment: A POPSTARTER (.VCD) title reached over NFS. POPSTARTER resets the IOP and reaches only SMB; Ember games launch over NFS.
+  label: NFS_NO_PS1
+  string: POPSTARTER cannot launch over NFS. Use Ember, or SMB, for this game.
