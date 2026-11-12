@@ -549,7 +549,7 @@ int sysGetDiscID(char *hexDiscID)
 // - LoadBOOTer (the memory card exploit installer's update) always runs mc0:/BOOT/BOOT.ELF. Its
 //   path sits at offset 12440 in the update, as Launchstation checks (its PR #362).
 // - FMCB opens its own menu (issue #370, reporter's console). Its config, SYS-CONF/FREEMCB.CNF,
-//   is on the same card; a card that also has OSDMenu's SYS-CONF/OSDMENU.CNF is left alone.
+//   is on the same card; if OSDMenu's SYS-CONF/OSDMENU.CNF is on either card, it is left alone.
 static int exitCardUpdateIgnoresBrowser(void)
 {
     char romver[16] = {0}, path[40], buf[18];
@@ -575,15 +575,18 @@ static int exitCardUpdateIgnoresBrowser(void)
         match = lseek(fd, 12440, SEEK_SET) == 12440 && read(fd, buf, 18) == 18 && !memcmp(buf, "mc0:/BOOT/BOOT.ELF", 18);
         close(fd);
         if (!match) {
-            // FMCB: its config is on the card and OSDMenu's is not (OSDMenu may leave FREEMCB.CNF behind).
+            // FMCB: its config is on the card and OSDMenu's is on neither card (OSDMenu may leave FREEMCB.CNF behind).
             snprintf(path, sizeof(path), "mc%d:/SYS-CONF/FREEMCB.CNF", port);
             if ((fd = open(path, O_RDONLY)) >= 0) {
                 close(fd);
-                snprintf(path, sizeof(path), "mc%d:/SYS-CONF/OSDMENU.CNF", port);
-                if ((fd = open(path, O_RDONLY)) >= 0)
-                    close(fd);
-                else
-                    match = 1;
+                match = 1;
+                for (int other = 0; other < 2 && match; other++) {
+                    snprintf(path, sizeof(path), "mc%d:/SYS-CONF/OSDMENU.CNF", other);
+                    if ((fd = open(path, O_RDONLY)) >= 0) {
+                        close(fd);
+                        match = 0;
+                    }
+                }
             }
         }
         break;
