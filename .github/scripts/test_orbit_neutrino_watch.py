@@ -120,7 +120,7 @@ class OrbitWatchWorkflowTests(unittest.TestCase):
 
     def test_uses_the_script_and_includes_prereleases(self):
         self.assertIn(".github/scripts/orbit_neutrino_watch.py", self.text)
-        self.assertIn("releases?per_page=", self.text)
+        self.assertIn("releases?per_page=100", self.text)
         self.assertNotIn("releases/latest", self.text.replace('"releases/latest" would', ""))
         self.assertIn("ORBIT_REPO: danielnuld/nuld\n", self.text)
 
