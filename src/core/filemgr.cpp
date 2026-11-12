@@ -302,7 +302,7 @@ static int fmRoomFor(const char *dstDir, long long size)
         return 1; // the driver does not say: let the write find out
     if (o[3] != 4 && size > 0xFFFFFFFFLL)
         return 0;
-    if ((unsigned long long)o[0] * 1024ULL < (unsigned long long)size) // o[0]: free KB, o[3]: FatFs fs_type
+    if ((unsigned long long)o[0] * o[2] < (unsigned long long)size) // o[0]: free clusters, o[2]: cluster bytes, o[3]: FatFs fs_type
         return 0;
 #else
     (void)dstDir;

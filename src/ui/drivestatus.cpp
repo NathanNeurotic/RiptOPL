@@ -99,8 +99,8 @@ static void dsScan(void)
         root[strlen(root) - 1] = '\0'; // the devctl goes to "massN:"
         memset(o, 0, sizeof(o));
         if (n < DS_LINE_SIZE && fileXioDevctl(root, BDM_DEVCTL_VOLINFO, NULL, 0, o, sizeof(o)) == 0 && o[2] != 0 && o[3] >= 1 && o[3] <= 4) {
-            dsSizeText(o[0], a, sizeof(a));
-            dsSizeText(o[1], b, sizeof(b));
+            dsSizeText((unsigned long long)o[0] * o[2] / 1024, a, sizeof(a)); // o[0], o[1]: clusters; o[2]: cluster bytes
+            dsSizeText((unsigned long long)o[1] * o[2] / 1024, b, sizeof(b));
             char space[DS_LINE_SIZE];
             if (o[2] >= 1024)
                 dsSizeText(o[2] / 1024, c, sizeof(c));

@@ -988,13 +988,13 @@ static int fs_devctl(iop_file_t *fd, const char *name, int cmd, void *arg, unsig
         case VMC_ALLOC_CAPS:
             ret = VMC_ALLOC_V1;
             break;
-        // Drive Status: free/total KB, cluster bytes, format (ported from RIPPS2 build 114, akilluminati47)
+        // Drive Status: free/total clusters, cluster bytes, format (ported from RIPPS2 build 114, akilluminati47).
+        // RiptOPL: clusters, not KB. KB in 32 bits stops at 4 TB, so an 8 TB drive showed 3.9 TB.
         case BDM_DEVCTL_VOLINFO: {
             int vol = fs_driver_resolve_volume(fd->device->name, fd->unit);
             char root[3] = {0, ':', 0};
             DWORD nclst = 0;
             FATFS *vfs = NULL;
-            unsigned long long cb, kb, tkb;
             unsigned int *o = (unsigned int *)buf;
             if (vol < 0 || vol > 9 || buf == NULL || buflen < 16) {
                 ret = -EINVAL;
@@ -1005,16 +1005,13 @@ static int fs_devctl(iop_file_t *fd, const char *name, int cmd, void *arg, unsig
                 ret = -EIO;
                 break;
             }
+            o[0] = nclst;
+            o[1] = vfs->n_fatent - 2;
 #if FF_MAX_SS != FF_MIN_SS
-            cb = (unsigned long long)vfs->csize * vfs->ssize;
+            o[2] = (unsigned int)vfs->csize * vfs->ssize;
 #else
-            cb = (unsigned long long)vfs->csize * FF_MAX_SS;
+            o[2] = (unsigned int)vfs->csize * FF_MAX_SS;
 #endif
-            kb = (unsigned long long)nclst * cb / 1024;
-            tkb = (unsigned long long)(vfs->n_fatent - 2) * cb / 1024;
-            o[0] = kb > 0xFFFFFFFFULL ? 0xFFFFFFFFu : (unsigned int)kb;
-            o[1] = tkb > 0xFFFFFFFFULL ? 0xFFFFFFFFu : (unsigned int)tkb;
-            o[2] = (unsigned int)cb;
             o[3] = vfs->fs_type;
             ret = 0;
             break;
