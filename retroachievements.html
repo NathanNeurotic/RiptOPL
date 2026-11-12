@@ -294,7 +294,7 @@ path. Disc boot, telemetry across game IOP resets and the IGR return path still 
 ee_core has nothing to take a snapshot from. The RA kit's Neutrino carries its own agent (below), and a USB
 VCD carries its own reader into POPStarter (see <a href="#ps1-through-usb-popstarter">PS1 through USB POPStarter</a>).</p>
 <h3 id="neutrino-in-the-ra-edition">Neutrino in the RA edition</h3>
-<p>The RetroAchievements kit's <code>neutrino/</code> is <strong><a href="https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2">ORBIT v1.0.2</a></strong>'s
+<p>The RetroAchievements kit's <code>neutrino/</code> is <strong><a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.12">ORBIT (now NULD) v1.2.12</a></strong>'s
 RA-Neutrino by <strong>Daniel / <a href="https://github.com/danielnuld">danielnuld</a></strong>, based on <a href="https://github.com/ps2max32/neutrino">Neutrino</a> by <strong><a href="https://github.com/rickgaiser">Maximus32</a></strong>, with an achievement agent
 (<code>raagent.irx</code>) that speaks <strong><a href="https://github.com/hacan359">hacan359</a> / <a href="https://github.com/hacan359/xerabora">xeRAbora</a></strong>'s protocol. Its AFL-3.0 licence, source commit and
 archive SHA-256 ship beside it (<code>neutrino/ORBIT-RA.json</code>). Standard kits keep ordinary upstream Neutrino,
@@ -312,9 +312,11 @@ a static console IP; other devices raise the menu network first, unless a UDP tr
 tracked. It reads the direct entries only and ignores a pointer-chain tail, as xeRAbora's protocol defines
 for an agent without chain support: chain-based achievements do not unlock on Neutrino launches while the
 rest of the set does. A game without a watch list launches quietly; any other reason the handoff cannot be
-made (no ORBIT runtime, no companion address, a failed write, or the two arguments pushing the launch past
-Neutrino's 256-byte budget) launches the game without achievements and says so. <strong>Console unlock cards and
-remote reset are not provided by this runtime</strong>; unlocks appear on the companion. <strong>NOT TESTED on hardware.</strong></p>
+made (no NULD runtime, no companion address, a failed write, or the two arguments pushing the launch past
+Neutrino's 256-byte budget) launches the game without achievements and says so. <strong>RiptOPL does not claim
+console unlock cards, and remote reset is not provided by this runtime</strong>; unlocks appear on the companion.
+NULD v1.2.12 can show an unlock box and pause the game for about 2.5 s when the client sends <code>RAU1</code>; RiptOPL
+hands over no titles for it, and client support for <code>RAU1</code> is unverified. <strong>NOT TESTED on hardware.</strong></p>
 <h3 id="do-not-expect-a-game-with-achievements-to-run-from-a-network-share">Do not expect a game with achievements to run from a network share</h3>
 <p>A game that streams its own disc over the NIC is competing with telemetry for that NIC. This build no
 longer <em>reads</em> from the network in play on such a launch — <code>raudp</code> stops walking the SMAP receive ring
@@ -524,7 +526,7 @@ switching between RA and a standard edition needs no clean step. See
 <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/ROLLING_RELEASE.md">release channels and packaging</a> for packaging.</p>
 <p>The <code>rolling-ra</code> channel publishes the kit as <strong><code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code></strong>, built to the same
 shape as the standard kit: <code>POPS/</code>, <code>EMBER/</code>, <code>neutrino/</code> (here the
-<a href="https://github.com/danielnuld/ps2-launcher/releases/tag/v1.0.2">ORBIT Neutrino RA runtime v1.0.2</a>, see
+<a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.12">NULD (formerly ORBIT) Neutrino RA runtime v1.2.12</a>, see
 <a href="#neutrino-in-the-ra-edition">Neutrino in the RA edition</a>) and the PC-tool shortcuts, with
 <code>APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF</code>, matching <code>ART/RIPTOPL-RA.ELF_*.png</code> artwork, and
 <code>APP_RIPTOPL-RA.psu</code>. The PSU contains only the direct files of <code>APP_RIPTOPL-RA</code>; import it with a
