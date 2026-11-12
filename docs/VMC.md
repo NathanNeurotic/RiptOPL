@@ -14,7 +14,7 @@ Every build compiles the BDM filesystem module from `modules/bdm/bdmfs_fatfs` (`
 
 Native OPL on FAT32/exFAT BDM storage requires a contiguous VMC sector range; do not bypass launch-time write guards. Native APA/PFS uses bounded inode/block mapping. MMCE uses a separate file-backed contract; unsupported layout queries are unknown, not proof of fragmentation.
 
-Native launch warnings distinguish a confirmed fragmented card from a disk address outside the core's 32-bit sector range, an unavailable layout query, and a PFS mapping that exceeds the native block-table limit. A read or mapping error is not proof of fragmentation. Rejected cards stay inactive; accepting the prompt uses the physical memory card in the named slot, and declining returns to the menu. Existing VMC files and saves are not modified by these checks.
+Native launch warnings distinguish a confirmed fragmented card from a disk address the core cannot reach (past 128 GiB on an internal drive whose 48-bit support is not confirmed; no other limit), an unavailable layout query, and a PFS mapping that exceeds the native block-table limit. A read or mapping error is not proof of fragmentation. Rejected cards stay inactive; accepting the prompt uses the physical memory card in the named slot, and declining returns to the menu. Existing VMC files and saves are not modified by these checks.
 
 Neutrino's BDM mapper supports multiple extents and shares a 64-fragment budget across the game and cards in the bundled runtime. If that combined count exceeds the limit, the prompt reports the current count and asks whether to skip the named VMC and use the physical memory card in that slot. Even a contiguous VMC can exceed the budget when the game already uses all 64 entries. Declining returns to the menu. This is different from native OPL requiring a single-extent VMC; it does not mean that a fragmented VMC always fails under Neutrino. APA/PFS VMC backing is not available under bundled Neutrino. Record the selected core and exact failure stage.
 
@@ -26,7 +26,7 @@ For historical source defects and validation limits, see the [creation/cancellat
 
 Native BDM creation requests a private versioned capability from the bundled FAT driver before opening a destination. The driver must return the exact positive version token; an old driver's zero/default response is not success. The destination is opened exclusively as a new file, without truncation. A file that appears after the menu's absence check is preserved.
 
-The driver enables FatFs `f_expand` and reserves the complete card allocation before formatting. Reservation does not initialize data: genvmc still writes every cluster and the complete card structures. Successful creation requires a synchronized, single-extent mapping within the native 32-bit sector range; a failed final verification or close is reported as failure. Only this job's newly created incomplete file is removed on failure or cancellation.
+The driver enables FatFs `f_expand` and reserves the complete card allocation before formatting. Reservation does not initialize data: genvmc still writes every cluster and the complete card structures. Successful creation requires a synchronized, single-extent mapping; a failed final verification or close is reported as failure. Only this job's newly created incomplete file is removed on failure or cancellation.
 
 This policy applies to native BDM card creation, including Favorites and automatic creation. Neutrino and non-BDM sources retain their existing allocation behavior. Existing cards are reused or rejected by the existing checks and are never relocated/reformatted by the allocation request. Unsupported drivers, unsupported sector sizes and unavailable contiguous space fail explicitly. Reservation and filesystem I/O can delay cancellation; power-loss recovery and damaged-media behavior require separate validation.
 
@@ -50,7 +50,7 @@ Rebuild asks for confirmation, then:
 
 1. Refuses to start if `VMC/<name>.bak` or `VMC/<name>.new` already exists (absence is proven by reading the folder). Either may hold saves, so neither is ever overwritten; move it away on a PC and try again.
 2. genvmc creates `VMC/<name>.new` exclusively, with the same reservation a new card gets: on BDM the whole card as one extent through the versioned driver API (no room means the job stops at once); on the HDD every zone in one PIOCALLOC request, and here a refusal also stops the job.
-3. genvmc copies every byte of the card into the copy, then reads both back and compares them byte for byte. On BDM the driver then confirms one extent within the 32-bit sector range.
+3. genvmc copies every byte of the card into the copy, then reads both back and compares them byte for byte. On BDM the driver then confirms one extent.
 4. The loader runs the launch's own layout check on the copy (BDM: one extent covering the card; HDD: the PFS map fits).
 5. Only then two renames swap them: the card becomes `VMC/<name>.bak`, the copy becomes `VMC/<name>.bin`. On the HDD the PFS cache is committed after the renames.
 

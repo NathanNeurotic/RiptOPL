@@ -38,7 +38,7 @@ int vmcRebuildLayout(const char *path, int sizeMb)
     fd = open(path, O_RDONLY);
     if (fd < 0)
         return -1;
-    verdict = bdmCheckNativeVmcLayout(ps2sdk_get_iop_fd(fd), sizeMb, &startingLBA, &fragments);
+    verdict = bdmCheckNativeVmcLayout(ps2sdk_get_iop_fd(fd), sizeMb, (u64)-1, &startingLBA, &fragments); // reach: checked at launch
     close(fd);
     LOG("VMC rebuild layout of %s: reason=%d fragments=%d\n", path, verdict, fragments);
     if (verdict == NATIVE_VMC_OK)

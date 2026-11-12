@@ -834,8 +834,8 @@ static int vmc_allocate_contiguous(FIL *file, const vmc_alloc_request_t *request
     if (get_frag_list(file, &extent, sizeof(extent)) != 1)
         return -EIO;
     sectors = request->bytes / 512U;
-    if (extent.count < sectors || extent.sector > 0xFFFFFFFFULL ||
-        sectors - 1 > 0xFFFFFFFFULL - extent.sector)
+    // RiptOPL: no 32-bit sector limit. mcemu and the in-game drivers take 64-bit sectors; the launch checks reach.
+    if (extent.count < sectors)
         return -EOVERFLOW;
     return VMC_ALLOC_V1;
 }
