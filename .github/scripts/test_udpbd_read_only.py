@@ -232,7 +232,7 @@ if 'int readOnly = support != NULL && !fav && (support->flags & MODE_FLAG_READ_O
 vcd_menu = function(MENUSYS, 'void menuInitVcdMenu(int isEmber, int readOnly)\n{', 'VCD menu')
 if 'if (isEmber && !readOnly)\n' not in vcd_menu or 'if (!readOnly)\n        submenuAppendItem(&appMenu, -1, NULL, APP_RENAME' not in vcd_menu:
     failures.append('menuInitVcdMenu: no Rename or Ember settings for a PS1 row on a read-only device')
-if 'menuInitVcdMenu(kind == FAV_KIND_CUE, bdmModeIsReadOnly(sourceMode));' not in TRIANGLE:
+if 'menuInitVcdMenu(kind == FAV_KIND_CUE, bdmModeIsReadOnly(sourceMode) || (sourceMode == ETH_MODE && ethIsReadOnly()));' not in TRIANGLE:
     failures.append('Triangle: the PS1 menu must be told whether the row is on a read-only device')
 if '!(support->mode == APP_MODE && appIsReadOnly(support, curMenu->current->item.id))' not in TRIANGLE:
     failures.append('Triangle: no Rename/Delete menu for an app on a read-only device')

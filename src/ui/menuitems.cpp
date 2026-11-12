@@ -499,7 +499,7 @@ void itemExecTriangle(struct menu_item *curMenu)
                 int kind = (support->mode == FAV_MODE) ? favGetItemKind(curMenu->current->item.id) :
                                                          itemFavKind(support, curMenu->current->item.id, curMenu->current->item.text);
                 int sourceMode = (support->mode == FAV_MODE) ? favGetItemSourceMode(curMenu->current->item.id) : support->mode;
-                menuInitVcdMenu(kind == FAV_KIND_CUE, bdmModeIsReadOnly(sourceMode));
+                menuInitVcdMenu(kind == FAV_KIND_CUE, bdmModeIsReadOnly(sourceMode) || (sourceMode == ETH_MODE && ethIsReadOnly()));
                 guiSwitchScreen(GUI_SCREEN_APP_MENU);
             }
             return;
