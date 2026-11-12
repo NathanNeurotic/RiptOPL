@@ -289,9 +289,11 @@ Special and sincere thanks to:
   - pcm720 - for udpfsd and nhddl, key foundations for modern PS2 streaming.
   - Ronnie Sahlberg (sahlberg) - for usmb2, the base of the fork's SMB2
     driver (https://github.com/sahlberg/usmb2), for libsmb2, which it used
-    before, and for the SMB
-    backend he added to Neutrino (https://github.com/ps2max32/neutrino/pull/236),
-    which RiptOPL uses to launch SMB games on the Neutrino core.
+    before, for unfs4, the NFS client under the NFS browse driver
+    (https://github.com/sahlberg/unfs4), and for the SMB and NFS backends he
+    added to Neutrino (https://github.com/ps2max32/neutrino/pull/236 and
+    https://github.com/ps2max32/neutrino/pull/240), which RiptOPL uses to
+    launch SMB and NFS games on the Neutrino core.
   - Ifcaro and jimmikaelkael - the original Open PS2 Loader authors - and every
     contributor across OPL's long history, all named above in this file.
 

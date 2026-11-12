@@ -2106,7 +2106,8 @@ struct UIItem diaAbout[] = {
     {UI_SPACER},
     // NathanNeurotic (maintainer). A fifth coder row: the rows above are full, and the dialog's height is
     // kept by putting Network update and its name on one row below, as Build Options and the forum are.
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - techwritescode", -1}}},
+    // sahlberg (Ronnie Sahlberg) wrote usmb2 and unfs4, under the SMB2 and NFS drivers; CREDITS has the detail.
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - sahlberg - techwritescode", -1}}},
     {UI_BREAK},
 
     // Quality Assurance
