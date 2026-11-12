@@ -78,6 +78,7 @@ MMCE Prefix Path (`mmce_prefix`).
 | Auto Start | Seconds before the remembered game starts by itself (shown when the row above is on). | `autostart_last` |
 | Browse Folders in Game List | Shows games in their folders instead of one flat list. | `folder_nav` |
 | IGR Path | Where in-game reset exits to. | `exit_path` |
+| Exit To | Where the main menu's Exit goes: Console Menu (the console's own exit, the default), PS2 Browser, or PS2 Browser (Skip Card Update). Only the main menu's Exit uses it. | `exit_menu` |
 | Custom Settings Path | A folder to read and save settings in instead of the default. | `custom_settings_path` |
 | Write Operations | Allows RiptOPL to write to game devices (rename, delete, VMC, art). | `enable_delete_rename` |
 | Parental Lock Password | Password that locks protected games and settings. | `parental_lock_password` |

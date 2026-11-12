@@ -137,8 +137,8 @@ Telemetry lives inside OPL's own loader core, which only exists for launches OPL
 | MMCE | yes |
 | Physical PS2 disc, **RA: launch disc** | implemented; **not hardware-tested** |
 | HTTP | local watch-list loading is wired into OPL-core launch; combined HTTP/RA operation is not hardware-validated, and it shares the ETH/SMB risk below |
-| Neutrino core (`$CoreLoader`) | RA kit's ORBIT runtime only (below); **not hardware-tested** |
-| UDPFS | RA kit's ORBIT runtime (below), with the support check run from the menu over the UDPFS link; **not hardware-tested** |
+| Neutrino core (`$CoreLoader`) | RA kit's NULD (formerly ORBIT) runtime only (below); **not hardware-tested** |
+| UDPFS | RA kit's NULD (formerly ORBIT) runtime (below), with the support check run from the menu over the UDPFS link; **not hardware-tested** |
 | UDPBD / UDPFS (Files or IMG) on `<OPL>` | **no** telemetry: OPL's RA module needs the SMB network stack, which cannot share the adapter with the UDP driver |
 | PS1 / USB VCD (POPStarter) | yes, through its own module (below); **NOT TESTED on hardware** |
 | PS1 / Ember, MMCE, APA HDD, SMB and non-USB BDM | **no** |

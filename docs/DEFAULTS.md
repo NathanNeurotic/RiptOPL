@@ -22,6 +22,7 @@ Settings row, the page it is on and the key it is saved under, see
 | Sound effects, boot sound, background music | Off; stored volume 90 | Settings → Audio Settings |
 | Controller Vibration in Menus | Off | Settings → Controller Settings |
 | Remember last played | Off | Settings → General & System |
+| Exit To (main menu's Exit) | Console Menu (the console's own exit) | Settings → General & System |
 | Automatic VMC creation | Off | Settings → Game Launching |
 | All Games List | Off | Settings → Game Sources |
 | Show Hidden Games | Off | Settings → Game Sources |
