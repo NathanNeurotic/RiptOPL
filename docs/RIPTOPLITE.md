@@ -31,7 +31,7 @@ HTTP and PC Card CF have no lite build.
 
 ## Why the RA builds are ZIPs
 
-RetroAchievements needs files outside the loader: ORBIT's Neutrino RA runtime replaces upstream
+RetroAchievements needs files outside the loader: NULD's (formerly ORBIT) Neutrino RA runtime replaces upstream
 Neutrino for every RA launch (see [RetroAchievements](RETROACHIEVEMENTS.md#neutrino-in-the-ra-edition)).
 Each `RIPTOPLITE-RA-<DEVICE>.zip` therefore carries the ELF, `neutrino/` (copied from the verified
 RA install kit of the same build), the xeRAbora shortcut, the licences, the build manifest and a

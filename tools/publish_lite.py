@@ -3,7 +3,7 @@
 * RIPTOPLITE-<DEVICE>.ELF -- the Korium edition with only that device's drivers. A bare ELF: it needs
   nothing the standard Korium kit does not already put on the device.
 * RIPTOPLITE-RA-<DEVICE>.zip -- the RetroAchievements edition, the same way. RA has requirements of its
-  own outside the ELF (ORBIT's Neutrino RA runtime, which replaces upstream Neutrino for every RA launch,
+  own outside the ELF (NULD's (formerly ORBIT) Neutrino RA runtime, which replaces upstream Neutrino for every RA launch,
   and mbedTLS's licence), so each RA download is a ZIP carrying them, copied from the verified RA kit.
 
 publish_editions.py verifies every build against the commit and SDK of the full kits, then publishes
@@ -35,12 +35,12 @@ Disc page.
 
 What is in this ZIP
 - {elf}: the loader. Put it where you start loaders from (for example APPS/APP_RIPTOPL-RA/).
-- neutrino/: ORBIT's Neutrino RA runtime. RetroAchievements needs it for every Neutrino launch; it
+- neutrino/: NULD's (formerly ORBIT) Neutrino RA runtime. RetroAchievements needs it for every Neutrino launch; it
   replaces upstream Neutrino. Copy the folder to the root of the device your games are on, where the
   RetroAchievements install kit puts it.
 - xeRAbora.url: the PC companion RetroAchievements reports to.
 - LICENSE, CREDITS and the LICENSE-*.txt files: the licences of RiptOPL and of the code this loader
-  embeds (mbedTLS, usmb2) and ORBIT's runtime (neutrino/LICENSE).
+  embeds (mbedTLS, usmb2) and NULD's (formerly ORBIT) runtime (neutrino/LICENSE).
 
 This build carries no drivers for other devices. It reads its settings where the full loader keeps
 them, unless that is a device it has no drivers for; a memory card or a USB stick always works. It
@@ -175,7 +175,7 @@ def release_notes(sha, version, git, repo="NathanNeurotic/RiptOPL"):
         "## Downloads\n\n"
         "| Device | Korium | RetroAchievements |\n|---|---|---|\n" + rows +
         "\nThe Korium ELFs replace RIPTOPL.ELF in an existing install. RetroAchievements needs files outside "
-        "the loader (ORBIT's Neutrino RA runtime), so each RA download is a ZIP that carries them; its "
+        "the loader (NULD's (formerly ORBIT) Neutrino RA runtime), so each RA download is a ZIP that carries them; its "
         "README says where they go.\n\n"
         "A RiptOPLite loader reads its settings where the full loader keeps them, unless that is a device it "
         "has no drivers for; a memory card or a USB stick always works. It does not change the device "
