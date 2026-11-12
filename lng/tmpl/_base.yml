@@ -2628,7 +2628,7 @@ gui_strings:
   string: No network. Check the cable and the network settings.
 - comment: Secure connections need the console's date and time.
   label: UPDATE_ERR_CLOCK
-  string: Set the console's date and time first. Secure connections need them.
+  string: Set the console's date and time first (Settings > General & System > Date and Time). Secure connections need them.
 - comment: GitHub could not be reached or answered wrongly. %d is the error code.
   label: UPDATE_ERR_GITHUB
   string: Could not reach GitHub (error %d). Check that the network has internet access and that the console's date is right.
@@ -2644,3 +2644,16 @@ gui_strings:
 - comment: The swap failed and the old ELF could not be put back. %s is the ELF's name; the old one is that name plus .BAK.
   label: UPDATE_ERR_RESTORE
   string: Could not replace the ELF or put it back. The old one is %s.BAK beside it. Rename it back with a file manager.
+- comment: "General & System row and dialog title. Sets the console's own clock (Launchstation issue 346 request)."
+  label: DATE_TIME
+  string: Date and Time
+- label: HINT_DATE_TIME
+  string: "Sets the console's clock, in the time zone chosen in the console's System Configuration."
+- comment: Date and Time dialog row (year - month - day).
+  label: DATE
+  string: Date
+- comment: "Date and Time dialog row (hour, minute; 24-hour)."
+  label: TIME
+  string: Time
+- label: DATE_TIME_ERROR
+  string: The clock was not set. Check the date and try again.

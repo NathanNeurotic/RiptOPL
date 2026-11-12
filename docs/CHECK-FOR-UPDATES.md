@@ -25,7 +25,7 @@ of build. The channel is fixed at build time (`tools/build_edition.py update_cha
   (HDD, network, MMCE) are refused before anything is downloaded.
 - A network adapter with internet access. It uses the same network settings as SMB (Settings > Network).
   While UDPBD or UDPFS owns the network adapter, it refuses and says so.
-- The console clock set to the current date: the GitHub certificates cannot be checked without it.
+- The console clock set to the current date (Settings > General & System > Date and Time): the GitHub certificates cannot be checked without it.
 - Free space for a second copy of the ELF next to the running one (about 2.5 MB).
 
 ## What it does

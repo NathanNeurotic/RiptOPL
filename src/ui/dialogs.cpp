@@ -465,6 +465,11 @@ struct UIItem diaConfig[] = {
     {UI_STRING, CFG_CUSTOMCFGPATH, 1, 1, _STR_HINT_CUSTOM_SETTINGS_PATH, 0, 0, DIA_STRING(diaStr_CFG_CUSTOMCFGPATH, NULL)},
     {UI_BREAK},
 
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_DATE_TIME}}},
+    {UI_SPACER},
+    {UI_BUTTON, CFG_DATETIME_BUTTON, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.label = {NULL, _STR_MODIFY}}},
+    {UI_BREAK},
+
     // buttons
     {UI_OK, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_OK}}},
     {UI_BREAK},
@@ -869,6 +874,31 @@ struct UIItem diaLanguageConfig[] = {
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_OSD_DEFAULTS}}},
     {UI_SPACER},
     {UI_BUTTON, LAUNCH_OSD_DEFAULTS_BUTTON, 1, 1, _STR_HINT_OSD_DEFAULTS_BUTTON, 0, 0, {.label = {NULL, _STR_MODIFY}}},
+    {UI_BREAK},
+
+    {UI_OK, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_OK}}},
+    {UI_BREAK},
+    {UI_TERMINATOR}};
+
+// General & System -> Date and Time: the console clock, in the console's own time zone. Nothing is saved.
+struct UIItem diaDateTimeConfig[] = {
+    {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_DATE_TIME}}},
+    {UI_SPLITTER},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_DATE}}},
+    {UI_SPACER},
+    {UI_INT, DATETIME_YEAR, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {2026, 2026, 2000, 2099}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"-", -1}}},
+    {UI_INT, DATETIME_MONTH, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {1, 1, 1, 12}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"-", -1}}},
+    {UI_INT, DATETIME_DAY, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {1, 1, 1, 31}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_TIME}}},
+    {UI_SPACER},
+    {UI_INT, DATETIME_HOUR, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {0, 0, 0, 23}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {":", -1}}},
+    {UI_INT, DATETIME_MINUTE, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {0, 0, 0, 59}}},
     {UI_BREAK},
 
     {UI_OK, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_OK}}},
