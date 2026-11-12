@@ -14,7 +14,9 @@ sector it was sent.
 of an 8 TB drive and the last 48-bit sector each reach exactly that sector.
 28-bit commands (48-bit support not confirmed): 2^28 - 1 is reached and 2^28
 wraps to sector 0, the limit bdmNativeVmcLimit (src/sources/bdmlaunch.cpp)
-applies at launch. Host only: no DMA, interrupts or real drive.
+applies at launch. cdvdman's DeviceInit turns 48-bit mode on before the driver
+starts, so the VMC is reached the same way before the game's first sceCdInit.
+Host only: no DMA, interrupts or real drive.
 """
 from pathlib import Path
 import re
@@ -44,6 +46,14 @@ for name in ("bdm_readSector", "bdm_writeSector"):
 # The launch refuses a VMC from the first sector 28-bit commands cannot reach (checked below).
 limit = function(launch, "static u64 bdmNativeVmcLimit(")
 assert "1ULL << 28" in limit, limit
+
+# 48-bit mode is on before the driver starts, and set nowhere else: mcemu reads and writes the VMC from
+# the IOP reset on, before the game's first sceCdInit runs DeviceFSInit. A PCSX2 run with the flag set
+# there sent its first VMC read as a 28-bit READ DMA.
+flag = "lba_48bit = cdvdman_settings.hddIsLBA48;"
+init = function(cdvdman, "void DeviceInit(void)\n{")
+assert 0 <= init.find(flag) < init.index("atad_start();"), init
+assert cdvdman.count(flag) == 1, "48-bit mode set outside DeviceInit"
 
 state_end = "static ata_cmd_state_t atad_cmd_state;"
 ata = "\n".join([

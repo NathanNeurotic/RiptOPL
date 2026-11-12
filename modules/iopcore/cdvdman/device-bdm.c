@@ -148,6 +148,10 @@ void DeviceInit(void)
 #endif
 
 #ifdef USE_BDM_ATA
+    // Before the drive is used: mcemu reads and writes the VMC from the IOP reset on, before the game's
+    // first sceCdInit runs DeviceFSInit. Set only there, the driver sent 28-bit commands until then, and a
+    // VMC past 2^28 sectors (128 GiB) was read and written 2^28-sector steps lower.
+    lba_48bit = cdvdman_settings.hddIsLBA48;
     RegisterLibraryEntries(&_exp_atad);
     // Initialize ATA interface which will register the HDD as a block device.
     atad_start();
@@ -198,11 +202,6 @@ void DeviceStop(void)
 
 void DeviceFSInit(void)
 {
-#ifdef USE_BDM_ATA
-    lba_48bit = cdvdman_settings.hddIsLBA48;
-    // TODO: there's more cdvdman init stuff after this in device-hdd.c...
-#endif
-
     DPRINTF("Waiting for device...\n");
     WaitSema(bdm_io_sema);
     DPRINTF("Waiting for device...done!\n");
