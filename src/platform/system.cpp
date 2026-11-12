@@ -544,10 +544,13 @@ int sysGetDiscID(char *hexDiscID)
     return 1;
 }
 
-// LoadBOOTer, the card update the memory card exploit installer writes, ignores BootBrowser and
-// always runs mc0:/BOOT/BOOT.ELF. Recognise it read-only by that path at offset 12440 in the
-// main system update (first card that has one), as Launchstation does (its PR #362).
-static int exitCardUpdateIsLoadBooter(void)
+// Card updates that ignore BootBrowser, so only SkipMc reaches the Browser (all checks read-only,
+// on the first card that has a main system update):
+// - LoadBOOTer (the memory card exploit installer's update) always runs mc0:/BOOT/BOOT.ELF. Its
+//   path sits at offset 12440 in the update, as Launchstation checks (its PR #362).
+// - FMCB opens its own menu (issue #370, reporter's console). Its config, SYS-CONF/FREEMCB.CNF,
+//   is on the same card; if OSDMenu's SYS-CONF/OSDMENU.CNF is on either card, it is left alone.
+static int exitCardUpdateIgnoresBrowser(void)
 {
     char romver[16] = {0}, path[40], buf[18];
     const char *file = "osdmain.elf";
@@ -571,6 +574,21 @@ static int exitCardUpdateIsLoadBooter(void)
             continue;
         match = lseek(fd, 12440, SEEK_SET) == 12440 && read(fd, buf, 18) == 18 && !memcmp(buf, "mc0:/BOOT/BOOT.ELF", 18);
         close(fd);
+        if (!match) {
+            // FMCB: its config is on the card and OSDMenu's is on neither card (OSDMenu may leave FREEMCB.CNF behind).
+            snprintf(path, sizeof(path), "mc%d:/SYS-CONF/FREEMCB.CNF", port);
+            if ((fd = open(path, O_RDONLY)) >= 0) {
+                close(fd);
+                match = 1;
+                for (int other = 0; other < 2 && match; other++) {
+                    snprintf(path, sizeof(path), "mc%d:/SYS-CONF/OSDMENU.CNF", other);
+                    if ((fd = open(path, O_RDONLY)) >= 0) {
+                        close(fd);
+                        match = 0;
+                    }
+                }
+            }
+        }
         break;
     }
     return match;
@@ -580,10 +598,10 @@ void sysExecExit(int toMenuChoice)
 {
     // Issue #370: the console's own exit opens its menu (or a card update such as FMCB), not the
     // Browser. These ask OSDSYS for the Browser, as Launchstation's PS2 system browser rows do.
-    // On a LoadBOOTer card only SkipMc reaches the Browser, so the plain Browser choice adds it.
+    // On LoadBOOTer and FMCB cards only SkipMc reaches the Browser, so the plain Browser choice adds it.
     int browserArgs = 0;
     if (toMenuChoice && gExitMenu != EXIT_MENU_CONSOLE)
-        browserArgs = (gExitMenu == EXIT_MENU_BROWSER_SKIPMC || exitCardUpdateIsLoadBooter()) ? 2 : 1;
+        browserArgs = (gExitMenu == EXIT_MENU_BROWSER_SKIPMC || exitCardUpdateIgnoresBrowser()) ? 2 : 1;
     // Deinitialize without shutting down active devices.
     host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
     if (browserArgs) {
