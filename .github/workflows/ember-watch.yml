@@ -44,9 +44,12 @@ jobs:
         id: cmp
         run: |
           set -eu
-          # One API call; the fields come back tab-separated.
-          FIELDS="$(gh api "repos/$EMBER_REPO/releases/latest" --jq \
-            '[.tag_name, .html_url, ([.assets[] | select(.name == "ember.elf")][0] | (.digest // ""), (.updated_at // ""))] | @tsv' 2>/dev/null || true)"
+          # One API call; the fields come back tab-separated. "releases/latest" would skip pre-releases, and
+          # Ember ships as pre-releases too, so list the releases and take the newest published one that carries
+          # an ember.elf (the Launcher pre-release has none and is skipped).
+          FIELDS="$(gh api "repos/$EMBER_REPO/releases?per_page=30" --jq \
+            '([.[] | select(.draft | not) | select(any(.assets[]; .name == "ember.elf"))] | sort_by(.published_at) | last // empty)
+             | [.tag_name, .html_url, ([.assets[] | select(.name == "ember.elf")][0] | (.digest // ""), (.updated_at // ""))] | @tsv' 2>/dev/null || true)"
           if [ -z "$FIELDS" ]; then
             echo "Could not read Ember's latest release (transient?); nothing to do."
             exit 0

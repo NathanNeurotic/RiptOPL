@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ORBIT Neutrino Watch: compare ORBIT's latest stable release with the RA edition's pinned runtime.
+"""ORBIT Neutrino Watch: compare ORBIT's newest release (pre-releases included) with the RA edition's pinned runtime.
 
 The RA kit's Neutrino comes from danielnuld/nuld (ORBIT was renamed NULD at v1.2; the repository was
 danielnuld/ps2-launcher), pinned by tag and archive SHA-256 in
@@ -8,7 +8,7 @@ never reaches a kit on its own: someone has to review it and move the pin. This 
 whether that review is due and writes the issue body that asks for it. It never edits the pin.
 
 Inputs are files, so the decision is testable offline:
-  --release      JSON of GET /repos/danielnuld/nuld/releases/latest
+  --release      JSON of the newest published release from GET /repos/danielnuld/nuld/releases
   --pin          third_party/orbit-neutrino/release.json
   --tag-commit   commit the latest tag points at (optional, for the suggested pin)
   --asset-sha256 SHA-256 of the downloaded asset, used when GitHub reports no digest
@@ -60,7 +60,8 @@ def decide(release, pin, asset_sha256=""):
     assets = orbit_assets(release)
     asset = next((a for a in assets if a["name"] == pin["asset"]), assets[0] if assets else None)
     if release.get("tag_name") != pin["tag"]:
-        return "changed", "ORBIT published a newer release than the pinned one.", asset
+        return ("changed", "ORBIT published a newer release than the pinned one"
+                + (" (a pre-release)." if release.get("prerelease") else "."), asset)
     if asset is None or asset["name"] != pin["asset"]:
         return "changed", "The pinned release no longer carries " + pin["asset"] + ".", asset
     digest = asset_sha256.lower() or digest_of(asset)
@@ -141,8 +142,8 @@ def main(argv=None):
 
     release = json.loads(args.release.read_text(encoding="utf-8"))
     pin = json.loads(args.pin.read_text(encoding="utf-8"))
-    if release.get("draft") or release.get("prerelease") or not release.get("tag_name"):
-        print("::warning::The latest-release answer is not a published stable release; nothing to compare.")
+    if release.get("draft") or not release.get("tag_name"):
+        print("::warning::The latest-release answer is not a published release; nothing to compare.")
         status, reason, asset = "unknown", "", None
     else:
         status, reason, asset = decide(release, pin, args.asset_sha256)

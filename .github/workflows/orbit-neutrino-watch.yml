@@ -6,7 +6,7 @@ name: ORBIT Neutrino RA Watch
 # ORBIT runtime can change the -ra= handoff, the one-packet snapshot limit or pointer-chain support, so
 # a person reviews it first (third_party/orbit-neutrino/README.md).
 #
-# What it does: compare ORBIT's latest stable release with the pin. When they differ -- a newer tag, or
+# What it does: compare ORBIT's newest release (pre-releases included) with the pin. When they differ -- a newer tag, or
 # the same tag with a replaced archive -- open (or refresh) the "ORBIT Neutrino RA runtime update" issue
 # with both digests, a review checklist and a suggested release.json. When the pin matches again, close
 # that issue. Two or three read-only API calls per run; the archive is downloaded only if GitHub reports
@@ -43,7 +43,11 @@ jobs:
           set -eu
           T="$RUNNER_TEMP/orbit"
           mkdir -p "$T"
-          if ! gh api "repos/$ORBIT_REPO/releases/latest" > "$T/release.json"; then
+          # "releases/latest" would skip pre-releases; take the newest published release (pre-releases included)
+          # that carries a launcher archive instead.
+          if ! gh api "repos/$ORBIT_REPO/releases?per_page=30" --jq \
+            '[.[] | select(.draft | not) | select(any(.assets[]; .name | test("^(ORBIT|NULD)-.*[.]zip$")))] | sort_by(.published_at) | last // empty' \
+            > "$T/release.json" || [ ! -s "$T/release.json" ]; then
             echo "::warning::Could not read ORBIT's latest release (transient?); nothing to do."
             exit 0
           fi

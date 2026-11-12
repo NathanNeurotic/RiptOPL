@@ -84,8 +84,13 @@ class OrbitWatchTests(unittest.TestCase):
         self.assertEqual(self.run_watch(self.release(digest=None), "--asset-sha256", self.pin["sha256"])[0], "current")
         self.assertEqual(self.run_watch(self.release(digest=None), "--asset-sha256", "11" * 32)[0], "changed")
 
-    def test_non_stable_answer_is_ignored(self):
-        self.assertEqual(self.run_watch(self.release("v9.9", prerelease=True)), ("unknown", None))
+    def test_prerelease_counts_as_newer(self):
+        status, issue = self.run_watch(self.release("v9.9", prerelease=True))
+        self.assertEqual(status, "changed")
+        self.assertIn("a pre-release", issue)
+
+    def test_draft_answer_is_ignored(self):
+        self.assertEqual(self.run_watch(self.release("v9.9", draft=True)), ("unknown", None))
         self.assertEqual(self.run_watch(self.release(tag_name="")), ("unknown", None))
 
     def test_issue_names_this_repository_snapshot_limit(self):
@@ -113,9 +118,10 @@ class OrbitWatchWorkflowTests(unittest.TestCase):
         for forbidden in ("contents: write", "git push", "git commit", "actions: write"):
             self.assertNotIn(forbidden, self.text)
 
-    def test_uses_the_script_and_stable_releases(self):
+    def test_uses_the_script_and_includes_prereleases(self):
         self.assertIn(".github/scripts/orbit_neutrino_watch.py", self.text)
-        self.assertIn("releases/latest", self.text)
+        self.assertIn("releases?per_page=", self.text)
+        self.assertNotIn("releases/latest", self.text.replace('"releases/latest" would', ""))
         self.assertIn("ORBIT_REPO: danielnuld/nuld\n", self.text)
 
 
