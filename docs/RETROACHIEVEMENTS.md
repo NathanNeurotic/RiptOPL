@@ -169,9 +169,11 @@ The agent sends each snapshot in one packet, so a set whose **direct values exce
 tracked. It reads the direct entries only and ignores a pointer-chain tail, as xeRAbora's protocol defines
 for an agent without chain support: chain-based achievements do not unlock on Neutrino launches while the
 rest of the set does. A game without a watch list launches quietly; any other reason the handoff cannot be
-made (no ORBIT runtime, no companion address, a failed write, or the two arguments pushing the launch past
-Neutrino's 256-byte budget) launches the game without achievements and says so. **Console unlock cards and
-remote reset are not provided by this runtime**; unlocks appear on the companion. **NOT TESTED on hardware.**
+made (no NULD runtime, no companion address, a failed write, or the two arguments pushing the launch past
+Neutrino's 256-byte budget) launches the game without achievements and says so. **RiptOPL does not claim
+console unlock cards, and remote reset is not provided by this runtime**; unlocks appear on the companion.
+NULD v1.2.12 can show an unlock box and pause the game for about 2.5 s when the client sends `RAU1`; RiptOPL
+hands over no titles for it, and client support for `RAU1` is unverified. **NOT TESTED on hardware.**
 
 ### Do not expect a game with achievements to run from a network share
 
