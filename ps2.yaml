@@ -174,8 +174,8 @@ targets:
     imports_lst: modules/network/smb2man/imports.lst
 
   # nfsman: the NFS browse driver, loaded instead of smbman/smb2man when Network Protocol is NFS.
-  # Launchstation's nfsman (PR 366, 4928b53) over unfs4 (Ronnie Sahlberg, BSD 2-Clause) at 3c673fc
-  # with three bounds checks (modules/network/nfsman/unfs4/VENDORED.txt); nfsman.c compiles unfs4.c
+  # Launchstation's nfsman (PR 366, 48e55ae) over unfs4 (Ronnie Sahlberg, BSD 2-Clause) at 449ba4e
+  # with two fixes (modules/network/nfsman/unfs4/VENDORED.txt); nfsman.c compiles unfs4.c
   # into itself. Full builds only: tools/lite_devices.py drops it from every RiptOPLite.
   - name: nfsman
     type: iop

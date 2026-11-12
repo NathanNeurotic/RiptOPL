@@ -1193,6 +1193,9 @@ static int nfsman_rename(iop_file_t *f, const char *oldname, const char *newname
 }
 
 //-------------------------------------------------------------------------
+// The largest uid or gid: 9 digits, as smb_cnf.c and the Settings editor take them
+#define NFS_ID_MAX 999999999u
+
 static int nfsman_number(const char **p, uint32_t max, uint32_t *out)
 {
     uint32_t v = 0;
@@ -1201,9 +1204,10 @@ static int nfsman_number(const char **p, uint32_t max, uint32_t *out)
     if (*s < '0' || *s > '9')
         return -1;
     for (; *s >= '0' && *s <= '9'; s++) {
-        v = v * 10 + (uint32_t)(*s - '0');
-        if (v > max)
+        // before the multiply, so that it cannot wrap
+        if (v > (max - (uint32_t)(*s - '0')) / 10)
             return -1;
+        v = v * 10 + (uint32_t)(*s - '0');
     }
     *p = s;
     *out = v;
@@ -1254,11 +1258,11 @@ static int nfsman_parse_url(struct nfsman_export *ex, const char *url)
         p++;
         if (!strncmp(p, "uid=", 4)) {
             p += 4;
-            if (nfsman_number(&p, 0xffffffffu / 10, &ex->uid))
+            if (nfsman_number(&p, NFS_ID_MAX, &ex->uid))
                 return -1;
         } else if (!strncmp(p, "gid=", 4)) {
             p += 4;
-            if (nfsman_number(&p, 0xffffffffu / 10, &ex->gid))
+            if (nfsman_number(&p, NFS_ID_MAX, &ex->gid))
                 return -1;
         } else if (!strncmp(p, "ro", 2) && (p[2] == '\0' || p[2] == '&')) {
             p += 2;
