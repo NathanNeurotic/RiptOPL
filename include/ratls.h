@@ -1,4 +1,4 @@
-/* RetroAchievements edition: verified HTTPS GET for the game-ID lookup. See src/platform/ratls.c
+/* Verified HTTPS: the RetroAchievements edition's game-ID lookup and Check for Updates. See src/platform/ratls.c
    (portable TLS + HTTP over callbacks, C so the host test builds it) and src/sources/ratls_ps2.cpp
    (DNS, TCP, clock, entropy, roots). */
 #ifndef __RATLS_H__
@@ -8,7 +8,11 @@
 
 /* The configuration the mbedtls library target is built with (tools/build_edition.py). */
 #ifndef MBEDTLS_CONFIG_FILE
+#if defined(RIPTOPL_UPDATER) && !defined(RETROACHIEVEMENTS)
+#define MBEDTLS_CONFIG_FILE "riptopl_mbedtls_slim_config.h" /* Check for Updates only: TLS 1.2 */
+#else
 #define MBEDTLS_CONFIG_FILE "riptopl_mbedtls_config.h"
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -16,15 +20,20 @@ extern "C" {
 #endif
 
 enum {
-    RATLS_ERR_NET = -1,     /* no network, DNS failed, or connect refused */
-    RATLS_ERR_CLOCK = -2,   /* console clock unset (before 2025): nothing was sent */
-    RATLS_ERR_TLS = -3,     /* handshake or record failure */
-    RATLS_ERR_CERT = -4,    /* certificate invalid, expired, untrusted or for another host */
-    RATLS_ERR_HTTP = -5,    /* not 200, malformed, or larger than the buffer */
-    RATLS_ERR_TIMEOUT = -6, /* the deadline passed */
-    RATLS_ERR_MEM = -7,     /* out of memory, or the crypto library failed to start */
-    RATLS_ERR_ARG = -8      /* bad arguments */
+    RATLS_ERR_NET = -1,      /* no network, DNS failed, or connect refused */
+    RATLS_ERR_CLOCK = -2,    /* console clock unset (before 2025): nothing was sent */
+    RATLS_ERR_TLS = -3,      /* handshake or record failure */
+    RATLS_ERR_CERT = -4,     /* certificate invalid, expired, untrusted or for another host */
+    RATLS_ERR_HTTP = -5,     /* not 200, malformed, or larger than the buffer */
+    RATLS_ERR_TIMEOUT = -6,  /* the deadline passed */
+    RATLS_ERR_MEM = -7,      /* out of memory, or the crypto library failed to start */
+    RATLS_ERR_ARG = -8,      /* bad arguments */
+    RATLS_ERR_REDIRECT = -9, /* raTlsDownload: the server redirected; the target is in location */
+    RATLS_ERR_SINK = -10     /* raTlsDownload: the sink refused the data (a write failed) */
 };
+
+/* Receives each piece of a download's body in order. 0 to go on, anything else stops the download. */
+typedef int (*ratls_sink_t)(void *ctx, const char *data, int len);
 
 typedef struct
 {
@@ -48,12 +57,30 @@ int raTlsClockOk(long long (*now_utc)(void));
 int raTlsRequest(const ratls_io_t *io, const char *host, const char *path, const char *user_agent,
                  const ratls_anchor_t *anchors, int anchor_count, char *buf, int max, int *length);
 
+/* One streamed HTTPS GET over an already-connected io, for Check for Updates. buf (max >= 512) holds
+   the request and then the headers, so it must hold both; the body goes to sink as it arrives. Only a
+   200 with a Content-Length of 1..max_body and no transfer or content encoding is taken. Returns the
+   body length, RATLS_ERR_REDIRECT with the Location target in location (301/302/303/307/308), or
+   RATLS_ERR_*. Certificates are verified exactly as for raTlsRequest. */
+int raTlsDownload(const ratls_io_t *io, const char *host, const char *path, const char *user_agent,
+                  const ratls_anchor_t *anchors, int anchor_count, char *buf, int max, int max_body,
+                  ratls_sink_t sink, void *sink_ctx, char *location, int location_size);
+
 /* The console RTC (already decoded from BCD, full year) to seconds since 1970 UTC. */
 long long raTlsRtcToUtc(int year, int month, int day, int hour, int minute, int second);
 
 /* PS2: clock check, DNS, TCP and raTlsRequest with the five embedded roots, 8 s deadline.
    Refuses while a UDP transport owns the NIC. Same return convention as raTlsRequest. */
 int raHttpsGet(const char *host, const char *path, char *buf, int max, int *length);
+
+/* PS2: raTlsDownload to host:443 with GitHub's roots (Sectigo E46/R46, ISRG X1/X2). The deadline is
+   idle time: 15 s without data, so a long download over a slow card is not cut off. Refuses while a
+   UDP transport owns the NIC. Same return convention as raTlsDownload. */
+int raHttpsDownload(const char *host, const char *path, char *buf, int max, int max_body, ratls_sink_t sink,
+                    void *sink_ctx, char *location, int location_size);
+
+/* PS2: 1 while a UDP transport owns (or is chosen for) the NIC, so no HTTPS request may start. */
+int ratlsNicBusy(void);
 
 #ifdef __cplusplus
 }

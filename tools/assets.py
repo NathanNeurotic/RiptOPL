@@ -125,6 +125,10 @@ def bin2c(src, name, symbol):
     run(BIN2C, src, os.path.join(ASM_DIR, name + ".c"), symbol)
 
 
+# github.com (Sectigo E46/R46) and its release download host (ISRG X1/X2): Check for Updates.
+UPDATER_ROOTS = ("sectigo-e46", "sectigo-r46", "isrgrootx1", "isrg-root-x2")
+
+
 def embed():
     os.makedirs(ASM_DIR, exist_ok=True)
     for stale in os.listdir(ASM_DIR):  # asm/*.c is globbed by ps2.yaml: drop leftovers
@@ -159,10 +163,13 @@ def embed():
         pngs += ["apps_case", "case_ps1", "disc_ps1", "Players_1", "Players_2", "Players_3", "Players_4"]
     if os.environ.get("RIPTOPL_RA") == "1":
         pngs += ["ra_mark"]
-        # The HTTPS lookup's trust anchors (src/sources/ratls_ps2.cpp): ratls_root_<name>.
+    if os.environ.get("RIPTOPL_RA") == "1" or os.environ.get("RIPTOPL_UPDATER") == "1":
+        # The trust anchors (src/sources/ratls_ps2.cpp): ratls_root_<name>. RA's lookup needs every root;
+        # Check for Updates alone needs only GitHub's (UPDATER_ROOTS).
         for der in sorted((Path(ROOT) / "third_party/ca-roots").glob("*.der")):
-            name = "ratls_root_" + der.stem.replace("-", "")
-            bin2c(str(der), name, name)
+            if os.environ.get("RIPTOPL_RA") == "1" or der.stem in UPDATER_ROOTS:
+                name = "ratls_root_" + der.stem.replace("-", "")
+                bin2c(str(der), name, name)
     for a in pngs:
         name = {"incebtion": "background", "ip": "background_info"}.get(a, a) if theme_dir else a
         themed = theme_dir / f"gfx/{name}.png" if theme_dir else None

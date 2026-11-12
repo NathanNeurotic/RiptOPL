@@ -12,7 +12,7 @@ import tempfile
 from types import SimpleNamespace
 import zipfile
 
-from build_edition import EDITIONS, ROOT, git
+from build_edition import EDITIONS, ROOT, git, update_channel
 from install_ports import download
 
 spec = importlib.util.spec_from_file_location("app_packager", ROOT / ".github/scripts/package_release_app.py")
@@ -190,7 +190,9 @@ def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
         manifest["neutrino_archive"] = {"filename": neutrino_archive.name, "sha256": hashlib.sha256(neutrino_archive.read_bytes()).hexdigest()}
         for name in ("LICENSE", "CREDITS", "README.md"):
             shutil.copyfile(ROOT / name, kit / name)
-        if options["ra"]:  # the RA ELF links mbedTLS (Apache-2.0): its licence travels with it
+        # The RA ELF, and every ELF with Check for Updates, links mbedTLS (Apache-2.0): its licence travels with it.
+        mbedtls = options["ra"] or update_channel(edition, "standard", compiler) is not None
+        if mbedtls:
             shutil.copyfile(ROOT / "third_party/mbedtls/LICENSE", kit / "LICENSE-MBEDTLS.txt")
         shutil.copyfile(USMB2_LICENCE, kit / "LICENSE-USMB2.txt")
         manifest["kit_files"] = {p.relative_to(kit).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(kit.rglob("*")) if p.is_file()}
@@ -200,7 +202,8 @@ def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
             for path in sorted(kit.rglob("*")):
                 if path.is_file():
                     zipped.write(path, path.relative_to(kit).as_posix())
-        app.verify(SimpleNamespace(zip=str(archive), source_elf=str(elf), app_name=app_name, elf_name=elf_name, ra=options["ra"]))
+        app.verify(SimpleNamespace(zip=str(archive), source_elf=str(elf), app_name=app_name, elf_name=elf_name, ra=options["ra"],
+                                  mbedtls=mbedtls))
         # RA resources must never enter either standard kit.
         if not options["ra"]:
             with zipfile.ZipFile(archive) as zipped:

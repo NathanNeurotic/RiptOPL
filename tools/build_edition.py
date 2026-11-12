@@ -40,6 +40,31 @@ def edition_options(edition):
     return LITES[edition] if edition in LITES else EDITIONS[edition]
 
 
+UPDATE_ELF_IDS = {"RIPTOPL.ELF": "PLAIN", "RIPTOPL-RA.ELF": "RA", "RIPTOPL-RA-IncebtIon.ELF": "RA_INCEBTION"}
+
+
+def update_defines(channel):
+    """The channel as two plain defines (src/ui/selfupdate.cpp maps them back to the names)."""
+    return ["RIPTOPL_UPDATE_TAG_" + channel[0].replace("rolling-", "").upper(),
+            "RIPTOPL_UPDATE_ELF_" + UPDATE_ELF_IDS[channel[1]]]
+
+
+def update_channel(edition, configuration="standard", toolchain="gcc"):
+    """(release tag, ELF asset) that Check for Updates fetches (src/ui/selfupdate.cpp), or None.
+
+    Only a published standard build updates itself, and only from its own channel: a variant, debug or
+    lite build would otherwise be replaced by another build, and an LLVM build by a GCC one."""
+    if edition in LITES or configuration != "standard":
+        return None
+    options = EDITIONS[edition]
+    elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
+    if toolchain == "llvm":  # rolling-llvm carries the Korium ELFs only (publish_llvm.py)
+        return ("rolling-llvm", elf) if options["theme"] == "korium" and "into" not in options else None
+    if "label" in options:  # the RA IncebtIon kit ships inside rolling-ra (publish_editions.py)
+        elf = elf.replace(".ELF", f"-{options['label']}.ELF")
+    return options["tag"], elf
+
+
 def add(target, field, *values):
     target.setdefault(field, []).extend(v for v in values if v not in target.get(field, []))
 
@@ -102,6 +127,22 @@ def definition(edition, configuration="standard", toolchain="gcc", device=None):
         for name in ("bdm_cdvdman", "mmce_cdvdman"):
             add(targets[name], "defines", "__USE_DEV9")
             add(targets[name], "sources", "modules/iopcore/cdvdman/dev9.c")
+    channel = update_channel(edition, configuration, toolchain)
+    if channel is not None:
+        tls = ["third_party/mbedtls/include", "third_party/mbedtls"]
+        if not options["ra"]:
+            # Check for Updates over HTTPS. The RA editions reuse their TLS above, unchanged; the others get
+            # the slim TLS 1.2 configuration (third_party/mbedtls/riptopl_mbedtls_slim_config.h).
+            slim = r'MBEDTLS_CONFIG_FILE=\"riptopl_mbedtls_slim_config.h\"'
+            config["targets"].append({"name": "mbedtls", "type": "ee_lib", "sources": ["third_party/mbedtls/library/*.c"],
+                                      "include_dirs": tls, "defines": [slim]})
+            add(main, "sources", "src/platform/ratls.c", "src/sources/ratls_ps2.cpp")
+            add(main, "include_dirs", *tls)
+            add(main, "libs", "mbedtls")
+        # Plain names, no quoted strings, on the main target: include/ratls.h picks the slim configuration
+        # from RIPTOPL_UPDATER without RETROACHIEVEMENTS, and selfupdate.cpp spells out the channel.
+        add(main, "sources", "src/platform/selfupdate.c", "src/ui/selfupdate.cpp")
+        add(main, "defines", "RIPTOPL_UPDATER", *update_defines(channel))
     if edition in LITES:
         apply_lite(config, device, ROOT, options["ra"])
     elif device is not None:
@@ -159,6 +200,7 @@ def main():
     options = edition_options(args.edition)
     os.environ["RIPTOPL_THEME"] = options["theme"]
     os.environ["RIPTOPL_RA"] = "1" if options["ra"] else "0"
+    os.environ["RIPTOPL_UPDATER"] = "1" if update_channel(args.edition, args.configuration, args.toolchain) else "0"
     suffix = "" if args.configuration == "standard" else f"-{args.configuration.upper()}"
     title = options["title"] if args.device is None else f"{options['title']}-{LITE_DEVICES[args.device]['title']}"
     os.environ["LOCALVERSION"] = f"PS2BUILD-{title}-{args.toolchain.upper()}{suffix}"

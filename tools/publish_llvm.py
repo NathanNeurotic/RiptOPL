@@ -176,6 +176,7 @@ def release_notes(version, sha):
         link("Build provenance for all editions", "BUILD-MANIFEST.json"),
         link("SHA-256 checksums", "SHA256SUMS.txt"),
         link("usmb2 licence", "LICENSE-USMB2.txt"),
+        f"- [Mbed TLS licence]({base}/blob/{sha}/third_party/mbedtls/LICENSE) - the Korium and RetroAchievements loaders link Mbed TLS (Apache-2.0)",
         "",
         "## Recent changes",
         "",

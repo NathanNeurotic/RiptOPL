@@ -123,10 +123,12 @@ Bundled third-party software, shipped in the release package and NOT part of Rip
 
   - Mbed TLS, by the Mbed TLS project   https://github.com/Mbed-TLS/mbedtls
     TLS 1.3/1.2 for the RetroAchievements edition's HTTPS game lookup on
-    retroachievements.org, the same lookup ORBIT performs. Vendored unmodified
+    retroachievements.org, the same lookup ORBIT performs, and TLS 1.2 for
+    Check for Updates in the other standard editions. Vendored unmodified
     from the 3.6.7 release archive (third_party/mbedtls) and used under the
-    Apache-2.0 licence; the upstream GPL option is not used. Shipped in the RA
-    package as LICENSE-MBEDTLS.txt; not compiled into the other editions.
+    Apache-2.0 licence; the upstream GPL option is not used. Shipped as
+    LICENSE-MBEDTLS.txt in every kit whose ELF links it; not compiled into
+    RiptOPLite, debug or variant builds without RetroAchievements.
 
   - usmb2, by Ronnie Sahlberg (sahlberg)   https://github.com/sahlberg/usmb2
     The SMB2/3 client under smb2man.irx, the menu's SMB2 browse driver, which

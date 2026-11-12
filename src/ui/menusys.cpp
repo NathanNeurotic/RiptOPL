@@ -41,6 +41,9 @@
 #include "include/libview.h"      // libViewActive / libListViewActive -- which list this page shows
 #include "include/bdmsupport.h"   // bdmSupportIsUDPBD() / bdmNetBlockCoreLoader() -- UDPBD games default to Neutrino
 #include "include/hddsupport.h"   // hdl_game_info_t -- the RA check hashes an HDLoader install
+#ifdef RIPTOPL_UPDATER
+#include "include/selfupdate.h" // selfUpdateMenu -- Check for Updates
+#endif
 #include <assert.h>
 #include <delaythread.h>
 #include <time.h> // clock() -- Random Game seed
@@ -64,6 +67,7 @@ enum MENU_IDs {
     MENU_RA_DISC_LAUNCH,
 #endif
     MENU_FILE_MANAGER, // after RIPPS2's Memory Files browser (akilluminati47)
+    MENU_UPDATE,       // Check for Updates (src/ui/selfupdate.cpp)
 };
 
 enum GAME_MENU_IDs {
@@ -1275,6 +1279,9 @@ static void menuInitMainMenu(void)
     submenuAppendItem(&mainMenu, -1, NULL, MENU_NBD, _STR_STARTNBD);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_DRIVE_STATUS, _STR_DRIVE_STATUS);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_FILE_MANAGER, _STR_FILE_MANAGER);
+#ifdef RIPTOPL_UPDATER
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_UPDATE, _STR_UPDATE_CHECK);
+#endif
     submenuAppendItem(&mainMenu, -1, NULL, MENU_ABOUT, _STR_ABOUT);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_EXIT, _STR_EXIT);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_POWER_OFF, _STR_POWEROFF);
@@ -2365,6 +2372,11 @@ void menuHandleInputMenu()
         } else if (id == MENU_FILE_MANAGER) {
             if (menuCheckParentalLock() == 0) // it can delete and run anything
                 guiShowFileManager();
+#ifdef RIPTOPL_UPDATER
+        } else if (id == MENU_UPDATE) {
+            if (menuCheckParentalLock() == 0) // it replaces the ELF
+                selfUpdateMenu();
+#endif
         } else if (id == MENU_ABOUT) {
             guiShowAbout();
         } else if (id == MENU_SAVE_CHANGES) {
