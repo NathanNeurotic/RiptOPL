@@ -161,6 +161,8 @@ jobs:
         run: python3 .github/scripts/test_settings_back_keeps_edits.py
       - name: Check Settings pages fit before they scroll, BDM rows indent, and RiptOPL's plasma
         run: python3 .github/scripts/test_settings_fit.py
+      - name: Check Date and Time sets the console clock in its own time zone, from General & System
+        run: python3 .github/scripts/test_date_time_setting.py
       - name: Check settings text stays on screen (long notes wrap, labels leave room, values fit)
         run: python3 .github/scripts/test_dia_text_room.py
       - name: Check dialogs draw under the GUI lock and IO-thread list operations run under it
