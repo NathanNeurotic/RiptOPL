@@ -216,6 +216,11 @@ enum UI_ITEMS {
     NETCFG_HTTP_DOT_1,
     NETCFG_HTTP_DOT_2,
     NETCFG_LBL_HTTP_TEST,
+    // NFS rows (Network Protocol NFS). Appended for the same reason as the HTTP rows.
+    NETCFG_LBL_NFS_EXPORT,
+    NETCFG_NFS_EXPORT,
+    NETCFG_LBL_NFS_WRITES,
+    NETCFG_NFS_WRITES,
     // UDPFS Assault PATHMAP.INI options on the POPS UDPFS page, a consecutive run (bit i = _0 + i).
     NETCFG_POPS_PATHMAP_0,
     NETCFG_POPS_PATHMAP_1,

@@ -41,6 +41,7 @@
 #include "include/libview.h"      // libViewActive / libListViewActive -- which list this page shows
 #include "include/bdmsupport.h"   // bdmSupportIsUDPBD() / bdmNetBlockCoreLoader() -- UDPBD games default to Neutrino
 #include "include/hddsupport.h"   // hdl_game_info_t -- the RA check hashes an HDLoader install
+#include "include/ethsupport.h"   // ethIsNfs -- NFS games run on Neutrino only
 #include <assert.h>
 #include <delaythread.h>
 #include <time.h> // clock() -- Random Game seed
@@ -2983,6 +2984,8 @@ static int gameMenuCoreIsNeutrino(void)
                 return 0;
             if (sourceMode == UDPFS_MODE || bdmModeIsUDPBD(sourceMode))
                 return bdmNetBlockCoreLoader(itemConfig);
+            if (sourceMode == ETH_MODE && ethIsNfs())
+                return 1; // NFS: Neutrino only (ethTryNeutrino)
         }
     }
     return coreLoader;

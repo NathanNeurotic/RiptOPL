@@ -332,7 +332,7 @@ int netLoadInitModules(int protocol)
     return gNetSupport.loadInitModules(protocol);
 }
 
-int NetSupport::ensureModules()
+int NetSupport::ensureModules(int protocol)
 {
     int ret;
 
@@ -340,15 +340,15 @@ int NetSupport::ensureModules()
         return ret;
 
     WaitSema(initSemaId_);
-    ret = loadModules(NET_PROTO_SMB);
+    ret = loadModules(protocol);
     SignalSema(initSemaId_);
 
     return ret;
 }
 
-int netEnsureModules(void)
+int netEnsureModules(int protocol)
 {
-    return gNetSupport.ensureModules();
+    return gNetSupport.ensureModules(protocol);
 }
 
 int NetSupport::readNetConfig(void)

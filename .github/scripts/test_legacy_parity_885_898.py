@@ -151,7 +151,7 @@ run('smb_refresh', r'''
 #include <cstring>
 #include <ctime>
 #include <cstddef>
-enum { NET_PROTO_OFF, NET_PROTO_SMB, NET_PROTO_UDPFS, NET_PROTO_UDPFSBD, NET_PROTO_UDPBD, NET_PROTO_HTTP,
+enum { NET_PROTO_OFF, NET_PROTO_SMB, NET_PROTO_UDPFS, NET_PROTO_UDPFSBD, NET_PROTO_UDPBD, NET_PROTO_HTTP, NET_PROTO_NFS,
        START_MODE_DISABLED = 0, ETH_MODE = 7, FAV_MODE, HDD_MODE, LIB_VIEW_PS1, LIB_VIEW_MIXED,
        IO_CUSTOM_SIMPLEACTION, IO_MENU_UPDATE_DEFFERED, IO_OK = 0, SMB_DEVCTL_ECHO = 20, SFX_CONFIRM };
 struct base_game_info_t { int id; };
@@ -182,13 +182,15 @@ static int libListViewActive(item_list_t*) { return view; }
 static void hddVcdInvalidateCache() { ++hddInvalidations; }
 static void sfxPlay(int) { ++sounds; }
 #define LOG(...) ((void)0)
+#define LITE_HAS_NFS 1
+#define NET_PROTO_IS_ETH(p) ((p) == NET_PROTO_SMB || (p) == NET_PROTO_NFS)
 #define private public
 ''' + session + r'''
 #undef private
 static EthSupport gEthSupport;
 void EthSupport::reconnectSmb() { ++reconnects; reconnectQueued_ = reconnectRequested_ = 0; }
 ''' + '\n'.join(function(eth, s) for s in (
-    'static void ethReconnectSMB(', 'static void ethCheckedRefreshSMB(',
+    'bool EthSupport::protocolLive(', 'static void ethReconnectSMB(', 'static void ethCheckedRefreshSMB(',
     'void EthSupport::checkedRefreshSmb(', 'void EthSupport::requestCheckedRefresh(',
     'void ethRequestCheckedRefresh(', 'void EthSupport::requestReconnect('))
     + '\n' + function(menu, 'void itemExecRefresh(') + r'''
@@ -197,12 +199,12 @@ static void reset() {
     semaResult = echoResult = queueResult = semas = echoes = queues = rebuilds = dirty = reconnects = 0;
     favReloads = hddInvalidations = sounds = 0; pending = duringEcho = nullptr; source = item_list_t{};
     gEthSupport.smbModuleLoaded_ = 1; gEthSupport.reconnectQueued_ = 0; gEthSupport.setBase("smb0:");
-    gEthSupport.reconnectRequested_ = 0;
+    gEthSupport.reconnectRequested_ = 0; gEthSupport.nfs_ = 0;
 }
 static void dispatch() { assert(pending); auto callback = pending; pending = nullptr; callback(); }
 int main() {
-    for (int protocol = NET_PROTO_OFF; protocol <= NET_PROTO_HTTP; ++protocol) {
-        if (protocol == NET_PROTO_SMB) continue;
+    for (int protocol = NET_PROTO_OFF; protocol <= NET_PROTO_NFS; ++protocol) {
+        if (protocol == NET_PROTO_SMB) continue; // NFS while smbman is resident: restart-only, nothing queued
         reset(); gNetworkProtocol = protocol; gEthSupport.requestCheckedRefresh(); assert(!queues && !semas);
     }
     reset(); gETHStartMode = START_MODE_DISABLED; gEthSupport.requestCheckedRefresh(); assert(!queues && !semas);
@@ -238,6 +240,14 @@ int main() {
         if (changed == 2) source.enabled = 0;
         dispatch(); assert(!echoes && !reconnects && !gEthSupport.reconnectQueued_);
     }
+    // NFS: the same queue, no echo (nfsman reconnects on use); SMB asked for while nfsman is resident is restart-only.
+    reset(); gNetworkProtocol = NET_PROTO_NFS; gEthSupport.nfs_ = 1; gEthSupport.setBase("nfs:/NFS/");
+    gEthSupport.requestCheckedRefresh(); assert(queues == 1); dispatch();
+    assert(!echoes && !reconnects && rebuilds == 1 && dirty == 1 && !gEthSupport.reconnectQueued_);
+    reset(); gNetworkProtocol = NET_PROTO_NFS; gEthSupport.nfs_ = 1; gNetworkStartup = 1;
+    gEthSupport.requestCheckedRefresh(); dispatch(); assert(!echoes && reconnects == 1);
+    reset(); gEthSupport.nfs_ = 1; gEthSupport.requestCheckedRefresh(); gEthSupport.requestReconnect(); assert(!queues && !semas);
+    reset(); gNetworkProtocol = NET_PROTO_NFS; gEthSupport.smbModuleLoaded_ = 0; gEthSupport.requestReconnect(); assert(queues == 1);
     reset(); menu_item menu{&source}; itemExecRefresh(&menu); assert(queues == 1 && sounds == 1); dispatch(); assert(echoes == 1);
     reset(); gNetworkStartup = 1; itemExecRefresh(&menu); dispatch(); assert(reconnects == 1);
     reset(); source.mode = FAV_MODE; itemExecRefresh(&menu); assert(favReloads == 1 && !queues && !rebuilds);

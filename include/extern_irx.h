@@ -162,6 +162,7 @@ IMPORT_BIN2C(smbinit_irx);
 
 IMPORT_BIN2C(smbman_irx);
 IMPORT_BIN2C(smb2man_irx);
+IMPORT_BIN2C(nfsman_irx);
 
 IMPORT_BIN2C(smsutils_irx);
 

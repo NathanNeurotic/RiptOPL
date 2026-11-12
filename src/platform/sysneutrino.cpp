@@ -103,6 +103,10 @@ static const char *getDeviceName(const char *driver)
         // SMB share (ethsupport): -bsd=smb loads config/bsd-smb.toml (smb_ioman + smb_fhi, ps2max32/neutrino
         // PR #236) and opens -dvd=smb:<path on the share> by name. Like udpfs it has no filesystem layer.
         return "smb";
+    if (!strcmp(driver, "nfs"))
+        // NFS export (ethsupport, Network Protocol NFS): -bsd=nfs loads config/bsd-nfs.toml (nfs_ioman +
+        // nfs_fhi, ps2max32/neutrino PR #240) and opens -dvd=nfs:<path in the export>, as smb does.
+        return "nfs";
     return "unsupported";
 }
 
@@ -248,7 +252,8 @@ static int neutrinoEffectiveBsdfs(const char *deviceName, int neutrinoBsdfs, con
             p = end;
         }
     }
-    if (!strcmp(deviceName, "mmce") || !strcmp(deviceName, "udpfs") || !strcmp(deviceName, "smb") || !strcmp(deviceName, "dvr"))
+    if (!strcmp(deviceName, "mmce") || !strcmp(deviceName, "udpfs") || !strcmp(deviceName, "smb") || !strcmp(deviceName, "nfs") ||
+        !strcmp(deviceName, "dvr"))
         return 0;
     if (typed)
         return value;
@@ -467,6 +472,8 @@ static int sysSyncNeutrinoUdpfsToml(const char *neutrinoPath, const char *device
 // and the share from the args of three modules in config/bsd-smb.toml: ministack.irx ("ip="),
 // smb_ioman.irx and smb_fhi.irx (both "ip= mask= gw= srv= user= pass= share="). Nothing on the
 // command line sets them, so the launch writes this game's values into every such string first.
+// NFS (-bsd=nfs, ps2max32/neutrino PR #240, also Ronnie Sahlberg's) has the same shape in
+// config/bsd-nfs.toml: ministack.irx, nfs_ioman.irx and nfs_fhi.irx, with "export=" for the login.
 
 // The modules whose args the hand-over writes, as bits: a key is only rewritten in the args of a
 // module it belongs to, and the preflight checks each of those modules carried it.
@@ -474,6 +481,7 @@ static int sysSyncNeutrinoUdpfsToml(const char *neutrinoPath, const char *device
 #define NEUTRINO_SMB_MOD_IOMAN     0x2
 #define NEUTRINO_SMB_MOD_FHI       0x4
 static const char *const neutrinoSmbModuleFiles[] = {"ministack.irx", "smb_ioman.irx", "smb_fhi.irx"};
+static const char *const neutrinoNfsModuleFiles[] = {"ministack.irx", "nfs_ioman.irx", "nfs_fhi.irx"};
 
 // One "key=" a module arg may start with, the value to give it, the modules it belongs to and the
 // modules whose args carried it.
@@ -511,7 +519,8 @@ static int sysTomlEscape(const char *in, char *out, int outSize)
 // `file = "..."` line; any table header starts a new one. Multi-line strings are not in the stock
 // file; one makes the result -1 and the file is left alone.
 // Returns the new length, or -1 (malformed, or it would not fit).
-static int sysTomlRewriteSmbArgs(const char *in, int len, char *out, int outSize, neutrino_smb_key_t *keys, int keyCount)
+static int sysTomlRewriteSmbArgs(const char *in, int len, char *out, int outSize, neutrino_smb_key_t *keys, int keyCount,
+                                 const char *const *moduleFiles)
 {
     int i = 0, n = 0, lineStart = 0, module = 0;
 #define TOML_PUT(ch)          \
@@ -581,8 +590,8 @@ static int sysTomlRewriteSmbArgs(const char *in, int len, char *out, int outSize
             if (isFile) {
                 module = 0;
                 for (int m = 0; m < 3; m++) {
-                    int ml = (int)strlen(neutrinoSmbModuleFiles[m]);
-                    if (i + ml < len && !strncmp(in + i, neutrinoSmbModuleFiles[m], ml) && in[i + ml] == '"')
+                    int ml = (int)strlen(moduleFiles[m]);
+                    if (i + ml < len && !strncmp(in + i, moduleFiles[m], ml) && in[i + ml] == '"')
                         module = 1 << m;
                 }
             }
@@ -625,7 +634,7 @@ static int sysTomlRewriteSmbArgs(const char *in, int len, char *out, int outSize
     return n;
 }
 
-int sysNeutrinoSmbPreflight(const char *neutrinoPath, const neutrino_smb_args_t *args)
+int sysNeutrinoSmbPreflight(const char *neutrinoPath, const neutrino_smb_args_t *args, const char *nfsExport)
 {
     static char toml[4096];
     static char updated[4096 + 512];
@@ -638,22 +647,23 @@ int sysNeutrinoSmbPreflight(const char *neutrinoPath, const neutrino_smb_args_t 
     int dirLen = (int)(slash - neutrinoPath) + 1;
     char sep = *slash;
 
-    // This Neutrino must have the SMB modules: a build from before PR #236 has none of them.
-    static const char *const modules[] = {"smb_ioman.irx", "smb_fhi.irx"};
-    for (int m = 0; m < 2; m++) {
+    // This Neutrino must have the modules: a build from before PR #236 (SMB) or #240 (NFS) has none of them.
+    const int nfs = nfsExport != NULL;
+    const char *const *modules = nfs ? neutrinoNfsModuleFiles : neutrinoSmbModuleFiles;
+    for (int m = 1; m < 3; m++) {
         snprintf(path, sizeof(path), "%.*smodules%c%s", dirLen, neutrinoPath, sep, modules[m]);
         fd = open(path, O_RDONLY);
         if (fd < 0) {
-            LOG("[NEUTRINO] no %s -- this Neutrino has no SMB support\n", path);
+            LOG("[NEUTRINO] no %s -- this Neutrino has no support for it\n", path);
             return -1;
         }
         close(fd);
     }
 
-    snprintf(path, sizeof(path), "%.*sconfig%cbsd-smb.toml", dirLen, neutrinoPath, sep);
+    snprintf(path, sizeof(path), "%.*sconfig%cbsd-%s.toml", dirLen, neutrinoPath, sep, nfs ? "nfs" : "smb");
     fd = open(path, O_RDONLY);
     if (fd < 0) {
-        LOG("[NEUTRINO] no %s -- this Neutrino has no SMB support\n", path);
+        LOG("[NEUTRINO] no %s -- this Neutrino has no support for it\n", path);
         return -1;
     }
     len = 0;
@@ -670,15 +680,18 @@ int sysNeutrinoSmbPreflight(const char *neutrinoPath, const neutrino_smb_args_t 
     }
     toml[len] = '\0';
 
-    const unsigned char smbMods = NEUTRINO_SMB_MOD_IOMAN | NEUTRINO_SMB_MOD_FHI;
+    // A key the protocol does not use belongs to no module: it is never written, and never missing.
+    const unsigned char netMods = NEUTRINO_SMB_MOD_IOMAN | NEUTRINO_SMB_MOD_FHI;
+    const unsigned char smbMods = nfs ? 0 : netMods, nfsMods = nfs ? netMods : 0;
     neutrino_smb_key_t keys[] = {
-        {"ip=", "", NEUTRINO_SMB_MOD_MINISTACK | smbMods, 0},
-        {"mask=", "", smbMods, 0},
-        {"gw=", "", smbMods, 0},
-        {"srv=", "", smbMods, 0},
+        {"ip=", "", NEUTRINO_SMB_MOD_MINISTACK | netMods, 0},
+        {"mask=", "", netMods, 0},
+        {"gw=", "", netMods, 0},
+        {"srv=", "", netMods, 0},
         {"user=", "", smbMods, 0},
         {"pass=", "", smbMods, 0},
-        {"share=", "", smbMods, 0}};
+        {"share=", "", smbMods, 0},
+        {"export=", "", nfsMods, 0}};
     enum { K_IP,
            K_MASK,
            K_GW,
@@ -686,28 +699,31 @@ int sysNeutrinoSmbPreflight(const char *neutrinoPath, const neutrino_smb_args_t 
            K_USER,
            K_PASS,
            K_SHARE,
+           K_EXPORT,
            K_COUNT };
     const unsigned char *const addrs[] = {args->ip, args->mask, args->gw, args->srv};
     for (int k = K_IP; k <= K_SRV; k++)
         snprintf(keys[k].value, sizeof(keys[k].value), "%u.%u.%u.%u", addrs[k][0], addrs[k][1], addrs[k][2], addrs[k][3]);
     if (sysTomlEscape(args->user, keys[K_USER].value, sizeof(keys[K_USER].value)) < 0 ||
         sysTomlEscape(args->pass, keys[K_PASS].value, sizeof(keys[K_PASS].value)) < 0 ||
-        sysTomlEscape(args->share, keys[K_SHARE].value, sizeof(keys[K_SHARE].value)) < 0) {
-        LOG("[NEUTRINO] SMB login holds a control character -- not written\n");
+        sysTomlEscape(args->share, keys[K_SHARE].value, sizeof(keys[K_SHARE].value)) < 0 ||
+        sysTomlEscape(nfs ? nfsExport : "", keys[K_EXPORT].value, sizeof(keys[K_EXPORT].value)) < 0) {
+        LOG("[NEUTRINO] login or export holds a control character -- not written\n");
         return -2;
     }
 
-    int newLen = sysTomlRewriteSmbArgs(toml, len, updated, sizeof(updated), keys, K_COUNT);
-    // The stock file gives ip= to ministack, smb_ioman and smb_fhi, and the rest to both SMB modules.
+    int newLen = sysTomlRewriteSmbArgs(toml, len, updated, sizeof(updated), keys, K_COUNT, modules);
+    // The stock file gives ip= to ministack and both share modules, and the rest to the two share modules.
     // A module missing one would boot with its own default (a /24 mask, no gateway is fine; an empty
-    // login or another ip is not), so each module must carry the ones that matter.
-    static const int required[] = {K_IP, K_SRV, K_USER, K_PASS, K_SHARE};
+    // login or export or another ip is not), so each module must carry the ones that matter.
+    static const int required[] = {K_IP, K_SRV, K_USER, K_PASS, K_SHARE, K_EXPORT};
     int missing = newLen < 0;
-    for (int r = 0; r < 5 && !missing; r++)
+    for (int r = 0; r < 6 && !missing; r++)
         missing = keys[required[r]].seenIn != keys[required[r]].modules;
     if (missing) {
-        LOG("[NEUTRINO] %s not in the stock shape (modules with ip %x, srv %x, user %x, pass %x, share %x) -- not written\n",
-            path, keys[K_IP].seenIn, keys[K_SRV].seenIn, keys[K_USER].seenIn, keys[K_PASS].seenIn, keys[K_SHARE].seenIn);
+        LOG("[NEUTRINO] %s not in the stock shape (modules with ip %x, srv %x, user %x, pass %x, share %x, export %x) -- not written\n",
+            path, keys[K_IP].seenIn, keys[K_SRV].seenIn, keys[K_USER].seenIn, keys[K_PASS].seenIn, keys[K_SHARE].seenIn,
+            keys[K_EXPORT].seenIn);
         return -2;
     }
     if (newLen == len && !memcmp(toml, updated, len))
@@ -731,7 +747,7 @@ int sysNeutrinoSmbPreflight(const char *neutrinoPath, const neutrino_smb_args_t 
         }
         return -2;
     }
-    LOG("[NEUTRINO] wrote %s (srv %s, share %s)\n", path, keys[K_SRV].value, keys[K_SHARE].value);
+    LOG("[NEUTRINO] wrote %s (srv %s, share %s%s)\n", path, keys[K_SRV].value, keys[K_SHARE].value, keys[K_EXPORT].value);
     return 0;
 }
 

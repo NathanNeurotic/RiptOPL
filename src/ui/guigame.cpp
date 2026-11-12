@@ -266,6 +266,8 @@ int guiGameResolveEffectiveCore(config_set_t *configSet, item_list_t *support, i
         core = key == 0 ? 0 : 1;
     else if (support != NULL && libListRowView(support, id) == LIB_VIEW_PS1)
         core = 0;
+    else if (sourceMode == ETH_MODE && ethIsNfs())
+        core = 1; // NFS has no OPL core leg (ethTryNeutrino)
     return core;
 }
 
@@ -673,7 +675,7 @@ int guiGameAutoCreateVmc(item_list_t *support, int id, config_set_t *configSet)
         return 1;
     // A read-only server launches without a VMC, so there is nothing to create.
     if (backing == NULL || !backing->enabled || !gsOf(backing)->hasCheckVmc() || backing->mode == HTTP_MODE || bdmModeIsPCCF(backing->mode) ||
-        bdmModeIsReadOnly(backing->mode))
+        bdmModeIsReadOnly(backing->mode) || (backing->mode == ETH_MODE && ethIsNfs()))
         return 1;
     int loader = gDefaultCoreLoader;
     configGetInt(configSet, CONFIG_ITEM_CORE_LOADER, &loader);
@@ -800,6 +802,11 @@ void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)
                                                  support->mode;
     if (sourceMode == HTTP_MODE) {
         guiMsgBox(_l(_STR_HTTP_NO_VMC), 0, NULL);
+        return;
+    }
+    // NFS games run on Neutrino only, which takes no VMC from the export (ethTryNeutrino).
+    if (sourceMode == ETH_MODE && ethIsNfs()) {
+        guiMsgBox(_l(_STR_NFS_NO_VMC), 0, NULL);
         return;
     }
     if (bdmModeIsPCCF(sourceMode)) {
@@ -1652,6 +1659,8 @@ static int guiGameDialogCoreIsNeutrino(int sourceMode, item_list_t *support, int
     // (bdmNetBlockCoreLoader).
     if (sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode))
         return coreChoice != 0;
+    if (sourceMode == ETH_MODE && ethIsNfs())
+        return 1; // NFS: Neutrino only, the row is pinned
     return (coreChoice == 1) || (coreChoice == 2 && gDefaultCoreLoader == 1);
 }
 
@@ -1776,7 +1785,8 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
     // (UDPBD and UDPFS IMG: bdmSupportIsUDPBD for its page, bdmModeIsUDPBD for a Favourite of it) boot
     // either core; their selector stays open and its "Default" row means Neutrino. Every other device
     // re-enables the row too (the dialog struct is reused across games).
-    coreDefaultNeutrino = sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode);
+    const int nfsSource = sourceMode == ETH_MODE && ethIsNfs(); // Neutrino only (ethTryNeutrino)
+    coreDefaultNeutrino = sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode) || nfsSource;
     if (support != NULL && libListRowView(support, id) == LIB_VIEW_PS1) // POPSTARTER: neither core
         snprintf(loaderDefault, sizeof(loaderDefault), "%s", _l(_STR_DEFAULT));
     else
@@ -1789,11 +1799,12 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
         // could run under a different core.
         diaSetInt(diaCompatConfig, COMPAT_LOADER, 2);
         diaSetEnabled(diaCompatConfig, COMPAT_LOADER, 0);
-    } else if (support != NULL && (sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode))) {
+    } else if (support != NULL && (sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode) || nfsSource)) {
         // HTTP and CF have no Neutrino launch leg (external Neutrino cannot restore the CF bus) --
         // the effective core is ALWAYS <OPL>. Pin the row to the inert "Default" (index 2: saving removes any
         // stale $CoreLoader key, self-healing old Neutrino selections) and lock it. Launch-time
         // honesty for keys set elsewhere (e.g. via Favourites) is the toast in the HTTP launch.
+        // NFS is the reverse, Neutrino ALWAYS: the same pinned "Default", which reads "Default (Neutrino)" there.
         diaSetInt(diaCompatConfig, COMPAT_LOADER, 2);
         diaSetEnabled(diaCompatConfig, COMPAT_LOADER, 0);
     } else {

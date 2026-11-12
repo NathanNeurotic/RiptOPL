@@ -29,6 +29,7 @@ start = udp.index('    if (host::library().consumeDirty(itemList->mode))', udp.i
 udp_retry = udp[start:udp.index('\n    if (!gUdpfsSupport.isoScanned_)', start)]
 # Use the real session declaration, including its default initialization and accessors.
 session = header[header.index('class EthSupport\n'):header.index('extern EthSupport')]
+session += function(eth, 'bool EthSupport::shareChosen(') + '\n'
 limit = re.search(r'constexpr int ETH_PS1_SCAN_RETRY_MAX = \d+;', header).group(0)
 # Every session reset, including reconnect and share selection, must discard the old budget.
 for signature in ('void EthSupport::reconnectSmb(', 'void EthSource::init('):
@@ -46,6 +47,7 @@ struct item_list_t { int mode; };
 enum { LIB_VIEW_ISO, LIB_VIEW_PS1, LIB_VIEW_MIXED };
 static int view, dirty, gNetworkStartup, scanResult, incomplete;
 static char gPCShareName[16] = "games";
+#define LITE_HAS_NFS 1
 @LIMIT@
 @SESSION@
 EthSupport gEthSupport;

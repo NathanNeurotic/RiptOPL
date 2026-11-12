@@ -137,6 +137,37 @@ Bundled third-party software, shipped in the release package and NOT part of Rip
     derived from the RSA Data Security, Inc. MD4 and MD5 Message-Digest
     Algorithms. The in-game SMB2 reader (smb2_cdvdman) is separate code.
 
+  - unfs4, by Ronnie Sahlberg (sahlberg)   https://github.com/sahlberg/unfs4
+    The NFSv4 client under nfsman.irx, the menu's NFS browse driver, which
+    every loader except the lite ones embeds. Vendored at upstream commit
+    3c673fc with the checks listed in modules/network/nfsman/unfs4/VENDORED.txt,
+    and used under the BSD 2-Clause licence, reproduced here:
+
+      BSD 2-Clause License
+
+      Copyright (c) 2026, Ronnie Sahlberg <ronniesahlberg@gmail.com>
+
+      Redistribution and use in source and binary forms, with or without
+      modification, are permitted provided that the following conditions are met:
+
+      1. Redistributions of source code must retain the above copyright notice, this
+         list of conditions and the following disclaimer.
+
+      2. Redistributions in binary form must reproduce the above copyright notice,
+         this list of conditions and the following disclaimer in the documentation
+         and/or other materials provided with the distribution.
+
+      THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+      AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+      IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+      DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+      FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+      DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+      SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+      CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+      OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+      OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
   - NULD (formerly ORBIT) Neutrino RA runtime, by Daniel (danielnuld)   https://github.com/danielnuld/nuld
     The RetroAchievements kit's neutrino/: Neutrino by Maximus32 with an
     achievement agent speaking xeRAbora's protocol (hacan359). AFL-3.0; the

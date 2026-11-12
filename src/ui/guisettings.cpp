@@ -185,10 +185,10 @@ int guiNetProtocolNeedsRestart(void)
     return gNetworkProtocol != resident;
 }
 
-// The Protocol row -- SMB(0) / UDPFS(1) / UDPBD(2) / HTTP(3) -- appears on the Network page AND,
+// The Protocol row -- SMB(0) / UDPFS(1) / UDPBD(2) / HTTP(3) / NFS(4) -- appears on the Network page AND,
 // indented under Network Connectivity, on Game Sources. It is one setting shown twice: both rows read
 // and write gNetworkProtocol through these helpers, so neither page can disagree with the other.
-static const char *guiNetProtocolNames[] = {"SMB", "UDPFS", "UDPBD", "HTTP", NULL}; // protocol names, not translated
+static const char *guiNetProtocolNames[] = {"SMB", "UDPFS", "UDPBD", "HTTP", "NFS", NULL}; // protocol names, not translated
 
 // What the Protocol rows show: the live protocol, or while Connectivity is Off (live = OFF) the one the
 // user last chose, so switching Off and back on never loses it.
@@ -199,6 +199,8 @@ static int guiNetProtocolShown(void)
 
 static int guiNetProtocolToPicker(int protocol)
 {
+    if (protocol == NET_PROTO_NFS)
+        return 4;
     if (protocol == NET_PROTO_HTTP)
         return 3;
     if (protocol == NET_PROTO_UDPBD)
@@ -218,6 +220,8 @@ static int guiNetProtocolAccess(int protocol)
 // The protocol the rows name. Access (Files 0 / IMG 1) is consulted only for UDPFS.
 static int guiNetProtocolFromPicker(int picker, int access)
 {
+    if (picker == 4)
+        return NET_PROTO_NFS;
     if (picker == 3)
         return NET_PROTO_HTTP;
     if (picker == 2)
@@ -252,9 +256,9 @@ static void guiNetProtocolApplied(int netProtocolWas)
 {
     gEnableUDPBD = (gNetworkProtocol == NET_PROTO_UDPBD || gNetworkProtocol == NET_PROTO_UDPFSBD);
     gNetBootProtocol = (gNetworkProtocol == NET_PROTO_UDPFSBD) ? NET_BOOT_UDPFS : NET_BOOT_UDPBD;
-    // SMB's start mode IS the network start row (Auto = boot connect, Manual = on-entry); every
-    // non-SMB protocol forces the SMB/ETH stack off so only one transport claims the NIC.
-    gETHStartMode = (gNetworkProtocol == NET_PROTO_SMB) ? gNetStartMode : START_MODE_DISABLED;
+    // SMB's (and NFS's) start mode IS the network start row (Auto = boot connect, Manual = on-entry);
+    // every other protocol forces the SMB/ETH stack off so only one transport claims the NIC.
+    gETHStartMode = NET_PROTO_IS_ETH(gNetworkProtocol) ? gNetStartMode : START_MODE_DISABLED;
 
     if (gNetworkProtocol == netProtocolWas)
         return;
@@ -630,7 +634,7 @@ static void httpTestWorker(void)
 
 static int netConfigUpdater(int modified)
 {
-    int showAdvancedOptions, isNetBIOS, isDHCPEnabled, netProto, isSMB, isHTTP, isUdp, i;
+    int showAdvancedOptions, isNetBIOS, isDHCPEnabled, netProto, isSMB, isHTTP, isNFS, isServer, isUdp, i;
 
     if (modified) {
         diaGetInt(diaNetConfig, NETCFG_SHOW_ADVANCED_OPTS, &showAdvancedOptions);
@@ -649,6 +653,8 @@ static int netConfigUpdater(int modified)
         diaGetInt(diaNetConfig, CFG_NETPROTOCOL, &netProto);
         isSMB = netProto == 0;
         isHTTP = netProto == 3;
+        isNFS = netProto == 4;
+        isServer = isSMB || isNFS; // the server's address rows serve both
         isUdp = netProto == 1 || netProto == 2;
 
         // Preserve UDPFS Access across in-dialog switches. A forced UDPBD IMG
@@ -690,19 +696,26 @@ static int netConfigUpdater(int modified)
 
         // SMB server fields belong to OPL's SMB consumer. UDPFS/UDPBD are the Neutrino-facing
         // transports, so do not present SMB-only options as if they applied to those protocols.
-        diaSetVisible(diaNetConfig, NETCFG_LBL_SMB_SERVER, isSMB);
-        diaSetVisible(diaNetConfig, NETCFG_LBL_SHARE_ADDR_TYPE, isSMB);
-        diaSetVisible(diaNetConfig, NETCFG_LBL_SHARE_ADDRESS, isSMB);
+        // NFS uses the same server address (IP or NetBIOS name) under its own header, and has no port,
+        // user, password or version: unfs4 always dials TCP 2049 with no login.
+        diaSetLabel(diaNetConfig, NETCFG_LBL_SMB_SERVER, isNFS ? _l(_STR_CAT_NFS_SERVER) : NULL);
+        diaSetVisible(diaNetConfig, NETCFG_LBL_SMB_SERVER, isServer);
+        diaSetVisible(diaNetConfig, NETCFG_LBL_SHARE_ADDR_TYPE, isServer);
+        diaSetVisible(diaNetConfig, NETCFG_LBL_SHARE_ADDRESS, isServer);
         diaSetVisible(diaNetConfig, NETCFG_LBL_SHARE_PORT, isSMB);
         diaSetVisible(diaNetConfig, NETCFG_LBL_SHARE_NAME, isSMB);
         diaSetVisible(diaNetConfig, NETCFG_LBL_SHARE_USER, isSMB);
         diaSetVisible(diaNetConfig, NETCFG_LBL_SHARE_PASSWORD, isSMB);
         diaSetVisible(diaNetConfig, NETCFG_LBL_SMBDIALECT, isSMB);
-        diaSetVisible(diaNetConfig, NETCFG_SHARE_ADDR_TYPE, isSMB);
-        diaSetVisible(diaNetConfig, NETCFG_SHARE_NB_ADDR, isSMB && isNetBIOS);
+        diaSetVisible(diaNetConfig, NETCFG_SHARE_ADDR_TYPE, isServer);
+        diaSetVisible(diaNetConfig, NETCFG_SHARE_NB_ADDR, isServer && isNetBIOS);
+        diaSetVisible(diaNetConfig, NETCFG_LBL_NFS_EXPORT, isNFS);
+        diaSetVisible(diaNetConfig, NETCFG_NFS_EXPORT, isNFS);
+        diaSetVisible(diaNetConfig, NETCFG_LBL_NFS_WRITES, isNFS);
+        diaSetVisible(diaNetConfig, NETCFG_NFS_WRITES, isNFS);
 
         for (i = 0; i < 4; i++) {
-            diaSetVisible(diaNetConfig, NETCFG_SHARE_IP_ADDR_0 + i, isSMB && !isNetBIOS);
+            diaSetVisible(diaNetConfig, NETCFG_SHARE_IP_ADDR_0 + i, isServer && !isNetBIOS);
 
             diaSetEnabled(diaNetConfig, NETCFG_PS2_IP_ADDR_0 + i, !isDHCPEnabled);
             diaSetEnabled(diaNetConfig, NETCFG_PS2_NETMASK_0 + i, !isDHCPEnabled);
@@ -711,7 +724,7 @@ static int netConfigUpdater(int modified)
         }
 
         for (i = 0; i < 3; i++)
-            diaSetVisible(diaNetConfig, NETCFG_SHARE_IP_ADDR_DOT_0 + i, isSMB && !isNetBIOS);
+            diaSetVisible(diaNetConfig, NETCFG_SHARE_IP_ADDR_DOT_0 + i, isServer && !isNetBIOS);
 
         diaSetEnabled(diaNetConfig, NETCFG_SHARE_PORT, isSMB && showAdvancedOptions);
         diaSetEnabled(diaNetConfig, NETCFG_ETHOPMODE, showAdvancedOptions);
@@ -740,7 +753,7 @@ static int netConfigUpdater(int modified)
         // The SMB Version row is live only while SMB is the picked protocol.
         diaSetEnabled(diaNetConfig, CFG_SMBDIALECT, isSMB);
         diaSetVisible(diaNetConfig, CFG_SMBDIALECT, isSMB);
-        if (netProto == 0 || netProto == 3) { // SMB and HTTP -> Files, locked
+        if (netProto == 0 || netProto == 3 || netProto == 4) { // SMB, HTTP and NFS -> Files, locked
             diaSetInt(diaNetConfig, CFG_UDPFSMODE, 0);
             diaSetEnabled(diaNetConfig, CFG_UDPFSMODE, 0);
         } else if (netProto == 2) { // UDPBD -> IMG, locked
@@ -760,8 +773,8 @@ static int netConfigUpdater(int modified)
 // struct, so bytes past a terminator can never read as a change.
 typedef struct
 {
-    int dhcp, ps2Ip[4], netmask[4], gateway[4], dns[4], pcIp[4], pcPort, pcNetBIOS, opMode, protocol, smbDialect;
-    char pcNBAddress[17], shareName[32], userName[32], password[32];
+    int dhcp, ps2Ip[4], netmask[4], gateway[4], dns[4], pcIp[4], pcPort, pcNetBIOS, opMode, protocol, smbDialect, nfsWrites;
+    char pcNBAddress[17], shareName[32], userName[32], password[32], nfsExport[NFS_EXPORT_MAX];
 } gui_smb_link_t;
 
 static void guiSmbLinkCapture(gui_smb_link_t *link)
@@ -782,6 +795,20 @@ static void guiSmbLinkCapture(gui_smb_link_t *link)
     snprintf(link->shareName, sizeof(link->shareName), "%s", gPCShareName);
     snprintf(link->userName, sizeof(link->userName), "%s", gPCUserName);
     snprintf(link->password, sizeof(link->password), "%s", gPCPassword);
+    link->nfsWrites = gNfsWrites;
+    snprintf(link->nfsExport, sizeof(link->nfsExport), "%s", gNfsExport);
+}
+
+// The NFS export row, as the core path rows: the row shows the first UI_STRING_SIZE - 1 characters,
+// this buffer holds the whole export (Neutrino takes up to NFS_EXPORT_MAX - 1).
+static char nfsExportEdit[NFS_EXPORT_MAX];
+
+int guiNfsExportHandler(char *text, int maxLen)
+{
+    if (!guiShowKeyboard(nfsExportEdit, sizeof(nfsExportEdit)))
+        return 0;
+    snprintf(text, maxLen, "%s", nfsExportEdit);
+    return 1;
 }
 
 static int guiSmbLinkChanged(const gui_smb_link_t *before)
@@ -883,6 +910,9 @@ int guiShowNetConfig(void)
         diaSetInt(diaNetConfig, NETCFG_HTTP_IP_0 + i, gHttpServerIp[i]);
     diaSetInt(diaNetConfig, NETCFG_HTTP_PORT, gHttpPort);
     diaSetString(diaNetConfig, NETCFG_HTTP_BASE, gHttpBasePath);
+    snprintf(nfsExportEdit, sizeof(nfsExportEdit), "%s", gNfsExport);
+    diaSetString(diaNetConfig, NETCFG_NFS_EXPORT, nfsExportEdit);
+    diaSetInt(diaNetConfig, NETCFG_NFS_WRITES, gNfsWrites);
     diaSetInt(diaNetConfig, CFG_NETPROTOCOL, netProtoVal);
     diaSetInt(diaNetConfig, CFG_UDPFSMODE, netAccessVal);
     diaSetInt(diaNetConfig, CFG_SMBDIALECT, gSMBDialect);
@@ -979,6 +1009,9 @@ reshow_network:
         diaGetString(diaNetConfig, NETCFG_SHARE_NAME, gPCShareName, sizeof(gPCShareName));
         diaGetString(diaNetConfig, NETCFG_SHARE_USERNAME, gPCUserName, sizeof(gPCUserName));
         diaGetString(diaNetConfig, NETCFG_SHARE_PASSWORD, gPCPassword, sizeof(gPCPassword));
+        snprintf(gNfsExport, sizeof(gNfsExport), "%s", nfsExportEdit[0] ? nfsExportEdit : "/");
+        diaGetInt(diaNetConfig, NETCFG_NFS_WRITES, &gNfsWrites);
+        gNfsWrites = gNfsWrites ? 1 : 0;
 
         // Fold the Protocol/Access rows back into the authoritative gNetworkProtocol. PROTOCOL-FIRST:
         // the Access value is consulted ONLY for UDPFS, so a stale IMG under SMB/UDPBD can never
@@ -1016,7 +1049,7 @@ reshow_network:
         // failed startup may already have queued this through initAllSupport();
         // ethRequestReconnect coalesces the duplicate. Protocol changes that disagree with the
         // resident NIC remain restart-only and are deliberately excluded here.
-        if (gNetworkProtocol == NET_PROTO_SMB && gETHStartMode != START_MODE_DISABLED &&
+        if (NET_PROTO_IS_ETH(gNetworkProtocol) && gETHStartMode != START_MODE_DISABLED &&
             !guiNetProtocolNeedsRestart() &&
             (result == NETCFG_OK || result == NETCFG_RECONNECT || guiSmbLinkChanged(&smbBefore)))
             ethRequestReconnect();

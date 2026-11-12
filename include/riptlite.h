@@ -83,6 +83,7 @@
 // Sources no lite build carries.
 #define LITE_HAS_PCCF 0
 #define LITE_HAS_HTTP 0
+#define LITE_HAS_NFS  0
 // The menu's network stack and the NBD server stay in every lite build (user decision 2026-11-02:
 // the network modules are backbone for other things), so the Network page stays too.
 #define LITE_HAS_NBD  1
@@ -101,6 +102,7 @@
 #define LITE_HAS_MMCE_GAMES 1
 #define LITE_HAS_PCCF       1
 #define LITE_HAS_HTTP       1
+#define LITE_HAS_NFS        1
 #define LITE_HAS_NBD        1
 
 #endif

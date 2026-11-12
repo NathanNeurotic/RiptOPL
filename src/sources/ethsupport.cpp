@@ -26,6 +26,7 @@
 #include "include/ps2sdkapi_compat.h"
 #include "modules/iopcore/common/cdvd_config.h"
 #include "modules/network/smb2man/smb2man_devctl.h" // SMB2_DEVCTL_GETDIALECT, SMB2_DEVCTL_GETIOPFREE
+#include "modules/network/nfsman/nfsman.h"           // NFS_DEVCTL_CONNECT, NFS_DEVCTL_DISCONNECT_ALL
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDevctl(dev, SMB_***)
@@ -84,11 +85,6 @@ void EthSupport::smbConnect(void)
     smbEcho_in_t echo;
     smbOpenShare_in_t openshare;
     int result;
-
-    if (gETHPrefix[0] != '\0')
-        sprintf(prefix_, "%s%s\\", base_, gETHPrefix);
-    else
-        strcpy(prefix_, base_);
 
     // open tcp connection with the server / logon to SMB server
     if (gPCShareAddressIsNetBIOS) {
@@ -191,6 +187,9 @@ int EthSupport::smbDisconnect(void)
 {
     int shareRet, logoffRet;
 
+    if (nfs()) // nothing is kept on the server: forgetting the export closes its connection
+        return fileXioDevctl("nfs:", NFS_DEVCTL_DISCONNECT_ALL, NULL, 0, NULL, 0) < 0 ? -1 : 0;
+
     // Always attempt both halves. CLOSESHARE legitimately fails after a connection/logon error or
     // when LOGON succeeded but OPENSHARE did not; returning early there used to leave that partial
     // session alive, so the next explicit reconnect was not actually a clean retry.
@@ -286,6 +285,77 @@ static void ethCheckedRefreshSMB(void)
     gEthSupport.checkedRefreshSmb();
 }
 
+// NFS (nfsman): connect gNfsExport on the server as nfs:/NFS/. While NFS Writes is Off it connects with
+// "?ro", so the driver itself refuses every change whatever the server allows, and the page is read-only
+// (Rename/Delete hidden, a game's settings saved next to OPL's own). The server is SMB's address row: an
+// IP, or a NetBIOS name resolved now, as smbConnect does (nfsman takes an address).
+void EthSupport::nfsConnect()
+{
+    unsigned char ip[4];
+    nfsConnect_in_t in;
+    const int readOnly = !gNfsWrites;
+    item_list_t *page = ethInstance();
+
+    page->flags = readOnly ? (page->flags | MODE_FLAG_READ_ONLY) : (page->flags & ~MODE_FLAG_READ_ONLY);
+    for (int k = 0; k < 4; k++)
+        ip[k] = (unsigned char)pc_ip[k];
+    if (gPCShareAddressIsNetBIOS && nbnsFindName(gPCShareNBAddress, ip) != 0) {
+        gNetworkStartup = ERROR_ETH_SMB_CONN;
+        return;
+    }
+    memset(&in, 0, sizeof(in));
+    strcpy(in.name, "NFS");
+    snprintf(in.url, sizeof(in.url), "nfs://%u.%u.%u.%u%s%s%s", ip[0], ip[1], ip[2], ip[3], gNfsExport[0] == '/' ? "" : "/",
+             gNfsExport, readOnly ? "?ro" : "");
+    in.seed = (unsigned int)time(NULL); // fresh xids, so a new session never reuses the last one's open owners
+    fileXioDevctl("nfs:", NFS_DEVCTL_DISCONNECT_ALL, NULL, 0, NULL, 0);
+    int rv = fileXioDevctl("nfs:", NFS_DEVCTL_CONNECT, &in, sizeof(in), NULL, 0);
+    LOG("ETHSUPPORT NFS connect %s: %d\n", in.url, rv);
+    if (rv == -NFS_CONNECT_ERR_EXPORT || rv == -NFS_CONNECT_ERR_URL)
+        gNetworkStartup = ERROR_ETH_SMB_OPENSHARE;
+    else if (rv == -NFS_CONNECT_ERR_ACCESS)
+        gNetworkStartup = ERROR_ETH_SMB_LOGON;
+    else if (rv != 0)
+        gNetworkStartup = ERROR_ETH_SMB_CONN;
+    else {
+        gNetworkStartup = 0;
+        for (int k = 0; k < 4; k++)
+            pc_ip[k] = ip[k]; // the address that answered, as smbConnect keeps it
+    }
+}
+
+// Which browse driver the next load uses: nfsman for NFS, smbman/smb2man for SMB, and its base device.
+// Chosen while none is resident; once one is, it stays until the restart a protocol change asks for.
+void EthSupport::selectDriver()
+{
+    if (!smbModuleLoaded_) {
+        nfs_ = LITE_HAS_NFS && gNetworkProtocol == NET_PROTO_NFS;
+        setBase(nfs() ? "nfs:/NFS/" : "smb0:");
+    }
+}
+
+// The saved protocol is SMB or NFS, and it is the resident driver's (or none is resident yet). A protocol
+// switched between the two is restart-only, like any other: nothing reconnects for it.
+bool EthSupport::protocolLive() const
+{
+    return NET_PROTO_IS_ETH(gNetworkProtocol) && (!smbModuleLoaded_ || nfs() == (gNetworkProtocol == NET_PROTO_NFS));
+}
+
+bool EthSupport::shareChosen() const
+{
+    return nfs() || gPCShareName[0] != '\0';
+}
+
+int ethIsNfs(void)
+{
+    return gEthSupport.nfs();
+}
+
+int ethShareChosen(void)
+{
+    return gEthSupport.shareChosen();
+}
+
 void EthSupport::initSmb(void)
 {
     int ret;
@@ -302,7 +372,14 @@ void EthSupport::initSmb(void)
     }
 
     // connect
-    smbConnect();
+    if (gETHPrefix[0] != '\0')
+        sprintf(prefix_, "%s%s\\", base_, gETHPrefix);
+    else
+        strcpy(prefix_, base_);
+    if (nfs())
+        nfsConnect();
+    else
+        smbConnect();
 
     if (gNetworkStartup == 0) {
         // update Themes
@@ -313,8 +390,9 @@ void EthSupport::initSmb(void)
         snprintf(path, sizeof(path), "%sLNG", prefix_);
         lngAddLanguages(path, "\\", (*ethInstance()).mode);
 
-        sbCreateFolders(prefix_, 1);
-    } else if (gPCShareName[0] || !(gNetworkStartup >= ERROR_ETH_SMB_OPENSHARE)) {
+        if (!((*ethInstance()).flags & MODE_FLAG_READ_ONLY))
+            sbCreateFolders(prefix_, 1);
+    } else if (nfs() || gPCShareName[0] || !(gNetworkStartup >= ERROR_ETH_SMB_OPENSHARE)) {
         displayErrorStatus();
     }
 }
@@ -355,20 +433,18 @@ int ethEnsureSMBShareConnected(void)
 
 bool EthSupport::smbShareConnected() const
 {
-    return netGetModulesLoaded() && gNetworkStartup == 0 && prefix_[0] != '\0';
+    return !nfs() && netGetModulesLoaded() && gNetworkStartup == 0 && prefix_[0] != '\0';
 }
 
 int EthSupport::ensureShareConnected()
 {
     if (smbShareConnected())
         return 1;
-    if (udpfsGetModulesLoaded() || bdmIsUDPBDLoaded())
+    selectDriver();
+    if (udpfsGetModulesLoaded() || bdmIsUDPBDLoaded() || nfs()) // NFS has no smb0: to give
         return 0;
     if (netInitSema() < 0)
         return 0;
-
-    if (base() == NULL)
-        setBase("smb0:");
 
     if (!netGetModulesLoaded() || !smbModuleLoaded_)
         loadModules();
@@ -394,7 +470,7 @@ void ethDeinitModules(void)
 
 int ethLoadInitModules(void)
 {
-    return netLoadInitModules(NET_PROTO_SMB);
+    return netLoadInitModules(gNetworkProtocol == NET_PROTO_NFS ? NET_PROTO_NFS : NET_PROTO_SMB);
 }
 
 void EthSupport::displayErrorStatus(void)
@@ -406,13 +482,13 @@ void EthSupport::displayErrorStatus(void)
             host::app().setError(_STR_NETWORK_STARTUP_ERROR_NETIF, gNetworkStartup);
             break;
         case ERROR_ETH_SMB_CONN:
-            host::app().setError(_STR_NETWORK_STARTUP_ERROR_CONN, gNetworkStartup);
+            host::app().setError(nfs() ? _STR_NFS_ERROR_CONN : _STR_NETWORK_STARTUP_ERROR_CONN, gNetworkStartup);
             break;
         case ERROR_ETH_SMB_LOGON:
-            host::app().setError(_STR_NETWORK_STARTUP_ERROR_LOGON, gNetworkStartup);
+            host::app().setError(nfs() ? _STR_NFS_ERROR_ACCESS : _STR_NETWORK_STARTUP_ERROR_LOGON, gNetworkStartup);
             break;
         case ERROR_ETH_SMB_OPENSHARE:
-            host::app().setError(_STR_NETWORK_STARTUP_ERROR_SHARE, gNetworkStartup);
+            host::app().setError(nfs() ? _STR_NFS_ERROR_EXPORT : _STR_NETWORK_STARTUP_ERROR_SHARE, gNetworkStartup);
             break;
         case ERROR_ETH_SMB_LISTSHARES:
             host::app().setError(_STR_NETWORK_SHARE_LIST_ERROR, gNetworkStartup);
@@ -438,15 +514,30 @@ void EthSupport::loadModules(void)
     int ret;
 
     LOG("SMBSUPPORT LoadModules\n");
+    selectDriver();
 
     if (gSMBDialect == SMB_DIALECT_V2)
         diagLog("SMB2 init: network module loading enter");
-    ret = netEnsureModules();
+    ret = netEnsureModules(nfs() ? NET_PROTO_NFS : NET_PROTO_SMB);
     if (gSMBDialect == SMB_DIALECT_V2)
         diagLog("SMB2 init: network module loading returned %d", ret);
 
     if (ret == 0) {
         gNetworkStartup = ERROR_ETH_MODULE_SMBMAN_FAILURE;
+        if (nfs()) {
+            // NFS: nfsman over unfs4 (modules/network/nfsman), the one driver for it. nbns resolves a
+            // NetBIOS server name, as for SMB.
+            LOG("[NFSMAN]:\n");
+            if (sysLoadModuleBuffer((void *)&nfsman_irx, size_nfsman_irx, 0, NULL) >= 0) {
+                smbModuleLoaded_ = 1;
+                sysLoadModuleBuffer(&nbns_irx, size_nbns_irx, 0, NULL);
+                nbnsInit();
+                initSmb();
+                return;
+            }
+            displayErrorStatus();
+            return;
+        }
         /*
           Load ONE SMB filesystem driver, chosen by the SMB Version picker. Both register the same
           iomanX device name ("smb", hence the "smb0:" paths everywhere), so only one may ever be
@@ -507,8 +598,7 @@ void EthSupport::reconnectSmb(void)
     // Runs on the serialized IO worker. Keep the old backing allocations alive until the normal
     // deferred menu rebuild has detached their row text, but publish zero counts immediately so a
     // button press during reconnect resolves to an inert row rather than launching stale data.
-    if (base() == NULL)
-        setBase("smb0:");
+    selectDriver();
 
     if (smbModuleLoaded_)
         (void)smbDisconnect();
@@ -538,7 +628,7 @@ void EthSupport::checkedRefreshSmb()
 {
     // A queued Refresh can outlive a protocol/settings change. Recheck ownership on the worker
     // before probing or reconnecting; do not revive SMB after the user selected a UDP transport.
-    if (gNetworkProtocol != NET_PROTO_SMB || gETHStartMode == START_MODE_DISABLED || !ethInstance()->enabled) {
+    if (!protocolLive() || gETHStartMode == START_MODE_DISABLED || !ethInstance()->enabled) {
         reconnectQueued_ = 0;
         reconnectRequested_ = 0;
         return;
@@ -551,10 +641,11 @@ void EthSupport::checkedRefreshSmb()
     memset(&echo, 0, sizeof(echo));
     strcpy(echo.echo, "OPL REFRESH");
     echo.len = strlen(echo.echo);
-    int echoResult = fileXioDevctl(base_, SMB_DEVCTL_ECHO, &echo, sizeof(echo), NULL, 0);
+    // NFS has no echo, and nfsman reconnects on use: a healthy session is just rescanned.
+    int echoResult = nfs() ? 0 : fileXioDevctl(base_, SMB_DEVCTL_ECHO, &echo, sizeof(echo), NULL, 0);
     // The RPC can yield to the GUI. A settings reconnect may have upgraded this request, or
     // the user may have disabled/switched away from SMB while the probe was in flight.
-    if (gNetworkProtocol != NET_PROTO_SMB || gETHStartMode == START_MODE_DISABLED || !ethInstance()->enabled) {
+    if (!protocolLive() || gETHStartMode == START_MODE_DISABLED || !ethInstance()->enabled) {
         reconnectQueued_ = 0;
         reconnectRequested_ = 0;
         return;
@@ -572,7 +663,7 @@ void EthSupport::checkedRefreshSmb()
 
 void EthSupport::requestCheckedRefresh()
 {
-    if (gNetworkProtocol != NET_PROTO_SMB || gETHStartMode == START_MODE_DISABLED || reconnectQueued_)
+    if (!protocolLive() || gETHStartMode == START_MODE_DISABLED || reconnectQueued_)
         return;
     if (!ethInstance()->enabled || netInitSema() < 0)
         return;
@@ -591,7 +682,7 @@ void EthSupport::requestReconnect()
 {
     // A protocol switch while another NIC stack is resident is restart-only. Do not let Refresh on
     // a stale/hidden ETH page fight that interlock or revive SMB after Network Start was disabled.
-    if (gNetworkProtocol != NET_PROTO_SMB || gETHStartMode == START_MODE_DISABLED)
+    if (!protocolLive() || gETHStartMode == START_MODE_DISABLED)
         return;
     if (reconnectQueued_) {
         // A healthy-session probe does not apply changed settings. Upgrade the queued worker's
@@ -629,7 +720,7 @@ void EthSource::init(item_list_t *itemList)
         ethRequestReconnect();
     } else {
         LOG("ETHSUPPORT Init\n");
-        gEthSupport.setBase("smb0:");
+        gEthSupport.selectDriver();
         gEthSupport.ulSizePrev() = -2;
         gEthSupport.modifiedCDPrev() = 0;
         gEthSupport.modifiedDVDPrev() = 0;
@@ -662,13 +753,13 @@ int EthSource::needsUpdate(item_list_t *itemList)
         gEthSupport.ps1ScanRetries() = 0;
         return 1;
     }
-    if (gPCShareName[0] && gNetworkStartup == 0 && gEthSupport.ps1ScanFailed() &&
+    if (gEthSupport.shareChosen() && gNetworkStartup == 0 && gEthSupport.ps1ScanFailed() &&
         gEthSupport.ps1ScanRetries() < ETH_PS1_SCAN_RETRY_MAX &&
         (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
         gEthSupport.ps1ScanRetries()++;
         return 1;
     }
-    if (gPCShareName[0] && (host::library().listViewActive(itemList) == LIB_VIEW_PS1))
+    if (gEthSupport.shareChosen() && (host::library().listViewActive(itemList) == LIB_VIEW_PS1))
         return 0;
 
     if (gEthSupport.ulSizePrev() == -2)
@@ -705,11 +796,12 @@ int EthSource::update(item_list_t *itemList)
 {
     int view = host::library().listViewActive(itemList);
 
-    if (gPCShareName[0]) {
+    if (gEthSupport.shareChosen()) {
         if (gNetworkStartup != 0)
             return 0;
 
-        if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
+        // PS1 games are SMB's: POPSTARTER and Ember reach them through SMB, so over NFS the PS1 list stays empty.
+        if (!gEthSupport.nfs() && (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED)) {
             // One list, both cores. Keep readable rows while retrying an incomplete scan.
             int r = ps1FillGameList(gEthSupport.prefix(), &gEthSupport.ps1Games(), gEthSupport.ps1GameCount());
             if (r >= 0) // r < 0: transient scan failure -> preserve the last-good list
@@ -766,7 +858,7 @@ int EthSource::update(item_list_t *itemList)
             gEthSupport.displayErrorStatus();
         }
     }
-    if (!gPCShareName[0])
+    if (!gEthSupport.shareChosen())
         return gEthSupport.gameCount();
     return view == LIB_VIEW_MIXED ? gEthSupport.gameCount() + gEthSupport.ps1GameCount() :
            view == LIB_VIEW_PS1   ? gEthSupport.ps1GameCount() :
@@ -775,7 +867,7 @@ int EthSource::update(item_list_t *itemList)
 
 int EthSupport::resolveIsoFavourite(int id, const char *name, int *outId)
 {
-    if (name == NULL || outId == NULL || id < 0 || !gPCShareName[0] || gNetworkStartup != 0)
+    if (name == NULL || outId == NULL || id < 0 || !shareChosen() || gNetworkStartup != 0)
         return 0;
 
     // ISO and PS1 now have permanent independent stores, so Favorites never needs to rescan or
@@ -797,7 +889,7 @@ int EthSource::rowView(item_list_t *itemList, int id)
     int view;
 
     // Before a share is chosen, the page is a share picker regardless of the global game display.
-    if (!gPCShareName[0])
+    if (!gEthSupport.shareChosen())
         return LIB_VIEW_ISO;
     view = host::library().listViewActive(itemList);
     if (view == LIB_VIEW_MIXED)
@@ -807,7 +899,7 @@ int EthSource::rowView(item_list_t *itemList, int id)
 
 int EthSource::sourceId(item_list_t *itemList, int id)
 {
-    return gPCShareName[0] && host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= gEthSupport.gameCount() ? id - gEthSupport.gameCount() : id;
+    return gEthSupport.shareChosen() && host::library().listViewActive(itemList) == LIB_VIEW_MIXED && id >= gEthSupport.gameCount() ? id - gEthSupport.gameCount() : id;
 }
 
 base_game_info_t *EthSupport::gameForView(item_list_t *itemList, int id)
@@ -825,7 +917,7 @@ int EthSource::count(item_list_t *itemList)
 {
     int view;
 
-    if (!gPCShareName[0])
+    if (!gEthSupport.shareChosen())
         return gEthSupport.gameCount();
     view = host::library().listViewActive(itemList);
     return view == LIB_VIEW_MIXED ? gEthSupport.gameCount() + gEthSupport.ps1GameCount() :
@@ -900,6 +992,10 @@ void EthSource::launchVcd(item_list_t *itemList, const char *vcdName, config_set
 {
     char vcdElf[256], vcdSelector[320];
 
+    if (gEthSupport.nfs()) { // a Favourite can still ask
+        host::ui().msgBox(_l(_STR_NFS_NO_PS1), 0, NULL);
+        return;
+    }
     if (!gPCShareName[0] || vcdName == NULL || vcdName[0] == '\0' || !strcasecmp(vcdName, "POPSTARTER")) // reserved-name belt: the scanner no longer lists it (#154); strcasecmp -- FAT is case-insensitive
         return;
     if (!vcdResolvePopstarter(gEthSupport.prefix(), vcdElf, sizeof(vcdElf))) {
@@ -948,6 +1044,10 @@ void EthSource::launchCue(item_list_t *itemList, const char *cueName, config_set
     char emberElf[256], biosPath[288];
     char launchName[CUE_NAME_MAX];
 
+    if (gEthSupport.nfs()) {
+        host::ui().msgBox(_l(_STR_NFS_NO_PS1), 0, NULL);
+        return;
+    }
     if (!gPCShareName[0] || cueName == NULL || cueName[0] == '\0')
         return;
 
@@ -993,6 +1093,8 @@ void EthSource::launchCue(item_list_t *itemList, const char *cueName, config_set
 // does not (port 445, SMB 3.0 dialect only, read-only, no VMC on the share). Each limit
 // is checked here, before anything is prepared, and a miss says why and returns 0: the caller goes on
 // with the OPL core. 1 = handled (handed off to Neutrino, or the user backed out of a dialog).
+// NFS (-bsd=nfs -dvd=nfs:<path>, ps2max32/neutrino PR #240) has no OPL core: every game takes this leg,
+// whatever its core, and a miss says why and returns 0, which EthSource::launch then ends the launch on.
 static int ethSmbNeutrinoRequested(config_set_t *configSet)
 {
     int coreLoader = gDefaultCoreLoader;
@@ -1007,33 +1109,35 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
 {
     neutrino_smb_args_t smb;
     neutrino_vmc_args_t neutrinoVmc = {0};
-    char sharePath[256], partname[256 + 8];
+    char sharePath[256], partname[256 + 8], nfsExport[NEUTRINO_NFS_EXPORT_MAX + 2];
     int compatmask, index, result, EnablePS2Logo = 0;
+    const int nfs = gEthSupport.nfs();
+    const char *driver = nfs ? "nfs" : "smb";
 
-    if (!ethSmbNeutrinoRequested(configSet))
+    if (!nfs && !ethSmbNeutrinoRequested(configSet))
         return 0;
 
     // Neutrino reads one plain ISO: no USBExtreme parts and no ZSO.
     if (game->format == GAME_FORMAT_USBLD || !strcasecmp(game->extension, ".zso")) {
-        host::ui().warning(_l(_STR_NEUTRINO_BAD_FORMAT), 6);
+        host::ui().warning(_l(nfs ? _STR_NFS_BAD_FORMAT : _STR_NEUTRINO_BAD_FORMAT), 6);
         return 0;
     }
     // neutrino.elf, its config/ and its modules/ must be on a device that outlives the SMB teardown, so
     // the share itself is not searched (NULL), and a custom path pointing at it is refused.
     const char *neutrinoPath = sbResolveNeutrinoPath(NULL);
-    if (neutrinoPath == NULL || !strncmp(neutrinoPath, "smb", 3)) {
-        host::ui().warning(_l(_STR_NEUTRINO_NOT_FOUND), 6);
+    if (neutrinoPath == NULL || !strncmp(neutrinoPath, "smb", 3) || !strncmp(neutrinoPath, "nfs", 3)) {
+        host::ui().warning(_l(nfs ? _STR_NFS_NEUTRINO_NOT_FOUND : _STR_NEUTRINO_NOT_FOUND), 6);
         return 0;
     }
     // usmb2 always dials port 445.
-    if (gPCPort != NEUTRINO_SMB_PORT) {
+    if (!nfs && gPCPort != NEUTRINO_SMB_PORT) {
         host::ui().warning(_l(_STR_NEUTRINO_SMB_PORT), 6);
         return 0;
     }
     // usmb2 offers only the 3.0 dialect; a server that negotiated lower cannot serve a launch.
     // Ask the driver for the live dialect (a keepalive reconnect can have renegotiated), and fall
     // back to the cached value only when the driver cannot answer (smbman: -EINVAL; session lost).
-    {
+    if (!nfs) {
         int dialect = fileXioDevctl(gEthSupport.base(), SMB2_DEVCTL_GETDIALECT, NULL, 0, NULL, 0);
         if (dialect <= 0)
             dialect = gEthSupport.smbNegotiatedDialect();
@@ -1046,7 +1150,7 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
     // on the OPL core, whose smb_mcemu writes it.
     sbBuildVmcNeutrinoArgs(configSet, gEthSupport.prefix(), &neutrinoVmc);
     if (neutrinoVmc.arg[0][0] || neutrinoVmc.arg[1][0]) {
-        host::ui().warning(_l(_STR_NEUTRINO_SMB_VMC), 6);
+        host::ui().warning(_l(nfs ? _STR_NFS_NO_VMC : _STR_NEUTRINO_SMB_VMC), 6);
         return 0;
     }
 
@@ -1059,19 +1163,31 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
         snprintf(sharePath, sizeof(sharePath), "%s", gamePath);
 
     memset(&smb, 0, sizeof(smb));
-    if (strlen(sharePath) > NEUTRINO_SMB_PATH_MAX || strlen(gPCUserName) > NEUTRINO_SMB_USER_MAX ||
-        strlen(gPCPassword) > NEUTRINO_SMB_PASS_MAX || strlen(gPCShareName) > NEUTRINO_SMB_SHARE_MAX) {
-        host::ui().warning(_l(_STR_NEUTRINO_SMB_LIMITS), 6);
-        return 0;
+    const int limits = nfs ? _STR_NFS_LIMITS : _STR_NEUTRINO_SMB_LIMITS;
+    if (nfs) {
+        // The export as nfs_args takes it, from the root: at most 127 characters, and nothing a TOML
+        // string would have to escape (Neutrino's reading of an escape is not something we have checked).
+        snprintf(nfsExport, sizeof(nfsExport), "%s%s", gNfsExport[0] == '/' ? "" : "/", gNfsExport);
+        if (strlen(sharePath) > NEUTRINO_SMB_PATH_MAX || strlen(nfsExport) > NEUTRINO_NFS_EXPORT_MAX ||
+            strpbrk(nfsExport, "\"\\") != NULL) {
+            host::ui().warning(_l(limits), 6);
+            return 0;
+        }
+    } else {
+        if (strlen(sharePath) > NEUTRINO_SMB_PATH_MAX || strlen(gPCUserName) > NEUTRINO_SMB_USER_MAX ||
+            strlen(gPCPassword) > NEUTRINO_SMB_PASS_MAX || strlen(gPCShareName) > NEUTRINO_SMB_SHARE_MAX) {
+            host::ui().warning(_l(limits), 6);
+            return 0;
+        }
+        strcpy(smb.user, gPCUserName);
+        strcpy(smb.pass, gPCPassword);
+        strcpy(smb.share, gPCShareName);
     }
-    strcpy(smb.user, gPCUserName);
-    strcpy(smb.pass, gPCPassword);
-    strcpy(smb.share, gPCShareName);
 
     // The server's address: Neutrino has no name lookup, so a NetBIOS name is resolved now, as smbConnect does.
     if (gPCShareAddressIsNetBIOS) {
         if (nbnsFindName(gPCShareNBAddress, smb.srv) != 0) {
-            host::ui().warning(_l(_STR_NEUTRINO_SMB_LIMITS), 6);
+            host::ui().warning(_l(limits), 6);
             return 0;
         }
     } else {
@@ -1081,18 +1197,18 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
     // The PS2's address as the stack has it now: the static one, or the DHCP lease (ministack has no DHCP
     // client, so it keeps this address for the game).
     if (ethGetNetConfig(smb.ip, smb.mask, smb.gw) < 0 || !(smb.ip[0] | smb.ip[1] | smb.ip[2] | smb.ip[3])) {
-        host::ui().warning(_l(_STR_NEUTRINO_SMB_LIMITS), 6);
+        host::ui().warning(_l(limits), 6);
         return 0;
     }
 
-    // Before any preparation: this Neutrino build must carry the SMB modules, and bsd-smb.toml must take
-    // this game's values. Either miss leaves the OPL core to run the game.
-    result = sysNeutrinoSmbPreflight(neutrinoPath, &smb);
+    // Before any preparation: this Neutrino build must carry the SMB (NFS) modules, and bsd-smb.toml
+    // (bsd-nfs.toml) must take this game's values. Either miss leaves the OPL core to run an SMB game.
+    result = sysNeutrinoSmbPreflight(neutrinoPath, &smb, nfs ? nfsExport : NULL);
     if (result < 0) {
-        host::ui().warning(_l(result == -1 ? _STR_NEUTRINO_SMB_UNSUPPORTED : _STR_NEUTRINO_TOML_SYNC_FAILED), 6);
+        host::ui().warning(_l(result == -2 ? _STR_NEUTRINO_TOML_SYNC_FAILED : nfs ? _STR_NFS_NEUTRINO_UNSUPPORTED : _STR_NEUTRINO_SMB_UNSUPPORTED), 6);
         return 0;
     }
-    if (sysNeutrinoPreflight("smb", neutrinoPath, 0, NULL, -1) < 0)
+    if (sysNeutrinoPreflight(driver, neutrinoPath, 0, NULL, -1) < 0)
         return 0; // it has shown its toast
 
     if (gRememberLastPlayed) {
@@ -1127,15 +1243,15 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
     configGetInt(configSet, CONFIG_ITEM_NEUTRINO_VIDEO, &neutrinoVideo);
     configGetInt(configSet, CONFIG_ITEM_NEUTRINO_GSMCOMP, &neutrinoGsmComp);
 
-    snprintf(partname, sizeof(partname), "smb:%s", sharePath);
+    snprintf(partname, sizeof(partname), "%s:%s", driver, sharePath);
 
     if (sbNeutrinoHandCheats(game->startup, neutrinoPath, neutrinoExtraArgs) < 0)
         return 1;
 #ifdef RETROACHIEVEMENTS
-    // Not carried on SMB yet: smb_fhi's ministack owns the adapter in the game. Disarm any earlier hand-over.
+    // Not carried on SMB or NFS yet: the fhi module's ministack owns the adapter in the game. Disarm any earlier hand-over.
     sysNeutrinoHandRA(NULL, NULL, NULL, 0, NULL, NULL, NULL, 0);
 #endif
-    if (sysNeutrinoArgsPreflight("smb", partname, game->startup, compatmask, EnablePS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0, -1, &neutrinoVmc) < 0)
+    if (sysNeutrinoArgsPreflight(driver, partname, game->startup, compatmask, EnablePS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0, -1, &neutrinoVmc) < 0)
         return 1;
 
     sysNeutrinoWarnPadEmu(configSet);
@@ -1147,7 +1263,7 @@ static int ethTryNeutrino(item_list_t *itemList, base_game_info_t *game, config_
     // Neutrino logs in again with its own client, so the SMB session is closed with the rest; only the
     // device neutrino.elf is on stays mounted.
     host::app().deinitEx(sbNeutrinoDeinitException(neutrinoPath), itemList->mode, neutrinoDevMode);
-    sysLaunchNeutrino("smb", partname, gameStartup, compatmask, EnablePS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0, -1, &neutrinoVmc);
+    sysLaunchNeutrino(driver, partname, gameStartup, compatmask, EnablePS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0, -1, &neutrinoVmc);
     return 1;
 }
 
@@ -1177,7 +1293,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         return;
     }
 
-    if (!gPCShareName[0]) {
+    if (!gEthSupport.shareChosen()) {
         memcpy(gPCShareName, game->name, sizeof(gPCShareName));
         gEthSupport.ulSizePrev() = -2;
         gEthSupport.gameCount() = 0;
@@ -1193,6 +1309,9 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // A game set to Neutrino goes there when Neutrino can run it from this share (ethTryNeutrino);
     // otherwise, and for every game on "Default" or <OPL>, the OPL core below.
     if (ethTryNeutrino(itemList, game, configSet))
+        return;
+    // NFS has no OPL core leg (no in-game NFS reader): ethTryNeutrino has said why it did not launch.
+    if (gEthSupport.nfs())
         return;
 
     char vmc_name[32];
@@ -1375,10 +1494,34 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     sysLaunchLoaderElf(filename, "ETH_MODE", cdvdmanSize, cdvdmanIrx, size_mcemu_irx, smb_mcemu_irx, EnablePS2Logo, compatmask);
 }
 
+// NFS with NFS Writes Off: a game's settings are kept in a CFG folder next to OPL's own, as a read-only
+// UDPBD server's are (BdmSource::config), unless those are on this export too. NULL: use the export's.
+static const char *ethReadOnlyCfgDir(char *cfgDir, int size)
+{
+    static char madeCfgDir[256];
+    const char *home = configGetHomePath();
+
+    if (home == NULL || home[0] == '\0' || !strncmp(home, "nfs:", 4))
+        return NULL;
+    size_t len = strlen(home);
+    snprintf(cfgDir, size, "%s%sCFG/", home, (home[len - 1] == '/' || home[len - 1] == ':') ? "" : "/");
+    // A memory card home has no CFG folder, and saving the settings does not create one. Once per folder.
+    if (strcmp(madeCfgDir, cfgDir) != 0) {
+        char dir[256];
+        snprintf(dir, sizeof(dir), "%s", cfgDir);
+        dir[strlen(dir) - 1] = '\0';
+        if (mkdir(dir, 0777) == 0) // a failure is tried again on the next selection
+            snprintf(madeCfgDir, sizeof(madeCfgDir), "%s", cfgDir);
+    }
+    return cfgDir;
+}
+
 config_set_t *EthSource::config(item_list_t *itemList, int id)
 {
     base_game_info_t *game = gEthSupport.gameForView(itemList, id);
-    config_set_t *config = game != NULL ? sbPopulateConfig(game, gEthSupport.prefix(), "\\") : NULL;
+    char cfgDir[256];
+    const char *readOnlyDir = (itemList->flags & MODE_FLAG_READ_ONLY) ? ethReadOnlyCfgDir(cfgDir, sizeof(cfgDir)) : NULL;
+    config_set_t *config = game != NULL ? sbPopulateConfigIn(game, gEthSupport.prefix(), "\\", readOnlyDir) : NULL;
     ps1Size(itemList, game, config);
     return config;
 }
@@ -1488,12 +1631,12 @@ int EthSource::ps1SaveDir(item_list_t *itemList, int id, const char *name, int *
     if (!ps1RowKind(itemList, id, ember))
         return 0;
     partition[0] = '\0';
-    return gPCShareName[0] && saveIconPs1Directory(gEthSupport.prefix(), name, *ember, directory, directorySize);
+    return !gEthSupport.nfs() && gPCShareName[0] && saveIconPs1Directory(gEthSupport.prefix(), name, *ember, directory, directorySize);
 }
 
 int EthSource::saveCueSettings(item_list_t *itemList, int id, const char *name, config_set_t *configSet)
 {
     (void)itemList;
     (void)id;
-    return gPCShareName[0] && cueSaveGameSettings(gEthSupport.prefix(), name, configSet);
+    return !gEthSupport.nfs() && gPCShareName[0] && cueSaveGameSettings(gEthSupport.prefix(), name, configSet);
 }

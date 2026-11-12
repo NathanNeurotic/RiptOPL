@@ -139,6 +139,15 @@ extern int gHttpServerIp[4];
 extern int gHttpPort;
 extern char gHttpBasePath[HTTP_BASE_PATH_MAX]; // leading '/', trailing '/' normalised away
 
+// NFS export. The server is SMB's address row (pc_ip / NetBIOS name); the export has its own
+// setting, so switching between SMB and NFS never rewrites the other's share. 127 characters is
+// Neutrino's limit (its export=, and FHI_NFS_PATH_MAX for the game's path).
+#define NFS_EXPORT_MAX 128
+extern char gNfsExport[NFS_EXPORT_MAX];
+// NFS Writes, Off by default: Off, the menu connects the export read-only (nfsman refuses every
+// change) and keeps per-game settings in its own home folder, as HTTP does. On, as SMB.
+extern int gNfsWrites;
+
 //// Settings
 
 // describes what is happening in the network startup thread (>0 means loading, <0 means error)...
@@ -349,7 +358,12 @@ enum NETWORK_PROTOCOL {
     // Plain LAN HTTP: a games.csv catalog plus byte-range reads of the ISO, over the same menu
     // TCP/IP stack SMB uses. Appended, so every value above keeps the number it was persisted with.
     NET_PROTO_HTTP = 5,
+    // NFS 4.0 (nfsman over unfs4) on the menu TCP/IP stack, games through Neutrino -bsd=nfs. It
+    // shares the Network game device (ETH_MODE) with SMB; only the file driver differs. Appended.
+    NET_PROTO_NFS = 6,
 };
+// SMB and NFS: the protocols of the Network game device (ETH_MODE) and its start mode, gETHStartMode.
+#define NET_PROTO_IS_ETH(p) ((p) == NET_PROTO_SMB || (p) == NET_PROTO_NFS)
 extern int gNetworkProtocol; // enum NETWORK_PROTOCOL -- authoritative backend; the three above are derived shadows
 extern int gNetStartMode;    // START_MODE_* -- network start row (Off/Manual/Auto); DISABLED <=> protocol OFF
 // The protocol the user last CHOSE -- never OFF. gNetworkProtocol becomes OFF while Connectivity is Off

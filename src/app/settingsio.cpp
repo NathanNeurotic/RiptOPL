@@ -1774,7 +1774,7 @@ void _loadConfig()
                 gSMBDialect = SMB_DIALECT_V1;
             gEnableUDPBD = (gNetworkProtocol == NET_PROTO_UDPBD || gNetworkProtocol == NET_PROTO_UDPFSBD);
             gNetBootProtocol = (gNetworkProtocol == NET_PROTO_UDPFSBD) ? NET_BOOT_UDPFS : NET_BOOT_UDPBD;
-            if (gNetworkProtocol == NET_PROTO_SMB) {
+            if (NET_PROTO_IS_ETH(gNetworkProtocol)) {
                 if (gETHStartMode == START_MODE_DISABLED)
                     gETHStartMode = START_MODE_MANUAL;
             } else {
@@ -1787,7 +1787,7 @@ void _loadConfig()
             if (gNetworkProtocol != NET_PROTO_OFF)
                 gNetProtocolPick = gNetworkProtocol;
             else if (!configGetInt(configOPL, CONFIG_OPL_NET_PROTOCOL_PICK, &gNetProtocolPick) ||
-                     gNetProtocolPick <= NET_PROTO_OFF || gNetProtocolPick > NET_PROTO_HTTP)
+                     gNetProtocolPick <= NET_PROTO_OFF || gNetProtocolPick > NET_PROTO_NFS)
                 gNetProtocolPick = NET_PROTO_SMB;
 
             // Recover UDPFS Access independently of UDPBD. Older configs have no key: infer
@@ -1804,7 +1804,7 @@ void _loadConfig()
             if (!configGetInt(configOPL, CONFIG_OPL_NET_START_MODE, &gNetStartMode)) {
                 if (gNetworkProtocol == NET_PROTO_OFF)
                     gNetStartMode = START_MODE_DISABLED;
-                else if (gNetworkProtocol == NET_PROTO_SMB)
+                else if (NET_PROTO_IS_ETH(gNetworkProtocol))
                     gNetStartMode = gETHStartMode;
                 else if (gNetworkProtocol == NET_PROTO_UDPFS)
                     gNetStartMode = START_MODE_MANUAL;
@@ -1825,7 +1825,7 @@ void _loadConfig()
             // a stale live protocol to OFF.
             gEnableUDPBD = (gNetworkProtocol == NET_PROTO_UDPBD || gNetworkProtocol == NET_PROTO_UDPFSBD);
             gNetBootProtocol = (gNetworkProtocol == NET_PROTO_UDPFSBD) ? NET_BOOT_UDPFS : NET_BOOT_UDPBD;
-            gETHStartMode = (gNetworkProtocol == NET_PROTO_SMB) ? gNetStartMode : START_MODE_DISABLED;
+            gETHStartMode = NET_PROTO_IS_ETH(gNetworkProtocol) ? gNetStartMode : START_MODE_DISABLED;
         }
 
         // BOOT-DEVICE RECONCILE. The device OPL is RUNNING FROM always has its transport enabled.
@@ -1935,6 +1935,10 @@ void _loadConfig()
             configGetInt(configNet, CONFIG_NET_HTTP_PORT, &gHttpPort);
             configGetStrCopy(configNet, CONFIG_NET_HTTP_BASE_PATH, gHttpBasePath, sizeof(gHttpBasePath));
             httpNormalizeBasePath(gHttpBasePath, sizeof(gHttpBasePath));
+
+            configGetStrCopy(configNet, CONFIG_NET_NFS_EXPORT, gNfsExport, sizeof(gNfsExport));
+            configGetInt(configNet, CONFIG_NET_NFS_WRITES, &gNfsWrites);
+            gNfsWrites = gNfsWrites == 1; // anything but an explicit On stays Off
 
             configGetStrCopy(configNet, CONFIG_NET_SMB_SHARE, gPCShareName, sizeof(gPCShareName));
             configGetStrCopy(configNet, CONFIG_NET_SMB_USER, gPCUserName, sizeof(gPCUserName));
@@ -2287,6 +2291,8 @@ static void _saveConfig()
         configSetStr(configNet, CONFIG_NET_HTTP_IP_ADDR, temp);
         configSetInt(configNet, CONFIG_NET_HTTP_PORT, gHttpPort);
         configSetStr(configNet, CONFIG_NET_HTTP_BASE_PATH, gHttpBasePath);
+        configSetStr(configNet, CONFIG_NET_NFS_EXPORT, gNfsExport);
+        configSetInt(configNet, CONFIG_NET_NFS_WRITES, gNfsWrites);
         configSetStr(configNet, CONFIG_NET_SMB_SHARE, gPCShareName);
         configSetStr(configNet, CONFIG_NET_SMB_USER, gPCUserName);
         configSetStr(configNet, CONFIG_NET_SMB_PASSW, gPCPassword);

@@ -46,7 +46,7 @@ helpers = ''.join(function_text(gui, sig, 'src/ui/gui.cpp') for sig in (
 HARNESS = r'''
 #include <stdio.h>
 
-enum { NET_PROTO_OFF = 0, NET_PROTO_SMB = 1, NET_PROTO_UDPFS = 2, NET_PROTO_UDPFSBD = 3, NET_PROTO_UDPBD = 4, NET_PROTO_HTTP = 5 };
+enum { NET_PROTO_OFF = 0, NET_PROTO_SMB = 1, NET_PROTO_UDPFS = 2, NET_PROTO_UDPFSBD = 3, NET_PROTO_UDPBD = 4, NET_PROTO_HTTP = 5, NET_PROTO_NFS = 6 };
 enum { START_MODE_DISABLED = 0, START_MODE_MANUAL = 1, START_MODE_AUTO = 2 };
 static int gNetworkProtocol, gNetProtocolPick, gNetStartMode, gUdpfsAccessMode;
 
@@ -98,6 +98,7 @@ int main(void)
     roundTrip("UDPFS IMG", NET_PROTO_UDPFSBD);
     roundTrip("UDPBD", NET_PROTO_UDPBD);
     roundTrip("HTTP", NET_PROTO_HTTP);
+    roundTrip("NFS", NET_PROTO_NFS);
 
     /* Network page while Off: the user picks HTTP there; it is remembered, still not live. */
     gNetworkProtocol = NET_PROTO_OFF;

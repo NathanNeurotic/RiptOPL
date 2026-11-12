@@ -58,11 +58,12 @@ int sysNeutrinoPreflight(const char *driver, const char *neutrinoPath, int neutr
 // smb_fhi.irx take the network and the login as module arguments in <neutrino>/config/bsd-smb.toml,
 // so the launch writes this game's values there first. The limits are the driver's: user and pass
 // are cut at 31 characters, share at 63, srv is a dotted address (no name lookup) and the port is 445.
-#define NEUTRINO_SMB_USER_MAX  31
-#define NEUTRINO_SMB_PASS_MAX  31
-#define NEUTRINO_SMB_SHARE_MAX 63
-#define NEUTRINO_SMB_PATH_MAX  127 // FHI_SMB_PATH_MAX (128) with its NUL: the path on the share
-#define NEUTRINO_SMB_PORT      445
+#define NEUTRINO_SMB_USER_MAX   31
+#define NEUTRINO_SMB_PASS_MAX   31
+#define NEUTRINO_SMB_SHARE_MAX  63
+#define NEUTRINO_SMB_PATH_MAX   127 // FHI_SMB_PATH_MAX (128) with its NUL: the path on the share
+#define NEUTRINO_SMB_PORT       445
+#define NEUTRINO_NFS_EXPORT_MAX 127 // nfs_args' export[128] with its NUL; the path in it is FHI_NFS_PATH_MAX too
 typedef struct neutrino_smb_args
 {
     unsigned char ip[4], mask[4], gw[4], srv[4];
@@ -73,7 +74,9 @@ typedef struct neutrino_smb_args
 // Before teardown. 0 = bsd-smb.toml holds these values; -1 = this Neutrino has no SMB support
 // (no config/bsd-smb.toml, or no modules/smb_ioman.irx / smb_fhi.irx); -2 = bsd-smb.toml is not
 // in the stock shape, or could not be written. No toast: the SMB leg falls back to the OPL core.
-int sysNeutrinoSmbPreflight(const char *neutrinoPath, const neutrino_smb_args_t *args);
+// With nfsExport (Network Protocol NFS, ps2max32/neutrino PR #240): the same for config/bsd-nfs.toml
+// and nfs_ioman.irx / nfs_fhi.irx, which take export= in place of the login; args' login is unused.
+int sysNeutrinoSmbPreflight(const char *neutrinoPath, const neutrino_smb_args_t *args, const char *nfsExport);
 
 // Compose the exact launch argv while the GUI is still live. Refuses a launch that would exceed
 // the 14-entry or 256-byte ExecPS2 budget, with a visible warning instead of dropping arguments.

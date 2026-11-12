@@ -41,9 +41,9 @@ DEVICES = {
     "mmce": {"title": "MMCE", "define": "RIPTOPLITE_MMCE", "keep": ()},
 }
 
-# The modules only some device needs. HTTP and PC Card CF have no lite build: their modules go everywhere.
+# The modules only some device needs. HTTP, PC Card CF and NFS have no lite build: their modules go everywhere.
 DEVICE_SPECIFIC = frozenset(name for options in DEVICES.values() for name in options["keep"]) | {
-    "http_cdvdman", "pccf_cdvdman", "pccf_bd", "pccf_game"}
+    "http_cdvdman", "pccf_cdvdman", "pccf_bd", "pccf_game", "nfsman"}
 
 # Never dropped, whatever DEVICE_SPECIFIC says (see the module docstring).
 ALWAYS = frozenset({

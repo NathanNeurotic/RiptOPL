@@ -1840,7 +1840,7 @@ int menuItemShown(const menu_item_t *item)
         case APP_MODE:
             return 0;
         case ETH_MODE:
-            return gPCShareName[0] == '\0';
+            return gPCShareName[0] == '\0' && gNetworkProtocol != NET_PROTO_NFS; // an NFS export lists games
         default:
             return 1;
     }

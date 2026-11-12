@@ -1644,7 +1644,7 @@ gui_strings:
 - label: NETBOOT_RESTART_NOW
   string: "The network protocol changes after a restart. Save settings and restart OPL now?"
 - label: HINT_NET_PROTOCOL
-  string: "Which network service RiptOPL uses: an SMB share, UDPFS, UDPBD or HTTP. The same setting as on Game Sources. Switching away from one that is already running needs a restart."
+  string: "Which network service RiptOPL uses: an SMB share, UDPFS, UDPBD, HTTP or an NFS export. The same setting as on Game Sources. Switching away from one that is already running needs a restart."
 - label: HINT_UDPFS_ACCESS
   string: "UDPFS only. Files reads loose ISOs from the server's games folder; IMG reads a disk image as a drive. SMB and HTTP always use Files, UDPBD always IMG."
 - label: HINT_SMB_VERSION
@@ -2596,3 +2596,36 @@ gui_strings:
 - comment: Main menu Exit prompt (issue 370). Replaces CONFIRMATION_EXIT, whose "Browser" was wrong when Exit To is Console Menu.
   label: CONFIRMATION_EXIT_APP
   string: Exit RiptOPL?
+- comment: Network page header above the server address rows while Network Protocol is NFS.
+  label: CAT_NFS_SERVER
+  string: '- NFS Server -'
+- comment: Network page, NFS. The export on the server, e.g. /srv/ps2.
+  label: NFS_EXPORT
+  string: NFS Export
+- label: HINT_NFS_EXPORT
+  string: "The export on the NFS server, for example /srv/ps2, or / for the whole server. RiptOPL speaks NFS version 4.0 on port 2049."
+- comment: Network page, NFS. Off by default.
+  label: NFS_WRITES
+  string: NFS Writes
+- label: HINT_NFS_WRITES
+  string: "Off: RiptOPL only reads the export, whatever the server allows, and keeps game settings next to its own. On: renaming, deleting and saving on the export, where the server allows it."
+- comment: "NFS connect errors. Keep the leading '%d: '."
+  label: NFS_ERROR_CONN
+  string: '%d: Cannot connect to NFS server. It must offer NFS version 4.0 on port 2049.'
+- label: NFS_ERROR_ACCESS
+  string: '%d: The NFS server refused this PS2.'
+- label: NFS_ERROR_EXPORT
+  string: '%d: Cannot open the NFS export. Check NFS Export and the server address.'
+- comment: NFS games launch only through Neutrino; each of these stops the launch.
+  label: NFS_NEUTRINO_NOT_FOUND
+  string: NFS games need Neutrino, and neutrino.elf was not found.
+- label: NFS_NEUTRINO_UNSUPPORTED
+  string: This Neutrino has no NFS support. NFS games need a Neutrino with NFS.
+- label: NFS_BAD_FORMAT
+  string: Neutrino, which runs NFS games, does not support this file format.
+- label: NFS_NO_VMC
+  string: Virtual memory cards are not available over NFS -- use a physical card
+- label: NFS_LIMITS
+  string: "Neutrino cannot take these NFS settings: check NFS Export (127 characters at most, no quotes or backslashes), the server address and the PS2's IP address."
+- label: NFS_NO_PS1
+  string: PS1 games cannot be launched over NFS. Use SMB for them.

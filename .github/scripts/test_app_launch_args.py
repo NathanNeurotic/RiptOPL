@@ -109,6 +109,7 @@ static int oplPath2Mode(const char *path)
 { return !strncmp(path, "pfs", 3) ? HDD_MODE : !strncmp(path, "mass", 4) ? BDM_MODE : !strncmp(path, "smb", 3) ? ETH_MODE : APP_MODE; }
 static int appIsPopstarterSmb(const char *path) { return pops_smb; }
 static const char *ethGetSMBPrefix(void) { return "smb0:"; }
+static int ethIsNfs(void) { return 0; }
 static int vcdPreparePopstarterSmbLaunch(const char *path) { return pops_smb_prep; }
 static int appIsPopstarterElf(const char *path, const char *title) { return is_pops; }
 static int appGetRebootIopConfig(config_set_t *c) { return reset_iop; }

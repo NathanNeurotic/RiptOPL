@@ -1,9 +1,10 @@
-"""Neutrino over SMB (-bsd=smb, ps2max32/neutrino PR #236 by Ronnie Sahlberg).
+"""Neutrino over SMB (-bsd=smb, ps2max32/neutrino PR #236 by Ronnie Sahlberg) and NFS (-bsd=nfs, PR #240).
 
 Runs the actual sysNeutrinoSmbPreflight against a fake filesystem: it must refuse a Neutrino without the
 SMB modules or bsd-smb.toml, write this game's network and login into every module arg of the stock file
 (TOML-escaped), leave comments and other strings alone, refuse a file missing an arg that matters, and
-not rewrite a file that already holds the values. Then checks the SMB launch leg's wiring.
+not rewrite a file that already holds the values. With an export it does the same for bsd-nfs.toml, writing
+export= and no login. Then checks the launch leg's wiring for both.
 """
 from pathlib import Path
 import re
@@ -63,6 +64,37 @@ env = ["LE"]
 [[module]]
 file = "smb_fhi.irx"
 args = ["ip=192.168.1.10", "mask=255.255.255.0", "gw=192.168.1.1", "srv=192.168.1.2", "user=guest", "pass=", "share=PS2SMB"]
+env = ["EE"]
+'''
+
+# config/bsd-nfs.toml as ps2max32/neutrino PR #240 ships it.
+NFS_STOCK = r'''# Name of loaded config, to show to user
+name = "NFS driver"
+
+# Drivers this driver depends on (config file must exist)
+depends = ["i_dev9_hidden"]
+
+# Modules to load
+[[module]]
+file = "iomanX.irx"
+env = ["LE"]
+[[module]]
+file = "fileXio.irx"
+env = ["LE"]
+[[module]]
+file = "smap.irx"
+env = ["LE", "EE"]
+[[module]]
+file = "ministack.irx"
+args = ["ip=192.168.1.10"]
+env = ["LE", "EE"]
+[[module]]
+file = "nfs_ioman.irx"
+args = ["ip=192.168.1.10", "mask=255.255.255.0", "gw=192.168.1.1", "srv=192.168.1.2", "export=/srv/ps2"]
+env = ["LE"]
+[[module]]
+file = "nfs_fhi.irx"
+args = ["ip=192.168.1.10", "mask=255.255.255.0", "gw=192.168.1.1", "srv=192.168.1.2", "export=/srv/ps2"]
 env = ["EE"]
 '''
 
@@ -131,13 +163,13 @@ int main() {
     neutrino_smb_args_t a = args("ripto", "pa\"ss\\word", "GAMES");
 
     install(nullptr, true);
-    check(sysNeutrinoSmbPreflight(ELF, &a) == -1, "no bsd-smb.toml: no SMB support");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == -1, "no bsd-smb.toml: no SMB support");
     install(R"(@STOCK@)", false);
-    check(sysNeutrinoSmbPreflight(ELF, &a) == -1, "no smb modules: no SMB support (a Neutrino from before #236)");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == -1, "no smb modules: no SMB support (a Neutrino from before #236)");
     check(files[TOML] == R"(@STOCK@)", "a refused launch leaves bsd-smb.toml as it was");
 
     install(R"(@STOCK@)", true);
-    check(sysNeutrinoSmbPreflight(ELF, &a) == 0, "stock file takes this game's values");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == 0, "stock file takes this game's values");
     const std::string &t = files[TOML];
     check(count(t, "\"ip=10.0.0.7\"") == 3, "ip= in ministack, smb_ioman and smb_fhi");
     check(count(t, "\"mask=255.255.0.0\"") == 2 && count(t, "\"gw=10.0.0.1\"") == 2 && count(t, "\"srv=10.0.0.2\"") == 2, "mask, gw, srv");
@@ -146,21 +178,21 @@ int main() {
     check(t.find("192.168.1.") == std::string::npos && t.find("guest") == std::string::npos, "no stock value left");
     check(t.find("name = \"SMB driver\"") != std::string::npos && t.find("depends = [\"i_dev9_hidden\"]") != std::string::npos, "the rest untouched");
     writes = 0;
-    check(sysNeutrinoSmbPreflight(ELF, &a) == 0 && writes == 0, "already in sync: not rewritten");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == 0 && writes == 0, "already in sync: not rewritten");
     neutrino_smb_args_t b = args("guest", "", "PS2SMB");
-    check(sysNeutrinoSmbPreflight(ELF, &b) == 0 && files[TOML].find("\"pass=\"") != std::string::npos, "an empty password is written as empty");
+    check(sysNeutrinoSmbPreflight(ELF, &b, nullptr) == 0 && files[TOML].find("\"pass=\"") != std::string::npos, "an empty password is written as empty");
 
     // A key inside a comment or inside another string is not an arg.
     std::string commented = std::string("# set \"ip=1.2.3.4\" here\nnote = \"say ip=1.2.3.4\"\n") + R"(@STOCK@)";
     install(commented.c_str(), true);
-    check(sysNeutrinoSmbPreflight(ELF, &a) == 0, "commented file takes the values");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == 0, "commented file takes the values");
     check(files[TOML].find("# set \"ip=1.2.3.4\" here") != std::string::npos && files[TOML].find("\"say ip=1.2.3.4\"") != std::string::npos, "comment and other strings untouched");
 
     // A file without the args that matter is not written.
     std::string nopass = R"(@STOCK@)";
     for (size_t p; (p = nopass.find(", \"pass=\"")) != std::string::npos;) nopass.erase(p, 9);
     install(nopass.c_str(), true);
-    check(sysNeutrinoSmbPreflight(ELF, &a) == -2, "no pass= args: refused");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == -2, "no pass= args: refused");
     check(files[TOML] == nopass, "refused file untouched");
     // Each module must carry its own: a key moved into another module does not count, and is not written.
     std::string moved = R"(@STOCK@)";
@@ -171,11 +203,11 @@ int main() {
         moved += "[[module]]\nfile = \"other.irx\"\nargs = [\"user=guest\"]\n";
     }
     install(moved.c_str(), true);
-    check(sysNeutrinoSmbPreflight(ELF, &a) == -2, "user= only in another module, not smb_fhi: refused");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == -2, "user= only in another module, not smb_fhi: refused");
     check(files[TOML] == moved, "refused file untouched");
     std::string extra = std::string(R"(@STOCK@)") + "[[module]]\nfile = \"other.irx\"\nargs = [\"ip=1.2.3.4\", \"user=keep\"]\n";
     install(extra.c_str(), true);
-    check(sysNeutrinoSmbPreflight(ELF, &a) == 0, "an extra module does not stop the hand-over");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == 0, "an extra module does not stop the hand-over");
     check(files[TOML].find("[\"ip=1.2.3.4\", \"user=keep\"]") != std::string::npos, "another module's args untouched");
     check(count(files[TOML], "\"ip=10.0.0.7\"") == 3, "ip= written in the three modules it belongs to");
     // Only the args line counts: the key in another field of the same module table does not.
@@ -187,21 +219,57 @@ int main() {
         field.insert(field.find("env = [\"EE\"]", fhi), "note = \"user=guest\"\n");
     }
     install(field.c_str(), true);
-    check(sysNeutrinoSmbPreflight(ELF, &a) == -2, "user= only in another field of smb_fhi: refused");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == -2, "user= only in another field of smb_fhi: refused");
     check(files[TOML] == field, "refused file untouched");
     install("args = [\"ip=1\n", true);
-    check(sysNeutrinoSmbPreflight(ELF, &a) == -2, "unterminated string: refused");
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == -2, "unterminated string: refused");
 
     neutrino_smb_args_t c = args("ripto", "tab\there", "GAMES");
     install(R"(@STOCK@)", true);
-    check(sysNeutrinoSmbPreflight(ELF, &c) == -2, "a control character in the login: refused");
-    check(sysNeutrinoSmbPreflight("neutrino.elf", &a) == -1, "flat path: no folder to look in");
+    check(sysNeutrinoSmbPreflight(ELF, &c, nullptr) == -2, "a control character in the login: refused");
+    check(sysNeutrinoSmbPreflight("neutrino.elf", &a, nullptr) == -1, "flat path: no folder to look in");
+
+    // NFS: bsd-nfs.toml, nfs_ioman/nfs_fhi, export= in place of the login.
+    static const char *NFS_TOML = "mass0:/neutrino/config/bsd-nfs.toml";
+    files.clear();
+    files[NFS_TOML] = R"(@NFS_STOCK@)";
+    files["mass0:/neutrino/modules/smb_ioman.irx"] = "x"; files["mass0:/neutrino/modules/smb_fhi.irx"] = "x";
+    check(sysNeutrinoSmbPreflight(ELF, &a, "/games") == -1, "SMB modules only: no NFS support (a Neutrino from before #240)");
+    check(files[NFS_TOML] == R"(@NFS_STOCK@)", "a refused NFS launch leaves bsd-nfs.toml as it was");
+    files.erase(NFS_TOML);
+    files["mass0:/neutrino/modules/nfs_ioman.irx"] = "x"; files["mass0:/neutrino/modules/nfs_fhi.irx"] = "x";
+    check(sysNeutrinoSmbPreflight(ELF, &a, "/games") == -1, "no bsd-nfs.toml: no NFS support");
+    files[NFS_TOML] = R"(@NFS_STOCK@)";
+    files[TOML] = R"(@STOCK@)";
+    check(sysNeutrinoSmbPreflight(ELF, &a, "/my \"ps2\"") == 0, "stock NFS file takes this game's values");
+    const std::string &n = files[NFS_TOML];
+    check(count(n, "\"ip=10.0.0.7\"") == 3, "NFS: ip= in ministack, nfs_ioman and nfs_fhi");
+    check(count(n, "\"mask=255.255.0.0\"") == 2 && count(n, "\"gw=10.0.0.1\"") == 2 && count(n, "\"srv=10.0.0.2\"") == 2, "NFS: mask, gw, srv");
+    check(count(n, "\"export=/my \\\"ps2\\\"\"") == 2, "NFS: export= in both NFS modules, TOML-escaped");
+    check(n.find("user=") == std::string::npos && n.find("192.168.1.") == std::string::npos, "NFS: no login written, no stock value left");
+    check(files[TOML] == R"(@STOCK@)", "an NFS launch leaves bsd-smb.toml alone");
+    writes = 0;
+    check(sysNeutrinoSmbPreflight(ELF, &a, "/my \"ps2\"") == 0 && writes == 0, "NFS: already in sync, not rewritten");
+    // The SMB file does not count for NFS, nor an export= outside the NFS modules.
+    std::string noexport = R"(@NFS_STOCK@)";
+    {
+        size_t fhi = noexport.find("file = \"nfs_fhi.irx\"");
+        size_t ex = noexport.find(", \"export=/srv/ps2\"", fhi);
+        noexport.erase(ex, 20);
+    }
+    files[NFS_TOML] = noexport;
+    check(sysNeutrinoSmbPreflight(ELF, &a, "/games") == -2, "NFS: no export= in nfs_fhi: refused");
+    check(files[NFS_TOML] == noexport, "refused NFS file untouched");
+    // An SMB launch never writes export=, even into a file that has one.
+    install((std::string(R"(@STOCK@)") + "[[module]]\nfile = \"smb_fhi.irx\"\nargs = [\"export=keep\"]\n").c_str(), true);
+    check(sysNeutrinoSmbPreflight(ELF, &a, nullptr) == 0 && files[TOML].find("\"export=keep\"") != std::string::npos,
+          "SMB: export= is not an SMB arg");
     return fails ? 1 : 0;
 }
 '''
 
 program = (program.replace("@HEADER@", smb_header).replace("@FUNCTIONS@", functions)
-           .replace("@STOCK@", STOCK))
+           .replace("@NFS_STOCK@", NFS_STOCK).replace("@STOCK@", STOCK))
 with tempfile.TemporaryDirectory() as tmp:
     src = Path(tmp) / "smb.cpp"
     exe = Path(tmp) / "smb"
@@ -223,6 +291,15 @@ if "if (ethTryNeutrino(itemList, game, configSet))\n        return;" not in laun
     failures.append("EthSource::launch must try the Neutrino leg before the OPL core")
 if launch.index("ethTryNeutrino(") > launch.index("sbPrepare("):
     failures.append("the Neutrino leg must run before the OPL core prepares smb_cdvdman")
+# NFS has no OPL core: a game the Neutrino leg did not launch stops there.
+nfs_stop = "if (gEthSupport.nfs())\n        return;"
+if nfs_stop not in launch or launch.index(nfs_stop) > launch.index("sbPrepare(") or \
+        launch.index(nfs_stop) < launch.index("ethTryNeutrino("):
+    failures.append("EthSource::launch: NFS ends after the Neutrino leg, before the OPL core")
+if 'const char *driver = nfs ? "nfs" : "smb";' not in leg or "if (!nfs && !ethSmbNeutrinoRequested(configSet))" not in leg:
+    failures.append("ethTryNeutrino: NFS takes the leg whatever the core, as driver nfs")
+if "sysNeutrinoSmbPreflight(neutrinoPath, &smb, nfs ? nfsExport : NULL)" not in leg:
+    failures.append("ethTryNeutrino: the NFS leg preflights bsd-nfs.toml with the export")
 # Execute the launch policy with missing, explicit and legacy Default keys.
 policy = function("static int ethSmbNeutrinoRequested(", eth)
 policy_program = r'''#include <cassert>
@@ -248,7 +325,7 @@ with tempfile.TemporaryDirectory() as tmp:
     subprocess.run(["g++", "-std=c++17", "-Wall", "-Werror", str(src), "-o", str(exe)], check=True)
     subprocess.run([str(exe)], check=True)
 order = ["sbResolveNeutrinoPath(NULL)", "NEUTRINO_SMB_PORT", "sbBuildVmcNeutrinoArgs(", "sysNeutrinoSmbPreflight(",
-         'sysNeutrinoPreflight("smb"', "sbPrepare(", "sbUnprepare(", "deinitEx(", 'sysLaunchNeutrino("smb"']
+         "sysNeutrinoPreflight(driver", "sbPrepare(", "sbUnprepare(", "deinitEx(", "sysLaunchNeutrino(driver"]
 positions = [leg.find(m) for m in order]
 if -1 in positions or positions != sorted(positions):
     failures.append("ethTryNeutrino: every fallback check comes before sbPrepare, and the hand-off last (%r)" % positions)
@@ -256,8 +333,8 @@ if -1 in positions or positions != sorted(positions):
 before, after = leg[:leg.index("sbPrepare(")], leg[leg.index("sbPrepare("):]
 if "return 1;" in before.split("ethSmbNeutrinoRequested")[1] or "return 0;" in after:
     failures.append("ethTryNeutrino: fallbacks return 0 before sbPrepare, back-outs return 1 after it")
-if not re.search(r'snprintf\(partname, sizeof\(partname\), "smb:%s", sharePath\);', leg):
-    failures.append('ethTryNeutrino: -dvd is "smb:<path on the share>"')
+if 'snprintf(partname, sizeof(partname), "%s:%s", driver, sharePath);' not in leg:
+    failures.append('ethTryNeutrino: -dvd is "smb:<path on the share>" or "nfs:<path in the export>"')
 
 gui = (ROOT / "src/ui/guigame.cpp").read_text(encoding="utf-8")
 if re.search(r"coreNeverNeutrino = [^;]*ETH_MODE", gui):
@@ -275,4 +352,4 @@ if failures:
     for f in failures:
         print(" -", f)
     sys.exit(1)
-print("neutrino smb: bsd-smb.toml preflight (support probe, rewrite, escaping, refusals) and launch-leg wiring OK")
+print("neutrino smb/nfs: bsd-smb.toml and bsd-nfs.toml preflight (support probe, rewrite, escaping, refusals) and launch-leg wiring OK")

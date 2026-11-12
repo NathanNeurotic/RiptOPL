@@ -1639,7 +1639,7 @@ int FavSupport::gatherPass(fav_rec_t *out, int cap, int shelf)
         if (!mod->menuItem.visible)
             continue;
         // A network share picker lists shares, not games.
-        if (src->mode == ETH_MODE && gPCShareName[0] == '\0')
+        if (src->mode == ETH_MODE && !ethShareChosen())
             continue;
 
         if (src->mode == APP_MODE) {

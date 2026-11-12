@@ -1,0 +1,29 @@
+unfs4 (vendored)
+================
+
+Upstream:  https://github.com/sahlberg/unfs4 (Ronnie Sahlberg, https://github.com/sahlberg)
+Commit:    3c673fc4c8f793b234ddbdb2b16978aa2844a32d
+           "unfs4: a client name of its own for each client"
+           The same commit Launchstation's nfsman (pull request 366) and Neutrino's NFS modules
+           (ps2max32/neutrino pull request 240) use.
+Licence:   BSD 2-Clause (see LICENSE)
+
+What is here
+- unfs4.h and LICENSE, unchanged.
+- unfs4.c with riptopl-bounds.patch applied: three checks on what the server sends, so that a
+  reply that is malformed or hostile cannot make the client read or write outside its buffers,
+  or read for minutes:
+  1. unfs4_readdir(): an entry whose name and attributes run past the folder buffer ends the
+     listing (it used to write a zero byte wherever the name length pointed).
+  2. get_attrs(): attributes that are not exactly TYPE, SIZE and TIME_MODIFY, as asked for, are
+     refused (it used to read at offsets the server's bitmap and length chose).
+  3. unfs4_rpc(): a reply that is not one fragment, or longer than the buffers it is read into,
+     is not read and the connection is closed (the fragment bit was ignored and the length,
+     up to 2 GB, read to the end).
+  A well-formed reply passes all three unchanged. Drop the patch once these are upstream.
+  ../nfsman.c compiles unfs4.c into itself with read(), write() and close() mapped to its
+  bounded socket calls, and the features it uses defined.
+
+What is omitted
+- unfs4-test.c, host/unfs4-cat-host.c (the tiny TCP/IP build, for Neutrino), the Makefile and
+  the README.
