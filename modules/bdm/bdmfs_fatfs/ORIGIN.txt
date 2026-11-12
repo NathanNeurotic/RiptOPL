@@ -34,5 +34,8 @@ LOCAL CHANGES (marked "RiptOPL" where they are not whole functions):
    test_vmc_fatfs_images.py.
 3. src/fs_driver.c USBMASS_IOCTL_GETDRIVERNAME: no copy from a NULL mounted device.
 4. src/main.c: prints "RiptOPL BDM VMC extent and allocation guard v2" at load.
+5. src/fs_driver.c BDM_DEVCTL_VOLINFO (Drive Status, ported from RIPPS2 build 114): free and total
+   clusters, cluster bytes and FatFs type. Clusters, not KB, so a drive over 4 TB shows its full
+   size. Tests: test_ripps2_drive_status.py.
 
 The sources keep their upstream formatting (.clang-format-ignore) so they diff cleanly against the pins.

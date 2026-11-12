@@ -152,13 +152,40 @@ print('ok   the hardware log: wrap keeps the newest lines, DIAG.TXT header, laun
 # ---- 2. names ----
 ds = read('src/ui/drivestatus.cpp')
 helpers = '\n\n'.join(function(ds, s) for s in ('void dsSizeText(', 'const char *dsDriverLabel(', 'const char *dsFsName('))
+# The devctl sends cluster counts; the menu multiplies in 64 bits. KB in a u32 stopped at 4 TB (an 8 TB drive: 3.9 TB).
+FREE_KB = '(unsigned long long)o[0] * o[2] / 1024'
+TOTAL_KB = '(unsigned long long)o[1] * o[2] / 1024'
+NO_ROOM = '(unsigned long long)o[0] * o[2] < (unsigned long long)size'
+assert 'dsSizeText(' + FREE_KB + ', a, sizeof(a));' in ds and 'dsSizeText(' + TOTAL_KB + ', b, sizeof(b));' in ds
+assert 'if (' + NO_ROOM + ')' in function(read('src/core/filemgr.cpp'), 'static int fmRoomFor('), 'free space in bytes'
 names_main = r'''
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-''' + helpers + r'''
+''' + helpers + '''
+static unsigned long long freeKb(const unsigned int *o) { return ''' + FREE_KB + '''; }
+static unsigned long long totalKb(const unsigned int *o) { return ''' + TOTAL_KB + '''; }
+static int noRoom(const unsigned int *o, long long size) { return ''' + NO_ROOM + '''; }
+''' + r'''
 int main(void)
 {
+    /* an 8 TB exFAT drive with 2 MB clusters, as the devctl reports it */
+    static const unsigned int big[4] = {3815400u, 3815400u, 2u * 1024 * 1024, 4};
+    static const unsigned int one[4] = {1u, 3815400u, 2u * 1024 * 1024, 4};
+    static const unsigned int most[4] = {0xFFFFFFF5u, 0xFFFFFFF5u, 32u * 1024 * 1024, 4};
+    static const unsigned int stick[4] = {975000u, 975000u, 32u * 1024, 3};
+    char t[24];
+    dsSizeText(totalKb(big), t, sizeof(t));
+    assert(!strcmp(t, "7.2 TB"));
+    dsSizeText(freeKb(big), t, sizeof(t));
+    assert(!strcmp(t, "7.2 TB"));
+    dsSizeText(0xFFFFFFFFULL, t, sizeof(t)); /* the old u32 KB cap */
+    assert(!strcmp(t, "3.9 TB"));
+    dsSizeText(totalKb(stick), t, sizeof(t));
+    assert(!strcmp(t, "29.7 GB"));
+    assert(freeKb(most) == 0xFFFFFFF5ULL * 32 * 1024 && totalKb(most) > 0xFFFFFFFFULL); /* no wrap at exFAT's limits */
+    assert(!noRoom(big, 50LL * 1024 * 1024 * 1024) && !noRoom(big, 5LL * 1024 * 1024 * 1024 * 1024));
+    assert(!noRoom(one, 2LL * 1024 * 1024) && noRoom(one, 2LL * 1024 * 1024 + 1));
     char s[24];
     dsSizeText(512, s, sizeof(s));
     assert(!strcmp(s, "512 KB"));
@@ -179,7 +206,7 @@ int main(void)
 '''
 with tempfile.TemporaryDirectory(prefix='drive-status-') as temp:
     run('names', names_main, temp)
-print('ok   sizes, drivers and formats by name')
+print('ok   sizes (an 8 TB drive: 7.2 TB, not 3.9 TB), room for a copy, drivers and formats by name')
 
 # ---- 3. wiring ----
 scan = function(ds, 'static void dsScan(')
@@ -207,6 +234,9 @@ vol = function(driver, 'static int fs_devctl(')
 assert 'case BDM_DEVCTL_VOLINFO:' in vol
 assert 'if (vol < 0 || vol > 9 || buf == NULL || buflen < 16)' in vol, 'checked before any use'
 assert 'f_getfree(root, &nclst, &vfs)' in vol and 'o[3] = vfs->fs_type;' in vol
+case = vol[vol.index('case BDM_DEVCTL_VOLINFO:'):vol.index('case USBMASS_DEVCTL_STOP_UNIT:')]
+assert 'o[0] = nclst;' in case and 'o[1] = vfs->n_fatent - 2;' in case, 'cluster counts'
+assert '0xFFFFFFFF' not in case and '1024' not in case, 'nothing clamped or cut to KB in the driver'
 
 assert 'if (notReadyRun_ >= 4)' in read('src/core/pad.cpp') and 'diagLog("pad: %u polls in a row could not be read"' in read('src/core/pad.cpp')
 mmce = read('src/sources/mmcesupport.cpp')
