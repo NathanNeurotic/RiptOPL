@@ -1075,6 +1075,9 @@ void EthSource::launchCue(item_list_t *itemList, const char *cueName, config_set
         host::ui().msgBox(_l(_STR_EMBER_NO_DISC), 0, NULL);
         return;
     }
+    // Ember keeps MC1.vmc/MC2.vmc in the game folder, which NFS Writes Off cannot change: say so, then go on.
+    if (ethIsReadOnly())
+        host::ui().warning(_l(_STR_NFS_EMBER_NO_SAVES), 6);
 
     // NO vcdPreparePopstarterSmbLaunch here, deliberately. That equips POPSTARTER's own
     // IPCONFIG.DAT / SMBCONFIG.DAT because POPSTARTER resets the IOP and has to redial the share

@@ -2692,3 +2692,6 @@ gui_strings:
 - comment: A POPSTARTER (.VCD) title reached over NFS. POPSTARTER resets the IOP and reaches only SMB; Ember games launch over NFS.
   label: NFS_NO_PS1
   string: POPSTARTER cannot launch over NFS. Use Ember, or SMB, for this game.
+- comment: Ember launch from an NFS export while NFS Writes is Off. Ember keeps its memory cards in the game folder, which it cannot write then.
+  label: NFS_EMBER_NO_SAVES
+  string: NFS Writes is Off, so Ember cannot keep memory card saves in this game's folder.
