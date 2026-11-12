@@ -544,15 +544,51 @@ int sysGetDiscID(char *hexDiscID)
     return 1;
 }
 
+// LoadBOOTer, the card update the memory card exploit installer writes, ignores BootBrowser and
+// always runs mc0:/BOOT/BOOT.ELF. Recognise it read-only by that path at offset 12440 in the
+// main system update (first card that has one), as Launchstation does (its PR #362).
+static int exitCardUpdateIsLoadBooter(void)
+{
+    char romver[16] = {0}, path[40], buf[18];
+    const char *file = "osdmain.elf";
+    int fd, port, match = 0;
+
+    if ((fd = open("rom0:ROMVER", O_RDONLY)) >= 0) {
+        read(fd, romver, sizeof(romver) - 1);
+        close(fd);
+    }
+    if (!strncmp(romver, "0100J", 5))
+        file = "osdsys.elf";
+    else if (!strncmp(romver, "0101J", 5))
+        file = "osd110.elf";
+    else if (!strncmp(romver, "0110A", 5))
+        file = "osd120.elf";
+    else if (!strncmp(romver, "0120E", 5))
+        file = "osd130.elf";
+    for (port = 0; port < 2; port++) {
+        snprintf(path, sizeof(path), "mc%d:/B%cEXEC-SYSTEM/%s", port, GetSystemFolderLetter(), file);
+        if ((fd = open(path, O_RDONLY)) < 0)
+            continue;
+        match = lseek(fd, 12440, SEEK_SET) == 12440 && read(fd, buf, 18) == 18 && !memcmp(buf, "mc0:/BOOT/BOOT.ELF", 18);
+        close(fd);
+        break;
+    }
+    return match;
+}
+
 void sysExecExit(int toMenuChoice)
 {
-    // Deinitialize without shutting down active devices.
-    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
     // Issue #370: the console's own exit opens its menu (or a card update such as FMCB), not the
     // Browser. These ask OSDSYS for the Browser, as Launchstation's PS2 system browser rows do.
-    if (toMenuChoice && gExitMenu != EXIT_MENU_CONSOLE) {
+    // On a LoadBOOTer card only SkipMc reaches the Browser, so the plain Browser choice adds it.
+    int browserArgs = 0;
+    if (toMenuChoice && gExitMenu != EXIT_MENU_CONSOLE)
+        browserArgs = (gExitMenu == EXIT_MENU_BROWSER_SKIPMC || exitCardUpdateIsLoadBooter()) ? 2 : 1;
+    // Deinitialize without shutting down active devices.
+    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+    if (browserArgs) {
         char *args[2] = {(char *)"BootBrowser", (char *)"SkipMc"};
-        ExecOSD(gExitMenu == EXIT_MENU_BROWSER_SKIPMC ? 2 : 1, args);
+        ExecOSD(browserArgs, args);
     }
     exit(0);
 }
