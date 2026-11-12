@@ -804,8 +804,10 @@ void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)
         guiMsgBox(_l(_STR_HTTP_NO_VMC), 0, NULL);
         return;
     }
-    // NFS games run on Neutrino only, which takes no VMC from the export (ethTryNeutrino).
-    if (sourceMode == ETH_MODE && ethIsNfs()) {
+    // NFS games run on Neutrino only, which takes no VMC from the export (ethTryNeutrino). One assigned
+    // already (on SMB) can still be reset or disabled, or the game would never launch.
+    int nfs = sourceMode == ETH_MODE && ethIsNfs();
+    if (nfs && !vmc1[0] && !vmc2[0]) {
         guiMsgBox(_l(_STR_NFS_NO_VMC), 0, NULL);
         return;
     }
@@ -841,7 +843,10 @@ void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)
         // UI_BOOL state persists across the button-driven do/while re-entries; read it back each pass
         diaGetInt(diaVMCConfig, COMPAT_VMC1_DISABLE, &vmc1Disabled);
         diaGetInt(diaVMCConfig, COMPAT_VMC2_DISABLE, &vmc2Disabled);
-        if (result == COMPAT_VMC1_DEFINE) {
+        if (nfs && (result == COMPAT_VMC1_DEFINE || result == COMPAT_VMC2_DEFINE || (result == COMPAT_VMC1_ACTION && !vmc1[0]) ||
+                    (result == COMPAT_VMC2_ACTION && !vmc2[0]))) {
+            guiMsgBox(_l(_STR_NFS_NO_VMC), 0, NULL); // no Create, no Use Generic
+        } else if (result == COMPAT_VMC1_DEFINE) {
             if (menuCheckParentalLock() == 0) {
                 if (guiGameShowVMCConfig(id, support, configSet, vmc1, 0, 0))
                     diaGetString(diaVMC, VMC_NAME, vmc1, sizeof(vmc1));
@@ -868,6 +873,8 @@ void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)
         }
     } while (result >= COMPAT_NOEXIT);
 
+    if (nfs) // Reset and disable only: validating would make a missing card on the export
+        return;
     guiGameShowVMCConfig(id, support, configSet, vmc1, 0, 1);
     guiGameShowVMCConfig(id, support, configSet, vmc2, 1, 1);
 }

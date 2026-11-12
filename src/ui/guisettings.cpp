@@ -955,7 +955,7 @@ reshow_network:
     }
     // The updater snaps the Access and IP Address Type rows (def too) on a protocol switch, so a pending
     // UDPFS Access or DHCP choice made before switching back is invisible to diaHasChanges: check it here.
-    if (result && (!gSettingsShell.leftUntouched(diaNetConfig, result, NULL, NULL) ||
+    if (result && (!gSettingsShell.leftUntouched(diaNetConfig, result, nfsExportEdit, gNfsExport) ||
                    netConfigUdpfsAccess != gUdpfsAccessMode || netConfigDhcpPreference != ps2_ip_use_dhcp)) {
         // Seeded with what the page showed: a RiptOPLite page has no Protocol row, and only UDPFS has Access.
         int netProtoVal2 = netProtoVal, netAccessVal2 = netAccessVal;

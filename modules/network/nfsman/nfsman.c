@@ -177,12 +177,14 @@ struct nfsman_export
     uint32_t retry_at; // nfsman_seconds() before which no reconnect is tried
     uint32_t seed;     // from the EE's clock, for the xids
     uint16_t port;
-    uint8_t ro; // RiptOPL: the URL option "ro", every change refused (nfsman_lock_change)
+    uint8_t ro;  // RiptOPL: the URL option "ro", every change refused (nfsman_lock_change)
+    uint32_t id; // RiptOPL: set by each CONNECT (0 once disconnected), see struct nfsman_dir
     char name[NFS_MAX_NAME_LEN];
     char path[200]; // the export, as unfs4_mount() takes it
 };
 
 static struct nfsman_export exports[NFSMAN_EXPORTS];
+static uint32_t last_id;
 static int nfs_sema = -1;
 
 struct nfsman_file
@@ -205,7 +207,7 @@ struct nfsman_dir
 {
     int exp;
     int off;
-    char name[NFS_MAX_NAME_LEN]; // the export it was opened on: a DISCONNECT_ALL ends it
+    uint32_t id; // the CONNECT it was opened on: a DISCONNECT_ALL ends it, even if the name comes back
     struct unfs4_dir *ud;
 };
 
@@ -635,7 +637,7 @@ static int nfsman_open(iop_file_t *f, const char *filename, int flags, int mode)
         rv = -EEXIST;
         goto fail;
     }
-    fh = unfs4_open(u, path, exists ? 0 : O_CREAT);
+    fh = unfs4_open(u, path, exists ? 0 : O_CREAT | (flags & FIO_O_EXCL ? O_EXCL : 0));
     if (fh == NULL) {
         rv = nfsman_errno(u, -EIO);
         goto fail;
@@ -764,8 +766,17 @@ static int nfsman_write(iop_file_t *f, void *buffer, int size)
         UNLOCK();
         return -EBADF;
     }
-    if ((file->writable & 2) && size > 0) // append: every write goes to the end, whatever lseek did
-        file->pos = file->size;
+    // Append: every write goes to the end, whatever lseek did or another handle wrote.
+    if ((file->writable & 2) && size > 0) {
+        int64_t end = unfs4_size(u, file->fh);
+        if (end < 0) {
+            rv = nfsman_errno(u, -EIO);
+            nfsman_check(file->exp);
+            UNLOCK();
+            return rv;
+        }
+        file->pos = file->size = (uint64_t)end;
+    }
 
     while (done < size) {
         n = size - done;
@@ -952,7 +963,7 @@ static int nfsman_dopen(iop_file_t *f, const char *dirname)
         return rv;
     }
     d->exp = e;
-    strcpy(d->name, exports[e].name);
+    d->id = exports[e].id;
     f->privdata = d;
 
     UNLOCK();
@@ -1001,8 +1012,8 @@ static int nfsman_dread(iop_file_t *f, iox_dirent_t *dirent)
         UNLOCK();
         return rv;
     }
-    // A folder of an export that was disconnected, or whose slot now holds another export.
-    if (d == NULL || strcmp(exports[d->exp].name, d->name)) {
+    // A folder of an export that was disconnected, or whose slot now holds another connection.
+    if (d == NULL || exports[d->exp].id != d->id) {
         UNLOCK();
         return -EBADF;
     }
@@ -1290,6 +1301,7 @@ static int nfsman_connect_devctl(const nfsConnect_in_t *in)
     rv = nfsman_parse_url(ex, in->url) ? -NFS_CONNECT_ERR_URL : 0;
     if (rv == 0) {
         strcpy(ex->name, in->name);
+        ex->id = ++last_id;
         ex->seed = in->seed;
         rv = nfsman_connect(free_slot);
     }

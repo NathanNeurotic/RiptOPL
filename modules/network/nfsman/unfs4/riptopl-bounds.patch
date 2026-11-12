@@ -1,0 +1,135 @@
+--- a/unfs4/unfs4.c
++++ b/unfs4/unfs4.c
+@@ -334,7 +334,7 @@
+ /* PUTFH, or PUTROOTFH before unfs4_mount() */
+ static uint8_t *put_fh(struct unfs4_context *unfs4, uint8_t *p, const uint8_t *fh)
+ {
+-        int len = 4 + get32(fh);
++        int len = 4 + ((get32(fh) + 3) & ~3);
+ 
+         if (len == 4) {
+                 return put_op(unfs4, p, OP_PUTROOTFH);
+@@ -413,14 +413,17 @@
+         return put32(p, 0x00200000);
+ }
+ 
+-/* Takes apart the attributes from put_attr_request(), returns the end */
++/* Takes apart the attributes from put_attr_request(), returns the end, or
++ * NULL unless they are exactly those: the offsets below are fixed */
+ static uint8_t *get_attrs(uint8_t *p, struct unfs4_attr *a)
+ {
+-        p += 4 + 4 * get32(p);
+-        a->type = get32(p + 4);
+-        a->size = get64(p + 8);
+-        a->mtime = get64(p + 16);
+-        return p + 4 + get32(p);
++        if (get32(p) != 2 || get32(p + 4) != 0x00000012 || get32(p + 8) != 0x00200000 || get32(p + 12) != 24) {
++                return NULL;
++        }
++        a->type = get32(p + 16);
++        a->size = get64(p + 20);
++        a->mtime = get64(p + 28);
++        return p + 40;
+ }
+ 
+ #if defined(UNFS4_FEATURE_MKDIR) || defined(UNFS4_FEATURE_CREATE)
+@@ -478,7 +481,17 @@
+ #endif
+ 
+         read_from_socket(unfs4, b, 4);
+-        left = get32(b) & 0x7fffffff;
++        left = get32(b);
++        /* One fragment, that fits in buf and indata: any other reply is not
++         * read, and the connection is closed */
++        if (!(left & 0x80000000) || (left & 0x7fffffff) > sizeof(unfs4->buf) - 4 + (uint32_t)indatacount) {
++                unfs4->status = UNFS4_ERR_CONN;
++#ifndef UNFS4_FEATURE_TINY_TCP
++                socket_failed(unfs4);
++#endif
++                return -1;
++        }
++        left &= 0x7fffffff;
+         /* Leave at least 64 bytes at the end of buf to read the rest to */
+         len = read_reply(unfs4, &b[4], indata ? 60 : sizeof(unfs4->buf) - 4 - 64, &left);
+         read_reply(unfs4, indata, indatacount, &left);
+@@ -525,7 +538,7 @@
+  * new one each time and close the file again at once, so that there is no
+  * state on the server for a lease to keep alive.
+  */
+-static uint8_t *unfs4_create(struct unfs4_context *unfs4, const char *name, uint8_t *fh)
++static uint8_t *unfs4_create(struct unfs4_context *unfs4, const char *name, uint8_t *fh, int mode)
+ {
+         uint8_t *p, clientid[16], stateid[16];
+         char id[14] = "unfs4-";
+@@ -564,7 +577,8 @@
+         /*
+          * SETCLIENTID_CONFIRM, then OPEN the file in its directory: seqid 0,
+          * access READ and WRITE, deny none, owner the client id and the xid,
+-         * CREATE UNCHECKED with mode 0644, CLAIM_NULL with the name
++         * CREATE UNCHECKED (GUARDED with O_EXCL) with mode 0644, CLAIM_NULL
++         * with the name
+          */
+         p = put_op(unfs4, unfs4_cmd_hdr(unfs4), OP_SETCLIENTID_CONFIRM);
+         memcpy(p, clientid, 16);
+@@ -575,6 +589,10 @@
+         p = put32(p + 20, 4);
+         p = put32(p, unfs4->xid);
+         p[3] = 1;
++#ifdef O_EXCL
++        /* GUARDED: the server refuses a file that is there, whoever made it */
++        p[7] = (mode & O_EXCL) != 0;
++#endif
+         p = put_mode(p + 8, 0644);
+         p = put_name(p + 4, last);
+         if (unfs4_rpc(unfs4, p, NULL, 0, NULL, 0)) {
+@@ -619,7 +637,7 @@
+         }
+ #ifdef UNFS4_FEATURE_CREATE
+         if (mode & O_CREAT) {
+-                if (unfs4_create(unfs4, name, fh)) {
++                if (unfs4_create(unfs4, name, fh, mode)) {
+                         return fh;
+                 }
+         } else
+@@ -674,15 +692,29 @@
+                 dir->have = 1;
+         }
+         p = &dir->buf[dir->pos];
++        /* What runs past buf is not taken apart: the end marker and eof, or
++         * an entry, its name and its attributes */
++        if (dir->pos > UNFS4_DIR_SIZE - 8) {
++                return NULL;
++        }
+         if (!get32(p)) {
+                 dir->eof = p[7];
+                 dir->have = 0;
+                 goto again;
+         }
++        if (dir->pos > UNFS4_DIR_SIZE - 16) {
++                return NULL;
++        }
+         memcpy(dir->cookie, p + 4, 8);
+         len = get32(p + 12);
++        if (len > UNFS4_DIR_SIZE || dir->pos + 16 + ((len + 3) & ~3) + 40 > UNFS4_DIR_SIZE) {
++                return NULL;
++        }
+         dir->de.name = (char *)p + 16;
+         p = get_attrs(p + 16 + ((len + 3) & ~3), &dir->de.attr);
++        if (p == NULL) {
++                return NULL;
++        }
+         /* over the padding or the attributes, which we have read */
+         dir->de.name[len] = 0;
+         dir->pos = p - dir->buf;
+@@ -721,7 +753,10 @@
+         if (unfs4_rpc(unfs4, p, NULL, 0, NULL, 0)) {
+                 return -1;
+         }
+-        get_attrs(RES(unfs4, unfs4->nops), a);
++        if (get_attrs(RES(unfs4, unfs4->nops), a) == NULL) {
++                unfs4->status = NFS4ERR_SERVERFAULT;
++                return -1;
++        }
+         return 0;
+ }
+ 

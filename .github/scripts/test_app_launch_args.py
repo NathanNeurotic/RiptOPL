@@ -75,6 +75,7 @@ STUBS = r'''
 #define _STR_POPSTARTER_NET_ERR 3
 #define _STR_POPSTARTER_NET_INVALID 4
 #define _STR_POPSTARTER_SMB_NEEDS_STATIC 5
+#define _STR_NFS_NO_PS1 6
 typedef int item_list_t;
 typedef struct { const char *path; const char *arg; } config_set_t;
 typedef int vcd_popsnet_ensure_t;
@@ -109,7 +110,8 @@ static int oplPath2Mode(const char *path)
 { return !strncmp(path, "pfs", 3) ? HDD_MODE : !strncmp(path, "mass", 4) ? BDM_MODE : !strncmp(path, "smb", 3) ? ETH_MODE : APP_MODE; }
 static int appIsPopstarterSmb(const char *path) { return pops_smb; }
 static const char *ethGetSMBPrefix(void) { return "smb0:"; }
-static int ethIsNfs(void) { return 0; }
+static int eth_nfs;
+static int ethIsNfs(void) { return eth_nfs; }
 static int vcdPreparePopstarterSmbLaunch(const char *path) { return pops_smb_prep; }
 static int appIsPopstarterElf(const char *path, const char *title) { return is_pops; }
 static int appGetRebootIopConfig(config_set_t *c) { return reset_iop; }
@@ -275,6 +277,12 @@ int main(void)
     pops_smb_prep = VCD_POPSNET_SMB_MISSING;
     run("smb0:/POPS/SB.GAME.ELF", NULL, 0, 1);
     assert(errors == 1 && !torn_down && !launched);
+    // On NFS a POPSTARTER SB.<game>.ELF is refused before the handoff (POPSTARTER reaches SMB only).
+    pops_smb_prep = VCD_POPSNET_READY;
+    eth_nfs = 1;
+    run("smb0:/POPS/SB.GAME.ELF", NULL, 0, 1);
+    assert(errors == 1 && !torn_down && !launched);
+    eth_nfs = 0;
     pops_smb = 0;
     pops_smb_prep = VCD_POPSNET_READY;
 

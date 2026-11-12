@@ -334,7 +334,7 @@ static uint8_t *unfs4_cmd_hdr(struct unfs4_context *unfs4)
 /* PUTFH, or PUTROOTFH before unfs4_mount() */
 static uint8_t *put_fh(struct unfs4_context *unfs4, uint8_t *p, const uint8_t *fh)
 {
-        int len = 4 + get32(fh);
+        int len = 4 + ((get32(fh) + 3) & ~3);
 
         if (len == 4) {
                 return put_op(unfs4, p, OP_PUTROOTFH);
@@ -538,7 +538,7 @@ int unfs4_mount(struct unfs4_context *unfs4, const char *path)
  * new one each time and close the file again at once, so that there is no
  * state on the server for a lease to keep alive.
  */
-static uint8_t *unfs4_create(struct unfs4_context *unfs4, const char *name, uint8_t *fh)
+static uint8_t *unfs4_create(struct unfs4_context *unfs4, const char *name, uint8_t *fh, int mode)
 {
         uint8_t *p, clientid[16], stateid[16];
         char id[14] = "unfs4-";
@@ -577,7 +577,8 @@ static uint8_t *unfs4_create(struct unfs4_context *unfs4, const char *name, uint
         /*
          * SETCLIENTID_CONFIRM, then OPEN the file in its directory: seqid 0,
          * access READ and WRITE, deny none, owner the client id and the xid,
-         * CREATE UNCHECKED with mode 0644, CLAIM_NULL with the name
+         * CREATE UNCHECKED (GUARDED with O_EXCL) with mode 0644, CLAIM_NULL
+         * with the name
          */
         p = put_op(unfs4, unfs4_cmd_hdr(unfs4), OP_SETCLIENTID_CONFIRM);
         memcpy(p, clientid, 16);
@@ -588,6 +589,10 @@ static uint8_t *unfs4_create(struct unfs4_context *unfs4, const char *name, uint
         p = put32(p + 20, 4);
         p = put32(p, unfs4->xid);
         p[3] = 1;
+#ifdef O_EXCL
+        /* GUARDED: the server refuses a file that is there, whoever made it */
+        p[7] = (mode & O_EXCL) != 0;
+#endif
         p = put_mode(p + 8, 0644);
         p = put_name(p + 4, last);
         if (unfs4_rpc(unfs4, p, NULL, 0, NULL, 0)) {
@@ -632,7 +637,7 @@ uint8_t *unfs4_open(struct unfs4_context *unfs4, const char *name, int mode)
         }
 #ifdef UNFS4_FEATURE_CREATE
         if (mode & O_CREAT) {
-                if (unfs4_create(unfs4, name, fh)) {
+                if (unfs4_create(unfs4, name, fh, mode)) {
                         return fh;
                 }
         } else
@@ -696,6 +701,9 @@ struct unfs4_dirent *unfs4_readdir(struct unfs4_context *unfs4, struct unfs4_dir
                 dir->eof = p[7];
                 dir->have = 0;
                 goto again;
+        }
+        if (dir->pos > UNFS4_DIR_SIZE - 16) {
+                return NULL;
         }
         memcpy(dir->cookie, p + 4, 8);
         len = get32(p + 12);

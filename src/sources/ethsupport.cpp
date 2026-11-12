@@ -1510,7 +1510,7 @@ static const char *ethReadOnlyCfgDir(char *cfgDir, int size)
         char dir[256];
         snprintf(dir, sizeof(dir), "%s", cfgDir);
         dir[strlen(dir) - 1] = '\0';
-        if (mkdir(dir, 0777) == 0) // a failure is tried again on the next selection
+        if (mkdir(dir, 0777) == 0 || errno == EEXIST) // a failure is tried again on the next selection
             snprintf(madeCfgDir, sizeof(madeCfgDir), "%s", cfgDir);
     }
     return cfgDir;

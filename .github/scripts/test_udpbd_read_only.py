@@ -222,6 +222,12 @@ if native is None or "if (vmc_name[0] && itemList != NULL && (itemList->flags & 
 vmc_menu = function(GUIGAME, 'void guiGameShowVMCMenu(int id, item_list_t *support, config_set_t *configSet)\n{', 'VMC menu')
 before(vmc_menu, 'if (bdmModeIsReadOnly(sourceMode)) {\n        guiMsgBox(_l(_STR_NET_READ_ONLY_VMC), 0, NULL);\n        return;',
        '// show dialog', 'guiGameShowVMCMenu: a read-only device shows the message instead of the VMC dialog')
+# NFS takes no VMC: one assigned already (on SMB) can be reset or disabled, but nothing validates a card,
+# which would make a missing one on the export.
+before(vmc_menu, 'if (nfs && !vmc1[0] && !vmc2[0]) {\n        guiMsgBox(_l(_STR_NFS_NO_VMC), 0, NULL);\n        return;',
+       '// show dialog', 'guiGameShowVMCMenu: an NFS game with no VMC shows the message instead of the VMC dialog')
+before(vmc_menu, 'if (nfs) // Reset and disable only', 'guiGameShowVMCConfig(id, support, configSet, vmc1, 0, 1);',
+       'guiGameShowVMCMenu: an NFS game leaves the menu without validating (making) a card on the export')
 game_menu = function(MENUSYS, 'void menuInitGameMenu(item_list_t *support)\n{', 'game menu')
 if 'int readOnly = support != NULL && !fav && (support->flags & MODE_FLAG_READ_ONLY);' not in game_menu or \
         len(re.findall(r'&& !readOnly\)\)\n\s+submenuAppendItem\(&gameMenu, -1, NULL, GAME_(RENAME|DELETE)_GAME', game_menu)) != 2:
