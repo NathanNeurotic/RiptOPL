@@ -56,14 +56,14 @@ def stage_orbit(archive, destination, pin):
     # sysNeutrinoRARuntime accepts a runtime only when this marker's first line matches.
     (destination / "ORBIT-RA.txt").write_text(
         "RiptOPL ORBIT RA handoff v1\n"
-        "ORBIT Neutrino RA runtime by Daniel (danielnuld), based on Neutrino by Maximus32\n"
+        "NULD (formerly ORBIT) Neutrino RA runtime by Daniel (danielnuld), based on Neutrino by Maximus32\n"
         "and xeRAbora's protocol by hacan359. AFL-3.0; see LICENSE.\n"
         f"Source: https://github.com/{pin['repository']}/tree/{pin['source_commit']}/third_party/neutrino-igr\n"
         "Pinned release and archive SHA-256: see ORBIT-RA.json.\n", encoding="utf-8")
     (destination / "RA-EDITION-NEUTRINO.txt").write_text(
         "THIS neutrino/ FOLDER BELONGS TO THE RIPTOPL RETROACHIEVEMENTS EDITION.\n"
         "\n"
-        f"It is ORBIT's RA-Neutrino {pin['tag']}: Neutrino v1.8.0 with the achievement agent\n"
+        f"It is NULD's (formerly ORBIT) RA-Neutrino {pin['tag']}: Neutrino v1.8.0 with the achievement agent\n"
         "(raagent.irx). Only modules/iLinkman.irx and modules/IEEE1394_bd_mini.irx are replaced,\n"
         "by RiptOPL's i.LINK pair, as in the standard kit. It is NOT the standard RiptOPL Neutrino:\n"
         "keep this folder with the RA loader (APPS/APP_RIPTOPL-RA) and the standard one with the standard loader.\n"
@@ -71,7 +71,7 @@ def stage_orbit(archive, destination, pin):
         "Every Neutrino launch in the RA edition uses this runtime, so upstream changes made\n"
         "after Neutrino v1.8.0 (including Neutrino cheats) are not available here.\n"
         "\n"
-        f"ORBIT Neutrino RA runtime {pin['tag']}: https://github.com/{pin['repository']}/releases/tag/{pin['tag']}\n", encoding="utf-8")
+        f"NULD (formerly ORBIT) Neutrino RA runtime {pin['tag']}: https://github.com/{pin['repository']}/releases/tag/{pin['tag']}\n", encoding="utf-8")
 
 
 LANGS_README = """RiptOPL translations

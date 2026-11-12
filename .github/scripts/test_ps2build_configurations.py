@@ -365,7 +365,7 @@ class PublisherTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
             root = Path(directory)
             self.kit(root, ra_neutrino="neutrino_v1.8.0.7z")
-            with self.assertRaisesRegex(ValueError, "not the pinned ORBIT"):
+            with self.assertRaisesRegex(ValueError, "not the pinned NULD"):
                 publish_editions.verify(root, self.sha)
 
     def test_ra_incebtion_kit_ships_inside_the_ra_channel(self):

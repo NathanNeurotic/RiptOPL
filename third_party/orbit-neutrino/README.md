@@ -1,4 +1,4 @@
-# ORBIT Neutrino runtime for the RA edition
+# NULD (formerly ORBIT) Neutrino runtime for the RA edition
 
 Pinned binary distribution: [NULD v1.2.12](https://github.com/danielnuld/nuld/releases/tag/v1.2.12) (ORBIT was renamed NULD at v1.2;
 the runtime keeps the ORBIT name here and in the kit's file names).

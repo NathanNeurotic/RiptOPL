@@ -169,7 +169,7 @@ Neutrino nightly includes the SMB backend merged on 2026-10-31 in
 `smb_ioman.irx` reads the game in Neutrino's loader and `smb_fhi.irx` reads it in the game. Install the
 **whole latest nightly folder**, including `config/bsd-smb.toml` and both SMB modules. Release kits
 fetch upstream's `latest` nightly at packaging time. An older installed folder without those files
-falls back to `<OPL>` with a warning. The RA kit uses the pinned ORBIT runtime; it needs its own SMB
+falls back to `<OPL>` with a warning. The RA kit uses the pinned NULD (formerly ORBIT) runtime; it needs its own SMB
 backend update before this path is available there. **Not tested on hardware.**
 
 How a game gets there:

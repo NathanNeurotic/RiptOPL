@@ -388,7 +388,7 @@ switching between RA and a standard edition needs no clean step. See
 
 The `rolling-ra` channel publishes the kit as **`RIPTOPL-RetroAchievements-<version>.zip`**, built to the same
 shape as the standard kit: `POPS/`, `EMBER/`, `neutrino/` (here the
-[ORBIT Neutrino RA runtime v1.2.12](https://github.com/danielnuld/nuld/releases/tag/v1.2.12), see
+[NULD (formerly ORBIT) Neutrino RA runtime v1.2.12](https://github.com/danielnuld/nuld/releases/tag/v1.2.12), see
 [Neutrino in the RA edition](#neutrino-in-the-ra-edition)) and the PC-tool shortcuts, with
 `APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF`, matching `ART/RIPTOPL-RA.ELF_*.png` artwork, and
 `APP_RIPTOPL-RA.psu`. The PSU contains only the direct files of `APP_RIPTOPL-RA`; import it with a

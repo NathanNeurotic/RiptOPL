@@ -62,7 +62,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertNotIn("BUGREPORT", body)
             self.assertEqual({"rolling-ra": 6}.get(options["tag"], 8), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
-                self.assertIn("Included build: NULD-v1.2.12 -- [ORBIT Neutrino RA runtime v1.2.12]"
+                self.assertIn("Included build: NULD-v1.2.12 -- [NULD (formerly ORBIT) Neutrino RA runtime v1.2.12]"
                               "(https://github.com/danielnuld/nuld/releases/tag/v1.2.12)", body)
                 self.assertIn("by [danielnuld](https://github.com/danielnuld)", body)
             else:
