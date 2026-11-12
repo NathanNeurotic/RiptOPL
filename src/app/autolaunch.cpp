@@ -128,12 +128,12 @@ void autoLaunchHDDGame(char *argv[])
     }
 }
 
-void autoLaunchBDMGame(char *argv[])
+void autoLaunchBDMGame(char *argv[], int ataOnly)
 {
     char path[256];
     config_set_t *configSet;
 
-    miniInit(BDM_MODE);
+    miniInit(BDM_MODE, ataOnly);
 
     gAutoLaunchBDMGame = static_cast<base_game_info_t*>(malloc(sizeof(base_game_info_t)));
     if (gAutoLaunchBDMGame == NULL) {
