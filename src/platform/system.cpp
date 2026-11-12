@@ -603,13 +603,13 @@ constexpr int CORE_IRX_VMC = 0x10;
 constexpr int CORE_IRX_DEBUG = 0x20;
 constexpr int CORE_IRX_DECI2 = 0x40;
 constexpr int CORE_IRX_ILINK = 0x80;
-#define CORE_IRX_MX4SIO      0x100
-#define CORE_IRX_MMCE        0x200
-#define CORE_IRX_PCCF        0x400
-#define CORE_IRX_UDPBD       0x800  // OPL-core UDPBD game: the smap_udpbd monolith
-#define CORE_IRX_UDPFS       0x1000 // OPL-core UDPFS (block) game: udpfs_smap + udpfs_ministack + udpfs_bd
+#define CORE_IRX_MX4SIO 0x100
+#define CORE_IRX_MMCE   0x200
+#define CORE_IRX_PCCF   0x400
+#define CORE_IRX_UDPBD  0x800  // OPL-core UDPBD game: the smap_udpbd monolith
+#define CORE_IRX_UDPFS  0x1000 // OPL-core UDPFS (block) game: udpfs_smap + udpfs_ministack + udpfs_bd
 #define CORE_IRX_UDPFS_FILES 0x2000 // OPL-core UDPFS Files game: udpfs_smap + udpfs_ministack + udpfs_fhi
-#define CORE_IRX_IGRMBOX     0x4000 // In-Game Menu on: igrmbox, the menu's mailbox (the silent pause, the held frame)
+#define CORE_IRX_IGRMBOX 0x4000 // In-Game Menu on: igrmbox, the menu's mailbox (the silent pause, the held frame)
 
 // The OPL-core UDPBD / UDPFS modes (UDPFS Files included). Their driver owns the SMAP adapter in game,
 // so nothing else may put a network stack on it: no SMB/RA SMAP + SMSTCPIP pair, no udptty.
@@ -886,7 +886,7 @@ static unsigned int sendIrxKernelRAM(const char *startup, const char *mode_str, 
     }
 #endif
 
-    // Load MMCEIGR module (~1.4KB) on reset if bootcard switch is enabled for either slot
+    //Load MMCEIGR module (~1.4KB) on reset if bootcard switch is enabled for either slot
     if (gMMCEIGRSlot != 0) {
         irxptr_tab[modcount].info = size_mmceigr_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_MMCEIGR);
         irxptr_tab[modcount++].ptr = (void *)&mmceigr_irx;
@@ -1549,7 +1549,7 @@ void sysLaunchLoaderElf(const char *filename, const char *mode_str, int size_cdv
     config->IgrRaUnlocked = raHuntUnlocked;
 #endif
 
-    // MMCEIGR Settings
+    //MMCEIGR Settings
     config->MMCEIGRSettings = gMMCEIGRSlot;
 
 #ifdef __DEBUG
