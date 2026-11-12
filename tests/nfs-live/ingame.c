@@ -58,6 +58,10 @@ int main(int argc, char **argv)
     }
     setvbuf(stdout, NULL, _IOLBF, 0);
     signal(SIGPIPE, SIG_IGN); // a send on the cut connection fails instead
+    /* A launch whose network never came up (device-smb.c: ps2ip_init failed) unmounts before any
+       negotiation: nothing was opened, so nothing is closed through the stack it never linked. */
+    smb_Disconnect();
+    printf("unmount before negotiation: no close\n");
     plwip_close = h_close;
     plwip_connect = h_connect_counted;
     plwip_bind = h_bind;

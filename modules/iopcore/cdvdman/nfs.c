@@ -349,7 +349,9 @@ void smb_CloseAll(void)
 
 int smb_Disconnect(void)
 {
-    if (nfs.fd >= 0) {
+    // nfs.fd holds a socket only once negotiation has run (smb_io_sema). Before that, as when the network
+    // never came up, it is bss's 0, and the stack's close was never linked.
+    if (smb_io_sema >= 0 && nfs.fd >= 0) {
         plwip_close(nfs.fd);
         nfs.fd = -1;
     }

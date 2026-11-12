@@ -6,7 +6,8 @@
 #               a folder of the share, a whole 5 MB image read back and compared byte for byte, the
 #               connection cut part way and the read carrying on over a new one, end-of-file short
 #               counts, VMC page writes and read-back, a 100 KB write across the 8 KB chunk after a cut,
-#               a UTF-8 name, every file slot, a missing file, a missing export, nothing listening;
+#               a UTF-8 name, every file slot, a missing file, a missing export, nothing listening, an
+#               unmount before any connection (the network never came up);
 #               against a server that refuses writes, the VMC writes fail without reconnecting.
 #   longname.c  (tests/smb2-live) compiles device-smb.c whole with nfs.c and launches games the way the
 #               IOP does, from a settings block filled as the EE fills it: the longest file names the
