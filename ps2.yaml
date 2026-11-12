@@ -352,6 +352,17 @@ targets:
     include_dirs: [modules/bdm/libbdm/src/include, modules/bdm/libbdm/include]
     headers: *iop_headers
 
+  # sdk-core's usbmass_bd_mini with the two-drive fixes (modules/usb/usbmass_bd/ORIGIN.md). The menu and
+  # the in-game bundle load it under the SDK name usbmass_bd in place of the sdk-core binary.
+  - name: usbmass_bd_mini_fork
+    type: iop
+    sources: [modules/usb/usbmass_bd/src/main.c, modules/usb/usbmass_bd/src/usb_mass.c, modules/usb/usbmass_bd/src/scsi.c]
+    include_dirs: [modules/usb/usbmass_bd/src, modules/usb/usbmass_bd/src/include]
+    headers: *iop_headers
+    defines: [MINI_DRIVER]
+    libs: [gcc]
+    imports_lst: modules/usb/usbmass_bd/src/imports.lst
+
   # FORK-VENDORED usbd_mini (pre-2024-09-04 driver). Do NOT use the SDK usbd_mini package.
   # -G0, not the original Makefile's IOP_PREFER_GPOPT=16384: with USE_GP_REGISTER=0, -G16384 made RegisterLdd fail and ds34usb_init() spin forever.
   - name: usbd_mini_fork
@@ -608,7 +619,7 @@ targets:
     ldflags: [-fdata-sections, -ffunction-sections, "-Wl,--gc-sections", "-Wl,-zmax-page-size=128", "-Wl,-Map,opl.map", -lpadx]
     libs: [gskit, dmakit, poweroff, filexio, patches, png, jpeg, z, mc, freetype, vux, cdvd, netman, ps2ips, audsrv-compat, vorbisfile, vorbis, ogg, pad, ds34usb_ee, ds34bt_ee, debug]
     pack: true
-    embed_irx: [isofs, bdmevent, genvmc, nbns, httpclient, imgdrv, resetspu, igrmbox, apemodpatch, cleareffects, f2techioppatch, iremsndpatch, cdvdfsv, smbinit, SMSUTILS:smsutils, SMSTCPIP:ingame_smstcpip, smap_ingame, xhdd, smap_udpbd, udpfs_smap, udpfs_ministack, udpfs_bd, udpfs_ioman, udpfs_fhi, lwnbdsvr, ps2ips_fork:ps2ips, bdm_drv:bdm, usbd_mini_fork:usbd, ata_bd:ps2atad, ps2hdd_osd:ps2hdd, hdd_cdvdman, hdd_hdpro_cdvdman, smb_cdvdman, smb2_cdvdman, http_cdvdman, bdm_cdvdman, bdm_ata_cdvdman, bdm_udp_cdvdman, udpfs_cdvdman, pccf_cdvdman, mmce_cdvdman, hdd_mcemu, smb_mcemu, bdm_mcemu, mmce_mcemu, usb_pademu, bt_pademu, ds34usb, ds34bt, pvrdrv:dvrdrv, dvrfile, eecore, elfldr, smbman_ra:smbman, smb2man, usbhdfsd, libsd, audio:audsrv, bdmfs_fatfs_fork:bdmfs_fatfs, iLinkman_fork:iLinkman, IEEE1394_bd_mini_fork:IEEE1394_bd, usbmass_bd_mini:usbmass_bd, mx4sio_bd_mini_fork:mx4sio_bd, pccf_bd, pccf_game, hdpro_atad, poweroff, dev9:ps2dev9, ps2ip-nm:ps2ip, smap, netman, iomanx, filexio, sio2man, padman, mcman, mcserv, mmceman_fork:mmceman, mmcedrv, mmceigr, fs-osd:ps2fs, eesync-nano:eesync, udnl]
+    embed_irx: [isofs, bdmevent, genvmc, nbns, httpclient, imgdrv, resetspu, igrmbox, apemodpatch, cleareffects, f2techioppatch, iremsndpatch, cdvdfsv, smbinit, SMSUTILS:smsutils, SMSTCPIP:ingame_smstcpip, smap_ingame, xhdd, smap_udpbd, udpfs_smap, udpfs_ministack, udpfs_bd, udpfs_ioman, udpfs_fhi, lwnbdsvr, ps2ips_fork:ps2ips, bdm_drv:bdm, usbd_mini_fork:usbd, ata_bd:ps2atad, ps2hdd_osd:ps2hdd, hdd_cdvdman, hdd_hdpro_cdvdman, smb_cdvdman, smb2_cdvdman, http_cdvdman, bdm_cdvdman, bdm_ata_cdvdman, bdm_udp_cdvdman, udpfs_cdvdman, pccf_cdvdman, mmce_cdvdman, hdd_mcemu, smb_mcemu, bdm_mcemu, mmce_mcemu, usb_pademu, bt_pademu, ds34usb, ds34bt, pvrdrv:dvrdrv, dvrfile, eecore, elfldr, smbman_ra:smbman, smb2man, usbhdfsd, libsd, audio:audsrv, bdmfs_fatfs_fork:bdmfs_fatfs, iLinkman_fork:iLinkman, IEEE1394_bd_mini_fork:IEEE1394_bd, usbmass_bd_mini_fork:usbmass_bd, mx4sio_bd_mini_fork:mx4sio_bd, pccf_bd, pccf_game, hdpro_atad, poweroff, dev9:ps2dev9, ps2ip-nm:ps2ip, smap, netman, iomanx, filexio, sio2man, padman, mcman, mcserv, mmceman_fork:mmceman, mmcedrv, mmceigr, fs-osd:ps2fs, eesync-nano:eesync, udnl]
 
 
   # ---- smb2probe: hardware test for the SMB2 menu freeze (tools/hwtest/smb2probe/README.md) ----

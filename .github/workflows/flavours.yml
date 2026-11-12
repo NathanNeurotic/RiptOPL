@@ -72,6 +72,8 @@ jobs:
         run: python3 .github/scripts/test_ra_mode6.py
       - name: Check UDP NIC reservation, DEV9 failure/retry and queued IP conflict notice
         run: python3 .github/scripts/test_network_parity_922.py
+      - name: Check the USB storage driver with two drives at once, an offline drive and a read cut short
+        run: python3 .github/scripts/test_usbmass_two_drives.py
       - name: Check real C++ configuration round trips and host modules under ASan/UBSan
         run: sh tests/host/run.sh
       - name: Check Ember image filtering, VMC recovery and checked SMB Refresh

@@ -49,7 +49,7 @@ DEVICE_SPECIFIC = frozenset(name for options in DEVICES.values() for name in opt
 ALWAYS = frozenset({
     "mmceman_fork", "mmcedrv", "mmceigr", "mmce_cdvdman", "mmce_mcemu",
     "netman", "smap", "ps2ip-nm", "ps2ips_fork", "SMSUTILS", "httpclient", "lwnbdsvr", "ata_bd",
-    "bdm_drv", "bdmfs_fatfs_fork", "bdmevent", "usbmass_bd_mini", "usbd_mini_fork", "dev9"})
+    "bdm_drv", "bdmfs_fatfs_fork", "bdmevent", "usbmass_bd_mini_fork", "usbd_mini_fork", "dev9"})
 assert not DEVICE_SPECIFIC & ALWAYS
 
 # What RetroAchievements uses whatever the game device, so an RA lite build keeps it for every device:
