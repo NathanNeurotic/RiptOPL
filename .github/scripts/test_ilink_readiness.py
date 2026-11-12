@@ -61,7 +61,7 @@ with tempfile.TemporaryDirectory() as temp:
 
 # Auto Loading sets the policy after the IO worker exists and before BDM starts; the menu clears it.
 opl = (root / 'src/app/opl.cpp').read_text(encoding='utf-8')
-for signature, enabled in [('\nstatic void init(void)', 0), ('\nvoid miniInit(int mode)', 1)]:
+for signature, enabled in [('\nstatic void init(void)', 0), ('\nvoid miniInit(int mode, int ataOnly)', 1)]:
     begin = opl.index(signature)
     body = opl[begin:opl.index('\n}', begin)]
     assert body.index('ioInit();') < body.index(f'bdmSetAutoLaunch({enabled});') < body.index('bdmInitSemaphore();'), signature

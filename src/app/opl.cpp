@@ -1830,7 +1830,7 @@ static void deferredAudioInit(void)
 // ----------------------------------------------------------
 
 
-void miniInit(int mode)
+void miniInit(int mode, int ataOnly)
 {
     int ret, value;
 #ifdef __OPLDIAG
@@ -1859,9 +1859,10 @@ void miniInit(int mode)
         // runs AFTER bdmLoadModules(). bdmLoadBlockDeviceModules gates the USB load on the flag, so
         // an argv autolaunch from a USB stick loaded no USB block driver at all.
         // A RiptOPLite build loads only the transport it carries (include/riptlite.h).
-        gEnableUSB = LITE_HAS_USB;
-        gEnableILK = LITE_HAS_ILINK; // iLink will break pcsx2 however.
-        gEnableMX4SIO = LITE_HAS_MX4SIO;
+        // An "ata" launch (internal exFAT HDD) loads only the ATA transport: no USB, iLink or MX4SIO.
+        gEnableUSB = ataOnly ? 0 : LITE_HAS_USB;
+        gEnableILK = ataOnly ? 0 : LITE_HAS_ILINK; // iLink will break pcsx2 however.
+        gEnableMX4SIO = ataOnly ? 0 : LITE_HAS_MX4SIO;
         gEnableBdmHDD = LITE_HAS_BDMHDD;
         bdmLoadModules();
     } else if (mode == HDD_MODE) {
@@ -2096,9 +2097,11 @@ int main(int argc, char *argv[])
            argv[1] file name (including extention)
            argv[2] game->startup
            argv[3] game->media ("CD" / "DVD")
-           argv[4] "bdm" */
+           argv[4] "bdm" (every BDM transport) or "ata" (internal HDD only, faster) */
         if (!strcmp(argv[4], "bdm"))
             autoLaunchBDMGame(argv);
+        else if (!strcmp(argv[4], "ata"))
+            autoLaunchBDMGame(argv, 1);
     }
 
     init();

@@ -323,13 +323,15 @@ def verify(args: argparse.Namespace) -> None:
         required.update("POPS/UDPFS-NOTICES/" + name for name in (
             "LICENSE", "AFL-2.0.txt", "AFL-3.0.txt", "README.md", "README_CONFIG.txt",
             "THIRD_PARTY_NOTICES.md", "UPSTREAM-README.md", "PROVENANCE.json", "PATHMAP.INI"))
+        # The ELF links mbedTLS in the RA edition and wherever it has Check for Updates.
+        if args.ra or getattr(args, "mbedtls", False):
+            required.add("LICENSE-MBEDTLS.txt")
+        elif "LICENSE-MBEDTLS.txt" in all_names:
+            raise ValueError("package carries mbedTLS's licence but its ELF does not link mbedTLS")
         if args.ra:
             required.add("xeRAbora.url")
-            required.add("LICENSE-MBEDTLS.txt")
             required.update({"neutrino/ORBIT-RA.json", "neutrino/ORBIT-RA.txt", "neutrino/RA-EDITION-NEUTRINO.txt",
                              "neutrino/LICENSE", "neutrino/modules/ee_core.elf", "neutrino/modules/raagent.irx"})
-        elif "LICENSE-MBEDTLS.txt" in all_names:
-            raise ValueError("ordinary package carries the RA edition's mbedTLS licence")
         elif any("raagent" in name.lower() or "/ORBIT-RA." in name or "/RA-EDITION-NEUTRINO." in name for name in all_names):
             raise ValueError("ordinary package contains the ORBIT RA runtime")
         required.update(f"POPS/POPSTARTER VERSIONS/{version}/POPSTARTER.ELF" for version in (
@@ -432,6 +434,7 @@ def main() -> None:
     verify_parser.add_argument("--app-name", required=True)
     verify_parser.add_argument("--elf-name", required=True)
     verify_parser.add_argument("--ra", action="store_true")
+    verify_parser.add_argument("--mbedtls", action="store_true", help="the ELF links mbedTLS (Check for Updates)")
     args = parser.parse_args()
     try:
         if args.command == "stage":

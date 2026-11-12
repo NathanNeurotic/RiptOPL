@@ -2235,6 +2235,87 @@ static int guiSettingsGeneralUpdater(int modified)
     return 0;
 }
 
+// Date and Time (Launchstation issue 346 request). The PS2 clock keeps Japan time (UTC+9); the
+// console's own time zone and daylight saving give local time = clock + zone - 9 h (+1 h DST).
+static int guiClockDaysIn(int year, int month)
+{
+    static const unsigned char days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    return days[month - 1] + (month == 2 && !(year & 3)); // 2000-2099: every fourth year is a leap year
+}
+
+// Moves t = {year, month, day, hour, minute} by minutes (less than a day either way).
+// 0 when the result leaves 2000-2099, which the clock's two-digit year cannot hold.
+static int guiClockShift(int *t, int minutes)
+{
+    int m = t[3] * 60 + t[4] + minutes;
+
+    if (minutes <= -1440 || minutes >= 1440)
+        return 0;
+    if (m < 0) {
+        m += 1440;
+        if (--t[2] < 1) {
+            if (--t[1] < 1) {
+                t[1] = 12;
+                t[0]--;
+            }
+            t[2] = guiClockDaysIn(t[0], t[1]);
+        }
+    } else if (m >= 1440) {
+        m -= 1440;
+        if (++t[2] > guiClockDaysIn(t[0], t[1])) {
+            t[2] = 1;
+            if (++t[1] > 12) {
+                t[1] = 1;
+                t[0]++;
+            }
+        }
+    }
+    t[3] = m / 60;
+    t[4] = m % 60;
+    return t[0] >= 2000 && t[0] <= 2099;
+}
+
+static int guiClockLocalOffset(void)
+{
+    return configGetTimezone() - 540 + (configIsDaylightSavingEnabled() ? 60 : 0);
+}
+
+static void guiSettingsShowDateTime(void)
+{
+    static const int ids[5] = {DATETIME_YEAR, DATETIME_MONTH, DATETIME_DAY, DATETIME_HOUR, DATETIME_MINUTE};
+    int t[5], i, ok;
+    sceCdCLOCK clk;
+
+    if (sceCdReadClock(&clk) && !clk.stat) {
+        t[0] = 2000 + btoi(clk.year);
+        t[1] = btoi(clk.month & 0x7F);
+        t[2] = btoi(clk.day);
+        t[3] = btoi(clk.hour);
+        t[4] = btoi(clk.minute);
+        if (t[1] >= 1 && t[1] <= 12 && t[2] >= 1 && t[2] <= guiClockDaysIn(t[0], t[1]) && t[3] < 24 && t[4] < 60 && guiClockShift(t, guiClockLocalOffset()))
+            for (i = 0; i < 5; i++)
+                diaSetInt(diaDateTimeConfig, ids[i], t[i]);
+    }
+
+    while (diaExecuteDialog(diaDateTimeConfig, -1, 1, NULL) == UIID_BTN_OK) {
+        for (i = 0; i < 5; i++)
+            diaGetInt(diaDateTimeConfig, ids[i], &t[i]);
+        ok = t[2] <= guiClockDaysIn(t[0], t[1]) && guiClockShift(t, -guiClockLocalOffset());
+        // The CD/DVD controller refuses a command while busy: one retry. The reply overwrites clk.
+        for (i = 0; ok && i < 2; i++) {
+            memset(&clk, 0, sizeof(clk));
+            clk.year = itob(t[0] - 2000);
+            clk.month = itob(t[1]);
+            clk.day = itob(t[2]);
+            clk.hour = itob(t[3]);
+            clk.minute = itob(t[4]);
+            if (sceCdWriteClock(&clk) && !(clk.stat & CdlRTCStatCommandError))
+                return;
+        }
+        guiMsgBox(_l(_STR_DATE_TIME_ERROR), 0, NULL); // the dialog then shows the entries again
+    }
+}
+
 static int guiSettingsShowGeneral(void)
 {
     const struct UIItem *parts[] = {diaConfig, diaSecurityConfig, diaAdvancedConfig};
@@ -2261,7 +2342,12 @@ static int guiSettingsShowGeneral(void)
     guiSetAdvancedSettings(ui);
     gSettingsShell.beginDialog(ui);
 
+reshow_general:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsGeneralUpdater);
+    if (result == CFG_DATETIME_BUTTON) {
+        guiSettingsShowDateTime(); // writes the console clock only; nothing to save
+        goto reshow_general;
+    }
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);

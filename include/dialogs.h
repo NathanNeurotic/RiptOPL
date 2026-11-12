@@ -349,6 +349,12 @@ enum UI_ITEMS {
     UICFG_BOOT_THEME_WAIT,
     UICFG_SHOW_LEGEND,
     UICFG_WALLPAPER,
+    CFG_DATETIME_BUTTON, // General & System: Date and Time (Launchstation issue 346 request)
+    DATETIME_YEAR,
+    DATETIME_MONTH,
+    DATETIME_DAY,
+    DATETIME_HOUR,
+    DATETIME_MINUTE,
 
 #ifdef PADEMU
     PADEMU_GLOBAL_BUTTON,
@@ -416,6 +422,7 @@ extern struct UIItem diaPadEmuInfo[];
 extern struct UIItem diaNetConfig[];
 extern struct UIItem diaUIConfig[];
 extern struct UIItem diaLanguageConfig[];
+extern struct UIItem diaDateTimeConfig[];
 extern struct UIItem diaAudioConfig[];
 extern struct UIItem diaControllerConfig[];
 extern struct UIItem diaCompatConfig[];

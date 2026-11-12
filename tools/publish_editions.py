@@ -355,6 +355,10 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
         f"- [usmb2 licence]({downloads}/LICENSE-USMB2.txt) - every loader embeds "
         "[usmb2](https://github.com/sahlberg/usmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
         "used under the MIT licence.\n"
+        # Every published loader links Mbed TLS (RA lookup or Check for Updates): its Apache-2.0 licence,
+        # pinned to the built commit, for those who take only the standalone ELF or PSU.
+        f"- [Mbed TLS licence]({base}/blob/{sha}/third_party/mbedtls/LICENSE) - every loader here links "
+        "[Mbed TLS](https://github.com/Mbed-TLS/mbedtls), used under the Apache-2.0 licence.\n"
         f"- [Languages]({downloads}/RIPTOPL-LANGS-{version}.zip) - translations and their fonts.\n"
         + "".join(f"- [{name.replace('-', ' ').title().replace('Ra ', 'RA ')}]({downloads}/RIPTOPL-{name}-{version}.zip) - {what}.\n"
                   for name, _, what in bundles(options))

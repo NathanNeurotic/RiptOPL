@@ -417,6 +417,15 @@ def check_pins():
     mini = function_text(opl, 'void miniInit(')
     check(mini is not None and 'resolveBootDirToMass();' in mini and 'gBootHomeApa' not in mini,
           'miniInit: autolaunch must run exactly the menu discovery')
+    # "ata" Auto Loading (CosmicScale): internal HDD transport only; "bdm" keeps every transport.
+    check(mini is not None and 'gEnableUSB = ataOnly ? 0 : LITE_HAS_USB;' in mini and
+          'gEnableILK = ataOnly ? 0 : LITE_HAS_ILINK;' in mini and
+          'gEnableMX4SIO = ataOnly ? 0 : LITE_HAS_MX4SIO;' in mini and
+          'gEnableBdmHDD = LITE_HAS_BDMHDD;' in mini,
+          'miniInit: an "ata" launch loads only ATA; a "bdm" launch keeps USB, iLink and MX4SIO')
+    check(re.search(r'if \(!strcmp\(argv\[4\], "bdm"\)\)\s*autoLaunchBDMGame\(argv\);\s*'
+                    r'else if \(!strcmp\(argv\[4\], "ata"\)\)\s*autoLaunchBDMGame\(argv, 1\);', opl),
+          'main: argv[4] "ata" must start the BDM autolaunch with ataOnly set, "bdm" without it')
     check(re.search(r'!\(result & CONFIG_NETWORK\) && !\(lscstatus & CONFIG_OPL\)', opl),
           '_loadConfig: a missing conf_network.cfg must not re-run discovery after the master load')
     restore = function_text(opl, 'static void restoreRecoverySaveHome(')

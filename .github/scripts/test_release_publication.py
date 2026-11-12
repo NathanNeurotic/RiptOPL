@@ -47,6 +47,9 @@ class PublicationTests(unittest.TestCase):
                           "/LICENSE-USMB2.txt) - every loader embeds [usmb2](https://github.com/sahlberg/usmb2) by "
                           "[Ronnie Sahlberg](https://github.com/sahlberg), used under the MIT licence.\n", body)
             self.assertLess(body.index(f"/{psu})"), body.index("/LICENSE-USMB2.txt)"))
+            # Every published loader links Mbed TLS: the notes link its licence at the built commit.
+            self.assertIn("/third_party/mbedtls/LICENSE) - every loader here links "
+                          "[Mbed TLS](https://github.com/Mbed-TLS/mbedtls), used under the Apache-2.0 licence.\n", body)
             # Every archive link ends with the version; the ELF and PSU links never change.
             for link in re.findall(r"\]\((\S+?)\)", body.split("## Downloads", 1)[1]):
                 if link.endswith(".zip"):
@@ -60,7 +63,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertLess(body.index("[Bug-report build]"), body.index("[Loader ELF]"))
             else:
                 self.assertNotIn("BUGREPORT", body)
-            self.assertEqual({"rolling-ra": 6}.get(options["tag"], 8), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
+            self.assertEqual({"rolling-ra": 7}.get(options["tag"], 9), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
                 self.assertIn("Included build: NULD-v1.2.12 -- [NULD (formerly ORBIT) Neutrino RA runtime v1.2.12]"
                               "(https://github.com/danielnuld/nuld/releases/tag/v1.2.12)", body)
@@ -70,7 +73,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertNotIn("ORBIT", body)
             self.assertNotIn("Release compiler", body)
             self.assertNotIn("Imported production documentation", body)
-            self.assertLess(len(body), 2600)  # the RA notes link eight versioned downloads, ORBIT, the usmb2 licence and the recommended kit
+            self.assertLess(len(body), 2900)  # the RA notes link eight versioned downloads, ORBIT, the usmb2 and Mbed TLS licences and the recommended kit
 
     def test_ra_notes_refuse_a_runtime_other_than_the_pin(self):
         with patch.object(publisher, "git", return_value="b" * 40 + "\x00Fix"), self.assertRaises(ValueError):
@@ -580,6 +583,9 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('shutil.copyfile(ROOT / "third_party/mbedtls/LICENSE", kit / "LICENSE-MBEDTLS.txt")', package)
         self.assertIn('required.add("LICENSE-MBEDTLS.txt")', app)
         self.assertIn('elif "LICENSE-MBEDTLS.txt" in all_names:', app)
+        # Check for Updates links mbedTLS into the other standard kits too, so they carry the licence.
+        self.assertIn('mbedtls = options["ra"] or update_channel(edition, "standard", compiler) is not None', package)
+        self.assertIn('if args.ra or getattr(args, "mbedtls", False):', app)
 
     def test_every_kit_bundle_and_standalone_download_ships_the_usmb2_licence(self):
         # Every RiptOPL ELF embeds smb2man over usmb2 (MIT), so the licence text must travel
@@ -590,7 +596,7 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('USMB2_LICENCE = ROOT / "modules/network/smb2man/usmb2/LICENSE"', package)
         self.assertIn('shutil.copyfile(USMB2_LICENCE, kit / "LICENSE-USMB2.txt")', package)
         self.assertIn('shutil.copyfile(USMB2_LICENCE, out / "LICENSE-USMB2.txt")', package)
-        self.assertLess(package.index('if options["ra"]:  # the RA ELF links mbedTLS'), package.index('kit / "LICENSE-USMB2.txt"'))
+        self.assertLess(package.index('kit / "LICENSE-MBEDTLS.txt"'), package.index('kit / "LICENSE-USMB2.txt"'))
         publish = (ROOT / "tools/publish_editions.py").read_text(encoding="utf-8")
         self.assertIn('bundle.writestr("LICENSE-USMB2.txt", (path / "LICENSE-USMB2.txt").read_bytes())', publish)
         self.assertIn('"LICENSE-USMB2.txt"}', publish)

@@ -11,7 +11,7 @@ constexpr int AUTOLAUNCH_MASS0_RETRIES = 8;
 
 extern char gExportName[32]; // NBD default export (CONFIG_NET_NBD_DEFAULT_EXPORT)
 
-void miniInit(int mode);
+void miniInit(int mode, int ataOnly = 0); // ataOnly: BDM_MODE loads only the ATA transport
 void reset(void);
 void initAllSupport(int force_reinit);
 void deinitAllSupport(int exception, int modeSelected);
@@ -45,6 +45,6 @@ void itemExecToggleView(struct menu_item *curMenu);
 
 // autolaunch.cpp
 void autoLaunchHDDGame(char *argv[]);
-void autoLaunchBDMGame(char *argv[]);
+void autoLaunchBDMGame(char *argv[], int ataOnly = 0); // argv[4] "ata": internal HDD only
 
 #endif

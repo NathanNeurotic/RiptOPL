@@ -29,6 +29,11 @@ arg = bdm
 
 `conf_opl.cfg` and `conf_game.cfg` sit at the root of the exFAT volume, next to the games.
 
+The last argument may also be `ata` instead of `bdm`. Everything else stays the same, but
+RiptOPL then loads only the internal HDD (ATA) driver and skips USB, iLink and MX4SIO, so the
+game starts sooner. Use it only when the game and the settings are on the internal exFAT drive.
+`bdm` still loads every BDM driver, as before. (Suggested by CosmicScale.)
+
 ## The disk layout
 
 PSBBN's installer builds an **"APA-Jail"** disk. Sector 0 is a valid, checksummed APA header
