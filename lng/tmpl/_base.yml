@@ -2596,3 +2596,51 @@ gui_strings:
 - comment: Main menu Exit prompt (issue 370). Replaces CONFIRMATION_EXIT, whose "Browser" was wrong when Exit To is Console Menu.
   label: CONFIRMATION_EXIT_APP
   string: Exit RiptOPL?
+- comment: Main menu entry. Asks this build's own GitHub release channel for a newer build.
+  label: UPDATE_CHECK
+  string: Check for Updates
+- comment: Shown while Check for Updates asks GitHub.
+  label: UPDATE_CHECKING
+  string: Checking for updates...
+- comment: Check for Updates found nothing newer. %d is this build's number.
+  label: UPDATE_NEWEST
+  string: You have the newest build (%d).
+- comment: Check for Updates offer. 1st %d the release's build number, 2nd %d this build's.
+  label: UPDATE_AVAILABLE
+  string: Build %d is available (you have %d). Download and install it?
+- comment: Shown while the update downloads. %d is the KB received so far.
+  label: UPDATE_DOWNLOADING
+  string: Downloading the update... %d KB
+- comment: The update is installed. %d is the new build's number.
+  label: UPDATE_DONE
+  string: Updated to build %d. It starts the next time you open RiptOPL.
+- comment: Check for Updates can only replace an ELF started from a memory card or a USB/exFAT drive.
+  label: UPDATE_ERR_PLACE
+  string: Check for Updates works when RiptOPL was started from a memory card or a USB/exFAT drive.
+- comment: The running build's version has no build number (a local or tagged build), so it cannot be compared.
+  label: UPDATE_ERR_UNVERSIONED
+  string: This build has no build number to compare with the release. Download the release from GitHub instead.
+- comment: The network protocol is UDPBD or UDPFS, which owns the network adapter.
+  label: UPDATE_ERR_NETBUSY
+  string: The network is in use by UDPBD or UDPFS. Choose SMB, HTTP or Off as the network protocol, restart RiptOPL, then try again.
+- comment: No link or no IP address.
+  label: UPDATE_ERR_NETWORK
+  string: No network. Check the cable and the network settings.
+- comment: Secure connections need the console's date and time.
+  label: UPDATE_ERR_CLOCK
+  string: Set the console's date and time first. Secure connections need them.
+- comment: GitHub could not be reached or answered wrongly. %d is the error code.
+  label: UPDATE_ERR_GITHUB
+  string: Could not reach GitHub (error %d). Check that the network has internet access and that the console's date is right.
+- comment: Writing the downloaded ELF failed.
+  label: UPDATE_ERR_WRITE
+  string: Could not write the update. Is the device full? RiptOPL was not changed.
+- comment: The download did not match the release's checksum.
+  label: UPDATE_ERR_VERIFY
+  string: The download did not match the release's checksum. RiptOPL was not changed.
+- comment: The new ELF could not take the old one's place.
+  label: UPDATE_ERR_SWAP
+  string: Could not replace the ELF. RiptOPL was not changed.
+- comment: The swap failed and the old ELF could not be put back. %s is the ELF's name; the old one is that name plus .BAK.
+  label: UPDATE_ERR_RESTORE
+  string: Could not replace the ELF or put it back. The old one is %s.BAK beside it. Rename it back with a file manager.

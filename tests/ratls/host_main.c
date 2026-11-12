@@ -5,6 +5,8 @@
  * mbedtls_ms_time().
  *
  *   host_main get HOST PORT PATH MAX DEADLINE_MS NOW ANCHOR.der...   NOW: epoch, "sys", or "unset"
+ *   host_main download HOST PORT PATH MAX MAX_BODY FAIL_AT ANCHOR.der...   (raTlsDownload; FAIL_AT: the
+ *             sink refuses once it holds that many bytes, -1 never)
  *   host_main anchors FILE.der...
  *   host_main rtc Y M D h m s
  *   host_main drbg
@@ -39,7 +41,9 @@ typedef int sock_t;
 #include "mbedtls/platform_time.h"
 #include "mbedtls/ssl.h"
 #include "mbedtls/x509_crt.h"
+#if defined(MBEDTLS_USE_PSA_CRYPTO)
 #include "psa/crypto.h"
+#endif
 
 /* --- what the console's platform layer supplies -------------------------------------------- */
 
@@ -208,6 +212,63 @@ static int cmd_get(int argc, char **argv)
     return 0;
 }
 
+typedef struct
+{
+    char *data;
+    int len, fail_at, calls;
+} sink_t;
+
+static int sink_write(void *ctx, const char *data, int len)
+{
+    sink_t *k = ctx;
+    if (k->fail_at >= 0 && k->len + len > k->fail_at)
+        return -1;
+    k->data = realloc(k->data, (size_t)(k->len + len));
+    memcpy(k->data + k->len, data, (size_t)len);
+    k->len += len;
+    k->calls++;
+    return 0;
+}
+
+static int cmd_download(int argc, char **argv)
+{
+    static ratls_anchor_t anchors[8];
+    const char *host = argv[2], *path = argv[4];
+    int port = atoi(argv[3]), max = atoi(argv[5]), max_body = atoi(argv[6]);
+    int count = 0, rc, i;
+    struct sockaddr_in to;
+    char location[2048];
+    sink_t sink = {NULL, 0, atoi(argv[7]), 0};
+    ratls_io_t io;
+    bio_t bio;
+    char *buf;
+
+    for (i = 8; i < argc && count < 8; i++, count++)
+        anchors[count].der = read_file(argv[i], &anchors[count].len);
+    bio.sock = socket(AF_INET, SOCK_STREAM, 0);
+    memset(&to, 0, sizeof(to));
+    to.sin_family = AF_INET;
+    to.sin_port = htons((unsigned short)port);
+    to.sin_addr.s_addr = htonl(0x7F000001);
+    if (connect(bio.sock, (struct sockaddr *)&to, sizeof(to)) != 0) {
+        printf("rc=%d\n", RATLS_ERR_NET);
+        return 0;
+    }
+    bio.deadline = wall_ms() + 5000;
+    io.send = bio_send;
+    io.recv = bio_recv;
+    io.ctx = &bio;
+    io.now_utc = now_utc;
+
+    buf = malloc(max);
+    rc = raTlsDownload(&io, host, path, "RiptOPL/host-test", anchors, count, buf, max, max_body, sink_write, &sink,
+                       location, sizeof(location));
+    close_sock(bio.sock);
+    printf("rc=%d calls=%d\nlocation=%s\n--BODY--\n", rc, sink.calls, location);
+    fwrite(sink.data, 1, (size_t)sink.len, stdout);
+    return 0;
+}
+
 static int cmd_anchors(int argc, char **argv)
 {
     int i, bad = 0;
@@ -227,6 +288,7 @@ static int cmd_anchors(int argc, char **argv)
     return 0;
 }
 
+#if defined(MBEDTLS_USE_PSA_CRYPTO)
 static void print_random(void)
 {
     unsigned char r[32];
@@ -240,6 +302,7 @@ static void print_random(void)
     printf("\n");
     mbedtls_psa_crypto_free();
 }
+#endif
 
 int main(int argc, char **argv)
 {
@@ -251,17 +314,21 @@ int main(int argc, char **argv)
     setvbuf(stdout, NULL, _IONBF, 0);
     if (argc >= 8 && !strcmp(argv[1], "get"))
         return cmd_get(argc, argv);
+    if (argc >= 9 && !strcmp(argv[1], "download"))
+        return cmd_download(argc, argv);
     if (argc >= 3 && !strcmp(argv[1], "anchors"))
         return cmd_anchors(argc, argv);
     if (argc == 8 && !strcmp(argv[1], "rtc")) {
         printf("%lld\n", raTlsRtcToUtc(atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7])));
         return 0;
     }
+#if defined(MBEDTLS_USE_PSA_CRYPTO)
     if (argc == 2 && !strcmp(argv[1], "drbg")) {
         print_random(); /* seeded, drawn, freed ... */
         print_random(); /* ... and seeded again in the same process */
         return 0;
     }
+#endif
     fprintf(stderr, "usage: see the header\n");
     return 2;
 }

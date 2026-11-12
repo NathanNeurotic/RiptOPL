@@ -580,6 +580,9 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('shutil.copyfile(ROOT / "third_party/mbedtls/LICENSE", kit / "LICENSE-MBEDTLS.txt")', package)
         self.assertIn('required.add("LICENSE-MBEDTLS.txt")', app)
         self.assertIn('elif "LICENSE-MBEDTLS.txt" in all_names:', app)
+        # Check for Updates links mbedTLS into the other standard kits too, so they carry the licence.
+        self.assertIn('mbedtls = options["ra"] or update_channel(edition, "standard", compiler) is not None', package)
+        self.assertIn('if args.ra or getattr(args, "mbedtls", False):', app)
 
     def test_every_kit_bundle_and_standalone_download_ships_the_usmb2_licence(self):
         # Every RiptOPL ELF embeds smb2man over usmb2 (MIT), so the licence text must travel
@@ -590,7 +593,7 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('USMB2_LICENCE = ROOT / "modules/network/smb2man/usmb2/LICENSE"', package)
         self.assertIn('shutil.copyfile(USMB2_LICENCE, kit / "LICENSE-USMB2.txt")', package)
         self.assertIn('shutil.copyfile(USMB2_LICENCE, out / "LICENSE-USMB2.txt")', package)
-        self.assertLess(package.index('if options["ra"]:  # the RA ELF links mbedTLS'), package.index('kit / "LICENSE-USMB2.txt"'))
+        self.assertLess(package.index('kit / "LICENSE-MBEDTLS.txt"'), package.index('kit / "LICENSE-USMB2.txt"'))
         publish = (ROOT / "tools/publish_editions.py").read_text(encoding="utf-8")
         self.assertIn('bundle.writestr("LICENSE-USMB2.txt", (path / "LICENSE-USMB2.txt").read_bytes())', publish)
         self.assertIn('"LICENSE-USMB2.txt"}', publish)
