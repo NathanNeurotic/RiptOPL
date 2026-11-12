@@ -590,9 +590,9 @@ For loading games by SMB protocol, you need to share a folder (ex: PS2SMB)
 on the host machine or NAS device and grant read access for game loading. Write access is also needed for VMC saves and changes to files stored on the share. USB Advance/Extreme format is optional - \*.ISO images
 are supported using the folder structure above.
 
-> **SMB version:** the **Network** page has an **SMB Version** row (**SMBv1** / **SMB2**) directly
-> under **Protocol**, live only while **Protocol** is **SMB**. A new install starts on **SMB2**; a saved setting is kept
-> (a settings file from before this row counts as **SMBv1**). **SMB2**
+> **SMB version:** the **Network** page has an **SMB Version** row (**SMBv1** / **SMB2/3**) directly
+> under **Protocol**, live only while **Protocol** is **SMB**. A new install starts on **SMB2/3**; a saved setting is kept
+> (a settings file from before this row counts as **SMBv1**). **SMB2/3**
 > switches *both* sides (browsing loads the SMB2 driver instead of the SMBv1 one, and the in-game
 > reader follows). Both offer SMB 2.0.2 and 2.1 first and try SMB 3.0/3.0.2 only when the server
 > refuses 2.x; SMB 3.1.1 is never offered, and a server that refuses 2.x and requires signing on 3.x
@@ -611,8 +611,8 @@ are supported using the folder structure above.
 > adjust them to your LAN. The default **SMB Port is `445`**, the standard port Windows, Samba, a NAS and
 > the Neutrino core use. The **Network** page opens with **Advanced Options** on, so
 > the **Port** field (and ETH link mode) are editable immediately. Windows 10/11 has SMB1 turned off:
-> either set **SMB Version** to **SMB2**, or use the **[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one
-> launcher instead of Windows' own sharing. Choose its SMBv1 server (or its SMBv2 card with **SMB2**), then set RiptOPL's
+> either set **SMB Version** to **SMB2/3**, or use the **[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** all-in-one
+> launcher instead of Windows' own sharing. Choose its SMBv1 server (or its SMBv2 card with **SMB2/3**), then set RiptOPL's
 > IP, port, share and credentials to the values the launcher displays. Its cards listen on their own
 > ports (SMBv1 **1025**, SMBv2/SMBv3 **1445**, or 445 with **Take port 445**), so copy
 > the port the running card shows ([PS2-Servers SMB setup](https://github.com/NathanNeurotic/PS2-Servers/blob/main/docs/SMB.md)).
@@ -636,7 +636,7 @@ alongside UDPBD. **Game Sources** holds the **Network Connectivity** row (Off / 
 **Protocol** (**SMB / UDPFS / UDPBD / HTTP**) indented under it; the same **Protocol** row is on
 **Network** too, and changing it on either page changes both. Setting Connectivity to **Off** keeps
 your protocol: turning it back on brings the same one back. **Network** also holds
-**SMB Version** (SMBv1 / SMB2, live only while Protocol is SMB, see [SMB](#smb)),
+**SMB Version** (SMBv1 / SMB2/3, live only while Protocol is SMB, see [SMB](#smb)),
 and **Access** (Files / IMG — locked to Files
 for SMB/HTTP and to IMG for UDPBD, free only for UDPFS). **Default Menu → ETH Games** opens
 whichever page that protocol's games are on (for UDPBD / UDPFS IMG, the network drive's page if it

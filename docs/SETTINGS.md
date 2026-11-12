@@ -107,7 +107,7 @@ HTTP and [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md) for the RA rows.
 | --- | --- | --- |
 | Protocol | SMB, UDPFS, UDPBD or HTTP. | `network_protocol`, `net_protocol_pick` |
 | Access | UDPFS only: read-only or read/write. | `udpfs_access` |
-| SMB Version | SMB only: SMB2 (new installs) or SMBv1. | `smb_dialect` |
+| SMB Version | SMB only: SMB2/3 (new installs) or SMBv1. | `smb_dialect` |
 | Advanced Options | Unlocks Ethernet Link Mode and the SMB port. Not saved. | |
 | Ethernet Link Mode | Auto or a fixed speed and duplex. | `eth_linkmode` *(net)* |
 | IP Address Type | DHCP or static. | `ps2_ip_use_dhcp` *(net)* |

@@ -1738,7 +1738,9 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
     // Index 0/1 == the stored $CoreLoader value (0=<OPL>, 1=Neutrino); index 2 "Default" = no per-game
     // key -> follow the global gDefaultCoreLoader. Keeping 0/1 aligned with the stored ints means the
     // UDPFS Files lock (index 1) and the launch-side value semantics are untouched -- only "Default" is new.
-    const char *loaders[] = {"<OPL>", "Neutrino", _l(_STR_DEFAULT), NULL};
+    // "Default" names the core it resolves to here, filled in once coreDefaultNeutrino is known below.
+    static char loaderDefault[48];
+    const char *loaders[] = {"<OPL>", "Neutrino", loaderDefault, NULL};
     diaSetEnum(diaCompatConfig, COMPAT_LOADER, loaders);
 
     // Indices map 1:1 onto system.c's gsmVideoTokens (fp1/fp2/1080ix1/ix2/ix3) -- old configs
@@ -1768,14 +1770,19 @@ void guiGameShowCompatConfig(int id, item_list_t *support, config_set_t *configS
     // this). HTTP likewise has no Neutrino launch leg. CF too: external Neutrino cannot restore the CF
     // bus. SMB follows the global core with per-game overrides (ethTryNeutrino).
     ilinkIdNativeCapable = support == NULL || (support->mode != APP_MODE && libListRowView(support, id) == LIB_VIEW_ISO);
-    coreNeverNeutrino = (support != NULL && ((libViewActive(support->mode) == LIB_VIEW_PS1) || sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode)));
+    coreNeverNeutrino = (support != NULL && ((libListRowView(support, id) == LIB_VIEW_PS1) || sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode)));
 
     // UDPFS (Files: UDPFS_MODE, also for a Favourite that points back to it) and the UDP block device
     // (UDPBD and UDPFS IMG: bdmSupportIsUDPBD for its page, bdmModeIsUDPBD for a Favourite of it) boot
     // either core; their selector stays open and its "Default" row means Neutrino. Every other device
     // re-enables the row too (the dialog struct is reused across games).
     coreDefaultNeutrino = sourceMode == UDPFS_MODE || bdmSupportIsUDPBD(support) || bdmModeIsUDPBD(sourceMode);
-    if (support != NULL && (libViewActive(support->mode) == LIB_VIEW_PS1)) {
+    if (support != NULL && libListRowView(support, id) == LIB_VIEW_PS1) // POPSTARTER: neither core
+        snprintf(loaderDefault, sizeof(loaderDefault), "%s", _l(_STR_DEFAULT));
+    else
+        snprintf(loaderDefault, sizeof(loaderDefault), "%s (%s)", _l(_STR_DEFAULT),
+                 !coreNeverNeutrino && (coreDefaultNeutrino || gDefaultCoreLoader == 1) ? "Neutrino" : "<OPL>");
+    if (support != NULL && (libListRowView(support, id) == LIB_VIEW_PS1)) {
         // VCD (PS1) games launch ONLY via POPSTARTER -- neither OPL's core nor Neutrino is used, so the
         // Loader Core choice is meaningless. Pin it to the inert "Default" row (index 2 -> no per-game
         // $CoreLoader key persisted, as before) and lock the row so the screen doesn't imply a VCD game
@@ -2532,7 +2539,7 @@ void guiGameLoadConfig(int id, item_list_t *support, config_set_t *configSet)
 
     // Includes a title default for the selected core, so the screen matches what launches.
     // coreNeverNeutrino belongs to the last dialog, so work out the sources that only boot the OPL core here.
-    int neverNeutrino = support != NULL && (libViewActive(support->mode) == LIB_VIEW_PS1 ||
+    int neverNeutrino = support != NULL && (libListRowView(support, id) == LIB_VIEW_PS1 ||
                                             sourceMode == HTTP_MODE || bdmModeIsPCCF(sourceMode));
     compatShownNeutrino = guiGameDialogCoreIsNeutrino(sourceMode, support, neverNeutrino);
     compatMode = sbGetCompatModes(configSet, compatShownNeutrino);

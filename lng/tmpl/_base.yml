@@ -95,7 +95,7 @@ gui_strings:
 - label: NETWORK_STARTUP_ERROR_LOGON
   string: '%d: Cannot log into SMB server.'
 - label: NETWORK_STARTUP_ERROR_SHARE
-  string: '%d: Cannot open SMB share.'
+  string: '%d: Cannot open SMB share. Check Share Name, User and Password.'
 - label: NETWORK_SHARE_LIST_ERROR
   string: '%d: Cannot list SMB shares.'
 - label: NETWORK_GAMES_LIST_ERROR

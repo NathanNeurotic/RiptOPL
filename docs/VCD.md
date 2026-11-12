@@ -482,7 +482,7 @@ complete static IP is entered. The SMB modules themselves ship in the release's 
 hanging.
 
 POPSTARTER's SMB module speaks **SMBv1 only**, whatever RiptOPL's **SMB Version** row says (a new
-install browses with **SMB2**). This applies to POPSTARTER launches only: an Ember (`.cue`) launch
+install browses with **SMB2/3**). This applies to POPSTARTER launches only: an Ember (`.cue`) launch
 reads through the browse driver that is already connected and needs no SMBv1. PS1 games still list
 over SMB2, and with SMB2 in use a box says so before each POPSTARTER launch; **Back** on that box
 cancels the launch. POPSTARTER games over SMB therefore need a server that also accepts SMBv1 at
