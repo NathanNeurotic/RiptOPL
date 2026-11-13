@@ -55,7 +55,7 @@ else:
     no_nt = "return smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 0);"
     nt_retry = "r = smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 1);"
     write_guard = "if (((mode & O_RDWR) == O_RDWR) || (mode & O_WRONLY) || (mode & (O_CREAT | O_TRUNC)))"
-    if (no_nt not in wrapper_src or nt_retry not in wrapper_src or write_guard not in wrapper_src:
+    if no_nt not in wrapper_src or nt_retry not in wrapper_src or write_guard not in wrapper_src:
         failures.append("smbman-ra smb.c: only NT sharing-violation reads may retry deny-none")
     elif not (wrapper_src.index(no_nt) < wrapper_src.index("smb_NTCreateAndX(")
               < wrapper_src.index("if (r != -EBUSY)") < wrapper_src.index(write_guard)
