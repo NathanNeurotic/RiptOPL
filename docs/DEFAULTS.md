@@ -23,7 +23,7 @@ Settings row, the page it is on and the key it is saved under, see
 | Controller Vibration in Menus | Off | Settings → Controller Settings |
 | Remember last played | Off | Settings → General & System |
 | Exit To (main menu's Exit) | Console Menu (the console's own exit) | Settings → General & System |
-| Network Connectivity | Off (no network page until you choose Manual or Auto and a Protocol) | Settings → Game Sources |
+| Network Connectivity | Off (no network adapter or network games until you choose Manual or Auto) | Settings → Game Sources |
 | SMB Version | SMB2/3 (a settings file from before this row counts as SMBv1) | Settings → Network |
 | NFS Export, NFS Writes | `/`, and Off (read only) | Settings → Network, while Protocol is NFS |
 | Automatic VMC creation | Off | Settings → Game Launching |
