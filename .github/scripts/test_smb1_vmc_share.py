@@ -11,7 +11,9 @@ Checks, from the sources:
   1. The in-game SMBv1 OPEN_ANDX asks sharing mode 4 (deny none, 0x40) for reads and writes.
   2. smbman-ra's NT_CREATE_ANDX shares read and write (0x03) when it opens to read, and keeps
      read-only sharing (0x01) for a write.
-  3. Every edition embeds smbman-ra, not ps2sdk's prebuilt copy.
+  3. Only a read-only NT sharing-violation fallback requests deny-none in legacy OPEN_ANDX;
+     servers without NT SMB commands and write-capable opens retain their prior behavior.
+  4. Every edition embeds smbman-ra, not ps2sdk's prebuilt copy.
 """
 import re
 import sys
@@ -38,6 +40,27 @@ if not body:
     failures.append("smbman-ra smb.c: smb_NTCreateAndX not found")
 elif want not in body.group(0):
     failures.append("smbman-ra smb.c: a read must share read|write (0x03), a write read (0x01)")
+
+# An NT sharing violation may retry through SMB_COM_OPEN_ANDX. That specific read-only
+# retry needs deny-none, while old NAS servers without NT SMB support retain compatibility
+# mode, and writes must never take the held-file retry.
+legacy = re.search(r"static int smb_LegacyOpenAndX\\(.*?\\n}\\n", menu, re.S)
+open_wrapper = re.search(r"int smb_OpenAndX\\(.*?\\n}\\n", menu, re.S)
+if not legacy or not open_wrapper:
+    failures.append("smbman-ra smb.c: legacy open or its wrapper not found")
+else:
+    legacy_src, wrapper_src = legacy.group(0), open_wrapper.group(0)
+    if not re.search(r"OR->AccessMask\\s*=.*?\\|\\s*\\(deny_none\\s*\\?\\s*0x40\\s*:\\s*0\\);", legacy_src):
+        failures.append("smbman-ra smb.c: legacy open must add deny-none only when requested")
+    no_nt = "return smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 0);"
+    nt_retry = "r = smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 1);"
+    write_guard = "if (((mode & O_RDWR) == O_RDWR) || (mode & O_WRONLY) || (mode & (O_CREAT | O_TRUNC)))"
+    if (no_nt not in wrapper_src or nt_retry not in wrapper_src or write_guard not in wrapper_src:
+        failures.append("smbman-ra smb.c: only NT sharing-violation reads may retry deny-none")
+    elif not (wrapper_src.index(no_nt) < wrapper_src.index("smb_NTCreateAndX(")
+              < wrapper_src.index("if (r != -EBUSY)") < wrapper_src.index(write_guard)
+              < wrapper_src.index(nt_retry)):
+        failures.append("smbman-ra smb.c: the no-NT, sharing violation and write guard must precede the retry")
 
 make = read("Makefile")
 assignments = []
