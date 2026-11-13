@@ -26,7 +26,6 @@ of build. The channel is fixed at build time (`tools/build_edition.py update_cha
 - A network adapter with internet access. It uses the same network settings as SMB (Settings > Network).
   While UDPBD or UDPFS owns the network adapter, it refuses and says so.
 - The console clock set to the current date (Settings > General & System > Date and Time): the GitHub certificates cannot be checked without it.
-- Free space for a second copy of the ELF next to the running one (about 2.5 MB).
 
 ## What it does
 
@@ -34,12 +33,14 @@ of build. The channel is fixed at build time (`tools/build_edition.py update_cha
    names (`RIPTOPL-Korium-v1.2.0-Beta-4257.zip`), and the ELF's expected SHA-256 from its line.
 2. Compares that build number with the running one (the number in the About screen's version). Equal
    or older: "already the newest". A build without a number (a local build) is not compared.
-3. On your OK, downloads the ELF to `<name>.NEW` beside the running one. The first bytes must be a PS2
-   ELF header; the size is limited to 8 MB.
-4. Checks the SHA-256 of what was written against `SHA256SUMS.txt`. A mismatch deletes `<name>.NEW`;
-   the running ELF is untouched.
-5. Deletes the running ELF and renames `<name>.NEW` to the running name. No backup is kept. If the
-   rename fails, the verified download stays as `<name>.NEW` and the message names it.
+3. On your OK, downloads the ELF into memory. The first bytes must be a PS2 ELF header; the size is
+   limited to 8 MB.
+4. Checks the SHA-256 of what was downloaded against `SHA256SUMS.txt`. A mismatch changes nothing.
+5. Overwrites the running ELF in place under its own name, as Launchstation does. No second file, rename or backup is made.
+   The old ELF is emptied before the new one is written, so a card too full for the new ELF can leave it
+   damaged. If the write fails part-way the ELF may be damaged: the message
+   gives the step (1 open, 2 write, 3 close) and the error code, and the ELF must be copied to the
+   device again.
 
 The new build starts the next time RiptOPL is opened. Settings, themes and other files are not touched.
 
@@ -55,4 +56,4 @@ a TLS 1.2-only build of the same mbedTLS (`third_party/mbedtls/riptopl_mbedtls_s
 
 Host-tested: the TLS download (`.github/scripts/test_ratls_host.py`) and the parsing
 (`.github/scripts/test_selfupdate_host.py`, against the real `SHA256SUMS.txt` files). NOT TESTED on
-hardware or in PCSX2: the real GitHub certificate chains, the memory card rename and the full download.
+hardware or in PCSX2: the real GitHub certificate chains, the in-place write to a real memory card and the full download.

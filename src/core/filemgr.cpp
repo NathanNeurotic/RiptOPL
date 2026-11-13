@@ -33,6 +33,7 @@
 
 #ifndef FILEMGR_HOST_TEST
 #include <ps2sdkapi.h> // lseek64
+#include <libmc.h>
 #include <delaythread.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>                  // fileXioDevctl: a BDM drive's format and free space
@@ -517,9 +518,43 @@ static int fmSameDevice(const char *a, const char *b)
     return ca != NULL && cb != NULL && ca - a == cb - b && !strncasecmp(a, b, ca - a);
 }
 
+#ifndef FILEMGR_HOST_TEST
+// A card entry is renamed through mcserv, as Launchstation does: the card's ioman device has no rename, so
+// rename() fails there. The card is woken first, since the first access after it is detected answers
+// "changed card". A rename is one short command: it never copies.
+static int fmMcRename(const char *from, const char *to)
+{
+    sceMcTblGetDir info;
+    const char *leaf = fmBaseName(to);
+    int type = 0, ret = -1, port = from[2] - '0', tries, sub = -1;
+
+    memset(&info, 0, sizeof(info));
+    if (strlen(leaf) >= sizeof(info.EntryName))
+        return 0;
+    memcpy(info.EntryName, leaf, strlen(leaf));
+    for (tries = 0; tries < 4; tries++) {
+        if (mcGetInfo(port, 0, &type, NULL, NULL) >= 0)
+            mcSync(0, NULL, &ret);
+        sub = mcSetFileInfo(port, 0, from + 4, &info, 0x10 /* the name */);
+        if (sub >= 0 && mcSync(0, NULL, &ret) > 0 && ret == 0)
+            return 1;
+        DelayThread(200 * 1000);
+    }
+    return 0;
+}
+#endif
+
 static int fmRenameDev(const char *from, const char *to)
 {
     char fbuf[FM_PATH], tbuf[FM_PATH];
+#ifndef FILEMGR_HOST_TEST
+    if (fmIsMc(from)) {
+        char pf[FM_PATH], pt[FM_PATH];
+        if (!fmParent(pf, sizeof(pf), from) || !fmParent(pt, sizeof(pt), to) || strcasecmp(pf, pt))
+            return 0; // a card renames within a folder only; a move to another folder is a copy
+        return fmMcRename(from, to) && fmExists(to) && (!strcasecmp(from, to) || !fmExists(from));
+    }
+#endif
     // On FAT and exFAT a rename that only changes the case still finds the old name: it is the same entry
     return rename(fmDevPath(from, fbuf, sizeof(fbuf)), fmDevPath(to, tbuf, sizeof(tbuf))) == 0 && fmExists(to) &&
            (!strcasecmp(from, to) || !fmExists(from));
@@ -566,6 +601,8 @@ int fmRename(const char *path, const char *newName)
         return fmFail(FM_ERR_EXISTS);
     if (fmRenameDev(path, dst))
         return 1;
+    if (fmIsMc(path))
+        return fmFail(FM_ERR_WRITE); // a card is never copied to rename: that needs a second copy of the file
     // a device that cannot rename (or only a file): copy under the new name, then remove the old one
     isDir = stat(path, &st) == 0 && S_ISDIR(st.st_mode);
     if (fmExists(dst))
