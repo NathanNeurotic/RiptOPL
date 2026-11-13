@@ -435,7 +435,7 @@ static void suReport(void)
             snprintf(text, sizeof(text), "%s (%d/%d)", _l(_STR_UPDATE_ERR_SWAP), suStep, suErrno);
             break;
         case SU_ERR_RESTORE:
-            snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_RESTORE), gBootElfName);
+            snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_RESTORE_NEW), gBootElfName);
             break;
         default:
             snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_GITHUB), suError);
