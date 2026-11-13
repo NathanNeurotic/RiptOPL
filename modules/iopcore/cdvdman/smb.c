@@ -765,7 +765,11 @@ static int smb_OpenAndXOnce(char *filename, u8 *FID, int Write)
     OR->smbH.TID = TID;
     OR->smbWordcount = 15;
     OR->smbAndxCmd = SMB_COM_NONE; // no ANDX command
-    OR->AccessMask = Write ? 2 : 0;
+    // Access mode 0 read / 2 read-write, sharing mode 4 (0x40) deny none. The default, compatibility
+    // mode, makes a Windows server deny every other reader of a non-.exe file (MS-CIFS appendix A).
+    // A console switched off or reset mid-game never closes its VMC, so that handle outlives the
+    // session on the server and the menu could not open the card again until the server dropped it.
+    OR->AccessMask = (Write ? 2 : 0) | 0x40;
     OR->FileAttributes = Write ? EXT_ATTR_NORMAL : EXT_ATTR_READONLY;
     OR->CreateOptions = 1;
 

@@ -261,15 +261,18 @@ endif
 
 # ---- Which prebuilt IOP modules the loader embeds -------------------------------------------
 # Two of ps2sdk's shipped .irx files are replaced by fork-built ones (see the rules further down
-# for the full account of each). Both defaults below are the stock ps2sdk prebuilt, and the RA
-# branch swaps in ours.
+# for the full account of each), in every flavour.
 #
 # THE USBD SWAP IS FORK-WIDE, ON PURPOSE. It fixes a bug present in every build this fork ships
 # -- and in official OPL too -- so it is deliberately NOT gated: a CD-era game run off a USB
 # stick loses its pad AND its sound at the game's first IOP reboot with ps2sdk's post-2024-09-04
 # driver, whatever flavour you built. See the rule further down for the whole account.
+#
+# SO IS THE SMBMAN SWAP: ps2sdk's smbman opens a file to read sharing read only, so the server
+# refuses it while any other handle can write -- the VMC a console left open on the server when it
+# was switched off mid-game ("Error accessing VMC", issue #418). See the rule further down.
 USBD_MINI_IRX = modules/usb/usbd-ra/usbd_mini.irx
-SMBMAN_IRX    = $(PS2SDK)/iop/irx/smbman.irx
+SMBMAN_IRX    = modules/network/smbman-ra/smbman.irx
 
 # RetroAchievements flavour. Everything the feature adds hangs off this one switch, on BOTH sides
 # of the EE/ee_core split -- the define reaches the menu build directly and ee_core through
@@ -278,7 +281,6 @@ SMBMAN_IRX    = $(PS2SDK)/iop/irx/smbman.irx
 ifeq ($(RETROACHIEVEMENTS),1)
   EE_CFLAGS += -DRETROACHIEVEMENTS
   EECORE_EXTRA_FLAGS += RETROACHIEVEMENTS=1
-  SMBMAN_IRX = modules/network/smbman-ra/smbman.irx
   # md5 (vendored, zlib licence): the game hash the PC client keys achievements on.
   # rawatch: the watch list the menu hands to ee_core, loaded from <device>RA/.
   # rahash:  the image hash RetroAchievements keys a game on, taken by walking
@@ -984,7 +986,14 @@ modules/network/ps2ips/ps2ips.irx: $(wildcard modules/network/ps2ips/*.c) $(wild
 $(EE_ASM_DIR)ps2ips.c: modules/network/ps2ips/ps2ips.irx | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)_irx
 
-# FORK-BUILT smbman (modules/network/smbman-ra) -- RA-only, see SMBMAN_IRX above.
+# FORK-BUILT smbman (modules/network/smbman-ra) -- every flavour, see SMBMAN_IRX above. It began
+# as RA-only (the held-image fix below); the "Share fix" made it fork-wide.
+#
+# The "Share fix": a read-only NT create shares read AND write, as smb2man does. ps2sdk shares
+# read only, which a server refuses while another handle can write: the in-game VMC handle of a
+# console switched off or reset mid-game stays open on the server until it drops that session, so
+# the next launch randomly said "Error accessing VMC" on SMBv1 only (issue #418). The in-game
+# driver (modules/iopcore/cdvdman/smb.c) opens deny-none for the same reason.
 #
 # A console that ran a game off a share and was switched off leaves the image OPEN on the server:
 # OPL logs off from nothing, the session dies with the console, and a cheap server never reaps it.

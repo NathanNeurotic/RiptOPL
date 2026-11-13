@@ -876,7 +876,10 @@ int smb_NTCreateAndX(int UID, int TID, char *filename, s64 *filesize, int mode)
     NTCR->smbAndxCmd     = SMB_COM_NONE; // no ANDX command
     NTCR->AccessMask     = ((mode & O_RDWR) == O_RDWR || (mode & O_WRONLY)) ? 0x2019f : 0x20089;
     NTCR->FileAttributes = ((mode & O_RDWR) == O_RDWR || (mode & O_WRONLY)) ? EXT_ATTR_NORMAL : EXT_ATTR_READONLY;
-    NTCR->ShareAccess    = 0x01; // Share in read mode only
+    // Share fix: a read shares read and write, as smb2man does. Sharing read only refuses the
+    // open whenever another handle can write -- the in-game VMC handle a console left open on the
+    // server when it was switched off mid-game -- and OPL then reports "Error accessing VMC".
+    NTCR->ShareAccess    = ((mode & O_RDWR) == O_RDWR || (mode & O_WRONLY)) ? 0x01 : 0x03;
     if (mode & O_CREAT)
         NTCR->CreateDisposition |= 0x02;
     if (mode & O_TRUNC)

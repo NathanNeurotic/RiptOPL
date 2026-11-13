@@ -183,6 +183,8 @@ jobs:
         run: python3 .github/scripts/test_neutrino_bsdfs.py
       - name: Check Neutrino SMB writes bsd-smb.toml safely and falls back to the OPL core
         run: python3 .github/scripts/test_neutrino_smb.py
+      - name: Check SMBv1 opens share so a VMC left open by a dead session still opens (issue 418)
+        run: python3 .github/scripts/test_smb1_vmc_share.py
       - name: Check the in-game SMB2 reader's hashes and NTLMv2 logon
         run: python3 .github/scripts/test_smb2_auth.py
       - name: Check in-game SMB2 negotiate retry bounds and SMB 3.0/3.0.2 fallback

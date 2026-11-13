@@ -10,9 +10,11 @@
 # marked "Write-count fix" (a write is complete only for the bytes the
 # server's WRITE_ANDX Count says it stored), one marked "ByteCount fix" (a
 # write request carries at most 65534 bytes, so its 16-bit ByteCount does
-# not wrap), and an unmarked bound on the password buffer in auth.c (this
+# not wrap), one marked "Share fix" (a read shares read and write, so a VMC
+# a dead session still holds open for write can be read), and an unmarked
+# bound on the password buffer in auth.c (this
 # repo's 14cd9ff3). Only this Makefile is ours. docs/PS2SDK-NOTES.md#smbman
-# records all four for ps2sdk.
+# records all five for ps2sdk.
 IOP_BIN  = smbman.irx
 IOP_OBJS = smbman.o smb_fio.o smb.o poll.o auth.o des.o md4.o imports.o
 
