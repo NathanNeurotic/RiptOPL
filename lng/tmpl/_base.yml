@@ -2711,4 +2711,4 @@ gui_strings:
   string: NFS Writes is Off, so Ember cannot keep memory card saves in this game's folder.
 - comment: The old ELF was removed but the new one could not take its place. %s is the ELF's name; the new one is that name plus .NEW.
   label: UPDATE_ERR_RESTORE_NEW
-  string: Could not finish the update. The new ELF is %s.NEW beside it. Rename it with a file manager.
+  string: Could not finish the update. The new ELF is %s.NEW beside it. Remove the .NEW from its name with a file manager.
