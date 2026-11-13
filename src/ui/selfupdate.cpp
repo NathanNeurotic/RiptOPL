@@ -27,8 +27,8 @@
 
 #include "mbedtls/sha256.h"
 
+#include <errno.h>
 #include <fcntl.h>
-#include <fileXio_rpc.h>
 #include <libmc.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -249,20 +249,60 @@ static int suExists(const char *path)
 /* A rename within the boot folder, checked by looking: from gone, to there. The memory card's ioman
    device has no rename (vcdsupport.cpp), so a card entry is renamed through mcserv, as Launchstation
    (genRenameNoReplace) and wLaunchELF do. */
+static int suStep, suErrno; /* which swap step failed and why, shown after "Could not replace the ELF" */
+
+/* A copy for drives whose rename() fails (a driver with no rename, or one that refuses it): the file is
+   written whole or removed, as POPSLoader's swap does. */
+static int suCopy(const char *from, const char *to)
+{
+    char *buf = static_cast<char *>(malloc(16 * 1024));
+    int in, out, ok = 0;
+    if (buf == NULL)
+        return -1;
+    in = open(from, O_RDONLY);
+    out = in < 0 ? -1 : open(to, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (in >= 0 && out >= 0) {
+        int n;
+        ok = 1;
+        while ((n = read(in, buf, 16 * 1024)) > 0) {
+            if (write(out, buf, n) != n) {
+                ok = 0;
+                break;
+            }
+        }
+        if (n < 0)
+            ok = 0;
+    }
+    if (in >= 0)
+        close(in);
+    if (out >= 0 && close(out) < 0)
+        ok = 0;
+    free(buf);
+    if (!ok && out >= 0)
+        unlink(to);
+    return ok ? 0 : -1;
+}
+
 static int suRename(const char *from, const char *to, const char *toName)
 {
     if (suIsMc(from)) {
         sceMcTblGetDir info;
         int ret = -1, type = 0, port = from[2] - '0';
-        /* Wake the card first, as Launchstation does: a rename on a card that has not been touched since boot can fail. */
+        /* Wake the card first, as Launchstation does: a rename on a card not touched since boot can fail. */
         if (mcGetInfo(port, 0, &type, NULL, NULL) >= 0)
             mcSync(0, NULL, &ret);
         memset(&info, 0, sizeof(info));
         strncpy(reinterpret_cast<char *>(info.EntryName), toName, sizeof(info.EntryName) - 1);
-        if (mcSetFileInfo(port, 0, strchr(from, ':') + 1, &info, 0x10 /* the name */) < 0 || mcSync(0, NULL, &ret) <= 0 || ret < 0)
+        if (mcSetFileInfo(port, 0, strchr(from, ':') + 1, &info, 0x10 /* the name */) < 0 || mcSync(0, NULL, &ret) <= 0 || ret < 0) {
+            suErrno = ret;
             return -1;
-    } else if (fileXioRename(from, to) < 0) /* the filesystem driver's own rename, as Launchstation does; libc rename() failed on a real console */
-        return -1;
+        }
+    } else if (rename(from, to) != 0) {
+        suErrno = errno;
+        if (suCopy(from, to) != 0) /* then the old name goes: the same result as a rename */
+            return -1;
+        unlink(from);
+    }
     return !suExists(from) && suExists(to) ? 0 : -1;
 }
 
@@ -276,6 +316,8 @@ static void suInstallWorker(void)
     suResult = SU_ERR_MEMORY;
     if (b == NULL)
         goto done;
+    suStep = 0;
+    suErrno = 0;
     suResult = SU_ERR_SWAP;
     if (suJoin(cur, sizeof(cur), gBootDir, gBootElfName, "") || suJoin(fresh, sizeof(fresh), gBootDir, gBootElfName, ".NEW") ||
         suJoin(bak, sizeof(bak), gBootDir, gBootElfName, ".BAK") ||
@@ -315,6 +357,7 @@ static void suInstallWorker(void)
 
     suResult = SU_ERR_SWAP;
     unlink(bak); /* the previous update's backup */
+    suStep = 1;
     if (suRename(cur, bak, bakName) != 0) {
         if (!suExists(cur) && suRename(bak, cur, gBootElfName) != 0) {
             suResult = SU_ERR_RESTORE; /* the old ELF is <name>.BAK: keep every file */
@@ -323,6 +366,7 @@ static void suInstallWorker(void)
         unlink(fresh);
         goto done;
     }
+    suStep = 2;
     if (suRename(fresh, cur, gBootElfName) != 0) {
         if (suRename(bak, cur, gBootElfName) != 0) {
             suResult = SU_ERR_RESTORE; /* the old ELF is <name>.BAK: the message names it */
@@ -371,7 +415,7 @@ static void suReport(void)
             snprintf(text, sizeof(text), "%s", _l(_STR_UPDATE_ERR_VERIFY));
             break;
         case SU_ERR_SWAP:
-            snprintf(text, sizeof(text), "%s", _l(_STR_UPDATE_ERR_SWAP));
+            snprintf(text, sizeof(text), "%s (%d/%d)", _l(_STR_UPDATE_ERR_SWAP), suStep, suErrno);
             break;
         case SU_ERR_RESTORE:
             snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_RESTORE), gBootElfName);
