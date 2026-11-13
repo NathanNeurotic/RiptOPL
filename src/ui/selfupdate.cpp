@@ -6,11 +6,11 @@
   its build number is newer. Nothing is fetched until the user picks the menu entry, and nothing is
   downloaded until they accept the offer.
 
-  The only file written is beside the ELF that booted, under its own name: <name>.NEW while it
-  downloads. The download must match the release's SHA-256 and look like a MIPS ELF before the booted
-  ELF is touched. No backup is kept (it would hold a second 2 MB copy). Any failure before the swap
-  deletes .NEW and leaves the booted ELF as it was; if the swap itself fails, .NEW is kept and the
-  message names it. Network and card work run on the I/O worker.
+  The download is held in RAM. It must match the release's SHA-256 and look like a MIPS ELF before
+  anything on the device is touched. Then the booted ELF is overwritten in place under its own name:
+  no second file, no rename, no backup, so a memory card needs no spare room. If that write fails
+  part-way the ELF may be damaged; the message gives the step and the error. Network and card work
+  run on the I/O worker.
 */
 
 #include "include/opl.h"
@@ -28,7 +28,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <libmc.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -68,7 +67,6 @@ enum {
     SU_ERR_WRITE,
     SU_ERR_VERIFY,
     SU_ERR_SWAP,
-    SU_ERR_RESTORE,
     SU_ERR_MEMORY,
 };
 
@@ -100,7 +98,8 @@ struct SuSums
 
 struct SuFile
 {
-    int fd;
+    unsigned char *data; /* the download, sized from Content-Length */
+    int cap;
     int written;
     int lastKb;
     int headLen; /* the first bytes, held until the ELF header can be checked */
@@ -175,15 +174,18 @@ static int suFileSink(void *ctx, const char *data, int len)
             return 0;
         if (!suLooksLikeElf(f->head, f->headLen))
             return -1; /* not an ELF: stop before writing anything */
-        if (write(f->fd, f->head, f->headLen) != f->headLen)
+        if (raTlsBodyLength <= 0 || raTlsBodyLength > SU_ELF_MAX || (f->data = static_cast<unsigned char *>(malloc(raTlsBodyLength))) == NULL)
             return -1;
+        f->cap = raTlsBodyLength;
+        memcpy(f->data, f->head, f->headLen);
         mbedtls_sha256_update(&f->sha, f->head, f->headLen);
         f->written = f->headLen;
         if (len == 0)
             return 0;
     }
-    if (write(f->fd, data, len) != len)
+    if (f->written + len > f->cap)
         return -1;
+    memcpy(f->data + f->written, data, len);
     mbedtls_sha256_update(&f->sha, reinterpret_cast<const unsigned char *>(data), len);
     f->written += len;
     if (f->written / 1024 - f->lastKb >= 64) {
@@ -236,111 +238,15 @@ static void suCheckWorker(void)
     suBusy = 0;
 }
 
-static int suExists(const char *path)
-{
-    int fd = open(path, O_RDONLY);
-    if (fd < 0)
-        return 0;
-    close(fd);
-    return 1;
-}
-
-/* A rename within the boot folder, checked by looking: from gone, to there. The memory card's ioman
-   device has no rename (vcdsupport.cpp), so a card entry is renamed through mcserv, as Launchstation
-   (genRenameNoReplace) and wLaunchELF do. */
-static int suStep, suErrno; /* which swap step failed and why, shown after "Could not replace the ELF" */
-
-/* A copy for drives whose rename() fails (a driver with no rename, or one that refuses it): the file is
-   written whole or removed, as POPSLoader's swap does. */
-static int suCopyErr; /* errno of the first failure inside suCopy, before a close or cleanup can replace it */
-
-static int suCopy(const char *from, const char *to)
-{
-    suCopyErr = 0;
-    char *buf = static_cast<char *>(malloc(16 * 1024));
-    int in, out, ok = 0;
-    if (buf == NULL) {
-        suCopyErr = ENOMEM;
-        return -1;
-    }
-    in = open(from, O_RDONLY);
-    if (in < 0)
-        suCopyErr = errno;
-    out = in < 0 ? -1 : open(to, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    if (in >= 0 && out < 0)
-        suCopyErr = errno;
-    if (in >= 0 && out >= 0) {
-        int n;
-        ok = 1;
-        while ((n = read(in, buf, 16 * 1024)) > 0) {
-            if (write(out, buf, n) != n) {
-                suCopyErr = errno ? errno : ENOSPC;
-                ok = 0;
-                break;
-            }
-        }
-        if (n < 0) {
-            suCopyErr = errno;
-            ok = 0;
-        }
-    }
-    if (in >= 0)
-        close(in);
-    if (out >= 0 && close(out) < 0) {
-        if (ok)
-            suCopyErr = errno;
-        ok = 0;
-    }
-    free(buf);
-    if (!ok && out >= 0)
-        unlink(to);
-    return ok ? 0 : -1;
-}
-
-static int suMcRename(const char *from, const char *toName)
-{
-    sceMcTblGetDir info;
-    int ret = -1, type = 0, port = from[2] - '0';
-    /* Wake the card first, as Launchstation does: a rename on a card not touched since boot can fail. */
-    if (mcGetInfo(port, 0, &type, NULL, NULL) >= 0)
-        mcSync(0, NULL, &ret);
-    memset(&info, 0, sizeof(info));
-    strncpy(reinterpret_cast<char *>(info.EntryName), toName, sizeof(info.EntryName) - 1);
-    int sub = mcSetFileInfo(port, 0, strchr(from, ':') + 1, &info, 0x10 /* the name */);
-    if (sub < 0) {
-        suErrno = sub; /* the command was not accepted */
-        return -1;
-    }
-    ret = 0;
-    if (mcSync(0, NULL, &ret) <= 0 || ret < 0) {
-        suErrno = ret < 0 ? ret : -1; /* the card's result, or the wait failed */
-        return -1;
-    }
-    return 0;
-}
-
-static int suRename(const char *from, const char *to, const char *toName)
-{
-    /* A card is renamed through mcserv; any rename that fails, on a card too, falls back to a copy. */
-    if (!(suIsMc(from) ? suMcRename(from, toName) == 0 : rename(from, to) == 0)) {
-        if (!suIsMc(from))
-            suErrno = errno;
-        if (suCopy(from, to) != 0) { /* then the old name goes: the same result as a rename */
-            suErrno = suCopyErr;
-            return -1;
-        }
-        if (unlink(from) != 0)
-            suErrno = errno;
-    }
-    return !suExists(from) && suExists(to) ? 0 : -1;
-}
+static int suStep, suErrno; /* which write step failed and why, shown after "Could not replace the ELF" */
 
 static void suInstallWorker(void)
 {
     SuBuffers *b = static_cast<SuBuffers *>(malloc(sizeof(SuBuffers)));
-    char cur[256], fresh[256], freshName[40];
+    char cur[256];
     unsigned char sha[32];
     SuFile f;
+    int fd, off;
 
     suResult = SU_ERR_MEMORY;
     if (b == NULL)
@@ -348,14 +254,11 @@ static void suInstallWorker(void)
     suStep = 0;
     suErrno = 0;
     suResult = SU_ERR_SWAP;
-    if (suJoin(cur, sizeof(cur), gBootDir, gBootElfName, "") || suJoin(fresh, sizeof(fresh), gBootDir, gBootElfName, ".NEW") ||
-        snprintf(freshName, sizeof(freshName), "%s.NEW", gBootElfName) >= (int)sizeof(freshName) || !suExists(cur))
+    if (suJoin(cur, sizeof(cur), gBootDir, gBootElfName, ""))
         goto done;
 
-    unlink(fresh); /* a .NEW left by an interrupted update is ours */
-    suResult = SU_ERR_WRITE;
-    if ((f.fd = open(fresh, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
-        goto done;
+    f.data = NULL;
+    f.cap = 0;
     f.written = 0;
     f.lastKb = 0;
     guiWaitBarDone = 0;
@@ -365,35 +268,48 @@ static void suInstallWorker(void)
     {
         int rc = suFetch(b, "/NathanNeurotic/RiptOPL/releases/download/" RIPTOPL_UPDATE_TAG "/" RIPTOPL_UPDATE_ELF, SU_ELF_MAX,
                          suFileSink, &f);
-        int closed = close(f.fd);
         mbedtls_sha256_finish(&f.sha, sha);
         mbedtls_sha256_free(&f.sha);
         if (rc >= 0 && f.written == 0)
             rc = RATLS_ERR_SINK; /* shorter than an ELF header */
-        if (rc < 0 || closed < 0) {
-            unlink(fresh);
-            suResult = rc < 0 ? suFromTls(rc) : SU_ERR_WRITE;
+        if (rc < 0) {
+            free(f.data);
+            suResult = suFromTls(rc);
             goto done;
         }
     }
-    if (memcmp(sha, suSha, sizeof(sha))) {
-        unlink(fresh);
+    if (f.written != f.cap || memcmp(sha, suSha, sizeof(sha))) {
+        free(f.data);
         suResult = SU_ERR_VERIFY;
         goto done;
     }
 
+    /* Overwrite the booted ELF with the verified bytes. Step 1 changes nothing if it fails. */
     suResult = SU_ERR_SWAP;
     suStep = 1;
-    if (unlink(cur) != 0) { /* the running ELF is in memory; nothing was changed */
+    if ((fd = open(cur, O_WRONLY | O_TRUNC)) < 0) {
         suErrno = errno;
-        unlink(fresh);
+        free(f.data);
         goto done;
     }
     suStep = 2;
-    if (suRename(fresh, cur, gBootElfName) != 0) {
-        suResult = SU_ERR_RESTORE; /* the old ELF is gone: the verified download stays as <name>.NEW */
+    for (off = 0; off < f.written;) {
+        int n = f.written - off < 16 * 1024 ? f.written - off : 16 * 1024;
+        if (write(fd, f.data + off, n) != n) {
+            suErrno = errno ? errno : ENOSPC;
+            close(fd);
+            free(f.data);
+            goto done;
+        }
+        off += n;
+    }
+    suStep = 3;
+    if (close(fd) < 0) {
+        suErrno = errno;
+        free(f.data);
         goto done;
     }
+    free(f.data);
     suInstalledRev = suRemoteRev;
     suResult = SU_OK;
 done:
@@ -433,9 +349,6 @@ static void suReport(void)
             break;
         case SU_ERR_SWAP:
             snprintf(text, sizeof(text), "%s (%d/%d)", _l(_STR_UPDATE_ERR_SWAP), suStep, suErrno);
-            break;
-        case SU_ERR_RESTORE:
-            snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_RESTORE_NEW), gBootElfName);
             break;
         default:
             snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_GITHUB), suError);

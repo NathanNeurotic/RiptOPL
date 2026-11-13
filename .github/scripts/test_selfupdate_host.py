@@ -4,7 +4,7 @@ Builds selfupdate.c with a small driver and checks it against the real SHA256SUM
 channel (copies in fixtures/selfupdate, taken 2026-11-12): the ELF's digest and the release's build
 number, the build number in RiptOPL's version strings, the GitHub-only redirect allowlist, path
 joining for mc0:/mass0: and the ELF header check. Also checks the console side keeps its safety
-order: the digest is compared before the running ELF is touched, and a failed swap restores it.
+order: the digest is compared before the running ELF is touched, and the ELF is overwritten in place.
 """
 import os
 import re
@@ -104,11 +104,11 @@ def source_checks():
     inst = src[src.index("static void suInstallWorker"):]
     inst = inst[:inst.index("\n}\n")]
     # The digest is compared before anything touches the running ELF, and a mismatch removes the download.
-    check("verify_before_swap", inst.index("memcmp(") < inst.index("unlink(cur)"), "digest compare must come first")
-    check("mismatch_unlinks", "unlink(fresh)" in inst[inst.index("memcmp("):inst.index("unlink(cur)")])
-    # The swap: current removed, new into place.
-    a, b = inst.index("unlink(cur)"), inst.index("suRename(fresh, cur,")
-    check("swap_order", a < b and "bak" not in inst.lower().replace("break", ""), "cur removed, new->cur, no backup")
+    a = inst.index("open(cur,")
+    check("verify_before_swap", inst.index("memcmp(") < a, "digest compare must come first")
+    # The ELF is overwritten in place: opened with O_TRUNC, no second file, no rename, no delete, no backup.
+    check("overwrite_in_place", "O_WRONLY | O_TRUNC" in inst and "O_CREAT" not in inst[a:], "cur opened with O_TRUNC")
+    check("no_second_file", not re.search(r"unlink\(|rename\(|\.NEW|bak", inst.lower().replace("break", "")), "no unlink, rename, .NEW or backup")
     # Redirects are followed only to GitHub's hosts, and only a few times.
     check("redirects_allowlisted", "suSplitUrl(" in src and re.search(r"for \(hop = 0; hop < 4", src) is not None)
     callers = sorted(str(p.relative_to(ROOT)) for p in (ROOT / "src").rglob("*.c*")
