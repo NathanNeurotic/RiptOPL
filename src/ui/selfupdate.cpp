@@ -479,6 +479,12 @@ void selfUpdateMenu(void)
     suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
     if (suResult == SU_NEWEST) { /* the checksum is read: offer the same swap again */
         snprintf(text, sizeof(text), _l(_STR_UPDATE_NEWEST), local);
+        if (suRemoteRev < local) { /* the channel is older than this build: no reinstall offer */
+            guiMsgBox(text, 0, NULL);
+            return;
+        }
+        size_t used = strlen(text);
+        snprintf(text + used, sizeof(text) - used, " %s", _l(_STR_UPDATE_AGAIN));
     } else if (suResult != SU_OK) {
         suReport();
         return;
