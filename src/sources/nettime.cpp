@@ -28,6 +28,16 @@
 #include <stdio.h>
 #include <time.h>
 
+/* <netdb.h> only declares struct hostent; this is lwIP's layout, as in ratls_ps2.cpp. */
+struct hostent
+{
+    char *h_name;
+    char **h_aliases;
+    int h_addrtype;
+    int h_length;
+    char **h_addr_list;
+};
+
 constexpr int NETTIME_DEADLINE_MS = 8000; /* DNS, connect and reply, per server */
 constexpr int NETTIME_POLL_MS = 20;
 
