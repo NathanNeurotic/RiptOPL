@@ -74,8 +74,9 @@ no USB device is involved (see [POPS UDPFS setup](#pops-udpfs-with-bdm-udpfs-ass
 acceptance; host checks and packaged drivers do not establish hardware compatibility.
 
 **NFS** lists Ember titles only. Ember does not reset the IOP, so it reads its ELF, `bios.bin` and the
-game folder through the menu's NFS connection, as over SMB. POPSTARTER resets the IOP and reaches only
-SMB, so `*.VCD` games are not listed over NFS; a POPSTARTER title reached there says to use Ember or SMB.
+game folder through the menu's NFS connection, as over SMB. POPSTARTER resets the IOP and has no NFS
+driver (on the network it reaches SMB, and UDPFS Files through UDPFS Assault), so `*.VCD` games are not listed
+over NFS; a POPSTARTER title reached there says to use Ember or SMB.
 While **NFS Writes** is Off, Ember cannot create or update `MC1.vmc`/`MC2.vmc` in the game folder: the
 PS1 row menu hides Ember Game Settings and Rename, and a warning says so before launch. Ember over NFS is
 NOT TESTED on hardware or in PCSX2, and whether Ember starts at all with NFS Writes Off is not known yet.

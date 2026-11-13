@@ -208,8 +208,10 @@ Neutrino's NFS backend, also by [Ronnie Sahlberg (sahlberg)](https://github.com/
 2026-11-12 in [ps2max32/neutrino PR #240](https://github.com/ps2max32/neutrino/pull/240). It is built on his
 [unfs4](https://github.com/sahlberg/unfs4) (NFS version 4.0): `nfs_ioman.irx` reads the game in Neutrino's
 loader and `nfs_fhi.irx` reads it in the game, read-only. **No Neutrino release or development build carries it
-yet**: the `latest` build the kits bundle is from 2026-08-31. Until one does, every NFS game runs on the OPL
-core's NFS reader, with the message "This Neutrino has no NFS support -- launching with the OPL core."
+yet**: the `latest` build the kits bundle is from 2026-08-31. With that build, an NFS game set to Neutrino runs
+on the OPL core's NFS reader instead, with the message "This Neutrino has no NFS support -- launching with the OPL
+core." A Neutrino folder you build yourself from upstream's `master` has the backend and can be used before
+upstream publishes a build.
 
 How a game gets there is the same as for SMB:
 

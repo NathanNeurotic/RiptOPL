@@ -151,7 +151,7 @@ edition is merged, including the RA browser, client and ORBIT integration; see t
 - **RetroAchievements:** a separate development package; the console integration has not been hardware-tested. It requires [xeRAbora v1.0.1](https://github.com/hacan359/xerabora/releases/tag/v1.0.1) (alpha.17 or later) on a PC and OPL-core launching. The RA build includes main-menu actions to check and launch a physical PS2 disc with achievements; this path also needs hardware validation. Keep games you play with achievements on a local device — upstream reports on hardware that a game with an achievement set stops loading about a minute in from a network share. [RA guide](docs/RETROACHIEVEMENTS.md).
 - **iLink:** revision 2692 passed Ember on the tested SCPH-39001 but failed native OPL, Neutrino and POPSTARTER handoffs. The Neutrino `-qb` correction is implemented; a passing retest is still needed.
 - **Core switching is source-dependent:** HTTP uses OPL; SMB and NFS use OPL unless a game is set to the Neutrino core (experimental, see [SMB through Neutrino](docs/NEUTRINO.md#smb-through-neutrino-experimental) and [NFS through Neutrino](docs/NEUTRINO.md#nfs-through-neutrino-experimental)); UDPFS (Files and IMG) and UDPBD default to Neutrino and can use OPL per game. See the [source table](#introduction).
-- **Neutrino over SMB or NFS needs a newer Neutrino than the kits carry:** the release kits bundle upstream's latest development build, which is still v1.8.0-61-g7be8de2 from 2026-08-31. It has neither Neutrino's SMB backend (merged 2026-10-31) nor its NFS backend (merged 2026-11-12), so SMB and NFS games set to Neutrino run on the OPL core with a message until upstream publishes a newer build.
+- **Neutrino over SMB or NFS needs a newer Neutrino than the kits carry:** the release kits bundle upstream's latest development build, which is still v1.8.0-61-g7be8de2 from 2026-08-31. It has neither Neutrino's SMB backend (merged 2026-10-31) nor its NFS backend (merged 2026-11-12), so with the kits as shipped, SMB and NFS games set to Neutrino run on the OPL core with a message. A Neutrino folder built from upstream's `master` has both backends and can be installed instead until upstream publishes a newer build.
 - **NFS:** new, host-tested against PS2-Servers' NFS server only; not tested on hardware, in PCSX2 or against other NFS servers. POPSTARTER cannot launch over NFS (Ember can). See [NFS](#nfs).
 
 ## Introduction
@@ -667,7 +667,7 @@ Advance/Extreme images work as on SMB. On the Neutrino core see
 NFS backend, which the bundled development build does not have yet, so the OPL core runs those games.
 PS1: **Ember** games launch over NFS; with **NFS Writes** Off, Ember cannot keep memory card saves in the
 game's folder and says so before launch. **POPSTARTER** (`.VCD`) cannot launch over NFS, because it restarts
-the I/O processor and reaches only SMB; use SMB for those. Switching between SMB and NFS needs a restart.
+the I/O processor and has no NFS driver (on the network it reaches SMB, and UDPFS Files through UDPFS Assault); use SMB for those. Switching between SMB and NFS needs a restart.
 RiptOPLite has no NFS. NOT TESTED on hardware or in PCSX2, and only tested against PS2-Servers' NFS server.
 
 ### UDPFS (Neutrino, or the OPL core per game)
