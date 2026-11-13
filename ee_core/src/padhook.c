@@ -510,26 +510,30 @@ static void IGR_Thread(void *arg)
         }
         // EXIT GAME, POWER OFF, the power button, or a frame the menu could not draw on: what the combo did
         // before. ResetEE leaves the DMAC alone (0x7E, not 0x7F): a SIF transfer in flight would stick (ORBIT)
+#ifndef __clang__
+        if (EnableDebug && choice == IGR_MENU_GS_BUSY) { // TEST COPY ONLY: the answer first, before any reset step touches anything
+            int rep;
+
+            for (rep = 0; rep < 2; rep++) {
+                BlinkColour(0, 0, 0);
+                BlinkColour(((IGR_BusyWhy >> 9) & 7) + 1, 0x0000FF, 0); // red
+                BlinkColour(((IGR_BusyWhy >> 6) & 7) + 1, 0x00FF00, 0); // green
+                BlinkColour(((IGR_BusyWhy >> 3) & 7) + 1, 0xFF0000, 0); // blue
+                BlinkColour((IGR_BusyWhy & 7) + 1, 0xFFFFFF, 0);        // white
+            }
+        }
+#endif
         IGR_StopDmaAndGs();
+#ifndef __clang__
+        if (EnableDebug && choice == IGR_MENU_GS_BUSY)
+            BlinkColour(1, 0x0080FF, 0); // orange: DMA and GS stopped
+#endif
         ResetEE(0x7E);
         if (EnableDebug && choice >= IGR_MENU_CANNOT_DRAW) {
             // Debug Colors: why the menu did not open, three blinks before the reset goes on (docs/IGR.md).
             // GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and growing it costs the stack
             static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x00FFFF, 0x80FF00}; // grey, purple, yellow, mint
             DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, yellow = GS busy, mint = first page failed, grey = no menu");
-#ifndef __clang__
-            if (choice == IGR_MENU_GS_BUSY) { // TEST COPY ONLY: red, green, blue, white = digits 1 to 4, each shown as digit + 1 blinks
-                int rep;
-
-                for (rep = 0; rep < 2; rep++) {
-                    BlinkColour(0, 0, 0); // a longer gap
-                    BlinkColour(((IGR_BusyWhy >> 9) & 7) + 1, 0x0000FF, 0);
-                    BlinkColour(((IGR_BusyWhy >> 6) & 7) + 1, 0x00FF00, 0);
-                    BlinkColour(((IGR_BusyWhy >> 3) & 7) + 1, 0xFF0000, 0);
-                    BlinkColour((IGR_BusyWhy & 7) + 1, 0xFFFFFF, 0);
-                }
-            }
-#endif
         }
         Pad_Data.combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
         break;
