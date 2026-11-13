@@ -138,6 +138,8 @@ int main(void) {
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 03:37:4", 0, 0, 0, 0, 0, 0, 0);
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 03:37:4\r\n\r\n", 0, 0, 0, 0, 0, 0, 0);
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 03:37:4 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 03:37:+4 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 03:37: 4 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 03:37:42 GMT", 0, 0, 0, 0, 0, 0, 0);
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 03:37:42 GMT\n", 1, 2026, 11, 13, 3, 37, 42);
     bad |= check("HTTP/1.1 200 OK\r\nDate: Tue, 31 Feb 2026 03:37:42 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);

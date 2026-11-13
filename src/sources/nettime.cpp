@@ -58,7 +58,7 @@ int netTimeParseDate(const char *headers, int t[6])
     /* A whole field only: two seconds digits, then GMT, then the end of the line. */
     const char *q = p + 6;
     if (sscanf(q, " %*[^,], %d %3s %d %d:%d:%2d%n GMT%n", &t[2], mon, &t[0], &t[3], &t[4], &t[5], &sec, &end) != 6 || end == 0 ||
-        q[sec - 3] != ':' || (q[end] != '\r' && q[end] != '\n'))
+        q[sec - 3] != ':' || (unsigned)(q[sec - 2] - '0') > 9 || (unsigned)(q[sec - 1] - '0') > 9 || (q[end] != '\r' && q[end] != '\n'))
         return 0;
     const char *m = strstr(months, mon);
     if (strlen(mon) != 3 || m == NULL || (m - months) % 3)
