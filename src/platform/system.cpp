@@ -550,6 +550,37 @@ int sysGetDiscID(char *hexDiscID)
 //   path sits at offset 12440 in the update, as Launchstation checks (its PR #362).
 // - FMCB opens its own menu (issue #370, reporter's console). Its config, SYS-CONF/FREEMCB.CNF,
 //   is on the same card; if OSDMenu's SYS-CONF/OSDMENU.CNF is on either card, it is left alone.
+//   Since FMCB 1.93, OSDSYS_Inner_Browser = 0 (AUTO) or 1 passes BootBrowser on, so the Browser
+//   opens with FMCB's menu kept; 2 (force OFF, every 1.9x installer's default) drops it.
+static int exitFmcbDropsBrowser(int fd)
+{
+    // The key sits about 1.2 KB in, after the launch-key paths: scan in chunks, keeping each
+    // chunk's tail so a key split across two reads is still found.
+    static const char key[] = "OSDSYS_Inner_Browser";
+    const int keep = sizeof(key) + 8;
+    char cnf[512];
+    int have = 0, n, eof = 0;
+    for (;;) {
+        if ((n = read(fd, cnf + have, sizeof(cnf) - 1 - have)) > 0)
+            have += n;
+        else
+            eof = 1;
+        cnf[have] = '\0';
+        char *p = strstr(cnf, key);
+        if (p && (eof || p + keep <= cnf + have)) {
+            p += sizeof(key) - 1;
+            p += strspn(p, " \t=");
+            return *p != '0' && *p != '1';
+        }
+        if (eof)
+            return 1;
+        if (have > keep) {
+            memmove(cnf, cnf + have - keep, keep);
+            have = keep;
+        }
+    }
+}
+
 static int exitCardUpdateIgnoresBrowser(void)
 {
     char romver[16] = {0}, path[40], buf[18];
@@ -578,8 +609,8 @@ static int exitCardUpdateIgnoresBrowser(void)
             // FMCB: its config is on the card and OSDMenu's is on neither card (OSDMenu may leave FREEMCB.CNF behind).
             snprintf(path, sizeof(path), "mc%d:/SYS-CONF/FREEMCB.CNF", port);
             if ((fd = open(path, O_RDONLY)) >= 0) {
+                match = exitFmcbDropsBrowser(fd);
                 close(fd);
-                match = 1;
                 for (int other = 0; other < 2 && match; other++) {
                     snprintf(path, sizeof(path), "mc%d:/SYS-CONF/OSDMENU.CNF", other);
                     if ((fd = open(path, O_RDONLY)) >= 0) {
