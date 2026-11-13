@@ -554,31 +554,31 @@ int sysGetDiscID(char *hexDiscID)
 //   opens with FMCB's menu kept; 2 (force OFF, every 1.9x installer's default) drops it.
 static int exitFmcbDropsBrowser(int fd)
 {
-    // The key sits about 1.2 KB in, after the launch-key paths: scan in chunks, keeping each
-    // chunk's tail so a key split across two reads is still found.
+    // Line by line, as FMCB parses it: '#' lines are comments, the key must start the entry,
+    // and a later entry wins. A missing key keeps the installer's default, OFF.
     static const char key[] = "OSDSYS_Inner_Browser";
-    const int keep = sizeof(key) + 8;
-    char cnf[512];
-    int have = 0, n, eof = 0;
-    for (;;) {
-        if ((n = read(fd, cnf + have, sizeof(cnf) - 1 - have)) > 0)
-            have += n;
-        else
-            eof = 1;
-        cnf[have] = '\0';
-        char *p = strstr(cnf, key);
-        if (p && (eof || p + keep <= cnf + have)) {
-            p += sizeof(key) - 1;
-            p += strspn(p, " \t=");
-            return *p != '0' && *p != '1';
+    char buf[256], line[48];
+    int drops = 1, len = 0, n, i;
+    do {
+        n = read(fd, buf, sizeof(buf));
+        for (i = 0; i < (n > 0 ? n : 1); i++) {
+            char c = n > 0 ? buf[i] : '\n'; // end of file ends the last line
+            if (c != '\n' && c != '\r') {
+                if (len < (int)sizeof(line) - 1)
+                    line[len++] = c;
+                continue;
+            }
+            line[len] = '\0';
+            const char *p = line + strspn(line, " \t");
+            if (!strncmp(p, key, sizeof(key) - 1) && strchr(" \t=", p[sizeof(key) - 1])) {
+                p += sizeof(key) - 1;
+                p += strspn(p, " \t=");
+                drops = *p != '0' && *p != '1';
+            }
+            len = 0;
         }
-        if (eof)
-            return 1;
-        if (have > keep) {
-            memmove(cnf, cnf + have - keep, keep);
-            have = keep;
-        }
-    }
+    } while (n > 0);
+    return drops;
 }
 
 static int exitCardUpdateIgnoresBrowser(void)
