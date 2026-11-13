@@ -194,8 +194,8 @@ void guiFadeOutForHandoff(const char *message)
     }
 }
 
-int guiWaitBarTotal;
-int guiWaitBarDone;
+volatile int guiWaitBarTotal;
+volatile int guiWaitBarDone;
 
 void guiRenderTextScreen(const char *message)
 {
