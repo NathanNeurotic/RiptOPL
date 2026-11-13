@@ -68,13 +68,17 @@ extern struct cdvdman_settings_nfs cdvdman_settings;
 // (fd -1), and the rest of that call fails at once.
 static int nfs_sock_read(int fd, void *buf, int len)
 {
-    int result, waited;
+    int result, polls, us, waited_us;
 
-    for (waited = 0; fd >= 0 && waited < NFS_RECV_TIMEOUT_MS; waited++) {
+    for (polls = 0, waited_us = 0; fd >= 0 && waited_us < NFS_RECV_TIMEOUT_MS * 1000; polls++, waited_us += us) {
         result = plwip_recv(fd, buf, len, MSG_DONTWAIT);
         if (result >= 0)
             return result;
-        DelayThread(1000); // 1 ms
+        /* A reply comes as several TCP segments a fraction of a millisecond apart, and a 1 ms sleep before
+           every retry added about a millisecond to each read (#399). Poll every 100 us for the first 2 ms,
+           then every 1 ms; the timeout is unchanged. */
+        us = polls < 20 ? 100 : 1000;
+        DelayThread(us);
     }
 
     return -1;

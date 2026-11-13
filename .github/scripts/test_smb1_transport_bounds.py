@@ -60,7 +60,7 @@ typedef struct { u8 data[32]; } SMBHeader_t;
 
 static uint64_t virtual_us;
 static int socket_calls, connect_calls, close_calls, recv_calls, body_calls, send_calls;
-static int socket_fails, connect_fails, delay_fails, receive_mode;
+static int socket_fails, connect_fails, delay_fails, receive_mode, short_delays, long_delays;
 enum { SILENT, CHUNKS, DRIP, CLOSED, KEEPALIVES, GOOD_REPLY, OVERSIZE_REPLY, SHORT_REPLY };
 static struct {
     u32 sessionHeader;
@@ -76,9 +76,14 @@ static void GetSystemTime(iop_sys_clock_t *clock)
 }
 static int DelayThread(unsigned int micros)
 {
-    assert(micros == 1000);
+    assert(micros == 100 || micros == 1000); // short polls first, then 1 ms (#399)
     if (delay_fails)
         return -1;
+    if (micros == 100) {
+        assert(long_delays == 0); // short polls come first, never after a 1 ms one
+        short_delays++;
+    } else
+        long_delays++;
     virtual_us += micros;
     return 0;
 }
@@ -180,6 +185,7 @@ static void reset(int mode)
     main_socket = 7;
     socket_calls = connect_calls = close_calls = recv_calls = body_calls = send_calls = 0;
     socket_fails = connect_fails = delay_fails = 0;
+    short_delays = long_delays = 0;
     receive_mode = mode;
     memset(&SMB_buf, 0, sizeof(SMB_buf));
     smb_ResetStream();
@@ -206,6 +212,8 @@ int main(void)
     smb_BeginReply();
     assert(RecvData(7, buf, 10) == -2);
     assert(virtual_us == 10000000ULL && recv_calls > 1);
+    /* A reply's segments arrive a fraction of a millisecond apart: the first 2 ms are polled every 100 us (#399). */
+    assert(short_delays == 20 && long_delays == 9998);
     /* A missed deadline keeps the session: the late reply is taken off before the next request. */
     assert(main_socket == 7 && close_calls == 0 && smb_rx.timed_out && smb_rx.open);
 
