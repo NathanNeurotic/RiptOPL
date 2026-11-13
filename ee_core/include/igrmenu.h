@@ -17,7 +17,6 @@ enum {
     // The menu ran but could not draw: the combo leaves as before. Distinct so Debug Colors can say which
     // (padhook.c IGR_Thread, docs/IGR.md). Keep them after IGR_MENU_CANNOT_DRAW: >= is the test.
     IGR_MENU_NO_FRAME,    // no DISPFB write recorded by the GS tracker, or a format / size the panel cannot use
-    IGR_MENU_GS_BUSY,     // the game's VIF1 / GIF transfers did not finish, or VIF1 is stalled, within the wait
     IGR_MENU_DRAW_FAILED, // the first page did not go through (VIF1 did not take the lines)
 };
 

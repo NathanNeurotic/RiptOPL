@@ -137,18 +137,23 @@ if not tries:
     failures.append('padhook.c: IGR_TRIES, the pauses one press of the combo may take, was not found')
 tries = tries.group(0) if tries else ''
 # The pauses of one press: IGR_Thread gives the game back while any is left, zeroes the count once the menu opens, and
-# only the last busy pause goes on to the reset
+# no busy pause goes on to the reset: the last one gives the game back too
 worker = padhook[igr_thread:] if igr_thread >= 0 else ''
 for needle, why in (
-        ('choice = IGR_MenuRearm ? IGR_MENU_RESUME : IGR_MENU_GS_BUSY;',
-         'a busy pause with pauses left gives the game back; only the last one is the yellow reset'),
+        ('choice = IGR_MENU_RESUME;',
+         'a busy pause gives the game back, the last one too: nothing is reset under a game that never went idle'),
+        ('IGR_MenuBusy = 1;', 'a last busy pause marks the game: the next press is the plain reset'),
         ('IGR_MenuRearm = 0; // once per press', 'a menu that opened takes the rest of the press\'s pauses')):
     if needle not in worker:
         failures.append('padhook.c IGR_Thread: ' + why)
 
+# The handler: a press after a last busy pause (let go in between: IGR_MenuBusy 2) skips the menu, so the plain reset runs
+if 'IGR_MenuBusy < 2' not in padhook or 'IGR_MenuBusy = 2;' not in padhook:
+    failures.append('padhook.c handler: the press after a busy last pause must skip the menu (IGR_MenuBusy)')
+
 # The check is RIPPS2's: channels 1 and 2, VIF1 VSS/VFS/VIS/FDR. VIF1_STAT.INT (0x800) stays set until the game clears it
 # and stalls nothing, and a GIF path left active (no EOP) or a FIFO that does not drain must not keep the menu from
-# opening (docs/IGR.md, Yellow)
+# opening (docs/IGR.md, Menu does not open)
 if not re.search(r'busy = \(\(\*R_EE_D1_CHCR \| \*R_EE_D2_CHCR\) & 0x100\) \| \(\*\(vu32 \*\)0x10003c00 & 0x800700\);', padhook) or \
         '0x10003020' in padhook or '0x12001000' in padhook:
     failures.append('padhook.c IGR_HoldGs: only channels 1 and 2 and VIF1 VSS/VFS/VIS/FDR (no INT, no GIF, no GS) may refuse the menu')
@@ -314,7 +319,7 @@ static int AddIntcHandler(int cause, int (*func)(int), int next) { (void)cause; 
 static int EnableIntc(int cause) { (void)cause; return 0; }
 @INSTALL@
 #ifdef IGR_MENU
-static volatile int IGR_MenuOpen;
+static volatile int IGR_MenuOpen, IGR_MenuBusy;
 @TRIES@
 static int IGR_MenuRearm = IGR_TRIES, held, wakes;
 static struct { int IgrMenu; } g_config, *config = &g_config;
@@ -413,6 +418,38 @@ int main(void)
         CHECK(!IGR_MenuOpen && !wakes, "a menu that opened must not reopen while the combo is still held");
         Pad_Data.combo_type = 0;
         handler();
+    }
+    {
+        // A last pause that found the game never idle (IGR_Thread sets IGR_MenuBusy): the press still held does nothing more,
+        // and once the combo is let go the next one leaves at once, with no pause: the menu-off path
+        g_config.IgrMenu = 1;
+        Power_Button.press = 0;
+        IGR_MenuOpen = 0;
+        IGR_MenuRearm = 0;
+        IGR_MenuBusy = 1;
+        wakes = held = 0;
+#ifdef HAS_PC_FLAG
+        IGR_PcReset = 0;
+#endif
+        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+        CHECK(!handler() && !wakes, "the press that found the game busy must not leave or pause again while held");
+        Pad_Data.combo_type = 0;
+        handler();
+        CHECK(IGR_MenuBusy == 2, "letting the combo go arms the leave");
+        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+        CHECK(handler() && !wakes && !held && !IGR_MenuOpen, "the next press after a busy game leaves with no pause");
+        // Menu off: IGR_MenuBusy is never set, and every press leaves, as it always did
+        g_config.IgrMenu = 0;
+        IGR_MenuBusy = 0;
+        IGR_MenuRearm = IGR_TRIES;
+        for (i = 0; i < 3; i++) {
+            Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+            CHECK(handler() && !wakes && !held && !IGR_MenuOpen, "menu off: the combo leaves at once, every time");
+            Pad_Data.combo_type = 0;
+            handler();
+            CHECK(!IGR_MenuBusy, "menu off: the busy mark is never touched");
+        }
+        IGR_MenuBusy = 0;
     }
 #ifdef HAS_PC_FLAG
     {

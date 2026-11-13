@@ -137,7 +137,7 @@ def host_safe(text):
     # MIPS hardware instructions have no host meaning; retain the production C logic.
     text = text.replace('asm volatile("sync.l\\n");', ';')
     # GetCop0 is stubbed to zero, so this MIPS-only performance-counter branch is never taken.
-    return re.sub(r'__asm__ __volatile__\(\s*" mfc0  \$3, \$25;".*?\);', ';', text, flags=re.S)
+    return re.sub(r'asm volatile\("mtc0 %0, \$25\\n sync\.p\\n" ::"r"\(perf & 0x7fffffff\)\);', ';', text)
 
 
 HARNESS = r'''
