@@ -943,7 +943,7 @@ int IGR_MenuRun(u16 (*buttons)(void))
     frameHeld = igrmFindFrame();
     if (!frameHeld)
         return IGR_MENU_NO_FRAME;
-    // the game's own transfers already finished: the IGR thread waited for them (padhook.c IGR_HoldGs)
+    // the game's own transfers already finished: the IGR thread waited for them (padhook.c IGR_WaitIdle)
     bpc = igrmBpcOff();
     // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
     if (frameHeld == 2) {
