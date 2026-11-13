@@ -627,18 +627,23 @@ static int exitCardUpdateIgnoresBrowser(void)
 
 void sysExecExit(int toMenuChoice)
 {
-    // Issue #370: the console's own exit opens its menu (or a card update such as FMCB), not the
-    // Browser. These ask OSDSYS for the Browser, as Launchstation's PS2 system browser rows do.
-    // On LoadBOOTer and FMCB cards only SkipMc reaches the Browser, so the plain Browser choice adds it.
-    int browserArgs = 0;
-    if (toMenuChoice && gExitMenu != EXIT_MENU_CONSOLE)
-        browserArgs = (gExitMenu == EXIT_MENU_BROWSER_SKIPMC || exitCardUpdateIgnoresBrowser()) ? 2 : 1;
+    // Issue #370: the console's own exit opens OSDSYS with the card update (FMCB, OSDMenu).
+    // PS2 Browser asks OSDSYS for the Browser, as Launchstation's PS2 system browser rows do, and
+    // adds SkipMc only on cards whose update would drop the request (LoadBOOTer, FMCB on OFF).
+    // OSDSYS (Skip Update) is OSDSYS with SkipMc alone. ROMs before v5 ignore SkipMc.
+    char *args[2] = {(char *)"BootBrowser", (char *)"SkipMc"};
+    char **argv = args;
+    int argc = 0;
+    if (toMenuChoice && gExitMenu == EXIT_MENU_BROWSER)
+        argc = exitCardUpdateIgnoresBrowser() ? 2 : 1;
+    else if (toMenuChoice && gExitMenu == EXIT_MENU_OSDSYS_SKIPMC) {
+        argv = &args[1];
+        argc = 1;
+    }
     // Deinitialize without shutting down active devices.
     host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
-    if (browserArgs) {
-        char *args[2] = {(char *)"BootBrowser", (char *)"SkipMc"};
-        ExecOSD(browserArgs, args);
-    }
+    if (argc)
+        ExecOSD(argc, argv);
     exit(0);
 }
 

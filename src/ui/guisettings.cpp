@@ -2326,9 +2326,14 @@ static int guiSettingsShowGeneral(void)
         return 0;
 
     guiExitPathBegin(ui);
-    const char *exitMenuNames[] = {_l(_STR_EXIT_MENU_CONSOLE), _l(_STR_EXIT_MENU_BROWSER), _l(_STR_EXIT_MENU_BROWSER_SKIPMC), NULL};
+    // Shown in the user's order (issue #370); the stored values stay as before.
+    static const char exitMenuOrder[] = {EXIT_MENU_BROWSER, EXIT_MENU_OSDSYS_SKIPMC, EXIT_MENU_CONSOLE};
+    const char *exitMenuNames[] = {_l(_STR_EXIT_MENU_BROWSER), _l(_STR_EXIT_MENU_OSDSYS_SKIPMC), _l(_STR_EXIT_MENU_CONSOLE), NULL};
+    int exitMenuIdx = 0;
+    while (exitMenuIdx < 2 && exitMenuOrder[exitMenuIdx] != gExitMenu)
+        exitMenuIdx++;
     diaSetEnum(ui, CFG_EXITMENU, exitMenuNames);
-    diaSetInt(ui, CFG_EXITMENU, gExitMenu);
+    diaSetInt(ui, CFG_EXITMENU, exitMenuIdx);
     diaSetShowDefaultWhenEmpty(ui, CFG_CUSTOMCFGPATH, 1);
     diaSetString(ui, CFG_CUSTOMCFGPATH, gCustomSettingsPath);
     diaSetInt(ui, CFG_LASTPLAYED, gRememberLastPlayed);
@@ -2351,7 +2356,8 @@ reshow_general:
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);
-        diaGetInt(ui, CFG_EXITMENU, &gExitMenu);
+        diaGetInt(ui, CFG_EXITMENU, &exitMenuIdx);
+        gExitMenu = exitMenuOrder[exitMenuIdx >= 0 && exitMenuIdx <= 2 ? exitMenuIdx : 2];
         diaGetString(ui, CFG_CUSTOMCFGPATH, gCustomSettingsPath, sizeof(gCustomSettingsPath));
         diaGetInt(ui, CFG_LASTPLAYED, &gRememberLastPlayed);
         diaGetInt(ui, CFG_FOLDERNAV, &gEnableFolderNav);
