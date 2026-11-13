@@ -2647,9 +2647,6 @@ gui_strings:
 - comment: The swap failed and the old ELF could not be put back. %s is the ELF's name; the old one is that name plus .BAK.
   label: UPDATE_ERR_RESTORE
   string: Could not replace the ELF or put it back. The old one is %s.BAK beside it. Rename it back with a file manager.
-- comment: The old ELF was removed but the new one could not take its place. %s is the ELF's name; the new one is that name plus .NEW.
-  label: UPDATE_ERR_RESTORE_NEW
-  string: Could not finish the update. The new ELF is %s.NEW beside it. Rename it with a file manager.
 - comment: "General & System row and dialog title. Sets the console's own clock (Launchstation issue 346 request)."
   label: DATE_TIME
   string: Date and Time
@@ -2712,3 +2709,6 @@ gui_strings:
 - comment: Ember launch from an NFS export while NFS Writes is Off. Ember keeps its memory cards in the game folder, which it cannot write then.
   label: NFS_EMBER_NO_SAVES
   string: NFS Writes is Off, so Ember cannot keep memory card saves in this game's folder.
+- comment: The old ELF was removed but the new one could not take its place. %s is the ELF's name; the new one is that name plus .NEW.
+  label: UPDATE_ERR_RESTORE_NEW
+  string: Could not finish the update. The new ELF is %s.NEW beside it. Rename it with a file manager.
