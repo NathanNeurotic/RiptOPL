@@ -78,9 +78,9 @@ MMCE Prefix Path (`mmce_prefix`).
 | Auto Start | Seconds before the remembered game starts by itself (shown when the row above is on). | `autostart_last` |
 | Browse Folders in Game List | Shows games in their folders instead of one flat list. | `folder_nav` |
 | IGR Path | Where in-game reset exits to. | `exit_path` |
-| Exit To | Where the main menu's Exit goes: Console Menu (the console's own exit, the default), PS2 Browser, or PS2 Browser (Skip Card Update). Only the main menu's Exit uses it. | `exit_menu` |
+| Exit To | Where the main menu's Exit goes: PS2 Browser, OSDSYS (Skip Update) (the console menu without the card's FMCB or OSDMenu, whose entries return at the next power-on), or OSDSYS (With Update) (the console's own exit, the default). Only the main menu's Exit uses it. PS2 Browser keeps FMCB's or OSDMenu's menu for when you leave the Browser whenever it can. FMCB allows this only when FMCB Configurator's Configure OSDSYS options > Go to Browser is AUTO or Force ON (OSDSYS_Inner_Browser 0 or 1); on Force OFF (the installer's default) and on exploit-installer (LoadBOOTer) cards, the Browser opens without the card's menu. Consoles older than ROM v5 (the first models) ignore Skip Update. An older setting of PS2 Browser (Skip Card Update) loads as PS2 Browser. | `exit_menu` |
 | Custom Settings Path | A folder to read and save settings in instead of the default. | `custom_settings_path` |
-| Date and Time *(Modify)* | Sets the console's clock, in the console's own time zone and daylight-saving setting. Check for Updates needs it set. | (the console clock; not saved by RiptOPL) |
+| Date and Time *(Modify)* | Sets the console's clock, in the console's own time zone and daylight-saving setting. Check for Updates needs it set. **Set from Internet** reads the time from a web server (github.com, then www.google.com) over plain HTTP; it brings the network up with the Network settings if it is not already, and is not available while UDPBD or UDPFS is the network protocol. | (the console clock; not saved by RiptOPL) |
 | Write Operations | Allows RiptOPL to write to game devices (rename, delete, VMC, art). | `enable_delete_rename` |
 | Parental Lock Password | Password that locks protected games and settings. | `parental_lock_password` |
 | Debug | Debug colours and logging during launch. | `disable_debug` |

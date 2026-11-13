@@ -52,6 +52,7 @@
 #include "include/appsupport.h" // appGetObject() -- push a live Art Delay change onto the APPS list
 #include "include/tar.h"        // tarInvalidate -- re-arm the .tar probe when the toggle flips
 #include "include/grid.h"       // GRID_LAYOUTS -- Grid Layout's presets
+#include "include/nettime.h"    // netTimeFetch -- Date and Time: Set from Internet
 #include "include/riptlite.h"   // LITE_HAS_NET_SOURCE / LITE_HAS_SMB_SHARE -- the Network page in a RiptOPLite build
 #include <limits.h>
 #include <stdlib.h>
@@ -2280,10 +2281,38 @@ static int guiClockLocalOffset(void)
     return configGetTimezone() - 540 + (configIsDaylightSavingEnabled() ? 60 : 0);
 }
 
+// Set from Internet runs on the I/O thread, as the network settings do; the GUI shows a wait message.
+static int guiClockSyncBusy, guiClockSyncResult, guiClockSyncTime[6];
+
+static void guiClockSyncWorker(void)
+{
+    guiClockSyncResult = netTimeFetch(guiClockSyncTime);
+    guiClockSyncBusy = 0;
+}
+
+// The CD/DVD controller refuses a command while busy: one retry. The reply overwrites clk.
+static int guiClockWrite(const int t[5], int second)
+{
+    sceCdCLOCK clk;
+
+    for (int i = 0; i < 2; i++) {
+        memset(&clk, 0, sizeof(clk));
+        clk.year = itob(t[0] - 2000);
+        clk.month = itob(t[1]);
+        clk.day = itob(t[2]);
+        clk.hour = itob(t[3]);
+        clk.minute = itob(t[4]);
+        clk.second = itob(second);
+        if (sceCdWriteClock(&clk) && !(clk.stat & CdlRTCStatCommandError))
+            return 1;
+    }
+    return 0;
+}
+
 static void guiSettingsShowDateTime(void)
 {
     static const int ids[5] = {DATETIME_YEAR, DATETIME_MONTH, DATETIME_DAY, DATETIME_HOUR, DATETIME_MINUTE};
-    int t[5], i, ok;
+    int t[5], i, ok, result;
     sceCdCLOCK clk;
 
     if (sceCdReadClock(&clk) && !clk.stat) {
@@ -2297,21 +2326,29 @@ static void guiSettingsShowDateTime(void)
                 diaSetInt(diaDateTimeConfig, ids[i], t[i]);
     }
 
-    while (diaExecuteDialog(diaDateTimeConfig, -1, 1, NULL) == UIID_BTN_OK) {
+    while ((result = diaExecuteDialog(diaDateTimeConfig, -1, 1, NULL)) == UIID_BTN_OK || result == DATETIME_SYNC) {
+        if (result == DATETIME_SYNC) {
+            guiClockSyncBusy = 1;
+            guiClockSyncResult = NETTIME_ERR_NETWORK; // stays set if the request is never queued
+            guiHandleDeferedIO(&guiClockSyncBusy, _l(_STR_DATE_TIME_SYNCING), IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&guiClockSyncWorker), 0);
+            if (guiClockSyncResult != NETTIME_OK) {
+                guiMsgBox(_l(guiClockSyncResult == NETTIME_ERR_NETBUSY ? _STR_UPDATE_ERR_NETBUSY : guiClockSyncResult == NETTIME_ERR_NETWORK ? _STR_UPDATE_ERR_NETWORK : _STR_DATE_TIME_SYNC_ERROR), 0, NULL);
+                continue;
+            }
+            // UTC to the clock's Japan time.
+            for (i = 0; i < 5; i++)
+                t[i] = guiClockSyncTime[i];
+            ok = guiClockShift(t, 540) && guiClockWrite(t, guiClockSyncTime[5] > 59 ? 59 : guiClockSyncTime[5]);
+            guiMsgBox(_l(ok ? _STR_DATE_TIME_SYNCED : _STR_DATE_TIME_ERROR), 0, NULL);
+            if (ok)
+                return;
+            continue;
+        }
         for (i = 0; i < 5; i++)
             diaGetInt(diaDateTimeConfig, ids[i], &t[i]);
         ok = t[2] <= guiClockDaysIn(t[0], t[1]) && guiClockShift(t, -guiClockLocalOffset());
-        // The CD/DVD controller refuses a command while busy: one retry. The reply overwrites clk.
-        for (i = 0; ok && i < 2; i++) {
-            memset(&clk, 0, sizeof(clk));
-            clk.year = itob(t[0] - 2000);
-            clk.month = itob(t[1]);
-            clk.day = itob(t[2]);
-            clk.hour = itob(t[3]);
-            clk.minute = itob(t[4]);
-            if (sceCdWriteClock(&clk) && !(clk.stat & CdlRTCStatCommandError))
-                return;
-        }
+        if (ok && guiClockWrite(t, 0))
+            return;
         guiMsgBox(_l(_STR_DATE_TIME_ERROR), 0, NULL); // the dialog then shows the entries again
     }
 }
@@ -2326,9 +2363,14 @@ static int guiSettingsShowGeneral(void)
         return 0;
 
     guiExitPathBegin(ui);
-    const char *exitMenuNames[] = {_l(_STR_EXIT_MENU_CONSOLE), _l(_STR_EXIT_MENU_BROWSER), _l(_STR_EXIT_MENU_BROWSER_SKIPMC), NULL};
+    // Shown in the user's order (issue #370); the stored values stay as before.
+    static const char exitMenuOrder[] = {EXIT_MENU_BROWSER, EXIT_MENU_OSDSYS_SKIPMC, EXIT_MENU_CONSOLE};
+    const char *exitMenuNames[] = {_l(_STR_EXIT_MENU_BROWSER), _l(_STR_EXIT_MENU_OSDSYS_SKIPMC), _l(_STR_EXIT_MENU_CONSOLE), NULL};
+    int exitMenuIdx = 0;
+    while (exitMenuIdx < 2 && exitMenuOrder[exitMenuIdx] != gExitMenu)
+        exitMenuIdx++;
     diaSetEnum(ui, CFG_EXITMENU, exitMenuNames);
-    diaSetInt(ui, CFG_EXITMENU, gExitMenu);
+    diaSetInt(ui, CFG_EXITMENU, exitMenuIdx);
     diaSetShowDefaultWhenEmpty(ui, CFG_CUSTOMCFGPATH, 1);
     diaSetString(ui, CFG_CUSTOMCFGPATH, gCustomSettingsPath);
     diaSetInt(ui, CFG_LASTPLAYED, gRememberLastPlayed);
@@ -2351,7 +2393,8 @@ reshow_general:
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);
-        diaGetInt(ui, CFG_EXITMENU, &gExitMenu);
+        diaGetInt(ui, CFG_EXITMENU, &exitMenuIdx);
+        gExitMenu = exitMenuOrder[exitMenuIdx >= 0 && exitMenuIdx <= 2 ? exitMenuIdx : 2];
         diaGetString(ui, CFG_CUSTOMCFGPATH, gCustomSettingsPath, sizeof(gCustomSettingsPath));
         diaGetInt(ui, CFG_LASTPLAYED, &gRememberLastPlayed);
         diaGetInt(ui, CFG_FOLDERNAV, &gEnableFolderNav);

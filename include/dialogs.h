@@ -355,6 +355,7 @@ enum UI_ITEMS {
     DATETIME_DAY,
     DATETIME_HOUR,
     DATETIME_MINUTE,
+    DATETIME_SYNC, // Date and Time: Set from Internet
 
 #ifdef PADEMU
     PADEMU_GLOBAL_BUTTON,

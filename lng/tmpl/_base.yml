@@ -2583,17 +2583,17 @@ gui_strings:
   label: EXIT_MENU
   string: Exit To
 - label: HINT_EXIT_MENU
-  string: "Console Menu: the console's own exit (FMCB or OSDMenu if installed). PS2 Browser: asks for the Browser; a card menu program may open first. Skip Card Update: the Browser without the card's menu program, whose entries return at the next power-on."
-- comment: Exit To choice. The console's own exit, as before the setting existed.
+  string: "PS2 Browser: opens the Browser, keeping the card's menu program (FMCB, OSDMenu) whenever it allows. OSDSYS (Skip Update): the console menu without the card's menu program, whose entries return at the next power-on. OSDSYS (With Update): the console's own exit."
+- comment: Exit To choice. The console's own exit (OSDSYS with the memory card system update, e.g. FMCB), as before the setting existed.
   label: EXIT_MENU_CONSOLE
-  string: Console Menu
-- comment: Exit To choice. OSDSYS asked for the Browser.
+  string: OSDSYS (With Update)
+- comment: Exit To choice. OSDSYS asked for the Browser, keeping the memory card system update when it passes the request on.
   label: EXIT_MENU_BROWSER
   string: PS2 Browser
-- comment: Exit To choice. OSDSYS asked for the Browser, skipping the memory card system update.
-  label: EXIT_MENU_BROWSER_SKIPMC
-  string: PS2 Browser (Skip Card Update)
-- comment: Main menu Exit prompt (issue 370). Replaces CONFIRMATION_EXIT, whose "Browser" was wrong when Exit To is Console Menu.
+- comment: Exit To choice. OSDSYS (the console menu) without the memory card system update.
+  label: EXIT_MENU_OSDSYS_SKIPMC
+  string: OSDSYS (Skip Update)
+- comment: Main menu Exit prompt (issue 370). Replaces CONFIRMATION_EXIT, whose "Browser" was wrong when Exit To is OSDSYS.
   label: CONFIRMATION_EXIT_APP
   string: Exit RiptOPL?
 - comment: Main menu entry. Asks this build's own GitHub release channel for a newer build.
@@ -2657,6 +2657,17 @@ gui_strings:
   string: Time
 - label: DATE_TIME_ERROR
   string: The clock was not set. Check the date and try again.
+- comment: Date and Time page button that reads the time from a web server.
+  label: DATE_TIME_SYNC
+  string: Set from Internet
+- label: HINT_DATE_TIME_SYNC
+  string: "Sets the console's clock from the Internet, in the time zone chosen in the console's System Configuration."
+- label: DATE_TIME_SYNCING
+  string: Getting the time from the Internet...
+- label: DATE_TIME_SYNCED
+  string: The clock was set from the Internet.
+- label: DATE_TIME_SYNC_ERROR
+  string: No time server answered. Check the cable and the network settings, then try again.
 - comment: Network page header above the server address rows while Network Protocol is NFS.
   label: CAT_NFS_SERVER
   string: '- NFS Server -'

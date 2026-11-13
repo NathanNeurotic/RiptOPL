@@ -22,7 +22,7 @@ Settings row, the page it is on and the key it is saved under, see
 | Sound effects, boot sound, background music | Off; stored volume 90 | Settings → Audio Settings |
 | Controller Vibration in Menus | Off | Settings → Controller Settings |
 | Remember last played | Off | Settings → General & System |
-| Exit To (main menu's Exit) | Console Menu (the console's own exit) | Settings → General & System |
+| Exit To (main menu's Exit) | OSDSYS (With Update) (the console's own exit) | Settings → General & System |
 | Network Connectivity | Off (no network adapter or network games until you choose Manual or Auto) | Settings → Game Sources |
 | SMB Version | SMB2/3 (a settings file from before this row counts as SMBv1) | Settings → Network |
 | NFS Export, NFS Writes | `/`, and Off (read only) | Settings → Network, while Protocol is NFS |
