@@ -477,16 +477,14 @@ void selfUpdateMenu(void)
     if (suInstalledRev > local)
         local = suInstalledRev; /* the file on the device is already that build */
     suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
-    if (suResult == SU_NEWEST) {
+    if (suResult == SU_NEWEST) { /* the checksum is read: offer the same swap again */
         snprintf(text, sizeof(text), _l(_STR_UPDATE_NEWEST), local);
-        guiMsgBox(text, 0, NULL);
-        return;
-    }
-    if (suResult != SU_OK) {
+    } else if (suResult != SU_OK) {
         suReport();
         return;
+    } else {
+        snprintf(text, sizeof(text), _l(_STR_UPDATE_AVAILABLE), suRemoteRev, local);
     }
-    snprintf(text, sizeof(text), _l(_STR_UPDATE_AVAILABLE), suRemoteRev, local);
     if (!guiMsgBox(text, 1, NULL))
         return;
     snprintf(text, sizeof(text), _l(_STR_UPDATE_DOWNLOADING), 0);
