@@ -40,9 +40,27 @@ elif want not in body.group(0):
     failures.append("smbman-ra smb.c: a read must share read|write (0x03), a write read (0x01)")
 
 make = read("Makefile")
-assigns = re.findall(r"^\s*SMBMAN_IRX\s*=\s*(\S+)", make, re.M)
-if assigns != ["modules/network/smbman-ra/smbman.irx"]:
-    failures.append("Makefile: SMBMAN_IRX must be smbman-ra in every flavour, got %r" % assigns)
+assignments = []
+depth = 0
+for lineno, line in enumerate(make.splitlines(), 1):
+    line = line.lstrip()
+    if not line or line.startswith("#"):
+        continue
+    if re.match(r"^(?:ifeq|ifneq|ifdef|ifndef)\b", line):
+        depth += 1
+    elif re.match(r"^endif\b", line):
+        depth -= 1
+    else:
+        # Reject *any* competing assignment, including :=, ?=, += and conditional variants.
+        match = re.match(r"^(?:(?:override|export|private)\s+)*SMBMAN_IRX\s*(?:::?=|\?=|\+=|!=|=)\s*(\S+)", line)
+        if match:
+            assignments.append((lineno, depth, match.group(1)))
+        elif re.match(r"^(?:(?:override|export|private)\s+)*define\s+SMBMAN_IRX\b", line):
+            assignments.append((lineno, depth, "<define>"))
+
+# One unconditional assignment means the same fork-built module is used by every flavour.
+if len(assignments) != 1 or assignments[0][1:] != (0, "modules/network/smbman-ra/smbman.irx"):
+    failures.append("Makefile: SMBMAN_IRX must be set unconditionally, exactly once, to smbman-ra; found %r" % assignments)
 
 if failures:
     print("\n".join(failures))
