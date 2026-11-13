@@ -253,30 +253,45 @@ static int suStep, suErrno; /* which swap step failed and why, shown after "Coul
 
 /* A copy for drives whose rename() fails (a driver with no rename, or one that refuses it): the file is
    written whole or removed, as POPSLoader's swap does. */
+static int suCopyErr; /* errno of the first failure inside suCopy, before a close or cleanup can replace it */
+
 static int suCopy(const char *from, const char *to)
 {
+    suCopyErr = 0;
     char *buf = static_cast<char *>(malloc(16 * 1024));
     int in, out, ok = 0;
-    if (buf == NULL)
+    if (buf == NULL) {
+        suCopyErr = ENOMEM;
         return -1;
+    }
     in = open(from, O_RDONLY);
+    if (in < 0)
+        suCopyErr = errno;
     out = in < 0 ? -1 : open(to, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (in >= 0 && out < 0)
+        suCopyErr = errno;
     if (in >= 0 && out >= 0) {
         int n;
         ok = 1;
         while ((n = read(in, buf, 16 * 1024)) > 0) {
             if (write(out, buf, n) != n) {
+                suCopyErr = errno ? errno : ENOSPC;
                 ok = 0;
                 break;
             }
         }
-        if (n < 0)
+        if (n < 0) {
+            suCopyErr = errno;
             ok = 0;
+        }
     }
     if (in >= 0)
         close(in);
-    if (out >= 0 && close(out) < 0)
+    if (out >= 0 && close(out) < 0) {
+        if (ok)
+            suCopyErr = errno;
         ok = 0;
+    }
     free(buf);
     if (!ok && out >= 0)
         unlink(to);
@@ -293,15 +308,24 @@ static int suRename(const char *from, const char *to, const char *toName)
             mcSync(0, NULL, &ret);
         memset(&info, 0, sizeof(info));
         strncpy(reinterpret_cast<char *>(info.EntryName), toName, sizeof(info.EntryName) - 1);
-        if (mcSetFileInfo(port, 0, strchr(from, ':') + 1, &info, 0x10 /* the name */) < 0 || mcSync(0, NULL, &ret) <= 0 || ret < 0) {
-            suErrno = ret;
+        int sub = mcSetFileInfo(port, 0, strchr(from, ':') + 1, &info, 0x10 /* the name */);
+        if (sub < 0) {
+            suErrno = sub; /* the command was not accepted */
+            return -1;
+        }
+        ret = 0;
+        if (mcSync(0, NULL, &ret) <= 0 || ret < 0) {
+            suErrno = ret < 0 ? ret : -1; /* the card's result, or the wait failed */
             return -1;
         }
     } else if (rename(from, to) != 0) {
         suErrno = errno;
-        if (suCopy(from, to) != 0) /* then the old name goes: the same result as a rename */
+        if (suCopy(from, to) != 0) { /* then the old name goes: the same result as a rename */
+            suErrno = suCopyErr;
             return -1;
-        unlink(from);
+        }
+        if (unlink(from) != 0)
+            suErrno = errno;
     }
     return !suExists(from) && suExists(to) ? 0 : -1;
 }
@@ -359,7 +383,9 @@ static void suInstallWorker(void)
     unlink(bak); /* the previous update's backup */
     suStep = 1;
     if (suRename(cur, bak, bakName) != 0) {
+        const int keep = suErrno; /* the restore below must not replace the error that is shown */
         if (!suExists(cur) && suRename(bak, cur, gBootElfName) != 0) {
+            suErrno = keep;
             suResult = SU_ERR_RESTORE; /* the old ELF is <name>.BAK: keep every file */
             goto done;
         }
@@ -368,7 +394,10 @@ static void suInstallWorker(void)
     }
     suStep = 2;
     if (suRename(fresh, cur, gBootElfName) != 0) {
-        if (suRename(bak, cur, gBootElfName) != 0) {
+        const int keep = suErrno;
+        const int restored = suRename(bak, cur, gBootElfName);
+        suErrno = keep;
+        if (restored != 0) {
             suResult = SU_ERR_RESTORE; /* the old ELF is <name>.BAK: the message names it */
             goto done;
         }
