@@ -46,7 +46,7 @@ int netTimeParseDate(const char *headers, int t[6])
     static const char months[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
     const char *p;
     char mon[4];
-    int end = 0;
+    int sec = 0, end = 0;
 
     /* The header name is case-insensitive; it starts a line. */
     for (p = headers; (p = strchr(p, '\n')) != NULL; p++)
@@ -55,8 +55,10 @@ int netTimeParseDate(const char *headers, int t[6])
     if (p == NULL)
         return 0;
     /* RFC 9110 IMF-fixdate: "Fri, 13 Nov 2026 03:37:42 GMT" */
-    /* The literal GMT and %n reject a field cut short, such as "03:37:4" when the reply ends early. */
-    if (sscanf(p + 6, " %*[^,], %d %3s %d %d:%d:%2d GMT%n", &t[2], mon, &t[0], &t[3], &t[4], &t[5], &end) != 6 || end == 0)
+    /* A whole field only: two seconds digits, then GMT, then the end of the line. */
+    const char *q = p + 6;
+    if (sscanf(q, " %*[^,], %d %3s %d %d:%d:%2d%n GMT%n", &t[2], mon, &t[0], &t[3], &t[4], &t[5], &sec, &end) != 6 || end == 0 ||
+        q[sec - 3] != ':' || (q[end] != '\r' && q[end] != '\n'))
         return 0;
     const char *m = strstr(months, mon);
     if (strlen(mon) != 3 || m == NULL || (m - months) % 3)
