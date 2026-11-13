@@ -517,8 +517,9 @@ change. On a first setup, with neither file on the card, saving the SMB values w
 <code>mc?:/POPSTARTER/</code>. If they are missing, an SMB VCD launch warns you rather than
 hanging silently.</p>
 
-<p><b>NFS:</b> POPSTARTER cannot launch over NFS, because it restarts the I/O processor and reaches only
-SMB, so the NFS page lists Ember games only; use SMB for <code>.VCD</code> games. Ember games launch over NFS as
+<p><b>NFS:</b> POPSTARTER cannot launch over NFS, because it restarts the I/O processor and has no NFS
+driver (on the network it reaches SMB, and UDPFS Files through UDPFS Assault), so the NFS page lists Ember games
+only; use SMB for <code>.VCD</code> games. Ember games launch over NFS as
 they do over SMB. See <a href="network-boot.html#nfs-ps1">PS1 over NFS</a>.</p>
 
 <h2 id="hdd-ps1">Internal HDD — APA partitions and exFAT</h2>

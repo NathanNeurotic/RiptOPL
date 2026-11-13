@@ -891,7 +891,8 @@ game folder through the menu's NFS connection, as it does over SMB. Put the <cod
 export's game folder, beside <code>CD/</code> and <code>DVD/</code>. While <b>NFS Writes</b> is Off, Ember's game
 settings and Rename are hidden on PS1 rows, and a warning says Ember cannot keep memory card saves in the game's
 folder. <b>POPSTARTER</b> (<code>.VCD</code>) cannot launch over NFS, because it restarts the I/O processor and
-reaches only SMB; the NFS page lists Ember games only. Use SMB for <code>.VCD</code> games.</p>
+has no NFS driver (on the network it reaches SMB, and UDPFS Files through UDPFS Assault); the NFS page lists Ember
+games only. Use SMB for <code>.VCD</code> games.</p>
 
 <h3 id="nfs-config-keys">NFS config file keys</h3>
 <p>Both live in <code>conf_network.cfg</code>, beside the SMB server keys, which NFS shares for its address.</p>
