@@ -2709,3 +2709,6 @@ gui_strings:
 - comment: Ember launch from an NFS export while NFS Writes is Off. Ember keeps its memory cards in the game folder, which it cannot write then.
   label: NFS_EMBER_NO_SAVES
   string: NFS Writes is Off, so Ember cannot keep memory card saves in this game's folder.
+- comment: Check for Updates: the memory card has no room for the new ELF, so nothing was changed.
+  label: UPDATE_ERR_SPACE
+  string: The memory card has no room for the new ELF. Free some space and try again. RiptOPL was not changed.

@@ -27,6 +27,7 @@
 #include "mbedtls/sha256.h"
 
 #include <errno.h>
+#include <libmc.h>
 #include <fcntl.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -67,6 +68,7 @@ enum {
     SU_ERR_WRITE,
     SU_ERR_VERIFY,
     SU_ERR_SWAP,
+    SU_ERR_SPACE, /* the card cannot hold the new ELF: nothing was changed */
     SU_ERR_MEMORY,
 };
 
@@ -240,6 +242,27 @@ static void suCheckWorker(void)
 
 static int suStep, suErrno; /* which write step failed and why, shown after "Could not replace the ELF" */
 
+/* A card allocates in 1 KB clusters. The new ELF has to fit in the free clusters plus the old ELF's own,
+   with one to spare; a card that cannot answer is left to the write to report. */
+static bool suCardFits(const char *path, int newSize)
+{
+    int type = 0, freeClusters = -1, format = 0, r = -1, old = 0;
+    int fd = open(path, O_RDONLY);
+
+    if (fd >= 0) {
+        old = lseek(fd, 0, SEEK_END);
+        close(fd);
+        if (old < 0)
+            old = 0;
+    }
+    if (mcGetInfo(path[2] - '0', 0, &type, &freeClusters, &format) < 0)
+        return true;
+    mcSync(0, NULL, &r); // mcGetInfo is async; the values are good after the sync
+    if (freeClusters < 0)
+        return true;
+    return freeClusters + (old + 1023) / 1024 >= (newSize + 1023) / 1024 + 1;
+}
+
 static void suInstallWorker(void)
 {
     SuBuffers *b = static_cast<SuBuffers *>(malloc(sizeof(SuBuffers)));
@@ -283,6 +306,13 @@ static void suInstallWorker(void)
     if (f.written != f.cap || memcmp(sha, suSha, sizeof(sha))) {
         free(f.data);
         suResult = SU_ERR_VERIFY;
+        goto done;
+    }
+
+    /* A card truncated and then filled up part-way would lose the ELF: refuse first if it cannot hold the new one. */
+    if (suIsMc(cur) && !suCardFits(cur, f.written)) {
+        free(f.data);
+        suResult = SU_ERR_SPACE;
         goto done;
     }
 
@@ -352,6 +382,9 @@ static void suReport(void)
             break;
         case SU_ERR_VERIFY:
             snprintf(text, sizeof(text), "%s", _l(_STR_UPDATE_ERR_VERIFY));
+            break;
+        case SU_ERR_SPACE:
+            snprintf(text, sizeof(text), "%s", _l(_STR_UPDATE_ERR_SPACE));
             break;
         case SU_ERR_SWAP:
             snprintf(text, sizeof(text), "%s (%d/%d)", _l(_STR_UPDATE_ERR_SWAP), suStep, suErrno);
