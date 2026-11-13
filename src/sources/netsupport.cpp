@@ -469,22 +469,8 @@ int NetSupport::applyIpConfig(void)
             }
 
             result = ps2ip_setconfig(&ip_info);
-            if (!ps2_ip_use_dhcp) {
-                // SMB/NFS need no DNS, so the field is often blank; the update check does. As Launchstation does:
-                // with none saved, ask the gateway, and 1.1.1.1 (8.8.8.8 if that is the first) as the second.
-                if (!ps2_dns[0] && !ps2_dns[1] && !ps2_dns[2] && !ps2_dns[3]) {
-                    struct ip4_addr second;
-                    int q = ps2_gateway[0] ? 1 : 8;
-
-                    if (ps2_gateway[0])
-                        dns = gw;
-                    else
-                        IP4_ADDR(&dns, 1, 1, 1, 1);
-                    IP4_ADDR(&second, q, q, q, q);
-                    dns_setserver(1, &second);
-                }
+            if (!ps2_ip_use_dhcp)
                 dns_setserver(0, &dns);
-            }
         } else
             result = 0;
 #pragma GCC diagnostic pop
