@@ -22,6 +22,7 @@
 #include "include/netsupport.h"
 #include "include/ethsupport.h"
 #include "include/ratls.h"
+#include "include/guiwait.h"
 #include "include/selfupdate.h"
 
 #include "mbedtls/sha256.h"
@@ -189,6 +190,8 @@ static int suFileSink(void *ctx, const char *data, int len)
         f->lastKb = f->written / 1024;
         snprintf(suMessage, sizeof(suMessage), _l(_STR_UPDATE_DOWNLOADING), f->lastKb);
     }
+    guiWaitBarTotal = raTlsBodyLength;
+    guiWaitBarDone = f->written;
     return 0;
 }
 
@@ -282,6 +285,7 @@ static void suInstallWorker(void)
         goto done;
     f.written = 0;
     f.lastKb = 0;
+    guiWaitBarDone = 0;
     f.headLen = 0;
     mbedtls_sha256_init(&f.sha);
     mbedtls_sha256_starts(&f.sha, 0);
@@ -336,7 +340,9 @@ static void suWait(void (*worker)(void), const char *message)
 {
     snprintf(suMessage, sizeof(suMessage), "%s", message);
     suBusy = 1;
+    guiWaitBarTotal = 0; /* the bar appears once a download reports its size */
     guiHandleDeferedIO(&suBusy, suMessage, IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(worker), 0);
+    guiWaitBarTotal = 0;
 }
 
 static void suReport(void)

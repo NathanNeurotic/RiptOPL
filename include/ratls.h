@@ -62,6 +62,8 @@ int raTlsRequest(const ratls_io_t *io, const char *host, const char *path, const
    200 with a Content-Length of 1..max_body and no transfer or content encoding is taken. Returns the
    body length, RATLS_ERR_REDIRECT with the Location target in location (301/302/303/307/308), or
    RATLS_ERR_*. Certificates are verified exactly as for raTlsRequest. */
+/* The Content-Length of the body raTlsDownload last accepted, set before the first sink call (a progress bar total). */
+extern int raTlsBodyLength;
 int raTlsDownload(const ratls_io_t *io, const char *host, const char *path, const char *user_agent,
                   const ratls_anchor_t *anchors, int anchor_count, char *buf, int max, int max_body,
                   ratls_sink_t sink, void *sink_ctx, char *location, int location_size);

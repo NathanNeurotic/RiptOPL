@@ -368,6 +368,8 @@ static int copyLocation(const char *buf, int bodyAt, char *location, int size)
     return n > 0;
 }
 
+int raTlsBodyLength;
+
 int raTlsDownload(const ratls_io_t *io, const char *host, const char *path, const char *user_agent,
                   const ratls_anchor_t *anchors, int anchor_count, char *buf, int max, int max_body,
                   ratls_sink_t sink, void *sink_ctx, char *location, int location_size)
@@ -428,6 +430,7 @@ int raTlsDownload(const ratls_io_t *io, const char *host, const char *path, cons
     if ((value = headerValue(buf, bodyAt, "Content-Encoding")) != NULL && strncmp(value, "identity", 8))
         goto out;
 
+    raTlsBodyLength = want;
     got = len - bodyAt;
     if (got > want)
         got = want; /* never hand on bytes past the declared body */

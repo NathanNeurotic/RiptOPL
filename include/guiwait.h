@@ -5,6 +5,10 @@ struct UIItem;
 
 // Hands a request to the I/O thread and keeps the GUI drawing until it clears `*flag`. The flag is a file-static int owned by the
 // caller and `data` a file-static handler, so a late write by a still-blocked I/O thread after a timeout is harmless.
+// A wait screen shows a progress bar while the total is above zero; the I/O worker updates the done count.
+extern volatile int guiWaitBarTotal;
+extern volatile int guiWaitBarDone;
+
 class DeferredIoWait
 {
 public:
