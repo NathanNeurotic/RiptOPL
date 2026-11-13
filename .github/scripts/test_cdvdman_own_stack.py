@@ -99,6 +99,15 @@ check(sync_read.index('WaitSema(cdvdman_syncsema)') < sync_read.index('cdvdman_c
 check(re.search(r'if \(cdread_job == CDREAD_JOB_SYNC\) \{[^}]*SignalSema\(cdvdman_syncsema\);\s*continue;', thread)
       is not None, 'a sync read must be handed back to its caller without the reading thread completing it')
 
+# Mode 2 (#399): the reading thread does a sync read at the caller's priority, lower as well as higher, as when the
+# read ran in the caller's thread. It must get that priority before it is woken, or it starts first at its own.
+queue_read = body(cdvdman, 'static int cdvdman_QueueRead(')
+check('job == CDREAD_JOB_SYNC' in queue_read
+      and 'ChangeThreadPriority(cdvdman_ReadingThreadID, info.currentPriority);' in queue_read
+      and queue_read.index('ChangeThreadPriority(cdvdman_ReadingThreadID') < queue_read.index('SignalSema(cdrom_rthread_sema)'),
+      'a sync read must give the reading thread the caller\'s exact priority before waking it')
+check('cdvdman_lend_priority' not in sync_read, 'cdvdman_SyncRead must not lend priority after the reading thread is woken')
+
 # The stack that work now runs on.
 check('thread_param.stacksize = 0x1000;' in start_threads, 'the reading thread keeps its 4 KB stack')
 

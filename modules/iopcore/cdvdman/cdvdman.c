@@ -746,6 +746,19 @@ static int cdvdman_QueueRead(u32 lsn, u32 sectors, u16 sector_size, void *buf, i
 
     CpuResumeIntr(OldState);
 
+    /* Mode 2 read the data in the game's own thread, at the game's priority, so the game's higher-priority IOP
+       threads (sound, movie streaming) kept running during a long read. The read now runs on cdvdman_cdread_Thread:
+       give it the caller's priority, lower as well as higher, before it is woken, so that it does not start first
+       at its own priority. It drops back when the read is done. While a mount is pending on that thread, it is only raised. */
+    if (job == CDREAD_JOB_SYNC) {
+        iop_thread_info_t info;
+
+        if (cdread_mount)
+            cdvdman_lend_priority();
+        else if (ReferThreadStatus(TH_SELF, &info) == 0)
+            ChangeThreadPriority(cdvdman_ReadingThreadID, info.currentPriority);
+    }
+
     if (IsIntrContext)
         iSignalSema(cdrom_rthread_sema);
     else
@@ -781,8 +794,6 @@ int cdvdman_SyncRead(u32 lsn, u32 sectors, u16 sector_size, void *buf)
         DPRINTF("cdvdman_SyncRead: exiting (sync_flag)...\n");
         return 0;
     }
-
-    cdvdman_lend_priority();
 
     WaitSema(cdvdman_syncsema); // signalled once per sync read, and only the holder of the drive lock waits here
 
