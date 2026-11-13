@@ -179,11 +179,15 @@ static void IGR_PauseThreads(void)
 // and the GS's own FIFO is empty (CSR.FIFO 01): a DMA can end with its last data still queued in front of a SIGNAL.
 // VIF1_STAT.INT (bit 11) is left out: it only records that a VIF code's interrupt bit was seen and stays set until the
 // game writes FBRST.STC, which a MARK code's interrupt (no stall) never makes it do; a real stall shows in VIS.
-// Returns non-zero when they did not get there within the wait (COP0 Count ticks). They are checked with all of them
-// held, so no handler can start a transfer after the check
+// That is the wait. What can still refuse the menu once the wait is over is only what the menu's own channel-1 packets
+// cannot get past: channel 1 or 2 running, or VIF1 stopped or reading back (as RIPPS2's check was): a GIF path left
+// active (APATH, OPH, P1Q: a packet that ends without EOP leaves it so for good), a GIF or VIF1 FIFO or a GS FIFO that
+// never drains are not refusals: each packet starts with FLUSHA, and a draw that cannot get through ends in mint green.
+// Returns non-zero when those did not clear within the wait (COP0 Count ticks). They are checked with all of the
+// interrupts held, so no handler can start a transfer after the check
 static u32 IGR_HoldGs(u32 wait)
 {
-    u32 on = 0, dmac = 0, busy, t, now;
+    u32 on = 0, dmac = 0, busy, hard, vif, t, now;
 
     asm volatile("mfc0 %0, $9"
                  : "=r"(t));
@@ -198,14 +202,15 @@ static u32 IGR_HoldGs(u32 wait)
         *IGR_I_MASK = on = *IGR_I_MASK & IGR_INTC_GIFS; // those of GS and VIF1 that are on: off
         *R_EE_D_STAT = dmac = *R_EE_D_STAT & IGR_DMAC_HELD;
         EIntr();
-        busy = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (((*(vu32 *)0x10003c00 & ~0x800) | *(vu32 *)0x10003020) & 0x1f800f00) |
-               ((*(vu32 *)0x12001000 & 0xc000) ^ 0x4000);
+        vif = *(vu32 *)0x10003c00;
+        hard = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (vif & 0x800700);
+        busy = hard | (((vif & ~0x800) | *(vu32 *)0x10003020) & 0x1f800f00) | ((*(vu32 *)0x12001000 & 0xc000) ^ 0x4000);
         asm volatile("mfc0 %0, $9"
                      : "=r"(now));
     } while (busy && now - t < wait);
     IGR_HeldIntc |= on;
     IGR_HeldDmac = dmac;
-    return busy;
+    return hard;
 }
 
 static void IGR_ResumeGame(void) // the pause, undone in reverse
