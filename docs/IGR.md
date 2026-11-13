@@ -256,7 +256,8 @@ only once its transfers are idle, so a transfer that stops on a VIF code's inter
 parts from a DMA handler, still finishes first.
 
 Report the colour with the game's ID and the device it runs from. No blink at all with Debug Colors on
-means the combination never reached the menu: check the list under *Nothing happens* first.
+means the combination never reached the menu (check the list under *Nothing happens* first), or the game's
+transfers stayed busy and the game was given back, as the entry above describes.
 
 ---
 
