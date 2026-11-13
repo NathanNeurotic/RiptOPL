@@ -609,9 +609,23 @@ static int exitCardUpdateIgnoresBrowser(void)
             // FMCB: its config is on the card and OSDMenu's is on neither card (OSDMenu may leave FREEMCB.CNF behind).
             snprintf(path, sizeof(path), "mc%d:/SYS-CONF/FREEMCB.CNF", port);
             if ((fd = open(path, O_RDONLY)) >= 0) {
-                // FMCB reads mass:/FREEMCB.CNF before the card's copy (its loadConfig); RiptOPL sees
-                // that USB drive as mass0: when its USB driver is loaded, else the card's copy decides.
-                int usb = open("mass0:/FREEMCB.CNF", O_RDONLY);
+                // FMCB reads mass:/FREEMCB.CNF (its first USB drive) before the card's copy (its
+                // loadConfig). massN: is shared with MX4SIO and exFAT HDD, so use the first USB one.
+                int usb = -1;
+                for (int unit = 0; unit < MAX_BDM_DEVICES && usb < 0; unit++) {
+                    char root[10], driver[16] = {0};
+                    snprintf(root, sizeof(root), "mass%d:/", unit);
+                    int dir = fileXioDopen(root);
+                    if (dir < 0)
+                        continue;
+                    bdmReadDriverName(dir, driver, sizeof(driver));
+                    fileXioDclose(dir);
+                    if (strcmp(driver, "usb"))
+                        continue;
+                    snprintf(path, sizeof(path), "mass%d:/FREEMCB.CNF", unit);
+                    usb = open(path, O_RDONLY);
+                    break; // FMCB only looks at the first USB drive
+                }
                 match = exitFmcbDropsBrowser(usb >= 0 ? usb : fd);
                 if (usb >= 0)
                     close(usb);
