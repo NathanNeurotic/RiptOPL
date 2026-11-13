@@ -39,7 +39,7 @@
     <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
     <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
     <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
-    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/UDPFS/UDPBD)</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/NFS/UDPFS/UDPBD)</a>
     <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
     <h4>Features</h4>
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
@@ -89,7 +89,7 @@
     <span class="sys-pill">PS1 POPSTARTER + EMBER</span>
   </div>
   <div class="sys-strip-row">
-    <span class="sys-pill">SMB / UDPFS / UDPBD / HTTP</span>
+    <span class="sys-pill">SMB / NFS / UDPFS / UDPBD / HTTP</span>
     <span class="sys-pill">APA &amp; EXFAT</span>
   </div>
 </div>
@@ -135,7 +135,7 @@
 every device, with its own PS2, PS1, ELF, All in One and Recent views. See the one-way migration note above.</li>
 <li><b>Neutrino external core (per-game)</b> — hand a game to an external <code>neutrino.elf</code> instead of OPL's
 built-in core, with a full <b>Neutrino Path</b> setting and a structured <b>Launch Args</b> screen.</li>
-<li><b><a href="network-boot.html">Network libraries</a></b> — SMB, UDPFS Files or IMG, and UDPBD, plus <a href="http.html">HTTP</a> ISO catalogs. UDPFS and UDPBD default to Neutrino and also support OPL per game; HTTP uses OPL. Available formats, VMC support and validation differ by source.</li>
+<li><b><a href="network-boot.html">Network libraries</a></b> — SMB, NFS, UDPFS Files or IMG, and UDPBD, plus <a href="http.html">HTTP</a> ISO catalogs. UDPFS and UDPBD default to Neutrino and also support OPL per game; SMB and NFS follow the global Loader Core (&lt;OPL&gt; unless you change it) unless a game picks its own; HTTP uses OPL. Available formats, VMC support and validation differ by source.</li>
 <li><b><a href="ps1-vcd.html">PS1 games</a></b> — POPSTARTER and Ember share one library, with separate PS2/PS1 views or a mixed list. POPSTARTER uses VCDs; Ember uses CUE/BIN images. POPS UDPFS also plays CUE/BIN with no manual conversion step through Okeanos's UDPFS Assault driver. That CUE/BIN playback is NOT TESTED on a real console. Setup, companion files and supported sources depend on the core.</li>
 <li><b>Category settings layout</b> — organised category pages (Game Sources, General &amp; System, Network, Interface, Game Launching, PS Emulation Settings, Controller Settings, Audio Settings, Language) instead of one flat list.</li>
 <li><b><a href="library.html">Library organization</a></b> — per-device pages or All Games, optional folder browsing, hidden games and mixed PS2/PS1 displays.</li>
@@ -155,7 +155,7 @@ built-in core, with a full <b>Neutrino Path</b> setting and a structured <b>Laun
 <a class="tile" href="hdd.html"><span class="icon icon-hdd"></span><b>Internal HDD</b><span>APA/PFS &amp; exFAT (BDMA)</span></a>
 <a class="tile" href="psx-dvr.html"><span class="icon icon-hdd"></span><b>PSX DVR (DESR)</b><span>Experimental read-only DVR ISO loading; special Neutrino required</span></a>
 <a class="tile" href="pc-card-cf.html"><span class="icon icon-hdd"></span><b>PC CARD CompactFlash</b><span>Early Japanese PS2 models; experimental native core; hardware testing pending</span></a>
-<a class="tile" href="network-boot.html"><span class="icon icon-netboot"></span><b>Network</b><span>SMB, UDPFS &amp; UDPBD</span></a>
+<a class="tile" href="network-boot.html"><span class="icon icon-netboot"></span><b>Network</b><span>SMB, NFS, UDPFS &amp; UDPBD</span></a>
 <a class="tile" href="ps1-vcd.html"><span class="icon icon-ps1"></span><b>PS1 Games</b><span>POPSTARTER + Ember</span></a>
 <a class="tile" href="neutrino.html"><span class="icon icon-neutrino"></span><b>Neutrino Core</b><span>Runtime path and launch arguments</span></a>
 <a class="tile" href="coverflow.html"><span class="icon icon-coverflow"></span><b>Coverflow &amp; PSBBN Flow</b><span>Choose a cover-art theme and learn its controls</span></a>
@@ -176,7 +176,7 @@ built-in core, with a full <b>Neutrino Path</b> setting and a structured <b>Laun
 
 <h2 id="ecosystem">Companion Ecosystem &amp; Tools</h2>
 <section class="callout info" id="external-tools"><div class="h">External Tools &amp; Services</div>
-<p><b><a href="https://github.com/NathanNeurotic/PS2-Servers">PS2-Servers</a></b> by <b><a href="https://github.com/NathanNeurotic">Ripto</a></b> — all-in-one PC server launcher for <b>SMB, UDPFS, UDPBD and HTTP</b>.<br>
+<p><b><a href="https://github.com/NathanNeurotic/PS2-Servers">PS2-Servers</a></b> by <b><a href="https://github.com/NathanNeurotic">Ripto</a></b> — all-in-one PC server launcher for <b>SMB, NFS, UDPFS, UDPBD and HTTP</b>.<br>
 <b><a href="https://github.com/YouKnow-sys/udpfs-server">udpfs-server</a></b> by <b><a href="https://github.com/YouKnow-sys">YouKnow-sys</a></b> — the same idea from a phone: an <b>Android</b> app that shares folders and disk images to the PS2 over <b>UDPFS</b>, found by broadcast so there is no server address to type in on the console. Built on <a href="https://github.com/pcm720/udpfsd">udpfsd</a> by <a href="https://github.com/pcm720">pcm720</a>; MIT licensed.<br>
 <b><a href="https://github.com/Luden02/OrbitPS2-Manager">OrbitPS2 Manager</a></b> by <b><a href="https://github.com/Luden02">Luden</a></b> — cross-platform PC library manager for importing discs, artwork/screenshots, ZSO compression, per-game settings and VMC management.<br>
 <b><a href="https://github.com/akilluminati47/RIPPS2">RIPPS2</a></b> by <b><a href="https://github.com/akilluminati47">Akilluminati47</a></b> — a PS2 front end and loader developed in collaboration with RiptOPL, with its own interface, game libraries, Memory Files browser and save tools. Built on the RiptOPL legacy C tree; see its <a href="https://github.com/akilluminati47/RIPPS2/releases">releases</a> for current PS2 builds.<br>

@@ -39,7 +39,7 @@
     <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
     <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
     <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
-    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/UDPFS/UDPBD)</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/NFS/UDPFS/UDPBD)</a>
     <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
     <h4>Features</h4>
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
@@ -126,7 +126,14 @@ This page is for a <b>first</b> install. To update, each channel carries a loose
 loader inside that kit. Overwrite the ELF you already have; <code>POPS/</code>, <code>EMBER/</code>, <code>neutrino/</code> and
 your settings stay where they are. Use the full kit instead if companion folders are missing or the release notes announce updated
 companion cores or modules: replacing only the loader does not update Neutrino or Ember. Back up your configuration and save cards
-before updating.</div>
+before updating.
+<p>The Korium, IncebtIon, RetroAchievements and LLVM builds can also do this themselves: <b>Check for Updates</b>, just above About
+in the main menu, asks the build's own rolling release for a newer build and, when you press OK, replaces the running ELF after
+checking its SHA-256. It needs RiptOPL started from a memory card or a USB/exFAT drive, a network connection with internet
+access, and the console clock set (<b>Settings &rarr; General &amp; System &rarr; Date and Time</b>). It replaces only the ELF.
+RiptOPLite, debug and variant builds do not have it. See
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/CHECK-FOR-UPDATES.md">Check for Updates</a>.
+<b>Not tested on hardware yet.</b></p></div>
 
 <details class="deep"><summary>What is inside the install kit?</summary>
 <p>Each <code>RIPTOPL-&lt;edition&gt;.zip</code> contains:</p>

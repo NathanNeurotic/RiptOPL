@@ -39,7 +39,7 @@
     <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
     <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
     <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
-    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/UDPFS/UDPBD)</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/NFS/UDPFS/UDPBD)</a>
     <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
     <h4>Features</h4>
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
@@ -118,7 +118,7 @@ multi-disc setups, and memory-card storage — see the
 list with filters, or one locked library. They remain views of the same device page — with the same
 covers, favorites, and per-game settings — rather than separate device tabs.</p>
 
-<div class="callout info"><div class="h">POPS UDPFS and Ember network libraries</div><b>UDPFS Files</b> lists uppercase <code>POPS/*.VCD</code> and <code>POPS/*.cue</code> games alongside Ember titles and launches them through <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST">Okeanos's UDPFS Assault TEST</a> pre-release, which serves every POPSTARTER file and VMC save from the server and builds a VCD from a cue sheet on the fly. No USB device is involved. See <a href="ps1-vcd.html#pops-udpfs">setup, supplied files and credits</a>. The VCD handoff has not been tested on a real console. UDPBD and UDPFS IMG remain Ember-only.</div>
+<div class="callout info"><div class="h">POPS UDPFS and Ember network libraries</div><b>UDPFS Files</b> lists uppercase <code>POPS/*.VCD</code> and <code>POPS/*.cue</code> games alongside Ember titles and launches them through <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1">Okeanos's UDPFS Assault 1.0.1</a>, which serves every POPSTARTER file and VMC save from the server and builds a VCD from a cue sheet on the fly. No USB device is involved. See <a href="ps1-vcd.html#pops-udpfs">setup, supplied files and credits</a>. The VCD handoff has not been tested on a real console. UDPBD, UDPFS IMG and NFS remain Ember-only.</div>
 
 <h2 id="default-game-view">PS2/PS1 Game Display</h2>
 
@@ -260,9 +260,12 @@ default — or, for a game, the global row — applies. Every other line in the 
 <code>480</code> as "480p"; it has always been 480i, and the 480i / 480p rows now say so.</p>
 
 <h3>Device support</h3>
-<p>Ember titles are supported on <b>USB, MX4SIO, iLink, exFAT-ATA, MMCE, SMB, APA/PFS HDD,
+<p>Ember titles are supported on <b>USB, MX4SIO, iLink, exFAT-ATA, MMCE, SMB, NFS, APA/PFS HDD,
 UDPFS and UDPBD</b>. Ordinary device pages merge Ember folders with their POPSTARTER rows.
-UDPFS Files also lists uppercase <code>POPS/*.VCD</code>; UDPBD and UDPFS IMG remain Ember-only.
+UDPFS Files also lists uppercase <code>POPS/*.VCD</code>; UDPBD, UDPFS IMG and NFS remain Ember-only.
+Over NFS with <b>NFS Writes</b> Off, Ember's game settings and Rename are hidden and a warning says Ember
+cannot keep memory card saves in the game's folder (<a href="network-boot.html#nfs-ps1">PS1 over NFS</a>).
+<b>Not tested on hardware.</b>
 A device with no <code>EMBER/</code> library simply contributes no
 Ember rows, and every ordinary device's POPSTARTER library lists exactly as before.</p>
 
@@ -293,7 +296,7 @@ not reset the IOP, so it needs no BDMA equip and no memory-card driver pair on a
   <thead><tr><th>Device</th><th>Location</th></tr></thead>
   <tbody>
     <tr><td>USB / MMCE / MX4SIO / iLink / exFAT HDD</td><td>An <code>EMBER/</code> folder at the device root, beside <code>POPS/</code>.</td></tr>
-    <tr><td>SMB / UDPFS Files</td><td>An <code>EMBER/</code> folder in the share's game folder, beside <code>CD/</code> and <code>DVD/</code>.</td></tr>
+    <tr><td>SMB / NFS / UDPFS Files</td><td>An <code>EMBER/</code> folder in the share's (or export's) game folder, beside <code>CD/</code> and <code>DVD/</code>. NFS lists Ember games only.</td></tr>
     <tr><td>UDPBD / UDPFS IMG</td><td>An <code>EMBER/</code> folder at the served disk image's root, even when a BDM prefix puts <code>CD/</code> and <code>DVD/</code> in a subfolder. For PS1 games, these two list Ember games only.</td></tr>
     <tr><td>Internal HDD (APA/PFS)</td><td>An exact <code>__.EMBER</code>, <code>__.EMBER0</code> … <code>__.EMBER9</code> partition holding an <code>EMBER/</code> folder.</td></tr>
   </tbody>
@@ -334,18 +337,18 @@ copied, nothing already there is overwritten, and a copy that fails part way is 
 <p>From <a href="https://github.com/akilluminati47/RIPPS2">RIPPS2</a> builds 85, 89 and 115 by <a href="https://github.com/akilluminati47">akilluminati47</a>. NOT TESTED on hardware.</p>
 
 <h2 id="pops-udpfs">POPS UDPFS with BDM-UDPFS Assault</h2>
-<p>RiptOPL uses <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST">Okeanos's UDPFS Assault TEST</a> pre-release (2026-10-28; it replaces
+<p>RiptOPL uses <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1">Okeanos's UDPFS Assault 1.0.1</a> (2026-11-08; it replaces the 2026-10-28 TEST pre-release and
 <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0">1.0.0</a>) as its only POPSTARTER UDPFS BDMA driver. It serves every <code>mass:</code> request from the UDPFS server, including POPS dependencies
 and VMC writes. <strong>USB is not required.</strong> The older Alpha driver, which tried USB first and only
 fetched VCDs from the network, is no longer bundled or selected. The driver starts again after POPSTARTER
 resets the IOP, independently of RiptOPL's own UDPFS connection, and is separate from Neutrino's PS2 UDPFS
 loader.</p>
 
-<p><strong>BDMA Mode → UDPFS</strong> uses <code>POPS/usbd.irx.udpfs</code> (the unmodified 51,029-byte
+<p><strong>BDMA Mode → UDPFS</strong> uses <code>POPS/usbd.irx.udpfs</code> (the unmodified 61,949-byte
 <code>udp_fs_assault.irx</code>) and <code>POPS/usbhdfsd.irx.udpfs</code> (the 34,508-byte
 <code>usbd_bd_assault.irx</code>). They install as <code>mc?:/POPSTARTER/usbd.irx</code> and
 <code>usbhdfsd.irx</code>. With <strong>VCD BDMA Apply on Launch</strong> enabled, a UDPFS game equips this pair
-automatically; a matching installed pair is not copied again, and a 1.0.0 or Alpha pair counts as stale and is replaced. With
+automatically; a matching installed pair is not copied again, and a TEST, 1.0.0, Alpha or USB-first pair counts as stale and is replaced. With
 automatic equip disabled, equip <strong>UDPFS</strong> manually before launching.</p>
 
 <p>Keep all support files in <code>POPS/</code> under the server's shared root (<code>udpfs:/POPS/</code> while
@@ -361,7 +364,7 @@ name always wins, and the list shows that game once. One <code>.bin</code> per d
 both work. Upstream limits: track 1 must be MODE2/2352, no PREGAP/POSTGAP, every track needs INDEX 01,
 <code>.bin</code> sizes must be multiples of 2352, cue sheets up to 16 KiB and 99 tracks, images under 4 GiB.
 The driver opens each <code>.bin</code> once at start (about 10 ms per file) and uses about 46 KB more IOP RAM
-than 1.0.0. A cue game's disc ID is not read from the image in the list or for the RetroGEM barcode; name
+than 1.0.0; the 1.0.1 module file is also 10,920 bytes larger than the TEST one. A cue game's disc ID is not read from the image in the list or for the RetroGEM barcode; name
 the file <code>SLUS_123.45.Title.cue</code> if you want the ID shown. <strong>NOT TESTED</strong> on a real console.</p>
 
 <table>
@@ -513,6 +516,11 @@ change. On a first setup, with neither file on the card, saving the SMB values w
 <p>The SMB modules themselves ship in the release's <code>POPS/</code> folder — copy them to
 <code>mc?:/POPSTARTER/</code>. If they are missing, an SMB VCD launch warns you rather than
 hanging silently.</p>
+
+<p><b>NFS:</b> POPSTARTER cannot launch over NFS, because it restarts the I/O processor and has no NFS
+driver (on the network it reaches SMB, and UDPFS Files through UDPFS Assault), so the NFS page lists Ember games
+only; use SMB for <code>.VCD</code> games. Ember games launch over NFS as
+they do over SMB. See <a href="network-boot.html#nfs-ps1">PS1 over NFS</a>.</p>
 
 <h2 id="hdd-ps1">Internal HDD — APA partitions and exFAT</h2>
 
