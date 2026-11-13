@@ -101,11 +101,23 @@ check(re.search(r'if \(cdread_job == CDREAD_JOB_SYNC\) \{[^}]*SignalSema\(cdvdma
 
 # Mode 2 (#399): the reading thread does a sync read at the caller's priority, lower as well as higher, as when the
 # read ran in the caller's thread. It must get that priority before it is woken, or it starts first at its own.
+def sync_priority_exact(src):
+    # The assignment outside a pending mount must not be limited to priorities above the thread's own: a game
+    # reading from a lower-priority thread must have the read lowered too.
+    m = re.search(r'else if \(ReferThreadStatus\(TH_SELF, &info\) == 0\)\s*'
+                  r'ChangeThreadPriority\(cdvdman_ReadingThreadID, info\.currentPriority\);', src)
+    return ('job == CDREAD_JOB_SYNC' in src and m is not None
+            and m.start() < src.index('SignalSema(cdrom_rthread_sema)'))
+
+
 queue_read = body(cdvdman, 'static int cdvdman_QueueRead(')
-check('job == CDREAD_JOB_SYNC' in queue_read
-      and 'ChangeThreadPriority(cdvdman_ReadingThreadID, info.currentPriority);' in queue_read
-      and queue_read.index('ChangeThreadPriority(cdvdman_ReadingThreadID') < queue_read.index('SignalSema(cdrom_rthread_sema)'),
+check(sync_priority_exact(queue_read),
       'a sync read must give the reading thread the caller\'s exact priority before waking it')
+# The check itself must reject the old raise-only rule.
+raise_only = queue_read.replace('ReferThreadStatus(TH_SELF, &info) == 0)',
+                                'ReferThreadStatus(TH_SELF, &info) == 0 && info.currentPriority < CDREAD_THREAD_PRIORITY)')
+check(raise_only != queue_read and not sync_priority_exact(raise_only),
+      'the sync-priority check must reject a raise-only priority rule')
 check('cdvdman_lend_priority' not in sync_read, 'cdvdman_SyncRead must not lend priority after the reading thread is woken')
 
 # The stack that work now runs on.
