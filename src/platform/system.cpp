@@ -618,7 +618,9 @@ static int exitCardUpdateIgnoresBrowser(void)
                     int dir = fileXioDopen(root);
                     if (dir < 0)
                         continue;
-                    bdmReadDriverName(dir, driver, sizeof(driver));
+                    // The same call as bdmReadDriverName (bdmsupport sits above system), on a
+                    // slot whose Dopen just succeeded.
+                    fileXioIoctl2(dir, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, driver, sizeof(driver) - 1);
                     fileXioDclose(dir);
                     if (strcmp(driver, "usb"))
                         continue;
