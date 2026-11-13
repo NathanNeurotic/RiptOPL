@@ -192,8 +192,9 @@ static int suFileSink(void *ctx, const char *data, int len)
     return 0;
 }
 
-/* The network, raised the way the RA lookup finds it: the Network device's stack (SMB or NFS), a link
-   and an address. */
+/* The network, raised the way the RA lookup raises it: the Network device's stack (SMB or NFS) with the
+   saved settings applied, a link and an address. Loading the modules alone is not enough: ps2ip starts
+   with a fixed 192.168.0.80 and no DNS server until the settings (DHCP or static, with DNS) are applied. */
 static int suNetworkUp(void)
 {
     u8 ip[4], mask[4], gw[4];
@@ -201,7 +202,7 @@ static int suNetworkUp(void)
 
     if (ratlsNicBusy())
         return SU_ERR_NETBUSY;
-    if (netEnsureModules(gNetworkProtocol == NET_PROTO_NFS ? NET_PROTO_NFS : NET_PROTO_SMB) < 0)
+    if (ethLoadInitModules() != 0)
         return SU_ERR_NETWORK;
     for (i = 0; i < 40; i++) { /* a DHCP lease can take a few seconds */
         if (ethGetNetConfig(ip, mask, gw) >= 0 && (ip[0] | ip[1] | ip[2] | ip[3]) != 0)
