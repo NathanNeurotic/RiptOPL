@@ -550,6 +550,37 @@ int sysGetDiscID(char *hexDiscID)
 //   path sits at offset 12440 in the update, as Launchstation checks (its PR #362).
 // - FMCB opens its own menu (issue #370, reporter's console). Its config, SYS-CONF/FREEMCB.CNF,
 //   is on the same card; if OSDMenu's SYS-CONF/OSDMENU.CNF is on either card, it is left alone.
+//   Since FMCB 1.93, OSDSYS_Inner_Browser = 0 (AUTO) or 1 passes BootBrowser on, so the Browser
+//   opens with FMCB's menu kept; 2 (force OFF, every 1.9x installer's default) drops it.
+static int exitFmcbDropsBrowser(int fd)
+{
+    // Line by line, as FMCB parses it: '#' lines are comments, the key must start the entry,
+    // and a later entry wins. A missing key keeps the installer's default, OFF.
+    static const char key[] = "OSDSYS_Inner_Browser";
+    char buf[256], line[48];
+    int drops = 1, len = 0, n, i;
+    do {
+        n = read(fd, buf, sizeof(buf));
+        for (i = 0; i < (n > 0 ? n : 1); i++) {
+            char c = n > 0 ? buf[i] : '\n'; // end of file ends the last line
+            if (c != '\n' && c != '\r') {
+                if (len < (int)sizeof(line) - 1)
+                    line[len++] = c;
+                continue;
+            }
+            line[len] = '\0';
+            const char *p = line + strspn(line, " \t");
+            if (!strncmp(p, key, sizeof(key) - 1) && strchr(" \t=", p[sizeof(key) - 1])) {
+                p += sizeof(key) - 1;
+                p += strspn(p, " \t=");
+                drops = *p != '0' && *p != '1';
+            }
+            len = 0;
+        }
+    } while (n > 0);
+    return drops;
+}
+
 static int exitCardUpdateIgnoresBrowser(void)
 {
     char romver[16] = {0}, path[40], buf[18];
@@ -578,8 +609,29 @@ static int exitCardUpdateIgnoresBrowser(void)
             // FMCB: its config is on the card and OSDMenu's is on neither card (OSDMenu may leave FREEMCB.CNF behind).
             snprintf(path, sizeof(path), "mc%d:/SYS-CONF/FREEMCB.CNF", port);
             if ((fd = open(path, O_RDONLY)) >= 0) {
+                // FMCB reads mass:/FREEMCB.CNF (its first USB drive) before the card's copy (its
+                // loadConfig). massN: is shared with MX4SIO and exFAT HDD, so use the first USB one.
+                int usb = -1;
+                for (int unit = 0; unit < MAX_BDM_DEVICES && usb < 0; unit++) {
+                    char root[10], driver[16] = {0};
+                    snprintf(root, sizeof(root), "mass%d:/", unit);
+                    int dir = fileXioDopen(root);
+                    if (dir < 0)
+                        continue;
+                    // The same call as bdmReadDriverName (bdmsupport sits above system), on a
+                    // slot whose Dopen just succeeded.
+                    fileXioIoctl2(dir, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, driver, sizeof(driver) - 1);
+                    fileXioDclose(dir);
+                    if (strcmp(driver, "usb"))
+                        continue;
+                    snprintf(path, sizeof(path), "mass%d:/FREEMCB.CNF", unit);
+                    usb = open(path, O_RDONLY);
+                    break; // FMCB only looks at the first USB drive
+                }
+                match = exitFmcbDropsBrowser(usb >= 0 ? usb : fd);
+                if (usb >= 0)
+                    close(usb);
                 close(fd);
-                match = 1;
                 for (int other = 0; other < 2 && match; other++) {
                     snprintf(path, sizeof(path), "mc%d:/SYS-CONF/OSDMENU.CNF", other);
                     if ((fd = open(path, O_RDONLY)) >= 0) {
@@ -596,18 +648,23 @@ static int exitCardUpdateIgnoresBrowser(void)
 
 void sysExecExit(int toMenuChoice)
 {
-    // Issue #370: the console's own exit opens its menu (or a card update such as FMCB), not the
-    // Browser. These ask OSDSYS for the Browser, as Launchstation's PS2 system browser rows do.
-    // On LoadBOOTer and FMCB cards only SkipMc reaches the Browser, so the plain Browser choice adds it.
-    int browserArgs = 0;
-    if (toMenuChoice && gExitMenu != EXIT_MENU_CONSOLE)
-        browserArgs = (gExitMenu == EXIT_MENU_BROWSER_SKIPMC || exitCardUpdateIgnoresBrowser()) ? 2 : 1;
+    // Issue #370: the console's own exit opens OSDSYS with the card update (FMCB, OSDMenu).
+    // PS2 Browser asks OSDSYS for the Browser, as Launchstation's PS2 system browser rows do, and
+    // adds SkipMc only on cards whose update would drop the request (LoadBOOTer, FMCB on OFF).
+    // OSDSYS (Skip Update) is OSDSYS with SkipMc alone. ROMs before v5 ignore SkipMc.
+    char *args[2] = {(char *)"BootBrowser", (char *)"SkipMc"};
+    char **argv = args;
+    int argc = 0;
+    if (toMenuChoice && gExitMenu == EXIT_MENU_BROWSER)
+        argc = exitCardUpdateIgnoresBrowser() ? 2 : 1;
+    else if (toMenuChoice && gExitMenu == EXIT_MENU_OSDSYS_SKIPMC) {
+        argv = &args[1];
+        argc = 1;
+    }
     // Deinitialize without shutting down active devices.
     host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
-    if (browserArgs) {
-        char *args[2] = {(char *)"BootBrowser", (char *)"SkipMc"};
-        ExecOSD(browserArgs, args);
-    }
+    if (argc)
+        ExecOSD(argc, argv);
     exit(0);
 }
 
