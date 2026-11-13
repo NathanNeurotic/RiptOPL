@@ -86,10 +86,14 @@ if 'configGetTimezone() - 540 + (configIsDaylightSavingEnabled() ? 60 : 0)' not 
     failures.append('guiClockLocalOffset must be configGetTimezone() - 540 (+60 with daylight saving)')
 # The write rebuilds the request on each try (the reply overwrites it) and checks the command error bit.
 show = function_text(settings, 'static void guiSettingsShowDateTime(')
-retry = re.search(r'for \(i = 0; ok && i < 2; i\+\+\) \{(.*?)\n        \}', show, re.S)
+write = function_text(settings, 'static int guiClockWrite(')
+retry = re.search(r'for \(int i = 0; i < 2; i\+\+\) \{(.*?)\n    \}', write, re.S)
 body = retry.group(1) if retry else ''
 if 'sceCdWriteClock(&clk) && !(clk.stat & CdlRTCStatCommandError)' not in body or not 0 <= body.find('memset(&clk') < body.find('sceCdWriteClock'):
-    failures.append('guiSettingsShowDateTime: rebuild clk before each sceCdWriteClock and check CdlRTCStatCommandError')
+    failures.append('guiClockWrite: rebuild clk before each sceCdWriteClock and check CdlRTCStatCommandError')
+# Set from Internet: UTC from the Date header goes to the clock's Japan time (+9 h).
+if 'guiClockShift(t, 540) && guiClockWrite(t,' not in show:
+    failures.append('guiSettingsShowDateTime: Set from Internet must shift UTC by +540 minutes before writing')
 if 'clk.month & 0x7F' not in show:
     failures.append('guiSettingsShowDateTime: mask the month century bit when reading')
 # The row sits on General & System and its button only reopens the page (no save, no reapply).
@@ -101,9 +105,51 @@ general = function_text(settings, 'static int guiSettingsShowGeneral(')
 m = re.search(r'if \(result == CFG_DATETIME_BUTTON\) \{(.*?)\}', general, re.S)
 if m is None or 'goto reshow_general' not in m.group(1) or 'markSavePending' in m.group(1):
     failures.append('guiSettingsShowGeneral: the Date and Time button must reopen the page without arming a save')
-for label in ('DATE_TIME', 'HINT_DATE_TIME', 'DATE', 'TIME', 'DATE_TIME_ERROR'):
+for label in ('DATE_TIME', 'HINT_DATE_TIME', 'DATE', 'TIME', 'DATE_TIME_ERROR', 'DATE_TIME_SYNC', 'HINT_DATE_TIME_SYNC',
+              'DATE_TIME_SYNCING', 'DATE_TIME_SYNCED', 'DATE_TIME_SYNC_ERROR'):
     if not re.search(r'^(?:- |\s+)label: %s$' % label, base, re.M):
         failures.append('_base.yml: label %s missing' % label)
+
+# nettime.cpp: the HTTP Date parser, compiled and run on the PC.
+nettime = read('src/sources/nettime.cpp')
+m = re.search(r'^int netTimeParseDate\(.*?\n\}\n', nettime, re.M | re.S)
+if m is None:
+    failures.append('nettime.cpp: netTimeParseDate not found')
+else:
+    PARSE = r'''
+#include <stdio.h>
+#include <string.h>
+#include <strings.h>
+@FUNC@
+static int check(const char *h, int ok, int y, int mo, int d, int hh, int mi, int ss) {
+    int t[6] = {0}; int got = netTimeParseDate(h, t);
+    if (got != ok || (ok && (t[0] != y || t[1] != mo || t[2] != d || t[3] != hh || t[4] != mi || t[5] != ss))) { printf("FAIL parse: %s\n", h); return 1; }
+    return 0;
+}
+int main(void) {
+    int bad = 0;
+    bad |= check("HTTP/1.1 301 Moved\r\ncontent-length: 0\r\ndate: Fri, 13 Nov 2026 03:37:42 GMT\r\n\r\n", 1, 2026, 11, 13, 3, 37, 42);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Mon, 01 Jan 2035 00:00:00 GMT\r\n\r\n", 1, 2035, 1, 1, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDATE: Tue, 29 Feb 2028 23:59:60 GMT\r\n", 1, 2028, 2, 29, 23, 59, 60);
+    bad |= check("HTTP/1.1 200 OK\r\nX-Date: Fri, 13 Nov 2026 03:37:42 GMT\r\n\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Foo 2026 03:37:42 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 eba 2026 03:37:42 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 1999 03:37:42 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 24:00:00 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\n\r\n", 0, 0, 0, 0, 0, 0, 0);
+    if (!bad) printf("PASS: HTTP Date header parser (case, leap second, bad month, range, truncated, missing)\n");
+    return bad;
+}
+'''
+    cc = shutil.which('cc') or shutil.which('gcc')
+    with tempfile.TemporaryDirectory() as d:
+        c = Path(d) / 'p.c'
+        c.write_text(PARSE.replace('@FUNC@', m.group(0)), encoding='utf-8')
+        exe = Path(d) / 'p'
+        subprocess.run([cc, '-std=gnu99', '-Wall', '-Werror', str(c), '-o', str(exe)], check=True)
+        if subprocess.run([str(exe)]).returncode != 0:
+            failures.append('HTTP Date parser harness failed')
 
 if failures:
     for f in failures:

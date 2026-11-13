@@ -80,7 +80,7 @@ MMCE Prefix Path (`mmce_prefix`).
 | IGR Path | Where in-game reset exits to. | `exit_path` |
 | Exit To | Where the main menu's Exit goes: Console Menu (the console's own exit, the default), PS2 Browser, or PS2 Browser (Skip Card Update). Only the main menu's Exit uses it. | `exit_menu` |
 | Custom Settings Path | A folder to read and save settings in instead of the default. | `custom_settings_path` |
-| Date and Time *(Modify)* | Sets the console's clock, in the console's own time zone and daylight-saving setting. Check for Updates needs it set. | (the console clock; not saved by RiptOPL) |
+| Date and Time *(Modify)* | Sets the console's clock, in the console's own time zone and daylight-saving setting. Check for Updates needs it set. **Set from Internet** reads the time from a web server (github.com, then www.google.com) over plain HTTP; it brings the network up with the Network settings if it is not already, and is not available while UDPBD or UDPFS is the network protocol. | (the console clock; not saved by RiptOPL) |
 | Write Operations | Allows RiptOPL to write to game devices (rename, delete, VMC, art). | `enable_delete_rename` |
 | Parental Lock Password | Password that locks protected games and settings. | `parental_lock_password` |
 | Debug | Debug colours and logging during launch. | `disable_debug` |
