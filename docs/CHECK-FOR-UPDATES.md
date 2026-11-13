@@ -38,9 +38,8 @@ of build. The channel is fixed at build time (`tools/build_edition.py update_cha
    ELF header; the size is limited to 8 MB.
 4. Checks the SHA-256 of what was written against `SHA256SUMS.txt`. A mismatch deletes `<name>.NEW`;
    the running ELF is untouched.
-5. Renames the running ELF to `<name>.BAK` and `<name>.NEW` to the running name. If the second rename
-   fails, the backup is renamed back. On a memory card the backup is then deleted to free the space;
-   on USB it is kept.
+5. Deletes the running ELF and renames `<name>.NEW` to the running name. No backup is kept. If the
+   rename fails, the verified download stays as `<name>.NEW` and the message names it.
 
 The new build starts the next time RiptOPL is opened. Settings, themes and other files are not touched.
 
