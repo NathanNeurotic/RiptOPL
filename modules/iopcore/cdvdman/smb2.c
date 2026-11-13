@@ -56,6 +56,8 @@
 #endif
 
 #define SMB2_RECV_TIMEOUT_MS          10000      // longest wire silence tolerated before the connection is declared dead
+#define SMB2_POLL_SHORT_US            100        // retry delay for the first SMB2_POLL_SHORT_COUNT polls of a silence
+#define SMB2_POLL_SHORT_COUNT         20         // 2 ms of short polls, then 1 ms
 #define SMB2_NEGOTIATE_TIMEOUT_TICKS  368640000U // ten seconds at the IOP's 36.864 MHz system clock
 #define SMB2_NEGOTIATE_MAX_ATTEMPTS   3
 #define SMB2_NEGOTIATE_RETRY_DELAY_US 500000
@@ -285,7 +287,7 @@ static int NegotiateTimedOut(void)
 static int RecvData(int sock, void *buf, int size)
 {
     u8 *ptr = (u8 *)buf;
-    int remaining = size, result, waited = 0;
+    int remaining = size, result, polls = 0, waited_us = 0;
 
     while (remaining > 0) {
         // A stream of keep-alives or STATUS_PENDING replies must not reset the attempt budget.
@@ -295,15 +297,23 @@ static int RecvData(int sock, void *buf, int size)
         if (result > 0) {
             ptr += result;
             remaining -= result;
-            waited = 0;
+            polls = 0;
+            waited_us = 0;
             continue;
         }
         // 0: closed by the peer. < 0 after SMB2_RECV_TIMEOUT_MS of silence: declared dead
         // (would-block and harder errors alike -- the caller reconnects either way).
-        if (result == 0 || waited >= SMB2_RECV_TIMEOUT_MS)
+        if (result == 0 || waited_us >= SMB2_RECV_TIMEOUT_MS * 1000)
             return -1;
-        DelayThread(1000); // 1 ms
-        waited++;
+        /* A blocking receive wakes when the next segment arrives; a read reply comes as several TCP segments
+           a fraction of a millisecond apart, and a 1 ms sleep before every retry added about a millisecond to
+           each 8 KB read (#399). Poll every 100 us for the first 2 ms of a silence, then every 1 ms. */
+        {
+            int us = polls++ < SMB2_POLL_SHORT_COUNT ? SMB2_POLL_SHORT_US : 1000;
+
+            DelayThread(us);
+            waited_us += us;
+        }
     }
 
     return size;

@@ -276,7 +276,7 @@ static int smb_TrackStream(const u8 *header, int hlen, const u8 *payload, int n)
 // and partial TCP segments. The custom header/payload receive path is preserved.
 static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int plen)
 {
-    int result;
+    int result, polls = 0;
     if (sock < 0)
         return -2;
     for (;;) {
@@ -297,7 +297,11 @@ static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int pl
             }
             return result;
         }
-        if (DelayThread(1000) < 0) {
+        /* A blocking receive, as upstream OPL's, wakes when the next segment arrives. A read reply comes as
+           several TCP segments a fraction of a millisecond apart, so sleeping 1 ms before every retry added
+           about a millisecond to each 8 KB read (#399). Poll every 100 us for the first 2 ms, then every 1 ms
+           once the reply is late (a server disk spinning up), so a slow server costs no more wake-ups. */
+        if (DelayThread(polls++ < 20 ? 100 : 1000) < 0) {
             // Never busy-spin in the CDVD thread when the IOP cannot sleep.
             smb_Disconnect();
             return -2;
