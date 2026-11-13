@@ -215,13 +215,15 @@ void guiRenderTextScreen(const char *message)
 
     guiDrawMsgText(message);
 
-    if (guiWaitBarTotal > 0) { /* a real bar: a download with a known size */
-        int done = guiWaitBarDone < 0 ? 0 : (guiWaitBarDone > guiWaitBarTotal ? guiWaitBarTotal : guiWaitBarDone);
+    /* One read of each per frame (the I/O worker rewrites them): the check, clamp and division use the same values. */
+    const int barTotal = guiWaitBarTotal, barDone = guiWaitBarDone;
+    if (barTotal > 0) { /* a real bar: a download with a known size */
+        int done = barDone < 0 ? 0 : (barDone > barTotal ? barTotal : barDone);
         int w = gGuiScreenWidth / 2, h = gGuiScreenHeight / 40 + 4;
         int x = (gGuiScreenWidth - w) / 2, y = gGuiScreenHeight * 2 / 3;
         rmDrawRect(x - 2, y - 2, w + 4, h + 4, gColWhite);
         rmDrawRect(x, y, w, h, gColBlack);
-        rmDrawRect(x, y, (int)((long long)w * done / guiWaitBarTotal), h, gColFocus);
+        rmDrawRect(x, y, (int)((long long)w * done / barTotal), h, gColFocus);
     }
 
     guiDrawOverlays();
