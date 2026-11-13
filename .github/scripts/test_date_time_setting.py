@@ -135,6 +135,12 @@ int main(void) {
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Foo 2026 03:37:42 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 eba 2026 03:37:42 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 1999 03:37:42 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 03:37:4", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 03:37:4\r\n\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Tue, 31 Feb 2026 03:37:42 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Sun, 29 Feb 2026 03:37:42 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Tue, 29 Feb 2028 03:37:42 GMT\r\n", 1, 2028, 2, 29, 3, 37, 42);
+    bad |= check("HTTP/1.1 200 OK\r\nDate: Thu, 31 Dec 2026 23:59:59 GMT\r\n", 1, 2026, 12, 31, 23, 59, 59);
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026 24:00:00 GMT\r\n", 0, 0, 0, 0, 0, 0, 0);
     bad |= check("HTTP/1.1 200 OK\r\nDate: Fri, 13 Nov 2026\r\n", 0, 0, 0, 0, 0, 0, 0);
     bad |= check("HTTP/1.1 200 OK\r\n\r\n", 0, 0, 0, 0, 0, 0, 0);

@@ -14,7 +14,7 @@
 #include "include/nettime.h"
 #include "include/opl.h"          /* gNetworkProtocol */
 #include "include/ethsupport.h"   /* ethLoadInitModules, ethGetNetConfig */
-#include "include/netsupport.h"   /* netGetModulesLoaded */
+#include "include/netsupport.h"   /* netGetModulesLoaded, netApplyConfig */
 #include "include/bdmsupport.h"   /* bdmIsUDPBDLoaded */
 #include "include/udpfssupport.h" /* udpfsGetModulesLoaded */
 #include <ps2ips.h>
@@ -46,6 +46,7 @@ int netTimeParseDate(const char *headers, int t[6])
     static const char months[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
     const char *p;
     char mon[4];
+    int end = 0;
 
     /* The header name is case-insensitive; it starts a line. */
     for (p = headers; (p = strchr(p, '\n')) != NULL; p++)
@@ -54,13 +55,16 @@ int netTimeParseDate(const char *headers, int t[6])
     if (p == NULL)
         return 0;
     /* RFC 9110 IMF-fixdate: "Fri, 13 Nov 2026 03:37:42 GMT" */
-    if (sscanf(p + 6, " %*[^,], %d %3s %d %d:%d:%d", &t[2], mon, &t[0], &t[3], &t[4], &t[5]) != 6)
+    /* The literal GMT and %n reject a field cut short, such as "03:37:4" when the reply ends early. */
+    if (sscanf(p + 6, " %*[^,], %d %3s %d %d:%d:%2d GMT%n", &t[2], mon, &t[0], &t[3], &t[4], &t[5], &end) != 6 || end == 0)
         return 0;
     const char *m = strstr(months, mon);
     if (strlen(mon) != 3 || m == NULL || (m - months) % 3)
         return 0;
     t[1] = (int)(m - months) / 3 + 1;
-    return t[0] >= 2000 && t[0] <= 2099 && t[2] >= 1 && t[2] <= 31 && t[3] >= 0 && t[3] < 24 && t[4] >= 0 &&
+    static const char mdays[] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    int days = (t[1] == 2 && t[0] % 4) ? 28 : mdays[t[1] - 1]; /* 2000-2099: every fourth year is a leap year */
+    return t[0] >= 2000 && t[0] <= 2099 && t[2] >= 1 && t[2] <= days && t[3] >= 0 && t[3] < 24 && t[4] >= 0 &&
            t[4] < 60 && t[5] >= 0 && t[5] < 61;
 }
 
@@ -134,8 +138,14 @@ int netTimeFetch(int t[6])
         gNetworkProtocol == NET_PROTO_UDPFSBD || gNetworkProtocol == NET_PROTO_UDPBD)
         return NETTIME_ERR_NETBUSY;
     /* Network modules are loaded on demand: bring them up once, with the saved settings. */
-    if (!netGetModulesLoaded() && ethLoadInitModules() != 0)
-        return NETTIME_ERR_NETWORK;
+    if (!netGetModulesLoaded()) {
+        if (ethLoadInitModules() != 0)
+            return NETTIME_ERR_NETWORK;
+    } else if (ethGetNetConfig(ip, mask, gw) < 0 || (ip[0] | ip[1] | ip[2] | ip[3]) == 0) {
+        /* Loaded earlier with no cable: the saved settings were never applied, so apply them now. */
+        if (netApplyConfig() != 0)
+            return NETTIME_ERR_NETWORK;
+    }
     for (i = 0; i < 40; i++) { /* a DHCP lease can take a few seconds */
         if (ethGetNetConfig(ip, mask, gw) >= 0 && (ip[0] | ip[1] | ip[2] | ip[3]) != 0)
             break;

@@ -2329,6 +2329,7 @@ static void guiSettingsShowDateTime(void)
     while ((result = diaExecuteDialog(diaDateTimeConfig, -1, 1, NULL)) == UIID_BTN_OK || result == DATETIME_SYNC) {
         if (result == DATETIME_SYNC) {
             guiClockSyncBusy = 1;
+            guiClockSyncResult = NETTIME_ERR_NETWORK; // stays set if the request is never queued
             guiHandleDeferedIO(&guiClockSyncBusy, _l(_STR_DATE_TIME_SYNCING), IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&guiClockSyncWorker), 0);
             if (guiClockSyncResult != NETTIME_OK) {
                 guiMsgBox(_l(guiClockSyncResult == NETTIME_ERR_NETBUSY ? _STR_UPDATE_ERR_NETBUSY : guiClockSyncResult == NETTIME_ERR_NETWORK ? _STR_UPDATE_ERR_NETWORK : _STR_DATE_TIME_SYNC_ERROR), 0, NULL);
