@@ -31,6 +31,7 @@
 #define SU_FIO_TRUNC 0x0400
 
 #include <errno.h>
+#define NEWLIB_PORT_AWARE // fileXioOpen/Write/Close: the call Launchstation overwrites its ELF with
 #include <fileXio_rpc.h>
 #include <fcntl.h>
 #include <malloc.h>
