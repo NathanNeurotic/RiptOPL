@@ -129,6 +129,7 @@ extern void *_end;
 #define IGR_SECOND     294912000u                             // COP0 Count ticks: the EE's clock
 static volatile int IGR_MenuOpen = 0;
 static int IGR_MenuRearm = IGR_TRIES; // the pauses left to this press: 0 once the menu opened, IGR_TRIES again when the combo is let go
+static volatile int IGR_MenuBusy;     // 1: the last pause of a press found the game never idle; 2: the combo was let go since, so the next press leaves
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 
 // libpad's buttons, 1 = held (its buffer is active-low), or 0 while the pad is not stable
@@ -475,10 +476,12 @@ static void IGR_Thread(void *arg)
         // the transfers idle is short and gives the game back untouched, and the handler pauses it again at the next
         // VBLANK the combo is still held at. The last pause of a press waits two seconds, and if that one finds them
         // busy too the game is given back as well: the menu stays shut, but nothing is reset or stopped under a game
-        // that never went idle. The handler is held with the game, so IGR_MenuRearm does not change here
-        if (IGR_HoldGs(IGR_MenuRearm ? IGR_SECOND / 16 : IGR_SECOND * 2))
+        // that never went idle, and the next press of the combo is the plain reset, with no pause (IGR_MenuBusy). The handler is held with the game, so IGR_MenuRearm does not change here
+        if (IGR_HoldGs(IGR_MenuRearm ? IGR_SECOND / 16 : IGR_SECOND * 2)) {
             choice = IGR_MENU_RESUME;
-        else {
+            if (!IGR_MenuRearm)
+                IGR_MenuBusy = 1; // the next press, once this one is let go, is the plain reset (the handler)
+        } else {
             IGR_MenuRearm = 0; // once per press: a menu closed at once must not reopen
             choice = IGR_MenuRun(IGR_PadButtons);
         }
@@ -698,7 +701,7 @@ static int IGR_Intc_Handler(int cause)
 #ifdef IGR_MENU
     // With In-Game Menu on, the reset combo pauses the game under the menu (igrmenu.c) instead. The power
     // button pressed twice, and the PC's reset (RAR1), still leave at once.
-    if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && !Power_Button.press && !IGR_FROM_PC) {
+    if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && IGR_MenuBusy < 2 && !Power_Button.press && !IGR_FROM_PC) {
         Pad_Data.combo_type = 0x00;
         if (IGR_MenuRearm && !IGR_MenuOpen) { // IGR_Thread zeroes it once the menu opened: once per press
             IGR_MenuOpen = 1;
@@ -709,6 +712,8 @@ static int IGR_Intc_Handler(int cause)
         }
     } else if (Pad_Data.combo_type == 0x00) {
         IGR_MenuRearm = IGR_TRIES;
+        if (IGR_MenuBusy)
+            IGR_MenuBusy = 2;
 #ifdef RETROACHIEVEMENTS
         // No request left, so no PC mark: in disc mode the pad's R3 + L3 can replace the PC's request and be dropped
         IGR_PcReset = 0;

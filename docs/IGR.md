@@ -248,8 +248,9 @@ The game's channel 1 or 2 transfers did not finish while it was paused, or its V
 code's interrupt bit, a stop or a break) or reading back, so the menu will not draw over them. The pause lasts a
 sixteenth of a second, the game gets everything back untouched, and the next frame the combination is still held
 pauses it again, up to eight times; the last pause waits two seconds. If that finds the game busy too, the game is
-given back and the menu stays shut until the combination is let go and pressed again: nothing is reset under a game
-that never went idle. A VIF1 interrupt flag the game never clears (it stalls nothing), a GIF path left active (a
+given back and the menu stays shut: nothing is reset under a game that never went idle. Let the combination go and
+press it again: that second press skips the menu and the pause and resets the game exactly as the combination does
+with In-Game Menu off. A VIF1 interrupt flag the game never clears (it stalls nothing), a GIF path left active (a
 packet that ends without EOP) and a FIFO that does not drain do not count: the menu's own packets start with FLUSHA,
 and a draw that cannot get through ends in mint green. The game's GS, VIF1 and DMA completion interrupts are held
 only once its transfers are idle, so a transfer that stops on a VIF code's interrupt bit, or that the game sends in
@@ -257,7 +258,7 @@ parts from a DMA handler, still finishes first.
 
 Report the colour with the game's ID and the device it runs from. No blink at all with Debug Colors on
 means the combination never reached the menu (check the list under *Nothing happens* first), or the game's
-transfers stayed busy and the game was given back, as the entry above describes.
+transfers stayed busy and the game was given back, as the entry above describes: press the combination again to reset.
 
 ---
 
