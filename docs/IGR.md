@@ -252,9 +252,9 @@ given back and the menu stays shut: nothing is reset under a game that never wen
 press it again: that second press skips the menu and the pause and resets the game exactly as the combination does
 with In-Game Menu off. A VIF1 interrupt flag the game never clears (it stalls nothing), a GIF path left active (a
 packet that ends without EOP) and a FIFO that does not drain do not count: the menu's own packets start with FLUSHA,
-and a draw that cannot get through ends in mint green. The game's GS, VIF1 and DMA completion interrupts are held
-only once its transfers are idle, so a transfer that stops on a VIF code's interrupt bit, or that the game sends in
-parts from a DMA handler, still finishes first.
+and a draw that cannot get through ends in mint green. Every interrupt of the game is held for the pause (its GS,
+VIF1 and DMA completions too, as RIPPS2 holds them), so a game whose handlers start one transfer after another cannot
+keep the channels busy while the menu waits.
 
 Report the colour with the game's ID and the device it runs from. No blink at all with Debug Colors on
 means the combination never reached the menu (check the list under *Nothing happens* first), or the game's

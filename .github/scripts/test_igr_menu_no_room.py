@@ -156,7 +156,7 @@ if 'IGR_MenuBusy < 2' not in padhook or 'IGR_MenuBusy = 2;' not in padhook:
 # opening (docs/IGR.md, Menu does not open)
 if not re.search(r'busy = \(\(\*R_EE_D1_CHCR \| \*R_EE_D2_CHCR\) & 0x100\) \| \(\*\(vu32 \*\)0x10003c00 & 0x800700\);', padhook) or \
         '0x10003020' in padhook or '0x12001000' in padhook:
-    failures.append('padhook.c IGR_HoldGs: only channels 1 and 2 and VIF1 VSS/VFS/VIS/FDR (no INT, no GIF, no GS) may refuse the menu')
+    failures.append('padhook.c IGR_WaitIdle: only channels 1 and 2 and VIF1 VSS/VFS/VIS/FDR (no INT, no GIF, no GS) may refuse the menu')
 
 # --- 5. the RA watch block before the menu's cheats --------------------------------------------------------------
 if LAYOUT['host'] is not None:

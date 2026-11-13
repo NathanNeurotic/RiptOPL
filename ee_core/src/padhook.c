@@ -119,14 +119,11 @@ extern void *_end;
   interrupts are held, and nothing is reset. The SIF stays up (SBUS, DMA channels 5-7), so padman keeps filling the
   pad buffer the menu reads. RESUME gives everything back; any other way out goes on to the IGR below, as before.
 */
-#define IGR_I_MASK     ((vu32 *)0x1000f010)
-#define IGR_INTC_SBUS  1
-#define IGR_INTC_VIF1  5
-#define IGR_INTC_GIFS  ((1 << 0) | (1 << IGR_INTC_VIF1))      // GS and VIF1: held in IGR_HoldGs
-#define IGR_INTC_LATER ((1 << IGR_INTC_SBUS) | IGR_INTC_GIFS) // SBUS is never held
-#define IGR_DMAC_HELD  0x031f0000                             // D_STAT's mask half: channels 0-4, 8 and 9, never SIF 5-7
-#define IGR_TRIES      8                                      // pauses one press of the combo may take to find the game idle
-#define IGR_SECOND     294912000u                             // COP0 Count ticks: the EE's clock
+#define IGR_I_MASK    ((vu32 *)0x1000f010)
+#define IGR_INTC_SBUS 1
+#define IGR_DMAC_HELD 0x031f0000 // D_STAT's mask half: channels 0-4, 8 and 9, never SIF 5-7
+#define IGR_TRIES     8          // pauses one press of the combo may take to find the game idle
+#define IGR_SECOND    294912000u // COP0 Count ticks: the EE's clock
 static volatile int IGR_MenuOpen = 0;
 static int IGR_MenuRearm = IGR_TRIES; // the pauses left to this press: 0 once the menu opened, IGR_TRIES again when the combo is let go
 static volatile int IGR_MenuBusy;     // 1: the last pause of a press found the game never idle; 2: the combo was let go since, so the next press leaves
@@ -147,12 +144,17 @@ static u16 IGR_PadButtons(void)
     return ~(b[Pad_Data.pos_combo2] | b[Pad_Data.pos_combo1] << 8) & 0xFFFF;
 }
 
-// interrupt handler context: the game's interrupts wait, the SIF's do not. Those its transfers may still need to
-// finish (GS, VIF1, the DMA completions) are held later, in IGR_HoldGs
+// interrupt handler context: every interrupt of the game waits, its GS, VIF1 and DMA completions too, the SIF's do not,
+// as RIPPS2 holds them (iDisableIntc/iDisableDmac in its handler). Held from here, a handler of the game cannot start
+// its next transfer, so the one in flight ends and the channels go idle for IGR_WaitIdle. Holding them only once the
+// transfers were idle let a game whose handlers chain one transfer to the next stay busy at every check: the menu
+// never opened (issue #364; Dirge of Cerberus on a console)
 static inline void IGR_HoldInterrupts(void)
 {
-    IGR_HeldIntc = *IGR_I_MASK & ~IGR_INTC_LATER; // what is held: IGR_HoldGs adds the GS and VIF1 it holds
-    *IGR_I_MASK = IGR_HeldIntc;                   // a 1 toggles: those off. No other handler runs between read and write
+    IGR_HeldIntc = *IGR_I_MASK & ~(1 << IGR_INTC_SBUS); // what is held, SBUS never
+    *IGR_I_MASK = IGR_HeldIntc;                         // a 1 toggles: those off. No other handler runs between read and write
+    IGR_HeldDmac = *R_EE_D_STAT & IGR_DMAC_HELD;        // D_STAT's mask half toggles too; its status half written 0
+    *R_EE_D_STAT = IGR_HeldDmac;                        // clears no completion: those wait for the game's handlers
 }
 
 // From the IGR thread at priority 0, while no game thread runs. Suspending the interrupted thread from
@@ -177,35 +179,19 @@ static void IGR_PauseThreads(void)
 // that a VIF code's interrupt bit was seen and stays set until the game writes FBRST.STC, which a MARK code's interrupt
 // (no stall) never makes it do; a real stall shows in VIS. The GIF path and the FIFOs are not tested: a path left active
 // by a packet that ends without EOP never clears, and every menu packet starts with FLUSHA anyway; a draw that cannot
-// get through ends in mint green. A VIF1 stopped on a VIF code's interrupt bit waits for the game's VIF1 handler
-// (FBRST.STC), and a list sent in parts or a stalled channel for the DMA completion handler that sends what comes next:
-// held from the start, that transfer never finished and the menu refused. So the GS, VIF1 and DMA completion
-// interrupts are held only here, once the transfers are idle.
-// Returns non-zero when they did not get there within the wait (COP0 Count ticks). They are checked with all of them
-// held, so no handler can start a transfer after the check
-static u32 IGR_HoldGs(u32 wait)
+// get through ends in mint green. The game's interrupts are all held (IGR_HoldInterrupts), so no handler starts a
+// transfer while this waits. Returns non-zero when they did not get there within the wait (COP0 Count ticks)
+static u32 IGR_WaitIdle(u32 wait)
 {
-    u32 on = 0, dmac = 0, busy, t, now;
+    u32 busy, t, now;
 
     asm volatile("mfc0 %0, $9"
                  : "=r"(t));
-
-    // A game handler may turn its own interrupt off (or on) while it runs here, so what is held is read at every check,
-    // with interrupts off between the read and the write, and only that is let go again or turned back on at resume.
-    // D_STAT's mask half toggles as I_MASK does; its status half is written 0, which clears no completion
     do {
-        *IGR_I_MASK = on; // on again while busy (a 1 toggles; 0 the first time): the transfer may still need its handler
-        *R_EE_D_STAT = dmac;
-        DIntr();
-        *IGR_I_MASK = on = *IGR_I_MASK & IGR_INTC_GIFS; // those of GS and VIF1 that are on: off
-        *R_EE_D_STAT = dmac = *R_EE_D_STAT & IGR_DMAC_HELD;
-        EIntr();
         busy = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x800700);
         asm volatile("mfc0 %0, $9"
                      : "=r"(now));
     } while (busy && now - t < wait);
-    IGR_HeldIntc |= on;
-    IGR_HeldDmac = dmac;
     return busy;
 }
 
@@ -477,7 +463,7 @@ static void IGR_Thread(void *arg)
         // VBLANK the combo is still held at. The last pause of a press waits two seconds, and if that one finds them
         // busy too the game is given back as well: the menu stays shut, but nothing is reset or stopped under a game
         // that never went idle, and the next press of the combo is the plain reset, with no pause (IGR_MenuBusy). The handler is held with the game, so IGR_MenuRearm does not change here
-        if (IGR_HoldGs(IGR_MenuRearm ? IGR_SECOND / 16 : IGR_SECOND * 2)) {
+        if (IGR_WaitIdle(IGR_MenuRearm ? IGR_SECOND / 16 : IGR_SECOND * 2)) {
             choice = IGR_MENU_RESUME;
             if (!IGR_MenuRearm)
                 IGR_MenuBusy = 1; // the next press, once this one is let go, is the plain reset (the handler)
