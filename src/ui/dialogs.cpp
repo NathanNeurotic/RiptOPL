@@ -914,6 +914,9 @@ struct UIItem diaDateTimeConfig[] = {
     {UI_INT, DATETIME_MINUTE, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {0, 0, 0, 59}}},
     {UI_BREAK},
 
+    {UI_BUTTON, DATETIME_SYNC, 1, 1, _STR_HINT_DATE_TIME_SYNC, 0, 0, {.label = {NULL, _STR_DATE_TIME_SYNC}}},
+    {UI_BREAK},
+
     {UI_OK, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_OK}}},
     {UI_BREAK},
     {UI_TERMINATOR}};

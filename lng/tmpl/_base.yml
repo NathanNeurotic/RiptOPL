@@ -2657,6 +2657,17 @@ gui_strings:
   string: Time
 - label: DATE_TIME_ERROR
   string: The clock was not set. Check the date and try again.
+- comment: Date and Time page button that reads the time from a web server.
+  label: DATE_TIME_SYNC
+  string: Set from Internet
+- label: HINT_DATE_TIME_SYNC
+  string: "Sets the console's clock from the Internet, in the time zone chosen in the console's System Configuration."
+- label: DATE_TIME_SYNCING
+  string: Getting the time from the Internet...
+- label: DATE_TIME_SYNCED
+  string: The clock was set from the Internet.
+- label: DATE_TIME_SYNC_ERROR
+  string: No time server answered. Check the cable and the network settings, then try again.
 - comment: Network page header above the server address rows while Network Protocol is NFS.
   label: CAT_NFS_SERVER
   string: '- NFS Server -'
