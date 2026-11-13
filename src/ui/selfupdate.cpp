@@ -256,6 +256,8 @@ static void suInstallWorker(void)
     suResult = SU_ERR_SWAP;
     if (suJoin(cur, sizeof(cur), gBootDir, gBootElfName, ""))
         goto done;
+    if (suIsMc(cur) && cur[4] == '/') /* mcman's own form: "mc0:BOOT/FILE", no slash after the colon */
+        memmove(cur + 4, cur + 5, strlen(cur + 5) + 1);
 
     f.data = NULL;
     f.cap = 0;
@@ -287,7 +289,11 @@ static void suInstallWorker(void)
     /* Overwrite the booted ELF with the verified bytes. Step 1 changes nothing if it fails. */
     suResult = SU_ERR_SWAP;
     suStep = 1;
-    if ((fd = open(cur, O_WRONLY | O_TRUNC)) < 0) {
+    /* O_CREAT is there for mcman, which truncates an existing file only in its O_CREAT branch (as sysneutrino.cpp
+       notes). The first access after a card is detected answers "changed card": asking again is the cure. */
+    for (off = 0; off < 4 && (fd = open(cur, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0 && suIsMc(cur); off++)
+        DelayThread(200 * 1000);
+    if (fd < 0) {
         suErrno = errno;
         free(f.data);
         goto done;

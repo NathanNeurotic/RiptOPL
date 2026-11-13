@@ -107,7 +107,7 @@ def source_checks():
     a = inst.index("open(cur,")
     check("verify_before_swap", inst.index("memcmp(") < a, "digest compare must come first")
     # The ELF is overwritten in place: opened with O_TRUNC, no second file, no rename, no delete, no backup.
-    check("overwrite_in_place", "O_WRONLY | O_TRUNC" in inst and "O_CREAT" not in inst[a:], "cur opened with O_TRUNC")
+    check("overwrite_in_place", "O_WRONLY | O_CREAT | O_TRUNC" in inst[a - 400:a + 400], "cur opened with O_CREAT | O_TRUNC (mcman truncates only there)")
     check("no_second_file", not re.search(r"unlink\(|rename\(|\.NEW|bak", inst.lower().replace("break", "")), "no unlink, rename, .NEW or backup")
     # Redirects are followed only to GitHub's hosts, and only a few times.
     check("redirects_allowlisted", "suSplitUrl(" in src and re.search(r"for \(hop = 0; hop < 4", src) is not None)
