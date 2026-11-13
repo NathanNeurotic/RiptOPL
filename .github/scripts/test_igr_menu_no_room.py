@@ -146,9 +146,12 @@ for needle, why in (
     if needle not in worker:
         failures.append('padhook.c IGR_Thread: ' + why)
 
-# VIF1_STAT.INT stays set until the game clears it and stalls nothing: it must not keep the menu from opening
-if not re.search(r'\(\*\(vu32 \*\)0x10003c00 & ~0x800\)', padhook):
-    failures.append('padhook.c IGR_HoldGs: VIF1_STAT.INT (0x800) must be left out of the idle check')
+# The check is RIPPS2's: channels 1 and 2, VIF1 VSS/VFS/VIS/FDR. VIF1_STAT.INT (0x800) stays set until the game clears it
+# and stalls nothing, and a GIF path left active (no EOP) or a FIFO that does not drain must not keep the menu from
+# opening (docs/IGR.md, Yellow)
+if not re.search(r'busy = \(\(\*R_EE_D1_CHCR \| \*R_EE_D2_CHCR\) & 0x100\) \| \(\*\(vu32 \*\)0x10003c00 & 0x800700\);', padhook) or \
+        '0x10003020' in padhook or '0x12001000' in padhook:
+    failures.append('padhook.c IGR_HoldGs: only channels 1 and 2 and VIF1 VSS/VFS/VIS/FDR (no INT, no GIF, no GS) may refuse the menu')
 
 # --- 5. the RA watch block before the menu's cheats --------------------------------------------------------------
 if LAYOUT['host'] is not None:
