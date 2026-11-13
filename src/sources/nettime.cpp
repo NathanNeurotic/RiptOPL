@@ -14,7 +14,6 @@
 #include "include/nettime.h"
 #include "include/opl.h"          /* gNetworkProtocol */
 #include "include/ethsupport.h"   /* ethLoadInitModules, ethGetNetConfig */
-#include "include/netsupport.h"   /* netGetModulesLoaded, netApplyConfig */
 #include "include/bdmsupport.h"   /* bdmIsUDPBDLoaded */
 #include "include/udpfssupport.h" /* udpfsGetModulesLoaded */
 #include <ps2ips.h>
@@ -139,15 +138,12 @@ int netTimeFetch(int t[6])
     if (bdmIsUDPBDLoaded() || udpfsGetModulesLoaded() || gNetworkProtocol == NET_PROTO_UDPFS ||
         gNetworkProtocol == NET_PROTO_UDPFSBD || gNetworkProtocol == NET_PROTO_UDPBD)
         return NETTIME_ERR_NETBUSY;
-    /* Network modules are loaded on demand: bring them up once, with the saved settings. */
-    if (!netGetModulesLoaded()) {
-        if (ethLoadInitModules() != 0)
-            return NETTIME_ERR_NETWORK;
-    } else if (ethGetNetConfig(ip, mask, gw) < 0 || (ip[0] | ip[1] | ip[2] | ip[3]) == 0) {
-        /* Loaded earlier with no cable: the saved settings were never applied, so apply them now. */
-        if (netApplyConfig() != 0)
-            return NETTIME_ERR_NETWORK;
-    }
+    /* Load the network modules if needed and apply the saved settings every time. Modules loaded
+       by another path (Check for Updates) keep ps2ip's start-up 192.168.0.80 with no DNS server,
+       which a non-zero address check cannot tell from a real lease. Applying unchanged settings
+       is a no-op (netsupport applyIpConfig). */
+    if (ethLoadInitModules() != 0)
+        return NETTIME_ERR_NETWORK;
     for (i = 0; i < 40; i++) { /* a DHCP lease can take a few seconds */
         if (ethGetNetConfig(ip, mask, gw) >= 0 && (ip[0] | ip[1] | ip[2] | ip[3]) != 0)
             break;
