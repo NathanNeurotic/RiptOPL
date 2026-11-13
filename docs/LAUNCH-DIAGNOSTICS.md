@@ -36,6 +36,7 @@ loader build and transport: that makes a useful before/after comparison difficul
 | MMCE | Device/firmware, slot, source mode, GameID and IGR bootcard settings, and where the loader/runtime resides. A GameID switch changes the emulated `mcN:` card contents; keep the runtime accessible after switching |
 | APA HDD | Console/adapter, APA installation and per-core VMC support. Preserve the disk; use [APA safety](APA-SAFETY.md) before repair or repartitioning |
 | SMB | Server implementation/version, share and prefix, credentials, negotiated SMB version, wired topology and core |
+| NFS | Server implementation/version (NFS version 4.0 on TCP 2049), export and prefix, NFS Writes and the server's own write switch, wired topology and core |
 | UDPFS / UDPBD | Protocol and server version, Core/standalone server mode, generated runtime configuration and selected device. Do not infer UDPBD behavior from a UDPFS result |
 | HTTP | Server profile, catalogue and range support; see [HTTP limits](HTTP.md). Host conformance does not establish real-console game compatibility |
 

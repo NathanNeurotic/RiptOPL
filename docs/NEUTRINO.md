@@ -162,14 +162,17 @@ Unsupported cases fall back to the `<OPL>` core automatically with an on-screen 
 
 ### SMB through Neutrino (experimental)
 
-Neutrino nightly includes the SMB backend merged on 2026-10-31 in
+Neutrino's SMB backend was merged on 2026-10-31 in
 [ps2max32/neutrino PR #236](https://github.com/ps2max32/neutrino/pull/236) by
 [Ronnie Sahlberg (sahlberg)](https://github.com/sahlberg). It uses his
 [usmb2](https://github.com/sahlberg/usmb2), a minimal SMB client (dialect 3.0 only) with its own small TCP/IP stack:
-`smb_ioman.irx` reads the game in Neutrino's loader and `smb_fhi.irx` reads it in the game. Install the
-**whole latest nightly folder**, including `config/bsd-smb.toml` and both SMB modules. Release kits
-fetch upstream's `latest` nightly at packaging time. An older installed folder without those files
-falls back to `<OPL>` with a warning. The RA kit uses the pinned NULD (formerly ORBIT) runtime; it needs its own SMB
+`smb_ioman.irx` reads the game in Neutrino's loader and `smb_fhi.irx` reads it in the game. It needs a
+**whole Neutrino folder built after that merge**, including `config/bsd-smb.toml` and both SMB modules.
+Release kits fetch upstream's `latest` development build at packaging time, and that build is still
+v1.8.0-61-g7be8de2 from 2026-08-31 (checked 2026-11-12), which predates the SMB backend. So with the kit
+as shipped, an SMB game set to Neutrino runs on `<OPL>` with a warning, until upstream publishes a newer
+build or you install a Neutrino folder built from upstream's `master` yourself. An installed folder
+without those files falls back to `<OPL>` with a warning. The RA kit uses the pinned NULD (formerly ORBIT) runtime; it needs its own SMB
 backend update before this path is available there. **Not tested on hardware.**
 
 How a game gets there:
@@ -199,6 +202,36 @@ The server must offer the **SMB 3.0** dialect (usmb2 asks for no other) with NTL
 carried on this path yet. `bsd-smb.toml` holds the SMB password in plain text, like
 `conf_network.cfg` already does.
 
+### NFS through Neutrino (experimental)
+
+Neutrino's NFS backend, also by [Ronnie Sahlberg (sahlberg)](https://github.com/sahlberg), was merged on
+2026-11-12 in [ps2max32/neutrino PR #240](https://github.com/ps2max32/neutrino/pull/240). It is built on his
+[unfs4](https://github.com/sahlberg/unfs4) (NFS version 4.0): `nfs_ioman.irx` reads the game in Neutrino's
+loader and `nfs_fhi.irx` reads it in the game, read-only. **No Neutrino release or development build carries it
+yet**: the `latest` build the kits bundle is from 2026-08-31. Until one does, every NFS game runs on the OPL
+core's NFS reader, with the message "This Neutrino has no NFS support -- launching with the OPL core."
+
+How a game gets there is the same as for SMB:
+
+1. **Protocol** is **NFS**, and the game is on Neutrino (its own **Loader Core**, or **Default** while the global
+   Loader Core is Neutrino).
+2. At launch, the PS2's address, mask and gateway, the server's address and the **NFS Export** are written into
+   the module arguments in `<neutrino folder>/config/bsd-nfs.toml` (`ministack.irx`, `nfs_ioman.irx` and
+   `nfs_fhi.irx`; the export goes in `export=`). The file is rewritten only when a value changed.
+3. Neutrino starts with `-bsd=nfs -dvd=nfs:<ETH prefix>/DVD/<name>.iso` after its own IOP reset.
+
+Each of these keeps the game on `<OPL>`, with a message:
+
+| Limit | Why |
+|---|---|
+| No `modules/nfs_ioman.irx`, `modules/nfs_fhi.irx` or `config/bsd-nfs.toml` | this Neutrino has no NFS support |
+| A VMC is set for the game | Neutrino's NFS modules cannot write the card |
+| `.zso` or USB Extreme (`ul.*`) images | Neutrino reads one plain ISO |
+| neutrino.elf only on the NFS export | Neutrino loads its modules after the menu's connection is closed; keep it on a memory card or USB |
+| A path or **NFS Export** too long, or holding a quote or backslash, or the addresses unknown | Neutrino's own limits |
+
+**Not tested** with Neutrino's NFS modules, in PCSX2 or on hardware.
+
 ## 3. Launch arguments
 
 OPL always builds the **mandatory** Neutrino arguments for you from the game and its
@@ -206,7 +239,7 @@ settings:
 
 | Auto argument | When |
 |---|---|
-| `-bsd=<usb\|ilink\|mx4sio\|ata\|mmce\|udpfs\|udpfsbd\|udpbd\|smb>` | always (the storage backend). APA HDD maps to `ata` (+ `-bsdfs=hdl`), so no separate `apa` token is ever emitted. OPL emits this unconditionally for every backend, including `udpfs` — nightly Neutrino builds that auto-detect the backend simply ignore the explicit token, so there is no version split on OPL's side |
+| `-bsd=<usb\|ilink\|mx4sio\|ata\|mmce\|udpfs\|udpfsbd\|udpbd\|smb\|nfs>` | always (the storage backend). APA HDD maps to `ata` (+ `-bsdfs=hdl`), so no separate `apa` token is ever emitted. OPL emits this unconditionally for every backend, including `udpfs` — nightly Neutrino builds that auto-detect the backend simply ignore the explicit token, so there is no version split on OPL's side |
 | `-bsdfs=hdl` | internal HDD (APA) only |
 | `-bsdfs=<exfat\|hdl\|bd>` | only if the per-game **Neutrino Filesystem** picker (Compatibility screen) is set off Auto; block-backed devices only (never mmce/udpfs — no filesystem layer there). `hdl`/`bd` also reshape `-dvd` to `hdl:`/`bdfs:`. A hand-typed `-bsdfs=` in the args wins over the picker (per-game args over global ones, last one wins) and reshapes `-dvd` the same way; a hand-typed `-dvd=` wins if it is forwarded (a long argument list can drop it). `bd` names the drive as `<driver><N>p0` (a second USB stick is `usb1p0`), using the device number the drive reported; if it never reported one, the launch is refused while the menu is still up, not guessed as device 0 -- whether `bd` came from the picker or was typed, and even beside a typed `-dvd=` (a long argument list can drop it). ATA is exempt (one device, always 0) |
 | `-dvd=<path>` / `-dvd=hdl:<partition>` | always (the game image/partition) |
@@ -307,7 +340,7 @@ For the full list of flags Neutrino accepts, see the
 
 RiptOPL streams games from a PC over the LAN, chosen with the **Game Sources → Network
 Connectivity** row (**Off** / Manual / Auto) plus the **Protocol** selector — **SMB / UDPFS /
-UDPBD / HTTP** — shown indented under it and on **Network** (one setting, both places). HTTP uses OPL’s core and has its own [guide](HTTP.md). **UDPFS** is the modern
+UDPBD / HTTP / NFS** — shown indented under it and on **Network** (one setting, both places). HTTP uses OPL’s core and has its own [guide](HTTP.md). **NFS** works like SMB, with its own **NFS Export** and **NFS Writes** rows and no login; Neutrino runs it only with a build that has the NFS backend (see [NFS through Neutrino](#nfs-through-neutrino-experimental)). **UDPFS** is the modern
 network-boot protocol ([Rick Gaiser](https://github.com/rickgaiser)'s **UDPRDMA** transport); **UDPBD** is the older SUDPBDv2 protocol,
 kept for users still running the `udpbd-server`. Both appear in OPL as their own games list — with
 covers and per-game settings — and boot via the external [Neutrino](https://github.com/ps2max32/neutrino) core. **SMB** uses
@@ -386,7 +419,7 @@ effect** (OPL shows the usual restart-to-apply notice).
   images over UDPFS and is found by broadcast, so there is no address to type on the console; it is
   built on **[udpfsd](https://github.com/pcm720/udpfsd)** by **[pcm720](https://github.com/pcm720)**
   and is MIT licensed. On a PC, use **[NathanNeurotic/PS2-Servers](https://github.com/NathanNeurotic/PS2-Servers)**,
-  the maintained all-in-one launcher for UDPFS, SMB (v1, v2 and v3), UDPBD and HTTP; release packages include a
+  the maintained all-in-one launcher for UDPFS, SMB (v1, v2 and v3), NFS, UDPBD and HTTP; release packages include a
   `PS2-Servers.url` shortcut to it. Advanced users can instead run
   **[pcm720/udpfsd](https://github.com/pcm720/udpfsd)** directly. The old standalone `udpbd-server`
   (SUDPBDv2) does **not** work with UDPFS. Layout: **Image** mode's served FAT/exFAT image uses the

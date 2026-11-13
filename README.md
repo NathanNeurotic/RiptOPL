@@ -47,7 +47,7 @@ Review the LICENSE file for further details.<br><br>
 [![Stars](https://img.shields.io/github/stars/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Stars)](https://github.com/NathanNeurotic/RiptOPL/stargazers)
 
 ![Storage](https://img.shields.io/badge/Storage-USB%20%C2%B7%20MX4SIO%20%C2%B7%20iLink%20%C2%B7%20MMCE%20%C2%B7%20HDD-2ea043?style=flat&labelColor=0b3d18)
-![Network](https://img.shields.io/badge/Network-SMB%20%C2%B7%20UDPBD%20%C2%B7%20UDPFS%20%C2%B7%20HTTP-2ea043?style=flat&labelColor=0b3d18)
+![Network](https://img.shields.io/badge/Network-SMB%20%C2%B7%20NFS%20%C2%B7%20UDPBD%20%C2%B7%20UDPFS%20%C2%B7%20HTTP-2ea043?style=flat&labelColor=0b3d18)
 ![PS2 Cores](https://img.shields.io/badge/PS2%20Cores-OPL%20%C2%B7%20Neutrino-2ea043?style=flat&labelColor=0b3d18)
 ![PS1 Cores](https://img.shields.io/badge/PS1%20Cores-POPStarter%20%C2%B7%20Ember-2ea043?style=flat&labelColor=0b3d18)
 ![RetroAchievements](https://img.shields.io/badge/RetroAchievements-dev%20build%2C%20untested-orange?style=flat&labelColor=7a3e00)
@@ -113,6 +113,14 @@ with publication enabled; pull-request builds remain Actions artifacts. The
 checks every LLVM configuration and publishes to its own
 [RiptOPLLVM release](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm). See [release channels and packaging](ROLLING_RELEASE.md).
 
+**Updating:** the Korium, IncebtIon, RetroAchievements and LLVM builds have a **Check for Updates**
+entry in the main menu, just above About. It asks the build's own rolling release on GitHub for a
+newer build and, when you press OK, replaces the running ELF after checking its SHA-256. It needs
+RiptOPL started from a memory card or a USB/exFAT drive, a network connection with internet access,
+and the console clock set (**Settings → General & System → Date and Time**). RiptOPLite, debug and
+variant builds do not have it. See [Check for Updates](docs/CHECK-FOR-UPDATES.md). Not tested on
+hardware yet.
+
 Hardware results in the feature documentation were measured on the legacy C edition unless a
 page says otherwise; each still needs a retest on this C++/ps2build edition. The parity port with the legacy
 edition is merged, including the RA browser, client and ORBIT integration; see the
@@ -142,7 +150,9 @@ edition is merged, including the RA browser, client and ORBIT integration; see t
 - **HTTP:** implemented and host-tested, but not yet tested on PS2 hardware. ISO only; no VMC, Neutrino or PS1. DVD9 probing is implemented but unproven. [HTTP guide](docs/HTTP.md).
 - **RetroAchievements:** a separate development package; the console integration has not been hardware-tested. It requires [xeRAbora v1.0.1](https://github.com/hacan359/xerabora/releases/tag/v1.0.1) (alpha.17 or later) on a PC and OPL-core launching. The RA build includes main-menu actions to check and launch a physical PS2 disc with achievements; this path also needs hardware validation. Keep games you play with achievements on a local device — upstream reports on hardware that a game with an achievement set stops loading about a minute in from a network share. [RA guide](docs/RETROACHIEVEMENTS.md).
 - **iLink:** revision 2692 passed Ember on the tested SCPH-39001 but failed native OPL, Neutrino and POPSTARTER handoffs. The Neutrino `-qb` correction is implemented; a passing retest is still needed.
-- **Core switching is source-dependent:** HTTP uses OPL; SMB uses OPL unless a game is set to the Neutrino core (experimental, see [SMB through Neutrino](docs/NEUTRINO.md#smb-through-neutrino-experimental)); UDPFS (Files and IMG) and UDPBD default to Neutrino and can use OPL per game. See the [source table](#introduction).
+- **Core switching is source-dependent:** HTTP uses OPL; SMB and NFS use OPL unless a game is set to the Neutrino core (experimental, see [SMB through Neutrino](docs/NEUTRINO.md#smb-through-neutrino-experimental) and [NFS through Neutrino](docs/NEUTRINO.md#nfs-through-neutrino-experimental)); UDPFS (Files and IMG) and UDPBD default to Neutrino and can use OPL per game. See the [source table](#introduction).
+- **Neutrino over SMB or NFS needs a newer Neutrino than the kits carry:** the release kits bundle upstream's latest development build, which is still v1.8.0-61-g7be8de2 from 2026-08-31. It has neither Neutrino's SMB backend (merged 2026-10-31) nor its NFS backend (merged 2026-11-12), so SMB and NFS games set to Neutrino run on the OPL core with a message until upstream publishes a newer build.
+- **NFS:** new, host-tested against PS2-Servers' NFS server only; not tested on hardware, in PCSX2 or against other NFS servers. POPSTARTER cannot launch over NFS (Ember can). See [NFS](#nfs).
 
 ## Introduction
 Open PS2 Loader (OPL) is a 100% Open source game and application loader for
@@ -153,7 +163,8 @@ the PS2 and supported backward-compatible PS3 units (see [PS3 BC](#ps3-bc)). Rip
 | USB / MX4SIO / MMCE / ATA exFAT | OPL or Neutrino for ISO | ISO; OPL also handles ZSO and UL split images | Supported; Neutrino cards must be on the game's device |
 | iLink | OPL or Neutrino paths implemented | Local files | Launch remains pending hardware retest; see [iLink status](#usbmmcemx4sioilink) |
 | Internal HDD, APA | OPL or Neutrino | HDLoader partitions | OPL supports VMC; Neutrino drops APA/PFS VMC with a warning |
-| SMB | OPL; Neutrino per game or by global Loader Core (experimental: latest Neutrino nightly, SMB 3.0 server on port 445) | ISO, ZSO, UL (Neutrino: plain ISO only) | Server must permit writes for VMC saves; a game with a VMC stays on OPL |
+| SMB | OPL; Neutrino per game or by global Loader Core (experimental: needs a Neutrino build with its SMB backend and an SMB 3.0 server on port 445) | ISO, ZSO, UL (Neutrino: plain ISO only) | Server must permit writes for VMC saves; a game with a VMC stays on OPL |
+| NFS (version 4.0) | OPL; Neutrino per game or by global Loader Core (experimental: needs a Neutrino build with its NFS backend) | ISO, ZSO, UL (Neutrino: plain ISO only) | Only with **NFS Writes** On and a server that allows writes; Off (the default) means no VMC, saves go to the real memory card |
 | UDPFS Files / IMG and UDPBD | Neutrino (`<OPL>` per game) | Files under `CD/` / `DVD/`, or a served FAT/exFAT disk image | Depends on backend and write access; see [Neutrino](docs/NEUTRINO.md) |
 | HTTP | OPL | ISO listed in `games.csv`; compressed images refuse to launch | No VMC; use physical memory cards |
 | PC CARD CF (experimental, off by default) | OPL only | ISO on MBR FAT32/exFAT CF, same `CD/`/`DVD/` layout; read-only | CF VMCs refused; use a physical memory card. Japanese SCPH-10000/15000/18000 only; see [PC CARD CF](docs/PC-CARD-CF.md) |
@@ -259,7 +270,8 @@ This build layers several features on top of upstream OPL:
 > (`modules/IEEE1394_bd_mini.irx` and `modules/iLinkman.irx`) with RiptOPL's builds of the same ps2sdk modules, which keep the login
 > across an IOP reset ([details](docs/NEUTRINO.md)). Launching an SMB game on Neutrino also writes the
 > menu's network and share settings into that folder's `config/bsd-smb.toml` on your device, the only
-> place Neutrino reads them from ([details](docs/NEUTRINO.md#smb-through-neutrino-experimental)). Nothing else of [rickgaiser](https://github.com/rickgaiser)'s is altered or
+> place Neutrino reads them from ([details](docs/NEUTRINO.md#smb-through-neutrino-experimental)); an NFS game on
+> Neutrino does the same with `config/bsd-nfs.toml` ([details](docs/NEUTRINO.md#nfs-through-neutrino-experimental)). Nothing else of [rickgaiser](https://github.com/rickgaiser)'s is altered or
 > removed. RiptOPL is one of several front-ends built on Neutrino, alongside
 > **[LUNA](https://github.com/dnunezx/LUNA)** by **[darkladark](https://github.com/dnunezx)**, **NHDDL**, **XEB+
 > Plugin**, **RETROLauncher**, **OSD-XMB** and **PSBBN/BBNL**. Please report *launching* problems to
@@ -275,8 +287,8 @@ This build layers several features on top of upstream OPL:
   **Network → Protocol**, set the address, port (default **1100**) and base path, then use **Test HTTP
   server**. No VMC, no [Neutrino](https://github.com/ps2max32/neutrino) and no PS1 over HTTP, and it has **not been hardware-tested yet**.
   See **[docs/HTTP.md](docs/HTTP.md)**.
-- **Network loading (SMB, UDPFS, UDPBD):** load games from a PC or NAS over the LAN. Setup for all
-  three protocols is in **[Network](#network)**.
+- **Network loading (SMB, NFS, UDPFS, UDPBD):** load games from a PC or NAS over the LAN. Setup for all
+  four protocols is in **[Network](#network)**.
 
 <a name="ps1-games-two-cores-one-list"></a>
 - **PS1 games — two cores, one list:** RiptOPL plays PS1 titles through **two** cores, and both appear
@@ -581,7 +593,7 @@ Back up all data before considering a reformat; a screen colour alone does not d
 
 ## Network
 
-RiptOPL loads games over the LAN with **SMB**, **UDPFS** and **UDPBD**; pick one with **Network
+RiptOPL loads games over the LAN with **SMB**, **NFS**, **UDPFS** and **UDPBD**; pick one with **Network
 Connectivity** and **Protocol** under **Game Sources**. HTTP has its own guide in [docs/HTTP.md](docs/HTTP.md).
 
 ### SMB
@@ -624,21 +636,50 @@ are supported using the folder structure above.
 > **SMB on the Neutrino core (experimental):** a game whose Loader Core is Neutrino (or Default while
 > the global Loader Core is Neutrino) launches from the share through Neutrino's own SMB driver, by
 > [Ronnie Sahlberg](https://github.com/sahlberg) ([usmb2](https://github.com/sahlberg/usmb2)). It
-> needs the complete latest Neutrino nightly and a server that offers SMB 3.0 on port **445**, such
-> as PS2-Servers' SMBv3 card; **SMB Version** does not apply to it. A game with a VMC, a ZSO or UL
+> needs a complete Neutrino folder built after that backend was merged (2026-10-31) and a server that
+> offers SMB 3.0 on port **445**, such as PS2-Servers' SMBv3 card; **SMB Version** does not apply to it.
+> The development build the release kits bundle (v1.8.0-61-g7be8de2, 2026-08-31) is older, so with the kit
+> as shipped these games run on the OPL core. A game with a VMC, a ZSO or UL
 > image, or any other unmet requirement launches on the OPL core with a warning. See
 > [SMB through Neutrino](docs/NEUTRINO.md#smb-through-neutrino-experimental). NOT TESTED on hardware.
+
+### NFS
+
+**NFS** reads games from an NFS version 4.0 export on TCP port **2049**, such as the **NFS** card of
+**[PS2 Servers](https://github.com/NathanNeurotic/PS2-Servers)** v0.9.3 or later. Other NFS version 4.0
+servers (Linux, a NAS) have not been tried yet. Set **Network Connectivity** to **Manual** or **Auto** and **Protocol** to **NFS**,
+then fill in the **Network** page:
+
+- **- NFS Server -** uses the same address rows as SMB: an IP address or a NetBIOS name. NFS has no port,
+  user or password.
+- **NFS Export** is the exported folder, for example `/srv/ps2`, or `/` for the whole server. The default
+  `/` is what PS2-Servers' NFS card exports.
+- **NFS Writes** (default **Off**). Off: RiptOPL only reads the export, whatever the server allows. The page
+  has no Rename or Delete, a game's settings are kept next to RiptOPL's own, and no VMC is used on either
+  core, so games save to the real memory card. On: renaming, deleting, saving and VMCs on the export, where
+  the server allows them (PS2-Servers' NFS card also needs its own **Allow writes** switch).
+
+The export holds the same `CD/` and `DVD/` folders as an SMB share, under **ETH Prefix Path** if one is
+set. Games choose their core as SMB games do. The OPL core reads them with its NFS reader, built on
+[Ronnie Sahlberg](https://github.com/sahlberg)'s [unfs4](https://github.com/sahlberg/unfs4); ZSO and USB
+Advance/Extreme images work as on SMB. On the Neutrino core see
+[NFS through Neutrino](docs/NEUTRINO.md#nfs-through-neutrino-experimental): it needs a Neutrino build with the
+NFS backend, which the bundled development build does not have yet, so the OPL core runs those games.
+PS1: **Ember** games launch over NFS; with **NFS Writes** Off, Ember cannot keep memory card saves in the
+game's folder and says so before launch. **POPSTARTER** (`.VCD`) cannot launch over NFS, because it restarts
+the I/O processor and reaches only SMB; use SMB for those. Switching between SMB and NFS needs a restart.
+RiptOPLite has no NFS. NOT TESTED on hardware or in PCSX2, and only tested against PS2-Servers' NFS server.
 
 ### UDPFS (Neutrino, or the OPL core per game)
 
 UDPFS is a newer network transport (Neutrino's UDPRDMA) offered
 alongside UDPBD. **Game Sources** holds the **Network Connectivity** row (Off / Manual / Auto) with
-**Protocol** (**SMB / UDPFS / UDPBD / HTTP**) indented under it; the same **Protocol** row is on
+**Protocol** (**SMB / UDPFS / UDPBD / HTTP / NFS**) indented under it; the same **Protocol** row is on
 **Network** too, and changing it on either page changes both. Setting Connectivity to **Off** keeps
 your protocol: turning it back on brings the same one back. **Network** also holds
 **SMB Version** (SMBv1 / SMB2/3, live only while Protocol is SMB, see [SMB](#smb)),
 and **Access** (Files / IMG — locked to Files
-for SMB/HTTP and to IMG for UDPBD, free only for UDPFS). **Default Menu → ETH Games** opens
+for SMB/HTTP/NFS and to IMG for UDPBD, free only for UDPFS). **Default Menu → ETH Games** opens
 whichever page that protocol's games are on (for UDPBD / UDPFS IMG, the network drive's page if it
 has attached by the time the menu appears). UDPFS Files launches with Neutrino's stock `-bsd=udpfs`; UDPFS IMG launches with
 `-bsd=udpfsbd` and the bundled `bsd-udpfsbd.toml`. Use the
@@ -932,7 +973,7 @@ discussion, the [OPL forum](https://www.psx-place.com/forums/open-ps2-loader-opl
 
 RiptOPL is intended to work with these maintained companion tools:
 
-- **[PS2-Servers](https://github.com/NathanNeurotic/PS2-Servers)** by **[Ripto](https://github.com/NathanNeurotic)** — all-in-one PC server launcher for **SMB, UDPFS, UDPBD and HTTP**.
+- **[PS2-Servers](https://github.com/NathanNeurotic/PS2-Servers)** by **[Ripto](https://github.com/NathanNeurotic)** — all-in-one PC server launcher for **SMB, NFS, UDPFS, UDPBD and HTTP**.
 - **[udpfs-server](https://github.com/YouKnow-sys/udpfs-server)** by **[YouKnow-sys](https://github.com/YouKnow-sys)** — the same idea **from a phone**: an Android app that shares folders and disk images to the PS2 over **UDPFS**, found by broadcast so there is no server address to type in on the console. Works over a router or a direct cable. Built on **[udpfsd](https://github.com/pcm720/udpfsd)** by **[pcm720](https://github.com/pcm720)**; MIT licensed. An `android-udpfs-server.url` shortcut ships in installable packages.
 - **[OrbitPS2 Manager](https://github.com/Luden02/OrbitPS2-Manager)** by **[Luden](https://github.com/Luden02)** — cross-platform PC library manager for importing discs, artwork/screenshots, ZSO compression, per-game settings and VMC management.
 - **[RIPPS2](https://github.com/akilluminati47/RIPPS2)** by **[Akilluminati47](https://github.com/akilluminati47)** — a PS2 front end and loader developed in collaboration with RiptOPL, with its own interface, game libraries, Memory Files browser and save tools. Built on the RiptOPL legacy C tree; see its [releases](https://github.com/akilluminati47/RIPPS2/releases) for current PS2 builds.

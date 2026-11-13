@@ -23,7 +23,7 @@ image; a PS1 CHD does not become a PS2 game because the container is readable.
 ## Direct ZSO playback
 
 Use the built-in OPL core for direct ZSO playback on supported USB, MX4SIO,
-iLink, MMCE, SMB and internal-HDD paths. Ordinary file-based installations use
+iLink, MMCE, SMB, NFS and internal-HDD paths. Ordinary file-based installations use
 the same `CD/` or `DVD/` placement and naming rules as ISO. APA installations
 require an appropriate installer rather than copying a file into a folder.
 
@@ -70,8 +70,8 @@ HTTP to skip CHD. ZSO is passed through unchanged by PS2-Servers; RiptOPL lists
 but refuses direct ZSO HTTP entries. Use ISO or UDPFS server decoding for ZSO.
 See the [HTTP reference](HTTP.md) for catalog, range and launch constraints.
 
-**SMB:** do not assume the UDPFS/HTTP conversion applies to an ordinary SMB
-share. Use ISO or native OPL ZSO as appropriate for the selected core. Sharing
+**SMB and NFS:** do not assume the UDPFS/HTTP conversion applies to an ordinary SMB
+share or NFS export. Use ISO or native OPL ZSO as appropriate for the selected core. Sharing
 the folder alone does not make CHD or CSO playable.
 
 **UDPBD:** exports block-device contents. Select a supported disk/filesystem
