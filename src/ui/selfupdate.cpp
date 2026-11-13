@@ -298,28 +298,34 @@ static int suCopy(const char *from, const char *to)
     return ok ? 0 : -1;
 }
 
+static int suMcRename(const char *from, const char *toName)
+{
+    sceMcTblGetDir info;
+    int ret = -1, type = 0, port = from[2] - '0';
+    /* Wake the card first, as Launchstation does: a rename on a card not touched since boot can fail. */
+    if (mcGetInfo(port, 0, &type, NULL, NULL) >= 0)
+        mcSync(0, NULL, &ret);
+    memset(&info, 0, sizeof(info));
+    strncpy(reinterpret_cast<char *>(info.EntryName), toName, sizeof(info.EntryName) - 1);
+    int sub = mcSetFileInfo(port, 0, strchr(from, ':') + 1, &info, 0x10 /* the name */);
+    if (sub < 0) {
+        suErrno = sub; /* the command was not accepted */
+        return -1;
+    }
+    ret = 0;
+    if (mcSync(0, NULL, &ret) <= 0 || ret < 0) {
+        suErrno = ret < 0 ? ret : -1; /* the card's result, or the wait failed */
+        return -1;
+    }
+    return 0;
+}
+
 static int suRename(const char *from, const char *to, const char *toName)
 {
-    if (suIsMc(from)) {
-        sceMcTblGetDir info;
-        int ret = -1, type = 0, port = from[2] - '0';
-        /* Wake the card first, as Launchstation does: a rename on a card not touched since boot can fail. */
-        if (mcGetInfo(port, 0, &type, NULL, NULL) >= 0)
-            mcSync(0, NULL, &ret);
-        memset(&info, 0, sizeof(info));
-        strncpy(reinterpret_cast<char *>(info.EntryName), toName, sizeof(info.EntryName) - 1);
-        int sub = mcSetFileInfo(port, 0, strchr(from, ':') + 1, &info, 0x10 /* the name */);
-        if (sub < 0) {
-            suErrno = sub; /* the command was not accepted */
-            return -1;
-        }
-        ret = 0;
-        if (mcSync(0, NULL, &ret) <= 0 || ret < 0) {
-            suErrno = ret < 0 ? ret : -1; /* the card's result, or the wait failed */
-            return -1;
-        }
-    } else if (rename(from, to) != 0) {
-        suErrno = errno;
+    /* A card is renamed through mcserv; any rename that fails, on a card too, falls back to a copy. */
+    if (!(suIsMc(from) ? suMcRename(from, toName) == 0 : rename(from, to) == 0)) {
+        if (!suIsMc(from))
+            suErrno = errno;
         if (suCopy(from, to) != 0) { /* then the old name goes: the same result as a rename */
             suErrno = suCopyErr;
             return -1;
