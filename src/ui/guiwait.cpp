@@ -194,6 +194,9 @@ void guiFadeOutForHandoff(const char *message)
     }
 }
 
+int guiWaitBarTotal;
+int guiWaitBarDone;
+
 void guiRenderTextScreen(const char *message)
 {
     guiStartFrame();
@@ -211,6 +214,15 @@ void guiRenderTextScreen(const char *message)
     rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColBlack);
 
     guiDrawMsgText(message);
+
+    if (guiWaitBarTotal > 0) { /* a real bar: a download with a known size */
+        int done = guiWaitBarDone < 0 ? 0 : (guiWaitBarDone > guiWaitBarTotal ? guiWaitBarTotal : guiWaitBarDone);
+        int w = gGuiScreenWidth / 2, h = gGuiScreenHeight / 40 + 4;
+        int x = (gGuiScreenWidth - w) / 2, y = gGuiScreenHeight * 2 / 3;
+        rmDrawRect(x - 2, y - 2, w + 4, h + 4, gColWhite);
+        rmDrawRect(x, y, w, h, gColBlack);
+        rmDrawRect(x, y, (int)((long long)w * done / guiWaitBarTotal), h, gColFocus);
+    }
 
     guiDrawOverlays();
 
