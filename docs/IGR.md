@@ -240,9 +240,20 @@ the usual reset colours:
 | Blink | Meaning |
 |---|---|
 | **Purple** | The game's picture is in a format or size the panel cannot use |
-| **Yellow** | The game's channel 1 or 2 transfers never finished while paused, or its VIF1 stayed stopped (on a VIF code's interrupt bit, a stop or a break) or reading back: the menu will not draw over those. A VIF1 interrupt flag the game simply never clears (it stalls nothing) does not count, and neither does a GIF path left active (a packet that ends without EOP leaves it so for good) or a FIFO that does not drain: the menu's own packets start with FLUSHA, and a draw that cannot get through ends in mint green. The game's GS, VIF1 and DMA completion interrupts are held only once its transfers are idle, so a transfer that stops on a VIF code's interrupt bit, or that the game sends in parts from a DMA handler, still finishes first. A pause that finds a transfer only the game's own threads can finish gives the game back untouched after a sixteenth of a second and tries again at the next frame, up to eight times while the combination is held; only the last one, which waits two seconds, ends in this blink |
 | **Mint green** | The first page was composed but VIF1 did not take it |
 | **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above) |
+
+**In-Game Menu is on, and pressing the combination does nothing, or the picture freezes for a moment and the game goes on.**
+The game's channel 1 or 2 transfers did not finish while it was paused, or its VIF1 stayed stopped (on a VIF
+code's interrupt bit, a stop or a break) or reading back, so the menu will not draw over them. The pause lasts a
+sixteenth of a second, the game gets everything back untouched, and the next frame the combination is still held
+pauses it again, up to eight times; the last pause waits two seconds. If that finds the game busy too, the game is
+given back and the menu stays shut until the combination is let go and pressed again: nothing is reset under a game
+that never went idle. A VIF1 interrupt flag the game never clears (it stalls nothing), a GIF path left active (a
+packet that ends without EOP) and a FIFO that does not drain do not count: the menu's own packets start with FLUSHA,
+and a draw that cannot get through ends in mint green. The game's GS, VIF1 and DMA completion interrupts are held
+only once its transfers are idle, so a transfer that stops on a VIF code's interrupt bit, or that the game sends in
+parts from a DMA handler, still finishes first.
 
 Report the colour with the game's ID and the device it runs from. No blink at all with Debug Colors on
 means the combination never reached the menu: check the list under *Nothing happens* first.

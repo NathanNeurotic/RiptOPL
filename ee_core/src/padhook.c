@@ -178,7 +178,7 @@ static void IGR_PauseThreads(void)
 // by a packet that ends without EOP never clears, and every menu packet starts with FLUSHA anyway; a draw that cannot
 // get through ends in mint green. A VIF1 stopped on a VIF code's interrupt bit waits for the game's VIF1 handler
 // (FBRST.STC), and a list sent in parts or a stalled channel for the DMA completion handler that sends what comes next:
-// held from the start, that transfer never finished and the menu refused (yellow). So the GS, VIF1 and DMA completion
+// held from the start, that transfer never finished and the menu refused. So the GS, VIF1 and DMA completion
 // interrupts are held only here, once the transfers are idle.
 // Returns non-zero when they did not get there within the wait (COP0 Count ticks). They are checked with all of them
 // held, so no handler can start a transfer after the check
@@ -418,6 +418,12 @@ static void IGR_CheckInputs(void)
 // to be called earlier -- which both callers do right after this.
 static void IGR_StopDmaAndGs(void)
 {
+    // Some game (GT4, GTA) start the performance counter, and when it overflows an exception occurs, so stop it
+    // before anything else of the reset can wait on it
+    u32 perf = GetCop0(25);
+    if (perf & 0x80000000)
+        asm volatile("mtc0 %0, $25\n sync.p\n" ::"r"(perf & 0x7fffffff));
+
     // Wait for preceding loads & stores to complete.
     asm volatile("sync.l\n");
 
@@ -438,7 +444,7 @@ static void IGR_StopDmaAndGs(void)
     // Wait for preceding loads & stores to complete.
     asm volatile("sync.l\n");
 
-    *R_EE_GS_CSR = 0x100; // Reset GS
+    *R_EE_GS_CSR = 0x100; // CSR bit 8 is FLUSH (RESET is bit 9, 0x200): drains the GS FIFO, as the original comment's GS reset never did
     asm volatile("sync.l\n");
     while (*R_EE_GS_CSR & 0x100) {
     };
@@ -448,7 +454,6 @@ static void IGR_StopDmaAndGs(void)
 static void IGR_Thread(void *arg)
 {
     USE_LOCAL_EECORE_CONFIG;
-    u32 Cop0_Perf;
 
     // Wait for the VBLANK_END handler, which latches the request, stops DMA/GS, suspends every
     // other thread and raises this one to priority 0 before waking it. Recheck the latch so a stray
@@ -468,10 +473,11 @@ static void IGR_Thread(void *arg)
         // A transfer that only the game's own threads can finish (a list or a GS read-back one of them was in the
         // middle of, a channel one of them feeds) never ends while they are paused. So a pause that does not find
         // the transfers idle is short and gives the game back untouched, and the handler pauses it again at the next
-        // VBLANK the combo is still held at. The last pause of a press waits two seconds, and only that one goes on
-        // to the reset. The handler is held with the game, so IGR_MenuRearm does not change here
+        // VBLANK the combo is still held at. The last pause of a press waits two seconds, and if that one finds them
+        // busy too the game is given back as well: the menu stays shut, but nothing is reset or stopped under a game
+        // that never went idle. The handler is held with the game, so IGR_MenuRearm does not change here
         if (IGR_HoldGs(IGR_MenuRearm ? IGR_SECOND / 16 : IGR_SECOND * 2))
-            choice = IGR_MenuRearm ? IGR_MENU_RESUME : IGR_MENU_GS_BUSY;
+            choice = IGR_MENU_RESUME;
         else {
             IGR_MenuRearm = 0; // once per press: a menu closed at once must not reopen
             choice = IGR_MenuRun(IGR_PadButtons);
@@ -492,8 +498,8 @@ static void IGR_Thread(void *arg)
         if (EnableDebug && choice >= IGR_MENU_CANNOT_DRAW) {
             // Debug Colors: why the menu did not open, three blinks before the reset goes on (docs/IGR.md).
             // GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and growing it costs the stack
-            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x00FFFF, 0x80FF00}; // grey, purple, yellow, mint
-            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, yellow = GS busy, mint = first page failed, grey = no menu");
+            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00}; // grey, purple, mint
+            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, grey = no menu");
         }
         Pad_Data.combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
         break;
@@ -571,22 +577,6 @@ static void IGR_Thread(void *arg)
         // Some game (GT4, GTA) modify memory map
         // A re-init is needed to properly access memory
         InitializeTLB();
-
-        // Check Performance Counter
-        // Some game (GT4) start performance counter
-        // When counter overflow, an exception occur, so stop them
-        Cop0_Perf = GetCop0(25);
-
-        // Stop Performance Counter
-        if (Cop0_Perf & 0x80000000) {
-            __asm__ __volatile__(
-                " mfc0  $3, $25;"
-                " lui   $2, 0x8000;"
-                " or    $3, $3, $2;"
-                " xor   $3, $3, $2;"
-                " mtc0  $3, $25;"
-                " sync.p;");
-        }
 
         if (config->EnableGSMOp) {
             if (EnableDebug)

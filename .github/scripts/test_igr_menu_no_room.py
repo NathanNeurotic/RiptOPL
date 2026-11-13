@@ -137,18 +137,18 @@ if not tries:
     failures.append('padhook.c: IGR_TRIES, the pauses one press of the combo may take, was not found')
 tries = tries.group(0) if tries else ''
 # The pauses of one press: IGR_Thread gives the game back while any is left, zeroes the count once the menu opens, and
-# only the last busy pause goes on to the reset
+# no busy pause goes on to the reset: the last one gives the game back too
 worker = padhook[igr_thread:] if igr_thread >= 0 else ''
 for needle, why in (
-        ('choice = IGR_MenuRearm ? IGR_MENU_RESUME : IGR_MENU_GS_BUSY;',
-         'a busy pause with pauses left gives the game back; only the last one is the yellow reset'),
+        ('choice = IGR_MENU_RESUME;',
+         'a busy pause gives the game back, the last one too: nothing is reset under a game that never went idle'),
         ('IGR_MenuRearm = 0; // once per press', 'a menu that opened takes the rest of the press\'s pauses')):
     if needle not in worker:
         failures.append('padhook.c IGR_Thread: ' + why)
 
 # The check is RIPPS2's: channels 1 and 2, VIF1 VSS/VFS/VIS/FDR. VIF1_STAT.INT (0x800) stays set until the game clears it
 # and stalls nothing, and a GIF path left active (no EOP) or a FIFO that does not drain must not keep the menu from
-# opening (docs/IGR.md, Yellow)
+# opening (docs/IGR.md, Menu does not open)
 if not re.search(r'busy = \(\(\*R_EE_D1_CHCR \| \*R_EE_D2_CHCR\) & 0x100\) \| \(\*\(vu32 \*\)0x10003c00 & 0x800700\);', padhook) or \
         '0x10003020' in padhook or '0x12001000' in padhook:
     failures.append('padhook.c IGR_HoldGs: only channels 1 and 2 and VIF1 VSS/VFS/VIS/FDR (no INT, no GIF, no GS) may refuse the menu')
