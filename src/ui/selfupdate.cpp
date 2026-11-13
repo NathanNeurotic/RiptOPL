@@ -6,12 +6,11 @@
   its build number is newer. Nothing is fetched until the user picks the menu entry, and nothing is
   downloaded until they accept the offer.
 
-  The only files written are beside the ELF that booted, under its own name: <name>.NEW while it
-  downloads, then <name>.BAK. The download must match the release's SHA-256 and look like a MIPS ELF
-  before anything is renamed. The swap is booted -> .BAK, .NEW -> booted; if the second rename fails
-  the first is undone. On a memory card the .BAK is then deleted (it would hold a second 2 MB copy);
-  on a USB/exFAT drive it stays. Any failure before the swap deletes .NEW and leaves the booted ELF
-  as it was. Network and card work run on the I/O worker.
+  The only file written is beside the ELF that booted, under its own name: <name>.NEW while it
+  downloads. The download must match the release's SHA-256 and look like a MIPS ELF before the booted
+  ELF is touched. No backup is kept (it would hold a second 2 MB copy). Any failure before the swap
+  deletes .NEW and leaves the booted ELF as it was; if the swap itself fails, .NEW is kept and the
+  message names it. Network and card work run on the I/O worker.
 */
 
 #include "include/opl.h"
@@ -339,7 +338,7 @@ static int suRename(const char *from, const char *to, const char *toName)
 static void suInstallWorker(void)
 {
     SuBuffers *b = static_cast<SuBuffers *>(malloc(sizeof(SuBuffers)));
-    char cur[256], fresh[256], bak[256], freshName[40], bakName[40];
+    char cur[256], fresh[256], freshName[40];
     unsigned char sha[32];
     SuFile f;
 
@@ -350,9 +349,7 @@ static void suInstallWorker(void)
     suErrno = 0;
     suResult = SU_ERR_SWAP;
     if (suJoin(cur, sizeof(cur), gBootDir, gBootElfName, "") || suJoin(fresh, sizeof(fresh), gBootDir, gBootElfName, ".NEW") ||
-        suJoin(bak, sizeof(bak), gBootDir, gBootElfName, ".BAK") ||
-        snprintf(freshName, sizeof(freshName), "%s.NEW", gBootElfName) >= (int)sizeof(freshName) ||
-        snprintf(bakName, sizeof(bakName), "%s.BAK", gBootElfName) >= (int)sizeof(bakName) || !suExists(cur))
+        snprintf(freshName, sizeof(freshName), "%s.NEW", gBootElfName) >= (int)sizeof(freshName) || !suExists(cur))
         goto done;
 
     unlink(fresh); /* a .NEW left by an interrupted update is ours */
@@ -386,32 +383,17 @@ static void suInstallWorker(void)
     }
 
     suResult = SU_ERR_SWAP;
-    unlink(bak); /* the previous update's backup */
     suStep = 1;
-    if (suRename(cur, bak, bakName) != 0) {
-        const int keep = suErrno; /* the restore below must not replace the error that is shown */
-        if (!suExists(cur) && suRename(bak, cur, gBootElfName) != 0) {
-            suErrno = keep;
-            suResult = SU_ERR_RESTORE; /* the old ELF is <name>.BAK: keep every file */
-            goto done;
-        }
+    if (unlink(cur) != 0) { /* the running ELF is in memory; nothing was changed */
+        suErrno = errno;
         unlink(fresh);
         goto done;
     }
     suStep = 2;
     if (suRename(fresh, cur, gBootElfName) != 0) {
-        const int keep = suErrno;
-        const int restored = suRename(bak, cur, gBootElfName);
-        suErrno = keep;
-        if (restored != 0) {
-            suResult = SU_ERR_RESTORE; /* the old ELF is <name>.BAK: the message names it */
-            goto done;
-        }
-        unlink(fresh);
+        suResult = SU_ERR_RESTORE; /* the old ELF is gone: the verified download stays as <name>.NEW */
         goto done;
     }
-    if (suIsMc(cur))
-        unlink(bak);
     suInstalledRev = suRemoteRev;
     suResult = SU_OK;
 done:

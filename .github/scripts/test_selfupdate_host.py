@@ -104,11 +104,11 @@ def source_checks():
     inst = src[src.index("static void suInstallWorker"):]
     inst = inst[:inst.index("\n}\n")]
     # The digest is compared before anything touches the running ELF, and a mismatch removes the download.
-    check("verify_before_swap", inst.index("memcmp(") < inst.index("suRename(cur"), "digest compare must come first")
-    check("mismatch_unlinks", "unlink(fresh)" in inst[inst.index("memcmp("):inst.index("suRename(cur")])
-    # The swap: current to .BAK, new into place, and the backup back if that fails.
-    a, b = inst.index("suRename(cur, bak,"), inst.index("suRename(fresh, cur,")
-    check("swap_order", a < b and "suRename(bak, cur," in inst[b:], "cur->bak, new->cur, bak->cur on failure")
+    check("verify_before_swap", inst.index("memcmp(") < inst.index("unlink(cur)"), "digest compare must come first")
+    check("mismatch_unlinks", "unlink(fresh)" in inst[inst.index("memcmp("):inst.index("unlink(cur)")])
+    # The swap: current removed, new into place.
+    a, b = inst.index("unlink(cur)"), inst.index("suRename(fresh, cur,")
+    check("swap_order", a < b and "bak" not in inst.lower().replace("break", ""), "cur removed, new->cur, no backup")
     # Redirects are followed only to GitHub's hosts, and only a few times.
     check("redirects_allowlisted", "suSplitUrl(" in src and re.search(r"for \(hop = 0; hop < 4", src) is not None)
     callers = sorted(str(p.relative_to(ROOT)) for p in (ROOT / "src").rglob("*.c*")
