@@ -171,23 +171,20 @@ static void IGR_PauseThreads(void)
     }
 }
 
-// The game's own transfers finish before the menu takes channel 1 and the GS. A VIF1 stopped on a VIF code's interrupt
-// bit waits for the game's VIF1 handler (FBRST.STC), a GS stopped on a second SIGNAL for its GS handler (CSR.SIGNAL),
-// and a list sent in parts, a masked PATH3 or a stalled channel for the DMA completion handler that sends what comes
-// next: held from the start, that transfer never finished and the menu refused (yellow). So all of them are held only
-// here, once channels 1 and 2 are idle, the VIF1 FIFO is empty and not stalled, the GIF holds nothing (FQC, APATH, OPH)
-// and the GS's own FIFO is empty (CSR.FIFO 01): a DMA can end with its last data still queued in front of a SIGNAL.
-// VIF1_STAT.INT (bit 11) is left out: it only records that a VIF code's interrupt bit was seen and stays set until the
-// game writes FBRST.STC, which a MARK code's interrupt (no stall) never makes it do; a real stall shows in VIS.
-// That is the wait. What can still refuse the menu once the wait is over is only what the menu's own channel-1 packets
-// cannot get past: channel 1 or 2 running, or VIF1 stopped or reading back (as RIPPS2's check was): a GIF path left
-// active (APATH, OPH, P1Q: a packet that ends without EOP leaves it so for good), a GIF or VIF1 FIFO or a GS FIFO that
-// never drains are not refusals: each packet starts with FLUSHA, and a draw that cannot get through ends in mint green.
-// Returns non-zero when those did not clear within the wait (COP0 Count ticks). They are checked with all of the
-// interrupts held, so no handler can start a transfer after the check
+// The game's own transfers finish before the menu takes channel 1 and the GS: channels 1 and 2 idle and VIF1 neither
+// stopped (VSS, VFS, VIS) nor reading back (FDR), which is RIPPS2's check. VIF1_STAT.INT is left out: it only records
+// that a VIF code's interrupt bit was seen and stays set until the game writes FBRST.STC, which a MARK code's interrupt
+// (no stall) never makes it do; a real stall shows in VIS. The GIF path and the FIFOs are not tested: a path left active
+// by a packet that ends without EOP never clears, and every menu packet starts with FLUSHA anyway; a draw that cannot
+// get through ends in mint green. A VIF1 stopped on a VIF code's interrupt bit waits for the game's VIF1 handler
+// (FBRST.STC), and a list sent in parts or a stalled channel for the DMA completion handler that sends what comes next:
+// held from the start, that transfer never finished and the menu refused (yellow). So the GS, VIF1 and DMA completion
+// interrupts are held only here, once the transfers are idle.
+// Returns non-zero when they did not get there within the wait (COP0 Count ticks). They are checked with all of them
+// held, so no handler can start a transfer after the check
 static u32 IGR_HoldGs(u32 wait)
 {
-    u32 on = 0, dmac = 0, busy, hard, vif, t, now;
+    u32 on = 0, dmac = 0, busy, t, now;
 
     asm volatile("mfc0 %0, $9"
                  : "=r"(t));
@@ -202,15 +199,13 @@ static u32 IGR_HoldGs(u32 wait)
         *IGR_I_MASK = on = *IGR_I_MASK & IGR_INTC_GIFS; // those of GS and VIF1 that are on: off
         *R_EE_D_STAT = dmac = *R_EE_D_STAT & IGR_DMAC_HELD;
         EIntr();
-        vif = *(vu32 *)0x10003c00;
-        hard = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (vif & 0x800700);
-        busy = hard | (((vif & ~0x800) | *(vu32 *)0x10003020) & 0x1f800f00) | ((*(vu32 *)0x12001000 & 0xc000) ^ 0x4000);
+        busy = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x800700);
         asm volatile("mfc0 %0, $9"
                      : "=r"(now));
     } while (busy && now - t < wait);
     IGR_HeldIntc |= on;
     IGR_HeldDmac = dmac;
-    return hard;
+    return busy;
 }
 
 static void IGR_ResumeGame(void) // the pause, undone in reverse
