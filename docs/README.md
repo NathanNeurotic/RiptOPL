@@ -32,7 +32,7 @@ Use the references below for implementation details, exact limits and contributo
 | USB, MX4SIO and iLink | [Device setup](https://nathanneurotic.github.io/RiptOPL/usb.html) · [MX4SIO launch notes](MX4SIO.md) |
 | MMCE | [MMCE setup](https://nathanneurotic.github.io/RiptOPL/mmce.html) |
 | Internal HDD | [APA/exFAT guide](https://nathanneurotic.github.io/RiptOPL/hdd.html) · [exFAT and APA-Jail](EXFAT.md) |
-| SMB / UDPFS / UDPBD | [SMB](https://nathanneurotic.github.io/RiptOPL/smb.html) · [Network boot](https://nathanneurotic.github.io/RiptOPL/network-boot.html) |
+| SMB / NFS / UDPFS / UDPBD | [Network: SMB, NFS, UDPFS and UDPBD](https://nathanneurotic.github.io/RiptOPL/network-boot.html) · [SMB](https://nathanneurotic.github.io/RiptOPL/network-boot.html#smb) · [NFS](https://nathanneurotic.github.io/RiptOPL/network-boot.html#nfs) |
 | HTTP | [HTTP profile and limits](HTTP.md) · [Host conformance tools](../tools/pc/http/README.md) |
 | Console i.LINK ID | [Optional per-game native-core identity](CONSOLE-ILINK-ID.md) |
 | Neutrino | [Installation, core selection, arguments, cheats and VMC](NEUTRINO.md) |

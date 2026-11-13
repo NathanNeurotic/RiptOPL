@@ -80,11 +80,12 @@ MMCE Prefix Path (`mmce_prefix`).
 | IGR Path | Where in-game reset exits to. | `exit_path` |
 | Exit To | Where the main menu's Exit goes: Console Menu (the console's own exit, the default), PS2 Browser, or PS2 Browser (Skip Card Update). Only the main menu's Exit uses it. | `exit_menu` |
 | Custom Settings Path | A folder to read and save settings in instead of the default. | `custom_settings_path` |
+| Date and Time *(Modify)* | Sets the console's clock, in the console's own time zone and daylight-saving setting. Check for Updates needs it set. | (the console clock; not saved by RiptOPL) |
 | Write Operations | Allows RiptOPL to write to game devices (rename, delete, VMC, art). | `enable_delete_rename` |
 | Parental Lock Password | Password that locks protected games and settings. | `parental_lock_password` |
 | Debug | Debug colours and logging during launch. | `disable_debug` |
 | BDM Prefix Path | A folder on BDM devices that holds the game folders. | `usb_prefix` |
-| ETH Prefix Path | A folder on the SMB share that holds the game folders. | `eth_prefix` |
+| ETH Prefix Path | A folder on the SMB share or NFS export that holds the game folders. | `eth_prefix` |
 | HDD Spindown | Minutes before the internal HDD spins down (0 = never). | `hdd_spindown` |
 | Cache Game List (HDD APA) | Keeps the APA game list between starts. | `hdd_game_list_cache` |
 | BDM Cache | In-game read cache for BDM devices (sectors). | `bdm_cache` |
@@ -105,17 +106,19 @@ HTTP and [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md) for the RA rows.
 
 | Row | What it does | Key |
 | --- | --- | --- |
-| Protocol | SMB, UDPFS, UDPBD or HTTP. | `network_protocol`, `net_protocol_pick` |
+| Protocol | SMB, UDPFS, UDPBD, HTTP or NFS. | `network_protocol`, `net_protocol_pick` |
 | Access | UDPFS only: read-only or read/write. | `udpfs_access` |
 | SMB Version | SMB only: SMB2/3 (new installs) or SMBv1. | `smb_dialect` |
 | Advanced Options | Unlocks Ethernet Link Mode and the SMB port. Not saved. | |
 | Ethernet Link Mode | Auto or a fixed speed and duplex. | `eth_linkmode` *(net)* |
 | IP Address Type | DHCP or static. | `ps2_ip_use_dhcp` *(net)* |
 | IP Address, Mask, Gateway, DNS Server | The console's static address. | `ps2_ip_addr`, `ps2_netmask`, `ps2_gateway`, `ps2_dns` *(net)* |
-| - SMB Server -: Address Type | IP address or NetBIOS name. | `smb_share_use_nbns` *(net)* |
+| - SMB Server - (- NFS Server - while Protocol is NFS): Address Type | IP address or NetBIOS name. | `smb_share_use_nbns` *(net)* |
 | Address | The server's IP address or NetBIOS name. | `smb_ip`, `smb_share_nb_addr` *(net)* |
 | Port | SMB port (Advanced Options). | `smb_port` *(net)* |
-| Share, User, Password | The share and its login. | `smb_share`, `smb_user`, `smb_pass` *(net)* |
+| Share, User, Password | The share and its login (SMB only; NFS has no login). | `smb_share`, `smb_user`, `smb_pass` *(net)* |
+| NFS Export | NFS only: the exported folder, for example `/srv/ps2`, or `/` (the default) for the whole server. NFS version 4.0 on TCP 2049. | `nfs_export` *(net)* |
+| NFS Writes | NFS only. Off (the default): read only, no Rename or Delete, no VMC on the export, game settings kept next to RiptOPL's own. On: writes where the server allows them. | `nfs_writes` *(net)* |
 | HTTP server, HTTP port, HTTP base path | HTTP only: the catalogue server. | `http_ip`, `http_port`, `http_base_path` *(net)* |
 | Test HTTP server *(button)* | Fetches the catalogue once and reports the result. | |
 | RA Mode, RA companion IP, RetroAchievements telemetry, RetroAchievements badges, RA mark in game list, Caduceus experimental cards | RA editions only. | `ra_mode`, `ra_host_ip`, `ra_telemetry`, `ra_badges`, `ra_badge_suffix`, `ra_experimental_cards` |

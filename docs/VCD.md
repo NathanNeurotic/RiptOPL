@@ -73,6 +73,14 @@ no USB device is involved (see [POPS UDPFS setup](#pops-udpfs-with-bdm-udpfs-ass
 **UDPBD and UDPFS IMG** remain Ember-only. The C++ UDPFS VCD handoff needs physical-console
 acceptance; host checks and packaged drivers do not establish hardware compatibility.
 
+**NFS** lists Ember titles only. Ember does not reset the IOP, so it reads its ELF, `bios.bin` and the
+game folder through the menu's NFS connection, as over SMB. POPSTARTER resets the IOP and has no NFS
+driver (on the network it reaches SMB, and UDPFS Files through UDPFS Assault), so `*.VCD` games are not listed
+over NFS; a POPSTARTER title reached there says to use Ember or SMB.
+While **NFS Writes** is Off, Ember cannot create or update `MC1.vmc`/`MC2.vmc` in the game folder: the
+PS1 row menu hides Ember Game Settings and Rename, and a warning says so before launch. Ember over NFS is
+NOT TESTED on hardware or in PCSX2, and whether Ember starts at all with NFS Writes Off is not known yet.
+
 ## 2. Choose Both, Mixed, PS2, or PS1
 
 The **PS2/PS1 Game Display** picker is on **Settings → Interface**:
@@ -250,7 +258,7 @@ IOP, so it needs no BDMA equip and no memory-card driver pair on any device.
 | Device | Location |
 | --- | --- |
 | USB / MMCE / MX4SIO / iLink / exFAT HDD | an **`EMBER`** folder at the device root, beside `POPS` |
-| SMB / UDPFS Files | an **`EMBER`** folder in the share's game folder, beside `CD`/`DVD` |
+| SMB / NFS / UDPFS Files | an **`EMBER`** folder in the share's (or export's) game folder, beside `CD`/`DVD`. NFS lists Ember games only |
 | UDPBD / UDPFS IMG | an **`EMBER`** folder at the served disk image's root, even when a BDM prefix puts `CD`/`DVD` in a subfolder. These two list Ember games only |
 | Internal HDD (APA/PFS) | an exact **`__.EMBER`**, `__.EMBER0` … `__.EMBER9` partition holding an `EMBER` folder |
 

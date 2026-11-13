@@ -144,6 +144,7 @@ DOCS = {
     "docs/RA-RUNTIME-BUDGETS.md": ("RA-Runtime-Budgets", "RA watch-list and snapshot budgets"),
     "docs/MAINTAINING-DOCS.md": ("Maintaining-Docs", "Maintaining the documentation"),
     "docs/SETTINGS.md": ("Settings-Map", "Where every setting lives"),
+    "docs/CHECK-FOR-UPDATES.md": ("Check-For-Updates", "Check for Updates"),
 }
 PAIRS = {
     "Game-Formats": "docs/GAME-FORMATS.md",
