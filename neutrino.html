@@ -39,7 +39,7 @@
     <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
     <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
     <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
-    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/UDPFS/UDPBD)</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/NFS/UDPFS/UDPBD)</a>
     <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
     <h4>Features</h4>
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
@@ -159,7 +159,8 @@ case-sensitive. The other old choices load as <em>&lt;not set&gt;</em>.</p>
 <tr><td>Internal HDD (APA partition &rarr; HDL)</td><td>Yes</td></tr>
 <tr><td>MMCE (SD2PSX / MemCard PRO2)</td><td>Yes</td></tr>
 <tr><td>UDPBD / UDPFS (network block device)</td><td>Yes — the default. UDPBD and UDPFS (Files and IMG) can also run on <code>&lt;OPL&gt;</code> per game (see <a href="network-boot.html#neutrino-only">Network Boot</a>). Both work on a real PS2; the UDPBD test (2026-09-26) used every Neutrino setting at its default.</td></tr>
-<tr><td>SMB / Ethernet</td><td>Yes, with the latest complete Neutrino nightly (<a href="https://github.com/ps2max32/neutrino/pull/236">SMB backend merged 2026-10-31</a>). <b>Default</b> follows the global Loader Core; per-game Neutrino / &lt;OPL&gt; choices override it. Uses SMB 3.0 on TCP 445, one plain ISO, no VMC on the share. Unsupported setups warn and fall back to &lt;OPL&gt;. Keep Neutrino on a local device. The RA kit's pinned NULD (formerly ORBIT) runtime needs its own SMB update. <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/NEUTRINO.md#smb-through-neutrino-experimental">Setup and limits</a>. <b>Not tested on hardware.</b></td></tr>
+<tr><td>SMB / Ethernet</td><td>Yes, with a complete Neutrino built after its <a href="https://github.com/ps2max32/neutrino/pull/236">SMB backend</a> was merged (2026-10-31). The development build the kits bundle (v1.8.0-61-g7be8de2, 2026-08-31) is older, so with the kit as shipped these games run on &lt;OPL&gt; with a warning. <b>Default</b> follows the global Loader Core; per-game Neutrino / &lt;OPL&gt; choices override it. Uses SMB 3.0 on TCP 445, one plain ISO, no VMC on the share. Unsupported setups warn and fall back to &lt;OPL&gt;. Keep Neutrino on a local device. The RA kit's pinned NULD (formerly ORBIT) runtime needs its own SMB update. <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/NEUTRINO.md#smb-through-neutrino-experimental">Setup and limits</a>. <b>Not tested on hardware.</b></td></tr>
+<tr><td>NFS</td><td>Yes, with a complete Neutrino built after its <a href="https://github.com/ps2max32/neutrino/pull/240">NFS backend</a> was merged (2026-11-12); no Neutrino release or development build has it yet, so these games run on &lt;OPL&gt; with a warning for now. <b>Default</b> follows the global Loader Core. Uses <code>-bsd=nfs</code> and <code>config/bsd-nfs.toml</code>, one plain ISO, read-only, no VMC. Keep Neutrino on a local device. <a href="network-boot.html#nfs-neutrino">Setup and limits</a>. <b>Not tested on hardware.</b></td></tr>
 <tr><td>USB Extreme split images (<code>.ul</code>)</td><td>No — falls back to <code>&lt;OPL&gt;</code></td></tr>
 <tr><td>Compressed ISO (<code>.zso</code>)</td><td>No — falls back to <code>&lt;OPL&gt;</code></td></tr>
 </tbody>
@@ -363,7 +364,7 @@ PS2 has one network adapter, so the other protocols stay unavailable until you r
 <p>Full setup, server instructions, and the UDPBD vs UDPFS protocol comparison are on the <a href="network-boot.html">Network Boot</a> page.</p>
 
 <div class="grid">
-<a class="tile" href="network-boot.html"><span class="icon icon-netboot"></span><b>Network</b><span>SMB, UDPFS &amp; UDPBD setup, server requirements, static IP</span></a>
+<a class="tile" href="network-boot.html"><span class="icon icon-netboot"></span><b>Network</b><span>SMB, NFS, UDPFS &amp; UDPBD setup, server requirements, static IP</span></a>
 <a class="tile" href="per-game-settings.html"><span class="icon icon-settings-pergame"></span><b>Per-game Settings</b><span>Every per-game option explained</span></a>
 <a class="tile" href="vmc.html"><span class="icon icon-vmc"></span><b>VMC</b><span>Virtual memory cards — works under Neutrino too</span></a>
 <a class="tile" href="ps1-vcd.html"><span class="icon icon-ps1"></span><b>PS1 Games (VCD)</b><span>Separate path — always POPSTARTER, never Neutrino</span></a>

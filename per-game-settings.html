@@ -39,7 +39,7 @@
     <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
     <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
     <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
-    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/UDPFS/UDPBD)</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/NFS/UDPFS/UDPBD)</a>
     <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
     <h4>Features</h4>
     <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
@@ -117,7 +117,7 @@ RiptOPL / OPL / wOPL builds that read from the same device; only the master sett
   <tbody>
     <tr><td><code>&lt;OPL&gt;</code></td><td>Pin this title to OPL's built-in EE core.</td></tr>
     <tr><td><code>Neutrino</code></td><td>Hand the game off to an external <code>neutrino.elf</code>. See <a href="neutrino.html">Neutrino Core</a>.</td></tr>
-    <tr><td><code>Default</code></td><td>Make no per-game choice — follow the global <b>Settings &rarr; Game Launching &rarr; Default Loader Core</b> value. This is what a title shows while it has no saved <code>$CoreLoader</code> key, so it is the state every game starts in.</td></tr>
+    <tr><td><code>Default</code></td><td>Make no per-game choice — follow the global <b>Settings &rarr; Game Launching &rarr; Default Loader Core</b> value. This is what a title shows while it has no saved <code>$CoreLoader</code> key, so it is the state every game starts in. It reads <b>Default (Neutrino)</b> or <b>Default (&lt;OPL&gt;)</b>, naming the core it resolves to for that game; PS1 games keep plain <b>Default</b>.</td></tr>
   </tbody>
 </table>
 <p>Config key: <code>$CoreLoader</code> — no key is written while the picker reads <b>Default</b>.
@@ -347,7 +347,7 @@ will be silently ignored at launch.</p>
     <tr><td>PADEMU / Pad Macro panels</td><td><b>Active</b></td><td>Shows "not used with Neutrino core"</td></tr>
     <tr><td>OSD Language panel</td><td><b>Active</b></td><td>Shows "not used with Neutrino core"</td></tr>
     <tr><td>VMC panel</td><td><b>Active</b></td><td><b>Active</b> (via -mc0/-mc1)</td></tr>
-    <tr><td>Loader Core selector</td><td><b>Active</b> where supported</td><td><b>Active</b> where supported; on UDPBD and UDPFS (Files and IMG), Default means Neutrino, and locked away from Neutrino for SMB/HTTP/PS1</td></tr>
+    <tr><td>Loader Core selector</td><td><b>Active</b> where supported</td><td><b>Active</b> where supported; on UDPBD and UDPFS (Files and IMG), Default means Neutrino, and locked away from Neutrino for HTTP, PC Card CF and PS1</td></tr>
   </tbody>
 </table>
 

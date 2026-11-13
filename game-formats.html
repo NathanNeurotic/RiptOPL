@@ -39,7 +39,7 @@
     <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
     <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
     <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
-    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/UDPFS/UDPBD)</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/NFS/UDPFS/UDPBD)</a>
     <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
     <h4>Features</h4>
     <a href="game-formats.html" class="active"><span class="icon icon-zso"></span>Game Image Formats</a>
@@ -127,7 +127,7 @@ variant or console setup works. The source image must be a supported PS2 disc
 image; a PS1 CHD does not become a PS2 game because the container is readable.</p>
 <h2 id="direct-zso-playback">Direct ZSO playback</h2>
 <p>Use the built-in OPL core for direct ZSO playback on supported USB, MX4SIO,
-iLink, MMCE, SMB and internal-HDD paths. Ordinary file-based installations use
+iLink, MMCE, SMB, NFS and internal-HDD paths. Ordinary file-based installations use
 the same <code>CD/</code> or <code>DVD/</code> placement and naming rules as ISO. APA installations
 require an appropriate installer rather than copying a file into a folder.</p>
 <p>When Neutrino is selected for a direct ZSO image, RiptOPL falls back to OPL on
@@ -166,8 +166,8 @@ catalog entry and the required byte-range responses. Missing <code>libchdr</code
 HTTP to skip CHD. ZSO is passed through unchanged by PS2-Servers; RiptOPL lists
 but refuses direct ZSO HTTP entries. Use ISO or UDPFS server decoding for ZSO.
 See the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/HTTP.md">HTTP reference</a> for catalog, range and launch constraints.</p>
-<p><strong>SMB:</strong> do not assume the UDPFS/HTTP conversion applies to an ordinary SMB
-share. Use ISO or native OPL ZSO as appropriate for the selected core. Sharing
+<p><strong>SMB and NFS:</strong> do not assume the UDPFS/HTTP conversion applies to an ordinary SMB
+share or NFS export. Use ISO or native OPL ZSO as appropriate for the selected core. Sharing
 the folder alone does not make CHD or CSO playable.</p>
 <p><strong>UDPBD:</strong> exports block-device contents. Select a supported disk/filesystem
 layout for Neutrino; it is not the same service as UDPFS virtual ISO streaming.</p>
