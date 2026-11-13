@@ -44,13 +44,13 @@ elif want not in body.group(0):
 # An NT sharing violation may retry through SMB_COM_OPEN_ANDX. That specific read-only
 # retry needs deny-none, while old NAS servers without NT SMB support retain compatibility
 # mode, and writes must never take the held-file retry.
-legacy = re.search(r"static int smb_LegacyOpenAndX\\(.*?\\n}\\n", menu, re.S)
-open_wrapper = re.search(r"int smb_OpenAndX\\(.*?\\n}\\n", menu, re.S)
+legacy = re.search(r"static int smb_LegacyOpenAndX\(.*?\n}\n", menu, re.S)
+open_wrapper = re.search(r"int smb_OpenAndX\(.*?\n}\n", menu, re.S)
 if not legacy or not open_wrapper:
     failures.append("smbman-ra smb.c: legacy open or its wrapper not found")
 else:
     legacy_src, wrapper_src = legacy.group(0), open_wrapper.group(0)
-    if not re.search(r"OR->AccessMask\\s*=.*?\\|\\s*\\(deny_none\\s*\\?\\s*0x40\\s*:\\s*0\\);", legacy_src):
+    if not re.search(r"OR->AccessMask\s*=.*?\|\s*\(deny_none\s*\?\s*0x40\s*:\s*0\);", legacy_src):
         failures.append("smbman-ra smb.c: legacy open must add deny-none only when requested")
     no_nt = "return smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 0);"
     nt_retry = "r = smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 1);"
