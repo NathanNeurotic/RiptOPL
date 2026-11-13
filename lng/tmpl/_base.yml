@@ -2583,17 +2583,17 @@ gui_strings:
   label: EXIT_MENU
   string: Exit To
 - label: HINT_EXIT_MENU
-  string: "Console Menu: the console's own exit (FMCB or OSDMenu if installed). PS2 Browser: asks for the Browser; a card menu program may open first. Skip Card Update: the Browser without the card's menu program, whose entries return at the next power-on."
-- comment: Exit To choice. The console's own exit, as before the setting existed.
+  string: "PS2 Browser: opens the Browser, keeping the card's menu program (FMCB, OSDMenu) whenever it allows. OSDSYS (Skip Update): the console menu without the card's menu program, whose entries return at the next power-on. OSDSYS (With Update): the console's own exit."
+- comment: Exit To choice. The console's own exit (OSDSYS with the memory card system update, e.g. FMCB), as before the setting existed.
   label: EXIT_MENU_CONSOLE
-  string: Console Menu
-- comment: Exit To choice. OSDSYS asked for the Browser.
+  string: OSDSYS (With Update)
+- comment: Exit To choice. OSDSYS asked for the Browser, keeping the memory card system update when it passes the request on.
   label: EXIT_MENU_BROWSER
   string: PS2 Browser
-- comment: Exit To choice. OSDSYS asked for the Browser, skipping the memory card system update.
-  label: EXIT_MENU_BROWSER_SKIPMC
-  string: PS2 Browser (Skip Card Update)
-- comment: Main menu Exit prompt (issue 370). Replaces CONFIRMATION_EXIT, whose "Browser" was wrong when Exit To is Console Menu.
+- comment: Exit To choice. OSDSYS (the console menu) without the memory card system update.
+  label: EXIT_MENU_OSDSYS_SKIPMC
+  string: OSDSYS (Skip Update)
+- comment: Main menu Exit prompt (issue 370). Replaces CONFIRMATION_EXIT, whose "Browser" was wrong when Exit To is OSDSYS.
   label: CONFIRMATION_EXIT_APP
   string: Exit RiptOPL?
 - comment: Main menu entry. Asks this build's own GitHub release channel for a newer build.
