@@ -2605,6 +2605,9 @@ gui_strings:
 - comment: Check for Updates found nothing newer. %d is this build's number.
   label: UPDATE_NEWEST
   string: You have the newest build (%d).
+- comment: Added after the newest-build line, offers to download this channel's build again.
+  label: UPDATE_AGAIN
+  string: Download it again anyway?
 - comment: Check for Updates offer. 1st %d the release's build number, 2nd %d this build's.
   label: UPDATE_AVAILABLE
   string: Build %d is available (you have %d). Download and install it?
