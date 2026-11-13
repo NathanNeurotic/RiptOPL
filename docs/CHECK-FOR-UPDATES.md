@@ -37,7 +37,8 @@ of build. The channel is fixed at build time (`tools/build_edition.py update_cha
    limited to 8 MB.
 4. Checks the SHA-256 of what was downloaded against `SHA256SUMS.txt`. A mismatch changes nothing.
 5. Overwrites the running ELF in place under its own name, as Launchstation does. No second file, rename or backup is made.
-   If the write fails part-way the ELF may be damaged: the message
+   The old ELF is emptied before the new one is written, so a card too full for the new ELF can leave it
+   damaged. If the write fails part-way the ELF may be damaged: the message
    gives the step (1 open, 2 write, 3 close) and the error code, and the ELF must be copied to the
    device again.
 

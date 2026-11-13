@@ -299,7 +299,7 @@ static void suInstallWorker(void)
     suStep = 1;
     fd = fileXioOpen(cur, SU_FIO_WRONLY | SU_FIO_CREAT | SU_FIO_TRUNC, 0777);
     if (fd < 0) {
-        char alt[256];
+        char alt[sizeof(cur) + 2]; // one slash may be added
         char *sep = strchr(strcpy(alt, cur), ':');
         if (sep != NULL && sep[1] != '\0') {
             if (sep[1] == '/')
