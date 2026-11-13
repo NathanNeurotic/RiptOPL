@@ -28,6 +28,7 @@
 #include "mbedtls/sha256.h"
 
 #include <fcntl.h>
+#include <fileXio_rpc.h>
 #include <libmc.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -252,12 +253,15 @@ static int suRename(const char *from, const char *to, const char *toName)
 {
     if (suIsMc(from)) {
         sceMcTblGetDir info;
-        int ret = -1;
+        int ret = -1, type = 0, port = from[2] - '0';
+        /* Wake the card first, as Launchstation does: a rename on a card that has not been touched since boot can fail. */
+        if (mcGetInfo(port, 0, &type, NULL, NULL) >= 0)
+            mcSync(0, NULL, &ret);
         memset(&info, 0, sizeof(info));
         strncpy(reinterpret_cast<char *>(info.EntryName), toName, sizeof(info.EntryName) - 1);
-        if (mcSetFileInfo(from[2] - '0', 0, strchr(from, ':') + 1, &info, 0x10 /* the name */) < 0 || mcSync(0, NULL, &ret) <= 0 || ret < 0)
+        if (mcSetFileInfo(port, 0, strchr(from, ':') + 1, &info, 0x10 /* the name */) < 0 || mcSync(0, NULL, &ret) <= 0 || ret < 0)
             return -1;
-    } else if (rename(from, to) != 0)
+    } else if (fileXioRename(from, to) < 0) /* the filesystem driver's own rename, as Launchstation does; libc rename() failed on a real console */
         return -1;
     return !suExists(from) && suExists(to) ? 0 : -1;
 }
