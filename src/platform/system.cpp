@@ -609,7 +609,12 @@ static int exitCardUpdateIgnoresBrowser(void)
             // FMCB: its config is on the card and OSDMenu's is on neither card (OSDMenu may leave FREEMCB.CNF behind).
             snprintf(path, sizeof(path), "mc%d:/SYS-CONF/FREEMCB.CNF", port);
             if ((fd = open(path, O_RDONLY)) >= 0) {
-                match = exitFmcbDropsBrowser(fd);
+                // FMCB reads mass:/FREEMCB.CNF before the card's copy (its loadConfig); RiptOPL sees
+                // that USB drive as mass0: when its USB driver is loaded, else the card's copy decides.
+                int usb = open("mass0:/FREEMCB.CNF", O_RDONLY);
+                match = exitFmcbDropsBrowser(usb >= 0 ? usb : fd);
+                if (usb >= 0)
+                    close(usb);
                 close(fd);
                 for (int other = 0; other < 2 && match; other++) {
                     snprintf(path, sizeof(path), "mc%d:/SYS-CONF/OSDMENU.CNF", other);
