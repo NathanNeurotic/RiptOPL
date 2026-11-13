@@ -26,8 +26,12 @@
 
 #include "mbedtls/sha256.h"
 
+#define SU_FIO_WRONLY 0x0002 /* iomanX flags, which fileXioOpen takes (newlib's differ) */
+#define SU_FIO_CREAT 0x0200
+#define SU_FIO_TRUNC 0x0400
+
 #include <errno.h>
-#include <libmc.h>
+#include <fileXio_rpc.h>
 #include <fcntl.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -68,7 +72,6 @@ enum {
     SU_ERR_WRITE,
     SU_ERR_VERIFY,
     SU_ERR_SWAP,
-    SU_ERR_SPACE, /* the card cannot hold the new ELF: nothing was changed */
     SU_ERR_MEMORY,
 };
 
@@ -244,25 +247,6 @@ static int suStep, suErrno; /* which write step failed and why, shown after "Cou
 
 /* A card allocates in 1 KB clusters. The new ELF has to fit in the free clusters plus the old ELF's own,
    with one to spare; a card that cannot answer is left to the write to report. */
-static bool suCardFits(const char *path, int newSize)
-{
-    int type = 0, freeClusters = -1, format = 0, r = -1, old = 0;
-    int fd = open(path, O_RDONLY);
-
-    if (fd >= 0) {
-        old = lseek(fd, 0, SEEK_END);
-        close(fd);
-        if (old < 0)
-            old = 0;
-    }
-    if (mcGetInfo(path[2] - '0', 0, &type, &freeClusters, &format) < 0)
-        return true;
-    mcSync(0, NULL, &r); // mcGetInfo is async; the values are good after the sync
-    if (freeClusters < 0)
-        return true;
-    return freeClusters + (old + 1023) / 1024 >= (newSize + 1023) / 1024 + 1;
-}
-
 static void suInstallWorker(void)
 {
     SuBuffers *b = static_cast<SuBuffers *>(malloc(sizeof(SuBuffers)));
@@ -279,8 +263,6 @@ static void suInstallWorker(void)
     suResult = SU_ERR_SWAP;
     if (suJoin(cur, sizeof(cur), gBootDir, gBootElfName, ""))
         goto done;
-    if (suIsMc(cur) && cur[4] == '/') /* mcman's own form: "mc0:BOOT/FILE", no slash after the colon */
-        memmove(cur + 4, cur + 5, strlen(cur + 5) + 1);
 
     f.data = NULL;
     f.cap = 0;
@@ -309,39 +291,45 @@ static void suInstallWorker(void)
         goto done;
     }
 
-    /* A card truncated and then filled up part-way would lose the ELF: refuse first if it cannot hold the new one. */
-    if (suIsMc(cur) && !suCardFits(cur, f.written)) {
-        free(f.data);
-        suResult = SU_ERR_SPACE;
-        goto done;
-    }
-
-    /* Overwrite the booted ELF with the verified bytes. Step 1 changes nothing if it fails. */
+    /* Overwrite the booted ELF with the verified bytes, as Launchstation does: fileXioOpen with the iomanX
+       WRONLY|CREAT|TRUNC flags (mcman truncates only in its CREAT branch), trying "dev:/path" and then "dev:path".
+       Step 1 changes nothing if it fails. */
     suResult = SU_ERR_SWAP;
     suStep = 1;
-    /* O_CREAT is there for mcman, which truncates an existing file only in its O_CREAT branch (as sysneutrino.cpp
-       notes). The first access after a card is detected answers "changed card": asking again is the cure. */
-    for (off = 0; off < 4 && (fd = open(cur, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0 && suIsMc(cur); off++)
-        DelayThread(200 * 1000);
+    fd = fileXioOpen(cur, SU_FIO_WRONLY | SU_FIO_CREAT | SU_FIO_TRUNC, 0777);
     if (fd < 0) {
-        suErrno = errno;
+        char alt[256];
+        char *sep = strchr(strcpy(alt, cur), ':');
+        if (sep != NULL && sep[1] != '\0') {
+            if (sep[1] == '/')
+                memmove(sep + 1, sep + 2, strlen(sep + 2) + 1);
+            else {
+                memmove(sep + 2, sep + 1, strlen(sep + 1) + 1);
+                sep[1] = '/';
+            }
+            fd = fileXioOpen(alt, SU_FIO_WRONLY | SU_FIO_CREAT | SU_FIO_TRUNC, 0777);
+        }
+    }
+    if (fd < 0) {
+        suErrno = -fd;
         free(f.data);
         goto done;
     }
     suStep = 2;
     for (off = 0; off < f.written;) {
         int n = f.written - off < 16 * 1024 ? f.written - off : 16 * 1024;
-        if (write(fd, f.data + off, n) != n) {
-            suErrno = errno ? errno : ENOSPC;
-            close(fd);
+        int w = fileXioWrite(fd, f.data + off, n);
+        if (w <= 0 || w > n) {
+            suErrno = w < 0 ? -w : ENOSPC;
+            fileXioClose(fd);
             free(f.data);
             goto done;
         }
-        off += n;
+        off += w;
     }
     suStep = 3;
-    if (close(fd) < 0) {
-        suErrno = errno;
+    if (fileXioClose(fd) < 0) {
+        suErrno = EIO;
         free(f.data);
         goto done;
     }
@@ -382,9 +370,6 @@ static void suReport(void)
             break;
         case SU_ERR_VERIFY:
             snprintf(text, sizeof(text), "%s", _l(_STR_UPDATE_ERR_VERIFY));
-            break;
-        case SU_ERR_SPACE:
-            snprintf(text, sizeof(text), "%s", _l(_STR_UPDATE_ERR_SPACE));
             break;
         case SU_ERR_SWAP:
             snprintf(text, sizeof(text), "%s (%d/%d)", _l(_STR_UPDATE_ERR_SWAP), suStep, suErrno);
