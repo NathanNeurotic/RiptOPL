@@ -766,11 +766,11 @@ static int igrmDraw(u32 *pkt)
 // read through the VIF1 FIFO, RIPPS2's rsRead (ripshot.c, written from the GS manual and ps2sdk's ee/debug
 // screenshot.c, AFL). The game is paused with its DMA idle; its GS state is left as found: FINISH is masked in IMR
 // while ours is raised and cleared again unless the game had it set. Returns 0 when the GS did not deliver.
-#define IGRM_GS_CSR    ((vu64 *)0x12001000)
-#define IGRM_GS_BUSDIR ((vu64 *)0x12001040)
-#define VIF_FDR        0x00800000
-#define CSR_FINISH     2
-#define IMR_FINISH     0x200
+#define IGRM_GS_CSR     ((vu64 *)0x12001000)
+#define IGRM_GS_BUSDIR  ((vu64 *)0x12001040)
+#define VIF_FDR         0x00800000
+#define CSR_FINISH      2
+#define IMR_FINISH      0x200
 
 static int igrmWaitFor(vu32 *reg, u32 bits, u32 want)
 {
