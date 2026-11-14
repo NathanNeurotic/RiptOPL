@@ -109,7 +109,7 @@ one-off test from the 2026-10-27 review that is not in the repository.</li>
 <td><a href="#smbman">smbman</a></td>
 <td><code>iop/network/smbman</code></td>
 <td><a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/modules/network/smbman-ra"><code>modules/network/smbman-ra</code></a></td>
-<td>4</td>
+<td>5</td>
 <td>0</td>
 <td>1</td>
 </tr>
@@ -189,7 +189,7 @@ were reformatted with clang-format in a baseline commit that each <code>ORIGIN.t
 against that commit. atad was added already reformatted and changed (<code>bcac683b</code>), so diff it against its
 pin with whitespace ignored (<code>diff -w</code>), or follow its <code>/* FORK */</code> markers.</p>
 <h2 id="smbman">smbman</h2>
-<p>Our copy is ps2sdk's <code>iop/network/smbman</code> with four changes. ps2sdk has not changed those sources since
+<p>Our copy is ps2sdk's <code>iop/network/smbman</code> with five changes. ps2sdk has not changed those sources since
 <code>d44e0128</code> (2024-12-12). Every edition embeds our copy; before 2026-10-27 only the RetroAchievements
 edition did. Only the menu loads it; in-game SMB access uses RiptOPL's own driver in
 <code>modules/iopcore/cdvdman</code>.</p>
@@ -251,6 +251,30 @@ not recorded. No host test. Not tried: asking for a wider NT share mode instead.
 <p>Not a ps2sdk defect. An open that writes, creates or truncates does not retry, and a refused open returns
 <code>-EBUSY</code> instead of <code>-EIO</code>, so the menu can say that the file is held. A distinct errno for a sharing
 violation could go to ps2sdk on its own; the read-only limit is OPL's choice.</p>
+<h3 id="a-read-is-refused-while-any-other-handle-can-write">A read is refused while any other handle can write</h3>
+<p><strong>Still in master.</strong></p>
+<ul>
+<li><strong>Where:</strong> <code>smb.c</code>, <code>smb_NTCreateAndX()</code>: <code>ShareAccess = 0x01</code>, share read only, for every open.</li>
+<li><strong>What goes wrong:</strong> a server grants an open only if its share mode allows every handle already open.
+Sharing read only, a read is refused while anyone holds the file with write access. A console switched
+off or reset mid-game leaves its VMC open for write on the server until the server drops the dead
+session, so OPL's check of the card before the next launch failed at random with "Error accessing VMC"
+(<a href="https://github.com/NathanNeurotic/RiptOPL/issues/418">RiptOPL #418</a>, SMBv1 only).</li>
+<li><strong>Who hits it:</strong> smbman users reading a file that another session can write, on a server that enforces
+share modes (Windows, Samba).</li>
+<li><strong>Our change:</strong> a menu read shares read and write (<code>0x03</code>), as our SMB2 driver does. A menu write still shares
+read only. The in-game SMBv1 driver opens game images read-only with deny-none (<code>0x40</code>), and opens
+writable VMC files with deny-write (<code>0x22</code>: read/write access plus <code>0x20</code> sharing mode). This
+lets the menu read a VMC while another session has it open without granting two consoles write
+access to the same card.</li>
+<li><strong>VMC safety limitation:</strong> two consoles must not write to the same VMC simultaneously. A server
+still holding the previous session's VMC writer open can refuse a new writer until that
+session expires or is released. That temporary refusal is intentional: permitting a second
+writer could interleave page writes and corrupt saves. Retry after server session cleanup;
+do not bypass the writer exclusion.</li>
+<li><strong>Evidence:</strong> code reading and <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/.github/scripts/test_smb1_vmc_share.py"><code>test_smb1_vmc_share.py</code></a>,
+which checks the sources only. Not tested on PCSX2 or hardware.</li>
+</ul>
 <h3 id="a-password-longer-than-256-characters-overruns-a-512-byte-buffer">A password longer than 256 characters overruns a 512-byte buffer</h3>
 <p><strong>Still in master.</strong></p>
 <ul>
