@@ -127,9 +127,16 @@ violation could go to ps2sdk on its own; the read-only limit is OPL's choice.
   ([RiptOPL #418](https://github.com/NathanNeurotic/RiptOPL/issues/418), SMBv1 only).
 - **Who hits it:** smbman users reading a file that another session can write, on a server that enforces
   share modes (Windows, Samba).
-- **Our change:** a read shares read and write (`0x03`), as our SMB2 driver does. A write still shares
-  read only. OPL's in-game SMBv1 driver also opens deny-none now: its compatibility-mode open is mapped by
-  Windows to a share that denies other readers (MS-CIFS appendix A).
+- **Our change:** a menu read shares read and write (`0x03`), as our SMB2 driver does. A menu write still shares
+  read only. The in-game SMBv1 driver opens game images read-only with deny-none (`0x40`), and opens
+  writable VMC files with deny-write (`0x22`: read/write access plus `0x20` sharing mode). This
+  lets the menu read a VMC while another session has it open without granting two consoles write
+  access to the same card.
+- **VMC safety limitation:** two consoles must not write to the same VMC simultaneously. A server
+  still holding the previous session's VMC writer open can refuse a new writer until that
+  session expires or is released. That temporary refusal is intentional: permitting a second
+  writer could interleave page writes and corrupt saves. Retry after server session cleanup;
+  do not bypass the writer exclusion.
 - **Evidence:** code reading and [`test_smb1_vmc_share.py`](../.github/scripts/test_smb1_vmc_share.py),
   which checks the sources only. Not tested on PCSX2 or hardware.
 
