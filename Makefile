@@ -1015,7 +1015,7 @@ $(EE_ASM_DIR)ps2ips.c: modules/network/ps2ips/ps2ips.irx | $(EE_ASM_DIR)
 modules/network/smbman-ra/smbman.irx: $(wildcard modules/network/smbman-ra/*.c) $(wildcard modules/network/smbman-ra/*.h) modules/network/smbman-ra/imports.lst modules/network/smbman-ra/Makefile
 	$(MAKE) -C modules/network/smbman-ra rebuild
 
-$(EE_ASM_DIR)smbman.c: $(SMBMAN_IRX) | $(EE_ASM_DIR)
+$(EE_ASM_DIR)smbman.c: $(SMBMAN_IRX) Makefile | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)_irx
 
 modules/network/smbinit/smbinit.irx: modules/network/smbinit
