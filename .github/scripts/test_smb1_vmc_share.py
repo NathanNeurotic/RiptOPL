@@ -52,15 +52,36 @@ else:
     legacy_src, wrapper_src = legacy.group(0), open_wrapper.group(0)
     if not re.search(r"OR->AccessMask\s*=.*?\|\s*\(deny_none\s*\?\s*0x40\s*:\s*0\);", legacy_src):
         failures.append("smbman-ra smb.c: legacy open must add deny-none only when requested")
-    no_nt = "return smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 0);"
     nt_retry = "r = smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 1);"
     write_guard = "if (((mode & O_RDWR) == O_RDWR) || (mode & O_WRONLY) || (mode & (O_CREAT | O_TRUNC)))"
-    if no_nt not in wrapper_src or nt_retry not in wrapper_src or write_guard not in wrapper_src:
+    guard_patterns = (
+        ("legacy-only server", re.escape("if (!(server_specs.Capabilities & SERVER_CAP_NT_SMBS))")
+         + r"\s*return\s+" + re.escape("smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 0);")),
+        ("sharing violation", re.escape("if (r != -EBUSY)") + r"\s*return\s+r\s*;"),
+        ("write-capable open", re.escape(write_guard) + r"\s*return\s+-EBUSY\s*;"),
+    )
+
+    def guards_prevent_retry(source):
+        matches = [re.search(pattern, source) for _, pattern in guard_patterns]
+        return (all(matches)
+                and nt_retry in source
+                and matches[0].end() < source.find("smb_NTCreateAndX(")
+                < matches[1].start() < matches[1].end()
+                < matches[2].start() < matches[2].end() < source.index(nt_retry))
+
+    if not guards_prevent_retry(wrapper_src):
         failures.append("smbman-ra smb.c: only NT sharing-violation reads may retry deny-none")
-    elif not (wrapper_src.index(no_nt) < wrapper_src.index("smb_NTCreateAndX(")
-              < wrapper_src.index("if (r != -EBUSY)") < wrapper_src.index(write_guard)
-              < wrapper_src.index(nt_retry)):
-        failures.append("smbman-ra smb.c: the no-NT, sharing violation and write guard must precede the retry")
+    else:
+        # Mutation check: a syntactically valid empty guard body must fail this test.
+        for label, pattern in guard_patterns:
+            mutant, count = re.subn(
+                pattern,
+                lambda match: re.sub(r"\breturn\b[^;]*;", ";", match.group(0), count=1),
+                wrapper_src,
+                count=1,
+            )
+            if count != 1 or guards_prevent_retry(mutant):
+                failures.append("smbman-ra smb.c: missing-return mutation escaped %s guard" % label)
 
 make = read("Makefile")
 assignments = []
