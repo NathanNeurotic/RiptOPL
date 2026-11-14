@@ -174,8 +174,17 @@ static int ratlsExpired(clock_t start, int ms = RATLS_DEADLINE_MS)
 static int bioSend(void *ctx, const unsigned char *buf, size_t len)
 {
     RatlsBio *bio = static_cast<RatlsBio *>(ctx);
-    int n = send(bio->sock, const_cast<unsigned char *>(buf), len, 0);
-    return n < 0 ? MBEDTLS_ERR_NET_SEND_FAILED : n;
+    int expired = bio->idle ? ratlsExpired(bio->start, RATLS_IDLE_MS) : ratlsExpired(bio->start);
+    if (expired)
+        return MBEDTLS_ERR_SSL_TIMEOUT;
+    int n = send(bio->sock, const_cast<unsigned char *>(buf), len, 0x08);
+    if (n > 0)
+        return n;
+    expired = bio->idle ? ratlsExpired(bio->start, RATLS_IDLE_MS) : ratlsExpired(bio->start);
+    if (expired)
+        return MBEDTLS_ERR_SSL_TIMEOUT;
+    DelayThread(2000);
+    return MBEDTLS_ERR_SSL_WANT_WRITE;
 }
 
 /* Reads through a 64-byte-aligned bounce buffer with ratlsTcpRecv (sized so ps2ips never drops an

@@ -695,7 +695,8 @@ int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, in
 #define PAD_CIRCLE 0x2000
 #define PAD_CROSS  0x4000
 
-#define IGRM_SECOND    294912000u // COP0 Count ticks: the EE's clock
+#define IGRM_SECOND     294912000u // COP0 Count ticks: the EE's clock
+#define IGRM_IDLE_TICKS (10u * IGRM_SECOND)
 static int igrmPending; // ticks the engine has not taken yet (CheatLiveApply was busy): tried again at every open
 
 static inline u32 igrmCount(void)
@@ -919,7 +920,7 @@ int IGR_MenuRun(u16 (*buttons)(void))
     USE_LOCAL_EECORE_CONFIG;
     u32 raw[(112 + PW * 2 * 4 + 64) / 4]; // one line of the panel at its widest (the IGR thread's stack)
     u32 *pkt = (u32 *)(((u32)raw + 63) & ~63);
-    u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, bpc;
+    u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, lastActivity, bpc;
     u16 held, now, pressed, ok, back;
     int sel = 0, armed = 0, result = IGR_MENU_RESUME, presses = 0, power = 1, powerLatched = 0, i;
     int page = 0, csel = 0, ctop = 0, full = 0, changed = 0, frameHeld;
@@ -1008,12 +1009,19 @@ int IGR_MenuRun(u16 (*buttons)(void))
     }
 
     held = buttons(); // the combo is still held: only new presses count
+    lastActivity = igrmCount();
     for (;;) {
         int dirty = 0, id = igrmIds[sel];
 
         now = buttons();
         pressed = now & ~held;
         held = now;
+        if (pressed)
+            lastActivity = igrmCount();
+        else if ((u32)(igrmCount() - lastActivity) > IGRM_IDLE_TICKS) {
+            result = IGR_MENU_RESUME;
+            break;
+        }
         if (page) { // CHEATS
             int n = (int)info.cheats->count;
             if (pressed & (PAD_UP | PAD_DOWN)) {
@@ -1127,7 +1135,8 @@ done:
     if (!gameDone)
         *IGRM_D_STAT = 2;
     asm volatile("sync.l");
-    igrmBpcBack(bpc);
+    if (result == IGR_MENU_RESUME)
+        igrmBpcBack(bpc);
     return result;
 }
 #endif

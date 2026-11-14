@@ -132,14 +132,22 @@ static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 // libpad's buttons, 1 = held (its buffer is active-low), or 0 while the pad is not stable
 static u16 IGR_PadButtons(void)
 {
-    const u8 *b;
+    const u8 *b, *b2;
+    u32 stride;
     u8 state;
 
     if (Pad_Data.pad_buf == NULL)
         return 0;
-    b = (const u8 *)UNCACHED_SEG(Pad_Data.pad_buf); // the IOP's padman fills it over SIF DMA, behind the cache
+    b = (const u8 *)UNCACHED_SEG(Pad_Data.pad_buf); // the IOP's padman double-buffers two slots over SIF DMA, behind the cache
+    stride = (Pad_Data.libpad == IGR_LIBPAD && Pad_Data.libversion < 0x0160) ? 64u : 128u;
+    b2 = b + stride;
+    if (*(const u32 *)(b + Pad_Data.pos_frame) < *(const u32 *)(b2 + Pad_Data.pos_frame))
+        b = b2;
     state = b[Pad_Data.pos_state];
-    if (!((Pad_Data.libpad == IGR_LIBPAD && state == IGR_PAD_STABLE_V1) || (Pad_Data.libpad == IGR_LIBPAD2 && state == IGR_PAD_STABLE_V2)))
+    if (!((Pad_Data.libpad == IGR_LIBPAD && (state == IGR_PAD_STABLE_V1 || state == 0x02)) ||
+          (Pad_Data.libpad == IGR_LIBPAD2 && (state == IGR_PAD_STABLE_V2 || state == 0x02))))
+        return 0;
+    if (Pad_Data.libpad == IGR_LIBPAD && Pad_Data.libversion >= 0x0160 && (b[0] & 1) != 0)
         return 0;
     return ~(b[Pad_Data.pos_combo2] | b[Pad_Data.pos_combo1] << 8) & 0xFFFF;
 }
@@ -199,14 +207,17 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
 {
     int i;
 
+    // Resume paused game threads BEFORE unmasking interrupts so pending VBLANK/GS/DMAC
+    // interrupts do not fire into still-suspended game workers.
+    for (i = 1; i < 256; i++)
+        if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
+            ResumeThread(i);
     // every interrupt in IGR_HeldDmac and IGR_HeldIntc is off now (the SIF's are in neither), and nothing runs that
     // turns one on or off: a 1 in either mask toggles, so one store each turns them all back on, and no handler can
     // run between a read and the write
     *R_EE_D_STAT = IGR_HeldDmac;
     *IGR_I_MASK = IGR_HeldIntc;
-    for (i = 1; i < 256; i++)
-        if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
-            ResumeThread(i);
+    asm volatile("sync.l; sync.p");
 }
 #endif
 
@@ -484,6 +495,17 @@ static void IGR_Thread(void *arg)
         // before. ResetEE leaves the DMAC alone (0x7E, not 0x7F): a SIF transfer in flight would stick (ORBIT)
         IGR_StopDmaAndGs();
         ResetEE(0x7E);
+        *R_EE_D_STAT = IGR_HeldDmac;
+        *IGR_I_MASK = IGR_HeldIntc;
+        asm volatile("sync.l; sync.p");
+        if (config->EnableGSMOp)
+            DisableGSM();
+#if defined(RETROACHIEVEMENTS) && RA_EXPERIMENTAL_CARD_DMA
+        else if (config->raOverlayBuf)
+            DisableGSTracker();
+#endif
+        else if (config->IgrMenu)
+            DisableGSTracker();
         if (EnableDebug && choice >= IGR_MENU_CANNOT_DRAW) {
             // Debug Colors: why the menu did not open, three blinks before the reset goes on (docs/IGR.md).
             // GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and growing it costs the stack
@@ -496,6 +518,16 @@ static void IGR_Thread(void *arg)
 #else
     while (Pad_Data.combo_type == 0x00)
         SleepThread();
+#endif
+    if (config->EnableGSMOp)
+        DisableGSM();
+#if defined(RETROACHIEVEMENTS) && RA_EXPERIMENTAL_CARD_DMA
+    else if (config->raOverlayBuf)
+        DisableGSTracker();
+#endif
+#ifdef IGR_MENU
+    else if (config->IgrMenu)
+        DisableGSTracker();
 #endif
 #ifdef IGR_OVERLAY
     // The combo with In-Game Menu on, in a launch that had no room for the menu (coreconfig.h IgrMenuNoRoom): the
@@ -714,9 +746,9 @@ static int IGR_Intc_Handler(int cause)
     if (Pad_Data.combo_type != 0x00) {
         IGR_StopDmaAndGs();
 
-        // Disable interrupts & reset some peripherals, back to a standard state.
-        // Call ResetEE(0x7F) from an interrupt handler.
-        iResetEE(0x7F);
+        // Disable interrupts & reset peripherals without resetting DMAC (0x7E, not 0x7F):
+        // resetting DMAC would stall in-flight SIF transfers.
+        iResetEE(0x7E);
 
         // Loop for each threads, skipping the idle & IGR threads.
         for (i = 1; i < 256; i++) {
