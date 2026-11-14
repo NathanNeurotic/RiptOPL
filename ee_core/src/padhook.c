@@ -452,6 +452,7 @@ static void IGR_StopDmaAndGs(void)
 static void IGR_Thread(void *arg)
 {
     USE_LOCAL_EECORE_CONFIG;
+    u8 combo_type;
 
     // Wait for the VBLANK_END handler, which latches the request, stops DMA/GS, suspends every
     // other thread and raises this one to priority 0 before waking it. Recheck the latch so a stray
@@ -464,8 +465,10 @@ static void IGR_Thread(void *arg)
 
         while (Pad_Data.combo_type == 0x00 && !IGR_MenuOpen)
             SleepThread();
-        if (!IGR_MenuOpen)
+        if (!IGR_MenuOpen) {
+            combo_type = Pad_Data.combo_type;
             break; // the power button, or the plain combo: the handler stopped DMA/GS and the game
+        }
 
         IGR_PauseThreads();
         // A transfer that only the game's own threads can finish (a list or a GS read-back one of them was in the
@@ -495,6 +498,8 @@ static void IGR_Thread(void *arg)
         // before. ResetEE leaves the DMAC alone (0x7E, not 0x7F): a SIF transfer in flight would stick (ORBIT)
         IGR_StopDmaAndGs();
         ResetEE(0x7E);
+        combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
+        Pad_Data.combo_type = combo_type;
         *R_EE_D_STAT = IGR_HeldDmac;
         *IGR_I_MASK = IGR_HeldIntc;
         asm volatile("sync.l; sync.p");
@@ -512,12 +517,12 @@ static void IGR_Thread(void *arg)
             static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00}; // grey, purple, mint
             DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, grey = no menu");
         }
-        Pad_Data.combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
         break;
     }
 #else
     while (Pad_Data.combo_type == 0x00)
         SleepThread();
+    combo_type = Pad_Data.combo_type;
 #endif
     if (config->EnableGSMOp)
         DisableGSM();
@@ -541,6 +546,7 @@ static void IGR_Thread(void *arg)
 
 #ifdef INGAMEDIAG
     // Freeze report: the handler has suspended the game's threads, so this records their state.
+    Pad_Data.combo_type = combo_type;
     if (Pad_Data.combo_type == IGR_COMBO_START_SELECT) {
         unsigned int pad_state = 0, pad_frame = 0;
 
@@ -562,9 +568,9 @@ static void IGR_Thread(void *arg)
     SifInitRpc(0);
 
     // If Pad Combo is Start + Select then Return to Home, else if Pad Combo is UP then take IGS
-    if ((Pad_Data.combo_type == IGR_COMBO_START_SELECT)
+    if ((combo_type == IGR_COMBO_START_SELECT)
 #ifdef IGS
-        || ((Pad_Data.combo_type == IGR_COMBO_UP) && (config->EnableGSMOp))
+        || ((combo_type == IGR_COMBO_UP) && (config->EnableGSMOp))
 #endif
     ) {
 
@@ -662,7 +668,7 @@ static void IGR_Thread(void *arg)
         }
 
 #ifdef IGS
-        if ((Pad_Data.combo_type == IGR_COMBO_UP) && (config->EnableGSMOp))
+        if ((combo_type == IGR_COMBO_UP) && (config->EnableGSMOp))
             InGameScreenshot();
 #endif
 
