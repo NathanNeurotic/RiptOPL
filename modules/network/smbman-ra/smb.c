@@ -876,7 +876,10 @@ int smb_NTCreateAndX(int UID, int TID, char *filename, s64 *filesize, int mode)
     NTCR->smbAndxCmd     = SMB_COM_NONE; // no ANDX command
     NTCR->AccessMask     = ((mode & O_RDWR) == O_RDWR || (mode & O_WRONLY)) ? 0x2019f : 0x20089;
     NTCR->FileAttributes = ((mode & O_RDWR) == O_RDWR || (mode & O_WRONLY)) ? EXT_ATTR_NORMAL : EXT_ATTR_READONLY;
-    NTCR->ShareAccess    = 0x01; // Share in read mode only
+    // Share fix: a read shares read and write, as smb2man does. Sharing read only refuses the
+    // open whenever another handle can write -- the in-game VMC handle a console left open on the
+    // server when it was switched off mid-game -- and OPL then reports "Error accessing VMC".
+    NTCR->ShareAccess    = ((mode & O_RDWR) == O_RDWR || (mode & O_WRONLY)) ? 0x01 : 0x03;
     if (mode & O_CREAT)
         NTCR->CreateDisposition |= 0x02;
     if (mode & O_TRUNC)
@@ -933,7 +936,7 @@ int smb_NTCreateAndX(int UID, int TID, char *filename, s64 *filesize, int mode)
 }
 
 //-------------------------------------------------------------------------
-static int smb_LegacyOpenAndX(int UID, int TID, char *filename, s64 *filesize, int mode)
+static int smb_LegacyOpenAndX(int UID, int TID, char *filename, s64 *filesize, int mode, int deny_none)
 {
     // does not supports filesize > 4Gb, so we'll have to use
     // smb_QueryPathInformation to find the real size.
@@ -957,7 +960,7 @@ static int smb_LegacyOpenAndX(int UID, int TID, char *filename, s64 *filesize, i
     OR->smbH.TID       = (u16)TID;
     OR->smbWordcount   = 15;
     OR->smbAndxCmd     = SMB_COM_NONE; // no ANDX command
-    OR->AccessMask     = ((mode & O_RDWR) == O_RDWR || (mode & O_WRONLY)) ? 0x02 : 0x00;
+    OR->AccessMask     = (((mode & O_RDWR) == O_RDWR || (mode & O_WRONLY)) ? 0x02 : 0x00) | (deny_none ? 0x40 : 0);
     OR->FileAttributes = ((mode & O_RDWR) == O_RDWR || (mode & O_WRONLY)) ? EXT_ATTR_NORMAL : EXT_ATTR_READONLY;
     if (mode & O_CREAT)
         OR->CreateOptions |= 0x10;
@@ -1012,24 +1015,23 @@ int smb_OpenAndX(int UID, int TID, char *filename, s64 *filesize, int mode)
     int r;
 
     if (!(server_specs.Capabilities & SERVER_CAP_NT_SMBS))
-        return smb_LegacyOpenAndX(UID, TID, filename, filesize, mode);
+        return smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 0);
 
     r = smb_NTCreateAndX(UID, TID, filename, filesize, mode);
     if (r != -EBUSY)
         return r;
 
-    // RA fix: the file is held by a session that is gone: a console that
-    // ran a game off the share and was switched off leaves exactly that,
-    // and the server frees it for nobody. The old command asks in
-    // compatibility mode, which such a server still grants, so the file
-    // can at least be read. Reading is all we take that way: writing past
-    // someone else's handle is not ours to ask for.
+    // RA fix: a read may be refused while the server still holds an earlier VMC handle.
+    // Retry using the legacy command with deny-none sharing, but do not attempt a
+    // write-capable fallback: the held VMC must not be modified concurrently.
     // O_RDWR is two bits, so a bare (mode & O_RDWR) matches a plain read as
     // well: ask the way the rest of the module asks.
     if (((mode & O_RDWR) == O_RDWR) || (mode & O_WRONLY) || (mode & (O_CREAT | O_TRUNC)))
         return -EBUSY;
 
-    r = smb_LegacyOpenAndX(UID, TID, filename, filesize, mode);
+    // After an NT sharing violation, a read-only legacy retry must also share access;
+    // compatibility mode can conflict with the VMC handle left by the old session.
+    r = smb_LegacyOpenAndX(UID, TID, filename, filesize, mode, 1);
 
     // RA fix: keep the reason if the legacy open failed too, so the caller
     // can say the file is held -- that is what the user has to act on.

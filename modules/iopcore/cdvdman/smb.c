@@ -765,7 +765,11 @@ static int smb_OpenAndXOnce(char *filename, u8 *FID, int Write)
     OR->smbH.TID = TID;
     OR->smbWordcount = 15;
     OR->smbAndxCmd = SMB_COM_NONE; // no ANDX command
-    OR->AccessMask = Write ? 2 : 0;
+    // Game images are read-only and share with other readers/writers (0x40: deny none).
+    // VMCs are opened read-write and deny other writers (0x20: deny write). Allowing
+    // concurrent VMC writers could corrupt saves. If a dead session still holds its
+    // VMC open, another writer must wait for the server to release that stale handle.
+    OR->AccessMask = Write ? (2 | 0x20) : 0x40;
     OR->FileAttributes = Write ? EXT_ATTR_NORMAL : EXT_ATTR_READONLY;
     OR->CreateOptions = 1;
 

@@ -24,7 +24,7 @@ Each entry gives its evidence:
 
 | Module | ps2sdk source | Our copy | Still in master | Fixed in master since our copy | Our own choices |
 | --- | --- | --- | --- | --- | --- |
-| [smbman](#smbman) | `iop/network/smbman` | [`modules/network/smbman-ra`](../modules/network/smbman-ra/) | 4 | 0 | 1 |
+| [smbman](#smbman) | `iop/network/smbman` | [`modules/network/smbman-ra`](../modules/network/smbman-ra/) | 5 | 0 | 1 |
 | [usbd (usbd_mini)](#usbd-usbd_mini) | `iop/usb/usbd` | [`modules/usb/usbd-ra`](../modules/usb/usbd-ra/) | 2 | 0 | 0 |
 | [ps2ips](#ps2ips) | `iop/tcpip/tcpips` | [`modules/network/ps2ips`](../modules/network/ps2ips/) | 5 | 0 | 0 |
 | [atad (ata_bd)](#atad-ata_bd) | `iop/dev9/atad` | [`modules/hdd/atad`](../modules/hdd/atad/) | 3 | 1 | 1 |
@@ -47,7 +47,7 @@ pin with whitespace ignored (`diff -w`), or follow its `/* FORK */` markers.
 
 ## smbman
 
-Our copy is ps2sdk's `iop/network/smbman` with four changes. ps2sdk has not changed those sources since
+Our copy is ps2sdk's `iop/network/smbman` with five changes. ps2sdk has not changed those sources since
 `d44e0128` (2024-12-12). Every edition embeds our copy; before 2026-10-27 only the RetroAchievements
 edition did. Only the menu loads it; in-game SMB access uses RiptOPL's own driver in
 `modules/iopcore/cdvdman`.
@@ -114,6 +114,31 @@ edition did. Only the menu loads it; in-game SMB access uses RiptOPL's own drive
 Not a ps2sdk defect. An open that writes, creates or truncates does not retry, and a refused open returns
 `-EBUSY` instead of `-EIO`, so the menu can say that the file is held. A distinct errno for a sharing
 violation could go to ps2sdk on its own; the read-only limit is OPL's choice.
+
+### A read is refused while any other handle can write
+
+**Still in master.**
+
+- **Where:** `smb.c`, `smb_NTCreateAndX()`: `ShareAccess = 0x01`, share read only, for every open.
+- **What goes wrong:** a server grants an open only if its share mode allows every handle already open.
+  Sharing read only, a read is refused while anyone holds the file with write access. A console switched
+  off or reset mid-game leaves its VMC open for write on the server until the server drops the dead
+  session, so OPL's check of the card before the next launch failed at random with "Error accessing VMC"
+  ([RiptOPL #418](https://github.com/NathanNeurotic/RiptOPL/issues/418), SMBv1 only).
+- **Who hits it:** smbman users reading a file that another session can write, on a server that enforces
+  share modes (Windows, Samba).
+- **Our change:** a menu read shares read and write (`0x03`), as our SMB2 driver does. A menu write still shares
+  read only. The in-game SMBv1 driver opens game images read-only with deny-none (`0x40`), and opens
+  writable VMC files with deny-write (`0x22`: read/write access plus `0x20` sharing mode). This
+  lets the menu read a VMC while another session has it open without granting two consoles write
+  access to the same card.
+- **VMC safety limitation:** two consoles must not write to the same VMC simultaneously. A server
+  still holding the previous session's VMC writer open can refuse a new writer until that
+  session expires or is released. That temporary refusal is intentional: permitting a second
+  writer could interleave page writes and corrupt saves. Retry after server session cleanup;
+  do not bypass the writer exclusion.
+- **Evidence:** code reading and [`test_smb1_vmc_share.py`](../.github/scripts/test_smb1_vmc_share.py),
+  which checks the sources only. Not tested on PCSX2 or hardware.
 
 ### A password longer than 256 characters overruns a 512-byte buffer
 
