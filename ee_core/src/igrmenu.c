@@ -1018,7 +1018,19 @@ int IGR_MenuRun(u16 (*buttons)(void))
         held = now;
         if (pressed)
             lastActivity = igrmCount();
-        else if ((u32)(igrmCount() - lastActivity) > IGRM_IDLE_TICKS) {
+        if (power) { // once = power off, twice = leave, decided a second after the first press (as OPL)
+            t = igrmCount();
+            if (igrmPowerButton(&powerLatched)) {
+                lastActivity = t;
+                if (presses++ == 0)
+                    firstT = t;
+            }
+            if (presses && t - firstT > IGRM_SECOND) {
+                result = presses == 1 ? IGR_MENU_POWEROFF : IGR_MENU_EXIT;
+                break;
+            }
+        }
+        if (!pressed && !presses && (u32)(igrmCount() - lastActivity) > IGRM_IDLE_TICKS) {
             result = IGR_MENU_RESUME;
             break;
         }
@@ -1083,16 +1095,6 @@ int IGR_MenuRun(u16 (*buttons)(void))
             }
         } else if (pressed & (back | PAD_START))
             break;
-
-        if (power) { // once = power off, twice = leave, decided a second after the first press (as OPL)
-            t = igrmCount();
-            if (igrmPowerButton(&powerLatched) && presses++ == 0)
-                firstT = t;
-            if (presses && t - firstT > IGRM_SECOND) {
-                result = presses == 1 ? IGR_MENU_POWEROFF : IGR_MENU_EXIT;
-                break;
-            }
-        }
 
         if (dirty) {
             if (page)
