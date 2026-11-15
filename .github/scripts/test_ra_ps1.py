@@ -479,6 +479,9 @@ int main(void) {
     nodes[0].offset=0x1000;ram[0x1000]=0;
     rp_frame_values(1);memcpy(pairs,snap+RA_SNAP_HDR+5,sizeof(pairs));
     assert(pairs[0]==0x1000 && pairs[1]==0 && pairs[2]==0x2000 && pairs[3]==0xAA);
+    nodes[0].w|=RA_NODE_LEGACY;nodes[0].offset=0x2000;
+    rp_frame_values(1);memcpy(pairs,snap+RA_SNAP_HDR+5,8);
+    assert(pairs[0]==0 && pairs[1]==0);
     FreeSysMemory(rp_win);FreeSysMemory(rp_entry_off);FreeSysMemory(rp_node_val);FreeSysMemory(rp_stage);
     puts("PASS: PS1 read windows, unaligned and last-byte reads, failed read suppresses frame, recovery and trailer");
 }

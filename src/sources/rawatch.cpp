@@ -98,6 +98,8 @@ bool RaWatch::takeNodes(const void *nodes, unsigned int count, unsigned int magi
             (size != 1 && size != 2 && size != 4) ||
             parent >= (RA_NODE_FROM_NODE(node.w) ? (unsigned int)i : (unsigned int)watchCount_))
             return false;
+        if (magic == RA_NODE_LEGACY_MAGIC)
+            node.w |= RA_NODE_LEGACY;
         nodeList_[i] = node;
     }
     nodeCount_ = (int)count;

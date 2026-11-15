@@ -157,9 +157,12 @@ int main() {
     entries[0]=RA_WATCH_PACK(0x7ffff,4);entries[1]=RA_WATCH_PACK(0x1ffffff,2);
     setup(2,6);ra_snap_send();for(int i=0;i<6;i++)assert(work[RA_SNAP_HDR+i]==0);
     // A chain whose base pointer is null sends address 0 and value 0, never reading through it
-    // (ported from the original's test_ra_watch).
-    entries[0]=RA_WATCH_PACK(0x80000,4);memset(gameRam+0x80000,0,4);gameRam[0x80004]=0xAA;
+    // (ported from the original's test_ra_watch), including legacy RANL with an in-range offset.
+    entries[0]=RA_WATCH_PACK(0x80000,4);memset(gameRam+0x80000,0,4);gameRam[0x80004]=0xAA;gameRam[0x100000]=0x55;
     nodes[0]={RA_NODE_PACK(0,0,4,0,0),4,1};
+    setup(1,4,1);ra_snap_send();
+    {const u8 zero[8]={0};assert(!memcmp(work+RA_SNAP_HDR+4,zero,8));}
+    nodes[0]={RA_NODE_PACK(0,0,1,0,0)|RA_NODE_LEGACY,0x100000,1};
     setup(1,4,1);ra_snap_send();
     {const u8 zero[8]={0};assert(!memcmp(work+RA_SNAP_HDR+4,zero,8));}
     puts("PASS: EE module-storage bounds, full entries/nodes, IRQ reads, null chains and one/two/three-frame pacing");

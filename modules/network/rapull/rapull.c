@@ -310,7 +310,7 @@ static void rp_frame_values(int read)
         if (RA_NODE_WIDTH(nw) != 0 && RA_NODE_WIDTH(nw) < 32)
             base &= (1u << RA_NODE_WIDTH(nw)) - 1;
         addr = (base * rp_nodes[i].scale + rp_nodes[i].offset) & 0x1FFFFFFF;
-        if (!read || !resolved) {
+        if (!read || !resolved || ((nw & RA_NODE_LEGACY) && base == 0)) {
             addr = 0;
         } else if ((size == 1 || size == 2 || size == 4) && rp_valid(addr, size)) {
             u32 at = addr & ~(RP_CHUNK - 1);

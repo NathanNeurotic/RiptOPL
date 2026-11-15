@@ -324,8 +324,9 @@ static void ra_snap_send(void)
                 base |= ((u32)at[2] << 16) | ((u32)at[3] << 24);
         }
 
-        /* Zero is a valid table index. Validate the computed address rather
-           than rejecting the unscaled parent value. */
+        /* Zero is a valid RAN2 table index, but in legacy RANL chains base == 0 is a null pointer. */
+        if ((w & RA_NODE_LEGACY) && base == 0)
+            size = 0;
         base >>= RA_NODE_SHIFT(w);
         if (RA_NODE_WIDTH(w) != 0 && RA_NODE_WIDTH(w) < 32)
             base &= (1u << RA_NODE_WIDTH(w)) - 1;

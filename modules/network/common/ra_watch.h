@@ -162,6 +162,8 @@ struct ra_node
 #define RA_NODE_SIZE(w)      (((w) >> 13) & 7)
 #define RA_NODE_SHIFT(w)     (((w) >> 16) & 31)
 #define RA_NODE_WIDTH(w)     (((w) >> 21) & 63)
+/* Normalized in-memory from RANL (not accepted on the wire): base == 0 is a null pointer. */
+#define RA_NODE_LEGACY       (1u << 27)
 #define RA_NODE_PACK(parent, from_node, size, shift, width)                                         \
     (((unsigned int)(width) << 21) | ((unsigned int)(shift) << 16) | ((unsigned int)(size) << 13) | \
      ((unsigned int)(from_node) << 12) | ((parent)&0x0FFF))
