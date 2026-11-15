@@ -1,0 +1,16 @@
+loadcore
+sysclib
+thbase
+thevent
+atad
+atad
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

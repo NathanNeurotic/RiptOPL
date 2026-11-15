@@ -1,0 +1,30 @@
+TIF_bridge_for_INET
+$! @
+$!(@
+deci2api
+modload
+ps2ip
+sifman
+sysmem
+thbase
+TIF_bridge_for_INET
+tifinet: StartThead -> %d
+tifinet: CreateThead -> %d
+tifinet: tif-recv -> %d
+tifinet: send -> %d
+tifinet: listening port %d
+tifinet: connected from %s.
+tifinet: tif-send -> %d
+tifinet: recv -> %d
+tifinet: Fin received
+tifinet: tif-open -> %d
+tifinet: Deci2GetTifHandlers -> NULL
+tifinet: accept -> %d
+tifinet: listen -> %d
+tifinet: bind -> %d
+.shstrtab
+.iopmod
+.rel.text
+.rodata
+.rel.data
+.bss

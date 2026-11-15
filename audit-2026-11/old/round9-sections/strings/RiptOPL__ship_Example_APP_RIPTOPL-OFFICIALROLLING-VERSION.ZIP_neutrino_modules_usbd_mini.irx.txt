@@ -1,0 +1,74 @@
+Gs&"
+GR&(
+<<HB
+<<H0
+GR&$
+$%0 
+Gc$l
+<PH"
+@B4%0
+<\H 
+<,HB
+<,H#
+Gc$8
+<8HB
+<8H#
+<(HB
+<4HB
+< HB
+< H#
+Gc$,
+$2%  
+Gs&h
+<DH 
+<@H 
+<LH 
+<HH 
+<dH"
+<4 B$
+<`H"
+BB$ 
+GR&%
+$*0C
+B$%@
+@B0~
+@B0Y
+$$(e
+$!8e
+@B0K
+<P=B$
+loadcore
+stdio
+sysmem
+sysclib
+intrman
+thsemap
+thevent
+thbase
+usbd
+freeIsoTd %p: already free
+FreeTD %p: already free
+freeDevice %p: Arg is not part of dev buffer
+freeIoRequest %p: already free.
+HC: Unrecoverable error
+FreeUsbd v.0.1.2
+dev=
+gtd=
+itd=
+ioreq=
+conf=
+hub=
+port=
+thpri=
+usbd
+.iopmod
+.text
+.rel.text
+.rodata
+.rel.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

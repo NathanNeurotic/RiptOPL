@@ -1,0 +1,25 @@
+$! D
+$% @
+$% @
+<%hM
+k5%(
+ B$	
+cdvdman
+esr_sl
+intrman
+loadcore
+sysclib
+cdvdman
+intrman
+sysmem
+ESR_DVDV_PA
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

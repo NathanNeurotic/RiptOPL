@@ -1,0 +1,27 @@
+USB$
+<USB$
+<USB$
+USB$	
+USB$
+<USB$
+	c$<
+2!8g
+2%P`
+'%(`
+'! C
+sysclib
+thbase
+thsemap
+usbd
+usbmass_bd
+mass-stor
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

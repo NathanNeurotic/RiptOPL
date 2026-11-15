@@ -1,0 +1,25 @@
+$% @
+$%( 
+$%(@
+cdvdman
+intrman
+loadcore
+sifcmd
+sifman
+sysclib
+thbase
+thevent
+cdvdfsv
+modload
+cdvd_ee_driver
+.iopmod
+.text
+.rel.text
+.rodata
+.rel.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab
