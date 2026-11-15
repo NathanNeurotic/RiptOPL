@@ -18,7 +18,7 @@ else — talking to the RetroAchievements servers, deciding what unlocked, your 
 PC.
 
 Based on the RetroAchievements implementation by **[hacan359 (yoba)](https://github.com/hacan359/Open-PS2-Loader/pull/1)**.
-Use the upstream **[xeRAbora PC client](https://github.com/hacan359/xerabora)** with RiptOPL's RA build. Download the required **[v1.0.1 release](https://github.com/hacan359/xerabora/releases/tag/v1.0.1)**.
+Use the upstream **[xeRAbora PC client](https://github.com/hacan359/xerabora)** with RiptOPL's RA build. Download **[v2.0.0](https://github.com/hacan359/xerabora/releases/tag/v2.0.0)** for this migration and regenerate every played game's watch plan.
 
 RiptOPL's real-hardware stabilization was contributed by **[oMrRexD](https://github.com/oMrRexD)** through
 PRs **#702–#705**, covering the ee_core stack squeeze, MMCE DEV9 dependency, cold-launch network
@@ -60,7 +60,7 @@ as finished.
 
 1. Start **RIPTOPL-RA.ELF** from the RetroAchievements kit (`rolling-ra`). The Korium and
    IncebtIon kits have no achievement telemetry and need no companion PC.
-2. Run **xeRAbora v1.0.1** (alpha.17 or later) on the companion PC and sign in to your RetroAchievements
+2. Run **xeRAbora v2.0.0** on the companion PC and sign in to your RetroAchievements
    account in its Settings page. Keep it running.
 3. In **Settings → Network**, leave **RA Mode** on **Xerabora**, turn **RetroAchievements
    telemetry** on and save. Telemetry is Off on a fresh start. Give the PS2 working network
@@ -174,9 +174,9 @@ protocol. The agent sends to the RA companion IP, else the verified peer. Networ
 a static console IP; other devices raise the menu network first, unless a UDP transport holds the adapter.
 
 The agent sends each snapshot in one packet, so a set whose **direct values exceed 1,216 bytes** cannot be
-tracked. It reads the direct entries only and ignores a pointer-chain tail, as xeRAbora's protocol defines
-for an agent without chain support: chain-based achievements do not unlock on Neutrino launches while the
-rest of the set does. A game without a watch list launches quietly; any other reason the handoff cannot be
+tracked. It reads direct entries only. A plan containing any pointer nodes is therefore refused as a
+whole, with the existing untracked warning; the direct prefix is not certified as the complete set.
+A game without a watch list launches quietly; any other reason the handoff cannot be
 made (no NULD runtime, no companion address, a failed write, or the two arguments pushing the launch past
 Neutrino's 256-byte budget) launches the game without achievements and says so. **RiptOPL does not claim
 console unlock cards, and remote reset is not provided by this runtime**; unlocks appear on the companion.
@@ -367,7 +367,7 @@ Updating the external client alone does not update the telemetry code in your EL
 - **Snapshot delivery:** telemetry polls every 4 ms, sends each new snapshot once, retries busy or torn copies, repeats an unchanged snapshot after ~1 second, and marks the staged sequence sent only after every part is accepted.
 
 > [!IMPORTANT]
-> Use **[xeRAbora v1.0.1](https://github.com/hacan359/xerabora/releases/tag/v1.0.1)** with this build; alpha.17 or later works. The console wire protocol is unchanged since alpha.10. Since alpha.17 the client has only gained a setting that keeps unlock notices off the TV (it then sends nothing) and reads optional link counters from the snapshot header. That is from a source review of xeRAbora `v0.1.0-alpha.17...v1.0.1` and its console fork `fa2d2e42...a9f97397`; **v1.0.1 is NOT TESTED on hardware with this build.** Host tests and successful builds do not establish console timing or game compatibility; the alpha.10 hardware report above is historical evidence, not validation of this update.
+> Historical pairing before this migration: **[xeRAbora v1.0.1](https://github.com/hacan359/xerabora/releases/tag/v1.0.1)** with this build; alpha.17 or later works. The console wire protocol is unchanged since alpha.10. Since alpha.17 the client has only gained a setting that keeps unlock notices off the TV (it then sends nothing) and reads optional link counters from the snapshot header. That is from a source review of xeRAbora `v0.1.0-alpha.17...v1.0.1` and its console fork `fa2d2e42...a9f97397`; **v1.0.1 is NOT TESTED on hardware with this build.** Host tests and successful builds do not establish console timing or game compatibility; the alpha.10 hardware report above is historical evidence, not validation of this update.
 
 ---
 
@@ -408,7 +408,7 @@ The same channel carries the IncebtIon-theme kit (`RIPTOPL-RetroAchievements-Inc
 `RIPTOPL-RA-IncebtIon.ELF` and `APP_RIPTOPL-RA-IncebtIon.psu`; inside it the app is still
 `APP_RIPTOPL-RA`), and `RIPTOPL-RA-VARIANTS-<version>.zip` with the `pademu0` loader (pad emulation compiled
 out); `RIPTOPL-RA-VARIANTS-IncebtIon-<version>.zip` is the same loader with the IncebtIon theme. The kit also carries **`xeRAbora.url`** (pointing directly to the paired
-[v1.0.1 release](https://github.com/hacan359/xerabora/releases/tag/v1.0.1)),
+[v2.0.0 release](https://github.com/hacan359/xerabora/releases/tag/v2.0.0)),
 because the loader does nothing without the PC client.
 
 The standard editions are unaffected: every RA source file and call site is behind
@@ -526,3 +526,19 @@ Hand testers a **run-pinned nightly.link build**, never a bare artifact link.
   PRs #702–#705: ee_core stack recovery, MMCE DEV9, launch-time network readiness/fallback, and the
   RA settings-page correction, plus the hardware investigation that exposed those failures.
 * `src/md5.c`, `include/md5.h` — L. Peter Deutsch, zlib licence, vendored unchanged.
+
+### RA kit pairing after the v2 migration
+
+Both RA theme kits ship the pinned RA-capable NULD Neutrino, not standard
+upstream Neutrino. That runtime supports direct plans up to 1216 snapshot bytes;
+a plan with any pointer nodes now produces the existing untracked warning and
+is not handed over as a partial set. The latest published NULD runtime remains
+v1.2.12; relabeling it cannot add RAN2 support.
+
+USB POPS uses the bundled POPStarter variants with RiptOPL's embedded rapops and
+rapull modules. MODULE_9.IRX is generated for the particular tracked game at
+launch; a pre-generated module must not be copied into a generic kit. Other PS1
+routes retain their existing untracked behavior. The release verifier checks
+the client link, NULD pin and POPStarter copies against the reviewed sources.
+Read RA-COMPATIBILITY.txt in the kit before upgrading. These checks establish
+packaging identity; they do not establish physical-console/gameplay acceptance.

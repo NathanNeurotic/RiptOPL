@@ -267,6 +267,19 @@ def stage(args: argparse.Namespace) -> None:
     print(f"Staged {app_dir} ({args.flavour}); {psu.name} ({psu.stat().st_size} bytes, SAS {sas_date})")
 
 
+def verify_ra_companions(package):
+    if package.read("xeRAbora.url") != (ROOT / "tools/pc/xeRAbora.url").read_bytes():
+        raise ValueError("RA kit carries a mismatched xeRAbora client link")
+    pin = json.loads((ROOT / "third_party/orbit-neutrino/release.json").read_text())
+    if json.loads(package.read("neutrino/ORBIT-RA.json")) != pin:
+        raise ValueError("RA kit carries a mismatched Neutrino runtime pin")
+    for name in ["POPS/POPSTARTER.ELF"] + [
+        f"POPS/POPSTARTER VERSIONS/{version}/POPSTARTER.ELF" for version in
+        ("MAIN", "DEBUG", "USBDELAY", "USBDELAY_DEBUG", "USBDELAY_LONGER_DEBUG")]:
+        if package.read(name) != (ROOT / "ship" / name).read_bytes():
+            raise ValueError(f"RA kit carries a mismatched POPStarter: {name}")
+
+
 def verify(args: argparse.Namespace) -> None:
     """Validate release ZIP structure, app metadata, and ELF/PSU consistency."""
     archive = Path(args.zip)
@@ -329,7 +342,7 @@ def verify(args: argparse.Namespace) -> None:
         elif "LICENSE-MBEDTLS.txt" in all_names:
             raise ValueError("package carries mbedTLS's licence but its ELF does not link mbedTLS")
         if args.ra:
-            required.add("xeRAbora.url")
+            required.update({"xeRAbora.url", "RA-COMPATIBILITY.txt"})
             required.update({"neutrino/ORBIT-RA.json", "neutrino/ORBIT-RA.txt", "neutrino/RA-EDITION-NEUTRINO.txt",
                              "neutrino/LICENSE", "neutrino/modules/ee_core.elf", "neutrino/modules/raagent.irx"})
         elif any("raagent" in name.lower() or "/ORBIT-RA." in name or "/RA-EDITION-NEUTRINO." in name for name in all_names):
@@ -382,6 +395,8 @@ def verify(args: argparse.Namespace) -> None:
                 raise ValueError(f"empty required ZIP entry: {name}")
         if "udpfs-server.url" in names:
             raise ValueError("legacy udpfs-server.url remains in the installable ZIP")
+        if args.ra:
+            verify_ra_companions(package)
         # The UDPFS driver pair, configs and notices ship unchanged: every pinned member must match
         # PROVENANCE.json, and every notice the repository's copy, byte for byte.
         notices = ROOT / "ship" / "POPS" / "UDPFS-NOTICES"

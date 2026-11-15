@@ -1892,9 +1892,8 @@ void sbNeutrinoPrepareRA(const char *prefix, const char *startup, const char *dr
     if (sbReadWatchList(prefix, startup) <= 0)
         return;
     // raagent sends each snapshot in ONE packet and skips anything larger. It reads the direct entries
-    // only and ignores a pointer-chain tail (xeRAbora PROTOCOL.md), so chain-based achievements do not
-    // track; the hand-over below carries the direct entries.
-    if (!sysNeutrinoRARuntime(neutrinoPath, extraArgs) || GetWatchBytes() > RA_ORBIT_SNAPSHOT_MAX)
+    // only. Never certify the direct prefix of a set that requires pointer nodes.
+    if (!sysNeutrinoRARuntime(neutrinoPath, extraArgs) || GetNodeCount() > 0 || GetWatchBytes() > RA_ORBIT_SNAPSHOT_MAX)
         goto untracked;
     networkGame = !strcmp(driver, "udpfs") || !strcmp(driver, "udp") || !strcmp(driver, "udpbd") || !strcmp(driver, "udpfsbd");
     if (networkGame) {

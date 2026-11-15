@@ -60,6 +60,22 @@ yet implement those three host features. Keep that limitation explicit when
 choosing a test profile. Physical-console acceptance of the coordinated pair
 and real Discord rendering remain unverified.
 
+### Release-kit pairing follow-up
+
+The RA kits now link to xeRAbora v2.0.0 and carry a short compatibility note.
+Both themes continue to select the digest-pinned NULD v1.2.12 RA Neutrino, while
+standard kits retain stock upstream Neutrino. NULD is direct-only and accepts
+at most 1216 snapshot bytes: a watch list with any nodes now takes the existing
+untracked-warning path instead of stripping its required tail. Full indexed
+Neutrino tracking requires a future node-capable runtime; this pin is not relabeled.
+
+USB POPS keeps the bundled stock POPStarter variants and this build's embedded
+rapops/rapull modules. The game-specific MODULE_9.IRX is generated at launch,
+not distributed as a stale generic module. The kit verifier checks the paired
+host shortcut, NULD provenance pin and POPStarter bytes. Edition checks now
+require all three RA modules (raudp, rapops, rapull) only in RA loaders. The
+NULD marker is explicitly written with LF even when packaging on Windows.
+
 ### Checkpoint validation
 
 - All 18 `.github/scripts/test_ra_*.py` host groups passed, plus

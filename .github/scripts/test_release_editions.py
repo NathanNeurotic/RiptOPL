@@ -23,7 +23,8 @@ class EditionsTests(unittest.TestCase):
             for target in (loader, core):
                 self.assertEqual("RETROACHIEVEMENTS" in target["defines"], ra)
             self.assertEqual("BUILTIN_KORIUM" in loader["defines"], editions.EDITIONS[name]["theme"] == "korium")
-            self.assertEqual("raudp" in loader["embed_irx"], ra)
+            for module in ("raudp", "rapops", "rapull"):
+                self.assertEqual(module in loader["embed_irx"], ra, module)
             self.assertNotIn("ps2sdk_socket_compat", loader["libs"])
             self.assertNotIn("ps2sdk_socket_compat", targets)
             self.assertEqual("ee_core/src/ra.c" in core["sources"], ra)
