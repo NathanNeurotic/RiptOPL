@@ -34,6 +34,16 @@ engine. Its explicit v2 read setting now works with either runtime, and its
 separate v2 console-loader export has verified artifact identity. Legacy
 defaults and separately constrained Caduceus/ORBIT profiles are retained.
 
+Review follow-up: both readers now consult the earlier node pair's resolved
+address before following a dependent node. An address-zero ancestor suppresses
+its descendants; a successfully read value of zero remains a valid table index.
+Unreadable EE direct parents are also suppressed at setup. This reuses the
+existing snapshot pairs without adding IRQ workspace. The POPS fixture now
+reallocates its setup buffers after installing the two-node plan, and that IOP
+snapshot fixture runs with ASan/UBSan on supported POSIX hosts. Regressions cover
+an unresolved ancestor with an otherwise readable child offset and the distinct
+case of a resolved parent whose value is zero.
+
 ### Checkpoint validation
 
 - All 18 `.github/scripts/test_ra_*.py` host groups passed, plus

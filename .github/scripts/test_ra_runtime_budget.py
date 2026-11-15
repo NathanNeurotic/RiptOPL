@@ -130,6 +130,17 @@ int main() {
     setup(1,1,1);ra_snap_send();memcpy(pair,work+RA_SNAP_HDR+1,8);
     assert(pair[0]==0x100000 && pair[1]==0x33);
     tailUnchanged(g_ee_core_config.raWorkBytes);
+    // An unresolved ancestor is not a successful read of index zero.
+    nodes[0]={RA_NODE_PACK(0,0,1,0,0),4,1};
+    nodes[1]={RA_NODE_PACK(0,1,1,0,0),0x110000,1};
+    setup(1,1,2);ra_snap_send();memcpy(pair,work+RA_SNAP_HDR+1,sizeof(pair));
+    assert(pair[0]==0 && pair[1]==0 && pair[2]==0 && pair[3]==0);
+    nodes[0].offset=0x100000;gameRam[0x100000]=0;
+    setup(1,1,2);ra_snap_send();memcpy(pair,work+RA_SNAP_HDR+1,sizeof(pair));
+    assert(pair[0]==0x100000 && pair[1]==0 && pair[2]==0x110000 && pair[3]==0x77);
+    entries[0]=RA_WATCH_PACK(0x7ffff,1);
+    setup(1,1,2);ra_snap_send();memcpy(pair,work+RA_SNAP_HDR+1,sizeof(pair));
+    assert(pair[0]==0 && pair[1]==0 && pair[2]==0 && pair[3]==0);
     // Undersized or unaligned reservations refuse without writing into them.
     setup(1,4);g_ee_core_config.raWorkBytes--;memset(work,0xCC,sizeof(work));RA_SetupWatchList();
     assert(!ra_watch_count && !RA_SnapBytes());tailUnchanged(0);

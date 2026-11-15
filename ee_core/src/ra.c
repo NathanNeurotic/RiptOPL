@@ -182,6 +182,9 @@ void RA_SetupWatchList(void)
         RA_NODE_VAL(i) = 0;
         if (RA_NODE_FROM_NODE(RA_NODE_W(i)) || parent >= (u32)ra_watch_count)
             continue;
+        if (RA_WATCH_ADDR(ra_watch[parent]) < RA_RAM_LOW ||
+            RA_WATCH_ADDR(ra_watch[parent]) + RA_WATCH_SIZE(ra_watch[parent]) > RA_RAM_HIGH)
+            continue;
 
         for (k = 0; k < (int)parent; k++)
             off += (int)RA_WATCH_SIZE(ra_watch[k]);
@@ -295,9 +298,21 @@ static void ra_snap_send(void)
             size = 0;
             base = 0;
         } else if (RA_NODE_FROM_NODE(w)) {
-            base = parent < (u32)i ? RA_NODE_VAL(parent) : 0;
+            // Earlier pairs carry resolution state separately from their value:
+            // a successful read of zero is a valid index, address zero is not.
+            base = 0;
+            if (parent >= (u32)i) {
+                size = 0;
+            } else {
+                const u8 *pair = &vals[ra_watch_bytes + parent * RA_NODE_PAIR_BYTES];
+                if ((pair[0] | pair[1] | pair[2] | pair[3]) == 0)
+                    size = 0;
+                else
+                    base = RA_NODE_VAL(parent);
+            }
         } else if (RA_NODE_BASE(i) == 0) {
             base = 0; /* the parent was out of range at setup */
+            size = 0;
         } else {
             u32 psize = RA_NODE_BASE(i) & 0xF;
             const u8 *at = &vals[RA_NODE_BASE(i) >> 4];

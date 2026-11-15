@@ -24,6 +24,8 @@ with tempfile.TemporaryDirectory(prefix='ra-ps1-') as directory:
             subprocess.run(['gcc', '-std=gnu99', '-Wall', '-Wextra', '-Werror', '-I', str(root), '-c', e, '-o', o], check=True)
             objs.append(o)
         compiler = ['g++', '-std=gnu++17'] if cxx else ['gcc', '-std=gnu99', '-Wno-pointer-to-int-cast', '-Wno-int-to-pointer-cast']  # IOP addresses are 32-bit
+        if name == 'snapshot' and os.name != 'nt':
+            compiler += ['-fsanitize=address,undefined', '-fno-sanitize-recover=undefined']
         subprocess.run(compiler + ['-Wall', '-Wextra', '-Werror', '-I', str(root), str(path), *objs, '-o', str(exe)], check=True)
         subprocess.run([str(exe)], cwd=tmp, check=True)
 
@@ -462,6 +464,8 @@ int main(void) {
     struct ra_node nodes[]={{RA_NODE_PACK(0,0,1,4,4),0x1000,4},
                             {RA_NODE_PACK(0,1,1,0,0),0x2000,1}};
     rp_node_count=2;rp_nodes=nodes;
+    FreeSysMemory(rp_win);FreeSysMemory(rp_entry_off);FreeSysMemory(rp_node_val);FreeSysMemory(rp_stage);
+    assert(rp_setup());
     ram[15]=0x20;ram[16]=ram[17]=ram[18]=0;
     ram[0x1008]=3;ram[0x2003]=0x55;
     rp_frame_values(1);
@@ -469,6 +473,13 @@ int main(void) {
     assert(pairs[0]==0x1008 && pairs[1]==3 && pairs[2]==0x2003 && pairs[3]==0x55);
     ram[15]=0;ram[0x1000]=2;rp_frame_values(1);
     memcpy(pairs,snap+RA_SNAP_HDR+5,8);assert(pairs[0]==0x1000 && pairs[1]==2);
+    nodes[0].offset=0x300000;nodes[1].offset=0x2000;ram[0x2000]=0xAA;
+    rp_frame_values(1);memcpy(pairs,snap+RA_SNAP_HDR+5,sizeof(pairs));
+    assert(pairs[0]==0 && pairs[1]==0 && pairs[2]==0 && pairs[3]==0);
+    nodes[0].offset=0x1000;ram[0x1000]=0;
+    rp_frame_values(1);memcpy(pairs,snap+RA_SNAP_HDR+5,sizeof(pairs));
+    assert(pairs[0]==0x1000 && pairs[1]==0 && pairs[2]==0x2000 && pairs[3]==0xAA);
+    FreeSysMemory(rp_win);FreeSysMemory(rp_entry_off);FreeSysMemory(rp_node_val);FreeSysMemory(rp_stage);
     puts("PASS: PS1 read windows, unaligned and last-byte reads, failed read suppresses frame, recovery and trailer");
 }
 ''')
