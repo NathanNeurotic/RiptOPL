@@ -2088,6 +2088,14 @@ static void menuPrevV()
     }
 }
 
+static int menuPageStep()
+{
+    // Single-title layouts (Coverflow, PSBBN Flow and compact themes) still need a fast browse step.
+    // Keep displayedItems unchanged: rendering and the end-of-page probe use the actual row count.
+    int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
+    return displayed == 1 ? 15 : displayed;
+}
+
 static void menuNextPage()
 {
     submenu_list_t *previous = selected_item->item->current;
@@ -2103,7 +2111,7 @@ static void menuNextPage()
         probe = probe->next;
 
     if (cur && probe) {
-        int itms = displayed + 1;
+        int itms = menuPageStep() + 1;
         sfxPlay(SFX_CURSOR);
 
         while (--itms && cur->next)
@@ -2129,7 +2137,7 @@ static void menuPrevPage()
     submenu_list_t *cur = selected_item->item->pagestart;
 
     if (cur && cur->prev) {
-        int itms = ((items_list_t *)gTheme->itemsList->extended)->displayedItems + 1;
+        int itms = menuPageStep() + 1;
         sfxPlay(SFX_CURSOR);
 
         while (--itms && cur->prev)
