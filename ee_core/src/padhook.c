@@ -119,30 +119,36 @@ extern void *_end;
   interrupts are held, and nothing is reset. The SIF stays up (SBUS, DMA channels 5-7), so padman keeps filling the
   pad buffer the menu reads. RESUME gives everything back; any other way out goes on to the IGR below, as before.
 */
-#define IGR_I_MASK    ((vu32 *)0x1000f010)
-#define IGR_INTC_SBUS 1
-#define IGR_DMAC_HELD 0x031f0000 // D_STAT's mask half: channels 0-4, 8 and 9, never SIF 5-7
-#define IGR_TRIES     8          // pauses one press of the combo may take to find the game idle
-#define IGR_SECOND    294912000u // COP0 Count ticks: the EE's clock
+#define IGR_I_MASK       ((vu32 *)0x1000f010)
+#define IGR_INTC_SBUS    1
+#define IGR_DMAC_HELD    0x031f0000 // D_STAT's mask half: channels 0-4, 8 and 9, never SIF 5-7
+#define IGR_WAIT_VBLANKS 120        // ~2 s waiting at VBLANK_END for GS/DMA idle before opening anyway
 static volatile int IGR_MenuOpen = 0;
-static int IGR_MenuRearm = IGR_TRIES; // the pauses left to this press: 0 once the menu opened, IGR_TRIES again when the combo is let go
-static volatile int IGR_MenuBusy;     // 1: the last pause of a press found the game never idle; 2: the combo was let go since, so the next press leaves
+static int IGR_MenuWant = 0, IGR_MenuWait = 0;
+static int IGR_MenuRearm = 1; // 1 when combo released; 0 once a press triggers the menu
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
+
+// the IOP's padman double-buffers two slots over SIF DMA, behind the cache: pick the newer frame
+static const u8 *IGR_PadBuf(void)
+{
+    const u8 *b = (const u8 *)UNCACHED_SEG(Pad_Data.pad_buf);
+    if (Pad_Data.libpad == IGR_LIBPAD) {
+        const u8 *b2 = b + (Pad_Data.libversion >= 0x0160 ? 128u : 64u);
+        if (*(const u32 *)(b + Pad_Data.pos_frame) < *(const u32 *)(b2 + Pad_Data.pos_frame))
+            return b2;
+    }
+    return b;
+}
 
 // libpad's buttons, 1 = held (its buffer is active-low), or 0 while the pad is not stable
 static u16 IGR_PadButtons(void)
 {
-    const u8 *b, *b2;
-    u32 stride;
+    const u8 *b;
     u8 state;
 
     if (Pad_Data.pad_buf == NULL)
         return 0;
-    b = (const u8 *)UNCACHED_SEG(Pad_Data.pad_buf); // the IOP's padman double-buffers two slots over SIF DMA, behind the cache
-    stride = (Pad_Data.libpad == IGR_LIBPAD && Pad_Data.libversion < 0x0160) ? 64u : 128u;
-    b2 = b + stride;
-    if (*(const u32 *)(b + Pad_Data.pos_frame) < *(const u32 *)(b2 + Pad_Data.pos_frame))
-        b = b2;
+    b = IGR_PadBuf();
     state = b[Pad_Data.pos_state];
     if (!((Pad_Data.libpad == IGR_LIBPAD && (state == IGR_PAD_STABLE_V1 || state == 0x02)) ||
           (Pad_Data.libpad == IGR_LIBPAD2 && (state == IGR_PAD_STABLE_V2 || state == 0x02))))
@@ -182,25 +188,11 @@ static void IGR_PauseThreads(void)
     }
 }
 
-// The game's own transfers finish before the menu takes channel 1 and the GS: channels 1 and 2 idle and VIF1 neither
-// stopped (VSS, VFS, VIS) nor reading back (FDR), which is RIPPS2's check. VIF1_STAT.INT is left out: it only records
-// that a VIF code's interrupt bit was seen and stays set until the game writes FBRST.STC, which a MARK code's interrupt
-// (no stall) never makes it do; a real stall shows in VIS. The GIF path and the FIFOs are not tested: a path left active
-// by a packet that ends without EOP never clears, and every menu packet starts with FLUSHA anyway; a draw that cannot
-// get through ends in mint green. The game's interrupts are all held (IGR_HoldInterrupts), so no handler starts a
-// transfer while this waits. Returns non-zero when they did not get there within the wait (COP0 Count ticks)
-static u32 IGR_WaitIdle(u32 wait)
+// VBLANK handler: no transfer of the game's to the GS under way (channels 1/2, VIF1 FIFO, GIF path idle), as ORBIT's Box_Drawable
+static inline int IGR_BoxDrawable(void)
 {
-    u32 busy, t, now;
-
-    asm volatile("mfc0 %0, $9"
-                 : "=r"(t));
-    do {
-        busy = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x800700);
-        asm volatile("mfc0 %0, $9"
-                     : "=r"(now));
-    } while (busy && now - t < wait);
-    return busy;
+    return !(*R_EE_D1_CHCR & 0x100) && !(*R_EE_D2_CHCR & 0x100) &&
+           !(*(vu32 *)0x10003c00 & 0x1f000000) && !(*(vu32 *)0x10003020 & 0x1f000c00);
 }
 
 static void IGR_ResumeGame(void) // the pause, undone in reverse
@@ -308,10 +300,18 @@ static void IGR_CheckInputs(void)
     // reopening its pad. Keep the pointer, layout and reads in one short snapshot.
     if (Pad_Data.pad_buf != NULL) {
         // Copy values via the uncached segment, to bypass the cache.
+#ifdef IGR_MENU
+        const u8 *b = IGR_PadBuf();
+        pad_pos_state = b[Pad_Data.pos_state];
+        pad_pos_frame = b[Pad_Data.pos_frame];
+        pad_pos_combo1 = b[Pad_Data.pos_combo1];
+        pad_pos_combo2 = b[Pad_Data.pos_combo2];
+#else
         pad_pos_state = ((u8 *)UNCACHED_SEG(Pad_Data.pad_buf))[Pad_Data.pos_state];
         pad_pos_frame = ((u8 *)UNCACHED_SEG(Pad_Data.pad_buf))[Pad_Data.pos_frame];
         pad_pos_combo1 = ((u8 *)UNCACHED_SEG(Pad_Data.pad_buf))[Pad_Data.pos_combo1];
         pad_pos_combo2 = ((u8 *)UNCACHED_SEG(Pad_Data.pad_buf))[Pad_Data.pos_combo2];
+#endif
 
 #ifdef INGAMEDIAG
         if (padOpen_hooked && Pad_Data.combo_type == 0x00) {
@@ -471,20 +471,7 @@ static void IGR_Thread(void *arg)
         }
 
         IGR_PauseThreads();
-        // A transfer that only the game's own threads can finish (a list or a GS read-back one of them was in the
-        // middle of, a channel one of them feeds) never ends while they are paused. So a pause that does not find
-        // the transfers idle is short and gives the game back untouched, and the handler pauses it again at the next
-        // VBLANK the combo is still held at. The last pause of a press waits two seconds, and if that one finds them
-        // busy too the game is given back as well: the menu stays shut, but nothing is reset or stopped under a game
-        // that never went idle, and the next press of the combo is the plain reset, with no pause (IGR_MenuBusy). The handler is held with the game, so IGR_MenuRearm does not change here
-        if (IGR_WaitIdle(IGR_MenuRearm ? IGR_SECOND / 16 : IGR_SECOND * 2)) {
-            choice = IGR_MENU_RESUME;
-            if (!IGR_MenuRearm)
-                IGR_MenuBusy = 1; // the next press, once this one is let go, is the plain reset (the handler)
-        } else {
-            IGR_MenuRearm = 0; // once per press: a menu closed at once must not reopen
-            choice = IGR_MenuRun(IGR_PadButtons);
-        }
+        choice = IGR_MenuRun(IGR_PadButtons);
         if (choice == IGR_MENU_RESUME) {
             // IGR_MenuOpen stays set until the game has its interrupts back: the VBLANK that came up while it was
             // paused runs this handler at once, and must not pause it again before it has run at all.
@@ -723,21 +710,19 @@ static int IGR_Intc_Handler(int cause)
     IGR_CheckInputs();
 
 #ifdef IGR_MENU
-    // With In-Game Menu on, the reset combo pauses the game under the menu (igrmenu.c) instead. The power
-    // button pressed twice, and the PC's reset (RAR1), still leave at once.
-    if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && IGR_MenuBusy < 2 && !Power_Button.press && !IGR_FROM_PC) {
+    // With In-Game Menu on, the reset combo waits for GS/DMA idle at VBLANK_END (up to IGR_WAIT_VBLANKS frames, then
+    // opens anyway, as ORBIT's neutrino-igr does) while the game keeps running. The power button pressed twice, and
+    // the PC's reset (RAR1), still leave at once.
+    if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && !Power_Button.press && !IGR_FROM_PC) {
         Pad_Data.combo_type = 0x00;
-        if (IGR_MenuRearm && !IGR_MenuOpen) { // IGR_Thread zeroes it once the menu opened: once per press
-            IGR_MenuOpen = 1;
-            IGR_MenuRearm--;
-            IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
-            iChangeThreadPriority(IGR_Thread_ID, 0);
-            iWakeupThread(IGR_Thread_ID);
+        if (IGR_MenuRearm && !IGR_MenuOpen && !IGR_MenuWant) {
+            IGR_MenuRearm = 0;
+            IGR_MenuWant = 1;
+            IGR_MenuWait = 0;
         }
     } else if (Pad_Data.combo_type == 0x00) {
-        IGR_MenuRearm = IGR_TRIES;
-        if (IGR_MenuBusy)
-            IGR_MenuBusy = 2;
+        if (!IGR_MenuOpen && !IGR_MenuWant)
+            IGR_MenuRearm = 1;
 #ifdef RETROACHIEVEMENTS
         // No request left, so no PC mark: in disc mode the pad's R3 + L3 can replace the PC's request and be dropped
         IGR_PcReset = 0;
@@ -769,6 +754,17 @@ static int IGR_Intc_Handler(int cause)
         // WakeUp IGR thread
         iWakeupThread(IGR_Thread_ID);
     }
+#ifdef IGR_MENU
+    else if (IGR_MenuWant) {
+        if (IGR_BoxDrawable() || ++IGR_MenuWait > IGR_WAIT_VBLANKS) {
+            IGR_MenuOpen = 1;
+            IGR_MenuWant = 0;
+            IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
+            iChangeThreadPriority(IGR_Thread_ID, 0);
+            iWakeupThread(IGR_Thread_ID);
+        }
+    }
+#endif
 
     ExitHandler();
 
@@ -845,6 +841,12 @@ void Install_IGR(void)
         Pad_Data.prev_frame = 0x00;
 #if defined(RETROACHIEVEMENTS) && defined(IGR_MENU)
         IGR_PcReset = 0; // no request, so no PC mark
+#endif
+#ifdef IGR_MENU
+        IGR_MenuOpen = 0;
+        IGR_MenuWant = 0;
+        IGR_MenuWait = 0;
+        IGR_MenuRearm = 1;
 #endif
 
         // Create and start IGR thread
