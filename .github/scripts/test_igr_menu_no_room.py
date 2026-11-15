@@ -128,6 +128,11 @@ gate = preprocessor_block(padhook, gate_at + 1) if gate_at >= 0 else ''
 if not gate or handler < 0 or gate_at < handler:
     failures.append('padhook.c: the IGR_MENU lines of IGR_Intc_Handler were not found')
     gate = ''
+defer_at = padhook.find('\n#ifdef IGR_MENU\n    else if (IGR_MenuWant)', gate_at)
+defer = preprocessor_block(padhook, defer_at + 1) if defer_at >= 0 else ''
+if not defer:
+    failures.append('padhook.c: the deferred-opening IGR_MENU lines of IGR_Intc_Handler were not found')
+    defer = ''
 install = re.search(r'\nvoid Install_IGR\(void\)\n\{\n(?:.*\n)*?\}\n', padhook)
 if install is None:
     failures.append('padhook.c: Install_IGR was not found')
@@ -317,13 +322,7 @@ static int handler(void)
 @GATE@
     if (Pad_Data.combo_type != 0x00)
         return 1;
-    if (IGR_MenuWant && (IGR_BoxDrawable() || ++IGR_MenuWait > IGR_WAIT_VBLANKS)) {
-        IGR_MenuOpen = 1;
-        IGR_MenuWant = 0;
-        IGR_HoldInterrupts();
-        iChangeThreadPriority(IGR_Thread_ID, 0);
-        iWakeupThread(IGR_Thread_ID);
-    }
+@DEFER@
     return 0;
 }
 #endif
@@ -514,7 +513,7 @@ if launcher and thread and not failures:
     build_and_run('no room', HARNESS.replace('@GREY@', grey).replace('@PRE@', LAYOUT['pre'])
                   .replace('@LAUNCHER@', launcher).replace('@THREAD@', thread))
 
-if flag and request and gate and install and not failures:
+if flag and request and gate and defer and install and not failures:
     for name, defines, req in (
             ('RA build with the menu: the combo opens it, the PC\'s reset leaves past it',
              '#define RETROACHIEVEMENTS\n#define IGR_MENU', request),
@@ -522,7 +521,7 @@ if flag and request and gate and install and not failures:
             ('menu build without RA: no PC flag, the combo opens the menu', '#define IGR_MENU', '')):
         build_and_run(name, GATE_HARNESS.replace('@DEFINES@', defines).replace('@FLAG@', flag)
                       .replace('@REQUEST@', req).replace('@INSTALL@', install).replace('@GATE@', gate)
-                      .replace('@NAME@', name))
+                      .replace('@DEFER@', defer).replace('@NAME@', name))
 
 if failures:
     print('In-Game Menu no-room checks FAILED:')

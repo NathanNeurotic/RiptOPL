@@ -946,7 +946,8 @@ int IGR_MenuRun(u16 (*buttons)(void))
         return IGR_MENU_NO_FRAME;
     // the game's own transfers settled (or timed out at VBLANK_END): let any last D1/D2 transfer finish
     bpc = igrmBpcOff();
-    igrmWaitClear(IGRM_D1_CHCR, CHCR_STR);
+    if (!igrmWaitClear(IGRM_D1_CHCR, CHCR_STR))
+        return IGR_MENU_DRAW_FAILED;
     igrmWaitClear((vu32 *)0x1000a000, CHCR_STR);
     // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
     if (frameHeld == 2) {
