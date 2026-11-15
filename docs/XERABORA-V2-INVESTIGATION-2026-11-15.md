@@ -44,6 +44,22 @@ snapshot fixture runs with ASan/UBSan on supported POSIX hosts. Regressions cove
 an unresolved ancestor with an otherwise readable child offset and the distinct
 case of a resolved parent whose value is zero.
 
+### Companion managed-host features
+
+PS2-Servers #321 now also implements the upstream managed-host features:
+bounded last-minute diagnostic reports, spectator/encore test mode with a
+submission barrier and queue disposal on both transitions, and an expanded
+opt-in Discord activity through its existing publisher. These use the current
+snapshot and notification protocols; no additional console wire change is
+needed. Test mode is controlled on the host and is not a new RiptOPL setting.
+The managed host reidentifies/reloads after either transition. Recheck support
+after updating both ends so its plan includes the v2 indexed reads.
+
+The optional PS2-Servers owned runtime has RAN2 transport support but does not
+yet implement those three host features. Keep that limitation explicit when
+choosing a test profile. Physical-console acceptance of the coordinated pair
+and real Discord rendering remain unverified.
+
 ### Checkpoint validation
 
 - All 18 `.github/scripts/test_ra_*.py` host groups passed, plus
