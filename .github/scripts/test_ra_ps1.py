@@ -250,7 +250,7 @@ int main(void) {
     assert(access("POPS/MODULE_9.IRX",0)==0);
     f=fopen("POPS/MODULE_9.IRX","wb");
     for(int i=0;i<4093;i++) fputc(0,f);
-    fputs("RIPTRA01",f);fclose(f);
+    fputs("RIPTRA02",f);fclose(f);
     replies[0]=0;replies[1]=0;replypos=0;
     assert(vcdConfirmCleanLaunch("")==0 && access("POPS/MODULE_9.IRX",0)==0);
     replies[0]=0;replies[1]=1;replypos=0;
@@ -258,7 +258,7 @@ int main(void) {
     replies[0]=1;replypos=0;
     assert(vcdConfirmCleanLaunch("")==1);
     assert(access("POPS/MODULE_9.IRX",0)<0);
-    f=fopen("POPS/MODULE_9.IRX","wb");fputs("RIPTRA01",f);fclose(f);
+    f=fopen("POPS/MODULE_9.IRX","wb");fputs("RIPTRA02",f);fclose(f);
     fail_remove=1;replies[0]=1;replies[1]=0;replypos=0;
     assert(vcdConfirmCleanLaunch("")==0 && access("POPS/MODULE_9.IRX",0)==0);
     replies[0]=1;replies[1]=1;replypos=0;
@@ -292,7 +292,7 @@ int main(void) {
     forced_read_errno=EIO;
     assert(vcdRemoveRaModule("")==-2 && access("POPS/MODULE_9.IRX",0)==0);
     forced_read_errno=0;
-    f=fopen("POPS/MODULE_9.IRX","wb");fputs("RIPTRA01",f);fclose(f);
+    f=fopen("POPS/MODULE_9.IRX","wb");fputs("RIPTRA02",f);fclose(f);
     forced_open_errno=EINTR;
     assert(vcdRemoveRaModule("")==-2 && access("POPS/MODULE_9.IRX",0)==0);
     forced_open_errno=0;
@@ -458,6 +458,17 @@ int main(void) {
     fail=0;ram[15]=8;rp_frame_values(1);
     assert(rp_snap->seq==seq+1 && snap[RA_SNAP_HDR]==8);
     assert(*(u32 *)(snap+RA_SNAP_TRAILER_OFF(5))==rp_snap->seq);
+    // Production IOP sampler resolves indexed chains and a dependent node.
+    struct ra_node nodes[]={{RA_NODE_PACK(0,0,1,4,4),0x1000,4},
+                            {RA_NODE_PACK(0,1,1,0,0),0x2000,1}};
+    rp_node_count=2;rp_nodes=nodes;
+    ram[15]=0x20;ram[16]=ram[17]=ram[18]=0;
+    ram[0x1008]=3;ram[0x2003]=0x55;
+    rp_frame_values(1);
+    u32 pairs[4];memcpy(pairs,snap+RA_SNAP_HDR+5,sizeof(pairs));
+    assert(pairs[0]==0x1008 && pairs[1]==3 && pairs[2]==0x2003 && pairs[3]==0x55);
+    ram[15]=0;ram[0x1000]=2;rp_frame_values(1);
+    memcpy(pairs,snap+RA_SNAP_HDR+5,8);assert(pairs[0]==0x1000 && pairs[1]==2);
     puts("PASS: PS1 read windows, unaligned and last-byte reads, failed read suppresses frame, recovery and trailer");
 }
 ''')

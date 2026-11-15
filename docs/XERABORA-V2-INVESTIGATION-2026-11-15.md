@@ -1,8 +1,46 @@
 # xeRAbora 2.0.0: console migration findings
 
 Investigation: 2026-11-15. Implementation handoff: Monday, 2026-11-16.
-This PR contains investigation findings only. It changes no ELF, loader code,
-protocol implementation, build flavour or game files.
+This document retains the original findings and records the first console
+implementation checkpoint below. No ELF was deployed and no game files changed.
+
+## First implementation checkpoint
+
+The loader now validates and normalizes both RANL and RAN2 tails, including
+exact lengths, parent dependencies, sizes and reserved/width bits. Unknown or
+malformed tails reject the plan instead of certifying its direct prefix.
+Legacy nodes normalize to scale 1. Both memory and disk paths are covered.
+
+The EE sampler and IOP `rapull` reader implement shift/width/scale arithmetic,
+including table index zero and unsigned wrap. The protected EE reservation now
+includes 20 bytes per node. POPS allocations copy three serialized words per
+node, its embedded config magic advances to `RIPTRA02`, and module ownership
+recognizes both old/new RiptOPL-generated files while preserving other modules.
+
+Production host fixtures cover maximum workspace/node budgets with ASan/UBSan,
+legacy file normalization, malformed/unknown tails, indexed/dependent reads,
+zero index, negative scale and width 32. Existing RA transfer, sender, Mode 6,
+POPS, ownership and Neutrino tests were also run. The RA GCC target build
+completed; see the PR description for final build/check results.
+
+Pair with upstream xeRAbora v2 or the explicit PS2-Servers owned `opl-v2` profile
+in [PR #321](https://github.com/NathanNeurotic/PS2-Servers/pull/321), then recheck
+each game's support. Legacy plans remain readable but do not gain omitted
+indexed reads without regeneration. ORBIT/Neutrino retains its separate limits.
+Hardware acceptance, cache-generation UX and host feature parity remain open.
+
+### Checkpoint validation
+
+- All 18 `.github/scripts/test_ra_*.py` host groups passed, plus
+  `test_neutrino_ra.py`. The production EE/parser/workspace fixture ran with
+  address and undefined-behavior sanitizers under Ubuntu/WSL.
+- ps2build v2026.11.06 with sdk-core v2026.11.05 and GCC toolchain
+  v2026.11.04 built both RA and RA-disabled Korium editions, through packed ELF.
+  Compiler warnings remain in SDK/downloaded and existing source; these were
+  not warning-free builds. No new diagnostics appeared in the changed RA
+  reader/parser files.
+- clang-format 12.0.1 and `git diff --check` passed.
+- No emulator, physical-console, live-account or gameplay acceptance was run.
 
 ## Required outcome
 
@@ -192,9 +230,9 @@ extensions independent of the RAN2 correction.
    Use no-submission diagnostics first. Host/emulator results and upstream's
    hardware report do not replace RiptOPL hardware acceptance.
 
-No implementation or compatibility claim is completed by this report. A
-coordinated PS2-Servers/RiptOPL migration and separately recorded acceptance
-are the next work items.
+The original report did not implement the migration. The checkpoint at the
+top of this document now records the first implementation; remaining migration
+and separately recorded acceptance work still applies.
 
 ## Investigation checks
 

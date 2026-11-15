@@ -99,7 +99,7 @@ int main() {
         int size=i<2136 ? 4 : i==2136 ? 2 : 1;
         entries[i]=RA_WATCH_PACK(0x80000+4*i,size);bytes+=size;
     }
-    for(int i=0;i<RA_NODE_MAX;i++)nodes[i]={RA_NODE_PACK(0,0,4),(u32)i*4};
+    for(int i=0;i<RA_NODE_MAX;i++)nodes[i]={RA_NODE_PACK(0,0,4,0,0),(u32)i*4,1};
     u32 base=0x100000;memcpy(gameRam+0x80000,&base,4);
     for(int i=0;i<RA_NODE_MAX;i++){u32 v=0x12340000+i;memcpy(gameRam+base+i*4,&v,4);}
     setup(RA_WATCH_MAX,bytes,RA_NODE_MAX);
@@ -113,6 +113,22 @@ int main() {
         u32 address,value;memcpy(&address,vals+bytes+i*8,4);memcpy(&value,vals+bytes+i*8+4,4);
         assert(address==base+(u32)i*4 && value==0x12340000+(u32)i);
     }
+    tailUnchanged(g_ee_core_config.raWorkBytes);
+    // RAN2 nibble extraction, index zero, negative scale and dependent nodes.
+    entries[0]=RA_WATCH_PACK(0x80000,1);
+    gameRam[0x80000]=0x30; gameRam[0x10000c]=0x5A;
+    nodes[0]={RA_NODE_PACK(0,0,1,4,4),0x100000,4};
+    nodes[1]={RA_NODE_PACK(0,1,1,0,0),0x11005a,0xFFFFFFFFu};
+    gameRam[0x110000]=0x77;
+    setup(1,1,2);ra_snap_send();
+    u32 pair[4];memcpy(pair,work+RA_SNAP_HDR+1,sizeof(pair));
+    assert(pair[0]==0x10000c && pair[1]==0x5A && pair[2]==0x110000 && pair[3]==0x77);
+    gameRam[0x80000]=0;gameRam[0x100000]=0x33;
+    setup(1,1,1);ra_snap_send();memcpy(pair,work+RA_SNAP_HDR+1,8);
+    assert(pair[0]==0x100000 && pair[1]==0x33);
+    nodes[0]={RA_NODE_PACK(0,0,1,0,32),0x100000,1};
+    setup(1,1,1);ra_snap_send();memcpy(pair,work+RA_SNAP_HDR+1,8);
+    assert(pair[0]==0x100000 && pair[1]==0x33);
     tailUnchanged(g_ee_core_config.raWorkBytes);
     // Undersized or unaligned reservations refuse without writing into them.
     setup(1,4);g_ee_core_config.raWorkBytes--;memset(work,0xCC,sizeof(work));RA_SetupWatchList();
@@ -132,7 +148,7 @@ int main() {
     // A chain whose base pointer is null sends address 0 and value 0, never reading through it
     // (ported from the original's test_ra_watch).
     entries[0]=RA_WATCH_PACK(0x80000,4);memset(gameRam+0x80000,0,4);gameRam[0x80004]=0xAA;
-    nodes[0]={RA_NODE_PACK(0,0,4),0x80001};
+    nodes[0]={RA_NODE_PACK(0,0,4,0,0),4,1};
     setup(1,4,1);ra_snap_send();
     {const u8 zero[8]={0};assert(!memcmp(work+RA_SNAP_HDR+4,zero,8));}
     puts("PASS: EE module-storage bounds, full entries/nodes, IRQ reads, null chains and one/two/three-frame pacing");
@@ -155,15 +171,15 @@ static int fake_close(int) {return 0;}
 #define close fake_close
 #define O_RDONLY 0
 ''' + '\n'.join(function(watch,s) for s in
-    ('void RaWatch::clearWatchList(', 'void RaWatch::takeNodes(', 'int RaWatch::setWatchList(', 'int RaWatch::loadWatchList(')) + r'''
+    ('void RaWatch::clearWatchList(', 'bool RaWatch::takeNodes(', 'int RaWatch::setWatchList(', 'int RaWatch::loadWatchList(')) + r'''
 int main() {
     RaWatch watch;
-    std::vector<u32> blob(4+RA_WATCH_MAX+2+RA_NODE_MAX*2);
+    std::vector<u32> blob(4+RA_WATCH_MAX+2+RA_NODE_MAX*3);
     auto *header=(ra_watch_file*)blob.data();
     *header={RA_WATCH_MAGIC,RA_WATCH_VERSION,RA_WATCH_MAX,RA_WATCH_MAX};
     for(int i=0;i<RA_WATCH_MAX;i++)blob[4+i]=RA_WATCH_PACK(0x80000+i,1);
     auto *nf=(ra_node_file*)&blob[4+RA_WATCH_MAX];*nf={RA_NODE_MAGIC,RA_NODE_MAX};
-    auto *node=(ra_node*)(nf+1);for(int i=0;i<RA_NODE_MAX;i++)node[i]={RA_NODE_PACK(0,0,1),0};
+    auto *node=(ra_node*)(nf+1);for(int i=0;i<RA_NODE_MAX;i++)node[i]={RA_NODE_PACK(0,0,1,0,0),0,1};
     int len=blob.size()*4;
     assert(watch.setWatchList(blob.data(),len,"SLUS_123.45")==4096 && watch.nodeCount()==128);
     assert(len<20*1024);
@@ -178,8 +194,20 @@ int main() {
     assert(watch.setWatchList(blob.data(),len,"SLUS_123.45")<0 && !watch.watchCount());
     disk=blob;assert(watch.loadWatchList("save.wl","SLUS_123.45")<0 && !watch.watchCount());
     header->bytes--;nf->count=0xffffffff;
-    assert(watch.setWatchList(blob.data(),len,"SLUS_123.45")==4096 && !watch.nodeCount());
+    assert(watch.setWatchList(blob.data(),len,"SLUS_123.45")<0 && !watch.watchCount());
     assert(watch.setWatchList(blob.data(),16+4096*4-1,"SLUS_123.45")<0);
+    // Legacy nodes normalize in memory and from disk, including alias expansion.
+    disk={RA_WATCH_MAGIC,1,1,4,RA_WATCH_PACK(0x80000,4),RA_NODE_LEGACY_MAGIC,2,
+          RA_NODE_PACK(0,0,4,0,0),4,RA_NODE_PACK(0,1,1,0,0),8};
+    watch.clearWatchList();
+    assert(watch.loadWatchList("legacy.wl","SLUS_123.45")==1 && watch.nodeCount()==2);
+    assert(watch.nodeList()[0].scale==1 && watch.nodeList()[1].scale==1 && watch.nodeList()[1].offset==8);
+    assert(watch.setWatchList(disk.data(),disk.size()*4,"SLUS_123.45")==1 && watch.nodeCount()==2);
+    disk[5]=0xDEADBEEF;
+    assert(watch.setWatchList(disk.data(),disk.size()*4,"SLUS_123.45")<0 && !watch.watchCount());
+    watch.clearWatchList();assert(watch.loadWatchList("unknown.wl","SLUS_123.45")<0 && !watch.watchCount());
+    disk[5]=RA_NODE_MAGIC;
+    assert(watch.setWatchList(disk.data(),disk.size()*4,"SLUS_123.45")<0);
     puts("PASS: real C++ parser accepts large sets and refuses invalid widths/byte sums/truncation");
 }
 ''')

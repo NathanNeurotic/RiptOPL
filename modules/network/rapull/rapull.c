@@ -299,7 +299,10 @@ static void rp_frame_values(int read)
             base = rp_get(&rp_stage[rp_entry_off[parent]], RA_WATCH_SIZE(rp_list[parent]));
         }
 
-        addr = (base + rp_nodes[i].offset) & 0x1FFFFFFF;
+        base >>= RA_NODE_SHIFT(nw);
+        if (RA_NODE_WIDTH(nw) != 0 && RA_NODE_WIDTH(nw) < 32)
+            base &= (1u << RA_NODE_WIDTH(nw)) - 1;
+        addr = (base * rp_nodes[i].scale + rp_nodes[i].offset) & 0x1FFFFFFF;
         if (!read) {
             addr = 0;
         } else if ((size == 1 || size == 2 || size == 4) && rp_valid(addr, size)) {

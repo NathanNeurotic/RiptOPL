@@ -2434,7 +2434,8 @@ int vcdWritePopsPathmap(int bits)
         int key = vcdPathmapLine(p, nl ? nl : end, &on);
         if (key >= 0) {
             seen |= 1 << key;
-            const char *eol = (nl == NULL) ? "" : (nl > p && nl[-1] == '\r') ? "\r\n" : "\n";
+            const char *eol = (nl == NULL) ? "" : (nl > p && nl[-1] == '\r') ? "\r\n" :
+                                                                               "\n";
             len += snprintf(out + len, sizeof(out) - len, "%s=%d%s", vcdPathmapKeys[key], (bits >> key) & 1, eol);
         } else {
             if (len + (next - p) > VCD_PATHMAP_MAX)
@@ -3225,7 +3226,8 @@ static int vcdRaModuleStatus(const char *root, int removeOwned)
     }
     while (!owned && (got = read(fd, buf, sizeof(buf))) > 0) {
         for (int i = 0; i < got && !owned; i++) {
-            if (buf[i] == (unsigned char)magic[matched])
+            // Both serialized-node layouts belong to RiptOPL; other module files stay untouched.
+            if (buf[i] == (unsigned char)magic[matched] || (matched == 7 && buf[i] == '2'))
                 owned = ++matched == 8;
             else
                 matched = buf[i] == (unsigned char)magic[0] ? 1 : 0;

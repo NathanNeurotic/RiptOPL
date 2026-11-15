@@ -77,49 +77,31 @@ void ClearWatchList(void)
    nothing is checked there: a parent must already be resolved when its
    child is read, and a size must be one the reader knows. A list that
    breaks either rule is thrown away whole rather than half-used. */
-void RaWatch::takeNodes(const struct ra_node *nodes, unsigned int count)
+bool RaWatch::takeNodes(const void *nodes, unsigned int count, unsigned int magic)
 {
-    unsigned int i;
-
     nodeCount_ = 0;
+    if (nodes == NULL || count == 0 || count > RA_NODE_MAX ||
+        (magic != RA_NODE_MAGIC && magic != RA_NODE_LEGACY_MAGIC) ||
+        watchBytes_ + (int)count * RA_NODE_PAIR_BYTES > RA_SNAP_MAX_BYTES)
+        return false;
 
-    if (nodes == NULL || count == 0)
-        return;
-
-    if (count > RA_NODE_MAX) {
-        LOG("RA: %u pointer chains, limit %d; dropping them\n", count, RA_NODE_MAX);
-        return;
+    // Normalize backwards: file reads can alias nodeList_, and RANL has a shorter stride.
+    const unsigned char *data = (const unsigned char *)nodes;
+    const unsigned int stride = magic == RA_NODE_MAGIC ? 12 : 8;
+    for (int i = (int)count - 1; i >= 0; i--) {
+        struct ra_node node;
+        node.scale = 1;
+        memcpy(&node, data + i * stride, stride);
+        const unsigned int parent = RA_NODE_PARENT(node.w), size = RA_NODE_SIZE(node.w);
+        const unsigned int allowed = magic == RA_NODE_MAGIC ? 0x07FFFFFFu : 0x0000FFFFu;
+        if ((node.w & ~allowed) != 0 || RA_NODE_WIDTH(node.w) > 32 ||
+            (size != 1 && size != 2 && size != 4) ||
+            parent >= (RA_NODE_FROM_NODE(node.w) ? (unsigned int)i : (unsigned int)watchCount_))
+            return false;
+        nodeList_[i] = node;
     }
-
-    if (watchBytes_ + (int)count * RA_NODE_PAIR_BYTES > RA_SNAP_MAX_BYTES) {
-        LOG("RA: chains do not fit the snapshot; dropping them\n");
-        return;
-    }
-
-    for (i = 0; i < count; i++) {
-        unsigned int parent = RA_NODE_PARENT(nodes[i].w);
-        unsigned int size = RA_NODE_SIZE(nodes[i].w);
-
-        if (size != 1 && size != 2 && size != 4) {
-            LOG("RA: chain %u reads %u bytes; dropping the chains\n", i, size);
-            return;
-        }
-
-        if (RA_NODE_FROM_NODE(nodes[i].w)) {
-            if (parent >= i) {
-                LOG("RA: chain %u waits on chain %u; dropping the chains\n", i, parent);
-                return;
-            }
-        } else if (parent >= (unsigned int)watchCount_) {
-            LOG("RA: chain %u points at entry %u of %d; dropping the chains\n", i, parent, watchCount_);
-            return;
-        }
-    }
-
-    if (nodes != nodeList_)
-        memcpy(nodeList_, nodes, count * sizeof(struct ra_node));
     nodeCount_ = (int)count;
-    LOG("RA: %d pointer chains\n", nodeCount_);
+    return true;
 }
 
 void RaWatch::clearWatchList()
@@ -201,18 +183,21 @@ int RaWatch::setWatchList(const void *data, int len, const char *startup)
     watchBytes_ = (int)hdr->bytes;
     snprintf(watchStartup_, sizeof(watchStartup_), "%s", startup);
 
-    /* Pointer chains ride after the entries. A list without them ends
-       here, which is what every client before them sends. */
-    {
-        const unsigned char *tail = (const unsigned char *)data + sizeof(*hdr) + need;
-        int left = len - (int)(sizeof(*hdr) + need);
-
-        if (left >= (int)sizeof(struct ra_node_file)) {
-            const struct ra_node_file *nf = (const struct ra_node_file *)tail;
-
-            if (nf->magic == RA_NODE_MAGIC && nf->count <= RA_NODE_MAX &&
-                left >= (int)(sizeof(*nf) + nf->count * sizeof(struct ra_node)))
-                takeNodes((const struct ra_node *)(nf + 1), nf->count);
+    // Unknown or malformed tails must not certify a direct-only subset of the set.
+    const unsigned char *tail = (const unsigned char *)data + sizeof(*hdr) + need;
+    const int left = len - (int)(sizeof(*hdr) + need);
+    if (left != 0) {
+        struct ra_node_file nf;
+        if (left < (int)sizeof(nf)) {
+            clearWatchList();
+            return -9;
+        }
+        memcpy(&nf, tail, sizeof(nf));
+        const unsigned int stride = nf.magic == RA_NODE_MAGIC ? 12 : 8;
+        if (nf.count > RA_NODE_MAX || left != (int)(sizeof(nf) + nf.count * stride) ||
+            !takeNodes(tail + sizeof(nf), nf.count, nf.magic)) {
+            clearWatchList();
+            return -9;
         }
     }
 
@@ -302,18 +287,23 @@ int RaWatch::loadWatchList(const char *file, const char *startup)
     watchBytes_ = (int)hdr.bytes;
     snprintf(watchStartup_, sizeof(watchStartup_), "%s", startup);
 
-    /* Pointer chains, if the file has them. Read straight into the
-       array; takeNodes checks them there and leaves the count at zero
-       if anything is wrong. */
-    {
-        struct ra_node_file nf;
-
-        if (read(fd, &nf, sizeof(nf)) == (int)sizeof(nf) && nf.magic == RA_NODE_MAGIC &&
-            nf.count > 0 && nf.count <= RA_NODE_MAX) {
-            int want = (int)(nf.count * sizeof(struct ra_node));
-
-            if (read(fd, nodeList_, want) == want)
-                takeNodes(nodeList_, nf.count);
+    struct ra_node_file nf = {};
+    const int tailBytes = read(fd, &nf, sizeof(nf));
+    if (tailBytes != 0) {
+        const unsigned int stride = nf.magic == RA_NODE_MAGIC ? 12 : 8;
+        if (tailBytes != (int)sizeof(nf) || nf.count == 0 || nf.count > RA_NODE_MAX ||
+            (nf.magic != RA_NODE_MAGIC && nf.magic != RA_NODE_LEGACY_MAGIC)) {
+            clearWatchList();
+            close(fd);
+            return -9;
+        }
+        const int want = (int)(nf.count * stride);
+        unsigned char extra;
+        if (read(fd, nodeList_, want) != want || read(fd, &extra, 1) != 0 ||
+            !takeNodes(nodeList_, nf.count, nf.magic)) {
+            clearWatchList();
+            close(fd);
+            return -9;
         }
     }
 
