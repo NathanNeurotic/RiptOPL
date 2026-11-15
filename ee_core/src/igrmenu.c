@@ -695,7 +695,8 @@ int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, in
 #define PAD_CIRCLE 0x2000
 #define PAD_CROSS  0x4000
 
-#define IGRM_SECOND    294912000u // COP0 Count ticks: the EE's clock
+#define IGRM_SECOND     294912000u // COP0 Count ticks: the EE's clock
+#define IGRM_IDLE_TICKS (10u * IGRM_SECOND)
 static int igrmPending; // ticks the engine has not taken yet (CheatLiveApply was busy): tried again at every open
 
 static inline u32 igrmCount(void)
@@ -765,11 +766,11 @@ static int igrmDraw(u32 *pkt)
 // read through the VIF1 FIFO, RIPPS2's rsRead (ripshot.c, written from the GS manual and ps2sdk's ee/debug
 // screenshot.c, AFL). The game is paused with its DMA idle; its GS state is left as found: FINISH is masked in IMR
 // while ours is raised and cleared again unless the game had it set. Returns 0 when the GS did not deliver.
-#define IGRM_GS_CSR    ((vu64 *)0x12001000)
-#define IGRM_GS_BUSDIR ((vu64 *)0x12001040)
-#define VIF_FDR        0x00800000
-#define CSR_FINISH     2
-#define IMR_FINISH     0x200
+#define IGRM_GS_CSR     ((vu64 *)0x12001000)
+#define IGRM_GS_BUSDIR  ((vu64 *)0x12001040)
+#define VIF_FDR         0x00800000
+#define CSR_FINISH      2
+#define IMR_FINISH      0x200
 
 static int igrmWaitFor(vu32 *reg, u32 bits, u32 want)
 {
@@ -919,7 +920,7 @@ int IGR_MenuRun(u16 (*buttons)(void))
     USE_LOCAL_EECORE_CONFIG;
     u32 raw[(112 + PW * 2 * 4 + 64) / 4]; // one line of the panel at its widest (the IGR thread's stack)
     u32 *pkt = (u32 *)(((u32)raw + 63) & ~63);
-    u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, bpc;
+    u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, lastActivity, bpc;
     u16 held, now, pressed, ok, back;
     int sel = 0, armed = 0, result = IGR_MENU_RESUME, presses = 0, power = 1, powerLatched = 0, i;
     int page = 0, csel = 0, ctop = 0, full = 0, changed = 0, frameHeld;
@@ -1008,12 +1009,31 @@ int IGR_MenuRun(u16 (*buttons)(void))
     }
 
     held = buttons(); // the combo is still held: only new presses count
+    lastActivity = igrmCount();
     for (;;) {
         int dirty = 0, id = igrmIds[sel];
 
         now = buttons();
         pressed = now & ~held;
         held = now;
+        if (pressed)
+            lastActivity = igrmCount();
+        if (power) { // once = power off, twice = leave, decided a second after the first press (as OPL)
+            t = igrmCount();
+            if (igrmPowerButton(&powerLatched)) {
+                lastActivity = t;
+                if (presses++ == 0)
+                    firstT = t;
+            }
+            if (presses && t - firstT > IGRM_SECOND) {
+                result = presses == 1 ? IGR_MENU_POWEROFF : IGR_MENU_EXIT;
+                break;
+            }
+        }
+        if (!pressed && !presses && (u32)(igrmCount() - lastActivity) > IGRM_IDLE_TICKS) {
+            result = IGR_MENU_RESUME;
+            break;
+        }
         if (page) { // CHEATS
             int n = (int)info.cheats->count;
             if (pressed & (PAD_UP | PAD_DOWN)) {
@@ -1076,16 +1096,6 @@ int IGR_MenuRun(u16 (*buttons)(void))
         } else if (pressed & (back | PAD_START))
             break;
 
-        if (power) { // once = power off, twice = leave, decided a second after the first press (as OPL)
-            t = igrmCount();
-            if (igrmPowerButton(&powerLatched) && presses++ == 0)
-                firstT = t;
-            if (presses && t - firstT > IGRM_SECOND) {
-                result = presses == 1 ? IGR_MENU_POWEROFF : IGR_MENU_EXIT;
-                break;
-            }
-        }
-
         if (dirty) {
             if (page)
                 igrmComposeCheats(&info, ctop, csel, full);
@@ -1127,7 +1137,8 @@ done:
     if (!gameDone)
         *IGRM_D_STAT = 2;
     asm volatile("sync.l");
-    igrmBpcBack(bpc);
+    if (result == IGR_MENU_RESUME)
+        igrmBpcBack(bpc);
     return result;
 }
 #endif

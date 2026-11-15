@@ -23,6 +23,7 @@
 #include "include/ratls.h"
 #include "include/guiwait.h"
 #include "include/selfupdate.h"
+#include "include/sound.h"
 
 #include "mbedtls/sha256.h"
 
@@ -182,6 +183,15 @@ static int suFileSink(void *ctx, const char *data, int len)
             return -1; /* not an ELF: stop before writing anything */
         if (raTlsBodyLength <= 0 || raTlsBodyLength > SU_ELF_MAX || (f->data = static_cast<unsigned char *>(malloc(raTlsBodyLength))) == NULL)
             return -1;
+#ifndef SELFUPDATE_HOST_TEST
+        void *reserve = malloc(4 * 1024 * 1024);
+        if (!reserve) {
+            free(f->data);
+            f->data = NULL;
+            return -1;
+        }
+        free(reserve);
+#endif
         f->cap = raTlsBodyLength;
         memcpy(f->data, f->head, f->headLen);
         mbedtls_sha256_update(&f->sha, f->head, f->headLen);
@@ -292,6 +302,10 @@ static void suInstallWorker(void)
         goto done;
     }
 
+    guiWaitBarDone = 0;
+    guiWaitBarTotal = f.written;
+    snprintf(suMessage, sizeof(suMessage), "Installing... (%d / %d KB)", 0, f.written / 1024);
+
     /* Overwrite the booted ELF with the verified bytes, as Launchstation does: fileXioOpen with the iomanX
        WRONLY|CREAT|TRUNC flags (mcman truncates only in its CREAT branch), trying "dev:/path" and then "dev:path".
        Step 1 changes nothing if it fails. */
@@ -327,6 +341,8 @@ static void suInstallWorker(void)
             goto done;
         }
         off += w;
+        guiWaitBarDone = off;
+        snprintf(suMessage, sizeof(suMessage), "Installing... (%d / %d KB)", off / 1024, f.written / 1024);
     }
     suStep = 3;
     if (fileXioClose(fd) < 0) {
@@ -413,6 +429,8 @@ void selfUpdateMenu(void)
     }
     if (!guiMsgBox(text, 1, NULL))
         return;
+    if (isBgmPlaying())
+        bgmStop();
     snprintf(text, sizeof(text), _l(_STR_UPDATE_DOWNLOADING), 0);
     suWait(&suInstallWorker, text);
     if (suResult != SU_OK) {

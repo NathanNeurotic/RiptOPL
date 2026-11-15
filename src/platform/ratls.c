@@ -343,7 +343,6 @@ int raTlsRequest(const ratls_io_t *io, const char *host, const char *path, const
     }
     buf[len] = '\0';
     result = finishResponse(buf, len, length);
-    mbedtls_ssl_close_notify(&s.ssl);
 
 out:
     sessionFree(&s);
@@ -451,7 +450,6 @@ int raTlsDownload(const ratls_io_t *io, const char *host, const char *path, cons
         got += rc;
     }
     result = want;
-    mbedtls_ssl_close_notify(&s.ssl);
 
 out:
     sessionFree(&s);
