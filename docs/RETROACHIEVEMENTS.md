@@ -4,8 +4,8 @@
 > RAN2 read plans. After updating the console ELF and PC client, run **RA: check
 > game support** again for every game you play. Old watch files remain readable
 > but cannot acquire missing indexed reads without that check. PS2-Servers needs
-> its explicit native-runtime v2 option for this preview; its default managed
-> engine is still on the earlier format. Physical-console acceptance of this
+> its explicit **Console read support: xeRAbora 2 / updated RiptOPL** setting,
+> available with either desktop runtime. Physical-console acceptance of this
 > migration remains open. See the [implementation checkpoint](XERABORA-V2-INVESTIGATION-2026-11-15.md).
 
 RiptOPL can report a running game's memory to a PC client that runs

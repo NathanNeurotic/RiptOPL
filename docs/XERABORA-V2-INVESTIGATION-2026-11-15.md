@@ -29,6 +29,11 @@ each game's support. Legacy plans remain readable but do not gain omitted
 indexed reads without regeneration. ORBIT/Neutrino retains its separate limits.
 Hardware acceptance, cache-generation UX and host feature parity remain open.
 
+PS2-Servers' follow-up checkpoint also adds RAN2 to its default bundled desktop
+engine. Its explicit v2 read setting now works with either runtime, and its
+separate v2 console-loader export has verified artifact identity. Legacy
+defaults and separately constrained Caduceus/ORBIT profiles are retained.
+
 ### Checkpoint validation
 
 - All 18 `.github/scripts/test_ra_*.py` host groups passed, plus
