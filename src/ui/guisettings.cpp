@@ -2812,6 +2812,7 @@ static int guiSettingsShowLaunch(void)
 #ifdef IGR_MENU
     diaSetInt(ui, CFG_IGR_MENU, gIgrMenu);
 #endif
+    diaSetInt(ui, CFG_IGR_ALT_COMBO, gIgrAltCombo);
     diaSetInt(ui, CFG_PS2LOGO, gPS2Logo);
     const char *appHandoffStrs[] = {_l(_STR_APP_HANDOFF_LEGACY), _l(_STR_APP_HANDOFF_TYPED), NULL};
     diaSetEnum(ui, CFG_APP_HANDOFF_PATH, appHandoffStrs);
@@ -2845,6 +2846,7 @@ reshow_launch:
 #ifdef IGR_MENU
         diaGetInt(ui, CFG_IGR_MENU, &gIgrMenu);
 #endif
+        diaGetInt(ui, CFG_IGR_ALT_COMBO, &gIgrAltCombo);
         diaGetInt(ui, CFG_PS2LOGO, &gPS2Logo);
         diaGetInt(ui, CFG_APP_HANDOFF_PATH, &gAppHandoffPath);
         if (strcmp(gNeutrinoPath, neutrinoPathEdit) != 0)

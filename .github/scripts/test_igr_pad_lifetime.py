@@ -33,7 +33,9 @@ typedef unsigned short u16;
 #define IGR_COMBO_R1_L1_R2_L2 0xf0
 #define IGR_COMBO_START_SELECT 0xf6
 #define IGR_COMBO_R3_L3 0xf9
-#define USE_LOCAL_EECORE_CONFIG
+struct cfg { int IgrAltCombo; };
+static struct cfg g_cfg;
+#define USE_LOCAL_EECORE_CONFIG struct cfg *config = &g_cfg;
 #define kINTC_VBLANK_END 3
 #define PADOPEN_CHECK 1
 #define DPRINTF(...) ((void)0)
@@ -131,6 +133,14 @@ int main(void) {
  memset(fresh,0,sizeof(fresh));Pad_Data.combo_type=0;
  fresh[4]=IGR_PAD_STABLE_V2;fresh[29]=IGR_COMBO_R1_L1_R2_L2;fresh[28]=IGR_COMBO_START_SELECT;
  assert(tick()==IGR_COMBO_START_SELECT && intrEnabled);
+ /* #416: with the alternative combo, Start + Select is the game's and R3 + L3 leaves the game. */
+ g_cfg.IgrAltCombo=1;Pad_Data.combo_type=0;
+ assert(tick()==0);
+ fresh[28]=IGR_COMBO_R3_L3;Pad_Data.combo_type=0;
+ assert(tick()==IGR_COMBO_START_SELECT);
+ g_cfg.IgrAltCombo=0;Pad_Data.combo_type=0;
+ assert(tick()==IGR_COMBO_R3_L3);
+ fresh[28]=IGR_COMBO_START_SELECT;Pad_Data.combo_type=0;
  padOpen_hooked=0;Pad_Data.combo_type=0;
  assert(Hook_scePadPortOpen(0,0,fresh)==1 && padOpen_hooked==1 && Pad_Data.pad_buf==fresh);
  padOpen_hooked=0;Invalidate_PadBuffer();
