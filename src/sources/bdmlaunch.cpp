@@ -371,7 +371,7 @@ static int neutrinoIlinkModuleIsOurs(const char *neutrinoPath, const char *name,
     if (fd < 0)
         return 0;
     unsigned int pos = 0;
-    int same = 1, r;
+    int same = 1, r = 0;
     while (same && (r = read(fd, buf, sizeof(buf))) > 0) {
         if (pos + (unsigned int)r > size || memcmp(buf, ours + pos, r))
             same = 0;
