@@ -120,7 +120,9 @@ extern void *_end;
   pad buffer the menu reads. RESUME gives everything back; any other way out goes on to the IGR below, as before.
 */
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
-#define IGR_INTC_SBUS 1
+// What the pause holds, taken out of the masks when they are read: one test a loop, no table (Korium's LLVM .text)
+#define IGR_INTC_HELD 0x7ffd // causes 0-14, never the SIF's (SBUS, 1)
+#define IGR_DMAC_HELD 0x31f  // channels 0-4, 8 and 9: never SIF 5-7
 static volatile int IGR_MenuOpen = 0;
 // Once per press: a menu closed at once must not reopen. Not 0: the press may still take its pause, and counts down
 // the VBLANKs the held combo waits for the game's transfers to stop (2 s of them). Not initialised here, so that it
@@ -129,7 +131,6 @@ static volatile int IGR_MenuOpen = 0;
 #define IGR_MENU_ARMED 121
 static int IGR_MenuRearm;
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
-static const u8 IGR_DmacHeld[] = {0, 1, 2, 3, 4, 8, 9}; // never SIF 5-7
 
 // libpad's buttons, 1 = held (its buffer is active-low), or 0 while the pad is not stable
 static u16 IGR_PadButtons(void)
@@ -163,14 +164,14 @@ static void IGR_HoldInterrupts(void)
 {
     int i;
 
-    IGR_HeldIntc = *IGR_I_MASK;
+    IGR_HeldIntc = *IGR_I_MASK & IGR_INTC_HELD;
     for (i = 0; i <= 14; i++)
-        if (i != IGR_INTC_SBUS && (IGR_HeldIntc & (1 << i)))
+        if (IGR_HeldIntc & (1 << i))
             iDisableIntc(i);
-    IGR_HeldDmac = (*R_EE_D_STAT >> 16) & 0x3ff;
-    for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
-        if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
-            iDisableDmac(IGR_DmacHeld[i]);
+    IGR_HeldDmac = (*R_EE_D_STAT >> 16) & IGR_DMAC_HELD;
+    for (i = 0; i <= 9; i++)
+        if (IGR_HeldDmac & (1 << i))
+            iDisableDmac(i);
 }
 
 // From the IGR thread at priority 0, while no game thread runs. Suspending the interrupted thread from
@@ -191,11 +192,11 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
 {
     int i;
 
-    for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
-        if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
-            EnableDmac(IGR_DmacHeld[i]);
+    for (i = 0; i <= 9; i++)
+        if (IGR_HeldDmac & (1 << i))
+            EnableDmac(i);
     for (i = 0; i <= 14; i++)
-        if (i != IGR_INTC_SBUS && (IGR_HeldIntc & (1 << i)))
+        if (IGR_HeldIntc & (1 << i))
             EnableIntc(i);
     for (i = 1; i < 256; i++)
         if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
