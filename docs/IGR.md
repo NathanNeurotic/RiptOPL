@@ -249,7 +249,7 @@ code's interrupt bit, a stop or a break) or reading back, so the menu will not d
 does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made once per press, inside the menu.
 Every interrupt of the game is held for the pause (its GS, VIF1 and DMA completions too, as RIPPS2 holds them), so a
 transfer that needs one of them to go on cannot end once the game is paused. The pause is therefore taken, with the
-game still running and the combination held, on a frame at which that check already holds, after 2 seconds at most;
+game still running and the combination held, on a frame at which channels 1 and 2 are stopped, after 2 seconds at most;
 a game that is never idle in that time is paused anyway and the check decides. Keep the combination held until the
 menu shows.
 

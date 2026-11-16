@@ -310,13 +310,12 @@ static int EnableIntc(int cause) { (void)cause; return 0; }
 @INSTALL@
 #ifdef IGR_MENU
 static volatile int IGR_MenuOpen;
-static int IGR_MenuRearm = 1, held, wakes;
-// The registers the handler waits on: channel 1 and 2 CHCR (STR 0x100), VIF1_STAT (stalled or reading back 0x00800f00)
-static unsigned int d1chcr, d2chcr, vif1stat;
-static int IGR_MenuWait;
+#define IGR_MENU_ARMED 121
+static int IGR_MenuRearm = IGR_MENU_ARMED, held, wakes;
+// The registers the handler waits on: channel 1 and 2 CHCR (STR 0x100)
+static unsigned int d1chcr, d2chcr;
 #define R_EE_D1_CHCR (&d1chcr)
 #define R_EE_D2_CHCR (&d2chcr)
-#define IGR_VIF1_STAT (&vif1stat)
 static struct { int IgrMenu; } g_config, *config = &g_config;
 static void IGR_HoldInterrupts(void) { held++; }
 static void iChangeThreadPriority(int id, int prio) { (void)id; (void)prio; }
@@ -357,7 +356,7 @@ int main(void)
         Power_Button.press = frames[i].power;
         Pad_Data.combo_type = frames[i].combo;
         IGR_MenuOpen = 0;
-        IGR_MenuRearm = 1;
+        IGR_MenuRearm = IGR_MENU_ARMED;
         wakes = held = 0;
 #ifdef HAS_PC_FLAG
         IGR_PcReset = 0;
@@ -383,7 +382,7 @@ int main(void)
         g_config.IgrMenu = 1;
         Power_Button.press = 0;
         IGR_MenuOpen = 0;
-        IGR_MenuRearm = 1;
+        IGR_MenuRearm = IGR_MENU_ARMED;
         wakes = held = 0;
 #ifdef HAS_PC_FLAG
         IGR_PcReset = 0;
@@ -398,28 +397,27 @@ int main(void)
               "one press pauses the game once (%d pauses, %d wakes, %d left)", pauses, wakes, IGR_MenuRearm);
         Pad_Data.combo_type = 0; // let go
         handler();
-        CHECK(IGR_MenuRearm == 1, "letting the combo go gives the next press its pause back");
+        CHECK(IGR_MenuRearm == IGR_MENU_ARMED, "letting the combo go gives the next press its pause back");
         Pad_Data.combo_type = IGR_COMBO_START_SELECT;
         handler();
         CHECK(IGR_MenuOpen && wakes == 2, "the next press pauses again");
         IGR_MenuOpen = 0;
         Pad_Data.combo_type = 0;
         handler();
-        // The pause waits, the combo held, for a VBLANK at which RIPPS2 build 129's check holds: channels 1 and 2
-        // stopped, VIF1 neither stalled nor reading back. After 120 busy VBLANKs it comes anyway
+        // The pause waits, the combo held, for a VBLANK at which channels 1 and 2 are stopped. After 2 s of busy
+        // VBLANKs it comes anyway
         {
-            static const struct { unsigned int d1, d2, vif; } busy[] = {
-                {0x100, 0, 0}, {0, 0x100, 0}, {0, 0, 0x400}, {0, 0, 0x00800000}, {0x101, 0x100, 0x800}};
+            static const struct { unsigned int d1, d2; } busy[] = {{0x100, 0}, {0, 0x100}, {0x101, 0x105}};
             unsigned int b;
 
             for (b = 0; b < sizeof(busy) / sizeof(busy[0]); b++) {
                 wakes = held = 0;
-                d1chcr = busy[b].d1, d2chcr = busy[b].d2, vif1stat = busy[b].vif;
+                d1chcr = busy[b].d1, d2chcr = busy[b].d2;
                 for (i = 0; i < 10; i++) {
                     Pad_Data.combo_type = IGR_COMBO_START_SELECT;
                     CHECK(!handler() && !IGR_MenuOpen && !wakes && !held, "busy %u: no pause yet (VBLANK %u)", b, i);
                 }
-                d1chcr = 1, d2chcr = 0x05, vif1stat = 0x1f000000; // idle: no STR, a FIFO count alone is no stall
+                d1chcr = 1, d2chcr = 0x05; // stopped: no STR
                 Pad_Data.combo_type = IGR_COMBO_START_SELECT;
                 handler();
                 CHECK(IGR_MenuOpen && wakes == 1 && held == 1, "busy %u: the first idle VBLANK takes the pause", b);
@@ -476,7 +474,7 @@ int main(void)
         g_config.IgrMenu = 1;
         Power_Button.press = 0;
         IGR_MenuOpen = 0;
-        IGR_MenuRearm = 1;
+        IGR_MenuRearm = IGR_MENU_ARMED;
         wakes = held = 0;
         Pad_Data.combo_type = 0;
         IGR_PcReset = 0;
