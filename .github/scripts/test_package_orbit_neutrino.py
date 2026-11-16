@@ -88,8 +88,8 @@ class OrbitStagingTests(unittest.TestCase):
 
     def test_pin_is_the_reviewed_release(self):
         self.assertEqual(self.pin["repository"], "danielnuld/nuld")
-        self.assertEqual(self.pin["tag"], "v1.2.12")
-        self.assertEqual(self.pin["sha256"], "2d06857af13647cba8ea93b9548e47cb79534781b14e21398fc2194a5bac9523")
+        self.assertEqual(self.pin["tag"], "v1.2.13")
+        self.assertEqual(self.pin["sha256"], "bd0fa6fd82537034de7163530f041897925dcdb81cd7429386e5e31487944a96")
 
 
 if __name__ == "__main__":
