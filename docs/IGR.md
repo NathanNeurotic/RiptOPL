@@ -234,14 +234,14 @@ in normal play can trigger IGR by accident. Set **Mode 6 — Disable IGR** for t
 **In-Game Menu is on, but the combination leaves the game instead of pausing it.** The menu only opens
 when it can draw into the picture the game is showing; when it cannot, the combination falls back to the
 plain reset, as described above. The screen blinks the reason three times near the end of that reset, just
-before the loader comes back, with or without **Debug Colors**:
+before the loader comes back. Every colour but grey shows with or without **Debug Colors**:
 
 | Blink | Meaning |
 |---|---|
 | **Purple** | The game's picture is in a format or size the panel cannot use |
 | **Mint green** | The first page was composed but VIF1 did not take it |
 | **Yellow** | The game's own drawing transfers did not finish while it was paused, or its VIF1 was stopped or reading back |
-| **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above) |
+| **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above). Only with **Debug Colors** on, and before the reset, not at its end |
 
 **In-Game Menu is on, the picture freezes for a moment and the game resets (yellow blinks).**
 The game's channel 1 or 2 transfers did not finish while it was paused, or its VIF1 stayed stopped (on a VIF
@@ -254,7 +254,8 @@ a game that is never idle in that time is paused anyway and the check decides. K
 menu shows.
 
 Report the colour with the game's ID and the device it runs from. No blink at all means the combination
-never reached the menu: the launch had In-Game Menu off (or Mode 6 set) for that game.
+never reached the menu: the launch had In-Game Menu off (or Mode 6 set) for that game, or, in a RetroAchievements
+edition with **Debug Colors** off, had no room for the menu.
 
 ---
 
