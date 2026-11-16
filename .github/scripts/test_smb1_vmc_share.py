@@ -16,6 +16,8 @@ Checks, from the sources:
   3. Only a read-only NT sharing-violation fallback requests deny-none in legacy OPEN_ANDX;
      servers without NT SMB commands and write-capable opens retain their prior behavior.
   4. Every edition embeds smbman-ra, not ps2sdk's prebuilt copy.
+  5. Both SMBv1 clients log on with VC number 0, so a server that honours it drops the console's
+     dead earlier session and its VMC handle.
 """
 import re
 import sys
@@ -84,6 +86,11 @@ else:
             )
             if count != 1 or guards_prevent_retry(mutant):
                 failures.append("smbman-ra smb.c: missing-return mutation escaped %s guard" % label)
+
+for name, src, line in (("in-game smb.c", ingame, "SSR->VCNumber = 0;"),
+                        ("smbman-ra smb.c", menu, "SSR->VCNumber      = 0;")):
+    if line not in src:
+        failures.append(name + ": session setup must send VC number 0")
 
 make = read("Makefile")
 assignments = []

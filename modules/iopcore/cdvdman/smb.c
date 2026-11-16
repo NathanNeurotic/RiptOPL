@@ -576,7 +576,10 @@ lbl_session_setup:
     SSR->smbAndxCmd = SMB_COM_NONE; // no ANDX command
     SSR->MaxBufferSize = CLIENT_MAX_BUFFER_SIZE;
     SSR->MaxMpxCount = server_specs.MaxMpxCount >= 2 ? 2 : (u16)server_specs.MaxMpxCount;
-    SSR->VCNumber = 1;
+    // VC 0: this console restarted. Servers that honour it (Windows) drop the console's earlier
+    // session and its open VMC handle, which otherwise refuses the game's reopen (#418). Only one
+    // SMB connection is ever live from cdvdman (mcemu shares it), so there is no live one to drop.
+    SSR->VCNumber = 0;
     SSR->SessionKey = server_specs.SessionKey;
     SSR->Capabilities = capabilities;
 
