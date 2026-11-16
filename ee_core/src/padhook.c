@@ -132,22 +132,23 @@ static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 // libpad's buttons, 1 = held (its buffer is active-low), or 0 while the pad is not stable
 static u16 IGR_PadButtons(void)
 {
-    const u8 *b, *b2;
-    u32 stride;
+    const u8 *b;
     u8 state;
 
     if (Pad_Data.pad_buf == NULL)
         return 0;
-    b = (const u8 *)UNCACHED_SEG(Pad_Data.pad_buf); // the IOP's padman double-buffers two slots over SIF DMA, behind the cache
-    stride = (Pad_Data.libpad == IGR_LIBPAD && Pad_Data.libversion < 0x0160) ? 64u : 128u;
-    b2 = b + stride;
-    if (*(const u32 *)(b + Pad_Data.pos_frame) < *(const u32 *)(b2 + Pad_Data.pos_frame))
-        b = b2;
+    b = (const u8 *)UNCACHED_SEG(Pad_Data.pad_buf); // the IOP's padman fills it over SIF DMA, behind the cache
+    // libpad's area holds two copies that padman writes in turn (128 bytes each, 64 before libpad 1.6): the newer
+    // frame counter wins, as ps2sdk's padGetDmaStr and NULD's pad_now do. Reading only the first froze NULD's menu
+    // with a pad adapter. libpad2: the first copy, as before
+    if (Pad_Data.libpad == IGR_LIBPAD) {
+        const u8 *b2 = b + (Pad_Data.libversion >= 0x0160 ? 128 : 64);
+
+        if (*(const u32 *)(b + Pad_Data.pos_frame) < *(const u32 *)(b2 + Pad_Data.pos_frame))
+            b = b2;
+    }
     state = b[Pad_Data.pos_state];
-    if (!((Pad_Data.libpad == IGR_LIBPAD && (state == IGR_PAD_STABLE_V1 || state == 0x02)) ||
-          (Pad_Data.libpad == IGR_LIBPAD2 && (state == IGR_PAD_STABLE_V2 || state == 0x02))))
-        return 0;
-    if (Pad_Data.libpad == IGR_LIBPAD && Pad_Data.libversion >= 0x0160 && (b[0] & 1) != 0)
+    if (!((Pad_Data.libpad == IGR_LIBPAD && state == IGR_PAD_STABLE_V1) || (Pad_Data.libpad == IGR_LIBPAD2 && state == IGR_PAD_STABLE_V2)))
         return 0;
     return ~(b[Pad_Data.pos_combo2] | b[Pad_Data.pos_combo1] << 8) & 0xFFFF;
 }
@@ -207,17 +208,14 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
 {
     int i;
 
-    // Resume paused game threads BEFORE unmasking interrupts so pending VBLANK/GS/DMAC
-    // interrupts do not fire into still-suspended game workers.
-    for (i = 1; i < 256; i++)
-        if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
-            ResumeThread(i);
     // every interrupt in IGR_HeldDmac and IGR_HeldIntc is off now (the SIF's are in neither), and nothing runs that
     // turns one on or off: a 1 in either mask toggles, so one store each turns them all back on, and no handler can
     // run between a read and the write
     *R_EE_D_STAT = IGR_HeldDmac;
     *IGR_I_MASK = IGR_HeldIntc;
-    asm volatile("sync.l; sync.p");
+    for (i = 1; i < 256; i++)
+        if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
+            ResumeThread(i);
 }
 #endif
 
@@ -452,7 +450,6 @@ static void IGR_StopDmaAndGs(void)
 static void IGR_Thread(void *arg)
 {
     USE_LOCAL_EECORE_CONFIG;
-    u8 combo_type;
 
     // Wait for the VBLANK_END handler, which latches the request, stops DMA/GS, suspends every
     // other thread and raises this one to priority 0 before waking it. Recheck the latch so a stray
@@ -465,10 +462,8 @@ static void IGR_Thread(void *arg)
 
         while (Pad_Data.combo_type == 0x00 && !IGR_MenuOpen)
             SleepThread();
-        if (!IGR_MenuOpen) {
-            combo_type = Pad_Data.combo_type;
+        if (!IGR_MenuOpen)
             break; // the power button, or the plain combo: the handler stopped DMA/GS and the game
-        }
 
         IGR_PauseThreads();
         // A transfer that only the game's own threads can finish (a list or a GS read-back one of them was in the
@@ -498,41 +493,18 @@ static void IGR_Thread(void *arg)
         // before. ResetEE leaves the DMAC alone (0x7E, not 0x7F): a SIF transfer in flight would stick (ORBIT)
         IGR_StopDmaAndGs();
         ResetEE(0x7E);
-        combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
-        Pad_Data.combo_type = combo_type;
-        *R_EE_D_STAT = IGR_HeldDmac;
-        *IGR_I_MASK = IGR_HeldIntc;
-        asm volatile("sync.l; sync.p");
-        if (config->EnableGSMOp)
-            DisableGSM();
-#if defined(RETROACHIEVEMENTS) && RA_EXPERIMENTAL_CARD_DMA
-        else if (config->raOverlayBuf)
-            DisableGSTracker();
-#endif
-        else if (config->IgrMenu)
-            DisableGSTracker();
         if (EnableDebug && choice >= IGR_MENU_CANNOT_DRAW) {
             // Debug Colors: why the menu did not open, three blinks before the reset goes on (docs/IGR.md).
             // GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and growing it costs the stack
             static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00}; // grey, purple, mint
             DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, grey = no menu");
         }
+        Pad_Data.combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
         break;
     }
 #else
     while (Pad_Data.combo_type == 0x00)
         SleepThread();
-    combo_type = Pad_Data.combo_type;
-#endif
-    if (config->EnableGSMOp)
-        DisableGSM();
-#if defined(RETROACHIEVEMENTS) && RA_EXPERIMENTAL_CARD_DMA
-    else if (config->raOverlayBuf)
-        DisableGSTracker();
-#endif
-#ifdef IGR_MENU
-    else if (config->IgrMenu)
-        DisableGSTracker();
 #endif
 #ifdef IGR_OVERLAY
     // The combo with In-Game Menu on, in a launch that had no room for the menu (coreconfig.h IgrMenuNoRoom): the
@@ -546,7 +518,6 @@ static void IGR_Thread(void *arg)
 
 #ifdef INGAMEDIAG
     // Freeze report: the handler has suspended the game's threads, so this records their state.
-    Pad_Data.combo_type = combo_type;
     if (Pad_Data.combo_type == IGR_COMBO_START_SELECT) {
         unsigned int pad_state = 0, pad_frame = 0;
 
@@ -568,9 +539,9 @@ static void IGR_Thread(void *arg)
     SifInitRpc(0);
 
     // If Pad Combo is Start + Select then Return to Home, else if Pad Combo is UP then take IGS
-    if ((combo_type == IGR_COMBO_START_SELECT)
+    if ((Pad_Data.combo_type == IGR_COMBO_START_SELECT)
 #ifdef IGS
-        || ((combo_type == IGR_COMBO_UP) && (config->EnableGSMOp))
+        || ((Pad_Data.combo_type == IGR_COMBO_UP) && (config->EnableGSMOp))
 #endif
     ) {
 
@@ -668,7 +639,7 @@ static void IGR_Thread(void *arg)
         }
 
 #ifdef IGS
-        if ((combo_type == IGR_COMBO_UP) && (config->EnableGSMOp))
+        if ((Pad_Data.combo_type == IGR_COMBO_UP) && (config->EnableGSMOp))
             InGameScreenshot();
 #endif
 
@@ -752,9 +723,9 @@ static int IGR_Intc_Handler(int cause)
     if (Pad_Data.combo_type != 0x00) {
         IGR_StopDmaAndGs();
 
-        // Disable interrupts & reset peripherals without resetting DMAC (0x7E, not 0x7F):
-        // resetting DMAC would stall in-flight SIF transfers.
-        iResetEE(0x7E);
+        // Disable interrupts & reset some peripherals, back to a standard state.
+        // Call ResetEE(0x7F) from an interrupt handler.
+        iResetEE(0x7F);
 
         // Loop for each threads, skipping the idle & IGR threads.
         for (i = 1; i < 256; i++) {
