@@ -53,6 +53,7 @@
 #include "include/cheatman.h"
 #include "include/sound.h"
 #include "include/xparam.h"
+#include "include/selfupdate.h" // oplSwapNicForUpdate
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDopen/fileXioIoctl2/fileXioDclose used by BDM autolaunch
@@ -271,6 +272,62 @@ void handleLwnbdSrv()
         unloadLwnbdSvr();
     }
 }
+
+#ifdef RIPTOPL_UPDATER
+// Check for Updates while UDPBD or UDPFS is the network protocol (src/ui/selfupdate.cpp). Those transports
+// keep the network adapter for the whole boot and have no unload, so the IOP is reset to take it back, as
+// Launchstation does when it switches network stacks (init.c switchNetworkStack ->
+// resetRuntimeDeviceState). take: the menu comes back without the UDP transport, so the updater can load
+// the menu's own network stack. !take: that stack is released and the menu comes back as saved. The
+// teardown and the way back are the NBD server's above. 0, or -1 when the menu's work could not be
+// drained in time; then the IOP was not reset (and !take has still put the saved protocol back).
+static int nicSwapProtocol, nicSwapUdpbd;
+
+int oplSwapNicForUpdate(int take)
+{
+    if (take) {
+        if (sysIsPccfOwned())
+            return -1;
+    } else {
+        gNetworkProtocol = nicSwapProtocol; // first, so no failure below can leave it Off for a save
+        gEnableUDPBD = nicSwapUdpbd;
+    }
+    if (!cacheAbortMmceImageLoadsTimed(LWNBD_ART_DRAIN_TICKS) || !cacheCancelPendingImageLoadsTimed(LWNBD_ART_DRAIN_TICKS))
+        return -1;
+    ioBlockOpsTimed(1, LWNBD_IO_DRAIN_TICKS);
+    if (ioHasPendingRequests()) {
+        ioBlockOps(0);
+        return -1;
+    }
+
+    guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
+    audioEnd();
+    guiExecDeferredOps();
+    deinitAllSupport(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+    clearErrorMessage();
+    if (!take)
+        shutdownLwnbdNetwork(); // the updater's stack, released before the reset (#307)
+    unloadPads();
+    reset();
+    if (take) {
+        nicSwapProtocol = gNetworkProtocol;
+        nicSwapUdpbd = gEnableUDPBD;
+        gNetworkProtocol = NET_PROTO_OFF;
+        gEnableUDPBD = 0;
+    }
+
+    padInit(0);
+    for (int tries = 0; !startPads() && tries < 100; tries++) // bounded, as unloadLwnbdSvr (#307)
+        delay(50);
+    ioBlockOps(0);
+    initAllSupport(1);
+    audioInit();
+    sfxInit(0);
+    if (gEnableBGM)
+        bgmStart();
+    return 0;
+}
+#endif
 
 // ----------------------------------------------------------
 // --------------------- Init/Deinit ------------------------

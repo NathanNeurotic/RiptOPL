@@ -34,6 +34,10 @@ int suLooksLikeElf(const unsigned char *head, int len);
 
 /* The main menu's Check for Updates (GUI thread). */
 void selfUpdateMenu(void);
+
+/* Resets the IOP to take the network adapter from UDPBD or UDPFS (take = 1) and to give it back (take = 0),
+   for Check for Updates (src/app/lwnbdctl.cpp, GUI thread). 0, or -1 when the menu could not be drained. */
+int oplSwapNicForUpdate(int take);
 #endif
 
 #endif

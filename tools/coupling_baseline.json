@@ -15,6 +15,7 @@
 "menusys->lwnbdctl": 1,
 "menusys->opl": 2,
 "menusys->settingsio": 1,
+"selfupdate->lwnbdctl": 1,
 "sfx->themes": 2,
 "sysdisc->mmcesupport": 1,
 "sysneutrino->bdmsupport": 1,

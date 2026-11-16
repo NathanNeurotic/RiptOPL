@@ -212,7 +212,7 @@ static int suNetworkUp(void)
     u8 ip[4], mask[4], gw[4];
     int i;
 
-    if (ratlsNicBusy())
+    if (ratlsNicBusy()) /* selfUpdateMenu could not take the adapter from UDPBD or UDPFS */
         return SU_ERR_NETBUSY;
     if (ethLoadInitModules() != 0)
         return SU_ERR_NETWORK;
@@ -388,19 +388,10 @@ static void suReport(void)
     guiMsgBox(text, 0, NULL);
 }
 
-void selfUpdateMenu(void)
+static void suOffer(int local)
 {
     char text[256];
-    int local = suRevision(OPL_VERSION);
 
-    if (!suPlaceOk()) {
-        guiMsgBox(_l(_STR_UPDATE_ERR_PLACE), 0, NULL);
-        return;
-    }
-    if (local < 0) {
-        guiMsgBox(_l(_STR_UPDATE_ERR_UNVERSIONED), 0, NULL);
-        return;
-    }
     if (suInstalledRev > local)
         local = suInstalledRev; /* the file on the device is already that build */
     suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
@@ -430,4 +421,31 @@ void selfUpdateMenu(void)
     }
     snprintf(text, sizeof(text), _l(_STR_UPDATE_DONE), suRemoteRev);
     guiMsgBox(text, 0, NULL);
+}
+
+void selfUpdateMenu(void)
+{
+    int local = suRevision(OPL_VERSION);
+
+    if (!suPlaceOk()) {
+        guiMsgBox(_l(_STR_UPDATE_ERR_PLACE), 0, NULL);
+        return;
+    }
+    if (local < 0) {
+        guiMsgBox(_l(_STR_UPDATE_ERR_UNVERSIONED), 0, NULL);
+        return;
+    }
+    /* UDPBD or UDPFS holds the network adapter: reset the IOP to take it for the update, and again after to
+       give it back, as Launchstation does when it switches network stacks. */
+    if (!ratlsNicBusy()) {
+        suOffer(local);
+        return;
+    }
+    if (oplSwapNicForUpdate(1) != 0) {
+        guiMsgBox(_l(_STR_UPDATE_ERR_NETBUSY), 0, NULL);
+        return;
+    }
+    suOffer(local);
+    for (int tries = 0; oplSwapNicForUpdate(0) != 0 && tries < 10; tries++)
+        ; /* each try waits for the menu's work to drain */
 }
