@@ -123,6 +123,7 @@ extern void *_end;
 #define IGR_INTC_SBUS 1
 static volatile int IGR_MenuOpen = 0;
 static int IGR_MenuRearm = 1; // once per press: a menu closed at once must not reopen
+static u32 IGR_MenuWhy;       // the colour IGR_Thread blinks for a menu that could not open (0: none)
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 static const u8 IGR_DmacHeld[] = {0, 1, 2, 3, 4, 8, 9}; // never SIF 5-7
 
@@ -458,12 +459,13 @@ static void IGR_Thread(void *arg)
         // before. ResetEE leaves the DMAC alone (0x7E, not 0x7F): a SIF transfer in flight would stick (ORBIT)
         IGR_StopDmaAndGs();
         ResetEE(0x7E);
+        // Why the menu did not open (docs/IGR.md), blinked further down, once the IOP is back: three blinks here, between
+        // ResetEE and the SIF's new start, are 3 s the plain combo never spends there, and a console hung in them
+        // (Dirge of Cerberus). GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and growing
+        // it costs the stack
         if (choice >= IGR_MENU_CANNOT_DRAW) {
-            // Why the menu did not open, three blinks before the reset goes on (docs/IGR.md). Not only with Debug
-            // Colors: the combo then looks exactly like the menu being off, and nothing else tells the two apart.
-            // GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and growing it costs the stack
             static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00, 0x00FFFF}; // grey, purple, mint, yellow
-            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = game's transfers busy, grey = no menu");
+            IGR_MenuWhy = why[choice - IGR_MENU_CANNOT_DRAW];
         }
         Pad_Data.combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
         break;
@@ -607,6 +609,13 @@ static void IGR_Thread(void *arg)
 #ifdef IGS
         if ((Pad_Data.combo_type == IGR_COMBO_UP) && (config->EnableGSMOp))
             InGameScreenshot();
+#endif
+
+#ifdef IGR_MENU
+        // With or without Debug Colors: the combo otherwise looks exactly like the menu being off. Here, where the
+        // screenshot's own colours have always been shown: the IOP is back, the SIF restarted, the GS trap off
+        if (IGR_MenuWhy)
+            DBGCOL_BLNK(3, IGR_MenuWhy, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = game's transfers busy, grey = no menu");
 #endif
 
         if (EnableDebug)

@@ -233,8 +233,8 @@ in normal play can trigger IGR by accident. Set **Mode 6 — Disable IGR** for t
 
 **In-Game Menu is on, but the combination leaves the game instead of pausing it.** The menu only opens
 when it can draw into the picture the game is showing; when it cannot, the combination falls back to the
-plain reset, as described above. The screen blinks the reason three times before the reset goes on, with
-or without **Debug Colors**:
+plain reset, as described above. The screen blinks the reason three times near the end of that reset, just
+before the loader comes back, with or without **Debug Colors**:
 
 | Blink | Meaning |
 |---|---|
