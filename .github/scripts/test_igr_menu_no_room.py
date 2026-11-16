@@ -163,7 +163,10 @@ if not re.search(r'if \(mfd == 2\) \{\s*t = \*IGRM_D_ENABLER;\s*\*IGRM_D_ENABLEW
 if not re.search(r'\*IGRM_D1_TADR = d1tadr;\s*\*IGRM_D_CTRL = dctrl;\s*\*IGRM_D1_CHCR = d1chcr;', igrmenu):
     failures.append('igrmenu.c IGR_MenuRun: D_CTRL goes back before channel 1 is started again')
 # The MFIFO-empty interrupt (D_STAT cause 14) is the game's too: held with the rest, or its handler runs in the pause
-if not re.search(r'#define IGR_DMAC_HELD 0x431f', padhook) or padhook.count('for (i = 0; i <= 14; i++)') < 4:
+if not re.search(r'#define IGR_DMAC_HELD 0x431f', padhook) or not re.search(
+        r'IGR_Each\(u32 mask, s32 \(\*call\)\(s32\)\)\s*\{\s*int i;\s*for \(i = 0; i <= 14; i\+\+\)', padhook) or \
+        not all(c in padhook for c in ('IGR_Each(IGR_HeldIntc, iDisableIntc);', 'IGR_Each(IGR_HeldDmac, iDisableDmac);',
+                                       'IGR_Each(IGR_HeldDmac, EnableDmac);', 'IGR_Each(IGR_HeldIntc, EnableIntc);')):
     failures.append('padhook.c: the pause must hold the MFIFO-empty interrupt (D_STAT cause 14) and give it back')
 
 # --- 5. the RA watch block before the menu's cheats --------------------------------------------------------------

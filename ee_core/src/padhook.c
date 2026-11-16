@@ -156,22 +156,27 @@ static u16 IGR_PadButtons(void)
     return ~(b[Pad_Data.pos_combo2] | b[Pad_Data.pos_combo1] << 8) & 0xFFFF;
 }
 
+// One kernel call for each cause or channel set in mask, lowest first. One loop for the four places that hold and
+// give back, not four (Korium's LLVM .text)
+static void __attribute__((noinline)) IGR_Each(u32 mask, s32 (*call)(s32))
+{
+    int i;
+
+    for (i = 0; i <= 14; i++)
+        if (mask & (1 << i))
+            call(i);
+}
+
 // interrupt handler context: every interrupt of the game waits, its GS, VIF1 and DMA completions too, the SIF's do not.
 // Through the kernel's own calls, as RIPPS2 build 129 holds them: the kernel keeps its record of which causes are on
 // in step with the masks. Held from here, a handler of the game cannot start its next transfer, so the one in flight
 // ends and the channels go idle for the menu's check (issue #364; Dirge of Cerberus on a console)
 static void IGR_HoldInterrupts(void)
 {
-    int i;
-
     IGR_HeldIntc = *IGR_I_MASK & IGR_INTC_HELD;
-    for (i = 0; i <= 14; i++)
-        if (IGR_HeldIntc & (1 << i))
-            iDisableIntc(i);
+    IGR_Each(IGR_HeldIntc, iDisableIntc);
     IGR_HeldDmac = (*R_EE_D_STAT >> 16) & IGR_DMAC_HELD;
-    for (i = 0; i <= 14; i++)
-        if (IGR_HeldDmac & (1 << i))
-            iDisableDmac(i);
+    IGR_Each(IGR_HeldDmac, iDisableDmac);
 }
 
 // From the IGR thread at priority 0, while no game thread runs. Suspending the interrupted thread from
@@ -192,12 +197,8 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
 {
     int i;
 
-    for (i = 0; i <= 14; i++)
-        if (IGR_HeldDmac & (1 << i))
-            EnableDmac(i);
-    for (i = 0; i <= 14; i++)
-        if (IGR_HeldIntc & (1 << i))
-            EnableIntc(i);
+    IGR_Each(IGR_HeldDmac, EnableDmac);
+    IGR_Each(IGR_HeldIntc, EnableIntc);
     for (i = 1; i < 256; i++)
         if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
             ResumeThread(i);
