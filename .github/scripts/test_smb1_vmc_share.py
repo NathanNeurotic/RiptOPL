@@ -8,8 +8,9 @@ Windows maps to a share that denies other readers (MS-CIFS appendix A). SMB2 sha
 on both sides and never showed it.
 
 Checks, from the sources:
-  1. The in-game SMBv1 OPEN_ANDX uses deny-none (0x40) for reads and deny-write
-     (0x20, combined access 0x22) for writable VMCs to prevent concurrent writers.
+  1. The in-game SMBv1 OPEN_ANDX uses deny-none (0x40) for reads and keeps upstream OPL's
+     read/write compatibility mode (2) for VMCs: deny-write (0x22) was refused while the server
+     still held the console's own dead VMC handle, and games then saw no memory card.
   2. smbman-ra's NT_CREATE_ANDX shares read and write (0x03) when it opens to read, and keeps
      read-only sharing (0x01) for a write.
   3. Only a read-only NT sharing-violation fallback requests deny-none in legacy OPEN_ANDX;
@@ -31,8 +32,8 @@ ingame = read("modules/iopcore/cdvdman/smb.c")
 body = re.search(r"static int smb_OpenAndXOnce\(.*?\n}\n", ingame, re.S)
 if not body:
     failures.append("in-game smb.c: smb_OpenAndXOnce not found")
-elif "OR->AccessMask = Write ? (2 | 0x20) : 0x40;" not in body.group(0):
-    failures.append("in-game smb.c: read-only opens share, VMC writes must deny other writers")
+elif "OR->AccessMask = Write ? 2 : 0x40;" not in body.group(0):
+    failures.append("in-game smb.c: read-only opens share, VMC opens keep compatibility mode")
 
 menu = read("modules/network/smbman-ra/smb.c")
 body = re.search(r"int smb_NTCreateAndX\(.*?\n}\n", menu, re.S)
