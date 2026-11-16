@@ -248,7 +248,9 @@ The game's channel 1 or 2 transfers did not finish while it was paused, or its V
 code's interrupt bit, a stop or a break) or reading back, so the menu will not draw over them and the combination
 does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made once per press, inside the menu.
 Every interrupt of the game is held for the pause (its GS, VIF1 and DMA completions too, as RIPPS2 holds them), so a
-game whose handlers start one transfer after another cannot keep the channels busy while the menu waits.
+transfer that needs one of them to go on cannot end once the game is paused. The pause therefore waits, with the game
+still running, for a frame at which channels 1 and 2 are stopped and the VIF1 FIFO and the GIF are empty (ORBIT's
+wait), for 2 seconds at most; a game that is never idle in that time is paused anyway and the check decides.
 
 Report the colour with the game's ID and the device it runs from. No blink at all means the combination
 never reached the menu: the launch had In-Game Menu off (or Mode 6 set) for that game.

@@ -122,8 +122,9 @@ extern void *_end;
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
 #define IGR_INTC_SBUS 1
 static volatile int IGR_MenuOpen = 0;
-static int IGR_MenuRearm = 1; // once per press: a menu closed at once must not reopen
-static u32 IGR_MenuWhy;       // the colour IGR_Thread blinks for a menu that could not open (0: none)
+static int IGR_MenuRearm = 1;          // once per press: a menu closed at once must not reopen
+static int IGR_MenuWant, IGR_MenuWait; // a press waiting for a VBLANK with the game's transfers idle, VBLANKs waited
+static u32 IGR_MenuWhy;                // the colour IGR_Thread blinks for a menu that could not open (0: none)
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 static const u8 IGR_DmacHeld[] = {0, 1, 2, 3, 4, 8, 9}; // never SIF 5-7
 
@@ -149,6 +150,14 @@ static u16 IGR_PadButtons(void)
     if (!((Pad_Data.libpad == IGR_LIBPAD && state == IGR_PAD_STABLE_V1) || (Pad_Data.libpad == IGR_LIBPAD2 && state == IGR_PAD_STABLE_V2)))
         return 0;
     return ~(b[Pad_Data.pos_combo2] | b[Pad_Data.pos_combo1] << 8) & 0xFFFF;
+}
+
+// VBLANK handler, the game still running: no transfer of the game's to the GS is under way (ORBIT's Box_Drawable,
+// danielnuld/ps2-launcher third_party/neutrino-igr/menu.c). Channels 1 and 2 stopped, the VIF1 FIFO empty, the GIF
+// with no FIFO data and no active path
+static int IGR_MenuDrawable(void)
+{
+    return !((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) && !(*(vu32 *)0x10003c00 & 0x1f000000) && !(*(vu32 *)0x10003020 & 0x1f000c00);
 }
 
 // interrupt handler context: every interrupt of the game waits, its GS, VIF1 and DMA completions too, the SIF's do not.
@@ -673,12 +682,10 @@ static int IGR_Intc_Handler(int cause)
     // button pressed twice, and the PC's reset (RAR1), still leave at once.
     if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && !Power_Button.press && !IGR_FROM_PC) {
         Pad_Data.combo_type = 0x00;
-        if (IGR_MenuRearm && !IGR_MenuOpen) { // once per press: a menu closed at once must not reopen
-            IGR_MenuOpen = 1;
+        if (IGR_MenuRearm && !IGR_MenuOpen && !IGR_MenuWant) { // once per press: a menu closed at once must not reopen
             IGR_MenuRearm = 0;
-            IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
-            iChangeThreadPriority(IGR_Thread_ID, 0);
-            iWakeupThread(IGR_Thread_ID);
+            IGR_MenuWant = 1;
+            IGR_MenuWait = 0;
         }
     } else if (Pad_Data.combo_type == 0x00) {
         IGR_MenuRearm = 1;
@@ -686,6 +693,16 @@ static int IGR_Intc_Handler(int cause)
         // No request left, so no PC mark: in disc mode the pad's R3 + L3 can replace the PC's request and be dropped
         IGR_PcReset = 0;
 #endif
+    }
+    // The pause waits for a VBLANK at which the game's transfers are idle, 2 s at most and then anyway (ORBIT's
+    // box_want). Paused at once, a transfer that needs one of the held interrupts to go on never ends, and the menu's
+    // check leaves with the plain reset (Dirge of Cerberus on a console: yellow)
+    if (IGR_MenuWant && Pad_Data.combo_type == 0x00 && (IGR_MenuDrawable() || ++IGR_MenuWait > 120)) {
+        IGR_MenuWant = 0;
+        IGR_MenuOpen = 1;
+        IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
+        iChangeThreadPriority(IGR_Thread_ID, 0);
+        iWakeupThread(IGR_Thread_ID);
     }
 #endif
 

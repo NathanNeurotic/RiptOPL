@@ -311,6 +311,8 @@ static int EnableIntc(int cause) { (void)cause; return 0; }
 #ifdef IGR_MENU
 static volatile int IGR_MenuOpen;
 static int IGR_MenuRearm = 1, held, wakes;
+static int IGR_MenuWant, IGR_MenuWait, drawable = 1; // drawable: the game's transfers are idle this VBLANK
+static int IGR_MenuDrawable(void) { return drawable; }
 static struct { int IgrMenu; } g_config, *config = &g_config;
 static void IGR_HoldInterrupts(void) { held++; }
 static void iChangeThreadPriority(int id, int prio) { (void)id; (void)prio; }
@@ -398,6 +400,31 @@ int main(void)
         CHECK(IGR_MenuOpen && wakes == 2, "the next press pauses again");
         IGR_MenuOpen = 0;
         Pad_Data.combo_type = 0;
+        handler();
+        // The pause waits for a VBLANK with the game's transfers idle (ORBIT's box_want): none while they are busy,
+        // whether the combo is still held or not, then one; after 120 busy VBLANKs it comes anyway
+        drawable = 0;
+        wakes = held = 0;
+        for (i = 0; i < 10; i++) {
+            Pad_Data.combo_type = i < 3 ? IGR_COMBO_START_SELECT : 0;
+            CHECK(!handler() && !IGR_MenuOpen && !wakes && !held, "busy transfers: no pause yet (VBLANK %u)", i);
+        }
+        drawable = 1;
+        handler();
+        CHECK(IGR_MenuOpen && wakes == 1 && held == 1, "the first idle VBLANK takes the press's pause");
+        IGR_MenuOpen = 0;
+        handler();
+        CHECK(!IGR_MenuOpen && wakes == 1, "one pause for the press that waited");
+        drawable = 0;
+        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+        for (i = 0; i < 120; i++) {
+            CHECK(!handler() && !IGR_MenuOpen, "busy transfers: no pause before 2 s are over (VBLANK %u)", i);
+            Pad_Data.combo_type = 0;
+        }
+        handler();
+        CHECK(IGR_MenuOpen && wakes == 2 && held == 2, "after 2 s of busy transfers the pause comes anyway");
+        IGR_MenuOpen = 0;
+        drawable = 1;
         handler();
         // Menu off: every press leaves, as it always did
         g_config.IgrMenu = 0;
