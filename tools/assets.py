@@ -156,6 +156,14 @@ def embed():
                     sys.exit(f"Korium asset digest mismatch: {name}")
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(data)
+        # RiptOPL's List Title and Description layout for Korium, kept outside the vendored archive so a
+        # re-import keeps it: the lines before its first section go above Korium's list cfg (a key after a
+        # section header would land in that section), the sections after it (main11 and main12, the next free
+        # numbers). It is inert unless the setting shows the CFG text (src/gfx/themeviews.cpp).
+        overlay = (Path(ROOT) / "misc/korium_list_desc.cfg").read_bytes()
+        split = overlay.index(b"\nmain") + 1
+        list_cfg = theme_dir / "misc/conf_theme_OPL.cfg"
+        list_cfg.write_bytes(overlay[:split] + list_cfg.read_bytes() + overlay[split:])
     pngs = list(PNG_ASSETS)
     if theme_dir:
         # inceBtion's app placeholder and foliage layer: Korium maps neither (src/gfx/textures.cpp).
