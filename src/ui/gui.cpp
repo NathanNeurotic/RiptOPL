@@ -201,7 +201,13 @@ void Gui::handleOp(struct gui_update_t *item)
             break;
 
         case GUI_OP_APPEND_MENU:
-            result = submenuAppendItem(item->menu.subMenu, item->submenu.icon_id, item->submenu.text, item->submenu.id, item->submenu.text_id);
+            // Append at the tail this menu already tracks. submenuAppendItem walks from the pointer it is
+            // given to the end of the list (and only writes through it when the list is empty), so handing
+            // it the head made every row re-walk all the rows before it. `last` is the tail whenever the
+            // list is not empty: it is set below on every append, recomputed after a sort and cleared
+            // with the list.
+            result = submenuAppendItem((*item->menu.subMenu != NULL && item->menu.menu->last != NULL) ? &item->menu.menu->last : item->menu.subMenu,
+                                       item->submenu.icon_id, item->submenu.text, item->submenu.id, item->submenu.text_id);
             // OOM: retain the previous tail, cursor and wrap navigation state.
             if (result == NULL) {
 #ifdef RETROACHIEVEMENTS

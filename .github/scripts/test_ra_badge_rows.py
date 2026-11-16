@@ -137,6 +137,7 @@ int main(void)
     assert(head && !strcmp(head->item.text, "Crash") && !strcmp(submenuItemGetText(&head->item), "Crash [RA]"));
     assert(live == 2);
     submenuDestroyItem(head);
+    head = NULL, m.last = NULL; /* as GUI_OP_CLEAR_SUBMENU leaves them: the next append starts a new list */
     assert(live == 0);
     /* No badge (or a failed copy): the plain name, unchanged. */
     p = op(&m, &head);
