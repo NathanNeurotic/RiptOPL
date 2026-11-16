@@ -140,6 +140,11 @@ for gone in ('IGR_TRIES', 'IGR_MenuBusy', 'IGR_WaitIdle'):
     if gone in padhook:
         failures.append('padhook.c: %s is not RIPPS2 build 129\'s: one pause per press, the idle check in the menu' % gone)
 
+# The pause wakes the IGR thread through the handler's one pair of calls (Korium's LLVM .text has no room for two)
+if not re.search(r'#ifdef IGR_MENU\n\s*wake:\n#endif\n\s*iChangeThreadPriority\(IGR_Thread_ID, 0\);\n(?:\s*//.*\n)?'
+                 r'\s*iWakeupThread\(IGR_Thread_ID\);', padhook):
+    failures.append('padhook.c IGR_Intc_Handler: the wake the menu\'s pause jumps to was not found')
+
 # The check is RIPPS2's, in the menu: channels 1 and 2 end, then VIF1 neither stopped (VSS, VFS, VIS, INT) nor reading
 # back (FDR). A game that fails it leaves as the combo did before, with Debug Colors' yellow (docs/IGR.md)
 igrmenu = (root / 'ee_core/src/igrmenu.c').read_text(encoding='utf-8')
@@ -324,6 +329,11 @@ static void iWakeupThread(int id) { (void)id; wakes++; }
 static int handler(void)
 {
 @GATE@
+    if (0) { // the handler's own wake, which the pause jumps to (checked in the source above)
+    wake:
+        iChangeThreadPriority(IGR_Thread_ID, 0);
+        iWakeupThread(IGR_Thread_ID);
+    }
     return Pad_Data.combo_type != 0x00;
 }
 #endif

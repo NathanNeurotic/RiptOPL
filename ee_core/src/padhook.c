@@ -686,8 +686,7 @@ static int IGR_Intc_Handler(int cause)
         if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) ? IGR_MenuRearm - 1 : 0)) {
             IGR_MenuOpen = 1;
             IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
-            iChangeThreadPriority(IGR_Thread_ID, 0);
-            iWakeupThread(IGR_Thread_ID);
+            goto wake;            // the IGR's own two calls below, not a second copy of them: .text has no room for one
         }
     } else if (Pad_Data.combo_type == 0x00) {
         IGR_MenuRearm = IGR_MENU_ARMED;
@@ -718,6 +717,9 @@ static int IGR_Intc_Handler(int cause)
         }
 
         DPRINTF("IGR: trying to wake IGR thread...\n");
+#ifdef IGR_MENU
+    wake:
+#endif
         iChangeThreadPriority(IGR_Thread_ID, 0);
         // WakeUp IGR thread
         iWakeupThread(IGR_Thread_ID);
