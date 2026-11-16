@@ -183,15 +183,6 @@ static int suFileSink(void *ctx, const char *data, int len)
             return -1; /* not an ELF: stop before writing anything */
         if (raTlsBodyLength <= 0 || raTlsBodyLength > SU_ELF_MAX || (f->data = static_cast<unsigned char *>(malloc(raTlsBodyLength))) == NULL)
             return -1;
-#ifndef SELFUPDATE_HOST_TEST
-        void *reserve = malloc(4 * 1024 * 1024);
-        if (!reserve) {
-            free(f->data);
-            f->data = NULL;
-            return -1;
-        }
-        free(reserve);
-#endif
         f->cap = raTlsBodyLength;
         memcpy(f->data, f->head, f->headLen);
         mbedtls_sha256_update(&f->sha, f->head, f->headLen);

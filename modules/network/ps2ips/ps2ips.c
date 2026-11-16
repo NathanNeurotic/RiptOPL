@@ -125,15 +125,6 @@ static void do_disconnect( void * rpcBuffer, int size )
 	ptr[0] = ret;
 }
 
-#define PS2IPS_MAX_MTU 1400
-
-static void clamp_sm0_mtu(void)
-{
-	struct netif *iface = netif_find("sm0");
-	if (iface != NULL && iface->mtu > PS2IPS_MAX_MTU)
-		iface->mtu = PS2IPS_MAX_MTU;
-}
-
 static void do_connect( void * rpcBuffer, int size )
 {
 	int *ptr = rpcBuffer;
@@ -142,7 +133,6 @@ static void do_connect( void * rpcBuffer, int size )
 
 	(void)size;
 
-	clamp_sm0_mtu();
 	ret = connect(pkt->socket, &pkt->sockaddr, pkt->len);
 
 	ptr[0] = ret;
@@ -480,7 +470,6 @@ static void do_getconfig(void *rpcBuffer, int size)
 	(void)size;
 
 	ps2ip_getconfig((char *)rpcBuffer, (t_ip_info *)rpcBuffer);
-	clamp_sm0_mtu();
 }
 
 static void do_setconfig(void *rpcBuffer, int size)
@@ -488,7 +477,6 @@ static void do_setconfig(void *rpcBuffer, int size)
 	(void)size;
 
 	ps2ip_setconfig((t_ip_info *)rpcBuffer);
-	clamp_sm0_mtu();
 }
 
 static void do_select( void * rpcBuffer, int size )
@@ -744,7 +732,6 @@ int _start( int argc, char *argv[])
 
 	printf( "PS2IPS: Module Loaded.\n" );
 
-	clamp_sm0_mtu();
 	t.attr = TH_C;
 	t.option = 0;
 	t.thread = &threadRpcFunction;
