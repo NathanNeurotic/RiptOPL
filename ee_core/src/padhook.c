@@ -121,13 +121,13 @@ extern void *_end;
 */
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
 #define IGR_INTC_SBUS 1
-#define IGR_DMAC_HELD 0x031f0000 // D_STAT's mask half: channels 0-4, 8 and 9, never SIF 5-7
 #define IGR_TRIES     8          // pauses one press of the combo may take to find the game idle
 #define IGR_SECOND    294912000u // COP0 Count ticks: the EE's clock
 static volatile int IGR_MenuOpen = 0;
 static int IGR_MenuRearm = IGR_TRIES; // the pauses left to this press: 0 once the menu opened, IGR_TRIES again when the combo is let go
 static volatile int IGR_MenuBusy;     // 1: the last pause of a press found the game never idle; 2: the combo was let go since, so the next press leaves
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
+static const u8 IGR_DmacHeld[] = {0, 1, 2, 3, 4, 8, 9}; // never SIF 5-7
 
 // libpad's buttons, 1 = held (its buffer is active-low), or 0 while the pad is not stable
 static u16 IGR_PadButtons(void)
@@ -153,17 +153,22 @@ static u16 IGR_PadButtons(void)
     return ~(b[Pad_Data.pos_combo2] | b[Pad_Data.pos_combo1] << 8) & 0xFFFF;
 }
 
-// interrupt handler context: every interrupt of the game waits, its GS, VIF1 and DMA completions too, the SIF's do not,
-// as RIPPS2 holds them (iDisableIntc/iDisableDmac in its handler). Held from here, a handler of the game cannot start
-// its next transfer, so the one in flight ends and the channels go idle for IGR_WaitIdle. Holding them only once the
-// transfers were idle let a game whose handlers chain one transfer to the next stay busy at every check: the menu
-// never opened (issue #364; Dirge of Cerberus on a console)
-static inline void IGR_HoldInterrupts(void)
+// interrupt handler context: every interrupt of the game waits, its GS, VIF1 and DMA completions too, the SIF's do not.
+// Through the kernel's own calls, as RIPPS2 build 129 holds them: the kernel keeps its record of which causes are on
+// in step with the masks. Held from here, a handler of the game cannot start its next transfer, so the one in flight
+// ends and the channels go idle for the menu's check (issue #364; Dirge of Cerberus on a console)
+static void IGR_HoldInterrupts(void)
 {
-    IGR_HeldIntc = *IGR_I_MASK & ~(1 << IGR_INTC_SBUS); // what is held, SBUS never
-    *IGR_I_MASK = IGR_HeldIntc;                         // a 1 toggles: those off. No other handler runs between read and write
-    IGR_HeldDmac = *R_EE_D_STAT & IGR_DMAC_HELD;        // D_STAT's mask half toggles too; its status half written 0
-    *R_EE_D_STAT = IGR_HeldDmac;                        // clears no completion: those wait for the game's handlers
+    int i;
+
+    IGR_HeldIntc = *IGR_I_MASK;
+    for (i = 0; i <= 14; i++)
+        if (i != IGR_INTC_SBUS && (IGR_HeldIntc & (1 << i)))
+            iDisableIntc(i);
+    IGR_HeldDmac = (*R_EE_D_STAT >> 16) & 0x3ff;
+    for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
+        if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
+            iDisableDmac(IGR_DmacHeld[i]);
 }
 
 // From the IGR thread at priority 0, while no game thread runs. Suspending the interrupted thread from
@@ -208,11 +213,12 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
 {
     int i;
 
-    // every interrupt in IGR_HeldDmac and IGR_HeldIntc is off now (the SIF's are in neither), and nothing runs that
-    // turns one on or off: a 1 in either mask toggles, so one store each turns them all back on, and no handler can
-    // run between a read and the write
-    *R_EE_D_STAT = IGR_HeldDmac;
-    *IGR_I_MASK = IGR_HeldIntc;
+    for (i = 0; i < (int)sizeof(IGR_DmacHeld); i++)
+        if (IGR_HeldDmac & (1 << IGR_DmacHeld[i]))
+            EnableDmac(IGR_DmacHeld[i]);
+    for (i = 0; i <= 14; i++)
+        if (i != IGR_INTC_SBUS && (IGR_HeldIntc & (1 << i)))
+            EnableIntc(i);
     for (i = 1; i < 256; i++)
         if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
             ResumeThread(i);
