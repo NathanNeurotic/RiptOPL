@@ -684,6 +684,7 @@ int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, in
 #define IGRM_D_ENABLEW ((vu32 *)0x1000f590)
 #define VIF_FQC        0x1f000000
 #define VIF_STALLED    0x00800f00 // FDR (the FIFO turned towards the EE), VSS, VFS, VIS, INT
+#define VIF_BUSY       0x1f00000f // FQC, VPS, VEW, VGW: data left, inside a VIF code, or waiting on VU1 or the GIF
 #define GIF_BUSY       0x1f000c00 // FQC and APATH
 
 #define VIF_NOP                       0
@@ -948,13 +949,15 @@ int IGR_MenuRun(u16 (*buttons)(void))
         return IGR_MENU_NO_FRAME;
     // the game's own transfers finish first; a VIF1 stalled on an interrupt the pause holds cannot take ours
     // (RIPPS2 build 129's check: channel 1, channel 2, then VIF1's status). A channel that drains a MFIFO counts as
-    // finished once it has drained it (igrmWaitFor). The answer is the blink's colour (igrmenu.h)
+    // finished once it has drained it (igrmWaitFor). VIF1 must then also come to rest, its FIFO empty and between
+    // two VIF codes: a MFIFO game paused between two pieces of its list (Dirge of Cerberus) can leave it inside one,
+    // and it takes our lines as the rest of it (build 5 on a console: mint). One answer for all, the blink's colour
+    // (igrmenu.h): a second one is more than Korium's LLVM .text has left before .rodata moves up a 128-byte step
     dctrl = *IGRM_D_CTRL;
     mfd = (dctrl >> 2) & 3; // D_CTRL MFD: 2 channel 1 (VIF1) drains a MFIFO, 3 channel 2 (GIF) does
-    if (!igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, mfd == 2) || !igrmWaitFor(IGRM_D2_CHCR, CHCR_STR, 0, mfd == 3))
+    if (!igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, mfd == 2) || !igrmWaitFor(IGRM_D2_CHCR, CHCR_STR, 0, mfd == 3) ||
+        !igrmWaitFor(IGRM_VIF1_STAT, VIF_STALLED | VIF_BUSY, 0, 0))
         return IGR_MENU_GS_BUSY;
-    if (*IGRM_VIF1_STAT & VIF_STALLED)
-        return IGR_MENU_VIF_STALLED;
     bpc = igrmBpcOff();
     // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
     if (frameHeld == 2) {
