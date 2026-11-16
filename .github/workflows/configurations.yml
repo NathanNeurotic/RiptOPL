@@ -21,25 +21,13 @@ jobs:
       fail-fast: false
       max-parallel: 8
       matrix:
-        toolchain: [gcc, llvm]
-        target:
-          - {edition: korium, configuration: pademu0}
-          - {edition: korium, configuration: ds5}
-          - {edition: korium, configuration: extras}
-          - {edition: korium, configuration: extras_ds5}
-          - {edition: korium, configuration: dtl}
-          - {edition: korium, configuration: diag}
-          - {edition: korium, configuration: debug}
-          - {edition: korium, configuration: debug_uart}
-          - {edition: korium, configuration: ingame_debug}
-          - {edition: korium, configuration: iopcore_debug}
-          - {edition: korium, configuration: eesio_debug}
-          - {edition: korium, configuration: ingame_debug_uart}
-          - {edition: korium, configuration: iopcore_debug_uart}
-          - {edition: korium, configuration: ingamediag}
-          - {edition: ra, configuration: pademu0}
-          - {edition: ra, configuration: ingame_debug}
-          - {edition: incebtion, configuration: extras_ds5}
+        # Only the builds no other workflow makes. Every other Korium, RA and IncebtIon configuration, with GCC in
+        # Rolling Release and with LLVM in RiptOPLLVM, is built there on every pull request and push (rolling-release.yml
+        # and rolling-llvm.yml list the same editions and configurations), so building it here too only spent runner time.
+        include:
+          - {toolchain: gcc, target: {edition: ra, configuration: ingame_debug}}
+          - {toolchain: llvm, target: {edition: ra, configuration: ingame_debug}}
+          - {toolchain: llvm, target: {edition: incebtion, configuration: extras_ds5}}
     env:
       PS2BUILD_HOME: ${{ github.workspace }}/.ps2dev
       PS2DEV_INSTALL_DIR: ${{ github.workspace }}/.ps2dev

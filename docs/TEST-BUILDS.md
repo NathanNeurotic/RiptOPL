@@ -8,7 +8,7 @@ sign into GitHub, then download the requested ZIP from Artifacts. Expired artifa
 | --- | --- | --- |
 | Rolling Release | `release-korium`, `release-ra`, `release-incebtion`, `release-ra_incebtion` | The complete install kit and every channel asset for that edition (the last is the IncebtIon-theme RA kit) |
 | Rolling Release | `variant-<edition>-<configuration>` | One configuration build (ELF, manifest and licences); the VARIANTS, DEBUG, BUGREPORT and RA-VARIANTS release zips are made from these |
-| ps2build-configurations | `configuration-<edition>-<configuration>-<gcc or llvm>` | One configuration build per compiler, with its manifest, resolved definition and licences |
+| ps2build-configurations | `configuration-<edition>-<configuration>-<gcc or llvm>` | The three configuration builds no other workflow makes (RA in-game debug with GCC and LLVM, IncebtIon extras/DS5 with LLVM), with manifest, resolved definition and licences; every other configuration is a `variant-` artifact of Rolling Release or RiptOPLLVM |
 | ps2build | `riptopl-ps2build-gcc`, `riptopl-ps2build-llvm` | The bare packed loader from the compiler gate, with `LICENSE-USMB2.txt` and `CREDITS` |
 
 Every loader embeds [usmb2](https://github.com/sahlberg/usmb2), by
