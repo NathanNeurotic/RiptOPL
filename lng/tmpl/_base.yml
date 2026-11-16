@@ -1508,25 +1508,23 @@ gui_strings:
 - label: VMC_REBUILD
   string: "Rebuild"
 - label: HINT_VMC_REBUILD
-  string: "Copies this card into one unbroken file the native core can use. The old card is kept as a .bak file."
+  string: "Copies this card into one unbroken file the native core can use. Needs free space for one copy while it runs."
 - label: VMC_FILE_NEEDS_REBUILD
   string: "Too fragmented for the native core"
 - label: VMC_REBUILD_CONFIRM
-  string: "Rebuild this VMC? Its saves are copied into a new file in one piece and checked byte by byte before it replaces the card. The old card is kept next to it as a .bak file and is never deleted."
+  string: "Rebuild this VMC? Its saves are copied into a new file in one piece and checked byte by byte before it replaces the card. No backup file is made."
 - label: VMC_REBUILD_DONE
-  string: "VMC rebuilt in one piece. The old card is kept next to it as a .bak file -- delete it on a PC once your saves check out."
+  string: "VMC rebuilt in one piece."
 - label: VMC_REBUILD_NO_ROOM
   string: "Not enough unbroken free space to rebuild this VMC. Nothing was changed. Free up space on the device and try again."
 - label: VMC_REBUILD_FAILED
   string: "The VMC could not be rebuilt. Nothing was changed."
 - label: VMC_REBUILD_ABORTED
   string: "Rebuild cancelled. Nothing was changed."
-- label: VMC_REBUILD_LEFTOVER
-  string: "A .bak or .new file for this VMC is already in the VMC folder. It may hold saves, so it is never overwritten -- move it away on a PC, then try again."
 - label: VMC_REBUILD_STUCK
-  string: "The VMC was copied but could not be swapped in. The old card (.bak) and the copy (.new) are both kept in the VMC folder -- rename one of them back to .bin on a PC."
+  string: "The VMC was copied but could not be swapped in. Your saves are in the .new file in the VMC folder -- if the card does not come back, rename that file to .bin on a PC."
 - label: VMC_REBUILD_UNSYNCED
-  string: "The VMC was rebuilt, but the HDD could not confirm the change was saved. The old card is kept as a .bak file -- check the card before deleting anything."
+  string: "The VMC was rebuilt, but the HDD could not confirm the change was saved. Check the card's saves before relying on it."
 - label: EMBER_SELECT_DISC
   string: "Select starting disc"
 - label: EMBER_DISC_ENTRY

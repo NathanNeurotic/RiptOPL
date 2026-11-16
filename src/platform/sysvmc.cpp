@@ -135,6 +135,20 @@ int sysVMCContiguity(void)
 }
 
 // -1: explicit delete, 0: size probe, SYS_VMC_PROBE_FORMAT: validated auto probe, >0: create.
+// A VMC rebuild on FatFs removes the card, then renames its verified "<name>.new" copy. Power lost
+// between the two leaves only the copy: give it the card's name. Called only when the card did not
+// open. Not on PFS, where the rename replaces the card in one step and would also replace a card
+// that merely failed to open. 1 = the copy is now the card.
+static int sysVMCAdoptRebuilt(const char *path)
+{
+    char copy[256];
+
+    if (!strncmp(path, "pfs", 3))
+        return 0;
+    snprintf(copy, sizeof(copy), "%.*s.new", (int)strlen(path) - 4, path);
+    return rename(copy, path) == 0;
+}
+
 int sysCheckVMCEx(const char *prefix, const char *sep, char *name, int createSize, vmc_superblock_t *vmc_superblock, int createFlags)
 {
     int size = -1;
@@ -155,6 +169,8 @@ int sysCheckVMCEx(const char *prefix, const char *sep, char *name, int createSiz
         unlink(path);
     else {
         int fd = open(path, O_RDONLY, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
+        if (fd < 0 && sysVMCAdoptRebuilt(path))
+            fd = open(path, O_RDONLY, 0);
         if (fd >= 0) {
             size = lseek(fd, 0, SEEK_END);
             const bool formatProbe = createSize == SYS_VMC_PROBE_FORMAT;
