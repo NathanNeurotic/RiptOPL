@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Page keys use the existing carousel animation without changing paging targets."""
+"""Fast paging for single-title layouts; keep list paging, D-pad steps and animation intact."""
 from pathlib import Path
 import subprocess
 import tempfile
@@ -8,7 +8,10 @@ import sys
 root = Path(__file__).resolve().parents[2]
 source = (Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'src/ui/menusys.cpp').read_text(encoding='utf-8')
 functions = []
-for name in ('menuFirstPage', 'menuLastPage', 'menuNextPage', 'menuPrevPage'):
+if 'static int menuPageStep(' in source:
+    start = source.index('static int menuPageStep(')
+    functions.append(source[start:source.index('\n}', start) + 2])
+for name in ('menuFirstPage', 'menuLastPage', 'menuNextV', 'menuPrevV', 'menuNextPage', 'menuPrevPage'):
     start = source.index('static void ' + name + '(')
     functions.append(source[start:source.index('\n}', start) + 2])
 harness = r'''
@@ -26,29 +29,84 @@ static menu_item item;
 static struct {menu_item *item;} selection = {&item};
 static __typeof__(selection) *selected_item = &selection;
 #define SFX_CURSOR 0
-static void sfxPlay(int id) {(void)id;}
+static int sounds;
+static void sfxPlay(int id) {(void)id;sounds++;}
 static int animations, direction;
 [[maybe_unused]] static void thmTriggerCoverflowAnim(int dir) {animations++;direction=dir;}
 @FUNCTIONS@
+static submenu_list_t nodes[64];
+static void setup(int count, int selected, int first=0) {
+    for (int i=0;i<count;i++) {
+        nodes[i].prev=i ? &nodes[i-1] : NULL;
+        nodes[i].next=i+1<count ? &nodes[i+1] : NULL;
+    }
+    item.submenu=count ? &nodes[0] : NULL;
+    item.current=count ? &nodes[selected] : NULL;
+    item.pagestart=count ? &nodes[first] : NULL;
+    animations=direction=sounds=0;
+}
+static void checkPage(int count, int selected, int first, int dir, int target, int top) {
+    setup(count,selected,first);
+    if (dir>0) menuNextPage(); else menuPrevPage();
+    assert(item.current==&nodes[target] && item.pagestart==&nodes[top]);
+    assert(animations==(theme.coverflow && target!=selected));
+    if (animations) assert(direction==dir);
+}
 int main(void) {
-    submenu_list_t nodes[3] = {};
-    for (int i=0;i<3;i++) {nodes[i].prev=i ? &nodes[i-1] : NULL;nodes[i].next=i<2 ? &nodes[i+1] : NULL;}
-    item.submenu=item.current=item.pagestart=&nodes[0];
-    menuNextPage();assert(item.current==&nodes[1] && animations==1 && direction==1);
-    menuNextPage();assert(item.current==&nodes[2] && animations==2);
-    menuNextPage();assert(item.current==&nodes[0] && animations==3 && direction==1);
-    menuPrevPage();assert(item.current==&nodes[2] && animations==4 && direction==-1);
-    menuPrevPage();assert(item.current==&nodes[1] && animations==5);
-    theme.coverflow=0;menuPrevPage();assert(item.current==&nodes[0] && animations==5);
-    /* A page containing the entire list must not collapse to its last row. */
-    theme.coverflow=1;list.displayedItems=4;
-    menuNextPage();assert(item.current==&nodes[0] && item.pagestart==&nodes[0] && animations==5);
-    item.current=item.pagestart=NULL;
-    menuNextPage();menuPrevPage();assert(animations==5);
-    /* One-item libraries never animate an unchanged selection. */
-    nodes[0].next=NULL;item.current=item.pagestart=&nodes[0];
-    menuNextPage();menuPrevPage();assert(animations==5);
-    puts("PASS: page-key animation, both wraps, flat themes, short/empty/single-item lists");
+    /* Coverflow (3/5), PSBBN Flow, compact custom layouts and one-row info pages all
+       share a one-row ItemsList. Test every position, including short lists and both ends. */
+    list.displayedItems=1;
+    for (int carousel=0;carousel<=1;carousel++) {
+        theme.coverflow=carousel;
+        for (int n=1;n<=64;n++) for (int s=0;s<n;s++) for (int dir=-1;dir<=1;dir+=2) {
+            int target=dir>0 ? (s==n-1 ? 0 : (s+15<n ? s+15 : n-1)) :
+                               (s==0 ? n-1 : (s>15 ? s-15 : 0));
+            // Entering Info from a multi-row main list can retain an earlier page start.
+            for (int first=0;first<=s;first++) {
+                checkPage(n,s,first,dir,target,target);
+                assert(sounds==(target!=s));
+                assert(list.displayedItems==1); // rendering still has one title row
+            }
+        }
+    }
+    /* Repeated shoulder keys reach each end, then wrap on the next press. */
+    theme.coverflow=1;setup(40,0);
+    int forward[]={15,30,39,0}, backward[]={39,24,9,0,39};
+    for (int target:forward) {menuNextPage();assert(item.current==&nodes[target]);}
+    for (int target:backward) {menuPrevPage();assert(item.current==&nodes[target]);}
+    /* Ordinary D-pad moves and L2/R2 still move one title or go straight to an end. */
+    setup(40,0);menuNextPage();menuNextV();
+    assert(item.current==&nodes[16] && item.pagestart==&nodes[16]);
+    menuPrevV();assert(item.current==&nodes[15] && item.pagestart==&nodes[15]);
+    menuLastPage();assert(item.current==&nodes[39] && item.pagestart==&nodes[39]);
+    menuNextV();assert(item.current==&nodes[0] && item.pagestart==&nodes[0]);
+    menuPrevV();assert(item.current==&nodes[39] && item.pagestart==&nodes[39]);
+    menuFirstPage();assert(item.current==&nodes[0] && item.pagestart==&nodes[0]);
+    /* Multi-row lists retain their visible-row paging and the short-page guard (#48).
+       Vary the selection within each page, as well as page size and start. */
+    for (int carousel=0;carousel<=1;carousel++) {
+        theme.coverflow=carousel;
+        for (int rows=2;rows<=16;rows++) {
+            list.displayedItems=rows;
+            for (int n=1;n<=40;n++) for (int first=0;first<n;first++)
+                for (int s=first;s<n && s<first+rows;s++) {
+                    int next=first+rows<n ? first+rows : 0;
+                    checkPage(n,s,first,1,next,next);
+                    int prev=first ? (first>rows ? first-rows : 0) : n-1;
+                    int top=first ? prev : (n>rows ? n-rows : 0);
+                    checkPage(n,s,first,-1,prev,top);
+                }
+        }
+    }
+    /* Empty and one-title libraries stay silent and do not animate. */
+    for (int rows=1;rows<=4;rows++) {
+        list.displayedItems=rows;setup(0,0);
+        menuNextPage();menuPrevPage();
+        assert(!item.current && !item.pagestart && !animations && !sounds);
+        setup(1,0);menuNextPage();menuPrevPage();
+        assert(item.current==&nodes[0] && !animations && !sounds);
+    }
+    puts("PASS: 15-title jumps, clamps/wraps, list paging, D-pad, home/end, animation, empty/single libraries");
 }
 '''.replace('@FUNCTIONS@', '\n'.join(functions))
 with tempfile.TemporaryDirectory() as tmp:
