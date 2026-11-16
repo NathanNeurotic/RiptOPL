@@ -122,10 +122,12 @@ extern void *_end;
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
 #define IGR_INTC_SBUS 1
 static volatile int IGR_MenuOpen = 0;
-// once per press: a menu closed at once must not reopen. Not 0: the press may still take its pause, and counts down
-// the VBLANKs the held combo waits for the game's transfers to stop (2 s of them)
+// Once per press: a menu closed at once must not reopen. Not 0: the press may still take its pause, and counts down
+// the VBLANKs the held combo waits for the game's transfers to stop (2 s of them). Not initialised here, so that it
+// stays in .bss (one more word of .data costs Korium's LLVM build 128 bytes of stack): the handler arms it on every
+// VBLANK without a request, the first of which comes long before a pad is read
 #define IGR_MENU_ARMED 121
-static int IGR_MenuRearm = IGR_MENU_ARMED;
+static int IGR_MenuRearm;
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 static const u8 IGR_DmacHeld[] = {0, 1, 2, 3, 4, 8, 9}; // never SIF 5-7
 
@@ -612,9 +614,12 @@ static void IGR_Thread(void *arg)
 #ifdef IGR_MENU
         // Why the menu did not open (docs/IGR.md), with or without Debug Colors: the combo otherwise looks exactly like
         // the menu being off. Here, where the screenshot's own colours have always been shown: the IOP is back, the SIF
-        // restarted, the GS trap off. The answer is the colour (igrmenu.h)
-        if (choice > IGR_MENU_POWEROFF)
-            DBGCOL_BLNK(3, choice, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = game's transfers busy, grey = no menu");
+        // restarted, the GS trap off. GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and
+        // growing it costs the stack
+        if (choice >= IGR_MENU_CANNOT_DRAW) {
+            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00, 0x00FFFF}; // grey, purple, mint, yellow
+            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = game's transfers busy, grey = no menu");
+        }
 #endif
 
         if (EnableDebug)
@@ -676,9 +681,10 @@ static int IGR_Intc_Handler(int cause)
         // a transfer that needs one of the held interrupts to go on never ends, and the menu's check (RIPPS2 build
         // 129's) leaves with the plain reset (Dirge of Cerberus on a console: yellow). The combo is held meanwhile;
         // after 2 s of busy VBLANKs the pause comes anyway and that check decides (ORBIT's menu waits like this)
-        if (IGR_MenuRearm && !IGR_MenuOpen && (!((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) || IGR_MenuRearm-- == 1)) {
+        // One store and one way into the pause (0: take it now, and this press has had it): written with ||, Korium's
+        // LLVM build came out 52 bytes larger, more than .text has left before .rodata moves up a 128-byte step
+        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) ? IGR_MenuRearm - 1 : 0)) {
             IGR_MenuOpen = 1;
-            IGR_MenuRearm = 0;
             IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
             iChangeThreadPriority(IGR_Thread_ID, 0);
             iWakeupThread(IGR_Thread_ID);
