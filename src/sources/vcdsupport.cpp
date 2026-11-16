@@ -3225,7 +3225,8 @@ static int vcdRaModuleStatus(const char *root, int removeOwned)
     }
     while (!owned && (got = read(fd, buf, sizeof(buf))) > 0) {
         for (int i = 0; i < got && !owned; i++) {
-            if (buf[i] == (unsigned char)magic[matched])
+            // Both serialized-node layouts belong to RiptOPL; other module files stay untouched.
+            if (buf[i] == (unsigned char)magic[matched] || (matched == 7 && buf[i] == '2'))
                 owned = ++matched == 8;
             else
                 matched = buf[i] == (unsigned char)magic[0] ? 1 : 0;
