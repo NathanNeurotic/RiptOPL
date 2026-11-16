@@ -46,7 +46,7 @@ Portuguese_BR Romana Russian Ryukyuan SChinese Serbian Spanish Swedish TChinese 
 PNG_ASSETS = """load0 load1 load2 load3 load4 load5 load6 load7 usb usb_bd ilk_bd
 m4s_bd hdd_bd mmce hdd eth udp_bd udp_fs app cross triangle circle square select start left right
 cover disc screen incebtion ip coverapp missing screens
-ELF HDL ISO VCD ZSO UL APPS CD DVD Aspect_s Aspect_w Aspect_w1
+ELF HDL ISO VCD ZSO UL CUE EXE BIN APPS CD DVD Aspect_s Aspect_w Aspect_w1
 Aspect_w2 Rating_0
 Rating_1 Rating_2 Rating_3 Rating_4 Rating_5 Scan_240p Scan_240p1 Scan_480i Scan_480p
 Scan_480p1 Scan_480p2 Scan_480p3 Scan_480p4 Scan_480p5 Scan_576i Scan_576p Scan_720p
@@ -176,6 +176,9 @@ def embed():
         if themed and not themed.is_file() and name.startswith("Index") and "_" in name and name[5] != "_":
             # Korium ships five-dot BdmIndex pictures only: dot <p> of <n> is its Index_<p>, never inceBtion's.
             themed = theme_dir / f"gfx/Index_{name.split('_')[1]}.png"
+        if themed and not themed.is_file():
+            # Badges Korium does not ship yet (CUE/EXE/BIN), drawn from its own badges until Berion's arrive.
+            themed = Path(ROOT) / f"third_party/korium/stand-in/gfx/{name}.png"
         source = str(themed) if themed and themed.is_file() else f"gfx/{a}.png"
         bin2c(source, f"{a}_png", f"{a}_png")
     bin2c("third_party/fonts/PoeVeticaNew.ttf", "poeveticanew", "poeveticanew_raw")

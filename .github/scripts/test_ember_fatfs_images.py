@@ -35,7 +35,7 @@ extensions = re.search(r'^static const char \*const cueDiscExts\[\] = \{[^}]*\};
 header = (root / 'include/cuesupport.h').read_text()
 constants = '\n'.join(line for line in header.splitlines() if line.startswith(('#define CUE_', '#define EMBER_')))
 constants += '\n#define ISO_GAME_NAME_MAX 160\n'
-entry = re.search(r'^typedef struct\s*\{[^}]*\} cue_entry_t;', header, re.M)[0]
+entry = 'typedef unsigned char u8;\n' + re.search(r'^enum \{\s*CUE_IMAGE_NONE[^}]*\};', header, re.M)[0] + '\n' + re.search(r'^typedef struct\s*\{[^}]*\} cue_entry_t;', header, re.M)[0]
 
 program = r'''
 #include <assert.h>
