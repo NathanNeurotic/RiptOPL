@@ -1,8 +1,16 @@
 # NULD (formerly ORBIT) Neutrino runtime for the RA edition
 
-Pinned binary distribution: [NULD v1.2.12](https://github.com/danielnuld/nuld/releases/tag/v1.2.12) (ORBIT was renamed NULD at v1.2;
+Pinned binary distribution: [NULD v1.2.13](https://github.com/danielnuld/nuld/releases/tag/v1.2.13) (ORBIT was renamed NULD at v1.2;
 the runtime keeps the ORBIT name here and in the kit's file names).
-Source: [danielnuld/nuld at 0a6bedb6](https://github.com/danielnuld/nuld/tree/0a6bedb6259c1d63d8174d48d2302dac9bf3bc17/third_party/neutrino-igr).
+Source: [danielnuld/nuld at 53abd1d3](https://github.com/danielnuld/nuld/tree/53abd1d3c171f3a6725b92f3045329e604cd8779/third_party/neutrino-igr).
+
+v1.2.13 (reviewed against v1.2.12): inside `neutrino/` only `modules/udpfs_fhi.irx` changed. `neutrino.elf`,
+`modules/ee_core.elf` and `modules/raagent.irx` are byte-identical, so the `-ra=` handoff, the 1,216-byte
+snapshot limit and direct-entry-only reading are unchanged. The new `udpfs_fhi.irx` (NULD commit 8b31753,
+`patch_neutrino.py` step 6) finds the UDPFS server again after a lost link, for up to about a minute, and asks a
+failed block read again over the new link; before, every later read of the running game failed. It restarts the
+link at sequence 0, which PS2-Servers' UDPFS server treats as the same console coming back (its open handles are
+kept). NULD's notes say this is not tested on a console yet.
 
 Daniel / ORBIT supplies the modified Neutrino loader, EE core and achievement agent
 (`raagent.irx`). Neutrino is by Maximus32; the achievement protocol and original agent
@@ -20,11 +28,11 @@ IOP reset). Standard kits keep the official upstream Neutrino; only the RA kit m
 
 `sbNeutrinoPrepareRA` (`src/sources/supportbase.cpp`) hands a game over only when
 `sysNeutrinoRARuntime` (`src/platform/sysneutrino.cpp`) finds `neutrino/ORBIT-RA.txt`
-starting with `RiptOPL ORBIT RA handoff v1` and `raagent.irx` present, so a stock Neutrino is never sent the unknown `-ra=` option. v1.2.12 sends each
+starting with `RiptOPL ORBIT RA handoff v1` and `raagent.irx` present, so a stock Neutrino is never sent the unknown `-ra=` option. v1.2.13 sends each
 snapshot in one packet: sets whose direct values exceed 1,216 bytes stay untracked. It
 reads the direct entries only, so a pointer-chain tail is ignored (xeRAbora PROTOCOL.md)
 and chain-based achievements do not unlock. It speaks the xeRAbora wire protocol, which
-is also what Caduceus's engine receives, so both RA modes use it. v1.2.12 can pause the game for
+is also what Caduceus's engine receives, so both RA modes use it. v1.2.13 can pause the game for
 about 2.5 s under an unlock box when the client sends `RAU1 <id> <points>`; RiptOPL hands over no titles
 for it and does not claim console unlock cards. ORBIT is Neutrino v1.8.0 based: Neutrino cheats are not available through it.
 
