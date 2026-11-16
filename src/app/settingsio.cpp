@@ -2580,7 +2580,7 @@ int saveConfig(int types, int showUI)
             // folder the file went to inside it (#429): pfs0:OPL/ on __common, pfs0:/CFG, pfs0:.
             char physicalHome[96];
             if (savedOnHddHome && !gLastSaveWasStagedOplHome) {
-                const char *rel = strchr(path, ':');
+                const char *rel = strchr(configGetHomePath(), ':'); // configGetDir() is the device only
                 rel = rel ? rel + 1 : "";
                 while (*rel == '/')
                     rel++;
