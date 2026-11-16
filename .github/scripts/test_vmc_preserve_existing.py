@@ -102,6 +102,7 @@ static int fake_devctl(const char *path, int command, void *args, int alen, void
     (void)path; (void)command; (void)args; (void)alen; (void)buf; (void)blen;
     jobs++; return returnsError ? -1 : 0;
 }
+static int vmcRebuildCardState(const char *path) { (void)path; return -1; } // cannot tell: never adopt here
 #define open fake_open
 #define lseek fake_lseek
 #define read fake_read
@@ -203,7 +204,7 @@ int main(void) {
     assert(sysCheckVMC("mass0:/", "/", name, 8, NULL) == SYS_VMC_CREATE_FAILED);
     assert(jobs==2 && erased==0 && !gVMCCreatePath[0]);
     returnsError=0;
-    assert(sysCheckVMC("mass0:/", "/", name, -1, NULL) == -1 && erased == 1);
+    assert(sysCheckVMC("mass0:/", "/", name, -1, NULL) == -1 && erased == 2) /* the card and its ".new" sibling */;
     puts("PASS: VMC format/IO checks refuse unfinished cards, preserve odd formatted cards and never replace saves");
     return 0;
 }

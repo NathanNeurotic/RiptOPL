@@ -19,6 +19,14 @@ program = r"""
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
+/* The real vmcRebuildCardState reads the folder; here stat stands in, and "cannot tell" can be forced. */
+static int cannotTell;
+static int vmcRebuildCardState(const char *path)
+{
+    struct stat s;
+    return cannotTell ? -1 : stat(path, &s) == 0;
+}
 @HELPER@
 static void put(const char *name, const char *text) { FILE *f = fopen(name, "wb"); assert(f); fputs(text, f); fclose(f); }
 static int holds(const char *name, const char *text)
@@ -45,6 +53,16 @@ int main(void)
     put("pfs0/card.new", "half a copy");
     assert(sysVMCAdoptRebuilt("pfs0/card.bin") == 0);
     assert(holds("pfs0/card.bin", "card") && holds("pfs0/card.new", "half a copy"));
+    /* A card that is there is never replaced, and neither is one whose absence cannot be proven. */
+    put("mass0/b.bin", "card");
+    put("mass0/b.new", "half a copy");
+    assert(sysVMCAdoptRebuilt("mass0/b.bin") == 0);
+    assert(holds("mass0/b.bin", "card") && holds("mass0/b.new", "half a copy"));
+    unlink("mass0/b.bin");
+    cannotTell = 1;
+    assert(sysVMCAdoptRebuilt("mass0/b.bin") == 0 && !exists("mass0/b.bin") && exists("mass0/b.new"));
+    cannotTell = 0;
+    assert(sysVMCAdoptRebuilt("mass0/b.bin") == 1 && holds("mass0/b.bin", "half a copy"));
     puts("VMC rebuild: a lone verified copy becomes the card again; PFS is never touched");
     return 0;
 }
