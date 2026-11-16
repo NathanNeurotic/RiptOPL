@@ -10,7 +10,7 @@
 #include <tamtypes.h>
 #include <stddef.h>
 
-constexpr int RETROGEM_GAMEID_MAX = 12;
+constexpr int RETROGEM_GAMEID_MAX = 13; // "LSP99016.101" + NUL
 
 // Normalize a serial token for metadata: case/separators, SLUSP alias and LSP layout.
 // Invalid or oversized tokens fail rather than truncating into another game's key.

@@ -75,6 +75,16 @@ int vcdExtractGameId(const char *name, char *idOut, int idSize)
     if (strlen(p) < 11)
         return 0;
 
+    // Lightspan: LSPNNNNN.NNN (LSP99016.101 -- the shape CosmicScale's PSBBN installer names files with)
+    if (idSize > 12 && !strncasecmp(p, "LSP", 3) && p[8] == '.') {
+        for (i = 3; i <= 11 && (i == 8 || (p[i] >= '0' && p[i] <= '9')); i++)
+            ;
+        if (i == 12 && (p[12] == '\0' || p[12] == '.' || p[12] == '_' || p[12] == ' ' || p[12] == '-')) {
+            snprintf(idOut, idSize, "LSP%.9s", p + 3);
+            return 12;
+        }
+    }
+
     // Check strict AAAA_NNN.NN shape (e.g. SLUS_005.51, SLES_012.58)
     for (i = 0; i < 4; i++) {
         if (!((p[i] >= 'A' && p[i] <= 'Z') || (p[i] >= 'a' && p[i] <= 'z') ||
@@ -101,7 +111,7 @@ int vcdExtractGameId(const char *name, char *idOut, int idSize)
         idOut[i] = c;
     }
     idOut[11] = '\0';
-    return 1;
+    return 11;
 }
 
 // Strict one-game POPS partition label (POPStarter HDD convention): PP.<DISC-ID>.POPS.<NAME>.
@@ -126,9 +136,10 @@ int vcdPopsPartitionTitleOffset(const char *label)
 
     // Form A: AAAA_NNN.NN.POPS.<name> -- vcdExtractGameId validates the ID; the separator into
     // the marker must be '.'. Shortest legal label: 12 + 5 + 1 chars.
-    if (len >= 18 && vcdExtractGameId(tail, discId, sizeof(discId)) && tail[11] == '.' &&
-        strncmp(tail + 12, "POPS.", 5) == 0 && tail[17] != '\0')
-        return (int)((tail + 17) - label);
+    int idLen = vcdExtractGameId(tail, discId, sizeof(discId));
+    if (len >= 18 && idLen && tail[idLen] == '.' &&
+        strncmp(tail + idLen + 1, "POPS.", 5) == 0 && tail[idLen + 6] != '\0')
+        return (int)((tail + idLen + 6) - label);
 
     // Form B: AAAA-NNNNN[.NN].POPS.<name>. Shortest legal label: 10 + 6 + 1 chars.
     if (len < 17)
@@ -162,10 +173,11 @@ static int vcdGameIdPrefixLen(const char *name)
     int prefixLen = vcdSkipPopstarterPrefix(name);
     const char *p = name + prefixLen;
     char gameId[VCD_ID_MAX];
-    if (vcdExtractGameId(p, gameId, sizeof(gameId))) {
-        if (p[11] == '.' || p[11] == '_' || p[11] == ' ' || p[11] == '-')
-            return prefixLen + 12;
-        return prefixLen + 11;
+    int idLen = vcdExtractGameId(p, gameId, sizeof(gameId));
+    if (idLen) {
+        if (p[idLen] == '.' || p[idLen] == '_' || p[idLen] == ' ' || p[idLen] == '-')
+            return prefixLen + idLen + 1;
+        return prefixLen + idLen;
     }
     return 0;
 }
