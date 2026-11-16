@@ -126,15 +126,13 @@ static int tarReadCache(const char *cachePath, const char *tarPath, TarKind kind
     if (fileSize < (int)sizeof(TarCacheHeader))
         return -1;
 
-    raii::UniqueMalloc<void> buf(memalign(64, fileSize));
-    if (!buf)
+    // Read the header on its own, then the entries straight into the block that becomes the index.
+    // (This used to read the whole file into one block, allocate a second and copy across, so both
+    // were held at once.)
+    TarCacheHeader header;
+    if (read(fd.get(), &header, sizeof(header)) != (int)sizeof(header))
         return -1;
-
-    if (read(fd.get(), buf.get(), fileSize) != fileSize)
-        return -1;
-    fd.reset();
-
-    TarCacheHeader *hdr = (TarCacheHeader *)buf.get();
+    const TarCacheHeader *hdr = &header;
 
     if (memcmp(hdr->magic, ARC_MAGIC, 4) != 0 || hdr->version != ARC_VERSION)
         return -1;
@@ -146,17 +144,22 @@ static int tarReadCache(const char *cachePath, const char *tarPath, TarKind kind
     u32 entrySize = gTarInfo[kind].entrySize;
     // Guard a corrupt/hostile entryCount: validate by DIVISION so entryCount * entrySize can
     // never overflow u32. Without this an overflowed product slips past the size check, malloc
-    // and memcpy use the wrapped (small) size, yet s_count keeps the huge original count -- and
+    // and read use the wrapped (small) size, yet s_count keeps the huge original count -- and
     // tarFind then walks that many entrySize-strides off the small allocation (OOB read).
+    if (entrySize == 0)
+        return -1;
     u32 maxEntries = (u32)(fileSize - (int)sizeof(TarCacheHeader)) / entrySize;
-    if (entrySize == 0 || hdr->entryCount > maxEntries)
+    if (hdr->entryCount > maxEntries)
         return -1;
 
-    raii::UniqueMalloc<void> entries(malloc(hdr->entryCount * entrySize));
+    int entryBytes = (int)(hdr->entryCount * entrySize);
+    raii::UniqueMalloc<void> entries(memalign(64, entryBytes > 0 ? entryBytes : 1)); // an empty index is still a valid cache
     if (!entries)
         return -1;
 
-    memcpy(entries.get(), (unsigned char *)buf.get() + sizeof(TarCacheHeader), hdr->entryCount * entrySize);
+    if (read(fd.get(), entries.get(), entryBytes) != entryBytes)
+        return -1;
+    fd.reset();
 
     // The live parser caps every rawSize at MAX_FILE_SIZE (the tar.h invariant); a corrupt cache could
     // carry a larger value. Reject such a cache so the caller re-parses the tar (which re-caps and

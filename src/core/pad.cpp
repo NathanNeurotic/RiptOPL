@@ -1170,7 +1170,8 @@ int PadManager::start()
     for (port = 0; port < maxports; ++port) {
         int maxslots = padGetSlotMax(port);
 
-        for (slot = 0; slot < maxslots; ++slot) {
+        // A multitap in port 2 behind a plain pad in port 1 reports 1 + 4 slots: stop at MAX_PADS.
+        for (slot = 0; slot < maxslots && padCount_ < MAX_PADS; ++slot) {
 
             struct pad_data_t *cpad = &padData_[padCount_];
 

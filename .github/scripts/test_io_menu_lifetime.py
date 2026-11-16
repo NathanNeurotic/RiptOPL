@@ -56,7 +56,9 @@ struct Update {
 static Entry oldEntry{}, newEntry{};
 static bool fail;
 static int DisableCron = 1, gRememberLastPlayed = 1, gAutoStartLastPlayed = 1, KeyPressedOnce;
-static Entry *submenuAppendItem(Entry **, int, char *, int, int) {
+static Entry **appendFrom;
+static Entry *submenuAppendItem(Entry **from, int, char *, int, int) {
+    appendFrom = from;
     return fail ? nullptr : &newEntry;
 }
 static int frees;
@@ -80,6 +82,7 @@ int main() {
     Update item{{&menu, &rows}, {0, nullptr, 7, 0, 1, 0, 1, 0, 1, 1, nullptr}};
     item.submenu.raText = strdup("RA Game");
     fail = true; appendRow(&item); // OOM: the badge snapshot is released, not leaked
+    assert(appendFrom == &menu.last); // a list with rows is appended at its tracked tail, not walked from the head
 #ifdef RETROACHIEVEMENTS
     assert(frees == 1);
 #else
@@ -91,10 +94,13 @@ int main() {
     assert(!menu.remindLast && DisableCron == 1);
     menu = {nullptr, nullptr, nullptr, nullptr, 0}; rows = nullptr;
     appendRow(&item);
+    assert(appendFrom == &rows); // an empty list is started through its head
     assert(!menu.last && !menu.submenu && !menu.current && !menu.pagestart);
     assert(!menu.remindLast && DisableCron == 1);
     char *snapshot = item.submenu.raText = strdup("RA Game");
+    menu.last = &oldEntry; // a stale tail on an empty list is never appended to
     fail = false; appendRow(&item);
+    assert(appendFrom == &rows);
     assert(menu.last == &newEntry && menu.submenu == &newEntry);
     assert(menu.current == &newEntry && menu.pagestart == &newEntry);
     assert(menu.remindLast && DisableCron == 0 && newEntry.item.isFolder);

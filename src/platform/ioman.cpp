@@ -216,6 +216,11 @@ void IoQueue::start()
 
     procSema_ = CreateSema(&sema);
     endSema_ = CreateSema(&sema);
+    // The worker deletes the other two when it exits but not this one, so a restart used to leak it.
+    // The previous worker is gone by now (waited for above), so running() is false and no ioPrintf
+    // takes the old one any more.
+    if (printSema_ >= 0)
+        DeleteSema(printSema_);
     printSema_ = CreateSema(&sema);
 
     // default custom simple action handler
