@@ -1490,6 +1490,8 @@ config_set_t *sbPopulateConfigIn(base_game_info_t *game, const char *prefix, con
             configSetStr(config, CONFIG_ITEM_FORMAT, "ZSO");
         else if (isVcd)
             configSetStr(config, CONFIG_ITEM_FORMAT, "VCD"); // VCD listing -> the VCD format glyph
+        else if (cueImageFormat(game) != NULL)
+            configSetStr(config, CONFIG_ITEM_FORMAT, cueImageFormat(game)); // Ember: the image it boots, not "ELF"
     } else if (game->format == GAME_FORMAT_USBLD)
         configSetStr(config, CONFIG_ITEM_FORMAT, "UL");
 
@@ -1876,7 +1878,7 @@ int sbNeutrinoLoadCheats(const char *prefix, const char *startup, config_set_t *
 }
 
 #ifdef RETROACHIEVEMENTS
-#define RA_ORBIT_SNAPSHOT_MAX 1216 // ORBIT/NULD v1.2.12's one-packet snapshot (third_party/orbit-neutrino)
+#define RA_ORBIT_SNAPSHOT_MAX 1216 // ORBIT/NULD v1.2.13's one-packet snapshot (third_party/orbit-neutrino)
 
 void sbNeutrinoPrepareRA(const char *prefix, const char *startup, const char *driver, const char *neutrinoPath, const char *extraArgs)
 {

@@ -122,18 +122,19 @@ int main(void) {
  CHECK(vcdReadPopsUdpfsNet(&c)==0 && c.server[3]==21);
  changed=c;changed.server[3]=22;
  CHECK(vcdWritePopsUdpfsNet(&changed)==0 && equals(srv0,"192.168.1.22\n") && equals(srv1,"192.168.1.99\n"));
- for(int failure=1;failure<=4;failure++) {
+ for(int failure=1;failure<=2;failure++) {
   put(ip0,ip);put(srv0,srv);writes=0;failWrite=failure;
   CHECK(vcdWritePopsUdpfsNet(&changed)!=0);failWrite=0;
   CHECK(equals(ip0,ip)&&equals(srv0,srv));
   CHECK(!exists("mc0:/SYS-CONF/IPCONFIG.DAT.bak")&&!exists("mc0:/SYS-CONF/UDPFSCONFIG.DAT.bak"));
  }
- // A failed rollback retains the original backup and blocks another save.
- put(ip0,ip);put(srv0,srv);writes=0;failWrite=4;failRestore=5;
+ // A failed rollback is reported, leaves no .bak, and does not block the next save.
+ put(ip0,ip);put(srv0,srv);writes=0;failWrite=2;failRestore=3;
  CHECK(vcdWritePopsUdpfsNet(&changed)!=0);failWrite=failRestore=0;
- CHECK(equals("mc0:/SYS-CONF/IPCONFIG.DAT.bak",ip));
- CHECK(vcdWritePopsUdpfsNet(&changed)!=0);
- unlink("mc0:/SYS-CONF/IPCONFIG.DAT.bak");put(ip0,ip);
+ CHECK(equals(srv0,srv));
+ CHECK(!exists("mc0:/SYS-CONF/IPCONFIG.DAT.bak")&&!exists("mc0:/SYS-CONF/UDPFSCONFIG.DAT.bak"));
+ CHECK(vcdWritePopsUdpfsNet(&changed)==0 && equals(srv0,"192.168.1.22\n"));
+ put(ip0,ip);put(srv0,srv);
  noSpace=1;CHECK(vcdWritePopsUdpfsNet(&changed)!=0);noSpace=0;
  CHECK(equals(ip0,ip)&&equals(srv0,srv));
  corruptWrite=1;CHECK(vcdWritePopsUdpfsNet(&changed)!=0);
@@ -157,12 +158,7 @@ int main(void) {
  CHECK(!exists(ip0)&&!exists(srv0));
  unlink(srv1);char large[122];memset(large,'x',121);large[121]=0;put("udpfs:/POPS/UDPFSCONFIG.DAT",large);
  CHECK(vcdInstallPopsUdpfsNet("udpfs:/POPS/")!=0 && !exists(srv1));
-    // An interrupted settings save must be recovered before automatic population.
     put("udpfs:/POPS/UDPFSCONFIG.DAT",srv);
-    put("mc1:/SYS-CONF/UDPFSCONFIG.DAT.bak","original server config");
-    CHECK(vcdInstallPopsUdpfsNet("udpfs:/POPS/")!=0 && !exists(srv1));
-    CHECK(equals("mc1:/SYS-CONF/UDPFSCONFIG.DAT.bak","original server config"));
-    unlink("mc1:/SYS-CONF/UDPFSCONFIG.DAT.bak");
     noSpace=1;CHECK(vcdInstallPopsUdpfsNet("udpfs:/POPS/")==-2 && !exists(srv1));noSpace=0;
     corruptWrite=1;CHECK(vcdInstallPopsUdpfsNet("udpfs:/POPS/")!=0 && !exists(srv1));
  printf("POPS UDPFS: %d population, precedence, config and rollback checks passed\n",checks);return 0;

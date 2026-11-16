@@ -103,7 +103,9 @@ jobs:
           python tools/assets.py fetch
           python tools/assets.py lang
       - name: Save LLVM SDK cache
-        if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
+        # Saved only from rebuild/main: a pull request that misses the cache must not add a second, different
+        # SDK under the same key, which later jobs of that pull request would restore instead.
+        if: ${{ github.ref == 'refs/heads/rebuild/main' && steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev
@@ -127,7 +129,7 @@ jobs:
         if: matrix.target.configuration != 'standard'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: variant-${{ matrix.target.edition }}-${{ matrix.target.configuration }}
+          name: variant-${{ matrix.target.edition }}-${{ matrix.target.configuration }}-attempt${{ github.run_attempt }}
           path: dist/configurations/${{ matrix.target.edition }}-${{ matrix.target.configuration }}-llvm/
           if-no-files-found: error
       - name: Retain the RA build for its unpacked loader
@@ -142,7 +144,7 @@ jobs:
         if: matrix.target.device
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ${{ matrix.target.edition }}-${{ matrix.target.device }}
+          name: ${{ matrix.target.edition }}-${{ matrix.target.device }}-attempt${{ github.run_attempt }}
           path: dist/lite/${{ matrix.target.edition == 'lite_ra' && 'ra-' || '' }}${{ matrix.target.device }}-llvm/
           if-no-files-found: error
       - name: Download official companion core
@@ -178,7 +180,7 @@ jobs:
         if: matrix.target.configuration == 'standard' && !matrix.target.device
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-${{ matrix.target.edition }}
+          name: release-${{ matrix.target.edition }}-attempt${{ github.run_attempt }}
           path: dist/releases/${{ matrix.target.edition }}/
           if-no-files-found: error
       - name: Retain compiler log
@@ -206,15 +208,17 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
-          path: dist/downloaded
+          path: dist/attempts
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: variant-*
-          path: dist/downloaded
+          path: dist/attempts
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: lite*-*
-          path: dist/downloaded
+          path: dist/attempts
+      - name: Keep each build's newest run attempt
+        run: python -S tools/newest_attempts.py dist/attempts dist/downloaded
       - name: Check LLVM provenance, edition parity, checksum inventory and archive integrity
         run: python -S tools/publish_llvm.py dist/downloaded --check
 
@@ -237,15 +241,17 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
-          path: dist/downloaded
+          path: dist/attempts
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: variant-*
-          path: dist/downloaded
+          path: dist/attempts
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: lite*-*
-          path: dist/downloaded
+          path: dist/attempts
+      - name: Keep each build's newest run attempt
+        run: python -S tools/newest_attempts.py dist/attempts dist/downloaded
       - name: Publish RiptOPLLVM (no GCC assets or tags touched)
         env:
           GH_TOKEN: ${{ github.token }}

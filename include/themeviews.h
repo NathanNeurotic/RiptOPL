@@ -54,8 +54,11 @@ void thmViewScan(config_set_t *themeConfig, thm_view_info_t *info);
 int thmViewChoose(const thm_view_info_t *info, int requested);
 
 // Coverflow is one theme view drawn with 3 or 5 covers (coverflow_count=, gCoverflowCount); the Theme View
-// picker and hold-L3 show the two as separate views, Coverflow (3) and Coverflow (5). A "pick" is one of
+// picker and hold-L3 show the two as separate views, Coverflow (3) and Coverflow (5). The Grid is one view
+// the same way: Grid (the theme's shape, or Grid Layout's preset) and Grid (7x2), RIPPS2's page of 7 x 2
+// covers in a fixed shape that Grid Layout never changes (grid_compact=, gGridCompact). A "pick" is one of
 // those user-facing views: THM_VIEW_PICK_* below, THM_VIEW_PICK_DEFAULT = the theme's default view.
+// Appended picks keep the older ones' numbers; a pick is never saved, only its view, count and grid shape.
 enum ThemeViewPick {
     THM_VIEW_PICK_DEFAULT = 0,
     THM_VIEW_PICK_LIST,
@@ -63,18 +66,20 @@ enum ThemeViewPick {
     THM_VIEW_PICK_COVERFLOW5,
     THM_VIEW_PICK_PSBBN,
     THM_VIEW_PICK_GRID,
+    THM_VIEW_PICK_GRID_COMPACT,
     THM_VIEW_PICK_COUNT
 };
 
-// The pick for a view request (THM_VIEW_*, -1 = default) and a cover count.
-int thmViewPickFor(int request, int coverCount);
-// The view request behind a pick; *coverCount becomes 3 or 5 for a Coverflow pick and is left alone otherwise.
-int thmViewPickRequest(int pick, int *coverCount);
+// The pick for a view request (THM_VIEW_*, -1 = default), a cover count and a grid shape (non-zero = 7x2).
+int thmViewPickFor(int request, int coverCount, int gridCompact);
+// The view request behind a pick; *coverCount becomes 3 or 5 for a Coverflow pick and *gridCompact 0 or 1
+// for a Grid pick; each is left alone otherwise (and may be NULL).
+int thmViewPickRequest(int pick, int *coverCount, int *gridCompact);
 
-// Hold L3: the next view after (view, *coverCount) among the offered ones, in the order List, Coverflow (3),
-// Coverflow (5), PSBBN Flow, Grid. Updates *coverCount when it lands on a Coverflow pick. Returns the
-// unchanged view when only one pick is offered.
-int thmViewCycleNext(unsigned int mask, int view, int *coverCount);
+// Hold L3: the next view after (view, *coverCount, *gridCompact) among the offered ones, in the order List,
+// Coverflow (3), Coverflow (5), PSBBN Flow, Grid, Grid (7x2). Updates *coverCount or *gridCompact when it
+// lands on a Coverflow or Grid pick. Returns the unchanged view when only one pick is offered.
+int thmViewCycleNext(unsigned int mask, int view, int *coverCount, int *gridCompact);
 
 // The block prefix for a chosen view: the view's name when the theme declares keys for it, else "" (the
 // base), so themes without views pay no extra lookups.
@@ -127,6 +132,18 @@ int thmLayoutAutoFitX(int x, int screenWidth);
 // Apply the alternate pictures when alt is non-zero. Returns 1 when the theme declares any alt key, i.e.
 // when it looks different with the setting flipped and must be reloaded if it changes.
 int thmApplyAltBackground(config_set_t *themeConfig, int alt);
+
+// List with descriptions (CosmicScale's ask, after RIPPS2's game list): a theme gives any key a "<key>_desc"
+// variant, used while Settings > Interface > List Title and Description shows the game CFG's Title and
+// Description on the list pages (On, or Theme when the theme's list_cfg_text key does not hide them). A theme
+// can so make room beside its list and declare the text blocks themselves only there ("main20_type_desc=
+// AttributeText"), so with the setting off no block asks for the game's CFG. Copied over the plain keys once,
+// right after the alt= pass; a theme without _desc keys loads exactly as before.
+#define THM_DESC_SUFFIX "_desc"
+
+// Apply the _desc variants when shown is non-zero. Returns 1 when the theme declares any, i.e. when it
+// looks different with the setting flipped and must be reloaded if it changes.
+int thmApplyListDescLayout(config_set_t *themeConfig, int shown);
 
 // Fallback views. A theme without views= offers every view: one it does not declare is built from its own
 // List (or flow) layout, keeping its background, colours, fonts, icons, hints and info page, and swapping

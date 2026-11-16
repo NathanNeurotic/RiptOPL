@@ -93,6 +93,15 @@ static inline int gridLayoutPreset(int layout, int wide, grid_layout_t *out)
     return 1;
 }
 
+// The Grid (7x2) view pick (themeviews.h): RIPPS2's page of 7 x 2 covers, one fixed shape that Grid Layout never
+// changes, so the two cannot disagree. 16:9 takes the 7 x 2 cell Grid Layout's 5 x 2 preset has there; 4:3 the
+// same seven columns, smaller.
+static inline void gridCompactShape(int wide, grid_layout_t *out)
+{
+    static const grid_layout_t sd = {7, 2, 72, 103, 8}, hd = {7, 2, 96, 135, 10};
+    *out = wide ? hd : sd;
+}
+
 // Is index in the page's first column? Left there opens the device sidebar.
 static inline int gridAtRowStart(int count, int index, int columns)
 {
@@ -109,6 +118,22 @@ static inline float gridSlideEase(float t)
         return 1.0f;
     float r = 1.0f - t;
     return 1.0f - r * r * r;
+}
+
+// Where a case picture goes so its cover window (left..right by top..bottom of its cw by ch element) lands on a
+// cover drawn w by h about a point: its size (*ow by *oh) and its centre's offset from that point (*dx, *dy,
+// before the wide-screen scale). A window that is the whole element gives the cover's own place.
+static inline void gridCaseRect(int w, int h, int cw, int ch, int left, int top, int right, int bottom, int *ow, int *oh,
+                                int *dx, int *dy)
+{
+    if (cw < 1)
+        cw = 1;
+    if (ch < 1)
+        ch = 1;
+    *ow = w * cw / (right > left ? right - left : cw);
+    *oh = h * ch / (bottom > top ? bottom - top : ch);
+    *dx = (cw - left - right) * *ow / (2 * cw);
+    *dy = (ch - top - bottom) * *oh / (2 * ch);
 }
 
 #endif

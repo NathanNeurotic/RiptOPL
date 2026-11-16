@@ -1351,6 +1351,13 @@ static void thmReadViewTemplate(config_set_t *cfg, int view)
 }
 
 // The caller holds thmSwitchSema.
+// Whether List Title and Description shows the game CFG's text on this theme's list pages (themeelems.cpp draws
+// by the same rule): On, or Theme unless the theme's list_cfg_text=0 hides it.
+static int thmListDescShown(int themeHides)
+{
+    return gListCfgText == LIST_CFG_TEXT_ON || (gListCfgText == LIST_CFG_TEXT_THEME && !themeHides);
+}
+
 static int thmLoad(const char *themePath)
 {
     LOG("THEMES Load theme path=%s\n", themePath);
@@ -1466,6 +1473,15 @@ static int thmLoad(const char *themePath)
     // alt keys are untouched.
     newT->altBackground = gThemeAltBackground != 0;
     newT->altDeclared = thmApplyAltBackground(themeConfig, newT->altBackground);
+    // List with descriptions (_desc keys): the layout for the List Title and Description setting it is shown with.
+    // The key as the view this load will show reads it (a "<view>.list_cfg_text" beats the base one), the same
+    // value hideListCfgText takes below: the layout, the refresh check and the drawing must agree on it.
+    int listCfgText = 1;
+    thm_view_info_t descViews;
+    thmViewScan(themeConfig, &descViews);
+    newT->descThemeHides = thmViewGetInt(themeConfig, thmViewPrefix(&descViews, thmViewChoose(&descViews, gThemeViewRequest)), "list_cfg_text", &listCfgText) && listCfgText == 0;
+    newT->descShown = thmListDescShown(newT->descThemeHides);
+    newT->descDeclared = thmApplyListDescLayout(themeConfig, newT->descShown);
 
     // Pick the view to build (docs/MULTI-VIEW-THEMES-PLAN.md). Only that view is parsed; switching views
     // reloads the theme. A theme that declares no "<view>." keys parses exactly as before.
@@ -2130,6 +2146,13 @@ int thmSetGuiValue(int themeID, int reload)
 
 // The view functions below read gTheme to decide on a reload. Only a theme switch replaces gTheme, so they hold
 // thmSwitchSema across the read and the reload, and reload the id selected at that moment.
+// Grid and Grid (7x2) are two picks of one view, but a page of another size needs another cover cache: the
+// grid on screen was built for the other pick.
+static int thmGridShapeChanged(void)
+{
+    return gTheme->grid != NULL && gTheme->gridCompact != (gGridCompact != 0);
+}
+
 static int thmSetViewLocked(int view)
 {
     if (view < 0 || view >= THM_VIEW_COUNT)
@@ -2141,7 +2164,7 @@ static int thmSetViewLocked(int view)
 
     // The view the active theme would load for this request; nothing to do when it is already showing.
     int target = (view >= 0 && (gTheme->viewMask & (1u << view))) ? view : gTheme->defaultView;
-    if (target == gTheme->view)
+    if (target == gTheme->view && !thmGridShapeChanged())
         return 0;
     if (!gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1)) {
         gThemeViewRequest = previous; // abandoned load (#120): the old view is still on screen
@@ -2164,9 +2187,15 @@ int thmRefreshDisplayLayout(void)
     int wideChanged = gTheme->layoutDependsOnWide && gTheme->layoutWide != rmIsWideDisplay();
     int altChanged = gTheme->altDeclared && gTheme->altBackground != (gThemeAltBackground != 0);
     int wallpaperChanged = gTheme->wallpaperWanted != (gThemeWallpaper != 0);
-    if (!wideChanged && !altChanged && !wallpaperChanged)
+    int descChanged = gTheme->descDeclared && gTheme->descShown != thmListDescShown(gTheme->descThemeHides);
+    int gridChanged = thmGridShapeChanged();
+    if (!wideChanged && !altChanged && !wallpaperChanged && !descChanged && !gridChanged)
         return 0;
-    return gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1);
+    if (gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1))
+        return 1;
+    if (gridChanged)
+        gGridCompact = gTheme->gridCompact; // abandoned load (#120): the grid on screen keeps its shape
+    return 0;
 }
 
 int thmRefreshGridLayout(void)
@@ -2190,18 +2219,21 @@ int thmCycleView(void)
         return 0;
     // Coverflow (3) and Coverflow (5) are two stops of one theme view: the count is read at draw time, so
     // moving between them needs no reload.
-    int covers = gCoverflowCount;
-    int v = thmViewCycleNext(gTheme->viewMask, gTheme->view, &covers);
-    if (v == gTheme->view) {
+    int covers = gCoverflowCount, compact = gGridCompact;
+    int v = thmViewCycleNext(gTheme->viewMask, gTheme->view, &covers, &compact);
+    if (v == gTheme->view && compact == gGridCompact) {
         if (covers == gCoverflowCount)
             return 0; // the theme offers a single view
         gCoverflowCount = covers;
         return 1;
     }
-    int previousCovers = gCoverflowCount;
+    // A new view, or Grid <-> Grid (7x2): thmSetViewLocked reloads for either.
+    int previousCovers = gCoverflowCount, previousCompact = gGridCompact;
     gCoverflowCount = covers;
-    if (!thmSetViewLocked(v) && gTheme->view != v) {
+    gGridCompact = compact;
+    if (!thmSetViewLocked(v) && (gTheme->view != v || thmGridShapeChanged())) {
         gCoverflowCount = previousCovers; // abandoned load: the old view is still on screen
+        gGridCompact = previousCompact;
         return 0;
     }
     return 1;

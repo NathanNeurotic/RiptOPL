@@ -43,7 +43,9 @@ run('ember_images', r'''
 #include <set>
 #include <string>
 enum { CUE_MAX_ITEMS = 2048, ISO_GAME_NAME_MAX = 160, CUE_NAME_LAUNCH_MAX = 160 };
-struct cue_entry_t { char name[256]; };
+typedef unsigned char u8;
+enum { CUE_IMAGE_NONE, CUE_IMAGE_CUE, CUE_IMAGE_EXE, CUE_IMAGE_BIN };
+struct cue_entry_t { char name[256]; u8 image; };
 static char gamesRoot[288];
 static int opens;
 static bool corePresent = true;
@@ -79,6 +81,7 @@ int main() {
     const char *names[] = {"cue", "exe", "bin", "empty", "group", "nested"};
     for (const char *name : names) { std::string path = std::string("games/") + name; assert(mkdir(path.c_str(), 0700) == 0); }
     put("games/cue/title.CUE"); put("games/exe/title.ExE"); put("games/bin/title.bin");
+    put("games/cue/track1.bin"); put("games/exe/track1.bin"); // the badge names what Ember boots: cue > exe > bin
     put("games/group/MC1.vmc"); put("games/group/readme.txt"); put("games/loose.bin");
     assert(mkdir("games/nested/subdir", 0700) == 0); put("games/nested/subdir/title.bin");
     dirent entry{}; strcpy(entry.d_name, "empty"); entry.d_type = DT_DIR;
@@ -90,6 +93,8 @@ int main() {
     cue_entry_t *list = nullptr;
     assert(cueScanDir("mass0:/", &list) == 3);
     std::set<std::string> found; for (int i = 0; i < 3; ++i) found.insert(list[i].name);
+    for (int i = 0; i < 3; ++i) // the #Format badge: the image Ember will boot, whatever order readdir gives
+        assert(list[i].image == (!strcmp(list[i].name, "cue") ? CUE_IMAGE_CUE : !strcmp(list[i].name, "exe") ? CUE_IMAGE_EXE : CUE_IMAGE_BIN));
     assert((found == std::set<std::string>{"cue", "exe", "bin"})); free(list);
     // Missing core no longer hides valid games; launch diagnostics name the absent file.
     corePresent = false; list = nullptr; assert(cueScanDir("mass0:/", &list) == 3 && list); free(list);

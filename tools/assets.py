@@ -46,7 +46,7 @@ Portuguese_BR Romana Russian Ryukyuan SChinese Serbian Spanish Swedish TChinese 
 PNG_ASSETS = """load0 load1 load2 load3 load4 load5 load6 load7 usb usb_bd ilk_bd
 m4s_bd hdd_bd mmce hdd eth udp_bd udp_fs app cross triangle circle square select start left right
 cover disc screen incebtion ip coverapp missing screens
-ELF HDL ISO VCD ZSO UL APPS CD DVD Aspect_s Aspect_w Aspect_w1
+ELF HDL ISO VCD ZSO UL CUE EXE BIN APPS CD DVD Aspect_s Aspect_w Aspect_w1
 Aspect_w2 Rating_0
 Rating_1 Rating_2 Rating_3 Rating_4 Rating_5 Scan_240p Scan_240p1 Scan_480i Scan_480p
 Scan_480p1 Scan_480p2 Scan_480p3 Scan_480p4 Scan_480p5 Scan_576i Scan_576p Scan_720p
@@ -156,6 +156,14 @@ def embed():
                     sys.exit(f"Korium asset digest mismatch: {name}")
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(data)
+        # RiptOPL's List Title and Description layout for Korium, kept outside the vendored archive so a
+        # re-import keeps it: the lines before its first section go above Korium's list cfg (a key after a
+        # section header would land in that section), the sections after it (main11 and main12, the next free
+        # numbers). It is inert unless the setting shows the CFG text (src/gfx/themeviews.cpp).
+        overlay = (Path(ROOT) / "misc/korium_list_desc.cfg").read_bytes()
+        split = overlay.index(b"\nmain") + 1
+        list_cfg = theme_dir / "misc/conf_theme_OPL.cfg"
+        list_cfg.write_bytes(overlay[:split] + list_cfg.read_bytes() + overlay[split:])
     pngs = list(PNG_ASSETS)
     if theme_dir:
         # inceBtion's app placeholder and foliage layer: Korium maps neither (src/gfx/textures.cpp).
@@ -176,6 +184,9 @@ def embed():
         if themed and not themed.is_file() and name.startswith("Index") and "_" in name and name[5] != "_":
             # Korium ships five-dot BdmIndex pictures only: dot <p> of <n> is its Index_<p>, never inceBtion's.
             themed = theme_dir / f"gfx/Index_{name.split('_')[1]}.png"
+        if themed and not themed.is_file():
+            # Badges Korium does not ship yet (CUE/EXE/BIN), drawn from its own badges until Berion's arrive.
+            themed = Path(ROOT) / f"third_party/korium/stand-in/gfx/{name}.png"
         source = str(themed) if themed and themed.is_file() else f"gfx/{a}.png"
         bin2c(source, f"{a}_png", f"{a}_png")
     bin2c("third_party/fonts/PoeVeticaNew.ttf", "poeveticanew", "poeveticanew_raw")
@@ -184,6 +195,8 @@ def embed():
     for name, src, sym in MISC:
         if theme_dir and name in ("conf_theme_OPL", "theme_coverflow"):
             src = str(theme_dir / src)
+        elif theme_dir and name == "theme_grid":
+            src = "misc/theme_grid_korium.cfg"  # Korium has no Grid of its own: ours, with its cases
         bin2c(src, name, sym)
     bin2c("modules/iopcore/IOPRP.img", "IOPRP_img", "IOPRP_img")
 

@@ -1757,6 +1757,7 @@ int HddSupport::buildVcdGameList()
                 snprintf(g->extension, sizeof(g->extension), "%s", CUE_ROW_EXTENSION);
                 g->parts = 1;
                 g->format = GAME_FORMAT_ISO; // harmless; the row's extension gates the launch path
+                g->media = cues[i].image;    // CUE_IMAGE_*, the #Format badge (cuesupport.h)
                 g->sizeMB = cueSizes != NULL ? cueSizes[i] : 0;
                 snprintf(newParts[total + kept], APA_IDMAX + 1, "%s", emberParts.names[p]);
                 kept++;

@@ -121,9 +121,20 @@ int cuePrepareLaunch(const char *devPrefix, const char *folder, const char *embe
 // through Ember, and nothing else about them differs. ISO_GAME_EXTENSION_MAX is 4, so it fits.
 #define CUE_ROW_EXTENSION ".CUE"
 
+// Which image Ember boots from a game folder, in Ember's own order (.cue, then .exe, then .bin).
+// The scan learns it from the opendir it already pays for and keeps it in the row's otherwise
+// unused `media` byte, so the info screen's #Format badge costs no device IO. 0 = not known.
+enum {
+    CUE_IMAGE_NONE = 0,
+    CUE_IMAGE_CUE,
+    CUE_IMAGE_EXE,
+    CUE_IMAGE_BIN
+};
+
 typedef struct
 {
     char name[CUE_NAME_MAX]; // game FOLDER name under EMBER/games/ -- the launch argument and identity
+    u8 image;                // CUE_IMAGE_*: what Ember will boot from this folder
 } cue_entry_t;
 
 
@@ -185,6 +196,8 @@ void cuePrepareRetroGemBarcode(const char *devPrefix, const char *name);
 // 1 when a published row is an Ember title rather than a POPSTARTER one. THE row-kind test; use it
 // for launch dispatch and art fallback instead of asking which view the page is on.
 int cueIsCueEntry(const base_game_info_t *game);
+// "CUE" / "EXE" / "BIN" -- the #Format badge an Ember row shows -- or NULL when the scan did not record it.
+const char *cueImageFormat(const base_game_info_t *game);
 
 
 // Rename an Ember game by renaming its FOLDER under EMBER/games/. The folder name IS the identity

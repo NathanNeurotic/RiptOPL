@@ -79,6 +79,11 @@ int main(void)
     gVcdSupport.noteScanDir("SLUS_999.99.Crash", "mass0:/POPS");
     assert(!strcmp(cached("SLUS_999.99.Crash", PS1_ROW_VCD), "SLUS_999.99") && discReads == 0);
     assert(cached("Crash", PS1_ROW_VCD) == NULL);
+    /* Lightspan rows (CosmicScale's PSBBN names) parse for free too; a near miss does not. */
+    assert(vcdExtractGameId("LSP99016.101.Science is Elementary 1", id, sizeof(id)) == 12 && !strcmp(id, "LSP99016.101"));
+    assert(vcdExtractGameId("XX.lsp99016.101", id, sizeof(id)) == 12 && !strcmp(id, "LSP99016.101"));
+    assert(!vcdExtractGameId("LSP99016.10", id, sizeof(id)) && !vcdExtractGameId("LSP99016.101x", id, sizeof(id)));
+    assert(vcdExtractGameId("SLPM_862.47.Metal Gear Solid", id, sizeof(id)) == 11 && !strcmp(id, "SLPM_862.47"));
     /* The caption keeps its zero-IO contract for well-named rows; metadata still verifies them. */
     vcdRequestDisplayId("SLUS_999.99.Crash", PS1_ROW_VCD);
     assert(ioCalls == 0);

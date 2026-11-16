@@ -149,7 +149,7 @@ VCD carries its own reader into POPStarter (see [PS1 through USB POPStarter](#ps
 
 ### Neutrino in the RA edition
 
-The RetroAchievements kit's `neutrino/` is **[ORBIT (now NULD) v1.2.12](https://github.com/danielnuld/nuld/releases/tag/v1.2.12)**'s
+The RetroAchievements kit's `neutrino/` is **[ORBIT (now NULD) v1.2.13](https://github.com/danielnuld/nuld/releases/tag/v1.2.13)**'s
 RA-Neutrino by **Daniel / [danielnuld](https://github.com/danielnuld)**, based on [Neutrino](https://github.com/ps2max32/neutrino) by **[Maximus32](https://github.com/rickgaiser)**, with an achievement agent
 (`raagent.irx`) that speaks **[hacan359](https://github.com/hacan359) / [xeRAbora](https://github.com/hacan359/xerabora)**'s protocol. Its AFL-3.0 licence, source commit and
 archive SHA-256 ship beside it (`neutrino/ORBIT-RA.json`). Standard kits keep ordinary upstream Neutrino,
@@ -172,7 +172,7 @@ rest of the set does. A game without a watch list launches quietly; any other re
 made (no NULD runtime, no companion address, a failed write, or the two arguments pushing the launch past
 Neutrino's 256-byte budget) launches the game without achievements and says so. **RiptOPL does not claim
 console unlock cards, and remote reset is not provided by this runtime**; unlocks appear on the companion.
-NULD v1.2.12 can show an unlock box and pause the game for about 2.5 s when the client sends `RAU1`; RiptOPL
+NULD v1.2.13 can show an unlock box and pause the game for about 2.5 s when the client sends `RAU1`; RiptOPL
 hands over no titles for it, and client support for `RAU1` is unverified. **NOT TESTED on hardware.**
 
 ### Do not expect a game with achievements to run from a network share
@@ -390,7 +390,7 @@ switching between RA and a standard edition needs no clean step. See
 
 The `rolling-ra` channel publishes the kit as **`RIPTOPL-RetroAchievements-<version>.zip`**, built to the same
 shape as the standard kit: `POPS/`, `EMBER/`, `neutrino/` (here the
-[NULD (formerly ORBIT) Neutrino RA runtime v1.2.12](https://github.com/danielnuld/nuld/releases/tag/v1.2.12), see
+[NULD (formerly ORBIT) Neutrino RA runtime v1.2.13](https://github.com/danielnuld/nuld/releases/tag/v1.2.13), see
 [Neutrino in the RA edition](#neutrino-in-the-ra-edition)) and the PC-tool shortcuts, with
 `APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF`, matching `ART/RIPTOPL-RA.ELF_*.png` artwork, and
 `APP_RIPTOPL-RA.psu`. The PSU contains only the direct files of `APP_RIPTOPL-RA`; import it with a

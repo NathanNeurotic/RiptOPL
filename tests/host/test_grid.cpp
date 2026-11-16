@@ -67,6 +67,19 @@ int main()
             CHECK(c * drawn + (c - 1) * l.spacing <= 640 - 2 * 32);
         }
 
+    // ---- Grid (7x2): one fixed 7 x 2 page on either picture, within the same limits ------------------
+    for (int wide = 0; wide < 2; wide++) {
+        gridCompactShape(wide, &l);
+        int r = l.rows, c = l.columns;
+        gridClamp(&r, &c);
+        CHECK(l.columns == 7 && l.rows == 2 && r == 2 && c == 7);
+        int drawn = wide ? l.width * 3 / 4 : l.width;
+        CHECK(c * drawn + (c - 1) * l.spacing <= 640 - 2 * 32);
+    }
+    gridCompactShape(1, &l);
+    grid_layout_t twin;
+    CHECK(gridLayoutPreset(2, 1, &twin) && twin.width == l.width && twin.height == l.height); // 16:9: Grid Layout's 7 x 2 cell
+
     // ---- the device sidebar opens from the first column --------------------------------------------
     CHECK(gridAtRowStart(10, 0, 4) && gridAtRowStart(10, 8, 4));
     CHECK(!gridAtRowStart(10, 1, 4) && !gridAtRowStart(10, 7, 4));
@@ -77,6 +90,23 @@ int main()
     CHECK(gridSlideEase(0.5f) > 0.5f); // fast first, slow into place
     for (int i = 1; i <= 10; i++)
         CHECK(gridSlideEase(i / 10.0f) >= gridSlideEase((i - 1) / 10.0f));
+
+    // ---- case pictures: the case is placed so its cover window lands on the cover -----------------
+    {
+        int ow, oh, dx, dy;
+        gridCaseRect(107, 150, 107, 150, 0, 0, 107, 150, &ow, &oh, &dx, &dy); // inceBtion: the window is the element
+        CHECK(ow == 107 && oh == 150 && dx == 0 && dy == 0);
+        // Korium's PS2 case on a 98 by 140 cover: drawn square, as its 256 by 256 PNG, and its window's left
+        // and top edges within a pixel of the cover's (-49, -70).
+        gridCaseRect(98, 140, 256, 256, 0, 12, 167, 250, &ow, &oh, &dx, &dy);
+        CHECK(ow == 150 && oh == 150 && dx == 26 && dy == -1);
+        CHECK(dx - ow / 2 == -49);
+        CHECK(dy - oh / 2 + 12 * oh / 256 >= -71 && dy - oh / 2 + 12 * oh / 256 <= -69);
+        // Korium's PS1 jewel case on a 100 by 100 cover: window left edge on the cover's (-50).
+        gridCaseRect(100, 100, 256, 256, 17, 11, 155, 150, &ow, &oh, &dx, &dy);
+        CHECK(ow == 185 && oh == 184 && dx == 30 && dy == 34);
+        CHECK(dx - ow / 2 + 17 * ow / 256 >= -51 && dx - ow / 2 + 17 * ow / 256 <= -49);
+    }
 
     TEST_DONE("grid");
 }

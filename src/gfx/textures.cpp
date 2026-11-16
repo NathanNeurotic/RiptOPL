@@ -85,6 +85,9 @@ extern void *ISO_png;
 extern void *VCD_png;
 extern void *ZSO_png;
 extern void *UL_png;
+extern void *CUE_png;
+extern void *EXE_png;
+extern void *BIN_png;
 extern void *APPS_png;
 extern void *CD_png;
 extern void *DVD_png;
@@ -248,6 +251,9 @@ static texture_t internalDefault[TEXTURES_COUNT] = {
     {VCD_FORMAT, "VCD", &VCD_png},
     {ZSO_FORMAT, "ZSO", &ZSO_png},
     {UL_FORMAT, "UL", &UL_png},
+    {CUE_FORMAT, "CUE", &CUE_png},
+    {EXE_FORMAT, "EXE", &EXE_png},
+    {BIN_FORMAT, "BIN", &BIN_png},
     {APP_MEDIA, "APP", &APPS_png},
     {CD_MEDIA, "CD", &CD_png},
     {DVD_MEDIA, "DVD", &DVD_png},

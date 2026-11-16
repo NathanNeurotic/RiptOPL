@@ -31,6 +31,20 @@ def archive(extra=None):
     return stream.getvalue()
 
 
+def sdk_root_archive(root, extra=None):
+    """The official GitHub release layout (from v2026.11.11): the package laid out from the SDK root."""
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, "w") as package:
+        for folder in ("packages-llvm/", "packages-llvm/world/", root):
+            package.writestr(zipfile.ZipInfo(folder), b"")
+        package.writestr(root + "package.yaml", "name: ogg\n")
+        package.writestr(root + "lib/libogg.a", b"new archive")
+        package.writestr(root + "COPYING", "upstream license")
+        if extra:
+            package.writestr(extra, "unexpected")
+    return stream.getvalue()
+
+
 class InstallPortsTests(unittest.TestCase):
     def test_incomplete_http_body_is_discarded_and_retried(self):
         import http.client
@@ -131,6 +145,42 @@ class InstallPortsTests(unittest.TestCase):
             self.assertEqual((gcc / "previous.txt").read_text(), "gcc")
             self.assertEqual((sdk / "packages-llvm/world/ogg/LICENSE").read_text(), "upstream license")
             self.assertEqual((sdk / "packages-llvm/world/ogg/lib/libogg.a").read_bytes(), b"new archive")
+
+    def test_sdk_root_layout_is_installed_as_the_package(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sdk = Path(directory)
+            metadata = json.dumps(release("ogg-v1-llvm.zip")).encode()
+            with patch.object(ports, "download", side_effect=[metadata, sdk_root_archive("packages-llvm/world/ogg/")]):
+                ports.install(sdk, "ogg", "llvm")
+            package = sdk / "packages-llvm/world/ogg"
+            self.assertEqual((package / "lib/libogg.a").read_bytes(), b"new archive")
+            self.assertEqual((package / "COPYING").read_text(), "upstream license")
+            self.assertFalse((package / "packages-llvm").exists())
+
+    def test_sdk_root_layout_for_the_other_compiler_or_with_stray_files_is_refused(self):
+        for data in (sdk_root_archive("packages/world/ogg/"),
+                     sdk_root_archive("packages-llvm/world/ogg/", extra="packages-llvm/world/vorbis/lib/libvorbis.a")):
+            with tempfile.TemporaryDirectory() as directory:
+                sdk = Path(directory)
+                metadata = json.dumps(release("ogg-v1-llvm.zip")).encode()
+                with patch.object(ports, "download", side_effect=[metadata, data]):
+                    with self.assertRaises(ValueError):
+                        ports.install(sdk, "ogg", "llvm")
+                self.assertFalse((sdk / "packages-llvm/world/ogg").exists())
+
+    def test_rooted_member_after_the_package_prefix_cannot_escape_the_destination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory, "outside")
+            outside.mkdir()
+            sdk = Path(directory, "sdk")
+            sdk.mkdir()
+            escape = "packages-llvm/world/ogg/" + str(outside / "planted.txt")  # "ogg//<absolute path>"
+            metadata = json.dumps(release("ogg-v1-llvm.zip")).encode()
+            with patch.object(ports, "download", side_effect=[metadata, sdk_root_archive("packages-llvm/world/ogg/", extra=escape)]):
+                with self.assertRaises(ValueError):
+                    ports.install(sdk, "ogg", "llvm")
+            self.assertFalse((outside / "planted.txt").exists())
+            self.assertFalse((sdk / "packages-llvm/world/ogg").exists())
 
     def test_host_outage_keeps_a_complete_cached_package_only(self):
         outage = ports.urllib.error.HTTPError("https://example.com/release", 521, "origin down", None, None)

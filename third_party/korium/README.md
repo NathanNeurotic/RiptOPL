@@ -11,3 +11,8 @@ It does not overwrite the IncebtIon source graphics or configs. Backgrounds
 keep their existing enum positions; additional PS1 and players textures are
 appended before the guarded RA mark. Update the archive and manifest together
 when deliberately importing another tested upstream theme revision.
+
+`stand-in/gfx/` holds badges Korium does not ship yet (CUE, EXE and BIN, for
+Ember PS1 games), drawn from Korium's own badges: same box, ink and lettering.
+`tools/assets.py` uses one only when the archive has no picture of that name,
+so Berion's replacements take over when they are added to the archive.

@@ -85,6 +85,9 @@ int sysNeutrinoSmbPreflight(const char *neutrinoPath, const neutrino_smb_args_t 
 // over nothing. 0 = launch; <0 = the user chose to stay in the menu. Callers go through
 // sbNeutrinoHandCheats, which reads the codes from the cheat engine.
 int sysNeutrinoHandCheats(const char *startup, const char *neutrinoPath, const char *extraArgs, const u32 *list, int pairs);
+// The folder Neutrino runs in and loads its modules from: the effective -cwd= (global, then the per-game
+// args), else the folder holding neutrino.elf. 0 = dir is set, -1 = none.
+int sysNeutrinoWorkDir(const char *neutrinoPath, const char *extraArgs, char *dir, int size);
 #ifdef RETROACHIEVEMENTS
 /* RA through the RA kit's ORBIT Neutrino (sbNeutrinoPrepareRA decides). 1 when the effective -cwd holds
    that runtime. HandRA writes the watch file and ript-ra.toml beside the cheats file and arms

@@ -37,8 +37,9 @@ typedef struct
 // entry's sizeMB: the container is only mounted during the scan, so the info screen cannot stat later.
 int vcdScanDirRoot(const char *dirPath, vcd_entry_t **outList);
 
-// Extract a strict leading PS1 ID from "SXXX_NNN.NN.Title" or "XX.SXXX_NNN.NN.Title" for same-folder CFG/art fallback.
-// Returns 1 and writes the 11-character ID on success; otherwise returns 0 and writes an empty string.
+// Extract a strict leading PS1 ID from "SXXX_NNN.NN.Title", "XX.SXXX_NNN.NN.Title" or the Lightspan
+// "LSPNNNNN.NNN.Title" for same-folder CFG/art fallback. Returns the ID's length (11, or 12 for
+// Lightspan) and writes it on success; otherwise returns 0 and writes an empty string.
 int vcdExtractGameId(const char *name, char *idOut, int idSize);
 
 // Strict one-game POPS HDD partition label PP.<DISC-ID>.POPS.<NAME>: returns the offset of <NAME>
@@ -63,6 +64,9 @@ enum {
 //     synchronously, and verifies a parsed name too, so art matches the id the barcode reports.
 int ps1RowIdCached(const char *name, int kind, char *idOut, int idSize);
 void ps1RowIdRequest(const char *name, int kind);
+//   ps1RowIdResolve -- read the disc id NOW for a row whose name carries none (memoised, hit and miss).
+//     I/O thread only: the opt-in CFG Titles pass, so a CFG/<id>.cfg title shows from the first build.
+void ps1RowIdResolve(const char *name, int kind);
 
 // Ask for a settled PS1 row's id (kind: PS1_ROW_*) to be resolved off-thread for the caption (one
 // queued resolve per row per session, memo-deduped, only under explicit ItemText demand; a name that
@@ -333,6 +337,9 @@ public:
     void requestRowId(const char *name, int kind, int verifyParsedName);
     // ps1RowIdCached's body: memo hit or free filename parse, never device IO.
     int rowIdCached(const char *name, int kind, char *idOut, int idSize);
+    // The device IO behind the memo: resolves one row's disc id, memoizing hit AND miss. I/O thread
+    // only (the queued resolve, and ps1RowIdResolve for the CFG Titles pass).
+    int resolveRowId(const char *name, int kind, char *idOut, int idSize);
 
     // ---- tier-1 custom POPSTARTER.ELF cache ----
     // Resolve gPopstarterPath to a file, remembering the value last resolved and the file it
@@ -349,8 +356,6 @@ private:
     static void resolveQueuedDisplayIdThunk();
     void resolveQueuedDisplayId();
     struct vcd_id_memo *idMemoFind(const char *name, int kind);
-    // The device IO behind the memo: resolves one row's disc id, memoizing hit AND miss.
-    int resolveRowId(const char *name, int kind, char *idOut, int idSize);
 
     struct vcd_id_memo *memoHead_ = NULL;
     int memoCount_ = 0;

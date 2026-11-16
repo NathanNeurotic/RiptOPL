@@ -84,10 +84,11 @@ reserved for standard release packaging. Both the packager and publisher reject
 a manifest naming a nonstandard configuration, even if its checksums are valid.
 Historical standard manifests without this new field remain verifiable.
 
-The `ps2build-configurations` workflow covers all 14 nonstandard configurations
-on Korium, plus RA without PADEMU, RA with in-game UDP debug, and IncebtIon with
-extras/DS5, on both compilers. This is 34 selected builds, not every possible
-edition/configuration cross-product. Host tests cover definition/ABI isolation
+Every pull request and push builds all 14 nonstandard configurations on Korium, RA without
+PADEMU and IncebtIon with extras/DS5 with GCC (Rolling Release) and the 14 Korium ones plus RA
+without PADEMU with LLVM (RiptOPLLVM). The `ps2build-configurations` workflow adds only the three
+builds those two do not make: RA with in-game UDP debug on both compilers, and IncebtIon with
+extras/DS5 on LLVM. This is not every possible edition/configuration cross-product. Host tests cover definition/ABI isolation
 across all three editions and all 15 configurations, separate stage paths and
 negative packaging/publishing cases.
 

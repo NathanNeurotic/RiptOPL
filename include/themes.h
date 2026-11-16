@@ -249,6 +249,11 @@ typedef struct theme
     // with, and whether it declares any alt= key -- then a change of the setting reloads it too.
     int altBackground;
     int altDeclared;
+    // List with descriptions (thmApplyListDescLayout): whether the list pages showed the CFG text when this theme
+    // was built, and whether it declares any _desc key -- then a change of List Title and Description reloads it.
+    int descShown;
+    int descDeclared;
+    int descThemeHides; // the base list_cfg_text=0
     // User Wallpaper: the setting this theme was built with (a change reloads it), and the picture it loaded from
     // the settings folder, NULL when off or when the file was missing or not allowed (thmWallpaperLoad).
     int wallpaperWanted;
@@ -266,6 +271,7 @@ typedef struct theme
     int gridCoverless;         // a cover with no art: 0 the default art, 1 its name, 2 its serial (<block>_coverless)
     int gridFlip;              // the right stick turns the selected case to its back cover (<block>_flip, default on)
     int gridCellW, gridCellH;  // Grid Layout's cell, 0 for the element's own size
+    int gridCompact;           // built as Grid (7x2) (gGridCompact when the grid was built)
     int coverflowCoverOffset;
 
     int gameCacheCount;
@@ -327,6 +333,7 @@ extern int gThemeViewRequest;
 extern int gCoverflowCount, gCoverflowCenterScale, gCoverflowAnimSpeed, gCoverflowDimCovers;
 extern int gGridSidebarOpen;           // the Grid's device sidebar has the pad (menusys sets it, grid.cpp draws it open)
 void gridForgetItem(const void *item); // a list item is freed: drop its case-flip state (grid.cpp)
+extern int gGridCompact;               // Grid (7x2) view pick: 1 the fixed 7 x 2 page, 0 the theme's / Grid Layout's
 extern int gGridLayout;                // Grid Layout: 0 the theme's, 1..GRID_LAYOUTS RIPPS2's presets (grid.h)
 void thmTriggerCoverflowAnim(int dir);
 

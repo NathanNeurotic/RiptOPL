@@ -351,6 +351,36 @@ int NeutrinoLauncher::fragBudgetOk(const char *isoPath, neutrino_vmc_args_t *vmc
     return 1;
 }
 
+// i.LINK: the Neutrino install's own iLinkman.irx / IEEE1394_bd_mini.irx are what its in-game
+// environment loads after the game's IOP reset (config/bsd-ilink.toml). The stock SDK pair never logs
+// out and gives up its LOGIN after about 0.8 s, inside the drive's hold on the menu's login, so a launch
+// boots or black-screens depending on timing. This ELF embeds the fixed pair (ps2.yaml *_fork), which
+// is byte for byte what the kit ships in neutrino/modules/. workDir is the folder Neutrino runs in (its
+// -cwd). 1 = the install's file is that build.
+static int neutrinoIlinkModuleIsOurs(const char *workDir, const char *name, const unsigned char *ours, unsigned int size)
+{
+    char path[320];
+    unsigned char buf[512];
+    size_t len = strlen(workDir);
+    const char *sep = (len > 0 && (workDir[len - 1] == '/' || workDir[len - 1] == '\\' || workDir[len - 1] == ':')) ? "" : "/";
+    if (len == 0)
+        return 1; // no derivable folder: nothing to check against
+    if (snprintf(path, sizeof(path), "%s%smodules/%s", workDir, sep, name) >= (int)sizeof(path))
+        return 1;
+    int fd = open(path, O_RDONLY);
+    if (fd < 0)
+        return 0;
+    unsigned int pos = 0;
+    int same = 1, r = 0;
+    while (same && (r = read(fd, buf, sizeof(buf))) > 0) {
+        if (pos + (unsigned int)r > size || memcmp(buf, ours + pos, r))
+            same = 0;
+        pos += r;
+    }
+    close(fd);
+    return same && r == 0 && pos == size;
+}
+
 // Abort path of tryLaunch: back to a live menu so a later launch from another device does not
 // inherit this one's markers. Returns failResult (1 = launch consumed, 0 = fall back to native).
 int NeutrinoLauncher::abortLaunch(int failResult, config_set_t *configSet)
@@ -410,7 +440,6 @@ int NeutrinoLauncher::tryLaunch(item_list_t *itemList, base_game_info_t *game, b
         host::ui().warning(_l(_STR_NEUTRINO_NOT_FOUND), 6);
         return abortLaunch(failResult, configSet);
     }
-
     // Everything Neutrino actually needs from the config/device, copied to THIS stack frame
     // (deinit below frees configSet's owner + pDeviceData).
     // Absent per-game $NeutrinoVideo/$NeutrinoGsmComp keys = follow the global defaults (the
@@ -422,6 +451,15 @@ int NeutrinoLauncher::tryLaunch(item_list_t *itemList, base_game_info_t *game, b
     char partname[256], bdmCurrentDriver[32];
     compatmask = sbGetCompatModes(configSet, 1); // same source sbPrepare reads; no IRX patch needed
     configGetStrCopy(configSet, CONFIG_ITEM_NEUTRINO_ARGS, neutrinoExtraArgs, sizeof(neutrinoExtraArgs));
+    // Not a gate: an older pair can still boot when the drive's hold has already ended. Checked where
+    // Neutrino will load them: its working directory, so a global or per-game -cwd= is honoured.
+    char workDir[256];
+    if (bdmDriverIsIlink(pDeviceData->bdmDriver) && sysNeutrinoWorkDir(neutrinoPath, neutrinoExtraArgs, workDir, sizeof(workDir)) == 0 &&
+        (!neutrinoIlinkModuleIsOurs(workDir, "iLinkman.irx", (const unsigned char *)iLinkman_irx, size_iLinkman_irx) ||
+         !neutrinoIlinkModuleIsOurs(workDir, "IEEE1394_bd_mini.irx", (const unsigned char *)IEEE1394_bd_irx, size_IEEE1394_bd_irx))) {
+        LOG("[NEUTRINO] %s: its i.LINK driver pair is not this release's fixed pair\n", workDir);
+        host::ui().warning("This Neutrino has an older i.LINK driver. Copy neutrino/modules/iLinkman.irx and IEEE1394_bd_mini.irx from this RiptOPL release.", 8);
+    }
     configGetInt(configSet, CONFIG_ITEM_NEUTRINO_VIDEO, &neutrinoVideo);
     configGetInt(configSet, CONFIG_ITEM_NEUTRINO_GSMCOMP, &neutrinoGsmComp);
     configGetInt(configSet, CONFIG_ITEM_NEUTRINO_BSDFS, &neutrinoBsdfs); // #11: bdm legs (incl. udpbd/udpfsbd) are the block-backed consumers
