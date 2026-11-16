@@ -249,6 +249,11 @@ typedef struct theme
     // with, and whether it declares any alt= key -- then a change of the setting reloads it too.
     int altBackground;
     int altDeclared;
+    // List with descriptions (thmApplyListDescLayout): whether the list pages showed the CFG text when this theme
+    // was built, and whether it declares any _desc key -- then a change of List Title and Description reloads it.
+    int descShown;
+    int descDeclared;
+    int descThemeHides; // the base list_cfg_text=0
     // User Wallpaper: the setting this theme was built with (a change reloads it), and the picture it loaded from
     // the settings folder, NULL when off or when the file was missing or not allowed (thmWallpaperLoad).
     int wallpaperWanted;

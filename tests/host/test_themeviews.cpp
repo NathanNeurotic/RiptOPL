@@ -198,6 +198,29 @@ int main()
         CHECK(thmApplyDisplayLayout(only, 1) == 1 && configGetStr(only, "main6_type", &v) && strcmp(v, "StaticText") == 0);
         configFree(only);
 
+        // ---- List with descriptions (_desc) -------------------------------------------------------------
+        static const char *descs = "main16:\n\ttype=ItemCover\n\tenabled_desc=0\n"
+                                   "main20:\n\ttype_desc=AttributeText\n\tattribute=Description\n";
+        config_set_t *dOff = parse(descs);
+        int n = 1;
+        CHECK(thmApplyListDescLayout(dOff, 0) == 1); // declared, but not shown: nothing changes
+        CHECK(!configGetInt(dOff, "main16_enabled", &n) && !configGetStr(dOff, "main20_type", &v));
+        CHECK(thmViewBlockPresent(dOff, "main16") && !thmViewBlockPresent(dOff, "main20"));
+        configFree(dOff);
+        config_set_t *dOn = parse(descs);
+        CHECK(thmApplyListDescLayout(dOn, 1) == 1);
+        CHECK(configGetInt(dOn, "main16_enabled", &n) && n == 0);
+        CHECK(configGetStr(dOn, "main20_type", &v) && strcmp(v, "AttributeText") == 0);
+        CHECK(thmViewBlockPresent(dOn, "main20"));
+        configFree(dOn);
+        config_set_t *dNone = parse("main0:\n\ttype=Background\n_desc=x\n");
+        CHECK(thmApplyListDescLayout(dNone, 1) == 0 && configGetStr(dNone, "main0_type", &v)); // a bare "_desc" names no key
+        configFree(dNone);
+        dNone = parse("main0:\n\ttype=Background\n");
+        CHECK(thmApplyListDescLayout(dNone, 1) == 0);
+        configFree(dNone);
+        CHECK(thmApplyListDescLayout(NULL, 1) == 0);
+
         // ---- Alternate background (alt=) ---------------------------------------------------------------
         static const char *alts = "alt=bg_top\n"
                                   "main0:\n\ttype=Background\n\tdefault=bg\n\talt=bg_night\n"

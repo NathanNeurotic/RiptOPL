@@ -1351,6 +1351,13 @@ static void thmReadViewTemplate(config_set_t *cfg, int view)
 }
 
 // The caller holds thmSwitchSema.
+// Whether List Title and Description shows the game CFG's text on this theme's list pages (themeelems.cpp draws
+// by the same rule): On, or Theme unless the theme's list_cfg_text=0 hides it.
+static int thmListDescShown(int themeHides)
+{
+    return gListCfgText == LIST_CFG_TEXT_ON || (gListCfgText == LIST_CFG_TEXT_THEME && !themeHides);
+}
+
 static int thmLoad(const char *themePath)
 {
     LOG("THEMES Load theme path=%s\n", themePath);
@@ -1466,6 +1473,11 @@ static int thmLoad(const char *themePath)
     // alt keys are untouched.
     newT->altBackground = gThemeAltBackground != 0;
     newT->altDeclared = thmApplyAltBackground(themeConfig, newT->altBackground);
+    // List with descriptions (_desc keys): the layout for the List Title and Description setting it is shown with.
+    int listCfgText = 1;
+    newT->descThemeHides = configGetInt(themeConfig, "list_cfg_text", &listCfgText) && listCfgText == 0;
+    newT->descShown = thmListDescShown(newT->descThemeHides);
+    newT->descDeclared = thmApplyListDescLayout(themeConfig, newT->descShown);
 
     // Pick the view to build (docs/MULTI-VIEW-THEMES-PLAN.md). Only that view is parsed; switching views
     // reloads the theme. A theme that declares no "<view>." keys parses exactly as before.
@@ -2171,7 +2183,8 @@ int thmRefreshDisplayLayout(void)
     int wideChanged = gTheme->layoutDependsOnWide && gTheme->layoutWide != rmIsWideDisplay();
     int altChanged = gTheme->altDeclared && gTheme->altBackground != (gThemeAltBackground != 0);
     int wallpaperChanged = gTheme->wallpaperWanted != (gThemeWallpaper != 0);
-    if (!wideChanged && !altChanged && !wallpaperChanged && !thmGridShapeChanged())
+    int descChanged = gTheme->descDeclared && gTheme->descShown != thmListDescShown(gTheme->descThemeHides);
+    if (!wideChanged && !altChanged && !wallpaperChanged && !descChanged && !thmGridShapeChanged())
         return 0;
     return gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1);
 }
