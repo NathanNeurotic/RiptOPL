@@ -30,8 +30,8 @@ public:
     void clearWatchList();
 
 private:
-    /* Takes the chain list if it is sound, drops all of it otherwise. */
-    void takeNodes(const struct ra_node *nodes, unsigned int count);
+    /* Normalize validated RANL/RAN2 nodes; false rejects the entire watch list. */
+    bool takeNodes(const void *nodes, unsigned int count, unsigned int magic);
 
     unsigned int watchList_[RA_WATCH_MAX] = {};
     int watchCount_ = 0;

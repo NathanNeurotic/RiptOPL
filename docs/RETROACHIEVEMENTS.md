@@ -10,7 +10,7 @@ else — talking to the RetroAchievements servers, deciding what unlocked, your 
 PC.
 
 Based on the RetroAchievements implementation by **[hacan359 (yoba)](https://github.com/hacan359/Open-PS2-Loader/pull/1)**.
-Use the upstream **[xeRAbora PC client](https://github.com/hacan359/xerabora)** with RiptOPL's RA build. Download the required **[v1.0.1 release](https://github.com/hacan359/xerabora/releases/tag/v1.0.1)**.
+Use the upstream **[xeRAbora PC client](https://github.com/hacan359/xerabora)** with RiptOPL's RA build. Download **[v2.0.0](https://github.com/hacan359/xerabora/releases/tag/v2.0.0)**; v1.0.1 (alpha.17 or later) also works. After moving to v2.0.0, run **RA: check game support** again for every game you play: v2.0.0 sends a new pointer-chain format (RAN2) that RiptOPL reads alongside the old one (RANL), and an old watch file lacks the reads v2.0.0 adds.
 
 RiptOPL's real-hardware stabilization was contributed by **[oMrRexD](https://github.com/oMrRexD)** through
 PRs **#702–#705**, covering the ee_core stack squeeze, MMCE DEV9 dependency, cold-launch network
@@ -52,7 +52,7 @@ as finished.
 
 1. Start **RIPTOPL-RA.ELF** from the RetroAchievements kit (`rolling-ra`). The Korium and
    IncebtIon kits have no achievement telemetry and need no companion PC.
-2. Run **xeRAbora v1.0.1** (alpha.17 or later) on the companion PC and sign in to your RetroAchievements
+2. Run **xeRAbora v2.0.0** (or v1.0.1, alpha.17 or later) on the companion PC and sign in to your RetroAchievements
    account in its Settings page. Keep it running.
 3. In **Settings → Network**, leave **RA Mode** on **Xerabora**, turn **RetroAchievements
    telemetry** on and save. Telemetry is Off on a fresh start. Give the PS2 working network
@@ -359,7 +359,7 @@ Updating the external client alone does not update the telemetry code in your EL
 - **Snapshot delivery:** telemetry polls every 4 ms, sends each new snapshot once, retries busy or torn copies, repeats an unchanged snapshot after ~1 second, and marks the staged sequence sent only after every part is accepted.
 
 > [!IMPORTANT]
-> Use **[xeRAbora v1.0.1](https://github.com/hacan359/xerabora/releases/tag/v1.0.1)** with this build; alpha.17 or later works. The console wire protocol is unchanged since alpha.10. Since alpha.17 the client has only gained a setting that keeps unlock notices off the TV (it then sends nothing) and reads optional link counters from the snapshot header. That is from a source review of xeRAbora `v0.1.0-alpha.17...v1.0.1` and its console fork `fa2d2e42...a9f97397`; **v1.0.1 is NOT TESTED on hardware with this build.** Host tests and successful builds do not establish console timing or game compatibility; the alpha.10 hardware report above is historical evidence, not validation of this update.
+> Use **[xeRAbora v2.0.0](https://github.com/hacan359/xerabora/releases/tag/v2.0.0)** or v1.0.1 (alpha.17 or later) with this build. v2.0.0 changes only the pointer-chain tail of the watch list (RANL to RAN2, adding shift, width and scale per node; source review of xeRAbora `7b90aa7...b0c0ed0` and its console fork `a162ae3e...37c5b2f9`); **v2.0.0 is NOT TESTED on hardware with this build.** For v1.0.1: The console wire protocol is unchanged since alpha.10. Since alpha.17 the client has only gained a setting that keeps unlock notices off the TV (it then sends nothing) and reads optional link counters from the snapshot header. That is from a source review of xeRAbora `v0.1.0-alpha.17...v1.0.1` and its console fork `fa2d2e42...a9f97397`; **v1.0.1 is NOT TESTED on hardware with this build.** Host tests and successful builds do not establish console timing or game compatibility; the alpha.10 hardware report above is historical evidence, not validation of this update.
 
 ---
 
@@ -399,8 +399,8 @@ PS2 save manager for a memory-card installation, then copy the other folders sep
 The same channel carries the IncebtIon-theme kit (`RIPTOPL-RetroAchievements-IncebtIon-<version>.zip`, with
 `RIPTOPL-RA-IncebtIon.ELF` and `APP_RIPTOPL-RA-IncebtIon.psu`; inside it the app is still
 `APP_RIPTOPL-RA`), and `RIPTOPL-RA-VARIANTS-<version>.zip` with the `pademu0` loader (pad emulation compiled
-out); `RIPTOPL-RA-VARIANTS-IncebtIon-<version>.zip` is the same loader with the IncebtIon theme. The kit also carries **`xeRAbora.url`** (pointing directly to the paired
-[v1.0.1 release](https://github.com/hacan359/xerabora/releases/tag/v1.0.1)),
+out) and the standard and `pademu0` loaders unpacked (`standard-unpacked/`, `pademu0-unpacked/`: no decompression step at start); `RIPTOPL-RA-VARIANTS-IncebtIon-<version>.zip` is the same loader with the IncebtIon theme. The kit also carries **`xeRAbora.url`** (pointing directly to the paired
+[v2.0.0 release](https://github.com/hacan359/xerabora/releases/tag/v2.0.0)),
 because the loader does nothing without the PC client.
 
 The standard editions are unaffected: every RA source file and call site is behind

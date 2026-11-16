@@ -30,7 +30,6 @@ private:
     Node *tail_ = NULL;
     s32 sema_ = -1;
     int scheduled_ = 0;
-    int completed_ = 0;
 };
 
 #endif

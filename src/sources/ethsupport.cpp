@@ -1322,7 +1322,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         return;
     const int nfs = gEthSupport.nfs();
 
-    char vmc_name[32];
+    char vmc_name[32], vmc_name0[32];
     int vmc_id, size_mcemu_irx = 0;
     smb_vmc_infos_t smb_vmc_infos;
     vmc_superblock_t vmc_superblock;
@@ -1335,6 +1335,13 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
             LOG("ETH VMC %s not used: NFS Writes is Off\n", vmc_name);
             vmc_name[0] = '\0';
         }
+        // One VMC file in both slots would get two writers (compatibility mode no longer refuses the second).
+        if (vmc_id == 1 && vmc_name[0] && !strcasecmp(vmc_name, vmc_name0)) {
+            LOG("ETH VMC %s already in slot 1, slot 2 left empty\n", vmc_name);
+            vmc_name[0] = '\0';
+        }
+        if (vmc_id == 0)
+            snprintf(vmc_name0, sizeof(vmc_name0), "%s", vmc_name);
         if (vmc_name[0]) {
             if (sysCheckVMC(gEthSupport.prefix(), "\\", vmc_name, 0, &vmc_superblock) > 0) {
                 smb_vmc_infos.flags = vmc_superblock.mc_flag & 0xFF;

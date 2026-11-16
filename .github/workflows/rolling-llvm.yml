@@ -130,6 +130,14 @@ jobs:
           name: variant-${{ matrix.target.edition }}-${{ matrix.target.configuration }}
           path: dist/configurations/${{ matrix.target.edition }}-${{ matrix.target.configuration }}-llvm/
           if-no-files-found: error
+      - name: Retain the RA build for its unpacked loader
+        # RIPTOPL-RA-VARIANTS carries the standard RA loader unpacked beside pademu0 (publish_editions.py).
+        if: matrix.target.configuration == 'standard' && !matrix.target.device && startsWith(matrix.target.edition, 'ra')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: variant-${{ matrix.target.edition }}-standard
+          path: dist/editions/${{ matrix.target.edition }}/
+          if-no-files-found: error
       - name: Retain RiptOPLite LLVM build
         if: matrix.target.device
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

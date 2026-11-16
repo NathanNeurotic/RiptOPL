@@ -11,7 +11,6 @@ void DeferredOpQueue::init()
     head_ = NULL;
     tail_ = NULL;
     scheduled_ = 0;
-    completed_ = 0;
 
     ee_sema_t sema;
     sema.init_count = 1;
@@ -78,8 +77,6 @@ void DeferredOpQueue::drain(void (*apply)(struct gui_update_t *))
         // support's own storage rather than the op, so releasing it here is safe.
         free(td->item);
         free(td);
-
-        completed_++;
     }
     // Clear the now-dangling tail pointer INSIDE the lock. Doing this after releasing it let an IO-thread
     // enqueue slip in (rebuild the list, set tail_) only to have it clobbered here -> the next enqueue's

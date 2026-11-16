@@ -74,9 +74,9 @@ struct ra_snap
    watch list copy and node scratch words for the actual set. The launcher reserves it in module
    storage and hands it over as EECoreConfig_t.raWorkArea; see there for why
    it is not in ee_core's .bss. */
-/* Each node needs its two source words plus two runtime scratch words.
+/* Each node needs its three source words plus two runtime scratch words.
    Counts must be validated before evaluating this size. */
-#define RA_EE_WORK_BYTES(count, nodes) (RA_SNAP_TOTAL + (count)*4 + (nodes)*16)
+#define RA_EE_WORK_BYTES(count, nodes) (RA_SNAP_TOTAL + (count)*4 + (nodes)*20)
 #define RA_SNAP_SEND_EVERY(bytes) \
     ((((bytes) + RA_SNAP_CHUNK_BYTES - 1) / RA_SNAP_CHUNK_BYTES + RA_SNAP_PARTS_PER_FRAME - 1) / RA_SNAP_PARTS_PER_FRAME)
 

@@ -13,7 +13,8 @@ Releases carry them for every theme, as the original did: the Korium and IncebtI
 channels each publish `RIPTOPL-VARIANTS-<version>.zip` (`pademu0`, `ds5`, `extras`, `extras_ds5`)
 and `RIPTOPL-DEBUG-<version>.zip` (every other nonstandard configuration), built with that channel's
 theme, one folder per configuration with its GCC `RIPTOPL.ELF` and build manifest; the
-RetroAchievements channel publishes `RIPTOPL-RA-VARIANTS-<version>.zip` (`pademu0`, as `RIPTOPL-RA.ELF`)
+RetroAchievements channel publishes `RIPTOPL-RA-VARIANTS-<version>.zip` (`pademu0`, as `RIPTOPL-RA.ELF`,
+plus the standard and `pademu0` RA loaders unpacked in `standard-unpacked/` and `pademu0-unpacked/`)
 and `RIPTOPL-RA-VARIANTS-IncebtIon-<version>.zip` for its IncebtIon-theme kit. The
 publisher packs them only from builds of the released commit and SDK suite. RiptOPLLVM enforces
 the same checks against the LLVM SDK suite and publishes its own verified bundles. The Korium and

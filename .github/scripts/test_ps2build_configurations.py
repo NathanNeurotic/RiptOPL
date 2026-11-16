@@ -236,7 +236,10 @@ class PublisherTests(unittest.TestCase):
 
     def variants(self, root, **changes):
         for edition, options in publish_editions.EDITIONS.items():
-            for configuration in (c for _, configurations, _ in publish_editions.bundles(options) for c in configurations):
+            configurations = {c for _, configurations, _ in publish_editions.bundles(options) for c in configurations}
+            if options["ra"]:
+                configurations |= set(publish_editions.RA_UNPACKED)
+            for configuration in sorted(configurations):
                 stage = root / f"variant-{edition}-{configuration}"
                 stage.mkdir()
                 payload = b"\x7fELF" + configuration.encode()
@@ -244,6 +247,10 @@ class PublisherTests(unittest.TestCase):
                             "configuration": configuration, "ps2build_version": "test", "components": {}, "ports": {},
                             "elf_sha256": hashlib.sha256(payload).hexdigest(), **changes.get(configuration, {})}
                 (stage / "RIPTOPL.ELF").write_bytes(payload)
+                if options["ra"]:
+                    unpacked = b"\x7fELFunpacked-" + configuration.encode()
+                    (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
+                    manifest.setdefault("unpacked_elf_sha256", hashlib.sha256(unpacked).hexdigest())
                 if configuration == "diag":
                     unpacked = changes.get("unpacked", unpacked_elf())
                     (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
@@ -280,10 +287,16 @@ class PublisherTests(unittest.TestCase):
             for edition in ("ra", "ra_incebtion"):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")
+                    # The standard and pademu0 RA loaders also ship unpacked, each with its manifest.
+                    self.assertEqual(bundle.read("standard-unpacked/RIPTOPL-RA.ELF"), b"\x7fELFunpacked-standard")
+                    self.assertEqual(bundle.read("pademu0-unpacked/RIPTOPL-RA.ELF"), b"\x7fELFunpacked-pademu0")
+                    self.assertIn("pademu0-unpacked/BUILD-MANIFEST.json", bundle.namelist())
+                    self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 3)
                     self.assertIn("RIPTOPL-RA.ELF", bundle.read("README.txt").decode())
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
         for bad in ({"ds5": {"configuration": "extras"}}, {"debug": {"source_commit": "0" * 40}},
-                    {"dtl": {"elf_sha256": "0" * 64}}, {"diag": {"ps2build_version": "other"}}):
+                    {"dtl": {"elf_sha256": "0" * 64}}, {"diag": {"ps2build_version": "other"}},
+                    {"standard": {"unpacked_elf_sha256": "0" * 64}}):
             with self.subTest(bad=bad), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
                 root = Path(directory)
                 self.kit(root)

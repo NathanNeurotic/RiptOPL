@@ -14,7 +14,7 @@
 
 #include "ra_watch.h"
 
-#define RAPOPS_MAGIC     "RIPTRA01"
+#define RAPOPS_MAGIC     "RIPTRA02"
 #define RAPOPS_IPCFG_MAX 64
 
 /* In load order: DEV9, SMSUTILS, SMSTCPIP, SMAP, raudp, rapull. */

@@ -26,7 +26,10 @@ STANDARD_BUNDLES = (
     ("VARIANTS", VARIANTS, "pad emulation off, DualSense and extras builds"),
     ("DEBUG", tuple(c for c in CONFIGURATIONS if c != "standard" and c not in VARIANTS), "debug and diagnostic builds"),
 )
-RA_BUNDLES = (("RA-VARIANTS", ("pademu0",), "pad emulation off"),)
+RA_BUNDLES = (("RA-VARIANTS", ("pademu0",), "pad emulation off, and the loaders unpacked"),)
+# RA-VARIANTS also carries these RA builds before compression, as <configuration>-unpacked/RIPTOPL-RA.ELF:
+# an unpacked loader starts without the decompression step (asked for by CosmicScale, 2026-11-16).
+RA_UNPACKED = ("standard", "pademu0")
 # The RA kits ship ORBIT's pinned RA runtime in place of upstream Neutrino; their notes link it.
 ORBIT_PIN = Path(__file__).resolve().parents[1] / "third_party/orbit-neutrino/release.json"
 
@@ -142,18 +145,21 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler="gcc"):
             elf_name = "RIPTOPL-RA.ELF" if EDITIONS[edition]["ra"] else "RIPTOPL.ELF"
             archive = path / f"RIPTOPL-{name}.zip"
             with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
-                for configuration in configurations:
+                folders = [(c, "RIPTOPL.ELF", "elf_sha256", c) for c in configurations]
+                if options["ra"]:
+                    folders += [(c, "RIPTOPL-UNPACKED.ELF", "unpacked_elf_sha256", f"{c}-unpacked") for c in RA_UNPACKED]
+                for configuration, source, digest, folder in folders:
                     stage = root / f"variant-{edition}-{configuration}"
                     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-                    elf = (stage / "RIPTOPL.ELF").read_bytes()
+                    elf = (stage / source).read_bytes()
                     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
                             or manifest["compiler"] != compiler or manifest["configuration"] != configuration
                             or manifest["ps2build_version"] != kit["ps2build_version"]
                             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
-                            or manifest["elf_sha256"] != hashlib.sha256(elf).hexdigest()):
-                        raise ValueError(f"invalid configuration build: {edition}/{configuration}")
-                    bundle.writestr(f"{configuration}/{elf_name}", elf)
-                    bundle.writestr(f"{configuration}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+                            or manifest.get(digest) != hashlib.sha256(elf).hexdigest()):
+                        raise ValueError(f"invalid configuration build: {edition}/{folder}")
+                    bundle.writestr(f"{folder}/{elf_name}", elf)
+                    bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
                 bundle.writestr("README.txt", BUNDLE_README.format(title=EDITIONS[edition]["title"], elf=elf_name))
                 # Each loader embeds usmb2 (MIT) and unfs4 (BSD 2-Clause, its notice in CREDITS): the bundle
                 # carries the licences the kit ships.

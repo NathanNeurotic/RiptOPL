@@ -79,7 +79,8 @@ static inline u32 ra_ticks(void)
    [0 .. count)                entries, one word each
    [count .. +2N)              nodes: packed word, then offset
    [count+2N .. +3N)           what each chain read this frame
-   [count+3N .. +4N)           where each chain reads its base, precomputed */
+   [count+3N .. +4N)           where each chain reads its base, precomputed
+   [count+4N .. +5N)           each node's scale */
 static u32 *ra_watch = NULL;
 static int ra_watch_count = 0;
 static int ra_watch_bytes = 0;
@@ -90,6 +91,7 @@ static int ra_node_count = 0;
 #define RA_NODE_OFF(i)  ra_watch[ra_node_at + (i)*2 + 1]
 #define RA_NODE_VAL(i)  ra_watch[ra_node_at + ra_node_count * 2 + (i)]
 #define RA_NODE_BASE(i) ra_watch[ra_node_at + ra_node_count * 3 + (i)]
+#define RA_NODE_MUL(i)  ra_watch[ra_node_at + ra_node_count * 4 + (i)]
 
 /* Direct values plus eight bytes per chain: what a snapshot carries. */
 static int ra_snap_bytes = 0;
@@ -144,7 +146,7 @@ void RA_SetupWatchList(void)
     ra_snap_bytes = ra_watch_bytes;
     ra_snap_every = RA_SNAP_SEND_EVERY(ra_snap_bytes);
 
-    /* Chains, if they fit behind the entries: four words each. A list
+    /* Chains, if they fit behind the entries: five words each. A list
        that leaves no room keeps its direct reads and loses the chains,
        which costs achievements, not telemetry. */
     if (config->raNodeList == NULL || config->raNodeCount <= 0)
@@ -166,6 +168,7 @@ void RA_SetupWatchList(void)
 
         RA_NODE_W(i) = n->w;
         RA_NODE_OFF(i) = n->offset;
+        RA_NODE_MUL(i) = n->scale;
     }
 
     /* Where each chain reads its base: the offset of the parent's value
@@ -178,6 +181,9 @@ void RA_SetupWatchList(void)
         RA_NODE_BASE(i) = 0;
         RA_NODE_VAL(i) = 0;
         if (RA_NODE_FROM_NODE(RA_NODE_W(i)) || parent >= (u32)ra_watch_count)
+            continue;
+        if (RA_WATCH_ADDR(ra_watch[parent]) < RA_RAM_LOW ||
+            RA_WATCH_ADDR(ra_watch[parent]) + RA_WATCH_SIZE(ra_watch[parent]) > RA_RAM_HIGH)
             continue;
 
         for (k = 0; k < (int)parent; k++)
@@ -292,9 +298,21 @@ static void ra_snap_send(void)
             size = 0;
             base = 0;
         } else if (RA_NODE_FROM_NODE(w)) {
-            base = parent < (u32)i ? RA_NODE_VAL(parent) : 0;
+            // Earlier pairs carry resolution state separately from their value:
+            // a successful read of zero is a valid index, address zero is not.
+            base = 0;
+            if (parent >= (u32)i) {
+                size = 0;
+            } else {
+                const u8 *pair = &vals[ra_watch_bytes + parent * RA_NODE_PAIR_BYTES];
+                if ((pair[0] | pair[1] | pair[2] | pair[3]) == 0)
+                    size = 0;
+                else
+                    base = RA_NODE_VAL(parent);
+            }
         } else if (RA_NODE_BASE(i) == 0) {
             base = 0; /* the parent was out of range at setup */
+            size = 0;
         } else {
             u32 psize = RA_NODE_BASE(i) & 0xF;
             const u8 *at = &vals[RA_NODE_BASE(i) >> 4];
@@ -306,15 +324,13 @@ static void ra_snap_send(void)
                 base |= ((u32)at[2] << 16) | ((u32)at[3] << 24);
         }
 
-        /* A zero base is a broken chain: a null pointer, or a parent that
-           itself led outside memory. Adding the offset to it can land on an
-           in-range address and read memory that has nothing to do with the
-           chain, so the pair goes out as address 0 -- the "led outside
-           memory" the client already understands. */
-        if (base == 0)
+        /* Zero is a valid RAN2 table index, but in legacy RANL chains base == 0 is a null pointer. */
+        if ((w & RA_NODE_LEGACY) && base == 0)
             size = 0;
-
-        addr = (base + RA_NODE_OFF(i)) & 0x1FFFFFFF;
+        base >>= RA_NODE_SHIFT(w);
+        if (RA_NODE_WIDTH(w) != 0 && RA_NODE_WIDTH(w) < 32)
+            base &= (1u << RA_NODE_WIDTH(w)) - 1;
+        addr = (base * RA_NODE_MUL(i) + RA_NODE_OFF(i)) & 0x1FFFFFFF;
 
         if (size == 0 || addr < RA_RAM_LOW || addr + size > RA_RAM_HIGH) {
             addr = 0;
