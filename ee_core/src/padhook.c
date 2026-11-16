@@ -175,15 +175,12 @@ static void IGR_HoldInterrupts(void)
 // the handler left it READY but never scheduled again after ResumeThread (ORBIT): so here, not there
 static void IGR_PauseThreads(void)
 {
-    ee_thread_status_t st;
     int i;
 
+    // RIPPS2 build 129's loop: every thread SuspendThread takes is paused, and only those are resumed
     for (i = 1; i < 256; i++) {
         IGR_PausedThreads[i / 32] &= ~(1u << (i % 32));
-        // a thread the game suspended itself stays so: only the threads paused here are resumed
-        if (i == IGR_Thread_ID || ReferThreadStatus(i, &st) < 0 || (st.status & THS_SUSPEND))
-            continue;
-        if (SuspendThread(i) >= 0)
+        if (i != IGR_Thread_ID && SuspendThread(i) >= 0)
             IGR_PausedThreads[i / 32] |= 1u << (i % 32);
     }
 }
