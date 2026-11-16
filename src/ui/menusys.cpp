@@ -2099,8 +2099,11 @@ static int menuPageStep()
 static void menuNextPage()
 {
     submenu_list_t *previous = selected_item->item->current;
-    submenu_list_t *cur = selected_item->item->pagestart;
     int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
+    // Info can inherit a multi-row page start; a one-row page starts at the selected title.
+    if (displayed == 1)
+        selected_item->item->pagestart = previous;
+    submenu_list_t *cur = selected_item->item->pagestart;
 
     // Probe to the item one row past the bottom of the current page. If the end comes first, the
     // rest of the list is already on screen, so never page onto it: that over-scroll collapsed a
@@ -2134,6 +2137,8 @@ static void menuNextPage()
 static void menuPrevPage()
 {
     submenu_list_t *previous = selected_item->item->current;
+    if (((items_list_t *)gTheme->itemsList->extended)->displayedItems == 1)
+        selected_item->item->pagestart = previous;
     submenu_list_t *cur = selected_item->item->pagestart;
 
     if (cur && cur->prev) {

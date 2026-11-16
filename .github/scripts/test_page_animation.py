@@ -61,9 +61,12 @@ int main(void) {
         for (int n=1;n<=64;n++) for (int s=0;s<n;s++) for (int dir=-1;dir<=1;dir+=2) {
             int target=dir>0 ? (s==n-1 ? 0 : (s+15<n ? s+15 : n-1)) :
                                (s==0 ? n-1 : (s>15 ? s-15 : 0));
-            checkPage(n,s,s,dir,target,target);
-            assert(sounds==(target!=s));
-            assert(list.displayedItems==1); // rendering still has one title row
+            // Entering Info from a multi-row main list can retain an earlier page start.
+            for (int first=0;first<=s;first++) {
+                checkPage(n,s,first,dir,target,target);
+                assert(sounds==(target!=s));
+                assert(list.displayedItems==1); // rendering still has one title row
+            }
         }
     }
     /* Repeated shoulder keys reach each end, then wrap on the next press. */
