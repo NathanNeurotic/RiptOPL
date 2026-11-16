@@ -2222,15 +2222,14 @@ void drawItemText(struct menu_list *menu, struct submenu_list *item, config_set_
                 // menusys.c), so a slow device never blocks here; until it lands, the name's own id
                 // prefix is shown, then the title as before.
                 if (libListRowView(support, item->item.id) == LIB_VIEW_PS1) {
+                    // No "[PS1]" tag: the caption shows the bare id, as a PS2 row does (CosmicScale).
                     char vcdId[VCD_ID_MAX];
-                    char labelledText[256];
                     const char *text = vcdDisplayNameForRow(support, item->item.id, startup);
                     int ember = 0;
                     gsOf(support)->ps1RowKind(support, item->item.id, &ember);
                     if (ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD, vcdId, sizeof(vcdId)))
                         text = vcdId;
-                    snprintf(labelledText, sizeof(labelledText), "[PS1] %s", text);
-                    thmDrawElemText(elem, SIZING_NONE, labelledText, 1);
+                    thmDrawElemText(elem, SIZING_NONE, text, 1);
                     return;
                 }
                 thmDrawElemText(elem, SIZING_NONE, vcdDisplayNameForRow(support, item->item.id, startup), 1);
