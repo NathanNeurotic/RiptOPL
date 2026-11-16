@@ -216,6 +216,19 @@ int main()
     CHECK(igrmBp == 0 && igrmBw == 10 && igrmPsm == 0 && igrmBpp == 4);
     CHECK(igrmSx == 1 && igrmSy == 1); // shown width unknown: the panel fits a 320 wide picture
     CHECK(igrmX == (320 - PW) / 2 && igrmY == (224 - PH) / 2);
+    // the same in interlaced FRAME mode, known from SetGsCrt alone: 224 lines is one field already, not halved again
+    GSMSourceSetGsCrt[0] = 1;
+    GSMSourceSetGsCrt[1] = 2;
+    GSMSourceSetGsCrt[2] = 1;
+    CHECK(igrmFindFrame() == 2);
+    CHECK(igrmSy == 1 && igrmY == (224 - PH) / 2);
+    // and a DISPLAY recorded in that mode is halved: 448 raster lines show a 224 line buffer
+    GSMSourceGSRegs[SRC_PMODE] = 1;
+    GSMSourceGSRegs[SRC_DISPLAY1] = display(636, 50, 4, 0, 2559, 447);
+    CHECK(igrmFindFrame() == 2);
+    CHECK(igrmSy == 1 && igrmY == (224 - PH) / 2);
+    memset(GSMSourceGSRegs, 0, sizeof(GSMSourceGSRegs));
+    memset(GSMSourceSetGsCrt, 0, sizeof(GSMSourceSetGsCrt));
     // a DISPLAY the game wrote from its own code still sizes that frame: 512 x 448 shown, the panel at scale 2
     GSMSourceGSRegs[SRC_PMODE] = 1;
     GSMSourceGSRegs[SRC_DISPLAY1] = display(636, 50, 4, 0, 2559, 447);

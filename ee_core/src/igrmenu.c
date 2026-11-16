@@ -623,13 +623,13 @@ static int igrmFindFrame(void)
         if ((smode2 & 1) && dh > ((((u32)(disp >> 12) & 0x7ff) >= 64) ? 576u : 480u))
             dh = (((u32)(disp >> 12) & 0x7ff) >= 64) ? 576 : 480;
         if (dh > 0 && dh <= 1024)
-            h = dh;
+            h = (smode2 & 3) == 3 ? dh / 2 : dh; // interlaced FRAME mode: the buffer holds one field of DH
     } else if (own) {
         // how wide the game shows its frame is unknown: a panel that fits a 320 wide picture fits any
         w = 320;
     }
-    if ((smode2 & 3) == 3) // interlaced FRAME mode: the buffer holds one field
-        h /= 2;
+    // with no DISPLAY recorded h stays 224, one field already: halving that too left 112 lines, less than the panel,
+    // so a FRAME mode game whose DISPLAY write was not seen (the own frame above) never got the menu
     x = (fb >> 32) & 0x7ff;
     y = (fb >> 43) & 0x7ff;
     if (w < PW + 8 || h < PH + 4)
