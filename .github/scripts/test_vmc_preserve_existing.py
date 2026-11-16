@@ -102,7 +102,7 @@ static int fake_devctl(const char *path, int command, void *args, int alen, void
     (void)path; (void)command; (void)args; (void)alen; (void)buf; (void)blen;
     jobs++; return returnsError ? -1 : 0;
 }
-static int vmcRebuildCardState(const char *path) { (void)path; return -1; } // cannot tell: never adopt here
+static int sysVMCCardState(const char *path) { (void)path; return -1; } // cannot tell: never adopt here
 #define open fake_open
 #define lseek fake_lseek
 #define read fake_read

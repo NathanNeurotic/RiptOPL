@@ -20,9 +20,9 @@ program = r"""
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-/* The real vmcRebuildCardState reads the folder; here stat stands in, and "cannot tell" can be forced. */
+/* The real sysVMCCardState reads the folder; here stat stands in, and "cannot tell" can be forced. */
 static int cannotTell;
-static int vmcRebuildCardState(const char *path)
+static int sysVMCCardState(const char *path)
 {
     struct stat s;
     return cannotTell ? -1 : stat(path, &s) == 0;

@@ -38,7 +38,6 @@ constexpr int SYS_DISC_NODISC_MS = 2000;
 #include "include/ioprp.h"
 #include "include/bdmsupport.h"
 #include "include/mmcesupport.h"
-#include "include/vmcrebuild.h" // vmcRebuildCardState -- adopt a rebuilt copy only when the card is provably absent
 #include "include/OSDHistory.h"
 #include "include/renderman.h"
 #include "include/extern_irx.h"
@@ -135,6 +134,33 @@ int sysVMCContiguity(void)
     return -1; // anything else is the ioctl itself failing, not a verdict about the file
 }
 
+// 1 the file is listed in its folder, 0 the whole folder was read and it is not there, -1 cannot tell
+// (a store fileXio cannot list, or a read error). Absence is proven by reading the folder, never by a
+// failed open, which a transient error also gives.
+static int sysVMCCardState(const char *path)
+{
+    char folder[256];
+    const char *name = strrchr(path, '/');
+    iox_dirent_t entry;
+    int dir, result;
+
+    if (name == NULL || (size_t)(name - path) >= sizeof(folder))
+        return -1;
+    memcpy(folder, path, name - path);
+    folder[name - path] = '\0';
+    dir = fileXioDopen(folder);
+    if (dir < 0)
+        return -1;
+    while ((result = fileXioDread(dir, &entry)) > 0) {
+        if (!strcasecmp(entry.name, name + 1)) {
+            fileXioDclose(dir);
+            return 1;
+        }
+    }
+    fileXioDclose(dir);
+    return result < 0 ? -1 : 0;
+}
+
 // -1: explicit delete, 0: size probe, SYS_VMC_PROBE_FORMAT: validated auto probe, >0: create.
 // A VMC rebuild on FatFs removes the card, then renames its verified "<name>.new" copy. Power lost
 // between the two leaves only the copy: give it the card's name. Called only when the card did not
@@ -145,7 +171,7 @@ static int sysVMCAdoptRebuilt(const char *path)
 {
     char copy[256];
 
-    if (!strncmp(path, "pfs", 3) || strlen(path) < 5 || vmcRebuildCardState(path) != 0)
+    if (!strncmp(path, "pfs", 3) || strlen(path) < 5 || sysVMCCardState(path) != 0)
         return 0;
     snprintf(copy, sizeof(copy), "%.*s.new", (int)strlen(path) - 4, path);
     return rename(copy, path) == 0;
