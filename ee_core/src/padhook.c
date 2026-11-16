@@ -122,12 +122,10 @@ extern void *_end;
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
 #define IGR_INTC_SBUS 1
 static volatile int IGR_MenuOpen = 0;
-// Once per press: a menu closed at once must not reopen. Not 0: the press may still take its pause, and counts down
-// the VBLANKs the held combo waits for the game's transfers to stop (2 s of them). Not initialised here, so that it
-// stays in .bss (one more word of .data costs Korium's LLVM build 128 bytes of stack): the handler arms it on every
-// VBLANK without a request, the first of which comes long before a pad is read
+// once per press: a menu closed at once must not reopen. Not 0: the press may still take its pause, and counts down
+// the VBLANKs the held combo waits for the game's transfers to stop (2 s of them)
 #define IGR_MENU_ARMED 121
-static int IGR_MenuRearm;
+static int IGR_MenuRearm = IGR_MENU_ARMED;
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 static const u8 IGR_DmacHeld[] = {0, 1, 2, 3, 4, 8, 9}; // never SIF 5-7
 
@@ -614,12 +612,9 @@ static void IGR_Thread(void *arg)
 #ifdef IGR_MENU
         // Why the menu did not open (docs/IGR.md), with or without Debug Colors: the combo otherwise looks exactly like
         // the menu being off. Here, where the screenshot's own colours have always been shown: the IOP is back, the SIF
-        // restarted, the GS trap off. GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and
-        // growing it costs the stack
-        if (choice >= IGR_MENU_CANNOT_DRAW) {
-            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00, 0x00FFFF}; // grey, purple, mint, yellow
-            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = game's transfers busy, grey = no menu");
-        }
+        // restarted, the GS trap off. The answer is the colour (igrmenu.h)
+        if (choice > IGR_MENU_POWEROFF)
+            DBGCOL_BLNK(3, choice, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = game's transfers busy, grey = no menu");
 #endif
 
         if (EnableDebug)

@@ -81,7 +81,7 @@ if thread and (igr_thread < 0 or padhook.find(thread) < igr_thread):
     failures.append('padhook.c: the IgrMenuNoRoom blink must be in IGR_Thread')
 
 # The grey the menu path blinks for IGR_MENU_CANNOT_DRAW: a menu that was not there to run
-grey = (re.search(r'why\[\][^=]*=\s*\{\s*(0x[0-9A-Fa-f]+)', padhook) or
+grey = (re.search(r'IGR_MENU_CANNOT_DRAW = (0x[0-9A-Fa-f]+)', read('ee_core/include/igrmenu.h')) or
         re.search(r'IGR_MENU_DRAW_FAILED \? 0x[0-9A-Fa-f]+ :\s*(0x[0-9A-Fa-f]+);', padhook))
 if grey is None:
     failures.append('padhook.c: the menu path\'s grey for a menu that was not there was not found')
@@ -311,7 +311,7 @@ static int EnableIntc(int cause) { (void)cause; return 0; }
 #ifdef IGR_MENU
 static volatile int IGR_MenuOpen;
 #define IGR_MENU_ARMED 121
-static int IGR_MenuRearm, held, wakes;
+static int IGR_MenuRearm = IGR_MENU_ARMED, held, wakes;
 // The registers the handler waits on: channel 1 and 2 CHCR (STR 0x100)
 static unsigned int d1chcr, d2chcr;
 #define R_EE_D1_CHCR (&d1chcr)
