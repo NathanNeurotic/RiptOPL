@@ -446,6 +446,10 @@ void selfUpdateMenu(void)
         return;
     }
     suOffer(local);
-    for (int tries = 0; oplSwapNicForUpdate(0) != 0 && tries < 10; tries++)
-        ; /* each try waits for the menu's work to drain */
+    /* each try waits for the menu's work to drain; the saved protocol is already back, so a restart applies it */
+    for (int tries = 0; oplSwapNicForUpdate(0) != 0;)
+        if (++tries == 10) {
+            guiMsgBox(_l(_STR_NETBOOT_RESTART), 0, NULL);
+            break;
+        }
 }

@@ -54,6 +54,7 @@
 #include "include/sound.h"
 #include "include/xparam.h"
 #include "include/selfupdate.h" // oplSwapNicForUpdate
+#include <delaythread.h>        // oplSwapNicForUpdate pad retry
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // fileXioDopen/fileXioIoctl2/fileXioDclose used by BDM autolaunch
@@ -318,7 +319,7 @@ int oplSwapNicForUpdate(int take)
 
     padInit(0);
     for (int tries = 0; !startPads() && tries < 100; tries++) // bounded, as unloadLwnbdSvr (#307)
-        delay(50);
+        DelayThread(50 * 1000);                               // 50 ms; delay() is a long busy loop
     ioBlockOps(0);
     initAllSupport(1);
     audioInit();
