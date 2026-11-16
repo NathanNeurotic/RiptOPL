@@ -74,7 +74,7 @@ private:
     s32 threadId_ = 0;
     s32 procSema_ = 0; // lock for tip processing
     s32 endSema_ = 0;  // lock for queue end
-    s32 printSema_ = 0;
+    s32 printSema_ = -1; // kept until the next start(): ioPrintf may still be inside it when the worker exits
 
     int terminate_ = 0;
     int blocked_ = 0;
