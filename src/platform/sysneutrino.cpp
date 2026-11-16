@@ -1045,8 +1045,12 @@ static char sysNeutrinoRAArg[336], sysNeutrinoRAStartup[32];
 // 0 = usable; -1 = none, or one we must not write under (hddN: is raw APA, where O_CREAT makes a partition).
 static int sysNeutrinoRADir(const char *neutrinoPath, const char *extraArgs, char *dir, int size)
 {
-    if (sysNeutrinoWorkDir(neutrinoPath, extraArgs, dir, size) < 0)
-        return -1;
+    if (!neutrinoArgActiveValue(extraArgs, "-cwd=", dir, size)) {
+        const char *slash = sysLastPathSeparator(neutrinoPath);
+        if (slash == NULL || slash - neutrinoPath + 1 >= size)
+            return -1;
+        snprintf(dir, size, "%.*s", (int)(slash - neutrinoPath) + 1, neutrinoPath);
+    }
     int len = (int)strlen(dir);
     if (len == 0 || len + 1 >= size || strchr(dir, '\\') != NULL || strchr(dir, '"') != NULL ||
         (!strncmp(dir, "hdd", 3) && dir[3] >= '0' && dir[3] <= '9' && dir[4] == ':'))
