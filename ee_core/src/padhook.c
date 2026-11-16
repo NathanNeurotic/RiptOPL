@@ -619,7 +619,8 @@ static void IGR_Thread(void *arg)
         // growing it costs the stack
         if (choice >= IGR_MENU_CANNOT_DRAW) {
             static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00, 0x00FFFF, 0xFF0000, 0x0000FF, 0xFFFFFF}; // grey, purple, mint, yellow, blue, red, white
-            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = channel 1 busy, blue = channel 2 busy, red = VIF1 stalled on an interrupt, white = VIF1 stopped, grey = no menu");
+            // three blinks, and one or two more for what VIF1's status said (bits 8 and 9 of the idle check's answer)
+            DBGCOL_BLNK(3 + (choice >> 8), why[(choice & 0xff) - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = channel 1 busy, blue = channel 2 busy, red = VIF1 stalled, white = MFIFO drain busy, grey = no menu");
         }
 #endif
 

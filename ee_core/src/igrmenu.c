@@ -672,6 +672,7 @@ int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, in
 #define IGRM_D1_MADR   ((vu32 *)0x10009010)
 #define IGRM_D1_QWC    ((vu32 *)0x10009020)
 #define IGRM_D1_TADR   ((vu32 *)0x10009030)
+#define IGRM_D_CTRL    ((vu32 *)0x1000e000)
 #define IGRM_D_STAT    ((vu32 *)0x1000e010)
 #define IGRM_GIF_STAT  ((vu32 *)0x10003020)
 #define IGRM_VIF1_STAT ((vu32 *)0x10003c00)
@@ -922,7 +923,7 @@ int IGR_MenuRun(u16 (*buttons)(void))
     USE_LOCAL_EECORE_CONFIG;
     u32 raw[(112 + PW * 2 * 4 + 64) / 4]; // one line of the panel at its widest (the IGR thread's stack)
     u32 *pkt = (u32 *)(((u32)raw + 63) & ~63);
-    u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, bpc;
+    u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, bpc, vs;
     u16 held, now, pressed, ok, back;
     int sel = 0, armed = 0, result = IGR_MENU_RESUME, presses = 0, power = 1, powerLatched = 0, i;
     int page = 0, csel = 0, ctop = 0, full = 0, changed = 0, frameHeld;
@@ -947,14 +948,21 @@ int IGR_MenuRun(u16 (*buttons)(void))
     if (!frameHeld)
         return IGR_MENU_NO_FRAME;
     // the game's own transfers finish first; a VIF1 stalled on an interrupt the pause holds cannot take ours
-    // (RIPPS2 build 129's check, here as there: the same three conditions in the same order, but each leaves with
-    // its own answer, so the blink says which one a console met)
+    // (RIPPS2 build 129's check, here as there: channel 1, channel 2, then VIF1's status). What refused the menu
+    // goes back with the answer, for the blink: which condition, and in bits 8 and 9 what VIF1's status said
+    t = 0;
     if (!igrmWaitClear(IGRM_D1_CHCR, CHCR_STR))
-        return IGR_MENU_GS_BUSY;
-    if (!igrmWaitClear(IGRM_D2_CHCR, CHCR_STR))
-        return IGR_MENU_D2_BUSY;
-    if (*IGRM_VIF1_STAT & VIF_STALLED)
-        return (*IGRM_VIF1_STAT & VIF_INT_STALL) ? IGR_MENU_VIF_INT : IGR_MENU_VIF_STOPPED;
+        t = IGR_MENU_GS_BUSY;
+    else if (!igrmWaitClear(IGRM_D2_CHCR, CHCR_STR))
+        t = IGR_MENU_D2_BUSY;
+    vs = *IGRM_VIF1_STAT;
+    if (t || (vs & VIF_STALLED)) {
+        if (!t)
+            t = IGR_MENU_VIF_STALLED;
+        else if (((*IGRM_D_CTRL >> 2) & 3) == t - IGR_MENU_GS_BUSY + 2) // MFD: 2 VIF1 drains a MFIFO, 3 GIF does
+            t = IGR_MENU_MFIFO;
+        return t | ((vs & VIF_INT_STALL) ? 0x100 : 0) | ((vs & (VIF_STALLED & ~VIF_INT_STALL)) ? 0x200 : 0);
+    }
     bpc = igrmBpcOff();
     // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
     if (frameHeld == 2) {

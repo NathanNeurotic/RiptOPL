@@ -233,7 +233,7 @@ in normal play can trigger IGR by accident. Set **Mode 6 — Disable IGR** for t
 
 **In-Game Menu is on, but the combination leaves the game instead of pausing it.** The menu only opens
 when it can draw into the picture the game is showing; when it cannot, the combination falls back to the
-plain reset, as described above. The screen blinks the reason three times near the end of that reset, just
+plain reset, as described above. The screen blinks the reason (three to six times) near the end of that reset, just
 before the loader comes back. Every colour but grey shows with or without **Debug Colors**:
 
 | Blink | Meaning |
@@ -241,23 +241,25 @@ before the loader comes back. Every colour but grey shows with or without **Debu
 | **Purple** | The game's picture is in a format or size the panel cannot use |
 | **Mint green** | The first page was composed but VIF1 did not take it |
 | **Yellow** | The game's channel 1 (VIF1) transfer did not finish while it was paused |
-| **Blue** | Channel 1 was idle, but the game's channel 2 (GIF) transfer did not finish |
-| **Red** | Both channels were idle, but VIF1 was stalled on a VIF code's interrupt bit that the game had not cleared |
-| **White** | Both channels were idle, but the game had stopped VIF1 (a stop or a break) or left it reading back |
+| **Blue** | Channel 1 finished, but the game's channel 2 (GIF) transfer did not |
+| **White** | The channel that did not finish drains a MFIFO: it waits for data the paused game would feed it |
+| **Red** | Both channels finished, but VIF1's status alone refused the menu |
 | **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above). Only with **Debug Colors** on, and before the reset, not at its end |
 
 **In-Game Menu is on, the picture freezes for a moment and the game resets (yellow, blue, red or white blinks).**
 The game's channel 1 or 2 transfers did not finish while it was paused, or its VIF1 stayed stopped (on a VIF
 code's interrupt bit, a stop or a break) or reading back, so the menu will not draw over them and the combination
 does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made once per press, inside the menu;
-the four colours say which of its conditions the game met.
+the four colours say which of its conditions the game met, and the number of blinks what VIF1's status said then:
+three for nothing, four for a stall on a VIF code's interrupt bit, five for a stop, a break or reading back, six for
+both. Purple, mint and grey always blink three times.
 Every interrupt of the game is held for the pause (its GS, VIF1 and DMA completions too, as RIPPS2 holds them), so a
 transfer that needs one of them to go on cannot end once the game is paused. The pause is therefore taken, with the
 game still running and the combination held, on a frame at which channels 1 and 2 are stopped, after 2 seconds at most;
 a game that is never idle in that time is paused anyway and the check decides. Keep the combination held until the
 menu shows.
 
-Report the colour with the game's ID and the device it runs from. No blink at all means the combination
+Report the colour and the number of blinks with the game's ID and the device it runs from. No blink at all means the combination
 never reached the menu: the launch had In-Game Menu off (or Mode 6 set) for that game, or, in a RetroAchievements
 edition with **Debug Colors** off, had no room for the menu.
 
