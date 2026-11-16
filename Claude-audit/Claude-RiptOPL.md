@@ -1,6 +1,6 @@
 # Claude audit: RiptOPL
 
-Status: IN PROGRESS. 9 of 154 reading passes are in; finding IDs are provisional and will be renumbered until this line says COMPLETE.
+Status: IN PROGRESS. 10 of 154 reading passes are in; finding IDs are provisional and will be renumbered until this line says COMPLETE.
 
 - Repository: NathanNeurotic/RiptOPL
 - Audited branch: rebuild/main
@@ -12,8 +12,8 @@ All `path:line` references are pinned to the audited commit above. Each finding 
 
 ## Totals
 
-- Findings in this report: 21. 62 more raised findings are waiting for their second check and are not shown yet.
-- Raised by readers: 83. Dropped as wrong or unsupported on re-check: 0. Corrected on re-check: 9. Merged as duplicates: 0.
+- Findings in this report: 21. 71 more raised findings are waiting for their second check and are not shown yet.
+- Raised by readers: 92. Dropped as wrong or unsupported on re-check: 0. Corrected on re-check: 9. Merged as duplicates: 0.
 
 | Category | Count |
 |---|---:|
