@@ -442,7 +442,7 @@ int VcdSupport::resolveRowId(const char *name, int kind, char *idOut, int idSize
     // A failed read is retried only after its backoff. The CFG title path calls this directly, so
     // without this it re-read every frame, used up the retries inside a second and marked the row
     // ABSENT for a transient failure.
-    if (m->state == VCD_ID_DEFERRED && guiFrameId < m->retryFrame)
+    if (m->state == VCD_ID_DEFERRED && (unsigned int)guiFrameId < m->retryFrame)
         return 0;
 
     char discId[RETROGEM_GAMEID_MAX];
