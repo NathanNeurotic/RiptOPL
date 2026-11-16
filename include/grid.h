@@ -111,4 +111,20 @@ static inline float gridSlideEase(float t)
     return 1.0f - r * r * r;
 }
 
+// Where a case picture goes so its cover window (left..right by top..bottom of its cw by ch element) lands on a
+// cover drawn w by h about a point: its size (*ow by *oh) and its centre's offset from that point (*dx, *dy,
+// before the wide-screen scale). A window that is the whole element gives the cover's own place.
+static inline void gridCaseRect(int w, int h, int cw, int ch, int left, int top, int right, int bottom, int *ow, int *oh,
+                                int *dx, int *dy)
+{
+    if (cw < 1)
+        cw = 1;
+    if (ch < 1)
+        ch = 1;
+    *ow = w * cw / (right > left ? right - left : cw);
+    *oh = h * ch / (bottom > top ? bottom - top : ch);
+    *dx = (cw - left - right) * *ow / (2 * cw);
+    *dy = (ch - top - bottom) * *oh / (2 * ch);
+}
+
 #endif
