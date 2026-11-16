@@ -42,7 +42,17 @@ static const char *names[8] = {"Dragon Quest VIII", "SLPM_655.55", "Game C", "Fo
 static config_set_t configs[8];
 static char *getName(item_list_t *l, int i) { (void)l; return const_cast<char *>(names[i]); }
 static void *getGame(item_list_t *l, int i) { (void)l; return &games[i]; }
-static config_set_t *getConfig(item_list_t *l, int i) { (void)l; configReads++; configs[i].title = titles[i]; return &configs[i]; }
+static int ps1Row[8], ps1Ember[8], resolves, resolvesBeforeRefresh = -1;
+static config_set_t *getConfig(item_list_t *l, int i)
+{
+    (void)l;
+    /* While armed, a PS1 row's CFG may be read only AFTER its id was resolved in this refresh. */
+    if (resolvesBeforeRefresh >= 0 && ps1Row[i])
+        assert(resolves > resolvesBeforeRefresh);
+    configReads++;
+    configs[i].title = titles[i];
+    return &configs[i];
+}
 static int configGetStr(config_set_t *c, const char *key, const char **out) { assert(!strcmp(key, "Title")); *out = c->title; return c->title != NULL; }
 static void configFree(config_set_t *c) { (void)c; configFrees++; }
 static void guiLock(void) { locks++; }
@@ -54,7 +64,6 @@ static const char *vcdDisplayNameForRow(item_list_t *l, int id, const char *text
     (void)l, (void)id;
     return hideVcdPrefix && !strncmp(text, "SLUS_012.15.", 12) ? text + 12 : text;
 }
-static int ps1Row[8], ps1Ember[8], resolves;
 static char resolvedName[32];
 static int resolvedKind = -1;
 static int libListRowView(item_list_t *l, int id) { (void)l; return ps1Row[id] ? LIB_VIEW_PS1 : LIB_VIEW_ISO; }
@@ -218,7 +227,9 @@ int main(void)
     ps1Row[0] = 1;
     ps1Ember[0] = 1;
     resolves = 0;
+    resolvesBeforeRefresh = 0;
     cfgTitleRefresh(&bdm, 3);
+    resolvesBeforeRefresh = -1;
     assert(resolves == 1 && !strcmp(resolvedName, "Metal Gear Solid Integral") && resolvedKind == PS1_ROW_CUE);
     ps1Ember[0] = 0;
     cfgTitleRefresh(&bdm, 1);
