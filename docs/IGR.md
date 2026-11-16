@@ -280,3 +280,26 @@ original `dc04f59c`; migration console verification remains separate.
 * [CONTROLS.md](CONTROLS.md) — the full button reference
 * [NEUTRINO.md](NEUTRINO.md) — the alternative core, which has no IGR
 * [VCD.md](VCD.md) — PS1 titles and their own IGR behaviour
+
+### Pad DMA buffer selection
+
+The menu selects the newer frame from both sides of each supported DMA area:
+libpad before 1.6 uses two 64-byte slots, libpad 1.6+ uses two 128-byte slots,
+and Sony libpad2 uses two 128-byte sides with its frame counter at offset 124.
+Sony libpad2 is not PS2SDK's XPADMAN-compatible libpad layout (frame offset 88).
+
+PS2SDK [libpad.c](https://github.com/ps2dev/ps2sdk/blob/b04e8973c8a9839d0653d87a8d30cc67fd3c3f05/ee/rpc/pad/src/libpad.c)
+defines paired old/new structures and compares their frame counters; its
+[IOP DMA writer](https://github.com/ps2dev/ps2sdk/blob/b04e8973c8a9839d0653d87a8d30cc67fd3c3f05/iop/input/padman/src/padInit.c)
+alternates destinations by 64 or 128 bytes. The independently reconstructed
+[Sony socket implementation](https://github.com/lombyte-project/Lombyte/blob/4974c241732bc00f75c8769a2a2055efa5425fa9/src/sdk/input/sce_pad2_create_socket.c)
+registers the base and base + 128 with DBC and initializes both sides. Its
+[reader](https://github.com/lombyte-project/Lombyte/blob/4974c241732bc00f75c8769a2a2055efa5425fa9/src/sdk/input/sce_pad2_get_side.c)
+compares the counters at offset 124. Existing game callers reserve 256 bytes
+per socket. Reading only side zero can therefore use stale state.
+
+`test_igr_pad_buffers.py` compiles the production selector, button reader and
+combo sampler under ASan/UBSan with exactly 128-byte old-libpad and 256-byte
+new-libpad/libpad2 allocations. It checks both newer sides, equal counters,
+unstable input and null buffers. This establishes bounds and selection logic,
+not physical controller or gameplay acceptance.

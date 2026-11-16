@@ -132,11 +132,9 @@ static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 static const u8 *IGR_PadBuf(void)
 {
     const u8 *b = (const u8 *)UNCACHED_SEG(Pad_Data.pad_buf);
-    if (Pad_Data.libpad == IGR_LIBPAD) {
-        const u8 *b2 = b + (Pad_Data.libversion >= 0x0160 ? 128u : 64u);
-        if (*(const u32 *)(b + Pad_Data.pos_frame) < *(const u32 *)(b2 + Pad_Data.pos_frame))
-            return b2;
-    }
+    const u8 *b2 = b + ((Pad_Data.libpad == IGR_LIBPAD && Pad_Data.libversion < 0x0160) ? 64u : 128u);
+    if (*(const u32 *)(b + Pad_Data.pos_frame) < *(const u32 *)(b2 + Pad_Data.pos_frame))
+        return b2;
     return b;
 }
 
