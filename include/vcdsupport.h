@@ -37,8 +37,9 @@ typedef struct
 // entry's sizeMB: the container is only mounted during the scan, so the info screen cannot stat later.
 int vcdScanDirRoot(const char *dirPath, vcd_entry_t **outList);
 
-// Extract a strict leading PS1 ID from "SXXX_NNN.NN.Title" or "XX.SXXX_NNN.NN.Title" for same-folder CFG/art fallback.
-// Returns 1 and writes the 11-character ID on success; otherwise returns 0 and writes an empty string.
+// Extract a strict leading PS1 ID from "SXXX_NNN.NN.Title", "XX.SXXX_NNN.NN.Title" or the Lightspan
+// "LSPNNNNN.NNN.Title" for same-folder CFG/art fallback. Returns the ID's length (11, or 12 for
+// Lightspan) and writes it on success; otherwise returns 0 and writes an empty string.
 int vcdExtractGameId(const char *name, char *idOut, int idSize);
 
 // Strict one-game POPS HDD partition label PP.<DISC-ID>.POPS.<NAME>: returns the offset of <NAME>
