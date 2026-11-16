@@ -38,6 +38,7 @@ constexpr int SYS_DISC_NODISC_MS = 2000;
 #include "include/ioprp.h"
 #include "include/bdmsupport.h"
 #include "include/mmcesupport.h"
+#include "include/vmcrebuild.h" // vmcRebuildCardState -- adopt a rebuilt copy only when the card is provably absent
 #include "include/OSDHistory.h"
 #include "include/renderman.h"
 #include "include/extern_irx.h"
@@ -137,13 +138,14 @@ int sysVMCContiguity(void)
 // -1: explicit delete, 0: size probe, SYS_VMC_PROBE_FORMAT: validated auto probe, >0: create.
 // A VMC rebuild on FatFs removes the card, then renames its verified "<name>.new" copy. Power lost
 // between the two leaves only the copy: give it the card's name. Called only when the card did not
-// open. Not on PFS, where the rename replaces the card in one step and would also replace a card
-// that merely failed to open. 1 = the copy is now the card.
+// open, and only when reading the folder PROVES the card is not there: a rename onto an existing card
+// replaces it on PFS and on the network stores, so a transient open failure must never reach it.
+// Where the folder cannot be listed this does nothing. 1 = the copy is now the card.
 static int sysVMCAdoptRebuilt(const char *path)
 {
     char copy[256];
 
-    if (!strncmp(path, "pfs", 3))
+    if (!strncmp(path, "pfs", 3) || strlen(path) < 5 || vmcRebuildCardState(path) != 0)
         return 0;
     snprintf(copy, sizeof(copy), "%.*s.new", (int)strlen(path) - 4, path);
     return rename(copy, path) == 0;
@@ -165,9 +167,16 @@ int sysCheckVMCEx(const char *prefix, const char *sep, char *name, int createSiz
     if ((unsigned int)snprintf(path, sizeof(path), "%sVMC%s%s.bin", prefix, sep, name) >= sizeof(path))
         return SYS_VMC_CREATE_FAILED;
 
-    if (createSize == -1)
+    if (createSize == -1) {
+        char copy[256];
+
         unlink(path);
-    else {
+        // An unfinished rebuild's "<name>.new" must go with the card: the next probe would adopt it.
+        if (strlen(path) >= 5) {
+            snprintf(copy, sizeof(copy), "%.*s.new", (int)strlen(path) - 4, path);
+            unlink(copy);
+        }
+    } else {
         int fd = open(path, O_RDONLY, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
         if (fd < 0 && sysVMCAdoptRebuilt(path))
             fd = open(path, O_RDONLY, 0);

@@ -16,6 +16,9 @@ enum vmc_rebuild_result {
 // The card at path (<prefix>VMC/<name>.bin, sizeMb MB) for the native core: 1 it maps, 0 it does not
 // but a rebuilt copy could (BDM fragmented, HDD PFS map too long), -1 the store cannot tell.
 int vmcRebuildLayout(const char *path, int sizeMb);
+// 1 the file at path is listed in its folder, 0 the whole folder was read and it is not there, -1 cannot
+// tell (a store fileXio cannot list, or a read error). Absence is never inferred from a failed open.
+int vmcRebuildCardState(const char *path);
 // Start the copy job for the card at path. 0 = started; otherwise a vmc_rebuild_result.
 int vmcRebuildStart(const char *path, int sizeMb);
 // Once genvmc reports the started job finished: check the copy's layout and swap it in.

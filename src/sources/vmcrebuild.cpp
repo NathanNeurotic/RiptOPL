@@ -87,6 +87,11 @@ static int vmcRebuildExists(const char *path)
     return result < 0 ? -1 : 0;
 }
 
+int vmcRebuildCardState(const char *path)
+{
+    return vmcRebuildExists(path);
+}
+
 // pfs0: is write-back: a rename is only in PFS's RAM cache until it is synced. 0 = committed (or not
 // PFS), < 0 = PFS could not commit it.
 static int vmcRebuildSync(void)
