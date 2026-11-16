@@ -2164,9 +2164,9 @@ gui_strings:
 - comment: Save Diagnostics could not write the file. %s is the file's path.
   label: DIAG_SAVE_FAILED
   string: "The diagnostics could not be written to %s. Is the device write-protected?"
-- comment: Hint of Theme View. List, Coverflow (3), Coverflow (5), PSBBN Flow and Grid are the choices' names, shown untranslated.
+- comment: Hint of Theme View. List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid and Grid (7x2) are the choices' names, shown untranslated.
   label: HINT_THEME_VIEW
-  string: "How the theme draws your games: List, Coverflow with 3 or 5 covers, PSBBN Flow or Grid. Hold L3 on the main page to switch. Themes without that view use their default view."
+  string: "How the theme draws your games: List, Coverflow with 3 or 5 covers, PSBBN Flow, Grid, or Grid (7x2) with 14 covers a page. Hold L3 on the main page to switch. Themes without that view use their default view."
 
 - comment: Interface setting (multi-view themes) that picks how the theme draws the game pages.
   label: THEME_VIEW
@@ -2206,7 +2206,7 @@ gui_strings:
   string: Grid Layout
 
 - label: HINT_GRID_LAYOUT
-  string: "Covers per page in the Grid view: the theme's own, or a preset. A 16:9 picture fits more columns, and each preset shows the shape it has on the picture now."
+  string: "Covers per page in the Grid view: the theme's own, or a preset. A 16:9 picture fits more columns, and each preset shows the shape it has on the picture now. Grid (7x2) keeps its own shape."
 
 - comment: Grid Layout's smallest covers, shown as "6 x 3 Compact".
   label: GRID_COMPACT

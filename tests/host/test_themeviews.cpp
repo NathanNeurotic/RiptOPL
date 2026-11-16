@@ -320,51 +320,65 @@ int main()
         configFree(tmpl);
     }
 
-    // Coverflow (3) and Coverflow (5): one theme view, two picks.
+    // Coverflow (3) and Coverflow (5): one theme view, two picks. Grid and Grid (7x2) the same.
     {
-        int covers = 3;
-        CHECK(thmViewPickFor(-1, 5) == THM_VIEW_PICK_DEFAULT);
-        CHECK(thmViewPickFor(THM_VIEW_LIST, 5) == THM_VIEW_PICK_LIST);
-        CHECK(thmViewPickFor(THM_VIEW_COVERFLOW, 3) == THM_VIEW_PICK_COVERFLOW3);
-        CHECK(thmViewPickFor(THM_VIEW_COVERFLOW, 5) == THM_VIEW_PICK_COVERFLOW5);
-        CHECK(thmViewPickFor(THM_VIEW_COVERFLOW, 7) == THM_VIEW_PICK_COVERFLOW3); // hand-edited count
-        CHECK(thmViewPickFor(THM_VIEW_GRID, 3) == THM_VIEW_PICK_GRID);
-        CHECK(thmViewPickRequest(THM_VIEW_PICK_COVERFLOW5, &covers) == THM_VIEW_COVERFLOW && covers == 5);
-        CHECK(thmViewPickRequest(THM_VIEW_PICK_PSBBN, &covers) == THM_VIEW_PSBBN && covers == 5); // kept
-        CHECK(thmViewPickRequest(THM_VIEW_PICK_COVERFLOW3, &covers) == THM_VIEW_COVERFLOW && covers == 3);
-        CHECK(thmViewPickRequest(THM_VIEW_PICK_DEFAULT, &covers) == -1 && covers == 3);
-        CHECK(thmViewPickRequest(99, &covers) == -1);
+        int covers = 3, compact = 0;
+        CHECK(thmViewPickFor(-1, 5, 0) == THM_VIEW_PICK_DEFAULT);
+        CHECK(thmViewPickFor(THM_VIEW_LIST, 5, 1) == THM_VIEW_PICK_LIST);
+        CHECK(thmViewPickFor(THM_VIEW_COVERFLOW, 3, 0) == THM_VIEW_PICK_COVERFLOW3);
+        CHECK(thmViewPickFor(THM_VIEW_COVERFLOW, 5, 1) == THM_VIEW_PICK_COVERFLOW5);
+        CHECK(thmViewPickFor(THM_VIEW_COVERFLOW, 7, 0) == THM_VIEW_PICK_COVERFLOW3); // hand-edited count
+        CHECK(thmViewPickFor(THM_VIEW_GRID, 3, 0) == THM_VIEW_PICK_GRID);
+        CHECK(thmViewPickFor(THM_VIEW_GRID, 3, 1) == THM_VIEW_PICK_GRID_COMPACT);
+        CHECK(thmViewPickRequest(THM_VIEW_PICK_COVERFLOW5, &covers, &compact) == THM_VIEW_COVERFLOW && covers == 5 && compact == 0);
+        CHECK(thmViewPickRequest(THM_VIEW_PICK_PSBBN, &covers, &compact) == THM_VIEW_PSBBN && covers == 5); // kept
+        CHECK(thmViewPickRequest(THM_VIEW_PICK_COVERFLOW3, &covers, NULL) == THM_VIEW_COVERFLOW && covers == 3);
+        CHECK(thmViewPickRequest(THM_VIEW_PICK_GRID_COMPACT, &covers, &compact) == THM_VIEW_GRID && compact == 1 && covers == 3);
+        CHECK(thmViewPickRequest(THM_VIEW_PICK_LIST, &covers, &compact) == THM_VIEW_LIST && compact == 1); // kept
+        CHECK(thmViewPickRequest(THM_VIEW_PICK_GRID, &covers, &compact) == THM_VIEW_GRID && compact == 0);
+        CHECK(thmViewPickRequest(THM_VIEW_PICK_DEFAULT, &covers, &compact) == -1 && covers == 3);
+        CHECK(thmViewPickRequest(99, &covers, &compact) == -1);
+        // The picks older builds had keep their numbers.
+        CHECK(THM_VIEW_PICK_GRID == 5 && THM_VIEW_PICK_GRID_COMPACT == 6);
         // Every pick round-trips.
         for (int p = THM_VIEW_PICK_LIST; p < THM_VIEW_PICK_COUNT; p++) {
-            int c = 3;
-            int r = thmViewPickRequest(p, &c);
-            CHECK(thmViewPickFor(r, c) == p);
+            int c = 3, g = 0;
+            int r = thmViewPickRequest(p, &c, &g);
+            CHECK(thmViewPickFor(r, c, g) == p);
         }
 
-        // Hold L3 walks List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, List.
+        // Hold L3 walks List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, Grid (7x2), List.
         unsigned int all = (1u << THM_VIEW_COUNT) - 1;
         int view = THM_VIEW_LIST;
         covers = 5;
-        view = thmViewCycleNext(all, view, &covers);
+        compact = 1;
+        view = thmViewCycleNext(all, view, &covers, &compact);
         CHECK(view == THM_VIEW_COVERFLOW && covers == 3);
-        view = thmViewCycleNext(all, view, &covers);
+        view = thmViewCycleNext(all, view, &covers, &compact);
         CHECK(view == THM_VIEW_COVERFLOW && covers == 5);
-        view = thmViewCycleNext(all, view, &covers);
+        view = thmViewCycleNext(all, view, &covers, &compact);
         CHECK(view == THM_VIEW_PSBBN && covers == 5);
-        view = thmViewCycleNext(all, view, &covers);
-        CHECK(view == THM_VIEW_GRID);
-        view = thmViewCycleNext(all, view, &covers);
-        CHECK(view == THM_VIEW_LIST);
+        view = thmViewCycleNext(all, view, &covers, &compact);
+        CHECK(view == THM_VIEW_GRID && compact == 0);
+        view = thmViewCycleNext(all, view, &covers, &compact);
+        CHECK(view == THM_VIEW_GRID && compact == 1);
+        view = thmViewCycleNext(all, view, &covers, &compact);
+        CHECK(view == THM_VIEW_LIST && compact == 1);
 
-        // A Coverflow-only theme still toggles 3 and 5; a List-only theme has nothing to cycle.
+        // A Coverflow-only theme still toggles 3 and 5, a Grid-only one Grid and Grid (7x2); a List-only theme
+        // has nothing to cycle.
         unsigned int cf = 1u << THM_VIEW_COVERFLOW;
         covers = 3;
-        CHECK(thmViewCycleNext(cf, THM_VIEW_COVERFLOW, &covers) == THM_VIEW_COVERFLOW && covers == 5);
-        CHECK(thmViewCycleNext(cf, THM_VIEW_COVERFLOW, &covers) == THM_VIEW_COVERFLOW && covers == 3);
+        CHECK(thmViewCycleNext(cf, THM_VIEW_COVERFLOW, &covers, &compact) == THM_VIEW_COVERFLOW && covers == 5);
+        CHECK(thmViewCycleNext(cf, THM_VIEW_COVERFLOW, &covers, NULL) == THM_VIEW_COVERFLOW && covers == 3);
+        unsigned int gr = 1u << THM_VIEW_GRID;
+        compact = 0;
+        CHECK(thmViewCycleNext(gr, THM_VIEW_GRID, &covers, &compact) == THM_VIEW_GRID && compact == 1);
+        CHECK(thmViewCycleNext(gr, THM_VIEW_GRID, &covers, &compact) == THM_VIEW_GRID && compact == 0);
         covers = 5;
-        CHECK(thmViewCycleNext(1u << THM_VIEW_LIST, THM_VIEW_LIST, &covers) == THM_VIEW_LIST && covers == 5);
+        CHECK(thmViewCycleNext(1u << THM_VIEW_LIST, THM_VIEW_LIST, &covers, &compact) == THM_VIEW_LIST && covers == 5);
         // List + PSBBN skips both Coverflow picks.
-        CHECK(thmViewCycleNext((1u << THM_VIEW_LIST) | (1u << THM_VIEW_PSBBN), THM_VIEW_LIST, &covers) == THM_VIEW_PSBBN);
+        CHECK(thmViewCycleNext((1u << THM_VIEW_LIST) | (1u << THM_VIEW_PSBBN), THM_VIEW_LIST, &covers, &compact) == THM_VIEW_PSBBN);
     }
 
     TEST_DONE("themeviews");

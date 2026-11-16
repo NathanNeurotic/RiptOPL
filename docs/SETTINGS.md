@@ -135,7 +135,7 @@ Settings**.
 | Applications Display | How the Applications page lists apps. | `apps_display` |
 | Video Mode | The menu's video mode (not the games'; that is GSM Defaults on Game Launching). | `vmode` |
 | Theme | The menu theme. See [INTERFACE.md](INTERFACE.md). | `theme` |
-| Theme View | List, Coverflow (3), Coverflow (5), PSBBN Flow or Grid; holding L3 cycles it too. | `theme_view` |
+| Theme View | List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid or Grid (7x2); holding L3 cycles it too. | `theme_view`, `coverflow_count`, `grid_compact` |
 | Library | Pages or All Games. Same setting as Game Sources → All Games List. | `all_games` |
 | Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
 | Boot Theme Wait | Seconds the start-up screen waits for a saved theme's drive. | `boot_theme_wait` |

@@ -519,7 +519,7 @@ static int guiReadAppsViewPicker(struct UIItem *ui)
 }
 
 // Theme View picker: THM_VIEW_PICK_* (include/themeviews.h): the theme's default view, then List,
-// Coverflow (3), Coverflow (5), PSBBN Flow and Grid. The two Coverflow entries are one theme view with 3 or 5
+// Coverflow (3), Coverflow (5), PSBBN Flow, Grid and Grid (7x2). The two Coverflow entries are one theme view with 3 or 5
 // covers, so they replace the old Cover Count row. A theme that does not offer the picked view shows its
 // default one; the choice is kept for the themes that do.
 static int sThemeViewPickerShown; // the value guiSetThemeViewPicker put on the picker
@@ -533,9 +533,10 @@ static void guiSetThemeViewPicker(struct UIItem *ui)
     names[THM_VIEW_PICK_COVERFLOW5] = "Coverflow (5)";
     names[THM_VIEW_PICK_PSBBN] = "PSBBN Flow";
     names[THM_VIEW_PICK_GRID] = "Grid";
+    names[THM_VIEW_PICK_GRID_COMPACT] = "Grid (7x2)";
     names[THM_VIEW_PICK_COUNT] = NULL;
     diaSetEnum(ui, UICFG_THEME_VIEW, names);
-    sThemeViewPickerShown = thmViewPickFor(gThemeViewRequest, gCoverflowCount);
+    sThemeViewPickerShown = thmViewPickFor(gThemeViewRequest, gCoverflowCount, gGridCompact);
     diaSetInt(ui, UICFG_THEME_VIEW, sThemeViewPickerShown);
 }
 
@@ -549,7 +550,7 @@ static int guiReadThemeViewPicker(struct UIItem *ui)
     diaGetInt(ui, UICFG_THEME_VIEW, &picker);
     if (picker == sThemeViewPickerShown)
         return gThemeViewRequest;
-    return thmViewPickRequest(picker, &gCoverflowCount);
+    return thmViewPickRequest(picker, &gCoverflowCount, &gGridCompact); // applyConfig reloads a grid of the other shape
 }
 
 // Library: Pages (a tab per device) or All Games (one list). Sits under Theme View because it changes how

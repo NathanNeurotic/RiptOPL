@@ -2130,6 +2130,13 @@ int thmSetGuiValue(int themeID, int reload)
 
 // The view functions below read gTheme to decide on a reload. Only a theme switch replaces gTheme, so they hold
 // thmSwitchSema across the read and the reload, and reload the id selected at that moment.
+// Grid and Grid (7x2) are two picks of one view, but a page of another size needs another cover cache: the
+// grid on screen was built for the other pick.
+static int thmGridShapeChanged(void)
+{
+    return gTheme->grid != NULL && gTheme->gridCompact != (gGridCompact != 0);
+}
+
 static int thmSetViewLocked(int view)
 {
     if (view < 0 || view >= THM_VIEW_COUNT)
@@ -2141,7 +2148,7 @@ static int thmSetViewLocked(int view)
 
     // The view the active theme would load for this request; nothing to do when it is already showing.
     int target = (view >= 0 && (gTheme->viewMask & (1u << view))) ? view : gTheme->defaultView;
-    if (target == gTheme->view)
+    if (target == gTheme->view && !thmGridShapeChanged())
         return 0;
     if (!gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1)) {
         gThemeViewRequest = previous; // abandoned load (#120): the old view is still on screen
@@ -2164,7 +2171,7 @@ int thmRefreshDisplayLayout(void)
     int wideChanged = gTheme->layoutDependsOnWide && gTheme->layoutWide != rmIsWideDisplay();
     int altChanged = gTheme->altDeclared && gTheme->altBackground != (gThemeAltBackground != 0);
     int wallpaperChanged = gTheme->wallpaperWanted != (gThemeWallpaper != 0);
-    if (!wideChanged && !altChanged && !wallpaperChanged)
+    if (!wideChanged && !altChanged && !wallpaperChanged && !thmGridShapeChanged())
         return 0;
     return gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1);
 }
@@ -2190,18 +2197,21 @@ int thmCycleView(void)
         return 0;
     // Coverflow (3) and Coverflow (5) are two stops of one theme view: the count is read at draw time, so
     // moving between them needs no reload.
-    int covers = gCoverflowCount;
-    int v = thmViewCycleNext(gTheme->viewMask, gTheme->view, &covers);
-    if (v == gTheme->view) {
+    int covers = gCoverflowCount, compact = gGridCompact;
+    int v = thmViewCycleNext(gTheme->viewMask, gTheme->view, &covers, &compact);
+    if (v == gTheme->view && compact == gGridCompact) {
         if (covers == gCoverflowCount)
             return 0; // the theme offers a single view
         gCoverflowCount = covers;
         return 1;
     }
-    int previousCovers = gCoverflowCount;
+    // A new view, or Grid <-> Grid (7x2): thmSetViewLocked reloads for either.
+    int previousCovers = gCoverflowCount, previousCompact = gGridCompact;
     gCoverflowCount = covers;
-    if (!thmSetViewLocked(v) && gTheme->view != v) {
+    gGridCompact = compact;
+    if (!thmSetViewLocked(v) && (gTheme->view != v || thmGridShapeChanged())) {
         gCoverflowCount = previousCovers; // abandoned load: the old view is still on screen
+        gGridCompact = previousCompact;
         return 0;
     }
     return 1;

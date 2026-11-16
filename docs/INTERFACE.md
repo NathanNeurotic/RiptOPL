@@ -27,7 +27,7 @@ centered carousel with 3 or 5 covers), **PSBBN Flow** (the PSBBN Definitive Proj
 covers; Up/Down move one row). `<OPL>` offers all of them; a disk
 theme offers the views its author declared (both Coverflow entries when it has a Coverflow view), and shows its default view for any other pick. **Default**
 uses the theme's own default. Holding **L3** for half a second on the main page switches to the next
-view the theme offers, in the order List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, without
+view the theme offers, in the order List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, Grid (7x2), without
 opening the settings. Apply and save to retain the choice. Fresh
 configurations start with `<OPL>` in the List view, 4:3 and Auto video mode; theme, view and aspect are
 separate settings. A configuration that saved the former `<Coverflow>` or `<PSBBN Flow>` theme loads

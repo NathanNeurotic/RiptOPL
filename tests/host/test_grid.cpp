@@ -67,6 +67,19 @@ int main()
             CHECK(c * drawn + (c - 1) * l.spacing <= 640 - 2 * 32);
         }
 
+    // ---- Grid (7x2): one fixed 7 x 2 page on either picture, within the same limits ------------------
+    for (int wide = 0; wide < 2; wide++) {
+        gridCompactShape(wide, &l);
+        int r = l.rows, c = l.columns;
+        gridClamp(&r, &c);
+        CHECK(l.columns == 7 && l.rows == 2 && r == 2 && c == 7);
+        int drawn = wide ? l.width * 3 / 4 : l.width;
+        CHECK(c * drawn + (c - 1) * l.spacing <= 640 - 2 * 32);
+    }
+    gridCompactShape(1, &l);
+    grid_layout_t twin;
+    CHECK(gridLayoutPreset(2, 1, &twin) && twin.width == l.width && twin.height == l.height); // 16:9: Grid Layout's 7 x 2 cell
+
     // ---- the device sidebar opens from the first column --------------------------------------------
     CHECK(gridAtRowStart(10, 0, 4) && gridAtRowStart(10, 8, 4));
     CHECK(!gridAtRowStart(10, 1, 4) && !gridAtRowStart(10, 7, 4));

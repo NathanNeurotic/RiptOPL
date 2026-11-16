@@ -89,6 +89,7 @@
     CONFIG_OPL_COVERFLOW_ANIM,
     CONFIG_OPL_COVERFLOW_DIM,
     CONFIG_OPL_GRID_LAYOUT, // added with the Grid Layout presets (RIPPS2 build 91)
+    CONFIG_OPL_GRID_COMPACT, // added with the Grid (7x2) view pick
     CONFIG_OPL_ENABLE_ILINK,
     CONFIG_OPL_ENABLE_MX4SIO,
     CONFIG_OPL_ENABLE_PCCF,
