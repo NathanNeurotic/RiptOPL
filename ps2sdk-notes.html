@@ -264,14 +264,11 @@ session, so OPL's check of the card before the next launch failed at random with
 share modes (Windows, Samba).</li>
 <li><strong>Our change:</strong> a menu read shares read and write (<code>0x03</code>), as our SMB2 driver does. A menu write still shares
 read only. The in-game SMBv1 driver opens game images read-only with deny-none (<code>0x40</code>), and opens
-writable VMC files with deny-write (<code>0x22</code>: read/write access plus <code>0x20</code> sharing mode). This
-lets the menu read a VMC while another session has it open without granting two consoles write
-access to the same card.</li>
-<li><strong>VMC safety limitation:</strong> two consoles must not write to the same VMC simultaneously. A server
-still holding the previous session's VMC writer open can refuse a new writer until that
-session expires or is released. That temporary refusal is intentional: permitting a second
-writer could interleave page writes and corrupt saves. Retry after server session cleanup;
-do not bypass the writer exclusion.</li>
+VMC files read/write in compatibility mode (<code>2</code>), as upstream OPL does.</li>
+<li><strong>Deny-write was tried and backed out:</strong> opening the VMC with deny-write (<code>0x22</code>) made the server
+refuse it while it still held the console's own VMC handle from a session that ended mid-game.
+The game then reported no memory card at random (<a href="https://github.com/NathanNeurotic/RiptOPL/issues/418">RiptOPL #418</a>,
+reported after #420). That stale handle belongs to a dead session and can never write again.</li>
 <li><strong>Evidence:</strong> code reading and <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/.github/scripts/test_smb1_vmc_share.py"><code>test_smb1_vmc_share.py</code></a>,
 which checks the sources only. Not tested on PCSX2 or hardware.</li>
 </ul>
