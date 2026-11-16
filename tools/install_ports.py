@@ -93,7 +93,12 @@ def unpack(data, destination, package, toolchain="gcc"):
                 if prefix.startswith(name) and entry.is_dir():
                     continue  # a parent folder of the package
                 raise ValueError(f"package member outside {prefix}: {entry.filename}")
-            target = Path(destination, name[len(prefix):])
+            relative = name[len(prefix):]
+            # "<prefix>/tmp/x" leaves "/tmp/x", and Path(destination, "/tmp/x") IS "/tmp/x": a rooted rest
+            # would write outside destination. Require the target to resolve inside it.
+            target = Path(destination, relative)
+            if relative.startswith("/") or not target.resolve().is_relative_to(Path(destination).resolve()):
+                raise ValueError(f"unsafe package member: {entry.filename}")
             if entry.is_dir():
                 target.mkdir(parents=True, exist_ok=True)
             else:

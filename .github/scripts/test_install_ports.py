@@ -168,6 +168,20 @@ class InstallPortsTests(unittest.TestCase):
                         ports.install(sdk, "ogg", "llvm")
                 self.assertFalse((sdk / "packages-llvm/world/ogg").exists())
 
+    def test_rooted_member_after_the_package_prefix_cannot_escape_the_destination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory, "outside")
+            outside.mkdir()
+            sdk = Path(directory, "sdk")
+            sdk.mkdir()
+            escape = "packages-llvm/world/ogg/" + str(outside / "planted.txt")  # "ogg//<absolute path>"
+            metadata = json.dumps(release("ogg-v1-llvm.zip")).encode()
+            with patch.object(ports, "download", side_effect=[metadata, sdk_root_archive("packages-llvm/world/ogg/", extra=escape)]):
+                with self.assertRaises(ValueError):
+                    ports.install(sdk, "ogg", "llvm")
+            self.assertFalse((outside / "planted.txt").exists())
+            self.assertFalse((sdk / "packages-llvm/world/ogg").exists())
+
     def test_host_outage_keeps_a_complete_cached_package_only(self):
         outage = ports.urllib.error.HTTPError("https://example.com/release", 521, "origin down", None, None)
         with tempfile.TemporaryDirectory() as directory:
