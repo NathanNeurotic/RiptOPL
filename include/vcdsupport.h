@@ -337,6 +337,9 @@ public:
     void requestRowId(const char *name, int kind, int verifyParsedName);
     // ps1RowIdCached's body: memo hit or free filename parse, never device IO.
     int rowIdCached(const char *name, int kind, char *idOut, int idSize);
+    // The device IO behind the memo: resolves one row's disc id, memoizing hit AND miss. I/O thread
+    // only (the queued resolve, and ps1RowIdResolve for the CFG Titles pass).
+    int resolveRowId(const char *name, int kind, char *idOut, int idSize);
 
     // ---- tier-1 custom POPSTARTER.ELF cache ----
     // Resolve gPopstarterPath to a file, remembering the value last resolved and the file it
@@ -353,8 +356,6 @@ private:
     static void resolveQueuedDisplayIdThunk();
     void resolveQueuedDisplayId();
     struct vcd_id_memo *idMemoFind(const char *name, int kind);
-    // The device IO behind the memo: resolves one row's disc id, memoizing hit AND miss.
-    int resolveRowId(const char *name, int kind, char *idOut, int idSize);
 
     struct vcd_id_memo *memoHead_ = NULL;
     int memoCount_ = 0;
