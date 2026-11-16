@@ -133,6 +133,18 @@ int thmLayoutAutoFitX(int x, int screenWidth);
 // when it looks different with the setting flipped and must be reloaded if it changes.
 int thmApplyAltBackground(config_set_t *themeConfig, int alt);
 
+// List with descriptions (CosmicScale's ask, after RIPPS2's game list): a theme gives any key a "<key>_desc"
+// variant, used while Settings > Interface > List Title and Description shows the game CFG's Title and
+// Description on the list pages (On, or Theme when the theme's list_cfg_text key does not hide them). A theme
+// can so make room beside its list and declare the text blocks themselves only there ("main20_type_desc=
+// AttributeText"), so with the setting off no block asks for the game's CFG. Copied over the plain keys once,
+// right after the alt= pass; a theme without _desc keys loads exactly as before.
+#define THM_DESC_SUFFIX "_desc"
+
+// Apply the _desc variants when shown is non-zero. Returns 1 when the theme declares any, i.e. when it
+// looks different with the setting flipped and must be reloaded if it changes.
+int thmApplyListDescLayout(config_set_t *themeConfig, int shown);
+
 // Fallback views. A theme without views= offers every view: one it does not declare is built from its own
 // List (or flow) layout, keeping its background, colours, fonts, icons, hints and info page, and swapping
 // only the presenter for the one in the built-in template of that view (tmpl: the <OPL> theme's cfg for

@@ -2718,7 +2718,7 @@ reshow_interface:
         if (previousPs1Dup != gPs1Duplicates)
             hddVcdInvalidateCache(); // the HDD PS1 list applies the setting when it is built
         diaGetInt(ui, UICFG_GAME_TYPE_LABELS, &gGameTypeLabels);
-        diaGetInt(ui, UICFG_LIST_CFG_TEXT, &gListCfgText); // read as each frame draws: nothing to rebuild
+        diaGetInt(ui, UICFG_LIST_CFG_TEXT, &gListCfgText); // read as each frame draws; applyConfig reloads a theme with _desc keys
         gameViewChanged = guiReadGameViewPicker(ui);
         appsViewChanged = guiReadAppsViewPicker(ui);
         themeViewRequest = guiReadThemeViewPicker(ui);

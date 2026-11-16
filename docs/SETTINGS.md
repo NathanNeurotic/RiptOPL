@@ -150,7 +150,7 @@ Settings**.
 | Sort Games | Off, A to Z or Last played. | `autosort` |
 | Automatic Refresh | Re-reads game lists while the menu is open. | `autorefresh` |
 | Show CFG Titles in Game Lists | Uses the title from a game's CFG file. See [CFG-TITLES.md](CFG-TITLES.md). | `cfg_titles_in_lists` |
-| List Title and Description | Theme, On or Off. | `list_cfg_text` |
+| List Title and Description | Theme, On or Off. On the built-in IncebtIon theme, On shows the game's CFG Title and Description beside the list in place of the cover. | `list_cfg_text` |
 | PS1 Duplicates | A PS1 game found for both cores: Both, Ember or POPSTARTER. | `ps1_duplicates` |
 | Show [PS1]/[PS2] Labels | Marks each row with its system. | `game_type_labels` |
 | Widescreen | 16:9 menu. | `wide_screen` |

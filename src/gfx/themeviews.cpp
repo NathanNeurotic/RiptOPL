@@ -324,6 +324,29 @@ int thmApplyDisplayLayout(config_set_t *themeConfig, int wide)
     return declared;
 }
 
+int thmApplyListDescLayout(config_set_t *themeConfig, int shown)
+{
+    char base[CONFIG_KEY_NAME_LEN], value[CONFIG_KEY_VALUE_LEN];
+    const size_t descLen = strlen(THM_DESC_SUFFIX);
+    int declared = 0;
+
+    if (themeConfig == NULL)
+        return 0;
+    // A copied key never ends in _desc, so the entries appended while walking are skipped.
+    for (const config_value_t *it = themeConfig->entries(); it != NULL; it = it->next) {
+        size_t len = strlen(it->key);
+        if (len <= descLen || !thmKeyEndsWith(it->key, len, THM_DESC_SUFFIX))
+            continue;
+        declared = 1;
+        if (!shown)
+            continue;
+        snprintf(base, sizeof(base), "%.*s", (int)(len - descLen), it->key);
+        snprintf(value, sizeof(value), "%s", it->val);
+        configSetStr(themeConfig, base, value);
+    }
+    return declared;
+}
+
 int thmLayoutAutoFitX(int x, int screenWidth)
 {
     int centre = screenWidth / 2;
