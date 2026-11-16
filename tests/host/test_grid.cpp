@@ -78,5 +78,22 @@ int main()
     for (int i = 1; i <= 10; i++)
         CHECK(gridSlideEase(i / 10.0f) >= gridSlideEase((i - 1) / 10.0f));
 
+    // ---- case pictures: the case is placed so its cover window lands on the cover -----------------
+    {
+        int ow, oh, dx, dy;
+        gridCaseRect(107, 150, 107, 150, 0, 0, 107, 150, &ow, &oh, &dx, &dy); // inceBtion: the window is the element
+        CHECK(ow == 107 && oh == 150 && dx == 0 && dy == 0);
+        // Korium's PS2 case on a 98 by 140 cover: drawn square, as its 256 by 256 PNG, and its window's left
+        // and top edges within a pixel of the cover's (-49, -70).
+        gridCaseRect(98, 140, 256, 256, 0, 12, 167, 250, &ow, &oh, &dx, &dy);
+        CHECK(ow == 150 && oh == 150 && dx == 26 && dy == -1);
+        CHECK(dx - ow / 2 == -49);
+        CHECK(dy - oh / 2 + 12 * oh / 256 >= -71 && dy - oh / 2 + 12 * oh / 256 <= -69);
+        // Korium's PS1 jewel case on a 100 by 100 cover: window left edge on the cover's (-50).
+        gridCaseRect(100, 100, 256, 256, 17, 11, 155, 150, &ow, &oh, &dx, &dy);
+        CHECK(ow == 185 && oh == 184 && dx == 30 && dy == 34);
+        CHECK(dx - ow / 2 + 17 * ow / 256 >= -51 && dx - ow / 2 + 17 * ow / 256 <= -49);
+    }
+
     TEST_DONE("grid");
 }

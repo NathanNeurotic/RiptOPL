@@ -187,6 +187,8 @@ def embed():
     for name, src, sym in MISC:
         if theme_dir and name in ("conf_theme_OPL", "theme_coverflow"):
             src = str(theme_dir / src)
+        elif theme_dir and name == "theme_grid":
+            src = "misc/theme_grid_korium.cfg"  # Korium has no Grid of its own: ours, with its cases
         bin2c(src, name, sym)
     bin2c("modules/iopcore/IOPRP.img", "IOPRP_img", "IOPRP_img")
 
