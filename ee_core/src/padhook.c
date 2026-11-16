@@ -122,7 +122,7 @@ extern void *_end;
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
 // What the pause holds, taken out of the masks when they are read: one test a loop, no table (Korium's LLVM .text)
 #define IGR_INTC_HELD 0x7ffd // causes 0-14, never the SIF's (SBUS, 1)
-#define IGR_DMAC_HELD 0x31f  // channels 0-4, 8 and 9: never SIF 5-7
+#define IGR_DMAC_HELD 0x431f // channels 0-4, 8 and 9, and MFIFO empty (14): never SIF 5-7
 static volatile int IGR_MenuOpen = 0;
 // Once per press: a menu closed at once must not reopen. Not 0: the press may still take its pause, and counts down
 // the VBLANKs the held combo waits for the game's transfers to stop (2 s of them). Not initialised here, so that it
@@ -169,7 +169,7 @@ static void IGR_HoldInterrupts(void)
         if (IGR_HeldIntc & (1 << i))
             iDisableIntc(i);
     IGR_HeldDmac = (*R_EE_D_STAT >> 16) & IGR_DMAC_HELD;
-    for (i = 0; i <= 9; i++)
+    for (i = 0; i <= 14; i++)
         if (IGR_HeldDmac & (1 << i))
             iDisableDmac(i);
 }
@@ -192,7 +192,7 @@ static void IGR_ResumeGame(void) // the pause, undone in reverse
 {
     int i;
 
-    for (i = 0; i <= 9; i++)
+    for (i = 0; i <= 14; i++)
         if (IGR_HeldDmac & (1 << i))
             EnableDmac(i);
     for (i = 0; i <= 14; i++)
@@ -616,9 +616,9 @@ static void IGR_Thread(void *arg)
         // Why the menu did not open (docs/IGR.md), with or without Debug Colors: the combo otherwise looks exactly like
         // the menu being off. Here, where the screenshot's own colours have always been shown: the IOP is back, the SIF
         // restarted, the GS trap off.
-        // The answer is the colour (igrmenu.h); three blinks, and one or two more for what VIF1's status said
+        // The answer is the colour (igrmenu.h), blinked three times
         if (choice > IGR_MENU_POWEROFF)
-            DBGCOL_BLNK(3 + (choice >> 24), choice & 0xFFFFFF, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = channel 1 busy, blue = channel 2 busy, red = VIF1 stalled, white = MFIFO drain busy, grey = no menu");
+            DBGCOL_BLNK(3, choice, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = a transfer did not end, red = VIF1 stalled, grey = no menu");
 #endif
 
         if (EnableDebug)
@@ -682,7 +682,7 @@ static int IGR_Intc_Handler(int cause)
         // after 2 s of busy VBLANKs the pause comes anyway and that check decides (ORBIT's menu waits like this)
         // One store and one way into the pause (0: take it now, and this press has had it): written with ||, Korium's
         // LLVM build came out 52 bytes larger, more than .text has left before .rodata moves up a 128-byte step
-        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) ? IGR_MenuRearm - 1 : 0)) {
+        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & ~(*R_EE_D_CTRL << 5) & 0x100) ? IGR_MenuRearm - 1 : 0)) {
             IGR_MenuOpen = 1;
             IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
             goto wake;            // the IGR's own two calls below, not a second copy of them: .text has no room for one

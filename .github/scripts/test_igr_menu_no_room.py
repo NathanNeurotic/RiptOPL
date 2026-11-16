@@ -146,13 +146,25 @@ if not re.search(r'#ifdef IGR_MENU\n\s*wake:\n#endif\n\s*iChangeThreadPriority\(
     failures.append('padhook.c IGR_Intc_Handler: the wake the menu\'s pause jumps to was not found')
 
 # The check is RIPPS2's, in the menu: channels 1 and 2 end, then VIF1 neither stopped (VSS, VFS, VIS, INT) nor reading
-# back (FDR). A game that fails it leaves as the combo did before, with a blink that says which of them (docs/IGR.md)
+# back (FDR). A game that fails it leaves as the combo did before, with a blink that says which of them (docs/IGR.md).
+# A channel that drains a MFIFO never ends while the game is paused (Dirge of Cerberus): it passes once the MFIFO is
+# empty, and the menu borrows channel 1 from it with the DMAC suspended and gives back D_CTRL and the channel after
 igrmenu = (root / 'ee_core/src/igrmenu.c').read_text(encoding='utf-8')
-if not re.search(r'if \(!igrmWaitClear\(IGRM_D1_CHCR, CHCR_STR\)\)\s*t = IGR_MENU_GS_BUSY;\s*'
-                 r'else if \(!igrmWaitClear\(IGRM_D2_CHCR, CHCR_STR\)\) \{\s*t = IGR_MENU_D2_BUSY;\s*d1chcr = 3;\s*\}\s*'
-                 r'vs = \*IGRM_VIF1_STAT;\s*if \(t \|\| \(vs & VIF_STALLED\)\) \{', igrmenu) or \
+if not re.search(r'mfd = \(dctrl >> 2\) & 3;.*\n\s*if \(!igrmWaitFor\(IGRM_D1_CHCR, CHCR_STR, 0, mfd == 2\) \|\| '
+                 r'!igrmWaitFor\(IGRM_D2_CHCR, CHCR_STR, 0, mfd == 3\)\)\s*return IGR_MENU_GS_BUSY;\s*'
+                 r'if \(\*IGRM_VIF1_STAT & VIF_STALLED\)\s*return IGR_MENU_VIF_STALLED;', igrmenu) or \
         not re.search(r'#define VIF_STALLED +0x00800f00', igrmenu):
     failures.append('igrmenu.c IGR_MenuRun: RIPPS2 build 129\'s idle check (channels 1 and 2, VIF1 0x00800f00) was not found')
+if 'drain && !reg[8] && !((reg[12] ^ *IGRM_D8_MADR) & *IGRM_D_RBSR)' not in igrmenu:
+    failures.append('igrmenu.c igrmWaitFor: a MFIFO drain channel must pass once its MFIFO is empty (QWC 0, TADR at D8_MADR)')
+if not re.search(r'if \(mfd == 2\) \{\s*t = \*IGRM_D_ENABLER;\s*\*IGRM_D_ENABLEW = t \| 0x10000;\s*'
+                 r'\*IGRM_D1_CHCR = d1chcr & ~CHCR_STR;\s*\*IGRM_D_ENABLEW = t;\s*\*IGRM_D_CTRL = dctrl & ~0xc;\s*\}', igrmenu):
+    failures.append('igrmenu.c IGR_MenuRun: channel 1 must be stopped with the DMAC suspended and the MFIFO taken out of D_CTRL')
+if not re.search(r'\*IGRM_D1_TADR = d1tadr;\s*\*IGRM_D_CTRL = dctrl;\s*\*IGRM_D1_CHCR = d1chcr;', igrmenu):
+    failures.append('igrmenu.c IGR_MenuRun: D_CTRL goes back before channel 1 is started again')
+# The MFIFO-empty interrupt (D_STAT cause 14) is the game's too: held with the rest, or its handler runs in the pause
+if not re.search(r'#define IGR_DMAC_HELD 0x431f', padhook) or padhook.count('for (i = 0; i <= 14; i++)') < 4:
+    failures.append('padhook.c: the pause must hold the MFIFO-empty interrupt (D_STAT cause 14) and give it back')
 
 # --- 5. the RA watch block before the menu's cheats --------------------------------------------------------------
 if LAYOUT['host'] is not None:
@@ -319,9 +331,11 @@ static volatile int IGR_MenuOpen;
 #define IGR_MENU_ARMED 121
 static int IGR_MenuRearm, held, wakes;
 // The registers the handler waits on: channel 1 and 2 CHCR (STR 0x100)
-static unsigned int d1chcr, d2chcr;
+// and D_CTRL: MFD (bits 2 and 3) 2 or 3 names channel 1 or 2 as a MFIFO's drain, which stays started
+static unsigned int d1chcr, d2chcr, dctrl;
 #define R_EE_D1_CHCR (&d1chcr)
 #define R_EE_D2_CHCR (&d2chcr)
+#define R_EE_D_CTRL  (&dctrl)
 static struct { int IgrMenu; } g_config, *config = &g_config;
 static void IGR_HoldInterrupts(void) { held++; }
 static void iChangeThreadPriority(int id, int prio) { (void)id; (void)prio; }
@@ -439,6 +453,20 @@ int main(void)
                 Pad_Data.combo_type = 0;
                 handler();
             }
+            // a game with a MFIFO keeps its drain channel started all through play: no wait for it, the menu's check
+            // decides at once (MFD 2 and 3; MFD 1 is not a MFIFO, so that game waits like any other)
+            for (b = 2; b <= 3; b++) {
+                wakes = held = 0;
+                d1chcr = 0x145, d2chcr = 0;
+                dctrl = b << 2 | 1;
+                Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                handler();
+                CHECK(IGR_MenuOpen && wakes == 1 && held == 1, "MFIFO (MFD %u): the pause does not wait for a drain channel", b);
+                IGR_MenuOpen = 0;
+                Pad_Data.combo_type = 0;
+                handler();
+            }
+            dctrl = 1 << 2 | 1;
             d1chcr = 0x100;
             wakes = held = 0;
             for (i = 0; i < 120; i++) {
