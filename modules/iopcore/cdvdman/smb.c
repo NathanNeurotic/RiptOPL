@@ -576,7 +576,10 @@ lbl_session_setup:
     SSR->smbAndxCmd = SMB_COM_NONE; // no ANDX command
     SSR->MaxBufferSize = CLIENT_MAX_BUFFER_SIZE;
     SSR->MaxMpxCount = server_specs.MaxMpxCount >= 2 ? 2 : (u16)server_specs.MaxMpxCount;
-    SSR->VCNumber = 1;
+    // VC 0: this console restarted. Servers that honour it (Windows) drop the console's earlier
+    // session and its open VMC handle, which otherwise refuses the game's reopen (#418). Only one
+    // SMB connection is ever live from cdvdman (mcemu shares it), so there is no live one to drop.
+    SSR->VCNumber = 0;
     SSR->SessionKey = server_specs.SessionKey;
     SSR->Capabilities = capabilities;
 
@@ -766,10 +769,11 @@ static int smb_OpenAndXOnce(char *filename, u8 *FID, int Write)
     OR->smbWordcount = 15;
     OR->smbAndxCmd = SMB_COM_NONE; // no ANDX command
     // Game images are read-only and share with other readers/writers (0x40: deny none).
-    // VMCs are opened read-write and deny other writers (0x20: deny write). Allowing
-    // concurrent VMC writers could corrupt saves. If a dead session still holds its
-    // VMC open, another writer must wait for the server to release that stale handle.
-    OR->AccessMask = Write ? (2 | 0x20) : 0x40;
+    // VMCs keep upstream OPL's read/write compatibility mode (2). Deny-write (0x22) was
+    // refused whenever the server still held this console's VMC handle from a session that
+    // ended without closing it (power off or reset mid-game), and the game then saw no
+    // memory card (#418). That dead handle can never write again.
+    OR->AccessMask = Write ? 2 : 0x40;
     OR->FileAttributes = Write ? EXT_ATTR_NORMAL : EXT_ATTR_READONLY;
     OR->CreateOptions = 1;
 

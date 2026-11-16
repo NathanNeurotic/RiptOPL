@@ -255,7 +255,7 @@ typedef unsigned char u8;
 enum { DISC_MODE=1, OTHER_MODE, IGR_LIBPAD, IGR_LIBPAD2,
        IGR_PAD_STABLE_V1, IGR_PAD_STABLE_V2, IGR_COMBO_R1_L1_R2_L2,
        IGR_COMBO_START_SELECT, IGR_COMBO_R3_L3 };
-static struct { int GameMode; } cfg;
+static struct { int GameMode; int IgrAltCombo; } cfg;
 #define USE_LOCAL_EECORE_CONFIG __typeof__(cfg) *config=&cfg
 #define UNCACHED_SEG(x) (x)
 static struct { u8 *pad_buf; int pos_state,pos_frame,pos_combo1,pos_combo2;

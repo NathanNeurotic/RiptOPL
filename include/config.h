@@ -171,7 +171,8 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_AUTO_REFRESH         "autorefresh"
 #define CONFIG_OPL_DEFAULT_DEVICE       "default_device"
 #define CONFIG_OPL_AUTO_CREATE_VMC      "auto_create_vmc"
-#define CONFIG_OPL_IGR_MENU             "igr_menu" // the in-game menu (ee_core igrmenu.c): 0 off, 1 on
+#define CONFIG_OPL_IGR_MENU             "igr_menu"      // the in-game menu (ee_core igrmenu.c): 0 off, 1 on
+#define CONFIG_OPL_IGR_ALT_COMBO        "igr_alt_combo" // 1: L1+L2+R1+R2+L3+R3 leaves the game, no pad power off (#416)
 #define CONFIG_OPL_ENABLE_WRITE         "enable_delete_rename"
 #define CONFIG_OPL_HDD_SPINDOWN         "hdd_spindown"
 #define CONFIG_OPL_BDM_PREFIX           "usb_prefix" // Leave this "usb" for compatibility
