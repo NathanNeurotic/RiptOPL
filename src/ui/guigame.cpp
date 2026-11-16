@@ -309,8 +309,6 @@ static int guiGameVMCRebuildMessage(int outcome)
             return _STR_VMC_REBUILD_NO_ROOM;
         case VMC_REBUILD_ABORTED:
             return _STR_VMC_REBUILD_ABORTED;
-        case VMC_REBUILD_LEFTOVER:
-            return _STR_VMC_REBUILD_LEFTOVER;
         case VMC_REBUILD_STUCK:
             return _STR_VMC_REBUILD_STUCK;
         case VMC_REBUILD_UNSYNCED:

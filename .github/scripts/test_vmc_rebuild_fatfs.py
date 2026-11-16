@@ -4,7 +4,7 @@ The pinned FatFs, the shipped fragment walker and allocation patch, genvmc's rea
 code and the EE's real start/finish (src/vmcrebuild.c with bdmsupport.c's launch layout check) run
 together. A card is written interleaved with other files so it lands in many pieces; the launch check
 calls it fragmented. With no 8 MiB run free the rebuild says so and changes nothing. With room, the
-card ends up as one extent with every byte the same, and the old card survives a remount as .bak.
+card ends up as one extent with every byte the same, and no .bak copy of the old card is left behind.
 """
 from pathlib import Path
 import re
@@ -332,7 +332,7 @@ static void run(BYTE format)
     verifyBytes("0:/VMC/card.bin");
     assert(fragments("0:/VMC/card.bin") > 100);
 
-    /* Room again: the card is rebuilt in one piece, every byte the same, the old card kept. */
+    /* Room again: the card is rebuilt in one piece, every byte the same, the old card removed. */
     for (int i = 1; i < files; i += 2) {
         snprintf(name, sizeof(name), "0:/h%03d.bin", i);
         assert(f_unlink(name) == FR_OK);
@@ -348,14 +348,15 @@ static void run(BYTE format)
     assert(fragments("0:/VMC/card.bin") == 1);
     assert(vmcRebuildLayout("0:/VMC/card.bin", 8) == 1); /* the launch would map it now */
     verifyBytes("0:/VMC/card.bin");
-    assert(fragments("0:/VMC/card.bak") > 100);
-    verifyBytes("0:/VMC/card.bak");
+    assert(!exists("0:/VMC/card.bak")); /* no backup is ever made */
 
-    /* A second rebuild never touches the backup the first one left. */
-    assert(rebuildCard() == VMC_REBUILD_LEFTOVER);
-    verifyBytes("0:/VMC/card.bak");
+    /* A second rebuild finds nothing in its way and leaves nothing behind either. */
+    assert(rebuildCard() == VMC_REBUILD_DONE);
+    assert(!exists("0:/VMC/card.new") && !exists("0:/VMC/card.bak"));
+    assert(fragments("0:/VMC/card.bin") == 1);
+    verifyBytes("0:/VMC/card.bin");
     assert(f_mount(NULL, "0:", 0) == FR_OK);
-    printf("FatFs image: %s fragmented card refused without room, rebuilt to one extent with identical bytes, backup kept across remount\n",
+    printf("FatFs image: %s fragmented card refused without room, rebuilt to one extent with identical bytes, no backup left behind\n",
            format == FM_EXFAT ? "exFAT" : "FAT32");
 }
 

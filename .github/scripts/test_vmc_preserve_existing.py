@@ -6,9 +6,9 @@ import sys
 
 root = Path(__file__).resolve().parents[2]
 source = Path(sys.argv[1]).read_text(encoding="utf-8") if len(sys.argv)>1 else (root / "src/platform/sysvmc.cpp").read_text(encoding="utf-8")
-start = source.index("int sysCheckVMCEx(")
+start = source.index("static int sysVMCAdoptRebuilt(")
 end = start
-for _ in range(2):  # sysCheckVMCEx, then the sysCheckVMC wrapper after it
+for _ in range(3):  # the rebuilt-copy helper, sysCheckVMCEx, then the sysCheckVMC wrapper after it
     end = source.index("{", end)
     depth = 0
     while end < len(source):

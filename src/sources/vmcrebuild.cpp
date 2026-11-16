@@ -5,9 +5,12 @@
 
 // Rebuild a native VMC that is too fragmented to map (original #986/#1015). The card stays as it is until a copy of
 // it exists, reserved the way a new card is, matches it byte for byte (genvmc reads both back) and
-// passes the same layout check the launch makes. Only then two renames swap them: the card becomes
-// "<name>.bak", the copy "<name>.bin". Nothing here ever deletes the card or its backup: the only
-// file ever removed is the copy this rebuild made, and only while the card is known to be in place.
+// passes the same layout check the launch makes. Only then does the copy take the card's name: on
+// PFS one rename replaces the card; FatFs cannot rename onto a file, so the card is removed and the
+// copy renamed right after. No ".bak" is ever made. If power is lost between those two steps the
+// saves are whole in "<name>.new", and sysCheckVMCEx gives it the card's name the next time the card
+// is looked for. A ".new" found beside the card at the start is an interrupted rebuild's unfinished
+// copy and is removed. A ".bak" left by an older build is neither touched nor in the way.
 
 #include "include/opl.h"
 #include "include/ioman.h"
@@ -24,7 +27,7 @@
 static struct
 {
     int active, sizeMb;
-    char card[256], copy[256], backup[256];
+    char card[256], copy[256];
 } gVMCRebuild;
 
 int vmcRebuildLayout(const char *path, int sizeMb)
@@ -103,11 +106,11 @@ static int vmcRebuildSync(void)
 }
 
 // The copy is this rebuild's own file (genvmc made it exclusively); remove it only while the card is
-// in place, so a rename that reported failure but happened can never cost the last good copy.
+// in place, so a step that reported failure but happened can never cost the last good copy.
 static int vmcRebuildDropCopy(int result)
 {
     if (vmcRebuildExists(gVMCRebuild.card) != 1) {
-        LOG("VMC rebuild: %s not found, keeping %s and %s\n", gVMCRebuild.card, gVMCRebuild.copy, gVMCRebuild.backup);
+        LOG("VMC rebuild: %s not found, keeping %s\n", gVMCRebuild.card, gVMCRebuild.copy);
         return VMC_REBUILD_STUCK;
     }
     if (unlink(gVMCRebuild.copy) != 0)
@@ -118,18 +121,18 @@ static int vmcRebuildDropCopy(int result)
 int vmcRebuildStart(const char *path, int sizeMb)
 {
     createVMCparam_t param;
-    int copy, backup;
+    int present;
 
     if (gVMCRebuild.active || (sizeMb != 8 && sizeMb != 16 && sizeMb != 32 && sizeMb != 64) || strlen(path) >= sizeof(gVMCRebuild.card) ||
-        vmcRebuildSibling(gVMCRebuild.copy, path, ".new") != 0 || vmcRebuildSibling(gVMCRebuild.backup, path, ".bak") != 0)
+        vmcRebuildSibling(gVMCRebuild.copy, path, ".new") != 0)
         return VMC_REBUILD_FAILED;
     strcpy(gVMCRebuild.card, path);
 
-    backup = vmcRebuildExists(gVMCRebuild.backup);
-    copy = vmcRebuildExists(gVMCRebuild.copy);
-    if (backup == 1 || copy == 1)
-        return VMC_REBUILD_LEFTOVER;
-    if (backup != 0 || copy != 0)
+    // With the card in place, a ".new" beside it is an unfinished copy of it.
+    if (vmcRebuildExists(gVMCRebuild.card) != 1)
+        return VMC_REBUILD_FAILED;
+    present = vmcRebuildExists(gVMCRebuild.copy);
+    if (present < 0 || (present == 1 && unlink(gVMCRebuild.copy) != 0))
         return VMC_REBUILD_FAILED;
 
     memset(&param, 0, sizeof(param));
@@ -150,7 +153,7 @@ int vmcRebuildStart(const char *path, int sizeMb)
 
 int vmcRebuildFinish(int jobError)
 {
-    int layout, present;
+    int layout, swapped;
 
     if (!gVMCRebuild.active)
         return VMC_REBUILD_FAILED;
@@ -170,31 +173,23 @@ int vmcRebuildFinish(int jobError)
     if (layout != 1)
         return vmcRebuildDropCopy(layout == 0 ? VMC_REBUILD_NO_ROOM : VMC_REBUILD_FAILED);
 
-    // Checked again right before the rename: something may have put a .bak there since the start.
-    present = vmcRebuildExists(gVMCRebuild.backup);
-    if (present != 0)
-        return vmcRebuildDropCopy(present == 1 ? VMC_REBUILD_LEFTOVER : VMC_REBUILD_FAILED);
-    if (rename(gVMCRebuild.card, gVMCRebuild.backup) != 0) {
-        vmcRebuildSync();
-        return vmcRebuildDropCopy(VMC_REBUILD_FAILED);
-    }
-    if (rename(gVMCRebuild.copy, gVMCRebuild.card) != 0) {
-        LOG("VMC rebuild: %s could not take the card's name, restoring it\n", gVMCRebuild.copy);
-        // The card's name is free once the first rename went through. Taken now, it is the copy:
-        // the rename happened after all.
-        present = vmcRebuildExists(gVMCRebuild.card);
-        if (present == 1)
-            return vmcRebuildSync() < 0 ? VMC_REBUILD_UNSYNCED : VMC_REBUILD_DONE;
-        if (present != 0 || rename(gVMCRebuild.backup, gVMCRebuild.card) != 0) {
+    if (!strncmp(gVMCRebuild.card, "pfs", 3))
+        swapped = rename(gVMCRebuild.copy, gVMCRebuild.card) == 0; // PFS replaces the card in one step
+    else if (unlink(gVMCRebuild.card) != 0)
+        return vmcRebuildDropCopy(VMC_REBUILD_FAILED); // STUCK, copy kept, if the card went after all
+    else
+        swapped = rename(gVMCRebuild.copy, gVMCRebuild.card) == 0;
+    if (!swapped) {
+        // A rename that reported failure but happened leaves the card present and no copy.
+        if (vmcRebuildExists(gVMCRebuild.copy) != 0 || vmcRebuildExists(gVMCRebuild.card) != 1) {
+            LOG("VMC rebuild: %s could not take the card's name\n", gVMCRebuild.copy);
             vmcRebuildSync();
-            return VMC_REBUILD_STUCK;
+            return vmcRebuildDropCopy(VMC_REBUILD_FAILED);
         }
-        vmcRebuildSync();
-        return vmcRebuildDropCopy(VMC_REBUILD_FAILED);
     }
     // "Rebuilt" only once the swap is on the disk; otherwise say the change was not confirmed.
     if (vmcRebuildSync() < 0)
         return VMC_REBUILD_UNSYNCED;
-    LOG("VMC rebuild done: %s, old card kept as %s\n", gVMCRebuild.card, gVMCRebuild.backup);
+    LOG("VMC rebuild done: %s\n", gVMCRebuild.card);
     return VMC_REBUILD_DONE;
 }
