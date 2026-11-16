@@ -2202,10 +2202,6 @@ int vcdInstallPopsUdpfsNet(const char *popsDir)
         close(fd);
         if (got < 0 || size > 120)
             return -3;
-        char backup[132], check[256];
-        snprintf(backup, sizeof(backup), "%s.bak", dst);
-        if (vcdReadNetFile(backup, check, sizeof(check)) != -1)
-            return -3; // interrupted editor save needs recovery, not automatic population
         snprintf(home, sizeof(home), "%s", dst);
         *strrchr(home, '/') = '\0';
         if (mkdir(home, 0777) != 0 && errno != EEXIST)
@@ -2264,12 +2260,12 @@ int vcdReadPopsUdpfsNet(vcd_pops_udpfs_t *out)
     return 0;
 }
 
-// MC does not support rename. Back up originals before writing either live file;
-// restore from those snapshots on failure and retain a backup if restoration fails.
+// Overwrites both live files in place: no .bak or .new file is ever made on the card. The old
+// contents (at most 120 bytes each) are held in memory and written back if either write fails.
 int vcdWritePopsUdpfsNet(const vcd_pops_udpfs_t *cfg)
 {
-    char paths[2][128], backup[2][132], oldData[2][256], buf[2][128];
-    int oldSize[2], committed[2] = {0, 0}, backed[2] = {0, 0};
+    char paths[2][128], oldData[2][256], buf[2][128];
+    int oldSize[2], committed[2] = {0, 0};
     if (!vcdPopsUdpfsNetValid(cfg))
         return -1;
     if (vcdPopsUdpfsConfigPath("IPCONFIG.DAT", paths[0], sizeof(paths[0])) < 0 ||
@@ -2284,10 +2280,6 @@ int vcdWritePopsUdpfsNet(const vcd_pops_udpfs_t *cfg)
     len[1] = vcdUdpfsAddress(cfg->server) == 0 ? 0 :
                                                  snprintf(buf[1], sizeof(buf[1]), "%d.%d.%d.%d\n", cfg->server[0], cfg->server[1], cfg->server[2], cfg->server[3]);
     for (int i = 0; i < 2; i++) {
-        snprintf(backup[i], sizeof(backup[i]), "%s.bak", paths[i]);
-        char check[256];
-        if (vcdReadNetFile(backup[i], check, sizeof(check)) != -1)
-            return -3;
         oldSize[i] = vcdReadNetFile(paths[i], oldData[i], sizeof(oldData[i]));
         if (oldSize[i] < -1)
             return -3;
@@ -2298,15 +2290,6 @@ int vcdWritePopsUdpfsNet(const vcd_pops_udpfs_t *cfg)
         *strrchr(home, '/') = '\0';
         if (mkdir(home, 0777) != 0 && errno != EEXIST)
             goto rollback;
-        if (oldSize[i] >= 0) {
-            if (vcdWritePopsUdpfsFile(backup[i], oldData[i], oldSize[i]) != 0) {
-                unlink(backup[i]); // this call's failed backup; live original is intact
-                goto rollback;
-            }
-            backed[i] = 1;
-        }
-    }
-    for (int i = 0; i < 2; i++) {
         committed[i] = 1; // the failed write may already have removed a partial file
         int result = vcdWritePopsUdpfsFile(paths[i], buf[i], len[i]);
         if (result == -2)
@@ -2314,22 +2297,15 @@ int vcdWritePopsUdpfsNet(const vcd_pops_udpfs_t *cfg)
         if (result != 0)
             goto rollback;
     }
-    for (int i = 0; i < 2; i++)
-        if (backed[i])
-            unlink(backup[i]);
     return 0;
 rollback:
     for (int i = 0; i < 2; i++) {
-        if (committed[i]) {
-            if (oldSize[i] >= 0) {
-                if (vcdWritePopsUdpfsFile(paths[i], oldData[i], oldSize[i]) != 0)
-                    continue; // retain .bak for manual recovery
-            } else {
-                unlink(paths[i]);
-            }
-        }
-        if (backed[i])
-            unlink(backup[i]);
+        if (!committed[i])
+            continue;
+        if (oldSize[i] < 0)
+            unlink(paths[i]);
+        else if (vcdWritePopsUdpfsFile(paths[i], oldData[i], oldSize[i]) != 0)
+            LOG("[POPSTARTER] could not restore %s\n", paths[i]);
     }
     return -3;
 }
