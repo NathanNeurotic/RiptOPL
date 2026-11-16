@@ -630,6 +630,15 @@ int ps1RowIdCached(const char *name, int kind, char *idOut, int idSize)
     return gVcdSupport.rowIdCached(name, kind, idOut, idSize);
 }
 
+void ps1RowIdResolve(const char *name, int kind)
+{
+    char id[VCD_ID_MAX];
+
+    if (name == NULL || vcdExtractGameId(name, id, sizeof(id)))
+        return; // the name already carries the id: no device IO
+    gVcdSupport.resolveRowId(name, kind, id, sizeof(id));
+}
+
 // dirPath is the directory that was just opened; fileName is what readdir returned (with ".VCD");
 // baseName is that name with the extension stripped. Writes the id, or an empty string when none.
 

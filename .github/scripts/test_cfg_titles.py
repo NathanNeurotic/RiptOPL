@@ -25,7 +25,9 @@ enum { BDM_MODE, ETH_MODE, HDD_MODE, APP_MODE, FAV_MODE };
 #define GAME_FORMAT_FOLDER 9
 
 typedef struct { const char *title; int present; } config_set_t;
-typedef struct { int format; } base_game_info_t;
+typedef struct { int format; char name[32]; } base_game_info_t;
+enum { LIB_VIEW_ISO, LIB_VIEW_PS1 };
+enum { PS1_ROW_VCD, PS1_ROW_CUE };
 typedef struct item_list item_list_t;
 struct item_list {
     int mode;
@@ -52,6 +54,11 @@ static const char *vcdDisplayNameForRow(item_list_t *l, int id, const char *text
     (void)l, (void)id;
     return hideVcdPrefix && !strncmp(text, "SLUS_012.15.", 12) ? text + 12 : text;
 }
+static int ps1Row[8], ps1Ember[8], resolves;
+static char resolvedName[32];
+static int resolvedKind = -1;
+static int libListRowView(item_list_t *l, int id) { (void)l; return ps1Row[id] ? LIB_VIEW_PS1 : LIB_VIEW_ISO; }
+static void ps1RowIdResolve(const char *name, int kind) { resolves++; snprintf(resolvedName, sizeof(resolvedName), "%s", name); resolvedKind = kind; }
 static int favSource[8];
 static int favGetItemSourceMode(int id) { return favSource[id]; }
 #ifdef RETROACHIEVEMENTS
@@ -69,6 +76,7 @@ struct FakeSource {
     void *game(item_list_t *l, int i) { return l->itemGet(l, i); }
     char *name(item_list_t *l, int i) { return l->itemGetName(l, i); }
     config_set_t *config(item_list_t *l, int i) { return l->itemGetConfig(l, i); }
+    int ps1RowKind(item_list_t *l, int i, int *ember) { (void)l; *ember = ps1Ember[i]; return ps1Row[i]; }
 };
 static FakeSource sourceObject;
 static FakeSource *gsOf(item_list_t *) { return &sourceObject; }
@@ -201,6 +209,24 @@ int main(void)
     gCfgTitlesInLists = 0;
     cfgTitleRefresh(&bdm, 2);
 #endif
+
+    /* ps1_id_first_build: a PS1 row's disc id is resolved before its CFG is read, so CFG/<id>.cfg
+       supplies the title on the first build, not only after a refresh (CosmicScale). PS2 rows never
+       ask; the row view gates the call, as a PS2 HDD row is not a base_game_info_t. */
+    gCfgTitlesInLists = 1;
+    snprintf(games[0].name, sizeof(games[0].name), "Metal Gear Solid Integral");
+    ps1Row[0] = 1;
+    ps1Ember[0] = 1;
+    resolves = 0;
+    cfgTitleRefresh(&bdm, 3);
+    assert(resolves == 1 && !strcmp(resolvedName, "Metal Gear Solid Integral") && resolvedKind == PS1_ROW_CUE);
+    ps1Ember[0] = 0;
+    cfgTitleRefresh(&bdm, 1);
+    assert(resolves == 2 && resolvedKind == PS1_ROW_VCD);
+    ps1Row[0] = 0;
+    gCfgTitlesInLists = 0;
+    cfgTitleRefresh(&bdm, 3);
+    assert(resolves == 2); /* off: no disc reads either */
 
     /* alloc_failure: no table means names, never a crash. */
     gCfgTitlesInLists = 1;

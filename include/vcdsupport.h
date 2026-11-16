@@ -64,6 +64,9 @@ enum {
 //     synchronously, and verifies a parsed name too, so art matches the id the barcode reports.
 int ps1RowIdCached(const char *name, int kind, char *idOut, int idSize);
 void ps1RowIdRequest(const char *name, int kind);
+//   ps1RowIdResolve -- read the disc id NOW for a row whose name carries none (memoised, hit and miss).
+//     I/O thread only: the opt-in CFG Titles pass, so a CFG/<id>.cfg title shows from the first build.
+void ps1RowIdResolve(const char *name, int kind);
 
 // Ask for a settled PS1 row's id (kind: PS1_ROW_*) to be resolved off-thread for the caption (one
 // queued resolve per row per session, memo-deduped, only under explicit ItemText demand; a name that
