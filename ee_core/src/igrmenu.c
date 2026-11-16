@@ -949,19 +949,22 @@ int IGR_MenuRun(u16 (*buttons)(void))
         return IGR_MENU_NO_FRAME;
     // the game's own transfers finish first; a VIF1 stalled on an interrupt the pause holds cannot take ours
     // (RIPPS2 build 129's check, here as there: channel 1, channel 2, then VIF1's status). What refused the menu
-    // goes back with the answer, for the blink: which condition, and in bits 8 and 9 what VIF1's status said
+    // goes back with the answer, for the blink: which condition, and in bits 24 and 25 what VIF1's status said
     t = 0;
+    d1chcr = 2; // D_CTRL MFD while channel 1 is the one looked at: 2 VIF1 drains a MFIFO, 3 GIF does
     if (!igrmWaitClear(IGRM_D1_CHCR, CHCR_STR))
         t = IGR_MENU_GS_BUSY;
-    else if (!igrmWaitClear(IGRM_D2_CHCR, CHCR_STR))
+    else if (!igrmWaitClear(IGRM_D2_CHCR, CHCR_STR)) {
         t = IGR_MENU_D2_BUSY;
+        d1chcr = 3;
+    }
     vs = *IGRM_VIF1_STAT;
     if (t || (vs & VIF_STALLED)) {
         if (!t)
             t = IGR_MENU_VIF_STALLED;
-        else if (((*IGRM_D_CTRL >> 2) & 3) == t - IGR_MENU_GS_BUSY + 2) // MFD: 2 VIF1 drains a MFIFO, 3 GIF does
+        else if (((*IGRM_D_CTRL >> 2) & 3) == d1chcr)
             t = IGR_MENU_MFIFO;
-        return t | ((vs & VIF_INT_STALL) ? 0x100 : 0) | ((vs & (VIF_STALLED & ~VIF_INT_STALL)) ? 0x200 : 0);
+        return t | ((vs & VIF_INT_STALL) ? 1 << 24 : 0) | ((vs & (VIF_STALLED & ~VIF_INT_STALL)) ? 2 << 24 : 0);
     }
     bpc = igrmBpcOff();
     // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's

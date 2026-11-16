@@ -615,13 +615,10 @@ static void IGR_Thread(void *arg)
 #ifdef IGR_MENU
         // Why the menu did not open (docs/IGR.md), with or without Debug Colors: the combo otherwise looks exactly like
         // the menu being off. Here, where the screenshot's own colours have always been shown: the IOP is back, the SIF
-        // restarted, the GS trap off. GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and
-        // growing it costs the stack
-        if (choice >= IGR_MENU_CANNOT_DRAW) {
-            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00, 0x00FFFF, 0xFF0000, 0x0000FF, 0xFFFFFF}; // grey, purple, mint, yellow, blue, red, white
-            // three blinks, and one or two more for what VIF1's status said (bits 8 and 9 of the idle check's answer)
-            DBGCOL_BLNK(3 + (choice >> 8), why[(choice & 0xff) - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = channel 1 busy, blue = channel 2 busy, red = VIF1 stalled, white = MFIFO drain busy, grey = no menu");
-        }
+        // restarted, the GS trap off.
+        // The answer is the colour (igrmenu.h); three blinks, and one or two more for what VIF1's status said
+        if (choice > IGR_MENU_POWEROFF)
+            DBGCOL_BLNK(3 + (choice >> 24), choice & 0xFFFFFF, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = channel 1 busy, blue = channel 2 busy, red = VIF1 stalled, white = MFIFO drain busy, grey = no menu");
 #endif
 
         if (EnableDebug)

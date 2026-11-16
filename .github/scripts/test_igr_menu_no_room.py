@@ -81,10 +81,10 @@ if thread and (igr_thread < 0 or padhook.find(thread) < igr_thread):
     failures.append('padhook.c: the IgrMenuNoRoom blink must be in IGR_Thread')
 
 # The grey the menu path blinks for IGR_MENU_CANNOT_DRAW: a menu that was not there to run
-grey = (re.search(r'why\[\][^=]*=\s*\{\s*(0x[0-9A-Fa-f]+)', padhook) or
-        re.search(r'IGR_MENU_DRAW_FAILED \? 0x[0-9A-Fa-f]+ :\s*(0x[0-9A-Fa-f]+);', padhook))
+grey = re.search(r'IGR_MENU_CANNOT_DRAW = (0x[0-9A-Fa-f]+),',
+                 (root / 'ee_core/include/igrmenu.h').read_text(encoding='utf-8'))
 if grey is None:
-    failures.append('padhook.c: the menu path\'s grey for a menu that was not there was not found')
+    failures.append('igrmenu.h: the menu path\'s grey for a menu that was not there was not found')
 grey = grey.group(1) if grey else '0'
 
 # --- 3. the field, appended ----------------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ if not re.search(r'#ifdef IGR_MENU\n\s*wake:\n#endif\n\s*iChangeThreadPriority\(
 # back (FDR). A game that fails it leaves as the combo did before, with a blink that says which of them (docs/IGR.md)
 igrmenu = (root / 'ee_core/src/igrmenu.c').read_text(encoding='utf-8')
 if not re.search(r'if \(!igrmWaitClear\(IGRM_D1_CHCR, CHCR_STR\)\)\s*t = IGR_MENU_GS_BUSY;\s*'
-                 r'else if \(!igrmWaitClear\(IGRM_D2_CHCR, CHCR_STR\)\)\s*t = IGR_MENU_D2_BUSY;\s*'
+                 r'else if \(!igrmWaitClear\(IGRM_D2_CHCR, CHCR_STR\)\) \{\s*t = IGR_MENU_D2_BUSY;\s*d1chcr = 3;\s*\}\s*'
                  r'vs = \*IGRM_VIF1_STAT;\s*if \(t \|\| \(vs & VIF_STALLED\)\) \{', igrmenu) or \
         not re.search(r'#define VIF_STALLED +0x00800f00', igrmenu):
     failures.append('igrmenu.c IGR_MenuRun: RIPPS2 build 129\'s idle check (channels 1 and 2, VIF1 0x00800f00) was not found')
