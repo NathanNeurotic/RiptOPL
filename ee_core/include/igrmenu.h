@@ -18,6 +18,7 @@ enum {
     // (padhook.c IGR_Thread, docs/IGR.md). Keep them after IGR_MENU_CANNOT_DRAW: >= is the test.
     IGR_MENU_NO_FRAME,    // no DISPFB write recorded by the GS tracker, or a format / size the panel cannot use
     IGR_MENU_DRAW_FAILED, // the first page did not go through (VIF1 did not take the lines)
+    IGR_MENU_GS_BUSY,     // the game's channel 1 or 2 transfer did not end, or its VIF1 is stopped or reading back
 };
 
 // Draws the panel over the paused game and reads the pad until a choice is made. The caller has

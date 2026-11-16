@@ -241,24 +241,18 @@ the usual reset colours:
 |---|---|
 | **Purple** | The game's picture is in a format or size the panel cannot use |
 | **Mint green** | The first page was composed but VIF1 did not take it |
+| **Yellow** | The game's own drawing transfers did not finish while it was paused, or its VIF1 was stopped or reading back |
 | **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above) |
 
-**In-Game Menu is on, and pressing the combination does nothing, or the picture freezes for a moment and the game goes on.**
+**In-Game Menu is on, the picture freezes for a moment and the game resets (yellow with Debug Colors).**
 The game's channel 1 or 2 transfers did not finish while it was paused, or its VIF1 stayed stopped (on a VIF
-code's interrupt bit, a stop or a break) or reading back, so the menu will not draw over them. The pause lasts a
-sixteenth of a second, the game gets everything back untouched, and the next frame the combination is still held
-pauses it again, up to eight times; the last pause waits two seconds. If that finds the game busy too, the game is
-given back and the menu stays shut: nothing is reset under a game that never went idle. Let the combination go and
-press it again: that second press skips the menu and the pause and resets the game exactly as the combination does
-with In-Game Menu off. A VIF1 interrupt flag the game never clears (it stalls nothing), a GIF path left active (a
-packet that ends without EOP) and a FIFO that does not drain do not count: the menu's own packets start with FLUSHA,
-and a draw that cannot get through ends in mint green. Every interrupt of the game is held for the pause (its GS,
-VIF1 and DMA completions too, as RIPPS2 holds them), so a game whose handlers start one transfer after another cannot
-keep the channels busy while the menu waits.
+code's interrupt bit, a stop or a break) or reading back, so the menu will not draw over them and the combination
+does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made once per press, inside the menu.
+Every interrupt of the game is held for the pause (its GS, VIF1 and DMA completions too, as RIPPS2 holds them), so a
+game whose handlers start one transfer after another cannot keep the channels busy while the menu waits.
 
 Report the colour with the game's ID and the device it runs from. No blink at all with Debug Colors on
-means the combination never reached the menu (check the list under *Nothing happens* first), or the game's
-transfers stayed busy and the game was given back, as the entry above describes: press the combination again to reset.
+means the combination never reached the menu (check the list under *Nothing happens* first).
 
 ---
 

@@ -676,7 +676,9 @@ int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, in
 #define IGRM_GIF_STAT  ((vu32 *)0x10003020)
 #define IGRM_VIF1_STAT ((vu32 *)0x10003c00)
 #define CHCR_STR       0x100
+#define IGRM_D2_CHCR   ((vu32 *)0x1000a000)
 #define VIF_FQC        0x1f000000
+#define VIF_STALLED    0x00800f00 // FDR (the FIFO turned towards the EE), VSS, VFS, VIS, INT
 #define GIF_BUSY       0x1f000c00 // FQC and APATH
 
 #define VIF_NOP                       0
@@ -943,7 +945,10 @@ int IGR_MenuRun(u16 (*buttons)(void))
     frameHeld = igrmFindFrame();
     if (!frameHeld)
         return IGR_MENU_NO_FRAME;
-    // the game's own transfers already finished: the IGR thread waited for them (padhook.c IGR_WaitIdle)
+    // the game's own transfers finish first; a VIF1 stalled on an interrupt the pause holds cannot take ours
+    // (RIPPS2 build 129's check, here as there)
+    if (!igrmWaitClear(IGRM_D1_CHCR, CHCR_STR) || !igrmWaitClear(IGRM_D2_CHCR, CHCR_STR) || (*IGRM_VIF1_STAT & VIF_STALLED))
+        return IGR_MENU_GS_BUSY;
     bpc = igrmBpcOff();
     // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
     if (frameHeld == 2) {
