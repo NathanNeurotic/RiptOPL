@@ -341,15 +341,20 @@ static void IGR_CheckInputs(void)
 
             // Combo R1 + L1 + R2 + L2
             if (pad_pos_combo1 == IGR_COMBO_R1_L1_R2_L2) {
-                // Combo Start + Select, R3 + L3 or UP
-                if ((pad_pos_combo2 == IGR_COMBO_START_SELECT) || // Start + Select combo, so reset
-                    (pad_pos_combo2 == IGR_COMBO_R3_L3)           // R3 + L3 combo, so poweroff
-#ifdef IGS
-                    || ((pad_pos_combo2 == IGR_COMBO_UP) && (config->EnableGSMOp)) // UP combo, so take IGS
-#endif
-                )
-
+                if (config->IgrAltCombo) {
+                    // Alternative combo (#416): R3 + L3 resets, Start + Select is left to the game, and the
+                    // pad has no power off (the in-game menu and the power button still have it).
+                    if (pad_pos_combo2 == IGR_COMBO_R3_L3)
+                        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                }
+                // Combo Start + Select or R3 + L3
+                else if ((pad_pos_combo2 == IGR_COMBO_START_SELECT) || // Start + Select combo, so reset
+                         (pad_pos_combo2 == IGR_COMBO_R3_L3))          // R3 + L3 combo, so poweroff
                     Pad_Data.combo_type = pad_pos_combo2;
+#ifdef IGS
+                if ((pad_pos_combo2 == IGR_COMBO_UP) && (config->EnableGSMOp)) // UP combo, so take IGS
+                    Pad_Data.combo_type = pad_pos_combo2;
+#endif
             }
         }
     }

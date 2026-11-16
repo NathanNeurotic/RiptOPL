@@ -2576,12 +2576,22 @@ int saveConfig(int types, int showUI)
                                  (path != NULL && !strncmp(path, "pfs", 3) && gOPLPart[0] != '\0');
 
             // pfs0: is only the transient mount name. For every successful HDD save, show the
-            // physical APA/PFS owner the user can actually find in a partition browser.
+            // physical APA/PFS owner the user can actually find in a partition browser, with the
+            // folder the file went to inside it (#429): pfs0:OPL/ on __common, pfs0:/CFG, pfs0:.
+            char physicalHome[96];
             if (savedOnHddHome && !gLastSaveWasStagedOplHome) {
-                if (!strcmp(gOPLPart, "hdd0:__common"))
-                    displayHome = "hdd0:__common/OPL";
+                const char *rel = strchr(configGetHomePath(), ':'); // configGetDir() is the device only
+                rel = rel ? rel + 1 : "";
+                while (*rel == '/')
+                    rel++;
+                int relLen = (int)strlen(rel);
+                while (relLen > 0 && rel[relLen - 1] == '/')
+                    relLen--;
+                if (relLen > 0)
+                    snprintf(physicalHome, sizeof(physicalHome), "%s/%.*s", gOPLPart, relLen, rel);
                 else
-                    displayHome = gOPLPart;
+                    snprintf(physicalHome, sizeof(physicalHome), "%s", gOPLPart);
+                displayHome = physicalHome;
             }
 
             if (gHddSettingsFallbackNotice || (!gLastSaveWasStagedOplHome && gBootHddCommonFallback && savedOnHddHome))

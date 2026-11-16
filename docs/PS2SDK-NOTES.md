@@ -129,14 +129,11 @@ violation could go to ps2sdk on its own; the read-only limit is OPL's choice.
   share modes (Windows, Samba).
 - **Our change:** a menu read shares read and write (`0x03`), as our SMB2 driver does. A menu write still shares
   read only. The in-game SMBv1 driver opens game images read-only with deny-none (`0x40`), and opens
-  writable VMC files with deny-write (`0x22`: read/write access plus `0x20` sharing mode). This
-  lets the menu read a VMC while another session has it open without granting two consoles write
-  access to the same card.
-- **VMC safety limitation:** two consoles must not write to the same VMC simultaneously. A server
-  still holding the previous session's VMC writer open can refuse a new writer until that
-  session expires or is released. That temporary refusal is intentional: permitting a second
-  writer could interleave page writes and corrupt saves. Retry after server session cleanup;
-  do not bypass the writer exclusion.
+  VMC files read/write in compatibility mode (`2`), as upstream OPL does.
+- **Deny-write was tried and backed out:** opening the VMC with deny-write (`0x22`) made the server
+  refuse it while it still held the console's own VMC handle from a session that ended mid-game.
+  The game then reported no memory card at random ([RiptOPL #418](https://github.com/NathanNeurotic/RiptOPL/issues/418),
+  reported after #420). That stale handle belongs to a dead session and can never write again.
 - **Evidence:** code reading and [`test_smb1_vmc_share.py`](../.github/scripts/test_smb1_vmc_share.py),
   which checks the sources only. Not tested on PCSX2 or hardware.
 

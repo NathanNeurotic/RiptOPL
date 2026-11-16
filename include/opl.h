@@ -192,7 +192,8 @@ enum { NEUTRINO_DEV_AUTO = 0, // game device, then mc0/mc1
 extern int gNeutrinoDevice;
 extern int gDefaultCoreLoader;
 extern int gAutoCreateVmc;
-extern int gIgrMenu; // the in-game menu (ee_core igrmenu.c), off by default; not in RetroAchievements editions
+extern int gIgrAltCombo; // IGR on L1+L2+R1+R2+L3+R3 instead of +Start+Select, off by default (#416)
+extern int gIgrMenu;     // the in-game menu (ee_core igrmenu.c), off by default; not in RetroAchievements editions
 extern int gNeutrinoVideoDefault;
 extern int gNeutrinoGsmCompDefault;
 extern int gNeutrinoElfArg;

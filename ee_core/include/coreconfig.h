@@ -116,6 +116,9 @@ struct EECoreConfig_t
     int IgrMenu;
     int IgrConfirmCircle;
     void *IgrCheats;
+    /* IgrAltCombo (#416): L1+L2+R1+R2+L3+R3 leaves the game instead of powering off, and
+       L1+L2+R1+R2+Start+Select is left to the game. 0: the usual combos. */
+    int IgrAltCombo;
 #ifdef RETROACHIEVEMENTS
     /* The menu's ACHIEVEMENTS page (RIPPS2 build 94), RA editions: RA/<startup>.ach as the launch found it.
        IgrRaTotal achievements, IgrRaUnlocked of them unlocked (0 total: no list). IgrRaHunt: IgrRaHuntCount of the
