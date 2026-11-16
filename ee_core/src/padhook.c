@@ -451,6 +451,7 @@ static void IGR_Thread(void *arg)
             // paused runs this handler at once, and must not pause it again before it has run at all
             IGR_ResumeGame();
             IGR_MenuOpen = 0;
+            ChangeThreadPriority(IGR_Thread_ID, 127); // back under the game's threads, as RIPPS2 build 129
             continue;
         }
         // EXIT GAME, POWER OFF, the power button, or a frame the menu could not draw on: what the combo did
