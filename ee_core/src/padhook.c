@@ -618,8 +618,8 @@ static void IGR_Thread(void *arg)
         // restarted, the GS trap off. GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and
         // growing it costs the stack
         if (choice >= IGR_MENU_CANNOT_DRAW) {
-            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00, 0x00FFFF}; // grey, purple, mint, yellow
-            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = game's transfers busy, grey = no menu");
+            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00, 0x00FFFF, 0xFF0000, 0x0000FF, 0xFFFFFF}; // grey, purple, mint, yellow, blue, red, white
+            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = channel 1 busy, blue = channel 2 busy, red = VIF1 stalled on an interrupt, white = VIF1 stopped, grey = no menu");
         }
 #endif
 

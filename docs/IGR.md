@@ -240,13 +240,17 @@ before the loader comes back. Every colour but grey shows with or without **Debu
 |---|---|
 | **Purple** | The game's picture is in a format or size the panel cannot use |
 | **Mint green** | The first page was composed but VIF1 did not take it |
-| **Yellow** | The game's own drawing transfers did not finish while it was paused, or its VIF1 was stopped or reading back |
+| **Yellow** | The game's channel 1 (VIF1) transfer did not finish while it was paused |
+| **Blue** | Channel 1 was idle, but the game's channel 2 (GIF) transfer did not finish |
+| **Red** | Both channels were idle, but VIF1 was stalled on a VIF code's interrupt bit that the game had not cleared |
+| **White** | Both channels were idle, but the game had stopped VIF1 (a stop or a break) or left it reading back |
 | **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above). Only with **Debug Colors** on, and before the reset, not at its end |
 
-**In-Game Menu is on, the picture freezes for a moment and the game resets (yellow blinks).**
+**In-Game Menu is on, the picture freezes for a moment and the game resets (yellow, blue, red or white blinks).**
 The game's channel 1 or 2 transfers did not finish while it was paused, or its VIF1 stayed stopped (on a VIF
 code's interrupt bit, a stop or a break) or reading back, so the menu will not draw over them and the combination
-does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made once per press, inside the menu.
+does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made once per press, inside the menu;
+the four colours say which of its conditions the game met.
 Every interrupt of the game is held for the pause (its GS, VIF1 and DMA completions too, as RIPPS2 holds them), so a
 transfer that needs one of them to go on cannot end once the game is paused. The pause is therefore taken, with the
 game still running and the combination held, on a frame at which channels 1 and 2 are stopped, after 2 seconds at most;

@@ -679,6 +679,7 @@ int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, in
 #define IGRM_D2_CHCR   ((vu32 *)0x1000a000)
 #define VIF_FQC        0x1f000000
 #define VIF_STALLED    0x00800f00 // FDR (the FIFO turned towards the EE), VSS, VFS, VIS, INT
+#define VIF_INT_STALL  0x00000c00 // VIS, INT: stalled on an interrupt VIFcode, which the game's handler has not cleared
 #define GIF_BUSY       0x1f000c00 // FQC and APATH
 
 #define VIF_NOP                       0
@@ -946,9 +947,14 @@ int IGR_MenuRun(u16 (*buttons)(void))
     if (!frameHeld)
         return IGR_MENU_NO_FRAME;
     // the game's own transfers finish first; a VIF1 stalled on an interrupt the pause holds cannot take ours
-    // (RIPPS2 build 129's check, here as there)
-    if (!igrmWaitClear(IGRM_D1_CHCR, CHCR_STR) || !igrmWaitClear(IGRM_D2_CHCR, CHCR_STR) || (*IGRM_VIF1_STAT & VIF_STALLED))
+    // (RIPPS2 build 129's check, here as there: the same three conditions in the same order, but each leaves with
+    // its own answer, so the blink says which one a console met)
+    if (!igrmWaitClear(IGRM_D1_CHCR, CHCR_STR))
         return IGR_MENU_GS_BUSY;
+    if (!igrmWaitClear(IGRM_D2_CHCR, CHCR_STR))
+        return IGR_MENU_D2_BUSY;
+    if (*IGRM_VIF1_STAT & VIF_STALLED)
+        return (*IGRM_VIF1_STAT & VIF_INT_STALL) ? IGR_MENU_VIF_INT : IGR_MENU_VIF_STOPPED;
     bpc = igrmBpcOff();
     // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
     if (frameHeld == 2) {

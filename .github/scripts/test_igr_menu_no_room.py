@@ -146,10 +146,11 @@ if not re.search(r'#ifdef IGR_MENU\n\s*wake:\n#endif\n\s*iChangeThreadPriority\(
     failures.append('padhook.c IGR_Intc_Handler: the wake the menu\'s pause jumps to was not found')
 
 # The check is RIPPS2's, in the menu: channels 1 and 2 end, then VIF1 neither stopped (VSS, VFS, VIS, INT) nor reading
-# back (FDR). A game that fails it leaves as the combo did before, with Debug Colors' yellow (docs/IGR.md)
+# back (FDR). A game that fails it leaves as the combo did before, with a blink that says which of them (docs/IGR.md)
 igrmenu = (root / 'ee_core/src/igrmenu.c').read_text(encoding='utf-8')
-if not re.search(r'if \(!igrmWaitClear\(IGRM_D1_CHCR, CHCR_STR\) \|\| !igrmWaitClear\(IGRM_D2_CHCR, CHCR_STR\) \|\| '
-                 r'\(\*IGRM_VIF1_STAT & VIF_STALLED\)\)\s*return IGR_MENU_GS_BUSY;', igrmenu) or \
+if not re.search(r'if \(!igrmWaitClear\(IGRM_D1_CHCR, CHCR_STR\)\)\s*return IGR_MENU_GS_BUSY;\s*'
+                 r'if \(!igrmWaitClear\(IGRM_D2_CHCR, CHCR_STR\)\)\s*return IGR_MENU_D2_BUSY;\s*'
+                 r'if \(\*IGRM_VIF1_STAT & VIF_STALLED\)\s*return ', igrmenu) or \
         not re.search(r'#define VIF_STALLED +0x00800f00', igrmenu):
     failures.append('igrmenu.c IGR_MenuRun: RIPPS2 build 129\'s idle check (channels 1 and 2, VIF1 0x00800f00) was not found')
 
