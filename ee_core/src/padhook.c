@@ -120,11 +120,11 @@ extern void *_end;
   pad buffer the menu reads. RESUME gives everything back; any other way out goes on to the IGR below, as before.
 */
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
+#define IGR_VIF1_STAT ((vu32 *)0x10003c00)
 #define IGR_INTC_SBUS 1
 static volatile int IGR_MenuOpen = 0;
-static int IGR_MenuRearm = 1;          // once per press: a menu closed at once must not reopen
-static int IGR_MenuWant, IGR_MenuWait; // a press waiting for a VBLANK with the game's transfers idle, VBLANKs waited
-static u32 IGR_MenuWhy;                // the colour IGR_Thread blinks for a menu that could not open (0: none)
+static int IGR_MenuRearm = 1; // once per press: a menu closed at once must not reopen
+static int IGR_MenuWait;      // VBLANKs a held combo has waited for the game's transfers to be idle
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 static const u8 IGR_DmacHeld[] = {0, 1, 2, 3, 4, 8, 9}; // never SIF 5-7
 
@@ -150,14 +150,6 @@ static u16 IGR_PadButtons(void)
     if (!((Pad_Data.libpad == IGR_LIBPAD && state == IGR_PAD_STABLE_V1) || (Pad_Data.libpad == IGR_LIBPAD2 && state == IGR_PAD_STABLE_V2)))
         return 0;
     return ~(b[Pad_Data.pos_combo2] | b[Pad_Data.pos_combo1] << 8) & 0xFFFF;
-}
-
-// VBLANK handler, the game still running: no transfer of the game's to the GS is under way (ORBIT's Box_Drawable,
-// danielnuld/ps2-launcher third_party/neutrino-igr/menu.c). Channels 1 and 2 stopped, the VIF1 FIFO empty, the GIF
-// with no FIFO data and no active path
-static int IGR_MenuDrawable(void)
-{
-    return !((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) && !(*(vu32 *)0x10003c00 & 0x1f000000) && !(*(vu32 *)0x10003020 & 0x1f000c00);
 }
 
 // interrupt handler context: every interrupt of the game waits, its GS, VIF1 and DMA completions too, the SIF's do not.
@@ -439,6 +431,9 @@ static void IGR_StopDmaAndGs(void)
 static void IGR_Thread(void *arg)
 {
     USE_LOCAL_EECORE_CONFIG;
+#ifdef IGR_MENU
+    int choice = 0; // what the menu answered: kept for the blink of a menu that could not open, further down
+#endif
 
     // Wait for the VBLANK_END handler, which latches the request, stops DMA/GS, suspends every
     // other thread and raises this one to priority 0 before waking it. Recheck the latch so a stray
@@ -447,8 +442,6 @@ static void IGR_Thread(void *arg)
     // With In-Game Menu on the handler wakes this thread for the menu too (IGR_MenuOpen), with the game's
     // interrupts held but nothing stopped; RESUME sends it back to sleep. Any other way out goes on below.
     for (;;) {
-        int choice;
-
         while (Pad_Data.combo_type == 0x00 && !IGR_MenuOpen)
             SleepThread();
         if (!IGR_MenuOpen)
@@ -468,14 +461,9 @@ static void IGR_Thread(void *arg)
         // before. ResetEE leaves the DMAC alone (0x7E, not 0x7F): a SIF transfer in flight would stick (ORBIT)
         IGR_StopDmaAndGs();
         ResetEE(0x7E);
-        // Why the menu did not open (docs/IGR.md), blinked further down, once the IOP is back: three blinks here, between
-        // ResetEE and the SIF's new start, are 3 s the plain combo never spends there, and a console hung in them
-        // (Dirge of Cerberus). GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and growing
-        // it costs the stack
-        if (choice >= IGR_MENU_CANNOT_DRAW) {
-            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00, 0x00FFFF}; // grey, purple, mint, yellow
-            IGR_MenuWhy = why[choice - IGR_MENU_CANNOT_DRAW];
-        }
+        // Why the menu did not open is blinked further down, once the IOP is back: three blinks here, between ResetEE
+        // and the SIF's new start, are 3 s the plain combo never spends there, and a console hung with them (Dirge of
+        // Cerberus)
         Pad_Data.combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
         break;
     }
@@ -621,10 +609,14 @@ static void IGR_Thread(void *arg)
 #endif
 
 #ifdef IGR_MENU
-        // With or without Debug Colors: the combo otherwise looks exactly like the menu being off. Here, where the
-        // screenshot's own colours have always been shown: the IOP is back, the SIF restarted, the GS trap off
-        if (IGR_MenuWhy)
-            DBGCOL_BLNK(3, IGR_MenuWhy, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = game's transfers busy, grey = no menu");
+        // Why the menu did not open (docs/IGR.md), with or without Debug Colors: the combo otherwise looks exactly like
+        // the menu being off. Here, where the screenshot's own colours have always been shown: the IOP is back, the SIF
+        // restarted, the GS trap off. GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and
+        // growing it costs the stack
+        if (choice >= IGR_MENU_CANNOT_DRAW) {
+            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00, 0x00FFFF}; // grey, purple, mint, yellow
+            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = game's transfers busy, grey = no menu");
+        }
 #endif
 
         if (EnableDebug)
@@ -682,27 +674,26 @@ static int IGR_Intc_Handler(int cause)
     // button pressed twice, and the PC's reset (RAR1), still leave at once.
     if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && !Power_Button.press && !IGR_FROM_PC) {
         Pad_Data.combo_type = 0x00;
-        if (IGR_MenuRearm && !IGR_MenuOpen && !IGR_MenuWant) { // once per press: a menu closed at once must not reopen
+        // once per press: a menu closed at once must not reopen. The pause is taken on a VBLANK at which RIPPS2 build
+        // 129's check in the menu already holds, the game still running: channels 1 and 2 stopped, VIF1 neither stalled
+        // nor reading back. Paused at once, a transfer that needs one of the held interrupts to go on never ends, and
+        // the menu leaves with the plain reset (Dirge of Cerberus on a console: yellow). The combo is held meanwhile;
+        // after 120 busy VBLANKs the pause comes anyway and the menu's check decides (ORBIT's menu waits like this)
+        if (IGR_MenuRearm && !IGR_MenuOpen &&
+            (!(((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*IGR_VIF1_STAT & 0x00800f00)) || ++IGR_MenuWait > 120)) {
+            IGR_MenuOpen = 1;
             IGR_MenuRearm = 0;
-            IGR_MenuWant = 1;
-            IGR_MenuWait = 0;
+            IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
+            iChangeThreadPriority(IGR_Thread_ID, 0);
+            iWakeupThread(IGR_Thread_ID);
         }
     } else if (Pad_Data.combo_type == 0x00) {
         IGR_MenuRearm = 1;
+        IGR_MenuWait = 0;
 #ifdef RETROACHIEVEMENTS
         // No request left, so no PC mark: in disc mode the pad's R3 + L3 can replace the PC's request and be dropped
         IGR_PcReset = 0;
 #endif
-    }
-    // The pause waits for a VBLANK at which the game's transfers are idle, 2 s at most and then anyway (ORBIT's
-    // box_want). Paused at once, a transfer that needs one of the held interrupts to go on never ends, and the menu's
-    // check leaves with the plain reset (Dirge of Cerberus on a console: yellow)
-    if (IGR_MenuWant && Pad_Data.combo_type == 0x00 && (IGR_MenuDrawable() || ++IGR_MenuWait > 120)) {
-        IGR_MenuWant = 0;
-        IGR_MenuOpen = 1;
-        IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
-        iChangeThreadPriority(IGR_Thread_ID, 0);
-        iWakeupThread(IGR_Thread_ID);
     }
 #endif
 
