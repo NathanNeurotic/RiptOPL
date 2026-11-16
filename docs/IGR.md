@@ -233,9 +233,8 @@ in normal play can trigger IGR by accident. Set **Mode 6 — Disable IGR** for t
 
 **In-Game Menu is on, but the combination leaves the game instead of pausing it.** The menu only opens
 when it can draw into the picture the game is showing; when it cannot, the combination falls back to the
-plain reset, as described above. To see which step refused, turn on **Debug Colors** for that game
-(*Game Settings*), start it, and press the combination. The screen blinks the reason three times before
-the usual reset colours:
+plain reset, as described above. The screen blinks the reason three times before the reset goes on, with
+or without **Debug Colors**:
 
 | Blink | Meaning |
 |---|---|
@@ -244,15 +243,15 @@ the usual reset colours:
 | **Yellow** | The game's own drawing transfers did not finish while it was paused, or its VIF1 was stopped or reading back |
 | **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above) |
 
-**In-Game Menu is on, the picture freezes for a moment and the game resets (yellow with Debug Colors).**
+**In-Game Menu is on, the picture freezes for a moment and the game resets (yellow blinks).**
 The game's channel 1 or 2 transfers did not finish while it was paused, or its VIF1 stayed stopped (on a VIF
 code's interrupt bit, a stop or a break) or reading back, so the menu will not draw over them and the combination
 does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made once per press, inside the menu.
 Every interrupt of the game is held for the pause (its GS, VIF1 and DMA completions too, as RIPPS2 holds them), so a
 game whose handlers start one transfer after another cannot keep the channels busy while the menu waits.
 
-Report the colour with the game's ID and the device it runs from. No blink at all with Debug Colors on
-means the combination never reached the menu (check the list under *Nothing happens* first).
+Report the colour with the game's ID and the device it runs from. No blink at all means the combination
+never reached the menu: the launch had In-Game Menu off (or Mode 6 set) for that game.
 
 ---
 
