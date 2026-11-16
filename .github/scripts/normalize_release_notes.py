@@ -22,7 +22,7 @@ def description(name):
         return "Source code snapshot."
     for prefix, text in (
         ("RIPTOPL-RetroAchievements-", "Full RetroAchievements kit: loader, artwork, PSU and shared cores; requires xeRAbora v1.0.1 or alpha.17+."),
-        ("RIPTOPL-RA-VARIANTS", "RetroAchievements loader with pad emulation off."),
+        ("RIPTOPL-RA-VARIANTS", "RetroAchievements loader with pad emulation off, and the RA loaders unpacked."),
         ("RIPTOPL-RA-", "RetroAchievements package."),
         # Current bundles are RIPTOPL-VARIANTS.zip/RIPTOPL-DEBUG.zip; older ones carried a version suffix.
         ("RIPTOPL-VARIANTS", "Alternative loaders with extra features, controller emulation and DualSense support."),

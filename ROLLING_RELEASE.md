@@ -113,7 +113,8 @@ theme: one folder per configuration with its RIPTOPL.ELF and manifest, each chec
 channel kit's commit and SDK components. They also carry `RIPTOPL-BUGREPORT.zip`, the channel's
 diag build before compression, with a README on what to send (see
 [Launch diagnostics](docs/LAUNCH-DIAGNOSTICS.md#bug-report-build)).
-The RetroAchievements channel also carries `RIPTOPL-RA-VARIANTS.zip` (pademu0) and the
+The RetroAchievements channel also carries `RIPTOPL-RA-VARIANTS.zip` (pademu0, plus the standard and
+pademu0 RA loaders unpacked in `standard-unpacked/` and `pademu0-unpacked/`) and the
 IncebtIon-theme kit as `RIPTOPL-RetroAchievements-IncebtIon.zip`, `RIPTOPL-RA-IncebtIon.ELF`,
 `APP_RIPTOPL-RA-IncebtIon.psu` and `RIPTOPL-RA-VARIANTS-IncebtIon.zip`; inside that kit the app is
 still `APP_RIPTOPL-RA`.
