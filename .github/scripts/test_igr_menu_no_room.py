@@ -310,8 +310,8 @@ static int EnableIntc(int cause) { (void)cause; return 0; }
 @INSTALL@
 #ifdef IGR_MENU
 static volatile int IGR_MenuOpen;
-#define IGR_MENU_WAIT 120
-static int IGR_MenuTried, held, wakes;
+#define IGR_MENU_ARMED 121
+static int IGR_MenuRearm, held, wakes;
 // The registers the handler waits on: channel 1 and 2 CHCR (STR 0x100)
 static unsigned int d1chcr, d2chcr;
 #define R_EE_D1_CHCR (&d1chcr)
@@ -356,7 +356,7 @@ int main(void)
         Power_Button.press = frames[i].power;
         Pad_Data.combo_type = frames[i].combo;
         IGR_MenuOpen = 0;
-        IGR_MenuTried = 0;
+        IGR_MenuRearm = IGR_MENU_ARMED;
         wakes = held = 0;
 #ifdef HAS_PC_FLAG
         IGR_PcReset = 0;
@@ -382,7 +382,7 @@ int main(void)
         g_config.IgrMenu = 1;
         Power_Button.press = 0;
         IGR_MenuOpen = 0;
-        IGR_MenuTried = 0;
+        IGR_MenuRearm = IGR_MENU_ARMED;
         wakes = held = 0;
 #ifdef HAS_PC_FLAG
         IGR_PcReset = 0;
@@ -393,11 +393,11 @@ int main(void)
             pauses += IGR_MenuOpen;
             IGR_MenuOpen = 0;
         }
-        CHECK(pauses == 1 && wakes == 1 && held == 1 && IGR_MenuTried > IGR_MENU_WAIT,
-              "one press pauses the game once (%d pauses, %d wakes, %d waited)", pauses, wakes, IGR_MenuTried);
+        CHECK(pauses == 1 && wakes == 1 && held == 1 && IGR_MenuRearm == 0,
+              "one press pauses the game once (%d pauses, %d wakes, %d left)", pauses, wakes, IGR_MenuRearm);
         Pad_Data.combo_type = 0; // let go
         handler();
-        CHECK(IGR_MenuTried == 0, "letting the combo go gives the next press its pause back");
+        CHECK(IGR_MenuRearm == IGR_MENU_ARMED, "letting the combo go gives the next press its pause back");
         Pad_Data.combo_type = IGR_COMBO_START_SELECT;
         handler();
         CHECK(IGR_MenuOpen && wakes == 2, "the next press pauses again");
@@ -474,7 +474,7 @@ int main(void)
         g_config.IgrMenu = 1;
         Power_Button.press = 0;
         IGR_MenuOpen = 0;
-        IGR_MenuTried = 0;
+        IGR_MenuRearm = IGR_MENU_ARMED;
         wakes = held = 0;
         Pad_Data.combo_type = 0;
         IGR_PcReset = 0;

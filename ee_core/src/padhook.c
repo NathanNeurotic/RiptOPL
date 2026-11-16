@@ -122,11 +122,12 @@ extern void *_end;
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
 #define IGR_INTC_SBUS 1
 static volatile int IGR_MenuOpen = 0;
-// Once per press: a menu closed at once must not reopen. Counts the VBLANKs the held combo has waited for the game's
-// transfers to stop (2 s of them at most); past that the press has had its pause. 0 at rest, so that it stays in .bss:
-// one more word of .data crosses a 128-byte boundary and costs Korium's LLVM build its stack
-#define IGR_MENU_WAIT 120
-static int IGR_MenuTried;
+// Once per press: a menu closed at once must not reopen. Not 0: the press may still take its pause, and counts down
+// the VBLANKs the held combo waits for the game's transfers to stop (2 s of them). Not initialised here, so that it
+// stays in .bss (one more word of .data costs Korium's LLVM build 128 bytes of stack): the handler arms it on every
+// VBLANK without a request, the first of which comes long before a pad is read
+#define IGR_MENU_ARMED 121
+static int IGR_MenuRearm;
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 static const u8 IGR_DmacHeld[] = {0, 1, 2, 3, 4, 8, 9}; // never SIF 5-7
 
@@ -680,15 +681,15 @@ static int IGR_Intc_Handler(int cause)
         // a transfer that needs one of the held interrupts to go on never ends, and the menu's check (RIPPS2 build
         // 129's) leaves with the plain reset (Dirge of Cerberus on a console: yellow). The combo is held meanwhile;
         // after 2 s of busy VBLANKs the pause comes anyway and that check decides (ORBIT's menu waits like this)
-        if (IGR_MenuTried <= IGR_MENU_WAIT && !IGR_MenuOpen && (!((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) || ++IGR_MenuTried > IGR_MENU_WAIT)) {
+        if (IGR_MenuRearm && !IGR_MenuOpen && (!((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) || IGR_MenuRearm-- == 1)) {
             IGR_MenuOpen = 1;
-            IGR_MenuTried = IGR_MENU_WAIT + 1;
+            IGR_MenuRearm = 0;
             IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
             iChangeThreadPriority(IGR_Thread_ID, 0);
             iWakeupThread(IGR_Thread_ID);
         }
     } else if (Pad_Data.combo_type == 0x00) {
-        IGR_MenuTried = 0;
+        IGR_MenuRearm = IGR_MENU_ARMED;
 #ifdef RETROACHIEVEMENTS
         // No request left, so no PC mark: in disc mode the pad's R3 + L3 can replace the PC's request and be dropped
         IGR_PcReset = 0;
