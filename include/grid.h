@@ -93,6 +93,15 @@ static inline int gridLayoutPreset(int layout, int wide, grid_layout_t *out)
     return 1;
 }
 
+// The Grid (7x2) view pick (themeviews.h): RIPPS2's page of 7 x 2 covers, one fixed shape that Grid Layout never
+// changes, so the two cannot disagree. 16:9 takes the 7 x 2 cell Grid Layout's 5 x 2 preset has there; 4:3 the
+// same seven columns, smaller.
+static inline void gridCompactShape(int wide, grid_layout_t *out)
+{
+    static const grid_layout_t sd = {7, 2, 72, 103, 8}, hd = {7, 2, 96, 135, 10};
+    *out = wide ? hd : sd;
+}
+
 // Is index in the page's first column? Left there opens the device sidebar.
 static inline int gridAtRowStart(int count, int index, int columns)
 {

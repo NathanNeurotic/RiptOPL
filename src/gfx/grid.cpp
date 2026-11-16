@@ -29,6 +29,7 @@
  * the right stick turns over to its back cover, and the devices in a sidebar on the left. */
 
 int gGridLayout = 0;      // Settings > Interface > Coverflow Settings > Grid Layout (grid.h, gridLayoutPreset)
+int gGridCompact = 0;     // the Grid (7x2) view pick (themeviews.h, gridCompactShape); Grid Layout leaves it alone
 int gGridSidebarOpen = 0; // menusys gives the device sidebar the pad; only set while a Grid page with a sidebar is on screen
 
 #define GRID_SLIDE_SCALE 8 // the page slide lasts Coverflow's Animation Speed x 8/5 (Normal: 320 ms, RIPPS2's)
@@ -644,9 +645,13 @@ void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, 
         rows = gridKeyInt(themeConfig, name, "rows", rows);
         columns = gridKeyInt(themeConfig, name, "columns", columns);
         spacing = gridKeyInt(themeConfig, name, "spacing", spacing);
-        // Grid Layout: RIPPS2's pages of covers in place of the theme's, a wider twin on a 16:9 picture.
+        // Grid (7x2): its own fixed shape. Else Grid Layout: RIPPS2's pages of covers in place of the theme's, a
+        // wider twin on a 16:9 picture.
         grid_layout_t preset;
-        if (gridLayoutPreset(gGridLayout, theme->layoutWide, &preset)) {
+        theme->gridCompact = gGridCompact != 0;
+        if (theme->gridCompact)
+            gridCompactShape(theme->layoutWide, &preset);
+        if (theme->gridCompact || gridLayoutPreset(gGridLayout, theme->layoutWide, &preset)) {
             rows = preset.rows;
             columns = preset.columns;
             spacing = preset.spacing;

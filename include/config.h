@@ -229,6 +229,7 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_COVERFLOW_ANIM       "coverflow_anim"
 #define CONFIG_OPL_COVERFLOW_DIM        "coverflow_dim"
 #define CONFIG_OPL_GRID_LAYOUT          "grid_layout"
+#define CONFIG_OPL_GRID_COMPACT         "grid_compact" // 1: the Grid view draws as Grid (7x2); absent = 0, the Grid pick
 
 // RetroAchievements keys. Placed AFTER the block above, not inside it: an #ifdef in the middle
 // of a run of #defines splits clang-format's alignment group and reflows every line above it.

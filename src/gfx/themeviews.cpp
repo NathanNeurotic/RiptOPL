@@ -172,13 +172,24 @@ int thmViewChoose(const thm_view_info_t *info, int requested)
     return info->defaultView;
 }
 
-static const signed char pickViews[THM_VIEW_PICK_COUNT] = {-1, THM_VIEW_LIST, THM_VIEW_COVERFLOW, THM_VIEW_COVERFLOW, THM_VIEW_PSBBN, THM_VIEW_GRID};
-static const signed char pickCovers[THM_VIEW_PICK_COUNT] = {0, 0, 3, 5, 0, 0};
+static const signed char pickViews[THM_VIEW_PICK_COUNT] = {-1, THM_VIEW_LIST, THM_VIEW_COVERFLOW, THM_VIEW_COVERFLOW, THM_VIEW_PSBBN, THM_VIEW_GRID, THM_VIEW_GRID};
+static const signed char pickCovers[THM_VIEW_PICK_COUNT] = {0, 0, 3, 5, 0, 0, 0};
+static const signed char pickCompact[THM_VIEW_PICK_COUNT] = {-1, -1, -1, -1, -1, 0, 1}; // -1: not a Grid pick
 
-int thmViewPickFor(int request, int coverCount)
+static void pickApply(int pick, int *coverCount, int *gridCompact)
+{
+    if (pickCovers[pick] != 0 && coverCount != NULL)
+        *coverCount = pickCovers[pick];
+    if (pickCompact[pick] >= 0 && gridCompact != NULL)
+        *gridCompact = pickCompact[pick];
+}
+
+int thmViewPickFor(int request, int coverCount, int gridCompact)
 {
     if (request == THM_VIEW_COVERFLOW)
         return coverCount == 5 ? THM_VIEW_PICK_COVERFLOW5 : THM_VIEW_PICK_COVERFLOW3;
+    if (request == THM_VIEW_GRID)
+        return gridCompact ? THM_VIEW_PICK_GRID_COMPACT : THM_VIEW_PICK_GRID;
     for (int p = THM_VIEW_PICK_LIST; p < THM_VIEW_PICK_COUNT; p++) {
         if (pickViews[p] == request)
             return p;
@@ -186,26 +197,24 @@ int thmViewPickFor(int request, int coverCount)
     return THM_VIEW_PICK_DEFAULT;
 }
 
-int thmViewPickRequest(int pick, int *coverCount)
+int thmViewPickRequest(int pick, int *coverCount, int *gridCompact)
 {
     if (pick <= THM_VIEW_PICK_DEFAULT || pick >= THM_VIEW_PICK_COUNT)
         return -1;
-    if (pickCovers[pick] != 0 && coverCount != NULL)
-        *coverCount = pickCovers[pick];
+    pickApply(pick, coverCount, gridCompact);
     return pickViews[pick];
 }
 
-int thmViewCycleNext(unsigned int mask, int view, int *coverCount)
+int thmViewCycleNext(unsigned int mask, int view, int *coverCount, int *gridCompact)
 {
     int covers = (coverCount != NULL && *coverCount == 5) ? 5 : 3;
-    int pick = thmViewPickFor(view, covers);
+    int pick = thmViewPickFor(view, covers, gridCompact != NULL && *gridCompact);
 
     for (int step = 1; step < THM_VIEW_PICK_COUNT - 1; step++) {
         // Picks 1..COUNT-1 form the ring; Default is not a stop.
         int p = (pick - 1 + step) % (THM_VIEW_PICK_COUNT - 1) + 1;
         if (mask & (1u << pickViews[p])) {
-            if (pickCovers[p] != 0 && coverCount != NULL)
-                *coverCount = pickCovers[p];
+            pickApply(p, coverCount, gridCompact);
             return pickViews[p];
         }
     }
