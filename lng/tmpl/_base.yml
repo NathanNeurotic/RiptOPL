@@ -2208,7 +2208,7 @@ gui_strings:
   string: Grid Layout
 
 - label: HINT_GRID_LAYOUT
-  string: "Covers per page in the Grid view: the theme's own, or 4 x 2, 5 x 2, 3 x 2 Large or 6 x 3 Compact (wider on a 16:9 picture)."
+  string: "Covers per page in the Grid view: the theme's own, or a preset. A 16:9 picture fits more columns, and each preset shows the shape it has on the picture now."
 
 - comment: Grid Layout's smallest covers, shown as "6 x 3 Compact".
   label: GRID_COMPACT

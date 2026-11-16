@@ -1908,11 +1908,19 @@ static void guiShowCoverflowConfig(void)
 
     diaSetInt(diaCoverflowConfig, COVERFLOW_CFG_DIM, gCoverflowDimCovers ? 1 : 0);
 
-    // Grid Layout (RIPPS2 build 91, akilluminati47): the theme's, or one of RIPPS2's pages of covers.
-    char large[48], compact[48];
-    snprintf(large, sizeof(large), "3 x 2 %s", _l(_STR_LARGE));
-    snprintf(compact, sizeof(compact), "6 x 3 %s", _l(_STR_GRID_COMPACT));
-    const char *gridLayouts[] = {_l(_STR_THEME), "4 x 2", "5 x 2", large, compact, NULL};
+    // Grid Layout (RIPPS2 build 91, akilluminati47): the theme's, or one of RIPPS2's pages of covers. Each preset is
+    // named by the shape it has on the picture now: "5 x 2" is 7 x 2 on a 16:9 picture (720p, 1080i, Widescreen).
+    static const int gridSuffix[GRID_LAYOUTS] = {-1, -1, _STR_LARGE, _STR_GRID_COMPACT};
+    char gridNames[GRID_LAYOUTS][48];
+    const char *gridLayouts[GRID_LAYOUTS + 2] = {_l(_STR_THEME)};
+    for (int i = 0; i < GRID_LAYOUTS; i++) {
+        grid_layout_t preset;
+        gridLayoutPreset(i + 1, rmIsWideDisplay(), &preset);
+        snprintf(gridNames[i], sizeof(gridNames[i]), "%d x %d%s%s", preset.columns, preset.rows, gridSuffix[i] < 0 ? "" : " ",
+                 gridSuffix[i] < 0 ? "" : _l(gridSuffix[i]));
+        gridLayouts[i + 1] = gridNames[i];
+    }
+    gridLayouts[GRID_LAYOUTS + 1] = NULL;
     diaSetEnum(diaCoverflowConfig, COVERFLOW_CFG_GRID_LAYOUT, gridLayouts);
     diaSetInt(diaCoverflowConfig, COVERFLOW_CFG_GRID_LAYOUT, gGridLayout);
     int keepLayout = gGridLayout;
