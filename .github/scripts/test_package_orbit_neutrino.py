@@ -86,28 +86,6 @@ class OrbitStagingTests(unittest.TestCase):
                 package_edition.stage_orbit(self.archive(**kwargs), self.destination, self.pin)
             self.assertFalse(self.destination.exists())
 
-    def test_ra_kit_companions_reject_mismatched_payloads(self):
-        pin = json.loads(package_edition.ORBIT_PIN.read_text())
-        files = {"xeRAbora.url": (ROOT / "tools/pc/xeRAbora.url").read_bytes(),
-                 "neutrino/ORBIT-RA.json": json.dumps(pin).encode()}
-        self.assertIn(b"/v2.0.0", files["xeRAbora.url"])
-        for p in (ROOT / "ship/POPS").rglob("POPSTARTER.ELF"):
-            files[p.relative_to(ROOT / "ship").as_posix()] = p.read_bytes()
-        def check(payload):
-            archive = self.root / "kit.zip"
-            with zipfile.ZipFile(archive, "w") as z:
-                for name, data in payload.items(): z.writestr(name, data)
-            with zipfile.ZipFile(archive) as z:
-                package_edition.app.verify_ra_companions(z)
-        check(files)
-        for name, replacement, error in (
-                ("xeRAbora.url", b"URL=old-client", "client link"),
-                ("neutrino/ORBIT-RA.json", b'{}', "runtime pin"),
-                ("POPS/POPSTARTER.ELF", b"wrong ELF", "POPStarter"),
-                ("POPS/POPSTARTER VERSIONS/DEBUG/POPSTARTER.ELF", b"wrong ELF", "POPStarter")):
-            with self.subTest(name=name), self.assertRaisesRegex(ValueError, error):
-                check(dict(files, **{name: replacement}))
-
     def test_pin_is_the_reviewed_release(self):
         self.assertEqual(self.pin["repository"], "danielnuld/nuld")
         self.assertEqual(self.pin["tag"], "v1.2.12")

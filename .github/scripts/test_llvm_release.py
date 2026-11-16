@@ -180,7 +180,6 @@ class RiptOPLLVMTests(unittest.TestCase):
                              "OPL-PS1-AIO-Converter-GUI.url", "PS2RD-CHT-Manager.url",
                              "udpfs-server.url"):
                     (root / "tools/pc" / name).write_text("[InternetShortcut]\\n", encoding="utf-8")
-                (root / "tools/pc/xeRAbora.url").write_bytes((ROOT / "tools/pc/xeRAbora.url").read_bytes())
                 for name in ("LICENSE", "CREDITS", "README.md"):
                     (root / name).write_text("test", encoding="utf-8")
                 (root / "third_party/mbedtls/LICENSE").write_text("Apache-2.0", encoding="utf-8")
@@ -254,8 +253,6 @@ class RiptOPLLVMTests(unittest.TestCase):
                 kit = out / ("RIPTOPL-" + EDITIONS[edition]["title"] + ".zip")
                 self.assertTrue(kit.is_file())
                 with zipfile.ZipFile(kit) as output:
-                    self.assertEqual(output.read("xeRAbora.url"), (ROOT / "tools/pc/xeRAbora.url").read_bytes())
-                    self.assertIn(b"direct-only", output.read("RA-COMPATIBILITY.txt"))
                     self.assertEqual(output.read("neutrino/modules/raagent.irx"), b"RA agent fixture")
                     self.assertEqual(output.read("neutrino/modules/iLinkman.irx"), modules["iLinkman.irx"])
                     self.assertEqual(output.read("neutrino/modules/IEEE1394_bd_mini.irx"),

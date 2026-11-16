@@ -1,8 +1,5 @@
 # RetroAchievements integration plan (RiptOPL)
 
-> Current compatibility follow-up: [xeRAbora 2.0.0 investigation, 2026-11-15](XERABORA-V2-INVESTIGATION-2026-11-15.md).
-> Existing integration approval and alpha.16 fixtures do not certify RAN2 support.
-
 > **Internal engineering document.** This is an implementation plan for contributors, not user
 > documentation. For how to *use* the feature, see [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md).
 

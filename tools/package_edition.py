@@ -59,7 +59,7 @@ def stage_orbit(archive, destination, pin):
         "NULD (formerly ORBIT) Neutrino RA runtime by Daniel (danielnuld), based on Neutrino by Maximus32\n"
         "and xeRAbora's protocol by hacan359. AFL-3.0; see LICENSE.\n"
         f"Source: https://github.com/{pin['repository']}/tree/{pin['source_commit']}/third_party/neutrino-igr\n"
-        "Pinned release and archive SHA-256: see ORBIT-RA.json.\n", encoding="utf-8", newline="\n")
+        "Pinned release and archive SHA-256: see ORBIT-RA.json.\n", encoding="utf-8")
     (destination / "RA-EDITION-NEUTRINO.txt").write_text(
         "THIS neutrino/ FOLDER BELONGS TO THE RIPTOPL RETROACHIEVEMENTS EDITION.\n"
         "\n"
@@ -70,7 +70,6 @@ def stage_orbit(archive, destination, pin):
         "\n"
         "Every Neutrino launch in the RA edition uses this runtime, so upstream changes made\n"
         "after Neutrino v1.8.0 (including Neutrino cheats) are not available here.\n"
-        "RA is direct-only, up to 1216 bytes; plans with pointer nodes launch untracked.\n"
         "\n"
         f"NULD (formerly ORBIT) Neutrino RA runtime {pin['tag']}: https://github.com/{pin['repository']}/releases/tag/{pin['tag']}\n", encoding="utf-8")
 
@@ -182,18 +181,7 @@ def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
         for target, source in shortcuts.items():
             shutil.copyfile(ROOT / "tools/pc" / source, kit / target)
         if options["ra"]:
-            shutil.copyfile(ROOT / "tools/pc/xeRAbora.url", kit / "xeRAbora.url")
-            (kit / "RA-COMPATIBILITY.txt").write_text(
-                "Use xeRAbora v2.0.0 or PS2-Servers' explicit RAN2 setting.\n"
-                "Update host and console, then recheck every played game's support.\n"
-                "OPL and USB POPS use RiptOPL's RAN2 readers. POPS uses the bundled\n"
-                "POPStarter; rapops/rapull are embedded in the RA loader, and its\n"
-                "MODULE_9.IRX is generated per tracked USB VCD launch. Do not reuse\n"
-                "another game's generated module. Other PS1 routes remain untracked.\n"
-                "The bundled NULD Neutrino runtime is direct-only, at most 1216 bytes.\n"
-                "Plans requiring pointer nodes launch untracked with a warning.\n"
-                "Keep this RA neutrino folder paired with the RA edition.\n"
-                "Console/gameplay acceptance of this migration remains pending.\n", encoding="utf-8")
+            (kit / "xeRAbora.url").write_text("[InternetShortcut]\nURL=https://github.com/hacan359/xerabora/releases/tag/v2.0.0\n", encoding="utf-8")
         args = SimpleNamespace(package=str(kit), source_elf=str(elf), app_name=app_name, elf_name=elf_name,
             title="RiptOPL " + options["title"], pbt_title="RiptOPL " + options["title"],
             version=manifest["version"].split('"')[1], flavour="PS2BUILD", channel=options["title"],

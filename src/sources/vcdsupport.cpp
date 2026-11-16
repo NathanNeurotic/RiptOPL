@@ -2434,8 +2434,7 @@ int vcdWritePopsPathmap(int bits)
         int key = vcdPathmapLine(p, nl ? nl : end, &on);
         if (key >= 0) {
             seen |= 1 << key;
-            const char *eol = (nl == NULL) ? "" : (nl > p && nl[-1] == '\r') ? "\r\n" :
-                                                                               "\n";
+            const char *eol = (nl == NULL) ? "" : (nl > p && nl[-1] == '\r') ? "\r\n" : "\n";
             len += snprintf(out + len, sizeof(out) - len, "%s=%d%s", vcdPathmapKeys[key], (bits >> key) & 1, eol);
         } else {
             if (len + (next - p) > VCD_PATHMAP_MAX)

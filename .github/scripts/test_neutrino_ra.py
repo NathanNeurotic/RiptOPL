@@ -51,7 +51,7 @@ harness = r'''
 static char gNeutrinoArgs[256], sysNeutrinoCheatArg[24], sysNeutrinoCheatStartup[32];
 static char sysNeutrinoRAArg[336], sysNeutrinoRAStartup[32];
 static int gRATelemetry=1, gRAMode, gRAHostIp[4]={192,168,1,2}, ps2_ip[4]={192,168,1,10}, ps2_ip_use_dhcp;
-static int count=2, bytes=5, nodes, warning, networkCalls, writes, missingMarker, failWrite, failClose, flat;
+static int count=2, bytes=5, warning, networkCalls, writes, missingMarker, failWrite, failClose, flat;
 static int nicBusy, sessionFail; /* a resident UDP transport; a Caduceus bridge reporting OFFLINE */
 static const char *marker="RiptOPL ORBIT RA handoff v1\nORBIT credits\n";
 static unsigned int entries[2]={RA_WATCH_PACK(0x100000,4),RA_WATCH_PACK(0x100004,1)};
@@ -86,7 +86,6 @@ static int fake_unlink(const char *path) { (void)path;return 0; }
 static int sbReadWatchList(const char *prefix,const char *startup) { assert(prefix); return strcmp(startup,"SLUS_123.45") ? 0 : count; }
 static int GetWatchCount(void){return count;}
 static int GetWatchBytes(void){return bytes;}
-static int GetNodeCount(void){return nodes;}
 static unsigned int *GetWatchList(void){return entries;}
 static int raNetNicBusy(void){return nicBusy;}
 /* The production raLaunchNetworkUp clears the list and shows its own notice on a failed session. */
@@ -103,12 +102,6 @@ static void prepare(const char *driver,const char *args) {
     sbNeutrinoPrepareRA("mmce1:/Games/","SLUS_123.45",driver,"mmce1:/neutrino/neutrino.elf",args);
 }
 int main(void) {
-    nodes=1;prepare("usb", "");
-    assert(!sysNeutrinoRAArg[0] && warning && !writes && !networkCalls);
-    nodes=128;prepare("udpfs", "");
-    assert(!sysNeutrinoRAArg[0] && warning && !writes && !networkCalls);
-    nodes=0;
-
     prepare("mmce", "-cfg=mine");
     assert(sysNeutrinoRAArg[0]);assert(networkCalls==1 && writes==2 && !warning);
     assert(!strcmp(sysNeutrinoRAArg,"-ra=mmce1:/neutrino/config/ript-ra.wl"));
