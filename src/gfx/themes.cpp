@@ -1474,8 +1474,12 @@ static int thmLoad(const char *themePath)
     newT->altBackground = gThemeAltBackground != 0;
     newT->altDeclared = thmApplyAltBackground(themeConfig, newT->altBackground);
     // List with descriptions (_desc keys): the layout for the List Title and Description setting it is shown with.
+    // The key as the view this load will show reads it (a "<view>.list_cfg_text" beats the base one), the same
+    // value hideListCfgText takes below: the layout, the refresh check and the drawing must agree on it.
     int listCfgText = 1;
-    newT->descThemeHides = configGetInt(themeConfig, "list_cfg_text", &listCfgText) && listCfgText == 0;
+    thm_view_info_t descViews;
+    thmViewScan(themeConfig, &descViews);
+    newT->descThemeHides = thmViewGetInt(themeConfig, thmViewPrefix(&descViews, thmViewChoose(&descViews, gThemeViewRequest)), "list_cfg_text", &listCfgText) && listCfgText == 0;
     newT->descShown = thmListDescShown(newT->descThemeHides);
     newT->descDeclared = thmApplyListDescLayout(themeConfig, newT->descShown);
 
@@ -2184,9 +2188,14 @@ int thmRefreshDisplayLayout(void)
     int altChanged = gTheme->altDeclared && gTheme->altBackground != (gThemeAltBackground != 0);
     int wallpaperChanged = gTheme->wallpaperWanted != (gThemeWallpaper != 0);
     int descChanged = gTheme->descDeclared && gTheme->descShown != thmListDescShown(gTheme->descThemeHides);
-    if (!wideChanged && !altChanged && !wallpaperChanged && !descChanged && !thmGridShapeChanged())
+    int gridChanged = thmGridShapeChanged();
+    if (!wideChanged && !altChanged && !wallpaperChanged && !descChanged && !gridChanged)
         return 0;
-    return gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1);
+    if (gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1))
+        return 1;
+    if (gridChanged)
+        gGridCompact = gTheme->gridCompact; // abandoned load (#120): the grid on screen keeps its shape
+    return 0;
 }
 
 int thmRefreshGridLayout(void)

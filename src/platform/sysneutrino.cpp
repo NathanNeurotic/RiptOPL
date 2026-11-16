@@ -1017,6 +1017,23 @@ int sysNeutrinoHandCheats(const char *startup, const char *neutrinoPath, const c
     LOG("[NEUTRINO] %d cheat code(s) for %s -> %s\n", pairs, startup, path);
     return 0;
 }
+// The folder Neutrino runs in and loads its modules from: the effective -cwd= (global then per-game args,
+// as above), else the folder holding neutrino.elf, with that path's own trailing separator. 0 = found.
+int sysNeutrinoWorkDir(const char *neutrinoPath, const char *extraArgs, char *dir, int size)
+{
+    if (neutrinoArgActiveValue(extraArgs, "-cwd=", dir, size))
+        return 0;
+    if (neutrinoPath == NULL)
+        return -1;
+    const char *slash = sysLastPathSeparator(neutrinoPath);
+    if (slash == NULL)
+        slash = strrchr(neutrinoPath, ':');
+    if (slash == NULL || slash - neutrinoPath + 1 >= size)
+        return -1;
+    snprintf(dir, size, "%.*s", (int)(slash - neutrinoPath) + 1, neutrinoPath);
+    return 0;
+}
+
 
 #ifdef RETROACHIEVEMENTS
 // RA through Neutrino: the RA kit's neutrino/ is ORBIT's runtime (third_party/orbit-neutrino), whose
@@ -1028,12 +1045,8 @@ static char sysNeutrinoRAArg[336], sysNeutrinoRAStartup[32];
 // 0 = usable; -1 = none, or one we must not write under (hddN: is raw APA, where O_CREAT makes a partition).
 static int sysNeutrinoRADir(const char *neutrinoPath, const char *extraArgs, char *dir, int size)
 {
-    if (!neutrinoArgActiveValue(extraArgs, "-cwd=", dir, size)) {
-        const char *slash = sysLastPathSeparator(neutrinoPath);
-        if (slash == NULL || slash - neutrinoPath + 1 >= size)
-            return -1;
-        snprintf(dir, size, "%.*s", (int)(slash - neutrinoPath) + 1, neutrinoPath);
-    }
+    if (sysNeutrinoWorkDir(neutrinoPath, extraArgs, dir, size) < 0)
+        return -1;
     int len = (int)strlen(dir);
     if (len == 0 || len + 1 >= size || strchr(dir, '\\') != NULL || strchr(dir, '"') != NULL ||
         (!strncmp(dir, "hdd", 3) && dir[3] >= '0' && dir[3] <= '9' && dir[4] == ':'))

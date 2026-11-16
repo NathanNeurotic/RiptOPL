@@ -459,7 +459,8 @@ it yet, and v0.9.1 and older show a CHD only as `.iso`, which the POPS list does
 replacement confirmation. The screen shows their MC locations. Each MC0 file
 wins over its MC1 counterpart. Saving overwrites each file in place and reads it
 back; no `.bak` or `.new` file is made on the card. If a write fails, the
-previous contents are written back from memory. SMB's separate POPSTARTER-folder
+previous contents are written back from memory on a best-effort basis: that write can fail
+too, so keep a copy of both DAT files before you change them. SMB's separate POPSTARTER-folder
 configuration is preserved.
 
 **The server must allow writes** (`udpfsd` without `-ro`, or `udpfs_server.py`

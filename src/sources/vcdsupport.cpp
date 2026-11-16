@@ -175,9 +175,10 @@ static int vcdGameIdPrefixLen(const char *name)
     char gameId[VCD_ID_MAX];
     int idLen = vcdExtractGameId(p, gameId, sizeof(gameId));
     if (idLen) {
+        int skip = prefixLen + idLen;
         if (p[idLen] == '.' || p[idLen] == '_' || p[idLen] == ' ' || p[idLen] == '-')
-            return prefixLen + idLen + 1;
-        return prefixLen + idLen;
+            skip++;
+        return name[skip] != '\0' ? skip : 0; // nothing after the ID: keep it rather than draw ""
     }
     return 0;
 }
@@ -437,6 +438,11 @@ int VcdSupport::resolveRowId(const char *name, int kind, char *idOut, int idSize
         return 1;
     }
     if (m->state == VCD_ID_ABSENT)
+        return 0;
+    // A failed read is retried only after its backoff. The CFG title path calls this directly, so
+    // without this it re-read every frame, used up the retries inside a second and marked the row
+    // ABSENT for a transient failure.
+    if (m->state == VCD_ID_DEFERRED && guiFrameId < m->retryFrame)
         return 0;
 
     char discId[RETROGEM_GAMEID_MAX];
@@ -2320,14 +2326,13 @@ int vcdWritePopsUdpfsNet(const vcd_pops_udpfs_t *cfg)
     }
     return 0;
 rollback:
-    for (int i = 0; i < 2; i++) {
-        if (!committed[i])
-            continue;
-        if (oldSize[i] < 0)
+    // Files this call created go first: they hold card space the restores below may need.
+    for (int i = 0; i < 2; i++)
+        if (committed[i] && oldSize[i] < 0)
             unlink(paths[i]);
-        else if (vcdWritePopsUdpfsFile(paths[i], oldData[i], oldSize[i]) != 0)
+    for (int i = 0; i < 2; i++)
+        if (committed[i] && oldSize[i] >= 0 && vcdWritePopsUdpfsFile(paths[i], oldData[i], oldSize[i]) != 0)
             LOG("[POPSTARTER] could not restore %s\n", paths[i]);
-    }
     return -3;
 }
 
