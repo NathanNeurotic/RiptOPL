@@ -272,7 +272,7 @@ int main(void)
 
 if not failures:
     program = (HARNESS.replace('@CONSTANTS@', constants)
-               .replace('@ENTRY@', entry.group(0))
+               .replace('@ENTRY@', 'typedef unsigned char u8;\n' + re.search(r'^enum \{\s*CUE_IMAGE_NONE[^}]*\};', header, re.M)[0] + '\n' + entry.group(0))
                .replace('@FUNCTIONS@', functions))
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / 'scan.c'

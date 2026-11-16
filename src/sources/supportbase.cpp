@@ -1490,6 +1490,8 @@ config_set_t *sbPopulateConfigIn(base_game_info_t *game, const char *prefix, con
             configSetStr(config, CONFIG_ITEM_FORMAT, "ZSO");
         else if (isVcd)
             configSetStr(config, CONFIG_ITEM_FORMAT, "VCD"); // VCD listing -> the VCD format glyph
+        else if (cueImageFormat(game) != NULL)
+            configSetStr(config, CONFIG_ITEM_FORMAT, cueImageFormat(game)); // Ember: the image it boots, not "ELF"
     } else if (game->format == GAME_FORMAT_USBLD)
         configSetStr(config, CONFIG_ITEM_FORMAT, "UL");
 

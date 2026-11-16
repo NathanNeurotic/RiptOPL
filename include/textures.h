@@ -61,6 +61,9 @@ enum INTERNAL_TEXTURE {
     VCD_FORMAT, // VCD (PS1-via-POPSTARTER) format glyph -- the VCD equivalent of ISO
     ZSO_FORMAT,
     UL_FORMAT,
+    CUE_FORMAT, // Ember PS1 images: the file a game boots (cue > exe > bin)
+    EXE_FORMAT,
+    BIN_FORMAT,
     APP_MEDIA,
     CD_MEDIA,
     DVD_MEDIA,
