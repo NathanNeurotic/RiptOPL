@@ -115,8 +115,8 @@ default, shows them the way the theme sets them, and a theme can leave them off 
 `list_cfg_text=0`. **On** shows them even then. **Off** hides them on every theme. The game info page shows
 them either way. The names in the list itself follow [Show CFG Titles in Game Lists](CFG-TITLES.md)
 instead. The change shows on the next frame and is saved with your settings (`list_cfg_text` in
-`settings_riptopl.cfg`). The built-in themes show these two on the info page only, so on them the setting
-changes nothing.
+`settings_riptopl.cfg`). The built-in IncebtIon and Korium themes keep them off on **Theme**, so their list
+looks as before. **On** swaps the cover beside their list for the game's Title and its Description.
 
 This comes from [RIPPS2](https://github.com/akilluminati47/RIPPS2) build 126, by
 [akilluminati47](https://github.com/akilluminati47). Theme authors can find the `list_cfg_text` key in the
