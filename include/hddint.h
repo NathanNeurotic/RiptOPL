@@ -63,6 +63,7 @@ public:
     // pooled __.POPS[0-9]? containers plus one-game PP.<id>.POPS.<name> installs, then the EMBER
     // phase; publishes transactionally and returns the row count.
     int buildVcdGameList();
+    int loadVcdListCache(); // publish the saved vcdgames.bin list; 0 on success
     // Swap in a new live HDL list under the UI lock, freeing the replaced one (was hddPublishHdlGameList).
     void publishHdlGameList(hdl_games_list_t *replacement);
     // Free both VCD backing arrays (was hddFreeVcdGameList); also the cleanUp/shutdown teardown path.
@@ -92,6 +93,11 @@ public:
 
     // ---- ATA / PFS module latches -----------------------------------------------------------
     unsigned char forceUpdate = 0; // 0 at initial startup: use a valid games.bin; set after the first scan
+    // The PS2 (HDL) list's twin of vcdListBuilt. An L3 flip back to the PS2 list posts the same update
+    // as Refresh, and with forceUpdate latched after the first build every flip re-walked the whole APA
+    // table. While set, the update reuses the live hdlGames; only hddRequestHdlRescan (explicit Refresh)
+    // clears it. Cleared by teardown too, and left clear after a failed first build so it retries.
+    volatile unsigned char hdlListBuilt = 0;
     unsigned char hdProKitDetected = 0;
     unsigned char modulesLoadCount = 0;
     unsigned char modulesLoaded = 0;
@@ -148,6 +154,11 @@ public:
     // if no invalidation arrived since it started.
     unsigned char vcdListBuilt = 0;
     volatile unsigned int vcdCacheGen = 0;
+    // vcdgames.bin, the PS1 twin of games.bin (gated on the same HDD game list cache setting): a
+    // build with this clear may publish the saved list instead of walking the drive. 0 at
+    // HddSource::init; set by invalidateVcdCache (explicit Refresh, rename, scan-time filter
+    // changes) so those always rescan; cleared again once a build has consumed it.
+    volatile unsigned char vcdForceScan = 0;
     // The split-store sentinels returned by activeVcd/activeHdl.
     base_game_info_t emptyVcd = {.extension = ".VCD"};
     hdl_game_info_t emptyHdl = {0};

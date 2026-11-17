@@ -228,6 +228,8 @@ void itemExecRefresh(struct menu_item *curMenu)
             if (support->mode == HDD_MODE &&
                 (libListViewActive(support) == LIB_VIEW_PS1 || libListViewActive(support) == LIB_VIEW_MIXED))
                 hddVcdInvalidateCache();
+            if (support->mode == HDD_MODE && libListViewActive(support) != LIB_VIEW_PS1)
+                hddRequestHdlRescan(); // an L3 flip reuses the PS2 list; only a PS2/Mixed Refresh rescans it
             // Explicit Refresh must bypass per-device scan caches. This also ensures a Mixed list
             // refreshes both of its backing stores instead of merely rebuilding the same rows.
             libViewMarkDirty(support->mode);
