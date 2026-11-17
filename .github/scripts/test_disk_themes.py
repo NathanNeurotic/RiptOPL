@@ -21,6 +21,7 @@ for theme in themes:
         errors.append(f'{theme.name}: no conf_theme.cfg')
         continue
     blocks = {}
+    conf = {}
     current = None
     for n, raw in enumerate(cfg.read_text(encoding='utf-8').splitlines(), 1):
         line = raw.split(';')[0].rstrip()
@@ -39,6 +40,7 @@ for theme in themes:
             blocks[current][k] = v
         else:
             current = None
+            conf[k] = v
     # contiguous numbering per family and view: the base blocks (mainN, appsMainN, infoN ...) must run 0..N-1,
     # and a <view>. block may replace a base slot or extend it, so base + that view's slots must run on too
     fams = {}
@@ -50,7 +52,8 @@ for theme in themes:
     for (view, fam), nums in sorted(fams.items(), key=lambda kv: (kv[0][0] or '', kv[0][1])):
         if fam not in ('main', 'info'):
             continue
-        effective = nums | (fams.get((None, fam), set()) if view else set())
+        inherits = (conf.get(f'{view}.inherit') if view else None) != '0'
+        effective = nums | (fams.get((None, fam), set()) if view and inherits else set())
         if sorted(effective) != list(range(len(effective))):
             errors.append(f'{theme.name}: {(view + "." if view else "")}{fam}N blocks are not 0..N-1 without a gap: {sorted(effective)}')
     for name, props in blocks.items():
