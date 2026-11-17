@@ -55,6 +55,7 @@
 #include "include/nettime.h"    // netTimeFetch -- Date and Time: Set from Internet
 #include "include/riptlite.h"   // LITE_HAS_NET_SOURCE / LITE_HAS_SMB_SHARE -- the Network page in a RiptOPLite build
 #include <limits.h>
+#include <strings.h> // strcasecmp: the disc list drops each CUE name's .cue
 #include <stdlib.h>
 // Last Played Auto Start
 #include <time.h>
@@ -1135,7 +1136,7 @@ static void guiDiscListItem(struct UIItem *item, UIItemType type, int id, const 
 
 int guiShowEmberDiscList(const char *folder, const cue_disc_list_t *list)
 {
-    struct UIItem *dialog = (struct UIItem *)calloc(list->count * 2 + 5, sizeof(*dialog));
+    struct UIItem *dialog = (struct UIItem *)calloc(list->count * 2 + 3, sizeof(*dialog));
     char(*labels)[CUE_NAME_MAX + 32] = (char(*)[CUE_NAME_MAX + 32]) calloc(list->count, sizeof(*labels));
     int index = 0, result;
 
@@ -1144,12 +1145,20 @@ int guiShowEmberDiscList(const char *folder, const cue_disc_list_t *list)
         free(labels);
         return -1;
     }
+    (void)folder; // the folder line was dropped: the disc rows already name the game
     guiDiscListItem(&dialog[index++], UI_HEADER, 0, NULL, _STR_EMBER_SELECT_DISC);
     guiDiscListItem(&dialog[index++], UI_SPLITTER, 0, NULL, -1);
-    guiDiscListItem(&dialog[index++], UI_LABEL, 0, folder, -1);
-    guiDiscListItem(&dialog[index++], UI_BREAK, 0, NULL, -1);
     for (int i = 0; i < list->count; i++) {
-        snprintf(labels[i], sizeof(*labels), _l(_STR_EMBER_DISC_ENTRY), i + 1, list->names[i]);
+        // Show the CUE name without its ".cue" extension; the launch still uses list->names[i].
+        char name[CUE_NAME_MAX];
+        size_t len;
+
+        strncpy(name, list->names[i], sizeof(name) - 1);
+        name[sizeof(name) - 1] = '\0';
+        len = strlen(name);
+        if (len > 4 && strcasecmp(&name[len - 4], ".cue") == 0)
+            name[len - 4] = '\0';
+        snprintf(labels[i], sizeof(*labels), _l(_STR_EMBER_DISC_ENTRY), i + 1, name);
         guiDiscListItem(&dialog[index++], UI_BUTTON, i + 1, labels[i], -1);
         guiDiscListItem(&dialog[index++], UI_BREAK, 0, NULL, -1);
     }
