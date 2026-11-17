@@ -33,6 +33,7 @@ def body_of(path, signature):
 
 
 for path, signature in (('src/ui/guiwait.cpp', 'void guiRenderTextScreen('),
+                        ('src/ui/guiwait.cpp', 'void guiRenderHandoffStep('),
                         ('src/ui/guimodal.cpp', 'void guiWarning('),
                         ('src/ui/guisettings.cpp', 'static int guiConfirmVideoMode('),
                         ('src/ui/guimodal.cpp', 'void RemoveSettingsPrompt::draw(')):

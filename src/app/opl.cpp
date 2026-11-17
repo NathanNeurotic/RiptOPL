@@ -1296,9 +1296,14 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     // right below already redraws the menu here, so drawing it eight more times touches nothing new.
     // The art worker stops STARTING reads first, so the fade's frames cannot let a queued cover hit
     // the device; nothing is released until cacheShutdownArtLoads() below, after the last menu frame.
+    //
+    // The status screen is a progress bar in GUI_HANDOFF_STEPS (gui.h): 1 here, 2 when the drain is
+    // done, 3 when the modules are torn down. Step 3 is drawn into both buffers and is the last frame
+    // OPL draws; it stays up through the IOP reset and the game's load (guiRenderHandoffStep). It used
+    // to fade to black here instead, which left the whole load on a black screen.
     cacheHoldArtStarts();
     guiFadeCurrentScreenToBlack();
-    guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
+    guiRenderHandoffStep(_l(_STR_PLEASE_WAIT), 1, 1);
     if (gLaunchDiag)
         launchDiagMark(5); // "Please Wait" is up -- the io/art drain below runs next
 
@@ -1327,8 +1332,8 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     // block all io ops, wait for the ones still running to finish (BOUNDED -- see the note above)
     ioBlockOpsTimed(1, gDeinitTerminal ? EXIT_IO_DRAIN_TICKS : LAUNCH_IO_DRAIN_TICKS);
 
-    // Drain is finished; now fade the status screen to black before device/GS teardown.
-    guiFadeOutForHandoff(_l(_STR_PLEASE_WAIT));
+    // Drain is finished: one step along before the device teardown.
+    guiRenderHandoffStep(_l(_STR_PLEASE_WAIT), 2, 1);
 
     // JOIN the art worker before anything unmounts a device under it. Its RESULT IS LOAD-BEARING and
     // used to be thrown away: a 0 means a thread is still inside a device read, and the teardown
@@ -1354,6 +1359,8 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
         }
     }
 
+    // The last frame OPL draws (both buffers): it stays on screen until the next program sets up the GS.
+    guiRenderHandoffStep(_l(_STR_PLEASE_WAIT), 3, 2);
     if (gLaunchDiag)
         launchDiagMark(7); // per-module teardown done -- audioEnd/ioEnd run next
     audioEnd();
@@ -1390,9 +1397,14 @@ void deinit(int exception, int modeSelected)
     // right below already redraws the menu here, so drawing it eight more times touches nothing new.
     // The art worker stops STARTING reads first, so the fade's frames cannot let a queued cover hit
     // the device; nothing is released until cacheShutdownArtLoads() below, after the last menu frame.
+    //
+    // The status screen is a progress bar in GUI_HANDOFF_STEPS (gui.h): 1 here, 2 when the drain is
+    // done, 3 when the modules are torn down. Step 3 is drawn into both buffers and is the last frame
+    // OPL draws; it stays up through the IOP reset and the game's load (guiRenderHandoffStep). It used
+    // to fade to black here instead, which left the whole load on a black screen.
     cacheHoldArtStarts();
     guiFadeCurrentScreenToBlack();
-    guiRenderTextScreen(_l(_STR_PLEASE_WAIT));
+    guiRenderHandoffStep(_l(_STR_PLEASE_WAIT), 1, 1);
     if (gLaunchDiag)
         launchDiagMark(5); // "Please Wait" is up -- the io/art drain below runs next
 
@@ -1421,8 +1433,8 @@ void deinit(int exception, int modeSelected)
     // block all io ops, wait for the ones still running to finish (BOUNDED -- see the note above)
     ioBlockOpsTimed(1, gDeinitTerminal ? EXIT_IO_DRAIN_TICKS : LAUNCH_IO_DRAIN_TICKS);
 
-    // Drain is finished; now fade the status screen to black before device/GS teardown.
-    guiFadeOutForHandoff(_l(_STR_PLEASE_WAIT));
+    // Drain is finished: one step along before the device teardown.
+    guiRenderHandoffStep(_l(_STR_PLEASE_WAIT), 2, 1);
 
     // JOIN the art worker before anything unmounts a device under it. Its RESULT IS LOAD-BEARING and
     // used to be thrown away: a 0 means a thread is still inside a device read, and the teardown
@@ -1443,6 +1455,8 @@ void deinit(int exception, int modeSelected)
 
     deinitAllSupport(exception, modeSelected);
 
+    // The last frame OPL draws (both buffers): it stays on screen until the next program sets up the GS.
+    guiRenderHandoffStep(_l(_STR_PLEASE_WAIT), 3, 2);
     audioEnd();
     ioEnd();
     guiEnd();

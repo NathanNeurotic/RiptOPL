@@ -159,11 +159,6 @@ void guiGameHandleDeferedIO(int *ptr, struct UIItem *ui, int type, void *data)
 }
 
 
-/* Fade the final status frame out just before renderer teardown. This does not
- * touch the game core, device/IOP lifetime or launch arguments. The long IO
- * drain remains visible as "Please Wait"; only its completion starts the fade.
- * No guiShow(): menu/art state may be changing during shutdown. */
-
 /* User-initiated TV-mode switch. Draw each outgoing frame against the old
  * GS mode, then let applyConfig reinitialize its framebuffers. This entry
  * point is intentionally NOT called from the renderer or the IO worker. */
@@ -179,23 +174,38 @@ void guiFadeCurrentScreenToBlack(void)
     }
 }
 
-void guiFadeOutForHandoff(const char *message)
+volatile int guiWaitBarTotal;
+volatile int guiWaitBarDone;
+
+/* The status screens' progress bar, two thirds down the screen. total > 0. */
+static void guiDrawWaitBar(int done, int total)
 {
-    int frame;
-    for (frame = 1; frame <= 8; ++frame) {
+    done = done < 0 ? 0 : (done > total ? total : done);
+    int w = gGuiScreenWidth / 2, h = gGuiScreenHeight / 40 + 4;
+    int x = (gGuiScreenWidth - w) / 2, y = gGuiScreenHeight * 2 / 3;
+    rmDrawRect(x - 2, y - 2, w + 4, h + 4, gColWhite);
+    rmDrawRect(x, y, w, h, gColBlack);
+    rmDrawRect(x, y, (int)((long long)w * done / total), h, gColFocus);
+}
+
+/* One step of the launch/exit handoff: the status message over a bar at step of GUI_HANDOFF_STEPS.
+ * No guiShow(): the menu and art are being torn down.
+ * Fonts are memory faces, so a frame after the devices are unmounted reads nothing from them.
+ *
+ * Nothing between deinit() and the next program reprograms a GS display register (see the #269 note in
+ * guigameid.cpp, seen on hardware: a strip left in the last frame stayed up for a whole USB load), so the
+ * LAST frame drawn here stays on screen through the IOP reset, the module loads and the game's ELF load,
+ * until the game (or the PS2 logo) sets up the GS itself. frames > 1 puts it in both buffers. */
+void guiRenderHandoffStep(const char *message, int step, int frames)
+{
+    while (frames-- > 0) {
         guiStartFrame();
         rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColBlack);
-        fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1,
-                        gTheme->usedHeight >> 1, ALIGN_CENTER, 0, 0,
-                        message, gTheme->textColor);
-        rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight,
-                   GS_SETREG_RGBA(0, 0, 0, (frame * 0x80) / 8));
+        guiDrawMsgText(message);
+        guiDrawWaitBar(step, GUI_HANDOFF_STEPS);
         guiEndFrame();
     }
 }
-
-volatile int guiWaitBarTotal;
-volatile int guiWaitBarDone;
 
 void guiRenderTextScreen(const char *message)
 {
@@ -217,14 +227,8 @@ void guiRenderTextScreen(const char *message)
 
     /* One read of each per frame (the I/O worker rewrites them): the check, clamp and division use the same values. */
     const int barTotal = guiWaitBarTotal, barDone = guiWaitBarDone;
-    if (barTotal > 0) { /* a real bar: a download with a known size */
-        int done = barDone < 0 ? 0 : (barDone > barTotal ? barTotal : barDone);
-        int w = gGuiScreenWidth / 2, h = gGuiScreenHeight / 40 + 4;
-        int x = (gGuiScreenWidth - w) / 2, y = gGuiScreenHeight * 2 / 3;
-        rmDrawRect(x - 2, y - 2, w + 4, h + 4, gColWhite);
-        rmDrawRect(x, y, w, h, gColBlack);
-        rmDrawRect(x, y, (int)((long long)w * done / barTotal), h, gColFocus);
-    }
+    if (barTotal > 0) /* a real bar: a download with a known size */
+        guiDrawWaitBar(barDone, barTotal);
 
     guiDrawOverlays();
 
