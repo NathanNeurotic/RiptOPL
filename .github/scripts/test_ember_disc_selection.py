@@ -84,8 +84,12 @@ static void guiMsgBoxMissing(const char *s,const char *p) {(void)s;(void)p;error
 static int diaExecuteDialog(struct UIItem *ui,int focus,short menu,int (*update)(int)) {
     (void)menu;(void)update;dialogs++;assert(focus==1);
     int buttons=0;
-    for(int i=0;ui[i].type!=UI_TERMINATOR;i++) if(ui[i].type==UI_BUTTON) {
-        buttons++;assert(ui[i].id==buttons);assert(strstr(ui[i].label.text,".cue"));
+    for(int i=0;ui[i].type!=UI_TERMINATOR;i++) {
+        assert(ui[i].type!=UI_LABEL); /* no folder line: the disc rows name the game */
+        if(ui[i].type==UI_BUTTON) {
+            buttons++;assert(ui[i].id==buttons);
+            assert(strstr(ui[i].label.text,"Disc ")&&!strstr(ui[i].label.text,".cue")&&!strstr(ui[i].label.text,".CUE"));
+        }
     }
     assert(buttons>=2 && buttons<=CUE_MAX_DISCS);return picker;
 }
