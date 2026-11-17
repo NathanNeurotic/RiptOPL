@@ -1924,6 +1924,13 @@ void sbNeutrinoPrepareRA(const char *prefix, const char *startup, const char *dr
             peer[i] = gRAHostIp[i];
     } else {
         unsigned int verified = raNetPeerIP();
+        if (verified == 0) {
+            // No support check or link test this boot (always so on Auto Loading): find the PC the
+            // way the link test does, rather than launching untracked.
+            char line1[96], line2[96];
+            raNetTestLink(line1, sizeof(line1), line2, sizeof(line2));
+            verified = raNetPeerIP();
+        }
         memcpy(peer, &verified, sizeof(peer)); // network byte order
     }
     if (!(peer[0] | peer[1] | peer[2] | peer[3]) || peer[0] >= 224 || peer[0] == 127)
@@ -3158,6 +3165,22 @@ static void sbTestPCLinkWorker(void)
 void sbTestPCLinkDeferred(void)
 {
     ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&sbTestPCLinkWorker));
+}
+
+/* Auto Loading has no menu to run "Check RetroAchievements support" from, so a game that was never
+   checked on this device had no watch list and was never tracked. Run the same check in place (the
+   launch thread does its own I/O here) when RA is on and the list is missing. It also finds the PC. */
+void sbAutoLaunchCheckRA(const char *path, const char *name, const char *ext, const char *startup, int format,
+                         unsigned int start_sector)
+{
+    if (!gRATelemetry || path == NULL || !path[0] || startup == NULL || !startup[0] || format == GAME_FORMAT_FOLDER)
+        return;
+    if (sbReadWatchList(path, startup) > 0)
+        return; // checked before: the launch reads this list
+    if (start_sector)
+        sbHashHdlGame(path, name, startup, start_sector);
+    else if (ext != NULL) // an HDL launch with no start sector has no image to hash
+        sbHashGame(path, name, ext, startup, format);
 }
 #endif
 
