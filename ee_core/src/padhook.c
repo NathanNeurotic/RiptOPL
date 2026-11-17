@@ -624,7 +624,7 @@ static void IGR_Thread(void *arg)
         // restarted, the GS trap off.
         // The answer is the colour (igrmenu.h), blinked three times
         if (choice > IGR_MENU_POWEROFF)
-            DBGCOL_BLNK(3, choice, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = the game's drawing did not come to an end, grey = no menu");
+            DBGCOL_BLNK(3, choice, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = a transfer did not end, red = VIF1 stalled, grey = no menu");
 #endif
 
         if (EnableDebug)
@@ -686,17 +686,9 @@ static int IGR_Intc_Handler(int cause)
         // a transfer that needs one of the held interrupts to go on never ends, and the menu's check (RIPPS2 build
         // 129's) leaves with the plain reset (Dirge of Cerberus on a console: yellow). The combo is held meanwhile;
         // after 2 s of busy VBLANKs the pause comes anyway and that check decides (ORBIT's menu waits like this)
-        // A channel that drains a MFIFO (D_CTRL MFD 2 or 3, bit 3 shifted onto STR) never stops, so it is not waited
-        // for; but the drawing is not over when the channels are: Dirge of Cerberus feeds VIF1 through the MFIFO a
-        // piece at a time, and paused between two pieces VIF1 can sit inside one of the game's VIF codes, which the
-        // paused game never finishes, and take the menu's lines as the rest of it (build 5 on a console: mint). So
-        // the VBLANK must also find channel 8 (what fills the MFIFO) stopped and VIF1 between two codes (VIF1_STAT
-        // VPS, VEW, VGW, shifted onto bits 10-13). And the GIF at rest, as NULD's pause waits for it: a path the game
-        // left inside one of its GIF packets holds the FLUSHA in front of every line of the menu's (build 6 on a
-        // console, VIF1 between two codes: still mint). GIF_STAT P1Q, OPH, APATH and DIR are bits 8-12 already
         // One store and one way into the pause (0: take it now, and this press has had it): written with ||, Korium's
         // LLVM build came out 52 bytes larger, more than .text has left before .rodata moves up a 128-byte step
-        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = ((((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & ~(*R_EE_D_CTRL << 5)) | *R_EE_D8_CHCR | *R_EE_VIF1_STAT << 10 | *R_EE_GIF_STAT) & 0x3f00) ? IGR_MenuRearm - 1 : 0)) {
+        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & ~(*R_EE_D_CTRL << 5) & 0x100) ? IGR_MenuRearm - 1 : 0)) {
             IGR_MenuOpen = 1;
             IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
             goto wake;            // the IGR's own two calls below, not a second copy of them: .text has no room for one

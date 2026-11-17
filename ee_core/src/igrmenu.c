@@ -684,7 +684,6 @@ int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, in
 #define IGRM_D_ENABLEW ((vu32 *)0x1000f590)
 #define VIF_FQC        0x1f000000
 #define VIF_STALLED    0x00800f00 // FDR (the FIFO turned towards the EE), VSS, VFS, VIS, INT
-#define VIF_BUSY       0x1f00000f // FQC, VPS, VEW, VGW: data left, inside a VIF code, or waiting on VU1 or the GIF
 #define GIF_BUSY       0x1f000c00 // FQC and APATH
 
 #define VIF_NOP                       0
@@ -715,18 +714,15 @@ static inline u32 igrmCount(void)
 }
 
 // Wait until reg's bits read as want. bounded: a stuck path must not hold the pause forever
-// drain & 1: reg is the CHCR of the channel D_CTRL names as the one that empties the game's MFIFO. Such a channel does
+// drain: reg is the CHCR of the channel D_CTRL names as the one that empties the game's MFIFO. Such a channel does
 // not stop when it has taken all the MFIFO holds: it stays started and waits for channel 8 to add more, which only
 // the paused game does. So it also counts as clear once the MFIFO is empty, by the DMAC's own test: the drain's tag
 // address has caught up with channel 8's write address in the ring (D_RBSR), with nothing left of the last tag's data
-// drain & 2: the GIF at rest as well, at the same moment: its FIFO empty and no path active (FQC, APATH). One loop
-// for VIF1 and the GIF, not a call for each: Korium's LLVM .text had no room for the second
 static int igrmWaitFor(vu32 *reg, u32 bits, u32 want, int drain)
 {
     int i;
     for (i = 0; i < 10000000; i++)
-        if (((*reg & bits) == want && !((drain & 2) && (*IGRM_GIF_STAT & GIF_BUSY))) ||
-            ((drain & 1) && !reg[8] && !((reg[12] ^ *IGRM_D8_MADR) & *IGRM_D_RBSR)))
+        if ((*reg & bits) == want || (drain && !reg[8] && !((reg[12] ^ *IGRM_D8_MADR) & *IGRM_D_RBSR)))
             return 1;
     return 0;
 }
@@ -928,11 +924,12 @@ int IGR_MenuRun(u16 (*buttons)(void))
     u32 *pkt = (u32 *)(((u32)raw + 63) & ~63);
     u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, bpc, dctrl, mfd;
     u16 held, now, pressed, ok, back;
-    int sel = 0, armed = 0, result = IGR_MENU_RESUME, presses = 0, power = 1, powerLatched = 0;
+    int sel = 0, armed = 0, result = IGR_MENU_RESUME, presses = 0, power = 1, powerLatched = 0, i;
     int page = 0, csel = 0, ctop = 0, full = 0, changed = 0, frameHeld;
 #ifdef IGRM_ACH
     int hunt = -1;
 #endif
+    char gameId[CORE_GAME_ID_MAX_LEN + 1];
     igrm_line_t lines[IGRM_LINES];
     igrm_info_t info;
     igr_cheat_t *row = NULL;
@@ -951,18 +948,13 @@ int IGR_MenuRun(u16 (*buttons)(void))
         return IGR_MENU_NO_FRAME;
     // the game's own transfers finish first; a VIF1 stalled on an interrupt the pause holds cannot take ours
     // (RIPPS2 build 129's check: channel 1, channel 2, then VIF1's status). A channel that drains a MFIFO counts as
-    // finished once it has drained it (igrmWaitFor). VIF1 must then also come to rest, its FIFO empty and between
-    // two VIF codes: a MFIFO game paused between two pieces of its list (Dirge of Cerberus) can leave it inside one,
-    // and it takes our lines as the rest of it (build 5 on a console: mint). And the GIF with it, as NULD's pause
-    // waits for it (danielnuld/ps2-launcher, third_party/neutrino-igr/menu.c Box_Drawable): a path the game left
-    // inside one of its GIF packets holds the FLUSHA in front of each of our lines, and none goes (build 6 on a
-    // console, VIF1 at rest: still mint). One answer for all, the blink's colour (igrmenu.h): a second one is more
-    // than Korium's LLVM .text has left before .rodata moves up a 128-byte step
+    // finished once it has drained it (igrmWaitFor). The answer is the blink's colour (igrmenu.h)
     dctrl = *IGRM_D_CTRL;
     mfd = (dctrl >> 2) & 3; // D_CTRL MFD: 2 channel 1 (VIF1) drains a MFIFO, 3 channel 2 (GIF) does
-    if (!igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, mfd == 2) || !igrmWaitFor(IGRM_D2_CHCR, CHCR_STR, 0, mfd == 3) ||
-        !igrmWaitFor(IGRM_VIF1_STAT, VIF_STALLED | VIF_BUSY, 0, 2))
+    if (!igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, mfd == 2) || !igrmWaitFor(IGRM_D2_CHCR, CHCR_STR, 0, mfd == 3))
         return IGR_MENU_GS_BUSY;
+    if (*IGRM_VIF1_STAT & VIF_STALLED)
+        return IGR_MENU_VIF_STALLED;
     bpc = igrmBpcOff();
     // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
     if (frameHeld == 2) {
@@ -987,6 +979,10 @@ int IGR_MenuRun(u16 (*buttons)(void))
         *IGRM_D_CTRL = dctrl & ~0xc;
     }
 
+    for (i = 0; i < CORE_GAME_ID_MAX_LEN && config->GameID[i]; i++)
+        gameId[i] = config->GameID[i];
+    gameId[i] = '\0';
+
     // silence first, then the pixels the panel will cover, so RESUME gives back the frame and the sound as they were
     IGR_MboxHush();
     // No copy (no IOP memory to spare, or the GS did not read back): the menu still opens; RESUME then leaves the
@@ -996,7 +992,7 @@ int IGR_MenuRun(u16 (*buttons)(void))
 
     config->ExitPath[CORE_EXIT_PATH_MAX_LEN - 1] = '\0';
     info.confirmCircle = config->IgrConfirmCircle;
-    info.gameId = config->GameID; // ended inside its array: the loader writes it with snprintf (system.cpp)
+    info.gameId = gameId;
     info.exitPath = config->ExitPath;
 #ifdef RETROACHIEVEMENTS
     info.canPowerOff = config->GameMode != DISC_MODE; // physical discs launch only in RA builds
@@ -1143,7 +1139,8 @@ int IGR_MenuRun(u16 (*buttons)(void))
 
 done:
     // DMA done is not the end: the VIF1 FIFO and the GIF may still be moving the last line
-    igrmWaitFor(IGRM_VIF1_STAT, VIF_FQC, 0, 2);
+    igrmWaitFor(IGRM_VIF1_STAT, VIF_FQC, 0, 0);
+    igrmWaitFor(IGRM_GIF_STAT, GIF_BUSY, 0, 0);
     *IGRM_D1_MADR = d1madr;
     *IGRM_D1_QWC = d1qwc;
     *IGRM_D1_TADR = d1tadr;

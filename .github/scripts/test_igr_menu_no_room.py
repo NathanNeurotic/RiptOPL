@@ -146,26 +146,17 @@ if not re.search(r'#ifdef IGR_MENU\n\s*wake:\n#endif\n\s*iChangeThreadPriority\(
     failures.append('padhook.c IGR_Intc_Handler: the wake the menu\'s pause jumps to was not found')
 
 # The check is RIPPS2's, in the menu: channels 1 and 2 end, then VIF1 neither stopped (VSS, VFS, VIS, INT) nor reading
-# back (FDR), and at rest: its FIFO empty, between two VIF codes, not waiting on VU1 or the GIF (a MFIFO game paused
-# between two pieces of its list can leave it inside one: Dirge of Cerberus, build 5 on a console, mint), with the GIF
-# at rest in the same loop (drain bit 2: FQC and APATH, as NULD's pause waits; build 6 on a console, VIF1 at rest, mint).
-# A game that fails it leaves as the combo did before, blinking yellow (docs/IGR.md).
+# back (FDR). A game that fails it leaves as the combo did before, with a blink that says which of them (docs/IGR.md).
 # A channel that drains a MFIFO never ends while the game is paused (Dirge of Cerberus): it passes once the MFIFO is
 # empty, and the menu borrows channel 1 from it with the DMAC suspended and gives back D_CTRL and the channel after
 igrmenu = (root / 'ee_core/src/igrmenu.c').read_text(encoding='utf-8')
 if not re.search(r'mfd = \(dctrl >> 2\) & 3;.*\n\s*if \(!igrmWaitFor\(IGRM_D1_CHCR, CHCR_STR, 0, mfd == 2\) \|\| '
-                 r'!igrmWaitFor\(IGRM_D2_CHCR, CHCR_STR, 0, mfd == 3\) \|\|\s*'
-                 r'!igrmWaitFor\(IGRM_VIF1_STAT, VIF_STALLED \| VIF_BUSY, 0, 2\)\)\s*return IGR_MENU_GS_BUSY;', igrmenu) or \
-        not re.search(r'#define VIF_STALLED +0x00800f00', igrmenu) or not re.search(r'#define VIF_BUSY +0x1f00000f', igrmenu) or \
-        not re.search(r'#define GIF_BUSY +0x1f000c00', igrmenu):
-    failures.append('igrmenu.c IGR_MenuRun: RIPPS2 build 129\'s idle check (channels 1 and 2, VIF1 0x00800f00), with VIF1 '
-                    'at rest after it (0x1f00000f) and the GIF with it (0x1f000c00), was not found')
-if '((drain & 1) && !reg[8] && !((reg[12] ^ *IGRM_D8_MADR) & *IGRM_D_RBSR))' not in igrmenu:
+                 r'!igrmWaitFor\(IGRM_D2_CHCR, CHCR_STR, 0, mfd == 3\)\)\s*return IGR_MENU_GS_BUSY;\s*'
+                 r'if \(\*IGRM_VIF1_STAT & VIF_STALLED\)\s*return IGR_MENU_VIF_STALLED;', igrmenu) or \
+        not re.search(r'#define VIF_STALLED +0x00800f00', igrmenu):
+    failures.append('igrmenu.c IGR_MenuRun: RIPPS2 build 129\'s idle check (channels 1 and 2, VIF1 0x00800f00) was not found')
+if 'drain && !reg[8] && !((reg[12] ^ *IGRM_D8_MADR) & *IGRM_D_RBSR)' not in igrmenu:
     failures.append('igrmenu.c igrmWaitFor: a MFIFO drain channel must pass once its MFIFO is empty (QWC 0, TADR at D8_MADR)')
-if '((*reg & bits) == want && !((drain & 2) && (*IGRM_GIF_STAT & GIF_BUSY)))' not in igrmenu or \
-        'igrmWaitFor(IGRM_VIF1_STAT, VIF_FQC, 0, 2);' not in igrmenu:
-    failures.append('igrmenu.c igrmWaitFor: drain bit 2 must hold out until the GIF is at rest too (before the first '
-                    'page, and before channel 1 goes back to the game)')
 if not re.search(r'if \(mfd == 2\) \{\s*t = \*IGRM_D_ENABLER;\s*\*IGRM_D_ENABLEW = t \| 0x10000;\s*'
                  r'\*IGRM_D1_CHCR = d1chcr & ~CHCR_STR;\s*\*IGRM_D_ENABLEW = t;\s*\*IGRM_D_CTRL = dctrl & ~0xc;\s*\}', igrmenu):
     failures.append('igrmenu.c IGR_MenuRun: channel 1 must be stopped with the DMAC suspended and the MFIFO taken out of D_CTRL')
@@ -344,15 +335,10 @@ static volatile int IGR_MenuOpen;
 static int IGR_MenuRearm, held, wakes;
 // The registers the handler waits on: channel 1 and 2 CHCR (STR 0x100)
 // and D_CTRL: MFD (bits 2 and 3) 2 or 3 names channel 1 or 2 as a MFIFO's drain, which stays started
-// channel 8 CHCR (what fills a MFIFO) and VIF1_STAT: VPS (bits 0 and 1), VEW (2) and VGW (3) put VIF1 inside a code
-// GIF_STAT: P1Q (8), OPH (9), APATH (10 and 11) and DIR (12): a path busy, or one left inside a packet
-static unsigned int d1chcr, d2chcr, dctrl, d8chcr, vif1stat, gifstat;
-#define R_EE_D1_CHCR   (&d1chcr)
-#define R_EE_D2_CHCR   (&d2chcr)
-#define R_EE_D_CTRL    (&dctrl)
-#define R_EE_D8_CHCR   (&d8chcr)
-#define R_EE_VIF1_STAT (&vif1stat)
-#define R_EE_GIF_STAT  (&gifstat)
+static unsigned int d1chcr, d2chcr, dctrl;
+#define R_EE_D1_CHCR (&d1chcr)
+#define R_EE_D2_CHCR (&d2chcr)
+#define R_EE_D_CTRL  (&dctrl)
 static struct { int IgrMenu; } g_config, *config = &g_config;
 static void IGR_HoldInterrupts(void) { held++; }
 static void iChangeThreadPriority(int id, int prio) { (void)id; (void)prio; }
@@ -482,43 +468,6 @@ int main(void)
                 IGR_MenuOpen = 0;
                 Pad_Data.combo_type = 0;
                 handler();
-            }
-            // but the drawing is not over at every such VBLANK: the pause waits for channel 8 (what fills a MFIFO) to
-            // stop, for VIF1 to be between two codes (Dirge of Cerberus, build 5 on a console: mint) and for the GIF
-            // to be at rest (build 6, VIF1 at rest: still mint), in a game with a MFIFO (the drain still not waited
-            // for) and in any other. VIF1 stopped, reading back, or with data left in its FIFO, and data left in the
-            // GIF's, do not hold the pause: that is the menu's check's to refuse
-            {
-                static const struct { unsigned int d8, vif1, gif; } mid[] = {
-                    {0x100, 0, 0}, {0x105, 0, 0}, {0, 1, 0}, {0, 2, 0}, {0, 3, 0}, {0, 4, 0}, {0, 8, 0}, {0x100, 0xf, 0},
-                    {0, 0, 0x100}, {0, 0, 0x200}, {0, 0, 0x400}, {0, 0, 0x800}, {0, 0, 0xc00}, {0, 0, 0x1000},
-                    {0x100, 0xf, 0x1f00}};
-                unsigned int m;
-
-                for (m = 0; m < 2; m++) {
-                    for (b = 0; b < sizeof(mid) / sizeof(mid[0]); b++) {
-                        wakes = held = 0;
-                        d1chcr = m ? 0x145 : 1, d2chcr = 0;
-                        dctrl = m ? 2 << 2 | 1 : 1;
-                        d8chcr = mid[b].d8, vif1stat = mid[b].vif1, gifstat = mid[b].gif;
-                        for (i = 0; i < 10; i++) {
-                            Pad_Data.combo_type = IGR_COMBO_START_SELECT;
-                            CHECK(!handler() && !IGR_MenuOpen && !wakes && !held,
-                                  "%s, VIF1, the GIF or channel 8 busy %u: no pause yet (VBLANK %u)", m ? "MFIFO" : "no MFIFO", b, i);
-                        }
-                        d8chcr = 0x05, vif1stat = 0x1f8030c0 | 0x0f00; // FQC, FDR, ER1, ER0, VSS..INT, DBF, MRK, 4-5
-                        gifstat = 0x1f0000ff; // FQC, P2Q, P3Q, IP3, PSE, IMT, M3P, M3R: no path active
-                        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
-                        handler();
-                        CHECK(IGR_MenuOpen && wakes == 1 && held == 1,
-                              "%s, VIF1, the GIF or channel 8 busy %u: the first VBLANK at rest takes the pause",
-                              m ? "MFIFO" : "no MFIFO", b);
-                        IGR_MenuOpen = 0;
-                        Pad_Data.combo_type = 0;
-                        handler();
-                    }
-                }
-                d8chcr = vif1stat = gifstat = 0;
             }
             dctrl = 1 << 2 | 1;
             d1chcr = 0x100;
