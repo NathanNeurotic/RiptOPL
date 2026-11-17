@@ -164,3 +164,14 @@ Release date-refresh duplication is recorded once as **CROSS-005** in [the summa
 - **Justification:** Edits/deletes static data and strengthens its existing audit; no alternate lookup, normalization fallback, or new dictionary framework. Do not guess a replacement for the ambiguous `SLES-5350` entry.
 - **Benefit:** READ inspection and complete table parsing identify **8 malformed strings, 12 redundant title rows and 2 wholly unreachable groups** among 1,046 title rows. Actual affected game ownership and final linked-byte savings are INFERRED.
 - **Effort:** S/M (verify intended IDs). **Risk:** Low when first-match mappings are retained. **Confidence:** READ for malformed data and unreachable rows; intended replacement IDs require verification.
+
+### RIPTOPL-118 / Validate VMC entry names before exporting them to filesystem paths / Category 6
+
+- **Location(s):** `RiptOPL/src/core/vmcsaves.cpp:453,469,726-744,766-770,793-799,818-824,1128-1148`.
+- **Problem:** VMC loading copies its directory/file entry names without validating them, and folder export concatenates those names into `mkdir` and truncating `open` paths. A damaged or supplied VMC can therefore give an entry a slash or `../` component and make an ordinary export create/write outside the selected save folder; the PSU importer already rejects precisely these names.
+- **Simplest fix:** Reuse the existing `vsNameOk` check for the save name and each file name in `vsLoadVmc` before accepting the entry, returning the existing name error. Place the existing check where both loaders can use it.
+- **Justification:** Reuses the validator and error code already used by the PSU input path; no path abstraction, normalization fallback or additional copy layer.
+- **Benefit:** Prevents malformed VMC metadata from redirecting filesystem export writes. Control flow is READ; occurrence and damage on individual devices are INFERRED. No exploit program was run.
+- **Effort:** S. **Risk:** Low (valid memory-card names already satisfy the existing check). **Confidence:** READ.
+
+- **CROSS-003 additional close-error locations:** `src/core/vmcsaves.cpp:186-195,622-628,739-750,1197-1207` ignores the image/export descriptor close status after in-place card edits or folder-file writes, unlike its PSU writer at `:891-892`. Propagate the existing write-failure result when final close fails; this supplements the canonical ignored-close finding and should not be counted separately.

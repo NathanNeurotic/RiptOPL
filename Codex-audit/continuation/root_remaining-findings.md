@@ -17,12 +17,12 @@
 - **Benefit:** One line and one three-entry dictionary construction removed; tiny desktop-only saving, not benchmarked.
 - **Effort:** S. **Risk:** Low. **Confidence:** High (READ; complete file and reference search).
 
-## POPSLOADER-102 / Use the anchor inventory already built by the site audit / Categories 2, 5
+## POPSLOADER-102 / Reuse file contents and indexes already loaded by the audit tools / Categories 2, 5
 
-- **Location(s):** POPSLoader/.research/audit_site.py:26-30,148-164.
-- **Problem:** The audit reads each generated HTML page to populate `ANCHORS`, then opens and scans those same pages again for every catalogue entry. There are 136 tracked entries, several sharing each destination page.
-- **Fix:** Check each slug against the existing normalized-path anchor set instead of reopening the page inside the entry loop.
-- **Benefit:** Removes up to 136 repeated file reads/string scans per audit; small desktop-only saving, milliseconds unmeasured. No new cache or helper needed.
+- **Location(s):** POPSLoader/.research/audit_site.py:26-30,148-164; POPSLoader/tools/host_harness.py:23-24,1776,1815,1949-1950,1982-1983,2017-2020,2137-2138,2180,2217-2221,2241,2282,2412-2414.
+- **Problem:** The site audit populates `ANCHORS`, then reopens those same pages for each of 136 catalogue entries. The host harness similarly retains `UI_SRC`/`SYS_SRC` but rereads them another six/nine times, also rereading already retained native source text.
+- **Fix:** Use the existing normalized-path anchor set in the site audit. Use `UI_SRC`/`SYS_SRC` throughout the harness and reuse its already loaded native source variables at subsequent checks; delete the redundant file reads and aliases.
+- **Benefit:** Up to 136 repeated generated-page reads/string scans per site audit removed. Harness source-size arithmetic gives 7,575,679 bytes of redundant source reads/decodes removable per run, including fifteen repeated Lua reads and three native-source reads. This is desktop-only; host timing/RSS savings unmeasured. No new cache or helper needed.
 - **Effort:** S. **Risk:** Low. **Confidence:** High (READ; catalogue count parsed).
 
 ## POPSLOADER-103 / Consider deleting the documentation cursor animation / Categories 3, 5, 8
@@ -106,3 +106,15 @@
 - **Fix:** Delete the earlier `.dl b` block and retain only the necessary color declaration in the earlier `.callout .h` block, or consolidate each selector at its final occurrence without changing cascade order.
 - **Benefit:** About 14 redundant declaration/block lines removed; very small stylesheet transfer/maintenance saving, no measured browser speedup or PS2 runtime effect.
 - **Effort:** S. **Risk:** Low. **Confidence:** High (READ; same specificity and cascade order).
+
+## Supplement to POPSLOADER-040 — superseded comments in the runtime sources
+
+Additional locations: POPSLoader/bin/POPSLDR/system.lua:2071-2097,5094-5098,6251,9184-9188; POPSLoader/bin/POPSLDR/ui.lua:6236-6243. These retain the old HDD-settings-to-memory-card model or describe a running ATA worker. The current HDD settings setup/write path is system.lua:5112-5127,6152-6161, while the dormant-worker implementation is already covered by POPSLOADER-005. Delete the false present-tense comments as part of those canonical cleanups; retain the actual current mount/launch contracts. This adds source-comment locations to POPSLOADER-040, not another finding. Benefit is fewer misleading source lines; the build minifier already strips comments, so no ELF/RAM saving is claimed.
+
+## POPSLOADER-113 / Delete the empty final SMB harness guard / Categories 1, 7
+
+- **Location(s):** POPSLoader/tools/host_harness.py:2461-2465.
+- **Problem:** The last branch in the SMB handoff check claims to verify narrow scoping, but its only body is `pass`. It cannot change the test result for any source input.
+- **Fix:** Delete the empty `else`/`if` block and its misleading comment. Keep the preceding checks that actually set a failure result.
+- **Benefit:** Five dead source lines removed; no actual validation is lost and no new test machinery is needed. Tiny desktop-only cleanup, no measured runtime saving.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).

@@ -72,6 +72,8 @@ Benefits below distinguish source-declared storage from unmeasured linked/packed
 - Benefit: Removes an unbounded hang and individual stalls of up to 30 seconds per wait; total wall-clock connection time is not benchmarked on hardware.
 - Effort: M. Risk: Med. Confidence: High (READ).
 
+**Re-triage required:** Current source/tests intentionally preserve separately configured static POPSTARTER addresses. See the resume index correction before applying the earlier recommendation below.
+
 ### POPSLOADER-015 / Pass the DHCP lease to the existing POPSTARTER handoff / Category 6
 
 - Location(s): `POPSLoader/src/luasystem.cpp:2176-2209`, `:2321-2348`, `:2572`; `POPSLoader/bin/POPSLDR/system.lua:8434-8440`, `:9365-9418`; `POPSLoader/bin/POPSLDR/ui.lua:3930`, `:7203`.

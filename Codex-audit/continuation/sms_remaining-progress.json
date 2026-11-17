@@ -180,20 +180,19 @@
     "docs/assets/app.js",
     "docs/assets/orbs.js",
     "docs/assets/sms.css",
-    "src/SMS_InverseCodePages.c"
+    "src/SMS_InverseCodePages.c",
+    "src/SMS_Locale.c",
+    "src/SMS_GUI.c",
+    "src/SMS_Spectrum.c",
+    "src/SMS_DMA_0.s",
+    "src/SMS_RC_0.s",
+    "src/libds34bt.c",
+    "src/libds34usb.c",
+    "src/SMS_PAD.c",
+    "src/SMS_Timer.s",
+    "src/SMS_VLC.c"
   ],
-  "partial_paths": {
-    "src/SMS_Locale.c": [
-      [
-        1,
-        105
-      ],
-      [
-        135,
-        300
-      ]
-    ]
-  },
+  "partial_paths": {},
   "structural_generated_data_reviews": [
     {
       "path": "src/SMS_Data.c",
@@ -602,6 +601,20 @@
       "initializer_count": 101,
       "literal_count": 24726,
       "details_path": "/workspace/Codex-audit/continuation/sms_codec-structures.json"
+    },
+    {
+      "path": "src/SMS_OS.c",
+      "review": "All non-payload source lines, comments, declarations, code, and consumers in this file read. Every pure numeric array initializer parsed in full as nested literal structure; numeric syntax, element count and extrema recorded. Numeric payload semantics not claimed.",
+      "initializer_count": 1,
+      "literal_count": 31120,
+      "details_path": "/workspace/Codex-audit/continuation/sms_codec-structures.json"
+    },
+    {
+      "path": "src/SMS_RC.c",
+      "review": "All non-payload source lines, comments, declarations, code, and consumers in this file read. Every pure numeric array initializer parsed in full as nested literal structure; numeric syntax, element count and extrema recorded. Numeric payload semantics not claimed.",
+      "initializer_count": 1,
+      "literal_count": 3813,
+      "details_path": "/workspace/Codex-audit/continuation/sms_codec-structures.json"
     }
   ],
   "remaining_paths": [
@@ -871,7 +884,6 @@
     "src/About_Data.s",
     "src/SMS_AC3.c",
     "src/SMS_AC3_imdct.c",
-    "src/SMS_DMA_0.s",
     "src/SMS_DSP.c",
     "src/SMS_DSP_FFT.S",
     "src/SMS_DSP_MMI.S",
@@ -879,14 +891,12 @@
     "src/SMS_DTS.c",
     "src/SMS_GS_0.S",
     "src/SMS_GS_1.c",
-    "src/SMS_GUI.c",
     "src/SMS_GUIFileMenu.c",
     "src/SMS_GUIMenuSMS.c",
     "src/SMS_GUISMBrowser.c",
     "src/SMS_H263.c",
     "src/SMS_JPEG.c",
     "src/SMS_JPEGData.c",
-    "src/SMS_Locale.c",
     "src/SMS_MP123.c",
     "src/SMS_MP123Core.S",
     "src/SMS_MPEG.c",
@@ -896,18 +906,9 @@
     "src/SMS_MSMPEG4.c",
     "src/SMS_Menu.c",
     "src/SMS_OGG.c",
-    "src/SMS_OS.c",
-    "src/SMS_PAD.c",
-    "src/SMS_RC.c",
-    "src/SMS_RC_0.s",
-    "src/SMS_Spectrum.c",
-    "src/SMS_Timer.s",
     "src/SMS_Utils.S",
-    "src/SMS_VLC.c",
     "src/SMS_WMA.c",
     "src/SMS_WMA.h",
-    "src/libds34bt.c",
-    "src/libds34usb.c",
     "src/libmpeg.c",
     "src/libmpeg_core.S",
     "tools/check_devmenu.py",

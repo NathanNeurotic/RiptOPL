@@ -242,3 +242,20 @@ Existing-finding evidence: LAUNCHSTATION-012 also applies to Launchstation/src/d
 - **Justification:** A narrow error check preserves the current writer and error UI; no staging file, backup or retry layer.
 - **Benefit:** Existing configuration-tail loss on read-open failure prevented; no extra successful-path writes or byte/timing measurement.
 - **Effort:** S. **Risk:** Low. **Confidence:** READ for the missing/error conflation; device-error occurrence INFERRED.
+
+### LAUNCHSTATION-127 / Bound boot-argument formatting in the classic debug screen / Category 6
+
+- **Location(s):** Launchstation/src/main_info_screens.c:215-217,248-252; Launchstation/src/main_boot.c:8-17.
+- **Problem:** ShowDebugInfo formats each captured boot argument with sprintf into a 256-byte stack buffer. An executable path or other boot argument longer than the remaining line space overruns the buffer when this screen is opened; the nearby boot_path and LaunchElfDir formatting already applies bounds.
+- **Fix:** Replace the argument sprintf with snprintf using sizeof(TextRow), as the adjacent bounded fields do.
+- **Benefit:** Stack overwrite removed for long boot arguments; no extra allocation or formatting layer.
+- **Effort:** S. **Risk:** Low. **Confidence:** READ.
+
+### LAUNCHSTATION-128 / Reuse the existing image-ID resolver for VCD files / Category 2,3,5
+
+- **Location(s):** Launchstation/src/popstarter_gameid.c:102-123,190-226,240-259; Launchstation/src/popstarter_vcd.c:246-257; Launchstation/src/ember_gameid.c:113-116,153-161.
+- **Problem:** The VCD resolver separately opens a file to parse SYSTEM.CNF and opens it again for the PVD timestamp, duplicating the sequence already implemented by buildPs1ImageGameID for the same sector reader. The second open is unnecessary when the first identity method fails.
+- **Fix:** Open the VCD once, construct the existing PS1_IMAGE_READER with its one-MiB offset, call buildPs1ImageGameID with a null name fallback, and close it. Delete the two VCD-specific open/resolve wrappers; keep the existing HDD-partition/name fallback afterward.
+- **Justification:** Reuses a resolver already called for CUE/BIN images and deletes two copies of its identity sequence; no new helper or reader layer.
+- **Benefit:** Deletes 43 wrapper-body lines before a small direct call sequence; eliminates one file open/close on the timestamp-fallback path. Existing PVD rereads inside the resolver remain; runtime and ELF deltas unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** READ.

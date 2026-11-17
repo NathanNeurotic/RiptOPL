@@ -165,9 +165,48 @@
     "modules/iopcore/cdvdfsv/irx_imports.h",
     "modules/iopcore/cdvdfsv/ncmd.c",
     "modules/iopcore/cdvdfsv/scmd.c",
-    "modules/iopcore/cdvdfsv/searchfile.c"
+    "modules/iopcore/cdvdfsv/searchfile.c",
+    "modules/iopcore/cdvdman/Makefile",
+    "modules/iopcore/cdvdman/atad.c",
+    "modules/iopcore/cdvdman/atad.h",
+    "modules/iopcore/cdvdman/cdvdman.c",
+    "modules/iopcore/cdvdman/dev9-pccf.c",
+    "modules/iopcore/cdvdman/dev9.c",
+    "modules/iopcore/cdvdman/dev9.h",
+    "modules/iopcore/cdvdman/device-bdm.c",
+    "modules/iopcore/cdvdman/device-hdd.c",
+    "modules/iopcore/cdvdman/device-http.c",
+    "modules/iopcore/cdvdman/device-mmce.c",
+    "modules/iopcore/cdvdman/device-smb.c",
+    "modules/iopcore/cdvdman/device-udpfs.c",
+    "modules/iopcore/cdvdman/device.h",
+    "modules/iopcore/cdvdman/hdpro_atad.c",
+    "modules/iopcore/cdvdman/heapdiag.c",
+    "modules/iopcore/cdvdman/imports.lst",
+    "modules/iopcore/cdvdman/internal.h",
+    "modules/iopcore/cdvdman/ioman_add.h",
+    "modules/iopcore/cdvdman/ioops.c",
+    "modules/iopcore/cdvdman/ioplib_util.c",
+    "modules/iopcore/cdvdman/ioplib_util.h",
+    "modules/iopcore/cdvdman/irx_imports.h",
+    "modules/iopcore/cdvdman/ncmd.c",
+    "modules/iopcore/cdvdman/scmd.c",
+    "modules/iopcore/cdvdman/searchfile.c",
+    "modules/iopcore/cdvdman/smb.c",
+    "modules/iopcore/cdvdman/smb.h",
+    "modules/iopcore/cdvdman/smb2.c",
+    "modules/iopcore/cdvdman/smb2auth.c",
+    "modules/iopcore/cdvdman/smb2auth.h",
+    "modules/iopcore/cdvdman/smsutils.S"
   ],
-  "partial_paths": {},
+  "partial_paths": {
+    "modules/iopcore/cdvdman/streaming.c": [
+      [
+        1,
+        332
+      ]
+    ]
+  },
   "structural_generated_data_reviews": [
     {
       "path": "modules/bdm/bdmfs_fatfs/fatfs/ffunicode.c",
@@ -569,38 +608,6 @@
     "modules/ilink/iLinkman/src/include/iLink_CROM.h",
     "modules/ilink/iLinkman/src/include/iLink_internal.h",
     "modules/ilink/iLinkman/src/irx_imports.h",
-    "modules/iopcore/cdvdman/Makefile",
-    "modules/iopcore/cdvdman/atad.c",
-    "modules/iopcore/cdvdman/atad.h",
-    "modules/iopcore/cdvdman/cdvdman.c",
-    "modules/iopcore/cdvdman/dev9-pccf.c",
-    "modules/iopcore/cdvdman/dev9.c",
-    "modules/iopcore/cdvdman/dev9.h",
-    "modules/iopcore/cdvdman/device-bdm.c",
-    "modules/iopcore/cdvdman/device-hdd.c",
-    "modules/iopcore/cdvdman/device-http.c",
-    "modules/iopcore/cdvdman/device-mmce.c",
-    "modules/iopcore/cdvdman/device-smb.c",
-    "modules/iopcore/cdvdman/device-udpfs.c",
-    "modules/iopcore/cdvdman/device.h",
-    "modules/iopcore/cdvdman/hdpro_atad.c",
-    "modules/iopcore/cdvdman/heapdiag.c",
-    "modules/iopcore/cdvdman/imports.lst",
-    "modules/iopcore/cdvdman/internal.h",
-    "modules/iopcore/cdvdman/ioman_add.h",
-    "modules/iopcore/cdvdman/ioops.c",
-    "modules/iopcore/cdvdman/ioplib_util.c",
-    "modules/iopcore/cdvdman/ioplib_util.h",
-    "modules/iopcore/cdvdman/irx_imports.h",
-    "modules/iopcore/cdvdman/ncmd.c",
-    "modules/iopcore/cdvdman/scmd.c",
-    "modules/iopcore/cdvdman/searchfile.c",
-    "modules/iopcore/cdvdman/smb.c",
-    "modules/iopcore/cdvdman/smb.h",
-    "modules/iopcore/cdvdman/smb2.c",
-    "modules/iopcore/cdvdman/smb2auth.c",
-    "modules/iopcore/cdvdman/smb2auth.h",
-    "modules/iopcore/cdvdman/smsutils.S",
     "modules/iopcore/cdvdman/streaming.c",
     "modules/isofs/Makefile",
     "modules/isofs/imports.lst",
@@ -961,16 +968,34 @@
   ],
   "last_acknowledged_batch": [
     [
-      "modules/iopcore/cdvdfsv/scmd.c",
-      1,
-      186,
-      186
+      "modules/iopcore/cdvdman/smb2.c",
+      1068,
+      1153,
+      1153
     ],
     [
-      "modules/iopcore/cdvdfsv/searchfile.c",
+      "modules/iopcore/cdvdman/smb2auth.c",
       1,
-      81,
-      81
+      307,
+      307
+    ],
+    [
+      "modules/iopcore/cdvdman/smb2auth.h",
+      1,
+      42,
+      42
+    ],
+    [
+      "modules/iopcore/cdvdman/smsutils.S",
+      1,
+      180,
+      180
+    ],
+    [
+      "modules/iopcore/cdvdman/streaming.c",
+      1,
+      332,
+      455
     ]
   ],
   "sensitive_opaque_initializers": [

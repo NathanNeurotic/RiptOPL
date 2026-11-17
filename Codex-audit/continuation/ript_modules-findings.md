@@ -211,3 +211,73 @@ Snapshot 679d3d8626dd09a913e7081101418e337234fe7c. Audit in progress; coverage i
 - Benefit: Correct file timestamps; the 32-second error for encoded seconds 16–29 follows directly from the arithmetic. No performance or RAM benefit claimed.
 - Effort: S. Risk: Low. Confidence: READ.
 
+
+### RIPTOPL-224 / Stop treating a queued disc read as a completed successful read / Category 6
+
+- Location(s): `RiptOPL/modules/iopcore/cdvdman/ioops.c:284-348,417-470`; `RiptOPL/modules/iopcore/cdvdman/searchfile.c:106-110`; `RiptOPL/modules/iopcore/cdvdfsv/ncmd.c:189-224,305-358`; completion result `RiptOPL/modules/iopcore/cdvdman/cdvdman.c:571-579,618-700`.
+- Problem: The file, directory, search, and EE-copy adapters check whether `sceCdRead` was accepted, then ignore the device error after `sceCdSync`. They advance positions/counts and copy the scratch buffer even when the asynchronous read failed, returning stale data as a successful file read or parsing the previous directory sector.
+- Simplest fix: Check the existing completion error immediately after each sync and stop before copying, parsing, or advancing a failed chunk. Return the existing negative file error or existing RPC failure/partial-count contract, preserving the first device error.
+- Justification: Local completion checks use the error already supplied by CDVDMAN; no retry, buffer, helper, or error framework is needed.
+- Benefit: Prevents acknowledged unread bytes and stale directory/EE data after real transport errors (READ control flow; hardware occurrence INFERRED). No timing or size saving measured.
+- Effort: M. Risk: Med (preserve the existing partial-read API contracts). Confidence: READ.
+
+### RIPTOPL-225 / Use the requested sector layout and its real scratch-buffer capacity / Category 6
+
+- Location(s): `RiptOPL/modules/iopcore/cdvdfsv/ncmd.c:120-128,175-215`; fixed allocation `RiptOPL/modules/iopcore/cdvdman/ioops.c:20-21,629-632`; eight-sector limit `RiptOPL/modules/iopcore/common/cdvdman_opl.h:65-67`; existing conversion `RiptOPL/modules/iopcore/cdvdman/ncmd.c:27-49`, `RiptOPL/modules/iopcore/cdvdman/cdvdman.c:628-689`.
+- Problem: The EE adapter computes copies using 2328/2340-byte sectors but calls `sceCdRead` with a null mode, which produces packed 2048-byte sectors. Its chunk limit also remains eight sectors regardless of layout, so an aligned eight-sector 2328-byte transfer copies 18624 bytes from a 16448-byte allocation, including 2176 bytes beyond it.
+- Simplest fix: Pass the already-received mode to the existing sector conversion and derive each chunk's sector count from the fixed scratch-buffer byte capacity and requested sector size, retaining the extra sector needed by alignment correction. Do not add a new raw-sector implementation or enlarge every resident buffer.
+- Justification: Reuses the conversion already present in CDVDMAN and corrects the local capacity calculation.
+- Benefit: Correct sector spacing and bounded EE DMA reads for supported non-2048 patterns (READ); 2176-byte over-read is arithmetic from the declared sizes, not an executed exploit. No extra resident RAM required.
+- Effort: S. Risk: Med (raw-pattern and unaligned-read compatibility). Confidence: READ.
+
+### RIPTOPL-226 / Reject invalid HDL partition counts before publishing the disc map / Category 6
+
+- Location(s): `RiptOPL/modules/iopcore/cdvdman/device-hdd.c:19-22,30-45,57-80,111-129`; on-disc layout `RiptOPL/modules/iopcore/cdvdman/atad.h:84-98`.
+- Problem: The signed on-disc `num_partitions` is narrowed into an unsigned byte without validation, then used to walk the 65-element copied part-spec array. Counts such as 66 or -1 permit out-of-bounds part specifications and incorrect physical reads, while zero still leaves `CurrentPart` consulted by the read path.
+- Simplest fix: Validate the signed count against one through `HDL_NUM_PART_SPECS` before assigning it, and reject zero-length/overflowing logical extents before making the map ready. Make a rejected header fail the existing ready/read checks using the existing zero-count state.
+- Justification: A small local validation is required by the fixed on-disc array; no alternate parser, map, or backup is needed.
+- Benefit: Bounded map traversal and deterministic failure for damaged HDL metadata (READ); physical-device effects INFERRED. No size/timing measurement.
+- Effort: S. Risk: Low. Confidence: READ.
+
+### RIPTOPL-227 / End HDPro and HDL-header retries after persistent I/O failure / Category 3, 5, 6
+
+- Location(s): `RiptOPL/modules/iopcore/cdvdman/hdpro_atad.c:678-732` (especially 714-719); `RiptOPL/modules/iopcore/cdvdman/device-hdd.c:70-73`.
+- Problem: HDPro retries every failed command/completion forever while holding `ata_io_sema`; the HDL backend separately retries a failed header read forever during module start. A disconnected or permanently failing drive therefore prevents the game/IOP startup or every later device user from completing, despite the drivers already returning useful error codes.
+- Simplest fix: Bound the existing command attempts, leave the loop on permanent failure, run the existing finish/unlock path, and return the original error. Bound header acquisition likewise and leave the existing partition-count state unready instead of publishing a failed header.
+- Justification: Removing indefinite retry behavior needs no reconnect layer or new recovery state. Preserve any short compatibility retry only where its purpose is supported by hardware evidence.
+- Benefit: Persistent errors terminate instead of hanging startup or monopolizing the device lock (READ); console time saved is unmeasured/INFERRED.
+- Effort: S. Risk: Med (HDPro hardware compatibility). Confidence: READ.
+
+### RIPTOPL-228 / Preserve SCMD failure instead of reporting success with unfilled output / Category 5, 6
+
+- Location(s): `RiptOPL/modules/iopcore/cdvdman/cdvdman.c:926-997`; output consumers `RiptOPL/modules/iopcore/cdvdman/scmd.c:12-23,196-212,224-267`.
+- Problem: After up to 2501 failed busy submissions, `cdvdman_sendSCmd` still returns success; several consumers then interpret or copy uninitialized stack reply bytes. Once submission starts, three hardware-status loops have no termination bound, so the nominal retry limit does not bound a stuck command.
+- Simplest fix: Return the actual submission/completion result and stop consumers before reading failed replies; apply one bounded command deadline to the existing status loops and release the existing semaphore on failure. Remove the final unconditional success and unnecessary final delay on a failed command.
+- Justification: Local result/deadline handling repairs the existing hardware operation without a wrapper, fallback, or additional retry system.
+- Benefit: No fabricated successful RTC/identity/model replies and bounded lock retention for a stuck Mechacon (READ control flow; occurrence/timing INFERRED). No sensitive identity bytes were collected or reproduced.
+- Effort: M. Risk: Med (hardware timing). Confidence: READ.
+
+### RIPTOPL-229 / Continue directory enumeration past the first ISO sector / Category 6
+
+- Location(s): `RiptOPL/modules/iopcore/cdvdman/ioops.c:417-470`; directory handle extent `RiptOPL/modules/iopcore/cdvdman/ioops.c:143-149`.
+- Problem: Every `dread` rereads `fh->lsn`, treats `fh->position` as an offset into that first sector, and returns end-of-directory once the position passes its boundary or encounters sector padding. A valid ISO directory extending into a second sector therefore loses all later entries even though the handle already records its complete size.
+- Simplest fix: Use the existing position to select `lsn + position / 2048` and its within-sector offset, skip padding to the next sector, and stop at the existing directory filesize. Keep the existing record-boundary checks and propagate read failures as in RIPTOPL-224.
+- Justification: Correct the existing iterator; no index, directory cache, or second buffer is needed.
+- Benefit: Complete enumeration of valid multi-sector directories (READ); affected-game frequency is unmeasured/INFERRED.
+- Effort: S. Risk: Low. Confidence: READ.
+
+### RIPTOPL-230 / Bound the optional PSS suffix lookup for short paths / Category 6
+
+- Location(s): `RiptOPL/modules/iopcore/cdvdman/searchfile.c:214-221`.
+- Problem: With video skipping enabled, a successfully found path shorter than six bytes indexes `strlen(path) - 6` before the static path buffer. The suffix check therefore reads unrelated memory instead of a path suffix.
+- Simplest fix: Require a length of at least six before comparing the existing suffix position, computing that length once.
+- Benefit: Removes the before-buffer read in the optional path (READ); no timing/RAM benefit measured.
+- Effort: S. Risk: Low. Confidence: READ.
+
+### RIPTOPL-231 / Delete the unreachable PIO transfer body in the in-game ATA fork / Category 1, 7
+
+- Location(s): `RiptOPL/modules/iopcore/cdvdman/atad.c:470-517`; duplicate command-table entry `RiptOPL/modules/iopcore/cdvdman/atad.c:91-93`.
+- Problem: `ata_pio_transfer` clears the existing hardware register and immediately returns zero, leaving its entire legacy PIO implementation unreachable. The command table also repeats the same standby-immediate command entry.
+- Simplest fix: Delete the code after that unconditional return and the duplicate table row; retain the intentional PIO stub and its current public behavior unless a separate supported need requires real PIO.
+- Benefit: Roughly 40 dead implementation lines and one duplicate table entry removed (READ count, final net source deletion INFERRED). Compiler likely already removes the unreachable body, so no executable/RAM saving is claimed without measurement.
+- Effort: S. Risk: Low. Confidence: READ.

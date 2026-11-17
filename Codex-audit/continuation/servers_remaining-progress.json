@@ -201,18 +201,7 @@
     "packaging/systemd/ps2servers-udpbd.env",
     "packaging/systemd/ps2servers-udpfs.env",
     "smbv1_server/Start-SMB-Server.bat",
-    "smbv1_server/build_exe.ps1"
-  ],
-  "partial_paths": {
-    "udpbd_server/selftest.py": [
-      [
-        1,
-        147
-      ]
-    ]
-  },
-  "structural_generated_data_reviews": [],
-  "remaining_paths": [
+    "smbv1_server/build_exe.ps1",
     "Start-Launcher.bat",
     "docs/antivirus.html",
     "docs/assets/app.js",
@@ -221,7 +210,24 @@
     "docs/compression.html",
     "docs/credits.html",
     "docs/data/search-index.json",
-    "docs/edge-builds.html",
+    "docs/edge-builds.html"
+  ],
+  "partial_paths": {
+    "udpbd_server/selftest.py": [
+      [
+        1,
+        147
+      ]
+    ],
+    "docs/edge-manual.html": [
+      [
+        1,
+        256
+      ]
+    ]
+  },
+  "structural_generated_data_reviews": [],
+  "remaining_paths": [
     "docs/edge-manual.html",
     "docs/edge.html",
     "docs/editions.html",
@@ -473,10 +479,22 @@
   ],
   "last_acknowledged_batch": [
     [
-      "udpbd_server/selftest.py",
+      "docs/data/search-index.json",
+      1007,
+      1088,
+      1088
+    ],
+    [
+      "docs/edge-builds.html",
       1,
-      147,
-      179
+      181,
+      181
+    ],
+    [
+      "docs/edge-manual.html",
+      1,
+      256,
+      296
     ]
   ],
   "supplemental_context_reads": {

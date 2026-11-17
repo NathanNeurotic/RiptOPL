@@ -282,3 +282,45 @@ Read-only continuation at b9a5c882d6d632914faa4ff8dc080f1ecd51bfd7. Findings sup
 - **Simplest fix:** Require the existing decoder's successful end result; free and clear the new font buffer on failure before returning it.
 - **Addition justification:** One existing-result check is necessary to prevent undefined decoder output from becoming active font data; no additional loading layer is needed.
 - **Benefit:** Eliminates acceptance of corrupt compressed font bodies; crash/misrender consequences INFERRED. **Effort S; risk Low; confidence READ.**
+
+## SMS-133 — Terminate and check the language-pack bytes before line splitting (category 6)
+- **Read:** `Simple-Media-System/src/SMS_Locale.c:838–845`, `:871–891`, `:899–924`.
+- **Problem:** Each language-pack read ignores its returned byte count and leaves the allocated extra byte uninitialized. When a short pack ends in a lone newline, the line splitter reads that extra byte and, if it happens to equal newline, advances beyond `lpEnd`, after which its inequality-only scan reads outside the allocation; short device reads also parse uninitialized bytes as translations.
+- **Simplest fix:** Require the requested read count, terminate at the confirmed end, and stop line splitting when the next pointer reaches that end.
+- **Addition justification:** Local result/end checks are required for the existing parser's buffer contract; no new loader or fallback is needed.
+- **Benefit:** Removes parsing of unread heap bytes and the trailing-newline overrun path; device-failure frequency and visible consequences INFERRED. **Effort S; risk Low; confidence READ.**
+
+## SMS-134 — Remove the eightfold oversized desktop DMA array (category 4)
+- **Read:** `Simple-Media-System/src/SMS_GUI.c:86`, `:153`, `:188`; `Simple-Media-System/src/SMS_EE.c:695–728`; `Simple-Media-System/include/SMS_GS.h:1153–1171`.
+- **Problem:** The desktop array uses a byte-valued `sizeof(GSLoadImage) * 9` as a count of 64-bit elements. Its only writer and consumer require nine `GSLoadImage` records, so seven eighths of the static data allocation are unused.
+- **Simplest fix:** Declare nine existing `GSLoadImage` objects, retaining the existing alignment and call sites.
+- **Addition justification:** None; correct the existing declaration's element type/count.
+- **Benefit:** Measured allocation ratio 8:1; saves `63 * sizeof(GSLoadImage)` bytes of static RAM and initialized ELF data (12,096 bytes when the target structure is 192 bytes). Target ELF byte delta not built: INFERRED. **Effort S; risk Low; confidence READ.**
+
+## SMS-135 — Include the remainder in the final desktop copy strip (category 6)
+- **Read:** `Simple-Media-System/src/SMS_EE.c:695–728`; `Simple-Media-System/src/SMS_GUI.c:153`.
+- **Problem:** The desktop copy divides its height into nine equal strips and computes a remainder adjustment only after the final strip has already been initialized. That adjustment is both too late and tests the next strip endpoint, leaving the bottom `height % 9` rows uncopied whenever the height is not divisible by nine.
+- **Simplest fix:** Set the final strip height from the remaining rows before calling the existing image-packet initializer; delete the ineffective post-initialization adjustment.
+- **Addition justification:** None; move the existing remainder calculation to where its result is used.
+- **Benefit:** Measured 3 omitted rows for a 480-row copy and 7 for 448 rows; visible stale-edge behavior INFERRED. **Effort S; risk Low; confidence READ.**
+
+## SMS-136 — Keep remote-driver import matching inside the loaded bytes (category 6)
+- **Read:** `Simple-Media-System/src/SMS_RC.c:58–80`, `:103–117`.
+- **Problem:** The import-version scanner rounds the file size upward and checks only the current word against its end pointer; it can then inspect a second word and compare a name twelve bytes farther on without proving those bytes exist. Truncated or malformed external RMMAN modules can therefore cause heap overreads, and the loader also scans after unchecked allocation/read results.
+- **Simplest fix:** Scan only positions where the complete import header and name fit inside the confirmed bytes read; reject failed allocation or incomplete reads before scanning/executing.
+- **Addition justification:** Local bounds/result checks protect the existing loader; no new scanner or recovery layer is needed.
+- **Benefit:** Eliminates overreads beyond the external module allocation; runtime crash frequency INFERRED. **Effort S; risk Low; confidence READ.**
+
+## SMS-137 — Reuse bounded boot-asset path construction for RMMAN (category 6)
+- **Read:** `Simple-Media-System/src/SMS_RC.c:84–95`; `Simple-Media-System/src/SMS_Config.c:72`, `:259–276`.
+- **Problem:** The remote-driver loader copies the boot directory into a 128-byte stack array and appends a nine-character filename without a capacity check. A valid boot directory longer than 118 characters overflows that array.
+- **Simplest fix:** Use the existing bounded `SMS_ConfigAssetPath` call to append the driver filename and add that candidate only when it fits.
+- **Addition justification:** None; reuse the existing helper and delete the unchecked copy/append.
+- **Benefit:** Measured 128-byte buffer and 10-byte filename including NUL; prevents a stack overwrite for long boot paths. **Effort S; risk Low; confidence READ.**
+
+## SMS-138 — Clear cached controller buttons when a report read fails (category 6)
+- **Read:** `Simple-Media-System/src/SMS_PAD.c:180–208`; `Simple-Media-System/src/libds34usb.c:132–145`; `Simple-Media-System/src/libds34bt.c:128–141`.
+- **Problem:** A controller that still reports RUNNING but fails its data RPC leaves `s_ds34Mask` unchanged. The GUI then keeps seeing the previous buttons as pressed until a successful report or status change, so a failed read can repeat a navigation/action indefinitely.
+- **Simplest fix:** Assign the cached mask from each successful report and clear it on the existing failed-read branch for either transport.
+- **Addition justification:** A local failure assignment is required to prevent stale input; no retry or polling layer is needed.
+- **Benefit:** Removes stale pressed-button state after failed reads; actual user-visible repeats INFERRED. **Effort S; risk Low; confidence READ.**

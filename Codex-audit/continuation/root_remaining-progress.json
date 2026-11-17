@@ -25,7 +25,13 @@
     "POPSLoader/.research/ui/capture-manifest.json",
     "POPSLoader/.vscode/settings.json",
     "POPSLoader/bin/POPSLDR/title.cfg",
-    "POPSLoader/docs/third_party/okeanos_udpfs/PROVENANCE.json"
+    "POPSLoader/docs/third_party/okeanos_udpfs/PROVENANCE.json",
+    "POPSLoader/modules/pademu/ds34usb.c",
+    "POPSLoader/modules/pademu/ds34usb.h",
+    "POPSLoader/modules/pademu/ds34bt.h",
+    "POPSLoader/modules/pademu/pademu.c",
+    "POPSLoader/tools/test_udpfs_config_runtime.py",
+    "POPSLoader/iop/ata_bd_fast/ps2atad.c"
   ],
   "partial_paths": {},
   "structural_generated_data_reviews": {
@@ -35,24 +41,46 @@
     },
     "POPSLoader/.research/build_site.py": {
       "review": "All 1\u20132377 read, with password-bearing documentation literals at1225\u20131227 and1701\u20131704 opaque. Entire Python AST parsed; no import/run because module performs build-tree deletion at import."
+    },
+    "POPSLoader/bin/POPSLDR/system.lua": {
+      "code": "Complete executable/string pass from baseline preserved; all remaining comments (1893 extracted source-comment lines) reviewed in numbered views, sensitive contexts opaque.",
+      "data": "All 2249 localization rows (2568\u20134843) parsed as literal-only Lua 5.4 data; duplicate keys, types, control characters and ordered format conversions checked. No linguistic accuracy claim. See root_lua-translations.json."
+    },
+    "POPSLoader/bin/POPSLDR/ui.lua": {
+      "code": "Complete executable/string pass from baseline preserved; all 1534 extracted comment lines reviewed, sensitive contexts opaque."
+    },
+    "POPSLoader/.research/_state/galleries.json": {
+      "data": "All 63 records JSON-parsed and confirmed lists of strings. Builder extraction/lookup/merge and rendering consumers fully read. Image names not visually/linguistically verified."
+    },
+    "POPSLoader/.research/research/entries.json": {
+      "data": "All 136 catalogue dictionaries JSON-parsed with field inventory. Complete card, index, category routing, and audit consumers read. Historical effect/provenance assertions not independently researched; no factual verification of every entry claimed."
+    },
+    "POPSLoader/modules/ds34bt/iop/ds34bt.c": {
+      "code": "Baseline read all non-key logic at1\u2013272,277\u20131719. Opaque secret-like initializer at273\u2013276 deliberately excluded."
+    },
+    "POPSLoader/modules/ds34usb/iop/ds34usb.c": {
+      "code": "Baseline read all non-key logic at1\u201356,61\u2013806. Opaque secret-like initializer at57\u201360 deliberately excluded."
+    },
+    "POPSLoader/src/elf_loader/loader.c": {
+      "data": "All 8732 array rows parsed as one 139700-byte literal payload; declared length, ELF32 little-endian header, MIPS machine and table extents checked. Nonliteral declarations read; generator/build consumers already read. Embedded machine instructions not disassembled or hardware-tested.",
+      "elf_header": {
+        "bytes": 139700,
+        "elf32": true,
+        "little_endian": true,
+        "machine": 8,
+        "program_headers": 2,
+        "section_headers": 20
+      }
+    },
+    "POPSLoader/modules/pademu/ds34bt.c": {
+      "code": "Complete comparison against fully reviewed RiptOPL/modules/pademu/ds34bt.c; all213 nonidentical target lines plus context read,1308 target lines byte-identical to reviewed reference. Key initializer at256\u2013260 opaque. See root_pademu-comparison.json."
+    },
+    "POPSLoader/tools/host_harness.py": {
+      "code": "Complete remaining243\u20132759 read; baseline1\u2013242 already read. Sensitive fixture and comment literals excluded; operations around masked fixture literals reviewed in a view that replaces string contents with opaque markers.",
+      "validation": "Existing suite was run earlier:62/62 passed; no rerun during read-only completion."
     }
   },
   "remaining_paths": [
-    "POPSLoader/.research/_state/galleries.json",
-    "POPSLoader/.research/research/entries.json",
-    "POPSLoader/bin/POPSLDR/system.lua",
-    "POPSLoader/bin/POPSLDR/ui.lua",
-    "POPSLoader/iop/ata_bd_fast/ps2atad.c",
-    "POPSLoader/modules/ds34bt/iop/ds34bt.c",
-    "POPSLoader/modules/ds34usb/iop/ds34usb.c",
-    "POPSLoader/modules/pademu/ds34bt.c",
-    "POPSLoader/modules/pademu/ds34bt.h",
-    "POPSLoader/modules/pademu/ds34usb.c",
-    "POPSLoader/modules/pademu/ds34usb.h",
-    "POPSLoader/modules/pademu/pademu.c",
-    "POPSLoader/src/elf_loader/loader.c",
-    "POPSLoader/tools/host_harness.py",
-    "POPSLoader/tools/test_udpfs_config_runtime.py",
     "RiptOPL/.github/ISSUE_TEMPLATE/feature_request.yml",
     "RiptOPL/.github/ISSUE_TEMPLATE/issue-report.yml",
     "RiptOPL/.github/ps2build-sdk.env",
@@ -341,5 +369,11 @@
     "RiptOPL/.github/scripts/test_zso_read_errors.py",
     "RiptOPL/.github/scripts/test_zso_validation.py",
     "RiptOPL/.github/scripts/wiki_sync.py"
-  ]
+  ],
+  "comparison_review_notes": {
+    "reference_manifest": "ript_modules-progress.json",
+    "mapping": "root_pademu-comparison.json",
+    "target_review": "All nonidentical lines and3-line contexts read; every equal span compared byte-for-byte with fully reviewed source. Covers five alternate pademu files; bt key initializer stays opaque.",
+    "atafast": "All105 nonidentical target lines plus3-line context read;1488 lines byte-identical to fully reviewed RiptOPL/modules/hdd/atad/src/ps2atad.c. See root_atafast-comparison.json. This is an unbuilt alternate driver; delete through POPSLOADER-022 rather than separately repair its old bugs."
+  }
 }
