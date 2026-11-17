@@ -114,6 +114,10 @@ void autoLaunchHDDGame(char *argv[])
     // never stores '#' keys. sbGetCompatModes needs it to find a title's default compatibility modes.
     configSetStr(configSet, CONFIG_ITEM_STARTUP, gAutoLaunchGame->startup);
 
+#ifdef RETROACHIEVEMENTS
+    sbAutoLaunchCheckRA(gHDDPrefix, gAutoLaunchGame->startup, NULL, gAutoLaunchGame->startup, GAME_FORMAT_ISO,
+                        gAutoLaunchGame->start_sector);
+#endif
     if (!menuGameRequiresParentalLock(configSet))
         hddLaunchGame(NULL, -1, configSet);
 
@@ -288,6 +292,10 @@ void autoLaunchBDMGame(char *argv[], int ataOnly)
     // never stores '#' keys. sbGetCompatModes needs it to find a title's default compatibility modes.
     configSetStr(configSet, CONFIG_ITEM_STARTUP, gAutoLaunchBDMGame->startup);
 
+#ifdef RETROACHIEVEMENTS
+    sbAutoLaunchCheckRA(gAutoLaunchDeviceData->bdmPrefix, gAutoLaunchBDMGame->name, gAutoLaunchBDMGame->extension,
+                        gAutoLaunchBDMGame->startup, gAutoLaunchBDMGame->format, 0);
+#endif
     if (!menuGameRequiresParentalLock(configSet))
         bdmLaunchGame(NULL, -1, configSet);
 

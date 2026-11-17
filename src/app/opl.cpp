@@ -1937,6 +1937,11 @@ void miniInit(int mode, int ataOnly)
                 configGetInt(configOPL, CONFIG_OPL_HDD_CACHE, &hddCacheSize);
         }
     }
+    // The saved network, as _loadConfig reads it. A tracked RA game raises the network before it
+    // starts; without these it came up on the defaults (static 192.168.1.10), not the user's DHCP
+    // or address, and the PC never heard it.
+    if (ret & CONFIG_NETWORK)
+        configReadNetwork(configGetByType(CONFIG_NETWORK));
 #ifdef __OPLDIAG
     // Autolaunch never initializes the GUI or a release TTY. Display the captured config state
     // using only the renderer and built-in font, then release them before the game handoff.

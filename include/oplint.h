@@ -22,8 +22,9 @@ void _loadConfig();
 void resolveBootDirToMass(void);
 int tryAlternateDevice(int types);
 void configReadNeutrinoGlobals(config_set_t *configOPL);
-void configReadRA(config_set_t *configOPL);    // RA settings, shared with Auto Loading
-void normalizeMcPath(char *path, size_t size); // "mc1:" / "mc1:X" -> "mc1:/" / "mc1:/X"
+void configReadRA(config_set_t *configOPL);      // RA settings, shared with Auto Loading
+void configReadNetwork(config_set_t *configNet); // network settings, shared with Auto Loading
+void normalizeMcPath(char *path, size_t size);   // "mc1:" / "mc1:X" -> "mc1:/" / "mc1:/X"
 extern char gBootElfName[64];
 extern const char *gBootHomeWhy; // why the boot home was chosen (diagnostics)
 

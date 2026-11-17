@@ -1514,6 +1514,49 @@ static void emberSaveSettings(config_set_t *configOPL)
     configRemoveKey(configOPL, CONFIG_OPL_EMBER_DISPLAY); // migrated on load; never written again
 }
 
+// The network settings, read the same way for the menu and for Auto Loading (miniInit): an auto-launched
+// RA game raises the network with them, so without them it ran on the defaults, not the user's network.
+void configReadNetwork(config_set_t *configNet)
+{
+    const char *temp;
+
+    configGetInt(configNet, CONFIG_NET_ETH_LINKM, &gETHOpMode);
+
+    configGetInt(configNet, CONFIG_NET_PS2_DHCP, &ps2_ip_use_dhcp);
+    configGetInt(configNet, CONFIG_NET_SMB_NBNS, &gPCShareAddressIsNetBIOS);
+    configGetStrCopy(configNet, CONFIG_NET_SMB_NB_ADDR, gPCShareNBAddress, sizeof(gPCShareNBAddress));
+
+    if (configGetStr(configNet, CONFIG_NET_SMB_IP_ADDR, &temp))
+        sscanf(temp, "%d.%d.%d.%d", &pc_ip[0], &pc_ip[1], &pc_ip[2], &pc_ip[3]);
+
+    configGetInt(configNet, CONFIG_NET_SMB_PORT, &gPCPort);
+
+    if (configGetStr(configNet, CONFIG_NET_HTTP_IP_ADDR, &temp))
+        sscanf(temp, "%d.%d.%d.%d", &gHttpServerIp[0], &gHttpServerIp[1], &gHttpServerIp[2], &gHttpServerIp[3]);
+    configGetInt(configNet, CONFIG_NET_HTTP_PORT, &gHttpPort);
+    configGetStrCopy(configNet, CONFIG_NET_HTTP_BASE_PATH, gHttpBasePath, sizeof(gHttpBasePath));
+    httpNormalizeBasePath(gHttpBasePath, sizeof(gHttpBasePath));
+
+    configGetStrCopy(configNet, CONFIG_NET_NFS_EXPORT, gNfsExport, sizeof(gNfsExport));
+    configGetInt(configNet, CONFIG_NET_NFS_WRITES, &gNfsWrites);
+    gNfsWrites = gNfsWrites == 1; // anything but an explicit On stays Off
+
+    configGetStrCopy(configNet, CONFIG_NET_SMB_SHARE, gPCShareName, sizeof(gPCShareName));
+    configGetStrCopy(configNet, CONFIG_NET_SMB_USER, gPCUserName, sizeof(gPCUserName));
+    configGetStrCopy(configNet, CONFIG_NET_SMB_PASSW, gPCPassword, sizeof(gPCPassword));
+
+    if (configGetStr(configNet, CONFIG_NET_PS2_IP, &temp))
+        sscanf(temp, "%d.%d.%d.%d", &ps2_ip[0], &ps2_ip[1], &ps2_ip[2], &ps2_ip[3]);
+    if (configGetStr(configNet, CONFIG_NET_PS2_NETM, &temp))
+        sscanf(temp, "%d.%d.%d.%d", &ps2_netmask[0], &ps2_netmask[1], &ps2_netmask[2], &ps2_netmask[3]);
+    if (configGetStr(configNet, CONFIG_NET_PS2_GATEW, &temp))
+        sscanf(temp, "%d.%d.%d.%d", &ps2_gateway[0], &ps2_gateway[1], &ps2_gateway[2], &ps2_gateway[3]);
+    if (configGetStr(configNet, CONFIG_NET_PS2_DNS, &temp))
+        sscanf(temp, "%d.%d.%d.%d", &ps2_dns[0], &ps2_dns[1], &ps2_dns[2], &ps2_dns[3]);
+
+    configGetStrCopy(configNet, CONFIG_NET_NBD_DEFAULT_EXPORT, gExportName, sizeof(gExportName));
+}
+
 // The RA settings, read and normalised the same way for the menu and for Auto Loading (miniInit).
 void configReadRA(config_set_t *configOPL)
 {
@@ -1919,45 +1962,8 @@ void _loadConfig()
             result = tryAlternateDevice(lscstatus);
         }
 
-        if (result & CONFIG_NETWORK) {
-            config_set_t *configNet = configGetByType(CONFIG_NETWORK);
-
-            configGetInt(configNet, CONFIG_NET_ETH_LINKM, &gETHOpMode);
-
-            configGetInt(configNet, CONFIG_NET_PS2_DHCP, &ps2_ip_use_dhcp);
-            configGetInt(configNet, CONFIG_NET_SMB_NBNS, &gPCShareAddressIsNetBIOS);
-            configGetStrCopy(configNet, CONFIG_NET_SMB_NB_ADDR, gPCShareNBAddress, sizeof(gPCShareNBAddress));
-
-            if (configGetStr(configNet, CONFIG_NET_SMB_IP_ADDR, &temp))
-                sscanf(temp, "%d.%d.%d.%d", &pc_ip[0], &pc_ip[1], &pc_ip[2], &pc_ip[3]);
-
-            configGetInt(configNet, CONFIG_NET_SMB_PORT, &gPCPort);
-
-            if (configGetStr(configNet, CONFIG_NET_HTTP_IP_ADDR, &temp))
-                sscanf(temp, "%d.%d.%d.%d", &gHttpServerIp[0], &gHttpServerIp[1], &gHttpServerIp[2], &gHttpServerIp[3]);
-            configGetInt(configNet, CONFIG_NET_HTTP_PORT, &gHttpPort);
-            configGetStrCopy(configNet, CONFIG_NET_HTTP_BASE_PATH, gHttpBasePath, sizeof(gHttpBasePath));
-            httpNormalizeBasePath(gHttpBasePath, sizeof(gHttpBasePath));
-
-            configGetStrCopy(configNet, CONFIG_NET_NFS_EXPORT, gNfsExport, sizeof(gNfsExport));
-            configGetInt(configNet, CONFIG_NET_NFS_WRITES, &gNfsWrites);
-            gNfsWrites = gNfsWrites == 1; // anything but an explicit On stays Off
-
-            configGetStrCopy(configNet, CONFIG_NET_SMB_SHARE, gPCShareName, sizeof(gPCShareName));
-            configGetStrCopy(configNet, CONFIG_NET_SMB_USER, gPCUserName, sizeof(gPCUserName));
-            configGetStrCopy(configNet, CONFIG_NET_SMB_PASSW, gPCPassword, sizeof(gPCPassword));
-
-            if (configGetStr(configNet, CONFIG_NET_PS2_IP, &temp))
-                sscanf(temp, "%d.%d.%d.%d", &ps2_ip[0], &ps2_ip[1], &ps2_ip[2], &ps2_ip[3]);
-            if (configGetStr(configNet, CONFIG_NET_PS2_NETM, &temp))
-                sscanf(temp, "%d.%d.%d.%d", &ps2_netmask[0], &ps2_netmask[1], &ps2_netmask[2], &ps2_netmask[3]);
-            if (configGetStr(configNet, CONFIG_NET_PS2_GATEW, &temp))
-                sscanf(temp, "%d.%d.%d.%d", &ps2_gateway[0], &ps2_gateway[1], &ps2_gateway[2], &ps2_gateway[3]);
-            if (configGetStr(configNet, CONFIG_NET_PS2_DNS, &temp))
-                sscanf(temp, "%d.%d.%d.%d", &ps2_dns[0], &ps2_dns[1], &ps2_dns[2], &ps2_dns[3]);
-
-            configGetStrCopy(configNet, CONFIG_NET_NBD_DEFAULT_EXPORT, gExportName, sizeof(gExportName));
-        }
+        if (result & CONFIG_NETWORK)
+            configReadNetwork(configGetByType(CONFIG_NETWORK));
     }
 
     // UDP transports bind their ministack to the saved STATIC PS2 IP fields and never consult DHCP.
