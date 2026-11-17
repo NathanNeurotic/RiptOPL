@@ -184,6 +184,11 @@ into the picture the game is showing, which it finds through the same GS write b
   drew there until the game draws that part of the picture again.
 * A game whose picture is in a format the menu cannot draw leaves at once, as before. Nothing is lost
   compared with the menu off.
+* **Known game where the menu does not open: Dirge of Cerberus.** On a console the screen blinks mint green
+  three times and the combination does the plain reset back to the loader, so IGR still works there. Why the
+  menu cannot draw in it is not known: test builds that also waited for VIF1 and the GIF to be at rest before
+  drawing changed nothing. Other games may do the same; report them with the blink's colour (see
+  [Troubleshooting](#troubleshooting)).
 * **The game goes quiet while the menu is open** and its sound goes on where it stopped when you resume:
   a small IOP module (`igrmbox.irx`) turns the SPU2's volume down and holds every voice. It cannot hold a
   game that streams PCM straight to the sound cores; that stream keeps running, silently, while you are paused.
