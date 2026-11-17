@@ -623,13 +623,13 @@ static int igrmFindFrame(void)
         if ((smode2 & 1) && dh > ((((u32)(disp >> 12) & 0x7ff) >= 64) ? 576u : 480u))
             dh = (((u32)(disp >> 12) & 0x7ff) >= 64) ? 576 : 480;
         if (dh > 0 && dh <= 1024)
-            h = dh;
+            h = (smode2 & 3) == 3 ? dh / 2 : dh; // interlaced FRAME mode: the buffer holds one field of DH
     } else if (own) {
         // how wide the game shows its frame is unknown: a panel that fits a 320 wide picture fits any
         w = 320;
     }
-    if ((smode2 & 3) == 3) // interlaced FRAME mode: the buffer holds one field
-        h /= 2;
+    // with no DISPLAY recorded h stays 224, one field already: halving that too left 112 lines, less than the panel,
+    // so a FRAME mode game whose DISPLAY write was not seen (the own frame above) never got the menu
     x = (fb >> 32) & 0x7ff;
     y = (fb >> 43) & 0x7ff;
     if (w < PW + 8 || h < PH + 4)
@@ -672,11 +672,18 @@ int igrmTestPage(const igrm_info_t *in, int page, int sel, int armed, int sx, in
 #define IGRM_D1_MADR   ((vu32 *)0x10009010)
 #define IGRM_D1_QWC    ((vu32 *)0x10009020)
 #define IGRM_D1_TADR   ((vu32 *)0x10009030)
+#define IGRM_D_CTRL    ((vu32 *)0x1000e000)
 #define IGRM_D_STAT    ((vu32 *)0x1000e010)
 #define IGRM_GIF_STAT  ((vu32 *)0x10003020)
 #define IGRM_VIF1_STAT ((vu32 *)0x10003c00)
 #define CHCR_STR       0x100
+#define IGRM_D2_CHCR   ((vu32 *)0x1000a000)
+#define IGRM_D8_MADR   ((vu32 *)0x1000d010)
+#define IGRM_D_RBSR    ((vu32 *)0x1000e040)
+#define IGRM_D_ENABLER ((vu32 *)0x1000f520)
+#define IGRM_D_ENABLEW ((vu32 *)0x1000f590)
 #define VIF_FQC        0x1f000000
+#define VIF_STALLED    0x00800f00 // FDR (the FIFO turned towards the EE), VSS, VFS, VIS, INT
 #define GIF_BUSY       0x1f000c00 // FQC and APATH
 
 #define VIF_NOP                       0
@@ -706,11 +713,16 @@ static inline u32 igrmCount(void)
     return c;
 }
 
-static int igrmWaitClear(vu32 *reg, u32 bits) // bounded: a stuck path must not hold the pause forever
+// Wait until reg's bits read as want. bounded: a stuck path must not hold the pause forever
+// drain: reg is the CHCR of the channel D_CTRL names as the one that empties the game's MFIFO. Such a channel does
+// not stop when it has taken all the MFIFO holds: it stays started and waits for channel 8 to add more, which only
+// the paused game does. So it also counts as clear once the MFIFO is empty, by the DMAC's own test: the drain's tag
+// address has caught up with channel 8's write address in the ring (D_RBSR), with nothing left of the last tag's data
+static int igrmWaitFor(vu32 *reg, u32 bits, u32 want, int drain)
 {
     int i;
     for (i = 0; i < 10000000; i++)
-        if (!(*reg & bits))
+        if ((*reg & bits) == want || (drain && !reg[8] && !((reg[12] ^ *IGRM_D8_MADR) & *IGRM_D_RBSR)))
             return 1;
     return 0;
 }
@@ -743,7 +755,7 @@ static int igrmSendLine(u32 *pkt, int line)
     *IGRM_D1_MADR = (u32)pkt;
     *IGRM_D1_CHCR = 0x101; // from memory, normal mode, start
     asm volatile("sync.l");
-    return igrmWaitClear(IGRM_D1_CHCR, CHCR_STR);
+    return igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, 0);
 }
 
 // The page composed last, from igrmY
@@ -770,15 +782,6 @@ static int igrmDraw(u32 *pkt)
 #define VIF_FDR        0x00800000
 #define CSR_FINISH     2
 #define IMR_FINISH     0x200
-
-static int igrmWaitFor(vu32 *reg, u32 bits, u32 want)
-{
-    int i;
-    for (i = 0; i < 10000000; i++)
-        if ((*reg & bits) == want)
-            return 1;
-    return 0;
-}
 
 static int igrmRead(void *buf, u32 x, u32 y, u32 w)
 {
@@ -813,8 +816,8 @@ static int igrmRead(void *buf, u32 x, u32 y, u32 w)
     *IGRM_D1_MADR = (u32)pkt;
     *IGRM_D1_CHCR = 0x101; // from memory, normal mode, start
     asm volatile("sync.l");
-    ok = igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0) && igrmWaitFor((vu32 *)IGRM_GS_CSR, CSR_FINISH, CSR_FINISH) &&
-         igrmWaitFor(IGRM_VIF1_STAT, VIF_FQC, 0);
+    ok = igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, 0) && igrmWaitFor((vu32 *)IGRM_GS_CSR, CSR_FINISH, CSR_FINISH, 0) &&
+         igrmWaitFor(IGRM_VIF1_STAT, VIF_FQC, 0, 0);
     if (ok) {
         *IGRM_VIF1_STAT = VIF_FDR; // the FIFO towards the EE
         *IGRM_GS_BUSDIR = 1;       // and the GS bus towards the host
@@ -822,7 +825,7 @@ static int igrmRead(void *buf, u32 x, u32 y, u32 w)
         *IGRM_D1_MADR = (u32)buf;
         *IGRM_D1_CHCR = 0x100; // to memory, normal mode, start
         asm volatile("sync.l");
-        ok = igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0);
+        ok = igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, 0);
         if (!ok)
             *IGRM_D1_CHCR = 0;
         *IGRM_VIF1_STAT = 0;
@@ -919,7 +922,7 @@ int IGR_MenuRun(u16 (*buttons)(void))
     USE_LOCAL_EECORE_CONFIG;
     u32 raw[(112 + PW * 2 * 4 + 64) / 4]; // one line of the panel at its widest (the IGR thread's stack)
     u32 *pkt = (u32 *)(((u32)raw + 63) & ~63);
-    u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, bpc;
+    u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, bpc, dctrl, mfd;
     u16 held, now, pressed, ok, back;
     int sel = 0, armed = 0, result = IGR_MENU_RESUME, presses = 0, power = 1, powerLatched = 0, i;
     int page = 0, csel = 0, ctop = 0, full = 0, changed = 0, frameHeld;
@@ -943,18 +946,42 @@ int IGR_MenuRun(u16 (*buttons)(void))
     frameHeld = igrmFindFrame();
     if (!frameHeld)
         return IGR_MENU_NO_FRAME;
-    // the game's own transfers already finished: the IGR thread waited for them (padhook.c IGR_WaitIdle)
+    // the game's own transfers finish first; a VIF1 stalled on an interrupt the pause holds cannot take ours
+    // (RIPPS2 build 129's check: channel 1, channel 2, then VIF1's status). A channel that drains a MFIFO counts as
+    // finished once it has drained it (igrmWaitFor). The answer is the blink's colour (igrmenu.h)
+    dctrl = *IGRM_D_CTRL;
+    mfd = (dctrl >> 2) & 3; // D_CTRL MFD: 2 channel 1 (VIF1) drains a MFIFO, 3 channel 2 (GIF) does
+    if (!igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, mfd == 2) || !igrmWaitFor(IGRM_D2_CHCR, CHCR_STR, 0, mfd == 3))
+        return IGR_MENU_GS_BUSY;
+    if (*IGRM_VIF1_STAT & VIF_STALLED)
+        return IGR_MENU_VIF_STALLED;
     bpc = igrmBpcOff();
     // the menu's own frame, written now the breakpoint is off, so the tracker does not record it as the game's
     if (frameHeld == 2) {
         *(vu64 *)0x12000070 = IGRM_OWN_DISPFB; // DISPFB1
         *(vu64 *)0x12000090 = IGRM_OWN_DISPFB; // DISPFB2
     }
-    gameDone = *IGRM_D_STAT & 2; // a channel 1 completion the game has not handled yet stays for its handler
+    // Channel 1 still started: it drains the game's MFIFO, which is empty, and waits there for the game to add to it
+    // (Dirge of Cerberus keeps it so all through play). The menu borrows the channel: stopped as the EE manual
+    // asks, with the DMAC suspended round the write (CHCR may not take it otherwise), and the MFIFO taken out of
+    // D_CTRL so that the panel's lines go from memory. All of it is put back at the end, and the channel waits again.
+    // Suspended before its registers are read: channel 8 may still be adding to the ring, and a drain that moved on
+    // between the reads and the stop would be put back where it had been, to take the same data twice
+    if (mfd == 2) {
+        t = *IGRM_D_ENABLER;
+        *IGRM_D_ENABLEW = t | 0x10000;
+    }
+    // a channel 1 completion or a MFIFO-empty the game has not handled yet stays for its handler
+    gameDone = *IGRM_D_STAT & 0x4002;
     d1chcr = *IGRM_D1_CHCR;
     d1madr = *IGRM_D1_MADR;
     d1qwc = *IGRM_D1_QWC;
     d1tadr = *IGRM_D1_TADR;
+    if (mfd == 2) {
+        *IGRM_D1_CHCR = d1chcr & ~CHCR_STR;
+        *IGRM_D_ENABLEW = t;
+        *IGRM_D_CTRL = dctrl & ~0xc;
+    }
 
     for (i = 0; i < CORE_GAME_ID_MAX_LEN && config->GameID[i]; i++)
         gameId[i] = config->GameID[i];
@@ -1116,18 +1143,20 @@ int IGR_MenuRun(u16 (*buttons)(void))
 
 done:
     // DMA done is not the end: the VIF1 FIFO and the GIF may still be moving the last line
-    igrmWaitClear(IGRM_VIF1_STAT, VIF_FQC);
-    igrmWaitClear(IGRM_GIF_STAT, GIF_BUSY);
+    igrmWaitFor(IGRM_VIF1_STAT, VIF_FQC, 0, 0);
+    igrmWaitFor(IGRM_GIF_STAT, GIF_BUSY, 0, 0);
     *IGRM_D1_MADR = d1madr;
     *IGRM_D1_QWC = d1qwc;
     *IGRM_D1_TADR = d1tadr;
+    *IGRM_D_CTRL = dctrl;
     *IGRM_D1_CHCR = d1chcr;
-    // our transfers flagged channel 1 done; left set, the game's VIF1 handler would run for a transfer it
-    // never started. Write 1 clears it (the mask bits stay)
-    if (!gameDone)
-        *IGRM_D_STAT = 2;
     asm volatile("sync.l");
     igrmBpcBack(bpc);
+    // our transfers flagged channel 1 done, and a drain started again on its empty MFIFO flags that (after
+    // igrmBpcBack: the DMAC has seen it by now); left set, the game's handlers would run for what it never did.
+    // Write 1 clears a flag (the mask bits stay); the ones that were already there are not written
+    *IGRM_D_STAT = gameDone ^ 0x4002;
+    asm volatile("sync.l");
     return result;
 }
 #endif

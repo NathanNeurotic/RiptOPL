@@ -81,10 +81,10 @@ if thread and (igr_thread < 0 or padhook.find(thread) < igr_thread):
     failures.append('padhook.c: the IgrMenuNoRoom blink must be in IGR_Thread')
 
 # The grey the menu path blinks for IGR_MENU_CANNOT_DRAW: a menu that was not there to run
-grey = (re.search(r'why\[\][^=]*=\s*\{\s*(0x[0-9A-Fa-f]+)', padhook) or
-        re.search(r'IGR_MENU_DRAW_FAILED \? 0x[0-9A-Fa-f]+ :\s*(0x[0-9A-Fa-f]+);', padhook))
+grey = re.search(r'IGR_MENU_CANNOT_DRAW = (0x[0-9A-Fa-f]+),',
+                 (root / 'ee_core/include/igrmenu.h').read_text(encoding='utf-8'))
 if grey is None:
-    failures.append('padhook.c: the menu path\'s grey for a menu that was not there was not found')
+    failures.append('igrmenu.h: the menu path\'s grey for a menu that was not there was not found')
 grey = grey.group(1) if grey else '0'
 
 # --- 3. the field, appended ----------------------------------------------------------------------------------------
@@ -132,31 +132,48 @@ install = re.search(r'\nvoid Install_IGR\(void\)\n\{\n(?:.*\n)*?\}\n', padhook)
 if install is None:
     failures.append('padhook.c: Install_IGR was not found')
 install = install.group(0) if install else ''
-tries = re.search(r'^#define IGR_TRIES +\d+', padhook, re.M)
-if not tries:
-    failures.append('padhook.c: IGR_TRIES, the pauses one press of the combo may take, was not found')
-tries = tries.group(0) if tries else ''
-# The pauses of one press: IGR_Thread gives the game back while any is left, zeroes the count once the menu opens, and
-# no busy pause goes on to the reset: the last one gives the game back too
+# One pause per press, as RIPPS2 build 129: the handler takes the press's one pause, and IGR_Thread runs the menu in it
 worker = padhook[igr_thread:] if igr_thread >= 0 else ''
-for needle, why in (
-        ('choice = IGR_MENU_RESUME;',
-         'a busy pause gives the game back, the last one too: nothing is reset under a game that never went idle'),
-        ('IGR_MenuBusy = 1;', 'a last busy pause marks the game: the next press is the plain reset'),
-        ('IGR_MenuRearm = 0; // once per press', 'a menu that opened takes the rest of the press\'s pauses')):
-    if needle not in worker:
-        failures.append('padhook.c IGR_Thread: ' + why)
+if 'choice = IGR_MenuRun(IGR_PadButtons);' not in worker:
+    failures.append('padhook.c IGR_Thread: every pause runs the menu (RIPPS2 build 129)')
+for gone in ('IGR_TRIES', 'IGR_MenuBusy', 'IGR_WaitIdle'):
+    if gone in padhook:
+        failures.append('padhook.c: %s is not RIPPS2 build 129\'s: one pause per press, the idle check in the menu' % gone)
 
-# The handler: a press after a last busy pause (let go in between: IGR_MenuBusy 2) skips the menu, so the plain reset runs
-if 'IGR_MenuBusy < 2' not in padhook or 'IGR_MenuBusy = 2;' not in padhook:
-    failures.append('padhook.c handler: the press after a busy last pause must skip the menu (IGR_MenuBusy)')
+# The pause wakes the IGR thread through the handler's one pair of calls (Korium's LLVM .text has no room for two)
+if not re.search(r'#ifdef IGR_MENU\n\s*wake:\n#endif\n\s*iChangeThreadPriority\(IGR_Thread_ID, 0\);\n(?:\s*//.*\n)?'
+                 r'\s*iWakeupThread\(IGR_Thread_ID\);', padhook):
+    failures.append('padhook.c IGR_Intc_Handler: the wake the menu\'s pause jumps to was not found')
 
-# The check is RIPPS2's: channels 1 and 2, VIF1 VSS/VFS/VIS/FDR. VIF1_STAT.INT (0x800) stays set until the game clears it
-# and stalls nothing, and a GIF path left active (no EOP) or a FIFO that does not drain must not keep the menu from
-# opening (docs/IGR.md, Menu does not open)
-if not re.search(r'busy = \(\(\*R_EE_D1_CHCR \| \*R_EE_D2_CHCR\) & 0x100\) \| \(\*\(vu32 \*\)0x10003c00 & 0x800700\);', padhook) or \
-        '0x10003020' in padhook or '0x12001000' in padhook:
-    failures.append('padhook.c IGR_WaitIdle: only channels 1 and 2 and VIF1 VSS/VFS/VIS/FDR (no INT, no GIF, no GS) may refuse the menu')
+# The check is RIPPS2's, in the menu: channels 1 and 2 end, then VIF1 neither stopped (VSS, VFS, VIS, INT) nor reading
+# back (FDR). A game that fails it leaves as the combo did before, with a blink that says which of them (docs/IGR.md).
+# A channel that drains a MFIFO never ends while the game is paused (Dirge of Cerberus): it passes once the MFIFO is
+# empty, and the menu borrows channel 1 from it with the DMAC suspended and gives back D_CTRL and the channel after
+igrmenu = (root / 'ee_core/src/igrmenu.c').read_text(encoding='utf-8')
+if not re.search(r'mfd = \(dctrl >> 2\) & 3;.*\n\s*if \(!igrmWaitFor\(IGRM_D1_CHCR, CHCR_STR, 0, mfd == 2\) \|\| '
+                 r'!igrmWaitFor\(IGRM_D2_CHCR, CHCR_STR, 0, mfd == 3\)\)\s*return IGR_MENU_GS_BUSY;\s*'
+                 r'if \(\*IGRM_VIF1_STAT & VIF_STALLED\)\s*return IGR_MENU_VIF_STALLED;', igrmenu) or \
+        not re.search(r'#define VIF_STALLED +0x00800f00', igrmenu):
+    failures.append('igrmenu.c IGR_MenuRun: RIPPS2 build 129\'s idle check (channels 1 and 2, VIF1 0x00800f00) was not found')
+if 'drain && !reg[8] && !((reg[12] ^ *IGRM_D8_MADR) & *IGRM_D_RBSR)' not in igrmenu:
+    failures.append('igrmenu.c igrmWaitFor: a MFIFO drain channel must pass once its MFIFO is empty (QWC 0, TADR at D8_MADR)')
+# The DMAC is suspended before channel 1's registers are read: a drain that moved on between the reads and the stop
+# would be put back where it had been, and take the same data twice
+if not re.search(r'if \(mfd == 2\) \{\s*t = \*IGRM_D_ENABLER;\s*\*IGRM_D_ENABLEW = t \| 0x10000;\s*\}\s*'
+                 r'(?://.*\n\s*)*gameDone = \*IGRM_D_STAT & 0x4002;\s*d1chcr = \*IGRM_D1_CHCR;\s*d1madr = \*IGRM_D1_MADR;\s*'
+                 r'd1qwc = \*IGRM_D1_QWC;\s*d1tadr = \*IGRM_D1_TADR;\s*'
+                 r'if \(mfd == 2\) \{\s*\*IGRM_D1_CHCR = d1chcr & ~CHCR_STR;\s*\*IGRM_D_ENABLEW = t;\s*'
+                 r'\*IGRM_D_CTRL = dctrl & ~0xc;\s*\}', igrmenu):
+    failures.append('igrmenu.c IGR_MenuRun: channel 1 must be read and stopped with the DMAC suspended, and the MFIFO '
+                    'taken out of D_CTRL')
+if not re.search(r'\*IGRM_D1_TADR = d1tadr;\s*\*IGRM_D_CTRL = dctrl;\s*\*IGRM_D1_CHCR = d1chcr;', igrmenu):
+    failures.append('igrmenu.c IGR_MenuRun: D_CTRL goes back before channel 1 is started again')
+# The MFIFO-empty interrupt (D_STAT cause 14) is the game's too: held with the rest, or its handler runs in the pause
+if not re.search(r'#define IGR_DMAC_HELD 0x431f', padhook) or not re.search(
+        r'IGR_Each\(u32 mask, s32 \(\*call\)\(s32\)\)\s*\{\s*int i;\s*for \(i = 0; i <= 14; i\+\+\)', padhook) or \
+        not all(c in padhook for c in ('IGR_Each(IGR_HeldIntc, iDisableIntc);', 'IGR_Each(IGR_HeldDmac, iDisableDmac);',
+                                       'IGR_Each(IGR_HeldDmac, EnableDmac);', 'IGR_Each(IGR_HeldIntc, EnableIntc);')):
+    failures.append('padhook.c: the pause must hold the MFIFO-empty interrupt (D_STAT cause 14) and give it back')
 
 # --- 5. the RA watch block before the menu's cheats --------------------------------------------------------------
 if LAYOUT['host'] is not None:
@@ -319,9 +336,16 @@ static int AddIntcHandler(int cause, int (*func)(int), int next) { (void)cause; 
 static int EnableIntc(int cause) { (void)cause; return 0; }
 @INSTALL@
 #ifdef IGR_MENU
-static volatile int IGR_MenuOpen, IGR_MenuBusy;
-@TRIES@
-static int IGR_MenuRearm = IGR_TRIES, held, wakes;
+static volatile int IGR_MenuOpen;
+#define IGR_MENU_ARMED 121
+static int IGR_MenuRearm, held, wakes;
+// The registers the handler waits on: channel 1 and 2 CHCR (STR 0x100)
+// and D_CTRL: MFD (bits 2 and 3) 2 or 3 names channel 1 or 2 as a MFIFO's drain, which stays started
+typedef unsigned int u32;
+static unsigned int d1chcr, d2chcr, dctrl;
+#define R_EE_D1_CHCR (&d1chcr)
+#define R_EE_D2_CHCR (&d2chcr)
+#define R_EE_D_CTRL  (&dctrl)
 static struct { int IgrMenu; } g_config, *config = &g_config;
 static void IGR_HoldInterrupts(void) { held++; }
 static void iChangeThreadPriority(int id, int prio) { (void)id; (void)prio; }
@@ -330,6 +354,11 @@ static void iWakeupThread(int id) { (void)id; wakes++; }
 static int handler(void)
 {
 @GATE@
+    if (0) { // the handler's own wake, which the pause jumps to (checked in the source above)
+    wake:
+        iChangeThreadPriority(IGR_Thread_ID, 0);
+        iWakeupThread(IGR_Thread_ID);
+    }
     return Pad_Data.combo_type != 0x00;
 }
 #endif
@@ -362,7 +391,7 @@ int main(void)
         Power_Button.press = frames[i].power;
         Pad_Data.combo_type = frames[i].combo;
         IGR_MenuOpen = 0;
-        IGR_MenuRearm = IGR_TRIES;
+        IGR_MenuRearm = IGR_MENU_ARMED;
         wakes = held = 0;
 #ifdef HAS_PC_FLAG
         IGR_PcReset = 0;
@@ -383,73 +412,121 @@ int main(void)
     {
         int pauses = 0;
 
-        // One press of the combo: a pause that found the game's transfers busy gives the game back (IGR_Thread clears
-        // IGR_MenuOpen) and the next VBLANK pauses it again, IGR_TRIES times in all. Then nothing more until the combo
-        // is let go
+        // One press of the combo: one pause, however long it is held and whatever the menu did with it (IGR_Thread
+        // clears IGR_MenuOpen when the game goes on). Nothing more until the combo is let go
         g_config.IgrMenu = 1;
         Power_Button.press = 0;
         IGR_MenuOpen = 0;
-        IGR_MenuRearm = IGR_TRIES;
+        IGR_MenuRearm = IGR_MENU_ARMED;
         wakes = held = 0;
 #ifdef HAS_PC_FLAG
         IGR_PcReset = 0;
 #endif
-        for (i = 0; i < IGR_TRIES + 3; i++) {
+        for (i = 0; i < 4; i++) {
             Pad_Data.combo_type = IGR_COMBO_START_SELECT;
             CHECK(!handler(), "a held combo with the menu on must never reach the reset from the handler");
             pauses += IGR_MenuOpen;
             IGR_MenuOpen = 0;
         }
-        CHECK(pauses == IGR_TRIES && wakes == IGR_TRIES && held == IGR_TRIES && IGR_MenuRearm == 0,
-              "one press pauses the game %d times at most (%d pauses, %d wakes, %d left)", IGR_TRIES, pauses, wakes,
-              IGR_MenuRearm);
+        CHECK(pauses == 1 && wakes == 1 && held == 1 && IGR_MenuRearm == 0,
+              "one press pauses the game once (%d pauses, %d wakes, %d left)", pauses, wakes, IGR_MenuRearm);
         Pad_Data.combo_type = 0; // let go
         handler();
-        CHECK(IGR_MenuRearm == IGR_TRIES, "letting the combo go gives the next press all its pauses back");
-        // A pause that opened the menu: IGR_Thread zeroes the count, so the combo still held at RESUME does not reopen it
+        CHECK(IGR_MenuRearm == IGR_MENU_ARMED, "letting the combo go gives the next press its pause back");
         Pad_Data.combo_type = IGR_COMBO_START_SELECT;
         handler();
-        CHECK(IGR_MenuOpen && IGR_MenuRearm == IGR_TRIES - 1, "the first pause of a press takes one of its pauses");
-        IGR_MenuRearm = 0;
+        CHECK(IGR_MenuOpen && wakes == 2, "the next press pauses again");
         IGR_MenuOpen = 0;
-        wakes = 0;
-        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
-        handler();
-        CHECK(!IGR_MenuOpen && !wakes, "a menu that opened must not reopen while the combo is still held");
         Pad_Data.combo_type = 0;
         handler();
-    }
-    {
-        // A last pause that found the game never idle (IGR_Thread sets IGR_MenuBusy): the press still held does nothing more,
-        // and once the combo is let go the next one leaves at once, with no pause: the menu-off path
-        g_config.IgrMenu = 1;
-        Power_Button.press = 0;
-        IGR_MenuOpen = 0;
-        IGR_MenuRearm = 0;
-        IGR_MenuBusy = 1;
-        wakes = held = 0;
-#ifdef HAS_PC_FLAG
-        IGR_PcReset = 0;
-#endif
-        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
-        CHECK(!handler() && !wakes, "the press that found the game busy must not leave or pause again while held");
-        Pad_Data.combo_type = 0;
-        handler();
-        CHECK(IGR_MenuBusy == 2, "letting the combo go arms the leave");
-        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
-        CHECK(handler() && !wakes && !held && !IGR_MenuOpen, "the next press after a busy game leaves with no pause");
-        // Menu off: IGR_MenuBusy is never set, and every press leaves, as it always did
+        // The pause waits, the combo held, for a VBLANK at which channels 1 and 2 are stopped. After 2 s of busy
+        // VBLANKs it comes anyway
+        {
+            static const struct { unsigned int d1, d2; } busy[] = {{0x100, 0}, {0, 0x100}, {0x101, 0x105}};
+            unsigned int b;
+
+            for (b = 0; b < sizeof(busy) / sizeof(busy[0]); b++) {
+                wakes = held = 0;
+                d1chcr = busy[b].d1, d2chcr = busy[b].d2;
+                for (i = 0; i < 10; i++) {
+                    Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                    CHECK(!handler() && !IGR_MenuOpen && !wakes && !held, "busy %u: no pause yet (VBLANK %u)", b, i);
+                }
+                d1chcr = 1, d2chcr = 0x05; // stopped: no STR
+                Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                handler();
+                CHECK(IGR_MenuOpen && wakes == 1 && held == 1, "busy %u: the first idle VBLANK takes the pause", b);
+                IGR_MenuOpen = 0;
+                Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                handler();
+                CHECK(!IGR_MenuOpen && wakes == 1, "busy %u: one pause for the press that waited", b);
+                Pad_Data.combo_type = 0;
+                handler();
+            }
+            // a game with a MFIFO keeps its drain channel started all through play: no wait for it, the menu's check
+            // decides at once (MFD 2: channel 1, MFD 3: channel 2; MFD 1 is not a MFIFO, so that game waits like any
+            // other). The channel that is not the drain, started, still holds the pause off
+            for (b = 2; b <= 3; b++) {
+                wakes = held = 0;
+                d1chcr = b == 2 ? 0x145 : 0, d2chcr = b == 3 ? 0x105 : 0;
+                dctrl = b << 2 | 1;
+                Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                handler();
+                CHECK(IGR_MenuOpen && wakes == 1 && held == 1, "MFIFO (MFD %u): the pause does not wait for a drain channel", b);
+                IGR_MenuOpen = 0;
+                Pad_Data.combo_type = 0;
+                handler();
+                d1chcr = b == 3 ? 0x145 : 0, d2chcr = b == 2 ? 0x105 : 0;
+                for (i = 0; i < 10; i++) {
+                    Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                    CHECK(!handler() && !IGR_MenuOpen && wakes == 1 && held == 1,
+                          "MFIFO (MFD %u): the channel that is not the drain, started, holds the pause off (VBLANK %u)", b, i);
+                }
+                d1chcr = b == 2 ? 0x145 : 0, d2chcr = b == 3 ? 0x105 : 0;
+                Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                handler();
+                CHECK(IGR_MenuOpen && wakes == 2 && held == 2, "MFIFO (MFD %u): the pause comes once that channel ends", b);
+                IGR_MenuOpen = 0;
+                Pad_Data.combo_type = 0;
+                handler();
+            }
+            dctrl = 1 << 2 | 1;
+            d1chcr = 0x100, d2chcr = 0;
+            wakes = held = 0;
+            for (i = 0; i < 120; i++) {
+                Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                CHECK(!handler() && !IGR_MenuOpen, "busy transfers: no pause before 2 s are over (VBLANK %u)", i);
+            }
+            Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+            handler();
+            CHECK(IGR_MenuOpen && wakes == 1 && held == 1, "after 2 s of busy transfers the pause comes anyway");
+            IGR_MenuOpen = 0;
+            Pad_Data.combo_type = 0;
+            handler();
+            // a combo let go while the transfers are busy opens nothing, and the next press waits its own 2 s
+            for (i = 0; i < 100; i++) {
+                Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                handler();
+            }
+            Pad_Data.combo_type = 0;
+            handler();
+            for (i = 0; i < 100; i++) {
+                Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                CHECK(!handler() && !IGR_MenuOpen, "a new press waits from the start (VBLANK %u)", i);
+            }
+            Pad_Data.combo_type = 0;
+            handler();
+            d1chcr = 0;
+        }
+        // Menu off: every press leaves, as it always did
         g_config.IgrMenu = 0;
-        IGR_MenuBusy = 0;
-        IGR_MenuRearm = IGR_TRIES;
+        wakes = held = 0;
         for (i = 0; i < 3; i++) {
             Pad_Data.combo_type = IGR_COMBO_START_SELECT;
             CHECK(handler() && !wakes && !held && !IGR_MenuOpen, "menu off: the combo leaves at once, every time");
             Pad_Data.combo_type = 0;
             handler();
-            CHECK(!IGR_MenuBusy, "menu off: the busy mark is never touched");
         }
-        IGR_MenuBusy = 0;
     }
 #ifdef HAS_PC_FLAG
     {
@@ -460,7 +537,7 @@ int main(void)
         g_config.IgrMenu = 1;
         Power_Button.press = 0;
         IGR_MenuOpen = 0;
-        IGR_MenuRearm = IGR_TRIES;
+        IGR_MenuRearm = IGR_MENU_ARMED;
         wakes = held = 0;
         Pad_Data.combo_type = 0;
         IGR_PcReset = 0;
@@ -553,7 +630,7 @@ if launcher and thread and not failures:
     build_and_run('no room', HARNESS.replace('@GREY@', grey).replace('@PRE@', LAYOUT['pre'])
                   .replace('@LAUNCHER@', launcher).replace('@THREAD@', thread))
 
-if flag and request and gate and install and tries and not failures:
+if flag and request and gate and install and not failures:
     for name, defines, req in (
             ('RA build with the menu: the combo opens it, the PC\'s reset leaves past it',
              '#define RETROACHIEVEMENTS\n#define IGR_MENU', request),
@@ -561,7 +638,6 @@ if flag and request and gate and install and tries and not failures:
             ('menu build without RA: no PC flag, the combo opens the menu', '#define IGR_MENU', '')):
         build_and_run(name, GATE_HARNESS.replace('@DEFINES@', defines).replace('@FLAG@', flag)
                       .replace('@REQUEST@', req).replace('@INSTALL@', install).replace('@GATE@', gate)
-                      .replace('@TRIES@', tries)
                       .replace('@NAME@', name))
 
 if failures:

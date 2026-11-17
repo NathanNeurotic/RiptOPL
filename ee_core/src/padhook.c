@@ -120,13 +120,16 @@ extern void *_end;
   pad buffer the menu reads. RESUME gives everything back; any other way out goes on to the IGR below, as before.
 */
 #define IGR_I_MASK    ((vu32 *)0x1000f010)
-#define IGR_INTC_SBUS 1
-#define IGR_DMAC_HELD 0x031f0000 // D_STAT's mask half: channels 0-4, 8 and 9, never SIF 5-7
-#define IGR_TRIES     8          // pauses one press of the combo may take to find the game idle
-#define IGR_SECOND    294912000u // COP0 Count ticks: the EE's clock
+// What the pause holds, taken out of the masks when they are read: one test a loop, no table (Korium's LLVM .text)
+#define IGR_INTC_HELD 0x7ffd // causes 0-14, never the SIF's (SBUS, 1)
+#define IGR_DMAC_HELD 0x431f // channels 0-4, 8 and 9, and MFIFO empty (14): never SIF 5-7
 static volatile int IGR_MenuOpen = 0;
-static int IGR_MenuRearm = IGR_TRIES; // the pauses left to this press: 0 once the menu opened, IGR_TRIES again when the combo is let go
-static volatile int IGR_MenuBusy;     // 1: the last pause of a press found the game never idle; 2: the combo was let go since, so the next press leaves
+// Once per press: a menu closed at once must not reopen. Not 0: the press may still take its pause, and counts down
+// the VBLANKs the held combo waits for the game's transfers to stop (2 s of them). Not initialised here, so that it
+// stays in .bss (one more word of .data costs Korium's LLVM build 128 bytes of stack): the handler arms it on every
+// VBLANK without a request, the first of which comes long before a pad is read
+#define IGR_MENU_ARMED 121
+static int IGR_MenuRearm;
 static u32 IGR_PausedThreads[8], IGR_HeldIntc, IGR_HeldDmac;
 
 // libpad's buttons, 1 = held (its buffer is active-low), or 0 while the pad is not stable
@@ -153,66 +156,49 @@ static u16 IGR_PadButtons(void)
     return ~(b[Pad_Data.pos_combo2] | b[Pad_Data.pos_combo1] << 8) & 0xFFFF;
 }
 
-// interrupt handler context: every interrupt of the game waits, its GS, VIF1 and DMA completions too, the SIF's do not,
-// as RIPPS2 holds them (iDisableIntc/iDisableDmac in its handler). Held from here, a handler of the game cannot start
-// its next transfer, so the one in flight ends and the channels go idle for IGR_WaitIdle. Holding them only once the
-// transfers were idle let a game whose handlers chain one transfer to the next stay busy at every check: the menu
-// never opened (issue #364; Dirge of Cerberus on a console)
-static inline void IGR_HoldInterrupts(void)
+// One kernel call for each cause or channel set in mask, lowest first. One loop for the four places that hold and
+// give back, not four (Korium's LLVM .text)
+static void __attribute__((noinline)) IGR_Each(u32 mask, s32 (*call)(s32))
 {
-    IGR_HeldIntc = *IGR_I_MASK & ~(1 << IGR_INTC_SBUS); // what is held, SBUS never
-    *IGR_I_MASK = IGR_HeldIntc;                         // a 1 toggles: those off. No other handler runs between read and write
-    IGR_HeldDmac = *R_EE_D_STAT & IGR_DMAC_HELD;        // D_STAT's mask half toggles too; its status half written 0
-    *R_EE_D_STAT = IGR_HeldDmac;                        // clears no completion: those wait for the game's handlers
+    int i;
+
+    for (i = 0; i <= 14; i++)
+        if (mask & (1 << i))
+            call(i);
+}
+
+// interrupt handler context: every interrupt of the game waits, its GS, VIF1 and DMA completions too, the SIF's do not.
+// Through the kernel's own calls, as RIPPS2 build 129 holds them: the kernel keeps its record of which causes are on
+// in step with the masks. Held from here, a handler of the game cannot start its next transfer, so the one in flight
+// ends and the channels go idle for the menu's check (issue #364; Dirge of Cerberus on a console)
+static void IGR_HoldInterrupts(void)
+{
+    IGR_HeldIntc = *IGR_I_MASK & IGR_INTC_HELD;
+    IGR_Each(IGR_HeldIntc, iDisableIntc);
+    IGR_HeldDmac = (*R_EE_D_STAT >> 16) & IGR_DMAC_HELD;
+    IGR_Each(IGR_HeldDmac, iDisableDmac);
 }
 
 // From the IGR thread at priority 0, while no game thread runs. Suspending the interrupted thread from
 // the handler left it READY but never scheduled again after ResumeThread (ORBIT): so here, not there
 static void IGR_PauseThreads(void)
 {
-    ee_thread_status_t st;
     int i;
 
+    // RIPPS2 build 129's loop: every thread SuspendThread takes is paused, and only those are resumed
     for (i = 1; i < 256; i++) {
         IGR_PausedThreads[i / 32] &= ~(1u << (i % 32));
-        // a thread the game suspended itself stays so: only the threads paused here are resumed
-        if (i == IGR_Thread_ID || ReferThreadStatus(i, &st) < 0 || (st.status & THS_SUSPEND))
-            continue;
-        if (SuspendThread(i) >= 0)
+        if (i != IGR_Thread_ID && SuspendThread(i) >= 0)
             IGR_PausedThreads[i / 32] |= 1u << (i % 32);
     }
-}
-
-// The game's own transfers finish before the menu takes channel 1 and the GS: channels 1 and 2 idle and VIF1 neither
-// stopped (VSS, VFS, VIS) nor reading back (FDR), which is RIPPS2's check. VIF1_STAT.INT is left out: it only records
-// that a VIF code's interrupt bit was seen and stays set until the game writes FBRST.STC, which a MARK code's interrupt
-// (no stall) never makes it do; a real stall shows in VIS. The GIF path and the FIFOs are not tested: a path left active
-// by a packet that ends without EOP never clears, and every menu packet starts with FLUSHA anyway; a draw that cannot
-// get through ends in mint green. The game's interrupts are all held (IGR_HoldInterrupts), so no handler starts a
-// transfer while this waits. Returns non-zero when they did not get there within the wait (COP0 Count ticks)
-static u32 IGR_WaitIdle(u32 wait)
-{
-    u32 busy, t, now;
-
-    asm volatile("mfc0 %0, $9"
-                 : "=r"(t));
-    do {
-        busy = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & 0x100) | (*(vu32 *)0x10003c00 & 0x800700);
-        asm volatile("mfc0 %0, $9"
-                     : "=r"(now));
-    } while (busy && now - t < wait);
-    return busy;
 }
 
 static void IGR_ResumeGame(void) // the pause, undone in reverse
 {
     int i;
 
-    // every interrupt in IGR_HeldDmac and IGR_HeldIntc is off now (the SIF's are in neither), and nothing runs that
-    // turns one on or off: a 1 in either mask toggles, so one store each turns them all back on, and no handler can
-    // run between a read and the write
-    *R_EE_D_STAT = IGR_HeldDmac;
-    *IGR_I_MASK = IGR_HeldIntc;
+    IGR_Each(IGR_HeldDmac, EnableDmac);
+    IGR_Each(IGR_HeldIntc, EnableIntc);
     for (i = 1; i < 256; i++)
         if (IGR_PausedThreads[i / 32] & (1u << (i % 32)))
             ResumeThread(i);
@@ -455,6 +441,9 @@ static void IGR_StopDmaAndGs(void)
 static void IGR_Thread(void *arg)
 {
     USE_LOCAL_EECORE_CONFIG;
+#ifdef IGR_MENU
+    int choice = 0; // what the menu answered: kept for the blink of a menu that could not open, further down
+#endif
 
     // Wait for the VBLANK_END handler, which latches the request, stops DMA/GS, suspends every
     // other thread and raises this one to priority 0 before waking it. Recheck the latch so a stray
@@ -463,47 +452,28 @@ static void IGR_Thread(void *arg)
     // With In-Game Menu on the handler wakes this thread for the menu too (IGR_MenuOpen), with the game's
     // interrupts held but nothing stopped; RESUME sends it back to sleep. Any other way out goes on below.
     for (;;) {
-        int choice;
-
         while (Pad_Data.combo_type == 0x00 && !IGR_MenuOpen)
             SleepThread();
         if (!IGR_MenuOpen)
             break; // the power button, or the plain combo: the handler stopped DMA/GS and the game
 
         IGR_PauseThreads();
-        // A transfer that only the game's own threads can finish (a list or a GS read-back one of them was in the
-        // middle of, a channel one of them feeds) never ends while they are paused. So a pause that does not find
-        // the transfers idle is short and gives the game back untouched, and the handler pauses it again at the next
-        // VBLANK the combo is still held at. The last pause of a press waits two seconds, and if that one finds them
-        // busy too the game is given back as well: the menu stays shut, but nothing is reset or stopped under a game
-        // that never went idle, and the next press of the combo is the plain reset, with no pause (IGR_MenuBusy). The handler is held with the game, so IGR_MenuRearm does not change here
-        if (IGR_WaitIdle(IGR_MenuRearm ? IGR_SECOND / 16 : IGR_SECOND * 2)) {
-            choice = IGR_MENU_RESUME;
-            if (!IGR_MenuRearm)
-                IGR_MenuBusy = 1; // the next press, once this one is let go, is the plain reset (the handler)
-        } else {
-            IGR_MenuRearm = 0; // once per press: a menu closed at once must not reopen
-            choice = IGR_MenuRun(IGR_PadButtons);
-        }
+        choice = IGR_MenuRun(IGR_PadButtons);
         if (choice == IGR_MENU_RESUME) {
             // IGR_MenuOpen stays set until the game has its interrupts back: the VBLANK that came up while it was
-            // paused runs this handler at once, and must not pause it again before it has run at all.
-            // This thread stays at priority 0 and sleeps above: lowering it here, after a handler that came in
-            // between had already paused the game again for it, would leave that pause to the game's own threads
+            // paused runs this handler at once, and must not pause it again before it has run at all
             IGR_ResumeGame();
             IGR_MenuOpen = 0;
+            ChangeThreadPriority(IGR_Thread_ID, 127); // back under the game's threads, as RIPPS2 build 129
             continue;
         }
         // EXIT GAME, POWER OFF, the power button, or a frame the menu could not draw on: what the combo did
         // before. ResetEE leaves the DMAC alone (0x7E, not 0x7F): a SIF transfer in flight would stick (ORBIT)
         IGR_StopDmaAndGs();
         ResetEE(0x7E);
-        if (EnableDebug && choice >= IGR_MENU_CANNOT_DRAW) {
-            // Debug Colors: why the menu did not open, three blinks before the reset goes on (docs/IGR.md).
-            // GS BGCOLOR is 0xBBGGRR. Kept in .data: .rodata ends on a 128-byte boundary and growing it costs the stack
-            static u32 why[] __attribute__((section(".data"))) = {0x808080, 0xFF0080, 0x80FF00}; // grey, purple, mint
-            DBGCOL_BLNK(3, why[choice - IGR_MENU_CANNOT_DRAW], 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, grey = no menu");
-        }
+        // Why the menu did not open is blinked further down, once the IOP is back: three blinks here, between ResetEE
+        // and the SIF's new start, are 3 s the plain combo never spends there, and a console hung with them (Dirge of
+        // Cerberus)
         Pad_Data.combo_type = choice == IGR_MENU_POWEROFF ? IGR_COMBO_R3_L3 : IGR_COMBO_START_SELECT;
         break;
     }
@@ -648,6 +618,15 @@ static void IGR_Thread(void *arg)
             InGameScreenshot();
 #endif
 
+#ifdef IGR_MENU
+        // Why the menu did not open (docs/IGR.md), with or without Debug Colors: the combo otherwise looks exactly like
+        // the menu being off. Here, where the screenshot's own colours have always been shown: the IOP is back, the SIF
+        // restarted, the GS trap off.
+        // The answer is the colour (igrmenu.h), blinked three times
+        if (choice > IGR_MENU_POWEROFF)
+            DBGCOL_BLNK(3, choice, 0, IGR, "In-Game Menu could not draw: purple = frame unusable, mint = first page failed, yellow = a transfer did not end, red = VIF1 stalled, grey = no menu");
+#endif
+
         if (EnableDebug)
             DBGCOL(0x008000, IGR, "Exiting services");
 
@@ -701,19 +680,24 @@ static int IGR_Intc_Handler(int cause)
 #ifdef IGR_MENU
     // With In-Game Menu on, the reset combo pauses the game under the menu (igrmenu.c) instead. The power
     // button pressed twice, and the PC's reset (RAR1), still leave at once.
-    if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && IGR_MenuBusy < 2 && !Power_Button.press && !IGR_FROM_PC) {
+    if (Pad_Data.combo_type == IGR_COMBO_START_SELECT && config->IgrMenu && !Power_Button.press && !IGR_FROM_PC) {
         Pad_Data.combo_type = 0x00;
-        if (IGR_MenuRearm && !IGR_MenuOpen) { // IGR_Thread zeroes it once the menu opened: once per press
+        // The pause is taken on a VBLANK at which channels 1 and 2 are stopped, the game still running: paused at once,
+        // a transfer that needs one of the held interrupts to go on never ends, and the menu's check (RIPPS2 build
+        // 129's) leaves with the plain reset (Dirge of Cerberus on a console: yellow). The combo is held meanwhile;
+        // after 2 s of busy VBLANKs the pause comes anyway and that check decides (ORBIT's menu waits like this)
+        // One store and one way into the pause (0: take it now, and this press has had it): written with ||, Korium's
+        // LLVM build came out 52 bytes larger, more than .text has left before .rodata moves up a 128-byte step.
+        // Only the channel D_CTRL names as a MFIFO's drain is not waited for: MFD (bits 3 and 2) 2 is channel 1, 3 is
+        // channel 2. The other one, started, holds the pause off as it does in a game with no MFIFO
+        u32 c = *R_EE_D_CTRL;
+        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = (((*R_EE_D1_CHCR & ~(c << 5 & ~(c << 6))) | (*R_EE_D2_CHCR & ~(c << 5 & c << 6))) & 0x100) ? IGR_MenuRearm - 1 : 0)) {
             IGR_MenuOpen = 1;
-            IGR_MenuRearm--;
             IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
-            iChangeThreadPriority(IGR_Thread_ID, 0);
-            iWakeupThread(IGR_Thread_ID);
+            goto wake;            // the IGR's own two calls below, not a second copy of them: .text has no room for one
         }
     } else if (Pad_Data.combo_type == 0x00) {
-        IGR_MenuRearm = IGR_TRIES;
-        if (IGR_MenuBusy)
-            IGR_MenuBusy = 2;
+        IGR_MenuRearm = IGR_MENU_ARMED;
 #ifdef RETROACHIEVEMENTS
         // No request left, so no PC mark: in disc mode the pad's R3 + L3 can replace the PC's request and be dropped
         IGR_PcReset = 0;
@@ -741,6 +725,9 @@ static int IGR_Intc_Handler(int cause)
         }
 
         DPRINTF("IGR: trying to wake IGR thread...\n");
+#ifdef IGR_MENU
+    wake:
+#endif
         iChangeThreadPriority(IGR_Thread_ID, 0);
         // WakeUp IGR thread
         iWakeupThread(IGR_Thread_ID);
