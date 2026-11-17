@@ -135,7 +135,7 @@ def embed():
         if stale.endswith(".c"):
             os.remove(os.path.join(ASM_DIR, stale))
     theme = os.environ.get("RIPTOPL_THEME", "incebtion")
-    if theme not in ("korium", "incebtion"):
+    if theme not in ("korium", "incebtion", "ps2classic"):
         sys.exit(f"unknown RIPTOPL_THEME: {theme}")
     theme_dir = None
     if theme == "korium":
@@ -164,6 +164,12 @@ def embed():
         split = overlay.index(b"\nmain") + 1
         list_cfg = theme_dir / "misc/conf_theme_OPL.cfg"
         list_cfg.write_bytes(overlay[:split] + list_cfg.read_bytes() + overlay[split:])
+    ps2classic = None
+    if theme == "ps2classic":
+        # PS2 Classic replaces the built-in picture and List cfg of the standard asset set: its one 160x120
+        # background stands in for inceBtion's, and its cfg (themes/thm_PS2Classic, the disk theme) names that
+        # picture by the embedded name. Every other embedded asset is unchanged.
+        ps2classic = Path(ROOT) / "themes/thm_PS2Classic"
     pngs = list(PNG_ASSETS)
     if theme_dir:
         # inceBtion's app placeholder and foliage layer: Korium maps neither (src/gfx/textures.cpp).
@@ -188,12 +194,19 @@ def embed():
             # Badges Korium does not ship yet (CUE/EXE/BIN), drawn from its own badges until Berion's arrive.
             themed = Path(ROOT) / f"third_party/korium/stand-in/gfx/{name}.png"
         source = str(themed) if themed and themed.is_file() else f"gfx/{a}.png"
+        if ps2classic and a == "incebtion":
+            source = str(ps2classic / "ps2bg.png")
         bin2c(source, f"{a}_png", f"{a}_png")
     bin2c("third_party/fonts/PoeVeticaNew.ttf", "poeveticanew", "poeveticanew_raw")
     for a in AUDIO:
         bin2c(f"audio/{a}.adp", a, f"{a}_adp")
     for name, src, sym in MISC:
-        if theme_dir and name in ("conf_theme_OPL", "theme_coverflow"):
+        if ps2classic and name == "conf_theme_OPL":
+            built = Path(ROOT) / "build/theme-assets/ps2classic/conf_theme_OPL.cfg"
+            built.parent.mkdir(parents=True, exist_ok=True)
+            built.write_bytes((ps2classic / "conf_theme.cfg").read_bytes().replace(b"default=ps2bg", b"default=incebtion"))
+            src = str(built)
+        elif theme_dir and name in ("conf_theme_OPL", "theme_coverflow"):
             src = str(theme_dir / src)
         elif theme_dir and name == "theme_grid":
             src = "misc/theme_grid_korium.cfg"  # Korium has no Grid of its own: ours, with its cases

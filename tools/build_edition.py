@@ -36,8 +36,15 @@ LITES = {
 }
 
 
+# Test builds, kept out of EDITIONS so the publishing tools never see them: the standard asset set with the
+# PS2 Classic picture and List cfg in place of inceBtion's (tools/assets.py). No channel, so no self-update.
+TESTS = {
+    "ps2classic": {"title": "PS2Classic", "tag": "test-ps2classic", "theme": "ps2classic", "ra": False},
+}
+
+
 def edition_options(edition):
-    return LITES[edition] if edition in LITES else EDITIONS[edition]
+    return LITES[edition] if edition in LITES else TESTS[edition] if edition in TESTS else EDITIONS[edition]
 
 
 UPDATE_ELF_IDS = {"RIPTOPL.ELF": "PLAIN", "RIPTOPL-RA.ELF": "RA", "RIPTOPL-RA-IncebtIon.ELF": "RA_INCEBTION"}
@@ -54,7 +61,7 @@ def update_channel(edition, configuration="standard", toolchain="gcc"):
 
     Only a published standard build updates itself, and only from its own channel: a variant, debug or
     lite build would otherwise be replaced by another build, and an LLVM build by a GCC one."""
-    if edition in LITES or configuration != "standard":
+    if edition in LITES or edition in TESTS or configuration != "standard":
         return None
     options = EDITIONS[edition]
     elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
@@ -187,7 +194,7 @@ def main():
     from build import build
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("edition", choices=[*EDITIONS, *LITES])
+    parser.add_argument("edition", choices=[*EDITIONS, *LITES, *TESTS])
     parser.add_argument("--toolchain", choices=("gcc", "llvm"), default="gcc")
     parser.add_argument("--configuration", choices=CONFIGURATIONS, default="standard")
     parser.add_argument("--device", choices=LITE_DEVICES, help="the lite edition's one game device")

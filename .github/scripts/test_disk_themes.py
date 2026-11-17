@@ -39,16 +39,20 @@ for theme in themes:
             blocks[current][k] = v
         else:
             current = None
-    # contiguous numbering per family prefix (main0, main1, ... / appsMain..., info...)
+    # contiguous numbering per family and view: the base blocks (mainN, appsMainN, infoN ...) must run 0..N-1,
+    # and a <view>. block may replace a base slot or extend it, so base + that view's slots must run on too
     fams = {}
     for name in blocks:
-        m = re.fullmatch(r'(?:[a-z]+\.)?([A-Za-z]+?)(\d+)', name)
+        m = re.fullmatch(r'(?:([a-z]+)\.)?([A-Za-z]+?)(\d+)', name)
         if m:
-            fams.setdefault(m.group(1), []).append(int(m.group(2)))
-    for fam in ('main', 'info'):
-        nums = sorted(fams.get(fam, []))
-        if nums != list(range(len(nums))):
-            errors.append(f'{theme.name}: {fam}N blocks are not 0..N-1 without a gap: {nums}')
+            fams.setdefault((m.group(1), m.group(2)), set()).add(int(m.group(3)))
+    # appsMain, favsMain, vcdMain ... are per-slot overrides of main and may be sparse; only main and info must be dense
+    for (view, fam), nums in sorted(fams.items(), key=lambda kv: (kv[0][0] or '', kv[0][1])):
+        if fam not in ('main', 'info'):
+            continue
+        effective = nums | (fams.get((None, fam), set()) if view else set())
+        if sorted(effective) != list(range(len(effective))):
+            errors.append(f'{theme.name}: {(view + "." if view else "")}{fam}N blocks are not 0..N-1 without a gap: {sorted(effective)}')
     for name, props in blocks.items():
         if name.startswith(('main', 'info')) and name[4:].isdigit() or name[:4] in ('main', 'info'):
             if 'type' not in props and 'type_desc' not in props:
@@ -57,8 +61,8 @@ for theme in themes:
             ref = props.get(key)
             if ref and not (theme / f'{ref}.png').is_file() and ref not in builtin:
                 errors.append(f'{theme.name}: block {name} {key}={ref} is neither in the folder nor built in')
-    if not any(p.get('type') == 'ItemsList' for p in blocks.values()):
-        errors.append(f'{theme.name}: needs one plain ItemsList')
+    if not any(p.get('type') == 'ItemsList' and 'devices' not in p for p in blocks.values()):
+        errors.append(f'{theme.name}: needs one ItemsList without devices=')
     total = 0
     for f in theme.rglob('*'):
         if not f.is_file():

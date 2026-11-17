@@ -18,3 +18,12 @@ Display modes: the layout is authored for 640x480 and uses `hd_autofit=1`, so 16
 proportions. The background is a stretched gradient, so it needs no per-mode variants.
 
 Not verified: any run on PCSX2 or a real PS2. Host check only (`.github/scripts/test_disk_themes.py`).
+
+## PS2 Classic as the built-in theme (test build)
+
+`tools/build_edition.py ps2classic` builds the loader with PS2 Classic in place of the built-in picture and List
+layout: `ps2bg.png` is embedded where inceBtion's background was, and `thm_PS2Classic/conf_theme.cfg` (with
+`default=ps2bg` renamed to the embedded name) is embedded as the List cfg. The Cover Flow, PSBBN Flow and Grid views
+keep their own layouts over the new picture. It is a test edition kept out of the publishing tools (`TESTS` in
+`tools/build_edition.py`) and has no update channel. The `ps2classic-test-build` workflow builds it with LLVM beside
+the Korium LLVM loader and prints both sizes.

@@ -1,0 +1,97 @@
+name: ps2classic-test-build
+
+# Test build, never published: the LLVM standard loader with the PS2 Classic theme in place of the built-in
+# one (tools/build_edition.py, TESTS), built beside the Korium LLVM loader it replaces so the size change is
+# measured, not guessed. The artifact is the loader only.
+on:
+  push:
+    branches: ["claude/**"]
+    paths:
+      - 'themes/**'
+      - 'tools/assets.py'
+      - 'tools/build_edition.py'
+      - '.github/workflows/ps2classic-test-build.yml'
+  pull_request:
+    paths:
+      - 'themes/**'
+      - 'tools/assets.py'
+      - 'tools/build_edition.py'
+      - '.github/workflows/ps2classic-test-build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ps2classic-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      PS2BUILD_HOME: ${{ github.workspace }}/.ps2dev
+      PS2DEV_INSTALL_DIR: ${{ github.workspace }}/.ps2dev
+      PS2BUILD_TOOLCHAIN: llvm
+      GODEBUG: http2client=0
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Resolve the pinned LLVM ps2build SDK
+        id: sdk
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
+        run: sh tools/ps2build_sdk.sh --resolve --llvm "$RUNNER_TEMP/ps2build-sdk.env"
+      - name: Restore LLVM SDK cache
+        id: sdk-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.ps2dev
+          key: ps2build-sdk-${{ runner.os }}-llvm-${{ steps.sdk.outputs.key }}
+          restore-keys: ps2build-sdk-${{ runner.os }}-llvm-
+      - name: Install LLVM ps2build SDK
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
+        run: sh tools/ps2build_sdk.sh --llvm "$PS2BUILD_HOME"
+      - name: Install matching LLVM ports and prepare assets
+        env:
+          PS2BUILD_SDK_MIRROR_TOKEN: ${{ secrets.PS2BUILD_MIRROR_TOKEN }}
+        run: |
+          sh tools/install_ps2build.sh
+          python tools/assets.py fetch
+          python tools/assets.py lang
+      - name: Build the Korium LLVM loader (the size baseline)
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          python tools/build_edition.py korium --toolchain llvm 2>&1 | tee build/korium.log
+      - name: Build the PS2 Classic LLVM loader
+        run: |
+          set -euo pipefail
+          python tools/build_edition.py ps2classic --toolchain llvm 2>&1 | tee build/ps2classic.log
+      - name: Measure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          {
+            echo "PS2 Classic test build, LLVM, standard configuration"
+            for e in korium ps2classic; do
+              echo "$e packed ELF:   $(stat -c %s dist/editions/$e/RIPTOPL.ELF) bytes"
+              echo "$e unpacked ELF: $(stat -c %s build/editions/$e-llvm/bin/riptopl.elf) bytes"
+            done
+            echo "ee_core: the build links ee_core into its fixed region; a build that finished fits."
+          } | tee out/SIZES.txt
+          cp dist/editions/ps2classic/RIPTOPL.ELF out/RIPTOPL-PS2Classic-LLVM.ELF
+          cp dist/editions/ps2classic/BUILD-MANIFEST.json out/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: riptopl-ps2classic-llvm-test
+          path: out/
+          if-no-files-found: error
