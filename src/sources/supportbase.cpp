@@ -3179,7 +3179,7 @@ void sbAutoLaunchCheckRA(const char *path, const char *name, const char *ext, co
         return; // checked before: the launch reads this list
     if (start_sector)
         sbHashHdlGame(path, name, startup, start_sector);
-    else
+    else if (ext != NULL) // an HDL launch with no start sector has no image to hash
         sbHashGame(path, name, ext, startup, format);
 }
 #endif
