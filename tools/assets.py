@@ -159,7 +159,9 @@ def embed():
         # RiptOPL's List Title and Description layout for Korium, kept outside the vendored archive so a
         # re-import keeps it: the lines before its first section go above Korium's list cfg (a key after a
         # section header would land in that section), the sections after it (main11 and main12, the next free
-        # numbers). It is inert unless the setting shows the CFG text (src/gfx/themeviews.cpp).
+        # numbers). It is inert unless the setting shows the CFG text (src/gfx/themeviews.cpp). Its vcdMain6 is
+        # the PS1 page's title ID, on the PS2 page's row: without it the PS1 page falls back to appsMain6, 30
+        # higher, where the PS1 disc leaves the ID too little room and it scrolls (CosmicScale).
         overlay = (Path(ROOT) / "misc/korium_list_desc.cfg").read_bytes()
         split = overlay.index(b"\nmain") + 1
         list_cfg = theme_dir / "misc/conf_theme_OPL.cfg"
