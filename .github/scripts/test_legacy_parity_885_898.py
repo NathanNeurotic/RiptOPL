@@ -167,7 +167,7 @@ static item_list_t source;
 static item_list_t *ethInstance() { return &source; }
 static int gNetworkProtocol, gETHStartMode, gNetworkStartup, gArtDelay;
 static int semaResult, echoResult, queueResult, semas, echoes, queues, rebuilds, dirty, reconnects;
-static int favReloads, hddInvalidations, sounds, view;
+static int favReloads, hddInvalidations, hdlRescans, sounds, view;
 static void (*pending)();
 static void (*duringEcho)();
 static int netInitSema() { ++semas; return semaResult; }
@@ -185,6 +185,7 @@ namespace host { struct Library { void markDirty(int mode) { libViewMarkDirty(mo
 static void loadFavourites() { ++favReloads; }
 static int libListViewActive(item_list_t*) { return view; }
 static void hddVcdInvalidateCache() { ++hddInvalidations; }
+static void hddRequestHdlRescan() { ++hdlRescans; }
 static void sfxPlay(int) { ++sounds; }
 #define LOG(...) ((void)0)
 #define LITE_HAS_NFS 1
@@ -202,7 +203,7 @@ void EthSupport::reconnectSmb() { ++reconnects; reconnectQueued_ = reconnectRequ
 static void reset() {
     gNetworkProtocol = NET_PROTO_SMB; gETHStartMode = 1; gNetworkStartup = 0;
     semaResult = echoResult = queueResult = semas = echoes = queues = rebuilds = dirty = reconnects = 0;
-    favReloads = hddInvalidations = sounds = 0; pending = duringEcho = nullptr; source = item_list_t{};
+    favReloads = hddInvalidations = hdlRescans = sounds = 0; pending = duringEcho = nullptr; source = item_list_t{};
     gEthSupport.smbModuleLoaded_ = 1; gEthSupport.reconnectQueued_ = 0; gEthSupport.setBase("smb0:");
     gEthSupport.reconnectRequested_ = 0; gEthSupport.nfs_ = 0;
 }
@@ -257,6 +258,9 @@ int main() {
     reset(); gNetworkStartup = 1; itemExecRefresh(&menu); dispatch(); assert(reconnects == 1);
     reset(); source.mode = FAV_MODE; itemExecRefresh(&menu); assert(favReloads == 1 && !queues && !rebuilds);
     reset(); source.mode = HDD_MODE; view = LIB_VIEW_PS1; itemExecRefresh(&menu); assert(hddInvalidations == 1 && rebuilds == 1 && !queues);
+    assert(!hdlRescans); // a PS1 Refresh leaves the live PS2 list alone
+    reset(); source.mode = HDD_MODE; view = LIB_VIEW_MIXED; itemExecRefresh(&menu); assert(hddInvalidations == 1 && hdlRescans == 1 && rebuilds == 1);
+    reset(); source.mode = HDD_MODE; view = 0; itemExecRefresh(&menu); assert(!hddInvalidations && hdlRescans == 1 && rebuilds == 1);
     reset(); source.enabled = 0; itemExecRefresh(&menu); assert(!queues && !sounds);
 }
 ''')

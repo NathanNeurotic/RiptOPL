@@ -319,64 +319,84 @@ static int hddIsPopsCandidateName(const char *name)
 //
 // ONE walk, two callers: the dedupe, the grow-on-demand array, the refusal to publish a partial walk
 // and the sort are all the POPS enumerator's own body. Only the name test is passed in.
-static int hddCollectPartitions(hdd_pops_list_t *list, int (*keep)(const char *))
+// Fills up to two lists from ONE walk of the APA table. Every fileXioDread reads a partition header,
+// and the headers of a large drive (every HDL game has sub-partitions too) are spread across the
+// whole disk, so each walk costs one seek per partition. The PS1 list needs both the POPS and the
+// Ember candidates; walking twice doubled that cost. lists[1]/keeps[1] may be NULL for one list.
+static int hddCollectPartitionsMulti(hdd_pops_list_t *lists[2], int (*keeps[2])(const char *))
 {
     iox_dirent_t dirent;
-    int fd, i, count = 0, readResult = 0, ret = 0;
-    char(*names)[APA_IDMAX + 1] = NULL;
+    int fd, i, k, readResult = 0, ret = 0;
+    int counts[2] = {0, 0};
+    char(*names[2])[APA_IDMAX + 1] = {NULL, NULL};
 
-    list->count = 0;
-    list->names = NULL;
+    for (k = 0; k < 2; k++) {
+        if (lists[k] != NULL) {
+            lists[k]->count = 0;
+            lists[k]->names = NULL;
+        }
+    }
 
     fd = fileXioDopen("hdd0:");
     if (fd < 0)
         return fd; // distinguish an enumeration failure from a valid zero-candidate disk
 
-    while ((readResult = fileXioDread(fd, &dirent)) > 0) {
+    while (ret == 0 && (readResult = fileXioDread(fd, &dirent)) > 0) {
         if (dirent.stat.attr != HDD_APA_ATTR_MAIN_PARTITION || dirent.stat.mode != HDD_APA_FS_TYPE_PFS)
             continue; // skip APA sub-partitions and HDL/raw/system formats
-        if (!keep(dirent.name))
-            continue; // not a PS1 source of the kind this caller is enumerating
 
-        int dup = 0;
-        for (i = 0; i < count; i++) {
-            if (!strncmp(names[i], dirent.name, APA_IDMAX)) {
-                dup = 1;
+        for (k = 0; k < 2; k++) {
+            if (lists[k] == NULL || !keeps[k](dirent.name))
+                continue; // not a PS1 source of the kind this list collects
+
+            int dup = 0;
+            for (i = 0; i < counts[k]; i++) {
+                if (!strncmp(names[k][i], dirent.name, APA_IDMAX)) {
+                    dup = 1;
+                    break;
+                }
+            }
+            if (dup)
+                continue;
+
+            char(*grown)[APA_IDMAX + 1] = static_cast<char(*)[APA_IDMAX + 1]>(realloc(names[k], (counts[k] + 1) * sizeof(*names[k])));
+            if (grown == NULL) {
+                ret = -ENOMEM;
                 break;
             }
+            names[k] = grown;
+            strncpy(names[k][counts[k]], dirent.name, APA_IDMAX);
+            names[k][counts[k]][APA_IDMAX] = '\0';
+            counts[k]++;
         }
-        if (dup)
-            continue;
-
-        char(*grown)[APA_IDMAX + 1] = static_cast<char(*)[APA_IDMAX + 1]>(realloc(names, (count + 1) * sizeof(*names)));
-        if (grown == NULL) {
-            ret = -ENOMEM;
-            break;
-        }
-        names = grown;
-        strncpy(names[count], dirent.name, APA_IDMAX);
-        names[count][APA_IDMAX] = '\0';
-        count++;
     }
     fileXioDclose(fd);
 
     if (ret == 0 && readResult < 0)
         ret = readResult;
     if (ret < 0) {
-        free(names);
+        free(names[0]);
+        free(names[1]);
         return ret; // never publish a partial APA partition walk as a complete candidate set
     }
 
-    if (count == 0) {
-        free(names);
-        return 0; // successful enumeration, no candidates of the requested kind
+    for (k = 0; k < 2; k++) {
+        if (lists[k] == NULL || counts[k] == 0) {
+            free(names[k]); // successful enumeration, no candidates of this kind
+            continue;
+        }
+        qsort(names[k], counts[k], sizeof(*names[k]), hddPopsNameCompare);
+        lists[k]->names = names[k];
+        lists[k]->count = counts[k];
     }
+    return counts[0];
+}
 
-    qsort(names, count, sizeof(*names), hddPopsNameCompare);
-
-    list->names = names;
-    list->count = count;
-    return count;
+static int hddCollectPartitions(hdd_pops_list_t *list, int (*keep)(const char *))
+{
+    hdd_pops_list_t *lists[2] = {list, NULL};
+    int (*keeps[2])(const char *) = {keep, NULL};
+    return hddCollectPartitionsMulti(lists, keeps);
 }
 
 //-------------------------------------------------------------------------
@@ -389,6 +409,14 @@ int hddGetPopsPartitionList(hdd_pops_list_t *list)
 int hddGetEmberPartitionList(hdd_pops_list_t *list)
 {
     return hddCollectPartitions(list, hddIsEmberContainerName);
+}
+
+//-------------------------------------------------------------------------
+int hddGetPs1PartitionLists(hdd_pops_list_t *pops, hdd_pops_list_t *ember)
+{
+    hdd_pops_list_t *lists[2] = {pops, ember};
+    int (*keeps[2])(const char *) = {hddIsPopsCandidateName, hddIsEmberContainerName};
+    return hddCollectPartitionsMulti(lists, keeps);
 }
 
 //-------------------------------------------------------------------------
