@@ -691,10 +691,12 @@ static int IGR_Intc_Handler(int cause)
         // piece at a time, and paused between two pieces VIF1 can sit inside one of the game's VIF codes, which the
         // paused game never finishes, and take the menu's lines as the rest of it (build 5 on a console: mint). So
         // the VBLANK must also find channel 8 (what fills the MFIFO) stopped and VIF1 between two codes (VIF1_STAT
-        // VPS, VEW, VGW, shifted onto bits 10-13)
+        // VPS, VEW, VGW, shifted onto bits 10-13). And the GIF at rest, as NULD's pause waits for it: a path the game
+        // left inside one of its GIF packets holds the FLUSHA in front of every line of the menu's (build 6 on a
+        // console, VIF1 between two codes: still mint). GIF_STAT P1Q, OPH, APATH and DIR are bits 8-12 already
         // One store and one way into the pause (0: take it now, and this press has had it): written with ||, Korium's
         // LLVM build came out 52 bytes larger, more than .text has left before .rodata moves up a 128-byte step
-        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = ((((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & ~(*R_EE_D_CTRL << 5)) | *R_EE_D8_CHCR | *R_EE_VIF1_STAT << 10) & 0x3f00) ? IGR_MenuRearm - 1 : 0)) {
+        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = ((((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & ~(*R_EE_D_CTRL << 5)) | *R_EE_D8_CHCR | *R_EE_VIF1_STAT << 10 | *R_EE_GIF_STAT) & 0x3f00) ? IGR_MenuRearm - 1 : 0)) {
             IGR_MenuOpen = 1;
             IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
             goto wake;            // the IGR's own two calls below, not a second copy of them: .text has no room for one

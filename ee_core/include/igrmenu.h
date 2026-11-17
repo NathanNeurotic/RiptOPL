@@ -19,7 +19,7 @@ enum {
     IGR_MENU_NO_FRAME = 0xFF0080,    // purple: no DISPFB write recorded by the GS tracker, or a format / size the panel cannot use
     IGR_MENU_DRAW_FAILED = 0x80FF00, // mint: the first page did not go through (VIF1 did not take the lines)
     // The idle check refused the menu
-    IGR_MENU_GS_BUSY = 0x00FFFF, // yellow: a transfer of the game's on channel 1 (VIF1) or 2 (GIF) did not end, a MFIFO did not empty, or VIF1 did not come to rest (stalled, reading back, data left, inside a VIF code)
+    IGR_MENU_GS_BUSY = 0x00FFFF, // yellow: a transfer of the game's on channel 1 (VIF1) or 2 (GIF) did not end, a MFIFO did not empty, VIF1 did not come to rest (stalled, reading back, data left, inside a VIF code), or the GIF did not (data left, a path still active)
 };
 
 // Draws the panel over the paused game and reads the pad until a choice is made. The caller has

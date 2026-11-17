@@ -240,14 +240,15 @@ before the loader comes back. Every colour but grey shows with or without **Debu
 |---|---|
 | **Purple** | The game's picture is in a format or size the panel cannot use |
 | **Mint green** | The first page was composed but VIF1 did not take it |
-| **Yellow** | The game's drawing did not come to an end while it was paused: a transfer on channel 1 (VIF1) or channel 2 (GIF) did not finish, its MFIFO did not empty, or VIF1 did not come to rest |
+| **Yellow** | The game's drawing did not come to an end while it was paused: a transfer on channel 1 (VIF1) or channel 2 (GIF) did not finish, its MFIFO did not empty, VIF1 did not come to rest, or the GIF did not |
 | **Grey** | The menu itself was not there to run (RetroAchievements editions: this launch had no room for it, see *Where it works* above). Only with **Debug Colors** on, and before the reset, not at its end |
 
 **In-Game Menu is on, the picture freezes for a moment and the game resets (yellow blinks).**
 The game's channel 1 or 2 transfers did not finish while it was paused, or its VIF1 stayed stopped (on a VIF
-code's interrupt bit, a stop or a break), reading back, or inside one of the game's VIF codes, so the menu will not
-draw over them and the combination does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made
-once per press, inside the menu, with VIF1 also waited for until it is between two codes.
+code's interrupt bit, a stop or a break), reading back, or inside one of the game's VIF codes, or its GIF still had
+data or a path in the middle of one of the game's packets, so the menu will not draw over them and the combination
+does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made once per press, inside the menu, with
+VIF1 also waited for until it is between two codes, and the GIF until it is at rest, as NULD's menu waits for it.
 One case is treated apart: a game that sends its drawing through a MFIFO (Dirge of Cerberus does) keeps the
 channel that empties it started for as long as it runs, so that channel never "finishes". It passes the check once
 the MFIFO is empty. The menu then borrows channel 1 for its own lines (stopped with the DMAC suspended, the MFIFO
@@ -256,9 +257,10 @@ the game goes on.
 Every interrupt of the game is held for the pause (its GS, VIF1 and DMA completions too, as RIPPS2 holds them, and the MFIFO-empty one), so a
 transfer that needs one of them to go on cannot end once the game is paused. The pause is therefore taken, with the
 game still running and the combination held, on a frame at which channels 1 and 2 are stopped (a MFIFO's draining
-channel is not waited for), channel 8, which fills a MFIFO, is stopped, and VIF1 is between two codes, after 2
-seconds at most. A game that sends its drawing through a MFIFO a piece at a time can otherwise be paused in the middle
-of one, which the paused game never finishes. A game that is never idle in that time is paused anyway and the check
+channel is not waited for), channel 8, which fills a MFIFO, is stopped, VIF1 is between two codes and the GIF is at
+rest, after 2 seconds at most. A game that sends its drawing through a MFIFO a piece at a time can otherwise be paused
+in the middle of one, which the paused game never finishes: inside a VIF code, or with a GIF path left open inside a
+packet, which holds every line of the menu's back. A game that is never idle in that time is paused anyway and the check
 decides. Keep the combination held until the menu shows.
 
 Report the colour with the game's ID and the device it runs from. No blink at all means the combination
