@@ -93,7 +93,10 @@ static void raLaunchNetworkUp(void){networkCalls++; if(sessionFail) count=0;}
 static int ethGetNetConfig(unsigned char *ip,unsigned char *mask,unsigned char *gateway) {
     (void)mask;(void)gateway;for(int i=0;i<4;i++)ip[i]=ps2_ip[i];return 0;
 }
-static unsigned int raNetPeerIP(void){return 0;}
+/* The link test is the only way a peer appears here: it verifies linkPeer (0 = no PC answered). */
+static int linkTests;static unsigned int linkPeer,verifiedPeer;
+static unsigned int raNetPeerIP(void){return verifiedPeer;}
+static int raNetTestLink(char *a,int an,char *b,int bn){(void)an;(void)bn;a[0]=b[0]=0;linkTests++;verifiedPeer=linkPeer;return linkPeer!=0;}
 static const char *_l(int x){(void)x;return "untracked";}
 static void guiWarning(const char *s,int seconds){(void)s;(void)seconds;warning++;}
 @FUNCTIONS@
@@ -147,7 +150,13 @@ int main(void) {
     prepare("usb", "-cfg=bad\"name");assert(!sysNeutrinoRAArg[0] && warning);
     prepare("usb", "-cfg=ript-ra");assert(!sysNeutrinoRAArg[0] && warning);
     gRAHostIp[0]=0;gRAHostIp[1]=0;gRAHostIp[2]=0;gRAHostIp[3]=0;
-    prepare("udpfs", "");assert(!sysNeutrinoRAArg[0] && warning);
+    /* No companion IP and no PC found this boot (Auto Loading): the link test runs; no answer is untracked. */
+    linkTests=0;prepare("udpfs", "");assert(!sysNeutrinoRAArg[0] && warning && linkTests==1);
+    /* The link test finds the PC: tracked, sent to the PC that answered. */
+    linkPeer=0x0501A8C0;linkTests=0;prepare("usb", "");
+    assert(sysNeutrinoRAArg[0] && !warning && linkTests==1 && strstr(cfg,"srv=192.168.1.5"));
+    /* A PC already verified this boot is used as it is. */
+    linkTests=0;prepare("usb", "");assert(sysNeutrinoRAArg[0] && linkTests==0);linkPeer=verifiedPeer=0;
     gRAHostIp[0]=127;prepare("udpfs", "");assert(!sysNeutrinoRAArg[0] && warning);
     gRAHostIp[0]=224;prepare("udpfs", "");assert(!sysNeutrinoRAArg[0] && warning);
     gRAHostIp[0]=192;gRAHostIp[1]=168;gRAHostIp[2]=1;gRAHostIp[3]=2;
