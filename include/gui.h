@@ -199,8 +199,11 @@ void guiGameHandleDeferedIO(int *ptr, struct UIItem *ui, int type, void *data);
 /** Renders a single frame with a specified message on the screen
  */
 void guiRenderTextScreen(const char *message);
-/* VBLANK-paced status fade, called only after the launch I/O drain. */
-void guiFadeOutForHandoff(const char *message);
+/* Launch/exit handoff progress: message over a bar at step of GUI_HANDOFF_STEPS, drawn frames times.
+   The last one drawn stays on screen until the next program sets up the GS. The last step is the
+   next program's own start, so deinit() never fills the bar. */
+#define GUI_HANDOFF_STEPS 4
+void guiRenderHandoffStep(const char *message, int step, int frames);
 /* Main-thread-only fade before an explicit display-mode change. */
 void guiFadeCurrentScreenToBlack(void);
 
