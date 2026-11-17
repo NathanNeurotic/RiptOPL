@@ -1,6 +1,6 @@
 # Claude audit: RiptOPL
 
-Status: IN PROGRESS. 10 of 154 reading passes are in; finding IDs are provisional and will be renumbered until this line says COMPLETE.
+Status: IN PROGRESS. 25 of 154 reading passes are in; finding IDs are provisional and will be renumbered until this line says COMPLETE.
 
 - Repository: NathanNeurotic/RiptOPL
 - Audited branch: rebuild/main
@@ -12,8 +12,8 @@ All `path:line` references are pinned to the audited commit above. Each finding 
 
 ## Totals
 
-- Findings in this report: 21. 71 more raised findings are waiting for their second check and are not shown yet.
-- Raised by readers: 92. Dropped as wrong or unsupported on re-check: 0. Corrected on re-check: 9. Merged as duplicates: 0.
+- Findings in this report: 21. 169 more raised findings are waiting for their second check and are not shown yet.
+- Raised by readers: 190. Dropped as wrong or unsupported on re-check: 0. Corrected on re-check: 9. Merged as duplicates: 0.
 
 | Category | Count |
 |---|---:|
@@ -342,4 +342,4 @@ Not read as text:
 - 365 files, 71.0 MB: binary file (covered by the asset/clutter inventory, not read as text). Mostly under `gfx` (142), `ship` (114), `docs` (71), `modules` (15), `audio` (9), `third_party` (9), `misc` (5).
 - 6 files, 0.0 MB: empty file. Mostly under `ship` (6).
 
-Not read yet (reading still in progress): 1630 files in 83 chunks.
+Not read yet (reading still in progress): 1587 files in 76 chunks.
