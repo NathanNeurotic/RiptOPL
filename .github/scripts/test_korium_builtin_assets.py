@@ -67,7 +67,15 @@ assert "main11_type" not in before and "main10_type" in before, "main11 must be 
 for block in ("main11", "main12"):
     assert merged[block + "_type_desc"] == "AttributeText" and block + "_type" not in merged, block
 for k in (k for k in merged if k.endswith("_enabled_desc")):
-    assert k[:-len("_enabled_desc")] + "_type" in before, f"{k} names a block Korium does not have"
+    block = k[:-len("_enabled_desc")]
+    assert block + "_type" in before or block == "vcdMain6", f"{k} names a block Korium does not have"
+# The PS1 page's title ID: its own block on the PS2 page's row, so it has the PS2 ID's room and does not
+# scroll. Without it the PS1 page falls back to appsMain6 (the chain vcdMain, appsMain, main in themes.cpp).
+assert "vcdMain6_type" not in before, "Korium now has its own vcdMain6: drop the overlay's"
+assert merged["vcdMain6_type"] == "ItemText"
+assert (merged["vcdMain6_x"], merged["vcdMain6_y"]) == (before["main6_x"], before["main6_y"])
+assert merged["vcdMain6_enabled_desc"] == "0"
+assert 'vcdMainChain[] = {"vcdMain", "appsMain", "main"}' in themes
 assert all(merged.get(k) == v for k, v in before.items()), "the overlay changed one of Korium's own keys"
 
 print("PASS: built-in Korium loads its Players badges, keeps its own app cover, starts with background art off and keeps its list description off")
