@@ -3154,6 +3154,19 @@ static void sbHashGameDeferredWorker(void)
     ra_hash_busy = 0;
 }
 
+static void sbTestPCLinkWorker(void)
+{
+    char line1[96], line2[96];
+
+    raNetTestLink(line1, sizeof(line1), line2, sizeof(line2));
+    host::ui().raNotice(line1, line2);
+}
+
+void sbTestPCLinkDeferred(void)
+{
+    ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&sbTestPCLinkWorker));
+}
+
 /* Auto Loading has no menu to run "Check RetroAchievements support" from, so a game that was never
    checked on this device had no watch list and was never tracked. Run the same check in place (the
    launch thread does its own I/O here) when RA is on and the list is missing. It also finds the PC. */
@@ -3168,19 +3181,6 @@ void sbAutoLaunchCheckRA(const char *path, const char *name, const char *ext, co
         sbHashHdlGame(path, name, startup, start_sector);
     else
         sbHashGame(path, name, ext, startup, format);
-}
-
-static void sbTestPCLinkWorker(void)
-{
-    char line1[96], line2[96];
-
-    raNetTestLink(line1, sizeof(line1), line2, sizeof(line2));
-    host::ui().raNotice(line1, line2);
-}
-
-void sbTestPCLinkDeferred(void)
-{
-    ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&sbTestPCLinkWorker));
 }
 #endif
 
