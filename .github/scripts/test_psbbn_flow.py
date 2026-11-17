@@ -374,10 +374,10 @@ cycle = r'''
 #include <stdint.h>
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64; typedef int32_t s32;
 #include "include/themeviews.h"
-struct theme_t { unsigned int viewMask; int view; };
+struct theme_t { unsigned int viewMask; int view; void *grid; int gridCompact; };
 static theme_t theme;
 static theme_t *gTheme = &theme;
-static int gCoverflowCount = 3;
+static int gCoverflowCount = 3, gGridCompact;
 static int loads, failLoad, loadedCovers;
 static int thmSwitchSema = 5, switchDepth;
 static void WaitSema(int id) { assert(id == thmSwitchSema && !switchDepth); switchDepth++; }
@@ -390,8 +390,11 @@ static int thmSetViewLocked(int v) {
  if (failLoad) return 0;
  loadedCovers = gCoverflowCount;
  gTheme->view = v;
+ gTheme->grid = v == THM_VIEW_GRID ? gTheme : NULL;
+ gTheme->gridCompact = gGridCompact;
  return 1;
 }
+static int thmGridShapeChanged(void) { return gTheme->grid != NULL && gTheme->gridCompact != (gGridCompact != 0); }
 @PICKS@
 @CYCLE@
 int main(void) {
@@ -402,18 +405,19 @@ int main(void) {
  // A single-view theme without Coverflow has nothing to cycle.
  theme.viewMask = 1u << THM_VIEW_LIST; theme.view = THM_VIEW_LIST;
  assert(thmCycleView() == 0 && loads == 0);
- // Every view: List -> CF3 (load) -> CF5 (no load) -> PSBBN (load) -> Grid (load) -> List (load).
+ // Every view: List -> CF3 (load) -> CF5 (no load) -> PSBBN (load) -> Grid (load) -> Grid (7x2) (load) -> List (load).
  theme.viewMask = 0xFu; theme.view = THM_VIEW_LIST; gCoverflowCount = 5;
  assert(thmCycleView() == 1 && theme.view == THM_VIEW_COVERFLOW && gCoverflowCount == 3 && loads == 1 && loadedCovers == 3);
  assert(thmCycleView() == 1 && theme.view == THM_VIEW_COVERFLOW && gCoverflowCount == 5 && loads == 1);
  assert(thmCycleView() == 1 && theme.view == THM_VIEW_PSBBN && loads == 2);
- assert(thmCycleView() == 1 && theme.view == THM_VIEW_GRID && loads == 3);
- assert(thmCycleView() == 1 && theme.view == THM_VIEW_LIST && loads == 4);
+ assert(thmCycleView() == 1 && theme.view == THM_VIEW_GRID && !gGridCompact && loads == 3);
+ assert(thmCycleView() == 1 && theme.view == THM_VIEW_GRID && gGridCompact && theme.gridCompact && loads == 4);
+ assert(thmCycleView() == 1 && theme.view == THM_VIEW_LIST && loads == 5);
  // An abandoned load keeps the old view and its count.
  theme.viewMask = (1u << THM_VIEW_LIST) | (1u << THM_VIEW_COVERFLOW); theme.view = THM_VIEW_LIST; gCoverflowCount = 5; failLoad = 1;
- assert(thmCycleView() == 0 && theme.view == THM_VIEW_LIST && gCoverflowCount == 5 && loads == 5);
+ assert(thmCycleView() == 0 && theme.view == THM_VIEW_LIST && gCoverflowCount == 5 && loads == 6);
  assert(!switchDepth);
- puts("L3 cycle: Coverflow (3)/(5) toggle without a reload, view changes load, a failed load keeps the count");
+ puts("L3 cycle: Coverflow (3)/(5) toggle without a reload, view and Grid shape changes load, a failed load keeps the count");
 }
 '''
 run('psbbn_cycle', cycle.replace('@PICKS@', picks).replace('@SEMALOCK@', SEMA_LOCK)

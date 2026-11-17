@@ -75,6 +75,16 @@ int vcdExtractGameId(const char *name, char *idOut, int idSize)
     if (strlen(p) < 11)
         return 0;
 
+    // Lightspan: LSPNNNNN.NNN (LSP99016.101 -- the shape CosmicScale's PSBBN installer names files with)
+    if (idSize > 12 && !strncasecmp(p, "LSP", 3) && p[8] == '.') {
+        for (i = 3; i <= 11 && (i == 8 || (p[i] >= '0' && p[i] <= '9')); i++)
+            ;
+        if (i == 12 && (p[12] == '\0' || p[12] == '.' || p[12] == '_' || p[12] == ' ' || p[12] == '-')) {
+            snprintf(idOut, idSize, "LSP%.9s", p + 3);
+            return 12;
+        }
+    }
+
     // Check strict AAAA_NNN.NN shape (e.g. SLUS_005.51, SLES_012.58)
     for (i = 0; i < 4; i++) {
         if (!((p[i] >= 'A' && p[i] <= 'Z') || (p[i] >= 'a' && p[i] <= 'z') ||
@@ -101,7 +111,7 @@ int vcdExtractGameId(const char *name, char *idOut, int idSize)
         idOut[i] = c;
     }
     idOut[11] = '\0';
-    return 1;
+    return 11;
 }
 
 // Strict one-game POPS partition label (POPStarter HDD convention): PP.<DISC-ID>.POPS.<NAME>.
@@ -126,9 +136,10 @@ int vcdPopsPartitionTitleOffset(const char *label)
 
     // Form A: AAAA_NNN.NN.POPS.<name> -- vcdExtractGameId validates the ID; the separator into
     // the marker must be '.'. Shortest legal label: 12 + 5 + 1 chars.
-    if (len >= 18 && vcdExtractGameId(tail, discId, sizeof(discId)) && tail[11] == '.' &&
-        strncmp(tail + 12, "POPS.", 5) == 0 && tail[17] != '\0')
-        return (int)((tail + 17) - label);
+    int idLen = vcdExtractGameId(tail, discId, sizeof(discId));
+    if (len >= 18 && idLen && tail[idLen] == '.' &&
+        strncmp(tail + idLen + 1, "POPS.", 5) == 0 && tail[idLen + 6] != '\0')
+        return (int)((tail + idLen + 6) - label);
 
     // Form B: AAAA-NNNNN[.NN].POPS.<name>. Shortest legal label: 10 + 6 + 1 chars.
     if (len < 17)
@@ -162,10 +173,12 @@ static int vcdGameIdPrefixLen(const char *name)
     int prefixLen = vcdSkipPopstarterPrefix(name);
     const char *p = name + prefixLen;
     char gameId[VCD_ID_MAX];
-    if (vcdExtractGameId(p, gameId, sizeof(gameId))) {
-        if (p[11] == '.' || p[11] == '_' || p[11] == ' ' || p[11] == '-')
-            return prefixLen + 12;
-        return prefixLen + 11;
+    int idLen = vcdExtractGameId(p, gameId, sizeof(gameId));
+    if (idLen) {
+        int skip = prefixLen + idLen;
+        if (p[idLen] == '.' || p[idLen] == '_' || p[idLen] == ' ' || p[idLen] == '-')
+            skip++;
+        return name[skip] != '\0' ? skip : 0; // nothing after the ID: keep it rather than draw ""
     }
     return 0;
 }
@@ -426,6 +439,11 @@ int VcdSupport::resolveRowId(const char *name, int kind, char *idOut, int idSize
     }
     if (m->state == VCD_ID_ABSENT)
         return 0;
+    // A failed read is retried only after its backoff. The CFG title path calls this directly, so
+    // without this it re-read every frame, used up the retries inside a second and marked the row
+    // ABSENT for a transient failure.
+    if (m->state == VCD_ID_DEFERRED && (unsigned int)guiFrameId < m->retryFrame)
+        return 0;
 
     char discId[RETROGEM_GAMEID_MAX];
     int found = 0;
@@ -616,6 +634,15 @@ int VcdSupport::rowIdCached(const char *name, int kind, char *idOut, int idSize)
 int ps1RowIdCached(const char *name, int kind, char *idOut, int idSize)
 {
     return gVcdSupport.rowIdCached(name, kind, idOut, idSize);
+}
+
+void ps1RowIdResolve(const char *name, int kind)
+{
+    char id[VCD_ID_MAX];
+
+    if (name == NULL || vcdExtractGameId(name, id, sizeof(id)))
+        return; // the name already carries the id: no device IO
+    gVcdSupport.resolveRowId(name, kind, id, sizeof(id));
 }
 
 // dirPath is the directory that was just opened; fileName is what readdir returned (with ".VCD");
@@ -2202,10 +2229,6 @@ int vcdInstallPopsUdpfsNet(const char *popsDir)
         close(fd);
         if (got < 0 || size > 120)
             return -3;
-        char backup[132], check[256];
-        snprintf(backup, sizeof(backup), "%s.bak", dst);
-        if (vcdReadNetFile(backup, check, sizeof(check)) != -1)
-            return -3; // interrupted editor save needs recovery, not automatic population
         snprintf(home, sizeof(home), "%s", dst);
         *strrchr(home, '/') = '\0';
         if (mkdir(home, 0777) != 0 && errno != EEXIST)
@@ -2264,12 +2287,12 @@ int vcdReadPopsUdpfsNet(vcd_pops_udpfs_t *out)
     return 0;
 }
 
-// MC does not support rename. Back up originals before writing either live file;
-// restore from those snapshots on failure and retain a backup if restoration fails.
+// Overwrites both live files in place: no .bak or .new file is ever made on the card. The old
+// contents (at most 120 bytes each) are held in memory and written back if either write fails.
 int vcdWritePopsUdpfsNet(const vcd_pops_udpfs_t *cfg)
 {
-    char paths[2][128], backup[2][132], oldData[2][256], buf[2][128];
-    int oldSize[2], committed[2] = {0, 0}, backed[2] = {0, 0};
+    char paths[2][128], oldData[2][256], buf[2][128];
+    int oldSize[2], committed[2] = {0, 0};
     if (!vcdPopsUdpfsNetValid(cfg))
         return -1;
     if (vcdPopsUdpfsConfigPath("IPCONFIG.DAT", paths[0], sizeof(paths[0])) < 0 ||
@@ -2284,10 +2307,6 @@ int vcdWritePopsUdpfsNet(const vcd_pops_udpfs_t *cfg)
     len[1] = vcdUdpfsAddress(cfg->server) == 0 ? 0 :
                                                  snprintf(buf[1], sizeof(buf[1]), "%d.%d.%d.%d\n", cfg->server[0], cfg->server[1], cfg->server[2], cfg->server[3]);
     for (int i = 0; i < 2; i++) {
-        snprintf(backup[i], sizeof(backup[i]), "%s.bak", paths[i]);
-        char check[256];
-        if (vcdReadNetFile(backup[i], check, sizeof(check)) != -1)
-            return -3;
         oldSize[i] = vcdReadNetFile(paths[i], oldData[i], sizeof(oldData[i]));
         if (oldSize[i] < -1)
             return -3;
@@ -2298,15 +2317,6 @@ int vcdWritePopsUdpfsNet(const vcd_pops_udpfs_t *cfg)
         *strrchr(home, '/') = '\0';
         if (mkdir(home, 0777) != 0 && errno != EEXIST)
             goto rollback;
-        if (oldSize[i] >= 0) {
-            if (vcdWritePopsUdpfsFile(backup[i], oldData[i], oldSize[i]) != 0) {
-                unlink(backup[i]); // this call's failed backup; live original is intact
-                goto rollback;
-            }
-            backed[i] = 1;
-        }
-    }
-    for (int i = 0; i < 2; i++) {
         committed[i] = 1; // the failed write may already have removed a partial file
         int result = vcdWritePopsUdpfsFile(paths[i], buf[i], len[i]);
         if (result == -2)
@@ -2314,23 +2324,15 @@ int vcdWritePopsUdpfsNet(const vcd_pops_udpfs_t *cfg)
         if (result != 0)
             goto rollback;
     }
-    for (int i = 0; i < 2; i++)
-        if (backed[i])
-            unlink(backup[i]);
     return 0;
 rollback:
-    for (int i = 0; i < 2; i++) {
-        if (committed[i]) {
-            if (oldSize[i] >= 0) {
-                if (vcdWritePopsUdpfsFile(paths[i], oldData[i], oldSize[i]) != 0)
-                    continue; // retain .bak for manual recovery
-            } else {
-                unlink(paths[i]);
-            }
-        }
-        if (backed[i])
-            unlink(backup[i]);
-    }
+    // Files this call created go first: they hold card space the restores below may need.
+    for (int i = 0; i < 2; i++)
+        if (committed[i] && oldSize[i] < 0)
+            unlink(paths[i]);
+    for (int i = 0; i < 2; i++)
+        if (committed[i] && oldSize[i] >= 0 && vcdWritePopsUdpfsFile(paths[i], oldData[i], oldSize[i]) != 0)
+            LOG("[POPSTARTER] could not restore %s\n", paths[i]);
     return -3;
 }
 

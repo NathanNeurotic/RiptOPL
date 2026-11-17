@@ -21,25 +21,13 @@ jobs:
       fail-fast: false
       max-parallel: 8
       matrix:
-        toolchain: [gcc, llvm]
-        target:
-          - {edition: korium, configuration: pademu0}
-          - {edition: korium, configuration: ds5}
-          - {edition: korium, configuration: extras}
-          - {edition: korium, configuration: extras_ds5}
-          - {edition: korium, configuration: dtl}
-          - {edition: korium, configuration: diag}
-          - {edition: korium, configuration: debug}
-          - {edition: korium, configuration: debug_uart}
-          - {edition: korium, configuration: ingame_debug}
-          - {edition: korium, configuration: iopcore_debug}
-          - {edition: korium, configuration: eesio_debug}
-          - {edition: korium, configuration: ingame_debug_uart}
-          - {edition: korium, configuration: iopcore_debug_uart}
-          - {edition: korium, configuration: ingamediag}
-          - {edition: ra, configuration: pademu0}
-          - {edition: ra, configuration: ingame_debug}
-          - {edition: incebtion, configuration: extras_ds5}
+        # Only the builds no other workflow makes. Every other Korium, RA and IncebtIon configuration, with GCC in
+        # Rolling Release and with LLVM in RiptOPLLVM, is built there on every pull request and push (rolling-release.yml
+        # and rolling-llvm.yml list the same editions and configurations), so building it here too only spent runner time.
+        include:
+          - {toolchain: gcc, target: {edition: ra, configuration: ingame_debug}}
+          - {toolchain: llvm, target: {edition: ra, configuration: ingame_debug}}
+          - {toolchain: llvm, target: {edition: incebtion, configuration: extras_ds5}}
     env:
       PS2BUILD_HOME: ${{ github.workspace }}/.ps2dev
       PS2DEV_INSTALL_DIR: ${{ github.workspace }}/.ps2dev
@@ -83,7 +71,9 @@ jobs:
           python tools/assets.py fetch
           python tools/assets.py lang
       - name: Cache the ps2build SDK
-        if: ${{ steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
+        # Saved only from rebuild/main: a pull request that misses the cache must not add a second, different
+        # SDK under the same key, which later jobs of that pull request would restore instead.
+        if: ${{ github.ref == 'refs/heads/rebuild/main' && steps.sdk-cache.outputs.cache-hit != 'true' && env.PS2BUILD_SDK_STALE != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.ps2dev

@@ -29,6 +29,7 @@
  * the right stick turns over to its back cover, and the devices in a sidebar on the left. */
 
 int gGridLayout = 0;      // Settings > Interface > Coverflow Settings > Grid Layout (grid.h, gridLayoutPreset)
+int gGridCompact = 0;     // the Grid (7x2) view pick (themeviews.h, gridCompactShape); Grid Layout leaves it alone
 int gGridSidebarOpen = 0; // menusys gives the device sidebar the pad; only set while a Grid page with a sidebar is on screen
 
 #define GRID_SLIDE_SCALE 8 // the page slide lasts Coverflow's Animation Speed x 8/5 (Normal: 320 ms, RIPPS2's)
@@ -46,17 +47,41 @@ static void gridCellSize(theme_element_t *elem, int *w, int *h)
     *h = gTheme->gridCellH > 0 ? gTheme->gridCellH : elem->height;
 }
 
-// The size a cover takes in a cell: the cell, or, for a cover of another shape (a preset cell, or a square
-// app or PS1 cover another family draws on a mixed page), that cover's shape fitted into the cell.
+// The cover window of a family's case picture, in its element's space: the whole element, or the part
+// the overlay corners give the cover when the case art is a larger canvas (Korium: its PS2 case is the
+// left 181 of a 256 by 256 picture, its PS1 jewel case the top left 172 by 161).
+static void gridCoverWindow(theme_element_t *coverElem, int *left, int *top, int *right, int *bottom)
+{
+    mutable_image_t *image = (mutable_image_t *)coverElem->extended;
+    image_texture_t *ov = image != NULL ? image->overlayTexture : NULL;
+    *left = 0, *top = 0, *right = coverElem->width, *bottom = coverElem->height;
+    if (ov == NULL)
+        return;
+    int l = ov->upperLeft_x < ov->lowerLeft_x ? ov->upperLeft_x : ov->lowerLeft_x;
+    int r = ov->upperRight_x > ov->lowerRight_x ? ov->upperRight_x : ov->lowerRight_x;
+    int t = ov->upperLeft_y < ov->upperRight_y ? ov->upperLeft_y : ov->upperRight_y;
+    int b = ov->lowerLeft_y > ov->lowerRight_y ? ov->lowerLeft_y : ov->lowerRight_y;
+    if (r > l && b > t)
+        *left = l, *top = t, *right = r, *bottom = b;
+}
+
+// The size a cover takes in a cell: the cell, or, for a cover of another shape (a preset cell, a square
+// app or PS1 cover another family draws on a mixed page, or a cover window smaller than its case
+// picture), that cover's shape fitted into the cell.
 static void gridCoverSize(theme_element_t *elem, theme_element_t *coverElem, int *w, int *h)
 {
     gridCellSize(elem, w, h);
-    if ((coverElem == elem && gTheme->gridCellW <= 0) || coverElem->width <= 0 || coverElem->height <= 0)
+    if (coverElem->width <= 0 || coverElem->height <= 0)
         return;
-    if (coverElem->width * *h > *w * coverElem->height)
-        *h = coverElem->height * *w / coverElem->width; // wider than the cell
+    int left, top, right, bottom;
+    gridCoverWindow(coverElem, &left, &top, &right, &bottom);
+    int cw = right - left, ch = bottom - top;
+    if (coverElem == elem && gTheme->gridCellW <= 0 && cw == coverElem->width && ch == coverElem->height)
+        return;
+    if (cw * *h > *w * ch)
+        *h = ch * *w / cw; // wider than the cell
     else
-        *w = coverElem->width * *h / coverElem->height;
+        *w = cw * *h / ch;
 }
 
 // ---- back covers (COV2), a small cache of their own for each Grid element ------------------------------
@@ -316,18 +341,24 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     if (texture == NULL || texture->Mem == NULL)
         return;
 
-    // Frame insets scale from the element that owns the overlay to the size drawn here.
+    // The case picture is drawn so its cover window lands on the cover's place in the cell (w by h): the
+    // whole picture when the window is the whole element, a larger one round it when it is not. Frame
+    // insets scale from the element that owns the overlay to the size drawn here.
     if (image->overlayTexture) {
         image_texture_t *ov = image->overlayTexture;
         int cw = coverElem->width > 0 ? coverElem->width : 1;
         int ch = coverElem->height > 0 ? coverElem->height : 1;
-        rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, tw, h, SCALING_RATIO, color,
-                            texture, ov->upperLeft_x * tw / cw, ov->upperLeft_y * h / ch,
-                            ov->upperRight_x * tw / cw, ov->upperRight_y * h / ch,
-                            ov->lowerLeft_x * tw / cw, ov->lowerLeft_y * h / ch,
-                            ov->lowerRight_x * tw / cw, ov->lowerRight_y * h / ch, 0);
+        int left, top, right, bottom, ow, oh, dx, dy;
+        gridCoverWindow(coverElem, &left, &top, &right, &bottom);
+        gridCaseRect(tw, h, cw, ch, left, top, right, bottom, &ow, &oh, &dx, &dy);
+        int ox = x + rmWideScale(dx), oy = y + dy;
+        rmDrawOverlayPixmap(&ov->source, ox, oy, ALIGN_CENTER, ow, oh, SCALING_RATIO, color,
+                            texture, ov->upperLeft_x * ow / cw, ov->upperLeft_y * oh / ch,
+                            ov->upperRight_x * ow / cw, ov->upperRight_y * oh / ch,
+                            ov->lowerLeft_x * ow / cw, ov->lowerLeft_y * oh / ch,
+                            ov->lowerRight_x * ow / cw, ov->lowerRight_y * oh / ch, 0);
         if (image->overlayTexture2)
-            rmDrawPixmap(&image->overlayTexture2->source, x, y, ALIGN_CENTER, tw, h, SCALING_RATIO, color, 0);
+            rmDrawPixmap(&image->overlayTexture2->source, ox, oy, ALIGN_CENTER, ow, oh, SCALING_RATIO, color, 0);
     } else {
         rmDrawPixmap(texture, x, y, ALIGN_CENTER, tw, h, SCALING_RATIO, color, 0);
     }
@@ -644,9 +675,13 @@ void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, 
         rows = gridKeyInt(themeConfig, name, "rows", rows);
         columns = gridKeyInt(themeConfig, name, "columns", columns);
         spacing = gridKeyInt(themeConfig, name, "spacing", spacing);
-        // Grid Layout: RIPPS2's pages of covers in place of the theme's, a wider twin on a 16:9 picture.
+        // Grid (7x2): its own fixed shape. Else Grid Layout: RIPPS2's pages of covers in place of the theme's, a
+        // wider twin on a 16:9 picture.
         grid_layout_t preset;
-        if (gridLayoutPreset(gGridLayout, theme->layoutWide, &preset)) {
+        theme->gridCompact = gGridCompact != 0;
+        if (theme->gridCompact)
+            gridCompactShape(theme->layoutWide, &preset);
+        if (theme->gridCompact || gridLayoutPreset(gGridLayout, theme->layoutWide, &preset)) {
             rows = preset.rows;
             columns = preset.columns;
             spacing = preset.spacing;
@@ -654,8 +689,11 @@ void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, 
             theme->gridCellH = preset.height;
             theme->layoutDependsOnWide = 1; // the preset changes with the picture
         } else {
-            theme->gridCellW = 0;
-            theme->gridCellH = 0;
+            // The theme's own cell (<block>_cell_width/_cell_height), else the element's size.
+            theme->gridCellW = gridKeyInt(themeConfig, name, "cell_width", 0);
+            theme->gridCellH = gridKeyInt(themeConfig, name, "cell_height", 0);
+            if (theme->gridCellW <= 0 || theme->gridCellH <= 0)
+                theme->gridCellW = theme->gridCellH = 0;
         }
         gridClamp(&rows, &columns);
     }

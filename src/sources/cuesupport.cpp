@@ -349,7 +349,8 @@ int cuePrepareLaunch(const char *devPrefix, const char *folder, const char *embe
 // strcasecmp is.
 static const char *const cueDiscExts[] = {".cue", ".exe", ".bin"};
 
-// 1 when d_name (length len) carries one of Ember's launchable image extensions.
+// CUE_IMAGE_* when d_name (length len) carries one of Ember's launchable image extensions, else 0.
+// cueDiscExts is in CUE_IMAGE_* order, so a lower value is the image Ember prefers.
 static int cueNameIsDiscImage(const char *name, int len)
 {
     unsigned int i;
@@ -358,7 +359,7 @@ static int cueNameIsDiscImage(const char *name, int len)
         return 0; // shortest possible match is "x.cue"
     for (i = 0; i < sizeof(cueDiscExts) / sizeof(cueDiscExts[0]); i++) {
         if (strcasecmp(name + len - 4, cueDiscExts[i]) == 0)
-            return 1;
+            return (int)i + 1;
     }
     return 0;
 }
@@ -373,7 +374,9 @@ static int cueNameIsDiscImage(const char *name, int len)
 // its TOP level -- io_find_disc does not recurse -- so a folder without one is a row whose X button
 // cannot work: an empty folder, or the group-VMC folders game installers drop into EMBER/games/
 // (reported by CosmicScale, October 2026). The image test rides the same opendir the dir probe
-// already pays for and stops at the first match, so the scan costs no extra directory opens.
+// already pays for, so the scan costs no extra directory opens. It reads on past a .bin or .exe
+// until a .cue turns up (or the folder ends), so the returned CUE_IMAGE_* is the image Ember will
+// boot: the info screen's format badge (CosmicScale, November 2026).
 static int cueEntryIsGame(const char *devPrefix, const char *gamesDir, const struct dirent *de)
 {
     char probe[320];
@@ -400,7 +403,7 @@ static int cueEntryIsGame(const char *devPrefix, const char *gamesDir, const str
         return -1;
     }
 
-    while (!found) {
+    while (found != CUE_IMAGE_CUE) {
         errno = 0;
         sub = readdir(d);
         if (sub == NULL) {
@@ -410,7 +413,9 @@ static int cueEntryIsGame(const char *devPrefix, const char *gamesDir, const str
             }
             break;
         }
-        found = cueNameIsDiscImage(sub->d_name, (int)strlen(sub->d_name));
+        int kind = cueNameIsDiscImage(sub->d_name, (int)strlen(sub->d_name));
+        if (kind && (!found || kind < found))
+            found = kind;
     }
     closedir(d);
 
@@ -520,6 +525,7 @@ int cueScanDir(const char *devPrefix, cue_entry_t **outList)
             capacity = grown;
         }
         snprintf(list[count].name, sizeof(list[count].name), "%s", de->d_name);
+        list[count].image = (u8)isGame;
         count++;
     }
     closedir(dir);
@@ -1027,6 +1033,15 @@ int cueRenameGame(const char *devPrefix, const char *oldName, const char *newNam
     return 0;
 }
 
+const char *cueImageFormat(const base_game_info_t *game)
+{
+    static const char *const formats[] = {"CUE", "EXE", "BIN"};
+
+    if (!cueIsCueEntry(game) || game->media < CUE_IMAGE_CUE || game->media > CUE_IMAGE_BIN)
+        return NULL;
+    return formats[game->media - CUE_IMAGE_CUE];
+}
+
 int cueIsCueEntry(const base_game_info_t *game)
 {
     return (game != NULL && strcasecmp(game->extension, CUE_ROW_EXTENSION) == 0);
@@ -1085,6 +1100,7 @@ static int cueFillGameListUnsorted(const char *devPrefix, base_game_info_t **out
         snprintf(games[i].extension, sizeof(games[i].extension), "%s", CUE_ROW_EXTENSION);
         games[i].parts = 1;
         games[i].format = GAME_FORMAT_ISO; // harmless; the row's extension gates the launch path
+        games[i].media = entries[i].image; // CUE_IMAGE_*: unused by PS1 rows otherwise (see cuesupport.h)
         // Share the PS1-row id memo the VCD rows use: name + device root, string work only -- the
         // RetroGEM art/CFG id for this row resolves lazily from here, never on the scan path.
         gVcdSupport.noteScanDir(entries[i].name, devPrefix, PS1_ROW_CUE);

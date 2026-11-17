@@ -3,9 +3,12 @@
 genvmc's real request, worker, copy/verify and abort code and the EE's real start/finish/swap
 (src/sources/vmcrebuild.cpp, plus bdmlaunch.cpp's real native layout check, compiled as C) run over one in-memory filesystem
 that can refuse a reservation, write short, read back different bytes, fail the layout check, fail or
-lie about each rename, and take an abort mid-copy or mid-verify. Whatever happens, the card's bytes
-stay under its own name or -- after a half-done swap -- under "<name>.bak" with the copy kept beside
-it: no path ever removes a .bin or a .bak, and only a copy the job made is ever removed.
+lie about the card's removal and the rename, and take an abort mid-copy or mid-verify. No ".bak" is
+ever made. Whatever happens, the card's bytes are complete under its own name or -- after a half-done
+swap on FatFs -- under "<name>.new": the card is removed only once the copy is verified and passes
+the layout check, and a copy is removed only while the card is in place. A ".new" left beside the
+card by an interrupted rebuild is cleared at the start; a ".bak" left by an older build is never
+touched and never in the way.
 """
 from pathlib import Path
 import subprocess
@@ -88,7 +91,7 @@ static struct { int file, pos, used; } fds[16];
 static int pfs;                                   /* PFS rename replaces its target; FatFs refuses */
 static int readsOfCard, readFailAt, writes, shortWriteAt, abortAtWrite, abortAtVerifyRead, corruptCopy;
 static int capsResult, reserveResult, verifyResult, piocallocResult, closeFailCopy, unreservedFragments;
-static int renames, renameFail[4], renameLie[4], dirFail, dirOpens, syncs, syncResult, mapOverride, cardRemoved, workerRuns;
+static int renames, renameFail[4], renameLie[4], dirFail, dirOpens, syncs, syncResult, mapOverride, cardRemoved, backupRemoved, workerRuns, unlinkFail, unlinkLie;
 static unsigned char original[CARD];
 
 static vfile *lookup(const char *name)
@@ -115,8 +118,10 @@ static vfile *make(const char *name)
 static void drop(vfile *f)
 {
     size_t len = strlen(f->name);
-    if (len > 4 && (!strcmp(f->name + len - 4, ".bin") || !strcmp(f->name + len - 4, ".bak")))
-        cardRemoved++; /* never allowed */
+    if (len > 4 && !strcmp(f->name + len - 4, ".bin"))
+        cardRemoved++; /* only once the copy is verified */
+    if (len > 4 && !strcmp(f->name + len - 4, ".bak"))
+        backupRemoved++; /* never allowed */
     free(f->data);
     memset(f, 0, sizeof(*f));
 }
@@ -295,7 +300,19 @@ static int ee_rename(const char *from, const char *to)
     snprintf(f->name, sizeof(f->name), "%s", to);
     return renameLie[step] ? -1 : 0;
 }
-static int ee_unlink(const char *name) { return iop_remove(name); }
+static int ee_unlink(const char *name)
+{
+    size_t len = strlen(name);
+    if (len > 4 && !strcmp(name + len - 4, ".bin")) {
+        if (unlinkFail)
+            return -1;
+        if (unlinkLie) {
+            iop_remove(name);
+            return -1;
+        }
+    }
+    return iop_remove(name);
+}
 static int dirPos;
 static char dirName[300];
 static int fileXioDopen(const char *folder) { dirOpens++; if (dirFail) return -EIO; snprintf(dirName, sizeof(dirName), "%s/", folder); dirPos = 0; return 3; }
@@ -346,7 +363,7 @@ static void reset(const char *name, int onPfs)
     pfs = onPfs;
     readsOfCard = readFailAt = writes = shortWriteAt = abortAtWrite = abortAtVerifyRead = corruptCopy = 0;
     capsResult = reserveResult = verifyResult = VMC_ALLOC_V1;
-    piocallocResult = closeFailCopy = renames = dirFail = dirOpens = syncs = syncResult = mapOverride = cardRemoved = workerRuns = 0;
+    piocallocResult = closeFailCopy = renames = dirFail = dirOpens = syncs = syncResult = mapOverride = cardRemoved = backupRemoved = workerRuns = unlinkFail = unlinkLie = 0;
     unreservedFragments = 7; /* written without a reservation, a file lands in pieces */
     semCount = 0;
     pending = NULL;
@@ -389,7 +406,7 @@ static void unchanged(void)
     CHECK(lookup(card)->fragments == 5, "the card is the original file");
     CHECK(lookup(copyName) == NULL, "no copy is left behind");
     CHECK(lookup(backupName) == NULL, "no backup is made");
-    CHECK(cardRemoved == 0, "no .bin or .bak was ever removed");
+    CHECK(cardRemoved == 0 && backupRemoved == 0, "no .bin or .bak was ever removed");
 }
 
 int main(void)
@@ -400,9 +417,9 @@ int main(void)
         CHECK(run(8) == VMC_REBUILD_DONE, "the rebuild completes");
         CHECK(same(card) && lookup(card)->fragments == 1 && lookup(card)->reserved, "the card is now the reserved one-piece copy, byte for byte");
         CHECK(vmcRebuildLayout(card, 8) == 1, "and the launch check maps it");
-        CHECK(same(backupName) && lookup(backupName)->fragments == 5, "the old card is kept, unchanged, as .bak");
-        CHECK(lookup(copyName) == NULL && cardRemoved == 0, "no .new remains and nothing was deleted");
-        CHECK(onPfs ? syncs > 0 : syncs == 0, "PFS renames are committed with a sync");
+        CHECK(lookup(backupName) == NULL && backupRemoved == 0, "no .bak is ever made");
+        CHECK(lookup(copyName) == NULL && cardRemoved == 1 && renames == 1, "no .new remains; the old card went once, after the checks");
+        CHECK(onPfs ? syncs > 0 : syncs == 0, "the PFS rename is committed with a sync");
 
         reset("reservation_refused", onPfs);
         if (onPfs) piocallocResult = -ENOSPC; else reserveResult = -ENOSPC;
@@ -480,65 +497,63 @@ int main(void)
         CHECK(vmcRebuildFinish(status()) == VMC_REBUILD_FAILED, "a copy whose layout cannot be checked is not swapped in");
         unchanged();
 
-        reset("first_rename_fails", onPfs);
+        reset("rename_fails", onPfs);
         renameFail[0] = 1;
-        CHECK(run(8) == VMC_REBUILD_FAILED, "the card cannot be moved aside");
-        unchanged();
+        if (onPfs) {
+            CHECK(run(8) == VMC_REBUILD_FAILED, "the copy cannot replace the card");
+            unchanged();
+        } else {
+            CHECK(run(8) == VMC_REBUILD_STUCK, "the card is gone and the copy could not take its name");
+            CHECK(lookup(card) == NULL && same(copyName) && lookup(backupName) == NULL, "every save is in the .new copy, which is kept");
+        }
 
-        reset("first_rename_lies", onPfs);
+        reset("rename_lies", onPfs);
         renameLie[0] = 1;
-        CHECK(run(8) == VMC_REBUILD_STUCK, "an error from a rename that happened is not trusted");
-        CHECK(lookup(card) == NULL && same(backupName) && same(copyName), "both the card (.bak) and the copy (.new) are kept");
-        CHECK(cardRemoved == 0, "nothing removed");
-
-        reset("second_rename_fails_rollback_works", onPfs);
-        renameFail[1] = 1;
-        CHECK(run(8) == VMC_REBUILD_FAILED, "the copy cannot take the card's name");
-        unchanged();
-
-        reset("second_rename_and_rollback_fail", onPfs);
-        renameFail[1] = renameFail[2] = 1;
-        CHECK(run(8) == VMC_REBUILD_STUCK, "a failed rollback is reported");
-        CHECK(lookup(card) == NULL && same(backupName) && same(copyName) && cardRemoved == 0, "both copies are kept, nothing removed");
-
-        reset("second_rename_lies", onPfs);
-        renameLie[1] = 1;
         CHECK(run(8) == VMC_REBUILD_DONE, "a rename that happened is recognised");
-        CHECK(same(card) && lookup(card)->fragments == 1 && same(backupName) && lookup(copyName) == NULL && cardRemoved == 0, "and the swap stands");
+        CHECK(same(card) && lookup(card)->fragments == 1 && lookup(backupName) == NULL && lookup(copyName) == NULL && cardRemoved == 1,
+              "and the swap stands, with nothing left over");
 
         reset("backup_already_there", onPfs);
         make(backupName)->size = 99;
-        CHECK(run(8) == VMC_REBUILD_LEFTOVER && workerRuns == 0, "an existing .bak stops the rebuild before it starts");
-        CHECK(same(card) && lookup(backupName)->size == 99 && lookup(copyName) == NULL && cardRemoved == 0, "and is not touched");
+        CHECK(run(8) == VMC_REBUILD_DONE, "an old .bak beside the card does not block the rebuild");
+        CHECK(same(card) && lookup(card)->fragments == 1 && lookup(backupName)->size == 99 && backupRemoved == 0 && lookup(copyName) == NULL,
+              "and is left exactly as it was");
 
         reset("copy_already_there", onPfs);
         make(copyName)->size = 77;
-        CHECK(run(8) == VMC_REBUILD_LEFTOVER && workerRuns == 0, "an existing .new stops the rebuild before it starts");
-        CHECK(same(card) && lookup(copyName)->size == 77 && cardRemoved == 0, "and is not touched");
+        CHECK(run(8) == VMC_REBUILD_DONE, "a .new left by an interrupted rebuild does not block the next one");
+        CHECK(same(card) && lookup(card)->fragments == 1 && lookup(copyName) == NULL && lookup(backupName) == NULL, "nothing but the card remains");
 
-        reset("backup_appears_during_job", onPfs);
-        CHECK(vmcRebuildStart(card, 8) == 0, "started");
-        runWorker();
-        make(backupName)->size = 55;
-        CHECK(vmcRebuildFinish(status()) == VMC_REBUILD_LEFTOVER, "a .bak that appeared meanwhile stops the swap");
-        CHECK(same(card) && lookup(backupName)->size == 55 && lookup(copyName) == NULL && cardRemoved == 0,
-              "it is never replaced (PFS rename would), and only the copy is removed");
+        reset("card_missing", onPfs);
+        make(copyName)->size = 77;
+        drop(lookup(card));
+        CHECK(vmcRebuildStart(card, 8) == VMC_REBUILD_FAILED && workerRuns == 0, "without the card nothing is cleared or started");
+        CHECK(lookup(copyName)->size == 77, "a lone .new is never removed");
 
         reset("folder_unreadable", onPfs);
         dirFail = 1;
-        CHECK(run(8) == VMC_REBUILD_FAILED && workerRuns == 0, "absence that cannot be proven stops the rebuild");
+        CHECK(run(8) == VMC_REBUILD_FAILED && workerRuns == 0, "a folder that cannot be read stops the rebuild");
         unchanged();
     }
+
+    reset("fat_card_removal_fails", 0);
+    unlinkFail = 1;
+    CHECK(run(8) == VMC_REBUILD_FAILED && renames == 0, "a card that cannot be removed is left as it is");
+    unchanged();
+    reset("fat_card_removal_lies", 0);
+    unlinkLie = 1;
+    CHECK(run(8) == VMC_REBUILD_STUCK && renames == 0, "a removal that reported failure but happened is not trusted");
+    CHECK(lookup(card) == NULL && same(copyName), "and the verified copy is kept");
 
     reset("pfs_swap_not_committed", 1);
     syncResult = -EIO;
     CHECK(run(8) == VMC_REBUILD_UNSYNCED, "a swap PFS could not commit is not reported as rebuilt");
-    CHECK(same(card) && same(backupName) && lookup(copyName) == NULL && cardRemoved == 0, "and both copies are still there");
+    CHECK(same(card) && lookup(copyName) == NULL && lookup(backupName) == NULL, "the card holds every byte");
     reset("pfs_late_rename_not_committed", 1);
-    renameLie[1] = 1;
+    renameLie[0] = 1;
     syncResult = -EIO;
     CHECK(run(8) == VMC_REBUILD_UNSYNCED, "nor is a rename that reported failure but happened");
-    CHECK(same(card) && same(backupName) && cardRemoved == 0, "and both copies are still there");
+    CHECK(same(card) && lookup(backupName) == NULL, "the card holds every byte");
 
     reset("driver_without_safe_allocation", 0);
     capsResult = 0;

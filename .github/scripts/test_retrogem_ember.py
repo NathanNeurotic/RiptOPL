@@ -43,7 +43,7 @@ HARNESS = r'''
 #include <string.h>
 #include <strings.h>
 typedef unsigned char u8;
-constexpr int RETROGEM_GAMEID_MAX = 12;
+constexpr int RETROGEM_GAMEID_MAX = 13;
 #define LOG(...) ((void)0)
 @CONSTANTS@
 @DISC_TYPE@
@@ -74,6 +74,8 @@ int main(int argc, char **argv)
     expect("raw.bin", "SCES_000.01");
     expect("cooked.iso", "SLPS_999.99");
     expect("track.cue", "SCUS_944.26");          /* follows FILE to the MODE2 data track */
+    expect("subdir.bin", "SCUS_946.06");         /* BOOT in a folder (Wild Arms): the file name is the id */
+    expect("lightspan.bin", "LSP99016.101");     /* Lightspan: LSP + 5 digits + 3 (CosmicScale) */
     expect("SLUS_000.01.bin", NULL);             /* no filesystem: never the file name */
     expect("game.exe", NULL);
     expect("missing.bin", NULL);
@@ -81,7 +83,9 @@ int main(int argc, char **argv)
     /* Serial normalization (CosmicScale's PSBBN rules). */
     assert(retrogemNormalizeGameID("slusp-01234", out, sizeof(out)) && !strcmp(out, "SLUS_012.34"));
     assert(retrogemNormalizeGameID("lsp12345.67", out, sizeof(out)) && !strcmp(out, "LSP12345.67"));
-    assert(!retrogemNormalizeGameID("LSP12345678", out, sizeof(out)));
+    assert(retrogemNormalizeGameID("LSP99016.101", out, sizeof(out)) && !strcmp(out, "LSP99016.101"));
+    assert(!retrogemNormalizeGameID("LSP123456789", out, sizeof(out)));
+    assert(!retrogemNormalizeGameID("LSP99016.101", out, 12)); /* no room for the NUL: refused */
     assert(!retrogemNormalizeGameID("SLUS_012.345", out, sizeof(out)));
     assert(!retrogemNormalizeGameID("Final Fantasy", out, sizeof(out)));
 
@@ -143,6 +147,8 @@ with tempfile.TemporaryDirectory() as directory:
     (folder / 'game.vcd').write_bytes(b'\0' * 0x100000 + iso('SLUS_012.34', 2352))
     (folder / 'raw.bin').write_bytes(iso('SCES_000.01', 2352))
     (folder / 'cooked.iso').write_bytes(iso('SLPS_999.99'))
+    (folder / 'subdir.bin').write_bytes(iso('EXE\\SCUS_946.06', 2352))
+    (folder / 'lightspan.bin').write_bytes(iso('LSP99016.101', 2352))
     (folder / 'data.bin').write_bytes(iso('SCUS_944.26', 2352))
     (folder / 'track.cue').write_text('FILE "audio.bin" BINARY\n  TRACK 01 AUDIO\nFILE "data.bin" BINARY\n  TRACK 02 MODE2/2352\n')
     (folder / 'SLUS_000.01.bin').write_bytes(b'\0' * 4096)

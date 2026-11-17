@@ -519,7 +519,7 @@ static int guiReadAppsViewPicker(struct UIItem *ui)
 }
 
 // Theme View picker: THM_VIEW_PICK_* (include/themeviews.h): the theme's default view, then List,
-// Coverflow (3), Coverflow (5), PSBBN Flow and Grid. The two Coverflow entries are one theme view with 3 or 5
+// Coverflow (3), Coverflow (5), PSBBN Flow, Grid and Grid (7x2). The two Coverflow entries are one theme view with 3 or 5
 // covers, so they replace the old Cover Count row. A theme that does not offer the picked view shows its
 // default one; the choice is kept for the themes that do.
 static int sThemeViewPickerShown; // the value guiSetThemeViewPicker put on the picker
@@ -533,9 +533,10 @@ static void guiSetThemeViewPicker(struct UIItem *ui)
     names[THM_VIEW_PICK_COVERFLOW5] = "Coverflow (5)";
     names[THM_VIEW_PICK_PSBBN] = "PSBBN Flow";
     names[THM_VIEW_PICK_GRID] = "Grid";
+    names[THM_VIEW_PICK_GRID_COMPACT] = "Grid (7x2)";
     names[THM_VIEW_PICK_COUNT] = NULL;
     diaSetEnum(ui, UICFG_THEME_VIEW, names);
-    sThemeViewPickerShown = thmViewPickFor(gThemeViewRequest, gCoverflowCount);
+    sThemeViewPickerShown = thmViewPickFor(gThemeViewRequest, gCoverflowCount, gGridCompact);
     diaSetInt(ui, UICFG_THEME_VIEW, sThemeViewPickerShown);
 }
 
@@ -549,7 +550,7 @@ static int guiReadThemeViewPicker(struct UIItem *ui)
     diaGetInt(ui, UICFG_THEME_VIEW, &picker);
     if (picker == sThemeViewPickerShown)
         return gThemeViewRequest;
-    return thmViewPickRequest(picker, &gCoverflowCount);
+    return thmViewPickRequest(picker, &gCoverflowCount, &gGridCompact); // applyConfig reloads a grid of the other shape
 }
 
 // Library: Pages (a tab per device) or All Games (one list). Sits under Theme View because it changes how
@@ -1908,11 +1909,19 @@ static void guiShowCoverflowConfig(void)
 
     diaSetInt(diaCoverflowConfig, COVERFLOW_CFG_DIM, gCoverflowDimCovers ? 1 : 0);
 
-    // Grid Layout (RIPPS2 build 91, akilluminati47): the theme's, or one of RIPPS2's pages of covers.
-    char large[48], compact[48];
-    snprintf(large, sizeof(large), "3 x 2 %s", _l(_STR_LARGE));
-    snprintf(compact, sizeof(compact), "6 x 3 %s", _l(_STR_GRID_COMPACT));
-    const char *gridLayouts[] = {_l(_STR_THEME), "4 x 2", "5 x 2", large, compact, NULL};
+    // Grid Layout (RIPPS2 build 91, akilluminati47): the theme's, or one of RIPPS2's pages of covers. Each preset is
+    // named by the shape it has on the picture now: "5 x 2" is 7 x 2 on a 16:9 picture (720p, 1080i, Widescreen).
+    static const int gridSuffix[GRID_LAYOUTS] = {-1, -1, _STR_LARGE, _STR_GRID_COMPACT};
+    char gridNames[GRID_LAYOUTS][48];
+    const char *gridLayouts[GRID_LAYOUTS + 2] = {_l(_STR_THEME)};
+    for (int i = 0; i < GRID_LAYOUTS; i++) {
+        grid_layout_t preset;
+        gridLayoutPreset(i + 1, rmIsWideDisplay(), &preset);
+        snprintf(gridNames[i], sizeof(gridNames[i]), "%d x %d%s%s", preset.columns, preset.rows, gridSuffix[i] < 0 ? "" : " ",
+                 gridSuffix[i] < 0 ? "" : _l(gridSuffix[i]));
+        gridLayouts[i + 1] = gridNames[i];
+    }
+    gridLayouts[GRID_LAYOUTS + 1] = NULL;
     diaSetEnum(diaCoverflowConfig, COVERFLOW_CFG_GRID_LAYOUT, gridLayouts);
     diaSetInt(diaCoverflowConfig, COVERFLOW_CFG_GRID_LAYOUT, gGridLayout);
     int keepLayout = gGridLayout;
@@ -2709,7 +2718,7 @@ reshow_interface:
         if (previousPs1Dup != gPs1Duplicates)
             hddVcdInvalidateCache(); // the HDD PS1 list applies the setting when it is built
         diaGetInt(ui, UICFG_GAME_TYPE_LABELS, &gGameTypeLabels);
-        diaGetInt(ui, UICFG_LIST_CFG_TEXT, &gListCfgText); // read as each frame draws: nothing to rebuild
+        diaGetInt(ui, UICFG_LIST_CFG_TEXT, &gListCfgText); // read as each frame draws; applyConfig reloads a theme with _desc keys
         gameViewChanged = guiReadGameViewPicker(ui);
         appsViewChanged = guiReadAppsViewPicker(ui);
         themeViewRequest = guiReadThemeViewPicker(ui);

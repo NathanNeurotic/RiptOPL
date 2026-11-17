@@ -27,7 +27,7 @@ centered carousel with 3 or 5 covers), **PSBBN Flow** (the PSBBN Definitive Proj
 covers; Up/Down move one row). `<OPL>` offers all of them; a disk
 theme offers the views its author declared (both Coverflow entries when it has a Coverflow view), and shows its default view for any other pick. **Default**
 uses the theme's own default. Holding **L3** for half a second on the main page switches to the next
-view the theme offers, in the order List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, without
+view the theme offers, in the order List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, Grid (7x2), without
 opening the settings. Apply and save to retain the choice. Fresh
 configurations start with `<OPL>` in the List view, 4:3 and Auto video mode; theme, view and aspect are
 separate settings. A configuration that saved the former `<Coverflow>` or `<PSBBN Flow>` theme loads
@@ -115,8 +115,8 @@ default, shows them the way the theme sets them, and a theme can leave them off 
 `list_cfg_text=0`. **On** shows them even then. **Off** hides them on every theme. The game info page shows
 them either way. The names in the list itself follow [Show CFG Titles in Game Lists](CFG-TITLES.md)
 instead. The change shows on the next frame and is saved with your settings (`list_cfg_text` in
-`settings_riptopl.cfg`). The built-in themes show these two on the info page only, so on them the setting
-changes nothing.
+`settings_riptopl.cfg`). The built-in IncebtIon and Korium themes keep them off on **Theme**, so their list
+looks as before. **On** swaps the cover beside their list for the game's Title and its Description.
 
 This comes from [RIPPS2](https://github.com/akilluminati47/RIPPS2) build 126, by
 [akilluminati47](https://github.com/akilluminati47). Theme authors can find the `list_cfg_text` key in the

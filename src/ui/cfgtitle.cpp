@@ -24,6 +24,7 @@
 #include "include/config.h"
 #include "include/gui.h"
 #include "include/vcdsupport.h"
+#include "include/libview.h" /* libListRowView: only a PS1 row has a base_game_info_t PS1 name */
 #include "include/folderbrowse.h"
 #include "include/gamesource.h"
 #include "include/favsupport.h" /* favGetItemSourceMode: Favorites from the Apps tab are apps */
@@ -224,6 +225,15 @@ void CfgTitles::refresh(item_list_t *support, int count)
                     continue;
                 if (support->mode == FAV_MODE && favGetItemSourceMode(i) == APP_MODE)
                     continue; /* a Favorite from the Apps tab is an app: the Apps list shows no titles */
+                {
+                    /* A PS1 row named without its id finds CFG/<id>.cfg only once the disc id is
+                       known. The art and caption paths learn it later, so ask the disc here, on the
+                       I/O thread, or the first build shows file names until a refresh (CosmicScale). */
+                    int ember = 0;
+                    if (libListRowView(support, i) == LIB_VIEW_PS1 && gsOf(support)->ps1RowKind(support, i, &ember))
+                        ps1RowIdResolve(((base_game_info_t *)gsOf(support)->game(support, i))->name,
+                                        ember ? PS1_ROW_CUE : PS1_ROW_VCD);
+                }
                 config = gsOf(support)->config(support, i);
                 if (config == NULL)
                     continue;

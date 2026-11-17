@@ -80,7 +80,8 @@ int retrogemNormalizeGameID(const char *raw, char *out, size_t maxLen)
         cleaned[n++] = (char)toupper(c);
     }
     cleaned[n] = '\0';
-    if (n >= 9 && n <= 10 && !strncmp(cleaned, "LSP", 3)) {
+    // Lightspan discs: LSP + 5 digits + '.' + 3 digits (LSP99016.101, CosmicScale) is the real shape.
+    if (n >= 9 && n <= 11 && !strncmp(cleaned, "LSP", 3)) {
         for (i = 3; i < n; i++)
             if (!isdigit((unsigned char)cleaned[i]))
                 return 0;
@@ -120,8 +121,14 @@ static int retrogemCleanTitleID(const char *raw, char *out, size_t maxLen)
     else if (!strncasecmp(p, "cdrom:", 6))
         p += 6;
 
-    while (*p == '/' || *p == '\\' || *p == ' ' || *p == '\t')
+    while (*p == ' ' || *p == '\t')
         p++;
+    // The serial is the boot file's NAME. Most discs boot it from the root, but some keep it in a
+    // folder (Wild Arms: cdrom:\EXE\SCUS_946.06;1), so read only the last path component, the way
+    // CosmicScale's PSBBN list builder does. A root-level name is unchanged by this.
+    for (const char *q = p; *q != '\0' && *q != ';'; q++)
+        if (*q == '/' || *q == '\\')
+            p = q + 1;
 
     if (!strncasecmp(p, "XX.", 3) || !strncasecmp(p, "SB.", 3) ||
         !strncasecmp(p, "EL.", 3) || !strncasecmp(p, "SM.", 3) ||

@@ -103,8 +103,9 @@ try:
     FAILURES.append("ingamediag must refuse RetroAchievements (RA runs IGR from VBLANK)")
 except ValueError:
     pass
-check("{edition: korium, configuration: ingamediag}" in read(".github/workflows/configurations.yml"),
-      "CI builds the ingamediag configuration")
+check(all("{edition: korium, configuration: ingamediag}" in read(".github/workflows/" + w)
+          for w in ("rolling-release.yml", "rolling-llvm.yml")),
+      "CI builds the ingamediag configuration with GCC (Rolling Release) and with LLVM (RiptOPLLVM)")
 
 # 2. IGR ordering in padhook.c. The VBLANK_END handler stops the game; the worker reports.
 pad = read("ee_core/src/padhook.c")

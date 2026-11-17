@@ -68,16 +68,42 @@ def select_asset(release, package, toolchain):
     raise ValueError(f"{package} {tag} has no unique {toolchain} package archive")
 
 
-def unpack(data, destination, package):
+def unpack(data, destination, package, toolchain="gcc"):
+    """Extract one package. Older archives hold it at their root; the official GitHub releases (from
+    v2026.11.11) lay it out from the SDK root (packages[-llvm]/world/<package>/...), as ps2build update
+    extracts them. Either way only that package's own files land in destination."""
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        required = {"package.yaml", *(f"lib/{lib}" for lib in LIBRARIES[package])}
-        if not required.issubset(archive.namelist()):
-            raise ValueError(f"{package} archive is missing its manifest or libraries")
         for entry in archive.infolist():
             path = PurePosixPath(entry.filename.replace("\\", "/"))
             if path.is_absolute() or ".." in path.parts or ":" in entry.filename or stat.S_ISLNK(entry.external_attr >> 16):
                 raise ValueError(f"unsafe package member: {entry.filename}")
-        archive.extractall(destination)
+        names = {entry.filename.replace("\\", "/") for entry in archive.infolist()}
+        prefix = f"{'packages-llvm' if toolchain == 'llvm' else 'packages'}/world/{package}/"
+        if not any(name.startswith(prefix) for name in names):
+            prefix = ""
+        required = {prefix + "package.yaml", *(f"{prefix}lib/{lib}" for lib in LIBRARIES[package])}
+        if not required.issubset(names):
+            raise ValueError(f"{package} archive is missing its manifest or libraries")
+        if not prefix:
+            archive.extractall(destination)
+            return
+        for entry in archive.infolist():
+            name = entry.filename.replace("\\", "/")
+            if not name.startswith(prefix):
+                if prefix.startswith(name) and entry.is_dir():
+                    continue  # a parent folder of the package
+                raise ValueError(f"package member outside {prefix}: {entry.filename}")
+            relative = name[len(prefix):]
+            # "<prefix>/tmp/x" leaves "/tmp/x", and Path(destination, "/tmp/x") IS "/tmp/x": a rooted rest
+            # would write outside destination. Require the target to resolve inside it.
+            target = Path(destination, relative)
+            if relative.startswith("/") or not target.resolve().is_relative_to(Path(destination).resolve()):
+                raise ValueError(f"unsafe package member: {entry.filename}")
+            if entry.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+            else:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(archive.read(entry))
 
 
 def mirror_file(repo, release, name):
@@ -221,7 +247,7 @@ def install(sdk, package, toolchain):
         if scratch.parent != world:
             raise ValueError("package staging directory escaped the SDK packages root")
         staged.mkdir()
-        unpack(data, staged, package)
+        unpack(data, staged, package, toolchain)
         (staged / ".release").write_text(f"{release['tag_name']} {source}\n")
         if target.exists():
             target.rename(backup)

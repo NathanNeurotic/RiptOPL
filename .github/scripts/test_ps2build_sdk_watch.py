@@ -399,6 +399,16 @@ class WorkflowTests(unittest.TestCase):
             self.assertGreaterEqual(text.count("key: " + expected), 2, name)
             self.assertIn("restore-keys: " + expected.removesuffix("${{ steps.sdk.outputs.key }}"), text, name)
 
+    def test_build_workflows_save_the_sdk_cache_only_from_rebuild_main(self):
+        # A pull request job that misses the cache installs the SDK again, maybe from another source; saved under
+        # the same key, that second copy would be what the pull request's later jobs restore.
+        for name in ("ps2build.yml", "configurations.yml", "flavours.yml", "rolling-release.yml", "rolling-llvm.yml"):
+            steps = (WORKFLOWS / name).read_text().split("\n      - ")
+            saves = [step for step in steps if "uses: actions/cache/save@" in step]
+            self.assertEqual(len(saves), 1, name)
+            condition = next(line for line in saves[0].splitlines() if line.strip().startswith("if:"))
+            self.assertIn("${{ github.ref == 'refs/heads/rebuild/main' && ", condition, name)
+
     def test_the_watch_never_publishes_and_pushes_only_its_own_branch(self):
         text = (WORKFLOWS / "ps2build-sdk-watch.yml").read_text()
         self.assertIn("-f publish=false", text)

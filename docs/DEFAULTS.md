@@ -11,7 +11,7 @@ Settings row, the page it is on and the key it is saved under, see
 | Menu aspect ratio | 4:3; Widescreen off | Settings → Interface |
 | Menu video mode | Auto | Settings → Interface |
 | Theme | Built-in `<OPL>` | Settings → Interface → Theme |
-| Theme View | Default (List for `<OPL>`); Coverflow (3), Coverflow (5), PSBBN Flow and Grid are optional views | Settings → Interface → Theme View, or hold L3 |
+| Theme View | Default (List for `<OPL>`); Coverflow (3), Coverflow (5), PSBBN Flow, Grid and Grid (7x2) are optional views | Settings → Interface → Theme View, or hold L3 |
 | Library | Pages (All Games List off) | Settings → Interface → Library, or Game Sources → All Games List |
 | Alternate Background | Off (the theme's `default=` background) | Settings → Interface → Alternate Background |
 | Boot Theme Wait | Off (0 s: the menu opens without waiting for the saved theme) | Settings → Interface → Boot Theme Wait |

@@ -1746,6 +1746,7 @@ void _loadConfig()
             gCoverflowDimCovers = gCoverflowDimCovers ? 1 : 0;
             if (gGridLayout < 0 || gGridLayout > GRID_LAYOUTS)
                 gGridLayout = 0;
+            gGridCompact = gGridCompact ? 1 : 0;
             int udpbdKeyPresent = configGetInt(configOPL, CONFIG_OPL_ENABLE_UDPBD, &gEnableUDPBD);
             // Unified network-protocol selector (single SMAP NIC -> at most one transport per session).
             // Read the new key if present (authoritative); otherwise DERIVE it from the three legacy keys,

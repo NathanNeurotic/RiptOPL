@@ -135,7 +135,7 @@ Settings**.
 | Applications Display | How the Applications page lists apps. | `apps_display` |
 | Video Mode | The menu's video mode (not the games'; that is GSM Defaults on Game Launching). | `vmode` |
 | Theme | The menu theme. See [INTERFACE.md](INTERFACE.md). | `theme` |
-| Theme View | List, Coverflow (3), Coverflow (5), PSBBN Flow or Grid; holding L3 cycles it too. | `theme_view` |
+| Theme View | List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid or Grid (7x2); holding L3 cycles it too. | `theme_view`, `coverflow_count`, `grid_compact` |
 | Library | Pages or All Games. Same setting as Game Sources → All Games List. | `all_games` |
 | Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
 | Boot Theme Wait | Seconds the start-up screen waits for a saved theme's drive. | `boot_theme_wait` |
@@ -150,7 +150,7 @@ Settings**.
 | Sort Games | Off, A to Z or Last played. | `autosort` |
 | Automatic Refresh | Re-reads game lists while the menu is open. | `autorefresh` |
 | Show CFG Titles in Game Lists | Uses the title from a game's CFG file. See [CFG-TITLES.md](CFG-TITLES.md). | `cfg_titles_in_lists` |
-| List Title and Description | Theme, On or Off. | `list_cfg_text` |
+| List Title and Description | Theme, On or Off. On the built-in IncebtIon and Korium themes, On shows the game's CFG Title and Description beside the list in place of the cover. | `list_cfg_text` |
 | PS1 Duplicates | A PS1 game found for both cores: Both, Ember or POPSTARTER. | `ps1_duplicates` |
 | Show [PS1]/[PS2] Labels | Marks each row with its system. | `game_type_labels` |
 | Widescreen | 16:9 menu. | `wide_screen` |
