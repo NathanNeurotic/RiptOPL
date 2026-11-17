@@ -961,19 +961,23 @@ int IGR_MenuRun(u16 (*buttons)(void))
         *(vu64 *)0x12000070 = IGRM_OWN_DISPFB; // DISPFB1
         *(vu64 *)0x12000090 = IGRM_OWN_DISPFB; // DISPFB2
     }
+    // Channel 1 still started: it drains the game's MFIFO, which is empty, and waits there for the game to add to it
+    // (Dirge of Cerberus keeps it so all through play). The menu borrows the channel: stopped as the EE manual
+    // asks, with the DMAC suspended round the write (CHCR may not take it otherwise), and the MFIFO taken out of
+    // D_CTRL so that the panel's lines go from memory. All of it is put back at the end, and the channel waits again.
+    // Suspended before its registers are read: channel 8 may still be adding to the ring, and a drain that moved on
+    // between the reads and the stop would be put back where it had been, to take the same data twice
+    if (mfd == 2) {
+        t = *IGRM_D_ENABLER;
+        *IGRM_D_ENABLEW = t | 0x10000;
+    }
     // a channel 1 completion or a MFIFO-empty the game has not handled yet stays for its handler
     gameDone = *IGRM_D_STAT & 0x4002;
     d1chcr = *IGRM_D1_CHCR;
     d1madr = *IGRM_D1_MADR;
     d1qwc = *IGRM_D1_QWC;
     d1tadr = *IGRM_D1_TADR;
-    // Channel 1 still started: it drains the game's MFIFO, which is empty, and waits there for the game to add to it
-    // (Dirge of Cerberus keeps it so all through play). The menu borrows the channel: stopped as the EE manual
-    // asks, with the DMAC suspended round the write (CHCR may not take it otherwise), and the MFIFO taken out of
-    // D_CTRL so that the panel's lines go from memory. All of it is put back at the end, and the channel waits again
     if (mfd == 2) {
-        t = *IGRM_D_ENABLER;
-        *IGRM_D_ENABLEW = t | 0x10000;
         *IGRM_D1_CHCR = d1chcr & ~CHCR_STR;
         *IGRM_D_ENABLEW = t;
         *IGRM_D_CTRL = dctrl & ~0xc;

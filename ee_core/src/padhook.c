@@ -687,8 +687,11 @@ static int IGR_Intc_Handler(int cause)
         // 129's) leaves with the plain reset (Dirge of Cerberus on a console: yellow). The combo is held meanwhile;
         // after 2 s of busy VBLANKs the pause comes anyway and that check decides (ORBIT's menu waits like this)
         // One store and one way into the pause (0: take it now, and this press has had it): written with ||, Korium's
-        // LLVM build came out 52 bytes larger, more than .text has left before .rodata moves up a 128-byte step
-        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = ((*R_EE_D1_CHCR | *R_EE_D2_CHCR) & ~(*R_EE_D_CTRL << 5) & 0x100) ? IGR_MenuRearm - 1 : 0)) {
+        // LLVM build came out 52 bytes larger, more than .text has left before .rodata moves up a 128-byte step.
+        // Only the channel D_CTRL names as a MFIFO's drain is not waited for: MFD (bits 3 and 2) 2 is channel 1, 3 is
+        // channel 2. The other one, started, holds the pause off as it does in a game with no MFIFO
+        u32 c = *R_EE_D_CTRL;
+        if (IGR_MenuRearm && !IGR_MenuOpen && !(IGR_MenuRearm = (((*R_EE_D1_CHCR & ~(c << 5 & ~(c << 6))) | (*R_EE_D2_CHCR & ~(c << 5 & c << 6))) & 0x100) ? IGR_MenuRearm - 1 : 0)) {
             IGR_MenuOpen = 1;
             IGR_HoldInterrupts(); // this handler's VBLANK too: the menu reads the pad itself
             goto wake;            // the IGR's own two calls below, not a second copy of them: .text has no room for one

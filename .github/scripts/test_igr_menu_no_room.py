@@ -157,9 +157,15 @@ if not re.search(r'mfd = \(dctrl >> 2\) & 3;.*\n\s*if \(!igrmWaitFor\(IGRM_D1_CH
     failures.append('igrmenu.c IGR_MenuRun: RIPPS2 build 129\'s idle check (channels 1 and 2, VIF1 0x00800f00) was not found')
 if 'drain && !reg[8] && !((reg[12] ^ *IGRM_D8_MADR) & *IGRM_D_RBSR)' not in igrmenu:
     failures.append('igrmenu.c igrmWaitFor: a MFIFO drain channel must pass once its MFIFO is empty (QWC 0, TADR at D8_MADR)')
-if not re.search(r'if \(mfd == 2\) \{\s*t = \*IGRM_D_ENABLER;\s*\*IGRM_D_ENABLEW = t \| 0x10000;\s*'
-                 r'\*IGRM_D1_CHCR = d1chcr & ~CHCR_STR;\s*\*IGRM_D_ENABLEW = t;\s*\*IGRM_D_CTRL = dctrl & ~0xc;\s*\}', igrmenu):
-    failures.append('igrmenu.c IGR_MenuRun: channel 1 must be stopped with the DMAC suspended and the MFIFO taken out of D_CTRL')
+# The DMAC is suspended before channel 1's registers are read: a drain that moved on between the reads and the stop
+# would be put back where it had been, and take the same data twice
+if not re.search(r'if \(mfd == 2\) \{\s*t = \*IGRM_D_ENABLER;\s*\*IGRM_D_ENABLEW = t \| 0x10000;\s*\}\s*'
+                 r'(?://.*\n\s*)*gameDone = \*IGRM_D_STAT & 0x4002;\s*d1chcr = \*IGRM_D1_CHCR;\s*d1madr = \*IGRM_D1_MADR;\s*'
+                 r'd1qwc = \*IGRM_D1_QWC;\s*d1tadr = \*IGRM_D1_TADR;\s*'
+                 r'if \(mfd == 2\) \{\s*\*IGRM_D1_CHCR = d1chcr & ~CHCR_STR;\s*\*IGRM_D_ENABLEW = t;\s*'
+                 r'\*IGRM_D_CTRL = dctrl & ~0xc;\s*\}', igrmenu):
+    failures.append('igrmenu.c IGR_MenuRun: channel 1 must be read and stopped with the DMAC suspended, and the MFIFO '
+                    'taken out of D_CTRL')
 if not re.search(r'\*IGRM_D1_TADR = d1tadr;\s*\*IGRM_D_CTRL = dctrl;\s*\*IGRM_D1_CHCR = d1chcr;', igrmenu):
     failures.append('igrmenu.c IGR_MenuRun: D_CTRL goes back before channel 1 is started again')
 # The MFIFO-empty interrupt (D_STAT cause 14) is the game's too: held with the rest, or its handler runs in the pause
@@ -335,6 +341,7 @@ static volatile int IGR_MenuOpen;
 static int IGR_MenuRearm, held, wakes;
 // The registers the handler waits on: channel 1 and 2 CHCR (STR 0x100)
 // and D_CTRL: MFD (bits 2 and 3) 2 or 3 names channel 1 or 2 as a MFIFO's drain, which stays started
+typedef unsigned int u32;
 static unsigned int d1chcr, d2chcr, dctrl;
 #define R_EE_D1_CHCR (&d1chcr)
 #define R_EE_D2_CHCR (&d2chcr)
@@ -457,10 +464,11 @@ int main(void)
                 handler();
             }
             // a game with a MFIFO keeps its drain channel started all through play: no wait for it, the menu's check
-            // decides at once (MFD 2 and 3; MFD 1 is not a MFIFO, so that game waits like any other)
+            // decides at once (MFD 2: channel 1, MFD 3: channel 2; MFD 1 is not a MFIFO, so that game waits like any
+            // other). The channel that is not the drain, started, still holds the pause off
             for (b = 2; b <= 3; b++) {
                 wakes = held = 0;
-                d1chcr = 0x145, d2chcr = 0;
+                d1chcr = b == 2 ? 0x145 : 0, d2chcr = b == 3 ? 0x105 : 0;
                 dctrl = b << 2 | 1;
                 Pad_Data.combo_type = IGR_COMBO_START_SELECT;
                 handler();
@@ -468,9 +476,22 @@ int main(void)
                 IGR_MenuOpen = 0;
                 Pad_Data.combo_type = 0;
                 handler();
+                d1chcr = b == 3 ? 0x145 : 0, d2chcr = b == 2 ? 0x105 : 0;
+                for (i = 0; i < 10; i++) {
+                    Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                    CHECK(!handler() && !IGR_MenuOpen && wakes == 1 && held == 1,
+                          "MFIFO (MFD %u): the channel that is not the drain, started, holds the pause off (VBLANK %u)", b, i);
+                }
+                d1chcr = b == 2 ? 0x145 : 0, d2chcr = b == 3 ? 0x105 : 0;
+                Pad_Data.combo_type = IGR_COMBO_START_SELECT;
+                handler();
+                CHECK(IGR_MenuOpen && wakes == 2 && held == 2, "MFIFO (MFD %u): the pause comes once that channel ends", b);
+                IGR_MenuOpen = 0;
+                Pad_Data.combo_type = 0;
+                handler();
             }
             dctrl = 1 << 2 | 1;
-            d1chcr = 0x100;
+            d1chcr = 0x100, d2chcr = 0;
             wakes = held = 0;
             for (i = 0; i < 120; i++) {
                 Pad_Data.combo_type = IGR_COMBO_START_SELECT;
