@@ -1,0 +1,297 @@
+type	name	last_commit	ahead_of_default	behind_default	state	last_subject
+branch	codex/docs-audit-site	2026-10-01	187	4282		docs: align site references with current RiptOPL
+branch	ps2build	2026-10-01	70	868		Gui runtime class (guiruntime.h): gui.cpp's lock, frame bracket, deferred ops, m
+branch	test/korium-audit-remediation	2026-10-12	134	775		Merge rebuild/main (7a760cf9) into Korium parity branch
+branch	claude/project-thread-6vq8sh	2026-10-27	0	511	merged	Docs: main-line framing, current defaults, and keep the RA and defaults pages in
+branch	claude/project-thread-6vq8sh-gh-pages	2026-10-27	317	4282		Merge gh-pages: take the site bot's sync, regenerate the search index
+branch	claude/project-thread-8mgzui	2026-10-27	0	518	merged	Stop one tap moving two rows on the first press after boot
+branch	claude/project-thread-8mgzui-gh-pages	2026-10-27	312	4282		Merge gh-pages into the site branch; regenerate the search index
+branch	claude/project-thread-ng8s1m	2026-10-27	0	513	merged	Merge branch 'rebuild/main' into claude/project-thread-ng8s1m
+branch	claude/project-thread-rxkpyt	2026-10-27	0	518	merged	Stop one tap moving two rows on the first press after boot
+branch	claude/project-thread-uu434q	2026-10-27	0	516	merged	CI: install the LLVM toolchain for configuration jobs; retry SDK setup twice
+branch	claude/project-thread-1ytfqq	2026-10-28	3	497		ci: pin the ps2build SDK to mirror release sdk-v2026.10.15-4a98265d
+branch	claude/project-thread-1ytfqq-latest	2026-10-28	2	445		ci: refuse unsafe characters in network-derived SDK versions
+branch	claude/project-thread-1ytfqq-official-first	2026-10-28	1	487		ci: install the ps2build SDK from techwritescode first, the mirror only as fallb
+branch	claude/project-thread-7os0js	2026-10-28	0	438	merged	release: publish VARIANTS/DEBUG bundles for every theme, not only Korium
+branch	claude/project-thread-7os0js-pages	2026-10-28	332	4282		site: variant and debug zips ship with every theme's release
+branch	claude/project-thread-8p1nns	2026-10-28	0	496	merged	Docs: point RiptOPL at its own site; Oct 28 ecosystem head check
+branch	claude/project-thread-8p1nns-gh-pages	2026-10-28	324	4282		Site: full fork-gap register on RiptOPL's own fork-gaps page
+branch	claude/project-thread-8p1nns-grid-docs	2026-10-28	2	434		Docs: DEFAULTS lists Grid among the optional theme views
+branch	claude/project-thread-8p1nns-grid-engine-doc	2026-10-28	1	432		docs: THEME_ENGINE lists Grid as the fourth built-in view
+branch	claude/project-thread-8p1nns-grid-gh-pages	2026-10-28	338	4282		Site: Grid is the fourth theme view
+branch	claude/project-thread-8p1nns-lba48	2026-10-28	0	496	merged	cdvdman: count LBA48 ATA transfers in a 32-bit chunk
+branch	claude/project-thread-8p1nns-ripps2-docs	2026-10-28	0	444	merged	Docs: the RIPPS2 port in user docs; fork-gap status marks it merged
+branch	claude/project-thread-8p1nns-ripps2-gh-pages	2026-10-28	334	4282		index: the Favorites tile says five L3 views (Recent)
+branch	claude/project-thread-8p1nns-views-docs	2026-10-28	0	442	merged	Docs: Theme selection and the L3 hold for multi-view themes
+branch	claude/project-thread-8p1nns-views-gh-pages	2026-10-28	336	4282		Site: multi-view themes (Theme View, hold L3, Views syntax)
+branch	claude/project-thread-8p1nns-ya2	2026-10-28	0	486	merged	Fork gaps: YA2 fixed in both editions
+branch	claude/project-thread-8p1nns-ya2-gh-pages	2026-10-28	330	4282		Fork gaps: YA2 fixed in both editions
+branch	claude/project-thread-djicky	2026-10-28	0	447	merged	Merge rebuild/main into the RIPPS2 port branch
+branch	claude/project-thread-j4ngtl	2026-10-28	0	501	merged	CI: run test_mx4sio_host_boot.py
+branch	claude/project-thread-j4ngtl-gh-pages	2026-10-28	319	4282		Cheats: the .img patch is the one that skips Neutrino, text cheats do not
+branch	claude/project-thread-jbitz4	2026-10-28	0	473	merged	CREDITS: RIPPS2 now ships a PS2 ELF (was "planned next")
+branch	claude/project-thread-rupufe	2026-10-28	0	506	merged	openFileBuffer: keep the EIO fallback out of the FatFs code mapping
+branch	claude/project-thread-skxuai	2026-10-28	0	490	merged	themes: <Coverflow> and <PSBBN Flow> become views of <OPL>
+branch	claude/project-thread-skxuai-grid	2026-10-28	0	435	merged	Grid: cover cache covers every cell; Theme View string at the end
+branch	claude/project-thread-skxuai-theme-docs	2026-10-28	2	474		Docs: L3 view order is fixed, and default_view fallback when views= omits the na
+branch	claude/project-thread-skxuai-view-picker	2026-10-28	1	445		Theme views: keep the shown view's request on an abandoned reload, keep Grid thr
+branch	claude/project-thread-skxuai-views	2026-10-28	0	433	merged	docs: built-in <OPL> theme offers four views, including Grid
+branch	claude/project-thread-vrn490	2026-10-28	0	494	merged	ci: skip test_wiki_sync.py without bs4 like test_site_sync.py; sync README RIPPS
+branch	claude/project-thread-vrn490-gh-pages	2026-10-28	324	4282		Site: fill the pages that lagged their docs or the legacy site
+branch	claude/project-thread-xtzetq	2026-10-28	0	503	merged	Move oplBootDirIsHostFs to util so bdm code does not call up into app
+branch	codex/analog-off-investigation	2026-10-28	5	427		Record normal navigation in the supplied diagnostic ELF
+branch	docs/credit-belomaxorka-yaopl-2026-10-28	2026-10-28	4	431		docs: keep project-family list punctuation consistent
+branch	docs/credit-belomaxorka-yaopl-20261028	2026-10-28	3	431		docs: credit belomaxorka's YAOPL work in src/ui/dialogs.cpp
+branch	docs/yaopl-parity-agent-handoff-2026-10-28	2026-10-28	1	431		docs: add YAOPL parity implementation checklist and agent handoff
+branch	claude/merge-reviewed-batch	2026-10-29	0	380	merged	Keep a blank line between the appended base strings
+branch	claude/position-per-mode	2026-10-29	0	411	merged	Move the per-mode screen position code to the core settings module
+branch	claude/project-thread-559h02	2026-10-29	0	416	merged	OSD history: clamp boot names to the 15 characters a record stores (YA-01 follow
+branch	claude/project-thread-74a1uc	2026-10-29	1	341		pad: a missed read is not a release; align rumble only while the pad is quiet
+branch	claude/project-thread-816dmr	2026-10-29	2	344		Make the ReferThreadStatus mock return the thread id like the EE does
+branch	claude/project-thread-lh5rt2	2026-10-29	0	360	merged	docs: October 29 ecosystem fork-gap reconciliation
+branch	claude/project-thread-lh5rt2-pages	2026-10-29	360	4282		site: October 29 ecosystem fork-gap report and evidence
+branch	claude/project-thread-m9ukp0	2026-10-29	1	415		POPS UDPFS: adopt Okeanos' UDPFS Assault TEST (BIN/CUE) driver
+branch	claude/project-thread-m9ukp0-gh-pages	2026-10-29	344	4282		Site: UDPFS Assault TEST and POPS BIN/CUE on UDPFS
+branch	claude/project-thread-nkjtgl	2026-10-29	0	359	merged	wiki_sync: encode Markdown delimiters in a table-cell code example
+branch	claude/project-thread-nkjtgl-pages	2026-10-29	354	4282		Keep the merged history of this branch
+branch	claude/project-thread-qefkwr	2026-10-29	0	358	merged	Boot video mode: skip the continuation of an overlong settings line
+branch	claude/project-thread-rv6740	2026-10-29	6	341		Merge old branch history (keeps this branch's tree)
+branch	claude/project-thread-rv6740-site	2026-10-29	371	4282		Site: SD and HD theme layouts (_sd/_hd, wsX, hd_autofit)
+branch	claude/project-thread-rv6740-site2	2026-10-29	372	4282		Site: fallback views (every view for every theme)
+branch	claude/project-thread-s5yoo8	2026-10-29	0	350	merged	README: list oMrRexD's RetroAchievements, font lock and MMCE music fixes
+branch	claude/project-thread-s5yoo8-gh-pages	2026-10-29	364	4282		Drop the "daughter project" wording for RIPPS2
+branch	claude/project-thread-vdlqc3	2026-10-29	3	361		PS1 art: a rebuilt row takes back its settled name fallback
+branch	claude/project-thread-ysg0vx	2026-10-29	1	352		Releases: every zip name ends with the build version
+branch	claude/project-thread-ysg0vx-gh-pages	2026-10-29	369	4282		Site: release ZIPs carry the build version in their names
+branch	claude/ra-xerabora-1.0.1	2026-10-29	0	412	merged	RA docs: point at xeRAbora v1.0.1 (alpha.17 or later works)
+branch	claude/review-followups	2026-10-29	0	376	merged	Re-check a returning UDPBD server's write access; print a dread name only for an
+branch	claude/smap-tx-base	2026-10-29	0	411	merged	test_smap_tx_base: check live code, the + SMAP_TX_BASE form, and every driver
+branch	claude/smb-idle-docs	2026-10-29	343	4282		smb: Samba settings for games that freeze after an idle time
+branch	claude/smb-read-closed	2026-10-29	0	412	merged	changelog: smb entry
+branch	claude/udpbd-read-only	2026-10-29	0	412	merged	Read-only UDPBD/UDPFS IMG servers: find them and never write to them
+branch	claude/udpfs-files-docs	2026-10-29	0	371	merged	docs: UDPFS Files games on the OPL core (#161)
+branch	claude/wiki-sync-pre-in-table-cell	2026-10-29	1	361		wiki_sync: keep code blocks inside table cells
+branch	claude/ya02-iso9660-records	2026-10-29	0	414	merged	isofs, cdvdman: walk ISO 9660 directory records safely
+branch	claude/ya03-zso-validation	2026-10-29	0	414	merged	zso: refuse unreadable headers, check the index, slice large reads
+branch	claude/ya06-ds2-handoff	2026-10-29	0	414	merged	pad: hand a DualShock to the game in its power-up mode
+branch	claude/ya07-ds34usb-transfers	2026-10-29	0	414	merged	pademu ds34usb: per-pad report transfers, matching alarm cancels
+branch	claude/ya09-mmce-silent-switch	2026-10-29	0	414	merged	MMCE Game ID: wait out the SD2PSX's silent card swap (YA-09)
+branch	claude/ya12-bdm-index-dots	2026-10-29	0	414	merged	BdmIndex: one dot per visible mass device
+branch	claude/ya14-mmce-igr-strings	2026-10-29	0	414	merged	MMCE Settings: translate the IGR slot and On/Off choices
+branch	claude/ya17-usb-host-stop	2026-10-29	0	412	merged	changelog: ya17 entry
+branch	codex/ya01-history-filename-bounds	2026-10-29	0	426	merged	history: bound executable names to the 16-byte record
+branch	codex/ya04-font-terminator	2026-10-29	0	426	merged	font: preserve terminators when wrapping final words
+branch	codex/ya05-cheat-capacity	2026-10-29	0	426	merged	fix: preserve accepted cheats when table reaches capacity
+branch	codex/ya15-disc-key-semaphore	2026-10-29	0	426	merged	disc: own synchronous key RPC semaphore through completion
+branch	codex/ya16-vmc-fragment-diagnostics	2026-10-29	0	426	merged	vmc: report fragment counts and safe recovery guidance
+branch	docs/fork-gaps-yaopl-jump-20261029	2026-10-29	343	4282		docs: add focused YAOPL and OPL-JUMP fork-gap audit
+branch	claude/bgm-decode-spin	2026-10-30	2	315		BGM: release a player that stopped on its own before starting again
+branch	claude/menu-freeze-watch	2026-10-30	4	341		Freeze report: own names for the GS registers it pokes
+branch	claude/project-thread-5u441w	2026-10-30	1	311		In-game freeze report v3: drive lock, read callbacks, CD streaming and a command
+branch	claude/project-thread-6zeqd5	2026-10-30	1	311		gui: wrap long text on the warning, text, video-mode and remove-settings screens
+branch	claude/project-thread-7r12qe	2026-10-30	11	317		Merge remote-tracking branch 'origin/claude/project-thread-7r12qe' into claude/p
+branch	claude/project-thread-7rx1er	2026-10-30	3	339		Tests: synthetic kits carry neutrino_archive like real manifests; unpinned RA ru
+branch	claude/project-thread-7rx1er-pages	2026-10-30	376	4282		Site: link the ORBIT Neutrino RA runtime on the RetroAchievements download descr
+branch	claude/project-thread-bc5ocj	2026-10-30	2	338		ORBIT Neutrino Watch: neutral wording for the handoff checklist item
+branch	claude/project-thread-h361ue	2026-10-30	0	333	merged	All Games: keep a switched-off BDM transport out on reappearance; docs
+branch	claude/project-thread-h361ue-allgames-hide	2026-10-30	0	329	merged	All Games: rebuild the list when a switched-off transport's page hides
+branch	claude/project-thread-h361ue-library	2026-10-30	0	319	merged	Library: start the All Games page through the host interface
+branch	claude/project-thread-h361ue-views	2026-10-30	0	327	merged	Tests: run the real thmCycleView for Coverflow (3)/(5)
+branch	claude/project-thread-lw1m6h	2026-10-30	1	314		Grid: L1/R1 do not wrap on a single page
+branch	claude/project-thread-lw1m6h-docs	2026-10-30	1	312		docs: Grid L1/R1 on a single page and Left without the device sidebar
+branch	claude/project-thread-lw1m6h-site	2026-10-30	380	4282		Themes and Controls: Grid Left without a sidebar, L1/R1 on a short or single pag
+branch	claude/project-thread-onpqd4	2026-10-30	2	313		Tests: row art pairs carry their count and theme load (#211)
+branch	claude/project-thread-qe61et	2026-10-30	3	336		Releases: a failed draft call costs only the date; retry a failed republish
+branch	claude/project-thread-rotzdi	2026-10-30	8	321		test_iop_pad: check the hook forwards the caller's address pointer
+branch	claude/project-thread-yta1d6	2026-10-30	8	339		In-game menu host test: include stdio.h for its own FILE use
+branch	claude/project-thread-zqq4yd	2026-10-30	2	341		Keep the home's other settings after a known-home recovery miss
+branch	codex/fork-gaps-refresh-20261029-docs	2026-10-30	0	329	merged	docs: refresh ecosystem fork-gap evidence [ChatGPT/OpenAI]
+branch	codex/fork-gaps-refresh-20261029-site	2026-10-30	379	4282		site: refresh fork gaps, provenance and search [ChatGPT/OpenAI]
+branch	plan/yaopl-parity-20261028	2026-10-30	8	428		docs: mark the 2026-10-29 YAOPL progress list as a dated snapshot
+branch	claude/hires-4x3-safe-area	2026-10-31	4	291		test_vmode_safe_area: check that Overscan shrinks the drawn area in every mode
+branch	claude/mx4sio-retry-fix	2026-10-31	4	273		Bound MX4SIO regression compiler and child-test execution times
+branch	claude/project-thread-0jgu33	2026-10-31	1	305		Credits: drop the financial-support line for Akilluminati47
+branch	claude/project-thread-11ptzl	2026-10-31	6	274		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-11
+branch	claude/project-thread-1k4ma4	2026-10-31	11	299		VMC Saves: align the trailing comments clang-format 12 wants
+branch	claude/project-thread-5u441w-stmcb	2026-10-31	2	292		CDVDMAN: restart a held-off stream fill without counting it as done
+branch	claude/project-thread-850j4t	2026-10-31	3	296		Test: bound the dia text room harness run with a timeout
+branch	claude/project-thread-9akdkk	2026-10-31	1	299		Rolling Release: an overtaken run steps aside instead of failing
+branch	claude/project-thread-b24rsw	2026-10-31	3	308		Merge already-merged branch history (#214) into this branch
+branch	claude/project-thread-c1diqh	2026-10-31	3	300		Remove the legacy settings editors nothing opens
+branch	claude/project-thread-imbc1v	2026-10-31	5	296		Settings: one theme reload when Theme View and Alternate Background change toget
+branch	claude/project-thread-imbc1v-site	2026-10-31	391	4282		Merge remote-tracking branch 'origin/gh-pages' into claude/project-thread-imbc1v
+branch	claude/project-thread-or0alu	2026-10-31	1	307		Background hold and boot hold: CodeRabbit follow-ups (OPL #1172)
+branch	claude/project-thread-pc2jg6-gh-pages	2026-10-31	397	4282		Document merged Neutrino SMB nightly support and global core defaults
+branch	claude/project-thread-sanilb	2026-10-31	0	283	merged	Diag boot trace: declare the SDK screen calls directly, not through <debug.h>
+branch	claude/project-thread-spw93o	2026-10-31	3	296		ds34usb: a first report transfer that times out is not parsed
+branch	claude/project-thread-ufa9fi	2026-10-31	1	304		docs: link every credited person and their projects
+branch	claude/project-thread-ufa9fi-gh-pages	2026-10-31	387	4282		site: link every credited person and their projects
+branch	claude/project-thread-uhfiyl	2026-10-31	12	291		test_vmc_write_result: dirty the block through write_page
+branch	claude/thin-rects-vsync	2026-10-31	1	296		Keep thin rects visible and wait for a real VSync after a slow frame
+branch	claude/vmode-selftest	2026-10-31	9	311		diag: include delaythread.h for the #132 bounce
+branch	claude/elf-align-128	2026-11-01	1	262		Link the main ELF with -zmax-page-size=128 like ps2sdk does
+branch	claude/hires-deflicker	2026-11-01	1	272		Video modes: add flicker-filtered 480i/576i HIRES modes
+branch	claude/project-thread-0fxeb6	2026-11-01	8	258		Bug-report README: photograph the trace promptly; wait for green or orange befor
+branch	claude/project-thread-m1qv4h	2026-11-01	4	260		GSM: declining the 1080p confirmation restores the loaded GSM switch and mode
+branch	claude/project-thread-oul1v7	2026-11-01	2	265		docs: point Neutrino links at ps2max32/neutrino, where the repository now lives
+branch	claude/project-thread-oul1v7-gh-pages	2026-11-01	394	4282		docs: point Neutrino links at ps2max32/neutrino, where the repository now lives
+branch	claude/project-thread-pc2jg6	2026-11-01	10	270		Join the merged branch tip (no content change)
+branch	claude/project-thread-pc2jg6-wiki-publish	2026-11-01	9	272		wiki-publish.yml: stop when a generated page was edited on the wiki
+branch	claude/project-thread-uervoh	2026-11-01	8	260		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-ue
+branch	claude/project-thread-uervoh-gh-pages	2026-11-01	394	4282		site: SMB Version offers SMB2 again
+branch	claude/project-thread-v0emcy	2026-11-01	2	265		Tests: the row checks must gate the Rename and Delete writes
+branch	claude/project-thread-vrcaoz	2026-11-01	7	263		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-vr
+branch	claude/project-thread-xvsv1r	2026-11-01	4	272		Pad lock test: hold DOWN across the lost-lock mode change
+branch	claude/startup-timing	2026-11-01	9	265		Boot diag: log the intro fade when it actually starts
+branch	claude/theme-hold-setting	2026-11-01	6	261		Merge remote-tracking branch 'origin/rebuild/main' into claude/theme-hold-settin
+branch	codex/neutrino-smb-nightly	2026-11-01	2	273		Loader Core hint: SMB Default now follows Game Launching
+branch	claude/project-thread-26y2jp	2026-11-02	12	244		Merge remote-tracking branch 'origin/rebuild/main' into HEAD
+branch	claude/project-thread-2dh7zb	2026-11-02	21	248		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-2d
+branch	claude/project-thread-5u441w-v4	2026-11-02	24	250		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-5u
+branch	claude/project-thread-82trej	2026-11-02	6	247		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-82
+branch	claude/project-thread-c3pwzb	2026-11-02	5	242		Merge origin/rebuild/main into i.LINK retry branch
+branch	claude/project-thread-cjq5cp	2026-11-02	2	241		Merge remote-tracking branch 'origin/rebuild/main' into HEAD
+branch	claude/project-thread-jiysgr	2026-11-02	10	251		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-ji
+branch	claude/project-thread-jiysgr-kh2mem	2026-11-02	5	252		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-ji
+branch	claude/project-thread-jiysgr-langswap-wip	2026-11-02	1	248		Language switch: rows look strings up per frame, a pick survives a device
+branch	claude/project-thread-jiysgr-listcfg	2026-11-02	5	249		Merge rebuild/main (e51a2dee, libsmb2 notice #274) into the List Title/Descripti
+branch	claude/project-thread-jiysgr-pads-wip	2026-11-02	3	248		WIP (not built, not reviewed): .pad port to RiptOPL, launch piece, stopped part 
+branch	claude/project-thread-tfanhx	2026-11-02	21	245		Merge remote-tracking branch 'origin/rebuild/main' into HEAD
+branch	claude/project-thread-uervoh-lgpl	2026-11-02	3	256		Merge rebuild/main (bug-report build #261, ELF page size #259) into the libsmb2 
+branch	claude/project-thread-uervoh-lgpl-artifacts	2026-11-02	9	250		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-ue
+branch	claude/project-thread-uervoh-lgpl-site	2026-11-02	398	4282		site: a configuration test build carries CREDITS too
+branch	claude/project-thread-wfnu1e	2026-11-02	6	246		Merge remote-tracking branch 'origin/rebuild/main' into HEAD
+branch	test-builds	2026-11-02	9	4282		Test builds: Tales of the Abyss v6 (current Break fix + freeze report, Korium in
+branch	claude/project-thread-434ahx	2026-11-03	34	240		Merge remote-tracking branch 'origin/rebuild/main' into HEAD
+branch	claude/project-thread-jiysgr-listcfg2	2026-11-03	0	235	merged	Cover view-prefixed list text precedence and fallback
+branch	codex/ci-action-warnings-20261103	2026-11-03	0	233	merged	ci: finish pinning checkout actions across release build matrix
+branch	codex/controller-report-clarification	2026-11-03	0	186	merged	docs: scope ANALOG observation to the tested ShanWan unit
+branch	codex/counter-allocation-safety	2026-11-03	0	235	merged	test: assert counter rendering performs no allocations
+branch	codex/counter-review	2026-11-03	0	235	merged	test: assert counter rendering performs no allocations
+branch	codex/docs-edition-captures	2026-11-03	0	230	merged	docs: identify Okami in paired wiki image descriptions
+branch	codex/docs-edition-captures-site	2026-11-03	405	4282		docs: illustrate feature guides with paired edition screenshots
+branch	codex/docs-ui-captures	2026-11-03	0	233	merged	docs: distinguish 16:9 and 4:3 capture workflows and emulator provenance
+branch	codex/docs-ui-captures-site	2026-11-03	402	4282		Include completed game information captures in the showcase
+branch	codex/mmce-ember-scan-retry	2026-11-03	0	219	merged	test: identify Ember correctly in the HDD duplicate fixture
+branch	docs/fix-app-handoff-path-scope	2026-11-03	0	194	merged	Merge remote-tracking branch 'origin/rebuild/main' into codex/finish-app-hint-30
+branch	feature/riptopllvm-release	2026-11-03	0	163	merged	test: verify compiler-specific SDK cache fallback prefixes
+branch	claude/project-thread-4dvtik	2026-11-04	0	95	merged	Merge remote-tracking branch 'origin/rebuild/main' into codex/maintenance-262
+branch	codex/console-ilink-id	2026-11-04	0	226	merged	fix: keep console identity editable for native fallback launches
+branch	fix/release-upload-retry-502-20261104	2026-11-04	0	142	merged	fix(ci): verify replacement backups before any upload
+branch	fix/saved-theme-render-queue	2026-11-04	0	152	merged	test: exercise the production theme frame-discard wrapper
+branch	investigate/saved-theme-boot-freeze-20261103	2026-11-04	0	103	merged	docs(fntsys): describe the boot-freeze link as a hypothesis
+branch	chore/no-ai-attribution	2026-11-05	2	675		docs: clarify attribution safeguards
+branch	claude/project-thread-4dvtik-break	2026-11-05	10	90		CDVDFSV: end an IOP-memory read on the break flag too
+branch	codex/fix-smb2-negotiate	2026-11-06	1	89		fix(smb2): bound in-game negotiate retries and add SMB 3.0/3.0.2 fallback
+branch	fix/companion-core-ra-dependency-timeouts-20261106	2026-11-06	10	90		test: include required neutrino TOML in synthetic RA packaging fixture
+branch	fix/smb2-menu-init-bounded-waits-20261106	2026-11-06	23	90		test(smb2): define success status in chained-callback host stub
+branch	fix/smb-consolidated-reliability-20261107	2026-11-07	7	87		test(smb2): handle conditional-platform branches in socket guard extraction
+branch	fix/smb-device-init-session-guards	2026-11-07	28	87		test(smb): ensure failed negotiation prevents session and disc setup
+branch	fix/smb2-iop-poll-bounds	2026-11-07	10	87		test(smb2): require nonblocking IOP socket probes
+branch	fix/smstcpip-connect-failure-ack	2026-11-07	20	87		test(smstcpip): verify descriptor capacity boundary against production lookup
+branch	validation/smb-316-317-318-20261107	2026-11-07	40	87		test(smb-integration): add #318 socket boundary regression test
+branch	claude/project-thread-0fpbpr	2026-11-09	9	84		Keep a toast raised from a settings page on screen
+branch	claude/project-thread-2yhu6q	2026-11-09	4	71		Merge branch 'rebuild/main' into claude/project-thread-2yhu6q
+branch	claude/project-thread-3h4hu0	2026-11-09	1	82		Settings: Exit without saving restores PC CARD CF, DESR DVR and UDPFS Access
+branch	claude/project-thread-4pi5ok	2026-11-09	12	86		fix(menuwatch): skip the newlib fallback for an empty memory-card slot
+branch	claude/project-thread-ajcfjr	2026-11-09	4	82		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-aj
+branch	claude/project-thread-glr3cl	2026-11-09	5	86		smb: align the reply timeout define for clang-format
+branch	claude/project-thread-jiysgr-docs	2026-11-09	18	86		docs: date the DT6/RI54 draft note to November 2
+branch	claude/project-thread-jiysgr-pages	2026-11-09	429	4282		Date the DT6/RI54 draft note to November 2
+branch	claude/project-thread-n9fc7r	2026-11-09	18	78		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-n9
+branch	claude/project-thread-seevp2	2026-11-09	3	86		test_save_icons: a damaged newer icon must not be read
+branch	claude/project-thread-tiyjbs	2026-11-09	11	87		ci: a version the mirror pin.env cannot give fails, instead of becoming "latest"
+branch	claude/project-thread-y7zuu0	2026-11-09	5	79		docs(igr): the menu's frame takes both picture circuits
+branch	claude/project-thread-yu6gxm	2026-11-09	91	78		Combined test build (NEVER MERGE): merge #331 (c9dabbec)
+branch	claude/project-thread-0y5ksw	2026-11-10	6	71		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-0y
+branch	claude/project-thread-25r4br	2026-11-10	1	55		Autolaunch: read the in-game menu and confirm-button settings
+branch	claude/project-thread-5de0xg	2026-11-10	1	50		Network defaults: HTTP server starts on 192.168.1.100; note SMB intro-video stut
+branch	claude/project-thread-83zw0o	2026-11-10	4	66		Docs: scope the VCD root-scan step to local devices
+branch	claude/project-thread-83zw0o-gh-pages	2026-11-10	440	4282		Scope the folder rule to BDM devices, add APA paths, and limit Ember-only to PS1
+branch	claude/project-thread-83zw0o-network	2026-11-10	3	66		Docs: match the Neutrino guide's SMB2 dialect note to the code; split the UDPFS 
+branch	claude/project-thread-83zw0o-network-gh-pages	2026-11-10	452	4282		Nest the SMB headings under the SMB section and point the self-links at in-page 
+branch	claude/project-thread-859hhj	2026-11-10	1	71		IGR keyboard: draw the bold text twice instead of four times
+branch	claude/project-thread-azwm92	2026-11-10	6	74		test(cdvdman): check that the sync read restores interrupts before it waits
+branch	claude/project-thread-f880kb	2026-11-10	5	60		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-f8
+branch	claude/project-thread-h9e8wo	2026-11-10	441	4282		docs: releases page: LLVM channel names its own commit
+branch	claude/project-thread-hx7y0g	2026-11-10	1	49		Memory card: stop the RiptOPL icon showing mirrored (#314)
+branch	claude/project-thread-i6iaud	2026-11-10	4	61		smb2man: an rmdir check that fails without a mapped status is -EIO, not a succes
+branch	claude/project-thread-i888wh	2026-11-10	12	65		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-i8
+branch	claude/project-thread-n8fgjr	2026-11-10	5	68		Tests: scan whole text-row initializers, even split over lines
+branch	claude/project-thread-ngvqfl	2026-11-10	436	4282		site: troubleshooting row qualifies the 3.x signing limit; regenerate the search
+branch	claude/project-thread-rj08uh	2026-11-10	4	58		wiki_sync: read link destinations with markdown-it's own parser
+branch	claude/project-thread-soexfl	2026-11-10	5	68		docs(GSM): qualify the Sega Classics hook limit for the in-game menu
+branch	claude/project-thread-t1kp6p	2026-11-10	2	51		fix(igr): stop a held-pixel line VIF1 did not take, and leave as before
+branch	claude/project-thread-uipb1i	2026-11-10	10	74		Keyboard bold: find the step that moves each position by one display pixel or li
+branch	claude/project-thread-uliai5	2026-11-10	17	54		VCD.md: POPSTARTER games, not all PS1 games, need POPSTARTER's SMB config
+branch	claude/project-thread-uliai5-indent	2026-11-10	3	55		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-ul
+branch	claude/project-thread-uliai5-recommended	2026-11-10	1	58		Release notes: lead with the recommended full install kit
+branch	claude/project-thread-veku9k	2026-11-10	4	62		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-ve
+branch	claude/project-thread-wa5yb3	2026-11-10	1	52		PS1 rows: CFG/<title id>.cfg for both cores; caption shows Ember ids
+branch	claude/project-thread-y7l9j0	2026-11-10	2	68		Test: take the Language page hold through lngHoldPick itself
+branch	claude/usmb2-menu-path	2026-11-10	33	74		tests/smb2-live: cover signed READ replies with padding
+branch	docs/refresh-homepage	2026-11-10	442	4282		docs: name stock OPL's conf_opl.cfg; give the POPS UDPFS untested note its own s
+branch	docs/refresh-homepage-sync	2026-11-10	3	58		docs: drop the LUNA recommendation, keep darkladark's credits
+branch	claude/igr-dmac-kernel-calls	2026-11-11	1	44		fix(igr): switch the DMA completions with the kernel's own calls (fallback, not 
+branch	claude/igr-gs-interrupt	2026-11-11	9	46		IGR: hold GS and VIF1 with a direct I_MASK toggle under DIntr, not DisableIntc
+branch	claude/igr-vif1-interrupt	2026-11-11	4	47		IGR: check the game's transfers with VIF1 already held
+branch	claude/launch-fade-85	2026-11-11	5	45		ui: keep a just-popped cover parked during the launch hold
+branch	claude/project-thread-13sfx7	2026-11-11	1	45		fix(igr): try the in-game menu pause again instead of resetting; hold DMA comple
+branch	claude/project-thread-2dfsdn	2026-11-11	2	39		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-2d
+branch	claude/project-thread-2xsb6t	2026-11-11	2	43		mmceman: keep getstat's -1 for a failed card open
+branch	claude/project-thread-3oosfo	2026-11-11	3	42		Test: vary bounce-harness data per sector
+branch	claude/project-thread-48yu33	2026-11-11	4	38		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-48
+branch	claude/project-thread-oevu58	2026-11-11	1	41		In-Game Menu: do not count VIF1's interrupt flag as a busy transfer (issue 364)
+branch	claude/project-thread-xmip2y	2026-11-11	3	48		CHANGELOG: a stick resting past 64 steps still slides the page
+branch	claude/project-thread-2g71hq	2026-11-12	1	32		Docs: log the November 11-12 merges; document Exit To
+branch	claude/project-thread-2g71hq-gh-pages	2026-11-12	444	4282		Site: list the Exit To values
+branch	claude/project-thread-3wzkbb	2026-11-12	6	32		Exit: leave OSDMenu alone when its config is on either card
+branch	claude/project-thread-61hcgm	2026-11-12	3	23		Network: warn before an Ember launch while NFS Writes is Off
+branch	claude/project-thread-6h4hu6	2026-11-12	1	28		Auto Loading: add an "ata" argument that loads only the internal HDD driver
+branch	claude/project-thread-9ig2av	2026-11-12	2	27		test_date_time_setting: require the clock request reset inside the retry loop
+branch	claude/project-thread-aqpz37	2026-11-12	3	26		Check for Updates: answer review findings
+branch	claude/project-thread-crtwz2	2026-11-12	9	24		nfs_cdvdman: set nfs.fd before the I/O semaphore
+branch	claude/project-thread-dg5q9r	2026-11-12	2	26		ci: read every page of upstream releases before picking the newest
+branch	claude/project-thread-dm2u26	2026-11-12	4	28		Credits: Ronnie Sahlberg for unfs4 and Neutrino's NFS backend
+branch	claude/project-thread-rfcmek	2026-11-12	5	34		VMC: 48-bit ATA commands from driver start on the internal drive
+branch	claude/project-thread-rnvbpo	2026-11-12	5	34		Lite: name the RA runtime NULD (formerly ORBIT) in the Lite kit texts and docs
+branch	claude/project-thread-s2mm9a	2026-11-12	2	32		Compatibility: use the row's view for the PS1 Loader Core checks
+branch	claude/project-thread-t2czpj	2026-11-12	9	29		usbmass_bd: a cut-off status fails the command with reset recovery (review)
+branch	claude/igr-busy-diag	2026-11-13	2	24		TEST COPY, not for main: show the busy answer before the reset steps, with a mar
+branch	claude/igr-gate-like-ripps2	2026-11-13	2	21		fix(igr): simplify the check to RIPPS2's: no GIF, FIFO or GS tests
+branch	claude/igr-resume-on-busy	2026-11-13	4	20		fix(igr): after a menu that never found the game idle, the next press leaves the
+branch	claude/project-thread-08y94a	2026-11-13	7	19		fix(exit): ask the driver name directly so system does not depend on bdmsupport 
+branch	claude/project-thread-428he2	2026-11-13	4	22		README: SMB and NFS follow the global Loader Core unless a game picks its own
+branch	claude/project-thread-428he2-gh-pages	2026-11-13	449	4282		Site: Default follows the global Loader Core for SMB and NFS; POPSTARTER has no 
+branch	claude/project-thread-74w6az	2026-11-13	11	8		test(smb1): guard single-writer VMC and incremental module selection
+branch	claude/project-thread-a6r2dq	2026-11-13	9	9		Check for Updates: size the alternate-path buffer for the added slash; say a ful
+branch	claude/project-thread-emdis8	2026-11-13	451	4282		Docs site: lift small cyan labels to AA contrast
+branch	claude/project-thread-h3o7mj	2026-11-13	1	9		fix(igr): hold the game's GS, VIF1 and DMA completion interrupts from the start 
+branch	claude/project-thread-o84r61	2026-11-13	5	16		NFS in game: the same 100 us then 1 ms receive poll as SMB (#399)
+branch	claude/project-thread-owkihq	2026-11-13	1	15		Check for Updates and Set from Internet: apply the network settings before going
+branch	claude/project-thread-v40wx3	2026-11-13	7	17		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-v4
+branch	test-files/igr-busy-diag	2026-11-13	2	24		Test copy 2 for issue 364 (download only)
+branch	fix/selfupdate-igr-stability	2026-11-14	4	6		fix(igr): preserve menu exit choice across interrupt mask restore
+branch	style/complete-neutral-palette-20261114	2026-11-14	454	4282		docs: credit gamerman 5000 in shared site footer
+branch	style/neutral-documentation-palette-20261114	2026-11-14	451	4282		style(docs): apply subdued monochrome dark palette
+branch	fix/display-mode-page-navigation	2026-11-15	2	5		fix(ui): anchor one-row paging to the selected title
+branch	fix/igr-menu-open	2026-11-15	3	5		fix(igr): select the latest libpad2 DMA side
+branch	gemini-audit-findings	2026-11-15	1	5		docs: add Gemini audit findings (draft handoff)
+branch	sable/audit-finals-2026-11	2026-11-15	7	5		Add five-repo audit finals (original + blind redo + comparison) — reports only (
+branch	audit/unfinished-review-2026-11-16	2026-11-16	1	5		docs: preserve unfinished repository audit findings [skip ci]
+branch	claude-audit-findings	2026-11-16	1	0		docs: start Claude-audit report for RiptOPL [skip ci]
+branch	claude/project-thread-6aetwi	2026-11-16	1	2		fix(selfupdate): reset the IOP to update while UDPBD or UDPFS holds the network
+branch	claude/project-thread-bhx5h9	2026-11-16	22	3		fix(igr): the menu's refusals are their blink colours, no table
+branch	claude/project-thread-hp3v79	2026-11-16	9	0		Merge remote-tracking branch 'origin/rebuild/main' into claude/project-thread-hp
+branch	claude/project-thread-jsyyah	2026-11-16	9	3		fix(smb1): log on with VC number 0 so the server drops the console's dead sessio
+branch	claude/project-thread-kj1erf	2026-11-16	2	1		Docs: RA-VARIANTS carries the RA loaders unpacked
+branch	claude/project-thread-no1323	2026-11-16	8	5		fix(ra): trim the xeRAbora v2 change to the RAN2 reader
+branch	claude/project-thread-sbu0jw	2026-11-16	453	4282		docs(fork-gaps): rename ORBIT to NULD and re-audit v1.0.2 to v1.2.13
+branch	docs/xerabora-v2-investigation-20261115	2026-11-16	8	5		fix(ra): trim the xeRAbora v2 change to the RAN2 reader
+branch	gh-pages	2026-11-16	457	4282		docs: regenerate data/search-index.json, ps2sdk-notes.html
+branch	rebuild/main	2026-11-16	0	0	default	Menu speed and RAM clean-up: tail append, archive index read, semaphore leak, mu
+tag	rolling-incebtion	2026-11-16	0	0	reachable from default	Menu speed and RAM clean-up: tail append, archive index read, semaphore leak, mu
+tag	rolling-korium	2026-11-16	0	0	reachable from default	Menu speed and RAM clean-up: tail append, archive index read, semaphore leak, mu
+tag	rolling-lite	2026-11-16	0	0	reachable from default	Menu speed and RAM clean-up: tail append, archive index read, semaphore leak, mu
+tag	rolling-llvm	2026-11-16	0	0	reachable from default	Menu speed and RAM clean-up: tail append, archive index read, semaphore leak, mu
+tag	rolling-ra	2026-11-16	0	0	reachable from default	Menu speed and RAM clean-up: tail append, archive index read, semaphore leak, mu

@@ -1,0 +1,241 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-31",
+  "coverage": [
+    {"path": "src/sources/rawatch.cpp", "status": "read_full", "note": ""},
+    {"path": "include/retrogem.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/retrogem.cpp", "status": "read_full", "note": ""},
+    {"path": "include/supportbase.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "rawatch.cpp (RetroAchievements overlay only) holds the per-game RA watch list and pointer-chain nodes in a single RaWatch object, filled either from a <device>RA/*.wl file or from a network buffer, and exposes it to the launch path through eight free forwarding functions; it also has an __OPLDIAG-only launch log (raLaunchNote). retrogem.cpp (base build) extracts a PS1 serial from SYSTEM.CNF inside a POPStarter VCD, raw/cooked BIN/ISO or a CUE's data track with its own small ISO9660 walker, normalises the serial, and draws the RetroGEM optical barcode before ELF handoff. supportbase.h is the shared header for the device-backend helpers in supportbase.cpp (game list scan, prepare/launch, cheats, Neutrino args, RA hashing hooks).",
+  "reusable_helpers": [
+    {"name": "retrogemGetPs1ImageGameID", "path": "src/sources/retrogem.cpp", "line": 581, "what": "PS1 serial from SYSTEM.CNF of a VCD/BIN/ISO/CUE image via a FILE*-based ISO9660 walker"},
+    {"name": "retrogemNormalizeGameID", "path": "src/sources/retrogem.cpp", "line": 63, "what": "normalises a PS1 serial token to AAAA_NNN.NN (or LSP form)"},
+    {"name": "retrogemReadSector", "path": "src/sources/retrogem.cpp", "line": 177, "what": "reads one 2048-byte ISO data sector from a cooked or raw 2352 (mode 1/2 form 1) image"},
+    {"name": "retrogemCueResolveDataFile", "path": "src/sources/retrogem.cpp", "line": 476, "what": "parses a CUE sheet and returns the path of its first MODE1/MODE2 data-track file"},
+    {"name": "retrogemHasExt", "path": "src/sources/retrogem.cpp", "line": 409, "what": "case-insensitive file-extension (suffix) test"},
+    {"name": "retrogemContainsNoCase", "path": "src/sources/retrogem.cpp", "line": 421, "what": "case-insensitive substring test (strcasestr equivalent)"},
+    {"name": "retrogemReadLe32", "path": "src/sources/retrogem.cpp", "line": 50, "what": "reads a little-endian 32-bit value from a byte buffer"},
+    {"name": "sbLoaderDeinitException", "path": "src/sources/supportbase.cpp", "line": 2070, "what": "deinit exception mask for an external ELF opened after teardown (declared in include/supportbase.h:129)"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "vcdCanonDisplayId is a no-op on retrogem output: retrogem only ever returns the canonical AAAA_NNN.NN (or LSP) shape",
+      "category": 1,
+      "locations": [
+        {"path": "src/sources/vcdsupport.cpp", "start": 358, "end": 409},
+        {"path": "src/sources/vcdsupport.cpp", "start": 452, "end": 459},
+        {"path": "src/sources/retrogem.cpp", "start": 78, "end": 104},
+        {"path": "src/sources/retrogem.cpp", "start": 154, "end": 172}
+      ],
+      "problem": "Its only caller (vcdsupport.cpp:457) feeds it ids from retrogemGetVcdGameID/retrogemGetPs1ImageGameID. Every retrogem success path writes an uppercased AAAA_NNN.NN (retrogem.cpp:103, 157-159, 167-170) or LSPxxxxx.xx (90-92); a dash form can never come out (the comment at vcdsupport.cpp:361-363 claiming AAAA-NNNNN survives retrogemCleanTitleID is wrong: the dash branch at 164-171 re-renders it). So the canonical branch copies the input unchanged, the dash branch at 394-406 is unreachable, and LSP ids return 0 and keep discId anyway.",
+      "fix": "Delete vcdCanonDisplayId and its comment block, and store discId directly at vcdsupport.cpp:456-459 (drop the canon buffer).",
+      "justification": "",
+      "benefit": "~55 source lines removed (52 for the function and comment, 3 at the call site); static function, a few hundred bytes of .text (INFERRED, not measured)",
+      "benefit_rank": 2,
+      "lines_removed": 55,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read vcdsupport.cpp:358-409 and 425-463 and every return path of retrogem.cpp:63-175 (normalize, legacy branches). Grep vcdCanonDisplayId over the whole repo: definition vcdsupport.cpp:366 and single call at :457, no test. retrogemGetVcdGameID/retrogemGetPs1ImageGameID only fill gameID through retrogemCleanTitleID (via retrogemParseSystemCnf retrogem.cpp:318)."
+    },
+    {
+      "n": 2,
+      "title": "rawatch: header and node-tail validation written twice (setWatchList vs loadWatchList) and repeated again in takeNodes",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/rawatch.cpp", "start": 164, "end": 174},
+        {"path": "src/sources/rawatch.cpp", "start": 252, "end": 274},
+        {"path": "src/sources/rawatch.cpp", "start": 288, "end": 290},
+        {"path": "src/sources/rawatch.cpp", "start": 184, "end": 186},
+        {"path": "src/sources/rawatch.cpp", "start": 296, "end": 297},
+        {"path": "src/sources/rawatch.cpp", "start": 83, "end": 84}
+      ],
+      "problem": "The magic/version/count/bytes checks on struct ra_watch_file appear in setWatchList (164-174) and again, with LOG lines, in loadWatchList (252-274); the commit of count/bytes/startup is duplicated (184-186 and 288-290). loadWatchList also re-checks nf.count == 0 and the node magic (296-297) although takeNodes rejects both at 83-84; only the count > RA_NODE_MAX bound is needed there before the read into nodeList_.",
+      "fix": "Move the four header checks into one static function returning the same -3..-6 codes (one LOG with the code is enough) and call it from both loaders; drop the nf.count == 0 and magic tests at 296-297 and let takeNodes reject them.",
+      "justification": "The helper replaces two copies of the same four checks; net code goes down (about 30 lines become about 12).",
+      "benefit": "~18 net source lines removed (INFERRED from the cited ranges); RA overlay only",
+      "benefit_rank": 2,
+      "lines_removed": 18,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read rawatch.cpp 1-318 completely. takeNodes (80-107) checks count==0, count>RA_NODE_MAX and magic before use. .github/scripts/test_ra_runtime_budget.py:187-212 extracts these methods by signature and exercises both loaders with bad headers, so it keeps covering the merged checks (it extracts named functions; a new static helper must be added to its extraction list)."
+    },
+    {
+      "n": 3,
+      "title": "RaWatch class with one instance plus eight free forwarders: two APIs for one global",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/rawatch.cpp", "start": 32, "end": 72},
+        {"path": "include/rawatch.h", "start": 7, "end": 63}
+      ],
+      "problem": "gRaWatch is referenced only inside rawatch.cpp (grep: rawatch.h:49 extern, rawatch.cpp:32-71); every other file uses the eight free functions LoadWatchListFile..ClearWatchList, each a one-line forward (rawatch.h:9-10 says they exist so callers do not change). The class adds inline accessors that the forwarders merely wrap.",
+      "fix": "Keep one API: either make the data file-static and turn the free functions into the implementations (delete the class and gRaWatch), or keep the class and call gRaWatch directly from the few callers. Update test_ra_runtime_budget.py, which instantiates RaWatch.",
+      "justification": "",
+      "benefit": "~40 source lines removed (39 lines of forwarders or the class declaration); calls are tiny non-static functions, ELF change a few hundred bytes at most (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 40,
+      "effort": "M",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep -w for gRaWatch|RaWatch|LoadWatchListFile|SetWatchList|GetWatchList|GetWatchCount|GetWatchBytes|GetNodeList|GetNodeCount|ClearWatchList over the repo: callers in host.cpp, ranet.cpp, rapopslaunch.cpp, supportbase.cpp, discsupport.cpp, system.cpp use only the free functions; RaWatch appears only in rawatch.h/.cpp, docs, and .github/scripts/test_ra_runtime_budget.py:188-190."
+    },
+    {
+      "n": 4,
+      "title": "Two ISO9660 SYSTEM.CNF readers for PS1 VCDs: retrogem.cpp and rahash.cpp",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/retrogem.cpp", "start": 177, "end": 388},
+        {"path": "src/sources/rahash.cpp", "start": 204, "end": 208},
+        {"path": "src/sources/rahash.cpp", "start": 270, "end": 303},
+        {"path": "src/sources/rahash.cpp", "start": 403, "end": 501},
+        {"path": "src/sources/rahash.cpp", "start": 663, "end": 763},
+        {"path": "src/sources/rahash.cpp", "start": 826, "end": 846}
+      ],
+      "problem": "Both files read a VCD past its 1 MiB header as raw 2352-byte sectors, locate the PVD, walk the root directory with case-insensitive ';'-tolerant name matching, read SYSTEM.CNF and parse its BOOT line (retrogem: readSector/FindPvd/IsoNameMatches/ParseReader/ParseSystemCnf; rahash: vcd_read_at/readRoot/findEntry/findPath/parse_boot_psx/vcdBootName), each with its own le32 reader. retrogem is always built; rahash is RA-only.",
+      "fix": "Keep one ISO9660 directory walker (rahash's findEntry/findPath already take a sector-source abstraction) and have the other use it; at minimum share the le32 reader and the directory-record walk. rahash must keep its rcheevos-exact BOOT parsing (BOOT2 ignored), so only the walker is shared.",
+      "justification": "",
+      "benefit": "~60-90 source lines removed in an RA build (INFERRED: walker and name match are ~100 lines in each file); no base-build saving unless retrogem adopts the shared walker",
+      "benefit_rank": 2,
+      "lines_removed": 60,
+      "effort": "M",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read retrogem.cpp 177-388 and rahash.cpp 200-309, 380-501, 663-763, 820-867. Grep CD001|SYSTEM.CNF over src: other hits (httpsupport.cpp:716, supportbase.cpp:805, sysdisc.cpp:216) are PS2 probes or a ROM-fs open, not walkers. The net line count is INFERRED; the two read paths differ (FILE* vs fd/sceCd/HDL), so the adapter cost is estimated, not measured."
+    },
+    {
+      "n": 5,
+      "title": "retrogemCleanTitleID legacy serial parser only adds acceptance of trailing junk after the serial",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/retrogem.cpp", "start": 131, "end": 132},
+        {"path": "src/sources/retrogem.cpp", "start": 142, "end": 172}
+      ],
+      "problem": "Every token the legacy branches accept (AAAA_NNN.NN or AAAA-NNNNN at the start of p) is already accepted by retrogemNormalizeGameID at 133-140 when the token ends there, since '_', '.', '-' are stripped and nine alnum characters remain. The legacy code therefore only changes the result for a serial followed by characters outside the strcspn stop set (for example SLUS_123.45X or a token of 32+ characters).",
+      "fix": "Delete lines 142-172 and return 0 after the normalize attempt; drop the 'legacy prefix parser' wording at 131-132.",
+      "justification": "",
+      "benefit": "~31 source lines removed; static code in the base ELF, roughly 300-400 bytes of .text (INFERRED, not measured)",
+      "benefit_rank": 2,
+      "lines_removed": 31,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Traced both paths in retrogem.cpp:63-175. test_retrogem_ember.py:72-86 exercises only clean BOOT tokens (BOOT = cdrom:\\SERIAL;1) and normalize directly, so it still passes without the legacy branches. Behaviour change limited to BOOT tokens with trailing junk; no real disc sample with that shape was found in the repo, hence Med risk/confidence."
+    },
+    {
+      "n": 6,
+      "title": "Small dead code in retrogem: always-true alnum recheck, impossible gidlen check, header-only export, five unused includes",
+      "category": 1,
+      "locations": [
+        {"path": "src/sources/retrogem.cpp", "start": 97, "end": 99},
+        {"path": "src/sources/retrogem.cpp", "start": 58, "end": 61},
+        {"path": "src/sources/retrogem.cpp", "start": 628, "end": 629},
+        {"path": "include/retrogem.h", "start": 15, "end": 17},
+        {"path": "src/sources/retrogem.cpp", "start": 8, "end": 8},
+        {"path": "src/sources/retrogem.cpp", "start": 11, "end": 12},
+        {"path": "src/sources/retrogem.cpp", "start": 15, "end": 15},
+        {"path": "src/sources/retrogem.cpp", "start": 17, "end": 17}
+      ],
+      "problem": "Lines 97-99 recheck isalnum on cleaned[0..3], which line 78 already guarantees; retrogemTitlePrefixChar (58-61) is just isalnum and is otherwise used only by the legacy parser (finding 5). gidlen <= 0 (628-629) cannot happen after the gameID[0] != 0 test at 622. retrogemNormalizeGameID is declared in retrogem.h but called only inside retrogem.cpp (and by a test that compiles the source text). stdlib.h, fcntl.h, unistd.h, gui.h and vcdsupport.h provide nothing this file uses.",
+      "fix": "Delete lines 97-99 and 628-629, replace retrogemTitlePrefixChar with isalnum (or delete it with finding 5), make retrogemNormalizeGameID static and drop its prototype, and remove the five includes.",
+      "justification": "",
+      "benefit": "~15 source lines removed; no meaningful ELF change (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read retrogem.cpp 1-675. Grep retrogemNormalizeGameID over the repo: retrogem.cpp:63,138, retrogem.h:17, .github/scripts/test_retrogem_ember.py:82-86 (which pastes the extractor source, so static is fine). No malloc/free/ato*/strto*, open/read/close/lseek, gui* or vcd* identifiers in retrogem.cpp; GS_SETREG_RGBA comes via opl.h (gsKit.h)."
+    },
+    {
+      "n": 7,
+      "title": "sbNeutrinoDeinitException only forwards to sbLoaderDeinitException",
+      "category": 3,
+      "locations": [
+        {"path": "include/supportbase.h", "start": 130, "end": 131},
+        {"path": "src/sources/supportbase.cpp", "start": 2085, "end": 2088}
+      ],
+      "problem": "The 'backward-compatible' wrapper returns sbLoaderDeinitException(neutrinoPath) unchanged; its eight callers (bdmlaunch.cpp:499, ethsupport.cpp:1275, mmcesupport.cpp:1675, hddsupport.cpp:2443,2453,2502, udpfssupport.cpp:1186) could call the real function.",
+      "fix": "Delete the wrapper and its prototype, rename the eight calls to sbLoaderDeinitException, and update the string match in .github/scripts/test_handoff_probe.py:74.",
+      "justification": "",
+      "benefit": "~6 source lines removed; no meaningful ELF change (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep -w sbNeutrinoDeinitException|sbLoaderDeinitException over the repo (docs excluded): definitions supportbase.cpp:2070,2085; callers listed; tests: test_handoff_probe.py:74 (string search), test_udpfs_library_launch.py:230 (stub of the loader variant)."
+    },
+    {
+      "n": 8,
+      "title": "Case-insensitive suffix test implemented three times in the main ELF",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/retrogem.cpp", "start": 409, "end": 419},
+        {"path": "src/ui/guifilemgr.cpp", "start": 74, "end": 78},
+        {"path": "src/platform/httpcatalog.cpp", "start": 118, "end": 128}
+      ],
+      "problem": "retrogemHasExt, fmHasSuffix and httpEndsWithNoCase all test whether a string ends with a suffix ignoring case (httpEndsWithNoCase hand-rolls tolower and requires a strictly longer string). All three are compiled into the main riptopl ELF.",
+      "fix": "Keep one (the 4-line fmHasSuffix form) in an existing shared util source and use it in the other two files; keep httpcatalog's strict-length rule at its call sites only if it matters.",
+      "justification": "A shared helper is allowed here because the same logic exists in three places and one 4-line copy replaces about 25 lines.",
+      "benefit": "~15 net source lines removed; tiny .text saving (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Grep for HasExt|hasExt|EndsWith|HasSuffix function definitions over the repo: retrogem.cpp:409, guifilemgr.cpp:74, httpcatalog.cpp:118, themeviews.cpp:273 (length-bounded, case-sensitive, not a copy) and ee_core igrmenu.c:213 (separate EE core binary, excluded). Read guifilemgr.cpp:74-78 and httpcatalog.cpp:118-128 (start of its loop)."
+    },
+    {
+      "n": 9,
+      "title": "ISO_GAME_FNAME_MAX is defined in supportbase.h and used nowhere in the product",
+      "category": 1,
+      "locations": [
+        {"path": "include/supportbase.h", "start": 11, "end": 11}
+      ],
+      "problem": "git grep -nw ISO_GAME_FNAME_MAX finds only this define and a private re-definition inside .github/scripts/test_iso_cache.py:57,106.",
+      "fix": "Delete the define.",
+      "justification": "",
+      "benefit": "1-2 source lines removed; no binary change",
+      "benefit_rank": 1,
+      "lines_removed": 2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "git grep -nw ISO_GAME_FNAME_MAX over the whole repo: include/supportbase.h:11, .github/scripts/test_iso_cache.py:57 (own #define) and :106. All other supportbase.h declarations were checked by word grep over src include ee_core modules and each has a definition and at least one caller."
+    },
+    {
+      "n": 10,
+      "title": "Stale or garbled comments in rawatch.cpp and supportbase.h",
+      "category": 7,
+      "locations": [
+        {"path": "src/sources/rawatch.cpp", "start": 119, "end": 121},
+        {"path": "include/supportbase.h", "start": 48, "end": 51},
+        {"path": "include/supportbase.h", "start": 57, "end": 57},
+        {"path": "include/supportbase.h", "start": 99, "end": 103}
+      ],
+      "problem": "rawatch.cpp:119-121 says CI builds 'make release'; CI builds with ps2build and __OPLDIAG is a ps2build configuration (brief: build_configuration.py:45-52). supportbase.h:48-51 is a broken sentence; :57 points at supportbase.c (the file is supportbase.cpp); :99-103 put the sbNeutrinoLoadCheats description above the sbNeutrinoHandCheats prototype, so the two comments describe the wrong lines.",
+      "fix": "Delete the 'make release' rationale, fix the sbReadList sentence and file name, and put each Neutrino cheats comment on its own prototype (or drop the duplicate wording).",
+      "justification": "",
+      "benefit": "~5 lines removed; clarity only",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read the cited lines; brief/RiptOPL.md section 2 states the top-level Makefile is not the build and __OPLDIAG comes from tools/build_configuration.py. ls src/sources shows supportbase.cpp (grep hits above), no supportbase.c."
+    }
+  ]
+}

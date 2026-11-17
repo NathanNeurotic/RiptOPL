@@ -1,0 +1,240 @@
+# grouping of extra-warnings-S.tsv (1163 unique warnings, 468 TUs, -S -o NUL whole-TU pass); NOT the shipped flag set
+## by flag
+   439  -Wunused-parameter
+   243  -Wmissing-prototypes
+   134  -Wunused-macros
+   119  -Wunused-const-variable=
+    82  -Wempty-body
+    82  -Wredundant-decls
+    18  -Wwrite-strings
+     8  -Wdiscarded-qualifiers
+     6  -Wold-style-declaration
+     5  -Wduplicated-branches
+     5  -Wunused-variable
+     4  -Wextra
+     4  -Wimplicit-fallthrough=
+     3  -Wclobbered
+     2  -Wcast-function-type
+     2  -Wtype-limits
+     2  -Wunterminated-string-initialization
+     1  (no flag)
+     1  -Wcomment
+     1  -Wmissing-declarations
+     1  -Wstringop-truncation
+     1  -Wunused-but-set-variable
+
+## by flag and area
+   114  -Wunused-parameter                   modules/network
+   101  -Wunused-const-variable=             include
+    82  -Wunused-parameter                   src/sources
+    77  -Wunused-macros                      modules/bdm
+    67  -Wunused-parameter                   modules/iopcore
+    48  -Wmissing-prototypes                 modules/network
+    46  -Wmissing-prototypes                 modules/usb
+    40  -Wunused-parameter                   src/gfx
+    36  -Wmissing-prototypes                 modules/iopcore
+    36  -Wredundant-decls                    third_party
+    30  -Wempty-body                         src/sources
+    26  -Wmissing-prototypes                 modules/mmce
+    20  -Wunused-parameter                   <sdk>
+    20  -Wunused-parameter                   modules/mmce
+    19  -Wmissing-prototypes                 modules/ds34usb
+    15  -Wunused-macros                      modules/isofs
+    15  -Wunused-parameter                   modules/pademu
+    14  -Wunused-parameter                   modules/isofs
+    13  -Wmissing-prototypes                 modules/bdm
+    13  -Wredundant-decls                    modules/iopcore
+    12  -Wunused-const-variable=             src/platform
+    12  -Wunused-macros                      modules/iopcore
+    11  -Wempty-body                         src/gfx
+    11  -Wmissing-prototypes                 modules/ds34bt
+    11  -Wwrite-strings                      src/sources
+    10  -Wunused-parameter                   modules/ds34bt
+     8  -Wdiscarded-qualifiers               modules/mmce
+     8  -Wempty-body                         src/app
+     8  -Wmissing-prototypes                 ee_core
+     8  -Wredundant-decls                    <sdk>
+     8  -Wredundant-decls                    modules/network
+     8  -Wunused-macros                      modules/mx4sio_bd
+     8  -Wunused-macros                      modules/network
+     7  -Wempty-body                         src/platform
+     7  -Wunused-macros                      modules/usb
+     7  -Wunused-parameter                   ee_core
+     7  -Wunused-parameter                   modules/ds34usb
+     7  -Wunused-parameter                   src/core
+     7  -Wunused-parameter                   src/ui
+     6  -Wmissing-prototypes                 elfldr
+     6  -Wold-style-declaration              modules/network
+     6  -Wunused-parameter                   modules/hdd
+     6  -Wunused-parameter                   modules/mcemu
+     6  -Wunused-parameter                   modules/vmc
+     6  -Wwrite-strings                      src/platform
+     5  -Wempty-body                         modules/pademu
+     5  -Wmissing-prototypes                 <sdk>
+     5  -Wmissing-prototypes                 modules/mx4sio_bd
+     5  -Wunused-const-variable=             modules/bdm
+     5  -Wunused-parameter                   modules/debug
+     4  -Wempty-body                         modules/ds34bt
+     4  -Wempty-body                         modules/iopcore
+     4  -Wempty-body                         src/ui
+     4  -Wextra                              src/ui
+     4  -Wmissing-prototypes                 modules/hdd
+     4  -Wredundant-decls                    modules/usb
+     4  -Wunused-variable                    <sdk>
+     3  -Wclobbered                          src/gfx
+     3  -Wempty-body                         modules/network
+     3  -Wempty-body                         src/core
+     3  -Wmissing-prototypes                 modules/debug
+     3  -Wmissing-prototypes                 modules/ilink
+     3  -Wredundant-decls                    src/platform
+     3  -Wunused-macros                      elfldr
+     3  -Wunused-parameter                   elfldr
+     2  -Wduplicated-branches                src/gfx
+     2  -Wempty-body                         modules/ds34usb
+     2  -Wmissing-prototypes                 modules/isofs
+     2  -Wmissing-prototypes                 modules/mcemu
+     2  -Wmissing-prototypes                 modules/pademu
+     2  -Wredundant-decls                    ee_core
+     2  -Wtype-limits                        src/gfx
+     2  -Wunterminated-string-initialization modules/network
+     2  -Wunused-parameter                   src/platform
+     1  (no flag)                            <sdk>
+     1  -Wcast-function-type                 modules/debug
+     1  -Wcast-function-type                 modules/network
+     1  -Wcomment                            <sdk>
+     1  -Wduplicated-branches                modules/bdm
+     1  -Wduplicated-branches                src/sources
+     1  -Wduplicated-branches                src/ui
+     1  -Wempty-body                         modules/mmce
+     1  -Wimplicit-fallthrough=              modules/debug
+     1  -Wimplicit-fallthrough=              modules/network
+     1  -Wimplicit-fallthrough=              modules/pademu
+     1  -Wimplicit-fallthrough=              src/ui
+     1  -Wmissing-declarations               src/sources
+     1  -Wmissing-prototypes                 modules/bdmevent
+     1  -Wmissing-prototypes                 modules/pccf
+     1  -Wmissing-prototypes                 modules/vmc
+     1  -Wmissing-prototypes                 tools
+     1  -Wredundant-decls                    modules/ds34bt
+     1  -Wredundant-decls                    modules/hdd
+     1  -Wredundant-decls                    modules/mcemu
+     1  -Wredundant-decls                    modules/pademu
+     1  -Wredundant-decls                    src/app
+     1  -Wredundant-decls                    src/gfx
+     1  -Wredundant-decls                    src/sources
+     1  -Wredundant-decls                    tools
+     1  -Wstringop-truncation                tools
+     1  -Wunused-but-set-variable            modules/network
+     1  -Wunused-const-variable=             src/sources
+     1  -Wunused-macros                      modules/hdd
+     1  -Wunused-macros                      modules/mmce
+     1  -Wunused-macros                      modules/pademu
+     1  -Wunused-macros                      src/gfx
+     1  -Wunused-parameter                   src/app
+     1  -Wunused-variable                    src/sources
+     1  -Wwrite-strings                      src/app
+
+## dead-code / bug-shaped warnings in first-party trees (src/, ee_core/, elfldr/, tools/); tus_warn/tus_total = variants warning/compiling
+-Wclobbered	src/gfx/textures.cpp	883	variable 'fd' might be clobbered by 'longjmp' or 'vfork'	1	1
+-Wclobbered	src/gfx/textures.cpp	888	variable 'readData' might be clobbered by 'longjmp' or 'vfork'	1	1
+-Wclobbered	src/gfx/textures.cpp	889	variable 'readFunction' might be clobbered by 'longjmp' or 'vfork'	1	1
+-Wduplicated-branches	src/gfx/textures.cpp	1304	this condition has identical branches	1	1
+-Wduplicated-branches	src/gfx/textures.cpp	1334	this condition has identical branches	1	1
+-Wduplicated-branches	src/sources/httpsupport.cpp	182	this condition has identical branches	1	1
+-Wduplicated-branches	src/ui/dia.cpp	637	this condition has identical branches	1	1
+-Wempty-body	src/app/autolaunch.cpp	96	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/lwnbdctl.cpp	203	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/lwnbdctl.cpp	239	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/opl.cpp	1826	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/app/settingsio.cpp	374	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/settingsio.cpp	377	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/settingsio.cpp	686	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/app/settingsio.cpp	894	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/core/bgm.cpp	145	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/core/config.cpp	1415	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/core/config.cpp	1467	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/artindex.cpp	178	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/artload.cpp	93	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/artload.cpp	117	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/coverflow.cpp	365	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/grid.cpp	688	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	94	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	473	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	628	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	950	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	1350	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/gfx/themeelems.cpp	1588	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/platform/ioman.cpp	198	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/sysneutrino.cpp	1431	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/system.cpp	1260	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/system.cpp	1302	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/system.cpp	1466	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/util.cpp	917	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/platform/util.cpp	931	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/appscan.cpp	124	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/appsupport.cpp	837	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/bdmdevices.cpp	362	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/bdmlaunch.cpp	756	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	593	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	607	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	1483	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	2183	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/bdmsupport.cpp	2309	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	418	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	458	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	792	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	859	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/cuesupport.cpp	922	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	303	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	403	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	930	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	1839	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	2540	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	2690	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/hddsupport.cpp	2705	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/httpsupport.cpp	234	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/httpsupport.cpp	837	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/mmcesupport.cpp	627	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/mmcesupport.cpp	756	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/sources/netsupport.cpp	217	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/netsupport.cpp	277	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/supportbase.cpp	1859	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/vmcrebuild.cpp	101	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/sources/vmcrebuild.cpp	114	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/ui/guigame.cpp	234	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/ui/guigame.cpp	242	suggest braces around empty body in an 'else' statement	1	1
+-Wempty-body	src/ui/guigame.cpp	410	suggest braces around empty body in an 'if' statement	1	1
+-Wempty-body	src/ui/guimodal.cpp	441	suggest braces around empty body in an 'if' statement	1	1
+-Wimplicit-fallthrough=	src/ui/dia.cpp	334	this statement may fall through	1	1
+-Wtype-limits	src/gfx/coverflow.cpp	157	comparison of unsigned expression in '< 0' is always false	1	1
+-Wtype-limits	src/gfx/grid.cpp	211	comparison of unsigned expression in '< 0' is always false	1	1
+-Wunused-const-variable=	src/platform/sysneutrino.cpp	15	'SYS_DISC_DETECT_MS' defined but not used	1	1
+-Wunused-const-variable=	src/platform/sysneutrino.cpp	16	'SYS_DISC_REDETECT_MS' defined but not used	1	1
+-Wunused-const-variable=	src/platform/sysneutrino.cpp	23	'SYS_DISC_NODISC_MS' defined but not used	1	1
+-Wunused-const-variable=	src/platform/system.cpp	17	'SYS_DISC_DETECT_MS' defined but not used	1	1
+-Wunused-const-variable=	src/platform/system.cpp	18	'SYS_DISC_REDETECT_MS' defined but not used	1	1
+-Wunused-const-variable=	src/platform/system.cpp	25	'SYS_DISC_NODISC_MS' defined but not used	1	1
+-Wunused-const-variable=	src/platform/system.cpp	99	'ELF_MAGIC' defined but not used	1	1
+-Wunused-const-variable=	src/platform/system.cpp	678	'CORE_IRX_DEBUG' defined but not used	1	1
+-Wunused-const-variable=	src/platform/sysvmc.cpp	15	'SYS_DISC_DETECT_MS' defined but not used	1	1
+-Wunused-const-variable=	src/platform/sysvmc.cpp	16	'SYS_DISC_REDETECT_MS' defined but not used	1	1
+-Wunused-const-variable=	src/platform/sysvmc.cpp	23	'SYS_DISC_NODISC_MS' defined but not used	1	1
+-Wunused-const-variable=	src/platform/util.cpp	728	'htab' defined but not used	1	1
+-Wunused-const-variable=	src/sources/vcdsupport.cpp	262	'VCD_ID_PROBE_BUDGET' defined but not used	1	1
+-Wunused-variable	src/sources/cuesupport.cpp	772	unused variable 'restored'	1	1
+
+## same kinds, modules/ (mixed first-party and upstream-derived)
+-Wcast-function-type	modules/debug/udptty-ingame/udptty.c	182	cast between incompatible function types from 'void * (*)(void *, const char *, void *)' to 'int (*)(void *, const char *, void *)'	1	1
+-Wcast-function-type	modules/network/SMSTCPIP/ps2ip.c	308	cast between incompatible function types from 'int (*)(int)' to 'void (*)(void *)'	1	1
+-Wduplicated-branches	modules/bdm/bdmfs_fatfs/fatfs/ff.c	918	this condition has identical branches	1	1
+-Wimplicit-fallthrough=	modules/debug/udptty-ingame/udptty.c	108	this statement may fall through	1	1
+-Wimplicit-fallthrough=	modules/network/SMSTCPIP/ps2ip.c	198	this statement may fall through	1	1
+-Wimplicit-fallthrough=	modules/pademu/pademu.c	459	this statement may fall through	2	2
+-Wunterminated-string-initialization	modules/network/smbinit/smbauth.c	23	initializer-string for array of 'char' truncates NUL terminator but destination lacks 'nonstring' attribute (15 chars into 14 available)	1	1
+-Wunterminated-string-initialization	modules/network/smbman-ra/auth.c	21	initializer-string for array of 'unsigned char' truncates NUL terminator but destination lacks 'nonstring' attribute (15 chars into 14 available)	1	1
+-Wunused-but-set-variable	modules/network/SMSTCPIP/icmp.c	54	variable 'code' set but not used	1	1
+-Wunused-const-variable=	modules/bdm/src/include/gpt_types.h	20	'EFI_PARTITION_SIGNATURE' defined but not used	1	
+-Wunused-const-variable=	modules/bdm/src/include/gpt_types.h	41	'NULL_GUID' defined but not used	1	
+-Wunused-const-variable=	modules/bdm/src/include/gpt_types.h	42	'MS_RESERVED_PARTITION_GUID' defined but not used	1	
+-Wunused-const-variable=	modules/bdm/src/include/gpt_types.h	43	'EFI_SYSTEM_PARTITION' defined but not used	1	
+-Wunused-const-variable=	modules/bdm/src/include/gpt_types.h	44	'MS_BASIC_DATA_PARTITION_GUID' defined but not used	2	

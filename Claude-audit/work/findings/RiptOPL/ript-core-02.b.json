@@ -1,0 +1,91 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-02.b",
+  "coverage": [
+    {"path": "ee_core/src/asm.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/cd_igr_rpc.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/cheat_api.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/cheat_engine.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/crt0.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/dve_reg.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/freeze_diag.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/freeze_diag_format.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/freeze_diag_screen.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/gsm_api.c", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "Low-level pieces of the in-game EE core (eecore target, ps2.yaml:604-613, linked at 0x84000 by ee_core/linkfile). asm.S holds the syscall hooks (SifSetDma IOP-reboot trap, SifSetReg, ExecPS2, CreateThread, Exit) that switch to the ee_core stack at _end, plus the register-clearing ExecPS2 entry; crt0.S is the trimmed start-up that clears .bss only on the first run. cheat_engine.S/cheat_api.c are the PS2RD cheat engine (SetupThread hook, code handler, in-game-menu live code sets) and the .img cheat-image applier. gsm_api.c/dve_reg.S drive the GSM video-mode forcer (SetGsCrt hook, debug-exception GS write trap, DVE setup for 576p). cd_igr_rpc.c sends OPL's IGR shutdown RPC to CDVDFSV. freeze_diag*.c are the INGAMEDIAG-only freeze report: thread/IOP-heap snapshot, a TV page drawn through GIF PATH3, an RPC with deadlines, and a text formatter shared with the freezediag.irx IOP module.",
+  "reusable_helpers": [
+    {"name": "oplIGRShutdown", "path": "ee_core/src/cd_igr_rpc.c", "line": 8, "what": "binds the 0x80000598 IGR RPC server and sends the shutdown/power-off request"},
+    {"name": "put_dec / put_hex / put_str", "path": "ee_core/src/freeze_diag_format.c", "line": 28, "what": "bounded decimal/hex/string append into a fixed text buffer without printf"},
+    {"name": "ln_dec / ln_hex", "path": "ee_core/src/freeze_diag_screen.c", "line": 49, "what": "the same bounded decimal/hex append for one screen line (second copy of the formatter helpers)"},
+    {"name": "budget_spent / ee_ticks", "path": "ee_core/src/freeze_diag.c", "line": 53, "what": "COP0 Count based millisecond deadline check (wrap-safe)"},
+    {"name": "fds_wait_ms / fds_ticks", "path": "ee_core/src/freeze_diag_screen.c", "line": 270, "what": "COP0 Count busy-wait delay in milliseconds (second COP0 Count reader)"},
+    {"name": "InitRegsExecPS2 / CleanExecPS2", "path": "ee_core/src/asm.S", "line": 390, "what": "clears all GPR/FPU/HI/LO/SA registers and resets SP before ExecPS2"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "LinkImage applies the PS2RD .img cheat image before the game is loaded, so the patches never land",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/cheat_api.c", "start": 34, "end": 71},
+        {"path": "ee_core/src/main.c", "start": 116, "end": 117},
+        {"path": "ee_core/src/main.c", "start": 178, "end": 181},
+        {"path": "ee_core/src/syshook.c", "start": 116, "end": 126},
+        {"path": "src/app/host.cpp", "start": 161, "end": 163},
+        {"path": "src/core/cheatman.cpp", "start": 39, "end": 39},
+        {"path": "src/core/cheatman.cpp", "start": 111, "end": 125},
+        {"path": "src/sources/supportbase.cpp", "start": 1701, "end": 1718}
+      ],
+      "problem": "LinkImage is called from eecoreInit (main.c:116-117), i.e. on the first ee_core run, before LoadExecPS2 (main.c:181) restarts ee_core, which then wipes user memory (syshook.c:117, plus the kernel wipe from ModStorageEnd) and loads the game ELF (syshook.c:126). At LinkImage time the game is not in memory: the sanity gate reads OPL's leftover memory at Offset0 and fails, and any word it did write is wiped and overwritten by the game load. The $EnableImage option therefore never patches a game.",
+      "fix": "Delete the .img feature (LinkImage, config->gImage, LoadImage/GetImage/gImage, sbLoadImage and its call sites, the $EnableImage row and strings). If the owner wants to keep it, the apply has to move to sysLoadElf after LoadElf/apply_patches, with the words kept somewhere the wipe does not reach (ee_core has no room for the 4 KB, cheat_api.c:36-38).",
+      "justification": "",
+      "benefit": "Removes an option that silently does nothing; ~100 lines across ee_core and the menu (INFERRED from the cited ranges plus prototypes/UI rows) and 4 KB of main-ELF .bss (static u32 gImage[MAX_IMAGEWORDS=1024] = 4096 bytes, INFERRED arithmetic).",
+      "benefit_rank": 3,
+      "lines_removed": 100,
+      "effort": "M",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "INFERRED",
+      "evidence": "Read main.c:40-185 (eecoreInit calls EnableCheats/LinkImage, then main() calls LoadExecPS2; isInit path calls sysLoadElf), syshook.c:86-147 (WipeUserMemory(&_end, ModStorageStart), LoadElf, apply_patches, CleanExecPS2), system.cpp:1195 (kernel InitializeUserMemory set to ModStorageEnd), host.cpp:161-163 (gImage handed over), cheatman.cpp:111-125 (LoadImage), supportbase.cpp:1701-1718. git show 97421c9520: the call was added at eecoreInit with no in-game test noted. grep LinkImage/gImage over tests and .github: no test. INFERRED part: that .img targets are game addresses (format not documented in the repo); any target above 0x97000 is wiped or reloaded."
+    },
+    {
+      "n": 2,
+      "title": "oplIGRShutdown writes poff uncached with SIF_RPC_M_NOWBDC and no cache flush",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/cd_igr_rpc.c", "start": 12, "end": 22}
+      ],
+      "problem": "poffData is a 64-byte-aligned stack slot; its cache line can still be dirty in the write-back D-cache from earlier IGR-thread calls. The value is stored through UNCACHED_SEG and the call uses SIF_RPC_M_NOWBDC, so nothing writes back or invalidates that line; if it is evicted before the SIF DMA reads memory, the stale stack word replaces poff. CDVDMAN then powers the console off (poff != 0, cdvdman.c:289-295) on a normal IGR exit, or skips the power-off on the L3+R3 path (padhook.c:565,669). freeze_diag.c:185 and :214 call FlushCache(0) before the same kind of store for this reason.",
+      "fix": "Store poff with a normal write and drop SIF_RPC_M_NOWBDC so SifCallRpc writes the send buffer back itself (no extra code); or call FlushCache(0) before the uncached store as freeze_diag.c does.",
+      "justification": "",
+      "benefit": "Removes a rare wrong-poff case on every IGR exit (unwanted power-off or missed power-off); no size change (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Low",
+      "basis": "INFERRED",
+      "evidence": "Read cd_igr_rpc.c:1-26; callers padhook.c:565 (oplIGRShutdown(0)) and :669 (oplIGRShutdown(1)), freeze_diag.c:235. IOP side cdvdfsv.c:225-250 reads *(int *)buf as poff, cdvdman.c:279-299 powers off when non-zero. grep SIF_RPC_M_NOWBDC over *.c/*.cpp/*.h: freeze_diag.c:187 and :216 (both preceded by FlushCache(0) at :185/:214) and cd_igr_rpc.c:22 (no flush). INFERRED: the eviction timing between the store and the DMA was not observed on hardware."
+    },
+    {
+      "n": 3,
+      "title": "freeze_diag.c shutdown_cd copies only .server, so the shutdown argument is DMAed to IOP address 0",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/freeze_diag.c", "start": 212, "end": 216}
+      ],
+      "problem": "shutdown_with_deadline fills the second client with shutdown_cd.server = igr_cd.server only. ps2sdk SifCallRpc sends the argument to cd->buf (the server buffer address that SifBindRpc stores in the client), which stays NULL here, so the 4-byte argument goes to IOP address 0 and cbrpc_shutdown (cdvdfsv.c:244) reads whatever its buffer last held. It works today only because the preceding FREEZE_DIAG_RPC_FNO call left 0 in that buffer; the IOP is rebooted right after.",
+      "fix": "Copy the whole bound client (shutdown_cd = igr_cd) instead of only the server pointer, so buf and cbuf come along.",
+      "justification": "",
+      "benefit": "The shutdown argument reaches the server and no stray SIF write lands at IOP address 0; INGAMEDIAG builds only; no size change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read freeze_diag.c:156-246 (igr_cd bound at :164, shutdown_cd never bound, only .server copied at :213, call at :216 with &shutdown_arg). cdvdfsv.c:173 registers shutdown_rpcbuf for 0x80000598; :232-238 the fno 2 path returns without touching buf; :241-248 fno 1 reads *(int *)buf. INFERRED: ps2sdk SifCallRpc passes cd->buf as the send destination (SDK source is not in the repo). Built only in the ingamediag configuration (tools/build_configuration.py:57-78)."
+    }
+  ]
+}

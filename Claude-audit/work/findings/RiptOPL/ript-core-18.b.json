@@ -1,0 +1,96 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-18.b",
+  "coverage": [
+    {"path": "src/gfx/themeelems.cpp", "status": "read_full", "note": ""},
+    {"path": "include/themes.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "themeelems.cpp holds the theme element types split out of themes.cpp: per-device element filters (devices=), text elements (StaticText, AttributeText, GameCountText, ItemText) with collision-aware text rooms, image elements (StaticImage, GameImage, AttributeImage, Background, user wallpaper) and their cache/texture sharing (findDuplicate), the per-row cover redirect (thmGetElemForItem), and the internal elements (MenuIcon, MenuText, BdmIndex, ItemsList with center-out cover warming, SaveIcon, HintText, InfoHintText). All draw functions run on the GUI thread once per frame; the init functions run at theme load (GUI or IO worker). themes.h declares the theme data model (image_texture_t, mutable_image_t, mutable_text_t, items_list_t, theme_element_t, theme_elems_t, theme_t) and the theme API used by menusys, coverflow, grid and settings.",
+  "reusable_helpers": [
+    {"name": "thmParseDeviceList", "path": "src/gfx/themeelems.cpp", "line": 69, "what": "parses a comma-separated device-name list into a bitmask with strtok_r (thread-safe tokenising)"},
+    {"name": "thmTextRoom", "path": "src/gfx/themeelems.cpp", "line": 311, "what": "computes horizontal room for text on a row against a list of obstacle boxes and the screen edge"},
+    {"name": "menuItemShown", "path": "src/gfx/themeelems.cpp", "line": 1820, "what": "decides whether a device menu page is navigable (visible, All Games filtering)"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "findDuplicate shares the first COV cache whatever slot count the later element needs: synthesized Coverflow/Grid/PSBBN views can get a 2-slot cache",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 633, "end": 649},
+        {"path": "src/gfx/themeelems.cpp", "start": 837, "end": 855},
+        {"path": "src/gfx/themeelems.cpp", "start": 871, "end": 891},
+        {"path": "src/gfx/themes.cpp", "start": 700, "end": 702},
+        {"path": "src/gfx/themes.cpp", "start": 1480, "end": 1491},
+        {"path": "src/gfx/themeviews.cpp", "start": 513, "end": 528},
+        {"path": "src/gfx/coverflow.cpp", "start": 354, "end": 357},
+        {"path": "src/gfx/grid.cpp", "start": 663, "end": 671},
+        {"path": "src/gfx/texcache.cpp", "start": 396, "end": 407}
+      ],
+      "problem": "initMutableImage links any earlier element's cache with the same suffix (findDuplicate) and only creates its own cache when none was linked, so the FIRST COV element's slot count wins. A GameImage with pattern=COV gets count 1 floored to 2. For a disk theme without views=, thmViewSynthesize appends the template presenter after the theme's last main block, so a Coverflow (wants 20), PSBBN flow or Grid (wants 2 x cells, up to 48) built after such a GameImage shares its 2-slot cache. The eviction scan never takes an entry used this frame, so only 2 covers of the carousel/grid ever load; the rest stay on the default picture.",
+      "fix": "In findDuplicate, share a cache only when its count() is at least the slot count the new element asked for (pass cacheCount in from initMutableImage); otherwise let the element create its own cache as it already does when nothing matches.",
+      "justification": "Adds one parameter and one condition. The cache has no resize, so refusing an undersized share is the smallest change that gives presenters the slots their own code computes (grid.cpp:663-671, coverflow COVER_CACHE_SLOTS); the cost is at most a duplicate decode of the selected cover in the small GameImage cache.",
+      "benefit": "Fixes permanently missing covers (all but 2) in synthesized Coverflow/Grid/PSBBN views of disk themes that declare a GameImage pattern=COV before the presenter. Theme population affected is INFERRED.",
+      "benefit_rank": 3,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read findDuplicate (themeelems.cpp:633-677) and initMutableImage (808-909): count from _count, floor 2 at 852-853, link before cacheInitCache at 884-891. themes.cpp:700-702 GameImage passes count 1; themes.cpp:1480-1491 synthesizes undeclared views for disk themes; themeviews.cpp:393,404-413 presenter types exclude GameImage, 495 copies it unchanged, 513-528 appends presenter after last block. coverflow.cpp:356 asks COVER_CACHE_SLOTS (20, themeint.h:76); grid.cpp:666-671 asks 2*cells. texcache.cpp:396-407 skips entries with lastUsed == guiFrameId. grep cacheResize/cacheGrow/count_ = : only texcache.cpp:59 (init), no resize. Built-in cfgs (misc/*.cfg) have no COV GameImage before a presenter, so only disk themes hit it (INFERRED)."
+    },
+    {
+      "n": 2,
+      "title": "Unchecked malloc/calloc in theme element init (initMutableText, initImageTexture, initMutableImage, initBasic, initItemsList and others)",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 211, "end": 217},
+        {"path": "src/gfx/themeelems.cpp", "start": 226, "end": 227},
+        {"path": "src/gfx/themeelems.cpp", "start": 275, "end": 277},
+        {"path": "src/gfx/themeelems.cpp", "start": 703, "end": 704},
+        {"path": "src/gfx/themeelems.cpp", "start": 722, "end": 724},
+        {"path": "src/gfx/themeelems.cpp", "start": 767, "end": 768},
+        {"path": "src/gfx/themeelems.cpp", "start": 773, "end": 775},
+        {"path": "src/gfx/themeelems.cpp", "start": 810, "end": 811},
+        {"path": "src/gfx/themeelems.cpp", "start": 1608, "end": 1610},
+        {"path": "src/gfx/themeelems.cpp", "start": 2123, "end": 2131},
+        {"path": "src/gfx/coverflow.cpp", "start": 360, "end": 360},
+        {"path": "src/gfx/grid.cpp", "start": 674, "end": 674}
+      ],
+      "problem": "These allocations are written through immediately with no NULL check, so an allocation failure during a theme (re)load is a NULL write and a crash rather than a disabled element. The same file does check in initGameCountText (509-519), thmParseDeviceList (79-81) and thmWallpaperLoad (1766-1768), and coverflow.cpp:360 / grid.cpp:674 test initMutableImage's result for NULL, which it can never return because it dereferences the malloc result first.",
+      "fix": "Return NULL on allocation failure from initImageTexture, initImageInternalTexture (their callers already treat NULL as no texture) and initMutableImage (Coverflow/Grid already handle NULL; add the same early return in initStaticImage, initGameImage, initAttributeImage and initBackground). Leave initBasic/initItemsList as they are unless addGUIElem is changed too.",
+      "justification": "A theme reload happens mid-session (view switch, settings change) while art caches hold the heap; a NULL write there takes the menu down. Only a few early returns are added, and they make the existing NULL guards in coverflow.cpp and grid.cpp reachable.",
+      "benefit": "Crash becomes a disabled element under OOM at theme load; about 10 lines added. Failure of these small allocations is unlikely (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": -10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read every cited allocation: 211 malloc then field writes 212-217; 226 malloc then memcpy 227; 275 calloc then snprintf 277/279; 703 calloc then write 704; 723 malloc then memcpy 724; 767/774 same; 810 malloc then writes 811-826; 1608 malloc then writes 1610-1622; 2123 malloc then itemsListFit write at 2131. Callers: themes.cpp:687-801 (addGUIElem) deref elem after initBasic; coverflow.cpp:356-360 and grid.cpp:671-674 check the initMutableImage result."
+    },
+    {
+      "n": 3,
+      "title": "AttributeImage (built-in theme) and BdmIndex look up the internal texture id by name every frame",
+      "category": 5,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 1506, "end": 1515},
+        {"path": "src/gfx/themeelems.cpp", "start": 1534, "end": 1540},
+        {"path": "src/gfx/themeelems.cpp", "start": 1917, "end": 1925},
+        {"path": "src/gfx/textures.cpp", "start": 349, "end": 362},
+        {"path": "misc/conf_theme_OPL.cfg", "start": 238, "end": 286}
+      ],
+      "problem": "On the built-in theme, drawAttributeImage calls thmAttributeTexId every frame (snprintf for 'value/asset' values, then texLookupInternalTexId, a linear strcmp over the ~129 internal texture names) although the value only changes when currentConfigId changes. The built-in info page has 7 AttributeImage elements, so the GUI thread repeats up to 7 snprintf plus about 900 strcmp per frame for an unchanged result; drawBDMIndex does one snprintf plus the same scan per frame on the main page.",
+      "fix": "In drawAttributeImage resolve the texId once inside the existing currentConfigId != config->uid() block and keep it in the element (currentCacheId is unused on the built-in branch), then draw from the stored id. Leave drawBDMIndex as it is unless the same edit is made there for free.",
+      "justification": "No new state is needed for AttributeImage: the uid-gated refresh block already exists and currentCacheId is idle on that branch, so the per-frame work is removed by moving one call.",
+      "benefit": "About 7 x 129 strcmp + up to 7 snprintf per frame removed on the built-in info page, roughly 50 us per frame at 294 MHz (INFERRED: ~15 cycles per mismatching strcmp).",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read drawAttributeImage 1517-1577: config uid gate 1525-1533, per-frame thmGetTexture(thmAttributeTexId()) at 1536 on the built-in path; thmAttributeTexId 1506-1515; textures.cpp:349-362 linear strcmp over TEXTURES_COUNT; include/textures.h enum has ~129 entries (counted with awk). misc/conf_theme_OPL.cfg:238-286 has 7 AttributeImage attributes (#Media, #Format, Vmode, Aspect, Scan, Players, Rating). drawBDMIndex 1917-1925 snprintf + lookup per frame. Timing is an estimate, not measured."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+path	line	tier	text
+.github/scripts/test_hires_thread_priority.py	3	support	gsKit_hires_init_screen ends with a HACK: ChangeThreadPriority(GetThreadId(), 2), so its caller sits right under the
+.github/scripts/test_hires_thread_priority.py	83	support	static void gsKit_hires_init_screen(GSGLOBAL *, int) { hiresActive = 1; ChangeThreadPriority(GetThreadId(), 2); } // the HACK
+docs/FORK-GAP-STATUS-2026-11-01.md	16	docs	| RI55 pad profiles | Unchanged: [legacy #1243](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1243) is a held draft; RiptOPL has preserved WIP only. | 
+docs/FORK-GAP-STATUS-2026-11-01.md	27	docs	| YA-21 / YA-22 / YA-25 GUI locks | Merged: [RiptOPL #264](https://github.com/NathanNeurotic/RiptOPL/pull/264) / [legacy #1225](https://github.com/NathanNeuroti
+docs/FORK-GAP-STATUS-2026-11-01.md	30	docs	| RI55 pad profiles | [legacy #1243](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1243) is an implemented, held draft. RiptOPL has preserved WIP only.
+docs/FORK-GAP-STATUS-2026-11-01.md	35	docs	| Launchstation Move | [Launchstation #270](https://github.com/NathanNeurotic/Launchstation/pull/270), implemented draft at `8bb2915`: bounded 256 KiB Move-only
+docs/OLD_DETAILED_CHANGELOG	99	docs	rev852 - Change version to 'OPL 0.9.4 WIP', re-enable development build flag - Fri Oct 23 04:16:22 2015 -0400
+docs/PS2SDK-NOTES.md	495	docs	`partition_count`. Nothing checks that count: the header CRC is a TODO, and the count is not clamped to
+ee_core/src/cheat_engine.S	539	core	.word   0 # TODO
+ee_core/src/cheat_engine.S	541	core	.word   0 # TODO
+ee_core/src/cheat_engine.S	542	core	.word   0 # TODO
+modules/bdm/bdmfs_fatfs/src/fs_driver.c	871	module	// TODO
+modules/bdm/src/part_driver_gpt.c	64	module	// TODO: we might want to check the header revision and size for compatibility for newer/older GPT layouts. There's
+modules/bdm/src/part_driver_gpt.c	156	module	// TODO: Check type specific partition flags: read-only, hidden, etc.
+modules/bdm/src/part_driver_mbr.c	107	module	// TODO: Filter out unsupported partition types.
+modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink.c	355	module	/* !!HACK!! Due to a chip bug (?) in the iLink hardware of most consoles, limit the speed to S100 mode whenever the console is the root node
+modules/debug/ps2link/net_fio.c	66	module	// XXX: Hm, this func should behave sorta like pko_recv_bytes imho..
+modules/debug/ps2link/net_fio.c	122	module	dbgprintf("pko_file: XXX: did not receive a full header!!!! "
+modules/hdd/apa/src/apa.c	264	module	// TODO: switch to HDDDevices.partitionMaxSize
+modules/hdd/apa/src/apa.c	316	module	// TODO: switch to HDDDevices.partitionMaxSize
+modules/hdd/apa/src/hdd.c	105	module	// TODO: In DVRP firmware, this check always succeeds
+modules/hdd/apa/src/hdd_fio.c	43	module	// TODO: For DVRP firmware 48-bit, __xdata and __xcontents partitions are created
+modules/hdd/apa/src/hdd_fio.c	361	module	// TODO: Why does DVRP firmware start clearing at 1024 * 4104 when not 48-bit?
+modules/hdd/apa/src/hdd_fio.c	362	module	// TODO: DVRP firmware 48-bit clears offset_24+0x2000, offset_24+0x42000, offset_24+0x242000
+modules/hdd/apa/src/hdd_fio.c	379	module	// TODO: DVRP firmware sets this to 0x400 bytes
+modules/hdd/apa/src/hdd_fio.c	382	module	// TODO: DVRP firmware 48-bit sets this to __extend
+modules/hdd/apa/src/hdd_fio.c	420	module	// TODO: DVRP firmware 48-bit creates __extend partition at offset_24_bit, with same params as __mbr except content is empty
+modules/hdd/apa/src/hdd_fio.c	427	module	// TODO: For DVRP firmware 48-bit, __xdata is created with size 1024 * 2048
+modules/hdd/apa/src/hdd_fio.c	428	module	// TODO: For DVRP firmware 48-bit, __xcontents is created with size (offset_48_bit - offset_24_bit) - 0x240000 & 0xfffff7ff
+modules/hdd/apa/src/hdd_fio.c	465	module	// TODO: start sector usually is at either 0x4A817C8 (40GB offset) or 0x400000 (2GiB offset)
+modules/hdd/apa/src/libapa.h	28	module	// TODO: In DVRP firmware, the following value is 0x1000 when 48-bit
+modules/hdd/atad/src/ps2atad.c	48	module	// TODO: last sdk 3.1.0 has ATAD module version 2.9 with significant changes.
+modules/ilink/iLinkman/src/iLink.c	351	module	/* !!HACK!! Due to a chip bug (?) in the iLink hardware of most consoles, limit the speed to S100 mode whenever the console is the root node
+modules/iopcore/cdvdman/device-mmce.c	224	module	//TODO: For VMCs
+modules/mmce/mmceman/src/mmce_cmds.c	46	module	//TODO:
+modules/mx4sio_bd/src/mx4sio.h	46	module	uint16_t crc[512]; /*FIXME*/
+modules/mx4sio_bd/src/spi_sdcard_driver.c	138	module	/* TODO: use this to verify writes */
+modules/mx4sio_bd/src/spi_sdcard_driver.h	62	module	// XXX: The folowing are not fixed to correct endianness!
+modules/network/SMSTCPIP/etharp.c	46	skim	* TODO:
+modules/network/SMSTCPIP/etharp.c	53	skim	* TODO:
+modules/network/SMSTCPIP/etharp.c	303	skim	/* queue later packet over earliers? TODO: Implement multiple pbuf queue */
+modules/network/SMSTCPIP/etharp.c	310	skim	/* packet can be queued? TODO: Implement multiple pbuf queue */
+modules/network/SMSTCPIP/etharp.c	329	skim	* TODO: decide what is a sensible return value?
+modules/network/SMSTCPIP/etharp.c	702	skim	/* TODO: How do we handle netif->ipaddr == ipaddr? */
+modules/network/SMSTCPIP/etharp.c	754	skim	* TODO: use the ctime field to see how long ago an ARP request was sent,
+modules/network/SMSTCPIP/etharp.c	773	skim	/* TODO: we will issue a new ARP request, which should not occur too often */
+modules/network/SMSTCPIP/etharp.c	779	skim	/* TODO: even if the ARP entry is stable, we might do an ARP request anyway */
+modules/network/SMSTCPIP/include/lwip/dhcp.h	50	skim	*  TODO: See dhcp.c "TODO"s
+modules/network/SMSTCPIP/include/lwip/netif.h	49	skim	/** TODO: define the use (where, when, whom) of netif flags */
+modules/network/SMSTCPIP/include/lwip/opt.h	510	skim	* (XXX - these constants should simply be shared by lcp.c instead
+modules/network/SMSTCPIP/include/lwip/tcp.h	348	skim	* Until a cleaner solution emerges this is here.FIXME
+modules/network/SMSTCPIP/loopif.c	93	skim	* TODO: Is there still a race condition here? Leon
+modules/network/SMSTCPIP/loopif.c	106	skim	#if 0 /** TODO: I think this should be enabled, or not? Leon */
+modules/network/SMSTCPIP/netif.c	165	skim	/* TODO: Handling of obsolete pcbs */
+modules/network/SMSTCPIP/sockets.c	896	skim	return lwip_close(s); /* XXX temporary hack until proper implementation */
+modules/network/SMSTCPIP/tcp.c	1078	skim	iss += tcp_ticks; /* XXX */
+modules/network/SMSTCPIP/udp.c	550	skim	SO_REUSE_PORT under *BSD). TODO: See where it fits instead, OR
+modules/network/SMSTCPIP/udp.c	669	skim	/** TODO: this functionality belongs in upper layers */
+modules/network/SMSTCPIP/udp.c	680	skim	/** TODO: this will bind the udp pcb locally, to the interface which
+modules/network/common/smstcpip-common.h	147	module	/** TODO: define the use (where, when, whom) of netif flags */
+modules/network/rapops/rapops.c	112	module	/* TODO: POPS may bring its own DEV9; whether ours then fails to load
+modules/network/rapops/rapops.c	126	module	TODO: no EE event buffer under POPS yet, so no notices in game. */
+modules/network/rapull/rapull.c	23	module	TODO: add an out-of-band startup/EE-read diagnostic that cannot be
+modules/network/rapull/rapull.c	25	module	TODO: the EE writes PS1 RAM through its data cache and this reads
+modules/network/rapull/rapull.c	28	module	TODO: the reads are not tied to a frame of the game; entries of one
+modules/network/rapull/rapull.c	114	module	/* TODO: PS1 scratchpad (0x200000-0x2003FF) reads as zero; where
+modules/network/smap_udpbd/src/xfer.c	208	module	// FIXME! We want a blocking write, this works but it's not ideal.
+modules/network/smb2man/usmb2/usmb2.h	80	module	* TODO: currently only support O_RDONLY.  Need to add O_RDWR support.
+modules/network/udpfs_smap/src/xfer.c	276	module	// FIXME! We want a blocking write, this works but it's not ideal.
+modules/usb/usbmass_bd/src/usb_mass.c	449	module	// TODO: handle error in an async way (cannot block in usb callback)
+ship/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/neutrino/config/emu-dvd-file.toml	18	support	#unload = true // FIXME this is broken, can be tested with Jak X
+src/core/bgm.cpp	890	core	// HACK: BGM stutters while perfroming certain tasks, mute during these operations and unmute once completed.
+src/core/config.cpp	17	core	// FIXME: We should not need this function.
+src/gfx/fntsys.cpp	672	core	// TODO: this seems correct, but the rest of the OPL UI (i.e. spacers) doesn't seem to be correctly scaled.
+src/gfx/fntsys.cpp	683	core	/* TODO: Ineffective on many parts:
+src/gfx/plasma.cpp	145	core	// TODO: Low priority... This could be done on VU0 (xyzw for the first 4 mixes)
+src/gfx/plasma.cpp	151	core	// TODO: The VU0MixVec could as well mix the results (as follows) - might improve performance...
+src/gfx/renderman.cpp	308	core	// gsKit_hires_init_screen raises its CALLER to priority 2 (a HACK in gsHires.c, so the
+src/gfx/uidraw.cpp	27	core	// HACK: font is aligned to VCENTER, the default height icon height is 20
+src/sources/bdmlaunch.cpp	983	core	settings->common.fakemodule_flags |= 0 /* TODO! fake ilinkman ? */;
+src/sources/hddsupport.cpp	59	core	* TODO (DESR hardware gate): load DVRP modules after switching to PSX mode
+src/sources/supportbase.cpp	650	core	/* TODO: size calculation is very slow
+third_party/mbedtls/include/psa/crypto_values.h	2102	skim	* \return              The corresponding PBKDF2-HMAC-XXX algorithm.
+third_party/mbedtls/library/aesce.c	64	skim	/* TODO: We haven't verified MSVC from 1920 to 1928. If someone verified that,
+third_party/mbedtls/library/aesce.c	72	skim	/* TODO: We haven't verified armclang for 32-bit Arm/Thumb prior to 6.20.
+third_party/mbedtls/library/mps_error.h	16	skim	/* TODO: The error code allocation needs to be revisited:
+third_party/mbedtls/library/pem.c	213	skim	* Decrypt with AES-XXX-CBC, using PBKDF1 for key derivation
+third_party/mbedtls/library/psa_crypto.c	2026	skim	/* TODO: If the key has already been created in the secure
+third_party/mbedtls/library/psa_crypto.c	8467	skim	/* TODO - fall through to the failure case until this
+third_party/mbedtls/library/sha256.c	98	skim	/* FIXME: GCC 5 claims to support Armv8 Crypto Extensions, but some
+third_party/mbedtls/library/ssl_misc.h	1437	skim	* type definitions. TODO: split the type definitions and the helper
+third_party/mbedtls/library/ssl_tls.c	3229	skim	// TODO: this is currently untested
+third_party/mbedtls/library/ssl_tls.c	10197	skim	/* TODO: Change this to a more appropriate error code when one is available. */
+third_party/mbedtls/library/ssl_tls13_keys.c	928	skim	mbedtls_ssl_context *ssl /* DEBUG ONLY */)
+third_party/mbedtls/library/ssl_tls13_keys.c	1199	skim	MBEDTLS_SSL_TLS_PRF_NONE /* TODO: FIX! */);
+third_party/mbedtls/library/ssl_tls13_keys.c	1404	skim	MBEDTLS_SSL_TLS_PRF_NONE /* TODO: FIX! */);
+third_party/mbedtls/library/ssl_tls13_keys.c	1413	skim	MBEDTLS_SSL_TLS_PRF_NONE /* TODO: FIX! */);
+third_party/mbedtls/library/ssl_tls13_keys.c	1664	skim	MBEDTLS_SSL_TLS_PRF_NONE /* TODO: this should be replaced by
+third_party/mbedtls/library/ssl_tls13_keys.c	1673	skim	MBEDTLS_SSL_TLS_PRF_NONE /* TODO: this should be replaced by
+third_party/mbedtls/library/ssl_tls13_server.c	3120	skim	/* TODO: Remove the check of SOME_PSK_ENABLED since SESSION_TICKETS requires

@@ -1,0 +1,110 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-26.b",
+  "coverage": [
+    {"path": "src/sources/cuesupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/discsupport.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/discsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/ethsupport.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/ethsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/favsupport.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "cuesupport.cpp is the Ember (PS1 .cue) side of the PS1 library: EMBER/games folder scan, discs.txt manifest parsing, Ember argument validation, settings.txt key:value rewrite, and the merge of POPSTARTER VCD rows with Ember rows (ps1FillGameList, ps1DropTwins). discsupport.cpp (RA editions only) identifies a physical disc, hashes it on the IO worker and launches it with RA telemetry. ethsupport.cpp/.h own the SMB/NFS game page: driver choice (smbman_ra, smb2man, nfsman), logon/open-share, live reconnect and checked refresh on the IO worker, the share picker, the ISO/PS1 backing lists, and the OPL-core and Neutrino launch legs that patch the embedded cdvdman/mcemu IRX settings. favsupport.h declares the favourites/recents store and its on-disk record layout.",
+  "reusable_helpers": [
+    {"name": "cueSep", "path": "src/sources/cuesupport.cpp", "line": 41, "what": "path separator for a device prefix: backslash when the prefix ends in one (SMB), else slash"},
+    {"name": "cueResolveEmberFile", "path": "src/sources/cuesupport.cpp", "line": 56, "what": "compose prefix+folder+sep+file and probe existence with open/close"},
+    {"name": "cueWriteAll", "path": "src/sources/cuesupport.cpp", "line": 673, "what": "write() loop that retries short writes and fails on <= 0"},
+    {"name": "cueRewriteSettings", "path": "src/sources/cuesupport.cpp", "line": 575, "what": "rewrites a key:value text buffer, dropping managed keys and appending the wanted values"},
+    {"name": "cueRewriteSettingsFile", "path": "src/sources/cuesupport.cpp", "line": 686, "what": "read-modify-write of a small text settings file; skips the write when unchanged, restores the original on a failed write"},
+    {"name": "ps1TwinKey", "path": "src/sources/cuesupport.cpp", "line": 1117, "what": "strips a POPSTARTER XX./SB./EL./SM. prefix and a leading disc ID from a PS1 title"},
+    {"name": "smbOpenShare", "path": "src/sources/ethsupport.cpp", "line": 60, "what": "SMB open-share with async poll on smb2man and blocking fallback"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "EthSource::update share picker: 64 KB ShareEntry_t sharelist[128] on the IO worker stack is a SIF DMA target with no cache maintenance",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/ethsupport.cpp", "start": 829, "end": 850},
+        {"path": "modules/network/smbman-ra/smb_fio.c", "start": 999, "end": 1000},
+        {"path": "modules/network/smbman-ra/smb_fio.c", "start": 871, "end": 889},
+        {"path": "src/platform/ioman.cpp", "start": 42, "end": 44}
+      ],
+      "problem": "The share picker passes a stack array (128 x 512 B = 64 KB of the IO worker's 96 KB stack) as EE_addr; the shipped smbman_ra copies each entry into it with sceSifSetDma (smb_fio.c:1000, DMA_sendEE). Nothing writes back or invalidates the EE data cache for that range and the array is not 64-byte aligned, so a dirty or stale line from earlier deep stack use can override the DMA'd share names that are then read at 847-849.",
+      "fix": "Align the array to 64 bytes and write back/invalidate its range (SifWriteBackDCache, the pattern fileXioRead uses for its receive buffer) before the GETSHARELIST devctl. Optionally lower maxent (only the 31-char name is kept) to give back most of the 64 KB of worker stack.",
+      "justification": "Adds one cache-maintenance call and an alignment attribute: the IOP writes this buffer by DMA behind the EE cache, which is a correctness hole on real hardware; one line is the smallest way to make the read coherent.",
+      "benefit": "Removes a non-coherent DMA read on the share-picker path; with maxent 32 the frame drops from 64 KB to 16 KB of the 96 KB worker stack (INFERRED: sizeof(ShareEntry_t) = 512 per tests/smb2-live/inc-sdk/ps2smb.h:79-83).",
+      "benefit_rank": 2,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read ethsupport.cpp:829-866; update() runs on the IO worker via menuDeferredUpdate (opl.cpp:855-871, handler registered opl.cpp:1691); worker stack 96 KB (ioman.cpp:42-44). ps2.yaml:146-154 + :652 show smbman_ra is the embedded smbman; its GETSHARELIST sends entries with DMA_sendEE -> sceSifSetDma (smb_fio.c:871-889, 999-1000). smb2man returns -ENOTSUP (smb2man.c:1708-1710). ShareEntry_t size taken from the in-repo SDK header copy. That fileXioDevctl does no cache op on pointers inside arg is INFERRED (ps2sdk source not in repo). git history: the stack array is inherited from upstream OPL (git show 31e9b1f4^:src/ethsupport.c line 472)."
+    },
+    {
+      "n": 2,
+      "title": "EthSupport::reconnectSmb clears the coalescing flags at its end, so a settings reconnect requested while it runs is dropped",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/ethsupport.cpp", "start": 601, "end": 630},
+        {"path": "src/sources/ethsupport.cpp", "start": 686, "end": 709},
+        {"path": "src/ui/guisettings.cpp", "start": 1053, "end": 1056}
+      ],
+      "problem": "requestReconnect (GUI thread, Network page OK) only sets reconnectRequested_ when reconnectQueued_ is 1 (692-696). reconnectQueued_ stays 1 for the whole reconnectSmb run on the IO worker (DHCP/link waits, logon, open-share poll of up to 90 s) and lines 628-629 then clear both flags, so a second OK pressed with corrected settings during that run never reconnects with them.",
+      "fix": "Move the two clears (628-629) to the top of reconnectSmb, before it reads any settings, so a request that arrives during the run queues a fresh reconnect.",
+      "justification": "",
+      "benefit": "Fixes a lost settings apply (session stays on the old IP/share until another manual Reconnect); 0 lines, the two assignments move.",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read ethsupport.cpp:601-709. Callers: grep ethRequestReconnect -> ethsupport.cpp:725 (init) and guisettings.cpp:1056 (Network page exit/OK, no wait on the worker). reconnectSmb runs via IO_CUSTOM_SIMPLEACTION (705); it calls loadModules/initSmb -> netApplyConfig (link/DHCP waitValidState up to ~30 s, netsupport.cpp:68-89) and smbConnect -> smbOpenShare (poll up to 900 x 100 ms, ethsupport.cpp:67-73). That the user can reopen and apply the Network page while the worker is blocked in those RPC waits is inferred from the non-blocking request path, not tested."
+    },
+    {
+      "n": 3,
+      "title": "Share picker in EthSource::update treats ERROR_ETH_LINK_FAIL/DHCP_FAIL as listable and replaces the link error with a share-list error",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/ethsupport.cpp", "start": 832, "end": 838},
+        {"path": "src/sources/ethsupport.cpp", "start": 863, "end": 866},
+        {"path": "include/iosupport.h", "start": 52, "end": 60}
+      ],
+      "problem": "With no share name set, update() only skips the GETSHARELIST devctl when gNetworkStartup < ERROR_ETH_SMB_OPENSHARE (303). ERROR_ETH_LINK_FAIL (310) and ERROR_ETH_DHCP_FAIL (311), set by netApplyConfig on a pulled cable or failed DHCP (netsupport.cpp:119-143), pass the gate, the devctl fails on the unconnected driver and 864-865 overwrite the status and message with ERROR_ETH_SMB_LISTSHARES.",
+      "fix": "Also return early when gNetworkStartup is above ERROR_ETH_SMB_LISTGAMES (the link/DHCP codes), so only the open-share and list errors retry the listing.",
+      "justification": "",
+      "benefit": "Correct error message and no pointless SMB RPC after a link or DHCP failure on the share-picker page; one condition changed, 0 lines.",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Enum values read at iosupport.h:41-60 (CONN 300 .. LISTGAMES 305, LINK_FAIL 310, DHCP_FAIL 311). grep ERROR_ETH_LINK_FAIL/DHCP_FAIL: set only in netsupport.cpp:119-143. initSmb (ethsupport.cpp:370-377) returns after that failure with smbman still loaded, and the deferred update then reaches 832. smbman_ra smb_GetShareList (smb_fio.c:959-981) fails without a session. That setError replaces the earlier message is inferred from host.cpp:86 (setErrorMessageWithCode), not traced further."
+    },
+    {
+      "n": 4,
+      "title": "cuePrepareLaunch skips the 256-byte argv pool check for a folder launch, so an over-long Ember argv is refused only after deinit",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/cuesupport.cpp", "start": 311, "end": 313},
+        {"path": "src/sources/cuesupport.cpp", "start": 331, "end": 336},
+        {"path": "src/sources/ethsupport.cpp", "start": 1092, "end": 1095},
+        {"path": "src/platform/elfldr_noreset.cpp", "start": 190, "end": 205}
+      ],
+      "problem": "The pool check (2*strlen(emberElf)+strlen(argument)+3 > 256) runs only after a discs.txt manifest; with no manifest line 313 returns 1 first. Over SMB the ELF path is up to 52 chars (smb0: + 31-char ETH prefix + EMBER/ember.elf), NFS 56, so a folder name of 150-160 chars (allowed by the scan cap ISO_GAME_NAME_MAX, cuesupport.cpp:502) exceeds the pool; sysLoadELFKeepIOP then refuses after host::app().deinit has already torn the menu down.",
+      "fix": "Apply the existing pool check on the no-manifest path too (run it before returning 1 at line 313), so the message is shown while the GUI is still live.",
+      "justification": "The check already exists; it only has to cover the second return path. The concrete problem is a refused handoff after teardown, which leaves the user with no menu.",
+      "benefit": "Turns a post-teardown launch failure into an on-screen message for long names on network prefixes; about 2 lines moved/added.",
+      "benefit_rank": 1,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read cuesupport.cpp:300-344 and the callers' order: ethsupport.cpp:1071 (cuePrepareLaunch) then 1094-1095 (deinit UNMOUNT_EXCEPTION, sysLaunchEmber); same order in bdmlaunch.cpp:88/117, hddsupport.cpp:2211/2230, mmcesupport.cpp:1219/1239, udpfssupport.cpp:850/866. sysLaunchEmber passes argv {emberElf, folder} (system.cpp:1278-1302); pool = strlen(filename)+1 + each argv+1 (elfldr_noreset.cpp:190-205) = 2L+F+3. Lengths: EMBER_FOLDER_DEFAULT/EMBER_ELF_NAME (cuesupport.h:113-114), gETHPrefix[32] (opl.h:501), prefix built at ethsupport.cpp:380-383. What the menu does after a refused handoff post-deinit is inferred, not traced."
+    }
+  ]
+}

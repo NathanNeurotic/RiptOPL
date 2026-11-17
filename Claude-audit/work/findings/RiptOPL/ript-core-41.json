@@ -1,0 +1,193 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-41",
+  "coverage": [
+    {"path": "src/ui/menusys.cpp", "status": "read_full", "note": ""},
+    {"path": "include/menuwatch.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "menusys.cpp is the menu core of the main ELF: the device-page ring (menu_list_t) and per-page submenu lists, their allocation, sorting (linked-list merge sort) and navigation (list, coverflow and grid views, paging, L3 view hold), the Start main menu, the per-game Triangle menu and the PS1/app menu, Rename/Delete/Hide game actions with a row-copy plus IO-pause guard, the per-game config prefetch/launch-config cache (menuSemaId, generation counters, IO-worker callbacks), parental lock prompts, settings save, and in RA builds the achievement browser screen. menuwatch.h declares the diagnostic-build menu watchdog API (menuWatchStart/Step/Stop) as inline no-ops in other builds plus the step/boot-stage enum; every enum value is used by gui.cpp, opl.cpp or menuwatch.cpp.",
+  "reusable_helpers": [
+    {"name": "submenuSort", "path": "src/ui/menusys.cpp", "line": 1820, "what": "stable bottom-up merge sort of a doubly linked submenu list with an already-sorted early exit"},
+    {"name": "submenuAppendItem", "path": "src/ui/menusys.cpp", "line": 1677, "what": "appends a node to a doubly linked submenu list (and submenuDestroy at 1714 frees one)"},
+    {"name": "menuCheckParentalLock", "path": "src/ui/menusys.cpp", "line": 2272, "what": "prompts once per session for the parental-lock password, master-password reset included"},
+    {"name": "menuRowCopy", "path": "src/ui/menusys.cpp", "line": 219, "what": "copies the selected row under guiLock so a dialog-spanning action survives a list rebuild (menuRowBeginEdit/EndEdit pause IO and re-check it)"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Three Start-menu submenu screens duplicate their background, layout and up/down wrap code",
+      "category": 2,
+      "locations": [
+        {"path": "src/ui/menusys.cpp", "start": 2177, "end": 2212},
+        {"path": "src/ui/menusys.cpp", "start": 2924, "end": 2980},
+        {"path": "src/ui/menusys.cpp", "start": 3293, "end": 3344},
+        {"path": "src/ui/menusys.cpp", "start": 2322, "end": 2340},
+        {"path": "src/ui/menusys.cpp", "start": 3151, "end": 3169},
+        {"path": "src/ui/menusys.cpp", "start": 3360, "end": 3378}
+      ],
+      "problem": "menuRenderMenu, menuRenderGameMenu and menuRenderAppMenu each repeat the same 6-line settings-background block (with the same 4-line comment), the same 'count items / find selected index / spacing 25 / centre y' block (~13 lines) and the same centred draw loop; menuHandleInputMenu, menuHandleInputGameMenu and menuHandleInputAppMenu repeat the same 19-line 'default current, Up wraps to last, Down wraps to first' block on mainMenu/gameMenu/appMenu.",
+      "fix": "Keep one static helper that moves a (head, current) pair on Up/Down and one that draws the background and the centred item list (with an optional extra-gap predicate for the main and game menus); call them from the three screens.",
+      "justification": "The helpers replace three verbatim copies each, so the file gets shorter overall; no behaviour changes.",
+      "benefit": "~55 lines removed (3x19 nav lines -> one ~17-line helper; 3x~25 render lines -> one ~25-line helper) (INFERRED from cited ranges); negligible ELF change",
+      "benefit_rank": 2,
+      "lines_removed": 55,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read all six ranges side by side: the background block and comment at 2177-2182, 2924-2929, 3293-3298 are identical; count/sitem loops 2191-2203, 2951-2963, 3317-3329 identical apart from the list variable; Up/Down blocks 2322-2340, 3151-3169, 3360-3378 identical apart from the variable names. Differences: the game menu draws title/config source and an extra gap keyed on GAME_SAVE_CHANGES/GAME_REMOVE_CHANGES, the main menu a gap after MENU_NBD, the app menu a title and PS1 note."
+    },
+    {
+      "n": 2,
+      "title": "menuRenderMain and menuRenderInfo are the same five-branch dispatcher and re-call the family getter",
+      "category": 2,
+      "locations": [
+        {"path": "src/ui/menusys.cpp", "start": 2557, "end": 2589},
+        {"path": "src/ui/menusys.cpp", "start": 2864, "end": 2887}
+      ],
+      "problem": "Both functions compute kindElems with menuGetMainElems/menuGetInfoElems and then, in every one of the four non-Favourites branches, call the same getter again and pass the result to menuRenderElements, so the render call is duplicated 5 times per function and the getter runs twice per frame. The branch tests mirror the getter's own tests, and the slot fallbacks (vcd/favs/apps ItemsList or gamesItemsList) are written out twice, once per function.",
+      "fix": "Call menuRenderElements(kindElems) once at the top of each function, then pick the items list; better, fold both into one static helper taking the getter's result plus the info/main family pointers so the slot-fallback chain is written once.",
+      "justification": "",
+      "benefit": "~20 lines removed and one redundant family lookup per frame (INFERRED from cited ranges)",
+      "benefit_rank": 2,
+      "lines_removed": 20,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read menuGetInfoElems 2517-2535 and menuGetMainElems 2537-2555: their test order (Favourites per-kind, PS1, FAV, APP, default) is the branch order of 2562-2588 and 2869-2886, so menuGetXElems(list) inside each branch returns kindElems. thmResolveItemsList/thmFamilyItemsList (src/gfx/themeelems.cpp:130-160) take the nominal family and a fallback; keeping that nominal family argument preserves behaviour when the family is empty."
+    },
+    {
+      "n": 3,
+      "title": "Grid navigation repeats the count/index walk three times and the select-by-index tail twice",
+      "category": 2,
+      "locations": [
+        {"path": "src/ui/menusys.cpp", "start": 2599, "end": 2605},
+        {"path": "src/ui/menusys.cpp", "start": 2616, "end": 2622},
+        {"path": "src/ui/menusys.cpp", "start": 2639, "end": 2645},
+        {"path": "src/ui/menusys.cpp", "start": 2656, "end": 2662},
+        {"path": "src/ui/menusys.cpp", "start": 2675, "end": 2681}
+      ],
+      "problem": "menuGridRow, menuGridPage and menuGridAtRowStart each open with the same 7-line loop that counts the submenu and finds the selected index; menuGridRow and menuGridPage end with the same 7-line 'walk to target, set current and pagestart, play cursor sound' tail.",
+      "fix": "Add one static function returning count and index, and one that selects row N; call them from the three functions.",
+      "justification": "Replaces three and two verbatim copies; net removal after the helpers is positive.",
+      "benefit": "~15 lines removed (3x7 + 2x7 = 35 duplicated lines -> ~20 with two small helpers) (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read 2597-2683: the loops at 2600-2605, 2640-2645, 2676-2681 are textually identical; tails 2616-2622 and 2656-2662 are identical."
+    },
+    {
+      "n": 4,
+      "title": "Main-menu IDs MENU_SAVE_CHANGES, MENU_MMCE and MENU_RETIRED_NETWORK_UPDATE are never added; MENU_SAVE_CHANGES handler is unreachable",
+      "category": 1,
+      "locations": [
+        {"path": "src/ui/menusys.cpp", "start": 53, "end": 54},
+        {"path": "src/ui/menusys.cpp", "start": 58, "end": 58},
+        {"path": "src/ui/menusys.cpp", "start": 62, "end": 62},
+        {"path": "src/ui/menusys.cpp", "start": 2395, "end": 2396},
+        {"path": ".github/scripts/test_settings_back_keeps_edits.py", "start": 418, "end": 421}
+      ],
+      "problem": "menuInitMainMenu (1264-1290) is the only place items are appended to mainMenu and it never appends MENU_SAVE_CHANGES, MENU_MMCE or MENU_RETIRED_NETWORK_UPDATE, so the MENU_SAVE_CHANGES branch in menuHandleInputMenu can never run. The IDs are only in-memory row tags (never persisted), so the 'keep IDs stable' reservation protects nothing; a source-text test enforces the retired name.",
+      "fix": "Delete the three enum values, the MENU_SAVE_CHANGES branch, and the test assertion that requires MENU_RETIRED_NETWORK_UPDATE.",
+      "justification": "",
+      "benefit": "~8 lines removed (enum 3, comment 1, branch 2, test 2) (INFERRED); no ELF change worth stating",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep over src/RiptOPL (code, scripts, headers): MENU_SAVE_CHANGES only at menusys.cpp:58 and 2395; MENU_MMCE only at :62; MENU_RETIRED_NETWORK_UPDATE only at :54 and test_settings_back_keeps_edits.py:420. mainMenu is file-static and only filled in menuInitMainMenu; menu ids are compared symbolically (2344-2403) and the spacing gap keys on MENU_NBD (2210), so removing values cannot retag anything."
+    },
+    {
+      "n": 5,
+      "title": "gameMenuLoadConfig ignores its UIItem parameter; 17 callers pass it and menusys.h keeps an include-cycle workaround for it",
+      "category": 1,
+      "locations": [
+        {"path": "src/ui/menusys.cpp", "start": 970, "end": 977},
+        {"path": "include/menusys.h", "start": 7, "end": 12},
+        {"path": "include/menusys.h", "start": 145, "end": 145},
+        {"path": "src/ui/guigame.cpp", "start": 881, "end": 898}
+      ],
+      "problem": "gameMenuLoadConfig does (void)ui and forwards to menuLoadConfig after padRumbleFlush. Callers in guigame.cpp pass dialog arrays (diaGSConfig, diaCheatConfig, ...) and the rest pass NULL. The only reason menusys.h forward-declares struct UIItem (with a 5-line comment about the dia.h/opl.h/menusys.h include cycle) is this prototype.",
+      "fix": "Drop the parameter (gameMenuLoadConfig(void)), update the 17 call sites, and delete the forward declaration and its comment in menusys.h.",
+      "justification": "",
+      "benefit": "~7 header lines removed and 17 call sites simplified (INFERRED); no ELF change",
+      "benefit_rank": 1,
+      "lines_removed": 7,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read menusys.cpp:970-977 (ui unused). Grep gameMenuLoadConfig: menusys.cpp:976 def, 3267, 3273; menuitems.cpp:513; guisettings.cpp:3361; guigame.cpp:881,895,898,1030,1034,1185,1189,1425,1429,2391,2395; menusys.h:145. Grep UIItem in menusys.h: only the forward declaration at :12 and the prototype at :145. Whether menusys.h still needs dia.h for anything else was not checked."
+    },
+    {
+      "n": 6,
+      "title": "Stale and change-history comments in menusys.cpp describe code that is gone",
+      "category": 7,
+      "locations": [
+        {"path": "src/ui/menusys.cpp", "start": 563, "end": 565},
+        {"path": "src/ui/menusys.cpp", "start": 803, "end": 810},
+        {"path": "src/ui/menusys.cpp", "start": 2464, "end": 2469}
+      ],
+      "problem": "563-565 says _menuLoadConfig serves the game-settings path 'gameMenuLoadConfig', but gameMenuLoadConfig (976) now calls menuLoadConfig directly. 808-810 says MENU_APP_CONFIG_IDLE_FRAMES 'does not exist here', but it is defined and used at 2426-2433. 803-807 and 2464-2469 narrate older versions ('the old version had two paths', 'READ BY NOTHING ... the third field in this tree') rather than the current code.",
+      "fix": "Delete the NOTE(rebuild) block and the history sentences; correct the _menuLoadConfig comment to name its real caller (_menuRequestConfig when a waiter is pending).",
+      "justification": "",
+      "benefit": "~12 comment lines removed (INFERRED); no ELF change",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read menusys.cpp:563-577, 803-863, 970-977, 2423-2439, 2455-2472. Grep MENU_APP_CONFIG_IDLE_FRAMES: menusys.cpp:808 (comment), 2426 (definition), 2433 (use). Grep _menuLoadConfig: queued only at 851."
+    },
+    {
+      "n": 7,
+      "title": "menuRenameGame and menuDeleteGame repeat the same Favourites refusal and NULL-support blocks",
+      "category": 2,
+      "locations": [
+        {"path": "src/ui/menusys.cpp", "start": 284, "end": 295},
+        {"path": "src/ui/menusys.cpp", "start": 322, "end": 323},
+        {"path": "src/ui/menusys.cpp", "start": 530, "end": 541},
+        {"path": "src/ui/menusys.cpp", "start": 559, "end": 560}
+      ],
+      "problem": "Both actions open with the same two 6-line blocks (FAV_MODE page -> _STR_FAV_MSG, favourited row -> _STR_FAV_PERSISTENCE_MSG) differing only in the verb string id, and both end with the same 'NULL Support object. Please report' message box.",
+      "fix": "Move the two refusals into one static function taking the row and the verb string id, returning nonzero when it refused; call it from both actions.",
+      "justification": "Two 12-line copies become one ~12-line function plus two one-line calls.",
+      "benefit": "~10 lines removed (INFERRED from cited ranges)",
+      "benefit_rank": 1,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read 275-324 and 521-561 side by side; the blocks at 284-295 and 530-541 differ only in _STR_RENAME vs _STR_DELETE."
+    },
+    {
+      "n": 8,
+      "title": "Small redundancies: menuRequestInfoSize repeated six times, menuReinitMainMenu forwarder, unused menuSetParentalLockCheckState return value",
+      "category": 3,
+      "locations": [
+        {"path": "src/ui/menusys.cpp", "start": 2896, "end": 2918},
+        {"path": "src/ui/menusys.cpp", "start": 1292, "end": 1295},
+        {"path": "src/ui/menusys.cpp", "start": 2218, "end": 2226}
+      ],
+      "problem": "menuHandleInputInfo calls menuRequestInfoSize after each of six navigation branches, each with the same comment. menuReinitMainMenu only forwards to the static menuInitMainMenu. menuSetParentalLockCheckState returns the previous state, but none of its four callers (menusys.cpp:1022, 3264, 3272; guisettings.cpp:1671) reads it.",
+      "fix": "Record 'moved' in the navigation branches and call menuRequestInfoSize once; make menuInitMainMenu the exported function and delete the forwarder; make menuSetParentalLockCheckState return void and drop wasEnabled.",
+      "justification": "",
+      "benefit": "~12 lines removed (5 calls and comments, 4-line forwarder, 3 lines of return plumbing) (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read 2889-2920, 1264-1295, 2218-2226. Grep menuSetParentalLockCheckState over src/RiptOPL: menusys.h:198 prototype, menusys.cpp:1022, 2218 (def), 3264, 3272, guisettings.cpp:1671, all as statements. Grep menuReinitMainMenu: menusys.h:123, menusys.cpp:1292, guisettings.cpp (10 calls), test_caduceus_browser.py:321 and test_settings_back_keeps_edits.py:375 (source-text assertions that would need the new name)."
+    }
+  ]
+}

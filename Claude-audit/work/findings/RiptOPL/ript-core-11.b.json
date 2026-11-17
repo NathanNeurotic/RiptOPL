@@ -1,0 +1,155 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-11.b",
+  "coverage": [
+    {"path": "src/core/config.cpp", "status": "read_full", "note": "All 1740 lines read in an earlier attempt of this unit (notes file); 1-130, 200-430, 560-730 and 1340-1740 re-read to verify candidates."},
+    {"path": "src/core/diagsave.cpp", "status": "read_full", "note": ""},
+    {"path": "include/filemgr.h", "status": "read_full", "note": ""},
+    {"path": "src/core/filemgr.cpp", "status": "read_full", "note": ""},
+    {"path": "src/core/gsm.cpp", "status": "read_full", "note": ""},
+    {"path": "include/lang.h", "status": "read_full", "note": ""},
+    {"path": "src/core/lang.cpp", "status": "read_full", "note": ""},
+    {"path": "include/pad.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "config.cpp is the settings store: ConfigSet linked lists of fixed-size key/value entries, a dual legacy/libconfig reader and writer, home relocation (configInit/configSetMove) and a save path with snapshot, read-back and restore. diagsave.cpp writes the in-RAM diag ring to DIAG.TXT. filemgr.cpp/.h is the File Manager's device-agnostic file layer (list, join, copy, move, delete, rename, mkdir, with memory-card retries), driven synchronously from the GUI thread by src/ui/guifilemgr.cpp. gsm.cpp reads GSM settings and fills the eecore GsmConfig from a predefined video-mode table. lang.cpp discovers lang_*.lng files on devices (IO thread), loads and validates a translation table and swaps it under the GUI lock. pad.h declares the menu pad API implemented in src/core/pad.cpp.",
+  "reusable_helpers": [
+    {"name": "fmJoin", "path": "src/core/filemgr.cpp", "line": 102, "what": "joins dir + name with one separator ('\\\\' for smb, '/' otherwise), fails if it does not fit"},
+    {"name": "fmParent", "path": "src/core/filemgr.cpp", "line": 114, "what": "parent folder of a device path, keeps the root separator, 0 at a device root"},
+    {"name": "fmBaseName", "path": "src/core/filemgr.cpp", "line": 139, "what": "last name in a path (splits on '/', '\\\\', ':')"},
+    {"name": "fmNameOk", "path": "src/core/filemgr.cpp", "line": 148, "what": "validates a single file or folder name (no separators, not . or ..)"},
+    {"name": "fmDevPath", "path": "src/core/filemgr.cpp", "line": 88, "what": "converts mc0:/A/B to mcman's own mc0:A/B form"},
+    {"name": "fmCopy", "path": "src/core/filemgr.cpp", "line": 453, "what": "recursive file/folder copy in 64 KB blocks with progress callback, size read-back check and cleanup"},
+    {"name": "fmSizeText", "path": "src/core/filemgr.cpp", "line": 627, "what": "formats a byte count as KB/MB/GB text"},
+    {"name": "configBuildPath", "path": "src/core/config.cpp", "line": 618, "what": "prefix + filename join that respects a trailing '/' or ':'"},
+    {"name": "strToColor", "path": "src/core/config.cpp", "line": 36, "what": "parses #RRGGBB into a 3-byte colour"},
+    {"name": "lngFormatFits", "path": "src/core/lang.cpp", "line": 148, "what": "checks that a translated printf format reads the same argument types as the English one"},
+    {"name": "diagSave", "path": "src/core/diagsave.cpp", "line": 19, "what": "writes a header plus the diag ring to <dir>/DIAG.TXT"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "fmCopy / fmCopyThenDelete clean up an FM_ERR_EXISTS failure by deleting the file or folder that was already at the target",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/filemgr.cpp", "start": 453, "end": 466},
+        {"path": "src/core/filemgr.cpp", "start": 564, "end": 573},
+        {"path": "src/core/filemgr.cpp", "start": 332, "end": 338},
+        {"path": "src/core/filemgr.cpp", "start": 400, "end": 401},
+        {"path": "src/core/filemgr.cpp", "start": 156, "end": 172},
+        {"path": "src/ui/guifilemgr.cpp", "start": 454, "end": 458}
+      ],
+      "problem": "A failed copy is undone with fmDeleteTree(dst) whatever the error. FM_ERR_EXISTS means the target's create was refused because something is already there (O_EXCL open 332-338, mkdir 400-401), i.e. fmTarget's fmExists (156-172, one try) wrongly said 'not there'; the cleanup then removes that pre-existing file or folder tree, the case O_EXCL was added to stop. The file's own header (11-12) says the first card access after a card is detected answers 'changed card', and for a file the opendir fallback cannot succeed. Trigger: copy a file, swap the memory card in that slot (listing not refreshed), paste where the new card has the same name: open fails once, O_EXCL fails, fmExists now says yes, remove(dst) deletes the card's file.",
+      "fix": "In fmCopy and fmCopyThenDelete, skip the fmDeleteTree(dst) cleanup when fmErr is FM_ERR_EXISTS; keep it for every other error.",
+      "justification": "One condition in two places. It is the smallest change that stops a refused create from deleting the user's existing file or save folder; an FM_ERR_EXISTS can only arise where this call made nothing at that path (a nested one needs two source names the target treats as one, where keeping the partial copy is the safe side).",
+      "benefit": "Closes a memory-card data-loss path (an existing save file or folder deleted on paste). No size change.",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read filemgr.cpp 156-172 (fmExists: one open with fmDevPath, then opendir on the raw path), 315-372 (fmCopyFile: O_EXCL retries x4 on mc, then fmFail(fmExists(dst) ? FM_ERR_EXISTS : FM_ERR_WRITE)), 390-413, 424-433 (fmTarget), 453-466 (fmCopy cleanup), 468-477 (fmRemove), 564-585. Caller: guifilemgr.cpp fmPaste 428-485 runs fmCopy/fmMove on the GUI thread with mc paths in mc0:/ form (fmScanDrives 204). The changed-card behaviour on the first access is the code's own statement at filemgr.cpp:11-12 (INFERRED that it applies after a swap in an open listing); whether mcman honours O_EXCL was not checked (if not, the same false negative overwrites instead)."
+    },
+    {
+      "n": 2,
+      "title": "Every config entry is a fixed 308-byte node (48-byte key + 256-byte value) regardless of content",
+      "category": 4,
+      "locations": [
+        {"path": "include/configset.h", "start": 13, "end": 20},
+        {"path": "include/config.h", "start": 268, "end": 269},
+        {"path": "src/core/config.cpp", "start": 229, "end": 241}
+      ],
+      "problem": "allocConfigItem mallocs sizeof(config_value_t) = 48 + 256 + 4 = 308 bytes (plus malloc header) for every key, although typical keys are under 30 bytes and most values are a few digits. The five global sets (settings, last, apps, network, game) stay loaded for the whole menu session; include/config.h defines 137 CONFIG_OPL_* and 47 CONFIG_ITEM_* key names, so the resident sets hold on the order of 150-250 nodes.",
+      "fix": "Allocate each node with its key and value at their real lengths (one malloc: header + key + NUL + value + NUL) and reallocate the node only when setStr stores a longer value. Callers that keep a getStr() pointer across a setStr of the same key must be checked first, since such a pointer would then dangle.",
+      "justification": "",
+      "benefit": "INFERRED: ~200 resident nodes x ~280 unused bytes = ~55 KB EE heap returned; per-game sets loaded at launch shrink the same way. Not measured.",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "M",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read configset.h:13-20 (key[CONFIG_KEY_NAME_LEN], val[CONFIG_KEY_VALUE_LEN], next), config.h:265-269 (48 and 256), config.cpp:229-241 (malloc(sizeof(config_value_t)) per entry), 363-386 (setStr overwrites val in place), 389-399 (getStr returns a pointer into val). git grep -c on include/config.h: 137 '#define CONFIG_OPL_* \"' and 47 '#define CONFIG_ITEM_* \"'. Theme config is freed after load (themes.cpp:1814), so it is not counted. Entry counts per set were not measured."
+    },
+    {
+      "n": 3,
+      "title": "configWrite restores the snapshot only when the file is shorter than the OLD file, so a save cut short after it grew stays truncated",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/config.cpp", "start": 1673, "end": 1685}
+      ],
+      "problem": "After a failed save the damage test is curLen < originalLen. When the new content is longer than the old file and the write stops part way (short write on a flaky or full device, the #184 case this machinery exists for), a file with originalLen <= curLen < new length is left as is: the tail settings are lost and the last line is cut mid-value, though a good snapshot is in RAM. The restore write's result is also unchecked (1681) while the log says restored.",
+      "fix": "Keep fileBuffer->totalQueued in a local before closeFileBuffer and restore when curLen differs from it (only on the path where the file was opened); leave the open-failure path without a restore as now.",
+      "justification": "Replaces one comparison and adds one local. The concrete problem is a truncated settings file left on disk after a failed save while the intact original is held in RAM; comparing with the length that was meant to land is the smallest correct damage test.",
+      "benefit": "Fixes a minor settings-loss case on failed saves to USB/HDD/MMCE/SMB; no size change (READ).",
+      "benefit_rank": 2,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read config.cpp 1532-1570 (snapshot read of the old file, skipped on mc), 1578-1618 (single openFileBuffer with O_TRUNC, closeFileBuffer), 1639-1658 (read-back rescue only for non-pfs with intended captured), 1667-1691 (restore if curLen < originalLen). util.cpp 647-672: writeFileBuffer counts totalQueued, records writeError on short writes and continues; util.h:32 documents totalQueued as total bytes handed to writeFileBuffer."
+    },
+    {
+      "n": 4,
+      "title": "diagSave keeps a static 16 KB copy buffer in .bss for the whole run",
+      "category": 4,
+      "locations": [
+        {"path": "src/core/diagsave.cpp", "start": 17, "end": 21},
+        {"path": "src/core/diagsave.cpp", "start": 32, "end": 32}
+      ],
+      "problem": "static char copy[DIAG_SIZE] (16 KB) is reserved in every build although it is only used while DIAG.TXT is written: from the Drive Status 'save' action (drivestatus.cpp:161) and, with Debug on, before an MMCE launch (mmcesupport.cpp:1335,1436,1666).",
+      "fix": "malloc(DIAG_SIZE) at the start of diagSave, return 0 if it fails, free it after the write.",
+      "justification": "Adds one NULL check; returns 16 KB of EE RAM for the whole session for a rare debug save.",
+      "benefit": "16 KB .bss removed (INFERRED: char copy[16 * 1024]); no ELF file size change.",
+      "benefit_rank": 2,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read diagsave.cpp 1-55; DIAG_SIZE 16*1024 at line 17. Callers from grep diagSave over src: drivestatus.cpp:161, mmcesupport.cpp:1335/1436/1666 (via diagSaveBeforeLaunch). diagsave.cpp is in src/core, compiled into the main ELF (ps2.yaml:641 per brief). diaglog.cpp:46-71 diagCopy returns 0..size, so the write length is never negative."
+    },
+    {
+      "n": 5,
+      "title": "File Manager walks re-list big folders and probe every removed file twice on all devices",
+      "category": 5,
+      "locations": [
+        {"path": "src/core/filemgr.cpp", "start": 225, "end": 248},
+        {"path": "src/core/filemgr.cpp", "start": 468, "end": 477}
+      ],
+      "problem": "fmChildren re-runs fmList (opendir, readdir and one stat per entry) on a 4x larger array each time a folder fills it: a 2000-entry folder is read 4 times with 64+256+1024+2000 stats instead of 2000. fmRemove follows every successful remove/rmdir with fmExists (a failed open plus a failed opendir) and pauses 50 ms per retry on any device, though its comment names only the card. Both run on the GUI thread inside fmPaste/fmDeleteSelection (guifilemgr.cpp:428-514), which shows a static text screen meanwhile; fmCopyTo also walks the tree once more for the progress total.",
+      "fix": "Read a folder in one readdir pass in fmChildren, growing the array with realloc, instead of re-listing; in fmRemove do the fmExists check and the pause-retry only when fmIsMc(path), and take remove()/rmdir()'s result as is elsewhere.",
+      "justification": "",
+      "benefit": "Deleting a 2000-file ART folder on USB: ~4000 fewer fileXio calls from fmRemove plus ~1300 fewer stats and 3 fewer readdir passes (counts READ from the code; time per call INFERRED ~1 ms, so seconds).",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read filemgr.cpp 174-221 (fmList stats each entry via fmIsDir), 225-248 (cap 64, x4 per retry up to 65536, full fmList each time), 250-285 (fmTreeWalk), 435-449 (fmCopyTo walks fmTreeSize first), 468-477 (fmRemove: remove + fmExists, 4 tries with fmPause on any device), 479-498 (fmDeleteTree). Callers guifilemgr.cpp:428-485 and 487-514 run on the GUI thread (dialog handlers, guiRenderTextScreen progress). Per-call latency not measured."
+    },
+    {
+      "n": 6,
+      "title": "lngGetFilePath(0) reads languages[-1]; the language popup calls it with the current id, which can be 0",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/lang.cpp", "start": 550, "end": 556},
+        {"path": "src/ui/guinotify.cpp", "start": 134, "end": 135},
+        {"path": "src/ui/guinotify.cpp", "start": 33, "end": 36}
+      ],
+      "problem": "Notifications::check only ever sets showLang_ (never clears it), and show() re-reads lngGetGuiValue() every frame for 5 s and passes it to lngGetFilePath, which indexes languages[langID - 1] with no check. Pick a language in Settings (popup armed), then switch back to English within the 5 s: guiLangID is 0, lngGetFilePath reads the word before the heap array as a char * and snprintf %s dereferences it (garbage text or an EE exception).",
+      "fix": "Return NULL from lngGetFilePath for langID < 1 and skip the language line in show() when it is NULL (as the theme line already does via thmGetFilePath at guinotify.cpp:29).",
+      "justification": "Two-line guard; the concrete problem is an out-of-bounds pointer read reachable from the Settings language switch.",
+      "benefit": "Removes a rare menu crash path; no size change.",
+      "benefit_rank": 1,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read lang.cpp 481-526 (lngSetGuiValue sets guiLangID = 0 for English), 550-556 (no bound). guinotify.cpp 21-38 (check sets showLang_ only when id != 0, never resets it), 96-108 and 134-140 (show re-reads lngGetGuiValue per frame), 148 (5 s window). opl.cpp:357-360 calls guiCheckNotifications(0, langChanged) after a language change; settingsio.cpp:2521 is the Settings path. grep lngGetFilePath: only guinotify.cpp:135 calls it."
+    }
+  ]
+}

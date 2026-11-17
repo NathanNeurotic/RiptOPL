@@ -1,0 +1,7 @@
+# Objects/archives named on the link line (LOAD lines of eecore.map) that contribute 0 bytes
+# to .text/.rodata/.data/.bss of the output. For an archive: no member was pulled in.
+
+archive, no member used: <sdk>/packages/core/startup/ee/lib/libstartup.a
+archive, no member used: <sdk>/toolchain/ee/bin/../lib/gcc/mips64r5900el-ps2-elf/15.3.1/libgcc.a
+
+# 2 of 23 link inputs contribute nothing

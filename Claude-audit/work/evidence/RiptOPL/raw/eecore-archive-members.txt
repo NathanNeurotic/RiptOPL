@@ -1,0 +1,25 @@
+# Archive members pulled into the link, from eecore.map ("Archive member included ...")
+# total members: 13 from 2 archives
+
+## members per archive
+    7  <sdk>/packages/core/kernel/lib/libkernel.a
+    6  <sdk>/packages/core/patches/lib/libpatches.a
+
+## detail (member <- first referencing file (symbol))
+
+<sdk>/packages/core/kernel/lib/libkernel.a  [7]
+    kernel.o                                 <- obj/eecore/ee_core/src/padhook.o (ResetEE)
+    sifrpc.o                                 <- obj/eecore/ee_core/src/modmgr.o (sceSifBindRpc)
+    getkernel.o                              <- obj/eecore/ee_core/src/syshook.o (GetSyscallHandler)
+    iopheap.o                                <- obj/eecore/ee_core/src/iopmgr.o (SifInitIopHeap)
+    iopcontrol.o                             <- obj/eecore/ee_core/src/iopmgr.o (_iop_reboot_count)
+    glue.o                                   <- obj/eecore/ee_core/src/syshook.o (DIntr)
+    sifcmd.o                                 <- <sdk>/packages/core/kernel/lib/libkernel.a(sifrpc.o) (sceSifSendCmd)
+
+<sdk>/packages/core/patches/lib/libpatches.a  [6]
+    smem.o                                   <- obj/eecore/ee_core/src/patches.o (smem_write)
+    patch_enable_lmb.o                       <- obj/eecore/ee_core/src/iopmgr.o (sbv_patch_enable_lmb)
+    patch_disable_prefix_check.o             <- obj/eecore/ee_core/src/padhook.o (sbv_patch_disable_prefix_check)
+    common.o                                 <- <sdk>/packages/core/patches/lib/libpatches.a(patch_enable_lmb.o) (smem_write_word)
+    smod.o                                   <- <sdk>/packages/core/patches/lib/libpatches.a(patch_enable_lmb.o) (smod_get_mod_by_name)
+    slib.o                                   <- <sdk>/packages/core/patches/lib/libpatches.a(patch_enable_lmb.o) (_slib_cur_exp_lib_list)

@@ -1,0 +1,313 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-18",
+  "coverage": [
+    {"path": "src/gfx/themeelems.cpp", "status": "read_full", "note": ""},
+    {"path": "include/themes.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "include/themes.h is the public theme API: the element structs (image_texture_t, mutable_image_t, mutable_text_t, items_list_t, theme_element_t, theme_elems_t), the big theme_t with twelve element families, hint and glyph-set enums, and the theme loader/catalog prototypes implemented in themes.cpp. src/gfx/themeelems.cpp holds the per-element code split out of themes.cpp: the devices= filter vocabulary and gates, collision-aware text rooms, the init/draw/end functions for StaticText, GameCountText, AttributeText, StaticImage, GameImage, Background, AttributeImage, MenuIcon, MenuText, BdmIndex, ItemsList (with center-out cover warming), SaveIcon, ItemText, HintText and InfoHintText, the per-row cover-element redirect (thmGetElemForItem) and the user wallpaper load/apply. themes.cpp's loader calls the init functions and wires the draw pointers; coverflow.cpp, grid.cpp and psbbnflow.cpp reuse the image helpers through themeint.h.",
+  "reusable_helpers": [
+    {"name": "thmParseDeviceList", "path": "src/gfx/themeelems.cpp", "line": 69, "what": "parses a comma-separated device name list into a bitmask with strtok_r (thread-safe tokenizing)"},
+    {"name": "thmTextRoom", "path": "src/gfx/themeelems.cpp", "line": 311, "what": "free horizontal room for text on a row band given obstacle boxes and the screen edge"},
+    {"name": "freeImageTexture", "path": "src/gfx/themeelems.cpp", "line": 679, "what": "unloads a GSTEXTURE from VRAM and frees its pixels, CLUT, name and the holder"},
+    {"name": "initImageTexture", "path": "src/gfx/themeelems.cpp", "line": 699, "what": "loads a theme PNG (disk path or embedded internal texture) into an image_texture_t, with optional overlay corner keys"},
+    {"name": "getGameImageTextureEx", "path": "src/gfx/themeelems.cpp", "line": 973, "what": "eligibility-checked game art fetch through the texture cache (priority flag, PS1 id key, folder/hidden/BG gates)"},
+    {"name": "getGameImageCached", "path": "src/gfx/themeelems.cpp", "line": 1028, "what": "returns already-resident game art only, never queues a read"},
+    {"name": "thmWallpaperLoad", "path": "src/gfx/themeelems.cpp", "line": 1741, "what": "reads a PNG header to reject oversize images before decoding, then loads an 8-bit palettised PNG"},
+    {"name": "drawHintEntry", "path": "src/gfx/themeelems.cpp", "line": 2243, "what": "draws one button glyph with or without its translated label and returns the next x"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "initImageInternalTexture duplicates initImageTexture's themePath==NULL branch and makes a failed internal load run twice",
+      "category": 2,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 762, "end": 784},
+        {"path": "src/gfx/themeelems.cpp", "start": 893, "end": 898},
+        {"path": "src/gfx/themeelems.cpp", "start": 712, "end": 719}
+      ],
+      "problem": "For a built-in theme (themePath NULL) initMutableImage first calls initImageInternalTexture, which does texLookupInternalTexId + texLoadInternal; if that fails it calls initImageTexture(NULL, ...), whose themePath==NULL branch (712-719) does the same lookup and load again. texLoadInternal(-1) already returns ERR_BAD_FILE (textures.cpp:1007), so initImageTexture alone gives the identical result. initImageInternalTexture also ignores its themeConfig parameter.",
+      "fix": "Delete initImageInternalTexture and the 'if (!themePath)' block at 893-895; the following initImageTexture call already handles a NULL themePath.",
+      "justification": "",
+      "benefit": "26 source lines removed; one static function (~150 bytes of .text, INFERRED) and a repeated failed lookup per missing built-in default texture.",
+      "benefit_rank": 2,
+      "lines_removed": 26,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read themeelems.cpp:699-784 and 893-898. Grep initImageInternalTexture over src/RiptOPL: definition 762 and single call 895 only. textures.cpp:1131-1134 texLoadInternal -> texLoadAll(texture, NULL, texId, NULL, 0); textures.cpp:1007 'if (texId == -1 || !internalDefault[texId].texture) return ERR_BAD_FILE'. Both paths store the name and free on failure the same way."
+    },
+    {
+      "n": 2,
+      "title": "Overlay-or-plain image draw block copied three times (StaticImage, GameImage, AttributeImage)",
+      "category": 2,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 931, "end": 938},
+        {"path": "src/gfx/themeelems.cpp", "start": 1307, "end": 1314},
+        {"path": "src/gfx/themeelems.cpp", "start": 1546, "end": 1553}
+      ],
+      "problem": "Each draw function repeats the same 8 lines: rmDrawOverlayPixmap with the element geometry and the overlay's eight corner fields, then rmDrawPixmap of overlayTexture2, else a plain rmDrawPixmap. Only the inlay texture and the element differ (in drawStaticImage the overlay inlay is defaultTexture, which equals bgPicture there because a Background never reads an overlay key, line 860).",
+      "fix": "Add one static helper (element, mutable_image_t, inlay GSTEXTURE) holding this block and call it from the three places.",
+      "justification": "The same 8-line block exists three times in one file; one ~10-line helper plus three one-line calls removes about 11 lines and three copies of a long 18-argument call.",
+      "benefit": "~11 source lines net; two inlined copies of the rmDrawOverlayPixmap argument setup (~200 bytes .text, INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 11,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read the three blocks. Grep rmDrawOverlayPixmap( over src: the three calls here plus coverflow.cpp:341, grid.cpp:324, psbbnflow.cpp:169 (those use their own geometry and colour, not included). themeelems.cpp:860-863 shows Background elements never load an overlay, so bgPicture==defaultTexture in the overlay branch of drawStaticImage."
+    },
+    {
+      "n": 3,
+      "title": "Eight hand-unrolled overlay corner key reads in initImageTexture",
+      "category": 3,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 726, "end": 753}
+      ],
+      "problem": "The eight <name>_overlay_ulx..lry keys are read with eight copies of snprintf + configGetInt + assign (24 lines). configGetInt leaves the output untouched when the key is absent (config.cpp:420-428) and the texture is calloc'd, so each can read straight into the field.",
+      "fix": "Loop over a small static table of the eight key suffixes paired with the eight field pointers (or make the corners an int[8]) and call configGetInt(themeConfig, prop, field) once in the loop.",
+      "justification": "Replaces 24 repeated lines with a ~7-line loop and table; no behaviour change.",
+      "benefit": "~17 source lines removed; seven fewer inlined snprintf/configGetInt sequences (~300 bytes .text, INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 17,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read themeelems.cpp:699-760 (texture is calloc'd at 703). include/config.h:324 configGetInt forwards to ConfigSet::getInt; src/core/config.cpp:420-428 writes *value only when the key exists. Fields are consecutive ints at include/themes.h:14-21."
+    },
+    {
+      "n": 4,
+      "title": "malloc followed by field-by-field zeroing instead of calloc in four init functions",
+      "category": 3,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 211, "end": 217},
+        {"path": "src/gfx/themeelems.cpp", "start": 810, "end": 829},
+        {"path": "src/gfx/themeelems.cpp", "start": 1608, "end": 1622},
+        {"path": "src/gfx/themeelems.cpp", "start": 2123, "end": 2141},
+        {"path": "src/gfx/themeelems.cpp", "start": 703, "end": 704},
+        {"path": "src/gfx/themeelems.cpp", "start": 767, "end": 768}
+      ],
+      "problem": "initMutableText, initMutableImage, initBasic and initItemsList malloc a struct and then zero or NULL most fields one by one (initBasic even comments that it must, 1614); initImageTexture/initImageInternalTexture set name=NULL right after calloc. About 33 of these lines only write 0/NULL.",
+      "fix": "Use calloc in the four init functions and delete every explicit 0/NULL store; keep only the non-zero defaults (-1 cache ids, currentCount -1, showRun 1, endElem). Delete the two 'texture->name = NULL' lines after calloc.",
+      "justification": "",
+      "benefit": "~33 source lines removed and fewer stores in the generated code (~100 bytes .text, INFERRED); new fields can no longer be left uninitialised by accident.",
+      "benefit_rank": 2,
+      "lines_removed": 33,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read the cited ranges. Count of pure zero/NULL stores: 212,214-217 (5); 815-826 plus RA 827-829 (15); 1611,1612,1614-1619,1621,1622 (10); 2134,2140,2141 (3); 704, 768 (2). All other fields of those structs are assigned later in the same functions."
+    },
+    {
+      "n": 5,
+      "title": "The twelve element families are enumerated by hand five times (12 findDuplicate calls plus four arrays in themes.cpp)",
+      "category": 2,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 871, "end": 882},
+        {"path": "src/gfx/themes.cpp", "start": 196, "end": 198},
+        {"path": "src/gfx/themes.cpp", "start": 334, "end": 336},
+        {"path": "src/gfx/themes.cpp", "start": 1122, "end": 1124},
+        {"path": "src/gfx/themes.cpp", "start": 1855, "end": 1858},
+        {"path": "include/themes.h", "start": 200, "end": 234}
+      ],
+      "problem": "initMutableImage calls findDuplicate twelve times, once per family; themes.cpp spells the same twelve-pointer list as a local array in four more functions (one with the first entry dropped). Adding a family means editing all of them.",
+      "fix": "Keep one list: either make the families an indexed array in theme_t (named indices) or add one small function in themes.cpp that fills theme_elems_t *[12] for a theme (declared in themeint.h), and loop over it in initMutableImage and the four themes.cpp sites.",
+      "justification": "The same 12-entry enumeration appears five times; one 5-line accessor and short loops remove roughly 12 lines and the risk of a family missing from one copy.",
+      "benefit": "~12 source lines net; 11 fewer inlined 7-argument calls in initMutableImage (~250 bytes .text, INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read themeelems.cpp:871-882 and themes.cpp:194-209, plus grep 'theme_elems_t \\*\\w+\\[\\d*\\] = {' over src: themes.cpp:196 (12), 334 (12), 355 (8, a different subset), 1122 (11, all but main), 1666 (6 mains, different subset), 1855 (12). Grep findDuplicate: only the 12 calls here and the prototype themeint.h:104."
+    },
+    {
+      "n": 6,
+      "title": "Element init chain carries parameters that are unused or always passed the same constant",
+      "category": 1,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 209, "end": 209},
+        {"path": "src/gfx/themeelems.cpp", "start": 469, "end": 469},
+        {"path": "src/gfx/themeelems.cpp", "start": 622, "end": 622},
+        {"path": "src/gfx/themeelems.cpp", "start": 633, "end": 633},
+        {"path": "src/gfx/themeelems.cpp", "start": 657, "end": 666},
+        {"path": "include/themeint.h", "start": 104, "end": 104},
+        {"path": "src/gfx/themeelems.cpp", "start": 808, "end": 808},
+        {"path": "src/gfx/themeelems.cpp", "start": 941, "end": 943},
+        {"path": "src/gfx/themeelems.cpp", "start": 1337, "end": 1339},
+        {"path": "src/gfx/themeelems.cpp", "start": 1727, "end": 1729},
+        {"path": "src/gfx/themeelems.cpp", "start": 2119, "end": 2138}
+      ],
+      "problem": "initMutableText ignores themePath and theme, and both callers pass alias=NULL, DISPLAY_ALWAYS, SIZING_NONE. findDuplicate's overlayTexture is discarded with (void) and the function is exported in themeint.h though only this file calls it. initMutableImage's defaultTexture/overlayTexture, initGameImage's texture/overlay, initStaticImage's imageName, initBackground's texture and initItemsList's decorator are NULL at every call site; each is only a seed for a configGetStr.",
+      "fix": "Drop these parameters and use locals initialised to the constant; make findDuplicate static without overlayTexture, delete its themeint.h prototype and shorten the 657-666 comment to one line; in initItemsList read straight into itemsList->decorator.",
+      "justification": "",
+      "benefit": "~10 source lines removed and 13 fewer arguments across 8 signatures and ~20 call sites; no ELF change expected (INFERRED, -O2 already propagates constants for static callees).",
+      "benefit_rank": 2,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep over src/RiptOPL: initMutableText calls 469, 622 only. initMutableImage calls 943, 1339, 1581, 1729, grid.cpp:671, coverflow.cpp:356, all with NULL,NULL or (imageName/texture NULL from callers). initGameImage calls themes.cpp:702,756,759 (texture,overlay NULL); initStaticImage themes.cpp:705 (NULL); initBackground themes.cpp:103,113,709 (texture NULL); initItemsList themes.cpp:153,732,739,743,747,751 (decorator NULL). findDuplicate: only calls 871-882 and prototype themeint.h:104."
+    },
+    {
+      "n": 7,
+      "title": "Checks for ELEM_TYPE_COVERFLOW can never match: Coverflow elements are created as ELEM_TYPE_GAME_IMAGE",
+      "category": 1,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 366, "end": 367},
+        {"path": "src/gfx/themeelems.cpp", "start": 1380, "end": 1380}
+      ],
+      "problem": "themes.cpp:784 creates a Coverflow element with initBasic(..., ELEM_TYPE_GAME_IMAGE, ...) and no code assigns ELEM_TYPE_COVERFLOW to elem->type, so the '!= ELEM_TYPE_COVERFLOW' term in thmElemBox and the '&& e->type != ELEM_TYPE_COVERFLOW' term in thmFindElemBySuffixEx are always true. The comment above thmFindElemBySuffixEx (1366-1367) already says Coverflow is typed GAME_IMAGE.",
+      "fix": "Delete the ELEM_TYPE_COVERFLOW comparisons at 367 and 1380.",
+      "justification": "",
+      "benefit": "Two dead comparisons removed; trivial .text.",
+      "benefit_rank": 1,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep ELEM_TYPE_COVERFLOW over src: themeelems.cpp:367, 1380; themes.cpp:644 (a type-name string compare in thmAutoFitElem, valid) and themes.cpp:780 (name compare). Read themes.cpp:780-785: initBasic(..., ELEM_TYPE_GAME_IMAGE, ...). initBasic sets elem->type only from its argument (themeelems.cpp:1610)."
+    },
+    {
+      "n": 8,
+      "title": "drawItemsList: identical title-draw code in both decorator branches and the decorator test recomputed per row",
+      "category": 2,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 2017, "end": 2018},
+        {"path": "src/gfx/themeelems.cpp", "start": 2060, "end": 2086}
+      ],
+      "problem": "Lines 2075-2078 and 2082-2085 are the same fntRenderStringFit/fntRenderString pair, and the branch condition at 2060-2061 is exactly hasDecorator computed at 2017-2018, so isHiddenArtworkCache (two strcmp) runs again for every visible row each frame.",
+      "fix": "Test hasDecorator for the decorator icon block only, then draw the title once after it; delete the else branch.",
+      "justification": "",
+      "benefit": "~8 source lines removed; one isHiddenArtworkCache call per visible row per frame saved.",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read themeelems.cpp:2009-2107. hasDecorator (2017-2018) is const and uses the same expression as 2060-2061; itemsList is not modified inside the row loop."
+    },
+    {
+      "n": 9,
+      "title": "Small redundant checks in drawGameImage and initMutableImage",
+      "category": 3,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 1234, "end": 1239},
+        {"path": "src/gfx/themeelems.cpp", "start": 1247, "end": 1249},
+        {"path": "src/gfx/themeelems.cpp", "start": 1257, "end": 1259},
+        {"path": "src/gfx/themeelems.cpp", "start": 860, "end": 869}
+      ],
+      "problem": "drawGameImage opens 'if (isBackground)' twice in a row (1234 and 1239); selImg and cfImg are tested for NULL right after covElem->extended / cfElem->extended were tested non-NULL; initMutableImage has two consecutive identical 'if (type != ELEM_TYPE_BACKGROUND)' blocks.",
+      "fix": "Merge the two isBackground blocks and the two type != BACKGROUND blocks; delete the 'selImg != NULL &&' and 'cfImg != NULL &&' terms.",
+      "justification": "",
+      "benefit": "~5 source lines removed; no ELF change expected (INFERRED, the compiler folds these).",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read themeelems.cpp:1230-1291 and 857-869."
+    },
+    {
+      "n": 10,
+      "title": "Three forwarding wrappers: getGameImageTexture, thmFindElemBySuffix, thmGetItemSource",
+      "category": 3,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 1020, "end": 1023},
+        {"path": "src/gfx/themeelems.cpp", "start": 1355, "end": 1361},
+        {"path": "src/gfx/themeelems.cpp", "start": 1395, "end": 1398},
+        {"path": "include/themeint.h", "start": 92, "end": 94},
+        {"path": "include/themeint.h", "start": 108, "end": 108}
+      ],
+      "problem": "getGameImageTexture only calls getGameImageTextureEx(..., 0); thmFindElemBySuffix only calls thmFindElemBySuffixEx(..., 0); thmGetItemSource ignores item and returns menu->item->userdata. This is C++, so default arguments cover the first two, and the third is a one-field read.",
+      "fix": "Give getGameImageTextureEx a default isPriority = 0 and thmFindElemBySuffixEx a default declaredOnly = 0 (renaming them to the short names), delete the two wrappers; replace thmGetItemSource(menu, item) with menu->item->userdata at its 7 call sites and delete it. The stubs in .github/scripts/test_psbbn_flow.py:121,215-216 need the same rename.",
+      "justification": "",
+      "benefit": "~12 source lines and 3 prototypes removed; two tiny call frames (INFERRED, gc-sections keeps them since they are called).",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep over src/RiptOPL: getGameImageTexture callers themeelems.cpp:1282, 2004, psbbnflow.cpp:155, grid.cpp:308, coverflow.cpp:247, 292; thmFindElemBySuffix callers themes.cpp:436, themeelems.cpp:1496; thmGetItemSource callers psbbnflow.cpp:155,269, grid.cpp:83,275,308,517, coverflow.cpp:65. Test stubs at .github/scripts/test_psbbn_flow.py:121, 215, 216."
+    },
+    {
+      "n": 11,
+      "title": "drawAttributeImage tests 'built-in theme' two different ways; one exact test makes the inner glyph fallback dead",
+      "category": 3,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 1535, "end": 1541},
+        {"path": "src/gfx/themeelems.cpp", "start": 1557, "end": 1571}
+      ],
+      "problem": "The outer test uses thmGetFilePath(thmGetGuiValue())==NULL (the selected theme id, which can differ from gTheme while a switch is pending or abandoned), so the disk-theme branch carries a second fallback keyed on cache->prefix()==NULL, which is exact for the element being drawn (the cache was created with themePath at line 888). Both draw the same embedded glyph.",
+      "fix": "Use 'attributeImage->cache->prefix() == NULL' as the single built-in test at 1535 and delete the inner fallback block and its comment (1557-1571).",
+      "justification": "",
+      "benefit": "~14 source lines removed and one thmGetFilePath call per AttributeImage per frame.",
+      "benefit_rank": 1,
+      "lines_removed": 14,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read themeelems.cpp:1517-1577 and 884-888 (cacheInitCache(-1, themePath, ...) for attribute images). themes.cpp:2085-2097 filePath returns NULL for built-in ids. That the gui id and gTheme can disagree (the only case where the inner fallback runs) is INFERRED from the abandoned-load path mentioned at themes.h:368-370, not traced."
+    },
+    {
+      "n": 12,
+      "title": "Unused or duplicate includes and a duplicate prototype in themeelems.cpp",
+      "category": 1,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 4, "end": 6},
+        {"path": "src/gfx/themeelems.cpp", "start": 15, "end": 15},
+        {"path": "src/gfx/themeelems.cpp", "start": 26, "end": 26},
+        {"path": "src/gfx/themeelems.cpp", "start": 1104, "end": 1106}
+      ],
+      "problem": "themeint.h is included twice (lines 4 and 6); themecatalog.h (class ThemeCatalog), sound.h (audio/sfx/bgm) and time.h are included but nothing in the file uses them; the local prototype of thmGetElemForItem at 1106 repeats themeint.h:95, which is already included.",
+      "fix": "Delete the second themeint.h include, the themecatalog.h, sound.h and time.h includes, and the local prototype with its comment (1104-1106).",
+      "justification": "",
+      "benefit": "7 lines removed; slightly faster compile; no ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 7,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read the whole file. Grep in themeelems.cpp for ThemeCatalog|catalog: only the include and a comment at 30. Grep for time(|clock(|time_t|sfx|bgm|audio: no hits. sound.h declares only audio/sfx/bgm functions. include/themeint.h:95 has the same thmGetElemForItem prototype. Confidence Med only because a transitively needed declaration would show at compile time."
+    },
+    {
+      "n": 13,
+      "title": "Stale comments naming a removed function (guiAlignMenuHints) and old .c files, plus a misplaced and a commented-out line",
+      "category": 7,
+      "locations": [
+        {"path": "src/gfx/themeelems.cpp", "start": 2256, "end": 2256},
+        {"path": "src/gfx/themeelems.cpp", "start": 2273, "end": 2279},
+        {"path": "src/gfx/themeelems.cpp", "start": 2311, "end": 2311},
+        {"path": "src/ui/menusys.cpp", "start": 151, "end": 151},
+        {"path": "src/gfx/themeelems.cpp", "start": 35, "end": 38},
+        {"path": "src/gfx/themeelems.cpp", "start": 2222, "end": 2222},
+        {"path": "include/themes.h", "start": 119, "end": 119},
+        {"path": "include/themes.h", "start": 320, "end": 320},
+        {"path": "src/gfx/themeelems.cpp", "start": 2143, "end": 2143}
+      ],
+      "problem": "guiAlignMenuHints no longer exists (uidraw.cpp has only guiAlignSubMenuHints) but three comments here and one in menusys.cpp explain the code by it; comments cite opl.c, textures.c, menusys.c and themes.c, which are now .cpp; themes.h:320 ends thmHintRank's line with a comment that belongs to thmGlyphSetRefresh (317); 2143 is a commented-out assignment.",
+      "fix": "Reword the guiAlignMenuHints comments to name hintEntryWidth/drawHintText, fix the file names, move the 320 trailing comment to line 317, and delete line 2143.",
+      "justification": "",
+      "benefit": "Comment accuracy only; 1 line removed.",
+      "benefit_rank": 1,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep guiAlignMenuHints over src: only comments at themeelems.cpp:2256, 2273, 2311 and menusys.cpp:151; no definition. uidraw.cpp:12-86 defines guiDrawIconAndText, guiDrawIconAndLiteralText, guiAlignSubMenuHints. Repo sources are .cpp (brief section 1, 120 C++ files in src/)."
+    }
+  ]
+}

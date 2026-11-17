@@ -1,0 +1,138 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-30.b",
+  "coverage": [
+    {"path": "src/sources/nettime.cpp", "status": "read_full", "note": ""},
+    {"path": "include/rabadge.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/rabadge.cpp", "status": "read_full", "note": ""},
+    {"path": "include/rahash.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/rahash.cpp", "status": "read_full", "note": ""},
+    {"path": "include/rahunt.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/rahunt.cpp", "status": "read_full", "note": ""},
+    {"path": "include/ranet.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/ranet.cpp", "status": "read_full", "note": ""},
+    {"path": "include/rapopslaunch.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/rapopslaunch.cpp", "status": "read_full", "note": ""},
+    {"path": "src/sources/ratls_ps2.cpp", "status": "read_full", "note": ""},
+    {"path": "include/rawatch.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "The menu-side RetroAchievements layer plus the internet clock sync. nettime.cpp sets the console clock from an HTTP Date header (base builds). rahash.cpp computes rcheevos-compatible PS2/PS1 hashes by walking ISO9660 directly over ISO files, VCDs, HDLoader partitions and the disc drive. ranet.cpp talks UDP (or the ministack's mstack: devctl while UDPFS owns the NIC) to the xeRAbora/Caduceus PC client, fetches the watch list in 896-byte chunks and stores it beside the game; it also does a small HTTP GET. ratls_ps2.cpp is the mbedTLS glue (DNS, TCP BIO with ps2ips alignment rules, RTC, entropy) for the RA HTTPS lookup and the updater. rabadge.cpp builds the per-list RA badge cache on the I/O thread, rahunt.cpp converts RA/<startup>.ach to the in-game menu blob, rapopslaunch.cpp patches and writes POPS/MODULE_9.IRX for tracked PS1 USB launches, and rawatch.h declares the in-memory watch list. Everything except nettime.cpp and the non-RA half of ratls_ps2.cpp is compiled only in RETROACHIEVEMENTS builds.",
+  "reusable_helpers": [
+    {"name": "Ranet::tcpRecv", "path": "src/sources/ranet.cpp", "line": 1072, "what": "non-blocking peek-then-read TCP receive into a 64-byte-aligned buffer, trimming the length so ps2ips never drops an unaligned tail"},
+    {"name": "netTimeExpired", "path": "src/sources/nettime.cpp", "line": 73, "what": "wrap-safe elapsed-time deadline check on the 32-bit clock()"},
+    {"name": "netTimeParseDate", "path": "src/sources/nettime.cpp", "line": 43, "what": "parses an HTTP IMF-fixdate Date header into year/month/day/h/m/s with range checks"},
+    {"name": "md5_hex", "path": "src/sources/rahash.cpp", "line": 171, "what": "formats a 16-byte MD5 digest as 32 lowercase hex digits"},
+    {"name": "le32", "path": "src/sources/rahash.cpp", "line": 204, "what": "reads a little-endian 32-bit value from a byte pointer (unaligned-safe)"},
+    {"name": "vcd_read_at", "path": "src/sources/rahash.cpp", "line": 276, "what": "reads 2048-byte logical data from a POPStarter VCD (1 MB header, 2352-byte raw sectors)"},
+    {"name": "RaHash::findPath", "path": "src/sources/rahash.cpp", "line": 663, "what": "resolves a backslash path to LBA/size through a bounded ISO9660 directory walk"},
+    {"name": "huntUtf8", "path": "src/sources/rahunt.cpp", "line": 20, "what": "decodes one UTF-8 code point with bounds and broken-sequence handling"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "RA badge cache keeps 168 bytes per list row for the whole session although it is only read during the same list rebuild",
+      "category": 4,
+      "locations": [
+        {"path": "src/sources/rabadge.cpp", "start": 173, "end": 199},
+        {"path": "src/sources/rabadge.cpp", "start": 202, "end": 218},
+        {"path": "include/rabadge.h", "start": 8, "end": 13},
+        {"path": "src/app/opl.cpp", "start": 797, "end": 805},
+        {"path": "src/ui/cfgtitle.cpp", "start": 147, "end": 158}
+      ],
+      "problem": "refresh() mallocs count * RA_BADGE_TEXT (ISO_GAME_NAME_MAX 160 + 8 = 168 bytes) per device list and fills every row, mostly with empty strings, and keeps it until the next rebuild of that list. The only readers are raBadgeText at opl.cpp:800 (which immediately strdup's the text into the row) and cfgtitle.cpp:149 (uses it at once), both inside the same updateMenuFromGameList pass on the I/O thread, so the per-row strings are never needed afterwards and badged names exist twice.",
+      "fix": "Store one byte per row in the slot (badged or not) instead of the formatted string, and let text() format prefix/suffix plus the row name into one static RA_BADGE_TEXT buffer on demand; both callers already copy or consume the result before the next call.",
+      "justification": "",
+      "benefit": "INFERRED: 168 B/row -> 1 B/row of EE heap held per list, e.g. a 500-row USB list 84,000 -> 500 bytes, 1,000 rows ~167 KB -> 1 KB; RA builds with telemetry and badges on only. Source size about equal (the snprintf moves into text()).",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read rabadge.cpp:141-218 and rabadge.h:8-38. ISO_GAME_NAME_MAX = 160 at include/supportbase.h:7, RA_BADGE_TEXT at rabadge.cpp:48. grep raBadgeText/gRaBadge over src: callers only opl.cpp:800 (strdup at :802) and cfgtitle.cpp:149 (keepTitle, called from cfgTitleRefresh at opl.cpp:842 in the same updateMenuFromGameList); raBadgeRefresh only at opl.cpp:747. Renderer uses the row's raText/raBadged snapshot (gui.cpp:222-223, menusys.cpp:1773, themeelems.cpp:1130), never the cache. Allocation skipped when gRATelemetry or gRABadges is 0 (rabadge.cpp:163); telemetry default 0 (settings.cpp:65), badges default 1 (:68)."
+    },
+    {
+      "n": 2,
+      "title": "rabadge refresh stats two files per list row on every rebuild, including an smb0: share probe, on the single I/O worker",
+      "category": 5,
+      "locations": [
+        {"path": "src/sources/rabadge.cpp", "start": 118, "end": 139},
+        {"path": "src/sources/rabadge.cpp", "start": 179, "end": 190}
+      ],
+      "problem": "For each row, watchListExists() stats <prefix>RA/<serial>.wl and, when that is missing, smb0:RA/<serial>.wl. A rebuild of an N-game USB list therefore costs up to 2N fileXio round trips, and N of them go over the network when an SMB share is mounted, even when neither RA directory exists. This runs inside updateMenuFromGameList on the I/O worker that also serves cover art (opl.cpp:745-747), so every list rebuild delays art by that many round trips.",
+      "fix": "In refresh(), stat the two directories (<prefix>RA and smb0:RA) once before the loop and skip the per-row probe for a side whose directory is missing; keep the per-row stats only where the directory exists (favourites keep the current path).",
+      "justification": "Adds about 6 lines. The concrete problem is up to 2N stat round trips per list rebuild on the shared I/O thread; one directory stat per side removes all of them for devices never checked and for setups without smb0:RA, which is the simplest change that keeps the loader's lookup order.",
+      "benefit": "INFERRED: a 500-game USB list with no RA folders goes from up to 1,000 stat RPCs (500 over SMB if mounted) to 2 per rebuild; at roughly 1-3 ms per SMB stat that is about 0.5-1.5 s less I/O-thread time per rebuild (timing not measured).",
+      "benefit_rank": 2,
+      "lines_removed": -6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read rabadge.cpp:118-199. Call path: menu update -> updateMenuFromGameList (opl.cpp:690) -> raBadgeRefresh (opl.cpp:747), run only when needsUpdate is true (opl.cpp:870-871) on the I/O worker (comment opl.cpp:745-746). Same worker serves cover art (opl.cpp:964-972, 1032-1038 describe the contention). Per-row stat at :127 and smb0: fallback at :132-136 for every row without a local list. Timing per stat is INFERRED, not measured."
+    },
+    {
+      "n": 3,
+      "title": "Ranet receive buffer rx_ is 2048 bytes but no read ever exceeds 992 + NUL; netTestLink keeps a second static rx[256]",
+      "category": 4,
+      "locations": [
+        {"path": "include/ranet.h", "start": 88, "end": 89},
+        {"path": "src/sources/ranet.cpp", "start": 313, "end": 317},
+        {"path": "src/sources/ranet.cpp", "start": 855, "end": 859},
+        {"path": "src/sources/ranet.cpp", "start": 1112, "end": 1112}
+      ],
+      "problem": "ask() clamps every read to RA_RECV_MAX = 992 bytes (ranet.cpp:313-317, also for the mstack: path) and httpGet reads into rx_ at most 992 (ranet.cpp:1112), so at most 993 bytes of rx_ are ever written. netTestLink uses its own static rx[256] although it runs on the same thread and never overlaps a use of rx_.",
+      "fix": "Shrink rx_ to 1024 bytes (still 64-byte aligned) and let netTestLink use rx_ instead of its static rx[256].",
+      "justification": "",
+      "benefit": "INFERRED: 2048 -> 1024 bytes for rx_ plus 256 bytes for netTestLink's buffer = 1,280 bytes of .bss, RA builds only.",
+      "benefit_rank": 2,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep rx_ over the repo: every use is in ranet.cpp (576, 667, 835, 943, 947, 970, 982, 1012 via ask(); 1112 via tcpRecv capped at RA_RECV_MAX) plus the declaration at ranet.h:89. ask() sets asklen = min(outmax-1, RA_RECV_MAX) and askMstack receives that asklen. No test script mentions rx_. netTestLink's rx is only passed to pcTarget/ask (ranet.cpp:887, 907) and read at :931."
+    },
+    {
+      "n": 4,
+      "title": "netTestLink uses an absolute clock() deadline and an overflowing millisecond product, unlike the wrap-safe form used elsewhere in the file",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/ranet.cpp", "start": 899, "end": 914}
+      ],
+      "problem": "deadline = t0 + 3 * CLOCKS_PER_SEC and the test clock() < deadline break when the 32-bit microsecond clock wraps (about every 71.6 min): if t0 is within 3 s of the wrap the loop never runs and the link test reports no answer. ms = (clock() - t0) * 1000 / CLOCKS_PER_SEC overflows once the elapsed time passes 4.29 s, which a last ask() started near the deadline can reach. The same file and its test say clock() is a 32-bit microsecond counter and use the elapsed form for httpGet.",
+      "fix": "Loop while (clock_t)(clock() - t0) < 3000 * (CLOCKS_PER_SEC / 1000), as httpGet does, and compute ms as (clock() - t0) / (CLOCKS_PER_SEC / 1000).",
+      "justification": "",
+      "benefit": "Removes a false 'no answer' in the link test around each clock wrap and a wrong round-trip figure; no size change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read ranet.cpp:851-936. Clock width stated by the repo: ranet.cpp:1064-1065, nettime.cpp:72, ratls_ps2.cpp:167-168, and .github/scripts/test_ra_xerabora_browser.py:464-468 ('clock() is a 32-bit microsecond counter on the EE ... an absolute deadline breaks at the wrap'). ask() can take up to RA_TRY 12 x 10 polls x RA_POLL_MS 25 ms = 3 s per call (ranet.cpp:113-114, 322-348), so elapsed can exceed 4.29 s. Caller: supportbase.cpp:3152."
+    },
+    {
+      "n": 5,
+      "title": "askPc keeps broadcasting every RAG1 chunk request in Xerabora discovery mode and accepts each chunk from any responder",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/ranet.cpp", "start": 515, "end": 523},
+        {"path": "src/sources/ranet.cpp", "start": 585, "end": 585},
+        {"path": "src/sources/ranet.cpp", "start": 658, "end": 693},
+        {"path": "src/sources/ranet.cpp", "start": 339, "end": 344}
+      ],
+      "problem": "Without a companion IP, pcTarget leaves `to` as 255.255.255.255 and askPc never narrows it after RAQ1 answers, so all chunk requests are broadcast and ask() accepts each reply from whichever host answers first (the source filter applies only to unicast). With two xeRAbora PCs on the LAN holding different versions of a set, chunks of the same index and length from different PCs can be stitched into one list that passes the length checks.",
+      "fix": "After raqAsk returns 0, if `to` is the broadcast address set to.sin_addr.s_addr = replyIP_ so the chunk requests go to, and are only accepted from, the PC that confirmed the game.",
+      "justification": "Adds one line; it closes the mixed-source list case and stops broadcasting up to 23 chunk requests per check, and it is the smallest change that ties the transfer to one peer.",
+      "benefit": "Chunked watch list comes from one verified PC; fewer broadcast datagrams (INFERRED). No size change.",
+      "benefit_rank": 1,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read ranet.cpp:309-352 (source check only when to is not INADDR_BROADCAST), 515-523 (Xerabora without hostIsExplicit returns 0 with broadcast target), 548-766 (to is not modified between raqAsk at :585 and the chunk loop at :658-693; rememberPeer uses the last replyIP_ at :710). Chunk acceptance checks only index and expected length (:673, :685). The two-PC scenario is a reasoned case, not observed."
+    }
+  ]
+}

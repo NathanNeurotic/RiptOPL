@@ -1,0 +1,88 @@
+## Symbols with no reference outside their definition (symbols-unreferenced.tsv). Class no-other-mention = the name appears nowhere else in the repo; only-prototype-or-export-mentions = it appears only in a prototype or export list
+- modules/iopcore/common/cdvdman_opl.h:10  macro `CDVDreg_NCOMMAND`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:11  macro `CDVDreg_READY`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:12  macro `CDVDreg_NDATAIN`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:13  macro `CDVDreg_ERROR`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:14  macro `CDVDreg_HOWTO`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:15  macro `CDVDreg_ABORT`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:17  macro `CDVDreg_9`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:19  macro `CDVDreg_B`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:20  macro `CDVDreg_C`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:21  macro `CDVDreg_D`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:22  macro `CDVDreg_E`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:23  macro `CDVDreg_TYPE`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:24  macro `CDVDreg_13`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:28  macro `CDVDreg_KEYSTATE`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:29  macro `CDVDreg_KEYXOR`  (no-other-mention)
+- modules/iopcore/common/cdvdman_opl.h:30  macro `CDVDreg_DEC`  (no-other-mention)
+- modules/isofs/lz4.c:365  function `LZ4_decompress_generic`  (only-prototype-or-export-mentions) | also mentioned: modules/isofs/lz4.c:503 return LZ4_decompress_generic(source, dest, 0, outputSize, endOnOutputSize, noPrefix, full, 0);; modules/isofs/lz4.c:505 return LZ4_decompress_generic(source, dest, 0, outputSize, endOnOutputSize, withPrefix, full, 0);
+- modules/isofs/lz4.h:44  macro `LZ4_VERSION_MAJOR`  (no-other-mention)
+- modules/isofs/lz4.h:45  macro `LZ4_VERSION_MINOR`  (no-other-mention)
+- modules/isofs/lz4.h:46  macro `LZ4_VERSION_RELEASE`  (no-other-mention)
+- modules/isofs/lz4.h:86  macro `LZ4_COMPRESSBOUND`  (no-other-mention)
+
+## Macros tested by #if/#ifdef that no source or build file defines (cond-macros-undefined.tsv). Compiler, SDK and toolchain macros also land here: check before using
+- `BIG_ENDIAN_NATIVE_BUT_INCOMPATIBLE`  tested at 1 site(s) in the repo, mentioned in 0 build file(s); here: modules/isofs/lz4.c:303
+- `L`  tested at 6 site(s) in the repo, mentioned in 0 build file(s); here: modules/isofs/lz4.c:108, modules/isofs/lz4.c:170
+- `_BIG_ENDIAN`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:73
+- `_LITTLE_ENDIAN`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:73
+- `_LP64`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `_MIPSEB`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:75
+- `_MSC_VER`  tested at 32 site(s) in the repo, mentioned in 2 build file(s) [builtin-like]; here: modules/isofs/lz4.c:114, modules/isofs/lz4.c:133, modules/isofs/lz4.c:502, modules/isofs/lz4.c:91, modules/isofs/lz4.h:52
+- `_M_IA64`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `_M_X64`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `_WIN32_WCE`  tested at 11 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:91
+- `_WIN64`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `__64BIT__`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `__ARM_FEATURE_UNALIGNED`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:86
+- `__BIG_ENDIAN__`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:73
+- `__BIG_ENDIAN`  tested at 3 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:70, modules/isofs/lz4.c:73
+- `__BYTE_ORDER`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:70
+- `__GLIBC__`  tested at 3 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:68
+- `__GNUC__`  tested at 51 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:126, modules/isofs/lz4.c:185, modules/isofs/lz4.c:191, modules/isofs/lz4.c:216
+- `__IBMC__`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:192
+- `__INTEL_COMPILER`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:141
+- `__LITTLE_ENDIAN__`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:73
+- `__LITTLE_ENDIAN`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:73
+- `__LP64__`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `__PPC64__`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `__PPC__`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:75
+- `__STDC_VERSION__`  tested at 3 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:108, modules/isofs/lz4.c:170
+- `__STRICT_ANSI__`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.h:52
+- `__SUNPRO_CC`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:192, modules/isofs/lz4.c:217
+- `__SUNPRO_C`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:192, modules/isofs/lz4.c:217
+- `__clang__`  tested at 26 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:141
+- `__hppa`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:75
+- `__hpux`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:75
+- `__ia64`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `__itanium__`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `__powerpc64__`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `__powerpc__`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:75
+- `__ppc64__`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+- `__ppc__`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:75
+- `__s390__`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:75
+- `__sparc__`  tested at 2 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:75
+- `__sparc`  tested at 1 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:75
+- `__x86_64__`  tested at 3 site(s) in the repo, mentioned in 0 build file(s) [builtin-like]; here: modules/isofs/lz4.c:58
+
+## Largely identical files (dupes-file-pairs.tsv)
+- modules/iopcore/imgdrv/irx_imports.h is 70% the same as RiptOPL/modules/iopcore/patches/iremsndpatch/irx_imports.h (12 cloned normalised lines)
+- modules/iopcore/imgdrv/irx_imports.h is 70% the same as Simple-Media-System/iop/USBD/src/irx_imports.h (12 cloned normalised lines)
+- modules/iopcore/patches/apemodpatch/main.c is 18% the same as RiptOPL/modules/iopcore/patches/f2techioppatch/main.c (13 cloned normalised lines)
+- modules/iopcore/patches/f2techioppatch/main.c is 44% the same as RiptOPL/modules/iopcore/patches/apemodpatch/main.c (13 cloned normalised lines)
+- modules/iopcore/patches/iremsndpatch/irx_imports.h is 63% the same as RiptOPL/modules/iopcore/imgdrv/irx_imports.h (12 cloned normalised lines)
+- modules/iopcore/patches/iremsndpatch/irx_imports.h is 63% the same as Simple-Media-System/iop/USBD/src/irx_imports.h (12 cloned normalised lines)
+- modules/isofs/isofs.c is 3% the same as RiptOPL/modules/iopcore/cdvdman/internal.h (14 cloned normalised lines)
+- modules/isofs/lz4.c is 6% the same as RiptOPL/modules/isofs/lz4.h (20 cloned normalised lines)
+- modules/isofs/lz4.h is 12% the same as RiptOPL/modules/isofs/lz4.c (20 cloned normalised lines)
+
+## Duplicate blocks (dupes-blocks.tsv)
+- modules/iopcore/imgdrv/irx_imports.h:2-17  ==  RiptOPL/modules/iopcore/patches/iremsndpatch/irx_imports.h:2-17  (12 normalised lines)
+- modules/iopcore/imgdrv/irx_imports.h:2-17  ==  Simple-Media-System/iop/USBD/src/irx_imports.h:2-17  (12 normalised lines)
+- modules/iopcore/patches/apemodpatch/main.c:67-88  ==  RiptOPL/modules/iopcore/patches/f2techioppatch/main.c:24-45  (13 normalised lines)
+- modules/iopcore/patches/f2techioppatch/main.c:24-45  ==  RiptOPL/modules/iopcore/patches/apemodpatch/main.c:67-88  (13 normalised lines)
+- modules/iopcore/patches/iremsndpatch/irx_imports.h:2-17  ==  RiptOPL/modules/iopcore/imgdrv/irx_imports.h:2-17  (12 normalised lines)
+- modules/iopcore/patches/iremsndpatch/irx_imports.h:2-17  ==  Simple-Media-System/iop/USBD/src/irx_imports.h:2-17  (12 normalised lines)
+- modules/isofs/isofs.c:19-34  ==  RiptOPL/modules/iopcore/cdvdman/internal.h:96-111  (14 normalised lines)
+- modules/isofs/lz4.c:4-29  ==  RiptOPL/modules/isofs/lz4.h:5-30  (20 normalised lines)
+- modules/isofs/lz4.h:5-30  ==  RiptOPL/modules/isofs/lz4.c:4-29  (20 normalised lines)

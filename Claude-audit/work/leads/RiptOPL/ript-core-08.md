@@ -1,0 +1,22 @@
+## Symbols with no reference outside their definition (symbols-unreferenced.tsv). Class no-other-mention = the name appears nowhere else in the repo; only-prototype-or-export-mentions = it appears only in a prototype or export list
+- src/app/opl.cpp:293  variable `gFadeDelay`  (no-other-mention)
+- src/app/opl.cpp:294  variable `toggleSfx`  (no-other-mention)
+
+## Largely identical files (dupes-file-pairs.tsv)
+- src/app/opl.cpp is 1% the same as RiptOPL/src/app/settingsio.cpp (13 cloned normalised lines)
+- src/app/opl.cpp is 1% the same as RiptOPL/src/sources/appscan.cpp (17 cloned normalised lines)
+- src/app/opl.cpp is 1% the same as RiptOPL/src/ui/menuitems.cpp (16 cloned normalised lines)
+- src/app/opl.cpp is 2% the same as RiptOPL/src/app/autolaunch.cpp (34 cloned normalised lines)
+- src/app/opl.cpp is 2% the same as RiptOPL/src/app/lwnbdctl.cpp (34 cloned normalised lines)
+- src/app/opl.cpp repeats itself: 20 cloned normalised lines inside the file (1%)
+
+## Duplicate blocks (dupes-blocks.tsv)
+- src/app/opl.cpp:1281-1348  ==  RiptOPL/src/app/opl.cpp:1375-1442  (20 normalised lines)
+- src/app/opl.cpp:13-29  ==  RiptOPL/src/sources/appscan.cpp:10-26  (17 normalised lines)
+- src/app/opl.cpp:1375-1442  ==  RiptOPL/src/app/opl.cpp:1281-1348  (20 normalised lines)
+- src/app/opl.cpp:14-29  ==  RiptOPL/src/app/autolaunch.cpp:10-25  (16 normalised lines)
+- src/app/opl.cpp:14-29  ==  RiptOPL/src/app/lwnbdctl.cpp:11-26  (16 normalised lines)
+- src/app/opl.cpp:14-29  ==  RiptOPL/src/ui/menuitems.cpp:10-25  (16 normalised lines)
+- src/app/opl.cpp:32-46  ==  RiptOPL/src/app/settingsio.cpp:31-45  (13 normalised lines)
+- src/app/opl.cpp:48-71  ==  RiptOPL/src/app/autolaunch.cpp:42-65  (18 normalised lines)
+- src/app/opl.cpp:48-71  ==  RiptOPL/src/app/lwnbdctl.cpp:43-66  (18 normalised lines)

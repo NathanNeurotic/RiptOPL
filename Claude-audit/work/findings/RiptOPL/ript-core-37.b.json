@@ -1,0 +1,146 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-37.b",
+  "coverage": [
+    {"path": "src/ui/guifilemgr.cpp", "status": "read_full", "note": ""},
+    {"path": "include/guiframe.h", "status": "read_full", "note": ""},
+    {"path": "src/ui/guiframe.cpp", "status": "read_full", "note": ""},
+    {"path": "include/guigame.h", "status": "read_full", "note": ""},
+    {"path": "src/ui/guigame.cpp", "status": "read_full", "note": ""},
+    {"path": "include/guigameid.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "guifilemgr.cpp is the main-menu File Manager dialog (RIPPS2-style): it lists started drives, browses folders a page at a time, keeps a mark set and a clipboard, and drives copy/move/delete/rename/mkdir in core/filemgr.cpp and PSU pack/unpack in core/vmcsaves.cpp, all synchronously on the UI thread with text-screen progress. guiframe.cpp/.h is the FrameClock used by the debug HUD (last/worst frame time, overrun count, debug FPS). guigame.cpp/.h is the per-game settings layer: VMC config and creation (genvmc devctl polling), VMC rebuild, the VMC Saves browser, first-launch auto VMC creation, the GSM, cheats, PADEMU, pad macro, OSD language and compatibility dialogs, and the load/apply/save/test/remove legs that move dialog values to and from per-game and global config sets. guigameid.h declares the GameID barcode class implemented elsewhere.",
+  "reusable_helpers": [
+    {"name": "fmDirSlash", "path": "src/ui/guifilemgr.cpp", "line": 407, "what": "turns a folder path into the trailing-separator form vmcsaves wants, with memory cards in mcman's bare mc0: form"},
+    {"name": "fmCardTitle", "path": "src/ui/guifilemgr.cpp", "line": 225, "what": "reads a memory card save folder's icon.sys title"},
+    {"name": "guiGameVMCSavesSync", "path": "src/ui/guigame.cpp", "line": 400, "what": "fileXioSync of the pfsN: device a path lives on, so write-back PFS data reaches the disk"},
+    {"name": "guiGameResolveEffectiveCore", "path": "src/ui/guigame.cpp", "line": 248, "what": "resolves a game's effective loader core (OPL or Neutrino) from its config, the global default and the source type"},
+    {"name": "bdaddr_to_str", "path": "src/ui/guigame.cpp", "line": 1151, "what": "formats a 6-byte Bluetooth address as XX:XX:XX:XX:XX:XX"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "VMC Saves lists and File Manager selection arrays hold about 30 KB of .bss for the whole run",
+      "category": 4,
+      "locations": [
+        {"path": "src/ui/guigame.cpp", "start": 326, "end": 331},
+        {"path": "src/ui/guifilemgr.cpp", "start": 374, "end": 374},
+        {"path": "src/ui/guifilemgr.cpp", "start": 489, "end": 489}
+      ],
+      "problem": "vmcSavesCard[64], vmcSavesFolder[64] (166-byte vmc_save_t each), vmcSavesFolderLabels and the two item arrays are file-scope statics used only while guiGameShowVMCSaves runs, and fmToClipboard and fmDeleteSelection each keep their own static int sel[512] although both only run inside guiShowFileManager. Together they pin 30,792 bytes of EE RAM from boot to exit for two rarely opened modal dialogs.",
+      "fix": "Allocate the VMC Saves arrays at the top of guiGameShowVMCSaves and free them on return. In the File Manager, drop both static sel arrays and allocate one selection buffer with the other FM buffers in guiShowFileManager (or put sel on the 128 KB main stack).",
+      "justification": "The fix adds one malloc/free pair per dialog. It returns 30 KB of permanently reserved RAM, and the File Manager already allocates its larger buffers this way (guifilemgr.cpp:618-621), so no new pattern is introduced.",
+      "benefit": "30,792 B .bss freed MEASURED (raw/riptopl-nm-size-sorted.full.txt: vmcSavesCard 0x2980, vmcSavesFolder 0x2980, vmcSavesFolderLabels 0x1340, two Items arrays 0x104, two sel 0x800); no ELF size change",
+      "benefit_rank": 2,
+      "lines_removed": -6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "guigame.cpp:326-331 declarations; uses only inside guiGameVMCSavesItems/guiGameRefreshVMCSaves/guiGameShowVMCSaves (lines 357-475), reached only from guiGameShowVMCConfig:635. guifilemgr.cpp:374 and :489 static sel; both functions are reached only from fmActions (:600,:606) inside guiShowFileManager. Sizes from evidence/RiptOPL/raw/riptopl-nm-size-sorted.full.txt lines 100,101,177,360,361,2421,2422 (Korium GCC build). vmc_save_t is 33+69+64 bytes (include/vmcsaves.h:22-27). Main stack 0x20000 from raw/riptopl-stack-heap.txt."
+    },
+    {
+      "n": 2,
+      "title": "File Manager label table allocates 160 bytes for each of 512 entries; folder rows never hold more than 47",
+      "category": 4,
+      "locations": [
+        {"path": "src/ui/guifilemgr.cpp", "start": 53, "end": 53},
+        {"path": "src/ui/guifilemgr.cpp", "start": 58, "end": 58},
+        {"path": "src/ui/guifilemgr.cpp", "start": 238, "end": 238},
+        {"path": "src/ui/guifilemgr.cpp", "start": 619, "end": 619}
+      ],
+      "problem": "fmLabel is malloc'd as FM_MAX x FM_ROW_TEXT = 512 x 160 = 80 KB while the File Manager is open. In a folder a label is only a card save title, clamped to FM_TITLE (48) at line 238, and is empty everywhere but a card root; only the handful of drive rows use the label text at all, and their row is clipped on screen long before 160 characters.",
+      "fix": "Give fmLabel its own row width of about 80 bytes (enough for the drive words and any title) instead of FM_ROW_TEXT.",
+      "justification": "",
+      "benefit": "40,960 B less heap while the File Manager is open INFERRED (512 x (160 - 80)); fewer FM_ERR_MEMORY failures on a fragmented heap",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read guifilemgr.cpp:53,58,153-163 (drive labels: root + words), 225-239 (card title clamp to FM_TITLE), 256-260 (labels empty except mc root), 328-332 (row text, names already cut to %.60s), 619 (malloc). Drive count is bounded by MAX_BDM_DEVICES + 2 MMCE + 2 MC + pfs0 + udpfs + smb0 (lines 181-221). The on-screen clip width is INFERRED from the %.60s name limit, not measured."
+    },
+    {
+      "n": 3,
+      "title": "VMC Saves actions and Load from disc block the UI thread for seconds with no wait screen",
+      "category": 5,
+      "locations": [
+        {"path": "src/ui/guigame.cpp", "start": 436, "end": 445},
+        {"path": "src/ui/guigame.cpp", "start": 451, "end": 458},
+        {"path": "src/ui/guigame.cpp", "start": 466, "end": 468},
+        {"path": "src/ui/guigame.cpp", "start": 1825, "end": 1826}
+      ],
+      "problem": "Export, Export as PSU, Import and Delete in guiGameShowVMCSaves call vmcSaves* directly on the menu thread; these read and write the card image one 512-byte page per lseek+read/write (vmcsaves.cpp:173-184), so a large save takes seconds. Load from disc calls sysGetDiscID, which waits for disc detection, sceCdDiskReady and a standby spin-up (system.cpp:498-535). Neither draws anything first, so the dialog's last frame stays frozen until the call returns.",
+      "fix": "Call guiRenderTextScreen(_l(_STR_PLEASE_WAIT)) right before each blocking call, as fmUnpackPsu already does (guifilemgr.cpp:558).",
+      "justification": "Four one-line calls to an existing helper turn a frozen screen of several seconds into a visible wait message; moving the work to the IO thread would be far more code.",
+      "benefit": "No frozen frame during multi-second card-image or disc I/O; durations INFERRED from page-at-a-time image I/O and CD spin-up, not measured",
+      "benefit_rank": 2,
+      "lines_removed": -4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "guiGameShowVMCSaves (guigame.cpp:413-475) is reached from guiGameShowVMCConfig:635, from guiGameShowVMCMenu, called by menusys.cpp:3229 (menu thread). guiGameShowCompatConfig is called by menusys.cpp:3219. No guiRenderTextScreen or other draw between diaExecuteDialog's return and the vmcSaves*/sysGetDiscID calls (read 435-474, 1810-1830). vmcsaves.cpp:173-184 page loop read; system.cpp:494-545 read. Freeze length INFERRED."
+    },
+    {
+      "n": 4,
+      "title": "VMC Saves re-reads both the card image and the SAVES folder after every button, even a declined delete",
+      "category": 5,
+      "locations": [
+        {"path": "src/ui/guigame.cpp", "start": 377, "end": 382},
+        {"path": "src/ui/guigame.cpp", "start": 473, "end": 473}
+      ],
+      "problem": "The loop in guiGameShowVMCSaves calls guiGameRefreshVMCSaves after every result, which runs vmcSavesList (opens the image and reads up to 64 icon.sys) and vmcSavesListFolder (opendir, stat and an icon.sys read per entry). An export changes only the folder, an import or delete only the card, and a delete the user declines (guiMsgBox returns 0 at line 466) or a failed action changes nothing, yet both lists are rebuilt on the UI thread each time.",
+      "fix": "Refresh only the side the action wrote (folder after export, card after import or delete), and skip the refresh when the action did not run or failed.",
+      "justification": "",
+      "benefit": "One of two directory rescans saved per action, and both on a declined delete; a few hundred card-image page reads on slow USB/HDD images INFERRED (64 saves x directory entry + icon.sys)",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read guigame.cpp:371-396 and 435-474; diaVMCSaves (dialogs.cpp:1552-1582) returns only button ids, so every loop pass follows a button. vmcSavesList at vmcsaves.cpp:1080-1109 reads icon.sys per save via vsReadIn; vmcSavesListFolder at vmcsaves.cpp:1217-1257 stats and opens per entry."
+    },
+    {
+      "n": 5,
+      "title": "fmCardTitle reads 964 bytes of each icon.sys when the title needs the first 260",
+      "category": 5,
+      "locations": [
+        {"path": "src/ui/guifilemgr.cpp", "start": 228, "end": 238}
+      ],
+      "problem": "On a memory card root, fmLoad reads every save's icon.sys through mcman into a 964-byte stack buffer; vmcSavesTitle only looks at bytes 0..0xC0+68 (ICON_SYS_HEAD, vmcsaves.cpp:46,1061), which the check at line 237 already uses. fmLoad runs again after every paste, delete, rename and new folder, so the extra page read per save repeats.",
+      "fix": "Size iconSys to 0xC0 + 68 (260 bytes) and read only that much, as vmcsaves.cpp does for its own lists.",
+      "justification": "",
+      "benefit": "About one 512-byte card page read less per save per card-root listing and 704 B less stack INFERRED (964 bytes span two pages, 260 one)",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "guifilemgr.cpp:228 buffer, :235 read of sizeof(iconSys), :237 check n >= 0xC0 + 68; vmcsaves.cpp:46 ICON_SYS_HEAD = 0xC0 + 68, :1056-1063 vmcSavesTitle reads only offsets 0-7 and 0xC0..0xC0+67; vmcsaves.cpp:1220 and :1249 read only ICON_SYS_HEAD. fmLoad is called after each change at guifilemgr.cpp:480,511,530,545,560. Page-read saving INFERRED from mcman page size."
+    },
+    {
+      "n": 6,
+      "title": "Cut then Paste of a .psu onto a memory card unpacks it but leaves the .psu in place and drops it from the clipboard",
+      "category": 6,
+      "locations": [
+        {"path": "src/ui/guifilemgr.cpp", "start": 449, "end": 452},
+        {"path": "src/ui/guifilemgr.cpp", "start": 469, "end": 479}
+      ],
+      "problem": "In fmPaste the .psu-onto-card branch runs vmcSavesPsuToFolder whether the clipboard is Copy or Cut. With Cut, a successful unpack counts as done, so the entry is removed from the clipboard (line 479), but the source .psu is never deleted, which contradicts HINT_FM_CUT ('Paste here moves them'). The user sees a move that was really a copy.",
+      "fix": "When fmClipCut is set, delete the source .psu after a successful unpack (one fmDelete call); otherwise leave the entry on the clipboard.",
+      "justification": "The single added call makes Cut behave as its hint promises; the alternative of documenting the exception would add more text than code.",
+      "benefit": "Correct Cut semantics for .psu onto a memory card; no data loss today, only an unexpected leftover file",
+      "benefit_rank": 1,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read guifilemgr.cpp:428-485: branch at 449 has no fmClipCut test and calls only vmcSavesPsuToFolder; keep logic 469-479 keeps only failed entries. lng/tmpl/_base.yml:2331-2333 HINT_FM_CUT text. vmcSavesPsuToFolder (vmcsaves.cpp:1171-1174) is a vsCopy from the .psu to a folder and never removes the source."
+    }
+  ]
+}

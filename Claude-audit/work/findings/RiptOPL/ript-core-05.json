@@ -1,0 +1,273 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-05",
+  "coverage": [
+    {"path": "ee_core/src/patches.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/patches_asm.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/ra.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/ra_overlay.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/ra_pulse.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/syshook.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/tlb.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/util.c", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "In-game EE core (eecore target, ps2.yaml:604-613, no --gc-sections). patches.c/patches_asm.S hold the upstream Open PS2 Loader per-title game patch table and hook implementations applied by apply_patches() from sysLoadElf (syshook.c). syshook.c installs and removes the kernel syscall hooks (SifSetDma/SifSetReg/ExecPS2/CreateThread/Exit/OSD config) and loads the game ELF. tlb.c re-creates the kernel TLB on 32 MB units for IGR; util.c has libc-free string helpers, the masked pattern search, CopyToIop, the IP config builder and delay/blink debug helpers. ra.c, ra_overlay.c and ra_pulse.c are RetroAchievements-only (added by tools/build_edition.py:108): VBLANK-time memory snapshots DMA'd to the IOP, and the unlock notice as either a GIF IMAGE card or a PMODE/BGCOLOR pulse.",
+  "reusable_helpers": [
+    {"name": "find_pattern_with_mask", "path": "ee_core/src/util.c", "line": 107, "what": "searches a word buffer for a masked u32 pattern"},
+    {"name": "CopyToIop", "path": "ee_core/src/util.c", "line": 132, "what": "SIF DMA of an EE buffer to IOP RAM, retrying SetDma and waiting for completion"},
+    {"name": "WipeUserMemory", "path": "ee_core/src/util.c", "line": 154, "what": "zeroes a memory range 64 bytes at a time with sq"},
+    {"name": "_strcmp / _strncmp / _strcpy / _strcat", "path": "ee_core/src/util.c", "line": 24, "what": "libc-free string compare and copy helpers"},
+    {"name": "set_ipconfig", "path": "ee_core/src/util.c", "line": 71, "what": "builds the NUL-separated ip/netmask/gateway/link-mode argument block for the network IRX"},
+    {"name": "delay", "path": "ee_core/src/util.c", "line": 170, "what": "busy-wait nop delay loop"},
+    {"name": "u32dec", "path": "ee_core/src/ra_overlay.c", "line": 159, "what": "unsigned int to decimal string"},
+    {"name": "text3x5", "path": "ee_core/src/ra_overlay.c", "line": 132, "what": "draws text with a 3x5 bitmap font into a pixel buffer"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "NIBBLE2CHAR emits 'k'..'p' for hex digits 10-15, so the SOS/Disaster Report IREMSND patch gets a wrong module ID",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/patches.c", "start": 160, "end": 160},
+        {"path": "ee_core/src/patches.c", "start": 565, "end": 570},
+        {"path": "modules/iopcore/patches/iremsndpatch/main.c", "start": 65, "end": 76}
+      ],
+      "problem": "NIBBLE2CHAR(n) is 'a' + n for n > 9, giving 'k' for 10 instead of 'a'. SOS_SifLoadModuleHook formats the IREMSND module ID with it and iremsndpatch parses it with strtol(..., 16), which stops at the bad character: an ID such as 0x1A becomes 1, so the patch searches for the wrong module (ID 1 exists) or none.",
+      "fix": "Change the macro to 'a' + (n) - 10.",
+      "justification": "",
+      "benefit": "Fixes the IREMSND patch for module IDs whose hex form contains a-f (6 of 16 low nibbles). No size change.",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read patches.c:160 and 565-570; iremsndpatch/main.c:60-76 (argc check, strtol base 16, walks lc->image_info comparing m->id). Upstream-derived code. Only caller of the hook path: SOSPatch for SLUS_205.61 / SLPS_251.13 (patches.c:113-115, 581-596)."
+    },
+    {
+      "n": 2,
+      "title": "Three copies of the alloc/SIF-DMA/LoadModuleBuffer/free block for IOP patch modules in patches.c",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/patches.c", "start": 553, "end": 575},
+        {"path": "ee_core/src/patches.c", "start": 674, "end": 694},
+        {"path": "ee_core/src/patches.c", "start": 836, "end": 856},
+        {"path": "ee_core/src/util.c", "start": 132, "end": 149}
+      ],
+      "problem": "SOS_SifLoadModuleHook, UltProPinball_SifLoadModuleHook and ShadowMan2_SifLoadModuleHook each repeat the same ~20 lines: GetOPLModInfo, game AllocIopHeap, a hand-built SifDmaTransfer_t retried until SetDma succeeds, LoadModuleBuffer retried until >= 0, FreeIopHeap, break on alloc failure. The DMA part re-implements CopyToIop (util.c:132), which also waits for the DMA to finish before the module is loaded; these copies do not wait.",
+      "fix": "Add one static helper in patches.c that takes the game's alloc/free/loadbuffer pointers plus the argument string, uses CopyToIop for the transfer, and returns the load result; call it from the three hooks and drop their local sifdma/dma_id variables.",
+      "justification": "The same block exists three times; one helper of ~15 lines replaces ~60 and reuses the existing CopyToIop instead of a third and fourth DMA loop.",
+      "benefit": "~35 lines removed net; eecore links without --gc-sections, so the shared code shrinks .text by roughly two block copies, ~150 bytes (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 35,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read patches.c:509-579, 625-698, 796-859 and util.c:132-149. grep CopyToIop over ee_core: util.c definition, callers iopmgr.c:108, igrmbox.c:79, igrmenu.c:854, freeze_diag.c:270. ps2.yaml:606-613 eecore ldflags have no --gc-sections. Upstream-derived code."
+    },
+    {
+      "n": 3,
+      "title": "One RA event buffer and one event-intake routine would do: ra_overlay.c and ra_pulse.c each keep a 128-byte buffer and the same torn-copy check",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/ra_overlay.c", "start": 61, "end": 61},
+        {"path": "ee_core/src/ra_overlay.c", "start": 364, "end": 393},
+        {"path": "ee_core/src/ra_pulse.c", "start": 42, "end": 60},
+        {"path": "ee_core/src/ra_pulse.c", "start": 75, "end": 99}
+      ],
+      "problem": "RA_OverlayEventBuffer hands raudp either ra_ovl_event or ra_pulse_event, chosen by raClientMode and ra_pkt, which are fixed before the IOP modules load (main.c:122-123, iopmgr.c:354), so only one 128-byte aligned buffer is ever used per launch. Both OnVblank paths then repeat the same magic/seq/commit copy-and-recheck and RESET handling, and both buffer getters repeat the same five-field clear.",
+      "fix": "Keep a single struct ra_event buffer and one static intake function (copy, validate, update seen, handle RESET, return the kind) used by both the card and the pulse paths; delete RA_PulseEventBuffer's separate buffer and clear.",
+      "justification": "",
+      "benefit": "128 bytes of ee_core .bss (INFERRED: struct ra_event is 128 bytes per ra_overlay.h:8); per ra.c:72-77 ee_core's stack is what is left above .bss. ~20 lines removed. RA builds only.",
+      "benefit_rank": 2,
+      "lines_removed": 20,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read ra_overlay.c:356-420, ra_pulse.c:40-100, main.c:119-125, ra_overlay.h:8. grep RA_PulseEventBuffer/RA_OverlayEventBuffer/RA_PulseOnVblank: only ra_overlay.c:370,378, ra_pulse.c, ra_overlay.h, iopmgr.c:354 (single getter call at module load), ra.c:388 (single OnVblank call)."
+    },
+    {
+      "n": 4,
+      "title": "Lab-only RA_PROBE ladder is 0 in every build but still threads through ra.c and iopmgr.c",
+      "category": 1,
+      "locations": [
+        {"path": "ee_core/src/ra.c", "start": 242, "end": 244},
+        {"path": "ee_core/src/ra.c", "start": 290, "end": 290},
+        {"path": "ee_core/src/ra.c", "start": 368, "end": 370},
+        {"path": "ee_core/src/ra.c", "start": 393, "end": 395},
+        {"path": "ee_core/include/ra.h", "start": 7, "end": 11},
+        {"path": "ee_core/src/iopmgr.c", "start": 238, "end": 247},
+        {"path": "ee_core/src/iopmgr.c", "start": 342, "end": 342}
+      ],
+      "problem": "ra.h says RA_PROBE is a lab probe ladder, 0 in every real build. No ps2.yaml, tools/*.py or workflow defines it; only two host tests set it to 0. All RA_PROBE tests are constant-false or constant-true in shipped builds and exist only for a past X-Men Origins investigation.",
+      "fix": "Delete the RA_PROBE default in ra.h and every RA_PROBE condition and its comment, keeping the RA_PROBE == 0 behaviour; drop the defines from the two host tests.",
+      "justification": "",
+      "benefit": "~15 lines removed; constant-folded today, so no ELF change (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep -rn RA_PROBE (excluding RA_PROBE_HASH) over the repo: ra.h:9-10 (default 0), ra.c:242,244,290,368,369,395, iopmgr.c:238,244,246,342, .github/scripts/test_ra_runtime_budget.py:55 and test_ra_launch_resources.py:40 (#define 0). Nothing in *.yaml/*.yml/*.py build scripts defines a nonzero value."
+    },
+    {
+      "n": 5,
+      "title": "Dead and duplicated bits in patches.c: SOS PAL entry is a no-op, commented-out pSifLoadModule, identical DotHack and Eutechnyx branches",
+      "category": 1,
+      "locations": [
+        {"path": "ee_core/src/patches.c", "start": 114, "end": 114},
+        {"path": "ee_core/src/patches.c", "start": 535, "end": 540},
+        {"path": "ee_core/src/patches.c", "start": 592, "end": 594},
+        {"path": "ee_core/src/patches.c", "start": 798, "end": 798},
+        {"path": "ee_core/src/patches.c", "start": 810, "end": 810},
+        {"path": "ee_core/src/patches.c", "start": 816, "end": 816},
+        {"path": "ee_core/src/patches.c", "start": 822, "end": 822},
+        {"path": "ee_core/src/patches.c", "start": 828, "end": 828},
+        {"path": "ee_core/src/patches.c", "start": 438, "end": 445},
+        {"path": "ee_core/src/patches.c", "start": 728, "end": 758}
+      ],
+      "problem": "SOSPatch case 2 (PAL) has its hook install commented out, so the SLES_513.01 table entry only sets g_mode and SOS_SifLoadModuleHook's case 2 can never run. ShadowMan2_SifLoadModuleHook carries five commented-out pSifLoadModule lines. DotHack_patches has two byte-identical branches for SLES_524.68 and SLES_524.69. EutechnyxWakeupTIDPatch repeats the same check-v1-then-v2 block for SLUS_215.80 and SLUS_205.82, differing only in the v2 address.",
+      "fix": "Delete the SLES_513.01 entry, SOSPatch case 2 and the hook's case 2; delete the commented-out lines; merge the two DotHack branches with ||; pick the v2 address by GameID and keep one Eutechnyx block.",
+      "justification": "",
+      "benefit": "~30 lines removed; a few dozen bytes of eecore .text/.rodata (no --gc-sections) (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 30,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read patches.c:113-115, 430-457, 509-596, 717-761, 796-876. SOS_SifLoadModuleHook is installed only by SOSPatch lines 587 and 590 (regions 0 and 1); g_mode 2 reaches no installed hook. Upstream-derived code."
+    },
+    {
+      "n": 6,
+      "title": "tlb.c: mutable TLBInfo struct only re-wraps constants; write-only NumWiredEntries, no-op kprintf, unused returns",
+      "category": 3,
+      "locations": [
+        {"path": "ee_core/src/tlb.c", "start": 2, "end": 5},
+        {"path": "ee_core/src/tlb.c", "start": 48, "end": 57},
+        {"path": "ee_core/src/tlb.c", "start": 113, "end": 113},
+        {"path": "ee_core/src/tlb.c", "start": 120, "end": 120},
+        {"path": "ee_core/src/tlb.c", "start": 133, "end": 141}
+      ],
+      "problem": "struct TLBInfo (a static, writable .data object) holds the three TLB_NUM_* constants and pointers to the three const tables, all used only by InitTLB32MB in the same file. NumWiredEntries is written at line 133 and never read; kprintf is defined empty and only feeds line 120; stdio.h is not needed; the NumExtendedTLBEntries > 0 test is always true; InitTLB32MB's and SetTLBEntry's return values are ignored by every caller.",
+      "fix": "Delete struct TLBInfo and its instance, loop over kernelTLB/defaultTLB/extendTLB with the TLB_NUM_* macros directly, drop kprintf, line 120, stdio.h, the always-true if, and make both functions void.",
+      "justification": "",
+      "benefit": "~18 lines removed; 28 bytes of .data (7 words) plus the loads through it (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 18,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep -rn 'InitializeTLB|InitTLB32MB|NumWiredEntries|kprintf|SetTLBEntry' (non-test): only tlb.c, tlb.h:1, padhook.c:582 (InitializeTLB(), return not used). The cond-macro lead 'x31' at tlb.c:64 is the literal 0x31, not a macro: dropped. Upstream-derived code."
+    },
+    {
+      "n": 7,
+      "title": "OSD ConfigParam copied field by field three times instead of by struct assignment",
+      "category": 3,
+      "locations": [
+        {"path": "ee_core/src/syshook.c", "start": 194, "end": 201},
+        {"path": "ee_core/src/syshook.c", "start": 209, "end": 216},
+        {"path": "src/platform/system.cpp", "start": 1591, "end": 1598}
+      ],
+      "problem": "hook_SetOsdConfigParam, hook_GetOsdConfigParam and the launcher copy all eight bitfields of ConfigParam one at a time between two objects of the same type (coreconfig.h:64 declares CustomOSDConfigParam as ConfigParam; system.cpp:1518 declares PARAM as ConfigParam). The eight fields make up the whole 32-bit struct, so each block is one assignment.",
+      "fix": "Replace each eight-line block with a single struct assignment.",
+      "justification": "",
+      "benefit": "21 lines removed; eight bitfield extract/insert pairs become one word copy in each eecore hook, likely ~100 bytes of eecore .text (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 21,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read syshook.c:189-217, coreconfig.h:64, system.cpp:1518-1530 and 1591-1598. The claim that the eight fields cover all 32 bits of ConfigParam comes from the ps2sdk kernel.h layout (1+2+1+1+8+3+5+11), which is not in the repo: INFERRED."
+    },
+    {
+      "n": 8,
+      "title": "ra_overlay.c keeps its own copy of struct GSMSourceGSRegs from igs_api.h",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/ra_overlay.c", "start": 41, "end": 60},
+        {"path": "ee_core/include/igs_api.h", "start": 126, "end": 142}
+      ],
+      "problem": "ra_overlay.c redeclares the GSM register record as struct ra_gs_source_regs with a 'keep in sync' comment, although igs_api.h already declares struct GSMSourceGSRegs and the extern for the same gsm_engine.S symbol.",
+      "fix": "Include igs_api.h (or declare the extern from it) in ra_overlay.c and delete the private struct and comment.",
+      "justification": "",
+      "benefit": "~18 lines removed and one less layout to keep in sync; no ELF change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 18,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep GSMSourceGSRegs|ra_gs_source_regs: gsm_engine.S:56-57 (88-byte definition), igs_api.h:126-142, ra_overlay.c:45-60,187-191, plus u64[11] externs in igrmenu.c:549 and igrovl_stub.c:22. Field order in ra_overlay.c:48-58 matches igs_api.h:128-138."
+    },
+    {
+      "n": 9,
+      "title": "ra_overlay.c draw_card/tracked_display: never-used pmode out-parameter, repeated validity check, dead x/y save-restore",
+      "category": 1,
+      "locations": [
+        {"path": "ee_core/src/ra_overlay.c", "start": 185, "end": 185},
+        {"path": "ee_core/src/ra_overlay.c", "start": 207, "end": 208},
+        {"path": "ee_core/src/ra_overlay.c", "start": 232, "end": 233},
+        {"path": "ee_core/src/ra_overlay.c", "start": 253, "end": 258},
+        {"path": "ee_core/src/ra_overlay.c", "start": 261, "end": 264},
+        {"path": "ee_core/src/ra_overlay.c", "start": 309, "end": 310}
+      ],
+      "problem": "tracked_display's only caller (line 221) passes NULL for pmode. tracked_display only returns a framebuffer that already passed valid_display_fb, so the check at 232-233 cannot fail. The block at 261-310 saves x/y, zeroes them and restores them, but nothing in between reads x or y (all sprite/text3x5 calls use literals). The pixel-size expression is evaluated three times at 253-258.",
+      "fix": "Drop the pmode parameter and its two lines, the second valid_display_fb check, the pixel_x/pixel_y save-zero-restore, and compute the pixel size once.",
+      "justification": "",
+      "benefit": "~12 lines removed; RA builds only; small .text saving (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep tracked_display|valid_display_fb over the repo: only ra_overlay.c:176,185,192-201,221,232. Read ra_overlay.c:211-355."
+    },
+    {
+      "n": 10,
+      "title": "Leftover declarations and comments: unused externs and '//foo' in util.c, commented-out WipeUserMemory call in syshook.c",
+      "category": 7,
+      "locations": [
+        {"path": "ee_core/src/util.c", "start": 15, "end": 21},
+        {"path": "ee_core/src/util.c", "start": 190, "end": 190},
+        {"path": "ee_core/src/syshook.c", "start": 119, "end": 119}
+      ],
+      "problem": "util.c declares cdvdman_irx, size_cdvdman_irx, cdvdfsv_irx, size_cdvdfsv_irx and _end but uses none of them; line 190 is a stray '//foo' comment. syshook.c:119 is a commented-out call that line 118 already explains.",
+      "fix": "Delete the five extern lines, the '//foo' line and the commented-out call.",
+      "justification": "",
+      "benefit": "~8 lines removed; no ELF change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep -rn 'cdvdman_irx|cdvdfsv_irx' over ee_core: only util.c:15-19. _end is not referenced in util.c beyond its declaration at :21 (syshook.c:31 has its own extern)."
+    },
+    {
+      "n": 11,
+      "title": "apply_capcom_protection_patch passes the opcode value, not its address, to SyncDCache",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/patches.c", "start": 262, "end": 264}
+      ],
+      "problem": "SyncDCache((void *)opcode, ...) uses 0x10000025 as the start address instead of &opcode, so the call does not write back the stack word it is meant to. smem_write copies with the CPU, so the line appears unnecessary rather than harmful.",
+      "fix": "Delete the SyncDCache line (or pass &opcode if a write-back turns out to be needed).",
+      "justification": "",
+      "benefit": "1 line removed; removes a cache operation on a bogus range (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read patches.c:257-273. smem_write is the ps2sdk libkernel routine (not in the repo); that it copies through the CPU and needs no cache write-back is INFERRED. Upstream-derived code; reached for SFA anthology, SFZ Generation and Vampire collection (patches.c:65-68)."
+    }
+  ]
+}

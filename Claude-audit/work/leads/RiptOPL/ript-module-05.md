@@ -1,0 +1,141 @@
+## Symbols with no reference outside their definition (symbols-unreferenced.tsv). Class no-other-mention = the name appears nowhere else in the repo; only-prototype-or-export-mentions = it appears only in a prototype or export list
+- modules/hdd/apa/src/apa.c:136  function `apaInsertPartition`  (only-prototype-or-export-mentions) | also mentioned: modules/hdd/apa/src/hdd.c:127 return apaInsertPartition(device, params, emptyBlocks[i], err);; modules/hdd/apa/src/libapa.h:153 extern apa_cache_t *apaInsertPartition(s32 device, const apa_params_t *params, u32 sector, int *err);
+
+## Disabled blocks (cond-if0.tsv)
+- modules/hdd/apa/src/cache.c:55-61  #if 0 (until #else) (7 lines)
+
+## Macros tested by #if/#ifdef that no source or build file defines (cond-macros-undefined.tsv). Compiler, SDK and toolchain macros also land here: check before using
+- `APA_POSIX_VER`  tested at 1 site(s) in the repo, mentioned in 0 build file(s); here: modules/hdd/apa/src/apa-opt.h:7
+- `APA_SUPPORT_GPT`  tested at 6 site(s) in the repo, mentioned in 0 build file(s); here: modules/hdd/apa/src/apa.c:419, modules/hdd/apa/src/apa.c:435, modules/hdd/apa/src/hdd_fio.c:1077, modules/hdd/apa/src/hdd_fio.c:395
+- `APA_USE_BDM`  tested at 6 site(s) in the repo, mentioned in 1 build file(s); here: modules/hdd/apa/src/hdd_blkio.c:17, modules/hdd/apa/src/hdd_blkio.c:298, modules/hdd/apa/src/hdd_blkio.c:308, modules/hdd/apa/src/hdd_blkio.c:376, modules/hdd/apa/src/hdd_blkio.c:394, modules/hdd/apa/src/irx_imports.h:22
+- `APA_USE_IOMANX`  tested at 5 site(s) in the repo, mentioned in 1 build file(s); here: modules/hdd/apa/src/hdd_blkio.c:178, modules/hdd/apa/src/hdd_blkio.c:322, modules/hdd/apa/src/hdd_blkio.h:79, modules/hdd/apa/src/hdd_fio.c:1209, modules/hdd/apa/src/hdd_fio.h:30
+- `APA_XOSD_VER`  tested at 2 site(s) in the repo, mentioned in 0 build file(s); here: modules/hdd/apa/src/apa-opt.h:25, modules/hdd/apa/src/hdd.c:346
+- `_IOP`  tested at 33 site(s) in the repo, mentioned in 1 build file(s) [builtin-like]; here: modules/hdd/apa/src/apa-opt.h:45, modules/hdd/apa/src/apa.c:15, modules/hdd/apa/src/cache.c:15, modules/hdd/apa/src/free.c:15, modules/hdd/apa/src/hdd.c:14
+
+## Byte-identical files (dupes-exact-files.tsv)
+- modules/ds34usb/iop/imports.lst is byte-identical to: POPSLoader/modules/ds34usb/iop/imports.lst
+- modules/ds34usb/iop/irx_imports.h is byte-identical to: RiptOPL/modules/ds34bt/iop/irx_imports.h
+- modules/ds34usb/iop/irx_imports.h is byte-identical to: RiptOPL/modules/ds34bt/iop/irx_imports.h; POPSLoader/modules/ds34bt/iop/irx_imports.h; POPSLoader/modules/ds34usb/iop/irx_imports.h
+- modules/ds34usb/iop/smsutils.S is byte-identical to: RiptOPL/modules/ds34bt/iop/smsutils.S; RiptOPL/modules/iopcore/cdvdman/smsutils.S
+- modules/ds34usb/iop/smsutils.S is byte-identical to: RiptOPL/modules/ds34bt/iop/smsutils.S; RiptOPL/modules/iopcore/cdvdman/smsutils.S; POPSLoader/modules/ds34bt/iop/smsutils.S; POPSLoader/modules/ds34usb/iop/smsutils.S
+- modules/hdd/apa/LICENSE is byte-identical to: RiptOPL/modules/bdm/LICENSE; RiptOPL/modules/ilink/IEEE1394_bd/LICENSE; RiptOPL/modules/ilink/iLinkman/LICENSE; RiptOPL/modules/pccf/PS2SDK_LICENSE.txt
+
+## Largely identical files (dupes-file-pairs.tsv)
+- modules/ds34usb/iop/ds34usb.c is 12% the same as Launchstation/iop/ds34bt/iop/ds34bt.c (72 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.c is 12% the same as POPSLoader/modules/ds34bt/iop/ds34bt.c (72 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.c is 14% the same as RiptOPL/modules/ds34bt/iop/ds34bt.c (83 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.c is 15% the same as RiptOPL/modules/pademu/ds34usb.c (89 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.c is 22% the same as POPSLoader/modules/pademu/ds34usb.c (130 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.c is 66% the same as Launchstation/iop/ds34usb/iop/ds34usb.c (390 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.c is 66% the same as POPSLoader/modules/ds34usb/iop/ds34usb.c (390 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.c is 8% the same as POPSLoader/modules/pademu/ds34bt.c (51 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.c repeats itself: 17 cloned normalised lines inside the file (2%)
+- modules/ds34usb/iop/ds34usb.h is 44% the same as POPSLoader/modules/pademu/ds34usb.h (22 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.h is 44% the same as RiptOPL/modules/pademu/ds34usb.h (22 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.h is 48% the same as Launchstation/iop/ds34usb/iop/ds34usb.h (24 cloned normalised lines)
+- modules/ds34usb/iop/ds34usb.h is 48% the same as POPSLoader/modules/ds34usb/iop/ds34usb.h (24 cloned normalised lines)
+- modules/ds34usb/iop/irx_imports.h is 93% the same as POPSLoader/modules/pademu/irx_imports.h (27 cloned normalised lines)
+- modules/ds34usb/iop/irx_imports.h is 93% the same as RiptOPL/modules/pademu/irx_imports.h (27 cloned normalised lines)
+- modules/ds34usb/iop/irx_imports.h is 96% the same as Launchstation/iop/ds34bt/iop/irx_imports.h (28 cloned normalised lines)
+- modules/ds34usb/iop/irx_imports.h is 96% the same as Launchstation/iop/ds34usb/iop/irx_imports.h (28 cloned normalised lines)
+- modules/ds34usb/iop/irx_imports.h is 96% the same as POPSLoader/modules/ds34bt/iop/irx_imports.h (28 cloned normalised lines)
+- modules/ds34usb/iop/irx_imports.h is 96% the same as POPSLoader/modules/ds34usb/iop/irx_imports.h (28 cloned normalised lines)
+- modules/ds34usb/iop/irx_imports.h is 96% the same as RiptOPL/modules/ds34bt/iop/irx_imports.h (28 cloned normalised lines)
+- modules/ds34usb/iop/smsutils.S is 9% the same as Launchstation/iop/ds34bt/iop/smsutils.S (15 cloned normalised lines)
+- modules/ds34usb/iop/smsutils.S is 9% the same as Launchstation/iop/ds34usb/iop/smsutils.S (15 cloned normalised lines)
+- modules/ds34usb/iop/smsutils.S is 9% the same as POPSLoader/modules/ds34bt/iop/smsutils.S (15 cloned normalised lines)
+- modules/ds34usb/iop/smsutils.S is 9% the same as POPSLoader/modules/ds34usb/iop/smsutils.S (15 cloned normalised lines)
+- modules/ds34usb/iop/smsutils.S is 9% the same as RiptOPL/modules/ds34bt/iop/smsutils.S (15 cloned normalised lines)
+- modules/ds34usb/iop/smsutils.S is 9% the same as RiptOPL/modules/iopcore/cdvdman/smsutils.S (15 cloned normalised lines)
+- modules/hdd/apa/LICENSE is 10% the same as Launchstation/ship/neutrino-ilink/LICENSE (15 cloned normalised lines)
+- modules/hdd/apa/LICENSE is 10% the same as RiptOPL/modules/bdm/LICENSE (15 cloned normalised lines)
+- modules/hdd/apa/LICENSE is 10% the same as RiptOPL/modules/ilink/IEEE1394_bd/LICENSE (15 cloned normalised lines)
+- modules/hdd/apa/LICENSE is 10% the same as RiptOPL/modules/ilink/iLinkman/LICENSE (15 cloned normalised lines)
+- modules/hdd/apa/src/apa-opt.h is 97% the same as Launchstation/iop/ps2hdd_osd/apa-opt.h (36 cloned normalised lines)
+- modules/hdd/apa/src/apa.c is 95% the same as Launchstation/iop/ps2hdd_osd/apa.c (337 cloned normalised lines)
+- modules/hdd/apa/src/cache.c is 95% the same as Launchstation/iop/ps2hdd_osd/cache.c (132 cloned normalised lines)
+- modules/hdd/apa/src/free.c is 70% the same as Launchstation/iop/ps2hdd_osd/free.c (33 cloned normalised lines)
+- modules/hdd/apa/src/hdd.c is 56% the same as Launchstation/iop/ps2hdd_osd/hdd.c (153 cloned normalised lines)
+- modules/hdd/apa/src/hdd.h is 60% the same as Launchstation/iop/ps2hdd_osd/hdd.h (12 cloned normalised lines)
+- modules/hdd/apa/src/hdd_blkio.c is 4% the same as RiptOPL/modules/bdm/bdmfs_fatfs/src/fs_driver.c (12 cloned normalised lines)
+- modules/hdd/apa/src/hdd_blkio.c is 83% the same as Launchstation/iop/ps2hdd_osd/hdd_blkio.c (208 cloned normalised lines)
+- modules/hdd/apa/src/hdd_blkio.h is 93% the same as Launchstation/iop/ps2hdd_osd/hdd_blkio.h (44 cloned normalised lines)
+- modules/hdd/apa/src/hdd_fio.c is 84% the same as Launchstation/iop/ps2hdd_osd/hdd_fio.c (673 cloned normalised lines)
+- ... 3 more: grep your file paths in evidence/RiptOPL/
+
+## Duplicate blocks (dupes-blocks.tsv)
+- modules/ds34usb/iop/ds34usb.c:1-24  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:1-24  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:1-24  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:1-24  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:100-135  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:93-128  (21 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:100-135  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:93-128  (21 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:100-135  ==  POPSLoader/modules/pademu/ds34usb.c:86-121  (21 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:149-223  ==  RiptOPL/modules/pademu/ds34usb.c:145-219  (41 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:180-225  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:157-202  (26 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:180-225  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:157-202  (26 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:180-225  ==  POPSLoader/modules/pademu/ds34usb.c:150-195  (26 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:307-335  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:268-296  (22 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:307-335  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:268-296  (22 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:314-335  ==  POPSLoader/modules/pademu/ds34usb.c:272-293  (18 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:322-335  ==  Launchstation/iop/ds34bt/iop/ds34bt.c:1316-1329  (12 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:322-335  ==  POPSLoader/modules/ds34bt/iop/ds34bt.c:1316-1329  (12 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:322-335  ==  POPSLoader/modules/pademu/ds34bt.c:1251-1264  (12 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:322-345  ==  RiptOPL/modules/ds34bt/iop/ds34bt.c:1316-1340  (18 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:338-358  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:299-319  (14 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:338-358  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:299-319  (14 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:342-358  ==  POPSLoader/modules/pademu/ds34usb.c:316-332  (12 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:391-442  ==  RiptOPL/modules/ds34bt/iop/ds34bt.c:1386-1437  (36 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:399-429  ==  POPSLoader/modules/pademu/ds34bt.c:1345-1375  (22 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:399-429  ==  POPSLoader/modules/pademu/ds34usb.c:373-403  (22 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:399-442  ==  Launchstation/iop/ds34bt/iop/ds34bt.c:1394-1437  (31 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:399-442  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:360-403  (31 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:399-442  ==  POPSLoader/modules/ds34bt/iop/ds34bt.c:1394-1437  (31 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:399-442  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:360-403  (31 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:407-427  ==  RiptOPL/modules/ds34usb/iop/ds34usb.c:508-528  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:508-528  ==  Launchstation/iop/ds34bt/iop/ds34bt.c:1402-1422  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:508-528  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:368-388  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:508-528  ==  POPSLoader/modules/ds34bt/iop/ds34bt.c:1402-1422  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:508-528  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:368-388  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:508-528  ==  POPSLoader/modules/pademu/ds34bt.c:1353-1373  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:508-528  ==  POPSLoader/modules/pademu/ds34usb.c:381-401  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:508-528  ==  RiptOPL/modules/ds34bt/iop/ds34bt.c:1402-1422  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:508-528  ==  RiptOPL/modules/ds34usb/iop/ds34usb.c:407-427  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:548-598  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:401-450  (31 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:548-598  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:401-450  (31 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:62-89  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:62-89  (19 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:62-89  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:62-89  (19 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:621-647  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:453-479  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:621-647  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:453-479  (17 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:629-648  ==  RiptOPL/modules/pademu/ds34usb.c:445-464  (12 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:662-734  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:491-563  (34 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:662-734  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:491-563  (34 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:737-760  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:563-586  (15 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:737-760  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:563-586  (15 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:776-804  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:586-612  (14 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:776-804  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:586-612  (14 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:809-913  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:617-721  (62 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:809-913  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:617-721  (62 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:922-997  ==  Launchstation/iop/ds34usb/iop/ds34usb.c:730-805  (50 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:922-997  ==  POPSLoader/modules/ds34usb/iop/ds34usb.c:730-805  (50 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:944-955  ==  RiptOPL/modules/pademu/ds34usb.c:574-585  (12 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:944-957  ==  POPSLoader/modules/pademu/ds34usb.c:595-608  (14 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:97-137  ==  RiptOPL/modules/pademu/ds34usb.c:92-132  (24 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:979-997  ==  Launchstation/iop/ds34bt/iop/ds34bt.c:1700-1718  (12 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:979-997  ==  POPSLoader/modules/ds34bt/iop/ds34bt.c:1700-1718  (12 normalised lines)
+- modules/ds34usb/iop/ds34usb.c:979-997  ==  RiptOPL/modules/ds34bt/iop/ds34bt.c:1700-1718  (12 normalised lines)
+- modules/ds34usb/iop/ds34usb.h:32-67  ==  Launchstation/iop/ds34usb/iop/ds34usb.h:30-64  (24 normalised lines)
+- modules/ds34usb/iop/ds34usb.h:32-67  ==  POPSLoader/modules/ds34usb/iop/ds34usb.h:30-64  (24 normalised lines)
+- ... 65 more: grep your file paths in evidence/RiptOPL/
+
+## TODO/FIXME/HACK style markers (cond-markers.tsv)
+- modules/hdd/apa/src/apa.c:264  // TODO: switch to HDDDevices.partitionMaxSize
+- modules/hdd/apa/src/apa.c:316  // TODO: switch to HDDDevices.partitionMaxSize
+- modules/hdd/apa/src/hdd.c:105  // TODO: In DVRP firmware, this check always succeeds
+- modules/hdd/apa/src/hdd_fio.c:361  // TODO: Why does DVRP firmware start clearing at 1024 * 4104 when not 48-bit?
+- modules/hdd/apa/src/hdd_fio.c:362  // TODO: DVRP firmware 48-bit clears offset_24+0x2000, offset_24+0x42000, offset_24+0x242000
+- modules/hdd/apa/src/hdd_fio.c:379  // TODO: DVRP firmware sets this to 0x400 bytes
+- modules/hdd/apa/src/hdd_fio.c:382  // TODO: DVRP firmware 48-bit sets this to __extend
+- modules/hdd/apa/src/hdd_fio.c:420  // TODO: DVRP firmware 48-bit creates __extend partition at offset_24_bit, with same params as __mbr except content is empty
+- modules/hdd/apa/src/hdd_fio.c:427  // TODO: For DVRP firmware 48-bit, __xdata is created with size 1024 * 2048
+- modules/hdd/apa/src/hdd_fio.c:428  // TODO: For DVRP firmware 48-bit, __xcontents is created with size (offset_48_bit - offset_24_bit) - 0x240000 & 0xfffff7ff
+- modules/hdd/apa/src/hdd_fio.c:43  // TODO: For DVRP firmware 48-bit, __xdata and __xcontents partitions are created
+- modules/hdd/apa/src/hdd_fio.c:465  // TODO: start sector usually is at either 0x4A817C8 (40GB offset) or 0x400000 (2GiB offset)

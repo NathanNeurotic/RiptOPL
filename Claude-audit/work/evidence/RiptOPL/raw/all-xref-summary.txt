@@ -1,0 +1,172 @@
+# Cross-reference candidate summary (CANDIDATES ONLY, see the .tsv header and scripts/xref.py)
+links analysed: 69   objects: EE 374, IOP 461   missing objects: 0
+global non-weak definitions (source,symbol pairs): 6055
+candidates (unreferenced by other objects in every link): 1499
+
+origin        kind  own_obj_reloc ee_elf  count     bytes(nm size)
+first-party   data  own=no        gc          4         16
+first-party   data  own=no        n/a         2         24
+first-party   data  own=yes       kept       33      25135
+first-party   data  own=yes       n/a        58      18181
+first-party   func  own=no        gc        278      20560
+first-party   func  own=no        kept       16       7144
+first-party   func  own=no        n/a        52       5760
+first-party   func  own=yes       kept      441     224832
+first-party   func  own=yes       n/a       223      57004
+generated     data  own=no        gc        111        444
+generated     data  own=no        kept        1          4
+generated     func  own=no        n/a       234          8
+generated     func  own=yes       n/a        24        192
+vendored      data  own=yes       n/a         3         10
+vendored      func  own=no        n/a        19        312
+
+## IRX/helper symbols with no reference by name anywhere (shipped dead-code candidates): per source file (count, bytes), top 60 of 34 files, 54 symbols, 5784 bytes
+    2       804  modules/hdd/apa/src/hdd.c
+    3       544  modules/network/smb2man/smb2man.c
+    2       436  modules/mmce/mmceman/src/mmce_sio2.c
+    1       432  modules/hdd/apa/src/apa.c
+    1       396  modules/network/smb2man/usmb2/unicode.c
+    1       384  modules/bdm/bdmfs_fatfs/fatfs/ff.c
+    2       332  modules/network/SMSTCPIP/api_lib.c
+    2       272  modules/network/udpfs_fhi/src/udpfs_core.c
+    2       236  modules/network/smap_udpbd/src/ministack.c
+    1       196  modules/network/nfsman/nfsman.c
+    2       192  modules/network/SMSTCPIP/etharp.c
+    1       152  modules/mx4sio_bd/src/crc16.c
+    1       144  modules/network/SMSTCPIP/timers.c
+    2       132  modules/bdm/bdmfs_fatfs/src/main.c
+    1       116  modules/network/SMSTCPIP/mem.c
+    2       108  modules/ilink/iLinkman/src/iLink_PHY.c
+    2       100  modules/network/udpfs_bd/src/udprdma.c
+    2       100  modules/network/udpfs_fhi/src/udprdma.c
+    2       100  modules/network/udpfs_ioman/src/udprdma.c
+    1        88  modules/iopcore/cdvdman/ncmd.c
+    3        88  modules/hdd/apa/src/cache.c
+    1        64  modules/network/udpfs_bd/src/udpfs_core.c
+    1        60  modules/ilink/IEEE1394_bd/src/sbp2_driver.c
+    1        60  modules/iopcore/cdvdman/scmd.c
+    2        60  modules/mmce/mmceman/src/mmceman.c
+    1        56  modules/pademu/sys_utils.c
+    2        40  modules/mcemu/mcemu.c
+    1        32  modules/iopcore/cdvdman/hdpro_atad.c
+    1        20  modules/iopcore/cdvdman/atad.c
+    1        20  modules/network/smb2man/usmb2/md5.c
+    1         8  modules/network/SMSTCPIP/sockets.c
+    1         8  modules/iopcore/imgdrv/imgdrv.c
+    1         4  modules/network/SMSTCPIP/ip_addr.c
+    4         0  modules/network/SMSTCPIP/inet.S
+
+## EE symbols removed by --gc-sections and unreferenced (source-only dead-code candidates): per source file (count, bytes), top 60 of 51 files, 282 symbols, 20576 bytes
+   20      1564  src/core/pad.cpp
+   21      1504  src/gfx/renderman.cpp
+   21      1332  src/sources/hddsupport.cpp
+   13      1132  src/sources/netsupport.cpp
+   13      1104  src/gfx/fntsys.cpp
+   16      1096  src/ui/gui.cpp
+    9      1004  src/sources/favsupport.cpp
+    1       952  src/platform/ratls.c
+    9       892  src/sources/ethsupport.cpp
+   10       852  src/platform/ioman.cpp
+    9       832  src/gfx/themes.cpp
+   10       620  src/ui/guisettings.cpp
+    6       568  src/ui/guimodal.cpp
+    5       500  src/sources/folderbrowse.cpp
+    5       480  src/gfx/artindex.cpp
+    5       460  src/core/config.cpp
+    5       416  src/core/bgm.cpp
+    2       408  src/platform/httpclient.cpp
+    6       400  src/sources/appsupport.cpp
+    6       400  src/ui/cfgtitle.cpp
+    4       352  src/sources/mmcesupport.cpp
+    4       348  src/sources/vcdsupport.cpp
+    3       284  src/core/settings.cpp
+    2       248  src/ui/guigameid.cpp
+   16       232  elfldr/loader.c
+    3       228  src/sources/bdmboot.cpp
+    3       228  src/sources/httpsupport.cpp
+    2       224  src/platform/tar.cpp
+    2       200  src/sources/udpfssupport.cpp
+    3       184  src/ui/guiscreens.cpp
+    3       176  src/gfx/atlas.cpp
+    9       160  src/platform/new.cpp
+    3       148  src/sources/bdmsupport.cpp
+    1       144  src/ui/menusys.cpp
+    2       124  src/sources/supportbase.cpp
+    1       104  src/gfx/textshape.cpp
+   11        96  ee_core/src/main.c
+    2        88  src/ui/guiwait.cpp
+    2        84  src/core/sfx.cpp
+    1        68  src/sources/bdmlaunch.cpp
+    1        64  src/core/filemgr.cpp
+    1        52  src/ui/drivestatus.cpp
+    1        44  ee_core/src/util.c
+    1        44  src/sources/ratls_ps2.cpp
+    2        40  src/ui/guioverlay.cpp
+    1        40  src/ui/guisplash.cpp
+    1        24  src/gfx/saveicon.cpp
+    1        16  src/platform/util.cpp
+    1         8  src/platform/zso.c
+    2         8  src/app/opl.cpp
+    1         0  ee_core/src/cheat_engine.S
+
+## EE symbols used only inside their own file (could be static): per source file (count, bytes), top 60 of 60 files, 474 symbols, 249967 bytes
+   11     44224  src/ui/guisettings.cpp
+   40     24644  src/sources/hddsupport.cpp
+   37     19680  src/sources/ethsupport.cpp
+   39     17548  src/sources/mmcesupport.cpp
+   27     11264  src/sources/udpfssupport.cpp
+   32     10560  src/sources/favsupport.cpp
+   26      9560  src/sources/appsupport.cpp
+    7      8146  src/sources/bdmlaunch.cpp
+   16      7808  src/gfx/renderman.cpp
+    3      7312  src/gfx/atlas.cpp
+   32      7060  src/sources/bdmsupport.cpp
+    7      5196  src/sources/vcdsupport.cpp
+    6      5124  src/gfx/saveicon.cpp
+    5      4744  src/gfx/themeelems.cpp
+   12      4544  src/core/pad.cpp
+   12      4472  src/gfx/fntsys.cpp
+    8      4384  src/gfx/artindex.cpp
+   23      4324  src/sources/httpsupport.cpp
+   14      4116  src/ui/guimodal.cpp
+    9      3892  src/core/bgm.cpp
+    6      3037  src/sources/bdmboot.cpp
+    8      2808  src/gfx/themes.cpp
+    3      2676  src/ui/guisplash.cpp
+    2      2254  src/sources/folderbrowse.cpp
+    6      2213  src/sources/cuesupport.cpp
+    6      2208  src/ui/cfgtitle.cpp
+    1      2120  src/app/opl.cpp
+    4      2060  src/ui/guioverlay.cpp
+    1      2032  src/platform/sysdisc.cpp
+    5      2016  src/core/sfx.cpp
+    6      1812  src/sources/netsupport.cpp
+    6      1792  src/ui/gui.cpp
+    1      1752  src/gfx/plasma.cpp
+    2      1288  src/sources/supportbase.cpp
+    4      1128  src/ui/guigameid.cpp
+    6      1096  src/platform/ioman.cpp
+    2      1004  src/platform/tar.cpp
+    4       988  ee_core/src/cheat_engine.S
+    5       816  src/platform/zso.c
+    1       692  src/sources/retrogem.cpp
+    3       636  src/core/config.cpp
+    1       580  src/sources/nettime.cpp
+    1       528  src/sources/bdmdevices.cpp
+    1       516  src/ui/guinotify.cpp
+    5       508  ee_core/src/syshook.c
+    1       484  src/ui/guigame.cpp
+    2       480  src/ui/guiwait.cpp
+    1       296  ee_core/src/cheat_api.c
+    1       260  src/gfx/themeviews.cpp
+    1       236  src/gfx/textshape.cpp
+    1       208  src/platform/util.cpp
+    1       192  src/ui/libview.cpp
+    2       160  ee_core/src/patches.c
+    1       156  src/core/filemgr.cpp
+    1       156  src/gfx/texcache.cpp
+    1       100  ee_core/src/dve_reg.S
+    1        56  ee_core/src/crt0.S
+    2        17  src/core/xparam.cpp
+    1         4  src/app/settingsio.cpp
+    1         0  ee_core/src/gsm_engine.S

@@ -1,0 +1,112 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-24.b",
+  "coverage": [
+    {"path": "src/sources/appsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/bdmboot.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/bdmboot.cpp", "status": "read_full", "note": ""},
+    {"path": "src/sources/bdmdevices.cpp", "status": "read_full", "note": ""},
+    {"path": "src/sources/bdmlaunch.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "appsupport.cpp is the APPS page source (AppSource): it merges legacy conf_apps.cfg entries with device-scanned title.cfg apps, dedups them by resolved startup path, keeps a hash table for art lookups, and launches ELFs through the child loader with the Reboot-IOP prompt, typed/legacy argv[0] spelling, HDD pfs-to-APA path rewrite and POPSTARTER/SMB special cases. bdmboot.cpp/.h resolve a BDM boot directory (usb0:/ata0:/massN:/mass:) to the mounted massN: slot at config load, loading transports on a bounded escalation ladder. bdmdevices.cpp owns the per-slot BDM device table: allocation, presence/identity polling (bdmUpdateDeviceData with debounce and a fast reappearance path), the UDPBD write-readback read-only probe, transport loading and wait helpers. bdmlaunch.cpp holds the BDM game launchers: Ember (.cue) and POPSTARTER (.VCD) PS1 handoffs, the lean Neutrino path with its fragment budget check, and the native cdvdman path (VMC layout checks, fragment lists, layer-1 probe, ATA DMA, driver-token dispatch).",
+  "reusable_helpers": [
+    {"name": "appStartupKeyEqual", "path": "src/sources/appsupport.cpp", "line": 309, "what": "path equality ignoring case, '/' vs '\\', repeated and trailing separators"},
+    {"name": "appBasename", "path": "src/sources/appsupport.cpp", "line": 138, "what": "basename after the last '/', '\\' or ':'"},
+    {"name": "appNormalizeLaunchPath", "path": "src/sources/appsupport.cpp", "line": 971, "what": "canonical device path: inserts '/' after the device colon and turns backslashes into slashes, refusing truncation"},
+    {"name": "appHashStartup", "path": "src/sources/appsupport.cpp", "line": 289, "what": "djb2-xor string hash used for an open-addressing lookup table"},
+    {"name": "appResolveLegacyMassStartup", "path": "src/sources/appsupport.cpp", "line": 438, "what": "resolves mass:/mass?: paths to the first massN: slot where the file opens"},
+    {"name": "bdmCheckWritable", "path": "src/sources/bdmdevices.cpp", "line": 183, "what": "write-then-read-back probe of a device root to detect servers that drop writes"},
+    {"name": "bdmWaitForDevice", "path": "src/sources/bdmdevices.cpp", "line": 458, "what": "polls fileXioDopen on massN:/ every 100 ms until a timeout"},
+    {"name": "bdmEnsureTransportLoaded", "path": "src/sources/bdmdevices.cpp", "line": 504, "what": "idempotent load of the USB/MX4SIO/iLink/ATA block transport for a BDM type"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "bdmUpdateDeviceData fast reappearance path republishes the old list for whatever volume now holds the slot",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/bdmdevices.cpp", "start": 286, "end": 309},
+        {"path": "src/sources/bdmdevices.cpp", "start": 437, "end": 449},
+        {"path": "src/sources/bdmdevices.cpp", "start": 373, "end": 390},
+        {"path": "src/sources/supportbase.cpp", "start": 707, "end": 714},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1814, "end": 1818},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1725, "end": 1734}
+      ],
+      "problem": "A confirmed disconnect (bdmdevices 437-449) hides the page but keeps root/driver/type, and the rescan it triggers keeps the old list because sbReadList retains it when the device is gone (supportbase 707-714). Any later mount in that slot is treated as 'reappeared intact' (286-309): page shown, return 0, so needsUpdate stops at 1817 before the CD/DVD mtime and ul.cfg checks. Swap stick A for stick B and B's tab shows A's games and art until a manual refresh. The path also skips the publish gates at 373-390: a page of a disabled transport is re-shown on every generation bump and hidden again on the next poll (bdmsupport 1725-1734), and BDM=Off is not honoured.",
+      "fix": "In the fast path, return without showing the page when bdmTransportEnabled(type)==0 or the explicit BDM-Off gate applies. Then let BdmSource::needsUpdate still run its cheap CD/DVD mtime and ul.cfg size comparison for a restored page (for example a distinct return value that skips the connect sound and folder creation). A stall on the same volume costs two stats, and a different volume gets a normal rebuild.",
+      "justification": "Adds about 8 lines. It fixes a wrong game list (and launches of titles that are not on the inserted device) without bringing back the full rescan on every transient stall, which is what the fast path was added to avoid. Reusing the existing mtime/size checks is the smallest change that can tell two volumes apart.",
+      "benefit": "Correct list after a device swap; no tab flash or FAV rebuild per hotplug for a disabled transport (INFERRED from the traced call chain).",
+      "benefit_rank": 3,
+      "lines_removed": -8,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read bdmdevices.cpp:209-456, bdmsupport.cpp:1698-1878 (needsUpdate), 1880-1921 (update), 899-943 (event handler only bumps BdmGeneration), supportbase.cpp:534-725 (sbReadList keeps list and fsize on total read failure), opl.cpp:690-742 and 1006-1056 (gen bump queues IO_MENU_UPDATE_DEFFERED). Grep for bdmDeviceRoot[0] =, bdmDriver[0] =, bdmULSizePrev = -2 over src: identity is never cleared on removal (only bdmsupport.cpp:1624, 2008, 2037 set -2). INFERRED: that bdm gives the freed massN slot to the next device that mounts."
+    },
+    {
+      "n": 2,
+      "title": "AppSource::rename can drop the app's config: legacy branch removes the key via a pointer into the freed node and before validating newName",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/appsupport.cpp", "start": 944, "end": 965},
+        {"path": "src/core/config.cpp", "start": 447, "end": 474},
+        {"path": "src/core/config.cpp", "start": 221, "end": 227}
+      ],
+      "problem": "Legacy branch: configRemoveKey(configApps, cur->key) frees cur at config.cpp:464 and the loop keeps comparing later nodes against that key, a read after free on every legacy rename. Then configSetStr(newName) fails when the name is empty or contains '=' (configKeyValidate, config.cpp:221-227; '=' is on the on-screen keyboard), and configWrite saves conf_apps.cfg without the app, so it disappears. Scanned branch: the configRead result is ignored, so after a failed read configWrite rewrites title.cfg with only title=, which loses boot= and argv1=. The app then drops out of the list because appScanCallback needs boot.",
+      "fix": "Legacy branch: return early when newName is empty or contains '='. Copy cur->key into a local buffer and pass that copy to configRemoveKey. Scanned branch: call configSetStr/configWrite only when configRead succeeded.",
+      "justification": "Adds about 4 lines. They close a use-after-free and two ways a rename silently deletes the user's app entry or title.cfg, and they are the smallest checks that do so.",
+      "benefit": "No freed-memory read per legacy rename; no lost conf_apps.cfg entry or title.cfg keys on rename (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": -4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read appsupport.cpp:936-969, config.cpp:221-227 (empty or '=' key rejected), 363-386 (setStr returns 0 on invalid key), 447-477 (removeKey frees the match and keeps looping with key), 1419-1434 (configRead returns 0 on failure). Caller menusys.cpp:302-319 passes keyboard text (max CONFIG_KEY_NAME_LEN=48). diaeditors.cpp:149 keyboard row contains '='. Grep 'configRemoveKey(.*->key)' over src: only appsupport.cpp:950."
+    },
+    {
+      "n": 3,
+      "title": "Legacy app records leave argv1 uninitialised, and the argv1 that dedup donates to them is never passed at launch",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/appsupport.cpp", "start": 696, "end": 721},
+        {"path": "src/sources/appsupport.cpp", "start": 374, "end": 381},
+        {"path": "src/sources/appsupport.cpp", "start": 1323, "end": 1342},
+        {"path": "src/sources/appsupport.cpp", "start": 1354, "end": 1354}
+      ],
+      "problem": "addAppsLegacyList mallocs each node and never sets app.argv1 (696-721), yet appDedupList reads appsList[dup].argv1[0] of the legacy survivor (378), which is uninitialised heap. Even when the scanned duplicate's argv1 is copied in, config() for a legacy row never sets CONFIG_ITEM_ALTSTARTUP from argv1 (1323-1342; only the scanned branch does, 1354). An app listed in both conf_apps.cfg and a title.cfg with argv1= is shown as the legacy row and starts without its argument, contrary to the comment at 355-356.",
+      "fix": "Set app->app.argv1[0] = '\\0' in addAppsLegacyList. In config()'s legacy branch, set CONFIG_ITEM_ALTSTARTUP from appsList[id].argv1 when it is non-empty. If donation is not wanted, delete lines 378-381 instead.",
+      "justification": "Adds 2-3 lines. They remove an uninitialised read and make the documented argv1 donation actually reach the launch. Otherwise the argument from title.cfg is lost whenever the app is also in conf_apps.cfg.",
+      "benefit": "Deterministic dedup; launch argument kept for apps present in both channels (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read appsupport.cpp:349-389, 662-773, 1314-1367, include/appsupport.h:21-32. Grep '\\.argv1|->argv1|argv1\\[' over the repo: written only at appsupport.cpp:379-380 (donation) and 762-765 (scanned); read at 378 and 1354; launch reads only CONFIG_ITEM_ALTSTARTUP (1203)."
+    },
+    {
+      "n": 4,
+      "title": "AppSource::launch resets MMCE cards before checks that can still cancel the launch",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/appsupport.cpp", "start": 1174, "end": 1187},
+        {"path": "src/sources/appsupport.cpp", "start": 1264, "end": 1289},
+        {"path": "src/sources/mmcesupport.cpp", "start": 547, "end": 590}
+      ],
+      "problem": "mmceReset() runs at 1181, right after the Reboot-IOP answer. The path normalisation (1184-1187), the HDD partition and handoff-path checks (1265-1273) and the 256-byte argument-pool check (1286-1289) can then still return to the menu. resetCards loads the MMCE modules if they are not loaded and sends the 0x9 reset to every present MMCE card (mmcesupport.cpp:554-585). An over-long path or argv1 therefore leaves OPL in the menu with the card switched and mmceman resident. appLaunchElfPath does the same reset only after all its checks (1068-1072).",
+      "fix": "Move the mmceReset() call to just before host::app().deinit at line 1295, after the argBytes check. Keep a call in the OPLDIAG Ember block if that probe needs it.",
+      "justification": "",
+      "benefit": "An aborted APPS launch no longer resets SD2PSX/MemCard PRO cards or loads mmceman; no line change (moved call).",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read appsupport.cpp:1037-1075 and 1077-1312, mmcesupport.cpp:547-595. Grep mmceReset over the repo: mmcesupport.h:42, mmcesupport.cpp:592, appsupport.cpp:1072 and 1181, plus a stub in .github/scripts/test_app_launch_args.py:130 (does not pin the order)."
+    }
+  ]
+}

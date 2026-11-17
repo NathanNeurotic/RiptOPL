@@ -1,0 +1,25 @@
+## Symbols with no reference outside their definition (symbols-unreferenced.tsv). Class no-other-mention = the name appears nowhere else in the repo; only-prototype-or-export-mentions = it appears only in a prototype or export list
+- src/ui/guiwait.cpp:155  function `guiGameHandleDeferedIO`  (only-prototype-or-export-mentions) | also mentioned: include/gui.h:197 void guiGameHandleDeferedIO(int *ptr, struct UIItem *ui, int type, void *data);
+
+## Largely identical files (dupes-file-pairs.tsv)
+- src/ui/guiwait.cpp is 19% the same as RiptOPL/src/ui/gui.cpp (22 cloned normalised lines)
+- src/ui/guiwait.cpp is 19% the same as RiptOPL/src/ui/guisettings.cpp (22 cloned normalised lines)
+- src/ui/guiwait.cpp is 33% the same as RiptOPL/src/ui/guimodal.cpp (37 cloned normalised lines)
+- src/ui/guiwait.cpp is 36% the same as RiptOPL/src/ui/guigameid.cpp (40 cloned normalised lines)
+- src/ui/menuitems.cpp is 10% the same as RiptOPL/src/app/settingsio.cpp (31 cloned normalised lines)
+- src/ui/menuitems.cpp is 13% the same as RiptOPL/src/app/lwnbdctl.cpp (39 cloned normalised lines)
+- src/ui/menuitems.cpp is 13% the same as RiptOPL/src/sources/appscan.cpp (38 cloned normalised lines)
+- src/ui/menuitems.cpp is 15% the same as RiptOPL/src/app/autolaunch.cpp (44 cloned normalised lines)
+- src/ui/menuitems.cpp is 5% the same as RiptOPL/src/app/opl.cpp (16 cloned normalised lines)
+
+## Duplicate blocks (dupes-blocks.tsv)
+- src/ui/guiwait.cpp:2-45  ==  RiptOPL/src/ui/guigameid.cpp:2-58  (40 normalised lines)
+- src/ui/guiwait.cpp:21-42  ==  RiptOPL/src/ui/guisettings.cpp:32-53  (22 normalised lines)
+- src/ui/guiwait.cpp:22-43  ==  RiptOPL/src/ui/gui.cpp:29-51  (22 normalised lines)
+- src/ui/guiwait.cpp:9-45  ==  RiptOPL/src/ui/guimodal.cpp:10-46  (37 normalised lines)
+- src/ui/menuitems.cpp:10-25  ==  RiptOPL/src/app/opl.cpp:14-29  (16 normalised lines)
+- src/ui/menuitems.cpp:10-49  ==  RiptOPL/src/sources/appscan.cpp:11-50  (38 normalised lines)
+- src/ui/menuitems.cpp:17-31  ==  RiptOPL/src/app/settingsio.cpp:20-34  (14 normalised lines)
+- src/ui/menuitems.cpp:2-49  ==  RiptOPL/src/app/autolaunch.cpp:2-49  (44 normalised lines)
+- src/ui/menuitems.cpp:32-49  ==  RiptOPL/src/app/settingsio.cpp:36-53  (17 normalised lines)
+- src/ui/menuitems.cpp:9-49  ==  RiptOPL/src/app/lwnbdctl.cpp:10-50  (39 normalised lines)

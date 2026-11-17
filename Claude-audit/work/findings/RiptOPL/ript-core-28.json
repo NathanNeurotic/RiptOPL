@@ -1,0 +1,351 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-28",
+  "coverage": [
+    {"path": "src/sources/hddsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/httpsupport.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "hddsupport.cpp is the internal APA/PFS HDD game source: it loads the ATA stack (DEV9, ATAD/HD Pro, XHDD, BDM) and the ps2hdd/ps2fs support stack with deferred Code 222/402 error reporting, discovers and mounts the pfs0: OPL data home (+OPL, __common or a conf_hdd.cfg redirect), stages the Settings home selector through pfs1:, builds the HDL list (games.bin cache plus live APA walk), the PS1 list (pooled __.POPS, one-game PP.*.POPS.*, __.EMBER partitions) and a read-only DESR DVR ISO list, and launches HDL games natively or through Neutrino, VCDs through POPSTARTER and Ember titles keep-IOP. State lives in one HddSupport instance (include/hddint.h) with a set of free hdd* functions that forward to it. include/httpsupport.h declares the HTTP catalog source state class (used only inside src/sources/httpsupport.cpp) plus three public entry points used by the settings UI.",
+  "reusable_helpers": [
+    {"name": "hddCheckOPLFolder", "path": "src/sources/hddsupport.cpp", "line": 408, "what": "opendir-or-mkdir an OPL folder under a mount point, tolerating a creation race"},
+    {"name": "hddApaHeaderValid", "path": "src/sources/hddsupport.cpp", "line": 793, "what": "validates an APA header magic plus 127- or 255-word checksum"},
+    {"name": "hddDetectNonSonyFileSystem", "path": "src/sources/hddsupport.cpp", "line": 817, "what": "classifies LBA 0-1 as APA, MBR/GPT or unreadable via xhdd0: devctl"},
+    {"name": "hddRestoreDataHome", "path": "src/sources/hddsupport.cpp", "line": 2034, "what": "remounts pfs0: on the OPL data partition after a launch borrowed it"},
+    {"name": "hddVisitCommonPops", "path": "src/sources/hddsupport.cpp", "line": 2079, "what": "runs a callback on __common/POPS via the live pfs0: home or a temporary pfs1: mount"},
+    {"name": "hddDvrNameToStartup", "path": "src/sources/hddsupport.cpp", "line": 146, "what": "derives an SLUS_123.45 style game id from a filename or an FNV-1a hash fallback"},
+    {"name": "httpNormalizeBasePath", "path": "include/httpsupport.h", "line": 84, "what": "normalises a URL base path: leading slash, no trailing slash, empty becomes /"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Nine hdd* free functions only forward to identical HddSupport methods used nowhere else",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 3232, "end": 3240},
+        {"path": "src/sources/hddsupport.cpp", "start": 3255, "end": 3273},
+        {"path": "src/sources/hddsupport.cpp", "start": 3285, "end": 3293},
+        {"path": "src/sources/hddsupport.cpp", "start": 3300, "end": 3303},
+        {"path": "include/hddint.h", "start": 38, "end": 39},
+        {"path": "include/hddint.h", "start": 50, "end": 55},
+        {"path": "include/hddint.h", "start": 61, "end": 61}
+      ],
+      "problem": "hddLoadModules, hddDiagLoadModulesReady, hddVcdInvalidateCache, hddGetLiveOplHomeSelection, hddGetOplHomeSelection, hddResolveLiveOplDataPath, hddOplHomeSelectionNeedsTargetSave, hddMountSelectedOplHome and hddCommitOplHomeSelection are one-line forwarders to methods of the single gHddSupport instance. HddSupport (include/hddint.h) is included only by hddsupport.cpp, all its data members are public, and the hddint.h comments ('was hddXxx') show the methods are the old free functions moved into the class, so each operation now exists twice. The file even mixes both spellings (hddGetLiveOplHomeSelection() at 2085/2098, gHddSupport.getLiveOplHomeSelection() at 2114).",
+      "fix": "Put each body back into its exported hdd* function (prefixing member accesses with gHddSupport.) and delete the matching method declaration and definition, keeping methods only where there is no exported twin. Update the .github/scripts source-scraping tests that stub these methods.",
+      "justification": "",
+      "benefit": "~9 forwarders x 4-5 lines + 9 declarations = ~50 source lines and one indirection layer; ELF change small (INFERRED: forwarders may already be inlined)",
+      "benefit_rank": 2,
+      "lines_removed": 50,
+      "effort": "M",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Grep hddint.h|gHddSupport over src/RiptOPL: only src/sources/hddsupport.cpp, include/hddint.h, docs/CPP-CONVERSION-PLAN.md and three .github/scripts tests. Read hddint.h 1-170 (all members public, 'was hddXxx' comments) and the forwarders at hddsupport.cpp 3228-3303. External callers of the forwarders: settingsio.cpp 2144-2207, supportbase.cpp 2402/2508, bdmsupport.cpp 1308, menuitems.cpp 230, guisettings.cpp 1281/1293/2710."
+    },
+    {
+      "n": 2,
+      "title": "Remember-last-played block copy-pasted in nine launch paths across the game sources",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 2389, "end": 2392},
+        {"path": "src/sources/hddsupport.cpp", "start": 2720, "end": 2723},
+        {"path": "src/sources/bdmlaunch.cpp", "start": 453, "end": 456},
+        {"path": "src/sources/bdmlaunch.cpp", "start": 898, "end": 901},
+        {"path": "src/sources/ethsupport.cpp", "start": 1224, "end": 1227},
+        {"path": "src/sources/ethsupport.cpp", "start": 1375, "end": 1378},
+        {"path": "src/sources/httpsupport.cpp", "start": 799, "end": 802},
+        {"path": "src/sources/mmcesupport.cpp", "start": 1384, "end": 1387},
+        {"path": "src/sources/udpfssupport.cpp", "start": 1070, "end": 1073}
+      ],
+      "problem": "The same four lines (if gRememberLastPlayed: configSetStr(CONFIG_LAST, \"last_played\", startup); saveConfig(CONFIG_LAST, 0)) appear nine times; no helper exists (grep for LastPlayed\\w*\\( finds none). In HDD the Neutrino attempt saves at 2389 and, when a preflight falls back to the native core, the native path saves again at 2720.",
+      "fix": "Add one small helper in supportbase (e.g. sbRememberLastPlayed(startup)) and replace the nine blocks with calls. In HDD, the Neutrino-fallback double save then also becomes obvious and can be dropped by moving the call after the preflights.",
+      "justification": "Adds a ~5-line helper but removes 9 x 4 = 36 duplicated lines (net ~22) and gives one place for the card-write policy.",
+      "benefit": "~22 net lines removed; a few dozen bytes of code (INFERRED); possibly one redundant CONFIG_LAST save on HDD Neutrino fallback (INFERRED, depends on saveConfig skipping unchanged data)",
+      "benefit_rank": 2,
+      "lines_removed": 22,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep '\"last_played\"' over src/RiptOPL/src: opl.cpp:733 (read), and the 9 write sites listed; Grep 'LastPlayed\\w*\\(' over *.c,*.cpp,*.h: no helper. Read hddsupport.cpp 2355-2463 (save at 2389 precedes sysNeutrinoPreflight at 2397, whose failure returns 0 into the native path that saves at 2720)."
+    },
+    {
+      "n": 3,
+      "title": "hddPartitionMountable duplicates hddPartitionMountableAt, whose only caller probes then mounts again",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 436, "end": 449},
+        {"path": "src/sources/hddsupport.cpp", "start": 1247, "end": 1257},
+        {"path": "src/sources/hddsupport.cpp", "start": 1326, "end": 1332}
+      ],
+      "problem": "hddPartitionMountable(p) is byte-for-byte hddPartitionMountableAt(hddPrefix, p, FIO_MT_RDWR). The At variant has one caller, commitOplHomeSelection, which mounts/unmounts pfs1: as a probe and then immediately mounts the same partition again at 1331 and fails the same way if that mount fails, so the probe adds nothing.",
+      "fix": "Delete hddPartitionMountableAt. In commitOplHomeSelection replace the probe plus mount with fileXioUmount(\"pfs1:\") followed by the existing fileXioMount check.",
+      "justification": "",
+      "benefit": "~13 lines removed and one mount/unmount cycle less per Settings save of the APA home (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 13,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read both helpers (436-449, 1247-1257) and commitOplHomeSelection 1301-1366. Grep hddPartitionMountable over src/RiptOPL: callers 1131, 1148 (plain) and 1328 (At) only; no .github/scripts reference."
+    },
+    {
+      "n": 4,
+      "title": "loadCoreSupportModules re-tests supportModulesLoaded after already returning on it",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 982, "end": 986},
+        {"path": "src/sources/hddsupport.cpp", "start": 1018, "end": 1018},
+        {"path": "src/sources/hddsupport.cpp", "start": 1072, "end": 1072}
+      ],
+      "problem": "The function returns 1 at 985-986 when supportModulesLoaded is set, and nothing between there and 1018 sets it, so `if (!supportModulesLoaded)` at 1018 is always true; the comment at 982-984 still describes the guard as covering only the module loads.",
+      "fix": "Delete the redundant if and its closing brace (de-indent the block) and the comment lines 982-984.",
+      "justification": "",
+      "benefit": "~5 lines removed; no ELF change (compiler folds it, INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read 937-1075: between 986 and 1018 only hddDetectNonSonyFileSystem (817-879, does not touch supportModulesLoaded) and the error branches run."
+    },
+    {
+      "n": 5,
+      "title": "buildVcdGameList grows its two parallel arrays with three copies of a paired realloc block",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 1568, "end": 1579},
+        {"path": "src/sources/hddsupport.cpp", "start": 1633, "end": 1646},
+        {"path": "src/sources/hddsupport.cpp", "start": 1715, "end": 1730}
+      ],
+      "problem": "Each phase (PP one-game rows, pooled __.POPS VCDs, __.EMBER folders) repeats the same realloc(newGames)/check/assign, realloc(newParts)/check/assign sequence with scanIncomplete=1; break, differing only in the element count and which scratch buffers it frees.",
+      "fix": "Add a static helper that grows both arrays to a given count and returns 0/1; each site becomes a one-line call plus its own frees and break.",
+      "justification": "The helper (~12 lines) replaces 42 lines of copies with ~15 lines of calls, a net reduction.",
+      "benefit": "~14 net lines removed (INFERRED from the cited ranges)",
+      "benefit_rank": 1,
+      "lines_removed": 14,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read 1530-1790; the three blocks are identical apart from (total + 1) vs (total + n) and the free(vcds)/free(cues)/free(cueSizes) calls."
+    },
+    {
+      "n": 6,
+      "title": "renameVcd repeats the pfs1: mount/unmount block for Ember and pooled VCD rows",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 1977, "end": 2001}
+      ],
+      "problem": "The Ember branch (1977-1987) and the pooled-VCD branch (1992-2001) build the same hdd0:<part> source, unmount and RDWR-mount pfs1:, call one rename function and unmount; only cueRenameGame vs vcdRenameFileInDir differs.",
+      "fix": "Handle the PP.* label case first, then do the mount once and call cueRenameGame or vcdRenameFileInDir depending on isEmber.",
+      "justification": "",
+      "benefit": "~9 lines removed (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 9,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read renameVcd 1961-2012."
+    },
+    {
+      "n": 7,
+      "title": "Three functions repeat the 'live __common pfs0: else borrow pfs1:' sequence; the comment above them describes the wrong one",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 2071, "end": 2092},
+        {"path": "src/sources/hddsupport.cpp", "start": 2094, "end": 2107},
+        {"path": "src/sources/hddsupport.cpp", "start": 2109, "end": 2124}
+      ],
+      "problem": "hddVisitCommonPops, hddEquipPopstarterBdmaFromCommon and hddInstallPopstarterMcFromCommon each test whether the live home is __common (use pfs0:) or mount hdd0:__common read-only on pfs1:, run one call, and unmount. hddVisitCommonPops already is the generic form. The comment at 2071-2076 documents hddInstallPopstarterMcFromCommon (pfs1: scratch, custom ELF, mc?:/POPSTARTER externals) but sits above hddVisitCommonPops.",
+      "fix": "Implement the other two through hddVisitCommonPops (a captureless lambda plus a small arg struct, or pass the root and append POPS/ inside), keeping their own module-ready checks; move the 2071-2076 comment to hddInstallPopstarterMcFromCommon or delete it.",
+      "justification": "",
+      "benefit": "~10 lines removed and one place for the __common mount rule (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read 2071-2124. Callers: hddVisitCommonPops vcdsupport.cpp:3145; hddEquipPopstarterBdmaFromCommon vcdsupport.cpp:1870; hddInstallPopstarterMcFromCommon hddsupport.cpp:2262 only. Note the root differs (vcdInstallPopstarterMc takes the partition root, the others the POPS folder)."
+    },
+    {
+      "n": 8,
+      "title": "games.bin cache helpers compute status codes that the only caller never distinguishes",
+      "category": 1,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 3097, "end": 3144},
+        {"path": "src/sources/hddsupport.cpp", "start": 3146, "end": 3198},
+        {"path": "src/sources/hddsupport.cpp", "start": 1860, "end": 1869}
+      ],
+      "problem": "hddLoadGameListCache returns 1, 0, EIO, ENOMEM, -1 or ENOENT but its one caller only tests cacheRet == 0 (1864). hddUpdateGameListCache tracks a result variable (EIO/0/1) that its one caller (1869) discards. hddLoadGameListCache also frees the list it is given although the caller always passes a zeroed one.",
+      "fix": "Make hddUpdateGameListCache void and drop its result bookkeeping; have hddLoadGameListCache return 0/-1 only; drop the leading hddFreeHDLGamelist(cache) or keep it if other callers are added.",
+      "justification": "",
+      "benefit": "~8 lines removed (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep hddLoadGameListCache|hddUpdateGameListCache over src/RiptOPL: forward declarations 1475-1476, calls 1860 and 1869, definitions 3097 and 3146; no tests reference them. cachedGames is {0}-initialised at 1850."
+    },
+    {
+      "n": 9,
+      "title": "pfsDiagHddCheckResult and pfsDiagPs2fsResult are stored only for a LOG that release builds compile out",
+      "category": 1,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 463, "end": 489},
+        {"path": "src/sources/hddsupport.cpp", "start": 1046, "end": 1046},
+        {"path": "src/sources/hddsupport.cpp", "start": 1063, "end": 1063},
+        {"path": "include/hddint.h", "start": 104, "end": 105}
+      ],
+      "problem": "The two fields are written by armPfsDiagFailure/clearPfsDiagFailure and read only inside logPfsDiagState's LOG call. LOG(...) expands to nothing unless __DEBUG (include/ioman.h:75-80), so in shipped builds they are write-only state and logPfsDiagState is an empty function. Only pfsDiagReason is used by real logic (762, 771).",
+      "fix": "Delete the two fields and the hddCheckResult/ps2fsResult parameters of armPfsDiagFailure; if the values are wanted in debug logs, LOG them at the two arm call sites.",
+      "justification": "",
+      "benefit": "~8 lines and 8 bytes of .bss removed (INFERRED: two ints)",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep pfsDiagHddCheckResult|pfsDiagPs2fsResult over src/RiptOPL: hddint.h:104-105 (fields), hddsupport.cpp 467-468 (LOG args), 475-476, 487-488 (writes); nothing else. Read include/ioman.h:75-80 for the LOG definition."
+    },
+    {
+      "n": 10,
+      "title": "HddSource::cleanUp repeats the list-free block in its abandoned-art branch",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 2984, "end": 2997}
+      ],
+      "problem": "Both branches free hdlGames, free the VCD list and call hddDvrCleanUp; they differ only in the keepMounts argument and in whether the unmounts and cleanUpSupportModules follow.",
+      "fix": "Do the frees once with hddDvrCleanUp(gArtAbandoned ? 1 : exception & (KEEP_DVR_MOUNTS_EXCEPTION | KEEPIOP_EXCEPTION)), then return early when gArtAbandoned before the unmounts.",
+      "justification": "",
+      "benefit": "~5 lines removed (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read HddSource::cleanUp 2972-3010."
+    },
+    {
+      "n": 11,
+      "title": "hddInit(item_list_t *) is declared but never defined; two comments still refer to it",
+      "category": 1,
+      "locations": [
+        {"path": "include/hddsupport.h", "start": 117, "end": 117},
+        {"path": "src/sources/hddsupport.cpp", "start": 2971, "end": 2971},
+        {"path": "src/sources/hddsupport.cpp", "start": 3039, "end": 3039}
+      ],
+      "problem": "The EE prototype hddInit(item_list_t *) has no definition anywhere; the init path is HddSource::init (1458). The only other hddInit is the unrelated IOP APA driver entry in modules/hdd/apa. The comments 'This may be called, even if hddInit() was not' name the missing function.",
+      "fix": "Delete the prototype and change the two comments to say HddSource::init (or delete them).",
+      "justification": "",
+      "benefit": "1 prototype removed; comments corrected; no ELF change",
+      "benefit_rank": 1,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep '\\bhddInit\\b' over src/RiptOPL (excluding .md): include/hddsupport.h:117, modules/hdd/apa/src/hdd_fio.h:15, hdd_fio.c:299, hdd.c:44 (IOP driver, different signature), and the two comments in hddsupport.cpp."
+    },
+    {
+      "n": 12,
+      "title": "include/httpsupport.h is included by four UI files that use nothing from it",
+      "category": 1,
+      "locations": [
+        {"path": "include/httpsupport.h", "start": 80, "end": 88},
+        {"path": "src/ui/guiwait.cpp", "start": 30, "end": 30},
+        {"path": "src/ui/guimodal.cpp", "start": 31, "end": 31},
+        {"path": "src/ui/guigameid.cpp", "start": 43, "end": 43},
+        {"path": "src/ui/gui.cpp", "start": 37, "end": 37}
+      ],
+      "problem": "Each of these four files includes httpsupport.h with the copied comment 'httpTestServer() -- the Network page Test button', but none of them references httpTestServer, httpGetObject, httpNormalizeBasePath, gHttpSupport or any HTTP_ constant; only guisettings.cpp (593, 627, 632) uses them.",
+      "fix": "Delete the four include lines (all four include opl.h directly; a build confirms nothing else was pulled in transitively).",
+      "justification": "",
+      "benefit": "4 lines removed; less header parsing; no ELF change",
+      "benefit_rank": 1,
+      "lines_removed": 4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Grep 'http[A-Z]\\w*|gHttpSupport|HTTP_' in guiwait.cpp, guimodal.cpp, guigameid.cpp, gui.cpp: only the include lines match. Grep of the header's symbols over src/RiptOPL: users are httpsupport.cpp, guisettings.cpp, settingsio.cpp, opl.cpp. Whether a transitive type from supportbase.h is needed was not compiled (INFERRED safe)."
+    },
+    {
+      "n": 13,
+      "title": "hddIsApaMbrHybrid re-implements hddDetectNonSonyFileSystem's sector read and APA checks",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 817, "end": 835},
+        {"path": "src/sources/hddsupport.cpp", "start": 893, "end": 903}
+      ],
+      "problem": "Both functions malloc 1 KB, issue the same ATA_DEVCTL_READ_PARTITION_SECTOR devctl on xhdd0:, then test the APA magic, hddApaHeaderValid and the 0x55AA signature. The malloc of a fixed 1 KB scratch buffer is also unnecessary on the IO worker's 96 KB stack.",
+      "fix": "Factor the read into one static helper filling a caller-provided 1 KB buffer (or a stack array), and use it from both functions.",
+      "justification": "",
+      "benefit": "~8 lines removed and two heap allocations per probe avoided (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read 793-932. Callers: hddDetectNonSonyFileSystem at 990 (loadCoreSupportModules, IO worker); hddIsApaMbrHybrid at settingsio.cpp:1252. hddIsApaMbrHybrid text is extracted by .github/scripts/test_autolaunch_settings.py:244, which needs the helper too."
+    },
+    {
+      "n": 14,
+      "title": "hddDvrScan: redundant gEnableDVR re-check, a root copy and a counter that only feeds a LOG",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 96, "end": 97},
+        {"path": "src/sources/hddsupport.cpp", "start": 222, "end": 222},
+        {"path": "src/sources/hddsupport.cpp", "start": 241, "end": 241},
+        {"path": "src/sources/hddsupport.cpp", "start": 249, "end": 253},
+        {"path": "src/sources/hddsupport.cpp", "start": 265, "end": 265},
+        {"path": "src/sources/hddsupport.cpp", "start": 271, "end": 271}
+      ],
+      "problem": "hddDvrEnsureDrivers has one caller, hddDvrScan, which has already returned when !gEnableDVR, so the check at 96-97 is dead. root[32] is a plain copy of roots[part]; `scanned` is only printed by a LOG that release builds drop.",
+      "fix": "Delete the gEnableDVR test in hddDvrEnsureDrivers, use roots[part] directly instead of root[], and drop `scanned` (log the fixed 6 directories if needed).",
+      "justification": "",
+      "benefit": "~5 lines removed (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep hddDvrEnsureDrivers|hddDvrScan\\( over src: single call at 230; hddDvrScan called only at 1884. Read 94-274. .github/scripts/test_dvr_scan_lifecycle.py exercises hddDvrScan behaviour, which this does not change."
+    },
+    {
+      "n": 15,
+      "title": "Changelog-style narrative comments and one comment duplicated from hddint.h",
+      "category": 7,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 361, "end": 364},
+        {"path": "include/hddint.h", "start": 98, "end": 101},
+        {"path": "src/sources/hddsupport.cpp", "start": 666, "end": 681},
+        {"path": "src/sources/hddsupport.cpp", "start": 727, "end": 741},
+        {"path": "src/sources/hddsupport.cpp", "start": 751, "end": 760},
+        {"path": "src/sources/hddsupport.cpp", "start": 973, "end": 984},
+        {"path": "src/sources/hddsupport.cpp", "start": 1084, "end": 1098},
+        {"path": "src/sources/hddsupport.cpp", "start": 1854, "end": 1859}
+      ],
+      "problem": "Many blocks narrate history (reviewer names, issue numbers, 'used to', 'the old path', user reports) rather than the current rule, e.g. 666-681 and 727-741 are 15-16 lines each around a few statements. The comment at 361-364 is a verbatim copy of hddint.h 98-101.",
+      "fix": "Delete the duplicated comment at 361-364 and cut each narrative block to the one or two sentences that state the current invariant; the history is in git.",
+      "justification": "",
+      "benefit": "~60 comment lines removed; no ELF change",
+      "benefit_rank": 1,
+      "lines_removed": 60,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read all cited ranges; compared hddsupport.cpp 361-364 with hddint.h 98-101 (same four sentences)."
+    }
+  ]
+}

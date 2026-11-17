@@ -1,0 +1,160 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-33",
+  "coverage": [
+    {"path": "src/sources/udpfssupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/vcdsupport.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "udpfssupport.cpp is the UDPFS network-filesystem game source (UdpfsSource, a GameSource subclass): it loads the udpfs_smap -> udpfs_ministack -> udpfs_ioman IRX chain once per boot with SMB/UDPBD NIC interlocks, polls the server until it answers, discovers THM/LNG/ART folders in any letter case, scans PS2 ISOs (sbReadList) and PS1 rows (ps1FillGameList), and launches games through Neutrino (default) or the OPL core with udpfs_cdvdman plus mmce_mcemu VMCs kept open on the server, and PS1 titles through POPSTARTER (UDPFS Assault) or Ember. vcdsupport.h is the public interface of src/sources/vcdsupport.cpp: POPS/*.VCD scanning, PS1 disc-id memo and async resolve, POPSTARTER.ELF resolution and selector building, display/sort keys for the PS1 list, memory-card free-space-gated writes, BDMAssault driver equip, and POPStarter network DAT (IPCONFIG/SMBCONFIG/UDPFS) read/write, plus the VcdSupport singleton class holding the memo and custom-path cache.",
+  "reusable_helpers": [
+    {"name": "vcdSafeWriteFile", "path": "include/vcdsupport.h", "line": 134, "what": "writes a buffer to a memory-card path only after a free-space check; removes a partial file on IO error"},
+    {"name": "vcdMcHasSpace", "path": "include/vcdsupport.h", "line": 132, "what": "checks whether a memory card holding a path has room for N bytes plus a margin"},
+    {"name": "vcdExtractGameId", "path": "include/vcdsupport.h", "line": 42, "what": "parses a strict leading PS1 disc id (SXXX_NNN.NN) from a file name"},
+    {"name": "vcdSortKey", "path": "include/vcdsupport.h", "line": 100, "what": "returns the PS1 list sort key, skipping a game-id prefix when the hide option is on"},
+    {"name": "vcdBuildSelector", "path": "include/vcdsupport.h", "line": 88, "what": "builds the POPSTARTER argv[0] selector <dev>POPS/<prefix><name>.ELF"},
+    {"name": "vcdIsHiddenDisc", "path": "include/vcdsupport.h", "line": 125, "what": "detects disc 2+ of a multi-disc set from (Disc N)/(CD N)/(Disk N) in a file name"},
+    {"name": "vcdPopsPartitionTitleOffset", "path": "include/vcdsupport.h", "line": 46, "what": "parses a PP.<ID>.POPS.<NAME> HDD partition label and returns the offset of the title"},
+    {"name": "udpfsArtFolderHasFiles", "path": "src/sources/udpfssupport.cpp", "line": 459, "what": "returns 1/0/-1/-2 for a directory that has non-dot entries, is empty, cannot be opened, or hit a read error"},
+    {"name": "udpfsEnsureReady", "path": "src/sources/udpfssupport.cpp", "line": 158, "what": "loads the UDPFS chain and polls stat(udpfs:/) with a millisecond timeout and 100 ms sleeps"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Duplicated vcdPreparePopstarterSmbLaunch result-to-message mapping in ethsupport.cpp and appsupport.cpp",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/ethsupport.cpp", "start": 1013, "end": 1033},
+        {"path": "src/sources/appsupport.cpp", "start": 1148, "end": 1166},
+        {"path": "include/vcdsupport.h", "start": 282, "end": 294},
+        {"path": "src/sources/vcdsupport.cpp", "start": 2994, "end": 3025}
+      ],
+      "problem": "Both callers of vcdPreparePopstarterSmbLaunch translate its vcd_popsnet_ensure_t result into the same five-branch chain (CANCELLED -> return, SMB_MISSING/NEED_STATIC/IO_ERROR/INVALID -> the same _STR_POPSTARTER_* msgBox and return). The function already uses host::ui().msgBox itself (vcdsupport.cpp:3022), so the messages can live there once.",
+      "fix": "Show the matching message inside vcdPreparePopstarterSmbLaunch and make it return 1 (ready) or 0 (stop); replace each caller's block with a single 'if (!vcdPreparePopstarterSmbLaunch(...)) return;'. The public vcd_popsnet_ensure_t enum can then become file-local to vcdsupport.cpp. The stub enum in .github/scripts/test_app_launch_args.py needs the matching edit.",
+      "justification": "",
+      "benefit": "~38 caller lines become 2 and ~10 lines move into the callee: about 25 lines net (INFERRED from the cited ranges); one mapping instead of two that can drift.",
+      "benefit_rank": 2,
+      "lines_removed": 25,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep over src for VCD_POPSNET_*: outside vcdsupport.cpp only ethsupport.cpp:1015-1029 and appsupport.cpp:1149-1163 use them; both blocks read and are line-for-line the same five checks and strings. vcdsupport.cpp:2994-3025 read: it already shows the SMBv1 msgBox and returns CANCELLED. .github/scripts grep: test_app_launch_args.py:77-83 stubs the enum and string id."
+    },
+    {
+      "n": 2,
+      "title": "PS2-logo probe (open, CheckPS2Logo, close) copied five times; udpfsLaunchOplCore opens the ISO twice and launch() builds partname twice",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/udpfssupport.cpp", "start": 940, "end": 954},
+        {"path": "src/sources/udpfssupport.cpp", "start": 1123, "end": 1131},
+        {"path": "src/sources/udpfssupport.cpp", "start": 1150, "end": 1150},
+        {"path": "src/sources/ethsupport.cpp", "start": 1242, "end": 1249},
+        {"path": "src/sources/ethsupport.cpp", "start": 1479, "end": 1485},
+        {"path": "src/sources/mmcesupport.cpp", "start": 1503, "end": 1509}
+      ],
+      "problem": "The block 'if (gPS2Logo) { fd = open(partname); if (fd >= 0) { EnablePS2Logo = CheckPS2Logo(fd, 0); close(fd); } }' appears five times. In udpfsLaunchOplCore the ISO is opened once for its size (941-947) and then reopened for the logo (948-954), although CheckPS2Logo seeks to 0 itself (util.cpp:796); on UDPFS each open/close is a server round trip. UdpfsSource::launch calls sbCreatePath for the same partname at 1125 and again at 1150.",
+      "fix": "In udpfsLaunchOplCore run CheckPS2Logo on the fd opened for the size before closing it. In launch() build partname once before the logo check and drop the second sbCreatePath. Optionally add one helper next to CheckPS2Logo (int ps2LogoForFile(const char *path): returns 0 when gPS2Logo is off, else opens, checks, closes) and call it from the other four sites.",
+      "justification": "The helper replaces five identical 7-line blocks with one-line calls; an 8-line helper leaves about 20 lines net removed, and the udpfs merge saves one network open/close per OPL-core launch.",
+      "benefit": "~20-25 lines net (INFERRED: 5 x 7-line blocks -> 5 calls + ~8-line helper, plus 5 lines in udpfsLaunchOplCore); one fewer UDPFS open/close round trip per OPL-core launch.",
+      "benefit_rank": 2,
+      "lines_removed": 22,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep 'EnablePS2Logo = CheckPS2Logo(fd, 0)' over src: udpfssupport.cpp:951,1128, ethsupport.cpp:1246,1482, mmcesupport.cpp:1506 (all the same open/check/close shape, read), plus bdmlaunch.cpp:847 which reuses an existing fd. util.cpp:784-797 read: CheckPS2Logo does lseek(fd,0,SEEK_SET) before reading, so sharing the size fd is safe."
+    },
+    {
+      "n": 3,
+      "title": "udpfsDiscoverThemes and udpfsDiscoverLanguages are the same any-case root scan, and with udpfsDiscoverArtFolder list the root three times per poll",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/udpfssupport.cpp", "start": 382, "end": 414},
+        {"path": "src/sources/udpfssupport.cpp", "start": 419, "end": 455},
+        {"path": "src/sources/udpfssupport.cpp", "start": 492, "end": 522},
+        {"path": "src/sources/udpfssupport.cpp", "start": 575, "end": 583}
+      ],
+      "problem": "udpfsDiscoverThemes (382-414) and udpfsDiscoverLanguages (419-455) differ only in the folder name (THM/LNG), the register call (thmAddElements/lngAddLanguages), the latch, and the fact that only the LNG copy handles readdir errors and unopenable entries. udpfsDiscoverArtFolder opens and lists the same root again (503-520). needsUpdate calls all three on every poll until each latches, so an unlatched session lists udpfs:/ over the network up to three times per poll.",
+      "fix": "Merge the THM and LNG functions into one helper that takes the folder name and a register callback (keeping the LNG copy's errno/failed handling for both), and let one root listing per poll feed THM, LNG and ART together. test_udpfs_themes.py and test_udpfs_art.py extract these functions by exact signature and must be updated with the change.",
+      "justification": "",
+      "benefit": "~20 lines removed (INFERRED: the two 33-37 line functions share ~25 lines); up to two fewer network directory listings per background poll before discovery latches.",
+      "benefit_rank": 2,
+      "lines_removed": 20,
+      "effort": "M",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read 382-583 in full. Grep strcasecmp(entry->d_name, \"THM\"|\"LNG\"|\"ART\") over src: only udpfssupport.cpp:396,438,510, so no shared helper exists elsewhere. Callers: needsUpdate 581-583 and update 655,668,670. Comment at 45-48 and .github/scripts/test_udpfs_themes.py / test_udpfs_art.py:45-58 show the source-text tests that pin these signatures."
+    },
+    {
+      "n": 4,
+      "title": "vcdDisplayName(mode, text) has no caller; three includes still cite it",
+      "category": 1,
+      "locations": [
+        {"path": "src/sources/vcdsupport.cpp", "start": 173, "end": 188},
+        {"path": "include/vcdsupport.h", "start": 102, "end": 105},
+        {"path": "src/gfx/coverflow.cpp", "start": 17, "end": 17},
+        {"path": "src/gfx/themes.cpp", "start": 18, "end": 18},
+        {"path": "src/gfx/themeelems.cpp", "start": 19, "end": 19}
+      ],
+      "problem": "The mode-based vcdDisplayName was superseded by the row-aware vcdDisplayNameForRow (vcdsupport.cpp:190, used by cfgtitle.cpp, themeelems.cpp, rabadge.cpp). The only remaining mentions of vcdDisplayName are its definition, its prototype, comments, and the '// vcdDisplayName' notes on three #include lines; no code and no test calls it.",
+      "fix": "Delete vcdDisplayName and its prototype/comment block. Fix the include comments; coverflow.cpp and themes.cpp appear to use nothing else from vcdsupport.h, so their #include can probably go too (check the build).",
+      "justification": "",
+      "benefit": "~20 source lines removed; no ELF change, the main ELF links with --gc-sections and -ffunction-sections (ps2.yaml:645,649) (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 20,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep 'vcdDisplayName\\b' over the whole repo except docs: vcdsupport.h:105 (prototype), vcdsupport.cpp:178 (definition), comments at vcdsupport.cpp:204,218,980 and guisettings.cpp:1259, include comments coverflow.cpp:17, themes.cpp:18, themeelems.cpp:19; nothing in .github/scripts. Grep for vcd/VCD/ps1Row/VcdSupport in coverflow.cpp: only the include line; in themes.cpp only theme fields (vcdMainElems etc.), not vcdsupport.h symbols. The include removal is INFERRED (transitive includes not checked)."
+    },
+    {
+      "n": 5,
+      "title": "vcdsupport.h: unused VCD_PREFIX_HDD and stale, orphan and repeated comments",
+      "category": 7,
+      "locations": [
+        {"path": "include/vcdsupport.h", "start": 26, "end": 26},
+        {"path": "include/vcdsupport.h", "start": 9, "end": 9},
+        {"path": "include/vcdsupport.h", "start": 328, "end": 329},
+        {"path": "include/vcdsupport.h", "start": 73, "end": 75},
+        {"path": "include/vcdsupport.h", "start": 347, "end": 348}
+      ],
+      "problem": "VCD_PREFIX_HDD (\"\", marked deferred) is referenced nowhere. Line 9 says the BDMA equip lives in system.c / opl.c, but vcdEquipBdma is declared here and defined in vcdsupport.cpp:1674. Lines 328-329 describe a render-thread getter that has no declaration after it (rowIdCached has its own comment at 334). The vcdInvalidateGameIds comment (73-75) is repeated word for word at 325-327, and 347 names a non-existent requestDisplayId.",
+      "fix": "Delete VCD_PREFIX_HDD, the orphan comment at 328-329 and one of the duplicated invalidate comments; correct line 9 and the name at 347.",
+      "justification": "",
+      "benefit": "~7 lines removed; header comments match the code. No binary effect.",
+      "benefit_rank": 1,
+      "lines_removed": 7,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "git grep -nw VCD_PREFIX_HDD in src/RiptOPL: no match outside include/vcdsupport.h:26. Grep vcdEquipBdma: defined vcdsupport.cpp:1674, called guisettings.cpp:1209-1225. Read vcdsupport.h:309-364 in full: no declaration between the 328-329 comment and requestRowId at 333. Grep requestDisplayId: only the vcdRequestDisplayId free function exists (vcdsupport.cpp:583)."
+    },
+    {
+      "n": 6,
+      "title": "Small redundancies in udpfssupport.cpp (double include, impossible NULL checks, identical cleanUp/shutdown, repeated guards)",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/udpfssupport.cpp", "start": 5, "end": 5},
+        {"path": "src/sources/udpfssupport.cpp", "start": 17, "end": 17},
+        {"path": "src/sources/udpfssupport.cpp", "start": 91, "end": 91},
+        {"path": "src/sources/udpfssupport.cpp", "start": 654, "end": 670},
+        {"path": "src/sources/udpfssupport.cpp", "start": 1052, "end": 1057},
+        {"path": "src/sources/udpfssupport.cpp", "start": 1232, "end": 1252}
+      ],
+      "problem": "include/lang.h is included at 5 and 17. In launch(), 'game != NULL' at 1052 and 1057 can never be false: activeGame (277-287) returns &emptyGame_ or &games[id], 1047 already returned on emptyGame_, and 1071 dereferences game unconditionally. cleanUp (1232-1241) and shutdown (1244-1252) have the same body. update() tests 'if (answeredBefore)' three times in a row (654, 667, 669). '#if defined(RIPTOPLITE) && !LITE_HAS_UDPFS' (91) can be '#if !LITE_HAS_UDPFS' because riptlite.h defines LITE_HAS_UDPFS 1 for full builds (riptlite.h:101).",
+      "fix": "Delete the second lang.h include and the two 'game != NULL &&' terms; let shutdown call cleanUp(itemList, 0); put the ART discovery, folder creation and THM/LNG discovery under one 'if (answeredBefore)' block in the same order; simplify the #if.",
+      "justification": "",
+      "benefit": "~8 lines removed, simpler conditions; no binary change worth counting (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read udpfssupport.cpp in full. activeGame 277-287 never returns NULL. cleanUp/shutdown bodies compared line by line (only the LOG text differs). riptlite.h:19-108 read: LITE_HAS_UDPFS is 0/1 inside #ifdef RIPTOPLITE and 1 in the #else branch. The RIPTOPLITE 'undefined macro' lead is a false positive: tools/lite_devices.py:106 passes RIPTOPLITE."
+    }
+  ]
+}

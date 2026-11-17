@@ -1,0 +1,190 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-03",
+  "coverage": [
+    {"path": "ee_core/src/gsm_engine.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/gsm_engine_adv.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/igrmbox.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/igrmenu.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/igrovl_stub.c", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "gsm_engine.S (upstream OPL GSM, with fork edits) hooks SetGsCrt and arms a GS-register data breakpoint whose debug-exception handler GSHandler rewrites or records the game's PMODE/SMODE/SYNC/DISPFB/DISPLAY writes; a TRACK_ONLY flag turns it into a passive recorder for RetroAchievements and the in-game menu. gsm_engine_adv.S is #included by it and holds the manual DTV_576P and (GSM_1080P) DTV_1080P rasters plus the SMODE1/SRFSH/SYNCH/SYNCV write handlers. igrmenu.c is the first-party in-game menu (ported from RIPPS2): it composes text pages, renders them line by line in the shown frame's pixel format from GSM's recorded registers, uploads them through VIF1 DIRECT, saves/restores the covered pixels via an IOP buffer, and handles RESUME/CHEATS/ACHIEVEMENTS/EXIT/POWER. igrmbox.c is the EE half of a SIF-DMA mailbox to igrmbox.irx (hush SPU2, lend a pixel buffer). In RetroAchievements editions both C files are built into igrovl.elf instead and ee_core keeps only igrovl_stub.c, which hands the overlay an API table.",
+  "reusable_helpers": [
+    {"name": "igrmNum", "path": "ee_core/src/igrmenu.c", "line": 196, "what": "writes a non-negative int as decimal text and returns the end pointer (no libc)"},
+    {"name": "igrmCat", "path": "ee_core/src/igrmenu.c", "line": 188, "what": "stpcpy-style string append returning the end pointer"},
+    {"name": "igrmEndsWith", "path": "ee_core/src/igrmenu.c", "line": 213, "what": "case-insensitive string suffix test"},
+    {"name": "igrmPath", "path": "ee_core/src/igrmenu.c", "line": 231, "what": "wraps a path into two fixed-width lines, breaking after '/' or space, eliding the start with ..."},
+    {"name": "igrmSendLine", "path": "ee_core/src/igrmenu.c", "line": 719, "what": "uploads one line of pixels into a GS frame buffer via VIF1 DIRECT (BITBLTBUF/TRXPOS/TRXREG/TRXDIR)"},
+    {"name": "igrmRead", "path": "ee_core/src/igrmenu.c", "line": 783, "what": "reads one GS frame-buffer line back to EE memory (local->host transfer through the VIF1 FIFO)"},
+    {"name": "igrmBpcOff", "path": "ee_core/src/igrmenu.c", "line": 879, "what": "saves BPC and disables all EE hardware breakpoints in kernel mode (igrmBpcBack restores)"},
+    {"name": "igrmPowerButton", "path": "ee_core/src/igrmenu.c", "line": 901, "what": "polls and cancels the latched CDVD power-button request so presses can be counted"},
+    {"name": "igrmCount", "path": "ee_core/src/igrmenu.c", "line": 701, "what": "reads the COP0 Count register (EE cycle counter)"},
+    {"name": "Enable_GSBreakpoint", "path": "ee_core/src/gsm_engine.S", "line": 1268, "what": "arms the GS-register data address breakpoint (writes only in TRACK_ONLY mode); Disable_GSBreakpoint turns all breakpoints off"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "COP0 Count reader and the 294912000 ticks-per-second constant are copied into six ee_core files",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/igrmbox.c", "start": 24, "end": 24},
+        {"path": "ee_core/src/igrmbox.c", "start": 36, "end": 42},
+        {"path": "ee_core/src/igrmenu.c", "start": 698, "end": 698},
+        {"path": "ee_core/src/igrmenu.c", "start": 701, "end": 707},
+        {"path": "ee_core/src/padhook.c", "start": 126, "end": 126},
+        {"path": "ee_core/src/padhook.c", "start": 197, "end": 202},
+        {"path": "ee_core/src/freeze_diag.c", "start": 53, "end": 60},
+        {"path": "ee_core/src/freeze_diag_screen.c", "start": 268, "end": 276},
+        {"path": "ee_core/src/ra.c", "start": 54, "end": 61}
+      ],
+      "problem": "The same static inline 'mfc0 %0, $9' wrapper exists as mbCount (igrmbox.c), igrmCount (igrmenu.c), ee_ticks (freeze_diag.c), fds_ticks (freeze_diag_screen.c), ra_ticks (ra.c) and twice open-coded in padhook.c IGR_WaitIdle; the clock constant is defined three times as MB_SECOND, IGRM_SECOND and IGR_SECOND (plus EE_TICKS_PER_MS). igrmbox.c and igrmenu.c are even linked into the same overlay (build_edition.py:161).",
+      "fix": "Put one static inline Count reader and one ticks-per-second define in ee_core/include/ee_core.h (every one of these files already includes it) and delete the six local copies and the three local constants.",
+      "justification": "",
+      "benefit": "~30 source lines net (five 7-8 line copies plus two open-coded reads and three constants, minus one 7-line helper); no ELF change, all copies are inlined (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 30,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep 'mfc0 %0, \\$9' over ee_core: freeze_diag.c:57, freeze_diag_screen.c:273, igrmbox.c:39, igrmenu.c:704, padhook.c:197,201, ra.c:58 (each read in context). Grep 294912000 over ee_core: igrmbox.c:24, igrmenu.c:698, padhook.c:126; freeze_diag_screen.c:268 has EE_TICKS_PER_MS 294912. ee_core.h is included by all six files (read their include lists). ee_core/include has no existing Count helper (grep Count|SECOND over ee_core/include)."
+    },
+    {
+      "n": 2,
+      "title": "GSM engine: dead instructions, unused GSMAdapts fields, unused labels and a duplicate include",
+      "category": 1,
+      "locations": [
+        {"path": "ee_core/src/gsm_engine.S", "start": 1055, "end": 1055},
+        {"path": "ee_core/src/gsm_engine.S", "start": 1069, "end": 1069},
+        {"path": "ee_core/src/gsm_engine.S", "start": 1295, "end": 1296},
+        {"path": "ee_core/src/gsm_engine.S", "start": 1299, "end": 1300},
+        {"path": "ee_core/src/gsm_engine.S", "start": 676, "end": 676},
+        {"path": "ee_core/src/gsm_engine.S", "start": 695, "end": 695},
+        {"path": "ee_core/src/gsm_engine.S", "start": 69, "end": 69},
+        {"path": "ee_core/include/gsm_defines.h", "start": 89, "end": 92},
+        {"path": "ee_core/src/gsm_engine.S", "start": 1119, "end": 1119},
+        {"path": "ee_core/src/gsm_engine.S", "start": 1257, "end": 1257},
+        {"path": "ee_core/src/gsm_engine_adv.S", "start": 14, "end": 15}
+      ],
+      "problem": "'la $t1, op_t' (1055, 1069) is overwritten by every BD handler before any read; 'mfbpc $a3' (1295) is never read; Enable_GSBreakpoint reloads TRACK_ONLY into $t0 (1299-1300) although $t0 still holds it from 1275; Adapted_DISPLAY1/2 are stored (676, 695) but nothing reads them and SMODE2_adaptation is never used, so GSMAdapts only needs Interlace_FRAME_Mode_Flag; labels B_likely and end_GSHandler have no reference; gsm_engine_adv.S repeats the ABI_EABI64 define and include its only includer (gsm_engine.S:14-15, :1260) already did.",
+      "fix": "Delete the two 'la $t1, op_t', the mfbpc and its sync.p, the second la/lbu of TRACK_ONLY, the two Adapted_DISPLAY stores, the two unused labels and gsm_engine_adv.S:14-15; shrink GSMAdapts to the one flag byte and drop the unused .equ lines in gsm_defines.h.",
+      "justification": "",
+      "benefit": "11 instructions = 44 bytes of eecore .text and 16 bytes of .data (GSMAdapts 18 B padded to 32 by .p2align 4, 1 B fits in 16) (INFERRED); two fewer stores on every trapped DISPLAY write; ~15 lines.",
+      "benefit_rank": 1,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read every BD handler gsm_engine.S:1061-1253: t1 written at 1066,1090,1107,1145,1164,1177,1190,1206,1224 before any read, untouched by B_taken/B_skip/B_com0, restored at 1246. $a3 not read after 1295 (1298-1311). $t0 not written between 1275 and 1299. Grep Adapted_DISPLAY|SMODE2_adaptation over repo: only gsm_defines.h:89-92 and the stores at 676/695; GSMAdapts is not .globl and only read at 875 (Interlace_FRAME_Mode_Flag). Grep B_likely, end_GSHandler: definitions only. ps2.yaml:606 compiles gsm_engine.S, not gsm_engine_adv.S. mfbpc dead-read is upstream-derived OPL code (INFERRED), hence Med confidence that it has no side purpose; it sits in the debug-exception path, hence Med risk."
+    },
+    {
+      "n": 3,
+      "title": "GSM_1080P is defined by every ps2build build, but gsm_engine comments still call DTV_1080P a variant-only build",
+      "category": 7,
+      "locations": [
+        {"path": "ee_core/src/gsm_engine.S", "start": 182, "end": 182},
+        {"path": "ee_core/src/gsm_engine.S", "start": 204, "end": 205},
+        {"path": "ee_core/src/gsm_engine_adv.S", "start": 138, "end": 139},
+        {"path": "ps2.yaml", "start": 609, "end": 609},
+        {"path": "ps2.yaml", "start": 644, "end": 644}
+      ],
+      "problem": "ps2.yaml puts GSM_1080P in the base defines of eecore and the main ELF, and no tools/ script removes it, so every shipped build compiles DTV_1080P. The comments say it is 'experimental 1080p variant build only' and 'absent from every default build', which is false and misleads readers about what ships.",
+      "fix": "Rewrite the three comments to state the code is in every build (or delete the 'variant only' sentences). The #ifdef GSM_1080P gates themselves only serve the legacy Makefile's GSM1080P=0 escape hatch; drop them together with the matching gates in src/ if that hatch is retired.",
+      "justification": "",
+      "benefit": "Removes ~4 lines of false comment; up to 4 more lines (the #ifdef/#endif pairs here) if the gate is retired; no ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep GSM_1080P|GSM1080P over repo (excluding docs): defines only at ps2.yaml:609,644, Makefile:241-243, ee_core/Makefile:37-38; tools/ grep for defines shows build_configuration.py removes only PADEMU (:25) and IGR_MENU/IGR_OVERLAY (:35), build_edition.py never touches GSM_1080P. .github/scripts/test_ps2build_configurations.py:61 asserts GSM_1080P is in every configuration's defines."
+    },
+    {
+      "n": 4,
+      "title": "igrmWaitClear duplicates igrmWaitFor with want = 0",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/igrmenu.c", "start": 709, "end": 716},
+        {"path": "ee_core/src/igrmenu.c", "start": 774, "end": 781},
+        {"path": "ee_core/src/igrmenu.c", "start": 746, "end": 746},
+        {"path": "ee_core/src/igrmenu.c", "start": 1119, "end": 1120}
+      ],
+      "problem": "igrmWaitClear(reg, bits) is the same 10,000,000-iteration poll as igrmWaitFor(reg, bits, 0); both are static in igrmenu.c and igrmRead already calls igrmWaitFor(..., 0) for the same CHCR STR test that igrmSendLine does with igrmWaitClear.",
+      "fix": "Delete igrmWaitClear, move igrmWaitFor above igrmSendLine and call igrmWaitFor(reg, bits, 0) at the three call sites.",
+      "justification": "",
+      "benefit": "8 lines; one fewer function in ee_core / igrovl.elf (a few dozen bytes if not inlined, INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read igrmenu.c:709-716 and 774-781: identical loops, the only difference is (*reg & bits) == want vs !(*reg & bits). Grep igrmWaitClear: definition plus calls at 746, 1119, 1120; igrmWaitFor calls at 816-817 and 825."
+    },
+    {
+      "n": 5,
+      "title": "The GSMSourceGSRegs layout is declared four separate ways (array + SRC_ indexes, two identical structs, asm offsets)",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/igrmenu.c", "start": 547, "end": 557},
+        {"path": "ee_core/src/igrovl_stub.c", "start": 22, "end": 23},
+        {"path": "ee_core/include/igs_api.h", "start": 119, "end": 142},
+        {"path": "ee_core/src/ra_overlay.c", "start": 41, "end": 60}
+      ],
+      "problem": "igrmenu.c and igrovl_stub.c declare 'extern u64 GSMSourceGSRegs[11]' with private SRC_* indexes, igs_api.h declares struct GSMSourceGSRegs, and ra_overlay.c declares a field-for-field copy, struct ra_gs_source_regs, with a 'keep this in sync' comment; all mirror the Source_* offsets in gsm_defines.h. Four C views of one asm object must be kept in step by hand.",
+      "fix": "Declare struct GSMSourceGSRegs / GSMSourceSetGsCrt and their externs once in ee_core/include/gsm_api.h (already included by padhook.c and gsm_api.c), include it from igs_api.h, ra_overlay.c, igrovl_stub.c and igrmenu.c, and delete ra_gs_source_regs, the local externs and the SRC_* indexes (the host test then uses the struct too).",
+      "justification": "",
+      "benefit": "~16 source lines (ra_overlay.c 14-line struct, 2 externs in igrovl_stub.c, igrmenu.c externs and SRC_ defines replaced by field names) and one place to keep in sync with gsm_defines.h; no ELF change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 16,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep GSMSourceGSRegs over repo: igrmenu.c:549, igrovl_stub.c:22, igs_api.h:126-142, ra_overlay.c:46-60 (struct ra_gs_source_regs, same 11 u64 fields in the same order), tests/host/test_igrmenu.cpp:14 (u64[11] for the host test), gsm_defines.h:47-58 (asm offsets). Read igs_api.h:119-142 and ra_overlay.c:40-60. gsm_api.h currently holds only prototypes (read in full)."
+    },
+    {
+      "n": 6,
+      "title": "igrovlFlushCache is a forwarding wrapper that exists only because the overlay API types FlushCache as returning int",
+      "category": 3,
+      "locations": [
+        {"path": "ee_core/src/igrovl_stub.c", "start": 25, "end": 29},
+        {"path": "ee_core/src/igrovl_stub.c", "start": 40, "end": 40},
+        {"path": "ee_core/include/igrovl.h", "start": 40, "end": 40}
+      ],
+      "problem": "igrovl_api_t declares 'int (*FlushCache)(int op)', so igrovl_stub.c wraps the kernel's void FlushCache in igrovlFlushCache returning 0. No caller in the overlay uses the result: igrmenu.c and igrmbox.c only call FlushCache(0) as a statement (via igrovl_side.h:26).",
+      "fix": "Type the field as void (*FlushCache)(int op) in igrovl.h, put FlushCache itself in igrovlApi, and delete igrovlFlushCache.",
+      "justification": "",
+      "benefit": "6 lines and one small function in ee_core's RA editions (~16 bytes, INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read igrovl.h:30-43, igrovl_side.h:26, igrovl_stub.c:25-43. Every FlushCache use in igrmenu.c (741, 811, 837) and igrmbox.c (78, 102) discards the result. The ps2sdk prototype being void FlushCache(s32) is INFERRED (the SDK header is not in the repo; the wrapper's existence implies the type mismatch). Overlay and core are built from the same tree in one build (build_edition.py:157-166), so the ABI change needs no compatibility handling beyond IGROVL_ABI."
+    },
+    {
+      "n": 7,
+      "title": "igrmLen re-implements strlen, which both ee_core and igrovl.elf already provide",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/igrmenu.c", "start": 154, "end": 160},
+        {"path": "ee_core/igrovl/igrovl_main.c", "start": 43, "end": 50}
+      ],
+      "problem": "igrmLen is a byte-loop strlen used at seven places in igrmenu.c. ee_core.h includes <string.h> and ee_core already calls strlen (iopmgr.c, patches.c, util.c); the overlay defines its own strlen for igrmenu.c (igrovl_main.c:43-50, 'igrmenu.c's only libc call'), so strlen is linked in both builds anyway.",
+      "fix": "Delete igrmLen and call strlen.",
+      "justification": "",
+      "benefit": "7 lines; likely no ELF change since the compiler already emits a strlen call for the loop (INFERRED from the igrovl_main.c comment).",
+      "benefit_rank": 1,
+      "lines_removed": 7,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep strlen( over ee_core: iopmgr.c:320,322, patches.c:687,849, util.c:26,32,85-93, igrovl_main.c:44 (definition); none in igrmenu.c source. ee_core.h:19 includes <string.h>. igrmLen uses: igrmenu.c:185, 215, 234, 241, 426, 443. The host test (tests/host/test_igrmenu.cpp) builds with libc."
+    }
+  ]
+}

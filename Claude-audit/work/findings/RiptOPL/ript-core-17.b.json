@@ -1,0 +1,127 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-17.b",
+  "coverage": [
+    {"path": "src/gfx/textshape.cpp", "status": "read_full", "note": ""},
+    {"path": "include/textures.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/textures.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "textshape.cpp is the text helper ported from RIPPS2: UTF-8 next/put helpers, CJK/Thai/Lao line-break rules, and Arabic/Persian shaping (presentation-form table, lam-alef ligatures) plus a simple right-to-left line reorder into static 1024-codepoint buffers; fntsys.cpp calls txtShape under the font lock for every drawn and measured string. textures.h holds the INTERNAL_TEXTURE enum (positional texture ids), the PNG-header and built-in-fallback inline helpers and the texture error codes. textures.cpp maps every texture id to an embedded PNG blob, decodes PNGs with libpng (embedded, tar member, staged whole-file for mmce/mass, 4 KB streaming for pfs/smb) and JPGs with libjpeg (shrunk to 512 or 720x512), classifies open failures as absent or transient for the art cache, and implements the art-name search (png/jpg/jpeg, OPL Manager _BG_00/_SCR_00 aliases) used by every itemGetImage.",
+  "reusable_helpers": [
+    {"name": "txtNext", "path": "src/gfx/textshape.cpp", "line": 14, "what": "decodes one UTF-8 codepoint and returns its byte length (a broken byte counts as one)"},
+    {"name": "txtPut", "path": "src/gfx/textshape.cpp", "line": 36, "what": "encodes one codepoint as UTF-8 into a bounded buffer, leaving room for the terminator"},
+    {"name": "texStageExternalFileIntoMemory", "path": "src/gfx/textures.cpp", "line": 623, "what": "reads a whole open file into a heap buffer: lseek size probe and one read, else 32 KB chunks into a doubling buffer, with an 8 MB cap and abort checks"},
+    {"name": "texIsJpg", "path": "src/gfx/textures.cpp", "line": 1166, "what": "JPEG SOI signature check on a buffer"},
+    {"name": "texPngHeaderIsSmallT8", "path": "include/textures.h", "line": 182, "what": "checks a PNG signature + IHDR for an 8-bit paletted image within a side limit before decoding"},
+    {"name": "texArtAlias", "path": "src/gfx/textures.cpp", "line": 1368, "what": "maps OPL art names to OPL Manager names (_BG <-> _BG_00, _SCR <-> _SCR_00, _SCR2 <-> _SCR_01) inside an ART folder"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Undecodable art files are retried back-to-back forever: decode failures are reported as transient to the art cache",
+      "category": 5,
+      "locations": [
+        {"path": "src/gfx/textures.cpp", "start": 1023, "end": 1031},
+        {"path": "src/gfx/textures.cpp", "start": 1035, "end": 1042},
+        {"path": "src/gfx/textures.cpp", "start": 1108, "end": 1111},
+        {"path": "src/gfx/textures.cpp", "start": 477, "end": 483},
+        {"path": "src/gfx/textures.cpp", "start": 1328, "end": 1334},
+        {"path": "src/gfx/textures.cpp", "start": 1397, "end": 1409},
+        {"path": "src/gfx/artload.cpp", "start": 746, "end": 751},
+        {"path": "src/gfx/texcache.cpp", "start": 372, "end": 378}
+      ],
+      "problem": "A present art file that cannot be decoded returns ERR_SET_JMP (corrupt PNG, PNG over 1024 px via png_set_user_limits, neither PNG nor JPG), ERR_BAD_DIMENSION (e.g. an 800x600 RGBA PNG over maxSize) or ERR_BAD_DEPTH (16-bit PNG). texDiscoverArt passes these up unchanged and artload.cpp:746 treats every result other than ERR_BAD_FILE as transient: it clears the slot, and texcache re-claims it on the next frame (only SIO2 devices have an idle gate). So the art worker reloads the same file in a loop for as long as the game is on screen, each cycle a full open and read (two of each for a .png name, finding 2).",
+      "fix": "Treat decode failures of a file that was read completely as absent: in texDiscoverArt return ERR_BAD_FILE for ERR_SET_JMP, ERR_BAD_DIMENSION and ERR_BAD_DEPTH (or let artload.cpp:746 retry only ERR_FILE_IO and the libpng-struct OOM codes). So a mid-read network error on the streaming reader stays transient, have texReadFileFunction mark its reader when read() fails and make the setjmp handler return ERR_FILE_IO in that case.",
+      "justification": "Adds a flag in tex_file_reader_t and one mapping (about 4 lines). It fixes a real endless reload loop that occupies the art worker and the device bus (shared with BGM on USB, with the pad on MMCE/MX4SIO). It is the smallest change that keeps the issue #388 rule that only real I/O failures retry.",
+      "benefit": "Ends an indefinite reload loop per broken art file on screen. INFERRED: a 2 MB 1280x720 PNG background read twice per cycle on USB at about 1 MB/s is about 4 s of device time per cycle, repeated while selected, delaying every other cover behind it.",
+      "benefit_rank": 3,
+      "lines_removed": -4,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read textures.cpp texLoadAll 880-1115 (setjmp handler returns ERR_SET_JMP, user limits 1035, ERR_BAD_DEPTH 1041-1042/1101-1105, ERR_BAD_DIMENSION 1108-1111), texReadFileFunction 477-483 (read failure -> png_error -> ERR_SET_JMP), texLoadArtFile 1328-1334, texFindArt 1360, texDiscoverArt 1404-1408. Callers: BdmSource::image bdmsupport.cpp:2092-2097, ethsupport.cpp:1566-1571, udpfssupport.cpp:1213-1218, hddsupport.cpp:2958, mmcesupport.cpp:662, appsupport.cpp:1381 return the result unchanged to artload.cpp:670. artload.cpp:746-751 clears on result != ERR_BAD_FILE; texcache.cpp:24-42 cacheClearItem wipes key; texcache.cpp:305-339 then finds no key, 372-378 gates only isSio2, 422-470 enqueues a new request. grep transientFail: only the counter at artload.cpp:747 and its getter, no retry cap."
+    },
+    {
+      "n": 2,
+      "title": "texLoadArtFile opens and reads a .png art file twice when its bytes are not a PNG (JPG-in-.png, corrupt PNG)",
+      "category": 5,
+      "locations": [
+        {"path": "src/gfx/textures.cpp", "start": 1328, "end": 1334},
+        {"path": "src/gfx/textures.cpp", "start": 1269, "end": 1288}
+      ],
+      "problem": "For a .png name, texLoad -> texLoadAll opens the file and (on mmce/mass) stages it whole, then libpng fails on the signature and the buffer is freed. texLoadArtFile then calls texLoadJpgFile, which opens the same path again (another FAT directory walk, which the comments at 533-546 measure in seconds on big ART folders) and reads the whole file again just to test for a JPG. This happens on every load of a JPG saved as .png (a case the comment at 1144-1146 says is supported) and on every failed PNG, doubling the cost of finding 1's retries.",
+      "fix": "In texLoadArtFile read the non-tar file into RAM once (the open + texStageExternalFileIntoMemory that texLoadJpgFile already does) and decode it with texLoadArtFromMemory, which already tries PNG and then JPG from one buffer. Delete texLoadJpgFile and the extension branch. This moves HDD/SMB PNG art from the 4 KB streaming reader to one staged read, as .jpg art already does.",
+      "justification": "",
+      "benefit": "One open and one read per art file instead of two for JPG-named-.png and broken files; about 15 lines removed (texLoadJpgFile 22 lines and the extension branch, replaced by about 8). INFERRED.",
+      "benefit_rank": 2,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read texLoadArtFile 1309-1335: for dot NULL or .png it calls texLoad (1329), and every result except >=0/ERR_BAD_FILE/ERR_FILE_IO/ERR_LOAD_ABORTED falls to texLoadJpgFile (1334). texLoad 1118-1129 -> texLoadAll staged arm 927-983 (open, texStageExternalFileIntoMemory, close) or streaming arm 984-1005; libpng signature failure longjmps to 1023-1031 (ERR_SET_JMP). texLoadJpgFile 1269-1288 opens again (1278) and stages again (1281). texLoadArtFromMemory 1299-1305 already does PNG-then-JPG on one buffer. grep texLoadJpgFile over the repo: only the definition (1269) and the call at 1334; .github/scripts/test_ripps2_art_port.py names texLoadJpgMemory only."
+    },
+    {
+      "n": 3,
+      "title": "texLoadJpgMemory has no size limit before jpeg_start_decompress: a large progressive JPG allocates MBs of RAM on the art thread",
+      "category": 4,
+      "locations": [
+        {"path": "src/gfx/textures.cpp", "start": 1194, "end": 1196},
+        {"path": "src/gfx/textures.cpp", "start": 1208, "end": 1212}
+      ],
+      "problem": "The PNG path refuses images over 1024 px before libpng allocates rows (png_set_user_limits, 1035). The JPG path has no bound. Downscaling to 1/8 does not help a progressive JPEG: libjpeg keeps the whole coefficient image in RAM (about 3 bytes per pixel at 4:2:0, 6 at 4:4:4), and the linked memory manager has no backing store. A 2000x2000 progressive cover or background (common for web downloads) therefore takes about 12 MB of heap on the art worker, next to its staged file buffer, while the GUI thread allocates in parallel.",
+      "fix": "Right after jpeg_read_header, refuse a progressive image above a pixel bound (for example about one megapixel). Or set info.mem->max_memory_to_use once after jpeg_create_decompress so that libjpeg fails with an error instead of allocating.",
+      "justification": "One line closes an unbounded allocation driven by untrusted art files. The PNG side already has the same guard for the same reason (YAOPL 07c868d comment at 1033-1034).",
+      "benefit": "Caps the JPG decoder's transient heap use. INFERRED: progressive 2000x2000 4:2:0 = 93,750 blocks x 128 B = 12 MB; 3000x3000 = 27 MB fails outright after a long attempt.",
+      "benefit_rank": 2,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read texLoadJpgMemory 1172-1265: jpeg_read_header (1196), scale_denom loop (1208-1211), jpeg_start_decompress (1212), no check of image_width/image_height or progressive_mode before it. texStageExternalFileIntoMemory caps only the compressed file size (8 MB, 160). Symbol table raw/riptopl-nm-size-sorted.full.txt: jpeg_mem_available 0x38 and jpeg_get_large 0x8 (IJG jmemnobs-style manager, no backing store; INFERRED), jinit_d_coef_controller present. Progressive whole-image coefficient buffer size is libjpeg behaviour (INFERRED, not read in this repo)."
+    },
+    {
+      "n": 4,
+      "title": "texStageExternalFileIntoMemory reads up to 8 MB before refusing a file whose size it already knows is too big",
+      "category": 5,
+      "locations": [
+        {"path": "src/gfx/textures.cpp", "start": 639, "end": 659},
+        {"path": "src/gfx/textures.cpp", "start": 681, "end": 698}
+      ],
+      "problem": "When lseek reports a size over TEX_STAGE_MAX_SIZE, or malloc(size) fails, the fast path falls through to the chunked loop. The loop then reads about 8 MB in 32 KB reads and grows its buffer to 8 MB by realloc (4 MB + 8 MB live at once) before it refuses with ERR_BAD_FILE. The size probe had already given the answer. This is reachable for any oversized art or theme PNG on mass/pfs/smb (texLoadAll staged arm, texLoadJpgFile).",
+      "fix": "When the size probe succeeded, do not enter the loop: return ERR_BAD_FILE for size > TEX_STAGE_MAX_SIZE and ERR_FILE_IO when malloc(size) fails. Keep the loop for MMCE (shortReadIsEof), where lseek is not available.",
+      "justification": "",
+      "benefit": "Avoids an 8 MB read (about 8 s on USB 1.1, INFERRED) and a 12 MB realloc peak for an oversized file; rare trigger.",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read textures.cpp 623-731: fast path 639-659 (size > cap -> else-if seeks back and falls to the loop; malloc NULL -> falls to the loop), loop 668-721 grows by doubling from 64 KB and refuses only when capacity >= TEX_STAGE_MAX_SIZE (684-689). Callers: texLoadAll 966 (mass/mmce) and texLoadJpgFile 1281 (all devices)."
+    },
+    {
+      "n": 5,
+      "title": "utf8d decoder table is static in utf8.h and linked twice (textshape.cpp and fntsys.cpp)",
+      "category": 4,
+      "locations": [
+        {"path": "include/utf8.h", "start": 21, "end": 49},
+        {"path": "src/gfx/textshape.cpp", "start": 12, "end": 12},
+        {"path": "src/gfx/fntsys.cpp", "start": 12, "end": 12}
+      ],
+      "problem": "utf8.h defines the 400-byte DFA table as static const and utf8Decode as static, so each translation unit that includes it gets its own copy. The shipped ELF has two identical 400-byte _ZL5utf8d objects, one from each includer.",
+      "fix": "Give the table one definition: make it inline constexpr in the header (C++17 inline variable) and utf8Decode inline, or define both once in textshape.cpp and declare them in utf8.h.",
+      "justification": "",
+      "benefit": "400 bytes of .rodata removed. MEASURED: raw/riptopl-nm-size-sorted.full.txt lines 1757-1758, two _ZL5utf8d of 0x190 bytes.",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep '#include \"include/utf8.h\"' over src/RiptOPL: only src/gfx/fntsys.cpp:12 and src/gfx/textshape.cpp:12. Read include/utf8.h 1-51 (static const uint8_t utf8d[] 21-36, static utf8Decode 38-49). evidence/RiptOPL/raw/riptopl-nm-size-sorted.full.txt:1757-1758: 005dc7d0 00000190 r _ZL5utf8d and 005dceb8 00000190 r _ZL5utf8d."
+    }
+  ]
+}

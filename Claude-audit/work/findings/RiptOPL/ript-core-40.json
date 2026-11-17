@@ -1,0 +1,122 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-40",
+  "coverage": [
+    {"path": "src/ui/guisplash.cpp", "status": "read_full", "note": ""},
+    {"path": "include/guiwait.h", "status": "read_full", "note": ""},
+    {"path": "src/ui/guiwait.cpp", "status": "read_full", "note": ""},
+    {"path": "include/libview.h", "status": "read_full", "note": ""},
+    {"path": "src/ui/libview.cpp", "status": "read_full", "note": ""},
+    {"path": "src/ui/menuitems.cpp", "status": "read_full", "note": ""},
+    {"path": "include/menusys.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "guisplash.cpp is the boot splash (BootSplash: logo with a breathing halo, version and status lines, theme-hold and boot-sound fade timing) plus thin C entry points (guiIntroLoop, guiRenderGreetingScreen, guiSetBootStatus*). guiwait.cpp/.h hold the main-thread blocking wait on the IO worker (guiHandleDeferedIO via the DeferredIoWait class), the fade-to-black helpers used at launch/TV-mode switch, and the plain text status screen with an optional download progress bar. libview.cpp/.h own the per-page library view state (PS2/PS1/Mixed/Favourites/Apps L3 rings), the staged L3 transition protocol, the dirty flags consumed by the support update callbacks, and the encoding of remembered positions into the LAST config set. menuitems.cpp holds the per-source menu button handlers (select/launch, refresh, L3 toggle, R3 favourite, triangle menus) split out of opl.cpp. menusys.h declares the menu/submenu linked-list types and the menu system API.",
+  "reusable_helpers": [
+    {"name": "guiHandleDeferedIO", "path": "src/ui/guiwait.cpp", "line": 149, "what": "queues an IO-worker request and keeps redrawing a status text screen until the request clears a flag, with an optional elapsed-time bound"},
+    {"name": "guiRenderTextScreen", "path": "src/ui/guiwait.cpp", "line": 200, "what": "draws one opaque status-message frame with an optional progress bar fed by guiWaitBarTotal/guiWaitBarDone"},
+    {"name": "guiFadeCurrentScreenToBlack", "path": "src/ui/guiwait.cpp", "line": 170, "what": "8-frame fade of the current screen to black"},
+    {"name": "libViewEncodeRing", "path": "src/ui/libview.cpp", "line": 302, "what": "encodes a per-mode byte array as a one-char-per-mode config string ('-' for unset)"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Boot logo animation frames LOGO1..LOGO6 and the single LOGO_PICTURE are decoded on every theme load but never drawn",
+      "category": 4,
+      "locations": [
+        {"path": "src/ui/guisplash.cpp", "start": 70, "end": 73},
+        {"path": "src/gfx/themes.cpp", "start": 1683, "end": 1697},
+        {"path": "include/themes.h", "start": 281, "end": 281},
+        {"path": "include/textures.h", "start": 102, "end": 112},
+        {"path": "src/gfx/textures.cpp", "start": 120, "end": 124},
+        {"path": "src/gfx/textures.cpp", "start": 291, "end": 301},
+        {"path": "tools/assets.py", "start": 53, "end": 54},
+        {"path": "gfx/logo.png", "whole": true},
+        {"path": "gfx/logo1.png", "whole": true},
+        {"path": "gfx/logo2.png", "whole": true},
+        {"path": "gfx/logo3.png", "whole": true},
+        {"path": "gfx/logo4.png", "whole": true},
+        {"path": "gfx/logo5.png", "whole": true},
+        {"path": "gfx/logo6.png", "whole": true}
+      ],
+      "problem": "The splash no longer animates: guisplash.cpp:73 draws only LOGO0_PICTURE (LOGO_PICTURE only when logoFrameCount is 0, which cannot happen because logo0 is always embedded and loaded with texLoadInternal). Yet themes.cpp:1684 and 1691-1697 decode LOGO_PICTURE and all seven LOGO0..LOGO6 frames on every theme load and keep them until the theme is freed. No other code references LOGO1..LOGO6_PICTURE or logoFrameCount. gfx/logo4..6.png are not embedded at all (assets.py:54 lists only logo0..3; textures.cpp:299-301 aliases them).",
+      "fix": "Keep one logo: map LOGO_PICTURE to the logo0 image (the one drawn today) and delete LOGO0..LOGO6_PICTURE from textures.h, their table rows and extern declarations in textures.cpp, the frame loop and logoFrameCount in themes.cpp/themes.h, the ternary in guisplash.cpp, and the files gfx/logo1..6.png plus the old gfx/logo.png (renaming logo0.png to logo.png) and their assets.py entries.",
+      "justification": "",
+      "benefit": "EE heap: 6 unused T8 512x128 frames (65536 B + 1 KB CLUT each, textures.cpp:1093-1095) + LOGO_PICTURE T8 512x256 (128 KB + 1 KB) = ~520 KB held for the theme lifetime (INFERRED arithmetic). ELF: logo.png+logo1..3.png = 32,964 B embedded (MEASURED file sizes). 7 fewer PNG decodes per theme load.",
+      "benefit_rank": 5,
+      "lines_removed": 25,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "INFERRED",
+      "evidence": "Grep over whole repo for logo[0-6], LOGO[0-6]_PICTURE, logoFrameCount, logo_png: only guisplash.cpp:73, themes.cpp:1690-1697, themes.h:281, textures.h:106-112, textures.cpp:121-124,293-301, tools/assets.py:53-54, Makefile (legacy), docs. LOGO_PICTURE elsewhere: themes.cpp:1684, textures.cpp:291, tests/host/test_wallpaper.cpp:72,84 (keep the name). PNG headers read: logo.png 512x256, logo0..6 512x128, 8-bit palette -> T8 per textures.cpp:1080-1099. md5: logo4/5/6 identical to logo3/2/1. Textures freed only in theme free loop themes.cpp:971-977. RAM retention part INFERRED (not measured on hardware)."
+    },
+    {
+      "n": 2,
+      "title": "guiGameHandleDeferedIO is never called; its dialog wait path makes DeferredIoWait a two-mode class with one live mode",
+      "category": 3,
+      "locations": [
+        {"path": "src/ui/guiwait.cpp", "start": 115, "end": 159},
+        {"path": "include/guiwait.h", "start": 12, "end": 47},
+        {"path": "include/gui.h", "start": 197, "end": 197}
+      ],
+      "problem": "guiGameHandleDeferedIO (guiwait.cpp:155) appears only at its definition and its prototype gui.h:197. It is the sole user of the UIItem constructor, ui_ field and runWithDialog (115-139); with it gone DeferredIoWait has one constructor, one path and one caller (guiHandleDeferedIO:149-153), so the class, its run() dispatch and the public header declaration are a wrapper around a single function body.",
+      "fix": "Delete guiGameHandleDeferedIO and its prototype, runWithDialog, run() and the class; move the runWithMessage body into guiHandleDeferedIO taking its parameters directly. guiwait.h then keeps only the two progress-bar externs.",
+      "justification": "",
+      "benefit": "~70 lines removed (guiwait.cpp 115-159 minus a 5-line signature, guiwait.h 12-47, gui.h:197); runWithDialog/class code is compiled into the ELF today (non-static members), so a few hundred bytes (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 70,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep over the whole repo for DeferredIoWait|guiGameHandleDeferedIO: guiwait.cpp:49,76,104,115,141,151,155,157; guiwait.h:12,16,26; gui.h:197; docs/CPP-CONVERSION-PLAN.md:442. No caller of guiGameHandleDeferedIO in src, tests, .github, ee_core or modules. guiwait.h is included only by guiwait.cpp and selfupdate.cpp (which uses only guiWaitBarTotal/Done)."
+    },
+    {
+      "n": 3,
+      "title": "Copy-pasted include blocks with stale per-include comments in guiwait.cpp and menuitems.cpp (and the other files split from gui.cpp/opl.cpp)",
+      "category": 7,
+      "locations": [
+        {"path": "src/ui/guiwait.cpp", "start": 9, "end": 45},
+        {"path": "src/ui/menuitems.cpp", "start": 7, "end": 68},
+        {"path": "src/ui/guimodal.cpp", "start": 9, "end": 46},
+        {"path": "src/app/autolaunch.cpp", "start": 7, "end": 66}
+      ],
+      "problem": "Both files carry the full include list of the file they were split from (guiwait.cpp:9-45 matches guimodal.cpp:10-46; menuitems.cpp:7-68 matches autolaunch.cpp:7-66; the duplicate report also pairs them with gui.cpp, guisettings.cpp, guigameid.cpp, opl.cpp, lwnbdctl.cpp, appscan.cpp, settingsio.cpp). guiwait.cpp includes sound.h twice and about 24 headers it does not use (plasma, lang, favsupport, mmce/eth/net/udpfs/http/bdm/hdd/vcd support, libview, pggsm, cheatman, guigame, appsupport, tar, limits, stdlib...). In menuitems.cpp the comments name symbols the file never uses: mkdir (sys/stat.h, 61-64), fileXioDopen (59), mmceLoadModules (43), tarInvalidate (44); libds34bt/usb, xparam, cheatman, extern_irx, OPLDIAG fntsys/delaythread are also unused.",
+      "fix": "Trim each file's includes to the headers whose symbols it uses and drop the stale comments; do the same in the sibling split files when their readers confirm.",
+      "justification": "",
+      "benefit": "~25 lines in guiwait.cpp and ~30 in menuitems.cpp; no ELF change (headers only), shorter compile and fewer false dependencies (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 55,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read all lines of both files; symbols actually used were matched to headers by Grep over include/ (padRumbleFlush pad.h:58, cache*Timed texcache.h:235-236, cacheDropQueuedArt texcache.h:260, gLastDeferredTimedOut diag.h:6, LOG ioman.h:77, folderDescend/Reset folderbrowse.h, hddVcdInvalidateCache hddsupport.h:115, ethIsReadOnly ethsupport.h:59, bdmModeIsReadOnly bdmsupport.h:139, appIsReadOnly appsupport.h:35, cueIsCueEntry cuesupport.h:187, achievementsBusy achievements.h:30). No mkdir, fileXio, mmce, tar, xparam, cheat, ds34 symbol appears in menuitems.cpp. Exact unused set INFERRED until compiled; transitive needs not tested. Duplicate block pairs from show_chunk leads, checked by reading guimodal.cpp:1-50 and autolaunch.cpp:1-70."
+    },
+    {
+      "n": 4,
+      "title": "Stale comments naming removed functions, files and states in the splash, wait, libview and menusys files",
+      "category": 7,
+      "locations": [
+        {"path": "src/ui/guisplash.cpp", "start": 72, "end": 72},
+        {"path": "src/ui/guisplash.cpp", "start": 104, "end": 104},
+        {"path": "src/ui/guiwait.cpp", "start": 162, "end": 165},
+        {"path": "include/libview.h", "start": 79, "end": 79},
+        {"path": "include/config.h", "start": 125, "end": 125},
+        {"path": "include/menusys.h", "start": 82, "end": 83},
+        {"path": "include/menusys.h", "start": 98, "end": 98}
+      ],
+      "problem": "guisplash.cpp:72 names guiDrawBootLogo and :104 names gBootStickyLabel; neither name exists anywhere else in the repo (the code is BootSplash::drawLogo and status.line()). guiwait.cpp:162-165 is an orphaned comment block describing a shutdown fade that sits above a different function. libview.h:79 and config.h:125 point to libview.c / src/libview.c (the file is src/ui/libview.cpp). menusys.h:82-83 is the same doc comment twice (old and new); :98 says toggleView is 'NULL until it lands' although itemExecToggleView exists.",
+      "fix": "Delete or correct these comment lines.",
+      "justification": "",
+      "benefit": "~8 lines removed; no code change.",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "git grep -nw guiDrawBootLogo and gBootStickyLabel (excluding docs/.github): 1 hit each, the comment itself. Grep libview.c: libview.h:79, config.h:125. itemExecToggleView defined at menuitems.cpp:243. guiwait.cpp:162-165 followed by a second comment 167-169 for guiFadeCurrentScreenToBlack."
+    }
+  ]
+}

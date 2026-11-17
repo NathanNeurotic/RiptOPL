@@ -1,0 +1,133 @@
+# Per-input-file contribution to eecore.map (bytes), parsed from the memory map
+# groups: text=.text  rodata=.rodata/.eh_frame/.lit*/.ctors/.dtors/.reginfo  data=.data/.sdata  bss=.bss/.sbss
+# obj/<target>/<source path>.o = object built from this repository (source = same path with its extension);
+# obj/_embed/<name>_irx.o = embedded IRX/ELF blob; lib/lib*.a = library built by this build;
+# <sdk>/... = ps2build SDK or toolchain archive member
+
+## output section sizes seen in the map
+.text                         45784
+.reginfo                         24
+.rodata                        6777
+.MIPS.abiflags                   24
+.data                          3332
+.bss                          16000
+
+## group totals (sum of attributed input sections, includes *fill*)
+text          45776
+rodata         6801
+data           3332
+bss           16000
+
+## rollup by category (text rodata data bss | total)
+# first-party = this repo's own sources; vendored = third_party/mbedtls; blob-irx = embedded IRX/ELF modules
+# (obj/_embed); blob-asset = bin2c of gfx/audio/misc/fonts/certs (asm/*.c); sdk = ps2build SDK + toolchain libs
+    33008      6665      3316      7096 |     50085  first-party
+    12760       128         4      8680 |     21572  sdk
+        8         8        12       224 |       252  padding
+
+## rollup by archive / origin (text rodata data bss | total)
+    10024         0         4      7384 |     17412  <sdk>/packages/core/kernel/lib/libkernel.a
+     4644       112      1224      4200 |     10180  obj/eecore/ee_core/src/padhook.o
+     7244       535         4        60 |      7843  obj/eecore/ee_core/src/igrmenu.o
+     4080      2424        64        24 |      6592  obj/eecore/ee_core/src/patches.o
+     3472         0      1440         0 |      4912  obj/eecore/ee_core/src/gsm_engine.o
+      892      2921       496        84 |      4393  obj/eecore/ee_core/src/main.o
+     2736       128         0      1296 |      4160  <sdk>/packages/core/patches/lib/libpatches.a
+     1192         0         4      2060 |      3256  obj/eecore/ee_core/src/cheat_engine.o
+     2408        32        44       112 |      2596  obj/eecore/ee_core/src/iopmgr.o
+     1556         0         4        44 |      1604  obj/eecore/ee_core/src/syshook.o
+     1520         0         0        48 |      1568  obj/eecore/ee_core/src/modmgr.o
+      420       624        28         0 |      1072  obj/eecore/ee_core/src/tlb.o
+     1060         0         0         0 |      1060  obj/eecore/ee_core/src/asm.o
+      964         0         0         8 |       972  obj/eecore/ee_core/src/gsm_api.o
+      936         0         0         0 |       936  obj/eecore/ee_core/src/util.o
+      712        17         0       128 |       857  obj/eecore/ee_core/src/igrmbox.o
+      856         0         0         0 |       856  obj/eecore/ee_core/src/cheat_api.o
+      288         0         0       328 |       616  obj/eecore/ee_core/src/crt0.o
+      452         0         8         0 |       460  obj/eecore/ee_core/src/dve_reg.o
+        8         8        12       224 |       252  *fill* (alignment padding)
+      236         0         0         0 |       236  obj/eecore/ee_core/src/cd_igr_rpc.o
+       76         0         0         0 |        76  obj/eecore/ee_core/src/patches_asm.o
+
+## top 60 contributors to text
+     7244  obj/eecore/ee_core/src/igrmenu.o
+     4644  obj/eecore/ee_core/src/padhook.o
+     4096  <sdk>/packages/core/kernel/lib/libkernel.a(kernel.o)
+     4080  obj/eecore/ee_core/src/patches.o
+     3472  obj/eecore/ee_core/src/gsm_engine.o
+     2672  <sdk>/packages/core/kernel/lib/libkernel.a(sifrpc.o)
+     2408  obj/eecore/ee_core/src/iopmgr.o
+     1680  <sdk>/packages/core/kernel/lib/libkernel.a(sifcmd.o)
+     1556  obj/eecore/ee_core/src/syshook.o
+     1520  obj/eecore/ee_core/src/modmgr.o
+     1192  obj/eecore/ee_core/src/cheat_engine.o
+     1060  obj/eecore/ee_core/src/asm.o
+      964  obj/eecore/ee_core/src/gsm_api.o
+      936  obj/eecore/ee_core/src/util.o
+      892  obj/eecore/ee_core/src/main.o
+      864  <sdk>/packages/core/patches/lib/libpatches.a(slib.o)
+      856  obj/eecore/ee_core/src/cheat_api.o
+      712  obj/eecore/ee_core/src/igrmbox.o
+      688  <sdk>/packages/core/patches/lib/libpatches.a(smod.o)
+      672  <sdk>/packages/core/patches/lib/libpatches.a(patch_enable_lmb.o)
+      656  <sdk>/packages/core/kernel/lib/libkernel.a(glue.o)
+      600  <sdk>/packages/core/kernel/lib/libkernel.a(iopheap.o)
+      452  obj/eecore/ee_core/src/dve_reg.o
+      420  obj/eecore/ee_core/src/tlb.o
+      288  obj/eecore/ee_core/src/crt0.o
+      280  <sdk>/packages/core/kernel/lib/libkernel.a(getkernel.o)
+      240  <sdk>/packages/core/patches/lib/libpatches.a(common.o)
+      236  obj/eecore/ee_core/src/cd_igr_rpc.o
+      152  <sdk>/packages/core/patches/lib/libpatches.a(patch_disable_prefix_check.o)
+      120  <sdk>/packages/core/patches/lib/libpatches.a(smem.o)
+       76  obj/eecore/ee_core/src/patches_asm.o
+       40  <sdk>/packages/core/kernel/lib/libkernel.a(iopcontrol.o)
+        8  *fill* (alignment padding)
+
+## top 60 contributors to rodata
+     2921  obj/eecore/ee_core/src/main.o
+     2424  obj/eecore/ee_core/src/patches.o
+      624  obj/eecore/ee_core/src/tlb.o
+      535  obj/eecore/ee_core/src/igrmenu.o
+      128  <sdk>/packages/core/patches/lib/libpatches.a(patch_enable_lmb.o)
+      112  obj/eecore/ee_core/src/padhook.o
+       32  obj/eecore/ee_core/src/iopmgr.o
+       17  obj/eecore/ee_core/src/igrmbox.o
+        8  *fill* (alignment padding)
+
+## top 60 contributors to data
+     1440  obj/eecore/ee_core/src/gsm_engine.o
+     1224  obj/eecore/ee_core/src/padhook.o
+      496  obj/eecore/ee_core/src/main.o
+       64  obj/eecore/ee_core/src/patches.o
+       44  obj/eecore/ee_core/src/iopmgr.o
+       28  obj/eecore/ee_core/src/tlb.o
+       12  *fill* (alignment padding)
+        8  obj/eecore/ee_core/src/dve_reg.o
+        4  obj/eecore/ee_core/src/cheat_engine.o
+        4  <sdk>/packages/core/kernel/lib/libkernel.a(kernel.o)
+        4  obj/eecore/ee_core/src/syshook.o
+        4  obj/eecore/ee_core/src/igrmenu.o
+
+## top 60 contributors to bss
+     6272  <sdk>/packages/core/kernel/lib/libkernel.a(sifrpc.o)
+     4200  obj/eecore/ee_core/src/padhook.o
+     2060  obj/eecore/ee_core/src/cheat_engine.o
+      896  <sdk>/packages/core/kernel/lib/libkernel.a(sifcmd.o)
+      768  <sdk>/packages/core/patches/lib/libpatches.a(common.o)
+      512  <sdk>/packages/core/patches/lib/libpatches.a(patch_enable_lmb.o)
+      328  obj/eecore/ee_core/src/crt0.o
+      224  *fill* (alignment padding)
+      168  <sdk>/packages/core/kernel/lib/libkernel.a(iopcontrol.o)
+      128  obj/eecore/ee_core/src/igrmbox.o
+      112  obj/eecore/ee_core/src/iopmgr.o
+       84  obj/eecore/ee_core/src/main.o
+       60  obj/eecore/ee_core/src/igrmenu.o
+       48  obj/eecore/ee_core/src/modmgr.o
+       44  obj/eecore/ee_core/src/syshook.o
+       44  <sdk>/packages/core/kernel/lib/libkernel.a(iopheap.o)
+       24  obj/eecore/ee_core/src/patches.o
+        8  obj/eecore/ee_core/src/gsm_api.o
+        8  <sdk>/packages/core/patches/lib/libpatches.a(patch_disable_prefix_check.o)
+        8  <sdk>/packages/core/patches/lib/libpatches.a(slib.o)
+        4  <sdk>/packages/core/kernel/lib/libkernel.a(getkernel.o)

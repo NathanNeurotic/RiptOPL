@@ -1,0 +1,179 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-22.b",
+  "coverage": [
+    {"path": "src/platform/system.cpp", "status": "read_full", "note": ""},
+    {"path": "src/platform/sysvmc.cpp", "status": "read_full", "note": ""},
+    {"path": "include/tar.h", "status": "read_full", "note": ""},
+    {"path": "src/platform/tar.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "system.cpp is the menu's platform layer: IOP reset and embedded-IRX loading with a dedupe table (sysReset, sysLoadModuleBuffer), DEV9/PC CARD ownership, power-off, the USBAdvance name CRC, disc ID read, exit to OSDSYS/Browser with LoadBOOTer/FMCB detection, and the OPL game launch: building the in-game IRX table in module storage (sendIrxKernelRAM), kernel EELOAD/erase patches, EE core config fill and ExecPS2, plus POPSTARTER/Ember keep-IOP handoffs and the RA in-game-menu overlay placement. sysvmc.cpp holds the VMC probe/validate/create path (genvmc devctl) and the post-create contiguity probe. tar.h/tar.cpp are a wOPL-derived ustar indexer for ART/CFG/CHT archives (one index per kind, persisted as a size-keyed *_cache.bin sidecar) and for theme archives (THM, under its own semaphore); the ART kind is driven from the art worker thread.",
+  "reusable_helpers": [
+    {"name": "sysLoadModuleBuffer", "path": "src/platform/system.cpp", "line": 139, "what": "loads an embedded IRX via SifExecModuleBuffer once, keeping a table of loaded buffers"},
+    {"name": "USBA_crc32", "path": "src/platform/system.cpp", "line": 467, "what": "USBAdvance/ul.cfg game-name CRC (same code in tools/pc/iso2opl and opl2iso)"},
+    {"name": "sysCheckMC", "path": "src/platform/sysvmc.cpp", "line": 70, "what": "returns the first memory card slot whose root opens"},
+    {"name": "tarRead", "path": "src/platform/tar.cpp", "line": 576, "what": "reads one indexed member of a ustar archive by open/seek/read loop/close"},
+    {"name": "parseOctal", "path": "src/platform/tar.cpp", "line": 75, "what": "parses a tar header octal field into u64"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "tarInvalidate(TAR_KIND_ART) frees the art index from the GUI/IO thread while the art worker is using it",
+      "category": 6,
+      "locations": [
+        {"path": "src/platform/tar.cpp", "start": 609, "end": 613},
+        {"path": "src/platform/tar.cpp", "start": 92, "end": 103},
+        {"path": "src/platform/tar.cpp", "start": 304, "end": 317},
+        {"path": "src/platform/tar.cpp", "start": 367, "end": 370},
+        {"path": "src/platform/tar.cpp", "start": 437, "end": 443},
+        {"path": "src/platform/tar.cpp", "start": 591, "end": 604},
+        {"path": "src/app/settingsio.cpp", "start": 2479, "end": 2483},
+        {"path": "src/ui/guisettings.cpp", "start": 1801, "end": 1804},
+        {"path": "src/gfx/artload.cpp", "start": 98, "end": 136}
+      ],
+      "problem": "The ART index (s_index/s_count/s_cap/s_dev) has no lock. All lookups, parses and reads run on the art worker (priority 72, artload.cpp:659-666), but applyConfig(...,0) from many settings pages and the Artwork toggle call tarInvalidate on the GUI thread (31), which preempts the worker at every wake. If it lands while the worker is blocked in a header read inside tarParseFile, the partial index is freed, parsing continues from mid-archive, and tarWriteCache stores that truncated index with the full tar size, so every later boot accepts it. s_dev is also cleared, so every tarRead fails for the session. If it lands inside artTarDecode, tarRead reads entry->offset and rawSize from freed memory.",
+      "fix": "Do not free from the foreign thread: tarInvalidate only sets a per-kind volatile flag; tarFind, tarFindPrefix, tarLoadFile and tarLoadFromAnyDevice (all called on the art worker) check it at entry, clear it, call tarCloseInternal and clear s_inactive. Nothing else changes.",
+      "justification": "Adds one flag and a 3-line check. It removes a real use-after-free and a corrupt sidecar that persists across boots. A semaphore like the THM one would make the GUI thread wait out multi-second device reads, so the deferred flag is the smallest safe change.",
+      "benefit": "Removes a use-after-free and a truncated art_cache.bin that hides covers until the archive changes size (paths READ; the race timing is INFERRED; needs gEnableArtTar on)",
+      "benefit_rank": 3,
+      "lines_removed": -4,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "grep tarInvalidate over src: settingsio.cpp:2480 (applyConfig with skipDeviceRefresh==0; called from guisettings.cpp:404,1044,1297,2408,2550,2859,2984,3093 on the GUI thread and settingsio.cpp:1970/opl.cpp:1735 at boot) and guisettings.cpp:1804. ART lookups and reads only from artload.cpp:89-136, run by cacheArtWorkerThread (artload.cpp:765-813, ART_THREAD_PRIORITY 72 at :31). grep cacheHoldArtStarts/cacheShutdownArtLoads: only the launch paths in opl.cpp:1299-1308,1393-1402, so nothing pauses the worker around applyConfig. tarReadCache validates only magic, version and tarSize (tar.cpp:137-142), so a short entryCount is accepted. THM has its own lock (tar.cpp:623-655); ART has none."
+    },
+    {
+      "n": 2,
+      "title": "HDD exact archive and generic sweep share one TAR_KIND_ART slot: mixed Favourites/Apps lists reload the whole index per cover",
+      "category": 5,
+      "locations": [
+        {"path": "src/platform/tar.cpp", "start": 389, "end": 405},
+        {"path": "src/platform/tar.cpp", "start": 407, "end": 413},
+        {"path": "src/platform/tar.cpp", "start": 467, "end": 477},
+        {"path": "src/platform/tar.cpp", "start": 504, "end": 514},
+        {"path": "src/gfx/artload.cpp", "start": 122, "end": 137},
+        {"path": "src/gfx/texcache.cpp", "start": 187, "end": 207}
+      ],
+      "problem": "cacheResolveArtArchive picks the HDD archive per row (mode 1) for HDD-origin Favourites/Apps rows and the generic sweep (mode 0) for others. artTarLoadImageExact calls tarLoadFile, which drops a generic index. artTarLoadImage calls tarFindPrefix, which drops any exact index (s_isExact) and runs tarLoadFromAnyDevice from gDevices[0]. So in a list that alternates HDD and USB/SMB/MMCE games, each change of source frees the index, opens device archives again and re-reads the whole sidecar (64 bytes per member) or rescans the tar, all on the art worker.",
+      "fix": "Give the HDD exact archive its own kind slot (one more TarKind with ART's entry size and cache name, used only by artTarLoadImageExact) so both indexes stay resident. Then delete the s_isExact close-and-reload branches in tarLoadFromAnyDevice, tarFind and tarFindPrefix.",
+      "justification": "The extra slot is the cause-level fix: the reloads exist only because two archives share one slot. Cost is the second index's RAM (64 bytes per member, held only when an HDD archive exists). It removes about as many lines of s_isExact handling as it adds.",
+      "benefit": "Removes a full index reload plus up to 12 device open() probes per HDD/non-HDD alternation (INFERRED; a 3000-member pack is a 192 KB sidecar read; artload.cpp:44 notes a missed open can cost ~4.3 s)",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "M",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read tar.cpp:389-458 and 467-574: tarLoadFile early-returns only when s_isExact and the same path, else tarCloseInternal; tarFind/tarFindPrefix call tarCloseInternal when s_isExact, then tarLoadFromAnyDevice sweeps from gDevices[0] (s_dev cleared). texcache.cpp:180-207: HDD support and FAV/APP rows whose source is HDD_MODE return hddGetArtArchivePath (hddsupport.cpp:3212-3221, \"<prefix>ART/art.tar\"), others return 0. artload.cpp:659-666 dispatches per request. The cost per reload is INFERRED from the code path (sidecar read in tarReadCache, opens in tarLoadFromAnyDevice). Not measured on hardware."
+    },
+    {
+      "n": 3,
+      "title": "tarParseFile cold scan: an extra lseek RPC per member and +64-entry linear index growth",
+      "category": 5,
+      "locations": [
+        {"path": "src/platform/tar.cpp", "start": 293, "end": 295},
+        {"path": "src/platform/tar.cpp", "start": 304, "end": 311},
+        {"path": "src/platform/tar.cpp", "start": 363, "end": 364}
+      ],
+      "problem": "For every member the scan does read(512), lseek64(fd, 0, SEEK_CUR) only to learn the offset it already knows (header end), and lseek64(paddedSize, SEEK_CUR). Each is a fileXio RPC on the art worker, and the scan contends with BGM I/O on the same channel. The index also grows by 64 entries per realloc. For N members that copies O(N^2) bytes when realloc moves the block (6000 members: about 18 MB copied) and leaves heap fragments.",
+      "fix": "Keep the file position in a local u64 (add 512 after each header, paddedSize after each member). Store it as dataOffset, and skip with one lseek64(pos, SEEK_SET). Delete the SEEK_CUR query. Double the capacity instead of adding 64.",
+      "justification": "",
+      "benefit": "One fewer IOP RPC per member on each cold scan (N members = N RPCs) and realloc copying drops from ~18 MB to under 1 MB for 6000 members (INFERRED arithmetic: 4096 x 94 x 95 / 2 bytes vs < 2 x 384 KB)",
+      "benefit_rank": 2,
+      "lines_removed": 2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read tar.cpp:256-365: per member read at :258, lseek64 SEEK_CUR at :293 (only used as dataOffset), lseek64 SEEK_CUR skip at :363 (and :288/:299 for skipped members); realloc with newCap = cap + 64 at :305-306. Runs on the art worker via tarFindPrefix -> tarLoadFromAnyDevice -> tarParseFile (artload.cpp:89) and, for THM, on every theme-load lookup (no sidecar, tar.cpp:63). The RPC cost per call is INFERRED; there was no hardware measurement."
+    },
+    {
+      "n": 4,
+      "title": "Static tables larger than needed: crctab[0x400] uses 256 entries; s_zeroBlock is a 512-byte table for one memcmp",
+      "category": 4,
+      "locations": [
+        {"path": "src/platform/system.cpp", "start": 465, "end": 484},
+        {"path": "src/platform/tar.cpp", "start": 73, "end": 73},
+        {"path": "src/platform/tar.cpp", "start": 87, "end": 90}
+      ],
+      "problem": "USBA_crc32 declares crctab[0x400] (4096 bytes .bss) but only fills and indexes crctab[0..255] (index is byte ^ (crc>>24 & 0xFF)). It also rebuilds the table on every call. tar.cpp keeps a 512-byte all-zero .rodata block whose only use is memcmp in isZeroBlock.",
+      "fix": "Declare crctab[256]. Replace s_zeroBlock with a loop in isZeroBlock that checks the 64-byte-aligned header word by word, and delete the table.",
+      "justification": "",
+      "benefit": "3072 bytes .bss and 512 bytes ELF .rodata (MEASURED: nm riptopl-nm-size-sorted.full.txt shows _ZL6crctab 0x1000 and _ZL11s_zeroBlock 0x200)",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read system.cpp:465-492: writes crctab[255 - table] for table 0..255 and reads crctab[byte ^ ((crc >> 24) & 0xFF)] with unsigned char byte, so the max index is 255. Read tar.cpp:73 and 87-90: s_zeroBlock is referenced only in isZeroBlock (grep s_zeroBlock: tar.cpp:73,89 only). Sizes from evidence/RiptOPL/raw/riptopl-nm-size-sorted.full.txt: 0060bb60 00001000 b _ZL6crctab; 005e0440 00000200 r _ZL11s_zeroBlock. Callers of USBA_crc32 (supportbase.cpp:1226,1473; ethsupport.cpp:1434) are not hot, so the per-call rebuild costs time but not memory."
+    },
+    {
+      "n": 5,
+      "title": "sysLaunchLoaderElf sprintf's unvalidated int ps2_ip[] with %d into char g_ps2_ip[16]",
+      "category": 6,
+      "locations": [
+        {"path": "src/platform/system.cpp", "start": 1577, "end": 1582},
+        {"path": "ee_core/include/coreconfig.h", "start": 43, "end": 45},
+        {"path": "src/app/settingsio.cpp", "start": 1949, "end": 1950},
+        {"path": "src/core/config.cpp", "start": 752, "end": 754}
+      ],
+      "problem": "For UDPBD/UDPFS launches, line 1580 formats int ps2_ip[4] with %d into g_ps2_ip[16]. The values come from sscanf(\"%d\") of conf_network.cfg or IPCONFIG.DAT with no range check, so an octet over 255 or a negative one (\"192.168.100.1000\") writes past the field. The worst case is 47 chars + NUL, which stays inside ip+netmask+gateway, and the next two sprintfs rewrite those. ee_core is still left with an unterminated IP that runs into the netmask string.",
+      "fix": "Use snprintf(config->g_ps2_ip, sizeof(config->g_ps2_ip), ...) with (u8) casts and %u, as line 1577 already formats the DHCP address.",
+      "justification": "",
+      "benefit": "Closes a small out-of-field write from config-file input (READ; effect limited to a wrong in-game IP)",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "coreconfig.h:43-45: char g_ps2_ip[16], g_ps2_netmask[16], g_ps2_gateway[16] in that order. opl.cpp:162 int ps2_ip[4]. Writers: settingsio.cpp:1950 and config.cpp:752 (sscanf %d, no clamp), guisettings.cpp:979 (dialog int). system.cpp:1579-1580 runs when sysModeIsNetBlock(mode_str) (BDM_UDP_MODE, BDM_UFS_MODE, UDPFS_MODE)."
+    },
+    {
+      "n": 6,
+      "title": "TarEntryCfg/TarEntryCht declare filename[20] but the parser writes 24 bytes; names loaded from the sidecar are never re-terminated",
+      "category": 6,
+      "locations": [
+        {"path": "include/tar.h", "start": 53, "end": 63},
+        {"path": "src/platform/tar.cpp", "start": 254, "end": 254},
+        {"path": "src/platform/tar.cpp", "start": 357, "end": 359},
+        {"path": "src/platform/tar.cpp", "start": 164, "end": 171}
+      ],
+      "problem": "nameMax = entrySize - sizeof(TarEntryBase) - 1. For the CFG/CHT entries that is 40 - 16 - 1 = 23 (sizeof is 40 because of the u64 member, INFERRED alignment), so strncpy writes 23 chars and a NUL at [23] into a filename[20]. tar.h:41-49 documents and fixes exactly this for TarEntryArt but not here, and the CHT kind is live (supportbase.cpp:1761). Separately, tarReadCache rejects a corrupt rawSize but never terminates names, so a damaged *_cache.bin makes tarFind's strcasecmp/strrchr read past the entry, and past the heap block for the last one.",
+      "fix": "Declare filename[24] in TarEntryCfg and TarEntryCht (sizeof stays 40). In the existing validation loop of tarReadCache also set the name byte at nameMax to 0.",
+      "justification": "The added line in tarReadCache sits in the loop that already rejects corrupt rawSize from the same untrusted sidecar. It is the smallest way to bound the string scans that follow.",
+      "benefit": "Removes an out-of-declared-bounds write on every CHT/CFG entry and an OOB read on a corrupt sidecar (READ; practical impact small)",
+      "benefit_rank": 1,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "tar.h:31-36 TarEntryBase {u64, u32, u32} = 16 bytes; tar.h:53-63 filename[20]; tar.cpp:59-63 entrySize = sizeof(TarEntryCfg/Cht); tar.cpp:254 nameMax; :358-359 strncpy + fname[nameMax] = 0. tarReadCache tar.cpp:144-176 reads entries raw and checks only rawSize. Name scans: tar.cpp:492-497, 524-527, 548-552, 568-570. CHT live: supportbase.cpp:1761-1777. The sizeof of 40 assumes 8-byte u64 alignment (INFERRED for the EE ABI, matching the host test)."
+    },
+    {
+      "n": 7,
+      "title": "Module storage end never checked against 0xD0000; RA work area is bounded only at 1 MB while IGR cheats use the 0xD0000 rule",
+      "category": 6,
+      "locations": [
+        {"path": "src/platform/system.cpp", "start": 1435, "end": 1447},
+        {"path": "src/platform/system.cpp", "start": 1455, "end": 1464},
+        {"path": "src/app/host.cpp", "start": 138, "end": 146},
+        {"path": "ee_core/linkfile", "start": 19, "end": 20}
+      ],
+      "problem": "The linkfile reserves 0x97000-0xD0000 (228 KB) for modules and says 0xD0000+ is used by some games. The IGR cheats code respects that, but nothing checks the modules from sendIrxKernelRAM or the RA work area placed after them, and raWorkBytes caps its card packet at 0x100000. In an RA edition, an SMB2 game with VMC, BT pad emulation, MMCEIGR and telemetry already needs ~220 KB of IRX, and RA_EE_WORK_BYTES (about 13 KB plus 4 bytes per watch) then ends above 0xD0000. A game that writes that range overwrites the RA buffers or the module images ee_core reloads on an in-game IOP reset.",
+      "fix": "Use one rule: cap the RA work area at 0xD0000 like the cheats. Use 0xD0000 as the low-memory limit in raWorkBytes, and in sysLaunchLoaderElf drop the reservation (telemetry off for that launch, logged) when modules plus list would end above it.",
+      "justification": "Adds one comparison, the same one the cheats block makes ten lines later. The alternative is RAM the linkfile documents as game-used holding live buffers and IRX images.",
+      "benefit": "Prevents in-game corruption for RA launches whose storage ends past 0xD0000 (INFERRED: IRX sizes from evidence/RiptOPL/raw/irx-modules.tsv sum to ~219.6 KB; room to 0xD0000 is 233,472 B)",
+      "benefit_rank": 2,
+      "lines_removed": -3,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Low",
+      "basis": "INFERRED",
+      "evidence": "ee_core/linkfile:19-20; iosupport.h:108 OPL_MOD_STORAGE 0x97000; system.cpp:1450-1462 cheats use top 0xD0000 (or IGROVL_BASE); system.cpp:1443-1447 RA area appended unbounded; host.cpp:140 limit 0x00100000; ra_snap.h:79 RA_EE_WORK_BYTES = RA_SNAP_TOTAL + count*4 + nodes*20; ra_watch.h:49 9 parts of ~1.4 KB. Sum from irx-modules.tsv: udnl 5889, IOPRP ~64075 (IOPRP_img 248 + smb2_cdvdman 55605 + cdvdfsv 7309 + eesync 913, INFERRED), imgdrv 1257, resetspu 1241, usbd 21333, sio2man 5241, smap_ingame 7841, SMSTCPIP 45101, smbinit 10049, raudp 12161, mmceigr 1385, smb_mcemu 11309, mmcedrv 11329, bt_pademu 21373 = 219,584. No game that breaks was identified."
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+# Compiler warnings in build-korium-gcc.full.log
+# warning lines: 100   unique (file,line,message,flag): 67
+# The same header warning repeated for several translation units counts once in 'unique'.
+
+## by flag (unique)
+    26  -Wsign-compare
+    18  -Wwrite-strings
+     8  -Wdiscarded-qualifiers
+     5  -Wunused-variable
+     4  (no flag)
+     3  -Wpointer-sign
+     1  -Wcomment
+     1  -Wmissing-declarations
+     1  -Wstringop-truncation
+
+## by flag and top-level area (unique)
+     2  (no flag)                                modules/network
+     1  (no flag)                                build
+     1  (no flag)                                <sdk>/packages
+     1  -Wcomment                                <sdk>/packages
+     8  -Wdiscarded-qualifiers                   modules/mmce
+     1  -Wmissing-declarations                   src/sources
+     3  -Wpointer-sign                           modules/mmce
+    10  -Wsign-compare                           src/sources
+     8  -Wsign-compare                           src/platform
+     7  -Wsign-compare                           src/gfx
+     1  -Wsign-compare                           src/ui
+     1  -Wstringop-truncation                    tools
+     4  -Wunused-variable                        <sdk>/packages
+     1  -Wunused-variable                        src/sources
+    11  -Wwrite-strings                          src/sources
+     6  -Wwrite-strings                          src/platform
+     1  -Wwrite-strings                          src/app
+
+## every unique warning (file:line: message [flag])
+<sdk>/packages/core/ps2ip/include/ps2ip.h:110: 'struct pbuf' declared inside parameter list will not be visible outside of this definition or declaration [(no flag)]
+build/editions/korium-gcc/generated/raudp_imports.c:11: initializer-string for array of 'char' is too long (12 chars into 8 available) [(no flag)]
+modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13: 'UINT64_MAX' redefined [(no flag)]
+modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14: 'UINT64_C' redefined [(no flag)]
+<sdk>/packages/core/ps2ip/include/ps2ip.h:32: '/*' within comment [-Wcomment]
+modules/mmce/mmceman/src/mmce_fs.c:113: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+modules/mmce/mmceman/src/mmce_fs.c:444: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+modules/mmce/mmceman/src/mmce_fs.c:503: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+modules/mmce/mmceman/src/mmce_fs.c:562: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+modules/mmce/mmceman/src/mmce_fs.c:628: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+modules/mmce/mmceman/src/mmce_fs.c:876: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+modules/mmce/mmceman/src/mmce_fs.c:989: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+modules/mmce/mmceman/src/mmce_fs.c:997: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+src/sources/hddsupport.cpp:817: no previous declaration for 'int hddDetectNonSonyFileSystem()' [-Wmissing-declarations]
+modules/mmce/mmceman/src/mmce_cmds.c:215: pointer targets in initialization of 'char *' from 'u8 *' {aka 'unsigned char *'} differ in signedness [-Wpointer-sign]
+modules/mmce/mmceman/src/mmce_cmds.c:240: pointer targets in initialization of 'char *' from 'u8 *' {aka 'unsigned char *'} differ in signedness [-Wpointer-sign]
+modules/mmce/mmceman/src/mmce_fs.c:820: pointer targets in passing argument 4 of 'mmce_sio2_tx_rx_pio' differ in signedness [-Wpointer-sign]
+src/gfx/fntsys.cpp:198: comparison of integer expressions of different signedness: 'unsigned int' and 'int' [-Wsign-compare]
+src/gfx/textures.cpp:369: comparison of integer expressions of different signedness: 'u32' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+src/gfx/textures.cpp:785: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+src/gfx/textures.cpp:797: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+src/gfx/textures.cpp:835: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+src/gfx/textures.cpp:845: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+src/gfx/textures.cpp:861: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+src/platform/hdd.cpp:459: comparison of integer expressions of different signedness: 'u32' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+src/platform/ps2cnf.cpp:89: comparison of integer expressions of different signedness: 'size_t' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+src/platform/system.cpp:1538: comparison of integer expressions of different signedness: 'int' and 'unsigned int' [-Wsign-compare]
+src/platform/tar.cpp:288: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'u64' {aka 'long long unsigned int'} [-Wsign-compare]
+src/platform/tar.cpp:299: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'u64' {aka 'long long unsigned int'} [-Wsign-compare]
+src/platform/tar.cpp:363: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'u64' {aka 'long long unsigned int'} [-Wsign-compare]
+src/platform/tar.cpp:595: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'const u64' {aka 'const long long unsigned int'} [-Wsign-compare]
+src/platform/util.cpp:595: comparison of integer expressions of different signedness: 'unsigned int' and 'int' [-Wsign-compare]
+src/sources/hddsupport.cpp:3120: comparison of integer expressions of different signedness: 'size_t' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+src/sources/hddsupport.cpp:3157: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+src/sources/hddsupport.cpp:3158: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+src/sources/hddsupport.cpp:3163: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+src/sources/netsupport.cpp:451: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+src/sources/supportbase.cpp:188: comparison of integer expressions of different signedness: 'size_t' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+src/sources/supportbase.cpp:245: comparison of integer expressions of different signedness: 'int' and 'const unsigned int' [-Wsign-compare]
+src/sources/supportbase.cpp:283: comparison of integer expressions of different signedness: 'size_t' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+src/sources/supportbase.cpp:809: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'u64' {aka 'long long unsigned int'} [-Wsign-compare]
+src/sources/vcdsupport.cpp:556: comparison of integer expressions of different signedness: 'int' and 'unsigned int' [-Wsign-compare]
+src/ui/diaeditors.cpp:609: comparison of integer expressions of different signedness: 'int' and 'size_t' {aka 'unsigned int'} [-Wsign-compare]
+tools/hwtest/smb2probe/probe.c:518: 'strncpy' output may be truncated copying 255 bytes from a string of length 255 [-Wstringop-truncation]
+<sdk>/packages/world/vorbis/include/vorbis/vorbisfile.h:74: 'OV_CALLBACKS_DEFAULT' defined but not used [-Wunused-variable]
+<sdk>/packages/world/vorbis/include/vorbis/vorbisfile.h:81: 'OV_CALLBACKS_NOCLOSE' defined but not used [-Wunused-variable]
+<sdk>/packages/world/vorbis/include/vorbis/vorbisfile.h:88: 'OV_CALLBACKS_STREAMONLY' defined but not used [-Wunused-variable]
+<sdk>/packages/world/vorbis/include/vorbis/vorbisfile.h:95: 'OV_CALLBACKS_STREAMONLY_NOCLOSE' defined but not used [-Wunused-variable]
+src/sources/cuesupport.cpp:772: unused variable 'restored' [-Wunused-variable]
+src/app/opl.cpp:1502: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/platform/sysneutrino.cpp:1277: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/platform/sysneutrino.cpp:1295: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/platform/sysneutrino.cpp:1299: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/platform/system.cpp:750: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/platform/system.cpp:751: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/platform/system.cpp:1663: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/ethsupport.cpp:958: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/favsupport.cpp:1243: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/favsupport.cpp:1249: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/hddsupport.cpp:49: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/hddsupport.cpp:645: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/hddsupport.cpp:1423: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/hddsupport.cpp:1425: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/netsupport.cpp:361: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/netsupport.cpp:441: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/netsupport.cpp:487: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+src/sources/udpfssupport.cpp:326: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]

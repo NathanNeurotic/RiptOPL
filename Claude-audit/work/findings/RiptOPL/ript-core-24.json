@@ -1,0 +1,687 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-24",
+  "coverage": [
+    {
+      "path": "src/sources/appsupport.cpp",
+      "status": "read_full",
+      "note": ""
+    },
+    {
+      "path": "include/bdmboot.h",
+      "status": "read_full",
+      "note": ""
+    },
+    {
+      "path": "src/sources/bdmboot.cpp",
+      "status": "read_full",
+      "note": ""
+    },
+    {
+      "path": "src/sources/bdmdevices.cpp",
+      "status": "read_full",
+      "note": ""
+    },
+    {
+      "path": "src/sources/bdmlaunch.cpp",
+      "status": "read_full",
+      "note": ""
+    }
+  ],
+  "module_summary": "appsupport.cpp is the APPS page (AppSource): it merges legacy conf_apps.cfg entries with device-scanned title.cfg apps, dedups them by resolved startup path, keeps a hash table for art lookup, and launches ELFs through the child loader with the Reboot-IOP question, typed/legacy argv0 handoff, HDD APA re-spelling and POPSTARTER SMB preparation. bdmboot.cpp/bdmboot.h resolve the launcher's boot directory (usb0:/ata0:/massN:/mass:) to a concrete massN: slot before the first config read, loading BDM transports in escalating tiers with time budgets. bdmdevices.cpp owns the BDM slot table: init, per-poll presence/identity refresh with debounced hide, UDPBD write-readback probe, transport loading and wait helpers. bdmlaunch.cpp holds the BDM launch paths: Ember .cue and POPSTARTER .VCD PS1 launches, the lean Neutrino path with its fragment-budget precheck, and the native cdvdman launch (VMC layout, fragment table, layer-1 probe, cheats, DMA, driver-token loader dispatch).",
+  "reusable_helpers": [
+    {
+      "name": "appStartupKeyEqual",
+      "path": "src/sources/appsupport.cpp",
+      "line": 309,
+      "what": "path equality ignoring case, '/' vs '\\', repeated and trailing separators"
+    },
+    {
+      "name": "appBasename",
+      "path": "src/sources/appsupport.cpp",
+      "line": 138,
+      "what": "basename after the last '/', '\\' or ':'"
+    },
+    {
+      "name": "appNormalizeLaunchPath",
+      "path": "src/sources/appsupport.cpp",
+      "line": 971,
+      "what": "inserts '/' after the device colon and converts backslashes to slashes"
+    },
+    {
+      "name": "appResolveLegacyMassStartup",
+      "path": "src/sources/appsupport.cpp",
+      "line": 438,
+      "what": "resolves mass:/mass?: to the first massN: slot where the file opens"
+    },
+    {
+      "name": "appHashStartup",
+      "path": "src/sources/appsupport.cpp",
+      "line": 289,
+      "what": "djb2-xor string hash"
+    },
+    {
+      "name": "appGetRebootIopConfig",
+      "path": "src/sources/appsupport.cpp",
+      "line": 207,
+      "what": "parses YES/1/TRUE/ON vs NO/0/FALSE/OFF config value"
+    },
+    {
+      "name": "bdmCheckWritable",
+      "path": "src/sources/bdmdevices.cpp",
+      "line": 183,
+      "what": "write-then-read-back probe for a device that silently drops writes"
+    },
+    {
+      "name": "bdmWaitForDevice",
+      "path": "src/sources/bdmdevices.cpp",
+      "line": 458,
+      "what": "polls Dopen of massN:/ until present or timeout"
+    },
+    {
+      "name": "bdmDeviceIsPresent",
+      "path": "src/sources/bdmdevices.cpp",
+      "line": 485,
+      "what": "one Dopen probe of massN:/"
+    },
+    {
+      "name": "bdmEnsureTransportLoaded",
+      "path": "src/sources/bdmdevices.cpp",
+      "line": 504,
+      "what": "idempotent load of the IRX stack for one BDM transport type"
+    },
+    {
+      "name": "bdmCheckNativeVmcLayout",
+      "path": "src/sources/bdmlaunch.cpp",
+      "line": 576,
+      "what": "checks a VMC file is one contiguous extent reachable by the core"
+    }
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Stateless single-instance classes BdmBoot, BdmLauncher, NeutrinoLauncher with private headers and free forwarders",
+      "category": 3,
+      "locations": [
+        {
+          "path": "include/bdmboot.h",
+          "start": 1,
+          "end": 41
+        },
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 41,
+          "end": 41
+        },
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 98,
+          "end": 112
+        },
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 488,
+          "end": 496
+        },
+        {
+          "path": "include/bdmlauncher.h",
+          "start": 1,
+          "end": 37
+        },
+        {
+          "path": "include/neutrinolauncher.h",
+          "start": 1,
+          "end": 43
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 29,
+          "end": 30
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 46,
+          "end": 47
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 120,
+          "end": 123
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 255,
+          "end": 258
+        }
+      ],
+      "problem": "None of the three classes has a data member; each has exactly one global instance (gBdmBoot, gBdmLauncher, gNeutrinoLauncher) and each header is included only by its own .cpp. The public entry points are free functions that just forward to the instance, and BdmBoot even needs public static shims slotIdentity/elfOnSlot (bdmboot.h:22-24) so the file's own free function bootElfProbe can reach its private statics.",
+      "fix": "Delete the three headers and the globals; make the member functions file-static functions in their .cpp, and let bdmResolveBootDir/bdmResolveBootDirBootstrap/bdmLaunchCue/bdmLaunchVcd be the functions themselves instead of forwarders. Update the source-scraping tests that look up 'BdmLauncher::'/'NeutrinoLauncher::' names.",
+      "justification": "",
+      "benefit": "~100 lines removed (121 header lines, ~17 forwarder/global lines, minus comments worth keeping); no ELF change expected (INFERRED: no state, calls already resolve statically)",
+      "benefit_rank": 3,
+      "lines_removed": 100,
+      "effort": "M",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "git grep gBdmBoot|bdmboot.h|BdmBoot (excluding docs): only bdmboot.h and bdmboot.cpp. git grep gBdmLauncher|gNeutrinoLauncher|bdmlauncher.h|neutrinolauncher.h: only the headers and bdmlaunch.cpp. Read both launcher headers: no data members (NeutrinoLauncher has only static constexpr kMaxFrags). Tests that scrape the member names: test_issues_830_831.py, test_ember_disc_selection.py, test_mcemu_slots.py, test_netblock_oplcore.py, test_patch_zone_restore.py, test_pccf.py, test_retrogem_ember.py (git grep -ln BdmLauncher::|NeutrinoLauncher::|BdmBoot::)."
+    },
+    {
+      "n": 2,
+      "title": "Neutrino fragBudgetOk isUdp parameter is always 0, so _STR_NEUTRINO_TOO_FRAGMENTED_NET and its 34 language entries are dead",
+      "category": 1,
+      "locations": [
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 271,
+          "end": 271
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 344,
+          "end": 347
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 441,
+          "end": 444
+        },
+        {
+          "path": "include/neutrinolauncher.h",
+          "start": 33,
+          "end": 33
+        },
+        {
+          "path": "lng/tmpl/_base.yml",
+          "start": 988,
+          "end": 989
+        }
+      ],
+      "problem": "The only caller passes 0 (bdmlaunch.cpp:444; the comment at 441-443 says udp deliberately takes the local message now), so the isUdp ? _STR_NEUTRINO_TOO_FRAGMENTED_NET branch at 347 never runs. That string id has no other user in the code, yet it is carried in _base.yml and 33 lng/fork language files.",
+      "fix": "Drop the isUdp parameter and always use _STR_NEUTRINO_TOO_FRAGMENTED; delete the NEUTRINO_TOO_FRAGMENTED_NET label from lng/tmpl/_base.yml and the lng/fork/*.yml files; update test_issues_830_831.py's budget() helper.",
+      "justification": "",
+      "benefit": "~37 lines removed (2 code, 2 in _base.yml, 33 fork lang lines) and one string out of every .lng and the internal language table (INFERRED, ~110 bytes of English text)",
+      "benefit_rank": 2,
+      "lines_removed": 37,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep fragBudgetOk over repo: definition bdmlaunch.cpp:271, prototype neutrinolauncher.h:33, one call bdmlaunch.cpp:444 with literal 0, test_issues_830_831.py. Grep NEUTRINO_TOO_FRAGMENTED_NET: bdmlaunch.cpp:347, test_issues_830_831.py:54, lng/tmpl/_base.yml:988 and 33 lng/fork/*.yml files (git grep -c in lng: 34 files)."
+    },
+    {
+      "n": 3,
+      "title": "Remember-last-played save block copied in 9 launch paths",
+      "category": 2,
+      "locations": [
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 453,
+          "end": 456
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 898,
+          "end": 901
+        },
+        {
+          "path": "src/sources/ethsupport.cpp",
+          "start": 1224,
+          "end": 1227
+        },
+        {
+          "path": "src/sources/ethsupport.cpp",
+          "start": 1375,
+          "end": 1378
+        },
+        {
+          "path": "src/sources/hddsupport.cpp",
+          "start": 2389,
+          "end": 2392
+        },
+        {
+          "path": "src/sources/hddsupport.cpp",
+          "start": 2720,
+          "end": 2723
+        },
+        {
+          "path": "src/sources/httpsupport.cpp",
+          "start": 799,
+          "end": 802
+        },
+        {
+          "path": "src/sources/mmcesupport.cpp",
+          "start": 1384,
+          "end": 1387
+        },
+        {
+          "path": "src/sources/udpfssupport.cpp",
+          "start": 1070,
+          "end": 1073
+        }
+      ],
+      "problem": "The same four lines (if gRememberLastPlayed: configSetStr(CONFIG_LAST, \"last_played\", startup); saveConfig(CONFIG_LAST, 0)) appear verbatim in nine launch functions, with the key spelled as a bare string literal each time (also read in opl.cpp:733).",
+      "fix": "Add one small helper in supportbase (e.g. sbRememberLastPlayed(startup)) and replace the nine blocks with a call.",
+      "justification": "Nine identical copies: a 5-line helper plus nine 1-line calls replaces 36 lines, and the key literal lives in one place.",
+      "benefit": "~22 lines removed net (36 -> 9 calls + 5-line helper); a few hundred bytes of repeated call sequences (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 22,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep 'gRememberLastPlayed\\)' over src with -A3: the nine identical blocks listed (httpsupport passes 'startup' instead of game->startup), plus the read in opl.cpp:732-733 and guisettings.cpp UI binding."
+    },
+    {
+      "n": 4,
+      "title": "AppSource::launch re-implements the mass:/mass?: slot search that appResolveLegacyMassStartup already does",
+      "category": 2,
+      "locations": [
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 1090,
+          "end": 1116
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 438,
+          "end": 464
+        }
+      ],
+      "problem": "launch() rewrites 'mass:' to 'mass?:' with memmove and then probes mass0..massN by poking filename[4] and opening the file (27 lines). appResolveLegacyMassStartup (same file) accepts both 'mass:' and 'mass?:' and returns the first massN: path that opens, or the input unchanged, which leads to the same open failure and error dialog.",
+      "fix": "Replace lines 1090-1116 with one call to appResolveLegacyMassStartup(filename) and copy its result back into filename (or open the returned pointer).",
+      "justification": "",
+      "benefit": "~22 lines removed (INFERRED from the cited ranges); no behaviour change except the diagnostic dialog shows the original path on failure",
+      "benefit_rank": 2,
+      "lines_removed": 22,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read appsupport.cpp:438-464 and 1088-1118. MAX_BDM_DEVICES = BDM_MODE_COUNT (bdmsupport.h:22). test_app_launch_args.py extracts AppSource::launch and would need a stub for appResolveLegacyMassStartup (it already stubs neighbouring helpers at lines 116-133)."
+    },
+    {
+      "n": 5,
+      "title": "Linked-list push in addAppsLegacyList and appScanCallback: both if/else branches do the same thing, twice",
+      "category": 2,
+      "locations": [
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 677,
+          "end": 689
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 736,
+          "end": 748
+        }
+      ],
+      "problem": "Each block mallocs a node and, in the NULL-head branch, sets next = NULL and head = app; in the other branch next = head and head = app. Since head is NULL in the first branch, both branches are 'app->next = *list; *list = app'. The 13-line block is copied verbatim into two functions.",
+      "fix": "Collapse each block to one malloc plus 'if (app) { app->next = *appsLinkedList; *appsLinkedList = app; }' (or one static push helper used by both).",
+      "justification": "",
+      "benefit": "~16 lines removed (2 x 13 lines -> 2 x 5 lines)",
+      "benefit_rank": 2,
+      "lines_removed": 16,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read appsupport.cpp:662-773; the two blocks are textually identical apart from indentation."
+    },
+    {
+      "n": 6,
+      "title": "AppSource::shutdown is a copy of cleanUp; config() repeats its media/format/size tail in both branches",
+      "category": 2,
+      "locations": [
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 1431,
+          "end": 1443
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 1417,
+          "end": 1429
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 1335,
+          "end": 1342
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 1357,
+          "end": 1364
+        }
+      ],
+      "problem": "shutdown() has the same body as cleanUp() except the log text. In config() the legacy and scanned branches end with the same MEDIA/FORMAT/SIZE block that differs only in the path passed to appGetELFSize.",
+      "fix": "Make shutdown() call cleanUp(itemList, 0) as HttpSource::shutdown already does (httpsupport.cpp:887-889). In config(), keep a size-path pointer per branch and set MEDIA/FORMAT/SIZE once after the if/else.",
+      "justification": "",
+      "benefit": "~14 lines removed",
+      "benefit_rank": 1,
+      "lines_removed": 14,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read appsupport.cpp:1314-1367 and 1417-1443; gamesource.h:49-50 declares both as pure virtual; grep '::shutdown(item_list_t' shows HttpSource::shutdown calling cleanUp."
+    },
+    {
+      "n": 7,
+      "title": "appsupport.cpp checks for states that cannot occur",
+      "category": 3,
+      "locations": [
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 470,
+          "end": 471
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 481,
+          "end": 484
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 494,
+          "end": 503
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 533,
+          "end": 534
+        }
+      ],
+      "problem": "appSetResolvedStartup/appSetArtSource are only called with &node->app (721, 767) or after the NULL check; appResolveLegacyMassStartup returns NULL only for a NULL input, and appBuildStartupPath never returns NULL (path, boot or a member buffer), so 499-503 is dead; appGetBoot returns appGetELFName which never returns NULL (481); and with appItemCount >= 1 the power-of-two loop already makes size >= 2 (533-534).",
+      "fix": "Delete the four checks.",
+      "justification": "",
+      "benefit": "~12 lines removed",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read appsupport.cpp:90-136, 424-558, 662-773. Callers of appSetResolvedStartup: appsupport.cpp:721 and 767 only (both &app->app)."
+    },
+    {
+      "n": 8,
+      "title": "appIsPopstarterElf has an unused title parameter and a redundant SB. pre-check; appTitleIsPs1Elf hand-rolls a substring match",
+      "category": 3,
+      "locations": [
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 178,
+          "end": 189
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 264,
+          "end": 264
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 1169,
+          "end": 1169
+        },
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 29,
+          "end": 43
+        }
+      ],
+      "problem": "title is discarded with (void)title; the comment keeps it only for a 'host-test contract'. The appIsPopstarterSmb call at 183-184 accepts SB.<x>.ELF (VCD_PREFIX_SMB is \"SB.\", vcdsupport.h:25), which lines 194-201 accept anyway. appTitleIsPs1Elf checks '[','P|p','S|s','1',']' character by character over 10 lines.",
+      "fix": "Drop the title parameter and lines 183-184 (callers at 264 and 1169 pass one argument); write appTitleIsPs1Elf as a loop with strncasecmp(title + i, \"[ps1]\", 5).",
+      "justification": "",
+      "benefit": "~12 lines removed",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep appIsPopstarterElf: appsupport.cpp:178, 264, 1169, and a stub in .github/scripts/test_app_launch_args.py:116 (its signature would change too). Grep VCD_PREFIX_SMB define: vcdsupport.h:25 \"SB.\"."
+    },
+    {
+      "n": 9,
+      "title": "appLookupByStartup scans the whole list linearly after every hash-table miss",
+      "category": 3,
+      "locations": [
+        {
+          "path": "src/sources/appsupport.cpp",
+          "start": 565,
+          "end": 583
+        }
+      ],
+      "problem": "The hash table holds every app with a non-empty startup, so a completed probe sequence that misses proves no row matches; the linear loop at 578-581 is only needed when the table could not be allocated, yet it runs on every miss (art worker path via image()).",
+      "fix": "Run the linear scan only when appArtLookupTable is NULL (make it the else branch).",
+      "justification": "",
+      "benefit": "Removes an O(n) strcmp pass per art miss; ~0 lines",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read appBuildArtLookup 520-558 (only empty startups skipped) and appLookupByStartup 560-584. An empty-startup row has artMode -1 (appSetArtSource 475-478), so image() returns -1 either way for value \"\"."
+    },
+    {
+      "n": 10,
+      "title": "bdmboot.cpp repeats the identity poll loop and the massN:+tail path composition",
+      "category": 2,
+      "locations": [
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 180,
+          "end": 189
+        },
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 216,
+          "end": 225
+        },
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 158,
+          "end": 161
+        },
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 49,
+          "end": 54
+        },
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 70,
+          "end": 73
+        },
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 120,
+          "end": 123
+        }
+      ],
+      "problem": "resolveLiteralMassSlot has the same 10-line 'poll readLiteralMassIdentity until budget' loop twice (known-type branch and tier loop) plus its first iteration once more at 158-161. The 'mass%d:' + tail-with-or-without-leading-slash snprintf is written out in three functions.",
+      "fix": "Fold the known-type case into the tier loop (one tier with that type) so one poll loop remains, and use one static path-compose helper for the three snprintf sites.",
+      "justification": "",
+      "benefit": "~15 lines removed",
+      "benefit_rank": 1,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read bdmboot.cpp:44-126 and 151-229; the loops at 181-189 and 217-225 are textually identical."
+    },
+    {
+      "n": 11,
+      "title": "Dead and redundant lines in bdmUpdateDeviceData",
+      "category": 1,
+      "locations": [
+        {
+          "path": "src/sources/bdmdevices.cpp",
+          "start": 222,
+          "end": 222
+        },
+        {
+          "path": "src/sources/bdmdevices.cpp",
+          "start": 231,
+          "end": 231
+        },
+        {
+          "path": "src/sources/bdmdevices.cpp",
+          "start": 341,
+          "end": 341
+        },
+        {
+          "path": "src/sources/bdmdevices.cpp",
+          "start": 353,
+          "end": 362
+        }
+      ],
+      "problem": "Two commented-out LOG lines; bdmDeviceType is set to UNKNOWN at 341 and overwritten at 347; the ATA test is made twice (353-355 and 357); and the else-if/else at 359-362 cannot take its last branch because 326-332 already returned when the driver name is empty.",
+      "fix": "Delete 222, 231 and 341; merge the two ATA ifs; drop the unreachable final else (and the now-redundant driver test).",
+      "justification": "",
+      "benefit": "~7 lines removed",
+      "benefit_rank": 1,
+      "lines_removed": 7,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read bdmdevices.cpp:209-456; driverName copied into bdmDriver at 339 only after the empty check at 326."
+    },
+    {
+      "n": 12,
+      "title": "bdmWaitForDevice re-implements bdmDeviceIsPresent's Dopen probe",
+      "category": 2,
+      "locations": [
+        {
+          "path": "src/sources/bdmdevices.cpp",
+          "start": 458,
+          "end": 497
+        }
+      ],
+      "problem": "Both functions format mass%d:/ and Dopen/Dclose it; the wait loop repeats the probe inline. Each has one caller (bdmsupport.cpp:2294 and 2304).",
+      "fix": "Make bdmWaitForDevice loop on bdmDeviceIsPresent(deviceId).",
+      "justification": "",
+      "benefit": "~6 lines removed",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep bdmWaitForDevice|bdmDeviceIsPresent: definitions bdmdevices.cpp:458/485, prototypes bdmint.h:16/27, calls bdmsupport.cpp:2294/2304 only."
+    },
+    {
+      "n": 13,
+      "title": "Repeated autolaunch teardown and MX4SIO quiesce blocks inside bdmlaunch.cpp",
+      "category": 2,
+      "locations": [
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 359,
+          "end": 365
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 500,
+          "end": 506
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 964,
+          "end": 972
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 102,
+          "end": 108
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 196,
+          "end": 202
+        }
+      ],
+      "problem": "miniDeinit + free/NULL of gAutoLaunchBDMGame and gAutoLaunchDeviceData is written out three times in this file; the 'SDC device: cacheAbortMmceImageLoadsTimed(500) else warn and return' block is written twice.",
+      "fix": "One static helper for the autolaunch release (used by abortLaunch, tryLaunch and launch) and one for the MX4SIO quiesce check.",
+      "justification": "Three and two identical copies; the helpers are shorter than the copies they replace.",
+      "benefit": "~10 lines removed",
+      "benefit_rank": 1,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep free(gAutoLaunchDeviceData)|free(gAutoLaunchBDMGame) over src: bdmlaunch.cpp 361/363, 502/504, 967/970 (plus other shapes in autolaunch.cpp and mmcesupport.cpp, not claimed). Read 100-110 and 194-204."
+    },
+    {
+      "n": 14,
+      "title": "Six near-identical sysLaunchLoaderElf calls with '|= 0' no-op flag lines and a stale TODO",
+      "category": 3,
+      "locations": [
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 975,
+          "end": 998
+        }
+      ],
+      "problem": "Each driver branch repeats the same nine-argument sysLaunchLoaderElf call, differing only in the mode string, fakemodule flags and (for cf) the mcemu arguments; the iLink and MX4SIO branches OR in 0 (983 carries 'TODO! fake ilinkman ?').",
+      "fix": "Have the branches only pick the mode string and flags (and zero the mcemu size for cf), then make one sysLaunchLoaderElf call; delete the '|= 0' lines and the TODO.",
+      "justification": "",
+      "benefit": "~10 lines removed",
+      "benefit_rank": 1,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read bdmlaunch.cpp:974-999; the native-launchable guard at 655-663 means one branch always matches."
+    },
+    {
+      "n": 15,
+      "title": "Copied include blocks and comments in the bdm split files name functions those files do not use; one comment contradicts bdmdevices.cpp",
+      "category": 7,
+      "locations": [
+        {
+          "path": "src/sources/bdmboot.cpp",
+          "start": 10,
+          "end": 36
+        },
+        {
+          "path": "src/sources/bdmdevices.cpp",
+          "start": 9,
+          "end": 36
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 9,
+          "end": 39
+        },
+        {
+          "path": "src/sources/bdmlaunch.cpp",
+          "start": 652,
+          "end": 654
+        },
+        {
+          "path": "src/sources/bdmdevices.cpp",
+          "start": 139,
+          "end": 142
+        }
+      ],
+      "problem": "The three files carry the include list of bdmsupport.cpp with comments for ethGetModulesLoaded, udpfsGetModulesLoaded, libViewActive and mkdir (and mmceSendGameID in bdmboot/bdmdevices), none of which these files call. bdmlaunch.cpp:652-654 says bdmEnumerateDevices now waits for MX4SIO, while bdmdevices.cpp:139-142 says that synchronous wait was removed.",
+      "fix": "Trim each include list to what the file uses (confirm with a compile) and delete the false comments; correct or delete bdmlaunch.cpp:652-654.",
+      "justification": "",
+      "benefit": "~15 lines removed; build time only, no ELF change (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Grep ethGetModulesLoaded|udpfsGetModulesLoaded|libViewActive|libListViewActive|mkdir(|mmceSendGameID over bdmboot/bdmdevices/bdmlaunch.cpp: only the include-comment lines match, except mmceSendGameID at bdmlaunch.cpp:480/957. Which other headers are unneeded is INFERRED (not compiled)."
+    }
+  ]
+}

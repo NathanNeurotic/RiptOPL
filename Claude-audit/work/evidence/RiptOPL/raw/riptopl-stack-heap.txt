@@ -1,0 +1,19 @@
+# nm obj/riptopl/riptopl.unstripped.elf (linker-provided symbols)
+007289dc B _end
+007289dc B _end_bss
+005e1180 D _fbss
+005e90f0 R _gp
+ffffffff A _heap_size
+ffffffff A _stack
+00020000 A _stack_size
+
+# nm obj/eecore/eecore.unstripped.elf
+00097000 A _end
+00095a00 B _end_bss
+00091b80 D _fbss
+00099b70 D _gp
+ffffffff A _heap_size
+00095a00 B _stack
+00001600 A _stack_size
+
+# grep in first-party sources for _stack_size/_heap_size overrides: see BUILD-EVIDENCE.md section 7

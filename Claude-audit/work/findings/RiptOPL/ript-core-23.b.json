@@ -1,0 +1,156 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-23.b",
+  "coverage": [
+    {"path": "src/platform/util.cpp", "status": "read_full", "note": ""},
+    {"path": "src/platform/zso.c", "status": "read_full", "note": ""},
+    {"path": "include/achievements.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/achievements.cpp", "status": "read_full", "note": ""},
+    {"path": "src/sources/appscan.cpp", "status": "read_full", "note": ""},
+    {"path": "include/appsupport.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "util.cpp is the menu ELF's grab-bag of platform helpers: memory-card detection and browser save-icon stamping, openFile with mc? substitution and parent-directory creation on O_CREAT, whole-file readFile, the buffered line reader/writer (openFileBuffer/readFileBuffer/writeFileBuffer/closeFileBuffer) used by config.cpp and lang.cpp, console region detection, the PS2 logo check (including ZSO images), recursive sysDeleteFolder, the NOP-spin delay(), prefix sanitising and host: boot detection. zso.c is the menu-side backing reader (file descriptor or raw HDD sectors) for the shared modules/isofs/zso.c decoder, which it #includes. achievements.cpp (compiled only in RETROACHIEVEMENTS editions) is the RA achievement browser's data source: Caduceus CADB1 text pages over the RA link, or the xeRAbora PC's HTTP JSON parsed by a small JSON scanner into a cached list, an ISO hash to game-ID lookup over HTTPS, and the RA/<startup>.ach hunt file; requests run on the IO thread and the GUI reads a snapshot. appscan.cpp scans <prefix>APPS and mc0:/mc1: for title.cfg apps and holds the legacy conf_apps.cfg lookups. The two headers carry the browser and app-info types.",
+  "reusable_helpers": [
+    {"name": "readFile", "path": "src/platform/util.cpp", "line": 324, "what": "reads a whole file into a malloc or 64-byte aligned buffer, with size check and short-read handling"},
+    {"name": "openFileBuffer/readFileBuffer", "path": "src/platform/util.cpp", "line": 458, "what": "buffered line reader with BOM skip, CRLF strip and # comment skip; optional per-line malloc"},
+    {"name": "writeFileBuffer/closeFileBuffer", "path": "src/platform/util.cpp", "line": 647, "what": "buffered writer that keeps the first write errno and reports short writes at close"},
+    {"name": "checkFile", "path": "src/platform/util.cpp", "line": 261, "what": "mc? card substitution plus best-effort mkdir of the parent directory before an O_CREAT open"},
+    {"name": "sysDeleteFolder", "path": "src/platform/util.cpp", "line": 857, "what": "recursive directory delete (collect files, close dir, unlink, rmdir)"},
+    {"name": "sanitizePrefix", "path": "src/platform/util.cpp", "line": 952, "what": "normalises backslashes to slashes and trims leading/trailing slashes in place"},
+    {"name": "bdmFatfsOpenErrno", "path": "src/platform/util.cpp", "line": 436, "what": "maps bdmfs_fatfs negated FRESULT codes to errno values"},
+    {"name": "fromHex", "path": "src/platform/util.cpp", "line": 716, "what": "single hex digit decode"},
+    {"name": "longLseek", "path": "src/platform/zso.c", "line": 25, "what": "seeks to a 2048-byte sector beyond INT_MAX bytes with chained SEEK_CUR steps"},
+    {"name": "jsonString/jsonSkip/jsonObject", "path": "src/sources/achievements.cpp", "line": 182, "what": "bounded JSON string decoder (escapes, \\u to UTF-8), value skipper and object member iterator with callback"},
+    {"name": "field/integer", "path": "src/sources/achievements.cpp", "line": 38, "what": "separator splitter that keeps empty fields, and a range-checked decimal parser"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "readFileBuffer hands lang.cpp a pointer into its own buffer for an empty line; the buffer is freed and the pointer is later passed to free()",
+      "category": 6,
+      "locations": [
+        {"path": "src/platform/util.cpp", "start": 614, "end": 615},
+        {"path": "src/platform/util.cpp", "start": 631, "end": 634},
+        {"path": "src/core/lang.cpp", "start": 163, "end": 188},
+        {"path": "src/core/lang.cpp", "start": 42, "end": 53}
+      ],
+      "problem": "With allocResult set, readFileBuffer only mallocs a copy when lineSize is non-zero; an empty line (or a lone CR) returns 1 with *outBuf = lastPtr, an address inside fileBuffer->buffer. lngLoadFromFile (the only allocResult=1 caller) stores it in newL[], calls closeFileBuffer (frees the buffer), then reads it in lngFormatFits and frees it at lang.cpp:183 or in lngFreeFromFile (language switch, and lngEnd in deinitEx before every launch). One blank line in a lang_*.lng is a use-after-free plus an invalid free of an interior pointer: newlib heap corruption. The copy's malloc is also unchecked (memcpy to NULL on OOM).",
+      "fix": "In readFileBuffer drop the lineSize test so every returned line is a heap copy when allocResult is set, and return 0 if that malloc fails.",
+      "justification": "The added NULL check stops a NULL memcpy on allocation failure; dropping the lineSize test removes code. Together they close a heap corruption reachable from a user-supplied language file.",
+      "benefit": "Fixes heap corruption (invalid free at language switch or game-launch teardown) triggered by any blank line in a .lng file; net about +1 line.",
+      "benefit_rank": 3,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Traced readFileBuffer for input 'a\\n\\nb\\n': 2nd call finds posLF==lastPtr, lineSize=0, skips the malloc at 631 and returns buffer+2. grep openFileBuffer( over src: allocResult=1 only at lang.cpp:163 (config.cpp:1190,1377,1402,1578 pass 0). lang.cpp:170 stores the pointer, :173 closeFileBuffer frees buffer (util.cpp:694), :178 lngFormatFits reads it, :183 frees it on mismatch; lngFreeFromFile (lang.cpp:42-53) frees the first nValidEntries entries; lngEnd (lang.cpp:459-461) runs from deinitEx (opl.cpp:1363). lang_compiler.py:158 writes one line per string, so an empty translation is an empty line; custom .lng files are loaded from devices (lngAddLanguages)."
+    },
+    {
+      "n": 2,
+      "title": "delay() is a CPU-burning NOP spin (~0.25 s per tick) that starves lower-priority threads, and lwnbdctl's '~5 s' pad retry is really ~20 minutes",
+      "category": 5,
+      "locations": [
+        {"path": "src/platform/util.cpp", "start": 941, "end": 950},
+        {"path": "src/app/lwnbdctl.cpp", "start": 194, "end": 201},
+        {"path": "src/app/lwnbdctl.cpp", "start": 228, "end": 237},
+        {"path": "src/ui/guimodal.cpp", "start": 287, "end": 287}
+      ],
+      "problem": "delay(n) spins 0x01000000 x 4 nops per tick; the repo's own notes put a tick at about 0.25 s (opl.cpp:1269-1272, autolaunch.cpp:204, settingsio.cpp:1419). It runs on the main thread at priority 31, so while it spins the IO worker (32), the art worker (72) and BGM I/O (31) cannot run; guiWarning spins delay(count) for 2 to 25 ticks. lwnbdctl retries startPads 100 times with delay(50) and its comment calls that ~5 s; at 0.25 s per tick it is about 12 s per retry and ~20 minutes in total, the very freeze #307 tried to bound.",
+      "fix": "Make delay() sleep instead of spin: DelayThread(250000) per tick, which keeps the tick length every caller was tuned to. In lwnbdctl.cpp replace the two delay(50) retry waits with a 50 ms DelayThread so the 100-try bound is the ~5 s its comment states.",
+      "justification": "",
+      "benefit": "Frees the CPU for the IO, art and BGM threads during every guiWarning and boot/autolaunch wait; bounds the NBD pad retry at ~5 s instead of ~20 min (INFERRED tick length from repo comments).",
+      "benefit_rank": 3,
+      "lines_removed": 2,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read util.cpp:941-950. grep -n 'delay(' over src include: guimodal.cpp:287 (guiWarning; callers pass 20 opl.cpp:1727, 6 opl.cpp:2129, 2 menuitems.cpp:299, 12/25 util.cpp:839-846), ioman.cpp:383, settingsio.cpp:1426, lwnbdctl.cpp:200,236, autolaunch.cpp:207,243,249; ee_core has its own delay (ee_core/src/util.c:170), not affected. Priorities: main 31 (opl.cpp:2064), IO 32 (ioman.cpp:250), BGM 0x1E/0x1F (bgm.cpp:40,684,696), art 72 (artload.cpp:31). Tick length INFERRED from opl.cpp:1269-1275, autolaunch.cpp:203-205, settingsio.cpp:1419; not measured. lwnbdctl.cpp:228-231 states ~5 s for 100 x delay(50). DelayThread is already used in 27 src files."
+    },
+    {
+      "n": 3,
+      "title": "Xerabora cache keeps a fixed 1024-entry achievement_entry_t array (232 KB) for the rest of the session",
+      "category": 4,
+      "locations": [
+        {"path": "src/sources/achievements.cpp", "start": 144, "end": 146},
+        {"path": "src/sources/achievements.cpp", "start": 356, "end": 356},
+        {"path": "src/sources/achievements.cpp", "start": 383, "end": 385},
+        {"path": "include/achievements.h", "start": 17, "end": 21}
+      ],
+      "problem": "achievementsParseXerabora mallocs XERA_LIST_MAX (1024) entries of achievement_entry_t for every parse and keeps the block as xeraList; nothing frees it (achievementsForget only marks it stale). A game set is typically tens of entries and a library a few hundred, so most of the 237,568-byte block is held unused for the whole menu session, and each refetch briefly holds the old list, the new one and the 512 KB document together.",
+      "fix": "After the parse loop, shrink the list to count entries with realloc (keep the original block if realloc fails or count is 0).",
+      "justification": "Two added lines return roughly 200 KB of EE heap that is otherwise pinned for the session after the browser is first opened in Xerabora mode; no new state or option.",
+      "benefit": "INFERRED: sizeof(achievement_entry_t) = 5 ints (20) + 33+57+101+20 chars = 231, padded 232; 1024 x 232 = 237,568 B held; a 100-entry set needs 23,200 B, so ~210 KB freed (RA editions only).",
+      "benefit_rank": 3,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read achievements.cpp:144-146 (XERA_DOC_MAX 512 KB, XERA_LIST_MAX 1024), :356 malloc, :383-385 free old + keep new, :427-436 512 KB doc per fetch, :656-660 achievementsForget only sets flags. grep -n xeraList over src: only achievements.cpp (no other free). Struct at achievements.h:17-21. Compiled only with RETROACHIEVEMENTS (file wrapped in #ifdef at :4)."
+    },
+    {
+      "n": 4,
+      "title": "sysDeleteFolder leaks its file list when a subfolder delete fails, and sprintf's to an unchecked malloc",
+      "category": 6,
+      "locations": [
+        {"path": "src/platform/util.cpp", "start": 873, "end": 881},
+        {"path": "src/platform/util.cpp", "start": 909, "end": 933}
+      ],
+      "problem": "The collected DirentToDelete list (nodes and filenames) is freed only inside the result >= 0 branch, so when a recursive sysDeleteFolder of a subfolder fails (r < 0 at 879-880) every node of the parent's list is leaked. The path buffer at 873 is used by sprintf without a NULL check. Reached from AppSource::deleteGame (appsupport.cpp:930) when the user deletes an app folder.",
+      "fix": "Always walk and free the list; only skip the unlink calls when result < 0. Check the malloc at 873 before the sprintf.",
+      "justification": "The NULL check stops a NULL write on allocation failure; the leak fix only moves the existing free loop.",
+      "benefit": "A few bytes per file leaked per failed app delete, plus one NULL-pointer write path removed; tiny.",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read util.cpp:857-936. grep -rn sysDeleteFolder over the repo: definition util.cpp:857, recursion :878, prototype util.h:63, only external caller appsupport.cpp:930 (deleteGame for non-legacy apps)."
+    },
+    {
+      "n": 5,
+      "title": "PS2 logo and ZSO-on-HDD reads issue one fileXio devctl per 512-byte sector",
+      "category": 5,
+      "locations": [
+        {"path": "src/platform/util.cpp", "start": 799, "end": 806},
+        {"path": "src/platform/zso.c", "start": 14, "end": 23}
+      ],
+      "problem": "CheckPS2Logo's HDD branch reads the 24 KB logo area with 48 hddReadSectors(lba + k, 1, ...) calls, and zso.c ReadHDDSectors reads every 2048-byte ISO sector as four single-sector calls. hddReadSectors takes a sector count (hdd.cpp:101-112) and rahash.cpp already reads 16 sectors (8 KB) per call to amortise the EE/IOP round trip. Runs on the launch path of HDD games (hddsupport.cpp:2790-2799).",
+      "fix": "Read in chunks of up to 16 HDD sectors per hddReadSectors call, as rahash.cpp does: 3 calls for the logo instead of 48, one call per ISO sector in ReadHDDSectors instead of four.",
+      "justification": "",
+      "benefit": "48 -> 3 fileXio RPCs for the HDD logo check and 4x fewer for menu-side ZSO-on-HDD reads; a few tens of ms per HDD launch (INFERRED, not measured); ~4 lines shorter.",
+      "benefit_rank": 1,
+      "lines_removed": 4,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read util.cpp:799-806, zso.c:14-23, hdd.cpp:101-112 (fileXioDevctl HDIOC_READSECTOR with nsectors*512 output), modules/hdd/apa/src/hdd_fio.c:1176-1179 (blkIoDmaTransfer of the requested count). rahash.cpp:340-344,376 uses HDL_READ_SECTORS=4 ISO sectors (16 HDD sectors, 8 KB) per call. Callers: hddsupport.cpp:2790 (CheckPS2Logo), :2796-2799 (ZSO probe). The per-call size limit of fileXio devctl was not verified in this repo, so 8 KB (proven by rahash) is the chunk proposed."
+    },
+    {
+      "n": 6,
+      "title": "Select on an image-opened achievements page skips achievementsForget, so the cached library and HTTPS 'unreachable' latch are reused",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/achievements.cpp", "start": 425, "end": 426},
+        {"path": "src/sources/achievements.cpp", "start": 496, "end": 500},
+        {"path": "src/sources/achievements.cpp", "start": 656, "end": 660},
+        {"path": "src/ui/menusys.cpp", "start": 1224, "end": 1229}
+      ],
+      "problem": "achievements.cpp says Select (achievementsForget) retries the online lookup and refetches, but the Select handler for a card page whose target is still 'image' (any non-READY state, e.g. ACH_NOT_PLAYED after an HTTPS failure) only calls achievementsRequestImage. loadXerabora then re-hashes the ISO, skips HTTPS because xeraHttpsUnreachable is still set, and xeraFetch returns the cached library because xeraStale is 0, so the 'Select refreshes this page' prompt can never change the result in that session.",
+      "fix": "Call achievementsForget() before achievementsRequestImage/achievementsRequestVcd in the image branch of the Select handler (menusys.cpp:1225-1229).",
+      "justification": "One added call makes the image-page refresh do what the on-screen prompt and the achievements.cpp comment promise; no new state.",
+      "benefit": "Refresh on a NOT_PLAYED/UNSUPPORTED card page actually refetches (RA editions, Xerabora mode); +1 line.",
+      "benefit_rank": 1,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read menusys.cpp:1072-1090 (menuOpenAchievements sets achTarget 'image'), :1128-1129 (target replaced by gameId only in READY with gameId>0), :1224-1233 (image branch has no achievementsForget; the other branch does). achievements.cpp:519-527 latches xeraHttpsUnreachable, :425-426 cache hit, :612-616 library fallback, :618-623 NOT_PLAYED with gameId 0. lng/tmpl/_base.yml:1944-1945 CAD_BACK_REFRESH text. The host test .github/scripts/test_ra_xerabora_browser.py:268 models Select as achievementsForget before the image request."
+    }
+  ]
+}

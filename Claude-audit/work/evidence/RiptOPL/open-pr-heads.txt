@@ -1,0 +1,12 @@
+claude/project-thread-zdpytb
+claude/project-thread-qj1dm3
+claude-audit-findings
+claude/project-thread-hp3v79
+claude/project-thread-6aetwi
+claude/project-thread-bhx5h9
+audit/unfinished-review-2026-11-16
+fix/igr-menu-open
+sable/audit-finals-2026-11
+gemini-audit-findings
+claude/igr-dmac-kernel-calls
+claude/project-thread-4dvtik-break
