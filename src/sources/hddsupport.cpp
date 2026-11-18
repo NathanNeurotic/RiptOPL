@@ -1992,8 +1992,11 @@ int HddSource::update(item_list_t *itemList)
             unsigned int gen = gHddSupport.vcdCacheGen;
             if (gHddSupport.vcdForceScan || gHddSupport.loadVcdListCache(gen) != 0)
                 gHddSupport.buildVcdGameList();
-            if (gen == gHddSupport.vcdCacheGen)
-                gHddSupport.vcdForceScan = 0; // consumed, unless another invalidation raced this build
+            // Consumed only by a build that completed and latched with no invalidation racing it. A
+            // Refresh whose scan failed keeps it set, so the next update retries the scan instead of
+            // loading the stale vcdgames.bin the Refresh was meant to replace.
+            if (gHddSupport.vcdListBuilt && gen == gHddSupport.vcdCacheGen)
+                gHddSupport.vcdForceScan = 0;
         }
         if (view == LIB_VIEW_PS1)
             return gHddSupport.vcdGameCount;
