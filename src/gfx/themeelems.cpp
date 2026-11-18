@@ -1906,11 +1906,6 @@ void drawMenuIcon(struct menu_list *menu, struct submenu_list *item, config_set_
 {
     if (thmElemSkipsDevice(elem, menu->item->icon_id))
         return; // devices= filter: not this page's element
-    if (elem->style == THM_MENU_STYLE_SIDEBAR) {
-        int bottomY = (gTheme->usedHeight > 0 ? gTheme->usedHeight : 480) - 64;
-        gridDrawDeviceSidebar(menu, 63, bottomY, (63 + bottomY) / 2, 0);
-        return;
-    }
     // The All Games page is every device at once: the Favourites star (or any one device's icon)
     // would say it is one of them, so it draws no page icon.
     const item_list_t *support = static_cast<const item_list_t *>(menu->item->userdata);
@@ -1995,6 +1990,90 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
         int startX = elem->aligned ? (elem->posX - (textW + 12) / 2) : elem->posX;
         rmDrawRect(startX, cy - 2, 4, 4, GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x80));
         fntRenderStringFit(elem->font, startX + 12, cy, ALIGN_VCENTER, textRoom, label, elem->color, 0);
+        return;
+    }
+
+    if (elem->style == THM_MENU_STYLE_PSBBN_BAR) {
+        struct menu_list *pages[16];
+        const char *labels[16];
+        int widths[16];
+        int count = 0, current = 0;
+        struct menu_list *head = menu;
+        while (head->prev != NULL)
+            head = head->prev;
+        int glyphSize = 12;
+        int glyphW = rmWideScale(glyphSize);
+        int iconTextGap = rmWideScale(3);
+        int itemGap = rmWideScale(10);
+        for (struct menu_list *m = head; m != NULL && count < 16; m = m->next) {
+            if (!menuItemShown(m->item))
+                continue;
+            if (m == menu)
+                current = count;
+            pages[count] = m;
+            labels[count] = menuItemGetText(m->item);
+            widths[count] = glyphW + iconTextGap + rmUnScaleX(fntCalcDimensions(elem->font, labels[count]));
+            count++;
+        }
+        if (count == 0)
+            return;
+
+        int maxW = elem->width > 0 ? elem->width : 540;
+        int totalW = 0;
+        for (int i = 0; i < count; i++)
+            totalW += widths[i] + (i + 1 < count ? itemGap : 0);
+
+        int start = 0, end = count - 1;
+        if (totalW > maxW) {
+            int arrowW = rmWideScale(10);
+            int budget = maxW - 2 * arrowW;
+            start = current;
+            end = current;
+            totalW = widths[current];
+            while (start > 0 || end < count - 1) {
+                int addRight = (end < count - 1) ? (widths[end + 1] + itemGap) : 0;
+                int addLeft = (start > 0) ? (widths[start - 1] + itemGap) : 0;
+                int did = 0;
+                if (end < count - 1 && (start == 0 || (current - start) >= (end - current)) && totalW + addRight <= budget) {
+                    end++;
+                    totalW += addRight;
+                    did = 1;
+                } else if (start > 0 && totalW + addLeft <= budget) {
+                    start--;
+                    totalW += addLeft;
+                    did = 1;
+                } else if (end < count - 1 && totalW + addRight <= budget) {
+                    end++;
+                    totalW += addRight;
+                    did = 1;
+                }
+                if (!did)
+                    break;
+            }
+        }
+
+        int cy = elem->aligned ? elem->posY : (elem->posY + elem->height / 2);
+        int x = elem->aligned ? (elem->posX - totalW / 2) : elem->posX;
+        u64 dimText = (elem->color & ~(0xffULL << 24)) | (0x48ULL << 24);
+        u64 dimGlyph = GS_SETREG_RGBA(0x55, 0x5E, 0x76, 0x58);
+        u64 litGlyph = GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80);
+
+        if (start > 0)
+            fntRenderString(elem->font, x - rmWideScale(10), cy, ALIGN_VCENTER, 0, 0, "<", dimText);
+        for (int i = start; i <= end; i++) {
+            int lit = (i == current);
+            int entryW = widths[i];
+            if (entryW > maxW)
+                entryW = maxW;
+            gridDrawPageGlyph(pages[i], x + glyphW / 2, cy, glyphSize, lit ? litGlyph : dimGlyph);
+            fntRenderStringFit(elem->font, x + glyphW + iconTextGap, cy, ALIGN_VCENTER,
+                               entryW - glyphW - iconTextGap, labels[i], lit ? elem->color : dimText, 0);
+            if (lit)
+                rmDrawRect(x, cy + 8, entryW, 2, GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x70));
+            x += widths[i] + itemGap;
+        }
+        if (end < count - 1)
+            fntRenderString(elem->font, x - itemGap + rmWideScale(4), cy, ALIGN_VCENTER, 0, 0, ">", dimText);
         return;
     }
 

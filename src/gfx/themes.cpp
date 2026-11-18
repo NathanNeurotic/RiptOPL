@@ -716,11 +716,6 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
                 }
             } else if (!strcmp(elementsType[ELEM_TYPE_MENU_ICON], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_MENU_ICON, gThmScreenWidth >> 1, 400, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
-                char styleProp[64];
-                const char *styleVal;
-                snprintf(styleProp, sizeof(styleProp), "%s_style", name);
-                if (configGetStr(themeConfig, styleProp, &styleVal) && !strcasecmp(styleVal, "sidebar"))
-                    elem->style = THM_MENU_STYLE_SIDEBAR;
                 elem->drawElem = &drawMenuIcon;
             } else if (!strcmp(elementsType[ELEM_TYPE_MENU_TEXT], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_MENU_TEXT, gThmScreenWidth >> 1, 20, ALIGN_CENTER, 200, 20, SCALING_RATIO, theme->textColor, theme->fonts[0]);
@@ -732,6 +727,8 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
                         elem->style = THM_MENU_STYLE_PSBBN;
                     else if (!strcasecmp(styleVal, "psbbn_active") || !strcasecmp(styleVal, "psbbn_pill"))
                         elem->style = THM_MENU_STYLE_PSBBN_ACTIVE;
+                    else if (!strcasecmp(styleVal, "psbbn_bar"))
+                        elem->style = THM_MENU_STYLE_PSBBN_BAR;
                 }
                 elem->drawElem = &drawMenuText;
             } else if (!strcmp(elementsType[ELEM_TYPE_ITEMS_LIST], type)) {

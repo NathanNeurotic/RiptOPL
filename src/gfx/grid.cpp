@@ -488,10 +488,8 @@ static void drawGlyph(GSTEXTURE *tex, int cell, int row, int cx, int cy, int siz
     rmDrawBlendedTriangles(tex, 2, xy, uv, col);
 }
 
-void gridDrawDeviceSidebar(struct menu_list *menu, int topY, int bottomY, int centerY, int interactive)
+static void drawDeviceSidebar(struct menu_list *menu, int centerY)
 {
-    if (menu == NULL)
-        return;
     struct menu_list *head = menu, *m;
     while (head->prev != NULL)
         head = head->prev;
@@ -505,31 +503,15 @@ void gridDrawDeviceSidebar(struct menu_list *menu, int topY, int bottomY, int ce
     if (count == 0)
         return;
 
-    int barH = bottomY - topY;
-    if (barH <= 0)
-        return;
-
-    int open = interactive ? gGridSidebarOpen : 0;
+    int open = gGridSidebarOpen;
     u64 sel = gTheme->selTextColor;
     int sr = sel & 0xFF, sg = (sel >> 8) & 0xFF, sb = (sel >> 16) & 0xFF;
-    int barW = rmWideScale(open ? GRID_DRAWER_W : GRID_BAR_W);
-    rmDrawRect(0, topY, barW, barH, GS_SETREG_RGBA(0x01, 0x04, 0x0F, open ? 0x70 : 0x50));
-    rmDrawRect(barW, topY, open ? 2 : 1, barH, GS_SETREG_RGBA(sr, sg, sb, open ? 0x40 : 0x20));
+    int barW = rmWideScale(open ? GRID_DRAWER_W : GRID_BAR_W), screenH = gTheme->usedHeight > 0 ? gTheme->usedHeight : 480;
+    rmDrawRect(0, 0, barW, screenH, GS_SETREG_RGBA(0x01, 0x04, 0x0F, open ? 0x70 : 0x50));
+    rmDrawRect(barW, 0, open ? 2 : 1, screenH, GS_SETREG_RGBA(sr, sg, sb, open ? 0x40 : 0x20));
 
     GSTEXTURE *tex = gridGlyphTexture();
-    int glyphX = rmWideScale(GRID_BAR_W) / 2;
-    int totalH = (count - 1) * GRID_GLYPH_PITCH;
-    int minTop = topY + GRID_GLYPH_PITCH / 2;
-    int maxTop = bottomY - GRID_GLYPH_PITCH / 2 - totalH;
-    int top = centerY - totalH / 2;
-    if (maxTop < minTop)
-        top = (minTop + maxTop) / 2;
-    else if (top < minTop)
-        top = minTop;
-    else if (top > maxTop)
-        top = maxTop;
-
-    int i = 0;
+    int glyphX = rmWideScale(GRID_BAR_W) / 2, top = centerY - (count - 1) * GRID_GLYPH_PITCH / 2, i = 0;
     for (m = head; m != NULL; m = m->next) {
         if (!menuItemShown(m->item))
             continue;
@@ -555,15 +537,24 @@ void gridDrawDeviceSidebar(struct menu_list *menu, int topY, int bottomY, int ce
     }
 }
 
+void gridDrawPageGlyph(struct menu_list *page, int cx, int cy, int size, u64 color)
+{
+    if (page == NULL)
+        return;
+    GSTEXTURE *tex = gridGlyphTexture();
+    if (tex == NULL)
+        return;
+    drawGlyph(tex, gridGlyphFor(page), 0, cx, cy, size, color);
+}
+
 static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     (void)config;
     if (elem->extended == NULL || menu == NULL || menu->item == NULL || elem->width <= 0 || elem->height <= 0)
         return;
-    int screenH = gTheme->usedHeight > 0 ? gTheme->usedHeight : 480;
     if (item == NULL) { // an empty device page: no covers, but the sidebar may hold the pad and must show
         if (gTheme->gridDevices && gTheme->grid != NULL)
-            gridDrawDeviceSidebar(menu, 0, screenH, elem->posY, 1);
+            drawDeviceSidebar(menu, elem->posY);
         return;
     }
 
@@ -668,7 +659,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
     }
 
     if (sidebar)
-        gridDrawDeviceSidebar(menu, 0, screenH, elem->posY, 1);
+        drawDeviceSidebar(menu, elem->posY);
 }
 
 static void endGrid(struct theme_element *elem)
