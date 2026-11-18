@@ -1150,7 +1150,7 @@ static void thmLoadFonts(config_set_t *themeConfig, const char *themePath, theme
         char fullPath[128];
         const char *fntFile;
         if (configGetStr(themeConfig, fntKey, &fntFile)) {
-            if (strncmp(fntFile, "builtin", 7) == 0)
+            if (!strcmp(fntFile, "builtin") || !strncmp(fntFile, "builtin:", 8))
                 snprintf(fullPath, sizeof(fullPath), "%s", fntFile);
             else if (themePath && themePath[0] != '\0')
                 snprintf(fullPath, sizeof(fullPath), "%s%s", themePath, fntFile);

@@ -457,9 +457,17 @@ void thmComputeTextRooms(theme_elems_t *elems)
 // otherwise exactly as before. Returns the end x.
 static int thmDrawElemText(theme_element_t *elem, int sizingMode, const char *text, int scroll)
 {
-    if ((elem->aligned & ALIGN_RIGHT) && !(elem->aligned & ALIGN_HCENTER) && sizingMode != SIZING_WRAP && text != NULL)
-        return fntRenderString(elem->font, elem->posX - rmUnScaleX(fntCalcDimensions(elem->font, text)), elem->posY,
-                               elem->aligned & ~ALIGN_RIGHT, 0, 0, text, elem->color);
+    if ((elem->aligned & ALIGN_RIGHT) && !(elem->aligned & ALIGN_HCENTER) && sizingMode != SIZING_WRAP && text != NULL) {
+        int textW = rmUnScaleX(fntCalcDimensions(elem->font, text));
+        int maxW = (sizingMode != SIZING_NONE && elem->width > 0) ? elem->width : elem->posX;
+        int clipW = (sizingMode != SIZING_NONE && elem->width > 0) ? elem->width : 0;
+        int clipH = (sizingMode != SIZING_NONE && elem->height > 0) ? elem->height : 0;
+        if (maxW > 0 && textW > maxW) {
+            textW = maxW;
+            clipW = maxW;
+        }
+        return fntRenderString(elem->font, elem->posX - textW, elem->posY, elem->aligned & ~ALIGN_RIGHT, clipW, clipH, text, elem->color);
+    }
     if (elem->textRoom > 0 && sizingMode != SIZING_WRAP)
         return fntRenderStringFit(elem->font, elem->posX, elem->posY, elem->aligned, elem->textRoom, text, elem->color, scroll);
     if (sizingMode == SIZING_NONE)
@@ -892,10 +900,10 @@ mutable_image_t *initMutableImage(const char *themePath, config_set_t *themeConf
         configGetStr(themeConfig, elemProp, &cachePattern);
         LOG("THEMES MutableImage %s: type: %s using cache pattern: %s\n", name, elementsType[type], cachePattern);
     } else if ((type == ELEM_TYPE_GAME_IMAGE) || (type == ELEM_TYPE_BACKGROUND)) {
-        if (cachePattern == NULL) {
-            snprintf(elemProp, sizeof(elemProp), "%s_pattern", name);
-            configGetStr(themeConfig, elemProp, &cachePattern);
-        }
+        const char *cfgPattern = NULL;
+        snprintf(elemProp, sizeof(elemProp), "%s_pattern", name);
+        if (configGetStr(themeConfig, elemProp, &cfgPattern) && cfgPattern != NULL && strcmp(cfgPattern, "SCRn") != 0)
+            cachePattern = cfgPattern;
         snprintf(elemProp, sizeof(elemProp), "%s_count", name);
         configGetInt(themeConfig, elemProp, &cacheCount);
         // Floor EVERY per-game art cache at 2 slots, not just COV.
@@ -1396,11 +1404,11 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
 void initGameImage(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, const char *pattern, int count, const char *texture, const char *overlay)
 {
     static const char *const scrnPatterns[] = {"SCR", "SCR2", "SCR3", "SCR4", "SCR5", "SCR6", "SCR7", "SCR8", "SCR9"};
-    if (pattern == NULL) {
-        char elemProp[64];
-        const char *cfgPattern = NULL;
-        snprintf(elemProp, sizeof(elemProp), "%s_pattern", name);
-        if (configGetStr(themeConfig, elemProp, &cfgPattern) && cfgPattern != NULL && !strcmp(cfgPattern, "SCRn")) {
+    char elemProp[64];
+    const char *cfgPattern = NULL;
+    snprintf(elemProp, sizeof(elemProp), "%s_pattern", name);
+    if (configGetStr(themeConfig, elemProp, &cfgPattern) && cfgPattern != NULL) {
+        if (!strcmp(cfgPattern, "SCRn")) {
             int scrIdx = 0;
             for (theme_element_t *e = elem->family ? elem->family->first : NULL; e != NULL; e = e->next) {
                 if (e->type == ELEM_TYPE_GAME_IMAGE && e->extended != NULL) {
@@ -1411,6 +1419,8 @@ void initGameImage(const char *themePath, config_set_t *themeConfig, theme_t *th
             }
             if (scrIdx < (int)(sizeof(scrnPatterns) / sizeof(scrnPatterns[0])))
                 pattern = scrnPatterns[scrIdx];
+        } else {
+            pattern = cfgPattern;
         }
     }
     mutable_image_t *mutableImage = initMutableImage(themePath, themeConfig, theme, name, elem->type, pattern, count, texture, overlay);
@@ -1615,45 +1625,47 @@ void drawAttributeImage(struct menu_list *menu, struct submenu_list *item, confi
             configGetStr(config, attributeImage->cache->suffix(), (const char **)&attributeImage->currentValue);
         }
         if (attributeImage->currentValue) {
-            if (thmGetFilePath(thmGetGuiValue()) == NULL || (gTheme != NULL && gTheme->badgeSet)) { // built-in theme or badge_set=ripps2
+            int isBuiltin = (thmGetFilePath(thmGetGuiValue()) == NULL);
+            if (isBuiltin || (gTheme != NULL && gTheme->badgeSet)) { // built-in theme or badge_set=ripps2
                 int badgeId = thmAttributeTexId(attributeImage);
                 if (gTheme != NULL && gTheme->badgeSet && badgeId >= 0 && badgeId < TEXTURES_COUNT && gTheme->textures[badgeId].Mem == NULL)
                     texLoadInternal(&gTheme->textures[badgeId], badgeId);
                 GSTEXTURE *texture = thmGetTexture(badgeId);
-                if (texture && texture->Mem)
+                if (texture && texture->Mem) {
+                    rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
+                    return;
+                }
+                if (isBuiltin)
+                    return;
+            }
+            // Keep the cache identity persistent so a missing optional glyph
+            // is memoized instead of being reopened every frame.
+            GSTEXTURE *texture = cacheGetTexture(attributeImage->cache, static_cast<item_list_t *>(menu->item->userdata), &attributeImage->currentCacheId, &attributeImage->currentUid, attributeImage->currentValue);
+            if (texture && texture->Mem) {
+                if (attributeImage->overlayTexture) {
+                    rmDrawOverlayPixmap(&attributeImage->overlayTexture->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol,
+                                        texture, attributeImage->overlayTexture->upperLeft_x, attributeImage->overlayTexture->upperLeft_y, attributeImage->overlayTexture->upperRight_x, attributeImage->overlayTexture->upperRight_y,
+                                        attributeImage->overlayTexture->lowerLeft_x, attributeImage->overlayTexture->lowerLeft_y, attributeImage->overlayTexture->lowerRight_x, attributeImage->overlayTexture->lowerRight_y, 0);
+                    if (attributeImage->overlayTexture2)
+                        rmDrawPixmap(&attributeImage->overlayTexture2->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
+                } else
                     rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
 
                 return;
-            } else {
-                // Keep the cache identity persistent so a missing optional glyph
-                // is memoized instead of being reopened every frame.
-                GSTEXTURE *texture = cacheGetTexture(attributeImage->cache, static_cast<item_list_t *>(menu->item->userdata), &attributeImage->currentCacheId, &attributeImage->currentUid, attributeImage->currentValue);
+            }
+            // Embedded-glyph fallback: BUILT-IN theme only (#213). Attribute caches carry
+            // prefix = themePath, so a NULL prefix is exactly the built-in path -- there the
+            // baked glyph fills NULL frames while nothing else can. On a DISK theme this
+            // fallback made our baked art FLASH before the theme's own glyph finished its async
+            // load (and stand in permanently when the theme ships none) -- violating the rule
+            // that a custom theme uses its OWN assets entirely. Disk themes now fall through to
+            // the element's own _default (or draw nothing). thmLoad also no longer decodes the
+            // baked set for disk themes, so this gate is double-covered.
+            if (attributeImage->cache->prefix() == NULL) {
+                texture = thmGetTexture(thmAttributeTexId(attributeImage));
                 if (texture && texture->Mem) {
-                    if (attributeImage->overlayTexture) {
-                        rmDrawOverlayPixmap(&attributeImage->overlayTexture->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol,
-                                            texture, attributeImage->overlayTexture->upperLeft_x, attributeImage->overlayTexture->upperLeft_y, attributeImage->overlayTexture->upperRight_x, attributeImage->overlayTexture->upperRight_y,
-                                            attributeImage->overlayTexture->lowerLeft_x, attributeImage->overlayTexture->lowerLeft_y, attributeImage->overlayTexture->lowerRight_x, attributeImage->overlayTexture->lowerRight_y, 0);
-                        if (attributeImage->overlayTexture2)
-                            rmDrawPixmap(&attributeImage->overlayTexture2->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
-                    } else
-                        rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
-
+                    rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
                     return;
-                }
-                // Embedded-glyph fallback: BUILT-IN theme only (#213). Attribute caches carry
-                // prefix = themePath, so a NULL prefix is exactly the built-in path -- there the
-                // baked glyph fills NULL frames while nothing else can. On a DISK theme this
-                // fallback made our baked art FLASH before the theme's own glyph finished its async
-                // load (and stand in permanently when the theme ships none) -- violating the rule
-                // that a custom theme uses its OWN assets entirely. Disk themes now fall through to
-                // the element's own _default (or draw nothing). thmLoad also no longer decodes the
-                // baked set for disk themes, so this gate is double-covered.
-                if (attributeImage->cache->prefix() == NULL) {
-                    texture = thmGetTexture(thmAttributeTexId(attributeImage));
-                    if (texture && texture->Mem) {
-                        rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
-                        return;
-                    }
                 }
             }
         }
