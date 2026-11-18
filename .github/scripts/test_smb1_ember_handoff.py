@@ -1,0 +1,156 @@
+"""Exercise the real SMB1 directory-reader EOF/handle code and pin Ember's SMB handoff.
+
+Issue #463: Ember enumerates nested SMB folders and rejects a directory scan that ends
+with an error instead of normal EOF. No console/network server is needed for the mock
+SMB1 response cases; actual hardware validation remains necessary.
+"""
+from pathlib import Path
+import subprocess
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def read(path):
+    return (ROOT / path).read_text(encoding="utf-8")
+
+
+def function(source, signature):
+    start = source.index(signature)
+    return source[start:source.index("\n}", start) + 2]
+
+
+fio = read("modules/network/smbman-ra/smb_fio.c")
+proto = read("modules/network/smbman-ra/smb.c")
+eth = read("src/sources/ethsupport.cpp")
+net = read("src/sources/netsupport.cpp")
+system = read("src/platform/system.cpp")
+cue = read("src/sources/cuesupport.cpp")
+opl = read("src/app/opl.cpp")
+
+# One ordinary EOF, whether carried on a final entry or on an empty result, is
+# not a scanner error. Only nonterminal/transport failures propagate as errors.
+assert "unsigned char dir_eos;" in fio
+assert "fh->dir_eos  = 0;" in function(fio, "int smb_dopen(")
+assert "return FFNRspParam->EndOfSearch ? 1 : -EIO;" in function(proto, "int smb_FindFirstNext2(")
+assert "fh->dir_eos = (info->EOS != 0);" in function(fio, "int smb_dread(")
+assert "fh->mode != O_DIROPEN && fh->smb_fid == -1" in function(fio, "int smb_close(")
+
+# The selected game device is spared by deinit; SMB also needs the IOP TCP/IP
+# modules and fileXio-backed driver kept alive after the UI and RPC wrappers end.
+clean = function(eth, "void EthSource::cleanUp(")
+launch = function(eth, "void EthSource::launchCue(")
+assert "if ((exception & UNMOUNT_EXCEPTION) == 0)\n            gEthSupport.smbDisconnect();" in clean
+assert "if ((exception & UNMOUNT_EXCEPTION) == 0)\n        ethDeinitModules();" in clean
+assert "NetManDeinit();" in function(net, "void NetSupport::deinitModules(")
+assert "ps2ip_deinit();" in function(net, "void NetSupport::deinitModules(")
+assert "host::app().deinit(UNMOUNT_EXCEPTION, itemList->mode);" in launch
+assert launch.index("cuePrepareLaunch(") < launch.index("host::app().deinit(")
+assert "sysLaunchEmber(emberElf, launchName);" in launch
+handoff = function(system, "void sysLaunchEmber(")
+assert "argv[argc++] = (char *)emberElf;" in handoff
+assert "argv[argc++] = (char *)gameFolder;" in handoff
+assert 'sysLoadELFKeepIOP(emberElf, "", argc, argv)' in handoff
+assert "deinitAllSupport(exception, modeSelected);" in function(opl, "void deinit(")
+preflight = function(cue, "int cuePrepareLaunch(")
+assert preflight.index("2 * strlen(emberElf) + strlen(argument) + 3 > 256") < preflight.index("if (count == 0)\n        return 1;")
+
+program = r"""
+#include <assert.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#define SMB_NAME_MAX 256
+#define O_DIROPEN 0x1000
+#define TRANS2_FIND_FIRST2 1
+#define TRANS2_FIND_NEXT2 2
+typedef struct { int size; } PathInformation_t;
+typedef struct { int size; } iox_stat_t;
+typedef struct { int SID, EOS; PathInformation_t fileInfo; char FileName[256]; } SearchInfo_t;
+typedef struct { iox_stat_t stat; char name[256]; } iox_dirent_t;
+typedef struct iop_file { void *privdata; } iop_file_t;
+typedef struct {
+    iop_file_t *f;
+    int smb_fid;
+    long long filesize, position;
+    unsigned int mode;
+    unsigned char dir_eos;
+    char name[SMB_NAME_MAX];
+} FHANDLE;
+static int UID = 1, TID = 1, queries, closing, test_case;
+static char SearchBuf[sizeof(SearchInfo_t)];
+static void smb_io_lock(void) {}
+static void smb_io_unlock(void) {}
+static void smb_statFiller(const PathInformation_t *src, iox_stat_t *dst)
+{ dst->size = src->size; }
+static int smb_Close(int a, int b, int fid)
+{ (void)a; (void)b; (void)fid; closing++; return 0; }
+static int smb_FindFirstNext2(int a, int b, char *path, int op, SearchInfo_t *info)
+{
+    (void)a; (void)b; (void)path;
+    assert(op == (queries == 0 ? TRANS2_FIND_FIRST2 : TRANS2_FIND_NEXT2));
+    queries++;
+    if (test_case == 4) return -EIO;
+    if (test_case == 3) return 1; /* empty successful search */
+    if (queries > (test_case == 2 ? 2 : 1)) assert(!"request after EOS");
+    info->SID = 42;
+    info->EOS = (test_case == 1 || queries == 2);
+    info->fileInfo.size = queries;
+    strcpy(info->FileName, queries == 1 ? "Game A" : "Game B");
+    return 0;
+}
+@CLOSE@
+@DREAD@
+static void setup(FHANDLE *handle, iop_file_t *file, int which)
+{
+    memset(handle, 0, sizeof(*handle));
+    file->privdata = handle;
+    handle->f = file;
+    handle->mode = O_DIROPEN;
+    handle->smb_fid = -1;
+    strcpy(handle->name, "\\EMBER\\games\\*");
+    test_case = which;
+    queries = closing = 0;
+}
+int main(void)
+{
+    FHANDLE h;
+    iop_file_t f;
+    iox_dirent_t de;
+
+    setup(&h, &f, 1);
+    assert(smb_dread(&f, &de) == 1 && strcmp(de.name, "Game A") == 0);
+    assert(smb_dread(&f, &de) == 0 && queries == 1);
+    assert(smb_close(&f) == 0 && h.f == NULL && closing == 0);
+
+    setup(&h, &f, 2);
+    assert(smb_dread(&f, &de) == 1 && strcmp(de.name, "Game A") == 0);
+    assert(smb_dread(&f, &de) == 1 && strcmp(de.name, "Game B") == 0);
+    assert(smb_dread(&f, &de) == 0 && queries == 2);
+    assert(smb_close(&f) == 0 && closing == 0);
+
+    setup(&h, &f, 3);
+    assert(smb_dread(&f, &de) == 0 && queries == 1);
+    assert(smb_dread(&f, &de) == 0 && queries == 1);
+    assert(smb_close(&f) == 0 && closing == 0);
+
+    setup(&h, &f, 4);
+    assert(smb_dread(&f, &de) == -EIO && queries == 1);
+    assert(smb_close(&f) == 0);
+
+    setup(&h, &f, 1);
+    assert(smb_close(&f) == 0 && h.f == NULL); /* closed without dread */
+    puts("PASS: SMB1 one/two/zero entries, terminal EOF, transport error and directory handle cleanup");
+    return 0;
+}
+"""
+program = program.replace("@CLOSE@", function(fio, "int smb_close("))
+program = program.replace("@DREAD@", function(fio, "int smb_dread("))
+with tempfile.TemporaryDirectory() as work:
+    src = Path(work) / "ember_smb1.c"
+    exe = Path(work) / "ember_smb1"
+    src.write_text(program, encoding="utf-8")
+    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                    str(src), "-o", str(exe)], check=True)
+    subprocess.run([str(exe)], check=True, timeout=10)
+print("PASS: SMB Ember launch preserves selected network driver, no-reset ELF argv and arg limits")
