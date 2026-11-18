@@ -1598,8 +1598,12 @@ void EthSource::cleanUp(item_list_t *itemList, int exception)
             gEthSupport.smbDisconnect();
     }
 
-    // UI may have initialized modules outside of ETH mode, so deinitialize regardless of the enabled status.
-    ethDeinitModules();
+    // Ember inherits the live SMB/NFS driver and TCP/IP stack rather than resetting the IOP.
+    // UNMOUNT_EXCEPTION already spares the share disconnect above; it must also spare
+    // NetManDeinit/ps2ip_deinit here, or the child inherits an unusable network mount.
+    // Normal exits still release the network stack.
+    if ((exception & UNMOUNT_EXCEPTION) == 0)
+        ethDeinitModules();
 }
 
 // This may be called, even if ethInit() was not.
