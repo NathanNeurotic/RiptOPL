@@ -85,9 +85,17 @@ typedef struct
     unsigned char cfgText;
 } mutable_text_t;
 
+enum {
+    THM_HL_NONE = 0,
+    THM_HL_BAR,
+    THM_HL_LINE
+};
+
 typedef struct
 {
     int displayedItems;
+    int hidden;
+    int highlight;
 
     const char *decorator;
     mutable_image_t *decoratorImage;
@@ -305,6 +313,7 @@ typedef struct theme
     // 0 (the key absent, or any other number) shows them, as before the key existed. A word such as "on"
     // reads as 0 and hides them, as in RIPPS2.
     int hideListCfgText;
+    int badgeSet; // badge_set=ripps2: use RIPPS2's internal badge set on AttributeImage
 } theme_t;
 
 // Button glyph sets (RIPPS2 build 90, akilluminati47): the theme's own PNGs, OPL's built-in ones, or one of two

@@ -351,6 +351,18 @@ static int thmElemBox(const theme_element_t *elem, thm_box_t *box)
 {
     int w = elem->width, h = elem->height;
 
+    if (elem->type == ELEM_TYPE_STATIC_TEXT && elem->extended != NULL) {
+        const mutable_text_t *text = (const mutable_text_t *)elem->extended;
+        int sw = (text->value != NULL && text->value[0] != '\0') ? rmUnScaleX(fntCalcDimensions(elem->font, text->value)) : 0;
+        if (sw > 0) {
+            box->x0 = (elem->aligned & ALIGN_HCENTER) ? elem->posX - sw / 2 :
+                      (elem->aligned & ALIGN_RIGHT)   ? elem->posX - sw :
+                                                        elem->posX;
+            box->x1 = box->x0 + sw;
+            thmTextRow(elem, &box->y0, &box->y1);
+            return 1;
+        }
+    }
     if (thmIsTextElem(elem->type) || elem->type == ELEM_TYPE_MENU_TEXT || elem->type == ELEM_TYPE_HINT_TEXT ||
         elem->type == ELEM_TYPE_INFO_HINT_TEXT) {
         box->x0 = box->x1 = elem->posX;
@@ -427,6 +439,8 @@ void thmComputeTextRooms(theme_elems_t *elems)
             if (other->deviceFilter && (other->type == ELEM_TYPE_MENU_ICON || other->type == ELEM_TYPE_ITEMS_LIST ||
                                         other->type == ELEM_TYPE_HINT_TEXT))
                 continue;
+            if (other->type == ELEM_TYPE_ITEMS_LIST && other->extended != NULL && ((const items_list_t *)other->extended)->hidden)
+                continue;
             if (thmElemBox(other, &boxes[count]))
                 count++;
         }
@@ -443,6 +457,9 @@ void thmComputeTextRooms(theme_elems_t *elems)
 // otherwise exactly as before. Returns the end x.
 static int thmDrawElemText(theme_element_t *elem, int sizingMode, const char *text, int scroll)
 {
+    if ((elem->aligned & ALIGN_RIGHT) && !(elem->aligned & ALIGN_HCENTER) && sizingMode != SIZING_WRAP && text != NULL)
+        return fntRenderString(elem->font, elem->posX - rmUnScaleX(fntCalcDimensions(elem->font, text)), elem->posY,
+                               elem->aligned & ~ALIGN_RIGHT, 0, 0, text, elem->color);
     if (elem->textRoom > 0 && sizingMode != SIZING_WRAP)
         return fntRenderStringFit(elem->font, elem->posX, elem->posY, elem->aligned, elem->textRoom, text, elem->color, scroll);
     if (sizingMode == SIZING_NONE)
@@ -628,6 +645,27 @@ void initAttributeText(const char *themePath, config_set_t *themeConfig, theme_t
         LOG("THEMES AttributeText %s: NO attribute, elem disabled !!\n", name);
 }
 
+void drawNameAttributeText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
+{
+    if (item == NULL)
+        return;
+    if (!thmElemIsInfo(elem) && psbbnFlowIsMoving())
+        return;
+    mutable_text_t *mutableText = (mutable_text_t *)elem->extended;
+    item_list_t *list = (menu && menu->item) ? static_cast<item_list_t *>(menu->item->userdata) : NULL;
+    const char *raw = submenuItemGetText(&item->item);
+    const char *disp = NULL;
+    if (!item->item.isFolder && config != NULL && (thmElemIsInfo(elem) || thmListCfgTextShown(gListCfgText, gTheme->hideListCfgText))) {
+        const char *cfgTitle = NULL;
+        if (configGetStr(config, "Title", &cfgTitle) && cfgTitle != NULL && cfgTitle[0] != '\0')
+            disp = cfgTitle;
+    }
+    if (disp == NULL)
+        disp = item->item.isFolder ? raw : (list ? host::library().listDisplayName(list, item->item.id, raw) : raw);
+    if (disp)
+        thmDrawElemText(elem, mutableText->sizingMode, disp, 1);
+}
+
 // Common functions for Image ///////////////////////////////////////////////////////////////////////////////////////////////
 
 void findDuplicate(theme_element_t *first, int type, const char *cachePattern, const char *defaultTexture, const char *overlayTexture, const char *overlayTexture2, mutable_image_t *target)
@@ -696,6 +734,18 @@ static void freeImageTexture(image_texture_t *texture)
     }
 }
 
+static int thmInternalIdFor(const char *imgName)
+{
+    char alt[64];
+    const char *slash, *under;
+    int id = texLookupInternalTexId(imgName);
+
+    if (id >= 0 || (slash = strchr(imgName, '/')) == NULL || (under = strrchr(slash, '_')) == NULL || under == slash + 1)
+        return id;
+    snprintf(alt, sizeof(alt), "%s_%.*s", under + 1, (int)(under - slash - 1), slash + 1);
+    return texLookupInternalTexId(alt);
+}
+
 static image_texture_t *initImageTexture(const char *themePath, config_set_t *themeConfig, const char *name, const char *imgName, int isOverlay)
 {
     // calloc so omitted overlay coordinate keys default to 0 instead of
@@ -713,8 +763,15 @@ static image_texture_t *initImageTexture(const char *themePath, config_set_t *th
         char path[256];
         snprintf(path, sizeof(path), "%s%s", themePath, imgName);
         result = (texDiscoverLoad(&texture->source, path, texId) >= 0);
+        if (!result && (texId = thmInternalIdFor(imgName)) >= 0) {
+            int useDefault = 1;
+            if (themeConfig != NULL)
+                configGetInt(themeConfig, "use_default", &useDefault);
+            if (useDefault)
+                result = (texLoadInternal(&texture->source, texId) >= 0);
+        }
     } else {
-        texId = texLookupInternalTexId(imgName);
+        texId = thmInternalIdFor(imgName);
         result = (texLoadInternal(&texture->source, texId) >= 0);
     }
 
@@ -835,8 +892,10 @@ mutable_image_t *initMutableImage(const char *themePath, config_set_t *themeConf
         configGetStr(themeConfig, elemProp, &cachePattern);
         LOG("THEMES MutableImage %s: type: %s using cache pattern: %s\n", name, elementsType[type], cachePattern);
     } else if ((type == ELEM_TYPE_GAME_IMAGE) || (type == ELEM_TYPE_BACKGROUND)) {
-        snprintf(elemProp, sizeof(elemProp), "%s_pattern", name);
-        configGetStr(themeConfig, elemProp, &cachePattern);
+        if (cachePattern == NULL) {
+            snprintf(elemProp, sizeof(elemProp), "%s_pattern", name);
+            configGetStr(themeConfig, elemProp, &cachePattern);
+        }
         snprintf(elemProp, sizeof(elemProp), "%s_count", name);
         configGetInt(themeConfig, elemProp, &cacheCount);
         // Floor EVERY per-game art cache at 2 slots, not just COV.
@@ -1336,6 +1395,24 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
 
 void initGameImage(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, const char *pattern, int count, const char *texture, const char *overlay)
 {
+    static const char *const scrnPatterns[] = {"SCR", "SCR2", "SCR3", "SCR4", "SCR5", "SCR6", "SCR7", "SCR8", "SCR9"};
+    if (pattern == NULL) {
+        char elemProp[64];
+        const char *cfgPattern = NULL;
+        snprintf(elemProp, sizeof(elemProp), "%s_pattern", name);
+        if (configGetStr(themeConfig, elemProp, &cfgPattern) && cfgPattern != NULL && !strcmp(cfgPattern, "SCRn")) {
+            int scrIdx = 0;
+            for (theme_element_t *e = elem->family ? elem->family->first : NULL; e != NULL; e = e->next) {
+                if (e->type == ELEM_TYPE_GAME_IMAGE && e->extended != NULL) {
+                    mutable_image_t *img = (mutable_image_t *)e->extended;
+                    if (img->cache != NULL && img->cache->suffix() != NULL && !strncmp(img->cache->suffix(), "SCR", 3))
+                        scrIdx++;
+                }
+            }
+            if (scrIdx < (int)(sizeof(scrnPatterns) / sizeof(scrnPatterns[0])))
+                pattern = scrnPatterns[scrIdx];
+        }
+    }
     mutable_image_t *mutableImage = initMutableImage(themePath, themeConfig, theme, name, elem->type, pattern, count, texture, overlay);
     elem->extended = mutableImage;
     elem->endElem = &endMutableImage;
@@ -1506,8 +1583,14 @@ theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *
 static int thmAttributeTexId(mutable_image_t *attributeImage)
 {
     char *seppos = strchr(attributeImage->currentValue, '/');
-    if (!seppos)
-        return texLookupInternalTexId(attributeImage->currentValue);
+    if (!seppos) {
+        int id = texLookupInternalTexId(attributeImage->currentValue);
+        if (id >= 0)
+            return id;
+        char imgName[32];
+        snprintf(imgName, sizeof(imgName), "%s_%s", attributeImage->cache->suffix(), attributeImage->currentValue);
+        return texLookupInternalTexId(imgName);
+    }
 
     char imgName[32];
     snprintf(imgName, sizeof(imgName), "%s_%s", attributeImage->cache->suffix(), &seppos[1]);
@@ -1532,8 +1615,11 @@ void drawAttributeImage(struct menu_list *menu, struct submenu_list *item, confi
             configGetStr(config, attributeImage->cache->suffix(), (const char **)&attributeImage->currentValue);
         }
         if (attributeImage->currentValue) {
-            if (thmGetFilePath(thmGetGuiValue()) == NULL) { // a built-in theme: embedded glyphs
-                GSTEXTURE *texture = thmGetTexture(thmAttributeTexId(attributeImage));
+            if (thmGetFilePath(thmGetGuiValue()) == NULL || (gTheme != NULL && gTheme->badgeSet)) { // built-in theme or badge_set=ripps2
+                int badgeId = thmAttributeTexId(attributeImage);
+                if (gTheme != NULL && gTheme->badgeSet && badgeId >= 0 && badgeId < TEXTURES_COUNT && gTheme->textures[badgeId].Mem == NULL)
+                    texLoadInternal(&gTheme->textures[badgeId], badgeId);
+                GSTEXTURE *texture = thmGetTexture(badgeId);
                 if (texture && texture->Mem)
                     rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
 
@@ -2008,6 +2094,8 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
 
         // PSBBN shows the title only once the covers come to rest.
         submenu_list_t *ps = psbbnFlowIsMoving() ? NULL : menu->item->pagestart;
+        if (itemsList->hidden)
+            ps = NULL;
         int others = 0;
         u64 color;
         // A fixed leading column keeps stars and titles aligned on ordinary lists. Centered
@@ -2032,9 +2120,17 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
             textRoom = rowRoom > favRoom ? rowRoom - favRoom : 1;
         }
         while (ps && (others++ < itemsList->displayedItems)) {
-            if (ps == item)
+            if (ps == item) {
                 color = gTheme->selTextColor;
-            else
+                if (!(elem->aligned & ALIGN_HCENTER)) {
+                    if (itemsList->highlight == THM_HL_BAR) {
+                        rmDrawRect(posX - 12, posY + 1, elem->width + 12, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0x1E, 0x3C, 0x9C, 0x5C, 0x00));
+                        rmDrawRect(posX - 12, posY + 1, 3, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
+                    } else if (itemsList->highlight == THM_HL_LINE) {
+                        rmDrawRect(posX - 12, posY + MENU_ITEM_HEIGHT - 3, elem->width + 12, 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
+                    }
+                }
+            } else
                 color = elem->color;
 
             const char *dispText = ps->item.isFolder ? submenuItemGetText(&ps->item) :
@@ -2139,6 +2235,18 @@ void initItemsList(const char *themePath, config_set_t *themeConfig, theme_t *th
 
     itemsList->decoratorImage = NULL;
     itemsList->coverElem = NULL;
+    itemsList->hidden = 0;
+    snprintf(elemProp, sizeof(elemProp), "%s_hidden", name);
+    configGetInt(themeConfig, elemProp, &itemsList->hidden);
+    itemsList->highlight = THM_HL_BAR;
+    const char *hlValue = NULL;
+    snprintf(elemProp, sizeof(elemProp), "%s_highlight", name);
+    if (configGetStr(themeConfig, elemProp, &hlValue) && hlValue != NULL) {
+        if (!strcasecmp(hlValue, "line"))
+            itemsList->highlight = THM_HL_LINE;
+        else if (!strcasecmp(hlValue, "none") || !strcmp(hlValue, "0"))
+            itemsList->highlight = THM_HL_NONE;
+    }
     elem->extended = itemsList;
     // elem->endElem = &endBasic; does the job
 

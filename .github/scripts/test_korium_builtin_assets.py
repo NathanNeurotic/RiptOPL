@@ -1,81 +1,62 @@
-"""The built-in Korium theme matches the original's Korium edition (test/korium-audit-remediation).
-
-- Its cfgs draw attribute=Players, so the built-in theme must load the PLAYERS_1..4 badges.
-- An app with no cover shows Korium's own cover, never inceBtion's placeholder or foliage layer.
-- Per-game background art starts off, as the original's Korium sets it.
-- List Title and Description has a Korium layout, kept off by the theme (list_cfg_text=0).
-"""
+"""The built-in PSBBN theme assets, fonts, configs and engine wiring replace legacy Korium/IncebtIon assets."""
 from pathlib import Path
-import json
 import re
-import zipfile
+import struct
 
 root = Path(__file__).resolve().parents[2]
 read = lambda path: (root / path).read_text(encoding="utf-8")
 
-# The vendored Korium cfgs really ask for the Players badge.
-with zipfile.ZipFile(root / "third_party/korium/assets.zip") as package:
-    cfgs = [package.read(n).decode("utf-8", "replace") for n in package.namelist() if n.endswith(".cfg")]
-assert any(re.search(r"attribute\s*=\s*Players", cfg) for cfg in cfgs), "Korium cfgs no longer use Players"
-
-themes = read("src/gfx/themes.cpp")
-builtin = themes[themes.index("    if (!themePath) {\n        for (i = ELF_FORMAT; i <= VMODE_PAL; i++)"):]
-builtin = builtin[:builtin.index("\n    }\n") + 6]
-assert "#ifdef BUILTIN_KORIUM" in builtin and "for (i = PLAYERS_1; i <= PLAYERS_4; i++)" in builtin, builtin
-
-textures = read("src/gfx/textures.cpp")
-korium = {}
-for block in re.findall(r"#ifdef BUILTIN_KORIUM\n(.*?)#(?:else|endif)", textures, re.S):
-    for texture, source in re.findall(r"\{(\w+), \"[^\"]*\", (&?\w+)\}", block):
-        korium[texture] = source
-assert korium.get("COVERAPP_DEFAULT") == "&cover_png", korium.get("COVERAPP_DEFAULT")
-assert korium.get("CASE_OVERLAY2") == "NULL", korium.get("CASE_OVERLAY2")
-for player in range(1, 5):
-    assert korium.get(f"PLAYERS_{player}") == f"&Players_{player}_png"
-
-# Nothing references the two inceBtion bitmaps in a Korium build, so they are not embedded either.
+# Embedded PNGs and font in gfx/, third_party/fonts/, tools/assets.py, include/textures.h, src/gfx/textures.cpp.
 assets = read("tools/assets.py")
-assert 'pngs = [p for p in pngs if p not in ("coverapp", "case_overlay")]' in assets
-assert "gfx/coverapp.png" not in json.loads(read("third_party/korium/UPSTREAM.json"))["files"]
+png_block = assets[assets.index('PNG_ASSETS = """'):assets.index('AUDIO = ')]
+for removed in ("incebtion", "ip", "case_overlay"):
+    assert not re.search(rf"\b{removed}\b", png_block), f"unused legacy asset {removed} still in PNG_ASSETS"
+for required in ("Players_1", "Players_2", "Players_3", "Players_4", "bezel_top", "bezel_bottom", "psbbn_bg"):
+    assert re.search(rf"\b{required}\b", png_block), f"missing {required} in PNG_ASSETS"
+    assert (root / f"gfx/{required}.png").is_file(), f"missing gfx/{required}.png"
+assert not (root / "gfx/incebtion.png").exists() and not (root / "gfx/ip.png").exists()
+assert 'bin2c("third_party/fonts/ripps2_roboto.ttf", "ripps2roboto", "ripps2roboto_raw")' in assets
+assert (root / "third_party/fonts/ripps2_roboto.ttf").is_file()
+assert (root / "third_party/fonts/ROBOTO-OFL.txt").is_file()
 
-settings = read("src/core/settings.cpp")
-bgart = settings[settings.index("#ifdef BUILTIN_KORIUM\n    intSetting(CONFIG_OPL_ENABLE_BGART"):]
-bgart = bgart[:bgart.index("#endif")]
-assert "&gEnableBGArt, 0)" in bgart.split("#else")[0] and "&gEnableBGArt, 1)" in bgart.split("#else")[1]
+for bezel in ("bezel_top", "bezel_bottom"):
+    png = (root / f"gfx/{bezel}.png").read_bytes()
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and png[24] == 8, f"{bezel}.png must be an 8-bit PNG"
+assert struct.unpack(">II", (root / "gfx/bezel_top.png").read_bytes()[16:24]) == (640, 63)
+assert struct.unpack(">II", (root / "gfx/bezel_bottom.png").read_bytes()[16:24]) == (640, 64)
 
-# The List Title and Description overlay (misc/korium_list_desc.cfg), merged the way tools/assets.py does it,
-# then read the way the theme parser does: a "name:" line sets the key prefix for every later key.
-with zipfile.ZipFile(root / "third_party/korium/assets.zip") as package:
-    vendored = package.read("misc/conf_theme_OPL.cfg")
-assert 'overlay = (Path(ROOT) / "misc/korium_list_desc.cfg").read_bytes()' in assets
-assert "list_cfg.write_bytes(overlay[:split] + list_cfg.read_bytes() + overlay[split:])" in assets
-overlay = (root / "misc/korium_list_desc.cfg").read_bytes()
-split = overlay.index(b"\nmain") + 1
-def keys(text):
-    prefix, out = "", {}
-    for line in text.decode("utf-8", "replace").splitlines():
-        line = line.strip()
-        if "=" in line:
-            k, v = line.split("=", 1)
-            out[prefix + k.strip()] = v.strip()
-        elif ":" in line:
-            prefix = line[:line.index(":")].strip() + "_"
-    return out
-before, merged = keys(vendored), keys(overlay[:split] + vendored + overlay[split:])
-assert merged["list_cfg_text"] == "0", "the theme keeps the description off until the setting says On"
-assert "main11_type" not in before and "main10_type" in before, "main11 must be Korium's next free list number"
-for block in ("main11", "main12"):
-    assert merged[block + "_type_desc"] == "AttributeText" and block + "_type" not in merged, block
-for k in (k for k in merged if k.endswith("_enabled_desc")):
-    block = k[:-len("_enabled_desc")]
-    assert block + "_type" in before or block == "vcdMain6", f"{k} names a block Korium does not have"
-# The PS1 page's title ID: its own block on the PS2 page's row, so it has the PS2 ID's room and does not
-# scroll. Without it the PS1 page falls back to appsMain6 (the chain vcdMain, appsMain, main in themes.cpp).
-assert "vcdMain6_type" not in before, "Korium now has its own vcdMain6: drop the overlay's"
-assert merged["vcdMain6_type"] == "ItemText"
-assert (merged["vcdMain6_x"], merged["vcdMain6_y"]) == (before["main6_x"], before["main6_y"])
-assert merged["vcdMain6_enabled_desc"] == "0"
-assert 'vcdMainChain[] = {"vcdMain", "appsMain", "main"}' in themes
-assert all(merged.get(k) == v for k, v in before.items()), "the overlay changed one of Korium's own keys"
+tex_h = read("include/textures.h")
+tex_c = read("src/gfx/textures.cpp")
+for enum_name, str_name, sym_name in (
+    ("PLAYERS_1", "Players_1", "&Players_1_png"),
+    ("PLAYERS_2", "Players_2", "&Players_2_png"),
+    ("PLAYERS_3", "Players_3", "&Players_3_png"),
+    ("PLAYERS_4", "Players_4", "&Players_4_png"),
+    ("BEZEL_TOP", "bezel_top", "&bezel_top_png"),
+    ("BEZEL_BOTTOM", "bezel_bottom", "&bezel_bottom_png"),
+    ("COVERAPP_DEFAULT", "coverapp", "&coverapp_png"),
+    ("APPS_CASE_OVERLAY", "apps_case", "&case_png"),
+):
+    assert enum_name in tex_h
+    assert f'{{{enum_name}, "{str_name}", {sym_name}}}' in tex_c, (enum_name, str_name, sym_name)
+assert "&incebtion_png" not in tex_c and "&ip_png" not in tex_c and "&case_overlay_png" not in tex_c
 
-print("PASS: built-in Korium loads its Players badges, keeps its own app cover, starts with background art off and keeps its list description off")
+# Engine wiring: built-in font aliases, SCRn, aligned=2, ItemsList hidden/highlight, #Name zero-I/O, badge_set=ripps2.
+themes = read("src/gfx/themes.cpp")
+elems = read("src/gfx/themeelems.cpp")
+fnt = read("src/gfx/fntsys.cpp")
+assert 'thmLoadFonts(themeConfig, themePath ? themePath : "", newT);' in themes
+assert 'for (i = PLAYERS_1; i <= PLAYERS_4; i++)' in themes
+assert "newT->badgeSet = configGetStr" in themes
+assert '"builtin:roboto"' in fnt and '"builtin:ripflow"' in fnt and "&ripps2roboto_raw" in fnt
+assert "ALIGN_RIGHT" in elems and "THM_HL_BAR" in elems and "drawNameAttributeText" in elems
+assert '!strcmp(cfgPattern, "SCRn")' in elems
+
+# All four built-in cfgs use the PSBBN fonts, info page, and have no global color overrides.
+for cfg_rel in ("misc/conf_theme_OPL.cfg", "misc/theme_psbbn_flow.cfg", "misc/theme_coverflow.cfg", "misc/theme_grid.cfg"):
+    cfg = read(cfg_rel)
+    assert "font1=builtin:roboto" in cfg and "font13=builtin:ripflow" in cfg, cfg_rel
+    assert "value=RiptOPL" in cfg and "attribute=#Name" in cfg and "pattern=SCRn" in cfg, cfg_rel
+    assert not re.search(r"^(?:bg|text|ui|sel|title)_color=", cfg, re.M), f"{cfg_rel} must keep Colors picker editable"
+
+print("PASS: built-in PSBBN theme assets, fonts, configs and engine wiring passed")
