@@ -63,7 +63,7 @@ public:
     // pooled __.POPS[0-9]? containers plus one-game PP.<id>.POPS.<name> installs, then the EMBER
     // phase; publishes transactionally and returns the row count.
     int buildVcdGameList();
-    int loadVcdListCache(); // publish the saved vcdgames.bin list; 0 on success
+    int loadVcdListCache(unsigned int genAtEntry); // publish the saved vcdgames.bin list; 0 on success
     // Swap in a new live HDL list under the UI lock, freeing the replaced one (was hddPublishHdlGameList).
     void publishHdlGameList(hdl_games_list_t *replacement);
     // Free both VCD backing arrays (was hddFreeVcdGameList); also the cleanUp/shutdown teardown path.
