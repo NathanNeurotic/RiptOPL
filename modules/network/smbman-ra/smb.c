@@ -1483,8 +1483,10 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
 
     info->EOS = FFNRspParam->EndOfSearch;
 
+    // Empty successful searches are normal. Return a distinct no-entry result
+    // instead of -EINVAL, which POSIX readdir mistakes for an incomplete scan.
     if (FFNRspParam->SearchCount == 0)
-        return -EINVAL;
+        return FFNRspParam->EndOfSearch ? 1 : -EIO;
 
     info->fileInfo.Created        = FFRspData->Created;
     info->fileInfo.LastAccess     = FFRspData->LastAccess;
