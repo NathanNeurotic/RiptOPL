@@ -108,11 +108,16 @@ int hddGetPopsPartitionList(hdd_pops_list_t *list);
 // hddFreePopsPartitionList as the POPS list above -- the list type is a plain name array, not a
 // POPS-specific one.
 int hddGetEmberPartitionList(hdd_pops_list_t *list);
+// Both lists above from ONE APA walk (each walk seeks to every partition header on the disk).
+// Returns the POPS count, or a negative error (then neither list is filled).
+int hddGetPs1PartitionLists(hdd_pops_list_t *pops, hdd_pops_list_t *ember);
 void hddFreePopsPartitionList(hdd_pops_list_t *list);
 
 // Drop the once-per-session HDD VCD list cache so the next VCD-view update re-walks the partitions.
 // Needed only when a SCAN-TIME filter changes (gVcdFirstDiscOnly); view flips reuse the built list.
 void hddVcdInvalidateCache(void);
+// Explicit Refresh: the next PS2-list update walks the APA table instead of reusing the live list.
+void hddRequestHdlRescan(void);
 
 void hddInit(item_list_t *itemList);
 item_list_t *hddGetObject(int initOnly);

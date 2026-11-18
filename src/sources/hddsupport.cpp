@@ -1458,7 +1458,9 @@ void hddReleaseSupportHome(void)
 void HddSource::init(item_list_t *itemList)
 {
     LOG("HDDSUPPORT Init\n");
-    gHddSupport.forceUpdate = 0; // Use cache at initial startup.
+    gHddSupport.forceUpdate = 0;  // Use cache at initial startup.
+    gHddSupport.hdlListBuilt = 0;
+    gHddSupport.vcdForceScan = 0; // ... for the PS1 list (vcdgames.bin) as well
     (*hddInstance()).delay = gArtDelay;
     ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&HddSupport::initModulesEntry));
     (*hddInstance()).enabled = 1;
@@ -1475,10 +1477,163 @@ item_list_t *hddGetObject(int initOnly)
 static int hddLoadGameListCache(hdl_games_list_t *cache);
 static int hddUpdateGameListCache(hdl_games_list_t *cache, hdl_games_list_t *game_list);
 
+// The list latches are written by the IO worker and cleared by Refresh on the UI thread with no lock
+// (the UI thread runs input outside guiLock, and a lock here would have to be taken by every caller).
+// Every latch store is therefore followed by a second generation check: Refresh bumps the generation
+// BEFORE it clears the latch, so either the worker sees the new generation and undoes its store, or
+// Refresh's clear lands after the store. Either way a Refresh is never lost. invalidateVcdCache below
+// keeps the same order (generation first).
+static void hddLatchHdlList(unsigned int genAtEntry)
+{
+    if (genAtEntry != gHddSupport.hdlRescanGen)
+        return;
+    gHddSupport.hdlListBuilt = 1;
+    if (genAtEntry != gHddSupport.hdlRescanGen)
+        gHddSupport.hdlListBuilt = 0;
+}
+
 void HddSupport::invalidateVcdCache()
 {
     vcdCacheGen++;
+    vcdForceScan = 1; // the saved vcdgames.bin is stale too: the next build must walk the drive
     vcdListBuilt = 0;
+}
+
+// ---- vcdgames.bin: persistent HDD PS1 list cache --------------------------------------------------
+// The PS1 twin of games.bin. A cold PS1 list walks the whole APA table (one seek per partition
+// header across the disk) and mounts every POPS/Ember container, which on a big drive takes many
+// seconds on the first L3 or on every boot with the combined list. Like games.bin it is used for the
+// first build of a session only; Refresh (and anything else that invalidates) rescans and rewrites it.
+// Layout: header, then count records of {base_game_info_t, owning partition label}. The header pins
+// the record size and the scan-time filters, so a build with a different struct or settings ignores it.
+#define HDD_VCD_CACHE_MAGIC 0x31435652u // "RVC1"
+
+typedef struct
+{
+    u32 magic;
+    u32 recSize;
+    u32 count;
+    u8 firstDiscOnly;
+    u8 showPpPops;
+    u8 ps1Duplicates;
+    u8 pad;
+} hdd_vcd_cache_hdr_t;
+
+static void hddVcdCacheFilters(hdd_vcd_cache_hdr_t *h, int ps1Duplicates)
+{
+    h->firstDiscOnly = (u8)gVcdFirstDiscOnly;
+    h->showPpPops = (u8)gVcdShowPpPops;
+    h->ps1Duplicates = (u8)ps1Duplicates;
+    h->pad = 0;
+}
+
+static constexpr u32 hddVcdCacheRecSize()
+{
+    return (u32)(sizeof(base_game_info_t) + APA_IDMAX + 1);
+}
+
+static void hddVcdCachePath(char *out, int outSize)
+{
+    snprintf(out, outSize, "%svcdgames.bin", gHDDPrefix);
+}
+
+// Returns 0 and publishes the saved list, or nonzero (nothing published) when there is no usable cache.
+int HddSupport::loadVcdListCache(unsigned int genAtEntry)
+{
+    char filename[256];
+    hdd_vcd_cache_hdr_t hdr, want;
+
+    if (!gHDDGameListCache || gHDDPrefix == NULL)
+        return 1;
+
+    hddVcdCachePath(filename, sizeof(filename));
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL)
+        return ENOENT;
+
+    hddVcdCacheFilters(&want, gPs1Duplicates); // the live setting
+    if (fread(&hdr, sizeof(hdr), 1, file) != 1 || hdr.magic != HDD_VCD_CACHE_MAGIC || hdr.recSize != hddVcdCacheRecSize() ||
+        hdr.firstDiscOnly != want.firstDiscOnly || hdr.showPpPops != want.showPpPops || hdr.ps1Duplicates != want.ps1Duplicates ||
+        hdr.count == 0 || hdr.count > 0x10000) {
+        fclose(file);
+        LOG("HDD VCD cache: absent/stale header; rescanning\n");
+        return EINVAL; // a count of 0 is never trusted either: an empty list is cheap to re-prove
+    }
+
+    int count = (int)hdr.count;
+    base_game_info_t *games = static_cast<base_game_info_t *>(memalign(64, count * sizeof(base_game_info_t)));
+    char(*parts)[APA_IDMAX + 1] = static_cast<char(*)[APA_IDMAX + 1]>(malloc(count * sizeof(*parts)));
+    int ok = games != NULL && parts != NULL;
+    for (int i = 0; ok && i < count; i++) {
+        ok = fread(&games[i], sizeof(base_game_info_t), 1, file) == 1 && fread(parts[i], APA_IDMAX + 1, 1, file) == 1;
+        if (ok) {
+            games[i].name[ISO_GAME_NAME_MAX] = '\0';
+            games[i].startup[GAME_STARTUP_MAX] = '\0';
+            games[i].extension[ISO_GAME_EXTENSION_MAX] = '\0';
+            parts[i][APA_IDMAX] = '\0';
+        }
+    }
+    fclose(file);
+    if (!ok) {
+        free(games);
+        free(parts);
+        LOG("HDD VCD cache: read failed; rescanning\n");
+        return EIO;
+    }
+
+    // Same string-only side effect the live scan has (vcdScanOpenDir / cueScanDir): remember where
+    // each row came from so the lazy disc-ID resolver can still find it. No device IO.
+    for (int i = 0; i < count; i++) {
+        if (!strcmp(games[i].extension, CUE_ROW_EXTENSION))
+            gVcdSupport.noteScanDir(games[i].name, "pfs1:/", PS1_ROW_CUE);
+        else
+            gVcdSupport.noteScanDir(games[i].name, "pfs1:/");
+    }
+
+    // Latch only if no invalidation (Refresh, rename, filter change) arrived while the file was read,
+    // exactly as buildVcdGameList does; otherwise the rows still show but the next update rescans.
+    publishVcdGameList(games, parts, count, genAtEntry == vcdCacheGen);
+    if (genAtEntry != vcdCacheGen)
+        vcdListBuilt = 0; // an invalidation landed between the check and the latch: see vcdCacheGen
+    LOG("HDD VCD cache: %d PS1 game(s) loaded from %s\n", count, filename);
+    return 0;
+}
+
+// Written after every complete scan (scans only run on the first-ever build or an explicit refresh).
+static void hddSaveVcdListCache(const base_game_info_t *games, const char (*parts)[APA_IDMAX + 1], int count, int ps1Duplicates)
+{
+    char filename[256];
+    hdd_vcd_cache_hdr_t hdr;
+
+    if (!gHDDGameListCache || gHDDPrefix == NULL)
+        return;
+
+    hddVcdCachePath(filename, sizeof(filename));
+    if (count <= 0 || games == NULL || parts == NULL) {
+        remove(filename); // nothing to cache: drop any stale list rather than keep serving it
+        return;
+    }
+
+    hdr.magic = HDD_VCD_CACHE_MAGIC;
+    hdr.recSize = hddVcdCacheRecSize();
+    hdr.count = (u32)count;
+    hddVcdCacheFilters(&hdr, ps1Duplicates); // the value the rows were deduplicated with
+
+    FILE *file = fopen(filename, "wb");
+    if (file == NULL) {
+        LOG("HDD VCD cache: cannot write %s\n", filename);
+        return;
+    }
+    int ok = fwrite(&hdr, sizeof(hdr), 1, file) == 1;
+    for (int i = 0; ok && i < count; i++)
+        ok = fwrite(&games[i], sizeof(base_game_info_t), 1, file) == 1 && fwrite(parts[i], APA_IDMAX + 1, 1, file) == 1;
+    fclose(file);
+    if (!ok) {
+        remove(filename); // never leave a short file behind; the header count would not match it
+        LOG("HDD VCD cache: write failed\n");
+        return;
+    }
+    LOG("HDD VCD cache: %d PS1 game(s) saved\n", count);
 }
 
 void HddSupport::publishVcdGameList(base_game_info_t *games, char (*parts)[APA_IDMAX + 1], int count, int built)
@@ -1535,12 +1690,16 @@ int HddSupport::buildVcdGameList()
     int total = 0;
     int scanIncomplete = 0;
     unsigned int genAtEntry = vcdCacheGen; // re-latch below only if no invalidation raced this build
+    // The dedupe and the vcdgames.bin header must agree even if the setting changes mid-build.
+    int ps1Duplicates = gPs1Duplicates;
 
     // Best-effort cleanup from an interrupted prior scan. This never touches pfs0:, which remains the
     // live OPL data mount used by both PS2 and VCD config/art lookups.
     fileXioUmount("pfs1:");
 
-    int partCount = hddGetPopsPartitionList(&parts);
+    // ONE APA walk for both phases: the Ember list is collected here too and consumed below.
+    hdd_pops_list_t emberParts;
+    int partCount = hddGetPs1PartitionLists(&parts, &emberParts);
     if (partCount < 0) {
         // TRANSACTIONAL LIST OWNERSHIP: a failed APA table walk is not an empty VCD library. Keep the
         // last-good arrays exactly as they are and leave the cache unlatched so a later explicit
@@ -1673,8 +1832,7 @@ int HddSupport::buildVcdGameList()
     // device. The rows land in the SAME arrays, so the PS1 view, Favourites resolution, art lookup
     // and the sort all keep working with no idea that two different emulators are involved. What
     // tells them apart is the row's extension, exactly as on USB and SMB.
-    hdd_pops_list_t emberParts;
-    int emberCount = hddGetEmberPartitionList(&emberParts);
+    int emberCount = emberParts.count; // filled by the shared walk above, which succeeded
     if (emberCount < 0) {
         // A failed walk is not an empty Ember library, and it must not blank the VCD rows already
         // collected above either. Mark the refresh incomplete and let the transaction below decide.
@@ -1785,8 +1943,13 @@ int HddSupport::buildVcdGameList()
     // latched as complete. A fully successful zero/nonzero scan is latched unless invalidated mid-run.
     // Interface > PS1 Duplicates, as on every other device. The partition array moves with its rows.
     // (An Ember folder named exactly like a VCD is already skipped above: launches resolve by name.)
-    total = ps1DropTwins(newGames, newParts, sizeof(*newParts), vcdRows, total - vcdRows, gPs1Duplicates);
-    publishVcdGameList(newGames, newParts, total, !scanIncomplete && (genAtEntry == vcdCacheGen));
+    total = ps1DropTwins(newGames, newParts, sizeof(*newParts), vcdRows, total - vcdRows, ps1Duplicates);
+    int complete = !scanIncomplete && (genAtEntry == vcdCacheGen);
+    if (complete)
+        hddSaveVcdListCache(newGames, newParts, total, ps1Duplicates); // before publish: the arrays are still ours
+    publishVcdGameList(newGames, newParts, total, complete);
+    if (genAtEntry != vcdCacheGen)
+        vcdListBuilt = 0; // invalidated during the save or the publish: keep the rows, rescan next time
     return total;
 }
 
@@ -1842,12 +2005,33 @@ int HddSource::update(item_list_t *itemList)
     if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
         // Reuse the session's built list on view flips; buildVcdGameList runs only when never
         // built, invalidated (first-disc-only change), or freed by teardown (freeVcdGameList).
-        if (!gHddSupport.vcdListBuilt)
-            gHddSupport.buildVcdGameList();
+        // A build the session has not forced (first entry, or a rebuild after teardown) tries the
+        // saved vcdgames.bin first, as the PS2 list does with games.bin.
+        if (!gHddSupport.vcdListBuilt) {
+            unsigned int gen = gHddSupport.vcdCacheGen;
+            if (gHddSupport.vcdForceScan || gHddSupport.loadVcdListCache(gen) != 0)
+                gHddSupport.buildVcdGameList();
+            // Consumed only by a build that completed and latched with no invalidation racing it. A
+            // Refresh whose scan failed keeps it set, so the next update retries the scan instead of
+            // loading the stale vcdgames.bin the Refresh was meant to replace.
+            if (gHddSupport.vcdListBuilt && gen == gHddSupport.vcdCacheGen) {
+                gHddSupport.vcdForceScan = 0;
+                if (gen != gHddSupport.vcdCacheGen)
+                    gHddSupport.vcdForceScan = 1; // an invalidation landed between the check and the clear
+            }
+        }
         if (view == LIB_VIEW_PS1)
             return gHddSupport.vcdGameCount;
     }
 
+    // An L3 flip back (or a Mixed list rebuild) while the PS2 list is already live: reuse it. Only
+    // Refresh (hddRequestHdlRescan) or a teardown sends this update back to games.bin / the APA walk.
+    if (gHddSupport.hdlListBuilt) {
+        hddDvrScan();
+        return view == LIB_VIEW_MIXED ? hddPs2GameCount() + gHddSupport.vcdGameCount : hddPs2GameCount();
+    }
+
+    unsigned int hdlGen = gHddSupport.hdlRescanGen; // see hdlRescanGen: latch below only if no Refresh raced
     hdl_games_list_t cachedGames = {0};
     hdl_games_list_t hddGamesNew = {0};
     int cacheRet, scanRet = 0;
@@ -1864,11 +2048,13 @@ int HddSource::update(item_list_t *itemList)
     // cache is empty. Otherwise the initial boot may use the valid games.bin exactly as before.
     if (cacheRet == 0 && !gHddSupport.forceUpdate && cachedGames.count > 0) {
         gHddSupport.publishHdlGameList(&cachedGames);
+        hddLatchHdlList(hdlGen);
     } else {
         scanRet = hddGetHDLGamelist(&hddGamesNew);
         if (scanRet == 0) {
             hddUpdateGameListCache(&cachedGames, &hddGamesNew);
             gHddSupport.publishHdlGameList(&hddGamesNew);
+            hddLatchHdlList(hdlGen);
         } else {
             // Keep the last-good live list. On a first entry with no live list yet, a valid cache is
             // still a safer fallback than turning a transient scan failure into an empty page.
@@ -2986,6 +3172,7 @@ void HddSource::cleanUp(item_list_t *itemList, int exception)
         LOG("HDDSUPPORT CleanUp: art worker abandoned mid-read -- leaving pfs mounted\n");
         if ((*hddInstance()).enabled) {
             hddFreeHDLGamelist(&gHddSupport.hdlGames);
+            gHddSupport.hdlListBuilt = 0;
             gHddSupport.freeVcdGameList();
             hddDvrCleanUp(1); // never unmount beneath an abandoned reader
         }
@@ -2994,6 +3181,7 @@ void HddSource::cleanUp(item_list_t *itemList, int exception)
 
     if ((*hddInstance()).enabled) {
         hddFreeHDLGamelist(&gHddSupport.hdlGames);
+        gHddSupport.hdlListBuilt = 0;
         gHddSupport.freeVcdGameList();
         hddDvrCleanUp(exception & (KEEP_DVR_MOUNTS_EXCEPTION | KEEPIOP_EXCEPTION));
 
@@ -3044,6 +3232,7 @@ void HddSource::shutdown(item_list_t *itemList)
 
     if ((*hddInstance()).enabled) {
         hddFreeHDLGamelist(&gHddSupport.hdlGames);
+        gHddSupport.hdlListBuilt = 0;
         gHddSupport.freeVcdGameList();
         hddDvrCleanUp(0);
         fileXioUmount("pfs1:");
@@ -3256,6 +3445,13 @@ int hddModulesAreLoaded(void)
 void hddVcdInvalidateCache(void)
 {
     gHddSupport.invalidateVcdCache();
+}
+
+void hddRequestHdlRescan(void)
+{
+    gHddSupport.hdlRescanGen++;
+    gHddSupport.forceUpdate = 1;
+    gHddSupport.hdlListBuilt = 0;
 }
 
 int hddGetLiveOplHomeSelection(void)

@@ -115,7 +115,8 @@ assert "diaGetInt(ui, UICFG_PS1_DUPLICATES, &gPs1Duplicates)" in gui
 assert "previousPs1Dup != gPs1Duplicates" in gui, "a change rebuilds the lists"
 assert re.search(r"if \(previousPs1Dup != gPs1Duplicates\)\s*hddVcdInvalidateCache\(\);", gui), "and rescans the cached HDD list"
 hdd = read("src/hddsupport.c", "src/sources/hddsupport.cpp")
-assert "ps1DropTwins(newGames, newParts, sizeof(*newParts), vcdRows, total - vcdRows, gPs1Duplicates)" in hdd, "HDD honours it"
+assert "int ps1Duplicates = gPs1Duplicates;" in hdd, "HDD reads the setting once per build"
+assert "ps1DropTwins(newGames, newParts, sizeof(*newParts), vcdRows, total - vcdRows, ps1Duplicates)" in hdd, "HDD honours it"
 base = (root / ("lng/tmpl/_base.yml" if CPP else "lng_tmpl/_base.yml")).read_text(encoding="utf-8")
 for label in ("PS1_DUPLICATES", "HINT_PS1_DUPLICATES", "PS1_DUPLICATES_BOTH"):
     assert "label: " + label + "\n" in base, label
