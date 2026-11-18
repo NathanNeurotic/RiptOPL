@@ -1,12 +1,12 @@
 
 <p align="center"><a href="#"><img alt="RiptOPL" src="https://raw.githubusercontent.com/NathanNeurotic/RiptOPL/rebuild/main/docs/assets/riptopl.png" /></a></p>
 
-> **RiptOPL is developed in partnership and collaboration with the [RIPPS2 Project](https://github.com/akilluminati47/RIPPS2) by [Akilluminati47](https://github.com/akilluminati47).**
+> **RiptOPL is developed in partnership and collaboration with the [RIPPS2 Project](https://gitlab.com/akilluminati247/RIPPS2) by [Akilluminati47](https://gitlab.com/akilluminati247).**
 
 ## Community Contributors
 
 A heartfelt thank you to developers who have contributed pull requests directly to this fork. Anyone who opens a pull request against RiptOPL is featured here at the top of the README in recognition of their support for the project and solidarity with its maintainer:
-### [@akilluminati47](https://github.com/akilluminati47) (AK), [RIPPS2](https://github.com/akilluminati47/RIPPS2) co-developer
+### [@akilluminati47](https://gitlab.com/akilluminati247) ([AK](https://gitlab.com/akilluminati247)), [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) co-developer
 ### [@oMrRexD](https://github.com/oMrRexD) (MrRexD)
 - **[#702](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/702)–[#705](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/705)** (`RetroAchievements`): the real-hardware RA stabilization pass. Fixed the ee_core stack squeeze, the MMCE DEV9 path, cold-launch networking and RA settings placement.
 - **[#789](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/789)** (`Font lock`): holds the font lock across draw, measure and load, ending the boot-freeze race on real hardware.
@@ -66,7 +66,7 @@ Review the LICENSE file for further details.<br><br>
 | ![RiptOPL five-cover library with matching game artwork — Korium](docs/assets/ui/coverflow-five.png) | ![RiptOPL five-cover library with matching game artwork — IncebtIon](docs/assets/ui/incebtion/coverflow-five.png) |
 
 **Your collection, your view.** Browse a classic list, three- or five-cover carousel,
-or PSBBN Flow. Real **Korium and IncebtIon v1.2.0-Beta-4052** menus captured in RIPPCSX2 with a
+or PSBBN Flow. Real **Korium and IncebtIon v1.2.0-Beta-4052** menus captured in [RIPPCSX2](https://gitlab.com/akilluminati247/RIPPCSX2) with a
 12-title sample library and matching artwork. Sample files are non-bootable placeholders.
 
 [Paired screenshots and recording notes](docs/UI-CAPTURES.md) /
@@ -125,8 +125,8 @@ Hardware results in the feature documentation were measured on the legacy C edit
 page says otherwise; each still needs a retest on this C++/ps2build edition. The parity port with the legacy
 edition is merged, including the RA browser, client and ORBIT integration; see the
 [parity ledger](docs/UPSTREAM-PARITY-2026-10-12.md) and the
-[fork-gap status](docs/FORK-GAP-STATUS-2026-11-01.md); the [October 28 status](docs/FORK-GAP-STATUS-2026-10-28.md) also covers the [RIPPS2](https://github.com/akilluminati47/RIPPS2) audit by
-[akilluminati47](https://github.com/akilluminati47) and what is still not tested on hardware.
+[fork-gap status](docs/FORK-GAP-STATUS-2026-11-01.md); the [October 28 status](docs/FORK-GAP-STATUS-2026-10-28.md) also covers the [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) audit by
+[akilluminati47](https://gitlab.com/akilluminati247) and what is still not tested on hardware.
 
 ## Quick Start
 
@@ -467,7 +467,7 @@ and then, still holding them, press the second half:
 
 The console's own power button works too: **one press** powers off, **two presses** reset.
 
-**In-Game Menu (beta)** (*Settings -> Game Launching*, off by default; from [akilluminati47](https://github.com/akilluminati47)'s [RIPPS2](https://github.com/akilluminati47/RIPPS2)): with it on, the reset combination pauses an OPL-core game under a panel with **Resume**, **Cheats** (switch the game's cheats on or off while playing), **Achievements** (RetroAchievements editions), **Exit Game** and **Power Off**. The pause is silent and Resume gives back the exact picture. PCSX2 and games the menu cannot draw on keep the plain combination. NOT TESTED on hardware; see [docs/IGR.md](docs/IGR.md#the-in-game-menu-beta).
+**In-Game Menu (beta)** (*Settings -> Game Launching*, off by default; from [akilluminati47](https://gitlab.com/akilluminati247)'s [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)): with it on, the reset combination pauses an OPL-core game under a panel with **Resume**, **Cheats** (switch the game's cheats on or off while playing), **Achievements** (RetroAchievements editions), **Exit Game** and **Power Off**. The pause is silent and Resume gives back the exact picture. PCSX2 and games the menu cannot draw on keep the plain combination. NOT TESTED on hardware; see [docs/IGR.md](docs/IGR.md#the-in-game-menu-beta).
 
 Three cases where the combinations do nothing, all expected: before the game has opened a controller
 (the hook patches the game's own pad-open call - `scePadPortOpen` or `scePad2CreateSocket`), when
@@ -976,7 +976,7 @@ RiptOPL is intended to work with these maintained companion tools:
 - **[PS2-Servers](https://github.com/NathanNeurotic/PS2-Servers)** by **[Ripto](https://github.com/NathanNeurotic)** — all-in-one PC server launcher for **SMB, NFS, UDPFS, UDPBD and HTTP**.
 - **[udpfs-server](https://github.com/YouKnow-sys/udpfs-server)** by **[YouKnow-sys](https://github.com/YouKnow-sys)** — the same idea **from a phone**: an Android app that shares folders and disk images to the PS2 over **UDPFS**, found by broadcast so there is no server address to type in on the console. Works over a router or a direct cable. Built on **[udpfsd](https://github.com/pcm720/udpfsd)** by **[pcm720](https://github.com/pcm720)**; MIT licensed. An `android-udpfs-server.url` shortcut ships in installable packages.
 - **[OrbitPS2 Manager](https://github.com/Luden02/OrbitPS2-Manager)** by **[Luden](https://github.com/Luden02)** — cross-platform PC library manager for importing discs, artwork/screenshots, ZSO compression, per-game settings and VMC management.
-- **[RIPPS2](https://github.com/akilluminati47/RIPPS2)** by **[Akilluminati47](https://github.com/akilluminati47)** — a PS2 front end and loader developed in collaboration with RiptOPL, with its own interface, game libraries, Memory Files browser and save tools. Built on the RiptOPL legacy C tree; see its [releases](https://github.com/akilluminati47/RIPPS2/releases) for current PS2 builds.
+- **[RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)** by **[Akilluminati47](https://gitlab.com/akilluminati247)** — a PS2 front end and loader developed in collaboration with RiptOPL, with its own interface, game libraries, Memory Files browser and save tools. Built on the RiptOPL legacy C tree; see its [releases](https://gitlab.com/akilluminati247/RIPPS2/-/releases) for current PS2 builds.
 - **[OPL PS1 AIO Converter GUI](https://github.com/shaanhomebrew-cloud/OPL-PS1-AIO-Converter-GUI)** by **[shaan](https://github.com/shaanhomebrew-cloud)** — Windows all-in-one PS1/POPStarter preparation tool for converting BIN/CUE backups to VCDs and installing them to USB, MX4SIO, MMCE, iLink, exFAT HDD, SMB and APA internal HDD.
 - **[xeRAbora](https://github.com/hacan359/xerabora)** by **[hacan359](https://github.com/hacan359)** — the PC client for **RetroAchievements** on real PS2 hardware. Client: **[v2.0.0](https://github.com/hacan359/xerabora/releases/tag/v2.0.0)**; v1.0.1 (alpha.17 or later) also works. RiptOPL's RA build reads both clients' watch lists and keeps the snapshot-only Mode 6 behavior. After moving to v2.0.0, run **RA: check game support** again for every game you play. xeRAbora runs rcheevos, talks to the RetroAchievements servers and unlocks the achievements. It also builds the per-game watch list the console needs. Shipped as a shortcut inside `RIPTOPL-RetroAchievements-<version>.zip`; MIT licensed. RiptOPL’s RA stabilization on real hardware was driven by **[oMrRexD](https://github.com/oMrRexD)**, whose PRs #702–#705 fixed the ee_core stack squeeze, MMCE DEV9 path, cold-launch networking and settings placement.
 - **[OPL HTTP PC server](https://github.com/Docmine17/Open-PS2-Loader-HTTP)** by **[Docmine17](https://github.com/Docmine17)** — the PC side of RiptOPL’s **HTTP** protocol: a small static HTTP server with byte-range support that serves your `games.csv` catalog and streams the ISOs themselves. RiptOPL works with it **unmodified** — no new API, no catalog conversion, no changed folder layout — with host conformance checks against the upstream server. PS2 hardware validation is still pending.
@@ -1104,7 +1104,7 @@ reports that shape the fixes — **eliminator1403, [lucaslmgv](https://github.co
 
 ### The name (this fork)
 
-**RiptOPL is named by [Akilluminati47](https://github.com/akilluminati47)** — he came up with it
+**RiptOPL is named by [Akilluminati47](https://gitlab.com/akilluminati247)** — he came up with it
 before the project existed, and it stuck. Every release, every build, every thread carries a name
 he thought of first.
 

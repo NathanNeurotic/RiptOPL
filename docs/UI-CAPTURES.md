@@ -1,6 +1,6 @@
 # RiptOPL interface captures
 
-These screenshots and clips show the real RiptOPL menu running in **RIPPCSX2**.
+These screenshots and clips show the real RiptOPL menu running in **[RIPPCSX2](https://gitlab.com/akilluminati247/RIPPCSX2)**.
 The collection covers library views, per-game controls and settings. Each pair shows
 the same screen in Korium and IncebtIon, captured from the same release source
 commit with the same sample library, artwork and configuration.
@@ -241,7 +241,7 @@ five frames per second. The PNGs retain the unmodified 640 x 480 emulator frames
 ## Capture identity
 
 - **Build:** Korium and IncebtIon v1.2.0-Beta-4052, source `a64f1b92a632a0c00ffdb9f67cbbd047b49dbaf0`.
-- **Emulator:** RIPPCSX2 2.9.96-rippcsx2.2.
+- **Emulator:** [RIPPCSX2](https://gitlab.com/akilluminati247/RIPPCSX2) 2.9.96-rippcsx2.2.
 - **Display:** Auto/NTSC; 16:9 library and per-game captures, 4:3 settings captures.
 - **Captured:** November 3, 2026.
 - **Evidence:** menu rendering and navigation in an emulator. These captures do not establish
@@ -254,14 +254,14 @@ no BIOS, memory-card image, game image or account information.
 
 ## Refreshing the images
 
-1. Prepare an isolated portable RIPPCSX2 lab with its own settings, card and output
+1. Prepare an isolated portable [RIPPCSX2](https://gitlab.com/akilluminati247/RIPPCSX2) lab with its own settings, card and output
    folders. Keep it separate from an everyday emulator installation.
 2. Put the edition's released `RIPTOPL.ELF` in the lab's program directory. In that
    directory's `settings_riptopl.cfg`, use `vmode=0` and `wide_screen=0` for the 4:3
    Settings captures; use `vmode=0` and `wide_screen=1` for the 16:9 library,
    Coverflow, PSBBN Flow, per-game and Info captures. These are lab settings, not
    recommended defaults.
-3. Bind the pad keys expected by the [RIPPS2 background driver](https://github.com/akilluminati47/RIPPS2/blob/f4679198071ebc6d57461111f5a70ba3e268c2e0/tools/dev/ps2bg.ps1).
+3. Bind the pad keys expected by the [RIPPS2 background driver](https://gitlab.com/akilluminati247/RIPPS2/-/blob/f4679198071ebc6d57461111f5a70ba3e268c2e0/tools/dev/ps2bg.ps1).
    The pinned driver hard-codes `$lab` to `B:\Emulation\PlayStation\PCSX2\ripps2-lab`.
    Update `$lab` in your copy to your isolated lab directory; the driver expects
    `pcsx2-qt.exe` there. Bind Screenshot to F8 and ToggleVideoCapture to F11.
@@ -275,7 +275,7 @@ no BIOS, memory-card image, game image or account information.
    in each edition's capture manifest after every capture refresh, even when the build
    is unchanged. Refresh `release`, `source_commit` and `elf_sha256` when the
    RiptOPL build changes; independently refresh `emulator` and `emulator_sha256`
-   whenever the RIPPCSX2 binary changes. Do not assume a matching loader build
+   whenever the [RIPPCSX2](https://gitlab.com/akilluminati247/RIPPCSX2) binary changes. Do not assume a matching loader build
    means the emulator is unchanged.
 6. Keep `docs/assets/ui/` and the site's `assets/ui/` copies identical. Update captions,
    then regenerate the site's search index. The wiki home and repository guide use
