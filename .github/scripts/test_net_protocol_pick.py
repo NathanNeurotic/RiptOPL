@@ -166,8 +166,11 @@ load_pick = opl.find('CONFIG_OPL_NET_PROTOCOL_PICK, &gNetProtocolPick')
 reconcile = opl.find('if (gNetStartMode == START_MODE_DISABLED || gNetworkProtocol == NET_PROTO_OFF)')
 if load_pick < 0 or reconcile < 0 or load_pick > reconcile:
     failures.append('src/app/opl.c: the pick must be taken BEFORE the start-row reconcile forces OFF')
-if 'gNetProtocolPick = NET_PROTO_SMB;' not in function_text(opl, 'static void setDefaults(', 'src/app/opl.cpp'):
-    failures.append('src/app/opl.c: setDefaults does not default the pick to SMB')
+if 'gNetProtocolPick = NET_PROTO_UDPFS;' not in function_text(opl, 'static void setDefaults(', 'src/app/opl.cpp'):
+    failures.append('src/app/opl.cpp: a fresh install must remember UDPFS Files while connectivity is Off')
+# Legacy configs read inside CONFIG_OPL retain SMB when no protocol pick was saved.
+if not re.search(r'else if \(!configGetInt\(configOPL, CONFIG_OPL_NET_PROTOCOL_PICK, &gNetProtocolPick\)\s*\|\|.*?gNetProtocolPick = NET_PROTO_SMB;', opl, re.S):
+    failures.append('src/app/settingsio.cpp: legacy configs without a saved protocol pick must keep SMB')
 if 'gNetworkProtocol = guiNetProtocolFromPicker' in gui or 'guiNetProtocolToPicker(gNetworkProtocol)' in gui:
     failures.append('src/ui/gui.c: a Protocol row still bypasses the remembered pick')
 
