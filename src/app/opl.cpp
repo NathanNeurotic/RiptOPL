@@ -1601,7 +1601,9 @@ static void setDefaults(void)
     // and forces a device refresh already. A saved net protocol in the config overrides this.
     gNetworkProtocol = NET_PROTO_OFF;
     gNetStartMode = START_MODE_DISABLED; // Off in the 3-row Network setting; migration reconciles old configs
-    gNetProtocolPick = NET_PROTO_SMB;
+    // Remember UDPFS Files on a clean install without claiming the NIC at boot. Existing
+    // configurations keep their saved choice (or their legacy SMB fallback).
+    gNetProtocolPick = NET_PROTO_UDPFS;
     gUdpfsAccessMode = 0; // UDPFS Files; never inherit UDPBD's forced IMG
     gSMBDialect = SMB_DIALECT_V2; // Windows 10/11 ship without SMBv1; a saved choice still wins
 
