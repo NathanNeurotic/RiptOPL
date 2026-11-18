@@ -181,7 +181,7 @@ def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
         for target, source in shortcuts.items():
             shutil.copyfile(ROOT / "tools/pc" / source, kit / target)
         if options["ra"]:
-            (kit / "xeRAbora.url").write_text("[InternetShortcut]\nURL=https://github.com/hacan359/xerabora/releases/tag/v2.0.0\n", encoding="utf-8")
+            (kit / "xeRAbora.url").write_text("[InternetShortcut]\nURL=https://github.com/hacan359/xerabora/releases/tag/v2.1.0\n", encoding="utf-8")
         args = SimpleNamespace(package=str(kit), source_elf=str(elf), app_name=app_name, elf_name=elf_name,
             title="RiptOPL " + options["title"], pbt_title="RiptOPL " + options["title"],
             version=manifest["version"].split('"')[1], flavour="PS2BUILD", channel=options["title"],
