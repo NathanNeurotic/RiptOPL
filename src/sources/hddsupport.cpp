@@ -1504,11 +1504,11 @@ typedef struct
     u8 pad;
 } hdd_vcd_cache_hdr_t;
 
-static void hddVcdCacheFilters(hdd_vcd_cache_hdr_t *h)
+static void hddVcdCacheFilters(hdd_vcd_cache_hdr_t *h, int ps1Duplicates)
 {
     h->firstDiscOnly = (u8)gVcdFirstDiscOnly;
     h->showPpPops = (u8)gVcdShowPpPops;
-    h->ps1Duplicates = (u8)gPs1Duplicates;
+    h->ps1Duplicates = (u8)ps1Duplicates;
     h->pad = 0;
 }
 
@@ -1536,7 +1536,7 @@ int HddSupport::loadVcdListCache(unsigned int genAtEntry)
     if (file == NULL)
         return ENOENT;
 
-    hddVcdCacheFilters(&want);
+    hddVcdCacheFilters(&want, gPs1Duplicates); // the live setting
     if (fread(&hdr, sizeof(hdr), 1, file) != 1 || hdr.magic != HDD_VCD_CACHE_MAGIC || hdr.recSize != hddVcdCacheRecSize() ||
         hdr.firstDiscOnly != want.firstDiscOnly || hdr.showPpPops != want.showPpPops || hdr.ps1Duplicates != want.ps1Duplicates ||
         hdr.count == 0 || hdr.count > 0x10000) {
@@ -1583,7 +1583,7 @@ int HddSupport::loadVcdListCache(unsigned int genAtEntry)
 }
 
 // Written after every complete scan (scans only run on the first-ever build or an explicit refresh).
-static void hddSaveVcdListCache(const base_game_info_t *games, const char (*parts)[APA_IDMAX + 1], int count)
+static void hddSaveVcdListCache(const base_game_info_t *games, const char (*parts)[APA_IDMAX + 1], int count, int ps1Duplicates)
 {
     char filename[256];
     hdd_vcd_cache_hdr_t hdr;
@@ -1600,7 +1600,7 @@ static void hddSaveVcdListCache(const base_game_info_t *games, const char (*part
     hdr.magic = HDD_VCD_CACHE_MAGIC;
     hdr.recSize = hddVcdCacheRecSize();
     hdr.count = (u32)count;
-    hddVcdCacheFilters(&hdr);
+    hddVcdCacheFilters(&hdr, ps1Duplicates); // the value the rows were deduplicated with
 
     FILE *file = fopen(filename, "wb");
     if (file == NULL) {
@@ -1673,6 +1673,8 @@ int HddSupport::buildVcdGameList()
     int total = 0;
     int scanIncomplete = 0;
     unsigned int genAtEntry = vcdCacheGen; // re-latch below only if no invalidation raced this build
+    // The dedupe and the vcdgames.bin header must agree even if the setting changes mid-build.
+    int ps1Duplicates = gPs1Duplicates;
 
     // Best-effort cleanup from an interrupted prior scan. This never touches pfs0:, which remains the
     // live OPL data mount used by both PS2 and VCD config/art lookups.
@@ -1924,10 +1926,10 @@ int HddSupport::buildVcdGameList()
     // latched as complete. A fully successful zero/nonzero scan is latched unless invalidated mid-run.
     // Interface > PS1 Duplicates, as on every other device. The partition array moves with its rows.
     // (An Ember folder named exactly like a VCD is already skipped above: launches resolve by name.)
-    total = ps1DropTwins(newGames, newParts, sizeof(*newParts), vcdRows, total - vcdRows, gPs1Duplicates);
+    total = ps1DropTwins(newGames, newParts, sizeof(*newParts), vcdRows, total - vcdRows, ps1Duplicates);
     int complete = !scanIncomplete && (genAtEntry == vcdCacheGen);
     if (complete)
-        hddSaveVcdListCache(newGames, newParts, total); // before publish: the arrays are still ours
+        hddSaveVcdListCache(newGames, newParts, total, ps1Duplicates); // before publish: the arrays are still ours
     publishVcdGameList(newGames, newParts, total, complete);
     return total;
 }
