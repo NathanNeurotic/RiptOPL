@@ -3026,6 +3026,7 @@ void SettingsShell::readSourceState(SourceState *state)
     state->appStartMode = gAPPStartMode;
     state->mmceStartMode = gMMCEStartMode;
     state->favStartMode = gFAVStartMode;
+    state->liteStartMode = gLiteStartMode;
     state->allGames = gAllGames;
     state->showHidden = gShowHidden;
     state->enableUSB = gEnableUSB;
@@ -3077,6 +3078,7 @@ void SettingsShell::restoreSourceState()
     gAPPStartMode = sourceState_.appStartMode;
     gMMCEStartMode = sourceState_.mmceStartMode;
     gFAVStartMode = sourceState_.favStartMode;
+    gLiteStartMode = sourceState_.liteStartMode;
     int previousAllGames = gAllGames, previousShowHidden = gShowHidden;
     gAllGames = sourceState_.allGames;
     gShowHidden = sourceState_.showHidden;
