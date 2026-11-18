@@ -75,6 +75,7 @@ typedef struct
     s64 filesize;
     s64 position;
     u32 mode;
+    unsigned char dir_eos; // SMB1 FIND_LAST: the last returned entry still belongs in the list
     char name[SMB_NAME_MAX];
 } FHANDLE;
 
@@ -375,7 +376,10 @@ int smb_close(iop_file_t *f)
     FHANDLE *fh = (FHANDLE *)f->privdata;
     int r       = 0;
 
-    if ((UID == -1) || (TID == -1) || (fh->smb_fid == -1))
+    // A directory opened and closed without a dread() never acquired a search ID.
+    // It still owns a local handle, which must be released rather than leaked.
+    if ((UID == -1) || (TID == -1) || fh == NULL ||
+        (fh->mode != O_DIROPEN && fh->smb_fid == -1))
         return -EBADF;
 
     smb_io_lock();
@@ -654,6 +658,8 @@ int smb_dopen(iop_file_t *f, const char *dirname)
         f->privdata  = fh;
         fh->f        = f;
         fh->mode     = O_DIROPEN;
+        fh->smb_fid  = -1;
+        fh->dir_eos  = 0;
         fh->filesize = 0;
         fh->position = 0;
 
@@ -693,26 +699,39 @@ int smb_dread(iop_file_t *f, iox_dirent_t *dirent)
 
     SearchInfo_t *info = (SearchInfo_t *)SearchBuf;
 
+    // FIND_FIRST2 returns the final entry with EndOfSearch set. Do not send
+    // FIND_NEXT2 on a search that the server has already closed.
+    if (fh->dir_eos) {
+        r = 0;
+        goto io_unlock;
+    }
+
     if (fh->smb_fid == -1) {
         r = smb_FindFirstNext2(UID, TID, fh->name, TRANS2_FIND_FIRST2, info);
-        if (r < 0) {
+        if (r != 0) {
+            if (r > 0) {
+                fh->dir_eos = 1; // empty directory; normal end, not a scan error
+                r = 0;
+            }
             goto io_unlock;
         }
         fh->smb_fid = info->SID;
-        r           = 1;
     } else {
         info->SID = fh->smb_fid;
-        r         = smb_FindFirstNext2(UID, TID, NULL, TRANS2_FIND_NEXT2, info);
-        if (r < 0) {
+        r = smb_FindFirstNext2(UID, TID, NULL, TRANS2_FIND_NEXT2, info);
+        if (r != 0) {
+            if (r > 0) {
+                fh->dir_eos = 1;
+                r = 0;
+            }
             goto io_unlock;
         }
-        r = 1;
     }
 
-    if (r == 1) {
-        smb_statFiller(&info->fileInfo, &dirent->stat);
-        strncpy(dirent->name, info->FileName, SMB_NAME_MAX);
-    }
+    fh->dir_eos = (info->EOS != 0);
+    smb_statFiller(&info->fileInfo, &dirent->stat);
+    strncpy(dirent->name, info->FileName, SMB_NAME_MAX);
+    r = 1;
 
 io_unlock:
     smb_io_unlock();
