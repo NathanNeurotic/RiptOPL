@@ -126,8 +126,9 @@ HTTP and [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md) for the RA rows.
 
 On a fresh installation, Network Connectivity starts **Off**, but the remembered Protocol is
 **UDPFS Files**. Enabling Connectivity selects UDPFS Files; the user must configure a reachable
-UDPFS server and static PS2 IP. No network driver claims the adapter until Connectivity is
-started. Existing installations keep their saved protocol; legacy configurations with no saved
+UDPFS server and static PS2 IP. Boot does not start the network while Connectivity is Off, but
+three features can still bring the SMB stack up on their own: the RetroAchievements lookup,
+**Set from Internet** and **Check for Updates**. Existing installations keep their saved protocol; legacy configurations with no saved
 protocol pick retain their previous SMB fallback.
 
 POPSTARTER's own network files are edited from **PS Emulation Settings → POPSTARTER Network
