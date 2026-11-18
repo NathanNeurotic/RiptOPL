@@ -124,8 +124,9 @@ HTTP and [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md) for the RA rows.
 | RA Mode, RA companion IP, RetroAchievements telemetry, RetroAchievements badges, RA mark in game list, Caduceus experimental cards | RA editions only. | `ra_mode`, `ra_host_ip`, `ra_telemetry`, `ra_badges`, `ra_badge_suffix`, `ra_experimental_cards` |
 | OK / Reconnect | OK applies; Reconnect restarts the network connection with the new values. | |
 
-On a fresh installation, Network Connectivity starts **Off**, but the remembered Protocol is
-**UDPFS Files**. Enabling Connectivity selects UDPFS Files; the user must configure a reachable
+On a fresh installation of **full RiptOPL**, Network Connectivity starts **Off**, but the
+remembered Protocol is **UDPFS Files**. RiptOPLite editions have their own source-specific
+startup policy; see [RIPTOPLITE.md](RIPTOPLITE.md). Enabling Connectivity selects UDPFS Files; the user must configure a reachable
 UDPFS server and static PS2 IP. Boot does not start the network while Connectivity is Off, but
 three features can still bring the SMB stack up on their own: the RetroAchievements lookup,
 **Set from Internet** and **Check for Updates**. Existing installations keep their saved protocol; legacy configurations with no saved
