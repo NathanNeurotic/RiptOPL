@@ -98,6 +98,9 @@ public:
     // table. While set, the update reuses the live hdlGames; only hddRequestHdlRescan (explicit Refresh)
     // clears it. Cleared by teardown too, and left clear after a failed first build so it retries.
     volatile unsigned char hdlListBuilt = 0;
+    // Bumped by every hddRequestHdlRescan. A build latches hdlListBuilt only if this is unchanged since
+    // it started, so a Refresh pressed while a build is running is not overwritten by that build.
+    volatile unsigned int hdlRescanGen = 0;
     unsigned char hdProKitDetected = 0;
     unsigned char modulesLoadCount = 0;
     unsigned char modulesLoaded = 0;

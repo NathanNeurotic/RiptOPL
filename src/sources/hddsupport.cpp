@@ -2009,6 +2009,7 @@ int HddSource::update(item_list_t *itemList)
         return view == LIB_VIEW_MIXED ? hddPs2GameCount() + gHddSupport.vcdGameCount : hddPs2GameCount();
     }
 
+    unsigned int hdlGen = gHddSupport.hdlRescanGen; // see hdlRescanGen: latch below only if no Refresh raced
     hdl_games_list_t cachedGames = {0};
     hdl_games_list_t hddGamesNew = {0};
     int cacheRet, scanRet = 0;
@@ -2025,13 +2026,13 @@ int HddSource::update(item_list_t *itemList)
     // cache is empty. Otherwise the initial boot may use the valid games.bin exactly as before.
     if (cacheRet == 0 && !gHddSupport.forceUpdate && cachedGames.count > 0) {
         gHddSupport.publishHdlGameList(&cachedGames);
-        gHddSupport.hdlListBuilt = 1;
+        gHddSupport.hdlListBuilt = (hdlGen == gHddSupport.hdlRescanGen);
     } else {
         scanRet = hddGetHDLGamelist(&hddGamesNew);
         if (scanRet == 0) {
             hddUpdateGameListCache(&cachedGames, &hddGamesNew);
             gHddSupport.publishHdlGameList(&hddGamesNew);
-            gHddSupport.hdlListBuilt = 1;
+            gHddSupport.hdlListBuilt = (hdlGen == gHddSupport.hdlRescanGen);
         } else {
             // Keep the last-good live list. On a first entry with no live list yet, a valid cache is
             // still a safer fallback than turning a transient scan failure into an empty page.
@@ -3149,7 +3150,7 @@ void HddSource::cleanUp(item_list_t *itemList, int exception)
         LOG("HDDSUPPORT CleanUp: art worker abandoned mid-read -- leaving pfs mounted\n");
         if ((*hddInstance()).enabled) {
             hddFreeHDLGamelist(&gHddSupport.hdlGames);
-        gHddSupport.hdlListBuilt = 0;
+            gHddSupport.hdlListBuilt = 0;
             gHddSupport.freeVcdGameList();
             hddDvrCleanUp(1); // never unmount beneath an abandoned reader
         }
@@ -3426,6 +3427,7 @@ void hddVcdInvalidateCache(void)
 
 void hddRequestHdlRescan(void)
 {
+    gHddSupport.hdlRescanGen++;
     gHddSupport.forceUpdate = 1;
     gHddSupport.hdlListBuilt = 0;
 }
