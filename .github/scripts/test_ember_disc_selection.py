@@ -167,6 +167,10 @@ int main(int argc,char **argv) {
     assert(errors==1 && !dialogs);
     reset();manifest("Disc 1.cue\n");char elf[200];memset(elf,'e',sizeof(elf)-1);elf[sizeof(elf)-1]=0;
     assert(!cuePrepareLaunch(prefix,"Game",elf,argument,sizeof(argument)) && errors==1);
+    reset();manifest(NULL); /* a plain folder needs the SAME total argv budget check */
+    assert(!cuePrepareLaunch(prefix,"Game",elf,argument,sizeof(argument)) && errors==1);
+    reset();assert(cuePrepareLaunch(prefix,"Game","mass:/EMBER/ember.elf",argument,sizeof(argument)));
+    assert(!errors && !strcmp(argument,"Game"));
     puts("PASS: manifests, ordered picker, faults, argument bounds and launch preflight");
     return 0;
 }
