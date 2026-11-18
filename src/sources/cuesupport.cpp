@@ -309,31 +309,33 @@ int cuePrepareLaunch(const char *devPrefix, const char *folder, const char *embe
     if (length < 0 || length >= argumentSize)
         return 0;
     count = cueReadDiscList(devPrefix, folder, &list);
-    if (count == 0)
-        return 1; // no manifest: the folder launch, unchanged
     if (count < 0) {
         host::ui().missingFile(_l(_STR_EMBER_DISCS_INVALID), folder);
         return 0;
     }
-    if (count > 1)
-        selected = host::ui().pickEmberDisc(folder, list);
-    if (selected < 0) {
+    if (count > 0) {
+        if (count > 1)
+            selected = host::ui().pickEmberDisc(folder, list);
+        if (selected < 0) {
+            free(list);
+            return 0;
+        }
+        if (!cueBuildDiscArgument(folder, list->names[selected], argument, argumentSize) ||
+            !cueBuildDiscPath(devPrefix, folder, list->names[selected], path, sizeof(path))) {
+            free(list);
+            host::ui().msgBox(_l(_STR_EMBER_DISC_ARGS_TOO_LONG), 0, NULL);
+            return 0;
+        }
         free(list);
-        return 0;
     }
-    if (!cueBuildDiscArgument(folder, list->names[selected], argument, argumentSize) ||
-        !cueBuildDiscPath(devPrefix, folder, list->names[selected], path, sizeof(path))) {
-        free(list);
-        host::ui().msgBox(_l(_STR_EMBER_DISC_ARGS_TOO_LONG), 0, NULL);
-        return 0;
-    }
-    free(list);
-    // The keep-IOP child also receives the ELF path as its own argv[0]: check the whole 256-byte
-    // string pool while the GUI and the device mounts are still live.
+    // Both a bare folder and a selected-disc launch must fit the child loader's 256-byte
+    // argument pool BEFORE tearing down the UI and the live network/device stack.
     if (2 * strlen(emberElf) + strlen(argument) + 3 > 256) {
         host::ui().msgBox(_l(_STR_EMBER_DISC_ARGS_TOO_LONG), 0, NULL);
         return 0;
     }
+    if (count == 0)
+        return 1; // no manifest: use the folder argument, after the same budget check
     fd = open(path, O_RDONLY);
     if (fd < 0) {
         host::ui().missingFile(_l(_STR_ERR_FILE_INVALID), path);
