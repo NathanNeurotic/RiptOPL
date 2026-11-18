@@ -107,7 +107,7 @@ HTTP and [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md) for the RA rows.
 | Row | What it does | Key |
 | --- | --- | --- |
 | Protocol | SMB, UDPFS, UDPBD, HTTP or NFS. | `network_protocol`, `net_protocol_pick` |
-| Access | UDPFS only: read-only or read/write. | `udpfs_access` |
+| Access | UDPFS only: Files (filesystem share) or IMG (block image). | `udpfs_access` |
 | SMB Version | SMB only: SMB2/3 (new installs) or SMBv1. | `smb_dialect` |
 | Advanced Options | Unlocks Ethernet Link Mode and the SMB port. Not saved. | |
 | Ethernet Link Mode | Auto or a fixed speed and duplex. | `eth_linkmode` *(net)* |
@@ -123,6 +123,12 @@ HTTP and [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md) for the RA rows.
 | Test HTTP server *(button)* | Fetches the catalogue once and reports the result. | |
 | RA Mode, RA companion IP, RetroAchievements telemetry, RetroAchievements badges, RA mark in game list, Caduceus experimental cards | RA editions only. | `ra_mode`, `ra_host_ip`, `ra_telemetry`, `ra_badges`, `ra_badge_suffix`, `ra_experimental_cards` |
 | OK / Reconnect | OK applies; Reconnect restarts the network connection with the new values. | |
+
+On a fresh installation, Network Connectivity starts **Off**, but the remembered Protocol is
+**UDPFS Files**. Enabling Connectivity selects UDPFS Files; the user must configure a reachable
+UDPFS server and static PS2 IP. No network driver claims the adapter until Connectivity is
+started. Existing installations keep their saved protocol; legacy configurations with no saved
+protocol pick retain their previous SMB fallback.
 
 POPSTARTER's own network files are edited from **PS Emulation Settings → POPSTARTER Network
 Settings**.
