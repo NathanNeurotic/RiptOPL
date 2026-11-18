@@ -306,9 +306,37 @@ static void igrmTitle(const char *left, const char *right)
     igrmRight(ROW_TITLE, C_DIM, right);
 }
 
+// the pad's confirm and back buttons as glyphs (\x01 cross, \x02 circle), for the hints
+#define IGRM_OK(in)   ((in)->confirmCircle ? "\x02" : "\x01")
+#define IGRM_BACK(in) ((in)->confirmCircle ? "\x01" : "\x02")
+
+// Fixed lines of a page, from ROW_INFO0 at TEXT_X: each one byte (its row, 0 to 3, times 16, plus its colour),
+// then its text; the list ends with an empty string. One call instead of one per line.
+static void igrmInfo(const char *b)
+{
+    while (*b) {
+        int k = (unsigned char)*b++;
+        igrmText(ROW_INFO0 + (k >> 4) * INFO_STEP, TEXT_X, k & 15, b);
+        b += igrmLen(b) + 1;
+    }
+}
+// the head bytes igrmInfo reads: row 0 to 3, then colour
+#define I0_TEXT  "\x08"
+#define I1_TEXT  "\x18"
+#define I2_TEXT  "\x28"
+#define I1_WARN  "\x1a"
+#define I2_WARN  "\x2a"
+#define I1_DIM   "\x15"
+#define I1_TITLE "\x14"
+#define I2_DIM   "\x25"
+#define I3_DIM   "\x35"
+#define I3_WARN  "\x3a"
+static const char igrmUnsaved[] = I3_WARN "UNSAVED PROGRESS IS LOST\0"; // EXIT GAME and POWER OFF
+
 static void igrmCompose(const igrm_info_t *in, int sel, int armed)
 {
-    char s[40], *p, ok[2] = {(char)(in->confirmCircle ? 2 : 1), 0}, back[2] = {(char)(in->confirmCircle ? 1 : 2), 0};
+    char s[40], *p;
+    const char *ok = IGRM_OK(in), *back = IGRM_BACK(in);
     int i, y = ROW_INFO0, id;
 
     igrmLines = 0;
@@ -324,35 +352,27 @@ static void igrmCompose(const igrm_info_t *in, int sel, int armed)
 
     switch (id) {
         case IT_RESUME:
-            igrmText(y, TEXT_X, C_TEXT, "BACK TO THE GAME");
-            igrmText(y + 2 * INFO_STEP, TEXT_X, C_DIM, "L1+L2+R1+R2+SELECT+START");
-            igrmText(y + 3 * INFO_STEP, TEXT_X, C_DIM, "OPENS THIS MENU AGAIN");
+            igrmInfo(I0_TEXT "BACK TO THE GAME\0" I2_DIM "L1+L2+R1+R2+SELECT+START\0" I3_DIM "OPENS THIS MENU AGAIN\0");
             break;
         case IT_CHEATS:
             p = igrmNum(s, igrmCheatsOn(in->cheats));
             p = igrmCat(p, " OF ");
             igrmCat(igrmNum(p, in->cheats->count), " ON");
             igrmText(y, TEXT_X, C_TEXT, s);
-            if (in->cheatsIdle) {
-                igrmText(y + INFO_STEP, TEXT_X, C_WARN, "THE CHEAT ENGINE HAS NOT");
-                igrmText(y + 2 * INFO_STEP, TEXT_X, C_WARN, "RUN IN THIS GAME YET");
-                igrmText(y + 3 * INFO_STEP, TEXT_X, C_DIM, "(CHECK THE MASTER CODE)");
-            } else if (in->cheatsBusy) {
-                igrmText(y + INFO_STEP, TEXT_X, C_WARN, "NOT APPLIED YET:");
-                igrmText(y + 2 * INFO_STEP, TEXT_X, C_WARN, "RESUME, THEN TRY AGAIN");
-            } else {
-                igrmText(y + INFO_STEP, TEXT_X, C_DIM, "CHANGES APPLY ON RESUME");
-                igrmText(y + 2 * INFO_STEP, TEXT_X, C_DIM, "OFF STOPS NEW WRITES,");
-                igrmText(y + 3 * INFO_STEP, TEXT_X, C_DIM, "WRITTEN VALUES STAY");
-            }
+            if (in->cheatsIdle)
+                igrmInfo(I1_WARN "THE CHEAT ENGINE HAS NOT\0" I2_WARN "RUN IN THIS GAME YET\0" I3_DIM
+                                 "(CHECK THE MASTER CODE)\0");
+            else if (in->cheatsBusy)
+                igrmInfo(I1_WARN "NOT APPLIED YET:\0" I2_WARN "RESUME, THEN TRY AGAIN\0");
+            else
+                igrmInfo(I1_DIM "CHANGES APPLY ON RESUME\0" I2_DIM "OFF STOPS NEW WRITES,\0" I3_DIM
+                                "WRITTEN VALUES STAY\0");
             break;
 #ifdef IGRM_ACH
         case IT_ACH:
             if (in->raTotal <= 0) {
-                igrmText(y, TEXT_X, C_TEXT, "NO LIST FOR THIS GAME:");
-                igrmText(y + INFO_STEP, TEXT_X, C_TEXT, "OPEN ITS ACHIEVEMENTS");
-                igrmText(y + 2 * INFO_STEP, TEXT_X, C_TEXT, "IN THE LOADER FIRST");
-                igrmText(y + 3 * INFO_STEP, TEXT_X, C_DIM, "(XERABORA MODE)");
+                igrmInfo(I0_TEXT "NO LIST FOR THIS GAME:\0" I1_TEXT "OPEN ITS ACHIEVEMENTS\0" I2_TEXT
+                                 "IN THE LOADER FIRST\0" I3_DIM "(XERABORA MODE)\0");
                 break;
             }
             p = igrmNum(s, in->raUnlocked);
@@ -370,31 +390,30 @@ static void igrmCompose(const igrm_info_t *in, int sel, int armed)
 #endif
         case IT_POWER:
             if (!in->canPowerOff) {
-                igrmText(y, TEXT_X, C_TEXT, "A DISC GAME TURNS OFF");
-                igrmText(y + INFO_STEP, TEXT_X, C_TEXT, "WITH THE POWER BUTTON");
+                igrmInfo(I0_TEXT "A DISC GAME TURNS OFF\0" I1_TEXT "WITH THE POWER BUTTON\0");
                 break;
             }
             if (armed) {
                 igrmCat(igrmCat(igrmCat(s, "PRESS "), ok), " AGAIN");
                 igrmText(y, TEXT_X, C_WARN, s);
-                igrmText(y + INFO_STEP, TEXT_X, C_WARN, "TO TURN THE PS2 OFF");
+                igrmInfo(I1_WARN "TO TURN THE PS2 OFF\0");
             } else
-                igrmText(y, TEXT_X, C_TEXT, "TURN THE PS2 OFF HERE");
-            igrmText(y + 3 * INFO_STEP, TEXT_X, C_WARN, "UNSAVED PROGRESS IS LOST");
+                igrmInfo(I0_TEXT "TURN THE PS2 OFF HERE\0");
+            igrmInfo(igrmUnsaved);
             break;
         default: // EXIT GAME
             if (armed) {
                 igrmCat(igrmCat(igrmCat(s, "PRESS "), ok), " AGAIN TO LEAVE");
                 igrmText(y, TEXT_X, C_WARN, s);
             } else
-                igrmText(y, TEXT_X, C_TEXT, "LEAVE THE GAME FOR");
+                igrmInfo(I0_TEXT "LEAVE THE GAME FOR\0");
             if (!in->exitPath[0])
-                igrmText(y + INFO_STEP, TEXT_X, C_TITLE, "THE PS2 BROWSER");
+                igrmInfo(I1_TITLE "THE PS2 BROWSER\0");
             else if (igrmEndsWith(in->exitPath, "RIPTOPL.ELF") || igrmEndsWith(in->exitPath, "OPNPS2LD.ELF"))
-                igrmText(y + INFO_STEP, TEXT_X, C_TITLE, "THE LOADER");
+                igrmInfo(I1_TITLE "THE LOADER\0");
             else
                 igrmPath(y + INFO_STEP, in->exitPath);
-            igrmText(y + 3 * INFO_STEP, TEXT_X, C_WARN, "UNSAVED PROGRESS IS LOST");
+            igrmInfo(igrmUnsaved);
             break;
     }
 
@@ -416,7 +435,8 @@ static void igrmCompose(const igrm_info_t *in, int sel, int armed)
 // ended, in TEXT_CHARS. RIPPS2 build 94.
 static void igrmComposeHunt(const igrm_info_t *in, int at)
 {
-    char s[40], *p, back[2] = {(char)(in->confirmCircle ? 1 : 2), 0};
+    char s[40], *p;
+    const char *back = IGRM_BACK(in);
     const u8 *e = in->hunt;
     const char *l;
     int i, k, y = ROW_ITEM0;
@@ -457,7 +477,8 @@ static void igrmComposeHunt(const igrm_info_t *in, int at)
 static void igrmComposeCheats(const igrm_info_t *in, int top, int sel, int full)
 {
     const igr_cheat_t *row = IGR_CHEATS_ROWS(in->cheats);
-    char s[40], *p, ok[2] = {(char)(in->confirmCircle ? 2 : 1), 0}, back[2] = {(char)(in->confirmCircle ? 1 : 2), 0};
+    char s[40], *p;
+    const char *ok = IGRM_OK(in), *back = IGRM_BACK(in);
     int i, y;
 
     igrmLines = 0;
@@ -727,6 +748,20 @@ static int igrmWaitFor(vu32 *reg, u32 bits, u32 want, int drain)
     return 0;
 }
 
+// Channel 1 (VIF1) from or to memory at p, normal mode, until it is done; stopped when it does not finish, so a
+// VIF1 that will not take data does not keep our transfer
+static int igrmKick(void *p, u32 qwc, u32 chcr)
+{
+    *IGRM_D1_QWC = qwc;
+    *IGRM_D1_MADR = (u32)p;
+    *IGRM_D1_CHCR = chcr;
+    asm volatile("sync.l");
+    if (igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, 0))
+        return 1;
+    *IGRM_D1_CHCR = 0;
+    return 0;
+}
+
 // One line into the frame from the pixels at pkt + 28: VIF codes, the GIF A+D setup of a host -> local transfer
 static int igrmSendLine(u32 *pkt, int line)
 {
@@ -751,11 +786,7 @@ static int igrmSendLine(u32 *pkt, int line)
     q[11] = 0;
 
     FlushCache(0);
-    *IGRM_D1_QWC = 7 + qw;
-    *IGRM_D1_MADR = (u32)pkt;
-    *IGRM_D1_CHCR = 0x101; // from memory, normal mode, start
-    asm volatile("sync.l");
-    return igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, 0);
+    return igrmKick(pkt, 7 + qw, 0x101); // from memory, normal mode, start
 }
 
 // The page composed last, from igrmY
@@ -765,10 +796,8 @@ static int igrmDraw(u32 *pkt)
 
     for (line = 0; line < PH * igrmSy; line++) {
         igrmRenderLine((u8 *)(pkt + 28), line);
-        if (!igrmSendLine(pkt, line)) {
-            *IGRM_D1_CHCR = 0; // stop it: a VIF1 that will not take data must not keep our transfer
+        if (!igrmSendLine(pkt, line)) // stopped: a VIF1 that will not take data must not keep our transfer
             return 0;
-        }
     }
     return 1;
 }
@@ -812,22 +841,12 @@ static int igrmRead(void *buf, u32 x, u32 y, u32 w)
     *IGRM_GS_CSR = CSR_FINISH;
 
     FlushCache(0); // the packet out to memory, and no dirty line of buf left to land on the DMA's data
-    *IGRM_D1_QWC = 7;
-    *IGRM_D1_MADR = (u32)pkt;
-    *IGRM_D1_CHCR = 0x101; // from memory, normal mode, start
-    asm volatile("sync.l");
-    ok = igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, 0) && igrmWaitFor((vu32 *)IGRM_GS_CSR, CSR_FINISH, CSR_FINISH, 0) &&
-         igrmWaitFor(IGRM_VIF1_STAT, VIF_FQC, 0, 0);
+    ok = igrmKick(pkt, 7, 0x101) && igrmWaitFor((vu32 *)IGRM_GS_CSR, CSR_FINISH, CSR_FINISH, 0) &&
+         igrmWaitFor(IGRM_VIF1_STAT, VIF_FQC, 0, 0); // from memory, normal mode, start
     if (ok) {
-        *IGRM_VIF1_STAT = VIF_FDR; // the FIFO towards the EE
-        *IGRM_GS_BUSDIR = 1;       // and the GS bus towards the host
-        *IGRM_D1_QWC = w * igrmBpp / 16;
-        *IGRM_D1_MADR = (u32)buf;
-        *IGRM_D1_CHCR = 0x100; // to memory, normal mode, start
-        asm volatile("sync.l");
-        ok = igrmWaitFor(IGRM_D1_CHCR, CHCR_STR, 0, 0);
-        if (!ok)
-            *IGRM_D1_CHCR = 0;
+        *IGRM_VIF1_STAT = VIF_FDR;                   // the FIFO towards the EE
+        *IGRM_GS_BUSDIR = 1;                         // and the GS bus towards the host
+        ok = igrmKick(buf, w * igrmBpp / 16, 0x100); // to memory, normal mode, start
         *IGRM_VIF1_STAT = 0;
         *IGRM_GS_BUSDIR = 0;
     } else
@@ -867,8 +886,7 @@ static int igrmHoldBack(u32 *pkt)
     int ok = 1;
 
     for (y = 0; y < h && IGR_MboxSend(y * lb, pkt + 28, lb) == (int)lb; y++)
-        if (!igrmSendLine(pkt, y)) {
-            *IGRM_D1_CHCR = 0;
+        if (!igrmSendLine(pkt, y)) { // stopped
             ok = 0;
             break;
         }
@@ -924,12 +942,11 @@ int IGR_MenuRun(u16 (*buttons)(void))
     u32 *pkt = (u32 *)(((u32)raw + 63) & ~63);
     u32 d1chcr, d1madr, d1qwc, d1tadr, gameDone, t, firstT = 0, bpc, dctrl, mfd;
     u16 held, now, pressed, ok, back;
-    int sel = 0, armed = 0, result = IGR_MENU_RESUME, presses = 0, power = 1, powerLatched = 0, i;
+    int sel = 0, armed = 0, result = IGR_MENU_RESUME, presses = 0, power = 1, powerLatched = 0;
     int page = 0, csel = 0, ctop = 0, full = 0, changed = 0, frameHeld;
 #ifdef IGRM_ACH
     int hunt = -1;
 #endif
-    char gameId[CORE_GAME_ID_MAX_LEN + 1];
     igrm_line_t lines[IGRM_LINES];
     igrm_info_t info;
     igr_cheat_t *row = NULL;
@@ -983,10 +1000,6 @@ int IGR_MenuRun(u16 (*buttons)(void))
         *IGRM_D_CTRL = dctrl & ~0xc;
     }
 
-    for (i = 0; i < CORE_GAME_ID_MAX_LEN && config->GameID[i]; i++)
-        gameId[i] = config->GameID[i];
-    gameId[i] = '\0';
-
     // silence first, then the pixels the panel will cover, so RESUME gives back the frame and the sound as they were
     IGR_MboxHush();
     // No copy (no IOP memory to spare, or the GS did not read back): the menu still opens; RESUME then leaves the
@@ -996,7 +1009,7 @@ int IGR_MenuRun(u16 (*buttons)(void))
 
     config->ExitPath[CORE_EXIT_PATH_MAX_LEN - 1] = '\0';
     info.confirmCircle = config->IgrConfirmCircle;
-    info.gameId = gameId;
+    info.gameId = config->GameID; // the launcher's snprintf always ends it inside the field
     info.exitPath = config->ExitPath;
 #ifdef RETROACHIEVEMENTS
     info.canPowerOff = config->GameMode != DISC_MODE; // physical discs launch only in RA builds
