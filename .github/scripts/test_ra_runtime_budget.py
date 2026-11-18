@@ -185,7 +185,7 @@ static int fake_close(int) {return 0;}
 #define close fake_close
 #define O_RDONLY 0
 ''' + '\n'.join(function(watch,s) for s in
-    ('void RaWatch::clearWatchList(', 'bool RaWatch::takeNodes(', 'int RaWatch::setWatchList(', 'int RaWatch::loadWatchList(')) + r'''
+    ('void RaWatch::clearWatchList(', 'bool RaWatch::takeNodes(', 'static bool raWatchHashTailValid(', 'int RaWatch::setWatchList(', 'int RaWatch::loadWatchList(')) + r'''
 int main() {
     RaWatch watch;
     std::vector<u32> blob(4+RA_WATCH_MAX+2+RA_NODE_MAX*3);
