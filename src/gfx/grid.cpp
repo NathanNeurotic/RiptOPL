@@ -252,10 +252,10 @@ static float gridSlideUpdate(const void *menu, int page)
 static void drawVignette(int cx, int cy, int w, int h, int strength)
 {
     float f = strength >= 2 ? 1.0f : 0.5f;
-    float x0 = cx - w / 2.0f - 1.0f, y0 = cy - h / 2.0f - 1.0f, x1 = x0 + w + 2.0f, y1 = y0 + h + 2.0f;
+    float x0 = cx - w / 2.0f, y0 = cy - h / 2.0f, x1 = x0 + w, y1 = y0 + h;
     float fx = w * 0.34f, fy = h * 0.30f;
     u64 dark = GS_SETREG_RGBA(0x00, 0x00, 0x00, (int)(0x58 * f)), clear = GS_SETREG_RGBA(0x00, 0x00, 0x00, 0x00);
-    rmDrawRect((int)x0, (int)y0, w + 2, h + 2, GS_SETREG_RGBA(0x00, 0x00, 0x00, (int)(0x14 * f)));
+    rmDrawRect((int)x0, (int)y0, w, h, GS_SETREG_RGBA(0x00, 0x00, 0x00, (int)(0x14 * f)));
 
     // four bands, each two triangles: (ax0, ay0)-(ax1, ay1) with the dark side given by dx/dy
     const float bands[4][4] = {{x0, y0, x1, y0 + fy}, {x0, y1 - fy, x1, y1}, {x0, y0, x0 + fx, y1}, {x1 - fx, y0, x1, y1}};
@@ -367,16 +367,22 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
 }
 
 // The selection's frame, after RIPPS2's (build 79): three soft rings in the selected-text colour, wider and
-// fainter outwards, breathing over 2.4 s, round a crisp 2-pixel frame. w/h are the cover as drawn.
-static void drawFrame(int x, int y, int w, int h, u64 color)
+// fainter outwards, breathing over 2.4 s, round a crisp 2-pixel frame. The outer glow draws under the cover;
+// the crisp 2-pixel border draws over it, overlapping the cover edge by 1 pixel so subpixel seams disappear.
+static float gridFrameBreath(void)
 {
     float t = (float)(clock() % (CLOCKS_PER_SEC * 12)) / (float)CLOCKS_PER_SEC;
-    float breath = 0.5f + 0.5f * sinf(t * 2.0f * 3.14159265f / 2.4f);
+    return 0.5f + 0.5f * sinf(t * 2.0f * 3.14159265f / 2.4f);
+}
+
+static void drawFrameGlow(int x, int y, int w, int h, u64 color)
+{
+    float breath = gridFrameBreath();
     int r = color & 0xFF, g = (color >> 8) & 0xFF, b = (color >> 16) & 0xFF;
     int left = x - w / 2, top = y - h / 2, right = left + w, bottom = top + h;
 
     for (int i = 3; i >= 1; i--) {
-        int grow = 2 + i * 3 + (int)(breath * 3.0f), t2 = i + 1;
+        int grow = 1 + i * 3 + (int)(breath * 3.0f), t2 = i + 1;
         u64 ring = GS_SETREG_RGBA(r, g, b, (int)((0x10 + 0x10 * breath) / i));
         int x0 = left - grow, y0 = top - grow, x1 = right + grow, y1 = bottom + grow;
         rmDrawRect(x0, y0, x1 - x0, t2, ring);
@@ -384,11 +390,22 @@ static void drawFrame(int x, int y, int w, int h, u64 color)
         rmDrawRect(x0, y0 + t2, t2, y1 - y0 - 2 * t2, ring);
         rmDrawRect(x1 - t2, y0 + t2, t2, y1 - y0 - 2 * t2, ring);
     }
+}
+
+static void drawFrameBorder(int x, int y, int w, int h, u64 color)
+{
+    float breath = gridFrameBreath();
+    int r = color & 0xFF, g = (color >> 8) & 0xFF, b = (color >> 16) & 0xFF;
+    int left = x - w / 2, top = y - h / 2, right = left + w, bottom = top + h;
     u64 frame = GS_SETREG_RGBA(r, g, b, 0x60 + (int)(0x20 * breath));
-    rmDrawRect(left - 2, top - 2, w + 4, 2, frame);
-    rmDrawRect(left - 2, bottom, w + 4, 2, frame);
-    rmDrawRect(left - 2, top, 2, h, frame);
-    rmDrawRect(right, top, 2, h, frame);
+    if (w > 4 && h > 4) {
+        rmDrawRect(left - 1, top - 1, w + 2, 2, frame);
+        rmDrawRect(left - 1, bottom - 1, w + 2, 2, frame);
+        rmDrawRect(left - 1, top + 1, 2, h - 2, frame);
+        rmDrawRect(right - 1, top + 1, 2, h - 2, frame);
+    } else {
+        rmDrawRect(left - 1, top - 1, w + 2, h + 2, frame);
+    }
 }
 
 // ---- the device sidebar (RIPPS2 build 113's category sidebar, by akilluminati47): the device pages as glyphs
@@ -471,8 +488,10 @@ static void drawGlyph(GSTEXTURE *tex, int cell, int row, int cx, int cy, int siz
     rmDrawBlendedTriangles(tex, 2, xy, uv, col);
 }
 
-static void drawDeviceSidebar(struct menu_list *menu, int centerY)
+void gridDrawDeviceSidebar(struct menu_list *menu, int topY, int bottomY, int centerY, int interactive)
 {
+    if (menu == NULL)
+        return;
     struct menu_list *head = menu, *m;
     while (head->prev != NULL)
         head = head->prev;
@@ -486,15 +505,31 @@ static void drawDeviceSidebar(struct menu_list *menu, int centerY)
     if (count == 0)
         return;
 
-    int open = gGridSidebarOpen;
+    int barH = bottomY - topY;
+    if (barH <= 0)
+        return;
+
+    int open = interactive ? gGridSidebarOpen : 0;
     u64 sel = gTheme->selTextColor;
     int sr = sel & 0xFF, sg = (sel >> 8) & 0xFF, sb = (sel >> 16) & 0xFF;
-    int barW = rmWideScale(open ? GRID_DRAWER_W : GRID_BAR_W), screenH = gTheme->usedHeight > 0 ? gTheme->usedHeight : 480;
-    rmDrawRect(0, 0, barW, screenH, GS_SETREG_RGBA(0x01, 0x04, 0x0F, open ? 0x70 : 0x50));
-    rmDrawRect(barW, 0, open ? 2 : 1, screenH, GS_SETREG_RGBA(sr, sg, sb, open ? 0x40 : 0x20));
+    int barW = rmWideScale(open ? GRID_DRAWER_W : GRID_BAR_W);
+    rmDrawRect(0, topY, barW, barH, GS_SETREG_RGBA(0x01, 0x04, 0x0F, open ? 0x70 : 0x50));
+    rmDrawRect(barW, topY, open ? 2 : 1, barH, GS_SETREG_RGBA(sr, sg, sb, open ? 0x40 : 0x20));
 
     GSTEXTURE *tex = gridGlyphTexture();
-    int glyphX = rmWideScale(GRID_BAR_W) / 2, top = centerY - (count - 1) * GRID_GLYPH_PITCH / 2, i = 0;
+    int glyphX = rmWideScale(GRID_BAR_W) / 2;
+    int totalH = (count - 1) * GRID_GLYPH_PITCH;
+    int minTop = topY + GRID_GLYPH_PITCH / 2;
+    int maxTop = bottomY - GRID_GLYPH_PITCH / 2 - totalH;
+    int top = centerY - totalH / 2;
+    if (maxTop < minTop)
+        top = (minTop + maxTop) / 2;
+    else if (top < minTop)
+        top = minTop;
+    else if (top > maxTop)
+        top = maxTop;
+
+    int i = 0;
     for (m = head; m != NULL; m = m->next) {
         if (!menuItemShown(m->item))
             continue;
@@ -525,9 +560,10 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
     (void)config;
     if (elem->extended == NULL || menu == NULL || menu->item == NULL || elem->width <= 0 || elem->height <= 0)
         return;
+    int screenH = gTheme->usedHeight > 0 ? gTheme->usedHeight : 480;
     if (item == NULL) { // an empty device page: no covers, but the sidebar may hold the pad and must show
         if (gTheme->gridDevices && gTheme->grid != NULL)
-            drawDeviceSidebar(menu, elem->posY);
+            gridDrawDeviceSidebar(menu, 0, screenH, elem->posY, 1);
         return;
     }
 
@@ -601,9 +637,12 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
         coverW = coverW * GRID_SELECTED_SCALE / 100;
         coverH = coverH * GRID_SELECTED_SCALE / 100;
         int frameW = (int)(coverW * fabsf(cosf(turn)) + 0.5f);
+        int drawnSelW = rmWideScale(frameW > 1 ? frameW : 1);
         if (focused)
-            drawFrame(selX, selY, rmWideScale(frameW > 1 ? frameW : 1), coverH, gTheme->selTextColor);
+            drawFrameGlow(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
         drawCell(menu, item, elem, selX, selY, gDefaultCol, GRID_SELECTED_SCALE, turn, selBack, 0);
+        if (focused)
+            drawFrameBorder(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
     }
 
     // Under the grid, clear of the selected cover's growth on the bottom row.
@@ -629,7 +668,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
     }
 
     if (sidebar)
-        drawDeviceSidebar(menu, elem->posY);
+        gridDrawDeviceSidebar(menu, 0, screenH, elem->posY, 1);
 }
 
 static void endGrid(struct theme_element *elem)

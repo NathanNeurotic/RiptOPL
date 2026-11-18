@@ -151,6 +151,7 @@ typedef struct theme_element
     // never replaces today's appsMain/vcdMain cover; likewise an inherited ItemsList leaves navigation on
     // the list that view used before (thmFamilyItemsList). Always 0 for every other family.
     unsigned char inherited;
+    unsigned char style;
 
     void *extended;
 

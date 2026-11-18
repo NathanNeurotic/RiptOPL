@@ -611,7 +611,7 @@ static void drawAttributeText(struct menu_list *menu, struct submenu_list *item,
         // A size of 0 means "not measured" (size reading off, a device that gave none, a row with no image
         // file): show nothing rather than a wrong "0 MiB" (from RIPPS2 build 126).
         if (mutableText->currentValue && !strcmp(mutableText->value, CONFIG_ITEM_SIZE) &&
-        (!strcmp(mutableText->currentValue, "0") || !strcmp(mutableText->currentValue, "0.00")))
+            (!strcmp(mutableText->currentValue, "0") || !strcmp(mutableText->currentValue, "0.00")))
             return;
         if (mutableText->currentValue) {
             char result[300];
@@ -1712,7 +1712,8 @@ theme_element_t *initBasic(const char *themePath, config_set_t *themeConfig, the
     elem->deviceFilter = 0;   // malloc'd without memset: MUST be zeroed explicitly (0 = unfiltered)
     elem->deviceCoverage = 0; // filled at validateGUIElems for unfiltered MenuIcon/ItemsList/HintText
     elem->inherited = 0;      // set by the Favourites per-kind family parse for fallback-block copies
-    elem->family = NULL;      // set by whoever chains the element into a family (addGUIElem, below)
+    elem->style = THM_MENU_STYLE_DEFAULT;
+    elem->family = NULL; // set by whoever chains the element into a family (addGUIElem, below)
     elem->extended = NULL;
     elem->drawElem = NULL;
     elem->endElem = &endBasic;
@@ -1905,6 +1906,11 @@ void drawMenuIcon(struct menu_list *menu, struct submenu_list *item, config_set_
 {
     if (thmElemSkipsDevice(elem, menu->item->icon_id))
         return; // devices= filter: not this page's element
+    if (elem->style == THM_MENU_STYLE_SIDEBAR) {
+        int bottomY = (gTheme->usedHeight > 0 ? gTheme->usedHeight : 480) - 64;
+        gridDrawDeviceSidebar(menu, 63, bottomY, (63 + bottomY) / 2, 0);
+        return;
+    }
     // The All Games page is every device at once: the Favourites star (or any one device's icon)
     // would say it is one of them, so it draws no page icon.
     const item_list_t *support = static_cast<const item_list_t *>(menu->item->userdata);
@@ -1944,31 +1950,56 @@ int menuItemShown(const menu_item_t *item)
     }
 }
 
-static int findMenuNext(struct menu_list *menu)
+static struct menu_list *findMenuStep(struct menu_list *menu, int forward)
 {
-    struct menu_list *next = menu->next;
-    while (next != NULL && !menuItemShown(next->item))
-        next = next->next;
+    struct menu_list *cur = forward ? menu->next : menu->prev;
+    while (cur != NULL && !menuItemShown(cur->item))
+        cur = forward ? cur->next : cur->prev;
 
-    return next != NULL;
-}
-
-static int findMenuPrev(struct menu_list *menu)
-{
-    struct menu_list *prev = menu->prev;
-    while (prev != NULL && !menuItemShown(prev->item))
-        prev = prev->prev;
-
-    return prev != NULL;
+    return cur;
 }
 
 void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
-    GSTEXTURE *leftIconTex = NULL, *rightIconTex = NULL;
-    if (findMenuPrev(menu) != 0)
-        leftIconTex = thmGetTexture(LEFT_ICON);
-    if (findMenuNext(menu) != 0)
-        rightIconTex = thmGetTexture(RIGHT_ICON);
+    struct menu_list *prev = findMenuStep(menu, 0);
+    struct menu_list *next = findMenuStep(menu, 1);
+
+    if (elem->style == THM_MENU_STYLE_PSBBN) {
+        int rowStep = elem->height > 24 ? elem->height / 3 : 20;
+        if (rowStep < 18)
+            rowStep = 18;
+        int maxW = elem->width > 0 ? elem->width : 160;
+        int leftX = elem->aligned ? (elem->posX - maxW / 2) : elem->posX;
+        int dotX = leftX + 2;
+        int textX = leftX + 12;
+        int textRoom = maxW - 12;
+        int cy = elem->aligned ? elem->posY : (elem->posY + elem->height / 2);
+        u64 dim = (elem->color & ~(0xffULL << 24)) | (0x40ULL << 24);
+        if (prev != NULL)
+            fntRenderStringFit(elem->font, textX, cy - rowStep, ALIGN_VCENTER, textRoom, menuItemGetText(prev->item), dim, 0);
+        rmDrawRect(dotX, cy - 2, 4, 4, GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x80));
+        fntRenderStringFit(elem->font, textX, cy, ALIGN_VCENTER, textRoom, menuItemGetText(menu->item), elem->color, 0);
+        if (next != NULL)
+            fntRenderStringFit(elem->font, textX, cy + rowStep, ALIGN_VCENTER, textRoom, menuItemGetText(next->item), dim, 0);
+        return;
+    }
+
+    if (elem->style == THM_MENU_STYLE_PSBBN_ACTIVE) {
+        int maxW = elem->width > 0 ? elem->width : 160;
+        const char *label = menuItemGetText(menu->item);
+        int textW = rmUnScaleX(fntCalcDimensions(elem->font, label));
+        int textRoom = maxW - 12;
+        if (textW > textRoom)
+            textW = textRoom;
+        int cy = elem->aligned ? elem->posY : (elem->posY + elem->height / 2);
+        int startX = elem->aligned ? (elem->posX - (textW + 12) / 2) : elem->posX;
+        rmDrawRect(startX, cy - 2, 4, 4, GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x80));
+        fntRenderStringFit(elem->font, startX + 12, cy, ALIGN_VCENTER, textRoom, label, elem->color, 0);
+        return;
+    }
+
+    GSTEXTURE *leftIconTex = prev != NULL ? thmGetTexture(LEFT_ICON) : NULL;
+    GSTEXTURE *rightIconTex = next != NULL ? thmGetTexture(RIGHT_ICON) : NULL;
 
     if (elem->aligned) {
         int offset = elem->width >> 1;

@@ -94,6 +94,12 @@ int isHiddenArtworkCache(const image_cache_t *cache);
 void *thmGetItemSource(struct menu_list *menu, struct submenu_list *item);
 theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem);
 
+// Per-element rendering variant selected via <block>_style= in conf_theme.cfg
+#define THM_MENU_STYLE_DEFAULT      0
+#define THM_MENU_STYLE_SIDEBAR      1
+#define THM_MENU_STYLE_PSBBN        1
+#define THM_MENU_STYLE_PSBBN_ACTIVE 2
+
 // themeelems.cpp (element init/draw functions the loader wires up)
 int thmParseDeviceList(const char *value, int quiet);
 void thmComputeDeviceCoverage(theme_elems_t *elems);
@@ -128,6 +134,7 @@ void initCoverflow(const char *themePath, config_set_t *themeConfig, theme_t *th
 
 // grid.cpp
 void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);
+void gridDrawDeviceSidebar(struct menu_list *menu, int topY, int bottomY, int centerY, int interactive);
 
 // psbbnflow.cpp
 void initPsbbnFlow(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);
