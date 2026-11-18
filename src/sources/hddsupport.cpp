@@ -1477,6 +1477,21 @@ item_list_t *hddGetObject(int initOnly)
 static int hddLoadGameListCache(hdl_games_list_t *cache);
 static int hddUpdateGameListCache(hdl_games_list_t *cache, hdl_games_list_t *game_list);
 
+// The list latches are written by the IO worker and cleared by Refresh on the UI thread with no lock
+// (the UI thread runs input outside guiLock, and a lock here would have to be taken by every caller).
+// Every latch store is therefore followed by a second generation check: Refresh bumps the generation
+// BEFORE it clears the latch, so either the worker sees the new generation and undoes its store, or
+// Refresh's clear lands after the store. Either way a Refresh is never lost. invalidateVcdCache below
+// keeps the same order (generation first).
+static void hddLatchHdlList(unsigned int genAtEntry)
+{
+    if (genAtEntry != gHddSupport.hdlRescanGen)
+        return;
+    gHddSupport.hdlListBuilt = 1;
+    if (genAtEntry != gHddSupport.hdlRescanGen)
+        gHddSupport.hdlListBuilt = 0;
+}
+
 void HddSupport::invalidateVcdCache()
 {
     vcdCacheGen++;
@@ -1578,6 +1593,8 @@ int HddSupport::loadVcdListCache(unsigned int genAtEntry)
     // Latch only if no invalidation (Refresh, rename, filter change) arrived while the file was read,
     // exactly as buildVcdGameList does; otherwise the rows still show but the next update rescans.
     publishVcdGameList(games, parts, count, genAtEntry == vcdCacheGen);
+    if (genAtEntry != vcdCacheGen)
+        vcdListBuilt = 0; // an invalidation landed between the check and the latch: see vcdCacheGen
     LOG("HDD VCD cache: %d PS1 game(s) loaded from %s\n", count, filename);
     return 0;
 }
@@ -1931,6 +1948,8 @@ int HddSupport::buildVcdGameList()
     if (complete)
         hddSaveVcdListCache(newGames, newParts, total, ps1Duplicates); // before publish: the arrays are still ours
     publishVcdGameList(newGames, newParts, total, complete);
+    if (genAtEntry != vcdCacheGen)
+        vcdListBuilt = 0; // invalidated during the save or the publish: keep the rows, rescan next time
     return total;
 }
 
@@ -1995,8 +2014,11 @@ int HddSource::update(item_list_t *itemList)
             // Consumed only by a build that completed and latched with no invalidation racing it. A
             // Refresh whose scan failed keeps it set, so the next update retries the scan instead of
             // loading the stale vcdgames.bin the Refresh was meant to replace.
-            if (gHddSupport.vcdListBuilt && gen == gHddSupport.vcdCacheGen)
+            if (gHddSupport.vcdListBuilt && gen == gHddSupport.vcdCacheGen) {
                 gHddSupport.vcdForceScan = 0;
+                if (gen != gHddSupport.vcdCacheGen)
+                    gHddSupport.vcdForceScan = 1; // an invalidation landed between the check and the clear
+            }
         }
         if (view == LIB_VIEW_PS1)
             return gHddSupport.vcdGameCount;
@@ -2026,13 +2048,13 @@ int HddSource::update(item_list_t *itemList)
     // cache is empty. Otherwise the initial boot may use the valid games.bin exactly as before.
     if (cacheRet == 0 && !gHddSupport.forceUpdate && cachedGames.count > 0) {
         gHddSupport.publishHdlGameList(&cachedGames);
-        gHddSupport.hdlListBuilt = (hdlGen == gHddSupport.hdlRescanGen);
+        hddLatchHdlList(hdlGen);
     } else {
         scanRet = hddGetHDLGamelist(&hddGamesNew);
         if (scanRet == 0) {
             hddUpdateGameListCache(&cachedGames, &hddGamesNew);
             gHddSupport.publishHdlGameList(&hddGamesNew);
-            gHddSupport.hdlListBuilt = (hdlGen == gHddSupport.hdlRescanGen);
+            hddLatchHdlList(hdlGen);
         } else {
             // Keep the last-good live list. On a first entry with no live list yet, a valid cache is
             // still a safer fallback than turning a transient scan failure into an empty page.
