@@ -109,7 +109,7 @@ A row that cannot be changed right now is drawn at half strength, label included
 controls are all hidden takes no line. A page too long for the screen shows a scroll bar. The
 **right stick** slides the page to look further down without moving the cursor; the D-pad or a
 confirm brings the cursor back into view, and the confirm acts on its row at once. Backing out of a submenu lands on the button that
-opened it. These come from [RIPPS2](https://github.com/akilluminati47/RIPPS2) by [akilluminati47](https://github.com/akilluminati47) and are NOT TESTED on hardware.
+opened it. These come from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) by [akilluminati47](https://gitlab.com/akilluminati247) and are NOT TESTED on hardware.
 
 ### Settings screens
 

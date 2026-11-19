@@ -55,7 +55,7 @@ Use the references below for implementation details, exact limits and contributo
 [parity ledger](UPSTREAM-PARITY-2026-10-12.md) record how RiptOPL tracks Open-PS2-Loader.
 [Fork-gap status: 2026-11-01](FORK-GAP-STATUS-2026-11-01.md) is the current summary: every tracked
 fork record against the November 1 source baselines (with a focused November 9 implementation checkpoint), what merged since October 29, and the open hardware checks; the
-[October 28 status](FORK-GAP-STATUS-2026-10-28.md) keeps the RIPPS2 audit and port plan as dated history.
+[October 28 status](FORK-GAP-STATUS-2026-10-28.md) keeps the [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) audit and port plan as dated history.
 [Learning across PS2 loader projects](FORK-COLLABORATION.md) says what evidence a candidate from
 another fork needs before it is ported, and [Maintaining documentation](MAINTAINING-DOCS.md) says
 where each page of the website, wiki and these references is edited and how the wiki is rebuilt.

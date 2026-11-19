@@ -133,7 +133,7 @@ leans; it stays turned until the stick turns it home. *Settings → Interface �
 Layout* swaps the theme's shape for 4 x 2, 5 x 2, 3 x 2 Large or 6 x 3 Compact (6 x 2, 7 x 2, 5 x 2 and
 8 x 3 on a 16:9 picture), and *Dim Side Covers* there makes the vignette full strength. Idea: [KrahJohlito](https://github.com/KrahJohlito)
 (multi-view themes); the pages, slide, selection, vignette, case flip, sidebar, tiles and layouts follow
-[RIPPS2](https://github.com/akilluminati47/RIPPS2)'s grid ([akilluminati47](https://github.com/akilluminati47)). NOT TESTED on hardware.
+[RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s grid ([akilluminati47](https://gitlab.com/akilluminati247)). NOT TESTED on hardware.
 
 | Property | Grid behavior |
 | --- | --- |
@@ -496,7 +496,7 @@ Colors are 8-bit-per-channel hex; alpha is fixed internally.
 | `font1` … `font15` | font file path | Extra fonts; each defaults to `default_font` if not set. |
 | `default_font_size` | int (px) | Size for the default font. |
 | `font1_size` … `font15_size` | int (px) | Per-font sizes. |
-| `default_font_weight` | 100–900 | Draws the default font heavier. A variable font follows its `wght` axis within its range. A static font, or a weight past a variable font's range, has its outlines grown in code (about 1 px at 18 px for every 300 units). Omit the key for the font's own weight. *From RIPPS2 build 114.* |
+| `default_font_weight` | 100–900 | Draws the default font heavier. A variable font follows its `wght` axis within its range. A static font, or a weight past a variable font's range, has its outlines grown in code (about 1 px at 18 px for every 300 units). Omit the key for the font's own weight. *From [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) build 114.* |
 | `font1_weight` … `font15_weight` | 100–900 | The same, per font. |
 
 Reference a font from an element with `font=N` (0 = default). Use `font1=builtin` to force the
@@ -507,20 +507,20 @@ embedded font for a slot.
 | Key | Value | Meaning |
 |---|---|---|
 | `coverflow_cover_offset` | int (−1024…1024, default 0) | Horizontal nudge for the Coverflow carousel (see §8). |
-| `list_cfg_text` | 0/1 (default 1) | `0` leaves the game CFG's `Title` and `Description` off the list pages: an `AttributeText` with `attribute=Title` or `attribute=Description` in a `main` family (`main`, `appsMain`, `favsMain`, `vcdMain`, `favsVcdMain`, `favsAppsMain`, and their view blocks). The info page keeps them. A word such as `on` reads as `0` and hides them too, as in RIPPS2. **Settings → Interface → List Title and Description** follows this key on **Theme**, its default. **On** and **Off** override it. From [RIPPS2](https://github.com/akilluminati47/RIPPS2) ([akilluminati47](https://github.com/akilluminati47), build 126). |
-| `<key>_desc` | any value | Used in place of `<key>` while **List Title and Description** shows the CFG text on the list pages (On, or Theme when `list_cfg_text` does not hide it), so a theme can make room beside its list only then: `main16_enabled_desc=0` hides a cover, and a block whose only type is `main20_type_desc=AttributeText` exists only in that mode, so with the setting off no block reads the game's CFG. Changing the setting reloads a theme that has `_desc` keys. The built-in IncebtIon and Korium lists use it for a Title and Description column beside the list (CosmicScale's request, after RIPPS2's game list); Korium's keys live in `misc/korium_list_desc.cfg`, merged into its vendored cfg at build time. *This fork.* |
+| `list_cfg_text` | 0/1 (default 1) | `0` leaves the game CFG's `Title` and `Description` off the list pages: an `AttributeText` with `attribute=Title` or `attribute=Description` in a `main` family (`main`, `appsMain`, `favsMain`, `vcdMain`, `favsVcdMain`, `favsAppsMain`, and their view blocks). The info page keeps them. A word such as `on` reads as `0` and hides them too, as in [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2). **Settings → Interface → List Title and Description** follows this key on **Theme**, its default. **On** and **Off** override it. From [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) ([akilluminati47](https://gitlab.com/akilluminati247), build 126). |
+| `<key>_desc` | any value | Used in place of `<key>` while **List Title and Description** shows the CFG text on the list pages (On, or Theme when `list_cfg_text` does not hide it), so a theme can make room beside its list only then: `main16_enabled_desc=0` hides a cover, and a block whose only type is `main20_type_desc=AttributeText` exists only in that mode, so with the setting off no block reads the game's CFG. Changing the setting reloads a theme that has `_desc` keys. The built-in IncebtIon and Korium lists use it for a Title and Description column beside the list (CosmicScale's request, after [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s game list); Korium's keys live in `misc/korium_list_desc.cfg`, merged into its vendored cfg at build time. *This fork.* |
 | `use_default` | 0/1 | Use OPL's embedded default assets for anything the theme omits. With `0`, the pictures stock OPL never had a name for (`mmce`, `udp_bd`, `udp_fs`, `fav`, `fav_mark`) still come from the built-in set when the theme has none, so a theme made for stock OPL shows an icon on the pages RiptOPL added. Ship your own (a transparent one to show nothing) to replace them. |
 | `use_real_height` | 0/1 | Lay out against the real screen height instead of 480. |
 | `use_settings_bg` | 0/1 | Load the theme's `settings_bg.png` behind the settings menus. |
 
 ### Button hints and glyphs
 
-These keys come from [RIPPS2](https://github.com/akilluminati47/RIPPS2) ([akilluminati47](https://github.com/akilluminati47), build 90). A theme that sets none of them draws the hint bar
+These keys come from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) ([akilluminati47](https://gitlab.com/akilluminati247), build 90). A theme that sets none of them draws the hint bar
 exactly as before.
 
 | Key | Value | Meaning |
 |---|---|---|
-| `glyph_set` | `theme` / `builtin` / `standard` / `white` | The button pictures every hint draws. `theme` (the default) uses the theme's own glyph PNGs, with the built-in ones filling gaps when `use_default=1`. `builtin` uses the built-in glyphs. `standard` and `white` are two sets built into the ELF, drawn from RIPPS2's Adapt and Grunge themes. **Settings → Interface → Button Glyphs** overrides this on every theme; its **Theme** choice follows this key. |
+| `glyph_set` | `theme` / `builtin` / `standard` / `white` | The button pictures every hint draws. `theme` (the default) uses the theme's own glyph PNGs, with the built-in ones filling gaps when `use_default=1`. `builtin` uses the built-in glyphs. `standard` and `white` are two sets built into the ELF, drawn from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s Adapt and Grunge themes. **Settings → Interface → Button Glyphs** overrides this on every theme; its **Theme** choice follows this key. |
 | `hints_hide` | hint list | Hints the theme leaves off the bar, e.g. `hints_hide=star,view`. |
 | `hints_order` | hint list | These hints come first, in this order. The rest follow in the order the page adds them. Example: `hints_order=run,info,menu`. |
 | `hints_labels` | 0/1 | `0` draws the glyphs alone, without the labels. `1` (the default) draws a glyph and its label. |
