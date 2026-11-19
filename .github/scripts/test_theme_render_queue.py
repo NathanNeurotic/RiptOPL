@@ -28,7 +28,7 @@ static Theme *gTheme;
 static Theme *replayed;
 static bool locked;
 static int syncs, flips, frees;
-static int loadedFontSize, gFontSize;
+static int loadedFontSize, gFontSize, gCoverflowDeviceBarFocused;
 static void *gsGlobal;
 struct UI {
     void lock() { assert(!locked); locked=true; }
