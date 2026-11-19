@@ -390,6 +390,10 @@ int smb_close(iop_file_t *f)
             if (r != 0) {
                 goto io_unlock;
             }
+        } else if (fh->smb_fid != -1 && !fh->dir_eos) {
+            // Release server-side search handles when a directory is closed before EOS
+            // (e.g. Ember's per-folder image probe stopping on the first .cue).
+            (void)smb_FindClose2(UID, TID, fh->smb_fid);
         }
         memset(fh, 0, sizeof(FHANDLE));
         fh->smb_fid = -1;

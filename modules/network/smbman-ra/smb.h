@@ -264,12 +264,17 @@
 
 // NT Status
 #define STATUS_SUCCESS               0x00000000
+#define STATUS_NO_MORE_FILES         0x80000006
+#define STATUS_NO_SUCH_FILE          0xc000000f
 #define STATUS_NO_MEDIA_IN_DEVICE    0xc0000013
 #define STATUS_ACCESS_DENIED         0xc0000022
 #define STATUS_OBJECT_NAME_NOT_FOUND 0xc0000034
+#define STATUS_OBJECT_PATH_NOT_FOUND 0xc000003a
 #define STATUS_SHARING_VIOLATION     0xc0000043
-// RA fix: the same refusal in the DOS error class (ERRDOS/ERRbadshare),
-// for a server that answers with DOS codes instead of an NT status.
+// DOS error class (ERRDOS = 0x01 in Eclass, error code in Ecode)
+#define DOSERR_FILE_NOT_FOUND        0x00020001
+#define DOSERR_PATH_NOT_FOUND        0x00030001
+#define DOSERR_NO_MORE_FILES         0x00120001
 #define DOSERR_SHARING_VIOLATION     0x00200001
 #define STATUS_LOGON_FAILURE         0xc000006d
 
@@ -803,6 +808,14 @@ typedef struct
 {
     SMBHeader_t smbH;
     u8 smbWordcount;
+    u16 SearchID;
+    u16 ByteCount;
+} __attribute__((packed)) FindClose2Request_t;
+
+typedef struct
+{
+    SMBHeader_t smbH;
+    u8 smbWordcount;
     u16 FID;
     u32 LastWrite;
     u16 ByteCount;
@@ -878,6 +891,7 @@ extern int smb_NetShareEnum(int UID, int TID, ShareEntry_t *shareEntries, int in
 extern int smb_QueryInformationDisk(int UID, int TID, smbQueryDiskInfo_out_t *QueryInformationDisk);
 extern int smb_QueryPathInformation(int UID, int TID, PathInformation_t *Info, char *Path);
 extern int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info);
+extern int smb_FindClose2(int UID, int TID, int SID);
 extern int smb_LogOffAndX(int UID);
 extern int smb_Echo(void *echo, int len);
 
