@@ -333,13 +333,18 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     GSTEXTURE *texture = getGameImageTexture(image->cache, thmGetItemSource(menu, item), &item->item);
     if (texture == NULL || texture->Mem == NULL) {
         if (gTheme->gridCoverless) {
-            drawCoverlessTile(menu, item, elem, x, y, tw, h, color == gDefaultCol);
+            drawCoverlessTile(menu, item, elem, x, y, tw, h, (color & 0xFFFFFF) == (gDefaultCol & 0xFFFFFF));
+            if (fabsf(turn) < 0.2f)
+                thmDrawDiscDecorator(menu, item, x, y, tw, h, 3, color);
             return;
         }
         texture = image->defaultTexture ? &image->defaultTexture->source : thmGetTexture(COVER_DEFAULT);
     }
-    if (texture == NULL || texture->Mem == NULL)
+    if (texture == NULL || texture->Mem == NULL) {
+        if (fabsf(turn) < 0.2f)
+            thmDrawDiscDecorator(menu, item, x, y, tw, h, 3, color);
         return;
+    }
 
     // The case picture is drawn so its cover window lands on the cover's place in the cell (w by h): the
     // whole picture when the window is the whole element, a larger one round it when it is not. Frame
@@ -364,6 +369,8 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     }
     if (vignette)
         drawVignette(x, y, rmWideScale(tw), h, vignette);
+    if (fabsf(turn) < 0.2f)
+        thmDrawDiscDecorator(menu, item, x, y, tw, h, 3, color);
 }
 
 // The selection's frame, after RIPPS2's (build 79): three soft rings in the selected-text colour, wider and
@@ -754,6 +761,7 @@ void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, 
         return;
     }
     elem->drawElem = &drawGrid;
+    thmInitElemDiscCache(themeConfig, theme, name, count);
 
     // The back covers (COV2) for the case flip, a few slots of their own.
     if (gridKeyInt(themeConfig, name, "flip", 1)) {

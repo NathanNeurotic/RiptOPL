@@ -1029,6 +1029,45 @@ int isHiddenArtworkCache(const image_cache_t *cache)
            (!gEnableLogoArt && strcmp(cache->suffix(), "LGO") == 0);
 }
 
+void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, const char *name, int slots)
+{
+    if (theme == NULL || themeConfig == NULL || name == NULL || theme->discCache != NULL)
+        return;
+    char prop[64];
+    int want = 0;
+    snprintf(prop, sizeof(prop), "%s_disc", name);
+    if (!configGetInt(themeConfig, prop, &want) || !want)
+        return;
+    if (slots < 2)
+        slots = 2;
+    theme->discCache = cacheInitCache(theme->gameCacheCount++, "ART", 1, "ICO", slots);
+}
+
+void thmDrawDiscDecorator(struct menu_list *menu, struct submenu_list *item, int x, int y, int coverW, int coverH, int inset, u64 color)
+{
+    if (gTheme == NULL || gTheme->discCache == NULL || menu == NULL || menu->item == NULL || item == NULL)
+        return;
+    if (item->item.isFolder || !gEnableArt || !gEnableDiscArt)
+        return;
+    GSTEXTURE *disc = getGameImageTexture(gTheme->discCache, thmGetItemSource(menu, item), &item->item);
+    if (disc == NULL || disc->Mem == NULL)
+        return;
+    int side = coverW / 4;
+    if (side < 16)
+        side = 16;
+    if (side > 32)
+        side = 32;
+    if (side > coverH / 2)
+        side = coverH / 2;
+    if (side < 4)
+        return;
+    int left = x - rmWideScale(coverW) / 2;
+    int bottom = y + coverH / 2;
+    int cx = left + rmWideScale(side) / 2 + rmWideScale(inset);
+    int cy = bottom - side / 2 - inset;
+    rmDrawPixmap(disc, cx, cy, ALIGN_CENTER, side, side, SCALING_RATIO, color, 0);
+}
+
 // The row's art pairs, ready for the theme on screen. The rows outlive a theme load: a view switch (Settings or
 // hold-L3) reloads the theme without rebuilding them, and Grid has more caches than List, so indexing a row's
 // pairs by the new theme's cache ids wrote past them (#211, a crash a few view switches later).

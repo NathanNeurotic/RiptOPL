@@ -285,6 +285,7 @@ typedef struct theme
     int gridCompact;           // built as Grid (7x2) (gGridCompact when the grid was built)
     int coverflowCoverOffset;
 
+    image_cache_t *discCache;
     int gameCacheCount;
     // Which load this is (1, 2, ... for the whole run, never reused). A game row's (slot, UID) pairs are
     // stamped with the load they were made for: cache user ids and UIDs start over in every load, so a

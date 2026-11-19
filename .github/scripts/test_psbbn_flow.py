@@ -108,6 +108,7 @@ static int guiFrameId = 100;
 static struct { u64 textColor; void *psbbnFlow; } theme, *gTheme = &theme;
 static int gCoverflowAnimSpeed, cfIsAnimating, cfAnimDirection, cfAnimFrameCount;
 static clock_t cfAnimStartTime;
+static u64 gDefaultCol;
 static int drawn[9], positions[9], rims[9], nDrawn, priorities, frames;
 static char counter[32];
 #define ALIGN_LEFT 0
@@ -116,6 +117,7 @@ static int rmUnScaleX(int x) { return x; }
 static int rmWideScale(int x) { return x; }
 static int focalSize(const theme_element_t *) { return 204; }
 static void drawFrame(struct menu_list *, theme_element_t *) { frames++; }
+static void thmDrawDiscDecorator(struct menu_list *, struct submenu_list *, int, int, int, int, int, u64) {}
 static void fntRenderString(int, int, int, int, int, int, const char *s, u64) { snprintf(counter, sizeof(counter), "%s", s); }
 static theme_element_t *thmGetElemForItem(struct menu_list *, struct submenu_list *, theme_element_t *e) { return e; }
 static void *thmGetItemSource(struct menu_list *, struct submenu_list *) { return NULL; }

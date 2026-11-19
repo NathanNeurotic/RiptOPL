@@ -989,6 +989,8 @@ static void thmFree(theme_t *theme)
         freeGUIElems(&theme->favsAppsMainElems);
         freeGUIElems(&theme->favsAppsInfoElems);
         thmWallpaperFree(theme->wallpaper); // after the elements: only they draw it
+        if (theme->discCache)
+            cacheDestroyCache(theme->discCache);
 
         // free textures
         GSTEXTURE *texture;

@@ -25,7 +25,7 @@
 
 // Coverflow: the carousel element (draw + init), its slide animation and the render-mode settings. Split out of themes.cpp.
 
-constexpr int COVERFLOW_PAD = 1;  // extra covers built off each edge, purely to fill the slide (see drawCoverFlow)
+constexpr int COVERFLOW_PAD = 1; // extra covers built off each edge, purely to fill the slide (see drawCoverFlow)
 constexpr int COVERFLOW_MAX = (5 + 2 * COVERFLOW_PAD);
 int gCoverflowCount = 3;        // 3 or 5 only (clamped on load AND at draw)
 int gCoverflowCenterScale = 45; // px added to the center cover: Large by default; saved UI choices override (0/15/30/45)
@@ -346,6 +346,7 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
         } else {
             rmDrawPixmap(texture, posX, posY, ALIGN_CENTER, drawW, drawH, SCALING_RATIO, coverColor, elem->reflection);
         }
+        thmDrawDiscDecorator(menu, covers[i], posX, posY, drawW, drawH, 4, coverColor);
     }
 
     rmSetReflectionYOffset(0); // don't leak the offset to any other reflection draw
@@ -361,7 +362,7 @@ void initCoverflow(const char *themePath, config_set_t *themeConfig, theme_t *th
         elem->drawElem = &drawCoverFlow;
         if (!theme->coverflow)
             theme->coverflow = elem; // first coverflow element = the "coverflow active" flag
+        thmInitElemDiscCache(themeConfig, theme, name, COVER_CACHE_SLOTS);
     } else
         LOG("THEMES Coverflow %s: NO cache, elem disabled !!\n", name);
 }
-
