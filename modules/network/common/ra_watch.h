@@ -129,11 +129,9 @@ struct ra_watch_file
 #define RA_NODE_LEGACY_MAGIC 0x4C4E4152 /* "RANL" */
 #define RA_NODE_MAGIC        0x324E4152 /* "RAN2" in little-endian */
 
-/* Node ceiling. Nodes travel with the list into module storage, 20
-   bytes each there (the node, then two scratch words per frame). The
-   largest set counted so far has 57. The snapshot ceiling binds next,
-   at 8 bytes per node. */
-#define RA_NODE_MAX 128
+/* xeRAbora v2.1 supports 256 nodes. Each one uses 20 bytes in EE module
+   storage and 8 in snapshots; the existing work-area/snapshot checks bind. */
+#define RA_NODE_MAX 256
 
 /* Bytes one node adds to a snapshot: the resolved address and the value. */
 #define RA_NODE_PAIR_BYTES 8
@@ -142,6 +140,16 @@ struct ra_node_file
 {
     unsigned int magic; /* RA_NODE_MAGIC */
     unsigned int count; /* nodes that follow */
+};
+
+/* Optional xeRAbora v2.1 image-hash tail, after entries and optional nodes.
+   The loader validates it but uses serial-based launch identification. */
+#define RA_HASH_MAGIC 0x31484152 /* "RAH1" */
+#define RA_HASH_LEN   32
+struct ra_hash_file
+{
+    unsigned int magic;
+    char hash[RA_HASH_LEN];
 };
 
 /* One node: some bits of the parent, scaled, plus offset -> read size

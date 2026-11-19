@@ -289,6 +289,10 @@ jobs:
           python3 .github/scripts/test_cnf_missing_equals.py
       - name: Check RA snapshot scheduling and transmission retries
         run: python3 .github/scripts/test_ra_sender.py
+      - name: Check xeRAbora 2.1 watch-list parsing, EE budgets and Neutrino RA handoff
+        run: |
+          python3 .github/scripts/test_ra_runtime_budget.py
+          python3 .github/scripts/test_neutrino_ra.py
 
   bdm-host-tests:
     runs-on: ubuntu-24.04
