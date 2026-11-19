@@ -1,0 +1,16 @@
+2!0F
+iomanx
+sysclib
+bdfs
+%s%dp%d
+bdfs
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

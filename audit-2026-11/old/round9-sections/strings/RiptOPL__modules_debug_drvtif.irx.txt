@@ -1,0 +1,37 @@
+Deci2_TIF_interface_driver
+0! D
+?D0#
+@C$*
+0!(E
+&!0`
+ b0!
+@B4T
+&!( 
+'!(@
+deci2api
+intrman
+sifman
+sysclib
+sysmem
+thevent
+Deci2_TIF_interface_driver
+RCV_START
+RCV_READ
+RCV_END
+SEND_START
+SEND_WRITE
+SEND_END
+POLL
+RCV_OFF
+RCV_ON
+SEND_OFF
+SEND_ON
+DEBUG
+	tif ifc func %s flag=%x p1=%x p2=%x
+	CreateEventFlag -> %d
+.shstrtab
+.iopmod
+.rel.text
+.rel.rodata
+.rel.data
+.bss

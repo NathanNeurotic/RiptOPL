@@ -1,0 +1,21 @@
+iLinkman
+intrman
+sysclib
+sysmem
+thbase
+thevent
+2!8g
+2!8g
+'! C
+IEEE1394_bd
+ilink
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

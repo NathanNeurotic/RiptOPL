@@ -1,0 +1,23 @@
+loadcore
+stdio
+sysclib
+thsemap
+B$+H&
+c$%@
+B$+H&
+c$%@
+bd_defrag_write
+bd_defrag_read
+BDM: %s: ERROR: read failed!
+BDM: %s: ERROR: fragment not found!
+BDM: %s: ERROR: write failed!
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

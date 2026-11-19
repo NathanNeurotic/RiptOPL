@@ -1,0 +1,15 @@
+intrman
+loadcore
+sysclib
+modload
+fakemod
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

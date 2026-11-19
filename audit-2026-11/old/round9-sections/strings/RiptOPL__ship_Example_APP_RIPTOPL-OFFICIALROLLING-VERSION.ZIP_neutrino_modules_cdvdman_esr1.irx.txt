@@ -1,0 +1,19 @@
+'! $
+$% @
+cdvdman
+loadcore
+sysmem
+thbase
+esr_sl
+ESR_DVDV_SL
+.iopmod
+.text
+.rel.text
+.rodata
+.rel.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab
