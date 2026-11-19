@@ -11,6 +11,7 @@
 #include "include/vcdsupport.h"
 #include "include/favsupport.h"
 #include "include/settings.h"
+#include "include/riptlite.h" // gLiteStartMode
 
 namespace
 {
@@ -109,6 +110,9 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_APP_MODE, &gAPPStartMode, START_MODE_DISABLED),
     strSetting(CONFIG_OPL_MMCE_PREFIX, gMMCEPrefix),
     intSetting(CONFIG_OPL_MMCE_MODE, &gMMCEStartMode, START_MODE_DISABLED),
+#ifdef RIPTOPLITE
+    intSetting(CONFIG_OPL_LITE_START_MODE, &gLiteStartMode, START_MODE_DISABLED), // the user turns it on
+#endif
     intSetting(CONFIG_OPL_MMCE_SLOT, &gMMCESlot, 2), // Default to first Auto slot
     intSetting(CONFIG_OPL_MMCEIGR_SLOT, &gMMCEIGRSlot, 3),
     intSetting(CONFIG_OPL_MMCE_GAMEID, &gMMCEEnableGameID, 0),

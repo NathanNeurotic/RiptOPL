@@ -6,6 +6,8 @@
 
 #include <string.h>
 
+int gLiteStartMode = START_MODE_DISABLED;
+
 #ifdef RIPTOPLITE
 
 namespace
@@ -53,14 +55,17 @@ void liteApplyDeviceMask(void)
     gEnableDVR = 0;
 #endif
 
-    // The one source starts at boot: there is nothing else to choose between.
+    // The one source starts only as the user set it (Game Sources > Start Mode). Off by default:
+    // the user turns on what they want.
+    if (gLiteStartMode < START_MODE_DISABLED || gLiteStartMode > START_MODE_AUTO)
+        gLiteStartMode = START_MODE_DISABLED;
 #if LITE_HAS_BDM
-    gBDMStartMode = START_MODE_AUTO;
+    gBDMStartMode = gLiteStartMode;
 #else
     gBDMStartMode = START_MODE_DISABLED;
 #endif
-    gHDDStartMode = LITE_HAS_APA ? START_MODE_AUTO : START_MODE_DISABLED;
-    gMMCEStartMode = LITE_HAS_MMCE_GAMES ? START_MODE_AUTO : START_MODE_DISABLED;
+    gHDDStartMode = LITE_HAS_APA ? gLiteStartMode : START_MODE_DISABLED;
+    gMMCEStartMode = LITE_HAS_MMCE_GAMES ? gLiteStartMode : START_MODE_DISABLED;
 
     // The network: this build's protocol, or none.
 #if LITE_HAS_SMB
@@ -76,8 +81,10 @@ void liteApplyDeviceMask(void)
         gNetStartMode = START_MODE_DISABLED;
         gNetProtocolPick = NET_PROTO_SMB; // the shipped default: never a protocol this build lacks
     } else {
-        gNetStartMode = START_MODE_AUTO;
-        gNetProtocolPick = gNetworkProtocol;
+        gNetProtocolPick = gNetworkProtocol; // remembered, so turning the source on picks it
+        gNetStartMode = gLiteStartMode;
+        if (gNetStartMode == START_MODE_DISABLED)
+            gNetworkProtocol = NET_PROTO_OFF; // Off means Off, as in the full build's reconcile
     }
     // The legacy shadows, derived as settingsio.cpp derives them.
     gEnableUDPBD = (gNetworkProtocol == NET_PROTO_UDPBD || gNetworkProtocol == NET_PROTO_UDPFSBD);
