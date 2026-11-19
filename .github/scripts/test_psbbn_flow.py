@@ -117,7 +117,7 @@ static int rmUnScaleX(int x) { return x; }
 static int rmWideScale(int x) { return x; }
 static int focalSize(const theme_element_t *) { return 204; }
 static void drawFrame(struct menu_list *, theme_element_t *) { frames++; }
-static void thmDrawDiscDecorator(struct menu_list *, struct submenu_list *, int, int, int, int, int, u64) {}
+static void thmDrawDiscDecorator(const theme_element_t *, struct menu_list *, struct submenu_list *, int, int, int, int, int, u64) {}
 static void fntRenderString(int, int, int, int, int, int, const char *s, u64) { snprintf(counter, sizeof(counter), "%s", s); }
 static theme_element_t *thmGetElemForItem(struct menu_list *, struct submenu_list *, theme_element_t *e) { return e; }
 static void *thmGetItemSource(struct menu_list *, struct submenu_list *) { return NULL; }

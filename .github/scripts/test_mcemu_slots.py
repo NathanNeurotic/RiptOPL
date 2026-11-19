@@ -94,7 +94,7 @@ for leg, image, cache, info, fn in (
         ('src/sources/bdmlaunch.cpp', 'bdm_mcemu_irx', 'bdmMcemuSlots', 'bdm_vmc_infos', 'void BdmLauncher::launch('),
         ('src/sources/ethsupport.cpp', 'smb_mcemu_irx', 'ethMcemuSlots', 'smb_vmc_infos', 'void EthSource::launch('),
         ('src/sources/hddsupport.cpp', 'hdd_mcemu_irx', 'hddMcemuSlots', 'hdd_vmc_infos', 'void HddSource::launch('),
-        ('src/sources/mmcesupport.cpp', 'mmce_mcemu_irx', 'mmceMcemuSlots', 'mmce_vmc_infos', 'void MmceSource::launch(')):
+        ('src/sources/mmcesupport.cpp', 'mmce_mcemu_irx', 'mmceMcemuSlots', 'mmce_vmc_infos', 'static void mmcePrepareVmcSlots(')):
     body = text(leg)
     launch = function(body, fn)
     call = 'nativeVmcSlotWord(&%s, size_%s, vmc_id, %s, sizeof(%s_t))' % (image, image, cache, info)
@@ -104,7 +104,7 @@ for leg, image, cache, info, fn in (
         failures.append('%s: %s must start unsearched (-2, -2)' % (leg, cache))
     if '0xC0DEFAC0' in launch:
         failures.append('%s: the launch must not search for the marker itself -- it is gone after the first launch' % leg)
-    if not re.search(r'if \(slotWord >= 0\) \{\s*if \(%s\.active\)\s*size_mcemu_irx = size_%s;\s*'
+    if not re.search(r'if \(slotWord >= 0\) \{\s*if \(%s\.active\)\s*\*?size_mcemu_irx = size_%s;\s*'
                      r'memcpy\(&\(\(u32 \*\)&%s\)\[slotWord\]' % (info, image, image), launch):
         failures.append('%s: write the slot only where it was found, loading mcemu only for an active card' % leg)
 
