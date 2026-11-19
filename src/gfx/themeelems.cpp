@@ -2345,15 +2345,13 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
             textX = rowX + favRoom;
             textRoom = rowRoom > favRoom ? rowRoom - favRoom : 1;
         }
-        int hlX = elem->posX;
-        if (elem->aligned & ALIGN_HCENTER)
-            hlX -= elem->width >> 1;
-        else if (elem->aligned & ALIGN_RIGHT)
-            hlX -= elem->width;
         while (ps && (others++ < itemsList->displayedItems)) {
             if (ps == item) {
                 color = gTheme->selTextColor;
                 if (!(elem->aligned & ALIGN_HCENTER)) {
+                    int hlX = elem->posX;
+                    if (elem->aligned & ALIGN_RIGHT)
+                        hlX -= elem->width;
                     if (itemsList->highlight == THM_HL_BAR) {
                         rmDrawRect(hlX - 12, posY + 1, elem->width + 12, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0x1E, 0x3C, 0x9C, 0x5C, 0x00));
                         rmDrawRect(hlX - 12, posY + 1, 3, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));

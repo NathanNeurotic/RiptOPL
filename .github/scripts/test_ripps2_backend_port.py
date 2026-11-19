@@ -553,10 +553,12 @@ print('ok   MMCE: "no busy query" only when the card answers presence and fails 
 # The launch resolves its core, the Neutrino-to-OPL-core fallback included, before the OPL core's preparation:
 # a launch that falls back gets the early history write and the card's switch waited out, before any card-side
 # file is opened (it used to skip them, and sysLaunchLoaderElf wrote the record right before the IOP reset).
+vmc_prep = mmce[mmce.index('static void mmcePrepareVmcSlots('):mmce.index('void MmceSource::launch(')]
+assert 'vmc_fd = fileXioOpen(' in vmc_prep, 'mmcePrepareVmcSlots must open the configured VMC file'
 launch = mmce[mmce.index('void MmceSource::launch('):]
 assert launch.count('sbResolveNeutrinoPath(') == 1, 'the MMCE launch resolves neutrino.elf once, before the OPL core preparation'
 assert launch.index('sbResolveNeutrinoPath(') < launch.index('_STR_NEUTRINO_NOT_FOUND') < launch.index('if (!coreLoader) {') \
-    < launch.index('sbEnsureIgrUsbDrivers(compatmask);') < launch.index('sysAddHistoryRecord(') < launch.index('vmc_fd = fileXioOpen('), \
+    < launch.index('sbEnsureIgrUsbDrivers(compatmask);') < launch.index('sysAddHistoryRecord(') < launch.index('mmcePrepareVmcSlots('), \
     'a Neutrino setting that falls back to the OPL core must get the OPL core preparation, history write first'
 assert launch.count('sbEnsureIgrUsbDrivers(') == 1, 'one IGR driver check per MMCE launch, before any card switch'
 print('ok   MMCE: the core (and its OPL-core fallback) is resolved before the OPL core preparation, so a fallback writes history early too')
