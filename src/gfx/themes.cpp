@@ -30,12 +30,6 @@
 
 extern const char conf_theme_OPL_cfg;
 extern u16 size_conf_theme_OPL_cfg;
-extern const char theme_coverflow_cfg;
-extern u16 size_theme_coverflow_cfg;
-extern const char theme_psbbn_flow_cfg;
-extern u16 size_theme_psbbn_flow_cfg;
-extern const char theme_grid_cfg;
-extern u16 size_theme_grid_cfg;
 
 theme_t *gTheme;
 
@@ -1369,17 +1363,10 @@ int thmHintRank(const theme_t *theme, int token)
     return THM_HINT_COUNT;
 }
 
-// The built-in <OPL> theme's cfg for a view: the template a fallback view takes its presenter from.
-static void thmReadViewTemplate(config_set_t *cfg, int view)
+// The built-in <OPL> theme's unified cfg: holds all views so fallback synthesis reads any view from it.
+static void thmReadViewTemplate(config_set_t *cfg)
 {
-    if (view == THM_VIEW_COVERFLOW)
-        configReadBuffer(cfg, &theme_coverflow_cfg, size_theme_coverflow_cfg);
-    else if (view == THM_VIEW_PSBBN)
-        configReadBuffer(cfg, &theme_psbbn_flow_cfg, size_theme_psbbn_flow_cfg);
-    else if (view == THM_VIEW_GRID)
-        configReadBuffer(cfg, &theme_grid_cfg, size_theme_grid_cfg);
-    else
-        configReadBuffer(cfg, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
+    configReadBuffer(cfg, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
 }
 
 // The caller holds thmSwitchSema.
@@ -1461,22 +1448,11 @@ static int thmLoad(const char *themePath)
         tarThemeReset(); // after the drain: an archive replaced since the last load is read again, as a folder's files are
 
     config_set_t *themeConfig = NULL;
-    // The built-in <OPL> theme offers its List, Coverflow, PSBBN Flow and Grid looks as views (Coverflow and
-    // PSBBN Flow were the separate <Coverflow> and <PSBBN Flow> themes). Each view is its own embedded cfg, because an edition
-    // such as Korium replaces some of them, so the view picks the buffer.
-    int builtinView = -1;
+    // The built-in <OPL> theme is a single multi-view cfg (List base + coverflow/psbbn/grid view
+    // overrides), resolved by thmViewScan/thmViewChoose on the same path as external disk themes.
     if (!themePath) {
-        // No theme specified. Prepare and load the default theme.
         themeConfig = configAlloc(0, NULL, NULL);
-        builtinView = (gThemeViewRequest >= 0 && gThemeViewRequest < THM_VIEW_COUNT) ? gThemeViewRequest : THM_VIEW_LIST;
-        if (builtinView == THM_VIEW_COVERFLOW)
-            configReadBuffer(themeConfig, &theme_coverflow_cfg, size_theme_coverflow_cfg);
-        else if (builtinView == THM_VIEW_PSBBN)
-            configReadBuffer(themeConfig, &theme_psbbn_flow_cfg, size_theme_psbbn_flow_cfg);
-        else if (builtinView == THM_VIEW_GRID)
-            configReadBuffer(themeConfig, &theme_grid_cfg, size_theme_grid_cfg);
-        else
-            configReadBuffer(themeConfig, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
+        configReadBuffer(themeConfig, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
     } else {
         snprintf(path, sizeof(path), "%sconf_theme.cfg", themePath);
         themeConfig = configAlloc(0, NULL, path);
@@ -1532,7 +1508,7 @@ static int thmLoad(const char *themePath)
             int built = 0;
             config_set_t *tmpl = configAlloc(0, NULL, NULL);
             if (tmpl != NULL) {
-                thmReadViewTemplate(tmpl, requested);
+                thmReadViewTemplate(tmpl);
                 // The template's own SD/HD keys (the built-in Grid's columns_hd) resolve for this picture too.
                 if (thmApplyDisplayLayout(tmpl, newT->layoutWide))
                     newT->layoutDependsOnWide = 1;
@@ -1548,11 +1524,6 @@ static int thmLoad(const char *themePath)
             }
         }
         newT->viewMask = offered;
-    }
-    if (builtinView >= 0) {
-        newT->view = builtinView;
-        newT->viewMask = (1u << THM_VIEW_LIST) | (1u << THM_VIEW_COVERFLOW) | (1u << THM_VIEW_PSBBN) | (1u << THM_VIEW_GRID);
-        newT->defaultView = THM_VIEW_LIST;
     }
     const char *viewPrefix = thmViewPrefix(&viewInfo, newT->view);
     thmParseViewPrefix = viewPrefix;

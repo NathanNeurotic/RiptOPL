@@ -348,12 +348,12 @@ registry = (registry.replace('@CLASS@', catalog_class.replace('private:', 'publi
             .replace('@METHODS@', methods).replace('@SEMALOCK@', SEMA_LOCK))
 run('psbbn_registry', registry)
 
-# The built-in config, embedded asset and wiring.
-cfg = (ROOT / 'misc/theme_psbbn_flow.cfg').read_text(encoding='utf-8')
+# The unified built-in config, embedded asset and wiring.
+cfg = (ROOT / 'misc/conf_theme_OPL.cfg').read_text(encoding='utf-8')
 assert cfg.count('type=PSBBNFlow') == 3 and cfg.count('default=psbbn_bg') == 2
-assert not re.search(r'^(?:bg|text|ui|sel)_color=', cfg, re.M), 'the built-in keeps the picker palette'
+assert not re.search(r'^(?:(?:list|coverflow|psbbn|grid)\.)?(?:bg|text|ui|sel)_color=', cfg, re.M), 'the built-in keeps the picker palette'
 assets = (ROOT / 'tools/assets.py').read_text(encoding='utf-8')
-assert '"misc/theme_psbbn_flow.cfg", "theme_psbbn_flow_cfg"' in assets and re.search(r'\bpsbbn_bg\b', assets)
+assert '"misc/conf_theme_OPL.cfg", "conf_theme_OPL_cfg"' in assets and re.search(r'\bpsbbn_bg\b', assets)
 assert '{PSBBN_BACKGROUND, "psbbn_bg", &psbbn_bg_png}' in (ROOT / 'src/gfx/textures.cpp').read_text(encoding='utf-8')
 assert 'src/gfx/psbbnflow.cpp' in (ROOT / 'ps2.yaml').read_text(encoding='utf-8')
 assert '"PSBBNFlow"' in THEMES and 'initPsbbnFlow(themePath, themeConfig, theme, elem, name);' in THEMES

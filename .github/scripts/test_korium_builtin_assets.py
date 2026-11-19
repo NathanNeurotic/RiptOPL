@@ -52,11 +52,11 @@ assert '"builtin:roboto"' in fnt and '"builtin:ripflow"' in fnt and "&ripps2robo
 assert "ALIGN_RIGHT" in elems and "THM_HL_BAR" in elems and "drawNameAttributeText" in elems
 assert '!strcmp(cfgPattern, "SCRn")' in elems
 
-# All four built-in cfgs use the PSBBN fonts, info page, and have no global color overrides.
-for cfg_rel in ("misc/conf_theme_OPL.cfg", "misc/theme_psbbn_flow.cfg", "misc/theme_coverflow.cfg", "misc/theme_grid.cfg"):
-    cfg = read(cfg_rel)
-    assert "font1=builtin:roboto" in cfg and "font13=builtin:ripflow" in cfg, cfg_rel
-    assert "value=RiptOPL" in cfg and "attribute=#Name" in cfg and "pattern=SCRn" in cfg, cfg_rel
-    assert not re.search(r"^(?:bg|text|ui|sel|title)_color=", cfg, re.M), f"{cfg_rel} must keep Colors picker editable"
+# The single unified built-in cfg carries all four views, uses the PSBBN fonts and info page, and keeps Colors editable.
+cfg = read("misc/conf_theme_OPL.cfg")
+assert "font1=builtin:roboto" in cfg and "font13=builtin:ripflow" in cfg, "misc/conf_theme_OPL.cfg"
+assert "value=RiptOPL" in cfg and "attribute=#Name" in cfg and "pattern=SCRn" in cfg, "misc/conf_theme_OPL.cfg"
+assert "coverflow.main4:" in cfg and "psbbn.main2:" in cfg and "grid.main4:" in cfg, "misc/conf_theme_OPL.cfg must declare all views"
+assert not re.search(r"^(?:(?:list|coverflow|psbbn|grid)\.)?(?:bg|text|ui|sel|title)_color=", cfg, re.M), "misc/conf_theme_OPL.cfg must keep Colors picker editable"
 
 print("PASS: built-in PSBBN theme assets, fonts, configs and engine wiring passed")

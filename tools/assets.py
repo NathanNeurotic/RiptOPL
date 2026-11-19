@@ -70,9 +70,6 @@ MISC = [
     ("icon_sys_J", "misc/icon_J.sys", "icon_sys_J"),
     ("icon_sys_C", "misc/icon_C.sys", "icon_sys_C"),
     ("conf_theme_OPL", "misc/conf_theme_OPL.cfg", "conf_theme_OPL_cfg"),
-    ("theme_coverflow", "misc/theme_coverflow.cfg", "theme_coverflow_cfg"),
-    ("theme_psbbn_flow", "misc/theme_psbbn_flow.cfg", "theme_psbbn_flow_cfg"),
-    ("theme_grid", "misc/theme_grid.cfg", "theme_grid_cfg"),
 ]
 
 
