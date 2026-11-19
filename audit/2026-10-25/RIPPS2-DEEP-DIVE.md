@@ -1,11 +1,11 @@
-# RIPPS2 collaboration review — October 25, 2026
+# [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) collaboration review — October 25, 2026
 
-RIPPS2 and RiptOPL share ancestry and exchange work. This review looks for useful mechanisms in both directions and preserves author credit. A difference is not automatically a defect, a finished feature or an instruction to port it.
+[RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) and RiptOPL share ancestry and exchange work. This review looks for useful mechanisms in both directions and preserves author credit. A difference is not automatically a defect, a finished feature or an instruction to port it.
 
 ## Exact revisions and reconstruction
 
 - RiptOPL publishing source: `55261de1381ae70ecfdfb2054f9cafbcfcd586cf`.
-- RIPPS2 main: `e1e3504f4a8bfd6b2f88425d284eb845393cfcb9`, Build 115 in progress.
+- [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) main: `e1e3504f4a8bfd6b2f88425d284eb845393cfcb9`, Build 115 in progress.
 - Published v1.1.4-beta: `f59abffde0794debdadaee526c175414a4b12b21`, Build 114. GitHub marks this beta-named release **non-prerelease**; publication occurred October 24 in America/Los_Angeles (October 25 UTC).
 - b114: `20fcc576a2c01b172a095796f2b1bfa63c596238`; no longer the sole place where Build 114 exists.
 - Imported RiptOPL upstream: `57c45b4fcc922ba00fed949c634caea0a2900c63`, revision 4224. RiptOPL changes after that import must be reconciled separately.
@@ -37,7 +37,7 @@ The existing [Build 113/114 deep dive](../2026-10-24/RIPPS2-DEEP-DIVE.md) retain
 
 ## Safety and compatibility boundaries
 
-RIPPS2's Neutrino reset path rewrites mass-unit paths only when no `-qb` is emitted. This is not a universal path fix: `-qb` inherits a mounted environment and RiptOPL's local/network dispatch must preserve the intended device. A typed drive family is still not a unique physical device when two devices share that family.
+[RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s Neutrino reset path rewrites mass-unit paths only when no `-qb` is emitted. This is not a universal path fix: `-qb` inherits a mounted environment and RiptOPL's local/network dispatch must preserve the intended device. A typed drive family is still not a unique physical device when two devices share that family.
 
 Deletion, conversion and memory-card tools need separate designs for existing files, shared saves, interrupted writes, failed rename, media removal and recovery. A read-only APA preflight can reject malformed headers; it cannot prove that all real disks are safe to modify. Keep these as separate investigations rather than a bundled parity port.
 
@@ -45,7 +45,7 @@ The Build 115 hardware plan reports a problematic MMCE launch and incomplete aut
 
 ## Shared wins and useful next experiments
 
-RIPPS2 already imports RiptOPL fixes through its recorded upstream pin. YAOPL also explicitly credits fixes reviewed from RiptOPL. Shared code is acknowledged once rather than counted as a new competitive gap.
+[RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) already imports RiptOPL fixes through its recorded upstream pin. YAOPL also explicitly credits fixes reviewed from RiptOPL. Shared code is acknowledged once rather than counted as a new competitive gap.
 
 The first low-scope candidates are artwork interoperability and external-runtime option negotiation. For either, preserve the current loader/core contracts, make a small isolated change, run function-level host checks, then compare the same console/media/game against a control build. MMCE scheduling and storage-writing features need their own controlled work and hardware evidence. No implementation port is included in this documentation refresh.
 

@@ -360,7 +360,7 @@ main0:
 <tr><td><code>font1</code> … <code>font15</code></td><td>font file path</td><td>Extra fonts; each defaults to <code>default_font</code> if not set.</td></tr>
 <tr><td><code>default_font_size</code></td><td>int (px)</td><td>Size for the default font (defaults to the system default if ≤ 0).</td></tr>
 <tr><td><code>font1_size</code> … <code>font15_size</code></td><td>int (px)</td><td>Per-font sizes.</td></tr>
-<tr><td><code>default_font_weight</code></td><td>100–900</td><td>Draws the default font heavier. A variable font follows its <code>wght</code> axis within its range. A static font, or a weight past a variable font's range, has its outlines grown in code (about 1 px at 18 px for every 300 units). Omit the key for the font's own weight. From RIPPS2 build 114.</td></tr>
+<tr><td><code>default_font_weight</code></td><td>100–900</td><td>Draws the default font heavier. A variable font follows its <code>wght</code> axis within its range. A static font, or a weight past a variable font's range, has its outlines grown in code (about 1 px at 18 px for every 300 units). Omit the key for the font's own weight. From <a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a> build 114.</td></tr>
 <tr><td><code>font1_weight</code> … <code>font15_weight</code></td><td>100–900</td><td>The same, per font.</td></tr>
 </tbody>
 </table>
@@ -381,12 +381,12 @@ all, since font loading is skipped for buffer-loaded built-in themes).</p>
 </tbody>
 </table>
 <h3 id="hint-glyphs">Button hints and glyphs</h3>
-<p>These keys come from <a href="https://github.com/akilluminati47/RIPPS2">RIPPS2</a> (<a href="https://github.com/akilluminati47">akilluminati47</a>, build 90). A theme that sets none of them draws the hint bar
+<p>These keys come from <a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a> (<a href="https://gitlab.com/akilluminati247">akilluminati47</a>, build 90). A theme that sets none of them draws the hint bar
 exactly as before. NOT TESTED on hardware.</p>
 <table data-sortable>
 <thead><tr><th>Key</th><th>Value</th><th>Meaning</th></tr></thead>
 <tbody>
-<tr><td><code>glyph_set</code></td><td><code>theme</code> / <code>builtin</code> / <code>standard</code> / <code>white</code></td><td>The button pictures every hint draws. <code>theme</code> (the default) uses the theme's own glyph PNGs, with the built-in ones filling gaps when <code>use_default=1</code>. <code>builtin</code> uses the built-in glyphs. <code>standard</code> and <code>white</code> are two sets built into the ELF, drawn from RIPPS2's Adapt and Grunge themes. <b>Settings → Interface → Button Glyphs</b> overrides this on every theme; its <b>Theme</b> choice follows this key.</td></tr>
+<tr><td><code>glyph_set</code></td><td><code>theme</code> / <code>builtin</code> / <code>standard</code> / <code>white</code></td><td>The button pictures every hint draws. <code>theme</code> (the default) uses the theme's own glyph PNGs, with the built-in ones filling gaps when <code>use_default=1</code>. <code>builtin</code> uses the built-in glyphs. <code>standard</code> and <code>white</code> are two sets built into the ELF, drawn from <a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a>'s Adapt and Grunge themes. <b>Settings → Interface → Button Glyphs</b> overrides this on every theme; its <b>Theme</b> choice follows this key.</td></tr>
 <tr><td><code>hints_hide</code></td><td>hint list</td><td>Hints the theme leaves off the bar, e.g. <code>hints_hide=star,view</code>.</td></tr>
 <tr><td><code>hints_order</code></td><td>hint list</td><td>These hints come first, in this order. The rest follow in the order the page adds them. Example: <code>hints_order=run,info,menu</code>.</td></tr>
 <tr><td><code>hints_labels</code></td><td>0 / 1</td><td><code>0</code> draws the glyphs alone, without the labels. <code>1</code> (the default) draws a glyph and its label.</td></tr>
@@ -873,7 +873,7 @@ over to its back cover (<code>COV2</code>), the way the stick leans; it stays tu
 <i>Settings → Interface → Coverflow Settings → Grid Layout</i> swaps the theme's shape for 4 × 2, 5 × 2, 3 × 2 Large or
 6 × 3 Compact (6 × 2, 7 × 2, 5 × 2 and 8 × 3 on a 16:9 picture), and <i>Dim Side Covers</i> there makes the vignette full
 strength. Idea: <a href="https://github.com/KrahJohlito">KrahJohlito</a> (multi-view themes); the pages, slide, selection, vignette, case flip, sidebar, tiles and layouts
-follow <a href="https://github.com/akilluminati47/RIPPS2">RIPPS2</a>'s grid (<a href="https://github.com/akilluminati47">akilluminati47</a>).
+follow <a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a>'s grid (<a href="https://gitlab.com/akilluminati247">akilluminati47</a>).
 Added in <a href="https://github.com/NathanNeurotic/RiptOPL/pull/121">RiptOPL #121</a>; NOT TESTED on hardware. Sidebar, slide, flip, vignette, tiles and Grid Layout: <a href="https://github.com/NathanNeurotic/RiptOPL/pull/196">RiptOPL #196</a>; NOT TESTED on hardware.</p>
 <table><thead><tr><th>Property</th><th>Grid behaviour</th></tr></thead><tbody>
 <tr><td><code>x</code>, <code>y</code></td><td>Centre of the whole grid; default is the screen centre.</td></tr>
