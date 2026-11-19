@@ -84,7 +84,7 @@ running it streams the handful of memory addresses that game's achievements depe
 else — talking to the RetroAchievements servers, deciding what unlocked, your login — happens on the
 PC.</p>
 <p>Based on the RetroAchievements implementation by <strong><a href="https://github.com/hacan359/Open-PS2-Loader/pull/1">hacan359 (yoba)</a></strong>.
-Use the upstream <strong><a href="https://github.com/hacan359/xerabora">xeRAbora PC client</a></strong> with RiptOPL's RA build. Download <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v2.0.0">v2.0.0</a></strong>; v1.0.1 (alpha.17 or later) also works. After moving to v2.0.0, run <strong>RA: check game support</strong> again for every game you play: v2.0.0 sends a new pointer-chain format (RAN2) that RiptOPL reads alongside the old one (RANL), and an old watch file lacks the reads v2.0.0 adds.</p>
+Use the upstream <strong><a href="https://github.com/hacan359/xerabora">xeRAbora PC client</a></strong> with RiptOPL's RA build. Download <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v2.1.0">v2.1.0</a></strong>; v2.0.0 and v1.0.1 (alpha.17 or later) also work. xeRAbora v2.1.0 adds a trailing RAH1 image-hash record and up to 256 pointer nodes: RiptOPL now accepts valid hash tails both over the network and from saved lists, with the unchanged snapshot-size budget. After moving to v2.0.0, run <strong>RA: check game support</strong> again for every game you play: v2.0.0 sends a new pointer-chain format (RAN2) that RiptOPL reads alongside the old one (RANL), and an old watch file lacks the reads v2.0.0 adds.</p>
 <p>RiptOPL's real-hardware stabilization was contributed by <strong><a href="https://github.com/oMrRexD">oMrRexD</a></strong> through
 PRs <strong>#702–#705</strong>, covering the ee_core stack squeeze, MMCE DEV9 dependency, cold-launch network
 bring-up / unusable-IP fallback, and the misplaced RA settings rows.</p>
@@ -151,7 +151,7 @@ as finished.</p>
 <ol>
 <li>Start <strong>RIPTOPL-RA.ELF</strong> from the RetroAchievements kit (<code>rolling-ra</code>). The Korium and
 IncebtIon kits have no achievement telemetry and need no companion PC.</li>
-<li>Run <strong>xeRAbora v2.0.0</strong> (or v1.0.1, alpha.17 or later) on the companion PC and sign in to your RetroAchievements
+<li>Run <strong>xeRAbora v2.1.0</strong> (or v2.0.0 / v1.0.1, alpha.17 or later) on the companion PC and sign in to your RetroAchievements
 account in its Settings page. Keep it running.</li>
 <li>In <strong>Settings → Network</strong>, leave <strong>RA Mode</strong> on <strong>Xerabora</strong>, turn <strong>RetroAchievements
 telemetry</strong> on and save. Telemetry is Off on a fresh start. Give the PS2 working network
@@ -294,7 +294,7 @@ path. Disc boot, telemetry across game IOP resets and the IGR return path still 
 ee_core has nothing to take a snapshot from. The RA kit's Neutrino carries its own agent (below), and a USB
 VCD carries its own reader into POPStarter (see <a href="#ps1-through-usb-popstarter">PS1 through USB POPStarter</a>).</p>
 <h3 id="neutrino-in-the-ra-edition">Neutrino in the RA edition</h3>
-<p>The RetroAchievements kit's <code>neutrino/</code> is <strong><a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.13">ORBIT (now NULD) v1.2.13</a></strong>'s
+<p>The RetroAchievements kit's <code>neutrino/</code> is <strong><a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.14">ORBIT (now NULD) v1.2.14</a></strong>'s
 RA-Neutrino by <strong>Daniel / <a href="https://github.com/danielnuld">danielnuld</a></strong>, based on <a href="https://github.com/ps2max32/neutrino">Neutrino</a> by <strong><a href="https://github.com/rickgaiser">Maximus32</a></strong>, with an achievement agent
 (<code>raagent.irx</code>) that speaks <strong><a href="https://github.com/hacan359">hacan359</a> / <a href="https://github.com/hacan359/xerabora">xeRAbora</a></strong>'s protocol. Its AFL-3.0 licence, source commit and
 archive SHA-256 ship beside it (<code>neutrino/ORBIT-RA.json</code>). Standard kits keep ordinary upstream Neutrino,
@@ -315,7 +315,7 @@ rest of the set does. A game without a watch list launches quietly; any other re
 made (no NULD runtime, no companion address, a failed write, or the two arguments pushing the launch past
 Neutrino's 256-byte budget) launches the game without achievements and says so. <strong>RiptOPL does not claim
 console unlock cards, and remote reset is not provided by this runtime</strong>; unlocks appear on the companion.
-NULD v1.2.13 can show an unlock box and pause the game for about 2.5 s when the client sends <code>RAU1</code>; RiptOPL
+NULD v1.2.14 can show an unlock box and pause the game for about 2.5 s when the client sends <code>RAU1</code>; RiptOPL
 hands over no titles for it, and client support for <code>RAU1</code> is unverified. <strong>NOT TESTED on hardware.</strong></p>
 <h3 id="do-not-expect-a-game-with-achievements-to-run-from-a-network-share">Do not expect a game with achievements to run from a network share</h3>
 <p>A game that streams its own disc over the NIC is competing with telemetry for that NIC. This build no
@@ -507,7 +507,7 @@ Updating the external client alone does not update the telemetry code in your EL
 <li><strong>PC-requested return:</strong> the client's return command takes the existing IGR path, so it is unavailable in Mode 6.</li>
 <li><strong>Snapshot delivery:</strong> telemetry polls every 4 ms, sends each new snapshot once, retries busy or torn copies, repeats an unchanged snapshot after ~1 second, and marks the staged sequence sent only after every part is accepted.</li>
 </ul>
-<div class="callout amber"><div class="h">Important</div>Use <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v2.0.0">xeRAbora v2.0.0</a></strong> or v1.0.1 (alpha.17 or later) with this build. v2.0.0 changes only the pointer-chain tail of the watch list (RANL to RAN2, adding shift, width and scale per node; source review of xeRAbora <code>7b90aa7...b0c0ed0</code> and its console fork <code>a162ae3e...37c5b2f9</code>); <strong>v2.0.0 is NOT TESTED on hardware with this build.</strong> For v1.0.1: The console wire protocol is unchanged since alpha.10. Since alpha.17 the client has only gained a setting that keeps unlock notices off the TV (it then sends nothing) and reads optional link counters from the snapshot header. That is from a source review of xeRAbora <code>v0.1.0-alpha.17...v1.0.1</code> and its console fork <code>fa2d2e42...a9f97397</code>; <strong>v1.0.1 is NOT TESTED on hardware with this build.</strong> Host tests and successful builds do not establish console timing or game compatibility; the alpha.10 hardware report above is historical evidence, not validation of this update.</div>
+<div class="callout amber"><div class="h">Important</div>Use <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v2.1.0">xeRAbora v2.1.0</a></strong>, v2.0.0 or v1.0.1 (alpha.17 or later) with this build. v2.0.0 introduced the RAN2 pointer-chain tail (v2.1.0 also adds the RAH1 image-hash suffix and raises the node limit) (RANL to RAN2, adding shift, width and scale per node; source review of xeRAbora <code>7b90aa7...b0c0ed0</code> and its console fork <code>a162ae3e...37c5b2f9</code>); <strong>v2.0.0 is NOT TESTED on hardware with this build.</strong> For v1.0.1: The console wire protocol is unchanged since alpha.10. Since alpha.17 the client has only gained a setting that keeps unlock notices off the TV (it then sends nothing) and reads optional link counters from the snapshot header. That is from a source review of xeRAbora <code>v0.1.0-alpha.17...v1.0.1</code> and its console fork <code>fa2d2e42...a9f97397</code>; <strong>v1.0.1 is NOT TESTED on hardware with this build.</strong> Host tests and successful builds do not establish console timing or game compatibility; the alpha.10 hardware report above is historical evidence, not validation of this update.</div>
 <hr/>
 <h2 id="files-on-the-card">Files on the card</h2>
 <pre><code>&lt;device root&gt;/RA/&lt;serial&gt;.wl        e.g. mass0:/RA/SLUS_210.65.wl
@@ -526,7 +526,7 @@ switching between RA and a standard edition needs no clean step. See
 <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/ROLLING_RELEASE.md">release channels and packaging</a> for packaging.</p>
 <p>The <code>rolling-ra</code> channel publishes the kit as <strong><code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code></strong>, built to the same
 shape as the standard kit: <code>POPS/</code>, <code>EMBER/</code>, <code>neutrino/</code> (here the
-<a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.13">NULD (formerly ORBIT) Neutrino RA runtime v1.2.13</a>, see
+<a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.14">NULD (formerly ORBIT) Neutrino RA runtime v1.2.13</a>, see
 <a href="#neutrino-in-the-ra-edition">Neutrino in the RA edition</a>) and the PC-tool shortcuts, with
 <code>APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF</code>, matching <code>ART/RIPTOPL-RA.ELF_*.png</code> artwork, and
 <code>APP_RIPTOPL-RA.psu</code>. The PSU contains only the direct files of <code>APP_RIPTOPL-RA</code>; import it with a
@@ -535,7 +535,7 @@ PS2 save manager for a memory-card installation, then copy the other folders sep
 <code>RIPTOPL-RA-IncebtIon.ELF</code> and <code>APP_RIPTOPL-RA-IncebtIon.psu</code>; inside it the app is still
 <code>APP_RIPTOPL-RA</code>), and <code>RIPTOPL-RA-VARIANTS-&lt;version&gt;.zip</code> with the <code>pademu0</code> loader (pad emulation compiled
 out) and the standard and <code>pademu0</code> loaders unpacked (<code>standard-unpacked/</code>, <code>pademu0-unpacked/</code>: no decompression step at start); <code>RIPTOPL-RA-VARIANTS-IncebtIon-&lt;version&gt;.zip</code> is the same loader with the IncebtIon theme. The kit also carries <strong><code>xeRAbora.url</code></strong> (pointing directly to the paired
-<a href="https://github.com/hacan359/xerabora/releases/tag/v2.0.0">v2.0.0 release</a>),
+<a href="https://github.com/hacan359/xerabora/releases/tag/v2.1.0">v2.1.0 release</a>),
 because the loader does nothing without the PC client.</p>
 <p>The standard editions are unaffected: every RA source file and call site is behind
 <code>#ifdef RETROACHIEVEMENTS</code>, the standard kits reject RA resources, and every build manifest
