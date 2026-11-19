@@ -14,7 +14,7 @@ import build_edition as editions
 
 class EditionsTests(unittest.TestCase):
     def test_definitions_are_isolated_and_only_ra_contains_runtime(self):
-        first = editions.definition("incebtion")
+        first = editions.definition("riptopl")
         for name in editions.EDITIONS:
             config = editions.definition(name)
             targets = {t["name"]: t for t in config["targets"]}
@@ -34,7 +34,7 @@ class EditionsTests(unittest.TestCase):
                     # host-only CI deliberately validates a plain source checkout.
                     if "*" not in source and source != "src/core/lang_internal.c" and not source.startswith("modules/network/lwNBD/"):
                         self.assertTrue((ROOT / source).is_file(), source)
-        self.assertEqual(first, editions.definition("incebtion"))
+        self.assertEqual(first, editions.definition("riptopl"))
 
     def test_production_texture_table_matches_enum_for_all_editions(self):
         compiler = shutil.which("g++")

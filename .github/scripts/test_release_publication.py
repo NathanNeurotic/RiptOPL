@@ -30,13 +30,14 @@ class PublicationTests(unittest.TestCase):
             self.assertIn(r"Fix \[launch\] \<edge\>", body)
             self.assertIn("/commit/" + "b" * 40, body)
             self.assertIn("/commits/" + sha, body)
-            self.assertIn(f"**RiptOPL {options['title']}** `v1.2.0-Beta-3925`", body)
+            display = publisher.edition_display_name(options)
+            self.assertIn(f"**{display}** `v1.2.0-Beta-3925`", body)
             # The standard full kit leads the notes, before the changelog.
-            kit = f"RIPTOPL-{options['title']}-v1.2.0-Beta-3925.zip"
+            kit = publisher.versioned(publisher.kit_archive_name(options), "v1.2.0-Beta-3925")
             self.assertIn(f"**Recommended download:** [{kit}](https://github.com/NathanNeurotic/RiptOPL/releases/download/"
                           f"{options['tag']}/{kit}) - the standard full install kit.", body)
             self.assertLess(body.index("**Recommended download:**"), body.index("## Changes"))
-            self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-{options['title']}-v1.2.0-Beta-3925.zip)", body)
+            self.assertIn(f"/releases/download/{options['tag']}/{kit})", body)
             elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
             psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
             self.assertIn(f"/{elf})", body)
@@ -54,10 +55,6 @@ class PublicationTests(unittest.TestCase):
             for link in re.findall(r"\]\((\S+?)\)", body.split("## Downloads", 1)[1]):
                 if link.endswith(".zip"):
                     self.assertTrue(link.endswith("-v1.2.0-Beta-3925.zip"), link)
-            if options["tag"] == "rolling-ra":
-                for name in ("RIPTOPL-RetroAchievements-IncebtIon-v1.2.0-Beta-3925.zip", "RIPTOPL-RA-IncebtIon.ELF",
-                             "APP_RIPTOPL-RA-IncebtIon.psu", "RIPTOPL-RA-VARIANTS-IncebtIon-v1.2.0-Beta-3925.zip"):
-                    self.assertIn(f"/releases/download/rolling-ra/{name})", body)
             if not options["ra"]:  # the bug-report build sits right under the kit
                 self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-BUGREPORT-v1.2.0-Beta-3925.zip)", body)
                 self.assertLess(body.index("[Bug-report build]"), body.index("[Loader ELF]"))
@@ -81,7 +78,7 @@ class PublicationTests(unittest.TestCase):
 
     def test_notes_refuse_empty_history(self):
         with patch.object(publisher, "git", return_value=""), self.assertRaises(ValueError):
-            publisher.release_notes(publisher.EDITIONS["korium"], "a" * 40, "v1", "v1.2.0-Beta-1")
+            publisher.release_notes(publisher.EDITIONS["riptopl"], "a" * 40, "v1", "v1.2.0-Beta-1")
 
     def test_only_matching_integration_push_or_dispatch_can_publish(self):
         environment = {
@@ -148,10 +145,10 @@ class PublicationTests(unittest.TestCase):
                         publisher.main()
                 upload.assert_not_called()
 
-    def test_only_incebtion_is_designated_latest(self):
-        self.assertEqual(set(publisher.EDITIONS), {"korium", "ra", "incebtion", "ra_incebtion"})
+    def test_only_riptopl_is_designated_latest(self):
+        self.assertEqual(set(publisher.EDITIONS), {"riptopl", "ra"})
         for edition in publisher.EDITIONS:
-            expected = "--latest=true" if edition == "incebtion" else "--latest=false"
+            expected = "--latest=true" if edition == "riptopl" else "--latest=false"
             self.assertEqual(publisher.latest_release_arg(edition), expected)
 
     def test_first_draft_release_creates_missing_tag(self):
@@ -163,8 +160,8 @@ class PublicationTests(unittest.TestCase):
 
     def test_existing_tag_moves_and_api_errors_do_not_create_tags(self):
         with patch.object(publisher.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "{}", "")), patch.object(publisher, "gh") as gh:
-            publisher.update_tag("owner/repo", "rolling-korium", "commit")
-        gh.assert_called_once_with("api", "repos/owner/repo/git/refs/tags/rolling-korium", "-X", "PATCH",
+            publisher.update_tag("owner/repo", "rolling", "commit")
+        gh.assert_called_once_with("api", "repos/owner/repo/git/refs/tags/rolling", "-X", "PATCH",
                                    "-f", "sha=commit", "-F", "force=true")
         for error in ("HTTP 401", "HTTP 403", "HTTP 500", "connection failed"):
             with patch.object(publisher.subprocess, "run", return_value=subprocess.CompletedProcess([], 1, "", error)), patch.object(publisher, "gh") as gh:
@@ -479,13 +476,13 @@ class PublicationTests(unittest.TestCase):
     def test_release_version_drops_the_hash_and_build_label(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            found = self.candidates(root, {"korium": "v1.2.0-Beta-3925-151fc05-PS2BUILD-Korium-GCC",
-                                           "incebtion": "v1.2.0-Beta-3925-151fc05-PS2BUILD-IncebtIon-GCC"})
+            found = self.candidates(root, {"riptopl": "v1.2.0-Beta-3925-151fc05-PS2BUILD-RiptOPL-LLVM",
+                                           "ra": "v1.2.0-Beta-3925-151fc05-PS2BUILD-RetroAchievements-GCC"})
             self.assertEqual(publisher.release_version(found), "v1.2.0-Beta-3925")
         with tempfile.TemporaryDirectory() as temporary:  # a v* tag names the build
             self.assertEqual(publisher.release_version(self.candidates(Path(temporary), {"ra": "v1.3.0-PS2BUILD-RetroAchievements-GCC"})), "v1.3.0")
         with tempfile.TemporaryDirectory() as temporary, self.assertRaisesRegex(ValueError, "different versions"):
-            publisher.release_version(self.candidates(Path(temporary), {"korium": "v1.2.0-Beta-3925-151fc05-PS2BUILD-Korium-GCC",
+            publisher.release_version(self.candidates(Path(temporary), {"riptopl": "v1.2.0-Beta-3925-151fc05-PS2BUILD-RiptOPL-LLVM",
                                                                          "ra": "v1.2.0-Beta-3926-1234567-PS2BUILD-RetroAchievements-GCC"}))
 
     def test_every_archive_name_ends_with_the_version(self):
@@ -493,21 +490,22 @@ class PublicationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary)
             names = ["RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip",
-                     "RIPTOPL-Korium.zip", "RIPTOPL-VARIANTS.zip", "RIPTOPL-DEBUG.zip", "RIPTOPL-BUGREPORT.zip"]
+                     "RIPTOPL.zip", "RIPTOPL-VARIANTS.zip", "RIPTOPL-DEBUG.zip", "RIPTOPL-BUGREPORT.zip"]
             sums = "".join(f"{hashlib.sha256(n.encode()).hexdigest()}  {n}\n" for n in names)
             for name in names:
                 (path / name).write_bytes(name.encode())
             (path / "SHA256SUMS.txt").write_text(sums)
-            publisher.name_assets([("korium", publisher.EDITIONS["korium"], path, {})], version)
+            publisher.name_assets([("riptopl", publisher.EDITIONS["riptopl"], path, {})], version)
             expected = {"RIPTOPL.ELF", "APP_RIPTOPL.psu", "BUILD-MANIFEST.json", "SHA256SUMS.txt",
-                        *(f"RIPTOPL-{k}-{version}.zip" for k in ("src", "LANGS", "Korium", "VARIANTS", "DEBUG", "BUGREPORT"))}
+                        f"RIPTOPL-{version}.zip",
+                        *(f"RIPTOPL-{k}-{version}.zip" for k in ("src", "LANGS", "VARIANTS", "DEBUG", "BUGREPORT"))}
             self.assertEqual({p.name for p in path.iterdir()}, expected)
             for line in (path / "SHA256SUMS.txt").read_text().splitlines():
                 digest, name = line.split("  ", 1)
                 self.assertEqual(hashlib.sha256((path / name).read_bytes()).hexdigest(), digest)
-        self.assertEqual(publisher.versioned("RIPTOPL-RetroAchievements-IncebtIon.zip", version),
-                         "RIPTOPL-RetroAchievements-IncebtIon-v1.2.0-Beta-3925.zip")
-        self.assertEqual(publisher.versioned("RIPTOPL-RA-IncebtIon.ELF", version), "RIPTOPL-RA-IncebtIon.ELF")
+        self.assertEqual(publisher.versioned("RIPTOPL-RetroAchievements.zip", version),
+                         "RIPTOPL-RetroAchievements-v1.2.0-Beta-3925.zip")
+        self.assertEqual(publisher.versioned("RIPTOPL-RA.ELF", version), "RIPTOPL-RA.ELF")
 
     def test_previous_builds_archives_are_removed_after_publication(self):
         calls = []
@@ -516,14 +514,14 @@ class PublicationTests(unittest.TestCase):
             calls.append(args)
             if args[:2] == ("release", "view"):
                 return json.dumps(dict(assets=[{"name": n} for n in (
-                    "RIPTOPL.ELF", "RIPTOPL-Korium.zip", "RIPTOPL-Korium-v1.2.0-Beta-3924.zip",
-                    "RIPTOPL-Korium-v1.2.0-Beta-3925.zip", "notes.txt")]))
+                    "RIPTOPL.ELF", "RIPTOPL.zip", "RIPTOPL-v1.2.0-Beta-3924.zip",
+                    "RIPTOPL-v1.2.0-Beta-3925.zip", "notes.txt")]))
             return ""
 
         with patch.object(publisher, "gh", side_effect=fake):
-            publisher.remove_stale_archives("owner/repo", "rolling-korium", ["RIPTOPL.ELF", "RIPTOPL-Korium-v1.2.0-Beta-3925.zip"])
+            publisher.remove_stale_archives("owner/repo", "rolling", ["RIPTOPL.ELF", "RIPTOPL-v1.2.0-Beta-3925.zip"])
         deleted = [c[3] for c in calls if c[:2] == ("release", "delete-asset")]
-        self.assertEqual(deleted, ["RIPTOPL-Korium-v1.2.0-Beta-3924.zip", "RIPTOPL-Korium.zip"])
+        self.assertEqual(deleted, ["RIPTOPL-v1.2.0-Beta-3924.zip"])
 
     def refresh(self, fail=None, stays_draft=False, moves=True):
         calls = self.calls = []
@@ -545,13 +543,13 @@ class PublicationTests(unittest.TestCase):
             return ""
 
         with patch.object(publisher, "gh", side_effect=fake), patch.object(publisher.time, "sleep"):
-            publisher.refresh_release_date("owner/repo", "rolling-incebtion", ("--prerelease=false", "--latest=true"))
+            publisher.refresh_release_date("owner/repo", "rolling", ("--prerelease=false", "--latest=true"))
         return [c for c in calls if c[:2] == ("release", "edit")], state
 
     def test_republished_channel_gets_a_new_date_and_keeps_its_flags(self):
         edits, state = self.refresh()
-        self.assertEqual(edits, [("release", "edit", "rolling-incebtion", "--repo", "owner/repo", "--draft=true"),
-                                 ("release", "edit", "rolling-incebtion", "--repo", "owner/repo", "--draft=false",
+        self.assertEqual(edits, [("release", "edit", "rolling", "--repo", "owner/repo", "--draft=true"),
+                                 ("release", "edit", "rolling", "--repo", "owner/repo", "--draft=false",
                                   "--prerelease=false", "--latest=true")])
         self.assertEqual(state, dict(isDraft=False, publishedAt="2026-10-30T06:00:00Z"))
         # GitHub ignoring the flip is reported, not fatal: the channel is still published.

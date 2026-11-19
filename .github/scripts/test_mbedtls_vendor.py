@@ -91,16 +91,15 @@ for edition in build_edition.EDITIONS:
         else:
             assert not pattern.search(text), f"{edition}/{configuration} names mbedTLS, ratls or the updater"
 # The channels: each build updates from the release that publishes it, and nothing else does.
-assert build_edition.update_channel("korium") == ("rolling-korium", "RIPTOPL.ELF")
-assert build_edition.update_channel("incebtion") == ("rolling-incebtion", "RIPTOPL.ELF")
+assert build_edition.update_channel("riptopl") == ("rolling", "RIPTOPL.ELF")
+assert build_edition.update_channel("riptopl", toolchain="llvm") == ("rolling", "RIPTOPL.ELF")
+assert build_edition.update_channel("riptopl", toolchain="gcc") is None
 assert build_edition.update_channel("ra") == ("rolling-ra", "RIPTOPL-RA.ELF")
-assert build_edition.update_channel("ra_incebtion") == ("rolling-ra", "RIPTOPL-RA-IncebtIon.ELF")
-assert build_edition.update_channel("korium", toolchain="llvm") == ("rolling-llvm", "RIPTOPL.ELF")
-assert build_edition.update_channel("ra", toolchain="llvm") == ("rolling-llvm", "RIPTOPL-RA.ELF")
-assert build_edition.update_channel("incebtion", toolchain="llvm") is None
+assert build_edition.update_channel("ra", toolchain="gcc") == ("rolling-ra", "RIPTOPL-RA.ELF")
+assert build_edition.update_channel("ra", toolchain="llvm") is None
 for configuration in build_edition.CONFIGURATIONS:
     if configuration != "standard":
-        assert build_edition.update_channel("korium", configuration) is None, configuration
+        assert build_edition.update_channel("riptopl", configuration) is None, configuration
 for lite in build_edition.LITES:
     assert build_edition.update_channel(lite) is None
 # The roots are embedded by tools/assets.py for RA alone.

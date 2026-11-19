@@ -12,7 +12,7 @@ import tempfile
 from types import SimpleNamespace
 import zipfile
 
-from build_edition import EDITIONS, ROOT, git, update_channel
+from build_edition import EDITIONS, ROOT, edition_display_name, git, kit_archive_name, update_channel
 from install_ports import download
 
 spec = importlib.util.spec_from_file_location("app_packager", ROOT / ".github/scripts/package_release_app.py")
@@ -103,13 +103,15 @@ def language_pack(destination, version):
         pack.writestr("README.txt", LANGS_README)
 
 
-def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
+def package(edition, neutrino_archive, orbit_archive=None, compiler=None):
     """Build and verify one release kit, using a pinned ORBIT runtime for RA editions.
 
     Standard editions require an upstream Neutrino archive; RA editions must not
     depend on that unused download. Both retain per-file and archive provenance.
     """
     options = EDITIONS[edition]
+    if compiler is None:
+        compiler = options["compiler"]
     if not options["ra"] and neutrino_archive is None:
         raise ValueError("standard kit requires --neutrino-archive")
     built = ROOT / "dist/editions" / edition
@@ -182,8 +184,9 @@ def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
             shutil.copyfile(ROOT / "tools/pc" / source, kit / target)
         if options["ra"]:
             (kit / "xeRAbora.url").write_text("[InternetShortcut]\nURL=https://github.com/hacan359/xerabora/releases/tag/v2.0.0\n", encoding="utf-8")
+        display = edition_display_name(options)
         args = SimpleNamespace(package=str(kit), source_elf=str(elf), app_name=app_name, elf_name=elf_name,
-            title="RiptOPL " + options["title"], pbt_title="RiptOPL " + options["title"],
+            title=display, pbt_title=display,
             version=manifest["version"].split('"')[1], flavour="PS2BUILD", channel=options["title"],
             description="C++ ps2build migration; " + options["title"])
         app.stage(args)
@@ -197,7 +200,7 @@ def package(edition, neutrino_archive, orbit_archive=None, compiler="gcc"):
         shutil.copyfile(USMB2_LICENCE, kit / "LICENSE-USMB2.txt")
         manifest["kit_files"] = {p.relative_to(kit).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(kit.rglob("*")) if p.is_file()}
         (kit / "BUILD-MANIFEST.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-        archive = out / f"RIPTOPL-{options['title']}.zip"
+        archive = out / kit_archive_name(options)
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zipped:
             for path in sorted(kit.rglob("*")):
                 if path.is_file():
@@ -226,7 +229,7 @@ def main(argv=None):
     parser.add_argument("edition", choices=EDITIONS)
     parser.add_argument("--neutrino-archive", type=Path, help="required for non-RA kits: the upstream Neutrino .7z")
     parser.add_argument("--orbit-archive", type=Path, help="RA only: the pinned ORBIT ZIP (else downloaded)")
-    parser.add_argument("--compiler", choices=("gcc", "llvm"), default="gcc", help="required compiler provenance")
+    parser.add_argument("--compiler", choices=("gcc", "llvm"), default=None, help="required compiler provenance")
     args = parser.parse_args(argv)
     try:
         package(args.edition, args.neutrino_archive.resolve() if args.neutrino_archive else None,

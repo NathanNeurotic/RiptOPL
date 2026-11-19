@@ -132,8 +132,8 @@ def embed():
     for stale in os.listdir(ASM_DIR):  # asm/*.c is globbed by ps2.yaml: drop leftovers
         if stale.endswith(".c"):
             os.remove(os.path.join(ASM_DIR, stale))
-    theme = os.environ.get("RIPTOPL_THEME", "incebtion")
-    if theme not in ("korium", "incebtion"):
+    theme = os.environ.get("RIPTOPL_THEME", "default")
+    if theme not in ("default", "korium", "incebtion"):
         sys.exit(f"unknown RIPTOPL_THEME: {theme}")
     pngs = list(PNG_ASSETS)
     if os.environ.get("RIPTOPL_RA") == "1":

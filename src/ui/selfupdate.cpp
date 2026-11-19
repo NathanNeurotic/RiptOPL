@@ -42,14 +42,10 @@
 #include <delaythread.h>
 
 /* This build's channel, from tools/build_edition.py update_defines. */
-#if defined(RIPTOPL_UPDATE_TAG_KORIUM)
-#define RIPTOPL_UPDATE_TAG "rolling-korium"
-#elif defined(RIPTOPL_UPDATE_TAG_INCEBTION)
-#define RIPTOPL_UPDATE_TAG "rolling-incebtion"
+#if defined(RIPTOPL_UPDATE_TAG_ROLLING)
+#define RIPTOPL_UPDATE_TAG "rolling"
 #elif defined(RIPTOPL_UPDATE_TAG_RA)
 #define RIPTOPL_UPDATE_TAG "rolling-ra"
-#elif defined(RIPTOPL_UPDATE_TAG_LLVM)
-#define RIPTOPL_UPDATE_TAG "rolling-llvm"
 #else
 #error "Check for Updates needs a RIPTOPL_UPDATE_TAG_* define (tools/build_edition.py)"
 #endif
@@ -57,8 +53,6 @@
 #define RIPTOPL_UPDATE_ELF "RIPTOPL.ELF"
 #elif defined(RIPTOPL_UPDATE_ELF_RA)
 #define RIPTOPL_UPDATE_ELF "RIPTOPL-RA.ELF"
-#elif defined(RIPTOPL_UPDATE_ELF_RA_INCEBTION)
-#define RIPTOPL_UPDATE_ELF "RIPTOPL-RA-IncebtIon.ELF"
 #else
 #error "Check for Updates needs a RIPTOPL_UPDATE_ELF_* define (tools/build_edition.py)"
 #endif
