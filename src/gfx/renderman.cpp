@@ -444,9 +444,16 @@ void Renderer::setupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int
 
 void Renderer::drawQuad(rm_quad_t *q)
 {
-    if ((q->txt->PSM == GS_PSM_CT32) || (q->txt->Clut && q->txt->ClutPSM == GS_PSM_CT32)) {
+    int hasAlpha = (q->txt->PSM == GS_PSM_CT32) || (q->txt->Clut && q->txt->ClutPSM == GS_PSM_CT32);
+    u8 primAlpha = (u8)((q->color >> 24) & 0xff);
+    int fixedAlpha = !hasAlpha && primAlpha < 0x80;
+    if (hasAlpha) {
         gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
         gsKit_set_test(gsGlobal, GS_ATEST_ON);
+    } else if (fixedAlpha) {
+        gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 2, 1, primAlpha), 0);
+        gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
+        gsKit_set_test(gsGlobal, GS_ATEST_OFF);
     } else {
         gsGlobal->PrimAlphaEnable = GS_SETTING_OFF;
         gsKit_set_test(gsGlobal, GS_ATEST_OFF);
@@ -459,6 +466,8 @@ void Renderer::drawQuad(rm_quad_t *q)
                               q->br.x + renderXOff_, q->br.y + renderYOff_,
                               q->br.u, q->br.v, order_, q->color);
     order_++;
+    if (fixedAlpha)
+        gsKit_set_primalpha(gsGlobal, gDefaultAlpha, 0);
 }
 
 // Vertical offset (px) applied to the coverflow reflection; set per-element by drawCoverFlow
@@ -536,10 +545,17 @@ void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned
     bly = scaleY(bly);
     bry = scaleY(bry);
 
-    if ((inlay->PSM == GS_PSM_CT32) || (inlay->Clut && inlay->ClutPSM == GS_PSM_CT32))
+    int inlayHasAlpha = (inlay->PSM == GS_PSM_CT32) || (inlay->Clut && inlay->ClutPSM == GS_PSM_CT32);
+    u8 inlayPrimAlpha = (u8)((color >> 24) & 0xff);
+    int inlayFixedAlpha = !inlayHasAlpha && inlayPrimAlpha < 0x80;
+    if (inlayHasAlpha) {
         gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
-    else
+    } else if (inlayFixedAlpha) {
+        gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 2, 1, inlayPrimAlpha), 0);
+        gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
+    } else {
         gsGlobal->PrimAlphaEnable = GS_SETTING_OFF;
+    }
 
     float u0 = (inlay->Filter == GS_FILTER_LINEAR && inlay->Width > 1 && inlay->Height > 1) ? 0.5f : 0.0f;
     float v0 = u0;
@@ -557,6 +573,8 @@ void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned
                             quad.ul.x + brx + renderXOff_, quad.ul.y + bry + renderYOff_,
                             u1, v1, order_, color);
     order_++;
+    if (inlayFixedAlpha)
+        gsKit_set_primalpha(gsGlobal, gDefaultAlpha, 0);
 
     drawQuad(&quad);
     if (reflection) {

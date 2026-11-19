@@ -346,7 +346,7 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
         } else {
             rmDrawPixmap(texture, posX, posY, ALIGN_CENTER, drawW, drawH, SCALING_RATIO, coverColor, elem->reflection);
         }
-        thmDrawDiscDecorator(menu, covers[i], posX, posY, drawW, drawH, 4, coverColor);
+        thmDrawDiscDecorator(elem, menu, covers[i], posX, posY, drawW, drawH, 4, coverColor);
     }
 
     rmSetReflectionYOffset(0); // don't leak the offset to any other reflection draw
@@ -362,7 +362,7 @@ void initCoverflow(const char *themePath, config_set_t *themeConfig, theme_t *th
         elem->drawElem = &drawCoverFlow;
         if (!theme->coverflow)
             theme->coverflow = elem; // first coverflow element = the "coverflow active" flag
-        thmInitElemDiscCache(themeConfig, theme, name, COVER_CACHE_SLOTS);
+        thmInitElemDiscCache(themeConfig, theme, elem, name, COVER_CACHE_SLOTS);
     } else
         LOG("THEMES Coverflow %s: NO cache, elem disabled !!\n", name);
 }

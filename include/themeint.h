@@ -91,8 +91,8 @@ void thmWallpaperFree(image_texture_t *wallpaper);
 GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct submenu_item *item, int isPriority);
 GSTEXTURE *getGameImageTexture(image_cache_t *cache, void *support, struct submenu_item *item);
 int isHiddenArtworkCache(const image_cache_t *cache);
-void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, const char *name, int slots);
-void thmDrawDiscDecorator(struct menu_list *menu, struct submenu_list *item, int x, int y, int coverW, int coverH, int inset, u64 color);
+void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, int slots);
+void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, struct submenu_list *item, int x, int y, int coverW, int coverH, int inset, u64 color);
 void *thmGetItemSource(struct menu_list *menu, struct submenu_list *item);
 theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem);
 
@@ -137,6 +137,7 @@ void initCoverflow(const char *themePath, config_set_t *themeConfig, theme_t *th
 // grid.cpp
 void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);
 void gridDrawPageGlyph(struct menu_list *page, int cx, int cy, int size, u64 color);
+void gridReleaseGlyphs(void);
 
 // psbbnflow.cpp
 void initPsbbnFlow(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);

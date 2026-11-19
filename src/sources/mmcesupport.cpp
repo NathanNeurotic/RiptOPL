@@ -895,7 +895,11 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     struct stat st;
 
     slot->probePresence();
-    mmceUpdateVisibility(itemList, slot, 1);
+    // Recompute both slots so the Manual-mode slot-0 fallback updates whenever slot 1 appears or disappears.
+    for (int s = 0; s < MMCE_MODE_COUNT; s++) {
+        item_list_t *list = mmceInstance(s);
+        mmceUpdateVisibility(list, &gMmceSupport.slots[s], 1);
+    }
 
     if (slot->prefix[0] == '\0') {
         itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
@@ -1233,6 +1237,51 @@ void MmceSource::launchVcd(item_list_t *itemList, const char *vcdName, config_se
 // Shared with udpfssupport.cpp: both write their VMC slots into the one mmce_mcemu image.
 int mmceMcemuSlots[2] = {-2, -2};
 
+// Open any configured VMC not yet opened and patch its descriptor into mmce_mcemu_irx.
+// Idempotent per slot (already-opened vmc_fds[i] >= 0 are left intact), so the post-recovery
+// path below can retry slots that failed while the card was mid-swap.
+static void mmcePrepareVmcSlots(const char *prefix, config_set_t *configSet, int vmc_fds[2], int *size_mcemu_irx)
+{
+    char vmc_name[32];
+    char vmc_path[256];
+    mmce_vmc_infos_t mmce_vmc_infos;
+    vmc_superblock_t vmc_superblock;
+
+    for (int vmc_id = 0; vmc_id < 2; vmc_id++) {
+        if (vmc_fds[vmc_id] >= 0)
+            continue;
+
+        memset(&mmce_vmc_infos, 0, sizeof(mmce_vmc_infos));
+        configGetVMC(configSet, vmc_name, sizeof(vmc_name), vmc_id);
+        if (vmc_name[0]) {
+            int vmc_size_mb = sysCheckVMC(prefix, "/", vmc_name, 0, &vmc_superblock);
+            if (vmc_size_mb > 0) {
+                mmce_vmc_infos.flags = vmc_superblock.mc_flag & 0xFF;
+                mmce_vmc_infos.flags |= 0x100;
+                mmce_vmc_infos.specs.page_size = vmc_superblock.page_size;
+                mmce_vmc_infos.specs.block_size = vmc_superblock.pages_per_block;
+                mmce_vmc_infos.specs.card_size = vmc_superblock.pages_per_cluster * vmc_superblock.clusters_per_card;
+
+                snprintf(vmc_path, sizeof(vmc_path), "%sVMC/%s.bin", prefix, vmc_name);
+
+                int vmc_fd = fileXioOpen(vmc_path, 0x3, 0666);
+                if (vmc_fd >= 0) {
+                    vmc_fds[vmc_id] = vmc_fd;
+                    mmce_vmc_infos.fd = fileXioIoctl2(vmc_fd, 0x80, NULL, 0, NULL, 0);
+                    mmce_vmc_infos.active = 1;
+                }
+            }
+        }
+
+        int slotWord = nativeVmcSlotWord(&mmce_mcemu_irx, size_mmce_mcemu_irx, vmc_id, mmceMcemuSlots, sizeof(mmce_vmc_infos_t));
+        if (slotWord >= 0) {
+            if (mmce_vmc_infos.active)
+                *size_mcemu_irx = size_mmce_mcemu_irx;
+            memcpy(&((u32 *)&mmce_mcemu_irx)[slotWord], &mmce_vmc_infos, sizeof(mmce_vmc_infos_t));
+        }
+    }
+}
+
 void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 {
     MmceSlotState *slot = mmceSlotStateOf(itemList);
@@ -1332,45 +1381,9 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         diagSaveBeforeLaunch();
     }
 
-    char vmc_name[32];
-    char vmc_path[256];
-    int vmc_size_mb;
-    int vmc_id, size_mcemu_irx = 0;
-    int vmc_fd;
+    int size_mcemu_irx = 0;
     int vmc_fds[2] = {-1, -1};
-    mmce_vmc_infos_t mmce_vmc_infos;
-    vmc_superblock_t vmc_superblock;
-
-    for (vmc_id = 0; vmc_id < 2; vmc_id++) {
-        memset(&mmce_vmc_infos, 0, sizeof(mmce_vmc_infos));
-        configGetVMC(configSet, vmc_name, sizeof(vmc_name), vmc_id);
-        if (vmc_name[0]) {
-            vmc_size_mb = sysCheckVMC(slot->prefix, "/", vmc_name, 0, &vmc_superblock);
-            if (vmc_size_mb > 0) {
-                mmce_vmc_infos.flags = vmc_superblock.mc_flag & 0xFF;
-                mmce_vmc_infos.flags |= 0x100;
-                mmce_vmc_infos.specs.page_size = vmc_superblock.page_size;
-                mmce_vmc_infos.specs.block_size = vmc_superblock.pages_per_block;
-                mmce_vmc_infos.specs.card_size = vmc_superblock.pages_per_cluster * vmc_superblock.clusters_per_card;
-
-                snprintf(vmc_path, sizeof(vmc_path), "%sVMC/%s.bin", slot->prefix, vmc_name);
-
-                vmc_fd = fileXioOpen(vmc_path, 0x3, 0666);
-                if (vmc_fd >= 0) {
-                    vmc_fds[vmc_id] = vmc_fd;
-                    mmce_vmc_infos.fd = fileXioIoctl2(vmc_fd, 0x80, NULL, 0, NULL, 0);
-                    mmce_vmc_infos.active = 1;
-                }
-            }
-        }
-
-        int slotWord = nativeVmcSlotWord(&mmce_mcemu_irx, size_mmce_mcemu_irx, vmc_id, mmceMcemuSlots, sizeof(mmce_vmc_infos_t));
-        if (slotWord >= 0) {
-            if (mmce_vmc_infos.active)
-                size_mcemu_irx = size_mmce_mcemu_irx;
-            memcpy(&((u32 *)&mmce_mcemu_irx)[slotWord], &mmce_vmc_infos, sizeof(mmce_vmc_infos_t));
-        }
-    }
+    mmcePrepareVmcSlots(slot->prefix, configSet, vmc_fds, &size_mcemu_irx);
 
     u64 isoTotalBytes = 0;
     int isoSizeKnown = 1;
@@ -1453,6 +1466,8 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
             sbUnprepare(&settings->common);
             return;
         }
+        // Card recovered from a swap/transient drop: retry any configured VMC slot that was not yet opened.
+        mmcePrepareVmcSlots(slot->prefix, configSet, vmc_fds, &size_mcemu_irx);
     }
     settings->port = (slot->slotIndex == 0) ? 2 : 3;
 

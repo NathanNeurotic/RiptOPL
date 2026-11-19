@@ -42,7 +42,7 @@ static unsigned int itemConfigGeneration;
 static int itemConfigId = -1, actionStatus, menuSemaId, depth, reads, frees, flushes;
 static int guiInactiveFrames, ownerMode, mmceCancels, otherCancels;
 static bool failRead, duplicate, switchList;
-static item_list_t favorite{FAV_MODE}, mmce{MMCE_MODE}, apps{APP_MODE}, hdd{HDD_MODE};
+static item_list_t favorite{FAV_MODE}, mmce{MMCE_MODE}, mmce1{MMCE_MODE1}, apps{APP_MODE}, hdd{HDD_MODE};
 static config_set_t *makeConfig() { return new config_set_t{++reads}; }
 static void configFree(config_set_t *p) { assert(p); ++frees; delete p; }
 static void WaitSema(int) { assert(depth++ == 0); }
@@ -70,26 +70,32 @@ static void reset(item_list_t *list) {
     failRead = duplicate = switchList = false;
 }
 int main() {
-    reset(&favorite); ownerMode = MMCE_MODE;
-    // A new row below the settle threshold still loads directly; there is no worker stub.
-    auto *loaded = gameMenuLoadConfig(nullptr);
-    assert(loaded && loaded == itemConfig && itemConfigId == 8 && itemConfigList == &favorite);
-    assert(reads == 1 && flushes == 1 && mmceCancels == 1 && otherCancels == 0 && actionStatus == 0);
-    assert(gameMenuLoadConfig(nullptr) == loaded && reads == 1 && mmceCancels == 2);
-    assert(!menuCanRequestItemConfig(&favorite));
-    guiInactiveFrames = 2; assert(!menuCanRequestItemConfig(&favorite));
-    guiInactiveFrames = 3; assert(menuCanRequestItemConfig(&favorite));
+    const int mmceOwners[] = {MMCE_MODE, MMCE_MODE1};
+    for (int mmceOwner : mmceOwners) {
+        reset(&favorite); ownerMode = mmceOwner;
+        // A new row below the settle threshold still loads directly; there is no worker stub.
+        auto *loaded = gameMenuLoadConfig(nullptr);
+        assert(loaded && loaded == itemConfig && itemConfigId == 8 && itemConfigList == &favorite);
+        assert(reads == 1 && flushes == 1 && mmceCancels == 1 && otherCancels == 0 && actionStatus == 0);
+        assert(gameMenuLoadConfig(nullptr) == loaded && reads == 1 && mmceCancels == 2);
+        assert(!menuCanRequestItemConfig(&favorite));
+        guiInactiveFrames = 2; assert(!menuCanRequestItemConfig(&favorite));
+        guiInactiveFrames = 3; assert(menuCanRequestItemConfig(&favorite));
+    }
     ownerMode = APP_MODE; guiInactiveFrames = 0; assert(!menuCanRequestItemConfig(&favorite));
     guiInactiveFrames = 1; assert(menuCanRequestItemConfig(&favorite));
     ownerMode = HDD_MODE; guiInactiveFrames = 0; assert(menuCanRequestItemConfig(&favorite));
     assert(menuConfigSourceMode(&apps) == APP_MODE); // unrelated Favorites selection cannot override a device
-    reset(&mmce); assert(gameMenuLoadConfig(nullptr) && mmceCancels == 1);
+    reset(&mmce); assert(gameMenuLoadConfig(nullptr) && mmceCancels == 1 && otherCancels == 0);
+    reset(&mmce1); assert(gameMenuLoadConfig(nullptr) && mmceCancels == 1 && otherCancels == 0);
     reset(&hdd); assert(gameMenuLoadConfig(nullptr) && otherCancels == 1 && mmceCancels == 0);
-    reset(&favorite); ownerMode = MMCE_MODE; failRead = true;
-    assert(!gameMenuLoadConfig(nullptr) && !itemConfig && !actionStatus);
-    failRead = false; assert(gameMenuLoadConfig(nullptr)); // failed foreground reads remain retryable
+    for (int mmceOwner : mmceOwners) {
+        reset(&favorite); ownerMode = mmceOwner; failRead = true;
+        assert(!gameMenuLoadConfig(nullptr) && !itemConfig && !actionStatus);
+        failRead = false; assert(gameMenuLoadConfig(nullptr)); // failed foreground reads remain retryable
+    }
     reset(&favorite); duplicate = true;
-    loaded = gameMenuLoadConfig(nullptr);
+    auto *loaded = gameMenuLoadConfig(nullptr);
     assert(loaded && loaded->serial == 1 && reads == 2 && frees == 1); // keep the published winner
     reset(&favorite); switchList = true;
     assert(!gameMenuLoadConfig(nullptr) && !itemConfig && frees == 1); // discard superseded read

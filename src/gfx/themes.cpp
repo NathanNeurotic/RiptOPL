@@ -987,6 +987,7 @@ static void thmFree(theme_t *theme)
         thmWallpaperFree(theme->wallpaper); // after the elements: only they draw it
         if (theme->discCache)
             cacheDestroyCache(theme->discCache);
+        gridReleaseGlyphs();
 
         // free textures
         GSTEXTURE *texture;

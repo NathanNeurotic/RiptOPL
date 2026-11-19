@@ -173,7 +173,7 @@ ifeq ($(RETROACHIEVEMENTS),1)
 PNG_ASSETS += ra_mark
 endif
 
-GFX_OBJS = $(PNG_ASSETS:%=%_png.o) poeveticanew.o
+GFX_OBJS = $(PNG_ASSETS:%=%_png.o) poeveticanew.o ripps2roboto.o
 
 # NOTE: audio/bgm.ogg is intentionally NOT compiled into the ELF (saves ~324 KB).
 # It is kept in the repo only as a reference/default track. BGM is loaded at
@@ -1129,6 +1129,9 @@ $(EE_ASM_DIR)mcserv.c: $(PS2SDK)/iop/irx/mcserv.irx | $(EE_ASM_DIR)
 
 $(EE_ASM_DIR)poeveticanew.c: third_party/fonts/PoeVeticaNew.ttf | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)_raw
+
+$(EE_ASM_DIR)ripps2roboto.c: third_party/fonts/ripps2_roboto.ttf | $(EE_ASM_DIR)
+	$(BIN2C) $< $@ ripps2roboto_raw
 
 $(EE_ASM_DIR)icon_sys.c: misc/icon.sys | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)

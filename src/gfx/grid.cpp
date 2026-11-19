@@ -337,14 +337,14 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
         if (gTheme->gridCoverless) {
             drawCoverlessTile(menu, item, elem, x, y, tw, h, (color & 0xFFFFFF) == (gDefaultCol & 0xFFFFFF), (color >> 24) & 0xFF);
             if (fabsf(turn) < 0.2f)
-                thmDrawDiscDecorator(menu, item, x, y, tw, h, 3, color);
+                thmDrawDiscDecorator(elem, menu, item, x, y, tw, h, 3, color);
             return;
         }
         texture = image->defaultTexture ? &image->defaultTexture->source : thmGetTexture(COVER_DEFAULT);
     }
     if (texture == NULL || texture->Mem == NULL) {
         if (fabsf(turn) < 0.2f)
-            thmDrawDiscDecorator(menu, item, x, y, tw, h, 3, color);
+            thmDrawDiscDecorator(elem, menu, item, x, y, tw, h, 3, color);
         return;
     }
 
@@ -372,7 +372,7 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     if (vignette)
         drawVignette(x, y, rmWideScale(tw), h, vignette);
     if (fabsf(turn) < 0.2f)
-        thmDrawDiscDecorator(menu, item, x, y, tw, h, 3, color);
+        thmDrawDiscDecorator(elem, menu, item, x, y, tw, h, 3, color);
 }
 
 // The selection's frame, after RIPPS2's (build 79): three soft rings in the selected-text colour, wider and
@@ -682,6 +682,15 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
         drawDeviceSidebar(menu, elem->posY);
 }
 
+void gridReleaseGlyphs(void)
+{
+    if (gridGlyphs.Mem != NULL) {
+        rmUnloadTexture(&gridGlyphs);
+        texFree(&gridGlyphs);
+    }
+    gridGlyphsTried = 0;
+}
+
 static void endGrid(struct theme_element *elem)
 {
     for (int i = 0; i < GRID_BACK_ELEMS; i++)
@@ -695,13 +704,7 @@ static void endGrid(struct theme_element *elem)
     gridSlideFrom = -1;
     memset(gridFlips, 0, sizeof(gridFlips));
     gridFlipHoldItem = NULL;
-    // The theme loads again after a video-mode change, on a new GS context: drop the sidebar glyphs (and their
-    // VRAM binding) so the next draw uploads them afresh instead of reading the old mode's VRAM.
-    if (gridGlyphs.Mem != NULL) {
-        rmUnloadTexture(&gridGlyphs);
-        texFree(&gridGlyphs);
-    }
-    gridGlyphsTried = 0;
+    gridReleaseGlyphs();
     endMutableImage(elem);
 }
 
@@ -766,7 +769,7 @@ void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, 
         return;
     }
     elem->drawElem = &drawGrid;
-    thmInitElemDiscCache(themeConfig, theme, name, count);
+    thmInitElemDiscCache(themeConfig, theme, elem, name, count);
 
     // The back covers (COV2) for the case flip, a few slots of their own.
     if (gridKeyInt(themeConfig, name, "flip", 1)) {

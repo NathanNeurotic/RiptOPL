@@ -671,6 +671,17 @@ void drawNameAttributeText(struct menu_list *menu, struct submenu_list *item, co
     if (disp == NULL)
         disp = item->item.isFolder ? raw : (list ? host::library().listDisplayName(list, item->item.id, raw) : raw);
     if (disp) {
+        char wrapped[300];
+        char formatted[300];
+        if (mutableText->sizingMode == SIZING_WRAP) {
+            snprintf(wrapped, sizeof(wrapped), "%s", disp);
+            fntFitString(elem->font, wrapped, elem->width);
+            disp = wrapped;
+        }
+        if (mutableText->displayMode != DISPLAY_NEVER && mutableText->alias != NULL) {
+            snprintf(formatted, sizeof(formatted), "%s%s", mutableText->alias, disp);
+            disp = formatted;
+        }
         GSTEXTURE *favTex = (!thmElemIsInfo(elem) && gFAVStartMode && item->item.favourited) ? thmGetTexture(FAV_MARK) : NULL;
         if (favTex != NULL && favTex->Mem != NULL) {
             int favRoom = MENU_ITEM_HEIGHT + 4;
@@ -703,6 +714,8 @@ void drawNameAttributeText(struct menu_list *menu, struct submenu_list *item, co
         } else {
             thmDrawElemText(elem, mutableText->sizingMode, disp, 1);
         }
+    } else if (mutableText->displayMode == DISPLAY_ALWAYS && mutableText->alias != NULL) {
+        thmDrawElemText(elem, mutableText->sizingMode, mutableText->alias, 1);
     }
 }
 
@@ -786,7 +799,7 @@ static int thmInternalIdFor(const char *imgName)
     return texLookupInternalTexId(alt);
 }
 
-static image_texture_t *initImageTexture(const char *themePath, config_set_t *themeConfig, const char *name, const char *imgName, int isOverlay)
+static image_texture_t *initImageTexture(const char *themePath, config_set_t *themeConfig, const char *name, const char *imgName, int isOverlay, int useDefault)
 {
     // calloc so omitted overlay coordinate keys default to 0 instead of
     // uninitialized heap garbage that would feed rmDrawOverlayPixmap.
@@ -804,9 +817,6 @@ static image_texture_t *initImageTexture(const char *themePath, config_set_t *th
         snprintf(path, sizeof(path), "%s%s", themePath, imgName);
         result = (texDiscoverLoad(&texture->source, path, texId) >= 0);
         if (!result && (texId = thmInternalIdFor(imgName)) >= 0) {
-            int useDefault = 1;
-            if (themeConfig != NULL)
-                configGetInt(themeConfig, "use_default", &useDefault);
             if (useDefault)
                 result = (texLoadInternal(&texture->source, texId) >= 0);
         }
@@ -993,16 +1003,18 @@ mutable_image_t *initMutableImage(const char *themePath, config_set_t *themeConf
         if (defaultTexture && !mutableImage->defaultTexture)
             mutableImage->defaultTexture = initImageInternalTexture(themeConfig, defaultTexture);
 
+    int useDefault = theme ? theme->useDefault : 1;
+
     if (defaultTexture && !mutableImage->defaultTexture)
-        mutableImage->defaultTexture = initImageTexture(themePath, themeConfig, name, defaultTexture, 0);
+        mutableImage->defaultTexture = initImageTexture(themePath, themeConfig, name, defaultTexture, 0, useDefault);
 
     if (overlayTexture && !mutableImage->overlayTexture)
-        mutableImage->overlayTexture = initImageTexture(themePath, themeConfig, name, overlayTexture, 1);
+        mutableImage->overlayTexture = initImageTexture(themePath, themeConfig, name, overlayTexture, 1, useDefault);
 
     // overlay2 is drawn over the cover composite (plain rmDrawPixmap), so it needs no cover-window
     // corners -- load it as a plain texture (isOverlay=0).
     if (overlayTexture2 && !mutableImage->overlayTexture2)
-        mutableImage->overlayTexture2 = initImageTexture(themePath, themeConfig, name, overlayTexture2, 0);
+        mutableImage->overlayTexture2 = initImageTexture(themePath, themeConfig, name, overlayTexture2, 0, useDefault);
 
     return mutableImage;
 }
@@ -1061,23 +1073,32 @@ int isHiddenArtworkCache(const image_cache_t *cache)
            (!gEnableLogoArt && strcmp(cache->suffix(), "LGO") == 0);
 }
 
-void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, const char *name, int slots)
+void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, int slots)
 {
-    if (theme == NULL || themeConfig == NULL || name == NULL || theme->discCache != NULL)
+    if (theme == NULL || themeConfig == NULL || name == NULL)
         return;
     char prop[64];
     int want = 0;
     snprintf(prop, sizeof(prop), "%s_disc", name);
-    if (!configGetInt(themeConfig, prop, &want) || !want)
+    if (!configGetInt(themeConfig, prop, &want) || !want) {
+        if (elem != NULL)
+            elem->drawDisc = 0;
+        return;
+    }
+    if (elem != NULL)
+        elem->drawDisc = 1;
+    if (theme->discCache != NULL)
         return;
     if (slots < 2)
         slots = 2;
     theme->discCache = cacheInitCache(theme->gameCacheCount++, "ART", 1, "ICO", slots);
 }
 
-void thmDrawDiscDecorator(struct menu_list *menu, struct submenu_list *item, int x, int y, int coverW, int coverH, int inset, u64 color)
+void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, struct submenu_list *item, int x, int y, int coverW, int coverH, int inset, u64 color)
 {
     if (gTheme == NULL || gTheme->discCache == NULL || menu == NULL || menu->item == NULL || item == NULL)
+        return;
+    if (elem != NULL && !elem->drawDisc)
         return;
     if (item->item.isFolder || !gEnableArt || !gEnableDiscArt)
         return;
@@ -2324,15 +2345,20 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
             textX = rowX + favRoom;
             textRoom = rowRoom > favRoom ? rowRoom - favRoom : 1;
         }
+        int hlX = elem->posX;
+        if (elem->aligned & ALIGN_HCENTER)
+            hlX -= elem->width >> 1;
+        else if (elem->aligned & ALIGN_RIGHT)
+            hlX -= elem->width;
         while (ps && (others++ < itemsList->displayedItems)) {
             if (ps == item) {
                 color = gTheme->selTextColor;
                 if (!(elem->aligned & ALIGN_HCENTER)) {
                     if (itemsList->highlight == THM_HL_BAR) {
-                        rmDrawRect(posX - 12, posY + 1, elem->width + 12, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0x1E, 0x3C, 0x9C, 0x5C, 0x00));
-                        rmDrawRect(posX - 12, posY + 1, 3, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
+                        rmDrawRect(hlX - 12, posY + 1, elem->width + 12, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0x1E, 0x3C, 0x9C, 0x5C, 0x00));
+                        rmDrawRect(hlX - 12, posY + 1, 3, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
                     } else if (itemsList->highlight == THM_HL_LINE) {
-                        rmDrawRect(posX - 12, posY + MENU_ITEM_HEIGHT - 3, elem->width + 12, 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
+                        rmDrawRect(hlX - 12, posY + MENU_ITEM_HEIGHT - 3, elem->width + 12, 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
                     }
                 }
             } else

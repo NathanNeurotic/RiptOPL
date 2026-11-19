@@ -152,6 +152,7 @@ typedef struct theme_element
     // the list that view used before (thmFamilyItemsList). Always 0 for every other family.
     unsigned char inherited;
     unsigned char style;
+    unsigned char drawDisc;
 
     void *extended;
 
