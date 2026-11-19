@@ -328,7 +328,7 @@ index = function_text(gui_c, 'src/ui/guisettings.cpp', 'int SettingsShell::showI
 
 SOURCE_FIELDS = (
     'gDefaultDevice', 'gBDMStartMode', 'gHDDStartMode', 'gAPPStartMode', 'gMMCEStartMode',
-    'gFAVStartMode', 'gEnableUSB', 'gEnableILK', 'gEnableMX4SIO', 'gEnableBdmHDD',
+    'gLiteStartMode', 'gFAVStartMode', 'gEnableUSB', 'gEnableILK', 'gEnableMX4SIO', 'gEnableBdmHDD',
     'gNetworkProtocol', 'gNetStartMode', 'gNetProtocolPick', 'gETHStartMode',
     'gEnableUDPBD', 'gNetBootProtocol', 'gMMCESlot', 'gMMCEIGRSlot',
     'gMMCEEnableGameID', 'gMMCEAckWaitCycles', 'gMMCEUseAlarms', 'gMMCEPrefix',

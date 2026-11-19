@@ -11,7 +11,7 @@ RiptOPL is the main line. The C codebase continues as the
 the same page in its `docs/`.
 
 This page records where the two RiptOPL repositories stand against each other, which fixes
-landed in both on October 27 and 28, what the RIPPS2 audit found, and what still has no hardware
+landed in both on October 27 and 28, what the [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) audit found, and what still has no hardware
 result. The full ecosystem register (LUNA, YAOPL, PSXCore, wOPL and the rest), refreshed on
 October 25 and head-checked on October 28 (section 5), is on the
 [fork feature gaps page](https://nathanneurotic.github.io/RiptOPL/fork-gaps.html).
@@ -21,7 +21,7 @@ October 25 and head-checked on October 28 (section 5), is on the
 | RiptOPL (C++ / ps2build, main line) | `rebuild/main` | [`4dab9cc0`](https://github.com/NathanNeurotic/RiptOPL/commit/4dab9cc0c79f1393f1f70ba80b954463e06a2803), merge of #96 |
 | Open-PS2-Loader (C, legacy edition) | `rebuild/main` | [`94e82f2b`](https://github.com/NathanNeurotic/Open-PS2-Loader/commit/94e82f2b2795fc8faf5ff87dce8e39d63030e073), merge of #1080 |
 | Korium skin branch (legacy) | `test/korium-audit-remediation` | `285b6f59` |
-| [RIPPS2](https://github.com/akilluminati47/RIPPS2) by [akilluminati47](https://github.com/akilluminati47) | `main` | `95299389`, build 119 (v1.1.8-beta) |
+| [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) by [akilluminati47](https://gitlab.com/akilluminati247) | `main` | `95299389`, build 119 (v1.1.8-beta) |
 
 **Evidence level.** Every status below comes from reading the source at those commits, host
 tests and CI builds. **Nothing on this page has been tested on real PS2 hardware.** A green
@@ -83,19 +83,19 @@ One-sided by design: the legacy notices (Open-PS2-Loader #1064, #1067, #1079) be
 legacy edition only, and RiptOPL's LLVM CI job (#89) and main-line framing (#91, #92) to the C++
 edition only.
 
-## 3. RIPPS2
+## 3. [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)
 
-[RIPPS2](https://github.com/akilluminati47/RIPPS2) is **[akilluminati47](https://github.com/akilluminati47)**'s RiptOPL-derived
-frontend. The findings in this section are theirs: the audit read RIPPS2's own source and
-changelog reasons and checked each one against our code. RIPPS2 is a patch stack (71 patches) on
+[RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) is **[akilluminati47](https://gitlab.com/akilluminati247)**'s RiptOPL-derived
+frontend. The findings in this section are theirs: the audit read [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s own source and
+changelog reasons and checked each one against our code. [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) is a patch stack (71 patches) on
 the legacy C tree (`65d4b89`, upstream mark `57c45b4`), so nothing cherry-picks into the C++
-edition; every item is a port by hand. RIPPS2 and RiptOPL share code freely. Every port carries
-credit to akilluminati47 in its commits.
+edition; every item is a port by hand. [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) and RiptOPL share code freely. Every port carries
+credit to [akilluminati47](https://gitlab.com/akilluminati247) in its commits.
 
 **Rule for these ports:** each one lands in both RiptOPL and Open-PS2-Loader. An item that
 cannot be ported to one of them gets an issue instead.
 
-### Backend fixes from RIPPS2
+### Backend fixes from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)
 
 Status as of the merge of RiptOPL #99 (`09ea7d83`) and Open-PS2-Loader #1084 (`fcafb991`) on
 2026-10-28. Shipped means merged in both; none of it is tested on hardware.
@@ -104,18 +104,18 @@ Status as of the merge of RiptOPL #99 (`09ea7d83`) and Open-PS2-Loader #1084 (`f
 | --- | --- | --- | --- |
 | Clear the BDM "module loaded" flags after an IOP reset (after the NBD server stops, iLink, MX4SIO, HDD-BDM, PC CARD CF and UDPBD otherwise never reload until reboot) | RiptOPL `src/sources/bdmsupport.cpp` flags were never cleared; same in the C `bdmsupport.c` | SHIPPED (BDM, HDD, MMCE and UDPFS latches) | RiptOPL #99, OPL #1084 |
 | mmceman upstream fix `21dbc0a` "don't block mc1 (2nd port)" | Both pinned `db3e93f0`; RiptOPL ships its own `mmceman_fork` | SHIPPED: pin moved to `de28936f`, only `sio2man_hook.c` changed | RiptOPL #99, OPL #1084 |
-| MMCE Game ID: wait to see "busy" before waiting for "not busy", with a longer budget and a skip | RiptOPL `src/sources/mmcesupport.cpp` polled 15 x 200 ms (about 3 s) and stopped at the first not-busy read | SHIPPED: up to 2 s to see busy, then an on-screen wait (START skips, 180 s cap). The Burnout 3 link is RIPPS2's report, not verified here | RiptOPL #99, OPL #1084 |
+| MMCE Game ID: wait to see "busy" before waiting for "not busy", with a longer budget and a skip | RiptOPL `src/sources/mmcesupport.cpp` polled 15 x 200 ms (about 3 s) and stopped at the first not-busy read | SHIPPED: up to 2 s to see busy, then an on-screen wait (START skips, 180 s cap). The Burnout 3 link is [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s report, not verified here | RiptOPL #99, OPL #1084 |
 | FreeType built with only the modules the fonts need | RiptOPL `fntsys.cpp` linked every module | SHIPPED: TrueType and CFF only (about 120 KB smaller unpacked) | RiptOPL #99, OPL #1084 |
 | POPS file sets (`POPS_IOX.PAK` + `POPS.PAK`, or `POPS.ELF` + `IOPRP252.IMG`) and a warning when files are missing | Neither name was in RiptOPL's source | SHIPPED: a launch asks first when the files are missing, and offers to copy them from another started drive | RiptOPL #99, OPL #1084 |
 | Ogg pages whose serial has the top bit set (refused by the PS2 Vorbis library) | `bgm.cpp` has no workaround | NOT NEEDED: upstream libogg 1.3.5 and libvorbis 1.3.7 (what ps2build ships) decode such a file | Checked in RiptOPL #99; not ported |
 | Neutrino options read from the `neutrino.elf` actually installed | `sysNeutrinoPreflight` does not check the version | MISSING | Not scheduled |
 | IGR exit path checked before use, else Browser | ee_core loads only rom0 SIO2MAN/MCMAN and USB before the exit path, so MMCE and HDD exit paths cannot work | PARTIAL | Not scheduled |
-| exFAT lost clusters when two files grow at once (RIPPS2's claim against the ps2sdk driver) | Not investigated; RiptOPL ships its own bdmfs FatFs fork | UNKNOWN | Reproduce on a PC image first |
+| exFAT lost clusters when two files grow at once ([RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s claim against the ps2sdk driver) | Not investigated; RiptOPL ships its own bdmfs FatFs fork | UNKNOWN | Reproduce on a PC image first |
 | PCSX2 `host:` launch: rename the `imgdrv` device from `host` to `iprp` | `imgdrv.c` and `ee_core iopmgr.c` still use `host` in both | INTENTIONAL DIFFERENCE | Owner decision 2026-10-28: not planned |
-| Pad missed-read hold, pad idle gate before `padSetActAlign`, analog-mode re-request | `src/core/pad.cpp` | PARTIAL | Corrected 2026-11-01: the missed-read hold shipped (`PAD_MISS_HOLD_TICKS`, 300 ms, from [zackcage6](https://github.com/zackcage6)'s navigation trace; same idea as [RIPPS2](https://github.com/akilluminati47/RIPPS2)'s `PAD_HOLD_MS` by [akilluminati47](https://github.com/akilluminati47)) and the DualShock mode lock is re-requested when it is lost (#246). Only the idle gate before `padSetActAlign` still differs |
+| Pad missed-read hold, pad idle gate before `padSetActAlign`, analog-mode re-request | `src/core/pad.cpp` | PARTIAL | Corrected 2026-11-01: the missed-read hold shipped (`PAD_MISS_HOLD_TICKS`, 300 ms, from [zackcage6](https://github.com/zackcage6)'s navigation trace; same idea as [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s `PAD_HOLD_MS` by [akilluminati47](https://gitlab.com/akilluminati247)) and the DualShock mode lock is re-requested when it is lost (#246). Only the idle gate before `padSetActAlign` still differs |
 
 Already PRESENT, no action: the ps2ips receive tail (#1064), the exFAT HDD device number on a USB
-boot, ee_core `gc-sections`, and the single-shape save icon. RiptOPL's hires HD drawing is sharper than RIPPS2's
+boot, ee_core `gc-sections`, and the single-shape save icon. RiptOPL's hires HD drawing is sharper than [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s
 single-pass 640-wide drawing; that difference is intentional.
 
 ### Feature port (shipped)
@@ -133,7 +133,7 @@ only: NOT TESTED on hardware.
 | B | Art: JPG and JPEG, OPL Manager names (`_BG_00`, `_SCR_00`, `_SCR_01`), any letter case in listed `ART` folders | [Game library](GAME-LIBRARY.md#game-art-jpg-any-letter-case-and-opl-manager-names) |
 | C | All Games List (device tabs step aside, L3 cycles All/PS2/PS1/Apps/Favourites/Recent, duplicates tagged by device), Sort Games: Last played, Recent (last 10), Random Game in the Start menu | [Game library](GAME-LIBRARY.md) |
 | D | `hidden.txt` and Hide Game; Delete removes a game's parts, CFG, art and cheats (no APA partition delete) | [Game library](GAME-LIBRARY.md#hide-game) |
-| E | Arabic and Persian shaping, right-to-left lines, CJK/Thai/Lao line breaks; 13 missing translations from [akilluminati47](https://github.com/akilluminati47)'s language files | [Languages](LANGUAGES.md#right-to-left-and-cjk-text) |
+| E | Arabic and Persian shaping, right-to-left lines, CJK/Thai/Lao line breaks; 13 missing translations from [akilluminati47](https://gitlab.com/akilluminati247)'s language files | [Languages](LANGUAGES.md#right-to-left-and-cjk-text) |
 | F | Drive Status page and `DIAG.TXT` | [Launch diagnostics](LAUNCH-DIAGNOSTICS.md#drive-status-and-diagtxt) |
 | G | Dimmed switched-off rows, scroll bar, right-stick peek, return to the opening button, button glyph sets, `<font>_weight` | [Controls](CONTROLS.md), [Interface](INTERFACE.md#button-glyphs), [Theme engine](THEME_ENGINE.md) |
 | H | Offer to copy Sony's POPS files from another drive; a Saves page that treats a VMC like a folder | [PS1](VCD.md#sonys-pops-files), [VMC](VMC.md#saves-on-a-card) |
@@ -142,12 +142,12 @@ only: NOT TESTED on hardware.
 
 - Declined by the owner: disc ripping, the CD player, and every HDD partition change (the
   relaxed APA fence in `hdd_fio.c`, BOOT LOCK's rewrite of FMCB/PS2BBL/OSDMenu configs, and
-  BIBLE's MBR write). RiptOPL's APA fence exists to protect PSBBN and OSD installs.
+  [BIBLE](https://gitlab.com/akilluminati247/BIBLE)'s MBR write). RiptOPL's APA fence exists to protect PSBBN and OSD installs.
 - The Planet N fonts (Iconian) are third-party and stay out.
-- RIPPS2's `elf/tests/expected_failures.txt` lists RiptOPL tests it breaks on purpose
+- [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s `elf/tests/expected_failures.txt` lists RiptOPL tests it breaks on purpose
   (`apa_table_safety`, `sfx_oneshot_cut`, `psbbn_flow`, `ra_cards_setting`, `igr_polling`,
   `ingame_freeze_diag`, `net_protocol_pick` and others). Any port keeps them green.
-- RIPPS2's mmceman pin lacks Open-PS2-Loader's `mmceman-fs-dread-eof.patch`; only the upstream
+- [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s mmceman pin lacks Open-PS2-Loader's `mmceman-fs-dread-eof.patch`; only the upstream
   hunk is ported.
 
 ## 4. Not tested on hardware
@@ -168,7 +168,7 @@ Everything above. The open console checks, in priority order:
    #1018), in this order: native, Neutrino, POPStarter.
 7. UDPFS covers on the first connect ([RiptOPL#81](https://github.com/NathanNeurotic/RiptOPL/issues/81),
    was #1036), Neutrino core, OPL Manager art.
-8. The RIPPS2 port (RiptOPL #99, Open-PS2-Loader #1084): every group A to H above. The MMCE Game ID wait and mmceman `21dbc0a` need an SD2PSX with
+8. The [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) port (RiptOPL #99, Open-PS2-Loader #1084): every group A to H above. The MMCE Game ID wait and mmceman `21dbc0a` need an SD2PSX with
    sd2psXtd firmware (8 MB card, Burnout 3) and an MMCE in slot 1 with a normal card in slot 2.
 
 ## 5. Ecosystem head check
@@ -181,7 +181,7 @@ others:
 
 | Project | Head | What changed |
 | --- | --- | --- |
-| [RIPPS2](https://github.com/akilluminati47/RIPPS2) | [`e1e3504f` to `1f356eec`](https://github.com/akilluminati47/RIPPS2/compare/e1e3504f4a8bfd6b2f88425d284eb845393cfcb9...1f356eecfeda6e11e018ed8c03b320862455c659) | Builds 115 to 119. Up to `95299389` is covered by section 3. Newer and not yet checked against our code: 16:9 art crop (`c2b94d6`), boot sound sent by the IO worker only and media with Music off (`1f356ee`). |
+| [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) | [`e1e3504f` to `1f356eec`](https://gitlab.com/akilluminati247/RIPPS2/-/compare/e1e3504f4a8bfd6b2f88425d284eb845393cfcb9...1f356eecfeda6e11e018ed8c03b320862455c659) | Builds 115 to 119. Up to `95299389` is covered by section 3. Newer and not yet checked against our code: 16:9 art crop (`c2b94d6`), boot sound sent by the IO worker only and media with Music off (`1f356ee`). |
 | [YAOPL](https://github.com/belomaxorka/yaopl) | [`33a2b19a` to `ac3cf25c`](https://github.com/belomaxorka/yaopl/compare/33a2b19a8afa37b50015eeb1414f575b2270ac7d...ac3cf25c6dd05570e75b2dffff44ee46dd4d6361) | UDP block device in the OPL core (`b3ff109`): RiptOPL only had it in the menu, and now also runs UDPBD and UDPFS IMG games on `<OPL>` per game, with YAOPL's 16 KiB UDPBD read cap (`12cc6fb`); the LBA48 ATA fix (`e09f548`), see YA2 below; docs site, CI, changelog. |
 | [LUNA](https://github.com/dnunezx/LUNA) | [`78096fb3` to `193f1879`](https://github.com/dnunezx/LUNA/compare/78096fb32900d561b2fca7716a2d029cbce11caa...193f1879c5cecaf931f8ffa6dcb897cd981e97c6) | Crystal menus, unified PS1/PS2 memory cards, widescreen cheat fixes with a paired Neutrino handoff, manual CI builds (commit messages only). |
 | [neutrino-luna](https://github.com/dnunezx/neutrino-luna) | [`02cbf4f2` to `833344a5`](https://github.com/dnunezx/neutrino-luna/compare/02cbf4f2a0bafcba71904f7d9d8fcda6ddd65f15...833344a570e3622ea315091284c8444f7e06bc88) | Long LUNA launch arguments survive PS2 startup (commit message only). |
@@ -200,5 +200,5 @@ hardening. Source review only; not tested on hardware.
 RiptOPL [#105](https://github.com/NathanNeurotic/RiptOPL/pull/105) and Open-PS2-Loader [#1087](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/1087). Not tested on hardware.
 
 Sources: the parity switch-readiness report and final sweep (2026-10-27), the fix cross-check
-(2026-10-28), the RIPPS2 audit (2026-10-28) and the ecosystem head check (2026-10-28), rechecked
+(2026-10-28), the [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) audit (2026-10-28) and the ecosystem head check (2026-10-28), rechecked
 against the commits in the table at the top.

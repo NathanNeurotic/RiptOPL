@@ -211,10 +211,10 @@ into the picture the game is showing, which it finds through the same GS write b
 * The CHEATS page needs a game whose modules sit at the usual address; a few games moved elsewhere
   (`mod_storage_location_list`) get the menu without it, and their cheats run as ticked before launch.
 
-The menu is **[RIPPS2](https://github.com/akilluminati47/RIPPS2)'s** (by **[akilluminati47](https://github.com/akilluminati47)**), itself built on ORBIT's [Neutrino](https://github.com/ps2max32/neutrino) in-game menu
-(danielnuld/ps2-launcher, AFL-3.0); the silent pause and the exact picture are RIPPS2's too (build 108,
+The menu is **[RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s** (by **[akilluminati47](https://gitlab.com/akilluminati247)**), itself built on ORBIT's [Neutrino](https://github.com/ps2max32/neutrino) in-game menu
+(danielnuld/ps2-launcher, AFL-3.0); the silent pause and the exact picture are [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s too (build 108,
 here as a module of their own instead of inside CDVDMAN), and so is Achievements with Left To Hunt (build 94).
-RIPPS2's Screenshot page is not ported yet; the Cheats page is new here. **NOT TESTED on hardware** yet: please report games where pausing misbehaves.
+[RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s Screenshot page is not ported yet; the Cheats page is new here. **NOT TESTED on hardware** yet: please report games where pausing misbehaves.
 
 ---
 
@@ -252,13 +252,13 @@ before the loader comes back. Every colour but grey shows with or without **Debu
 **In-Game Menu is on, the picture freezes for a moment and the game resets (yellow or red blinks).**
 The game's channel 1 or 2 transfers did not finish while it was paused, or its VIF1 stayed stopped (on a VIF
 code's interrupt bit, a stop or a break) or reading back, so the menu will not draw over them and the combination
-does what it does with In-Game Menu off. This is RIPPS2 build 129's check, made once per press, inside the menu.
+does what it does with In-Game Menu off. This is [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) build 129's check, made once per press, inside the menu.
 One case is treated apart: a game that sends its drawing through a MFIFO (Dirge of Cerberus does) keeps the
 channel that empties it started for as long as it runs, so that channel never "finishes". It passes the check once
 the MFIFO is empty. The menu then borrows channel 1 for its own lines (stopped with the DMAC suspended, the MFIFO
 taken out of `D_CTRL`) and puts the channel, `D_CTRL` and the two interrupt flags it raised back as they were before
 the game goes on.
-Every interrupt of the game is held for the pause (its GS, VIF1 and DMA completions too, as RIPPS2 holds them, and the MFIFO-empty one), so a
+Every interrupt of the game is held for the pause (its GS, VIF1 and DMA completions too, as [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) holds them, and the MFIFO-empty one), so a
 transfer that needs one of them to go on cannot end once the game is paused. The pause is therefore taken, with the
 game still running and the combination held, on a frame at which channels 1 and 2 are stopped, after 2 seconds at most (a MFIFO's emptying channel is not waited for, the other one is);
 a game that is never idle in that time is paused anyway and the check decides. Keep the combination held until the

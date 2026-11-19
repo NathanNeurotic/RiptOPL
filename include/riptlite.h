@@ -122,11 +122,16 @@
 // A network games source: the protocol-specific rows of the Network page.
 #define LITE_HAS_NET_SOURCE (LITE_HAS_SMB || LITE_HAS_UDPBD || LITE_HAS_UDPFS || LITE_HAS_HTTP)
 
+// RiptOPLite: Start Mode (Off/Manual/Auto) of the build's one source. Off until the user turns it on.
+// Unused in a full build.
+extern int gLiteStartMode;
+
 #ifdef __cplusplus
 #include <tamtypes.h>       // u32, for configset.h
 #include "include/config.h" // config_set_t
 
-// Holds every source this build does not carry off, and the one it does carry on. Run after the
+// Holds every source this build does not carry off, and gives the one it does carry the user's
+// Start Mode (gLiteStartMode, Off by default). Run after the
 // config file is read and after every settings change. A no-op in a full build.
 void liteApplyDeviceMask(void);
 // The shared config file belongs to the full build too: a lite build must not overwrite which

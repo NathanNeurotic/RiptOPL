@@ -283,8 +283,8 @@ POPSTARTER also needs Sony's PS1 emulator in the same `POPS` folder: `POPS_IOX.P
 `POPS.PAK` or `POPS.ELF` with `IOPRP252.IMG`. They come from your own console's software and are in
 no PS2 ROM, so RiptOPL cannot make them. Without them the game is a black screen, then the browser.
 
-Before a PS1 launch from USB, MX4SIO, iLink, an exFAT HDD or MMCE, RiptOPL checks for them. *(From [RIPPS2](https://github.com/akilluminati47/RIPPS2) builds 85, 89
-and 115, [akilluminati47](https://github.com/akilluminati47).)*
+Before a PS1 launch from USB, MX4SIO, iLink, an exFAT HDD or MMCE, RiptOPL checks for them. *(From [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) builds 85, 89
+and 115, [akilluminati47](https://gitlab.com/akilluminati247).)*
 
 - **Another started drive has a full set.** RiptOPL offers to copy them over. It looks at the drives it
   has already started: other BDM drives, both MMCE cards, and the internal HDD's `__common/POPS`

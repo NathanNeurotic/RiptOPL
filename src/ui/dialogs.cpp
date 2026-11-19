@@ -497,9 +497,28 @@ struct UIItem diaDeviceConfig[] = {
     {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_GAME_SOURCES}}},
     {UI_SPLITTER},
 
-    // RiptOPLite starts its one source itself (liteApplyDeviceMask): no default page or start-mode rows
-    // for sources it does not carry, and none for the one it does. The MMCE Settings button stays (Game ID).
-#if !defined(RIPTOPLITE)
+    // RiptOPLite: no default page or start-mode rows for sources it does not carry. Its one source gets a
+    // single Start Mode row (Off by default; liteApplyDeviceMask). The MMCE Settings button stays (Game ID).
+#if defined(RIPTOPLITE)
+#if LITE_HAS_APA
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_HDDMODE}}},
+    {UI_SPACER},
+    {UI_ENUM, CFG_LITEMODE, 1, 1, _STR_HDD_HINT, 0, 0, {.intvalue = {0, 0}}},
+#elif LITE_HAS_MMCE_GAMES
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_MMCEMODE}}},
+    {UI_SPACER},
+    {UI_ENUM, CFG_LITEMODE, 1, 1, _STR_HINT_MMCE_MODE, 0, 0, {.intvalue = {0, 0}}},
+#elif LITE_HAS_NET_SOURCE
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_NET_CONNECTIVITY}}},
+    {UI_SPACER},
+    {UI_ENUM, CFG_LITEMODE, 1, 1, _STR_HINT_NETSTART, 0, 0, {.intvalue = {0, 0}}},
+#else
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_BDM_DEVICES_START_MODE}}},
+    {UI_SPACER},
+    {UI_ENUM, CFG_LITEMODE, 1, 1, _STR_HINT_BDM_START, 0, 0, {.intvalue = {0, 0}}},
+#endif
+    {UI_BREAK},
+#else
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_DEFDEVICE}}},
     {UI_SPACER},
     {UI_ENUM, CFG_DEFDEVICE, 1, 1, _STR_HINT_DEFDEVICE, 0, 0, {.intvalue = {0, 0}}},

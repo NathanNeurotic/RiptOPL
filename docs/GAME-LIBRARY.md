@@ -1,7 +1,7 @@
 # Game library: All Games, recents, hiding, deleting and art
 
-These library features came from [RIPPS2](https://github.com/akilluminati47/RIPPS2) by
-**[akilluminati47](https://github.com/akilluminati47)** (builds 95 to 118) and landed in RiptOPL #99 and Open-PS2-Loader #1084 on
+These library features came from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) by
+**[akilluminati47](https://gitlab.com/akilluminati247)** (builds 95 to 118) and landed in RiptOPL #99 and Open-PS2-Loader #1084 on
 2026-10-28. Both editions behave the same way. They have passed host tests only and are
 **NOT TESTED on hardware**.
 
@@ -115,4 +115,4 @@ JPG support costs about 261 KB in the ELF (101 KB packed).
 
 - [Favourites storage](FAVORITES-STORAGE.md) for how `favourites.bin` and `recents.bin` are saved.
 - [Fresh-start defaults](DEFAULTS.md) for every setting's starting value.
-- [Fork-gap status](FORK-GAP-STATUS-2026-10-28.md) for the rest of the RIPPS2 port.
+- [Fork-gap status](FORK-GAP-STATUS-2026-10-28.md) for the rest of the [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) port.

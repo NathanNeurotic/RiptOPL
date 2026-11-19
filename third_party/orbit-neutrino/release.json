@@ -1,9 +1,9 @@
 {
   "repository": "danielnuld/nuld",
-  "tag": "v1.2.13",
-  "source_commit": "53abd1d3c171f3a6725b92f3045329e604cd8779",
-  "asset": "NULD-v1.2.13.zip",
-  "sha256": "bd0fa6fd82537034de7163530f041897925dcdb81cd7429386e5e31487944a96",
+  "tag": "v1.2.14",
+  "source_commit": "dd27a63006030ce07b31327b5cdeaedc09865d2b",
+  "asset": "NULD-v1.2.14.zip",
+  "sha256": "dd2b8b8c56340cf37991514f95ad2dd7159dd098dec2370924a21d0967bf3a03",
   "snapshot_bytes_max": 1216,
   "pointer_chains": false
 }

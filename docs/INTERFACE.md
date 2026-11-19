@@ -89,7 +89,7 @@ Explicit custom theme point sizes stay unchanged.
 
 These are the button pictures in the hint bar. **Theme** uses the theme's own glyphs, or the set its
 `glyph_set` key names. Each of the other choices replaces the glyphs on every theme. **Built-in** is the
-built-in set. **Standard** and **White** come from [RIPPS2](https://github.com/akilluminati47/RIPPS2) ([akilluminati47](https://github.com/akilluminati47)), drawn from its Adapt and Grunge
+built-in set. **Standard** and **White** come from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) ([akilluminati47](https://gitlab.com/akilluminati247)), drawn from its Adapt and Grunge
 themes. The change shows on the next frame and is saved with your settings. Theme authors can find the
 `glyph_set` key and the hint bar keys in the [Theme Engine reference](THEME_ENGINE.md#button-hints-and-glyphs).
 
@@ -118,8 +118,8 @@ instead. The change shows on the next frame and is saved with your settings (`li
 `settings_riptopl.cfg`). The built-in IncebtIon and Korium themes keep them off on **Theme**, so their list
 looks as before. **On** swaps the cover beside their list for the game's Title and its Description.
 
-This comes from [RIPPS2](https://github.com/akilluminati47/RIPPS2) build 126, by
-[akilluminati47](https://github.com/akilluminati47). Theme authors can find the `list_cfg_text` key in the
+This comes from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) build 126, by
+[akilluminati47](https://gitlab.com/akilluminati247). Theme authors can find the `list_cfg_text` key in the
 [Theme Engine reference](THEME_ENGINE.md#other-global-keys).
 
 *Not yet tested on hardware.*

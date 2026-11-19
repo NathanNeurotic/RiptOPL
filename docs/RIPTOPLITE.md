@@ -40,8 +40,10 @@ are bare ELFs that replace `RIPTOPL.ELF`.
 
 ## Settings
 
-The game page, start mode and protocol of the one device are fixed by the build, and their rows are
-not shown on Game Sources or Network. Every other setting works as in the full loader.
+The game page and protocol of the one device are fixed by the build, and their rows are not shown on
+Game Sources or Network. The device's **Start Mode** (Off, Manual or Auto) is a single row on Game
+Sources and starts **Off**: turn it on to see your games. It is saved as `lite_start_mode`, apart from
+the full loader's own start modes. Every other setting works as in the full loader.
 
 The settings file is shared with the full loader. A lite loader reads the full loader's device
 settings when it starts and writes them back unchanged when it saves, so switching between a lite

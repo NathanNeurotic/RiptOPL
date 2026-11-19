@@ -183,7 +183,7 @@ def package(edition, neutrino_archive, orbit_archive=None, compiler=None):
         for target, source in shortcuts.items():
             shutil.copyfile(ROOT / "tools/pc" / source, kit / target)
         if options["ra"]:
-            (kit / "xeRAbora.url").write_text("[InternetShortcut]\nURL=https://github.com/hacan359/xerabora/releases/tag/v2.0.0\n", encoding="utf-8")
+            (kit / "xeRAbora.url").write_text("[InternetShortcut]\nURL=https://github.com/hacan359/xerabora/releases/tag/v2.1.0\n", encoding="utf-8")
         display = edition_display_name(options)
         args = SimpleNamespace(package=str(kit), source_elf=str(elf), app_name=app_name, elf_name=elf_name,
             title=display, pbt_title=display,

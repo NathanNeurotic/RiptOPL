@@ -173,5 +173,21 @@ class ChannelTests(unittest.TestCase):
             self.assertTrue(link.endswith("-v1.2.0-Beta-4000.zip"), link)
 
 
+class DefaultsOffTests(unittest.TestCase):
+    """Every source starts Off: the user turns on what they want (user rule, 2026-11-17)."""
+
+    def test_lite_mask_never_forces_a_source_on(self):
+        src = (ROOT / "src/core/riptlite.cpp").read_text()
+        body = src[src.index("void liteApplyDeviceMask(void)"):src.index("void liteRememberDeviceKeys")]
+        forced = re.findall(r"=\s*[^;=]*START_MODE_(?:AUTO|MANUAL)[^;]*;", body)
+        self.assertEqual([], forced)
+        self.assertIn("int gLiteStartMode = START_MODE_DISABLED;", src)
+
+    def test_lite_start_mode_is_saved_and_defaults_off(self):
+        settings = (ROOT / "src/core/settings.cpp").read_text()
+        self.assertRegex(settings, r"intSetting\(CONFIG_OPL_LITE_START_MODE, &gLiteStartMode, START_MODE_DISABLED\)")
+        self.assertIn("CFG_LITEMODE", (ROOT / "src/ui/dialogs.cpp").read_text())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 # C++/ps2build migration: production parity ledger
 
 The continuation tracker, [issue #20](https://github.com/NathanNeurotic/RiptOPL/issues/20), is closed.
-For the current state, including fixes merged since the port and the RIPPS2 audit, read
+For the current state, including fixes merged since the port and the [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) audit, read
 [Fork-gap status: 2026-10-28](FORK-GAP-STATUS-2026-10-28.md).
 
 ## Status at 2026-10-28

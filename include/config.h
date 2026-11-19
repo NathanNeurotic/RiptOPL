@@ -183,6 +183,7 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_AUTOSTART_LAST       "autostart_last"
 #define CONFIG_OPL_BDM_MODE             "usb_mode" // Leave this "usb" for compatibility
 #define CONFIG_OPL_HDD_MODE             "hdd_mode"
+#define CONFIG_OPL_LITE_START_MODE      "lite_start_mode" // RiptOPLite only: its own source, kept apart from the full build's
 #define CONFIG_OPL_ETH_MODE             "eth_mode"
 #define CONFIG_OPL_APP_MODE             "app_mode"
 #define CONFIG_OPL_FAV_MODE             "fav_mode"

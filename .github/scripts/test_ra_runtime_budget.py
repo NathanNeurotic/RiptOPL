@@ -96,14 +96,14 @@ int main() {
     // Full entry/node budgets, with source + scratch words beyond 4096.
     int bytes=0;
     for(int i=0;i<RA_WATCH_MAX;i++) {
-        int size=i<2136 ? 4 : i==2136 ? 2 : 1;
+        int size=i<1795 ? 4 : 1; // 9481 direct + 256*8 node bytes at the snapshot ceiling
         entries[i]=RA_WATCH_PACK(0x80000+4*i,size);bytes+=size;
     }
     for(int i=0;i<RA_NODE_MAX;i++)nodes[i]={RA_NODE_PACK(0,0,4,0,0),(u32)i*4,1};
     u32 base=0x100000;memcpy(gameRam+0x80000,&base,4);
     for(int i=0;i<RA_NODE_MAX;i++){u32 v=0x12340000+i;memcpy(gameRam+base+i*4,&v,4);}
     setup(RA_WATCH_MAX,bytes,RA_NODE_MAX);
-    assert(ra_watch_count==4096 && ra_node_count==128 && ra_snap_bytes==RA_SNAP_MAX_BYTES && ra_snap_every==3);
+    assert(ra_watch_count==4096 && ra_node_count==RA_NODE_MAX && ra_snap_bytes==RA_SNAP_MAX_BYTES && ra_snap_every==3);
     ra_snap_send();assert(transfers==1 && RA_SnapBytes()==RA_SNAP_MAX_BYTES);
     // The read cost is two clock reads apart; the frame is the gap between two VBLANKs.
     RA_OnVblank();RA_OnVblank();ra_snap_dma_id=0;ra_snap_send();
@@ -185,7 +185,7 @@ static int fake_close(int) {return 0;}
 #define close fake_close
 #define O_RDONLY 0
 ''' + '\n'.join(function(watch,s) for s in
-    ('void RaWatch::clearWatchList(', 'bool RaWatch::takeNodes(', 'int RaWatch::setWatchList(', 'int RaWatch::loadWatchList(')) + r'''
+    ('void RaWatch::clearWatchList(', 'bool RaWatch::takeNodes(', 'static bool raWatchHashTailValid(', 'int RaWatch::setWatchList(', 'int RaWatch::loadWatchList(')) + r'''
 int main() {
     RaWatch watch;
     std::vector<u32> blob(4+RA_WATCH_MAX+2+RA_NODE_MAX*3);
@@ -195,10 +195,10 @@ int main() {
     auto *nf=(ra_node_file*)&blob[4+RA_WATCH_MAX];*nf={RA_NODE_MAGIC,RA_NODE_MAX};
     auto *node=(ra_node*)(nf+1);for(int i=0;i<RA_NODE_MAX;i++)node[i]={RA_NODE_PACK(0,0,1,0,0),0,1};
     int len=blob.size()*4;
-    assert(watch.setWatchList(blob.data(),len,"SLUS_123.45")==4096 && watch.nodeCount()==128);
+    assert(watch.setWatchList(blob.data(),len,"SLUS_123.45")==4096 && watch.nodeCount()==RA_NODE_MAX);
     assert(len<20*1024);
     disk=blob;watch.clearWatchList();
-    assert(watch.loadWatchList("save.wl","SLUS_123.45")==4096 && watch.nodeCount()==128);
+    assert(watch.loadWatchList("save.wl","SLUS_123.45")==4096 && watch.nodeCount()==RA_NODE_MAX);
     for(int bad : {0,3,5,15}) {
         blob[4]=RA_WATCH_PACK(0x80000,bad);
         assert(watch.setWatchList(blob.data(),len,"SLUS_123.45")<0 && !watch.watchCount());
@@ -222,7 +222,35 @@ int main() {
     watch.clearWatchList();assert(watch.loadWatchList("unknown.wl","SLUS_123.45")<0 && !watch.watchCount());
     disk[5]=RA_NODE_MAGIC;
     assert(watch.setWatchList(disk.data(),disk.size()*4,"SLUS_123.45")<0);
-    puts("PASS: real C++ parser accepts large sets and refuses invalid widths/byte sums/truncation");
+    // xeRAbora 2.1 hash suffix: direct-only, legacy chains and all 256 RAN2 nodes.
+    auto withHash = [](std::vector<u32> original) {
+        const char *md5 = "0123456789abcdef0123456789abcdef";
+        original.push_back(RA_HASH_MAGIC);
+        for(int i=0;i<RA_HASH_LEN;i+=4) {u32 word;memcpy(&word,md5+i,4);original.push_back(word);}
+        return original;
+    };
+    nf->count=RA_NODE_MAX;
+    const std::vector<u32> bare={RA_WATCH_MAGIC,1,1,4,RA_WATCH_PACK(0x80000,4)};
+    const std::vector<u32> legacy={RA_WATCH_MAGIC,1,1,4,RA_WATCH_PACK(0x80000,4),
+                                   RA_NODE_LEGACY_MAGIC,1,RA_NODE_PACK(0,0,1,0,0),4};
+    for (const auto &original : {bare,legacy,blob}) {
+        auto current=withHash(original);
+        int expected=original.size()==bare.size()?0:original.size()==legacy.size()?1:RA_NODE_MAX;
+        assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")>0 && watch.nodeCount()==expected);
+        disk=current;watch.clearWatchList();
+        assert(watch.loadWatchList("hash.wl","SLUS_123.45")>0 && watch.nodeCount()==expected);
+        current.back()=0x7A7A7A7A; // not hexadecimal
+        assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")<0 && !watch.watchCount());
+        disk=current;assert(watch.loadWatchList("invalid.wl","SLUS_123.45")<0 && !watch.watchCount());
+        current=withHash(original);current.pop_back();
+        assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")<0 && !watch.watchCount());
+        disk=current;assert(watch.loadWatchList("short.wl","SLUS_123.45")<0 && !watch.watchCount());
+        current=withHash(original);current.push_back(0);
+        assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")<0 && !watch.watchCount());
+        disk=current;assert(watch.loadWatchList("extra.wl","SLUS_123.45")<0 && !watch.watchCount());
+    }
+    assert(16+4*RA_WATCH_MAX+8+12*RA_NODE_MAX+sizeof(ra_hash_file)<20*1024);
+    puts("PASS: real C++ parser accepts RAH1/RANL/RAN2 and rejects invalid suffixes");
 }
 ''')
 
@@ -259,9 +287,9 @@ int main() {
         count=bytes=n;nodes=0;
         assert(launch.raWorkBytes(nullptr)==(n>0 && n<=4096 ? (unsigned)RA_EE_WORK_BYTES(n,0) : 0));
     }
-    count=bytes=4096;nodes=128;
-    assert(launch.raWorkBytes(nullptr)==RA_EE_WORK_BYTES(4096,128));
-    nodes=-1;assert(!launch.raWorkBytes(nullptr));nodes=129;assert(!launch.raWorkBytes(nullptr));
+    count=bytes=4096;nodes=RA_NODE_MAX;
+    assert(launch.raWorkBytes(nullptr)==RA_EE_WORK_BYTES(4096,RA_NODE_MAX));
+    nodes=-1;assert(!launch.raWorkBytes(nullptr));nodes=RA_NODE_MAX+1;assert(!launch.raWorkBytes(nullptr));
     nodes=0;bytes--;assert(!launch.raWorkBytes(nullptr));bytes++;
     entries[0]=RA_WATCH_PACK(0x80000,3);assert(!launch.raWorkBytes(nullptr));
     entries[0]=RA_WATCH_PACK(0x80000,1);gRATelemetry=0;assert(!launch.raWorkBytes(nullptr));
