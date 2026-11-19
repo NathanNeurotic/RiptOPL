@@ -2525,6 +2525,8 @@ static int guiSettingsShowSources(void)
     diaSetEnum(ui, CFG_MMCEMODE, deviceModes);
     diaSetInt(ui, CFG_MMCEMODE, gMMCEStartMode);
     diaSetEnabled(ui, CFG_MMCEMODE, 1);
+    diaSetEnum(ui, CFG_LITEMODE, deviceModes); // RiptOPLite only; absent from a full build's page
+    diaSetInt(ui, CFG_LITEMODE, gLiteStartMode);
     gSettingsShell.beginDialog(ui);
 
 reshow_sources:
@@ -2549,6 +2551,7 @@ reshow_sources:
         diaGetInt(ui, CFG_HDDMODE, &gHDDStartMode);
         diaGetInt(ui, CFG_APPMODE, &gAPPStartMode);
         diaGetInt(ui, CFG_MMCEMODE, &gMMCEStartMode);
+        diaGetInt(ui, CFG_LITEMODE, &gLiteStartMode); // applied to the one source by applyConfig
         diaGetInt(ui, CFG_FAVMODE, &gFAVStartMode);
         int previousAllGames = gAllGames, previousShowHidden = gShowHidden;
         diaGetInt(ui, CFG_ALLGAMES, &gAllGames);
@@ -3023,6 +3026,7 @@ void SettingsShell::readSourceState(SourceState *state)
     state->appStartMode = gAPPStartMode;
     state->mmceStartMode = gMMCEStartMode;
     state->favStartMode = gFAVStartMode;
+    state->liteStartMode = gLiteStartMode;
     state->allGames = gAllGames;
     state->showHidden = gShowHidden;
     state->enableUSB = gEnableUSB;
@@ -3074,6 +3078,7 @@ void SettingsShell::restoreSourceState()
     gAPPStartMode = sourceState_.appStartMode;
     gMMCEStartMode = sourceState_.mmceStartMode;
     gFAVStartMode = sourceState_.favStartMode;
+    gLiteStartMode = sourceState_.liteStartMode;
     int previousAllGames = gAllGames, previousShowHidden = gShowHidden;
     gAllGames = sourceState_.allGames;
     gShowHidden = sourceState_.showHidden;

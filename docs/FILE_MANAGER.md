@@ -2,7 +2,7 @@
 
 **Start → File Manager** browses every drive the loader has started and copies, moves, renames and deletes
 files on them, without booting a separate file manager. It is a port of the Memory Files browser from
-[akilluminati47](https://github.com/akilluminati47)'s [RIPPS2](https://github.com/akilluminati47/RIPPS2)
+[akilluminati47](https://gitlab.com/akilluminati247)'s [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)
 (builds 91 to 125), redrawn as an ordinary dialog.
 
 *NOT TESTED on hardware yet.*
@@ -76,9 +76,9 @@ apply (a cut-short or badly named `.psu` is refused, a PSU is written whole befo
 - A file over 4 GB is refused before it starts on a FAT32 drive, and so is a file bigger than a BDM
   drive's free space.
 
-## Different from RIPPS2
+## Different from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)
 
-RIPPS2 draws its own screen with a grid of tiles, a search, a `.tar` browser, card-image (VMC) browsing and
+[RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) draws its own screen with a grid of tiles, a search, a `.tar` browser, card-image (VMC) browsing and
 ISO/CUE launching. This port keeps the file manager itself and leaves those out: card images have their own
-[VMC Saves](VMC.md#saves-on-a-card) page, and games start from their pages. RIPPS2 asks before replacing a
+[VMC Saves](VMC.md#saves-on-a-card) page, and games start from their pages. [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) asks before replacing a
 name that is already there; here nothing is ever replaced.

@@ -113,12 +113,12 @@ drivers mount. A matching `font_<Name>.ttf`/`.otf` beside the file is loaded wit
 
 ## Right-to-left and CJK text
 
-Ported from [RIPPS2](https://github.com/akilluminati47/RIPPS2) build 104 by [akilluminati47](https://github.com/akilluminati47) (`src/gfx/textshape.cpp`). NOT TESTED on hardware.
+Ported from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) build 104 by [akilluminati47](https://gitlab.com/akilluminati247) (`src/gfx/textshape.cpp`). NOT TESTED on hardware.
 
 - **Arabic and Persian** letters are joined into their presentation forms (lam-alef as one
   letter), and each line is laid out right to left. Latin words and numbers keep their own order,
   and brackets are turned round. Centred Arabic stays centred, and zero-width marks draw nothing.
-  The forms table is RIPPS2's, generated from Unicode 16.0.0.
+  The forms table is [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s, generated from Unicode 16.0.0.
 - **CJK, Thai and Lao** lines may break between letters, but never before closing punctuation or
   before a vowel that belongs to the letter in front of it.
 - The settings hint box and message boxes wrap with these rules, break an over-wide word anywhere,
