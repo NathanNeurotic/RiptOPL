@@ -1973,6 +1973,7 @@ int menuItemShown(const menu_item_t *item)
     switch (support->mode) {
         case HDD_MODE:
         case MMCE_MODE:
+        case MMCE_MODE1:
         case UDPFS_MODE:
         case HTTP_MODE:
         case APP_MODE:

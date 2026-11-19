@@ -6,6 +6,11 @@
 
 #define MMCE_MODE_UPDATE_DELAY MENU_UPD_DELAY_GENREFRESH
 
+#define MMCE_GAMEID_OFF   0
+#define MMCE_GAMEID_SLOT0 1
+#define MMCE_GAMEID_SLOT1 2
+#define MMCE_GAMEID_BOTH  3
+
 typedef struct
 {
     int active;       /* Activation flag */
@@ -15,6 +20,9 @@ typedef struct
 } mmce_vmc_infos_t;
 
 item_list_t *mmceGetObject(int initOnly);
+item_list_t *mmceGetSlotObject(int slot, int initOnly);
+void mmceEnumerateDevices(int forceReinit);
+const char *mmceGameIdModeLabel(int mode);
 void mmceLoadModules(void);
 // 1 once mmceman is resident (mmceN:/ can be opened without loading anything)
 int mmceModulesLoaded(void);

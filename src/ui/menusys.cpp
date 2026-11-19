@@ -916,7 +916,7 @@ config_set_t *menuLoadConfig()
     // Launch owns the storage path now. Drop speculative art before any launch I/O or cached return.
     // A zero wait requests cancellation but never kills or waits on an in-flight fileXio/SIO2 RPC;
     // that transaction is allowed to finish cleanly while no new queued art can get in front.
-    if (menuConfigSourceMode(list) == MMCE_MODE)
+    if (isMmceMode(menuConfigSourceMode(list)))
         (void)cacheAbortMmceImageLoadsTimed(0);
     else
         (void)cacheCancelPendingImageLoadsTimed(0);
@@ -1498,7 +1498,7 @@ static int menuDevicePageRank(const menu_item_t *item)
 
     if (support->mode >= BDM_MODE && support->mode <= BDM_MODE_LAST)
         return 0;
-    if (support->mode == MMCE_MODE)
+    if (isMmceMode(support->mode))
         return 1;
     if (support->mode == HDD_MODE)
         return 2;
@@ -2432,7 +2432,7 @@ static int menuCanRequestItemConfig(item_list_t *list)
     if (mode == APP_MODE)
         return guiInactiveFrames >= MENU_APP_CONFIG_IDLE_FRAMES;
 
-    if (mode == MMCE_MODE)
+    if (isMmceMode(mode))
         return guiInactiveFrames >= MENU_MMCE_CONFIG_IDLE_FRAMES;
 
     return 1;

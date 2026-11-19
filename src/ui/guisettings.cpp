@@ -107,7 +107,7 @@ static int guiIoModeToDeviceType(int ioMode)
 {
     if (ioMode >= BDM_MODE && ioMode < ETH_MODE)
         return 0;
-    if (ioMode == MMCE_MODE)
+    if (isMmceMode(ioMode))
         return 1;
     if (ioMode == HDD_MODE)
         return 2;
@@ -359,7 +359,6 @@ static int guiShowMmceConfig(void)
 {
     const struct UIItem *parts[] = {diaMmceConfig, diaMmceCommConfig, diaMmcePathConfig};
     const int skipIDs[] = {MMCE_COMM_BUTTON, MMCE_PATH_BUTTON};
-    static const char *deviceSlots[] = {"0", "1", NULL, NULL};
     static const char *deviceIGRSlots[] = {NULL, "0", "1", NULL, NULL};
     static const char *deviceAckWaitCycles[] = {"0", "1", "2", "3", "4", "5", NULL};
     static const char *deviceOnOff[] = {NULL, NULL, NULL};
@@ -368,9 +367,7 @@ static int guiShowMmceConfig(void)
 
     // diaSetEnum stores the array pointer rather than copying it. Keep the MMCE options alive for
     // the lifetime of the dedicated child dialog, including any parent re-entry after Circle.
-    deviceSlots[2] = _l(_STR_AUTO);
-    // The IGR slot and ON/OFF choices were fixed English text no translation could change
-    // (belomaxorka / YAOPL 999bb6d3). The stored values (mmceigr_slot 0-3, 0/1) are unchanged.
+    // The IGR/GameID slot and ON/OFF choices use localized Off/Both/On strings (values 0-3, 0/1).
     deviceIGRSlots[0] = _l(_STR_OFF);
     deviceIGRSlots[3] = _l(_STR_BOTH);
     deviceOnOff[0] = _l(_STR_OFF);
@@ -380,10 +377,9 @@ static int guiShowMmceConfig(void)
     if (ui == NULL)
         return -1;
 
-    diaSetEnum(ui, CFG_MMCESLOT, deviceSlots);
-    diaSetInt(ui, CFG_MMCESLOT, gMMCESlot);
     diaSetEnum(ui, CFG_MMCEIGRSLOT, deviceIGRSlots);
     diaSetInt(ui, CFG_MMCEIGRSLOT, gMMCEIGRSlot);
+    diaSetEnum(ui, CFG_MMCEGAMEID, deviceIGRSlots);
     diaSetInt(ui, CFG_MMCEGAMEID, gMMCEEnableGameID);
     diaSetEnum(ui, CFG_MMCE_WAIT_CYCLES, deviceAckWaitCycles);
     diaSetInt(ui, CFG_MMCE_WAIT_CYCLES, gMMCEAckWaitCycles);
@@ -393,7 +389,6 @@ static int guiShowMmceConfig(void)
 
     int ret = diaExecuteDialog(ui, -1, 1, NULL);
     if (ret == UIID_BTN_OK) {
-        diaGetInt(ui, CFG_MMCESLOT, &gMMCESlot);
         diaGetInt(ui, CFG_MMCEIGRSLOT, &gMMCEIGRSlot);
         diaGetInt(ui, CFG_MMCEGAMEID, &gMMCEEnableGameID);
         diaGetInt(ui, CFG_MMCE_WAIT_CYCLES, &gMMCEAckWaitCycles);
@@ -1817,8 +1812,8 @@ static void guiShowArtworkConfig(void)
         diaGetInt(diaArtworkConfig, UICFG_ART_DELAY, &artDelayIdx);
         if (artDelayIdx >= 0 && artDelayIdx < 4) {
             gArtDelay = artDelayValues[artDelayIdx];
-            item_list_t *lists[] = {appGetObject(1), hddGetObject(1), ethGetObject(1), mmceGetObject(1), udpfsGetObject(1), favGetObject(1)};
-            for (int i = 0; i < 6; i++) {
+            item_list_t *lists[] = {appGetObject(1), hddGetObject(1), ethGetObject(1), mmceGetSlotObject(0, 1), mmceGetSlotObject(1, 1), udpfsGetObject(1), favGetObject(1)};
+            for (int i = 0; i < 7; i++) {
                 if (lists[i] != NULL)
                     lists[i]->delay = gArtDelay;
             }

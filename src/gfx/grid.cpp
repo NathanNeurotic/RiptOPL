@@ -462,6 +462,7 @@ static int gridGlyphFor(struct menu_list *m)
         case HDD_MODE:
             return GRID_GLYPH_HDD;
         case MMCE_MODE:
+        case MMCE_MODE1:
             return GRID_GLYPH_MMCE;
         case ETH_MODE:
         case UDPFS_MODE:

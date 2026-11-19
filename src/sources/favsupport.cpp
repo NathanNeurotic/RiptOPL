@@ -1582,7 +1582,7 @@ int recentRankForRow(item_list_t *support, int id, const char *text)
 
 // Source order: the order rows are gathered in, which is also the order equal titles keep.
 static const int kAllGamesModes[] = {HDD_MODE, BDM_MODE, BDM_MODE1, BDM_MODE2, BDM_MODE3, BDM_MODE4, BDM_MODE5,
-                                     BDM_MODE6, BDM_MODE7, MMCE_MODE, ETH_MODE, UDPFS_MODE, HTTP_MODE, APP_MODE};
+                                     BDM_MODE6, BDM_MODE7, MMCE_MODE, MMCE_MODE1, ETH_MODE, UDPFS_MODE, HTTP_MODE, APP_MODE};
 
 // Appends one row; out == NULL only counts it.
 static int favGatherAdd(fav_rec_t *out, int n, int cap, item_list_t *owner, int id, int kind, const char *name)

@@ -196,6 +196,7 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_MMCE_SLOT            "mmce_slot"
 #define CONFIG_OPL_MMCEIGR_SLOT         "mmceigr_slot"
 #define CONFIG_OPL_MMCE_GAMEID          "mmce_gameid"
+#define CONFIG_OPL_MMCE_GAMEID_MIGR     "mmce_gameid_slot_migrated"
 #define CONFIG_OPL_APPLY_GAMEID         "apply_gameid"
 #define CONFIG_OPL_MMCE_WAIT_CYCLES     "mmce_wait_cycles"
 #define CONFIG_OPL_MMCE_USE_ALARMS      "mmce_use_alarms"
