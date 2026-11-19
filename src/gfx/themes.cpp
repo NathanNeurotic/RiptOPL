@@ -39,6 +39,9 @@ extern u16 size_theme_grid_cfg;
 
 theme_t *gTheme;
 
+// 1 when Coverflow's horizontal device strip holds the pad (Down/Up toggles focus with the carousel).
+int gCoverflowDeviceBarFocused = 0;
+
 // The view the user asked for (THM_VIEW_*), -1 = the theme's default. thmLoad falls back to the theme's
 // default when the theme does not offer it.
 int gThemeViewRequest = -1;
@@ -727,8 +730,10 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
                         elem->style = THM_MENU_STYLE_PSBBN;
                     else if (!strcasecmp(styleVal, "psbbn_active") || !strcasecmp(styleVal, "psbbn_pill"))
                         elem->style = THM_MENU_STYLE_PSBBN_ACTIVE;
-                    else if (!strcasecmp(styleVal, "psbbn_bar"))
+                    else if (!strcasecmp(styleVal, "psbbn_bar")) {
                         elem->style = THM_MENU_STYLE_PSBBN_BAR;
+                        elems->hasDeviceBar = 1;
+                    }
                 }
                 elem->drawElem = &drawMenuText;
             } else if (!strcmp(elementsType[ELEM_TYPE_ITEMS_LIST], type)) {
@@ -1875,6 +1880,7 @@ static int thmLoad(const char *themePath)
         rmDiscardFrame();
     gTheme = newT;
     loadedFontSize = gFontSize;
+    gCoverflowDeviceBarFocused = 0;
     psbbnFlowReset();
     thmFree(curT);
     host::ui().unlock();

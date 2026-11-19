@@ -174,6 +174,8 @@ typedef struct theme_elems
     unsigned char needsSaveIconConfig;
     // Set when this family contains a Grid: Left/Right and Up/Down follow the grid on its pages only.
     unsigned char hasGrid;
+    // Set when this family contains a horizontal device strip (MenuText with style=psbbn_bar).
+    unsigned char hasDeviceBar;
 } theme_elems_t;
 
 typedef struct
@@ -341,6 +343,7 @@ extern theme_t *gTheme;
 extern int gThemeViewRequest;
 
 extern int gCoverflowCount, gCoverflowCenterScale, gCoverflowAnimSpeed, gCoverflowDimCovers;
+extern int gCoverflowDeviceBarFocused; // Coverflow's bottom horizontal device bar has the pad (Down/Up swaps focus)
 extern int gGridSidebarOpen;           // the Grid's device sidebar has the pad (menusys sets it, grid.cpp draws it open)
 void gridForgetItem(const void *item); // a list item is freed: drop its case-flip state (grid.cpp)
 extern int gGridCompact;               // Grid (7x2) view pick: 1 the fixed 7 x 2 page, 0 the theme's / Grid Layout's

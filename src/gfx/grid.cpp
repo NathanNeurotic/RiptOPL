@@ -586,30 +586,40 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
     int x0 = elem->posX - (columns * stepX - spacing) / 2 + drawnW / 2;
     int y0 = elem->posY - (rows * stepY - spacing) / 2 + cellH / 2;
 
-    // Whole pages; turning to another one slides the old page away and the new one in.
+    // Whole pages, stacked vertically; turning to another one glides vertically and crossfades smoothly.
     float slide = gridSlideUpdate(menu, first);
-    int slideW = columns * stepX + 2 * spacing; // a page and a gap: the old page clears as the new arrives
-    int shift = gridSlideFrom >= 0 ? (int)(gridSlideDir * slideW * (1.0f - slide)) : 0;
+    int slideH = stepY / 3;
+    int shiftY = gridSlideFrom >= 0 ? (int)(gridSlideDir * slideH * (1.0f - slide)) : 0;
 
     u64 dim = GS_SETREG_RGBA(vignette ? 0x78 : 0x70, vignette ? 0x78 : 0x70, vignette ? 0x78 : 0x70, 0x80); // the others a step back
-    if (gridSlideFrom >= 0) {                                                                               // the old page on its way out
-        struct submenu_list *old = menu->item->submenu;
-        for (int i = 0; i < gridSlideFrom && old != NULL; i++)
-            old = old->next;
-        int oshift = shift - gridSlideDir * slideW;
-        for (int slot = 0; slot < perPage && old != NULL; slot++, old = old->next) {
-            float turn = gridFlipTurn(old);
-            drawCell(menu, old, elem, x0 + (slot % columns) * stepX + oshift, y0 + (slot / columns) * stepY, dim, 100, turn,
-                     turn != 0.0f ? gridBackTexture(menu, old, elem, 0) : NULL, vignette);
+    if (gridSlideFrom >= 0) {                                                                               // the old page gliding out vertically
+        float outFactor = (1.0f - slide) * (1.0f - slide);
+        int outAlpha = (int)(0x80 * outFactor);
+        if (outAlpha > 2) {
+            u64 outDim = (dim & ~(0xffULL << 24)) | ((u64)outAlpha << 24);
+            struct submenu_list *old = menu->item->submenu;
+            for (int i = 0; i < gridSlideFrom && old != NULL; i++)
+                old = old->next;
+            int oshiftY = shiftY - gridSlideDir * slideH;
+            for (int slot = 0; slot < perPage && old != NULL; slot++, old = old->next) {
+                float turn = gridFlipTurn(old);
+                drawCell(menu, old, elem, x0 + (slot % columns) * stepX, y0 + (slot / columns) * stepY + oshiftY, outDim, 100, turn,
+                         turn != 0.0f ? gridBackTexture(menu, old, elem, 0) : NULL, 0);
+            }
         }
     }
+
+    int inAlpha = gridSlideFrom >= 0 ? (int)(0x80 * slide) : 0x80;
+    u64 inDim = (dim & ~(0xffULL << 24)) | ((u64)inAlpha << 24);
+    u64 inSel = GS_SETREG_RGBA(0x80, 0x80, 0x80, inAlpha);
+    int activeVignette = gridSlideFrom >= 0 ? 0 : vignette;
 
     struct submenu_list *cell = menu->item->submenu;
     for (int i = 0; i < first && cell != NULL; i++)
         cell = cell->next;
     int selX = 0, selY = 0, shown = 0;
     for (int slot = 0; slot < perPage && cell != NULL; slot++, cell = cell->next) {
-        int x = x0 + (slot % columns) * stepX + shift, y = y0 + (slot / columns) * stepY;
+        int x = x0 + (slot % columns) * stepX, y = y0 + (slot / columns) * stepY + shiftY;
         if (cell == item) {
             selX = x;
             selY = y;
@@ -617,7 +627,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
             continue; // drawn last, larger, over its neighbours
         }
         float turn = gridFlipTurn(cell); // a case left turned keeps its back
-        drawCell(menu, cell, elem, x, y, dim, 100, turn, turn != 0.0f ? gridBackTexture(menu, cell, elem, 0) : NULL, vignette);
+        drawCell(menu, cell, elem, x, y, inDim, 100, turn, turn != 0.0f ? gridBackTexture(menu, cell, elem, 0) : NULL, activeVignette);
     }
     if (shown) {
         float turn = gridFlipTurn(item);
@@ -629,10 +639,10 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
         coverH = coverH * GRID_SELECTED_SCALE / 100;
         int frameW = (int)(coverW * fabsf(cosf(turn)) + 0.5f);
         int drawnSelW = rmWideScale(frameW > 1 ? frameW : 1);
-        if (focused)
+        if (focused && gridSlideFrom < 0)
             drawFrameGlow(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
-        drawCell(menu, item, elem, selX, selY, gDefaultCol, GRID_SELECTED_SCALE, turn, selBack, 0);
-        if (focused)
+        drawCell(menu, item, elem, selX, selY, inSel, GRID_SELECTED_SCALE, turn, selBack, 0);
+        if (focused && gridSlideFrom < 0)
             drawFrameBorder(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
     }
 

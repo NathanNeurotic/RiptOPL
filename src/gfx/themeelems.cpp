@@ -2058,6 +2058,10 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
         u64 dimGlyph = GS_SETREG_RGBA(0x55, 0x5E, 0x76, 0x58);
         u64 litGlyph = GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80);
 
+        int barFocused = gCoverflowDeviceBarFocused && gTheme != NULL && gTheme->coverflow != NULL && gTheme->psbbnFlow == NULL;
+        u64 sel = gTheme != NULL ? gTheme->selTextColor : elem->color;
+        int sr = sel & 0xFF, sg = (sel >> 8) & 0xFF, sb = (sel >> 16) & 0xFF;
+
         if (start > 0)
             fntRenderString(elem->font, x - rmWideScale(10), cy, ALIGN_VCENTER, 0, 0, "<", dimText);
         for (int i = start; i <= end; i++) {
@@ -2065,11 +2069,16 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
             int entryW = widths[i];
             if (entryW > maxW)
                 entryW = maxW;
+            if (lit && barFocused) {
+                int pad = rmWideScale(4);
+                rmDrawRect(x - pad, cy - 10, entryW + 2 * pad, 20, GS_SETREG_RGBA(sr, sg, sb, 0x45));
+            }
             gridDrawPageGlyph(pages[i], x + glyphW / 2, cy, glyphSize, lit ? litGlyph : dimGlyph);
             fntRenderStringFit(elem->font, x + glyphW + iconTextGap, cy, ALIGN_VCENTER,
-                               entryW - glyphW - iconTextGap, labels[i], lit ? elem->color : dimText, 0);
+                               entryW - glyphW - iconTextGap, labels[i],
+                               lit ? (barFocused ? gTheme->selTextColor : elem->color) : dimText, 0);
             if (lit)
-                rmDrawRect(x, cy + 8, entryW, 2, GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x70));
+                rmDrawRect(x, cy + 8, entryW, 2, barFocused ? GS_SETREG_RGBA(sr, sg, sb, 0x80) : GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x70));
             x += widths[i] + itemGap;
         }
         if (end < count - 1)
