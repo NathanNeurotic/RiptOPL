@@ -775,9 +775,11 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
                 }
             } else if (!strcmp(elementsType[ELEM_TYPE_ITEM_ICON], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_GAME_IMAGE, 0, 0, ALIGN_CENTER, 64, 64, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
+                elem->family = elems;
                 initGameImage(themePath, themeConfig, theme, elem, name, "ICO", 20, NULL, NULL);
             } else if (!strcmp(elementsType[ELEM_TYPE_ITEM_COVER], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_GAME_IMAGE, 0, 0, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
+                elem->family = elems;
                 initGameImage(themePath, themeConfig, theme, elem, name, "COV", COVER_CACHE_SLOTS, NULL, NULL);
             } else if (!strcmp(elementsType[ELEM_TYPE_ITEM_TEXT], type)) {
                 elems->needsVcdDisplayId = 1;

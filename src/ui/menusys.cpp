@@ -2702,8 +2702,10 @@ static void menuGridSidebarInput(void)
 
 static int menuCoverflowDeviceBarAvailable(void)
 {
-    return gTheme != NULL && gTheme->coverflow != NULL && gTheme->psbbnFlow == NULL &&
-           !menuPageIsGrid() && gTheme->mainElems.hasDeviceBar;
+    if (gTheme == NULL || gTheme->coverflow == NULL || gTheme->psbbnFlow != NULL ||
+        menuPageIsGrid() || selected_item == NULL || selected_item->item == NULL)
+        return 0;
+    return menuGetMainElems((item_list_t *)selected_item->item->userdata)->hasDeviceBar;
 }
 
 static void menuCoverflowDeviceBarInput(void)

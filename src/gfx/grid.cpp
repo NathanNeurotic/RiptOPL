@@ -285,11 +285,11 @@ static void drawVignette(int cx, int cy, int w, int h, int strength)
 
 // A cover with no art, when the theme asks for it (<block>_coverless=name or serial; RIPPS2 build 79/92): a
 // clear glass tile with the game's name, or the serial its case prints (the name when it has none).
-static void drawCoverlessTile(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem, int x, int y, int w, int h, int selected)
+static void drawCoverlessTile(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem, int x, int y, int w, int h, int selected, int alpha)
 {
     int tw = rmWideScale(w);
-    rmDrawRect(x - tw / 2, y - h / 2, tw, h, GS_SETREG_RGBA(0x04, 0x0C, 0x2E, selected ? 0x60 : 0x48));
-    u64 edge = GS_SETREG_RGBA(0x80, 0xA0, 0xFF, selected ? 0x30 : 0x18);
+    rmDrawRect(x - tw / 2, y - h / 2, tw, h, GS_SETREG_RGBA(0x04, 0x0C, 0x2E, (selected ? 0x60 : 0x48) * alpha / 0x80));
+    u64 edge = GS_SETREG_RGBA(0x80, 0xA0, 0xFF, (selected ? 0x30 : 0x18) * alpha / 0x80);
     rmDrawRect(x - tw / 2, y - h / 2, tw, 1, edge);
     rmDrawRect(x - tw / 2, y + h / 2 - 1, tw, 1, edge);
     rmDrawRect(x - tw / 2, y - h / 2, 1, h, edge);
@@ -303,9 +303,11 @@ static void drawCoverlessTile(struct menu_list *menu, struct submenu_list *item,
         if (saveIconSerialForStartup(startup, serial, sizeof(serial)))
             text = serial;
     }
-    if (text != NULL && tw > 16)
-        fntRenderStringFit(elem->font, x, y, ALIGN_CENTER, tw - 10, text,
-                           selected ? gTheme->selTextColor : gTheme->textColor, selected);
+    if (text != NULL && tw > 16) {
+        u64 tcol = selected ? gTheme->selTextColor : gTheme->textColor;
+        tcol = (tcol & ~(0xffULL << 24)) | ((u64)(((tcol >> 24) & 0xff) * alpha / 0x80) << 24);
+        fntRenderStringFit(elem->font, x, y, ALIGN_CENTER, tw - 10, text, tcol, selected);
+    }
 }
 
 // One cover. turn: the case flip (0 its front; past pi/2 its back, drawn plain); w/h the cover's size before
@@ -333,7 +335,7 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     GSTEXTURE *texture = getGameImageTexture(image->cache, thmGetItemSource(menu, item), &item->item);
     if (texture == NULL || texture->Mem == NULL) {
         if (gTheme->gridCoverless) {
-            drawCoverlessTile(menu, item, elem, x, y, tw, h, (color & 0xFFFFFF) == (gDefaultCol & 0xFFFFFF));
+            drawCoverlessTile(menu, item, elem, x, y, tw, h, (color & 0xFFFFFF) == (gDefaultCol & 0xFFFFFF), (color >> 24) & 0xFF);
             if (fabsf(turn) < 0.2f)
                 thmDrawDiscDecorator(menu, item, x, y, tw, h, 3, color);
             return;
@@ -751,8 +753,10 @@ void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, 
     // slots, never for fewer than two pages.
     int cells = rows * columns, count = 2 * cells > COVER_CACHE_SLOTS ? 2 * cells : COVER_CACHE_SLOTS;
     snprintf(key, sizeof(key), "%s_count", name);
-    if (configGetInt(themeConfig, key, &count) && count < 2 * cells)
-        configSetInt(themeConfig, key, 2 * cells);
+    if (configGetInt(themeConfig, key, &count) && count < 2 * cells) {
+        count = 2 * cells;
+        configSetInt(themeConfig, key, count);
+    }
 
     mutable_image_t *image = initMutableImage(themePath, themeConfig, theme, name, elem->type, "COV", count, NULL, NULL);
     elem->extended = image;

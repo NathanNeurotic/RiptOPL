@@ -33,7 +33,7 @@ program = r'''
 #include <string.h>
 #define FAV_TEXT_MAX 256
 enum { BDM_MODE = 0, BDM_MODE1, BDM_MODE2, BDM_MODE3, BDM_MODE4, BDM_MODE5, BDM_MODE6, BDM_MODE7,
-       ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MODE_COUNT };
+       ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MMCE_MODE1, MODE_COUNT };
 #define BDM_MODE_LAST BDM_MODE7
 enum { LIB_VIEW_ISO = 0, LIB_VIEW_PS1, LIB_VIEW_ELF, LIB_VIEW_ALL };
 enum { FAV_KIND_ISO = 0, FAV_KIND_VCD, FAV_KIND_CUE, FAV_KIND_ELF };
@@ -217,7 +217,7 @@ themeelems = (root / 'src/gfx/themeelems.cpp').read_text()
 tabs = r'''
 #include <assert.h>
 #include <stddef.h>
-enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE };
+enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MMCE_MODE1 };
 #define BDM_MODE_LAST BDM_MODE7
 struct item_list_t { int mode, enabled; };
 struct menu_item_t { int visible; void *userdata; };
@@ -266,7 +266,7 @@ assert ('if (selected_item != NULL && !menuItemShown(selected_item->item) && (gA
 rehome = r"""
 #include <assert.h>
 #include <stddef.h>
-enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE };
+enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MMCE_MODE1 };
 #define BDM_MODE_LAST BDM_MODE7
 struct item_list_t { int mode, enabled; };
 struct menu_item_t { int visible; void *userdata; };

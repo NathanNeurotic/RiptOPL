@@ -22,7 +22,19 @@ typedef struct
 item_list_t *mmceGetObject(int initOnly);
 item_list_t *mmceGetSlotObject(int slot, int initOnly);
 void mmceEnumerateDevices(int forceReinit);
-const char *mmceGameIdModeLabel(int mode);
+static inline const char *mmceGameIdModeLabel(int mode)
+{
+    switch (mode) {
+        case MMCE_GAMEID_SLOT0:
+            return "slot 0";
+        case MMCE_GAMEID_SLOT1:
+            return "slot 1";
+        case MMCE_GAMEID_BOTH:
+            return "both";
+        default:
+            return "off";
+    }
+}
 void mmceLoadModules(void);
 // 1 once mmceman is resident (mmceN:/ can be opened without loading anything)
 int mmceModulesLoaded(void);

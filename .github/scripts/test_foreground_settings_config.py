@@ -26,7 +26,8 @@ methods = "\n\n".join(function(s) for s in (
 program = r'''
 #include <cassert>
 #include <cstdio>
-enum { FAV_MODE, MMCE_MODE, APP_MODE, HDD_MODE };
+enum { FAV_MODE, MMCE_MODE, MMCE_MODE1, APP_MODE, HDD_MODE };
+static inline int isMmceMode(int mode) { return mode == MMCE_MODE || mode == MMCE_MODE1; }
 constexpr int MENU_APP_CONFIG_IDLE_FRAMES = 1, MENU_MMCE_CONFIG_IDLE_FRAMES = 3;
 struct config_set_t { int serial; };
 struct item_list_t { int mode; };

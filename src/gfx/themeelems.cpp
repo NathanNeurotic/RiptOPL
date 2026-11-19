@@ -670,8 +670,40 @@ void drawNameAttributeText(struct menu_list *menu, struct submenu_list *item, co
     }
     if (disp == NULL)
         disp = item->item.isFolder ? raw : (list ? host::library().listDisplayName(list, item->item.id, raw) : raw);
-    if (disp)
-        thmDrawElemText(elem, mutableText->sizingMode, disp, 1);
+    if (disp) {
+        GSTEXTURE *favTex = (!thmElemIsInfo(elem) && gFAVStartMode && item->item.favourited) ? thmGetTexture(FAV_MARK) : NULL;
+        if (favTex != NULL && favTex->Mem != NULL) {
+            int favRoom = MENU_ITEM_HEIGHT + 4;
+            theme_element_t tmp = *elem;
+            int starX = elem->posX;
+            if (tmp.textRoom > 0) {
+                if (tmp.aligned & ALIGN_HCENTER) {
+                    if (tmp.textRoom > 2 * favRoom)
+                        tmp.textRoom -= 2 * favRoom;
+                } else if (tmp.aligned & ALIGN_RIGHT) {
+                    if (tmp.textRoom > favRoom)
+                        tmp.textRoom -= favRoom;
+                } else if (tmp.textRoom > favRoom) {
+                    tmp.posX += favRoom;
+                    tmp.textRoom -= favRoom;
+                }
+            }
+            thmDrawElemText(&tmp, mutableText->sizingMode, disp, 1);
+            int room = tmp.textRoom > 0 ? tmp.textRoom : tmp.width;
+            int labelW = rmUnScaleX(fntCalcDimensions(elem->font, disp));
+            if (room > 0 && labelW > room)
+                labelW = room;
+            if (tmp.aligned & ALIGN_HCENTER)
+                starX = tmp.posX - labelW / 2 - favRoom;
+            else if (tmp.aligned & ALIGN_RIGHT)
+                starX = tmp.posX - labelW - favRoom;
+            else if (tmp.posX == elem->posX)
+                starX = elem->posX + labelW + 4;
+            rmDrawPixmap(favTex, starX, elem->posY, elem->aligned & ALIGN_VCENTER, MENU_ITEM_HEIGHT, MENU_ITEM_HEIGHT, elem->scaled, gDefaultCol, 0);
+        } else {
+            thmDrawElemText(elem, mutableText->sizingMode, disp, 1);
+        }
+    }
 }
 
 // Common functions for Image ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -2045,6 +2077,7 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
         int glyphW = rmWideScale(glyphSize);
         int iconTextGap = rmWideScale(3);
         int itemGap = rmWideScale(10);
+        int maxW = elem->width > 0 ? elem->width : 540;
         for (struct menu_list *m = head; m != NULL && count < 16; m = m->next) {
             if (!menuItemShown(m->item))
                 continue;
@@ -2053,12 +2086,13 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
             pages[count] = m;
             labels[count] = menuItemGetText(m->item);
             widths[count] = glyphW + iconTextGap + rmUnScaleX(fntCalcDimensions(elem->font, labels[count]));
+            if (widths[count] > maxW)
+                widths[count] = maxW;
             count++;
         }
         if (count == 0)
             return;
 
-        int maxW = elem->width > 0 ? elem->width : 540;
         int totalW = 0;
         for (int i = 0; i < count; i++)
             totalW += widths[i] + (i + 1 < count ? itemGap : 0);
@@ -2069,6 +2103,8 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
             int budget = maxW - 2 * arrowW;
             start = current;
             end = current;
+            if (budget > 0 && widths[current] > budget)
+                widths[current] = budget;
             totalW = widths[current];
             while (start > 0 || end < count - 1) {
                 int addRight = (end < count - 1) ? (widths[end + 1] + itemGap) : 0;
@@ -2107,8 +2143,6 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
         for (int i = start; i <= end; i++) {
             int lit = (i == current);
             int entryW = widths[i];
-            if (entryW > maxW)
-                entryW = maxW;
             if (lit && barFocused) {
                 int pad = rmWideScale(4);
                 rmDrawRect(x - pad, cy - 10, entryW + 2 * pad, 20, GS_SETREG_RGBA(sr, sg, sb, 0x45));
@@ -2119,7 +2153,7 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
                                lit ? (barFocused ? gTheme->selTextColor : elem->color) : dimText, 0);
             if (lit)
                 rmDrawRect(x, cy + 8, entryW, 2, barFocused ? GS_SETREG_RGBA(sr, sg, sb, 0x80) : GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x70));
-            x += widths[i] + itemGap;
+            x += entryW + itemGap;
         }
         if (end < count - 1)
             fntRenderString(elem->font, x - itemGap + rmWideScale(4), cy, ALIGN_VCENTER, 0, 0, ">", dimText);

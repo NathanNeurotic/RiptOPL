@@ -144,25 +144,19 @@ static void mmceSleepReadingStart(int us, int *latch)
     }
 }
 
-const char *mmceGameIdModeLabel(int mode)
-{
-    switch (mode) {
-        case MMCE_GAMEID_SLOT0:
-            return "slot 0";
-        case MMCE_GAMEID_SLOT1:
-            return "slot 1";
-        case MMCE_GAMEID_BOTH:
-            return "both";
-        default:
-            return "off";
-    }
-}
-
-int MmceSupport::waitGameIdSendOn(const char *mmceDevice, int slot, const char *startup)
+int MmceSupport::waitGameIdSendOn(const char *mmceDevice, int slot, const char *startup, int *start)
 {
     int queryFailures = 0;
     int answered = 0; // the card answered a busy query since the send, so its firmware has one
+    int own = 0;
+    if (start == NULL)
+        start = &own;
     for (int waited = 0; waited < MMCE_GAMEID_START_MS; waited += MMCE_GAMEID_START_POLL_MS) {
+        if (mmceStartPressed(start)) {
+            LOG("MMCE GameID %s (%s): START pressed during start wait; launching\n", startup, mmceDevice);
+            diagLog("gameid %s (%s): START during start wait; launching", startup, mmceDevice);
+            return 1;
+        }
         int status = fileXioDevctl(mmceDevice, 0x2, NULL, 0, NULL, 0);
         if (status < 0) {
             // One failed query is retried, not trusted. Before any answer, a run of failures means the
@@ -180,7 +174,7 @@ int MmceSupport::waitGameIdSendOn(const char *mmceDevice, int slot, const char *
                 LOG("MMCE GameID %s (%s): the card went silent after %d ms (swapping)\n", startup, mmceDevice, waited);
                 diagLog("gameid %s (%s): the card silent after %d ms; waiting for the swap", startup, mmceDevice, waited);
                 gameIdSwitchSeenMask |= (1 << slot); // the card is switching for our send
-                int ready = waitCardReady(mmceDevice, NULL);
+                int ready = waitCardReady(mmceDevice, start);
                 if (ready < 0)
                     return -1; // never came back within the silent bound: unconfirmed
                 if (ready == 0)
@@ -189,7 +183,7 @@ int MmceSupport::waitGameIdSendOn(const char *mmceDevice, int slot, const char *
                 return 1;
             }
             if (!answered || queryFailures < MMCE_GAMEID_QUERY_SILENT) {
-                DelayThread(MMCE_GAMEID_START_POLL_MS * 1000);
+                mmceSleepReadingStart(MMCE_GAMEID_START_POLL_MS * 1000, start);
                 continue;
             }
         } else {
@@ -201,7 +195,7 @@ int MmceSupport::waitGameIdSendOn(const char *mmceDevice, int slot, const char *
                 status < 0 ? "not answering" : "busy");
             diagLog("gameid %s (%s): the card switching after %d ms", startup, mmceDevice, waited);
             gameIdSwitchSeenMask |= (1 << slot); // the card is switching for our send
-            int ready = waitCardReady(mmceDevice, NULL);
+            int ready = waitCardReady(mmceDevice, start);
             if (ready < 0)
                 return -1; // the query failed mid-wait: unconfirmed
             if (ready == 0)
@@ -209,7 +203,7 @@ int MmceSupport::waitGameIdSendOn(const char *mmceDevice, int slot, const char *
             LOG("Set MMCE GameID (%s) to: %s\n", mmceDevice, startup);
             return 1; // card finished switching (settle CONFIRMED, or the user pressed START)
         }
-        DelayThread(MMCE_GAMEID_START_POLL_MS * 1000);
+        mmceSleepReadingStart(MMCE_GAMEID_START_POLL_MS * 1000, start);
     }
     int idle = fileXioDevctl(mmceDevice, 0x2, NULL, 0, NULL, 0);
     if (idle >= 0 && (idle & 1) == 0) {
@@ -247,7 +241,7 @@ int MmceSupport::sendGameID(const char *startup, const char *protectMcPath, int 
         return 0;
     }
 
-    int anyUnconfirmed = 0;
+    int anyUnconfirmed = 0, start = 0;
     for (int slot = 0; slot < MMCE_MODE_COUNT; slot++) {
         if (!((allowedMask >> slot) & 1))
             continue;
@@ -274,7 +268,7 @@ int MmceSupport::sendGameID(const char *startup, const char *protectMcPath, int 
             continue;
 
         gameIdTargetMask |= (1 << slot);
-        if (waitGameIdSendOn(mmceDevice, slot, startup) < 0)
+        if (waitGameIdSendOn(mmceDevice, slot, startup, &start) < 0)
             anyUnconfirmed = 1;
     }
 
@@ -475,23 +469,26 @@ int MmceSupport::gameIdSettle(int timeoutMs)
 {
     if (gameIdTargetMask == 0)
         return 0;
-    int pendingMask = gameIdTargetMask;
-    for (int waited = 0; waited <= timeoutMs && pendingMask != 0; waited += 200) {
+    int busyMask = gameIdTargetMask;
+    for (int waited = 0; waited <= timeoutMs && busyMask != 0; waited += 200) {
+        busyMask = 0;
         for (int s = 0; s < MMCE_MODE_COUNT; s++) {
-            if (!((pendingMask >> s) & 1))
+            if (!((gameIdTargetMask >> s) & 1))
                 continue;
             const char *dev = (s == 0) ? "mmce0:/" : "mmce1:/";
-            if (fileXioDevctl(dev, 0x1, NULL, 0, NULL, 0) != -1) {
-                int busy = fileXioDevctl(dev, 0x2, NULL, 0, NULL, 0);
-                if ((busy >= 0 && (busy & 1) == 0) || (busy < 0 && mmceLacksBusyQuery(dev)))
-                    pendingMask &= ~(1 << s);
+            if (fileXioDevctl(dev, 0x1, NULL, 0, NULL, 0) == -1) {
+                busyMask |= (1 << s);
+                continue;
             }
+            int busy = fileXioDevctl(dev, 0x2, NULL, 0, NULL, 0);
+            if (!((busy >= 0 && (busy & 1) == 0) || (busy < 0 && mmceLacksBusyQuery(dev))))
+                busyMask |= (1 << s);
         }
-        if (pendingMask == 0)
+        if (busyMask == 0)
             return 0;
         DelayThread(200 * 1000);
     }
-    LOG("MMCE GameID settle NOT confirmed after %d ms (pending mask 0x%x)\n", timeoutMs, pendingMask);
+    LOG("MMCE GameID settle NOT confirmed after %d ms (pending mask 0x%x)\n", timeoutMs, busyMask);
     return -1;
 }
 
@@ -1444,14 +1441,18 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 
     // MMCEDRV port: slot 0 -> port 2 (mmce0:), slot 1 -> port 3 (mmce1:).
     if (fileXioDevctl(slotRoot, 0x1, NULL, 0, NULL, 0) == -1) {
-        LOG("MMCE slot %d lost, aborting launch\n", slot->slotIndex);
-        host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
-        if (vmc_fds[0] >= 0)
-            fileXioClose(vmc_fds[0]);
-        if (vmc_fds[1] >= 0)
-            fileXioClose(vmc_fds[1]);
-        sbUnprepare(&settings->common);
-        return;
+        if (gMmceSupport.waitSwapDoneOn(slotRoot, "recovering slot", NULL))
+            gMmceSupport.settleDeviceFs(slotRoot);
+        if (fileXioDevctl(slotRoot, 0x1, NULL, 0, NULL, 0) == -1) {
+            LOG("MMCE slot %d lost, aborting launch\n", slot->slotIndex);
+            host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
+            if (vmc_fds[0] >= 0)
+                fileXioClose(vmc_fds[0]);
+            if (vmc_fds[1] >= 0)
+                fileXioClose(vmc_fds[1]);
+            sbUnprepare(&settings->common);
+            return;
+        }
     }
     settings->port = (slot->slotIndex == 0) ? 2 : 3;
 
