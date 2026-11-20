@@ -1274,8 +1274,10 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
            did its job) and then the screen stays black, because Neutrino reset away the stack the
            game path depends on. -qb keeps the inherited environment and skips that reset.
 
-           USB, iLink, UDPFS (both filesystem and block variants) and UDPBD: all launch through this
-           inherited environment. For UDPFS, an IOP reset destroys the resident ministack/ioman
+           USB, iLink, ATA/exFAT, UDPFS (both filesystem and block variants) and UDPBD launch
+           through this inherited environment. For ATA/exFAT the reset discards the live massN:
+           mount the ISO path uses. HDL needs its own load stage, so it remains excluded from
+           quick boot (as in NHDDL). For UDPFS, an IOP reset destroys the resident ministack/ioman
            state and triggers an immediate secondary DISCOVERY from the same socket that collides
            with active server streams. UDPBD without -qb, on hardware (FatBaldDad, 09-25, PR #756):
            the handoff reached Neutrino, then the link dropped, a NEW client rediscovered the server,
@@ -1288,6 +1290,7 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
            Composed before the budget check so an overfull launch is refused rather than silently
            losing -qb and reproducing the black screen. */
         if ((!strcmp(deviceName, "usb") || !strcmp(deviceName, "ilink") ||
+             (!strcmp(deviceName, "ata") && fsOverride != 2) ||
              !strcmp(deviceName, "udpfs") || !strcmp(deviceName, "udpfsbd") || !strcmp(deviceName, "udpbd")) &&
             argc < argvMax &&
             !neutrinoArgHasActiveFlag(gNeutrinoArgs, "-qb") && !neutrinoArgHasActiveFlag(extraArgs, "-qb"))

@@ -4,7 +4,7 @@ PS1 rows (POPStarter .VCD and Ember .CUE) look up ART/<RetroGEM id>_*.png first 
 row name (original #1049). CFG/<id>.cfg applies the same way: the whole file when the row has no
 CFG/<name>.cfg, only the display metadata the name cfg lacks beside one; the id file is never the save
 target. The ItemText caption shows the id for both cores. The id comes from
-one session memo, keyed by (row name, core): a disc-verified id beats the filename parse, an Ember
+one session memo, keyed by (row name, core, source root): a disc-verified id beats the filename parse, an Ember
 row resolves disc 1 the way the launch barcode does (discs.txt first), and nothing does device IO
 on the render or CFG paths.
 """
@@ -70,7 +70,8 @@ static int cueResolveFirstDiscImage(const char *dev, const char *name, char *out
 VcdSupport gVcdSupport;
 @MEMO@
 static void run(void) { void (*fn)(void) = queued; queued = NULL; assert(fn != NULL); fn(); }
-static const char *cached(const char *name, int kind) { static char id[VCD_ID_MAX]; return ps1RowIdCached(name, kind, id, sizeof(id)) ? id : NULL; }
+static const char *cached(const char *name, int kind) { static char id[VCD_ID_MAX]; return ps1RowIdCached(name, kind, id, sizeof(id), NULL) ? id : NULL; }
+static const char *cachedOn(const char *name, int kind, const char *root) { static char id[VCD_ID_MAX]; return ps1RowIdCached(name, kind, id, sizeof(id), root) ? id : NULL; }
 int main(void)
 {
     char id[VCD_ID_MAX];
@@ -85,38 +86,38 @@ int main(void)
     assert(!vcdExtractGameId("LSP99016.10", id, sizeof(id)) && !vcdExtractGameId("LSP99016.101x", id, sizeof(id)));
     assert(vcdExtractGameId("SLPM_862.47.Metal Gear Solid", id, sizeof(id)) == 11 && !strcmp(id, "SLPM_862.47"));
     /* The caption keeps its zero-IO contract for well-named rows; metadata still verifies them. */
-    vcdRequestDisplayId("SLUS_999.99.Crash", PS1_ROW_VCD);
+    vcdRequestDisplayId("SLUS_999.99.Crash", PS1_ROW_VCD, "mass0:");
     assert(ioCalls == 0);
-    ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_VCD);
+    ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_VCD, "mass0:");
     assert(ioCalls == 1);
-    ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_VCD); /* queued: deduped */
+    ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_VCD, "mass0:"); /* queued: deduped */
     assert(ioCalls == 1);
     run();
     assert(!strcmp(lastPath, "mass0:/POPS/SLUS_999.99.Crash.VCD"));
     /* The disc beats the name, canonicalized to the caption's one shape. */
     assert(!strcmp(cached("SLUS_999.99.Crash", PS1_ROW_VCD), "SLUS_012.34"));
-    assert(ps1RowIdCached("SLUS_999.99.Crash", PS1_ROW_VCD, id, sizeof(id)) && !strcmp(id, "SLUS_012.34"));
-    ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_VCD); /* resolved: never read again */
+    assert(ps1RowIdCached("SLUS_999.99.Crash", PS1_ROW_VCD, id, sizeof(id), "mass0:") && !strcmp(id, "SLUS_012.34"));
+    ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_VCD, "mass0:"); /* resolved: never read again */
     assert(ioCalls == 1);
 
     /* Kinds never cross: an Ember folder named like a VCD has its own entry, resolved from disc 1. */
     gVcdSupport.noteScanDir("SLUS_999.99.Crash", "mass0:/", PS1_ROW_CUE);
     assert(!strcmp(cached("SLUS_999.99.Crash", PS1_ROW_CUE), "SLUS_999.99"));
-    ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_CUE);
+    ps1RowIdRequest("SLUS_999.99.Crash", PS1_ROW_CUE, "mass0:");
     run();
     assert(cueReads == 1 && !strcmp(lastPath, "mass0:/EMBER/games/SLUS_999.99.Crash/Disc 1.cue"));
     assert(!strcmp(cached("SLUS_999.99.Crash", PS1_ROW_CUE), "SCES_000.02"));
     assert(!strcmp(cached("SLUS_999.99.Crash", PS1_ROW_VCD), "SLUS_012.34"));
-    assert(!ps1RowIdCached("Never", PS1_ROW_VCD, id, sizeof(id)));
+    assert(!ps1RowIdCached("Never", PS1_ROW_VCD, id, sizeof(id), "mass0:"));
 
     /* The caption asks for an Ember row's own (CUE) entry: a folder without an id in its name is
        read from disc 1 once, and a well-named folder costs nothing. */
     gVcdSupport.noteScanDir("Ape Escape (USA)", "mass0:/", PS1_ROW_CUE);
     assert(cached("Ape Escape (USA)", PS1_ROW_CUE) == NULL);
     calls = ioCalls;
-    vcdRequestDisplayId("SLUS_999.99.Crash", PS1_ROW_CUE);
+    vcdRequestDisplayId("SLUS_999.99.Crash", PS1_ROW_CUE, "mass0:");
     assert(ioCalls == calls);
-    vcdRequestDisplayId("Ape Escape (USA)", PS1_ROW_CUE);
+    vcdRequestDisplayId("Ape Escape (USA)", PS1_ROW_CUE, "mass0:");
     assert(ioCalls == calls + 1);
     run();
     assert(!strcmp(cached("Ape Escape (USA)", PS1_ROW_CUE), "SCES_000.02"));
@@ -126,14 +127,14 @@ int main(void)
     gVcdSupport.noteScanDir("Spyro", "pfs0:/", PS1_ROW_VCD);
     artBusy = 1;
     int reads = discReads;
-    ps1RowIdRequest("Spyro", PS1_ROW_VCD);
+    ps1RowIdRequest("Spyro", PS1_ROW_VCD, "pfs0:");
     run();
     assert(discReads == reads);
-    ps1RowIdRequest("Spyro", PS1_ROW_VCD);
+    ps1RowIdRequest("Spyro", PS1_ROW_VCD, "pfs0:");
     assert(queued == NULL); /* inside the backoff window */
     artBusy = 0;
     guiFrameId += 91;
-    ps1RowIdRequest("Spyro", PS1_ROW_VCD);
+    ps1RowIdRequest("Spyro", PS1_ROW_VCD, "pfs0:");
     run();
     assert(!strcmp(lastPath, "pfs0:/Spyro.VCD")); /* dir with a trailing slash: no double separator */
 
@@ -142,34 +143,77 @@ int main(void)
     gVcdSupport.noteScanDir("Junk", "mass0:/POPS");
     for (int i = 0; i < 10; i++) {
         guiFrameId += 200;
-        ps1RowIdRequest("Junk", PS1_ROW_VCD);
+        ps1RowIdRequest("Junk", PS1_ROW_VCD, "mass0:");
         if (queued)
             run();
     }
     assert(cached("Junk", PS1_ROW_VCD) == NULL);
     reads = discReads;
     guiFrameId += 200;
-    ps1RowIdRequest("Junk", PS1_ROW_VCD);
+    ps1RowIdRequest("Junk", PS1_ROW_VCD, "mass0:");
     assert(queued == NULL && discReads == reads);
 
-    /* The same row seen on another device is re-pointed and re-asked. */
+    /* The same name on another card gets its own read and answer. */
     strcpy(vcdDisc, "SCUS_944.26");
     gVcdSupport.noteScanDir("Junk", "mmce0:/POPS");
-    ps1RowIdRequest("Junk", PS1_ROW_VCD);
+    ps1RowIdRequest("Junk", PS1_ROW_VCD, "mmce0:");
     run();
-    assert(!strcmp(lastPath, "mmce0:/POPS/Junk.VCD") && !strcmp(cached("Junk", PS1_ROW_VCD), "SCUS_944.26"));
+    assert(!strcmp(lastPath, "mmce0:/POPS/Junk.VCD") && !strcmp(cachedOn("Junk", PS1_ROW_VCD, "mmce0:"), "SCUS_944.26"));
+
+    /* Same-named rows on two cards keep independent ids and queued reads. */
+    gVcdSupport.noteScanDir("Shared", "mmce0:/POPS");
+    gVcdSupport.noteScanDir("Shared", "mmce1:/POPS");
+    strcpy(vcdDisc, "SLUS-00001");
+    ps1RowIdRequest("Shared", PS1_ROW_VCD, "mmce0:");
+    run();
+    assert(!strcmp(lastPath, "mmce0:/POPS/Shared.VCD"));
+    assert(!strcmp(cachedOn("Shared", PS1_ROW_VCD, "mmce0:"), "SLUS_000.01"));
+    strcpy(vcdDisc, "SLUS-00002");
+    ps1RowIdRequest("Shared", PS1_ROW_VCD, "mmce1:");
+    run();
+    assert(!strcmp(lastPath, "mmce1:/POPS/Shared.VCD"));
+    assert(!strcmp(cachedOn("Shared", PS1_ROW_VCD, "mmce1:"), "SLUS_000.02"));
+    assert(!strcmp(cachedOn("Shared", PS1_ROW_VCD, "mmce0:"), "SLUS_000.01"));
+    assert(cachedOn("Shared", PS1_ROW_VCD, NULL) == NULL); /* ambiguous without a root */
+
+    /* A rootless compatibility request still resolves when the name is unique. */
+    gVcdSupport.noteScanDir("Legacy", "mass0:/POPS");
+    strcpy(vcdDisc, "SCUS_944.26");
+    ps1RowIdRequest("Legacy", PS1_ROW_VCD, NULL);
+    run();
+    assert(!strcmp(lastPath, "mass0:/POPS/Legacy.VCD"));
+    assert(!strcmp(cached("Legacy", PS1_ROW_VCD), "SCUS_944.26"));
+
+    /* The HDD's scratch and data-home mounts are the same source for this key. */
+    gVcdSupport.noteScanDir("HDD Shared", "pfs1:/");
+    strcpy(vcdDisc, "SCUS_944.26");
+    ps1RowIdRequest("HDD Shared", PS1_ROW_VCD, "pfs0:");
+    run();
+    assert(!strcmp(lastPath, "pfs1:/HDD Shared.VCD"));
+    assert(!strcmp(cachedOn("HDD Shared", PS1_ROW_VCD, "pfs0:"), "SCUS_944.26"));
+
+    /* A second card scanned after queueing cannot strand the selected entry. */
+    gVcdSupport.noteScanDir("Race", "mass0:/POPS");
+    strcpy(vcdDisc, "SLUS-00003");
+    ps1RowIdRequest("Race", PS1_ROW_VCD, NULL);
+    gVcdSupport.noteScanDir("Race", "mmce1:/POPS");
+    run();
+    assert(!strcmp(lastPath, "mass0:/POPS/Race.VCD"));
+    assert(!strcmp(cachedOn("Race", PS1_ROW_VCD, "mass0:"), "SLUS_000.03"));
+    ps1RowIdRequest("Race", PS1_ROW_VCD, "mass0:"); /* resolved, not stuck queued */
+    assert(queued == NULL);
 
     /* A failed enqueue throttles instead of spinning. */
     ioFails = 1;
     gVcdSupport.noteScanDir("Retry", "mass0:/POPS");
     calls = ioCalls;
-    ps1RowIdRequest("Retry", PS1_ROW_VCD);
-    ps1RowIdRequest("Retry", PS1_ROW_VCD);
+    ps1RowIdRequest("Retry", PS1_ROW_VCD, "mass0:");
+    ps1RowIdRequest("Retry", PS1_ROW_VCD, "mass0:");
     assert(ioCalls == calls + 1);
     ioFails = 0;
 
     /* Unscanned rows never touch a device; invalidation forgets everything. */
-    ps1RowIdRequest("Unscanned", PS1_ROW_CUE);
+    ps1RowIdRequest("Unscanned", PS1_ROW_CUE, "mass0:");
     assert(queued == NULL);
     vcdInvalidateGameIds();
     assert(cached("Junk", PS1_ROW_VCD) == NULL);
@@ -403,7 +447,7 @@ static void configFree(config_set_t *) {}
 static int configGetStr(config_set_t *c, const char *k, const char **v) { auto it = c->kv.find(k); if (it == c->kv.end()) return 0; *v = it->second.c_str(); return 1; }
 static int configSetStr(config_set_t *c, const char *k, const char *v) { c->kv[k] = v; if (k[0] != '#') c->mod = true; return 1; }
 static const char *rowId = "SLUS_012.34";
-static int ps1RowIdCached(const char *, int, char *out, int size) { if (!rowId) return 0; snprintf(out, size, "%s", rowId); return 1; }
+static int ps1RowIdCached(const char *, int, char *out, int size, const char *root) { if (!rowId || !root) return 0; snprintf(out, size, "%s", rowId); return 1; }
 struct game_t { char name[64]; };
 static config_set_t *populate(const char *name, int isVcd, int dirty)
 {

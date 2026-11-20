@@ -392,12 +392,20 @@ int main(int argc, char *argv[])
     int reset_iop = 0;
     int cleanup_hdd = 0;
     int rom0_mc = 0;
+    const char *fallback = NULL;
+    int attempt;
 
     LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_UP); // stage 12: child is on the air
 
     if (argc < 2)
         return -EINVAL;
 
+    /* Only the parent's appended options are parsed, never the target's own
+     * arguments. The fallback is last; reset/-la= precedes it. */
+    if (argc > 1 && !strncmp(argv[argc - 1], "-fallback=", 10) && argv[argc - 1][10] != '\0') {
+        fallback = argv[argc - 1] + 10;
+        argc--;
+    }
     if (argc > 1) {
         if (strcmp(argv[argc - 1], "-reset-iop") == 0) {
             reset_iop = 1;
@@ -437,37 +445,47 @@ int main(int argc, char *argv[])
        bdmevent.irx stays resident with bdm_RegisterCallback armed and fires on EVERY mount. The
        target, inheriting the live IOP, mounts the game device; the callback DMAs into a stale
        handler in memory the target now owns; the console lands in OSDSYS instead of the game. */
-    // Primary: the classic LOADFILE path (see header -- every ioman-visible device stays on it).
-    memset(&elfdata, 0, sizeof(elfdata));
-    SifLoadFileInit();
-    ret = SifLoadElf(argv[0], &elfdata);
-    if (ret != 0 || elfdata.epc == 0)
-        ret = SifLoadElfEncrypted(argv[0], &elfdata);
-    SifLoadFileExit();
-    if (ret == 0 && elfdata.epc != 0) {
-        if (cleanup_hdd)
-            cleanupHddForLaunch();
-        if (reset_iop)
-            resetIOP(rom0_mc);
-        SifExitRpc();
-        FlushCache(0);
-        FlushCache(2);
-        LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_LOADED); // stage 13: LOADFILE path loaded the target
-        return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc - 1, &argv[1]);
-    }
+    for (attempt = 0; attempt < 2 && (attempt == 0 || fallback != NULL); attempt++) {
+        const char *loadPath = attempt == 0 ? argv[0] : fallback;
+        if (attempt != 0) {
+            /* The fallback is also the child's real argv[0]. */
+            argv[1] = (char *)fallback;
+            wipeUserMem();
+            FlushCache(0);
+        }
 
-    // Rescue: fileXio (iomanX) for the devices LOADFILE cannot see (mmceN:, pfs, ...).
-    u32 gp = 0;
-    if (loadElfViaFileXio(argv[0], &entry, &gp) == 0) {
-        if (cleanup_hdd)
-            cleanupHddForLaunch();
-        if (reset_iop)
-            resetIOP(rom0_mc);
-        SifExitRpc();
-        FlushCache(0);
-        FlushCache(2);
-        LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_LOADED); // stage 13: fileXio rescue path loaded the target
-        return ExecPS2((void *)entry, (void *)gp, argc - 1, &argv[1]);
+        // Primary: the classic LOADFILE path (see header -- every ioman-visible device stays on it).
+        memset(&elfdata, 0, sizeof(elfdata));
+        SifLoadFileInit();
+        ret = SifLoadElf(loadPath, &elfdata);
+        if (ret != 0 || elfdata.epc == 0)
+            ret = SifLoadElfEncrypted(loadPath, &elfdata);
+        SifLoadFileExit();
+        if (ret == 0 && elfdata.epc != 0) {
+            if (cleanup_hdd)
+                cleanupHddForLaunch();
+            if (reset_iop)
+                resetIOP(rom0_mc);
+            SifExitRpc();
+            FlushCache(0);
+            FlushCache(2);
+            LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_LOADED); // stage 13: LOADFILE path loaded the target
+            return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc - 1, &argv[1]);
+        }
+
+        // Rescue: fileXio (iomanX) for the devices LOADFILE cannot see (mmceN:, pfs, ...).
+        u32 gp = 0;
+        if (loadElfViaFileXio(loadPath, &entry, &gp) == 0) {
+            if (cleanup_hdd)
+                cleanupHddForLaunch();
+            if (reset_iop)
+                resetIOP(rom0_mc);
+            SifExitRpc();
+            FlushCache(0);
+            FlushCache(2);
+            LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_LOADED); // stage 13: fileXio rescue path loaded the target
+            return ExecPS2((void *)entry, (void *)gp, argc - 1, &argv[1]);
+        }
     }
 
     SifExitRpc();

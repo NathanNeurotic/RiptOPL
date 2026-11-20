@@ -85,9 +85,17 @@ typedef struct
     unsigned char cfgText;
 } mutable_text_t;
 
+enum {
+    THM_HL_NONE = 0,
+    THM_HL_BAR,
+    THM_HL_LINE
+};
+
 typedef struct
 {
     int displayedItems;
+    int hidden;
+    int highlight;
 
     const char *decorator;
     mutable_image_t *decoratorImage;
@@ -143,6 +151,8 @@ typedef struct theme_element
     // never replaces today's appsMain/vcdMain cover; likewise an inherited ItemsList leaves navigation on
     // the list that view used before (thmFamilyItemsList). Always 0 for every other family.
     unsigned char inherited;
+    unsigned char style;
+    unsigned char drawDisc;
 
     void *extended;
 
@@ -165,6 +175,8 @@ typedef struct theme_elems
     unsigned char needsSaveIconConfig;
     // Set when this family contains a Grid: Left/Right and Up/Down follow the grid on its pages only.
     unsigned char hasGrid;
+    // Set when this family contains a horizontal device strip (MenuText with style=psbbn_bar).
+    unsigned char hasDeviceBar;
 } theme_elems_t;
 
 typedef struct
@@ -274,6 +286,7 @@ typedef struct theme
     int gridCompact;           // built as Grid (7x2) (gGridCompact when the grid was built)
     int coverflowCoverOffset;
 
+    image_cache_t *discCache;
     int gameCacheCount;
     // Which load this is (1, 2, ... for the whole run, never reused). A game row's (slot, UID) pairs are
     // stamped with the load they were made for: cache user ids and UIDs start over in every load, so a
@@ -305,6 +318,7 @@ typedef struct theme
     // 0 (the key absent, or any other number) shows them, as before the key existed. A word such as "on"
     // reads as 0 and hides them, as in RIPPS2.
     int hideListCfgText;
+    int badgeSet; // badge_set=ripps2: use RIPPS2's internal badge set on AttributeImage
 } theme_t;
 
 // Button glyph sets (RIPPS2 build 90, akilluminati47): the theme's own PNGs, OPL's built-in ones, or one of two
@@ -331,6 +345,7 @@ extern theme_t *gTheme;
 extern int gThemeViewRequest;
 
 extern int gCoverflowCount, gCoverflowCenterScale, gCoverflowAnimSpeed, gCoverflowDimCovers;
+extern int gCoverflowDeviceBarFocused; // Coverflow's bottom horizontal device bar has the pad (Down/Up swaps focus)
 extern int gGridSidebarOpen;           // the Grid's device sidebar has the pad (menusys sets it, grid.cpp draws it open)
 void gridForgetItem(const void *item); // a list item is freed: drop its case-flip state (grid.cpp)
 extern int gGridCompact;               // Grid (7x2) view pick: 1 the fixed 7 x 2 page, 0 the theme's / Grid Layout's

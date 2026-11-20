@@ -836,11 +836,6 @@ struct UIItem diaMmceConfig[] = {
     {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_MMCE}}},
     {UI_SPLITTER},
 
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_MMCE_SLOT}}},
-    {UI_SPACER},
-    {UI_ENUM, CFG_MMCESLOT, 1, 1, _STR_HINT_MMCE_SLOT, 0, 0, {.intvalue = {0, 0, 0, 1}}},
-    {UI_BREAK},
-
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_MMCEIGR_SLOT}}},
     {UI_SPACER},
     {UI_ENUM, CFG_MMCEIGRSLOT, 1, 1, _STR_HINT_MMCEIGR_SLOT, 0, 0, {.intvalue = {0, 0, 0, 1}}},
@@ -848,7 +843,7 @@ struct UIItem diaMmceConfig[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_MMCE_SEND_GAMEID}}},
     {UI_SPACER},
-    {UI_BOOL, CFG_MMCEGAMEID, 1, 1, _STR_HINT_MMCE_GAMEID, 0, 0, {.intvalue = {0, 0}}},
+    {UI_ENUM, CFG_MMCEGAMEID, 1, 1, _STR_HINT_MMCE_GAMEID, 0, 0, {.intvalue = {0, 0, 0, 1}}},
     {UI_BREAK},
 
     // Legacy action rows. The Settings page skips these and composes both editors inline below.

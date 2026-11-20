@@ -655,6 +655,35 @@ void sysExecExit(int toMenuChoice)
     char *args[2] = {(char *)"BootBrowser", (char *)"SkipMc"};
     char **argv = args;
     int argc = 0;
+    if (toMenuChoice && (gExitMenu == EXIT_MENU_BOOT2 || gExitMenu == EXIT_MENU_BOOT)) {
+        char path[40];
+        char *bootArgv[] = {path};
+        const char *file = gExitMenu == EXIT_MENU_BOOT2 ? "BOOT2.ELF" : "BOOT.ELF";
+        int fd, port, present = 0;
+
+        for (port = 0; port < 2; port++) {
+            snprintf(path, sizeof(path), "mc%d:/BOOT/%s", port, file);
+            if ((fd = open(path, O_RDONLY)) >= 0) {
+                close(fd);
+                present |= 1 << port;
+            }
+        }
+        if (!present)
+            return;
+        host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+        port = (present & 1) ? 0 : 1;
+        snprintf(path, sizeof(path), "mc%d:/BOOT/%s", port, file);
+        if (port == 0 && (present & 2)) {
+            char fallback[40];
+            snprintf(fallback, sizeof(fallback), "mc1:/BOOT/%s", file);
+            sysLoadELFAppFallback(path, fallback, "", 1, bootArgv, 1, 0);
+        } else {
+            sysLoadELFAppFallback(path, NULL, "", 1, bootArgv, 1, 0);
+        }
+        /* The menu has been torn down: even a refused handoff is terminal. */
+        exit(0);
+        return;
+    }
     if (toMenuChoice && gExitMenu == EXIT_MENU_BROWSER)
         argc = exitCardUpdateIgnoresBrowser() ? 2 : 1;
     else if (toMenuChoice && gExitMenu == EXIT_MENU_OSDSYS_SKIPMC) {

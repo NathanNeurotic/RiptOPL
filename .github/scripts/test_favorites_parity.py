@@ -172,7 +172,9 @@ int main() {
 
 libview = read("src/ui/libview.cpp")
 view_enum = re.search(r"enum LIB_VIEW \{.*?\};", read("include/libview.h"), re.S).group()
-mode_enum = re.search(r"enum IO_MODES \{.*?\};", read("include/iosupport.h"), re.S).group()
+iosupport_h = read("include/iosupport.h")
+mode_enum = re.search(r"enum IO_MODES \{.*?\};", iosupport_h, re.S).group()
+mmce_helper = re.search(r"static inline int isMmceMode\(int mode\)\n\{.*?\n\}\n", iosupport_h, re.S).group()
 initial = libview[libview.index("#define LIB_VIEW_ENTRIES"):libview.index("// Mixed has")]
 run("fav_default", r'''
 #include <array>
@@ -180,7 +182,7 @@ run("fav_default", r'''
 #include <cstddef>
 #include <cstring>
 #define LIB_VIEW_STATE_NONE '-'
-''' + mode_enum + r'''
+''' + mode_enum + "\n" + mmce_helper + r'''
 #define BDM_MODE_LAST BDM_MODE7
 #define BDM_MODE_COUNT (BDM_MODE_LAST - BDM_MODE + 1)
 ''' + view_enum + "\n" + initial + function(libview, "static int libViewIsDeviceMode(") +

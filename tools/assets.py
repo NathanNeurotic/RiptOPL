@@ -45,7 +45,7 @@ Portuguese_BR Romana Russian Ryukyuan SChinese Serbian Spanish Swedish TChinese 
 
 PNG_ASSETS = """load0 load1 load2 load3 load4 load5 load6 load7 usb usb_bd ilk_bd
 m4s_bd hdd_bd mmce hdd eth udp_bd udp_fs app cross triangle circle square select start left right
-cover disc screen incebtion ip coverapp missing screens
+cover disc screen coverapp missing screens
 ELF HDL ISO VCD ZSO UL CUE EXE BIN APPS CD DVD Aspect_s Aspect_w Aspect_w1
 Aspect_w2 Rating_0
 Rating_1 Rating_2 Rating_3 Rating_4 Rating_5 Scan_240p Scan_240p1 Scan_480i Scan_480p
@@ -53,7 +53,8 @@ Scan_480p1 Scan_480p2 Scan_480p3 Scan_480p4 Scan_480p5 Scan_576i Scan_576p Scan_
 Scan_1080i Scan_1080i2 Scan_1080p Vmode_multi Vmode_ntsc Vmode_pal logo
 logo0 logo1 logo2 logo3 case
 Index_0 Index_1 Index_2 Index_3 Index_4 Index2_0 Index2_1 Index3_0 Index3_1 Index3_2
-Index4_0 Index4_1 Index4_2 Index4_3 fav fav_mark R3 L3 L1 R1 PS1 PS2 case_overlay psbbn_bg techwritescode
+Index4_0 Index4_1 Index4_2 Index4_3 fav fav_mark R3 L3 L1 R1 PS1 PS2
+Players_1 Players_2 Players_3 Players_4 bezel_top bezel_bottom psbbn_bg techwritescode
 grid_devices""".split()
 # Button glyph sets (RIPPS2 build 90, akilluminati47): Standard and White, for Settings > Interface > Button Glyphs
 PNG_ASSETS += ["glyph_%s_%s" % (s, n) for s in ("standard", "white")
@@ -69,9 +70,6 @@ MISC = [
     ("icon_sys_J", "misc/icon_J.sys", "icon_sys_J"),
     ("icon_sys_C", "misc/icon_C.sys", "icon_sys_C"),
     ("conf_theme_OPL", "misc/conf_theme_OPL.cfg", "conf_theme_OPL_cfg"),
-    ("theme_coverflow", "misc/theme_coverflow.cfg", "theme_coverflow_cfg"),
-    ("theme_psbbn_flow", "misc/theme_psbbn_flow.cfg", "theme_psbbn_flow_cfg"),
-    ("theme_grid", "misc/theme_grid.cfg", "theme_grid_cfg"),
 ]
 
 
@@ -134,43 +132,10 @@ def embed():
     for stale in os.listdir(ASM_DIR):  # asm/*.c is globbed by ps2.yaml: drop leftovers
         if stale.endswith(".c"):
             os.remove(os.path.join(ASM_DIR, stale))
-    theme = os.environ.get("RIPTOPL_THEME", "incebtion")
-    if theme not in ("korium", "incebtion"):
+    theme = os.environ.get("RIPTOPL_THEME", "default")
+    if theme not in ("default", "korium", "incebtion"):
         sys.exit(f"unknown RIPTOPL_THEME: {theme}")
-    theme_dir = None
-    if theme == "korium":
-        vendor = Path(ROOT) / "third_party/korium"
-        archive = vendor / "assets.zip"
-        manifest = json.loads((vendor / "UPSTREAM.json").read_text(encoding="utf-8"))
-        if hashlib.sha256(archive.read_bytes()).hexdigest() != manifest["archive_sha256"]:
-            sys.exit("Korium asset archive digest mismatch")
-        theme_dir = Path(ROOT) / "build/theme-assets/korium"
-        with zipfile.ZipFile(archive) as package:
-            # Do not trust archive paths even when refreshing a vendored pin.
-            for name, digest in manifest["files"].items():
-                destination = (theme_dir / name).resolve()
-                if not destination.is_relative_to(theme_dir.resolve()):
-                    sys.exit(f"unsafe Korium asset path: {name}")
-                data = package.read(name)
-                if hashlib.sha256(data).hexdigest() != digest:
-                    sys.exit(f"Korium asset digest mismatch: {name}")
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                destination.write_bytes(data)
-        # RiptOPL's List Title and Description layout for Korium, kept outside the vendored archive so a
-        # re-import keeps it: the lines before its first section go above Korium's list cfg (a key after a
-        # section header would land in that section), the sections after it (main11 and main12, the next free
-        # numbers). It is inert unless the setting shows the CFG text (src/gfx/themeviews.cpp). Its vcdMain6 is
-        # the PS1 page's title ID, on the PS2 page's row: without it the PS1 page falls back to appsMain6, 30
-        # higher, where the PS1 disc leaves the ID too little room and it scrolls (CosmicScale).
-        overlay = (Path(ROOT) / "misc/korium_list_desc.cfg").read_bytes()
-        split = overlay.index(b"\nmain") + 1
-        list_cfg = theme_dir / "misc/conf_theme_OPL.cfg"
-        list_cfg.write_bytes(overlay[:split] + list_cfg.read_bytes() + overlay[split:])
     pngs = list(PNG_ASSETS)
-    if theme_dir:
-        # inceBtion's app placeholder and foliage layer: Korium maps neither (src/gfx/textures.cpp).
-        pngs = [p for p in pngs if p not in ("coverapp", "case_overlay")]
-        pngs += ["apps_case", "case_ps1", "disc_ps1", "Players_1", "Players_2", "Players_3", "Players_4"]
     if os.environ.get("RIPTOPL_RA") == "1":
         pngs += ["ra_mark"]
     if os.environ.get("RIPTOPL_RA") == "1" or os.environ.get("RIPTOPL_UPDATER") == "1":
@@ -181,24 +146,12 @@ def embed():
                 name = "ratls_root_" + der.stem.replace("-", "")
                 bin2c(str(der), name, name)
     for a in pngs:
-        name = {"incebtion": "background", "ip": "background_info"}.get(a, a) if theme_dir else a
-        themed = theme_dir / f"gfx/{name}.png" if theme_dir else None
-        if themed and not themed.is_file() and name.startswith("Index") and "_" in name and name[5] != "_":
-            # Korium ships five-dot BdmIndex pictures only: dot <p> of <n> is its Index_<p>, never inceBtion's.
-            themed = theme_dir / f"gfx/Index_{name.split('_')[1]}.png"
-        if themed and not themed.is_file():
-            # Badges Korium does not ship yet (CUE/EXE/BIN), drawn from its own badges until Berion's arrive.
-            themed = Path(ROOT) / f"third_party/korium/stand-in/gfx/{name}.png"
-        source = str(themed) if themed and themed.is_file() else f"gfx/{a}.png"
-        bin2c(source, f"{a}_png", f"{a}_png")
+        bin2c(f"gfx/{a}.png", f"{a}_png", f"{a}_png")
     bin2c("third_party/fonts/PoeVeticaNew.ttf", "poeveticanew", "poeveticanew_raw")
+    bin2c("third_party/fonts/ripps2_roboto.ttf", "ripps2roboto", "ripps2roboto_raw")
     for a in AUDIO:
         bin2c(f"audio/{a}.adp", a, f"{a}_adp")
     for name, src, sym in MISC:
-        if theme_dir and name in ("conf_theme_OPL", "theme_coverflow"):
-            src = str(theme_dir / src)
-        elif theme_dir and name == "theme_grid":
-            src = "misc/theme_grid_korium.cfg"  # Korium has no Grid of its own: ours, with its cases
         bin2c(src, name, sym)
     bin2c("modules/iopcore/IOPRP.img", "IOPRP_img", "IOPRP_img")
 

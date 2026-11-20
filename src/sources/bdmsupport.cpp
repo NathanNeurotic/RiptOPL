@@ -51,6 +51,7 @@ int pccfModLoaded;
 static volatile unsigned int pccfProbeGeneration = 1;
 static unsigned int pccfAttemptGeneration;
 static int bdmAutoLaunch; // Auto Loading waits for its own mass device; skip menu discovery settles
+static unsigned int bdmIopResetGeneration; // iLink discovery needs a new probe after any IOP reset
 int hddModLoaded = 0;
 static int udpbdModLoaded = 0;
 static int udpbdNicClaimed = 0; // SMAP resident, even if later block modules failed; only an IOP reset frees it
@@ -64,6 +65,7 @@ void bdmIopWasReset(void)
     if (pccfModLoaded)
         pccfProbeGeneration++; // CF only retries on an explicit probe; a reset that unloaded it is one
     iUSBModLoaded = iLinkModLoaded = iLinkManModLoaded = ieee1394ModLoaded = mx4sioModLoaded = 0;
+    ++bdmIopResetGeneration;
     pccfModLoaded = hddModLoaded = udpbdModLoaded = udpbdNicClaimed = 0;
     gBdmSupport.setLoadedNetProtocol(-1);
 }
@@ -1470,6 +1472,14 @@ void bdmLoadBlockDeviceModules(void)
     // Recheck late iLink roots once per enabled session on the IO worker.
     // Refresh even for immediate readiness or absence; mount events may precede the menu.
     static int ilinkProbeDone = 0;
+    static unsigned int ilinkProbeResetGeneration = 0;
+    // The probe is one-shot per IOP lifetime, not forever. A menu IOP reset
+    // discards iLinkman and IEEE1394_bd even while iLink remains enabled;
+    // their reloaded instance needs the same first-mount discovery pass.
+    if (ilinkProbeResetGeneration != bdmIopResetGeneration) {
+        ilinkProbeDone = 0;
+        ilinkProbeResetGeneration = bdmIopResetGeneration;
+    }
     if (!gEnableILK)
         ilinkProbeDone = 0;
     else if (iLinkModLoaded && !ilinkProbeDone && !bdmAutoLaunch) {

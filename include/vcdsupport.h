@@ -62,17 +62,17 @@ enum {
 //   ps1RowIdRequest -- queue a background disc verify (the caption's one-slot worker). Call on the
 //     render path; the answer lands in the memo and the next lookup upgrades. Never opens the image
 //     synchronously, and verifies a parsed name too, so art matches the id the barcode reports.
-int ps1RowIdCached(const char *name, int kind, char *idOut, int idSize);
-void ps1RowIdRequest(const char *name, int kind);
+int ps1RowIdCached(const char *name, int kind, char *idOut, int idSize, const char *sourceRoot = NULL);
+void ps1RowIdRequest(const char *name, int kind, const char *sourceRoot = NULL);
 //   ps1RowIdResolve -- read the disc id NOW for a row whose name carries none (memoised, hit and miss).
 //     I/O thread only: the opt-in CFG Titles pass, so a CFG/<id>.cfg title shows from the first build.
-void ps1RowIdResolve(const char *name, int kind);
+void ps1RowIdResolve(const char *name, int kind, const char *sourceRoot = NULL);
 
 // Ask for a settled PS1 row's id (kind: PS1_ROW_*) to be resolved off-thread for the caption (one
 // queued resolve per row per session, memo-deduped, only under explicit ItemText demand; a name that
 // already parses as an id costs nothing). Called per frame from the menu render path; the caption
-// reads the answer back with ps1RowIdCached.
-void vcdRequestDisplayId(const char *name, int kind);
+// reads the answer back with ps1RowIdCached. sourceRoot keeps same-named rows on separate devices apart.
+void vcdRequestDisplayId(const char *name, int kind, const char *sourceRoot = NULL);
 
 // Forget every remembered id and scan directory, so swapped media is not described by the previous
 // disc. Cheap: ids re-resolve lazily as rows are settled on.
@@ -334,12 +334,12 @@ public:
     // Ask for a row's id to be resolved off-thread (one queued resolve per row per session,
     // memo-deduped). A cold memo with a request already in flight is a no-op. verifyParsedName=0
     // keeps the caption's zero-IO contract for well-named rows; the metadata path passes 1.
-    void requestRowId(const char *name, int kind, int verifyParsedName);
+    void requestRowId(const char *name, int kind, int verifyParsedName, const char *sourceRoot = NULL);
     // ps1RowIdCached's body: memo hit or free filename parse, never device IO.
-    int rowIdCached(const char *name, int kind, char *idOut, int idSize);
+    int rowIdCached(const char *name, int kind, char *idOut, int idSize, const char *sourceRoot = NULL);
     // The device IO behind the memo: resolves one row's disc id, memoizing hit AND miss. I/O thread
     // only (the queued resolve, and ps1RowIdResolve for the CFG Titles pass).
-    int resolveRowId(const char *name, int kind, char *idOut, int idSize);
+    int resolveRowId(const char *name, int kind, char *idOut, int idSize, const char *sourceRoot = NULL);
 
     // ---- tier-1 custom POPSTARTER.ELF cache ----
     // Resolve gPopstarterPath to a file, remembering the value last resolved and the file it
@@ -355,11 +355,12 @@ private:
     // a plain function pointer, so the request is handed in through this static thunk.
     static void resolveQueuedDisplayIdThunk();
     void resolveQueuedDisplayId();
-    struct vcd_id_memo *idMemoFind(const char *name, int kind);
+    struct vcd_id_memo *idMemoFind(const char *name, int kind, const char *sourceRoot = NULL);
 
     struct vcd_id_memo *memoHead_ = NULL;
     int memoCount_ = 0;
     char idReqName_[256] = {};                         // one-slot request: the GUI writes it, the io worker reads + clears
+    char idReqRoot_[256] = {};                         // the queued row's source root: same names on two cards stay apart
     volatile int idReqPending_ = 0;                    // DIntr/EIntr-guarded, like the SFX dispatch ring
     volatile unsigned char idReqKind_ = PS1_ROW_VCD;   // the queued row's core: same-named rows never cross
     char customPopsFor_[sizeof(gPopstarterPath)] = {}; // gPopstarterPath value the cache resolved for

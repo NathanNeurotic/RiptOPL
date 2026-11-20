@@ -252,10 +252,10 @@ static float gridSlideUpdate(const void *menu, int page)
 static void drawVignette(int cx, int cy, int w, int h, int strength)
 {
     float f = strength >= 2 ? 1.0f : 0.5f;
-    float x0 = cx - w / 2.0f - 1.0f, y0 = cy - h / 2.0f - 1.0f, x1 = x0 + w + 2.0f, y1 = y0 + h + 2.0f;
+    float x0 = cx - w / 2.0f, y0 = cy - h / 2.0f, x1 = x0 + w, y1 = y0 + h;
     float fx = w * 0.34f, fy = h * 0.30f;
     u64 dark = GS_SETREG_RGBA(0x00, 0x00, 0x00, (int)(0x58 * f)), clear = GS_SETREG_RGBA(0x00, 0x00, 0x00, 0x00);
-    rmDrawRect((int)x0, (int)y0, w + 2, h + 2, GS_SETREG_RGBA(0x00, 0x00, 0x00, (int)(0x14 * f)));
+    rmDrawRect((int)x0, (int)y0, w, h, GS_SETREG_RGBA(0x00, 0x00, 0x00, (int)(0x14 * f)));
 
     // four bands, each two triangles: (ax0, ay0)-(ax1, ay1) with the dark side given by dx/dy
     const float bands[4][4] = {{x0, y0, x1, y0 + fy}, {x0, y1 - fy, x1, y1}, {x0, y0, x0 + fx, y1}, {x1 - fx, y0, x1, y1}};
@@ -285,11 +285,11 @@ static void drawVignette(int cx, int cy, int w, int h, int strength)
 
 // A cover with no art, when the theme asks for it (<block>_coverless=name or serial; RIPPS2 build 79/92): a
 // clear glass tile with the game's name, or the serial its case prints (the name when it has none).
-static void drawCoverlessTile(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem, int x, int y, int w, int h, int selected)
+static void drawCoverlessTile(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem, int x, int y, int w, int h, int selected, int alpha)
 {
     int tw = rmWideScale(w);
-    rmDrawRect(x - tw / 2, y - h / 2, tw, h, GS_SETREG_RGBA(0x04, 0x0C, 0x2E, selected ? 0x60 : 0x48));
-    u64 edge = GS_SETREG_RGBA(0x80, 0xA0, 0xFF, selected ? 0x30 : 0x18);
+    rmDrawRect(x - tw / 2, y - h / 2, tw, h, GS_SETREG_RGBA(0x04, 0x0C, 0x2E, (selected ? 0x60 : 0x48) * alpha / 0x80));
+    u64 edge = GS_SETREG_RGBA(0x80, 0xA0, 0xFF, (selected ? 0x30 : 0x18) * alpha / 0x80);
     rmDrawRect(x - tw / 2, y - h / 2, tw, 1, edge);
     rmDrawRect(x - tw / 2, y + h / 2 - 1, tw, 1, edge);
     rmDrawRect(x - tw / 2, y - h / 2, 1, h, edge);
@@ -303,9 +303,11 @@ static void drawCoverlessTile(struct menu_list *menu, struct submenu_list *item,
         if (saveIconSerialForStartup(startup, serial, sizeof(serial)))
             text = serial;
     }
-    if (text != NULL && tw > 16)
-        fntRenderStringFit(elem->font, x, y, ALIGN_CENTER, tw - 10, text,
-                           selected ? gTheme->selTextColor : gTheme->textColor, selected);
+    if (text != NULL && tw > 16) {
+        u64 tcol = selected ? gTheme->selTextColor : gTheme->textColor;
+        tcol = (tcol & ~(0xffULL << 24)) | ((u64)(((tcol >> 24) & 0xff) * alpha / 0x80) << 24);
+        fntRenderStringFit(elem->font, x, y, ALIGN_CENTER, tw - 10, text, tcol, selected);
+    }
 }
 
 // One cover. turn: the case flip (0 its front; past pi/2 its back, drawn plain); w/h the cover's size before
@@ -333,13 +335,18 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     GSTEXTURE *texture = getGameImageTexture(image->cache, thmGetItemSource(menu, item), &item->item);
     if (texture == NULL || texture->Mem == NULL) {
         if (gTheme->gridCoverless) {
-            drawCoverlessTile(menu, item, elem, x, y, tw, h, color == gDefaultCol);
+            drawCoverlessTile(menu, item, elem, x, y, tw, h, (color & 0xFFFFFF) == (gDefaultCol & 0xFFFFFF), (color >> 24) & 0xFF);
+            if (fabsf(turn) < 0.2f)
+                thmDrawDiscDecorator(elem, menu, item, x, y, tw, h, 3, color);
             return;
         }
         texture = image->defaultTexture ? &image->defaultTexture->source : thmGetTexture(COVER_DEFAULT);
     }
-    if (texture == NULL || texture->Mem == NULL)
+    if (texture == NULL || texture->Mem == NULL) {
+        if (fabsf(turn) < 0.2f)
+            thmDrawDiscDecorator(elem, menu, item, x, y, tw, h, 3, color);
         return;
+    }
 
     // The case picture is drawn so its cover window lands on the cover's place in the cell (w by h): the
     // whole picture when the window is the whole element, a larger one round it when it is not. Frame
@@ -364,19 +371,27 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     }
     if (vignette)
         drawVignette(x, y, rmWideScale(tw), h, vignette);
+    if (fabsf(turn) < 0.2f)
+        thmDrawDiscDecorator(elem, menu, item, x, y, tw, h, 3, color);
 }
 
 // The selection's frame, after RIPPS2's (build 79): three soft rings in the selected-text colour, wider and
-// fainter outwards, breathing over 2.4 s, round a crisp 2-pixel frame. w/h are the cover as drawn.
-static void drawFrame(int x, int y, int w, int h, u64 color)
+// fainter outwards, breathing over 2.4 s, round a crisp 2-pixel frame. The outer glow draws under the cover;
+// the crisp 2-pixel border draws over it, overlapping the cover edge by 1 pixel so subpixel seams disappear.
+static float gridFrameBreath(void)
 {
     float t = (float)(clock() % (CLOCKS_PER_SEC * 12)) / (float)CLOCKS_PER_SEC;
-    float breath = 0.5f + 0.5f * sinf(t * 2.0f * 3.14159265f / 2.4f);
+    return 0.5f + 0.5f * sinf(t * 2.0f * 3.14159265f / 2.4f);
+}
+
+static void drawFrameGlow(int x, int y, int w, int h, u64 color)
+{
+    float breath = gridFrameBreath();
     int r = color & 0xFF, g = (color >> 8) & 0xFF, b = (color >> 16) & 0xFF;
     int left = x - w / 2, top = y - h / 2, right = left + w, bottom = top + h;
 
     for (int i = 3; i >= 1; i--) {
-        int grow = 2 + i * 3 + (int)(breath * 3.0f), t2 = i + 1;
+        int grow = 1 + i * 3 + (int)(breath * 3.0f), t2 = i + 1;
         u64 ring = GS_SETREG_RGBA(r, g, b, (int)((0x10 + 0x10 * breath) / i));
         int x0 = left - grow, y0 = top - grow, x1 = right + grow, y1 = bottom + grow;
         rmDrawRect(x0, y0, x1 - x0, t2, ring);
@@ -384,11 +399,22 @@ static void drawFrame(int x, int y, int w, int h, u64 color)
         rmDrawRect(x0, y0 + t2, t2, y1 - y0 - 2 * t2, ring);
         rmDrawRect(x1 - t2, y0 + t2, t2, y1 - y0 - 2 * t2, ring);
     }
+}
+
+static void drawFrameBorder(int x, int y, int w, int h, u64 color)
+{
+    float breath = gridFrameBreath();
+    int r = color & 0xFF, g = (color >> 8) & 0xFF, b = (color >> 16) & 0xFF;
+    int left = x - w / 2, top = y - h / 2, right = left + w, bottom = top + h;
     u64 frame = GS_SETREG_RGBA(r, g, b, 0x60 + (int)(0x20 * breath));
-    rmDrawRect(left - 2, top - 2, w + 4, 2, frame);
-    rmDrawRect(left - 2, bottom, w + 4, 2, frame);
-    rmDrawRect(left - 2, top, 2, h, frame);
-    rmDrawRect(right, top, 2, h, frame);
+    if (w > 4 && h > 4) {
+        rmDrawRect(left - 1, top - 1, w + 2, 2, frame);
+        rmDrawRect(left - 1, bottom - 1, w + 2, 2, frame);
+        rmDrawRect(left - 1, top + 1, 2, h - 2, frame);
+        rmDrawRect(right - 1, top + 1, 2, h - 2, frame);
+    } else {
+        rmDrawRect(left - 1, top - 1, w + 2, h + 2, frame);
+    }
 }
 
 // ---- the device sidebar (RIPPS2 build 113's category sidebar, by akilluminati47): the device pages as glyphs
@@ -438,6 +464,7 @@ static int gridGlyphFor(struct menu_list *m)
         case HDD_MODE:
             return GRID_GLYPH_HDD;
         case MMCE_MODE:
+        case MMCE_MODE1:
             return GRID_GLYPH_MMCE;
         case ETH_MODE:
         case UDPFS_MODE:
@@ -520,6 +547,16 @@ static void drawDeviceSidebar(struct menu_list *menu, int centerY)
     }
 }
 
+void gridDrawPageGlyph(struct menu_list *page, int cx, int cy, int size, u64 color)
+{
+    if (page == NULL)
+        return;
+    GSTEXTURE *tex = gridGlyphTexture();
+    if (tex == NULL)
+        return;
+    drawGlyph(tex, gridGlyphFor(page), 0, cx, cy, size, color);
+}
+
 static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     (void)config;
@@ -559,30 +596,40 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
     int x0 = elem->posX - (columns * stepX - spacing) / 2 + drawnW / 2;
     int y0 = elem->posY - (rows * stepY - spacing) / 2 + cellH / 2;
 
-    // Whole pages; turning to another one slides the old page away and the new one in.
+    // Whole pages, stacked vertically; turning to another one glides vertically and crossfades smoothly.
     float slide = gridSlideUpdate(menu, first);
-    int slideW = columns * stepX + 2 * spacing; // a page and a gap: the old page clears as the new arrives
-    int shift = gridSlideFrom >= 0 ? (int)(gridSlideDir * slideW * (1.0f - slide)) : 0;
+    int slideH = stepY / 3;
+    int shiftY = gridSlideFrom >= 0 ? (int)(gridSlideDir * slideH * (1.0f - slide)) : 0;
 
     u64 dim = GS_SETREG_RGBA(vignette ? 0x78 : 0x70, vignette ? 0x78 : 0x70, vignette ? 0x78 : 0x70, 0x80); // the others a step back
-    if (gridSlideFrom >= 0) {                                                                               // the old page on its way out
-        struct submenu_list *old = menu->item->submenu;
-        for (int i = 0; i < gridSlideFrom && old != NULL; i++)
-            old = old->next;
-        int oshift = shift - gridSlideDir * slideW;
-        for (int slot = 0; slot < perPage && old != NULL; slot++, old = old->next) {
-            float turn = gridFlipTurn(old);
-            drawCell(menu, old, elem, x0 + (slot % columns) * stepX + oshift, y0 + (slot / columns) * stepY, dim, 100, turn,
-                     turn != 0.0f ? gridBackTexture(menu, old, elem, 0) : NULL, vignette);
+    if (gridSlideFrom >= 0) {                                                                               // the old page gliding out vertically
+        float outFactor = (1.0f - slide) * (1.0f - slide);
+        int outAlpha = (int)(0x80 * outFactor);
+        if (outAlpha > 2) {
+            u64 outDim = (dim & ~(0xffULL << 24)) | ((u64)outAlpha << 24);
+            struct submenu_list *old = menu->item->submenu;
+            for (int i = 0; i < gridSlideFrom && old != NULL; i++)
+                old = old->next;
+            int oshiftY = shiftY - gridSlideDir * slideH;
+            for (int slot = 0; slot < perPage && old != NULL; slot++, old = old->next) {
+                float turn = gridFlipTurn(old);
+                drawCell(menu, old, elem, x0 + (slot % columns) * stepX, y0 + (slot / columns) * stepY + oshiftY, outDim, 100, turn,
+                         turn != 0.0f ? gridBackTexture(menu, old, elem, 0) : NULL, 0);
+            }
         }
     }
+
+    int inAlpha = gridSlideFrom >= 0 ? (int)(0x80 * slide) : 0x80;
+    u64 inDim = (dim & ~(0xffULL << 24)) | ((u64)inAlpha << 24);
+    u64 inSel = GS_SETREG_RGBA(0x80, 0x80, 0x80, inAlpha);
+    int activeVignette = gridSlideFrom >= 0 ? 0 : vignette;
 
     struct submenu_list *cell = menu->item->submenu;
     for (int i = 0; i < first && cell != NULL; i++)
         cell = cell->next;
     int selX = 0, selY = 0, shown = 0;
     for (int slot = 0; slot < perPage && cell != NULL; slot++, cell = cell->next) {
-        int x = x0 + (slot % columns) * stepX + shift, y = y0 + (slot / columns) * stepY;
+        int x = x0 + (slot % columns) * stepX, y = y0 + (slot / columns) * stepY + shiftY;
         if (cell == item) {
             selX = x;
             selY = y;
@@ -590,7 +637,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
             continue; // drawn last, larger, over its neighbours
         }
         float turn = gridFlipTurn(cell); // a case left turned keeps its back
-        drawCell(menu, cell, elem, x, y, dim, 100, turn, turn != 0.0f ? gridBackTexture(menu, cell, elem, 0) : NULL, vignette);
+        drawCell(menu, cell, elem, x, y, inDim, 100, turn, turn != 0.0f ? gridBackTexture(menu, cell, elem, 0) : NULL, activeVignette);
     }
     if (shown) {
         float turn = gridFlipTurn(item);
@@ -601,9 +648,12 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
         coverW = coverW * GRID_SELECTED_SCALE / 100;
         coverH = coverH * GRID_SELECTED_SCALE / 100;
         int frameW = (int)(coverW * fabsf(cosf(turn)) + 0.5f);
-        if (focused)
-            drawFrame(selX, selY, rmWideScale(frameW > 1 ? frameW : 1), coverH, gTheme->selTextColor);
-        drawCell(menu, item, elem, selX, selY, gDefaultCol, GRID_SELECTED_SCALE, turn, selBack, 0);
+        int drawnSelW = rmWideScale(frameW > 1 ? frameW : 1);
+        if (focused && gridSlideFrom < 0)
+            drawFrameGlow(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
+        drawCell(menu, item, elem, selX, selY, inSel, GRID_SELECTED_SCALE, turn, selBack, 0);
+        if (focused && gridSlideFrom < 0)
+            drawFrameBorder(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
     }
 
     // Under the grid, clear of the selected cover's growth on the bottom row.
@@ -632,6 +682,15 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
         drawDeviceSidebar(menu, elem->posY);
 }
 
+void gridReleaseGlyphs(void)
+{
+    if (gridGlyphs.Mem != NULL) {
+        rmUnloadTexture(&gridGlyphs);
+        texFree(&gridGlyphs);
+    }
+    gridGlyphsTried = 0;
+}
+
 static void endGrid(struct theme_element *elem)
 {
     for (int i = 0; i < GRID_BACK_ELEMS; i++)
@@ -645,13 +704,6 @@ static void endGrid(struct theme_element *elem)
     gridSlideFrom = -1;
     memset(gridFlips, 0, sizeof(gridFlips));
     gridFlipHoldItem = NULL;
-    // The theme loads again after a video-mode change, on a new GS context: drop the sidebar glyphs (and their
-    // VRAM binding) so the next draw uploads them afresh instead of reading the old mode's VRAM.
-    if (gridGlyphs.Mem != NULL) {
-        rmUnloadTexture(&gridGlyphs);
-        texFree(&gridGlyphs);
-    }
-    gridGlyphsTried = 0;
     endMutableImage(elem);
 }
 
@@ -703,8 +755,10 @@ void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, 
     // slots, never for fewer than two pages.
     int cells = rows * columns, count = 2 * cells > COVER_CACHE_SLOTS ? 2 * cells : COVER_CACHE_SLOTS;
     snprintf(key, sizeof(key), "%s_count", name);
-    if (configGetInt(themeConfig, key, &count) && count < 2 * cells)
-        configSetInt(themeConfig, key, 2 * cells);
+    if (configGetInt(themeConfig, key, &count) && count < 2 * cells) {
+        count = 2 * cells;
+        configSetInt(themeConfig, key, count);
+    }
 
     mutable_image_t *image = initMutableImage(themePath, themeConfig, theme, name, elem->type, "COV", count, NULL, NULL);
     elem->extended = image;
@@ -714,6 +768,7 @@ void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, 
         return;
     }
     elem->drawElem = &drawGrid;
+    thmInitElemDiscCache(themeConfig, theme, elem, name, count);
 
     // The back covers (COV2) for the case flip, a few slots of their own.
     if (gridKeyInt(themeConfig, name, "flip", 1)) {
