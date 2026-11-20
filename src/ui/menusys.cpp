@@ -2090,10 +2090,10 @@ static void menuPrevV()
 
 static int menuPageStep()
 {
-    // Single-title layouts (Coverflow, PSBBN Flow and compact themes) still need a fast browse step.
-    // Keep displayedItems unchanged: rendering and the end-of-page probe use the actual row count.
-    int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
-    return displayed == 1 ? 15 : displayed;
+    // L1/R1 advance by the number of visible rows. One-title views (Coverflow,
+    // PSBBN Flow and compact themes) must move ONE game, not jump 15 titles or
+    // bounce between the ends of a short list. L2/R2 remain Home/End.
+    return ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
 }
 
 static void menuNextPage()
