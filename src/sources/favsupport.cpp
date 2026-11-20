@@ -664,13 +664,23 @@ static int favResolveStoredId(item_list_t *source, int id, const char *text, int
         return 0;
     }
 
-    if (id < 0 || id >= count)
+    if (id >= 0 && id < count) {
+        char *name = gsOf(&view)->name(&view, id);
+        if (name != NULL && strcmp(name, text) == 0) {
+            *outId = id;
+            return 1;
+        }
+    }
+    if (!favKindIsNameAddressed(kind))
         return 0;
-    char *name = gsOf(&view)->name(&view, id);
-    if (name == NULL || strcmp(name, text) != 0)
-        return 0;
-    *outId = id;
-    return 1;
+    for (int i = 0; i < count; i++) {
+        char *name = gsOf(&view)->name(&view, i);
+        if (name != NULL && strcmp(name, text) == 0) {
+            *outId = i;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 // Can this support launch a PS1 favourite of the wanted core by NAME?
@@ -696,7 +706,9 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
     // records on either card, preferring slot 0 when both have a valid match.
     // MMCE_MODE1 records remain slot-specific and never fall back to slot 0.
     if (mode == MMCE_MODE) {
-        for (int m = MMCE_MODE; m <= MMCE_MODE1; m++) {
+        static const int legacyModes[] = {MMCE_MODE, MMCE_MODE1};
+        for (size_t i = 0; i < sizeof(legacyModes) / sizeof(legacyModes[0]); i++) {
+            const int m = legacyModes[i];
             opl_io_module_t *mod = oplGetModule(m);
             if (mod == NULL || mod->support == NULL)
                 continue;

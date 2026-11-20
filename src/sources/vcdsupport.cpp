@@ -600,8 +600,8 @@ void VcdSupport::requestRowId(const char *name, int kind, int verifyParsedName, 
     if (m->state == VCD_ID_DEFERRED && guiFrameId < m->retryFrame)
         return;
 
-    if (strlen(name) >= sizeof(idReqName_) ||
-        (sourceRoot != NULL && strlen(sourceRoot) >= sizeof(idReqRoot_)))
+    const char *queuedRoot = m->dir;
+    if (strlen(name) >= sizeof(idReqName_) || strlen(queuedRoot) >= sizeof(idReqRoot_))
         return; // pathological basename/root: leave the title
 
     DIntr();
@@ -610,7 +610,7 @@ void VcdSupport::requestRowId(const char *name, int kind, int verifyParsedName, 
         return;
     }
     snprintf(idReqName_, sizeof(idReqName_), "%s", name);
-    snprintf(idReqRoot_, sizeof(idReqRoot_), "%s", sourceRoot != NULL ? sourceRoot : "");
+    snprintf(idReqRoot_, sizeof(idReqRoot_), "%s", queuedRoot);
     idReqKind_ = (unsigned char)kind;
     idReqPending_ = 1;
     m->state = VCD_ID_QUEUED;

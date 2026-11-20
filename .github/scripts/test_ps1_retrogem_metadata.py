@@ -192,6 +192,17 @@ int main(void)
     assert(!strcmp(lastPath, "pfs1:/HDD Shared.VCD"));
     assert(!strcmp(cachedOn("HDD Shared", PS1_ROW_VCD, "pfs0:"), "SCUS_944.26"));
 
+    /* A second card scanned after queueing cannot strand the selected entry. */
+    gVcdSupport.noteScanDir("Race", "mass0:/POPS");
+    strcpy(vcdDisc, "SLUS-00003");
+    ps1RowIdRequest("Race", PS1_ROW_VCD, NULL);
+    gVcdSupport.noteScanDir("Race", "mmce1:/POPS");
+    run();
+    assert(!strcmp(lastPath, "mass0:/POPS/Race.VCD"));
+    assert(!strcmp(cachedOn("Race", PS1_ROW_VCD, "mass0:"), "SLUS_000.03"));
+    ps1RowIdRequest("Race", PS1_ROW_VCD, "mass0:"); /* resolved, not stuck queued */
+    assert(queued == NULL);
+
     /* A failed enqueue throttles instead of spinning. */
     ioFails = 1;
     gVcdSupport.noteScanDir("Retry", "mass0:/POPS");
