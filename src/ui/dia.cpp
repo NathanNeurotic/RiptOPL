@@ -609,6 +609,14 @@ static int diaLayoutBottom(struct UIItem *ui, int spacingH, int gap, int top, in
     return bottom;
 }
 
+// A small menu font can make the normal Settings row height shorter than the
+// minimum row gap. Keep both at least that minimum, so fitting and scrolling
+// remain well-defined at every configured font percentage.
+static int diaSettingsSpacingFloor(int spacingH)
+{
+    return spacingH < UI_SETTINGS_MIN_GAP ? UI_SETTINGS_MIN_GAP : spacingH;
+}
+
 // Settings pages FIT the screen before they scroll. A page a few rows too tall (General & System,
 // Interface, Network) put its OK below the hint bar and made the user scroll for it. Shrink the gap
 // between rows just enough to fit -- never below UI_SETTINGS_MIN_GAP -- and leave a page that already
@@ -636,6 +644,8 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
     int settingsContext = settingsShell || diaSettingsContext;
     int spacingH = settingsContext ? UI_SETTINGS_SPACING_H : UI_SPACING_H;
     spacingH += fntScaleFontSize(FNTSYS_DEFAULT_SIZE) - FNTSYS_DEFAULT_SIZE;
+    if (settingsContext)
+        spacingH = diaSettingsSpacingFloor(spacingH);
     // Rows keep their height (spacingH); only the gap between them tightens, and only on a Settings page.
     int gapH = settingsContext ? diaSettingsFitGap(ui, spacingH, y0, x0, gTheme->usedHeight - 40) : spacingH;
 

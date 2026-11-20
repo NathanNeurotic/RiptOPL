@@ -185,6 +185,7 @@ mini = function(opl, 'void miniInit(')
 assert mini.index('CONFIG_OPL_FONT_SIZE, &gFontSize') < mini.index('gFontSize = fntValidFontSize(gFontSize);')
 assert 'int gFontSize = FONT_SIZE_DEFAULT;' in opl, 'the autolaunch path never sees a zero (Small) default'
 assert 'spacingH += fntScaleFontSize(FNTSYS_DEFAULT_SIZE) - FNTSYS_DEFAULT_SIZE;' in function(dia, 'void diaRenderUI(')
+assert 'spacingH = diaSettingsSpacingFloor(spacingH);' in function(dia, 'void diaRenderUI('), 'Settings spacing floor must be applied in the renderer'
 updater = function(guisettings, 'static int guiSettingsDisplayUpdater(')
 assert 'UICFG_FONT_SIZE' in updater and updater.count('guiUpdateScreenScale();') >= 3
 for page in ('static int guiSettingsShowInterface(',):
@@ -205,7 +206,7 @@ dialog_defines = '\n'.join(re.findall(r'^#define UI_SETTINGS_(?:SPACING_H|MIN_GA
     '#define %s %s' % m for m in re.findall(r'^constexpr int (UI_SPACING_V|UI_SPACER_WIDTH|UI_SPACER_MINIMAL) = (\d+);', dia, re.M))
 dialog_functions = '\n'.join(function(dia, signature) for signature in (
     'static int diaShouldBreakLine(', 'static int diaShouldBreakLineAfter(', 'static int diaSpacerWidth(',
-    'static int diaItemHeight(', 'static void diaRowState(', 'static int diaRowCollapses(', 'static int diaLayoutBottom(', 'static int diaSettingsFitGap(',
+    'static int diaItemHeight(', 'static void diaRowState(', 'static int diaRowCollapses(', 'static int diaLayoutBottom(', 'static int diaSettingsSpacingFloor(', 'static int diaSettingsFitGap(',
 ))
 run('font_dialog', common + dialog_types + '\n' + dialog_defines + r'''
 static int diaScreenHeight = 480;
@@ -219,7 +220,7 @@ int main(void)
     for (int index = 0; index < FONT_SIZE_COUNT; index++) {
         gFontSize = fntFontSizePercentFromIndex(index);
         int size = fntScaleFontSize(FNTSYS_DEFAULT_SIZE);
-        int spacing = UI_SETTINGS_SPACING_H + size - FNTSYS_DEFAULT_SIZE;
+        int spacing = diaSettingsSpacingFloor(UI_SETTINGS_SPACING_H + size - FNTSYS_DEFAULT_SIZE);
         for (int rows = 5; rows <= 30; rows += 5) {
             int n = 0;
             memset(page, 0, sizeof(page));
