@@ -1,5 +1,6 @@
 """Fixed-path BOOT ELF choices in the real Exit To dispatcher."""
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 
@@ -7,6 +8,9 @@ root = Path(__file__).resolve().parents[2]
 system = (root / "src/platform/system.cpp").read_text(encoding="utf-8")
 settingsio = (root / "src/app/settingsio.cpp").read_text(encoding="utf-8")
 opl = (root / "include/opl.h").read_text(encoding="utf-8")
+base_lang = (root / "lng/tmpl/_base.yml").read_text(encoding="utf-8")
+lang_labels = re.findall(r"^\s*label:\s*(\S+)\s*$", base_lang, re.M)
+assert lang_labels[-2:] == ["EXIT_MENU_BOOT2", "EXIT_MENU_BOOT"], "new labels must preserve positional language-pack compatibility"
 
 
 def function(source, signature):
