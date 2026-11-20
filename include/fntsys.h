@@ -29,7 +29,9 @@ inline int fntValidFontSize(int size)
     if (size == 2)
         return 110;
     return (size >= FONT_SIZE_MIN_PERCENT && size <= FONT_SIZE_MAX_PERCENT &&
-            size % FONT_SIZE_STEP_PERCENT == 0) ? size : FONT_SIZE_DEFAULT;
+            size % FONT_SIZE_STEP_PERCENT == 0) ?
+               size :
+               FONT_SIZE_DEFAULT;
 }
 
 /** Map between the stored percentage and the 21-entry picker, safely. */
@@ -40,7 +42,8 @@ inline int fntFontSizeIndex(int percent)
 inline int fntFontSizePercentFromIndex(int index)
 {
     return (index >= 0 && index < FONT_SIZE_COUNT) ?
-               FONT_SIZE_MIN_PERCENT + index * FONT_SIZE_STEP_PERCENT : FONT_SIZE_DEFAULT;
+               FONT_SIZE_MIN_PERCENT + index * FONT_SIZE_STEP_PERCENT :
+               FONT_SIZE_DEFAULT;
 }
 
 /** Scale the standard menu font; other explicitly sized fonts are unchanged. */
