@@ -937,17 +937,26 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     // Folder browsing: descend/ascend forces one rescan (consumed before the NOUPDATE latch below).
     if (folderConsumeDirty(itemList->mode))
         return 1;
-    if (slot->ps1ScanFailed && slot->ps1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
-        itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
-        result = 1;
-    }
     if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1 || host::library().viewActive(itemList->mode) == LIB_VIEW_MIXED) {
         if (!slot->ps1Scanned && !slot->ps1ScanFailed) {
             itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
+        if (slot->ps1ScanFailed && slot->ps1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
+            slot->ps1ScanRetries++;
+            itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
+            result = 1;
+        }
         if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1)
             return result;
+    }
+    /* A Favourites-triggered retry can be queued while this page shows ISO. */
+    if (slot->ps1ScanFailed && slot->ps1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX &&
+        host::library().viewActive(itemList->mode) != LIB_VIEW_PS1 &&
+        host::library().viewActive(itemList->mode) != LIB_VIEW_MIXED) {
+        slot->ps1ScanRetries++;
+        itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
+        result = 1;
     }
 
     if (slot->ulSizePrev == -2) {
@@ -1037,9 +1046,7 @@ int MmceSource::update(item_list_t *itemList)
             slot->ps1Scanned = 0;
             slot->ps1ScanFailed = 1;
         }
-        if (slot->ps1ScanFailed)
-            slot->ps1ScanRetries++;
-        else
+        if (!slot->ps1ScanFailed)
             slot->ps1ScanRetries = 0;
         result += slot->ps1GameCount;
     }
