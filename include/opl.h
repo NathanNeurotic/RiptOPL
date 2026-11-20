@@ -419,7 +419,7 @@ extern int gEnableArt;
 extern int gEnableDiscArt; // ItemIcon/ICO disc artwork; independent of cover art
 extern int gEnableLogoArt; // per-game LGO logo artwork; independent of cover, disc and boot logo
 extern int gWideScreen;
-extern int gFontSize;           // FONT_SIZE_* (fntsys.h)
+extern int gFontSize;           // persisted percentage, 50-150% (fntsys.h)
 extern int gGlyphSet;           // GLYPH_SET_* (themes.h); GLYPH_SET_THEME follows the theme
 extern int gThemeAltBackground; // Alternate Background: the theme's alt= pictures (thmApplyAltBackground)
 extern int gBootThemeWait;      // Boot Theme Wait: seconds the intro holds for the saved theme (0 = off)
