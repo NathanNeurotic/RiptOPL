@@ -639,6 +639,16 @@ static int favKindIsNameAddressed(int kind)
     return kind == FAV_KIND_VCD || kind == FAV_KIND_CUE;
 }
 
+// MMCE's PS1 shelf can contain an Ember folder and a POPSTARTER VCD with
+// the same display name. A name match alone must never select the wrong core.
+static int favMmcePs1KindMatches(item_list_t *view, int id, int kind)
+{
+    if (!favKindIsNameAddressed(kind) || (view->mode != MMCE_MODE && view->mode != MMCE_MODE1))
+        return 1;
+    int ember = 0;
+    return gsOf(view)->ps1RowKind(view, id, &ember) && ((ember != 0) == (kind == FAV_KIND_CUE));
+}
+
 static int favResolveStoredId(item_list_t *source, int id, const char *text, int kind, int *outId)
 {
     if (source == NULL || text == NULL || outId == NULL)
@@ -669,7 +679,7 @@ static int favResolveStoredId(item_list_t *source, int id, const char *text, int
 
     if (id >= 0 && id < count) {
         char *name = gsOf(&view)->name(&view, id);
-        if (name != NULL && strcmp(name, text) == 0) {
+        if (name != NULL && strcmp(name, text) == 0 && favMmcePs1KindMatches(&view, id, kind)) {
             *outId = id;
             return 1;
         }
@@ -678,7 +688,7 @@ static int favResolveStoredId(item_list_t *source, int id, const char *text, int
         return 0;
     for (int i = 0; i < count; i++) {
         char *name = gsOf(&view)->name(&view, i);
-        if (name != NULL && strcmp(name, text) == 0) {
+        if (name != NULL && strcmp(name, text) == 0 && favMmcePs1KindMatches(&view, i, kind)) {
             *outId = i;
             return 1;
         }
@@ -1132,6 +1142,12 @@ int FavSupport::removeByIdAndText(int mode, int id, const char *text, int kind)
         if (!(favIdsMatchForMode(mode, kind, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 &&
               favRecordMatchesResolved(recs[i].mode, recs[i].id, recs[i].text, recs[i].kind, mode) && recs[i].kind == kind))
             recs[survivors++] = recs[i]; // compact in place (single buffer)
+    }
+    // A stale resolved row must not clear a star while the saved record survives.
+    // No write is needed when nothing matched; the caller can retry after a rebuild.
+    if (survivors == count) {
+        free(recs);
+        return 0;
     }
     int ok = favWriteFile(recs, survivors); // survivors may be 0 -> writes a header-only (empty) file
     free(recs);
@@ -1704,6 +1720,12 @@ int FavSupport::gatherPass(fav_rec_t *out, int cap, int shelf)
         if (src->mode == ETH_MODE && !ethShareChosen())
             continue;
 
+        // MMCE's ISO page does not normally scan PS1. All Games must populate
+        // that backing array before counting or gathering its PS1 entries.
+        if ((src->mode == MMCE_MODE || src->mode == MMCE_MODE1) &&
+            (shelf == LIB_VIEW_ALL || shelf == LIB_VIEW_PS1))
+            mmceEnsurePs1List(src);
+
         if (src->mode == APP_MODE) {
             if (shelf != LIB_VIEW_ALL && shelf != LIB_VIEW_ELF)
                 continue;
@@ -1798,9 +1820,11 @@ static void favTagDuplicates(fav_rec_t *recs, int count)
 static int favRecIsStarred(const fav_rec_t *r, const fav_raw_t *favs, int count)
 {
     for (int i = 0; i < count; i++) {
-        if (favs[i].kind == r->kind && favRecordMatchesResolved(favs[i].mode, favs[i].id, favs[i].text, favs[i].kind, r->mode) &&
+        // Reject mismatched names before legacy MMCE resolution, which may
+        // scan a card and enqueue deferred updates.
+        if (favs[i].kind == r->kind && strcmp(favs[i].text, r->text) == 0 &&
             (favKindIsNameAddressed(r->kind) || favIdsMatchForMode(r->mode, r->kind, favs[i].id, r->id)) &&
-            strcmp(favs[i].text, r->text) == 0)
+            favRecordMatchesResolved(favs[i].mode, favs[i].id, favs[i].text, favs[i].kind, r->mode))
             return 1;
     }
     return 0;
