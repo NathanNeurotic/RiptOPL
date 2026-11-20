@@ -138,7 +138,8 @@ enum { FAV_KIND_ISO, FAV_KIND_VCD, FAV_KIND_CUE, FAV_KIND_ELF };
 typedef struct { int mode, id, icon_id, text_id, kind; char text[FAV_TEXT_MAX]; } fav_raw_t;
 struct item_list_t {};
 typedef struct { item_list_t *owner; int mode, id, icon_id, text_id, kind; char *text; char *display; int starred; } fav_rec_t;
-static fav_raw_t stored;
+static fav_raw_t stored[2];
+static int storedCount = 1;
 static int writtenCount = -1;
 static int legacyResolvedMode = MMCE_MODE1;
 static item_list_t *favResolve(int mode, int id, const char *text, int kind, int *outMode, int *outId, int markStars)
@@ -152,15 +153,19 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
 static fav_raw_t *favReadFile(int *count, int *editable = NULL, const char *name = NULL)
 {
     (void)name;
-    fav_raw_t *copy = (fav_raw_t *)malloc(sizeof(stored));
-    if (copy != NULL) *copy = stored;
-    *count = copy != NULL ? 1 : 0;
+    fav_raw_t *copy = (fav_raw_t *)malloc(sizeof(fav_raw_t) * (storedCount ? storedCount : 1));
+    if (copy != NULL && storedCount)
+        memcpy(copy, stored, sizeof(fav_raw_t) * storedCount);
+    *count = copy != NULL ? storedCount : 0;
     if (editable != NULL) *editable = 1;
     return copy;
 }
 static int favWriteFile(fav_raw_t *recs, int count)
 {
-    (void)recs;
+    assert(count >= 0 && count <= 2);
+    if (count)
+        memcpy(stored, recs, sizeof(fav_raw_t) * count);
+    storedCount = count;
     writtenCount = count;
     return 1;
 }
@@ -173,11 +178,12 @@ public:
 ''' + function(fav, "static int favIdsMatchForMode(") + function(fav, "static int favKindIsNameAddressed(") + function(fav, "static int favModesMatch(") + function(fav, "static int favRecordMatchesResolved(") + function(fav, "static int favRecIsStarred(") + function(fav, "int FavSupport::addItem(") + function(fav, "int FavSupport::removeByIdAndText(") + r'''
 static void storedRecord(int kind)
 {
-    memset(&stored, 0, sizeof(stored));
-    stored.mode = MMCE_MODE;
-    stored.id = 0;
-    stored.kind = kind;
-    strcpy(stored.text, "Game");
+    memset(stored, 0, sizeof(stored));
+    storedCount = 1;
+    stored[0].mode = MMCE_MODE;
+    stored[0].id = 0;
+    stored[0].kind = kind;
+    strcpy(stored[0].text, "Game");
     writtenCount = -1;
 }
 int main()
@@ -197,7 +203,7 @@ int main()
     assert(store.addItem(MMCE_MODE1, 1, 0, 0, "Game", FAV_KIND_VCD) == 1 && writtenCount == -1);
     assert(store.removeByIdAndText(MMCE_MODE1, 1, "Game", FAV_KIND_VCD) == 1 && writtenCount == 0);
     storedRecord(FAV_KIND_VCD);
-    stored.mode = MMCE_MODE1;
+    stored[0].mode = MMCE_MODE1;
     assert(store.removeByIdAndText(MMCE_MODE, 1, "Game", FAV_KIND_VCD) == 0 && writtenCount == -1);
     storedRecord(FAV_KIND_VCD);
     legacyResolvedMode = MMCE_MODE;
@@ -207,9 +213,9 @@ int main()
     fav_rec_t row = {};
     row.mode = MMCE_MODE1; row.id = 1; row.kind = FAV_KIND_VCD; row.text = (char *)"Game";
     legacyResolvedMode = MMCE_MODE1;
-    assert(favRecIsStarred(&row, &stored, 1) == 1);
+    assert(favRecIsStarred(&row, stored, 1) == 1);
     legacyResolvedMode = MMCE_MODE;
-    assert(favRecIsStarred(&row, &stored, 1) == 0);
+    assert(favRecIsStarred(&row, stored, 1) == 0);
 }
 '''
 
