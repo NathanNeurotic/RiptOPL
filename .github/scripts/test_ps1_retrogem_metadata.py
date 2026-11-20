@@ -404,6 +404,7 @@ assert 'cueReadDiscList(' in function(cue, 'int cueResolveFirstDiscImage(')
 # The caption reads the row's own core entry; the old VCD-only caption reader is gone.
 caption = function(elems, 'void drawItemText(')
 assert 'ps1RowKind(' in caption and 'ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD' in caption
+assert 'gsOf(support)->rowPrefix(support, item->item.id)' in caption, 'PS1 caption must resolve source-specific memo root, including favourites'
 assert 'vcdDisplayIdCached' not in vcd + vcd_h + elems
 
 # CFG/<id>.cfg: executed against a fake config set. Zero disc IO (cached id only), never written.
