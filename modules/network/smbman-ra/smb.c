@@ -1548,7 +1548,7 @@ int smb_FindClose2(int UID, int TID, int SID)
     nb_SetSessionMessage(sizeof(FindClose2Request_t));
     r = GetSMBServerReply(0, NULL, 0);
     if (r <= 0)
-        return -EIO;
+        return -ETIMEDOUT;
 
     if (FCRsp->smbH.Magic != SMB_MAGIC)
         return -EIO;
@@ -1691,6 +1691,18 @@ int smb_Disconnect(void)
         while (recv(main_socket, &dummy, sizeof(dummy), 0) > 0)
             ;
 
+        lwip_close(main_socket);
+        main_socket = -1;
+    }
+
+    return 0;
+}
+
+//-------------------------------------------------------------------------
+int smb_AbortConnection(void)
+{
+    if (main_socket != -1) {
+        shutdown(main_socket, SHUT_WR);
         lwip_close(main_socket);
         main_socket = -1;
     }

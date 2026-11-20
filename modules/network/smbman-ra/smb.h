@@ -882,6 +882,7 @@ extern server_specs_t *getServerSpecs(void);
 
 extern int smb_Connect(char *SMBServerIP, int SMBServerPort);
 extern int smb_Disconnect(void);
+extern int smb_AbortConnection(void);
 
 extern int smb_NegotiateProtocol(u32 *capabilities);
 extern int smb_SessionSetupAndX(char *User, char *Password, int PasswordType, u32 capabilities);

@@ -97,6 +97,7 @@ static int smb_Close(int a, int b, int fid)
 { (void)a; (void)b; (void)fid; closing++; return 0; }
 static int smb_FindClose2(int a, int b, int sid)
 { (void)a; (void)b; (void)sid; find_closing++; return 0; }
+static int smb_AbortConnection(void) { return 0; }
 static int smb_FindFirstNext2(int a, int b, char *path, int op, SearchInfo_t *info)
 {
     (void)a; (void)b; (void)path;
