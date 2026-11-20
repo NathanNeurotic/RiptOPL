@@ -74,12 +74,16 @@ Theme authors declare views with `views=` and `<view>.` blocks; see the
 
 ## Menu font size
 
-**Settings → Interface → Font Size.** Choose **Small**, **Default** or **Large**.
+**Settings → Interface → Font Size.** Choose from **50% through 150% in 5% increments**
+(21 settings). **100%** is the default, based on 17-pixel menu text. Each percentage scales the
+standard size to the nearest whole pixel; adjacent percentages may therefore render identically
+where both round to the same pixel size.
 
-The size change applies immediately and is saved with your settings. Standard menu text uses
-15, 17 or 19 pixels, with list rows and dialog spacing adjusted to match. Theme and language fonts
-using the standard 17-pixel size follow this choice, and so does a `font_CJK.ttf` fallback.
-Explicit custom theme point sizes stay unchanged.
+The change previews immediately and is saved as a percentage (`font_size=105`, for example).
+Older saved values are migrated automatically: **Small (0) → 90%** (15px),
+**Default (1) → 100%** (17px), **Large (2) → 110%** (19px). Standard menu text,
+translated UI, and the `font_CJK.ttf` fallback follow the setting, with list-row and dialog
+spacing recalculated. Explicit custom-theme point sizes stay unchanged.
 
 ---
 
