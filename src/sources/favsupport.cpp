@@ -31,6 +31,7 @@
 #include "include/cuesupport.h" // CUE_ROW_EXTENSION -- a PS1 favourite names its core  // VCD favourites: name-addressed POPSTARTER launch helpers
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
 #include "include/ethsupport.h" // ETH ISO favourite resolution while the live source is in VCD view
+#include "include/mmcesupport.h" // populate a card's PS1 list before name-addressed favourite lookup
 #include "include/bdmsupport.h" // bdmSupportIsUDPBD -- POPSTARTER favourites cannot bind to UDPBD
 #include "include/favsupport.h"
 #include "include/gamemanage.h" // Hide Game: hidden games are not gathered (RIPPS2)
@@ -647,6 +648,8 @@ static int favResolveStoredId(item_list_t *source, int id, const char *text, int
     // identity so Favorites never depends on the source page's current view or visible mixed index.
     if (source->mode == ETH_MODE && kind == FAV_KIND_ISO)
         return ethResolveIsoFavourite(id, text, outId);
+    if (favKindIsNameAddressed(kind) && (source->mode == MMCE_MODE || source->mode == MMCE_MODE1))
+        mmceEnsurePs1List(source);
 
     item_list_t view = *source;
     view.viewOverride = favKindIsNameAddressed(kind) ? ITEM_VIEW_FORCE_PS1 : ITEM_VIEW_FORCE_ISO;
@@ -814,7 +817,6 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
 }
 
 // Guard the stored source id against the owner's CURRENT count -- the source list may have
-// shrunk / re-scanned since the favourite was validated, so re-check before every proxy call
 // to avoid indexing the owner's game array out of bounds.
 static int favOwnerHasId(item_list_t *o, int id)
 {
@@ -830,6 +832,18 @@ static int favModesMatch(int a, int b)
     if (aBdm && bBdm)
         return 1;
     return a == b;
+}
+
+// Legacy records may match a slot-1 add/remove only when they actually resolve
+// there. Resolution must not change a source row's star during persistence I/O.
+static int favRecordMatchesResolved(int storedMode, int storedId, const char *storedText, int storedKind, int mode)
+{
+    if (favModesMatch(storedMode, mode))
+        return 1;
+    if (storedMode != MMCE_MODE || mode != MMCE_MODE1)
+        return 0;
+    int resolvedMode = storedMode, resolvedId = storedId;
+    return favResolve(storedMode, storedId, storedText, storedKind, &resolvedMode, &resolvedId, 0) != NULL && resolvedMode == MMCE_MODE1;
 }
 
 // ---- the store ----------------------------------------------------------------
@@ -1070,7 +1084,7 @@ int FavSupport::addItem(int mode, int id, int icon_id, int text_id, const char *
     for (int i = 0; i < count; i++) {
         // Apps and name-addressed PS1 favourites can move to another live index;
         // without that leniency, re-favouriting one would collect a duplicate record.
-        if ((favModesMatch(recs[i].mode, mode) || (recs[i].mode == MMCE_MODE && mode == MMCE_MODE1)) && favIdsMatchForMode(mode, kind, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
+        if (favRecordMatchesResolved(recs[i].mode, recs[i].id, recs[i].text, recs[i].kind, mode) && favIdsMatchForMode(mode, kind, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
             free(recs);
             return 1;
         }
@@ -1116,7 +1130,7 @@ int FavSupport::removeByIdAndText(int mode, int id, const char *text, int kind)
         // same-titled favourite in another mode or kind is NOT collaterally deleted. Apps and
         // name-addressed PS1 favourites can move to another live index between resolve and removal.
         if (!(favIdsMatchForMode(mode, kind, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 &&
-              (favModesMatch(recs[i].mode, mode) || (recs[i].mode == MMCE_MODE && mode == MMCE_MODE1)) && recs[i].kind == kind))
+              favRecordMatchesResolved(recs[i].mode, recs[i].id, recs[i].text, recs[i].kind, mode) && recs[i].kind == kind))
             recs[survivors++] = recs[i]; // compact in place (single buffer)
     }
     int ok = favWriteFile(recs, survivors); // survivors may be 0 -> writes a header-only (empty) file

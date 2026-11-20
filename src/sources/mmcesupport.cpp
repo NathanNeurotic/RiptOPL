@@ -1049,6 +1049,38 @@ int MmceSource::update(item_list_t *itemList)
     return result;
 }
 
+// Favourites resolve PS1 titles even while this card's visible page is ISO.
+// Populate the backing list directly instead of making resolution depend on a
+// prior PS1-view scan, and keep the existing failed-scan retry budget.
+int mmceEnsurePs1List(item_list_t *itemList)
+{
+    if (itemList == NULL)
+        return 0;
+    MmceSlotState *slot = mmceSlotStateOf(itemList);
+    if (slot->prefix[0] == '\0')
+        return 0;
+    if (slot->ps1Scanned && !slot->ps1ScanFailed)
+        return 1;
+    if (slot->ps1ScanFailed && slot->ps1ScanRetries >= MMCE_VCD_SCAN_RETRY_MAX)
+        return 0;
+
+    char root[sizeof(slot->prefix)];
+    slot->getDeviceRoot(root, sizeof(root));
+    int result = ps1FillGameList(root, &slot->ps1Games, slot->ps1GameCount);
+    if (result < 0) {
+        slot->ps1Scanned = 0;
+        slot->ps1ScanFailed = 1;
+        slot->ps1ScanRetries++;
+        return 0;
+    }
+    slot->ps1Scanned = 1;
+    slot->ps1GameCount = result;
+    slot->ps1ScanFailed = ps1GameListNeedsRetry();
+    if (!slot->ps1ScanFailed)
+        slot->ps1ScanRetries = 0;
+    return 1;
+}
+
 int MmceSource::count(item_list_t *itemList)
 {
     MmceSlotState *slot = mmceSlotStateOf(itemList);

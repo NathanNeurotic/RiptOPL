@@ -21,6 +21,7 @@ typedef struct
 
 item_list_t *mmceGetObject(int initOnly);
 item_list_t *mmceGetSlotObject(int slot, int initOnly);
+int mmceEnsurePs1List(item_list_t *itemList);
 void mmceEnumerateDevices(int forceReinit);
 static inline const char *mmceGameIdModeLabel(int mode)
 {

@@ -63,7 +63,7 @@ static fav_raw_t *favReadFile(int *count, int *editable=nullptr) {
     assert(p); p[0].mode=3; p[0].id=7; strcpy(p[0].text,"previous"); return p;
 }
 static int favWriteFile(fav_raw_t*,int) {++writes;return 1;}
-static int favModesMatch(int a,int b){return a==b;}
+static int favRecordMatchesResolved(int a,int,const char*,int,int b){return a==b;}
 static int favIdsMatchForMode(int,int,int a,int b){return a==b;}
 class FavSupport { public:
  int addItem(int,int,int,int,const char*,int);
