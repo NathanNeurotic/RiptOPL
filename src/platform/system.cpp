@@ -671,13 +671,17 @@ void sysExecExit(int toMenuChoice)
         if (!present)
             return;
         host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
-        for (port = 0; port < 2; port++) {
-            if (!(present & (1 << port)))
-                continue;
-            snprintf(path, sizeof(path), "mc%d:/BOOT/%s", port, file);
-            if (sysLoadELFApp(path, "", 1, bootArgv, 1, 0) >= 0)
-                return;
+        port = (present & 1) ? 0 : 1;
+        snprintf(path, sizeof(path), "mc%d:/BOOT/%s", port, file);
+        if (port == 0 && (present & 2)) {
+            char fallback[40];
+            snprintf(fallback, sizeof(fallback), "mc1:/BOOT/%s", file);
+            sysLoadELFAppFallback(path, fallback, "", 1, bootArgv, 1, 0);
+        } else {
+            sysLoadELFAppFallback(path, NULL, "", 1, bootArgv, 1, 0);
         }
+        /* The menu has been torn down: even a refused handoff is terminal. */
+        exit(0);
         return;
     }
     if (toMenuChoice && gExitMenu == EXIT_MENU_BROWSER)
