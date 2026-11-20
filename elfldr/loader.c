@@ -400,7 +400,13 @@ int main(int argc, char *argv[])
     if (argc < 2)
         return -EINVAL;
 
-    while (argc > 1) {
+    /* Only the parent's appended options are parsed, never the target's own
+     * arguments. The fallback is last; reset/-la= precedes it. */
+    if (argc > 1 && !strncmp(argv[argc - 1], "-fallback=", 10) && argv[argc - 1][10] != '\0') {
+        fallback = argv[argc - 1] + 10;
+        argc--;
+    }
+    if (argc > 1) {
         if (strcmp(argv[argc - 1], "-reset-iop") == 0) {
             reset_iop = 1;
             argc--;
@@ -412,11 +418,6 @@ int main(int argc, char *argv[])
             if (strchr(argv[argc - 1] + 4, 'M') != NULL)
                 rom0_mc = 1;
             argc--;
-        } else if (!strncmp(argv[argc - 1], "-fallback=", 10) && argv[argc - 1][10] != '\0') {
-            fallback = argv[argc - 1] + 10;
-            argc--;
-        } else {
-            break;
         }
     }
 
