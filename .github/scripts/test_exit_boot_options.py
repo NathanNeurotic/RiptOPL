@@ -7,6 +7,7 @@ import tempfile
 root = Path(__file__).resolve().parents[2]
 system = (root / "src/platform/system.cpp").read_text(encoding="utf-8")
 loader = (root / "elfldr/loader.c").read_text(encoding="utf-8")
+elf_parent = (root / "src/platform/elfldr_noreset.cpp").read_text(encoding="utf-8")
 settingsio = (root / "src/app/settingsio.cpp").read_text(encoding="utf-8")
 opl = (root / "include/opl.h").read_text(encoding="utf-8")
 base_lang = (root / "lng/tmpl/_base.yml").read_text(encoding="utf-8")
@@ -155,7 +156,8 @@ child_harness = r'''
 typedef uintptr_t u32;
 typedef struct { u32 epc, gp; } t_ExecData;
 static int failPrimary, failFallback, resetCalls, execCalls, primaryLoads, fallbackLoads;
-static char execArg0[32];
+static char execArg0[32], execArg1[32];
+static int execArgc;
 static int fails(const char *path) {
     return !strncmp(path, "mc0:", 4) ? failPrimary : failFallback;
 }
@@ -183,33 +185,38 @@ static int loadElfViaFileXio(const char *path, u32 *entry, u32 *gp) {
 static int ExecPS2(void *entry, void *gp, int argc, char **argv) {
     (void)entry; (void)gp;
     execCalls++;
-    assert(argc == 1);
+    execArgc = argc;
     snprintf(execArg0, sizeof(execArg0), "%s", argv[0]);
+    if (argc > 1) snprintf(execArg1, sizeof(execArg1), "%s", argv[1]);
     return 0;
 }
 #define main loaderMain
 ''' + function(loader, "int main(int argc, char *argv[])") + r'''
 #undef main
-static int runChild(int fail0, int fail1, int withFallback, int withReset) {
-    char *args[4];
+static int runChild(int fail0, int fail1, int withFallback, int withReset, int targetReset) {
+    char *args[5];
     int argc = 0;
     args[argc++] = (char *)"mc0:/BOOT/BOOT.ELF";
     args[argc++] = (char *)"mc0:/BOOT/BOOT.ELF";
+    if (targetReset) args[argc++] = (char *)"-reset-iop";
     if (withReset) args[argc++] = (char *)"-reset-iop";
     if (withFallback) args[argc++] = (char *)"-fallback=mc1:/BOOT/BOOT.ELF";
     failPrimary = fail0; failFallback = fail1;
     resetCalls = execCalls = primaryLoads = fallbackLoads = 0;
-    execArg0[0] = 0;
+    execArg0[0] = execArg1[0] = 0;
+    execArgc = 0;
     return loaderMain(argc, args);
 }
 int main(void) {
-    assert(runChild(0, 0, 1, 1) == 0 && execCalls == 1 && fallbackLoads == 0);
+    assert(runChild(0, 0, 1, 1, 0) == 0 && execCalls == 1 && fallbackLoads == 0 && execArgc == 1);
     assert(!strcmp(execArg0, "mc0:/BOOT/BOOT.ELF") && resetCalls == 1);
-    assert(runChild(1, 0, 1, 1) == 0 && execCalls == 1 && fallbackLoads == 1);
+    assert(runChild(1, 0, 1, 1, 0) == 0 && execCalls == 1 && fallbackLoads == 1 && execArgc == 1);
     assert(!strcmp(execArg0, "mc1:/BOOT/BOOT.ELF") && resetCalls == 1);
-    assert(runChild(1, 1, 1, 1) == -ENOENT && execCalls == 0);
-    assert(runChild(1, 0, 0, 1) == -ENOENT && execCalls == 0);
-    assert(runChild(1, 0, 1, 0) == 0 && execCalls == 1 && resetCalls == 0);
+    assert(runChild(1, 1, 1, 1, 0) == -ENOENT && execCalls == 0);
+    assert(runChild(1, 0, 0, 1, 0) == -ENOENT && execCalls == 0);
+    assert(runChild(1, 0, 1, 0, 0) == 0 && execCalls == 1 && resetCalls == 0);
+    assert(runChild(1, 0, 1, 1, 1) == 0 && execCalls == 1 && execArgc == 2);
+    assert(!strcmp(execArg0, "mc1:/BOOT/BOOT.ELF") && !strcmp(execArg1, "-reset-iop"));
 }
 '''
 with tempfile.TemporaryDirectory(prefix="exit-boot-child-") as tmp:
@@ -218,4 +225,83 @@ with tempfile.TemporaryDirectory(prefix="exit-boot-child-") as tmp:
     src.write_text(child_harness, encoding="utf-8")
     subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-Werror", str(src), "-o", str(exe)], check=True)
     subprocess.run([str(exe)], check=True)
-print("PASS: BOOT2/BOOT exit choices, child fallback, terminal failures, legacy exits and saved values")
+parent_harness = r'''
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#define SYS_LOAD_ELF_RESET_ROM0_MC 2
+#define LAUNCHDIAG_REFUSE_ARGS 1
+#define LAUNCHDIAG_REFUSE_CHILD_BUDGET 2
+#define LAUNCHDIAG_REFUSE_CHILD_MAGIC 3
+#define LOG(...) ((void)0)
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uintptr_t u32;
+typedef struct { u8 ident[16]; u16 type, machine; u32 version, entry, phoff, shoff, flags; u16 ehsize, phentsize, phnum, shentsize, shnum, shstrndx; } elfldr_header_t;
+typedef struct { u32 type, offset; void *vaddr; u32 paddr, filesz, memsz, flags, align; } elfldr_pheader_t;
+#define ELFLDR_ELF_MAGIC 0x464c457f
+#define ELFLDR_PT_LOAD 1
+static unsigned char elfldr_irx[64] __attribute__((aligned(8)));
+static int gLaunchDiag, probeFailures, execCalls, wipeCalls;
+static int capturedArgc;
+static char captured[6][256];
+static u32 _lw(u32 address) { return *(u32 *)address; }
+static int probeTarget(const char *path, int diag) {
+    (void)diag;
+    return (!strncmp(path, "mc0:", 4) && (probeFailures & 1)) ||
+           (!strncmp(path, "mc1:", 4) && (probeFailures & 2)) ? -1 : 0;
+}
+static void wipeBramMem(void) { wipeCalls++; }
+static void sceSifExitRpc(void) {}
+static void FlushCache(int which) { (void)which; }
+static void launchDiagMark(int stage) { (void)stage; }
+static void launchDiagRefuse(int code) { (void)code; }
+static int ExecPS2(void *entry, void *gp, int argc, char **argv) {
+    (void)entry; (void)gp;
+    int i;
+    execCalls++;
+    capturedArgc = argc;
+    assert(argc <= 6);
+    for (i = 0; i < argc; i++) snprintf(captured[i], sizeof(captured[i]), "%s", argv[i]);
+    return 0;
+}
+''' + function(elf_parent, "static int sysLoadELFCommon(") + function(elf_parent, "int sysLoadELFAppFallback(") + r'''
+static void resetParent(void) {
+    elfldr_header_t *eh = (elfldr_header_t *)elfldr_irx;
+    memset(elfldr_irx, 0, sizeof(elfldr_irx));
+    eh->ident[0] = 0x7f; eh->ident[1] = 'E'; eh->ident[2] = 'L'; eh->ident[3] = 'F';
+    probeFailures = execCalls = wipeCalls = capturedArgc = 0;
+}
+int main(void) {
+    char *args[] = {(char *)"mc0:/BOOT/BOOT.ELF"};
+    resetParent();
+    assert(sysLoadELFAppFallback("mc0:/BOOT/BOOT.ELF", "mc1:/BOOT/BOOT.ELF", "", 1, args, 1, 0) == 0);
+    assert(execCalls == 1 && wipeCalls == 1 && capturedArgc == 4);
+    assert(!strcmp(captured[0], "mc0:/BOOT/BOOT.ELF") && !strcmp(captured[1], "mc0:/BOOT/BOOT.ELF"));
+    assert(!strcmp(captured[2], "-reset-iop") && !strcmp(captured[3], "-fallback=mc1:/BOOT/BOOT.ELF"));
+
+    char *promoted[] = {(char *)"mc0:/BOOT/BOOT.ELF"};
+    resetParent(); probeFailures = 1;
+    assert(sysLoadELFAppFallback("mc0:/BOOT/BOOT.ELF", "mc1:/BOOT/BOOT.ELF", "", 1, promoted, 1, 0) == 0);
+    assert(execCalls == 1 && capturedArgc == 3);
+    assert(!strcmp(captured[0], "mc1:/BOOT/BOOT.ELF") && !strcmp(captured[1], "mc1:/BOOT/BOOT.ELF"));
+    assert(!strcmp(captured[2], "-reset-iop"));
+
+    char longFallback[280];
+    memset(longFallback, 'x', sizeof(longFallback));
+    memcpy(longFallback, "mc1:/", 5);
+    longFallback[sizeof(longFallback) - 1] = 0;
+    char *refused[] = {(char *)"mc0:/BOOT/BOOT.ELF"};
+    resetParent();
+    assert(sysLoadELFAppFallback("mc0:/BOOT/BOOT.ELF", longFallback, "", 1, refused, 1, 0) == -1);
+    assert(!execCalls && !wipeCalls);
+}
+'''
+with tempfile.TemporaryDirectory(prefix="exit-boot-parent-") as tmp:
+    src = Path(tmp) / "parent.cpp"
+    exe = Path(tmp) / "parent"
+    src.write_text(parent_harness, encoding="utf-8")
+    subprocess.run(["g++", "-std=c++17", "-Wall", "-Wextra", "-Werror", str(src), "-o", str(exe)], check=True)
+    subprocess.run([str(exe)], check=True)
+print("PASS: BOOT2/BOOT exits, parent/child fallback packaging, terminal failures, legacy exits and saved values")
