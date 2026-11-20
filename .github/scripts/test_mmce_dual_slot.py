@@ -100,6 +100,66 @@ int main()
 }
 '''
 
+moved_identity = r'''
+#include <assert.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+enum { BDM_MODE = 0, BDM_MODE_LAST = 7, APP_MODE = 8, MMCE_MODE = 11, MMCE_MODE1 = 13 };
+enum { FAV_KIND_ISO, FAV_KIND_VCD, FAV_KIND_CUE, FAV_KIND_ELF };
+#define FAV_TEXT_MAX 256
+#define FAV_MAX_ITEMS 512
+typedef struct { int mode, id, icon_id, text_id, kind; char text[FAV_TEXT_MAX]; } fav_raw_t;
+static fav_raw_t stored;
+static int writtenCount = -1;
+static fav_raw_t *favReadFile(int *count, int *editable = NULL, const char *name = NULL)
+{
+    (void)name;
+    fav_raw_t *copy = (fav_raw_t *)malloc(sizeof(stored));
+    if (copy != NULL) *copy = stored;
+    *count = copy != NULL ? 1 : 0;
+    if (editable != NULL) *editable = 1;
+    return copy;
+}
+static int favWriteFile(fav_raw_t *recs, int count)
+{
+    (void)recs;
+    writtenCount = count;
+    return 1;
+}
+class FavSupport
+{
+public:
+    int addItem(int mode, int id, int icon_id, int text_id, const char *text, int kind);
+    int removeByIdAndText(int mode, int id, const char *text, int kind);
+};
+''' + function(fav, "static int favIdsMatchForMode(") + function(fav, "static int favKindIsNameAddressed(") + function(fav, "static int favModesMatch(") + function(fav, "int FavSupport::addItem(") + function(fav, "int FavSupport::removeByIdAndText(") + r'''
+static void storedRecord(int kind)
+{
+    memset(&stored, 0, sizeof(stored));
+    stored.mode = MMCE_MODE;
+    stored.id = 0;
+    stored.kind = kind;
+    strcpy(stored.text, "Game");
+    writtenCount = -1;
+}
+int main()
+{
+    FavSupport store;
+    storedRecord(FAV_KIND_VCD);
+    assert(store.addItem(MMCE_MODE, 1, 0, 0, "Game", FAV_KIND_VCD) == 1 && writtenCount == -1);
+    assert(store.removeByIdAndText(MMCE_MODE, 1, "Game", FAV_KIND_VCD) == 1 && writtenCount == 0);
+    storedRecord(FAV_KIND_CUE);
+    assert(store.addItem(MMCE_MODE, 1, 0, 0, "Game", FAV_KIND_CUE) == 1 && writtenCount == -1);
+    assert(store.removeByIdAndText(MMCE_MODE, 1, "Game", FAV_KIND_CUE) == 1 && writtenCount == 0);
+    storedRecord(FAV_KIND_ISO);
+    assert(store.addItem(MMCE_MODE, 1, 0, 0, "Game", FAV_KIND_ISO) == 1 && writtenCount == 2);
+    writtenCount = -1;
+    assert(store.removeByIdAndText(MMCE_MODE, 1, "Game", FAV_KIND_ISO) == 1 && writtenCount == 1);
+}
+'''
+
 vmc = r'''
 #include <assert.h>
 #include <string.h>
@@ -172,7 +232,7 @@ probe_ok = "gMmceSupport.slots[1].probePresence();" in needs
 with tempfile.TemporaryDirectory(prefix="mmce-dual-slot-") as tmp:
     folder = Path(tmp)
     failures = []
-    for label, source in (("favorites", favorites), ("name_lookup", name_lookup), ("vmc", vmc)):
+    for label, source in (("favorites", favorites), ("name_lookup", name_lookup), ("moved_identity", moved_identity), ("vmc", vmc)):
         src, exe = folder / (label + ".cpp"), folder / label
         src.write_text(source, encoding="utf-8")
         result = subprocess.run(["g++", "-std=c++17", "-Wall", "-Wextra", "-Werror", "-Wno-unused-function", str(src), "-o", str(exe)], capture_output=True, text=True)

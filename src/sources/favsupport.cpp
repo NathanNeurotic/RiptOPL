@@ -613,9 +613,9 @@ static void favVcdMarkStar(opl_io_module_t *mod, int id, const char *text)
 // title.cfg value), so apps match by mode+text and ignore the stored id everywhere: resolve (below),
 // the add-time duplicate check, and removal. Nathan's "Apps didn't seem to have functioning
 // R3/Favorites" (HW, 2026-07-16).
-static int favIdsMatchForMode(int mode, int recId, int liveId)
+static int favIdsMatchForMode(int mode, int kind, int recId, int liveId)
 {
-    return (mode == APP_MODE) || (recId == liveId);
+    return (mode == APP_MODE) || kind == FAV_KIND_VCD || kind == FAV_KIND_CUE || (recId == liveId);
 }
 
 static int favKindView(int kind)
@@ -1056,14 +1056,14 @@ int FavSupport::addItem(int mode, int id, int icon_id, int text_id, const char *
         return 0;
     }
 
-    // Already present (same mode + id + text + kind) -> treat as success (the star stays set).
+    // Already present (same resolved identity) -> treat as success (the star stays set).
     // Use favModesMatch so a BDM favourite that moved slots (e.g. BDM_MODE -> BDM_MODE1) is
     // recognised as already-present, matching the BDM-lenient logic in removeByIdAndText.
     // kind is part of the identity so a disc favourite and a PS1 favourite never collide.
     for (int i = 0; i < count; i++) {
-        // favIdsMatchForMode: apps identify by title (their stored id shifts with the device set) --
-        // without it, a shifted app would collect a DUPLICATE record on every re-favourite.
-        if (favModesMatch(recs[i].mode, mode) && favIdsMatchForMode(mode, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
+        // Apps and name-addressed PS1 favourites can move to another live index;
+        // without that leniency, re-favouriting one would collect a duplicate record.
+        if (favModesMatch(recs[i].mode, mode) && favIdsMatchForMode(mode, kind, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
             free(recs);
             return 1;
         }
@@ -1105,11 +1105,10 @@ int FavSupport::removeByIdAndText(int mode, int id, const char *text, int kind)
 
     int survivors = 0;
     for (int i = 0; i < count; i++) {
-        // Match on id + text + mode (BDM-lenient) + kind so a same-titled favourite in a different
-        // device mode -- or a disc vs PS1 favourite of the same title -- is NOT collaterally deleted.
-        // Apps match by title alone (favIdsMatchForMode): their stored id shifts with the device set,
-        // and without the leniency R3 on an already-starred app could not un-favourite it.
-        if (!(favIdsMatchForMode(mode, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 && favModesMatch(recs[i].mode, mode) && recs[i].kind == kind))
+        // Match on text + mode (BDM-lenient) + kind, plus id for index-addressed records, so a
+        // same-titled favourite in another mode or kind is NOT collaterally deleted. Apps and
+        // name-addressed PS1 favourites can move to another live index between resolve and removal.
+        if (!(favIdsMatchForMode(mode, kind, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 && favModesMatch(recs[i].mode, mode) && recs[i].kind == kind))
             recs[survivors++] = recs[i]; // compact in place (single buffer)
     }
     int ok = favWriteFile(recs, survivors); // survivors may be 0 -> writes a header-only (empty) file
@@ -1778,7 +1777,7 @@ static int favRecIsStarred(const fav_rec_t *r, const fav_raw_t *favs, int count)
 {
     for (int i = 0; i < count; i++) {
         if (favs[i].kind == r->kind && favModesMatch(favs[i].mode, r->mode) &&
-            (favKindIsNameAddressed(r->kind) || favIdsMatchForMode(r->mode, favs[i].id, r->id)) &&
+            (favKindIsNameAddressed(r->kind) || favIdsMatchForMode(r->mode, r->kind, favs[i].id, r->id)) &&
             strcmp(favs[i].text, r->text) == 0)
             return 1;
     }
