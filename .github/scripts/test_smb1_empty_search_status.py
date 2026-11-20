@@ -18,10 +18,10 @@ macros = ["TRANS2_FIND_FIRST2", "TRANS2_FIND_NEXT2", "DOSERR_FILE_NOT_FOUND",
           "STATUS_OBJECT_PATH_NOT_FOUND"]
 defines = []
 for key in macros:
-    m = re.search(r"^#define\\s+" + key + r"\\s+0x[0-9a-fA-F]+", header, re.M)
+    m = re.search(r"^#define\s+" + key + r"\s+0x[0-9a-fA-F]+", header, re.M)
     assert m, key
     defines.append(m.group())
-code = "#include <assert.h>\\n#include <stdint.h>\\ntypedef uint32_t u32;\\n" + "\\n".join(defines) + "\\n" + helper + r"""
+code = "#include <assert.h>\n#include <stdint.h>\ntypedef uint32_t u32;\n" + "\n".join(defines) + "\n" + helper + r"""
 int main(void)
 {
     assert(smbFindFirstEmptyDosStatus(TRANS2_FIND_FIRST2, DOSERR_FILE_NOT_FOUND));
