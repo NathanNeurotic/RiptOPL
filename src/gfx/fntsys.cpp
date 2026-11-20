@@ -86,6 +86,8 @@ typedef FontSystem::fnt_glyph_cache_entry_t fnt_glyph_cache_entry_t;
 
 extern void *poeveticanew_raw;
 extern int size_poeveticanew_raw;
+extern void *ripps2roboto_raw;
+extern int size_ripps2roboto_raw;
 
 
 static const float fDPI = 72.0f;
@@ -374,7 +376,7 @@ static void *fntReadData(char *path, int *bufferSize, int *owned)
 
     *owned = 0;
     *bufferSize = -1; // readFile() takes a positive incoming size as the exact expected file size
-    if (path == NULL) {
+    if (path == NULL || strcmp(path, "builtin") == 0) {
         *bufferSize = size_poeveticanew_raw;
         return &poeveticanew_raw;
     }
@@ -388,6 +390,18 @@ static void *fntReadData(char *path, int *bufferSize, int *owned)
     *owned = 1;
     return buffer;
 }
+
+static void *fntReadFontData(char *path, int *bufferSize, int *owned)
+{
+    if (path != NULL && (!strcmp(path, "builtin:roboto") || !strcmp(path, "builtin:ripflow") || !strcmp(path, "builtin:ripflowbold"))) {
+        *owned = 0;
+        *bufferSize = size_ripps2roboto_raw;
+        return &ripps2roboto_raw;
+    }
+    return fntReadData(path, bufferSize, owned);
+}
+
+#define fntReadData fntReadFontData
 
 // Lock held. Takes ownership of an owned buffer (freed with the slot, including on failure).
 int FontSystem::loadSlotLocked(font_t *font, void *buffer, int bufferSize, int owned, int fontSize)

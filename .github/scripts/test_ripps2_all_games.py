@@ -33,7 +33,7 @@ program = r'''
 #include <string.h>
 #define FAV_TEXT_MAX 256
 enum { BDM_MODE = 0, BDM_MODE1, BDM_MODE2, BDM_MODE3, BDM_MODE4, BDM_MODE5, BDM_MODE6, BDM_MODE7,
-       ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MODE_COUNT };
+       ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MMCE_MODE1, MODE_COUNT };
 #define BDM_MODE_LAST BDM_MODE7
 enum { LIB_VIEW_ISO = 0, LIB_VIEW_PS1, LIB_VIEW_ELF, LIB_VIEW_ALL };
 enum { FAV_KIND_ISO = 0, FAV_KIND_VCD, FAV_KIND_CUE, FAV_KIND_ELF };
@@ -108,9 +108,18 @@ public:
     int count_ = 0;
 };
 static FavSupport store;
+static int legacyResolvedMode = MMCE_MODE1;
+static item_list_t *favResolve(int mode, int id, const char *text, int kind, int *outMode, int *outId, int markStars)
+{
+    (void)mode; (void)id; (void)text; (void)kind;
+    assert(markStars == 0);
+    *outMode = legacyResolvedMode; *outId = id;
+    static item_list_t resolved;
+    return legacyResolvedMode == MMCE_MODE1 ? &resolved : NULL;
+}
 ''' + function(fav, 'static int favKindView(') + function(fav, 'static int favKindIsNameAddressed(') + \
     function(fav, 'static int favIdsMatchForMode(') + function(fav, 'static int favModesMatch(') + \
-    function(fav, 'const char *FavSupport::itemDisplay(') + block + r'''
+    function(fav, 'static int favRecordMatchesResolved(') + function(fav, 'const char *FavSupport::itemDisplay(') + block + r'''
 static item_list_t usb, hdd, apps, smb, mmce;
 static void game(item_list_t *l, int ps1, const char *name, int format, int cue)
 {
@@ -217,7 +226,7 @@ themeelems = (root / 'src/gfx/themeelems.cpp').read_text()
 tabs = r'''
 #include <assert.h>
 #include <stddef.h>
-enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE };
+enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MMCE_MODE1 };
 #define BDM_MODE_LAST BDM_MODE7
 struct item_list_t { int mode, enabled; };
 struct menu_item_t { int visible; void *userdata; };
@@ -266,7 +275,7 @@ assert ('if (selected_item != NULL && !menuItemShown(selected_item->item) && (gA
 rehome = r"""
 #include <assert.h>
 #include <stddef.h>
-enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE };
+enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MMCE_MODE1 };
 #define BDM_MODE_LAST BDM_MODE7
 struct item_list_t { int mode, enabled; };
 struct menu_item_t { int visible; void *userdata; };

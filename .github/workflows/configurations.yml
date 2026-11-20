@@ -21,13 +21,11 @@ jobs:
       fail-fast: false
       max-parallel: 8
       matrix:
-        # Only the builds no other workflow makes. Every other Korium, RA and IncebtIon configuration, with GCC in
-        # Rolling Release and with LLVM in RiptOPLLVM, is built there on every pull request and push (rolling-release.yml
-        # and rolling-llvm.yml list the same editions and configurations), so building it here too only spent runner time.
+        # Only the builds no other workflow makes. Every other RiptOPL and RA configuration is built
+        # in Rolling Release on every pull request and push, so building it here too only spent runner time.
         include:
           - {toolchain: gcc, target: {edition: ra, configuration: ingame_debug}}
           - {toolchain: llvm, target: {edition: ra, configuration: ingame_debug}}
-          - {toolchain: llvm, target: {edition: incebtion, configuration: extras_ds5}}
     env:
       PS2BUILD_HOME: ${{ github.workspace }}/.ps2dev
       PS2DEV_INSTALL_DIR: ${{ github.workspace }}/.ps2dev

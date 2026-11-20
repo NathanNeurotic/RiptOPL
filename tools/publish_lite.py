@@ -1,7 +1,7 @@
 """The rolling-lite channel: one RiptOPLite download per game device (tools/lite_devices.py).
 
-* RIPTOPLITE-<DEVICE>.ELF -- the Korium edition with only that device's drivers. A bare ELF: it needs
-  nothing the standard Korium kit does not already put on the device.
+* RIPTOPLITE-<DEVICE>.ELF -- standard RiptOPL with only that device's drivers. A bare ELF: it needs
+  nothing the standard RiptOPL kit does not already put on the device.
 * RIPTOPLITE-RA-<DEVICE>.zip -- the RetroAchievements edition, the same way. RA has requirements of its
   own outside the ELF (NULD's (formerly ORBIT) Neutrino RA runtime, which replaces upstream Neutrino for every RA launch,
   and mbedTLS's licence), so each RA download is a ZIP carrying them, copied from the verified RA kit.
@@ -28,7 +28,7 @@ ISSUES = "https://github.com/NathanNeurotic/RiptOPL/issues"
 RA_README = """RiptOPLite RetroAchievements {title}, {version}
 {underline}
 
-RiptOPL RetroAchievements (Korium theme) with only the {title} game drivers, for consoles that play
+RiptOPL RetroAchievements with only the {title} game drivers, for consoles that play
 from {title} alone. MMCE and network modules stay in every RiptOPLite build, and so does everything
 RetroAchievements uses on any device: the in-game network modules, the RA telemetry modules and the
 Disc page.
@@ -54,7 +54,7 @@ def _check(manifest, edition, device, sha, kit, elf_bytes, compiler="gcc"):
     if (manifest.get("repository") != "NathanNeurotic/RiptOPL" or manifest.get("source_commit") != sha
             or manifest.get("dirty") or manifest.get("edition") != edition or manifest.get("device") != device
             or manifest.get("compiler") != compiler or manifest.get("configuration") != "standard"
-            or manifest.get("theme") != "korium" or manifest.get("ra") != LITES[edition]["ra"]
+            or manifest.get("theme") != LITES[edition]["theme"] or manifest.get("ra") != LITES[edition]["ra"]
             or any(manifest.get(field) != kit.get(field) for field in SDK_SUITE)
             or manifest.get("elf") != elf_name(device, LITES[edition]["ra"])
             or manifest.get("elf_sha256") != hashlib.sha256(elf_bytes).hexdigest()):
@@ -79,7 +79,6 @@ def _common_version(manifest):
 
 def assemble(root, sha, compiler="gcc"):
     """Build root/release-lite from the lite-* and lite_ra-* artifacts. Returns (path, sums)."""
-    korium = json.loads((root / "release-korium" / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     ra_kit_manifest = json.loads((root / "release-ra" / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     ra_kit = root / "release-ra" / f"RIPTOPL-{EDITIONS['ra']['title']}.zip"
     path = root / CHANNEL
@@ -98,7 +97,7 @@ def assemble(root, sha, compiler="gcc"):
             name = elf_name(device)
             elf = (stage / name).read_bytes()
             manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-            _check(manifest, LITE, device, sha, korium, elf, compiler)
+            _check(manifest, LITE, device, sha, ra_kit_manifest, elf, compiler)
             (path / name).write_bytes(elf)
             manifests[name] = manifest
 
@@ -118,12 +117,12 @@ def assemble(root, sha, compiler="gcc"):
                 for entry in (*runtime, *RA_KIT_FILES):
                     bundle.writestr(entry, kit.read(entry))
             manifests[archive.name] = manifest
-    versions = {_common_version(m) for m in manifests.values()} | {_common_version(korium)}
+    versions = {_common_version(m) for m in manifests.values()} | {_common_version(ra_kit_manifest)}
     if len(versions) != 1:
         raise ValueError(f"lite builds carry different versions: {sorted(versions)}")
-    (path / "LICENSE-USMB2.txt").write_bytes((root / "release-korium" / "LICENSE-USMB2.txt").read_bytes())
+    (path / "LICENSE-USMB2.txt").write_bytes((root / "release-ra" / "LICENSE-USMB2.txt").read_bytes())
     channel = {"repository": "NathanNeurotic/RiptOPL", "source_commit": sha, "edition": "lite",
-               "version": korium["version"], "ps2build_version": korium["ps2build_version"], "builds": manifests}
+               "version": ra_kit_manifest["version"], "ps2build_version": ra_kit_manifest["ps2build_version"], "builds": manifests}
     (path / "BUILD-MANIFEST.json").write_text(json.dumps(channel, indent=2) + "\n", encoding="utf-8")
     sums = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(path.iterdir()) if p.is_file()}
     (path / "SHA256SUMS.txt").write_text("".join(f"{d}  {n}\n" for n, d in sums.items()), encoding="utf-8")
@@ -168,13 +167,13 @@ def release_notes(sha, version, git, repo="NathanNeurotic/RiptOPL"):
         for device, options in DEVICES.items())
     return (
         f"**RiptOPLite** `{version}` - Development build [{sha[:8]}]({base}/commit/{sha}).\n\n"
-        "One loader per game device, for consoles that only play from one. Each is RiptOPL Korium with "
+        "One loader per game device, for consoles that only play from one. Each is RiptOPL with "
         "that device's drivers alone, so it is smaller and starts faster; Memory Card (MMCE) and network "
         "modules stay in every build. HDD covers both APA and exFAT drives and DESR DVR games; UDPFS covers "
         "Files and IMG.\n\n"
         "## Downloads\n\n"
-        "| Device | Korium | RetroAchievements |\n|---|---|---|\n" + rows +
-        "\nThe Korium ELFs replace RIPTOPL.ELF in an existing install. RetroAchievements needs files outside "
+        "| Device | RiptOPL | RetroAchievements |\n|---|---|---|\n" + rows +
+        "\nThe standard ELFs replace RIPTOPL.ELF in an existing install. RetroAchievements needs files outside "
         "the loader (NULD's (formerly ORBIT) Neutrino RA runtime), so each RA download is a ZIP that carries them; its "
         "README says where they go.\n\n"
         "A RiptOPLite loader reads its settings where the full loader keeps them, unless that is a device it "

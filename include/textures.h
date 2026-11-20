@@ -127,11 +127,13 @@ enum INTERNAL_TEXTURE {
 #ifdef BUILTIN_KORIUM
     CASE_PS1,
     DISC_PS1,
+#endif
     PLAYERS_1,
     PLAYERS_2,
     PLAYERS_3,
     PLAYERS_4,
-#endif
+    BEZEL_TOP,
+    BEZEL_BOTTOM,
     TECHWRITESCODE_LOGO, // boot-splash credit mark, embedded techwritescode_png
     // BdmIndex dots for 2-4 visible mass devices (dot <p> of <n>); five use INDEX_0..INDEX_4.
     // Appended, not placed after INDEX_4: texture ids are positional.

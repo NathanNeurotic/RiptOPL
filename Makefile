@@ -173,7 +173,7 @@ ifeq ($(RETROACHIEVEMENTS),1)
 PNG_ASSETS += ra_mark
 endif
 
-GFX_OBJS = $(PNG_ASSETS:%=%_png.o) poeveticanew.o
+GFX_OBJS = $(PNG_ASSETS:%=%_png.o) poeveticanew.o ripps2roboto.o
 
 # NOTE: audio/bgm.ogg is intentionally NOT compiled into the ELF (saves ~324 KB).
 # It is kept in the repo only as a reference/default track. BGM is loaded at
@@ -186,7 +186,7 @@ AUDIO_OBJS =	boot.o cancel.o confirm.o cursor.o message.o transition.o bd_connec
 # icon_sys.o + save_icn.o are the memory-card browser save icon for the settings folder.
 # icon.sys names list.icn, copy.icn and del.icn; all three are the same artwork, so ONE blob is
 # embedded and util.c writes it out under all three names (see saveIconName in src/util.c).
-MISC_OBJS =	icon_sys.o save_icn.o icon_sys_A.o icon_sys_J.o icon_sys_C.o conf_theme_OPL.o theme_coverflow.o
+MISC_OBJS =	icon_sys.o save_icn.o icon_sys_A.o icon_sys_J.o icon_sys_C.o conf_theme_OPL.o
 
 TRANSLATIONS = Albanian Arabic Bulgarian Cebuano Croatian Czech Danish Dutch Filipino French \
 	Galician German Greek Hungarian Indonesian Italian Japanese Korean Laotian Persian Polish Portuguese \
@@ -1130,6 +1130,9 @@ $(EE_ASM_DIR)mcserv.c: $(PS2SDK)/iop/irx/mcserv.irx | $(EE_ASM_DIR)
 $(EE_ASM_DIR)poeveticanew.c: third_party/fonts/PoeVeticaNew.ttf | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)_raw
 
+$(EE_ASM_DIR)ripps2roboto.c: third_party/fonts/ripps2_roboto.ttf | $(EE_ASM_DIR)
+	$(BIN2C) $< $@ ripps2roboto_raw
+
 $(EE_ASM_DIR)icon_sys.c: misc/icon.sys | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)
 
@@ -1147,9 +1150,6 @@ $(EE_ASM_DIR)icon_sys_C.c: misc/icon_C.sys | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)
 
 $(EE_ASM_DIR)conf_theme_OPL.c: misc/conf_theme_OPL.cfg | $(EE_ASM_DIR)
-	$(BIN2C) $< $@ $(*F)_cfg
-
-$(EE_ASM_DIR)theme_coverflow.c: misc/theme_coverflow.cfg | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)_cfg
 
 $(EE_ASM_DIR)boot.c: audio/boot.adp | $(EE_ASM_DIR)
