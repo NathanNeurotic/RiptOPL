@@ -20,7 +20,7 @@ constexpr int FONT_SIZE_COUNT = (FONT_SIZE_MAX_PERCENT - FONT_SIZE_MIN_PERCENT) 
 
 /** Convert old config values (Small=0, Default=1, Large=2) to matching
  *  percentages before use. 90% -> 15px, 100% -> 17px, 110% -> 19px. */
-inline int fntValidFontSize(int size)
+static inline int fntValidFontSize(int size)
 {
     if (size == 0)
         return 90;
@@ -35,11 +35,11 @@ inline int fntValidFontSize(int size)
 }
 
 /** Map between the stored percentage and the 21-entry picker, safely. */
-inline int fntFontSizeIndex(int percent)
+static inline int fntFontSizeIndex(int percent)
 {
     return (fntValidFontSize(percent) - FONT_SIZE_MIN_PERCENT) / FONT_SIZE_STEP_PERCENT;
 }
-inline int fntFontSizePercentFromIndex(int index)
+static inline int fntFontSizePercentFromIndex(int index)
 {
     return (index >= 0 && index < FONT_SIZE_COUNT) ?
                FONT_SIZE_MIN_PERCENT + index * FONT_SIZE_STEP_PERCENT :
