@@ -674,14 +674,16 @@ void drawNameAttributeText(struct menu_list *menu, struct submenu_list *item, co
     if (disp) {
         char wrapped[300];
         char formatted[300];
+        // Include the alias in width fitting; appending it after wrapping can
+        // clip the last part of the first line.
+        if (mutableText->displayMode != DISPLAY_NEVER && mutableText->alias != NULL) {
+            snprintf(formatted, sizeof(formatted), "%s%s", mutableText->alias, disp);
+            disp = formatted;
+        }
         if (mutableText->sizingMode == SIZING_WRAP) {
             snprintf(wrapped, sizeof(wrapped), "%s", disp);
             fntFitString(elem->font, wrapped, elem->width);
             disp = wrapped;
-        }
-        if (mutableText->displayMode != DISPLAY_NEVER && mutableText->alias != NULL) {
-            snprintf(formatted, sizeof(formatted), "%s%s", mutableText->alias, disp);
-            disp = formatted;
         }
         GSTEXTURE *favTex = (!thmElemIsInfo(elem) && gFAVStartMode && item->item.favourited) ? thmGetTexture(FAV_MARK) : NULL;
         if (favTex != NULL && favTex->Mem != NULL) {
@@ -2048,6 +2050,17 @@ static struct menu_list *findMenuStep(struct menu_list *menu, int forward)
     return cur;
 }
 
+// Use the horizontal alignment bits, not any nonzero alignment flag:
+// right and centered menus have different left-edge positions.
+static int thmMenuStyleStartX(int posX, int width, int aligned)
+{
+    if (aligned & ALIGN_RIGHT)
+        return posX - width;
+    if (aligned & ALIGN_HCENTER)
+        return posX - width / 2;
+    return posX;
+}
+
 void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     struct menu_list *prev = findMenuStep(menu, 0);
@@ -2058,7 +2071,7 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
         if (rowStep < 18)
             rowStep = 18;
         int maxW = elem->width > 0 ? elem->width : 160;
-        int leftX = elem->aligned ? (elem->posX - maxW / 2) : elem->posX;
+        int leftX = thmMenuStyleStartX(elem->posX, maxW, elem->aligned);
         int dotX = leftX + 2;
         int textX = leftX + 12;
         int textRoom = maxW - 12;
@@ -2081,7 +2094,7 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
         if (textW > textRoom)
             textW = textRoom;
         int cy = elem->aligned ? elem->posY : (elem->posY + elem->height / 2);
-        int startX = elem->aligned ? (elem->posX - (textW + 12) / 2) : elem->posX;
+        int startX = thmMenuStyleStartX(elem->posX, textW + 12, elem->aligned);
         rmDrawRect(startX, cy - 2, 4, 4, GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x80));
         fntRenderStringFit(elem->font, startX + 12, cy, ALIGN_VCENTER, textRoom, label, elem->color, 0);
         return;
@@ -2151,7 +2164,7 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
         }
 
         int cy = elem->aligned ? elem->posY : (elem->posY + elem->height / 2);
-        int x = elem->aligned ? (elem->posX - totalW / 2) : elem->posX;
+        int x = thmMenuStyleStartX(elem->posX, totalW, elem->aligned);
         u64 dimText = (elem->color & ~(0xffULL << 24)) | (0x48ULL << 24);
         u64 dimGlyph = GS_SETREG_RGBA(0x55, 0x5E, 0x76, 0x58);
         u64 litGlyph = GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80);

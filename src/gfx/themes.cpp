@@ -684,7 +684,7 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
                 snprintf(elemProp, sizeof(elemProp), "%s_attribute", name);
                 int isName = configGetStr(themeConfig, elemProp, &attr) && attr != NULL && !strcmp(attr, CONFIG_ITEM_NAME);
                 elems->needsItemConfig = 1;
-                elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_ATTRIBUTE_TEXT, 0, 0, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, theme->textColor, theme->fonts[0]);
+                elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_ATTRIBUTE_TEXT, 0, 0, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, isName ? theme->titleColor : theme->textColor, theme->fonts[0]);
                 initAttributeText(themePath, themeConfig, theme, elem, name);
                 if (isName && elem->drawElem != NULL)
                     elem->drawElem = &drawNameAttributeText;
@@ -1103,7 +1103,7 @@ static void thmRecolorFollowers(theme_elems_t *elems, u64 oldText, u64 oldTitle,
         if (elem->type == ELEM_TYPE_ATTRIBUTE_IMAGE || elem->type == ELEM_TYPE_GAME_IMAGE || elem->type == ELEM_TYPE_STATIC_IMAGE ||
             elem->type == ELEM_TYPE_BACKGROUND || elem->type == ELEM_TYPE_MENU_ICON || elem->type == ELEM_TYPE_BDM_INDEX)
             continue;
-        if (elem->color == oldTitle && (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT))
+        if (elem->color == oldTitle && (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT || elem->drawElem == &drawNameAttributeText))
             elem->color = theme->titleColor;
         else if (elem->color == oldText)
             elem->color = theme->textColor;
@@ -1135,7 +1135,7 @@ static void thmSetColors(theme_t *theme)
        Coverflow. Both ARE the game title, so both follow the title picker. */
     theme_element_t *elem = theme->mainElems.first;
     while (elem) {
-        elem->color = (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT) ? theme->titleColor : theme->textColor;
+        elem->color = (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT || elem->drawElem == &drawNameAttributeText) ? theme->titleColor : theme->textColor;
         elem = elem->next;
     }
 
