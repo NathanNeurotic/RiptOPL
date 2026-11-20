@@ -895,6 +895,8 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     struct stat st;
 
     slot->probePresence();
+    if (slot->slotIndex == 0)
+        gMmceSupport.slots[1].probePresence();
     // Recompute both slots so the Manual-mode slot-0 fallback updates whenever slot 1 appears or disappears.
     for (int s = 0; s < MMCE_MODE_COUNT; s++) {
         item_list_t *list = mmceInstance(s);
@@ -1266,9 +1268,15 @@ static void mmcePrepareVmcSlots(const char *prefix, config_set_t *configSet, int
 
                 int vmc_fd = fileXioOpen(vmc_path, 0x3, 0666);
                 if (vmc_fd >= 0) {
-                    vmc_fds[vmc_id] = vmc_fd;
-                    mmce_vmc_infos.fd = fileXioIoctl2(vmc_fd, 0x80, NULL, 0, NULL, 0);
-                    mmce_vmc_infos.active = 1;
+                    int vmc_handle = fileXioIoctl2(vmc_fd, 0x80, NULL, 0, NULL, 0);
+                    if (vmc_handle >= 0) {
+                        vmc_fds[vmc_id] = vmc_fd;
+                        mmce_vmc_infos.fd = vmc_handle;
+                        mmce_vmc_infos.active = 1;
+                    } else {
+                        fileXioClose(vmc_fd);
+                        host::ui().warningId(_STR_VMC_FILE_ERROR, 6);
+                    }
                 }
             }
         }

@@ -987,7 +987,6 @@ static void thmFree(theme_t *theme)
         thmWallpaperFree(theme->wallpaper); // after the elements: only they draw it
         if (theme->discCache)
             cacheDestroyCache(theme->discCache);
-        gridReleaseGlyphs();
 
         // free textures
         GSTEXTURE *texture;
@@ -1852,8 +1851,10 @@ static int thmLoad(const char *themePath)
     host::ui().lock();
     // The GUI lock excludes CPU drawing, but HIRES still replays the previous frame's inline
     // texture uploads. Retire that queue before freeing the theme whose buffers it references.
-    if (curT != NULL)
+    if (curT != NULL) {
         rmDiscardFrame();
+        gridReleaseGlyphs();
+    }
     gTheme = newT;
     loadedFontSize = gFontSize;
     gCoverflowDeviceBarFocused = 0;
@@ -2276,6 +2277,8 @@ char *thmGetFilePath(int themeID)
 
 void thmEnd(void)
 {
+    rmDiscardFrame();
+    gridReleaseGlyphs();
     thmFree(gTheme);
     gCatalog.end();
 }

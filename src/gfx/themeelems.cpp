@@ -16,6 +16,7 @@
 #include "include/texcache.h"
 #include "include/favsupport.h"
 #include "include/gamesource.h"
+#include "include/grid.h"
 #include "include/vcdsupport.h" // vcdDisplayName -- display-only VCD game-ID prefix hide
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
 #include "include/saveicon.h"   // SaveIcon: the selected game's 3D save icon
@@ -1089,8 +1090,8 @@ void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, theme_eleme
         elem->drawDisc = 1;
     if (theme->discCache != NULL)
         return;
-    if (slots < 2)
-        slots = 2;
+    if (slots < GRID_MAX_CELLS)
+        slots = GRID_MAX_CELLS;
     theme->discCache = cacheInitCache(theme->gameCacheCount++, "ART", 1, "ICO", slots);
 }
 
@@ -2564,7 +2565,7 @@ void drawItemText(struct menu_list *menu, struct submenu_list *item, config_set_
                     const char *text = vcdDisplayNameForRow(support, item->item.id, startup);
                     int ember = 0;
                     gsOf(support)->ps1RowKind(support, item->item.id, &ember);
-                    if (ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD, vcdId, sizeof(vcdId)))
+                    if (ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD, vcdId, sizeof(vcdId), gsOf(support)->prefix(support)))
                         text = vcdId;
                     thmDrawElemText(elem, SIZING_NONE, text, 1);
                     return;

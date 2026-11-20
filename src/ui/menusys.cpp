@@ -2480,7 +2480,7 @@ static void menuRenderElements(theme_elems_t *elems)
         char *vcdName = gsOf(list)->startup(list, id);
         if (vcdName != NULL) {
             gsOf(list)->ps1RowKind(list, id, &ember); // Ember rows ask for their own (CUE) entry
-            vcdRequestDisplayId(vcdName, ember ? PS1_ROW_CUE : PS1_ROW_VCD);
+            vcdRequestDisplayId(vcdName, ember ? PS1_ROW_CUE : PS1_ROW_VCD, gsOf(list)->prefix(list));
         }
     }
 

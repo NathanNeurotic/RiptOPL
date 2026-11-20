@@ -704,7 +704,6 @@ static void endGrid(struct theme_element *elem)
     gridSlideFrom = -1;
     memset(gridFlips, 0, sizeof(gridFlips));
     gridFlipHoldItem = NULL;
-    gridReleaseGlyphs();
     endMutableImage(elem);
 }
 

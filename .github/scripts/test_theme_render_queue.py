@@ -53,6 +53,10 @@ static void thmFree(Theme *old) {
         throw std::runtime_error("retained HIRES upload references the freed theme");
     if (old) ++frees;
 }
+static void gridReleaseGlyphs() {
+    if (replayed)
+        throw std::runtime_error("retained HIRES upload references the Grid glyphs");
+}
 static void publish(Theme *curT, Theme *newT) {
 @PUBLISH@
 }
@@ -84,5 +88,5 @@ with tempfile.TemporaryDirectory(prefix='theme-render-queue-') as folder:
         result = subprocess.run([str(exe)], capture_output=True, text=True)
         assert result.returncode == expected, (name, result.returncode, result.stderr)
         if name == 'before':
-            assert 'retained HIRES upload references the freed theme' in result.stderr
+            assert 'retained HIRES upload references' in result.stderr
 print('PASS: old theme retained through HIRES queue retirement; baseline fails, fixed path passes; non-HIRES and first load do not flip')

@@ -692,6 +692,35 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
     *outMode = mode;
     *outId = id;
 
+    // Before the slot split, every MMCE favourite used MMCE_MODE. Preserve those
+    // records on either card, preferring slot 0 when both have a valid match.
+    // MMCE_MODE1 records remain slot-specific and never fall back to slot 0.
+    if (mode == MMCE_MODE) {
+        for (int m = MMCE_MODE; m <= MMCE_MODE1; m++) {
+            opl_io_module_t *mod = oplGetModule(m);
+            if (mod == NULL || mod->support == NULL)
+                continue;
+            if (favKindIsNameAddressed(kind) && !favSupportLaunches(mod->support, kind == FAV_KIND_CUE))
+                continue;
+            int liveId = id;
+            if (!favResolveStoredId(mod->support, id, text, kind, &liveId))
+                continue;
+            if (markStars) {
+                if (favKindIsNameAddressed(kind)) {
+                    favVcdMarkStar(mod, liveId, text);
+                } else {
+                    submenu_list_t *src = favFindVisibleSource(mod, liveId, text, LIB_VIEW_ISO);
+                    if (src != NULL)
+                        src->item.favourited = 1;
+                }
+            }
+            *outMode = m;
+            *outId = liveId;
+            return mod->support;
+        }
+        return NULL;
+    }
+
     // PS1 favourites are name-addressed and already view-independent: art/config/launch all key off
     // the stored name. Bind one to a loaded source that can launch ITS core -- a POPSTARTER
     // favourite needs itemLaunchVcd, an Ember one needs itemLaunchCue -- without disturbing that

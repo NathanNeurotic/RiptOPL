@@ -298,13 +298,38 @@ struct vcd_id_memo
 
 typedef struct vcd_id_memo vcd_id_memo_t;
 
-vcd_id_memo_t *VcdSupport::idMemoFind(const char *name, int kind)
+static size_t vcdSourceRootSize(const char *path)
 {
+    const char *colon = path != NULL ? strchr(path, ':') : NULL;
+    return colon != NULL ? (size_t)(colon - path + 1) : 0;
+}
+
+static int vcdSameSourceRoot(const char *dirPath, const char *sourceRoot)
+{
+    size_t dirSize = vcdSourceRootSize(dirPath), rootSize = vcdSourceRootSize(sourceRoot);
+    if (dirSize != 0 && dirSize == rootSize && !strncmp(dirPath, sourceRoot, dirSize))
+        return 1;
+    // pfs0 and pfs1 are mount slots for the same HDD source.
+    return dirSize == 5 && rootSize == 5 && !strncmp(dirPath, "pfs", 3) && !strncmp(sourceRoot, "pfs", 3) &&
+           dirPath[3] >= '0' && dirPath[3] <= '9' && sourceRoot[3] >= '0' && sourceRoot[3] <= '9';
+}
+
+vcd_id_memo_t *VcdSupport::idMemoFind(const char *name, int kind, const char *sourceRoot)
+{
+    vcd_id_memo_t *match = NULL;
     for (vcd_id_memo_t *m = memoHead_; m != NULL; m = m->next) {
-        if (m->kind == kind && !strcmp(m->name, name))
-            return m;
+        if (m->kind != kind || strcmp(m->name, name))
+            continue;
+        if (sourceRoot != NULL) {
+            if (vcdSameSourceRoot(m->dir, sourceRoot))
+                return m;
+            continue;
+        }
+        if (match != NULL)
+            return NULL; // rootless compatibility lookup is ambiguous
+        match = m;
     }
-    return NULL;
+    return match;
 }
 
 // Called for EVERY entry the scan sees. STRING WORK ONLY -- no device access, deliberately: the scan
@@ -318,10 +343,10 @@ void VcdSupport::noteScanDir(const char *name, const char *dirPath, int kind)
     if (name == NULL || dirPath == NULL || name[0] == '\0')
         return;
 
-    vcd_id_memo_t *m = idMemoFind(name, kind);
+    vcd_id_memo_t *m = idMemoFind(name, kind, dirPath);
     if (m != NULL) {
         if (m->dir == NULL || strcmp(m->dir, dirPath) != 0) {
-            free(m->dir); // same name on a different device: re-point, and re-ask the disc
+            free(m->dir); // same source, a new scan directory: re-point and re-ask the disc
             m->dir = strdup(dirPath);
             m->state = VCD_ID_UNREQUESTED;
             m->retries = 0;
@@ -423,13 +448,13 @@ static int vcdCanonDisplayId(const char *idIn, char *idOut, int idSize)
 
 // The io worker's device read for the memo, shared by the caption and the art/CFG metadata. It runs
 // once per row per session and may arrive late; it never holds anything up.
-int VcdSupport::resolveRowId(const char *name, int kind, char *idOut, int idSize)
+int VcdSupport::resolveRowId(const char *name, int kind, char *idOut, int idSize, const char *sourceRoot)
 {
     if (name == NULL || idOut == NULL || idSize <= 0)
         return 0;
     idOut[0] = '\0';
 
-    vcd_id_memo_t *m = idMemoFind(name, kind);
+    vcd_id_memo_t *m = idMemoFind(name, kind, sourceRoot);
     if (m == NULL || m->dir == NULL)
         return 0; // never scanned (or the table was full): caller falls back to the filename
 
@@ -521,7 +546,7 @@ void VcdSupport::resolveQueuedDisplayIdThunk()
 
 void VcdSupport::resolveQueuedDisplayId()
 {
-    char name[256];
+    char name[256], root[256];
     char id[VCD_ID_MAX];
     int kind;
 
@@ -531,11 +556,12 @@ void VcdSupport::resolveQueuedDisplayId()
         return;
     }
     snprintf(name, sizeof(name), "%s", idReqName_);
+    snprintf(root, sizeof(root), "%s", idReqRoot_);
     kind = idReqKind_;
     idReqPending_ = 0;
     EIntr();
 
-    vcd_id_memo_t *m = idMemoFind(name, kind);
+    vcd_id_memo_t *m = idMemoFind(name, kind, root[0] ? root : NULL);
 
     // Async is not enough by itself: a device read can still starve the same USB/PFS channel
     // used by artwork and BGM. If either pipeline is busy, transition to DEFERRED with a throttled
@@ -548,10 +574,10 @@ void VcdSupport::resolveQueuedDisplayId()
         return;
     }
 
-    resolveRowId(name, kind, id, sizeof(id));
+    resolveRowId(name, kind, id, sizeof(id), root[0] ? root : NULL);
 }
 
-void VcdSupport::requestRowId(const char *name, int kind, int verifyParsedName)
+void VcdSupport::requestRowId(const char *name, int kind, int verifyParsedName, const char *sourceRoot)
 {
     char parsed[VCD_ID_MAX];
 
@@ -562,7 +588,7 @@ void VcdSupport::requestRowId(const char *name, int kind, int verifyParsedName)
     if (!verifyParsedName && vcdExtractGameId(name, parsed, sizeof(parsed)))
         return;
 
-    vcd_id_memo_t *m = idMemoFind(name, kind);
+    vcd_id_memo_t *m = idMemoFind(name, kind, sourceRoot);
     if (m == NULL || m->dir == NULL)
         return;
 
@@ -574,8 +600,9 @@ void VcdSupport::requestRowId(const char *name, int kind, int verifyParsedName)
     if (m->state == VCD_ID_DEFERRED && guiFrameId < m->retryFrame)
         return;
 
-    if (strlen(name) >= sizeof(idReqName_))
-        return; // pathological basename: leave the title
+    if (strlen(name) >= sizeof(idReqName_) ||
+        (sourceRoot != NULL && strlen(sourceRoot) >= sizeof(idReqRoot_)))
+        return; // pathological basename/root: leave the title
 
     DIntr();
     if (idReqPending_) {
@@ -583,6 +610,7 @@ void VcdSupport::requestRowId(const char *name, int kind, int verifyParsedName)
         return;
     }
     snprintf(idReqName_, sizeof(idReqName_), "%s", name);
+    snprintf(idReqRoot_, sizeof(idReqRoot_), "%s", sourceRoot != NULL ? sourceRoot : "");
     idReqKind_ = (unsigned char)kind;
     idReqPending_ = 1;
     m->state = VCD_ID_QUEUED;
@@ -598,17 +626,17 @@ void VcdSupport::requestRowId(const char *name, int kind, int verifyParsedName)
     }
 }
 
-void vcdRequestDisplayId(const char *name, int kind)
+void vcdRequestDisplayId(const char *name, int kind, const char *sourceRoot)
 {
-    gVcdSupport.requestRowId(name, kind, 0);
+    gVcdSupport.requestRowId(name, kind, 0, sourceRoot);
 }
 
-void ps1RowIdRequest(const char *name, int kind)
+void ps1RowIdRequest(const char *name, int kind, const char *sourceRoot)
 {
-    gVcdSupport.requestRowId(name, kind, 1);
+    gVcdSupport.requestRowId(name, kind, 1, sourceRoot);
 }
 
-int VcdSupport::rowIdCached(const char *name, int kind, char *idOut, int idSize)
+int VcdSupport::rowIdCached(const char *name, int kind, char *idOut, int idSize, const char *sourceRoot)
 {
     char parsed[VCD_ID_MAX];
 
@@ -617,7 +645,7 @@ int VcdSupport::rowIdCached(const char *name, int kind, char *idOut, int idSize)
     idOut[0] = '\0';
 
     // Disc-verified answer first: metadata must match the id the RetroGEM barcode reports at launch.
-    vcd_id_memo_t *m = idMemoFind(name, kind);
+    vcd_id_memo_t *m = idMemoFind(name, kind, sourceRoot);
     if (m != NULL && m->state == VCD_ID_RESOLVED && m->id[0] != '\0') {
         snprintf(idOut, idSize, "%s", m->id);
         return 1;
@@ -631,18 +659,18 @@ int VcdSupport::rowIdCached(const char *name, int kind, char *idOut, int idSize)
     return 0;
 }
 
-int ps1RowIdCached(const char *name, int kind, char *idOut, int idSize)
+int ps1RowIdCached(const char *name, int kind, char *idOut, int idSize, const char *sourceRoot)
 {
-    return gVcdSupport.rowIdCached(name, kind, idOut, idSize);
+    return gVcdSupport.rowIdCached(name, kind, idOut, idSize, sourceRoot);
 }
 
-void ps1RowIdResolve(const char *name, int kind)
+void ps1RowIdResolve(const char *name, int kind, const char *sourceRoot)
 {
     char id[VCD_ID_MAX];
 
     if (name == NULL || vcdExtractGameId(name, id, sizeof(id)))
         return; // the name already carries the id: no device IO
-    gVcdSupport.resolveRowId(name, kind, id, sizeof(id));
+    gVcdSupport.resolveRowId(name, kind, id, sizeof(id), sourceRoot);
 }
 
 // dirPath is the directory that was just opened; fileName is what readdir returned (with ".VCD");
