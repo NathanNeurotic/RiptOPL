@@ -655,6 +655,31 @@ void sysExecExit(int toMenuChoice)
     char *args[2] = {(char *)"BootBrowser", (char *)"SkipMc"};
     char **argv = args;
     int argc = 0;
+    if (toMenuChoice && (gExitMenu == EXIT_MENU_BOOT2 || gExitMenu == EXIT_MENU_BOOT)) {
+        char path[40];
+        char *bootArgv[] = {path};
+        const char *file = gExitMenu == EXIT_MENU_BOOT2 ? "BOOT2.ELF" : "BOOT.ELF";
+        int fd, port, present = 0;
+
+        for (port = 0; port < 2; port++) {
+            snprintf(path, sizeof(path), "mc%d:/BOOT/%s", port, file);
+            if ((fd = open(path, O_RDONLY)) >= 0) {
+                close(fd);
+                present |= 1 << port;
+            }
+        }
+        if (!present)
+            return;
+        host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+        for (port = 0; port < 2; port++) {
+            if (!(present & (1 << port)))
+                continue;
+            snprintf(path, sizeof(path), "mc%d:/BOOT/%s", port, file);
+            if (sysLoadELFApp(path, "", 1, bootArgv, 1, 0) >= 0)
+                return;
+        }
+        return;
+    }
     if (toMenuChoice && gExitMenu == EXIT_MENU_BROWSER)
         argc = exitCardUpdateIgnoresBrowser() ? 2 : 1;
     else if (toMenuChoice && gExitMenu == EXIT_MENU_OSDSYS_SKIPMC) {
