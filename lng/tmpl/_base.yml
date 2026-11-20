@@ -2597,12 +2597,6 @@ gui_strings:
 - comment: Exit To choice. OSDSYS (the console menu) without the memory card system update.
   label: EXIT_MENU_OSDSYS_SKIPMC
   string: OSDSYS (Skip Update)
-- comment: Exit To choice. Run BOOT2.ELF from mc0:/BOOT, falling back to mc1:/BOOT.
-  label: EXIT_MENU_BOOT2
-  string: mc?:/BOOT/BOOT2.ELF
-- comment: Exit To choice. Run BOOT.ELF from mc0:/BOOT, falling back to mc1:/BOOT.
-  label: EXIT_MENU_BOOT
-  string: mc?:/BOOT/BOOT.ELF
 - comment: Main menu Exit prompt (issue 370). Replaces CONFIRMATION_EXIT, whose "Browser" was wrong when Exit To is OSDSYS.
   label: CONFIRMATION_EXIT_APP
   string: Exit RiptOPL?
@@ -2719,3 +2713,9 @@ gui_strings:
 - comment: Ember launch from an NFS export while NFS Writes is Off. Ember keeps its memory cards in the game folder, which it cannot write then.
   label: NFS_EMBER_NO_SAVES
   string: NFS Writes is Off, so Ember cannot keep memory card saves in this game's folder.
+- comment: Exit To choice. Run BOOT2.ELF from mc0:/BOOT, falling back to mc1:/BOOT.
+  label: EXIT_MENU_BOOT2
+  string: mc?:/BOOT/BOOT2.ELF
+- comment: Exit To choice. Run BOOT.ELF from mc0:/BOOT, falling back to mc1:/BOOT.
+  label: EXIT_MENU_BOOT
+  string: mc?:/BOOT/BOOT.ELF
