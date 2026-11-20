@@ -37,7 +37,7 @@ static opl_io_module_t *oplGetModule(int mode)
 }
 static int favResolveStoredId(item_list_t *source, int, const char *, int, int *out)
 {
-    (void)out;
+    if (source != NULL && source->match) *out = 7;
     return source != NULL && source->match;
 }
 static int favSupportLaunches(const item_list_t *source, int needCue)
@@ -51,6 +51,10 @@ static item_list_t *resolve(int mode, int *outMode)
 {
     int outId = 0;
     return favResolve(mode, 0, "Game", FAV_KIND_ISO, outMode, &outId, 0);
+}
+static item_list_t *resolveNamed(int mode, int *outMode, int *outId)
+{
+    return favResolve(mode, 0, "Game", FAV_KIND_VCD, outMode, outId, 0);
 }
 int main()
 {
@@ -68,6 +72,11 @@ int main()
     unrelated.match = 1;
     slots[0].match = 0; slots[1].match = 1;
     assert(resolve(MMCE_MODE, &outMode) == &slots[1] && outMode == MMCE_MODE1);
+    slots[1].match = 0;
+    int outId = -1;
+    assert(resolveNamed(MMCE_MODE1, &outMode, &outId) == NULL);
+    slots[1].match = 1;
+    assert(resolveNamed(MMCE_MODE1, &outMode, &outId) == &slots[1] && outId == 7);
 }
 '''
 
@@ -157,6 +166,12 @@ int main()
     assert(store.addItem(MMCE_MODE, 1, 0, 0, "Game", FAV_KIND_ISO) == 1 && writtenCount == 2);
     writtenCount = -1;
     assert(store.removeByIdAndText(MMCE_MODE, 1, "Game", FAV_KIND_ISO) == 1 && writtenCount == 1);
+    storedRecord(FAV_KIND_VCD);
+    assert(store.addItem(MMCE_MODE1, 1, 0, 0, "Game", FAV_KIND_VCD) == 1 && writtenCount == -1);
+    assert(store.removeByIdAndText(MMCE_MODE1, 1, "Game", FAV_KIND_VCD) == 1 && writtenCount == 0);
+    storedRecord(FAV_KIND_VCD);
+    stored.mode = MMCE_MODE1;
+    assert(store.removeByIdAndText(MMCE_MODE, 1, "Game", FAV_KIND_VCD) == 1 && writtenCount == 1);
 }
 '''
 

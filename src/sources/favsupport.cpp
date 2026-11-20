@@ -763,6 +763,13 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
         opl_io_module_t *mod = oplGetModule(mode);
         if (mod == NULL || mod->support == NULL || !favSupportLaunches(mod->support, needCue))
             return NULL;
+        if (mode == MMCE_MODE1) {
+            int liveId = id;
+            if (!favResolveStoredId(mod->support, id, text, kind, &liveId))
+                return NULL;
+            id = liveId;
+            *outId = liveId;
+        }
         if (markStars)
             favVcdMarkStar(mod, id, text);
         return mod->support;
@@ -1063,7 +1070,7 @@ int FavSupport::addItem(int mode, int id, int icon_id, int text_id, const char *
     for (int i = 0; i < count; i++) {
         // Apps and name-addressed PS1 favourites can move to another live index;
         // without that leniency, re-favouriting one would collect a duplicate record.
-        if (favModesMatch(recs[i].mode, mode) && favIdsMatchForMode(mode, kind, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
+        if ((favModesMatch(recs[i].mode, mode) || (recs[i].mode == MMCE_MODE && mode == MMCE_MODE1)) && favIdsMatchForMode(mode, kind, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
             free(recs);
             return 1;
         }
@@ -1108,7 +1115,8 @@ int FavSupport::removeByIdAndText(int mode, int id, const char *text, int kind)
         // Match on text + mode (BDM-lenient) + kind, plus id for index-addressed records, so a
         // same-titled favourite in another mode or kind is NOT collaterally deleted. Apps and
         // name-addressed PS1 favourites can move to another live index between resolve and removal.
-        if (!(favIdsMatchForMode(mode, kind, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 && favModesMatch(recs[i].mode, mode) && recs[i].kind == kind))
+        if (!(favIdsMatchForMode(mode, kind, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 &&
+              (favModesMatch(recs[i].mode, mode) || (recs[i].mode == MMCE_MODE && mode == MMCE_MODE1)) && recs[i].kind == kind))
             recs[survivors++] = recs[i]; // compact in place (single buffer)
     }
     int ok = favWriteFile(recs, survivors); // survivors may be 0 -> writes a header-only (empty) file
