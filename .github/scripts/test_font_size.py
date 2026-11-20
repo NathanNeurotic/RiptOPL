@@ -190,7 +190,8 @@ assert 'UICFG_FONT_SIZE' in updater and updater.count('guiUpdateScreenScale();')
 for page in ('static int guiSettingsShowInterface(',):
     body = function(guisettings, page)
     assert 'diaSetEnum(' in body and 'UICFG_FONT_SIZE, fontSizeNames' in body, page
-    assert re.search(r'diaGetInt\(\w+, UICFG_FONT_SIZE, &gFontSize\)', body), page
+    assert re.search(r'diaGetInt\(\w+, UICFG_FONT_SIZE, &fontSizeIndex\)', body), page
+    assert 'gFontSize = fntFontSizePercentFromIndex(fontSizeIndex);' in body, page
 scale = function(gui, 'void Gui::updateScreenScale(')
 assert scale.index('lock();') < scale.index('if (thmRefreshFontSize())\n        menuResetPageStarts();') < scale.index('unlock();')
 assert 'loadedFontSize = gFontSize;' in function(theme, 'static int thmLoad(')
