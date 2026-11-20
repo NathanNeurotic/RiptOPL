@@ -108,9 +108,18 @@ public:
     int count_ = 0;
 };
 static FavSupport store;
+static int legacyResolvedMode = MMCE_MODE1;
+static item_list_t *favResolve(int mode, int id, const char *text, int kind, int *outMode, int *outId, int markStars)
+{
+    (void)mode; (void)id; (void)text; (void)kind;
+    assert(markStars == 0);
+    *outMode = legacyResolvedMode; *outId = id;
+    static item_list_t resolved;
+    return legacyResolvedMode == MMCE_MODE1 ? &resolved : NULL;
+}
 ''' + function(fav, 'static int favKindView(') + function(fav, 'static int favKindIsNameAddressed(') + \
     function(fav, 'static int favIdsMatchForMode(') + function(fav, 'static int favModesMatch(') + \
-    function(fav, 'const char *FavSupport::itemDisplay(') + block + r'''
+    function(fav, 'static int favRecordMatchesResolved(') + function(fav, 'const char *FavSupport::itemDisplay(') + block + r'''
 static item_list_t usb, hdd, apps, smb, mmce;
 static void game(item_list_t *l, int ps1, const char *name, int format, int cue)
 {

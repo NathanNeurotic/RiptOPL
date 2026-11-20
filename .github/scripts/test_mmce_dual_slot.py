@@ -126,6 +126,7 @@ enum { FAV_KIND_ISO, FAV_KIND_VCD, FAV_KIND_CUE, FAV_KIND_ELF };
 #define FAV_MAX_ITEMS 512
 typedef struct { int mode, id, icon_id, text_id, kind; char text[FAV_TEXT_MAX]; } fav_raw_t;
 struct item_list_t {};
+typedef struct { item_list_t *owner; int mode, id, icon_id, text_id, kind; char *text; char *display; int starred; } fav_rec_t;
 static fav_raw_t stored;
 static int writtenCount = -1;
 static int legacyResolvedMode = MMCE_MODE1;
@@ -158,7 +159,7 @@ public:
     int addItem(int mode, int id, int icon_id, int text_id, const char *text, int kind);
     int removeByIdAndText(int mode, int id, const char *text, int kind);
 };
-''' + function(fav, "static int favIdsMatchForMode(") + function(fav, "static int favKindIsNameAddressed(") + function(fav, "static int favModesMatch(") + function(fav, "static int favRecordMatchesResolved(") + function(fav, "int FavSupport::addItem(") + function(fav, "int FavSupport::removeByIdAndText(") + r'''
+''' + function(fav, "static int favIdsMatchForMode(") + function(fav, "static int favKindIsNameAddressed(") + function(fav, "static int favModesMatch(") + function(fav, "static int favRecordMatchesResolved(") + function(fav, "static int favRecIsStarred(") + function(fav, "int FavSupport::addItem(") + function(fav, "int FavSupport::removeByIdAndText(") + r'''
 static void storedRecord(int kind)
 {
     memset(&stored, 0, sizeof(stored));
@@ -192,6 +193,12 @@ int main()
     assert(store.addItem(MMCE_MODE1, 1, 0, 0, "Game", FAV_KIND_VCD) == 1 && writtenCount == 2);
     writtenCount = -1;
     assert(store.removeByIdAndText(MMCE_MODE1, 1, "Game", FAV_KIND_VCD) == 1 && writtenCount == 1);
+    fav_rec_t row = {};
+    row.mode = MMCE_MODE1; row.id = 1; row.kind = FAV_KIND_VCD; row.text = (char *)"Game";
+    legacyResolvedMode = MMCE_MODE1;
+    assert(favRecIsStarred(&row, &stored, 1) == 1);
+    legacyResolvedMode = MMCE_MODE;
+    assert(favRecIsStarred(&row, &stored, 1) == 0);
 }
 '''
 
@@ -200,7 +207,9 @@ ps1_ensure = r'''
 #include <stdio.h>
 #include <string.h>
 #define MMCE_VCD_SCAN_RETRY_MAX 15
-struct item_list_t {};
+struct item_list_t { int mode, updateDelay; };
+#define IO_MENU_UPDATE_DEFFERED 1
+static int queued;
 struct MmceSlotState {
     char prefix[16];
     void *ps1Games;
@@ -209,6 +218,7 @@ struct MmceSlotState {
 };
 static MmceSlotState slot;
 static item_list_t list;
+static int ioPutRequest(int request, void *data) { assert(request == IO_MENU_UPDATE_DEFFERED && data == &list.mode); queued++; return 0; }
 static MmceSlotState *mmceSlotStateOf(item_list_t *) { return &slot; }
 static int fillResult, fillCalls, needsRetry;
 static int ps1FillGameList(const char *root, void *, int &) {
@@ -228,6 +238,12 @@ int main() {
     assert(mmceEnsurePs1List(&list) == 0 && fillCalls == 1);
     slot.prefix[0] = 0;
     assert(mmceEnsurePs1List(&list) == 0 && fillCalls == 1);
+    strcpy(slot.prefix, "mmce1:/");
+    slot.ps1Games = NULL; slot.ps1Scanned = 0; slot.ps1ScanFailed = 0; slot.ps1ScanRetries = 0;
+    needsRetry = 1; fillResult = 1; fillCalls = 0;
+    assert(mmceEnsurePs1List(&list) == 1 && slot.ps1ScanRetries == 1);
+    slot.ps1Games = (void *)1; queued = 0;
+    assert(mmceEnsurePs1List(&list) == 0 && fillCalls == 1 && queued == 1);
 }
 '''
 

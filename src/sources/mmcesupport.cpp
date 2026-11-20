@@ -937,13 +937,12 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     // Folder browsing: descend/ascend forces one rescan (consumed before the NOUPDATE latch below).
     if (folderConsumeDirty(itemList->mode))
         return 1;
+    if (slot->ps1ScanFailed && slot->ps1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
+        itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
+        result = 1;
+    }
     if (host::library().viewActive(itemList->mode) == LIB_VIEW_PS1 || host::library().viewActive(itemList->mode) == LIB_VIEW_MIXED) {
         if (!slot->ps1Scanned && !slot->ps1ScanFailed) {
-            itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
-            result = 1;
-        }
-        if (slot->ps1ScanFailed && slot->ps1ScanRetries < MMCE_VCD_SCAN_RETRY_MAX) {
-            slot->ps1ScanRetries++;
             itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
             result = 1;
         }
@@ -1026,7 +1025,7 @@ int MmceSource::update(item_list_t *itemList)
         return 0;
     }
 
-    if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
+    if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED || slot->ps1ScanFailed) {
         char ps1Root[sizeof(slot->prefix)];
         slot->getDeviceRoot(ps1Root, sizeof(ps1Root));
         int r = ps1FillGameList(ps1Root, &slot->ps1Games, slot->ps1GameCount);
@@ -1034,12 +1033,14 @@ int MmceSource::update(item_list_t *itemList)
             slot->ps1Scanned = 1;
             slot->ps1GameCount = r;
             slot->ps1ScanFailed = ps1GameListNeedsRetry();
-            if (!slot->ps1ScanFailed)
-                slot->ps1ScanRetries = 0;
         } else {
             slot->ps1Scanned = 0;
             slot->ps1ScanFailed = 1;
         }
+        if (slot->ps1ScanFailed)
+            slot->ps1ScanRetries++;
+        else
+            slot->ps1ScanRetries = 0;
         result += slot->ps1GameCount;
     }
     if (view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) {
@@ -1063,6 +1064,12 @@ int mmceEnsurePs1List(item_list_t *itemList)
         return 1;
     if (slot->ps1ScanFailed && slot->ps1ScanRetries >= MMCE_VCD_SCAN_RETRY_MAX)
         return 0;
+    if (slot->ps1ScanFailed && slot->ps1Games != NULL) {
+        /* A source menu may still hold pointers into this partial list. Let its
+         * normal deferred rebuild retire those consumers before replacing it. */
+        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &itemList->mode);
+        return 0;
+    }
 
     char root[sizeof(slot->prefix)];
     slot->getDeviceRoot(root, sizeof(root));
@@ -1076,7 +1083,9 @@ int mmceEnsurePs1List(item_list_t *itemList)
     slot->ps1Scanned = 1;
     slot->ps1GameCount = result;
     slot->ps1ScanFailed = ps1GameListNeedsRetry();
-    if (!slot->ps1ScanFailed)
+    if (slot->ps1ScanFailed)
+        slot->ps1ScanRetries++;
+    else
         slot->ps1ScanRetries = 0;
     return 1;
 }

@@ -1798,7 +1798,7 @@ static void favTagDuplicates(fav_rec_t *recs, int count)
 static int favRecIsStarred(const fav_rec_t *r, const fav_raw_t *favs, int count)
 {
     for (int i = 0; i < count; i++) {
-        if (favs[i].kind == r->kind && favModesMatch(favs[i].mode, r->mode) &&
+        if (favs[i].kind == r->kind && favRecordMatchesResolved(favs[i].mode, favs[i].id, favs[i].text, favs[i].kind, r->mode) &&
             (favKindIsNameAddressed(r->kind) || favIdsMatchForMode(r->mode, r->kind, favs[i].id, r->id)) &&
             strcmp(favs[i].text, r->text) == 0)
             return 1;
