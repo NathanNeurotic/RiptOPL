@@ -242,7 +242,7 @@ typedef struct { u8 ident[16]; u16 type, machine; u32 version, entry, phoff, sho
 typedef struct { u32 type, offset; void *vaddr; u32 paddr, filesz, memsz, flags, align; } elfldr_pheader_t;
 #define ELFLDR_ELF_MAGIC 0x464c457f
 #define ELFLDR_PT_LOAD 1
-static unsigned char elfldr_irx[64] __attribute__((aligned(8)));
+static unsigned char elfldr_irx[sizeof(elfldr_header_t)] __attribute__((aligned(8)));
 static int gLaunchDiag, probeFailures, execCalls, wipeCalls;
 static int capturedArgc;
 static char captured[6][256];
@@ -302,6 +302,6 @@ with tempfile.TemporaryDirectory(prefix="exit-boot-parent-") as tmp:
     src = Path(tmp) / "parent.cpp"
     exe = Path(tmp) / "parent"
     src.write_text(parent_harness, encoding="utf-8")
-    subprocess.run(["g++", "-std=c++17", "-Wall", "-Wextra", "-Werror", str(src), "-o", str(exe)], check=True)
+    subprocess.run(["g++", "-std=c++17", "-Wall", "-Wextra", "-Werror", "-fsanitize=address,undefined", "-fno-omit-frame-pointer", str(src), "-o", str(exe)], check=True)
     subprocess.run([str(exe)], check=True)
 print("PASS: BOOT2/BOOT exits, parent/child fallback packaging, terminal failures, legacy exits and saved values")
