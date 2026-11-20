@@ -147,7 +147,7 @@ static int probeTarget(const char *filename, int diag)
     return -1;
 }
 
-static int sysLoadELFCommon(const char *filename, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd)
+static int sysLoadELFCommon(const char *filename, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd, const char *fallback)
 {
     elfldr_header_t *eh;
     elfldr_pheader_t *eph;
@@ -158,7 +158,12 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
                             resetIop == SYS_LOAD_ELF_RESET_ROM0_MC ? "-la=RM" :
                             resetIop                               ? "-reset-iop" :
                                                                      NULL;
-    int extra_args = loaderArg != NULL ? 1 : 0;
+    int extra_args = (loaderArg != NULL) + (fallback != NULL);
+    char fallbackArg[fallback != NULL ? (int)strlen(fallback) + 11 : 1];
+    if (fallback != NULL) {
+        strcpy(fallbackArg, "-fallback=");
+        strcat(fallbackArg, fallback);
+    }
 
     // The child loads through filename's live mount. Any portable APA path is already present in
     // the caller-controlled target argv[0]; partition is retained for API compatibility.
@@ -177,8 +182,15 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
             launchDiagRefuse(LAUNCHDIAG_REFUSE_ARGS);
         return -1;
     }
-    if (probeTarget(filename, diag) < 0)
-        return -1;
+    if (probeTarget(filename, diag) < 0) {
+        if (fallback == NULL || probeTarget(fallback, diag) < 0)
+            return -1;
+        /* The primary vanished after the parent's probe: start with the fallback. */
+        filename = fallback;
+        argv[0] = (char *)fallback;
+        fallback = NULL;
+        extra_args = loaderArg != NULL ? 1 : 0;
+    }
     if (diag)
         launchDiagMark(10); // ELF probe open OK -- the elfldr child handoff runs next
 
@@ -192,6 +204,8 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
         int j;
         if (loaderArg != NULL)
             pool += (int)strlen(loaderArg) + 1;
+        if (fallback != NULL)
+            pool += (int)strlen(fallbackArg) + 1;
         for (j = 0; j < argc; j++) {
             if (argv[j] == NULL)
                 return -1; // a NULL mid-argv would crash SetArg's copy inside ExecPS2 -- refuse here
@@ -206,14 +220,17 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
     }
 
     // Child contract: argv[0] = load path (SifLoadElf'd), argv[1..argc] = the target's full argv;
-    // if resetIop is non-zero, trailing argv[argc+1] = "-reset-iop".
+    // trailing options are "-reset-iop" and, when supplied, "-fallback=<second load path>".
     // The ExecPS2 syscall marshals the strings across the jump.
     char *new_argv[argc + 1 + extra_args];
     new_argv[0] = (char *)filename;
     for (i = 0; i < argc; i++)
         new_argv[i + 1] = argv[i];
+    int extra = 0;
     if (loaderArg != NULL)
-        new_argv[argc + 1] = (char *)loaderArg;
+        new_argv[argc + 1 + extra++] = (char *)loaderArg;
+    if (fallback != NULL)
+        new_argv[argc + 1 + extra] = fallbackArg;
 
     wipeBramMem();
 
@@ -248,12 +265,17 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
 
 static int sysLoadELF(const char *filename, const char *partition, int argc, char *argv[], int resetIop)
 {
-    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, 0);
+    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, 0, NULL);
 }
 
 int sysLoadELFApp(const char *filename, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd)
 {
-    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, cleanupHdd);
+    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, cleanupHdd, NULL);
+}
+
+int sysLoadELFAppFallback(const char *filename, const char *fallback, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd)
+{
+    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, cleanupHdd, fallback);
 }
 
 int sysLoadELFKeepIOP(const char *filename, const char *partition, int argc, char *argv[])

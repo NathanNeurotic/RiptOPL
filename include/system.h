@@ -120,6 +120,7 @@ void sysLaunchEmber(const char *emberElf, const char *gameFolder);
 // rom0:SIO2MAN/MCMAN/MCSERV after that reset (the SDK elf-loader's behaviour, kept for POPSTARTER Apps rows).
 #define SYS_LOAD_ELF_RESET_ROM0_MC 2
 int sysLoadELFApp(const char *filename, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd);
+int sysLoadELFAppFallback(const char *filename, const char *fallback, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd);
 int sysLoadELFKeepIOP(const char *filename, const char *partition, int argc, char *argv[]);
 void sysPowerOff(void);
 #ifdef __DECI2_DEBUG
