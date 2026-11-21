@@ -16,7 +16,7 @@ Settings row, the page it is on and the key it is saved under, see
 | Alternate Background | Off (the theme's `default=` background) | Settings → Interface → Alternate Background |
 | Boot Theme Wait | Off (0 s: the menu opens without waiting for the saved theme) | Settings → Interface → Boot Theme Wait |
 | Cover and disc artwork | On | Settings → Interface → Artwork Settings |
-| Per-game background art | Off in Korium and RetroAchievements (as the original's Korium); On in IncebtIon | Settings → Interface → Artwork Settings |
+| Per-game background art | Off | Settings → Interface → Artwork Settings |
 | Notifications | On | Settings → Interface |
 | PS2 logo | On | Settings → Game Launching |
 | Sound effects, boot sound, background music | Off; stored volume 90 | Settings → Audio Settings |

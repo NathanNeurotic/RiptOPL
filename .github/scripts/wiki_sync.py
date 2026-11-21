@@ -428,26 +428,20 @@ and translation maintenance are covered under {link('Languages', 'Languages')}.
 
 ## See the interface
 
-| Korium | IncebtIon |
+| List | Grid |
 | --- | --- |
-| ![RiptOPL five-cover sample library — Korium]({media}/coverflow-five.png) | ![RiptOPL five-cover sample library — IncebtIon]({media}/incebtion/coverflow-five.png) |
+| ![RiptOPL List view]({media}/list.png) | ![RiptOPL Grid view]({media}/grid.png) |
 
-Korium and IncebtIon v1.2.0-Beta-4052, captured in RIPPCSX2 with a widescreen sample library.
-The 12 sample titles are non-bootable placeholders with matching cover artwork.
+| Coverflow (3) | Coverflow (5) |
+| --- | --- |
+| ![RiptOPL three-cover carousel]({media}/coverflow-three.png) | ![RiptOPL five-cover carousel]({media}/coverflow-five.png) |
+
+| PSBBN Flow | Grid (7×2) |
+| --- | --- |
+| ![RiptOPL PSBBN Flow]({media}/psbbn-flow.png) | ![RiptOPL Grid with seven columns]({media}/grid-7x2.png) |
+
+The built-in PSBBN theme uses the same library across all six views. Captured in [RIPPCSX2](https://gitlab.com/akilluminati247/RIPPCSX2).
 {link('More screenshots and capture notes', 'UI-Captures')}.
-
-| Korium | IncebtIon |
-| --- | --- |
-| ![Okami game information with matching screenshot artwork — Korium]({media}/info-okami.png) | ![Okami game information with matching screenshot artwork — IncebtIon]({media}/incebtion/info-okami.png) |
-
-<details>
-<summary>Watch the library views in motion (24-second GIF)</summary>
-
-| Korium | IncebtIon |
-| --- | --- |
-| ![List, three-cover, five-cover and PSBBN Flow browsing — Korium]({media}/library-tour.gif) | ![List, three-cover, five-cover and PSBBN Flow browsing — IncebtIon]({media}/incebtion/library-tour.gif) |
-
-</details>
 
 ## Choose a starting point
 

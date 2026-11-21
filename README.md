@@ -53,45 +53,27 @@ Review the LICENSE file for further details.<br><br>
 [![Discord](https://img.shields.io/discord/1275875800318476381?style=flat&logo=Discord)](https://tinyurl.com/PS2SPACE)
 [![Documentation](https://img.shields.io/badge/Documentation-RiptOPL-skyblue?style=flat&logo=githubpages&logoColor=white&labelColor=navy)](https://nathanneurotic.github.io/RiptOPL/)
 
-> **What is RiptOPL?** A downstream fork of Open PS2 Loader with a built-in cover-art **Coverflow** theme (optional), a **Favorites** tab, per-game **Neutrino** external-core launching, a reorganized category **settings layout**, DualSense support, and ready-to-use opinionated defaults. Fresh configurations use **`<OPL>`**, **4:3**, and **Auto** menu video; see [Fresh-start defaults](docs/DEFAULTS.md). Its settings live in their own **`settings_riptopl.cfg`** to keep its master settings separate from official OPL and wOPL. Other files, including network and per-game settings, can still be shared. Favorites import from uOPL/wOPL is **one-way**: the next save writes RiptOPL’s own format to `favourites.bin`. See [Where your files live](#where-your-files-live). See **[This Fork's Additions](#this-forks-additions)**. For the canonical project, use [ps2homebrew/Open-PS2-Loader](https://github.com/ps2homebrew/Open-PS2-Loader).
+> **What is RiptOPL?** A downstream fork of Open PS2 Loader with a built-in **PSBBN** theme for List, Grid, Coverflow and PSBBN Flow, a **Favorites** tab, per-game **Neutrino** external-core launching, a reorganized category **settings layout**, DualSense support, and ready-to-use opinionated defaults. Fresh configurations use **`<OPL>`**, **4:3**, and **Auto** menu video; see [Fresh-start defaults](docs/DEFAULTS.md). Its settings live in their own **`settings_riptopl.cfg`** to keep its master settings separate from official OPL and wOPL. Other files, including network and per-game settings, can still be shared. Favorites import from uOPL/wOPL is **one-way**: the next save writes RiptOPL’s own format to `favourites.bin`. See [Where your files live](#where-your-files-live). See **[This Fork's Additions](#this-forks-additions)**. For the canonical project, use [ps2homebrew/Open-PS2-Loader](https://github.com/ps2homebrew/Open-PS2-Loader).
 
 > 📖 **Full documentation & guides:** **<https://nathanneurotic.github.io/RiptOPL/>** — searchable setup and reference guides covering storage backends, the Neutrino core, PS1/VCD, the Theme Engine (with worked examples and an annotated sample theme), a full settings reference, and troubleshooting.
 
 ## See RiptOPL
 
-| Korium | IncebtIon |
+The built-in PSBBN theme shares the same library across List, Grid, Coverflow and PSBBN Flow. Change **Settings → Interface → Theme View**, or hold **L3** while browsing.
+
+| List | Grid |
 | --- | --- |
-| ![RiptOPL five-cover library with matching game artwork — Korium](docs/assets/ui/coverflow-five.png) | ![RiptOPL five-cover library with matching game artwork — IncebtIon](docs/assets/ui/incebtion/coverflow-five.png) |
+| ![PSBBN List view](docs/assets/ui/list.png) | ![PSBBN Grid view](docs/assets/ui/grid.png) |
 
-**Your collection, your view.** Browse a classic list, three- or five-cover carousel,
-or PSBBN Flow. Real **Korium and IncebtIon v1.2.0-Beta-4052** menus captured in [RIPPCSX2](https://gitlab.com/akilluminati247/RIPPCSX2) with a
-12-title sample library and matching artwork. Sample files are non-bootable placeholders.
-
-[Paired screenshots and recording notes](docs/UI-CAPTURES.md) /
-[Korium MP4](docs/assets/ui/library-tour.mp4) /
-[IncebtIon MP4](docs/assets/ui/incebtion/library-tour.mp4).
-
-<details>
-<summary>Watch the library views in motion (24-second GIF)</summary>
-
-| Korium | IncebtIon |
+| Coverflow (3) | Coverflow (5) |
 | --- | --- |
-| ![Browse List, three-cover, five-cover and PSBBN Flow views — Korium](docs/assets/ui/library-tour.gif) | ![Browse List, three-cover, five-cover and PSBBN Flow views — IncebtIon](docs/assets/ui/incebtion/library-tour.gif) |
+| ![Three-cover carousel](docs/assets/ui/coverflow-three.png) | ![Five-cover carousel](docs/assets/ui/coverflow-five.png) |
 
-[Korium MP4](docs/assets/ui/library-tour.mp4) / [IncebtIon MP4](docs/assets/ui/incebtion/library-tour.mp4).
-
-</details>
-
-<details>
-<summary>See the game information panel</summary>
-
-| Korium | IncebtIon |
+| PSBBN Flow | Grid (7×2) |
 | --- | --- |
-| ![Okami information with developer, description and two screenshot-art panels — Korium](docs/assets/ui/info-okami.png) | ![Okami information with developer, description and two screenshot-art panels — IncebtIon](docs/assets/ui/incebtion/info-okami.png) |
+| ![Perspective PSBBN Flow view](docs/assets/ui/psbbn-flow.png) | ![Grid with seven covers per row and two rows](docs/assets/ui/grid-7x2.png) |
 
-[All 12 Info pages and navigation clips](docs/UI-CAPTURES.md#game-information).
-
-</details>
+See [interface captures and artwork credits](docs/UI-CAPTURES.md) and the [controls guide](docs/CONTROLS.md).
 
 ## Releases
 
@@ -107,6 +89,8 @@ builds full-edition install kits, standalone loaders, PSU saves, source snapshot
 manifests and checksums, plus the supported Lite devices. Publication is restricted
 to verified integration pushes or an explicitly authorized dispatch; pull-request
 builds remain Actions artifacts. See [release channels and packaging](ROLLING_RELEASE.md).
+
+**Moving from Korium, IncebtIon or RiptOPLLVM?** Install the current full kit once to switch channels. Back up your settings and saves, then copy the updated companion folders from the kit for the cores you use.
 
 **Updating:** the standard RiptOPL and RetroAchievements editions have a
 **Check for Updates** entry. They query their own channel and verify the downloaded
@@ -139,13 +123,13 @@ edition is merged, including the RA browser, client and ORBIT integration; see t
 3. Prepare your game's source: `CD/` or `DVD/` for folder-based PS2 libraries, HDLoader partitions for APA, or `games.csv` for HTTP. See [How to use](#how-to-use).
 4. In **Settings → Game Sources**, enable the device and its start mode. For a network source, set **Network Connectivity** to **Manual** or **Auto** and pick the **Protocol** under it, then enter your server's settings in **Network**.
 5. Use the server's Test action where available, then choose **Save Changes** before launching a game. A successful menu test is not proof that gameplay works.
-6. Launch one test game. If it fails, record the exact build, SDK flavour, source and core before changing settings; see [Frequent Issues](#frequent-issues).
+6. Launch one test game. If it fails, record the exact build, compiler, game source and launch core before changing settings; see [Frequent Issues](#frequent-issues).
 
 ### Known limitations
 
 - **HTTP:** implemented and host-tested, but not yet tested on PS2 hardware. ISO only; no VMC, Neutrino or PS1. DVD9 probing is implemented but unproven. [HTTP guide](docs/HTTP.md).
 - **RetroAchievements:** a separate development package; the console integration has not been hardware-tested. It requires [xeRAbora v2.1.0](https://github.com/hacan359/xerabora/releases/tag/v2.1.0) or v1.0.1 (alpha.17 or later) on a PC and OPL-core launching. The RA build includes main-menu actions to check and launch a physical PS2 disc with achievements; this path also needs hardware validation. Keep games you play with achievements on a local device — upstream reports on hardware that a game with an achievement set stops loading about a minute in from a network share. [RA guide](docs/RETROACHIEVEMENTS.md).
-- **iLink:** revision 2692 passed Ember on the tested SCPH-39001 but failed native OPL, Neutrino and POPSTARTER handoffs. The Neutrino `-qb` correction is implemented; a passing retest is still needed.
+- **i.LINK:** native OPL, the bundled Neutrino driver and POPStarter retry transient configuration ROM reads after reset. The reported enclosure still needs a passing console retest. Use the current kit's `neutrino/` and `POPS/` folders when testing. [i.LINK issue](https://github.com/NathanNeurotic/RiptOPL/issues/86).
 - **Core switching is source-dependent:** HTTP uses OPL; SMB and NFS follow the global Loader Core (`<OPL>` unless you change it) unless a game picks its own; the Neutrino core is experimental there (see [SMB through Neutrino](docs/NEUTRINO.md#smb-through-neutrino-experimental) and [NFS through Neutrino](docs/NEUTRINO.md#nfs-through-neutrino-experimental)); UDPFS (Files and IMG) and UDPBD default to Neutrino and can use OPL per game. See the [source table](#introduction).
 - **Neutrino over SMB or NFS needs a newer Neutrino than the kits carry:** the release kits bundle upstream's latest development build, which is still v1.8.0-61-g7be8de2 from 2026-08-31. It has neither Neutrino's SMB backend (merged 2026-10-31) nor its NFS backend (merged 2026-11-12), so with the kits as shipped, SMB and NFS games set to Neutrino run on the OPL core with a message. A Neutrino folder built from upstream's `master` has both backends and can be installed instead until upstream publishes a newer build.
 - **NFS:** new, host-tested against PS2-Servers' NFS server only; not tested on hardware, in PCSX2 or against other NFS servers. POPSTARTER cannot launch over NFS (Ember can). See [NFS](#nfs).

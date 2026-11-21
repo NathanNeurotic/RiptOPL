@@ -26,6 +26,18 @@ Use a disk exposing **512-byte logical sectors**. A 512e disk has 4 KiB physical
 
 The internal exFAT HDD mounts into the shared `massN:` namespace. `mass0:` does **not** always mean USB: numbers depend on mount order. For a Neutrino custom path, the typed `ata:/neutrino/neutrino.elf` alias identifies internal ATA storage more reliably than a fixed slot number.
 
+## Launching PS2 games from internal exFAT
+
+The native OPL core can launch directly from the internal exFAT library. The
+[ATA alignment fix](https://github.com/NathanNeurotic/RiptOPL/pull/481) resolved
+the LLVM build's hang while querying the drive and was retested on a physical
+PS2.
+
+For Neutrino, use the matching `neutrino/` folder from your kit. RiptOPL uses
+quick boot to map the game's file through the already-mounted ATA exFAT
+filesystem before reset. **PS2 Logo** can stay enabled. The Neutrino logo
+path still needs a physical-console retest. See [Neutrino](NEUTRINO.md).
+
 ## Benefits and limitations
 
 - **PC file management:** copy images and artwork as ordinary files rather than installing each PS2 game into an HDLoader partition. exFAT supports individual files larger than FAT32's 4 GiB limit.

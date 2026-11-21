@@ -51,7 +51,7 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 | Default Menu | The page the menu opens on. | `default_device` |
 | HDD (APA) Start Mode | When the internal HDD (APA/PFS) page starts: Off, Manual or Auto. | `hdd_mode` |
 | MMCE Start Mode | When the MMCE (SD2PSX, MemCard PRO2) page starts. | `mmce_mode` |
-| &nbsp;&nbsp;MMCE Settings *(Modify)* | MMCE slot, IGR slot, Send GameID on Launch, communication and path settings (below). | |
+| &nbsp;&nbsp;MMCE Settings *(Modify)* | IGR bootcard targets, Game ID targets, communication and path settings (below). | |
 | BDM Devices Start Mode | When the block-device pages (the indented rows below) start. | `usb_mode` |
 | &nbsp;&nbsp;Internal HDD (exFAT) | Lists games from an exFAT internal HDD. | `enable_bdm_hdd` |
 | &nbsp;&nbsp;USB | Lists games from USB mass storage. | `enable_usb` |
@@ -66,9 +66,12 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 | All Games List | One list of every game instead of a page per device. Same setting as Interface → Library. | `all_games` |
 | Show Hidden Games | Lists games you hid. | `show_hidden` |
 
-**MMCE Settings** sub-page: MMCE Slot (`mmce_slot`), MMCE IGR Slot (`mmceigr_slot`), Send GameID
-on Launch (`mmce_gameid`), ACK wait cycles (`mmce_wait_cycles`), use alarms (`mmce_use_alarms`),
-MMCE Prefix Path (`mmce_prefix`).
+**MMCE Settings** covers IGR Bootcard Slot(s) (`mmceigr_slot`), Send GameID on Launch
+(`mmce_gameid`), ACK wait cycles (`mmce_wait_cycles`), use alarms (`mmce_use_alarms`)
+and MMCE Prefix Path (`mmce_prefix`). Each detected MMCE has its own library page.
+Set **Send GameID on Launch** to **0** for the card in physical Slot 1, **1** for Slot 2,
+**Both** for both cards or **Off**. This setting selects the save-card targets independently
+of the game source.
 
 ## General & System
 
@@ -158,7 +161,7 @@ Settings**.
 | Sort Games | Off, A to Z or Last played. | `autosort` |
 | Automatic Refresh | Re-reads game lists while the menu is open. | `autorefresh` |
 | Show CFG Titles in Game Lists | Uses the title from a game's CFG file. See [CFG-TITLES.md](CFG-TITLES.md). | `cfg_titles_in_lists` |
-| List Title and Description | Theme, On or Off. On the built-in IncebtIon and Korium themes, On shows the game's CFG Title and Description beside the list in place of the cover. | `list_cfg_text` |
+| List Title and Description | Theme, On or Off. On displays the game's CFG Title and Description in supported list layouts. | `list_cfg_text` |
 | PS1 Duplicates | A PS1 game found for both cores: Both, Ember or POPSTARTER. | `ps1_duplicates` |
 | Show [PS1]/[PS2] Labels | Marks each row with its system. | `game_type_labels` |
 | Widescreen | 16:9 menu. | `wide_screen` |

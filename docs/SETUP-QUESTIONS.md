@@ -2,7 +2,7 @@
 
 ## Which build should I download?
 
-Every RiptOPL build uses one SDK, ps2build, so there is no toolchain flavour to choose. Pick an edition: **Korium** (the default theme), **IncebtIon** (the IncebtIon theme) or **RetroAchievements** (Korium with the achievements runtime and its own kit). The Korium and IncebtIon releases also carry `RIPTOPL-VARIANTS-<version>.zip` (pad emulation off, DualSense and extras builds) and `RIPTOPL-DEBUG-<version>.zip` (debug and diagnostic builds); see [Build configurations](BUILD-CONFIGURATIONS.md).
+Start with the full **RiptOPL** kit (`rolling`, LLVM/Clang). Choose **RetroAchievements** (`rolling-ra`, GCC) for the bundled RA runtime, or **RiptOPLite** (`rolling-lite`, GCC) when you already have the full kit and want a smaller loader for one device. All share the built-in PSBBN theme. See [release channels and packaging](../ROLLING_RELEASE.md) and [Build configurations](BUILD-CONFIGURATIONS.md).
 
 Use builds from the same release when comparing behavior. Record the complete version string, which names a nonstandard configuration; a successful build does not prove that it boots on your console. Keep the disk, configuration and selected core unchanged during a comparison. A failure in one configuration is evidence to investigate, not proof by itself of a defect in that configuration.
 

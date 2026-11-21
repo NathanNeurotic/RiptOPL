@@ -55,15 +55,16 @@ replaces the built-in one as soon as its drive is up. Saved as `boot_theme_wait`
 PS1 and Favourites) in any theme, the built-in one included (requested by Berion). Put it beside
 `settings_riptopl.cfg`, in the folder your settings are saved in, named `wallpaper.png` (for example
 `mc0:/OPL/wallpaper.png`). It must be a PNG of at most 512 x 512 pixels with an 8-bit (256 colour) palette; it is
-stretched to the screen like a theme background. In the built-in theme the full-screen inceBtion picture over
-the background is left out while the wallpaper shows. Disk themes keep all their pictures, so one that lays an
+stretched to the screen like a theme background. The built-in theme uses the wallpaper in place of
+its default PSBBN background. Disk themes keep all their pictures, so one that lays an
 opaque full-screen picture over its background still hides the wallpaper. Anything else, or no file, keeps the theme's background
 and a message says why. The info pages keep the theme's own background, and per-game background art
 (Background Art) still wins while a game is selected. It is Off on fresh configurations and saved as
 `wallpaper=1`; changing it reloads the theme. *Not yet tested on hardware.*
 
-Both flow views rotate navigation on the main game list: Left/Right browse covers and Up/Down
-change sources. R3 remains Favorite, and info/settings screens keep their normal controls.
+In the flow views, Left/Right browse covers. In Coverflow, Down focuses the device bar when a theme
+shows one. In PSBBN Flow and Coverflow without a bar, Up/Down switch devices. L1/R1 jump 15 titles;
+List and Grid use page jumps. R3 toggles Favorite. See [Controls](CONTROLS.md).
 **Coverflow Settings** tunes the `Coverflow` renderer; PSBBN Flow uses its fixed layout and
 25-frame glide. All four views share the editable palette, artwork and audio settings.
 Theme authors declare views with `views=` and `<view>.` blocks; see the
@@ -119,8 +120,7 @@ default, shows them the way the theme sets them, and a theme can leave them off 
 `list_cfg_text=0`. **On** shows them even then. **Off** hides them on every theme. The game info page shows
 them either way. The names in the list itself follow [Show CFG Titles in Game Lists](CFG-TITLES.md)
 instead. The change shows on the next frame and is saved with your settings (`list_cfg_text` in
-`settings_riptopl.cfg`). The built-in IncebtIon and Korium themes keep them off on **Theme**, so their list
-looks as before. **On** swaps the cover beside their list for the game's Title and its Description.
+`settings_riptopl.cfg`). Use **On** to show CFG text on layouts that support it.
 
 This comes from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) build 126, by
 [akilluminati47](https://gitlab.com/akilluminati247). Theme authors can find the `list_cfg_text` key in the

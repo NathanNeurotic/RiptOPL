@@ -830,7 +830,7 @@ You can point `default=`/`overlay=` at any of OPL's embedded textures (no file n
 - **Media icons:** `APP`, `CD`, `DVD`
 - **Aspect / scan / vmode / rating** sets as listed in §6.
 
-(`settings_bg`, `case_overlay`, `incebtion` and `ip` are theme-supplied. `Device_*` indicators are deprecated.)
+(`settings_bg` is theme-supplied. Use `psbbn_bg` for the embedded PSBBN background. `Device_*` indicators are deprecated.)
 
 ---
 
