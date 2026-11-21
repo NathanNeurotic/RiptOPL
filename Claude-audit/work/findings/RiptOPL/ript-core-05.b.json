@@ -1,0 +1,138 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-05.b",
+  "coverage": [
+    {"path": "ee_core/src/patches.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/patches_asm.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/ra.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/ra_overlay.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/ra_pulse.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/syshook.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/tlb.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/util.c", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "In-game EE core (ee_core, upstream Open PS2 Loader with fork edits). patches.c holds the per-serial game patch table that apply_patches() runs from sysLoadElf() after the game ELF is loaded, including hooks that load small IOP patch modules (iremsndpatch, apemodpatch, f2techioppatch) and the video-skip compat mode; patches_asm.S has two asm helpers for those patches. syshook.c installs and removes the kernel syscall hooks (SifSetDma reset intercept, SifSetReg, ExecPS2, CreateThread, Exit, OSD config) and loads the game ELF. ra.c, ra_overlay.c and ra_pulse.c are RetroAchievements-only: a VBLANK-interrupt memory snapshot sent to the IOP raudp module by SIF DMA, an opt-in GIF PATH3 unlock card, and the default PMODE/BGCOLOR unlock pulse. tlb.c is a ps2sdk-derived 32 MB TLB setup used by the IGR path; util.c has libc-free string helpers, the SMAP ipconfig builder, masked pattern search, CopyToIop, WipeUserMemory and a NOP delay.",
+  "reusable_helpers": [
+    {"name": "find_pattern_with_mask", "path": "ee_core/src/util.c", "line": 107, "what": "masked u32 pattern search over a memory range"},
+    {"name": "CopyToIop", "path": "ee_core/src/util.c", "line": 132, "what": "blocking SIF DMA copy from EE to IOP memory, waits for completion"},
+    {"name": "WipeUserMemory", "path": "ee_core/src/util.c", "line": 154, "what": "zeroes a memory range with 128-bit stores, 64 bytes per step"},
+    {"name": "_strncmp", "path": "ee_core/src/util.c", "line": 36, "what": "libc-free bounded string compare (returns -1 if either string ends early)"},
+    {"name": "_strcmp", "path": "ee_core/src/util.c", "line": 53, "what": "libc-free string compare"},
+    {"name": "_strcpy / _strcat", "path": "ee_core/src/util.c", "line": 24, "what": "libc-free string copy and append"},
+    {"name": "set_ipconfig", "path": "ee_core/src/util.c", "line": 71, "what": "builds the SMAP ip/netmask/gateway/link-mode argument block"},
+    {"name": "delay", "path": "ee_core/src/util.c", "line": 170, "what": "busy-wait of count x 0x01000000 NOP loops"},
+    {"name": "JAL / JMP / FNADDR", "path": "ee_core/src/patches.c", "line": 157, "what": "encode and decode MIPS jal/j targets for code patching"},
+    {"name": "u32dec", "path": "ee_core/src/ra_overlay.c", "line": 159, "what": "unsigned int to decimal string without libc"},
+    {"name": "text3x5", "path": "ee_core/src/ra_overlay.c", "line": 132, "what": "draws text with a 3x5 bitmap font into a pixel buffer"},
+    {"name": "InitializeTLB", "path": "ee_core/src/tlb.c", "line": 9, "what": "32 MB TLB setup from ps2sdk-derived tables"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "NIBBLE2CHAR emits 'k'..'p' for 10..15, so the SOS/Disaster Report hook can patch the wrong IOP module",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/patches.c", "start": 160, "end": 160},
+        {"path": "ee_core/src/patches.c", "start": 565, "end": 570},
+        {"path": "modules/iopcore/patches/iremsndpatch/main.c", "start": 65, "end": 76},
+        {"path": "modules/iopcore/patches/iremsndpatch/main.c", "start": 87, "end": 108}
+      ],
+      "problem": "NIBBLE2CHAR returns 'a' + n for n >= 10, i.e. 'k'..'p' instead of 'a'..'f'. SOS_SifLoadModuleHook uses it to pass IREMSND's IOP module ID as two hex digits (patches.c:565-570), and iremsndpatch parses the argument with strtol(argv[1], NULL, 16) (main.c:65). For an ID like 0x2A the argument is \"2k\", strtol returns 2, and iremsndpatch writes its JAL/JMP words at fixed offsets into module 2's text (main.c:87-108). With a high nibble of A-F the parse gives 0 and the fix is silently skipped.",
+      "fix": "Change the second branch of NIBBLE2CHAR to 'a' + (n) - 10.",
+      "justification": "",
+      "benefit": "Fixes IOP code corruption (crash or hang) in Disaster Report and Zettai Zetsumei Toshi whenever IREMSND's module ID has a low nibble of A-F; one character, no size change (INFERRED)",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read patches.c:160 (macro) and :509-579 (only user); grep -rn NIBBLE2CHAR over the repo: only patches.c:160,565,566. Read modules/iopcore/patches/iremsndpatch/main.c fully: strtol base 16 at :65, module lookup by id at :70-76, fixed-offset writes at :87-108. patch_list entries SLUS_205.61 / SLES_513.01 / SLPS_251.13 (patches.c:113-115) reach SOSPatch; the PAL hook is commented out (patches.c:592-594), so the NTSC-U and NTSC-J titles are affected. INFERRED part: IOP module IDs are small sequential numbers, so which nibble IREMSND gets depends on how many modules the device mode loads."
+    },
+    {
+      "n": 2,
+      "title": "ZombieZone_patches scans 768 KB past the end of 32 MB RAM",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/patches.c", "start": 408, "end": 408},
+        {"path": "ee_core/src/util.c", "start": 117, "end": 121},
+        {"path": "ee_core/src/tlb.c", "start": 84, "end": 92}
+      ],
+      "problem": "ZombieZone_patches searches from 0x001c0000 for 0x01f00000 bytes, i.e. up to 0x020c0000; every other scan in patches.c stops at or below 0x01FC0000. If the scePadEnd pattern is not found below 0x02000000 (a different build under one of the four serials at patches.c:105-108), find_pattern_with_mask reads 0x02000000, which no TLB entry maps (the cached RAM entries end at 0x01FFFFFF, tlb.c:84-92), and the TLB miss stops the boot instead of skipping the patch.",
+      "fix": "Change the size argument to 0x01e40000 (0x02000000 - 0x001c0000).",
+      "justification": "",
+      "benefit": "Removes a TLB-miss hang path at boot for four titles when the pattern is absent; one constant, no size change (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read patches.c:392-415 (ZZ search 0x001c0000 + 0x01f00000) and the other find_pattern_with_mask calls (patches.c:193,227,473,501,780-785: end addresses 0x01F00000, 0x01F00000, 0x01FC0000, 0x01FC0000, <0x00A00000). util.c:117-121 reads buf[i+j] up to buf+bufsize. tlb.c:84-92 (same layout as the kernel default, per the note at ra.c:99-103, which also records that a TLB miss hangs the game). Only call is under file_eq_gameid (patches.c:963-965). INFERRED part: that a build of these serials without the pattern exists."
+    },
+    {
+      "n": 3,
+      "title": "set_ipconfig indexes SmapLinkModeArgs with an unchecked eth_linkmode from conf_network.cfg",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/util.c", "start": 74, "end": 78},
+        {"path": "ee_core/src/util.c", "start": 96, "end": 100},
+        {"path": "src/app/settingsio.cpp", "start": 1924, "end": 1924},
+        {"path": "src/platform/system.cpp", "start": 1561, "end": 1561},
+        {"path": "src/sources/netsupport.cpp", "start": 408, "end": 423}
+      ],
+      "problem": "The link mode is read from conf_network.cfg with configGetInt and never range-checked (settingsio.cpp:1924), copied into the unsigned char g_ps2_ETHOpMode (system.cpp:1561), and set_ipconfig indexes the four-entry SmapLinkModeArgs with ETHOpMode - 1 for any non-zero value (util.c:96-100). A value of 5..255 (hand-edited or damaged file; -1 becomes 255) reads a pointer past the array and strncpy's 6 bytes from it: a garbage SMAP argument or an address/TLB exception at ee_core start. The menu's own switch treats such values as auto (netsupport.cpp:408-423).",
+      "fix": "In set_ipconfig, add the -no_auto arguments only when ETHOpMode is below ETH_OP_MODE_COUNT, as the menu does.",
+      "justification": "Adds one comparison: a config-file value currently reaches an array index unchecked; defaulting to auto matches what the menu already does with the same value.",
+      "benefit": "Closes an out-of-bounds read at game launch from a malformed network config; no net line change (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read util.c:71-102. grep -rn 'gETHOpMode|g_ps2_ETHOpMode' over src/: opl.cpp:1513 (default), settingsio.cpp:1924 (configGetInt, no clamp), :2285 (save), guisettings.cpp:792,884,985 (dialog), netsupport.cpp:408 (switch with default -> auto), system.cpp:1561 (copy into the core config). Enum ee_core/include/ee_core.h:44-52 has 5 values. coreconfig.h:46: unsigned char field."
+    },
+    {
+      "n": 4,
+      "title": "apply_capcom_protection_patch passes the opcode value to SyncDCache; the flush is not needed",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/patches.c", "start": 262, "end": 264}
+      ],
+      "problem": "SyncDCache((void *)opcode, &opcode + 4) uses the value 0x10000025 as the start of the range, so the range starts above its end (a stack address). The flush is also unnecessary: smem_write comes from ps2sdk libkernel smem.o (pulled in by patches.o, evidence/RiptOPL/raw/eecore-archive-members.txt:20) and copies with CPU stores through the IOP memory window, so the source never has to be written back to RAM.",
+      "fix": "Delete the SyncDCache line.",
+      "justification": "",
+      "benefit": "1 line and one inverted-range kernel cache call removed (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read patches.c:257-273; reached from apply_patches PATCH_GENERIC_CAPCOM for the four Capcom serials (patches.c:65-68, 951-954). grep smem over ee_core: smem.h include (ee_core.h:21), smem_read (modmgr.c:279), smem_write (patches.c:264) only; no repo copy of smem. evidence/RiptOPL/raw/eecore-archive-members.txt:20 shows smem.o from libkernel. INFERRED part: ps2sdk smem_write being a CPU copy through 0xBC000000 and SyncDCache's handling of start > end are SDK internals not in this repo."
+    },
+    {
+      "n": 5,
+      "title": "RA unlock pulse forces PMODE to circuit 1 only and leaves it there",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/ra_pulse.c", "start": 26, "end": 28},
+        {"path": "ee_core/src/ra_pulse.c", "start": 111, "end": 123},
+        {"path": "ee_core/src/ra_overlay.c", "start": 185, "end": 210},
+        {"path": "ee_core/src/main.c", "start": 127, "end": 152}
+      ],
+      "problem": "For 60 frames the pulse writes PMODE with EN1=1, EN2=0, SLBG=1, and on the last frame writes RA_OVL_PMODE(0xFF), relying on the game rewriting PMODE on its next flip (ra_pulse.c:112-115). A game that shows its picture through read circuit 2 only shows circuit 1 during the pulse, and one that writes PMODE only at start-up stays on circuit 1 afterwards. The card path (ra_overlay.c:185-210) already treats circuit 2 as a normal case and reads the tracked PMODE.",
+      "fix": "When the GS tracker is on (GSM, cards or In-Game Menu, main.c:127-152), save GSMSourceGSRegs.pmode when the pulse starts and write that value back on the last frame instead of RA_OVL_PMODE(0xFF); skip the pulse's PMODE writes when the saved value has EN1 clear. Keep the current behaviour when nothing was tracked.",
+      "justification": "Adds one saved word and two conditions; without them an unlock can leave a circuit-2 game, or one that sets PMODE once, on the wrong display circuit.",
+      "benefit": "Avoids a wrong or black display after an unlock notice in RA builds for such games (INFERRED, not tested on hardware)",
+      "benefit_rank": 2,
+      "lines_removed": -4,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Low",
+      "basis": "INFERRED",
+      "evidence": "Read ra_pulse.c fully; RA_PulseOnVblank is the default notice (ra_overlay.c:377-380: used whenever raClientMode is 0, cards are compiled out or no card buffer). GSMSourceGSRegs (gsm_engine.S:56-57, igs_api.h:126) records PMODE/DISPFB/DISPLAY; ra_overlay.c:185-210 and igrmenu.c:584 read it. main.c:142-152 enables the tracker for cards or In-Game Menu. INFERRED part: how many games use circuit 2 only or write PMODE once; no hardware test."
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-16.b",
+  "coverage": [
+    {"path": "src/gfx/renderman.cpp", "status": "read_full", "note": ""},
+    {"path": "include/saveicon.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/saveicon.cpp", "status": "read_full", "note": ""},
+    {"path": "include/texcache.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/texcache.cpp", "status": "read_full", "note": ""},
+    {"path": "include/textshape.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "renderman.cpp is the GS renderer behind the rm* API: the video-mode table, gsKit setup for normal and HIRES modes, vsync-paced frame flip, overscan/aspect scaling from the 640x480 design grid, and the quad, reflection, rect, line and triangle primitives. saveicon.cpp parses PS2 icon.sys/.icn files, the PS2 memory-card filesystem inside a VMC image and raw PS1 card images, loads the selected game's newest save icon on the IO worker and draws it spinning (or the PS1 16x16 frames) on the GUI thread. texcache.cpp is the cover-art cache: per-theme slot arrays, the per-frame lookup with reunion-by-value and absence memo, LRU slot claiming, and request creation for the art worker thread (artload.cpp). textshape.h only declares the UTF-8 / RTL shaping helpers used by the font system.",
+  "reusable_helpers": [
+    {"name": "siRd32 / siRd16u / siRdFloat", "path": "src/gfx/saveicon.cpp", "line": 48, "what": "little-endian 32/16-bit and float readers from a byte buffer (unaligned-safe)"},
+    {"name": "siReadFile", "path": "src/gfx/saveicon.cpp", "line": 664, "what": "reads a whole small file into a malloc'd buffer with a size cap"},
+    {"name": "saveIconSerialForStartup", "path": "src/gfx/saveicon.cpp", "line": 258, "what": "converts a boot file name SLUS_200.62 to the product code SLUS-20062"},
+    {"name": "saveIconFolderMatches", "path": "src/gfx/saveicon.cpp", "line": 277, "what": "tests whether a memory-card save folder name belongs to a product code"},
+    {"name": "siFdRead", "path": "src/gfx/saveicon.cpp", "line": 688, "what": "lseek+read callback for reading at an offset from an fd"},
+    {"name": "txtNext / txtPut", "path": "include/textshape.h", "line": 10, "what": "UTF-8 decode of one code point and bounded UTF-8 encode"},
+    {"name": "Renderer::drawFramedRect", "path": "src/gfx/renderman.cpp", "line": 613, "what": "frame plus fill rectangle that keeps at least one display line per border"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Art cache eviction frees a cover's pixels while the HIRES replay of the previous frame may still upload them",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/texcache.cpp", "start": 396, "end": 407},
+        {"path": "src/gfx/texcache.cpp", "start": 467, "end": 467},
+        {"path": "src/gfx/texcache.cpp", "start": 24, "end": 31}
+      ],
+      "problem": "The LRU scan accepts any slot with lastUsed < guiFrameId, so a cover drawn in the previous frame (lastUsed == guiFrameId-1, typically the one that just scrolled off) is evicted and cacheClearItem frees texture.Mem in the middle of drawing the next frame. The repo itself states that in HIRES the DMA thread keeps replaying the previous frame, whose inline uploads reference those pixels, and guards theme and font frees with rmDiscardFrame for that reason; this per-frame eviction has no such guard, so the replay can read freed (and possibly already reused) memory.",
+      "fix": "Start the scan with rtime = guiFrameId - 1 so a slot drawn in the previous frame is never evicted; in the rare case every slot was drawn last frame the claim simply happens one frame later.",
+      "justification": "",
+      "benefit": "Removes corrupted-cover flashes during scrolling in the 704-wide, 720p and 1080i HIRES modes (INFERRED from the repo's own HIRES model; not observed on hardware). No size change.",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read texcache.cpp:388-407 (scan uses lastUsed < rtime, rtime = guiFrameId) and :467 (cacheClearItem(oldestEntry,1) on the GUI thread during cacheGetTextureEx, i.e. while the frame is being built). cacheClearItem :24-31 does rmUnloadTexture + free(Mem). Repo statements of the hazard: renderman.cpp:188-189 (HIRES replays the last frame; flip before referenced pixel buffers are freed), fntsys.cpp:120-123 (inline uploads reference pixels until the frame, under HIRES its replay, is retired), themes.cpp:1836-1839 (rmDiscardFrame before freeing the theme), saveicon.cpp:807 (retired model kept two frames for HIRES). grep rmDiscardFrame over src: only themes.cpp:1839, fntsys.cpp:138; grep cacheClearItem: texcache eviction path has no frame guard. gsKit HIRES internals are not in the repo, hence INFERRED."
+    },
+    {
+      "n": 2,
+      "title": "PS1 save icons: colour-0 texels meant to be transparent are drawn as opaque black",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/saveicon.cpp", "start": 631, "end": 636},
+        {"path": "src/gfx/saveicon.cpp", "start": 1029, "end": 1037},
+        {"path": "src/gfx/saveicon.cpp", "start": 1238, "end": 1239},
+        {"path": "src/gfx/renderman.cpp", "start": 445, "end": 451}
+      ],
+      "problem": "saveIconFromPs1CardImage writes palette colour 0x0000 as texel 0 and sets bit 15 only on other colours, i.e. it encodes PS1 transparency in the A1 bit of a CT16 texture. The frames are drawn through rmDrawPixmap -> drawQuad, which enables alpha blending and the alpha test only for CT32 (or CT32-CLUT) textures; for CT16 it turns both off, so every transparent texel is written as black and the icon shows on a black square.",
+      "fix": "Decode the PS1 frames as CT32 (alpha 0 for colour 0, 0x80 otherwise) so drawQuad's existing CT32 path blends and alpha-tests them; the three frames grow from 1.5 KB to 3 KB. Update test_ps1_save_icons.py's expected texel values with it.",
+      "justification": "",
+      "benefit": "PS1 icons render with their intended transparency instead of a black box; +1.5 KB peak for a shown PS1 icon (INFERRED: 3 frames x 256 texels x 2 extra bytes).",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read saveicon.cpp:631-636 (color == 0 ? 0 : color | 0x8000), :1031-1036 (siPs1Tex PSM GS_PSM_CT16, Clut left NULL by the memset at :950), :1238-1239 (rmDrawPixmap(&siPs1Tex[frame]...)); renderman.cpp:513-517 drawPixmap -> drawQuad :445-451 (alpha on only for CT32 or CLUT CT32, else PrimAlphaEnable OFF and GS_ATEST_OFF). test_ps1_save_icons.py:158,181 confirms palette entry 0 = 0x0000 decodes to texel 0000. grep GS_PSM_CT16 over src: only saveicon.cpp and atlas.cpp, so no other CT16 texture relies on drawQuad's current behaviour. Visual result not observed on hardware."
+    },
+    {
+      "n": 3,
+      "title": "ImageCache::requestFinished decrements activeRequests_ without protection against the GUI thread's increment",
+      "category": 6,
+      "locations": [
+        {"path": "include/texcache.h", "start": 103, "end": 107},
+        {"path": "src/gfx/texcache.cpp", "start": 520, "end": 520},
+        {"path": "src/gfx/artload.cpp", "start": 369, "end": 370},
+        {"path": "src/gfx/artload.cpp", "start": 385, "end": 386}
+      ],
+      "problem": "activeRequests_ is the guard that stops cacheDestroyCache freeing content[] under an in-flight request. The art thread (priority 72) does a plain volatile read-modify-write decrement with interrupts enabled; the vsync interrupt wakes the GUI thread (priority 31), which preempts it and may run activeRequests_++ for the same cache before the decrement is stored. The increment is then lost, the counter under-counts for the rest of the cache's life, and a later theme switch can free content[] while a request still points into it.",
+      "fix": "Do the decrement inside a DIntr()/EIntr() bracket in requestFinished (or inside gArtQ.release's existing bracket); the GUI-side increment cannot be preempted by the lower-priority art thread and needs nothing.",
+      "justification": "Two lines close a lost-update race on the only guard against the theme-switch use-after-free that texcache.h:125-133 describes; the code already uses the same DIntr bracket for its queue counters.",
+      "benefit": "Removes a rare race that defeats the use-after-free guard (INFERRED window: about two instructions per completed request against a 60 Hz interrupt). No size change.",
+      "benefit_rank": 1,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read texcache.h:101-107,125-134; texcache.cpp:520 (GUI thread increments directly; requestQueued has no caller: grep -rn requestQueued src include gives only texcache.h:101). grep requestFinished: artload.cpp:370 (artFreeChain) and :386 (artReleaseRequest), both outside the DIntr sections per artload.cpp:342-348. Priorities: ART_THREAD_PRIORITY = 72 (artload.cpp:31,840), GUI 31 (brief, opl.cpp:2064). renderman.cpp:195-209 wakes the GUI thread from the vsync interrupt. The compiled instruction window is INFERRED."
+    },
+    {
+      "n": 4,
+      "title": "Overscan read from the settings file is never clamped; >= 1000 makes displayWidth_ 0 and unScaleX divides by zero",
+      "category": 6,
+      "locations": [
+        {"path": "src/gfx/renderman.cpp", "start": 784, "end": 787},
+        {"path": "src/gfx/renderman.cpp", "start": 789, "end": 803},
+        {"path": "src/core/settings.cpp", "start": 88, "end": 88},
+        {"path": "src/core/settings.cpp", "start": 301, "end": 302}
+      ],
+      "problem": "The dialog limits Overscan to 0..100 (dialogs.cpp:1087), but settingsLoad and screenPosLoad copy overscan and overscan_N from the cfg file unchecked, and setOverscan uses the value as is. With overscan >= 1000 (a hand-edited or damaged settings_riptopl.cfg) displayXOff_ reaches half the width, displayWidth_ becomes 0 or negative, and every text measurement through rmUnScaleX divides by it (a divide-by-zero trap on GCC MIPS builds, INFERRED) on every boot until the file is fixed.",
+      "fix": "Clamp overscan to 0..100 at the top of Renderer::setOverscan.",
+      "justification": "One clamp at the single consumer covers both cfg keys and the dialog; it turns an unrecoverable boot fault from a bad cfg value into the nearest valid setting.",
+      "benefit": "Removes a boot-time crash/garbage layout from an out-of-range cfg value (INFERRED). Trigger needs a hand-edited file, so rated low.",
+      "benefit_rank": 1,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "grep -rn gOverscan src include: settings.cpp:88 (intSetting load), :263/:273 (per-mode store/recall), guisettings.cpp:2582-2585,2733 (dialog), renderman.cpp:360 (setMode -> setOverscan). screenPosLoad settings.cpp:294-305 loads overscan_N unchecked. renderman.cpp:800-803: displayXOff_ = (W-baseW)/2 + baseW*overscan/2000, displayWidth_ = W - 2*displayXOff_; :784-787 divides by displayWidth_. rmUnScaleX callers: fntsys.cpp:806,960,977, dia.cpp:81,139 and others. GCC MIPS -mcheck-zero-division default is INFERRED."
+    },
+    {
+      "n": 5,
+      "title": "saveIconDraw keeps a redundant per-vertex colour array siCol",
+      "category": 4,
+      "locations": [
+        {"path": "src/gfx/saveicon.cpp", "start": 812, "end": 812},
+        {"path": "src/gfx/saveicon.cpp", "start": 1165, "end": 1166},
+        {"path": "src/gfx/saveicon.cpp", "start": 1282, "end": 1283},
+        {"path": "src/gfx/saveicon.cpp", "start": 1300, "end": 1311}
+      ],
+      "problem": "Each frame siShade fills siCol in model order and the sort pass copies it into siDrawCol. The model is a plain (non-indexed) triangle list, so every vertex is copied exactly once and the shade could be computed straight into siDrawCol[dst]. siCol is an extra 8-byte-per-vertex buffer held, like the other work buffers, until saveIconReset (only called when the setting is switched off, guisettings.cpp:1795).",
+      "fix": "Delete siCol: compute siShade for src directly into siDrawCol[dst] in the sorted copy loop and drop its malloc, free and NULL checks.",
+      "justification": "",
+      "benefit": "Up to 48,000 bytes less heap held (INFERRED: SAVEICON_MAX_VERTS 6000 x sizeof(u64)); one array and one store/load per vertex per frame removed; ~3 lines.",
+      "benefit_rank": 1,
+      "lines_removed": 3,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read saveicon.cpp:810-813 (buffer declarations), :1136-1175 (siFreeBuffers/siEnsureBuffers: siCol malloc'd at :1165), :1265-1284 (siCol filled per vertex), :1300-1311 (siDrawCol[dst] = siCol[src], each src used once since a = siOrder[i]*3 covers each triangle once). grep -n siCol saveicon.cpp: only 812, 1144, 1148, 1165, 1169, 1282, 1309. saveIconReset callers: guisettings.cpp:1795 only."
+    }
+  ]
+}

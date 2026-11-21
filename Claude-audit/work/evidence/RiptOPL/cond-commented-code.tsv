@@ -1,0 +1,70 @@
+path	start	end	code_like_lines	tier	sample
+include/OSDHistory.h	3	81	39	core	block comment containing code-like lines
+tools/pc/iso2opl/src/iso2opl.c	225	271	34	support	block comment containing code-like lines
+third_party/mbedtls/library/ssl_client.c	411	439	18	skim	block comment containing code-like lines
+tools/pc/iso2opl/src/iso2opl.c	95	112	16	support	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	876	898	14	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	497	516	14	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_generic.c	459	484	13	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_generic.c	774	797	13	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls.c	9533	9552	11	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	1060	1077	10	skim	block comment containing code-like lines
+src/sources/supportbase.cpp	654	665	9	core	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	1227	1242	9	skim	block comment containing code-like lines
+src/gfx/plasma.cpp	85	92	8	core	g000 = grad3[gi000];
+third_party/mbedtls/library/ssl_msg.c	3924	3935	8	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_server.c	3048	3062	8	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	1416	1430	8	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_server.c	2353	2365	7	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	250	262	7	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	457	468	7	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	1584	1594	7	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	2847	2858	7	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_generic.c	1347	1356	7	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	2128	2140	7	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	2257	2268	7	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_ticket.c	285	297	6	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_client.c	421	429	6	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_client.c	994	1004	6	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_server.c	562	571	6	skim	block comment containing code-like lines
+tools/pc/iso2opl/src/iso2opl.c	169	179	6	support	block comment containing code-like lines
+third_party/mbedtls/library/ssl_client.c	710	721	5	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls.c	9281	9287	5	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_client.c	1677	1685	5	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_server.c	2791	2799	5	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	2757	2765	5	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	724	732	5	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	828	837	5	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	1474	1482	5	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	2199	2209	5	skim	block comment containing code-like lines
+tools/pc/iso2opl/src/isofs.c	172	179	5	support	block comment containing code-like lines
+modules/network/httpclient/httpclient.c	159	165	4	module	block comment containing code-like lines
+src/core/OSDHistory.cpp	217	223	4	core	block comment containing code-like lines
+src/sources/mmcesupport.cpp	1735	1741	4	core	block comment containing code-like lines
+third_party/mbedtls/library/ecdh.c	330	336	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ecdh.c	378	384	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ecjpake.c	262	267	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ecjpake.c	389	394	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/pkparse.c	140	147	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls.c	7480	7486	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_client.c	1121	1126	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_client.c	1835	1842	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_client.c	1927	1933	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_client.c	3486	3495	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_server.c	1921	1926	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_server.c	2834	2841	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls12_server.c	4148	4157	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	605	613	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	1727	1734	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_client.c	2409	2416	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_generic.c	150	157	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_generic.c	283	288	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_generic.c	978	983	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	101	107	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	937	942	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	2349	2356	4	skim	block comment containing code-like lines
+third_party/mbedtls/library/ssl_tls13_server.c	2697	2703	4	skim	block comment containing code-like lines
+tools/pc/genvmc/src/genvmc.c	408	411	4	support	if ((size_MB != 1) && (size_MB % 8)) {
+modules/network/SMSTCPIP/include/lwipopts.h	356	359	3	skim	int valuesize = sizeof(value);
+modules/network/smap_udpbd/src/xfer.c	143	145	3	module	PktBdPtr->reserved=0;
+tools/pc/iso2opl/src/isofs.c	1051	1053	3	support	g_fh_iso = open(iso_path, O_RDONLY);

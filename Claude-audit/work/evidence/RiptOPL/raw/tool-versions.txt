@@ -1,0 +1,57 @@
+# tool versions (commands run 2026-11-16T21:20Z)
+## ps2build --version
+ps2build v2026.11.06
+## <HOME>/AppData/Local/ps2build/versions.yaml (path shown with SDK root only)
+suite: ""
+components:
+    cmake: v2026.11.04
+    llvm-toolchain: v2026.11.05
+    ninja: v1.13.2
+    ps2build: v2026.11.06
+    sdk-core: v2026.11.05
+    sdk-world: v2026.11.05
+    srxfixup: v2026.09.05
+    toolchain: v2026.11.04
+    tools: v2026.11.04
+    vcl: v2026.11.04
+## pinned by repo (.github/ps2build-sdk.env)
+PS2BUILD_COMPONENTS="cmake=v2026.11.04 ninja=v1.13.2 ps2build=v2026.11.10 sdk-core=v2026.11.10 sdk-world=v2026.11.05 toolchain=v2026.11.04 tools=v2026.11.04 vcl=v2026.11.04"
+PS2BUILD_LLVM_TOOLCHAIN=v2026.11.05
+OGG_VERSION=v2026.10.13
+VORBIS_VERSION=v2026.10.13
+## EE gcc
+mips64r5900el-ps2-elf-gcc.exe (GCC) 15.3.1 20260823
+## EE ld
+GNU ld (GNU Binutils) 2.45.1.20260126
+## IOP gcc
+mipsel-none-elf-gcc.exe (GCC) 15.2.0
+## IOP ld
+GNU ld (GNU Binutils) 2.45.1
+## ninja
+1.13.2
+## python / PyYAML
+Python 3.14.7
+PyYAML 6.0.3
+## git
+git version 2.56.0.windows.4
+## ogg/vorbis packages present in SDK
+name: ogg
+origin: port:libogg
+tier: world
+license: BSD-3-Clause
+
+# world: a real, untouched upstream CMake build (this repo's own
+# CMakeLists.txt) against ps2dev.cmake - the real bitstream container
+# format libvorbis (world/vorbis) sits on top of. Not part of
+name: vorbis
+origin: port:libvorbis
+tier: world
+license: BSD-3-Clause
+
+# world: real, untouched upstream CMake build (this repo's own
+# CMakeLists.txt) against ps2dev.cmake, matching this repo's own real
+# CMake targets - "vorbis" (core codec) and "vorbisfile" (the
+## audited commit
+b00e773bf28c1790b458ab53f25caad69e79f237 2026-11-16T12:16:05-08:00
+## lwNBD commit
+<redacted>

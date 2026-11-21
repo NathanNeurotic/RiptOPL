@@ -1,0 +1,101 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-04.b",
+  "coverage": [
+    {"path": "ee_core/src/igs_api.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/iopmgr.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/main.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/modmgr.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/padhook.c", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "These are the in-game EE core (eecore target, ps2.yaml:604-613, -Os). main.c parses the launcher's EECoreConfig_t, enables cheats/GSM/GS tracker, installs kernel hooks and starts the game with LoadExecPS2. iopmgr.c replaces the game's IOP reset: it reboots the IOP with OPL's IOPRP through imgdrv/udnl and then loads the per-mode transport, network, USBD, MCEMU, PADEMU and RetroAchievements modules. modmgr.c is the LOADFILE RPC client (load from path or EE buffer), finds embedded modules in module storage and stops the boot on a red screen when a required transport fails. padhook.c is IGR: it patches libpad's PadOpen callers, samples pad and power button from a VBLANK_END handler, and its worker thread opens the in-game menu or shuts down, resets the IOP and exits. igs_api.c is the upstream PS2 IGS screenshot, compiled only in the extras configurations (tools/build_configuration.py:37-40) and run from the IGR thread after the game is shut down (padhook.c:646-659).",
+  "reusable_helpers": [
+    {"name": "u32todecstr", "path": "ee_core/src/igs_api.c", "line": 109, "what": "zero-padded decimal formatting without sprintf (u8/u16/u64/hex variants at 79, 94, 124, 139)"},
+    {"name": "RA_Hex32", "path": "ee_core/src/iopmgr.c", "line": 59, "what": "eight-digit uppercase hex formatting without sprintf"},
+    {"name": "LoadMemModule", "path": "ee_core/src/modmgr.c", "line": 82, "what": "copies an IRX from EE memory to the IOP heap over SIF DMA and starts it through LOADFILE"},
+    {"name": "LoadModule", "path": "ee_core/src/modmgr.c", "line": 53, "what": "loads an IRX by device path through the LOADFILE RPC"},
+    {"name": "GetOPLModInfo", "path": "ee_core/src/modmgr.c", "line": 135, "what": "looks up an embedded module's pointer and size in the module-storage table"},
+    {"name": "Reset_Iop", "path": "ee_core/src/iopmgr.c", "line": 497, "what": "sends an IOP reset command packet over SIF without the SDK's SifStopDma"},
+    {"name": "IGR_WaitIdle", "path": "ee_core/src/padhook.c", "line": 193, "what": "waits on DMA ch1/ch2 and VIF1 idle with a COP0 Count timeout"},
+    {"name": "Install_PadOpen_Hook", "path": "ee_core/src/padhook.c", "line": 948, "what": "masked pattern search for libpad PadOpen and patching of J/JAL callers or function pointers"},
+    {"name": "FindEmptyArea", "path": "ee_core/src/igs_api.c", "line": 41, "what": "scans EE RAM for a zeroed 16-byte-aligned run of a given size"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "InGameScreenshot spends roughly 8-15 s in decorative busy-waits and writes its text file one byte per RPC",
+      "category": 5,
+      "locations": [
+        {"path": "ee_core/src/igs_api.c", "start": 30, "end": 39},
+        {"path": "ee_core/src/igs_api.c", "start": 61, "end": 61},
+        {"path": "ee_core/src/igs_api.c", "start": 171, "end": 171},
+        {"path": "ee_core/src/igs_api.c", "start": 303, "end": 304},
+        {"path": "ee_core/src/igs_api.c", "start": 340, "end": 341},
+        {"path": "ee_core/src/igs_api.c", "start": 356, "end": 357},
+        {"path": "ee_core/src/igs_api.c", "start": 370, "end": 371},
+        {"path": "ee_core/src/igs_api.c", "start": 379, "end": 379},
+        {"path": "ee_core/src/igs_api.c", "start": 549, "end": 551},
+        {"path": "ee_core/src/igs_api.c", "start": 556, "end": 556},
+        {"path": "ee_core/src/igs_api.c", "start": 564, "end": 564},
+        {"path": "ee_core/src/igs_api.c", "start": 673, "end": 673},
+        {"path": "ee_core/src/igs_api.c", "start": 762, "end": 762},
+        {"path": "ee_core/src/igs_api.c", "start": 787, "end": 787}
+      ],
+      "problem": "On the IGR thread, between the game's shutdown and IGR_Exit, the screenshot code waits only to animate the background colour: FastDelay(1) (a 768-pass nop loop) after every pixel in the three ConvertColors loops, delay(1) (16.7M-pass nop loop, util.c:170-179) after each 128 KB DMA slice and six more times, and two success blinks (BlinkColour, util.c:184-198) worth 10 more delay units. SaveTextFile then sends its ~700-byte report with one fioPutc (one fio RPC) per byte.",
+      "fix": "Delete FastDelay and its three calls with the per-pixel fade writes, the six standalone delay(1) calls and the success blinks at lines 61 and 787. Keep the per-slice delay(1) only if a hardware test shows the empirical slicing needs it. Replace the fioPutc loop with one fioWrite of the built string.",
+      "justification": "",
+      "benefit": "INFERRED: delay(1) = 16.7M passes x 4-7 cycles at 294.9 MHz = 0.23-0.40 s; 16 fixed units = 3.6-6.4 s, 8 slices at 640x448x32 = 1.8-3.2 s; FastDelay 768 x 4-7 cycles x 286720 px = 3.0-5.2 s. ~700 RPCs become 1. ~24 lines removed.",
+      "benefit_rank": 3,
+      "lines_removed": 24,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read igs_api.c 1-790; delay() and BlinkColour() at util.c:170-198; DBGCOL_BLNK expands to BlinkColour (ee_core.h:91), BGCOLND to a GS_BGCOLOUR write (ee_core.h:90). Counted delay units: 171, 379, 556, 564, 673, 762 (6); line 61 BlinkColour(2) = delay(2)+4 = 6; line 787 BlinkColour(1) = 4; per-slice 303. Cycle counts per loop pass are INFERRED (eecore -Os, ps2.yaml:612); no hardware timing measured. Upstream-derived code (git log: Open PS2 Loader commits only). Compiled only in extras/extras_ds5 (tools/build_configuration.py:37-40); called at padhook.c:646-648 after oplIGRShutdown and the IOP reset, followed by IGR_Exit at padhook.c:659."
+    },
+    {
+      "n": 2,
+      "title": "IGS halts the console forever when mc1 is missing or full, or after the 255th screenshot, instead of finishing the exit",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/igs_api.c", "start": 411, "end": 413},
+        {"path": "ee_core/src/igs_api.c", "start": 598, "end": 600},
+        {"path": "ee_core/src/igs_api.c", "start": 608, "end": 626},
+        {"path": "ee_core/src/igs_api.c", "start": 646, "end": 648},
+        {"path": "ee_core/src/igs_api.c", "start": 659, "end": 665},
+        {"path": "ee_core/src/padhook.c", "start": 646, "end": 659}
+      ],
+      "problem": "The output path is hard-coded to mc1:. A failed fioOpen (no card in slot 2), any short fioWrite (card full: a 640x448x32 BMP is ~1.1 MB), and a 255th existing file all call DBGCOL_BLNK(..., true), which is BlinkColour with forever set (util.c:184-198), so the IGR thread never reaches IGR_Exit (padhook.c:659). The game is already shut down and the IOP reset, so the user is left on a blinking screen and must power-cycle; a truncated BMP stays on the card.",
+      "fix": "On an open or write failure (and at the 255 limit) close any open handle and return, passing false to the blink, so InGameScreenshot falls through to IGR_Exit like a normal exit.",
+      "justification": "",
+      "benefit": "Removes a hang that needs a power cycle on realistic card conditions (empty slot 2, full card); no size change (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read igs_api.c 375-678 and InGameScreenshot 680-790; ee_core.h:91 maps DBGCOL_BLNK to BlinkColour(blinkCount, colour, forever); util.c:184-198 loops do{...}while(forever). Call path: IGR_CheckInputs sets IGR_COMBO_UP when EnableGSMOp (padhook.c:354-357) -> IGR_Thread shutdown branch (547-551) -> oplIGRShutdown(0), Reset_Iop, InGameScreenshot (646-648) -> IGR_Exit (659). Only compiled in the extras configurations (tools/build_configuration.py:37-40)."
+    },
+    {
+      "n": 3,
+      "title": "Screenshot() asks DMA channel 1 for 8192 qwords when the frame is under 128 KB, then divides by slices == 0",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/igs_api.c", "start": 193, "end": 197},
+        {"path": "ee_core/src/igs_api.c", "start": 272, "end": 306}
+      ],
+      "problem": "slices = qwords >> 13 is 0 for any frame below 131072 bytes (for example 256x240 PSMCT16 = 122880 B, or the 64x64 minimum that the range checks at 193-197 accept). The do-while still runs once with QWC = 8192 + 0, so the channel waits for more data than the BITBLT sends and would write up to 128 KB past the buffer, and line 304 then evaluates 255 * i / slices with slices 0 (GCC MIPS traps on integer division by zero by default).",
+      "fix": "Loop over the remaining qword count, sending min(remaining, 8192) per pass, and drop the slices/remainder arithmetic and the fade division with it.",
+      "justification": "",
+      "benefit": "Fixes a hang with interrupts disabled (DI at 683) on small frames; the loop gets ~4 lines shorter (INFERRED: over-long VIF1 read never completing is hardware behaviour not tested here).",
+      "benefit_rank": 1,
+      "lines_removed": 4,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read igs_api.c 168-329 and 680-738: width = FBW*64, image_size = width*height*pixel_size, qwords = image_size >> 4, slices = qwords >> 13, remainder only added when slices > 0 (279-280, 289). With slices 0 the single pass sets QWC 8192 at 289 and waits at 300-301 before reaching the division at 304. eecore cflags in ps2.yaml:604-613 do not pass -mno-check-zero-division. Small frames on PS2 are rare, hence rank 1."
+    }
+  ]
+}

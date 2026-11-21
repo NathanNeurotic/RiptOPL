@@ -1,0 +1,273 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-16",
+  "coverage": [
+    {"path": "src/gfx/renderman.cpp", "status": "read_full", "note": ""},
+    {"path": "include/saveicon.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/saveicon.cpp", "status": "read_full", "note": ""},
+    {"path": "include/texcache.h", "status": "read_full", "note": ""},
+    {"path": "src/gfx/texcache.cpp", "status": "read_full", "note": ""},
+    {"path": "include/textshape.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "renderman.cpp is the gsKit renderer: the video-mode table (20 rows, stored-index order), mode switching (normal and HIRES, with the hires thread-priority restore and the line-blend flicker filter), overscan/PAR/aspect math, quad/rect/line/triangle/reflection primitives, and the rm* C API that forwards to a single static Renderer object declared in include/renderer.h. saveicon.cpp parses PS2 icon.sys/.icn files and PS2/PS1 memory-card images (pure, host-tested half under SAVEICON_HOST_TEST), loads the selected game's save icon on the IO worker (per-game VMC first, then mc0/mc1; PS1 dedicated VMCs incl. Ember SharedMC redirect), hands it to the GUI thread under a semaphore, and draws it spinning with morph-target animation, lighting and painter's sort through rmDrawTriangles. texcache.h/.cpp hold the cover-art slot cache (ImageCache, cache entries keyed by value with an absence memo and a PS1 id-or-name fallback) and the GUI-thread enqueue path into the art worker queue; the worker itself lives in artload.cpp. textshape.h declares the UTF-8 / Arabic shaping / CJK-Thai line-break helpers implemented in textshape.cpp and used by fntsys.cpp.",
+  "reusable_helpers": [
+    {"name": "siReadFile", "path": "src/gfx/saveicon.cpp", "line": 664, "what": "reads a whole small file into a malloc'd buffer, refusing empty files and files larger than maxSize"},
+    {"name": "saveIconFromCardImage", "path": "src/gfx/saveicon.cpp", "line": 485, "what": "walks a PS2 VMC image (with or without ECC spare) through a read callback: superblock, two-level FAT, directory chains, file read"},
+    {"name": "saveIconFromPs1CardImage", "path": "src/gfx/saveicon.cpp", "line": 578, "what": "validates a raw 128 KiB PS1 card directory (checksums, block chains) and decodes a save's 4-bit 16x16 icon frames"},
+    {"name": "saveIconSerialForStartup", "path": "src/gfx/saveicon.cpp", "line": 258, "what": "converts a boot file name SLUS_200.62 to the product code SLUS-20062"},
+    {"name": "saveIconFolderMatches", "path": "src/gfx/saveicon.cpp", "line": 277, "what": "tests whether a memory-card save folder name (B + region + serial) belongs to a product code"},
+    {"name": "siRd32 / siRd16u / siRdFloat", "path": "src/gfx/saveicon.cpp", "line": 48, "what": "little-endian 32/16-bit and float reads from a byte buffer"},
+    {"name": "cacheRowPairsReady", "path": "src/gfx/texcache.cpp", "line": 601, "what": "grow-and-reset of a pair of int arrays stamped with a generation, allocating before freeing"},
+    {"name": "txtNext / txtPut", "path": "include/textshape.h", "line": 10, "what": "UTF-8 decode of one code point and bounded UTF-8 encode into a buffer"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Renderer class is a single-instance, single-file object reached only through 34 one-line rm* forwarders",
+      "category": 3,
+      "locations": [
+        {"path": "src/gfx/renderman.cpp", "start": 817, "end": 965},
+        {"path": "src/gfx/renderman.cpp", "start": 21, "end": 21},
+        {"path": "include/renderer.h", "whole": true}
+      ],
+      "problem": "include/renderer.h declares class Renderer; its only instance is `static Renderer gRenderer` (renderman.cpp:21) and no other source or header includes renderer.h or names Renderer. Every rm* function (renderman.cpp:819-965) only forwards to the matching method, and scaleXi/scaleYi exist only to wrap the private scaleX/scaleY template for rmScaleX/rmScaleY. The layer adds a second name for every entry point and a 96-line header without any second implementation or caller.",
+      "fix": "Make the Renderer methods the rm* functions themselves, with the member variables as file-static state in renderman.cpp (keep scaleX/scaleY as static inline helpers), and delete include/renderer.h and the forwarder block. Update the four host tests that extract `Renderer::` function text (.github/scripts/test_vmode_safe_area.py, test_hires_line_blend.py, test_hires_thread_priority.py, test_theme_render_queue.py) to extract the rm* functions instead.",
+      "justification": "",
+      "benefit": "~170 source lines (149-line forwarder block plus most of the 96-line header, minus ~25 lines of statics). No ELF change: MEASURED, riptopl-discarded-firstparty.txt shows the out-of-line Renderer:: copies (1,504 bytes) already discarded by --gc-sections because they are inlined into the forwarders.",
+      "benefit_rank": 3,
+      "lines_removed": 170,
+      "effort": "M",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Grep \\bRenderer\\b|renderer\\.h over src/RiptOPL: only src/gfx/renderman.cpp, include/renderer.h, docs/CPP-CONVERSION-PLAN.md and the four .github/scripts tests listed. Read renderer.h:1-96 (comment line 5 says the rm* functions forward to the one instance). Read renderman.cpp:817-965: each rm* body is a single gRenderer call (rmEndFrame also bumps rmFramesDrawn). evidence/RiptOPL/raw/riptopl-discarded-firstparty.txt lists 20 discarded .text._ZN8Renderer* sections from renderman.o. Confidence Med only because the C++ class shape was a deliberate conversion (docs/CPP-CONVERSION-PLAN.md)."
+    },
+    {
+      "n": 2,
+      "title": "Stale history narratives in texcache.h/texcache.cpp (wrong priorities, removed depth cap, old .c file names)",
+      "category": 7,
+      "locations": [
+        {"path": "include/texcache.h", "start": 26, "end": 31},
+        {"path": "include/texcache.h", "start": 35, "end": 47},
+        {"path": "include/texcache.h", "start": 149, "end": 149},
+        {"path": "include/texcache.h", "start": 188, "end": 190},
+        {"path": "include/texcache.h", "start": 219, "end": 232},
+        {"path": "src/gfx/texcache.cpp", "start": 362, "end": 367},
+        {"path": "src/gfx/texcache.cpp", "start": 409, "end": 412},
+        {"path": "src/gfx/texcache.cpp", "start": 482, "end": 512},
+        {"path": "src/gfx/texcache.cpp", "start": 522, "end": 524}
+      ],
+      "problem": "Large comments record past releases instead of current behaviour, and several are now wrong: texcache.cpp:365 says the art thread runs at priority 64 and :490-496 explains a race through the IO worker at priority 32, but artload.cpp:31 sets ART_THREAD_PRIORITY = 72 on its own thread; texcache.cpp:409-412 describes a backpressure refusal that the next paragraph (:413-419) says was removed; texcache.h:188-190 documents a 'depth cap' counter that nothing increments; texcache.h:219-232 lists call sites in themes.c/opl.c (now .cpp) and a stub history; :149 and :26-31 are rebuild-number history. texcache.cpp:522 names 'artPush' for gArtQ.push.",
+      "fix": "Delete the historical paragraphs and the wrong priority/backpressure statements; keep one or two sentences per site that state the current rule (e.g. 'stamp lastUsed at enqueue so the 20-frame cancellation measures frames since last draw').",
+      "justification": "",
+      "benefit": "~70 comment lines removed; no binary effect (INFERRED, comments only). Removes three statements that contradict the code.",
+      "benefit_rank": 2,
+      "lines_removed": 70,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read texcache.h:1-280 and texcache.cpp:1-634 in full. artload.cpp:28-31 sets ART_THREAD_PRIORITY = 72 and its own comment places IO worker at 32 and art below it. Grep \\.refused\\b|->refused\\b over the repo: the only first-party hit is the read at artload.cpp:181 (no writer), so the 'depth cap' counter is never incremented. themes.c/opl.c no longer exist (sources are themes.cpp/opl.cpp). gArtQ.push/pushFront are the calls at texcache.cpp:525-528."
+    },
+    {
+      "n": 3,
+      "title": "Copy-paste in texcache.cpp: FAV/APP proxy-mode resolution twice and in-flight request adoption twice",
+      "category": 2,
+      "locations": [
+        {"path": "src/gfx/texcache.cpp", "start": 151, "end": 162},
+        {"path": "src/gfx/texcache.cpp", "start": 191, "end": 202},
+        {"path": "src/gfx/texcache.cpp", "start": 263, "end": 273},
+        {"path": "src/gfx/texcache.cpp", "start": 318, "end": 328},
+        {"path": "src/gfx/texcache.cpp", "start": 525, "end": 525}
+      ],
+      "problem": "cacheRequestIsSIO2 (151-162) and cacheResolveArtArchive (191-202) carry the same 12 lines resolving FAV_MODE then APP_MODE through favGetArtMode/appGetArtMode, and cacheGetTextureEx calls both for the same request (355 and 430), so a FAV/APP enqueue looks the value up twice. The pending-request touch (stamp focusEpoch, promote when isPriority && !(req->sio2 && gArtQ.navActive())) is pasted with the same 5-line comment at 263-273 and 318-328, inside an `if (req != NULL)` that is always true because entry->qr was just tested non-NULL; the same promotion condition recurs at 525.",
+      "fix": "Add one static helper returning the effective art mode (resolving FAV and APP) and call it once in cacheGetTextureEx, passing the mode to both checks; add one static helper for the pending-request touch and use it at both sites, dropping the always-true NULL test and the duplicate comment.",
+      "justification": "The two helpers replace four pasted blocks (about 40 lines) with two definitions of about 15 lines, and halve the favGetArtMode/appGetArtMode calls per FAV/APP enqueue.",
+      "benefit": "~22 lines removed net (INFERRED: 2x12 + 2x11 pasted lines -> ~25 lines of helpers and calls); one fewer FAV/APP store lookup per enqueue.",
+      "benefit_rank": 2,
+      "lines_removed": 22,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read texcache.cpp:144-208 and 245-330 side by side: identical code apart from the enclosing function. Grep favGetArtMode\\(|appGetArtMode\\( over src: only texcache.cpp:154,159,194,199 plus the definitions (favsupport.cpp:1452, appsupport.cpp:624), so there is no existing shared helper. isSio2 at :355 and cacheResolveArtArchive at :430 are both reached for the same value on one enqueue."
+    },
+    {
+      "n": 4,
+      "title": "Dead art bookkeeping: ImageCache::requestQueued and the never-written gArtW.refused counter",
+      "category": 1,
+      "locations": [
+        {"path": "include/texcache.h", "start": 100, "end": 101},
+        {"path": "src/gfx/texcache.cpp", "start": 520, "end": 520},
+        {"path": "include/texcache.h", "start": 191, "end": 191},
+        {"path": "include/artworker.h", "start": 49, "end": 52},
+        {"path": "src/gfx/artload.cpp", "start": 174, "end": 184},
+        {"path": "src/ui/guioverlay.cpp", "start": 143, "end": 147}
+      ],
+      "problem": "requestQueued() (texcache.h:101) has no caller anywhere; the enqueue path increments activeRequests_ directly (texcache.cpp:520). gArtW.refused (artworker.h:52) is never written by any code, is copied out by cacheDebugCounters' `refused` parameter (artload.cpp:180-181), and the HUD reads it into `r` (guioverlay.cpp:143,147) but never prints `r` (the format at guioverlay.cpp:211 shows Q, A, D, X only).",
+      "fix": "Delete requestQueued (or call it at texcache.cpp:520 and drop the friend's direct access; deleting is shorter). Delete the refused field and its comment, the refused parameter of cacheDebugCounters, and the `r` variable in the HUD.",
+      "justification": "",
+      "benefit": "~9 lines removed; 4 bytes of .bss for the field (INFERRED, volatile int). No other ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 9,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep requestQueued over src/RiptOPL: texcache.h:101 and docs/CPP-CONVERSION-PLAN.md only (script lead also says no-other-mention). Grep \\.refused\\b|->refused\\b: only artload.cpp:181 (read) in first-party code; the rest are modules/bdm g_mount[].refused, a different field. Read guioverlay.cpp:140-215: r is filled at :147 and absent from the snprintf at :211-215."
+    },
+    {
+      "n": 5,
+      "title": "cacheCancelPendingImageLoads is an empty inline stub whose single call does nothing",
+      "category": 1,
+      "locations": [
+        {"path": "include/texcache.h", "start": 238, "end": 247},
+        {"path": "src/gfx/themes.cpp", "start": 1826, "end": 1827}
+      ],
+      "problem": "cacheCancelPendingImageLoads() has an empty body; its only caller is `if (curT == NULL) cacheCancelPendingImageLoads();` at themes.cpp:1826-1827, whose own comment says it is a plain no-op. The ten-line warning comment exists only to stop someone filling the stub in again.",
+      "fix": "Delete the stub, its comment, and the two-line call in themes.cpp; the warning becomes unnecessary once there is nothing to fill in. Update the cross-reference comment in include/artworker.h:74.",
+      "justification": "",
+      "benefit": "~13 lines removed; no ELF change (INFERRED: empty static inline already compiles to nothing).",
+      "benefit_rank": 1,
+      "lines_removed": 13,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep cacheCancelPendingImageLoads\\b over the repo: definition texcache.h:245, call themes.cpp:1827, comment artworker.h:74, nothing else (cacheCancelPendingImageLoadsTimed is a different, real function). Read themes.cpp:1815-1834."
+    },
+    {
+      "n": 6,
+      "title": "Redundant stores and always-true checks in texcache.cpp",
+      "category": 3,
+      "locations": [
+        {"path": "src/gfx/texcache.cpp", "start": 34, "end": 37},
+        {"path": "src/gfx/texcache.cpp", "start": 39, "end": 39},
+        {"path": "src/gfx/texcache.cpp", "start": 41, "end": 41},
+        {"path": "src/gfx/texcache.cpp", "start": 385, "end": 385}
+      ],
+      "problem": "cacheClearItem memsets the whole entry (line 33) and then sets Mem, Vram, Clut, VramClut, qr and UID to zero again (34-37, 39, 41). At 385 `cache->suffix_ != NULL` is always true: cacheInitCache refuses a NULL suffix (line 50) and fails unless suffix_ was allocated (67-69).",
+      "fix": "Delete the six zero stores after the memset (keep ClutStorageMode and lastUsed = -1) and the suffix_ NULL test.",
+      "justification": "",
+      "benefit": "~6 lines removed; a few instructions per cleared slot (INFERRED). Trivial.",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read texcache.cpp:24-89 and 380-386. GS_CLUT_STORAGE_CSM1 and -1 are the only non-zero values written after the memset. The only constructor of ImageCache is cacheInitCache (friend), and suffix_ is private (texcache.h:120)."
+    },
+    {
+      "n": 7,
+      "title": "texcache.cpp include list copied from artload.cpp, with headers whose symbols it never uses",
+      "category": 7,
+      "locations": [
+        {"path": "src/gfx/texcache.cpp", "start": 7, "end": 16},
+        {"path": "src/gfx/artload.cpp", "start": 6, "end": 15}
+      ],
+      "problem": "texcache.cpp lines 1-22 are the same include block as artload.cpp 1-21 (the file was split from it). texcache.cpp uses none of what several of them are commented as providing: pad.h ('getKeyPressed') and sound.h ('BGM low-water admission') have no matching use, and there is no tar*, artIndex*, tex*() or io*() call in the file.",
+      "fix": "Delete the includes texcache.cpp does not need (at least pad.h, sound.h, tar.h, artindex.h; check textures.h, ioman.h, util.h with a compile) and their misleading comments.",
+      "justification": "",
+      "benefit": "~5 lines removed; slightly faster compile; no ELF change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Script lead: texcache.cpp:3-22 == artload.cpp:2-21. Grep over texcache.cpp for getKeyPressed|bgm|Bgm|sfx|artTar|artIndex|ioPut|ioBlock: only the include comment lines 15-16. Grep for tex[A-Z]*(, io[A-Z]*(, tar*(: no calls. ART_MIN_SETTLE_FRAMES and ART_FOREGROUND_DRAIN_MS come from texcacheint.h:33,40. INFERRED: which of textures.h/ioman.h/util.h are needed transitively for types was not compiled."
+    },
+    {
+      "n": 8,
+      "title": "siNameLaunchable re-implements cueNameLaunchable, which saveicon.cpp already includes",
+      "category": 2,
+      "locations": [
+        {"path": "src/gfx/saveicon.cpp", "start": 650, "end": 655},
+        {"path": "src/sources/cuesupport.cpp", "start": 94, "end": 119}
+      ],
+      "problem": "siNameLaunchable (saveicon.cpp:651-655) applies exactly cueNameLaunchable's rules (non-empty, not '.', not starting with '..', no '/', '\\\\' or ':', length <= CUE_NAME_LAUNCH_MAX), and its own comment names cueNameLaunchable. saveicon.cpp already includes include/cuesupport.h (line 645), which declares it (cuesupport.h:143), and cuesupport.cpp is in the main ELF.",
+      "fix": "Delete siNameLaunchable and call cueNameLaunchable at saveicon.cpp:875.",
+      "justification": "",
+      "benefit": "~6 lines removed; a few dozen bytes of .text (INFERRED, static function body).",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read saveicon.cpp:644-655 and cuesupport.cpp:94-119; the conditions are equivalent (strncmp(name,\"..\",2) == name[0]=='.'&&name[1]=='.'). Grep siNameLaunchable: definition and the one call at :875. ps2.yaml:641 compiles src/sources/*.cpp into riptopl (brief section 3)."
+    },
+    {
+      "n": 9,
+      "title": "saveIconFromPs1CardImage serial matching is used only by the host test",
+      "category": 1,
+      "locations": [
+        {"path": "src/gfx/saveicon.cpp", "start": 588, "end": 589},
+        {"path": "src/gfx/saveicon.cpp", "start": 601, "end": 602},
+        {"path": "src/gfx/saveicon.cpp", "start": 897, "end": 897},
+        {"path": "include/saveicon.h", "start": 80, "end": 83}
+      ],
+      "problem": "The only shipped caller passes serial = NULL (saveicon.cpp:897), so the two-pass loop (589) and the folder-name match (601-602) never run in the ELF; only .github/scripts/test_ps1_save_icons.py:125 passes a serial.",
+      "fix": "Drop the serial parameter, the pass loop and the match, and update the header comment and the host test call.",
+      "justification": "",
+      "benefit": "~5 lines removed; no measurable ELF change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep saveIconFromPs1CardImage over src/RiptOPL: definition saveicon.cpp:578, prototype saveicon.h:82, shipped call saveicon.cpp:897 (NULL serial), test call test_ps1_save_icons.py:125."
+    },
+    {
+      "n": 10,
+      "title": "Pasted blocks inside saveicon.cpp: VMC open/size/parse/close, want-key publish, settle-and-queue",
+      "category": 2,
+      "locations": [
+        {"path": "src/gfx/saveicon.cpp", "start": 702, "end": 707},
+        {"path": "src/gfx/saveicon.cpp", "start": 893, "end": 898},
+        {"path": "src/gfx/saveicon.cpp", "start": 1063, "end": 1072},
+        {"path": "src/gfx/saveicon.cpp", "start": 1122, "end": 1127},
+        {"path": "src/gfx/saveicon.cpp", "start": 1099, "end": 1104},
+        {"path": "src/gfx/saveicon.cpp", "start": 1129, "end": 1133}
+      ],
+      "problem": "siLoadFromVmc (702-707) and the PS1 slot loop (893-898) both open a file, lseek to the end for its size, run a card parser through siFdRead and close. siSetWant (1063-1072) and saveIconSelectPs1 (1122-1127) both publish siWantKey/siWantVmc under siLock, differing only in siWantStartup and siWantPs1. The 'settled and not shown/queued -> ioPutRequestUnlessWaiting(siLoadAction), clear siQueuedKey on failure' block appears at 1099-1104 and 1129-1133.",
+      "fix": "Give siSetWant a ps1-kind argument and use it from saveIconSelectPs1; move the settle-and-queue test into one static function called from both select functions; let the PS1 loop open the image through a small shared open-and-parse helper used by siLoadFromVmc too.",
+      "justification": "Three pairs of pasted blocks (about 34 lines) collapse to three short helpers and their calls, net about 12 lines fewer, and the want/queue rules can no longer drift apart between the PS1 and PS2 paths.",
+      "benefit": "~12 lines removed net (INFERRED from the cited ranges); no measurable ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read saveicon.cpp:698-710, 889-899, 1063-1134 side by side. All six blocks are reachable: saveIconSelect is called from themeelems.cpp (via the SaveIcon element) and saveIconSelectPs1 from themeelems.cpp:2185; siLoadAction runs on the IO worker via ioPutRequestUnlessWaiting."
+    },
+    {
+      "n": 11,
+      "title": "renderman leftovers: unused __VRAM_SIZE, orphan comments, commented-out ATE, redundant rmEnd prototype, needlessly exported gDefaultAlpha",
+      "category": 1,
+      "locations": [
+        {"path": "src/gfx/renderman.cpp", "start": 15, "end": 16},
+        {"path": "src/gfx/renderman.cpp", "start": 115, "end": 119},
+        {"path": "src/gfx/renderman.cpp", "start": 271, "end": 271},
+        {"path": "src/gfx/renderman.cpp", "start": 397, "end": 397},
+        {"path": "src/gfx/renderman.cpp", "start": 462, "end": 463},
+        {"path": "src/platform/system.cpp", "start": 135, "end": 135},
+        {"path": "include/renderman.h", "start": 66, "end": 66}
+      ],
+      "problem": "__VRAM_SIZE has no use anywhere. Lines 115-119, 397 and 462-463 are headings and descriptions of members and templates that moved to include/renderer.h (where the same comments sit again, renderer.h:77-92). Line 271 is commented-out code. system.cpp:135 re-declares rmEnd although it includes renderman.h (system.cpp:45). gDefaultAlpha is exported in renderman.h but only renderman.cpp uses it.",
+      "fix": "Delete the macro, the orphan comments, the commented-out line and the extra prototype; make gDefaultAlpha static in renderman.cpp and drop its extern.",
+      "justification": "",
+      "benefit": "~12 lines removed. gDefaultAlpha's 8-byte .rodata copy is already discarded by --gc-sections (MEASURED, riptopl-discarded-firstparty.txt), so no ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "git grep -nw __VRAM_SIZE outside renderman.cpp: 0 hits; Grep over the repo shows only renderman.cpp:16. Grep gDefaultAlpha: renderman.cpp:127,327,668, renderman.h:66, and a host-test stub; no other source. Grep rmEnd: system.cpp:135 prototype with system.cpp:45 including renderman.h (which declares it at renderman.h:79). renderer.h:77-93 carries the same member comments."
+    }
+  ]
+}

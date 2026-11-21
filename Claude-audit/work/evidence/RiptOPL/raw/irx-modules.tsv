@@ -1,0 +1,95 @@
+# every IRX/ELF in build/editions/korium-gcc/bin; embedded = named in riptopl embed_irx (ps2.resolved.yaml)
+# blob_bytes = bytes of obj/_embed/<symbol>_irx.o in opl.map (riptopl-per-object.tsv); loose = copied into dist/editions/korium
+file	bytes	target	embedded_as	blob_bytes_in_elf	loose_in_dist
+apemodpatch.irx	2049	apemodpatch	apemodpatch	2065	
+ata_bd.irx	13005	ata_bd	ps2atad	13021	
+bdm_ata_cdvdman.irx	45789	bdm_ata_cdvdman	bdm_ata_cdvdman	45805	
+bdm_cdvdman.irx	35989	bdm_cdvdman	bdm_cdvdman	36005	
+bdm_drv.irx	11769	bdm_drv	bdm	11785	
+bdm_mcemu.irx	11069	bdm_mcemu	bdm_mcemu	11085	
+bdm_udp_cdvdman.irx	40637	bdm_udp_cdvdman	bdm_udp_cdvdman	40653	
+bdmevent.irx	1729	bdmevent	bdmevent	1745	
+bdmfs_fatfs_fork.irx	38325	bdmfs_fatfs_fork	bdmfs_fatfs	38341	
+bt_pademu.irx	21373	bt_pademu	bt_pademu	21389	
+cdvdfsv.irx	7309	cdvdfsv	cdvdfsv	7325	
+cleareffects.irx	905	cleareffects	cleareffects	921	
+ds34bt.irx	15685	ds34bt	ds34bt	15701	
+ds34usb.irx	9797	ds34usb	ds34usb	9813	
+eecore.elf	73008	eecore	eecore	73024	
+elfldr.elf	21476	elfldr	elfldr	21492	
+f2techioppatch.irx	1233	f2techioppatch	f2techioppatch	1249	
+genvmc.irx	12189	genvmc	genvmc	12205	
+hdd_cdvdman.irx	41669	hdd_cdvdman	hdd_cdvdman	41685	
+hdd_hdpro_cdvdman.irx	37389	hdd_hdpro_cdvdman	hdd_hdpro_cdvdman	37405	
+hdd_mcemu.irx	11149	hdd_mcemu	hdd_mcemu	11165	
+http_cdvdman.irx	43773	http_cdvdman	http_cdvdman	43789	
+httpclient.irx	10917	httpclient	httpclient	10933	
+IEEE1394_bd_mini_fork.irx	10577	IEEE1394_bd_mini_fork	IEEE1394_bd	10593	yes
+igrmbox.irx	2941	igrmbox	igrmbox	2957	
+iLinkman_fork.irx	15713	iLinkman_fork	iLinkman	15729	yes
+imgdrv.irx	1257	imgdrv	imgdrv	1273	
+iremsndpatch.irx	1729	iremsndpatch	iremsndpatch	1745	
+isofs.irx	7433	isofs	isofs	7449	
+lwnbdsvr.irx	13697	lwnbdsvr	lwnbdsvr	13713	
+mmce_cdvdman.irx	34117	mmce_cdvdman	mmce_cdvdman	34133	
+mmce_mcemu.irx	10829	mmce_mcemu	mmce_mcemu	10845	
+mmceman_fork.irx	16733	mmceman_fork	mmceman	16749	
+mx4sio_bd_full_fork.irx	12289	mx4sio_bd_full_fork			
+mx4sio_bd_mini_fork.irx	11233	mx4sio_bd_mini_fork	mx4sio_bd	11249	
+nbns.irx	4457	nbns	nbns	4473	
+nfs_cdvdman.irx	45525	nfs_cdvdman	nfs_cdvdman	45541	
+nfsman.irx	20217	nfsman	nfsman	20233	
+pccf_bd.irx	22037	pccf_bd	pccf_bd	22053	
+pccf_cdvdman.irx	36941	pccf_cdvdman	pccf_cdvdman	36957	
+pccf_game.irx	20325	pccf_game	pccf_game	20341	
+ps2hdd_osd.irx	21493	ps2hdd_osd	ps2hdd	21509	
+ps2ips_fork.irx	5133	ps2ips_fork	ps2ips	5149	
+raudp.irx	12161	raudp			
+resetspu.irx	1241	resetspu	resetspu	1257	
+smap_ingame.irx	7841	smap_ingame	smap_ingame	7857	
+smap_udpbd.irx	13281	smap_udpbd	smap_udpbd	13297	
+smb2_cdvdman.irx	55605	smb2_cdvdman	smb2_cdvdman	55621	
+smb2man.irx	32357	smb2man	smb2man	32373	
+smb2probe.elf	727440	smb2probe			
+smb2probe_iop.irx	2113	smb2probe_iop			
+smb_cdvdman.irx	48853	smb_cdvdman	smb_cdvdman	48869	
+smb_mcemu.irx	11309	smb_mcemu	smb_mcemu	11325	
+smbinit.irx	10049	smbinit	smbinit	10065	
+smbman_ra.irx	35309	smbman_ra	smbman	35325	
+SMSTCPIP.irx	45101	SMSTCPIP	ingame_smstcpip	45117	
+SMSUTILS.irx	1305	SMSUTILS	smsutils	1321	
+udpfs_bd.irx	7905	udpfs_bd	udpfs_bd	7921	
+udpfs_cdvdman.irx	38541	udpfs_cdvdman	udpfs_cdvdman	38557	
+udpfs_fhi.irx	7897	udpfs_fhi	udpfs_fhi	7913	
+udpfs_ioman.irx	12929	udpfs_ioman	udpfs_ioman	12945	
+udpfs_ministack.irx	7537	udpfs_ministack	udpfs_ministack	7553	
+udpfs_smap.irx	7441	udpfs_smap	udpfs_smap	7457	
+udptty_ingame.irx	3129	udptty_ingame			
+usb_pademu.irx	15517	usb_pademu	usb_pademu	15533	
+usbd_mini_fork.irx	21333	usbd_mini_fork	usbd	21349	
+usbmass_bd_mini_fork.irx	8497	usbmass_bd_mini_fork	usbmass_bd	8513	
+xhdd.irx	2393	xhdd	xhdd	2409	
+
+# embed_irx entries with no bin/ file from this repo (prebuilt SDK package IRX):
+pvrdrv	dvrdrv	12065
+dvrfile	dvrfile	12721
+usbhdfsd	usbhdfsd	38265
+libsd	libsd	15813
+audio	audsrv	14101
+hdpro_atad	hdpro_atad	7669
+poweroff	poweroff	3505
+dev9	ps2dev9	10977
+ps2ip-nm	ps2ip	99245
+smap	smap	15045
+netman	netman	13093
+iomanx	iomanx	10401
+filexio	filexio	5653
+sio2man	sio2man	5241
+padman	padman	36709
+mcman	mcman	72117
+mcserv	mcserv	8213
+mmcedrv	mmcedrv	11329
+mmceigr	mmceigr	1385
+fs-osd	ps2fs	42637
+eesync-nano	eesync	913
+udnl	udnl	5889

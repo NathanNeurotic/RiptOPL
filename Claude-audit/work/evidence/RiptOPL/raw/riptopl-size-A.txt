@@ -1,0 +1,160 @@
+# size -A bin/riptopl.elf (stripped, unpacked; the shipped payload before ps2pack)
+bin/riptopl.elf  :
+section              size      addr
+.text             2102648   1048576
+.ctors                 40   3151232
+.reginfo               24   3151272
+.data             2661826   3151360
+.rodata            350480   5813248
+.MIPS.abiflags         24   6163728
+.eh_frame             888   6163752
+.sdata                  4   6164736
+.bss              1341532   6164864
+.comment               27         0
+.gnu.attributes        16         0
+Total             6457509
+
+
+
+# size -A obj/riptopl/riptopl.unstripped.elf
+obj/riptopl/riptopl.unstripped.elf  :
+section              size      addr
+.text             2102648   1048576
+.ctors                 40   3151232
+.reginfo               24   3151272
+.data             2661826   3151360
+.rodata            350480   5813248
+.MIPS.abiflags         24   6163728
+.eh_frame             888   6163752
+.sdata                  4   6164736
+.bss              1341532   6164864
+.comment               27         0
+.gnu.attributes        16         0
+.debug_info        457090         0
+.debug_abbrev      114679         0
+.debug_loc         301350         0
+.debug_aranges       8544         0
+.debug_line        273629         0
+.debug_str          22743         0
+.debug_frame        17960         0
+.debug_ranges       13640         0
+.debug_loclists     23289         0
+.debug_rnglists      1635         0
+Total             7692068
+
+
+
+# size -A bin/riptopl-packed.elf
+bin/riptopl-packed.elf  :
+section   size   addr
+Total      0
+
+
+
+# size -A bin/eecore.elf bin/elfldr.elf bin/smb2probe.elf
+bin/eecore.elf  :
+section            size     addr
+.text             45784   540672
+.reginfo             24   586456
+.rodata            6777   586496
+.MIPS.abiflags       24   593280
+.data              3332   593408
+.bss              16000   596864
+.comment             27        0
+.gnu.attributes      16        0
+Total             71984
+
+
+bin/elfldr.elf  :
+section                               size     addr
+.text                                 5616   540672
+.text.readAll                           96   546288
+.text.cleanupHddForLaunch              244   546384
+.text.resetIOP                         176   546628
+.text._libcglue_init                     8   546804
+.text._libcglue_deinit                   8   546812
+.text._libcglue_args_parse               8   546820
+.text._ps2sdk_fileXio_init               8   546828
+.text._ps2sdk_fileXio_deinit             8   546836
+.text.InitAlarm                          8   546844
+.text.InitThread                         8   546852
+.text.iWakeupThread                      8   546860
+.text.InitExecPS2                        8   546868
+.text.InitTLBFunctions                   8   546876
+.text.Exit                              16   546884
+.text._ps2sdk_init_timer                 8   546900
+.text.startup.main                    1448   546908
+.text.__start                          128   548360
+.text._main                            344   548488
+.text._fxio_intr                        16   548832
+.text.recv_intr                        128   548848
+.text.fxio_ctl_intr                     56   548976
+.text.fileXioExit                      216   549032
+.text.fileXioInit                      320   549248
+.text.fileXioUmount                    248   549568
+.text.fileXioOpen                      312   549816
+.text.fileXioClose                     248   550128
+.text.fileXioRead                      320   550376
+.text.fileXioLseek                     280   550696
+.text.fileXioSync                      264   550976
+.text.fileXioDevctl                    440   551240
+.text._request_rdata                   104   551680
+.text._request_call                    144   551784
+.text._request_end                     168   551928
+.text._request_bind                    232   552096
+.text._rpc_get_packet                  200   552328
+.text.sceSifBindRpc                    368   552528
+.text.sceSifCallRpc                    600   552896
+.text.sceSifInitRpc                    432   553496
+.text.sceSifExitRpc                     40   553928
+.text.SifLoadFileInit                  280   553968
+.text.SifLoadFileExit                   32   554248
+.text._SifLoadModule                   320   554280
+.text.SifLoadModule                     16   554600
+.text._SifLoadElfPart                  256   554616
+.text.SifLoadElf                        48   554872
+.text.SifLoadElfEncrypted               48   554920
+.text.SifIopReset                      296   554968
+.text.SifIopSync                        40   555264
+.text.DIntr                             64   555304
+.text.EIntr                             24   555368
+.text.EnableDmac                       144   555392
+.text.DisableDmac                      144   555536
+.text._InitSys                          56   555680
+.text.change_addr                       16   555736
+.text.set_sreg                          32   555752
+.text._SifCmdIntHandler                264   555784
+.text.sceSifSendCmd                    208   556048
+.text.isceSifSendCmd                   208   556256
+.text.sceSifInitCmd                    752   556464
+.text.sceSifExitCmd                     88   557216
+.text.sceSifAddCmdHandler               88   557304
+.text.sceSifGetSreg                     24   557392
+.reginfo                                24   557416
+.MIPS.abiflags                          24   557416
+.rodata.cleanupHddForLaunch.str1.8      31   557440
+.rodata.resetIOP.str1.8                 52   557472
+.rodata.main.str1.8                     21   557528
+.data                                    4   557568
+.bss                                 39680   557696
+.bss.elfdata.0                          16   597376
+.comment                                27        0
+.gnu.attributes                         16        0
+Total                                56635
+
+
+bin/smb2probe.elf  :
+section             size      addr
+.text             212632   1048576
+.ctors                28   1261216
+.reginfo              24   1261248
+.data             434132   1261312
+.rodata            14212   1695488
+.MIPS.abiflags        24   1709704
+.sdata                 4   1709824
+.bss              156804   1709952
+.comment              27         0
+.gnu.attributes       16         0
+Total             817903
+
+

@@ -1,0 +1,282 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-04",
+  "coverage": [
+    {"path": "ee_core/src/igs_api.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/iopmgr.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/main.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/modmgr.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/padhook.c", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "These are the in-game EE core (eecore, ps2.yaml:604-613, upstream Open PS2 Loader derived) entry and IOP management files. main.c parses the loader config and installs kernel hooks before LoadExecPS2 of the game; modmgr.c wraps the LOADFILE RPC (LoadModule, LoadMemModule, LoadElf) and loads OPL's embedded IRX by id with a hang-on-failure policy for required transports; iopmgr.c replaces SifIopReset, rebooting the IOP with OPL's IOPRP image and reloading the per-mode driver chain plus RA telemetry (raudp) and the IGR mailbox. padhook.c finds and patches the game's libpad PadOpen calls, then runs In-Game Reset from a VBLANK_END handler and a priority-0 worker (with the In-Game Menu pause in IGR_MENU builds). igs_api.c is the In-Game Screenshot feature, compiled only in the extras configuration (tools/build_configuration.py:40).",
+  "reusable_helpers": [
+    {"name": "LoadModule", "path": "ee_core/src/modmgr.c", "line": 53, "what": "loads an IRX from a device path through the LOADFILE RPC"},
+    {"name": "LoadMemModule", "path": "ee_core/src/modmgr.c", "line": 82, "what": "DMAs an IRX buffer to IOP heap and loads it through LOADFILE"},
+    {"name": "LoadOPLModule", "path": "ee_core/src/modmgr.c", "line": 181, "what": "loads an embedded OPL IRX by module id, halting on OOM or a failed required transport"},
+    {"name": "LoadElf", "path": "ee_core/src/modmgr.c", "line": 239, "what": "loads an ELF through the LOADFILE RPC and returns entry point and gp"},
+    {"name": "Reset_Iop", "path": "ee_core/src/iopmgr.c", "line": 497, "what": "sends the SIF reset command packet to the IOP (SifIopReset replacement)"},
+    {"name": "RA_Hex32", "path": "ee_core/src/iopmgr.c", "line": 59, "what": "formats a u32 as eight upper-case hex digits"},
+    {"name": "u32todecstr", "path": "ee_core/src/igs_api.c", "line": 109, "what": "zero-padded fixed-width decimal formatting"},
+    {"name": "u64tohexstr", "path": "ee_core/src/igs_api.c", "line": 139, "what": "zero-padded fixed-width hex formatting"},
+    {"name": "FindEmptyArea", "path": "ee_core/src/igs_api.c", "line": 41, "what": "scans EE RAM for a zeroed 16-byte aligned region of a given size"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "RA_PROBE lab probe ladder: a compile-time knob that every build leaves at 0",
+      "category": 8,
+      "locations": [
+        {"path": "ee_core/src/iopmgr.c", "start": 238, "end": 247},
+        {"path": "ee_core/src/iopmgr.c", "start": 342, "end": 342},
+        {"path": "ee_core/src/ra.c", "start": 242, "end": 244},
+        {"path": "ee_core/src/ra.c", "start": 290, "end": 290},
+        {"path": "ee_core/src/ra.c", "start": 368, "end": 370},
+        {"path": "ee_core/src/ra.c", "start": 393, "end": 395},
+        {"path": "ee_core/include/ra.h", "start": 7, "end": 11}
+      ],
+      "problem": "RA_PROBE is defined only as a default 0 in ra.h:9-10 ('0 in every real build'); no ps2.yaml, tools/*.py or workflow defines it. All tests on it (iopmgr.c:244,246,342; ra.c:244,290,369,395) are constant, plus comments describing a 12.09 lab hunt.",
+      "fix": "Delete the RA_PROBE define and its comments, and drop every RA_PROBE term from the conditions (the SMSTCPIP/SMAP loads, the raudp load, ra_snap_send's loops, the early return and the RA_OnVblank test become unconditional as at RA_PROBE 0). Drop the '#define RA_PROBE 0' stubs in .github/scripts/test_ra_launch_resources.py:40 and test_ra_runtime_budget.py:55.",
+      "justification": "",
+      "benefit": "~18 lines of conditions and lab comments removed; no ELF change, the compiler already folds RA_PROBE == 0 (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 18,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep RA_PROBE over the whole repo (*.h,*.c,*.cpp,*.py,*.yaml,*.S): definition ra.h:9-10, uses iopmgr.c:238,244,246,342 and ra.c:242,244,290,368,369,395, test stubs test_ra_launch_resources.py:40 and test_ra_runtime_budget.py:55 (RA_PROBE_HASH is a different macro). No -DRA_PROBE in ps2.yaml, tools/build_edition.py or tools/build_configuration.py."
+    },
+    {
+      "n": 2,
+      "title": "igs_api.c: five number formatters, three decimal and two hex copies with identical bodies",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/igs_api.c", "start": 79, "end": 152}
+      ],
+      "problem": "u8todecstr, u16todecstr and u32todecstr (79-122) are the same 14-line body with only the parameter type changed; u32tohexstr and u64tohexstr (124-152) likewise. Every u8/u16 call promotes cleanly to u32, and the single u32tohexstr call (546) to u64.",
+      "fix": "Keep one decimal formatter taking u32 and one hex formatter taking u64; delete the other three and point the calls at the kept ones.",
+      "justification": "",
+      "benefit": "~44 lines removed; three small static functions dropped from the extras eecore (INFERRED, a few hundred bytes at most)",
+      "benefit_rank": 2,
+      "lines_removed": 44,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read igs_api.c:79-152 side by side: bodies identical except the input type. Grep over repo: only callers are in igs_api.c (406-546, 605). igs_api.c is compiled only by the extras configuration (tools/build_configuration.py:40; ee_core/Makefile:17 is the legacy Makefile)."
+    },
+    {
+      "n": 3,
+      "title": "igs_api.c SaveTextFile: 37 hand-unrolled label/format/strcat triples, DISPFB/DISPLAY blocks written twice",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/igs_api.c", "start": 415, "end": 547}
+      ],
+      "problem": "SaveTextFile builds its report with about 37 repetitions of _strcat(label); u16todecstr(field); _strcat(value), and the DISPFB2/DISPLAY2 block (506-544) is a line-for-line copy of the DISPFB1/DISPLAY1 block (467-505) with only the variable changed.",
+      "fix": "Add one static helper that appends a label and a formatted field, call it once per field, and emit the DISPFB/DISPLAY pair in a two-iteration loop over (dispfb1, display1) and (dispfb2, display2).",
+      "justification": "The helper replaces about 110 lines of repeated three-line triples with about 40 one-line calls plus an 8-line helper, and the loop removes the duplicated 39-line block; net code shrinks.",
+      "benefit": "~60 lines removed net (INFERRED: 111 triple lines -> ~37 calls + 8-line helper, minus the duplicated block); smaller .text in the extras eecore",
+      "benefit_rank": 2,
+      "lines_removed": 60,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read igs_api.c:375-558. Lines 467-505 and 506-544 differ only by dispfb1/display1 vs dispfb2/display2 and the label digit. SaveTextFile has one caller (igs_api.c:775). Extras-only build (tools/build_configuration.py:40)."
+    },
+    {
+      "n": 4,
+      "title": "ListModules in modmgr.c has no caller in any build",
+      "category": 1,
+      "locations": [
+        {"path": "ee_core/src/modmgr.c", "start": 265, "end": 285},
+        {"path": "ee_core/include/modmgr.h", "start": 94, "end": 96}
+      ],
+      "problem": "ListModules (guarded by __EESIO_DEBUG) is only defined and prototyped: no source, assembly, script or test calls it, so even the EESIO debug configuration compiles it for nothing.",
+      "fix": "Delete the function, its banner and the guarded prototype.",
+      "justification": "",
+      "benefit": "~24 lines removed; no release ELF change (only built with __EESIO_DEBUG, and eecore links with --gc-sections per BUILD-EVIDENCE.md:147)",
+      "benefit_rank": 2,
+      "lines_removed": 24,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep ListModules over the whole repo (*.c,*.h,*.cpp,*.S,*.s,*.py,*.yaml,*.tab): modmgr.c:269 (definition) and modmgr.h:95 (prototype) only. Lead symbols-unreferenced.tsv agrees."
+    },
+    {
+      "n": 5,
+      "title": "Install_PadOpen_Hook: the J/JAL patch loop and the pointer patch loop are near copies",
+      "category": 2,
+      "locations": [
+        {"path": "ee_core/src/padhook.c", "start": 1006, "end": 1037},
+        {"path": "ee_core/src/padhook.c", "start": 1040, "end": 1079}
+      ],
+      "problem": "The two search-and-patch loops repeat the same find_pattern_with_mask walk, the same libpad/libpad2 hook selection (1022-1028 and 1063-1069), the same DPRINTFs and the same Pad_Data.libpad/libversion stores (1034-1035, 1075-1076); they differ only in the pattern/mask and in whether the written word is a jump encoding or the raw hook address.",
+      "fix": "Pick the hook address once per pattern before the loops, and run one search-and-patch loop twice (first with the J/JAL pattern and the jump encoding, then, if nothing was patched, with the address pattern and the raw address), setting libpad/libversion once after a patch.",
+      "justification": "",
+      "benefit": "~22 lines removed in upstream-derived OPL code; slightly smaller eecore .text (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 22,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read padhook.c:948-1110. The loop bodies at 1007-1036 and 1051-1077 match statement for statement except pattern/mask setup (997-1001 vs 1044-1045) and the stored value (1019-1028 vs 1063-1069). Called from Hook_scePadPortOpen 908, Hook_scePad2CreateSocket 932 and the asm/syshook hooks (test_ee_hook_context.py:120 lists Install_PadOpen_Hook). Host tests (test_pad_hook_cache.py) model this function and would need a re-run."
+    },
+    {
+      "n": 6,
+      "title": "IGR_CheckInputs keeps the removed polling worker's DI/EI and kernel-mode bracketing and comments, but runs only in the VBLANK handler",
+      "category": 3,
+      "locations": [
+        {"path": "ee_core/src/padhook.c", "start": 303, "end": 306},
+        {"path": "ee_core/src/padhook.c", "start": 371, "end": 378},
+        {"path": "ee_core/src/padhook.c", "start": 409, "end": 413}
+      ],
+      "problem": "IGR_CheckInputs is static and its only caller is IGR_Intc_Handler (padhook.c:699), i.e. interrupt context, already masked and in kernel mode. Its DI()/EI(), ee_kmode_enter/exit and the comments about 'the polling worker', 'the user-mode worker stack' and 'the low-priority worker' describe the thread design that the 72-89 banner says was removed.",
+      "fix": "Delete the DI()/EI() pair and the ee_kmode_enter/exit pair in IGR_CheckInputs and reword the three stale comments to the handler context; drop the matching unprotectedReads/unprotectedKmode expectations in .github/scripts/test_igr_polling.py (lines 168-182, 234-236, 487, 495).",
+      "justification": "",
+      "benefit": "~8 lines and four stale comment lines removed; a few instructions per VBLANK saved (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 8,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Grep IGR_CheckInputs over the repo: padhook.c:299 (definition), 699 (call in IGR_Intc_Handler), and the host test test_igr_polling.py. That the handler already runs with interrupts masked (EXL) and in kernel mode is INFERRED from the EE exception model, not tested on hardware. Comment text at 305-306, 371, 374-378 refers to a worker thread that padhook.c:72-89 says was replaced."
+    },
+    {
+      "n": 7,
+      "title": "padhook.h declares Remove_Padhook (no definition), six DEV9 register macros and IGR_LIBPAD_NONE that nothing uses",
+      "category": 1,
+      "locations": [
+        {"path": "ee_core/include/padhook.h", "start": 25, "end": 25},
+        {"path": "ee_core/include/padhook.h", "start": 29, "end": 35},
+        {"path": "ee_core/include/padhook.h", "start": 84, "end": 84}
+      ],
+      "problem": "Remove_Padhook has a prototype but no definition anywhere; DEV9_R_1460..DEV9_R_1474 and IGR_LIBPAD_NONE are never referenced by ee_core (the IOP dev9.c uses same-named offsets from ps2sdk's dev9regs.h, not this header).",
+      "fix": "Delete the Remove_Padhook prototype, the DEV9 register block and IGR_LIBPAD_NONE.",
+      "justification": "",
+      "benefit": "~10 header lines removed; no binary change",
+      "benefit_rank": 1,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep Remove_Padhook|DEV9_R_14|IGR_LIBPAD_NONE over *.c,*.h,*.cpp,*.S,*.s,*.py: only padhook.h hits plus modules/iopcore/cdvdman/dev9.c, which includes <dev9regs.h> (dev9.c:23) and not padhook.h, and wraps offsets in DEV9_REG()."
+    },
+    {
+      "n": 8,
+      "title": "iopmgr.c __DECI2_DEBUG module loads: no ps2build configuration defines __DECI2_DEBUG",
+      "category": 1,
+      "locations": [
+        {"path": "ee_core/src/iopmgr.c", "start": 183, "end": 186},
+        {"path": "ee_core/include/modules.h", "start": 33, "end": 34},
+        {"path": "src/platform/system.cpp", "start": 993, "end": 1000}
+      ],
+      "problem": "The DRVTIF/TIFINET loads after an IOP reset and the matching packing in system.cpp exist only under __DECI2_DEBUG, which only the legacy Makefiles (Makefile:340, ee_core/Makefile:44) and the tools/syntax_sweep.py syntax check set; tools/build_configuration.py has no DECI2 configuration.",
+      "fix": "Delete the __DECI2_DEBUG branch in ResetIopSpecial (leaving the TTY_UDP/TTY_PPC chain) and the two module ids, together with the rest of the DECI2 chain in src/platform (brief open question 5).",
+      "justification": "",
+      "benefit": "~12 lines removed across these locations (more in the wider DECI2 chain); no shipped ELF change",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep __DECI2_DEBUG over the repo: defined only at Makefile:340, ee_core/Makefile:44 and tools/syntax_sweep.py:23; tested in iopmgr.c:183, include/system.h:122, src/platform/*.cpp, src/app/opl.cpp:2056. tools/build_configuration.py:79-117 defines TTY_UDP/TTY_PPC/__LOAD_DEBUG_MODULES/__EESIO_DEBUG but no __DECI2_DEBUG. OPL_MODULE_ID_DRVTIF/TIFINET appear only in modules.h:33-34, iopmgr.c:184-185, system.cpp:995-997."
+    },
+    {
+      "n": 9,
+      "title": "iopmgr.c small redundancies: RA_TelemetryWanted ignores its argument, a no-op else, duplicated ETH/HTTP loads",
+      "category": 3,
+      "locations": [
+        {"path": "ee_core/src/iopmgr.c", "start": 51, "end": 55},
+        {"path": "ee_core/src/iopmgr.c", "start": 389, "end": 394},
+        {"path": "ee_core/src/iopmgr.c", "start": 262, "end": 274}
+      ],
+      "problem": "RA_TelemetryWanted takes config, casts it to void and returns RA_SnapBytes() > 0 (3 callers: 167, 243, 342). The else at 389-394 sets ra_snap_iop to 0, which line 341 already did. ETH_MODE and HTTP_MODE repeat the same guarded SMSTCPIP+SMAP load pair (264-266, 271-273).",
+      "fix": "Drop the unused parameter (or call RA_SnapBytes() > 0 directly); delete the else branch; merge the ETH and HTTP cases so the stack loads once and only ETH adds SMBINIT. Update the source-text checks in test_ra_launch_resources.py:22, test_netblock_oplcore.py:164 and test_udpfs_files_oplcore.py:152 that match these lines.",
+      "justification": "",
+      "benefit": "~10 lines removed; no meaningful ELF change (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read iopmgr.c:34-68, 255-326, 335-396. Grep RA_TelemetryWanted: iopmgr.c:51,167,243,342 and three .github/scripts tests that match its text. ra_snap_iop = 0 at 341 runs before the if at 342, so the else at 389-394 cannot change state."
+    },
+    {
+      "n": 10,
+      "title": "igs_api.c: hand-rolled ClearBuffer, duplicate CT16S case, unused Screenshot parameters and always-0 return",
+      "category": 3,
+      "locations": [
+        {"path": "ee_core/src/igs_api.c", "start": 71, "end": 77},
+        {"path": "ee_core/src/igs_api.c", "start": 778, "end": 778},
+        {"path": "ee_core/src/igs_api.c", "start": 750, "end": 757},
+        {"path": "ee_core/src/igs_api.c", "start": 168, "end": 168},
+        {"path": "ee_core/src/igs_api.c", "start": 738, "end": 738},
+        {"path": "ee_core/src/igs_api.c", "start": 680, "end": 680},
+        {"path": "ee_core/src/igs_api.c", "start": 789, "end": 789},
+        {"path": "ee_core/include/igs_api.h", "start": 178, "end": 178}
+      ],
+      "problem": "ClearBuffer is a byte loop where memset (already used by ee_core, modmgr.c:46) does; the CT16S case repeats the CT16 case body; Screenshot never reads its dimensions and pixel_size parameters; InGameScreenshot always returns 0 and its only caller (padhook.c:648) ignores it.",
+      "fix": "Replace ClearBuffer with memset and delete it; let CT16 fall through to CT16S; drop the two unused Screenshot parameters; make InGameScreenshot void.",
+      "justification": "",
+      "benefit": "~13 lines removed in the extras-only eecore (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 13,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read Screenshot (168-329): neither dimensions nor pixel_size appears in the body. Grep InGameScreenshot: igs_api.c:680, igs_api.h:178, padhook.c:648 (result unused). Grep memset in ee_core/src: modmgr.c:46,60,116, util.c:80."
+    },
+    {
+      "n": 11,
+      "title": "eecoreInit takes argc/argv it never reads and always returns 0, used as an argv offset",
+      "category": 3,
+      "locations": [
+        {"path": "ee_core/src/main.c", "start": 40, "end": 40},
+        {"path": "ee_core/src/main.c", "start": 165, "end": 165},
+        {"path": "ee_core/src/main.c", "start": 170, "end": 170},
+        {"path": "ee_core/src/main.c", "start": 178, "end": 181}
+      ],
+      "problem": "eecoreInit ignores both parameters and its only return is 0, so argOffset in main is always 0 and argv[argOffset], argc - 1 - argOffset and &argv[1 + argOffset] are plain argv[0], argc - 1 and &argv[1].",
+      "fix": "Make eecoreInit void with no parameters, delete argOffset and pass argv[0], argc - 1, &argv[1] directly.",
+      "justification": "",
+      "benefit": "~3 lines removed; no ELF change worth counting",
+      "benefit_rank": 1,
+      "lines_removed": 3,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read main.c:40-185: eecoreInit body never references argc or argv; single return 0 at 165; single caller at 178."
+    },
+    {
+      "n": 12,
+      "title": "Commented-out code lines in igs_api.c, modmgr.c and padhook.c",
+      "category": 1,
+      "locations": [
+        {"path": "ee_core/src/igs_api.c", "start": 63, "end": 63},
+        {"path": "ee_core/src/modmgr.c", "start": 91, "end": 92},
+        {"path": "ee_core/src/modmgr.c", "start": 103, "end": 104},
+        {"path": "ee_core/src/padhook.c", "start": 1087, "end": 1087}
+      ],
+      "problem": "Dead alternatives kept as comments: an abandoned FindEmptyArea workaround, a disabled size round-up with its banner, a disabled SifWriteBackDCache with its explanation, and the old pointer increment above its replacement.",
+      "fix": "Delete these commented-out lines (keep a one-line note at modmgr.c:103 if the write-back reasoning is wanted).",
+      "justification": "",
+      "benefit": "~6 comment lines removed; no binary change",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read the cited lines; each is a commented-out statement next to the live code that superseded it. The long commented SifStopDma note at iopmgr.c:503-513 is explanatory and is not included."
+    }
+  ]
+}

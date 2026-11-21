@@ -1,0 +1,21 @@
+# First-party discarded input sections of eecore.map (allocatable kinds, size > 0)
+# columns: bytes  section  object
+# A function/data section listed here was compiled but dropped by --gc-sections (unreferenced in THIS
+# build configuration) or is a COMDAT duplicate (inline/template copy kept from another object).
+# It is a CANDIDATE for dead code: check other editions/configurations before deleting the source.
+
+# entries: 13   bytes: 144
+
+       4  .rodata  obj/eecore/ee_core/src/cheat_engine.o
+      16  .text.LoadExecPS2  obj/eecore/ee_core/src/main.o
+       8  .text.ForTimer_InitAlarm  obj/eecore/ee_core/src/main.o
+       8  .text.InitAlarm  obj/eecore/ee_core/src/main.o
+       8  .text.InitExecPS2  obj/eecore/ee_core/src/main.o
+       8  .text.InitTLB  obj/eecore/ee_core/src/main.o
+       8  .text.InitTLBFunctions  obj/eecore/ee_core/src/main.o
+       8  .text.InitThread  obj/eecore/ee_core/src/main.o
+       8  .text._ps2sdk_deinit_timer  obj/eecore/ee_core/src/main.o
+       8  .text._ps2sdk_init_timer  obj/eecore/ee_core/src/main.o
+       8  .text._ps2sdk_timezone_update  obj/eecore/ee_core/src/main.o
+       8  .text.iRotateThreadReadyQueue  obj/eecore/ee_core/src/main.o
+      44  .text._strcat  obj/eecore/ee_core/src/util.o

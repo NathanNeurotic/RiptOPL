@@ -1,0 +1,123 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-28.b",
+  "coverage": [
+    {"path": "src/sources/hddsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/httpsupport.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "hddsupport.cpp is the internal HDD (APA/PFS) game source. It brings up DEV9/ATAD/xhdd (with a 1 s settle), probes sectors 0-1 for MBR/GPT before loading ps2hdd/ps2fs, discovers and mounts the OPL data home on pfs0: (+OPL, __common or a conf_hdd.cfg choice), and builds three lists: HDL games from the APA table with an optional games.bin cache, PS1 VCD/Ember rows from __.POPS*/PP.*.POPS.*/__.EMBER* partitions mounted on the pfs1: scratch slot, and a read-only DESR DVR ISO view. It also owns the launch legs (native cdvdman with HDD VMC block maps and ZSO probe, Neutrino, POPSTARTER, Ember) and the cleanUp/shutdown teardown. include/httpsupport.h declares the HttpSupport state class and entry points of the HTTP catalog source.",
+  "reusable_helpers": [
+    {"name": "hddCheckOPLFolder", "path": "src/sources/hddsupport.cpp", "line": 408, "what": "ensures <mountPoint>OPL exists: opendir, else mkdir, tolerating a racing creator"},
+    {"name": "hddApaHeaderValid", "path": "src/sources/hddsupport.cpp", "line": 793, "what": "validates an APA header magic and checksum over 127 or 255 words"},
+    {"name": "hddPartitionMountableAt", "path": "src/sources/hddsupport.cpp", "line": 1247, "what": "probe-mounts an APA partition on a given pfsN: slot and unmounts it again"},
+    {"name": "hddDvrNameToStartup", "path": "src/sources/hddsupport.cpp", "line": 146, "what": "extracts an XXXX_NNN.NN game id from a file name, else derives a stable FNV-1a key"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "hddUpdateGameListCache detects only partition-name changes, so games.bin keeps stale start_sector/name/size and the next boot launches from it",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 3155, "end": 3179},
+        {"path": "src/sources/hddsupport.cpp", "start": 1860, "end": 1866},
+        {"path": "src/sources/hddsupport.cpp", "start": 2779, "end": 2779}
+      ],
+      "problem": "The rewrite test only asks whether every cached partition_name still exists and whether the counts match. A game reinstalled under the same partition label (new start_sector/size) or retitled in its HDL header leaves games.bin untouched. At the next boot update() publishes the cache without any APA scan (forceUpdate is 0), and the native launch writes the stale game->start_sector into cdvdman's lba_start. The game then fails to boot until the user refreshes. The log labels are also swapped: a cached game missing from the scan is logged as \"game added\".",
+      "fix": "Replace the nested partition-name loops with one test: rewrite when the counts differ or memcmp of the two arrays differs. Both arrays are byte-deterministic because hddGetHDLGamelist memsets the records and walks the APA table in a fixed order.",
+      "justification": "",
+      "benefit": "Fixes a stale-LBA boot failure on the opt-in HDD game list cache. Removes about 18 lines and the O(n*m) strncmp loop (INFERRED from 3155-3176).",
+      "benefit_rank": 2,
+      "lines_removed": 18,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read hddsupport.cpp 1458-1465 (forceUpdate=0 at init), 1860-1882 (cache published with no scan on the first update, forceUpdate=1 after), 3097-3198 and 2779 (lba_start from game->start_sector). Read platform/hdd.cpp 165-249: records are memset and filled in APA dirent order, start_sector comes from private_5. gHDDGameListCache defaults to 0 (core/settings.cpp:91), so the feature is opt-in. INFERRED part: that PC install tools reuse the same partition label when the same game is reinstalled. The Neutrino leg resolves by partition name, so only the native core is hit."
+    },
+    {
+      "n": 2,
+      "title": "HDD PS1 favourite launch and Ember settings save rebuild the whole VCD/Ember list on the GUI thread",
+      "category": 5,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 2319, "end": 2326},
+        {"path": "src/sources/hddsupport.cpp", "start": 3367, "end": 3372},
+        {"path": "src/sources/hddsupport.cpp", "start": 1699, "end": 1701},
+        {"path": "src/sources/favsupport.cpp", "start": 1309, "end": 1310}
+      ],
+      "problem": "When a PS1/Ember favourite is launched before this session built the HDD PS1 list (the HDD page never entered PS1/mixed view), launchVcd calls buildVcdGameList directly on the GUI thread with the IO worker blocked. That rebuild walks the APA table, mounts every __.POPS* and __.EMBER* partition, scans them, and runs cueGameSizeMB (opendir plus a stat per .bin) for every Ember game. No frame is drawn meanwhile, so the menu looks hung. menuSaveCueSettings at least prints a text screen first. launchVcd prints nothing.",
+      "fix": "Before the cold rebuild in launchVcd, render the wait text with host::ui().renderTextScreen(_l(_STR_PLEASE_WAIT)), as menusys.cpp:1004 already does for saveCueSettings. The larger fix is to run the rebuild through guiHandleDeferedIO on the IO worker.",
+      "justification": "Adds one line. Today the launch gives no feedback while a scan of several PFS mounts plus per-game directory walks runs on the render thread. A wait screen is the smallest change and uses an existing helper and string.",
+      "benefit": "Removes a silent UI hang of roughly 0.3-2 s on the first HDD PS1 favourite launch per session (INFERRED: mount and directory-scan costs scale with containers and Ember games; not measured).",
+      "benefit_rank": 2,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read hddsupport.cpp 1530-1790 (buildVcdGameList: mounts and cueGameSizeMB per Ember folder), 2308-2345 (launchVcd cold path), 3356-3383 (saveCueSettings). Caller: favsupport.cpp:1290-1316 FavSource::launch -> launchVcd, reached from menu input on the GUI thread. Input dispatch runs after endFrame (gui.cpp:114-124, brief section 6), so publishVcdGameList's ui lock does not deadlock but no frames render. menusys.cpp:1004 renders _STR_SAVING_SETTINGS before saveCueSettings. cuesupport.cpp:963-988 shows the per-folder opendir plus stat walk. The duration is INFERRED, not measured."
+    },
+    {
+      "n": 3,
+      "title": "games.bin records are trusted unvalidated; strcpy at launch copies a possibly unterminated startup into filename[32]",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 3112, "end": 3124},
+        {"path": "src/sources/hddsupport.cpp", "start": 2786, "end": 2787}
+      ],
+      "problem": "hddLoadGameListCache derives the record count from the file size, ignoring any remainder, and publishes the raw bytes as hdl_game_info_t without terminating partition_name, name or startup. The native launch then does strcpy(filename[32], game->startup). A truncated, corrupted or foreign-layout games.bin can carry an unterminated startup. The copy then runs through the following flag, LBA and size bytes and can write past the 32-byte stack buffer.",
+      "fix": "Use snprintf(filename, sizeof(filename), \"%s\", game->startup) at 2787. In hddLoadGameListCache, reject a file whose size is not a whole number of records, and force a NUL at the end of the three string fields of each loaded record.",
+      "justification": "Adds about 4 lines. games.bin is a file on the user's disk that is read back as raw structs and reaches an unbounded strcpy. The size check and three terminators close that path at the one place the file enters the program.",
+      "benefit": "Closes a stack overflow reachable from a corrupt cache file. Applies only with the opt-in cache enabled (INFERRED: overflow needs at least 32 non-zero bytes from offset 98 of a record).",
+      "benefit_rank": 1,
+      "lines_removed": -4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read hddsupport.cpp 3097-3144 (no remainder check, no termination) and 2572-2833 (filename[32], strcpy at 2787). include/hddsupport.h:19-32: startup[13] sits at offset 98 of a 128-byte record, followed by flags, layer_break, start_sector and total_size_in_kb. Writers terminate the strings (platform/hdd.cpp:131-136), so a valid file is safe. INFERRED: how likely a corrupt file is (for example a write-back PFS mount losing power mid-write)."
+    },
+    {
+      "n": 4,
+      "title": "hddDvrScan publishes its full 128-entry candidate array (44 KB) whatever the ISO count",
+      "category": 4,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 236, "end": 238},
+        {"path": "src/sources/hddsupport.cpp", "start": 268, "end": 273}
+      ],
+      "problem": "Each DVR scan callocs HDD_DVR_MAX_ISOS records and, when any directory was readable, publishes that allocation as the live list even when count is 0 or a handful. The memory stays held until the next scan or teardown.",
+      "fix": "Before hddDvrPublish, shrink candidate to count with realloc, or free it and publish NULL when count is 0.",
+      "justification": "Adds one or two lines. It returns about 44 KB of EE heap for the life of the session on a DESR with the DVR view enabled, where the list is usually empty or short.",
+      "benefit": "Up to 45,056 bytes of EE RAM returned (INFERRED: sizeof(hdd_dvr_iso_t) = 128 + 224 = 352 bytes x 128). Applies only to DESR hardware with gEnableDVR.",
+      "benefit_rank": 1,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read hddsupport.cpp 64-76 (hdd_dvr_iso_t = hdl_game_info_t + char path[224]), 128-137 (publish keeps the pointer), 217-274 (calloc of 128 entries, published as-is when available > 0). hdl_game_info_t is 128 bytes (include/hddsupport.h:19-32 with APA_IDMAX 32). The scan runs on every HDD update (hddsupport.cpp:1884), gated by gEnableDVR and the SPD DVR capability bit (82-86, 94-101)."
+    },
+    {
+      "n": 5,
+      "title": "HDD launch saves last_played to conf_last.cfg before the points where the launch can still be abandoned",
+      "category": 5,
+      "locations": [
+        {"path": "src/sources/hddsupport.cpp", "start": 2389, "end": 2392},
+        {"path": "src/sources/hddsupport.cpp", "start": 2401, "end": 2407},
+        {"path": "src/sources/hddsupport.cpp", "start": 2720, "end": 2723},
+        {"path": "src/sources/hddsupport.cpp", "start": 2750, "end": 2751},
+        {"path": "src/sources/hddsupport.cpp", "start": 2761, "end": 2767}
+      ],
+      "problem": "Both legs write last_played and call saveConfig(CONFIG_LAST) before steps that can return to the menu without launching. In the Neutrino leg these are the cheat back-out (2401-2402) and the argument preflight (2406-2407). In the native leg they are a sbPrepare failure (2750-2751) and the cheat back-out (2765-2766). Each aborted launch costs a config write (usually to the memory card) and marks a game that never ran as last played.",
+      "fix": "Move each gRememberLastPlayed block below its leg's last abort point: after 2407 in hddTryNeutrinoLaunch and after the cheat block in launch. This only reorders lines.",
+      "justification": "",
+      "benefit": "Saves one conf_last.cfg write per aborted HDD launch and keeps the last-played marker correct. No lines change (INFERRED: CONFIG_LAST normally lives with the settings on mc?:OPL).",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read hddsupport.cpp 2355-2463 and 2572-2833. When the Neutrino preflight falls back to native, the second save is a no-op: ConfigSet::setStr marks modified only on a changed value (core/config.cpp:363-386) and configWrite skips unmodified sets (config.cpp:1498-1519). The extra write is therefore only on the abort paths listed. Upstream OPL saves last_played before sbPrepare too; the cheat back-outs are fork additions (#265 comment at 2762)."
+    }
+  ]
+}

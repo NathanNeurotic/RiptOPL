@@ -1,0 +1,120 @@
+## Symbols with no reference outside their definition (symbols-unreferenced.tsv). Class no-other-mention = the name appears nowhere else in the repo; only-prototype-or-export-mentions = it appears only in a prototype or export list
+- modules/network/smb2man/usmb2/usmb2.c:1002  function `usmb2_size`  (only-prototype-or-export-mentions) | also mentioned: modules/network/smb2man/usmb2/usmb2.h:91 int usmb2_size(struct usmb2_context *usmb2, uint8_t *fid);
+- modules/network/smb2man/usmb2/usmb2.c:744  function `usmb2_opendir`  (only-prototype-or-export-mentions) | also mentioned: modules/network/smb2man/usmb2/usmb2.h:93 uint8_t *usmb2_opendir(struct usmb2_context *usmb2, const char *name);
+- modules/network/smb2man/usmb2/usmb2.c:754  function `usmb2_readdir`  (only-prototype-or-export-mentions) | also mentioned: modules/network/smb2man/usmb2/usmb2.h:94 uint8_t *usmb2_readdir(struct usmb2_context *usmb2, uint8_t *dh);
+- modules/network/smb2man/usmb2/usmb2.h:101  macro `usmb2_closedir`  (no-other-mention)
+- modules/network/smbman-ra/poll.h:18  macro `POLLNORM`  (no-other-mention)
+- modules/network/smbman-ra/poll.h:19  macro `POLLERR`  (no-other-mention)
+- modules/network/smbman-ra/poll.h:20  macro `POLLHUP`  (no-other-mention)
+- modules/network/smbman-ra/smb.c:725  function `smb_QueryInformationDisk`  (only-prototype-or-export-mentions) | also mentioned: modules/network/smbman-ra/smb.h:878 extern int smb_QueryInformationDisk(int UID, int TID, smbQueryDiskInfo_out_t *QueryInformationDisk);; modules/network/smbman-ra/smb_fio.c:1073 return smb_QueryInformationDisk(UID, TID, querydiskinfo);
+
+## Macros tested by #if/#ifdef that no source or build file defines (cond-macros-undefined.tsv). Compiler, SDK and toolchain macros also land here: check before using
+- `HAVE_SOCK_SIN_LEN`  tested at 2 site(s) in the repo, mentioned in 0 build file(s); here: modules/network/smb2man/usmb2/usmb2.c:1053
+- `USMB2_FEATURE_OPENDIR`  tested at 2 site(s) in the repo, mentioned in 0 build file(s); here: modules/network/smb2man/usmb2/usmb2.c:731, modules/network/smb2man/usmb2/usmb2.c:743
+- `USMB2_FEATURE_REASSEMBLY`  tested at 6 site(s) in the repo, mentioned in 0 build file(s); here: modules/network/smb2man/usmb2/usmb2.c:107, modules/network/smb2man/usmb2/usmb2.c:144, modules/network/smb2man/usmb2/usmb2.c:197, modules/network/smb2man/usmb2/usmb2.c:314, modules/network/smb2man/usmb2/usmb2.c:77, modules/network/smb2man/usmb2/usmb2.c:91
+- `Z80`  tested at 7 site(s) in the repo, mentioned in 0 build file(s); here: modules/network/smb2man/usmb2/usmb2.c:19
+
+## Byte-identical files (dupes-exact-files.tsv)
+- modules/network/smbman-ra/auth.h is byte-identical to: Simple-Media-System/iop/smbman-sms/src/auth.h
+- modules/network/smbman-ra/debug.h is byte-identical to: Simple-Media-System/iop/smbman-sms/src/debug.h
+- modules/network/smbman-ra/des.c is byte-identical to: Simple-Media-System/iop/smbman-sms/src/des.c
+- modules/network/smbman-ra/des.h is byte-identical to: Simple-Media-System/iop/smbman-sms/src/des.h
+- modules/network/smbman-ra/md4.c is byte-identical to: Simple-Media-System/iop/smbman-sms/src/md4.c
+- modules/network/smbman-ra/md4.h is byte-identical to: Simple-Media-System/iop/smbman-sms/src/md4.h
+- modules/network/smbman-ra/poll.c is byte-identical to: Simple-Media-System/iop/smbman-sms/src/poll.c
+- modules/network/smbman-ra/poll.h is byte-identical to: Simple-Media-System/iop/smbman-sms/src/poll.h
+
+## Largely identical files (dupes-file-pairs.tsv)
+- modules/network/smb2man/usmb2/usmb2.c is 100% the same as Launchstation/iop/smb2man/usmb2/usmb2.c (586 cloned normalised lines)
+- modules/network/smb2man/usmb2/usmb2.c is 2% the same as Launchstation/iop/nfsman/unfs4/unfs4.c (15 cloned normalised lines)
+- modules/network/smb2man/usmb2/usmb2.c is 2% the same as RiptOPL/modules/network/nfsman/unfs4/unfs4.c (15 cloned normalised lines)
+- modules/network/smb2man/usmb2/usmb2.h is 100% the same as Launchstation/iop/smb2man/usmb2/usmb2.h (58 cloned normalised lines)
+- modules/network/smbinit/des.c is 76% the same as Launchstation/iop/smbman/des.c (99 cloned normalised lines)
+- modules/network/smbinit/des.c is 76% the same as RiptOPL/modules/network/smbman-ra/des.c (99 cloned normalised lines)
+- modules/network/smbinit/des.c is 76% the same as Simple-Media-System/iop/smbman-sms/src/des.c (99 cloned normalised lines)
+- modules/network/smbinit/md4.c is 56% the same as Launchstation/iop/smbman/md4.c (46 cloned normalised lines)
+- modules/network/smbinit/md4.c is 56% the same as RiptOPL/modules/network/smbman-ra/md4.c (46 cloned normalised lines)
+- modules/network/smbinit/md4.c is 56% the same as Simple-Media-System/iop/smbman-sms/src/md4.c (46 cloned normalised lines)
+- modules/network/smbman-ra/auth.c is 100% the same as Launchstation/iop/smbman/auth.c (43 cloned normalised lines)
+- modules/network/smbman-ra/auth.c is 90% the same as Simple-Media-System/iop/smbman-sms/src/auth.c (39 cloned normalised lines)
+- modules/network/smbman-ra/des.c is 75% the same as RiptOPL/modules/network/smbinit/des.c (99 cloned normalised lines)
+- modules/network/smbman-ra/des.c is 84% the same as Launchstation/iop/smbman/des.c (111 cloned normalised lines)
+- modules/network/smbman-ra/des.c is 84% the same as Simple-Media-System/iop/smbman-sms/src/des.c (111 cloned normalised lines)
+- modules/network/smbman-ra/irx_imports.h is 100% the same as Simple-Media-System/iop/smbman-sms/src/irx_imports.h (19 cloned normalised lines)
+- modules/network/smbman-ra/irx_imports.h is 63% the same as Launchstation/iop/smbman/irx_imports.h (12 cloned normalised lines)
+- modules/network/smbman-ra/md4.c is 100% the same as Launchstation/iop/smbman/md4.c (90 cloned normalised lines)
+- modules/network/smbman-ra/md4.c is 100% the same as Simple-Media-System/iop/smbman-sms/src/md4.c (90 cloned normalised lines)
+- modules/network/smbman-ra/md4.c is 51% the same as RiptOPL/modules/network/smbinit/md4.c (46 cloned normalised lines)
+- modules/network/smbman-ra/poll.c is 100% the same as Launchstation/iop/smbman/poll.c (58 cloned normalised lines)
+- modules/network/smbman-ra/poll.c is 100% the same as Simple-Media-System/iop/smbman-sms/src/poll.c (58 cloned normalised lines)
+- modules/network/smbman-ra/poll.h is 84% the same as Launchstation/iop/smbman/poll.h (16 cloned normalised lines)
+- modules/network/smbman-ra/poll.h is 84% the same as Simple-Media-System/iop/smbman-sms/src/poll.h (16 cloned normalised lines)
+- modules/network/smbman-ra/smb.c is 5% the same as RiptOPL/modules/iopcore/cdvdman/smb.c (51 cloned normalised lines)
+- modules/network/smbman-ra/smb.c is 74% the same as Simple-Media-System/iop/smbman-sms/src/smb.c (733 cloned normalised lines)
+- modules/network/smbman-ra/smb.c is 93% the same as Launchstation/iop/smbman/smb.c (920 cloned normalised lines)
+
+## Duplicate blocks (dupes-blocks.tsv)
+- modules/network/smb2man/usmb2/usmb2.c:1016-1083  ==  Launchstation/iop/smb2man/usmb2/usmb2.c:1016-1083  (39 normalised lines)
+- modules/network/smb2man/usmb2/usmb2.c:177-206  ==  Launchstation/iop/smb2man/usmb2/usmb2.c:177-206  (19 normalised lines)
+- modules/network/smb2man/usmb2/usmb2.c:206-552  ==  Launchstation/iop/smb2man/usmb2/usmb2.c:206-552  (159 normalised lines)
+- modules/network/smb2man/usmb2/usmb2.c:3-184  ==  Launchstation/iop/smb2man/usmb2/usmb2.c:3-184  (126 normalised lines)
+- modules/network/smb2man/usmb2/usmb2.c:3-22  ==  Launchstation/iop/nfsman/unfs4/unfs4.c:30-49  (15 normalised lines)
+- modules/network/smb2man/usmb2/usmb2.c:3-22  ==  RiptOPL/modules/network/nfsman/unfs4/unfs4.c:30-49  (15 normalised lines)
+- modules/network/smb2man/usmb2/usmb2.c:546-785  ==  Launchstation/iop/smb2man/usmb2/usmb2.c:546-785  (120 normalised lines)
+- modules/network/smb2man/usmb2/usmb2.c:775-1027  ==  Launchstation/iop/smb2man/usmb2/usmb2.c:775-1027  (123 normalised lines)
+- modules/network/smb2man/usmb2/usmb2.h:2-130  ==  Launchstation/iop/smb2man/usmb2/usmb2.h:2-130  (58 normalised lines)
+- modules/network/smbinit/des.c:365-376  ==  Launchstation/iop/smbman/des.c:364-375  (12 normalised lines)
+- modules/network/smbinit/des.c:365-376  ==  RiptOPL/modules/network/smbman-ra/des.c:364-375  (12 normalised lines)
+- modules/network/smbinit/des.c:365-376  ==  Simple-Media-System/iop/smbman-sms/src/des.c:364-375  (12 normalised lines)
+- modules/network/smbinit/des.c:403-417  ==  Launchstation/iop/smbman/des.c:402-416  (13 normalised lines)
+- modules/network/smbinit/des.c:403-417  ==  RiptOPL/modules/network/smbman-ra/des.c:402-416  (13 normalised lines)
+- modules/network/smbinit/des.c:403-417  ==  Simple-Media-System/iop/smbman-sms/src/des.c:402-416  (13 normalised lines)
+- modules/network/smbinit/des.c:422-437  ==  Launchstation/iop/smbman/des.c:421-436  (12 normalised lines)
+- modules/network/smbinit/des.c:422-437  ==  RiptOPL/modules/network/smbman-ra/des.c:421-436  (12 normalised lines)
+- modules/network/smbinit/des.c:422-437  ==  Simple-Media-System/iop/smbman-sms/src/des.c:421-436  (12 normalised lines)
+- modules/network/smbinit/des.c:452-475  ==  Launchstation/iop/smbman/des.c:452-475  (16 normalised lines)
+- modules/network/smbinit/des.c:452-475  ==  RiptOPL/modules/network/smbman-ra/des.c:452-475  (16 normalised lines)
+- modules/network/smbinit/des.c:452-475  ==  Simple-Media-System/iop/smbman-sms/src/des.c:452-475  (16 normalised lines)
+- modules/network/smbinit/des.c:476-505  ==  Launchstation/iop/smbman/des.c:478-507  (18 normalised lines)
+- modules/network/smbinit/des.c:476-505  ==  RiptOPL/modules/network/smbman-ra/des.c:478-507  (18 normalised lines)
+- modules/network/smbinit/des.c:476-505  ==  Simple-Media-System/iop/smbman-sms/src/des.c:478-507  (18 normalised lines)
+- modules/network/smbinit/des.c:511-542  ==  Launchstation/iop/smbman/des.c:513-544  (16 normalised lines)
+- modules/network/smbinit/des.c:511-542  ==  RiptOPL/modules/network/smbman-ra/des.c:513-544  (16 normalised lines)
+- modules/network/smbinit/des.c:511-542  ==  Simple-Media-System/iop/smbman-sms/src/des.c:513-544  (16 normalised lines)
+- modules/network/smbinit/des.c:543-563  ==  Launchstation/iop/smbman/des.c:547-567  (12 normalised lines)
+- modules/network/smbinit/des.c:543-563  ==  RiptOPL/modules/network/smbman-ra/des.c:547-567  (12 normalised lines)
+- modules/network/smbinit/des.c:543-563  ==  Simple-Media-System/iop/smbman-sms/src/des.c:547-567  (12 normalised lines)
+- modules/network/smbinit/md4.c:80-142  ==  Launchstation/iop/smbman/md4.c:83-145  (46 normalised lines)
+- modules/network/smbinit/md4.c:80-142  ==  RiptOPL/modules/network/smbman-ra/md4.c:83-145  (46 normalised lines)
+- modules/network/smbinit/md4.c:80-142  ==  Simple-Media-System/iop/smbman-sms/src/md4.c:83-145  (46 normalised lines)
+- modules/network/smbman-ra/auth.c:2-52  ==  Simple-Media-System/iop/smbman-sms/src/auth.c:2-52  (26 normalised lines)
+- modules/network/smbman-ra/auth.c:2-92  ==  Launchstation/iop/smbman/auth.c:2-92  (43 normalised lines)
+- modules/network/smbman-ra/auth.c:61-92  ==  Simple-Media-System/iop/smbman-sms/src/auth.c:56-87  (13 normalised lines)
+- modules/network/smbman-ra/des.c:364-375  ==  Launchstation/iop/smbman/des.c:364-375  (12 normalised lines)
+- modules/network/smbman-ra/des.c:364-375  ==  RiptOPL/modules/network/smbinit/des.c:365-376  (12 normalised lines)
+- modules/network/smbman-ra/des.c:364-375  ==  Simple-Media-System/iop/smbman-sms/src/des.c:364-375  (12 normalised lines)
+- modules/network/smbman-ra/des.c:402-416  ==  RiptOPL/modules/network/smbinit/des.c:403-417  (13 normalised lines)
+- modules/network/smbman-ra/des.c:402-567  ==  Launchstation/iop/smbman/des.c:402-567  (99 normalised lines)
+- modules/network/smbman-ra/des.c:402-567  ==  Simple-Media-System/iop/smbman-sms/src/des.c:402-567  (99 normalised lines)
+- modules/network/smbman-ra/des.c:421-436  ==  RiptOPL/modules/network/smbinit/des.c:422-437  (12 normalised lines)
+- modules/network/smbman-ra/des.c:452-475  ==  RiptOPL/modules/network/smbinit/des.c:452-475  (16 normalised lines)
+- modules/network/smbman-ra/des.c:478-507  ==  RiptOPL/modules/network/smbinit/des.c:476-505  (18 normalised lines)
+- modules/network/smbman-ra/des.c:513-544  ==  RiptOPL/modules/network/smbinit/des.c:511-542  (16 normalised lines)
+- modules/network/smbman-ra/des.c:547-567  ==  RiptOPL/modules/network/smbinit/des.c:543-563  (12 normalised lines)
+- modules/network/smbman-ra/irx_imports.h:2-18  ==  Launchstation/iop/smbman/irx_imports.h:2-18  (12 normalised lines)
+- modules/network/smbman-ra/irx_imports.h:2-25  ==  Simple-Media-System/iop/smbman-sms/src/irx_imports.h:2-25  (19 normalised lines)
+- modules/network/smbman-ra/md4.c:18-64  ==  Launchstation/iop/smbman/md4.c:18-64  (23 normalised lines)
+- modules/network/smbman-ra/md4.c:18-64  ==  Simple-Media-System/iop/smbman-sms/src/md4.c:18-64  (23 normalised lines)
+- modules/network/smbman-ra/md4.c:83-145  ==  RiptOPL/modules/network/smbinit/md4.c:80-142  (46 normalised lines)
+- modules/network/smbman-ra/md4.c:83-181  ==  Launchstation/iop/smbman/md4.c:83-181  (67 normalised lines)
+- modules/network/smbman-ra/md4.c:83-181  ==  Simple-Media-System/iop/smbman-sms/src/md4.c:83-181  (67 normalised lines)
+- modules/network/smbman-ra/poll.c:2-90  ==  Launchstation/iop/smbman/poll.c:2-90  (58 normalised lines)
+- modules/network/smbman-ra/poll.c:2-90  ==  Simple-Media-System/iop/smbman-sms/src/poll.c:2-90  (58 normalised lines)
+- modules/network/smbman-ra/poll.h:6-23  ==  Launchstation/iop/smbman/poll.h:6-23  (16 normalised lines)
+- modules/network/smbman-ra/poll.h:6-23  ==  Simple-Media-System/iop/smbman-sms/src/poll.h:6-23  (16 normalised lines)
+- modules/network/smbman-ra/smb.c:1038-1066  ==  Launchstation/iop/smbman/smb.c:1080-1108  (22 normalised lines)
+- modules/network/smbman-ra/smb.c:1048-1069  ==  Simple-Media-System/iop/smbman-sms/src/smb.c:1099-1120  (18 normalised lines)
+- ... 41 more: grep your file paths in evidence/RiptOPL/
+
+## TODO/FIXME/HACK style markers (cond-markers.tsv)
+- modules/network/smb2man/usmb2/usmb2.h:80  * TODO: currently only support O_RDONLY. Need to add O_RDWR support.

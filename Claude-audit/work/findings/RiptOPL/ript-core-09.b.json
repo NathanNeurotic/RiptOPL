@@ -1,0 +1,129 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-09.b",
+  "coverage": [
+    {"path": "src/app/settingsio.cpp", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "settingsio.cpp is the settings persistence layer split out of opl.cpp. At boot it resolves the settings home (resolveBootDirToMass: APA/PFS data home, APA+exFAT hybrid, cdrom re-home, network deferral, MMCE wait, bounded BDM resolve) and reads or recovers the config sets (tryAlternateDevice: config.path redirect with an MC mirror for network boots, per-device legacy homes, MC/USB/MMCE recovery, legacy mc?:OPL read). _loadConfig applies the loaded values with clamps and migrations (network protocol selector, POPSTARTER and Neutrino device migration, Ember keys, boot-device transport reconcile) and calls applyConfig. _saveConfig writes them on the IO worker (Custom Settings Path, APA staged next-boot home through pfs1:, boot-device re-resolve retry, legacy alternate-device sweep) and saveConfig queues it through guiHandleDeferedIO and shows the result toast.",
+  "reusable_helpers": [
+    {"name": "normalizeMcPath", "path": "src/app/settingsio.cpp", "line": 584, "what": "inserts the slash after mcN: so a memory-card path has the mcN:/ form file creation needs"},
+    {"name": "createMcSettingsFolder", "path": "src/app/settingsio.cpp", "line": 601, "what": "creates each missing directory level of a memory-card path"},
+    {"name": "bootHomeHasFile", "path": "src/app/settingsio.cpp", "line": 1183, "what": "joins a home and a file name with a separator check and tests existence with open/close"},
+    {"name": "oplGetDefaultThemeBgmPath", "path": "src/app/settingsio.cpp", "line": 187, "what": "path join that adds '/' only when the base does not end in ':' '/' or backslash (same pattern at 283-286, 524-528, 1186)"},
+    {"name": "configWriteChecked", "path": "src/app/settingsio.cpp", "line": 2108, "what": "configWriteMulti that reports failure when a requested set is still marked modified"},
+    {"name": "configFileName", "path": "src/app/settingsio.cpp", "line": 2123, "what": "basename of a config path after the last '/' or ':'"},
+    {"name": "emberSettingGet", "path": "src/app/settingsio.cpp", "line": 1470, "what": "bounded int read from a config set with an unset sentinel"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "Custom Settings Path is ignored at boot whenever the boot folder still holds a settings file",
+      "category": 6,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 1557, "end": 1563},
+        {"path": "src/app/settingsio.cpp", "start": 962, "end": 984},
+        {"path": "src/app/settingsio.cpp", "start": 2397, "end": 2402},
+        {"path": "src/app/opl.cpp", "start": 1885, "end": 1895}
+      ],
+      "problem": "config.path is read only inside tryAlternateDevice, and _loadConfig and miniInit call that only when the boot home has no master file. Choosing a Custom Settings Path writes the settings only to the new folder and leaves the old settings_riptopl.cfg beside the ELF as it was. The next boot loads that stale file (custom path empty) and never reads config.path, so every change saved since appears lost, and the next save goes back to the boot folder.",
+      "fix": "Check the redirect before trusting the boot home: move the readConfigPathRedirect / prepareCustomSettingsPath block out of tryAlternateDevice into the first read in _loadConfig and miniInit, and fall back to the boot home when the redirect target has no master.",
+      "justification": "The setting is documented as a folder to read and save settings in instead of the default, but it fails for every user who saved settings before choosing a path. Moving the existing check costs one small open() of config.path per boot and adds no new mechanism.",
+      "benefit": "Fixes a settings-revert bug for Custom Settings Path users who already had settings in the boot folder; costs one extra small file open per boot (INFERRED)",
+      "benefit_rank": 3,
+      "lines_removed": -6,
+      "effort": "M",
+      "risk": "High",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read settingsio.cpp:1546-1563 (first configReadMulti; tryAlternateDevice only when !(result & CONFIG_OPL)), 938-984 (the only readConfigPathRedirect call), 2367-2402 (explicit save: configSetMove(customSettingsTarget) then configWriteChecked; the boot-home master is neither rewritten nor removed), opl.cpp:1885-1895 (miniInit has the same shape). config.cpp:345-355 rename() only changes the filename; grep remove/unlink in config.cpp: none. grep readConfigPathRedirect: settingsio.cpp:296 (definition) and :964 only. The user flow was traced in code, not run on hardware."
+    },
+    {
+      "n": 2,
+      "title": "config.path stores the slot-resolved massN: form, so the boot read loses the device type and can wait about 14 s",
+      "category": 6,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 2368, "end": 2371},
+        {"path": "src/app/settingsio.cpp", "start": 2419, "end": 2420},
+        {"path": "src/app/settingsio.cpp", "start": 659, "end": 663},
+        {"path": "src/app/settingsio.cpp", "start": 964, "end": 965},
+        {"path": "src/sources/bdmboot.cpp", "start": 195, "end": 226},
+        {"path": "src/sources/bdmboot.cpp", "start": 472, "end": 477}
+      ],
+      "problem": "prepareCustomSettingsPath rewrites customSettingsTarget in place (usb:/CFG becomes massN:/CFG through bdmResolveBootDir), and that rewritten text is what writeConfigPathRedirect saves. At boot the untyped literal massN: goes to resolveLiteralMassSlot with the full budget. It loads USB, then MX4SIO, then iLink and ATA whatever the settings say, waits 3+3+8 s on the main thread when the device is absent, and accepts whichever device registered under that slot number, which depends on load order.",
+      "fix": "Pass gCustomSettingsPath (the user's own spelling) to writeConfigPathRedirect at line 2420 instead of the resolved customSettingsTarget. The boot read already runs prepareCustomSettingsPath on whatever it reads.",
+      "justification": "",
+      "benefit": "With the settings device missing, the worst-case boot wait for a typed usb: path drops from about 14 s (3000+3000+8000 ms) to 3 s, with no unrequested MX4SIO/iLink/ATA loads (INFERRED from bdmboot.cpp budgets)",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read settingsio.cpp:647-664 (prepareCustomSettingsPath -> bdmResolveBootDir, the full-budget resolver), 2367-2399 and 2419-2420 (writeConfigPathRedirect(customSettingsTarget) after the in-place rewrite), 964-969 (boot read). bdmboot.cpp:116-126 (rewriteBootDir writes massN:), 151-229 (literal slot: untyped tiers USB, SDC, iLink+ATA, no identity check), 295-299, 472-477 (resolve budgets 3000/10000/3000/8000 vs bootstrap 1500/5000/1500/3500 at 479-486). _loadConfig runs on the main thread from init() (opl.cpp:1661, 1719). That slot numbers follow registration order is INFERRED."
+    },
+    {
+      "n": 3,
+      "title": "Every save with a Custom Settings Path rewrites config.path, including each game launch's CONFIG_LAST save",
+      "category": 5,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 2419, "end": 2424},
+        {"path": "src/app/settingsio.cpp", "start": 348, "end": 381},
+        {"path": "src/sources/bdmlaunch.cpp", "start": 453, "end": 456},
+        {"path": "src/ui/guigame.cpp", "start": 2117, "end": 2117}
+      ],
+      "problem": "_saveConfig calls writeConfigPathRedirect after every successful explicit-path save, whatever lscstatus holds. Launch paths call saveConfig(CONFIG_LAST, 0) when Remember Last Played is on, and per-game resets call saveConfig(CONFIG_GAME, 0). Each of these truncates and rewrites config.path in the boot folder (often a memory card) and, on a network boot, the mc?:/OPL mirror too, although the path has not changed. configWriteChecked returns a positive value even when no set was dirty, so the rewrite happens even when nothing else was written.",
+      "fix": "Rewrite the redirect only when the save includes CONFIG_OPL, the set that holds custom_settings_path: add (lscstatus & CONFIG_OPL) to the condition at line 2420.",
+      "justification": "The condition removes one or two file rewrites (open with O_TRUNC, two writes, close) per game launch for Custom Settings Path users. The path can only change in a CONFIG_OPL save, so no state is lost.",
+      "benefit": "Saves 1 file rewrite per launch (2 on network boots: boot-folder copy plus mc mirror) for Custom Settings Path users, usually on a memory card (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read settingsio.cpp:331-385 (O_TRUNC open plus two write calls; mc mirror when gBootHomeDeferred), 2402-2429 (redirect written when customSettingsExplicit && lscret > 0, no lscstatus test), 2100-2121 (configWriteMulti counts unmodified sets as 1). grep saveConfig( callers: bdmlaunch.cpp:455,900, ethsupport.cpp:1226,1377, hddsupport.cpp:2391,2722, httpsupport.cpp:801, mmcesupport.cpp:1386, udpfssupport.cpp:1072 (CONFIG_LAST); guigame.cpp:2117, menusys.cpp:3258 (CONFIG_GAME); menusys.cpp:1021,2259 include CONFIG_OPL. settings.cpp:104 Remember Last Played setting."
+    },
+    {
+      "n": 4,
+      "title": "A save request abandoned by the 30 s deferred-IO timeout still runs later with lscstatus 0",
+      "category": 6,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 2215, "end": 2221},
+        {"path": "src/app/settingsio.cpp", "start": 2555, "end": 2569},
+        {"path": "src/ui/guiwait.cpp", "start": 99, "end": 110},
+        {"path": "src/platform/ioman.cpp", "start": 179, "end": 185}
+      ],
+      "problem": "When guiHandleDeferedIO gives up after OPL_DEFERRED_IO_TIMEOUT_MS it only clears lscstatus. The queued IO_CUSTOM_SIMPLEACTION request stays in the queue, so _saveConfig still runs when the worker reaches it. With lscstatus 0 it runs the rest of the save path anyway: the BDM re-resolve and retry (bdmResolveBootDir with its full budget); on a bare boot, the whole trySaveAlternateDevice sweep including bdmHDDIsPresent(5000); and on an APA boot with a staged home it mounts pfs1:, writes nothing and commits the HDD home selector, which strands the next boot on a home without the settings.",
+      "fix": "Return at the top of _saveConfig when lscstatus is 0.",
+      "justification": "The one-line guard closes a path where a stale request blocks the single IO worker for seconds and can commit an APA home selection without its settings. The comment at 2604-2608 states that the timeout happens in practice.",
+      "benefit": "Avoids seconds of wasted IO-worker time and a possible wrong-home commit after a timed-out save (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read guiwait.cpp:79-113 (on timeout *flag_=0 and gLastDeferredTimedOut=1; nothing dequeues the request), ioman.cpp:179-185 (handler just calls the function), gui.h:194 (OPL_DEFERRED_IO_TIMEOUT_MS = 30000). settingsio.cpp:2215-2463: no lscstatus==0 guard; 2306-2316 staged APA path commits through commitSelectedHddOplHome; 2435-2445 BDM retry; 2452-2454 trySaveAlternateDevice; 2003-2026 bdmHDDIsPresent(5000); 2140-2203 saveSelectedHddOplHome writes only requested sets. hddsupport.cpp:1234-1242, 1301-1324 selector state. That a stale request meets a pending selection is INFERRED."
+    },
+    {
+      "n": 5,
+      "title": "writeConfigPathRedirect(configGetDir()) after an alternate-device save can never write",
+      "category": 1,
+      "locations": [
+        {"path": "src/app/settingsio.cpp", "start": 2452, "end": 2458},
+        {"path": "src/app/settingsio.cpp", "start": 340, "end": 343}
+      ],
+      "problem": "The call at 2458 sits inside if (gBootDir[0] == '\\0'), and writeConfigPathRedirect returns 0 at 340-343 exactly when gBootDir is empty, because it deliberately refuses relative writes. The comment promises that the next boot skips the hunt, but that never happens: each bare-launch save only logs a refusal.",
+      "fix": "Delete the call and its two-line comment.",
+      "justification": "",
+      "benefit": "4 lines removed; one LOG line per bare-launch save gone (READ)",
+      "benefit_rank": 1,
+      "lines_removed": 4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read settingsio.cpp:331-347 (early return 0 when gBootDir[0]=='\\0') and 2446-2462 (call is reached only under gBootDir[0]=='\\0'; trySaveAlternateDevice at 2047-2098 does not change gBootDir). grep writeConfigPathRedirect: definition 331, calls 2420 and 2458 only."
+    }
+  ]
+}

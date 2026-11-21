@@ -1,0 +1,141 @@
+## Symbols with no reference outside their definition (symbols-unreferenced.tsv). Class no-other-mention = the name appears nowhere else in the repo; only-prototype-or-export-mentions = it appears only in a prototype or export list
+- modules/network/udpfs_fhi/src/udpfs_fhi.c:32  function `udpfs_fhi_connected`  (only-prototype-or-export-mentions) | also mentioned: .github/scripts/test_udpfs_files_oplcore.py:181 check('DECLARE_EXPORT_TABLE(udpfsfhi, 1, 1)' in fhi_exports and exports[4:7] == ['udpfs_fhi_read', 'udpfs_fhi_; modules/network/udpfs_fhi/src/exports.tab:9 DECLARE_EXPORT(udpfs_fhi_connected)
+
+## Byte-identical files (dupes-exact-files.tsv)
+- modules/network/udpfs_fhi/include/mprintf.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/include/mprintf.h; RiptOPL/modules/network/udpfs_ioman/include/mprintf.h; RiptOPL/modules/network/udpfs_ministack/include/mprintf.h; RiptOPL/modules/network/udpfs_smap/include/mprintf.h
+- modules/network/udpfs_fhi/src/irx_imports.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/irx_imports.h; RiptOPL/modules/network/udpfs_ioman/src/irx_imports.h
+- modules/network/udpfs_fhi/src/irx_imports.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/irx_imports.h; RiptOPL/modules/network/udpfs_ioman/src/irx_imports.h; Simple-Media-System/iop/SMSUdpfs/udpfs/src/irx_imports.h
+- modules/network/udpfs_fhi/src/udpfs_core.c is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udpfs_core.c; RiptOPL/modules/network/udpfs_ioman/src/udpfs_core.c
+- modules/network/udpfs_fhi/src/udpfs_core.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udpfs_core.h; RiptOPL/modules/network/udpfs_ioman/src/udpfs_core.h
+- modules/network/udpfs_fhi/src/udpfs_core.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udpfs_core.h; RiptOPL/modules/network/udpfs_ioman/src/udpfs_core.h; Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_core.h
+- modules/network/udpfs_fhi/src/udpfs_packet.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udpfs_packet.h; RiptOPL/modules/network/udpfs_ioman/src/udpfs_packet.h
+- modules/network/udpfs_fhi/src/udprdma.c is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udprdma.c; RiptOPL/modules/network/udpfs_ioman/src/udprdma.c
+- modules/network/udpfs_fhi/src/udprdma.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udprdma.h; RiptOPL/modules/network/udpfs_ioman/src/udprdma.h
+- modules/network/udpfs_fhi/src/udprdma_packet.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udprdma_packet.h; RiptOPL/modules/network/udpfs_ioman/src/udprdma_packet.h
+- modules/network/udpfs_fhi/src/udprdma_seq.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udprdma_seq.h; RiptOPL/modules/network/udpfs_ioman/src/udprdma_seq.h
+- modules/network/udpfs_ioman/include/mprintf.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/include/mprintf.h; RiptOPL/modules/network/udpfs_fhi/include/mprintf.h; RiptOPL/modules/network/udpfs_ministack/include/mprintf.h; RiptOPL/modules/network/udpfs_smap/include/mprintf.h
+- modules/network/udpfs_ioman/src/exports.tab is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/exports.tab
+- modules/network/udpfs_ioman/src/exports.tab is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/exports.tab; Simple-Media-System/iop/SMSUdpfs/udpfs/src/exports.tab
+- modules/network/udpfs_ioman/src/irx_imports.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/irx_imports.h; RiptOPL/modules/network/udpfs_fhi/src/irx_imports.h
+- modules/network/udpfs_ioman/src/irx_imports.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/irx_imports.h; RiptOPL/modules/network/udpfs_fhi/src/irx_imports.h; Simple-Media-System/iop/SMSUdpfs/udpfs/src/irx_imports.h
+- modules/network/udpfs_ioman/src/main.c is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/main.c
+- modules/network/udpfs_ioman/src/udpfs_core.c is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udpfs_core.c; RiptOPL/modules/network/udpfs_fhi/src/udpfs_core.c
+- modules/network/udpfs_ioman/src/udpfs_core.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udpfs_core.h; RiptOPL/modules/network/udpfs_fhi/src/udpfs_core.h
+- modules/network/udpfs_ioman/src/udpfs_core.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udpfs_core.h; RiptOPL/modules/network/udpfs_fhi/src/udpfs_core.h; Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_core.h
+- modules/network/udpfs_ioman/src/udpfs_packet.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udpfs_packet.h; RiptOPL/modules/network/udpfs_fhi/src/udpfs_packet.h
+- modules/network/udpfs_ioman/src/udprdma.c is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udprdma.c; RiptOPL/modules/network/udpfs_fhi/src/udprdma.c
+- modules/network/udpfs_ioman/src/udprdma.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udprdma.h; RiptOPL/modules/network/udpfs_fhi/src/udprdma.h
+- modules/network/udpfs_ioman/src/udprdma_packet.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udprdma_packet.h; RiptOPL/modules/network/udpfs_fhi/src/udprdma_packet.h
+- modules/network/udpfs_ioman/src/udprdma_seq.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/src/udprdma_seq.h; RiptOPL/modules/network/udpfs_fhi/src/udprdma_seq.h
+- modules/network/udpfs_ministack/include/main.h is byte-identical to: Simple-Media-System/iop/SMSUdpfs/ministack/include/main.h
+- modules/network/udpfs_ministack/include/mprintf.h is byte-identical to: RiptOPL/modules/network/udpfs_bd/include/mprintf.h; RiptOPL/modules/network/udpfs_fhi/include/mprintf.h; RiptOPL/modules/network/udpfs_ioman/include/mprintf.h; RiptOPL/modules/network/udpfs_smap/include/mprintf.h
+- modules/network/udpfs_ministack/include/udptty.h is byte-identical to: RiptOPL/modules/network/smap_udpbd/src/udptty.h
+- modules/network/udpfs_ministack/include/udptty.h is byte-identical to: RiptOPL/modules/network/smap_udpbd/src/udptty.h; Simple-Media-System/iop/SMSUdpfs/ministack/include/udptty.h
+- modules/network/udpfs_ministack/src/irx_imports.h is byte-identical to: Simple-Media-System/iop/SMSUdpfs/ministack/src/irx_imports.h
+- modules/network/udpfs_ministack/src/ministack_eth.c is byte-identical to: Simple-Media-System/iop/SMSUdpfs/ministack/src/ministack_eth.c
+
+## Largely identical files (dupes-file-pairs.tsv)
+- modules/network/udpfs_fhi/include/mprintf.h is 100% the same as RiptOPL/modules/network/smap_udpbd/src/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_fhi/include/mprintf.h is 100% the same as RiptOPL/modules/network/udpfs_bd/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_fhi/include/mprintf.h is 100% the same as RiptOPL/modules/network/udpfs_ioman/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_fhi/include/mprintf.h is 100% the same as RiptOPL/modules/network/udpfs_ministack/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_fhi/include/mprintf.h is 100% the same as RiptOPL/modules/network/udpfs_smap/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_fhi/src/irx_imports.h is 100% the same as RiptOPL/modules/network/udpfs_bd/src/irx_imports.h (14 cloned normalised lines)
+- modules/network/udpfs_fhi/src/irx_imports.h is 100% the same as RiptOPL/modules/network/udpfs_ioman/src/irx_imports.h (14 cloned normalised lines)
+- modules/network/udpfs_fhi/src/irx_imports.h is 100% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/irx_imports.h (14 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_core.h is 100% the same as RiptOPL/modules/network/udpfs_bd/src/udpfs_core.h (21 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_core.h is 100% the same as RiptOPL/modules/network/udpfs_ioman/src/udpfs_core.h (21 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_core.h is 100% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_core.h (21 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_packet.h is 100% the same as RiptOPL/modules/network/udpfs_bd/src/udpfs_packet.h (153 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_packet.h is 100% the same as RiptOPL/modules/network/udpfs_ioman/src/udpfs_packet.h (153 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_packet.h is 26% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_packet.h (40 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udprdma.h is 100% the same as RiptOPL/modules/network/udpfs_bd/src/udprdma.h (26 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udprdma.h is 100% the same as RiptOPL/modules/network/udpfs_ioman/src/udprdma.h (26 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udprdma.h is 100% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/udprdma.h (26 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udprdma_packet.h is 100% the same as RiptOPL/modules/network/udpfs_bd/src/udprdma_packet.h (55 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udprdma_packet.h is 100% the same as RiptOPL/modules/network/udpfs_ioman/src/udprdma_packet.h (55 cloned normalised lines)
+- modules/network/udpfs_fhi/src/udprdma_packet.h is 27% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/udprdma_packet.h (15 cloned normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h is 100% the same as RiptOPL/modules/network/smap_udpbd/src/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h is 100% the same as RiptOPL/modules/network/udpfs_bd/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h is 100% the same as RiptOPL/modules/network/udpfs_fhi/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h is 100% the same as RiptOPL/modules/network/udpfs_ministack/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h is 100% the same as RiptOPL/modules/network/udpfs_smap/include/mprintf.h (14 cloned normalised lines)
+- modules/network/udpfs_ioman/src/irx_imports.h is 100% the same as RiptOPL/modules/network/udpfs_bd/src/irx_imports.h (14 cloned normalised lines)
+- modules/network/udpfs_ioman/src/irx_imports.h is 100% the same as RiptOPL/modules/network/udpfs_fhi/src/irx_imports.h (14 cloned normalised lines)
+- modules/network/udpfs_ioman/src/irx_imports.h is 100% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/irx_imports.h (14 cloned normalised lines)
+- modules/network/udpfs_ioman/src/main.c is 100% the same as RiptOPL/modules/network/udpfs_bd/src/main.c (25 cloned normalised lines)
+- modules/network/udpfs_ioman/src/main.c is 52% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/main.c (13 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_core.h is 100% the same as RiptOPL/modules/network/udpfs_bd/src/udpfs_core.h (21 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_core.h is 100% the same as RiptOPL/modules/network/udpfs_fhi/src/udpfs_core.h (21 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_core.h is 100% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_core.h (21 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_ioman.c is 51% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_ioman.c (145 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_packet.h is 100% the same as RiptOPL/modules/network/udpfs_bd/src/udpfs_packet.h (153 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_packet.h is 100% the same as RiptOPL/modules/network/udpfs_fhi/src/udpfs_packet.h (153 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_packet.h is 26% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_packet.h (40 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udprdma.h is 100% the same as RiptOPL/modules/network/udpfs_bd/src/udprdma.h (26 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udprdma.h is 100% the same as RiptOPL/modules/network/udpfs_fhi/src/udprdma.h (26 cloned normalised lines)
+- modules/network/udpfs_ioman/src/udprdma.h is 100% the same as Simple-Media-System/iop/SMSUdpfs/udpfs/src/udprdma.h (26 cloned normalised lines)
+- ... 22 more: grep your file paths in evidence/RiptOPL/
+
+## Duplicate blocks (dupes-blocks.tsv)
+- modules/network/udpfs_fhi/include/mprintf.h:1-20  ==  RiptOPL/modules/network/smap_udpbd/src/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_fhi/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_bd/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_fhi/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_ioman/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_fhi/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_ministack/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_fhi/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_smap/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_fhi/src/irx_imports.h:1-18  ==  RiptOPL/modules/network/udpfs_bd/src/irx_imports.h:1-18  (14 normalised lines)
+- modules/network/udpfs_fhi/src/irx_imports.h:1-18  ==  RiptOPL/modules/network/udpfs_ioman/src/irx_imports.h:1-18  (14 normalised lines)
+- modules/network/udpfs_fhi/src/irx_imports.h:1-18  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/irx_imports.h:1-18  (14 normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_core.h:1-81  ==  RiptOPL/modules/network/udpfs_bd/src/udpfs_core.h:1-81  (21 normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_core.h:1-81  ==  RiptOPL/modules/network/udpfs_ioman/src/udpfs_core.h:1-81  (21 normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_core.h:1-81  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_core.h:1-81  (21 normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_packet.h:1-262  ==  RiptOPL/modules/network/udpfs_bd/src/udpfs_packet.h:1-262  (153 normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_packet.h:1-262  ==  RiptOPL/modules/network/udpfs_ioman/src/udpfs_packet.h:1-262  (153 normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_packet.h:1-60  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_packet.h:1-60  (28 normalised lines)
+- modules/network/udpfs_fhi/src/udpfs_packet.h:178-190  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_packet.h:166-178  (12 normalised lines)
+- modules/network/udpfs_fhi/src/udprdma.h:1-152  ==  RiptOPL/modules/network/udpfs_bd/src/udprdma.h:1-152  (26 normalised lines)
+- modules/network/udpfs_fhi/src/udprdma.h:1-152  ==  RiptOPL/modules/network/udpfs_ioman/src/udprdma.h:1-152  (26 normalised lines)
+- modules/network/udpfs_fhi/src/udprdma.h:1-152  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udprdma.h:1-152  (26 normalised lines)
+- modules/network/udpfs_fhi/src/udprdma_packet.h:1-135  ==  RiptOPL/modules/network/udpfs_bd/src/udprdma_packet.h:1-135  (55 normalised lines)
+- modules/network/udpfs_fhi/src/udprdma_packet.h:1-135  ==  RiptOPL/modules/network/udpfs_ioman/src/udprdma_packet.h:1-135  (55 normalised lines)
+- modules/network/udpfs_fhi/src/udprdma_packet.h:1-47  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udprdma_packet.h:1-47  (15 normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h:1-20  ==  RiptOPL/modules/network/smap_udpbd/src/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_bd/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_fhi/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_ministack/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ioman/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_smap/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ioman/src/irx_imports.h:1-18  ==  RiptOPL/modules/network/udpfs_bd/src/irx_imports.h:1-18  (14 normalised lines)
+- modules/network/udpfs_ioman/src/irx_imports.h:1-18  ==  RiptOPL/modules/network/udpfs_fhi/src/irx_imports.h:1-18  (14 normalised lines)
+- modules/network/udpfs_ioman/src/irx_imports.h:1-18  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/irx_imports.h:1-18  (14 normalised lines)
+- modules/network/udpfs_ioman/src/main.c:1-22  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/main.c:1-22  (13 normalised lines)
+- modules/network/udpfs_ioman/src/main.c:1-46  ==  RiptOPL/modules/network/udpfs_bd/src/main.c:1-46  (25 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_core.h:1-81  ==  RiptOPL/modules/network/udpfs_bd/src/udpfs_core.h:1-81  (21 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_core.h:1-81  ==  RiptOPL/modules/network/udpfs_fhi/src/udpfs_core.h:1-81  (21 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_core.h:1-81  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_core.h:1-81  (21 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_ioman.c:184-304  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_ioman.c:147-267  (67 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_ioman.c:307-396  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_ioman.c:276-365  (48 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_ioman.c:400-421  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_ioman.c:367-388  (12 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_ioman.c:44-78  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_ioman.c:33-67  (18 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_packet.h:1-262  ==  RiptOPL/modules/network/udpfs_bd/src/udpfs_packet.h:1-262  (153 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_packet.h:1-262  ==  RiptOPL/modules/network/udpfs_fhi/src/udpfs_packet.h:1-262  (153 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_packet.h:1-60  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_packet.h:1-60  (28 normalised lines)
+- modules/network/udpfs_ioman/src/udpfs_packet.h:178-190  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udpfs_packet.h:166-178  (12 normalised lines)
+- modules/network/udpfs_ioman/src/udprdma.h:1-152  ==  RiptOPL/modules/network/udpfs_bd/src/udprdma.h:1-152  (26 normalised lines)
+- modules/network/udpfs_ioman/src/udprdma.h:1-152  ==  RiptOPL/modules/network/udpfs_fhi/src/udprdma.h:1-152  (26 normalised lines)
+- modules/network/udpfs_ioman/src/udprdma.h:1-152  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udprdma.h:1-152  (26 normalised lines)
+- modules/network/udpfs_ioman/src/udprdma_packet.h:1-135  ==  RiptOPL/modules/network/udpfs_bd/src/udprdma_packet.h:1-135  (55 normalised lines)
+- modules/network/udpfs_ioman/src/udprdma_packet.h:1-135  ==  RiptOPL/modules/network/udpfs_fhi/src/udprdma_packet.h:1-135  (55 normalised lines)
+- modules/network/udpfs_ioman/src/udprdma_packet.h:1-47  ==  Simple-Media-System/iop/SMSUdpfs/udpfs/src/udprdma_packet.h:1-47  (15 normalised lines)
+- modules/network/udpfs_ministack/include/ministack_arp.h:10-29  ==  Simple-Media-System/iop/SMSUdpfs/ministack/include/ministack_arp.h:10-29  (16 normalised lines)
+- modules/network/udpfs_ministack/include/ministack_eth.h:1-65  ==  Simple-Media-System/iop/SMSUdpfs/ministack/include/ministack_eth.h:1-65  (29 normalised lines)
+- modules/network/udpfs_ministack/include/ministack_ip.h:22-74  ==  Simple-Media-System/iop/SMSUdpfs/ministack/include/ministack_ip.h:22-74  (22 normalised lines)
+- modules/network/udpfs_ministack/include/ministack_udp.h:1-61  ==  Simple-Media-System/iop/SMSUdpfs/ministack/include/ministack_udp.h:1-61  (29 normalised lines)
+- modules/network/udpfs_ministack/include/mprintf.h:1-20  ==  RiptOPL/modules/network/smap_udpbd/src/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ministack/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_bd/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ministack/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_fhi/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ministack/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_ioman/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ministack/include/mprintf.h:1-20  ==  RiptOPL/modules/network/udpfs_smap/include/mprintf.h:1-20  (14 normalised lines)
+- modules/network/udpfs_ministack/src/main.c:14-57  ==  Simple-Media-System/iop/SMSUdpfs/ministack/src/main.c:12-55  (28 normalised lines)
+- modules/network/udpfs_ministack/src/main.c:20-44  ==  RiptOPL/modules/network/smap_udpbd/src/main.c:21-45  (17 normalised lines)
+- modules/network/udpfs_ministack/src/ministack_arp.c:142-161  ==  Simple-Media-System/iop/SMSUdpfs/ministack/src/ministack_arp.c:97-116  (13 normalised lines)
+- ... 13 more: grep your file paths in evidence/RiptOPL/

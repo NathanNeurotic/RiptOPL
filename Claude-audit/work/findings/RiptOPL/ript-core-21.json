@@ -1,0 +1,167 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-21",
+  "coverage": [
+    {"path": "src/platform/ratls.c", "status": "read_full", "note": ""},
+    {"path": "src/platform/selfupdate.c", "status": "read_full", "note": ""},
+    {"path": "src/platform/sysdisc.cpp", "status": "read_full", "note": ""},
+    {"path": "src/platform/sysneutrino.cpp", "status": "read_full", "note": ""},
+    {"path": "include/system.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "ratls.c is the portable mbedTLS client (one TLS session plus an HTTP GET; raTlsRequest for RA lookups, raTlsDownload as the streamed updater download) built only by the RA and updater overlays; selfupdate.c is the updater's pure parsing half (SHA256SUMS, version revision, GitHub redirect allow-list, ELF header check). sysdisc.cpp boots the physical disc (SYSTEM.CNF BOOT2 parse, disc-key fallback, bounded DETCT/NODISC waits). sysneutrino.cpp maps OPL devices to Neutrino's -bsd backends, runs the pre-teardown preflights (DVR files, bd device number, udpfs ip= toml sync, SMB/NFS toml rewrite), writes the cheats and RA handoff configs, and composes and budgets the ExecPS2 argv for the keep-IOP handoff. system.h declares the system layer split across system.cpp, sysdisc.cpp, sysneutrino.cpp and sysvmc.cpp.",
+  "reusable_helpers": [
+    {"name": "sysLastPathSeparator", "path": "src/platform/sysneutrino.cpp", "line": 279, "what": "last '/' or '\\\\' in a path, whichever comes later"},
+    {"name": "sysTomlEscape", "path": "src/platform/sysneutrino.cpp", "line": 498, "what": "escapes a string for a TOML basic string, rejects control characters"},
+    {"name": "sysTomlTornTailCut", "path": "src/platform/sysneutrino.cpp", "line": 303, "what": "minimal TOML lexer that finds the last complete point of a file"},
+    {"name": "neutrinoArgActiveValue", "path": "src/platform/sysneutrino.cpp", "line": 881, "what": "value of the last active key=value token in whitespace-separated argument strings"},
+    {"name": "sysParseBoot2", "path": "src/platform/sysdisc.cpp", "line": 75, "what": "parses BOOT2 = path out of SYSTEM.CNF text"},
+    {"name": "sysStartupShapeOk", "path": "src/platform/sysneutrino.cpp", "line": 173, "what": "checks a retail AAAA_NNN.NN boot file name"},
+    {"name": "raTlsRtcToUtc", "path": "src/platform/ratls.c", "line": 50, "what": "civil date (PS2 RTC, JST) to Unix UTC seconds"},
+    {"name": "headerValue", "path": "src/platform/ratls.c", "line": 87, "what": "case-insensitive HTTP header lookup in a header block"},
+    {"name": "dechunk", "path": "src/platform/ratls.c", "line": 110, "what": "validates or decodes an HTTP chunked body in place"},
+    {"name": "hexValue", "path": "src/platform/selfupdate.c", "line": 20, "what": "hex digit to value or -1"},
+    {"name": "suJoin", "path": "src/platform/selfupdate.c", "line": 128, "what": "joins dir + name + suffix with a '/' unless dir ends in ':' or '/'"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "system.cpp include prelude and disc-probe constants copied verbatim into sysneutrino.cpp, sysvmc.cpp and sysdisc.cpp at the split",
+      "category": 2,
+      "locations": [
+        {"path": "src/platform/sysneutrino.cpp", "start": 7, "end": 65},
+        {"path": "src/platform/sysvmc.cpp", "start": 7, "end": 64},
+        {"path": "src/platform/sysdisc.cpp", "start": 9, "end": 66},
+        {"path": "src/platform/system.cpp", "start": 9, "end": 67}
+      ],
+      "problem": "When system.cpp was split, its whole prelude (DECI2 include, delaythread/time, the SYS_DISC_* constexprs and their 6-line comment, ~25 project headers, PADEMU libds34, fileXio/usbhdfsd-common/ps2sdkapi_compat 'VMC contiguity probe') was pasted into each new file. SYS_DISC_DETECT/REDETECT/NODISC_MS are used only in sysdisc.cpp:161,185,186; the copies at sysneutrino.cpp:15-23, sysvmc.cpp:15-23 and system.cpp:17-25 are dead. sysneutrino.cpp uses no DelayThread, clock, fileXio, USBMASS ioctl, ps2sdk_get_iop_fd, ds34, cheat, xparam, pggsm, OSDHistory, ioprp or extern_irx symbol; sysdisc.cpp likewise uses none of the VMC/PADEMU/fileXio/RA headers.",
+      "fix": "Delete the SYS_DISC_* constants and their comment from sysneutrino.cpp, sysvmc.cpp and system.cpp (keep sysdisc.cpp's). Delete delaythread/time from sysneutrino.cpp and sysvmc.cpp, and trim each split file's include list to the headers it uses (for sysneutrino.cpp at least lines 7-23, 57-65, 39, 42, 44, 48, 50-55; for sysdisc.cpp at least 9-11, 39-52 except mmcesupport, 53-66), letting the compiler confirm the minimal set.",
+      "justification": "",
+      "benefit": "About 70 source lines and the misleading 'disc wait' / 'VMC contiguity probe' comments in files that do neither; no ELF change (constexpr ints and unused headers emit nothing), faster compiles (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 70,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read all four preludes; they match line for line (dupes-blocks.tsv agrees). Grep SYS_DISC_(DETECT|REDETECT|NODISC)_MS over *.c,*.cpp,*.h: definitions in system.cpp, sysvmc.cpp, sysneutrino.cpp, sysdisc.cpp; uses only sysdisc.cpp:161,185,186 (and a system.h:24 comment). Grep DelayThread|clock( in system.cpp/sysvmc.cpp/sysneutrino.cpp: only system.cpp:504 uses DelayThread. Grep in sysneutrino.cpp for fileXio|USBMASS_|ps2sdk_get_iop_fd|ds34|cheat|xparam|pggsm|OSD|ioprp|_irx: only the include lines and comments. INFERRED part: the exact minimal project-header set, which needs a compile."
+    },
+    {
+      "n": 2,
+      "title": "sysneutrino.cpp: file read, write-with-restore and two 8 KB static buffer pairs duplicated in the udpfs ip sync and SMB/NFS preflight",
+      "category": 2,
+      "locations": [
+        {"path": "src/platform/sysneutrino.cpp", "start": 384, "end": 416},
+        {"path": "src/platform/sysneutrino.cpp", "start": 445, "end": 465},
+        {"path": "src/platform/sysneutrino.cpp", "start": 639, "end": 681},
+        {"path": "src/platform/sysneutrino.cpp", "start": 732, "end": 749},
+        {"path": "src/platform/sysneutrino.cpp", "start": 980, "end": 991},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1068, "end": 1079}
+      ],
+      "problem": "sysSyncNeutrinoUdpfsToml and sysNeutrinoSmbPreflight each carry the same accumulate-read loop (403-409 vs 670-676) and the same O_TRUNC write plus restore-original-on-short-write block (446-465 vs 733-749), and each owns static toml[4096] plus updated[4116] / updated[4608]. Both run only on the GUI thread before teardown and never nest, so the second pair of buffers is never live at the same time as the first. sysWriteNeutrinoCheats (980-991) repeats the open/write/close/unlink-on-short-write that sysNeutrinoRAWrite (1068-1079) already implements.",
+      "fix": "Move the two buffers to file scope once (toml[4096], updated[4608]) and use them from both functions; replace the duplicated read loop and write-restore block with two small static helpers (read whole file into toml, write updated or restore toml). Take sysNeutrinoRAWrite out of the RETROACHIEVEMENTS block and call it from sysWriteNeutrinoCheats.",
+      "justification": "The helpers replace two copies each of the same 7-line read loop and 15-line write/restore block plus one 10-line write/unlink copy, so code shrinks, and sharing the buffers removes a whole duplicate 8 KB .bss pair.",
+      "benefit": "8,212 B .bss (INFERRED: 4096+4116+4096+4608 = 16,916 B now vs 4096+4608 = 8,704 B shared) and about 25 lines.",
+      "benefit_rank": 3,
+      "lines_removed": 25,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read sysneutrino.cpp:382-468 and 637-752 side by side: the read loops and write/restore blocks differ only in log text and return codes. Callers: sysSyncNeutrinoUdpfsToml only from sysNeutrinoPreflight (sysneutrino.cpp:837, udpfs/udpfsbd/udpbd only); sysNeutrinoSmbPreflight from ethsupport (system.h:79 contract, smb/nfs leg) - disjoint devices, both pre-teardown, neither calls the other. sysNeutrinoRAWrite at 1068-1079 under #ifdef RETROACHIEVEMENTS (1021-1124)."
+    },
+    {
+      "n": 3,
+      "title": "Three hand-written copies of the Neutrino argument token walk (neutrinoArgHasActiveFlag, neutrinoEffectiveBsdfs, neutrinoArgActiveValue)",
+      "category": 2,
+      "locations": [
+        {"path": "src/platform/sysneutrino.cpp", "start": 199, "end": 219},
+        {"path": "src/platform/sysneutrino.cpp", "start": 228, "end": 261},
+        {"path": "src/platform/sysneutrino.cpp", "start": 881, "end": 904}
+      ],
+      "problem": "Each function re-implements the same skip-blanks / find-token-end / stop-at --b walk over gNeutrinoArgs and extraArgs. neutrinoEffectiveBsdfs (234-254) is exactly neutrinoArgActiveValue(extraArgs, \"-bsdfs=\", ...) followed by a name lookup: both scan global then per-game args, require a non-empty value, and let the last token win.",
+      "fix": "Move neutrinoArgActiveValue above neutrinoEffectiveBsdfs and replace the 21-line loop in neutrinoEffectiveBsdfs with one call into a 16-byte buffer plus the names[] comparison.",
+      "justification": "",
+      "benefit": "About 15 lines and one fewer copy of tokenizer rules that must agree with Neutrino's parser; a few hundred bytes of .text at most (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read 199-261 and 881-904. Both loops: sources {gNeutrinoArgs, extraArgs}, skip ' '/'\\t', end at blank, break on a 3-char --b, match prefix with len > prefix length, overwrite on each later match. A $-disabled token does not start with '-bsdfs=' in either, so behaviour is unchanged; values longer than 15 chars cannot truncate to a 2-5 char name."
+    },
+    {
+      "n": 4,
+      "title": "sysLastPathSeparator is a byte-identical copy of supportbase.cpp's sbLastPathSeparator",
+      "category": 2,
+      "locations": [
+        {"path": "src/platform/sysneutrino.cpp", "start": 279, "end": 291},
+        {"path": "src/sources/supportbase.cpp", "start": 1955, "end": 1967},
+        {"path": "src/platform/util.cpp", "start": 288, "end": 292}
+      ],
+      "problem": "The 13-line static helper exists twice with only the name changed, and util.cpp:288-292 open-codes the same last-of-slash-or-backslash logic inline.",
+      "fix": "Keep one non-static copy (for example in util.cpp with a prototype in util.h), delete the other, and use it at util.cpp:288-292.",
+      "justification": "Adding one prototype lets a 13-line duplicate and a 4-line inline copy go, a net reduction.",
+      "benefit": "About 15 lines; tens of bytes of .text (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read sysneutrino.cpp:279-291 and supportbase.cpp:1955-1967: identical bodies. Grep strrchr(..., '\\\\') over src/: util.cpp:289 (same logic inline, 288-292), saveicon.cpp:867 and others with different shapes not counted."
+    },
+    {
+      "n": 5,
+      "title": "Bounds guards that can never fail in convertCompatmaskToModes and the core-argument appends of sysRunNeutrinoLaunch",
+      "category": 3,
+      "locations": [
+        {"path": "src/platform/sysneutrino.cpp", "start": 113, "end": 137},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1195, "end": 1210},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1231, "end": 1247},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1275, "end": 1275},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1286, "end": 1286},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1293, "end": 1297},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1307, "end": 1307},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1327, "end": 1327},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1341, "end": 1341},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1358, "end": 1358}
+      ],
+      "problem": "result[COMPAT_MODE_COUNT + 2] is 10 bytes (COMPAT_MODE_COUNT is 8, iosupport.h:106) and at most 5 digits are appended, so all five pos guards are always true. argv has 32 slots and at most 13 core entries are appended before appendArgTokens (argv0, bsd, bsdfs, dvd, -qb, -gc, -dbc, -logo, -gsm, -elf, two -mc, -cwd), so every argc < argvMax test before line 1370 is always true; the real limit is the 14-entry/256-byte check at 1401-1412.",
+      "fix": "Drop the pos guards and the 'bounds-guarded so widening the set later cannot overflow' comment; drop the argc < argvMax tests on the core appends before appendArgTokens (keep the ones after it at 1375, 1382, 1389, which can trigger).",
+      "justification": "",
+      "benefit": "About 10 lines and simpler conditions; no measurable ELF change (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 10,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "COMPAT_MODE_COUNT 8 at include/iosupport.h:106; argv[32] at sysneutrino.cpp:1184, argvMax = 32 at 1190. Counted every argv[argc++] before 1370: 1196, 1201, 1204, 1207 (apa) or 1211, 1232, 1247, 1277, then 1287, 1295, 1299, 1318, 1330, 1342 (x2), 1359 = 13 at most."
+    },
+    {
+      "n": 6,
+      "title": "Stale, doubled and misplaced comments in sysneutrino.cpp, sysdisc.cpp and system.h",
+      "category": 7,
+      "locations": [
+        {"path": "src/platform/sysneutrino.cpp", "start": 190, "end": 198},
+        {"path": "src/platform/sysneutrino.cpp", "start": 263, "end": 278},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1186, "end": 1190},
+        {"path": "src/platform/sysneutrino.cpp", "start": 1363, "end": 1365},
+        {"path": "src/platform/sysdisc.cpp", "start": 109, "end": 120},
+        {"path": "include/system.h", "start": 81, "end": 86}
+      ],
+      "problem": "sysneutrino.cpp:190-192 and 193-198 are two versions of the same comment on neutrinoArgHasActiveFlag. 263-268 (describes the old sysLaunchNeutrino body) and 269-278 (describes sysSyncNeutrinoUdpfsToml at 382) sit above sysLastPathSeparator. 1186-1189 says the limit is '14, NOT sizeof(argv)' directly above argvMax = sizeof(argv)/sizeof(argv[0]) = 32. 1363-1365 is a placeholder saying nothing happens here. sysdisc.cpp:109-117 documents sysLaunchDisc/sysGetDiscBootPath but sits above sysDiscProbeWait. system.h:81-82 describe sysNeutrinoArgsPreflight (line 96) but sit above the cheats comment.",
+      "fix": "Delete 190-192, 263-268, 1363-1365 and the wrong first sentence of 1186-1189; move 269-278 above sysSyncNeutrinoUdpfsToml, sysdisc.cpp:109-117 above sysGetDiscBootPath, and system.h:81-82 above line 96.",
+      "justification": "",
+      "benefit": "About 12 lines removed and comments that match the code; no binary change.",
+      "benefit_rank": 1,
+      "lines_removed": 12,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read each cited range against the code below it: sysLastPathSeparator at 279, sysSyncNeutrinoUdpfsToml at 382, argvMax at 1190 with argv[32] at 1184, sysDiscProbeWait at sysdisc.cpp:121, sysGetDiscBootPath at 147, sysNeutrinoArgsPreflight prototype at system.h:96."
+    }
+  ]
+}

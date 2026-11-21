@@ -1,0 +1,166 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-10.b",
+  "coverage": [
+    {"path": "include/OSDHistory.h", "status": "read_full", "note": ""},
+    {"path": "src/core/OSDHistory.cpp", "status": "read_full", "note": ""},
+    {"path": "src/core/bgm.cpp", "status": "read_full", "note": ""},
+    {"path": "include/cheatconfig.h", "status": "read_full", "note": ""},
+    {"path": "src/core/cheatconfig.cpp", "status": "read_full", "note": ""},
+    {"path": "include/cheatman.h", "status": "read_full", "note": ""},
+    {"path": "src/core/cheatman.cpp", "status": "read_full", "note": ""},
+    {"path": "include/config.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "OSDHistory.cpp writes the Sony browser play-history record (mc?:/B?DATA-SYSTEM/history) at each game launch, called from sysLaunchLoaderElf/sysAddHistoryRecord in src/platform/system.cpp. bgm.cpp is the theme background-music player: an Ogg Vorbis decode thread fills a 768 KB static ring, a playback thread feeds audsrv, with descriptor-reopen and top-bit-serial page fixing for odd streams; it is driven from the GUI thread (gui.cpp, guisettings.cpp) and quiesced/stopped from deinit()/audioEnd(). cheatman.cpp is the PS2rd-derived .cht parser and code-list builder (lazily allocated 1 MB cheat table, flat gCheatList for ee_core, the in-game-menu cheat page packer); cheatconfig.cpp remembers Select-mode cheat picks by name in the game CFG. config.h holds the config key names and the free-function wrappers over ConfigSet.",
+  "reusable_helpers": [
+    {"name": "read_text_file", "path": "src/core/cheatman.cpp", "line": 393, "what": "reads a whole file into a malloc'd NUL-terminated buffer with an optional size cap (POSIX open/lseek/read)"},
+    {"name": "trim_str", "path": "src/core/cheatman.cpp", "line": 261, "what": "trims leading and trailing white space in place"},
+    {"name": "cheatConfigNormalize", "path": "src/core/cheatconfig.cpp", "line": 18, "what": "lower-cases a string, drops outer spaces and collapses inner runs of spaces (case/space-insensitive compare key)"},
+    {"name": "GetBootFilename", "path": "src/core/OSDHistory.cpp", "line": 266, "what": "extracts the file name from a device path, dropping a trailing ';1' version suffix"},
+    {"name": "CreateSystemDataFolder", "path": "src/core/OSDHistory.cpp", "line": 35, "what": "creates a memory-card save folder and writes its icon.sys if absent"},
+    {"name": "bgmSourceReopen", "path": "src/core/bgm.cpp", "line": 314, "what": "reopens a FILE* by path and seeks back to the saved offset after the descriptor died (bounded retries)"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "bgm.cpp: 768 KB static bgmBuffer ring is reserved for the whole run although BGM is off by default",
+      "category": 4,
+      "locations": [
+        {"path": "src/core/bgm.cpp", "start": 29, "end": 30},
+        {"path": "src/core/bgm.cpp", "start": 72, "end": 72},
+        {"path": "src/core/bgm.cpp", "start": 720, "end": 734},
+        {"path": "src/core/settings.cpp", "start": 176, "end": 176}
+      ],
+      "problem": "bgmBuffer[192][4096] is file-static .bss (786,432 bytes, the largest symbol in the ELF) and is only touched by the two BGM threads, yet CONFIG_OPL_BGM defaults to 0 (settings.cpp:176) and BGM also stays silent when no bgm.ogg is found. In the default setup the 768 KB is EE RAM the menu can never use.",
+      "fix": "Allocate the ring with malloc in BgmPlayer::start() after load() succeeds (fail like a missing file when it returns NULL) and free it in teardown(); keep it when stop() abandons threads that did not exit. Use the pointer in threadMain/ioThreadMain instead of the static array.",
+      "justification": "Adds about six lines (malloc, NULL check, free, pointer member). The concrete gain is 768 KB of EE RAM back for every user without theme music, which is the default; the same lazy pattern was already applied to the 1 MB cheat table (cheatman.cpp:448-465) for the same reason.",
+      "benefit": "786,432 bytes of .bss removed (MEASURED: evidence/RiptOPL/BUILD-EVIDENCE.md:95 and :249, nm of the unstripped ELF); RAM is then held only while music plays.",
+      "benefit_rank": 4,
+      "lines_removed": -6,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read bgm.cpp:29-30,72 and every bgmBuffer use (only threadMain :201 and ioThreadMain :242). grep CONFIG_OPL_BGM|gEnableBGM over src: default 0 at settings.cpp:176, int gEnableBGM at opl.cpp:285; start only when gEnableBGM (gui.cpp:332, guisettings.cpp:1957,2766, lwnbdctl.cpp:249). BUILD-EVIDENCE.md:95 lists bgmBuffer 786,432 b; :249 says bgm.o holds 795,654 of the 1,341,532-byte .bss."
+    },
+    {
+      "n": 2,
+      "title": "bgmStart/bgmStop block the GUI thread: up to 500 ms prebuffer wait in start(), 200 ms minimum alarm slice in stop()",
+      "category": 5,
+      "locations": [
+        {"path": "src/core/bgm.cpp", "start": 798, "end": 816},
+        {"path": "src/core/bgm.cpp", "start": 860, "end": 870},
+        {"path": "src/core/bgm.cpp", "start": 736, "end": 739},
+        {"path": "src/ui/gui.cpp", "start": 332, "end": 333},
+        {"path": "src/ui/guisettings.cpp", "start": 1957, "end": 1958},
+        {"path": "src/ui/guisettings.cpp", "start": 2741, "end": 2742},
+        {"path": "src/ui/guisettings.cpp", "start": 2766, "end": 2767}
+      ],
+      "problem": "start() runs on the GUI thread and spins DelayThread(5 ms) up to 100 times until 48 chunks are decoded, so no frame is drawn for up to 500 ms at main-loop entry, on Audio settings accept and after a theme change. stop() waits in SetAlarm/SleepThread slices of 3200 HSYNC (~200 ms); the I/O thread has priority 31 like the GUI thread (opl.cpp:2064, bgm.cpp:696), so it cannot exit before the first sleep and every stop costs at least ~200 ms. A theme change does stop then start: roughly 0.2-0.7 s of frozen screen.",
+      "fix": "Move the prebuffer wait to the top of threadMain (the playback thread waits for the cushion before its first queueChunk; discretionaryIoAllowed already holds art I/O until the ring is primed) and drop the else-branch at 810-816, since the playback thread already exits on the I/O thread's terminate signal. In stop(), poll with DelayThread(10 ms) over the same 3.2 s budget and delete bgmShutdownDelayCallback.",
+      "justification": "",
+      "benefit": "Removes up to ~500 ms (start) and ~190 ms (stop) of GUI-thread stall per call (INFERRED: 100 x 5 ms loop bound; 3200 HSYNC slice vs a 10 ms poll); about 6 lines removed (callback, else-branch).",
+      "benefit_rank": 2,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read bgm.cpp:741-881. Callers via grep bgmStart|bgmStop: gui.cpp:333 (mainLoop entry, GUI thread), guisettings.cpp:1958 (guiSetAudioSettingsState), 2742/2767 (theme apply), selfupdate.cpp:424, sound.cpp:51 (audioEnd at launch), lwnbdctl.cpp:250. Thread priorities: GUI 31 at opl.cpp:2064, BGM io thread BGM_THREAD_BASE_PRIO+1 = 31 at bgm.cpp:40,696, playback 30. Durations are derived from the loop constants, not measured on hardware."
+    },
+    {
+      "n": 3,
+      "title": "BgmPlayer::quiesce() signals and wakes semaphore/thread IDs it does not own when the player is not live",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/bgm.cpp", "start": 820, "end": 842},
+        {"path": "src/core/bgm.cpp", "start": 720, "end": 726},
+        {"path": "src/core/bgm.cpp", "start": 759, "end": 764},
+        {"path": "include/bgmplayer.h", "start": 35, "end": 36},
+        {"path": "src/app/opl.cpp", "start": 1325, "end": 1325},
+        {"path": "src/app/opl.cpp", "start": 1419, "end": 1419}
+      ],
+      "problem": "deinitEx()/deinit() call bgmQuiesce() on every launch and exit, and quiesce() does SignalSema(inSema_), SignalSema(outSema_), WakeupThread(threadId_) without checking live_. With BGM never started these IDs are 0; with BGM enabled but no usable bgm.ogg, start() created the objects and teardown() deleted them (759-764, 720-726), leaving stale IDs the kernel can hand to later CreateSema/CreateThread calls. A launch then signals or wakes another subsystem's object.",
+      "fix": "Return early from quiesce() when live_ is 0.",
+      "justification": "Two lines. The player must only touch kernel objects it created; the guard closes the stale-ID signal on the common BGM-on-without-music and BGM-off paths. stop() needs no change because all its callers already gate it on isBgmPlaying() or the running flags.",
+      "benefit": "Removes a spurious SignalSema x2 and WakeupThread on unowned IDs during every launch/exit teardown; consequence depends on ID reuse (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read bgm.cpp:645-734,741-764,820-881 and bgmplayer.h:35-40 (IDs default 0, live_ cleared only in teardown). grep bgmQuiesce: opl.cpp:1325 (deinitEx) and 1419 (deinit), both unconditional. grep bgmStop callers: selfupdate.cpp:423, guisettings.cpp:2741, sound.cpp:50, all guarded. INFERRED part: that the EE kernel reuses freed semaphore/thread IDs and that a reused one is live at launch."
+    },
+    {
+      "n": 4,
+      "title": "cheat_entry_t.codes[] is sized in u32 words (510) but holds pairs: the 1.05 MB cheat table is twice what any consumer can use",
+      "category": 4,
+      "locations": [
+        {"path": "include/cheatman.h", "start": 39, "end": 41},
+        {"path": "include/cheatman.h", "start": 64, "end": 69},
+        {"path": "src/core/cheatman.cpp", "start": 373, "end": 374},
+        {"path": "src/core/cheatman.cpp", "start": 454, "end": 465},
+        {"path": "src/core/cheatman.cpp", "start": 522, "end": 525},
+        {"path": "src/core/cheatman.cpp", "start": 570, "end": 570},
+        {"path": "src/core/cheatman.cpp", "start": 623, "end": 623},
+        {"path": "src/core/cheatman.cpp", "start": 660, "end": 660}
+      ],
+      "problem": "MAX_CHEATLIST (510) is the word count of gCheatList (5 hook pairs + 250 code pairs), but cheat_entry_t uses it as the number of code_t PAIRS per cheat. No reader can use more than 255 pairs of one cheat: set_cheats_list caps the whole list at 510 words, igrRowFits needs n <= 250, set_cheats_list_live takes at most 5 hooks plus 250 codes. Half of every 4216-byte entry is unreachable.",
+      "fix": "Declare codes[MAX_CHEATLIST / 2] and bound the parser store (cheatman.cpp:373) and the four codes[] walks (524, 570, 623, 660) by that array size instead of MAX_CHEATLIST. Update the ~1.03 MB comments.",
+      "justification": "",
+      "benefit": "sizeof(cheat_entry_t) 132+4080+4 = 4216 -> 132+2040+4 = 2176; x250 = 1,054,000 -> 544,000 bytes, 510,000 bytes less heap per cheats-on launch and a smaller single malloc that is less likely to fail (INFERRED arithmetic).",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read cheatman.h:39-69, cheatman.cpp:312-385,448-680, ee_core/include/igrcheats.h:22-71 (IGR_CHEAT_SET_CODES 250). grep gCheats|codes[|MAX_CHEATLIST over the repo: the only codes[] readers are cheatman.cpp:524,570,593,614,623,660; guimodal.cpp and cheatconfig.cpp read only name/enabled; supportbase.cpp:1856 reads gCheatList (<= 255 pairs). Behaviour change only for a cheat with more than 255 codes, whose tail can already never reach ee_core."
+    },
+    {
+      "n": 5,
+      "title": ".cht parser: an indented comment line becomes a blank-named cheat, and lines over 255 chars are split with one byte dropped",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/cheatman.cpp", "start": 261, "end": 271},
+        {"path": "src/core/cheatman.cpp", "start": 342, "end": 352},
+        {"path": "src/core/cheatman.cpp", "start": 326, "end": 335},
+        {"path": "src/core/cheatman.cpp", "start": 381, "end": 381}
+      ],
+      "problem": "For a line like '  // note', term_str cuts at '//' leaving '  ', trim_str returns -1 on an all-space string without clearing it, and strlen>0 makes it a cheat NAME: before a cheat's codes it renames the cheat to spaces; between codes it splits the cheat, and in Select mode the second half starts disabled. A line longer than 255 chars is capped, but buf advances by len+1 (256), so byte 255 is dropped and the tail is parsed as its own line (a long comment's tail becomes a cheat name).",
+      "fix": "In trim_str set s[0] = NUL before returning -1 for an all-space string. In parse_buf compute the advance from lfIdx (lfIdx + 1, or strlen when there is no LF) before capping len, so the rest of an over-long line is skipped.",
+      "justification": "One statement in trim_str and one changed expression; both fix wrong cheat names/splits from ordinary user-supplied .cht text (cht.tar packs are treated as untrusted input by the comment at 330-333). Names also key the remembered picks, so a wrong name restores the wrong cheat.",
+      "benefit": "Correct parsing of indented comments and long lines; no size change (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": -1,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Traced parse_buf (cheatman.cpp:312-385) by hand: term_str :227-240 with is_cmt_str :205-208, trim_str :261-288 (early return at :269-270 leaves the string), is_cheat_code :167-182 returns 0 for '  ', name branch :346-351. Long line: lfIdx 300 -> len capped 255 (:334-335) -> buf += 256 (:381). Input reaches here from load_cheats/load_cheats_buf via sbLoadCheats (supportbase.cpp:1779,1811). PS2rd-derived code; upstream parity not checked."
+    },
+    {
+      "n": 6,
+      "title": "cheatConfigSaveSelections marks the game CFG modified even when the picks did not change, so every Select-mode launch rewrites it",
+      "category": 5,
+      "locations": [
+        {"path": "src/core/cheatconfig.cpp", "start": 100, "end": 110},
+        {"path": "src/ui/guimodal.cpp", "start": 439, "end": 441},
+        {"path": "src/core/config.cpp", "start": 447, "end": 458},
+        {"path": "src/core/config.cpp", "start": 1519, "end": 1519}
+      ],
+      "problem": "The save first removes every $CheatSel000-249 key and then re-appends the enabled picks. removeKey sets modified_ when a key exists and append sets it again, so with any remembered pick the set is always dirty and CheatScreen::finish's configWrite rewrites the game's CFG on its device at each Select-mode launch, even when the user pressed START without changing anything. configWrite would otherwise skip a clean set (config.cpp:1511-1519).",
+      "fix": "Write the picks first with configSetStr (a no-op when the value is equal, config.cpp:371-377), then remove only the keys from index n upward; an unchanged pick list leaves the set clean and configWrite does nothing.",
+      "justification": "",
+      "benefit": "One CFG file write saved per Select-mode launch with unchanged picks (game device, may be MMCE/USB/HDD); removeKey calls drop from 250 to 250-n. No size change (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read cheatconfig.cpp:62-111, guimodal.cpp:435-444 (finish: save + configWrite), config.cpp:363-386 (setStr marks modified only on change or append), :447-458 (removeKey marks modified only when the key is found), :1498-1519 (configWrite skips unmodified sets). Caller chain: sbLoadCheats -> sbCheatsSelect -> manageCheats (supportbase.cpp:1732-1739). Whether other launch code dirties the same set first was not traced."
+    }
+  ]
+}

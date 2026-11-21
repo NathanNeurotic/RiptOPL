@@ -1,0 +1,92 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-35.b",
+  "coverage": [
+    {"path": "include/cfgtitle.h", "status": "read_full", "note": ""},
+    {"path": "src/ui/cfgtitle.cpp", "status": "read_full", "note": ""},
+    {"path": "include/dia.h", "status": "read_full", "note": ""},
+    {"path": "src/ui/dia.cpp", "status": "read_full", "note": ""},
+    {"path": "src/ui/diaeditors.cpp", "status": "read_full", "note": ""},
+    {"path": "src/ui/diaitems.cpp", "status": "read_full", "note": ""},
+    {"path": "include/dialogs.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "The dialog layer of the menu ELF. dia.cpp lays out and draws a UIItem array (labels, buttons, int/bool/enum/string/colour rows), handles focus navigation, scrolling, right-stick peek, Settings peer-page L1/R1 results and list keys, and runs the modal loop diaExecuteDialog under the GUI lock. diaeditors.cpp holds the modal value editors (on-screen keyboard, number pad, colour picker); diaitems.cpp the get/set accessors by item id; dialogs.h the shared item-id enum and the extern dialog definitions (defined in src/ui/dialogs.cpp). cfgtitle.cpp is the opt-in per-source cache of CFG Title strings used for game-row display and sorting, filled on the IO thread and swapped under the GUI lock.",
+  "reusable_helpers": [
+    {"name": "CfgTitles::clean / cfgTitleClean", "path": "src/ui/cfgtitle.cpp", "line": 95, "what": "trims blanks and copies a string only if it is strict printable UTF-8, cutting on a character boundary"},
+    {"name": "utf8Length", "path": "src/ui/cfgtitle.cpp", "line": 67, "what": "length of one strict UTF-8 character (rejects overlong, surrogates, C1, > U+10FFFF)"},
+    {"name": "diaKeybNextChar / diaKeybPrevChar", "path": "src/ui/diaeditors.cpp", "line": 112, "what": "step to the next / previous UTF-8 character start in a byte string"},
+    {"name": "diaDrawBoldText", "path": "src/ui/diaeditors.cpp", "line": 82, "what": "draws text twice offset by one display pixel/line for a heavier CRT-readable stroke"},
+    {"name": "diaShowNumPad", "path": "src/ui/diaeditors.cpp", "line": 457, "what": "modal 3x4 numeric entry pad with sign toggle and range display"},
+    {"name": "diaFindByID", "path": "src/ui/diaitems.cpp", "line": 13, "what": "linear lookup of a UIItem by id in a terminator-ended array"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "diaShowKeyb writes one byte past its pre[maxLen] VLA when strlen(text) == maxLen; File Manager rename passes FM_NAME - 1 with names up to 127 bytes",
+      "category": 6,
+      "locations": [
+        {"path": "src/ui/diaeditors.cpp", "start": 104, "end": 109},
+        {"path": "src/ui/diaeditors.cpp", "start": 215, "end": 238},
+        {"path": "src/ui/guifilemgr.cpp", "start": 518, "end": 523},
+        {"path": "src/ui/guifilemgr.cpp", "start": 535, "end": 539},
+        {"path": "src/core/filemgr.cpp", "start": 208, "end": 210}
+      ],
+      "problem": "diaKeybTextWidth copies text[from..to) into scratch and writes scratch[to - from] = 0; diaShowKeyb passes the stack VLA pre[maxLen] with from=view(0) and to=n=len every frame, so len == maxLen writes pre[maxLen]. fmRenameEntry seeds name from a list entry (fmList keeps names up to 127 bytes, filemgr.cpp:208-210) and passes maxLen FM_NAME - 1 = 127, so renaming a file whose name is 127 bytes long overwrites one stack byte per frame while the keyboard is open. Every other caller passes the buffer size.",
+      "fix": "Pass sizeof(name) (FM_NAME) instead of FM_NAME - 1 at guifilemgr.cpp:523 and :539, matching every other diaShowKeyb caller and fmNameOk's 1..FM_NAME-1 limit (filemgr.cpp:151).",
+      "justification": "",
+      "benefit": "Closes a reachable one-byte stack overwrite in the main thread (consequence depends on what lies above the VLA in the frame: INFERRED); no size change.",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read diaeditors.cpp:104-109 (memcpy + scratch[to-from]=0), :130 len=strlen(text), :138 caret=len, :215 char pre[maxLen], :216 n=len, :224 and :238 diaKeybTextWidth(shown, view, n, pre). Callers (grep diaShowKeyb): dia.cpp:946 tmp[32]/32, gui.cpp:176 tmp[maxLength]/maxLength, menusys.cpp:2252 empty/CONFIG_KEY_VALUE_LEN, guigame.cpp:110/153 handler args from dia.cpp:941 (tmp,32), guifilemgr.cpp:523/539 name[FM_NAME]/FM_NAME-1. FM_NAME 128 at include/filemgr.h:8; fmList keeps strlen < 128 (filemgr.cpp:208-210); rename reached from diaFileActions FMA_RENAME (guifilemgr.cpp:602-603)."
+    },
+    {
+      "n": 2,
+      "title": "On-screen keyboard moves the caret and backspaces one byte at a time, splitting multi-byte UTF-8 in an existing name",
+      "category": 6,
+      "locations": [
+        {"path": "src/ui/diaeditors.cpp", "start": 298, "end": 307},
+        {"path": "src/ui/diaeditors.cpp", "start": 360, "end": 368},
+        {"path": "src/ui/diaeditors.cpp", "start": 395, "end": 403},
+        {"path": "src/ui/diaeditors.cpp", "start": 112, "end": 126},
+        {"path": "src/ui/menusys.cpp", "start": 306, "end": 316}
+      ],
+      "problem": "L1/R1 do caret-- / caret++ and both backspaces memmove out exactly one byte, while the view scroll already steps by UTF-8 characters (diaKeybNextChar/PrevChar). Renaming a game (menusys.cpp:306-316) or file whose name holds multi-byte UTF-8 leaves orphan lead/continuation bytes after one backspace, or inserts a key inside a sequence; confirming writes that invalid name through gsOf()->rename.",
+      "fix": "Use the existing helpers: caret = diaKeybPrevChar(text, caret) / diaKeybNextChar(text, caret, len) for L1/R1, and make both backspaces remove the bytes from diaKeybPrevChar(text, caret) to caret. ASCII text behaves exactly as now.",
+      "justification": "",
+      "benefit": "Prevents renames that write broken UTF-8 into game/file names; no new code, four expressions change (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read diaeditors.cpp:298-307, 351-367, 395-403 (byte steps) and 112-126 (UTF-8-aware helpers used only for view at :225-227). Callers seeding existing names: menusys.cpp:306-309 (game rename via guiShowKeyboard), guifilemgr.cpp:522-523. INFERRED part: which devices return UTF-8 names; BDM FatFs is built with FF_LFN_UNICODE 0 / FF_CODE_PAGE 869 (modules/bdm/bdmfs_fatfs/fatfs/include/ffconf.h:87,136), so the case needs a source such as SMB/NFS/HDD returning UTF-8."
+    },
+    {
+      "n": 3,
+      "title": "Cancel on a focused int/bool/enum row restores the value the page opened with, discarding an earlier confirmed edit of the same row",
+      "category": 6,
+      "locations": [
+        {"path": "src/ui/dia.cpp", "start": 839, "end": 855},
+        {"path": "src/ui/dia.cpp", "start": 863, "end": 868},
+        {"path": "src/ui/dia.cpp", "start": 1298, "end": 1301},
+        {"path": "src/ui/diaitems.cpp", "start": 97, "end": 111}
+      ],
+      "problem": "diaHandleInput's Cancel calls diaResetValue, which sets current = def; def is the value diaSetInt stored when the page opened (diaitems.cpp:105-106) and edits never update it. Sequence: set an IP octet 192 -> 10 and confirm, focus it again, press Up once, press Cancel: the row shows 192, not 10. Same for enums. Inherited Open PS2 Loader behaviour.",
+      "fix": "When Confirm gives a row focus (dia.cpp:1298-1301) remember cur->intvalue.current in a local, and on Cancel restore that value for UI_INT/UI_BOOL/UI_ENUM instead of def; def stays the page-open value diaHasChanges needs.",
+      "justification": "Adds one local and one assignment: def cannot be reused because diaHasChanges (diaitems.cpp:59-80) depends on it meaning the page-open value, so the pre-edit value has to be kept somewhere; this is the smallest place.",
+      "benefit": "Cancel undoes only the current edit; about 3 lines added (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": -3,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read dia.cpp:839-855 (diaResetValue uses def), :863-868 (Cancel path), :1298-1301 (focus taken), :919-934 (Up/Down change current only); diaitems.cpp:97-111 (diaSetInt sets def and current) and :55-80 (diaHasChanges compares to def, comment says Cancel restores def)."
+    }
+  ]
+}

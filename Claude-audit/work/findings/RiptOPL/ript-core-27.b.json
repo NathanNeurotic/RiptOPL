@@ -1,0 +1,150 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-27.b",
+  "coverage": [
+    {"path": "src/sources/favsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/folderbrowse.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/folderbrowse.cpp", "status": "read_full", "note": ""},
+    {"path": "include/gamemanage.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/gamemanage.cpp", "status": "read_full", "note": ""},
+    {"path": "include/gamesource.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/gamesource.cpp", "status": "read_full", "note": ""},
+    {"path": "include/hddsupport.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "favsupport.cpp is the Favourites page (FAV_MODE GameSource): it keeps favourites.bin and recents.bin in a bounds-checked OFAV binary format (with a read-only uOPL/wOPL import and a .new staged-write recovery scheme), resolves each record against the live source lists, proxies launch/config/art/VMC calls to the owning source, and builds the All Games list from every started source. The store array is rebuilt on the IO worker and read from the GUI thread and the art worker. folderbrowse.cpp holds per-mode subfolder navigation state for loose-file devices. gamemanage.cpp implements Hide Game (per-device hidden.txt cached in a static per-mode table) and the Delete everything plan (game CFG/ART/CHT files). gamesource.h/.cpp define the GameSource base class that turns item_list_t callbacks into virtuals with capability flags; hddsupport.h declares the HDD/APA types and entry points.",
+  "reusable_helpers": [
+    {"name": "favLoadImage", "path": "src/sources/favsupport.cpp", "line": 344, "what": "reads a whole file (bounded size) into a malloc'd buffer with short-read accumulation and EOF/close checks"},
+    {"name": "favWriteWhole", "path": "src/sources/favsupport.cpp", "line": 493, "what": "writes a buffer to a file with O_TRUNC in a short-write loop and checks close"},
+    {"name": "favGetFilePath", "path": "src/sources/favsupport.cpp", "line": 66, "what": "builds a path to a named file in the directory of the OPL config file"},
+    {"name": "bufU16 / bufU32", "path": "src/sources/favsupport.cpp", "line": 426, "what": "little-endian scalar appenders into a byte buffer"},
+    {"name": "rdU16 / rdU32", "path": "src/sources/favsupport.cpp", "line": 110, "what": "bounds-checked little-endian scalar readers over an in-memory stream"},
+    {"name": "favStrdup", "path": "src/sources/favsupport.cpp", "line": 47, "what": "strdup replacement (malloc + memcpy)"},
+    {"name": "hiddenLoad", "path": "src/sources/gamemanage.cpp", "line": 91, "what": "reads a per-device line list file (tab-tagged names, # comments) into a cached table"},
+    {"name": "gmCollect", "path": "src/sources/gamemanage.cpp", "line": 256, "what": "case-insensitive directory scan for files keyed by a game startup id, with open() probing fallback"},
+    {"name": "FolderBrowse::descend", "path": "src/sources/folderbrowse.cpp", "line": 67, "what": "joins a path segment onto a bounded subpath, refusing truncation"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "PS1 favourites resolve and star by name, but addItem/removeByIdAndText require the stored id, so un-favouriting fails once the PS1 list reorders",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/favsupport.cpp", "start": 616, "end": 619},
+        {"path": "src/sources/favsupport.cpp", "start": 1022, "end": 1029},
+        {"path": "src/sources/favsupport.cpp", "start": 1065, "end": 1076},
+        {"path": "src/sources/favsupport.cpp", "start": 1765, "end": 1776},
+        {"path": "src/sources/favsupport.cpp", "start": 1736, "end": 1745},
+        {"path": "src/sources/favsupport.cpp", "start": 594, "end": 596},
+        {"path": "src/sources/favsupport.cpp", "start": 700, "end": 728},
+        {"path": "src/ui/menuitems.cpp", "start": 459, "end": 465},
+        {"path": "src/sources/vcdsupport.cpp", "start": 737, "end": 738},
+        {"path": "src/sources/cuesupport.cpp", "start": 1105, "end": 1106}
+      ],
+      "problem": "VCD/CUE favourites ignore the stored id when resolving (700-728), lighting device-page stars (594-596) and All Games stars (1740), but the add-time duplicate check (1025) and removeByIdAndText (1071) require recs[i].id == id unless mode is APP (616-619). PS1 lists are qsorted (vcdsupport.cpp:737-738, cuesupport.cpp:1105-1106), so adding/removing a PS1 game or toggling autosort shifts the index. R3 on the lit star (menuitems.cpp:459-465, toggleByIndex 1770) then matches nothing, rewrites the file unchanged, returns 1 ('Removed'), and the star returns on the next rebuild; the next R3 appends a duplicate record.",
+      "fix": "Make favIdsMatchForMode kind-aware: ignore the id for FAV_KIND_VCD and FAV_KIND_CUE exactly as it already does for APP_MODE, and pass the kind from addItem and removeByIdAndText. favRecIsStarred can then call the same helper instead of its own favKindIsNameAddressed special case.",
+      "justification": "",
+      "benefit": "Fixes un-favouriting of PS1 games after any PS1 list change and stops duplicate PS1 records in favourites.bin; net ~0 lines (one extra parameter, one special case folded in).",
+      "benefit_rank": 3,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read favResolve 690-766: name-addressed branch never compares id. favFindVisibleSource 594: LIB_VIEW_PS1 matches by text only. favRecIsStarred 1740 skips id for name-addressed kinds. addItem 1025 and removeByIdAndText 1071 call favIdsMatchForMode(mode, recId, id) which is id-equality except APP_MODE. Callers: menuitems.cpp:446-465 store/remove with libListSourceId (libview.cpp:158-163), the PS1-list index; toggleByIndex 1770 passes the All Games row id. vcdsupport.cpp:730-738 comment says VCD ids follow a qsorted backing array and 'favourites resolve BY NAME'; cuesupport.cpp:1105-1106 qsorts too. hddsupport.cpp:3324 already handles 'Favourites can keep a source id from before a refresh' for ps1SaveDir."
+    },
+    {
+      "n": 2,
+      "title": "R3 handlers keep pointers into gFavSupport's array and the menu row across blocking card I/O while the higher-priority IO worker can free both",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/favsupport.cpp", "start": 1765, "end": 1776},
+        {"path": "src/sources/favsupport.cpp", "start": 1079, "end": 1099},
+        {"path": "src/sources/favsupport.cpp", "start": 1491, "end": 1507},
+        {"path": "src/sources/favsupport.cpp", "start": 1181, "end": 1186},
+        {"path": "src/sources/favsupport.cpp", "start": 789, "end": 800},
+        {"path": "src/ui/menuitems.cpp", "start": 416, "end": 424},
+        {"path": "src/ui/menuitems.cpp", "start": 92, "end": 95},
+        {"path": "src/ui/gui.cpp", "start": 368, "end": 374},
+        {"path": "src/app/opl.cpp", "start": 712, "end": 712},
+        {"path": "src/app/opl.cpp", "start": 908, "end": 909}
+      ],
+      "problem": "itemExecFav runs on the GUI thread (prio 31) after endFrame drops the GUI lock (gui.cpp:368-374). toggleByIndex writes r->starred through r = &array_[i] after addItem/removeByIdAndText card I/O (1769-1774); removeByIndex reuses the array text after I/O (1086-1095); recentRecord copies fav->text (menuitems.cpp:93-95) only after favReadFile (1492-1507); itemExecFav writes it->favourited after I/O (menuitems.cpp:418-423). While the GUI waits on the card RPC, the prio-30 IO worker can run a queued FAV rebuild: clearMenuGameList frees the rows (opl.cpp:712) and update() calls clear(), freeing array_ and texts (1183, 789-800). Every other list rebuild queues one (opl.cpp:908-909).",
+      "fix": "In toggleByIndex and removeByIndex copy mode, id, kind, starred and the text into locals before the I/O, and afterwards touch array_ only if validIndex(favIndex) still holds and that entry's text equals the copy. In itemExecFav re-read curMenu->current after the call instead of writing through the old it, and in itemRecordRecent pass a local copy of fav->text.",
+      "justification": "Closes a write to freed heap reachable from a button press (for example R3 on All Games while the apps scan it arms at 1630-1632, a boot device scan or a hotplug list lands). Local copies and one re-check (~8 lines) are the smallest fix; no new lock is needed.",
+      "benefit": "Removes a use-after-free write that can corrupt the EE heap or star the wrong row; about +8 lines (INFERRED).",
+      "benefit_rank": 3,
+      "lines_removed": -8,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read gui.cpp:114-132 (startFrame locks, endFrame unlocks) and 335-379 (dispatchInput after endFrame); menusys.cpp:2842-2844 calls item->fav directly. opl.cpp:690-741: IO-thread updateMenuFromGameList calls clearMenuGameList (guiLock only inside, 460-476) then gsOf->update; FavSource::update 1181-1186 calls gFavSupport.clear() which frees texts and array_ (789-800). artMode note 910-918 states IO worker prio 30 outranks GUI prio 31. INFERRED part: the timing window (a FAV rebuild must be queued while the GUI thread is blocked in the R3 file I/O)."
+    },
+    {
+      "n": 3,
+      "title": "favWriteFile rewrites favourites.bin/recents.bin even when the new image is byte-identical (every relaunch of the last game, no-match removals)",
+      "category": 5,
+      "locations": [
+        {"path": "src/sources/favsupport.cpp", "start": 528, "end": 545},
+        {"path": "src/sources/favsupport.cpp", "start": 547, "end": 570},
+        {"path": "src/sources/favsupport.cpp", "start": 1486, "end": 1521},
+        {"path": "src/sources/favsupport.cpp", "start": 1065, "end": 1076},
+        {"path": "src/ui/menuitems.cpp", "start": 88, "end": 101}
+      ],
+      "problem": "One save on the GUI thread costs: the caller's favReadFile read, favPrepareSave's second read and parse of the same primary (528-545), a .new write plus read-back, a primary write plus read-back, and a .new delete (547-570). recentRecord (1486-1521), run before every launch by itemRecordRecent (menuitems.cpp:88-101) when Favourites, All Games or Last-played sort is on, always writes, even when the launched game is already first and the result is byte-identical; removeByIdAndText also writes when no record matched (1065-1076).",
+      "fix": "Pass the new image to favPrepareSave; when the complete primary it already loads is byte-identical (same size, memcmp equal), return success without writing. This covers the replay and no-match cases in one place.",
+      "justification": "Saves memory-card writes and launch delay on the commonest launch (replaying the last game) and on no-op removals; the check reuses the primary image favPrepareSave already reads, about 3 lines.",
+      "benefit": "Per skipped save: 2 card file writes, 2 read-backs and a .new create/delete avoided (INFERRED from 547-570); ~+3 lines.",
+      "benefit_rank": 2,
+      "lines_removed": -3,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read favPrepareSave 528-545 (favLoadImage + favParseImage of the primary), favWriteFile 547-570 (favWriteWhole + favImageMatches for .new and primary, then remove). recentRecord 1491-1516: out[0] is the new record, later records skip only matches, then favWriteFile unconditionally; identical bytes when recs[0] is the same game with the same id/icon/text ids. removeByIdAndText 1065-1074 calls favWriteFile even with survivors == count. Callers: menuitems.cpp:88-101 (launch path), 459-468 (R3); favsupport.cpp:442-449 comment confirms the GUI thread runs this off R3."
+    },
+    {
+      "n": 4,
+      "title": "hiddenLists reserves 512 name slots for each of 15 modes: 40,920 bytes of .bss for lists that are usually empty",
+      "category": 4,
+      "locations": [
+        {"path": "src/sources/gamemanage.cpp", "start": 33, "end": 41},
+        {"path": "src/sources/gamemanage.cpp", "start": 70, "end": 88},
+        {"path": "include/gamemanage.h", "start": 9, "end": 10}
+      ],
+      "problem": "hidden_list_t embeds names[HIDDEN_MAX] pointers and ps1[HIDDEN_MAX] flags (gamemanage.cpp:33-39) and hiddenLists has one per MODE_COUNT (15) mode (41): MEASURED 40,920 bytes of .bss. APP, FAV and HTTP can never hold a list (hiddenPrefix 60-62), and a device's hidden list is normally a handful of names.",
+      "fix": "Replace the two fixed arrays with one heap array of {name, ps1} entries per list, grown with realloc in hiddenAppend and freed in hiddenClear; keep HIDDEN_MAX as the cap and keep prefix/loaded/count static.",
+      "justification": "About 38 KB of EE RAM is reserved for the whole run by a feature that is usually unused; a growable array is about 6 extra lines.",
+      "benefit": "MEASURED 40,920 B .bss (BUILD-EVIDENCE.md:113) -> about 2.6 KB (15 x 176 B) plus heap per hidden game; ~38 KB RAM saved.",
+      "benefit_rank": 3,
+      "lines_removed": -6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "evidence/RiptOPL/BUILD-EVIDENCE.md:113 lists hiddenLists 40,920 b and :125 gamemanage.o .bss 40,924. Arithmetic: 160 + 4 + 4 + 512*4 + 512 = 2,728 B x 15 = 40,920. MODE_COUNT = 15 from include/iosupport.h:10-28. Only names/ps1/count are touched: hiddenClear 70-75, hiddenAppend 77-88, hiddenFind 126-132, hiddenSave 156-174, hiddenSet 176-220, all in this file."
+    },
+    {
+      "n": 5,
+      "title": "A torn first save (favourites.bin.new without favourites.bin) or a zero-length store file blocks every later favourite/recent save",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/favsupport.cpp", "start": 226, "end": 234},
+        {"path": "src/sources/favsupport.cpp", "start": 410, "end": 422},
+        {"path": "src/sources/favsupport.cpp", "start": 537, "end": 541},
+        {"path": "src/sources/favsupport.cpp", "start": 553, "end": 560}
+      ],
+      "problem": "With the primary missing and an incomplete but recognised .new, favReadFile returns editable = missing && stagedMissing = 0 (420-421) and favPrepareSave returns ok = missing && recovery.missing = false (540), so addItem, removeByIdAndText and recentRecord refuse to save for good. The first-ever save writes .new while no primary exists (553-560), so a power cut or card pull there leaves exactly this state. A readable zero-length primary (for example made on a PC) is never editable either (231-234). Only deleting the files by hand recovers.",
+      "fix": "When the primary is missing, treat a recognised-but-incomplete .new as replaceable in favReadFile and favPrepareSave (it never held an authoritative list), and treat a readable zero-length file as an empty editable list.",
+      "justification": "",
+      "benefit": "Removes a permanent 'save failed' state for favourites and recents; three condition edits, no added lines.",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Traced favReadFile 395-423: primary missing -> complete 0; staged torn OFAV -> favParseImage keeps recognized = 1 but complete = 0 (283-323), so stagedComplete = 0 and line 421 gives editable = 1 && 0. favPrepareSave 537-541 uses recovery.missing only. favParseImage 231-234 returns with editable 0 for size 0 while recognized stays 1; with no .new, line 421 again yields 0. addItem 1013-1016, removeByIdAndText 1060-1063, recentRecord 1493-1496 all return 0 when not editable. Trigger (power loss in the first-save window, or an externally created empty file) is rare."
+    }
+  ]
+}

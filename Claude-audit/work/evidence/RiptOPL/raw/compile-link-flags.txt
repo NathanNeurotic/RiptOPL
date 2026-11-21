@@ -1,0 +1,154 @@
+# from compile_commands.json and build.ninja of build/editions/korium-gcc
+## per target: TUs, TUs with -ffunction-sections, with -fdata-sections, optimisation level counts
+IEEE1394_bd_mini_fork            tus=   4 ffs=   0 fds=   0 -Os:4
+SMSTCPIP                         tus=  22 ffs=   0 fds=   0 -Os:22
+SMSUTILS                         tus=   1 ffs=   0 fds=   0 -Os:1
+_embed                           tus=  86 ffs=   0 fds=   0 
+apemodpatch                      tus=   2 ffs=   0 fds=   0 -Os:2
+ata_bd                           tus=   3 ffs=   0 fds=   0 -Os:3
+bdm_ata_cdvdman                  tus=  15 ffs=   0 fds=   0 -Os:15
+bdm_cdvdman                      tus=  13 ffs=   0 fds=   0 -Os:13
+bdm_drv                          tus=   7 ffs=   0 fds=   0 -Os:7
+bdm_fork                         tus=   2 ffs=   0 fds=   0 -Os:2
+bdm_mcemu                        tus=   7 ffs=   0 fds=   0 -Os:7
+bdm_udp_cdvdman                  tus=  14 ffs=   0 fds=   0 -Os:14
+bdmevent                         tus=   2 ffs=   0 fds=   0 -Os:2
+bdmfs_fatfs_fork                 tus=   7 ffs=   0 fds=   0 -Os:7
+bt_pademu                        tus=   7 ffs=   0 fds=   0 -Os:7
+cdvdfsv                          tus=   6 ffs=   0 fds=   0 -Os:6
+cleareffects                     tus=   2 ffs=   0 fds=   0 -Os:2
+ds34bt                           tus=   3 ffs=   0 fds=   0 -Os:3
+ds34bt_ee                        tus=   1 ffs=   1 fds=   0 -O2:1
+ds34usb                          tus=   3 ffs=   0 fds=   0 -Os:3
+ds34usb_ee                       tus=   1 ffs=   1 fds=   0 -O2:1
+eecore                           tus=  19 ffs=  19 fds=   0 -Os:19
+elfldr                           tus=   1 ffs=   1 fds=   1 -Os:1
+f2techioppatch                   tus=   2 ffs=   0 fds=   0 -Os:2
+genvmc                           tus=   2 ffs=   0 fds=   0 -Os:2
+hdd_cdvdman                      tus=  15 ffs=   0 fds=   0 -Os:15
+hdd_hdpro_cdvdman                tus=  14 ffs=   0 fds=   0 -Os:14
+hdd_mcemu                        tus=   7 ffs=   0 fds=   0 -Os:7
+http_cdvdman                     tus=  14 ffs=   0 fds=   0 -Os:14
+httpclient                       tus=   4 ffs=   0 fds=   0 -Os:4
+iLinkman_fork                    tus=   9 ffs=   0 fds=   0 -Os:9
+igrmbox                          tus=   2 ffs=   0 fds=   0 -Os:2
+imgdrv                           tus=   2 ffs=   0 fds=   0 -Os:2
+iremsndpatch                     tus=   3 ffs=   0 fds=   0 -Os:3
+isofs                            tus=   4 ffs=   0 fds=   0 -Os:4
+lwnbdsvr                         tus=  13 ffs=   0 fds=   0 -Os:13
+mbedtls                          tus= 109 ffs= 109 fds=   0 -O2:109
+mmce_cdvdman                     tus=  13 ffs=   0 fds=   0 -Os:13
+mmce_mcemu                       tus=   7 ffs=   0 fds=   0 -Os:7
+mmceman_fork                     tus=   7 ffs=   0 fds=   0 -Os:7
+mx4sio_bd_full_fork              tus=   7 ffs=   0 fds=   0 -Os:7
+mx4sio_bd_mini_fork              tus=   7 ffs=   0 fds=   0 -Os:7
+nbns                             tus=   4 ffs=   0 fds=   0 -Os:4
+nfs_cdvdman                      tus=  15 ffs=   0 fds=   0 -Os:15
+nfsman                           tus=   2 ffs=   2 fds=   2 -Os:2
+pccf_bd                          tus=   6 ffs=   0 fds=   0 -O2:6
+pccf_cdvdman                     tus=  14 ffs=   0 fds=   0 -Os:14
+pccf_game                        tus=   6 ffs=   0 fds=   0 -O2:6
+ps2hdd_osd                       tus=  11 ffs=   0 fds=   0 -Os:11
+ps2ips_fork                      tus=   2 ffs=   0 fds=   0 -Os:2
+raudp                            tus=   3 ffs=   0 fds=   0 -Os:3
+resetspu                         tus=   2 ffs=   0 fds=   0 -Os:2
+riptopl                          tus= 267 ffs= 267 fds= 267 -O2:267
+smap_ingame                      tus=   4 ffs=   0 fds=   0 -Os:4
+smap_udpbd                       tus=   8 ffs=   0 fds=   0 -Os:8
+smb2_cdvdman                     tus=  16 ffs=   0 fds=   0 -Os:16
+smb2man                          tus=   8 ffs=   8 fds=   8 -Os:8
+smb2probe                        tus=   1 ffs=   1 fds=   0 -O2:1
+smb2probe_iop                    tus=   2 ffs=   0 fds=   0 -Os:2
+smb_cdvdman                      tus=  15 ffs=   0 fds=   0 -Os:15
+smb_mcemu                        tus=   7 ffs=   0 fds=   0 -Os:7
+smbinit                          tus=   5 ffs=   0 fds=   0 -Os:5
+smbman_ra                        tus=   8 ffs=   0 fds=   0 -Os:8
+udpfs_bd                         tus=   6 ffs=   0 fds=   0 -Os:6
+udpfs_cdvdman                    tus=  14 ffs=   0 fds=   0 -Os:14
+udpfs_fhi                        tus=   6 ffs=   0 fds=   0 -Os:6
+udpfs_ioman                      tus=   6 ffs=   0 fds=   0 -Os:6
+udpfs_ministack                  tus=   9 ffs=   0 fds=   0 -Os:9
+udpfs_smap                       tus=   5 ffs=   0 fds=   0 -Os:5
+udptty_ingame                    tus=   3 ffs=   0 fds=   0 -Os:3
+usb_pademu                       tus=   7 ffs=   0 fds=   0 -Os:7
+usbd_mini_fork                   tus=   9 ffs=   0 fds=   0 -Os:9
+usbmass_bd_mini_fork             tus=   4 ffs=   0 fds=   0 -Os:4
+xhdd                             tus=   4 ffs=   0 fds=   0 -Os:4
+
+## link edges: --gc-sections present? (all links in build.ninja)
+# 6 of 69 links pass -Wl,--gc-sections
+--  obj/IEEE1394_bd_mini_fork/IEEE1394_bd_mini_fork.notiopmod.elf
+--  obj/SMSTCPIP/SMSTCPIP.notiopmod.elf
+--  obj/SMSUTILS/SMSUTILS.notiopmod.elf
+--  obj/apemodpatch/apemodpatch.notiopmod.elf
+--  obj/ata_bd/ata_bd.notiopmod.elf
+--  obj/bdm_ata_cdvdman/bdm_ata_cdvdman.notiopmod.elf
+--  obj/bdm_cdvdman/bdm_cdvdman.notiopmod.elf
+--  obj/bdm_drv/bdm_drv.notiopmod.elf
+--  obj/bdm_mcemu/bdm_mcemu.notiopmod.elf
+--  obj/bdm_udp_cdvdman/bdm_udp_cdvdman.notiopmod.elf
+--  obj/bdmevent/bdmevent.notiopmod.elf
+--  obj/bdmfs_fatfs_fork/bdmfs_fatfs_fork.notiopmod.elf
+--  obj/bt_pademu/bt_pademu.notiopmod.elf
+--  obj/cdvdfsv/cdvdfsv.notiopmod.elf
+--  obj/cleareffects/cleareffects.notiopmod.elf
+--  obj/ds34bt/ds34bt.notiopmod.elf
+--  obj/ds34usb/ds34usb.notiopmod.elf
+gc  obj/eecore/eecore.unstripped.elf
+gc  obj/elfldr/elfldr.unstripped.elf
+--  obj/f2techioppatch/f2techioppatch.notiopmod.elf
+--  obj/genvmc/genvmc.notiopmod.elf
+--  obj/hdd_cdvdman/hdd_cdvdman.notiopmod.elf
+--  obj/hdd_hdpro_cdvdman/hdd_hdpro_cdvdman.notiopmod.elf
+--  obj/hdd_mcemu/hdd_mcemu.notiopmod.elf
+--  obj/http_cdvdman/http_cdvdman.notiopmod.elf
+--  obj/httpclient/httpclient.notiopmod.elf
+--  obj/iLinkman_fork/iLinkman_fork.notiopmod.elf
+--  obj/igrmbox/igrmbox.notiopmod.elf
+--  obj/imgdrv/imgdrv.notiopmod.elf
+--  obj/iremsndpatch/iremsndpatch.notiopmod.elf
+--  obj/isofs/isofs.notiopmod.elf
+--  obj/lwnbdsvr/lwnbdsvr.notiopmod.elf
+--  obj/mmce_cdvdman/mmce_cdvdman.notiopmod.elf
+--  obj/mmce_mcemu/mmce_mcemu.notiopmod.elf
+--  obj/mmceman_fork/mmceman_fork.notiopmod.elf
+--  obj/mx4sio_bd_full_fork/mx4sio_bd_full_fork.notiopmod.elf
+--  obj/mx4sio_bd_mini_fork/mx4sio_bd_mini_fork.notiopmod.elf
+--  obj/nbns/nbns.notiopmod.elf
+--  obj/nfs_cdvdman/nfs_cdvdman.notiopmod.elf
+gc  obj/nfsman/nfsman.notiopmod.elf
+--  obj/pccf_bd/pccf_bd.notiopmod.elf
+--  obj/pccf_cdvdman/pccf_cdvdman.notiopmod.elf
+--  obj/pccf_game/pccf_game.notiopmod.elf
+--  obj/ps2hdd_osd/ps2hdd_osd.notiopmod.elf
+--  obj/ps2ips_fork/ps2ips_fork.notiopmod.elf
+--  obj/raudp/raudp.notiopmod.elf
+--  obj/resetspu/resetspu.notiopmod.elf
+gc  obj/riptopl/riptopl.unstripped.elf
+--  obj/smap_ingame/smap_ingame.notiopmod.elf
+--  obj/smap_udpbd/smap_udpbd.notiopmod.elf
+--  obj/smb2_cdvdman/smb2_cdvdman.notiopmod.elf
+gc  obj/smb2man/smb2man.notiopmod.elf
+gc  obj/smb2probe/smb2probe.unstripped.elf
+--  obj/smb2probe_iop/smb2probe_iop.notiopmod.elf
+--  obj/smb_cdvdman/smb_cdvdman.notiopmod.elf
+--  obj/smb_mcemu/smb_mcemu.notiopmod.elf
+--  obj/smbinit/smbinit.notiopmod.elf
+--  obj/smbman_ra/smbman_ra.notiopmod.elf
+--  obj/udpfs_bd/udpfs_bd.notiopmod.elf
+--  obj/udpfs_cdvdman/udpfs_cdvdman.notiopmod.elf
+--  obj/udpfs_fhi/udpfs_fhi.notiopmod.elf
+--  obj/udpfs_ioman/udpfs_ioman.notiopmod.elf
+--  obj/udpfs_ministack/udpfs_ministack.notiopmod.elf
+--  obj/udpfs_smap/udpfs_smap.notiopmod.elf
+--  obj/udptty_ingame/udptty_ingame.notiopmod.elf
+--  obj/usb_pademu/usb_pademu.notiopmod.elf
+--  obj/usbd_mini_fork/usbd_mini_fork.notiopmod.elf
+--  obj/usbmass_bd_mini_fork/usbmass_bd_mini_fork.notiopmod.elf
+--  obj/xhdd/xhdd.notiopmod.elf
+
+## flags of obj/riptopl/riptopl.unstripped.elf
+-Llib -O2 -Wl,--gc-sections -nostartfiles -L<HOME>/AppData/Local/ps2build/packages/core/startup/ee/lib -L<HOME>/AppData/Local/ps2build/packages/world/gskit/lib -L<HOME>/AppData/Local/ps2build/packages/world/dmakit/lib -L<HOME>/AppData/Local/ps2build/packages/core/poweroff/lib -L<HOME>/AppData/Local/ps2build/packages/core/filexio/lib -L<HOME>/AppData/Local/ps2build/packages/core/patches/lib -L<HOME>/AppData/Local/ps2build/packages/world/png/lib -L<HOME>/AppData/Local/ps2build/packages/world/jpeg/lib -L<HOME>/AppData/Local/ps2build/packages/world/z/lib -L<HOME>/AppData/Local/ps2build/packages/core/mc/lib -L<HOME>/AppData/Local/ps2build/packages/world/freetype/lib -L<HOME>/AppData/Local/ps2build/packages/core/vux/lib -L<HOME>/AppData/Local/ps2build/packages/core/cdvd/lib -L<HOME>/AppData/Local/ps2build/packages/core/netman/lib -L<HOME>/AppData/Local/ps2build/packages/core/ps2ips/lib -L<HOME>/AppData/Local/ps2build/packages/world/audsrv-compat/lib -L<HOME>/AppData/Local/ps2build/packages/world/vorbis/lib -L<HOME>/AppData/Local/ps2build/packages/world/ogg/lib -L<HOME>/AppData/Local/ps2build/packages/core/pad/lib -L<HOME>/AppData/Local/ps2build/packages/core/debug/lib -L<HOME>/AppData/Local/ps2build/packages/world/audio/lib -L<HOME>/AppData/Local/ps2build/packages/core/cdvd/lib -L<HOME>/AppData/Local/ps2build/packages/core/pthreadglue/lib -L<HOME>/AppData/Local/ps2build/packages/core/cglue/lib -L<HOME>/AppData/Local/ps2build/packages/core/kernel/lib -L<HOME>/AppData/Local/ps2build/packages/core/profglue/lib -L<HOME>/AppData/Local/ps2build/toolchain/ee/lib -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-zmax-page-size=128 -Wl,-Map,opl.map -lpadx
+
+## flags of obj/eecore/eecore.unstripped.elf
+-Os -Wl,--gc-sections -nostartfiles -L<HOME>/AppData/Local/ps2build/packages/core/startup/ee/lib -L<HOME>/AppData/Local/ps2build/packages/core/patches/lib -L<HOME>/AppData/Local/ps2build/packages/core/kernel/lib -L<HOME>/AppData/Local/ps2build/packages/core/cdvd/lib -L<HOME>/AppData/Local/ps2build/packages/core/pthreadglue/lib -L<HOME>/AppData/Local/ps2build/packages/core/cglue/lib -L<HOME>/AppData/Local/ps2build/packages/core/kernel/lib -L<HOME>/AppData/Local/ps2build/packages/core/profglue/lib -L<HOME>/AppData/Local/ps2build/toolchain/ee/lib -nostartfiles -nostdlib -Wl,-Map,eecore.map

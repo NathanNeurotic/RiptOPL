@@ -1,0 +1,72 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-03.b",
+  "coverage": [
+    {"path": "ee_core/src/gsm_engine.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/gsm_engine_adv.S", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/igrmbox.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/igrmenu.c", "status": "read_full", "note": ""},
+    {"path": "ee_core/src/igrovl_stub.c", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "gsm_engine.S (upstream Open PS2 Loader GSM, with fork additions) is the eecore's SetGsCrt syscall hook and the level-2 debug-exception handler GSHandler that emulates trapped loads/stores to the GS privileged registers, rewriting them for forced video modes or, in TRACK_ONLY mode, only recording PMODE/SMODE2/DISPFB/DISPLAY for the RetroAchievements cards and the in-game menu; it also emulates the branch when the trapped access sits in a delay slot. gsm_engine_adv.S (included by gsm_engine.S) holds the custom DTV_576P and DTV_1080P raster setup and the SMODE1/SRFSH/SYNC write handlers. igrmenu.c is the in-game menu ported from RIPPS2: it finds the shown frame from the GSM record, renders a small bitmap-font panel line by line and uploads it with VIF1 DIRECT image transfers, reads the covered pixels back from the GS first and restores them on RESUME, and runs the RESUME/CHEATS/EXIT/POWER OFF loop on the IGR thread while the game is paused. igrmbox.c is the EE half of a SIF-DMA mailbox to igrmbox.irx (IOP buffer for the saved pixels, SPU2 hush/wake). igrovl_stub.c forwards IGR_MenuRun/IGR_MboxLink to the separate igrovl.elf overlay in RetroAchievements editions.",
+  "reusable_helpers": [
+    {"name": "igrmNum", "path": "ee_core/src/igrmenu.c", "line": 196, "what": "writes a non-negative int as decimal and returns the end pointer (no libc)"},
+    {"name": "igrmCat", "path": "ee_core/src/igrmenu.c", "line": 188, "what": "strcpy that returns the end of the result, for chaining"},
+    {"name": "igrmEndsWith", "path": "ee_core/src/igrmenu.c", "line": 213, "what": "case-insensitive string suffix test"},
+    {"name": "igrmPath", "path": "ee_core/src/igrmenu.c", "line": 231, "what": "splits/elides a path over two fixed-width lines, breaking after '/' or space"},
+    {"name": "igrmDiv", "path": "ee_core/src/igrmenu.c", "line": 565, "what": "u32 divide via divu without the compiler's divide-by-zero trap"},
+    {"name": "igrmWaitClear", "path": "ee_core/src/igrmenu.c", "line": 709, "what": "bounded poll until register bits clear"},
+    {"name": "igrmWaitFor", "path": "ee_core/src/igrmenu.c", "line": 774, "what": "bounded poll until masked register bits equal a value"},
+    {"name": "igrmCount", "path": "ee_core/src/igrmenu.c", "line": 701, "what": "reads the COP0 Count register (same as mbCount in igrmbox.c:36)"},
+    {"name": "igrmRead", "path": "ee_core/src/igrmenu.c", "line": 783, "what": "GS local-to-host read of one frame line through the VIF1 FIFO"},
+    {"name": "igrmSendLine", "path": "ee_core/src/igrmenu.c", "line": 719, "what": "uploads one image line to GS memory via VIF1 DIRECT (PATH2) DMA"},
+    {"name": "Enable_GSBreakpoint / Disable_GSBreakpoint", "path": "ee_core/src/gsm_engine.S", "line": 1266, "what": "arm/disarm the EE data-address breakpoint on the GS privileged register page"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "GSHandler delay-slot emulation: B_taken zero-extends backward branch offsets and B_com1 masks the REGIMM field with 0x3F",
+      "category": 6,
+      "locations": [
+        {"path": "ee_core/src/gsm_engine.S", "start": 1128, "end": 1134},
+        {"path": "ee_core/src/gsm_engine.S", "start": 1061, "end": 1064},
+        {"path": "ee_core/src/gsm_engine.S", "start": 119, "end": 127},
+        {"path": "ee_core/src/main.c", "start": 127, "end": 152}
+      ],
+      "problem": "When a trapped GS access is in a branch delay slot, GSHandler computes the resume PC itself. B_taken takes the offset with and 0xFFFF then sll 2, so a negative offset is zero-extended: a taken backward branch resumes at EPC+4+~0x3FFxx (about 256 KB ahead) instead of the loop head. B_com1 masks the REGIMM rt field with 0x3F, which also takes bit 21 (low bit of rs), so BLTZ/BGEZ/... on an odd register (v1, a1, a3, t1, s1, sp, ra...) indexes past the 32-word BD_t2 table and jumps to whatever word follows it. Either way the game jumps into arbitrary code.",
+      "fix": "In B_taken replace the li/and/sll triple with a sign-extending pair (shift the instruction left 16, then arithmetic shift right 14). In B_com1 change the mask from 0x3F to 0x1F (its own comment already says range 0x00-0x1F).",
+      "justification": "",
+      "benefit": "Fixes a crash/freeze whenever a trapped GS access sits in a backward-branch delay slot (GSM: CSR polling loops with the ld in a beql slot; IGR menu tracker: GS register stores in loops) or an odd-rs REGIMM slot (INFERRED frequency); net -1 instruction",
+      "benefit_rank": 4,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read gsm_engine.S:1030-1255 (BD path: BD2 from Cause bit 30, BD_t1/BD_t2 dispatch, B_taken, B_com1), 99-127 (BD_t2 = 32 words, last item of .data), 1266-1312 (BPC 0x60280000 = DRE+DWE for GSM, reads of CSR page trapped via TRAP_MASK 0x1FFFEF0F in gsm_defines.h:17; 0x20280000 = DWE for TRACK_ONLY). Reachability: main.c:127-140 EnableGSM when per-game GSM is on; main.c:147-151 EnableGSTracker for every game when In-Game Menu is on (IGR_MENU is a base define, ps2.yaml:609); gsm_api.c:155-174 installs GSHandler at 0x80000100. git blame: both lines date from a3f22727 (2015), 62052d1a1 (2021) only reindented (git show). grep over all of src/ for these lines: only this file. Code defect is READ; how often real games hit it is INFERRED. Upstream-derived (Open PS2 Loader GSM)."
+    },
+    {
+      "n": 2,
+      "title": "Comments say DTV_1080P is variant-only, but GSM_1080P is a base define of eecore and the main ELF",
+      "category": 7,
+      "locations": [
+        {"path": "ee_core/src/gsm_engine_adv.S", "start": 136, "end": 139},
+        {"path": "ee_core/src/gsm_engine.S", "start": 182, "end": 182},
+        {"path": "ee_core/src/gsm_engine.S", "start": 204, "end": 205},
+        {"path": "ps2.yaml", "start": 609, "end": 609},
+        {"path": "ps2.yaml", "start": 644, "end": 644}
+      ],
+      "problem": "gsm_engine_adv.S:138-139 says DTV_1080P is compiled only into a dedicated GSM1080P variant and absent from every default build; gsm_engine.S:182 and 204-205 say the same and that a mainline build is bit-for-bit unaffected. ps2.yaml defines GSM_1080P for eecore (:609) and riptopl (:644), and .github/scripts/test_ps2build_configurations.py:61 asserts it, so the hardware-unvalidated 1080p raster ships in every build behind the guigame.cpp confirmations. The comments misstate the shipped risk.",
+      "fix": "Correct the three comments to say GSM_1080P is a base define (one line each), or drop GSM_1080P from the base defines if variant-only was the intent.",
+      "justification": "",
+      "benefit": "Accurate safety statement for shipped code; no size change (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep -n GSM_1080P over *.yaml *.py *.c *.h *.cpp *.S: ps2.yaml:609 and :644 (base defines), test_ps2build_configurations.py:61 (assertIn GSM_1080P), guigame.cpp:924-2262 and gsm.cpp:142 (UI), gsm_engine.S:182, gsm_engine_adv.S:138-140."
+    }
+  ]
+}

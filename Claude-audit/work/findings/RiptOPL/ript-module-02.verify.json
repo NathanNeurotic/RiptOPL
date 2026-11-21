@@ -1,0 +1,124 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-module-02",
+  "verdicts": [
+    {
+      "n": 1,
+      "verdict": "corrected",
+      "note": "diff -w of every bdmassault file against modules/ilink: iLink_intr/DMA/PHY 2 lines (include path), iLink_TxRx 5 (include path plus one comment split), iLink.c 8 (BD_iLink_start chain :74,:160-163), iLink_internal.c 38, iLink_crom.c 58, iLink_CROM.h 52, iLink_internal.h 62, iLinkman.h 50, README identical, sbp2_driver.c 57 (sbp2FreeDevNr at modules/ilink sbp2_driver.c:403-427 absent), scsi.c 141. ORIGIN.txt:18-20 says what is quoted; modules/ilink scsi.c:397 sets bd->path. Duplication is real. Corrections: ilink_bd_assault/README.md:102-104 says the device-number change was left out on purpose ('this copy's BDM layer has no use for'), so the justification's claim that the POPSTARTER build is missing it as a fix is wrong; the merged build must keep that difference. Line count: cited bdmassault files minus the kept Makefile are 3,440 lines, plus iLink_internal.h (327) and iLink_CROM.h (72) which the benefit mentions but the locations omitted, minus ~40 ifdef lines = ~3,800.",
+      "corrected": {
+        "locations": [
+          {"path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/sbp2_driver.c", "start": 1, "end": 801},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/scsi.c", "start": 1, "end": 386},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/include/sbp2_disk.h", "start": 1, "end": 183},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/include/scsi.h", "start": 1, "end": 19},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/include/module_debug.h", "start": 1, "end": 22},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/main.c", "start": 1, "end": 33},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/include/iLinkman.h", "start": 1, "end": 88},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/README", "whole": true},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink.c", "start": 1, "end": 369},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_DMA.c", "start": 1, "end": 132},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_PHY.c", "start": 1, "end": 74},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_TxRx.c", "start": 1, "end": 212},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_crom.c", "start": 1, "end": 398},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_internal.c", "start": 1, "end": 190},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_intr.c", "start": 1, "end": 469},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/include/iLink_internal.h", "start": 1, "end": 327},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/include/iLink_CROM.h", "start": 1, "end": 72},
+          {"path": "modules/bdmassault/ilink_bd_assault/Makefile", "start": 1, "end": 36},
+          {"path": "modules/bdmassault/ilink_bd_assault/README.md", "start": 102, "end": 104},
+          {"path": "modules/ilink/IEEE1394_bd/src/sbp2_driver.c", "start": 403, "end": 427},
+          {"path": "modules/ilink/IEEE1394_bd/ORIGIN.txt", "start": 18, "end": 20}
+        ],
+        "justification": "Adds roughly 30-40 lines of #ifdef in modules/ilink to remove about 3,800 duplicated lines; it ends the double maintenance that ORIGIN.txt:18-20 documents (the #1024, October 22 and November 2 changes were each written twice). The ifdefs must keep the deliberate differences: no device-number change for this copy (README.md:102-104), the cdvdman-free GetConsoleIDs and the chained _start. Whether the newer READ(16) path is wanted under POPSTARTER is untested.",
+        "benefit": "~3,800 source lines removed (3,440 lines of cited bdmassault sources excluding the kept Makefile, plus iLink_internal.h 327 and iLink_CROM.h 72, minus ~40 ifdef lines); every future i.LINK fix made once. No menu ELF change claimed. INFERRED.",
+        "lines_removed": 3800
+      }
+    },
+    {
+      "n": 2,
+      "verdict": "confirmed",
+      "note": "Read Makefile:9-16,30-36: IOP_SRC_DIR := src/, objects from src/; wc gives 73+35+30+74+32 = 244 lines for the five sub-tree files. git grep irx_imports over modules/bdmassault: no #include of it in any .c (src/irx_imports.h is pulled in by the SDK imports rule via -Isrc/). iLinkman/src/imports.lst:1-4 imports sceCdRI/sceCdRM; I_PollEventFlag is absent from IEEE1394_bd/src/imports.lst but present at src/imports.lst:64 and called at sbp2_driver.c:392. No .github/tools/tests file references the sub-tree import files (only ps2.yaml:325-336 for modules/ilink paths)."
+    },
+    {
+      "n": 3,
+      "verdict": "corrected",
+      "note": "git grep REQ_CHECK_DMAC_STAT/REQ_CHECK_ERRORS (excluding docs): only the #ifdef sites in both iLinkman copies and the commented defines at iLink_internal.h:17-18 of both; ps2.yaml:319-326 iLinkman_fork and both Makefiles define neither; no test defines them. Commented-out code confirmed at the cited bdmassault lines. Correction: the modules/ilink location 374-453 included live code; replaced with tight ranges and added that copy's matching commented-out lines (iLink_internal.c:151, iLink_intr.c:120-123, iLink_TxRx.c:150-151, iLink_internal.h:17-18).",
+      "corrected": {
+        "locations": [
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_internal.c", "start": 82, "end": 88},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_internal.c", "start": 138, "end": 138},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_intr.c", "start": 120, "end": 123},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_intr.c", "start": 374, "end": 376},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_intr.c", "start": 398, "end": 422},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_intr.c", "start": 445, "end": 453},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_TxRx.c", "start": 150, "end": 152},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/include/iLink_internal.h", "start": 17, "end": 18},
+          {"path": "modules/ilink/iLinkman/src/iLink_internal.c", "start": 95, "end": 101},
+          {"path": "modules/ilink/iLinkman/src/iLink_internal.c", "start": 151, "end": 151},
+          {"path": "modules/ilink/iLinkman/src/iLink_intr.c", "start": 120, "end": 123},
+          {"path": "modules/ilink/iLinkman/src/iLink_intr.c", "start": 374, "end": 376},
+          {"path": "modules/ilink/iLinkman/src/iLink_intr.c", "start": 398, "end": 422},
+          {"path": "modules/ilink/iLinkman/src/iLink_intr.c", "start": 445, "end": 453},
+          {"path": "modules/ilink/iLinkman/src/iLink_TxRx.c", "start": 150, "end": 151},
+          {"path": "modules/ilink/iLinkman/src/include/iLink_internal.h", "start": 17, "end": 18}
+        ]
+      }
+    },
+    {
+      "n": 4,
+      "verdict": "confirmed",
+      "note": "git grep USE_CUSTOM_ILINKMAN_MALLOC_AND_FREE: only iLink_internal.c:170. Read iLink_internal.c:170-190 (the #endif is on line 191, no trailing newline) and sbp2_driver.c:782-801: same AllocSysMemory/FreeSysMemory bodies with interrupts suspended (parameter type unsigned int vs int only)."
+    },
+    {
+      "n": 5,
+      "verdict": "confirmed",
+      "note": "git grep over modules, .github, ps2.yaml: DeinitIEEE1394 only defined (bdmassault :775, ilink :802) and prototyped (sbp2_disk.h:180 both), no caller, not exported; iLinkIntrCBThreadID otherwise used only in init_ieee1394DiskDriver :109-112. sbp2_get_max_lun (:684-689 / :711-716) returns 0, set at :87 / :89, called at scsi.c:170-171 / :215-216 only for M_DEBUG. ieee1394_SendManagementORB called only at :250 / :251 with SBP2_LOGIN_REQUEST and rejects other modes at :627 / :654. sbp2_driver.c uses no USBMASS_/bd_fragment symbol. main.c:13 commented IRX_ID and sbp2_driver.c:45 commented declaration confirmed. Tests that need adjusting are named in the fix."
+    },
+    {
+      "n": 6,
+      "verdict": "confirmed",
+      "note": "Read bdmassault scsi.c:238-290 and modules/ilink scsi.c:304-358: in each copy scsi_read and scsi_write differ only in const and the 0/1 write flag passed to scsi_cmd_rw_sector (the ilink copy also has the same DEBUG_U64_2XU32 debug lines in both). ~26-line loop duplicated per copy; net ~20 per copy after one helper plus two thin wrappers."
+    },
+    {
+      "n": 7,
+      "verdict": "corrected",
+      "note": "scsi.c:30-41 repeats sbp2_driver.c:143-155's GetSystemTime / 64-bit subtract / SysClock2USec sequence (same in modules/ilink :144-156). warmup_interface is set only around the single scsi_warmup call in scsi_connect (bdmassault scsi.c:334-337, ilink :404-407), so the budget always applies. But the try count is not exactly redundant: with negligible command time the 300th try is checked after 299 delays (~29.9 s), one poll before the 30 s budget trips, and test_ilink_bd_reset.py:182 and test_ilink_bd_assault_reset.py:193 assert turCalls <= 300 on a simulated clock. Dropping SCSI_READY_TRIES allows one more TEST UNIT READY and requires those test checks to change; the fix now says so.",
+      "corrected": {
+        "fix": "Make sbp2ElapsedUs non-static (declare it in scsi.h) and call it from scsiCommandBudget; drop SCSI_READY_TRIES and the tries counter, keeping the 30 s elapsed-time budget (it allows at most one more poll), and update the turCalls <= 300 checks in test_ilink_bd_reset.py and test_ilink_bd_assault_reset.py plus the scsi.c extraction in those tests so they supply the shared helper."
+      }
+    },
+    {
+      "n": 8,
+      "verdict": "confirmed",
+      "note": "Read src/exports.tab (22 iLinkman entries at 004-025), iLink.c:156-163 (RegisterLibraryEntries then BD_iLink_start), and the export-only functions: grep -rnw over ilink_bd_assault/src finds iLinkSetNodeCapabilities (iLink.c:266), iLinkDisableSBus (:300), iLinkGetLocalNodeEUI64 (:366), iLinkAddCROMUnit (iLink_crom.c:65), iLinkDeleteCROMUnit (:92), iLinkGetNodeCapabilities (:104) only at their definitions. PROVENANCE.md:21-25,40 confirms usbd.irx.ilink is bdm_assault.irx and usbhdfsd.irx.ilink is 27,769 bytes. The finding already marks POPSTARTER's import behaviour and the byte saving as INFERRED with Low confidence."
+    },
+    {
+      "n": 9,
+      "verdict": "corrected",
+      "note": "REQ_CHECK_CONSOLE_VERSION: Makefile:10 -D and iLink_internal.h:16 #define (line 15 is the unrelated REQ_CHECK_MEM_BOUNDARIES); iLink.c includes the header at :23 and tests it at :60,:88. src/include does not exist; IOP_LIB is never set. iLink_internal.c:15 includes cdvdman.h while GetConsoleIDs (:57-64) uses no cdvdman symbol. Correction: the cited IEEE1394_bd/src/irx_imports.h:21-27 is the unused copy from finding 2; the live file is src/irx_imports.h, with cdvdman.h at :20 and the SIF_CALLBACKS_12_13 guard at :32-34. Makefile range tightened to the IOP_INC_DIR/IOP_LIB lines 16-21.",
+      "corrected": {
+        "locations": [
+          {"path": "modules/bdmassault/ilink_bd_assault/Makefile", "start": 10, "end": 10},
+          {"path": "modules/bdmassault/ilink_bd_assault/Makefile", "start": 16, "end": 21},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/include/iLink_internal.h", "start": 16, "end": 16},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_internal.c", "start": 15, "end": 15},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/irx_imports.h", "start": 20, "end": 20},
+          {"path": "modules/bdmassault/ilink_bd_assault/src/irx_imports.h", "start": 32, "end": 34}
+        ],
+        "problem": "REQ_CHECK_CONSOLE_VERSION is already #defined unconditionally in iLink_internal.h:16 (included by iLink.c before its use), so the Makefile -D only duplicates it; IOP_LIB is never set and IOP_INC_DIR names src/include/, which does not exist; iLink_internal.c and the live src/irx_imports.h still include cdvdman.h although nothing uses cdvdman, and the SIF_CALLBACKS_12_13 guard in src/irx_imports.h is never defined.",
+        "fix": "Drop the -DREQ_CHECK_CONSOLE_VERSION flag, the $(IOP_LIB) references and IOP_INC_DIR, the cdvdman.h includes in iLink_internal.c and src/irx_imports.h, and the SIF_CALLBACKS_12_13 guard in src/irx_imports.h."
+      }
+    },
+    {
+      "n": 10,
+      "verdict": "confirmed",
+      "note": "part_driver.c:140 is the only assignment of part_connect_gpt; fs connect_bd is called only at bdm.c:184, after the sectorSize != 512 return at bdm.c:169-180. The device passed may be the cache device, but bd_cache.c:250 copies bd->sectorSize, and partition devices copy it at part_driver_gpt.c:171. So entriesPerSector is always 512/128 = 4 and the check at part_driver_gpt.c:69-74 cannot fire. git blame: lines 69-74 from 5fe47865 (2026-10-27)."
+    },
+    {
+      "n": 11,
+      "verdict": "confirmed",
+      "note": "part_driver_mbr.c:14-32: valid++ is unconditional and the only other exit is return 0, so valid == 4 always holds. git grep over the repo (excluding docs): MS_BASIC_DATA_PARTITION_GUID (gpt_types.h:44), GPT_PART_ATTR_PLATFORM_REQUIRED (:56), LEGACY_BOOTABLE (:58), TYPE_* (:60-62) and GPT_BDP_* (:64-68) appear only in gpt_types.h; NULL_GUID, MS_RESERVED, EFI_SYSTEM and GPT_PART_ATTR_IGNORE are used in part_driver_gpt.c and kept. Read part_driver.c in full: no errno, string, MBR or GPT symbol is used (part_driver.h itself includes only bdm.h)."
+    }
+  ]
+}

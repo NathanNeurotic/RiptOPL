@@ -1,0 +1,183 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-11",
+  "coverage": [
+    {"path": "src/core/config.cpp", "status": "read_full", "note": ""},
+    {"path": "src/core/diagsave.cpp", "status": "read_full", "note": ""},
+    {"path": "include/filemgr.h", "status": "read_full", "note": ""},
+    {"path": "src/core/filemgr.cpp", "status": "read_full", "note": ""},
+    {"path": "src/core/gsm.cpp", "status": "read_full", "note": ""},
+    {"path": "include/lang.h", "status": "read_full", "note": ""},
+    {"path": "src/core/lang.cpp", "status": "read_full", "note": ""},
+    {"path": "include/pad.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "config.cpp is the settings store: a ConfigSet linked list of key/value pairs, the five global config files (settings_riptopl.cfg, conf_last/apps/network/game.cfg), a dual-format reader/writer for legacy key=value and wOPL libconfig files with a wOPL per-game key map, fallback reads (wOPL names, legacy name, carry-over home) and a guarded save with snapshot/verify/restore. diagsave.cpp writes the diag ring buffer to DIAG.TXT. filemgr.cpp/filemgr.h are the File Manager's plain file operations (list, copy, move, rename, delete, mkdir) with memory-card retries and an mcserv rename. gsm.cpp resolves the per-game/global GS mode forcing settings and fills the ee_core GsmConfig_t from a mode table. lang.cpp/lang.h load .lng translation files found on devices, validate their printf signatures against English and swap the string table under the GUI lock. pad.h is the pad input API (key ids, edge/held queries, repeat delays, rumble, diag counters).",
+  "reusable_helpers": [
+    {"name": "fmJoin", "path": "src/core/filemgr.cpp", "line": 102, "what": "dir + name with exactly one separator ('\\\\' on smb, '/' elsewhere); returns 0 if it does not fit"},
+    {"name": "fmParent", "path": "src/core/filemgr.cpp", "line": 114, "what": "parent folder of a device path, keeping the root separator; 0 at a device root"},
+    {"name": "fmBaseName", "path": "src/core/filemgr.cpp", "line": 139, "what": "last path component across '/', '\\\\' and ':'"},
+    {"name": "fmNameOk", "path": "src/core/filemgr.cpp", "line": 148, "what": "validates a new file/folder name (length, not . or .., no / \\\\ :)"},
+    {"name": "fmExists", "path": "src/core/filemgr.cpp", "line": 156, "what": "existence test by open/opendir (memory-card safe, unlike stat)"},
+    {"name": "fmCopy", "path": "src/core/filemgr.cpp", "line": 453, "what": "recursive file/folder copy with 64 KB buffer, progress callback, card retries and size read-back"},
+    {"name": "fmDelete", "path": "src/core/filemgr.cpp", "line": 500, "what": "recursive delete with card retry"},
+    {"name": "fmSizeText", "path": "src/core/filemgr.cpp", "line": 627, "what": "bytes to \"12 KB\" / \"3.4 MB\" / \"1.2 GB\" text"},
+    {"name": "configBuildPath", "path": "src/core/config.cpp", "line": 618, "what": "prefix + filename with '/' unless prefix ends in '/' or ':' (static)"},
+    {"name": "configBuildSiblingPath", "path": "src/core/config.cpp", "line": 1218, "what": "path of a file next to another path, device-root aware (static)"},
+    {"name": "strToColor", "path": "src/core/config.cpp", "line": 36, "what": "parses \"#RRGGBB\" into 3 bytes (static)"},
+    {"name": "lngFormatArgs", "path": "src/core/lang.cpp", "line": 88, "what": "printf format argument-type signature parser (static)"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "PrepareGSM: unused cmdline parameter, always-true config check, and the caller copies an identical struct field by field",
+      "category": 3,
+      "locations": [
+        {"path": "src/core/gsm.cpp", "start": 95, "end": 95},
+        {"path": "src/core/gsm.cpp", "start": 199, "end": 211},
+        {"path": "include/pggsm.h", "start": 64, "end": 64},
+        {"path": "src/app/host.cpp", "start": 202, "end": 217}
+      ],
+      "problem": "PrepareGSM never reads its cmdline argument, and its only caller (host.cpp:206) passes NULL for it and a stack struct for config, so the if (config) guard at gsm.cpp:199 is always true. host.cpp:207-217 then copies all 11 fields of that local GsmConfig_t into config->GsmConfig, which is the same struct GsmConfig_t (ee_core/include/coreconfig.h:14-27, member at :73, not packed).",
+      "fix": "Drop the cmdline parameter (definition and pggsm.h prototype) and the if (config) wrapper, and call PrepareGSM(&config->GsmConfig) directly in host.cpp, deleting the local gsm_config and the 11 copy lines.",
+      "justification": "",
+      "benefit": "~14 source lines removed and one 48-byte stack struct plus 11 copies per launch gone (INFERRED from the cited lines); negligible ELF change",
+      "benefit_rank": 2,
+      "lines_removed": 14,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep -rn PrepareGSM over src/RiptOPL: gsm.cpp:95 (definition), pggsm.h:64 (prototype), host.cpp:206 (only call, PrepareGSM(NULL, &gsm_config)). Read gsm.cpp:95-212: cmdline is never referenced. grep GsmConfig_t: coreconfig.h:14 (struct), :73 (struct GsmConfig_t GsmConfig in EECoreConfig_t), pggsm.h:64, gsm.cpp:95, host.cpp:202. grep packed in coreconfig.h: only comments. host.cpp:207-217 assigns all 11 members listed in coreconfig.h:16-26."
+    },
+    {
+      "n": 2,
+      "title": "config.cpp: configSetMove duplicates configInit; configMove and configBuildLegacyOplPath are one-line forwarders",
+      "category": 2,
+      "locations": [
+        {"path": "src/core/config.cpp", "start": 630, "end": 647},
+        {"path": "src/core/config.cpp", "start": 660, "end": 680},
+        {"path": "src/core/config.cpp", "start": 22, "end": 23},
+        {"path": "src/core/config.cpp", "start": 702, "end": 705},
+        {"path": "src/core/config.cpp", "start": 1228, "end": 1234},
+        {"path": "src/core/config.cpp", "start": 1464, "end": 1464}
+      ],
+      "problem": "configInit and configSetMove are the same 18 lines (NULL->gBaseMCDir, legacy IPCONFIG path, build each file path, set cfgHomePath, configPrepareNotifications) except for one call per file: configAlloc versus configMove. configMove (plus its forward declaration and comment) only forwards to ConfigSet::rename and has two callers (672, 1446). configBuildLegacyOplPath only forwards to configBuildSiblingPath with a constant and has one caller (1464).",
+      "fix": "Make one static function that takes the prefix and a move flag, and let configInit/configSetMove call it. Replace configMove(x, p) with x->rename(p) and delete configMove and its forward declaration. Call configBuildSiblingPath(..., CONFIG_OPL_FILENAME_LEGACY, ...) at 1464 and delete configBuildLegacyOplPath.",
+      "justification": "",
+      "benefit": "~22 source lines removed (INFERRED: 18-line duplicate body less ~6 lines of new helper/call sites, plus 6 and 7 lines of forwarders); static functions, so ELF change is a few dozen bytes at most",
+      "benefit_rank": 2,
+      "lines_removed": 22,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read config.cpp:630-680 side by side: only line 642 (configAlloc) vs 672 (configMove) and a comment differ. grep -rn configMove src/RiptOPL: config.cpp:23 decl, :672, :702 def, :1446, :1504 comment; .github/scripts/test_autolaunch_settings.py:319 only asserts configMove( is absent from a configRead slice; test_udpbd_read_only.py:198-200 refers to other files. grep configBuildLegacyOplPath: config.cpp:1231 def, :1464 only call; no script references. grep void configSetMove/void configInit in .github/scripts: none."
+    },
+    {
+      "n": 3,
+      "title": "Stale comments in config.cpp: upstream FIXME, a false claim about re-emitting empties, and references to deleted C files/functions",
+      "category": 7,
+      "locations": [
+        {"path": "src/core/config.cpp", "start": 17, "end": 18},
+        {"path": "src/core/config.cpp", "start": 792, "end": 793},
+        {"path": "src/core/config.cpp", "start": 918, "end": 920},
+        {"path": "src/core/config.cpp", "start": 1536, "end": 1536}
+      ],
+      "problem": "The FIXME at 17-18 asks to replace fileXioGetStat with newlib stat for GMT time, but the only use (1513) is an existence check. 792-793 says configWrite re-emits empty values for wOPL keys via cfgWriteLibconfigLine; cfgWriteLibconfig (1059-1113) only walks stored entries and empties are dropped on read (865), so nothing is re-emitted. 918-920 cite guigame.c:1059 and config.c, and 1536 cites system.c sysSyncNeutrinoIp; those C files are gone and sysSyncNeutrinoIp exists nowhere in src/.",
+      "fix": "Delete the FIXME, delete the false sentence at 792-793, and drop the dead file:line and function references (or point them at the current .cpp names).",
+      "justification": "",
+      "benefit": "~4 comment lines removed or corrected; no binary change",
+      "benefit_rank": 1,
+      "lines_removed": 4,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep fileXioGetStat in config.cpp: only 1513 (existence check under !modified). Read cfgWriteLibconfig 1059-1113 and cfgWriteLibconfigLine 1003-1032: no path emits keys that are not in the set; cfgReadLibconfigLine returns at 864-865 for empty values. grep -rn sysSyncNeutrinoIp src/RiptOPL/src: only config.cpp:1536. Brief: src/ is C++ (.cpp); no guigame.c/config.c/system.c in src/."
+    },
+    {
+      "n": 4,
+      "title": "config.cpp re-checks conditions its only callers already guarantee",
+      "category": 3,
+      "locations": [
+        {"path": "src/core/config.cpp", "start": 1117, "end": 1118},
+        {"path": "src/core/config.cpp", "start": 1284, "end": 1285},
+        {"path": "src/core/config.cpp", "start": 1322, "end": 1323},
+        {"path": "src/core/config.cpp", "start": 1639, "end": 1639}
+      ],
+      "problem": "configReadFileBuffer re-checks fileBuffer/configSet for NULL although both callers (configReadBuffer 1186-1194, configRead 1421, 1479) return earlier on NULL. configBuildWoplPath re-checks path although its only call (1439) is under filename() != NULL (1436). configOpenFailureIsAbsent re-checks path although its only call (1347) follows the NULL return at 1339. At 1639, intended != NULL already implies the !singleOpenDevice && not-pfs test, because intended is only allocated under that same test at 1608.",
+      "fix": "Delete the three NULL checks and reduce the 1639 condition to !ok && intended != NULL.",
+      "justification": "",
+      "benefit": "~6 source lines removed; a few bytes of ELF (INFERRED)",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep -n over src/RiptOPL: configReadFileBuffer called only at config.cpp:1196 and :1485; configBuildWoplPath only at :1439; configOpenFailureIsAbsent only at :1347 (test_config_missing_open_once.py extracts the function but does not call it with NULL). Read config.cpp:1604-1615 (intended allocated only when !singleOpenDevice and not pfs) and 1639."
+    },
+    {
+      "n": 5,
+      "title": "InitGSMConfig: the legacy per-game and global branches are the same five reads on different sets",
+      "category": 2,
+      "locations": [
+        {"path": "src/core/gsm.cpp", "start": 73, "end": 86}
+      ],
+      "problem": "Lines 73-79 read ENABLEGSM and the four GSM keys from configSet when $GSMSource is present and not MIXED; lines 81-86 read the same five keys the same way from configGame when $GSMSource is absent. The only difference is which set is read.",
+      "fix": "Pick the set once (configSet if the source key was found, else configGame) and keep one copy of the five reads.",
+      "justification": "",
+      "benefit": "~6 source lines removed (INFERRED from the two 6-line blocks); negligible ELF change",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read gsm.cpp:31-88 in full. InitGSMConfig has one caller, supportbase.cpp:1065 (grep -rn InitGSMConfig src/RiptOPL; test_patch_zone_restore.py:85 only stubs it)."
+    },
+    {
+      "n": 6,
+      "title": "lang.cpp builds the custom font path twice through two heap buffers and repeats the ttf/otf attempt",
+      "category": 3,
+      "locations": [
+        {"path": "src/core/lang.cpp", "start": 55, "end": 83},
+        {"path": "src/core/lang.cpp", "start": 208, "end": 216}
+      ],
+      "problem": "lngLoadFromFile mallocs a copy of the directory part of the .lng path only to pass it to lngLoadFont (its only caller), which mallocs again to compose dir + font_<name>.ttf, then repeats the same snprintf/LOG/fntLoadDefault block for .otf. lngInitFallbackFont (424-441) already does the same kind of try-list with a loop and a stack buffer.",
+      "fix": "Pass the .lng path and its directory length to lngLoadFont, build the name with %.*s into one buffer, and loop over the two extensions; delete the dir malloc/copy in lngLoadFromFile.",
+      "justification": "",
+      "benefit": "~15 source lines and one malloc/free pair per language switch removed (INFERRED from the cited ranges)",
+      "benefit_rank": 1,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "grep -rn lngLoadFont src/RiptOPL: lang.cpp:55 (definition), :214 (only call). Read lang.cpp:55-83, 159-221, 424-441."
+    },
+    {
+      "n": 7,
+      "title": "dir + name joining with the trailing '/' or ':' test is written inline four more times beside configBuildPath and fmJoin",
+      "category": 2,
+      "locations": [
+        {"path": "src/core/config.cpp", "start": 618, "end": 628},
+        {"path": "src/core/diagsave.cpp", "start": 30, "end": 31},
+        {"path": "src/core/lang.cpp", "start": 372, "end": 376},
+        {"path": "src/core/lang.cpp", "start": 431, "end": 435},
+        {"path": "src/core/filemgr.cpp", "start": 102, "end": 112}
+      ],
+      "problem": "configBuildPath (static) and fmJoin (public) both join a directory and a name, adding '/' only when the directory does not already end in '/' or ':' (fmJoin also accepts '\\\\' and uses '\\\\' on smb). diagSave, lngScanBootDirectory and lngInitFallbackFont each re-implement the same end-character test inline. Edge cases differ slightly: an empty prefix gives a bare name in configBuildPath and diagSave but \"/name\" in fmJoin.",
+      "fix": "Export one of the existing helpers (configBuildPath semantics, or fmJoin moved next to the other util path code) and call it from diagsave.cpp and the two lang.cpp sites instead of the inline copies.",
+      "justification": "",
+      "benefit": "~6 source lines removed (INFERRED: three inline 2-4 line blocks become single calls; no new helper is written)",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read all five sites. grep -rn 'Join' include/: only fmJoin (filemgr.h:38) and suJoin (selfupdate.h:27, overlay-only C file, same rule) exist as join helpers; configBuildPath is static in config.cpp:618 with callers 638/641/668/671. lngReadEntry (lang.cpp:276-289) also joins but into a malloc'd exact-size buffer, so it is not counted."
+    }
+  ]
+}

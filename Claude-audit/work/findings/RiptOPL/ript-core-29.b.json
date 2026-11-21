@@ -1,0 +1,92 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-29.b",
+  "coverage": [
+    {"path": "src/sources/httpsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/mmcesupport.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/mmcesupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/netsupport.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/netsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/nettime.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "httpsupport.cpp is the HTTP game source: it fetches and parses games.csv from a static HTTP server (parser shared with src/httpcatalog.c and a host test that extracts httpParseCatalog verbatim), probes ISO size and DVD layer 1 with ranged GETs, and fills the HTTP cdvdman settings at launch; per-game data resolves under the local home prefix. mmcesupport.cpp is the MMCE (SD2PSX / MemCard PRO2) game source plus the Game ID card-switch transport: presence/busy devctls, on-screen bounded waits for the card swap, the OSD-history switch watch, fs settle, card reset, and the native and Neutrino launch legs. netsupport.cpp owns the shared menu-side TCP/IP stack (netman, smsutils, smap, ps2ip, ps2ips, httpclient), the link/DHCP waits, IP/link-mode apply and the bounded teardown used by SMB, NFS and HTTP. nettime.h only declares the HTTP Date-header clock fetch.",
+  "reusable_helpers": [
+    {"name": "httpBuildPath", "path": "src/sources/httpsupport.cpp", "line": 95, "what": "joins a base path and a relative path into a bounded buffer, percent-encoding everything outside the unreserved set"},
+    {"name": "httpNormalizeBasePath", "path": "src/sources/httpsupport.cpp", "line": 64, "what": "forces a leading '/', strips trailing '/', collapses empty to '/'"},
+    {"name": "httpProbeRead", "path": "src/sources/httpsupport.cpp", "line": 676, "what": "one ranged GET of length bytes at an offset into a buffer, success only on a full read with a known total"},
+    {"name": "httpProbeImage", "path": "src/sources/httpsupport.cpp", "line": 702, "what": "ISO9660 PVD volume size and DVD dual-layer start detection over ranged reads"},
+    {"name": "MmceSupport::getDeviceRoot", "path": "src/sources/mmcesupport.cpp", "line": 521, "what": "extracts the 'device:/' root from a prefix, falling back to the configured slot"},
+    {"name": "mmceSlotOf", "path": "src/sources/mmcesupport.cpp", "line": 98, "what": "maps 'mmce0...'/'mmce1...' to slot 0/1, else -1"},
+    {"name": "MmceSupport::settleAfterSwitch", "path": "src/sources/mmcesupport.cpp", "line": 605, "what": "polls a directory open on the card root every 200 ms (bounded ~5 s) until the file system answers"},
+    {"name": "mmceSleepReadingStart", "path": "src/sources/mmcesupport.cpp", "line": 135, "what": "sleeps in 20 ms slices reading the START button so a tap is not missed"},
+    {"name": "NetSupport::waitValidState", "path": "src/sources/netsupport.cpp", "line": 68, "what": "polls a predicate once per second via SetAlarm + semaphore, bounded to ~30 s"},
+    {"name": "NetSupport::applyIpConfig", "path": "src/sources/netsupport.cpp", "line": 434, "what": "applies static IP/DHCP/DNS settings to ps2ip only when they differ from the live config"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "httpParseCatalog allocates 2048-row arrays (~890 KB) for every catalog and keeps them for the whole HTTP listing",
+      "category": 4,
+      "locations": [
+        {"path": "src/sources/httpsupport.cpp", "start": 165, "end": 166},
+        {"path": "src/sources/httpsupport.cpp", "start": 241, "end": 243},
+        {"path": "src/sources/httpsupport.cpp", "start": 604, "end": 610},
+        {"path": "src/sources/httpsupport.cpp", "start": 443, "end": 455},
+        {"path": "include/httpsupport.h", "start": 19, "end": 19}
+      ],
+      "problem": "Both row arrays are sized HTTP_CATALOG_ROWS_MAX (2048) whatever the row count: base_game_info_t is 188 bytes (161+13+5 chars, 3 u8, padding, u32) and http_catalog_extra_t 257 bytes, so 445 B x 2048 = 911,360 bytes are held while the HTTP source is listed. A refresh peaks near 2 MB, because update() parses the new pair before setCatalog frees the old one, on top of the up-to-256 KB fetch buffer. A 100-row catalog needs about 44 KB.",
+      "fix": "At the end of httpParseCatalog, shrink both arrays to `rows` entries (at least one) with realloc before publishing them, keeping the original pointers if realloc returns NULL.",
+      "justification": "Adds about 6 lines. It returns roughly 850 KB of EE heap for a typical catalog for the whole time the HTTP source is active, and the same on the test-server copy. The parse contract the host fixtures check does not change: the harness compiles the extracted function against libc, which has realloc.",
+      "benefit": "~867 KB EE heap freed for a 100-row catalog and the refresh peak lowered by the same (INFERRED: (2048-100) x 445 B). Only while the HTTP source is in use, so rated 4, not 5.",
+      "benefit_rank": 4,
+      "lines_removed": -6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Struct sizes from include/supportbase.h:22-31 (ISO_GAME_NAME_MAX 160, GAME_STARTUP_MAX 12, ISO_GAME_EXTENSION_MAX 4 at :7-9) and httpsupport.cpp:43-47 with HTTP_CATALOG_PATH_MAX 255 (include/httpsupport.h:14); HTTP_CATALOG_ROWS_MAX 2048 and BYTES_MAX 262144 at include/httpsupport.h:18-19. Read HttpSource::update 580-614 (fetchCatalog buffer, httpParseCatalog, free(buf), setCatalog) and setCatalog 376-383 (frees old pair after the new one exists). httpTestServer 443-455 parses a second full-size copy. tools/pc/http/tests/test_catalog_limits.py only mallocs the input buffer (:52) and asserts the row count (:68)."
+    },
+    {
+      "n": 2,
+      "title": "httpTestServer keeps a static 2 KB probe buffer and repeats httpProbeRead's read loop",
+      "category": 4,
+      "locations": [
+        {"path": "src/sources/httpsupport.cpp", "start": 474, "end": 497},
+        {"path": "src/sources/httpsupport.cpp", "start": 676, "end": 697}
+      ],
+      "problem": "The Test button's range probe reads into `static char probe[2048]`, 2048 bytes of .bss held for the whole session, through a copy of httpProbeRead's loop with the same got == length && hasTotal test. The function runs on the IO worker (guisettings.cpp:952-953 through guiHandleDeferedIO), whose stack is 96 KB, so the buffer can live on the stack.",
+      "fix": "Move httpProbeRead above httpTestServer and replace lines 474-497 with one httpProbeRead(&testEndpoint, probePath, 0, 2048, buf, &total) call into a local 2 KB buffer. Delete the static array.",
+      "justification": "",
+      "benefit": "2,048 bytes .bss (MEASURED: evidence/RiptOPL/raw/riptopl-nm-size-sorted.full.txt:362, size 0x800) and ~18 source lines",
+      "benefit_rank": 2,
+      "lines_removed": 18,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read httpsupport.cpp:474-497 and httpProbeRead 676-697: both call openRequest with useRange=1, loop HttpStreamRead until short or done, close the socket, and accept only a full read with hasTotal. nm shows _ZZ14httpTestServerPKiiPKcPcjE5probe as a 0x800 b symbol. Caller: guisettings.cpp:630-634 httpTestWorker, queued with guiHandleDeferedIO(..., IO_CUSTOM_SIMPLEACTION, ...) at :952-953, which goes through ioPutRequest (guiwait.cpp:82,126). IO worker stack 96 KB per brief (src/platform/ioman.cpp:42-44)."
+    },
+    {
+      "n": 3,
+      "title": "Native MMCE launch switches the card (Game ID) and writes the OSD history before the cheats prompt that can cancel the launch",
+      "category": 6,
+      "locations": [
+        {"path": "src/sources/mmcesupport.cpp", "start": 1399, "end": 1437},
+        {"path": "src/sources/mmcesupport.cpp", "start": 1540, "end": 1550},
+        {"path": "src/sources/supportbase.cpp", "start": 1690, "end": 1697},
+        {"path": "include/mmcesupport.h", "start": 40, "end": 42}
+      ],
+      "problem": "The OPL-core leg sends the 0x8 Game ID switch (1410), waits the swap out and writes the OSD history record (1426) before sbLoadCheats. When per-game cheats are on and the .cht is missing or broken, sbCheatsMissingContinue asks, and a cancel returns to the menu (1543-1548). The card is then left on the game's per-game folder, or switching to it through its own history tracker, with a history entry for a game that never started. Nothing resets the card on that path (mmceReset serves non-game launches only), so later menu writes to that slot's mcN: go to the game's card (INFERRED).",
+      "fix": "Move the cheats load and its prompt (1540-1550, with the RA watch-list call above it if wanted) to just after `settings` is set at 1379, before the native Game ID block. The Neutrino leg already loads cheats before its own send. The two VMC fd closes in that bail then go away, because no fd exists yet.",
+      "justification": "",
+      "benefit": "A cancelled launch leaves the card folder and OSD history untouched and skips a pointless swap wait of up to 180 s; 4 lines removed (INFERRED)",
+      "benefit_rank": 2,
+      "lines_removed": 4,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read MmceSource::launch 1292-1746: sbPrepare 1376, settings 1379, Game ID send + waitSwapDone/settleAfterSwitch 1410-1414, sysAddHistoryRecord + waitHistorySwitch 1426-1434, VMC fds opened 1462, cheats 1540-1550. Neutrino leg loads cheats at 1540 before its send at 1656, after every preflight bail (1629-1644). sbCheatsMissingContinue (supportbase.cpp:1667-1697) returns 0 on the cancel button and unprepares. mmceReset is described as the non-game-launch reset (mmcesupport.h:40-42); grep of mmceSendGameID callers shows every other source (e.g. httpsupport.cpp:842) sends right before deinit, after its bails. Inferred part: what the menu then writes to the switched mcN: surface. Two more post-send bails (Auto slot lost 1564-1581, ISO open failure 1685-1700) are hardware failures and stay."
+    }
+  ]
+}

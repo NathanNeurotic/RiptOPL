@@ -1,0 +1,26 @@
+## Macros tested by #if/#ifdef that no source or build file defines (cond-macros-undefined.tsv). Compiler, SDK and toolchain macros also land here: check before using
+- `IGR_OVERLAY`  tested at 7 site(s) in the repo, mentioned in 3 build file(s); here: src/platform/system.cpp:1305, src/platform/system.cpp:1457, src/platform/system.cpp:1471, src/platform/system.cpp:80
+
+## Largely identical files (dupes-file-pairs.tsv)
+- src/platform/system.cpp is 1% the same as POPSLoader/src/elf_loader/src/elf.h (14 cloned normalised lines)
+- src/platform/system.cpp is 3% the same as RiptOPL/src/platform/sysvmc.cpp (33 cloned normalised lines)
+- src/platform/system.cpp is 4% the same as RiptOPL/src/platform/sysdisc.cpp (47 cloned normalised lines)
+- src/platform/system.cpp is 4% the same as RiptOPL/src/platform/sysneutrino.cpp (44 cloned normalised lines)
+- src/platform/sysvmc.cpp is 18% the same as RiptOPL/src/platform/sysneutrino.cpp (33 cloned normalised lines)
+- src/platform/sysvmc.cpp is 18% the same as RiptOPL/src/platform/system.cpp (33 cloned normalised lines)
+- src/platform/sysvmc.cpp is 22% the same as RiptOPL/src/platform/sysdisc.cpp (41 cloned normalised lines)
+- src/platform/tar.cpp repeats itself: 30 cloned normalised lines inside the file (6%)
+
+## Duplicate blocks (dupes-blocks.tsv)
+- src/platform/system.cpp:113-128  ==  POPSLoader/src/elf_loader/src/elf.h:31-46  (14 normalised lines)
+- src/platform/system.cpp:2-26  ==  RiptOPL/src/platform/sysdisc.cpp:2-26  (12 normalised lines)
+- src/platform/system.cpp:28-65  ==  RiptOPL/src/platform/sysvmc.cpp:25-62  (33 normalised lines)
+- src/platform/system.cpp:28-67  ==  RiptOPL/src/platform/sysdisc.cpp:27-66  (35 normalised lines)
+- src/platform/system.cpp:9-67  ==  RiptOPL/src/platform/sysneutrino.cpp:7-65  (44 normalised lines)
+- src/platform/sysvmc.cpp:25-62  ==  RiptOPL/src/platform/sysneutrino.cpp:26-63  (33 normalised lines)
+- src/platform/sysvmc.cpp:25-62  ==  RiptOPL/src/platform/system.cpp:28-65  (33 normalised lines)
+- src/platform/sysvmc.cpp:7-62  ==  RiptOPL/src/platform/sysdisc.cpp:9-64  (41 normalised lines)
+- src/platform/tar.cpp:477-501  ==  RiptOPL/src/platform/tar.cpp:537-555  (18 normalised lines)
+- src/platform/tar.cpp:514-531  ==  RiptOPL/src/platform/tar.cpp:561-573  (12 normalised lines)
+- src/platform/tar.cpp:537-555  ==  RiptOPL/src/platform/tar.cpp:477-501  (18 normalised lines)
+- src/platform/tar.cpp:561-573  ==  RiptOPL/src/platform/tar.cpp:514-531  (12 normalised lines)

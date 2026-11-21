@@ -1,0 +1,256 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-25",
+  "coverage": [
+    {"path": "include/bdmsupport.h", "status": "read_full", "note": ""},
+    {"path": "src/sources/bdmsupport.cpp", "status": "read_full", "note": ""},
+    {"path": "include/cuesupport.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "bdmsupport.cpp is the BDM (USB/iLink/MX4SIO/ATA/PCCF/UDPBD/UDPFS-block) game source: module latches and IRX loading (core bdm/bdmfs/bdmevent/usbmass, then optional transports on the IO worker), the bdmevent SIF handler that bumps BdmGeneration, slot/type lookup helpers over massN: roots, debug-only identity diagnostics, and the BdmSource GameSource implementation (needsUpdate/update/list accessors, delete/rename, per-game config, art, VMC, shutdown, launch forwarders to bdmlaunch.cpp). bdmsupport.h declares the per-slot bdm_device_data_t and the public API whose other halves live in bdmdevices.cpp, bdmlaunch.cpp and bdmboot.cpp. cuesupport.h declares the Ember (PS1 via ember.elf) library: scanning EMBER/games, discs.txt, settings.txt rewrite, the launch preflight helpers used by every device backend, and the merged POPS+Ember PS1 list builder.",
+  "reusable_helpers": [
+    {"name": "bdmDetermineDeviceType", "path": "src/sources/bdmsupport.cpp", "line": 135, "what": "maps a BDM driver name (usb/sd/ilink/sdc/mx4sio/ata/udp/cf) to BDM_TYPE_*"},
+    {"name": "bdmParseBootStem", "path": "src/sources/bdmsupport.cpp", "line": 179, "what": "splits a '<device><unit>:' path token into digit-stripped stem and bounded unit number"},
+    {"name": "bdmBuildGamePrefix", "path": "src/sources/bdmsupport.cpp", "line": 223, "what": "composes '<deviceRoot><gBDMPrefix>/' or the bare root"},
+    {"name": "bdmReadDeviceIdentity", "path": "src/sources/bdmsupport.cpp", "line": 296, "what": "Dopen a massN: root and read driver name plus device number via ioctl2"},
+    {"name": "bdmGetDeviceRootByType", "path": "src/sources/bdmsupport.cpp", "line": 495, "what": "first mounted massN:/ root whose driver matches a BDM_TYPE_*"},
+    {"name": "bdmGetDeviceSlotsByType", "path": "src/sources/bdmsupport.cpp", "line": 527, "what": "all mounted massN: slot indices of a BDM_TYPE_*"},
+    {"name": "bdmLoadOptionalModule", "path": "src/sources/bdmsupport.cpp", "line": 586, "what": "sysLoadModuleBuffer with a log line and failure log"},
+    {"name": "bdmProbeMassSlots", "path": "src/sources/bdmsupport.cpp", "line": 631, "what": "opens every massN: root once (forces FatFs lazy mount) and builds a one-line slot summary"},
+    {"name": "cueNameLaunchable", "path": "include/cuesupport.h", "line": 143, "what": "validates a bare folder name (no '/', ':', '\\\\', no leading '..')"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "UDPBD/UDPFS network block chain load is written twice (ensureNetworkSourceModules and bdmLoadBlockDeviceModules)",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 781, "end": 807},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1326, "end": 1369}
+      ],
+      "problem": "Both blocks do the same sequence: sysInitDev9, build the 'ip=' arg from ps2_ip, load UDPFS_SMAP -> UDPFS_MINISTACK(args) -> UDPFS_BD or SMAP_UDPBD(args), set udpbdNicClaimed/udpbdModLoaded/loaded protocol, and call sysShutdownDev9 when the NIC was not claimed. Inside each copy the NicClaimed + protocol latch is also set twice on the UDPFS success path (789-792 and 801-804; 1340-1343 and 1348-1352).",
+      "fix": "Keep one static helper (caller holds bdmLoadModuleLock) that takes the protocol, performs the DEV9 init, the chain load, the latches and the DEV9 release, and returns the result; call it from ensureNetworkSourceModules and from bdmLoadBlockDeviceModules. Drop the duplicated second latch assignment inside the UDPFS branch.",
+      "justification": "The helper replaces two existing ~30-line copies of the same load order and latch rules (which must stay in sync for the NIC interlock), so it removes code overall.",
+      "benefit": "~30 source lines removed (two 27-44 line copies become one ~25-line helper plus two calls) (INFERRED); a few hundred bytes of .text (INFERRED, duplicated call sequences).",
+      "benefit_rank": 2,
+      "lines_removed": 30,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read bdmsupport.cpp:751-821 and 1322-1370 side by side: same IRX order, same ipArg snprintf, same latch and sysShutdownDev9 rule; only the diag stage labels (bdmDiagLoadOptionalModule wrappers) differ, which a helper can keep. udpbdLoadedProtocol_ vs gBdmSupport.setLoadedNetProtocol set the same member (bdmsupport.cpp:68, 737-740)."
+    },
+    {
+      "n": 2,
+      "title": "bdmLoadBlockDeviceModules re-implements bdmEnsureTransportLoaded for USB, iLink, MX4SIO and ATA",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 1275, "end": 1297},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1301, "end": 1320},
+        {"path": "src/sources/bdmdevices.cpp", "start": 504, "end": 532}
+      ],
+      "problem": "bdmEnsureTransportLoaded (bdmdevices.cpp:504-532) already loads each local transport with the same latches (iUSBModLoaded, iLinkManModLoaded/ieee1394ModLoaded/iLinkModLoaded, mx4sioModLoaded with the host: gate, hddModLoaded). bdmLoadBlockDeviceModules repeats the iLink block line for line, the MX4SIO gate and the ATA load, differing only in gEnable* gating and diag labels. It also sets the USB boot status at 1276 although bdmLoadUsbMassBd sets the same string again at 1176.",
+      "fix": "In bdmLoadBlockDeviceModules call bdmEnsureTransportLoaded(BDM_TYPE_USB/ILINK/SDC/ATA) under the existing gEnable* checks, keeping only the ATA post-settle devctl probe locally. Delete the duplicate bootStatusSticky at 1276.",
+      "justification": "",
+      "benefit": "~15 source lines removed (iLink 9 lines, MX4SIO 4, USB status 1, ATA partly) (INFERRED). The diag-only BEGIN/END stage labels would be lost or need moving into bdmEnsureTransportLoaded.",
+      "benefit_rank": 2,
+      "lines_removed": 15,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Read bdmsupport.cpp:1260-1320 and bdmdevices.cpp:499-532. ATA differs: bdmLoadBlockDeviceModules uses hddDiagLoadModulesReady plus a post-settle ATA_DEVCTL_IS_48BIT probe, bdmEnsureTransportLoaded uses hddLoadModulesReady; INFERRED that the diag variant can be used in both. Both callers hold bdmLoadModuleLock (1267; comment at bdmdevices.cpp:502)."
+    },
+    {
+      "n": 3,
+      "title": "Four module-load wrappers where two would do (bdmLoadOptionalModule/Args, bdmDiagLoadOptionalModule/Args)",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 586, "end": 610},
+        {"path": "src/sources/bdmsupport.cpp", "start": 711, "end": 729}
+      ],
+      "problem": "bdmLoadOptionalModuleArgs is bdmLoadOptionalModule with arglen/args passed to sysLoadModuleBuffer instead of 0/NULL, and bdmDiagLoadOptionalModuleArgs is likewise a copy of bdmDiagLoadOptionalModule. Each pair is identical apart from those two arguments.",
+      "fix": "Delete bdmLoadOptionalModuleArgs and bdmDiagLoadOptionalModuleArgs and give the remaining two functions arglen/args parameters; pass 0, NULL at the no-arg call sites (bdmsupport.cpp, bdmdevices.cpp:508-520, prototype bdmint.h:24, stub in .github/scripts/test_pccf.py:79).",
+      "justification": "",
+      "benefit": "~20 source lines removed (two 11- and 9-line functions) (INFERRED); no ELF change worth stating.",
+      "benefit_rank": 2,
+      "lines_removed": 18,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read bdmsupport.cpp:586-610 and 711-729. Grep bdmLoadOptionalModuleArgs|bdmDiagLoadOptionalModule over the repo (excluding docs/modules/third_party): only bdmsupport.cpp uses the Args/Diag variants; bdmLoadOptionalModule is also called from bdmdevices.cpp:508,513,518,520, declared bdmint.h:24, stubbed in test_pccf.py:79."
+    },
+    {
+      "n": 4,
+      "title": "bdmDeviceIsATA/bdmGetATADeviceId re-implement the identity and by-type lookup helpers",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 2244, "end": 2274},
+        {"path": "src/sources/bdmsupport.cpp", "start": 2285, "end": 2287},
+        {"path": "src/sources/bdmsupport.cpp", "start": 2322, "end": 2322}
+      ],
+      "problem": "bdmDeviceIsATA opens mass<i>:/ and reads the driver name into a whole bdm_device_data_t on the stack (a ~190-byte struct for a 32-byte field), with a redundant strlen()==3 after strcmp(\"ata\"). bdmGetATADeviceId loops all slots with it, but both callers only test the result for >= 0; bdmGetDeviceRootByType(BDM_TYPE_ATA, ...) at 495-520 already answers that, and bdmReadDeviceIdentity + bdmDriverIsATA cover the single-slot check.",
+      "fix": "Delete bdmGetATADeviceId and use bdmGetDeviceRootByType(BDM_TYPE_ATA, root, sizeof(root)) at 2285 and 2322. Reduce bdmDeviceIsATA to a char[32] read via bdmReadDeviceIdentity and bdmDriverIsATA, or test the waited slot with bdmGetDeviceSlotsByType.",
+      "justification": "",
+      "benefit": "~20 source lines removed (INFERRED); ~160 bytes less stack per call (INFERRED from bdm_device_data_t fields at bdmsupport.h:37-74).",
+      "benefit_rank": 2,
+      "lines_removed": 20,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep bdmDeviceIsATA|bdmGetATADeviceId: only bdmsupport.cpp:2244,2266,2269,2285,2306,2322 (static, file-local). bdmGetDeviceRootByType (495-520) iterates the same massN: roots and classifies by bdmDetermineDeviceType, which maps 'ata' to BDM_TYPE_ATA (125-128, 143-144). It does one extra GET_DEVICE_NUMBER ioctl per slot, on a path (settings save, settingsio.cpp:2015) that is not hot."
+    },
+    {
+      "n": 5,
+      "title": "Five copies of the 'mode slot -> bdmDeviceType == X' check",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 859, "end": 876},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1157, "end": 1164},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1229, "end": 1243}
+      ],
+      "problem": "bdmSupportIsUDPBD, bdmModeIsUDPBD, bdmModeIsSIO2, bdmModeIsPCCF and bdmModeIsUSB each repeat the BDM_MODE..BDM_MODE_LAST range check, the priv NULL check and a compare of bdmDeviceType against one constant.",
+      "fix": "Add one static bdmModeDeviceType(mode) returning the slot's bdmDeviceType or BDM_TYPE_UNKNOWN, and make each public predicate a one-line return of a compare against it.",
+      "justification": "One 6-line static helper replaces five 6-8 line bodies of the same checks, so it removes code overall.",
+      "benefit": "~14 source lines removed (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 14,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read 859-876, 1157-1164, 1229-1243: identical range/priv guards, differing only in the BDM_TYPE_* constant (bdmSupportIsUDPBD takes support->mode/priv instead of a mode)."
+    },
+    {
+      "n": 6,
+      "title": "BdmSource::textId/iconId reclassify the driver string with strcmp chains although bdmDeviceType is already stored",
+      "category": 3,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 2100, "end": 2140}
+      ],
+      "problem": "Both functions run up to five bdmDriverIs* strcmp tests on pDeviceData->bdmDriver, which is the same classification bdmDetermineDeviceType already stored in bdmDeviceType when the driver was read (bdmdevices.cpp:347); textId even mixes in a bdmDeviceType test for PCCF. The comment at 2117 names a 'bdmGetIconId' that no longer exists.",
+      "fix": "Switch on pDeviceData->bdmDeviceType in both functions and drop the stale name in the comment.",
+      "justification": "",
+      "benefit": "~6 source lines removed and no string compares on each menu draw call of the tab label/icon (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 6,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "READ",
+      "evidence": "Grep 'bdmDeviceType =' over src: bdmdevices.cpp:339-347 sets bdmDriver then bdmDeviceType = bdmDetermineDeviceType(bdmDriver) together; init sets UNKNOWN at bdmsupport.cpp:1634. INFERRED that no path writes bdmDriver without updating the type (autolaunch.cpp:192-234 uses a separate gAutoLaunchDeviceData, not a menu page). Grep bdmGetIconId: no definition."
+    },
+    {
+      "n": 7,
+      "title": "bdmIsReadOnlyPath re-parses 'massN:' instead of using bdmParseMassSlot",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 887, "end": 896},
+        {"path": "include/bdmtyped.h", "start": 37, "end": 55}
+      ],
+      "problem": "bdmIsReadOnlyPath hand-rolls the 'mass' prefix and digit parse that bdmParseMassSlot in bdmtyped.h (already included at bdmsupport.cpp:11) provides; its loop also accumulates any number of digits into a signed int, which bdmParseMassSlot bounds to two.",
+      "fix": "Replace the body with slot = bdmParseMassSlot(path, NULL); return slot >= 0 && bdmModeIsReadOnly(BDM_MODE + slot). The source-extracting test .github/scripts/test_udpbd_read_only.py:57 must then also include bdmtyped.h.",
+      "justification": "",
+      "benefit": "~5 source lines removed (INFERRED); removes a signed-overflow on a path with a long digit run.",
+      "benefit_rank": 1,
+      "lines_removed": 5,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read bdmtyped.h:37-55 and bdmsupport.cpp:887-896. Test cases at test_udpbd_read_only.py:144-147 (mass1 read-only, mass11 and mass: false, non-mass false) give the same results with bdmParseMassSlot plus the range check in bdmModeIsReadOnly (879-884)."
+    },
+    {
+      "n": 8,
+      "title": "Debug-only bdmTypedRootStem duplicates bdmTypedPathToken and probes a 'cf' alias that does not exist",
+      "category": 2,
+      "locations": [
+        {"path": "src/sources/bdmsupport.cpp", "start": 348, "end": 364},
+        {"path": "include/bdmtyped.h", "start": 17, "end": 33}
+      ],
+      "problem": "bdmTypedRootStem (inside #ifdef __DEBUG) is the same switch as bdmTypedPathToken plus a BDM_TYPE_PCCF -> \"cf\" case, while bdmtyped.h:17-18 states PC CARD CF never got a typed path, so the extra case only makes the diagnostic open cf0:..cf7: for nothing.",
+      "fix": "Delete bdmTypedRootStem and call bdmTypedPathToken at bdmsupport.cpp:371.",
+      "justification": "",
+      "benefit": "17 source lines removed; debug builds only (INFERRED).",
+      "benefit_rank": 1,
+      "lines_removed": 17,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep bdmTypedRootStem: definition 348 and single use 371. bdmTypedPathToken defined bdmtyped.h:19-33, header included at bdmsupport.cpp:11."
+    },
+    {
+      "n": 9,
+      "title": "CueSupport class has one stateless method, a global instance and a forwarder",
+      "category": 3,
+      "locations": [
+        {"path": "include/cuesupport.h", "start": 220, "end": 235},
+        {"path": "src/sources/cuesupport.cpp", "start": 33, "end": 35},
+        {"path": "src/sources/cuesupport.cpp", "start": 912, "end": 913},
+        {"path": "src/sources/cuesupport.cpp", "start": 956, "end": 959}
+      ],
+      "problem": "CueSupport has no data members and a single method gameHasImage; its only caller is the free cueGameHasImage, which every backend calls. The comment at cuesupport.cpp:33-34 says the instance 'owns only the extension table', but the class owns nothing.",
+      "fix": "Delete the class, gCueSupport and the forwarder; make the gameHasImage body the body of cueGameHasImage.",
+      "justification": "",
+      "benefit": "~20 source lines removed (16 header lines, ~5 cpp lines) (INFERRED); no ELF change.",
+      "benefit_rank": 1,
+      "lines_removed": 20,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Grep CueSupport|gCueSupport|gameHasImage over the repo: cuesupport.h:227,232,235; cuesupport.cpp:35,912,958; docs/CPP-CONVERSION-PLAN.md:486. All callers use cueGameHasImage (bdmlaunch.cpp:97, ethsupport.cpp:1074, mmcesupport.cpp:1228, udpfssupport.cpp:854, hddsupport.cpp:2216)."
+    },
+    {
+      "n": 10,
+      "title": "Contradictory comments on bdmReadDriverName say a no-buffer probe guards the read; the code removed it",
+      "category": 7,
+      "locations": [
+        {"path": "include/bdmsupport.h", "start": 205, "end": 213},
+        {"path": "src/sources/bdmsupport.cpp", "start": 240, "end": 263},
+        {"path": "src/sources/bdmsupport.cpp", "start": 271, "end": 292},
+        {"path": "src/sources/bdmsupport.cpp", "start": 653, "end": 653}
+      ],
+      "problem": "The header says the implementation 'asks without a buffer first', and the block above the function ends 'Gate on it, then ask for the full name'; the 22-line block inside the function says that probe was retracted, and line 293 issues the buffered ioctl directly. bdmProbeMassSlots:653 still calls it a 'Guarded reader'. About 55 comment lines describe two opposite contracts for one 3-line function.",
+      "fix": "Replace the three blocks with one short accurate comment (the read is unguarded; the fork bdmfs_fatfs guards the NULL copy) and fix the 'Guarded reader' remark.",
+      "justification": "",
+      "benefit": "~45 comment lines removed (INFERRED); stops callers relying on a guard that does not exist.",
+      "benefit_rank": 1,
+      "lines_removed": 45,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read bdmsupport.h:205-214 and bdmsupport.cpp:240-294, 653-654. The function body is 264-294 and contains no probe before the fileXioIoctl2 call at 293."
+    },
+    {
+      "n": 11,
+      "title": "Stale file names, a misplaced comment, commented-out code and a history note in bdmsupport/cuesupport",
+      "category": 7,
+      "locations": [
+        {"path": "include/bdmsupport.h", "start": 221, "end": 221},
+        {"path": "src/sources/bdmsupport.cpp", "start": 507, "end": 508},
+        {"path": "src/sources/bdmsupport.cpp", "start": 986, "end": 991},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1149, "end": 1149},
+        {"path": "src/sources/bdmsupport.cpp", "start": 1521, "end": 1521},
+        {"path": "src/sources/bdmsupport.cpp", "start": 2156, "end": 2157},
+        {"path": "src/sources/bdmsupport.cpp", "start": 2331, "end": 2340},
+        {"path": "include/cuesupport.h", "start": 62, "end": 62},
+        {"path": "include/cuesupport.h", "start": 72, "end": 72}
+      ],
+      "problem": "Comments cite src/pad.c, bdmsupport.c ~1219, opl.c, system.c and vcdsupport.c, none of which exist (the sources are now pad.cpp, opl.cpp, system.cpp, vcdsupport.cpp). The comment at 986-991 documents bdmForceDeviceRefresh but sits above bdmRequestPccfProbe. 2156-2157 is commented-out code, and 2331-2340 narrates a bug in a previous version of bdmFindPartition.",
+      "fix": "Delete the commented-out code and the history note, move the 986-991 comment above bdmForceDeviceRefresh (1001), and correct or drop the stale file references.",
+      "justification": "",
+      "benefit": "~14 comment lines removed (INFERRED); no binary change.",
+      "benefit_rank": 1,
+      "lines_removed": 14,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Glob src/**/{pad,system,vcdsupport,opl,bdmsupport}.*: only pad.cpp, system.cpp, vcdsupport.cpp, opl.cpp, bdmsupport.cpp exist. Read 986-1011 (comment above bdmRequestPccfProbe describes the generation bump done at 1001-1011)."
+    }
+  ]
+}

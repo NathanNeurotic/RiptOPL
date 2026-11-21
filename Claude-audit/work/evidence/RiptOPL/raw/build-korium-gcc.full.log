@@ -1,0 +1,2005 @@
+Mon Nov 16 12:51:20 PST 2026
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\third_party\ca-roots\isrg-root-x2.der asm\ratls_root_isrgrootx2.c ratls_root_isrgrootx2
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\third_party\ca-roots\isrgrootx1.der asm\ratls_root_isrgrootx1.c ratls_root_isrgrootx1
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\third_party\ca-roots\sectigo-e46.der asm\ratls_root_sectigoe46.c ratls_root_sectigoe46
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\third_party\ca-roots\sectigo-r46.der asm\ratls_root_sectigor46.c ratls_root_sectigor46
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\load0.png asm\load0_png.c load0_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\load1.png asm\load1_png.c load1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\load2.png asm\load2_png.c load2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\load3.png asm\load3_png.c load3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\load4.png asm\load4_png.c load4_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\load5.png asm\load5_png.c load5_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\load6.png asm\load6_png.c load6_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\load7.png asm\load7_png.c load7_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\usb.png asm\usb_png.c usb_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\usb_bd.png asm\usb_bd_png.c usb_bd_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\ilk_bd.png asm\ilk_bd_png.c ilk_bd_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\m4s_bd.png asm\m4s_bd_png.c m4s_bd_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\hdd_bd.png asm\hdd_bd_png.c hdd_bd_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\mmce.png asm\mmce_png.c mmce_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\hdd.png asm\hdd_png.c hdd_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\eth.png asm\eth_png.c eth_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\udp_bd.png asm\udp_bd_png.c udp_bd_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\udp_fs.png asm\udp_fs_png.c udp_fs_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\app.png asm\app_png.c app_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\cross.png asm\cross_png.c cross_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\triangle.png asm\triangle_png.c triangle_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\circle.png asm\circle_png.c circle_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\square.png asm\square_png.c square_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\select.png asm\select_png.c select_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\start.png asm\start_png.c start_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\left.png asm\left_png.c left_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\right.png asm\right_png.c right_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\cover.png asm\cover_png.c cover_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\disc.png asm\disc_png.c disc_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\screen.png asm\screen_png.c screen_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\background.png asm\incebtion_png.c incebtion_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\background_info.png asm\ip_png.c ip_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\missing.png asm\missing_png.c missing_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\screens.png asm\screens_png.c screens_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\ELF.png asm\ELF_png.c ELF_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\HDL.png asm\HDL_png.c HDL_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\ISO.png asm\ISO_png.c ISO_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\VCD.png asm\VCD_png.c VCD_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\ZSO.png asm\ZSO_png.c ZSO_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\UL.png asm\UL_png.c UL_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\APPS.png asm\APPS_png.c APPS_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\CD.png asm\CD_png.c CD_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\DVD.png asm\DVD_png.c DVD_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Aspect_s.png asm\Aspect_s_png.c Aspect_s_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Aspect_w.png asm\Aspect_w_png.c Aspect_w_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Aspect_w1.png asm\Aspect_w1_png.c Aspect_w1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Aspect_w2.png asm\Aspect_w2_png.c Aspect_w2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Rating_0.png asm\Rating_0_png.c Rating_0_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Rating_1.png asm\Rating_1_png.c Rating_1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Rating_2.png asm\Rating_2_png.c Rating_2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Rating_3.png asm\Rating_3_png.c Rating_3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Rating_4.png asm\Rating_4_png.c Rating_4_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Rating_5.png asm\Rating_5_png.c Rating_5_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_240p.png asm\Scan_240p_png.c Scan_240p_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_240p1.png asm\Scan_240p1_png.c Scan_240p1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_480i.png asm\Scan_480i_png.c Scan_480i_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_480p.png asm\Scan_480p_png.c Scan_480p_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_480p1.png asm\Scan_480p1_png.c Scan_480p1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_480p2.png asm\Scan_480p2_png.c Scan_480p2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_480p3.png asm\Scan_480p3_png.c Scan_480p3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_480p4.png asm\Scan_480p4_png.c Scan_480p4_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_480p5.png asm\Scan_480p5_png.c Scan_480p5_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_576i.png asm\Scan_576i_png.c Scan_576i_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_576p.png asm\Scan_576p_png.c Scan_576p_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_720p.png asm\Scan_720p_png.c Scan_720p_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_1080i.png asm\Scan_1080i_png.c Scan_1080i_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_1080i2.png asm\Scan_1080i2_png.c Scan_1080i2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Scan_1080p.png asm\Scan_1080p_png.c Scan_1080p_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Vmode_multi.png asm\Vmode_multi_png.c Vmode_multi_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Vmode_ntsc.png asm\Vmode_ntsc_png.c Vmode_ntsc_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Vmode_pal.png asm\Vmode_pal_png.c Vmode_pal_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\logo.png asm\logo_png.c logo_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\logo0.png asm\logo0_png.c logo0_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\logo1.png asm\logo1_png.c logo1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\logo2.png asm\logo2_png.c logo2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\logo3.png asm\logo3_png.c logo3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\case.png asm\case_png.c case_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_0.png asm\Index_0_png.c Index_0_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_1.png asm\Index_1_png.c Index_1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_2.png asm\Index_2_png.c Index_2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_3.png asm\Index_3_png.c Index_3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_4.png asm\Index_4_png.c Index_4_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_0.png asm\Index2_0_png.c Index2_0_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_1.png asm\Index2_1_png.c Index2_1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_0.png asm\Index3_0_png.c Index3_0_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_1.png asm\Index3_1_png.c Index3_1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_2.png asm\Index3_2_png.c Index3_2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_0.png asm\Index4_0_png.c Index4_0_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_1.png asm\Index4_1_png.c Index4_1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_2.png asm\Index4_2_png.c Index4_2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Index_3.png asm\Index4_3_png.c Index4_3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\fav.png asm\fav_png.c fav_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\fav_mark.png asm\fav_mark_png.c fav_mark_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\R3.png asm\R3_png.c R3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\L3.png asm\L3_png.c L3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\L1.png asm\L1_png.c L1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\R1.png asm\R1_png.c R1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\PS1.png asm\PS1_png.c PS1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\PS2.png asm\PS2_png.c PS2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/psbbn_bg.png asm\psbbn_bg_png.c psbbn_bg_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/techwritescode.png asm\techwritescode_png.c techwritescode_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/grid_devices.png asm\grid_devices_png.c grid_devices_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_cross.png asm\glyph_standard_cross_png.c glyph_standard_cross_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_circle.png asm\glyph_standard_circle_png.c glyph_standard_circle_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_square.png asm\glyph_standard_square_png.c glyph_standard_square_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_triangle.png asm\glyph_standard_triangle_png.c glyph_standard_triangle_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_start.png asm\glyph_standard_start_png.c glyph_standard_start_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_select.png asm\glyph_standard_select_png.c glyph_standard_select_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_L1.png asm\glyph_standard_L1_png.c glyph_standard_L1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_R1.png asm\glyph_standard_R1_png.c glyph_standard_R1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_L3.png asm\glyph_standard_L3_png.c glyph_standard_L3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_R3.png asm\glyph_standard_R3_png.c glyph_standard_R3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_left.png asm\glyph_standard_left_png.c glyph_standard_left_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_standard_right.png asm\glyph_standard_right_png.c glyph_standard_right_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_cross.png asm\glyph_white_cross_png.c glyph_white_cross_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_circle.png asm\glyph_white_circle_png.c glyph_white_circle_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_square.png asm\glyph_white_square_png.c glyph_white_square_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_triangle.png asm\glyph_white_triangle_png.c glyph_white_triangle_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_start.png asm\glyph_white_start_png.c glyph_white_start_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_select.png asm\glyph_white_select_png.c glyph_white_select_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_L1.png asm\glyph_white_L1_png.c glyph_white_L1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_R1.png asm\glyph_white_R1_png.c glyph_white_R1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_L3.png asm\glyph_white_L3_png.c glyph_white_L3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_R3.png asm\glyph_white_R3_png.c glyph_white_R3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_left.png asm\glyph_white_left_png.c glyph_white_left_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE gfx/glyph_white_right.png asm\glyph_white_right_png.c glyph_white_right_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\apps_case.png asm\apps_case_png.c apps_case_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\case_ps1.png asm\case_ps1_png.c case_ps1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\disc_ps1.png asm\disc_ps1_png.c disc_ps1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Players_1.png asm\Players_1_png.c Players_1_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Players_2.png asm\Players_2_png.c Players_2_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Players_3.png asm\Players_3_png.c Players_3_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\gfx\Players_4.png asm\Players_4_png.c Players_4_png
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE third_party/fonts/PoeVeticaNew.ttf asm\poeveticanew.c poeveticanew_raw
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE audio/boot.adp asm\boot.c boot_adp
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE audio/cancel.adp asm\cancel.c cancel_adp
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE audio/confirm.adp asm\confirm.c confirm_adp
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE audio/cursor.adp asm\cursor.c cursor_adp
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE audio/message.adp asm\message.c message_adp
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE audio/transition.adp asm\transition.c transition_adp
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE audio/bd_connect.adp asm\bd_connect.c bd_connect_adp
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE audio/bd_disconnect.adp asm\bd_disconnect.c bd_disconnect_adp
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE misc/icon.sys asm\icon_sys.c icon_sys
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE misc/list.icn asm\save_icn.c save_icn
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE misc/icon_A.sys asm\icon_sys_A.c icon_sys_A
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE misc/icon_J.sys asm\icon_sys_J.c icon_sys_J
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE misc/icon_C.sys asm\icon_sys_C.c icon_sys_C
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\misc\conf_theme_OPL.cfg asm\conf_theme_OPL.c conf_theme_OPL_cfg
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE <WORK_ROOT>\build\RiptOPL\build\theme-assets\korium\misc\theme_coverflow.cfg asm\theme_coverflow.c theme_coverflow_cfg
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE misc/theme_psbbn_flow.cfg asm\theme_psbbn_flow.c theme_psbbn_flow_cfg
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE misc/theme_grid.cfg asm\theme_grid.c theme_grid_cfg
++ <HOME>\AppData\Local\ps2build\tools\bin2c.EXE modules/iopcore/IOPRP.img asm\IOPRP_img.c IOPRP_img
+OPL_VERSION v1.2.0-Beta-4284-b00e773-PS2BUILD-Korium-GCC
+ninja: Entering directory `build\editions\korium-gcc'
+[1/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/isofs_imports.c
+[2/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdmevent_imports.c
+[3/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/imgdrv_imports.c
+[4/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/resetspu_imports.c
+[5/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/igrmbox_imports.c
+[6/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/apemodpatch_imports.c
+[7/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/cleareffects_imports.c
+[8/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/f2techioppatch_imports.c
+[9/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/iremsndpatch_imports.c
+[10/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/genvmc_imports.c
+[11/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/cdvdfsv_exports.c
+[12/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/cdvdfsv_imports.c
+[13/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smbinit_imports.c
+[14/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/nbns_exports.c
+[15/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/nbns_imports.c
+[16/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/httpclient_exports.c
+[17/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/httpclient_imports.c
+[18/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/xhdd_imports.c
+[19/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ps2ips_fork_imports.c
+[20/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smbman_ra_imports.c
+[21/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb2man_imports.c
+[22/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/nfsman_imports.c
+[23/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smap_ingame_imports.c
+[24/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/SMSTCPIP_exports.c
+[25/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/SMSTCPIP_imports.c
+[26/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smap_udpbd_exports.c
+[27/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smap_udpbd_imports.c
+[28/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_smap_exports.c
+[29/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_smap_imports.c
+[30/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_ministack_exports.c
+[31/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_ministack_imports.c
+[32/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_bd_exports.c
+[33/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_bd_imports.c
+[34/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_ioman_exports.c
+[35/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_ioman_imports.c
+[36/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_fhi_exports.c
+[37/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_fhi_imports.c
+[38/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ata_bd_exports.c
+[39/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ata_bd_imports.c
+[40/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ps2hdd_osd_imports.c
+[41/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_drv_exports.c
+[42/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_drv_imports.c
+[43/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdmfs_fatfs_fork_imports.c
+[44/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/iLinkman_fork_exports.c
+[45/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/iLinkman_fork_imports.c
+[46/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/IEEE1394_bd_mini_fork_imports.c
+[47/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mmceman_fork_imports.c
+[48/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mx4sio_bd_mini_fork_imports.c
+[49/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/usbmass_bd_mini_fork_imports.c
+[50/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/usbd_mini_fork_exports.c
+[51/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/usbd_mini_fork_imports.c
+[52/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/hdd_cdvdman_exports.c
+[53/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/hdd_cdvdman_imports.c
+[54/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/hdd_hdpro_cdvdman_exports.c
+[55/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/hdd_hdpro_cdvdman_imports.c
+[56/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb_cdvdman_exports.c
+[57/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb_cdvdman_imports.c
+[58/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb2_cdvdman_exports.c
+[59/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb2_cdvdman_imports.c
+[60/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/nfs_cdvdman_exports.c
+[61/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/nfs_cdvdman_imports.c
+[62/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/http_cdvdman_exports.c
+[63/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/http_cdvdman_imports.c
+[64/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_cdvdman_exports.c
+[65/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_cdvdman_imports.c
+[66/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_ata_cdvdman_exports.c
+[67/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_ata_cdvdman_imports.c
+[68/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_udp_cdvdman_exports.c
+[69/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_udp_cdvdman_imports.c
+[70/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/pccf_bd_imports.c
+[71/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/pccf_game_imports.c
+[72/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/pccf_cdvdman_exports.c
+[73/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/pccf_cdvdman_imports.c
+[74/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_cdvdman_exports.c
+[75/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_cdvdman_imports.c
+[76/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mmce_cdvdman_exports.c
+[77/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mmce_cdvdman_imports.c
+[78/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/hdd_mcemu_imports.c
+[79/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb_mcemu_imports.c
+[80/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_mcemu_imports.c
+[81/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mmce_mcemu_imports.c
+[82/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/usb_pademu_exports.c
+[83/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/usb_pademu_imports.c
+[84/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bt_pademu_exports.c
+[85/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bt_pademu_imports.c
+[86/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ds34usb_imports.c
+[87/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ds34bt_imports.c
+[88/1335] CC(iop) obj/bdm_fork/modules/bdm/libbdm/src/bd_defrag.o
+[89/1335] CC(iop) obj/bdm_fork/modules/bdm/libbdm/src/bd_cache.o
+[90/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb2probe_iop_imports.c
+[91/1335] CC(iop) obj/isofs/modules/isofs/isofs.o
+[92/1335] CC(iop) obj/isofs/modules/isofs/zso.o
+[93/1335] CC(iop) obj/isofs/modules/isofs/lz4.o
+[94/1335] CC(iop) obj/isofs/imports.o
+[95/1335] CC(iop) obj/bdmevent/modules/bdmevent/main.o
+[96/1335] CC(iop) obj/bdmevent/imports.o
+[97/1335] CC(iop) obj/imgdrv/modules/iopcore/imgdrv/imgdrv.o
+[98/1335] CC(iop) obj/imgdrv/imports.o
+[99/1335] CC(iop) obj/resetspu/modules/iopcore/resetspu/resetspu.o
+[100/1335] CC(iop) obj/resetspu/imports.o
+[101/1335] CC(iop) obj/igrmbox/modules/iopcore/igrmbox/igrmbox.o
+[102/1335] CC(iop) obj/igrmbox/imports.o
+[103/1335] CC(iop) obj/apemodpatch/modules/iopcore/patches/apemodpatch/main.o
+[104/1335] CC(iop) obj/apemodpatch/imports.o
+[105/1335] CC(iop) obj/cleareffects/modules/iopcore/patches/cleareffects/main.o
+[106/1335] CC(iop) obj/cleareffects/imports.o
+[107/1335] CC(iop) obj/f2techioppatch/modules/iopcore/patches/f2techioppatch/main.o
+[108/1335] CC(iop) obj/f2techioppatch/imports.o
+[109/1335] CC(iop) obj/iremsndpatch/modules/iopcore/patches/iremsndpatch/main.o
+[110/1335] CC(iop) obj/iremsndpatch/modules/iopcore/patches/iremsndpatch/asm.o
+[111/1335] CC(iop) obj/iremsndpatch/imports.o
+[112/1335] CC(iop) obj/genvmc/modules/vmc/genvmc/genvmc.o
+[113/1335] CC(iop) obj/genvmc/imports.o
+[114/1335] CC(iop) obj/cdvdfsv/exports.o
+[115/1335] CC(iop) obj/cdvdfsv/modules/iopcore/cdvdfsv/cdvdfsv.o
+[116/1335] CC(iop) obj/cdvdfsv/modules/iopcore/cdvdfsv/searchfile.o
+[117/1335] CC(iop) obj/cdvdfsv/modules/iopcore/cdvdfsv/ncmd.o
+[118/1335] CC(iop) obj/cdvdfsv/modules/iopcore/cdvdfsv/scmd.o
+[119/1335] CC(iop) obj/cdvdfsv/imports.o
+[120/1335] CC(iop) obj/SMSUTILS/modules/network/SMSUTILS/SMSUTILS.o
+[121/1335] CC(iop) obj/smbinit/modules/network/smbinit/main.o
+[122/1335] CC(iop) obj/smbinit/modules/network/smbinit/smbauth.o
+[123/1335] CC(iop) obj/smbinit/modules/network/smbinit/des.o
+[124/1335] CC(iop) obj/smbinit/modules/network/smbinit/md4.o
+[125/1335] CC(iop) obj/smbinit/imports.o
+[126/1335] CC(iop) obj/nbns/exports.o
+[127/1335] CC(iop) obj/nbns/modules/network/nbns/main.o
+[128/1335] CC(iop) obj/nbns/modules/network/nbns/nbns.o
+[129/1335] CC(iop) obj/nbns/imports.o
+[130/1335] CC(iop) obj/httpclient/exports.o
+[131/1335] CC(iop) obj/httpclient/modules/network/httpclient/main.o
+[132/1335] CC(iop) obj/httpclient/modules/network/httpclient/httpclient.o
+[133/1335] CC(iop) obj/httpclient/imports.o
+[134/1335] CC(iop) obj/xhdd/modules/hdd/xhdd/xhdd.o
+[135/1335] CC(iop) obj/xhdd/modules/hdd/xhdd/xatad.o
+[136/1335] CC(iop) obj/xhdd/modules/hdd/xhdd/hdpro.o
+[137/1335] CC(iop) obj/xhdd/imports.o
+[138/1335] CC(iop) obj/ps2ips_fork/modules/network/ps2ips/ps2ips.o
+[139/1335] CC(iop) obj/ps2ips_fork/imports.o
+[140/1335] CC(iop) obj/smbman_ra/modules/network/smbman-ra/smbman.o
+[141/1335] CC(iop) obj/smbman_ra/modules/network/smbman-ra/smb_fio.o
+[142/1335] CC(iop) obj/smbman_ra/modules/network/smbman-ra/smb.o
+[143/1335] CC(iop) obj/smbman_ra/modules/network/smbman-ra/poll.o
+[144/1335] CC(iop) obj/smbman_ra/modules/network/smbman-ra/auth.o
+[145/1335] CC(iop) obj/smbman_ra/modules/network/smbman-ra/des.o
+[146/1335] CC(iop) obj/smbman_ra/modules/network/smbman-ra/md4.o
+[147/1335] CC(iop) obj/smbman_ra/imports.o
+[148/1335] CC(iop) obj/smb2man/modules/network/smb2man/smb2man.o
+[149/1335] CC(iop) obj/smb2man/modules/network/smb2man/usmb2/ntlm.o
+[150/1335] CC(iop) obj/smb2man/modules/network/smb2man/usmb2/md4c.o
+[151/1335] CC(iop) obj/smb2man/modules/network/smb2man/usmb2/hmac-md5.o
+[152/1335] CC(iop) obj/smb2man/modules/network/smb2man/usmb2/md5.o
+[153/1335] CC(iop) obj/smb2man/modules/network/smb2man/usmb2/unicode.o
+[154/1335] CC(iop) obj/smb2man/modules/iopcore/cdvdman/smb2auth.o
+[155/1335] CC(iop) obj/smb2man/imports.o
+[156/1335] CC(iop) obj/nfsman/modules/network/nfsman/nfsman.o
+[157/1335] CC(iop) obj/nfsman/imports.o
+[158/1335] CC(iop) obj/smap_ingame/modules/network/smap-ingame/main.o
+[159/1335] CC(iop) obj/smap_ingame/modules/network/smap-ingame/smap.o
+[160/1335] CC(iop) obj/smap_ingame/modules/network/smap-ingame/xfer.o
+[161/1335] CC(iop) obj/smap_ingame/imports.o
+[162/1335] CC(iop) obj/SMSTCPIP/exports.o
+[163/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/ps2ip.o
+[164/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/inet.o
+[165/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/ip.o
+[166/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/ip_addr.o
+[167/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/ip_frag.o
+[168/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/etharp.o
+[169/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/tcp_in.o
+[170/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/tcp_out.o
+[171/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/tcp.o
+[172/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/tcpip.o
+[173/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/mem.o
+[174/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/api_lib.o
+[175/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/api_msg.o
+[176/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/sockets.o
+[177/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/netif.o
+[178/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/udp.o
+[179/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/memp.o
+[180/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/icmp.o
+[181/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/pbuf.o
+[182/1335] CC(iop) obj/SMSTCPIP/modules/network/SMSTCPIP/timers.o
+[183/1335] CC(iop) obj/SMSTCPIP/imports.o
+[184/1335] CC(iop) obj/smap_udpbd/exports.o
+[185/1335] CC(iop) obj/smap_udpbd/modules/network/smap_udpbd/src/main.o
+[186/1335] CC(iop) obj/smap_udpbd/modules/network/smap_udpbd/src/smap.o
+[187/1335] CC(iop) obj/smap_udpbd/modules/network/smap_udpbd/src/xfer.o
+[188/1335] CC(iop) obj/smap_udpbd/modules/network/smap_udpbd/src/ministack.o
+[189/1335] CC(iop) obj/smap_udpbd/modules/network/smap_udpbd/src/udpbd.o
+[190/1335] CC(iop) obj/smap_udpbd/modules/network/smap_udpbd/src/udptty.o
+[191/1335] CC(iop) obj/smap_udpbd/imports.o
+[192/1335] CC(iop) obj/udpfs_smap/exports.o
+[193/1335] CC(iop) obj/udpfs_smap/modules/network/udpfs_smap/src/main.o
+[194/1335] CC(iop) obj/udpfs_smap/modules/network/udpfs_smap/src/smap.o
+[195/1335] CC(iop) obj/udpfs_smap/modules/network/udpfs_smap/src/xfer.o
+[196/1335] CC(iop) obj/udpfs_smap/imports.o
+[197/1335] CC(iop) obj/udpfs_ministack/exports.o
+[198/1335] CC(iop) obj/udpfs_ministack/modules/network/udpfs_ministack/src/main.o
+[199/1335] CC(iop) obj/udpfs_ministack/modules/network/udpfs_ministack/src/ministack_arp.o
+[200/1335] CC(iop) obj/udpfs_ministack/modules/network/udpfs_ministack/src/ministack_eth.o
+[201/1335] CC(iop) obj/udpfs_ministack/modules/network/udpfs_ministack/src/ministack_ip.o
+[202/1335] CC(iop) obj/udpfs_ministack/modules/network/udpfs_ministack/src/ministack_udp.o
+[203/1335] CC(iop) obj/udpfs_ministack/modules/network/udpfs_ministack/src/ministack_xchg.o
+[204/1335] CC(iop) obj/udpfs_ministack/modules/network/udpfs_ministack/src/udptty.o
+[205/1335] CC(iop) obj/udpfs_ministack/imports.o
+[206/1335] CC(iop) obj/udpfs_bd/exports.o
+[207/1335] CC(iop) obj/udpfs_bd/modules/network/udpfs_bd/src/main.o
+[208/1335] CC(iop) obj/udpfs_bd/modules/network/udpfs_bd/src/udprdma.o
+[209/1335] CC(iop) obj/udpfs_bd/modules/network/udpfs_bd/src/udpfs_core.o
+[210/1335] CC(iop) obj/udpfs_bd/modules/network/udpfs_bd/src/udpfs_bd.o
+[211/1335] CC(iop) obj/udpfs_bd/imports.o
+[212/1335] CC(iop) obj/udpfs_ioman/exports.o
+[213/1335] CC(iop) obj/udpfs_ioman/modules/network/udpfs_ioman/src/main.o
+[214/1335] CC(iop) obj/udpfs_ioman/modules/network/udpfs_ioman/src/udprdma.o
+[215/1335] CC(iop) obj/udpfs_ioman/modules/network/udpfs_ioman/src/udpfs_core.o
+[216/1335] CC(iop) obj/udpfs_ioman/modules/network/udpfs_ioman/src/udpfs_ioman.o
+[217/1335] CC(iop) obj/udpfs_ioman/imports.o
+[218/1335] CC(iop) obj/udpfs_fhi/exports.o
+[219/1335] CC(iop) obj/udpfs_fhi/modules/network/udpfs_fhi/src/main.o
+[220/1335] CC(iop) obj/udpfs_fhi/modules/network/udpfs_fhi/src/udprdma.o
+[221/1335] CC(iop) obj/udpfs_fhi/modules/network/udpfs_fhi/src/udpfs_core.o
+[222/1335] CC(iop) obj/udpfs_fhi/modules/network/udpfs_fhi/src/udpfs_fhi.o
+[223/1335] CC(iop) obj/udpfs_fhi/imports.o
+[224/1335] CC(iop) obj/ata_bd/exports.o
+[225/1335] CC(iop) obj/ata_bd/modules/hdd/atad/src/ps2atad.o
+[226/1335] CC(iop) obj/ata_bd/imports.o
+[227/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/hdd_fio.o
+[228/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/hdd_blkio.o
+[229/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/hdd.o
+[230/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/password.o
+[231/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/misc.o
+[232/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/cache.o
+[233/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/apa.o
+[234/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/journal.o
+[235/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/free.o
+[236/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/ports/playstation2/lwnbd_irx.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[237/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/ports/playstation2/exports.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[238/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/ports/playstation2/imports.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[239/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/src/servers.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[240/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/src/plugins.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[241/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/src/contexts.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[242/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/servers/nbd/protocol-handshake.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[243/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/servers/nbd/protocol.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[244/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/servers/nbd/nbd.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[245/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/servers/nbd/tcp.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[246/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/plugins/memory/memory.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[247/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/plugins/atad/atad_d.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[248/1335] CC(iop) obj/lwnbdsvr/modules/network/lwNBD/plugins/mcman/mcman_d.o
+In file included from <command-line>:
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:13:9: warning: 'UINT64_MAX' redefined
+   13 | #define UINT64_MAX  0xffffffffffffffff
+      |         ^~~~~~~~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:2:
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:137:10: note: this is the location of the previous definition
+  137 | # define UINT64_MAX __UINT64_MAX__
+      |          ^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/network/lwNBD/ports/playstation2/ps2sdk-compat.h:14:9: warning: 'UINT64_C' redefined
+   14 | #define UINT64_C(x) ((x) + (UINT64_MAX - UINT64_MAX))
+      |         ^~~~~~~~
+<HOME>/AppData/Local/ps2build/toolchain/iop/lib/gcc/mipsel-none-elf/15.2.0/include/stdint.h:254:9: note: this is the location of the previous definition
+  254 | #define UINT64_C(c) __UINT64_C(c)
+      |         ^~~~~~~~
+[249/1335] CC(iop) obj/ps2hdd_osd/modules/hdd/apa/src/table_fence.o
+[250/1335] CC(iop) obj/ps2hdd_osd/imports.o
+[251/1335] CC(iop) obj/bdm_drv/exports.o
+[252/1335] CC(iop) obj/bdm_drv/modules/bdm/src/main.o
+[253/1335] CC(iop) obj/bdm_drv/modules/bdm/src/bdm.o
+[254/1335] CC(iop) obj/bdm_drv/modules/bdm/src/part_driver.o
+[255/1335] CC(iop) obj/bdm_drv/modules/bdm/src/part_driver_mbr.o
+[256/1335] CC(iop) obj/bdm_drv/modules/bdm/src/part_driver_gpt.o
+[257/1335] CC(iop) obj/bdm_drv/imports.o
+[258/1335] CC(iop) obj/bdmfs_fatfs_fork/modules/bdm/bdmfs_fatfs/src/main.o
+[259/1335] CC(iop) obj/bdmfs_fatfs_fork/modules/bdm/bdmfs_fatfs/src/fs_driver.o
+[260/1335] CC(iop) obj/bdmfs_fatfs_fork/modules/bdm/bdmfs_fatfs/fatfs/diskio.o
+[261/1335] CC(iop) obj/bdmfs_fatfs_fork/modules/bdm/bdmfs_fatfs/fatfs/ff.o
+[262/1335] CC(iop) obj/bdmfs_fatfs_fork/modules/bdm/bdmfs_fatfs/fatfs/ffsystem.o
+[263/1335] CC(iop) obj/bdmfs_fatfs_fork/modules/bdm/bdmfs_fatfs/fatfs/ffunicode.o
+[264/1335] CC(iop) obj/bdmfs_fatfs_fork/imports.o
+[265/1335] CC(iop) obj/iLinkman_fork/exports.o
+[266/1335] CC(iop) obj/iLinkman_fork/modules/ilink/iLinkman/src/iLink.o
+[267/1335] CC(iop) obj/iLinkman_fork/modules/ilink/iLinkman/src/iLink_PHY.o
+[268/1335] CC(iop) obj/iLinkman_fork/modules/ilink/iLinkman/src/iLink_internal.o
+[269/1335] CC(iop) obj/iLinkman_fork/modules/ilink/iLinkman/src/iLink_crom.o
+[270/1335] CC(iop) obj/iLinkman_fork/modules/ilink/iLinkman/src/iLink_intr.o
+[271/1335] CC(iop) obj/iLinkman_fork/modules/ilink/iLinkman/src/iLink_TxRx.o
+[272/1335] CC(iop) obj/iLinkman_fork/modules/ilink/iLinkman/src/iLink_DMA.o
+[273/1335] CC(iop) obj/iLinkman_fork/imports.o
+[274/1335] CC(iop) obj/IEEE1394_bd_mini_fork/modules/ilink/IEEE1394_bd/src/sbp2_driver.o
+[275/1335] CC(iop) obj/IEEE1394_bd_mini_fork/modules/ilink/IEEE1394_bd/src/main.o
+[276/1335] CC(iop) obj/IEEE1394_bd_mini_fork/modules/ilink/IEEE1394_bd/src/scsi.o
+[277/1335] CC(iop) obj/IEEE1394_bd_mini_fork/imports.o
+[278/1335] CC(iop) obj/mmceman_fork/modules/mmce/mmceman/src/ioplib.o
+[279/1335] CC(iop) obj/mmceman_fork/modules/mmce/mmceman/src/sio2man_hook.o
+[280/1335] CC(iop) obj/mmceman_fork/modules/mmce/mmceman/src/mmce_sio2.o
+[281/1335] CC(iop) obj/mmceman_fork/modules/mmce/mmceman/src/mmceman.o
+[282/1335] CC(iop) obj/mmceman_fork/imports.o
+[283/1335] CC(iop) obj/mx4sio_bd_mini_fork/modules/mx4sio_bd/src/spi_sdcard_crc7.o
+[284/1335] CC(iop) obj/mx4sio_bd_mini_fork/modules/mx4sio_bd/src/spi_sdcard_driver.o
+[285/1335] CC(iop) obj/mx4sio_bd_mini_fork/modules/mx4sio_bd/src/crc16.o
+[286/1335] CC(iop) obj/mx4sio_bd_mini_fork/modules/mx4sio_bd/src/ioplib.o
+[287/1335] CC(iop) obj/mx4sio_bd_mini_fork/modules/mx4sio_bd/src/sio2man_hook.o
+[288/1335] CC(iop) obj/mx4sio_bd_mini_fork/modules/mx4sio_bd/src/mx4sio.o
+[289/1335] CC(iop) obj/mx4sio_bd_mini_fork/imports.o
+[290/1335] CC(iop) obj/usbmass_bd_mini_fork/modules/usb/usbmass_bd/src/main.o
+[291/1335] CC(iop) obj/usbmass_bd_mini_fork/modules/usb/usbmass_bd/src/usb_mass.o
+[292/1335] CC(iop) obj/usbmass_bd_mini_fork/modules/usb/usbmass_bd/src/scsi.o
+[293/1335] CC(iop) obj/usbmass_bd_mini_fork/imports.o
+[294/1335] CC(iop) obj/usbd_mini_fork/exports.o
+[295/1335] CC(iop) obj/usbd_mini_fork/modules/usb/usbd-ra/src/hcd.o
+[296/1335] CC(iop) obj/usbd_mini_fork/modules/usb/usbd-ra/src/hub.o
+[297/1335] CC(iop) obj/usbd_mini_fork/modules/usb/usbd-ra/src/interface.o
+[298/1335] CC(iop) obj/usbd_mini_fork/modules/usb/usbd-ra/src/mem.o
+[299/1335] CC(iop) obj/usbd_mini_fork/modules/usb/usbd-ra/src/usbd.o
+[300/1335] CC(iop) obj/usbd_mini_fork/modules/usb/usbd-ra/src/usbio.o
+[301/1335] CC(iop) obj/usbd_mini_fork/modules/usb/usbd-ra/src/driver.o
+[302/1335] CC(iop) obj/usbd_mini_fork/imports.o
+[303/1335] CC(iop) obj/hdd_cdvdman/exports.o
+[304/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[305/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/ioops.o
+[306/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[307/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/scmd.o
+[308/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[309/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/streaming.o
+[310/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[311/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[312/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/device-hdd.o
+[313/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/atad.o
+[314/1335] CC(iop) obj/hdd_cdvdman/modules/iopcore/cdvdman/dev9.o
+[315/1335] CC(iop) obj/hdd_cdvdman/modules/isofs/zso.o
+[316/1335] CC(iop) obj/hdd_cdvdman/modules/isofs/lz4.o
+[317/1335] CC(iop) obj/hdd_cdvdman/imports.o
+[318/1335] CC(iop) obj/hdd_hdpro_cdvdman/exports.o
+[319/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[320/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/ioops.o
+[321/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[322/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/scmd.o
+[323/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[324/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/streaming.o
+[325/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[326/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[327/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/device-hdd.o
+[328/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/iopcore/cdvdman/hdpro_atad.o
+[329/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/isofs/zso.o
+[330/1335] CC(iop) obj/hdd_hdpro_cdvdman/modules/isofs/lz4.o
+[331/1335] CC(iop) obj/hdd_hdpro_cdvdman/imports.o
+[332/1335] CC(iop) obj/smb_cdvdman/exports.o
+[333/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[334/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/ioops.o
+[335/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[336/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/scmd.o
+[337/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[338/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/streaming.o
+[339/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[340/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[341/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/device-smb.o
+[342/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/smb.o
+[343/1335] CC(iop) obj/smb_cdvdman/modules/iopcore/cdvdman/dev9.o
+[344/1335] CC(iop) obj/smb_cdvdman/modules/isofs/zso.o
+[345/1335] CC(iop) obj/smb_cdvdman/modules/isofs/lz4.o
+[346/1335] CC(iop) obj/smb_cdvdman/imports.o
+[347/1335] CC(iop) obj/smb2_cdvdman/exports.o
+[348/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[349/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/ioops.o
+[350/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[351/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/scmd.o
+[352/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[353/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/streaming.o
+[354/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[355/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[356/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/device-smb.o
+[357/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/smb2.o
+[358/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/smb2auth.o
+[359/1335] CC(iop) obj/smb2_cdvdman/modules/iopcore/cdvdman/dev9.o
+[360/1335] CC(iop) obj/smb2_cdvdman/modules/isofs/zso.o
+[361/1335] CC(iop) obj/smb2_cdvdman/modules/isofs/lz4.o
+[362/1335] CC(iop) obj/smb2_cdvdman/imports.o
+[363/1335] CC(iop) obj/nfs_cdvdman/exports.o
+[364/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[365/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/ioops.o
+[366/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[367/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/scmd.o
+[368/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[369/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/streaming.o
+[370/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[371/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[372/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/device-smb.o
+[373/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/nfs.o
+[374/1335] CC(iop) obj/nfs_cdvdman/modules/iopcore/cdvdman/dev9.o
+[375/1335] CC(iop) obj/nfs_cdvdman/modules/isofs/zso.o
+[376/1335] CC(iop) obj/nfs_cdvdman/modules/isofs/lz4.o
+[377/1335] CC(iop) obj/mmceman_fork/modules/mmce/mmceman/src/mmce_cmds.o
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_cmds.c: In function 'mmce_cmd_get_gameid':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_cmds.c:215:21: warning: pointer targets in initialization of 'char *' from 'u8 *' {aka 'unsigned char *'} differ in signedness [-Wpointer-sign]
+  215 |         char* str = &rdbuf[0x4];
+      |                     ^
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_cmds.c: In function 'mmce_cmd_set_gameid':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_cmds.c:240:17: warning: pointer targets in initialization of 'char *' from 'u8 *' {aka 'unsigned char *'} differ in signedness [-Wpointer-sign]
+  240 |     char *str = &wrbuf[0x4];
+      |                 ^
+[378/1335] CC(iop) obj/nfs_cdvdman/imports.o
+[379/1335] CC(iop) obj/http_cdvdman/exports.o
+[380/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[381/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/ioops.o
+[382/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[383/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/scmd.o
+[384/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[385/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/streaming.o
+[386/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[387/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[388/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/device-http.o
+[389/1335] CC(iop) obj/http_cdvdman/modules/iopcore/cdvdman/dev9.o
+[390/1335] CC(iop) obj/http_cdvdman/modules/isofs/zso.o
+[391/1335] CC(iop) obj/http_cdvdman/modules/isofs/lz4.o
+[392/1335] CC(iop) obj/http_cdvdman/imports.o
+[393/1335] CC(iop) obj/bdm_cdvdman/exports.o
+[394/1335] CC(iop) obj/bdm_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[395/1335] CC(iop) obj/bdm_cdvdman/modules/iopcore/cdvdman/ioops.o
+[396/1335] CC(iop) obj/bdm_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[397/1335] CC(iop) obj/bdm_cdvdman/modules/iopcore/cdvdman/scmd.o
+[398/1335] CC(iop) obj/bdm_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[399/1335] CC(iop) obj/bdm_cdvdman/modules/iopcore/cdvdman/streaming.o
+[400/1335] CC(iop) obj/bdm_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[401/1335] CC(iop) obj/bdm_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[402/1335] CC(iop) obj/bdm_cdvdman/modules/iopcore/cdvdman/device-bdm.o
+[403/1335] CC(iop) obj/bdm_cdvdman/modules/isofs/zso.o
+[404/1335] CC(iop) obj/bdm_cdvdman/modules/isofs/lz4.o
+[405/1335] CC(iop) obj/bdm_cdvdman/imports.o
+[406/1335] CC(iop) obj/bdm_ata_cdvdman/exports.o
+[407/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[408/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/ioops.o
+[409/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[410/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/scmd.o
+[411/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[412/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/streaming.o
+[413/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[414/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[415/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/device-bdm.o
+[416/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/atad.o
+[417/1335] CC(iop) obj/bdm_ata_cdvdman/modules/iopcore/cdvdman/dev9.o
+[418/1335] CC(iop) obj/bdm_ata_cdvdman/modules/isofs/zso.o
+[419/1335] CC(iop) obj/bdm_ata_cdvdman/modules/isofs/lz4.o
+[420/1335] CC(iop) obj/bdm_ata_cdvdman/imports.o
+[421/1335] CC(iop) obj/bdm_udp_cdvdman/exports.o
+[422/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[423/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/ioops.o
+[424/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[425/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/scmd.o
+[426/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[427/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/streaming.o
+[428/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[429/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[430/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/device-bdm.o
+[431/1335] CC(iop) obj/bdm_udp_cdvdman/modules/iopcore/cdvdman/dev9.o
+[432/1335] CC(iop) obj/bdm_udp_cdvdman/modules/isofs/zso.o
+[433/1335] CC(iop) obj/bdm_udp_cdvdman/modules/isofs/lz4.o
+[434/1335] CC(iop) obj/bdm_udp_cdvdman/imports.o
+[435/1335] CC(iop) obj/pccf_bd/modules/pccf/main.o
+[436/1335] CC(iop) obj/pccf_bd/modules/pccf/pccf_hw.o
+[437/1335] CC(iop) obj/pccf_bd/modules/pccf/pccf_ata.o
+[438/1335] CC(iop) obj/pccf_bd/modules/pccf/pcdiag_cis.o
+[439/1335] CC(iop) obj/pccf_bd/modules/pccf/pcdiag_cf.o
+[440/1335] CC(iop) obj/pccf_bd/imports.o
+[441/1335] CC(iop) obj/pccf_game/modules/pccf/main.o
+[442/1335] CC(iop) obj/pccf_game/modules/pccf/pccf_hw.o
+[443/1335] CC(iop) obj/pccf_game/modules/pccf/pccf_ata.o
+[444/1335] CC(iop) obj/pccf_game/modules/pccf/pcdiag_cis.o
+[445/1335] CC(iop) obj/pccf_game/modules/pccf/pcdiag_cf.o
+[446/1335] CC(iop) obj/pccf_game/imports.o
+[447/1335] CC(iop) obj/pccf_cdvdman/exports.o
+[448/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[449/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/ioops.o
+[450/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[451/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/scmd.o
+[452/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[453/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/streaming.o
+[454/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[455/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[456/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/device-bdm.o
+[457/1335] CC(iop) obj/pccf_cdvdman/modules/iopcore/cdvdman/dev9-pccf.o
+[458/1335] CC(iop) obj/pccf_cdvdman/modules/isofs/zso.o
+[459/1335] CC(iop) obj/pccf_cdvdman/modules/isofs/lz4.o
+[460/1335] CC(iop) obj/pccf_cdvdman/imports.o
+[461/1335] CC(iop) obj/udpfs_cdvdman/exports.o
+[462/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[463/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/ioops.o
+[464/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[465/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/scmd.o
+[466/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[467/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/streaming.o
+[468/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[469/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[470/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/device-udpfs.o
+[471/1335] CC(iop) obj/udpfs_cdvdman/modules/iopcore/cdvdman/dev9.o
+[472/1335] CC(iop) obj/udpfs_cdvdman/modules/isofs/zso.o
+[473/1335] CC(iop) obj/udpfs_cdvdman/modules/isofs/lz4.o
+[474/1335] CC(iop) obj/udpfs_cdvdman/imports.o
+[475/1335] CC(iop) obj/mmce_cdvdman/exports.o
+[476/1335] CC(iop) obj/mmce_cdvdman/modules/iopcore/cdvdman/cdvdman.o
+[477/1335] CC(iop) obj/mmce_cdvdman/modules/iopcore/cdvdman/ioops.o
+[478/1335] CC(iop) obj/mmce_cdvdman/modules/iopcore/cdvdman/ncmd.o
+[479/1335] CC(iop) obj/mmce_cdvdman/modules/iopcore/cdvdman/scmd.o
+[480/1335] CC(iop) obj/mmce_cdvdman/modules/iopcore/cdvdman/searchfile.o
+[481/1335] CC(iop) obj/mmce_cdvdman/modules/iopcore/cdvdman/streaming.o
+[482/1335] CC(iop) obj/mmce_cdvdman/modules/iopcore/cdvdman/ioplib_util.o
+[483/1335] CC(iop) obj/mmce_cdvdman/modules/iopcore/cdvdman/smsutils.o
+[484/1335] CC(iop) obj/mmce_cdvdman/modules/iopcore/cdvdman/device-mmce.o
+[485/1335] CC(iop) obj/mmce_cdvdman/modules/isofs/zso.o
+[486/1335] CC(iop) obj/mmce_cdvdman/modules/isofs/lz4.o
+[487/1335] CC(iop) obj/mmce_cdvdman/imports.o
+[488/1335] CC(iop) obj/hdd_mcemu/modules/mcemu/mcemu.o
+[489/1335] CC(iop) obj/hdd_mcemu/modules/mcemu/mcemu_io.o
+[490/1335] CC(iop) obj/hdd_mcemu/modules/mcemu/mcemu_sys.o
+[491/1335] CC(iop) obj/hdd_mcemu/modules/mcemu/mcemu_var.o
+[492/1335] CC(iop) obj/hdd_mcemu/modules/mcemu/mcemu_rpc.o
+[493/1335] CC(iop) obj/hdd_mcemu/modules/mcemu/device-hdd.o
+[494/1335] CC(iop) obj/hdd_mcemu/imports.o
+[495/1335] CC(iop) obj/smb_mcemu/modules/mcemu/mcemu.o
+[496/1335] CC(iop) obj/smb_mcemu/modules/mcemu/mcemu_io.o
+[497/1335] CC(iop) obj/smb_mcemu/modules/mcemu/mcemu_sys.o
+[498/1335] CC(iop) obj/smb_mcemu/modules/mcemu/mcemu_var.o
+[499/1335] CC(iop) obj/smb_mcemu/modules/mcemu/mcemu_rpc.o
+[500/1335] CC(iop) obj/smb_mcemu/modules/mcemu/device-smb.o
+[501/1335] CC(iop) obj/smb_mcemu/imports.o
+[502/1335] CC(iop) obj/bdm_mcemu/modules/mcemu/mcemu.o
+[503/1335] CC(iop) obj/bdm_mcemu/modules/mcemu/mcemu_io.o
+[504/1335] CC(iop) obj/bdm_mcemu/modules/mcemu/mcemu_sys.o
+[505/1335] CC(iop) obj/bdm_mcemu/modules/mcemu/mcemu_var.o
+[506/1335] CC(iop) obj/bdm_mcemu/modules/mcemu/mcemu_rpc.o
+[507/1335] CC(iop) obj/bdm_mcemu/modules/mcemu/device-bdm.o
+[508/1335] CC(iop) obj/bdm_mcemu/imports.o
+[509/1335] CC(iop) obj/mmce_mcemu/modules/mcemu/mcemu.o
+[510/1335] CC(iop) obj/mmce_mcemu/modules/mcemu/mcemu_io.o
+[511/1335] CC(iop) obj/mmce_mcemu/modules/mcemu/mcemu_sys.o
+[512/1335] CC(iop) obj/mmce_mcemu/modules/mcemu/mcemu_var.o
+[513/1335] CC(iop) obj/mmce_mcemu/modules/mcemu/mcemu_rpc.o
+[514/1335] CC(iop) obj/mmce_mcemu/modules/mcemu/device-mmce.o
+[515/1335] CC(iop) obj/mmce_mcemu/imports.o
+[516/1335] CC(iop) obj/usb_pademu/exports.o
+[517/1335] CC(iop) obj/usb_pademu/modules/pademu/pademu.o
+[518/1335] CC(iop) obj/usb_pademu/modules/pademu/sys_utils.o
+[519/1335] CC(iop) obj/usb_pademu/modules/pademu/padmacro.o
+[520/1335] CC(iop) obj/usb_pademu/modules/pademu/ds34common.o
+[521/1335] CC(iop) obj/usb_pademu/modules/pademu/ds34usb.o
+[522/1335] CC(iop) obj/usb_pademu/imports.o
+[523/1335] CC(iop) obj/bt_pademu/exports.o
+[524/1335] CC(iop) obj/bt_pademu/modules/pademu/pademu.o
+[525/1335] CC(iop) obj/bt_pademu/modules/pademu/sys_utils.o
+[526/1335] CC(iop) obj/bt_pademu/modules/pademu/padmacro.o
+[527/1335] CC(iop) obj/bt_pademu/modules/pademu/ds34common.o
+[528/1335] CC(iop) obj/bt_pademu/modules/pademu/ds34bt.o
+[529/1335] CC(iop) obj/bt_pademu/imports.o
+[530/1335] CC(iop) obj/ds34usb/modules/ds34usb/iop/ds34usb.o
+[531/1335] CC(iop) obj/ds34usb/modules/ds34usb/iop/smsutils.o
+[532/1335] CC(iop) obj/ds34usb/imports.o
+[533/1335] CC(iop) obj/ds34bt/modules/ds34bt/iop/ds34bt.o
+[534/1335] CC(iop) obj/ds34bt/modules/ds34bt/iop/smsutils.o
+[535/1335] CC(iop) obj/ds34bt/imports.o
+[536/1335] AR(iop) lib/libbdm_fork.a
+[537/1335] CC(iop) obj/smb2probe_iop/tools/hwtest/smb2probe/probe_iop.o
+[538/1335] CC(iop) obj/smb2probe_iop/imports.o
+[539/1335] CC(ee) obj/eecore/ee_core/src/main.o
+[540/1335] CC(ee) obj/eecore/ee_core/src/syshook.o
+[541/1335] CC(ee) obj/eecore/ee_core/src/iopmgr.o
+[542/1335] CC(ee) obj/eecore/ee_core/src/modmgr.o
+[543/1335] CC(ee) obj/eecore/ee_core/src/util.o
+[544/1335] CC(ee) obj/eecore/ee_core/src/patches.o
+[545/1335] CC(ee) obj/eecore/ee_core/src/patches_asm.o
+[546/1335] CC(ee) obj/eecore/ee_core/src/padhook.o
+[547/1335] CC(ee) obj/eecore/ee_core/src/cd_igr_rpc.o
+[548/1335] CC(ee) obj/eecore/ee_core/src/tlb.o
+[549/1335] CC(ee) obj/eecore/ee_core/src/asm.o
+[550/1335] CC(ee) obj/eecore/ee_core/src/crt0.o
+[551/1335] CC(ee) obj/eecore/ee_core/src/gsm_engine.o
+[552/1335] CC(ee) obj/eecore/ee_core/src/gsm_api.o
+[553/1335] CC(ee) obj/eecore/ee_core/src/dve_reg.o
+[554/1335] CC(ee) obj/eecore/ee_core/src/cheat_engine.o
+[555/1335] CC(ee) obj/eecore/ee_core/src/cheat_api.o
+[556/1335] CC(ee) obj/eecore/ee_core/src/igrmenu.o
+[557/1335] CC(ee) obj/eecore/ee_core/src/igrmbox.o
+[558/1335] CC(ee) obj/elfldr/elfldr/loader.o
+[559/1335] LINK(iop) obj/isofs/isofs.notiopmod.elf
+[560/1335] LINK(iop) obj/bdmevent/bdmevent.notiopmod.elf
+[561/1335] LINK(iop) obj/imgdrv/imgdrv.notiopmod.elf
+[562/1335] LINK(iop) obj/resetspu/resetspu.notiopmod.elf
+[563/1335] LINK(iop) obj/igrmbox/igrmbox.notiopmod.elf
+[564/1335] LINK(iop) obj/apemodpatch/apemodpatch.notiopmod.elf
+[565/1335] LINK(iop) obj/cleareffects/cleareffects.notiopmod.elf
+[566/1335] LINK(iop) obj/f2techioppatch/f2techioppatch.notiopmod.elf
+[567/1335] LINK(iop) obj/iremsndpatch/iremsndpatch.notiopmod.elf
+[568/1335] LINK(iop) obj/genvmc/genvmc.notiopmod.elf
+[569/1335] LINK(iop) obj/cdvdfsv/cdvdfsv.notiopmod.elf
+[570/1335] LINK(iop) obj/SMSUTILS/SMSUTILS.notiopmod.elf
+[571/1335] LINK(iop) obj/smbinit/smbinit.notiopmod.elf
+[572/1335] LINK(iop) obj/nbns/nbns.notiopmod.elf
+[573/1335] LINK(iop) obj/httpclient/httpclient.notiopmod.elf
+[574/1335] LINK(iop) obj/xhdd/xhdd.notiopmod.elf
+[575/1335] LINK(iop) obj/ps2ips_fork/ps2ips_fork.notiopmod.elf
+[576/1335] LINK(iop) obj/smbman_ra/smbman_ra.notiopmod.elf
+[577/1335] LINK(iop) obj/smb2man/smb2man.notiopmod.elf
+[578/1335] LINK(iop) obj/nfsman/nfsman.notiopmod.elf
+[579/1335] LINK(iop) obj/smap_ingame/smap_ingame.notiopmod.elf
+[580/1335] LINK(iop) obj/SMSTCPIP/SMSTCPIP.notiopmod.elf
+[581/1335] LINK(iop) obj/lwnbdsvr/lwnbdsvr.notiopmod.elf
+[582/1335] LINK(iop) obj/smap_udpbd/smap_udpbd.notiopmod.elf
+[583/1335] LINK(iop) obj/udpfs_smap/udpfs_smap.notiopmod.elf
+[584/1335] LINK(iop) obj/udpfs_ministack/udpfs_ministack.notiopmod.elf
+[585/1335] LINK(iop) obj/udpfs_bd/udpfs_bd.notiopmod.elf
+[586/1335] LINK(iop) obj/udpfs_ioman/udpfs_ioman.notiopmod.elf
+[587/1335] LINK(iop) obj/udpfs_fhi/udpfs_fhi.notiopmod.elf
+[588/1335] LINK(iop) obj/ata_bd/ata_bd.notiopmod.elf
+[589/1335] LINK(iop) obj/ps2hdd_osd/ps2hdd_osd.notiopmod.elf
+[590/1335] LINK(iop) obj/bdm_drv/bdm_drv.notiopmod.elf
+[591/1335] LINK(iop) obj/bdmfs_fatfs_fork/bdmfs_fatfs_fork.notiopmod.elf
+[592/1335] LINK(iop) obj/iLinkman_fork/iLinkman_fork.notiopmod.elf
+[593/1335] LINK(iop) obj/IEEE1394_bd_mini_fork/IEEE1394_bd_mini_fork.notiopmod.elf
+[594/1335] LINK(iop) obj/mx4sio_bd_mini_fork/mx4sio_bd_mini_fork.notiopmod.elf
+[595/1335] LINK(iop) obj/usbmass_bd_mini_fork/usbmass_bd_mini_fork.notiopmod.elf
+[596/1335] LINK(iop) obj/usbd_mini_fork/usbd_mini_fork.notiopmod.elf
+[597/1335] LINK(iop) obj/hdd_cdvdman/hdd_cdvdman.notiopmod.elf
+[598/1335] LINK(iop) obj/hdd_hdpro_cdvdman/hdd_hdpro_cdvdman.notiopmod.elf
+[599/1335] LINK(iop) obj/smb_cdvdman/smb_cdvdman.notiopmod.elf
+[600/1335] LINK(iop) obj/smb2_cdvdman/smb2_cdvdman.notiopmod.elf
+[601/1335] LINK(iop) obj/nfs_cdvdman/nfs_cdvdman.notiopmod.elf
+[602/1335] LINK(iop) obj/http_cdvdman/http_cdvdman.notiopmod.elf
+[603/1335] LINK(iop) obj/bdm_cdvdman/bdm_cdvdman.notiopmod.elf
+[604/1335] LINK(iop) obj/bdm_ata_cdvdman/bdm_ata_cdvdman.notiopmod.elf
+[605/1335] LINK(iop) obj/bdm_udp_cdvdman/bdm_udp_cdvdman.notiopmod.elf
+[606/1335] LINK(iop) obj/pccf_bd/pccf_bd.notiopmod.elf
+[607/1335] LINK(iop) obj/pccf_game/pccf_game.notiopmod.elf
+[608/1335] LINK(iop) obj/pccf_cdvdman/pccf_cdvdman.notiopmod.elf
+[609/1335] LINK(iop) obj/udpfs_cdvdman/udpfs_cdvdman.notiopmod.elf
+[610/1335] LINK(iop) obj/mmce_cdvdman/mmce_cdvdman.notiopmod.elf
+[611/1335] LINK(iop) obj/hdd_mcemu/hdd_mcemu.notiopmod.elf
+[612/1335] LINK(iop) obj/smb_mcemu/smb_mcemu.notiopmod.elf
+[613/1335] LINK(iop) obj/bdm_mcemu/bdm_mcemu.notiopmod.elf
+[614/1335] LINK(iop) obj/mmce_mcemu/mmce_mcemu.notiopmod.elf
+[615/1335] LINK(iop) obj/usb_pademu/usb_pademu.notiopmod.elf
+[616/1335] LINK(iop) obj/bt_pademu/bt_pademu.notiopmod.elf
+[617/1335] LINK(iop) obj/ds34usb/ds34usb.notiopmod.elf
+[618/1335] LINK(iop) obj/ds34bt/ds34bt.notiopmod.elf
+[619/1335] LINK(iop) obj/smb2probe_iop/smb2probe_iop.notiopmod.elf
+[620/1335] LINK(ee) obj/eecore/eecore.unstripped.elf
+[621/1335] LINK(ee) obj/elfldr/elfldr.unstripped.elf
+[622/1335] STRIP obj/isofs/isofs.notiopmod.stripped.elf
+[623/1335] STRIP obj/bdmevent/bdmevent.notiopmod.stripped.elf
+[624/1335] STRIP obj/imgdrv/imgdrv.notiopmod.stripped.elf
+[625/1335] STRIP obj/resetspu/resetspu.notiopmod.stripped.elf
+[626/1335] STRIP obj/igrmbox/igrmbox.notiopmod.stripped.elf
+[627/1335] STRIP obj/apemodpatch/apemodpatch.notiopmod.stripped.elf
+[628/1335] STRIP obj/cleareffects/cleareffects.notiopmod.stripped.elf
+[629/1335] STRIP obj/f2techioppatch/f2techioppatch.notiopmod.stripped.elf
+[630/1335] STRIP obj/iremsndpatch/iremsndpatch.notiopmod.stripped.elf
+[631/1335] STRIP obj/genvmc/genvmc.notiopmod.stripped.elf
+[632/1335] STRIP obj/cdvdfsv/cdvdfsv.notiopmod.stripped.elf
+[633/1335] STRIP obj/SMSUTILS/SMSUTILS.notiopmod.stripped.elf
+[634/1335] STRIP obj/smbinit/smbinit.notiopmod.stripped.elf
+[635/1335] STRIP obj/nbns/nbns.notiopmod.stripped.elf
+[636/1335] STRIP obj/httpclient/httpclient.notiopmod.stripped.elf
+[637/1335] STRIP obj/xhdd/xhdd.notiopmod.stripped.elf
+[638/1335] STRIP obj/ps2ips_fork/ps2ips_fork.notiopmod.stripped.elf
+[639/1335] STRIP obj/smbman_ra/smbman_ra.notiopmod.stripped.elf
+[640/1335] STRIP obj/smb2man/smb2man.notiopmod.stripped.elf
+[641/1335] STRIP obj/nfsman/nfsman.notiopmod.stripped.elf
+[642/1335] STRIP obj/smap_ingame/smap_ingame.notiopmod.stripped.elf
+[643/1335] STRIP obj/SMSTCPIP/SMSTCPIP.notiopmod.stripped.elf
+[644/1335] STRIP obj/lwnbdsvr/lwnbdsvr.notiopmod.stripped.elf
+[645/1335] STRIP obj/smap_udpbd/smap_udpbd.notiopmod.stripped.elf
+[646/1335] STRIP obj/udpfs_smap/udpfs_smap.notiopmod.stripped.elf
+[647/1335] STRIP obj/udpfs_ministack/udpfs_ministack.notiopmod.stripped.elf
+[648/1335] STRIP obj/udpfs_bd/udpfs_bd.notiopmod.stripped.elf
+[649/1335] STRIP obj/udpfs_ioman/udpfs_ioman.notiopmod.stripped.elf
+[650/1335] STRIP obj/udpfs_fhi/udpfs_fhi.notiopmod.stripped.elf
+[651/1335] STRIP obj/ata_bd/ata_bd.notiopmod.stripped.elf
+[652/1335] STRIP obj/ps2hdd_osd/ps2hdd_osd.notiopmod.stripped.elf
+[653/1335] STRIP obj/bdm_drv/bdm_drv.notiopmod.stripped.elf
+[654/1335] STRIP obj/bdmfs_fatfs_fork/bdmfs_fatfs_fork.notiopmod.stripped.elf
+[655/1335] STRIP obj/iLinkman_fork/iLinkman_fork.notiopmod.stripped.elf
+[656/1335] STRIP obj/IEEE1394_bd_mini_fork/IEEE1394_bd_mini_fork.notiopmod.stripped.elf
+[657/1335] STRIP obj/mx4sio_bd_mini_fork/mx4sio_bd_mini_fork.notiopmod.stripped.elf
+[658/1335] STRIP obj/usbmass_bd_mini_fork/usbmass_bd_mini_fork.notiopmod.stripped.elf
+[659/1335] STRIP obj/usbd_mini_fork/usbd_mini_fork.notiopmod.stripped.elf
+[660/1335] STRIP obj/hdd_cdvdman/hdd_cdvdman.notiopmod.stripped.elf
+[661/1335] STRIP obj/hdd_hdpro_cdvdman/hdd_hdpro_cdvdman.notiopmod.stripped.elf
+[662/1335] STRIP obj/smb_cdvdman/smb_cdvdman.notiopmod.stripped.elf
+[663/1335] STRIP obj/smb2_cdvdman/smb2_cdvdman.notiopmod.stripped.elf
+[664/1335] STRIP obj/nfs_cdvdman/nfs_cdvdman.notiopmod.stripped.elf
+[665/1335] STRIP obj/http_cdvdman/http_cdvdman.notiopmod.stripped.elf
+[666/1335] STRIP obj/bdm_cdvdman/bdm_cdvdman.notiopmod.stripped.elf
+[667/1335] STRIP obj/bdm_ata_cdvdman/bdm_ata_cdvdman.notiopmod.stripped.elf
+[668/1335] STRIP obj/bdm_udp_cdvdman/bdm_udp_cdvdman.notiopmod.stripped.elf
+[669/1335] STRIP obj/pccf_bd/pccf_bd.notiopmod.stripped.elf
+[670/1335] STRIP obj/pccf_game/pccf_game.notiopmod.stripped.elf
+[671/1335] STRIP obj/pccf_cdvdman/pccf_cdvdman.notiopmod.stripped.elf
+[672/1335] STRIP obj/udpfs_cdvdman/udpfs_cdvdman.notiopmod.stripped.elf
+[673/1335] STRIP obj/mmce_cdvdman/mmce_cdvdman.notiopmod.stripped.elf
+[674/1335] STRIP obj/hdd_mcemu/hdd_mcemu.notiopmod.stripped.elf
+[675/1335] STRIP obj/smb_mcemu/smb_mcemu.notiopmod.stripped.elf
+[676/1335] STRIP obj/bdm_mcemu/bdm_mcemu.notiopmod.stripped.elf
+[677/1335] STRIP obj/mmce_mcemu/mmce_mcemu.notiopmod.stripped.elf
+[678/1335] STRIP obj/usb_pademu/usb_pademu.notiopmod.stripped.elf
+[679/1335] STRIP obj/bt_pademu/bt_pademu.notiopmod.stripped.elf
+[680/1335] STRIP obj/ds34usb/ds34usb.notiopmod.stripped.elf
+[681/1335] STRIP obj/ds34bt/ds34bt.notiopmod.stripped.elf
+[682/1335] STRIP obj/smb2probe_iop/smb2probe_iop.notiopmod.stripped.elf
+[683/1335] STRIP bin/eecore.elf
+[684/1335] STRIP bin/elfldr.elf
+[685/1335] IOPFIXUP bin/isofs.irx
+[686/1335] IOPFIXUP bin/bdmevent.irx
+[687/1335] IOPFIXUP bin/imgdrv.irx
+[688/1335] IOPFIXUP bin/resetspu.irx
+[689/1335] IOPFIXUP bin/igrmbox.irx
+[690/1335] IOPFIXUP bin/apemodpatch.irx
+[691/1335] IOPFIXUP bin/cleareffects.irx
+[692/1335] IOPFIXUP bin/f2techioppatch.irx
+[693/1335] IOPFIXUP bin/iremsndpatch.irx
+[694/1335] IOPFIXUP bin/genvmc.irx
+[695/1335] IOPFIXUP bin/cdvdfsv.irx
+[696/1335] IOPFIXUP bin/SMSUTILS.irx
+[697/1335] IOPFIXUP bin/smbinit.irx
+[698/1335] IOPFIXUP bin/nbns.irx
+[699/1335] IOPFIXUP bin/httpclient.irx
+[700/1335] IOPFIXUP bin/xhdd.irx
+[701/1335] IOPFIXUP bin/ps2ips_fork.irx
+[702/1335] IOPFIXUP bin/smbman_ra.irx
+[703/1335] IOPFIXUP bin/smb2man.irx
+[704/1335] IOPFIXUP bin/nfsman.irx
+[705/1335] IOPFIXUP bin/smap_ingame.irx
+[706/1335] IOPFIXUP bin/SMSTCPIP.irx
+[707/1335] IOPFIXUP bin/lwnbdsvr.irx
+[708/1335] IOPFIXUP bin/smap_udpbd.irx
+[709/1335] IOPFIXUP bin/udpfs_smap.irx
+[710/1335] IOPFIXUP bin/udpfs_ministack.irx
+[711/1335] IOPFIXUP bin/udpfs_bd.irx
+[712/1335] IOPFIXUP bin/udpfs_ioman.irx
+[713/1335] IOPFIXUP bin/udpfs_fhi.irx
+[714/1335] IOPFIXUP bin/ata_bd.irx
+[715/1335] IOPFIXUP bin/ps2hdd_osd.irx
+[716/1335] IOPFIXUP bin/bdm_drv.irx
+[717/1335] IOPFIXUP bin/bdmfs_fatfs_fork.irx
+[718/1335] IOPFIXUP bin/iLinkman_fork.irx
+[719/1335] IOPFIXUP bin/IEEE1394_bd_mini_fork.irx
+[720/1335] IOPFIXUP bin/mx4sio_bd_mini_fork.irx
+[721/1335] IOPFIXUP bin/usbmass_bd_mini_fork.irx
+[722/1335] IOPFIXUP bin/usbd_mini_fork.irx
+[723/1335] IOPFIXUP bin/hdd_cdvdman.irx
+[724/1335] IOPFIXUP bin/hdd_hdpro_cdvdman.irx
+[725/1335] IOPFIXUP bin/smb_cdvdman.irx
+[726/1335] IOPFIXUP bin/smb2_cdvdman.irx
+[727/1335] IOPFIXUP bin/nfs_cdvdman.irx
+[728/1335] IOPFIXUP bin/http_cdvdman.irx
+[729/1335] IOPFIXUP bin/bdm_cdvdman.irx
+[730/1335] IOPFIXUP bin/bdm_ata_cdvdman.irx
+[731/1335] IOPFIXUP bin/bdm_udp_cdvdman.irx
+[732/1335] IOPFIXUP bin/pccf_bd.irx
+[733/1335] IOPFIXUP bin/pccf_game.irx
+[734/1335] IOPFIXUP bin/pccf_cdvdman.irx
+[735/1335] IOPFIXUP bin/udpfs_cdvdman.irx
+[736/1335] IOPFIXUP bin/mmce_cdvdman.irx
+[737/1335] IOPFIXUP bin/hdd_mcemu.irx
+[738/1335] IOPFIXUP bin/smb_mcemu.irx
+[739/1335] IOPFIXUP bin/bdm_mcemu.irx
+[740/1335] IOPFIXUP bin/mmce_mcemu.irx
+[741/1335] IOPFIXUP bin/usb_pademu.irx
+[742/1335] IOPFIXUP bin/bt_pademu.irx
+[743/1335] IOPFIXUP bin/ds34usb.irx
+[744/1335] IOPFIXUP bin/ds34bt.irx
+[745/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/raudp_exports.c
+[746/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/raudp_imports.c
+[747/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udptty_ingame_exports.c
+[748/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udptty_ingame_imports.c
+[749/1335] GENIRX <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mx4sio_bd_full_fork_imports.c
+[750/1335] CC(ee) obj/ds34usb_ee/modules/ds34usb/ee/libds34usb.o
+[751/1335] CC(ee) obj/ds34bt_ee/modules/ds34bt/ee/libds34bt.o
+[752/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/aes.o
+[753/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/aesce.o
+[754/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/aesni.o
+[755/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/aria.o
+[756/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/asn1parse.o
+[757/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/asn1write.o
+[758/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/base64.o
+[759/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/bignum.o
+[760/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/bignum_core.o
+[761/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/bignum_mod.o
+[762/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/bignum_mod_raw.o
+[763/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/block_cipher.o
+[764/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/camellia.o
+[765/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ccm.o
+[766/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/chacha20.o
+[767/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/chachapoly.o
+[768/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/cipher.o
+[769/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/cipher_wrap.o
+[770/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/cmac.o
+[771/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/constant_time.o
+[772/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ctr_drbg.o
+[773/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/debug.o
+[774/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/des.o
+[775/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/dhm.o
+[776/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ecdh.o
+[777/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ecdsa.o
+[778/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ecjpake.o
+[779/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ecp.o
+[780/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ecp_curves.o
+[781/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ecp_curves_new.o
+[782/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/entropy.o
+[783/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/entropy_poll.o
+[784/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/error.o
+[785/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/gcm.o
+[786/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/hkdf.o
+[787/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/hmac_drbg.o
+[788/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/lmots.o
+[789/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/lms.o
+[790/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/md.o
+[791/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/md5.o
+[792/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/memory_buffer_alloc.o
+[793/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/mps_reader.o
+[794/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/mps_trace.o
+[795/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/net_sockets.o
+[796/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/nist_kw.o
+[797/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/oid.o
+[798/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/padlock.o
+[799/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/pem.o
+[800/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/pk.o
+[801/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/pk_ecc.o
+[802/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/pk_wrap.o
+[803/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/pkcs12.o
+[804/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/pkcs5.o
+[805/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/pkcs7.o
+[806/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/pkparse.o
+[807/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/pkwrite.o
+[808/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/platform.o
+[809/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/platform_util.o
+[810/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/poly1305.o
+[811/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto.o
+[812/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_aead.o
+[813/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_cipher.o
+[814/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_client.o
+[815/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_driver_wrappers_no_static.o
+[816/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_ecp.o
+[817/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_ffdh.o
+[818/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_hash.o
+[819/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_mac.o
+[820/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_pake.o
+[821/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_random.o
+[822/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_rsa.o
+[823/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_se.o
+[824/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_slot_management.o
+[825/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_crypto_storage.o
+[826/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_its_file.o
+[827/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/psa_util.o
+[828/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ripemd160.o
+[829/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/rsa.o
+[830/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/rsa_alt_helpers.o
+[831/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/sha1.o
+[832/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/sha256.o
+[833/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/sha3.o
+[834/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/sha512.o
+[835/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_cache.o
+[836/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_ciphersuites.o
+[837/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_client.o
+[838/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_cookie.o
+[839/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_debug_helpers_generated.o
+[840/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_msg.o
+[841/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_ticket.o
+[842/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_tls.o
+[843/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_tls12_client.o
+[844/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_tls12_server.o
+[845/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_tls13_client.o
+[846/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_tls13_generic.o
+[847/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_tls13_keys.o
+[848/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/ssl_tls13_server.o
+[849/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/threading.o
+[850/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/timing.o
+[851/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/version.o
+[852/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/version_features.o
+[853/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/x509.o
+[854/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/x509_create.o
+[855/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/x509_crl.o
+[856/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/x509_crt.o
+[857/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/x509_csr.o
+[858/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/x509write.o
+[859/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/x509write_crt.o
+[860/1335] CC(ee) obj/mbedtls/third_party/mbedtls/library/x509write_csr.o
+[861/1335] IOPFIXUP bin/smb2probe_iop.irx
+[862/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/isofs_irx.c
+[863/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdmevent_irx.c
+[864/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/genvmc_irx.c
+[865/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/nbns_irx.c
+[866/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/httpclient_irx.c
+[867/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/imgdrv_irx.c
+[868/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/resetspu_irx.c
+[869/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/igrmbox_irx.c
+[870/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/apemodpatch_irx.c
+[871/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/cleareffects_irx.c
+[872/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/f2techioppatch_irx.c
+[873/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/iremsndpatch_irx.c
+[874/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/cdvdfsv_irx.c
+[875/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smbinit_irx.c
+[876/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smsutils_irx.c
+[877/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ingame_smstcpip_irx.c
+[878/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smap_ingame_irx.c
+[879/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/xhdd_irx.c
+[880/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smap_udpbd_irx.c
+[881/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_smap_irx.c
+[882/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_ministack_irx.c
+[883/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_bd_irx.c
+[884/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_ioman_irx.c
+[885/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_fhi_irx.c
+[886/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/lwnbdsvr_irx.c
+[887/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ps2ips_irx.c
+[888/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_irx.c
+[889/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/usbd_irx.c
+[890/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ps2atad_irx.c
+[891/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ps2hdd_irx.c
+[892/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/hdd_cdvdman_irx.c
+[893/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/hdd_hdpro_cdvdman_irx.c
+[894/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb_cdvdman_irx.c
+[895/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb2_cdvdman_irx.c
+[896/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/nfs_cdvdman_irx.c
+[897/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/http_cdvdman_irx.c
+[898/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_cdvdman_irx.c
+[899/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_ata_cdvdman_irx.c
+[900/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_udp_cdvdman_irx.c
+[901/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udpfs_cdvdman_irx.c
+[902/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/pccf_cdvdman_irx.c
+[903/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mmce_cdvdman_irx.c
+[904/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/hdd_mcemu_irx.c
+[905/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb_mcemu_irx.c
+[906/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdm_mcemu_irx.c
+[907/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mmce_mcemu_irx.c
+[908/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/usb_pademu_irx.c
+[909/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bt_pademu_irx.c
+[910/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ds34usb_irx.c
+[911/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ds34bt_irx.c
+[912/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/dvrdrv_irx.c
+[913/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/dvrfile_irx.c
+[914/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/eecore_irx.c
+[915/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/elfldr_irx.c
+[916/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smbman_irx.c
+[917/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb2man_irx.c
+[918/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/nfsman_irx.c
+[919/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/usbhdfsd_irx.c
+[920/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/libsd_irx.c
+[921/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/audsrv_irx.c
+[922/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/bdmfs_fatfs_irx.c
+[923/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/iLinkman_irx.c
+[924/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/IEEE1394_bd_irx.c
+[925/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/usbmass_bd_irx.c
+[926/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mx4sio_bd_irx.c
+[927/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/pccf_bd_irx.c
+[928/1335] CC(iop) obj/mmceman_fork/modules/mmce/mmceman/src/mmce_fs.o
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c: In function 'mmce_fs_open':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:113:50: warning: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  113 |     res = mmce_sio2_tx_rx_pio(filename_len, 0x0, name, NULL, &timeout_1s);
+      |                                                  ^~~~
+In file included from <WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:6:
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/include/mmce_sio2.h:37:53: note: expected 'u8 *' {aka 'unsigned char *'} but argument is of type 'const char *'
+   37 | int mmce_sio2_tx_rx_pio(u8 tx_size, u8 rx_size, u8 *tx_buf, u8 *rx_buf, iop_sys_clock_t *timeout);
+      |                                                 ~~~~^~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c: In function 'mmce_fs_remove':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:444:50: warning: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  444 |     res = mmce_sio2_tx_rx_pio(filename_len, 0x0, name, NULL, &timeout_1s);
+      |                                                  ^~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/include/mmce_sio2.h:37:53: note: expected 'u8 *' {aka 'unsigned char *'} but argument is of type 'const char *'
+   37 | int mmce_sio2_tx_rx_pio(u8 tx_size, u8 rx_size, u8 *tx_buf, u8 *rx_buf, iop_sys_clock_t *timeout);
+      |                                                 ~~~~^~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c: In function 'mmce_fs_mkdir':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:503:45: warning: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  503 |     res = mmce_sio2_tx_rx_pio(dir_len, 0x0, name, NULL, &timeout_1s);
+      |                                             ^~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/include/mmce_sio2.h:37:53: note: expected 'u8 *' {aka 'unsigned char *'} but argument is of type 'const char *'
+   37 | int mmce_sio2_tx_rx_pio(u8 tx_size, u8 rx_size, u8 *tx_buf, u8 *rx_buf, iop_sys_clock_t *timeout);
+      |                                                 ~~~~^~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c: In function 'mmce_fs_rmdir':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:562:45: warning: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  562 |     res = mmce_sio2_tx_rx_pio(dir_len, 0x0, name, NULL, &timeout_1s);
+      |                                             ^~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/include/mmce_sio2.h:37:53: note: expected 'u8 *' {aka 'unsigned char *'} but argument is of type 'const char *'
+   37 | int mmce_sio2_tx_rx_pio(u8 tx_size, u8 rx_size, u8 *tx_buf, u8 *rx_buf, iop_sys_clock_t *timeout);
+      |                                                 ~~~~^~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c: In function 'mmce_fs_dopen':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:628:45: warning: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  628 |     res = mmce_sio2_tx_rx_pio(dir_len, 0x0, name, NULL, &timeout_1s);
+      |                                             ^~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/include/mmce_sio2.h:37:53: note: expected 'u8 *' {aka 'unsigned char *'} but argument is of type 'const char *'
+   37 | int mmce_sio2_tx_rx_pio(u8 tx_size, u8 rx_size, u8 *tx_buf, u8 *rx_buf, iop_sys_clock_t *timeout);
+      |                                                 ~~~~^~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c: In function 'mmce_fs_dread':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:820:62: warning: pointer targets in passing argument 4 of 'mmce_sio2_tx_rx_pio' differ in signedness [-Wpointer-sign]
+  820 |     res = mmce_sio2_tx_rx_pio(0x0, filename_len, NULL, dirent->name, &timeout_1s);
+      |                                                        ~~~~~~^~~~~~
+      |                                                              |
+      |                                                              char *
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/include/mmce_sio2.h:37:65: note: expected 'u8 *' {aka 'unsigned char *'} but argument is of type 'char *'
+   37 | int mmce_sio2_tx_rx_pio(u8 tx_size, u8 rx_size, u8 *tx_buf, u8 *rx_buf, iop_sys_clock_t *timeout);
+      |                                                             ~~~~^~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c: In function 'mmce_fs_getstat':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:876:41: warning: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  876 |     res = mmce_sio2_tx_rx_pio(len, 0x0, name, NULL, &timeout_1s);
+      |                                         ^~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/include/mmce_sio2.h:37:53: note: expected 'u8 *' {aka 'unsigned char *'} but argument is of type 'const char *'
+   37 | int mmce_sio2_tx_rx_pio(u8 tx_size, u8 rx_size, u8 *tx_buf, u8 *rx_buf, iop_sys_clock_t *timeout);
+      |                                                 ~~~~^~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c: In function 'mmce_fs_rename':
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:989:54: warning: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  989 |     res = mmce_sio2_tx_rx_pio(old_filename_len, 0x0, old_name, NULL, &timeout_1s);
+      |                                                      ^~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/include/mmce_sio2.h:37:53: note: expected 'u8 *' {aka 'unsigned char *'} but argument is of type 'const char *'
+   37 | int mmce_sio2_tx_rx_pio(u8 tx_size, u8 rx_size, u8 *tx_buf, u8 *rx_buf, iop_sys_clock_t *timeout);
+      |                                                 ~~~~^~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/src/mmce_fs.c:997:54: warning: passing argument 3 of 'mmce_sio2_tx_rx_pio' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  997 |     res = mmce_sio2_tx_rx_pio(new_filename_len, 0x0, new_name, NULL, &timeout_1s);
+      |                                                      ^~~~~~~~
+<WORK_ROOT>/build/RiptOPL/modules/mmce/mmceman/include/mmce_sio2.h:37:53: note: expected 'u8 *' {aka 'unsigned char *'} but argument is of type 'const char *'
+   37 | int mmce_sio2_tx_rx_pio(u8 tx_size, u8 rx_size, u8 *tx_buf, u8 *rx_buf, iop_sys_clock_t *timeout);
+      |                                                 ~~~~^~~~~~
+[929/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/pccf_game_irx.c
+[930/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/hdpro_atad_irx.c
+[931/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/poweroff_irx.c
+[932/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ps2dev9_irx.c
+[933/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ps2ip_irx.c
+[934/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smap_irx.c
+[935/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/netman_irx.c
+[936/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/iomanx_irx.c
+[937/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/filexio_irx.c
+[938/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/sio2man_irx.c
+[939/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/padman_irx.c
+[940/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mcman_irx.c
+[941/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mcserv_irx.c
+[942/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mmcedrv_irx.c
+[943/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mmceigr_irx.c
+[944/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/ps2fs_irx.c
+[945/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/eesync_irx.c
+[946/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/udnl_irx.c
+[947/1335] CC(iop) obj/raudp/exports.o
+[948/1335] CC(iop) obj/raudp/modules/network/raudp/raudp.o
+[949/1335] CC(iop) obj/udptty_ingame/exports.o
+[950/1335] CC(iop) obj/udptty_ingame/modules/debug/udptty-ingame/udptty.o
+[951/1335] CC(iop) obj/udptty_ingame/imports.o
+[952/1335] CC(iop) obj/mx4sio_bd_full_fork/modules/mx4sio_bd/src/spi_sdcard_crc7.o
+[953/1335] LINK(iop) obj/mmceman_fork/mmceman_fork.notiopmod.elf
+[954/1335] CC(iop) obj/mx4sio_bd_full_fork/modules/mx4sio_bd/src/spi_sdcard_driver.o
+[955/1335] CC(iop) obj/mx4sio_bd_full_fork/modules/mx4sio_bd/src/crc16.o
+[956/1335] CC(iop) obj/mx4sio_bd_full_fork/modules/mx4sio_bd/src/ioplib.o
+[957/1335] CC(iop) obj/mx4sio_bd_full_fork/modules/mx4sio_bd/src/sio2man_hook.o
+[958/1335] CC(iop) obj/mx4sio_bd_full_fork/modules/mx4sio_bd/src/mx4sio.o
+[959/1335] CC(iop) obj/mx4sio_bd_full_fork/imports.o
+[960/1335] CXX(ee) obj/riptopl/src/platform/diaglog.o
+[961/1335] CXX(ee) obj/riptopl/src/ui/menuwatch.o
+[962/1335] CXX(ee) obj/riptopl/src/core/pad.o
+[963/1335] CXX(ee) obj/riptopl/src/core/xparam.o
+[964/1335] CXX(ee) obj/riptopl/src/gfx/textshape.o
+[965/1335] CXX(ee) obj/riptopl/src/core/diagsave.o
+[966/1335] CXX(ee) obj/riptopl/src/ui/drivestatus.o
+[967/1335] CXX(ee) obj/riptopl/src/core/filemgr.o
+[968/1335] CXX(ee) obj/riptopl/src/ui/guifilemgr.o
+[969/1335] CXX(ee) obj/riptopl/src/gfx/renderman.o
+[970/1335] CXX(ee) obj/riptopl/src/ui/menusys.o
+[971/1335] CXX(ee) obj/riptopl/src/core/OSDHistory.o
+[972/1335] CXX(ee) obj/riptopl/src/platform/sysvmc.o
+[973/1335] CXX(ee) obj/riptopl/src/platform/sysdisc.o
+[974/1335] CXX(ee) obj/riptopl/src/platform/elfldr_noreset.o
+[975/1335] STRIP obj/mmceman_fork/mmceman_fork.notiopmod.stripped.elf
+[976/1335] CXX(ee) obj/riptopl/src/core/lang.o
+[977/1335] CC(ee) obj/riptopl/src/core/lang_internal.o
+[978/1335] CXX(ee) obj/riptopl/src/core/config.o
+[979/1335] CXX(ee) obj/riptopl/src/ui/dialogs.o
+[980/1335] CXX(ee) obj/riptopl/src/sources/gamemanage.o
+[981/1335] CXX(ee) obj/riptopl/src/ui/dia.o
+[982/1335] CXX(ee) obj/riptopl/src/ui/diaitems.o
+[983/1335] CXX(ee) obj/riptopl/src/gfx/fntsys.o
+<WORK_ROOT>/build/RiptOPL/src/gfx/fntsys.cpp: In member function 'int FontSystem::prepareGlyphCachePage(font_t*, int)':
+<WORK_ROOT>/build/RiptOPL/src/gfx/fntsys.cpp:198:52: warning: comparison of integer expressions of different signedness: 'unsigned int' and 'int' [-Wsign-compare]
+  198 |         for (page = font->cacheMaxPageID + 1; page <= pageid; ++page)
+      |                                               ~~~~~^~~~~~~~~
+[984/1335] CXX(ee) obj/riptopl/src/platform/ioman.o
+[985/1335] CXX(ee) obj/riptopl/src/gfx/texcache.o
+[986/1335] CXX(ee) obj/riptopl/src/gfx/artload.o
+[987/1335] CXX(ee) obj/riptopl/src/gfx/artqueue.o
+[988/1335] CXX(ee) obj/riptopl/src/gfx/artworker.o
+[989/1335] CXX(ee) obj/riptopl/src/gfx/themes.o
+[990/1335] CXX(ee) obj/riptopl/src/gfx/themeviews.o
+[991/1335] CXX(ee) obj/riptopl/src/gfx/themeelems.o
+[992/1335] CC(iop) obj/raudp/imports.o
+In file included from <WORK_ROOT>/build/RiptOPL/modules/network/raudp/irx_imports.h:4,
+                 from <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/raudp_imports.c:1:
+<WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/raudp_imports.c:11:1: warning: initializer-string for array of 'char' is too long (12 chars into 8 available)
+   11 | smap_driver_IMPORTS_start
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/core/loadcore/include/irx.h:93:16: note: in definition of macro 'DECLARE_IMPORT_TABLE'
+   93 |         name: #modname, };
+      |                ^~~~~~~
+<WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/raudp_imports.c:11:1: note: in expansion of macro 'smap_driver_IMPORTS_start'
+   11 | smap_driver_IMPORTS_start
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/raudp_imports.c:11:1: note: (near initialization for '_imp_smap_driver.name')
+   11 | smap_driver_IMPORTS_start
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/core/loadcore/include/irx.h:93:16: note: in definition of macro 'DECLARE_IMPORT_TABLE'
+   93 |         name: #modname, };
+      |                ^~~~~~~
+<WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/raudp_imports.c:11:1: note: in expansion of macro 'smap_driver_IMPORTS_start'
+   11 | smap_driver_IMPORTS_start
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+[993/1335] CXX(ee) obj/riptopl/src/gfx/coverflow.o
+[994/1335] CXX(ee) obj/riptopl/src/gfx/psbbnflow.o
+[995/1335] CXX(ee) obj/riptopl/src/gfx/grid.o
+[996/1335] IOPFIXUP bin/mmceman_fork.irx
+[997/1335] CXX(ee) obj/riptopl/src/gfx/saveicon.o
+[998/1335] CXX(ee) obj/riptopl/src/sources/bdmsupport.o
+[999/1335] CXX(ee) obj/riptopl/src/platform/hdd.o
+<WORK_ROOT>/build/RiptOPL/src/platform/hdd.cpp: In function 'int hddGetFileBlockInfo(const char*, const apa_sub_t*, pfs_blockinfo_t*, int)':
+<WORK_ROOT>/build/RiptOPL/src/platform/hdd.cpp:459:41: warning: comparison of integer expressions of different signedness: 'u32' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+  459 |             else if (inode->number_data < max) {
+      |                      ~~~~~~~~~~~~~~~~~~~^~~~~
+[1000/1335] CXX(ee) obj/riptopl/src/sources/bdmlaunch.o
+[1001/1335] CXX(ee) obj/riptopl/src/sources/bdmdevices.o
+[1002/1335] CXX(ee) obj/riptopl/src/sources/bdmboot.o
+[1003/1335] CXX(ee) obj/riptopl/src/ui/diaeditors.o
+<WORK_ROOT>/build/RiptOPL/src/ui/diaeditors.cpp: In function 'int diaShowColSel(unsigned char*, unsigned char*, unsigned char*)':
+<WORK_ROOT>/build/RiptOPL/src/ui/diaeditors.cpp:609:22: warning: comparison of integer expressions of different signedness: 'int' and 'size_t' {aka 'unsigned int'} [-Wsign-compare]
+  609 |             if (selc == co)
+      |                 ~~~~~^~~~~
+[1004/1335] CXX(ee) obj/riptopl/src/sources/nettime.o
+[1005/1335] CXX(ee) obj/riptopl/src/platform/httpcatalog.o
+[1006/1335] CXX(ee) obj/riptopl/src/sources/httpsupport.o
+[1007/1335] CXX(ee) obj/riptopl/src/sources/gamesource.o
+[1008/1335] CXX(ee) obj/riptopl/src/sources/vmcrebuild.o
+[1009/1335] CC(ee) obj/riptopl/src/platform/zso.o
+[1010/1335] CC(ee) obj/riptopl/src/platform/lz4.o
+[1011/1335] CXX(ee) obj/riptopl/src/platform/launchdiag.o
+[1012/1335] CXX(ee) obj/riptopl/src/sources/appsupport.o
+[1013/1335] CXX(ee) obj/riptopl/src/sources/mmcesupport.o
+[1014/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/mmceman_irx.c
+[1015/1335] CXX(ee) obj/riptopl/src/gfx/artindex.o
+[1016/1335] CXX(ee) obj/riptopl/src/ui/libview.o
+[1017/1335] CXX(ee) obj/riptopl/src/sources/favsupport.o
+<WORK_ROOT>/build/RiptOPL/src/sources/favsupport.cpp: In member function 'virtual char* FavSource::startup(item_list_t*, int)':
+<WORK_ROOT>/build/RiptOPL/src/sources/favsupport.cpp:1243:16: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+ 1243 |         return "";
+      |                ^~
+<WORK_ROOT>/build/RiptOPL/src/sources/favsupport.cpp:1249:16: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+ 1249 |         return "";
+      |                ^~
+[1018/1335] CXX(ee) obj/riptopl/src/ui/cfgtitle.o
+[1019/1335] CXX(ee) obj/riptopl/src/sources/retrogem.o
+[1020/1335] CXX(ee) obj/riptopl/src/sources/folderbrowse.o
+[1021/1335] CXX(ee) obj/riptopl/src/sources/ethsupport.o
+<WORK_ROOT>/build/RiptOPL/src/sources/ethsupport.cpp: In member function 'virtual char* EthSource::startup(item_list_t*, int)':
+<WORK_ROOT>/build/RiptOPL/src/sources/ethsupport.cpp:958:16: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+  958 |         return "";
+      |                ^~
+[1022/1335] CXX(ee) obj/riptopl/src/ui/gui.o
+[1023/1335] CXX(ee) obj/riptopl/src/ui/guisettings.o
+[1024/1335] CXX(ee) obj/riptopl/src/ui/guiqueue.o
+[1025/1335] CXX(ee) obj/riptopl/src/ui/guiboot.o
+[1026/1335] CXX(ee) obj/riptopl/src/sources/udpfssupport.o
+<WORK_ROOT>/build/RiptOPL/src/sources/udpfssupport.cpp: In member function 'virtual void UdpfsSource::init(item_list_t*)':
+<WORK_ROOT>/build/RiptOPL/src/sources/udpfssupport.cpp:326:17: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+  326 |     udpfsBase = "udpfs:";
+      |                 ^~~~~~~~
+[1027/1335] CXX(ee) obj/riptopl/src/ui/guinotify.o
+[1028/1335] CXX(ee) obj/riptopl/src/ui/guiscreens.o
+[1029/1335] CXX(ee) obj/riptopl/src/ui/guiframe.o
+[1030/1335] CXX(ee) obj/riptopl/src/ui/guioverlay.o
+[1031/1335] CXX(ee) obj/riptopl/src/platform/sysneutrino.o
+<WORK_ROOT>/build/RiptOPL/src/platform/sysneutrino.cpp: In function 'int sysRunNeutrinoLaunch(const char*, const char*, const char*, int, int, const char*, const char*, int, int, int, int, const neutrino_vmc_args_t*, int)':
+<WORK_ROOT>/build/RiptOPL/src/platform/sysneutrino.cpp:1277:28: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+ 1277 |             argv[argc++] = "-qb";
+      |                            ^~~~~
+<WORK_ROOT>/build/RiptOPL/src/platform/sysneutrino.cpp:1295:24: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+ 1295 |         argv[argc++] = "-dbc";
+      |                        ^~~~~~
+<WORK_ROOT>/build/RiptOPL/src/platform/sysneutrino.cpp:1299:24: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+ 1299 |         argv[argc++] = "-logo";
+      |                        ^~~~~~~
+[1032/1335] CXX(ee) obj/riptopl/src/ui/guisplash.o
+[1033/1335] CXX(ee) obj/riptopl/src/ui/guimodal.o
+[1034/1335] CXX(ee) obj/riptopl/src/ui/guiwait.o
+[1035/1335] CXX(ee) obj/riptopl/src/ui/guigameid.o
+[1036/1335] CXX(ee) obj/riptopl/src/sources/vcdsupport.o
+<WORK_ROOT>/build/RiptOPL/src/sources/vcdsupport.cpp: In member function 'void VcdSupport::requestRowId(const char*, int, int)':
+<WORK_ROOT>/build/RiptOPL/src/sources/vcdsupport.cpp:556:51: warning: comparison of integer expressions of different signedness: 'int' and 'unsigned int' [-Wsign-compare]
+  556 |     if (m->state == VCD_ID_DEFERRED && guiFrameId < m->retryFrame)
+      |                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~
+[1037/1335] CXX(ee) obj/riptopl/src/sources/cuesupport.o
+<WORK_ROOT>/build/RiptOPL/src/sources/cuesupport.cpp: In function 'int cueRewriteSettingsFile(const char*, const cue_setting_t*, int)':
+<WORK_ROOT>/build/RiptOPL/src/sources/cuesupport.cpp:772:21: warning: unused variable 'restored' [-Wunused-variable]
+  772 |                 int restored = (len == 0) || cueWriteAll(fd, before, len);
+      |                     ^~~~~~~~
+[1038/1335] CXX(ee) obj/riptopl/src/gfx/plasma.o
+[1039/1335] CXX(ee) obj/riptopl/src/gfx/uidraw.o
+[1040/1335] CXX(ee) obj/riptopl/src/ui/guigame.o
+[1041/1335] CXX(ee) obj/riptopl/src/core/vmc_groups.o
+[1042/1335] CXX(ee) obj/riptopl/src/core/vmcsaves.o
+[1043/1335] CXX(ee) obj/riptopl/src/platform/new.o
+[1044/1335] CXX(ee) obj/riptopl/src/ui/menuitems.o
+[1045/1335] CXX(ee) obj/riptopl/src/sources/appscan.o
+[1046/1335] CXX(ee) obj/riptopl/src/app/settingsio.o
+[1047/1335] CXX(ee) obj/riptopl/src/app/lwnbdctl.o
+[1048/1335] CXX(ee) obj/riptopl/src/app/autolaunch.o
+[1049/1335] CXX(ee) obj/riptopl/src/platform/system.o
+<WORK_ROOT>/build/RiptOPL/src/platform/system.cpp:750:6: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+  750 |     {"SLUS_209.77", (void *)0x01fc7000}, // Virtua Quest
+      |      ^~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/platform/system.cpp:751:6: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+  751 |     {"SLPM_656.32", (void *)0x01fc7000}, // Virtua Fighter Cyber Generation: Judgment Six No Yabou
+      |      ^~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/platform/system.cpp: In function 'void sysLaunchLoaderElf(const char*, const char*, int, void**, int, void**, int, unsigned int)':
+<WORK_ROOT>/build/RiptOPL/src/platform/system.cpp:1538:19: warning: comparison of integer expressions of different signedness: 'int' and 'unsigned int' [-Wsign-compare]
+ 1538 |     for (i = 0; i < size_eecore_irx / 4; i++) {
+      |                 ~~^~~~~~~~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/platform/system.cpp:1663:26: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+ 1663 |             argv[argc] = "rom0:PS2LOGO";
+      |                          ^~~~~~~~~~~~~~
+[1050/1335] CXX(ee) obj/riptopl/src/core/settings.o
+[1051/1335] CXX(ee) obj/riptopl/src/core/riptlite.o
+[1052/1335] CXX(ee) obj/riptopl/src/app/host.o
+[1053/1335] CXX(ee) obj/riptopl/src/gfx/atlas.o
+[1054/1335] CXX(ee) obj/riptopl/src/platform/nbns.o
+[1055/1335] CXX(ee) obj/riptopl/src/platform/httpclient.o
+[1056/1335] CXX(ee) obj/riptopl/src/core/gsm.o
+[1057/1335] CXX(ee) obj/riptopl/src/core/cheatman.o
+[1058/1335] CXX(ee) obj/riptopl/src/core/cheatconfig.o
+[1059/1335] CXX(ee) obj/riptopl/src/platform/ioprp.o
+[1060/1335] CXX(ee) obj/riptopl/src/app/opl.o
+<WORK_ROOT>/build/RiptOPL/src/app/opl.cpp: In function 'void setDefaults()':
+<WORK_ROOT>/build/RiptOPL/src/app/opl.cpp:1502:18: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+ 1502 |     gBaseMCDir = "mc?:OPL";
+      |                  ^~~~~~~~~
+[1061/1335] CC(ee) obj/riptopl/asm/APPS_png.o
+[1062/1335] CC(ee) obj/riptopl/asm/Aspect_s_png.o
+[1063/1335] CC(ee) obj/riptopl/asm/Aspect_w1_png.o
+[1064/1335] CC(ee) obj/riptopl/asm/Aspect_w2_png.o
+[1065/1335] CC(ee) obj/riptopl/asm/Aspect_w_png.o
+[1066/1335] CC(ee) obj/riptopl/asm/CD_png.o
+[1067/1335] CC(ee) obj/riptopl/asm/DVD_png.o
+[1068/1335] CC(ee) obj/riptopl/asm/ELF_png.o
+[1069/1335] CC(ee) obj/riptopl/asm/HDL_png.o
+[1070/1335] CC(ee) obj/riptopl/asm/IOPRP_img.o
+[1071/1335] CC(ee) obj/riptopl/asm/ISO_png.o
+[1072/1335] CC(ee) obj/riptopl/asm/Index2_0_png.o
+[1073/1335] CXX(ee) obj/riptopl/src/sources/supportbase.o
+<WORK_ROOT>/build/RiptOPL/src/sources/supportbase.cpp: In function 'int loadISOGameListCache(const char*, game_cache_list*)':
+<WORK_ROOT>/build/RiptOPL/src/sources/supportbase.cpp:188:73: warning: comparison of integer expressions of different signedness: 'size_t' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+  188 |                 if (fread(games, sizeof(base_game_info_t), count, file) == count) {
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/supportbase.cpp: In function 'int updateISOGameList(const char*, const game_cache_list*, const game_list_t*, int)':
+<WORK_ROOT>/build/RiptOPL/src/sources/supportbase.cpp:245:23: warning: comparison of integer expressions of different signedness: 'int' and 'const unsigned int' [-Wsign-compare]
+  245 |             if (count != cache->count) {
+      |                 ~~~~~~^~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/supportbase.cpp:283:78: warning: comparison of integer expressions of different signedness: 'size_t' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+  283 |                 result = fwrite(list, sizeof(base_game_info_t), count, file) == count ? 0 : EIO;
+      |                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/supportbase.cpp: In function 'int sbProbeISO9660(const char*, base_game_info_t*, u32)':
+<WORK_ROOT>/build/RiptOPL/src/sources/supportbase.cpp:809:70: warning: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'u64' {aka 'long long unsigned int'} [-Wsign-compare]
+  809 |                 if (lseek64(fd, (u64)layer1_offset * 2048, SEEK_SET) == (u64)layer1_offset * 2048) {
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[1074/1335] CC(ee) obj/riptopl/asm/Index2_1_png.o
+[1075/1335] CC(ee) obj/riptopl/asm/Index3_0_png.o
+[1076/1335] CXX(ee) obj/riptopl/src/platform/ps2cnf.o
+<WORK_ROOT>/build/RiptOPL/src/platform/ps2cnf.cpp: In function 'int ps2cnfGetBootFile(const char*, char*)':
+<WORK_ROOT>/build/RiptOPL/src/platform/ps2cnf.cpp:89:40: warning: comparison of integer expressions of different signedness: 'size_t' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+   89 |     if (fread(system_cnf, 1, size, fd) != size) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+[1077/1335] CC(ee) obj/riptopl/asm/Index3_1_png.o
+[1078/1335] CC(ee) obj/riptopl/asm/Index3_2_png.o
+[1079/1335] CXX(ee) obj/riptopl/src/platform/util.o
+<WORK_ROOT>/build/RiptOPL/src/platform/util.cpp: In function 'int readFileBuffer(file_buffer_t*, char**)':
+<WORK_ROOT>/build/RiptOPL/src/platform/util.cpp:595:61: warning: comparison of integer expressions of different signedness: 'unsigned int' and 'int' [-Wsign-compare]
+  595 |                 if (fileBuffer->fd >= 0 && fileBuffer->size != lineSize + 1) {
+      |                                            ~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+[1080/1335] CC(ee) obj/riptopl/asm/Index4_0_png.o
+[1081/1335] CC(ee) obj/riptopl/asm/Index4_1_png.o
+[1082/1335] CC(ee) obj/riptopl/asm/Index4_2_png.o
+[1083/1335] CC(ee) obj/riptopl/asm/Index4_3_png.o
+[1084/1335] CC(ee) obj/riptopl/asm/Index_0_png.o
+[1085/1335] CC(ee) obj/riptopl/asm/Index_1_png.o
+[1086/1335] CC(ee) obj/riptopl/asm/Index_2_png.o
+[1087/1335] CC(ee) obj/riptopl/asm/Index_3_png.o
+[1088/1335] CC(ee) obj/riptopl/asm/Index_4_png.o
+[1089/1335] CC(ee) obj/riptopl/asm/L1_png.o
+[1090/1335] CC(ee) obj/riptopl/asm/L3_png.o
+[1091/1335] CC(ee) obj/riptopl/asm/PS1_png.o
+[1092/1335] CC(ee) obj/riptopl/asm/PS2_png.o
+[1093/1335] CC(ee) obj/riptopl/asm/Players_1_png.o
+[1094/1335] CC(ee) obj/riptopl/asm/Players_2_png.o
+[1095/1335] CC(ee) obj/riptopl/asm/Players_3_png.o
+[1096/1335] CXX(ee) obj/riptopl/src/sources/netsupport.o
+In file included from <WORK_ROOT>/build/RiptOPL/src/sources/netsupport.cpp:10:
+<HOME>/AppData/Local/ps2build/packages/core/ps2ip/include/ps2ip.h:32:46: warning: '/*' within comment [-Wcomment]
+   32 |  * plain CMake project globbing packages/core/*\/include
+In file included from <HOME>/AppData/Local/ps2build/packages/core/ps2ip/include/ps2ip.h:26:
+<WORK_ROOT>/build/RiptOPL/src/sources/netsupport.cpp: In member function 'int NetSupport::readNetConfig()':
+<WORK_ROOT>/build/RiptOPL/src/sources/netsupport.cpp:361:35: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+  361 |     if ((result = ps2ip_getconfig("sm0", &ip_info)) >= 0) {
+      |                                   ^~~~~
+<HOME>/AppData/Local/ps2build/packages/core/cglue/include/sys/socket.h:979:55: note: in definition of macro 'ps2ip_getconfig'
+  979 | #define ps2ip_getconfig(...) libcglue_ps2ip_getconfig(__VA_ARGS__)
+      |                                                       ^~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/netsupport.cpp: In member function 'int NetSupport::applyIpConfig()':
+<WORK_ROOT>/build/RiptOPL/src/sources/netsupport.cpp:441:35: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+  441 |     if ((result = ps2ip_getconfig("sm0", &ip_info)) >= 0) {
+      |                                   ^~~~~
+<HOME>/AppData/Local/ps2build/packages/core/cglue/include/sys/socket.h:979:55: note: in definition of macro 'ps2ip_getconfig'
+  979 | #define ps2ip_getconfig(...) libcglue_ps2ip_getconfig(__VA_ARGS__)
+      |                                                       ^~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/netsupport.cpp:451:30: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+  451 |         if ((ps2_ip_use_dhcp != ip_info.dhcp_enabled) || (!ps2_ip_use_dhcp &&
+      |              ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/netsupport.cpp: In member function 'int NetSupport::dhcpStatus()':
+<WORK_ROOT>/build/RiptOPL/src/sources/netsupport.cpp:487:35: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+  487 |     if ((result = ps2ip_getconfig("sm0", &ip_info)) >= 0) {
+      |                                   ^~~~~
+<HOME>/AppData/Local/ps2build/packages/core/cglue/include/sys/socket.h:979:55: note: in definition of macro 'ps2ip_getconfig'
+  979 | #define ps2ip_getconfig(...) libcglue_ps2ip_getconfig(__VA_ARGS__)
+      |                                                       ^~~~~~~~~~~
+[1097/1335] CC(ee) obj/riptopl/asm/Players_4_png.o
+[1098/1335] CC(ee) obj/riptopl/asm/R1_png.o
+[1099/1335] CC(ee) obj/riptopl/asm/R3_png.o
+[1100/1335] CC(ee) obj/riptopl/asm/Rating_0_png.o
+[1101/1335] CC(ee) obj/riptopl/asm/Rating_1_png.o
+[1102/1335] CC(ee) obj/riptopl/asm/Rating_2_png.o
+[1103/1335] CC(ee) obj/riptopl/asm/Rating_3_png.o
+[1104/1335] CC(ee) obj/riptopl/asm/Rating_4_png.o
+[1105/1335] CC(ee) obj/riptopl/asm/Rating_5_png.o
+[1106/1335] CC(ee) obj/riptopl/asm/Scan_1080i2_png.o
+[1107/1335] CC(ee) obj/riptopl/asm/Scan_1080i_png.o
+[1108/1335] CC(ee) obj/riptopl/asm/Scan_1080p_png.o
+[1109/1335] CC(ee) obj/riptopl/asm/Scan_240p1_png.o
+[1110/1335] CC(ee) obj/riptopl/asm/Scan_240p_png.o
+[1111/1335] CC(ee) obj/riptopl/asm/Scan_480i_png.o
+[1112/1335] CC(ee) obj/riptopl/asm/Scan_480p1_png.o
+[1113/1335] CC(ee) obj/riptopl/asm/Scan_480p2_png.o
+[1114/1335] CC(ee) obj/riptopl/asm/Scan_480p3_png.o
+[1115/1335] CC(ee) obj/riptopl/asm/Scan_480p4_png.o
+[1116/1335] CC(ee) obj/riptopl/asm/Scan_480p5_png.o
+[1117/1335] CC(ee) obj/riptopl/asm/Scan_480p_png.o
+[1118/1335] CC(ee) obj/riptopl/asm/Scan_576i_png.o
+[1119/1335] CC(ee) obj/riptopl/asm/Scan_576p_png.o
+[1120/1335] CC(ee) obj/riptopl/asm/Scan_720p_png.o
+[1121/1335] CC(ee) obj/riptopl/asm/UL_png.o
+[1122/1335] CC(ee) obj/riptopl/asm/VCD_png.o
+[1123/1335] CC(ee) obj/riptopl/asm/Vmode_multi_png.o
+[1124/1335] CC(ee) obj/riptopl/asm/Vmode_ntsc_png.o
+[1125/1335] CC(ee) obj/riptopl/asm/Vmode_pal_png.o
+[1126/1335] CC(ee) obj/riptopl/asm/ZSO_png.o
+[1127/1335] CC(ee) obj/riptopl/asm/app_png.o
+[1128/1335] CC(ee) obj/riptopl/asm/apps_case_png.o
+[1129/1335] CC(ee) obj/riptopl/asm/bd_connect.o
+[1130/1335] CC(ee) obj/riptopl/asm/bd_disconnect.o
+[1131/1335] CC(ee) obj/riptopl/asm/boot.o
+[1132/1335] CC(ee) obj/riptopl/asm/cancel.o
+[1133/1335] CC(ee) obj/riptopl/asm/case_png.o
+[1134/1335] CC(ee) obj/riptopl/asm/case_ps1_png.o
+[1135/1335] CXX(ee) obj/riptopl/src/core/sound.o
+In file included from <WORK_ROOT>/build/RiptOPL/src/core/sound.cpp:9:
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:95:21: warning: 'OV_CALLBACKS_STREAMONLY_NOCLOSE' defined but not used [-Wunused-variable]
+   95 | static ov_callbacks OV_CALLBACKS_STREAMONLY_NOCLOSE = {
+      |                     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:88:21: warning: 'OV_CALLBACKS_STREAMONLY' defined but not used [-Wunused-variable]
+   88 | static ov_callbacks OV_CALLBACKS_STREAMONLY = {
+      |                     ^~~~~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:81:21: warning: 'OV_CALLBACKS_NOCLOSE' defined but not used [-Wunused-variable]
+   81 | static ov_callbacks OV_CALLBACKS_NOCLOSE = {
+      |                     ^~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:74:21: warning: 'OV_CALLBACKS_DEFAULT' defined but not used [-Wunused-variable]
+   74 | static ov_callbacks OV_CALLBACKS_DEFAULT = {
+      |                     ^~~~~~~~~~~~~~~~~~~~
+[1136/1335] CXX(ee) obj/riptopl/src/core/sfx.o
+In file included from <WORK_ROOT>/build/RiptOPL/src/core/sfx.cpp:9:
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:95:21: warning: 'OV_CALLBACKS_STREAMONLY_NOCLOSE' defined but not used [-Wunused-variable]
+   95 | static ov_callbacks OV_CALLBACKS_STREAMONLY_NOCLOSE = {
+      |                     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:88:21: warning: 'OV_CALLBACKS_STREAMONLY' defined but not used [-Wunused-variable]
+   88 | static ov_callbacks OV_CALLBACKS_STREAMONLY = {
+      |                     ^~~~~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:81:21: warning: 'OV_CALLBACKS_NOCLOSE' defined but not used [-Wunused-variable]
+   81 | static ov_callbacks OV_CALLBACKS_NOCLOSE = {
+      |                     ^~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:74:21: warning: 'OV_CALLBACKS_DEFAULT' defined but not used [-Wunused-variable]
+   74 | static ov_callbacks OV_CALLBACKS_DEFAULT = {
+      |                     ^~~~~~~~~~~~~~~~~~~~
+[1137/1335] CXX(ee) obj/riptopl/src/core/bgm.o
+In file included from <WORK_ROOT>/build/RiptOPL/src/core/bgm.cpp:9:
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:95:21: warning: 'OV_CALLBACKS_STREAMONLY_NOCLOSE' defined but not used [-Wunused-variable]
+   95 | static ov_callbacks OV_CALLBACKS_STREAMONLY_NOCLOSE = {
+      |                     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:88:21: warning: 'OV_CALLBACKS_STREAMONLY' defined but not used [-Wunused-variable]
+   88 | static ov_callbacks OV_CALLBACKS_STREAMONLY = {
+      |                     ^~~~~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:81:21: warning: 'OV_CALLBACKS_NOCLOSE' defined but not used [-Wunused-variable]
+   81 | static ov_callbacks OV_CALLBACKS_NOCLOSE = {
+      |                     ^~~~~~~~~~~~~~~~~~~~
+<HOME>/AppData/Local/ps2build/packages/world/vorbis/include/vorbis/vorbisfile.h:74:21: warning: 'OV_CALLBACKS_DEFAULT' defined but not used [-Wunused-variable]
+   74 | static ov_callbacks OV_CALLBACKS_DEFAULT = {
+      |                     ^~~~~~~~~~~~~~~~~~~~
+[1138/1335] CC(ee) obj/riptopl/asm/circle_png.o
+[1139/1335] CXX(ee) obj/riptopl/src/platform/tar.o
+<WORK_ROOT>/build/RiptOPL/src/platform/tar.cpp: In function 'int tarParseFile(TarKind, const char*)':
+<WORK_ROOT>/build/RiptOPL/src/platform/tar.cpp:288:57: warning: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'u64' {aka 'long long unsigned int'} [-Wsign-compare]
+  288 |             if (lseek64(fd.get(), paddedSize, SEEK_CUR) == (u64)-1)
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/platform/tar.cpp:299:57: warning: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'u64' {aka 'long long unsigned int'} [-Wsign-compare]
+  299 |             if (lseek64(fd.get(), paddedSize, SEEK_CUR) == (u64)-1)
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/platform/tar.cpp:363:53: warning: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'u64' {aka 'long long unsigned int'} [-Wsign-compare]
+  363 |         if (lseek64(fd.get(), paddedSize, SEEK_CUR) == (u64)-1)
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/platform/tar.cpp: In function 'u32 tarRead(TarKind, const TarEntryBase*, void*, u32)':
+<WORK_ROOT>/build/RiptOPL/src/platform/tar.cpp:595:52: warning: comparison of integer expressions of different signedness: 'off64_t' {aka 'long long int'} and 'const u64' {aka 'const long long unsigned int'} [-Wsign-compare]
+  595 |     if (lseek64(fd.get(), entry->offset, SEEK_SET) != entry->offset)
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+[1140/1335] CC(ee) obj/riptopl/asm/conf_theme_OPL.o
+[1141/1335] CC(ee) obj/riptopl/asm/confirm.o
+[1142/1335] CC(ee) obj/riptopl/asm/cover_png.o
+[1143/1335] CC(ee) obj/riptopl/asm/cross_png.o
+[1144/1335] CC(ee) obj/riptopl/asm/cursor.o
+[1145/1335] CC(ee) obj/riptopl/asm/disc_png.o
+[1146/1335] CC(ee) obj/riptopl/asm/disc_ps1_png.o
+[1147/1335] CC(ee) obj/riptopl/asm/eth_png.o
+[1148/1335] CC(ee) obj/riptopl/asm/fav_mark_png.o
+[1149/1335] CC(ee) obj/riptopl/asm/fav_png.o
+[1150/1335] CC(ee) obj/riptopl/asm/glyph_standard_L1_png.o
+[1151/1335] CC(ee) obj/riptopl/asm/glyph_standard_L3_png.o
+[1152/1335] CC(ee) obj/riptopl/asm/glyph_standard_R1_png.o
+[1153/1335] CC(ee) obj/riptopl/asm/glyph_standard_R3_png.o
+[1154/1335] CC(ee) obj/riptopl/asm/glyph_standard_circle_png.o
+[1155/1335] CC(ee) obj/riptopl/asm/glyph_standard_cross_png.o
+[1156/1335] CC(ee) obj/riptopl/asm/glyph_standard_left_png.o
+[1157/1335] CC(ee) obj/riptopl/asm/glyph_standard_right_png.o
+[1158/1335] CC(ee) obj/riptopl/asm/glyph_standard_select_png.o
+[1159/1335] CC(ee) obj/riptopl/asm/glyph_standard_square_png.o
+[1160/1335] CC(ee) obj/riptopl/asm/glyph_standard_start_png.o
+[1161/1335] CC(ee) obj/riptopl/asm/glyph_standard_triangle_png.o
+[1162/1335] CC(ee) obj/riptopl/asm/glyph_white_L1_png.o
+[1163/1335] CC(ee) obj/riptopl/asm/glyph_white_L3_png.o
+[1164/1335] CC(ee) obj/riptopl/asm/glyph_white_R1_png.o
+[1165/1335] CXX(ee) obj/riptopl/src/gfx/textures.o
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp: In function 'int texSizeValidate(int, int, u8)':
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp:369:53: warning: comparison of integer expressions of different signedness: 'u32' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+  369 |     if (gsKit_texture_size(width, height, (int)psm) > maxSize)
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp: In function 'void texReadPixels24Row(GSTEXTURE*, png_bytep, int)':
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp:785:23: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+  785 |     for (int i = 0; i < texture->Width; i++)
+      |                     ~~^~~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp: In function 'void texReadPixels32Row(GSTEXTURE*, png_bytep, int)':
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp:797:23: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+  797 |     for (int i = 0; i < texture->Width; i++) {
+      |                     ~~^~~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp: In function 'int texReadData(GSTEXTURE*, png_structp, png_infop, int, png_byte* volatile*, void (*)(GSTEXTURE*, png_bytep, int))':
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp:835:35: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+  835 |             for (int row = 0; row < texture->Height; row++) {
+      |                               ~~~~^~~~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp:845:31: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+  845 |         for (int row = 0; row < texture->Height; row++)
+      |                           ~~~~^~~~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/gfx/textures.cpp:861:27: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+  861 |     for (int row = 0; row < texture->Height; row++) {
+      |                       ~~~~^~~~~~~~~~~~~~~~~
+[1166/1335] CC(ee) obj/riptopl/asm/glyph_white_R3_png.o
+[1167/1335] CC(ee) obj/riptopl/asm/glyph_white_circle_png.o
+[1168/1335] CC(ee) obj/riptopl/asm/glyph_white_cross_png.o
+[1169/1335] CC(ee) obj/riptopl/asm/glyph_white_left_png.o
+[1170/1335] CC(ee) obj/riptopl/asm/glyph_white_right_png.o
+[1171/1335] CC(ee) obj/riptopl/asm/glyph_white_select_png.o
+[1172/1335] CC(ee) obj/riptopl/asm/glyph_white_square_png.o
+[1173/1335] CC(ee) obj/riptopl/asm/glyph_white_start_png.o
+[1174/1335] CC(ee) obj/riptopl/asm/glyph_white_triangle_png.o
+[1175/1335] CC(ee) obj/riptopl/asm/grid_devices_png.o
+[1176/1335] CC(ee) obj/riptopl/asm/hdd_bd_png.o
+[1177/1335] CC(ee) obj/riptopl/asm/hdd_png.o
+[1178/1335] CC(ee) obj/riptopl/asm/icon_sys.o
+[1179/1335] CC(ee) obj/riptopl/asm/icon_sys_A.o
+[1180/1335] CC(ee) obj/riptopl/asm/icon_sys_C.o
+[1181/1335] CC(ee) obj/riptopl/asm/icon_sys_J.o
+[1182/1335] CC(ee) obj/riptopl/asm/ilk_bd_png.o
+[1183/1335] CC(ee) obj/riptopl/asm/incebtion_png.o
+[1184/1335] CC(ee) obj/riptopl/asm/ip_png.o
+[1185/1335] CC(ee) obj/riptopl/asm/left_png.o
+[1186/1335] CC(ee) obj/riptopl/asm/load0_png.o
+[1187/1335] CC(ee) obj/riptopl/asm/load1_png.o
+[1188/1335] CC(ee) obj/riptopl/asm/load2_png.o
+[1189/1335] CC(ee) obj/riptopl/asm/load3_png.o
+[1190/1335] CC(ee) obj/riptopl/asm/load4_png.o
+[1191/1335] CC(ee) obj/riptopl/asm/load5_png.o
+[1192/1335] CC(ee) obj/riptopl/asm/load6_png.o
+[1193/1335] CC(ee) obj/riptopl/asm/load7_png.o
+[1194/1335] CC(ee) obj/riptopl/asm/logo0_png.o
+[1195/1335] CC(ee) obj/riptopl/asm/logo1_png.o
+[1196/1335] CXX(ee) obj/riptopl/src/sources/hddsupport.o
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp:49:26: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+   49 | static char *hddPrefix = "pfs0:";
+      |                          ^~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp: In member function 'int HddSupport::loadModules()':
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp:645:78: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+  645 |             retXhddModule = sysLoadModuleBuffer(&xhdd_irx, size_xhdd_irx, 6, "-hdpro");
+      |                                                                              ^~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp: At global scope:
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp:817:5: warning: no previous declaration for 'int hddDetectNonSonyFileSystem()' [-Wmissing-declarations]
+  817 | int hddDetectNonSonyFileSystem()
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp: In function 'void hddMountSupportHome(int)':
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp:1423:22: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+ 1423 |         gHDDPrefix = "pfs0:OPL/";
+      |                      ^~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp:1425:22: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+ 1425 |         gHDDPrefix = "pfs0:";
+      |                      ^~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp: In function 'int hddLoadGameListCache(hdl_games_list_t*)':
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp:3120:72: warning: comparison of integer expressions of different signedness: 'size_t' {aka 'unsigned int'} and 'int' [-Wsign-compare]
+ 3120 |                 if (fread(games, sizeof(hdl_game_info_t), count, file) == count) {
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp: In function 'int hddUpdateGameListCache(hdl_games_list_t*, hdl_games_list_t*)':
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp:3157:23: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+ 3157 |         for (i = 0; i < cache->count; i++) {
+      |                     ~~^~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp:3158:27: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+ 3158 |             for (j = 0; j < game_list->count; j++) {
+      |                         ~~^~~~~~~~~~~~~~~~~~
+<WORK_ROOT>/build/RiptOPL/src/sources/hddsupport.cpp:3163:19: warning: comparison of integer expressions of different signedness: 'int' and 'u32' {aka 'unsigned int'} [-Wsign-compare]
+ 3163 |             if (j == game_list->count) {
+      |                 ~~^~~~~~~~~~~~~~~~~~~
+[1197/1335] CC(ee) obj/riptopl/asm/logo2_png.o
+[1198/1335] CC(ee) obj/riptopl/asm/logo3_png.o
+[1199/1335] CC(ee) obj/riptopl/asm/logo_png.o
+[1200/1335] CC(ee) obj/riptopl/asm/m4s_bd_png.o
+[1201/1335] CC(ee) obj/riptopl/asm/message.o
+[1202/1335] CC(ee) obj/riptopl/asm/missing_png.o
+[1203/1335] CC(ee) obj/riptopl/asm/mmce_png.o
+[1204/1335] CC(ee) obj/riptopl/asm/poeveticanew.o
+[1205/1335] CC(ee) obj/riptopl/asm/psbbn_bg_png.o
+[1206/1335] CC(ee) obj/riptopl/asm/ratls_root_isrgrootx1.o
+[1207/1335] CC(ee) obj/riptopl/asm/ratls_root_isrgrootx2.o
+[1208/1335] CC(ee) obj/riptopl/asm/ratls_root_sectigoe46.o
+[1209/1335] CC(ee) obj/riptopl/asm/ratls_root_sectigor46.o
+[1210/1335] CC(ee) obj/riptopl/asm/right_png.o
+[1211/1335] CC(ee) obj/riptopl/asm/save_icn.o
+[1212/1335] CC(ee) obj/riptopl/asm/screen_png.o
+[1213/1335] CC(ee) obj/riptopl/asm/screens_png.o
+[1214/1335] CC(ee) obj/riptopl/asm/select_png.o
+[1215/1335] CC(ee) obj/riptopl/asm/square_png.o
+[1216/1335] CC(ee) obj/riptopl/asm/start_png.o
+[1217/1335] CC(ee) obj/riptopl/asm/techwritescode_png.o
+[1218/1335] CC(ee) obj/riptopl/asm/theme_coverflow.o
+[1219/1335] CC(ee) obj/riptopl/asm/theme_grid.o
+[1220/1335] CC(ee) obj/riptopl/asm/theme_psbbn_flow.o
+[1221/1335] CC(ee) obj/riptopl/asm/transition.o
+[1222/1335] CC(ee) obj/riptopl/asm/triangle_png.o
+[1223/1335] CC(ee) obj/riptopl/asm/udp_bd_png.o
+[1224/1335] CC(ee) obj/riptopl/asm/udp_fs_png.o
+[1225/1335] CC(ee) obj/riptopl/asm/usb_bd_png.o
+[1226/1335] CC(ee) obj/riptopl/asm/usb_png.o
+[1227/1335] CC(ee) obj/riptopl/src/platform/ratls.o
+[1228/1335] CXX(ee) obj/riptopl/src/sources/ratls_ps2.o
+[1229/1335] CC(ee) obj/riptopl/src/platform/selfupdate.o
+[1230/1335] CXX(ee) obj/riptopl/src/ui/selfupdate.o
+[1231/1335] CC(ee) obj/_embed/isofs_irx.o
+[1232/1335] CC(ee) obj/_embed/bdmevent_irx.o
+[1233/1335] CC(ee) obj/_embed/genvmc_irx.o
+[1234/1335] CC(ee) obj/_embed/nbns_irx.o
+[1235/1335] CC(ee) obj/_embed/httpclient_irx.o
+[1236/1335] CC(ee) obj/_embed/imgdrv_irx.o
+[1237/1335] CC(ee) obj/_embed/resetspu_irx.o
+[1238/1335] CC(ee) obj/_embed/igrmbox_irx.o
+[1239/1335] CC(ee) obj/_embed/apemodpatch_irx.o
+[1240/1335] CC(ee) obj/_embed/cleareffects_irx.o
+[1241/1335] CC(ee) obj/_embed/f2techioppatch_irx.o
+[1242/1335] CC(ee) obj/_embed/iremsndpatch_irx.o
+[1243/1335] CC(ee) obj/_embed/cdvdfsv_irx.o
+[1244/1335] CC(ee) obj/_embed/smbinit_irx.o
+[1245/1335] CC(ee) obj/_embed/smsutils_irx.o
+[1246/1335] CC(ee) obj/_embed/ingame_smstcpip_irx.o
+[1247/1335] CC(ee) obj/_embed/smap_ingame_irx.o
+[1248/1335] CC(ee) obj/_embed/xhdd_irx.o
+[1249/1335] CC(ee) obj/_embed/smap_udpbd_irx.o
+[1250/1335] CC(ee) obj/_embed/udpfs_smap_irx.o
+[1251/1335] CC(ee) obj/_embed/udpfs_ministack_irx.o
+[1252/1335] CC(ee) obj/_embed/udpfs_bd_irx.o
+[1253/1335] CC(ee) obj/_embed/udpfs_ioman_irx.o
+[1254/1335] CC(ee) obj/_embed/udpfs_fhi_irx.o
+[1255/1335] CC(ee) obj/_embed/lwnbdsvr_irx.o
+[1256/1335] CC(ee) obj/_embed/ps2ips_irx.o
+[1257/1335] CC(ee) obj/_embed/bdm_irx.o
+[1258/1335] CC(ee) obj/_embed/usbd_irx.o
+[1259/1335] CC(ee) obj/_embed/ps2atad_irx.o
+[1260/1335] CC(ee) obj/_embed/ps2hdd_irx.o
+[1261/1335] CC(ee) obj/_embed/hdd_cdvdman_irx.o
+[1262/1335] CC(ee) obj/_embed/hdd_hdpro_cdvdman_irx.o
+[1263/1335] CC(ee) obj/_embed/smb_cdvdman_irx.o
+[1264/1335] CC(ee) obj/_embed/smb2_cdvdman_irx.o
+[1265/1335] CC(ee) obj/_embed/nfs_cdvdman_irx.o
+[1266/1335] CC(ee) obj/_embed/http_cdvdman_irx.o
+[1267/1335] CC(ee) obj/_embed/bdm_cdvdman_irx.o
+[1268/1335] CC(ee) obj/_embed/bdm_ata_cdvdman_irx.o
+[1269/1335] CC(ee) obj/_embed/bdm_udp_cdvdman_irx.o
+[1270/1335] CC(ee) obj/_embed/udpfs_cdvdman_irx.o
+[1271/1335] CC(ee) obj/_embed/pccf_cdvdman_irx.o
+[1272/1335] CC(ee) obj/_embed/mmce_cdvdman_irx.o
+[1273/1335] CC(ee) obj/_embed/hdd_mcemu_irx.o
+[1274/1335] CC(ee) obj/_embed/smb_mcemu_irx.o
+[1275/1335] CC(ee) obj/_embed/bdm_mcemu_irx.o
+[1276/1335] CC(ee) obj/_embed/mmce_mcemu_irx.o
+[1277/1335] CC(ee) obj/_embed/usb_pademu_irx.o
+[1278/1335] CC(ee) obj/_embed/bt_pademu_irx.o
+[1279/1335] CC(ee) obj/_embed/ds34usb_irx.o
+[1280/1335] CC(ee) obj/_embed/ds34bt_irx.o
+[1281/1335] CC(ee) obj/_embed/dvrdrv_irx.o
+[1282/1335] CC(ee) obj/_embed/dvrfile_irx.o
+[1283/1335] CC(ee) obj/_embed/eecore_irx.o
+[1284/1335] CC(ee) obj/_embed/elfldr_irx.o
+[1285/1335] CC(ee) obj/_embed/smbman_irx.o
+[1286/1335] CC(ee) obj/_embed/smb2man_irx.o
+[1287/1335] CC(ee) obj/_embed/nfsman_irx.o
+[1288/1335] CC(ee) obj/_embed/usbhdfsd_irx.o
+[1289/1335] CC(ee) obj/_embed/libsd_irx.o
+[1290/1335] CC(ee) obj/_embed/audsrv_irx.o
+[1291/1335] CC(ee) obj/_embed/bdmfs_fatfs_irx.o
+[1292/1335] CC(ee) obj/_embed/iLinkman_irx.o
+[1293/1335] CC(ee) obj/_embed/IEEE1394_bd_irx.o
+[1294/1335] CC(ee) obj/_embed/usbmass_bd_irx.o
+[1295/1335] CC(ee) obj/_embed/mx4sio_bd_irx.o
+[1296/1335] CC(ee) obj/_embed/pccf_bd_irx.o
+[1297/1335] CC(ee) obj/_embed/pccf_game_irx.o
+[1298/1335] CC(ee) obj/_embed/hdpro_atad_irx.o
+[1299/1335] CC(ee) obj/_embed/poweroff_irx.o
+[1300/1335] CC(ee) obj/_embed/ps2dev9_irx.o
+[1301/1335] CC(ee) obj/_embed/ps2ip_irx.o
+[1302/1335] CC(ee) obj/_embed/smap_irx.o
+[1303/1335] CC(ee) obj/_embed/netman_irx.o
+[1304/1335] CC(ee) obj/_embed/iomanx_irx.o
+[1305/1335] CC(ee) obj/_embed/filexio_irx.o
+[1306/1335] CC(ee) obj/_embed/sio2man_irx.o
+[1307/1335] CC(ee) obj/_embed/padman_irx.o
+[1308/1335] CC(ee) obj/_embed/mcman_irx.o
+[1309/1335] CC(ee) obj/_embed/mcserv_irx.o
+[1310/1335] CC(ee) obj/_embed/mmceman_irx.o
+[1311/1335] CC(ee) obj/_embed/mmcedrv_irx.o
+[1312/1335] CC(ee) obj/_embed/mmceigr_irx.o
+[1313/1335] CC(ee) obj/_embed/ps2fs_irx.o
+[1314/1335] CC(ee) obj/_embed/eesync_irx.o
+[1315/1335] CC(ee) obj/_embed/udnl_irx.o
+[1316/1335] AR(ee) lib/libds34usb_ee.a
+[1317/1335] AR(ee) lib/libds34bt_ee.a
+[1318/1335] AR(ee) lib/libmbedtls.a
+[1319/1335] BIN2C <WORK_ROOT>/build/RiptOPL/build/editions/korium-gcc/generated/smb2probe_iop_irx.c
+[1320/1335] LINK(iop) obj/raudp/raudp.notiopmod.elf
+[1321/1335] LINK(iop) obj/udptty_ingame/udptty_ingame.notiopmod.elf
+[1322/1335] LINK(iop) obj/mx4sio_bd_full_fork/mx4sio_bd_full_fork.notiopmod.elf
+[1323/1335] STRIP obj/raudp/raudp.notiopmod.stripped.elf
+[1324/1335] STRIP obj/udptty_ingame/udptty_ingame.notiopmod.stripped.elf
+[1325/1335] STRIP obj/mx4sio_bd_full_fork/mx4sio_bd_full_fork.notiopmod.stripped.elf
+[1326/1335] IOPFIXUP bin/raudp.irx
+[1327/1335] CC(ee) obj/_embed/smb2probe_iop_irx.o
+[1328/1335] IOPFIXUP bin/udptty_ingame.irx
+[1329/1335] IOPFIXUP bin/mx4sio_bd_full_fork.irx
+[1330/1335] CC(ee) obj/smb2probe/tools/hwtest/smb2probe/probe.o
+In file included from <WORK_ROOT>/build/RiptOPL/tools/hwtest/smb2probe/probe.c:36:
+<HOME>/AppData/Local/ps2build/packages/core/ps2ip/include/ps2ip.h:32:46: warning: '/*' within comment [-Wcomment]
+   32 |  * plain CMake project globbing packages/core/*\/include
+<HOME>/AppData/Local/ps2build/packages/core/ps2ip/include/ps2ip.h:110:33: warning: 'struct pbuf' declared inside parameter list will not be visible outside of this definition or declaration
+  110 | extern err_t ps2ip_input(struct pbuf *p, struct netif *inp);
+      |                                 ^~~~
+<WORK_ROOT>/build/RiptOPL/tools/hwtest/smb2probe/probe.c: In function 'main':
+<WORK_ROOT>/build/RiptOPL/tools/hwtest/smb2probe/probe.c:518:5: warning: 'strncpy' output may be truncated copying 255 bytes from a string of length 255 [-Wstringop-truncation]
+  518 |     strncpy(share.Password, logon.Password, sizeof(share.Password) - 1);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[1331/1335] LINK(ee) obj/smb2probe/smb2probe.unstripped.elf
+[1332/1335] LINK(ee,c++) obj/riptopl/riptopl.unstripped.elf
+[1333/1335] STRIP bin/smb2probe.elf
+[1334/1335] STRIP bin/riptopl.elf
+[1335/1335] PS2PACK bin/riptopl-packed.elf
+File compressed, from 5116992 to 2275504 bytes, ratio = 55.53%
+Built Korium: 1d8030d7ce48a63b4a533e352bc4ef7209394a82e8d247aac2a27630e18cc2c4
+
+real	59m50.102s
+user	0m0.015s
+sys	0m0.030s

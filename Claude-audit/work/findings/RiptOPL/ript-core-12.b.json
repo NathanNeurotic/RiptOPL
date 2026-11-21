@@ -1,0 +1,115 @@
+{
+  "repo": "RiptOPL",
+  "chunk": "ript-core-12.b",
+  "coverage": [
+    {"path": "src/core/pad.cpp", "status": "read_full", "note": ""},
+    {"path": "include/riptlite.h", "status": "read_full", "note": ""},
+    {"path": "src/core/riptlite.cpp", "status": "read_full", "note": ""},
+    {"path": "include/settings.h", "status": "read_full", "note": ""},
+    {"path": "src/core/settings.cpp", "status": "read_full", "note": ""},
+    {"path": "src/core/sfx.cpp", "status": "read_full", "note": ""},
+    {"path": "include/sound.h", "status": "read_full", "note": ""},
+    {"path": "src/core/sound.cpp", "status": "read_full", "note": ""},
+    {"path": "include/vmc_groups.h", "status": "read_full", "note": ""}
+  ],
+  "module_summary": "pad.cpp is the menu's controller layer: a PadManager singleton over libpad/freepad (port open and DualShock init, per-frame polling with miss-hold, key repeat timers, ANALOG lock confirmation, deferred re-init behind a verified-idle gate, menu rumble pulses, and PADEMU polling of the ds34bt/ds34usb drivers), exposed through the C-style pad.h functions. riptlite.h/.cpp define the LITE_HAS_* gates for single-device RiptOPLite builds and force or preserve the device-selection config keys. settings.cpp holds the table of plain CONFIG_OPL_* keys (defaults, load, save) plus per-video-mode screen position storage. sfx.cpp loads the built-in or theme ADPCM sound effects into audsrv and plays them (cursor channel rotation, one-shot coalescing, menu rumble triggers); sound.cpp is audsrv init/teardown and volume; sound.h and vmc_groups.h are small API headers.",
+  "reusable_helpers": [
+    {"name": "settingsLoad / settingsSave / settingsApplyDefaults", "path": "src/core/settings.cpp", "line": 209, "what": "table-driven load, save and default of int, string and RGB config keys from one constexpr row list"},
+    {"name": "SoundEffects::readFile", "path": "src/core/sfx.cpp", "line": 87, "what": "reads a whole file (theme .tar member or device file) into a 64-byte aligned malloc buffer with size"},
+    {"name": "PadManager::pollElapsedMs", "path": "src/core/pad.cpp", "line": 786, "what": "wrap-safe elapsed milliseconds between calls from cpu_ticks(), carrying the sub-ms remainder"},
+    {"name": "screenPosLoad / screenPosSave", "path": "src/core/settings.cpp", "line": 294, "what": "per-index int triples persisted as suffixed config keys (xoff_N, yoff_N, overscan_N)"}
+  ],
+  "findings": [
+    {
+      "n": 1,
+      "title": "PADEMU poll issues ds34bt/ds34usb get_status SIF RPCs every frame for port 1 (and every multitap slot), which the menu never enables",
+      "category": 5,
+      "locations": [
+        {"path": "src/core/pad.cpp", "start": 466, "end": 482},
+        {"path": "src/core/pad.cpp", "start": 672, "end": 677},
+        {"path": "src/platform/system.cpp", "start": 430, "end": 446},
+        {"path": "modules/ds34bt/ee/libds34bt.c", "start": 72, "end": 83},
+        {"path": "modules/ds34usb/ee/libds34usb.c", "start": 61, "end": 72},
+        {"path": "modules/ds34usb/iop/ds34usb.c", "start": 940, "end": 959},
+        {"path": "modules/ds34bt/iop/ds34bt.c", "start": 1675, "end": 1685},
+        {"path": "src/ui/gui.cpp", "start": 311, "end": 311}
+      ],
+      "problem": "readOne() runs for every opened pad on the GUI thread each frame (Gui::pollPads, gui.cpp:311) and calls ds34bt_get_status and ds34usb_get_status, each a synchronous SifCallRpc. padCount_ includes empty ports, so a normal console makes 4 RPCs per frame with no DS3/DS4 attached. system.cpp:431 loads both drivers with pad mask 1 and the IOP modules set enabled = (enable >> pad) & 1, so port 1 can never be RUNNING: its two RPCs per frame are always wasted. A multitap repeats port 0's calls once per slot.",
+      "fix": "Run the PADEMU block in readOne() and the loop body in pademuStopAll() only for pad->port == 0 && pad->slot == 0, the one pad system.cpp enables (note next to ds3pads that the two must change together).",
+      "justification": "The added condition removes half of the idle-case per-frame SIF RPC traffic from the GUI thread; the code itself documents synchronous SIF RPCs on the GUI thread stalling the menu under IOP load (sfx.cpp:264-267). One comparison is the smallest change that does it.",
+      "benefit": "2 of 4 synchronous SIF RPCs per frame removed in the common case = about 120 RPC/s at 60 Hz off the GUI thread; more with a multitap (INFERRED from the call counts above, cost per RPC not measured).",
+      "benefit_rank": 2,
+      "lines_removed": -2,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read pad.cpp:446-483 and 664-679; libds34bt.c:72-83 and libds34usb.c:61-72 (get_status = SifCallRpc when inited); system.cpp:430-446 (ds3pads = 1, both IRX loaded and inited whenever SYS_LOAD_USB_MODULES, which reset() at opl.cpp:1214 always passes); ds34usb.c:940-959 and ds34bt.c:1675-1685 (enabled bit per pad from argv[1][0]); ds34bt.c:1559-1569 (RUNNING comes from the per-pad status). initialize() returns 1 on every path (pad.cpp:209,235,248,256,296) so start() counts empty ports. INFERRED: the IOP loader passes the 4-byte arg as argv[1] (same mechanism and comment 'only one pad enabled' as upstream OPL)."
+    },
+    {
+      "n": 2,
+      "title": "Pad fault-discriminator runs (notReadyRun_/emptyRun_) are one counter updated once per pad, so an empty second port doubles them and logs false misses",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/pad.cpp", "start": 484, "end": 501},
+        {"path": "include/padmanager.h", "start": 80, "end": 82},
+        {"path": "src/core/pad.cpp", "start": 1170, "end": 1187}
+      ],
+      "problem": "readOne() advances the shared run counters per pad, not per poll. start() keeps an empty port in padData_ (initialize() returns 1 on every path), and a DISCONN port reads nothing, so each poll adds 1 to notReadyRun_. With one pad and one empty port, a k-poll miss on the real pad becomes a run of 2k: the debug HUD, DIAG.TXT and menuwatch (guioverlay.cpp:159, diagsave.cpp:33, menuwatch.cpp:192) report doubled maxima, maxNotReadyRun_ is never below 1, and a 2-poll miss writes 'pad: 4 polls in a row could not be read' into the 16 KB diag ring. With two pads, emptyRun_ interleaves the same way.",
+      "fix": "Decide the runs once per poll in read(): have readOne() report whether it attempted a native or ds34 read and whether any delivered, then after the loop count a not-ready poll when some pad attempted and none delivered, and an empty poll when one delivered and paddata_ is 0. Delete the per-pad block at 484-501.",
+      "justification": "",
+      "benefit": "Correct fault counters and no false miss lines in DIAG.TXT on the diagnostic path the code was written to chase hardware faults with; net lines about 0 (INFERRED).",
+      "benefit_rank": 2,
+      "lines_removed": 0,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "High",
+      "basis": "READ",
+      "evidence": "Read pad.cpp:373-529 (padsRead is local per call, counters are members updated per call), 888-905 (read() loops readOne over padCount_), 1136-1200 (start() increments padCount_ whenever startOne succeeds; startOne fails only if padPortOpen fails), 188-297 (initialize returns 1 on all paths), opl.cpp:1696-1697 comment ('a port with nothing plugged in still counts'). Readers: grep padGetFaultCounters -> diagsave.cpp:33, guioverlay.cpp:159, menuwatch.cpp:192. diagLog is a RAM ring (diaglog.cpp:14-44)."
+    },
+    {
+      "n": 3,
+      "title": "Boot runs PadManager::start() twice: init() discards the first startPads() result and its retry loop always calls it again",
+      "category": 5,
+      "locations": [
+        {"path": "src/app/opl.cpp", "start": 1686, "end": 1686},
+        {"path": "src/app/opl.cpp", "start": 1699, "end": 1708},
+        {"path": "src/core/pad.cpp", "start": 1136, "end": 1191}
+      ],
+      "problem": "opl.cpp:1686 calls startPads() and ignores the result; padStatus is still 0 (opl.cpp:1668), so the loop at 1701 calls startPads() again at once. start() has no guard against re-entry: it re-issues padPortOpen on ports that are already open and runs initialize() again for every pad, which resends padSetMainMode(LOCK), padEnterPressMode and padSetActAlign with up to seven 25 ms bounded waits per DualShock, on the main thread before the first menu frame.",
+      "fix": "Delete the call at opl.cpp:1686; the loop below makes the first call and retries only if no port opened.",
+      "justification": "",
+      "benefit": "One pad init per connected DualShock less at boot: up to about 7 x 25 ms = 175 ms of polled waits plus three pad config commands (INFERRED from waitReady bounds, not measured); 1 line removed.",
+      "benefit_rank": 1,
+      "lines_removed": 1,
+      "effort": "S",
+      "risk": "Med",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read opl.cpp:1665-1749 and pad.cpp:171-297, 1136-1200. git log -L on opl.cpp:1684-1710 shows the first call predates the retry loop's rewrite (3ec4e337, f228547b). lwnbdctl.cpp:192-201 and 226-237 start pads once per reset. INFERRED: a second padPortOpen on an open port succeeds (the shipped menu boots), and the time saved; risk Med because the second init may currently paper over a first init that ran before freepad found the pad (lockRelock and rumbleRealign retry those later)."
+    },
+    {
+      "n": 4,
+      "title": "Boot splash waits for the sample count read from a theme's sound/boot.adp header, unchecked: a non-ADPCM file holds the splash for hours",
+      "category": 6,
+      "locations": [
+        {"path": "src/core/sfx.cpp", "start": 137, "end": 143},
+        {"path": "src/core/sfx.cpp", "start": 175, "end": 186},
+        {"path": "src/core/sfx.cpp", "start": 231, "end": 242},
+        {"path": "src/ui/guisplash.cpp", "start": 183, "end": 188},
+        {"path": "src/ui/guisplash.cpp", "start": 206, "end": 210}
+      ],
+      "problem": "SoundEffects::load() sets duration_ms from the u32 at bytes 12-15 of a theme's boot.adp before, and regardless of, audsrv_load_adpcm, with no magic or range check. BootSplash::run() waits duration minus the fade before fading out, and that comparison is the loop's only exit. A WAV renamed to boot.adp has 'fmt ' there (544,501,094), giving 12,346,964 ms: the menu sits on the splash for about 3.4 hours at every boot while Boot Sound is on, until the user knows to hold START.",
+      "fix": "In load(), keep the header value only when audsrv_load_adpcm succeeded (else 0), and clamp duration_ms to a small bound such as 10 s, as THEME_HOLD_MAX_S already does for the theme hold.",
+      "justification": "The clamp is one comparison and closes a boot-time hang reachable from a user-supplied theme file; the success check reuses the existing return value.",
+      "benefit": "Removes an hours-long boot splash hang from a bad theme sound file (arithmetic: 544501094 / 44100 * 1000 = 12.3M ms); about 3 lines added.",
+      "benefit_rank": 2,
+      "lines_removed": -3,
+      "effort": "S",
+      "risk": "Low",
+      "confidence": "Med",
+      "basis": "INFERRED",
+      "evidence": "Read sfx.cpp:87-252 (theme sound dir used when present; SFX_BOOT read when bootSnd=1), guisplash.cpp:137-236 (fadeDelayMs clamped only below 0; line 142 comment: the comparison is the only exit; splash never polls pads), opl.cpp:1740-1748 and 1816-1827 (sfxInit(1) queued after _loadConfig). soundeffects.h:36-44 names boot.adp. INFERRED: the saved theme is active when deferredAudioInit runs (true for a card theme), and audsrv rejects or mis-plays a non-ADPCM file; neither changes the wait, which uses only the header."
+    }
+  ]
+}

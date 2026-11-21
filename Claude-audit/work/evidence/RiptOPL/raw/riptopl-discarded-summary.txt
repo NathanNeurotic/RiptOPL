@@ -1,0 +1,97 @@
+# "Discarded input sections" of opl.map
+# NOTE: the list also holds non-loaded metadata (.comment, .pdr, .mdebug, .gnu.attributes, .reginfo, COMDAT
+# .group duplicates). Only the allocatable kinds are code/data that --gc-sections or COMDAT folding removed.
+# A section discarded here is NOT in the ELF: it is evidence of unused source, not of shipped bloat.
+
+total entries: 6581   total bytes: 710497
+non-empty entries: 4496
+
+## by section kind (entries, bytes)
+.text                   1946     264216   (allocatable)
+.pdr                     604     213280
+other                    369     123775
+.debug                   100      57528
+.reginfo                 860      20640
+.MIPS                    860      20640
+.rodata                   41       7142   (allocatable)
+.bss                     803       1168   (allocatable)
+.group                    65        688
+.comment                  22        616
+.data                    867        452   (allocatable)
+.gnu.attributes           22        352
+.mdebug                   22          0
+
+## allocatable kinds only, by origin (entries, bytes)
+blob-asset   .data                     111        444
+first-party  .bss                        2          8
+first-party  .rodata                    16        178
+first-party  .text                     254      21376
+sdk          .bss                        2       1108
+sdk          .data                       2          8
+sdk          .rodata                    23       6936
+sdk          .text                     944     205344
+vendored     .bss                        3         52
+vendored     .rodata                     2         28
+vendored     .text                     237      37496
+
+## allocatable discarded bytes per input file (top 60)
+    19917    46  <sdk>/packages/world/png/lib/libpng.a(pngwutil.o)
+    16828    26  <sdk>/packages/world/z/lib/libz.a(deflate.o)
+    14153    46  <sdk>/packages/world/png/lib/libpng.a(pngwrite.o)
+    12984    14  <sdk>/packages/world/gskit/lib/libgskit.a(gsTexture.o)
+    12264    21  <sdk>/packages/world/png/lib/libpng.a(pngread.o)
+    10876    13  <sdk>/packages/world/z/lib/libz.a(trees.o)
+    10312    94  <sdk>/packages/world/freetype/lib/libfreetype.a(ftbase.o)
+     9400    48  <sdk>/packages/core/mc/lib/libmc.a(libmc.o)
+     7928    16  <sdk>/packages/world/gskit/lib/libgskit.a(gsPrimitive.o)
+     7364    66  <sdk>/packages/world/png/lib/libpng.a(pngget.o)
+     6600    24  <sdk>/packages/world/png/lib/libpng.a(png.o)
+     6552    28  <sdk>/packages/core/cdvd/lib/libcdvd.a(scmd.o)
+     5840    59  lib/libmbedtls.a(ssl_tls.o)
+     5744    22  <sdk>/packages/core/cdvd/lib/libcdvd.a(ncmd.o)
+     5680    21  <sdk>/packages/world/audio/lib/libaudio.a(audio_core.o)
+     5672    14  <sdk>/packages/world/png/lib/libpng.a(pngrtran.o)
+     5129    25  <sdk>/packages/world/png/lib/libpng.a(pngset.o)
+     4784    76  <sdk>/packages/core/cglue/lib/libcglue.a(glue.o)
+     4696    13  lib/libmbedtls.a(rsa.o)
+     4640     2  <sdk>/toolchain/ee/bin/../lib/gcc/mips64r5900el-ps2-elf/15.3.1/../../../../mips64r5900el-ps2-elf/lib/libc.a(libc_a-arc4random.o)
+     4009    11  lib/libmbedtls.a(bignum.o)
+     3392    17  lib/libmbedtls.a(asn1write.o)
+     3288    12  <sdk>/packages/world/z/lib/libz.a(inflate.o)
+     2920    10  lib/libmbedtls.a(x509_crt.o)
+     2821    17  <sdk>/packages/core/kernel/lib/libkernel.a(osd_config.o)
+     2704     9  lib/libmbedtls.a(x509.o)
+     2588    27  lib/libmbedtls.a(ecp.o)
+     2408     1  <sdk>/packages/world/png/lib/libpng.a(pngwtran.o)
+     2408    12  lib/libmbedtls.a(oid.o)
+     2388    23  <sdk>/packages/core/kernel/lib/libkernel.a(timer.o)
+     2369    11  <sdk>/packages/core/filexio/lib/libfilexio.a(fileXio_rpc.o)
+     2288    20  <sdk>/packages/core/pthreadglue/lib/libpthreadglue.a(osal.o)
+     2248    19  <sdk>/packages/world/gskit/lib/libgskit.a(gsCore.o)
+     2108     4  <sdk>/packages/world/freetype/lib/libfreetype.a(ftbitmap.o)
+     2096    16  <sdk>/packages/core/cglue/lib/libcglue.a(socket.o)
+     1992     6  <sdk>/packages/core/cdvd/lib/libcdvd.a(libcdvd.o)
+     1976    15  <sdk>/packages/core/kernel/lib/libkernel.a(loadfile.o)
+     1852     6  <sdk>/packages/world/freetype/lib/libfreetype.a(ftgzip.o)
+     1764    11  <sdk>/packages/world/freetype/lib/libfreetype.a(ftmm.o)
+     1720     3  lib/libmbedtls.a(pkparse.o)
+     1592    20  obj/riptopl/src/core/pad.o
+     1552    21  obj/riptopl/src/gfx/renderman.o
+     1468    11  lib/libmbedtls.a(cipher.o)
+     1440     2  obj/riptopl/src/platform/ratls.o
+     1384     8  <sdk>/packages/core/kernel/lib/libkernel.a(fileio.o)
+     1380    22  obj/riptopl/src/sources/hddsupport.o
+     1304     9  <sdk>/packages/world/png/lib/libpng.a(pngerror.o)
+     1248    19  <sdk>/packages/world/audsrv-compat/lib/libaudsrv-compat.a(audsrv_shim.o)
+     1160    13  obj/riptopl/src/sources/netsupport.o
+     1123     9  lib/libmbedtls.a(pk.o)
+     1112    13  obj/riptopl/src/gfx/fntsys.o
+     1112    16  obj/riptopl/src/ui/gui.o
+     1040     8  lib/libmbedtls.a(ecdh.o)
+     1016     9  obj/riptopl/src/sources/favsupport.o
+      976     6  <sdk>/packages/world/z/lib/libz.a(crc32.o)
+      920     7  <sdk>/packages/core/pad/lib/libpadx.a(libpad.o)
+      904     9  obj/riptopl/src/sources/ethsupport.o
+      864    10  obj/riptopl/src/platform/ioman.o
+      840     9  obj/riptopl/src/gfx/themes.o
+      808    12  lib/libmbedtls.a(ssl_msg.o)

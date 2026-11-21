@@ -1,0 +1,38 @@
+## Symbols with no reference outside their definition (symbols-unreferenced.tsv). Class no-other-mention = the name appears nowhere else in the repo; only-prototype-or-export-mentions = it appears only in a prototype or export list
+- modules/iopcore/cdvdman/atad.h:24  macro `ATAD_XFER_MODE_PIO`  (no-other-mention)
+- modules/iopcore/cdvdman/atad.h:25  macro `ATAD_XFER_MODE_MDMA`  (no-other-mention)
+- modules/iopcore/cdvdman/atad.h:26  macro `ATAD_XFER_MODE_UDMA`  (no-other-mention)
+- modules/iopcore/cdvdman/cdvdman.c:817  function `sceCdPosToInt`  (only-prototype-or-export-mentions) | also mentioned: modules/iopcore/cdvdman/exports.tab:20 DECLARE_EXPORT(sceCdPosToInt)
+
+## Macros tested by #if/#ifdef that no source or build file defines (cond-macros-undefined.tsv). Compiler, SDK and toolchain macros also land here: check before using
+- `NETLOG_DEBUG`  tested at 2 site(s) in the repo, mentioned in 0 build file(s); here: modules/iopcore/cdvdman/atad.c:42, modules/iopcore/cdvdman/atad.c:550
+
+## Largely identical files (dupes-file-pairs.tsv)
+- modules/iopcore/cdvdman/atad.c is 20% the same as Launchstation/iop/ata_bd/src/ps2atad.c (96 cloned normalised lines)
+- modules/iopcore/cdvdman/atad.c is 22% the same as POPSLoader/iop/ata_bd_fast/ps2atad.c (107 cloned normalised lines)
+- modules/iopcore/cdvdman/atad.c is 25% the same as RiptOPL/modules/hdd/atad/src/ps2atad.c (122 cloned normalised lines)
+- modules/iopcore/cdvdman/atad.c is 4% the same as RiptOPL/modules/iopcore/cdvdman/hdpro_atad.c (20 cloned normalised lines)
+- modules/iopcore/cdvdman/dev9.c is 11% the same as Simple-Media-System/iop/SMSDev9/src/ps2dev9.c (48 cloned normalised lines)
+
+## Duplicate blocks (dupes-blocks.tsv)
+- modules/iopcore/cdvdman/atad.c:333-360  ==  POPSLoader/iop/ata_bd_fast/ps2atad.c:509-536  (16 normalised lines)
+- modules/iopcore/cdvdman/atad.c:333-360  ==  RiptOPL/modules/hdd/atad/src/ps2atad.c:494-521  (16 normalised lines)
+- modules/iopcore/cdvdman/atad.c:363-389  ==  RiptOPL/modules/iopcore/cdvdman/hdpro_atad.c:402-428  (20 normalised lines)
+- modules/iopcore/cdvdman/atad.c:377-430  ==  POPSLoader/iop/ata_bd_fast/ps2atad.c:565-618  (34 normalised lines)
+- modules/iopcore/cdvdman/atad.c:377-430  ==  RiptOPL/modules/hdd/atad/src/ps2atad.c:550-603  (34 normalised lines)
+- modules/iopcore/cdvdman/atad.c:394-430  ==  Launchstation/iop/ata_bd/src/ps2atad.c:583-619  (24 normalised lines)
+- modules/iopcore/cdvdman/atad.c:445-461  ==  Launchstation/iop/ata_bd/src/ps2atad.c:644-660  (15 normalised lines)
+- modules/iopcore/cdvdman/atad.c:445-461  ==  POPSLoader/iop/ata_bd_fast/ps2atad.c:643-659  (15 normalised lines)
+- modules/iopcore/cdvdman/atad.c:445-461  ==  RiptOPL/modules/hdd/atad/src/ps2atad.c:628-644  (15 normalised lines)
+- modules/iopcore/cdvdman/atad.c:526-549  ==  Launchstation/iop/ata_bd/src/ps2atad.c:729-752  (17 normalised lines)
+- modules/iopcore/cdvdman/atad.c:526-549  ==  POPSLoader/iop/ata_bd_fast/ps2atad.c:728-751  (17 normalised lines)
+- modules/iopcore/cdvdman/atad.c:526-549  ==  RiptOPL/modules/hdd/atad/src/ps2atad.c:713-736  (17 normalised lines)
+- modules/iopcore/cdvdman/atad.c:554-577  ==  Launchstation/iop/ata_bd/src/ps2atad.c:754-778  (12 normalised lines)
+- modules/iopcore/cdvdman/atad.c:554-577  ==  POPSLoader/iop/ata_bd_fast/ps2atad.c:753-777  (12 normalised lines)
+- modules/iopcore/cdvdman/atad.c:554-577  ==  RiptOPL/modules/hdd/atad/src/ps2atad.c:738-762  (12 normalised lines)
+- modules/iopcore/cdvdman/atad.c:615-636  ==  Launchstation/iop/ata_bd/src/ps2atad.c:829-850  (13 normalised lines)
+- modules/iopcore/cdvdman/atad.c:615-636  ==  POPSLoader/iop/ata_bd_fast/ps2atad.c:828-849  (13 normalised lines)
+- modules/iopcore/cdvdman/atad.c:615-636  ==  RiptOPL/modules/hdd/atad/src/ps2atad.c:813-834  (13 normalised lines)
+- modules/iopcore/cdvdman/atad.c:676-700  ==  Launchstation/iop/ata_bd/src/ps2atad.c:1052-1076  (15 normalised lines)
+- modules/iopcore/cdvdman/atad.c:676-700  ==  RiptOPL/modules/hdd/atad/src/ps2atad.c:1083-1107  (15 normalised lines)
+- modules/iopcore/cdvdman/dev9.c:320-382  ==  Simple-Media-System/iop/SMSDev9/src/ps2dev9.c:317-379  (48 normalised lines)

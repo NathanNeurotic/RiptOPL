@@ -1,0 +1,34 @@
+# "Discarded input sections" of eecore.map
+# NOTE: the list also holds non-loaded metadata (.comment, .pdr, .mdebug, .gnu.attributes, .reginfo, COMDAT
+# .group duplicates). Only the allocatable kinds are code/data that --gc-sections or COMDAT folding removed.
+# A section discarded here is NOT in the ELF: it is evidence of unused source, not of shipped bloat.
+
+total entries: 196   total bytes: 16805
+non-empty entries: 138
+
+## by section kind (entries, bytes)
+.pdr                      32      11616
+.text                     67       3652   (allocatable)
+.reginfo                  31        744
+.MIPS                     31        744
+.rodata                    2         49   (allocatable)
+.data                     21          0   (allocatable)
+.bss                      12          0   (allocatable)
+
+## allocatable kinds only, by origin (entries, bytes)
+first-party  .rodata                     1          4
+first-party  .text                      12        140
+sdk          .rodata                     1         45
+sdk          .text                      30       3512
+
+## allocatable discarded bytes per input file (top 60)
+     1440     9  <sdk>/packages/core/kernel/lib/libkernel.a(sifrpc.o)
+      525     4  <sdk>/packages/core/kernel/lib/libkernel.a(iopcontrol.o)
+      464     5  <sdk>/packages/core/kernel/lib/libkernel.a(sifcmd.o)
+      440     8  <sdk>/packages/core/kernel/lib/libkernel.a(glue.o)
+      384     3  <sdk>/packages/core/kernel/lib/libkernel.a(getkernel.o)
+      176     1  <sdk>/packages/core/kernel/lib/libkernel.a(iopheap.o)
+      128     1  <sdk>/packages/core/patches/lib/libpatches.a(smem.o)
+       96    11  obj/eecore/ee_core/src/main.o
+       44     1  obj/eecore/ee_core/src/util.o
+        4     1  obj/eecore/ee_core/src/cheat_engine.o
