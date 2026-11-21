@@ -114,5 +114,10 @@ and the manager recovery corrections. No physical-console acceptance yet.
    test_ilink_sbp2_completion.py cover it; the POPSTARTER copy carries the same changes except the
    device number, which its single-device BDM layer does not have. Not tested on a console.
 
+8. Retry transient configuration ROM read failures before LOGIN. iLinkman returns
+   ILINK_FIND_UNIT_RETRY for a failed remote ROM read; the driver feeds it into the existing bus
+   retry. A readable non-SBP-2 device and the local node are ignored. Both the native/bundled
+   Neutrino pair and the POPStarter pair are covered by test_ilink_discovery.py.
+
 RE-VENDOR: fetch the files above from the new pin, clang-format 12, then re-apply LOCAL CHANGES and
 update the pin. Keep test_ilink_bd_reset.py passing.

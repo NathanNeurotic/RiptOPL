@@ -54,6 +54,8 @@ extern int iLinkGetNodeMaxSpeed(unsigned short int NodeID);
 extern int iLinkGetNodeTrSpeed(int trContext);
 extern int iLinkSetNodeTrSpeed(int trContext, unsigned char speed);
 
+// A remote configuration ROM could not be read. Callers may retry.
+#define ILINK_FIND_UNIT_RETRY (-2)
 extern int iLinkFindUnit(int UnitInList, unsigned int UnitSpec, unsigned int UnitSW_Version);
 extern int iLinkReadCROM(unsigned short int NodeID, unsigned int Offset, unsigned int nQuads, unsigned int *buffer);
 
