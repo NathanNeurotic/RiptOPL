@@ -32,6 +32,7 @@ Install/update the pinned SDK and assets, then build from the repository root:
 ```sh
 SDK="${PS2DEV_INSTALL_DIR:-$HOME/.local/share/ps2build}"
 sh tools/ps2build_sdk.sh --llvm "$SDK"
+export PATH="$SDK:$PATH"
 PS2BUILD_TOOLCHAIN=all sh tools/install_ps2build.sh
 python tools/assets.py fetch
 python tools/assets.py lang
