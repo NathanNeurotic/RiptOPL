@@ -91,13 +91,12 @@ If <code>RIPTOPL.ELF</code> is already on your PS2 and booting, skip ahead to
   <li>A PlayStation 2 (any model) or a backward-compatible PlayStation 3.</li>
   <li>A way to launch homebrew ELFs — Free McBoot (FMCB), Free HD Boot (FHDB), a modchip, or equivalent.</li>
   <li>At least one storage option: USB drive, MMCE / MX4SIO SD card, iLink storage, SMB network share, or an internal HDD.</li>
-  <li>A complete RiptOPL install kit — download <code>RIPTOPL-Korium-&lt;version&gt;.zip</code> (or <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code>, or the RetroAchievements kit) from the <a href="releases.html">Releases</a> page.</li>
+  <li>A complete RiptOPL install kit — download <code>RIPTOPL-&lt;version&gt;.zip</code> for the standard loader, or the RetroAchievements kit from the <a href="releases.html">Releases</a> page.</li>
   <li>At least one PS2 game image in ISO or ZSO format.</li>
 </ul>
 
 <details class="deep"><summary>Which release should I download?</summary>
-<p>RiptOPL publishes three editions, each rebuilt from <code>rebuild/main</code> on every push: <b>Korium</b> (<code>rolling-korium</code>, the Korium Komblete theme), <b>IncebtIon</b> (<code>rolling-incebtion</code>, the IncebtIon theme) and <b>RetroAchievements</b> (<code>rolling-ra</code>, Korium or IncebtIon theme with the RA runtime). They are development builds and may occasionally be unstable. Each edition's install kit (<code>RIPTOPL-Korium-&lt;version&gt;.zip</code>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code>, <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>) contains the ready app <code>APPS/APP_RIPTOPL/</code>, its artwork, one canonical <code>POPS/</code> folder (every loose BDMA pair, including the iLink <code>.ilink</code> pair), <code>EMBER/</code>, and an extracted <code>neutrino/</code> folder. No duplicate release-root <code>POPSTARTER/</code> folder or embedded BDMA pair is used. Translations are the separate <code>RIPTOPL-LANGS-&lt;version&gt;.zip</code> asset. See <a href="releases.html">Releases</a> for details.</p>
-</details>
+<p>Use the <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling">standard RiptOPL kit</a> for the walkthrough below. See <a href="releases.html">Releases</a> for the RetroAchievements kit and device-specific RiptOPLite loaders.</p>
 
 <h2 id="pick-a-device">Pick a device</h2>
 
@@ -152,8 +151,8 @@ An APA-formatted internal HDD stores games as HDLoader partitions, <b>not</b> as
 <h2 id="walk-through">Walk-through: USB to first launch</h2>
 
 <p>These steps use USB as the example — the pattern is identical for every folder-based device.</p>
-<p class="muted">Paired emulator captures: Korium and IncebtIon Beta-4052, using the same non-bootable documentation samples. <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UI-CAPTURES.md">Capture notes and artwork credits</a>.</p>
-<div class="ui-capture-grid"><figure><a href="assets/ui/game-sources.png"><img src="assets/ui/game-sources.png" width="640" height="480" loading="lazy" decoding="async" alt="Enable USB in Game Sources — Korium"></a><figcaption>Enable USB in Game Sources — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/game-sources.png"><img src="assets/ui/incebtion/game-sources.png" width="640" height="480" loading="lazy" decoding="async" alt="Enable USB in Game Sources — IncebtIon"></a><figcaption>Enable USB in Game Sources — IncebtIon</figcaption></figure></div>
+<p class="muted">Captured in RIPPCSX2 using a sample library. <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UI-CAPTURES.md">Capture details and artwork credits</a>.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/game-sources.png"><img src="assets/ui/game-sources.png" width="640" height="480" loading="lazy" decoding="async" alt="Enable USB in Game Sources"></a><figcaption>Enable USB in Game Sources</figcaption></figure></div>
 
 
 <div class="steps">

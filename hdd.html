@@ -249,6 +249,8 @@ In <code>conf_apps.cfg</code>, use <code>mass:</code> as the device prefix (the 
 
 <h3 id="exfat-hybrid">APA-Jail / APA + exFAT hybrid disks</h3>
 <p>APA-Jail lets APA/PFS system storage coexist with an MBR exFAT game area. Games stored as files appear through the exFAT BDM list. For an APA launch, RiptOPL normally uses exFAT for settings, with existing settings and explicit redirects deciding the final home. See the <a href="#guide-apa-jail-apapfs-and-exfat-on-the-same-disk">complete APA-Jail guide below</a> for migration, exceptions, supported layouts and safety.</p>
+<h3 id="exfat-launch">Native OPL and Neutrino launches</h3>
+<p>The internal ATA exFAT launch hang in the LLVM build was fixed and the native OPL path was retested on a physical PS2. Neutrino uses quick boot with the drive already mounted to map the ISO before the reset. You can leave <b>PS2 Logo</b> enabled for this path. Neutrino with the logo enabled still needs a physical-console retest. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/481">Native ATA fix</a> · <a href="neutrino.html">Neutrino setup</a>.</p>
 <h3 id="exfat-ps1">PS1 games on exFAT (BDMA equip)</h3>
 <p>Put your <code>*.VCD</code> files in the drive's <code>POPS/</code> folder alongside
 <code>POPSTARTER.ELF</code>. Use <b>PS2/PS1 Game Display</b> to show the PS1 library separately,

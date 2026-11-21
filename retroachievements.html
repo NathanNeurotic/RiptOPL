@@ -108,7 +108,7 @@ as finished.</p>
 </thead>
 <tbody>
 <tr>
-<td>RetroAchievements editions (<code>ra</code>, <code>ra_incebtion</code>)</td>
+<td>RetroAchievements edition (<code>ra</code>)</td>
 <td>done</td>
 </tr>
 <tr>
@@ -149,8 +149,7 @@ as finished.</p>
 <h2 id="using-it">Using it</h2>
 <h3 id="first-tracked-game">First tracked game</h3>
 <ol>
-<li>Start <strong>RIPTOPL-RA.ELF</strong> from the RetroAchievements kit (<code>rolling-ra</code>). The Korium and
-IncebtIon kits have no achievement telemetry and need no companion PC.</li>
+<li>Start <strong>RIPTOPL-RA.ELF</strong> from the RetroAchievements kit (<code>rolling-ra</code>). The standard RiptOPL kit runs without achievement telemetry or a companion PC.</li>
 <li>Run <strong>xeRAbora v2.1.0</strong> (or v2.0.0 / v1.0.1, alpha.17 or later) on the companion PC and sign in to your RetroAchievements
 account in its Settings page. Keep it running.</li>
 <li>In <strong>Settings → Network</strong>, leave <strong>RA Mode</strong> on <strong>Xerabora</strong>, turn <strong>RetroAchievements
@@ -518,23 +517,20 @@ The explicit <strong>RA: launch disc</strong> action instead asks you to check s
 remains available for a normal disc boot.</p>
 <hr/>
 <h2 id="building">Building</h2>
-<pre><code class="language-sh">python tools/build_edition.py ra             # Korium theme
-python tools/build_edition.py ra_incebtion   # IncebtIon theme
+<pre><code class="language-sh">python tools/build_edition.py ra
 </code></pre>
 <p>Each edition build regenerates its assets and objects under <code>build/editions/&lt;edition&gt;-gcc</code>, so
 switching between RA and a standard edition needs no clean step. See
 <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/ROLLING_RELEASE.md">release channels and packaging</a> for packaging.</p>
 <p>The <code>rolling-ra</code> channel publishes the kit as <strong><code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code></strong>, built to the same
 shape as the standard kit: <code>POPS/</code>, <code>EMBER/</code>, <code>neutrino/</code> (here the
-<a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.14">NULD (formerly ORBIT) Neutrino RA runtime v1.2.13</a>, see
+<a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.14">NULD (formerly ORBIT) Neutrino RA runtime v1.2.14</a>, see
 <a href="#neutrino-in-the-ra-edition">Neutrino in the RA edition</a>) and the PC-tool shortcuts, with
 <code>APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF</code>, matching <code>ART/RIPTOPL-RA.ELF_*.png</code> artwork, and
 <code>APP_RIPTOPL-RA.psu</code>. The PSU contains only the direct files of <code>APP_RIPTOPL-RA</code>; import it with a
 PS2 save manager for a memory-card installation, then copy the other folders separately.</p>
-<p>The same channel carries the IncebtIon-theme kit (<code>RIPTOPL-RetroAchievements-IncebtIon-&lt;version&gt;.zip</code>, with
-<code>RIPTOPL-RA-IncebtIon.ELF</code> and <code>APP_RIPTOPL-RA-IncebtIon.psu</code>; inside it the app is still
-<code>APP_RIPTOPL-RA</code>), and <code>RIPTOPL-RA-VARIANTS-&lt;version&gt;.zip</code> with the <code>pademu0</code> loader (pad emulation compiled
-out) and the standard and <code>pademu0</code> loaders unpacked (<code>standard-unpacked/</code>, <code>pademu0-unpacked/</code>: no decompression step at start); <code>RIPTOPL-RA-VARIANTS-IncebtIon-&lt;version&gt;.zip</code> is the same loader with the IncebtIon theme. The kit also carries <strong><code>xeRAbora.url</code></strong> (pointing directly to the paired
+<p>The channel also carries <code>RIPTOPL-RA-VARIANTS-&lt;version&gt;.zip</code> with a <code>pademu0</code> loader (pad emulation
+compiled out) and unpacked standard and <code>pademu0</code> loaders. The kit also carries <strong><code>xeRAbora.url</code></strong> (pointing directly to the paired
 <a href="https://github.com/hacan359/xerabora/releases/tag/v2.1.0">v2.1.0 release</a>),
 because the loader does nothing without the PC client.</p>
 <p>The standard editions are unaffected: every RA source file and call site is behind

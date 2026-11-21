@@ -95,10 +95,10 @@ are given below.</div>
 <tr><td><b>Circle</b></td><td>Go up one folder level <em>(or launch, if Circle is your select button)</em></td></tr>
 <tr><td><b>Triangle</b></td><td>Per-game settings for the selected title</td></tr>
 <tr><td><b>Square</b></td><td>Game info page — cover, screenshots, size, disc type</td></tr>
-<tr><td><b>L1 / R1</b></td><td>Previous / next page of the list; both wrap around at the ends</td></tr>
+<tr><td><b>L1 / R1</b></td><td>Previous / next page in List and Grid. Jump 15 titles in Coverflow and PSBBN Flow. Wraps at either end.</td></tr>
 <tr><td><b>L2</b></td><td>Jump to the first page</td></tr>
 <tr><td><b>R2</b></td><td>Jump to the last page</td></tr>
-<tr><td><b>L3</b></td><td>Tap: cycle this page's library view (PS2 / PS1 / Both / …; All, PS2, PS1, Apps, Favorites and Recent on All Games). Hold for half a second: switch to the next <a href="themes.html#views">theme view</a> (List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid) when the theme offers more than one; the tap then acts on release.</td></tr>
+<tr><td><b>L3</b></td><td>Tap: open the library filter named beside the L3 icon (PS2 / PS1 / Both / …; All, PS2, PS1, Apps, Favorites and Recent on All Games). Hold for half a second (Hold=Style): switch to the next <a href="themes.html#views">theme view</a> (List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, Grid (7×2)) when the theme offers more than one; the tap then acts on release.</td></tr>
 <tr><td><b>R3</b></td><td>Star or un-star the selected title as a Favorite (also on All Games and Recent rows)</td></tr>
 <tr><td><b>Start</b></td><td>Open the main menu</td></tr>
 <tr><td><b>Select</b></td><td>Refresh the current device list</td></tr>
@@ -113,14 +113,15 @@ every menu keep the standard layout.</p>
 <table>
 <thead><tr><th>Button</th><th>List view, such as &lt;OPL&gt;</th><th>Coverflow / PSBBN Flow</th><th>Grid</th></tr></thead>
 <tbody>
-<tr><td><b>Up / Down</b></td><td>Move through the list</td><td>Switch device page</td><td>Move one row, keeping the column; stops at the top and bottom rows</td></tr>
+<tr><td><b>Up / Down</b></td><td>Move through the list</td><td>Switch device page, or focus the Coverflow device bar with Down</td><td>Move one row, keeping the column; stops at the top and bottom rows</td></tr>
 <tr><td><b>Left / Right</b></td><td>Switch device page</td><td>Move through the carousel</td><td>Move one cover; Left on the first column opens the device sidebar, when the theme shows one</td></tr>
-<tr><td><b>L1 / R1</b></td><td>Page up / down the list</td><td>Page up / down the list</td><td>Turn a whole page of covers, keeping your place on it (or the last cover, on a short last page); wraps at either end, and does nothing when every cover fits on one page</td></tr>
+<tr><td><b>L1 / R1</b></td><td>Page up / down the list</td><td>Jump 15 titles, wrapping at the ends</td><td>Turn a whole page of covers, keeping your place on it (or the last cover, on a short last page); wraps at either end, and does nothing when every cover fits on one page</td></tr>
 <tr><td><b>Right stick</b></td><td>—</td><td>—</td><td>Hold to one side: turn the selected case over to its back cover, and back</td></tr>
 </tbody>
 </table>
-<p>In Grid's device sidebar, <b>Up / Down</b> switch device page (the grid follows at once) and <b>Right</b>, <b>Cross</b> or <b>Circle</b> go back to the covers. A theme can drop the sidebar (<code>&lt;block&gt;_devices=0</code>); Up/Down then switch device page from the top and bottom rows, and Left on the first column goes to the last cover of the row above.</p>
-<p>Every other button is unchanged, including <b>R3 = toggle Favorite</b>. Choose PSBBN Flow in the Theme picker; R3 does not switch displays. See <a href="coverflow.html">Coverflow</a>.</p>
+<p>In Grid's device sidebar, <b>Up / Down</b> switch device page (the grid follows at once) and <b>Right</b>, <b>Cross</b> or <b>Circle</b> go back to the covers. A theme can drop the sidebar (<code>&lt;block&gt;_devices=0</code>); Up/Down then switch device page from the top and bottom rows, and Left stops at the first column.</p>
+<p>In Coverflow’s device bar, use <b>Left / Right</b> to pick a device. <b>Up</b> returns to the covers, <b>Cross</b> opens the selected device, and <b>Circle</b> returns to the current device’s covers.</p>
+<p>Other controls include <b>R3 = toggle Favorite</b>. Choose PSBBN Flow in the Theme picker; R3 does not switch displays. See <a href="coverflow.html">Coverflow</a>.</p>
 
 <h3 id="button-notes">Notes on individual buttons</h3>
 <p><b>Triangle</b> adapts to what is selected. On a PS2 title it opens
