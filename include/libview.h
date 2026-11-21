@@ -64,9 +64,6 @@ int libListSourceId(item_list_t *itemList, int id);
 // Whether L3 is actionable on this page under the current independent settings.
 int libViewRingUsable(int mode);
 
-// The target of an L3 tap, or -1 when the page has no library filter to switch to.
-int libViewNext(int mode);
-
 // Stage one L3 stop without changing the view that owns the rows currently on screen. The IO
 // rebuild commits that target only after it has cleared those rows, so a stale row id can never be
 // resolved through the next view's backing array. Returns 1 when a transition was staged.

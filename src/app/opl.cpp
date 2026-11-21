@@ -386,8 +386,8 @@ void moduleUpdateMenuInternal(opl_io_module_t *mod, int themeChanged, int langCh
         if (gFAVStartMode || gAllGames)
             menuAddHint(&mod->menuItem, _STR_FAV_HINT, R3_ICON);
 
-        // The renderer resolves the L3 actions for the current library and theme.
-        menuAddHint(&mod->menuItem, _STR_VIEW, L3_ICON);
+        if (libViewRingUsable(mod->support->mode) || thmCanCycleView())
+            menuAddHint(&mod->menuItem, _STR_L3_VIEW_FILTER, L3_ICON);
     }
 
     menuHintsUnlock();

@@ -2589,45 +2589,12 @@ void drawItemText(struct menu_list *menu, struct submenu_list *item, config_set_
     }
 }
 
-static const char *nextLibraryViewLabel(const menu_item_t *item)
-{
-    const item_list_t *list = static_cast<const item_list_t *>(item->userdata);
-    if (list == NULL || item->toggleView == NULL)
-        return NULL;
-
-    switch (libViewNext(list->mode)) {
-        case LIB_VIEW_ISO:
-            return list->mode == APP_MODE ? _l(_STR_APPS) : "PS2";
-        case LIB_VIEW_PS1:
-            return _l(_STR_VCD);
-        case LIB_VIEW_ELF:
-            return _l(_STR_APPS);
-        case LIB_VIEW_ALL:
-            return _l(_STR_ALL_SETTINGS);
-        case LIB_VIEW_MIXED:
-            return _l(_STR_L3_MIXED);
-        case LIB_VIEW_PS1_ELF:
-            return _l(_STR_L3_PS1_APPS);
-        case LIB_VIEW_RECENT:
-            return _l(_STR_L3_RECENT);
-        case LIB_VIEW_FAVS:
-            return _l(_STR_FAV);
-        default:
-            return NULL;
-    }
-}
-
-static const char *hintCaption(const menu_hint_item_t *hint, const char *viewHint)
-{
-    return hint->icon_id == L3_ICON ? viewHint : _l(hint->text_id);
-}
-
-// Draw an icon and its current caption, then return the next x.
-static int drawHintEntry(const menu_hint_item_t *hint, const char *viewHint, int labels, int font, int x, int y, u64 color)
+// One hint, its glyph and (labels) its label, as guiDrawIconAndText draws it; returns the x after it
+static int drawHintEntry(const menu_hint_item_t *hint, int labels, int font, int x, int y, u64 color)
 {
     GSTEXTURE *iconTex;
     if (labels)
-        return guiDrawIconAndLiteralText(hint->icon_id, hintCaption(hint, viewHint), font, x, y, color);
+        return guiDrawIconAndText(hint->icon_id, hint->text_id, font, x, y, color);
     iconTex = thmGetTexture(hint->icon_id);
     if (iconTex == NULL || iconTex->Mem == NULL)
         return x;
@@ -2637,13 +2604,13 @@ static int drawHintEntry(const menu_hint_item_t *hint, const char *viewHint, int
 }
 
 // Its width, as guiAlignMenuHints measures it
-static int hintEntryWidth(const menu_hint_item_t *hint, const char *viewHint, int labels, int font)
+static int hintEntryWidth(const menu_hint_item_t *hint, int labels, int font)
 {
     GSTEXTURE *iconTex = thmGetTexture(hint->icon_id);
     int w = iconTex ? (iconTex->Width * 20) / iconTex->Height : 20;
     if (!labels)
         return rmWideScale(w);
-    return rmWideScale(w) + 2 + rmUnScaleX(fntCalcDimensions(font, hintCaption(hint, viewHint)));
+    return rmWideScale(w) + 2 + rmUnScaleX(fntCalcDimensions(font, _l(hint->text_id)));
 }
 
 void drawHintText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
@@ -2668,22 +2635,9 @@ void drawHintText(struct menu_list *menu, struct submenu_list *item, config_set_
         // hints it does not name stay in the order the page added them, after the named ones
         const menu_hint_item_t *row[16];
         int n = 0, i, j, labels = gTheme->hintsLabels;
-
-        const char *next = nextLibraryViewLabel(menu->item);
-        const char *hold = thmCanCycleView() ? _l(_STR_L3_HOLD_STYLE) : NULL;
-        char combinedCaption[128];
-        const char *l3Caption = next != NULL ? next : hold;
-        if (next != NULL && hold != NULL) {
-            snprintf(combinedCaption, sizeof(combinedCaption), "%s (%s)", next, hold);
-            l3Caption = combinedCaption;
-        }
-
-        for (; hint != NULL && n < 16; hint = hint->next) {
-            if (hint->icon_id == L3_ICON && l3Caption == NULL)
-                continue;
+        for (; hint != NULL && n < 16; hint = hint->next)
             if (!(gTheme->hintsHide & (1 << thmHintToken(hint->icon_id))))
                 row[n++] = hint;
-        }
         for (i = 1; i < n; i++) {
             const menu_hint_item_t *k = row[i];
             int r = thmHintRank(gTheme, thmHintToken(k->icon_id));
@@ -2701,18 +2655,18 @@ void drawHintText(struct menu_list *menu, struct submenu_list *item, config_set_
             if (y < 0)
                 y = 0;
             for (i = 0; i < n; i++)
-                drawHintEntry(row[i], l3Caption, labels, elem->font, x, y + i * pitch, elem->color);
+                drawHintEntry(row[i], labels, elem->font, x, y + i * pitch, elem->color);
         } else {
             int x = elem->posX;
             if (elem->aligned) { // centred, as guiAlignMenuHints places the whole list
                 int total = 0, screenWidth, screenHeight;
                 rmGetScreenExtents(&screenWidth, &screenHeight);
                 for (i = 0; i < n; i++)
-                    total += hintEntryWidth(row[i], l3Caption, labels, elem->font) + (i + 1 < n ? elem->width : 0);
+                    total += hintEntryWidth(row[i], labels, elem->font) + (i + 1 < n ? elem->width : 0);
                 x = (screenWidth - total) / 2;
             }
             for (i = 0; i < n; i++)
-                x = drawHintEntry(row[i], l3Caption, labels, elem->font, x, elem->posY, elem->color) + elem->width;
+                x = drawHintEntry(row[i], labels, elem->font, x, elem->posY, elem->color) + elem->width;
         }
     }
 
