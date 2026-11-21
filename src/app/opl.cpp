@@ -1811,19 +1811,18 @@ static void deferredInit(void)
         (list_support[MMCE_MODE].support == NULL || list_support[MMCE_MODE].menuItem.visible == 0) &&
         list_support[MMCE_MODE1].support != NULL && list_support[MMCE_MODE1].menuItem.visible != 0)
         bootMode = MMCE_MODE1;
-    if (list_support[bootMode].support == NULL) {
+    if (list_support[bootMode].support == NULL ||
+        (isMmceMode(bootMode) && !list_support[bootMode].menuItem.visible)) {
         if (list_support[MMCE_MODE].support != NULL && list_support[MMCE_MODE].menuItem.visible != 0)
             bootMode = MMCE_MODE;
         else if (list_support[MMCE_MODE1].support != NULL && list_support[MMCE_MODE1].menuItem.visible != 0)
             bootMode = MMCE_MODE1;
-        else if (list_support[MMCE_MODE].support != NULL)
-            bootMode = MMCE_MODE;
-        else if (list_support[APP_MODE].support != NULL)
+        else if (list_support[APP_MODE].support != NULL && list_support[APP_MODE].menuItem.visible)
             bootMode = APP_MODE;
         else {
             bootMode = -1;
             for (int i = 0; i < MODE_COUNT; i++) {
-                if (list_support[i].support != NULL) {
+                if (list_support[i].support != NULL && list_support[i].menuItem.visible) {
                     bootMode = i;
                     break;
                 }

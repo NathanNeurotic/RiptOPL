@@ -232,7 +232,7 @@ void CfgTitles::refresh(item_list_t *support, int count)
                     int ember = 0;
                     if (libListRowView(support, i) == LIB_VIEW_PS1 && gsOf(support)->ps1RowKind(support, i, &ember))
                         ps1RowIdResolve(((base_game_info_t *)gsOf(support)->game(support, i))->name,
-                                        ember ? PS1_ROW_CUE : PS1_ROW_VCD, gsOf(support)->prefix(support));
+                                        ember ? PS1_ROW_CUE : PS1_ROW_VCD, gsOf(support)->rowPrefix(support, i));
                 }
                 config = gsOf(support)->config(support, i);
                 if (config == NULL)

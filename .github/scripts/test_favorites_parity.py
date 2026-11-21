@@ -42,7 +42,7 @@ static int result, writes, finds;
 static bool present = true;
 static opl_io_module_t *oplGetModule(int mode) { assert(mode == 3); return present ? &module : nullptr; }
 static int favKindView(int kind) { assert(kind == 2); return 9; }
-static submenu_list_t *favFindVisibleSource(opl_io_module_t*, int id, const char *text, int view) {
+static submenu_list_t *favFindVisibleSource(opl_io_module_t*, int id, const char *text, int view, int = 0) {
     assert(writes == 1 && result && id == 17 && text && view == 9);
     ++finds; return &source;
 }

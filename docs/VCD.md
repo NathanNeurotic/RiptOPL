@@ -182,6 +182,10 @@ path, for example `usb:/POPS/POPSTARTER.ELF` or `mmce:/POPS/POPSTARTER.ELF`, and
 kept as it was. HDD (APA) and Game's Device become `<not set>`, because the Game Device tier below
 already covers them.
 
+Use one MMCE device at a time for POPStarter. Its driver reopens a `mass:` selector
+after the IOP resets, and that selector does not carry a physical slot number.
+Ember can launch from either MMCE slot with both cards connected.
+
 The launch resolver uses one fixed order:
 
 1. **Custom Path** — the user-entered full `POPSTARTER.ELF` path, when present and resolvable.

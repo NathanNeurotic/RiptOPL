@@ -579,7 +579,7 @@ static int favWriteFile(fav_raw_t *recs, int count, const char *name = FAV_FILE_
 // its submenu IS the VCD list, so light the star on the matching VCD item (by id+text). Misses
 // harmlessly (no star, no change) when the device is in ISO view or the VCD list index has since
 // shifted -- purely cosmetic on the source page; the FAV record + launch are unaffected either way.
-static submenu_list_t *favFindVisibleSource(opl_io_module_t *mod, int sourceId, const char *text, int wantedView)
+static submenu_list_t *favFindVisibleSource(opl_io_module_t *mod, int sourceId, const char *text, int wantedView, int kind = 0)
 {
     submenu_list_t *cur;
 
@@ -590,6 +590,12 @@ static submenu_list_t *favFindVisibleSource(opl_io_module_t *mod, int sourceId, 
         int viewMatches = wantedView == LIB_VIEW_ELF ? (rowView == LIB_VIEW_ELF || rowView == LIB_VIEW_PS1_ELF) : rowView == wantedView;
         if (!viewMatches || cur->item.text == NULL || strcmp(cur->item.text, text) != 0)
             continue;
+        if (wantedView == LIB_VIEW_PS1 && (kind == FAV_KIND_CUE || kind == FAV_KIND_VCD)) {
+            int ember = 0;
+            if (!gsOf(mod->support)->ps1RowKind(mod->support, cur->item.id, &ember) ||
+                (ember != 0) != (kind == FAV_KIND_CUE))
+                continue;
+        }
         // Apps have title identity and PS1 records are name-addressed. ISO games retain the exact
         // source-local id, even when the visible Mixed id is offset by the PS2-list length.
         if (mod->support->mode == APP_MODE || wantedView == LIB_VIEW_PS1 ||
@@ -599,9 +605,9 @@ static submenu_list_t *favFindVisibleSource(opl_io_module_t *mod, int sourceId, 
     return NULL;
 }
 
-static void favVcdMarkStar(opl_io_module_t *mod, int id, const char *text)
+static void favVcdMarkStar(opl_io_module_t *mod, int id, const char *text, int kind)
 {
-    submenu_list_t *src = favFindVisibleSource(mod, id, text, LIB_VIEW_PS1);
+    submenu_list_t *src = favFindVisibleSource(mod, id, text, LIB_VIEW_PS1, kind);
     if (src != NULL)
         src->item.favourited = 1;
 }
@@ -730,7 +736,7 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
                 continue;
             if (markStars) {
                 if (favKindIsNameAddressed(kind)) {
-                    favVcdMarkStar(mod, liveId, text);
+                    favVcdMarkStar(mod, liveId, text, kind);
                 } else {
                     submenu_list_t *src = favFindVisibleSource(mod, liveId, text, LIB_VIEW_ISO);
                     if (src != NULL)
@@ -755,7 +761,7 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
             opl_io_module_t *mod = oplGetModule(mode);
             if (mod != NULL && mod->support != NULL && favSupportLaunches(mod->support, needCue)) {
                 if (markStars)
-                    favVcdMarkStar(mod, id, text);
+                    favVcdMarkStar(mod, id, text, kind);
                 return mod->support;
             }
             for (int m = BDM_MODE; m <= BDM_MODE_LAST; m++) {
@@ -763,7 +769,7 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
                 if (bm != NULL && bm->support != NULL && favSupportLaunches(bm->support, needCue)) {
                     *outMode = m;
                     if (markStars)
-                        favVcdMarkStar(bm, id, text);
+                        favVcdMarkStar(bm, id, text, kind);
                     return bm->support;
                 }
             }
@@ -775,7 +781,7 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
         if (mod == NULL || mod->support == NULL || !favSupportLaunches(mod->support, needCue))
             return NULL;
         if (markStars)
-            favVcdMarkStar(mod, id, text);
+            favVcdMarkStar(mod, id, text, kind);
         return mod->support;
     }
 
@@ -1162,7 +1168,7 @@ int FavSupport::removeByIndex(int favIndex)
 
     opl_io_module_t *mod = oplGetModule(srcMode);
     if (mod != NULL) {
-        submenu_list_t *src = favFindVisibleSource(mod, srcId, txt, favKindView(srcKind));
+        submenu_list_t *src = favFindVisibleSource(mod, srcId, txt, favKindView(srcKind), srcKind);
         if (src != NULL)
             src->item.favourited = 0;
     }

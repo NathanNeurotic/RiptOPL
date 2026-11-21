@@ -937,8 +937,9 @@ int MmceSource::needsUpdate(item_list_t *itemList)
 
     // VCD view: force a rescan once on toggle, then skip the disc heuristics while showing VCDs.
     if (host::library().consumeDirty(itemList->mode)) {
-        slot->ps1ScanRetries = 0; // fresh user toggle re-arms the failed-scan retry budget
-        return 1;
+        slot->ps1ScanRetries = 0;
+        slot->folderRetries = 0; // Refresh also retries a still-missing CFG folder.
+        result = 1;
     }
     // Folder browsing: descend/ascend forces one rescan (consumed before the NOUPDATE latch below).
     if (folderConsumeDirty(itemList->mode))
@@ -991,7 +992,7 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     if (!sbIsSameSize(slot->prefix, slot->ulSizePrev))
         result = 1;
 
-    if (strcmp(slot->foldersCreatedFor, slot->prefix) != 0) {
+    if (slot->folderRetries < MMCE_FOLDER_RETRY_MAX && strcmp(slot->foldersCreatedFor, slot->prefix) != 0) {
         sbCreateFolders(slot->prefix, 1);
 
         char cfgPath[sizeof(slot->prefix) + 4];
@@ -1002,10 +1003,8 @@ int MmceSource::needsUpdate(item_list_t *itemList)
             snprintf(slot->foldersCreatedFor, sizeof(slot->foldersCreatedFor), "%s", slot->prefix);
             slot->folderRetries = 0;
         } else if (++slot->folderRetries >= MMCE_FOLDER_RETRY_MAX) {
-            LOG("MMCE: %s still absent after %d create attempts -- obstructed; giving up for this session\n",
+            LOG("MMCE: %s still absent after %d create attempts; waiting for a refresh\n",
                 cfgPath, MMCE_FOLDER_RETRY_MAX);
-            snprintf(slot->foldersCreatedFor, sizeof(slot->foldersCreatedFor), "%s", slot->prefix);
-            slot->folderRetries = 0;
         } else {
             LOG("MMCE: %s not present after sbCreateFolders -- re-arming retry (%d/%d)\n",
                 cfgPath, slot->folderRetries, MMCE_FOLDER_RETRY_MAX);
@@ -1088,6 +1087,8 @@ int mmceEnsurePs1List(item_list_t *itemList)
     slot->getDeviceRoot(root, sizeof(root));
     int result = ps1FillGameList(root, &slot->ps1Games, slot->ps1GameCount);
     if (result < 0) {
+        itemList->updateDelay = MMCE_MODE_UPDATE_DELAY;
+        ioPutRequestUnlessWaiting(IO_MENU_UPDATE_DEFFERED, &itemList->mode);
         slot->ps1Scanned = 0;
         slot->ps1ScanFailed = 1;
         slot->ps1ScanRetries++;
@@ -1106,6 +1107,9 @@ int mmceEnsurePs1List(item_list_t *itemList)
 int MmceSource::count(item_list_t *itemList)
 {
     MmceSlotState *slot = mmceSlotStateOf(itemList);
+    // Detached rows can still belong to the old submenu until the deferred rebuild.
+    if (slot->prefix[0] == '\0')
+        return 0;
     int view = host::library().listViewActive(itemList);
     return view == LIB_VIEW_MIXED ? slot->gameCount + slot->ps1GameCount :
            view == LIB_VIEW_PS1   ? slot->ps1GameCount :
@@ -1263,6 +1267,15 @@ void MmceSource::launchVcd(item_list_t *itemList, const char *vcdName, config_se
 
     if (!cacheAbortMmceImageLoadsTimed(MMCE_ART_ABORT_WAIT_TICKS)) {
         host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
+        return;
+    }
+
+    // POPStarter resets the IOP and reopens this bare mass: selector with
+    // its own BDMA driver. The selector cannot bind to a physical MMCE slot.
+    MmceSlotState &other = gMmceSupport.slots[1 - slot->slotIndex];
+    other.probePresence();
+    if (other.present) {
+        host::ui().msgBox(_l(_STR_POPSTARTER_MMCE_TWO_CARDS), 0, NULL);
         return;
     }
 
@@ -1442,6 +1455,42 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     int vmc_fds[2] = {-1, -1};
     mmcePrepareVmcSlots(slot->prefix, configSet, vmc_fds, &size_mcemu_irx);
 
+#ifdef RETROACHIEVEMENTS
+    sbLoadWatchList(slot->prefix, game->startup);
+#endif
+    if ((result = sbLoadCheats(slot->prefix, game->startup, configSet)) < 0) {
+        if (!sbCheatsMissingContinue(&settings->common, result)) {
+            if (vmc_fds[0] >= 0)
+                fileXioClose(vmc_fds[0]);
+            if (vmc_fds[1] >= 0)
+                fileXioClose(vmc_fds[1]);
+            return;
+        }
+    }
+    sbLoadImage(slot->prefix, game->startup);
+
+    if (configGetStrCopy(configSet, CONFIG_ITEM_ALTSTARTUP, filename, sizeof(filename)) == 0)
+        strcpy(filename, game->startup);
+
+    // MMCEDRV port: slot 0 -> port 2 (mmce0:), slot 1 -> port 3 (mmce1:).
+    if (fileXioDevctl(slotRoot, 0x1, NULL, 0, NULL, 0) == -1) {
+        if (gMmceSupport.waitSwapDoneOn(slotRoot, "recovering slot", NULL))
+            gMmceSupport.settleDeviceFs(slotRoot);
+        if (fileXioDevctl(slotRoot, 0x1, NULL, 0, NULL, 0) == -1) {
+            LOG("MMCE slot %d lost, aborting launch\n", slot->slotIndex);
+            host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
+            if (vmc_fds[0] >= 0)
+                fileXioClose(vmc_fds[0]);
+            if (vmc_fds[1] >= 0)
+                fileXioClose(vmc_fds[1]);
+            sbUnprepare(&settings->common);
+            return;
+        }
+        // Card recovered from a swap/transient drop: retry any configured VMC slot that was not yet opened.
+        mmcePrepareVmcSlots(slot->prefix, configSet, vmc_fds, &size_mcemu_irx);
+    }
+    settings->port = (slot->slotIndex == 0) ? 2 : 3;
+
     u64 isoTotalBytes = 0;
     int isoSizeKnown = 1;
     for (int part = 0; part < game->parts; part++) {
@@ -1491,42 +1540,6 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         LOG("DVD-DL layer 1 @ part %u sector 0x%lx.\n", layer1_part, layer1_offset);
     }
     settings->common.layer1_start = layer1_start;
-
-#ifdef RETROACHIEVEMENTS
-    sbLoadWatchList(slot->prefix, game->startup);
-#endif
-    if ((result = sbLoadCheats(slot->prefix, game->startup, configSet)) < 0) {
-        if (!sbCheatsMissingContinue(&settings->common, result)) {
-            if (vmc_fds[0] >= 0)
-                fileXioClose(vmc_fds[0]);
-            if (vmc_fds[1] >= 0)
-                fileXioClose(vmc_fds[1]);
-            return;
-        }
-    }
-    sbLoadImage(slot->prefix, game->startup);
-
-    if (configGetStrCopy(configSet, CONFIG_ITEM_ALTSTARTUP, filename, sizeof(filename)) == 0)
-        strcpy(filename, game->startup);
-
-    // MMCEDRV port: slot 0 -> port 2 (mmce0:), slot 1 -> port 3 (mmce1:).
-    if (fileXioDevctl(slotRoot, 0x1, NULL, 0, NULL, 0) == -1) {
-        if (gMmceSupport.waitSwapDoneOn(slotRoot, "recovering slot", NULL))
-            gMmceSupport.settleDeviceFs(slotRoot);
-        if (fileXioDevctl(slotRoot, 0x1, NULL, 0, NULL, 0) == -1) {
-            LOG("MMCE slot %d lost, aborting launch\n", slot->slotIndex);
-            host::ui().warning(_l(_STR_ERR_FILE_INVALID), 8);
-            if (vmc_fds[0] >= 0)
-                fileXioClose(vmc_fds[0]);
-            if (vmc_fds[1] >= 0)
-                fileXioClose(vmc_fds[1]);
-            sbUnprepare(&settings->common);
-            return;
-        }
-        // Card recovered from a swap/transient drop: retry any configured VMC slot that was not yet opened.
-        mmcePrepareVmcSlots(slot->prefix, configSet, vmc_fds, &size_mcemu_irx);
-    }
-    settings->port = (slot->slotIndex == 0) ? 2 : 3;
 
     // Per-game Neutrino core
     char neutrinoExtraArgs[256] = "";

@@ -44,8 +44,8 @@ static int favSupportLaunches(const item_list_t *source, int needCue)
 {
     return needCue ? source->cue : source->vcd;
 }
-static submenu_list_t *favFindVisibleSource(opl_io_module_t *, int, const char *, int) { return NULL; }
-static void favVcdMarkStar(opl_io_module_t *, int, const char *) {}
+static submenu_list_t *favFindVisibleSource(opl_io_module_t *, int, const char *, int, int = 0) { return NULL; }
+static void favVcdMarkStar(opl_io_module_t *, int, const char *, int) {}
 ''' + function(fav, "static int favKindIsNameAddressed(") + function(fav, "static item_list_t *favResolve(") + r'''
 static item_list_t *resolve(int mode, int *outMode)
 {
@@ -229,13 +229,23 @@ ps1_ensure = r'''
 #include <stdio.h>
 #include <string.h>
 #define MMCE_VCD_SCAN_RETRY_MAX 15
+#define MMCE_MODE_UPDATE_DELAY 0
 struct item_list_t { int mode, updateDelay; };
+enum { LIB_VIEW_ISO, LIB_VIEW_PS1, LIB_VIEW_MIXED };
+class MmceSource { public: int count(item_list_t *); };
+namespace host {
+struct Library {
+    int view = LIB_VIEW_ISO;
+    int listViewActive(item_list_t *) { return view; }
+};
+static Library &library() { static Library value; return value; }
+}
 #define IO_MENU_UPDATE_DEFFERED 1
 static int queued;
 struct MmceSlotState {
     char prefix[16];
     void *ps1Games;
-    int ps1GameCount, ps1Scanned, ps1ScanFailed, ps1ScanRetries;
+    int gameCount, ps1GameCount, ps1Scanned, ps1ScanFailed, ps1ScanRetries;
     void getDeviceRoot(char *out, int size) { snprintf(out, size, "mmce1:/"); }
 };
 static MmceSlotState slot;
@@ -249,7 +259,7 @@ static int ps1FillGameList(const char *root, void *, int &) {
     return fillResult;
 }
 static int ps1GameListNeedsRetry(void) { return needsRetry; }
-''' + function(mmce, "int mmceEnsurePs1List(") + r'''
+''' + function(mmce, "int mmceEnsurePs1List(") + function(mmce, "int MmceSource::count(") + r'''
 int main() {
     strcpy(slot.prefix, "mmce1:/");
     fillResult = 1;
@@ -258,14 +268,64 @@ int main() {
     slot.ps1Scanned = 0; slot.ps1ScanFailed = 1; slot.ps1ScanRetries = MMCE_VCD_SCAN_RETRY_MAX;
     fillResult = -1;
     assert(mmceEnsurePs1List(&list) == 0 && fillCalls == 1);
+    slot.gameCount = 2;
+    MmceSource source;
+    assert(source.count(&list) == 2);
+    host::library().view = LIB_VIEW_PS1;
+    assert(source.count(&list) == 1);
     slot.prefix[0] = 0;
+    assert(source.count(&list) == 0);
+    host::library().view = LIB_VIEW_ISO;
+    assert(source.count(&list) == 0);
     assert(mmceEnsurePs1List(&list) == 0 && fillCalls == 1);
     strcpy(slot.prefix, "mmce1:/");
     slot.ps1Games = NULL; slot.ps1Scanned = 0; slot.ps1ScanFailed = 0; slot.ps1ScanRetries = 0;
+    list.updateDelay = -1;
+    queued = 0;
+    assert(mmceEnsurePs1List(&list) == 0 && queued == 1 && list.updateDelay == MMCE_MODE_UPDATE_DELAY);
+    slot.ps1ScanFailed = 0; slot.ps1ScanRetries = 0;
     needsRetry = 1; fillResult = 1; fillCalls = 0;
     assert(mmceEnsurePs1List(&list) == 1 && slot.ps1ScanRetries == 1);
     slot.ps1Games = (void *)1; queued = 0;
     assert(mmceEnsurePs1List(&list) == 0 && fillCalls == 1 && queued == 1);
+}
+'''
+
+ps1_star = r'''
+#include <assert.h>
+#include <string.h>
+enum { APP_MODE, MMCE_MODE };
+enum { FAV_KIND_ISO, FAV_KIND_VCD, FAV_KIND_CUE };
+enum { LIB_VIEW_ISO, LIB_VIEW_PS1, LIB_VIEW_ELF, LIB_VIEW_PS1_ELF };
+struct item_list_t { int mode; };
+struct submenu_list_t {
+    struct { int id; const char *text; int favourited; } item;
+    submenu_list_t *next;
+};
+struct opl_io_module_t { item_list_t *support; submenu_list_t *subMenu; };
+namespace host {
+struct Library {
+    int listRowView(item_list_t *, int) { return LIB_VIEW_PS1; }
+    int listSourceId(item_list_t *, int id) { return id; }
+};
+static Library &library() { static Library value; return value; }
+}
+struct Source {
+    int ps1RowKind(item_list_t *, int id, int *ember) { *ember = id == 0; return 1; }
+};
+static Source *gsOf(item_list_t *) { static Source value; return &value; }
+''' + function(fav, "static submenu_list_t *favFindVisibleSource(") + function(fav, "static void favVcdMarkStar(") + r'''
+int main()
+{
+    submenu_list_t vcd{{1, "Same Game", 0}, NULL};
+    submenu_list_t cue{{0, "Same Game", 0}, &vcd};
+    item_list_t support{MMCE_MODE};
+    opl_io_module_t mod{&support, &cue};
+    favVcdMarkStar(&mod, 1, "Same Game", FAV_KIND_VCD);
+    assert(vcd.item.favourited && !cue.item.favourited);
+    vcd.item.favourited = 0;
+    favVcdMarkStar(&mod, 0, "Same Game", FAV_KIND_CUE);
+    assert(cue.item.favourited && !vcd.item.favourited);
 }
 '''
 
@@ -342,11 +402,14 @@ all_games_ready = all_games.index("mmceEnsurePs1List(src);") < all_games.index("
 launch = function(mmce, "void MmceSource::launch(")
 native_switch = launch.index("mmceSendGameID(game->startup, NULL, 0)")
 assert native_switch < launch.index("mmcePrepareVmcSlots(") < launch.index("fileXioOpen(partname,")
+assert launch.index("waitSwapDoneOn(slotRoot,") < launch.index("sbGetISO9660MaxLBA(") < launch.index("fileXioOpen(partname,")
+vcd_launch = function(mmce, "void MmceSource::launchVcd(")
+assert vcd_launch.index("if (other.present)") < vcd_launch.index("vcdBuildSelector(")
 
 with tempfile.TemporaryDirectory(prefix="mmce-dual-slot-") as tmp:
     folder = Path(tmp)
     failures = []
-    for label, source in (("favorites", favorites), ("name_lookup", name_lookup), ("moved_identity", moved_identity), ("ps1_ensure", ps1_ensure), ("vmc", vmc)):
+    for label, source in (("favorites", favorites), ("name_lookup", name_lookup), ("moved_identity", moved_identity), ("ps1_ensure", ps1_ensure), ("ps1_star", ps1_star), ("vmc", vmc)):
         src, exe = folder / (label + ".cpp"), folder / label
         src.write_text(source, encoding="utf-8")
         result = subprocess.run(["g++", "-std=c++17", "-Wall", "-Wextra", "-Werror", "-Wno-unused-function", str(src), "-o", str(exe)], capture_output=True, text=True)

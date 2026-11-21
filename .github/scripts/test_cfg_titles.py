@@ -85,7 +85,7 @@ struct FakeSource {
     void *game(item_list_t *l, int i) { return l->itemGet(l, i); }
     char *name(item_list_t *l, int i) { return l->itemGetName(l, i); }
     config_set_t *config(item_list_t *l, int i) { return l->itemGetConfig(l, i); }
-    char *prefix(item_list_t *) { return const_cast<char *>("mass0:"); }
+    char *rowPrefix(item_list_t *, int) { return const_cast<char *>("mass0:"); }
     int ps1RowKind(item_list_t *l, int i, int *ember) { (void)l; *ember = ps1Ember[i]; return ps1Row[i]; }
 };
 static FakeSource sourceObject;
