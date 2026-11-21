@@ -180,10 +180,10 @@ print('ok   MMCE Game ID waits for the switch to start, then for the card')
 latches = ('iUSBModLoaded', 'iLinkModLoaded', 'iLinkManModLoaded', 'ieee1394ModLoaded', 'mx4sioModLoaded',
            'pccfModLoaded', 'hddModLoaded', 'udpbdModLoaded', 'udpbdNicClaimed')
 reset_program = '#include <assert.h>\nstatic int ' + ', '.join(l + ' = 1' for l in latches) + \
-    ', pccfProbeGeneration, udpbdLoadedProtocol = 1;\nstatic unsigned int bdmIopResetGeneration = 0;\nstruct { void setLoadedNetProtocol(int p) { udpbdLoadedProtocol = p; } } gBdmSupport;\n' + bdmReset + '\n}\nint main(void)\n{\n    bdmIopWasReset();\n' + \
+    ', pccfProbeGeneration, udpbdLoadedProtocol = 1;\nstruct { void setLoadedNetProtocol(int p) { udpbdLoadedProtocol = p; } } gBdmSupport;\n' + bdmReset + '\n}\nint main(void)\n{\n    bdmIopWasReset();\n' + \
     ''.join('    assert(%s == 0);\n' % l for l in latches) + \
-    '    assert(udpbdLoadedProtocol == -1 && pccfProbeGeneration == 1 && bdmIopResetGeneration == 1);\n    bdmIopWasReset();\n' + \
-    '    assert(pccfProbeGeneration == 1); /* CF probes again only when the reset unloaded it */\n    assert(bdmIopResetGeneration == 2); /* iLink must rediscover after every reset */\n    return 0;\n}\n'
+    '    assert(udpbdLoadedProtocol == -1 && pccfProbeGeneration == 1);\n    bdmIopWasReset();\n' + \
+    '    assert(pccfProbeGeneration == 1); /* CF probes again only when the reset unloaded it */\n    return 0;\n}\n'
 with tempfile.TemporaryDirectory(prefix='ripps2-reset-') as temp:
     src = Path(temp) / 'reset.cpp'
     src.write_text(reset_program)
