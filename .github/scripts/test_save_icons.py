@@ -557,11 +557,10 @@ if 'UICFG_ENABLE_SAVE_ICONS, &gEnableSaveIcons' not in gui or 'saveIconReset()' 
 if 'src/gfx/saveicon.cpp' not in text('ps2.yaml'):
     failures.append('ps2.yaml: saveicon.cpp is not built')
 
-for rel, families in (('misc/conf_theme_OPL.cfg', ('main', 'info')), ('misc/theme_coverflow.cfg', ('main', 'info'))):
-    cfg = text(rel)
-    for family in families:
-        if not re.search(r'^%s\d+:\n\ttype=SaveIcon$' % family, cfg, re.M):
-            failures.append('%s: no SaveIcon in the %s family' % (rel, family))
+cfg = text('misc/conf_theme_OPL.cfg')
+for family in ('main', 'info', 'coverflow.main', 'psbbn.main', 'grid.main'):
+    if not re.search(r'^%s\d+:\n\ttype=SaveIcon$' % re.escape(family), cfg, re.M):
+        failures.append('misc/conf_theme_OPL.cfg: no SaveIcon in the %s family' % family)
 
 # Language labels are append-only: these two come after every label that existed before them.
 base = text('lng/tmpl/_base.yml')

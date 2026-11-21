@@ -91,8 +91,16 @@ void thmWallpaperFree(image_texture_t *wallpaper);
 GSTEXTURE *getGameImageTextureEx(image_cache_t *cache, void *support, struct submenu_item *item, int isPriority);
 GSTEXTURE *getGameImageTexture(image_cache_t *cache, void *support, struct submenu_item *item);
 int isHiddenArtworkCache(const image_cache_t *cache);
+void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, int slots);
+void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, struct submenu_list *item, int x, int y, int coverW, int coverH, int inset, u64 color);
 void *thmGetItemSource(struct menu_list *menu, struct submenu_list *item);
 theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem);
+
+// Per-element rendering variant selected via <block>_style= in conf_theme.cfg
+#define THM_MENU_STYLE_DEFAULT      0
+#define THM_MENU_STYLE_PSBBN        1
+#define THM_MENU_STYLE_PSBBN_ACTIVE 2
+#define THM_MENU_STYLE_PSBBN_BAR    3
 
 // themeelems.cpp (element init/draw functions the loader wires up)
 int thmParseDeviceList(const char *value, int quiet);
@@ -100,6 +108,7 @@ void thmComputeDeviceCoverage(theme_elems_t *elems);
 void thmComputeTextRooms(theme_elems_t *elems);
 void initStaticText(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);
 void initGameCountText(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);
+void drawNameAttributeText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem);
 void initAttributeText(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);
 void findDuplicate(theme_element_t *first, int type, const char *cachePattern, const char *defaultTexture, const char *overlayTexture, const char *overlayTexture2, mutable_image_t *target);
 void initStaticImage(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, const char *imageName);
@@ -127,6 +136,8 @@ void initCoverflow(const char *themePath, config_set_t *themeConfig, theme_t *th
 
 // grid.cpp
 void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);
+void gridDrawPageGlyph(struct menu_list *page, int cx, int cy, int size, u64 color);
+void gridReleaseGlyphs(void);
 
 // psbbnflow.cpp
 void initPsbbnFlow(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);

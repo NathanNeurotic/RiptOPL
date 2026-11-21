@@ -6,15 +6,16 @@ until you choose the entry: RiptOPL never checks or downloads on its own.
 
 ## Which builds have it
 
-Every standard build that has a rolling release to come from:
+Only two full standard editions support Check for Updates:
 
-| Build | Channel (GitHub release) | File replaced |
+| Build | GitHub release | ELF replaced |
 | --- | --- | --- |
-| Korium | `rolling-korium` | `RIPTOPL.ELF` |
-| IncebtIon | `rolling-incebtion` | `RIPTOPL.ELF` |
-| RetroAchievements | `rolling-ra` | `RIPTOPL-RA.ELF` |
-| RetroAchievements IncebtIon | `rolling-ra` | `RIPTOPL-RA-IncebtIon.ELF` |
-| LLVM Korium / LLVM RA | `rolling-llvm` | `RIPTOPL.ELF` / `RIPTOPL-RA.ELF` |
+| RiptOPL (LLVM) | `rolling` | `RIPTOPL.ELF` |
+| RetroAchievements (GCC) | `rolling-ra` | `RIPTOPL-RA.ELF` |
+
+Korium, IncebtIon and the old independent LLVM channel are retired. To move
+from one of those channels, install a current standard RiptOPL ELF manually
+once. Older builds continue checking the release tag they were built for.
 
 RiptOPLite, debug and variant builds do not have it, so a build is never replaced by a different kind
 of build. The channel is fixed at build time (`tools/build_edition.py update_channel`).
@@ -30,7 +31,7 @@ of build. The channel is fixed at build time (`tools/build_edition.py update_cha
 ## What it does
 
 1. Downloads the channel's `SHA256SUMS.txt`. The release's build number comes from its versioned zip
-   names (`RIPTOPL-Korium-v1.2.0-Beta-4257.zip`), and the ELF's expected SHA-256 from its line.
+   names (for example, `RIPTOPL-v1.2.0-Beta-4257.zip`), and the ELF's expected SHA-256 from its line.
 2. Compares that build number with the running one (the number in the About screen's version). Equal
    or older: "already the newest". A build without a number (a local build) is not compared.
 3. On your OK, downloads the ELF into memory. The first bytes must be a PS2 ELF header; the size is

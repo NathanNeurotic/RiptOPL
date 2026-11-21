@@ -272,7 +272,6 @@ jobs:
           dispatch configurations.yml
           dispatch flavours.yml
           dispatch rolling-release.yml -f publish=false
-          dispatch rolling-llvm.yml -f publish=false
           if [ -n "$FAILED" ]; then
             echo "::error::Could not start$FAILED on $BRANCH. The next run starts whatever has not run there."
             exit 1

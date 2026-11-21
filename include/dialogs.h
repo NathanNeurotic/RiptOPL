@@ -27,7 +27,7 @@ enum UI_ITEMS {
     UICFG_ENABLE_ANALOG_NAV,
     UICFG_ART_DELAY,
     UICFG_WIDESCREEN,
-    UICFG_FONT_SIZE, // original #1038: Interface page Font Size (FONT_SIZE_*)
+    UICFG_FONT_SIZE, // Interface page font-size percentage picker (50%-150%)
     UICFG_GLYPH_SET, // Interface page Button Glyphs (GLYPH_SET_*)
     UICFG_AUTOREFRESH,
     UICFG_VMODE,
@@ -43,7 +43,7 @@ enum UI_ITEMS {
     CFG_APP_HANDOFF_PATH,
     CFG_HDDGAMELISTCACHE,
     CFG_EXITTO,
-    CFG_EXITMENU,      // Exit To: console menu, PS2 Browser, PS2 Browser (skip card update) -- issue #370
+    CFG_EXITMENU,      // Exit To: console menu, PS2 Browser, or a fixed BOOT ELF on a memory card
     CFG_CUSTOMCFGPATH, // opt-in "Custom Settings Path" (typed)
     CFG_DEFDEVICE,
     CFG_BDMMODE,

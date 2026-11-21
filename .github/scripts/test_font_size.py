@@ -71,25 +71,30 @@ struct FontSystem {
 ''' + function(font, 'void FontSystem::updateAspectRatioLocked(') + r'''
 int main(void)
 {
-    const int expected[] = {15, 17, 19};
+    // Every 5% option, with nearest-pixel raster sizing and safe legacy migration.
     FontSystem fs;
     /* Built-in, translated and CJK fallback slots plus two explicitly sized theme faces. */
     for (int i = 0; i < FNT_MAX_COUNT; i++) fs.fonts_[i] = (font_t){1, 17, i};
     fs.fonts_[3].fontSize = 9;
     fs.fonts_[4].fontSize = 42;
-    for (int mode = 0; mode < FONT_SIZE_COUNT; mode++) {
-        gFontSize = fntValidFontSize(mode);
-        assert(gFontSize == mode && MENU_ITEM_HEIGHT == expected[mode] + 2);
+    for (int index = 0; index < FONT_SIZE_COUNT; index++) {
+        gFontSize = fntFontSizePercentFromIndex(index);
+        int expected = (FNTSYS_DEFAULT_SIZE * gFontSize + 50) / 100;
+        assert(fntValidFontSize(gFontSize) == gFontSize && MENU_ITEM_HEIGHT == expected + 2);
         for (nativeH = 224; nativeH <= 1080; nativeH += 214) {
             fs.updateAspectRatioLocked();
-            for (int i = 0; i < 3; i++) assert(sizes[i] == expected[mode]);
+            for (int i = 0; i < 3; i++) assert(sizes[i] == expected);
             assert(sizes[3] == 9 && sizes[4] == 42);
             for (int i = 0; i < 3; i++) assert(fs.fonts_[i].fontSize == 17);
         }
     }
-    for (int i = 0; i < FNT_MAX_COUNT; i++) assert(flushes[i] == 15);
-    assert(fntValidFontSize(-1) == FONT_SIZE_DEFAULT && fntValidFontSize(FONT_SIZE_COUNT) == FONT_SIZE_DEFAULT);
-    gFontSize = 7; /* an unnormalized value never shrinks or grows text */
+    for (int i = 0; i < FNT_MAX_COUNT; i++) assert(flushes[i] == FONT_SIZE_COUNT * 5);
+    assert(fntFontSizeIndex(50) == 0 && fntFontSizeIndex(100) == 10 && fntFontSizeIndex(150) == 20);
+    assert(fntFontSizePercentFromIndex(-1) == 100 && fntFontSizePercentFromIndex(21) == 100);
+    assert(fntValidFontSize(0) == 90 && fntValidFontSize(1) == 100 && fntValidFontSize(2) == 110);
+    assert(fntValidFontSize(-1) == 100 && fntValidFontSize(52) == 100 && fntValidFontSize(151) == 100);
+    assert(fntScaleFontSize(9) == 9 && fntScaleFontSize(42) == 42);
+    gFontSize = 7; /* an invalid setting restores 100%, even before normalization */
     assert(fntScaleFontSize(FNTSYS_DEFAULT_SIZE) == FNTSYS_DEFAULT_SIZE);
     puts("PASS: menu raster sizes, custom point sizes, cache invalidation and config normalization");
 }
@@ -128,8 +133,8 @@ static void resetAndCheckPageStarts(void) {
 static void refresh(void) { if (thmRefreshFontSize()) resetAndCheckPageStarts(); }
 int main(void)
 {
-    for (int mode = 0; mode < FONT_SIZE_COUNT; mode++) {
-        gFontSize = mode;
+    for (int index = 0; index < FONT_SIZE_COUNT; index++) {
+        gFontSize = fntFontSizePercentFromIndex(index);
         for (int height = 1; height <= 400; height++) {
             items_list_t items;
             itemsListFit(&items, height);
@@ -154,11 +159,11 @@ int main(void)
     assert(rooms == 0 && resets == 0);
     gTheme = &layout;
     loadedFontSize = -1;
-    for (int mode = 0; mode < FONT_SIZE_COUNT; mode++) {
-        gFontSize = mode;
+    for (int index = 0; index < FONT_SIZE_COUNT; index++) {
+        gFontSize = fntFontSizePercentFromIndex(index);
         int before = rooms;
         refresh();
-        assert(rooms == before + 12 && loadedFontSize == mode);
+        assert(rooms == before + 12 && loadedFontSize == gFontSize);
         for (int i = 0; i < 12; i++) {
             assert(counts[i][0].displayedItems == 398 / MENU_ITEM_HEIGHT);
             assert(counts[i][1].displayedItems == 1);
@@ -180,12 +185,15 @@ mini = function(opl, 'void miniInit(')
 assert mini.index('CONFIG_OPL_FONT_SIZE, &gFontSize') < mini.index('gFontSize = fntValidFontSize(gFontSize);')
 assert 'int gFontSize = FONT_SIZE_DEFAULT;' in opl, 'the autolaunch path never sees a zero (Small) default'
 assert 'spacingH += fntScaleFontSize(FNTSYS_DEFAULT_SIZE) - FNTSYS_DEFAULT_SIZE;' in function(dia, 'void diaRenderUI(')
+assert 'spacingH = diaSettingsSpacingFloor(spacingH);' in function(dia, 'void diaRenderUI('), 'Settings spacing floor must be applied in the renderer'
+assert 'spacingH = diaDialogSpacingFloor(spacingH);' in function(dia, 'void diaRenderUI('), 'ordinary dialogs also need a font-safe floor'
 updater = function(guisettings, 'static int guiSettingsDisplayUpdater(')
 assert 'UICFG_FONT_SIZE' in updater and updater.count('guiUpdateScreenScale();') >= 3
 for page in ('static int guiSettingsShowInterface(',):
     body = function(guisettings, page)
     assert 'diaSetEnum(' in body and 'UICFG_FONT_SIZE, fontSizeNames' in body, page
-    assert re.search(r'diaGetInt\(\w+, UICFG_FONT_SIZE, &gFontSize\)', body), page
+    assert re.search(r'diaGetInt\(\w+, UICFG_FONT_SIZE, &fontSizeIndex\)', body), page
+    assert 'gFontSize = fntFontSizePercentFromIndex(fontSizeIndex);' in body, page
 scale = function(gui, 'void Gui::updateScreenScale(')
 assert scale.index('lock();') < scale.index('if (thmRefreshFontSize())\n        menuResetPageStarts();') < scale.index('unlock();')
 assert 'loadedFontSize = gFontSize;' in function(theme, 'static int thmLoad(')
@@ -195,11 +203,12 @@ print('PASS: both config load paths, save/defaults, live preview and LTR/RTL wir
 
 dialog_types = re.search(r'^typedef enum\s*\{.*?\} UIItemType;', dia_header, re.M | re.S).group()
 dialog_types += re.search(r'^struct UIItem\s*\{.*?^\};', dia_header, re.M | re.S).group()
-dialog_defines = '\n'.join(re.findall(r'^#define UI_SETTINGS_(?:SPACING_H|MIN_GAP)\s+\d+', dia, re.M)) + '\n' + '\n'.join(
+dialog_defines = re.search(r'^#define UI_SPACING_H\s+\d+', (ROOT / 'include/diaint.h').read_text(), re.M).group() + '\n'
+dialog_defines += '\n'.join(re.findall(r'^#define UI_SETTINGS_(?:SPACING_H|MIN_GAP)\s+\d+', dia, re.M)) + '\n' + '\n'.join(
     '#define %s %s' % m for m in re.findall(r'^constexpr int (UI_SPACING_V|UI_SPACER_WIDTH|UI_SPACER_MINIMAL) = (\d+);', dia, re.M))
 dialog_functions = '\n'.join(function(dia, signature) for signature in (
     'static int diaShouldBreakLine(', 'static int diaShouldBreakLineAfter(', 'static int diaSpacerWidth(',
-    'static int diaItemHeight(', 'static void diaRowState(', 'static int diaRowCollapses(', 'static int diaLayoutBottom(', 'static int diaSettingsFitGap(',
+    'static int diaItemHeight(', 'static void diaRowState(', 'static int diaRowCollapses(', 'static int diaLayoutBottom(', 'static int diaDialogSpacingFloor(', 'static int diaSettingsSpacingFloor(', 'static int diaSettingsFitGap(',
 ))
 run('font_dialog', common + dialog_types + '\n' + dialog_defines + r'''
 static int diaScreenHeight = 480;
@@ -210,10 +219,14 @@ static int diaWrapExtra(struct UIItem *item, int wrapRoom) { (void)item; (void)w
 int main(void)
 {
     static struct UIItem page[150];
-    for (int mode = 0; mode < FONT_SIZE_COUNT; mode++) {
-        gFontSize = mode;
+    for (int index = 0; index < FONT_SIZE_COUNT; index++) {
+        gFontSize = fntFontSizePercentFromIndex(index);
         int size = fntScaleFontSize(FNTSYS_DEFAULT_SIZE);
-        int spacing = UI_SETTINGS_SPACING_H + size - FNTSYS_DEFAULT_SIZE;
+        int spacing = diaSettingsSpacingFloor(UI_SETTINGS_SPACING_H + size - FNTSYS_DEFAULT_SIZE);
+        int ordinarySpacing = diaDialogSpacingFloor(UI_SPACING_H + size - FNTSYS_DEFAULT_SIZE);
+        assert(ordinarySpacing >= 1);
+        assert(2 * ordinarySpacing >= size); /* Ordinary dialogs advance by spacing + gap. */
+        if (size == FNTSYS_DEFAULT_SIZE) assert(ordinarySpacing == UI_SPACING_H);
         for (int rows = 5; rows <= 30; rows += 5) {
             int n = 0;
             memset(page, 0, sizeof(page));

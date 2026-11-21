@@ -916,7 +916,7 @@ config_set_t *menuLoadConfig()
     // Launch owns the storage path now. Drop speculative art before any launch I/O or cached return.
     // A zero wait requests cancellation but never kills or waits on an in-flight fileXio/SIO2 RPC;
     // that transaction is allowed to finish cleanly while no new queued art can get in front.
-    if (menuConfigSourceMode(list) == MMCE_MODE)
+    if (isMmceMode(menuConfigSourceMode(list)))
         (void)cacheAbortMmceImageLoadsTimed(0);
     else
         (void)cacheCancelPendingImageLoadsTimed(0);
@@ -1498,7 +1498,7 @@ static int menuDevicePageRank(const menu_item_t *item)
 
     if (support->mode >= BDM_MODE && support->mode <= BDM_MODE_LAST)
         return 0;
-    if (support->mode == MMCE_MODE)
+    if (isMmceMode(support->mode))
         return 1;
     if (support->mode == HDD_MODE)
         return 2;
@@ -2090,9 +2090,8 @@ static void menuPrevV()
 
 static int menuPageStep()
 {
-    // Single-title layouts (Coverflow, PSBBN Flow and compact themes) still need a fast browse step.
-    // Keep displayedItems unchanged: rendering and the end-of-page probe use the actual row count.
-    int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
+    // Use a 15-title browse step when the view has no multi-row page.
+    const int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
     return displayed == 1 ? 15 : displayed;
 }
 
@@ -2123,10 +2122,7 @@ static void menuNextPage()
         selected_item->item->current = cur;
         selected_item->item->pagestart = selected_item->item->current;
     } else { // wrap to start
-        // Mirror of L1, which wraps from the first page to the last (menuPrevPage). Without this R1
-        // stopped dead at the end of the list while L1 kept cycling. Coverflow shows that at its
-        // worst: its one-row items list makes a page a single title, so holding R1 walked to the
-        // last game and stayed there (#729).
+        // Mirror L1's wrap from the first page to the last.
         menuFirstPage();
     }
     // Page keys use the carousel animation only when the selection changes.
@@ -2432,7 +2428,7 @@ static int menuCanRequestItemConfig(item_list_t *list)
     if (mode == APP_MODE)
         return guiInactiveFrames >= MENU_APP_CONFIG_IDLE_FRAMES;
 
-    if (mode == MMCE_MODE)
+    if (isMmceMode(mode))
         return guiInactiveFrames >= MENU_MMCE_CONFIG_IDLE_FRAMES;
 
     return 1;
@@ -2480,7 +2476,7 @@ static void menuRenderElements(theme_elems_t *elems)
         char *vcdName = gsOf(list)->startup(list, id);
         if (vcdName != NULL) {
             gsOf(list)->ps1RowKind(list, id, &ember); // Ember rows ask for their own (CUE) entry
-            vcdRequestDisplayId(vcdName, ember ? PS1_ROW_CUE : PS1_ROW_VCD);
+            vcdRequestDisplayId(vcdName, ember ? PS1_ROW_CUE : PS1_ROW_VCD, gsOf(list)->rowPrefix(list, id));
         }
     }
 
@@ -2700,16 +2696,61 @@ static void menuGridSidebarInput(void)
         gGridSidebarOpen = 0; // a device page another view draws has no sidebar
 }
 
-static void menuNavigateLeft()
+static int menuCoverflowDeviceBarAvailable(void)
 {
-    if (menuPageIsGrid() && gTheme->gridDevices && menuGridAtRowStart()) {
-        if (getKeyOn(KEY_LEFT)) { // a fresh press, so a held Left stops at the first column
-            gGridSidebarOpen = 1;
-            sfxPlay(SFX_CURSOR);
-        }
+    if (gTheme == NULL || gTheme->coverflow == NULL || gTheme->psbbnFlow != NULL ||
+        menuPageIsGrid() || selected_item == NULL || selected_item->item == NULL)
+        return 0;
+    return menuGetMainElems((item_list_t *)selected_item->item->userdata)->hasDeviceBar;
+}
+
+static void menuCoverflowDeviceBarInput(void)
+{
+    if (!menuCoverflowDeviceBarAvailable()) {
+        gCoverflowDeviceBarFocused = 0;
         return;
     }
-    if (gTheme->coverflow || menuPageIsGrid())
+    if (getKey(KEY_LEFT)) {
+        menuPrevH();
+    } else if (getKey(KEY_RIGHT)) {
+        menuNextH();
+    } else if (getKeyOn(KEY_UP) || getKeyOn(KEY_CROSS) || getKeyOn(KEY_CIRCLE)) {
+        gCoverflowDeviceBarFocused = 0;
+        sfxPlay(SFX_CURSOR);
+    } else if (getKeyOn(KEY_START)) {
+        gCoverflowDeviceBarFocused = 0;
+        menuInitMainMenu();
+        guiSwitchScreen(GUI_SCREEN_MENU);
+    }
+}
+
+static int menuGridAtRowEnd(void)
+{
+    if (selected_item == NULL || selected_item->item == NULL || selected_item->item->current == NULL)
+        return 1;
+    if (selected_item->item->current->next == NULL)
+        return 1;
+    submenu_list_t *cur = selected_item->item->current, *walk;
+    int index = 0;
+    for (walk = selected_item->item->submenu; walk != NULL && walk != cur; walk = walk->next)
+        index++;
+    return (index + 1) % gTheme->gridColumns == 0;
+}
+
+static void menuNavigateLeft()
+{
+    if (menuPageIsGrid()) {
+        if (menuGridAtRowStart()) {
+            if (gTheme->gridDevices && getKeyOn(KEY_LEFT)) { // a fresh press, so a held Left stops at the first column
+                gGridSidebarOpen = 1;
+                sfxPlay(SFX_CURSOR);
+            }
+            return;
+        }
+        menuPrevV();
+        return;
+    }
+    if (gTheme->coverflow)
         menuPrevV();
     else
         menuPrevH();
@@ -2717,7 +2758,12 @@ static void menuNavigateLeft()
 
 static void menuNavigateRight()
 {
-    if (gTheme->coverflow || menuPageIsGrid())
+    if (menuPageIsGrid()) {
+        if (!menuGridAtRowEnd())
+            menuNextV();
+        return;
+    }
+    if (gTheme->coverflow)
         menuNextV();
     else
         menuNextH();
@@ -2727,6 +2773,8 @@ static void menuNavigateUp()
 {
     if (menuPageIsGrid())
         menuGridRow(-1);
+    else if (menuCoverflowDeviceBarAvailable())
+        return; // Down/Up moves focus between Coverflow and its horizontal device bar
     else if (gTheme->coverflow)
         menuPrevH();
     else
@@ -2737,7 +2785,12 @@ static void menuNavigateDown()
 {
     if (menuPageIsGrid())
         menuGridRow(1);
-    else if (gTheme->coverflow)
+    else if (menuCoverflowDeviceBarAvailable()) {
+        if (getKeyOn(KEY_DOWN)) {
+            gCoverflowDeviceBarFocused = 1;
+            sfxPlay(SFX_CURSOR);
+        }
+    } else if (gTheme->coverflow)
         menuNextH();
     else
         menuNextV();
@@ -2797,6 +2850,14 @@ void menuHandleInputMain()
         return;
     }
     gGridSidebarOpen = 0;
+
+    if (gCoverflowDeviceBarFocused && menuCoverflowDeviceBarAvailable()) {
+        if (getKeyOn(KEY_R3) && !viewPending && selected_item->item->fav)
+            selected_item->item->fav(selected_item->item);
+        menuCoverflowDeviceBarInput();
+        return;
+    }
+    gCoverflowDeviceBarFocused = 0;
 
     if (getKey(KEY_LEFT)) {
         menuNavigateLeft();

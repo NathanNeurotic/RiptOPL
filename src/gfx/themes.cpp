@@ -30,14 +30,11 @@
 
 extern const char conf_theme_OPL_cfg;
 extern u16 size_conf_theme_OPL_cfg;
-extern const char theme_coverflow_cfg;
-extern u16 size_theme_coverflow_cfg;
-extern const char theme_psbbn_flow_cfg;
-extern u16 size_theme_psbbn_flow_cfg;
-extern const char theme_grid_cfg;
-extern u16 size_theme_grid_cfg;
 
 theme_t *gTheme;
+
+// 1 when Coverflow's horizontal device strip holds the pad (Down/Up toggles focus with the carousel).
+int gCoverflowDeviceBarFocused = 0;
 
 // The view the user asked for (THM_VIEW_*), -1 = the theme's default. thmLoad falls back to the theme's
 // default when the theme does not offer it.
@@ -683,9 +680,14 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
         configGetStr(themeConfig, elemProp, &type);
         if (type) {
             if (!strcmp(elementsType[ELEM_TYPE_ATTRIBUTE_TEXT], type)) {
+                const char *attr = NULL;
+                snprintf(elemProp, sizeof(elemProp), "%s_attribute", name);
+                int isName = configGetStr(themeConfig, elemProp, &attr) && attr != NULL && !strcmp(attr, CONFIG_ITEM_NAME);
                 elems->needsItemConfig = 1;
-                elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_ATTRIBUTE_TEXT, 0, 0, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, theme->textColor, theme->fonts[0]);
+                elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_ATTRIBUTE_TEXT, 0, 0, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, isName ? theme->titleColor : theme->textColor, theme->fonts[0]);
                 initAttributeText(themePath, themeConfig, theme, elem, name);
+                if (isName && elem->drawElem != NULL)
+                    elem->drawElem = &drawNameAttributeText;
             } else if (!strcmp(elementsType[ELEM_TYPE_STATIC_TEXT], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_STATIC_TEXT, 0, 0, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, theme->textColor, theme->fonts[0]);
                 initStaticText(themePath, themeConfig, theme, elem, name);
@@ -699,6 +701,7 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
                 initAttributeImage(themePath, themeConfig, theme, elem, name);
             } else if (!strcmp(elementsType[ELEM_TYPE_GAME_IMAGE], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_GAME_IMAGE, 0, 0, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
+                elem->family = elems;
                 initGameImage(themePath, themeConfig, theme, elem, name, NULL, 1, NULL, NULL);
             } else if (!strcmp(elementsType[ELEM_TYPE_STATIC_IMAGE], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_STATIC_IMAGE, 0, 0, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
@@ -713,6 +716,19 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
                 elem->drawElem = &drawMenuIcon;
             } else if (!strcmp(elementsType[ELEM_TYPE_MENU_TEXT], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_MENU_TEXT, gThmScreenWidth >> 1, 20, ALIGN_CENTER, 200, 20, SCALING_RATIO, theme->textColor, theme->fonts[0]);
+                char styleProp[64];
+                const char *styleVal;
+                snprintf(styleProp, sizeof(styleProp), "%s_style", name);
+                if (configGetStr(themeConfig, styleProp, &styleVal)) {
+                    if (!strcasecmp(styleVal, "psbbn"))
+                        elem->style = THM_MENU_STYLE_PSBBN;
+                    else if (!strcasecmp(styleVal, "psbbn_active") || !strcasecmp(styleVal, "psbbn_pill"))
+                        elem->style = THM_MENU_STYLE_PSBBN_ACTIVE;
+                    else if (!strcasecmp(styleVal, "psbbn_bar")) {
+                        elem->style = THM_MENU_STYLE_PSBBN_BAR;
+                        elems->hasDeviceBar = 1;
+                    }
+                }
                 elem->drawElem = &drawMenuText;
             } else if (!strcmp(elementsType[ELEM_TYPE_ITEMS_LIST], type)) {
                 // A devices=-filtered ItemsList is a per-device OVERRIDE: it joins its family's
@@ -753,9 +769,11 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
                 }
             } else if (!strcmp(elementsType[ELEM_TYPE_ITEM_ICON], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_GAME_IMAGE, 0, 0, ALIGN_CENTER, 64, 64, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
+                elem->family = elems;
                 initGameImage(themePath, themeConfig, theme, elem, name, "ICO", 20, NULL, NULL);
             } else if (!strcmp(elementsType[ELEM_TYPE_ITEM_COVER], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_GAME_IMAGE, 0, 0, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
+                elem->family = elems;
                 initGameImage(themePath, themeConfig, theme, elem, name, "COV", COVER_CACHE_SLOTS, NULL, NULL);
             } else if (!strcmp(elementsType[ELEM_TYPE_ITEM_TEXT], type)) {
                 elems->needsVcdDisplayId = 1;
@@ -967,6 +985,8 @@ static void thmFree(theme_t *theme)
         freeGUIElems(&theme->favsAppsMainElems);
         freeGUIElems(&theme->favsAppsInfoElems);
         thmWallpaperFree(theme->wallpaper); // after the elements: only they draw it
+        if (theme->discCache)
+            cacheDestroyCache(theme->discCache);
 
         // free textures
         GSTEXTURE *texture;
@@ -1083,7 +1103,7 @@ static void thmRecolorFollowers(theme_elems_t *elems, u64 oldText, u64 oldTitle,
         if (elem->type == ELEM_TYPE_ATTRIBUTE_IMAGE || elem->type == ELEM_TYPE_GAME_IMAGE || elem->type == ELEM_TYPE_STATIC_IMAGE ||
             elem->type == ELEM_TYPE_BACKGROUND || elem->type == ELEM_TYPE_MENU_ICON || elem->type == ELEM_TYPE_BDM_INDEX)
             continue;
-        if (elem->color == oldTitle && (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT))
+        if (elem->color == oldTitle && (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT || elem->drawElem == &drawNameAttributeText))
             elem->color = theme->titleColor;
         else if (elem->color == oldText)
             elem->color = theme->textColor;
@@ -1115,7 +1135,7 @@ static void thmSetColors(theme_t *theme)
        Coverflow. Both ARE the game title, so both follow the title picker. */
     theme_element_t *elem = theme->mainElems.first;
     while (elem) {
-        elem->color = (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT) ? theme->titleColor : theme->textColor;
+        elem->color = (elem->type == ELEM_TYPE_ITEMS_LIST || elem->type == ELEM_TYPE_ITEM_TEXT || elem->drawElem == &drawNameAttributeText) ? theme->titleColor : theme->textColor;
         elem = elem->next;
     }
 
@@ -1144,7 +1164,12 @@ static void thmLoadFonts(config_set_t *themeConfig, const char *themePath, theme
         char fullPath[128];
         const char *fntFile;
         if (configGetStr(themeConfig, fntKey, &fntFile)) {
-            snprintf(fullPath, sizeof(fullPath), "%s%s", themePath, fntFile);
+            if (!strcmp(fntFile, "builtin") || !strncmp(fntFile, "builtin:", 8))
+                snprintf(fullPath, sizeof(fullPath), "%s", fntFile);
+            else if (themePath && themePath[0] != '\0')
+                snprintf(fullPath, sizeof(fullPath), "%s%s", themePath, fntFile);
+            else
+                continue;
 
             int fontSize;
             char sizeKey[64];
@@ -1161,12 +1186,13 @@ static void thmLoadFonts(config_set_t *themeConfig, const char *themePath, theme
             if (fntHandle != FNT_ERROR) {
                 theme->fonts[fntID] = fntHandle;
                 // <font>_weight=100..900, the weight it is drawn at (RIPPS2 build 114, akilluminati47)
-                int weight = 0;
+                int weight = !strcmp(fntFile, "builtin:ripflowbold") ? 700 : 0;
                 if (fntID == 0)
                     snprintf(sizeKey, sizeof(sizeKey), "default_font_weight");
                 else
                     snprintf(sizeKey, sizeof(sizeKey), "font%d_weight", fntID);
-                if (configGetInt(themeConfig, sizeKey, &weight) && weight >= 100 && weight <= 900)
+                configGetInt(themeConfig, sizeKey, &weight);
+                if (weight >= 100 && weight <= 900)
                     fntSetWeight(fntHandle, weight);
             }
         }
@@ -1337,17 +1363,10 @@ int thmHintRank(const theme_t *theme, int token)
     return THM_HINT_COUNT;
 }
 
-// The built-in <OPL> theme's cfg for a view: the template a fallback view takes its presenter from.
-static void thmReadViewTemplate(config_set_t *cfg, int view)
+// The built-in <OPL> theme's unified cfg: holds all views so fallback synthesis reads any view from it.
+static void thmReadViewTemplate(config_set_t *cfg)
 {
-    if (view == THM_VIEW_COVERFLOW)
-        configReadBuffer(cfg, &theme_coverflow_cfg, size_theme_coverflow_cfg);
-    else if (view == THM_VIEW_PSBBN)
-        configReadBuffer(cfg, &theme_psbbn_flow_cfg, size_theme_psbbn_flow_cfg);
-    else if (view == THM_VIEW_GRID)
-        configReadBuffer(cfg, &theme_grid_cfg, size_theme_grid_cfg);
-    else
-        configReadBuffer(cfg, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
+    configReadBuffer(cfg, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
 }
 
 // The caller holds thmSwitchSema.
@@ -1429,22 +1448,11 @@ static int thmLoad(const char *themePath)
         tarThemeReset(); // after the drain: an archive replaced since the last load is read again, as a folder's files are
 
     config_set_t *themeConfig = NULL;
-    // The built-in <OPL> theme offers its List, Coverflow, PSBBN Flow and Grid looks as views (Coverflow and
-    // PSBBN Flow were the separate <Coverflow> and <PSBBN Flow> themes). Each view is its own embedded cfg, because an edition
-    // such as Korium replaces some of them, so the view picks the buffer.
-    int builtinView = -1;
+    // The built-in <OPL> theme is a single multi-view cfg (List base + coverflow/psbbn/grid view
+    // overrides), resolved by thmViewScan/thmViewChoose on the same path as external disk themes.
     if (!themePath) {
-        // No theme specified. Prepare and load the default theme.
         themeConfig = configAlloc(0, NULL, NULL);
-        builtinView = (gThemeViewRequest >= 0 && gThemeViewRequest < THM_VIEW_COUNT) ? gThemeViewRequest : THM_VIEW_LIST;
-        if (builtinView == THM_VIEW_COVERFLOW)
-            configReadBuffer(themeConfig, &theme_coverflow_cfg, size_theme_coverflow_cfg);
-        else if (builtinView == THM_VIEW_PSBBN)
-            configReadBuffer(themeConfig, &theme_psbbn_flow_cfg, size_theme_psbbn_flow_cfg);
-        else if (builtinView == THM_VIEW_GRID)
-            configReadBuffer(themeConfig, &theme_grid_cfg, size_theme_grid_cfg);
-        else
-            configReadBuffer(themeConfig, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
+        configReadBuffer(themeConfig, &conf_theme_OPL_cfg, size_conf_theme_OPL_cfg);
     } else {
         snprintf(path, sizeof(path), "%sconf_theme.cfg", themePath);
         themeConfig = configAlloc(0, NULL, path);
@@ -1500,7 +1508,7 @@ static int thmLoad(const char *themePath)
             int built = 0;
             config_set_t *tmpl = configAlloc(0, NULL, NULL);
             if (tmpl != NULL) {
-                thmReadViewTemplate(tmpl, requested);
+                thmReadViewTemplate(tmpl);
                 // The template's own SD/HD keys (the built-in Grid's columns_hd) resolve for this picture too.
                 if (thmApplyDisplayLayout(tmpl, newT->layoutWide))
                     newT->layoutDependsOnWide = 1;
@@ -1516,11 +1524,6 @@ static int thmLoad(const char *themePath)
             }
         }
         newT->viewMask = offered;
-    }
-    if (builtinView >= 0) {
-        newT->view = builtinView;
-        newT->viewMask = (1u << THM_VIEW_LIST) | (1u << THM_VIEW_COVERFLOW) | (1u << THM_VIEW_PSBBN) | (1u << THM_VIEW_GRID);
-        newT->defaultView = THM_VIEW_LIST;
     }
     const char *viewPrefix = thmViewPrefix(&viewInfo, newT->view);
     thmParseViewPrefix = viewPrefix;
@@ -1588,8 +1591,7 @@ static int thmLoad(const char *themePath)
 
     // before loading the element definitions, we have to have the fonts prepared
     // for that, we load the fonts and a translation table
-    if (themePath)
-        thmLoadFonts(themeConfig, themePath, newT);
+    thmLoadFonts(themeConfig, themePath ? themePath : "", newT);
     THEME_BOOT_TRACE("theme load: fonts ready");
 
     // Every family resolves block j through its fallback chain, the active view's "<view>." blocks first
@@ -1797,6 +1799,7 @@ static int thmLoad(const char *themePath)
             newT->hintsColumn = !strcasecmp(v, "column");
         if (configGetInt(themeConfig, "hints_spacing", &k) && k >= 12 && k <= 96)
             newT->hintsSpacing = k;
+        newT->badgeSet = configGetStr(themeConfig, "badge_set", &v) && v != NULL && !strcasecmp(v, "ripps2");
     }
 
     // Embedded attribute glyphs (#Format/#Media/Aspect/Rating/Scan/Vmode values): BUILT-IN theme
@@ -1808,14 +1811,11 @@ static int thmLoad(const char *themePath)
     // element's own _default (or nothing), not our art. Gating the decode also reclaims the ~153 KB
     // of EE RAM on disk themes. The draw-site fallback is additionally gated on the built-in
     // (NULL-prefix) cache in drawAttributeImage, so this can never regress by re-widening one side.
-    if (!themePath) {
+    if (!themePath || newT->badgeSet) {
         for (i = ELF_FORMAT; i <= VMODE_PAL; i++)
-            thmLoadResource(&newT->textures[i], i, NULL, GS_PSM_CT32, 1);
-#ifdef BUILTIN_KORIUM
-        // Korium's cfgs draw attribute=Players; its badges are outside the ELF_FORMAT..VMODE_PAL range.
+            thmLoadResource(&newT->textures[i], i, themePath, GS_PSM_CT32, 1);
         for (i = PLAYERS_1; i <= PLAYERS_4; i++)
-            thmLoadResource(&newT->textures[i], i, NULL, GS_PSM_CT32, 1);
-#endif
+            thmLoadResource(&newT->textures[i], i, themePath, GS_PSM_CT32, 1);
     }
 
     // Optional settings/menu background (guiDrawBGSettings draws it instead of the plasma).
@@ -1851,10 +1851,13 @@ static int thmLoad(const char *themePath)
     host::ui().lock();
     // The GUI lock excludes CPU drawing, but HIRES still replays the previous frame's inline
     // texture uploads. Retire that queue before freeing the theme whose buffers it references.
-    if (curT != NULL)
+    if (curT != NULL) {
         rmDiscardFrame();
+        gridReleaseGlyphs();
+    }
     gTheme = newT;
     loadedFontSize = gFontSize;
+    gCoverflowDeviceBarFocused = 0;
     psbbnFlowReset();
     thmFree(curT);
     host::ui().unlock();
@@ -2274,6 +2277,8 @@ char *thmGetFilePath(int themeID)
 
 void thmEnd(void)
 {
+    rmDiscardFrame();
+    gridReleaseGlyphs();
     thmFree(gTheme);
     gCatalog.end();
 }

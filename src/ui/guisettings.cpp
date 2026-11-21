@@ -107,7 +107,7 @@ static int guiIoModeToDeviceType(int ioMode)
 {
     if (ioMode >= BDM_MODE && ioMode < ETH_MODE)
         return 0;
-    if (ioMode == MMCE_MODE)
+    if (isMmceMode(ioMode))
         return 1;
     if (ioMode == HDD_MODE)
         return 2;
@@ -359,7 +359,6 @@ static int guiShowMmceConfig(void)
 {
     const struct UIItem *parts[] = {diaMmceConfig, diaMmceCommConfig, diaMmcePathConfig};
     const int skipIDs[] = {MMCE_COMM_BUTTON, MMCE_PATH_BUTTON};
-    static const char *deviceSlots[] = {"0", "1", NULL, NULL};
     static const char *deviceIGRSlots[] = {NULL, "0", "1", NULL, NULL};
     static const char *deviceAckWaitCycles[] = {"0", "1", "2", "3", "4", "5", NULL};
     static const char *deviceOnOff[] = {NULL, NULL, NULL};
@@ -368,9 +367,7 @@ static int guiShowMmceConfig(void)
 
     // diaSetEnum stores the array pointer rather than copying it. Keep the MMCE options alive for
     // the lifetime of the dedicated child dialog, including any parent re-entry after Circle.
-    deviceSlots[2] = _l(_STR_AUTO);
-    // The IGR slot and ON/OFF choices were fixed English text no translation could change
-    // (belomaxorka / YAOPL 999bb6d3). The stored values (mmceigr_slot 0-3, 0/1) are unchanged.
+    // The IGR/GameID slot and ON/OFF choices use localized Off/Both/On strings (values 0-3, 0/1).
     deviceIGRSlots[0] = _l(_STR_OFF);
     deviceIGRSlots[3] = _l(_STR_BOTH);
     deviceOnOff[0] = _l(_STR_OFF);
@@ -380,10 +377,9 @@ static int guiShowMmceConfig(void)
     if (ui == NULL)
         return -1;
 
-    diaSetEnum(ui, CFG_MMCESLOT, deviceSlots);
-    diaSetInt(ui, CFG_MMCESLOT, gMMCESlot);
     diaSetEnum(ui, CFG_MMCEIGRSLOT, deviceIGRSlots);
     diaSetInt(ui, CFG_MMCEIGRSLOT, gMMCEIGRSlot);
+    diaSetEnum(ui, CFG_MMCEGAMEID, deviceIGRSlots);
     diaSetInt(ui, CFG_MMCEGAMEID, gMMCEEnableGameID);
     diaSetEnum(ui, CFG_MMCE_WAIT_CYCLES, deviceAckWaitCycles);
     diaSetInt(ui, CFG_MMCE_WAIT_CYCLES, gMMCEAckWaitCycles);
@@ -393,7 +389,6 @@ static int guiShowMmceConfig(void)
 
     int ret = diaExecuteDialog(ui, -1, 1, NULL);
     if (ret == UIID_BTN_OK) {
-        diaGetInt(ui, CFG_MMCESLOT, &gMMCESlot);
         diaGetInt(ui, CFG_MMCEIGRSLOT, &gMMCEIGRSlot);
         diaGetInt(ui, CFG_MMCEGAMEID, &gMMCEEnableGameID);
         diaGetInt(ui, CFG_MMCE_WAIT_CYCLES, &gMMCEAckWaitCycles);
@@ -1817,8 +1812,8 @@ static void guiShowArtworkConfig(void)
         diaGetInt(diaArtworkConfig, UICFG_ART_DELAY, &artDelayIdx);
         if (artDelayIdx >= 0 && artDelayIdx < 4) {
             gArtDelay = artDelayValues[artDelayIdx];
-            item_list_t *lists[] = {appGetObject(1), hddGetObject(1), ethGetObject(1), mmceGetObject(1), udpfsGetObject(1), favGetObject(1)};
-            for (int i = 0; i < 6; i++) {
+            item_list_t *lists[] = {appGetObject(1), hddGetObject(1), ethGetObject(1), mmceGetSlotObject(0, 1), mmceGetSlotObject(1, 1), udpfsGetObject(1), favGetObject(1)};
+            for (int i = 0; i < 7; i++) {
                 if (lists[i] != NULL)
                     lists[i]->delay = gArtDelay;
             }
@@ -2382,10 +2377,10 @@ static int guiSettingsShowGeneral(void)
 
     guiExitPathBegin(ui);
     // Shown in the user's order (issue #370); the stored values stay as before.
-    static const char exitMenuOrder[] = {EXIT_MENU_BROWSER, EXIT_MENU_OSDSYS_SKIPMC, EXIT_MENU_CONSOLE};
-    const char *exitMenuNames[] = {_l(_STR_EXIT_MENU_BROWSER), _l(_STR_EXIT_MENU_OSDSYS_SKIPMC), _l(_STR_EXIT_MENU_CONSOLE), NULL};
+    static const char exitMenuOrder[] = {EXIT_MENU_BROWSER, EXIT_MENU_OSDSYS_SKIPMC, EXIT_MENU_CONSOLE, EXIT_MENU_BOOT2, EXIT_MENU_BOOT};
+    const char *exitMenuNames[] = {_l(_STR_EXIT_MENU_BROWSER), _l(_STR_EXIT_MENU_OSDSYS_SKIPMC), _l(_STR_EXIT_MENU_CONSOLE), _l(_STR_EXIT_MENU_BOOT2), _l(_STR_EXIT_MENU_BOOT), NULL};
     int exitMenuIdx = 0;
-    while (exitMenuIdx < 2 && exitMenuOrder[exitMenuIdx] != gExitMenu)
+    while (exitMenuIdx < 4 && exitMenuOrder[exitMenuIdx] != gExitMenu)
         exitMenuIdx++;
     diaSetEnum(ui, CFG_EXITMENU, exitMenuNames);
     diaSetInt(ui, CFG_EXITMENU, exitMenuIdx);
@@ -2412,7 +2407,7 @@ reshow_general:
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);
         diaGetInt(ui, CFG_EXITMENU, &exitMenuIdx);
-        gExitMenu = exitMenuOrder[exitMenuIdx >= 0 && exitMenuIdx <= 2 ? exitMenuIdx : 2];
+        gExitMenu = exitMenuOrder[exitMenuIdx >= 0 && exitMenuIdx <= 4 ? exitMenuIdx : 2];
         diaGetString(ui, CFG_CUSTOMCFGPATH, gCustomSettingsPath, sizeof(gCustomSettingsPath));
         diaGetInt(ui, CFG_LASTPLAYED, &gRememberLastPlayed);
         diaGetInt(ui, CFG_FOLDERNAV, &gEnableFolderNav);
@@ -2612,10 +2607,12 @@ static int guiSettingsDisplayUpdater(int modified)
         rmSetAspectRatio(rmIsWideDisplay() ? RM_ARATIO_16_9 : RM_ARATIO_4_3);
         guiUpdateScreenScale();
     }
-    diaGetInt(activeDialog, UICFG_FONT_SIZE, &temp);
-    if (temp != gFontSize) {
-        gFontSize = temp;
-        guiUpdateScreenScale();
+    if (diaGetInt(activeDialog, UICFG_FONT_SIZE, &temp)) {
+        int percent = fntFontSizePercentFromIndex(temp);
+        if (percent != gFontSize) {
+            gFontSize = percent;
+            guiUpdateScreenScale();
+        }
     }
     if (diaGetInt(activeDialog, UICFG_GLYPH_SET, &temp))
         gGlyphSet = temp; // the next frame swaps the glyphs (thmGlyphSetRefresh)
@@ -2685,9 +2682,17 @@ static int guiSettingsShowInterface(void)
     diaSetVisible(ui, UICFG_COVERFLOW_BUTTON, 1);
     diaSetInt(ui, UICFG_VMODE, gVMode);
     diaSetInt(ui, UICFG_WIDESCREEN, gWideScreen);
-    const char *fontSizeNames[] = {_l(_STR_SMALL), _l(_STR_DEFAULT), _l(_STR_LARGE), NULL};
+    // diaSetEnum retains the pointer while the child dialogs can reopen this page.
+    // Keep the 21 labels and their pointer array alive throughout the settings shell.
+    static char fontSizeLabels[FONT_SIZE_COUNT][8];
+    static const char *fontSizeNames[FONT_SIZE_COUNT + 1];
+    for (int i = 0; i < FONT_SIZE_COUNT; ++i) {
+        snprintf(fontSizeLabels[i], sizeof(fontSizeLabels[i]), "%d%%", fntFontSizePercentFromIndex(i));
+        fontSizeNames[i] = fontSizeLabels[i];
+    }
+    fontSizeNames[FONT_SIZE_COUNT] = NULL;
     diaSetEnum(ui, UICFG_FONT_SIZE, fontSizeNames);
-    diaSetInt(ui, UICFG_FONT_SIZE, gFontSize);
+    diaSetInt(ui, UICFG_FONT_SIZE, fntFontSizeIndex(gFontSize));
     const char *glyphSetNames[] = {_l(_STR_THEME), _l(_STR_GLYPHS_BUILTIN), _l(_STR_GLYPHS_STANDARD), _l(_STR_GLYPHS_WHITE), NULL};
     diaSetEnum(ui, UICFG_GLYPH_SET, glyphSetNames);
     diaSetInt(ui, UICFG_GLYPH_SET, gGlyphSet);
@@ -2747,7 +2752,9 @@ reshow_interface:
         allGamesChanged = guiReadLibraryPicker(ui);
         diaGetInt(ui, UICFG_VMODE, &gVMode);
         diaGetInt(ui, UICFG_WIDESCREEN, &gWideScreen);
-        diaGetInt(ui, UICFG_FONT_SIZE, &gFontSize);
+        int fontSizeIndex = fntFontSizeIndex(gFontSize);
+        diaGetInt(ui, UICFG_FONT_SIZE, &fontSizeIndex);
+        gFontSize = fntFontSizePercentFromIndex(fontSizeIndex);
         diaGetInt(ui, UICFG_GLYPH_SET, &gGlyphSet);
         diaGetInt(ui, UICFG_XOFF, &gXOff);
         diaGetInt(ui, UICFG_YOFF, &gYOff);
