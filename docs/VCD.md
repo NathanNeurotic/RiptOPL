@@ -182,9 +182,9 @@ path, for example `usb:/POPS/POPSTARTER.ELF` or `mmce:/POPS/POPSTARTER.ELF`, and
 kept as it was. HDD (APA) and Game's Device become `<not set>`, because the Game Device tier below
 already covers them.
 
-Use one MMCE device at a time for POPStarter. Its driver reopens a `mass:` selector
-after the IOP resets, and that selector does not carry a physical slot number.
-Ember can launch from either MMCE slot with both cards connected.
+POPStarter's BDMA driver uses the first present MMCE. With two MMCE devices
+connected, POPStarter launches from Slot 1. To use POPStarter with a Slot 2 game,
+remove the Slot 1 MMCE. Ember can launch from either slot with both connected.
 
 The launch resolver uses one fixed order:
 
@@ -324,9 +324,10 @@ block-device modules (the BDMAssault / "BDMA" drivers). RiptOPL
 *equips* them for you from the BDMA rows on **Settings → PS Emulation Settings** — RiptOPL copies the selected
 loose pair from a device's `POPS/` folder onto your memory card:
 
-RiptOPL prefers an existing `mc0:/POPSTARTER` or `mc1:/POPSTARTER` folder. On first setup it
-creates the folder on the first present card (slot 1, then slot 2). Both replacement modules are
-staged before the live pair is changed, so a failed copy leaves the previous pair available.
+RiptOPL uses `mc0:/POPSTARTER` for the BDMA files whenever Slot 1 has a card, even if
+the folder must be created. It uses `mc1:/POPSTARTER` only when Slot 1 is empty.
+Both replacement modules are staged before the live pair is changed, so a failed
+copy leaves the previous pair available.
 
 - **VCD BDMA Apply on Launch** *(default On)* — POPSTARTER does its own IOP reset and reloads
   its block-device driver from the memory card, so the right exFAT variant must already be on

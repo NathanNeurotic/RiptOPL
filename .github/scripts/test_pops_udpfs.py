@@ -190,7 +190,7 @@ assert 'An explicit game-device POPS source is authoritative.' in equip
 assert 'if (found || popsDir != NULL) {' in equip
 assert equip.index('vcdWriteBdmaMarker(mcDir, mode);') < equip.index('return vcdInstallPopsUdpfsNet(sourcePops);')
 assert '{61949, 34508}  // UDPFS Assault 1.0.1 2026-11-08' in source
-assert 'if (strcmp(buf, "udpfsnet") == 0)' in function('int vcdReadBdmaMode(')
+assert 'if (strcmp(buf, "udpfsnet") == 0)' in function('static int vcdReadBdmaModeAt(')
 
 provenance = json.loads((ROOT/'ship/POPS/UDPFS-NOTICES/PROVENANCE.json').read_text(encoding='utf-8'))
 assert provenance['release'].endswith('/tag/1.0.1') and provenance['prerelease'] is False

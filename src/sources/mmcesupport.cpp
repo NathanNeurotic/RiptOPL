@@ -1270,13 +1270,14 @@ void MmceSource::launchVcd(item_list_t *itemList, const char *vcdName, config_se
         return;
     }
 
-    // POPStarter resets the IOP and reopens this bare mass: selector with
-    // its own BDMA driver. The selector cannot bind to a physical MMCE slot.
-    MmceSlotState &other = gMmceSupport.slots[1 - slot->slotIndex];
-    other.probePresence();
-    if (other.present) {
-        host::ui().msgBox(_l(_STR_POPSTARTER_MMCE_TWO_CARDS), 0, NULL);
-        return;
+    // The BDMA driver reopens the bare mass: selector on the first present MMCE.
+    if (slot->slotIndex == 1) {
+        MmceSlotState &primary = gMmceSupport.slots[0];
+        primary.probePresence();
+        if (primary.present) {
+            host::ui().msgBox(_l(_STR_POPSTARTER_MMCE_TWO_CARDS), 0, NULL);
+            return;
+        }
     }
 
     slot->getDeviceRoot(ps1Root, sizeof(ps1Root));

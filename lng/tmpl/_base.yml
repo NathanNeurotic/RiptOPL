@@ -2719,6 +2719,6 @@ gui_strings:
 - comment: Exit To choice. Run BOOT.ELF from mc0:/BOOT, falling back to mc1:/BOOT.
   label: EXIT_MENU_BOOT
   string: mc?:/BOOT/BOOT.ELF
-- comment: POPStarter cannot select an MMCE slot when both physical slots have an MMCE device.
+- comment: POPStarter uses the first present MMCE. This message is shown when a Slot 2 VCD is selected with Slot 1 connected.
   label: POPSTARTER_MMCE_TWO_CARDS
-  string: "POPStarter cannot select an MMCE slot with two MMCE cards connected. Use one card or launch the game with Ember."
+  string: "POPStarter uses MMCE Slot 1 while it is connected. Remove that card to launch this game from Slot 2."

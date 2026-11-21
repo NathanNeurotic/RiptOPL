@@ -404,7 +404,7 @@ native_switch = launch.index("mmceSendGameID(game->startup, NULL, 0)")
 assert native_switch < launch.index("mmcePrepareVmcSlots(") < launch.index("fileXioOpen(partname,")
 assert launch.index("waitSwapDoneOn(slotRoot,") < launch.index("sbGetISO9660MaxLBA(") < launch.index("fileXioOpen(partname,")
 vcd_launch = function(mmce, "void MmceSource::launchVcd(")
-assert vcd_launch.index("if (other.present)") < vcd_launch.index("vcdBuildSelector(")
+assert vcd_launch.index("if (slot->slotIndex == 1)") < vcd_launch.index("gMmceSupport.slots[0]") < vcd_launch.index("if (primary.present)") < vcd_launch.index("vcdBuildSelector(")
 
 with tempfile.TemporaryDirectory(prefix="mmce-dual-slot-") as tmp:
     folder = Path(tmp)

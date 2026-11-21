@@ -62,6 +62,9 @@ pieces = '\n\n'.join([
     function(vcd, 'static void vcdStampPopstarterIcons('),
     function(vcd, 'static int vcdFindPopstarterMc('),
     function(vcd, 'static int vcdResolvePopstarterMc('),
+    function(vcd, 'static int vcdBdmaCardPresence('),
+    function(vcd, 'static int vcdSelectBdmaMc('),
+    function(vcd, 'static int vcdReadBdmaModeAt('),
     function(vcd, 'int vcdReadBdmaMode('),
     block(vcd, r'^typedef struct\s*\{\s*int usbdSize;\s*int hdfsdSize;\s*\} bdma_pair_sig_t;'),
     block(vcd, r'^static const bdma_pair_sig_t vcdBdmaPairSig\[VCD_BDMA_MODE_COUNT\] = \{.*?\};'),
@@ -97,6 +100,25 @@ static volatile int gLastSaveErrno;
 /* An in-memory card: folders and files by full path. */
 static char dirs[64][96];
 static int ndirs, mkdirs, mkdirFails;
+enum { MC_WAIT = 0, MC_FUNC_GET_INFO = 1, sceMcTypeNoCard = 0, sceMcTypePS2 = 2 };
+static int cardTypes[2], *pendingCardType, pendingPort;
+static int mcGetInfo(int port, int slot, int *type, int *freeClusters, int *format)
+{
+    if (slot != 0 || freeClusters || format || cardTypes[port] < 0)
+        return -1;
+    pendingPort = port;
+    pendingCardType = type;
+    return 0;
+}
+static int mcSync(int mode, int *command, int *result)
+{
+    if (mode != MC_WAIT || pendingCardType == NULL || result != NULL)
+        return -1;
+    *pendingCardType = cardTypes[pendingPort];
+    pendingCardType = NULL;
+    *command = MC_FUNC_GET_INFO;
+    return 1;
+}
 static struct { char path[96]; unsigned char data[2048]; int len; int used; } files[64];
 #define DIR fake_DIR
 #define opendir fake_opendir
@@ -165,7 +187,7 @@ unsigned int size_save_icn = sizeof(save_icn);
 
 @PIECES@
 
-static void reset(void) { ndirs = mkdirs = mkdirFails = 0; memset(files, 0, sizeof(files)); snprintf(dirs[ndirs++], 96, "mc0:/"); snprintf(dirs[ndirs++], 96, "mc1:/"); }
+static void reset(void) { cardTypes[0] = cardTypes[1] = sceMcTypePS2; ndirs = mkdirs = mkdirFails = 0; memset(files, 0, sizeof(files)); snprintf(dirs[ndirs++], 96, "mc0:/"); snprintf(dirs[ndirs++], 96, "mc1:/"); }
 static void hexfile(const char *label, const char *p) { int i = findFile(p); printf("%s:", label); if (i < 0) { printf(" none\n"); return; } for (int k = 0; k < files[i].len; k++) printf("%02x", files[i].data[k]); printf("\n"); }
 
 int main(void)
@@ -192,6 +214,20 @@ int main(void)
     /* Resolving for a write makes it once, on the first present card. */
     r = vcdResolvePopstarterMc(out, sizeof(out)); printf("resolve r=%d dir=%s mkdirs=%d\n", r, out, mkdirs);
     r = vcdResolvePopstarterMc(out, sizeof(out)); printf("resolve again r=%d mkdirs=%d\n", r, mkdirs);
+
+    /* A prepared second card must not shadow a present but blank first card. */
+    reset(); snprintf(dirs[ndirs++], 96, "mc1:/POPSTARTER");
+    putFile("mc1:/POPSTARTER/bdma_config.txt", "usbexfat", 8);
+    putFile("mc1:/POPSTARTER/usbd.irx", "IRX", 3);
+    putFile("mc1:/POPSTARTER/usbhdfsd.irx", "IRX", 3);
+    r = vcdSelectBdmaMc(out, sizeof(out)); a = vcdReadBdmaMode(); b = vcdBdmaEnvironmentValid(VCD_BDMA_FAT32);
+    printf("read both cards r=%d dir=%s mode=%d valid fat32=%d mkdirs=%d\n", r, out, a, b, mkdirs);
+    cardTypes[0] = sceMcTypeNoCard;
+    r = vcdSelectBdmaMc(out, sizeof(out)); a = vcdReadBdmaMode(); b = vcdBdmaEnvironmentValid(VCD_BDMA_FAT32);
+    printf("read slot 2 only r=%d dir=%s mode=%d valid fat32=%d mkdirs=%d\n", r, out, a, b, mkdirs);
+    cardTypes[0] = -1;
+    r = vcdSelectBdmaMc(out, sizeof(out)); a = vcdReadBdmaMode(); b = vcdBdmaEnvironmentValid(VCD_BDMA_FAT32);
+    printf("read slot 1 probe failure r=%d mode=%d valid fat32=%d mkdirs=%d\n", r, a, b, mkdirs);
 
     /* Icons: POPStarter's own set from a source folder... */
     reset(); snprintf(dirs[ndirs++], 96, "mass0:/POPS");
@@ -288,7 +324,10 @@ want_head = ['norm mc1: -> mc1:/', 'norm mc1:OPL -> mc1:/OPL', 'norm mc1:/OPL ->
              'folder root r=0 mkdirs=0', 'folder new r=0 mkdirs=1 exists=1', 'folder again r=0 mkdirs=0', 'folder fail r=-1 errno=1',
              'folder notcard r=0 mkdirs=0', 'folder nested r=0 mkdirs=2 exists=1,1', 'folder under r=0 mkdirs=1',
              'read mode=0 found=0 valid fat32=1 valid usbexfat=0 mkdirs=0',
-             'resolve r=1 dir=mc0:/POPSTARTER mkdirs=1', 'resolve again r=1 mkdirs=1']
+             'resolve r=1 dir=mc0:/POPSTARTER mkdirs=1', 'resolve again r=1 mkdirs=1',
+             'read both cards r=1 dir=mc0:/POPSTARTER mode=0 valid fat32=1 mkdirs=0',
+             'read slot 2 only r=1 dir=mc1:/POPSTARTER mode=1 valid fat32=0 mkdirs=0',
+             'read slot 1 probe failure r=-1 mode=0 valid fat32=0 mkdirs=0']
 if lines[:len(want_head)] != want_head:
     failures.append('settings path / POPSTARTER folder:\n  got  %r\n  want %r' % (lines[:len(want_head)], want_head))
 if got.get('own icon.sys', '').strip() != b'SYS'.hex() or got.get('own del.icn', '').strip() != b'DEL'.hex():
@@ -355,11 +394,11 @@ if sorted(mkdirs) != ['vcdEnsurePopstarterNetDir', 'vcdResolvePopstarterMc']:
     failures.append('vcdsupport.cpp: only the two creating resolvers may mkdir (found %r)' % mkdirs)
 for reader in ('int vcdReadBdmaMode(', 'static int vcdBdmaEnvironmentValid(', 'static int vcdBdmaManualPairMatches('):
     body = function(vcd, reader)
-    if 'vcdResolvePopstarterMc(' in body or 'vcdFindPopstarterMc(' not in body:
-        failures.append('vcdsupport.cpp %s: a read must find the folder, never create it' % reader)
+    if 'vcdResolvePopstarterMc(' in body or 'mkdir(' in body or 'vcdSelectBdmaMc(' not in body:
+        failures.append('vcdsupport.cpp %s: a BDMA read must select the card without creating a folder' % reader)
 equip = function(vcd, 'int VcdSupport::equipBdma(')
-first_find, not_found = equip.find('vcdFindPopstarterMc(mcDir, sizeof(mcDir))'), equip.find('return -4;')
-create, stamp, stage = (equip.find('vcdResolvePopstarterMc(mcDir, sizeof(mcDir))'), equip.find('vcdStampPopstarterIcons(mcDir, srcDir);'),
+first_find, not_found = equip.find('vcdSelectBdmaMc(mcDir, sizeof(mcDir))'), equip.find('return -4;')
+create, stamp, stage = (equip.find('mkdir(mcDir, 0777)'), equip.find('vcdStampPopstarterIcons(mcDir, srcDir);'),
                         equip.find('vcdSafeCopyFile(src0, tmp0)'))
 if not (0 <= first_find < not_found < create < stamp < stage):
     failures.append('vcdsupport.cpp VcdSupport::equipBdma: make the folder only once a pair was found, and give it icons before the pair')
