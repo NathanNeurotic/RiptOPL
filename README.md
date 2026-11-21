@@ -16,7 +16,7 @@ A heartfelt thank you to developers who have contributed pull requests directly 
 
 # RiptOPL
 
-> **C++ / ps2build edition:** This repository is RiptOPL's main line. The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader). It uses **one SDK: ps2build**, with **Korium**, **RetroAchievements** and **IncebtIon** release editions. The standard rolling channels ship GCC builds, and a separate **RiptOPLLVM** channel packages LLVM-built Korium, Korium RetroAchievements and RiptOPLite; GCC and LLVM are both validated in CI. See the [release contract](ROLLING_RELEASE.md), [migration checkpoint](docs/MIGRATION-CHECKPOINT-2026-10-12.md), [parity ledger](docs/UPSTREAM-PARITY-2026-10-12.md), [documentation site](https://nathanneurotic.github.io/RiptOPL/) and [wiki](https://github.com/NathanNeurotic/RiptOPL/wiki). A passing build does not establish hardware acceptance; test the exact edition and commit on your console.
+> **C++ / ps2build edition:** This repository is RiptOPL's main line. The C codebase continues as the [legacy Open-PS2-Loader edition](https://github.com/NathanNeurotic/Open-PS2-Loader). One pinned **ps2build SDK** supports the current release channels: standard **RiptOPL** on LLVM/Clang (`rolling`), **RetroAchievements** on GCC (`rolling-ra`), and **RiptOPLite / RiptOPLite RA** on GCC (`rolling-lite`). All share the same built-in theme. Korium, IncebtIon, and the separate RiptOPLLVM release are historical channels; both compilers remain CI validation targets. See the [release contract](ROLLING_RELEASE.md), [migration checkpoint](docs/MIGRATION-CHECKPOINT-2026-10-12.md), [parity ledger](docs/UPSTREAM-PARITY-2026-10-12.md), [documentation site](https://nathanneurotic.github.io/RiptOPL/) and [wiki](https://github.com/NathanNeurotic/RiptOPL/wiki). A passing build does not establish hardware acceptance; test the exact edition and commit on your console.
 
 **An opinionated [Open PS2 Loader](https://github.com/ps2homebrew/Open-PS2-Loader) fork — aiming to be the "definitive build."**
 <br>
@@ -27,11 +27,9 @@ Review the LICENSE file for further details.<br><br>
 [![CI](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/ps2build.yml/badge.svg?branch=rebuild/main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/ps2build.yml)
 [![Format](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/check-format.yml/badge.svg?branch=rebuild/main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/check-format.yml)
 [![Rolling Release](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml/badge.svg?branch=rebuild/main)](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml)
-[![Korium](https://img.shields.io/badge/Release-Korium-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium)
+[![RiptOPL](https://img.shields.io/badge/Release-RiptOPL-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling)
 [![RetroAchievements](https://img.shields.io/badge/Release-RetroAchievements-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra)
-[![IncebtIon](https://img.shields.io/badge/Release-IncebtIon-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion)
 [![RiptOPLite](https://img.shields.io/badge/Release-RiptOPLite-skyblue)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite)
-[![RiptOPLLVM](https://img.shields.io/badge/Release-RiptOPLLVM-purple)](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm)
 
 [![License](https://img.shields.io/github/license/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=opensourceinitiative&logoColor=white&label=License)](LICENSE)
 ![Written in C++](https://img.shields.io/badge/Written%20in-C%2B%2B-skyblue?style=flat&logo=cplusplus&logoColor=white&labelColor=navy)
@@ -97,29 +95,27 @@ or PSBBN Flow. Real **Korium and IncebtIon v1.2.0-Beta-4052** menus captured in 
 
 ## Releases
 
-This repository builds **Korium**, **RetroAchievements** and **IncebtIon** on the
-single **ps2build SDK**. Korium and IncebtIon are standard loaders with distinct
-built-in themes; RetroAchievements uses Korium and enables the RA runtime.
-The four standard release channels ship GCC builds. **RiptOPLLVM** is a separate, pre-release
-LLVM/Clang channel for Korium, Korium RetroAchievements, and all Korium-based RiptOPLite
-builds (standard and RA). It does not replace GCC downloads or publish IncebtIon.
-Both compilers remain mandatory CI validation gates.
+The three current ps2build release channels are **RiptOPL** (`rolling`, LLVM/Clang),
+**RetroAchievements** (`rolling-ra`, GCC), and **RiptOPLite / RiptOPLite RA**
+(`rolling-lite`, GCC). All variants share the same built-in multi-view theme.
+Korium, IncebtIon and RiptOPLLVM are historical releases, not current editions.
+GCC and LLVM remain mandatory CI validation targets; a successful build does not
+establish console runtime equivalence.
 
 The [Rolling Release workflow](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml)
-builds full install ZIPs, standalone loaders, app PSU saves, exact source snapshots,
-build manifests and checksums for all three editions. Channels publish only from verified integration pushes or an explicit dispatch
-with publication enabled; pull-request builds remain Actions artifacts. The
-[RiptOPLLVM workflow](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-llvm.yml)
-checks every LLVM configuration and publishes to its own
-[RiptOPLLVM release](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm). See [release channels and packaging](ROLLING_RELEASE.md).
+builds full-edition install kits, standalone loaders, PSU saves, source snapshots,
+manifests and checksums, plus the supported Lite devices. Publication is restricted
+to verified integration pushes or an explicitly authorized dispatch; pull-request
+builds remain Actions artifacts. See [release channels and packaging](ROLLING_RELEASE.md).
 
-**Updating:** the Korium, IncebtIon, RetroAchievements and LLVM builds have a **Check for Updates**
-entry in the main menu, just above About. It asks the build's own rolling release on GitHub for a
-newer build and, when you press OK, replaces the running ELF after checking its SHA-256. It needs
-RiptOPL started from a memory card or a USB/exFAT drive, a network connection with internet access,
-and the console clock set (**Settings → General & System → Date and Time**). RiptOPLite, debug and
-variant builds do not have it. See [Check for Updates](docs/CHECK-FOR-UPDATES.md). Not tested on
-hardware yet.
+**Updating:** the standard RiptOPL and RetroAchievements editions have a
+**Check for Updates** entry. They query their own channel and verify the downloaded
+ELF before replacement. Updating requires RiptOPL to run from a memory card or
+USB/exFAT drive, internet access and the correct console clock
+(**Settings → General & System → Date and Time**). Lite, debug and other
+nonstandard builds do not offer in-app updates. See
+[Check for Updates](docs/CHECK-FOR-UPDATES.md). Console verification is pending.
+
 
 Hardware results in the feature documentation were measured on the legacy C edition unless a
 page says otherwise; each still needs a retest on this C++/ps2build edition. The parity port with the legacy
@@ -138,7 +134,7 @@ edition is merged, including the RA browser, client and ORBIT integration; see t
 
 ### Minimal startup path
 
-1. Extract the archive for your edition: Korium, RetroAchievements, or IncebtIon. Copy the supplied app folder under `APPS/` to your device, or import its matching `.psu` with a PS2 save manager. See the [download contract](ROLLING_RELEASE.md#download-contract) for the three ps2build release channels and their contents.
+1. Extract the archive for the standard RiptOPL or RetroAchievements edition (Lite has device-specific standalone ELFs). Copy the supplied app folder under `APPS/` to your device, or import its matching `.psu` with a PS2 save manager. See the [download contract](ROLLING_RELEASE.md#download-contract) for the three ps2build release channels and their contents.
 2. Copy `ART/` to the device's artwork directory. For Neutrino, copy the complete `neutrino/` folder to `mc0:/neutrino/` or `mc1:/neutrino/`. Install the `POPS/` and `EMBER/` companions for PS1 as described in [PS1 games](#ps1-games-two-cores-one-list). The PSU contains the app files only.
 3. Prepare your game's source: `CD/` or `DVD/` for folder-based PS2 libraries, HDLoader partitions for APA, or `games.csv` for HTTP. See [How to use](#how-to-use).
 4. In **Settings → Game Sources**, enable the device and its start mode. For a network source, set **Network Connectivity** to **Manual** or **Auto** and pick the **Protocol** under it, then enter your server's settings in **Network**.
@@ -438,8 +434,8 @@ This build layers several features on top of upstream OPL:
   it no longer falls back to the first USB page. Every row, page by page, with its saved key:
   **[docs/SETTINGS.md](docs/SETTINGS.md)**.
 - **DualSense / DualShock 5 (USB):** optional controller support — available as `ds5/RIPTOPL.ELF` (and `extras_ds5/`) in the
-  Korium and IncebtIon releases' `RIPTOPL-VARIANTS-<version>.zip`, or build with
-  `python tools/build_edition.py korium --configuration ds5`.
+  RiptOPL release's `RIPTOPL-VARIANTS-<version>.zip`, or build with
+  `python tools/build_edition.py riptopl --configuration ds5`.
 - **1080p GSM video mode:** forced progressive 1080p (1920×1080) GSM mode is built directly into all standard builds (`make GSM1080P=1`). Full GSM documentation: **[docs/GSM.md](docs/GSM.md)**. Selecting 1080p in the per-game GSM picker is guarded by a **three-step confirmation**; if a game loses the picture, disable/change its GSM override before relaunching. **Triangle + Cross** at boot affects only the OPL menu and requires a 480p-capable display/connection; **Triangle + Circle** forces the interlaced Auto mode instead.
 - **Ready-to-use defaults:** a fresh install boots with sensible options already enabled —
   cover art, notifications and the PS2 logo; widescreen, sound effects and boot sound start
