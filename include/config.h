@@ -114,7 +114,7 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_ENABLE_ANALOG_NAV          "enable_analog_nav"
 #define CONFIG_OPL_ART_DELAY                  "art_delay"
 #define CONFIG_OPL_WIDESCREEN                 "wide_screen"
-#define CONFIG_OPL_FONT_SIZE                  "font_size" // FONT_SIZE_* (fntsys.h); absent = Default
+#define CONFIG_OPL_FONT_SIZE                  "font_size" // 50-150% in steps of 5; legacy 0/1/2 migrated (fntsys.h)
 #define CONFIG_OPL_GLYPH_SET                  "glyph_set" // GLYPH_SET_* (themes.h); absent = the theme's
 #define CONFIG_OPL_DEFAULT_GAME_VIEW          "default_game_view"
 #define CONFIG_OPL_APPS_DISPLAY               "apps_display"

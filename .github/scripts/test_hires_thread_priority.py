@@ -53,7 +53,7 @@ enum { GS_MODE_PAL = 3, GS_MODE_NTSC = 2, GS_MODE_DTV_480P = 0x50, GS_MODE_DTV_5
        GS_MODE_DTV_720P = 0x52, GS_MODE_DTV_1080I = 0x51 };
 enum { GS_INTERLACED = 1, GS_NONINTERLACED = 0, GS_FIELD = 0, GS_FRAME = 1 };
 enum { GS_PSM_CT24 = 1, GS_PSM_CT16S = 10, GS_PSMZ_16S = 0x3a, GS_SETTING_OFF = 0, GS_SETTING_ON = 1, GS_ONESHOT = 1,
-       GS_ZTEST_OFF = 1 };
+       GS_ZTEST_OFF = 1, GS_CMODE_CLAMP = 1 };
 enum rm_aratio { RM_ARATIO_4_3 = 0, RM_ARATIO_16_9 = 1 };
 #define LOG(...) ((void)0)
 struct test_t { int ATST, AREF, AFAIL; };
@@ -85,6 +85,7 @@ static void gsKit_init_screen(GSGLOBAL *) {}
 static void gsKit_mode_switch(GSGLOBAL *, int) {}
 static void gsKit_set_test(GSGLOBAL *, int) {}
 static void gsKit_set_primalpha(GSGLOBAL *, u64, int) {}
+static void gsKit_set_clamp(GSGLOBAL *, int) {}
 static void gsKit_hires_sync(GSGLOBAL *) {}
 static void gsKit_hires_flip(GSGLOBAL *) {}
 static void gsKit_clear(GSGLOBAL *, u64) {}

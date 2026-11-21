@@ -165,7 +165,7 @@ navigation.
 ```ini
 main0:
     type=Background
-    default=incebtion
+    default=psbbn_bg
     aligned=0
     width=DIM_INF
     height=DIM_INF
@@ -508,7 +508,7 @@ embedded font for a slot.
 |---|---|---|
 | `coverflow_cover_offset` | int (−1024…1024, default 0) | Horizontal nudge for the Coverflow carousel (see §8). |
 | `list_cfg_text` | 0/1 (default 1) | `0` leaves the game CFG's `Title` and `Description` off the list pages: an `AttributeText` with `attribute=Title` or `attribute=Description` in a `main` family (`main`, `appsMain`, `favsMain`, `vcdMain`, `favsVcdMain`, `favsAppsMain`, and their view blocks). The info page keeps them. A word such as `on` reads as `0` and hides them too, as in [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2). **Settings → Interface → List Title and Description** follows this key on **Theme**, its default. **On** and **Off** override it. From [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) ([akilluminati47](https://gitlab.com/akilluminati247), build 126). |
-| `<key>_desc` | any value | Used in place of `<key>` while **List Title and Description** shows the CFG text on the list pages (On, or Theme when `list_cfg_text` does not hide it), so a theme can make room beside its list only then: `main16_enabled_desc=0` hides a cover, and a block whose only type is `main20_type_desc=AttributeText` exists only in that mode, so with the setting off no block reads the game's CFG. Changing the setting reloads a theme that has `_desc` keys. The built-in IncebtIon and Korium lists use it for a Title and Description column beside the list (CosmicScale's request, after [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s game list); Korium's keys live in `misc/korium_list_desc.cfg`, merged into its vendored cfg at build time. *This fork.* |
+| `<key>_desc` | any value | Used in place of `<key>` while **List Title and Description** shows the CFG text on the list pages (On, or Theme when `list_cfg_text` does not hide it), so a theme can make room beside its list only then: `main16_enabled_desc=0` hides a cover, and a block whose only type is `main20_type_desc=AttributeText` exists only in that mode, so with the setting off no block reads the game's CFG. Changing the setting reloads a theme that has `_desc` keys. The Title and Description layout originated with CosmicScale's request, after [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s game list. *This fork.* |
 | `use_default` | 0/1 | Use OPL's embedded default assets for anything the theme omits. With `0`, the pictures stock OPL never had a name for (`mmce`, `udp_bd`, `udp_fs`, `fav`, `fav_mark`) still come from the built-in set when the theme has none, so a theme made for stock OPL shows an icon on the pages RiptOPL added. Ship your own (a transparent one to show nothing) to replace them. |
 | `use_real_height` | 0/1 | Lay out against the real screen height instead of 480. |
 | `use_settings_bg` | 0/1 | Load the theme's `settings_bg.png` behind the settings menus. |
@@ -819,18 +819,18 @@ coordinates from a neighbouring `AttributeImage` such as the `#Media` badge to l
 You can point `default=`/`overlay=` at any of OPL's embedded textures (no file needed):
 
 - **Covers / art:** `cover`, `coverapp`, `disc`, `screen`, `screens` (overlay), `missing`
-- **Case overlays:** `case` (the shared frame, layer 1), `case_overlay` (layer 2, drawn over `case`), `apps_case` (legacy apps-only frame)
+- **Case overlays:** `case` (the shared frame, layer 1), `apps_case` (legacy apps-only frame)
 - **Device icons:** `usb`, `mmce`, `hdd`, `eth`, `app`, `fav`, `usb_bd`, `ilk_bd`, `m4s_bd`, `hdd_bd`, `udp_bd` (UDPBD), `udp_fs` (UDPFS)
 - **BDM indicators:** `Index_0` … `Index_4`
 - **Buttons:** `cross`, `circle`, `triangle`, `square`, `left`, `right`, `select`, `start`, `L3`, `R3`, `fav_mark`
 - **Loading frames:** `load0` … `load7`
 - **Boot logo:** `logo`, `logo0` … `logo6`
-- **Backgrounds:** `incebtion` (default theme bg), `ip`
+- **Backgrounds:** `psbbn_bg`
 - **Format icons:** `ELF`, `HDL`, `ISO`, `ZSO`, `UL`
 - **Media icons:** `APP`, `CD`, `DVD`
 - **Aspect / scan / vmode / rating** sets as listed in §6.
 
-(`settings_bg` is theme-supplied; `Device_*` indicators are deprecated/removed in this fork.)
+(`settings_bg`, `case_overlay`, `incebtion` and `ip` are theme-supplied. `Device_*` indicators are deprecated.)
 
 ---
 
