@@ -2904,7 +2904,7 @@ void menuHandleInputMain()
         if (!viewPending && selected_item->item->fav)
             selected_item->item->fav(selected_item->item);
     } else if (getKeyOn(KEY_L3)) { // advance the current page's library-view ring; hold = next theme view
-        if (gTheme->viewMask & (gTheme->viewMask - 1)) {
+        if (thmCanCycleView()) {
             menuL3Down = clock();
             menuL3State = 1;
         } else

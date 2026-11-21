@@ -167,40 +167,49 @@ int libViewRingUsable(int mode)
     return mode >= 0 && mode < MODE_COUNT && libViewRingSize(mode) > 1;
 }
 
-int libViewStageAdvance(int mode)
+int libViewNext(int mode)
 {
-    int cur;
+    if (!libViewRingUsable(mode))
+        return -1;
 
-    if (!libViewRingUsable(mode) || pendingViewValid[mode])
-        return 0;
-
-    cur = libViewActive(mode);
+    const int cur = libViewActive(mode);
     if (mode == FAV_MODE && gAllGames) {
         // All Games: All -> PS2 -> PS1 -> APP -> Favourites -> Recent -> All.
-        pendingView[mode] = (cur == LIB_VIEW_ALL)  ? LIB_VIEW_ISO :
-                            (cur == LIB_VIEW_ISO)  ? LIB_VIEW_PS1 :
-                            (cur == LIB_VIEW_PS1)  ? LIB_VIEW_ELF :
-                            (cur == LIB_VIEW_ELF)  ? LIB_VIEW_FAVS :
-                            (cur == LIB_VIEW_FAVS) ? LIB_VIEW_RECENT :
-                                                     LIB_VIEW_ALL;
+        return (cur == LIB_VIEW_ALL)  ? LIB_VIEW_ISO :
+               (cur == LIB_VIEW_ISO)  ? LIB_VIEW_PS1 :
+               (cur == LIB_VIEW_PS1)  ? LIB_VIEW_ELF :
+               (cur == LIB_VIEW_ELF)  ? LIB_VIEW_FAVS :
+               (cur == LIB_VIEW_FAVS) ? LIB_VIEW_RECENT :
+               LIB_VIEW_ALL;
     } else if (mode == FAV_MODE) {
         // Explicit order: PS2 -> PS1 -> ELF -> All -> Recent -> PS2. The final arm is the fallback for
         // any value outside the ring (a hand-edited remembered position).
-        pendingView[mode] = (cur == LIB_VIEW_ISO) ? LIB_VIEW_PS1 :
-                            (cur == LIB_VIEW_PS1) ? LIB_VIEW_ELF :
-                            (cur == LIB_VIEW_ELF) ? LIB_VIEW_ALL :
-                            (cur == LIB_VIEW_ALL) ? LIB_VIEW_RECENT :
-                                                    LIB_VIEW_ISO;
+        return (cur == LIB_VIEW_ISO) ? LIB_VIEW_PS1 :
+               (cur == LIB_VIEW_PS1) ? LIB_VIEW_ELF :
+               (cur == LIB_VIEW_ELF) ? LIB_VIEW_ALL :
+               (cur == LIB_VIEW_ALL) ? LIB_VIEW_RECENT :
+               LIB_VIEW_ISO;
     } else if (mode == APP_MODE) {
-        pendingView[mode] = cur == LIB_VIEW_PS1_ELF ? LIB_VIEW_ISO : LIB_VIEW_PS1_ELF;
+        return cur == LIB_VIEW_PS1_ELF ? LIB_VIEW_ISO : LIB_VIEW_PS1_ELF;
     } else if (gDefaultGameView == GAME_VIEW_MIXED) {
-        pendingView[mode] = (cur == LIB_VIEW_MIXED) ? LIB_VIEW_ISO :
-                            (cur == LIB_VIEW_ISO)   ? LIB_VIEW_PS1 :
-                                                      LIB_VIEW_MIXED;
+        return (cur == LIB_VIEW_MIXED) ? LIB_VIEW_ISO :
+               (cur == LIB_VIEW_ISO)   ? LIB_VIEW_PS1 :
+               LIB_VIEW_MIXED;
     } else {
-        pendingView[mode] = cur == LIB_VIEW_PS1 ? LIB_VIEW_ISO : LIB_VIEW_PS1;
+        return cur == LIB_VIEW_PS1 ? LIB_VIEW_ISO : LIB_VIEW_PS1;
     }
+}
 
+int libViewStageAdvance(int mode)
+{
+    if (libViewPending(mode))
+        return 0;
+
+    const int next = libViewNext(mode);
+    if (next < 0)
+        return 0;
+
+    pendingView[mode] = next;
     pendingViewUsesMixedRing[mode] = mode != FAV_MODE && mode != APP_MODE && gDefaultGameView == GAME_VIEW_MIXED;
     pendingViewValid[mode] = 1;
     libDirty[mode] = 1;

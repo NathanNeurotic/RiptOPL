@@ -2215,6 +2215,11 @@ int thmReload(void)
     return gCatalog.setGuiValueLocked(gCatalog.guiValue(), 1);
 }
 
+int thmCanCycleView(void)
+{
+    return gTheme != NULL && (gTheme->viewMask & (gTheme->viewMask - 1)) != 0;
+}
+
 int thmCycleView(void)
 {
     raii::SemaLock lock(thmSwitchSema);

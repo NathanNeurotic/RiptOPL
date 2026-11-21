@@ -386,19 +386,8 @@ void moduleUpdateMenuInternal(opl_io_module_t *mod, int themeChanged, int langCh
         if (gFAVStartMode || gAllGames)
             menuAddHint(&mod->menuItem, _STR_FAV_HINT, R3_ICON);
 
-        // L3 moves the page around its ring of lists. Both and Mixed expose rings; PS2/PS1 pin an
-        // ordinary device page, while Favorites and APPS retain their independent display rules.
-        //
-        // The question is "does this page have more than one list", NOT "does it have a VCD list".
-        // Those were the same thing while every ring was ISO<->VCD, and stop being the same as soon
-        // as a page offers a third; libViewRingSize keeps the hint honest either way.
-        if (libViewRingUsable(mod->support->mode)) {
-            int hint = _STR_VCD;
-            if (mod->support->mode == FAV_MODE || mod->support->mode == APP_MODE ||
-                gDefaultGameView == GAME_VIEW_MIXED)
-                hint = _STR_VIEW;
-            menuAddHint(&mod->menuItem, hint, L3_ICON);
-        }
+        // The renderer resolves the L3 actions for the current library and theme.
+        menuAddHint(&mod->menuItem, _STR_VIEW, L3_ICON);
     }
 
     menuHintsUnlock();

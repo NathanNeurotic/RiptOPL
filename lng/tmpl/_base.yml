@@ -2722,3 +2722,15 @@ gui_strings:
 - comment: POPStarter uses the first present MMCE. This message is shown when a Slot 2 VCD is selected with Slot 1 connected.
   label: POPSTARTER_MMCE_TWO_CARDS
   string: "POPStarter uses MMCE Slot 1 while it is connected. Remove that card to launch this game from Slot 2."
+- comment: L3 button hint when tapping will show PS2 and PS1 games together.
+  label: L3_MIXED
+  string: Mixed
+- comment: L3 button hint when tapping will show PlayStation 1 apps.
+  label: L3_PS1_APPS
+  string: PS1 Apps
+- comment: L3 button hint when tapping will show the recently played list.
+  label: L3_RECENT
+  string: Recent
+- comment: L3 button hint for holding the button to change the display style.
+  label: L3_HOLD_STYLE
+  string: Hold=Style

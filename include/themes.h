@@ -380,6 +380,8 @@ int thmGetGuiValue(void);
 // Ask for a view (THM_VIEW_*, -1 = the theme's default) and reload the active theme when that changes
 // what is shown. Returns 1 when the theme was reloaded. GUI thread, outside a frame.
 int thmSetView(int view);
+// Whether holding L3 switches the active theme's layout.
+int thmCanCycleView(void);
 // Switch to the next view the active theme offers (hold L3), Coverflow (3) and Coverflow (5) counting as
 // two stops. Returns 1 when the view changed; a step between the two Coverflow stops does not reload.
 int thmCycleView(void);
