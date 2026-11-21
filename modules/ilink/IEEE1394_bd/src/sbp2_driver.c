@@ -461,7 +461,11 @@ static int sbp2AttachUnits(void)
 
     nNodes = iLinkGetNodeCount();
     for (i = 0; i < nNodes; i++) {
-        if ((nodeID = iLinkFindUnit(i, 0x0609e, 0x010483)) < 0)
+        nodeID = iLinkFindUnit(i, 0x0609e, 0x010483);
+        // A transient CROM failure can happen before LOGIN. Keep this unit on the retry path.
+        if (nodeID == ILINK_FIND_UNIT_RETRY)
+            missing++;
+        if (nodeID < 0)
             continue;
         WaitSema(sbp2_io_sema);
         sbp2CommandAvailable();

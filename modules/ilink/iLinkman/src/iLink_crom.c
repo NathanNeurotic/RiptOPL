@@ -134,22 +134,22 @@ int iLinkGetNodeMaxSpeed(unsigned short int NodeID)
 static inline int ParseUnitCROM(unsigned short NodeID, unsigned int *UnitSpec, unsigned int *UnitSW_Version)
 {
     unsigned int data, UnitDirectoryOffset, CROMOffset;
-    int result, i;
+    int i;
     unsigned short int DirectoryLength;
 
     CROMOffset          = 0x14 >> 2;
     UnitDirectoryOffset = 0;
 
     /* Search the root directory for the unit directory key. */
-    if ((result = iLinkReadCROM(NodeID, CROMOffset, 1, &data)) < 0)
-        return (result);
+    if (iLinkReadCROM(NodeID, CROMOffset, 1, &data) < 0)
+        return ILINK_FIND_UNIT_RETRY;
     DirectoryLength = (unsigned short int)(data >> 16);
 
     CROMOffset++;
 
     for (i = 0; i < DirectoryLength; i++) {
-        if ((result = iLinkReadCROM(NodeID, CROMOffset, 1, &data)) < 0)
-            return (result);
+        if (iLinkReadCROM(NodeID, CROMOffset, 1, &data) < 0)
+            return ILINK_FIND_UNIT_RETRY;
 
         if ((data >> 24) == IEEE1394_CROM_UNIT_DIRECTORY) {
             UnitDirectoryOffset = data & 0x00FFFFFF;
@@ -165,15 +165,15 @@ static inline int ParseUnitCROM(unsigned short NodeID, unsigned int *UnitSpec, u
     DEBUG_PRINTF("CROMOffset=0x%08x.\n", CROMOffset);
 
     /* Search the unit directory for the unit spec and unit SW keys. */
-    if ((result = iLinkReadCROM(NodeID, CROMOffset, 1, &data)) < 0)
-        return result;
+    if (iLinkReadCROM(NodeID, CROMOffset, 1, &data) < 0)
+        return ILINK_FIND_UNIT_RETRY;
     DirectoryLength = (unsigned short int)(data >> 16);
 
     CROMOffset++;
 
     for (i = 0; i < DirectoryLength; i++) {
-        if ((result = iLinkReadCROM(NodeID, CROMOffset, 1, &data)) < 0)
-            return (result);
+        if (iLinkReadCROM(NodeID, CROMOffset, 1, &data) < 0)
+            return ILINK_FIND_UNIT_RETRY;
 
         CROMOffset++;
 
@@ -198,10 +198,12 @@ int iLinkFindUnit(int UnitInList, unsigned int UnitSpec, unsigned int UnitSW_Ver
     DEBUG_PRINTF("iLinkFindUnit() %d UnitSpec: 0x%08x; UnitSW Version: 0x%08x.\n", UnitInList, UnitSpec, UnitSW_Version);
 
     result = -1;
-    if (UnitInList < nNodes) {
+    if (UnitInList >= 0 && UnitInList < nNodes) {
         unsigned short int NodeID;
 
         NodeID                = (unsigned short int)SELF_ID_NODEID(NodeData[UnitInList]) | (LocalNodeID & 0xFFC0);
+        if (NodeID == LocalNodeID)
+            return -1;
         CurrentUnitSW_Version = CurrentUnitSpec = 0;
 
         if ((result = ParseUnitCROM(NodeID, &CurrentUnitSpec, &CurrentUnitSW_Version)) >= 0) {

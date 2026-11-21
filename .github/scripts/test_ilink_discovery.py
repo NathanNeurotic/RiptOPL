@@ -18,6 +18,9 @@ login left from a generation whose bus reset the thread has not handled yet is n
 A try holds the transport while it waits for the drive, so a drive that never attaches would stall
 an attached drive's I/O at every try. With another drive attached, the tries stop after
 SBP2_RETRY_LIMIT retries (32 s of waiting) until the next bus reset; with none attached they go on.
+
+A transient configuration ROM read failure also schedules a retry before LOGIN. A readable camera
+or other non-SBP-2 node and the PS2 itself never schedule storage retries.
 """
 from pathlib import Path
 import subprocess
@@ -37,6 +40,12 @@ SIGNATURES = (
 )
 DEFINES = ('SBP2_RETRY_FIRST_US', 'SBP2_RETRY_MAX_US', 'SBP2_RETRY_POLL_US', 'SBP2_RETRY_LIMIT')
 
+CROM_SIGNATURES = (
+    'static inline int ParseUnitCROM(unsigned short NodeID, unsigned int *UnitSpec, unsigned int *UnitSW_Version)',
+    'int iLinkFindUnit(int UnitInList, unsigned int UnitSpec, unsigned int UnitSW_Version)',
+)
+CROM_DEFINES = ('IEEE1394_CROM_UNIT_SPEC', 'IEEE1394_CROM_UNIT_SW_VERSION')
+
 HARNESS = r"""
 #include <stdint.h>
 #include <stdio.h>
@@ -47,11 +56,14 @@ HARNESS = r"""
 #define WEF_AND 1
 #define WEF_CLEAR 2
 #define M_DEBUG(...) ((void)0)
+#define DEBUG_PRINTF(...) ((void)0)
 static struct SBP2Device SBP2Devices[MAX_DEVICES];
 static struct { int pending;struct SBP2Device *owner; } command;
 static int sbp2_io_sema,sbp2_event_flag;
 static int failures,held,scenario,generation,waits,allocations,frees,live[64];
-static int nNodesNow,nodeIds[4],speedNow,attempts;
+static int nNodes, speedNow, attempts, cromFailures, selfReads;
+static unsigned int NodeData[63];
+static unsigned short LocalNodeID = 63;
 static unsigned long long simUs,resetAtUs;
 static unsigned long long attemptUs[16];
 static int attemptSlot[16],attemptNode[16],attemptGeneration[16],attemptLoggedIn[16];
@@ -61,18 +73,23 @@ static int WaitSema(int s) { (void)s;CHECK(!held,"discovery must not recursively
 static int SignalSema(int s) { (void)s;CHECK(held,"discovery releases owned transport");held=0;return 0; }
 static int iLinkGetGenerationNumber(void) { return generation; }
 static void topology(void) {
+    int nodes[2] = {0};
     speedNow=scenario==4 ? 3 : 0;
     if(scenario==5) {
-        nNodesNow=generation==1 ? 2 : 1;nodeIds[0]=generation==1 ? 1 : 2;nodeIds[1]=2;
+        nNodes=generation==1 ? 2 : 1;nodes[0]=generation==1 ? 1 : 2;nodes[1]=2;
     } else if(scenario==6) {
-        nNodesNow=2;nodeIds[0]=1;nodeIds[1]=2;
+        nNodes=2;nodes[0]=1;nodes[1]=2;
     } else if(scenario==7) { /* the reset renumbers the first drive and keeps the second at node 2 */
-        nNodesNow=2;nodeIds[0]=generation==1 ? 1 : 3;nodeIds[1]=2;
+        nNodes=2;nodes[0]=generation==1 ? 1 : 3;nodes[1]=2;
     } else if(scenario==8) {
-        nNodesNow=2;nodeIds[0]=1;nodeIds[1]=2;
+        nNodes=2;nodes[0]=1;nodes[1]=2;
+    } else if (scenario == 10) {
+        nNodes=2;nodes[0]=LocalNodeID;nodes[1]=2;
     } else {
-        nNodesNow=1;nodeIds[0]=generation==1 ? 1 : 3; /* a reset can renumber the lone drive */
+        nNodes=1;nodes[0]=generation==1 ? 1 : 3; /* a reset can renumber the lone drive */
     }
+    for (int i = 0; i < nNodes; i++)
+        NodeData[i] = (unsigned int)nodes[i] << 24;
 }
 static void busReset(void) { generation++;topology(); }
 /* Blocking wait: the thread's idle state. The second one ends the scenario. */
@@ -91,8 +108,26 @@ static int PollEventFlag(int id,u32 bits,int op,u32 *out) {
     return -421; /* KE_EVF_COND */
 }
 static int DelayThread(int us) { CHECK(!held,"the retry wait cannot hold the transport mutex");simUs+=us;return 0; }
-static int iLinkGetNodeCount(void) { return nNodesNow; }
-static int iLinkFindUnit(int index,int spec,int version) { (void)spec;(void)version;return index<nNodesNow ? nodeIds[index] : -1; }
+static int iLinkGetNodeCount(void) { return nNodes; }
+static int iLinkReadCROM(unsigned short node, unsigned int offset, unsigned int count, unsigned int *word) {
+    CHECK(count == 1, "the unit parser reads one CROM quadlet");
+    if (node == LocalNodeID) {
+        selfReads++;
+        return -1;
+    }
+    if (scenario == 9 && offset == 5 && cromFailures++ == 0)
+        return -1; /* Some low-level failures share the no-match return code. */
+
+    switch (offset) {
+        case 5: *word = 1u << 16; break; /* root directory, one entry */
+        case 6: *word = 0xd1000001; break; /* unit directory key, points to 7 */
+        case 7: *word = 2u << 16; break; /* two entries */
+        case 8: *word = scenario == 10 ? 0x12000001 : 0x1200609e; break;
+        case 9: *word = 0x13010483; break;
+        default: return -1;
+    }
+    return 0;
+}
 static int iLinkGetLocalNodeID(void) { return 0xffc0; }
 static int iLinkGetNodeMaxSpeed(int node) { (void)node;return speedNow; }
 static int iLinkTrAlloc(int node,int speed) {
@@ -150,7 +185,9 @@ static void run(int which,unsigned long long reset_at) {
     memset(SBP2Devices,0,sizeof(SBP2Devices));memset(live,0,sizeof(live));memset(&command,0,sizeof(command));
     memset(attemptUs,0,sizeof(attemptUs));
     for(int i=0;i<MAX_DEVICES;i++) { SBP2Devices[i].trContext=-1;SBP2Devices[i].scsi.priv=&SBP2Devices[i]; }
-    scenario=which;generation=waits=held=allocations=frees=attempts=0;simUs=0;resetAtUs=reset_at;
+    scenario=which;generation=waits=held=allocations=frees=attempts=0;
+    cromFailures=selfReads=0;
+    simUs=0;resetAtUs=reset_at;
     if(setjmp(done)==0) iLinkIntrCBHandlingThread(NULL);
     CHECK(!held,"all paths release the transport mutex");
 }
@@ -249,6 +286,14 @@ int main(void) {
     CHECK(waits==2,"then the thread waits for a bus reset instead of trying again");
     CHECK(SBP2Devices[1].IsConnected && SBP2Devices[1].nodeID==2 && SBP2Devices[0].nodeID==1,
           "the attached drive stays attached");
+    /* Failure occurs before the drive is recognized, then clears on the same bus generation. */
+    run(9,0);
+    CHECK(attempts == 1 && attemptUs[0] == 1000000 && generation == 1 && SBP2Devices[0].IsConnected,
+          "a failed CROM read retries and attaches without another bus reset");
+
+    run(10,0);
+    CHECK(attempts == 0 && simUs == 0 && selfReads == 0,
+          "a non-SBP-2 node and the console itself do not schedule a retry");
     return failures ? 1 : 0;
 }
 """
@@ -261,7 +306,7 @@ def function(source, signature):
 
 def define(source, name):
     for line in source.splitlines():
-        if line.startswith('#define %s ' % name):
+        if line.startswith(('#define %s ' % name, '#define %s(' % name)):
             return line
     raise ValueError('%s not defined' % name)
 
@@ -269,7 +314,16 @@ def define(source, name):
 def run(driver):
     source = (driver / 'sbp2_driver.c').read_text(encoding='utf-8')
     has_devnr = 'static unsigned int sbp2FreeDevNr(' in source
-    parts = [define(source, name) for name in DEFINES]
+    manager = driver.parents[1] / 'iLinkman'
+    api = (manager / 'include/iLinkman.h').read_text(encoding='utf-8')
+    internal = (manager / 'src/include/iLink_internal.h').read_text(encoding='utf-8')
+    crom = (manager / 'src/iLink_crom.c').read_text(encoding='utf-8')
+    parts = [define(api, 'ILINK_FIND_UNIT_RETRY')]
+    parts += [define(internal, 'SELF_ID_NODEID')]
+    keys = (manager / 'src/include/iLink_CROM.h').read_text(encoding='utf-8')
+    parts += [define(keys, name) for name in CROM_DEFINES]
+    parts += [function(crom, signature) for signature in CROM_SIGNATURES]
+    parts += [define(source, name) for name in DEFINES]
     parts += [function(source, s) for s in SIGNATURES if has_devnr or 'sbp2FreeDevNr' not in s]
     with tempfile.TemporaryDirectory() as directory:
         folder = Path(directory)

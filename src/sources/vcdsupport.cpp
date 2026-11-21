@@ -1729,7 +1729,7 @@ static const bdma_pair_sig_t vcdBdmaPairSig[VCD_BDMA_MODE_COUNT] = {
     {48500, 14993}, // mx4sio
     {11841, 19733}, // mmce
     {42749, 21837}, // ata
-    {48500, 27769}, // iLink (27129 before the bring-up retry fix, 27145 before the SBP-2 status decode fix, 21609 before #1018/#1042)
+    {48500, 27833}, // iLink (27769 before configuration ROM read failures were retried)
     {61949, 34508}  // UDPFS Assault 1.0.1 2026-11-08 (network read/write, BIN/CUE, PATHMAP.INI)
 };
 
