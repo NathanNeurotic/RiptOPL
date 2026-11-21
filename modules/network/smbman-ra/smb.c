@@ -1406,6 +1406,13 @@ int smb_Rename(int UID, int TID, char *oldPath, char *newPath)
     return 0;
 }
 
+// ERRDOS/ERRbadfile denotes an empty initial FIND_FIRST2 search on SMB1.
+// Unlike STATUS_NO_MORE_FILES it does not represent a normal FIND_NEXT2 EOF.
+static int smbFindFirstEmptyDosStatus(int cmd, u32 status)
+{
+    return cmd == TRANS2_FIND_FIRST2 && status == DOSERR_FILE_NOT_FOUND;
+}
+
 //-------------------------------------------------------------------------
 int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info)
 {
@@ -1478,6 +1485,12 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
     if (FFNRsp->smbH.Magic != SMB_MAGIC)
         return -EIO;
 
+    // DOS ERRDOS/ERRbadfile is an empty *initial* search, but a path
+    // failure elsewhere must still propagate instead of hiding the error.
+    if (smbFindFirstEmptyDosStatus(cmd, (u32)(u16)FFNRsp->smbH.Eclass | ((u32)(u16)FFNRsp->smbH.Ecode << 16))) {
+        info->EOS = 1;
+        return 1;
+    }
     // check there's no error
     switch ((u32)(u16)FFNRsp->smbH.Eclass | ((u32)(u16)FFNRsp->smbH.Ecode << 16)) {
         // check there's no error

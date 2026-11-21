@@ -88,9 +88,11 @@ enum { APP_MODE = 1, ETH_MODE = 2, MMCE_MODE = 11, MMCE_MODE1 = 13 };
 #define ITEM_VIEW_FORCE_PS1 2
 #define ITEM_VIEW_FORCE_ISO 1
 struct item_list_t { int mode, viewOverride; };
+static int cueRow = 0;
 struct Source {
     int count(item_list_t *) { return 2; }
     char *name(item_list_t *, int id) { return names[id]; }
+    int ps1RowKind(item_list_t *, int id, int *ember) { *ember = (id == cueRow); return 1; }
     char names[2][16] = {"Other", "Game"};
 };
 static Source source;
@@ -98,19 +100,28 @@ static Source *gsOf(item_list_t *) { return &source; }
 static int ethResolveIsoFavourite(int, const char *, int *) { return 0; }
 static int ensureCalls;
 static int mmceEnsurePs1List(item_list_t *) { ensureCalls++; return 1; }
-''' + function(fav, "static int favKindIsNameAddressed(") + function(fav, "static int favResolveStoredId(") + r'''
+''' + function(fav, "static int favKindIsNameAddressed(") + function(fav, "static int favMmcePs1KindMatches(") + function(fav, "static int favResolveStoredId(") + r'''
 int main()
 {
     item_list_t list = {};
+    list.mode = MMCE_MODE1;
     int out = -1;
+    cueRow = 0;
     assert(favResolveStoredId(&list, 0, "Game", FAV_KIND_VCD, &out) == 1 && out == 1);
-    out = -1;
+    cueRow = 1;
     assert(favResolveStoredId(&list, 1, "Game", FAV_KIND_CUE, &out) == 1 && out == 1);
+    assert(favResolveStoredId(&list, 1, "Game", FAV_KIND_VCD, &out) == 0);
+    cueRow = 0;
+    assert(favResolveStoredId(&list, 1, "Game", FAV_KIND_CUE, &out) == 0);
     assert(favResolveStoredId(&list, 0, "Game", FAV_KIND_ISO, &out) == 0);
     assert(favResolveStoredId(&list, 0, "Missing", FAV_KIND_VCD, &out) == 0);
-    list.mode = MMCE_MODE1;
-    out = -1;
-    assert(favResolveStoredId(&list, 0, "Game", FAV_KIND_VCD, &out) == 1 && out == 1 && ensureCalls == 1);
+    // Same title on both cores: saved index may point to the wrong one.
+    strcpy(source.names[0], "Game");
+    assert(favResolveStoredId(&list, 0, "Game", FAV_KIND_VCD, &out) == 1 && out == 1);
+    assert(favResolveStoredId(&list, 1, "Game", FAV_KIND_CUE, &out) == 1 && out == 0);
+    // A PS1 lookup must not mutate this source page's visible view.
+    assert(list.viewOverride == 0);
+    assert(ensureCalls > 0);
 }
 '''
 
@@ -127,7 +138,8 @@ enum { FAV_KIND_ISO, FAV_KIND_VCD, FAV_KIND_CUE, FAV_KIND_ELF };
 typedef struct { int mode, id, icon_id, text_id, kind; char text[FAV_TEXT_MAX]; } fav_raw_t;
 struct item_list_t {};
 typedef struct { item_list_t *owner; int mode, id, icon_id, text_id, kind; char *text; char *display; int starred; } fav_rec_t;
-static fav_raw_t stored;
+static fav_raw_t stored[2];
+static int storedCount = 1;
 static int writtenCount = -1;
 static int legacyResolvedMode = MMCE_MODE1;
 static item_list_t *favResolve(int mode, int id, const char *text, int kind, int *outMode, int *outId, int markStars)
@@ -141,15 +153,19 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
 static fav_raw_t *favReadFile(int *count, int *editable = NULL, const char *name = NULL)
 {
     (void)name;
-    fav_raw_t *copy = (fav_raw_t *)malloc(sizeof(stored));
-    if (copy != NULL) *copy = stored;
-    *count = copy != NULL ? 1 : 0;
+    fav_raw_t *copy = (fav_raw_t *)malloc(sizeof(fav_raw_t) * (storedCount ? storedCount : 1));
+    if (copy != NULL && storedCount)
+        memcpy(copy, stored, sizeof(fav_raw_t) * storedCount);
+    *count = copy != NULL ? storedCount : 0;
     if (editable != NULL) *editable = 1;
     return copy;
 }
 static int favWriteFile(fav_raw_t *recs, int count)
 {
-    (void)recs;
+    assert(count >= 0 && count <= 2);
+    if (count)
+        memcpy(stored, recs, sizeof(fav_raw_t) * count);
+    storedCount = count;
     writtenCount = count;
     return 1;
 }
@@ -162,11 +178,12 @@ public:
 ''' + function(fav, "static int favIdsMatchForMode(") + function(fav, "static int favKindIsNameAddressed(") + function(fav, "static int favModesMatch(") + function(fav, "static int favRecordMatchesResolved(") + function(fav, "static int favRecIsStarred(") + function(fav, "int FavSupport::addItem(") + function(fav, "int FavSupport::removeByIdAndText(") + r'''
 static void storedRecord(int kind)
 {
-    memset(&stored, 0, sizeof(stored));
-    stored.mode = MMCE_MODE;
-    stored.id = 0;
-    stored.kind = kind;
-    strcpy(stored.text, "Game");
+    memset(stored, 0, sizeof(stored));
+    storedCount = 1;
+    stored[0].mode = MMCE_MODE;
+    stored[0].id = 0;
+    stored[0].kind = kind;
+    strcpy(stored[0].text, "Game");
     writtenCount = -1;
 }
 int main()
@@ -186,8 +203,8 @@ int main()
     assert(store.addItem(MMCE_MODE1, 1, 0, 0, "Game", FAV_KIND_VCD) == 1 && writtenCount == -1);
     assert(store.removeByIdAndText(MMCE_MODE1, 1, "Game", FAV_KIND_VCD) == 1 && writtenCount == 0);
     storedRecord(FAV_KIND_VCD);
-    stored.mode = MMCE_MODE1;
-    assert(store.removeByIdAndText(MMCE_MODE, 1, "Game", FAV_KIND_VCD) == 1 && writtenCount == 1);
+    stored[0].mode = MMCE_MODE1;
+    assert(store.removeByIdAndText(MMCE_MODE, 1, "Game", FAV_KIND_VCD) == 0 && writtenCount == -1);
     storedRecord(FAV_KIND_VCD);
     legacyResolvedMode = MMCE_MODE;
     assert(store.addItem(MMCE_MODE1, 1, 0, 0, "Game", FAV_KIND_VCD) == 1 && writtenCount == 2);
@@ -196,9 +213,9 @@ int main()
     fav_rec_t row = {};
     row.mode = MMCE_MODE1; row.id = 1; row.kind = FAV_KIND_VCD; row.text = (char *)"Game";
     legacyResolvedMode = MMCE_MODE1;
-    assert(favRecIsStarred(&row, &stored, 1) == 1);
+    assert(favRecIsStarred(&row, stored, 1) == 1);
     legacyResolvedMode = MMCE_MODE;
-    assert(favRecIsStarred(&row, &stored, 1) == 0);
+    assert(favRecIsStarred(&row, stored, 1) == 0);
 }
 '''
 
@@ -218,7 +235,7 @@ struct MmceSlotState {
 };
 static MmceSlotState slot;
 static item_list_t list;
-static int ioPutRequest(int request, void *data) { assert(request == IO_MENU_UPDATE_DEFFERED && data == &list.mode); queued++; return 0; }
+static int ioPutRequestUnlessWaiting(int request, void *data) { assert(request == IO_MENU_UPDATE_DEFFERED && data == &list.mode); queued++; return 0; }
 static MmceSlotState *mmceSlotStateOf(item_list_t *) { return &slot; }
 static int fillResult, fillCalls, needsRetry;
 static int ps1FillGameList(const char *root, void *, int &) {
@@ -314,7 +331,9 @@ int main()
 '''
 
 needs = function(mmce, "int MmceSource::needsUpdate(")
-probe_ok = "gMmceSupport.slots[1].probePresence();" in needs
+probe_ok = "peer->probePresence();" in needs and "wasPresent != peer->present" in needs and "ioPutRequestUnlessWaiting(IO_MENU_UPDATE_DEFFERED, &peerList->mode)" in needs
+all_games = function(fav, "int FavSupport::gatherPass(")
+all_games_ready = all_games.index("mmceEnsurePs1List(src);") < all_games.index("if (src->mode == APP_MODE)") and "shelf == LIB_VIEW_PS1" in all_games
 
 with tempfile.TemporaryDirectory(prefix="mmce-dual-slot-") as tmp:
     folder = Path(tmp)
@@ -340,7 +359,9 @@ with tempfile.TemporaryDirectory(prefix="mmce-dual-slot-") as tmp:
         if result.returncode == 0:
             failures.append("VMC descriptor assertions accepted the wrong ioctl handle")
     if not probe_ok:
-        failures.append("Manual slot-0 fallback does not probe hidden slot 1")
+        failures.append("Manual slot-0 fallback does not refresh changed slot-1 game list")
+    if not all_games_ready:
+        failures.append("All Games did not prepare MMCE PS1 backing lists before gathering")
     if failures:
         raise SystemExit("\n".join(failures))
 print("PASS: legacy MMCE favorites, hidden-slot probing and failed-VMC retry behavior")

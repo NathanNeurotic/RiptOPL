@@ -13,6 +13,7 @@ program = r'''
 #include <assert.h>
 #include <stdio.h>
 static int gEnableILK, iLinkModLoaded, delays, refreshes, ready_after, bdmAutoLaunch;
+static unsigned int bdmIopResetGeneration;
 #define BDM_TYPE_ILINK 1
 #define LOG(...) ((void)0)
 static int bdmGetDeviceRootByType(int type, char *root, unsigned int size) {
@@ -42,12 +43,18 @@ int main(void) {
         assert(delays == (ready_after < 0 || ready_after > 12 ? 12 : ready_after));
         run_probe(); assert(refreshes == 1); // one probe per enabled session
     }
+    // A full IOP reset drops iLink modules but not the user's enabled option.
+    // The new module lifetime must get a new first-mount probe.
+    ready_after = 0; delays = refreshes = 0;
+    bdmIopResetGeneration++;
+    run_probe(); assert(refreshes == 1 && delays == 0);
+    run_probe(); assert(refreshes == 1);
     gEnableILK = 0; run_probe();
     refreshes = delays = 0; iLinkModLoaded = 0; gEnableILK = 1;
     run_probe(); assert(refreshes == 0 && delays == 0);
     iLinkModLoaded = 1; ready_after = 0;
     run_probe(); assert(refreshes == 1 && delays == 0);
-    puts("iLink readiness: autoload skip, menu fallback, ready, delayed, absent, one-shot and re-enable passed");
+    puts("iLink readiness: autoload skip, ready, delayed, absent, IOP-reset retry, one-shot and re-enable passed");
     return 0;
 }
 '''
@@ -65,3 +72,8 @@ for signature, enabled in [('\nstatic void init(void)', 0), ('\nvoid miniInit(in
     begin = opl.index(signature)
     body = opl[begin:opl.index('\n}', begin)]
     assert body.index('ioInit();') < body.index(f'bdmSetAutoLaunch({enabled});') < body.index('bdmInitSemaphore();'), signature
+
+# The reset gate is advanced by the actual menu-reset hook, not by a time-based retry.
+reset = source[source.index('void bdmIopWasReset('):]
+reset = reset[:reset.index('\n}')]
+assert '++bdmIopResetGeneration;' in reset

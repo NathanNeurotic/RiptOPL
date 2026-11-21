@@ -159,6 +159,7 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
                             resetIop                               ? "-reset-iop" :
                                                                      NULL;
     int extra_args = (loaderArg != NULL) + (fallback != NULL);
+    char optionMarker[] = "-rlopt=0";
     char fallbackArg[fallback != NULL ? (int)strlen(fallback) + 11 : 1];
     if (fallback != NULL) {
         strcpy(fallbackArg, "-fallback=");
@@ -194,6 +195,11 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
     if (diag)
         launchDiagMark(10); // ELF probe open OK -- the elfldr child handoff runs next
 
+    // The parent can promote the fallback to primary after the probes. The
+    // boundary must report the FINAL option count, not the count before that
+    // promotion, or the child will misinterpret target arguments.
+    optionMarker[7] = '0' + extra_args;
+
     // Kernel args-area budget, the last line of defense for EVERY handoff (Neutrino,
     // POPSTARTER, Apps): SetArg copies at most 15 strings into ONE 256-byte pool (NULs included) and
     // ExecPS2 forwards the UNCLAMPED count -- exceeding either limit corrupts rather than
@@ -206,13 +212,14 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
             pool += (int)strlen(loaderArg) + 1;
         if (fallback != NULL)
             pool += (int)strlen(fallbackArg) + 1;
+        pool += (int)sizeof(optionMarker); // explicit suffix boundary, even with no options
         for (j = 0; j < argc; j++) {
             if (argv[j] == NULL)
                 return -1; // a NULL mid-argv would crash SetArg's copy inside ExecPS2 -- refuse here
             pool += (int)strlen(argv[j]) + 1;
         }
-        if (argc + 1 + extra_args > 15 || pool > 256) {
-            LOG("[ELFLDR] argv over the kernel budget (args=%d/15, pool=%d/256) -- refusing handoff\n", argc + 1 + extra_args, pool);
+        if (argc + 2 + extra_args > 15 || pool > 256) {
+            LOG("[ELFLDR] argv over the kernel budget (args=%d/15, pool=%d/256) -- refusing handoff\n", argc + 2 + extra_args, pool);
             if (diag)
                 launchDiagRefuse(LAUNCHDIAG_REFUSE_CHILD_BUDGET);
             return -1;
@@ -220,9 +227,10 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
     }
 
     // Child contract: argv[0] = load path (SifLoadElf'd), argv[1..argc] = the target's full argv;
-    // trailing options are "-reset-iop" and, when supplied, "-fallback=<second load path>".
+    // trailing options are "-reset-iop" and, when supplied, "-fallback=<second load path>",
+    // followed by the mandatory "-rlopt=N" boundary marker (including N=0).
     // The ExecPS2 syscall marshals the strings across the jump.
-    char *new_argv[argc + 1 + extra_args];
+    char *new_argv[argc + 2 + extra_args];
     new_argv[0] = (char *)filename;
     for (i = 0; i < argc; i++)
         new_argv[i + 1] = argv[i];
@@ -231,6 +239,7 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
         new_argv[argc + 1 + extra++] = (char *)loaderArg;
     if (fallback != NULL)
         new_argv[argc + 1 + extra] = fallbackArg;
+    new_argv[argc + 1 + extra_args] = optionMarker;
 
     wipeBramMem();
 
@@ -260,7 +269,7 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
     if (diag)
         launchDiagMark(11); // ExecPS2 into the elfldr child is the next (and last) step on this side
 
-    return ExecPS2((void *)eh->entry, NULL, argc + 1 + extra_args, new_argv);
+    return ExecPS2((void *)eh->entry, NULL, argc + 2 + extra_args, new_argv);
 }
 
 static int sysLoadELF(const char *filename, const char *partition, int argc, char *argv[], int resetIop)

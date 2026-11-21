@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fast paging for single-title layouts; keep list paging, D-pad steps and animation intact."""
+"""Cycle individual titles with L1/R1; keep multi-row paging, home/end and animation intact."""
 from pathlib import Path
 import subprocess
 import tempfile
@@ -59,8 +59,7 @@ int main(void) {
     for (int carousel=0;carousel<=1;carousel++) {
         theme.coverflow=carousel;
         for (int n=1;n<=64;n++) for (int s=0;s<n;s++) for (int dir=-1;dir<=1;dir+=2) {
-            int target=dir>0 ? (s==n-1 ? 0 : (s+15<n ? s+15 : n-1)) :
-                               (s==0 ? n-1 : (s>15 ? s-15 : 0));
+            int target=dir>0 ? (s+1)%n : (s+n-1)%n;
             // Entering Info from a multi-row main list can retain an earlier page start.
             for (int first=0;first<=s;first++) {
                 checkPage(n,s,first,dir,target,target);
@@ -69,15 +68,15 @@ int main(void) {
             }
         }
     }
-    /* Repeated shoulder keys reach each end, then wrap on the next press. */
+    /* Shoulder keys browse every title, not first/last; they still wrap at an end. */
     theme.coverflow=1;setup(40,0);
-    int forward[]={15,30,39,0}, backward[]={39,24,9,0,39};
+    int forward[]={1,2,3,4}, backward[]={3,2,1,0};
     for (int target:forward) {menuNextPage();assert(item.current==&nodes[target]);}
     for (int target:backward) {menuPrevPage();assert(item.current==&nodes[target]);}
     /* Ordinary D-pad moves and L2/R2 still move one title or go straight to an end. */
     setup(40,0);menuNextPage();menuNextV();
-    assert(item.current==&nodes[16] && item.pagestart==&nodes[16]);
-    menuPrevV();assert(item.current==&nodes[15] && item.pagestart==&nodes[15]);
+    assert(item.current==&nodes[2] && item.pagestart==&nodes[2]);
+    menuPrevV();assert(item.current==&nodes[1] && item.pagestart==&nodes[1]);
     menuLastPage();assert(item.current==&nodes[39] && item.pagestart==&nodes[39]);
     menuNextV();assert(item.current==&nodes[0] && item.pagestart==&nodes[0]);
     menuPrevV();assert(item.current==&nodes[39] && item.pagestart==&nodes[39]);
@@ -106,7 +105,7 @@ int main(void) {
         setup(1,0);menuNextPage();menuPrevPage();
         assert(item.current==&nodes[0] && !animations && !sounds);
     }
-    puts("PASS: 15-title jumps, clamps/wraps, list paging, D-pad, home/end, animation, empty/single libraries");
+    puts("PASS: one-title cycling/wraps, multi-row paging, D-pad, home/end, animation, empty/single libraries");
 }
 '''.replace('@FUNCTIONS@', '\n'.join(functions))
 with tempfile.TemporaryDirectory() as tmp:

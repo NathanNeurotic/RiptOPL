@@ -1287,13 +1287,10 @@ void fntEnd()
 
 int fntScaleFontSize(int baseSize)
 {
-    // Themes can deliberately use larger titles or smaller labels. Preserve those sizes.
-    if (baseSize == FNTSYS_DEFAULT_SIZE) {
-        if (gFontSize == FONT_SIZE_SMALL)
-            return 15;
-        if (gFontSize == FONT_SIZE_LARGE)
-            return 19;
-    }
+    // Only the standard-size menu font scales, including translation and CJK
+    // fallback slots. Respect explicit point sizes in custom themes.
+    if (baseSize == FNTSYS_DEFAULT_SIZE)
+        return (baseSize * fntValidFontSize(gFontSize) + 50) / 100;
     return baseSize;
 }
 

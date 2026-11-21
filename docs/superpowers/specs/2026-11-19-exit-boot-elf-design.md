@@ -13,7 +13,7 @@ Let users exit RiptOPL directly to `mc?:/BOOT/BOOT2.ELF` or `mc?:/BOOT/BOOT.ELF`
 
 ## Card selection and launch
 
-For the selected filename, try `mc0:/BOOT/` first, then `mc1:/BOOT/` if the file is absent or its load fails. Use the existing `sysLoadELFApp()` handoff with an IOP reset, after the same application teardown used by other exit modes. Pass the selected ELF path as `argv[0]` and add no extra arguments.
+For the selected filename, try `mc0:/BOOT/` first, then `mc1:/BOOT/` if the file is absent or its load fails. Use the existing `sysLoadELFAppFallback()` handoff with an IOP reset, after the same application teardown used by other exit modes. The child loader handles a load failure after teardown; the parent must not issue a second handoff at that point. Pass the selected ELF path as `argv[0]` and add no extra arguments.
 
 ## Approaches
 
@@ -23,4 +23,4 @@ For the selected filename, try `mc0:/BOOT/` first, then `mc1:/BOOT/` if the file
 
 ## Verification
 
-Add host coverage for both filenames, mc0-first selection, mc1 fallback, unchanged legacy choices, and saved-value validation. Run the related host suites and the standard PS2 build. Emulator or physical-console launch confirmation is separate from host/build evidence.
+Add host coverage for both filenames, mc0-first selection, child-side mc1 fallback, explicit parent-option boundaries, unchanged legacy choices, and saved-value validation. Run the related host suites and the standard PS2 build. Emulator or physical-console launch confirmation is separate from host/build evidence.

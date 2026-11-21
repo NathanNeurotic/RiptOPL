@@ -895,8 +895,14 @@ int MmceSource::needsUpdate(item_list_t *itemList)
     struct stat st;
 
     slot->probePresence();
-    if (slot->slotIndex == 0)
-        gMmceSupport.slots[1].probePresence();
+    if (slot->slotIndex == 0) {
+        MmceSlotState *peer = &gMmceSupport.slots[1];
+        int wasPresent = peer->present;
+        peer->probePresence();
+        item_list_t *peerList = mmceInstance(1);
+        if (peerList->enabled && wasPresent != peer->present)
+            ioPutRequestUnlessWaiting(IO_MENU_UPDATE_DEFFERED, &peerList->mode);
+    }
     // Recompute both slots so the Manual-mode slot-0 fallback updates whenever slot 1 appears or disappears.
     for (int s = 0; s < MMCE_MODE_COUNT; s++) {
         item_list_t *list = mmceInstance(s);
@@ -1074,7 +1080,7 @@ int mmceEnsurePs1List(item_list_t *itemList)
     if (slot->ps1ScanFailed && slot->ps1Games != NULL) {
         /* A source menu may still hold pointers into this partial list. Let its
          * normal deferred rebuild retire those consumers before replacing it. */
-        ioPutRequest(IO_MENU_UPDATE_DEFFERED, &itemList->mode);
+        ioPutRequestUnlessWaiting(IO_MENU_UPDATE_DEFFERED, &itemList->mode);
         return 0;
     }
 

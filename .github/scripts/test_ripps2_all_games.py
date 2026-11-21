@@ -77,6 +77,19 @@ static opl_io_module_t mods[MODE_COUNT];
 static int gone[MODE_COUNT]; /* the page is hidden: device removed or its start mode switched Off */
 static opl_io_module_t *oplGetModule(int m) { mods[m].support = modules[m]; mods[m].menuItem.visible = !gone[m]; return &mods[m]; }
 static int folderModeSupported(int mode) { return mode != HTTP_MODE; }
+static int mmcePs1Prepares;
+static int mmceEnsurePs1List(item_list_t *list)
+{
+    assert(list->mode == MMCE_MODE || list->mode == MMCE_MODE1);
+    mmcePs1Prepares++;
+    if (list->ps1Count == 0) {
+        snprintf(list->ps1[0].name, sizeof(list->ps1[0].name), "MMCE VCD");
+        list->ps1[0].format = 0;
+        list->ps1[0].cue = 0;
+        list->ps1Count = 1;
+    }
+    return 1;
+}
 static int cueIsCueEntry(const base_game_info_t *g) { return g->cue; }
 static const char *labels[] = {"USB Games", "HDD Games", "Apps", "SMB Games"};
 static const char *_l(int id) { return labels[id]; }
@@ -218,6 +231,18 @@ int main(void)
     gone[BDM_MODE] = 0;
     usb.enabled = hdd.enabled = smb.enabled = 0;
     assert(store.gatherAllGames(LIB_VIEW_ALL, NULL, 0) == 0 && store.array_ == NULL);
+    // A slot-1 card whose menu is ISO-view only needs a PS1 backing scan
+    // before All Games gathers the PS1 shelf, without switching its page.
+    static item_list_t mmce1;
+    setup(&mmce1, MMCE_MODE1, 0);
+    mmce1.vcd = 1;
+    mmce1.viewOverride = ITEM_VIEW_FORCE_ISO;
+    assert(mmce1.ps1Count == 0);
+    assert(store.gatherAllGames(LIB_VIEW_PS1, NULL, 0) == 1);
+    assert(mmcePs1Prepares == 2 && mmce1.ps1Count == 1);
+    assert(mmce1.viewOverride == ITEM_VIEW_FORCE_ISO);
+    assert(find("MMCE VCD", FAV_KIND_VCD) >= 0);
+    freeArray();
     return 0;
 }
 '''
