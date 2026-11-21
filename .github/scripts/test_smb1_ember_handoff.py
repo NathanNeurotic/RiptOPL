@@ -43,7 +43,7 @@ assert "case STATUS_OBJECT_NAME_NOT_FOUND:" in qpi_fn
 assert "case STATUS_OBJECT_PATH_NOT_FOUND:" in qpi_fn
 assert "return -ENOENT;" in qpi_fn
 assert "fh->dir_eos = (info->EOS != 0);" in function(fio, "int smb_dread(")
-assert "fh->mode != O_DIROPEN && fh->smb_fid == -1" in function(fio, "int smb_close(")
+assert "fh->mode != O_DIROPEN &&" in function(fio, "int smb_close(")
 assert "smb_FindClose2(UID, TID, fh->smb_fid);" in function(fio, "int smb_close(")
 
 # The selected game device is spared by deinit; SMB also needs the IOP TCP/IP
@@ -84,9 +84,11 @@ typedef struct {
     int smb_fid;
     long long filesize, position;
     unsigned int mode;
-    unsigned char dir_eos;
+    unsigned char dir_eos, dir_stale;
     char name[SMB_NAME_MAX];
 } FHANDLE;
+#define MAX_FDHANDLES 4
+static FHANDLE smbman_fdhandles[MAX_FDHANDLES];
 static int UID = 1, TID = 1, queries, closing, find_closing, test_case;
 static char SearchBuf[sizeof(SearchInfo_t)];
 static void smb_io_lock(void) {}
@@ -96,8 +98,9 @@ static void smb_statFiller(const PathInformation_t *src, iox_stat_t *dst)
 static int smb_Close(int a, int b, int fid)
 { (void)a; (void)b; (void)fid; closing++; return 0; }
 static int smb_FindClose2(int a, int b, int sid)
-{ (void)a; (void)b; (void)sid; find_closing++; return 0; }
-static int smb_AbortConnection(void) { return 0; }
+{ (void)a; (void)b; (void)sid; find_closing++; return test_case == 6 ? -ETIMEDOUT : 0; }
+static int aborts;
+static int smb_AbortConnection(void) { aborts++; return 0; }
 static int smb_FindFirstNext2(int a, int b, char *path, int op, SearchInfo_t *info)
 {
     (void)a; (void)b; (void)path;
@@ -172,6 +175,21 @@ int main(void)
 
     setup(&h, &f, 1);
     assert(smb_close(&f) == 0 && h.f == NULL && find_closing == 0); /* closed without dread */
+    iop_file_t parent, unopened, completed;
+    setup(&smbman_fdhandles[0], &parent, 6);
+    setup(&smbman_fdhandles[1], &unopened, 6);
+    setup(&smbman_fdhandles[2], &completed, 6);
+    smbman_fdhandles[0].smb_fid = 100;
+    smbman_fdhandles[2].smb_fid = 101;
+    smbman_fdhandles[2].dir_eos = 1;
+    setup(&h, &f, 6);
+    h.smb_fid = 102;
+    assert(smb_close(&f) == -ETIMEDOUT && aborts == 1);
+    assert(smb_dread(&parent, &de) == -EIO && queries == 0);
+    assert(smb_dread(&completed, &de) == 0 && queries == 0);
+    assert(smb_dread(&unopened, &de) == 1 && queries == 1);
+    TID = -1;
+    assert(smb_close(&parent) == 0 && !smbman_fdhandles[0].f && find_closing == 1);
     puts("PASS: SMB1 one/two/zero entries, Windows NO_MORE_FILES EOF, early FindClose2, transport error and handle cleanup");
     return 0;
 }

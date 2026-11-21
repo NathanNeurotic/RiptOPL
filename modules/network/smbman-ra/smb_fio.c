@@ -76,6 +76,7 @@ typedef struct
     s64 position;
     u32 mode;
     unsigned char dir_eos; // SMB1 FIND_LAST: the last returned entry still belongs in the list
+    unsigned char dir_stale; // the SMB session closed before this search reached EOS
     char name[SMB_NAME_MAX];
 } FHANDLE;
 
@@ -378,8 +379,8 @@ int smb_close(iop_file_t *f)
 
     // A directory opened and closed without a dread() never acquired a search ID.
     // It still owns a local handle, which must be released rather than leaked.
-    if ((UID == -1) || (TID == -1) || fh == NULL ||
-        (fh->mode != O_DIROPEN && fh->smb_fid == -1))
+    if (fh == NULL || (fh->mode != O_DIROPEN &&
+                       (UID == -1 || TID == -1 || fh->smb_fid == -1)))
         return -EBADF;
 
     smb_io_lock();
@@ -390,12 +391,23 @@ int smb_close(iop_file_t *f)
             if (r != 0) {
                 goto io_unlock;
             }
-        } else if (fh->smb_fid != -1 && !fh->dir_eos) {
+        } else if (UID != -1 && TID != -1 && fh->smb_fid != -1 && !fh->dir_eos) {
             // Release server-side search handles when a directory is closed before EOS
             // (e.g. Ember's per-folder image probe stopping on the first .cue).
             r = smb_FindClose2(UID, TID, fh->smb_fid);
-            if (r == -ETIMEDOUT)
+            if (r == -ETIMEDOUT) {
                 smb_AbortConnection();
+                // Search IDs belong to the old session. Keep the local handles
+                // closeable, but report an error when their caller resumes a scan.
+                for (int i = 0; i < MAX_FDHANDLES; i++) {
+                    FHANDLE *search = &smbman_fdhandles[i];
+                    if (search->f != NULL && search->mode == O_DIROPEN &&
+                        search->smb_fid != -1 && !search->dir_eos) {
+                        search->smb_fid = -1;
+                        search->dir_stale = 1;
+                    }
+                }
+            }
         }
         memset(fh, 0, sizeof(FHANDLE));
         fh->smb_fid = -1;
@@ -665,6 +677,7 @@ int smb_dopen(iop_file_t *f, const char *dirname)
         fh->mode     = O_DIROPEN;
         fh->smb_fid  = -1;
         fh->dir_eos  = 0;
+        fh->dir_stale = 0;
         fh->filesize = 0;
         fh->position = 0;
 
@@ -703,6 +716,11 @@ int smb_dread(iop_file_t *f, iox_dirent_t *dirent)
     memset((void *)dirent, 0, sizeof(iox_dirent_t));
 
     SearchInfo_t *info = (SearchInfo_t *)SearchBuf;
+
+    if (fh->dir_stale) {
+        r = -EIO;
+        goto io_unlock;
+    }
 
     // FIND_FIRST2 returns the final entry with EndOfSearch set. Do not send
     // FIND_NEXT2 on a search that the server has already closed.
