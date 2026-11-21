@@ -45,7 +45,7 @@ using u16 = unsigned short;
 using u32 = unsigned int;
 constexpr int FAV_MAX_ITEMS=512, FAV_TEXT_MAX=256, FAV_VERSION=3;
 constexpr u32 FAV_MAGIC=0x4641464f;
-enum {ETH_MODE=8,HDD_MODE=9,APP_MODE=10,FAV_MODE=12,MMCE_MODE=11,
+enum {ETH_MODE=8,HDD_MODE=9,APP_MODE=10,FAV_MODE=12,MMCE_MODE=11,MMCE_MODE1=13,
       FAV_KIND_ISO=0,FAV_KIND_VCD=1,FAV_KIND_ELF=3};
 struct fav_raw_t {int mode,id,icon_id,text_id,kind; char text[FAV_TEXT_MAX];};
 #define LOG(...) ((void)0)
@@ -63,8 +63,8 @@ static fav_raw_t *favReadFile(int *count, int *editable=nullptr) {
     assert(p); p[0].mode=3; p[0].id=7; strcpy(p[0].text,"previous"); return p;
 }
 static int favWriteFile(fav_raw_t*,int) {++writes;return 1;}
-static int favModesMatch(int a,int b){return a==b;}
-static int favIdsMatchForMode(int,int a,int b){return a==b;}
+static int favRecordMatchesResolved(int a,int,const char*,int,int b){return a==b;}
+static int favIdsMatchForMode(int,int,int a,int b){return a==b;}
 class FavSupport { public:
  int addItem(int,int,int,int,const char*,int);
  int removeByIdAndText(int,int,const char*,int);

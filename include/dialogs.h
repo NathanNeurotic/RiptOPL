@@ -43,7 +43,7 @@ enum UI_ITEMS {
     CFG_APP_HANDOFF_PATH,
     CFG_HDDGAMELISTCACHE,
     CFG_EXITTO,
-    CFG_EXITMENU,      // Exit To: console menu, PS2 Browser, PS2 Browser (skip card update) -- issue #370
+    CFG_EXITMENU,      // Exit To: console menu, PS2 Browser, or a fixed BOOT ELF on a memory card
     CFG_CUSTOMCFGPATH, // opt-in "Custom Settings Path" (typed)
     CFG_DEFDEVICE,
     CFG_BDMMODE,

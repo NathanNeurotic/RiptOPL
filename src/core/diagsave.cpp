@@ -13,6 +13,7 @@
 #include "include/config.h"
 #include "include/pad.h"
 #include "include/diaglog.h"
+#include "include/mmcesupport.h"
 
 #define DIAG_SIZE (16 * 1024) // as large as the ring, so a copy holds all of it
 
@@ -35,7 +36,7 @@ int diagSave(const char *dir, char *path, int pathSize)
              "RiptOPL %s diagnostics, %d s after boot\r\n"
              "longest run of missed pad reads: %u polls; of empty reads: %u polls\r\n"
              "MMCE: Game ID %s\r\n%s\r\n\r\n",
-             OPL_VERSION, (int)(clock() / CLOCKS_PER_SEC), (unsigned)notReady, (unsigned)empty, gMMCEEnableGameID ? "on" : "off",
+             OPL_VERSION, (int)(clock() / CLOCKS_PER_SEC), (unsigned)notReady, (unsigned)empty, mmceGameIdModeLabel(gMMCEEnableGameID),
              wrapped ? "(the oldest lines have rolled out of the log)" : "");
     if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
         return 0;
