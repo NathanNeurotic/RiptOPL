@@ -30,8 +30,9 @@ testing the actual devices, launch cores, VMC and IGR paths on a PS2.
 Install/update the pinned SDK and assets, then build from the repository root:
 
 ```sh
-ps2build update
-sh tools/install_ps2build.sh
+SDK="${PS2DEV_INSTALL_DIR:-$HOME/.local/share/ps2build}"
+sh tools/ps2build_sdk.sh --llvm "$SDK"
+PS2BUILD_TOOLCHAIN=all sh tools/install_ps2build.sh
 python tools/assets.py fetch
 python tools/assets.py lang
 python tools/build_edition.py riptopl
@@ -51,8 +52,10 @@ remain isolated. The pinned SDK and selected compiler are recorded in the
 build manifest. The RA-only socket compatibility code preserves libc's
 descriptor table, without installing a second SDK.
 
-Each edition stages its ELF, resolved definition and build manifest under
-`dist/editions/<edition>`. The manifest records source SHA, clean/dirty state,
+Standard full editions stage their ELF, resolved definition and build manifest
+under `dist/editions/<edition>`. Lite builds instead stage under
+`dist/lite/<device>-gcc` and Lite RA under `dist/lite/ra-<device>-gcc`.
+The manifest records source SHA, clean/dirty state,
 edition, ps2build version, installed component versions, compiler choice,
 definition/ELF hashes and CI run URL. Dirty builds are useful development probes
 but are rejected by release packaging.
