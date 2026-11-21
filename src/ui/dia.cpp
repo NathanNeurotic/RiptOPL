@@ -609,6 +609,15 @@ static int diaLayoutBottom(struct UIItem *ui, int spacingH, int gap, int top, in
     return bottom;
 }
 
+// Non-Settings dialogs use their row height as the gap too. At small font
+// percentages, keep that pair tall enough for a complete rasterized line
+// (for example, 9px at 50% needs at least 5px + 5px).
+static int diaDialogSpacingFloor(int spacingH)
+{
+    int minSpacing = (fntScaleFontSize(FNTSYS_DEFAULT_SIZE) + 1) / 2;
+    return spacingH < minSpacing ? minSpacing : spacingH;
+}
+
 // A small menu font can make the normal Settings row height shorter than the
 // minimum row gap. Keep both at least that minimum, so fitting and scrolling
 // remain well-defined at every configured font percentage.
@@ -646,6 +655,8 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
     spacingH += fntScaleFontSize(FNTSYS_DEFAULT_SIZE) - FNTSYS_DEFAULT_SIZE;
     if (settingsContext)
         spacingH = diaSettingsSpacingFloor(spacingH);
+    else
+        spacingH = diaDialogSpacingFloor(spacingH);
     // Rows keep their height (spacingH); only the gap between them tightens, and only on a Settings page.
     int gapH = settingsContext ? diaSettingsFitGap(ui, spacingH, y0, x0, gTheme->usedHeight - 40) : spacingH;
 
