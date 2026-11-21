@@ -160,7 +160,6 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
                                                                      NULL;
     int extra_args = (loaderArg != NULL) + (fallback != NULL);
     char optionMarker[] = "-rlopt=0";
-    optionMarker[7] = '0' + extra_args;
     char fallbackArg[fallback != NULL ? (int)strlen(fallback) + 11 : 1];
     if (fallback != NULL) {
         strcpy(fallbackArg, "-fallback=");
@@ -195,6 +194,11 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
     }
     if (diag)
         launchDiagMark(10); // ELF probe open OK -- the elfldr child handoff runs next
+
+    // The parent can promote the fallback to primary after the probes. The
+    // boundary must report the FINAL option count, not the count before that
+    // promotion, or the child will misinterpret target arguments.
+    optionMarker[7] = '0' + extra_args;
 
     // Kernel args-area budget, the last line of defense for EVERY handoff (Neutrino,
     // POPSTARTER, Apps): SetArg copies at most 15 strings into ONE 256-byte pool (NULs included) and
