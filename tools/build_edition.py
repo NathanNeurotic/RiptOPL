@@ -16,23 +16,19 @@ from install_ports import LIBRARIES
 
 ROOT = Path(__file__).resolve().parents[1]
 EDITIONS = {
-    "korium": {"title": "Korium", "tag": "rolling-korium", "theme": "korium", "ra": False},
-    "ra": {"title": "RetroAchievements", "tag": "rolling-ra", "theme": "korium", "ra": True},
-    "incebtion": {"title": "IncebtIon", "tag": "rolling-incebtion", "theme": "incebtion", "ra": False},
-    # The original's RA release carries a kit per theme: this one ships inside rolling-ra ("into").
-    "ra_incebtion": {"title": "RetroAchievements-IncebtIon", "tag": "rolling-ra", "theme": "incebtion", "ra": True,
-                     "into": "ra", "label": "IncebtIon"},
+    "riptopl": {"title": "RiptOPL", "tag": "rolling", "theme": "default", "ra": False, "compiler": "llvm"},
+    "ra": {"title": "RetroAchievements", "tag": "rolling-ra", "theme": "default", "ra": True, "compiler": "gcc"},
 }
-# RiptOPLite: the Korium edition with one game device's drivers per ELF (tools/lite_devices.py). Built
-# with `lite --device <device>`; kept out of EDITIONS because it has no install kit, bundles or
-# configurations -- its channel is only the RIPTOPLITE-<DEVICE>.ELF files (publish_editions.py).
-# lite_ra is the same over the RetroAchievements edition (RIPTOPLITE-RA-<DEVICE>.ELF): Korium theme, RA on,
+# RiptOPLite: one game device's drivers per ELF (tools/lite_devices.py). Built with `lite --device <device>`;
+# kept out of EDITIONS because it has no install kit, bundles or configurations -- its channel is only the
+# RIPTOPLITE-<DEVICE>.ELF files (publish_editions.py).
+# lite_ra is the same over the RetroAchievements edition (RIPTOPLITE-RA-<DEVICE>.ELF): RA on,
 # and the in-game network RA needs kept for every device. Both publish into the one rolling-lite channel.
 LITE = "lite"
 LITE_RA = "lite_ra"
 LITES = {
-    LITE: {"title": "Lite", "tag": "rolling-lite", "theme": "korium", "ra": False, "base": "korium"},
-    LITE_RA: {"title": "Lite-RA", "tag": "rolling-lite", "theme": "korium", "ra": True, "base": "ra"},
+    LITE: {"title": "Lite", "tag": "rolling-lite", "theme": "default", "ra": False, "base": "riptopl", "compiler": "gcc"},
+    LITE_RA: {"title": "Lite-RA", "tag": "rolling-lite", "theme": "default", "ra": True, "base": "ra", "compiler": "gcc"},
 }
 
 
@@ -40,28 +36,37 @@ def edition_options(edition):
     return LITES[edition] if edition in LITES else EDITIONS[edition]
 
 
-UPDATE_ELF_IDS = {"RIPTOPL.ELF": "PLAIN", "RIPTOPL-RA.ELF": "RA", "RIPTOPL-RA-IncebtIon.ELF": "RA_INCEBTION"}
+def edition_display_name(options):
+    return "RiptOPL" if options["title"] == "RiptOPL" else f"RiptOPL {options['title']}"
+
+
+def kit_archive_name(options):
+    return "RIPTOPL.zip" if options["title"] == "RiptOPL" else f"RIPTOPL-{options['title']}.zip"
+
+
+UPDATE_ELF_IDS = {"RIPTOPL.ELF": "PLAIN", "RIPTOPL-RA.ELF": "RA"}
 
 
 def update_defines(channel):
     """The channel as two plain defines (src/ui/selfupdate.cpp maps them back to the names)."""
-    return ["RIPTOPL_UPDATE_TAG_" + channel[0].replace("rolling-", "").upper(),
+    tag_key = "ROLLING" if channel[0] == "rolling" else channel[0].replace("rolling-", "").upper()
+    return ["RIPTOPL_UPDATE_TAG_" + tag_key,
             "RIPTOPL_UPDATE_ELF_" + UPDATE_ELF_IDS[channel[1]]]
 
 
-def update_channel(edition, configuration="standard", toolchain="gcc"):
+def update_channel(edition, configuration="standard", toolchain=None):
     """(release tag, ELF asset) that Check for Updates fetches (src/ui/selfupdate.cpp), or None.
 
-    Only a published standard build updates itself, and only from its own channel: a variant, debug or
-    lite build would otherwise be replaced by another build, and an LLVM build by a GCC one."""
+    Only a published standard build updates itself, and only from its own channel and compiler:
+    a variant, debug, lite or alternate-compiler build would otherwise be replaced by another build."""
     if edition in LITES or configuration != "standard":
         return None
     options = EDITIONS[edition]
+    if toolchain is None:
+        toolchain = options["compiler"]
+    if toolchain != options["compiler"]:
+        return None
     elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
-    if toolchain == "llvm":  # rolling-llvm carries the Korium ELFs only (publish_llvm.py)
-        return ("rolling-llvm", elf) if options["theme"] == "korium" and "into" not in options else None
-    if "label" in options:  # the RA IncebtIon kit ships inside rolling-ra (publish_editions.py)
-        elf = elf.replace(".ELF", f"-{options['label']}.ELF")
     return options["tag"], elf
 
 
@@ -69,10 +74,12 @@ def add(target, field, *values):
     target.setdefault(field, []).extend(v for v in values if v not in target.get(field, []))
 
 
-def definition(edition, configuration="standard", toolchain="gcc", device=None):
+def definition(edition, configuration="standard", toolchain=None, device=None):
     import yaml
 
     options = edition_options(edition)
+    if toolchain is None:
+        toolchain = options["compiler"]
     if edition in LITES and configuration != "standard":
         raise ValueError("the lite edition is built in the standard configuration only")
     config = yaml.safe_load((ROOT / "ps2.yaml").read_text(encoding="utf-8"))
@@ -80,8 +87,6 @@ def definition(edition, configuration="standard", toolchain="gcc", device=None):
     config["targets"] = [copy.deepcopy(t) for t in config["targets"]]
     targets = {t["name"]: t for t in config["targets"]}
     main, core = targets["riptopl"], targets["eecore"]
-    if options["theme"] == "korium":
-        add(main, "defines", "BUILTIN_KORIUM")
     if options["ra"]:
         for target in (main, core):
             add(target, "defines", "RETROACHIEVEMENTS")
@@ -188,7 +193,7 @@ def main():
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("edition", choices=[*EDITIONS, *LITES])
-    parser.add_argument("--toolchain", choices=("gcc", "llvm"), default="gcc")
+    parser.add_argument("--toolchain", choices=("gcc", "llvm"), default=None)
     parser.add_argument("--configuration", choices=CONFIGURATIONS, default="standard")
     parser.add_argument("--device", choices=LITE_DEVICES, help="the lite edition's one game device")
     args = parser.parse_args()
@@ -198,7 +203,8 @@ def main():
     source = git("rev-parse", "HEAD")
     dirty = bool(git("status", "--porcelain"))
     options = edition_options(args.edition)
-    os.environ["RIPTOPL_THEME"] = options["theme"]
+    if args.toolchain is None:
+        args.toolchain = options["compiler"]
     os.environ["RIPTOPL_RA"] = "1" if options["ra"] else "0"
     os.environ["RIPTOPL_UPDATER"] = "1" if update_channel(args.edition, args.configuration, args.toolchain) else "0"
     suffix = "" if args.configuration == "standard" else f"-{args.configuration.upper()}"

@@ -28,13 +28,23 @@ system = read("src/platform/system.cpp")
 cue = read("src/sources/cuesupport.cpp")
 opl = read("src/app/opl.cpp")
 
-# One ordinary EOF, whether carried on a final entry or on an empty result, is
-# not a scanner error. Only nonterminal/transport failures propagate as errors.
+# One ordinary EOF, whether carried on a final entry, on an empty result, or as Windows
+# SMB1's STATUS_NO_MORE_FILES / STATUS_NO_SUCH_FILE, is not a scanner error. Only
+# nonterminal/transport failures propagate as errors.
 assert "unsigned char dir_eos;" in fio
 assert "fh->dir_eos  = 0;" in function(fio, "int smb_dopen(")
-assert "return FFNRspParam->EndOfSearch ? 1 : -EIO;" in function(proto, "int smb_FindFirstNext2(")
+find_fn = function(proto, "int smb_FindFirstNext2(")
+qpi_fn = function(proto, "int smb_QueryPathInformation(")
+assert "return FFNRspParam->EndOfSearch ? 1 : -EIO;" in find_fn
+assert "case STATUS_NO_MORE_FILES:" in find_fn
+assert "case STATUS_NO_SUCH_FILE:" in find_fn
+assert "case DOSERR_NO_MORE_FILES:" in find_fn
+assert "case STATUS_OBJECT_NAME_NOT_FOUND:" in qpi_fn
+assert "case STATUS_OBJECT_PATH_NOT_FOUND:" in qpi_fn
+assert "return -ENOENT;" in qpi_fn
 assert "fh->dir_eos = (info->EOS != 0);" in function(fio, "int smb_dread(")
 assert "fh->mode != O_DIROPEN && fh->smb_fid == -1" in function(fio, "int smb_close(")
+assert "smb_FindClose2(UID, TID, fh->smb_fid);" in function(fio, "int smb_close(")
 
 # The selected game device is spared by deinit; SMB also needs the IOP TCP/IP
 # modules and fileXio-backed driver kept alive after the UI and RPC wrappers end.
@@ -77,7 +87,7 @@ typedef struct {
     unsigned char dir_eos;
     char name[SMB_NAME_MAX];
 } FHANDLE;
-static int UID = 1, TID = 1, queries, closing, test_case;
+static int UID = 1, TID = 1, queries, closing, find_closing, test_case;
 static char SearchBuf[sizeof(SearchInfo_t)];
 static void smb_io_lock(void) {}
 static void smb_io_unlock(void) {}
@@ -85,6 +95,9 @@ static void smb_statFiller(const PathInformation_t *src, iox_stat_t *dst)
 { dst->size = src->size; }
 static int smb_Close(int a, int b, int fid)
 { (void)a; (void)b; (void)fid; closing++; return 0; }
+static int smb_FindClose2(int a, int b, int sid)
+{ (void)a; (void)b; (void)sid; find_closing++; return 0; }
+static int smb_AbortConnection(void) { return 0; }
 static int smb_FindFirstNext2(int a, int b, char *path, int op, SearchInfo_t *info)
 {
     (void)a; (void)b; (void)path;
@@ -92,6 +105,15 @@ static int smb_FindFirstNext2(int a, int b, char *path, int op, SearchInfo_t *in
     queries++;
     if (test_case == 4) return -EIO;
     if (test_case == 3) return 1; /* empty successful search */
+    if (test_case == 5) {
+        /* Windows SMB1 srv.sys: last entry has EOS=0, next FIND_NEXT2 returns STATUS_NO_MORE_FILES (1). */
+        if (queries == 2) { info->EOS = 1; return 1; }
+        info->SID = 42;
+        info->EOS = 0;
+        info->fileInfo.size = 1;
+        strcpy(info->FileName, "Chrono Trigger");
+        return 0;
+    }
     if (queries > (test_case == 2 ? 2 : 1)) assert(!"request after EOS");
     info->SID = 42;
     info->EOS = (test_case == 1 || queries == 2);
@@ -110,7 +132,7 @@ static void setup(FHANDLE *handle, iop_file_t *file, int which)
     handle->smb_fid = -1;
     strcpy(handle->name, "\\EMBER\\games\\*");
     test_case = which;
-    queries = closing = 0;
+    queries = closing = find_closing = 0;
 }
 int main(void)
 {
@@ -121,26 +143,36 @@ int main(void)
     setup(&h, &f, 1);
     assert(smb_dread(&f, &de) == 1 && strcmp(de.name, "Game A") == 0);
     assert(smb_dread(&f, &de) == 0 && queries == 1);
-    assert(smb_close(&f) == 0 && h.f == NULL && closing == 0);
+    assert(smb_close(&f) == 0 && h.f == NULL && closing == 0 && find_closing == 0);
 
     setup(&h, &f, 2);
     assert(smb_dread(&f, &de) == 1 && strcmp(de.name, "Game A") == 0);
     assert(smb_dread(&f, &de) == 1 && strcmp(de.name, "Game B") == 0);
     assert(smb_dread(&f, &de) == 0 && queries == 2);
-    assert(smb_close(&f) == 0 && closing == 0);
+    assert(smb_close(&f) == 0 && closing == 0 && find_closing == 0);
 
     setup(&h, &f, 3);
     assert(smb_dread(&f, &de) == 0 && queries == 1);
     assert(smb_dread(&f, &de) == 0 && queries == 1);
-    assert(smb_close(&f) == 0 && closing == 0);
+    assert(smb_close(&f) == 0 && closing == 0 && find_closing == 0);
 
     setup(&h, &f, 4);
     assert(smb_dread(&f, &de) == -EIO && queries == 1);
-    assert(smb_close(&f) == 0);
+    assert(smb_close(&f) == 0 && find_closing == 0);
+
+    setup(&h, &f, 5);
+    assert(smb_dread(&f, &de) == 1 && strcmp(de.name, "Chrono Trigger") == 0);
+    assert(smb_dread(&f, &de) == 0 && queries == 2);
+    assert(smb_dread(&f, &de) == 0 && queries == 2);
+    assert(smb_close(&f) == 0 && closing == 0 && find_closing == 0);
+
+    setup(&h, &f, 5);
+    assert(smb_dread(&f, &de) == 1 && strcmp(de.name, "Chrono Trigger") == 0);
+    assert(smb_close(&f) == 0 && closing == 0 && find_closing == 1); /* early close before EOS */
 
     setup(&h, &f, 1);
-    assert(smb_close(&f) == 0 && h.f == NULL); /* closed without dread */
-    puts("PASS: SMB1 one/two/zero entries, terminal EOF, transport error and directory handle cleanup");
+    assert(smb_close(&f) == 0 && h.f == NULL && find_closing == 0); /* closed without dread */
+    puts("PASS: SMB1 one/two/zero entries, Windows NO_MORE_FILES EOF, early FindClose2, transport error and handle cleanup");
     return 0;
 }
 """

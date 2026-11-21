@@ -12,6 +12,13 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 ee = (ROOT / 'src/sources/bdmsupport.cpp').read_text()
 iop = (ROOT / 'modules/iopcore/cdvdman/device-bdm.c').read_text()
+native_launch = (ROOT / 'src/sources/bdmlaunch.cpp').read_text()
+
+# Launch-time safeguards must reject an unusable ISO before deinit and honor UDMA mode 0
+# (a valid drive capability, not a failed ioctl).
+assert 'iFragCount <= 0 || iFragCount > BDM_MAX_FRAGS - iTotalFragCount' in native_launch
+assert native_launch.index('iFragCount <= 0 ||') < native_launch.index('host::app().deinit(NO_EXCEPTION, itemList->mode)')
+assert 'pDeviceData->ataHighestUDMAMode >= 0 && dmaMode > pDeviceData->ataHighestUDMAMode' in native_launch
 
 
 def function(source, signature):

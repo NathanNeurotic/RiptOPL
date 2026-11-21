@@ -108,6 +108,7 @@ static int guiFrameId = 100;
 static struct { u64 textColor; void *psbbnFlow; } theme, *gTheme = &theme;
 static int gCoverflowAnimSpeed, cfIsAnimating, cfAnimDirection, cfAnimFrameCount;
 static clock_t cfAnimStartTime;
+static u64 gDefaultCol;
 static int drawn[9], positions[9], rims[9], nDrawn, priorities, frames;
 static char counter[32];
 #define ALIGN_LEFT 0
@@ -116,6 +117,7 @@ static int rmUnScaleX(int x) { return x; }
 static int rmWideScale(int x) { return x; }
 static int focalSize(const theme_element_t *) { return 204; }
 static void drawFrame(struct menu_list *, theme_element_t *) { frames++; }
+static void thmDrawDiscDecorator(const theme_element_t *, struct menu_list *, struct submenu_list *, int, int, int, int, int, u64) {}
 static void fntRenderString(int, int, int, int, int, int, const char *s, u64) { snprintf(counter, sizeof(counter), "%s", s); }
 static theme_element_t *thmGetElemForItem(struct menu_list *, struct submenu_list *, theme_element_t *e) { return e; }
 static void *thmGetItemSource(struct menu_list *, struct submenu_list *) { return NULL; }
@@ -346,12 +348,12 @@ registry = (registry.replace('@CLASS@', catalog_class.replace('private:', 'publi
             .replace('@METHODS@', methods).replace('@SEMALOCK@', SEMA_LOCK))
 run('psbbn_registry', registry)
 
-# The built-in config, embedded asset and wiring.
-cfg = (ROOT / 'misc/theme_psbbn_flow.cfg').read_text(encoding='utf-8')
+# The unified built-in config, embedded asset and wiring.
+cfg = (ROOT / 'misc/conf_theme_OPL.cfg').read_text(encoding='utf-8')
 assert cfg.count('type=PSBBNFlow') == 3 and cfg.count('default=psbbn_bg') == 2
-assert not re.search(r'^(?:bg|text|ui|sel)_color=', cfg, re.M), 'the built-in keeps the picker palette'
+assert not re.search(r'^(?:(?:list|coverflow|psbbn|grid)\.)?(?:bg|text|ui|sel)_color=', cfg, re.M), 'the built-in keeps the picker palette'
 assets = (ROOT / 'tools/assets.py').read_text(encoding='utf-8')
-assert '"misc/theme_psbbn_flow.cfg", "theme_psbbn_flow_cfg"' in assets and re.search(r'\bpsbbn_bg\b', assets)
+assert '"misc/conf_theme_OPL.cfg", "conf_theme_OPL_cfg"' in assets and re.search(r'\bpsbbn_bg\b', assets)
 assert '{PSBBN_BACKGROUND, "psbbn_bg", &psbbn_bg_png}' in (ROOT / 'src/gfx/textures.cpp').read_text(encoding='utf-8')
 assert 'src/gfx/psbbnflow.cpp' in (ROOT / 'ps2.yaml').read_text(encoding='utf-8')
 assert '"PSBBNFlow"' in THEMES and 'initPsbbnFlow(themePath, themeConfig, theme, elem, name);' in THEMES

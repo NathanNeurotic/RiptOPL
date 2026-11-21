@@ -32,6 +32,7 @@ constexpr int SYS_DISC_NODISC_MS = 2000;
 #include "include/util.h"
 #include "include/pad.h"
 #include "include/system.h"
+#include "include/elfldr_args.h"
 #ifdef RETROACHIEVEMENTS
 #include "include/discsupport.h"
 #endif
@@ -1200,10 +1201,6 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
     char extraArgsBuf[256];    // mutable copy of the per-game extraArgs for tokenizing
     char *argv[32];            // compose beyond the kernel budget so overflow is detected, never silently truncated
     int argc = 0;
-    // 14, NOT sizeof(argv): the kernel args area holds at most 15 strings per ExecPS2 hop (ps2sdk
-    // exit.c SetArg, SETARG_MAX_ARGS 15 -- and ExecPS2 forwards the UNCLAMPED count, so overflowing
-    // makes the kernel read string bytes as argv pointers). Hop 1 prepends the elfldr child's load
-    // path, spending one slot, so the target argv must stay <= 14 entries.
     const int argvMax = sizeof(argv) / sizeof(argv[0]);
 
     // Target argv[0] = neutrino.elf's own path (NHDDL convention). sysLoadELFKeepIOP forwards
@@ -1274,8 +1271,11 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
            did its job) and then the screen stays black, because Neutrino reset away the stack the
            game path depends on. -qb keeps the inherited environment and skips that reset.
 
-           USB, iLink, UDPFS (both filesystem and block variants) and UDPBD: all launch through this
-           inherited environment. For UDPFS, an IOP reset destroys the resident ministack/ioman
+           USB, iLink, ATA/exFAT, UDPFS (both filesystem and block variants) and UDPBD launch
+           through this inherited environment. ATA/exFAT uses its live mount to map the image to
+           block extents before the IOP reset, so the emulated disc remains available to PS2LOGO.
+           ATA modes HDL and raw BD need Neutrino's load-environment drivers.
+           For UDPFS, an IOP reset destroys the resident ministack/ioman
            state and triggers an immediate secondary DISCOVERY from the same socket that collides
            with active server streams. UDPBD without -qb, on hardware (FatBaldDad, 09-25, PR #756):
            the handoff reached Neutrino, then the link dropped, a NEW client rediscovered the server,
@@ -1288,6 +1288,7 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
            Composed before the budget check so an overfull launch is refused rather than silently
            losing -qb and reproducing the black screen. */
         if ((!strcmp(deviceName, "usb") || !strcmp(deviceName, "ilink") ||
+             (!strcmp(deviceName, "ata") && fsOverride <= 1) ||
              !strcmp(deviceName, "udpfs") || !strcmp(deviceName, "udpfsbd") || !strcmp(deviceName, "udpbd")) &&
             argc < argvMax &&
             !neutrinoArgHasActiveFlag(gNeutrinoArgs, "-qb") && !neutrinoArgHasActiveFlag(extraArgs, "-qb"))
@@ -1410,22 +1411,12 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
     if (gLaunchDiag && !checkOnly)
         launchDiagMark(9); // argv composed -- the budget check below can still refuse (blink code 2)
 
-    // ExecPS2 argv BYTE budget (verified vs ps2sdk exit.c SetArg + the crt0 args struct): each hop
-    // carries its strings in ONE 256-byte pool, every NUL included. Hop 1 packs the child's load
-    // path PLUS this argv -- neutrinoPath is counted TWICE (loadpath and target argv[0]). SetArg's
-    // copy is UNbounded, so exceeding the pool corrupts rather than truncates. Refuse the whole
-    // launch before teardown when preflighting; never silently discard a requested option.
-    {
-        int pool = (int)strlen(neutrinoPath) + 1; // hop-1 child argv[0] = the load path
-        int i;
-        for (i = 0; i < argc; i++)
-            pool += (int)strlen(argv[i]) + 1;
-        if (argc > 14 || pool > 256) {
-            LOG("[NEUTRINO] argv exceeds launch budget: %d entries (14 max), %d bytes (256 max)\n", argc, pool);
-            if (!checkOnly)
-                launchDiagRefuse(LAUNCHDIAG_REFUSE_CORE_ARGV); // blink code 2 if the preflight was bypassed
-            return -1;
-        }
+    // Use the child loader's exact budget before confirming and tearing down the menu.
+    if (!elfldrArgsFit(neutrinoPath, argc, argv, NULL, NULL)) {
+        LOG("[NEUTRINO] argv exceeds launch budget\n");
+        if (!checkOnly)
+            launchDiagRefuse(LAUNCHDIAG_REFUSE_CORE_ARGV);
+        return -1;
     }
 
     if (checkOnly)

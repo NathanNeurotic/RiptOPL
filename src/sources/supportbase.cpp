@@ -1421,7 +1421,7 @@ config_set_t *sbPopulateConfigIn(base_game_info_t *game, const char *prefix, con
     // verified in the background, which keeps the CFG Titles all-rows pass from opening disc images.
     if (isPs1) {
         char idKey[VCD_ID_MAX];
-        if (ps1RowIdCached(game->name, isVcd ? PS1_ROW_VCD : PS1_ROW_CUE, idKey, sizeof(idKey)) && strcmp(idKey, cfgKey) != 0) {
+        if (ps1RowIdCached(game->name, isVcd ? PS1_ROW_VCD : PS1_ROW_CUE, idKey, sizeof(idKey), prefix) && strcmp(idKey, cfgKey) != 0) {
             snprintf(path, sizeof(path), "%sCFG%s%s.cfg", prefix, sep, idKey);
             config_set_t *byId = configAlloc(0, NULL, path);
             if (byId != NULL) {

@@ -22,7 +22,7 @@ def embedded(config):
 
 class DefinitionTests(unittest.TestCase):
     def test_each_device_keeps_its_drivers_and_the_backbone(self):
-        _, full = embedded(editions.definition("korium"))
+        _, full = embedded(editions.definition("riptopl"))
         for edition in editions.LITES:
             ra = editions.LITES[edition]["ra"]
             for device, options in lite.DEVICES.items():
@@ -31,7 +31,6 @@ class DefinitionTests(unittest.TestCase):
                     self.assertIn("RIPTOPLITE", main["defines"])
                     self.assertIn(options["define"], main["defines"])
                     self.assertEqual(1, sum(d.startswith("RIPTOPLITE_") for d in main["defines"]))
-                    self.assertIn("BUILTIN_KORIUM", main["defines"])  # strictly Korium (user, 2026-11-02)
                     self.assertEqual(ra, "RETROACHIEVEMENTS" in main["defines"])
                     # MMCE and the network stack in every build (user, 2026-11-02).
                     self.assertLessEqual(lite.ALWAYS, names)
@@ -49,7 +48,7 @@ class DefinitionTests(unittest.TestCase):
         main, _ = embedded(config)
         stub = next(s for s in main["sources"] if s.endswith("lite_irx_stubs.c"))
         text = (ROOT / stub).read_text(encoding="utf-8")
-        full = embedded(editions.definition("korium"))[0]["embed_irx"]
+        full = embedded(editions.definition("riptopl"))[0]["embed_irx"]
         for entry in lite.dropped(full, "mmce"):
             symbol = lite.split(entry)[1]
             self.assertIn(f"unsigned char {symbol}_irx[16]", text)
@@ -58,7 +57,7 @@ class DefinitionTests(unittest.TestCase):
         self.assertNotIn("mmce_cdvdman", text)
 
     def test_unknown_module_names_fail_loudly(self):
-        config = editions.definition("korium")
+        config = editions.definition("riptopl")
         main, _ = embedded(config)
         main["embed_irx"] = [e for e in main["embed_irx"] if not e.startswith("hdd_cdvdman")]
         with self.assertRaises(ValueError):
@@ -68,7 +67,7 @@ class DefinitionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             editions.definition("lite", configuration="debug", device="usb")
         with self.assertRaises(ValueError):
-            editions.definition("korium", device="usb")
+            editions.definition("riptopl", device="usb")
         self.assertNotIn("lite", editions.EDITIONS)  # no install kit, bundles or configurations
 
     def test_loader_refuses_a_zero_sized_module(self):
@@ -95,9 +94,8 @@ class ChannelTests(unittest.TestCase):
 
     def make_root(self, root, sha, tamper=None):
         kit = {**self.SUITE, "version": self.VERSION}
-        write_manifest(root / "release-korium", **kit)
-        (root / "release-korium" / "LICENSE-USMB2.txt").write_text("lgpl", encoding="utf-8")
         write_manifest(root / "release-ra", **kit)
+        (root / "release-ra" / "LICENSE-USMB2.txt").write_text("lgpl", encoding="utf-8")
         with zipfile.ZipFile(root / "release-ra" / "RIPTOPL-RetroAchievements.zip", "w") as z:
             z.writestr("BUILD-MANIFEST.json", json.dumps(kit))
             for name in ("neutrino/neutrino.elf", "neutrino/modules/raagent.irx", "neutrino/ORBIT-RA.txt",
@@ -111,7 +109,7 @@ class ChannelTests(unittest.TestCase):
                 stage = root / f"{edition}-{device}"
                 manifest = {"repository": "NathanNeurotic/RiptOPL", "source_commit": sha, "dirty": False,
                             "edition": edition, "device": device, "compiler": "gcc", "configuration": "standard",
-                            "theme": "korium", "ra": options["ra"], **self.SUITE, "elf": name,
+                            "theme": options["theme"], "ra": options["ra"], **self.SUITE, "elf": name,
                             "elf_sha256": hashlib.sha256(elf).hexdigest(),
                             # Each build names its edition and device in LOCALVERSION (build_edition.py).
                             "version": self.VERSION.replace("Korium-GCC", f"{options['title']}-{lite.DEVICES[device]['title']}-GCC")}
