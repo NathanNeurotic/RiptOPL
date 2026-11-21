@@ -186,6 +186,7 @@ assert mini.index('CONFIG_OPL_FONT_SIZE, &gFontSize') < mini.index('gFontSize = 
 assert 'int gFontSize = FONT_SIZE_DEFAULT;' in opl, 'the autolaunch path never sees a zero (Small) default'
 assert 'spacingH += fntScaleFontSize(FNTSYS_DEFAULT_SIZE) - FNTSYS_DEFAULT_SIZE;' in function(dia, 'void diaRenderUI(')
 assert 'spacingH = diaSettingsSpacingFloor(spacingH);' in function(dia, 'void diaRenderUI('), 'Settings spacing floor must be applied in the renderer'
+assert 'spacingH = diaDialogSpacingFloor(spacingH);' in function(dia, 'void diaRenderUI('), 'ordinary dialogs also need a font-safe floor'
 updater = function(guisettings, 'static int guiSettingsDisplayUpdater(')
 assert 'UICFG_FONT_SIZE' in updater and updater.count('guiUpdateScreenScale();') >= 3
 for page in ('static int guiSettingsShowInterface(',):
@@ -202,11 +203,12 @@ print('PASS: both config load paths, save/defaults, live preview and LTR/RTL wir
 
 dialog_types = re.search(r'^typedef enum\s*\{.*?\} UIItemType;', dia_header, re.M | re.S).group()
 dialog_types += re.search(r'^struct UIItem\s*\{.*?^\};', dia_header, re.M | re.S).group()
-dialog_defines = '\n'.join(re.findall(r'^#define UI_SETTINGS_(?:SPACING_H|MIN_GAP)\s+\d+', dia, re.M)) + '\n' + '\n'.join(
+dialog_defines = re.search(r'^#define UI_SPACING_H\s+\d+', (ROOT / 'include/diaint.h').read_text(), re.M).group() + '\n'
+dialog_defines += '\n'.join(re.findall(r'^#define UI_SETTINGS_(?:SPACING_H|MIN_GAP)\s+\d+', dia, re.M)) + '\n' + '\n'.join(
     '#define %s %s' % m for m in re.findall(r'^constexpr int (UI_SPACING_V|UI_SPACER_WIDTH|UI_SPACER_MINIMAL) = (\d+);', dia, re.M))
 dialog_functions = '\n'.join(function(dia, signature) for signature in (
     'static int diaShouldBreakLine(', 'static int diaShouldBreakLineAfter(', 'static int diaSpacerWidth(',
-    'static int diaItemHeight(', 'static void diaRowState(', 'static int diaRowCollapses(', 'static int diaLayoutBottom(', 'static int diaSettingsSpacingFloor(', 'static int diaSettingsFitGap(',
+    'static int diaItemHeight(', 'static void diaRowState(', 'static int diaRowCollapses(', 'static int diaLayoutBottom(', 'static int diaDialogSpacingFloor(', 'static int diaSettingsSpacingFloor(', 'static int diaSettingsFitGap(',
 ))
 run('font_dialog', common + dialog_types + '\n' + dialog_defines + r'''
 static int diaScreenHeight = 480;
@@ -221,6 +223,10 @@ int main(void)
         gFontSize = fntFontSizePercentFromIndex(index);
         int size = fntScaleFontSize(FNTSYS_DEFAULT_SIZE);
         int spacing = diaSettingsSpacingFloor(UI_SETTINGS_SPACING_H + size - FNTSYS_DEFAULT_SIZE);
+        int ordinarySpacing = diaDialogSpacingFloor(UI_SPACING_H + size - FNTSYS_DEFAULT_SIZE);
+        assert(ordinarySpacing >= 1);
+        assert(2 * ordinarySpacing >= size); /* Ordinary dialogs advance by spacing + gap. */
+        if (size == FNTSYS_DEFAULT_SIZE) assert(ordinarySpacing == UI_SPACING_H);
         for (int rows = 5; rows <= 30; rows += 5) {
             int n = 0;
             memset(page, 0, sizeof(page));
