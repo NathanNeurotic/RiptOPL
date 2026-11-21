@@ -14,7 +14,8 @@ IRX_ID(MODNAME, 1, 2);
 
 static int isHDPro;
 
-static IDENTIFY_DEVICE_DATA deviceIdentifyData;
+// ATAD fills the packed IDENTIFY data through a u16 pointer during PIO.
+static IDENTIFY_DEVICE_DATA deviceIdentifyData __attribute__((aligned(2)));
 
 static int xhddInit(iop_device_t *device)
 {
