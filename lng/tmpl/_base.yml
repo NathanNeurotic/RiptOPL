@@ -1189,7 +1189,7 @@ gui_strings:
 - label: GAME_VIEW_MODE
   string: PS2/PS1 Game Display
 - label: HINT_GAME_VIEW_MODE
-  string: "Both mode uses separate PS2/PS1 pages toggled with L3. Mixed combines them and L3 cycles Mixed, PS2, PS1. PS2 or PS1 shows only that type and fully disables L3. APPS and Favorites use their own display rules."
+  string: "Both mode uses separate PS2/PS1 pages toggled with L3. Mixed combines them and L3 cycles Mixed, PS2, PS1. PS2 or PS1 fixes the filter. Holding L3 still changes the style if the theme offers multiple layouts. Apps and Favorites have their own filters."
 - label: VIEW_MIXED
   string: Showing PS2 + PS1 games
 - label: VIEW_PS1_ELF

@@ -8,8 +8,8 @@
   Ordinary game devices follow PS2/PS1 Game Display:
     Both  - separate PS2 and PS1 pages, toggled by L3.
     Mixed - one combined page; L3 cycles Mixed -> PS2 -> PS1.
-    PS2   - PS2 only; L3 is completely inert.
-    PS1   - PS1 only; L3 is completely inert.
+    PS2   - PS2 only; tapping L3 leaves the filter unchanged.
+    PS1   - PS1 only; tapping L3 leaves the filter unchanged.
 
   Favorites and APPS are deliberately independent. Favorites keeps its five-stop ring, cycling
   PS2 -> PS1 -> ELF -> All -> Recent and opening on All for a fresh config. Recent lists the last
@@ -45,8 +45,8 @@ enum LIB_VIEW {
 // currently enabled L3 ring (libViewRingSize/libViewRingUsable describe that).
 int libViewSupported(int mode, int view);
 
-// Number of live L3 stops under the current setting. A value of one means L3 has no hint, sound,
-// notification, pause, or state change.
+// Number of available filters under the current setting. A value of one means an L3 tap has no effect.
+// A hold can still change the theme layout.
 int libViewRingSize(int mode);
 
 // Page-level active view.
