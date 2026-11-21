@@ -1,144 +1,119 @@
 # RiptOPL releases on ps2build
 
-This repository uses **one SDK: ps2build**. Its three release editions are:
+This repository uses one pinned **ps2build SDK** and three release channels:
 
-| Edition | Channel | Built-in theme | Runtime |
+| Edition | Channel | Release compiler | Built-in theme |
 | --- | --- | --- | --- |
-| Korium | `rolling-korium` | Korium Komblete | Standard |
-| RetroAchievements | `rolling-ra` | Korium Komblete | RA enabled |
-| IncebtIon | `rolling-incebtion` | IncebtIon | Standard |
+| RiptOPL (GitHub Latest) | `rolling` | **LLVM/Clang** | Unified `<OPL>` multi-view theme |
+| RetroAchievements | `rolling-ra` | **GCC** | The same unified theme |
+| RiptOPLite and RiptOPLite RA | `rolling-lite` | **GCC** | The same unified theme |
 
-The RetroAchievements channel also carries the same kit built with the IncebtIon theme
-(edition `ra_incebtion`), as the legacy edition's RA release carries one kit per theme.
+Korium and IncebtIon are retired as **separate editions**. The historical
+`rolling-llvm` release is superseded by LLVM becoming the standard RiptOPL
+compiler. Existing release history, third-party licenses and human credits
+remain intact. RetroAchievements and every Lite variant stay on GCC until
+LLVM performance and hardware behavior have been accepted.
 
-A fourth channel, `rolling-lite` (RiptOPLite), carries one Korium loader per game device:
-`RIPTOPLITE-<DEVICE>.ELF`, and `RIPTOPLITE-RA-<DEVICE>.zip` for RetroAchievements (a ZIP because RA
-needs ORBIT's Neutrino runtime beside the loader). It has no install kit. See [RiptOPLite](docs/RIPTOPLITE.md).
+The full RiptOPL and RetroAchievements editions retain their install kits,
+language packs, release bundles, verified Neutrino companions and separate
+compiler provenance. RiptOPLite carries device-specific standalone ELFs;
+RiptOPLite RA adds its required pinned RA companion runtime in each device ZIP.
+The supported Lite game transports are USB, MX4SIO, i.LINK, HDD, SMB,
+UDPBD, UDPFS and MMCE (eight standard and eight RA builds).
 
-GCC is the compiler for the four traditional rolling releases. GCC and LLVM are both validated
-by `ps2build.yml`; they are compiler choices within the same ps2build SDK, not separate SDK flavours.
-
-### RiptOPLLVM — independent LLVM release
-
-A fifth rolling release named **[RiptOPLLVM](https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm)**
-(tag `rolling-llvm`) builds and publishes with the **LLVM/Clang** PS2BUILD toolchain and matching
-`packages-llvm` dependencies, using the *same* `rebuild/main` commit and SDK pin as the GCC pipeline.
-It includes Korium and Korium RetroAchievements full kits, standalone loader ELFs and PSUs,
-all Korium configuration bundles (VARIANTS, DEBUG and BUGREPORT), the RA `pademu0` variant,
-and **all eight RiptOPLite devices in both standard and RA configurations**. IncebtIon is not
-included. Its public files and checksums remain under the separate `rolling-llvm` tag;
-no normal GCC release asset or tag is overwritten. The release is marked prerelease, never Latest.
-
-RiptOPLLVM retains the normal in-kit installation names. Its download ZIPs are versioned,
-and the combined release also ships a single `BUILD-MANIFEST.json` for all LLVM components,
-`SHA256SUMS.txt`, separate Korium/RA language packs and a source snapshot. Each RA Lite ZIP
-contains its required verified ORBIT RA runtime. Same-source and same-SDK validation runs before
-publication, and every LLVM build manifest must prove `compiler: llvm`. Both workflows run on
-integration pushes and can be manually verified using `workflow_dispatch`; publishing by manual
-dispatch requires `publish=true`. Pull requests build and verify without publishing. An older
-job never deliberately replaces the newer integration head. Hardware equivalence with GCC
-must still be established separately.
-
-[Inspect the LLVM workflow](https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-llvm.yml).
-The old ps2dev/official pinned and rolling container releases are legacy-edition
-history, not build targets here. No Makefile is used by the release workflow.
+All editions use the same theme configuration, code and embedded theme assets,
+regardless of compiler. GCC and LLVM validation is not a substitute for
+testing the actual devices, launch cores, VMC and IGR paths on a PS2.
 
 ## Build and package
 
-Install/update ps2build, then run from the repository root:
+Install/update the pinned SDK and assets, then build from the repository root:
 
 ```sh
-ps2build update
-sh tools/install_ps2build.sh
+SDK="${PS2DEV_INSTALL_DIR:-$HOME/.local/share/ps2build}"
+sh tools/ps2build_sdk.sh --llvm "$SDK"
+PS2BUILD_TOOLCHAIN=all sh tools/install_ps2build.sh
 python tools/assets.py fetch
 python tools/assets.py lang
-python tools/build_edition.py korium
+python tools/build_edition.py riptopl
 python tools/build_edition.py ra
-python tools/build_edition.py incebtion
-python tools/build_edition.py ra_incebtion
+python tools/build_edition.py lite --device usb
+python tools/build_edition.py lite_ra --device usb
 ```
 
-Local edition builds must run sequentially: generated assets and the version
-header are shared. Object files are isolated under `build/editions/<edition>-gcc`.
-Each build regenerates its complete asset set, removing any prior edition's RA
-mark or theme blobs. The LLVM channel builds with `--toolchain llvm` using
-`tools/ps2build_sdk.sh --llvm`; its kits are packaged with `--compiler llvm`.
-The standard release pipeline retains the GCC default.
+By default, `riptopl` selects LLVM and `ra`, `lite` and `lite_ra`
+select GCC. Specify `--configuration` for optional full-edition builds,
+or `--toolchain` for an explicitly experimental compiler candidate;
+the latter cannot take over the production updater channel.
 
-Korium assets/configs retain their exact upstream revision, original credits,
-license and per-file hashes under `third_party/korium`. The RA-only socket glue
-is a small pinned implementation from ps2sdk, not another SDK installation or
-toolchain. sdk-core v2026.10.12.1's libcglue archive lacks the five POSIX entry
-points used by RA. The compatibility archive preserves libc's descriptor table.
-Reassess it when the rolling ps2build SDK supplies those functions.
+Build editions sequentially when sharing one checkout: assets and the version
+header are regenerated for every build, while compiler-specific object trees
+remain isolated. The pinned SDK and selected compiler are recorded in the
+build manifest. The RA-only socket compatibility code preserves libc's
+descriptor table, without installing a second SDK.
 
-Each edition stages its ELF, resolved definition and build manifest under
-`dist/editions/<edition>`. The manifest records source SHA, clean/dirty state,
+Standard full editions stage their ELF, resolved definition and build manifest
+under `dist/editions/<edition>`. Lite builds instead stage under
+`dist/lite/<device>-gcc` and Lite RA under `dist/lite/ra-<device>-gcc`.
+The manifest records source SHA, clean/dirty state,
 edition, ps2build version, installed component versions, compiler choice,
 definition/ELF hashes and CI run URL. Dirty builds are useful development probes
 but are rejected by release packaging.
 
-Download the official Neutrino `latest` release's `neutrino_*.7z` archive and run:
+For a standard full RiptOPL kit, download the official Neutrino
+`latest` release's `neutrino_*.7z` archive and package:
 
 ```sh
-python tools/package_edition.py korium --neutrino-archive path/to/neutrino_BUILD.7z
+python tools/package_edition.py riptopl --neutrino-archive path/to/neutrino_BUILD.7z --compiler llvm
+python tools/package_edition.py ra --compiler gcc
 ```
 
-Repeat for `ra`, `incebtion` and `ra_incebtion`. Python, PyYAML, Git and 7z are required.
-Use a fresh output directory/workspace for a new package attempt; packaging
-refuses to mix assets with an earlier attempt. The companion archive filename
-and SHA-256 are recorded, along with the complete installed file inventory.
+The RA packager uses its pinned and verified RA runtime instead of the
+upstream archive. Python, PyYAML, Git and 7z are required where applicable.
+Package from a fresh staging directory, not a mixture of source revisions
+or previous artifacts.
 
 ## Download contract
 
-Each channel carries exactly these assets (the app/ELF names differ for RA):
+The two full channels each carry:
 
-- `RIPTOPL-<edition>.zip`: full install kit, including APPS, matching ART, app
-  PSU, POPS/BDMA variants, licensed Ember, official Neutrino plus the UDPFS IMG
-  config, external-tool shortcuts, license, credits, the usmb2 licence and manifest.
-- `RIPTOPL.ELF` / `RIPTOPL-RA.ELF`: the exact packed loader used in that kit.
-- `APP_RIPTOPL.psu` / `APP_RIPTOPL-RA.psu`: only the app's direct files, with
-  deterministic SAS timestamps and metadata matching the packaged ELF.
-- `RIPTOPL-src.zip`: Git's source archive of the exact built commit.
-- `RIPTOPL-LANGS.zip`: every translation and the font its script needs, one folder per language.
-- `LICENSE-USMB2.txt`: the MIT licence of [usmb2](https://github.com/sahlberg/usmb2),
-  by [Ronnie Sahlberg](https://github.com/sahlberg), which every loader embeds for SMB2 browsing.
-  The kit and the VARIANTS, DEBUG and RA-VARIANTS zips carry the same file; the bug-report zip
-  carries the same text under `licenses/usmb2/`.
-- `BUILD-MANIFEST.json` and `SHA256SUMS.txt`: build identity and asset checksums.
+- A versioned install kit: `RIPTOPL.zip` for RiptOPL,
+  `RIPTOPL-RetroAchievements.zip` for RA before publication renaming.
+- The matching packed loader: `RIPTOPL.ELF` or `RIPTOPL-RA.ELF`,
+  and `APP_RIPTOPL.psu` or `APP_RIPTOPL-RA.psu`.
+- Exact-source snapshot, translation archive, build manifest, SHA-256
+  checksum list, upstream credits and applicable licenses, including usmb2.
+- Full installation resources, including the correct PS1/POPS/BDMA and
+  Neutrino companions. RA ships the pinned RA runtime and its required files.
 
-The Korium and IncebtIon channels also carry `RIPTOPL-VARIANTS.zip` (pademu0, ds5, extras, extras_ds5)
-and `RIPTOPL-DEBUG.zip` (every debug and diagnostic configuration), each built with that channel's
-theme: one folder per configuration with its RIPTOPL.ELF and manifest, each checked against the
-channel kit's commit and SDK components. They also carry `RIPTOPL-BUGREPORT.zip`, the channel's
-diag build before compression, with a README on what to send (see
-[Launch diagnostics](docs/LAUNCH-DIAGNOSTICS.md#bug-report-build)).
-The RetroAchievements channel also carries `RIPTOPL-RA-VARIANTS.zip` (pademu0, plus the standard and
-pademu0 RA loaders unpacked in `standard-unpacked/` and `pademu0-unpacked/`) and the
-IncebtIon-theme kit as `RIPTOPL-RetroAchievements-IncebtIon.zip`, `RIPTOPL-RA-IncebtIon.ELF`,
-`APP_RIPTOPL-RA-IncebtIon.psu` and `RIPTOPL-RA-VARIANTS-IncebtIon.zip`; inside that kit the app is
-still `APP_RIPTOPL-RA`.
-See [Build configurations](docs/BUILD-CONFIGURATIONS.md).
+`rolling` also publishes `RIPTOPL-VARIANTS.zip` (PADEMU0, DS5,
+extras and extras+DS5), `RIPTOPL-DEBUG.zip` (debug and diagnostic
+configurations), and `RIPTOPL-BUGREPORT.zip` (unpacked diag build).
+`rolling-ra` publishes `RIPTOPL-RA-VARIANTS.zip`, including the
+supported PADEMU0 and unpacked RA loaders.
 
-Standard kits reject RA resources. The RA kit adds the xeRAbora client shortcut
-and replaces upstream Neutrino with NULD's (formerly ORBIT) RA runtime (see
-[RetroAchievements](docs/RETROACHIEVEMENTS.md#neutrino-in-the-ra-edition)). No BIOS is
-redistributed.
+`rolling-lite` publishes eight `RIPTOPLITE-<DEVICE>.ELF` files,
+eight `RIPTOPLITE-RA-<DEVICE>.zip` files containing their pinned
+RA companions, and verified licenses, source/provenance, checksum and
+manifest assets. There is no Lite full-install kit. Published archive
+filenames carry version suffixes; the installed ELF and PSU filenames
+remain stable. See [RiptOPLite](docs/RIPTOPLITE.md) and
+[Build configurations](docs/BUILD-CONFIGURATIONS.md).
 
 ## Preview and publication
 
-`Rolling Release` builds and verifies all three install kits on pull requests,
+`Rolling Release` builds and verifies both full install kits and the Lite release on pull requests,
 integration pushes and manual dispatch. It uploads candidates as Actions
 artifacts without publishing; see [Test builds](docs/TEST-BUILDS.md) for
 downloading one.
 
 Publication requires a verified integration push or manual dispatch with `publish=true` from `rebuild/main` in
-`NathanNeurotic/RiptOPL`. All three builds must pass. The publisher verifies
+`NathanNeurotic/RiptOPL`. All required channel builds must pass. The publisher verifies
 source SHA, clean state, SDK consistency, exact file inventory, source ZIP
 commit, installed ELF/PSU bytes and all checksums before touching GitHub.
 An integration branch that advanced during the build must be rebuilt instead.
 GitHub-reported asset sizes/digests and final tag SHA are verified on publication.
-IncebtIon owns GitHub's Latest marker; Korium and RA have their own stable URLs.
+RiptOPL (`rolling`) owns GitHub's Latest marker; RetroAchievements and RiptOPLite have their own stable URLs.
 
 The three GitHub release updates are sequential, not an atomic transaction.
 A network/API failure can leave a partial publication and must be inspected

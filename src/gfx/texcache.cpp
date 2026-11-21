@@ -161,7 +161,7 @@ static int cacheRequestIsSIO2(item_list_t *list, const char *value)
             mode = src;
     }
 
-    if (mode == MMCE_MODE)
+    if (isMmceMode(mode))
         return 1;
 
     return bdmModeIsSIO2(mode);

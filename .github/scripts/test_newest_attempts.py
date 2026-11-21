@@ -31,7 +31,7 @@ class NewestAttemptsTests(unittest.TestCase):
         }), {"variant-korium-extras": "newest", "release-korium": "kept", "release-log-korium-standard": "log"})
 
     def test_release_workflows_name_builds_by_attempt_and_verify_the_newest(self):
-        for name in ("rolling-llvm.yml", "rolling-release.yml"):
+        for name in ("rolling-release.yml",):
             text = (WORKFLOWS / name).read_text()
             for artifact in ("name: variant-${{ matrix.target.edition }}-${{ matrix.target.configuration }}",
                              "name: ${{ matrix.target.edition }}-${{ matrix.target.device }}",

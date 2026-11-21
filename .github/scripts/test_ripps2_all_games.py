@@ -33,7 +33,7 @@ program = r'''
 #include <string.h>
 #define FAV_TEXT_MAX 256
 enum { BDM_MODE = 0, BDM_MODE1, BDM_MODE2, BDM_MODE3, BDM_MODE4, BDM_MODE5, BDM_MODE6, BDM_MODE7,
-       ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MODE_COUNT };
+       ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MMCE_MODE1, MODE_COUNT };
 #define BDM_MODE_LAST BDM_MODE7
 enum { LIB_VIEW_ISO = 0, LIB_VIEW_PS1, LIB_VIEW_ELF, LIB_VIEW_ALL };
 enum { FAV_KIND_ISO = 0, FAV_KIND_VCD, FAV_KIND_CUE, FAV_KIND_ELF };
@@ -77,6 +77,19 @@ static opl_io_module_t mods[MODE_COUNT];
 static int gone[MODE_COUNT]; /* the page is hidden: device removed or its start mode switched Off */
 static opl_io_module_t *oplGetModule(int m) { mods[m].support = modules[m]; mods[m].menuItem.visible = !gone[m]; return &mods[m]; }
 static int folderModeSupported(int mode) { return mode != HTTP_MODE; }
+static int mmcePs1Prepares;
+static int mmceEnsurePs1List(item_list_t *list)
+{
+    assert(list->mode == MMCE_MODE || list->mode == MMCE_MODE1);
+    mmcePs1Prepares++;
+    if (list->ps1Count == 0) {
+        snprintf(list->ps1[0].name, sizeof(list->ps1[0].name), "MMCE VCD");
+        list->ps1[0].format = 0;
+        list->ps1[0].cue = 0;
+        list->ps1Count = 1;
+    }
+    return 1;
+}
 static int cueIsCueEntry(const base_game_info_t *g) { return g->cue; }
 static const char *labels[] = {"USB Games", "HDD Games", "Apps", "SMB Games"};
 static const char *_l(int id) { return labels[id]; }
@@ -108,9 +121,18 @@ public:
     int count_ = 0;
 };
 static FavSupport store;
+static int legacyResolvedMode = MMCE_MODE1;
+static item_list_t *favResolve(int mode, int id, const char *text, int kind, int *outMode, int *outId, int markStars)
+{
+    (void)mode; (void)id; (void)text; (void)kind;
+    assert(markStars == 0);
+    *outMode = legacyResolvedMode; *outId = id;
+    static item_list_t resolved;
+    return legacyResolvedMode == MMCE_MODE1 ? &resolved : NULL;
+}
 ''' + function(fav, 'static int favKindView(') + function(fav, 'static int favKindIsNameAddressed(') + \
     function(fav, 'static int favIdsMatchForMode(') + function(fav, 'static int favModesMatch(') + \
-    function(fav, 'const char *FavSupport::itemDisplay(') + block + r'''
+    function(fav, 'static int favRecordMatchesResolved(') + function(fav, 'const char *FavSupport::itemDisplay(') + block + r'''
 static item_list_t usb, hdd, apps, smb, mmce;
 static void game(item_list_t *l, int ps1, const char *name, int format, int cue)
 {
@@ -209,6 +231,18 @@ int main(void)
     gone[BDM_MODE] = 0;
     usb.enabled = hdd.enabled = smb.enabled = 0;
     assert(store.gatherAllGames(LIB_VIEW_ALL, NULL, 0) == 0 && store.array_ == NULL);
+    // A slot-1 card whose menu is ISO-view only needs a PS1 backing scan
+    // before All Games gathers the PS1 shelf, without switching its page.
+    static item_list_t mmce1;
+    setup(&mmce1, MMCE_MODE1, 0);
+    mmce1.vcd = 1;
+    mmce1.viewOverride = ITEM_VIEW_FORCE_ISO;
+    assert(mmce1.ps1Count == 0);
+    assert(store.gatherAllGames(LIB_VIEW_PS1, NULL, 0) == 1);
+    assert(mmcePs1Prepares == 2 && mmce1.ps1Count == 1);
+    assert(mmce1.viewOverride == ITEM_VIEW_FORCE_ISO);
+    assert(find("MMCE VCD", FAV_KIND_VCD) >= 0);
+    freeArray();
     return 0;
 }
 '''
@@ -217,7 +251,7 @@ themeelems = (root / 'src/gfx/themeelems.cpp').read_text()
 tabs = r'''
 #include <assert.h>
 #include <stddef.h>
-enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE };
+enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MMCE_MODE1 };
 #define BDM_MODE_LAST BDM_MODE7
 struct item_list_t { int mode, enabled; };
 struct menu_item_t { int visible; void *userdata; };
@@ -266,7 +300,7 @@ assert ('if (selected_item != NULL && !menuItemShown(selected_item->item) && (gA
 rehome = r"""
 #include <assert.h>
 #include <stddef.h>
-enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE };
+enum { BDM_MODE = 0, BDM_MODE7 = 7, ETH_MODE, HDD_MODE, APP_MODE, MMCE_MODE, FAV_MODE, UDPFS_MODE, HTTP_MODE, MMCE_MODE1 };
 #define BDM_MODE_LAST BDM_MODE7
 struct item_list_t { int mode, enabled; };
 struct menu_item_t { int visible; void *userdata; };

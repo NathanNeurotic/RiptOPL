@@ -381,7 +381,9 @@ static void cleanupHddForLaunch(void)
 // exactly what sent POPSTARTER down its HDD "__common" route on every non-HDD VCD launch.
 // The ExecPS2 syscall marshals the strings, so wiping user memory is safe.
 //
-// An optional trailing "-reset-iop" (or "-la=AR" wLaunchELF flag) requests a clean SifIopReset()
+// Parent-only options have a final "-rlopt=N" marker (N = 0, 1, or 2), which
+// prevents a target's own trailing "-reset-iop" or "-fallback=..." being consumed.
+// An optional parent "-reset-iop" (or "-la=AR" wLaunchELF flag) requests a clean SifIopReset()
 // after the target ELF has been loaded into user memory, matching wLaunchELF_R3Z parity. In "-la=",
 // H adds the HDD cleanup and M loads rom0:SIO2MAN/MCMAN/MCSERV after the reset.
 int main(int argc, char *argv[])
@@ -392,25 +394,47 @@ int main(int argc, char *argv[])
     int reset_iop = 0;
     int cleanup_hdd = 0;
     int rom0_mc = 0;
+    const char *fallback = NULL;
+    int attempt;
 
     LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_UP); // stage 12: child is on the air
 
     if (argc < 2)
         return -EINVAL;
 
-    if (argc > 1) {
-        if (strcmp(argv[argc - 1], "-reset-iop") == 0) {
-            reset_iop = 1;
+    /* The parent marks the suffix even when it appends zero options.
+     * Do not guess from an unmarked target argument: games/apps may legally
+     * take literal "-reset-iop" and "-fallback=..." arguments. */
+    if (argc >= 3 && !strncmp(argv[argc - 1], "-rlopt=", 7) &&
+        argv[argc - 1][7] >= '0' && argv[argc - 1][7] <= '2' &&
+        argv[argc - 1][8] == '\0') {
+        int options = argv[argc - 1][7] - '0';
+        argc--; // remove the marker; target argv is still untouched
+        if (argc < options + 2)
+            return -EINVAL;
+        if (options && !strncmp(argv[argc - 1], "-fallback=", 10) && argv[argc - 1][10] != '\0') {
+            fallback = argv[argc - 1] + 10;
             argc--;
-        } else if (!strncmp(argv[argc - 1], "-la=", 4)) {
-            if (strchr(argv[argc - 1] + 4, 'R') != NULL)
-                reset_iop = 1;
-            if (strchr(argv[argc - 1] + 4, 'H') != NULL)
-                cleanup_hdd = 1;
-            if (strchr(argv[argc - 1] + 4, 'M') != NULL)
-                rom0_mc = 1;
-            argc--;
+            options--;
         }
+        if (options) {
+            if (strcmp(argv[argc - 1], "-reset-iop") == 0) {
+                reset_iop = 1;
+            } else if (!strncmp(argv[argc - 1], "-la=", 4)) {
+                if (strchr(argv[argc - 1] + 4, 'R') != NULL)
+                    reset_iop = 1;
+                if (strchr(argv[argc - 1] + 4, 'H') != NULL)
+                    cleanup_hdd = 1;
+                if (strchr(argv[argc - 1] + 4, 'M') != NULL)
+                    rom0_mc = 1;
+            } else {
+                return -EINVAL;
+            }
+            argc--;
+            options--;
+        }
+        if (options != 0)
+            return -EINVAL; // bad/mismatched marker: never consume target arguments
     }
 
     if (argc < 2)
@@ -437,37 +461,47 @@ int main(int argc, char *argv[])
        bdmevent.irx stays resident with bdm_RegisterCallback armed and fires on EVERY mount. The
        target, inheriting the live IOP, mounts the game device; the callback DMAs into a stale
        handler in memory the target now owns; the console lands in OSDSYS instead of the game. */
-    // Primary: the classic LOADFILE path (see header -- every ioman-visible device stays on it).
-    memset(&elfdata, 0, sizeof(elfdata));
-    SifLoadFileInit();
-    ret = SifLoadElf(argv[0], &elfdata);
-    if (ret != 0 || elfdata.epc == 0)
-        ret = SifLoadElfEncrypted(argv[0], &elfdata);
-    SifLoadFileExit();
-    if (ret == 0 && elfdata.epc != 0) {
-        if (cleanup_hdd)
-            cleanupHddForLaunch();
-        if (reset_iop)
-            resetIOP(rom0_mc);
-        SifExitRpc();
-        FlushCache(0);
-        FlushCache(2);
-        LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_LOADED); // stage 13: LOADFILE path loaded the target
-        return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc - 1, &argv[1]);
-    }
+    for (attempt = 0; attempt < 2 && (attempt == 0 || fallback != NULL); attempt++) {
+        const char *loadPath = attempt == 0 ? argv[0] : fallback;
+        if (attempt != 0) {
+            /* The fallback is also the child's real argv[0]. */
+            argv[1] = (char *)fallback;
+            wipeUserMem();
+            FlushCache(0);
+        }
 
-    // Rescue: fileXio (iomanX) for the devices LOADFILE cannot see (mmceN:, pfs, ...).
-    u32 gp = 0;
-    if (loadElfViaFileXio(argv[0], &entry, &gp) == 0) {
-        if (cleanup_hdd)
-            cleanupHddForLaunch();
-        if (reset_iop)
-            resetIOP(rom0_mc);
-        SifExitRpc();
-        FlushCache(0);
-        FlushCache(2);
-        LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_LOADED); // stage 13: fileXio rescue path loaded the target
-        return ExecPS2((void *)entry, (void *)gp, argc - 1, &argv[1]);
+        // Primary: the classic LOADFILE path (see header -- every ioman-visible device stays on it).
+        memset(&elfdata, 0, sizeof(elfdata));
+        SifLoadFileInit();
+        ret = SifLoadElf(loadPath, &elfdata);
+        if (ret != 0 || elfdata.epc == 0)
+            ret = SifLoadElfEncrypted(loadPath, &elfdata);
+        SifLoadFileExit();
+        if (ret == 0 && elfdata.epc != 0) {
+            if (cleanup_hdd)
+                cleanupHddForLaunch();
+            if (reset_iop)
+                resetIOP(rom0_mc);
+            SifExitRpc();
+            FlushCache(0);
+            FlushCache(2);
+            LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_LOADED); // stage 13: LOADFILE path loaded the target
+            return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc - 1, &argv[1]);
+        }
+
+        // Rescue: fileXio (iomanX) for the devices LOADFILE cannot see (mmceN:, pfs, ...).
+        u32 gp = 0;
+        if (loadElfViaFileXio(loadPath, &entry, &gp) == 0) {
+            if (cleanup_hdd)
+                cleanupHddForLaunch();
+            if (reset_iop)
+                resetIOP(rom0_mc);
+            SifExitRpc();
+            FlushCache(0);
+            FlushCache(2);
+            LAUNCHDIAG_CHILD_PAINT(LAUNCHDIAG_COLOR_CHILD_LOADED); // stage 13: fileXio rescue path loaded the target
+            return ExecPS2((void *)entry, (void *)gp, argc - 1, &argv[1]);
+        }
     }
 
     SifExitRpc();

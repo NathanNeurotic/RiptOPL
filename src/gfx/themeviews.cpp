@@ -445,8 +445,21 @@ static int thmSynthIsPresenter(const char *type)
 }
 
 // The first block of the template's chain (one family name, else the next) whose type is `type`.
-static int thmSynthFindTemplate(config_set_t *tmpl, const char *const *chain, int chainLen, const char *type, char *out, size_t outSize)
+// Checks view-prefixed blocks ("<viewPrefix>.<family><j>") first so a unified multi-view template
+// (conf_theme_OPL.cfg) supplies each view's presenter and list directly, falling back to unprefixed
+// base blocks for flat templates and List.
+static int thmSynthFindTemplate(config_set_t *tmpl, const char *viewPrefix, const char *const *chain, int chainLen, const char *type, char *out, size_t outSize)
 {
+    if (viewPrefix != NULL && viewPrefix[0] != '\0') {
+        for (int c = 0; c < chainLen && chain[c] != NULL; c++) {
+            for (int j = 0; j < THM_SYNTH_MAX_SLOTS; j++) {
+                snprintf(out, outSize, "%s.%s%d", viewPrefix, chain[c], j);
+                const char *t = thmSynthType(tmpl, out);
+                if (t != NULL && strcmp(t, type) == 0)
+                    return 1;
+            }
+        }
+    }
     for (int c = 0; c < chainLen && chain[c] != NULL; c++) {
         for (int j = 0; j < THM_SYNTH_MAX_SLOTS; j++) {
             snprintf(out, outSize, "%s%d", chain[c], j);
@@ -495,12 +508,12 @@ int thmViewSynthesize(config_set_t *themeConfig, config_set_t *tmpl, int view)
         return 0;
     const char *vn = viewNames[view];
     const char *presenter = synthPresenter[view];
-    if (!thmSynthFindTemplate(tmpl, synthFamilies[0].tmplChain, 1, presenter, tpl, sizeof(tpl)))
+    if (!thmSynthFindTemplate(tmpl, vn, synthFamilies[0].tmplChain, 1, presenter, tpl, sizeof(tpl)))
         return 0;
 
     for (int f = 0; f < familyCount; f++) {
         const struct thm_synth_family *fam = &synthFamilies[f];
-        int haveList = thmSynthFindTemplate(tmpl, fam->tmplChain, 3, "ItemsList", tplList, sizeof(tplList));
+        int haveList = thmSynthFindTemplate(tmpl, vn, fam->tmplChain, 3, "ItemsList", tplList, sizeof(tplList));
 
         for (int j = 0; j < THM_SYNTH_MAX_SLOTS; j++) {
             snprintf(src, sizeof(src), "%s%d", fam->name, j);
@@ -515,7 +528,7 @@ int thmViewSynthesize(config_set_t *themeConfig, config_set_t *tmpl, int view)
             if (!enabled) {
                 thmSynthSetKey(themeConfig, dst, "enabled", "0");
             } else if (thmSynthIsPresenter(type)) {
-                if (!hasPresenter[f] && thmSynthFindTemplate(tmpl, fam->tmplChain, 3, presenter, tpl, sizeof(tpl))) {
+                if (!hasPresenter[f] && thmSynthFindTemplate(tmpl, vn, fam->tmplChain, 3, presenter, tpl, sizeof(tpl))) {
                     thmSynthCopyBlock(themeConfig, tmpl, tpl, dst);
                     hasPresenter[f] = 1;
                     if (f == 0)
@@ -553,7 +566,7 @@ int thmViewSynthesize(config_set_t *themeConfig, config_set_t *tmpl, int view)
         }
         if (presenterSlot >= THM_SYNTH_MAX_SLOTS)
             return 0;
-        thmSynthFindTemplate(tmpl, synthFamilies[0].tmplChain, 1, presenter, tpl, sizeof(tpl));
+        thmSynthFindTemplate(tmpl, vn, synthFamilies[0].tmplChain, 1, presenter, tpl, sizeof(tpl));
         snprintf(dst, sizeof(dst), "%s.main%d", vn, presenterSlot);
         thmSynthCopyBlock(themeConfig, tmpl, tpl, dst);
         hasPresenter[0] = 1;
@@ -569,7 +582,7 @@ int thmViewSynthesize(config_set_t *themeConfig, config_set_t *tmpl, int view)
         snprintf(dst, sizeof(dst), "%s.%s%d", vn, fam->name, presenterSlot);
         if (thmViewBlockPresent(themeConfig, src) || thmViewBlockPresent(themeConfig, dst))
             continue;
-        if (thmSynthFindTemplate(tmpl, fam->tmplChain, 1, presenter, tpl, sizeof(tpl)))
+        if (thmSynthFindTemplate(tmpl, vn, fam->tmplChain, 1, presenter, tpl, sizeof(tpl)))
             thmSynthCopyBlock(themeConfig, tmpl, tpl, dst);
     }
     return 1;

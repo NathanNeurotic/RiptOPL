@@ -162,6 +162,7 @@ PNG_ASSETS = load0 load1 load2 load3 load4 load5 load6 load7 usb usb_bd ilk_bd \
 	Scan_480p1 Scan_480p2 Scan_480p3 Scan_480p4 Scan_480p5 Scan_576i Scan_576p Scan_720p \
 	Scan_1080i Scan_1080i2 Scan_1080p Vmode_multi Vmode_ntsc Vmode_pal logo \
 	logo0 logo1 logo2 logo3 case\
+	Players_1 Players_2 Players_3 Players_4 bezel_top bezel_bottom psbbn_bg techwritescode grid_devices \
 	Index_0 Index_1 Index_2 Index_3 Index_4 Index2_0 Index2_1 Index3_0 Index3_1 Index3_2 Index4_0 Index4_1 Index4_2 Index4_3 fav fav_mark R3 L3 L1 R1 PS1 PS2 case_overlay
 	# unused icons - up down l2 r2
 
@@ -173,7 +174,7 @@ ifeq ($(RETROACHIEVEMENTS),1)
 PNG_ASSETS += ra_mark
 endif
 
-GFX_OBJS = $(PNG_ASSETS:%=%_png.o) poeveticanew.o
+GFX_OBJS = $(PNG_ASSETS:%=%_png.o) poeveticanew.o ripps2roboto.o
 
 # NOTE: audio/bgm.ogg is intentionally NOT compiled into the ELF (saves ~324 KB).
 # It is kept in the repo only as a reference/default track. BGM is loaded at
@@ -186,7 +187,7 @@ AUDIO_OBJS =	boot.o cancel.o confirm.o cursor.o message.o transition.o bd_connec
 # icon_sys.o + save_icn.o are the memory-card browser save icon for the settings folder.
 # icon.sys names list.icn, copy.icn and del.icn; all three are the same artwork, so ONE blob is
 # embedded and util.c writes it out under all three names (see saveIconName in src/util.c).
-MISC_OBJS =	icon_sys.o save_icn.o icon_sys_A.o icon_sys_J.o icon_sys_C.o conf_theme_OPL.o theme_coverflow.o
+MISC_OBJS =	icon_sys.o save_icn.o icon_sys_A.o icon_sys_J.o icon_sys_C.o conf_theme_OPL.o
 
 TRANSLATIONS = Albanian Arabic Bulgarian Cebuano Croatian Czech Danish Dutch Filipino French \
 	Galician German Greek Hungarian Indonesian Italian Japanese Korean Laotian Persian Polish Portuguese \
@@ -1130,6 +1131,9 @@ $(EE_ASM_DIR)mcserv.c: $(PS2SDK)/iop/irx/mcserv.irx | $(EE_ASM_DIR)
 $(EE_ASM_DIR)poeveticanew.c: third_party/fonts/PoeVeticaNew.ttf | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)_raw
 
+$(EE_ASM_DIR)ripps2roboto.c: third_party/fonts/ripps2_roboto.ttf | $(EE_ASM_DIR)
+	$(BIN2C) $< $@ ripps2roboto_raw
+
 $(EE_ASM_DIR)icon_sys.c: misc/icon.sys | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)
 
@@ -1147,9 +1151,6 @@ $(EE_ASM_DIR)icon_sys_C.c: misc/icon_C.sys | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)
 
 $(EE_ASM_DIR)conf_theme_OPL.c: misc/conf_theme_OPL.cfg | $(EE_ASM_DIR)
-	$(BIN2C) $< $@ $(*F)_cfg
-
-$(EE_ASM_DIR)theme_coverflow.c: misc/theme_coverflow.cfg | $(EE_ASM_DIR)
 	$(BIN2C) $< $@ $(*F)_cfg
 
 $(EE_ASM_DIR)boot.c: audio/boot.adp | $(EE_ASM_DIR)

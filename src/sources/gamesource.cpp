@@ -62,6 +62,7 @@ int GameSource::ps1ArtId(item_list_t *itemList, int id, const char *startup, cha
         kind = PS1_ROW_CUE;
     else if (strcasecmp(row->extension, ".VCD") != 0)
         return 0;
-    ps1RowIdRequest(startup, kind); // verify provisional filename ids too
-    return ps1RowIdCached(startup, kind, out, outSize);
+    const char *root = gsOf(itemList)->prefix(itemList);
+    ps1RowIdRequest(startup, kind, root); // verify provisional filename ids too
+    return ps1RowIdCached(startup, kind, out, outSize, root);
 }

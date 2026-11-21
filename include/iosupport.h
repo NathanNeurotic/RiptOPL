@@ -19,16 +19,31 @@ enum IO_MODES {
     ETH_MODE,
     HDD_MODE,
     APP_MODE,
-    MMCE_MODE,  // reserved: MMCE support returns with checklist item 1
+    MMCE_MODE,  // mmce0: (Slot 1)
     FAV_MODE,   // reserved: Favourites returns with checklist item 33
     UDPFS_MODE, // reserved (item 6); appended last so existing mode values don't shift
     HTTP_MODE,  // games.csv catalog + byte-range ISO reads; appended for the same reason
+    MMCE_MODE1, // mmce1: (Slot 2); appended last so existing mode values don't shift
 
     MODE_COUNT
 };
 
 #define BDM_MODE_LAST  BDM_MODE7
 #define BDM_MODE_COUNT (BDM_MODE_LAST - BDM_MODE + 1)
+
+#define MMCE_MODE_COUNT 2
+static inline int isMmceMode(int mode)
+{
+    return mode == MMCE_MODE || mode == MMCE_MODE1;
+}
+static inline int mmceModeSlot(int mode)
+{
+    return (mode == MMCE_MODE1) ? 1 : 0;
+}
+static inline int mmceSlotToMode(int slot)
+{
+    return (slot == 1) ? MMCE_MODE1 : MMCE_MODE;
+}
 
 enum START_MODE {
     START_MODE_DISABLED = 0,

@@ -1685,12 +1685,26 @@ void _loadConfig()
                     configSetInt(configOPL, CONFIG_OPL_MMCE_PACING_MIGR, 1);
                 }
             }
+            // GameID slot migration: legacy mmce_gameid was a boolean (0=Off, 1=On).
+            // Now it is a 4-way slot selector (0=Off, 1=Slot 1/mmce0, 2=Slot 2/mmce1, 3=Both).
+            // Upgrade legacy 1 (On) -> 3 (Both) once so existing Slot 2 setups keep receiving GameID.
+            {
+                int gameIdMigrated = 0;
+                configGetInt(configOPL, CONFIG_OPL_MMCE_GAMEID_MIGR, &gameIdMigrated);
+                if (!gameIdMigrated) {
+                    if (gMMCEEnableGameID == 1)
+                        gMMCEEnableGameID = MMCE_GAMEID_BOTH;
+                    configSetInt(configOPL, CONFIG_OPL_MMCE_GAMEID_MIGR, 1);
+                }
+            }
+            if (gMMCEEnableGameID < MMCE_GAMEID_OFF || gMMCEEnableGameID > MMCE_GAMEID_BOTH)
+                gMMCEEnableGameID = MMCE_GAMEID_OFF;
             gCfgTitlesInLists = gCfgTitlesInLists ? 1 : 0;
             if (gPs1Duplicates < PS1_DUP_BOTH || gPs1Duplicates > PS1_DUP_POPSTARTER)
                 gPs1Duplicates = PS1_DUP_BOTH;
             if (gExitMenu == EXIT_MENU_LEGACY_BROWSER_SKIPMC)
                 gExitMenu = EXIT_MENU_BROWSER;
-            else if (gExitMenu < EXIT_MENU_CONSOLE || gExitMenu > EXIT_MENU_OSDSYS_SKIPMC)
+            else if (gExitMenu < EXIT_MENU_CONSOLE || gExitMenu > EXIT_MENU_BOOT)
                 gExitMenu = EXIT_MENU_CONSOLE;
             if (gListCfgText < LIST_CFG_TEXT_THEME || gListCfgText > LIST_CFG_TEXT_OFF)
                 gListCfgText = LIST_CFG_TEXT_THEME;
@@ -2244,6 +2258,7 @@ static void _saveConfig()
             configRemoveKey(configOPL, CONFIG_OPL_THEME_VIEW);
         configSetStr(configOPL, CONFIG_OPL_LANGUAGE, lngGetValue());
         configSetInt(configOPL, CONFIG_OPL_MMCE_PACING_MIGR, 1);
+        configSetInt(configOPL, CONFIG_OPL_MMCE_GAMEID_MIGR, 1);
         emberSaveSettings(configOPL);
         configSetInt(configOPL, CONFIG_OPL_POPSTARTER_DEVICE, gPopstarterDevice);
         configSetInt(configOPL, CONFIG_OPL_POPSTARTER_RETROGEM_GAMEID, gPopstarterRetroGemGameID);
@@ -2504,7 +2519,7 @@ void applyConfig(int themeID, int langID, int skipDeviceRefresh)
     // choice would boot into a hidden tab with no way back to a visible one.
     if (gDefaultDevice == FAV_MODE && !gFAVStartMode && !gAllGames)
         gDefaultDevice = MMCE_MODE;
-    if (gDefaultDevice == MMCE_MODE && gMMCEStartMode == START_MODE_DISABLED)
+    if (isMmceMode(gDefaultDevice) && gMMCEStartMode == START_MODE_DISABLED)
         gDefaultDevice = APP_MODE;
 
     guiUpdateScrollSpeed();

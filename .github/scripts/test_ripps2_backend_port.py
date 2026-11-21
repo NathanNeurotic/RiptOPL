@@ -171,17 +171,19 @@ print('ok   FreeType registers only the TrueType/CFF modules')
 mmce = (root / 'src/sources/mmcesupport.cpp').read_text()
 send = mmce[mmce.index('int MmceSupport::sendGameID('):]
 send = send[:send.index('\n}\n')]
-assert 'MMCE_GAMEID_START_MS' in send and 'waitCardReady(' in send, 'Game ID send no longer waits to see the switch start'
+waitSend = mmce[mmce.index('int MmceSupport::waitGameIdSendOn('):].replace('MmceSupport::', 'static ', 1)
+waitSend = waitSend[:waitSend.index('\n}\n') + 3]
+assert 'waitGameIdSendOn(' in send and 'MMCE_GAMEID_START_MS' in waitSend and 'waitCardReady(' in waitSend, 'Game ID send no longer waits to see the switch start'
 print('ok   MMCE Game ID waits for the switch to start, then for the card')
 
 # The latches are cleared, not just named: run bdmIopWasReset with every latch set.
 latches = ('iUSBModLoaded', 'iLinkModLoaded', 'iLinkManModLoaded', 'ieee1394ModLoaded', 'mx4sioModLoaded',
            'pccfModLoaded', 'hddModLoaded', 'udpbdModLoaded', 'udpbdNicClaimed')
 reset_program = '#include <assert.h>\nstatic int ' + ', '.join(l + ' = 1' for l in latches) + \
-    ', pccfProbeGeneration, udpbdLoadedProtocol = 1;\nstruct { void setLoadedNetProtocol(int p) { udpbdLoadedProtocol = p; } } gBdmSupport;\n' + bdmReset + '\n}\nint main(void)\n{\n    bdmIopWasReset();\n' + \
+    ', pccfProbeGeneration, udpbdLoadedProtocol = 1;\nstatic unsigned int bdmIopResetGeneration = 0;\nstruct { void setLoadedNetProtocol(int p) { udpbdLoadedProtocol = p; } } gBdmSupport;\n' + bdmReset + '\n}\nint main(void)\n{\n    bdmIopWasReset();\n' + \
     ''.join('    assert(%s == 0);\n' % l for l in latches) + \
-    '    assert(udpbdLoadedProtocol == -1 && pccfProbeGeneration == 1);\n    bdmIopWasReset();\n' + \
-    '    assert(pccfProbeGeneration == 1); /* CF probes again only when the reset unloaded it */\n    return 0;\n}\n'
+    '    assert(udpbdLoadedProtocol == -1 && pccfProbeGeneration == 1 && bdmIopResetGeneration == 1);\n    bdmIopWasReset();\n' + \
+    '    assert(pccfProbeGeneration == 1); /* CF probes again only when the reset unloaded it */\n    assert(bdmIopResetGeneration == 2); /* iLink must rediscover after every reset */\n    return 0;\n}\n'
 with tempfile.TemporaryDirectory(prefix='ripps2-reset-') as temp:
     src = Path(temp) / 'reset.cpp'
     src.write_text(reset_program)
@@ -212,7 +214,6 @@ startKey = startKey[:startKey.index('\n}\n') + 3]
 sleepKey = mmce[mmce.index('static void mmceSleepReadingStart('):]
 sleepKey = sleepKey[:sleepKey.index('\n}\n') + 3]
 defines = ''.join(line + '\n' for line in mmce.splitlines() if line.startswith(('constexpr int MMCE_GAMEID_START', 'constexpr int MMCE_GAMEID_QUERY', 'constexpr int MMCE_CARD_READY', 'constexpr int MMCE_HISTORY_SWITCH', 'constexpr int MMCE_START_SAMPLE')))
-loop = send[send.index('    int queryFailures = 0;'):]
 mmce_program = r'''
 #include <assert.h>
 #include <stdio.h>
@@ -222,6 +223,7 @@ mmce_program = r'''
 #define KEY_START 1
 #define _STR_MMCE_GAMEID_CARD_WAIT 0
 #define _STR_PLEASE_WAIT 1
+#define MMCE_MODE_COUNT 2
 ''' + defines + r'''
 static int script[512], scriptLen, calls, startPressed, slept, rendered, acked, noBusyQuery, asked[2], lastAsked = -1;
 /* The script is the card's state over time, read by the busy query (0x2). The presence probe (0x1) reads the
@@ -258,16 +260,15 @@ static char lastLine[64]; /* the last frame drawn */
 namespace host { struct Ui { void renderTextScreen(const char *s) { rendered++; acked += !strcmp(s, "Please wait."); snprintf(lastLine, sizeof(lastLine), "%s", s); } }; static Ui theUi; static Ui &ui() { return theUi; } }
 static void DelayThread(int us) { slept += us; }
 ''' + r'''
-static char gameIdTarget[8] = "mmce0:/";
-static int gameIdSwitchSeen;
+static int gameIdTargetMask = (1 << 0);
+static int gameIdSwitchSeenMask;
 static char gameRoot[8] = "mmce0:/"; /* the slot the game is on */
 static void getDeviceRoot(char *root, size_t size) { snprintf(root, size, "%s", gameRoot); }
-''' + slotOf + lacks + startKey + sleepKey + wait + swapOn + swap + handoff + hist + settle + r'''
 static int waitCardReady(const char *device, int *start);
+''' + slotOf + lacks + startKey + sleepKey + waitSend + wait + swapOn + swap + handoff + hist + settle + r'''
 static int sendWait(const char *mmceDevice, const char *startup)
 {
-    (void)startup; /* LOG discards it here */
-''' + loop + r'''
+    return waitGameIdSendOn(mmceDevice, mmceSlotOf(mmceDevice), startup, NULL);
 }
 static int run(const int *answers, int n)
 {
@@ -284,9 +285,9 @@ int main(void)
     assert(run(neverBusy, 1) == 1);                        /* idle throughout: already this game's card */
     const int noQuery[] = {-1};
     noBusyQuery = 1;
-    gameIdSwitchSeen = 0;
+    gameIdSwitchSeenMask = 0;
     assert(run(noQuery, 1) == -1 && calls == MMCE_GAMEID_QUERY_FAILURES + 1); /* no busy query (asked once more): unconfirmed, quickly */
-    assert(gameIdSwitchSeen == 0);
+    assert(gameIdSwitchSeenMask == 0);
     noBusyQuery = 0;
     /* The same three failures from a card that answers NOTHING are the swap already under way (sd2psXtd
        starts it in the main-loop pass right after the 0x8): waited out, not read as "no busy query". */
@@ -295,9 +296,9 @@ int main(void)
        the third failure. Its busy query answers again, so it is the swap, seen and waited out: not "no busy
        query" (which left the switch unseen and the history write's window to be paid on top). */
     const int backAtPresence[] = {-1, -1, -1, 1, 1, 0};
-    gameIdSwitchSeen = 0;
-    assert(run(backAtPresence, 6) == 1 && calls == 6 && gameIdSwitchSeen == 1);
-    gameIdSwitchSeen = 0;
+    gameIdSwitchSeenMask = 0;
+    assert(run(backAtPresence, 6) == 1 && calls == 6 && gameIdSwitchSeenMask == (1 << 0));
+    gameIdSwitchSeenMask = 0;
     const int swapBeforeFirstPoll[] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 1, 1, 0};
     assert(run(swapBeforeFirstPoll, 14) == 1 && calls == 14);  /* silent, then loading, then ready: confirmed */
     const int blipThenBusy[] = {-1, 0, -1, 1, 0};
@@ -381,58 +382,68 @@ int main(void)
        the game's. */
     memcpy(script, idleCard, sizeof(idleCard)); scriptLen = 1;
     strcpy(gameRoot, "mmce0:/");
-    strcpy(gameIdTarget, "mmce1:/");
+    gameIdTargetMask = (1 << 1);
     calls = 0; asked[0] = asked[1] = 0;
-    assert(waitBeforeHandoff() == 0 && calls == 2 && asked[1] == 2 && asked[0] == 2 && lastAsked == 0);
+    assert(waitBeforeHandoff(gameRoot) == 0 && calls == 2 && asked[1] == 2 && asked[0] == 2 && lastAsked == 0);
     const int gameSlotSwapping[] = {0, 1, 0}; /* the other slot idle, then the game's slot loading */
     memcpy(script, gameSlotSwapping, sizeof(gameSlotSwapping)); scriptLen = 3; calls = 0;
-    assert(waitBeforeHandoff() == 1 && calls == 3 && lastAsked == 0);
+    assert(waitBeforeHandoff(gameRoot) == 1 && calls == 3 && lastAsked == 0);
     memcpy(script, idleCard, sizeof(idleCard)); scriptLen = 1;
-    strcpy(gameIdTarget, "mmce0:/"); /* the send went to the game's slot: one look */
+    gameIdTargetMask = (1 << 0); /* the send went to the game's slot: one look */
     calls = 0; asked[0] = asked[1] = 0;
-    assert(waitBeforeHandoff() == 0 && calls == 1 && asked[1] == 0);
-    gameIdTarget[0] = '\0'; /* no send this launch (Game ID off): the game's slot */
+    assert(waitBeforeHandoff(gameRoot) == 0 && calls == 1 && asked[1] == 0);
+    gameIdTargetMask = 0; /* no send this launch (Game ID off): the game's slot */
     calls = 0; asked[0] = asked[1] = 0;
-    assert(waitBeforeHandoff() == 0 && calls == 1 && asked[0] == 2 && asked[1] == 0);
+    assert(waitBeforeHandoff(gameRoot) == 0 && calls == 1 && asked[0] == 2 && asked[1] == 0);
     strcpy(gameRoot, "mmce1:/");
     calls = 0; asked[0] = asked[1] = 0;
-    assert(waitBeforeHandoff() == 0 && calls == 1 && asked[1] == 2 && asked[0] == 0);
+    assert(waitBeforeHandoff(gameRoot) == 0 && calls == 1 && asked[1] == 2 && asked[0] == 0);
     strcpy(gameRoot, "mmce0:/");
-    strcpy(gameIdTarget, "mmce0:/");
+    gameIdTargetMask = (1 << 0);
     /* On screen the two looks are one wait, so one START press ends both (getKeyOn is an edge: read once).
        Pressed during the other slot's look, silent or loading, the game's own slot is still asked, but nothing
        more is waited out: an idle card is nothing to wait for, a silent one launches now (0: no settle), and one
        still loading returns at once, as after START in its own wait (1: the caller settles its file system). The
        press is answered once ("Please wait."), not once per look. */
-    strcpy(gameIdTarget, "mmce1:/");
+    gameIdTargetMask = (1 << 1);
     const int otherSilentGameIdle[] = {-1, 0};
     memcpy(script, otherSilentGameIdle, sizeof(otherSilentGameIdle)); scriptLen = 2;
     calls = rendered = acked = 0; asked[0] = asked[1] = 0;
     startPressed = 1;
-    assert(waitBeforeHandoff() == 0 && calls == 2 && asked[1] == 1 && asked[0] == 2 && lastAsked == 0 && rendered == 1 && acked == 1);
+    assert(waitBeforeHandoff(gameRoot) == 0 && calls == 2 && asked[1] == 1 && asked[0] == 2 && lastAsked == 0 && rendered == 1 && acked == 1);
     const int bothSilent[] = {-1, -1};
     memcpy(script, bothSilent, sizeof(bothSilent)); scriptLen = 2;
     calls = slept = rendered = acked = 0; asked[0] = asked[1] = 0;
     startPressed = 1;
-    assert(waitBeforeHandoff() == 0 && calls == 2 && asked[1] == 1 && asked[0] == 1 && lastAsked == 0 && slept == 0 && rendered == 1 && acked == 1);
+    assert(waitBeforeHandoff(gameRoot) == 0 && calls == 2 && asked[1] == 1 && asked[0] == 1 && lastAsked == 0 && slept == 0 && rendered == 1 && acked == 1);
     const int otherLoadingGameSilent[] = {1, 1, -1};
     memcpy(script, otherLoadingGameSilent, sizeof(otherLoadingGameSilent)); scriptLen = 3;
     calls = slept = rendered = acked = 0; asked[0] = asked[1] = 0;
     startPressed = 1;
-    assert(waitBeforeHandoff() == 1 && calls == 3 && asked[1] == 3 && asked[0] == 1 && lastAsked == 0 && slept == 0 && rendered == 1 && acked == 1);
+    assert(waitBeforeHandoff(gameRoot) == 1 && calls == 3 && asked[1] == 3 && asked[0] == 1 && lastAsked == 0 && slept == 0 && rendered == 1 && acked == 1);
     const int otherSilentGameLoading[] = {-1, 1};
     memcpy(script, otherSilentGameLoading, sizeof(otherSilentGameLoading)); scriptLen = 2;
     calls = slept = rendered = acked = 0; asked[0] = asked[1] = 0;
     startPressed = 1;
-    assert(waitBeforeHandoff() == 1 && calls == 3 && asked[1] == 1 && asked[0] == 3 && lastAsked == 0 && slept == 0 && rendered == 1 && acked == 1);
+    assert(waitBeforeHandoff(gameRoot) == 1 && calls == 3 && asked[1] == 1 && asked[0] == 3 && lastAsked == 0 && slept == 0 && rendered == 1 && acked == 1);
     /* The press holds for that one handoff only: the next one waits a silence out again. */
     memcpy(script, bothSilent, sizeof(bothSilent)); scriptLen = 2; calls = rendered = acked = 0;
-    assert(startPressed == 0 && waitBeforeHandoff() == 0 && calls == 2 * ((MMCE_CARD_READY_SILENT_MS + 199) / 200) && acked == 0 &&
+    assert(startPressed == 0 && waitBeforeHandoff(gameRoot) == 0 && calls == 2 * ((MMCE_CARD_READY_SILENT_MS + 199) / 200) && acked == 0 &&
            rendered == 2 * ((MMCE_CARD_READY_SILENT_MS + 199) / 200));
-    strcpy(gameIdTarget, "mmce0:/");
+    gameIdTargetMask = (1 << 0);
+
+    /* Dual-slot sendGameID waits share a single START latch across slots (one press answers both). */
+    int sharedStart = 0;
+    memcpy(script, stuckBusy, sizeof(stuckBusy)); scriptLen = 1;
+    calls = slept = rendered = acked = 0; asked[0] = asked[1] = 0;
+    startPressed = 1;
+    assert(waitGameIdSendOn("mmce0:/", 0, "SLUS_000.01", &sharedStart) == 1);
+    assert(waitGameIdSendOn("mmce1:/", 1, "SLUS_000.01", &sharedStart) == 1);
+    assert(sharedStart == 1 && calls == 0 && slept == 0 && rendered == 1 && acked == 1 && asked[0] == 0 && asked[1] == 0);
+    startPressed = 0;
 
     /* The history-write wait: idle for the whole window, a switch that begins (busy, or silence), skipped. */
-    gameIdSwitchSeen = 0;
+    gameIdSwitchSeenMask = 0;
     memcpy(script, idleCard, sizeof(idleCard)); scriptLen = 1; calls = 0;
     waitHistorySwitch("mmce0:/", "test"); assert(calls == MMCE_HISTORY_SWITCH_WINDOW_MS / MMCE_HISTORY_SWITCH_POLL_MS); /* no switch: the window */
     const int idleThenBusy[] = {0, 0, 1, 1, 0};
@@ -450,14 +461,15 @@ int main(void)
     const int backBeforePresence[] = {0, -1, -1, -1, 1, 1, 0};
     memcpy(script, backBeforePresence, sizeof(backBeforePresence)); scriptLen = 7; calls = 0;
     assert(waitHistorySwitch("mmce0:/", "test") == 1 && calls == 7);
-    gameIdSwitchSeen = 1;
+    gameIdSwitchSeenMask = (1 << 0);
     memcpy(script, idleCard, sizeof(idleCard)); scriptLen = 1; calls = 0;
     waitHistorySwitch("mmce0:/", "test"); assert(calls == 0);           /* the Game ID send already switched the card: skipped */
-    strcpy(gameIdTarget, "mmce1:/"); /* the send switched the OTHER slot: this card was not switched, watch it */
+    gameIdTargetMask = (1 << 1); /* the send switched the OTHER slot: this card was not switched, watch it */
+    gameIdSwitchSeenMask = (1 << 1);
     calls = 0;
     assert(waitHistorySwitch("mmce0:/", "test") == 0 && calls == MMCE_HISTORY_SWITCH_WINDOW_MS / MMCE_HISTORY_SWITCH_POLL_MS);
-    strcpy(gameIdTarget, "mmce0:/");
-    gameIdSwitchSeen = 0;
+    gameIdTargetMask = (1 << 0);
+    gameIdSwitchSeenMask = 0;
 
     /* The MX4SIO leg's settle: settled on an idle card or one without the busy query, not on one that fell silent
        between the presence and busy queries (the swap starting): that one is looked at again. */
@@ -471,10 +483,16 @@ int main(void)
     noBusyQuery = 0;
     calls = slept = 0;
     assert(gameIdSettle(1000) == -1 && calls == 1000 / 200 + 1); /* never answers: expired, bounded */
-    gameIdTarget[0] = '\0';
+    /* Dual-slot settle re-checks every targeted slot each pass so a late switch on slot 0 is still seen. */
+    gameIdTargetMask = (1 << 0) | (1 << 1);
+    const int lateSwitchOnSlot0[] = {0, 1, -1, 0, 1, 0, 0, 0};
+    memcpy(script, lateSwitchOnSlot0, sizeof(lateSwitchOnSlot0)); scriptLen = 8;
+    calls = slept = 0; asked[0] = asked[1] = 0;
+    assert(gameIdSettle(1000) == 0 && calls == 8 && slept == 600 * 1000 && asked[0] == 7 && asked[1] == 8);
+    gameIdTargetMask = 0;
     calls = 0;
     assert(gameIdSettle(1000) == 0 && calls == 0); /* no send this launch: nothing to settle */
-    strcpy(gameIdTarget, "mmce0:/");
+    gameIdTargetMask = (1 << 0);
 
     /* START is read about once a frame while a wait sleeps between its looks at the card (getKeyOn is an edge
        between two reads), so a quick tap between two looks still launches, at the next look; the card is still
@@ -488,7 +506,7 @@ int main(void)
     assert(run(stuckBusy, 1) == 1 && calls == 4 && slept == 310 * 1000 && acked == 1 && !strcmp(lastLine, "Please wait."));
     memcpy(script, idleCard, sizeof(idleCard)); scriptLen = 1;
     calls = slept = rendered = acked = 0;
-    gameIdSwitchSeen = 0;
+    gameIdSwitchSeenMask = 0;
     tap(600 * 1000, 700 * 1000); /* the history window looks at 500 and 750 ms */
     assert(waitHistorySwitch("mmce0:/", "test") == 0 && calls == 4 && slept == 600 * 1000 && acked == 1);
     /* A tap the history window catches while the card starts its switch: the switch is still reported (1), so
@@ -514,7 +532,7 @@ int main(void)
     tap(-1, -1);
     calls = slept = rendered = acked = 0;
     assert(waitCardReady("mmce0:/", NULL) == 0 && calls == 721 && acked == 0);
-    gameIdSwitchSeen = 0;
+    gameIdSwitchSeenMask = 0;
 
     /* No slot resolved (Auto mode after the card was taken out): neither wait asks anything or waits. */
     memcpy(script, noQuery, sizeof(noQuery)); scriptLen = 1; calls = slept = 0;
@@ -535,10 +553,12 @@ print('ok   MMCE: "no busy query" only when the card answers presence and fails 
 # The launch resolves its core, the Neutrino-to-OPL-core fallback included, before the OPL core's preparation:
 # a launch that falls back gets the early history write and the card's switch waited out, before any card-side
 # file is opened (it used to skip them, and sysLaunchLoaderElf wrote the record right before the IOP reset).
+vmc_prep = mmce[mmce.index('static void mmcePrepareVmcSlots('):mmce.index('void MmceSource::launch(')]
+assert 'vmc_fd = fileXioOpen(' in vmc_prep, 'mmcePrepareVmcSlots must open the configured VMC file'
 launch = mmce[mmce.index('void MmceSource::launch('):]
 assert launch.count('sbResolveNeutrinoPath(') == 1, 'the MMCE launch resolves neutrino.elf once, before the OPL core preparation'
 assert launch.index('sbResolveNeutrinoPath(') < launch.index('_STR_NEUTRINO_NOT_FOUND') < launch.index('if (!coreLoader) {') \
-    < launch.index('sbEnsureIgrUsbDrivers(compatmask);') < launch.index('sysAddHistoryRecord(') < launch.index('vmc_fd = fileXioOpen('), \
+    < launch.index('sbEnsureIgrUsbDrivers(compatmask);') < launch.index('sysAddHistoryRecord(') < launch.index('mmcePrepareVmcSlots('), \
     'a Neutrino setting that falls back to the OPL core must get the OPL core preparation, history write first'
 assert launch.count('sbEnsureIgrUsbDrivers(') == 1, 'one IGR driver check per MMCE launch, before any card switch'
 print('ok   MMCE: the core (and its OPL-core fallback) is resolved before the OPL core preparation, so a fallback writes history early too')

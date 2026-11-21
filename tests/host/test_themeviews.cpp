@@ -404,5 +404,33 @@ int main()
         CHECK(thmViewCycleNext((1u << THM_VIEW_LIST) | (1u << THM_VIEW_PSBBN), THM_VIEW_LIST, &covers, &compact) == THM_VIEW_PSBBN);
     }
 
+    // Unified multi-view template (one cfg holding List base + coverflow/psbbn/grid view prefixes):
+    // thmViewSynthesize extracts the requested view's presenter and list layout from "<view>." blocks.
+    {
+        config_set_t *tmpl = parse(
+            "main0_type=Background\n"
+            "main1_type=ItemsList\nmain1_x=62\nmain1_y=78\nmain1_width=330\n"
+            "main2_type=ItemCover\nmain2_default=cover\n"
+            "coverflow.main1_type=Coverflow\ncoverflow.main1_default=cover\ncoverflow.main1_y=233\n"
+            "coverflow.appsMain1_type=Coverflow\ncoverflow.appsMain1_default=coverapp\n"
+            "coverflow.main2_type=ItemsList\ncoverflow.main2_x=POS_MID\ncoverflow.main2_width=DIM_INF\n"
+            "grid.main1_type=Grid\ngrid.main1_rows=2\ngrid.main1_columns=4\n"
+            "grid.main2_type=ItemsList\ngrid.main2_x=POS_MID\ngrid.main2_width=DIM_INF\n");
+        config_set_t *disk = parse(
+            "main0_type=Background\n"
+            "main1_type=ItemsList\nmain1_x=40\nmain1_y=90\nmain1_width=250\n"
+            "main2_type=ItemCover\nmain2_default=cover\n");
+        CHECK(thmViewSynthesize(disk, tmpl, THM_VIEW_COVERFLOW) == 1);
+        const char *val = NULL;
+        CHECK(configGetStr(disk, "coverflow.main2_type", &val) && strcmp(val, "Coverflow") == 0);
+        CHECK(configGetStr(disk, "coverflow.appsMain2_default", &val) && strcmp(val, "coverapp") == 0);
+        CHECK(configGetStr(disk, "coverflow.main1_width", &val) && strcmp(val, "DIM_INF") == 0);
+        CHECK(thmViewSynthesize(disk, tmpl, THM_VIEW_GRID) == 1);
+        CHECK(configGetStr(disk, "grid.main2_type", &val) && strcmp(val, "Grid") == 0);
+        CHECK(configGetStr(disk, "grid.main2_columns", &val) && strcmp(val, "4") == 0);
+        configFree(disk);
+        configFree(tmpl);
+    }
+
     TEST_DONE("themeviews");
 }
