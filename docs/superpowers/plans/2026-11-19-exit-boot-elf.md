@@ -4,7 +4,7 @@
 
 **Goal:** Add Exit To choices for `mc?:/BOOT/BOOT2.ELF` and `mc?:/BOOT/BOOT.ELF`, trying mc0 before mc1.
 
-**Architecture:** Append two values to the existing `gExitMenu` enum and extend `sysExecExit()` to probe those fixed card paths and hand the selected ELF to `sysLoadELFApp()`. Reuse the existing settings dialog and localization template; do not add a picker or another launcher.
+**Architecture:** Append two values to the existing `gExitMenu` enum and extend `sysExecExit()` to probe those fixed card paths and hand both candidate paths to `sysLoadELFAppFallback()`. The child loader, not the torn-down parent, attempts the second candidate when the first load fails. Reuse the existing settings dialog and localization template; do not add a picker or another launcher.
 
 **Tech Stack:** C++, PS2SDK, Python host regression harnesses.
 
@@ -15,12 +15,12 @@
 - Preserve existing stored values and the OSDSYS-with-update default.
 - Only the main menu's Exit changes; restart and IGR behavior stay unchanged.
 - Try mc0 first, then mc1 when the selected file is absent or cannot be loaded.
-- Pass the selected ELF path as `argv[0]`, reset the IOP through `sysLoadELFApp()`, and add no launch arguments.
+- Pass the selected ELF path as `argv[0]`, reset the IOP through `sysLoadELFAppFallback()`, and add no target launch arguments. The parent marks its loader-only options with an explicit suffix count.
 
 ## Review Focus
 
 - Neither card contains the selected ELF: remain in RiptOPL without falling through to an OSDSYS exit; pin in the host dispatcher test.
-- mc0 lacks the file or its load fails: attempt the same filename on mc1; pin both cases.
+- mc0 lacks the file: the parent selects mc1 before teardown; if mc0 opens but its load fails, the child loader attempts mc1. Pin both cases.
 - Both cards contain the file: launch mc0 only; pin the call sequence.
 - Existing OSDSYS choices and restart calls: preserve their ExecOSD/exit behavior; pin in the same test.
 - Unknown saved values: still sanitize to `EXIT_MENU_CONSOLE`; exercise the updated validation bound.
@@ -45,7 +45,7 @@
 
 - [ ] **Step 1: Write the failing dispatcher and configuration tests**
 
-Create a host harness that extracts the real `sysExecExit()` and supplies bounded mocks for file open/close, application teardown, `ExecOSD()`, `exit()`, and `sysLoadELFApp()`. Assert both filename mappings, mc0-first behavior, mc1 fallback for absence and load failure, `argv[0]`, `resetIop=1`, `cleanupHdd=0`, no OSDSYS fallthrough when neither load succeeds, unchanged legacy choices, and unchanged `sysExecExit(0)`. Exercise the configuration validation block with values 4 and 5 accepted and out-of-range values reset to `EXIT_MENU_CONSOLE`.
+Create a host harness that extracts the real `sysExecExit()` and supplies bounded mocks for file open/close, application teardown, `ExecOSD()`, `exit()`, and `sysLoadELFApp()`. Assert both filename mappings, mc0-first behavior, mc1 fallback for absence and load failure, `argv[0]`, `resetIop=1`, `cleanupHdd=0`, no OSDSYS fallthrough when neither load succeeds, explicit child-option boundary, unchanged legacy choices, and unchanged `sysExecExit(0)`. Exercise the configuration validation block with values 4 and 5 accepted and out-of-range values reset to `EXIT_MENU_CONSOLE`.
 
 - [ ] **Step 2: Run the new test to verify it fails**
 
@@ -54,7 +54,7 @@ Expected: FAIL because the new enum values/BOOT dispatch do not exist.
 
 - [ ] **Step 3: Implement the saved choices and ELF dispatch**
 
-Append `EXIT_MENU_BOOT2` and `EXIT_MENU_BOOT` without renumbering existing values; extend the validation upper bound. In `sysExecExit()`, select only on `toMenuChoice != 0`, probe `mc0:/BOOT/<name>` then `mc1:/BOOT/<name>`, tear down once, and call `sysLoadELFApp(path, "", 1, argv, 1, 0)`. If the first load fails, try the other card; if neither succeeds, return without calling `ExecOSD()` or `exit(0)`.
+Append `EXIT_MENU_BOOT2` and `EXIT_MENU_BOOT` without renumbering existing values; extend the validation upper bound. In `sysExecExit()`, select only on `toMenuChoice != 0`, probe `mc0:/BOOT/<name>` then `mc1:/BOOT/<name>`, tear down once, and call `sysLoadELFAppFallback(path, fallback, "", 1, argv, 1, 0)`. The child handles load failures and fallback. If neither file is present before teardown, return without calling `ExecOSD()` or `exit(0)`. If the handoff unexpectedly returns after teardown, exit terminally; do not attempt a second parent-side loader call.
 
 - [ ] **Step 4: Add the settings labels and documentation**
 

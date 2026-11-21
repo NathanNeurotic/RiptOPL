@@ -888,7 +888,7 @@ To run OPL, you need an entry point for running PS2 titles. You can use everythi
 Use [ps2build](docs/PS2BUILD-MIGRATION.md) for this C++ source tree. The legacy
 Makefile and container instructions belong to the legacy C edition and are
 not supported here. Run assets and matching audio-package setup, then
-`python tools/build_edition.py korium`, `ra` or `incebtion`; see the complete
+`python tools/build_edition.py riptopl` or `ra` (or a Lite build with `--device`); see the complete
 commands and manifest contract in [ROLLING_RELEASE.md](ROLLING_RELEASE.md).
 
 Run `sh tools/run_tests.sh -k` on a host with the required C/C++ compilers and

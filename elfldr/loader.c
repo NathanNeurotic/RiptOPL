@@ -381,7 +381,9 @@ static void cleanupHddForLaunch(void)
 // exactly what sent POPSTARTER down its HDD "__common" route on every non-HDD VCD launch.
 // The ExecPS2 syscall marshals the strings, so wiping user memory is safe.
 //
-// An optional trailing "-reset-iop" (or "-la=AR" wLaunchELF flag) requests a clean SifIopReset()
+// Parent-only options have a final "-rlopt=N" marker (N = 0, 1, or 2), which
+// prevents a target's own trailing "-reset-iop" or "-fallback=..." being consumed.
+// An optional parent "-reset-iop" (or "-la=AR" wLaunchELF flag) requests a clean SifIopReset()
 // after the target ELF has been loaded into user memory, matching wLaunchELF_R3Z parity. In "-la=",
 // H adds the HDD cleanup and M loads rom0:SIO2MAN/MCMAN/MCSERV after the reset.
 int main(int argc, char *argv[])
@@ -400,25 +402,39 @@ int main(int argc, char *argv[])
     if (argc < 2)
         return -EINVAL;
 
-    /* Only the parent's appended options are parsed, never the target's own
-     * arguments. The fallback is last; reset/-la= precedes it. */
-    if (argc > 1 && !strncmp(argv[argc - 1], "-fallback=", 10) && argv[argc - 1][10] != '\0') {
-        fallback = argv[argc - 1] + 10;
-        argc--;
-    }
-    if (argc > 1) {
-        if (strcmp(argv[argc - 1], "-reset-iop") == 0) {
-            reset_iop = 1;
+    /* The parent marks the suffix even when it appends zero options.
+     * Do not guess from an unmarked target argument: games/apps may legally
+     * take literal "-reset-iop" and "-fallback=..." arguments. */
+    if (argc >= 3 && !strncmp(argv[argc - 1], "-rlopt=", 7) &&
+        argv[argc - 1][7] >= '0' && argv[argc - 1][7] <= '2' &&
+        argv[argc - 1][8] == '\0') {
+        int options = argv[argc - 1][7] - '0';
+        argc--; // remove the marker; target argv is still untouched
+        if (argc < options + 2)
+            return -EINVAL;
+        if (options && !strncmp(argv[argc - 1], "-fallback=", 10) && argv[argc - 1][10] != '\0') {
+            fallback = argv[argc - 1] + 10;
             argc--;
-        } else if (!strncmp(argv[argc - 1], "-la=", 4)) {
-            if (strchr(argv[argc - 1] + 4, 'R') != NULL)
-                reset_iop = 1;
-            if (strchr(argv[argc - 1] + 4, 'H') != NULL)
-                cleanup_hdd = 1;
-            if (strchr(argv[argc - 1] + 4, 'M') != NULL)
-                rom0_mc = 1;
-            argc--;
+            options--;
         }
+        if (options) {
+            if (strcmp(argv[argc - 1], "-reset-iop") == 0) {
+                reset_iop = 1;
+            } else if (!strncmp(argv[argc - 1], "-la=", 4)) {
+                if (strchr(argv[argc - 1] + 4, 'R') != NULL)
+                    reset_iop = 1;
+                if (strchr(argv[argc - 1] + 4, 'H') != NULL)
+                    cleanup_hdd = 1;
+                if (strchr(argv[argc - 1] + 4, 'M') != NULL)
+                    rom0_mc = 1;
+            } else {
+                return -EINVAL;
+            }
+            argc--;
+            options--;
+        }
+        if (options != 0)
+            return -EINVAL; // bad/mismatched marker: never consume target arguments
     }
 
     if (argc < 2)

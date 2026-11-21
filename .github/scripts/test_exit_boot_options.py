@@ -194,13 +194,14 @@ static int ExecPS2(void *entry, void *gp, int argc, char **argv) {
 ''' + function(loader, "int main(int argc, char *argv[])") + r'''
 #undef main
 static int runChild(int fail0, int fail1, int withFallback, int withReset, int targetReset) {
-    char *args[5];
+    char *args[6];
     int argc = 0;
     args[argc++] = (char *)"mc0:/BOOT/BOOT.ELF";
     args[argc++] = (char *)"mc0:/BOOT/BOOT.ELF";
     if (targetReset) args[argc++] = (char *)"-reset-iop";
     if (withReset) args[argc++] = (char *)"-reset-iop";
     if (withFallback) args[argc++] = (char *)"-fallback=mc1:/BOOT/BOOT.ELF";
+    args[argc++] = (char *)(withFallback && withReset ? "-rlopt=2" : (withFallback || withReset ? "-rlopt=1" : "-rlopt=0"));
     failPrimary = fail0; failFallback = fail1;
     resetCalls = execCalls = primaryLoads = fallbackLoads = 0;
     execArg0[0] = execArg1[0] = 0;
@@ -217,6 +218,12 @@ int main(void) {
     assert(runChild(1, 0, 1, 0, 0) == 0 && execCalls == 1 && resetCalls == 0);
     assert(runChild(1, 0, 1, 1, 1) == 0 && execCalls == 1 && execArgc == 2);
     assert(!strcmp(execArg0, "mc1:/BOOT/BOOT.ELF") && !strcmp(execArg1, "-reset-iop"));
+    assert(runChild(0, 0, 0, 0, 1) == 0 && execCalls == 1 && execArgc == 2);
+    assert(!strcmp(execArg1, "-reset-iop") && resetCalls == 0); // target flag is never a parent flag
+    char *targetFallback[] = {(char *)"mc0:/BOOT/BOOT.ELF", (char *)"mc0:/BOOT/BOOT.ELF",
+                              (char *)"-fallback=mc1:/NOT-A-BOOT.ELF", (char *)"-rlopt=0"};
+    failPrimary = 1; failFallback = 0; fallbackLoads = 0;
+    assert(loaderMain(4, targetFallback) == -ENOENT && fallbackLoads == 0);
 }
 '''
 with tempfile.TemporaryDirectory(prefix="exit-boot-child-") as tmp:
@@ -277,16 +284,23 @@ int main(void) {
     char *args[] = {(char *)"mc0:/BOOT/BOOT.ELF"};
     resetParent();
     assert(sysLoadELFAppFallback("mc0:/BOOT/BOOT.ELF", "mc1:/BOOT/BOOT.ELF", "", 1, args, 1, 0) == 0);
-    assert(execCalls == 1 && wipeCalls == 1 && capturedArgc == 4);
+    assert(execCalls == 1 && wipeCalls == 1 && capturedArgc == 5);
     assert(!strcmp(captured[0], "mc0:/BOOT/BOOT.ELF") && !strcmp(captured[1], "mc0:/BOOT/BOOT.ELF"));
     assert(!strcmp(captured[2], "-reset-iop") && !strcmp(captured[3], "-fallback=mc1:/BOOT/BOOT.ELF"));
+    assert(!strcmp(captured[4], "-rlopt=2"));
 
     char *promoted[] = {(char *)"mc0:/BOOT/BOOT.ELF"};
     resetParent(); probeFailures = 1;
     assert(sysLoadELFAppFallback("mc0:/BOOT/BOOT.ELF", "mc1:/BOOT/BOOT.ELF", "", 1, promoted, 1, 0) == 0);
-    assert(execCalls == 1 && capturedArgc == 3);
+    assert(execCalls == 1 && capturedArgc == 4);
     assert(!strcmp(captured[0], "mc1:/BOOT/BOOT.ELF") && !strcmp(captured[1], "mc1:/BOOT/BOOT.ELF"));
-    assert(!strcmp(captured[2], "-reset-iop"));
+    assert(!strcmp(captured[2], "-reset-iop") && !strcmp(captured[3], "-rlopt=1"));
+
+    char *plainArgs[] = {(char *)"mc0:/BOOT/BOOT.ELF", (char *)"-fallback=mc1:/AN-APP-ARG"};
+    resetParent();
+    assert(sysLoadELFCommon("mc0:/BOOT/BOOT.ELF", "", 2, plainArgs, 0, 0, NULL) == 0);
+    assert(capturedArgc == 4 && !strcmp(captured[2], "-fallback=mc1:/AN-APP-ARG"));
+    assert(!strcmp(captured[3], "-rlopt=0"));
 
     char longFallback[280];
     memset(longFallback, 'x', sizeof(longFallback));
