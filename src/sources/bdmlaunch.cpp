@@ -861,8 +861,8 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
 
         // Get fragment list
         int iFragCount = fileXioIoctl2(iop_fd, USBMASS_IOCTL_GET_FRAGLIST, NULL, 0, (void *)&settings->frags[iTotalFragCount], sizeof(bd_fragment_t) * (BDM_MAX_FRAGS - iTotalFragCount));
-        if (iFragCount < 0 || iFragCount > BDM_MAX_FRAGS - iTotalFragCount) {
-            // Negative (ioctl error) or more fragments than the remaining frags[] slots.
+        if (iFragCount <= 0 || iFragCount > BDM_MAX_FRAGS - iTotalFragCount) {
+            // An error, zero mapped extents, or more fragments than remaining slots is not launchable.
             // A negative value would underflow the u8 iTotalFragCount and corrupt the next
             // iteration's destination offset and size.
             close(fd);
@@ -966,7 +966,7 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
             // RiptOPL already avoids the worse scan-time UDMA push -- bdmResolveLBA_UDMA only queries
             // (never sets) the mode and caps it to UDMA 4 -- so the reported exFAT-HDD corruption from a
             // max-UDMA scan does not apply here; this just respects a user's lower-DMA stability choice.
-            if (pDeviceData->ataHighestUDMAMode > 0 && dmaMode > pDeviceData->ataHighestUDMAMode)
+            if (pDeviceData->ataHighestUDMAMode >= 0 && dmaMode > pDeviceData->ataHighestUDMAMode)
                 dmaMode = pDeviceData->ataHighestUDMAMode;
         }
 
