@@ -1835,6 +1835,7 @@ int menuItemShown(const menu_item_t *item)
     switch (support->mode) {
         case HDD_MODE:
         case MMCE_MODE:
+        case MMCE_MODE1:
         case UDPFS_MODE:
         case HTTP_MODE:
         case APP_MODE:
@@ -2227,7 +2228,7 @@ void drawItemText(struct menu_list *menu, struct submenu_list *item, config_set_
                     const char *text = vcdDisplayNameForRow(support, item->item.id, startup);
                     int ember = 0;
                     gsOf(support)->ps1RowKind(support, item->item.id, &ember);
-                    if (ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD, vcdId, sizeof(vcdId)))
+                    if (ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD, vcdId, sizeof(vcdId), gsOf(support)->rowPrefix(support, item->item.id)))
                         text = vcdId;
                     thmDrawElemText(elem, SIZING_NONE, text, 1);
                     return;

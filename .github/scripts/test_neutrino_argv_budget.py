@@ -51,6 +51,7 @@ harness = r'''
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "include/elfldr_args.h"
 
 #define LOG(...) ((void)0)
 #define NET_BOOT_UDPFS 2
@@ -128,16 +129,31 @@ int main(void)
     failures += check("byte pool", longArg, "", NULL, -1);
     failures += check("VMC consumes budget", "-cfg=long-name", "", &vmc, -1);
 
-    /* Exactly 14 target entries must retain each token after the second --b pass. */
-    snprintf(gNeutrinoArgs, sizeof(gNeutrinoArgs), "-a -b -c -d -e -f --b tail");
+    /* Thirteen target entries plus the load path and marker fill the child argv. */
+    snprintf(gNeutrinoArgs, sizeof(gNeutrinoArgs), "-a -b -c -d -e --b tail");
     int beforeLoads = loads;
     if (sysRunNeutrinoLaunch("usb", "mass0:/DVD/SLUS_123.45.iso", "SLUS_123.45", 0, 0,
                              "mass0:/NEUTRINO/neutrino.elf", "", 0, 0, 0, 0, NULL, 0) != 0 ||
-        loads != beforeLoads + 1 || lastArgc != 14 ||
-        strcmp(lastArgs[6], "-a") || strcmp(lastArgs[11], "-f") ||
-        strcmp(lastArgs[12], "--b") || strcmp(lastArgs[13], "tail")) {
+        loads != beforeLoads + 1 || lastArgc != 13 ||
+        strcmp(lastArgs[6], "-a") || strcmp(lastArgs[10], "-e") ||
+        strcmp(lastArgs[11], "--b") || strcmp(lastArgs[12], "tail")) {
         puts("FAIL boundary argv must preserve each token without concatenated suffixes");
         failures++;
+    }
+
+    failures += check("14 targets leave no slot for the loader marker",
+                      "-a -b -c -d -e -f --b tail", "", NULL, -1);
+    {
+        char token[247];
+        char *target[] = {token};
+        memset(token, 'x', sizeof(token));
+        token[244] = '\0'; /* "x" + NUL, loader marker, and 245 bytes. */
+        if (!elfldrArgsFit("x", 1, target, NULL, NULL))
+            failures++;
+        token[244] = 'x';
+        token[245] = '\0';
+        if (elfldrArgsFit("x", 1, target, NULL, NULL))
+            failures++;
     }
 
     snprintf(gNeutrinoArgs, sizeof(gNeutrinoArgs), "%s", many);
@@ -257,6 +273,29 @@ int main(void)
     }
     sysNeutrinoCheatArg[0] = '\0';
 
+    /* ATA/exFAT retains the mount for the mapping phase and may still run the logo. */
+    for (int fs = 0; fs <= 3; fs++) {
+        for (int logo = 0; logo <= 1; logo++) {
+            const char *elf = "mc0:/neutrino/neutrino.elf";
+            int quickBoot = 0, showLogo = 0;
+            beforeLoads = loads;
+            if (sysRunNeutrinoLaunch("ata", "mass0:/DVD/Game.iso", "SLUS_123.45", 0, logo,
+                                     elf, "", 0, 0, fs, 0, NULL, 0) != 0 || loads != beforeLoads + 1) {
+                puts("FAIL ATA launch arguments could not be composed");
+                failures++;
+                continue;
+            }
+            for (int i = 0; i < lastArgc; i++) {
+                quickBoot += !strcmp(lastArgs[i], "-qb");
+                showLogo += !strcmp(lastArgs[i], "-logo");
+            }
+            if (quickBoot != (fs <= 1) || showLogo != logo) {
+                printf("FAIL ATA fs %d: -qb count %d, -logo count %d\n", fs, quickBoot, showLogo);
+                failures++;
+            }
+        }
+    }
+
     /* DVR is a filesystem path, never a bdfs tuple or an automatic quickboot/logo pass. */
     gNeutrinoArgs[0] = '\0';
     beforeLoads = loads;
@@ -351,9 +390,9 @@ with tempfile.TemporaryDirectory() as tmp:
     src.write_text(harness.replace("@FUNCTIONS@", functions), encoding="utf-8")
     for flags in ([], ["-DRETROACHIEVEMENTS"]):
         build = subprocess.run(["gcc", *flags, "-std=gnu99", "-Wall", "-Werror", "-Wno-unused-function",
-                                "-o", str(exe), str(src)], capture_output=True, text=True)
+                                "-I", str(root), "-o", str(exe), str(src)], capture_output=True, text=True)
         assert build.returncode == 0, build.stderr
         result = subprocess.run([str(exe)], capture_output=True, text=True)
         assert result.returncode == 0, result.stdout + result.stderr
 
-print("neutrino argv budget: count, bytes, VMC, 14-entry token integrity, and pre-teardown refusal OK")
+print("Neutrino handoff: ATA quick boot and logo, exact child argv budget, VMC and pre-teardown refusal passed")

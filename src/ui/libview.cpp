@@ -46,7 +46,7 @@ static int libViewIsDeviceMode(int mode)
 {
     if (mode >= BDM_MODE && mode <= BDM_MODE_LAST)
         return 1;
-    return mode == MMCE_MODE || mode == ETH_MODE || mode == HDD_MODE || mode == UDPFS_MODE;
+    return isMmceMode(mode) || mode == ETH_MODE || mode == HDD_MODE || mode == UDPFS_MODE;
 }
 
 int libViewSupported(int mode, int view)

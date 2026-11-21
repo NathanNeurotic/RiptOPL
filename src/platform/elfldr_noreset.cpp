@@ -15,6 +15,7 @@
 */
 
 #include <kernel.h>
+#include "include/elfldr_args.h"
 #include "include/ioman.h"      // LOG (kernel argv-budget refusal trace)
 #include "include/launchdiag.h" // UDPBD hang-triage stage markers (keep-IOP handoffs only)
 #include "include/system.h"     // SYS_LOAD_ELF_RESET_ROM0_MC
@@ -147,7 +148,7 @@ static int probeTarget(const char *filename, int diag)
     return -1;
 }
 
-static int sysLoadELFCommon(const char *filename, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd)
+static int sysLoadELFCommon(const char *filename, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd, const char *fallback)
 {
     elfldr_header_t *eh;
     elfldr_pheader_t *eph;
@@ -158,7 +159,13 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
                             resetIop == SYS_LOAD_ELF_RESET_ROM0_MC ? "-la=RM" :
                             resetIop                               ? "-reset-iop" :
                                                                      NULL;
-    int extra_args = loaderArg != NULL ? 1 : 0;
+    int extra_args = (loaderArg != NULL) + (fallback != NULL);
+    char optionMarker[] = ELFLDR_OPTION_MARKER;
+    char fallbackArg[fallback != NULL ? (int)strlen(fallback) + 11 : 1];
+    if (fallback != NULL) {
+        strcpy(fallbackArg, "-fallback=");
+        strcat(fallbackArg, fallback);
+    }
 
     // The child loads through filename's live mount. Any portable APA path is already present in
     // the caller-controlled target argv[0]; partition is retained for API compatibility.
@@ -177,43 +184,49 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
             launchDiagRefuse(LAUNCHDIAG_REFUSE_ARGS);
         return -1;
     }
-    if (probeTarget(filename, diag) < 0)
-        return -1;
+    if (probeTarget(filename, diag) < 0) {
+        if (fallback == NULL || probeTarget(fallback, diag) < 0)
+            return -1;
+        /* The primary vanished after the parent's probe: start with the fallback. */
+        filename = fallback;
+        argv[0] = (char *)fallback;
+        fallback = NULL;
+        extra_args = loaderArg != NULL ? 1 : 0;
+    }
     if (diag)
         launchDiagMark(10); // ELF probe open OK -- the elfldr child handoff runs next
+
+    // The parent can promote the fallback to primary after the probes. The
+    // boundary must report the FINAL option count, not the count before that
+    // promotion, or the child will misinterpret target arguments.
+    optionMarker[7] = '0' + extra_args;
 
     // Kernel args-area budget, the last line of defense for EVERY handoff (Neutrino,
     // POPSTARTER, Apps): SetArg copies at most 15 strings into ONE 256-byte pool (NULs included) and
     // ExecPS2 forwards the UNCLAMPED count -- exceeding either limit corrupts rather than
     // truncates. Callers are expected to fit (sysLaunchNeutrino budgets itself); refuse loudly
     // here rather than hand the kernel a mangled argv.
-    {
-        int pool = (int)strlen(filename) + 1;
-        int j;
-        if (loaderArg != NULL)
-            pool += (int)strlen(loaderArg) + 1;
-        for (j = 0; j < argc; j++) {
-            if (argv[j] == NULL)
-                return -1; // a NULL mid-argv would crash SetArg's copy inside ExecPS2 -- refuse here
-            pool += (int)strlen(argv[j]) + 1;
-        }
-        if (argc + 1 + extra_args > 15 || pool > 256) {
-            LOG("[ELFLDR] argv over the kernel budget (args=%d/15, pool=%d/256) -- refusing handoff\n", argc + 1 + extra_args, pool);
-            if (diag)
-                launchDiagRefuse(LAUNCHDIAG_REFUSE_CHILD_BUDGET);
-            return -1;
-        }
+    if (!elfldrArgsFit(filename, argc, argv, loaderArg, fallback != NULL ? fallbackArg : NULL)) {
+        LOG("[ELFLDR] invalid argv or kernel argument budget exceeded\n");
+        if (diag)
+            launchDiagRefuse(LAUNCHDIAG_REFUSE_CHILD_BUDGET);
+        return -1;
     }
 
     // Child contract: argv[0] = load path (SifLoadElf'd), argv[1..argc] = the target's full argv;
-    // if resetIop is non-zero, trailing argv[argc+1] = "-reset-iop".
+    // trailing options are "-reset-iop" and, when supplied, "-fallback=<second load path>",
+    // followed by the mandatory "-rlopt=N" boundary marker (including N=0).
     // The ExecPS2 syscall marshals the strings across the jump.
-    char *new_argv[argc + 1 + extra_args];
+    char *new_argv[argc + 2 + extra_args];
     new_argv[0] = (char *)filename;
     for (i = 0; i < argc; i++)
         new_argv[i + 1] = argv[i];
+    int extra = 0;
     if (loaderArg != NULL)
-        new_argv[argc + 1] = (char *)loaderArg;
+        new_argv[argc + 1 + extra++] = (char *)loaderArg;
+    if (fallback != NULL)
+        new_argv[argc + 1 + extra] = fallbackArg;
+    new_argv[argc + 1 + extra_args] = optionMarker;
 
     wipeBramMem();
 
@@ -243,17 +256,22 @@ static int sysLoadELFCommon(const char *filename, const char *partition, int arg
     if (diag)
         launchDiagMark(11); // ExecPS2 into the elfldr child is the next (and last) step on this side
 
-    return ExecPS2((void *)eh->entry, NULL, argc + 1 + extra_args, new_argv);
+    return ExecPS2((void *)eh->entry, NULL, argc + 2 + extra_args, new_argv);
 }
 
 static int sysLoadELF(const char *filename, const char *partition, int argc, char *argv[], int resetIop)
 {
-    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, 0);
+    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, 0, NULL);
 }
 
 int sysLoadELFApp(const char *filename, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd)
 {
-    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, cleanupHdd);
+    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, cleanupHdd, NULL);
+}
+
+int sysLoadELFAppFallback(const char *filename, const char *fallback, const char *partition, int argc, char *argv[], int resetIop, int cleanupHdd)
+{
+    return sysLoadELFCommon(filename, partition, argc, argv, resetIop, cleanupHdd, fallback);
 }
 
 int sysLoadELFKeepIOP(const char *filename, const char *partition, int argc, char *argv[])

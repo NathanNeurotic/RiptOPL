@@ -500,7 +500,7 @@ void initSupport(item_list_t *itemList, int mode, int force_reinit)
         startMode = (gNetworkProtocol == NET_PROTO_UDPFS) ? gNetStartMode : START_MODE_DISABLED;
     else if (mode == HTTP_MODE)
         startMode = (gNetworkProtocol == NET_PROTO_HTTP) ? gNetStartMode : START_MODE_DISABLED;
-    else if (mode == MMCE_MODE)
+    else if (isMmceMode(mode))
         startMode = gMMCEStartMode;
 
     if (startMode) {
@@ -594,7 +594,7 @@ void initAllSupport(int force_reinit)
     if (gBootInProgress)
         guiRenderGreetingScreen();
     LOG("BOOT scan: MMCE initSupport begin\n");
-    initSupport(mmceGetObject(0), MMCE_MODE, force_reinit);
+    mmceEnumerateDevices(force_reinit);
     LOG("BOOT scan: MMCE initSupport done\n");
     if (gBootInProgress)
         diagLog("boot: MMCE start stage done (enabled drivers may still be loading in the background)");
@@ -641,6 +641,8 @@ int oplPath2Mode(const char *path)
     // Custom core paths are normalized to these live filesystem namespaces before teardown.
     // Classify them directly instead of depending on a visible/enabled menu page: a user may keep
     // Neutrino/POPSTARTER on a device whose games tab is disabled.
+    if (!strncasecmp(path, "mmce1", 5))
+        return MMCE_MODE1;
     if (!strncasecmp(path, "mmce", 4))
         return MMCE_MODE;
     if (!strncasecmp(path, "smb", 3) || !strncasecmp(path, "nfs:", 4))
@@ -1805,8 +1807,16 @@ static void deferredInit(void)
     // All Games: the device pages step aside for the one list, so boot onto it.
     if (gAllGames && list_support[FAV_MODE].support != NULL)
         bootMode = FAV_MODE;
+    if (bootMode == MMCE_MODE &&
+        (list_support[MMCE_MODE].support == NULL || list_support[MMCE_MODE].menuItem.visible == 0) &&
+        list_support[MMCE_MODE1].support != NULL && list_support[MMCE_MODE1].menuItem.visible != 0)
+        bootMode = MMCE_MODE1;
     if (list_support[bootMode].support == NULL) {
-        if (list_support[MMCE_MODE].support != NULL)
+        if (list_support[MMCE_MODE].support != NULL && list_support[MMCE_MODE].menuItem.visible != 0)
+            bootMode = MMCE_MODE;
+        else if (list_support[MMCE_MODE1].support != NULL && list_support[MMCE_MODE1].menuItem.visible != 0)
+            bootMode = MMCE_MODE1;
+        else if (list_support[MMCE_MODE].support != NULL)
             bootMode = MMCE_MODE;
         else if (list_support[APP_MODE].support != NULL)
             bootMode = APP_MODE;
@@ -1885,7 +1895,7 @@ void miniInit(int mode, int ataOnly)
     } else if (mode == HDD_MODE) {
         hddLoadModules();
         hddLoadSupportModules();
-    } else if (mode == MMCE_MODE) {
+    } else if (isMmceMode(mode)) {
         mmceLoadModules();
     }
 
