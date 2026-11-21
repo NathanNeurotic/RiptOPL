@@ -55,6 +55,6 @@ Press **Triangle** on a PS2 game for per-game options.
 
 1. Set up a portable RIPPCSX2 instance with its own settings and a USB image containing placeholder `DVD/` entries and matching `ART/` and `CFG/` files. Use a local BIOS from your own console. Keep BIOS, card images and sample disk images outside the repository.
 2. Use the standard RiptOPL ELF and record its build manifest. Enable USB in the capture configuration, choose List and set Auto menu video and widescreen for the library. Hold L3 between captures and allow the artwork to settle. Use 4:3 when capturing the general Settings menus.
-3. Use the emulator's screenshot hotkey. Check each frame at full size. Keep screenshots and their hashes in `docs/assets/ui/` and copy the same PNGs to `assets/ui/` on the Pages branch. Run the site and wiki generators after updating the captions.
+3. Use the emulator's screenshot hotkey. For repeatable pad sequences, adapt the [RIPPS2 background capture driver](https://gitlab.com/akilluminati247/RIPPS2/-/blob/f4679198071ebc6d57461111f5a70ba3e268c2e0/tools/dev/ps2bg.ps1) by [akilluminati47](https://gitlab.com/akilluminati247) to your lab. Check each frame at full size. Keep screenshots and their hashes in `docs/assets/ui/` and copy the same PNGs to `assets/ui/` on the Pages branch. Run the site and wiki generators after updating the captions.
 
 Earlier views and recordings are available in the [archived captures guide](https://github.com/NathanNeurotic/RiptOPL/blob/1d4b642eab3a9e54f86197120b7fc637e05fc11f/docs/UI-CAPTURES.md).
