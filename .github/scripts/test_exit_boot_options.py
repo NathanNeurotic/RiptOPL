@@ -12,7 +12,10 @@ settingsio = (root / "src/app/settingsio.cpp").read_text(encoding="utf-8")
 opl = (root / "include/opl.h").read_text(encoding="utf-8")
 base_lang = (root / "lng/tmpl/_base.yml").read_text(encoding="utf-8")
 lang_labels = re.findall(r"^\s*label:\s*(\S+)\s*$", base_lang, re.M)
-assert lang_labels[-2:] == ["EXIT_MENU_BOOT2", "EXIT_MENU_BOOT"], "new labels must preserve positional language-pack compatibility"
+# Keep the BOOT labels immediately after the last pre-BOOT label. Future
+# labels can extend the table without shifting the positions of existing ones.
+boot_labels = lang_labels.index("NFS_EMBER_NO_SAVES") + 1
+assert lang_labels[boot_labels:boot_labels + 2] == ["EXIT_MENU_BOOT2", "EXIT_MENU_BOOT"], "BOOT labels must preserve language-pack positions"
 
 
 def function(source, signature):
