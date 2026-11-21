@@ -63,6 +63,7 @@ static struct
         QueryPathInformationResponse_t queryPathInformationResponse;
         FindFirstNext2Request_t findFirstNext2Request;
         FindFirstNext2Response_t findFirstNext2Response;
+        FindClose2Request_t findClose2Request;
         NTCreateAndXRequest_t ntCreateAndXRequest;
         NTCreateAndXResponse_t ntCreateAndXResponse;
         OpenAndXRequest_t openAndXRequest;
@@ -817,10 +818,16 @@ query:
         return -EIO;
 
     // check there's no error
-    switch (QPIRsp->smbH.Eclass | (QPIRsp->smbH.Ecode << 16)) {
+    switch ((u32)(u16)QPIRsp->smbH.Eclass | ((u32)(u16)QPIRsp->smbH.Ecode << 16)) {
         // check there's no error
         case STATUS_SUCCESS:
             break;
+        case STATUS_NO_SUCH_FILE:
+        case STATUS_OBJECT_NAME_NOT_FOUND:
+        case STATUS_OBJECT_PATH_NOT_FOUND:
+        case DOSERR_FILE_NOT_FOUND:
+        case DOSERR_PATH_NOT_FOUND:
+            return -ENOENT;
         // check if access denied
         case STATUS_ACCESS_DENIED:
             return -EACCES;
@@ -912,10 +919,16 @@ int smb_NTCreateAndX(int UID, int TID, char *filename, s64 *filesize, int mode)
     if (NTCRsp->smbH.Magic != SMB_MAGIC)
         return -EIO;
 
-    switch (NTCRsp->smbH.Eclass | (NTCRsp->smbH.Ecode << 16)) {
+    switch ((u32)(u16)NTCRsp->smbH.Eclass | ((u32)(u16)NTCRsp->smbH.Ecode << 16)) {
         // check there's no error
         case STATUS_SUCCESS:
             break;
+        case STATUS_NO_SUCH_FILE:
+        case STATUS_OBJECT_NAME_NOT_FOUND:
+        case STATUS_OBJECT_PATH_NOT_FOUND:
+        case DOSERR_FILE_NOT_FOUND:
+        case DOSERR_PATH_NOT_FOUND:
+            return -ENOENT;
         // check if access denied
         case STATUS_ACCESS_DENIED:
             return -EACCES;
@@ -988,10 +1001,16 @@ static int smb_LegacyOpenAndX(int UID, int TID, char *filename, s64 *filesize, i
     if (ORsp->smbH.Magic != SMB_MAGIC)
         return -EIO;
 
-    switch (ORsp->smbH.Eclass | (ORsp->smbH.Ecode << 16)) {
+    switch ((u32)(u16)ORsp->smbH.Eclass | ((u32)(u16)ORsp->smbH.Ecode << 16)) {
         // check there's no error
         case STATUS_SUCCESS:
             break;
+        case STATUS_NO_SUCH_FILE:
+        case STATUS_OBJECT_NAME_NOT_FOUND:
+        case STATUS_OBJECT_PATH_NOT_FOUND:
+        case DOSERR_FILE_NOT_FOUND:
+        case DOSERR_PATH_NOT_FOUND:
+            return -ENOENT;
         // check if access denied
         case STATUS_ACCESS_DENIED:
             return -EACCES;
@@ -1387,6 +1406,13 @@ int smb_Rename(int UID, int TID, char *oldPath, char *newPath)
     return 0;
 }
 
+// ERRDOS/ERRbadfile denotes an empty initial FIND_FIRST2 search on SMB1.
+// Unlike STATUS_NO_MORE_FILES it does not represent a normal FIND_NEXT2 EOF.
+static int smbFindFirstEmptyDosStatus(int cmd, u32 status)
+{
+    return cmd == TRANS2_FIND_FIRST2 && status == DOSERR_FILE_NOT_FOUND;
+}
+
 //-------------------------------------------------------------------------
 int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info)
 {
@@ -1459,11 +1485,24 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
     if (FFNRsp->smbH.Magic != SMB_MAGIC)
         return -EIO;
 
+    // DOS ERRDOS/ERRbadfile is an empty *initial* search, but a path
+    // failure elsewhere must still propagate instead of hiding the error.
+    if (smbFindFirstEmptyDosStatus(cmd, (u32)(u16)FFNRsp->smbH.Eclass | ((u32)(u16)FFNRsp->smbH.Ecode << 16))) {
+        info->EOS = 1;
+        return 1;
+    }
     // check there's no error
-    switch (FFNRsp->smbH.Eclass | (FFNRsp->smbH.Ecode << 16)) {
+    switch ((u32)(u16)FFNRsp->smbH.Eclass | ((u32)(u16)FFNRsp->smbH.Ecode << 16)) {
         // check there's no error
         case STATUS_SUCCESS:
             break;
+        // Windows SMB1 (srv.sys) ends FIND_NEXT2 with STATUS_NO_MORE_FILES and empty
+        // FIND_FIRST2 with STATUS_NO_SUCH_FILE (or DOS ERRDOS/ERRnofiles). Report clean EOF.
+        case STATUS_NO_MORE_FILES:
+        case STATUS_NO_SUCH_FILE:
+        case DOSERR_NO_MORE_FILES:
+            info->EOS = 1;
+            return 1;
         // check if access denied
         case STATUS_ACCESS_DENIED:
             return -EACCES;
@@ -1493,11 +1532,42 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
     info->fileInfo.LastWrite      = FFRspData->LastWrite;
     info->fileInfo.Change         = FFRspData->Change;
     info->fileInfo.FileAttributes = FFRspData->FileAttributes;
-    if (FFRspData->FileAttributes & EXT_ATTR_DIRECTORY)
-        info->fileInfo.IsDirectory = 1;
+    info->fileInfo.IsDirectory    = (FFRspData->FileAttributes & EXT_ATTR_DIRECTORY) ? 1 : 0;
     info->fileInfo.AllocationSize = FFRspData->AllocationSize;
     info->fileInfo.EndOfFile      = FFRspData->EndOfFile;
     getStringField(info->FileName, FFRspData->FileName, FFRspData->FileNameLen);
+
+    return 0;
+}
+
+//-------------------------------------------------------------------------
+int smb_FindClose2(int UID, int TID, int SID)
+{
+    int r;
+    FindClose2Request_t *FCR = &SMB_buf.smb.findClose2Request;
+    CloseResponse_t *FCRsp   = &SMB_buf.smb.closeResponse;
+
+    ZERO_PKT_ALIGNED(FCR, sizeof(FindClose2Request_t));
+
+    FCR->smbH.Magic   = SMB_MAGIC;
+    FCR->smbH.Cmd     = SMB_COM_FIND_CLOSE2;
+    FCR->smbH.Flags   = SMB_FLAGS_CANONICAL_PATHNAMES;
+    FCR->smbH.Flags2  = SMB_FLAGS2_KNOWS_LONG_NAMES | SMB_FLAGS2_32BIT_STATUS;
+    FCR->smbH.UID     = (u16)UID;
+    FCR->smbH.TID     = (u16)TID;
+    FCR->smbWordcount = 1;
+    FCR->SearchID     = (u16)SID;
+
+    nb_SetSessionMessage(sizeof(FindClose2Request_t));
+    r = GetSMBServerReply(0, NULL, 0);
+    if (r <= 0)
+        return -ETIMEDOUT;
+
+    if (FCRsp->smbH.Magic != SMB_MAGIC)
+        return -EIO;
+
+    if (((u32)(u16)FCRsp->smbH.Eclass | ((u32)(u16)FCRsp->smbH.Ecode << 16)) != STATUS_SUCCESS)
+        return -EIO;
 
     return 0;
 }
@@ -1634,6 +1704,18 @@ int smb_Disconnect(void)
         while (recv(main_socket, &dummy, sizeof(dummy), 0) > 0)
             ;
 
+        lwip_close(main_socket);
+        main_socket = -1;
+    }
+
+    return 0;
+}
+
+//-------------------------------------------------------------------------
+int smb_AbortConnection(void)
+{
+    if (main_socket != -1) {
+        shutdown(main_socket, SHUT_WR);
         lwip_close(main_socket);
         main_socket = -1;
     }

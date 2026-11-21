@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fast paging for single-title layouts; keep list paging, D-pad steps and animation intact."""
+"""Check 15-title jumps, multi-row paging, wraparound, home/end and animation."""
 from pathlib import Path
 import subprocess
 import tempfile
@@ -59,8 +59,8 @@ int main(void) {
     for (int carousel=0;carousel<=1;carousel++) {
         theme.coverflow=carousel;
         for (int n=1;n<=64;n++) for (int s=0;s<n;s++) for (int dir=-1;dir<=1;dir+=2) {
-            int target=dir>0 ? (s==n-1 ? 0 : (s+15<n ? s+15 : n-1)) :
-                               (s==0 ? n-1 : (s>15 ? s-15 : 0));
+            int target=dir>0 ? (s==n-1 ? 0 : (s+15<n ? s+15 : n-1))
+                             : (s==0 ? n-1 : (s>15 ? s-15 : 0));
             // Entering Info from a multi-row main list can retain an earlier page start.
             for (int first=0;first<=s;first++) {
                 checkPage(n,s,first,dir,target,target);
@@ -69,9 +69,9 @@ int main(void) {
             }
         }
     }
-    /* Repeated shoulder keys reach each end, then wrap on the next press. */
+    /* Short final steps land at the end, and the next press wraps. */
     theme.coverflow=1;setup(40,0);
-    int forward[]={15,30,39,0}, backward[]={39,24,9,0,39};
+    int forward[]={15,30,39,0}, backward[]={39,24,9,0};
     for (int target:forward) {menuNextPage();assert(item.current==&nodes[target]);}
     for (int target:backward) {menuPrevPage();assert(item.current==&nodes[target]);}
     /* Ordinary D-pad moves and L2/R2 still move one title or go straight to an end. */
@@ -106,7 +106,7 @@ int main(void) {
         setup(1,0);menuNextPage();menuPrevPage();
         assert(item.current==&nodes[0] && !animations && !sounds);
     }
-    puts("PASS: 15-title jumps, clamps/wraps, list paging, D-pad, home/end, animation, empty/single libraries");
+    puts("PASS: 15-title jumps and wraps, multi-row paging, D-pad, home/end, animation, empty/single libraries");
 }
 '''.replace('@FUNCTIONS@', '\n'.join(functions))
 with tempfile.TemporaryDirectory() as tmp:

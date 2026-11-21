@@ -67,7 +67,7 @@ static const char *vcdDisplayNameForRow(item_list_t *l, int id, const char *text
 static char resolvedName[32];
 static int resolvedKind = -1;
 static int libListRowView(item_list_t *l, int id) { (void)l; return ps1Row[id] ? LIB_VIEW_PS1 : LIB_VIEW_ISO; }
-static void ps1RowIdResolve(const char *name, int kind) { resolves++; snprintf(resolvedName, sizeof(resolvedName), "%s", name); resolvedKind = kind; }
+static void ps1RowIdResolve(const char *name, int kind, const char *root) { assert(root && !strcmp(root, "mass0:")); resolves++; snprintf(resolvedName, sizeof(resolvedName), "%s", name); resolvedKind = kind; }
 static int favSource[8];
 static int favGetItemSourceMode(int id) { return favSource[id]; }
 #ifdef RETROACHIEVEMENTS
@@ -85,6 +85,7 @@ struct FakeSource {
     void *game(item_list_t *l, int i) { return l->itemGet(l, i); }
     char *name(item_list_t *l, int i) { return l->itemGetName(l, i); }
     config_set_t *config(item_list_t *l, int i) { return l->itemGetConfig(l, i); }
+    char *rowPrefix(item_list_t *, int) { return const_cast<char *>("mass0:"); }
     int ps1RowKind(item_list_t *l, int i, int *ember) { (void)l; *ember = ps1Ember[i]; return ps1Row[i]; }
 };
 static FakeSource sourceObject;

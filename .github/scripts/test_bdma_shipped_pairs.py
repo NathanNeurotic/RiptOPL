@@ -24,8 +24,8 @@ struct bdma_pair_sig_t {int usbdSize,hdfsdSize;};
 static const char *vcdBdmaModule[]={"usbd.irx","usbhdfsd.irx"};
 static int pairSize[2], markerMode, opens, closes;
 static bool markerExists, cardExists=true;
-static int vcdFindPopstarterMc(char *out,int n) {snprintf(out,n,"mc0:/POPSTARTER");return cardExists;}
-static int vcdReadBdmaMode() {return markerMode;}
+static int vcdSelectBdmaMc(char *out,int n) {snprintf(out,n,"mc0:/POPSTARTER");return cardExists;}
+static int vcdReadBdmaModeAt(const char *) {return markerMode;}
 static int vcdGetFileSize(const char *p) {return pairSize[strstr(p,"usbhdfsd")?1:0];}
 static int open(const char *,int flags) {assert(flags==O_RDONLY);if(markerExists){++opens;return 7;}return -1;}
 static int close(int fd) {assert(fd==7);++closes;return 0;}

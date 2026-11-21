@@ -2587,7 +2587,7 @@ gui_strings:
   label: EXIT_MENU
   string: Exit To
 - label: HINT_EXIT_MENU
-  string: "PS2 Browser: opens the Browser, keeping the card's menu program (FMCB, OSDMenu) whenever it allows. OSDSYS (Skip Update): the console menu without the card's menu program, whose entries return at the next power-on. OSDSYS (With Update): the console's own exit."
+  string: "PS2 Browser: opens the Browser, keeping the card's menu program (FMCB, OSDMenu) whenever it allows. OSDSYS (Skip Update): the console menu without the card's menu program. OSDSYS (With Update): the console's own exit. BOOT choices: run the named ELF from mc0:/BOOT, then mc1:/BOOT if needed."
 - comment: Exit To choice. The console's own exit (OSDSYS with the memory card system update, e.g. FMCB), as before the setting existed.
   label: EXIT_MENU_CONSOLE
   string: OSDSYS (With Update)
@@ -2713,3 +2713,12 @@ gui_strings:
 - comment: Ember launch from an NFS export while NFS Writes is Off. Ember keeps its memory cards in the game folder, which it cannot write then.
   label: NFS_EMBER_NO_SAVES
   string: NFS Writes is Off, so Ember cannot keep memory card saves in this game's folder.
+- comment: Exit To choice. Run BOOT2.ELF from mc0:/BOOT, falling back to mc1:/BOOT.
+  label: EXIT_MENU_BOOT2
+  string: mc?:/BOOT/BOOT2.ELF
+- comment: Exit To choice. Run BOOT.ELF from mc0:/BOOT, falling back to mc1:/BOOT.
+  label: EXIT_MENU_BOOT
+  string: mc?:/BOOT/BOOT.ELF
+- comment: POPStarter uses the first present MMCE. This message is shown when a Slot 2 VCD is selected with Slot 1 connected.
+  label: POPSTARTER_MMCE_TWO_CARDS
+  string: "POPStarter uses MMCE Slot 1 while it is connected. Remove that card to launch this game from Slot 2."

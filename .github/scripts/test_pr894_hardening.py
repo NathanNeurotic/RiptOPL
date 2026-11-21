@@ -13,15 +13,17 @@ root = Path(__file__).resolve().parents[2]
 cue = (root / 'src/sources/cuesupport.cpp').read_text(encoding='utf-8')
 mmce = (root / 'src/sources/mmcesupport.cpp').read_text(encoding='utf-8')
 
-# Source reinitialization must not inherit a completed scan or exhausted retry budget.
-mmce_init = mmce[mmce.index('void MmceSource::init('):mmce.index('item_list_t *mmceGetObject(', mmce.index('void MmceSource::init('))]
+# Source reinitialization must reset slot state without inheriting a completed scan or exhausted retry budget.
+mmce_init = mmce[mmce.index('void MmceSource::init('):mmce.index('item_list_t *mmceGetSlotObject(', mmce.index('void MmceSource::init('))]
+assert 'slot->resetState(slotIdx);' in mmce_init
+mmce_reset = mmce[mmce.index('void MmceSlotState::resetState('):mmce.index('void MmceSlotState::probePresence(', mmce.index('void MmceSlotState::resetState('))]
 for state in ('ps1Scanned', 'ps1ScanFailed', 'ps1ScanRetries'):
-    assert f'gMmceSupport.{state} = 0;' in mmce_init
+    assert f'{state} = 0;' in mmce_reset
 
 # Exercise the caller as well as the merge: a positive count can still need recovery.
-start = mmce.index('        int r = ps1FillGameList(ps1Root, &gMmceSupport.ps1Games, gMmceSupport.ps1GameCount);')
-publish = mmce[start:mmce.index('        result += gMmceSupport.ps1GameCount;', start)]
-start = mmce.index('        if (!gMmceSupport.ps1Scanned')
+start = mmce.index('        int r = ps1FillGameList(ps1Root, &slot->ps1Games, slot->ps1GameCount);')
+publish = mmce[start:mmce.index('        result += slot->ps1GameCount;', start)]
+start = mmce.index('        if (!slot->ps1Scanned')
 retry = mmce[start:mmce.index('        if (host::library().viewActive', start)]
 retry_max = re.search(r'^constexpr int MMCE_VCD_SCAN_RETRY_MAX = (\d+);', mmce, re.M).group(1)
 
@@ -48,12 +50,13 @@ static int half(int count,base_game_info_t **out,int tag,const char *ext) {
 static int vcdFillGameList(const char *p,base_game_info_t **out) { (void)p;return half(vc,out,11,".VCD"); }
 static int cueFillGameListUnsorted(const char *p,base_game_info_t **out) { (void)p;return half(cc,out,22,".CUE"); }
 ''' + cue[cue.index('int cueIsCueEntry('):cue.index('\n}', cue.index('int cueIsCueEntry(')) + 2] + '\n' + cue[cue.index('static int ps1ScanIncomplete;'):] + '''
-struct {
+struct MmceSlotState {
     base_game_info_t *ps1Games;
     int ps1GameCount, ps1Scanned, ps1ScanFailed, ps1ScanRetries;
-} gMmceSupport;
-struct MmceInstance { int updateDelay; } instance;
-static MmceInstance *mmceInstance(void) { return &instance; }
+} gMmceSlot, *slot = &gMmceSlot;
+struct item_list_t { int updateDelay; } itemListInstance;
+static item_list_t *itemList = &itemListInstance;
+#define gMmceSupport gMmceSlot
 #define MMCE_MODE_UPDATE_DELAY 2
 #define MMCE_VCD_SCAN_RETRY_MAX ''' + retry_max + '''
 static void publishMmce(void) {

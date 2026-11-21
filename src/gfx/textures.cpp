@@ -71,11 +71,7 @@ extern void *fav_mark_png;
 extern void *cover_png;
 extern void *disc_png;
 extern void *screen_png;
-extern void *incebtion_png;
-extern void *ip_png;
-#ifndef BUILTIN_KORIUM
 extern void *coverapp_png;
-#endif
 extern void *missing_png;
 extern void *screens_png;
 
@@ -126,20 +122,14 @@ extern void *logo1_png;
 extern void *logo2_png;
 extern void *logo3_png;
 extern void *case_png;
-#ifdef BUILTIN_KORIUM
-extern void *apps_case_png;
-extern void *case_ps1_png;
-extern void *disc_ps1_png;
 extern void *Players_1_png;
 extern void *Players_2_png;
 extern void *Players_3_png;
 extern void *Players_4_png;
-#endif
+extern void *bezel_top_png;
+extern void *bezel_bottom_png;
 extern void *PS1_png;
 extern void *PS2_png;
-#ifndef BUILTIN_KORIUM
-extern void *case_overlay_png;
-#endif
 #ifdef RETROACHIEVEMENTS
 extern void *ra_mark_png;
 #endif
@@ -228,18 +218,9 @@ static texture_t internalDefault[TEXTURES_COUNT] = {
     {COVER_DEFAULT, "cover", &cover_png},
     {DISC_DEFAULT, "disc", &disc_png},
     {SCREEN_DEFAULT, "screen", &screen_png},
-#ifdef BUILTIN_KORIUM
-    {INCEBTION_PICTURE, "background", &incebtion_png},
-    {IP_PICTURE, "background_info", &ip_png},
-#else
-    {INCEBTION_PICTURE, "incebtion", &incebtion_png}, // default theme background (conf_theme_OPL.cfg: default=incebtion)
-    {IP_PICTURE, "ip", &ip_png},
-#endif
-#ifdef BUILTIN_KORIUM
-    {COVERAPP_DEFAULT, "coverapp", &cover_png}, // Korium has no app placeholder of its own; never show inceBtion's
-#else
+    {INCEBTION_PICTURE, "incebtion", NULL},
+    {IP_PICTURE, "ip", NULL},
     {COVERAPP_DEFAULT, "coverapp", &coverapp_png},
-#endif
     {MISSING_PICTURE, "missing", &missing_png},
     // no_Device fallback dropped with the device indicator; not embedded.
     {NO_DEVICE_PICTURE, "no_Device", NULL},
@@ -306,32 +287,20 @@ static texture_t internalDefault[TEXTURES_COUNT] = {
     {LOGO5_PICTURE, "logo5", &logo2_png},
     {LOGO6_PICTURE, "logo6", &logo1_png},
     {CASE_OVERLAY, "case", &case_png},
-// apps_case retired -- both built-in themes now use case + case_overlay; aliased to case so an
-// external theme that still names overlay=apps_case keeps a frame (no separate bitmap embedded).
-#ifdef BUILTIN_KORIUM
-    {APPS_CASE_OVERLAY, "apps_case", &apps_case_png},
-#else
     {APPS_CASE_OVERLAY, "apps_case", &case_png},
-#endif
     {PS1_SYSTEM, "PS1", &PS1_png}, // #System console glyphs (FR #49); names match the #System values
     {PS2_SYSTEM, "PS2", &PS2_png},
-#ifdef BUILTIN_KORIUM
-    {CASE_OVERLAY2, "case_overlay", NULL}, // inceBtion's foliage layer; Korium's case is one layer
-#else
-    {CASE_OVERLAY2, "case_overlay", &case_overlay_png}, // b2 foliage layer (two-layer frame)
-#endif
+    {CASE_OVERLAY2, "case_overlay", NULL},
     {UDPFS_ICON, "udp_fs", &udp_fs_png},
     {L1_ICON, "L1", &L1_png},
     {R1_ICON, "R1", &R1_png},
     {PSBBN_BACKGROUND, "psbbn_bg", &psbbn_bg_png},
-#ifdef BUILTIN_KORIUM
-    {CASE_PS1, "case_ps1", &case_ps1_png},
-    {DISC_PS1, "disc_ps1", &disc_ps1_png},
     {PLAYERS_1, "Players_1", &Players_1_png},
     {PLAYERS_2, "Players_2", &Players_2_png},
     {PLAYERS_3, "Players_3", &Players_3_png},
     {PLAYERS_4, "Players_4", &Players_4_png},
-#endif
+    {BEZEL_TOP, "bezel_top", &bezel_top_png},
+    {BEZEL_BOTTOM, "bezel_bottom", &bezel_bottom_png},
     {TECHWRITESCODE_LOGO, "techwritescode", &techwritescode_png},
     // BdmIndex dots for 2-4 visible mass devices, drawn by tools/make_bdmindex.py from Index_0.
     {INDEX2_0, "Index2_0", &Index2_0_png},

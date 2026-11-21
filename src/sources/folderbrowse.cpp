@@ -17,7 +17,7 @@ int folderModeSupported(int mode)
     // Loose-file tree scanners only (sbReadList/base_game_info_t, "/" separator): BDM (all 8 slots),
     // MMCE and UDPFS-Files. APA-HDD (HDL), the UDPFS block device and the VCD/POPS view do not scan a
     // CD/DVD directory tree, so they are excluded. SMB/ETH is deferred (uses "\\").
-    return (mode >= BDM_MODE && mode <= BDM_MODE_LAST) || mode == MMCE_MODE || mode == UDPFS_MODE;
+    return (mode >= BDM_MODE && mode <= BDM_MODE_LAST) || isMmceMode(mode) || mode == UDPFS_MODE;
 }
 
 const char *folderGetSub(int mode)

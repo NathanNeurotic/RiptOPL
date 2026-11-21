@@ -84,7 +84,7 @@ for rel in [
 
 import build_edition as editions  # noqa: E402
 
-for edition in ("korium", "incebtion"):
+for edition in ("riptopl",):
     plain = {t["name"]: t for t in editions.definition(edition)["targets"]}
     diag = {t["name"]: t for t in editions.definition(edition, "ingamediag")["targets"]}
     check(all("INGAMEDIAG" not in t.get("defines", []) for t in plain.values()) and "freezediag" not in plain,
@@ -103,9 +103,8 @@ try:
     FAILURES.append("ingamediag must refuse RetroAchievements (RA runs IGR from VBLANK)")
 except ValueError:
     pass
-check(all("{edition: korium, configuration: ingamediag}" in read(".github/workflows/" + w)
-          for w in ("rolling-release.yml", "rolling-llvm.yml")),
-      "CI builds the ingamediag configuration with GCC (Rolling Release) and with LLVM (RiptOPLLVM)")
+check("{edition: riptopl, configuration: ingamediag, toolchain: llvm}" in read(".github/workflows/rolling-release.yml"),
+      "CI builds the ingamediag configuration in Rolling Release")
 
 # 2. IGR ordering in padhook.c. The VBLANK_END handler stops the game; the worker reports.
 pad = read("ee_core/src/padhook.c")

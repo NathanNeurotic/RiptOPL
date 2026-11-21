@@ -500,7 +500,7 @@ void initSupport(item_list_t *itemList, int mode, int force_reinit)
         startMode = (gNetworkProtocol == NET_PROTO_UDPFS) ? gNetStartMode : START_MODE_DISABLED;
     else if (mode == HTTP_MODE)
         startMode = (gNetworkProtocol == NET_PROTO_HTTP) ? gNetStartMode : START_MODE_DISABLED;
-    else if (mode == MMCE_MODE)
+    else if (isMmceMode(mode))
         startMode = gMMCEStartMode;
 
     if (startMode) {
@@ -594,7 +594,7 @@ void initAllSupport(int force_reinit)
     if (gBootInProgress)
         guiRenderGreetingScreen();
     LOG("BOOT scan: MMCE initSupport begin\n");
-    initSupport(mmceGetObject(0), MMCE_MODE, force_reinit);
+    mmceEnumerateDevices(force_reinit);
     LOG("BOOT scan: MMCE initSupport done\n");
     if (gBootInProgress)
         diagLog("boot: MMCE start stage done (enabled drivers may still be loading in the background)");
@@ -641,6 +641,8 @@ int oplPath2Mode(const char *path)
     // Custom core paths are normalized to these live filesystem namespaces before teardown.
     // Classify them directly instead of depending on a visible/enabled menu page: a user may keep
     // Neutrino/POPSTARTER on a device whose games tab is disabled.
+    if (!strncasecmp(path, "mmce1", 5))
+        return MMCE_MODE1;
     if (!strncasecmp(path, "mmce", 4))
         return MMCE_MODE;
     if (!strncasecmp(path, "smb", 3) || !strncasecmp(path, "nfs:", 4))
@@ -1475,17 +1477,17 @@ void setDefaultColors(void)
     gDefaultBgColor[1] = RIPTOPL_PLASMA_BG_G;
     gDefaultBgColor[2] = RIPTOPL_PLASMA_BG_B;
 
-    gDefaultTextColor[0] = 0xFF;
-    gDefaultTextColor[1] = 0xFF;
-    gDefaultTextColor[2] = 0xFF;
+    gDefaultTextColor[0] = 0x47; // text is GS-modulated: shows as #8FA4D8
+    gDefaultTextColor[1] = 0x52;
+    gDefaultTextColor[2] = 0x6C;
 
-    gDefaultSelTextColor[0] = 0x00;
-    gDefaultSelTextColor[1] = 0xAE;
+    gDefaultSelTextColor[0] = 0xFF;
+    gDefaultSelTextColor[1] = 0xFF;
     gDefaultSelTextColor[2] = 0xFF;
 
-    gDefaultUITextColor[0] = 0x58;
-    gDefaultUITextColor[1] = 0x68;
-    gDefaultUITextColor[2] = 0xB4;
+    gDefaultUITextColor[0] = 0x4F; // shows as #9FB4E8
+    gDefaultUITextColor[1] = 0x5A;
+    gDefaultUITextColor[2] = 0x74;
 
     // Seeded from the general text colour: out of the box titles look exactly as before, and
     // only diverge once the user actually picks something in the new row.
@@ -1805,15 +1807,22 @@ static void deferredInit(void)
     // All Games: the device pages step aside for the one list, so boot onto it.
     if (gAllGames && list_support[FAV_MODE].support != NULL)
         bootMode = FAV_MODE;
-    if (list_support[bootMode].support == NULL) {
-        if (list_support[MMCE_MODE].support != NULL)
+    if (bootMode == MMCE_MODE &&
+        (list_support[MMCE_MODE].support == NULL || list_support[MMCE_MODE].menuItem.visible == 0) &&
+        list_support[MMCE_MODE1].support != NULL && list_support[MMCE_MODE1].menuItem.visible != 0)
+        bootMode = MMCE_MODE1;
+    if (list_support[bootMode].support == NULL ||
+        (isMmceMode(bootMode) && !list_support[bootMode].menuItem.visible)) {
+        if (list_support[MMCE_MODE].support != NULL && list_support[MMCE_MODE].menuItem.visible != 0)
             bootMode = MMCE_MODE;
-        else if (list_support[APP_MODE].support != NULL)
+        else if (list_support[MMCE_MODE1].support != NULL && list_support[MMCE_MODE1].menuItem.visible != 0)
+            bootMode = MMCE_MODE1;
+        else if (list_support[APP_MODE].support != NULL && list_support[APP_MODE].menuItem.visible)
             bootMode = APP_MODE;
         else {
             bootMode = -1;
             for (int i = 0; i < MODE_COUNT; i++) {
-                if (list_support[i].support != NULL) {
+                if (list_support[i].support != NULL && list_support[i].menuItem.visible) {
                     bootMode = i;
                     break;
                 }
@@ -1885,7 +1894,7 @@ void miniInit(int mode, int ataOnly)
     } else if (mode == HDD_MODE) {
         hddLoadModules();
         hddLoadSupportModules();
-    } else if (mode == MMCE_MODE) {
+    } else if (isMmceMode(mode)) {
         mmceLoadModules();
     }
 

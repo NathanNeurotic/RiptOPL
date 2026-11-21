@@ -15,7 +15,7 @@ import time
 import zipfile
 
 from build_configuration import CONFIGURATIONS
-from build_edition import EDITIONS, LITES, LITE, git
+from build_edition import EDITIONS, LITES, LITE, edition_display_name, git, kit_archive_name
 import publish_lite
 
 # The original's VARIANTS and DEBUG zips and its RA nopademu loader, published for every theme beside
@@ -81,8 +81,8 @@ def check_unpacked_layout(elf):
         raise ValueError("bug-report build is truncated: its program runs past the end of the file")
 
 
-BUNDLE_README = ("RiptOPL {title} configuration builds. Each folder holds one {elf} and the manifest it was\n"
-                 "built from; replace the ELF of an existing {title} install to use one. What each configuration\n"
+BUNDLE_README = ("{display} configuration builds. Each folder holds one {elf} and the manifest it was\n"
+                 "built from; replace the ELF of an existing {display} install to use one. What each configuration\n"
                  "changes: https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md\n"
                  "Every loader embeds usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\n"
                  "MIT licence; its licence is LICENSE-USMB2.txt beside this file. They also embed his unfs4,\n"
@@ -135,10 +135,11 @@ def add_sum(path, name, digest):
     sums.write_text("".join(f"{line}\n" for line in [*lines, f"{digest}  {name}"]), encoding="utf-8")
 
 
-def bundle_configurations(root, expected_sha, *, editions=None, compiler="gcc"):
-    """Pack the requested compiler's configuration builds into verified edition releases."""
+def bundle_configurations(root, expected_sha, *, editions=None, compiler=None):
+    """Pack each edition's configuration builds into its verified release folder."""
     for edition in (EDITIONS if editions is None else editions):
         options = EDITIONS[edition]
+        expected_compiler = options["compiler"] if compiler is None else compiler
         for name, configurations, _ in bundles(options):
             path = root / ("release-" + edition)
             kit = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
@@ -153,32 +154,33 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler="gcc"):
                     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
                     elf = (stage / source).read_bytes()
                     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
-                            or manifest["compiler"] != compiler or manifest["configuration"] != configuration
+                            or manifest["compiler"] != expected_compiler or manifest["configuration"] != configuration
                             or manifest["ps2build_version"] != kit["ps2build_version"]
                             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
                             or manifest.get(digest) != hashlib.sha256(elf).hexdigest()):
                         raise ValueError(f"invalid configuration build: {edition}/{folder}")
                     bundle.writestr(f"{folder}/{elf_name}", elf)
                     bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
-                bundle.writestr("README.txt", BUNDLE_README.format(title=EDITIONS[edition]["title"], elf=elf_name))
+                bundle.writestr("README.txt", BUNDLE_README.format(display=edition_display_name(options), elf=elf_name))
                 # Each loader embeds usmb2 (MIT) and unfs4 (BSD 2-Clause, its notice in CREDITS): the bundle
                 # carries the licences the kit ships.
                 bundle.writestr("LICENSE-USMB2.txt", (path / "LICENSE-USMB2.txt").read_bytes())
                 bundle.writestr("CREDITS", (ROOT / "CREDITS").read_bytes())
             add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
         if BUGREPORT in archives(options):
-            bundle_bug_report(root, edition, expected_sha, compiler=compiler)
+            bundle_bug_report(root, edition, expected_sha, compiler=expected_compiler)
 
 
-def bundle_bug_report(root, edition, expected_sha, compiler="gcc"):
-    """RIPTOPL-BUGREPORT.zip: the theme's diag build, unpacked, its manifest and a README on what to send."""
+def bundle_bug_report(root, edition, expected_sha, compiler=None):
+    """RIPTOPL-BUGREPORT.zip: the edition's diag build, unpacked, its manifest and a README on what to send."""
+    expected_compiler = EDITIONS[edition]["compiler"] if compiler is None else compiler
     path = root / ("release-" + edition)
     kit = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     stage = root / f"variant-{edition}-diag"
     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     elf = (stage / "RIPTOPL-UNPACKED.ELF").read_bytes()
     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
-            or manifest["compiler"] != compiler or manifest["configuration"] != "diag"
+            or manifest["compiler"] != expected_compiler or manifest["configuration"] != "diag"
             or manifest["ps2build_version"] != kit["ps2build_version"]
             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
             or manifest.get("unpacked_elf_sha256") != hashlib.sha256(elf).hexdigest()):
@@ -198,20 +200,22 @@ def bundle_bug_report(root, edition, expected_sha, compiler="gcc"):
     add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
 
 
-def verify(root, expected_sha, *, editions=None, compiler="gcc"):
+def verify(root, expected_sha, *, editions=None, compiler=None):
     candidates = []
-    suites = []
+    suites_by_compiler = {}
     for edition in (EDITIONS if editions is None else editions):
         options = EDITIONS[edition]
+        expected_compiler = options["compiler"] if compiler is None else compiler
         path = root / ("release-" + edition)
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
         if (manifest["repository"] != "NathanNeurotic/RiptOPL" or manifest["source_commit"] != expected_sha
-                or manifest["dirty"] or manifest["edition"] != edition or manifest["compiler"] != compiler
+                or manifest["dirty"] or manifest["edition"] != edition or manifest["compiler"] != expected_compiler
                 or manifest["sdk"] != "ps2build" or manifest["ra"] != options["ra"]
                 or manifest.get("configuration", "standard") != "standard"):
             raise ValueError(f"invalid source/edition manifest for {edition}")
         included_neutrino(options, bundled_neutrino(manifest))  # refuse an unpinned RA runtime before any publish
-        suites.append((manifest["ps2build_version"], manifest["components"], manifest["ports"]))
+        suites_by_compiler.setdefault(expected_compiler, []).append(
+            (manifest["ps2build_version"], manifest["components"], manifest["ports"]))
         sums = {}
         for line in (path / "SHA256SUMS.txt").read_text(encoding="utf-8").splitlines():
             digest, name = line.split("  ", 1)
@@ -223,7 +227,8 @@ def verify(root, expected_sha, *, editions=None, compiler="gcc"):
         actual = {p.name for p in path.iterdir() if p.is_file()}
         elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
         psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
-        required = {elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", f"RIPTOPL-{options['title']}.zip",
+        kit_zip = kit_archive_name(options)
+        required = {elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", kit_zip,
                     "LICENSE-USMB2.txt"}
         required |= {f"RIPTOPL-{name}.zip" for name in archives(options)}
         if set(sums) != required or actual != required | {"SHA256SUMS.txt"}:
@@ -233,7 +238,7 @@ def verify(root, expected_sha, *, editions=None, compiler="gcc"):
         with zipfile.ZipFile(path / "RIPTOPL-src.zip") as source:
             if source.testzip() or source.comment.decode() != expected_sha:
                 raise ValueError("source snapshot differs from the built commit")
-        with zipfile.ZipFile(path / f"RIPTOPL-{options['title']}.zip") as kit:
+        with zipfile.ZipFile(path / kit_zip) as kit:
             if kit.testzip() or json.loads(kit.read("BUILD-MANIFEST.json")) != manifest:
                 raise ValueError("install kit manifest differs from the standalone manifest")
             app_name = "APP_RIPTOPL-RA" if options["ra"] else "APP_RIPTOPL"
@@ -242,8 +247,9 @@ def verify(root, expected_sha, *, editions=None, compiler="gcc"):
             if kit.read("LICENSE-USMB2.txt") != (path / "LICENSE-USMB2.txt").read_bytes():
                 raise ValueError("install kit carries a different usmb2 licence than the standalone download")
         candidates.append((edition, options, path, sums))
-    if any(suite != suites[0] for suite in suites[1:]):
-        raise ValueError("editions resolved different SDK suites; rebuild them together before publication")
+    for suites in suites_by_compiler.values():
+        if any(suite != suites[0] for suite in suites[1:]):
+            raise ValueError("editions resolved different SDK suites; rebuild them together before publication")
     return candidates
 
 
@@ -342,15 +348,17 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
     elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
     psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
     downloads = f"{base}/releases/download/{options['tag']}"
+    display = edition_display_name(options)
+    kit_zip = versioned(kit_archive_name(options), version)
     return (
-        f"**RiptOPL {options['title']}** `{version}` - Development build [{sha[:8]}]({base}/commit/{sha}).\n\n"
+        f"**{display}** `{version}` - Development build [{sha[:8]}]({base}/commit/{sha}).\n\n"
         # First, so a reader can take the standard kit without reading on (jolek, 2026-11-10).
-        f"**Recommended download:** [RIPTOPL-{options['title']}-{version}.zip]({downloads}/RIPTOPL-{options['title']}-{version}.zip)"
+        f"**Recommended download:** [{kit_zip}]({downloads}/{kit_zip})"
         " - the standard full install kit. Everything below is optional.\n\n"
         "## Changes\n\n" + "\n".join(changes)
         + f"\n\n[Full history]({base}/commits/{sha})\n\n"
         "## Downloads\n\n"
-        f"- [Full install kit]({downloads}/RIPTOPL-{options['title']}-{version}.zip) - loader and companions.\n"
+        f"- [Full install kit]({downloads}/{kit_zip}) - loader and companions.\n"
         + (f"- [Bug-report build]({downloads}/RIPTOPL-{BUGREPORT}-{version}.zip) - RiptOPL will not start or freezes? "
            "This build shows each start-up step on screen and writes a report; its README says what to send.\n"
            if BUGREPORT in archives(options) else "")
@@ -578,8 +586,8 @@ def lite_candidates(root, sha, compiler="gcc"):
 
 
 def latest_release_arg(edition):
-    """Only IncebtIon is presented as GitHub's Latest release (never rolling-lite)."""
-    return "--latest=" + ("true" if edition == "incebtion" else "false")
+    """Only RiptOPL (rolling) is presented as GitHub's Latest release."""
+    return "--latest=" + ("true" if edition == "riptopl" else "false")
 
 
 def main():

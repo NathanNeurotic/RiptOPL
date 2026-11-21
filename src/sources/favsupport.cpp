@@ -31,6 +31,7 @@
 #include "include/cuesupport.h" // CUE_ROW_EXTENSION -- a PS1 favourite names its core  // VCD favourites: name-addressed POPSTARTER launch helpers
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
 #include "include/ethsupport.h" // ETH ISO favourite resolution while the live source is in VCD view
+#include "include/mmcesupport.h" // populate a card's PS1 list before name-addressed favourite lookup
 #include "include/bdmsupport.h" // bdmSupportIsUDPBD -- POPSTARTER favourites cannot bind to UDPBD
 #include "include/favsupport.h"
 #include "include/gamemanage.h" // Hide Game: hidden games are not gathered (RIPPS2)
@@ -578,7 +579,7 @@ static int favWriteFile(fav_raw_t *recs, int count, const char *name = FAV_FILE_
 // its submenu IS the VCD list, so light the star on the matching VCD item (by id+text). Misses
 // harmlessly (no star, no change) when the device is in ISO view or the VCD list index has since
 // shifted -- purely cosmetic on the source page; the FAV record + launch are unaffected either way.
-static submenu_list_t *favFindVisibleSource(opl_io_module_t *mod, int sourceId, const char *text, int wantedView)
+static submenu_list_t *favFindVisibleSource(opl_io_module_t *mod, int sourceId, const char *text, int wantedView, int kind = 0)
 {
     submenu_list_t *cur;
 
@@ -589,6 +590,12 @@ static submenu_list_t *favFindVisibleSource(opl_io_module_t *mod, int sourceId, 
         int viewMatches = wantedView == LIB_VIEW_ELF ? (rowView == LIB_VIEW_ELF || rowView == LIB_VIEW_PS1_ELF) : rowView == wantedView;
         if (!viewMatches || cur->item.text == NULL || strcmp(cur->item.text, text) != 0)
             continue;
+        if (wantedView == LIB_VIEW_PS1 && (kind == FAV_KIND_CUE || kind == FAV_KIND_VCD)) {
+            int ember = 0;
+            if (!gsOf(mod->support)->ps1RowKind(mod->support, cur->item.id, &ember) ||
+                (ember != 0) != (kind == FAV_KIND_CUE))
+                continue;
+        }
         // Apps have title identity and PS1 records are name-addressed. ISO games retain the exact
         // source-local id, even when the visible Mixed id is offset by the PS2-list length.
         if (mod->support->mode == APP_MODE || wantedView == LIB_VIEW_PS1 ||
@@ -598,9 +605,9 @@ static submenu_list_t *favFindVisibleSource(opl_io_module_t *mod, int sourceId, 
     return NULL;
 }
 
-static void favVcdMarkStar(opl_io_module_t *mod, int id, const char *text)
+static void favVcdMarkStar(opl_io_module_t *mod, int id, const char *text, int kind)
 {
-    submenu_list_t *src = favFindVisibleSource(mod, id, text, LIB_VIEW_PS1);
+    submenu_list_t *src = favFindVisibleSource(mod, id, text, LIB_VIEW_PS1, kind);
     if (src != NULL)
         src->item.favourited = 1;
 }
@@ -613,9 +620,9 @@ static void favVcdMarkStar(opl_io_module_t *mod, int id, const char *text)
 // title.cfg value), so apps match by mode+text and ignore the stored id everywhere: resolve (below),
 // the add-time duplicate check, and removal. Nathan's "Apps didn't seem to have functioning
 // R3/Favorites" (HW, 2026-07-16).
-static int favIdsMatchForMode(int mode, int recId, int liveId)
+static int favIdsMatchForMode(int mode, int kind, int recId, int liveId)
 {
-    return (mode == APP_MODE) || (recId == liveId);
+    return (mode == APP_MODE) || kind == FAV_KIND_VCD || kind == FAV_KIND_CUE || (recId == liveId);
 }
 
 static int favKindView(int kind)
@@ -638,6 +645,16 @@ static int favKindIsNameAddressed(int kind)
     return kind == FAV_KIND_VCD || kind == FAV_KIND_CUE;
 }
 
+// MMCE's PS1 shelf can contain an Ember folder and a POPSTARTER VCD with
+// the same display name. A name match alone must never select the wrong core.
+static int favMmcePs1KindMatches(item_list_t *view, int id, int kind)
+{
+    if (!favKindIsNameAddressed(kind) || (view->mode != MMCE_MODE && view->mode != MMCE_MODE1))
+        return 1;
+    int ember = 0;
+    return gsOf(view)->ps1RowKind(view, id, &ember) && ((ember != 0) == (kind == FAV_KIND_CUE));
+}
+
 static int favResolveStoredId(item_list_t *source, int id, const char *text, int kind, int *outId)
 {
     if (source == NULL || text == NULL || outId == NULL)
@@ -647,6 +664,8 @@ static int favResolveStoredId(item_list_t *source, int id, const char *text, int
     // identity so Favorites never depends on the source page's current view or visible mixed index.
     if (source->mode == ETH_MODE && kind == FAV_KIND_ISO)
         return ethResolveIsoFavourite(id, text, outId);
+    if (favKindIsNameAddressed(kind) && (source->mode == MMCE_MODE || source->mode == MMCE_MODE1))
+        mmceEnsurePs1List(source);
 
     item_list_t view = *source;
     view.viewOverride = favKindIsNameAddressed(kind) ? ITEM_VIEW_FORCE_PS1 : ITEM_VIEW_FORCE_ISO;
@@ -664,13 +683,23 @@ static int favResolveStoredId(item_list_t *source, int id, const char *text, int
         return 0;
     }
 
-    if (id < 0 || id >= count)
+    if (id >= 0 && id < count) {
+        char *name = gsOf(&view)->name(&view, id);
+        if (name != NULL && strcmp(name, text) == 0 && favMmcePs1KindMatches(&view, id, kind)) {
+            *outId = id;
+            return 1;
+        }
+    }
+    if (!favKindIsNameAddressed(kind))
         return 0;
-    char *name = gsOf(&view)->name(&view, id);
-    if (name == NULL || strcmp(name, text) != 0)
-        return 0;
-    *outId = id;
-    return 1;
+    for (int i = 0; i < count; i++) {
+        char *name = gsOf(&view)->name(&view, i);
+        if (name != NULL && strcmp(name, text) == 0 && favMmcePs1KindMatches(&view, i, kind)) {
+            *outId = i;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 // Can this support launch a PS1 favourite of the wanted core by NAME?
@@ -692,6 +721,35 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
     *outMode = mode;
     *outId = id;
 
+    // Like BDM favourites, follow an MMCE game when its card moves. Prefer the
+    // stored slot when both have a match; older records start at MMCE_MODE.
+    if (mode == MMCE_MODE || mode == MMCE_MODE1) {
+        const int modes[] = {mode, mode == MMCE_MODE ? MMCE_MODE1 : MMCE_MODE};
+        for (const int m : modes) {
+            opl_io_module_t *mod = oplGetModule(m);
+            if (mod == NULL || mod->support == NULL)
+                continue;
+            if (favKindIsNameAddressed(kind) && !favSupportLaunches(mod->support, kind == FAV_KIND_CUE))
+                continue;
+            int liveId = id;
+            if (!favResolveStoredId(mod->support, id, text, kind, &liveId))
+                continue;
+            if (markStars) {
+                if (favKindIsNameAddressed(kind)) {
+                    favVcdMarkStar(mod, liveId, text, kind);
+                } else {
+                    submenu_list_t *src = favFindVisibleSource(mod, liveId, text, LIB_VIEW_ISO);
+                    if (src != NULL)
+                        src->item.favourited = 1;
+                }
+            }
+            *outMode = m;
+            *outId = liveId;
+            return mod->support;
+        }
+        return NULL;
+    }
+
     // PS1 favourites are name-addressed and already view-independent: art/config/launch all key off
     // the stored name. Bind one to a loaded source that can launch ITS core -- a POPSTARTER
     // favourite needs itemLaunchVcd, an Ember one needs itemLaunchCue -- without disturbing that
@@ -703,7 +761,7 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
             opl_io_module_t *mod = oplGetModule(mode);
             if (mod != NULL && mod->support != NULL && favSupportLaunches(mod->support, needCue)) {
                 if (markStars)
-                    favVcdMarkStar(mod, id, text);
+                    favVcdMarkStar(mod, id, text, kind);
                 return mod->support;
             }
             for (int m = BDM_MODE; m <= BDM_MODE_LAST; m++) {
@@ -711,7 +769,7 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
                 if (bm != NULL && bm->support != NULL && favSupportLaunches(bm->support, needCue)) {
                     *outMode = m;
                     if (markStars)
-                        favVcdMarkStar(bm, id, text);
+                        favVcdMarkStar(bm, id, text, kind);
                     return bm->support;
                 }
             }
@@ -723,7 +781,7 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
         if (mod == NULL || mod->support == NULL || !favSupportLaunches(mod->support, needCue))
             return NULL;
         if (markStars)
-            favVcdMarkStar(mod, id, text);
+            favVcdMarkStar(mod, id, text, kind);
         return mod->support;
     }
 
@@ -766,7 +824,6 @@ static item_list_t *favResolve(int mode, int id, const char *text, int kind, int
 }
 
 // Guard the stored source id against the owner's CURRENT count -- the source list may have
-// shrunk / re-scanned since the favourite was validated, so re-check before every proxy call
 // to avoid indexing the owner's game array out of bounds.
 static int favOwnerHasId(item_list_t *o, int id)
 {
@@ -782,6 +839,19 @@ static int favModesMatch(int a, int b)
     if (aBdm && bBdm)
         return 1;
     return a == b;
+}
+
+// A record can match on the other MMCE slot only when it resolves there.
+// Do not change source rows' stars during persistence I/O.
+static int favRecordMatchesResolved(int storedMode, int storedId, const char *storedText, int storedKind, int mode)
+{
+    if (favModesMatch(storedMode, mode))
+        return 1;
+    if (!((storedMode == MMCE_MODE && mode == MMCE_MODE1) ||
+          (storedMode == MMCE_MODE1 && mode == MMCE_MODE)))
+        return 0;
+    int resolvedMode = storedMode, resolvedId = storedId;
+    return favResolve(storedMode, storedId, storedText, storedKind, &resolvedMode, &resolvedId, 0) != NULL && resolvedMode == mode;
 }
 
 // ---- the store ----------------------------------------------------------------
@@ -1015,14 +1085,14 @@ int FavSupport::addItem(int mode, int id, int icon_id, int text_id, const char *
         return 0;
     }
 
-    // Already present (same mode + id + text + kind) -> treat as success (the star stays set).
+    // Already present (same resolved identity) -> treat as success (the star stays set).
     // Use favModesMatch so a BDM favourite that moved slots (e.g. BDM_MODE -> BDM_MODE1) is
     // recognised as already-present, matching the BDM-lenient logic in removeByIdAndText.
     // kind is part of the identity so a disc favourite and a PS1 favourite never collide.
     for (int i = 0; i < count; i++) {
-        // favIdsMatchForMode: apps identify by title (their stored id shifts with the device set) --
-        // without it, a shifted app would collect a DUPLICATE record on every re-favourite.
-        if (favModesMatch(recs[i].mode, mode) && favIdsMatchForMode(mode, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
+        // Apps and name-addressed PS1 favourites can move to another live index;
+        // without that leniency, re-favouriting one would collect a duplicate record.
+        if (favRecordMatchesResolved(recs[i].mode, recs[i].id, recs[i].text, recs[i].kind, mode) && favIdsMatchForMode(mode, kind, recs[i].id, id) && recs[i].kind == kind && strcmp(recs[i].text, text) == 0) {
             free(recs);
             return 1;
         }
@@ -1064,12 +1134,18 @@ int FavSupport::removeByIdAndText(int mode, int id, const char *text, int kind)
 
     int survivors = 0;
     for (int i = 0; i < count; i++) {
-        // Match on id + text + mode (BDM-lenient) + kind so a same-titled favourite in a different
-        // device mode -- or a disc vs PS1 favourite of the same title -- is NOT collaterally deleted.
-        // Apps match by title alone (favIdsMatchForMode): their stored id shifts with the device set,
-        // and without the leniency R3 on an already-starred app could not un-favourite it.
-        if (!(favIdsMatchForMode(mode, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 && favModesMatch(recs[i].mode, mode) && recs[i].kind == kind))
+        // Match on text + mode (BDM-lenient) + kind, plus id for index-addressed records, so a
+        // same-titled favourite in another mode or kind is NOT collaterally deleted. Apps and
+        // name-addressed PS1 favourites can move to another live index between resolve and removal.
+        if (!(favIdsMatchForMode(mode, kind, recs[i].id, id) && text != NULL && strcmp(recs[i].text, text) == 0 &&
+              favRecordMatchesResolved(recs[i].mode, recs[i].id, recs[i].text, recs[i].kind, mode) && recs[i].kind == kind))
             recs[survivors++] = recs[i]; // compact in place (single buffer)
+    }
+    // A stale resolved row must not clear a star while the saved record survives.
+    // No write is needed when nothing matched; the caller can retry after a rebuild.
+    if (survivors == count) {
+        free(recs);
+        return 0;
     }
     int ok = favWriteFile(recs, survivors); // survivors may be 0 -> writes a header-only (empty) file
     free(recs);
@@ -1092,7 +1168,7 @@ int FavSupport::removeByIndex(int favIndex)
 
     opl_io_module_t *mod = oplGetModule(srcMode);
     if (mod != NULL) {
-        submenu_list_t *src = favFindVisibleSource(mod, srcId, txt, favKindView(srcKind));
+        submenu_list_t *src = favFindVisibleSource(mod, srcId, txt, favKindView(srcKind), srcKind);
         if (src != NULL)
             src->item.favourited = 0;
     }
@@ -1582,7 +1658,7 @@ int recentRankForRow(item_list_t *support, int id, const char *text)
 
 // Source order: the order rows are gathered in, which is also the order equal titles keep.
 static const int kAllGamesModes[] = {HDD_MODE, BDM_MODE, BDM_MODE1, BDM_MODE2, BDM_MODE3, BDM_MODE4, BDM_MODE5,
-                                     BDM_MODE6, BDM_MODE7, MMCE_MODE, ETH_MODE, UDPFS_MODE, HTTP_MODE, APP_MODE};
+                                     BDM_MODE6, BDM_MODE7, MMCE_MODE, MMCE_MODE1, ETH_MODE, UDPFS_MODE, HTTP_MODE, APP_MODE};
 
 // Appends one row; out == NULL only counts it.
 static int favGatherAdd(fav_rec_t *out, int n, int cap, item_list_t *owner, int id, int kind, const char *name)
@@ -1641,6 +1717,12 @@ int FavSupport::gatherPass(fav_rec_t *out, int cap, int shelf)
         // A network share picker lists shares, not games.
         if (src->mode == ETH_MODE && !ethShareChosen())
             continue;
+
+        // MMCE's ISO page does not normally scan PS1. All Games must populate
+        // that backing array before counting or gathering its PS1 entries.
+        if ((src->mode == MMCE_MODE || src->mode == MMCE_MODE1) &&
+            (shelf == LIB_VIEW_ALL || shelf == LIB_VIEW_PS1))
+            mmceEnsurePs1List(src);
 
         if (src->mode == APP_MODE) {
             if (shelf != LIB_VIEW_ALL && shelf != LIB_VIEW_ELF)
@@ -1736,9 +1818,11 @@ static void favTagDuplicates(fav_rec_t *recs, int count)
 static int favRecIsStarred(const fav_rec_t *r, const fav_raw_t *favs, int count)
 {
     for (int i = 0; i < count; i++) {
-        if (favs[i].kind == r->kind && favModesMatch(favs[i].mode, r->mode) &&
-            (favKindIsNameAddressed(r->kind) || favIdsMatchForMode(r->mode, favs[i].id, r->id)) &&
-            strcmp(favs[i].text, r->text) == 0)
+        // Reject mismatched names before legacy MMCE resolution, which may
+        // scan a card and enqueue deferred updates.
+        if (favs[i].kind == r->kind && strcmp(favs[i].text, r->text) == 0 &&
+            (favKindIsNameAddressed(r->kind) || favIdsMatchForMode(r->mode, r->kind, favs[i].id, r->id)) &&
+            favRecordMatchesResolved(favs[i].mode, favs[i].id, favs[i].text, favs[i].kind, r->mode))
             return 1;
     }
     return 0;

@@ -50,7 +50,7 @@ jobs:
             | sed -e 's/^neutrino_//' -e 's/\.7z$//' || true)"
           # Currently bundled: parsed from our rolling release notes (rolling-release.yml writes
           # "Included build: <ver> -- ...").
-          CUR="$(gh release view rolling-korium --repo "$GITHUB_REPOSITORY" --json body \
+          CUR="$(gh release view rolling --repo "$GITHUB_REPOSITORY" --json body \
             --jq '.body' 2>/dev/null | sed -n 's/.*Included build: \([^ ]*\).*/\1/p' | head -n1 || true)"
           echo "upstream Neutrino = [$NEU]"
           echo "rolling bundles   = [$CUR]"
@@ -67,9 +67,8 @@ jobs:
           if [ -z "$CUR" ]; then
             echo "Rolling has no recorded bundled Neutrino version; deferring to the next push-to-master rebuild."
           elif [ "$NEU" != "$CUR" ]; then
-            echo "Neutrino changed ($CUR -> $NEU): dispatching GCC and LLVM release workflows to rebundle."
+            echo "Neutrino changed ($CUR -> $NEU): dispatching release workflow to rebundle."
             gh workflow run rolling-release.yml --repo "$GITHUB_REPOSITORY" --ref rebuild/main -f publish=true
-            gh workflow run rolling-llvm.yml --repo "$GITHUB_REPOSITORY" --ref rebuild/main -f publish=true
           else
             echo "Rolling already bundles the latest Neutrino ($NEU). Nothing to do."
           fi

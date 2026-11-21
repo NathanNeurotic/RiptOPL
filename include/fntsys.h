@@ -8,23 +8,46 @@ constexpr int FNT_ERROR = (-1);
 
 constexpr int FNTSYS_DEFAULT_SIZE = 17;
 
-// Menu font size (original #1038): applies to text using FNTSYS_DEFAULT_SIZE, translated and
-// fallback fonts included. Theme fonts with an explicit point size keep it.
-enum {
-    FONT_SIZE_SMALL = 0,
-    FONT_SIZE_DEFAULT,
-    FONT_SIZE_LARGE,
-    FONT_SIZE_COUNT
-};
+// Menu font scaling, 50%-150% in 5% increments. Only the standard 17px
+// menu face (including translation and CJK fallbacks) follows this choice;
+// explicitly sized theme fonts retain their author's point sizes.
+// The config persists the actual percentage, NOT the UI's selection index.
+constexpr int FONT_SIZE_MIN_PERCENT = 50;
+constexpr int FONT_SIZE_MAX_PERCENT = 150;
+constexpr int FONT_SIZE_STEP_PERCENT = 5;
+constexpr int FONT_SIZE_DEFAULT = 100;
+constexpr int FONT_SIZE_COUNT = (FONT_SIZE_MAX_PERCENT - FONT_SIZE_MIN_PERCENT) / FONT_SIZE_STEP_PERCENT + 1;
 
-/** Menu fonts use 15/17/19 px. Other theme-requested point sizes stay unchanged. */
-int fntScaleFontSize(int baseSize);
-
-/** A stored size outside FONT_SIZE_* reads as Default. */
-inline int fntValidFontSize(int size)
+/** Convert old config values (Small=0, Default=1, Large=2) to matching
+ *  percentages before use. 90% -> 15px, 100% -> 17px, 110% -> 19px. */
+static inline int fntValidFontSize(int size)
 {
-    return (size >= FONT_SIZE_SMALL && size < FONT_SIZE_COUNT) ? size : FONT_SIZE_DEFAULT;
+    if (size == 0)
+        return 90;
+    if (size == 1)
+        return FONT_SIZE_DEFAULT;
+    if (size == 2)
+        return 110;
+    return (size >= FONT_SIZE_MIN_PERCENT && size <= FONT_SIZE_MAX_PERCENT &&
+            size % FONT_SIZE_STEP_PERCENT == 0) ?
+               size :
+               FONT_SIZE_DEFAULT;
 }
+
+/** Map between the stored percentage and the 21-entry picker, safely. */
+static inline int fntFontSizeIndex(int percent)
+{
+    return (fntValidFontSize(percent) - FONT_SIZE_MIN_PERCENT) / FONT_SIZE_STEP_PERCENT;
+}
+static inline int fntFontSizePercentFromIndex(int index)
+{
+    return (index >= 0 && index < FONT_SIZE_COUNT) ?
+               FONT_SIZE_MIN_PERCENT + index * FONT_SIZE_STEP_PERCENT :
+               FONT_SIZE_DEFAULT;
+}
+
+/** Scale the standard menu font; other explicitly sized fonts are unchanged. */
+int fntScaleFontSize(int baseSize);
 
 /** Initializes the font subsystem */
 void fntInit();

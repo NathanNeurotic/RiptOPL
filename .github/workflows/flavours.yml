@@ -39,7 +39,6 @@ jobs:
           python3 .github/scripts/test_foreground_settings_config.py
           python3 .github/scripts/test_config_prefetch_generation.py
           python3 .github/scripts/test_release_publication.py
-          python3 .github/scripts/test_llvm_release.py
           python3 .github/scripts/test_riptoplite.py
           python3 .github/scripts/test_game_size_fallback.py
           python3 .github/scripts/test_ps1_duplicates.py
@@ -159,6 +158,8 @@ jobs:
         run: python3 .github/scripts/test_config_missing_open_once.py
       - name: Check Back on a Settings page keeps its edits and only a real change reconnects SMB
         run: python3 .github/scripts/test_settings_back_keeps_edits.py
+      - name: Check BOOT ELF exit choices, card fallback and legacy exit behavior
+        run: python3 .github/scripts/test_exit_boot_options.py
       - name: Check Settings pages fit before they scroll, BDM rows indent, and RiptOPL's plasma
         run: python3 .github/scripts/test_settings_fit.py
       - name: Check Date and Time sets the console clock in its own time zone, from General & System

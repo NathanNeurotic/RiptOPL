@@ -16,6 +16,7 @@
 #include "include/texcache.h"
 #include "include/favsupport.h"
 #include "include/gamesource.h"
+#include "include/grid.h"
 #include "include/vcdsupport.h" // vcdDisplayName -- display-only VCD game-ID prefix hide
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
 #include "include/saveicon.h"   // SaveIcon: the selected game's 3D save icon
@@ -351,6 +352,18 @@ static int thmElemBox(const theme_element_t *elem, thm_box_t *box)
 {
     int w = elem->width, h = elem->height;
 
+    if (elem->type == ELEM_TYPE_STATIC_TEXT && elem->extended != NULL) {
+        const mutable_text_t *text = (const mutable_text_t *)elem->extended;
+        int sw = (text->value != NULL && text->value[0] != '\0') ? rmUnScaleX(fntCalcDimensions(elem->font, text->value)) : 0;
+        if (sw > 0) {
+            box->x0 = (elem->aligned & ALIGN_HCENTER) ? elem->posX - sw / 2 :
+                      (elem->aligned & ALIGN_RIGHT)   ? elem->posX - sw :
+                                                        elem->posX;
+            box->x1 = box->x0 + sw;
+            thmTextRow(elem, &box->y0, &box->y1);
+            return 1;
+        }
+    }
     if (thmIsTextElem(elem->type) || elem->type == ELEM_TYPE_MENU_TEXT || elem->type == ELEM_TYPE_HINT_TEXT ||
         elem->type == ELEM_TYPE_INFO_HINT_TEXT) {
         box->x0 = box->x1 = elem->posX;
@@ -427,6 +440,8 @@ void thmComputeTextRooms(theme_elems_t *elems)
             if (other->deviceFilter && (other->type == ELEM_TYPE_MENU_ICON || other->type == ELEM_TYPE_ITEMS_LIST ||
                                         other->type == ELEM_TYPE_HINT_TEXT))
                 continue;
+            if (other->type == ELEM_TYPE_ITEMS_LIST && other->extended != NULL && ((const items_list_t *)other->extended)->hidden)
+                continue;
             if (thmElemBox(other, &boxes[count]))
                 count++;
         }
@@ -443,6 +458,17 @@ void thmComputeTextRooms(theme_elems_t *elems)
 // otherwise exactly as before. Returns the end x.
 static int thmDrawElemText(theme_element_t *elem, int sizingMode, const char *text, int scroll)
 {
+    if ((elem->aligned & ALIGN_RIGHT) && !(elem->aligned & ALIGN_HCENTER) && sizingMode != SIZING_WRAP && text != NULL) {
+        int textW = rmUnScaleX(fntCalcDimensions(elem->font, text));
+        int maxW = (sizingMode != SIZING_NONE && elem->width > 0) ? elem->width : elem->posX;
+        int clipW = (sizingMode != SIZING_NONE && elem->width > 0) ? elem->width : 0;
+        int clipH = (sizingMode != SIZING_NONE && elem->height > 0) ? elem->height : 0;
+        if (maxW > 0 && textW > maxW) {
+            textW = maxW;
+            clipW = maxW;
+        }
+        return fntRenderString(elem->font, elem->posX - textW, elem->posY, elem->aligned & ~ALIGN_RIGHT, clipW, clipH, text, elem->color);
+    }
     if (elem->textRoom > 0 && sizingMode != SIZING_WRAP)
         return fntRenderStringFit(elem->font, elem->posX, elem->posY, elem->aligned, elem->textRoom, text, elem->color, scroll);
     if (sizingMode == SIZING_NONE)
@@ -586,7 +612,7 @@ static void drawAttributeText(struct menu_list *menu, struct submenu_list *item,
         // A size of 0 means "not measured" (size reading off, a device that gave none, a row with no image
         // file): show nothing rather than a wrong "0 MiB" (from RIPPS2 build 126).
         if (mutableText->currentValue && !strcmp(mutableText->value, CONFIG_ITEM_SIZE) &&
-        (!strcmp(mutableText->currentValue, "0") || !strcmp(mutableText->currentValue, "0.00")))
+            (!strcmp(mutableText->currentValue, "0") || !strcmp(mutableText->currentValue, "0.00")))
             return;
         if (mutableText->currentValue) {
             char result[300];
@@ -626,6 +652,74 @@ void initAttributeText(const char *themePath, config_set_t *themeConfig, theme_t
         ((mutable_text_t *)elem->extended)->cfgText = !strcmp(attribute, "Title") || !strcmp(attribute, "Description");
     } else
         LOG("THEMES AttributeText %s: NO attribute, elem disabled !!\n", name);
+}
+
+void drawNameAttributeText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
+{
+    if (item == NULL)
+        return;
+    if (!thmElemIsInfo(elem) && psbbnFlowIsMoving())
+        return;
+    mutable_text_t *mutableText = (mutable_text_t *)elem->extended;
+    item_list_t *list = (menu && menu->item) ? static_cast<item_list_t *>(menu->item->userdata) : NULL;
+    const char *raw = submenuItemGetText(&item->item);
+    const char *disp = NULL;
+    if (!item->item.isFolder && config != NULL && (thmElemIsInfo(elem) || thmListCfgTextShown(gListCfgText, gTheme->hideListCfgText))) {
+        const char *cfgTitle = NULL;
+        if (configGetStr(config, "Title", &cfgTitle) && cfgTitle != NULL && cfgTitle[0] != '\0')
+            disp = cfgTitle;
+    }
+    if (disp == NULL)
+        disp = item->item.isFolder ? raw : (list ? host::library().listDisplayName(list, item->item.id, raw) : raw);
+    if (disp) {
+        char wrapped[300];
+        char formatted[300];
+        // Include the alias in width fitting; appending it after wrapping can
+        // clip the last part of the first line.
+        if (mutableText->displayMode != DISPLAY_NEVER && mutableText->alias != NULL) {
+            snprintf(formatted, sizeof(formatted), "%s%s", mutableText->alias, disp);
+            disp = formatted;
+        }
+        if (mutableText->sizingMode == SIZING_WRAP) {
+            snprintf(wrapped, sizeof(wrapped), "%s", disp);
+            fntFitString(elem->font, wrapped, elem->width);
+            disp = wrapped;
+        }
+        GSTEXTURE *favTex = (!thmElemIsInfo(elem) && gFAVStartMode && item->item.favourited) ? thmGetTexture(FAV_MARK) : NULL;
+        if (favTex != NULL && favTex->Mem != NULL) {
+            int favRoom = MENU_ITEM_HEIGHT + 4;
+            theme_element_t tmp = *elem;
+            int starX = elem->posX;
+            if (tmp.textRoom > 0) {
+                if (tmp.aligned & ALIGN_HCENTER) {
+                    if (tmp.textRoom > 2 * favRoom)
+                        tmp.textRoom -= 2 * favRoom;
+                } else if (tmp.aligned & ALIGN_RIGHT) {
+                    if (tmp.textRoom > favRoom)
+                        tmp.textRoom -= favRoom;
+                } else if (tmp.textRoom > favRoom) {
+                    tmp.posX += favRoom;
+                    tmp.textRoom -= favRoom;
+                }
+            }
+            thmDrawElemText(&tmp, mutableText->sizingMode, disp, 1);
+            int room = tmp.textRoom > 0 ? tmp.textRoom : tmp.width;
+            int labelW = rmUnScaleX(fntCalcDimensions(elem->font, disp));
+            if (room > 0 && labelW > room)
+                labelW = room;
+            if (tmp.aligned & ALIGN_HCENTER)
+                starX = tmp.posX - labelW / 2 - favRoom;
+            else if (tmp.aligned & ALIGN_RIGHT)
+                starX = tmp.posX - labelW - favRoom;
+            else if (tmp.posX == elem->posX)
+                starX = elem->posX + labelW + 4;
+            rmDrawPixmap(favTex, starX, elem->posY, elem->aligned & ALIGN_VCENTER, MENU_ITEM_HEIGHT, MENU_ITEM_HEIGHT, elem->scaled, gDefaultCol, 0);
+        } else {
+            thmDrawElemText(elem, mutableText->sizingMode, disp, 1);
+        }
+    } else if (mutableText->displayMode == DISPLAY_ALWAYS && mutableText->alias != NULL) {
+        thmDrawElemText(elem, mutableText->sizingMode, mutableText->alias, 1);
+    }
 }
 
 // Common functions for Image ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -696,7 +790,19 @@ static void freeImageTexture(image_texture_t *texture)
     }
 }
 
-static image_texture_t *initImageTexture(const char *themePath, config_set_t *themeConfig, const char *name, const char *imgName, int isOverlay)
+static int thmInternalIdFor(const char *imgName)
+{
+    char alt[64];
+    const char *slash, *under;
+    int id = texLookupInternalTexId(imgName);
+
+    if (id >= 0 || (slash = strchr(imgName, '/')) == NULL || (under = strrchr(slash, '_')) == NULL || under == slash + 1)
+        return id;
+    snprintf(alt, sizeof(alt), "%s_%.*s", under + 1, (int)(under - slash - 1), slash + 1);
+    return texLookupInternalTexId(alt);
+}
+
+static image_texture_t *initImageTexture(const char *themePath, config_set_t *themeConfig, const char *name, const char *imgName, int isOverlay, int useDefault)
 {
     // calloc so omitted overlay coordinate keys default to 0 instead of
     // uninitialized heap garbage that would feed rmDrawOverlayPixmap.
@@ -713,8 +819,12 @@ static image_texture_t *initImageTexture(const char *themePath, config_set_t *th
         char path[256];
         snprintf(path, sizeof(path), "%s%s", themePath, imgName);
         result = (texDiscoverLoad(&texture->source, path, texId) >= 0);
+        if (!result && (texId = thmInternalIdFor(imgName)) >= 0) {
+            if (useDefault)
+                result = (texLoadInternal(&texture->source, texId) >= 0);
+        }
     } else {
-        texId = texLookupInternalTexId(imgName);
+        texId = thmInternalIdFor(imgName);
         result = (texLoadInternal(&texture->source, texId) >= 0);
     }
 
@@ -835,8 +945,10 @@ mutable_image_t *initMutableImage(const char *themePath, config_set_t *themeConf
         configGetStr(themeConfig, elemProp, &cachePattern);
         LOG("THEMES MutableImage %s: type: %s using cache pattern: %s\n", name, elementsType[type], cachePattern);
     } else if ((type == ELEM_TYPE_GAME_IMAGE) || (type == ELEM_TYPE_BACKGROUND)) {
+        const char *cfgPattern = NULL;
         snprintf(elemProp, sizeof(elemProp), "%s_pattern", name);
-        configGetStr(themeConfig, elemProp, &cachePattern);
+        if (configGetStr(themeConfig, elemProp, &cfgPattern) && cfgPattern != NULL && strcmp(cfgPattern, "SCRn") != 0)
+            cachePattern = cfgPattern;
         snprintf(elemProp, sizeof(elemProp), "%s_count", name);
         configGetInt(themeConfig, elemProp, &cacheCount);
         // Floor EVERY per-game art cache at 2 slots, not just COV.
@@ -894,16 +1006,18 @@ mutable_image_t *initMutableImage(const char *themePath, config_set_t *themeConf
         if (defaultTexture && !mutableImage->defaultTexture)
             mutableImage->defaultTexture = initImageInternalTexture(themeConfig, defaultTexture);
 
+    int useDefault = theme ? theme->useDefault : 1;
+
     if (defaultTexture && !mutableImage->defaultTexture)
-        mutableImage->defaultTexture = initImageTexture(themePath, themeConfig, name, defaultTexture, 0);
+        mutableImage->defaultTexture = initImageTexture(themePath, themeConfig, name, defaultTexture, 0, useDefault);
 
     if (overlayTexture && !mutableImage->overlayTexture)
-        mutableImage->overlayTexture = initImageTexture(themePath, themeConfig, name, overlayTexture, 1);
+        mutableImage->overlayTexture = initImageTexture(themePath, themeConfig, name, overlayTexture, 1, useDefault);
 
     // overlay2 is drawn over the cover composite (plain rmDrawPixmap), so it needs no cover-window
     // corners -- load it as a plain texture (isOverlay=0).
     if (overlayTexture2 && !mutableImage->overlayTexture2)
-        mutableImage->overlayTexture2 = initImageTexture(themePath, themeConfig, name, overlayTexture2, 0);
+        mutableImage->overlayTexture2 = initImageTexture(themePath, themeConfig, name, overlayTexture2, 0, useDefault);
 
     return mutableImage;
 }
@@ -960,6 +1074,54 @@ int isHiddenArtworkCache(const image_cache_t *cache)
         return 0;
     return (!gEnableDiscArt && strcmp(cache->suffix(), "ICO") == 0) ||
            (!gEnableLogoArt && strcmp(cache->suffix(), "LGO") == 0);
+}
+
+void thmInitElemDiscCache(config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, int slots)
+{
+    if (theme == NULL || themeConfig == NULL || name == NULL)
+        return;
+    char prop[64];
+    int want = 0;
+    snprintf(prop, sizeof(prop), "%s_disc", name);
+    if (!configGetInt(themeConfig, prop, &want) || !want) {
+        if (elem != NULL)
+            elem->drawDisc = 0;
+        return;
+    }
+    if (elem != NULL)
+        elem->drawDisc = 1;
+    if (theme->discCache != NULL)
+        return;
+    if (slots < GRID_MAX_CELLS)
+        slots = GRID_MAX_CELLS;
+    theme->discCache = cacheInitCache(theme->gameCacheCount++, "ART", 1, "ICO", slots);
+}
+
+void thmDrawDiscDecorator(const theme_element_t *elem, struct menu_list *menu, struct submenu_list *item, int x, int y, int coverW, int coverH, int inset, u64 color)
+{
+    if (gTheme == NULL || gTheme->discCache == NULL || menu == NULL || menu->item == NULL || item == NULL)
+        return;
+    if (elem != NULL && !elem->drawDisc)
+        return;
+    if (item->item.isFolder || !gEnableArt || !gEnableDiscArt)
+        return;
+    GSTEXTURE *disc = getGameImageTexture(gTheme->discCache, thmGetItemSource(menu, item), &item->item);
+    if (disc == NULL || disc->Mem == NULL)
+        return;
+    int side = coverW / 4;
+    if (side < 16)
+        side = 16;
+    if (side > 32)
+        side = 32;
+    if (side > coverH / 2)
+        side = coverH / 2;
+    if (side < 4)
+        return;
+    int left = x - rmWideScale(coverW) / 2;
+    int bottom = y + coverH / 2;
+    int cx = left + rmWideScale(side) / 2 + rmWideScale(inset);
+    int cy = bottom - side / 2 - inset;
+    rmDrawPixmap(disc, cx, cy, ALIGN_CENTER, side, side, SCALING_RATIO, color, 0);
 }
 
 // The row's art pairs, ready for the theme on screen. The rows outlive a theme load: a view switch (Settings or
@@ -1336,6 +1498,26 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
 
 void initGameImage(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, const char *pattern, int count, const char *texture, const char *overlay)
 {
+    static const char *const scrnPatterns[] = {"SCR", "SCR2", "SCR3", "SCR4", "SCR5", "SCR6", "SCR7", "SCR8", "SCR9"};
+    char elemProp[64];
+    const char *cfgPattern = NULL;
+    snprintf(elemProp, sizeof(elemProp), "%s_pattern", name);
+    if (configGetStr(themeConfig, elemProp, &cfgPattern) && cfgPattern != NULL) {
+        if (!strcmp(cfgPattern, "SCRn")) {
+            int scrIdx = 0;
+            for (theme_element_t *e = elem->family ? elem->family->first : NULL; e != NULL; e = e->next) {
+                if (e->type == ELEM_TYPE_GAME_IMAGE && e->extended != NULL) {
+                    mutable_image_t *img = (mutable_image_t *)e->extended;
+                    if (img->cache != NULL && img->cache->suffix() != NULL && !strncmp(img->cache->suffix(), "SCR", 3))
+                        scrIdx++;
+                }
+            }
+            if (scrIdx < (int)(sizeof(scrnPatterns) / sizeof(scrnPatterns[0])))
+                pattern = scrnPatterns[scrIdx];
+        } else {
+            pattern = cfgPattern;
+        }
+    }
     mutable_image_t *mutableImage = initMutableImage(themePath, themeConfig, theme, name, elem->type, pattern, count, texture, overlay);
     elem->extended = mutableImage;
     elem->endElem = &endMutableImage;
@@ -1506,8 +1688,14 @@ theme_element_t *thmGetElemForItem(struct menu_list *menu, struct submenu_list *
 static int thmAttributeTexId(mutable_image_t *attributeImage)
 {
     char *seppos = strchr(attributeImage->currentValue, '/');
-    if (!seppos)
-        return texLookupInternalTexId(attributeImage->currentValue);
+    if (!seppos) {
+        int id = texLookupInternalTexId(attributeImage->currentValue);
+        if (id >= 0)
+            return id;
+        char imgName[32];
+        snprintf(imgName, sizeof(imgName), "%s_%s", attributeImage->cache->suffix(), attributeImage->currentValue);
+        return texLookupInternalTexId(imgName);
+    }
 
     char imgName[32];
     snprintf(imgName, sizeof(imgName), "%s_%s", attributeImage->cache->suffix(), &seppos[1]);
@@ -1532,42 +1720,47 @@ void drawAttributeImage(struct menu_list *menu, struct submenu_list *item, confi
             configGetStr(config, attributeImage->cache->suffix(), (const char **)&attributeImage->currentValue);
         }
         if (attributeImage->currentValue) {
-            if (thmGetFilePath(thmGetGuiValue()) == NULL) { // a built-in theme: embedded glyphs
-                GSTEXTURE *texture = thmGetTexture(thmAttributeTexId(attributeImage));
-                if (texture && texture->Mem)
+            int isBuiltin = (thmGetFilePath(thmGetGuiValue()) == NULL);
+            if (isBuiltin || (gTheme != NULL && gTheme->badgeSet)) { // built-in theme or badge_set=ripps2
+                int badgeId = thmAttributeTexId(attributeImage);
+                if (gTheme != NULL && gTheme->badgeSet && badgeId >= 0 && badgeId < TEXTURES_COUNT && gTheme->textures[badgeId].Mem == NULL)
+                    texLoadInternal(&gTheme->textures[badgeId], badgeId);
+                GSTEXTURE *texture = thmGetTexture(badgeId);
+                if (texture && texture->Mem) {
+                    rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
+                    return;
+                }
+                if (isBuiltin)
+                    return;
+            }
+            // Keep the cache identity persistent so a missing optional glyph
+            // is memoized instead of being reopened every frame.
+            GSTEXTURE *texture = cacheGetTexture(attributeImage->cache, static_cast<item_list_t *>(menu->item->userdata), &attributeImage->currentCacheId, &attributeImage->currentUid, attributeImage->currentValue);
+            if (texture && texture->Mem) {
+                if (attributeImage->overlayTexture) {
+                    rmDrawOverlayPixmap(&attributeImage->overlayTexture->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol,
+                                        texture, attributeImage->overlayTexture->upperLeft_x, attributeImage->overlayTexture->upperLeft_y, attributeImage->overlayTexture->upperRight_x, attributeImage->overlayTexture->upperRight_y,
+                                        attributeImage->overlayTexture->lowerLeft_x, attributeImage->overlayTexture->lowerLeft_y, attributeImage->overlayTexture->lowerRight_x, attributeImage->overlayTexture->lowerRight_y, 0);
+                    if (attributeImage->overlayTexture2)
+                        rmDrawPixmap(&attributeImage->overlayTexture2->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
+                } else
                     rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
 
                 return;
-            } else {
-                // Keep the cache identity persistent so a missing optional glyph
-                // is memoized instead of being reopened every frame.
-                GSTEXTURE *texture = cacheGetTexture(attributeImage->cache, static_cast<item_list_t *>(menu->item->userdata), &attributeImage->currentCacheId, &attributeImage->currentUid, attributeImage->currentValue);
+            }
+            // Embedded-glyph fallback: BUILT-IN theme only (#213). Attribute caches carry
+            // prefix = themePath, so a NULL prefix is exactly the built-in path -- there the
+            // baked glyph fills NULL frames while nothing else can. On a DISK theme this
+            // fallback made our baked art FLASH before the theme's own glyph finished its async
+            // load (and stand in permanently when the theme ships none) -- violating the rule
+            // that a custom theme uses its OWN assets entirely. Disk themes now fall through to
+            // the element's own _default (or draw nothing). thmLoad also no longer decodes the
+            // baked set for disk themes, so this gate is double-covered.
+            if (attributeImage->cache->prefix() == NULL) {
+                texture = thmGetTexture(thmAttributeTexId(attributeImage));
                 if (texture && texture->Mem) {
-                    if (attributeImage->overlayTexture) {
-                        rmDrawOverlayPixmap(&attributeImage->overlayTexture->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol,
-                                            texture, attributeImage->overlayTexture->upperLeft_x, attributeImage->overlayTexture->upperLeft_y, attributeImage->overlayTexture->upperRight_x, attributeImage->overlayTexture->upperRight_y,
-                                            attributeImage->overlayTexture->lowerLeft_x, attributeImage->overlayTexture->lowerLeft_y, attributeImage->overlayTexture->lowerRight_x, attributeImage->overlayTexture->lowerRight_y, 0);
-                        if (attributeImage->overlayTexture2)
-                            rmDrawPixmap(&attributeImage->overlayTexture2->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
-                    } else
-                        rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
-
+                    rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
                     return;
-                }
-                // Embedded-glyph fallback: BUILT-IN theme only (#213). Attribute caches carry
-                // prefix = themePath, so a NULL prefix is exactly the built-in path -- there the
-                // baked glyph fills NULL frames while nothing else can. On a DISK theme this
-                // fallback made our baked art FLASH before the theme's own glyph finished its async
-                // load (and stand in permanently when the theme ships none) -- violating the rule
-                // that a custom theme uses its OWN assets entirely. Disk themes now fall through to
-                // the element's own _default (or draw nothing). thmLoad also no longer decodes the
-                // baked set for disk themes, so this gate is double-covered.
-                if (attributeImage->cache->prefix() == NULL) {
-                    texture = thmGetTexture(thmAttributeTexId(attributeImage));
-                    if (texture && texture->Mem) {
-                        rmDrawPixmap(texture, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
-                        return;
-                    }
                 }
             }
         }
@@ -1614,7 +1807,8 @@ theme_element_t *initBasic(const char *themePath, config_set_t *themeConfig, the
     elem->deviceFilter = 0;   // malloc'd without memset: MUST be zeroed explicitly (0 = unfiltered)
     elem->deviceCoverage = 0; // filled at validateGUIElems for unfiltered MenuIcon/ItemsList/HintText
     elem->inherited = 0;      // set by the Favourites per-kind family parse for fallback-block copies
-    elem->family = NULL;      // set by whoever chains the element into a family (addGUIElem, below)
+    elem->style = THM_MENU_STYLE_DEFAULT;
+    elem->family = NULL; // set by whoever chains the element into a family (addGUIElem, below)
     elem->extended = NULL;
     elem->drawElem = NULL;
     elem->endElem = &endBasic;
@@ -1835,6 +2029,7 @@ int menuItemShown(const menu_item_t *item)
     switch (support->mode) {
         case HDD_MODE:
         case MMCE_MODE:
+        case MMCE_MODE1:
         case UDPFS_MODE:
         case HTTP_MODE:
         case APP_MODE:
@@ -1846,31 +2041,162 @@ int menuItemShown(const menu_item_t *item)
     }
 }
 
-static int findMenuNext(struct menu_list *menu)
+static struct menu_list *findMenuStep(struct menu_list *menu, int forward)
 {
-    struct menu_list *next = menu->next;
-    while (next != NULL && !menuItemShown(next->item))
-        next = next->next;
+    struct menu_list *cur = forward ? menu->next : menu->prev;
+    while (cur != NULL && !menuItemShown(cur->item))
+        cur = forward ? cur->next : cur->prev;
 
-    return next != NULL;
+    return cur;
 }
 
-static int findMenuPrev(struct menu_list *menu)
+// Use the horizontal alignment bits, not any nonzero alignment flag:
+// right and centered menus have different left-edge positions.
+static int thmMenuStyleStartX(int posX, int width, int aligned)
 {
-    struct menu_list *prev = menu->prev;
-    while (prev != NULL && !menuItemShown(prev->item))
-        prev = prev->prev;
-
-    return prev != NULL;
+    if (aligned & ALIGN_RIGHT)
+        return posX - width;
+    if (aligned & ALIGN_HCENTER)
+        return posX - width / 2;
+    return posX;
 }
 
 void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
-    GSTEXTURE *leftIconTex = NULL, *rightIconTex = NULL;
-    if (findMenuPrev(menu) != 0)
-        leftIconTex = thmGetTexture(LEFT_ICON);
-    if (findMenuNext(menu) != 0)
-        rightIconTex = thmGetTexture(RIGHT_ICON);
+    struct menu_list *prev = findMenuStep(menu, 0);
+    struct menu_list *next = findMenuStep(menu, 1);
+
+    if (elem->style == THM_MENU_STYLE_PSBBN) {
+        int rowStep = elem->height > 24 ? elem->height / 3 : 20;
+        if (rowStep < 18)
+            rowStep = 18;
+        int maxW = elem->width > 0 ? elem->width : 160;
+        int leftX = thmMenuStyleStartX(elem->posX, maxW, elem->aligned);
+        int dotX = leftX + 2;
+        int textX = leftX + 12;
+        int textRoom = maxW - 12;
+        int cy = elem->aligned ? elem->posY : (elem->posY + elem->height / 2);
+        u64 dim = (elem->color & ~(0xffULL << 24)) | (0x40ULL << 24);
+        if (prev != NULL)
+            fntRenderStringFit(elem->font, textX, cy - rowStep, ALIGN_VCENTER, textRoom, menuItemGetText(prev->item), dim, 0);
+        rmDrawRect(dotX, cy - 2, 4, 4, GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x80));
+        fntRenderStringFit(elem->font, textX, cy, ALIGN_VCENTER, textRoom, menuItemGetText(menu->item), elem->color, 0);
+        if (next != NULL)
+            fntRenderStringFit(elem->font, textX, cy + rowStep, ALIGN_VCENTER, textRoom, menuItemGetText(next->item), dim, 0);
+        return;
+    }
+
+    if (elem->style == THM_MENU_STYLE_PSBBN_ACTIVE) {
+        int maxW = elem->width > 0 ? elem->width : 160;
+        const char *label = menuItemGetText(menu->item);
+        int textW = rmUnScaleX(fntCalcDimensions(elem->font, label));
+        int textRoom = maxW - 12;
+        if (textW > textRoom)
+            textW = textRoom;
+        int cy = elem->aligned ? elem->posY : (elem->posY + elem->height / 2);
+        int startX = thmMenuStyleStartX(elem->posX, textW + 12, elem->aligned);
+        rmDrawRect(startX, cy - 2, 4, 4, GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x80));
+        fntRenderStringFit(elem->font, startX + 12, cy, ALIGN_VCENTER, textRoom, label, elem->color, 0);
+        return;
+    }
+
+    if (elem->style == THM_MENU_STYLE_PSBBN_BAR) {
+        struct menu_list *pages[16];
+        const char *labels[16];
+        int widths[16];
+        int count = 0, current = 0;
+        struct menu_list *head = menu;
+        while (head->prev != NULL)
+            head = head->prev;
+        int glyphSize = 12;
+        int glyphW = rmWideScale(glyphSize);
+        int iconTextGap = rmWideScale(3);
+        int itemGap = rmWideScale(10);
+        int maxW = elem->width > 0 ? elem->width : 540;
+        for (struct menu_list *m = head; m != NULL && count < 16; m = m->next) {
+            if (!menuItemShown(m->item))
+                continue;
+            if (m == menu)
+                current = count;
+            pages[count] = m;
+            labels[count] = menuItemGetText(m->item);
+            widths[count] = glyphW + iconTextGap + rmUnScaleX(fntCalcDimensions(elem->font, labels[count]));
+            if (widths[count] > maxW)
+                widths[count] = maxW;
+            count++;
+        }
+        if (count == 0)
+            return;
+
+        int totalW = 0;
+        for (int i = 0; i < count; i++)
+            totalW += widths[i] + (i + 1 < count ? itemGap : 0);
+
+        int start = 0, end = count - 1;
+        if (totalW > maxW) {
+            int arrowW = rmWideScale(10);
+            int budget = maxW - 2 * arrowW;
+            start = current;
+            end = current;
+            if (budget > 0 && widths[current] > budget)
+                widths[current] = budget;
+            totalW = widths[current];
+            while (start > 0 || end < count - 1) {
+                int addRight = (end < count - 1) ? (widths[end + 1] + itemGap) : 0;
+                int addLeft = (start > 0) ? (widths[start - 1] + itemGap) : 0;
+                int did = 0;
+                if (end < count - 1 && (start == 0 || (current - start) >= (end - current)) && totalW + addRight <= budget) {
+                    end++;
+                    totalW += addRight;
+                    did = 1;
+                } else if (start > 0 && totalW + addLeft <= budget) {
+                    start--;
+                    totalW += addLeft;
+                    did = 1;
+                } else if (end < count - 1 && totalW + addRight <= budget) {
+                    end++;
+                    totalW += addRight;
+                    did = 1;
+                }
+                if (!did)
+                    break;
+            }
+        }
+
+        int cy = elem->aligned ? elem->posY : (elem->posY + elem->height / 2);
+        int x = thmMenuStyleStartX(elem->posX, totalW, elem->aligned);
+        u64 dimText = (elem->color & ~(0xffULL << 24)) | (0x48ULL << 24);
+        u64 dimGlyph = GS_SETREG_RGBA(0x55, 0x5E, 0x76, 0x58);
+        u64 litGlyph = GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80);
+
+        int barFocused = gCoverflowDeviceBarFocused && gTheme != NULL && gTheme->coverflow != NULL && gTheme->psbbnFlow == NULL;
+        u64 sel = gTheme != NULL ? gTheme->selTextColor : elem->color;
+        int sr = sel & 0xFF, sg = (sel >> 8) & 0xFF, sb = (sel >> 16) & 0xFF;
+
+        if (start > 0)
+            fntRenderString(elem->font, x - rmWideScale(10), cy, ALIGN_VCENTER, 0, 0, "<", dimText);
+        for (int i = start; i <= end; i++) {
+            int lit = (i == current);
+            int entryW = widths[i];
+            if (lit && barFocused) {
+                int pad = rmWideScale(4);
+                rmDrawRect(x - pad, cy - 10, entryW + 2 * pad, 20, GS_SETREG_RGBA(sr, sg, sb, 0x45));
+            }
+            gridDrawPageGlyph(pages[i], x + glyphW / 2, cy, glyphSize, lit ? litGlyph : dimGlyph);
+            fntRenderStringFit(elem->font, x + glyphW + iconTextGap, cy, ALIGN_VCENTER,
+                               entryW - glyphW - iconTextGap, labels[i],
+                               lit ? (barFocused ? gTheme->selTextColor : elem->color) : dimText, 0);
+            if (lit)
+                rmDrawRect(x, cy + 8, entryW, 2, barFocused ? GS_SETREG_RGBA(sr, sg, sb, 0x80) : GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x70));
+            x += entryW + itemGap;
+        }
+        if (end < count - 1)
+            fntRenderString(elem->font, x - itemGap + rmWideScale(4), cy, ALIGN_VCENTER, 0, 0, ">", dimText);
+        return;
+    }
+
+    GSTEXTURE *leftIconTex = prev != NULL ? thmGetTexture(LEFT_ICON) : NULL;
+    GSTEXTURE *rightIconTex = next != NULL ? thmGetTexture(RIGHT_ICON) : NULL;
 
     if (elem->aligned) {
         int offset = elem->width >> 1;
@@ -2008,6 +2334,8 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
 
         // PSBBN shows the title only once the covers come to rest.
         submenu_list_t *ps = psbbnFlowIsMoving() ? NULL : menu->item->pagestart;
+        if (itemsList->hidden)
+            ps = NULL;
         int others = 0;
         u64 color;
         // A fixed leading column keeps stars and titles aligned on ordinary lists. Centered
@@ -2032,9 +2360,20 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
             textRoom = rowRoom > favRoom ? rowRoom - favRoom : 1;
         }
         while (ps && (others++ < itemsList->displayedItems)) {
-            if (ps == item)
+            if (ps == item) {
                 color = gTheme->selTextColor;
-            else
+                if (!(elem->aligned & ALIGN_HCENTER)) {
+                    int hlX = elem->posX;
+                    if (elem->aligned & ALIGN_RIGHT)
+                        hlX -= elem->width;
+                    if (itemsList->highlight == THM_HL_BAR) {
+                        rmDrawRect(hlX - 12, posY + 1, elem->width + 12, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0x1E, 0x3C, 0x9C, 0x5C, 0x00));
+                        rmDrawRect(hlX - 12, posY + 1, 3, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
+                    } else if (itemsList->highlight == THM_HL_LINE) {
+                        rmDrawRect(hlX - 12, posY + MENU_ITEM_HEIGHT - 3, elem->width + 12, 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
+                    }
+                }
+            } else
                 color = elem->color;
 
             const char *dispText = ps->item.isFolder ? submenuItemGetText(&ps->item) :
@@ -2139,6 +2478,18 @@ void initItemsList(const char *themePath, config_set_t *themeConfig, theme_t *th
 
     itemsList->decoratorImage = NULL;
     itemsList->coverElem = NULL;
+    itemsList->hidden = 0;
+    snprintf(elemProp, sizeof(elemProp), "%s_hidden", name);
+    configGetInt(themeConfig, elemProp, &itemsList->hidden);
+    itemsList->highlight = THM_HL_BAR;
+    const char *hlValue = NULL;
+    snprintf(elemProp, sizeof(elemProp), "%s_highlight", name);
+    if (configGetStr(themeConfig, elemProp, &hlValue) && hlValue != NULL) {
+        if (!strcasecmp(hlValue, "line"))
+            itemsList->highlight = THM_HL_LINE;
+        else if (!strcasecmp(hlValue, "none") || !strcmp(hlValue, "0"))
+            itemsList->highlight = THM_HL_NONE;
+    }
     elem->extended = itemsList;
     // elem->endElem = &endBasic; does the job
 
@@ -2227,7 +2578,7 @@ void drawItemText(struct menu_list *menu, struct submenu_list *item, config_set_
                     const char *text = vcdDisplayNameForRow(support, item->item.id, startup);
                     int ember = 0;
                     gsOf(support)->ps1RowKind(support, item->item.id, &ember);
-                    if (ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD, vcdId, sizeof(vcdId)))
+                    if (ps1RowIdCached(startup, ember ? PS1_ROW_CUE : PS1_ROW_VCD, vcdId, sizeof(vcdId), gsOf(support)->rowPrefix(support, item->item.id)))
                         text = vcdId;
                     thmDrawElemText(elem, SIZING_NONE, text, 1);
                     return;

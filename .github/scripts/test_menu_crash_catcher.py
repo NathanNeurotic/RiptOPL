@@ -75,7 +75,7 @@ if CPP:
     import build_edition as editions
 
     def main_target(configuration):
-        targets = {t["name"]: t for t in editions.definition("korium", configuration)["targets"]}
+        targets = {t["name"]: t for t in editions.definition("riptopl", configuration)["targets"]}
         return targets["riptopl"]
 
     # Every configuration: libeedebug is linked exactly when __OPLDIAG compiles the catcher in.

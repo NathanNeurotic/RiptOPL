@@ -230,11 +230,14 @@ extern int gPs1Duplicates;
 // Where the main menu's Exit goes (issue #370). CONSOLE: the console's own exit, OSDSYS with the
 // card update (FMCB, OSDMenu), as before. BROWSER: ask OSDSYS for the Browser, keeping the card
 // update whenever it passes the request on. OSDSYS_SKIPMC: OSDSYS without the card update.
+// BOOT2/BOOT: run the named ELF from mc0:/BOOT, falling back to mc1:/BOOT.
 // 2 was "Browser, skip the card update": settings that still hold it load as BROWSER.
 enum { EXIT_MENU_CONSOLE = 0,
        EXIT_MENU_BROWSER,
        EXIT_MENU_LEGACY_BROWSER_SKIPMC,
-       EXIT_MENU_OSDSYS_SKIPMC };
+       EXIT_MENU_OSDSYS_SKIPMC,
+       EXIT_MENU_BOOT2,
+       EXIT_MENU_BOOT };
 extern int gExitMenu;
 extern int gGameTypeLabels; // optional [PS1]/[PS2] prefixes in game lists; default off
 // Interface > List Title and Description (RIPPS2 build 126): the Title and Description from a game's CFG that a
@@ -416,7 +419,7 @@ extern int gEnableArt;
 extern int gEnableDiscArt; // ItemIcon/ICO disc artwork; independent of cover art
 extern int gEnableLogoArt; // per-game LGO logo artwork; independent of cover, disc and boot logo
 extern int gWideScreen;
-extern int gFontSize;           // FONT_SIZE_* (fntsys.h)
+extern int gFontSize;           // persisted percentage, 50-150% (fntsys.h)
 extern int gGlyphSet;           // GLYPH_SET_* (themes.h); GLYPH_SET_THEME follows the theme
 extern int gThemeAltBackground; // Alternate Background: the theme's alt= pictures (thmApplyAltBackground)
 extern int gBootThemeWait;      // Boot Theme Wait: seconds the intro holds for the saved theme (0 = off)
