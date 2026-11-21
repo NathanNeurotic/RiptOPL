@@ -1477,17 +1477,17 @@ void setDefaultColors(void)
     gDefaultBgColor[1] = RIPTOPL_PLASMA_BG_G;
     gDefaultBgColor[2] = RIPTOPL_PLASMA_BG_B;
 
-    gDefaultTextColor[0] = 0xFF;
-    gDefaultTextColor[1] = 0xFF;
-    gDefaultTextColor[2] = 0xFF;
+    gDefaultTextColor[0] = 0x47; // text is GS-modulated: shows as #8FA4D8
+    gDefaultTextColor[1] = 0x52;
+    gDefaultTextColor[2] = 0x6C;
 
-    gDefaultSelTextColor[0] = 0x00;
-    gDefaultSelTextColor[1] = 0xAE;
+    gDefaultSelTextColor[0] = 0xFF;
+    gDefaultSelTextColor[1] = 0xFF;
     gDefaultSelTextColor[2] = 0xFF;
 
-    gDefaultUITextColor[0] = 0x58;
-    gDefaultUITextColor[1] = 0x68;
-    gDefaultUITextColor[2] = 0xB4;
+    gDefaultUITextColor[0] = 0x4F; // shows as #9FB4E8
+    gDefaultUITextColor[1] = 0x5A;
+    gDefaultUITextColor[2] = 0x74;
 
     // Seeded from the general text colour: out of the box titles look exactly as before, and
     // only diverge once the user actually picks something in the new row.

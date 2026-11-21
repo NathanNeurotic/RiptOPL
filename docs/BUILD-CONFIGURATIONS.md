@@ -1,47 +1,35 @@
 # ps2build configuration candidates
 
-This repository has one SDK and three release editions: Korium, RetroAchievements
-and IncebtIon. `--configuration` selects optional controller, diagnostic or debug
-settings within an edition. GCC and LLVM select compilers. Configuration
-candidates are not extra release channels and cannot replace standard release kits.
-The separate [RiptOPLLVM channel](../ROLLING_RELEASE.md#riptopllvm--independent-llvm-release)
-publishes the same Korium configuration bundles plus Korium RA and RiptOPLite
-from LLVM builds; its compiler-specific manifests, artifacts, checksums and tag
-remain isolated from the GCC release channels.
+The SDK has three release channels and one shared built-in multi-view theme.
+Standard RiptOPL is LLVM/Clang (`rolling`), RetroAchievements is GCC
+(`rolling-ra`) and standard/RA RiptOPLite are GCC (`rolling-lite`).
+Korium, IncebtIon and the separate RiptOPLLVM release are historical,
+not current release editions.
 
-Releases carry them for every theme, as the original did: the Korium and IncebtIon
-channels each publish `RIPTOPL-VARIANTS-<version>.zip` (`pademu0`, `ds5`, `extras`, `extras_ds5`)
-and `RIPTOPL-DEBUG-<version>.zip` (every other nonstandard configuration), built with that channel's
-theme, one folder per configuration with its GCC `RIPTOPL.ELF` and build manifest; the
-RetroAchievements channel publishes `RIPTOPL-RA-VARIANTS-<version>.zip` (`pademu0`, as `RIPTOPL-RA.ELF`,
-plus the standard and `pademu0` RA loaders unpacked in `standard-unpacked/` and `pademu0-unpacked/`)
-and `RIPTOPL-RA-VARIANTS-IncebtIon-<version>.zip` for its IncebtIon-theme kit. The
-publisher packs them only from builds of the released commit and SDK suite. RiptOPLLVM enforces
-the same checks against the LLVM SDK suite and publishes its own verified bundles. The Korium and
-IncebtIon channels also publish `RIPTOPL-BUGREPORT-<version>.zip`: their `diag` build before
-compression, as `RIPTOPL-BUGREPORT.ELF`, with a README on what to send (see
-[Launch diagnostics](LAUNCH-DIAGNOSTICS.md#bug-report-build)). The publisher refuses one that is
-packed or whose program does not start 0x80 bytes into the file. Every channel
-also publishes `RIPTOPL-LANGS-<version>.zip`, the translations and their fonts, and
-`LICENSE-USMB2.txt`, the MIT licence of [usmb2](https://github.com/sahlberg/usmb2),
-by [Ronnie Sahlberg](https://github.com/sahlberg), which every loader embeds; every kit and
-configuration zip carries the same text. Every archive
-name ends with the build version, for example `RIPTOPL-Korium-v1.2.0-Beta-3925.zip`; the
-loader ELFs, PSUs, `LICENSE-USMB2.txt`, `BUILD-MANIFEST.json` and `SHA256SUMS.txt` keep fixed
-names, so their download links never change. The release notes name the version at the top.
+`--configuration` selects optional controller, diagnostic or debug behavior
+within an edition. Configuration builds are not new release channels.
+`rolling` carries `RIPTOPL-VARIANTS-<version>.zip` for
+`pademu0`, `ds5`, `extras` and `extras_ds5`;
+`RIPTOPL-DEBUG-<version>.zip` for the other nonstandard configurations;
+and `RIPTOPL-BUGREPORT-<version>.zip` for the unpacked `diag` build.
+`rolling-ra` carries `RIPTOPL-RA-VARIANTS-<version>.zip` with the
+supported PADEMU0 and unpacked loaders. All archives preserve their
+applicable manifest, licensing, source and compiler provenance.
 
-Prepare the SDK/ports and assets as described in [PS2BUILD-MIGRATION.md](PS2BUILD-MIGRATION.md),
-then use the existing builder:
+Install the SDK described in [PS2BUILD-MIGRATION.md](PS2BUILD-MIGRATION.md)
+and use the standard edition builder:
 
 ```sh
-python tools/build_edition.py korium --configuration ds5 --toolchain gcc
-python tools/build_edition.py ra --configuration pademu0 --toolchain llvm
-python tools/build_edition.py korium --configuration iopcore_debug_uart --toolchain llvm
+python tools/build_edition.py riptopl --configuration ds5
+python tools/build_edition.py ra --configuration pademu0
+python tools/build_edition.py riptopl --configuration iopcore_debug_uart --toolchain llvm
 ```
 
-Omitting `--configuration` selects `standard` and preserves existing release
-commands. Every build regenerates edition artwork, RA marks and the displayed
-version. Nonstandard version strings also name their configuration.
+Omitting `--toolchain` chooses LLVM for `riptopl` and GCC for
+`ra` or `lite`. Explicit alternate-toolchain builds are test
+candidates, not published channel updates. Each build regenerates
+edition artwork, manifests and version strings. Configuration builds
+have their own object tree and output stage, separate from release kits.
 
 | Configuration | Behavior selected |
 | --- | --- |
@@ -84,13 +72,13 @@ reserved for standard release packaging. Both the packager and publisher reject
 a manifest naming a nonstandard configuration, even if its checksums are valid.
 Historical standard manifests without this new field remain verifiable.
 
-Every pull request and push builds all 14 nonstandard configurations on Korium, RA without
-PADEMU and IncebtIon with extras/DS5 with GCC (Rolling Release) and the 14 Korium ones plus RA
-without PADEMU with LLVM (RiptOPLLVM). The `ps2build-configurations` workflow adds only the three
-builds those two do not make: RA with in-game UDP debug on both compilers, and IncebtIon with
-extras/DS5 on LLVM. This is not every possible edition/configuration cross-product. Host tests cover definition/ABI isolation
-across all three editions and all 15 configurations, separate stage paths and
-negative packaging/publishing cases.
+The `Rolling Release` PR and integration matrix verifies standard
+RiptOPL and its optional configurations on LLVM, standard and PADEMU0
+RetroAchievements on GCC, and eight standard plus eight RA Lite
+device configurations on GCC. `ps2build-configurations` independently
+checks additional requested compiler/configuration combinations.
+Not every cross-product is a supported production release.
+Host tests check build-definition and output-tree isolation.
 
 With IGS enabled, LLVM `-Os` left only 2,712 bytes for the EE core's stack and
 correctly failed its 3,072-byte linker guard. Core-only comparison builds left

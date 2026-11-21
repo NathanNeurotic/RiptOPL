@@ -388,13 +388,13 @@ class WorkflowTests(unittest.TestCase):
         warm = (WORKFLOWS / "ps2build-sdk-watch.yml").read_text()
         key = "ps2build-sdk-${{ runner.os }}-${{ matrix.toolchain }}-${{ steps.sdk.outputs.key }}"
         self.assertIn(key, warm)
-        for name in ("ps2build.yml", "configurations.yml", "flavours.yml", "rolling-release.yml", "rolling-llvm.yml"):
+        for name in ("ps2build.yml", "configurations.yml", "flavours.yml", "rolling-release.yml"):
             text = (WORKFLOWS / name).read_text()
             self.assertIn("sh tools/ps2build_sdk.sh --resolve", text, name)
             self.assertIn("path: ${{ github.workspace }}/.ps2dev", text, name)
             self.assertIn("workflow_dispatch:", text, name)  # the watch starts it on its branch
             self.assertNotIn("PS2BUILD_SDK_PIN:", text, name)
-            compiler = "llvm" if name == "rolling-llvm.yml" else "gcc" if name in ("rolling-release.yml", "flavours.yml") else "${{ matrix.toolchain }}"
+            compiler = "${{ matrix.target.toolchain }}" if name == "rolling-release.yml" else "gcc" if name == "flavours.yml" else "${{ matrix.toolchain }}"
             expected = key.replace("${{ matrix.toolchain }}", compiler)
             self.assertGreaterEqual(text.count("key: " + expected), 2, name)
             self.assertIn("restore-keys: " + expected.removesuffix("${{ steps.sdk.outputs.key }}"), text, name)
@@ -402,7 +402,7 @@ class WorkflowTests(unittest.TestCase):
     def test_build_workflows_save_the_sdk_cache_only_from_rebuild_main(self):
         # A pull request job that misses the cache installs the SDK again, maybe from another source; saved under
         # the same key, that second copy would be what the pull request's later jobs restore.
-        for name in ("ps2build.yml", "configurations.yml", "flavours.yml", "rolling-release.yml", "rolling-llvm.yml"):
+        for name in ("ps2build.yml", "configurations.yml", "flavours.yml", "rolling-release.yml"):
             steps = (WORKFLOWS / name).read_text().split("\n      - ")
             saves = [step for step in steps if "uses: actions/cache/save@" in step]
             self.assertEqual(len(saves), 1, name)

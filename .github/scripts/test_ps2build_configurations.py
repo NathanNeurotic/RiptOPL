@@ -62,7 +62,7 @@ class ConfigurationTests(unittest.TestCase):
                     for name in ("bdm_mcemu", "mmce_mcemu", "hdd_mcemu", "smb_mcemu"):
                         self.assertEqual("PADEMU" in targets[name]["defines"], configuration != "pademu0")
                     loader = targets["riptopl"]
-                    self.assertEqual("BUILTIN_KORIUM" in loader["defines"], editions.EDITIONS[edition]["theme"] == "korium")
+                    self.assertNotIn("BUILTIN_KORIUM", loader["defines"])
                     self.assertEqual("raudp" in loader["embed_irx"], ra)
                     self.assertNotIn("ps2sdk_socket_compat", loader["libs"])
                     self.assertNotIn("ps2sdk_socket_compat", targets)
@@ -76,14 +76,14 @@ class ConfigurationTests(unittest.TestCase):
                             self.assertEqual(len(values), len(set(values)), (target["name"], field))
             self.assertEqual(original[edition], editions.definition(edition))
         with self.assertRaisesRegex(ValueError, "unknown configuration"):
-            editions.definition("korium", "invented")
+            editions.definition("riptopl", "invented")
 
     def test_controller_and_extras_resources(self):
         targets = self.targets("ra", "pademu0")
         loader = targets["riptopl"]
         self.assertTrue({"ds34usb_ee", "ds34bt_ee"}.isdisjoint(loader["libs"]))
         self.assertTrue({"usb_pademu", "bt_pademu", "ds34usb", "ds34bt"}.isdisjoint(loader["embed_irx"]))
-        targets = self.targets("incebtion", "extras_ds5")
+        targets = self.targets("riptopl", "extras_ds5")
         self.assertIn("DS5_ENABLE", targets["ds34usb"]["defines"])
         self.assertNotIn("DS5_ENABLE", targets["ds34bt"].get("defines", []))
         self.assertIn("__RTL", targets["riptopl"]["defines"])
@@ -120,12 +120,12 @@ class ConfigurationTests(unittest.TestCase):
                         self.assertIn("__IOPCORE_DEBUG", target["defines"])
                         self.assertEqual("modules/iopcore/cdvdman/dev9.c" in target["sources"], dev9)
                 self.assertEqual("DEBUG" in targets["bdm_mcemu"]["defines"], configuration.startswith("iopcore_"))
-        dtl = self.targets("korium", "dtl")
+        dtl = self.targets("riptopl", "dtl")
         self.assertIn("udnl-t300:udnl", dtl["riptopl"]["embed_irx"])
         self.assertNotIn("udnl", dtl["riptopl"]["embed_irx"])
         for name in ("riptopl", "eecore"):
             self.assertIn("_DTL_T10000", dtl[name]["defines"])
-        serial = self.targets("korium", "eesio_debug")
+        serial = self.targets("riptopl", "eesio_debug")
         self.assertIn("siocookie", serial["riptopl"]["libs"])
         self.assertIn("siocookie", serial["riptopl"]["headers"])
 
@@ -158,12 +158,12 @@ class ConfigurationTests(unittest.TestCase):
     def test_packager_refuses_configuration_before_touching_release_outputs(self):
         with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
             root = Path(directory)
-            built = root / "dist/editions/korium"
+            built = root / "dist/editions/riptopl"
             built.mkdir(parents=True)
             (built / "BUILD-MANIFEST.json").write_text(json.dumps({"configuration": "debug"}))
             with patch.object(package_edition, "ROOT", root):
                 with self.assertRaisesRegex(ValueError, "configuration candidates"):
-                    package_edition.package("korium", root / "unused.7z")
+                    package_edition.package("riptopl", root / "unused.7z")
             self.assertFalse((root / "dist/releases").exists())
 
 
@@ -209,7 +209,7 @@ class PublisherTests(unittest.TestCase):
             app = "APP_RIPTOPL-RA" if options["ra"] else "APP_RIPTOPL"
             payload = b"\x7fELFsynthetic-test-only"
             manifest = {"repository": "NathanNeurotic/RiptOPL", "source_commit": source or self.sha,
-                        "dirty": dirty, "edition": edition, "compiler": "gcc", "sdk": "ps2build",
+                        "dirty": dirty, "edition": edition, "compiler": options["compiler"], "sdk": "ps2build",
                         "ra": options["ra"], "configuration": configuration,
                         "ps2build_version": "test", "components": {}, "ports": {},
                         "elf_sha256": hashlib.sha256(payload).hexdigest(),
@@ -226,7 +226,7 @@ class PublisherTests(unittest.TestCase):
                 langs.writestr("README.txt", "synthetic")
             for name in publish_editions.archives(options):
                 (path / f"RIPTOPL-{name}.zip").write_bytes(b"synthetic-bundle")
-            with zipfile.ZipFile(path / f"RIPTOPL-{options['title']}.zip", "w") as kit:
+            with zipfile.ZipFile(path / editions.kit_archive_name(options), "w") as kit:
                 kit.writestr("BUILD-MANIFEST.json", json.dumps(manifest))
                 kit.writestr(f"APPS/{app}/{elf}", payload)
                 kit.writestr(psu, b"synthetic-psu")
@@ -243,7 +243,7 @@ class PublisherTests(unittest.TestCase):
                 stage = root / f"variant-{edition}-{configuration}"
                 stage.mkdir()
                 payload = b"\x7fELF" + configuration.encode()
-                manifest = {"source_commit": self.sha, "dirty": False, "edition": edition, "compiler": "gcc",
+                manifest = {"source_commit": self.sha, "dirty": False, "edition": edition, "compiler": options["compiler"],
                             "configuration": configuration, "ps2build_version": "test", "components": {}, "ports": {},
                             "elf_sha256": hashlib.sha256(payload).hexdigest(), **changes.get(configuration, {})}
                 (stage / "RIPTOPL.ELF").write_bytes(payload)
@@ -255,7 +255,7 @@ class PublisherTests(unittest.TestCase):
                     unpacked = changes.get("unpacked", unpacked_elf())
                     (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
                     manifest.setdefault("unpacked_elf_sha256", hashlib.sha256(unpacked).hexdigest())
-                    manifest.setdefault("version", f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-GCC-DIAG"')
+                    manifest.setdefault("version", f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM-DIAG"')
                 (stage / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
 
     def test_configuration_bundles(self):
@@ -269,9 +269,8 @@ class PublisherTests(unittest.TestCase):
                     listing.write_text("".join(l + "\n" for l in listing.read_text().splitlines() if not l.endswith(f"  RIPTOPL-{name}.zip")))
             self.variants(root)
             publish_editions.bundle_configurations(root, self.sha)
-            self.assertEqual(len(publish_editions.verify(root, self.sha)), 4)
-            # Every theme carries the same configuration builds.
-            for edition in ("korium", "incebtion"):
+            self.assertEqual(len(publish_editions.verify(root, self.sha)), 2)
+            for edition in ("riptopl",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("ds5/RIPTOPL.ELF"), b"\x7fELFds5")
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 4)
@@ -284,7 +283,7 @@ class PublisherTests(unittest.TestCase):
                     self.assertIn(b"unfs4, by Ronnie Sahlberg", bundle.read("CREDITS"))  # nfsman's BSD notice
                     self.assertIn("unfs4,\nused under the BSD 2-Clause licence, reproduced in CREDITS",
                                   bundle.read("README.txt").decode())
-            for edition in ("ra", "ra_incebtion"):
+            for edition in ("ra",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")
                     # The standard and pademu0 RA loaders also ship unpacked, each with its manifest.
@@ -305,7 +304,7 @@ class PublisherTests(unittest.TestCase):
                     publish_editions.bundle_configurations(root, self.sha)
 
     def test_bug_report_build(self):
-        """Each standard theme gets RIPTOPL-BUGREPORT.zip: diag unpacked, its manifest, a README. RA gets none."""
+        """Standard RiptOPL gets RIPTOPL-BUGREPORT.zip: diag unpacked, its manifest, a README. RA gets none."""
         with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
             root = Path(directory)
             self.kit(root)
@@ -317,7 +316,7 @@ class PublisherTests(unittest.TestCase):
             self.variants(root)
             publish_editions.bundle_configurations(root, self.sha)
             publish_editions.verify(root, self.sha)
-            for edition in ("korium", "incebtion"):
+            for edition in ("riptopl",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-BUGREPORT.zip") as bundle:
                     self.assertEqual(sorted(bundle.namelist()), [
                         "BUILD-MANIFEST.json", "CREDITS", "LICENSE", "README.txt", "RIPTOPL-BUGREPORT.ELF",
@@ -326,11 +325,11 @@ class PublisherTests(unittest.TestCase):
                     self.assertEqual(bundle.read("RIPTOPL-BUGREPORT.ELF"), unpacked_elf())
                     self.assertEqual(json.loads(bundle.read("BUILD-MANIFEST.json"))["configuration"], "diag")
                     readme = bundle.read("README.txt").decode()
-                    self.assertIn(f"RiptOPL bug-report build, v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-GCC-DIAG\r\n====", readme)
+                    self.assertIn(f"RiptOPL bug-report build, v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM-DIAG\r\n====", readme)
                     self.assertIn("DIAG.TXT", readme)
                     self.assertIn("https://github.com/NathanNeurotic/RiptOPL/issues", readme)
                     self.assertNotIn("{", readme)
-            for edition in ("ra", "ra_incebtion"):
+            for edition in ("ra",):
                 self.assertFalse((root / f"release-{edition}/RIPTOPL-BUGREPORT.zip").exists())
         packed = unpacked_elf(offset=0x60, vaddr=0x01D00000)
         padded = unpacked_elf(offset=0x10000)
@@ -354,14 +353,14 @@ class PublisherTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "invalid source/edition manifest"):
                         publish_editions.verify(root, self.sha)
                 else:
-                    self.assertEqual(len(publish_editions.verify(root, self.sha)), 4)
+                    self.assertEqual(len(publish_editions.verify(root, self.sha)), 2)
 
     def test_a_channel_without_the_usmb2_licence_or_with_another_copy_is_refused(self):
         for change, message in (("missing", "unexpected release inventory"), ("different", "different usmb2 licence")):
             with self.subTest(change=change), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
                 root = Path(directory)
                 self.kit(root)
-                path = root / "release-korium"
+                path = root / "release-riptopl"
                 if change == "missing":
                     (path / "LICENSE-USMB2.txt").unlink()
                 else:
@@ -383,28 +382,6 @@ class PublisherTests(unittest.TestCase):
             self.kit(root, ra_neutrino="neutrino_v1.8.0.7z")
             with self.assertRaisesRegex(ValueError, "not the pinned NULD"):
                 publish_editions.verify(root, self.sha)
-
-    def test_ra_incebtion_kit_ships_inside_the_ra_channel(self):
-        with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
-            root = Path(directory)
-            self.kit(root)
-            candidates = publish_editions.verify(root, self.sha)
-            channels = publish_editions.fold_companions(candidates)
-            self.assertEqual([c[0] for c in channels], ["korium", "ra", "incebtion"])
-            ra = root / "release-ra"
-            folded = ["RIPTOPL-RetroAchievements-IncebtIon.zip", "RIPTOPL-RA-IncebtIon.ELF", "APP_RIPTOPL-RA-IncebtIon.psu",
-                      "RIPTOPL-RA-VARIANTS-IncebtIon.zip"]
-            sums = dict(reversed(line.split("  ", 1)) for line in (ra / "SHA256SUMS.txt").read_text().splitlines())
-            for name in folded:
-                self.assertEqual(sums[name], hashlib.sha256((ra / name).read_bytes()).hexdigest())
-            self.assertEqual(set(sums) | {"SHA256SUMS.txt"}, {p.name for p in ra.iterdir()})
-            # A rerun after a partial publish folds the same files again without duplicating a sum.
-            publish_editions.fold_companions(candidates)
-            self.assertEqual(sums, dict(reversed(line.split("  ", 1)) for line in (ra / "SHA256SUMS.txt").read_text().splitlines()))
-            # A different file already in the channel is never overwritten.
-            (ra / "RIPTOPL-RA-IncebtIon.ELF").write_bytes(b"channel's own")
-            with self.assertRaisesRegex(ValueError, "collides"):
-                publish_editions.fold_companions(candidates)
 
 
 if __name__ == "__main__":

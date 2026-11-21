@@ -141,11 +141,7 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_VCD_HIDE_GAMEID, &gVcdHideGameId, 1),              // hide the PS1 game-ID prefix by default (display-only)
     intSetting(CONFIG_OPL_VCD_FIRST_DISC_ONLY, &gVcdFirstDiscOnly, 1),       // hide discs 2+ of multi-disc PS1 sets by default (POPSLoader parity)
     intSetting(CONFIG_OPL_VCD_SHOW_PP_POPS, &gVcdShowPpPops, 1),             // list strict PP.<ID>.POPS.<name> one-game HDD partitions by default
-#ifdef BUILTIN_KORIUM
-    intSetting(CONFIG_OPL_ENABLE_BGART, &gEnableBGArt, 0), // as the original's Korium: its per-game _BG competes with cover loads
-#else
     intSetting(CONFIG_OPL_ENABLE_BGART, &gEnableBGArt, 1), // fork parity; gEnableArt is 1 above, so this is live
-#endif
     intSetting(CONFIG_OPL_ENABLE_SAVE_ICONS, &gEnableSaveIcons, 0),
     intSetting(CONFIG_OPL_ENABLE_ART_TAR, &gEnableArtTar, 0),
     // NO SETTLE BY DEFAULT. This is the number of INACTIVE frames the menu must see before art is

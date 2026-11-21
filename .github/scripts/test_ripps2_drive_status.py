@@ -50,6 +50,7 @@ log_mocks = r'''
 #include <assert.h>
 typedef unsigned int u32;
 #define OPL_VERSION "test"
+''' + "\n".join(re.findall(r"^#define MMCE_GAMEID_\w+.*$", read("include/mmcesupport.h"), re.M)) + "\n" + function(read("include/mmcesupport.h"), "static inline const char *mmceGameIdModeLabel(") + r'''
 static int intrOn = 1;
 static int DIntr(void) { int was = intrOn; intrOn = 0; return was; }
 static int EIntr(void) { intrOn = 1; return 1; }
@@ -118,7 +119,7 @@ int main(void)
     assert(slurp(path, file, sizeof(file)) > DIAG_SIZE);
     assert(!strncmp(file, "RiptOPL test diagnostics, ", 26));
     assert(strstr(file, "longest run of missed pad reads: 7 polls; of empty reads: 3 polls\r\n"));
-    assert(strstr(file, "MMCE: Game ID on\r\n") && strstr(file, "(the oldest lines have rolled out of the log)"));
+    assert(strstr(file, "MMCE: Game ID slot 0\r\n") && strstr(file, "(the oldest lines have rolled out of the log)"));
     assert(strstr(file, "line 1999\r\n"));
     remove(path);
 
@@ -240,8 +241,8 @@ assert '0xFFFFFFFF' not in case and '1024' not in case, 'nothing clamped or cut 
 
 assert 'if (notReadyRun_ >= 4)' in read('src/core/pad.cpp') and 'diagLog("pad: %u polls in a row could not be read"' in read('src/core/pad.cpp')
 mmce = read('src/sources/mmcesupport.cpp')
-for line in ('diagLog("gameid %s: the card switching after %d ms"', 'diagLog("gameid %s: no switch within %d ms"',
-             'diagLog("mmce: the game\'s card ready after %d ms"', 'diagLog("launch: %s (%s) from MMCE, Game ID %s"'):
+for line in ('diagLog("gameid %s (%s): the card switching after %d ms"', 'diagLog("gameid %s (%s): no switch within %d ms"',
+             'diagLog("mmce: the game\'s card ready after %d ms"', 'diagLog("launch: %s (%s) from MMCE slot %d, Game ID %s"'):
     assert line in mmce, line
 launch = function(mmce, 'void MmceSource::launch(')
 assert launch.index('cacheAbortMmceImageLoadsTimed') < launch.index('diagSaveBeforeLaunch();') < launch.index('deinitEx('), \
