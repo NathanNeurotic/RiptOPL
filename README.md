@@ -43,6 +43,7 @@ Review the LICENSE file for further details.<br><br>
 ![Contributors](https://img.shields.io/github/contributors/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Contributors)
 [![Open Issues](https://img.shields.io/github/issues/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Open%20Issues)](https://github.com/NathanNeurotic/RiptOPL/issues)
 [![Stars](https://img.shields.io/github/stars/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Stars)](https://github.com/NathanNeurotic/RiptOPL/stargazers)
+![Pull requests reviewed by CodeRabbit](https://img.shields.io/coderabbit/prs/github/NathanNeurotic/RiptOPL?style=plastic&logo=coderabbit&logoColor=%23FF570A&logoSize=auto&label=coderabbitai&labelColor=%23000000&color=%23FF570A)
 
 ![Storage](https://img.shields.io/badge/Storage-USB%20%C2%B7%20MX4SIO%20%C2%B7%20iLink%20%C2%B7%20MMCE%20%C2%B7%20HDD-2ea043?style=flat&labelColor=0b3d18)
 ![Network](https://img.shields.io/badge/Network-SMB%20%C2%B7%20NFS%20%C2%B7%20UDPBD%20%C2%B7%20UDPFS%20%C2%B7%20HTTP-2ea043?style=flat&labelColor=0b3d18)
