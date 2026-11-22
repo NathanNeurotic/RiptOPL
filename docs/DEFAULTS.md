@@ -39,7 +39,7 @@ Background music still needs a playable configured/default track. An enabled
 setting alone does not supply music. Storage discovery and saved configuration
 can affect the active presentation after initial defaults are applied.
 
-To use the widescreen/carousel presentation, select **Widescreen: On** and
+To use the widescreen/carousel presentation, select **Widescreen: On** under **Settings → Interface** and
 **Theme View: Coverflow (3)** or **Coverflow (5)** under **Settings → Theme Settings** (theme `<OPL>`), apply, and save.
 Coverflow supports both 4:3 and 16:9; selecting it does not toggle widescreen.
 The 720p and 1080i video modes are always drawn as 16:9, whatever the Widescreen setting.

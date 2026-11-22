@@ -349,7 +349,7 @@ was already in RiptOPL: the `RAC1` header ends at the length and its one space i
 Updating the external client alone does not update the telemetry code in your ELF.
 
 - **Pointer chains:** xeRAbora compiles pointer chains into nodes (parent, static offset, read size) sent as a tail after the watch addresses. `ee_core` walks the nodes once per frame and appends the dynamic `(address, value)` pair per node. A base that resolves to 0 (a null pointer or an out-of-range parent) sends address 0 instead of reading through it.
-- **Larger achievement sets:** up to 4,096 direct watches and 128 pointer-chain nodes, subject to the snapshot byte limit. The block in module storage is sized to the actual set, so ee_core's limited memory carries no tables.
+- **Larger achievement sets:** up to 4,096 direct watches and 512 pointer-chain nodes on the native PS2 runtime (256 on USB POPStarter), subject to the snapshot byte limit. The block in module storage is sized to the actual set, so ee_core's limited memory carries no tables.
 - **Bounded telemetry cadence:** up to three snapshot packets per video frame on average. Sets needing four to six parts are sampled every second frame, seven to nine parts every third frame; smaller sets every frame.
 - **Read-cost diagnostics:** the PC receives the COP0 ticks spent reading a snapshot and the ticks per video frame.
 - **Watch-list validation and read safety:** only 1-, 2- and 4-byte entries with an exact declared byte sum are accepted. Addresses outside `0x00080000..0x02000000` (some sets, like X-Men Origins, carry `0x00000000`) are never read from the VBlank handler, where they took a TLB miss and hung the game; they are sent as 0 so the snapshot keeps its shape.
