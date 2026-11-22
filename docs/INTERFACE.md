@@ -62,6 +62,12 @@ and a message says why. The info pages keep the theme's own background, and per-
 (Background Art) still wins while a game is selected. It is Off on fresh configurations and saved as
 `wallpaper=1`; changing it reloads the theme. *Not yet tested on hardware.*
 
+**Ambient Effects**, under User Wallpaper, draws a seamless 24-second crystal light scene over the
+built-in PSBBN backdrop and per-game background art, and over the Start menu/settings/dialog plasma.
+Every other foreground element stays above the effect. A game/app launch adds a 0.7-second convergence
+before the existing fade. **Off** keeps the static backdrops and original fade. On by default and saved
+as `ambient_effects=1`. Scene geometry adapted from Launchstation's Crystal theme. *Not yet tested on hardware.*
+
 Both flow views rotate navigation on the main game list: Left/Right browse covers and Up/Down
 change sources. R3 remains Favorite, and info/settings screens keep their normal controls.
 **Coverflow Settings** tunes the `Coverflow` renderer; PSBBN Flow uses its fixed layout and

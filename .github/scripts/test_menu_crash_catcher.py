@@ -60,7 +60,7 @@ assert "crashRegs.sp >= 0x00100000" in report, "only a sane stack pointer is wal
 stop = function(src, "void menuWatchStop(")
 assert "RemoveIntcHandler(INTC_VBLANK_S, epcHandlerId)" in stop and "ee_dbg_remove(1)" in stop
 opl = (root / ("src/app/opl.cpp" if CPP else "src/opl.c")).read_text(encoding="utf-8")
-for sig in ("void deinitEx(", "void deinit("):
+for sig in ("void deinitEx(", "static void deinitWithTransition("):
     assert "menuWatchStop();" in function(opl, sig), sig + " tears the crash catcher down"
 header = (root / "include/menuwatch.h").read_text(encoding="utf-8")
 assert header.count("menuWatchStop(void)") == 2, "declared, and a no-op outside diagnostic builds"

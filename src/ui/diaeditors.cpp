@@ -199,6 +199,7 @@ int diaShowKeyb(char *text, int maxLen, int hide_text, int titleId)
         rmStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
+        guiDrawAmbientEffects();
         rmDrawRect(0, 0, diaScreenWidth, diaScreenHeight, gColDarker);
 
         // Title
@@ -476,6 +477,7 @@ int diaShowNumPad(char *text, int maxLen, int minv, int maxv)
         rmStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
+        guiDrawAmbientEffects();
         rmDrawRect(0, 0, diaScreenWidth, diaScreenHeight, gColDarker);
 
         // The entry so far, with the accepted range beside it. An octet and a port look identical
@@ -588,6 +590,7 @@ int diaShowColSel(unsigned char *r, unsigned char *g, unsigned char *b)
         rmStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
+        guiDrawAmbientEffects();
         rmDrawRect(0, 0, diaScreenWidth, diaScreenHeight, gColDarker);
 
         // "Color selection"

@@ -2571,6 +2571,11 @@ gui_strings:
   string: User Wallpaper
 - label: HINT_WALLPAPER
   string: "Draws wallpaper.png from the folder your settings are saved in behind the menu pages, in any theme. 512x512 at most, 8-bit (256 colour) palette."
+- comment: Interface setting under User Wallpaper. Procedural background and launch animation.
+  label: AMBIENT_EFFECTS
+  string: Ambient Effects
+- label: HINT_AMBIENT_EFFECTS
+  string: "Shows the seamless crystal light scene, plus a short convergence when launching. Off keeps static backgrounds and the original launch fade."
 - comment: Toast when User Wallpaper is on and the file is not there.
   label: WALLPAPER_MISSING
   string: "User Wallpaper: no wallpaper.png in the settings folder. The theme's background is shown."

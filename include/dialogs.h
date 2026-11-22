@@ -351,6 +351,7 @@ enum UI_ITEMS {
     UICFG_BOOT_THEME_WAIT,
     UICFG_SHOW_LEGEND,
     UICFG_WALLPAPER,
+    UICFG_AMBIENT_EFFECTS,
     CFG_DATETIME_BUTTON, // General & System: Date and Time (Launchstation issue 346 request)
     DATETIME_YEAR,
     DATETIME_MONTH,

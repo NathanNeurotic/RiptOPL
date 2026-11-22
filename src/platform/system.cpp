@@ -458,7 +458,7 @@ static void poweroffHandler(void *arg)
 
 void sysPowerOff(void)
 {
-    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_NONE);
+    host::app().deinitTerminal(NO_EXCEPTION, IO_MODE_SELECTED_NONE);
     poweroffShutdown();
 }
 
@@ -670,7 +670,7 @@ void sysExecExit(int toMenuChoice)
         }
         if (!present)
             return;
-        host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+        host::app().deinitTerminal(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
         port = (present & 1) ? 0 : 1;
         snprintf(path, sizeof(path), "mc%d:/BOOT/%s", port, file);
         if (port == 0 && (present & 2)) {
@@ -691,7 +691,7 @@ void sysExecExit(int toMenuChoice)
         argc = 1;
     }
     // Deinitialize without shutting down active devices.
-    host::app().deinit(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
+    host::app().deinitTerminal(NO_EXCEPTION, IO_MODE_SELECTED_ALL);
     if (argc)
         ExecOSD(argc, argv);
     exit(0);

@@ -15,6 +15,7 @@ Settings row, the page it is on and the key it is saved under, see
 | Library | Pages (All Games List off) | Settings → Interface → Library, or Game Sources → All Games List |
 | Alternate Background | Off (the theme's `default=` background) | Settings → Interface → Alternate Background |
 | Boot Theme Wait | Off (0 s: the menu opens without waiting for the saved theme) | Settings → Interface → Boot Theme Wait |
+| Ambient Effects | On (24-second crystal light loop and 0.7-second launch convergence) | Settings → Interface → Ambient Effects |
 | Cover and disc artwork | On | Settings → Interface → Artwork Settings |
 | Per-game background art | Off in Korium and RetroAchievements (as the original's Korium); On in IncebtIon | Settings → Interface → Artwork Settings |
 | Notifications | On | Settings → Interface |

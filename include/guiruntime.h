@@ -3,6 +3,7 @@
 
 #include "include/guiqueue.h"
 #include "include/plasma.h"
+#include "include/ambient.h"
 #include "include/gui.h"
 
 // The GUI runtime: owns the frame lock, the deferred-op queue, the background plasma and the main loop. The guiXxx functions in
@@ -24,6 +25,8 @@ public:
     void show();
     void showToast(const char *text);
     void drawBackground();
+    void drawAmbientEffects();
+    void playLaunchTransition();
     void reloadScreenExtents();
 
     void mainLoop();
@@ -64,6 +67,7 @@ private:
     gui_callback_t frameHook_ = nullptr;
     DeferredOpQueue ops_;
     PlasmaBackground plasma_;
+    AmbientEffects ambient_;
 };
 
 extern Gui gGui;

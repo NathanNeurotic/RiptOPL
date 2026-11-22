@@ -148,6 +148,7 @@ Settings**.
 | Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
 | Boot Theme Wait | Seconds the start-up screen waits for a saved theme's drive. | `boot_theme_wait` |
 | User Wallpaper | Draws `wallpaper.png` from the settings folder behind the menu pages, in any theme (512x512 at most, 8-bit palette). See [INTERFACE.md](INTERFACE.md). | `wallpaper` |
+| Ambient Effects | Shows the built-in backdrop's seamless 24-second crystal light scene and a 0.7-second launch convergence. Off retains static backgrounds and the original launch fade. | `ambient_effects` |
 | Show Legend | Shows the button legend on the menu and info pages; off hides it in every theme. | `show_legend` |
 | Font Size | Small, Default or Large. | `font_size` |
 | Button Glyphs | The theme's glyphs or a built-in set. | `glyph_set` |

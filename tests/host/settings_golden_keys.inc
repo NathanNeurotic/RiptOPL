@@ -25,6 +25,7 @@
     CONFIG_OPL_BOOT_THEME_WAIT, // added with the Boot Theme Wait setting
     CONFIG_OPL_SHOW_LEGEND, // added with Show Legend (Berion)
     CONFIG_OPL_WALLPAPER, // added with User Wallpaper (Berion)
+    CONFIG_OPL_AMBIENT_EFFECTS, // added with Ambient Effects
     CONFIG_OPL_VMODE,
     CONFIG_OPL_XOFF,
     CONFIG_OPL_YOFF,

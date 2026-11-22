@@ -1379,6 +1379,7 @@ static int guiReadPopsNet(int source, vcd_popsnet_t *out)
         guiStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
+        guiDrawAmbientEffects();
         rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColDarker);
         fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, gTheme->usedHeight >> 1,
                         ALIGN_CENTER, 0, 0, _l(_STR_POPS_LOADING_SETTINGS), gTheme->textColor);
@@ -2659,6 +2660,7 @@ static int guiSettingsShowInterface(void)
     guiSetThemeViewPicker(ui);
     diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
     diaSetInt(ui, UICFG_WALLPAPER, gThemeWallpaper);
+    diaSetInt(ui, UICFG_AMBIENT_EFFECTS, gEnableAmbientEffects);
     diaSetInt(ui, UICFG_SHOW_LEGEND, gShowLegend);
     diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
     guiSetLibraryPicker(ui);
@@ -2741,6 +2743,7 @@ reshow_interface:
         themeViewRequest = guiReadThemeViewPicker(ui);
         diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
         diaGetInt(ui, UICFG_WALLPAPER, &wallpaperRequest);
+        diaGetInt(ui, UICFG_AMBIENT_EFFECTS, &gEnableAmbientEffects);
         diaGetInt(ui, UICFG_SHOW_LEGEND, &gShowLegend); // read as each frame draws: nothing to rebuild
         diaGetInt(ui, UICFG_BOOT_THEME_WAIT, &gBootThemeWait);
         // With a view change pending, the alt change waits for that reload so the theme loads once.
@@ -3142,6 +3145,7 @@ int SettingsShell::promptSave(void)
         guiStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
+        guiDrawAmbientEffects();
 
         rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColDarker);
         rmDrawLine(50, 75, gGuiScreenWidth - 50, 75, gColWhite);
@@ -3218,6 +3222,7 @@ int SettingsShell::showIndex(int *page)
         guiStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
+        guiDrawAmbientEffects();
 
         fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, 50, ALIGN_CENTER, 0, 0, _l(_STR_SETTINGS), gTheme->textColor);
 
