@@ -102,7 +102,7 @@ picker. Inside the folder, all the artwork/fonts sit alongside a single <code>co
 the List, the optional Coverflow carousel, the optional PSBBN Flow fan and the optional <a href="#grid">Grid</a>. They are the four <a href="#views">views</a> of the built-in <code>&lt;OPL&gt;</code> theme. See <a href="coverflow.html#psbbn-flow">PSBBN Flow</a>.
 Their sources are <code>misc/conf_theme_OPL.cfg</code>, <code>misc/theme_coverflow.cfg</code>,
 <code>misc/theme_psbbn_flow.cfg</code> and <code>misc/theme_grid.cfg</code> in the repository — the traditional layouts and PSBBN Flow authoring example are documented below.</p>
-<p>Fresh configurations use a 4:3 menu and Auto video mode. Pick the Coverflow, PSBBN Flow or Grid view under <b>Settings → Interface → Theme View</b> (or hold L3 on the main page)
+<p>Fresh configurations use a 4:3 menu and Auto video mode. Pick the Coverflow, PSBBN Flow or Grid view under <b>Settings → Theme Settings → Theme View</b> (or hold L3 on the main page)
 and, if wanted, Widescreen under <b>Settings → Interface</b>, then apply and save.
 An ELF update retains saved theme and display choices. See <a href="install.html#opinionated-defaults">Fresh-start defaults</a>.</p>
 
@@ -204,7 +204,7 @@ sharing its cover cache. Give it a fourth and it gets its own.</details>
 <h3 id="views">Views (multi-view themes) — <em>this fork</em></h3>
 <p>One <code>conf_theme.cfg</code> can describe several <b>views</b> of the main and info pages: <code>list</code>,
 <code>coverflow</code>, <code>psbbn</code> and <code>grid</code>. The user picks a view
-under <b>Settings → Interface → <a href="settings.html#theme-view">Theme View</a></b>, or holds <b>L3</b> for half a second on the
+under <b>Settings → Theme Settings → <a href="settings.html#theme-view">Theme View</a></b>, or holds <b>L3</b> for half a second on the
 main page to switch to the next view the theme offers (a tap on L3 still cycles the library view). Idea and design:
 <a href="https://github.com/KrahJohlito">KrahJohlito</a>. Added in <a href="https://github.com/NathanNeurotic/RiptOPL/pull/102">RiptOPL #102</a>; NOT TESTED on hardware.</p>
 <p>The unprefixed blocks are the <b>base</b>. A block named <code>&lt;view&gt;.&lt;block&gt;</code> replaces that block in that
@@ -315,7 +315,7 @@ out for 16:9 already), and <code>scaled=0</code> images.</p>
 
 <h3 id="alt-background">Alternate background (<code>alt=</code>) — <em>this fork</em></h3>
 <p>A theme can ship a second background in the same <code>conf_theme.cfg</code>, and the user picks it with
-<b>Settings → Interface → Alternate Background</b> (Off by default). Idea: <a href="https://github.com/KrahJohlito">KrahJohlito</a> ("one theme, a toggle switch").</p>
+<b>Settings → Theme Settings → Alternate Background</b> (Off by default). Idea: <a href="https://github.com/KrahJohlito">KrahJohlito</a> ("one theme, a toggle switch").</p>
 <pre>alt=bg_night              # top level: the alternate picture for every Background element
 
 main0:
@@ -386,7 +386,7 @@ exactly as before. NOT TESTED on hardware.</p>
 <table data-sortable>
 <thead><tr><th>Key</th><th>Value</th><th>Meaning</th></tr></thead>
 <tbody>
-<tr><td><code>glyph_set</code></td><td><code>theme</code> / <code>builtin</code> / <code>standard</code> / <code>white</code></td><td>The button pictures every hint draws. <code>theme</code> (the default) uses the theme's own glyph PNGs, with the built-in ones filling gaps when <code>use_default=1</code>. <code>builtin</code> uses the built-in glyphs. <code>standard</code> and <code>white</code> are two sets built into the ELF, drawn from <a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a>'s Adapt and Grunge themes. <b>Settings → Interface → Button Glyphs</b> overrides this on every theme; its <b>Theme</b> choice follows this key.</td></tr>
+<tr><td><code>glyph_set</code></td><td><code>theme</code> / <code>builtin</code> / <code>standard</code> / <code>white</code></td><td>The button pictures every hint draws. <code>theme</code> (the default) uses the theme's own glyph PNGs, with the built-in ones filling gaps when <code>use_default=1</code>. <code>builtin</code> uses the built-in glyphs. <code>standard</code> and <code>white</code> are two sets built into the ELF, drawn from <a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a>'s Adapt and Grunge themes. <b>Settings → Theme Settings → Button Glyphs</b> overrides this on every theme; its <b>Theme</b> choice follows this key.</td></tr>
 <tr><td><code>hints_hide</code></td><td>hint list</td><td>Hints the theme leaves off the bar, e.g. <code>hints_hide=star,view</code>.</td></tr>
 <tr><td><code>hints_order</code></td><td>hint list</td><td>These hints come first, in this order. The rest follow in the order the page adds them. Example: <code>hints_order=run,info,menu</code>.</td></tr>
 <tr><td><code>hints_labels</code></td><td>0 / 1</td><td><code>0</code> draws the glyphs alone, without the labels. <code>1</code> (the default) draws a glyph and its label.</td></tr>
@@ -466,12 +466,12 @@ by art declared after it.</p>
 
 <p>Images keyed on the <b><code>ICO</code></b> suffix — an <code>ItemIcon</code>, a <code>GameImage</code> with
 <code>pattern=ICO</code>, or an <code>ItemsList</code> with <code>decorator=ICO</code> — are the theme's disc art.
-The user can hide them with <b>Disc Artwork</b> (<i>Settings → Interface → Artwork Settings</i>, on by
+The user can hide them with <b>Disc Artwork</b> (<i>Settings → Theme Settings</i>, on by
 default), and that removes the element's <code>default=</code> image as well, so plan a layout that still
 reads without them. Art keyed on any other suffix, such as <code>COV</code> covers and <code>BG</code>
 backgrounds, is unaffected; a <code>Background</code> with <code>pattern=ICO</code> is hidden too.</p>
 
-<p><b>Logo Artwork</b> independently gates <code>LGO</code> images, theme placeholders and LGO decorators, including custom Coverflow patterns. It is On by default and does not control the game-launch PS2 Logo. See <a href="settings.html#artwork-settings">Artwork Settings</a>.</p>
+<p><b>Logo Artwork</b> independently gates <code>LGO</code> images, theme placeholders and LGO decorators, including custom Coverflow patterns. It is On by default and does not control the game-launch PS2 Logo. See <a href="settings.html#artwork-settings">artwork controls</a>.</p>
 
 <h3>Text-element extras</h3>
 <table data-sortable>
@@ -707,7 +707,7 @@ were removed in this fork — use the device icons and <code>Index_*</code> abov
 reflection and slide animation. It behaves like a <code>GameImage</code> — it uses the same <code>COV</code>
 cover cache and <code>overlay</code>/corner system — but draws 3 or 5 covers fanned out around the selection.
 Either a <code>Coverflow</code> or <code>PSBBNFlow</code> element enables flow navigation on the main
-browse pages. <b>Coverflow Settings</b> tunes only the <code>Coverflow</code> renderer.</p>
+browse pages. <b>Layout Settings</b> tunes only the <code>Coverflow</code> renderer.</p>
 <div class="ui-capture-grid"><figure><a href="assets/ui/coverflow-five.png"><img src="assets/ui/coverflow-five.png" width="796" height="448" loading="lazy" decoding="async" alt="Built-in five-cover view"></a><figcaption>Built-in five-cover view</figcaption></figure></div>
 
 
@@ -773,7 +773,7 @@ vcdMain2:
     overlay_llx=0    overlay_lly=184  overlay_lrx=184  overlay_lry=184</pre>
 
 <h3>Global Coverflow tuning (NOT in the theme)</h3>
-<p>These live in <code>settings_riptopl.cfg</code> and are exposed in <b>Settings → Interface → Coverflow Settings</b>. They can be edited before selecting a theme and affect <code>Coverflow</code> elements. PSBBN Flow uses its fixed layout and animation. They apply to <em>any</em> Coverflow theme and are clamped on load:</p>
+<p>These live in <code>settings_riptopl.cfg</code> and are exposed in <b>Settings → Theme Settings → Layout Settings</b>. They can be edited before selecting a theme and affect <code>Coverflow</code> elements. PSBBN Flow uses its fixed layout and animation. They apply to <em>any</em> Coverflow theme and are clamped on load:</p>
 <table data-sortable>
 <thead><tr><th>Config key</th><th>Values</th><th>Effect</th></tr></thead>
 <tbody>
@@ -870,7 +870,7 @@ corner.</p>
 opens it into a drawer with the devices' names; Up/Down there switch device (the grid shows that device at once), and
 Right, Cross or Circle go back to the covers. Hold the right stick to one side for half a second and the selected case turns
 over to its back cover (<code>COV2</code>), the way the stick leans; it stays turned until the stick turns it home.
-<i>Settings → Interface → Coverflow Settings → Grid Layout</i> swaps the theme's shape for 4 × 2, 5 × 2, 3 × 2 Large or
+<i>Settings → Theme Settings → Layout Settings → Grid Layout</i> swaps the theme's shape for 4 × 2, 5 × 2, 3 × 2 Large or
 6 × 3 Compact (6 × 2, 7 × 2, 5 × 2 and 8 × 3 on a 16:9 picture), and <i>Dim Side Covers</i> there makes the vignette full
 strength. Idea: <a href="https://github.com/KrahJohlito">KrahJohlito</a> (multi-view themes); the pages, slide, selection, vignette, case flip, sidebar, tiles and layouts
 follow <a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a>'s grid (<a href="https://gitlab.com/akilluminati247">akilluminati47</a>).
@@ -930,8 +930,7 @@ browser shows — spinning, and moving too when the icon is animated. It comes f
 <p><code>x</code>/<code>y</code>/<code>aligned</code> place the element and <code>width</code>/<code>height</code>
 (64×64 by default) give the box the whole icon fits in, at every angle of its turn; <code>scaled=1</code> (the
 default) narrows it on a 16:9 screen like any image. Lighting comes from the save's own <code>icon.sys</code>.</p>
-<p>It draws <b>nothing</b> while the user's <b>3D Save Icons</b> setting is off (<i>Settings → Interface → Artwork
-Settings</i>, off by default), on an app row, or when the game has no readable
+<p>It draws <b>nothing</b> while the user's <b>3D Save Icons</b> setting is off (<i>Settings → Theme Settings</i>, off by default), on an app row, or when the game has no readable
 save. A theme can place it unconditionally, but should not put anything under it that depends on it being there. The
 cards are read only once the cursor has rested on a game for a quarter of a second, on the worker that also loads
 cover art.</p>
