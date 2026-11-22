@@ -2815,7 +2815,7 @@ static void menuL3Tap(int viewPending)
     if (selected_item->item->toggleView)
         selected_item->item->toggleView(selected_item->item);
     if (thmCanCycleView())
-        guiShowToast(_l(_STR_L3_HOLD_FOR_THEME));
+        guiShowToast(_l(_STR_L3_HOLD_FOR_THEME), L3_ICON);
 }
 
 static void menuHandleViewHold(int viewPending, const item_list_t *support)
@@ -2832,7 +2832,7 @@ static void menuHandleViewHold(int viewPending, const item_list_t *support)
         const bool canFilter = support != NULL && support->enabled &&
                                selected_item->item->toggleView && libViewRingUsable(support->mode);
         if (!viewPending && thmCycleView() && canFilter)
-            guiShowToast(_l(_STR_L3_TAP_FOR_FILTER));
+            guiShowToast(_l(_STR_L3_TAP_FOR_FILTER), L3_ICON);
     }
 }
 

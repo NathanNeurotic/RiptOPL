@@ -174,7 +174,7 @@ void guiCheckNotifications(int checkTheme, int checkLang);
 
 // GUI thread only, outside a frame bracket. Draws immediately before a synchronous action,
 // then keeps the feedback visible for three seconds, independently of courtesy notifications.
-void guiShowToast(const char *text);
+void guiShowToast(const char *text, int iconId = -1);
 // Draws the current toast, if its three seconds are not up, inside a frame (dialogs call it so a toast raised from a
 // settings page stays readable).
 void guiDrawToast(void);
