@@ -2398,12 +2398,7 @@ static int guiSettingsShowGeneral(void)
     guiSetAdvancedSettings(ui);
     gSettingsShell.beginDialog(ui);
 
-reshow_general:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsGeneralUpdater);
-    if (result == CFG_DATETIME_BUTTON) {
-        guiShowDateTime(); // writes the console clock only; nothing to save
-        goto reshow_general;
-    }
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);

@@ -68,6 +68,7 @@ enum MENU_IDs {
 #endif
     MENU_FILE_MANAGER, // after RIPPS2's Memory Files browser (akilluminati47)
     MENU_UPDATE,       // Check for Updates (src/ui/selfupdate.cpp)
+    MENU_DATE_TIME,
 };
 
 enum GAME_MENU_IDs {
@@ -1282,6 +1283,7 @@ static void menuInitMainMenu(void)
 #ifdef RIPTOPL_UPDATER
     submenuAppendItem(&mainMenu, -1, NULL, MENU_UPDATE, _STR_UPDATE_CHECK);
 #endif
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_DATE_TIME, _STR_DATE_TIME);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_ABOUT, _STR_ABOUT);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_EXIT, _STR_EXIT);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_POWER_OFF, _STR_POWEROFF);
@@ -2386,6 +2388,9 @@ void menuHandleInputMenu()
             if (menuCheckParentalLock() == 0) // it replaces the ELF
                 selfUpdateMenu();
 #endif
+        } else if (id == MENU_DATE_TIME) {
+            if (menuCheckParentalLock() == 0)
+                guiShowDateTime();
         } else if (id == MENU_ABOUT) {
             guiShowAbout();
         } else if (id == MENU_SAVE_CHANGES) {

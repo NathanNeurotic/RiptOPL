@@ -1,5 +1,5 @@
 /*
-  General & System -> Date and Time -> Set from Internet (Launchstation issue 346 request).
+  Main menu -> Date and Time -> Set from Internet (Launchstation issue 346 request).
 
   Reads the time from a web server's HTTP Date header over plain HTTP on port 80. Not NTP: an NTP
   reply is 48 bytes, and ps2ips delivers a packet of 64 bytes or less through its small-packet path,

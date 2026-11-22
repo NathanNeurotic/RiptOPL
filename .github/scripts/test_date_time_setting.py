@@ -1,12 +1,11 @@
-"""General & System -> Date and Time sets the console clock in the console's own time zone.
+"""Main menu -> Date and Time sets the console clock in the console's own time zone.
 
 - guisettings.cpp: guiClockDaysIn / guiClockShift are compiled and run on the PC. The PS2 clock keeps
   Japan time, so local = clock + (zone - 540 min) + 60 min with daylight saving, and the write is the
   same shift backwards. Every zone from -12 h to +14 h (quarter hours), with and without daylight
   saving, must round-trip across day, month, year and leap-day carries, and a shift that leaves
   2000-2099 (the clock's two-digit year) must be refused.
-- dialogs.cpp / guisettings.cpp / _base.yml: the row is on General & System, its button reopens the page
-  (nothing is saved), and the strings exist.
+- menusys.cpp / dialogs.cpp / _base.yml: the clock sits below Check for Updates and opens the clock dialog.
 """
 from pathlib import Path
 import re
@@ -96,15 +95,17 @@ if 'guiClockShift(t, 540) && guiClockWrite(t,' not in show:
     failures.append('guiShowDateTime: Set from Internet must shift UTC by +540 minutes before writing')
 if 'clk.month & 0x7F' not in show:
     failures.append('guiShowDateTime: mask the month century bit when reading')
-# The row sits on General & System and its button only reopens the page (no save, no reapply).
-diaconfig = dialogs[dialogs.index('struct UIItem diaConfig[]'):]
-diaconfig = diaconfig[:diaconfig.index('{UI_TERMINATOR}')]
-if 'CFG_DATETIME_BUTTON' not in diaconfig:
-    failures.append('dialogs.cpp: the Date and Time button must be on General & System (diaConfig)')
-general = function_text(settings, 'static int guiSettingsShowGeneral(')
-m = re.search(r'if \(result == CFG_DATETIME_BUTTON\) \{(.*?)\}', general, re.S)
-if m is None or 'goto reshow_general' not in m.group(1) or 'markSavePending' in m.group(1):
-    failures.append('guiSettingsShowGeneral: the Date and Time button must reopen the page without arming a save')
+menu = read('src/ui/menusys.cpp')
+order = re.compile(
+    r'MENU_UPDATE, _STR_UPDATE_CHECK\);\s*#endif\s*'
+    r'submenuAppendItem\(&mainMenu, -1, NULL, MENU_DATE_TIME, _STR_DATE_TIME\);'
+)
+if not order.search(menu):
+    failures.append('menusys.cpp: Date and Time must sit below Check for Updates and remain available without it')
+if not re.search(r'id == MENU_DATE_TIME\) \{\s*if \(menuCheckParentalLock\(\) == 0\)\s*guiShowDateTime\(\);', menu):
+    failures.append('menusys.cpp: Date and Time must open the clock dialog with the same parental lock as Settings')
+if 'CFG_DATETIME_BUTTON' in dialogs or 'CFG_DATETIME_BUTTON' in settings:
+    failures.append('Date and Time must have one menu location')
 for label in ('DATE_TIME', 'HINT_DATE_TIME', 'DATE', 'TIME', 'DATE_TIME_ERROR', 'DATE_TIME_SYNC', 'HINT_DATE_TIME_SYNC',
               'DATE_TIME_SYNCING', 'DATE_TIME_SYNCED', 'DATE_TIME_SYNC_ERROR'):
     if not re.search(r'^(?:- |\s+)label: %s$' % label, base, re.M):

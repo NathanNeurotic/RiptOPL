@@ -1,6 +1,6 @@
 # Check for Updates
 
-The main menu's **Check for Updates** entry (just above About) asks GitHub whether the release this
+The main menu's **Check for Updates** entry, just above **Date and Time**, asks GitHub whether the release this
 build came from has a newer build, and on request replaces the running ELF with it. Nothing happens
 until you choose the entry: RiptOPL never checks or downloads on its own.
 
@@ -27,8 +27,8 @@ of build. The channel is fixed at build time (`tools/build_edition.py update_cha
 - A network adapter with working DNS and internet access. The updater uses **Settings → Network** to
   reach GitHub over HTTPS. The SMB version only controls access to SMB shares. RiptOPL temporarily
   switches network stacks when UDPBD or UDPFS owns the adapter, then restores the chosen protocol.
-- The console clock set to the current date and time. Open **Settings → General & System → Date and
-  Time → Modify** to enter local time manually or choose **Set from Internet**. If Check for Updates
+- The console clock set to the current date and time. Open **Date and Time** in the main menu to
+  enter local time manually or choose **Set from Internet**. If Check for Updates
   detects an unset clock, it offers to open this dialog and retries the check after you set the clock.
 
 If an update check fails, the message distinguishes a connection failure, a secure connection or

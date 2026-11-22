@@ -2635,7 +2635,7 @@ gui_strings:
   string: No network. Check the cable and the network settings.
 - comment: Secure connections need the console's date and time.
   label: UPDATE_ERR_CLOCK
-  string: Set the console's date and time first (Settings > General & System > Date and Time). Secure connections need them.
+  string: Set the console's clock from Date and Time in the main menu. Secure connections need it.
 - comment: The GitHub HTTPS connection failed. %d is the error code.
   label: UPDATE_ERR_GITHUB
   string: GitHub secure connection failed (error %d).
@@ -2651,7 +2651,7 @@ gui_strings:
 - comment: The swap failed and the old ELF could not be put back. %s is the ELF's name; the old one is that name plus .BAK.
   label: UPDATE_ERR_RESTORE
   string: Could not replace the ELF or put it back. The old one is %s.BAK beside it. Rename it back with a file manager.
-- comment: "General & System row and dialog title. Sets the console's own clock (Launchstation issue 346 request)."
+- comment: "Main menu entry and dialog title. Sets the console's own clock (Launchstation issue 346 request)."
   label: DATE_TIME
   string: Date and Time
 - label: HINT_DATE_TIME
@@ -2739,7 +2739,7 @@ gui_strings:
   string: Could not connect to GitHub (error %d). Check the network's DNS and internet access.
 - comment: GitHub certificate verification failed. %d is the error code.
   label: UPDATE_ERR_CERTIFICATE
-  string: Could not verify GitHub's certificate (error %d). Check Settings > General & System > Date and Time.
+  string: Could not verify GitHub's certificate (error %d). Check Date and Time in the main menu.
 - comment: The GitHub response or release manifest was invalid. %d is the error code.
   label: UPDATE_ERR_RESPONSE
   string: GitHub returned an unusable update response (error %d).
