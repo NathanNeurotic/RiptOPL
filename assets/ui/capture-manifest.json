@@ -1,10 +1,10 @@
 {
   "captured_on": "2026-11-21",
   "edition": "RiptOPL",
-  "version": "v1.2.0-Beta-4304-110148c-PS2BUILD-RiptOPL-LLVM",
-  "source_commit": "110148cb7a47ddf2ce0fb7d5cdeff5870943336f",
+  "version": "v1.2.0-Beta-4310-e74731d-PS2BUILD-RiptOPL-LLVM",
+  "source_commit": "e74731d8030065ee2949445c329dc26b6f155e68",
   "compiler": "llvm",
-  "elf_sha256": "dc30d56aca8ad7d10753a2af6b066610aae84778612a98c3bf7b6e191bf34117",
+  "elf_sha256": "f668ac016130a457340a6999b8e7a670916eb067c16bd7d3ad669851dac1fc37",
   "emulator": "RIPPCSX2 2.9.96-rippcsx2.2",
   "emulator_sha256": "10caa1405cb4b18495ff765a92693a9b26dcc7221335635ade38b4c83e6a6b85",
   "scope": "Menu rendering and navigation with non-bootable game placeholders",
@@ -315,16 +315,14 @@
       "start_view": "list",
       "wide_screen": 1,
       "filter_mode": 0,
-      "steps": "wait:20,down,down,down,wait:2,shot,hold:l3:850,wait:4,shot,hold:l3:850,wait:4,shot,hold:l3:850,wait:4,shot,hold:l3:850,wait:4,shot,hold:l3:850,wait:4,shot,l3,wait:5,shot,l3,wait:5,shot",
+      "steps": "wait:20,down,down,down,wait:2,shot,hold:l3:1150,wait:0.2,shot,wait:4,shot,hold:l3:1150,wait:5,shot,hold:l3:1150,wait:5,shot,hold:l3:1150,wait:5,shot,hold:l3:1150,wait:5,shot,l3,wait:0.18,shot,wait:4,l3,wait:0.18,shot",
       "source_screenshots": {
-        "list": "RIPTOPL [_]_RIPTOPL_20261121152309.png",
-        "coverflow-three": "RIPTOPL [_]_RIPTOPL_20261121152315.png",
-        "coverflow-five": "RIPTOPL [_]_RIPTOPL_20261121152322.png",
-        "psbbn-flow": "RIPTOPL [_]_RIPTOPL_20261121152328.png",
-        "grid": "RIPTOPL [_]_RIPTOPL_20261121152335.png",
-        "grid-7x2": "RIPTOPL [_]_RIPTOPL_20261121152341.png",
-        "verify-next-ps2": "RIPTOPL [_]_RIPTOPL_20261121152348.png",
-        "verify-next-ps1": "RIPTOPL [_]_RIPTOPL_20261121152355.png"
+        "list": "L3-ALIGNED [_]_L3-ALIGNED_20261121192755.png",
+        "coverflow-three": "L3-ALIGNED [_]_L3-ALIGNED_20261121192804.png",
+        "coverflow-five": "L3-ALIGNED [_]_L3-ALIGNED_20261121192812.png",
+        "psbbn-flow": "L3-ALIGNED [_]_L3-ALIGNED_20261121192820.png",
+        "grid": "L3-ALIGNED [_]_L3-ALIGNED_20261121192827.png",
+        "grid-7x2": "L3-ALIGNED [_]_L3-ALIGNED_20261121192835.png"
       }
     },
     "information": {
@@ -333,7 +331,7 @@
       "filter_mode": 0,
       "steps": "wait:21,right,right,right,right,right,right,right,wait:3,square,wait:3,shot",
       "source_screenshots": {
-        "info-okami": "RIPTOPL [_]_RIPTOPL_20261121152450.png"
+        "info-okami": "L3-ALIGNED [_]_L3-ALIGNED_20261121192938.png"
       }
     },
     "settings": {
@@ -342,9 +340,9 @@
       "filter_mode": 0,
       "steps": "wait:21,start,wait:1,down,down,cross,wait:2,shot,cross,wait:2,shot,circle,wait:1,down,down,down,down,cross,wait:2,shot",
       "source_screenshots": {
-        "settings-overview": "RIPTOPL [_]_RIPTOPL_20261121152540.png",
-        "game-sources": "RIPTOPL [_]_RIPTOPL_20261121152544.png",
-        "interface-settings": "RIPTOPL [_]_RIPTOPL_20261121152550.png"
+        "settings-overview": "L3-ALIGNED [_]_L3-ALIGNED_20261121193028.png",
+        "game-sources": "L3-ALIGNED [_]_L3-ALIGNED_20261121193032.png",
+        "interface-settings": "L3-ALIGNED [_]_L3-ALIGNED_20261121193038.png"
       }
     },
     "game-controls": {
@@ -353,13 +351,13 @@
       "filter_mode": 0,
       "steps": "wait:21,right,right,right,right,right,right,right,wait:2,triangle,wait:2,shot,cross,wait:2,shot,circle,wait:1,down,cross,wait:2,shot,circle,wait:1,down,cross,wait:2,shot,circle,wait:1,down,cross,wait:2,shot,circle,wait:1,down,cross,wait:2,shot,circle,wait:1,down,cross,wait:2,shot,circle,wait:1",
       "source_screenshots": {
-        "game-options": "RIPTOPL [_]_RIPTOPL_20261121152700.png",
-        "game-settings": "RIPTOPL [_]_RIPTOPL_20261121152704.png",
-        "cheat-settings": "RIPTOPL [_]_RIPTOPL_20261121152710.png",
-        "gsm-settings": "RIPTOPL [_]_RIPTOPL_20261121152715.png",
-        "vmc-settings": "RIPTOPL [_]_RIPTOPL_20261121152720.png",
-        "controller-emulation": "RIPTOPL [_]_RIPTOPL_20261121152725.png",
-        "controller-macros": "RIPTOPL [_]_RIPTOPL_20261121152731.png"
+        "game-options": "L3-ALIGNED [_]_L3-ALIGNED_20261121193131.png",
+        "game-settings": "L3-ALIGNED [_]_L3-ALIGNED_20261121193134.png",
+        "cheat-settings": "L3-ALIGNED [_]_L3-ALIGNED_20261121193140.png",
+        "gsm-settings": "L3-ALIGNED [_]_L3-ALIGNED_20261121193145.png",
+        "vmc-settings": "L3-ALIGNED [_]_L3-ALIGNED_20261121193150.png",
+        "controller-emulation": "L3-ALIGNED [_]_L3-ALIGNED_20261121193156.png",
+        "controller-macros": "L3-ALIGNED [_]_L3-ALIGNED_20261121193201.png"
       }
     }
   },
@@ -368,120 +366,120 @@
       "file": "list.png",
       "width": 796,
       "height": 448,
-      "sha256": "0853f8ec97aa5fa52002193a780624411b6ae02495b2ca66d94094b80f327405",
-      "bytes": 189348
+      "sha256": "25d434655b2dcbd8ac9e4c795e5de2ffa1e85194ba96da029bcea8727ec0f5d1",
+      "bytes": 188874
     },
     {
       "file": "grid.png",
       "width": 796,
       "height": 448,
-      "sha256": "e9cc40cab8add110160752564ceac33d814cef2e38e90c0f569dbe7d36cae182",
-      "bytes": 410882
+      "sha256": "d96ce1e8c4635b0f60c587228f7a6b5d4462c5f3a0654c72e3b23582d309098b",
+      "bytes": 409002
     },
     {
       "file": "grid-7x2.png",
       "width": 796,
       "height": 448,
-      "sha256": "8eb408174d75f82fbd050e7d783b36501eb3883eec19d7b898893e4cdc4bf626",
-      "bytes": 349555
+      "sha256": "073c51a63ac729040550380dc9f8991aedc6a40deaaf85f044c53bfcc9b9d31e",
+      "bytes": 348749
     },
     {
       "file": "coverflow-three.png",
       "width": 796,
       "height": 448,
-      "sha256": "2298b9046e81460d3a1a9473cc06835eb4706d31f2b3dac918c6d33783200101",
-      "bytes": 299767
+      "sha256": "b79ad9deddd7f6591744cc165257e90e83ba9c7be3f7444c2cab4f1cdcce71b3",
+      "bytes": 298266
     },
     {
       "file": "coverflow-five.png",
       "width": 796,
       "height": 448,
-      "sha256": "61ac33fdb43f7fedbbbc7c48b551df219872d172c0ec11e4ca1ad16380c0a5ae",
-      "bytes": 300100
+      "sha256": "0c57fe7a26bd7f7c503be6426b0ca90c6efd448f1d0b11469d8de30c26697b3e",
+      "bytes": 300701
     },
     {
       "file": "psbbn-flow.png",
       "width": 796,
       "height": 448,
-      "sha256": "fc977ccd638525d7800514c767e45d5e076def8b5320b2e49f361cc6192e1878",
-      "bytes": 176851
+      "sha256": "70951daa44fbb7b02b2bee1c02936c3dd695e5583ac5611bf2f94f2ba0fa1894",
+      "bytes": 177850
     },
     {
       "file": "info-okami.png",
       "width": 796,
       "height": 448,
-      "sha256": "fb9ebfd78d91834d3b42ddcf94ea01e1d68c0e48b079da1f5021695f6702593b",
-      "bytes": 204749
+      "sha256": "678559829df49af4ebb2f7d2c7c35c292640a9cef490f56b8d2dc2309f5aebce",
+      "bytes": 204116
     },
     {
       "file": "settings-overview.png",
       "width": 640,
       "height": 480,
-      "sha256": "584b783d6bde6bfca0e66879eacff2d284e3f251b3cbce1ed4b7d4fb482dc7f9",
-      "bytes": 90774
+      "sha256": "41f6d6e01c89f1812b49231fd7bcb0ea553cb0f6448bd043671fddbee22fba91",
+      "bytes": 91376
     },
     {
       "file": "game-sources.png",
       "width": 640,
       "height": 480,
-      "sha256": "70b28463535766d9d34d48d9e27a74de9ea18b7f8108a00a26f54e74ab734d0f",
-      "bytes": 123542
+      "sha256": "92af99c621a4d9d350915293e5c1552afd6ac20c80e4cb1fe29a1e910b14dfae",
+      "bytes": 123120
     },
     {
       "file": "interface-settings.png",
       "width": 640,
       "height": 480,
-      "sha256": "8989d66435868b934a2c75f970642ba7e023422c617a39b96b012bb2b9ca547e",
-      "bytes": 148686
+      "sha256": "d3e1f548762065e9614f31931a679c26cc48241d63aba9e3bb8b6228393c4111",
+      "bytes": 147783
     },
     {
       "file": "game-options.png",
       "width": 796,
       "height": 448,
-      "sha256": "c82def15fbd612bd33dd36ea8bbade54607c72a1b04d22c0cc2ab890b56b6db1",
-      "bytes": 84464
+      "sha256": "d467cf4f11efc94b34501ad6063c22a1e79b0cf3e6755047c1f47f056115f6d3",
+      "bytes": 94570
     },
     {
       "file": "game-settings.png",
       "width": 796,
       "height": 448,
-      "sha256": "40af1d9883b6dc13a1c0664a8eb15338b34c33f1f9ccf53e850b3443470ef036",
-      "bytes": 125031
+      "sha256": "48c5f298afb0f11e1c60fee840640ff133a7624db13c164411ad10c82ac53578",
+      "bytes": 118788
     },
     {
       "file": "cheat-settings.png",
       "width": 796,
       "height": 448,
-      "sha256": "5c48636dc71b3f0b02a23344a94a00b4223a27ca3632d86b396fa80740687ba5",
-      "bytes": 82664
+      "sha256": "c37dd78c1972cac085a15c62704e45c9ab042a105bbe623bc6b83b8c9b952816",
+      "bytes": 85468
     },
     {
       "file": "gsm-settings.png",
       "width": 796,
       "height": 448,
-      "sha256": "7376a2995df4a2fd2dee444d8e7ad621eb3b8cb7f067d538966da1869961373d",
-      "bytes": 85409
+      "sha256": "23134f5877398998a8bb9486c2987f21415d96c29688233a7d81665b5b85e8ae",
+      "bytes": 87790
     },
     {
       "file": "vmc-settings.png",
       "width": 796,
       "height": 448,
-      "sha256": "8d460a00c96d0afa37f6348516219f5454d931863b1ee22f0eeee5b6af95e761",
-      "bytes": 86437
+      "sha256": "fbd5dae17d5b6d2f69f3787ddc6b6adb4781cbfb13d8160f56c80c53bef85f97",
+      "bytes": 86289
     },
     {
       "file": "controller-emulation.png",
       "width": 796,
       "height": 448,
-      "sha256": "0f06f7ebf72e837c78eb3dbbad613320da7704710bcc52e062e1a7734f9a80b6",
-      "bytes": 95737
+      "sha256": "0fb043b0d3f44bf44a654216f75350b2e7a0aedde1afcf2f05aa068e63124194",
+      "bytes": 85383
     },
     {
       "file": "controller-macros.png",
       "width": 796,
       "height": 448,
-      "sha256": "2ca6cbf99d5813c4b90629f73d8119a7a865304a32ae41812a901def5040d935",
-      "bytes": 98080
+      "sha256": "55cb62a96c3faa02db2d343a6d3396b35792d0d6e8ac06a88774d87f939def73",
+      "bytes": 93083
     }
   ]
 }
