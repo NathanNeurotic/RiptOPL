@@ -6,10 +6,9 @@ sign into GitHub, then download the requested ZIP from Artifacts. Expired artifa
 
 | Workflow | Artifact | What it holds |
 | --- | --- | --- |
-| Rolling Release | `release-riptopl-attempt<run>`, `release-ra-attempt<run>` | The complete install kit for the standard or RetroAchievements edition |
+| Rolling Release | `release-korium-attempt<run>`, `release-ra-attempt<run>`, `release-incebtion-attempt<run>`, `release-ra_incebtion-attempt<run>` | The complete install kit and every channel asset for that edition (the last is the IncebtIon-theme RA kit) |
 | Rolling Release | `variant-<edition>-<configuration>-attempt<run>` | One configuration build (ELF, manifest and licences); the VARIANTS, DEBUG, BUGREPORT and RA-VARIANTS release zips are made from these |
-| ps2build-configurations | `configuration-<edition>-<configuration>-<gcc or llvm>` | Configuration build with its manifest, resolved definition and licenses, for the targets in the workflow matrix |
-| Rolling Release | `lite-<device>-attempt<run>`, `lite_ra-<device>-attempt<run>` | One standard or RA RiptOPLite build for its selected game device |
+| ps2build-configurations | `configuration-<edition>-<configuration>-<gcc or llvm>` | The three configuration builds no other workflow makes (RA in-game debug with GCC and LLVM, IncebtIon extras/DS5 with LLVM), with manifest, resolved definition and licences; every other configuration is a `variant-` artifact of Rolling Release or RiptOPLLVM |
 | ps2build | `riptopl-ps2build-gcc`, `riptopl-ps2build-llvm` | The bare packed loader from the compiler gate, with `LICENSE-USMB2.txt` and `CREDITS` |
 
 Every loader embeds [usmb2](https://github.com/sahlberg/usmb2), by
@@ -42,7 +41,7 @@ configuration names itself there. See [release channels and packaging](../ROLLIN
 
 ## In-game freeze report (ingamediag)
 
-Use the `ingamediag` configuration (in the DEBUG bundle, or the `variant-riptopl-ingamediag-attempt<run>` artifact
+Use the `ingamediag` configuration (in the DEBUG bundle, or the `variant-korium-ingamediag-attempt<run>` artifact
 of a Rolling Release run) when a game freezes during play. Play as usual.
 When it freezes, press **L1 + L2 + R1 + R2 + Start + Select** (the normal IGR combo). The build
 saves `RIPTFRZ.TXT` to the root of the memory card in slot 1 (slot 2 if slot 1 fails), then exits
@@ -81,7 +80,7 @@ say so if the page appears while the game was still fine.
 If the combo does nothing, report that and confirm Compatibility Mode 6 was off. An unresponsive
 combo alone does not establish a main-CPU freeze: IGR can be disabled or fail to detect input.
 Compatibility Mode 6 turns IGR off, so it also turns this report off. The configuration is
-otherwise a normal RiptOPL build; it is refused for RetroAchievements, which runs
+otherwise a normal Korium or IncebtIon build; it is refused for RetroAchievements, which runs
 IGR from VBLANK.
 
 ## Favorites and automatic VMC failure recovery

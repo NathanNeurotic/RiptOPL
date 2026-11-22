@@ -51,7 +51,7 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 | Default Menu | The page the menu opens on. | `default_device` |
 | HDD (APA) Start Mode | When the internal HDD (APA/PFS) page starts: Off, Manual or Auto. | `hdd_mode` |
 | MMCE Start Mode | When the MMCE (SD2PSX, MemCard PRO2) page starts. | `mmce_mode` |
-| &nbsp;&nbsp;MMCE Settings *(Modify)* | IGR bootcard targets, Game ID targets, communication and path settings (below). | |
+| &nbsp;&nbsp;MMCE Settings *(Modify)* | MMCE slot, IGR slot, Send GameID on Launch, communication and path settings (below). | |
 | BDM Devices Start Mode | When the block-device pages (the indented rows below) start. | `usb_mode` |
 | &nbsp;&nbsp;Internal HDD (exFAT) | Lists games from an exFAT internal HDD. | `enable_bdm_hdd` |
 | &nbsp;&nbsp;USB | Lists games from USB mass storage. | `enable_usb` |
@@ -66,18 +66,11 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 | All Games List | One list of every game instead of a page per device. Same setting as Interface → Library. | `all_games` |
 | Show Hidden Games | Lists games you hid. | `show_hidden` |
 
-**MMCE Settings** covers IGR Bootcard Slot(s) (`mmceigr_slot`), Send GameID on Launch
-(`mmce_gameid`), ACK wait cycles (`mmce_wait_cycles`), use alarms (`mmce_use_alarms`)
-and MMCE Prefix Path (`mmce_prefix`). Each detected MMCE has its own library page.
-Set **Send GameID on Launch** to **0** for the card in physical Slot 1, **1** for Slot 2,
-**Both** for both cards or **Off**. This setting selects the save-card targets independently
-of the game source.
+**MMCE Settings** sub-page: MMCE Slot (`mmce_slot`), MMCE IGR Slot (`mmceigr_slot`), Send GameID
+on Launch (`mmce_gameid`), ACK wait cycles (`mmce_wait_cycles`), use alarms (`mmce_use_alarms`),
+MMCE Prefix Path (`mmce_prefix`).
 
 ## General & System
-
-**Date and Time** is in the main menu below **Check for Updates**. It sets the console clock using
-the console's time zone and daylight-saving setting. Choose **Set from Internet** to sync using
-RiptOPL's network settings. Internet sync is unavailable while UDPBD or UDPFS owns the adapter.
 
 | Row | What it does | Key |
 | --- | --- | --- |
@@ -87,6 +80,7 @@ RiptOPL's network settings. Internet sync is unavailable while UDPBD or UDPFS ow
 | IGR Path | Where in-game reset exits to. | `exit_path` |
 | Exit To | Where the main menu's Exit goes: PS2 Browser, OSDSYS (Skip Update) (the console menu without the card's FMCB or OSDMenu, whose entries return at the next power-on), or OSDSYS (With Update) (the console's own exit, the default). The BOOT choices run the named ELF from `mc0:/BOOT`, falling back to `mc1:/BOOT` when it is absent or cannot be loaded. Only the main menu's Exit uses it. PS2 Browser keeps FMCB's or OSDMenu's menu for when you leave the Browser whenever it can. FMCB allows this only when FMCB Configurator's Configure OSDSYS options > Go to Browser is AUTO or Force ON (OSDSYS_Inner_Browser 0 or 1); on Force OFF (the installer's default) and on exploit-installer (LoadBOOTer) cards, the Browser opens without the card's menu. Consoles older than ROM v5 (the first models) ignore Skip Update. An older setting of PS2 Browser (Skip Card Update) loads as PS2 Browser. | `exit_menu` |
 | Custom Settings Path | A folder to read and save settings in instead of the default. | `custom_settings_path` |
+| Date and Time *(Modify)* | Sets the console's clock, in the console's own time zone and daylight-saving setting. Check for Updates needs it set. **Set from Internet** reads the time from a web server (github.com, then www.google.com) over plain HTTP; it brings the network up with the Network settings if it is not already, and is not available while UDPBD or UDPFS is the network protocol. | (the console clock; not saved by RiptOPL) |
 | Write Operations | Allows RiptOPL to write to game devices (rename, delete, VMC, art). | `enable_delete_rename` |
 | Parental Lock Password | Password that locks protected games and settings. | `parental_lock_password` |
 | Debug | Debug colours and logging during launch. | `disable_debug` |
@@ -148,43 +142,30 @@ Settings**.
 | PS2/PS1 Game Display | Both (L3 switches), Mixed, PS2 or PS1 on each device page. See [VCD.md](VCD.md). | `default_game_view` |
 | Applications Display | How the Applications page lists apps. | `apps_display` |
 | Video Mode | The menu's video mode (not the games'; that is GSM Defaults on Game Launching). | `vmode` |
+| Theme | The menu theme. See [INTERFACE.md](INTERFACE.md). | `theme` |
+| Theme View | List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid or Grid (7x2); holding L3 cycles it too. | `theme_view`, `coverflow_count`, `grid_compact` |
 | Library | Pages or All Games. Same setting as Game Sources → All Games List. | `all_games` |
+| Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
+| Boot Theme Wait | Seconds the start-up screen waits for a saved theme's drive. | `boot_theme_wait` |
+| User Wallpaper | Draws `wallpaper.png` from the settings folder behind the menu pages, in any theme (512x512 at most, 8-bit palette). See [INTERFACE.md](INTERFACE.md). | `wallpaper` |
+| Ambient Effects | Shows the built-in backdrop's seamless 24-second crystal light scene and a 0.7-second launch convergence. Off retains static backgrounds and the original launch fade. | `ambient_effects` |
 | Show Legend | Shows the button legend on the menu and info pages; off hides it in every theme. | `show_legend` |
 | Font Size | Small, Default or Large. | `font_size` |
+| Button Glyphs | The theme's glyphs or a built-in set. | `glyph_set` |
+| Coverflow Settings *(Modify)* | Center scale, animation speed, side-cover dimming, grid layout. | `coverflow_scale`, `coverflow_anim`, `coverflow_dim`, `grid_layout` |
+| Artwork Settings *(Modify)* | Cover Art, Disc Artwork, Logo Artwork, Background Art, 3D Save Icons, Cover Art .tar Archive, Art Delay. | `enable_coverart`, `enable_discart`, `enable_logoart`, `enable_bgart`, `enable_save_icons`, `enable_art_tar`, `art_delay` |
+| Colors *(Modify)* | Text, selected, UI, title, background and plasma colours, and Reset Colors. | `text_color`, `sel_text_color`, `ui_text_color`, `title_color`, `bg_color`, `plasma_blend_color` |
 | Notifications | Shows short notices (device found, saved). | `enable_notifications` |
 | Sort Games | Off, A to Z or Last played. | `autosort` |
 | Automatic Refresh | Re-reads game lists while the menu is open. | `autorefresh` |
 | Show CFG Titles in Game Lists | Uses the title from a game's CFG file. See [CFG-TITLES.md](CFG-TITLES.md). | `cfg_titles_in_lists` |
+| List Title and Description | Theme, On or Off. On the built-in IncebtIon and Korium themes, On shows the game's CFG Title and Description beside the list in place of the cover. | `list_cfg_text` |
 | PS1 Duplicates | A PS1 game found for both cores: Both, Ember or POPSTARTER. | `ps1_duplicates` |
 | Show [PS1]/[PS2] Labels | Marks each row with its system. | `game_type_labels` |
 | Widescreen | 16:9 menu. | `wide_screen` |
 | H-POS, V-POS | Moves the picture (kept per video mode). | `xoff`, `yoff` |
 | Overscan | Shrinks the picture to fit the TV. | `overscan` |
 | Show GameID Barcode (Pixel FX) | Sends the game ID to Pixel FX scalers: All, POPSTARTER only, PS2 only or Off. | `apply_gameid` (PS2), `popstarter_retrogem_gameid` (PS1) |
-
-## Theme Settings
-
-Open **Theme Settings** from the Settings index, or press **R1** from **Interface**. The artwork controls are on the page. Layout Settings and Colors have their own editors.
-
-| Row | What it does | Key |
-| --- | --- | --- |
-| Theme | The menu theme. See [INTERFACE.md](INTERFACE.md). | `theme` |
-| Theme View | List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid or Grid (7x2); holding L3 cycles it too. | `theme_view`, `coverflow_count`, `grid_compact` |
-| Layout Settings *(Modify)* | Center scale, animation speed, side-cover dimming, grid layout. | `coverflow_scale`, `coverflow_anim`, `coverflow_dim`, `grid_layout` |
-| Cover Art | Loads cover art for games. | `enable_coverart` |
-| Disc Artwork | Shows disc art and ICO images. | `enable_discart` |
-| Logo Artwork | Shows LGO images. | `enable_logoart` |
-| Background Art | Uses per-game artwork for the background. | `enable_bgart` |
-| 3D Save Icons | Shows a game's save icon where the theme places one. | `enable_save_icons` |
-| Cover Art .tar Archive | Also reads artwork from `ART/art.tar`. | `enable_art_tar` |
-| Art Delay | Frames the cursor must rest on a game before its art starts loading. | `art_delay` |
-| Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
-| User Wallpaper | Draws `wallpaper.png` from the settings folder behind the menu pages, in any theme (512x512 at most, 8-bit palette). See [INTERFACE.md](INTERFACE.md). | `wallpaper` |
-| Ambient Effects | Shows a seamless 24-second crystal light scene and a 0.7-second animation before the launch fade. Off keeps static backgrounds and the original launch fade. | `ambient_effects` |
-| Colors *(Modify)* | Text, selected, UI, title, background and plasma colours, and Reset Colors. | `text_color`, `sel_text_color`, `ui_text_color`, `title_color`, `bg_color`, `plasma_blend_color` |
-| Button Glyphs | The theme's glyphs or a built-in set. | `glyph_set` |
-| List Title and Description | Theme, On or Off. On displays the game's CFG Title and Description in supported list layouts. | `list_cfg_text` |
-| Boot Theme Wait | Seconds the start-up screen waits for a saved theme's drive. | `boot_theme_wait` |
 
 ## Game Launching
 

@@ -17,7 +17,8 @@ These library features came from [RIPPS2](https://gitlab.com/akilluminati247/RIP
 
 ## All Games list
 
-Turn it on with **Settings → Interface → Library: All Games List** (it works with every view) or **Game Sources → All Games List**; both are the same setting.
+Turn it on with **Settings → Interface → Library: All Games List** (right under Theme View, and it works
+with every view) or **Game Sources → All Games List**; both are the same setting.
 With **All Games List** on, the Favourites page becomes **All Games**: one list of the PS2 games,
 PS1 games and apps of every device that is started. Device tabs whose games are on it step aside,
 and so does the Apps tab once the apps are on it. All Games starts the apps itself when

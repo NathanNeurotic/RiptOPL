@@ -1,11 +1,10 @@
 # RA watch-list and snapshot budgets
 
-The RetroAchievements edition accepts up to 4,096 direct entries and 512 PS2
-pointer-chain nodes. POPStarter supports up to 256 nodes. The menu transfer
-ceiling is 24 KiB and can hold a full RAN2 list with its RAH1 hash record.
-RAWL remains version 1 and the loader accepts RANL and RAN2 node records.
-Every direct entry must read 1, 2 or 4 bytes, and their sum must exactly match
-the header's direct-byte count. The loader and EE core both validate the list.
+The RetroAchievements edition accepts up to 4,096 direct entries and 128
+pointer-chain nodes. The menu transfer ceiling is 20 KB. The RAWL/RANL formats
+remain version 1; every direct entry must read 1, 2 or 4 bytes, and their sum
+must exactly match the header's direct-byte count. A malformed list is refused
+by both the network/file loader and the EE-core setup boundary.
 
 The total sampled bytes, including eight bytes per node, must fit nine snapshot
 parts. A packet reserves 191 bytes for the text header, leaving 1,281 value
@@ -21,11 +20,17 @@ the IRX data in protected module storage, aligned to 64 bytes. The EE-core
 config carries both the pointer and actual reserved capacity. EE-core copies
 the entries and nodes during setup, before loader memory can be overwritten.
 
-The layout reserves the maximum snapshot DMA buffer, one word per direct entry,
-and five words per node. The additional nodes use up to 5 KiB in protected
-module storage when a set needs them. An untracked launch reserves no RA work
-area. The launcher skips telemetry if the cache-aligned reservation would cross
-the applicable RAM boundary. EE core also checks alignment and capacity.
+The layout is the maximum snapshot DMA buffer, then one word per actual direct
+entry, then four words per actual node: two source words and two scratch words.
+Nodes no longer compete with entries for the old fixed 1,024-word allocation.
+There are no new large arrays in EE-core BSS. An untracked launch reserves no
+RA work area. EE-core refuses an unaligned or undersized reservation before
+writing into it; insufficient node capacity keeps only the direct reads.
+
+The snapshot buffer still reserves the protocol maximum. Thus the larger
+ceiling can increase protected module-storage use even for a small set; it
+does not consume EE-core's low-memory stack. Console compatibility and timing
+must be tested separately from memory-layout/source checks.
 
 ## Sampling and pacing
 
@@ -42,6 +47,11 @@ use byte reads to avoid address-error exceptions inside VBLANK. Out-of-window
 addresses produce zeros while preserving the snapshot's shape. Entry width
 and direct-region bounds are checked before reads; node resolution retains its
 existing parent/size/address guards.
+
+This is the larger-budget subset of the original runtime port. It does not
+implement newer timing fields, peer/client commands, browser, ORBIT handoff,
+overlay cards, HTTPS or watch-cache durability. Track those separately in
+[migration issue #20](https://github.com/NathanNeurotic/RiptOPL/issues/20).
 
 Host tests execute the real C++ network/file parser, launch capacity method,
 EE-core setup/sampling/pacing and IOP sender. They cover full entry/node budgets,

@@ -8,7 +8,7 @@ Two settings change what you read below, so check them first if the tables do no
   **Cross = confirm, Circle = back**, which is the default everywhere except **Japanese consoles**,
   where RiptOPL starts with Circle as confirm to match the regional convention. If Circle is your
   select button, swap those two everywhere, including the Settings screens.
-* **Coverflow (3), Coverflow (5), PSBBN Flow, Grid and Grid (7x2)** (*Settings → Theme Settings → Theme View*, or hold L3) change the navigation on
+* **Coverflow (3), Coverflow (5), PSBBN Flow, Grid and Grid (7x2)** (*Settings → Interface → Theme View*, or hold L3) change the navigation on
   the game list. The layouts are given below.
 
 ---
@@ -26,7 +26,7 @@ Two settings change what you read below, so check them first if the tables do no
 | **L1 / R1** | Previous / next page of the list; both wrap around at the ends |
 | **L2** | Jump to the first page |
 | **R2** | Jump to the last page |
-| **L3** | **View/Filter**. Tap to cycle this page's library filters. Supported devices offer PS2, PS1 and Mixed. All Games offers All, PS2, PS1, Apps, Favourites and Recent. Hold for half a second to switch to the next [theme view](THEME_ENGINE.md#views-multi-view-themes--this-fork) when the theme offers more than one. In that case, a tap acts on release. The **Hold for Theme** and **Tap for Filter** tips show the L3 icon when the other action is available. |
+| **L3** | Tap: cycle this page's library view (PS2 / PS1 / Both / …; All, PS2, PS1, Apps, Favourites and Recent on All Games). Hold it for half a second to switch to the next [theme view](THEME_ENGINE.md#views-multi-view-themes--this-fork) (List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid) when the theme offers more than one; the tap then acts on release. |
 | **R3** | Star or un-star the selected title as a Favorite (also on All Games and Recent rows) |
 | **Start** | Open the main menu |
 | **Select** | Refresh the current device list |
@@ -39,19 +39,16 @@ and every menu keep the standard layout.
 
 | Button | List view, such as `<OPL>` | Coverflow / PSBBN Flow | Grid |
 |---|---|---|---|
-| **Up / Down** | Move through the list | Switch device page; Coverflow uses its left vertical device list | Move one row, keeping the column and wrapping between the first and last rows |
+| **Up / Down** | Move through the list | Switch device page, or use the Coverflow device bar below | Move one row, keeping the column; stops at the top and bottom rows |
 | **Left / Right** | Switch device page | Move through the covers | Move one cover; Left on the first column opens the device sidebar, when the theme shows one |
 | **L1 / R1** | Page up / down the list | Jump 15 titles, wrapping at either end | Turn a whole page of covers, keeping your place on it (or the last cover, on a short last page); wraps at either end, and does nothing when every cover fits on one page |
 | **Right stick** | — | — | Hold to one side: turn the selected case over to its back cover, and back |
 
-Coverflow shows devices in a left vertical list. **Up / Down** switches the active device immediately;
-**Left / Right** stays with the covers. No focus change or Cross press is needed.
+When a Coverflow theme shows a device bar, press **Down** to focus it and **Left / Right**
+to switch devices. Press **Up**, **Cross** or **Circle** to return to the covers.
+PSBBN Flow and Coverflow themes without the bar use **Up / Down** to switch devices.
 
-Grid uses a separate device sidebar because its covers need all four directions. **Up / Down** moves only
-the device highlight. **Cross** activates an inactive highlighted device and returns to the covers; on the
-active device it only returns to the covers. **Right** or **Circle** returns without activation. A theme can
-drop the sidebar (`<block>_devices=0`); Up/Down then switch device page from the top and bottom rows, and
-Left on the first column stays there.
+In Grid's device sidebar, **Up / Down** switch device page (the grid follows at once) and **Right**, **Cross** or **Circle** go back to the covers. A theme can drop the sidebar (`<block>_devices=0`); Up/Down then switch device page from the top and bottom rows, and Left on the first column stays there.
 
 Custom layouts that display only one title row also jump 15 titles, including on the info screen. A jump stops at the first or last title if fewer than 15 remain. Press again to wrap. Multi-row lists page by their visible row count.
 
