@@ -2746,3 +2746,9 @@ gui_strings:
 - comment: The GitHub connection or download timed out. %d is the error code.
   label: UPDATE_ERR_TIMEOUT
   string: The GitHub update request timed out (error %d).
+- label: THEME_SETTINGS
+  string: Theme Settings
+- label: LAYOUT_SETTINGS
+  string: Layout Settings
+- label: HINT_LAYOUT_SETTINGS
+  string: "Adjust Coverflow size, animation and dimming, or choose a Grid layout."

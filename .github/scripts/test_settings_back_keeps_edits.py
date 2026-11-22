@@ -146,7 +146,7 @@ if page_functions.count('{') >= 3:
 
 PAGES = ('static int guiSettingsShowGeneral(', 'static int guiSettingsShowSources(', 'int guiShowNetConfig(',
          'static int guiSettingsShowLanguage(',
-         'static int guiSettingsShowInterface(', 'static int guiSettingsShowLaunch(',
+         'static int guiSettingsShowInterface(', 'static int guiSettingsShowTheme(', 'static int guiSettingsShowLaunch(',
          'static int guiSettingsShowPopstarter(', 'static int guiShowControllerConfig(')
 # Pages whose apply block is a full device re-apply: an untouched Back/L1/R1 must skip it (#806).
 DEVICE_PAGES = {

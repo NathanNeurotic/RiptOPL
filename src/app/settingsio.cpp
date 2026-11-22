@@ -2493,8 +2493,7 @@ void applyConfig(int themeID, int langID, int skipDeviceRefresh)
     // anywhere" latch and let it be probed once more. That latch (tar.c s_inactive[]) is write-once
     // and process-wide with no self-clearing path, so without this a user who boots with the loader
     // already ON and no archive present -- then plugs one in -- keeps getting nothing until a
-    // reboot. The Artwork page's own toggle-flip re-arm only covers the case where the toggle
-    // CHANGES; this covers the rest.
+    // reboot. Theme Settings also re-arms the probe when the archive toggle changes.
     // Gate archive and directory index invalidation on full device refresh (skipDeviceRefresh == 0).
     // Pure theme/color UI switches (skipDeviceRefresh == 1) keep the indices warm in memory (issue #488)
     // so returning to List Mode does not re-probe USB 1.1 storage.

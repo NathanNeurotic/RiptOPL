@@ -326,7 +326,6 @@ enum UI_ITEMS {
     POPS_OVERWRITE_REPLACE,
 
     // Settings-layout restructure: sub-page buttons (chained dialogs, goto-reshow pattern)
-    UICFG_ARTWORK_BUTTON,
     UICFG_COLORS_BUTTON,
     LAUNCH_NEUTRINO_DEFAULTS_BUTTON,
     LAUNCH_OSD_DEFAULTS_BUTTON,
@@ -423,6 +422,7 @@ extern struct UIItem diaPadEmuInfo[];
 
 extern struct UIItem diaNetConfig[];
 extern struct UIItem diaUIConfig[];
+extern struct UIItem diaThemeConfig[];
 extern struct UIItem diaLanguageConfig[];
 extern struct UIItem diaDateTimeConfig[];
 extern struct UIItem diaAudioConfig[];
@@ -447,7 +447,6 @@ extern struct UIItem diaDeviceConfig[];
 extern struct UIItem diaVcdConfig[];
 extern struct UIItem diaMmceConfig[];
 extern struct UIItem diaVcdUsbMode[];
-extern struct UIItem diaArtworkConfig[];
 extern struct UIItem diaColorsConfig[];
 extern struct UIItem diaLaunchConfig[];
 extern struct UIItem diaNeutrinoDefaults[];
