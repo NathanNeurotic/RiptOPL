@@ -111,7 +111,7 @@ def source_checks():
     check("no_second_file", not re.search(r"unlink\(|rename\(|\.NEW|bak", inst.lower().replace("break", "")), "no unlink, rename, .NEW or backup")
     # Redirects are followed only to GitHub's hosts, and only a few times.
     check("redirects_allowlisted", "suSplitUrl(" in src and re.search(r"for \(hop = 0; hop < 4", src) is not None)
-    callers = sorted(str(p.relative_to(ROOT)) for p in (ROOT / "src").rglob("*.c*")
+    callers = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "src").rglob("*.c*")
                      if "selfUpdateMenu" in p.read_text(encoding="utf-8", errors="replace"))
     check("no_auto_check", callers == ["src/ui/menusys.cpp", "src/ui/selfupdate.cpp"],
           f"the check runs only from the menu: {callers}")

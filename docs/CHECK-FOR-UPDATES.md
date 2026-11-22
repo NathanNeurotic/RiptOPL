@@ -24,9 +24,16 @@ of build. The channel is fixed at build time (`tools/build_edition.py update_cha
 
 - RiptOPL started from a memory card (`mc0:`/`mc1:`) or a USB/exFAT drive (`massN:`). Other places
   (HDD, network, MMCE) are refused before anything is downloaded.
-- A network adapter with internet access. It uses the same network settings as SMB (Settings > Network).
-  While UDPBD or UDPFS owns the network adapter, it refuses and says so.
-- The console clock set to the current date (Settings > General & System > Date and Time): the GitHub certificates cannot be checked without it.
+- A network adapter with working DNS and internet access. The updater uses **Settings → Network** to
+  reach GitHub over HTTPS. The SMB version only controls access to SMB shares. RiptOPL temporarily
+  switches network stacks when UDPBD or UDPFS owns the adapter, then restores the chosen protocol.
+- The console clock set to the current date and time. Open **Settings → General & System → Date and
+  Time → Modify** to enter local time manually or choose **Set from Internet**. If Check for Updates
+  detects an unset clock, it offers to open this dialog and retries the check after you set the clock.
+
+If an update check fails, the message distinguishes a connection failure, a secure connection or
+certificate failure, a timeout, and an unusable release response. Include the exact message and the
+build version from **About** when reporting a failure.
 
 ## What it does
 
@@ -47,14 +54,14 @@ The new build starts the next time RiptOPL is opened. Settings, themes and other
 
 ## Security
 
-HTTPS with certificate, host name and date always verified, against four built-in roots only: Sectigo
-E46 and R46 (github.com) and ISRG X1 and X2 (GitHub's release download host). Redirects are followed
+HTTPS verifies the certificate, host name and date against four built-in roots. GitHub uses Sectigo
+E46 and R46, and its release download host uses ISRG X1 and X2. Redirects are followed
 only to `github.com`, `release-assets.githubusercontent.com` and `objects.githubusercontent.com`, at
-most three times. The RetroAchievements builds use their existing TLS (TLS 1.3 and 1.2); the others carry
-a TLS 1.2-only build of the same mbedTLS (`third_party/mbedtls/riptopl_mbedtls_slim_config.h`).
+most three times. The RetroAchievements build uses TLS 1.3 and 1.2, with RSA-PSS for TLS 1.3 handshakes
+when the server uses an RSA certificate. The standard LLVM build uses TLS 1.2.
 
 ## Status
 
-Host-tested: the TLS download (`.github/scripts/test_ratls_host.py`) and the parsing
-(`.github/scripts/test_selfupdate_host.py`, against the real `SHA256SUMS.txt` files). NOT TESTED on
-hardware or in PCSX2: the real GitHub certificate chains, the in-place write to a real memory card and the full download.
+Host tests cover TLS downloads and checksum parsing. The updater's portable HTTPS code also downloaded
+the live `rolling` and `rolling-ra` releases and verified their ELF hashes with both TLS configurations.
+The PS2 network path and in-place write to a physical memory card still need console validation.

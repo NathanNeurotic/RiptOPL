@@ -85,7 +85,7 @@ if funcs:
 if 'configGetTimezone() - 540 + (configIsDaylightSavingEnabled() ? 60 : 0)' not in settings:
     failures.append('guiClockLocalOffset must be configGetTimezone() - 540 (+60 with daylight saving)')
 # The write rebuilds the request on each try (the reply overwrites it) and checks the command error bit.
-show = function_text(settings, 'static void guiSettingsShowDateTime(')
+show = function_text(settings, 'int guiShowDateTime(')
 write = function_text(settings, 'static int guiClockWrite(')
 retry = re.search(r'for \(int i = 0; i < 2; i\+\+\) \{(.*?)\n    \}', write, re.S)
 body = retry.group(1) if retry else ''
@@ -93,9 +93,9 @@ if 'sceCdWriteClock(&clk) && !(clk.stat & CdlRTCStatCommandError)' not in body o
     failures.append('guiClockWrite: rebuild clk before each sceCdWriteClock and check CdlRTCStatCommandError')
 # Set from Internet: UTC from the Date header goes to the clock's Japan time (+9 h).
 if 'guiClockShift(t, 540) && guiClockWrite(t,' not in show:
-    failures.append('guiSettingsShowDateTime: Set from Internet must shift UTC by +540 minutes before writing')
+    failures.append('guiShowDateTime: Set from Internet must shift UTC by +540 minutes before writing')
 if 'clk.month & 0x7F' not in show:
-    failures.append('guiSettingsShowDateTime: mask the month century bit when reading')
+    failures.append('guiShowDateTime: mask the month century bit when reading')
 # The row sits on General & System and its button only reopens the page (no save, no reapply).
 diaconfig = dialogs[dialogs.index('struct UIItem diaConfig[]'):]
 diaconfig = diaconfig[:diaconfig.index('{UI_TERMINATOR}')]

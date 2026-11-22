@@ -154,6 +154,7 @@ int guiNeutrinoArgsAta0idHandler(char *text, int maxLen);
 int guiNeutrinoArgsAta1Handler(char *text, int maxLen);
 int guiNeutrinoArgsExtraHandler(char *text, int maxLen);
 int guiShowNetConfig(void);
+int guiShowDateTime(void); // 1 when the console clock was set
 
 
 // 1 when a network stack is resident and the saved protocol is NOT the one running -- i.e. the

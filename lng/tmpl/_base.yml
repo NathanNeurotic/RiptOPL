@@ -2636,9 +2636,9 @@ gui_strings:
 - comment: Secure connections need the console's date and time.
   label: UPDATE_ERR_CLOCK
   string: Set the console's date and time first (Settings > General & System > Date and Time). Secure connections need them.
-- comment: GitHub could not be reached or answered wrongly. %d is the error code.
+- comment: The GitHub HTTPS connection failed. %d is the error code.
   label: UPDATE_ERR_GITHUB
-  string: Could not reach GitHub (error %d). Check that the network has internet access and that the console's date is right.
+  string: GitHub secure connection failed (error %d).
 - comment: Writing the downloaded ELF failed.
   label: UPDATE_ERR_WRITE
   string: Could not write the update. Is the device full? RiptOPL was not changed.
@@ -2731,3 +2731,18 @@ gui_strings:
 - comment: Brief toast after holding L3 to switch styles when the current page has another library filter.
   label: L3_TAP_FOR_FILTER
   string: Tap for Filter
+- comment: Offer to open the clock setting when Check for Updates detects an unset clock.
+  label: UPDATE_OPEN_CLOCK
+  string: Check for Updates needs the PS2 clock. Open Date and Time now?
+- comment: GitHub DNS or TCP connection failed. %d is the error code.
+  label: UPDATE_ERR_CONNECT
+  string: Could not connect to GitHub (error %d). Check the network's DNS and internet access.
+- comment: GitHub certificate verification failed. %d is the error code.
+  label: UPDATE_ERR_CERTIFICATE
+  string: Could not verify GitHub's certificate (error %d). Check Settings > General & System > Date and Time.
+- comment: The GitHub response or release manifest was invalid. %d is the error code.
+  label: UPDATE_ERR_RESPONSE
+  string: GitHub returned an unusable update response (error %d).
+- comment: The GitHub connection or download timed out. %d is the error code.
+  label: UPDATE_ERR_TIMEOUT
+  string: The GitHub update request timed out (error %d).

@@ -376,8 +376,25 @@ static void suReport(void)
         case SU_ERR_SWAP:
             snprintf(text, sizeof(text), "%s (%d/%d)", _l(_STR_UPDATE_ERR_SWAP), suStep, suErrno);
             break;
-        default:
-            snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_GITHUB), suError);
+        default: {
+            int label = _STR_UPDATE_ERR_GITHUB;
+            switch (suError) {
+                case RATLS_ERR_NET:
+                    label = _STR_UPDATE_ERR_CONNECT;
+                    break;
+                case RATLS_ERR_CERT:
+                    label = _STR_UPDATE_ERR_CERTIFICATE;
+                    break;
+                case RATLS_ERR_HTTP:
+                    label = _STR_UPDATE_ERR_RESPONSE;
+                    break;
+                case RATLS_ERR_TIMEOUT:
+                    label = _STR_UPDATE_ERR_TIMEOUT;
+                    break;
+            }
+            snprintf(text, sizeof(text), _l(label), suError);
+            break;
+        }
     }
     guiMsgBox(text, 0, NULL);
 }
@@ -389,6 +406,11 @@ static void suOffer(int local)
     if (suInstalledRev > local)
         local = suInstalledRev; /* the file on the device is already that build */
     suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
+    if (suResult == SU_ERR_CLOCK) {
+        if (!guiMsgBox(_l(_STR_UPDATE_OPEN_CLOCK), 1, NULL) || !guiShowDateTime())
+            return;
+        suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
+    }
     if (suResult == SU_NEWEST) { /* the checksum is read: offer the same swap again */
         snprintf(text, sizeof(text), _l(_STR_UPDATE_NEWEST), local);
         if (suRemoteRev < local) { /* the channel is older than this build: no reinstall offer */

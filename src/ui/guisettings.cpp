@@ -2322,7 +2322,7 @@ static int guiClockWrite(const int t[5], int second)
     return 0;
 }
 
-static void guiSettingsShowDateTime(void)
+int guiShowDateTime(void)
 {
     static const int ids[5] = {DATETIME_YEAR, DATETIME_MONTH, DATETIME_DAY, DATETIME_HOUR, DATETIME_MINUTE};
     int t[5], i, ok, result;
@@ -2354,16 +2354,17 @@ static void guiSettingsShowDateTime(void)
             ok = guiClockShift(t, 540) && guiClockWrite(t, guiClockSyncTime[5] > 59 ? 59 : guiClockSyncTime[5]);
             guiMsgBox(_l(ok ? _STR_DATE_TIME_SYNCED : _STR_DATE_TIME_ERROR), 0, NULL);
             if (ok)
-                return;
+                return 1;
             continue;
         }
         for (i = 0; i < 5; i++)
             diaGetInt(diaDateTimeConfig, ids[i], &t[i]);
         ok = t[2] <= guiClockDaysIn(t[0], t[1]) && guiClockShift(t, -guiClockLocalOffset());
         if (ok && guiClockWrite(t, 0))
-            return;
+            return 1;
         guiMsgBox(_l(_STR_DATE_TIME_ERROR), 0, NULL); // the dialog then shows the entries again
     }
+    return 0;
 }
 
 static int guiSettingsShowGeneral(void)
@@ -2400,7 +2401,7 @@ static int guiSettingsShowGeneral(void)
 reshow_general:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsGeneralUpdater);
     if (result == CFG_DATETIME_BUTTON) {
-        guiSettingsShowDateTime(); // writes the console clock only; nothing to save
+        guiShowDateTime(); // writes the console clock only; nothing to save
         goto reshow_general;
     }
 
