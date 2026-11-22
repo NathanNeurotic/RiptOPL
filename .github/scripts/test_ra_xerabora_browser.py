@@ -336,7 +336,7 @@ static u32 htonl(u32 p) { return p; }
 int Ranet::nicReserved() { return nic; }
 int Ranet::openPcSocket(char *myaddr, int sz, unsigned char *) { sockets++; snprintf(myaddr, sz, " 192.168.1.9 18196"); return 5; }
 void Ranet::forgetPeer() { verifiedIP_ = 0; verifiedMode_ = -1; }
-int Ranet::ask(int, sockaddr_in *to, const char *req, char *out, int max) {
+int Ranet::ask(int, sockaddr_in *to, const char *req, char *out, int max, int) {
     const char *reply = asks < 8 ? udp[asks] : NULL;
     asks++;
     if (reply == NULL)

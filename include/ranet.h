@@ -6,7 +6,7 @@ struct sockaddr_in;
 #include "modules/network/udpfs_ministack/include/mstack_xchg.h" /* the mstack: link */
 
 // Ceiling for the watch list one ask can bring in (src/sources/ranet.cpp).
-constexpr int RA_MAX_BYTES = (20 * 1024);
+constexpr int RA_MAX_BYTES = (24 * 1024); // 4,096 direct entries, 512 PS2 nodes, headers and hash
 
 // The menu-side PC client exchange (src/sources/ranet.cpp): discovery, the
 // hash -> watch-list ask, the telemetry network bring-up and the link test.
@@ -66,11 +66,13 @@ public:
     static int tcpRecv(int sock, void *aligned, int max);
 
 private:
+    static constexpr int RA_TRY = 12;
+    static constexpr int RA_TRY_CHUNK = 60; // xeRAbora allows a longer wait once transfer begins
     static int hostIsExplicit();
     void rememberPeer(unsigned int ip);
     /* Waits for a reply, resending the request. Returns the length or -1. */
-    int ask(int sock, struct sockaddr_in *to, const char *req, char *out, int outmax);
-    int askMstack(struct sockaddr_in *to, const char *req, char *out, int asklen);
+    int ask(int sock, struct sockaddr_in *to, const char *req, char *out, int outmax, int attempts = RA_TRY);
+    int askMstack(struct sockaddr_in *to, const char *req, char *out, int asklen, int attempts);
     /* Opens the UDP socket: network up if needed, broadcast allowed,
        non-blocking, bound to the fixed own port. Fills myaddr with
        " <ip> <port>" (empty when the console has no address yet). */

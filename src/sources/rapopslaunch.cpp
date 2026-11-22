@@ -84,7 +84,7 @@ int raPopsPrepare(const char *root, const char *watchRoot, const char *vcdPath, 
     cfg->count = GetWatchCount();
     cfg->bytes = GetWatchBytes();
     cfg->node_count = GetNodeCount();
-    if (!cfg->count || cfg->count > RA_WATCH_MAX || cfg->node_count > RA_NODE_MAX ||
+    if (!cfg->count || cfg->count > RA_WATCH_MAX || cfg->node_count > RA_NODE_MAX_PS1 ||
         cfg->bytes + cfg->node_count * RA_NODE_PAIR_BYTES > RA_SNAP_MAX_BYTES)
         goto done;
     memcpy(cfg->list, GetWatchList(), cfg->count * sizeof(unsigned int));

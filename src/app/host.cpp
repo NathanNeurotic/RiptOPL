@@ -133,13 +133,16 @@ public:
     {
 #ifdef RETROACHIEVEMENTS
         const unsigned int list = raListBytes();
-        if (list == 0 || !RA_EXPERIMENTAL_CARD_DMA || gRAMode != RA_MODE_CADUCEUS || gRAExperimentalCards != 1)
-            return list;
         // The kernel keeps module storage from the game. Below 1 MB it must stay below 1 MB, where
         // games load; without room the cards fall back to the pulse.
         const unsigned int start = (unsigned int)(uintptr_t)at, limit = start < 0x00100000 ? 0x00100000 : 0x02000000;
-        const unsigned int total = raCardOffset(list) + RA_CARD_PACKET_BYTES;
-        if (start > limit || total > limit - start) {
+        const unsigned int alignedList = raCardOffset(list);
+        if (list == 0 || start > limit || alignedList > limit - start)
+            return 0;
+        if (!RA_EXPERIMENTAL_CARD_DMA || gRAMode != RA_MODE_CADUCEUS || gRAExperimentalCards != 1)
+            return list;
+        const unsigned int total = alignedList + RA_CARD_PACKET_BYTES;
+        if (total > limit - start) {
             raLaunchNote("overlay-no-room", RA_CARD_PACKET_BYTES, (int)start);
             return list;
         }

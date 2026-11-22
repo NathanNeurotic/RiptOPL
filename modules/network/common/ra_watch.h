@@ -129,9 +129,10 @@ struct ra_watch_file
 #define RA_NODE_LEGACY_MAGIC 0x4C4E4152 /* "RANL" */
 #define RA_NODE_MAGIC        0x324E4152 /* "RAN2" in little-endian */
 
-/* xeRAbora v2.1 supports 256 nodes. Each one uses 20 bytes in EE module
-   storage and 8 in snapshots; the existing work-area/snapshot checks bind. */
-#define RA_NODE_MAX 256
+/* xeRAbora v2.2 supports 512 PS2 nodes. Each one uses 20 bytes in EE module
+   storage and adds 8 bytes to each snapshot. POPStarter keeps its 256-node limit. */
+#define RA_NODE_MAX 512
+#define RA_NODE_MAX_PS1 256
 
 /* Bytes one node adds to a snapshot: the resolved address and the value. */
 #define RA_NODE_PAIR_BYTES 8
