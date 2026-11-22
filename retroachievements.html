@@ -84,7 +84,7 @@ running it streams the handful of memory addresses that game's achievements depe
 else — talking to the RetroAchievements servers, deciding what unlocked, your login — happens on the
 PC.</p>
 <p>Based on the RetroAchievements implementation by <strong><a href="https://github.com/hacan359/Open-PS2-Loader/pull/1">hacan359 (yoba)</a></strong>.
-Use the upstream <strong><a href="https://github.com/hacan359/xerabora">xeRAbora PC client</a></strong> with RiptOPL's RA build. Download <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v2.1.0">v2.1.0</a></strong>; v2.0.0 and v1.0.1 (alpha.17 or later) also work. xeRAbora v2.1.0 adds a trailing RAH1 image-hash record and up to 256 pointer nodes: RiptOPL now accepts valid hash tails both over the network and from saved lists, with the unchanged snapshot-size budget. After moving to v2.0.0, run <strong>RA: check game support</strong> again for every game you play: v2.0.0 sends a new pointer-chain format (RAN2) that RiptOPL reads alongside the old one (RANL), and an old watch file lacks the reads v2.0.0 adds.</p>
+Use <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v2.2.0">xeRAbora v2.2.0</a></strong> with the matching RiptOPL RA build. Install both updates, then run <strong>RA: check game support</strong> again for the games you play. The client can compile Remember/Recall reads into RAN2 chains. The native PS2 runtime accepts up to 512 nodes, and USB POPStarter accepts up to 256. The same snapshot byte limit applies.</p>
 <p>RiptOPL's real-hardware stabilization was contributed by <strong><a href="https://github.com/oMrRexD">oMrRexD</a></strong> through
 PRs <strong>#702–#705</strong>, covering the ee_core stack squeeze, MMCE DEV9 dependency, cold-launch network
 bring-up / unusable-IP fallback, and the misplaced RA settings rows.</p>
@@ -150,7 +150,7 @@ as finished.</p>
 <h3 id="first-tracked-game">First tracked game</h3>
 <ol>
 <li>Start <strong>RIPTOPL-RA.ELF</strong> from the RetroAchievements kit (<code>rolling-ra</code>). The standard RiptOPL kit runs without achievement telemetry or a companion PC.</li>
-<li>Run <strong>xeRAbora v2.1.0</strong> (or v2.0.0 / v1.0.1, alpha.17 or later) on the companion PC and sign in to your RetroAchievements
+<li>Run <strong>xeRAbora v2.2.0</strong> on the companion PC and sign in to your RetroAchievements
 account in its Settings page. Keep it running.</li>
 <li>In <strong>Settings → Network</strong>, leave <strong>RA Mode</strong> on <strong>Xerabora</strong>, turn <strong>RetroAchievements
 telemetry</strong> on and save. Telemetry is Off on a fresh start. Give the PS2 working network
@@ -506,7 +506,7 @@ Updating the external client alone does not update the telemetry code in your EL
 <li><strong>PC-requested return:</strong> the client's return command takes the existing IGR path, so it is unavailable in Mode 6.</li>
 <li><strong>Snapshot delivery:</strong> telemetry polls every 4 ms, sends each new snapshot once, retries busy or torn copies, repeats an unchanged snapshot after ~1 second, and marks the staged sequence sent only after every part is accepted.</li>
 </ul>
-<div class="callout amber"><div class="h">Important</div>Use <strong><a href="https://github.com/hacan359/xerabora/releases/tag/v2.1.0">xeRAbora v2.1.0</a></strong>, v2.0.0 or v1.0.1 (alpha.17 or later) with this build. v2.0.0 introduced the RAN2 pointer-chain tail (v2.1.0 also adds the RAH1 image-hash suffix and raises the node limit) (RANL to RAN2, adding shift, width and scale per node; source review of xeRAbora <code>7b90aa7...b0c0ed0</code> and its console fork <code>a162ae3e...37c5b2f9</code>); <strong>v2.0.0 is NOT TESTED on hardware with this build.</strong> For v1.0.1: The console wire protocol is unchanged since alpha.10. Since alpha.17 the client has only gained a setting that keeps unlock notices off the TV (it then sends nothing) and reads optional link counters from the snapshot header. That is from a source review of xeRAbora <code>v0.1.0-alpha.17...v1.0.1</code> and its console fork <code>fa2d2e42...a9f97397</code>; <strong>v1.0.1 is NOT TESTED on hardware with this build.</strong> Host tests and successful builds do not establish console timing or game compatibility; the alpha.10 hardware report above is historical evidence, not validation of this update.</div>
+<div class="callout amber"><div class="h">Important</div>Older watch files still load. xeRAbora v2.0.0 introduced RAN2, which adds shift, width and scale to the earlier RANL nodes. v2.1.0 added the RAH1 image hash. v2.2.0 keeps that format and raises the PS2 node limit. Host tests cover both node formats, the optional hash, and the new capacity. The v2.2.0 RiptOPL port still needs console testing for timing, game compatibility and unlocks. <a href="https://github.com/hacan359/Open-PS2-Loader/commit/03cc1879424c03fef99d3a43da1614e3ac4c17b4">Upstream console change</a></div>
 <hr/>
 <h2 id="files-on-the-card">Files on the card</h2>
 <pre><code>&lt;device root&gt;/RA/&lt;serial&gt;.wl        e.g. mass0:/RA/SLUS_210.65.wl
@@ -531,7 +531,7 @@ shape as the standard kit: <code>POPS/</code>, <code>EMBER/</code>, <code>neutri
 PS2 save manager for a memory-card installation, then copy the other folders separately.</p>
 <p>The channel also carries <code>RIPTOPL-RA-VARIANTS-&lt;version&gt;.zip</code> with a <code>pademu0</code> loader (pad emulation
 compiled out) and unpacked standard and <code>pademu0</code> loaders. The kit also carries <strong><code>xeRAbora.url</code></strong> (pointing directly to the paired
-<a href="https://github.com/hacan359/xerabora/releases/tag/v2.1.0">v2.1.0 release</a>),
+<a href="https://github.com/hacan359/xerabora/releases/tag/v2.2.0">v2.2.0 release</a>),
 because the loader does nothing without the PC client.</p>
 <p>The standard editions are unaffected: every RA source file and call site is behind
 <code>#ifdef RETROACHIEVEMENTS</code>, the standard kits reject RA resources, and every build manifest
