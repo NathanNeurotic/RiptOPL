@@ -89,10 +89,11 @@ void menuDeferredUpdate(void *data);
 void moduleUpdateMenu(int mode, int themeChanged, int langChanged);
 void handleLwnbdSrv();
 void deinit(int exception, int modeSelected);
+void deinitTerminal(int exception, int modeSelected);
 // External-loader handoff: deinit that can spare a SECOND mode's mounts (for a cross-device
 // Neutrino/POPSTARTER ELF) until sysLoadELFKeepIOP has opened the child.
 void deinitEx(int exception, int modeSelected, int modeSelected2);
-extern int gDeinitTerminal; // 1 while deinit() runs for exit/poweroff, 0 for a game/app LAUNCH teardown.
+extern int gDeinitTerminal; // ALL/NONE device-cleanup policy; visual transition intent is separate.
 extern int gArtAbandoned;   // 1 when cacheEnd() could NOT join the art worker: a thread is still inside a
                             // device read while teardown proceeds. hddCleanUp skips its unmount and
                             // PDIOC_CLOSEALL when set -- see the comment there.
@@ -419,13 +420,14 @@ extern int gEnableArt;
 extern int gEnableDiscArt; // ItemIcon/ICO disc artwork; independent of cover art
 extern int gEnableLogoArt; // per-game LGO logo artwork; independent of cover, disc and boot logo
 extern int gWideScreen;
-extern int gFontSize;           // persisted percentage, 50-150% (fntsys.h)
-extern int gGlyphSet;           // GLYPH_SET_* (themes.h); GLYPH_SET_THEME follows the theme
-extern int gThemeAltBackground; // Alternate Background: the theme's alt= pictures (thmApplyAltBackground)
-extern int gBootThemeWait;      // Boot Theme Wait: seconds the intro holds for the saved theme (0 = off)
-extern int gShowLegend;         // Show Legend: 0 hides the theme's button legend (HintText, InfoHintText)
-extern int gThemeWallpaper;     // User Wallpaper: wallpaper.png from the settings folder behind the main pages
-extern int gVMode;              // 0 - Auto, 1 - PAL, 2 - NTSC
+extern int gFontSize;             // persisted percentage, 50-150% (fntsys.h)
+extern int gGlyphSet;             // GLYPH_SET_* (themes.h); GLYPH_SET_THEME follows the theme
+extern int gThemeAltBackground;   // Alternate Background: the theme's alt= pictures (thmApplyAltBackground)
+extern int gBootThemeWait;        // Boot Theme Wait: seconds the intro holds for the saved theme (0 = off)
+extern int gShowLegend;           // Show Legend: 0 hides the theme's button legend (HintText, InfoHintText)
+extern int gThemeWallpaper;       // User Wallpaper: wallpaper.png from the settings folder behind the main pages
+extern int gEnableAmbientEffects; // Ambient Effects: Crystal orbs, pointed caps and glints over the built-in/settings backdrops
+extern int gVMode;                // 0 - Auto, 1 - PAL, 2 - NTSC
 extern int gXOff;
 extern int gYOff;
 extern int gOverscan;

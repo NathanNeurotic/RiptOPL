@@ -61,7 +61,7 @@ handoff = function(system, "void sysLaunchEmber(")
 assert "argv[argc++] = (char *)emberElf;" in handoff
 assert "argv[argc++] = (char *)gameFolder;" in handoff
 assert 'sysLoadELFKeepIOP(emberElf, "", argc, argv)' in handoff
-assert "deinitAllSupport(exception, modeSelected);" in function(opl, "void deinit(")
+assert "deinitAllSupport(exception, modeSelected);" in function(opl, "static void deinitWithTransition(")
 preflight = function(cue, "int cuePrepareLaunch(")
 assert preflight.index("2 * strlen(emberElf) + strlen(argument) + 3 > 256") < preflight.index("if (count == 0)\n        return 1;")
 

@@ -1112,6 +1112,7 @@ void menuRenderAchievements()
     char line[160];
 
     guiDrawBGPlasma();
+    guiDrawAmbientEffects();
     if (achNeedsPage && !discCheckBusy() && achievementsRequest(achKind, achPage, achFilter, achTarget)) {
         achNeedsPage = 0;
         for (int i = 0; i < ACH_PAGE_SIZE; i++)
@@ -2176,6 +2177,7 @@ void menuRenderMenu()
     // settings background got it on its dialogs and the plasma on its menus.
     if (guiDrawBGSettings() == 0)
         guiDrawBGPlasma();
+    guiDrawAmbientEffects();
 
     if (!mainMenu)
         return;
@@ -2988,6 +2990,7 @@ void menuRenderGameMenu()
     // settings background got it on its dialogs and the plasma on its menus.
     if (guiDrawBGSettings() == 0)
         guiDrawBGPlasma();
+    guiDrawAmbientEffects();
 
     if (!gameMenu)
         return;
@@ -3357,6 +3360,7 @@ void menuRenderAppMenu()
     // settings background got it on its dialogs and the plasma on its menus.
     if (guiDrawBGSettings() == 0)
         guiDrawBGPlasma();
+    guiDrawAmbientEffects();
 
     if (!appMenu) {
         guiSwitchScreen(GUI_SCREEN_MAIN);

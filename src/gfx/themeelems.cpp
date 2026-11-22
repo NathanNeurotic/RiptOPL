@@ -1038,10 +1038,14 @@ static int sWallpaperShown;
 static void drawStaticImage(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
 {
     mutable_image_t *staticImage = (mutable_image_t *)elem->extended;
+    bool ambientBackdrop = staticImage->defaultTexture != NULL && !strcmp(staticImage->defaultTexture->name, "psbbn_bg");
     if (staticImage->wallpaper != NULL)
         sWallpaperShown = 1; // the Background of a main page in place of the theme picture or the plasma
-    else if (staticImage->backdropLayer && sWallpaperShown)
+    else if (staticImage->backdropLayer && sWallpaperShown) {
+        if (ambientBackdrop)
+            host::ui().drawAmbientEffects();
         return;
+    }
     if (staticImage->overlayTexture) {
         rmDrawOverlayPixmap(&staticImage->overlayTexture->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol,
                             &staticImage->defaultTexture->source, staticImage->overlayTexture->upperLeft_x, staticImage->overlayTexture->upperLeft_y, staticImage->overlayTexture->upperRight_x, staticImage->overlayTexture->upperRight_y,
@@ -1050,6 +1054,8 @@ static void drawStaticImage(struct menu_list *menu, struct submenu_list *item, c
             rmDrawPixmap(&staticImage->overlayTexture2->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
     } else
         rmDrawPixmap(&bgPicture(staticImage)->source, elem->posX, elem->posY, elem->aligned, elem->width, elem->height, elem->scaled, gDefaultCol, 0);
+    if (ambientBackdrop)
+        host::ui().drawAmbientEffects();
 }
 
 void initStaticImage(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name, const char *imageName)

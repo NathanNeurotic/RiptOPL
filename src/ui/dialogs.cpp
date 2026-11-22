@@ -1013,6 +1013,11 @@ struct UIItem diaUIConfig[] = {
     {UI_BOOL, UICFG_WALLPAPER, 1, 1, _STR_HINT_WALLPAPER, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_AMBIENT_EFFECTS}}},
+    {UI_SPACER},
+    {UI_BOOL, UICFG_AMBIENT_EFFECTS, 1, 1, _STR_HINT_AMBIENT_EFFECTS, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
     // The button legend at the bottom of the menu and the info page, in every theme (Berion's request).
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SHOW_LEGEND}}},
     {UI_SPACER},

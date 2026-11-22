@@ -66,6 +66,7 @@ public:
         return guiMsgBox(text, 1, NULL);
     }
     void drawBackgroundPlasma() override { guiDrawBGPlasma(); }
+    void drawAmbientEffects() override { guiDrawAmbientEffects(); }
     void toastId(int strId) override { guiShowToast(_l(strId)); }
     void lock() override { guiLock(); }
     void unlock() override { guiUnlock(); }
@@ -75,6 +76,7 @@ class OplApp final: public AppServices
 {
 public:
     void deinit(int exception, int modeSelected) override { ::deinit(exception, modeSelected); }
+    void deinitTerminal(int exception, int modeSelected) override { ::deinitTerminal(exception, modeSelected); }
     void deinitEx(int exception, int modeSelected, int modeSelected2) override { ::deinitEx(exception, modeSelected, modeSelected2); }
     void miniDeinit(config_set_t *configSet) override { ::miniDeinit(configSet); }
     int saveConfig(int types, int showUI) override { return ::saveConfig(types, showUI); }

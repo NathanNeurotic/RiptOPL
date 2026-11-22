@@ -130,6 +130,7 @@ void guiUpdateScrollSpeed(void);
 void guiUpdateScreenScale(void);
 
 void guiDrawBGPlasma();
+void guiDrawAmbientEffects();
 #include "include/uidraw.h" // the hint helpers moved out of gui.cpp
 void guiDrawSubMenuHints(void);
 
@@ -206,6 +207,8 @@ void guiRenderTextScreen(const char *message);
 void guiRenderHandoffStep(const char *message, int step, int frames);
 /* Main-thread-only fade before an explicit display-mode change. */
 void guiFadeCurrentScreenToBlack(void);
+/* Main-thread launch-only ambient convergence followed by the ordinary fade. */
+void guiPlayLaunchTransition(void);
 
 /** Display the visual GameID barcode (CosmicScale scheme) for Pixel FX / RetroGEM / PS2Digital
  *  HDMI auto-profiles. No-op unless gApplyGameID is set. Call just before launching a game.

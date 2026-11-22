@@ -646,6 +646,7 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
 {
     if (guiDrawBGSettings() == 0)
         guiDrawBGPlasma();
+    guiDrawAmbientEffects();
 
     int x0 = 20;
     int y0 = 20;
