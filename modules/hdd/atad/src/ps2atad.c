@@ -1589,7 +1589,10 @@ static void ata_shutdown_cb(void)
 //
 static int ata_bd_read(struct block_device *bd, u64 sector, void *buffer, u16 count)
 {
-    if (ata_device_sector_io64(bd->devNr, buffer, sector, count, ATA_DIR_READ) != 0) {
+    int result = ata_device_sector_io64(bd->devNr, buffer, sector, count, ATA_DIR_READ);
+    if (result != 0) {
+        M_PRINTF("BDM read error %d: dev=%u LBA=0x%08lx%08lx count=%u\n",
+                 result, bd->devNr, (unsigned long)(sector >> 32), (unsigned long)(sector & 0xffffffff), count);
         return -EIO;
     }
 

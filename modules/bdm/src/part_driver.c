@@ -55,8 +55,12 @@ static int part_read(struct block_device *bd, u64 sector, void *buffer, u16 coun
 
     // RiptOPL: stay inside the partition. A filesystem whose boot sector claims more sectors than
     // its partition holds would otherwise read (and, below, write) into the partition after it.
-    if (sector > bd->sectorCount || count > bd->sectorCount - sector)
+    if (sector > bd->sectorCount || count > bd->sectorCount - sector) {
+        M_PRINTF("partition read refused: LBA=0x%08lx%08lx count=%u, partition sectors=0x%08lx%08lx\n",
+                 (unsigned long)(sector >> 32), (unsigned long)(sector & 0xffffffff), count,
+                 (unsigned long)(bd->sectorCount >> 32), (unsigned long)(bd->sectorCount & 0xffffffff));
         return -1;
+    }
 
 #ifdef DEBUG
     u64 finalSector = sector + bd->sectorOffset;
