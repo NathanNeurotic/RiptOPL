@@ -45,7 +45,7 @@ enum LIB_VIEW {
 // currently enabled L3 ring (libViewRingSize/libViewRingUsable describe that).
 int libViewSupported(int mode, int view);
 
-// Number of available filters under the current setting. A value of one means an L3 tap has no effect.
+// Number of available filters under the current setting. A value of one means an L3 tap leaves the filter unchanged.
 // A hold can still change the theme layout.
 int libViewRingSize(int mode);
 

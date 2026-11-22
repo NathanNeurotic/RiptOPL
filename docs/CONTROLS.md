@@ -26,7 +26,7 @@ Two settings change what you read below, so check them first if the tables do no
 | **L1 / R1** | Previous / next page of the list; both wrap around at the ends |
 | **L2** | Jump to the first page |
 | **R2** | Jump to the last page |
-| **L3** | **View/Filter**. Tap to cycle this page's library filters (PS2 / PS1 / Mixed on devices that offer them; All, PS2, PS1, Apps, Favourites and Recent on All Games). Hold it for half a second to switch to the next [theme view](THEME_ENGINE.md#views-multi-view-themes--this-fork) (List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, Grid (7×2)) when the theme offers more than one; the tap then acts on release. **Hold for Theme** and **Tap for Filter** remind you of the other action when it is available. |
+| **L3** | **View/Filter**. Tap to cycle this page's library filters. Supported devices offer PS2, PS1 and Mixed. All Games offers All, PS2, PS1, Apps, Favourites and Recent. Hold for half a second to switch to the next [theme view](THEME_ENGINE.md#views-multi-view-themes--this-fork) when the theme offers more than one. In that case, a tap acts on release. The **Hold for Theme** and **Tap for Filter** tips show the L3 icon when the other action is available. |
 | **R3** | Star or un-star the selected title as a Favorite (also on All Games and Recent rows) |
 | **Start** | Open the main menu |
 | **Select** | Refresh the current device list |
