@@ -136,4 +136,4 @@ for unwanted in ("MBEDTLS_SSL_SRV_C", "MBEDTLS_FS_IO", "MBEDTLS_SSL_RENEGOTIATIO
                  "MBEDTLS_DEBUG_C", "MBEDTLS_SSL_PROTO_TLS1_3", "MBEDTLS_PSA_CRYPTO_C", "MBEDTLS_USE_PSA_CRYPTO"):
     assert not re.search(rf"^#define {unwanted}\b", slim, re.M), unwanted
 
-print("PASS: mbedTLS 3.6.7 vendored (Apache-2.0): RA configuration unchanged, slim TLS 1.2 for Check for Updates, seven pinned roots")
+print("PASS: mbedTLS 3.6.7 vendored (Apache-2.0): RA TLS 1.3, slim TLS 1.2 for Check for Updates, seven pinned roots")
