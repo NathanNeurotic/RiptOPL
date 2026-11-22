@@ -8,6 +8,7 @@ order: the digest is compared before the running ELF is touched, and the ELF is 
 """
 import os
 import re
+import struct
 import shutil
 import subprocess
 import sys
@@ -24,6 +25,9 @@ DRIVER = r"""
 #include <stdlib.h>
 #include <string.h>
 #include "include/selfupdate.h"
+
+#define APA_IDMAX 32
+@APA_BOOT_PARSER@
 
 static char *slurp(const char *path, int *len)
 {
@@ -62,15 +66,91 @@ int main(int argc, char **argv)
         char out[64];
         int rc = suJoin(out, atoi(argv[5]), argv[2], argv[3], argv[4]);
         printf(rc == 0 ? "%s\n" : "FAIL\n", out);
-    } else if (argc == 3 && !strcmp(argv[1], "elf")) {
-        unsigned char head[64];
+    } else if (argc == 3 && !strcmp(argv[1], "apa")) {
+        char partition[38], directory[256];
+        int rc = hddParseBootDirectory(argv[2], partition, sizeof(partition), directory, sizeof(directory));
+        printf(rc == 0 ? "%s|%s\n" : "FAIL\n", partition, directory);
+    } else if (argc == 3 && (!strcmp(argv[1], "elf") || !strcmp(argv[1], "format"))) {
         int len = 0;
-        char *data = slurp(argv[2], &len);
-        memcpy(head, data, len < 64 ? len : 64);
-        printf("%d\n", suLooksLikeElf(head, len < 64 ? len : 64));
+        unsigned char *data = (unsigned char *)slurp(argv[2], &len);
+        printf("%d\n", !strcmp(argv[1], "format") ? suElfFormat(data, len) : suLooksLikeElf(data, len));
+        free(data);
     } else {
         return 2;
     }
+    return 0;
+}
+"""
+
+VERSION_DRIVER = r"""
+#include <assert.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include "include/selfupdate.h"
+#define SU_FIO_WRONLY 0x0002
+#define SU_FIO_CREAT  0x0200
+#define SU_FIO_TRUNC  0x0400
+static char path[272], contents[32];
+static int shortWrite, closes, suRemoteRev = 4321, suStep;
+int fileXioOpen(const char *name, int, int) { snprintf(path, sizeof(path), "%s", name); return 1; }
+int fileXioWrite(int, const void *data, int len) {
+    if (shortWrite) return -5;
+    memcpy(contents, data, (size_t)len);
+    contents[len] = 0;
+    return len;
+}
+int fileXioClose(int) { closes++; return 0; }
+@VERSION_WRITER@
+int main() {
+    int rc = suWriteVersion("mc0:/APPS/RIPTOPL.ELF");
+    assert(rc == 0 && !strcmp(path, "mc0:/APPS/version.txt"));
+    assert(!strcmp(contents, "4321\n") && suStep == 6);
+    shortWrite = 1;
+    assert(suWriteVersion("mc0:/APPS/RIPTOPL.ELF") < 0 && closes == 2);
+    puts("version.txt: sibling path, validated decimal revision, and write failure handling ok");
+    return 0;
+}
+"""
+
+APA_DRIVER = r"""
+#include <assert.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#define SU_FIO_CREAT 0x0200
+#define SU_FIO_TRUNC 0x0400
+#define ENOENT 2
+typedef struct { int unused; } iox_stat_t;
+struct SuFile { unsigned char *data; int written; };
+static int pathExists = 1, stagedExists, backupExists, writes, removeCalls, syncCalls, suStep;
+static int suWriteElf(const char *, int, const SuFile &) { writes++; stagedExists = 1; return 0; }
+int fileXioGetStat(const char *path, iox_stat_t *) {
+    if (strstr(path, ".update")) return stagedExists ? 0 : -ENOENT;
+    if (strstr(path, ".bak")) return backupExists ? 0 : -ENOENT;
+    return pathExists ? 0 : -ENOENT;
+}
+int fileXioSync(const char *, int) { return syncCalls++ == 1 ? -1 : 0; }
+int fileXioRename(const char *from, const char *to) {
+    if (strstr(to, ".bak")) { backupExists = 1; pathExists = 0; }
+    else if (strstr(from, ".update")) { pathExists = 1; stagedExists = 0; }
+    else { pathExists = 1; backupExists = 0; }
+    return 0;
+}
+int fileXioRemove(const char *path) {
+    if (strstr(path, ".update")) { stagedExists = 0; return 0; }
+    if (removeCalls++ == 0) return -1;
+    backupExists = 0;
+    return 0;
+}
+@APA_INSTALL@
+int main() {
+    SuFile file{};
+    int rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
+    assert(rc == 0 && pathExists && backupExists && writes == 1);
+    rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
+    assert(rc == 0 && !backupExists && writes == 2);
+    puts("APA committed swap survives cleanup failure and permits the next update");
     return 0;
 }
 """
@@ -104,11 +184,15 @@ def source_checks():
     inst = src[src.index("static void suInstallWorker"):]
     inst = inst[:inst.index("\n}\n")]
     # The digest is compared before anything touches the running ELF, and a mismatch removes the download.
-    a = inst.index("fileXioOpen(cur,")
-    check("verify_before_swap", inst.index("memcmp(") < a, "digest compare must come first")
-    # The ELF is overwritten in place: opened with O_TRUNC, no second file, no rename, no delete, no backup.
-    check("overwrite_in_place", "SU_FIO_WRONLY | SU_FIO_CREAT | SU_FIO_TRUNC" in inst[a:a + 200], "cur opened with CREAT | TRUNC through fileXioOpen, as Launchstation does")
-    check("no_second_file", not re.search(r"unlink\(|rename\(|\.NEW|bak", inst.lower().replace("break", "")), "no unlink, rename, .NEW or backup")
+    a = inst.index("suInstallApa(")
+    check("verify_before_swap", inst.index("memcmp(") < a and inst.index("suElfFormat(") < a)
+    check("overwrite_in_place", "suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f)" in inst)
+    apa = src[src.index("static int suInstallApa("):src.index("static void suInstallWorker(")]
+    check("stage_before_apa_swap", apa.index("suWriteElf(staged,") < apa.index("fileXioRename(path, backup)"))
+    check("rollback_apa_swap", "fileXioRename(backup, path)" in apa)
+    version_call = "suWriteVersion(target.path)"
+    check("version_after_install", version_call in inst and inst.index(version_call) < inst.index("suResult = SU_OK"),
+          "write the validated revision beside the installed ELF, before reporting success")
     # Redirects are followed only to GitHub's hosts, and only a few times.
     check("redirects_allowlisted", "suSplitUrl(" in src and re.search(r"for \(hop = 0; hop < 4", src) is not None)
     callers = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "src").rglob("*.c*")
@@ -121,8 +205,10 @@ def main():
     source_checks()
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        (tmp / "driver.c").write_text(DRIVER)
-        exe = tmp / "driver"
+        hdd = (ROOT / "src/platform/hdd.cpp").read_text(encoding="utf-8")
+        parser = hdd[hdd.index("int hddParseBootDirectory("):].split("\n}\n", 1)[0] + "\n}"
+        (tmp / "driver.c").write_text(DRIVER.replace("@APA_BOOT_PARSER@", parser))
+        exe = tmp / ("driver.exe" if os.name == "nt" else "driver")
         subprocess.run([CC, "-O1", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT), str(tmp / "driver.c"),
                         str(ROOT / "src/platform/selfupdate.c"), "-o", str(exe)], check=True)
 
@@ -197,6 +283,57 @@ def main():
                                  ("short", mips[:19], "0")):
             (tmp / "head.bin").write_bytes(data)
             check(f"elf_{name}", run(exe, "elf", tmp / "head.bin") == want)
+
+        def elf_format(data_offset, address, align, headers=1):
+            header = bytearray(mips[:52])
+            struct.pack_into("<II", header, 24, address, 52)
+            struct.pack_into("<HH", header, 42, 32, headers)
+            header.extend(struct.pack("<8I", 1, data_offset, address, address, 16, 16, 7, align))
+            header.extend(bytes(32 * (headers - 1)))
+            return header
+
+        packed = elf_format(96, 0x01B00000, 16)
+        for name, data, want in (
+                ("packed", packed, "1"),
+                ("gnu_unpacked", elf_format(128, 0x00100000, 128), "2"),
+                ("llvm_unpacked", elf_format(256, 0x00100000, 128, 3), "2"),
+                ("short_program_headers", packed[:83], "0"),
+                ("unknown_layout", elf_format(128, 0x00200000, 128), "0")):
+            (tmp / "head.bin").write_bytes(data)
+            check(f"format_{name}", run(exe, "format", tmp / "head.bin") == want)
+
+        for directory, want in (
+                ("hdd0:__system:pfs:/launcher", "hdd0:__system|/launcher"),
+                ("hdd0:/__system/launcher", "hdd0:__system|/launcher"),
+                ("hdd0:__system:pfs0:launcher", "hdd0:__system|/launcher"),
+                ("hdd0:+OPL:pfs:", "hdd0:+OPL|/"),
+                ("pfs0:/launcher", "FAIL"),
+                ("hdd0::pfs:/launcher", "FAIL"),
+                ("hdd0:__system:other:/launcher", "FAIL")):
+            check(f"apa_{directory}", run(exe, "apa", directory) == want)
+
+        updater = (ROOT / "src/ui/selfupdate.cpp").read_text(encoding="utf-8")
+        if "static int suWriteVersion(" in updater:
+            writer = updater[updater.index("static int suWriteVersion("):]
+            writer = writer[:writer.index("\n}\n") + 2]
+            (tmp / "version-driver.cpp").write_text(VERSION_DRIVER.replace("@VERSION_WRITER@", writer))
+            subprocess.run([CC, "-O1", "-I", str(ROOT), "-c", str(ROOT / "src/platform/selfupdate.c"),
+                            "-o", str(tmp / "selfupdate.o")], check=True)
+            version_exe = tmp / ("version-driver.exe" if os.name == "nt" else "version-driver")
+            subprocess.run([os.environ.get("CXX", "c++"), "-O1", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT),
+                            str(tmp / "version-driver.cpp"), str(tmp / "selfupdate.o"), "-o", str(version_exe)], check=True)
+            subprocess.run([str(version_exe)], check=True)
+            check("version_metadata_behavior", True)
+        else:
+            check("version_metadata_behavior", False, "suWriteVersion is missing")
+
+        apa = updater[updater.index("static int suInstallApa("):updater.index("static void suInstallWorker(")]
+        (tmp / "apa-driver.cpp").write_text(APA_DRIVER.replace("@APA_INSTALL@", apa))
+        apa_exe = tmp / ("apa-driver.exe" if os.name == "nt" else "apa-driver")
+        subprocess.run([os.environ.get("CXX", "c++"), "-O1", "-Wall", "-Wextra", "-Werror",
+                        str(tmp / "apa-driver.cpp"), "-o", str(apa_exe)], check=True)
+        subprocess.run([str(apa_exe)], check=True)
+        check("apa_committed_swap_retry", True)
 
     if failures:
         print(f"{len(failures)} failure(s)")

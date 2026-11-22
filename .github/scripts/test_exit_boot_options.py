@@ -46,7 +46,7 @@ static char osdArg[32], loadPath[2][32], loadArgv0[32], loadFallback[32];
 static int loadReset[2], loadCleanup[2], loadArgc[2];
 namespace host {
 struct App {
-    void deinit(int exception, int selected) {
+    void deinitTerminal(int exception, int selected) {
         assert(exception == NO_EXCEPTION && selected == IO_MODE_SELECTED_ALL);
         deinitCalls++;
     }

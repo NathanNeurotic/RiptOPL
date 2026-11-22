@@ -152,6 +152,12 @@ jobs:
         run: python3 .github/scripts/test_boot_theme_wait.py
       - name: Check theme replacement retires HIRES texture references before freeing them
         run: python3 .github/scripts/test_theme_render_queue.py
+      - name: Check Grid and vertical Coverflow device navigation never falls through to game launch
+        run: python3 .github/scripts/test_device_navigation.py
+      - name: Check HIRES texture ownership and starvation recovery
+        run: python3 .github/scripts/test_hires_texture_ownership.py
+      - name: Check smooth bounded background preparation in 16-bit HIRES modes
+        run: python3 .github/scripts/test_background_art.py
       - name: Check font loads flush glyph atlases under the GUI lock after retiring the frame
         run: python3 .github/scripts/test_font_flush_frame_lock.py
       - name: Check that a missing settings file is opened once, not twice

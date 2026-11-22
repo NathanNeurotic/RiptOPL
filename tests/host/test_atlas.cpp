@@ -9,7 +9,14 @@
 // renderman hooks the atlas calls: count them
 static int g_invalidated = 0, g_unloaded = 0;
 void rmInvalidateTexture(GSTEXTURE *) { g_invalidated++; }
-void rmUnloadTexture(GSTEXTURE *) { g_unloaded++; }
+void rmReleaseTexture(GSTEXTURE *texture)
+{
+    g_unloaded++;
+    free(texture->Mem);
+    free(texture->Clut);
+    texture->Mem = NULL;
+    texture->Clut = NULL;
+}
 
 static unsigned rngState = 12345;
 static unsigned rnd(unsigned n) { rngState = rngState * 1103515245u + 12345u; return (rngState >> 16) % n; }
@@ -70,12 +77,18 @@ int main()
     const unsigned *m32 = static_cast<const unsigned *>(b->texture()->Mem);
     CHECK(m32[g32->y * 8 + g32->x] == 0x11111111 && m32[(g32->y + 1) * 8 + g32->x + 1] == 0x44444444);
 
+    // A font's atlases share the font system's CLUT: destroying them must not free it.
+    u32 *shared = static_cast<u32 *>(malloc(16));
+    a->texture()->Clut = shared;
+    b->texture()->Clut = shared;
+
     // destroy unloads the texture; NULL is fine
     int before = g_unloaded;
     Atlas::destroy(a);
     Atlas::destroy(b);
     Atlas::destroy(NULL);
     CHECK(g_unloaded == before + 2);
+    free(shared); // the font owner releases the shared table once, after its atlases
 
     TEST_DONE("atlas");
 }

@@ -43,7 +43,6 @@ Review the LICENSE file for further details.<br><br>
 ![Contributors](https://img.shields.io/github/contributors/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Contributors)
 [![Open Issues](https://img.shields.io/github/issues/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Open%20Issues)](https://github.com/NathanNeurotic/RiptOPL/issues)
 [![Stars](https://img.shields.io/github/stars/NathanNeurotic/RiptOPL?style=flat&labelColor=navy&color=skyblue&logo=github&label=Stars)](https://github.com/NathanNeurotic/RiptOPL/stargazers)
-![Pull requests reviewed by CodeRabbit](https://img.shields.io/coderabbit/prs/github/NathanNeurotic/RiptOPL?style=plastic&logo=coderabbit&logoColor=%23FF570A&logoSize=auto&label=coderabbitai&labelColor=%23000000&color=%23FF570A)
 
 ![Storage](https://img.shields.io/badge/Storage-USB%20%C2%B7%20MX4SIO%20%C2%B7%20iLink%20%C2%B7%20MMCE%20%C2%B7%20HDD-2ea043?style=flat&labelColor=0b3d18)
 ![Network](https://img.shields.io/badge/Network-SMB%20%C2%B7%20NFS%20%C2%B7%20UDPBD%20%C2%B7%20UDPFS%20%C2%B7%20HTTP-2ea043?style=flat&labelColor=0b3d18)
@@ -93,13 +92,12 @@ builds remain Actions artifacts. See [release channels and packaging](ROLLING_RE
 
 **Moving from Korium, IncebtIon or RiptOPLLVM?** Install the current full kit once to switch channels. Back up your settings and saves, then copy the updated companion folders from the kit for the cores you use.
 
-**Updating:** the standard RiptOPL and RetroAchievements editions have a
-**Check for Updates** entry. They query their own channel and verify the downloaded
-ELF before replacement. Updating requires RiptOPL to run from a memory card or
-USB/exFAT drive, internet access and the correct console clock
-(**Date and Time** in the main menu). Lite, debug and other
-nonstandard builds do not offer in-app updates. See
-[Check for Updates](docs/CHECK-FOR-UPDATES.md). Console verification is pending.
+**Updating:** published RiptOPL, RetroAchievements and RiptOPLite builds use
+**Check for Updates** to download a verified replacement for their own configuration.
+The updater preserves packed or unpacked format, including RetroAchievements ELFs
+launched from a qualified APA path such as `hdd0:__system:pfs:/launcher/RIPTOPL-RA.ELF`.
+A successful update also writes the new build number to `version.txt` beside the ELF.
+See [Check for Updates](docs/CHECK-FOR-UPDATES.md) for supported paths and first-time setup.
 
 
 Hardware results in the feature documentation were measured on the legacy C edition unless a

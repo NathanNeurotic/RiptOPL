@@ -50,6 +50,8 @@ public:
     // The GUI-wide lock (no-op before the GUI exists).
     // The animated plasma behind the menu (a theme can ask for it as its background).
     virtual void drawBackgroundPlasma() = 0;
+    // The procedural ambient layer a theme draws over its backdrop, below foreground elements.
+    virtual void drawAmbientEffects() = 0;
     // A short message at the bottom of the screen for a few seconds (the theme loader's User Wallpaper notices).
     virtual void toastId(int strId) = 0;
     virtual void lock() = 0;
@@ -62,6 +64,7 @@ class AppServices
 public:
     virtual ~AppServices() = default;
     virtual void deinit(int exception, int modeSelected) = 0;
+    virtual void deinitTerminal(int exception, int modeSelected) = 0;
     virtual void deinitEx(int exception, int modeSelected, int modeSelected2) = 0;
     virtual void miniDeinit(config_set_t *configSet) = 0;
     virtual int saveConfig(int types, int showUI) = 0;

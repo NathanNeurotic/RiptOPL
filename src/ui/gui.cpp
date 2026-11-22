@@ -23,6 +23,7 @@
 #include "include/ioman.h"
 #include "include/lang.h"
 #include "include/themes.h"
+#include "include/themeint.h"
 #include "include/favsupport.h" // gFAVStartMode -- Favourites Start Mode row
 #include "include/pad.h"
 #include "include/menuwatch.h" // menuWatchStep: where the frame is, for the diagnostic freeze report
@@ -83,10 +84,12 @@ void Gui::init()
     reloadScreenExtents();
 
     plasma_.init();
+    ambient_.init();
 }
 
 void Gui::shutdown()
 {
+    ambient_.shutdown();
     plasma_.shutdown();
 
     ops_.shutdown();
@@ -144,6 +147,13 @@ void Gui::reloadScreenExtents()
 void Gui::drawBackground()
 {
     plasma_.draw(gTheme->bgColor, gTheme->plasBlendColor, gGuiScreenWidth, gGuiScreenHeight);
+}
+
+void Gui::drawAmbientEffects()
+{
+    if (gTheme == NULL)
+        return;
+    ambient_.draw(gEnableAmbientEffects != 0, clock(), rmFramesDrawn, gTheme->bgColor, gTheme->textColor, gGuiScreenWidth, gGuiScreenHeight);
 }
 
 void Gui::showAbout()
@@ -484,6 +494,8 @@ void guiShow() { gGui.show(); }
 void guiShowToast(const char *text, int iconId) { gGui.showToast(text, iconId); }
 void guiDrawToast(void) { gNotifications.drawToast(); }
 void guiDrawBGPlasma() { gGui.drawBackground(); }
+void guiDrawAmbientEffects() { gGui.drawAmbientEffects(); }
+void guiPlayLaunchTransition() { gGui.playLaunchTransition(); }
 void guiReloadScreenExtents() { gGui.reloadScreenExtents(); }
 void guiMainLoop(void) { gGui.mainLoop(); }
 void guiSetFrameHook(gui_callback_t cback) { gGui.setFrameHook(cback); }

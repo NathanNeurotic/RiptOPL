@@ -26,6 +26,7 @@ CHECK(gThemeAltBackground == (0)); // the theme's default= pictures
 CHECK(gBootThemeWait == (0)); // off: the intro does not wait for the saved theme
 CHECK(gShowLegend == (1)); // the legend is drawn, as before
 CHECK(gThemeWallpaper == (0)); // the theme's own background
+CHECK(gEnableAmbientEffects == (1)); // the built-in ambient backdrop is live
 CHECK(gVMode == (0));
 CHECK(gXOff == (0));
 CHECK(gYOff == (0));

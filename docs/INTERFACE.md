@@ -62,9 +62,18 @@ and a message says why. The info pages keep the theme's own background, and per-
 (Background Art) still wins while a game is selected. It is Off on fresh configurations and saved as
 `wallpaper=1`; changing it reloads the theme. *Not yet tested on hardware.*
 
-In the flow views, Left/Right browse covers. In Coverflow, Down focuses the device bar when a theme
-shows one. In PSBBN Flow and Coverflow without a bar, Up/Down switch devices. L1/R1 jump 15 titles;
-List and Grid use page jumps. R3 toggles Favorite. See [Controls](CONTROLS.md).
+**Ambient Effects**, under User Wallpaper in Theme Settings, draws a seamless 24-second crystal light
+scene over the built-in PSBBN backdrop and per-game background art, and over the Start menu, settings
+and dialog plasma. Foreground elements stay above the effect. Launching a game or app adds a 0.7-second
+convergence before the fade. **Off** keeps the static backdrops and original fade. On by default and
+saved as `ambient_effects=1`. Scene geometry adapted from Launchstation's Crystal theme.
+*Not yet tested on hardware.*
+
+In the flow views, Left/Right browse covers. Coverflow shows devices in a left vertical list and
+Up/Down switches them immediately; PSBBN Flow keeps its existing device navigation. Grid wraps between
+its first and last rows, and its device sidebar separates the highlighted device from the active page:
+Up/Down highlights, Cross activates an inactive device, and Right/Circle returns without activating it.
+L1/R1 jump 15 titles in Coverflow; List and Grid use page jumps. R3 toggles Favorite. See [Controls](CONTROLS.md).
 **Layout Settings** tunes the `Coverflow` renderer; PSBBN Flow uses its fixed layout and
 25-frame glide. All four views share the editable palette, artwork and audio settings.
 Theme authors declare views with `views=` and `<view>.` blocks; see the

@@ -180,6 +180,7 @@ Open **Theme Settings** from the Settings index, or press **R1** from **Interfac
 | Art Delay | Frames the cursor must rest on a game before its art starts loading. | `art_delay` |
 | Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
 | User Wallpaper | Draws `wallpaper.png` from the settings folder behind the menu pages, in any theme (512x512 at most, 8-bit palette). See [INTERFACE.md](INTERFACE.md). | `wallpaper` |
+| Ambient Effects | Shows a seamless 24-second crystal light scene and a 0.7-second animation before the launch fade. Off keeps static backgrounds and the original launch fade. | `ambient_effects` |
 | Colors *(Modify)* | Text, selected, UI, title, background and plasma colours, and Reset Colors. | `text_color`, `sel_text_color`, `ui_text_color`, `title_color`, `bg_color`, `plasma_blend_color` |
 | Button Glyphs | The theme's glyphs or a built-in set. | `glyph_set` |
 | List Title and Description | Theme, On or Off. On displays the game's CFG Title and Description in supported list layouts. | `list_cfg_text` |

@@ -28,7 +28,8 @@ static Theme *gTheme;
 static Theme *replayed;
 static bool locked;
 static int syncs, flips, frees;
-static int loadedFontSize, gFontSize, gCoverflowDeviceBarFocused;
+static int loadedFontSize, gFontSize, gGridSidebarOpen;
+static void *gGridSidebarCursor;
 static void *gsGlobal;
 struct UI {
     void lock() { assert(!locked); locked=true; }
@@ -44,6 +45,7 @@ static void gsKit_hires_flip(void *) {
     // changes the queue the HIRES worker replays, and resets the old queue.
     replayed=nullptr; ++flips;
 }
+static void gsKit_TexManager_commitFrame(int) {}
 @RETIRE@
 @WRAPPER@
 static void psbbnFlowReset() { assert(locked); }

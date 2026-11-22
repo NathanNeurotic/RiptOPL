@@ -273,6 +273,7 @@ int gBootThemeWait;
 int gShowLegend = 1;
 // User Wallpaper (Berion's request): wallpaper.png from the settings folder instead of the theme's background.
 int gThemeWallpaper;
+int gEnableAmbientEffects = 1;
 int gVMode; // 0 - Auto, 1 - PAL, 2 - NTSC
 int gXOff;
 int gYOff;
@@ -1229,10 +1230,10 @@ static void moduleCleanup(opl_io_module_t *mod, int exception, int modeSelected)
     clearMenuGameList(mod);
 }
 
-// 1 while deinit() tears down for exit/poweroff, 0 for a game/app launch. Consumed by device shutdowns
-// that must behave differently on the launch path (hddShutdown keeps DEV9 powered so the post-deinit
-// POPSTARTER.ELF read from the ATA-backed massN: mount still works; ee_core/POPSTARTER reset the IOP
-// themselves, so skipping the power-off on launches leaks nothing).
+// Device-cleanup policy for ALL/NONE selection modes, independent of the visual transition intent.
+// Consumed by device shutdowns that must behave differently on the launch path (hddShutdown keeps
+// DEV9 powered so the post-deinit POPSTARTER.ELF read from the ATA-backed massN: mount still works;
+// ee_core/POPSTARTER reset the IOP themselves, so skipping the power-off on launches leaks nothing).
 int gDeinitTerminal = 0;
 
 // Set by deinit/deinitEx when cacheEnd() gave up waiting for the art worker, i.e. a thread is still
@@ -1269,7 +1270,8 @@ constexpr int LAUNCH_IO_DRAIN_TICKS = 40; // ~10 s, as the paragraph above alway
 
 void deinitEx(int exception, int modeSelected, int modeSelected2)
 {
-    gDeinitTerminal = (modeSelected == IO_MODE_SELECTED_ALL || modeSelected == IO_MODE_SELECTED_NONE);
+    const opl_deinit_policy_t policy = oplDeinitPolicy(modeSelected, 0);
+    gDeinitTerminal = policy.terminalCleanup;
 
     // Say something BEFORE the blocking teardown below, because it can hold this thread for the
     // whole of LAUNCH_IO_DRAIN_TICKS (~10 s) and nothing repaints while it does. Measured on
@@ -1282,8 +1284,9 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     // frame flips and then persists on its own -- nothing draws again until the handoff -- so one
     // call covers the entire wait.
     //
-    // Fade the menu out first (issue #85), so a launch no longer cuts hard from the game list to the
-    // status screen. Eight frames, the same fade the video-mode switch uses; guiRenderTextScreen()
+    // A launch optionally converges the ambient field before the existing fade; terminal exits keep
+    // just the fade. Eight fade frames (issue #85) prevent a hard cut to the status screen, using the
+    // same video-mode-switch fade; guiRenderTextScreen()
     // right below already redraws the menu here, so drawing it eight more times touches nothing new.
     // The art worker stops STARTING reads first, so the fade's frames cannot let a queued cover hit
     // the device; nothing is released until cacheShutdownArtLoads() below, after the last menu frame.
@@ -1293,7 +1296,10 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
     // OPL draws; it stays up through the IOP reset and the game's load (guiRenderHandoffStep). It used
     // to fade to black here instead, which left the whole load on a black screen.
     cacheHoldArtStarts();
-    guiFadeCurrentScreenToBlack();
+    if (policy.launchTransition)
+        guiPlayLaunchTransition();
+    else
+        guiFadeCurrentScreenToBlack();
     guiRenderHandoffStep(_l(_STR_PLEASE_WAIT), 1, 1);
     if (gLaunchDiag)
         launchDiagMark(5); // "Please Wait" is up -- the io/art drain below runs next
@@ -1368,9 +1374,10 @@ void deinitEx(int exception, int modeSelected, int modeSelected2)
         launchDiagMark(8); // deinitEx finished -- sysLaunchNeutrino runs next
 }
 
-void deinit(int exception, int modeSelected)
+static void deinitWithTransition(int exception, int modeSelected, int terminal)
 {
-    gDeinitTerminal = (modeSelected == IO_MODE_SELECTED_ALL || modeSelected == IO_MODE_SELECTED_NONE);
+    const opl_deinit_policy_t policy = oplDeinitPolicy(modeSelected, terminal);
+    gDeinitTerminal = policy.terminalCleanup;
 
     // Say something BEFORE the blocking teardown below, because it can hold this thread for the
     // whole of LAUNCH_IO_DRAIN_TICKS (~10 s) and nothing repaints while it does. Measured on
@@ -1383,8 +1390,9 @@ void deinit(int exception, int modeSelected)
     // frame flips and then persists on its own -- nothing draws again until the handoff -- so one
     // call covers the entire wait.
     //
-    // Fade the menu out first (issue #85), so a launch no longer cuts hard from the game list to the
-    // status screen. Eight frames, the same fade the video-mode switch uses; guiRenderTextScreen()
+    // A launch optionally converges the ambient field before the existing fade; terminal exits keep
+    // just the fade. Eight fade frames (issue #85) prevent a hard cut to the status screen, using the
+    // same video-mode-switch fade; guiRenderTextScreen()
     // right below already redraws the menu here, so drawing it eight more times touches nothing new.
     // The art worker stops STARTING reads first, so the fade's frames cannot let a queued cover hit
     // the device; nothing is released until cacheShutdownArtLoads() below, after the last menu frame.
@@ -1394,7 +1402,10 @@ void deinit(int exception, int modeSelected)
     // OPL draws; it stays up through the IOP reset and the game's load (guiRenderHandoffStep). It used
     // to fade to black here instead, which left the whole load on a black screen.
     cacheHoldArtStarts();
-    guiFadeCurrentScreenToBlack();
+    if (policy.launchTransition)
+        guiPlayLaunchTransition();
+    else
+        guiFadeCurrentScreenToBlack();
     guiRenderHandoffStep(_l(_STR_PLEASE_WAIT), 1, 1);
     if (gLaunchDiag)
         launchDiagMark(5); // "Please Wait" is up -- the io/art drain below runs next
@@ -1458,6 +1469,16 @@ void deinit(int exception, int modeSelected)
     rmEnd();
     menuWatchStop(); // diagnostic builds: no VBlank handler or exception hooks survive the handoff
     configEnd();
+}
+
+void deinit(int exception, int modeSelected)
+{
+    deinitWithTransition(exception, modeSelected, 0);
+}
+
+void deinitTerminal(int exception, int modeSelected)
+{
+    deinitWithTransition(exception, modeSelected, 1);
 }
 
 void setDefaultColors(void)

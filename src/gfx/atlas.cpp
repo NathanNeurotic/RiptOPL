@@ -41,9 +41,8 @@ Atlas::Atlas()
 
 Atlas::~Atlas()
 {
-    rmUnloadTexture(&surface_);
-    free(surface_.Mem);
-    surface_.Mem = NULL;
+    surface_.Clut = NULL; // the font system owns the shared CLUT, not this atlas
+    rmReleaseTexture(&surface_);
 }
 
 GSTEXTURE *Atlas::texture()

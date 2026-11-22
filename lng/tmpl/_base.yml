@@ -2571,6 +2571,11 @@ gui_strings:
   string: User Wallpaper
 - label: HINT_WALLPAPER
   string: "Draws wallpaper.png from the folder your settings are saved in behind the menu pages, in any theme. 512x512 at most, 8-bit (256 colour) palette."
+- comment: Theme setting under User Wallpaper. Procedural background and launch animation.
+  label: AMBIENT_EFFECTS
+  string: Ambient Effects
+- label: HINT_AMBIENT_EFFECTS
+  string: "Shows the seamless crystal light scene, plus a short convergence when launching. Off keeps static backgrounds and the original launch fade."
 - comment: Toast when User Wallpaper is on and the file is not there.
   label: WALLPAPER_MISSING
   string: "User Wallpaper: no wallpaper.png in the settings folder. The theme's background is shown."
@@ -2621,9 +2626,13 @@ gui_strings:
 - comment: The update is installed. %d is the new build's number.
   label: UPDATE_DONE
   string: Updated to build %d. It starts the next time you open RiptOPL.
-- comment: Check for Updates can only replace an ELF started from a memory card or a USB/exFAT drive.
+- label: UPDATE_RELAUNCH
+  string: Launch it now?
+- label: UPDATE_RELAUNCH_FAILED
+  string: The update is installed. Open RiptOPL again from your launcher.
+- comment: The current ELF's path or packed/unpacked format cannot be resolved safely for updating.
   label: UPDATE_ERR_PLACE
-  string: Check for Updates works when RiptOPL was started from a memory card or a USB/exFAT drive.
+  string: Could not identify the running ELF for a safe update. Start it from a memory card, MMCE, USB/exFAT or a full APA partition path.
 - comment: The running build's version has no build number (a local or tagged build), so it cannot be compared.
   label: UPDATE_ERR_UNVERSIONED
   string: This build has no build number to compare with the release. Download the release from GitHub instead.

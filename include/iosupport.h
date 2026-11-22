@@ -28,6 +28,18 @@ enum IO_MODES {
     MODE_COUNT
 };
 
+typedef struct
+{
+    int terminalCleanup;
+    int launchTransition;
+} opl_deinit_policy_t;
+
+static inline opl_deinit_policy_t oplDeinitPolicy(int modeSelected, int terminal)
+{
+    opl_deinit_policy_t policy = {modeSelected == IO_MODE_SELECTED_ALL || modeSelected == IO_MODE_SELECTED_NONE, !terminal};
+    return policy;
+}
+
 #define BDM_MODE_LAST  BDM_MODE7
 #define BDM_MODE_COUNT (BDM_MODE_LAST - BDM_MODE + 1)
 

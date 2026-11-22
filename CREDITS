@@ -230,6 +230,12 @@ Contributor:
     contributes to RiptOPL directly: PR #733 brings LUNA's Collection cover-art
     screen to RiptOPL's renderer. Thank you for sharing your work with us.
 
+  - Launchstation, by NathanNeurotic and contributors
+    https://github.com/NathanNeurotic/Launchstation
+    The ambient background's orb, crystal-cap and star geometry is adapted from
+    Launchstation's Crystal theme (`src/dash_bg.c`, BSD Zero Clause License). The
+    seamless timing and launch convergence are implemented for RiptOPL's renderer.
+
 Partnership and collaboration:
 
   RiptOPL is developed in partnership and collaboration with the RIPPS2 Project

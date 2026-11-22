@@ -8,6 +8,8 @@ import sys
 root = Path(__file__).resolve().parents[2]
 source = (Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'src/ui/menusys.cpp').read_text(encoding='utf-8')
 functions = []
+start = source.index('static constexpr int carouselPageStep')
+functions.append(source[start:source.index('\n}', start) + 2])
 if 'static int menuPageStep(' in source:
     start = source.index('static int menuPageStep(')
     functions.append(source[start:source.index('\n}', start) + 2])
@@ -24,10 +26,10 @@ static items_list_t list = {1};
 static struct {void *extended;} element = {&list};
 static struct {int coverflow; __typeof__(element) *itemsList;} theme = {1, &element};
 static __typeof__(theme) *gTheme = &theme;
-struct menu_item {submenu_list_t *current, *pagestart, *submenu;};
+typedef struct menu_item {submenu_list_t *current, *pagestart, *submenu;} menu_item_t;
 static menu_item item;
-static struct {menu_item *item;} selection = {&item};
-static __typeof__(selection) *selected_item = &selection;
+static struct menu_list_t {menu_item *item;} selection = {&item};
+static menu_list_t *selected_item = &selection;
 #define SFX_CURSOR 0
 static int sounds;
 static void sfxPlay(int id) {(void)id;sounds++;}
@@ -74,6 +76,19 @@ int main(void) {
     int forward[]={15,30,39,0}, backward[]={39,24,9,0};
     for (int target:forward) {menuNextPage();assert(item.current==&nodes[target]);}
     for (int target:backward) {menuPrevPage();assert(item.current==&nodes[target]);}
+    /* Carousel paging follows the selected cover, not a multi-row ItemsList or a stale page start. */
+    list.displayedItems=18;
+    for (int n=1;n<=64;n++) for (int s=0;s<n;s++) for (int dir=-1;dir<=1;dir+=2) {
+        setup(n,s);
+        int target=dir>0 ? (s==n-1 ? 0 : (s+15<n ? s+15 : n-1))
+                         : (s==0 ? n-1 : (s>15 ? s-15 : 0));
+        menuCarouselPage(dir);
+        assert(item.current==&nodes[target] && item.pagestart==&nodes[target]);
+        assert(sounds==(target!=s) && animations==(target!=s));
+    }
+    setup(0,0); menuCarouselPage(1); menuCarouselPage(-1);
+    assert(!item.current && !sounds && !animations);
+    list.displayedItems=1;
     /* Ordinary D-pad moves and L2/R2 still move one title or go straight to an end. */
     setup(40,0);menuNextPage();menuNextV();
     assert(item.current==&nodes[16] && item.pagestart==&nodes[16]);

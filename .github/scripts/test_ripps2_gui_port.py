@@ -238,7 +238,7 @@ def check_glyphs(thm, gui, settings_src):
     assert out[0] == '0 1 2 3 0 0', out[0]  # an unknown name or none is the theme's own
     assert out[1] == '3 2', out[1]  # Theme follows the theme's key; any other pick wins over it
     load = function(thm, GLYPH_LOAD)
-    assert 'rmUnloadTexture(tex)' in load and 'texFree(tex)' in load and 'texLoadInternal(tex, glyphSlots[i])' in load
+    assert 'rmReleaseTexture(tex)' in load and 'texLoadInternal(tex, glyphSlots[i])' in load
     assert 'theme->glyphPath[0] ? theme->glyphPath : NULL' in load, 'Theme loads the theme\'s own glyphs back'
     assert '"glyph_set"' in thm and 'thmGlyphSetLoad(newT, thmGlyphSetFor(newT->glyphSetDef), 0)' in thm, 'theme key'
     start = function(gui, START_FRAME)

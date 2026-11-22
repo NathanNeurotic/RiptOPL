@@ -10,6 +10,7 @@
 #include "include/selfupdate.h"
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 static int isDigit(char c)
@@ -137,4 +138,43 @@ int suLooksLikeElf(const unsigned char *head, int len)
     /* ident, 32-bit, little-endian, executable, MIPS */
     return len >= 20 && head[0] == 0x7F && head[1] == 'E' && head[2] == 'L' && head[3] == 'F' && head[4] == 1 && head[5] == 1 &&
            head[16] == 2 && head[17] == 0 && head[18] == 8 && head[19] == 0;
+}
+
+static uint32_t readLe32(const unsigned char *p)
+{
+    return p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
+}
+
+int suElfFormat(const unsigned char *head, int len)
+{
+    if (len < 52 || !suLooksLikeElf(head, len) || head[42] != 32 || head[43] != 0)
+        return SU_ELF_UNKNOWN;
+
+    uint32_t offset = readLe32(head + 28);
+    unsigned int count = head[44] | head[45] << 8;
+    if (offset < 52 || offset > (uint32_t)len || count > ((uint32_t)len - offset) / 32)
+        return SU_ELF_UNKNOWN;
+
+    /* Both linkers put the unpacked image at 0x00100000 with 128-byte alignment.
+       PS2PACK emits one aligned load segment after the 52-byte header and its 32-byte table. */
+    const unsigned char *load = NULL;
+    for (unsigned int i = 0; i < count; i++) {
+        const unsigned char *ph = head + offset + 32 * i;
+        if (readLe32(ph) == 1) {
+            if (load != NULL)
+                return SU_ELF_UNKNOWN;
+            load = ph;
+        }
+    }
+    if (load == NULL)
+        return SU_ELF_UNKNOWN;
+    uint32_t data = readLe32(load + 4), address = readLe32(load + 8);
+    uint32_t align = readLe32(load + 28), entry = readLe32(head + 24);
+    if (entry < address || entry - address >= readLe32(load + 16))
+        return SU_ELF_UNKNOWN;
+    if (address == 0x00100000 && align == 128 && data == ((offset + count * 32 + 127) & ~127u))
+        return SU_ELF_UNPACKED;
+    if (offset == 52 && count == 1 && data == 96 && align == 16 && address != 0x00100000)
+        return SU_ELF_PACKED;
+    return SU_ELF_UNKNOWN;
 }

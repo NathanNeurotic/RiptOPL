@@ -1123,6 +1123,11 @@ struct UIItem diaThemeConfig[] = {
     {UI_BOOL, UICFG_WALLPAPER, 1, 1, _STR_HINT_WALLPAPER, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_AMBIENT_EFFECTS}}},
+    {UI_SPACER},
+    {UI_BOOL, UICFG_AMBIENT_EFFECTS, 1, 1, _STR_HINT_AMBIENT_EFFECTS, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_COLORS_SETTINGS}}},
     {UI_SPACER},
     {UI_BUTTON, UICFG_COLORS_BUTTON, 1, 1, _STR_HINT_COLORS_BUTTON, 0, 0, {.label = {NULL, _STR_MODIFY}}},

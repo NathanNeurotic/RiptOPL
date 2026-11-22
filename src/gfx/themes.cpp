@@ -33,9 +33,6 @@ extern u16 size_conf_theme_OPL_cfg;
 
 theme_t *gTheme;
 
-// 1 when Coverflow's horizontal device strip holds the pad (Down/Up toggles focus with the carousel).
-int gCoverflowDeviceBarFocused = 0;
-
 // The view the user asked for (THM_VIEW_*), -1 = the theme's default. thmLoad falls back to the theme's
 // default when the theme does not offer it.
 int gThemeViewRequest = -1;
@@ -993,10 +990,8 @@ static void thmFree(theme_t *theme)
         int id = 0;
         for (; id < TEXTURES_COUNT; id++) {
             texture = &theme->textures[id];
-            if (texture->Mem != NULL) {
-                rmUnloadTexture(texture);
-                texFree(texture);
-            }
+            if (texture->Mem != NULL)
+                rmReleaseTexture(texture);
         }
 
         // free fonts
@@ -1276,8 +1271,9 @@ static void thmGlyphSetLoad(theme_t *theme, int set, int onGui)
         GSTEXTURE *tex = &theme->textures[glyphSlots[i]];
         if (tex->Mem != NULL) {
             if (onGui)
-                rmUnloadTexture(tex);
-            texFree(tex);
+                rmReleaseTexture(tex);
+            else
+                texFree(tex);
         }
         if (set == GLYPH_SET_STANDARD || set == GLYPH_SET_WHITE)
             texLoadFromMemory(tex, glyphSetPng[set - GLYPH_SET_STANDARD][i].png, *glyphSetPng[set - GLYPH_SET_STANDARD][i].size);
@@ -1857,7 +1853,8 @@ static int thmLoad(const char *themePath)
     }
     gTheme = newT;
     loadedFontSize = gFontSize;
-    gCoverflowDeviceBarFocused = 0;
+    gGridSidebarOpen = 0;
+    gGridSidebarCursor = NULL;
     psbbnFlowReset();
     thmFree(curT);
     host::ui().unlock();

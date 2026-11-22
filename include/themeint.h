@@ -137,6 +137,7 @@ void initCoverflow(const char *themePath, config_set_t *themeConfig, theme_t *th
 // grid.cpp
 void initGrid(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name);
 void gridDrawPageGlyph(struct menu_list *page, int cx, int cy, int size, u64 color);
+void gridDrawDeviceSidebar(struct menu_list *active, int centerY, int open, struct menu_list *highlight);
 void gridReleaseGlyphs(void);
 
 // psbbnflow.cpp

@@ -1378,6 +1378,7 @@ static int guiReadPopsNet(int source, vcd_popsnet_t *out)
         guiStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
+        guiDrawAmbientEffects();
         rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColDarker);
         fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, gTheme->usedHeight >> 1,
                         ALIGN_CENTER, 0, 0, _l(_STR_POPS_LOADING_SETTINGS), gTheme->textColor);
@@ -2727,6 +2728,7 @@ static int guiSettingsShowTheme(void)
     diaSetInt(ui, UICFG_ART_DELAY, displayedArtDelay);
     diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
     diaSetInt(ui, UICFG_WALLPAPER, gThemeWallpaper);
+    diaSetInt(ui, UICFG_AMBIENT_EFFECTS, gEnableAmbientEffects);
     diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
     const char *listCfgNames[] = {_l(_STR_THEME), _l(_STR_ON), _l(_STR_OFF), NULL};
     diaSetEnum(ui, UICFG_LIST_CFG_TEXT, listCfgNames);
@@ -2763,10 +2765,10 @@ static int guiSettingsShowTheme(void)
         diaGetInt(ui, UICFG_ART_DELAY, &artDelayIdx);
         if (artDelayIdx != displayedArtDelay && artDelayIdx >= 0 && artDelayIdx < (int)(sizeof(artDelayValues) / sizeof(artDelayValues[0]))) {
             gArtDelay = artDelayValues[artDelayIdx];
-            for (int mode = 0; mode < MODE_COUNT; mode++) {
-                item_list_t *list = oplGetModule(mode)->support;
-                if (list != NULL)
-                    list->delay = gArtDelay;
+            item_list_t *lists[] = {appGetObject(1), hddGetObject(1), ethGetObject(1), mmceGetSlotObject(0, 1), mmceGetSlotObject(1, 1), udpfsGetObject(1), favGetObject(1)};
+            for (int i = 0; i < 7; i++) {
+                if (lists[i] != NULL)
+                    lists[i]->delay = gArtDelay;
             }
         }
         diaGetInt(ui, UICFG_BOOT_THEME_WAIT, &gBootThemeWait);
@@ -2775,6 +2777,7 @@ static int guiSettingsShowTheme(void)
         int altBackgroundRequest = gThemeAltBackground, wallpaperRequest = gThemeWallpaper;
         diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
         diaGetInt(ui, UICFG_WALLPAPER, &wallpaperRequest);
+        diaGetInt(ui, UICFG_AMBIENT_EFFECTS, &gEnableAmbientEffects);
         const int themeViewRequest = guiReadThemeViewPicker(ui);
         const bool viewPending = themeViewRequest != gThemeViewRequest;
         if (!viewPending) {
@@ -3138,6 +3141,7 @@ int SettingsShell::promptSave(void)
         guiStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
+        guiDrawAmbientEffects();
 
         rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColDarker);
         rmDrawLine(50, 75, gGuiScreenWidth - 50, 75, gColWhite);
@@ -3215,6 +3219,7 @@ int SettingsShell::showIndex(int *page)
         guiStartFrame();
         if (guiDrawBGSettings() == 0)
             guiDrawBGPlasma();
+        guiDrawAmbientEffects();
 
         fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, 50, ALIGN_CENTER, 0, 0, _l(_STR_SETTINGS), gTheme->textColor);
 

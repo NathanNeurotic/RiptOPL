@@ -5,10 +5,12 @@
 #include "include/tar.h"
 #include "include/ioman.h"
 #include "include/sound.h" // gBgmInRead -- BGM bypasses ioman but shares the fileXio channel
+#include "include/renderman.h"
 #include <errno.h>         // errno/ENOENT in the staging-arm open classifier (transitively via opl.h, but be explicit)
 #include <kernel.h>
 #include <png.h>
 #include <jpeglib.h>
+#include <math.h>
 #include <setjmp.h>
 #include <strings.h> // strcasecmp, strncasecmp
 
@@ -1268,6 +1270,60 @@ static int texArtIsBackground(const char *stemEnd, const char *start)
     if (stemEnd - start >= 3 && !strncasecmp(stemEnd - 3, "_BG", 3))
         return 1;
     return stemEnd - start >= 6 && !strncasecmp(stemEnd - 6, "_BG_0", 5);
+}
+
+void texPrepareArtForDisplay(GSTEXTURE *texture, int background)
+{
+    if (!background || !rmUse16BitArt() || texture->PSM != GS_PSM_CT24)
+        return;
+
+    int srcW = texture->Width, srcH = texture->Height;
+    int outW = srcW, outH = srcH;
+    if (outW > TEX_BG_MAX_W) {
+        outH = outH * TEX_BG_MAX_W / outW;
+        outW = TEX_BG_MAX_W;
+    }
+    if (outH > TEX_BG_MAX_H) {
+        outW = outW * TEX_BG_MAX_H / outH;
+        outH = TEX_BG_MAX_H;
+    }
+    if (outW < 1)
+        outW = 1;
+    if (outH < 1)
+        outH = 1;
+
+    if (outW != srcW || outH != srcH) {
+        u32 *pixels = static_cast<u32 *>(memalign(128, gsKit_texture_size_ee(outW, outH, GS_PSM_CT24)));
+        if (pixels == NULL)
+            return;
+        const u8 *src = reinterpret_cast<const u8 *>(texture->Mem);
+        u8 *dst = reinterpret_cast<u8 *>(pixels);
+        for (int y = 0; y < outH; y++) {
+            float sy = (y + 0.5f) * srcH / outH - 0.5f;
+            if (sy < 0.0f)
+                sy = 0.0f;
+            int y0 = static_cast<int>(floorf(sy)), y1 = y0 + 1 < srcH ? y0 + 1 : srcH - 1;
+            float fy = sy - y0;
+            for (int x = 0; x < outW; x++) {
+                float sx = (x + 0.5f) * srcW / outW - 0.5f;
+                if (sx < 0.0f)
+                    sx = 0.0f;
+                int x0 = static_cast<int>(floorf(sx)), x1 = x0 + 1 < srcW ? x0 + 1 : srcW - 1;
+                float fx = sx - x0;
+                for (int c = 0; c < 3; c++) {
+                    float top = src[(y0 * srcW + x0) * 3 + c] * (1.0f - fx) + src[(y0 * srcW + x1) * 3 + c] * fx;
+                    float bottom = src[(y1 * srcW + x0) * 3 + c] * (1.0f - fx) + src[(y1 * srcW + x1) * 3 + c] * fx;
+                    int value = static_cast<int>((top * (1.0f - fy) + bottom * fy) + 0.5f);
+                    dst[(y * outW + x) * 3 + c] = static_cast<u8>(value);
+                }
+            }
+        }
+        free(texture->Mem);
+        texture->Mem = pixels;
+        texture->Width = outW;
+        texture->Height = outH;
+    }
+    gsKit_texture_to_psm16(texture);
 }
 
 // A PNG or JPG game art picture already in RAM (an ART .tar member). background picks the box a JPG is shrunk to.

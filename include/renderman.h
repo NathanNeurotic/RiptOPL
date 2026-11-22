@@ -91,6 +91,9 @@ void rmInvalidateTexture(GSTEXTURE *txt);
 /** Unload texture from texture manager, performance optimization */
 void rmUnloadTexture(GSTEXTURE *txt);
 
+/** Release a texture's VRAM, pixels and CLUT. HIRES defers CPU frees until its outgoing queue retires. */
+void rmReleaseTexture(GSTEXTURE *txt);
+
 
 void rmDrawQuad(rm_quad_t *q);
 
@@ -142,6 +145,9 @@ void rmSetOverscan(int overscan);
 /** Sets the aspect ratio correction for the upcoming operations.
  * When set, it will treat all pixmap widths/heights (not positions) as scaled with the ratios provided */
 void rmSetAspectRatio(enum rm_aratio dar);
+
+/** 1 when the active HIRES framebuffer is 16-bit, so art can use CT16S without losing output precision. */
+int rmUse16BitArt(void);
 
 /** 1 when the screen is 16:9: the Widescreen setting is on, or the video mode is natively 16:9 (720p, 1080i) */
 int rmIsWideDisplay(void);

@@ -23,12 +23,8 @@
 
 void cacheClearItem(cache_entry_t *item, int freeTxt)
 {
-    if (freeTxt && item->texture.Mem) {
-        rmUnloadTexture(&item->texture);
-        free(item->texture.Mem);
-        if (item->texture.Clut)
-            free(item->texture.Clut);
-    }
+    if (freeTxt && item->texture.Mem)
+        rmReleaseTexture(&item->texture);
 
     memset(item, 0, sizeof(cache_entry_t));
     item->texture.Mem = NULL;

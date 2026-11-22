@@ -1,4 +1,4 @@
-"""The rolling-lite channel: one RiptOPLite download per game device (tools/lite_devices.py).
+"""The rolling-lite channel: one RiptOPLite build per game device (tools/lite_devices.py).
 
 * RIPTOPLITE-<DEVICE>.ELF -- standard RiptOPL with only that device's drivers. A bare ELF: it needs
   nothing the standard RiptOPL kit does not already put on the device.
@@ -106,6 +106,7 @@ def assemble(root, sha, compiler="gcc"):
             elf = (stage / name).read_bytes()
             manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
             _check(manifest, LITE_RA, device, sha, ra_kit_manifest, elf, compiler)
+            (path / name).write_bytes(elf)
             version = _version(manifest)
             readme = RA_README.format(title=options["title"], version=version, elf=name, issues=ISSUES,
                                       underline="=" * len(f"RiptOPLite RetroAchievements {options['title']}, {version}"))
@@ -117,6 +118,7 @@ def assemble(root, sha, compiler="gcc"):
                 for entry in (*runtime, *RA_KIT_FILES):
                     bundle.writestr(entry, kit.read(entry))
             manifests[archive.name] = manifest
+        (path / "LICENSE-MBEDTLS.txt").write_bytes(kit.read("LICENSE-MBEDTLS.txt"))
     versions = {_common_version(m) for m in manifests.values()} | {_common_version(ra_kit_manifest)}
     if len(versions) != 1:
         raise ValueError(f"lite builds carry different versions: {sorted(versions)}")
@@ -130,9 +132,10 @@ def assemble(root, sha, compiler="gcc"):
 
 
 def expected_assets():
-    names = {"BUILD-MANIFEST.json", "LICENSE-USMB2.txt"}
+    names = {"BUILD-MANIFEST.json", "LICENSE-MBEDTLS.txt", "LICENSE-USMB2.txt"}
     for device in DEVICES:
-        names |= {elf_name(device), elf_name(device, ra=True).replace(".ELF", ".zip")}
+        ra = elf_name(device, ra=True)
+        names |= {elf_name(device), ra, ra.replace(".ELF", ".zip")}
     return names
 
 
