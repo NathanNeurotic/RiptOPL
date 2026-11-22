@@ -1,6 +1,6 @@
 # RiptOPL interface captures
 
-RiptOPL includes one PSBBN theme with six layouts. Open **Settings → Interface → Theme View** to choose one, or hold **L3** while browsing the library to move to the next layout. The button bar labels L3 **View/Filter**. Tap it to cycle the library filters, or hold it to change the layout. See [Controls](CONTROLS.md) for navigation within each layout.
+RiptOPL includes one PSBBN theme with six layouts. Open **Settings → Interface → Theme View** to choose one, or hold **L3** while browsing the library to move to the next layout. The button bar labels L3 **View/Filter**. Tap it to cycle the library filters, or hold it to change the layout. When both actions are available, a tap shows **Hold for Theme** and a hold shows **Tap for Filter**. See [Controls](CONTROLS.md) for navigation within each layout.
 
 ## Library views
 

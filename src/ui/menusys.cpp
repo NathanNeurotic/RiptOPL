@@ -2810,11 +2810,15 @@ static int menuL3HoldReached(void)
 
 static void menuL3Tap(int viewPending)
 {
-    if (!viewPending && selected_item->item->toggleView)
+    if (viewPending)
+        return;
+    if (selected_item->item->toggleView)
         selected_item->item->toggleView(selected_item->item);
+    if (thmCanCycleView())
+        guiShowToast(_l(_STR_L3_HOLD_FOR_THEME));
 }
 
-static void menuHandleViewHold(int viewPending)
+static void menuHandleViewHold(int viewPending, const item_list_t *support)
 {
     if (menuL3State == 0)
         return;
@@ -2825,8 +2829,10 @@ static void menuHandleViewHold(int viewPending)
         menuL3State = 0;
     } else if (menuL3State == 1 && menuL3HoldReached()) {
         menuL3State = 2;
-        if (!viewPending)
-            thmCycleView();
+        const bool canFilter = support != NULL && support->enabled &&
+                               selected_item->item->toggleView && libViewRingUsable(support->mode);
+        if (!viewPending && thmCycleView() && canFilter)
+            guiShowToast(_l(_STR_L3_TAP_FOR_FILTER));
     }
 }
 
@@ -2910,7 +2916,7 @@ void menuHandleInputMain()
         } else
             menuL3Tap(viewPending);
     }
-    menuHandleViewHold(viewPending);
+    menuHandleViewHold(viewPending, support);
 
     // Last Played Auto Start
     if (gRememberLastPlayed && gAutoStartLastPlayed > 0 && RemainSecs < 0 && DisableCron == 0 && !viewPending) {

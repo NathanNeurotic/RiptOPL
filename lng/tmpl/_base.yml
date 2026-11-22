@@ -2725,3 +2725,9 @@ gui_strings:
 - comment: L3 button hint. Tap to change the library filter or hold to change the theme view.
   label: L3_VIEW_FILTER
   string: View/Filter
+- comment: Brief toast after tapping L3 when another theme view is available.
+  label: L3_HOLD_FOR_THEME
+  string: Hold for Theme
+- comment: Brief toast after holding L3 to switch styles when the current page has another library filter.
+  label: L3_TAP_FOR_FILTER
+  string: Tap for Filter
