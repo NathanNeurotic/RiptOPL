@@ -1,11 +1,10 @@
 # RiptOPLite: one loader per game device
 
 `rolling-lite` carries one RiptOPL loader per game device, for consoles that only play from one.
-Each is the Korium edition with that device's drivers alone, so the ELF is smaller and starts with
-less to load. Every build is Korium (built-in Korium Komblete theme); the RetroAchievements builds
-are Korium with RA on.
+Each GCC build includes only the game drivers needed for its device, so the ELF is smaller.
+Both standard and RetroAchievements Lite builds use the same built-in PSBBN theme as full RiptOPL.
 
-| Device | Korium | RetroAchievements | Game drivers it carries |
+| Device | Standard | RetroAchievements | Game drivers it carries |
 | --- | --- | --- | --- |
 | USB | `RIPTOPLITE-USB.ELF` | `RIPTOPLITE-RA-USB.zip` | BDM, USB mass storage |
 | MX4SIO | `RIPTOPLITE-MX4SIO.ELF` | `RIPTOPLITE-RA-MX4SIO.zip` | BDM, MX4SIO |
@@ -35,7 +34,7 @@ RetroAchievements needs files outside the loader: NULD's (formerly ORBIT) Neutri
 Neutrino for every RA launch (see [RetroAchievements](RETROACHIEVEMENTS.md#neutrino-in-the-ra-edition)).
 Each `RIPTOPLITE-RA-<DEVICE>.zip` therefore carries the ELF, `neutrino/` (copied from the verified
 RA install kit of the same build), the xeRAbora shortcut, the licences, the build manifest and a
-README. The Korium lite builds need nothing the standard Korium kit does not already install, so they
+README. The standard Lite builds use the companion folders from the full RiptOPL kit, so they
 are bare ELFs that replace `RIPTOPL.ELF`.
 
 ## Settings
