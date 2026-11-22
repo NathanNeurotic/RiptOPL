@@ -47,7 +47,7 @@ u64 hueRgb(int hue, int sat, int val)
     int rem = (hue - region * 60) * 255 / 60;
     int p = (val * (255 - sat)) / 255;
     int q = (val * (255 - (sat * rem) / 255)) / 255;
-    int t = (val * (255 - (sat * (255 - rem)))) / 255;
+    int t = (val * (255 - (sat * (255 - rem)) / 255)) / 255;
     int r, g, b;
     switch (region) {
         case 0: r = val; g = t; b = p; break;
@@ -177,7 +177,7 @@ void AmbientEffects::tower(const Tower &tower, float phase, float pull, float su
         float x0 = tower.x * sx + cosf(a0) * tower.radius * sx;
         float x1 = tower.x * sx + cosf(a1) * tower.radius * sx;
         float facing = (sinf(a0) + sinf(a1)) * 0.5f;
-        if (facing < -0.05f)
+        if (facing < -0.05f || x1 <= x0)
             continue;
         float nx = cosf(a0 + kPi / 6.0f);
         float light = 0.35f + 0.65f * std::min(1.0f, std::max(0.0f, 0.6f * nx + 0.8f * facing));
@@ -237,7 +237,7 @@ void AmbientEffects::build(clock_t now, const unsigned char *background, u64 tex
         float x = width * (g.x + g.radiusX * cosf(phase * g.xCycles + g.phaseX));
         float y = height * (g.y + g.radiusY * sinf(phase * g.yCycles + g.phaseY));
         float radius = g.radius * scale * (0.90f + 0.10f * cosf(phase + g.phaseX)) * (1.0f + 0.8f * surge);
-        int alpha = (int)(g.alpha * (0.70f + 0.30f * sinf(phase * g.twinkleCycles + g.phaseY)) * launchAlpha);
+        int alpha = std::min(0x80, (int)(g.alpha * (0.70f + 0.30f * sinf(phase * g.twinkleCycles + g.phaseY)) * launchAlpha));
         float curve = sinf(kPi * pull) * width * 0.04f * (i & 1 ? 1.0f : -1.0f);
         x += (width * 0.5f - x) * pull + curve;
         y += (height * 0.5f - y) * pull - curve * 0.25f;

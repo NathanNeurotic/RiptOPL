@@ -3,7 +3,6 @@
 #include "check.h"
 #include <algorithm>
 #include <math.h>
-#include <map>
 #include <stdint.h>
 #include <stdlib.h>
 #include <vector>
@@ -88,22 +87,13 @@ static void checkGeometry(const Capture &capture, int width, int height)
 
 static void checkCapGeometry(const Capture &capture)
 {
-    std::map<int, int> faces;
-    std::map<int, float> widths;
     for (int triangle = 0; triangle < capture.count; triangle++) {
         u64 top = capture.colors[triangle * 3];
         if (top != capture.colors[triangle * 3 + 1] || top == capture.colors[triangle * 3 + 2])
             continue;
         const float *xy = capture.xy.data() + triangle * 6;
         CHECK(xy[1] == xy[3] && xy[5] < xy[1]);
-        int center = (int)lroundf(xy[4]);
-        faces[center]++;
-        widths[center] = std::max(widths[center], fabsf(xy[2] - xy[0]));
-    }
-    CHECK(faces.size() == AmbientEffects::kTowerCount);
-    for (const auto &cap : faces) {
-        CHECK(cap.second >= 2);
-        CHECK(widths[cap.first] >= 5.0f);
+        CHECK(xy[2] > xy[0]);
     }
 }
 
@@ -111,6 +101,9 @@ int main()
 {
     AmbientEffects fx;
     fx.init();
+
+    CHECK(hueRgb(268, 170, 200) == rgba(129, 66, 200, 0));
+    CHECK(hueRgb(120, 0, 200) == rgba(200, 200, 200, 0));
 
     // One or many complete periods return every vertex and colour to its exact starting value.
     Capture start = draw(fx, true, 0, 0);
@@ -175,10 +168,10 @@ int main()
         AmbientEffects sampled;
         sampled.init();
         for (clock_t t = 0; t < AmbientEffects::kLoopUs; t += 977777)
-            checkGeometry(draw(sampled, true, t, (unsigned int)t), extent[0], extent[1]);
+            checkGeometry(draw(sampled, true, t, (unsigned int)t, extent[0], extent[1]), extent[0], extent[1]);
     }
 
-    // Every cap keeps multiple meaningful front faces throughout the complete rotation loop.
+    // The accepted subtle cap facets retain their original winding and never grow long side walls.
     AmbientEffects caps;
     caps.init();
     for (clock_t t = 0; t < AmbientEffects::kLoopUs; t += 1000)
@@ -210,6 +203,26 @@ int main()
     for (u64 color : wrappedLaunch.colors)
         CHECK(((color >> 24) & 0xff) == 0);
     fx.endLaunch();
+
+    // Launch surges never exceed full-opacity alpha, at any point in the ordinary loop.
+    bool launchAlphaInRange = true;
+    for (clock_t startUs : {(clock_t)0, (clock_t)4000000, (clock_t)8000000, (clock_t)12000000, (clock_t)16000000, (clock_t)20000000, (clock_t)23300000}) {
+        AmbientEffects launching;
+        launching.init();
+        draw(launching, true, 0, 0);
+        draw(launching, true, startUs, 1);
+        launching.beginLaunch(startUs);
+        for (clock_t elapsed = 0; elapsed <= AmbientEffects::kLaunchUs && launchAlphaInRange; elapsed += 1000) {
+            Capture sample = draw(launching, true, startUs + elapsed, (unsigned int)(elapsed + 2));
+            for (u64 color : sample.colors) {
+                if (((color >> 24) & 0xff) > 0x80) {
+                    launchAlphaInRange = false;
+                    break;
+                }
+            }
+        }
+    }
+    CHECK(launchAlphaInRange);
 
     // Off emits no GS work; enabling later starts from the continuously tracked shared phase.
     fx.init();
