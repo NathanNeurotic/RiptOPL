@@ -59,7 +59,7 @@ Review the LICENSE file for further details.<br><br>
 
 ## See RiptOPL
 
-The built-in PSBBN theme shares the same library across List, Grid, Coverflow and PSBBN Flow. Change **Settings → Interface → Theme View**, or hold **L3** while browsing.
+The built-in PSBBN theme shares the same library across List, Grid, Coverflow and PSBBN Flow. Change **Settings → Theme Settings → Theme View**, or hold **L3** while browsing.
 
 | List | Grid |
 | --- | --- |
@@ -176,7 +176,7 @@ This section is a fast feature map to improve discoverability of core OPL capabi
 - **MMCE support:** OPL supports MMCE devices using the Memory Card Mass Storage protocol for SD-based loading through the Memory Card slot.
 - **MX4SIO support:** OPL supports MX4SIO adapters for SD-based loading through the Memory Card slot. See the **USB/MMCE/MX4SIO/iLink** section for filesystem and layout guidance.
 - **Internal HDD exFAT support:** the internal ATA HDD can be loaded as **exFAT** — mounted through the Block Device Manager (BDMAssault / "BDMA") into the same `massN:` namespace as USB/MX4SIO — in addition to APA/PFS, including GPT partitioning for large disks, for PS2 **and** PS1 (POPSTARTER) games. See the **HDD** section for formatting, the BDMA equip, and fragmentation guidance.
-- **Themes:** Place theme assets in the `THM` folder, then select and apply themes from OPL settings. **UDPFS Files** also reads `udpfs:/THM` once the server is reachable: with Network Connectivity **Auto** this is available during boot; with **Manual** it appears after the UDPFS page starts the connection. The built-in `<OPL>` theme has four views, List, Coverflow, PSBBN Flow and Grid: pick one under **Settings → Interface → Theme View**, or hold L3 on the main page to switch (fresh configurations start with List) — see the [Theme Engine reference](docs/THEME_ENGINE.md) to author your own themes.
+- **Themes:** Place theme assets in the `THM` folder, then select and apply themes from OPL settings. **UDPFS Files** also reads `udpfs:/THM` once the server is reachable: with Network Connectivity **Auto** this is available during boot; with **Manual** it appears after the UDPFS page starts the connection. The built-in `<OPL>` theme has four views, List, Coverflow, PSBBN Flow and Grid: pick one under **Settings → Theme Settings → Theme View**, or hold L3 on the main page to switch (fresh configurations start with List) — see the [Theme Engine reference](docs/THEME_ENGINE.md) to author your own themes.
 - **Cheats / PS2RD:** OPL supports PS2RD `.cht` cheat files from the `CHT` folder, with both auto-apply and launch-time selection modes.
 - **Pad emulation (DS3/DS4):** On any build with PADEMU (the default), a DualShock 3 or DualShock 4 plugged into the console's USB port can navigate the OPL menu right away, with nothing to enable first. To play games with it, turn on **Pad Emulator** under **Settings**, then **Controller Settings** (globally, or per game via **Game Settings**). One caveat: pad emulation shares the SIO2 bus with MX4SIO SD-card loading, so running both can cause a game to hang on a black screen; leave Pad Emulator off if you boot from an MX4SIO card.
 - **GSM (video mode handling):** Builds that include GSM allow game video mode handling/overrides for display compatibility.
@@ -192,7 +192,7 @@ This build layers several features on top of upstream OPL:
   the game/app list, with an alpha-faded reflection, animated scrolling, 3 or 5 covers
   (the **Coverflow (3)** and **Coverflow (5)** Theme Views), and aspect-correct covers in both 4:3
   and widescreen. Tune it live under
-  **Coverflow Settings** (shown while the Coverflow view is active). Authoring details
+  **Theme Settings → Layout Settings**. Authoring details
   and every theme value live in the **[Theme Engine reference](docs/THEME_ENGINE.md)**.
 - **PSBBN Flow view (built-in, optional):** the [PSBBN Definitive Project](https://github.com/CosmicScale/PSBBN-Definitive-Project) Game Collection look: a
   rounded square focal cover with a tail of covers turned away into the distance, adapted from
@@ -208,7 +208,7 @@ This build layers several features on top of upstream OPL:
   **`ART/art.tar`** (entries named `<GAMEID>_<suffix>.png`; VCD entries first use the filename without
   `.VCD`, or the displayed `PP.<name>` / `__.<name>` install name, then fall back to a parsed PS1 ID)
   instead of thousands of loose files.
-  Enable **Cover Art .tar Archive** under **Interface → Artwork Settings** (default **off**); when on, each
+  Enable **Cover Art .tar Archive** under **Theme Settings** (default **off**); when on, each
   cover is read from the archive and *falls back to the loose `.png`* when it isn't there, so the
   two coexist. A small `art_cache.bin` index written beside the archive lets later boots skip the
   re-scan. The format matches wOPL/sOPL art packs, so existing `.tar` packs work unchanged.

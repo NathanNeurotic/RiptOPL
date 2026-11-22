@@ -10,13 +10,13 @@ Settings row, the page it is on and the key it is saved under, see
 | --- | --- | --- |
 | Menu aspect ratio | 4:3; Widescreen off | Settings → Interface |
 | Menu video mode | Auto | Settings → Interface |
-| Theme | Built-in `<OPL>` | Settings → Interface → Theme |
-| Theme View | Default (List for `<OPL>`); Coverflow (3), Coverflow (5), PSBBN Flow, Grid and Grid (7x2) are optional views | Settings → Interface → Theme View, or hold L3 |
+| Theme | Built-in `<OPL>` | Settings → Theme Settings → Theme |
+| Theme View | Default (List for `<OPL>`); Coverflow (3), Coverflow (5), PSBBN Flow, Grid and Grid (7x2) are optional views | Settings → Theme Settings → Theme View, or hold L3 |
 | Library | Pages (All Games List off) | Settings → Interface → Library, or Game Sources → All Games List |
-| Alternate Background | Off (the theme's `default=` background) | Settings → Interface → Alternate Background |
-| Boot Theme Wait | Off (0 s: the menu opens without waiting for the saved theme) | Settings → Interface → Boot Theme Wait |
-| Cover and disc artwork | On | Settings → Interface → Artwork Settings |
-| Per-game background art | Off | Settings → Interface → Artwork Settings |
+| Alternate Background | Off (the theme's `default=` background) | Settings → Theme Settings → Alternate Background |
+| Boot Theme Wait | Off (0 s: the menu opens without waiting for the saved theme) | Settings → Theme Settings → Boot Theme Wait |
+| Cover and disc artwork | On | Settings → Theme Settings |
+| Per-game background art | Off | Settings → Theme Settings |
 | Notifications | On | Settings → Interface |
 | PS2 logo | On | Settings → Game Launching |
 | Sound effects, boot sound, background music | Off; stored volume 90 | Settings → Audio Settings |
@@ -39,7 +39,7 @@ setting alone does not supply music. Storage discovery and saved configuration
 can affect the active presentation after initial defaults are applied.
 
 To use the widescreen/carousel presentation, select **Widescreen: On** and
-**Theme View: Coverflow (3)** or **Coverflow (5)** under **Settings → Interface** (theme `<OPL>`), apply, and save.
+**Theme View: Coverflow (3)** or **Coverflow (5)** under **Settings → Theme Settings** (theme `<OPL>`), apply, and save.
 Coverflow supports both 4:3 and 16:9; selecting it does not toggle widescreen.
 The 720p and 1080i video modes are always drawn as 16:9, whatever the Widescreen setting.
 The carousel starts with three covers, Large center scale (45), 200 ms animation and

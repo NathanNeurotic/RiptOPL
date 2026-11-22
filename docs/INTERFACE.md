@@ -20,7 +20,7 @@ hides them. Back and L1/R1 keep edits for the session; **Save Changes** keeps th
 
 ## Theme selection
 
-**Settings → Interface → Theme** picks the theme: `<OPL>` or a disk theme from `THM/`, a `thm_<Name>` folder
+**Settings → Theme Settings → Theme** picks the theme: `<OPL>` or a disk theme from `THM/`, a `thm_<Name>` folder
 or one `thm_<Name>.tar` file (see [Theme engine](THEME_ENGINE.md), one-file themes).
 **Theme View** picks how it draws your games: **List**, **Coverflow (3)** or **Coverflow (5)** (the
 centered carousel with 3 or 5 covers), **PSBBN Flow** (the PSBBN Definitive Project Game Collection look) or **Grid** (rows and columns of
@@ -33,25 +33,25 @@ configurations start with `<OPL>` in the List view, 4:3 and Auto video mode; the
 separate settings. A configuration that saved the former `<Coverflow>` or `<PSBBN Flow>` theme loads
 `<OPL>` with that view, and the next save writes `<OPL>` plus `theme_view=`. The two Coverflow entries are saved as `theme_view=coverflow` plus
 `coverflow_count=3` or `5`, the keys earlier builds used, so an older configuration keeps its count
-and the Coverflow Settings page no longer has a Cover Count row.
+and the Layout Settings page no longer has a Cover Count row.
 
-**Library**, right under Theme View, picks **Pages** (every device keeps its own tab) or **All Games
+**Settings → Interface → Library** picks **Pages** (every device keeps its own tab) or **All Games
 List** (one page with the games of every started device; see [Game library](GAME-LIBRARY.md#all-games-list)).
 It works with every view and is the same `all_games` setting as **Game Sources → All Games List**.
 
-**Alternate Background**, under Library, shows the theme's second background when its author gave one
+**Alternate Background** shows the theme's second background when its author gave one
 (`alt=` in `conf_theme.cfg`; idea: [KrahJohlito](https://github.com/KrahJohlito)), so one theme can ship two looks. It is Off on fresh
 configurations and saved as `theme_alt_bg=1`. A theme without `alt=` looks the same either way, and only
 a theme with `alt=` is reloaded when the setting changes. Per-game background art still wins over the
 theme's picture while a game is selected. See
 [THEME_ENGINE.md, Alternate background](THEME_ENGINE.md#alternate-background-alt--this-fork).
 
-**Boot Theme Wait**, under Alternate Background, is how many seconds (0 to 10) the start-up screen waits
+**Boot Theme Wait** in Theme Settings is how many seconds (0 to 10) the start-up screen waits
 for your saved theme while the drive that holds it is still starting up, so the built-in theme does not show
 for a moment first. It is Off (0) on fresh configurations: the menu opens right away and the saved theme
 replaces the built-in one as soon as its drive is up. Saved as `boot_theme_wait`; 6 is the old fixed wait.
 
-**User Wallpaper**, under Boot Theme Wait, draws your own picture behind the main pages (games, apps,
+**User Wallpaper** draws your own picture behind the main pages (games, apps,
 PS1 and Favourites) in any theme, the built-in one included (requested by Berion). Put it beside
 `settings_riptopl.cfg`, in the folder your settings are saved in, named `wallpaper.png` (for example
 `mc0:/OPL/wallpaper.png`). It must be a PNG of at most 512 x 512 pixels with an 8-bit (256 colour) palette; it is
@@ -65,7 +65,7 @@ and a message says why. The info pages keep the theme's own background, and per-
 In the flow views, Left/Right browse covers. In Coverflow, Down focuses the device bar when a theme
 shows one. In PSBBN Flow and Coverflow without a bar, Up/Down switch devices. L1/R1 jump 15 titles;
 List and Grid use page jumps. R3 toggles Favorite. See [Controls](CONTROLS.md).
-**Coverflow Settings** tunes the `Coverflow` renderer; PSBBN Flow uses its fixed layout and
+**Layout Settings** tunes the `Coverflow` renderer; PSBBN Flow uses its fixed layout and
 25-frame glide. All four views share the editable palette, artwork and audio settings.
 Theme authors declare views with `views=` and `<view>.` blocks; see the
 [Theme Engine reference](THEME_ENGINE.md#views-multi-view-themes--this-fork). Idea and design: [KrahJohlito](https://github.com/KrahJohlito).
@@ -90,7 +90,7 @@ spacing recalculated. Explicit custom-theme point sizes stay unchanged.
 
 ## Button glyphs
 
-**Settings → Interface → Button Glyphs.** Choose **Theme**, **Built-in**, **Standard** or **White**.
+**Settings → Theme Settings → Button Glyphs.** Choose **Theme**, **Built-in**, **Standard** or **White**.
 
 These are the button pictures in the hint bar. **Theme** uses the theme's own glyphs, or the set its
 `glyph_set` key names. Each of the other choices replaces the glyphs on every theme. **Built-in** is the
@@ -104,7 +104,7 @@ themes. The change shows on the next frame and is saved with your settings. Them
 
 ## Show Legend
 
-**Settings → Interface → Show Legend**, under User Wallpaper (requested by Berion). **Off** hides the button
+**Settings → Interface → Show Legend** (requested by Berion). **Off** hides the button
 legend at the bottom of the menu and of the game info page in every theme; the buttons keep working. **On**,
 the default, draws it as the theme lays it out (its `hints_*` keys). The change shows on the next frame and is
 saved as `show_legend=0`. *Not yet tested on hardware.*
@@ -113,7 +113,7 @@ saved as `show_legend=0`. *Not yet tested on hardware.*
 
 ## List Title and Description
 
-**Settings → Interface → List Title and Description.** Choose **Theme**, **On** or **Off**.
+**Settings → Theme Settings → List Title and Description.** Choose **Theme**, **On** or **Off**.
 
 Some themes show the `Title` and `Description` from each game's CFG beside the game list. **Theme**, the
 default, shows them the way the theme sets them, and a theme can leave them off its list pages with

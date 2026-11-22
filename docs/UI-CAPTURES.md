@@ -1,6 +1,6 @@
 # RiptOPL interface captures
 
-RiptOPL includes one PSBBN theme with six layouts. Open **Settings → Interface → Theme View** to choose one, or hold **L3** while browsing the library to move to the next layout. The button bar stays in the same position across layouts and labels L3 **View/Filter**. Tap it to cycle the library filters, or hold it to change the layout. When both actions are available, a tap shows **Hold for Theme** and a hold shows **Tap for Filter**. Both tips include the L3 icon. See [Controls](CONTROLS.md) for navigation within each layout.
+RiptOPL includes one PSBBN theme with six layouts. Open **Settings → Theme Settings → Theme View** to choose one, or hold **L3** while browsing the library to move to the next layout. The button bar stays in the same position across layouts and labels L3 **View/Filter**. Tap it to cycle the library filters, or hold it to change the layout. When both actions are available, a tap shows **Hold for Theme** and a hold shows **Tap for Filter**. Both tips include the L3 icon. See [Controls](CONTROLS.md) for navigation within each layout.
 
 ## Library views
 
@@ -26,9 +26,13 @@ Press **Square** on a game. The information screen can show CFG metadata and mat
 
 ## Settings and game options
 
-| Settings categories | Game Sources | Interface |
-| --- | --- | --- |
-| ![Settings categories](assets/ui/settings-overview.png) | ![Game Sources showing device and start-mode controls](assets/ui/game-sources.png) | ![Interface settings with theme controls](assets/ui/interface-settings.png) |
+| Settings categories | Game Sources |
+| --- | --- |
+| ![Settings categories](assets/ui/settings-overview.png) | ![Game Sources showing device and start-mode controls](assets/ui/game-sources.png) |
+
+| Interface | Theme Settings |
+| --- | --- |
+| ![Interface with library, readability and video settings](assets/ui/interface-settings.png) | ![Theme Settings with the artwork controls on the page](assets/ui/theme-settings.png) |
 
 Press **Triangle** on a PS2 game for per-game options.
 
@@ -46,7 +50,7 @@ Press **Triangle** on a PS2 game for per-game options.
 
 ## Build and sample library
 
-- **Loader:** standard RiptOPL, LLVM/Clang, source [`e74731d8`](https://github.com/NathanNeurotic/RiptOPL/commit/e74731d8030065ee2949445c329dc26b6f155e68).
+- **Loader:** standard RiptOPL, LLVM/Clang. The library, information and per-game images use [`e74731d8`](https://github.com/NathanNeurotic/RiptOPL/commit/e74731d8030065ee2949445c329dc26b6f155e68). The Settings images use [`6745b338`](https://github.com/NathanNeurotic/RiptOPL/commit/6745b3382d5c18aacd8f859d70332947a0a61b3f).
 - **Emulator:** [RIPPCSX2](https://gitlab.com/akilluminati247/RIPPCSX2). The library and per-game captures are widescreen. The general Settings screens use 4:3.
 - **Library:** twelve non-bootable placeholder disc files on an isolated USB disk image. The titles and serials are used to demonstrate artwork and metadata matching. These captures verify menu rendering and navigation in the emulator. Launch compatibility is checked separately on real hardware.
 - **Artwork:** covers from [xlenore/ps2-covers](https://github.com/xlenore/ps2-covers), matched against the PCSX2 GameIndex. Info artwork from [Luden's OPL artwork archive](https://github.com/Luden02/psx-ps2-opl-art-database). Artwork belongs to its respective owners. See the [capture manifest](assets/ui/capture-manifest.json) for build and image hashes, and [the earlier artwork manifest](https://github.com/NathanNeurotic/RiptOPL/blob/1d4b642eab3a9e54f86197120b7fc637e05fc11f/docs/assets/ui/capture-manifest.json) for the sample artwork sources.

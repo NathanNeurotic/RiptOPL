@@ -335,15 +335,20 @@
       }
     },
     "settings": {
+      "source_commit": "6745b3382d5c18aacd8f859d70332947a0a61b3f",
+      "version": "v1.2.0-Beta-4317-6745b33-PS2BUILD-RiptOPL-LLVM",
+      "elf_sha256": "c929f6bb788fedb21fbd503f92af5cf9571180d6e76766ab35b88527ebb76319",
       "start_view": "list",
       "wide_screen": 0,
       "filter_mode": 0,
-      "steps": "wait:21,start,wait:1,down,down,cross,wait:2,shot,cross,wait:2,shot,circle,wait:1,down,down,down,down,cross,wait:2,shot",
+      "steps": "wait:21,start,wait:1,down,down,cross,wait:2,shot,cross,wait:2,shot,circle,wait:1,down,down,down,down,cross,wait:2,shot,r1,wait:2,shot,down,down,down,cross,wait:1,r1,wait:1,l1,wait:2,shot",
       "source_screenshots": {
-        "settings-overview": "L3-ALIGNED [_]_L3-ALIGNED_20261121193028.png",
-        "game-sources": "L3-ALIGNED [_]_L3-ALIGNED_20261121193032.png",
-        "interface-settings": "L3-ALIGNED [_]_L3-ALIGNED_20261121193038.png"
-      }
+        "settings-overview": "RIPTOPL-THEME-SETTINGS [_]_RIPTOPL-THEME-SETTINGS_20261122013506.png",
+        "game-sources": "RIPTOPL-THEME-SETTINGS [_]_RIPTOPL-THEME-SETTINGS_20261122013510.png",
+        "interface-settings": "RIPTOPL-THEME-SETTINGS [_]_RIPTOPL-THEME-SETTINGS_20261122013516.png",
+        "theme-settings": "RIPTOPL-THEME-SETTINGS [_]_RIPTOPL-THEME-SETTINGS_20261122013520.png"
+      },
+      "captured_on": "2026-11-22"
     },
     "game-controls": {
       "start_view": "coverflow",
@@ -415,22 +420,22 @@
       "file": "settings-overview.png",
       "width": 640,
       "height": 480,
-      "sha256": "41f6d6e01c89f1812b49231fd7bcb0ea553cb0f6448bd043671fddbee22fba91",
-      "bytes": 91376
+      "sha256": "b3d9fa67d104b5b7aaa4923cc89ee9303ea8e99a672ead44c17b5b6d2d0c42b6",
+      "bytes": 94839
     },
     {
       "file": "game-sources.png",
       "width": 640,
       "height": 480,
-      "sha256": "92af99c621a4d9d350915293e5c1552afd6ac20c80e4cb1fe29a1e910b14dfae",
-      "bytes": 123120
+      "sha256": "e426d744a18f1d6d021635bb2bb658cfe98b71b60aa1d1b041554e05a97c6b6c",
+      "bytes": 122898
     },
     {
       "file": "interface-settings.png",
       "width": 640,
       "height": 480,
-      "sha256": "d3e1f548762065e9614f31931a679c26cc48241d63aba9e3bb8b6228393c4111",
-      "bytes": 147783
+      "sha256": "dd4210368acfe45eb50dbccd211349d054d89fb98e5134c962aa00110be82caa",
+      "bytes": 128333
     },
     {
       "file": "game-options.png",
@@ -480,6 +485,13 @@
       "height": 448,
       "sha256": "55cb62a96c3faa02db2d343a6d3396b35792d0d6e8ac06a88774d87f939def73",
       "bytes": 93083
+    },
+    {
+      "file": "theme-settings.png",
+      "width": 640,
+      "height": 480,
+      "sha256": "1cd46cff0d0704bd756d6e3b4bff17078a2f23180278b4a782b7819b2271809d",
+      "bytes": 108565
     }
   ]
 }

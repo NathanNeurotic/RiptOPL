@@ -148,29 +148,42 @@ Settings**.
 | PS2/PS1 Game Display | Both (L3 switches), Mixed, PS2 or PS1 on each device page. See [VCD.md](VCD.md). | `default_game_view` |
 | Applications Display | How the Applications page lists apps. | `apps_display` |
 | Video Mode | The menu's video mode (not the games'; that is GSM Defaults on Game Launching). | `vmode` |
-| Theme | The menu theme. See [INTERFACE.md](INTERFACE.md). | `theme` |
-| Theme View | List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid or Grid (7x2); holding L3 cycles it too. | `theme_view`, `coverflow_count`, `grid_compact` |
 | Library | Pages or All Games. Same setting as Game Sources → All Games List. | `all_games` |
-| Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
-| Boot Theme Wait | Seconds the start-up screen waits for a saved theme's drive. | `boot_theme_wait` |
-| User Wallpaper | Draws `wallpaper.png` from the settings folder behind the menu pages, in any theme (512x512 at most, 8-bit palette). See [INTERFACE.md](INTERFACE.md). | `wallpaper` |
 | Show Legend | Shows the button legend on the menu and info pages; off hides it in every theme. | `show_legend` |
 | Font Size | Small, Default or Large. | `font_size` |
-| Button Glyphs | The theme's glyphs or a built-in set. | `glyph_set` |
-| Coverflow Settings *(Modify)* | Center scale, animation speed, side-cover dimming, grid layout. | `coverflow_scale`, `coverflow_anim`, `coverflow_dim`, `grid_layout` |
-| Artwork Settings *(Modify)* | Cover Art, Disc Artwork, Logo Artwork, Background Art, 3D Save Icons, Cover Art .tar Archive, Art Delay. | `enable_coverart`, `enable_discart`, `enable_logoart`, `enable_bgart`, `enable_save_icons`, `enable_art_tar`, `art_delay` |
-| Colors *(Modify)* | Text, selected, UI, title, background and plasma colours, and Reset Colors. | `text_color`, `sel_text_color`, `ui_text_color`, `title_color`, `bg_color`, `plasma_blend_color` |
 | Notifications | Shows short notices (device found, saved). | `enable_notifications` |
 | Sort Games | Off, A to Z or Last played. | `autosort` |
 | Automatic Refresh | Re-reads game lists while the menu is open. | `autorefresh` |
 | Show CFG Titles in Game Lists | Uses the title from a game's CFG file. See [CFG-TITLES.md](CFG-TITLES.md). | `cfg_titles_in_lists` |
-| List Title and Description | Theme, On or Off. On displays the game's CFG Title and Description in supported list layouts. | `list_cfg_text` |
 | PS1 Duplicates | A PS1 game found for both cores: Both, Ember or POPSTARTER. | `ps1_duplicates` |
 | Show [PS1]/[PS2] Labels | Marks each row with its system. | `game_type_labels` |
 | Widescreen | 16:9 menu. | `wide_screen` |
 | H-POS, V-POS | Moves the picture (kept per video mode). | `xoff`, `yoff` |
 | Overscan | Shrinks the picture to fit the TV. | `overscan` |
 | Show GameID Barcode (Pixel FX) | Sends the game ID to Pixel FX scalers: All, POPSTARTER only, PS2 only or Off. | `apply_gameid` (PS2), `popstarter_retrogem_gameid` (PS1) |
+
+## Theme Settings
+
+Open **Theme Settings** from the Settings index, or press **R1** from **Interface**. The artwork controls are on the page. Layout Settings and Colors have their own editors.
+
+| Row | What it does | Key |
+| --- | --- | --- |
+| Theme | The menu theme. See [INTERFACE.md](INTERFACE.md). | `theme` |
+| Theme View | List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid or Grid (7x2); holding L3 cycles it too. | `theme_view`, `coverflow_count`, `grid_compact` |
+| Layout Settings *(Modify)* | Center scale, animation speed, side-cover dimming, grid layout. | `coverflow_scale`, `coverflow_anim`, `coverflow_dim`, `grid_layout` |
+| Cover Art | Loads cover art for games. | `enable_coverart` |
+| Disc Artwork | Shows disc art and ICO images. | `enable_discart` |
+| Logo Artwork | Shows LGO images. | `enable_logoart` |
+| Background Art | Uses per-game artwork for the background. | `enable_bgart` |
+| 3D Save Icons | Shows a game's save icon where the theme places one. | `enable_save_icons` |
+| Cover Art .tar Archive | Also reads artwork from `ART/art.tar`. | `enable_art_tar` |
+| Art Delay | Frames the cursor must rest on a game before its art starts loading. | `art_delay` |
+| Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
+| User Wallpaper | Draws `wallpaper.png` from the settings folder behind the menu pages, in any theme (512x512 at most, 8-bit palette). See [INTERFACE.md](INTERFACE.md). | `wallpaper` |
+| Colors *(Modify)* | Text, selected, UI, title, background and plasma colours, and Reset Colors. | `text_color`, `sel_text_color`, `ui_text_color`, `title_color`, `bg_color`, `plasma_blend_color` |
+| Button Glyphs | The theme's glyphs or a built-in set. | `glyph_set` |
+| List Title and Description | Theme, On or Off. On displays the game's CFG Title and Description in supported list layouts. | `list_cfg_text` |
+| Boot Theme Wait | Seconds the start-up screen waits for a saved theme's drive. | `boot_theme_wait` |
 
 ## Game Launching
 
