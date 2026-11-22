@@ -200,7 +200,7 @@ typedef struct {
     u32 option;
 } ee_thread_t;
 
-struct cfg { int EnableGSMOp; int GameMode; int gCheatList; int MMCEIGRSettings; int IgrAltCombo; };
+struct cfg { int EnableGSMOp; int GameMode; int gCheatList; int MMCEIGRSettings; int IgrAltCombo; int IgrMenu; };
 static struct cfg g_cfg;
 #define USE_LOCAL_EECORE_CONFIG struct cfg *config = &g_cfg;
 
@@ -262,6 +262,10 @@ static int IGR_Intc_Handler(int cause);
 static void IGR_Thread(void *arg);
 static void (*beforeSleep)(void);
 static int pendingWake, workerWaiting, dropRunningWake, lostRunningWakes, consumedWakes, strayWakeups;
+#ifdef IGR_MENU
+static volatile int IGR_MenuOpen;
+static int IGR_MenuRearm;
+#endif
 static void SleepThread(void)
 {
     nSleep++;
@@ -283,7 +287,12 @@ static void SleepThread(void)
         workerWaiting = 0;
     }
     if (!pendingWake) {
+#ifdef IGR_MENU
+        fprintf(stderr, "FAIL production worker blocked: combo=%d open=%d alt=%d menu=%d rearm=%d pending=%d\n",
+                Pad_Data.combo_type, IGR_MenuOpen, g_cfg.IgrAltCombo, g_cfg.IgrMenu, IGR_MenuRearm, pendingWake);
+#else
         fputs("FAIL production worker blocked without a pending or repeated VBLANK wake\n", stderr);
+#endif
         exit(1);
     }
     pendingWake--;
@@ -332,7 +341,7 @@ static void EnableIntc(int cause) { (void)cause; nEnableIntc++; }
 static void ExitHandler(void) {}
 static void RA_OnVblank(void) { nRA++; }
 /* Reset services are inert; the complete production worker still executes its wait and exit path. */
-static int EnableDebug, workerShutdowns, workerExitCalls, workerRpcCalls, prematureShutdown;
+static int EnableDebug, workerShutdowns, workerExitCalls, workerRpcCalls, prematureShutdown, lastWorkerPoweroff = -1;
 #define DBGCOL(...) ((void)0)
 #define OPL_MODULE_ID_RESETSPU 1
 #define OPL_MODULE_ID_MMCEDRV 2
@@ -344,7 +353,7 @@ static void SifInitRpc(int mode)
     if (!Pad_Data.combo_type)
         prematureShutdown++;
 }
-static void oplIGRShutdown(int poweroff) { (void)poweroff; workerShutdowns++; }
+static void oplIGRShutdown(int poweroff) { lastWorkerPoweroff = poweroff; workerShutdowns++; }
 static int Reset_Iop(const char *arg, int len) { (void)arg; (void)len; return 1; }
 static void Remove_Kernel_Hooks(void) {}
 static void InitializeTLB(void) {}
@@ -364,6 +373,23 @@ static void SifExitIopHeap(void) {}
 static void LoadFileExit(void) {}
 static void SifExitRpc(void) {}
 static void IGR_Exit(s32 code) { (void)code; workerExitCalls++; }
+
+#ifdef IGR_MENU
+#define IGR_FROM_PC 0
+#define IGR_MENU_ARMED 121
+#define IGR_MENU_RESUME 0
+#define IGR_MENU_EXIT 1
+#define IGR_MENU_POWEROFF 2
+#define IGR 0
+#define DBGCOL_BLNK(...) ((void)0)
+static volatile int IGR_MenuOpen;
+static int IGR_MenuRearm, IGR_PadButtons;
+static void IGR_HoldInterrupts(void) {}
+static void IGR_PauseThreads(void) {}
+static int IGR_MenuRun(int buttons) { (void)buttons; return IGR_MENU_EXIT; }
+static void IGR_ResumeGame(void) {}
+static void DisableGSTracker(void) {}
+#endif
 
 @CODE@
 
@@ -385,7 +411,7 @@ static void armPad(void)
 
 static void prepareWorker(void)
 {
-    g_cfg.GameMode = g_cfg.EnableGSMOp = g_cfg.gCheatList = g_cfg.MMCEIGRSettings = 0;
+    g_cfg.GameMode = g_cfg.EnableGSMOp = g_cfg.gCheatList = g_cfg.MMCEIGRSettings = g_cfg.IgrMenu = g_cfg.IgrAltCombo = 0;
     IGR_Thread_ID = 5;
     armPad();
     Pad_Data.combo_type = 0;
@@ -394,6 +420,9 @@ static void prepareWorker(void)
     pendingWake = workerWaiting = dropRunningWake = lostRunningWakes = consumedWakes = strayWakeups = 0;
     nSleep = nWake = nIResetEE = nISuspend = nIPrio = 0;
     workerShutdowns = workerExitCalls = workerRpcCalls = prematureShutdown = 0;
+#ifdef IGR_MENU
+    IGR_MenuOpen = IGR_MenuRearm = 0;
+#endif
     beforeSleep = NULL;
 }
 
@@ -402,6 +431,13 @@ static void requestAtSleep(void)
     padBuf[112] = IGR_PAD_STABLE_V1;
     padBuf[3] = IGR_COMBO_R1_L1_R2_L2;
     padBuf[2] = IGR_COMBO_START_SELECT;
+    IGR_Intc_Handler(0);
+}
+static void requestAltAtSleep(void)
+{
+    padBuf[112] = IGR_PAD_STABLE_V1;
+    padBuf[3] = IGR_COMBO_R1_L1_R2_L2;
+    padBuf[2] = IGR_COMBO_R3_L3;
     IGR_Intc_Handler(0);
 }
 
@@ -570,6 +606,55 @@ STANDARD_CHECKS = r'''
 '''
 
 
+ALT_COMBO_CHECKS = r'''
+    armPad();
+    padBuf[112] = IGR_PAD_STABLE_V1;
+    padBuf[3] = IGR_COMBO_R1_L1_R2_L2;
+    g_cfg.IgrAltCombo = 0;
+    padBuf[2] = IGR_COMBO_START_SELECT;
+    IGR_CheckInputs();
+    CHECK(Pad_Data.combo_type == IGR_COMBO_START_SELECT, "default Start+Select keeps ordinary IGR");
+    Pad_Data.combo_type = 0;
+    padBuf[2] = IGR_COMBO_R3_L3;
+    IGR_CheckInputs();
+    CHECK(Pad_Data.combo_type == IGR_COMBO_R3_L3, "default L3+R3 keeps ordinary power off");
+
+    g_cfg.IgrAltCombo = 1;
+    Pad_Data.combo_type = 0;
+    padBuf[2] = IGR_COMBO_START_SELECT;
+    IGR_CheckInputs();
+    CHECK(Pad_Data.combo_type == 0, "alternative mode leaves Start+Select to the game");
+    Pad_Data.combo_type = 0;
+    padBuf[2] = IGR_COMBO_R3_L3;
+    IGR_CheckInputs();
+    CHECK(Pad_Data.combo_type == IGR_COMBO_START_SELECT, "alternative L3+R3 maps to the ordinary IGR worker");
+
+    prepareWorker();
+    g_cfg.IgrAltCombo = 1;
+    requestAltAtSleep();
+    IGR_Thread(NULL);
+    CHECK(workerShutdowns == 1 && lastWorkerPoweroff == 0 && workerExitCalls == 1,
+          "alternative L3+R3 performs the ordinary reset instead of power off");
+
+    prepareWorker();
+    g_cfg.IgrAltCombo = 0;
+    requestAltAtSleep();
+    IGR_Thread(NULL);
+    CHECK(workerShutdowns == 1 && lastWorkerPoweroff == 1,
+          "default L3+R3 still powers off");
+
+#ifdef IGR_MENU
+    prepareWorker();
+    g_cfg.IgrAltCombo = 1;
+    g_cfg.IgrMenu = 1;
+    IGR_MenuRearm = 1;
+    requestAltAtSleep();
+    IGR_Thread(NULL);
+    CHECK(workerShutdowns == 1 && lastWorkerPoweroff == 0 && workerExitCalls == 1,
+          "alternative L3+R3 exits through the in-game-menu path instead of freezing");
+#endif
+'''
+
 WORKER_CHECKS = r'''
     prepareWorker();
     requestAtSleep();
@@ -706,7 +791,9 @@ def build_and_run(name, defines, code, checks, harness=HARNESS):
 if not failures:
     reset_code = RESET_STUBS + reset_hook
     build_and_run('standard', '', common + handler + worker + install + reset + reset_code,
-                  STANDARD_CHECKS + RESET_CHECKS + WORKER_CHECKS)
+                  STANDARD_CHECKS + ALT_COMBO_CHECKS + RESET_CHECKS + WORKER_CHECKS)
+    build_and_run('standard_with_igr_menu', '#define IGR_MENU\n', common + handler + worker + install + reset + reset_code,
+                  STANDARD_CHECKS + ALT_COMBO_CHECKS + RESET_CHECKS + WORKER_CHECKS)
     # nWake counts iWakeupThread for the RA handler too (the stub is shared), so the check compares it.
     ra_checks = RA_CHECKS.replace('nIWake == 0 + nWake', 'nWake == 1')
     build_and_run('retroachievements', '#define RETROACHIEVEMENTS\n',
