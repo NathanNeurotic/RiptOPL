@@ -352,7 +352,7 @@ static void _rollbackAllocations(void)
             block->tex = NULL;
             block->allocated = 0;
             block->protectUntil = 0;
-            _blockMergeFree(block);
+            block = _blockMergeFree(block);
         }
     }
 }

@@ -29,22 +29,24 @@ program = r'''
 #include <malloc.h>
 #include <math.h>
 typedef unsigned char u8;
+typedef signed char s8;
+typedef unsigned short u16;
 typedef unsigned int u32;
 struct GSTEXTURE { int Width, Height; u8 PSM; u32 *Mem, *Clut, Vram, VramClut; };
-enum { GS_PSM_CT24 = 1, GS_PSM_CT16S = 2 };
+enum { GS_PSM_CT32 = 0, GS_PSM_CT24 = 1, GS_PSM_CT16S = 2, GS_PSM_T8 = 3, GS_PSM_T4 = 4 };
 static int hires;
 static int rmUse16BitArt() { return hires; }
-static u32 gsKit_texture_size_ee(int w, int h, int psm) { return (u32)w * h * (psm == GS_PSM_CT24 ? 4 : 2); }
+static u32 gsKit_texture_size_ee(int w, int h, int psm) { return (u32)w * h * (psm == GS_PSM_CT24 || psm == GS_PSM_CT32 ? 4 : psm == GS_PSM_CT16S ? 2 : 1); }
 static void gsKit_texture_to_psm16(GSTEXTURE *texture) { texture->PSM = GS_PSM_CT16S; }
 constexpr int TEX_BG_MAX_W = 720, TEX_BG_MAX_H = 512;
 @HELPER@
 static int failures;
 #define CHECK(c) do { if (!(c)) { std::printf("FAIL line %d: %s\n", __LINE__, #c); failures++; } } while (0)
-static GSTEXTURE make(int w, int h, const u8 *pixels) {
+static GSTEXTURE make(int w, int h, const u8 *pixels, u8 psm = GS_PSM_CT24) {
     GSTEXTURE t{};
-    t.Width = w; t.Height = h; t.PSM = GS_PSM_CT24;
+    t.Width = w; t.Height = h; t.PSM = psm;
     t.Mem = (u32 *)malloc((size_t)w * h * 4);
-    memcpy(t.Mem, pixels, (size_t)w * h * 3);
+    memcpy(t.Mem, pixels, (size_t)w * h * (psm == GS_PSM_CT32 ? 4 : 3));
     return t;
 }
 int main() {
@@ -63,8 +65,31 @@ int main() {
     CHECK(big.PSM == GS_PSM_CT16S && big.Width == 682 && big.Height == 512);
     free(big.Mem);
 
+    const u8 rgbaPixels[8] = {255,0,248,128, 0,255,0,127};
+    GSTEXTURE rgba = make(2, 1, rgbaPixels, GS_PSM_CT32);
+    texPrepareArtForDisplay(&rgba, 1);
+    CHECK(rgba.PSM == GS_PSM_CT16S && rgba.Width == 2 && rgba.Height == 1);
+    const u16 *rgbaOut = (const u16 *)rgba.Mem;
+    CHECK(rgbaOut[0] == 0xF81F && rgbaOut[1] == 0x03E0);
+    free(rgba.Mem);
+
+    u32 *original;
+    GSTEXTURE indexed8 = make(2, 2, pixels);
+    indexed8.PSM = GS_PSM_T8;
+    original = indexed8.Mem;
+    texPrepareArtForDisplay(&indexed8, 1);
+    CHECK(indexed8.PSM == GS_PSM_T8 && indexed8.Mem == original);
+    free(indexed8.Mem);
+
+    GSTEXTURE indexed4 = make(2, 2, pixels);
+    indexed4.PSM = GS_PSM_T4;
+    original = indexed4.Mem;
+    texPrepareArtForDisplay(&indexed4, 1);
+    CHECK(indexed4.PSM == GS_PSM_T4 && indexed4.Mem == original);
+    free(indexed4.Mem);
+
     GSTEXTURE ordinary = make(2, 2, pixels);
-    u32 *original = ordinary.Mem;
+    original = ordinary.Mem;
     hires = 0;
     texPrepareArtForDisplay(&ordinary, 1);
     CHECK(ordinary.PSM == GS_PSM_CT24 && ordinary.Width == 2 && ordinary.Height == 2 && ordinary.Mem == original);
@@ -96,6 +121,8 @@ small_cap = program.replace("constexpr int TEX_BG_MAX_W = 720, TEX_BG_MAX_H = 51
 small_cap = small_cap.replace("t.Width == 2 && t.Height == 2", "t.Width == 1 && t.Height == 1")
 small_cap = small_cap.replace("out[0] == 10 && out[1] == 10 && out[2] == 10", "out[0] == 25 && out[1] == 25 && out[2] == 25")
 small_cap = small_cap.replace("big.Width == 682 && big.Height == 512", "big.Width == 1 && big.Height == 1")
+small_cap = small_cap.replace("rgba.Width == 2 && rgba.Height == 1", "rgba.Width == 1 && rgba.Height == 1")
+small_cap = small_cap.replace("rgbaOut[0] == 0xF81F && rgbaOut[1] == 0x03E0", "rgbaOut[0] == 0xBDEF")
 
 with tempfile.TemporaryDirectory(prefix="background-art-") as tmp:
     folder = Path(tmp)

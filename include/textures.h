@@ -216,7 +216,7 @@ int texDiscoverArt(GSTEXTURE *texture, const char *path);
 // A PNG or JPG game art picture already in RAM (an ART .tar member); a JPG is shrunk to a full screen when
 // background is set, to 512 on a side otherwise.
 int texLoadArtFromMemory(GSTEXTURE *texture, const void *buf, u32 size, int background);
-// Worker-side HIRES background preparation: smooth bounded resize and CT16S only on 16-bit displays.
+// Worker-side HIRES background preparation: smooth bounded resize and CT24/CT32 to CT16S on 16-bit displays; indexed T4/T8 stay native.
 void texPrepareArtForDisplay(GSTEXTURE *texture, int background);
 // OPL Manager's other name for a piece of art in an ART folder (_BG <-> _BG_00, _SCR <-> _SCR_00,
 // _SCR2 <-> _SCR_01) into out. 1 when there is one.

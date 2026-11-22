@@ -1274,7 +1274,7 @@ static int texArtIsBackground(const char *stemEnd, const char *start)
 
 void texPrepareArtForDisplay(GSTEXTURE *texture, int background)
 {
-    if (!background || !rmUse16BitArt() || texture->PSM != GS_PSM_CT24)
+    if (!background || !rmUse16BitArt() || (texture->PSM != GS_PSM_CT24 && texture->PSM != GS_PSM_CT32))
         return;
 
     int srcW = texture->Width, srcH = texture->Height;
@@ -1293,7 +1293,8 @@ void texPrepareArtForDisplay(GSTEXTURE *texture, int background)
         outH = 1;
 
     if (outW != srcW || outH != srcH) {
-        u32 *pixels = static_cast<u32 *>(memalign(128, gsKit_texture_size_ee(outW, outH, GS_PSM_CT24)));
+        int channels = texture->PSM == GS_PSM_CT32 ? 4 : 3;
+        u32 *pixels = static_cast<u32 *>(memalign(128, gsKit_texture_size_ee(outW, outH, texture->PSM)));
         if (pixels == NULL)
             return;
         const u8 *src = reinterpret_cast<const u8 *>(texture->Mem);
@@ -1310,11 +1311,11 @@ void texPrepareArtForDisplay(GSTEXTURE *texture, int background)
                     sx = 0.0f;
                 int x0 = static_cast<int>(floorf(sx)), x1 = x0 + 1 < srcW ? x0 + 1 : srcW - 1;
                 float fx = sx - x0;
-                for (int c = 0; c < 3; c++) {
-                    float top = src[(y0 * srcW + x0) * 3 + c] * (1.0f - fx) + src[(y0 * srcW + x1) * 3 + c] * fx;
-                    float bottom = src[(y1 * srcW + x0) * 3 + c] * (1.0f - fx) + src[(y1 * srcW + x1) * 3 + c] * fx;
+                for (int c = 0; c < channels; c++) {
+                    float top = src[(y0 * srcW + x0) * channels + c] * (1.0f - fx) + src[(y0 * srcW + x1) * channels + c] * fx;
+                    float bottom = src[(y1 * srcW + x0) * channels + c] * (1.0f - fx) + src[(y1 * srcW + x1) * channels + c] * fx;
                     int value = static_cast<int>((top * (1.0f - fy) + bottom * fy) + 0.5f);
-                    dst[(y * outW + x) * 3 + c] = static_cast<u8>(value);
+                    dst[(y * outW + x) * channels + c] = static_cast<u8>(value);
                 }
             }
         }
@@ -1323,7 +1324,36 @@ void texPrepareArtForDisplay(GSTEXTURE *texture, int background)
         texture->Width = outW;
         texture->Height = outH;
     }
-    gsKit_texture_to_psm16(texture);
+    if (texture->PSM == GS_PSM_CT24) {
+        gsKit_texture_to_psm16(texture);
+        return;
+    }
+
+    static const s8 ditherMatrix[16] = {-4, 2, -3, 3, -2, 1, -1, -3, 3, -4, 2, 1, -1, 2, -2, 3};
+    u32 *pixels = static_cast<u32 *>(memalign(128, gsKit_texture_size_ee(outW, outH, GS_PSM_CT16S)));
+    if (pixels == NULL)
+        return;
+    const u8 *src = reinterpret_cast<const u8 *>(texture->Mem);
+    u16 *dst = reinterpret_cast<u16 *>(pixels);
+    for (int y = 0; y < outH; y++) {
+        for (int x = 0; x < outW; x++) {
+            int i = y * outW + x;
+            const s8 dither = ditherMatrix[(y & 3) * 4 + (x & 3)];
+            auto to5 = [dither](int value) -> u16 {
+                value += dither;
+                if (value > 255)
+                    return 31;
+                if (value < 0)
+                    return 0;
+                return static_cast<u16>(value >> 3);
+            };
+            u16 alpha = src[i * 4 + 3] & 0x80 ? 0x8000 : 0;
+            dst[i] = alpha | (to5(src[i * 4 + 2]) << 10) | (to5(src[i * 4 + 1]) << 5) | to5(src[i * 4]);
+        }
+    }
+    free(texture->Mem);
+    texture->Mem = pixels;
+    texture->PSM = GS_PSM_CT16S;
 }
 
 // A PNG or JPG game art picture already in RAM (an ART .tar member). background picks the box a JPG is shrunk to.

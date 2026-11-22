@@ -277,6 +277,30 @@ int main() {
     CHECK(!gsKit_TexManager_starved());
     releaseNow(&s); releaseNow(&oversized); releaseNow(&small);
 
+    // Seventy protected blocks plus forty different requests recover through one degraded complete frame.
+    reset(1);
+    std::vector<GSTEXTURE> displayed(70), requested(40);
+    for (GSTEXTURE &t : displayed) t = makeTexture(320, 64);
+    for (GSTEXTURE &t : requested) t = makeTexture(320, 64);
+    for (GSTEXTURE &t : displayed)
+        CHECK(gsKit_TexManager_bind(&global, &t) != GSKIT_TEXMGR_BIND_DEFERRED);
+    gsKit_TexManager_commitFrame(1);
+    int deferred = 0;
+    for (GSTEXTURE &t : requested) {
+        if (gsKit_TexManager_bind(&global, &t) == GSKIT_TEXMGR_BIND_DEFERRED)
+            deferred++;
+    }
+    CHECK(deferred > 0 && gsKit_TexManager_starved());
+    gsKit_TexManager_commitFrame(0);
+    for (GSTEXTURE &t : requested)
+        (void)gsKit_TexManager_bind(&global, &t);
+    CHECK(!gsKit_TexManager_starved());
+    gsKit_TexManager_commitFrame(1);
+    for (GSTEXTURE &t : requested)
+        CHECK(gsKit_TexManager_bind(&global, &t) != GSKIT_TEXMGR_BIND_DEFERRED);
+    for (GSTEXTURE &t : displayed) releaseNow(&t);
+    for (GSTEXTURE &t : requested) releaseNow(&t);
+
     // gsKit's framebuffer allocator reinitializes the texture manager; HIRES protection must survive it.
     reset(1);
     GSTEXTURE q = makeTexture(64, 64, true);
