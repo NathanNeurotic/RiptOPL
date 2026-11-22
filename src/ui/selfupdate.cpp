@@ -24,6 +24,7 @@
 #include "include/guiwait.h"
 #include "include/hdd.h"
 #include "include/hddint.h"
+#include "include/host.h"
 #include "include/selfupdate.h"
 #include "include/sound.h"
 #include "include/supportbase.h"
@@ -506,7 +507,7 @@ static void suRelaunch(void)
         suJoin(bootPath, sizeof(bootPath), gBootDir, gBootElfName, "") == 0 &&
         elfldrArgsFit(target.path, 1, argv, target.apa ? "-la=RH" : "-reset-iop", NULL)) {
         // Load from the live mount, but give the new instance the physical boot identity.
-        deinitTerminal(sbLoaderDeinitException(target.path) | KEEPIOP_EXCEPTION, IO_MODE_SELECTED_ALL_SPARE);
+        host::app().deinitTerminal(sbLoaderDeinitException(target.path) | KEEPIOP_EXCEPTION, IO_MODE_SELECTED_ALL_SPARE);
         sysLoadELFApp(target.path, "", 1, argv, 1, target.apa);
         // The UI has already shut down if the loader unexpectedly returns.
         LoadExecPS2("rom0:OSDSYS", 0, NULL);
