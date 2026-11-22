@@ -35,9 +35,6 @@ enum { SU_ELF_UNKNOWN,
 #define SU_ELF_HEADER_MAX 512
 int suElfFormat(const unsigned char *head, int len);
 
-/* Turn a qualified hdd0: boot directory into an APA partition and an absolute path within it. */
-int suApaDirectory(const char *dir, char *partition, int partition_size, char *path, int path_size);
-
 #ifdef __cplusplus
 }
 

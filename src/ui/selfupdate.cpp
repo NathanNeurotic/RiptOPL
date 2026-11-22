@@ -22,6 +22,7 @@
 #include "include/ethsupport.h"
 #include "include/ratls.h"
 #include "include/guiwait.h"
+#include "include/hdd.h"
 #include "include/hddint.h"
 #include "include/selfupdate.h"
 #include "include/sound.h"
@@ -140,8 +141,8 @@ static bool suResolveTarget(SuTarget &target, bool writing)
 {
     if (gBootElfName[0] == '\0' || strpbrk(gBootElfName, "/\\:") != NULL)
         return false;
-    char partition[38], directory[256];
-    if (suApaDirectory(gBootDir, partition, sizeof(partition), directory, sizeof(directory)) == 0) {
+    char partition[APA_IDMAX + 6], directory[256];
+    if (hddParseBootDirectory(gBootDir, partition, sizeof(partition), directory, sizeof(directory)) == 0) {
         target.apa = true;
         // The updater runs on the I/O worker, which also owns the temporary PFS scan slot.
         const char *device = "pfs0:";

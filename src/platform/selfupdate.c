@@ -178,33 +178,3 @@ int suElfFormat(const unsigned char *head, int len)
         return SU_ELF_PACKED;
     return SU_ELF_UNKNOWN;
 }
-
-int suApaDirectory(const char *dir, char *partition, int partition_size, char *path, int path_size)
-{
-    /* The launcher can report hdd0:__system:pfs:/launcher or hdd0:/__system/launcher. */
-    if (strncmp(dir, "hdd0:", 5))
-        return -1;
-    const char *label = dir + 5;
-    if (*label == '/')
-        label++;
-    size_t n = strcspn(label, ":/");
-    if (n == 0 || n > 32 || n + 5 >= (size_t)partition_size)
-        return -1;
-    const char *folder = label + n;
-    if (*folder == ':') {
-        if (!strncmp(folder, ":pfs:", 5))
-            folder += 5;
-        else if (!strncmp(folder, ":pfs0:", 6) || !strncmp(folder, ":pfs1:", 6))
-            folder += 6;
-        else
-            return -1;
-    }
-    if (strchr(folder, ':') || strchr(folder, '\\'))
-        return -1;
-    /* Only use the named partition and the exact launch directory. */
-    int written = snprintf(path, (size_t)path_size, "%s%s", *folder == '/' ? "" : "/", folder);
-    if (written < 0 || written >= path_size)
-        return -1;
-    snprintf(partition, (size_t)partition_size, "hdd0:%.*s", (int)n, label);
-    return 0;
-}

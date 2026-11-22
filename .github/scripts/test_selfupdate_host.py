@@ -26,6 +26,9 @@ DRIVER = r"""
 #include <string.h>
 #include "include/selfupdate.h"
 
+#define APA_IDMAX 32
+@APA_BOOT_PARSER@
+
 static char *slurp(const char *path, int *len)
 {
     FILE *f = fopen(path, "rb");
@@ -65,7 +68,7 @@ int main(int argc, char **argv)
         printf(rc == 0 ? "%s\n" : "FAIL\n", out);
     } else if (argc == 3 && !strcmp(argv[1], "apa")) {
         char partition[38], directory[256];
-        int rc = suApaDirectory(argv[2], partition, sizeof(partition), directory, sizeof(directory));
+        int rc = hddParseBootDirectory(argv[2], partition, sizeof(partition), directory, sizeof(directory));
         printf(rc == 0 ? "%s|%s\n" : "FAIL\n", partition, directory);
     } else if (argc == 3 && (!strcmp(argv[1], "elf") || !strcmp(argv[1], "format"))) {
         int len = 0;
@@ -126,7 +129,9 @@ def main():
     source_checks()
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        (tmp / "driver.c").write_text(DRIVER)
+        hdd = (ROOT / "src/platform/hdd.cpp").read_text(encoding="utf-8")
+        parser = hdd[hdd.index("int hddParseBootDirectory("):].split("\n}\n", 1)[0] + "\n}"
+        (tmp / "driver.c").write_text(DRIVER.replace("@APA_BOOT_PARSER@", parser))
         exe = tmp / ("driver.exe" if os.name == "nt" else "driver")
         subprocess.run([CC, "-O1", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT), str(tmp / "driver.c"),
                         str(ROOT / "src/platform/selfupdate.c"), "-o", str(exe)], check=True)
