@@ -1,5 +1,5 @@
 /* Check for Updates: the portable half (src/platform/selfupdate.c, host-tested) and the menu entry
-   (src/ui/selfupdate.cpp). Built only into standard builds that have a release channel
+   (src/ui/selfupdate.cpp). Built into configurations that have a release asset
    (RIPTOPL_UPDATER, tools/build_edition.py update_channel). */
 #ifndef __SELFUPDATE_H__
 #define __SELFUPDATE_H__
@@ -28,6 +28,15 @@ int suJoin(char *out, int size, const char *dir, const char *name, const char *s
 
 /* 1 when the first bytes are a 32-bit little-endian MIPS executable ELF header. */
 int suLooksLikeElf(const unsigned char *head, int len);
+
+enum { SU_ELF_UNKNOWN,
+       SU_ELF_PACKED,
+       SU_ELF_UNPACKED };
+#define SU_ELF_HEADER_MAX 512
+int suElfFormat(const unsigned char *head, int len);
+
+/* Turn a qualified hdd0: boot directory into an APA partition and an absolute path within it. */
+int suApaDirectory(const char *dir, char *partition, int partition_size, char *path, int path_size);
 
 #ifdef __cplusplus
 }

@@ -40,7 +40,7 @@ for source in sorted((MBED / "library").glob("*.c")):
     assert re.search(r"SPDX-License-Identifier:.*Apache-2\.0", head), f"{source.name}: no Apache-2.0 SPDX line"
 
 # The RA editions compile mbedTLS with their configuration, as before. Of the others, only a build with an
-# update channel (Check for Updates: a standard build, tools/build_edition.py update_channel) compiles it,
+# update channel (tools/build_edition.py update_channel) compiles it,
 # with the slim TLS 1.2 configuration; every other build names neither mbedTLS nor the TLS client.
 sys.path.insert(0, str(ROOT / "tools"))
 import build_edition  # noqa: E402
@@ -48,7 +48,7 @@ import build_edition  # noqa: E402
 pattern = re.compile(r"mbedtls|ratls|selfupdate|RIPTOPL_UPDATE", re.I)
 SLIM = r'MBEDTLS_CONFIG_FILE=\"riptopl_mbedtls_slim_config.h\"'
 for edition in build_edition.EDITIONS:
-    for configuration, toolchain in [(c, "gcc") for c in build_edition.CONFIGURATIONS] + [("standard", "llvm")]:
+    for configuration, toolchain in [(c, t) for c in build_edition.CONFIGURATIONS for t in ("gcc", "llvm")]:
         try:
             config = build_edition.definition(edition, configuration, toolchain)
         except ValueError:
@@ -59,12 +59,14 @@ for edition in build_edition.EDITIONS:
         if channel is not None:
             assert {"src/platform/selfupdate.c", "src/ui/selfupdate.cpp"} <= set(main["sources"]), edition
             assert "RIPTOPL_UPDATER" in main["defines"], edition
-            assert set(build_edition.update_defines(channel)) <= set(main["defines"]), edition
+            tag, elf = channel
+            assert {f"RIPTOPL_UPDATE_CHANNEL={tag}", f"RIPTOPL_UPDATE_ASSET={elf}"} <= set(main["defines"]), edition
             # No quoted strings on the main target (test_release_editions.py compiles with its defines).
             assert not any('"' in d for d in main["defines"]), edition
-            cpp = (ROOT / "src/ui/selfupdate.cpp").read_text(encoding="utf-8")
-            for define, value in zip(build_edition.update_defines(channel), channel):
-                assert re.search(rf"defined\({define}\)\n#define RIPTOPL_UPDATE_(TAG|ELF) \"{re.escape(value)}\"", cpp), define
+            raw_defines = [d for d in main["defines"] if d.startswith("RIPTOPL_UPDATE_RAW_ASSET=")]
+            expected = build_edition.update_asset(edition, configuration, unpacked=True)
+            assert raw_defines == ([f"RIPTOPL_UPDATE_RAW_ASSET={expected}"]
+                                   if build_edition.publishes_unpacked(edition, configuration) else [])
         else:
             assert "RIPTOPL_UPDATER" not in main["defines"] and "selfupdate" not in text, f"{edition}/{configuration}"
         if build_edition.EDITIONS[edition]["ra"]:
@@ -97,11 +99,14 @@ assert build_edition.update_channel("riptopl", toolchain="gcc") is None
 assert build_edition.update_channel("ra") == ("rolling-ra", "RIPTOPL-RA.ELF")
 assert build_edition.update_channel("ra", toolchain="gcc") == ("rolling-ra", "RIPTOPL-RA.ELF")
 assert build_edition.update_channel("ra", toolchain="llvm") is None
-for configuration in build_edition.CONFIGURATIONS:
-    if configuration != "standard":
-        assert build_edition.update_channel("riptopl", configuration) is None, configuration
+assert build_edition.update_channel("riptopl", "debug_uart") == ("rolling", "RIPTOPL-DEBUG-UART.ELF")
+assert build_edition.update_channel("ra", "pademu0") == ("rolling-ra", "RIPTOPL-RA-PADEMU0.ELF")
+assert build_edition.update_channel("ra", "debug_uart") is None
 for lite in build_edition.LITES:
     assert build_edition.update_channel(lite) is None
+    for device in build_edition.LITE_DEVICES:
+        tag, asset = build_edition.update_channel(lite, device=device)
+        assert tag == "rolling-lite" and asset == build_edition.elf_name(device, lite == "lite_ra")
 # The roots are embedded by tools/assets.py for RA alone.
 assets = (ROOT / "tools/assets.py").read_text(encoding="utf-8")
 ra_branch = assets[assets.index('    if os.environ.get("RIPTOPL_RA") == "1":'):]

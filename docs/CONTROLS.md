@@ -45,14 +45,16 @@ and every menu keep the standard layout.
 | **Right stick** | — | — | Hold to one side: turn the selected case over to its back cover, and back |
 
 When a Coverflow theme shows a device bar, press **Down** to focus it and **Left / Right**
-to switch devices. Press **Up**, **Cross** or **Circle** to return to the covers.
+to switch devices and immediately browse the new device's games. Press **Up**, **Cross** or
+**Circle** to leave the bar without choosing a different device. **L1 / R1** leave the bar and jump through the current list.
 PSBBN Flow and Coverflow themes without the bar use **Up / Down** to switch devices.
 
 In Grid's device sidebar, **Up / Down** switch device page (the grid follows at once) and **Right**, **Cross** or **Circle** go back to the covers. A theme can drop the sidebar (`<block>_devices=0`); Up/Down then switch device page from the top and bottom rows, and Left on the first column stays there.
 
 Custom layouts that display only one title row also jump 15 titles, including on the info screen. A jump stops at the first or last title if fewer than 15 remain. Press again to wrap. Multi-row lists page by their visible row count.
 
-Every other button is unchanged, including **R3 = toggle Favorite**. While the Grid's device sidebar is open, only Up/Down, Right, Cross, Circle, START and R3 work; go back to the covers for the rest.
+While the Grid sidebar is open, **L1 / R1** return to the covers and turn a page.
+**L2 / R2** reach the first or last title from either device selector. **R3** still toggles Favorite.
 
 ### Notes on individual buttons
 

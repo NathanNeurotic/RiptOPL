@@ -108,13 +108,11 @@ manifests and checksums, plus the supported Lite devices. Publication is restric
 to verified integration pushes or an explicitly authorized dispatch; pull-request
 builds remain Actions artifacts. See [release channels and packaging](ROLLING_RELEASE.md).
 
-**Updating:** the standard RiptOPL and RetroAchievements editions have a
-**Check for Updates** entry. They query their own channel and verify the downloaded
-ELF before replacement. Updating requires RiptOPL to run from a memory card or
-USB/exFAT drive, internet access and the correct console clock
-(**Settings → General & System → Date and Time**). Lite, debug and other
-nonstandard builds do not offer in-app updates. See
-[Check for Updates](docs/CHECK-FOR-UPDATES.md). Console verification is pending.
+**Updating:** published RiptOPL, RetroAchievements and RiptOPLite builds use
+**Check for Updates** to download a verified replacement for their own configuration.
+The updater preserves packed or unpacked format, including RetroAchievements ELFs
+launched from a qualified APA path such as `hdd0:__system:pfs:/launcher/RIPTOPL-RA.ELF`.
+See [Check for Updates](docs/CHECK-FOR-UPDATES.md) for supported paths and first-time setup.
 
 
 Hardware results in the feature documentation were measured on the legacy C edition unless a

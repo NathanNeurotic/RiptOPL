@@ -8,6 +8,7 @@ order: the digest is compared before the running ELF is touched, and the ELF is 
 """
 import os
 import re
+import struct
 import shutil
 import subprocess
 import sys
@@ -62,12 +63,15 @@ int main(int argc, char **argv)
         char out[64];
         int rc = suJoin(out, atoi(argv[5]), argv[2], argv[3], argv[4]);
         printf(rc == 0 ? "%s\n" : "FAIL\n", out);
-    } else if (argc == 3 && !strcmp(argv[1], "elf")) {
-        unsigned char head[64];
+    } else if (argc == 3 && !strcmp(argv[1], "apa")) {
+        char partition[38], directory[256];
+        int rc = suApaDirectory(argv[2], partition, sizeof(partition), directory, sizeof(directory));
+        printf(rc == 0 ? "%s|%s\n" : "FAIL\n", partition, directory);
+    } else if (argc == 3 && (!strcmp(argv[1], "elf") || !strcmp(argv[1], "format"))) {
         int len = 0;
-        char *data = slurp(argv[2], &len);
-        memcpy(head, data, len < 64 ? len : 64);
-        printf("%d\n", suLooksLikeElf(head, len < 64 ? len : 64));
+        unsigned char *data = (unsigned char *)slurp(argv[2], &len);
+        printf("%d\n", !strcmp(argv[1], "format") ? suElfFormat(data, len) : suLooksLikeElf(data, len));
+        free(data);
     } else {
         return 2;
     }
@@ -104,14 +108,15 @@ def source_checks():
     inst = src[src.index("static void suInstallWorker"):]
     inst = inst[:inst.index("\n}\n")]
     # The digest is compared before anything touches the running ELF, and a mismatch removes the download.
-    a = inst.index("fileXioOpen(cur,")
-    check("verify_before_swap", inst.index("memcmp(") < a, "digest compare must come first")
-    # The ELF is overwritten in place: opened with O_TRUNC, no second file, no rename, no delete, no backup.
-    check("overwrite_in_place", "SU_FIO_WRONLY | SU_FIO_CREAT | SU_FIO_TRUNC" in inst[a:a + 200], "cur opened with CREAT | TRUNC through fileXioOpen, as Launchstation does")
-    check("no_second_file", not re.search(r"unlink\(|rename\(|\.NEW|bak", inst.lower().replace("break", "")), "no unlink, rename, .NEW or backup")
+    a = inst.index("suInstallApa(")
+    check("verify_before_swap", inst.index("memcmp(") < a and inst.index("suElfFormat(") < a)
+    check("overwrite_in_place", "suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f)" in inst)
+    apa = src[src.index("static int suInstallApa("):src.index("static void suInstallWorker(")]
+    check("stage_before_apa_swap", apa.index("suWriteElf(staged,") < apa.index("fileXioRename(path, backup)"))
+    check("rollback_apa_swap", "fileXioRename(backup, path)" in apa)
     # Redirects are followed only to GitHub's hosts, and only a few times.
     check("redirects_allowlisted", "suSplitUrl(" in src and re.search(r"for \(hop = 0; hop < 4", src) is not None)
-    callers = sorted(str(p.relative_to(ROOT)) for p in (ROOT / "src").rglob("*.c*")
+    callers = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "src").rglob("*.c*")
                      if "selfUpdateMenu" in p.read_text(encoding="utf-8", errors="replace"))
     check("no_auto_check", callers == ["src/ui/menusys.cpp", "src/ui/selfupdate.cpp"],
           f"the check runs only from the menu: {callers}")
@@ -122,7 +127,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         (tmp / "driver.c").write_text(DRIVER)
-        exe = tmp / "driver"
+        exe = tmp / ("driver.exe" if os.name == "nt" else "driver")
         subprocess.run([CC, "-O1", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT), str(tmp / "driver.c"),
                         str(ROOT / "src/platform/selfupdate.c"), "-o", str(exe)], check=True)
 
@@ -197,6 +202,34 @@ def main():
                                  ("short", mips[:19], "0")):
             (tmp / "head.bin").write_bytes(data)
             check(f"elf_{name}", run(exe, "elf", tmp / "head.bin") == want)
+
+        def elf_format(data_offset, address, align, headers=1):
+            header = bytearray(mips[:52])
+            struct.pack_into("<II", header, 24, address, 52)
+            struct.pack_into("<HH", header, 42, 32, headers)
+            header.extend(struct.pack("<8I", 1, data_offset, address, address, 16, 16, 7, align))
+            header.extend(bytes(32 * (headers - 1)))
+            return header
+
+        packed = elf_format(96, 0x01B00000, 16)
+        for name, data, want in (
+                ("packed", packed, "1"),
+                ("gnu_unpacked", elf_format(128, 0x00100000, 128), "2"),
+                ("llvm_unpacked", elf_format(256, 0x00100000, 128, 3), "2"),
+                ("short_program_headers", packed[:83], "0"),
+                ("unknown_layout", elf_format(128, 0x00200000, 128), "0")):
+            (tmp / "head.bin").write_bytes(data)
+            check(f"format_{name}", run(exe, "format", tmp / "head.bin") == want)
+
+        for directory, want in (
+                ("hdd0:__system:pfs:/launcher", "hdd0:__system|/launcher"),
+                ("hdd0:/__system/launcher", "hdd0:__system|/launcher"),
+                ("hdd0:__system:pfs0:launcher", "hdd0:__system|/launcher"),
+                ("hdd0:+OPL:pfs:", "hdd0:+OPL|/"),
+                ("pfs0:/launcher", "FAIL"),
+                ("hdd0::pfs:/launcher", "FAIL"),
+                ("hdd0:__system:other:/launcher", "FAIL")):
+            check(f"apa_{directory}", run(exe, "apa", directory) == want)
 
     if failures:
         print(f"{len(failures)} failure(s)")

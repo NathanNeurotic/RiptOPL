@@ -2089,11 +2089,41 @@ static void menuPrevV()
     }
 }
 
+static constexpr int carouselPageStep = 15;
+
+static void menuCarouselPage(int dir)
+{
+    menu_item_t *page = selected_item->item;
+    submenu_list_t *previous = page->current;
+    if (previous == NULL)
+        return;
+    submenu_list_t *target = previous;
+    if (dir < 0) {
+        if (target->prev == NULL) {
+            while (target->next != NULL)
+                target = target->next;
+        } else {
+            for (int i = 0; i < carouselPageStep && target->prev != NULL; i++)
+                target = target->prev;
+        }
+    } else if (target->next == NULL) {
+        target = page->submenu;
+    } else {
+        for (int i = 0; i < carouselPageStep && target->next != NULL; i++)
+            target = target->next;
+    }
+    page->current = page->pagestart = target;
+    if (target != previous) {
+        sfxPlay(SFX_CURSOR);
+        thmTriggerCoverflowAnim(dir);
+    }
+}
+
 static int menuPageStep()
 {
     // Use a 15-title browse step when the view has no multi-row page.
     const int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
-    return displayed == 1 ? 15 : displayed;
+    return displayed == 1 ? carouselPageStep : displayed;
 }
 
 static void menuNextPage()
@@ -2686,6 +2716,12 @@ static void menuGridSidebarInput(void)
         menuPrevH();
     } else if (getKey(KEY_DOWN)) {
         menuNextH();
+    } else if (getKey(KEY_L1)) {
+        gGridSidebarOpen = 0;
+        menuGridPage(-1);
+    } else if (getKey(KEY_R1)) {
+        gGridSidebarOpen = 0;
+        menuGridPage(1);
     } else if (getKeyOn(KEY_RIGHT) || getKeyOn(KEY_CROSS) || getKeyOn(KEY_CIRCLE)) {
         gGridSidebarOpen = 0;
         sfxPlay(SFX_CURSOR);
@@ -2712,10 +2748,17 @@ static void menuCoverflowDeviceBarInput(void)
         gCoverflowDeviceBarFocused = 0;
         return;
     }
-    if (getKey(KEY_LEFT)) {
+    menu_list_t *previous = selected_item;
+    if (getKeyOn(KEY_LEFT)) {
         menuPrevH();
-    } else if (getKey(KEY_RIGHT)) {
+    } else if (getKeyOn(KEY_RIGHT)) {
         menuNextH();
+    } else if (getKey(KEY_L1)) {
+        gCoverflowDeviceBarFocused = 0;
+        menuCarouselPage(-1);
+    } else if (getKey(KEY_R1)) {
+        gCoverflowDeviceBarFocused = 0;
+        menuCarouselPage(1);
     } else if (getKeyOn(KEY_UP) || getKeyOn(KEY_CROSS) || getKeyOn(KEY_CIRCLE)) {
         gCoverflowDeviceBarFocused = 0;
         sfxPlay(SFX_CURSOR);
@@ -2724,6 +2767,8 @@ static void menuCoverflowDeviceBarInput(void)
         menuInitMainMenu();
         guiSwitchScreen(GUI_SCREEN_MENU);
     }
+    if (selected_item != previous)
+        gCoverflowDeviceBarFocused = 0; // the newly selected device is ready to browse
 }
 
 static int menuGridAtRowEnd(void)
@@ -2844,6 +2889,19 @@ void menuHandleInputMain()
     item_list_t *support = selected_item != NULL && selected_item->item != NULL ? static_cast<item_list_t *>(selected_item->item->userdata) : NULL;
     int viewPending = support != NULL && libViewPending(support->mode);
 
+    const bool home = getKeyOn(KEY_L2);
+    if (home || getKeyOn(KEY_R2)) {
+        if (selected_item != NULL && selected_item->item != NULL) {
+            gGridSidebarOpen = 0;
+            gCoverflowDeviceBarFocused = 0;
+            if (home)
+                menuFirstPage();
+            else
+                menuLastPage();
+        }
+        return;
+    }
+
     if (menuGridSidebarFocused()) {
         // R3 still marks the selected game (read before the sidebar can move to another device this frame)
         if (getKeyOn(KEY_R3) && !viewPending && selected_item->item->fav)
@@ -2891,17 +2949,17 @@ void menuHandleInputMain()
     } else if (getKey(KEY_L1)) {
         if (menuPageIsGrid())
             menuGridPage(-1);
+        else if (gTheme->coverflow)
+            menuCarouselPage(-1);
         else
             menuPrevPage();
     } else if (getKey(KEY_R1)) {
         if (menuPageIsGrid())
             menuGridPage(1);
+        else if (gTheme->coverflow)
+            menuCarouselPage(1);
         else
             menuNextPage();
-    } else if (getKeyOn(KEY_L2)) { // home
-        menuFirstPage();
-    } else if (getKeyOn(KEY_R2)) { // end
-        menuLastPage();
     } else if (getKeyOn(KEY_R3)) { // toggle favourite
         if (!viewPending && selected_item->item->fav)
             selected_item->item->fav(selected_item->item);

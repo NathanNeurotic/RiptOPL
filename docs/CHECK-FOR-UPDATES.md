@@ -6,26 +6,29 @@ until you choose the entry: RiptOPL never checks or downloads on its own.
 
 ## Which builds have it
 
-Only two full standard editions support Check for Updates:
-
-| Build | GitHub release | ELF replaced |
+| Build | GitHub release | Matched by |
 | --- | --- | --- |
-| RiptOPL (LLVM) | `rolling` | `RIPTOPL.ELF` |
-| RetroAchievements (GCC) | `rolling-ra` | `RIPTOPL-RA.ELF` |
+| RiptOPL (LLVM) | `rolling` | Standard, controller variants and diagnostic configurations |
+| RetroAchievements (GCC) | `rolling-ra` | Standard or PadEmu Off, packed or unpacked |
+| RiptOPLite (GCC) | `rolling-lite` | Selected device and RetroAchievements support |
 
 Korium, IncebtIon and the old independent LLVM channel are retired. To move
 from one of those channels, install a current standard RiptOPL ELF manually
 once. Older builds continue checking the release tag they were built for.
 
-RiptOPLite, debug and variant builds do not have it, so a build is never replaced by a different kind
-of build. The channel is fixed at build time (`tools/build_edition.py update_channel`).
+Install an updater-capable build manually once if your existing build lacks this update path.
+The release channel and configuration are fixed at build time. Where a release ships two formats,
+the updater reads the running ELF's headers from disk to select the asset. The file can be renamed.
+Local builds using an alternate compiler have no matching asset on the rolling channels.
 
 ## What it needs
 
-- RiptOPL started from a memory card (`mc0:`/`mc1:`) or a USB/exFAT drive (`massN:`). Other places
-  (HDD, network, MMCE) are refused before anything is downloaded.
+- RiptOPL started from a memory card (`mc0:`/`mc1:`), a directly accessible MMCE card (`mmceN:`),
+  a BDM drive (`massN:`), or an internal APA partition named in the launch path. PSBBN Definitive
+  Project's launcher can use `hdd0:__system:pfs:/launcher/RIPTOPL-RA.ELF`. An unqualified PFS mount
+  alias has no partition identity after the IOP resets.
 - A network adapter with internet access. It uses the same network settings as SMB (Settings > Network).
-  While UDPBD or UDPFS owns the network adapter, it refuses and says so.
+  RiptOPL temporarily switches the adapter away from UDPBD or UDPFS when necessary.
 - The console clock set to the current date (Settings > General & System > Date and Time): the GitHub certificates cannot be checked without it.
 
 ## What it does
@@ -36,14 +39,16 @@ of build. The channel is fixed at build time (`tools/build_edition.py update_cha
    or older: "already the newest". A build without a number (a local build) is not compared.
 3. On your OK, downloads the ELF into memory. The first bytes must be a PS2 ELF header; the size is
    limited to 8 MB.
-4. Checks the SHA-256 of what was downloaded against `SHA256SUMS.txt`. A mismatch changes nothing.
-5. Overwrites the running ELF in place under its own name, as Launchstation does. No second file, rename or backup is made.
-   The old ELF is emptied before the new one is written, so a card too full for the new ELF can leave it
-   damaged. If the write fails part-way the ELF may be damaged: the message
-   gives the step (1 open, 2 write, 3 close) and the error code, and the ELF must be copied to the
-   device again.
+4. Checks the SHA-256 and packing format before writing.
+5. On APA, writes a sibling `.update` file and flushes it before moving the original to `.bak` and
+   renaming the new file into place. The partition needs space for the new ELF alongside the old one.
+   If an interrupted swap leaves a `.bak` and the launcher file is missing, rename the backup to the
+   original filename before retrying. An existing staging or backup file stops a new install.
+   Memory-card, BDM and MMCE installs overwrite in place to minimize space use. If a write fails in
+   place, reinstall the ELF manually. Error messages include the write step and error code.
 
-The new build starts the next time RiptOPL is opened. Settings, themes and other files are not touched.
+After installation, choose whether to launch the updated ELF now or start it the next time you open RiptOPL.
+Settings and themes stay in place.
 
 ## Security
 
@@ -55,6 +60,5 @@ a TLS 1.2-only build of the same mbedTLS (`third_party/mbedtls/riptopl_mbedtls_s
 
 ## Status
 
-Host-tested: the TLS download (`.github/scripts/test_ratls_host.py`) and the parsing
-(`.github/scripts/test_selfupdate_host.py`, against the real `SHA256SUMS.txt` files). NOT TESTED on
-hardware or in PCSX2: the real GitHub certificate chains, the in-place write to a real memory card and the full download.
+Host checks cover TLS, checksum parsing, packed and unpacked ELF detection, and APA launch path parsing.
+The full download and install on a physical PS2, including PSBBN's APA launcher directory, still need a console test.
