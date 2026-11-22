@@ -25,13 +25,13 @@ Run the navigation controls and existing Grid/Coverflow suites after this step.
 ## Task 3. HIRES regression controls
 
 - Add `.github/scripts/test_hires_texture_ownership.py` (and register it with the repository's script runner) to compile the production texture manager and frame-end logic against a bounded fake VRAM/DMA model.
-- Cover: outgoing pixel retention, outgoing VRAM protection, explicit unload/rebind using a distinct block, starvation retaining the previous queue, recovery on the following frame, ordinary-mode immediate behavior, and shutdown release.
+- Cover: direct upload with immediate source-pixel release, outgoing VRAM protection, explicit unload/rebind using a distinct block, starvation retaining the previous queue, recovery on the following frame, ordinary-mode immediate behavior, and shutdown release.
 - Run against the current code to demonstrate premature reuse; do not weaken the control to make it pass.
 
 ## Task 4. Implement HIRES ownership
 
 - Add a project-local adaptation of gsKit's texture manager with upstream attribution, current/previous-frame protection, explicit-unload reservation, and an allocation-starvation result rather than an unbounded eviction loop.
-- Add renderer-owned texture release for CPU pixels/CLUTs, deferring HIRES frees until the outgoing queue retires and flushing them after DMA shutdown. Convert existing paired unload/free call sites without changing art-worker rules.
+- Add renderer-owned texture release for CPU pixels/CLUTs. Select `ETM_DIRECT` for HIRES so uploads leave no inline DMA reference to source pixels, then free pixels/CLUTs immediately without deferred-release metadata. Convert existing paired unload/free call sites without changing art-worker rules.
 - On starvation, reset only the unfinished HIRES queue and retain the displayed queue; age protection and retry next frame. Keep non-HIRES execution unchanged.
 - Add the new source to `ps2.yaml` and verify archive link resolution in both toolchains.
 

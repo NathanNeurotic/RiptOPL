@@ -26,7 +26,7 @@ JPG backgrounds are independently capped at 720x512 and reduced with nearest-pix
 
 ## Approaches considered
 
-1. **Chosen: preserve animated game art and repair ownership.** Add two-generation texture/VRAM protection with backpressure, deferred pixel release, smaller HD background textures, and smooth resampling. This retains the requested appearance at the cost of a focused renderer change and a project-local gsKit texture-manager adaptation.
+1. **Chosen: preserve animated game art and repair ownership.** Add two-generation texture/VRAM protection with backpressure, direct pixel upload, smaller HD background textures, and smooth resampling. This retains the requested appearance at the cost of a focused renderer change and a project-local gsKit texture-manager adaptation.
 2. **Static HIRES background.** Disable only per-game background changes in HIRES while retaining theme art and ambient effects. Smaller, but removes behavior the user explicitly chose to keep.
 3. **Flicker filtering alone.** Rejected: it can reduce interlace strobing but cannot correct DMA/texture lifetime or VRAM reuse.
 
@@ -46,7 +46,7 @@ Adapt gsKit's texture manager locally, preserving its upstream copyright and pub
 
 If no safe VRAM block is available, allocation reports starvation instead of evicting a protected block or looping. `rmEndFrame` then waits for the HIRES boundary, resets only the unfinished new queue, and does not flip. The previous complete queue continues displaying. On the next frame, expired blocks become reclaimable and drawing retries. This favors a short pause over corruption.
 
-Replace paired unload/free calls with a renderer-owned texture-release operation. In HIRES it queues CPU pixel/CLUT release until the corresponding queue is retired; ordinary modes retain immediate release. Mode shutdown flushes deferred releases after the HIRES DMA thread is drained. No art-worker GS/VRAM calls are introduced.
+Replace paired unload/free calls with a renderer-owned texture-release operation. HIRES uses `ETM_DIRECT` uploads, so no inline DMA reference to source pixels survives the upload; the renderer immediately frees CPU pixels/CLUTs on release. Ordinary modes retain their existing inline uploads and immediate release. There is no deferred-release allocation, queue, or allocation-failure retention path. No art-worker GS/VRAM calls are introduced.
 
 ### Background memory and scaling
 
@@ -55,7 +55,7 @@ For HIRES modes whose framebuffer is already 16-bit, post-process per-game backg
 ## Verification
 
 - Add failing-first host tests for Grid wrapping and real menu-input/render harnesses proving Grid Cross activates only the device page, Coverflow Up/Down directly changes devices with its vertical list visible, and neither path launches a game.
-- Compile the production texture-manager adaptation against a small VRAM model: outgoing pixels/VRAM survive a replacement, starvation leaves the old queue displayed, and the next frame can complete. Include a failing control using the old behavior.
+- Compile the production texture-manager adaptation against a small VRAM model: direct uploads permit immediate source-pixel release, outgoing VRAM survives a replacement, starvation leaves the old queue displayed, and the next frame can complete. Include a failing control using the old behavior.
 - Exercise smooth resampling and CT16S background preparation with known image data; verify non-HIRES behavior is unchanged.
 - Run focused host/script suites, then the full repository suite, coupling gate, standard LLVM build, and GCC/RetroAchievements build sequentially.
 - Compare 1080i navigation with real per-game backgrounds in PCSX2, including rapid Grid page changes and theme changes. Record any remaining interlace-only shimmer separately from corruption; do not describe emulator results as physical-console acceptance.

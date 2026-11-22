@@ -91,7 +91,7 @@ void rmInvalidateTexture(GSTEXTURE *txt);
 /** Unload texture from texture manager, performance optimization */
 void rmUnloadTexture(GSTEXTURE *txt);
 
-/** Release a texture's VRAM, pixels and CLUT. HIRES defers CPU frees until its outgoing queue retires. */
+/** Release a texture's VRAM, pixels and CLUT. HIRES uses direct uploads, so source pixels are free after upload. */
 void rmReleaseTexture(GSTEXTURE *txt);
 
 

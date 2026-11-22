@@ -166,20 +166,20 @@ struct GSTEXTURE {
     u8 PSM = 0, ClutPSM = 0, TBW = 0, ClutStorageMode = 0;
 };
 struct GSGLOBAL { u32 CurrentPointer; };
-enum ETransferMode { ETM_INLINE, ETM_DMA };
+enum ETransferMode { ETM_INLINE, ETM_DIRECT };
 enum { GS_PSM_CT16S = 2, GS_PSM_CT32 = 0, GS_PSM_T8 = 3, GS_CLUT_NONE = 0, GS_CLUT_TEXTURE = 1, GS_CLUT_PALLETE = 2 };
 #define GSKIT_TEXMGR_BIND_DEFERRED 0x80000000u
 static std::vector<void *> frees;
 extern "C" void test_free(void *p) noexcept { frees.push_back(p); std::free(p); }
 #define free test_free
-static int uploadCount;
+static int uploadCount, inlineUploads, directUploads;
 static u32 textureBytes(int w, int h, int psm) { return (u32)w * (u32)h * (psm == GS_PSM_CT16S ? 2 : 4); }
 static u32 gsKit_texture_size_ee(int w, int h, int psm) { return textureBytes(w, h, psm); }
 static u32 gsKit_texture_size(int w, int h, int psm) { return textureBytes(w, h, psm); }
 static void gsKit_setup_tbw(GSTEXTURE *tex) { tex->TBW = (tex->Width + 63) / 64; }
 static void SyncDCache(const void *, const void *) {}
-static void gsKit_texture_send_inline(GSGLOBAL *, u32 *, int, int, u32, u32, u32, u8) { uploadCount++; }
-static void gsKit_texture_send(u32 *, int, int, u32, u32, u32, u8) { uploadCount++; }
+static void gsKit_texture_send_inline(GSGLOBAL *, u32 *, int, int, u32, u32, u32, u8) { uploadCount++; inlineUploads++; }
+static void gsKit_texture_send(u32 *, int, int, u32, u32, u32, u8) { uploadCount++; directUploads++; }
 #include "src/gfx/texmanager.cpp"
 #undef free
 static int failures;
@@ -197,29 +197,27 @@ static void reset(int latency) {
     gsKit_TexManager_flush();
     gsKit_TexManager_init(&global);
     gsKit_TexManager_setQueueLatency(latency);
-    frees.clear(); uploadCount = 0;
+    frees.clear(); uploadCount = inlineUploads = directUploads = 0;
 }
 static void releaseNow(GSTEXTURE *t) {
     gsKit_TexManager_setQueueLatency(0);
     gsKit_TexManager_release(&global, t);
 }
 int main() {
-    // Explicit unload: outgoing pixels and VRAM survive until the next completed queue retires.
+    // Direct uploads free source pixels immediately while outgoing VRAM remains protected.
     reset(1);
     GSTEXTURE a = makeTexture(64, 64, true), b = makeTexture(64, 64), c = makeTexture(64, 64);
     gsKit_TexManager_bind(&global, &a);
+    CHECK(directUploads > 0 && inlineUploads == 0);
     u32 oldVram = a.Vram;
     void *oldMem = a.Mem, *oldClut = a.Clut;
     gsKit_TexManager_commitFrame(1);
     gsKit_TexManager_release(&global, &a);
-    CHECK(!freed(oldMem) && !freed(oldClut));
+    CHECK(freed(oldMem) && freed(oldClut));
     CHECK(a.Mem == nullptr && a.Clut == nullptr);
     gsKit_TexManager_bind(&global, &b);
     CHECK(b.Vram != oldVram);
     gsKit_TexManager_commitFrame(1);
-    CHECK(!freed(oldMem) && !freed(oldClut));
-    gsKit_TexManager_commitFrame(1);
-    CHECK(freed(oldMem) && freed(oldClut));
     CHECK(gsKit_TexManager_bind(&global, &c) != GSKIT_TEXMGR_BIND_DEFERRED);
     releaseNow(&b); releaseNow(&c);
 
@@ -286,7 +284,7 @@ int main() {
     void *qMem = q.Mem;
     gsKit_TexManager_init(&global);
     gsKit_TexManager_release(&global, &q);
-    CHECK(!freed(qMem));
+    CHECK(freed(qMem));
     gsKit_TexManager_flush();
     CHECK(freed(qMem));
 
@@ -302,13 +300,13 @@ int main() {
     CHECK(h.Vram == ordinaryVram);
     releaseNow(&h);
 
-    // Shutdown releases anything still deferred.
+    // Shutdown also releases source pixels immediately; no deferred bookkeeping remains.
     reset(1);
     GSTEXTURE z = makeTexture(64, 64, true);
     void *zMem = z.Mem, *zClut = z.Clut;
     gsKit_TexManager_bind(&global, &z);
     gsKit_TexManager_release(&global, &z);
-    CHECK(!freed(zMem) && !freed(zClut));
+    CHECK(freed(zMem) && freed(zClut));
     gsKit_TexManager_flush();
     CHECK(freed(zMem) && freed(zClut));
     return failures ? 1 : 0;
@@ -345,4 +343,4 @@ with tempfile.TemporaryDirectory(prefix="hires-texture-ownership-") as tmp:
         results.append(1)
 if any(results):
     sys.exit("FAIL: HIRES texture ownership or starvation recovery is unsafe")
-print("PASS: deferred release, VRAM protection, starvation recovery, ordinary modes, and shutdown")
+print("PASS: direct pixel release, VRAM protection, starvation recovery, ordinary modes, and shutdown")

@@ -26,17 +26,8 @@ struct SVramBlock
     SVramBlock *pPrev;
 };
 
-struct SDeferredFree
-{
-    void *mem;
-    void *clut;
-    unsigned int ready;
-    SDeferredFree *next;
-};
-
 static SVramBlock *__head;
 static enum ETransferMode __trmode = ETM_INLINE;
-static SDeferredFree *__deferred;
 static unsigned int __building = 1;
 static unsigned int __committed;
 static int __latency;
@@ -213,6 +204,7 @@ void gsKit_TexManager_setmode(GSGLOBAL *gsGlobal, enum ETransferMode mode)
 void gsKit_TexManager_setQueueLatency(int frames)
 {
     __latency = frames > 0 ? 1 : 0;
+    __trmode = __latency ? ETM_DIRECT : ETM_INLINE;
     __building = 1;
     __committed = 0;
     __starved = 0;
@@ -323,20 +315,9 @@ void gsKit_TexManager_free(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
 void gsKit_TexManager_release(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
 {
     gsKit_TexManager_free(gsGlobal, tex);
-    if (__latency) {
-        SDeferredFree *release = static_cast<SDeferredFree *>(malloc(sizeof(SDeferredFree)));
-        if (release != NULL) {
-            release->mem = tex->Mem;
-            release->clut = tex->Clut;
-            release->ready = __building + 1;
-            release->next = __deferred;
-            __deferred = release;
-        }
-        // If the tiny node cannot be allocated, retain the pixels rather than risking a DMA use-after-free.
-    } else {
-        free(tex->Mem);
-        free(tex->Clut);
-    }
+    // HIRES uses direct uploads, so no inline DMA reference survives this call.
+    free(tex->Mem);
+    free(tex->Clut);
     tex->Mem = NULL;
     tex->Clut = NULL;
 }
@@ -385,18 +366,6 @@ void gsKit_TexManager_commitFrame(int completed)
         __starved = 0;
     } else {
         __committed = __building;
-        SDeferredFree **link = &__deferred;
-        while (*link != NULL) {
-            SDeferredFree *release = *link;
-            if (!frameAtLeast(__committed, release->ready)) {
-                link = &release->next;
-                continue;
-            }
-            free(release->mem);
-            free(release->clut);
-            *link = release->next;
-            free(release);
-        }
         if (__degradedProgress)
             __degraded = 0;
         __degradedProgress = 0;
@@ -413,15 +382,6 @@ int gsKit_TexManager_starved(void)
 
 void gsKit_TexManager_flush(void)
 {
-    SDeferredFree *release = __deferred;
-    __deferred = NULL;
-    while (release != NULL) {
-        SDeferredFree *next = release->next;
-        free(release->mem);
-        free(release->clut);
-        free(release);
-        release = next;
-    }
     __starved = 0;
     __degraded = 0;
     __degradedProgress = 0;
