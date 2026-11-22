@@ -152,8 +152,8 @@ also publishes the loose loader, the app <code>.psu</code>, <code>RIPTOPL-src-&l
     <p>Go to the <a href="https://github.com/NathanNeurotic/RiptOPL/releases" target="_blank" rel="noopener">Releases page</a>, pick an <a href="#release-channels">edition</a>, and download its install kit: <code>RIPTOPL-&lt;version&gt;.zip</code> or <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>. Unzip it locally.</p>
   </div>
   <div class="step">
-    <h3>2. Copy RIPTOPL.ELF to your boot location</h3>
-    <p>The loader is <code>APPS/APP_RIPTOPL/RIPTOPL.ELF</code> inside the kit. The simplest install is to copy the whole <code>APPS/APP_RIPTOPL/</code> folder into a device's <code>APPS/</code> (or import <code>APP_RIPTOPL.psu</code> onto a memory card) and point your launcher at the <code>RIPTOPL.ELF</code> inside it. Where the ELF goes depends on your boot method:</p>
+    <h3>2. Copy the loader to your boot location</h3>
+    <p>For the standard kit, the loader is <code>APPS/APP_RIPTOPL/RIPTOPL.ELF</code>. The simplest standard install is to copy the whole <code>APPS/APP_RIPTOPL/</code> folder into a device's <code>APPS/</code> or import <code>APP_RIPTOPL.psu</code> onto a memory card. For the RetroAchievements kit, use <code>APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF</code>, the matching <code>APPS/APP_RIPTOPL-RA/</code> folder and <code>APP_RIPTOPL-RA.psu</code> instead. Point your launcher at the ELF from the package you downloaded. Where the ELF goes depends on your boot method:</p>
     <ul>
       <li><b>FMCB</b> — copy <code>RIPTOPL.ELF</code> to a folder on a device that your launcher can access, such as a USB drive or memory card, then add a FMCB menu entry pointing to it. A common convention is <code>mass:/APPS/RIPTOPL/RIPTOPL.ELF</code> or <code>mc0:/RIPTOPL/RIPTOPL.ELF</code>.</li>
       <li><b>FHDB</b> — copy into an HDD partition the same way FHDB expects its launch targets.</li>
@@ -215,8 +215,8 @@ defaults. Existing saved settings override them, and updating the ELF does not r
 <thead><tr><th>Setting</th><th>Default</th><th>Where to change</th></tr></thead>
 <tbody>
 <tr><td>Menu aspect ratio</td><td>4:3 (Widescreen off)</td><td>Interface</td></tr>
-<tr><td>Theme</td><td>&lt;OPL&gt; (built-in)</td><td>Interface</td></tr>
-<tr><td>Theme View</td><td>Default (List for &lt;OPL&gt;); Coverflow, PSBBN Flow and Grid are optional views</td><td>Interface, or hold L3</td></tr>
+<tr><td>Theme</td><td>&lt;OPL&gt; (built-in)</td><td>Theme Settings</td></tr>
+<tr><td>Theme View</td><td>Default (List for &lt;OPL&gt;); Coverflow, PSBBN Flow and Grid are optional views</td><td>Theme Settings, or hold L3</td></tr>
 <tr><td>Cover Art</td><td>On</td><td>Theme Settings</td></tr>
 <tr><td>Per-game background art</td><td>Off</td><td>Theme Settings</td></tr>
 <tr><td>Notifications (popups)</td><td>On</td><td>Interface</td></tr>
