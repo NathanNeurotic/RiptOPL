@@ -860,15 +860,15 @@ See <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/misc/th
 <h2 id="grid">The Grid element</h2>
 <p>Use <code>type=Grid</code> for the page's covers in rows and columns. The selected cover is drawn 12% larger and last,
 over its neighbours, inside a soft glow and a 2-pixel frame in the selected-text colour; the others are a step darker under
-a vignette. Left/Right step one cover; Up/Down step one row and keep the column (a short last row takes its last cover),
-and stop at the top and bottom rows. L1/R1 turn a whole page, the cursor keeping its place on it (on a short last page, a place past the last cover takes
+a vignette. Left/Right step one cover; Up/Down step one row, keep the column (a short last row takes its last cover),
+and wrap between the first and last rows. L1/R1 turn a whole page, the cursor keeping its place on it (on a short last page, a place past the last cover takes
 the last cover), and wrap at either end as they do in the list; with every cover on one page they do nothing. The grid shows whole pages: the page holding the selection stays still while the cursor moves on it,
 a new page slides in as the old one slides out (at Coverflow's Animation Speed; Off turns the slide off), and a short last
 page keeps its covers in their cells from the top. A position counter (<code>12/40</code>) sits under the grid's lower right
 corner.</p>
 <p>The devices sit in a slim sidebar on the left, one glyph each, the page on screen lit. Left from the grid's first column
-opens it into a drawer with the devices' names; Up/Down there switch device (the grid shows that device at once), and
-Right, Cross or Circle go back to the covers. Hold the right stick to one side for half a second and the selected case turns
+opens it into a drawer with the devices' names; Up/Down there only moves the highlight. Cross activates an inactive highlighted
+device and returns to its covers; on the active device it only returns to the covers. Right or Circle also returns without activation. Hold the right stick to one side for half a second and the selected case turns
 over to its back cover (<code>COV2</code>), the way the stick leans; it stays turned until the stick turns it home.
 <i>Settings → Theme Settings → Layout Settings → Grid Layout</i> swaps the theme's shape for 4 × 2, 5 × 2, 3 × 2 Large or
 6 × 3 Compact (6 × 2, 7 × 2, 5 × 2 and 8 × 3 on a 16:9 picture), and <i>Dim Side Covers</i> there makes the vignette full
