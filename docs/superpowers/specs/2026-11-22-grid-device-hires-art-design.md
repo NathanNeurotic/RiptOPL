@@ -44,13 +44,13 @@ Replace Coverflow's bottom horizontal device bar and `gCoverflowDeviceBarFocused
 
 Adapt gsKit's texture manager locally, preserving its upstream copyright and public behavior for ordinary modes. Track frame use and protect blocks used by the current and outgoing HIRES queues. Explicit unloads reserve their old VRAM until that outgoing queue retires. A rebound texture receives a different block rather than overwriting the old one.
 
-If no safe VRAM block is available, allocation reports starvation instead of evicting a protected block or looping. `rmEndFrame` then waits for the HIRES boundary, resets only the unfinished new queue, and does not flip. The previous complete queue continues displaying. On the next frame, expired blocks become reclaimable and drawing retries. This favors a short pause over corruption.
+If no safe VRAM block is available, allocation reports starvation instead of evicting a protected block or looping. `rmEndFrame` then waits for the HIRES boundary, resets only the unfinished new queue, and does not flip. The previous complete queue continues displaying. If retries still cannot fit, one degraded frame completes without new uploads so expired blocks become reclaimable instead of starving forever. The bounded 70-protected/40-requested control verifies forward progress after that completed frame. This favors a short pause or placeholders over corruption or an endless retry loop.
 
 Replace paired unload/free calls with a renderer-owned texture-release operation. HIRES uses `ETM_DIRECT` uploads, so no inline DMA reference to source pixels survives the upload; the renderer immediately frees CPU pixels/CLUTs on release. Ordinary modes retain their existing inline uploads and immediate release. There is no deferred-release allocation, queue, or allocation-failure retention path. No art-worker GS/VRAM calls are introduced.
 
 ### Background memory and scaling
 
-For HIRES modes whose framebuffer is already 16-bit, post-process per-game backgrounds on the art worker into CT16S, halving their pixel memory and transfer footprint without changing the display's output precision. Bound backgrounds to the existing 720x512 budget for both PNG and JPG in those modes. Resample with smooth area/bilinear filtering rather than nearest-pixel selection. Do not perform GS calls on the worker and do not alter ordinary 24-bit video-mode art.
+For HIRES modes whose framebuffer is already 16-bit, post-process CT24 and CT32 per-game backgrounds on the art worker into CT16S, halving their pixel memory and transfer footprint without changing the display's output precision. Preserve indexed T4/T8 backgrounds in their native formats rather than increasing their storage. Bound CT24 and CT32 backgrounds to the existing 720x512 budget and resample with smooth area/bilinear filtering rather than nearest-pixel selection. Do not perform GS calls on the worker and do not alter ordinary 24-bit video-mode art.
 
 ## Verification
 

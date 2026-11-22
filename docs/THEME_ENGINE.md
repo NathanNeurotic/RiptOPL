@@ -117,8 +117,8 @@ See [`misc/theme_psbbn_flow.cfg`](../misc/theme_psbbn_flow.cfg) for the full exa
 
 Use `type=Grid` for the page's covers in rows and columns. The selected cover is drawn 12% larger
 and last, over its neighbours, inside a soft glow and a 2-pixel frame in the selected-text colour; the
-others are a step darker under a vignette. Left/Right step one cover; Up/Down step one row and keep the
-column (a short last row takes its last cover), and stop at the top and bottom rows. L1/R1 turn a whole
+others are a step darker under a vignette. Left/Right step one cover; Up/Down step one row, keep the
+column (a short last row takes its last cover), and wrap between the first and last rows. L1/R1 turn a whole
 page, the cursor keeping its place on it, and wrap at either end as they do in the list. The grid shows
 whole pages: the page holding the selection stays still while the cursor moves on it, a new page slides
 in as the old one slides out (at Coverflow's Animation Speed; Off turns the slide off), and a short last
@@ -126,8 +126,9 @@ page keeps its covers in their cells from the top. A position counter (`12/40`) 
 lower right corner.
 
 The devices sit in a slim sidebar on the left, one glyph each, the page on screen lit. Left from the
-grid's first column opens it into a drawer with the devices' names; Up/Down there switch device (the grid
-shows that device at once), and Right, Cross or Circle go back to the covers. Hold the right stick to one
+grid's first column opens it into a drawer with the devices' names; Up/Down there only moves the highlight.
+Cross activates an inactive highlighted device and returns to its covers; on the active device it only returns
+to the covers. Right or Circle also returns without activating a different device. Hold the right stick to one
 side for half a second and the selected case turns over to its back cover (`COV2`), the way the stick
 leans; it stays turned until the stick turns it home. *Settings → Theme Settings → Layout Settings → Grid
 Layout* swaps the theme's shape for 4 x 2, 5 x 2, 3 x 2 Large or 6 x 3 Compact (6 x 2, 7 x 2, 5 x 2 and
