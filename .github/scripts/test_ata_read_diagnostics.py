@@ -87,9 +87,8 @@ int main(void)
     ataResult = -17;
     CHECK(ata_bd_read(&ata, 0x123456789ULL, buffer, 8) == -EIO, "ATA error result changed");
     CHECK(strstr(logText, "-17") != NULL, "ATA driver result missing");
-    CHECK(strstr(logText, "12345678") != NULL || strstr(logText, "00000001") != NULL,
-          "ATA failing LBA missing");
-    CHECK(strstr(logText, "8") != NULL, "ATA sector count missing");
+    CHECK(strstr(logText, "LBA=0x0000000123456789") != NULL, "complete ATA failing LBA missing");
+    CHECK(strstr(logText, "count=8") != NULL, "ATA sector count field missing");
 
     logLength = 0;
     logText[0] = '\0';
@@ -108,7 +107,7 @@ int main(void)
     CHECK(part_read(&partition, 39, buffer, 2) == -1, "partition bounds result changed");
     CHECK(strstr(logText, "00000027") != NULL, "partition-relative LBA missing");
     CHECK(strstr(logText, "00000028") != NULL, "partition sector count missing");
-    CHECK(strstr(logText, "2") != NULL, "partition read length missing");
+    CHECK(strstr(logText, "count=2") != NULL, "partition read length field missing");
 
     logLength = 0;
     logText[0] = '\0';

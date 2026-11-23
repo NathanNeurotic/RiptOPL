@@ -383,10 +383,10 @@ static void IGR_Exit(s32 code) { (void)code; workerExitCalls++; }
 #define IGR 0
 #define DBGCOL_BLNK(...) ((void)0)
 static volatile int IGR_MenuOpen;
-static int IGR_MenuRearm, IGR_PadButtons;
+static int IGR_MenuRearm, IGR_PadButtons, menuRunCalls;
 static void IGR_HoldInterrupts(void) {}
 static void IGR_PauseThreads(void) {}
-static int IGR_MenuRun(int buttons) { (void)buttons; return IGR_MENU_EXIT; }
+static int IGR_MenuRun(int buttons) { (void)buttons; menuRunCalls++; return IGR_MENU_EXIT; }
 static void IGR_ResumeGame(void) {}
 static void DisableGSTracker(void) {}
 #endif
@@ -421,7 +421,7 @@ static void prepareWorker(void)
     nSleep = nWake = nIResetEE = nISuspend = nIPrio = 0;
     workerShutdowns = workerExitCalls = workerRpcCalls = prematureShutdown = 0;
 #ifdef IGR_MENU
-    IGR_MenuOpen = IGR_MenuRearm = 0;
+    IGR_MenuOpen = IGR_MenuRearm = menuRunCalls = 0;
 #endif
     beforeSleep = NULL;
 }
@@ -650,8 +650,8 @@ ALT_COMBO_CHECKS = r'''
     IGR_MenuRearm = 1;
     requestAltAtSleep();
     IGR_Thread(NULL);
-    CHECK(workerShutdowns == 1 && lastWorkerPoweroff == 0 && workerExitCalls == 1,
-          "alternative L3+R3 exits through the in-game-menu path instead of freezing");
+    CHECK(workerShutdowns == 1 && lastWorkerPoweroff == 0 && workerExitCalls == 1 && menuRunCalls == 1,
+          "alternative L3+R3 calls the in-game menu once, then exits instead of freezing");
 #endif
 '''
 
