@@ -607,6 +607,12 @@ fnt_glyph_cache_entry_t *FontSystem::cacheGlyph(font_t *font, uint32_t gid)
         font->face != NULL && FT_Get_Char_Index(font->face, gid) == 0 &&
         FT_Get_Char_Index(fonts_[fallbackFontId_].face, gid) != 0)
         font = &fonts_[fallbackFontId_];
+    // Then the menu font, which a translation replaces with its own: theme fonts (the built-in theme
+    // draws the title bar and tabs in Roboto) have no Japanese, so a Japanese UI showed boxes there.
+    else if (gid >= 0x80 && font != &fonts_[FNT_DEFAULT] && fonts_[FNT_DEFAULT].isValid &&
+             fonts_[FNT_DEFAULT].face != NULL && font->face != NULL && FT_Get_Char_Index(font->face, gid) == 0 &&
+             FT_Get_Char_Index(fonts_[FNT_DEFAULT].face, gid) != 0)
+        font = &fonts_[FNT_DEFAULT];
 
     // calc page id and in-page index from glyph id
     int pageid = gid / GLYPH_CACHE_PAGE_SIZE;

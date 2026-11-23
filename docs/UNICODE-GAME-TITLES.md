@@ -40,6 +40,7 @@ The `RIPTOPL-LANGS` ZIP contains translated `.lng` files and matching fonts such
 
 - UTF-8 titles on ISO/ZSO/VCD game lists and other text already supplied to RiptOPL's Unicode renderer, with mixed English/Japanese characters.
 - Font fallback for built-in, language-pack and theme fonts that lack the relevant glyphs.
+- With a translation selected, theme fonts that lack a character (the built-in theme's title bar and tabs use Roboto) borrow it from the translation's font, after the optional fallback font.
 - No changes to disc/startup ID, game filename, art lookup, launch path, VMC, or favorites identity.
 
 ### Current limits
