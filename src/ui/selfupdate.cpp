@@ -45,6 +45,7 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <delaythread.h>
 
@@ -143,7 +144,7 @@ static bool suNumberedDevice(const char *path, const char *name)
 static bool suResolveTarget(SuTarget &target, bool writing)
 {
     if (gBootElfName[0] == '\0' || strpbrk(gBootElfName, "/\\:") != NULL ||
-        strcmp(gBootElfName, "version.txt") == 0)
+        strcasecmp(gBootElfName, "version.txt") == 0)
         return false;
     char partition[APA_IDMAX + 6], directory[256];
     if (hddParseBootDirectory(gBootDir, partition, sizeof(partition), directory, sizeof(directory)) == 0) {
@@ -383,7 +384,7 @@ static int suWriteVersion(const char *elfPath)
 
 static int suStagedMatches(const char *path, const SuFile &file, int size)
 {
-    if (size > file.written)
+    if (size < 0 || size > file.written)
         return 0;
     int fd = fileXioOpen(path, 0x0001, 0);
     if (fd < 0)
@@ -691,6 +692,10 @@ static void suOffer(int local)
             suReport();
             return;
         }
+    }
+    if (suVersionPending && suResult != SU_OK) {
+        suReport();
+        return;
     }
     snprintf(text, sizeof(text), _l(_STR_UPDATE_DONE), suRemoteRev);
     size_t used = strlen(text);

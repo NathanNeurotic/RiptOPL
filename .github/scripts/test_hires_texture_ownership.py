@@ -331,7 +331,8 @@ int main() {
     for (GSTEXTURE &t : fragments)
         CHECK(gsKit_TexManager_bind(&global, &t) != GSKIT_TEXMGR_BIND_DEFERRED);
     gsKit_TexManager_commitFrame(1);
-    for (GSTEXTURE &t : fragments) releaseNow(&t);
+    for (GSTEXTURE &t : fragments) gsKit_TexManager_release(&global, &t);
+    gsKit_TexManager_commitFrame(1);
     gsKit_TexManager_commitFrame(1); // expire the released blocks before the larger request
     GSTEXTURE merged = makeTexture(1024, 512);
     CHECK(gsKit_TexManager_bind(&global, &merged) != GSKIT_TEXMGR_BIND_DEFERRED);
@@ -375,6 +376,20 @@ with tempfile.TemporaryDirectory(prefix="hires-texture-ownership-") as tmp:
     manager = root / "src/gfx/texmanager.cpp"
     if manager.exists():
         results.append(compile_and_run(folder, "texture-manager", manager_program))
+        previous_scan = '''        if (block->tex == NULL && _blockReclaimable(block) && block->iSize >= size)
+            break;'''
+        corrected_scan = '''        if (block->tex == NULL && _blockReclaimable(block)) {
+            block = _blockMergeFree(block);
+            if (block->iSize >= size)
+                break;
+        }'''
+        if corrected_scan in manager_program:
+            previous_program = manager_program.replace(corrected_scan, previous_scan)
+            if compile_and_run(folder, "texture-manager-previous", previous_program) == 0:
+                print("FAIL: previous allocation scan also satisfies the fragmented release case")
+                results.append(1)
+            else:
+                print("PASS: previous allocation scan fails the fragmented release case")
     else:
         print("FAIL: production HIRES texture manager is absent; outgoing queues have no VRAM protection")
         results.append(1)

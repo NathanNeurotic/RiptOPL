@@ -257,14 +257,37 @@ def compile_and_run(folder, name, source):
 
 
 themes = (root / "src/gfx/themes.cpp").read_text(encoding="utf-8")
-can_cycle = function_text(themes, "int thmCanCycleView(void)")
-cycle_variants = all(name in can_cycle for name in ("THM_VIEW_COVERFLOW", "THM_VIEW_GRID"))
-if not cycle_variants:
-    print("FAIL: single-mask Coverflow/Grid variants cannot start hold-to-cycle")
+cycle_program = r'''
+#include <cstdio>
+struct theme { unsigned int viewMask; };
+static theme *gTheme;
+enum { THM_VIEW_LIST, THM_VIEW_COVERFLOW, THM_VIEW_PSBBN, THM_VIEW_GRID };
+@CAN_CYCLE@
+static int failures;
+#define CHECK(c) do { if (!(c)) { std::printf("FAIL line %d: %s\n", __LINE__, #c); failures++; } } while (0)
+int main() {
+    gTheme = nullptr;
+    CHECK(thmCanCycleView() == 0);
+    theme t{};
+    gTheme = &t;
+    t.viewMask = 1u << THM_VIEW_COVERFLOW;
+    CHECK(thmCanCycleView() == 1);
+    t.viewMask = 1u << THM_VIEW_GRID;
+    CHECK(thmCanCycleView() == 1);
+    t.viewMask = 1u << THM_VIEW_LIST;
+    CHECK(thmCanCycleView() == 0);
+    t.viewMask = 1u << THM_VIEW_PSBBN;
+    CHECK(thmCanCycleView() == 0);
+    t.viewMask = (1u << THM_VIEW_LIST) | (1u << THM_VIEW_PSBBN);
+    CHECK(thmCanCycleView() == 1);
+    return failures ? 1 : 0;
+}
+'''
+cycle_program = cycle_program.replace('@CAN_CYCLE@', function_text(themes, "int thmCanCycleView(void)"))
 
 with tempfile.TemporaryDirectory(prefix="device-navigation-") as tmp:
     folder = Path(tmp)
-    results = [compile_and_run(folder, "input", input_program), compile_and_run(folder, "render", render_program), 0 if cycle_variants else 1]
+    results = [compile_and_run(folder, "input", input_program), compile_and_run(folder, "render", render_program), compile_and_run(folder, "cycle", cycle_program)]
 if any(results):
     sys.exit("FAIL: device navigation/presentation behavior differs from the approved contract")
 print("PASS: Grid highlight/X behavior, direct vertical Coverflow devices, and PSBBN Flow control")

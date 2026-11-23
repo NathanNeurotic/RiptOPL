@@ -182,6 +182,11 @@ int main() {
     rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
     assert(rc == -EEXIST && stagedExists && writes == 4);
     puts("APA unrecognized stage is preserved");
+
+    resetInstall(); stagedExists = 1; stagedSize = -2147483648; memcpy(stagedData, "EL", 2);
+    rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
+    assert(rc == -EEXIST && stagedExists && writes == 4);
+    puts("APA negative staged size is preserved as a mismatch");
     return 0;
 }
 """
@@ -233,8 +238,10 @@ def source_checks():
     check("update_labels_append", labels.index("UPDATE_RELAUNCH") > labels.index("UPDATE_ERR_RESTORE") and
           labels.index("UPDATE_RELAUNCH_FAILED") > labels.index("UPDATE_ERR_RESTORE"),
           "new update labels must append after existing labels to preserve positional language-pack IDs")
-    check("boot_version_txt_rejected", 'strcmp(gBootElfName, "version.txt") == 0' in src,
-          "a boot ELF named version.txt must be rejected before update writes")
+    check("boot_version_txt_rejected", 'strcasecmp(gBootElfName, "version.txt") == 0' in src,
+          "a boot ELF named version.txt in any case must be rejected before update writes")
+    check("metadata_retry_result_checked", "suVersionPending && suResult != SU_OK" in src,
+          "a failed metadata retry must report instead of reaching UPDATE_DONE")
     check("apa_stat_error_preserves_backup", "originalStat" in apa and "return originalStat" in apa,
           "an original-stat I/O error must abort before removing the previous backup")
     check("apa_sync_error_preserves_backup", "syncRc" in apa and "syncRc < 0" in apa,
