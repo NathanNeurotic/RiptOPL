@@ -292,10 +292,13 @@ with tempfile.TemporaryDirectory() as tmp:
 opl = (ROOT / "src/app/opl.cpp").read_text(encoding="utf-8")
 update = opl[opl.index("static void updateMenuFromGameList("):]
 update = update[:update.index("\n}\n")]
-# Rows appear with file names at once; the CFG pass runs after them and the sort follows it.
-assert update.index("cfgTitleForget(mdl->support);") < update.index("gsOf(mdl->support)->update(mdl->support)") < update.index("guiDeferUpdate(gup);")
-assert update.index("guiDeferUpdate(gup);") < update.index("cfgTitleRefresh(mdl->support, count);") < update.index("GUI_OP_SORT")
-assert update.index("libViewFinishPending(") < update.index("cfgTitleRefresh(mdl->support, count);")
+# The CFG pass runs after the scan and the badges (kept titles copy them) and before any row is queued,
+# so no row shows its file name before its title (CosmicScale: the PS1/PS2 switch flashed them).
+assert update.index("cfgTitleForget(mdl->support);") < update.index("gsOf(mdl->support)->update(mdl->support)") < update.index("cfgTitleRefresh(mdl->support, count);")
+assert update.count("cfgTitleRefresh(mdl->support, count);") == 1
+assert update.index("cfgTitleRefresh(mdl->support, count);") < update.index("guiDeferUpdate(gup);") < update.index("GUI_OP_SORT")
+if "raBadgeRefresh(mdl->support, count);" in update:
+    assert update.index("raBadgeRefresh(mdl->support, count);") < update.index("cfgTitleRefresh(mdl->support, count);")
 assert "gup->submenu.text = mdl->support->mode == FAV_MODE ? const_cast<char *>(favGetItemDisplay(i)) : gsOf(mdl->support)->name(mdl->support, i);" in update  # identity unchanged
 menusys = (ROOT / "src/ui/menusys.cpp").read_text(encoding="utf-8")
 sort = menusys[menusys.index("static int submenuSortCompare("):]

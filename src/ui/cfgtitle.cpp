@@ -14,8 +14,8 @@
   Cost, which is why it is opt-in: each list rebuild reads every game's CFG
   once, on the I/O thread, through the same loader the info page uses
   (itemGetConfig). Reading them all is what lets the list sort by what it
-  shows. The rows appear with their file names first; the CFG pass runs after
-  them and the sort follows it. The table of kept titles is swapped in under
+  shows. The CFG pass runs before the rows are queued, so a row never shows
+  its file name before its title. The table of kept titles is swapped in under
   the GUI frame lock, so a frame never sees it half built or freed.
 */
 
