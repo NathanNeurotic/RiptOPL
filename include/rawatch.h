@@ -27,6 +27,8 @@ public:
        parent points backwards, so ee_core can resolve them in one pass. */
     struct ra_node *nodeList() { return nodeCount_ > 0 ? nodeList_ : NULL; }
     int nodeCount() const { return nodeCount_; }
+    /* The image hash the list in memory was built for, 32 hex digits; "" when it carries none. */
+    const char *watchHash() const { return watchHash_; }
     void clearWatchList();
 
 private:
@@ -44,6 +46,8 @@ private:
        (ranet.cpp) while still in the menu; at launch there is then no reason to read
        the file, which on USB may not even have left the driver's cache yet. */
     char watchStartup_[16] = {};
+    /* The list's RAH1 tail (xeRAbora 2.1.0 and later), kept for raudp to name the image in play. */
+    char watchHash_[RA_HASH_LEN + 1] = {};
 };
 
 extern RaWatch gRaWatch;
@@ -60,6 +64,7 @@ int GetWatchCount(void);
 int GetWatchBytes(void);
 struct ra_node *GetNodeList(void);
 int GetNodeCount(void);
+const char *GetWatchHash(void);
 void ClearWatchList(void);
 
 #endif

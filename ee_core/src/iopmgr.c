@@ -372,7 +372,8 @@ static int ResetIopSpecial(const char *args, unsigned int arglen)
             for (; n < RA_ARG_ID_MAX; n++)
                 args[RA_ARG_ID + n] = ' ';
             args[RA_ARG_HOST - 1] = ',';
-            for (n = 0; n < 15 && config->raHost[n] != '\0'; n++)
+            _Static_assert(sizeof(config->raHost) == RA_ARG_TAIL_MAX + 1, "raHost holds the longest host argument");
+            for (n = 0; n < RA_ARG_TAIL_MAX && config->raHost[n] != '\0'; n++)
                 args[RA_ARG_HOST + n] = config->raHost[n];
             args[RA_ARG_HOST + n] = '\0';
             n += RA_ARG_HOST + 1;

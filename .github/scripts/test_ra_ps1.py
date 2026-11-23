@@ -339,6 +339,8 @@ static int GetWatchBytes(void) {return 4;}
 static int GetNodeCount(void) {return 0;}
 static unsigned int *GetWatchList(void) {static unsigned int w=RA_WATCH_PACK(15,4);return &w;}
 static struct ra_node *GetNodeList(void) {return NULL;}
+static const char *watch_hash="";
+static const char *GetWatchHash(void) {return watch_hash;}
 static unsigned int raNetPeerIP(void) {return 0;}
 static int ethGetNetConfig(unsigned char *ip,unsigned char *m,unsigned char *g) {
     ip[0]=192;ip[1]=168;ip[2]=1;ip[3]=2;memset(m,255,4);memset(g,0,4);return network ? 0 : -1;
@@ -385,6 +387,11 @@ int main(void) {
     read_back();
     assert(cfg.host_pinned==1 && cfg.client_mode==1 && cfg.count==1 && cfg.bytes==4 && !strcmp(cfg.game_id,"P123456789abcde"));
     assert(!strcmp(loaded_key,cfg.game_id) && !strcmp(cfg.host,"10.0.0.0"));
+    /* A list with an image hash hands it to raudp behind the host. */
+    unlink("POPS/MODULE_9.IRX");watch_hash="0123456789abcdef0123456789abcdef";
+    assert(raPopsPrepare("","","game.vcd",1)==0);
+    read_back();watch_hash="";
+    assert(!strcmp(cfg.host,"10.0.0.0,0123456789abcdef0123456789abcdef"));
     assert(!memcmp(cfg.ipcfg,"192.168.1.2\0" "255.255.255.255\0" "0.0.0.0",cfg.ipcfg_len));
     /* Every module present, in load order, 16-byte aligned and intact. */
     assert(cfg.blob_off[RAPOPS_DEV9]==0 && cfg.blob_size[RAPOPS_DEV9]==11);

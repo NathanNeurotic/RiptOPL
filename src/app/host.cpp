@@ -194,6 +194,11 @@ public:
                                                                                                             pc_ip;
             snprintf(config->raHost, sizeof(config->raHost), "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
         }
+        // xeRAbora 2.1.0: the list's image hash rides behind the host, for raudp's "RAI1 <serial> <hash>".
+        if (GetWatchHash()[0] != '\0') {
+            const size_t used = strlen(config->raHost);
+            snprintf(config->raHost + used, sizeof(config->raHost) - used, ",%s", GetWatchHash());
+        }
 
         // The last point where the list is still ours: from here it goes into ee_core
         // with no feedback. A zero shows up in the launch log directly, rather than as

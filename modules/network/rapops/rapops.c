@@ -135,7 +135,7 @@ int _start(int argc, char *argv[])
     for (i = 0; i < RA_ARG_ID_MAX && g_cfg.game_id[i] != '\0'; i++)
         args[RA_ARG_ID + i] = g_cfg.game_id[i];
     args[RA_ARG_HOST - 1] = ',';
-    for (i = 0; i < 15 && g_cfg.host[i] != '\0'; i++)
+    for (i = 0; i < RA_ARG_TAIL_MAX && g_cfg.host[i] != '\0'; i++)
         args[RA_ARG_HOST + i] = g_cfg.host[i];
     args[RA_ARG_HOST + i] = '\0';
     n = RA_ARG_HOST + i + 1;

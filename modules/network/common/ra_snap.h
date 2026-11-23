@@ -110,15 +110,20 @@ struct ra_event
                    the game runs; bit 1 selects the Caduceus bridge;
                    bit 2 pins discovery to the configured host
      RA_ARG_ID     the game's serial, space-padded to RA_ARG_ID_MAX
-     RA_ARG_HOST   the companion's IPv4 in dotted form
+     RA_ARG_HOST   the companion's IPv4 in dotted form; then, only when the
+                   watch list carries an image hash, ',' and its RA_HASH_LEN
+                   hex digits
    argv[2..4] are SMAP's IP, netmask and gateway. Both sides build and
    parse the argument by these offsets. */
-#define RA_ARG_SNAP   0
-#define RA_ARG_EVENT  9
-#define RA_ARG_RX     18
-#define RA_ARG_ID     20
-#define RA_ARG_ID_MAX 15
-#define RA_ARG_HOST   (RA_ARG_ID + RA_ARG_ID_MAX + 1)
-#define RA_ARG_MAX    (RA_ARG_HOST + 15) /* characters before the terminator */
+#define RA_ARG_SNAP     0
+#define RA_ARG_EVENT    9
+#define RA_ARG_RX       18
+#define RA_ARG_ID       20
+#define RA_ARG_ID_MAX   15
+#define RA_ARG_HOST     (RA_ARG_ID + RA_ARG_ID_MAX + 1)
+#define RA_ARG_HOST_MAX 15
+/* The host field at its longest: the address, ',' and the hash. */
+#define RA_ARG_TAIL_MAX (RA_ARG_HOST_MAX + 1 + RA_HASH_LEN)
+#define RA_ARG_MAX      (RA_ARG_HOST + RA_ARG_TAIL_MAX) /* characters before the terminator */
 
 #endif /* __RA_SNAP_H__ */

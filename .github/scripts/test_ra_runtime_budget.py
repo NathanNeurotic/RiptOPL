@@ -272,11 +272,19 @@ int main() {
         auto current=withHash(original);
         int expected=original.size()==bare.size()?0:original.size()==legacy.size()?1:RA_NODE_MAX;
         assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")>0 && watch.nodeCount()==expected);
+        assert(!strcmp(watch.watchHash(),"0123456789abcdef0123456789abcdef"));
         disk=current;watch.clearWatchList();
+        assert(!watch.watchHash()[0]);
         assert(watch.loadWatchList("hash.wl","SLUS_123.45")>0 && watch.nodeCount()==expected);
+        assert(!strcmp(watch.watchHash(),"0123456789abcdef0123456789abcdef"));
+        // The same list from a client before 2.1.0 carries no hash and leaves none behind.
+        assert(watch.setWatchList(original.data(),original.size()*4,"SLUS_123.45")>0 && !watch.watchHash()[0]);
+        assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")>0 && watch.watchHash()[0]);
         current.back()=0x7A7A7A7A; // not hexadecimal
         assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")<0 && !watch.watchCount());
+        assert(!watch.watchHash()[0]);
         disk=current;assert(watch.loadWatchList("invalid.wl","SLUS_123.45")<0 && !watch.watchCount());
+        assert(!watch.watchHash()[0]);
         current=withHash(original);current.pop_back();
         assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")<0 && !watch.watchCount());
         disk=current;assert(watch.loadWatchList("short.wl","SLUS_123.45")<0 && !watch.watchCount());
