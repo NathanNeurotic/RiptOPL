@@ -1,8 +1,9 @@
 """HIRES texture ownership and starvation recovery controls.
 
-The first program compiles the real cacheClearItem and catches immediate pixel frees. The second compiles
-the production texture manager against bounded VRAM and DMA-reference models. A degraded frame may skip new
-uploads, but it must complete so expired VRAM becomes available instead of starving forever.
+The first programs compile the real cacheClearItem, plasma shutdown and endFrame. The last compiles the
+production texture manager against bounded VRAM: HIRES uploads stay inline, a block a frame drew without
+uploading is never overwritten in that frame, and released pixels wait until no queue can read them. A
+degraded frame may skip new uploads, but it must complete instead of starving forever.
 """
 from pathlib import Path
 import subprocess
@@ -200,43 +201,104 @@ static void reset(int latency) {
     frees.clear(); uploadCount = inlineUploads = directUploads = 0;
 }
 static void releaseNow(GSTEXTURE *t) {
-    gsKit_TexManager_setQueueLatency(0);
     gsKit_TexManager_release(&global, t);
+    gsKit_TexManager_flush();
 }
 int main() {
-    // Direct uploads free source pixels immediately while outgoing VRAM remains protected.
+    // HIRES uploads stay inside the draw queue.
     reset(1);
-    GSTEXTURE a = makeTexture(64, 64, true), b = makeTexture(64, 64), c = makeTexture(64, 64);
+    GSTEXTURE a = makeTexture(64, 64, true);
     gsKit_TexManager_bind(&global, &a);
-    CHECK(directUploads > 0 && inlineUploads == 0);
-    u32 oldVram = a.Vram;
-    void *oldMem = a.Mem, *oldClut = a.Clut;
-    gsKit_TexManager_commitFrame(1);
-    gsKit_TexManager_release(&global, &a);
-    CHECK(freed(oldMem) && freed(oldClut));
-    CHECK(a.Mem == nullptr && a.Clut == nullptr);
-    gsKit_TexManager_bind(&global, &b);
-    CHECK(b.Vram != oldVram);
-    gsKit_TexManager_commitFrame(1);
-    CHECK(gsKit_TexManager_bind(&global, &c) != GSKIT_TEXMGR_BIND_DEFERRED);
-    releaseNow(&b); releaseNow(&c);
+    CHECK(inlineUploads > 0 && directUploads == 0);
+    releaseNow(&a);
 
-    // Bounded VRAM: a new frame starves, then a degraded complete frame lets old blocks expire.
+    // Released pixels outlive the queue being built and the flipped one that is replayed after it.
     reset(1);
-    GSTEXTURE d = makeTexture(768, 1024), e = makeTexture(768, 1024), f = makeTexture(768, 1024);
-    CHECK(gsKit_TexManager_bind(&global, &d) != GSKIT_TEXMGR_BIND_DEFERRED);
-    CHECK(gsKit_TexManager_bind(&global, &e) != GSKIT_TEXMGR_BIND_DEFERRED);
+    GSTEXTURE p = makeTexture(64, 64, true);
+    gsKit_TexManager_bind(&global, &p);
+    void *pMem = p.Mem, *pClut = p.Clut;
+    gsKit_TexManager_commitFrame(1);      // frame 1 flipped: it is replayed while frame 2 is built
+    gsKit_TexManager_release(&global, &p);
+    CHECK(!freed(pMem) && !freed(pClut) && p.Mem == nullptr && p.Clut == nullptr);
+    gsKit_TexManager_commitFrame(1);      // frame 2 flipped: the releasing frame is now the one replayed
+    CHECK(!freed(pMem));
+    gsKit_TexManager_commitFrame(1);      // frame 3 flipped: nothing can read them any more
+    CHECK(freed(pMem) && freed(pClut));
+    gsKit_TexManager_flush();
+
+    // Pixels no live queue uploaded are freed at once.
+    reset(1);
+    GSTEXTURE old = makeTexture(64, 64, true);
+    gsKit_TexManager_bind(&global, &old);
     gsKit_TexManager_commitFrame(1);
-    CHECK(gsKit_TexManager_bind(&global, &f) == GSKIT_TEXMGR_BIND_DEFERRED);
-    CHECK(gsKit_TexManager_starved());
-    gsKit_TexManager_commitFrame(0);
+    gsKit_TexManager_commitFrame(1);
+    void *oldMem = old.Mem;
+    gsKit_TexManager_release(&global, &old);
+    CHECK(freed(oldMem));
+
+    // A discarded (empty) frame retires the old queue: textures released after it are freed at once.
+    reset(1);
+    GSTEXTURE th = makeTexture(64, 64);
+    gsKit_TexManager_bind(&global, &th);
+    gsKit_TexManager_commitFrame(1);
+    gsKit_TexManager_commitFrame(1);      // discardFrame: flip to the empty queue
+    gsKit_TexManager_free(&global, &th);  // no block left: only the upload counters decide
+    void *thMem = th.Mem;
+    gsKit_TexManager_release(&global, &th);
+    CHECK(freed(thMem));
+
+    // A frame may draw more art than VRAM holds: blocks it uploaded itself can be reused in the same frame.
+    reset(1);
+    GSTEXTURE big1 = makeTexture(1024, 1024), big2 = makeTexture(1024, 1024);
+    CHECK(gsKit_TexManager_bind(&global, &big1) != GSKIT_TEXMGR_BIND_DEFERRED);
+    CHECK(gsKit_TexManager_bind(&global, &big2) != GSKIT_TEXMGR_BIND_DEFERRED);
+    CHECK(big1.Vram == 0);
+    CHECK(gsKit_TexManager_bind(&global, &big1) != GSKIT_TEXMGR_BIND_DEFERRED);
+    CHECK(!gsKit_TexManager_starved());
+    releaseNow(&big1); releaseNow(&big2);
+
+    // A block this frame drew without uploading is never overwritten in the same frame (the banding).
+    reset(1);
+    GSTEXTURE d = makeTexture(1024, 1024), e = makeTexture(1024, 1024);
+    CHECK(gsKit_TexManager_bind(&global, &d) != GSKIT_TEXMGR_BIND_DEFERRED);
+    gsKit_TexManager_commitFrame(1);
+    u32 dVram = d.Vram;
+    CHECK(gsKit_TexManager_bind(&global, &d) == 0); // resident: drawn with no upload
+    CHECK(gsKit_TexManager_bind(&global, &e) == GSKIT_TEXMGR_BIND_DEFERRED);
+    CHECK(d.Vram == dVram && gsKit_TexManager_starved());
+    gsKit_TexManager_commitFrame(0);      // starved: queue reset, no flip
     CHECK(!gsKit_TexManager_starved());
     CHECK(gsKit_TexManager_bind(&global, &d) != GSKIT_TEXMGR_BIND_DEFERRED);
-    CHECK(gsKit_TexManager_bind(&global, &f) == GSKIT_TEXMGR_BIND_DEFERRED);
-    CHECK(!gsKit_TexManager_starved()); // degraded frame: skip new uploads, but complete the frame
+    CHECK(gsKit_TexManager_bind(&global, &e) == GSKIT_TEXMGR_BIND_DEFERRED);
+    CHECK(!gsKit_TexManager_starved());   // degraded: skip the new art, but complete the frame
     gsKit_TexManager_commitFrame(1);
-    CHECK(gsKit_TexManager_bind(&global, &f) != GSKIT_TEXMGR_BIND_DEFERRED);
-    releaseNow(&d); releaseNow(&e); releaseNow(&f);
+    CHECK(gsKit_TexManager_bind(&global, &e) != GSKIT_TEXMGR_BIND_DEFERRED);
+    releaseNow(&d); releaseNow(&e);
+
+    // Unloading a texture this frame drew keeps its block for the rest of the frame.
+    reset(1);
+    GSTEXTURE u = makeTexture(1024, 1024), v = makeTexture(1024, 1024);
+    gsKit_TexManager_bind(&global, &u);
+    gsKit_TexManager_commitFrame(1);
+    gsKit_TexManager_bind(&global, &u);
+    gsKit_TexManager_free(&global, &u);
+    CHECK(gsKit_TexManager_bind(&global, &v) == GSKIT_TEXMGR_BIND_DEFERRED);
+    gsKit_TexManager_commitFrame(0);
+    gsKit_TexManager_commitFrame(1);
+    CHECK(gsKit_TexManager_bind(&global, &v) != GSKIT_TEXMGR_BIND_DEFERRED);
+    releaseNow(&u); releaseNow(&v);
+
+    // New pixels for a texture this frame already drew go to a new block.
+    reset(1);
+    GSTEXTURE w = makeTexture(64, 64);
+    gsKit_TexManager_bind(&global, &w);
+    gsKit_TexManager_commitFrame(1);
+    gsKit_TexManager_bind(&global, &w);
+    u32 wVram = w.Vram;
+    gsKit_TexManager_invalidate(&global, &w);
+    gsKit_TexManager_bind(&global, &w);
+    CHECK(w.Vram != 0 && w.Vram != wVram);
+    releaseNow(&w);
 
     // A reused block reuploaded in a discarded queue must be invalidated by rollback too.
     reset(1);
@@ -256,6 +318,22 @@ int main() {
     gsKit_TexManager_commitFrame(1);
     CHECK(gsKit_TexManager_bind(&global, &r) != GSKIT_TEXMGR_BIND_DEFERRED);
     releaseNow(&r); releaseNow(&huge);
+
+    // Rollback keeps the pixels of a texture the flipped queue may still upload.
+    reset(1);
+    GSTEXTURE k = makeTexture(64, 64), kHuge = makeTexture(2048, 1024);
+    gsKit_TexManager_bind(&global, &k);
+    gsKit_TexManager_commitFrame(1);
+    gsKit_TexManager_invalidate(&global, &k);
+    gsKit_TexManager_bind(&global, &k);
+    CHECK(gsKit_TexManager_bind(&global, &kHuge) == GSKIT_TEXMGR_BIND_DEFERRED);
+    gsKit_TexManager_commitFrame(0);
+    void *kMem = k.Mem;
+    gsKit_TexManager_release(&global, &k);
+    CHECK(!freed(kMem));
+    gsKit_TexManager_flush();
+    CHECK(freed(kMem));
+    releaseNow(&kHuge);
 
     // Persistent overflow stays deferred without another failed queue or a starvation loop.
     reset(1);
@@ -277,21 +355,25 @@ int main() {
     CHECK(!gsKit_TexManager_starved());
     releaseNow(&s); releaseNow(&oversized); releaseNow(&small);
 
-    // Seventy protected blocks plus forty different requests recover through one degraded complete frame.
+    // VRAM full of art this frame drew, plus forty new requests: one degraded complete frame recovers.
     reset(1);
-    std::vector<GSTEXTURE> displayed(70), requested(40);
+    std::vector<GSTEXTURE> displayed(102), requested(40);
     for (GSTEXTURE &t : displayed) t = makeTexture(320, 64);
     for (GSTEXTURE &t : requested) t = makeTexture(320, 64);
     for (GSTEXTURE &t : displayed)
         CHECK(gsKit_TexManager_bind(&global, &t) != GSKIT_TEXMGR_BIND_DEFERRED);
     gsKit_TexManager_commitFrame(1);
     int deferred = 0;
+    for (GSTEXTURE &t : displayed)
+        (void)gsKit_TexManager_bind(&global, &t);
     for (GSTEXTURE &t : requested) {
         if (gsKit_TexManager_bind(&global, &t) == GSKIT_TEXMGR_BIND_DEFERRED)
             deferred++;
     }
     CHECK(deferred > 0 && gsKit_TexManager_starved());
     gsKit_TexManager_commitFrame(0);
+    for (GSTEXTURE &t : displayed)
+        (void)gsKit_TexManager_bind(&global, &t);
     for (GSTEXTURE &t : requested)
         (void)gsKit_TexManager_bind(&global, &t);
     CHECK(!gsKit_TexManager_starved());
@@ -301,52 +383,61 @@ int main() {
     for (GSTEXTURE &t : displayed) releaseNow(&t);
     for (GSTEXTURE &t : requested) releaseNow(&t);
 
-    // gsKit's framebuffer allocator reinitializes the texture manager; HIRES protection must survive it.
+    // gsKit's framebuffer allocator reinitializes the texture manager: pixels stay until the queues are gone.
     reset(1);
     GSTEXTURE q = makeTexture(64, 64, true);
     gsKit_TexManager_bind(&global, &q);
     void *qMem = q.Mem;
     gsKit_TexManager_init(&global);
     gsKit_TexManager_release(&global, &q);
-    CHECK(freed(qMem));
+    CHECK(!freed(qMem));
     gsKit_TexManager_flush();
     CHECK(freed(qMem));
 
-    // Ordinary video modes keep immediate release and immediate VRAM reuse.
+    // Ordinary video modes: VRAM is reused at once; pixels wait only for the queue not yet run.
     reset(0);
-    GSTEXTURE g = makeTexture(64, 64, true), h = makeTexture(64, 64);
+    GSTEXTURE g = makeTexture(64, 64, true), h = makeTexture(64, 64), o = makeTexture(64, 64);
+    gsKit_TexManager_bind(&global, &o);
+    gsKit_TexManager_commitFrame(1);
+    void *oMem = o.Mem;
+    gsKit_TexManager_release(&global, &o);
+    CHECK(freed(oMem));
     gsKit_TexManager_bind(&global, &g);
     u32 ordinaryVram = g.Vram;
     void *ordinaryMem = g.Mem, *ordinaryClut = g.Clut;
     gsKit_TexManager_release(&global, &g);
-    CHECK(freed(ordinaryMem) && freed(ordinaryClut));
+    CHECK(!freed(ordinaryMem));
     gsKit_TexManager_bind(&global, &h);
     CHECK(h.Vram == ordinaryVram);
+    gsKit_TexManager_commitFrame(1);
+    CHECK(freed(ordinaryMem) && freed(ordinaryClut));
     releaseNow(&h);
 
-    // Expired free blocks coalesce before allocation: six 512 KiB releases must satisfy a 1 MiB request.
+    // Free blocks coalesce before allocation: six 512 KiB releases must satisfy a 1 MiB request.
     reset(1);
     std::vector<GSTEXTURE> fragments(6);
     for (GSTEXTURE &t : fragments) t = makeTexture(512, 512);
     for (GSTEXTURE &t : fragments)
         CHECK(gsKit_TexManager_bind(&global, &t) != GSKIT_TEXMGR_BIND_DEFERRED);
     gsKit_TexManager_commitFrame(1);
+    for (GSTEXTURE &t : fragments)
+        (void)gsKit_TexManager_bind(&global, &t); // drawn this frame: their blocks stay reserved
     for (GSTEXTURE &t : fragments) gsKit_TexManager_release(&global, &t);
-    gsKit_TexManager_commitFrame(1);
-    gsKit_TexManager_commitFrame(1); // expire the released blocks before the larger request
+    gsKit_TexManager_commitFrame(1); // the reservations expire with the frame
     GSTEXTURE merged = makeTexture(1024, 512);
     CHECK(gsKit_TexManager_bind(&global, &merged) != GSKIT_TEXMGR_BIND_DEFERRED);
     releaseNow(&merged);
 
-    // Shutdown also releases source pixels immediately; no deferred bookkeeping remains.
+    // Shutdown: the queues are gone, so every waiting release is freed.
     reset(1);
-    GSTEXTURE z = makeTexture(64, 64, true);
-    void *zMem = z.Mem, *zClut = z.Clut;
-    gsKit_TexManager_bind(&global, &z);
-    gsKit_TexManager_release(&global, &z);
-    CHECK(freed(zMem) && freed(zClut));
+    GSTEXTURE zz = makeTexture(64, 64, true);
+    void *zMem = zz.Mem, *zClut = zz.Clut;
+    gsKit_TexManager_bind(&global, &zz);
+    gsKit_TexManager_release(&global, &zz);
+    CHECK(!freed(zMem));
     gsKit_TexManager_flush();
     CHECK(freed(zMem) && freed(zClut));
+    if (!failures) std::printf("PASS: inline HIRES uploads, same-frame protection, deferred pixel release\n");
     return failures ? 1 : 0;
 }
 '''
@@ -400,4 +491,4 @@ with tempfile.TemporaryDirectory(prefix="hires-texture-ownership-") as tmp:
         results.append(1)
 if any(results):
     sys.exit("FAIL: HIRES texture ownership or starvation recovery is unsafe")
-print("PASS: direct pixel release, VRAM protection, starvation recovery, ordinary modes, and shutdown")
+print("PASS: inline uploads, VRAM protection, deferred pixel release, starvation recovery, ordinary modes, and shutdown")
