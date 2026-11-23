@@ -35,6 +35,37 @@ static int __starved;
 static int __degraded;
 static int __degradedProgress;
 static int __pressureSeen;
+static unsigned int __uploadsBuilding;  // uploads in the queue being built
+static unsigned int __uploadsCommitted; // uploads in the queue last flipped
+
+/* HIRES (latency 1) keeps gsKit's inline uploads: an upload is a step of the draw queue, so it reaches VRAM
+   only when that queue runs, in order with its draws, and never races gsHires.c's DMA thread. Two rules
+   make that safe while gsHires.c replays a queue once per pass and per field, until the next flip:
+   - A block whose texture this frame drew without uploading it is kept until the frame ends. The replay
+     of the next pass starts with what the last upload of this frame left there, so an upload over it
+     later in the same queue would put the wrong picture under the earlier draw (the banding). A block
+     this frame uploaded itself may be reused: each replay uploads it again before its draw.
+   - Released pixels (Mem, Clut) that a live queue uploads stay allocated until that queue is retired: the
+     one being built is replayed until the frame after it is flipped (flip waits for its DMA to end). */
+struct PendingFree
+{
+    void *mem;
+    void *clut;
+    unsigned int frame;
+    PendingFree *next;
+};
+static PendingFree *__pending;
+
+static void _pendingFreeAll(void)
+{
+    while (__pending != NULL) {
+        PendingFree *next = __pending->next;
+        free(__pending->mem);
+        free(__pending->clut);
+        free(__pending);
+        __pending = next;
+    }
+}
 
 static int frameAfter(unsigned int a, unsigned int b)
 {
@@ -87,13 +118,23 @@ static void _blockSplitFree(SVramBlock *block, unsigned int size)
     _blockInsertAfter(block, newBlock);
 }
 
+// protectUntil: a freed block that this frame drew from without uploading it, reserved until that frame ends.
 static int _blockProtected(const SVramBlock *block)
 {
-    if (!__latency || (block->tex == NULL && block->protectUntil == 0))
+    if (!__latency)
         return 0;
-    if (block->protectUntil && frameAfter(block->protectUntil, __committed))
-        return 1;
-    return frameAtLeast(block->lastUsed, __committed);
+    if (block->tex == NULL)
+        return block->protectUntil != 0 && frameAfter(block->protectUntil, __building);
+    return block->lastUsed == __building && block->lastUpload != __building;
+}
+
+// The texture leaves the block: keep the block for the rest of the frame when this frame drew it as it was.
+static void _blockLeave(SVramBlock *block)
+{
+    int reserve = _blockProtected(block);
+    block->tex = NULL;
+    block->allocated = 0;
+    block->protectUntil = reserve ? __building + 1 : 0;
 }
 
 static int _blockReclaimable(const SVramBlock *block)
@@ -168,9 +209,7 @@ static SVramBlock *_blockAlloc(unsigned int size)
         }
         candidate->tex->Vram = 0;
         candidate->tex->VramClut = 0;
-        candidate->tex = NULL;
-        candidate->allocated = 0;
-        candidate->protectUntil = 0;
+        _blockLeave(candidate); // not protected, so not reserved
         block = _blockMergeFree(candidate);
         if (block->iSize < size)
             block = NULL;
@@ -207,13 +246,15 @@ void gsKit_TexManager_setmode(GSGLOBAL *gsGlobal, enum ETransferMode mode)
 void gsKit_TexManager_setQueueLatency(int frames)
 {
     __latency = frames > 0 ? 1 : 0;
-    __trmode = __latency ? ETM_DIRECT : ETM_INLINE;
+    __trmode = ETM_INLINE;
     __building = 1;
     __committed = 0;
     __starved = 0;
     __degraded = 0;
     __degradedProgress = 0;
     __pressureSeen = 0;
+    __uploadsBuilding = 0;
+    __uploadsCommitted = 0;
 }
 
 unsigned int gsKit_TexManager_bind(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
@@ -234,10 +275,10 @@ unsigned int gsKit_TexManager_bind(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
         csize = gsKit_texture_size(cwidth, cheight, tex->ClutPSM);
     }
 
-    // Invalidation also needs a new VRAM generation when the old queue still uses this block.
+    // New pixels for a texture this frame already drew as it was: a new block, or the earlier draw would
+    // replay over them.
     if (block != NULL && tex->Vram == 0 && _blockProtected(block)) {
-        block->tex = NULL;
-        block->protectUntil = __building + 1;
+        _blockLeave(block);
         block = NULL;
     }
 
@@ -258,6 +299,8 @@ unsigned int gsKit_TexManager_bind(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
         block->iUseCount = 0;
         block->iUseCountPrev = 1;
         block->allocated = __building;
+        block->lastUsed = 0;
+        block->lastUpload = 0;
         tex->Vram = 0;
         tex->VramClut = 0;
     }
@@ -283,6 +326,7 @@ unsigned int gsKit_TexManager_bind(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
     }
     if (ttransfer || ctransfer) {
         block->lastUpload = __building;
+        __uploadsBuilding++;
         if (__degraded)
             __degradedProgress = 1;
     }
@@ -303,10 +347,8 @@ void gsKit_TexManager_free(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
     (void)gsGlobal;
     for (SVramBlock *block = __head; block != NULL; block = block->pNext) {
         if (block->tex == tex) {
-            block->tex = NULL;
-            if (__latency)
-                block->protectUntil = __building + 1;
-            else
+            _blockLeave(block);
+            if (block->protectUntil == 0)
                 _blockMergeFree(block);
             break;
         }
@@ -315,14 +357,53 @@ void gsKit_TexManager_free(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
     tex->VramClut = 0;
 }
 
+// May a queue that has not run out yet still read this texture's pixels? Without HIRES that is only the
+// queue being built (endFrame runs it to the end); with HIRES also the last flipped one, replayed until the
+// next flip. A texture with no block may have been evicted after an upload, so any upload counts for it.
+static int _pixelsReferenced(const GSTEXTURE *tex)
+{
+    for (const SVramBlock *block = __head; block != NULL; block = block->pNext) {
+        if (block->tex == tex)
+            return block->lastUpload != 0 && (block->lastUpload == __building || (__latency && block->lastUpload == __committed));
+    }
+    return __uploadsBuilding != 0 || (__latency && __uploadsCommitted != 0);
+}
+
 void gsKit_TexManager_release(GSGLOBAL *gsGlobal, GSTEXTURE *tex)
 {
+    int referenced = (tex->Mem != NULL || tex->Clut != NULL) && _pixelsReferenced(tex);
     gsKit_TexManager_free(gsGlobal, tex);
-    // HIRES uses direct uploads, so no inline DMA reference survives this call.
-    free(tex->Mem);
-    free(tex->Clut);
+    PendingFree *pending = referenced ? static_cast<PendingFree *>(malloc(sizeof(PendingFree))) : NULL;
+    if (pending != NULL) {
+        pending->mem = tex->Mem;
+        pending->clut = tex->Clut;
+        pending->frame = __building;
+        pending->next = __pending;
+        __pending = pending;
+    } else {
+        free(tex->Mem);
+        free(tex->Clut);
+    }
     tex->Mem = NULL;
     tex->Clut = NULL;
+}
+
+// Free the pixels no queue can read any more: the frame that released them, and with HIRES the frame
+// after it (whose flip stops the replay), has been flipped. flip waits for the DMA, so it really ended.
+static void _pendingFreeRetired(void)
+{
+    PendingFree **link = &__pending;
+    while (*link != NULL) {
+        PendingFree *entry = *link;
+        if (frameAtLeast(__committed, entry->frame + (__latency ? 1 : 0))) {
+            *link = entry->next;
+            free(entry->mem);
+            free(entry->clut);
+            free(entry);
+        } else {
+            link = &entry->next;
+        }
+    }
 }
 
 static void _usageNextFrame(void)
@@ -350,7 +431,8 @@ static void _rollbackAllocations(void)
             block->tex->Vram = 0;
             block->tex->VramClut = 0;
         }
-        block->lastUpload = 0;
+        // The reset queue is gone, but the last flipped one may still upload this texture
+        block->lastUpload = __committed;
         if (block->allocated == __building) {
             block->tex = NULL;
             block->allocated = 0;
@@ -369,13 +451,16 @@ void gsKit_TexManager_commitFrame(int completed)
         __starved = 0;
     } else {
         __committed = __building;
+        __uploadsCommitted = __uploadsBuilding;
         if (__degradedProgress)
             __degraded = 0;
         __degradedProgress = 0;
         __starved = 0;
     }
+    __uploadsBuilding = 0;
     __building++;
     _usageNextFrame();
+    _pendingFreeRetired();
 }
 
 int gsKit_TexManager_starved(void)
@@ -383,8 +468,10 @@ int gsKit_TexManager_starved(void)
     return __starved;
 }
 
+// The queues are gone (HIRES stopped, or a normal frame ran to the end): no reference is left.
 void gsKit_TexManager_flush(void)
 {
+    _pendingFreeAll();
     __starved = 0;
     __degraded = 0;
     __degradedProgress = 0;

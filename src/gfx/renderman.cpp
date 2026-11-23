@@ -331,12 +331,11 @@ int Renderer::setMode(int force)
             gsKit_mode_switch(gsGlobal, GS_ONESHOT);
         }
 
-        // Every mode keeps gsKit's own texture handling: uploads go into the draw queue (inline) and any
-        // texture may be evicted when VRAM is short. The two-frame VRAM reservation (latency 1) was never
-        // run on a PS2. It sent HIRES uploads straight to the GIF from this thread, outside gsHires.c's
-        // queue lock, so its priority-1 DMA thread could start a pass between our wait and our send.
-        // And it could not draw more art in a frame than fits VRAM at once, so covers never showed.
-        gsKit_TexManager_setQueueLatency(0);
+        // Every mode uploads inside the draw queue (inline), in order with its draws. HIRES replays a queue
+        // every pass until the next flip, so there the texture manager also keeps a block this frame drew
+        // without uploading until the frame ends, and frees released pixels only once no queue can read
+        // them (texmanager.cpp). Never upload straight to the GIF here: that races gsHires.c's DMA thread.
+        gsKit_TexManager_setQueueLatency(hires_);
         gsKit_set_test(gsGlobal, GS_ZTEST_OFF);
         gsKit_set_primalpha(gsGlobal, gDefaultAlpha, 0);
         gsKit_set_clamp(gsGlobal, GS_CMODE_CLAMP);
