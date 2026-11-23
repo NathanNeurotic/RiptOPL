@@ -86,10 +86,14 @@ class OrbitStagingTests(unittest.TestCase):
                 package_edition.stage_orbit(self.archive(**kwargs), self.destination, self.pin)
             self.assertFalse(self.destination.exists())
 
-    def test_pin_is_the_reviewed_release(self):
+    def test_pin_is_well_formed(self):
+        # NULD Neutrino RA Watch moves the pin by itself, so check its shape rather than one release.
         self.assertEqual(self.pin["repository"], "danielnuld/nuld")
-        self.assertEqual(self.pin["tag"], "v1.2.14")
-        self.assertEqual(self.pin["sha256"], "dd2b8b8c56340cf37991514f95ad2dd7159dd098dec2370924a21d0967bf3a03")
+        self.assertRegex(self.pin["tag"], r"^v\d+(\.\d+)*$")
+        self.assertEqual(self.pin["asset"], "NULD-" + self.pin["tag"] + ".zip")
+        self.assertRegex(self.pin["sha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(self.pin["source_commit"], r"^[0-9a-f]{40}$")
+        self.assertEqual(self.pin["snapshot_bytes_max"], 1216)
 
 
 if __name__ == "__main__":
