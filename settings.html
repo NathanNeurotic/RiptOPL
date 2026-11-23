@@ -98,8 +98,8 @@ page was disabled or removed.</div>
 <h2 id="settings-index">The Settings screen</h2>
 <p><b>Settings</b> on the Start menu opens a screen titled <b>Settings</b> that lists nine pages, then
 <b>Save Changes</b>.</p>
-<p class="muted">Paired emulator captures: Korium and IncebtIon Beta-4052, using the same non-bootable documentation samples. <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UI-CAPTURES.md">Capture notes and artwork credits</a>.</p>
-<div class="ui-capture-grid"><figure><a href="assets/ui/settings-overview.png"><img src="assets/ui/settings-overview.png" width="640" height="480" loading="lazy" decoding="async" alt="Settings categories — Korium"></a><figcaption>Settings categories — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/settings-overview.png"><img src="assets/ui/incebtion/settings-overview.png" width="640" height="480" loading="lazy" decoding="async" alt="Settings categories — IncebtIon"></a><figcaption>Settings categories — IncebtIon</figcaption></figure></div>
+<p class="muted">Captured in RIPPCSX2 using a sample library. <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/UI-CAPTURES.md">Capture details and artwork credits</a>.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/settings-overview.png"><img src="assets/ui/settings-overview.png" width="640" height="480" loading="lazy" decoding="async" alt="Settings categories"></a><figcaption>Settings categories</figcaption></figure></div>
 
 <table>
 <thead><tr><th>Page</th><th>What is on it</th></tr></thead>
@@ -108,7 +108,8 @@ page was disabled or removed.</div>
 <tr><td><a href="#general-settings">General &amp; System</a></td><td>Last-played, folders, IGR path, settings home, Write Operations, the parental lock, prefix paths, caches</td></tr>
 <tr><td><a href="#language-settings">Language</a></td><td>Menu language and the separate OSD defaults handed to games</td></tr>
 <tr><td><a href="#network-settings">Network</a></td><td>Protocol, the PS2's address, the SMB and HTTP servers, POPSTARTER's network files</td></tr>
-<tr><td><a href="#display-settings">Interface</a></td><td>Game display, theme, font size, Coverflow, artwork, colours, screen position</td></tr>
+<tr><td><a href="#display-settings">Interface</a></td><td>Library behaviour, font size, button legend and menu video</td></tr>
+<tr><td><a href="#theme-settings">Theme Settings</a></td><td>Theme, layout, artwork, colours and button glyphs</td></tr>
 <tr><td><a href="#game-launching">Game Launching</a></td><td>PS2 logo, default core, GSM defaults, Neutrino defaults</td></tr>
 <tr><td><a href="#vcd-settings">PS Emulation Settings</a></td><td>POPSTARTER and Ember, the PS1 list, BDMA driver equip</td></tr>
 <tr><td><a href="#controller-settings">Controller Settings</a></td><td>Scrolling, confirm button, stick sensitivity, menu vibration, pad emulation</td></tr>
@@ -128,7 +129,7 @@ page was disabled or removed.</div>
 boot lands on the Start menu with no tabs: enable exactly the devices your console has. The network
 protocol and addresses are on the <a href="#network-settings">Network</a> page; prefix paths and cache
 sizes are on <a href="#general-settings">General &amp; System</a>.</p>
-<div class="ui-capture-grid"><figure><a href="assets/ui/game-sources.png"><img src="assets/ui/game-sources.png" width="640" height="480" loading="lazy" decoding="async" alt="Game Sources — Korium"></a><figcaption>Game Sources — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/game-sources.png"><img src="assets/ui/incebtion/game-sources.png" width="640" height="480" loading="lazy" decoding="async" alt="Game Sources — IncebtIon"></a><figcaption>Game Sources — IncebtIon</figcaption></figure></div>
+<div class="ui-capture-grid"><figure><a href="assets/ui/game-sources.png"><img src="assets/ui/game-sources.png" width="640" height="480" loading="lazy" decoding="async" alt="Game Sources"></a><figcaption>Game Sources</figcaption></figure></div>
 
 
 <h3 id="device-enable-modes">Devices and start modes</h3>
@@ -159,9 +160,8 @@ sizes are on <a href="#general-settings">General &amp; System</a>.</p>
 <table data-sortable>
 <thead><tr><th>Option</th><th>Values</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>MMCE Slot</td><td>0 / 1 / Auto</td><td>Which memory-card slot the MMCE adapter is in.</td></tr>
 <tr><td>IGR Bootcard Slot(s)</td><td>NONE / 0 / 1 / BOTH</td><td>Slot(s) sent the "switch to bootcard" command on an in-game reset. See <a href="igr.html">In-Game Reset</a>.</td></tr>
-<tr><td>Send GameID on Launch</td><td>Off / On</td><td>Sends the Game ID to the MMCE adapter when a game launches, for adapters that switch memory-card profiles by game.</td></tr>
+<tr><td>Send GameID on Launch</td><td>Off / 0 / 1 / Both</td><td>Choose the card that receives the Game ID independently of the device that holds the game. 0 is physical Slot 1 and 1 is physical Slot 2. See <a href="mmce.html#gameid-wait">MMCE</a>.</td></tr>
 <tr><td>Wait cycles after /ACK low</td><td>0&ndash;5</td><td>Extra wait cycles after the /ACK signal goes low. Lower values may improve performance but can make some adapters unstable.</td></tr>
 <tr><td>Use timeout alarms</td><td>OFF / ON</td><td>MMCE timeout alarms. Off may help performance, but a timeout then freezes instead of failing cleanly.</td></tr>
 <tr><td>MMCE Prefix Path</td><td>text (path)</td><td>Subfolder on the MMCE card that holds the OPL folder tree, instead of the card root.</td></tr>
@@ -169,6 +169,7 @@ sizes are on <a href="#general-settings">General &amp; System</a>.</p>
 </table>
 
 <h2 id="general-settings">General &amp; System</h2>
+<p>Open <b>Date and Time</b> in the main menu, directly below <b>Check for Updates</b>. Enter the time manually or choose <b>Set from Internet</b>. The manual editor uses the console’s time zone and daylight-saving setting. Check for Updates offers to open it when the clock is unset.</p>
 <p>One page: general behaviour first, then Write Operations and the parental lock, then prefix paths and
 cache sizes.</p>
 
@@ -179,9 +180,8 @@ cache sizes.</p>
 <tr><td>Auto Start</td><td>0&ndash;9 (seconds)</td><td>Launches the last played game after this many seconds. Shown only when <em>Remember Last Played Game</em> is on; 0 disables the countdown.</td></tr>
 <tr><td>Browse Folders in Game List</td><td>Off / On</td><td>Shows subfolders of <code>CD/</code> and <code>DVD/</code> as browsable entries. Off by default, and <b>not supported on every device</b>; see <a href="#folder-browsing">Folder browsing</a>.</td></tr>
 <tr><td>IGR Path</td><td>text (path)</td><td>An ELF to boot after an in-game reset, instead of exiting to the PS2 browser; give it RiptOPL's own ELF to come back to RiptOPL. Keep it on the memory card (<code>mc0:</code>/<code>mc1:</code>) or a FAT32 USB drive (<code>mass:/…</code>): the post-reset loader cannot reach MMCE, so for MMCE chain through a memory-card loader such as PS2BBL. A USB path needs <code>USBD.IRX</code> and <code>USBHDFSD.IRX</code> in the card's <code>SYS-CONF</code> folder; if they are missing, RiptOPL offers to copy them the first time you launch a game on the OPL core from the menu (Auto Loading launches can't ask), and without them the reset drops to the PS2 browser. See <a href="igr.html#where-reset-goes">In-Game Reset</a>.</td></tr>
-<tr><td>Exit To</td><td>Console Menu / PS2 Browser / PS2 Browser (Skip Card Update)</td><td>Where the main menu's Exit goes. <b>Console Menu</b> (default) is the console's own exit, as before (FMCB or OSDMenu if installed). <b>PS2 Browser</b> asks for the Browser; a card menu program may open first. <b>PS2 Browser (Skip Card Update)</b> opens the Browser without the card's menu program, whose entries return at the next power-on. On a LoadBOOTer card, PS2 Browser skips the card update too so it reaches the Browser; RiptOPL only reads the card to tell. Restarts and IGR Path are not affected. Saved as <code>exit_menu</code>.</td></tr>
+<tr><td>Exit To</td><td>PS2 Browser / OSDSYS (Skip Update) / OSDSYS (With Update) / BOOT2.ELF / BOOT.ELF</td><td>Controls the main menu’s Exit. OSDSYS (With Update) is the default. A BOOT choice searches <code>mc0:/BOOT/</code> then <code>mc1:/BOOT/</code> for the named ELF. If neither has the file, RiptOPL opens the PS2 Browser. See the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/SETTINGS.md#general--system">settings reference</a> for FMCB behavior.</td></tr>
 <tr><td>Custom Settings Path</td><td>text (path)</td><td>Saves settings to a folder you choose, for example <code>mass0:/OPL</code>. Blank uses the folder RiptOPL booted from. The device is loaded on demand, so it need not be mounted when you type the path.</td></tr>
-<tr><td>Date and Time</td><td>[Modify]</td><td>Sets the console's clock. The dialog opens at the current local time; OK writes the date and time (seconds 0) in the console's own time zone and daylight-saving setting, and Cancel changes nothing. Years 2000&ndash;2099. Nothing is saved to RiptOPL's settings. <b>Check for Updates</b> needs the clock set to check GitHub's certificates. A clock that resets after the console is unplugged points to a flat clock battery. <b>Not tested on hardware.</b></td></tr>
 <tr><td>GSM Defaults (All Games)</td><td>[sub-screen]</td><td>The global GSM video settings every game inherits unless it sets its own. Also on Interface and Game Launching. See <a href="gsm.html">GSM Video Modes</a>.</td></tr>
 <tr><td>Write Operations</td><td>Off / On</td><td>Allows RiptOPL to rename and delete titles and create VMC images. On by default. It never allows edits to an APA partition table; see <a href="hdd.html#disk-safety">Disk safety</a>.</td></tr>
 <tr><td>Parental Lock Password</td><td>text (password)</td><td>Blank disables the lock. See <a href="#parental-lock">Parental lock</a> below.</td></tr>
@@ -339,37 +339,30 @@ already shows a failed connection, <b>Select / Refresh</b> retries it there, wit
 settings or saving the whole configuration.</div>
 
 <h2 id="display-settings">Interface</h2>
-<p>How the menu looks: game display, theme, font size, artwork, colours, and screen position.</p>
-<div class="ui-capture-grid"><figure><a href="assets/ui/interface-settings.png"><img src="assets/ui/interface-settings.png" width="640" height="480" loading="lazy" decoding="async" alt="Interface settings — Korium"></a><figcaption>Interface settings — Korium</figcaption></figure><figure><a href="assets/ui/incebtion/interface-settings.png"><img src="assets/ui/incebtion/interface-settings.png" width="640" height="480" loading="lazy" decoding="async" alt="Interface settings — IncebtIon"></a><figcaption>Interface settings — IncebtIon</figcaption></figure></div>
+<p>Controls what the library shows, menu readability, and video output.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/interface-settings.png"><img src="assets/ui/interface-settings.png" width="640" height="480" loading="lazy" decoding="async" alt="Interface settings"></a><figcaption>Interface settings</figcaption></figure></div>
 
 
 <table data-sortable>
 <thead><tr><th>Option</th><th>Values</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>PS2/PS1 Game Display</td><td>Both (L3) / Mixed / PS2 / PS1</td><td><em>Both (L3)</em> keeps separate PS2 and PS1 pages toggled with L3. <em>Mixed</em> combines them and L3 cycles Mixed / PS2 / PS1. <em>PS2</em> or <em>PS1</em> shows only that type and fully disables L3. APPS and Favorites use their own rules. See <a href="ps1-vcd.html">PS1 Games</a>.</td></tr>
+<tr><td>PS2/PS1 Game Display</td><td>Both (L3) / Mixed / PS2 / PS1</td><td><em>Both (L3)</em> keeps separate PS2 and PS1 pages toggled with L3. <em>Mixed</em> combines them and L3 cycles Mixed / PS2 / PS1. <em>PS2</em> or <em>PS1</em> fixes the filter to that type. APPS and Favorites use their own rules. See <a href="ps1-vcd.html">PS1 Games</a>.</td></tr>
 <tr><td>Applications Display</td><td>Mixed / Apps / PS1ELF (L3)</td><td><em>Mixed</em> shows every ELF in one APPS list with L3 disabled. <em>Apps / PS1ELF (L3)</em> moves titles containing <code>[PS1]</code> to a second L3 page; launch behaviour is unchanged.</td></tr>
-<tr><td>Show [PS1]/[PS2] Labels</td><td>Off / On</td><td>Starts each disc-game row with <code>[PS1]</code> or <code>[PS2]</code>, which helps in the <em>Mixed</em> view. Off by default. Display only: names, sorting, renames and favourites are unchanged, and app and folder rows are never labelled.</td></tr>
-<tr><td>Show CFG Titles in Game Lists</td><td>Off / On</td><td>Shows the <code>Title=</code> line from each game's CFG instead of its file name, and sorts by it. Off by default: every list refresh then reads every game's CFG, so large SMB, MMCE and MX4SIO libraries load slower. Display only: renames, favourites, art and launching keep the file name. See <a href="unicode-titles.html#cfg-titles">Unicode game titles</a>.</td></tr>
 <tr><td>Video Mode</td><td>Auto / PAL / NTSC / &hellip;</td><td>Output mode for the <b>menu</b>. <em>Auto</em> follows the console. Besides the standard interlaced and progressive modes the list has the sharper 704-wide <em>HIRES</em> modes (the interlaced ones keep the menu inside a 4:3 safe area), 720p and 1080i (always 16:9), and 224p/256p. The two <em>FLICKER-FREE</em> 640-wide modes send the same 480i/576i signal but show the same lines in both fields, so thin lines and font edges stop strobing on a CRT, at the cost of half the vertical detail; the three <em>HIRES, FLICKER FILTER</em> modes at the end of the list instead show each line mixed half-and-half with the one below, keeping the full detail (new, not tested on hardware). H-POS, V-POS and Overscan are kept for each mode. After a change, <b>hold</b> Accept to keep the new mode; a tap does nothing, and Back or 10 seconds restores the old one (see <a href="controls.html#keep-video-mode">Keeping a new video mode</a>). Games use GSM instead; see <a href="gsm.html">GSM Video Modes</a>.</td></tr>
-<tr><td>Theme</td><td><em>built-in and installed themes</em></td><td>A fresh configuration starts with <code>&lt;OPL&gt;</code>. A configuration that saved the former <code>&lt;Coverflow&gt;</code> or <code>&lt;PSBBN Flow&gt;</code> theme loads <code>&lt;OPL&gt;</code> with that view, and the next save writes <code>theme_view=</code>. Saved theme choices override the default. External themes are read from <code>THM/</code> on each device. See <a href="themes.html">Theme Engine</a>.</td></tr>
-<tr id="theme-view"><td>Theme View</td><td>Default / List / Coverflow (3) / Coverflow (5) / PSBBN Flow / Grid</td><td>How the theme draws your games. <code>&lt;OPL&gt;</code> offers all of them; a disk theme offers the views its author declared (both Coverflow entries when it has a Coverflow view) and shows its default view for any other pick. Coverflow (3) and Coverflow (5) are the centered carousel with 3 or 5 covers; they are saved as <code>theme_view=coverflow</code> plus <code>coverflow_count=3</code> or <code>5</code>, so older configurations keep their count (<a href="https://github.com/NathanNeurotic/RiptOPL/pull/199">RiptOPL #199</a>, idea: <a href="https://github.com/KrahJohlito">KrahJohlito</a>). <b>Default</b> uses the theme's own default (List for <code>&lt;OPL&gt;</code>). Holding <b>L3</b> for half a second on the main page switches to the next view the theme offers, in the order List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid; save your settings to keep it. The choice is one setting for every theme (<code>theme_view=</code>). Both flow views use Left/Right to browse covers; Grid moves one cover with Left/Right and one row with Up/Down. All keep R3 as Favorite. See <a href="coverflow.html">Coverflow</a>, <a href="coverflow.html#psbbn-flow">PSBBN Flow</a> and <a href="themes.html#grid">Grid</a> and <a href="themes.html#views">multi-view themes</a>. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/102">RiptOPL #102</a>; NOT TESTED on hardware.</td></tr>
-<tr id="library-row"><td>Library</td><td>Pages / All Games List</td><td>Right under Theme View. <em>Pages</em> keeps a tab for every device; <em>All Games List</em> puts the games of every started device on one page. It works with every view and is the same <code>all_games</code> setting as <b>Game Sources → All Games List</b>. See <a href="library.html#all-games-list">Game Library</a>. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/199">RiptOPL #199</a>; NOT TESTED on hardware.</td></tr>
-<tr id="alt-background"><td>Alternate Background</td><td>Off / On</td><td>Shows the theme's second background (<code>alt=</code> in its <code>conf_theme.cfg</code>) instead of its default one, so one theme can ship two looks. A theme without <code>alt=</code> looks the same either way. Saved as <code>theme_alt_bg=</code>. See <a href="themes.html#alt-background">alternate background</a>. Idea: <a href="https://github.com/KrahJohlito">KrahJohlito</a>. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/220">RiptOPL #220</a>; NOT TESTED on hardware.</td></tr>
-<tr><td>Font Size</td><td>Small / Default / Large</td><td>Standard menu text at 15 / 17 / 19 pixels, with matching list and dialog spacing. Theme fonts with other point sizes keep their own size.</td></tr>
-<tr><td>Button Glyphs</td><td>Theme / Built-in / Standard / White</td><td>The button pictures in the hint bar. <em>Theme</em> (the default) uses the theme's own glyphs, or the set its <code>glyph_set</code> key names; the others replace them on every theme. Standard and White come from <a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a> by <a href="https://gitlab.com/akilluminati247">akilluminati47</a>. See <a href="themes.html#hint-glyphs">Theme Engine</a>.</td></tr>
-<tr><td>Coverflow Settings</td><td>[sub-screen]</td><td>See <a href="#coverflow-settings">Coverflow Settings</a>.</td></tr>
-<tr><td>Artwork Settings</td><td>[sub-screen]</td><td>See <a href="#artwork-settings">Artwork Settings</a>.</td></tr>
-<tr><td>Colors</td><td>[sub-screen]</td><td>See <a href="#colors-settings">Colors</a>.</td></tr>
-<tr><td>VCD Games List Settings</td><td>[sub-screen]</td><td>How the PS1 list is shown. See <a href="#vcd-list-settings">VCD Games List Settings</a>.</td></tr>
+<tr id="library-row"><td>Library</td><td>Pages / All Games List</td><td><em>Pages</em> keeps a tab for every device; <em>All Games List</em> puts the games of every started device on one page. It works with every view and is the same <code>all_games</code> setting as <b>Game Sources → All Games List</b>. See <a href="library.html#all-games-list">Game Library</a>. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/199">RiptOPL #199</a>; NOT TESTED on hardware.</td></tr>
+<tr><td>Show Legend</td><td>Off / On</td><td>Shows the button labels in the library and game information screens.</td></tr>
+<tr><td>Font Size</td><td>50–150% in 5% steps</td><td>Adjusts menu text and its spacing. The default is 100%, based on 17 px. Theme fonts at other sizes keep their own size. See the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/INTERFACE.md#menu-font-size">font size reference</a>.</td></tr>
 <tr><td>Notifications</td><td>Off / On</td><td>Brief on-screen notices when a config, theme or language file loads, or a partition mounts. On by default.</td></tr>
 <tr><td>Sort Games</td><td>Off / A to Z / Last played</td><td><em>A to Z</em> (the default) sorts game lists by title. <em>Last played</em> puts the last 10 games played first, newest first, with the rest A to Z beneath. <em>Off</em> keeps the order they were found. Replaces Sort Games Alphabetically; an old On reads as A to Z. See <a href="library.html#recent-games-and-sort-games">Game Library</a>.</td></tr>
 <tr><td>Automatic Refresh</td><td>Off / On</td><td>Re-scans for newly connected devices and adds their games without a manual refresh. Off by default.</td></tr>
+<tr><td>Show CFG Titles in Game Lists</td><td>Off / On</td><td>Shows the <code>Title=</code> line from each game's CFG instead of its file name, and sorts by it. Off by default: every list refresh then reads every game's CFG, so large SMB, MMCE and MX4SIO libraries load slower. Display only: renames, favourites, art and launching keep the file name. See <a href="unicode-titles.html#cfg-titles">Unicode game titles</a>.</td></tr>
+<tr><td>PS1 Duplicates</td><td>Both / Ember / POPSTARTER</td><td>Chooses which entry to show when the same PS1 game exists for both loaders.</td></tr>
+<tr><td>Show [PS1]/[PS2] Labels</td><td>Off / On</td><td>Starts each disc-game row with <code>[PS1]</code> or <code>[PS2]</code>, which helps in the <em>Mixed</em> view. Off by default. Display only: names, sorting, renames and favourites are unchanged, and app and folder rows are never labelled.</td></tr>
 <tr><td>Widescreen</td><td>Off / On</td><td>Draws the menu for a 16:9 screen when On. Fresh configurations start Off (4:3); saved choices override this. Selecting either flow theme does not enable widescreen.</td></tr>
 <tr><td>H-POS</td><td>&minus;300&ndash;300</td><td>Horizontal screen offset.</td></tr>
 <tr><td>V-POS</td><td>&minus;300&ndash;300</td><td>Vertical screen offset.</td></tr>
 <tr><td>Overscan</td><td>0&ndash;100</td><td>Shrinks the drawn area inward to compensate for overscan.</td></tr>
 <tr><td>Show GameID Barcode (Pixel FX)</td><td>On (All) / On (POPSTARTER only) / On (PS2 only) / Off</td><td>Draws a game-ID barcode as a game launches, read by Pixel FX / RetroGEM / PS2Digital devices to switch profiles, for PS2 games, PS1 VCDs or both. Its PS1 half is the same setting as <em>RetroGEM Game ID</em> on PS Emulation Settings.</td></tr>
-<tr><td>GSM Defaults (All Games)</td><td>[sub-screen]</td><td>The global GSM settings. See <a href="gsm.html">GSM Video Modes</a>.</td></tr>
 </tbody>
 </table>
 
@@ -382,7 +375,25 @@ a position rides along with a write that already happens — launching a game, o
 toggling and then powering off without doing either is the one case that is not kept. A remembered view
 the display pickers above no longer allow is discarded, not forced.</div>
 
-<h3 id="coverflow-settings">Coverflow Settings</h3>
+<h2 id="theme-settings">Theme Settings</h2>
+<p>Open Theme Settings from the Settings index or press <b>R1</b> from Interface. Artwork controls are on the page.</p>
+<div class="ui-capture-grid"><figure><a href="assets/ui/theme-settings.png"><img src="assets/ui/theme-settings.png" width="640" height="480" loading="lazy" decoding="async" alt="Theme Settings with the artwork controls"></a><figcaption>Theme Settings</figcaption></figure></div>
+<table data-sortable>
+<thead><tr><th>Option</th><th>Values</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Theme</td><td><em>built-in and installed themes</em></td><td>A fresh configuration starts with <code>&lt;OPL&gt;</code>. A configuration that saved the former <code>&lt;Coverflow&gt;</code> or <code>&lt;PSBBN Flow&gt;</code> theme loads <code>&lt;OPL&gt;</code> with that view, and the next save writes <code>theme_view=</code>. Saved theme choices override the default. External themes are read from <code>THM/</code> on each device. See <a href="themes.html">Theme Engine</a>.</td></tr>
+<tr id="theme-view"><td>Theme View</td><td>Default / List / Coverflow (3) / Coverflow (5) / PSBBN Flow / Grid / Grid (7×2)</td><td>How the theme draws your games. <code>&lt;OPL&gt;</code> offers all of them; a disk theme offers the views its author declared (both Coverflow entries when it has a Coverflow view) and shows its default view for any other pick. Coverflow (3) and Coverflow (5) are the centered carousel with 3 or 5 covers; they are saved as <code>theme_view=coverflow</code> plus <code>coverflow_count=3</code> or <code>5</code>, so older configurations keep their count (<a href="https://github.com/NathanNeurotic/RiptOPL/pull/199">RiptOPL #199</a>, idea: <a href="https://github.com/KrahJohlito">KrahJohlito</a>). <b>Default</b> uses the theme's own default (List for <code>&lt;OPL&gt;</code>). Holding <b>L3</b> for half a second on the main page switches to the next view the theme offers, in the order List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid or Grid (7×2); save your settings to keep it. The choice is one setting for every theme (<code>theme_view=</code>). Both flow views use Left/Right to browse covers; Grid moves one cover with Left/Right and one row with Up/Down. All keep R3 as Favorite. See <a href="coverflow.html">Coverflow</a>, <a href="coverflow.html#psbbn-flow">PSBBN Flow</a> and <a href="themes.html#grid">Grid</a> and <a href="themes.html#views">multi-view themes</a>. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/102">RiptOPL #102</a>; NOT TESTED on hardware.</td></tr>
+<tr><td>Layout Settings</td><td>[sub-screen]</td><td>See <a href="#coverflow-settings">Layout Settings</a>.</td></tr>
+<tr id="alt-background"><td>Alternate Background</td><td>Off / On</td><td>Shows the theme's second background (<code>alt=</code> in its <code>conf_theme.cfg</code>) instead of its default one, so one theme can ship two looks. A theme without <code>alt=</code> looks the same either way. Saved as <code>theme_alt_bg=</code>. See <a href="themes.html#alt-background">alternate background</a>. Idea: <a href="https://github.com/KrahJohlito">KrahJohlito</a>. <a href="https://github.com/NathanNeurotic/RiptOPL/pull/220">RiptOPL #220</a>; NOT TESTED on hardware.</td></tr>
+<tr><td>User Wallpaper</td><td>Off / On</td><td>Uses <code>wallpaper.png</code> from the settings folder behind the library. See the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/INTERFACE.md#theme-selection">wallpaper requirements</a>.</td></tr>
+<tr><td>Colors</td><td>[sub-screen]</td><td>See <a href="#colors-settings">Colors</a>.</td></tr>
+<tr><td>Button Glyphs</td><td>Theme / Built-in / Standard / White</td><td>The button pictures in the hint bar. <em>Theme</em> (the default) uses the theme's own glyphs, or the set its <code>glyph_set</code> key names; the others replace them on every theme. Standard and White come from <a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a> by <a href="https://gitlab.com/akilluminati247">akilluminati47</a>. See <a href="themes.html#hint-glyphs">Theme Engine</a>.</td></tr>
+<tr><td>List Title and Description</td><td>Theme / On / Off</td><td>Controls the extra CFG title and description in supported list layouts. Theme uses the theme author’s default.</td></tr>
+<tr><td>Boot Theme Wait</td><td>0–10 seconds</td><td>Time to wait at startup for the drive holding the saved theme. 0 opens the menu immediately.</td></tr>
+</tbody>
+</table>
+
+<h3 id="coverflow-settings">Layout Settings</h3>
 <p>These options tune <code>Coverflow</code> elements, including custom themes, and can be edited before selecting a theme. The number of covers is no longer a row here: pick <b>Coverflow (3)</b> or <b>Coverflow (5)</b> under <a href="#theme-view">Theme View</a>. PSBBN Flow retains its fixed perspective layout, distance shading and 25-frame animation. See <a href="coverflow.html">Coverflow &amp; PSBBN Flow</a> for full detail.</p>
 
 <table data-sortable>
@@ -395,14 +406,14 @@ the display pickers above no longer allow is discarded, not forced.</div>
 </tbody>
 </table>
 
-<h3 id="artwork-settings">Artwork Settings</h3>
+<h3 id="artwork-settings">Artwork controls on Theme Settings</h3>
 <table data-sortable>
 <thead><tr><th>Option</th><th>Values</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td>Cover Art</td><td>Off / On</td><td>Loads cover art. When off, no art images are loaded even if present. On by default.</td></tr>
 <tr><td>Logo Artwork</td><td>Off / On</td><td>Shows LGO images such as <code>&lt;ID&gt;_LGO.png</code>, including theme placeholders and LGO list decorators. Independent of ICO disc art and the game-launch PS2 Logo. On by default.</td></tr>
 <tr><td>Disc Artwork</td><td>Off / On</td><td>Shows the theme's disc art: every image keyed on the <code>ICO</code> suffix (<code>&lt;ID&gt;_ICO</code> in <code>ART/</code>), including the theme's own placeholder for it. Turn it off to hide the disc while keeping covers and backgrounds. On by default.</td></tr>
-<tr><td>Background Art</td><td>Off / On</td><td>Shows a game's background image (<code>&lt;ID&gt;_BG</code> in <code>ART/</code>) when the theme uses one. On by default.</td></tr>
+<tr><td>Background Art</td><td>Off / On</td><td>Shows a game's background image (<code>&lt;ID&gt;_BG</code> in <code>ART/</code>) when the theme uses one. Off by default.</td></tr>
 <tr><td>3D Save Icons</td><td>Off / On</td><td>Shows a save icon where the theme has a spot for it (the List and Coverflow views of <code>&lt;OPL&gt;</code> do; its PSBBN Flow view does not place one). PS2 titles use the assigned VMC first, then memory cards. PS1 titles read the 2D save icon from POPSTARTER's SLOT0.VMC/SLOT1.VMC or Ember's MC1.vmc/MC2.vmc in the game's save folder; those cards appear after the emulator creates them. Off by default. Themes place it with the <a href="themes.html#saveicon">SaveIcon element</a>.</td></tr>
 <tr><td>Cover Art .tar Archive</td><td>Off / On</td><td>Also reads art from an <code>ART/art.tar</code> archive alongside the loose image files. Off by default.</td></tr>
 <tr><td>Art Delay</td><td>0 (Instant) / 2 (Fast) / 5 (Medium) / 8 (Standard)</td><td>How many frames the cursor must rest on a title before its art starts loading. <em>0</em>, the default, loads straight away; a higher value skips art for titles you scroll past.</td></tr>

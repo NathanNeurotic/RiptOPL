@@ -86,7 +86,7 @@ built with one SDK, ps2build, into a single PS2 ELF. It is the main line of this
 GSM video-mode handling (including the forced-progressive 1080p mode), DS3/DS4 pad emulation (PADEMU), Virtual Memory Cards,
 PS2RD cheats and parental controls in one file. <b>In-game screenshots (IGS) and right-to-left (RTL) language support are not in
 the standard loader</b>; they belong to the <code>extras</code> configuration. USB DualSense support is the <code>ds5</code>
-configuration. Ready-made loaders for both are in the Korium and IncebtIon releases' <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> (see
+configuration. Ready-made loaders for both are in the RiptOPL channel's <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> (see
 <a href="releases.html">Releases</a>). The 1080p picker is gated behind a triple confirmation, and holding <b>Triangle + Cross</b>
 during console boot forces 480p for the menu only, on displays and connections that accept it.</p>
 
@@ -99,44 +99,21 @@ format to <code>favourites.bin</code>, which those loaders cannot read back. Kee
 you use them too. The settings home follows boot-directory discovery or <b>Custom Settings Path</b>;
 do not assume it is always <code>mc0:/OPL/</code>.</div>
 
-<h2 id="release-channels">Editions</h2>
-<p>RiptOPL publishes three editions, each with its own release channel. They are development builds from
-<code>rebuild/main</code>: every build is verified before publication, but none is a compatibility guarantee, so check the
-release notes for the exact build.</p>
+<h2 id="release-channels">Which package to install</h2>
+<ul>
+<li><b>Most installations:</b> download <code>RIPTOPL-&lt;version&gt;.zip</code> from <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling">RiptOPL</a>.</li>
+<li><b>RetroAchievements:</b> download <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code> from <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra">RetroAchievements</a> and follow the <a href="retroachievements.html">RA setup guide</a>.</li>
+<li><b>One game device:</b> once the full kit is installed, <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite">RiptOPLite</a> offers a smaller device-specific loader.</li>
+</ul>
+<p>Extract the kit to the root of your chosen device. The app is in <code>APPS/APP_RIPTOPL/</code> or <code>APPS/APP_RIPTOPL-RA/</code>. To install the app on a memory card, import the kit's matching <code>.psu</code> with a PS2 save manager. The PSU holds the app files. Put any companion folders required by your selected cores on supported storage.</p>
 
-<table data-sortable>
-<thead><tr><th>Edition</th><th>Tag</th><th>What it is</th></tr></thead>
-<tbody>
-<tr><td><b>Korium</b></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium"><code>rolling-korium</code></a></td><td>The standard loader with the Korium Komblete theme. Also carries <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> and <code>RIPTOPL-DEBUG-&lt;version&gt;.zip</code>.</td></tr>
-<tr><td><b>IncebtIon</b></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion"><code>rolling-incebtion</code></a></td><td>The standard loader with the IncebtIon theme. GitHub marks it as Latest. Also carries <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> and <code>RIPTOPL-DEBUG-&lt;version&gt;.zip</code>.</td></tr>
-<tr><td><b>RetroAchievements</b></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra"><code>rolling-ra</code></a></td><td>Korium with the RetroAchievements runtime and the <a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.12">NULD (formerly ORBIT) Neutrino RA runtime v1.2.12</a> in place of upstream Neutrino, plus the same kit built with the IncebtIon theme. See <a href="retroachievements.html">RetroAchievements</a>.</td></tr>
-</tbody>
-</table>
-
-<p>Download your edition's install kit (<code>RIPTOPL-Korium-&lt;version&gt;.zip</code>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code> or
-<code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>), unzip it, and either copy its ready app folder
-(<code>APPS/APP_RIPTOPL/</code>) to a device or import <code>APP_RIPTOPL.psu</code> onto a memory card. See
-<a href="releases.html">Releases</a> for the full asset list.</p>
-
-<div class="callout info"><div class="h">Already have RiptOPL installed?</div>
-This page is for a <b>first</b> install. To update, each channel carries a loose loader whose name and link never change:
-<a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-korium/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a> for Korium,
-<a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-incebtion/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a> for IncebtIon and
-<a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-ra/RIPTOPL-RA.ELF"><code>RIPTOPL-RA.ELF</code></a> for RetroAchievements. It is the exact
-loader inside that kit. Overwrite the ELF you already have; <code>POPS/</code>, <code>EMBER/</code>, <code>neutrino/</code> and
-your settings stay where they are. Use the full kit instead if companion folders are missing or the release notes announce updated
-companion cores or modules: replacing only the loader does not update Neutrino or Ember. Back up your configuration and save cards
-before updating.
-<p>The Korium, IncebtIon, RetroAchievements and LLVM builds can also do this themselves: <b>Check for Updates</b>, just above About
-in the main menu, asks the build's own rolling release for a newer build and, when you press OK, replaces the running ELF after
-checking its SHA-256. It needs RiptOPL started from a memory card or a USB/exFAT drive, a network connection with internet
-access, and the console clock set (<b>Settings &rarr; General &amp; System &rarr; Date and Time</b>). It replaces only the ELF.
-RiptOPLite, debug and variant builds do not have it. See
-<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/CHECK-FOR-UPDATES.md">Check for Updates</a>.
-<b>Not tested on hardware yet.</b></p></div>
+<div class="callout info"><div class="h">Updating an existing installation</div>
+<p>From a retired Korium, IncebtIon or RiptOPLLVM channel, install the current full kit once to move to the new channel. Back up your settings and saves. Copy updated <code>POPS/</code>, <code>EMBER/</code> and <code>neutrino/</code> files from the matching kit if you use those cores.</p>
+<p>The standard RiptOPL and RetroAchievements main menus offer <b>Check for Updates</b> when launched from a memory card or USB/exFAT drive. You need internet access and the correct console clock. The updater checks the loader ELF against the published SHA-256. Companion updates come from the kit. See <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/CHECK-FOR-UPDATES.md">Check for Updates</a> for the SHA-256 verification and recovery steps.</p>
+</div>
 
 <details class="deep"><summary>What is inside the install kit?</summary>
-<p>Each <code>RIPTOPL-&lt;edition&gt;.zip</code> contains:</p>
+<p>Each full install kit contains:</p>
 <ul>
   <li><code>APPS/APP_RIPTOPL/</code> (<code>APP_RIPTOPL-RA/</code> in the RetroAchievements kit): the ready-to-install app,
   <code>RIPTOPL.ELF</code> with its icons, <code>title.cfg</code> and music. Copy the folder into a device's <code>APPS/</code>.</li>
@@ -150,7 +127,7 @@ RiptOPLite, debug and variant builds do not have it. See
   <li><code>EMBER/</code>: the bundled Ember PS1 core, unmodified and ready for your own BIOS and games.</li>
   <li><code>neutrino/</code>: the official Neutrino release, extracted as a drag-and-drop folder (<code>neutrino.elf</code> +
   <code>config/</code> + <code>modules/</code>) with RiptOPL's UDPFS config added and its i.LINK pair replaced by RiptOPL's
-  builds (see <a href="credits.html">Credits</a>). The RetroAchievements kit carries the <a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.12">NULD (formerly ORBIT) Neutrino RA runtime v1.2.12</a>
+  builds (see <a href="credits.html">Credits</a>). The RetroAchievements kit carries the <a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.14">NULD (formerly ORBIT) Neutrino RA runtime v1.2.14</a>
   instead (see <a href="retroachievements.html">RetroAchievements</a>); an ELF-only update does not install it. It is used by per-game Neutrino launching and
   <b>network boot (UDPBD/UDPFS)</b>. Copy the <b>whole folder</b>; see step 3 below.</li>
   <li><code>BUILD-MANIFEST.json</code>, <code>LICENSE</code>, <code>CREDITS</code> and <code>README.md</code>.</li>
@@ -172,11 +149,11 @@ also publishes the loose loader, the app <code>.psu</code>, <code>RIPTOPL-src-&l
 <div class="steps">
   <div class="step">
     <h3>1. Download the package</h3>
-    <p>Go to the <a href="https://github.com/NathanNeurotic/RiptOPL/releases" target="_blank" rel="noopener">Releases page</a>, pick an <a href="#release-channels">edition</a>, and download its install kit: <code>RIPTOPL-Korium-&lt;version&gt;.zip</code>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code> or <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>. Unzip it locally.</p>
+    <p>Go to the <a href="https://github.com/NathanNeurotic/RiptOPL/releases" target="_blank" rel="noopener">Releases page</a>, pick an <a href="#release-channels">edition</a>, and download its install kit: <code>RIPTOPL-&lt;version&gt;.zip</code> or <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>. Unzip it locally.</p>
   </div>
   <div class="step">
-    <h3>2. Copy RIPTOPL.ELF to your boot location</h3>
-    <p>The loader is <code>APPS/APP_RIPTOPL/RIPTOPL.ELF</code> inside the kit. The simplest install is to copy the whole <code>APPS/APP_RIPTOPL/</code> folder into a device's <code>APPS/</code> (or import <code>APP_RIPTOPL.psu</code> onto a memory card) and point your launcher at the <code>RIPTOPL.ELF</code> inside it. Where the ELF goes depends on your boot method:</p>
+    <h3>2. Copy the loader to your boot location</h3>
+    <p>For the standard kit, the loader is <code>APPS/APP_RIPTOPL/RIPTOPL.ELF</code>. The simplest standard install is to copy the whole <code>APPS/APP_RIPTOPL/</code> folder into a device's <code>APPS/</code> or import <code>APP_RIPTOPL.psu</code> onto a memory card. For the RetroAchievements kit, use <code>APPS/APP_RIPTOPL-RA/RIPTOPL-RA.ELF</code>, the matching <code>APPS/APP_RIPTOPL-RA/</code> folder and <code>APP_RIPTOPL-RA.psu</code> instead. Point your launcher at the ELF from the package you downloaded. Where the ELF goes depends on your boot method:</p>
     <ul>
       <li><b>FMCB</b> — copy <code>RIPTOPL.ELF</code> to a folder on a device that your launcher can access, such as a USB drive or memory card, then add a FMCB menu entry pointing to it. A common convention is <code>mass:/APPS/RIPTOPL/RIPTOPL.ELF</code> or <code>mc0:/RIPTOPL/RIPTOPL.ELF</code>.</li>
       <li><b>FHDB</b> — copy into an HDD partition the same way FHDB expects its launch targets.</li>
@@ -238,10 +215,10 @@ defaults. Existing saved settings override them, and updating the ELF does not r
 <thead><tr><th>Setting</th><th>Default</th><th>Where to change</th></tr></thead>
 <tbody>
 <tr><td>Menu aspect ratio</td><td>4:3 (Widescreen off)</td><td>Interface</td></tr>
-<tr><td>Theme</td><td>&lt;OPL&gt; (built-in)</td><td>Interface</td></tr>
-<tr><td>Theme View</td><td>Default (List for &lt;OPL&gt;); Coverflow, PSBBN Flow and Grid are optional views</td><td>Interface, or hold L3</td></tr>
-<tr><td>Cover Art</td><td>On</td><td>Interface → Artwork Settings</td></tr>
-<tr><td>Per-game background art</td><td>Off in Korium and RetroAchievements; On in IncebtIon</td><td>Interface → Artwork Settings</td></tr>
+<tr><td>Theme</td><td>&lt;OPL&gt; (built-in)</td><td>Theme Settings</td></tr>
+<tr><td>Theme View</td><td>Default (List for &lt;OPL&gt;); Coverflow, PSBBN Flow and Grid are optional views</td><td>Theme Settings, or hold L3</td></tr>
+<tr><td>Cover Art</td><td>On</td><td>Theme Settings</td></tr>
+<tr><td>Per-game background art</td><td>Off</td><td>Theme Settings</td></tr>
 <tr><td>Notifications (popups)</td><td>On</td><td>Interface</td></tr>
 <tr><td>PS2 Logo</td><td>On</td><td>Game Launching</td></tr>
 <tr><td>Sound effects, boot sound, background music</td><td>Off (stored volume 90)</td><td>Audio Settings</td></tr>

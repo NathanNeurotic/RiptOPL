@@ -131,18 +131,18 @@ automatically on first launch.</p>
 <tr><td><code>EMBER/</code></td><td>Ember PS1 emulator, BIOS, settings, and game folders</td></tr>
 </tbody>
 </table>
-<p>The device prefix is <code>mmce0:/</code> (slot 0) or <code>mmce1:/</code> (slot 1). In
+<p>Physical Slot 1 is <code>mmce0:/</code> and physical Slot 2 is <code>mmce1:/</code>. In
 <code>conf_apps.cfg</code>, reference ELFs on the MMCE card as <code>mmce:APPS/MYAPP.ELF</code>.</p>
 
 <span id="device-settings"></span>
 <h2 id="game-sources">Where the MMCE settings live</h2>
 <p><b>MMCE Start Mode</b> is in <b>Settings &rarr; Game Sources</b>, alongside the other device start
 modes. Everything else is on the <b>MMCE Settings</b> screen, opened from the <b>MMCE Settings</b> row just
-below it: <b>MMCE Slot</b>, <b>IGR Bootcard Slot(s)</b>, <b>Send GameID on Launch</b>,
+below it: <b>IGR Bootcard Slot(s)</b>, <b>Send GameID on Launch</b>,
 <b>Wait cycles after /ACK low</b>, <b>Use timeout alarms</b> and <b>MMCE Prefix Path</b>.</p>
 
 <h3 id="start-mode">MMCE Start Mode</h3>
-<p>Controls when OPL loads the MMCE driver and shows the MMCE Games tab.</p>
+<p>Controls when OPL loads the MMCE driver and shows a library page for each detected MMCE card.</p>
 <table data-sortable>
 <thead><tr><th>Value</th><th>Behaviour</th></tr></thead>
 <tbody>
@@ -154,16 +154,8 @@ below it: <b>MMCE Slot</b>, <b>IGR Bootcard Slot(s)</b>, <b>Send GameID on Launc
 <p>Every device in Game Sources ships <b>Off</b>: a fresh install boots to the start menu with no tabs, and
 you enable exactly what your rig has. A saved config overrides the shipped default on load.</p>
 
-<h3 id="slot">MMCE Slot</h3>
-<p>Selects which memory-card slot the MMCE device occupies.</p>
-<table data-sortable>
-<thead><tr><th>Value</th><th>Meaning</th></tr></thead>
-<tbody>
-<tr><td><b>0</b></td><td>Memory-card slot 1 (port 2 internally); fixed.</td></tr>
-<tr><td><b>1</b></td><td>Memory-card slot 2 (port 3 internally); fixed.</td></tr>
-<tr><td><b>Auto</b></td><td>OPL probes both slots and uses the first one that responds. Default.</td></tr>
-</tbody>
-</table>
+<h3 id="slot">Using both memory-card slots</h3>
+<p>RiptOPL detects both MMCE cards automatically and shows their games on separate pages, like separate USB devices. Open the page for the card that holds the game. The save-card target is set independently in <b>Send GameID on Launch</b>.</p>
 
 <h3 id="prefix-path">MMCE Prefix Path</h3>
 <p><i>(On the <b>MMCE Settings</b> screen, opened from Game Sources.)</i> An optional sub-path appended after the device root before OPL looks for game folders.
@@ -171,7 +163,8 @@ Useful when your SD card serves multiple purposes and you want to keep OPL files
 <code>OPL</code> causes OPL to look for games in <code>mmce0:/OPL/DVD/</code> instead of
 <code>mmce0:/DVD/</code>. Leave blank (the default) to use the root of the SD card.</p>
 
-<h3 id="gameid-wait">Send GameID on Launch: waiting for the card</h3>
+<h3 id="gameid-wait">Send GameID on Launch</h3>
+<p>Choose <b>0</b> for physical Slot 1, <b>1</b> for physical Slot 2, <b>Both</b> for both cards, or <b>Off</b> (the default). For example, launch an ISO from Slot 2 and choose <b>0</b> to switch the save card in Slot 1 to the game's profile. The adapter must be configured to accept Game ID changes.</p>
 <p>sd2psXtd starts the card switch a moment after it is asked, so a launch could start the game while the card
 was still switching (<a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a> reported a Burnout 3 hang). RiptOPL now waits up to 2 seconds to see the card go
 busy, then shows <em>The MMCE is getting this game's memory card ready (N s)</em> until it is done, up to
@@ -226,8 +219,8 @@ separate PS2 / PS1 views, a combined list, or one locked type; L3 is available o
 and <b>Mixed</b>. See <a href="ps1-vcd.html">PS1 Games (VCD)</a> for the full setup walkthrough and cover-art
 fallback chain.</p>
 
-<p>MMCE is also a supported BDMA source for the exFAT POPSTARTER equip (BDMA Mode → <b>MMCE (exFAT)</b>),
-meaning POPSTARTER can read BDMA module files from the MMCE card when you use an exFAT-formatted SD.</p>
+<p>POPStarter's MMCE BDMA driver reads the first present MMCE. With both connected, launch a POPStarter title from Slot 1. For a Slot 2 POPStarter title, remove the Slot 1 MMCE before launching. Ember can use either slot with both connected.</p>
+<p>RiptOPL reads and installs the BDMA module pair under <code>mc0:/POPSTARTER/</code> whenever a card occupies Slot 1. It uses <code>mc1:/POPSTARTER/</code> when Slot 1 is empty. See <a href="ps1-vcd.html#bdma">BDMA equip</a>.</p>
 
 <h2 id="neutrino">Neutrino on MMCE</h2>
 <p>Per-game <a href="neutrino.html">Neutrino</a> is fully supported for games stored on MMCE. Copy the

@@ -77,58 +77,28 @@
   </nav>
   <main class="content">
 <h1>Releases and packages</h1>
-<p class="lead">Three editions and five release channels, one SDK: ps2build. Every channel is rebuilt from
-<code>rebuild/main</code> and verified before it is published; channels can briefly differ while builds run, so match source commits from each
-release's notes or <code>BUILD-MANIFEST.json</code>. GCC builds the Korium, RetroAchievements, IncebtIon and
-RiptOPLite channels; RiptOPLLVM is a separate LLVM/Clang pre-release.</p>
-
-<div class="callout info" id="recommended"><div class="h">Which download do I want?</div><p>Take the <b>full install kit</b> of one edition:
-<a href="#how-to-pull"><code>RIPTOPL-Korium-&lt;version&gt;.zip</code></a>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code> or, for achievements,
-<code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>. The Korium, RetroAchievements and IncebtIon release notes open with a <b>Recommended download</b> line
-that links that kit. Everything else on a release is optional: a loader ELF to update an existing install, a memory-card PSU,
-variant, debug and bug-report builds, RiptOPLite single-device loaders and the LLVM pre-release.</p></div>
+<p>For a first installation, choose the full <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling">RiptOPL kit</a>. Choose the <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra">RetroAchievements kit</a> if you use xeRAbora. The <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite">RiptOPLite channel</a> supplies smaller loaders for existing installations that use one game device. All three channels use the built-in PSBBN theme, with List, Grid, Coverflow and PSBBN Flow views.</p>
 
 <h2 id="channels">Editions and channels</h2>
-<table><thead><tr><th>Edition</th><th>Channel</th><th>Contents</th></tr></thead><tbody>
-<tr><td>Korium</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium">rolling-korium</a></td><td>Standard loader with Korium Komblete graphics and layout. Also carries the variant and debug builds.</td></tr>
-<tr><td>RetroAchievements</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra">rolling-ra</a></td><td>Korium theme with the RetroAchievements runtime, the <a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.12">NULD (formerly ORBIT) Neutrino RA runtime v1.2.12</a> (in place of upstream Neutrino) and the xeRAbora client shortcut, plus the same kit built with the IncebtIon theme.</td></tr>
-<tr><td>IncebtIon</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion">rolling-incebtion</a></td><td>Standard loader with the IncebtIon built-in theme. Also carries the variant and debug builds. GitHub marks this channel as Latest.</td></tr>
-<tr><td>RiptOPLite</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite">rolling-lite</a></td><td>One Korium loader per game device (USB, MX4SIO, iLink, HDD, SMB, UDPBD, UDPFS, MMCE), smaller and with less to load at start-up, plus a RetroAchievements ZIP per device. No install kit: it goes onto an existing Korium or RetroAchievements install. See <a href="#riptoplite">RiptOPLite</a>.</td></tr>
-<tr><td>RiptOPLLVM</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm">rolling-llvm</a></td><td>rebuild/main built with the LLVM/Clang toolchain: Korium and Korium RetroAchievements kits, their ELFs, PSUs, variant, debug and bug-report builds, and every RiptOPLite build. No IncebtIon. Marked pre-release, never Latest. See <a href="#riptopllvm">RiptOPLLVM</a>.</td></tr>
+<table><thead><tr><th>Edition</th><th>Channel</th><th>Download</th></tr></thead><tbody>
+<tr><td>RiptOPL</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling"><code>rolling</code></a></td><td>Standard full kit, built with LLVM/Clang and marked Latest. Choose <code>RIPTOPL-&lt;version&gt;.zip</code>.</td></tr>
+<tr><td>RetroAchievements</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra"><code>rolling-ra</code></a></td><td>Full GCC kit with the pinned NULD runtime and a xeRAbora shortcut. Choose <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>.</td></tr>
+<tr><td>RiptOPLite and RiptOPLite RA</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite"><code>rolling-lite</code></a></td><td>GCC loaders for individual game devices. The standard loaders are ELFs, and RA loaders come in ZIPs with the matching runtime.</td></tr>
 </tbody></table>
-<div class="callout amber"><div class="h">Development builds</div><p>Every channel is a development build. Publication checks the source commit, clean state, SDK consistency, file inventory and checksums, but a passing build does not mean it has been tested on your console, storage and settings. Check the release notes for the exact commit. Builds that are not published yet are in the <a href="https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-release.yml">Rolling Release</a> runs as workflow artifacts.</p></div>
 
 <h2 id="rolling-assets">What each channel carries</h2>
-<table><thead><tr><th>Asset</th><th>What it is</th></tr></thead><tbody>
-<tr><td><code>RIPTOPL-Korium-&lt;version&gt;.zip</code>, <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code>, <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code></td><td>The full install kit: <code>APPS/</code> with the ready app, matching <code>ART/</code>, the app PSU, <code>POPS/</code> with every BDMA pair, the licensed <code>EMBER/</code> core, the official Neutrino release as <code>neutrino/</code> with RiptOPL's UDPFS config and i.LINK pair (the <a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.12">NULD (formerly ORBIT) Neutrino RA runtime v1.2.12</a> in the RetroAchievements kits), external-tool shortcuts, license, credits, the usmb2 licence and build manifest.</td></tr>
-<tr><td><code>RIPTOPL.ELF</code> (<code>RIPTOPL-RA.ELF</code> in RetroAchievements)</td><td>The exact loader used in that kit, under a name and link that never change. Use it to update an existing install.</td></tr>
-<tr><td><code>APP_RIPTOPL.psu</code> (<code>APP_RIPTOPL-RA.psu</code>)</td><td>The app's own files as one memory-card save, for a PS2 save manager.</td></tr>
-<tr><td><code>RIPTOPL-LANGS-&lt;version&gt;.zip</code></td><td>Every translation and the font its script needs, one folder per language. See <a href="languages.html">Languages</a>.</td></tr>
-<tr><td><code>RIPTOPL-src-&lt;version&gt;.zip</code></td><td>Git's source archive of the exact built commit.</td></tr>
-<tr><td><code>LICENSE-USMB2.txt</code></td><td>The MIT licence of <a href="https://github.com/sahlberg/usmb2">usmb2</a>, by <a href="https://github.com/sahlberg">Ronnie Sahlberg</a>, which every loader embeds for SMB2 browsing (see <a href="network-boot.html#smb">SMB</a>). The kit and every bundle zip below carry the same text. A <code>LICENSE-LIBSMB2.txt</code> still listed on a release is left over from builds before the switch to usmb2; the current loader does not contain libsmb2.</td></tr>
-<tr><td><code>BUILD-MANIFEST.json</code>, <code>SHA256SUMS.txt</code></td><td>Build identity and asset checksums.</td></tr>
-</tbody></table>
-
-<p>Every channel carries extra builds, built with its own theme, each as one folder per configuration with its own <code>RIPTOPL.ELF</code> and manifest,
-built from the same commit and SDK as the kit:</p>
+<p>Both full kits include the matching app under <code>APPS/</code>, artwork, a PSU app save, <code>POPS/</code> drivers, <code>EMBER/</code>, the bundled Neutrino runtime, licenses and credits. Both channels publish the packed ELF, source snapshot, language pack, build manifest and SHA-256 checksums. Sony BIOS and emulator files must be supplied separately where required.</p>
 <ul>
-<li><b>Korium</b> and <b>IncebtIon</b>: <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> with <code>pademu0</code> (pad emulation compiled out), <code>ds5</code>
-(USB DualSense), <code>extras</code> (in-game screenshots and right-to-left languages) and <code>extras_ds5</code>; and
-<code>RIPTOPL-DEBUG-&lt;version&gt;.zip</code> with every debug and diagnostic configuration (<code>dtl</code>, <code>diag</code>,
-<code>debug</code>, <code>debug_uart</code>, <code>ingame_debug</code>, <code>iopcore_debug</code>, <code>eesio_debug</code>,
-<code>ingame_debug_uart</code>, <code>iopcore_debug_uart</code>, <code>ingamediag</code>).</li>
-<li><b>RetroAchievements</b>: <code>RIPTOPL-RA-VARIANTS-&lt;version&gt;.zip</code> with <code>pademu0</code>, and the IncebtIon-theme kit as
-<code>RIPTOPL-RetroAchievements-IncebtIon-&lt;version&gt;.zip</code>, <code>RIPTOPL-RA-IncebtIon.ELF</code>,
-<code>APP_RIPTOPL-RA-IncebtIon.psu</code> and <code>RIPTOPL-RA-VARIANTS-IncebtIon-&lt;version&gt;.zip</code>. Inside that kit the app is still <code>APP_RIPTOPL-RA</code>.</li>
+<li><b>RiptOPL:</b> <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> contains <code>pademu0</code>, <code>ds5</code>, <code>extras</code> and <code>extras_ds5</code>. <code>RIPTOPL-DEBUG-&lt;version&gt;.zip</code> contains diagnostic configurations. <code>RIPTOPL-BUGREPORT-&lt;version&gt;.zip</code> contains the unpacked diagnostic loader and reporting instructions.</li>
+<li><b>RetroAchievements:</b> <code>RIPTOPL-RA-VARIANTS-&lt;version&gt;.zip</code> contains <code>pademu0</code> and unpacked loader builds. Use the runtime packaged with the RA release.</li>
 </ul>
-<p>The <b>Korium</b> and <b>IncebtIon</b> channels also carry <code>RIPTOPL-BUGREPORT-&lt;version&gt;.zip</code>: their <code>diag</code> build before compression, with a README on what to send. See <a href="launch-diagnostics.html#bug-report-build">Launch diagnostics</a>.</p>
-<p>Standard kits never include RetroAchievements resources. No BIOS or Sony emulator file is distributed.</p>
+<p>For the supported options and exact toolchains, see <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md">Build configurations</a> and the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/ROLLING_RELEASE.md">release contract</a>.</p>
 
 <h2 id="riptoplite">RiptOPLite: one loader per game device</h2>
-<p><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite">rolling-lite</a> is for consoles that play from one device only. Each build is the Korium edition with
-that device's game drivers alone; the memory card (MMCE) and network modules stay in every build, and the RetroAchievements builds also
+<p><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite">rolling-lite</a> is for consoles that play from one device only. Each standard build includes
+the game drivers for its chosen device; the memory card (MMCE) and network modules stay in every build, and the RetroAchievements builds also
 keep everything RetroAchievements uses on any device.</p>
-<table><thead><tr><th>Device</th><th>Korium</th><th>RetroAchievements</th></tr></thead><tbody>
+<table><thead><tr><th>Device</th><th>Standard</th><th>RetroAchievements</th></tr></thead><tbody>
 <tr><td>USB</td><td><code>RIPTOPLITE-USB.ELF</code></td><td><code>RIPTOPLITE-RA-USB-&lt;version&gt;.zip</code></td></tr>
 <tr><td>MX4SIO</td><td><code>RIPTOPLITE-MX4SIO.ELF</code></td><td><code>RIPTOPLITE-RA-MX4SIO-&lt;version&gt;.zip</code></td></tr>
 <tr><td>iLink</td><td><code>RIPTOPLITE-ILINK.ELF</code></td><td><code>RIPTOPLITE-RA-ILINK-&lt;version&gt;.zip</code></td></tr>
@@ -138,57 +108,30 @@ keep everything RetroAchievements uses on any device.</p>
 <tr><td>UDPFS (Files and IMG)</td><td><code>RIPTOPLITE-UDPFS.ELF</code></td><td><code>RIPTOPLITE-RA-UDPFS-&lt;version&gt;.zip</code></td></tr>
 <tr><td>MMCE</td><td><code>RIPTOPLITE-MMCE.ELF</code></td><td><code>RIPTOPLITE-RA-MMCE-&lt;version&gt;.zip</code></td></tr>
 </tbody></table>
-<p>HTTP and PC Card CF have no lite build. A Korium lite ELF replaces <code>RIPTOPL.ELF</code> in an existing Korium install and needs
-nothing else. RetroAchievements needs files outside the loader (NULD's Neutrino RA runtime, formerly ORBIT), so each RA lite download is a ZIP with the
+<p>HTTP and PC Card CF have no lite build. A standard Lite ELF can replace <code>RIPTOPL.ELF</code> in an existing RiptOPL installation. Keep the companion folders for any cores you use. RetroAchievements needs files outside the loader (NULD's Neutrino RA runtime, formerly ORBIT), so each RA lite download is a ZIP with the
 ELF, <code>neutrino/</code>, the xeRAbora shortcut, licences, manifest and a README saying where each goes. A lite loader shares the full
 loader's settings file and leaves the device settings it has no drivers for unchanged; it cannot read settings from such a device, so keep them
 on its own device, a memory card or a USB stick. The channel also carries <code>BUILD-MANIFEST.json</code>, <code>SHA256SUMS.txt</code> and
 <code>LICENSE-USMB2.txt</code>. See <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/RIPTOPLITE.md">RIPTOPLITE.md</a>.</p>
 
-<h2 id="riptopllvm">RiptOPLLVM: the LLVM pre-release</h2>
-<p><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm">rolling-llvm</a> builds <code>rebuild/main</code> with the GCC channels' SDK pin, using
-the pinned ps2build LLVM/Clang toolchain and matching LLVM ports; its notes name the commit it was built from. It carries <code>RIPTOPL-Korium-&lt;version&gt;.zip</code>,
-<code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>, <code>RIPTOPL.ELF</code>, <code>RIPTOPL-RA.ELF</code>, both PSUs,
-<code>RIPTOPL-VARIANTS</code>, <code>RIPTOPL-DEBUG</code>, <code>RIPTOPL-BUGREPORT</code> and <code>RIPTOPL-RA-VARIANTS</code> zips,
-all sixteen RiptOPLite builds, separate Korium and RetroAchievements language packs (<code>RIPTOPL-LANGS</code>, <code>RIPTOPL-RA-LANGS</code>),
-a source snapshot, one <code>BUILD-MANIFEST.json</code> for every LLVM build and <code>SHA256SUMS.txt</code>. Every manifest must show
-<code>compiler: llvm</code> before it publishes. It replaces no GCC asset or tag. Start with the GCC kits unless you want to test LLVM:
-it has not been shown to behave the same as GCC on hardware.</p>
+<h2 id="riptopllvm">Moving from an earlier edition</h2>
+<p>Older Korium, IncebtIon and RiptOPLLVM installations use earlier channel names. Switch once by downloading and installing the full current kit manually. Back up your settings and saves first. Copy the companion folders with the new kit so the installed loader, Neutrino and POPStarter drivers agree. The standard RiptOPL kit now uses LLVM/Clang.</p>
 
-<h2 id="install">Installing</h2><p>Use the edition's full install ZIP, extract it to the device root, and launch its app from <code>APPS/</code>. The accompanying PSU contains only the app and its direct metadata files for memory-card installation. Keep the bundled POPS, EMBER and neutrino folders beside APPS when using those cores; supply your own required BIOS/emulator components. See <a href="install.html">Installation</a> and <a href="ps1-vcd.html">PS1 games</a>.</p>
+<h2 id="install">Installing and updating</h2>
+<p>Use <a href="install.html">Install &amp; First Boot</a> to copy the app and companion files. Standard RiptOPL and RetroAchievements can check their own channels from the main menu after that first manual migration. The updater replaces the ELF. Read the release notes to see when to update the companion folders separately.</p>
 
-<h2 id="identity">Identify a tested build</h2><p>Report the edition, source commit, SDK component versions and compiler from <code>BUILD-MANIFEST.json</code>, plus your hardware, storage backend and relevant settings. Verify downloads against <code>SHA256SUMS.txt</code>. The in-loader version names the edition, and any nonstandard configuration. The older ps2dev/official pinned and rolling SDK flavours belong to the <a href="https://github.com/NathanNeurotic/Open-PS2-Loader/releases">legacy Open-PS2-Loader edition's release history</a>; they are not built here.</p>
+<h2 id="identity">Identify a tested build</h2>
+<p>Report the source commit, edition, configuration and compiler from <code>BUILD-MANIFEST.json</code>, plus your PS2 model, storage device, launch core and exact result. Verify the download with its channel's <code>SHA256SUMS.txt</code>.</p>
 
 <h2 id="how-to-pull">Stable download links</h2>
-<p>Every ZIP name ends with the build version, for example <code>RIPTOPL-Korium-v1.2.0-Beta-4229.zip</code>, and the release notes name that version at the top, so a download always says which build it is. The loader ELF, the app <code>.psu</code>, <code>LICENSE-USMB2.txt</code>, <code>BUILD-MANIFEST.json</code> and <code>SHA256SUMS.txt</code> keep fixed names, so these links always fetch the newest published build of that edition:</p>
-<table><thead><tr><th>Edition</th><th>Install kit</th><th>Loader only</th></tr></thead><tbody>
-<tr><td>Korium</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-korium"><code>rolling-korium</code></a> &rarr; <code>RIPTOPL-Korium-&lt;version&gt;.zip</code></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-korium/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a></td></tr>
-<tr><td>IncebtIon</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-incebtion"><code>rolling-incebtion</code></a> &rarr; <code>RIPTOPL-IncebtIon-&lt;version&gt;.zip</code></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-incebtion/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a></td></tr>
-<tr><td>RetroAchievements</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra"><code>rolling-ra</code></a> &rarr; <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-ra/RIPTOPL-RA.ELF"><code>RIPTOPL-RA.ELF</code></a></td></tr>
-<tr><td>RetroAchievements, IncebtIon theme</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra"><code>rolling-ra</code></a> &rarr; <code>RIPTOPL-RetroAchievements-IncebtIon-&lt;version&gt;.zip</code></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-ra/RIPTOPL-RA-IncebtIon.ELF"><code>RIPTOPL-RA-IncebtIon.ELF</code></a></td></tr>
-<tr><td>RiptOPLite</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite"><code>rolling-lite</code></a> &rarr; <code>RIPTOPLITE-RA-&lt;DEVICE&gt;-&lt;version&gt;.zip</code> (RA only)</td><td><code>RIPTOPLITE-&lt;DEVICE&gt;.ELF</code> (fixed name, same <code>download/rolling-lite/</code> path)</td></tr>
-<tr><td>RiptOPLLVM</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-llvm"><code>rolling-llvm</code></a> &rarr; <code>RIPTOPL-Korium-&lt;version&gt;.zip</code>, <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code></td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-llvm/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a>, <a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-llvm/RIPTOPL-RA.ELF"><code>RIPTOPL-RA.ELF</code></a></td></tr>
-</tbody></table>
-<p>For a script, fetch <code>SHA256SUMS.txt</code> from the channel, read the kit's current name from it and check the download against it, for example</p>
-<pre>curl -LO https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-korium/SHA256SUMS.txt
-kit=$(grep -o 'RIPTOPL-Korium-v[^ ]*\.zip' SHA256SUMS.txt)
-curl -LO "https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-korium/$kit"
-sha256sum -c --ignore-missing SHA256SUMS.txt</pre>
+<p>Install ZIP names include the version. For a loader-only replacement, use <a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a> or <a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-ra/RIPTOPL-RA.ELF"><code>RIPTOPL-RA.ELF</code></a>. Match the loader to the kit already installed.</p>
+
 <h2 id="bundled-neutrino">Bundled Neutrino core</h2>
-<p>The Korium and IncebtIon kits carry the newest build of <a href="https://github.com/ps2max32/neutrino/releases">ps2max32/neutrino</a>'s
-<code>latest</code> development release at the time the kit was built (each channel's release notes name the included build, for example <code>v1.8.0-61-g7be8de2</code>), unmodified apart from RiptOPL's UDPFS config and i.LINK pair
-(see <a href="neutrino.html">Neutrino Core</a>). It is newer than Neutrino v1.8.0, which is what text cheats under Neutrino need
-(see <a href="cheats.html#neutrino">Cheats</a>). The RetroAchievements kits carry the <a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.12">NULD (formerly ORBIT) Neutrino RA runtime v1.2.12</a> instead, which is built on
-Neutrino v1.8.0 (see <a href="retroachievements.html">RetroAchievements</a>). An ELF-only update never changes the
-<code>neutrino/</code> folder; copy it from the kit when the release notes say it changed.</p>
+<p>The standard kit uses the <a href="https://github.com/ps2max32/neutrino/releases/tag/latest">Neutrino development release</a> selected at packaging time, with RiptOPL's UDPFS configuration and i.LINK drivers. The RetroAchievements kit uses <a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.14">NULD v1.2.14</a> (formerly ORBIT). Use each kit's own <code>neutrino/</code> folder. See <a href="neutrino.html">Neutrino</a> and <a href="retroachievements.html">RetroAchievements</a>.</p>
+
 <h2 id="test-artifacts">Download a PR or Actions test build</h2>
-<p>A test build belongs to one GitHub Actions run and commit, separate from the release channels. Open the run you were given,
-check its commit, sign in to GitHub and download the requested ZIP under <b>Artifacts</b>: <code>release-&lt;edition&gt;</code> is a
-complete install kit, <code>variant-&lt;edition&gt;-&lt;configuration&gt;</code> is one configuration's ELF, manifest, licences and <code>CREDITS</code>,
-and <code>lite-&lt;device&gt;</code> or <code>lite_ra-&lt;device&gt;</code> is one RiptOPLite build. The <a href="https://github.com/NathanNeurotic/RiptOPL/actions/workflows/rolling-llvm.yml">RiptOPLLVM</a>
-workflow has its own runs. Artifacts
-expire; an expired one needs a new run. See <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/TEST-BUILDS.md">Test builds</a>
-for every artifact name and what a useful report contains.</p>
+<p>Open the supplied Actions run and verify the commit. Under Artifacts, <code>release-riptopl-attempt&lt;run&gt;</code> and <code>release-ra-attempt&lt;run&gt;</code> contain their full kits. Variant and Lite artifacts carry individual loader builds. Test artifacts expire. See <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/TEST-BUILDS.md">Test builds</a> for artifact names and report details.</p>
+
 <h2 id="changes">What changed</h2>
 <p>Each channel's release notes list the ten newest changes in the build and link the full history, so they are always current for that build.
 Read them on the <a href="https://github.com/NathanNeurotic/RiptOPL/releases">releases list</a>, or see the <a href="https://github.com/NathanNeurotic/RiptOPL/commits/rebuild/main">rebuild/main history</a>
@@ -200,10 +143,10 @@ you may want to return to.</p>
 <h2 id="building">Building it yourself</h2><p>With ps2build installed, run from the repository root:</p>
 <pre>python tools/assets.py fetch
 python tools/assets.py lang
-python tools/build_edition.py korium
-python tools/build_edition.py korium --configuration extras</pre>
-<p>The editions are <code>korium</code>, <code>ra</code>, <code>incebtion</code> and <code>ra_incebtion</code>, and
-<code>lite</code> and <code>lite_ra</code> with <code>--device &lt;device&gt;</code> for RiptOPLite. Add <code>--toolchain llvm</code> for an LLVM build. See
+python tools/build_edition.py riptopl
+python tools/build_edition.py riptopl --configuration extras</pre>
+<p>Build <code>riptopl</code> for the standard LLVM loader, <code>ra</code> for GCC RetroAchievements, or
+<code>lite</code> and <code>lite_ra</code> with <code>--device &lt;device&gt;</code> for RiptOPLite. See
 <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/ROLLING_RELEASE.md">ROLLING_RELEASE.md</a> and
 <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md">Build configurations</a>.</p>
 

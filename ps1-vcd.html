@@ -415,7 +415,7 @@ license notices and verified hashes accompany the drivers in <code>POPS/UDPFS-NO
 <p>POPSTARTER's stock driver handles ordinary USB FAT32. USB exFAT and the MX4SIO, MMCE, ATA and
 iLink transports need matching external block-device modules (the BDMAssault / "BDMA" drivers). RiptOPL
 <em>equips</em> them onto your memory card from <b>Settings → PS Emulation Settings</b> — you supply the module
-files, RiptOPL copies the right pair to <code>mc?:/POPSTARTER/</code>. <b>VCD BDMA Apply on Launch</b>
+files. RiptOPL uses <code>mc0:/POPSTARTER/</code> for BDMA whenever Slot 1 has a card, creating the folder there when needed. It uses <code>mc1:/POPSTARTER/</code> only when Slot 1 is empty. <b>VCD BDMA Apply on Launch</b>
 ships <b>On</b>, so by default the matching pair is equipped automatically immediately before each VCD
 launch and the manual <b>BDMA Source</b> / <b>BDMA Mode</b> pickers stay hidden; turn it <b>Off</b> to
 equip by hand instead.</p>
@@ -437,12 +437,13 @@ copies them to the card as <code>usbd.irx</code> + <code>usbhdfsd.irx</code>.
 The card should contain <code>mc?:/POPSTARTER/bdma_config.txt</code> with exactly <code>ilink</code>,
 <code>usbd.irx</code> at 48,500 bytes (SHA-256
 <code>5EA4818BA1CF5207F6D7CADB4C13B5AFA88C37C260750C21155B079A8C18F369</code>), and
-<code>usbhdfsd.irx</code> at 23,452 bytes (SHA-256
-<code>145CF1C0AF130EA7AC5CEC6696AA7E60B5C66A2AC46B8DEA94DB17BB3B911BCC</code>). Missing or different
+<code>usbhdfsd.irx</code> at 27,833 bytes (SHA-256
+<code>A5C741565A9015283610E400401C3BBDEA94D3E9C54CE483897F6DBA725AB544</code>). Missing or different
 files identify RiptOPL's external-equip leg; exact files narrow the remaining failure to the
 POPSTARTER/BDMA reinitialization leg.
 </div>
 
+<p>The bundled i.LINK driver retries transient configuration ROM reads after reset. Update the drive's <code>POPS/</code> folder from the current kit. See the <a href="https://github.com/NathanNeurotic/RiptOPL/issues/86">i.LINK hardware retest</a> for current status.</p>
 <h3>BDMA Mode</h3>
 <p>Shown only when <b>VCD BDMA Apply on Launch</b> is <b>Off</b>. Selects which driver variant
 POPSTARTER should use:</p>
@@ -586,7 +587,7 @@ re-documented here:</p>
 </div>
 
 <h2 id="save-icons">PS1 save icons</h2>
-<p><b>Artwork Settings → 3D Save Icons</b> also displays PS1 save artwork, using the card's 2D icon. POPSTARTER cards are <code>SLOT0.VMC</code>/<code>SLOT1.VMC</code> in the VCD's accompanying save folder; Ember cards are <code>MC1.vmc</code>/<code>MC2.vmc</code> inside the listed game folder. Launch the game and create a save first. These emulator cards are separate from the PS2 <code>VMC/&lt;name&gt;.bin</code> assignments.</p>
+<p><b>Theme Settings → 3D Save Icons</b> also displays PS1 save artwork, using the card's 2D icon. POPSTARTER cards are <code>SLOT0.VMC</code>/<code>SLOT1.VMC</code> in the VCD's accompanying save folder; Ember cards are <code>MC1.vmc</code>/<code>MC2.vmc</code> inside the listed game folder. Launch the game and create a save first. These emulator cards are separate from the PS2 <code>VMC/&lt;name&gt;.bin</code> assignments.</p>
 </main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
