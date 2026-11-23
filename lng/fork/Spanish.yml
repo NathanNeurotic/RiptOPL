@@ -562,7 +562,7 @@ translations:
   RA_CADUCEUS_OFFLINE: La sesión RA de Caduceus está desconectada.
   RA_CADUCEUS_SIGN_IN: Inicia sesión en RetroAchievements en Caduceus e inténtalo de nuevo.
   RA_EXPERIMENTAL_CARDS: Tarjetas experimentales de Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: Tarjetas de logros experimentales dentro del juego en PS2. Pueden parpadear o congelar juegos. Solo Caduceus; Desactivado usa el pulso dorado. Se aplica en el siguiente inicio de juego.
+  HINT_RA_EXPERIMENTAL_CARDS: Tarjetas de logros experimentales dentro del juego en PS2. Pueden parpadear o congelar juegos. Desactivado usa el pulso dorado. Se aplica en el siguiente inicio de juego.
   CAD_ACHIEVEMENTS: Logros de Caduceus
   CAD_VIEW_ACHIEVEMENTS: Ver logros
   CAD_BACK: Atrás

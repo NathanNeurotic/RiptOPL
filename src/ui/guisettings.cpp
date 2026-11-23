@@ -682,11 +682,10 @@ static int netConfigUpdater(int modified)
         }
         netConfigLastProtocol = netProto;
 #ifdef RETROACHIEVEMENTS
-        // Cards are a Caduceus feature and need telemetry; the saved choice survives a switch away.
-        int raMode, raTelemetry;
-        diaGetInt(diaNetConfig, NETCFG_RA_MODE, &raMode);
+        // Cards need telemetry, with either client; the saved choice survives telemetry going Off.
+        int raTelemetry;
         diaGetInt(diaNetConfig, NETCFG_RA_TELEMETRY, &raTelemetry);
-        diaSetEnabled(diaNetConfig, NETCFG_RA_EXPERIMENTAL_CARDS, raMode == RA_MODE_CADUCEUS && raTelemetry);
+        diaSetEnabled(diaNetConfig, NETCFG_RA_EXPERIMENTAL_CARDS, raTelemetry);
 #endif
 
         diaSetVisible(diaNetConfig, NETCFG_SHARE_NB_ADDR, isNetBIOS);

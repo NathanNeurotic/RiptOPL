@@ -571,7 +571,7 @@ translations:
   RA_CADUCEUS_OFFLINE: Caduceus 的 RA 工作階段處於離線狀態。
   RA_CADUCEUS_SIGN_IN: 請在 Caduceus 中登入 RetroAchievements 後重試。
   RA_EXPERIMENTAL_CARDS: Caduceus 實驗性卡片
-  HINT_RA_EXPERIMENTAL_CARDS: PS2 遊戲內的實驗性成就卡片。可能閃爍或讓遊戲當機。僅限 Caduceus；關閉則使用金色脈衝。下次啟動遊戲時生效。
+  HINT_RA_EXPERIMENTAL_CARDS: PS2 遊戲內的實驗性成就卡片。可能閃爍或讓遊戲當機。關閉則使用金色脈衝。下次啟動遊戲時生效。
   CAD_ACHIEVEMENTS: Caduceus 成就
   CAD_VIEW_ACHIEVEMENTS: 檢視成就
   CAD_BACK: 返回

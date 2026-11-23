@@ -1,4 +1,4 @@
-"""Exercise the experimental-card setting: its load rule, its dialog row and its Caduceus-only control."""
+"""Exercise the experimental-card setting: its load rule, its dialog row and its telemetry-only control."""
 from pathlib import Path
 import subprocess
 import tempfile
@@ -7,7 +7,7 @@ root = Path(__file__).resolve().parents[2]
 settings = (root / 'src/core/settings.cpp').read_text()
 settingsio = (root / 'src/app/settingsio.cpp').read_text()
 gui = (root / 'src/ui/guisettings.cpp').read_text()
-start = gui.index('        int raMode, raTelemetry;')
+start = gui.index('        int raTelemetry;')
 control = gui[start:gui.index('#endif', start)]
 load = next(line.strip() for line in settingsio.splitlines() if line.strip().startswith('gRAExperimentalCards =')).split('//')[0]
 program = r'''
@@ -18,8 +18,8 @@ enum { NETCFG_RA_MODE, NETCFG_RA_TELEMETRY, NETCFG_RA_EXPERIMENTAL_CARDS };
 static int diaNetConfig, mode, telemetry, enabled, gRAExperimentalCards;
 static void diaGetInt(int dialog, int id, int *out) {
     (void)dialog;
-    assert(id == NETCFG_RA_MODE || id == NETCFG_RA_TELEMETRY);
-    *out = id == NETCFG_RA_MODE ? mode : telemetry;
+    assert(id == NETCFG_RA_TELEMETRY);
+    *out = telemetry;
 }
 static void diaSetEnabled(int dialog, int id, int value) {
     (void)dialog; assert(id == NETCFG_RA_EXPERIMENTAL_CARDS); enabled = value;
@@ -36,10 +36,10 @@ int main(void) {
     for (mode = 0; mode <= 1; mode++)
         for (telemetry = 0; telemetry <= 1; telemetry++) {
             gRAExperimentalCards = 1; enabled = -1; update();
-            assert(enabled == (mode == 1 && telemetry == 1));
+            assert(enabled == telemetry); /* either client */
             assert(gRAExperimentalCards == 1); /* an inactive row keeps the saved choice */
         }
-    puts("PASS: cards load Off unless explicitly 1, and the row is live only for Caduceus with telemetry");
+    puts("PASS: cards load Off unless explicitly 1, and the row is live with telemetry for either client");
     return 0;
 }
 '''

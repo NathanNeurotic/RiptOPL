@@ -573,7 +573,7 @@ translations:
   RA_CADUCEUS_OFFLINE: Η συνεδρία RA του Caduceus είναι εκτός σύνδεσης.
   RA_CADUCEUS_SIGN_IN: Συνδεθείτε στο RetroAchievements μέσα στο Caduceus και δοκιμάστε ξανά.
   RA_EXPERIMENTAL_CARDS: Πειραματικές κάρτες Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: Πειραματικές κάρτες επιτευγμάτων μέσα σε παιχνίδια PS2. Μπορεί να τρεμοπαίζουν ή να παγώνουν παιχνίδια. Μόνο Caduceus· το Ανενεργό χρησιμοποιεί τον χρυσό παλμό. Ισχύει από την επόμενη εκκίνηση παιχνιδιού.
+  HINT_RA_EXPERIMENTAL_CARDS: Πειραματικές κάρτες επιτευγμάτων μέσα σε παιχνίδια PS2. Μπορεί να τρεμοπαίζουν ή να παγώνουν παιχνίδια. Το Ανενεργό χρησιμοποιεί τον χρυσό παλμό. Ισχύει από την επόμενη εκκίνηση παιχνιδιού.
   CAD_ACHIEVEMENTS: Επιτεύγματα Caduceus
   CAD_VIEW_ACHIEVEMENTS: Προβολή επιτευγμάτων
   CAD_BACK: Πίσω

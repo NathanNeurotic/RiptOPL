@@ -290,11 +290,12 @@ RiptOPL never stores a RetroAchievements password or key. Caduceus here covers t
 watch lists, telemetry, in-game notices and the achievement browser below. **Caduceus end-to-end
 console tracking is NOT TESTED on hardware.**
 
-In the game an unlock shows as a gold pulse (Xerabora always, Caduceus by default). **Settings →
-Network → Caduceus experimental cards** (Off by default, saved as `ra_experimental_cards=1`; any other
-value reads as Off) instead draws a small card with the achievement's title and points in the upper
-right. The row is available only with RA Mode Caduceus and telemetry on, and a switch away keeps the
-saved choice. With cards Off a launch reserves nothing extra and installs no GS tracker. With cards on,
+In the game an unlock shows as a gold pulse by default, with either client. **Settings →
+Network → Experimental achievement cards** (Off by default, saved as `ra_experimental_cards=1`; any other
+value reads as Off) instead draws a small card in the upper right: "ACHIEVEMENT UNLOCKED", the
+achievement's title and its points. xeRAbora (the upstream client and PS2 Servers' xeRAbora mode alike)
+sends the achievement's number and points but no title, so its card shows the points in the title's
+place; Caduceus sends the title. The row is available with telemetry on, in either RA Mode. With cards Off a launch reserves nothing extra and installs no GS tracker. With cards on,
 a tracked launch reserves about 30 KiB more in module storage, kept below 1 MB when the storage starts
 there; without room, or for a display the renderer cannot draw on, the pulse is used instead. The
 renderer is the original's (adapted from [Rian6's caduceus-opl](https://github.com/Rian6/caduceus-opl/tree/2a98a9d7361f8e33f421244bc88c318eab3bdf2f),

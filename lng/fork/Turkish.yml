@@ -566,7 +566,7 @@ translations:
   RA_CADUCEUS_OFFLINE: Caduceus RA oturumu çevrimdışı.
   RA_CADUCEUS_SIGN_IN: Caduceus'ta RetroAchievements'a giriş yapıp yeniden deneyin.
   RA_EXPERIMENTAL_CARDS: Caduceus deneysel kartları
-  HINT_RA_EXPERIMENTAL_CARDS: Deneysel PS2 oyun içi başarım kartları. Titreyebilir veya oyunları dondurabilir. Yalnızca Caduceus; Kapalı altın nabzı kullanır. Bir sonraki oyun başlatmada geçerli olur.
+  HINT_RA_EXPERIMENTAL_CARDS: Deneysel PS2 oyun içi başarım kartları. Titreyebilir veya oyunları dondurabilir. Kapalı altın nabzı kullanır. Bir sonraki oyun başlatmada geçerli olur.
   CAD_ACHIEVEMENTS: Caduceus başarımları
   CAD_VIEW_ACHIEVEMENTS: Başarımları görüntüle
   CAD_BACK: Geri

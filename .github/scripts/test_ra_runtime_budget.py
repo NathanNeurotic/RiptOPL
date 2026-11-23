@@ -343,7 +343,7 @@ int main() {
     entries[0]=RA_WATCH_PACK(0x80000,3);assert(!launch.raWorkBytes(nullptr));
     entries[0]=RA_WATCH_PACK(0x80000,1);gRATelemetry=0;assert(!launch.raWorkBytes(nullptr));
     puts("PASS: actual C++ launch service reserves only validated set-sized module storage");
-    // Cards: Caduceus and an explicit opt-in add a cache-aligned packet behind the list,
+    // Cards: an explicit opt-in adds a cache-aligned packet behind the list,
     // never past 1 MB when the block starts below it; the ee_core pointer follows the size.
     static u8 area[1];
     const void *low=(const void *)0x000C0000, *high=(const void *)0x00200000;
@@ -353,12 +353,12 @@ int main() {
     gRAMode=1;assert(launch.raWorkBytes(low)==list);
     gRAExperimentalCards=1;assert(launch.raWorkBytes(low)==cards);
     assert(launch.overlayFor(area,cards)==area+((list+63)&~63u) && !launch.overlayFor(area,cards-1));
-    gRAMode=0;assert(launch.raWorkBytes(low)==list);gRAMode=1;
+    gRAMode=0;assert(launch.raWorkBytes(low)==cards);gRAMode=1; // xeRAbora takes the same opt-in
     assert(!notes && launch.raWorkBytes((const void *)(0x00100000-cards))==cards);
     assert(launch.raWorkBytes((const void *)(0x00100000-cards+64))==list && notes==1);
     assert(launch.raWorkBytes(high)==cards && launch.raWorkBytes((const void *)(0x02000000-cards+64))==list);
     assert(!launch.raWorkBytes((const void *)0x02000040) && notes==2);
     count=0;assert(!launch.raWorkBytes(low) && !launch.overlayFor(area,0));
-    puts("PASS: card packet only for Caduceus opt-in, cache-aligned, below the 1 MB/32 MB limit, else the pulse");
+    puts("PASS: card packet only for the opt-in, either client, cache-aligned, below the 1 MB/32 MB limit, else the pulse");
 }
 ''')

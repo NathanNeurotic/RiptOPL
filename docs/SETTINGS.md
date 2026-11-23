@@ -127,7 +127,7 @@ HTTP and [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md) for the RA rows.
 | NFS Writes | NFS only. Off (the default): read only, no Rename or Delete, no VMC on the export, game settings kept next to RiptOPL's own. On: writes where the server allows them. | `nfs_writes` *(net)* |
 | HTTP server, HTTP port, HTTP base path | HTTP only: the catalogue server. | `http_ip`, `http_port`, `http_base_path` *(net)* |
 | Test HTTP server *(button)* | Fetches the catalogue once and reports the result. | |
-| RA Mode, RA companion IP, RetroAchievements telemetry, RetroAchievements badges, RA mark in game list, Caduceus experimental cards | RA editions only. | `ra_mode`, `ra_host_ip`, `ra_telemetry`, `ra_badges`, `ra_badge_suffix`, `ra_experimental_cards` |
+| RA Mode, RA companion IP, RetroAchievements telemetry, RetroAchievements badges, RA mark in game list, Experimental achievement cards | RA editions only. | `ra_mode`, `ra_host_ip`, `ra_telemetry`, `ra_badges`, `ra_badge_suffix`, `ra_experimental_cards` |
 | OK / Reconnect | OK applies; Reconnect restarts the network connection with the new values. | |
 
 On a fresh installation of **full RiptOPL**, Network Connectivity starts **Off**, but the

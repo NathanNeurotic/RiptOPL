@@ -564,7 +564,7 @@ translations:
   RA_CADUCEUS_OFFLINE: RA сесията на Caduceus е офлайн.
   RA_CADUCEUS_SIGN_IN: Влезте в RetroAchievements в Caduceus и опитайте отново.
   RA_EXPERIMENTAL_CARDS: Експериментални карти на Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: Експериментални карти с постижения в PS2 игрите. Може да трептят или да замразяват игри. Само Caduceus; Изкл. използва златния пулс. Влиза в сила при следващото стартиране на игра.
+  HINT_RA_EXPERIMENTAL_CARDS: Експериментални карти с постижения в PS2 игрите. Може да трептят или да замразяват игри. Изкл. използва златния пулс. Влиза в сила при следващото стартиране на игра.
   CAD_ACHIEVEMENTS: Постижения в Caduceus
   CAD_VIEW_ACHIEVEMENTS: Преглед на постиженията
   CAD_BACK: Назад

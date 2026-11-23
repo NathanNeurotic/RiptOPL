@@ -561,7 +561,7 @@ translations:
   RA_CADUCEUS_OFFLINE: Caduceus の RA セッションはオフラインです。
   RA_CADUCEUS_SIGN_IN: Caduceus で RetroAchievements にサインインしてから、もう一度お試しください。
   RA_EXPERIMENTAL_CARDS: Caduceus の実験的カード
-  HINT_RA_EXPERIMENTAL_CARDS: PS2 のゲーム内に出る実験的な実績カード。ちらついたりゲームが固まったりすることがあります。Caduceus のみ。オフでは金色のパルスを使います。次のゲーム起動から有効です。
+  HINT_RA_EXPERIMENTAL_CARDS: PS2 のゲーム内に出る実験的な実績カード。ちらついたりゲームが固まったりすることがあります。オフでは金色のパルスを使います。次のゲーム起動から有効です。
   CAD_ACHIEVEMENTS: Caduceus の実績
   CAD_VIEW_ACHIEVEMENTS: 実績を見る
   CAD_BACK: 戻る
