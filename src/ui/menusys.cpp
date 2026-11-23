@@ -3092,6 +3092,16 @@ void menuRenderGameMenu()
     int y = (gTheme->usedHeight >> 1) - (spacing * (count >> 1));
     int cp = 0; // current position
 
+    // The title (y 20) and config source (y 40) sit above the list. A long menu (the RA build adds three
+    // rows) centred from the middle reached y 40 and drew its first row over them, so start it below
+    // them and close the spacing until the rows, plus the two half-row gaps, end above the hints.
+    if (y < 60 && count > 0) {
+        y = 60;
+        spacing = (gTheme->usedHeight - 40 - y) / count;
+        if (spacing > 25)
+            spacing = 25;
+    }
+
     // game title: a name can run to 160 characters, about twice the screen, and nothing stopped it at either edge.
     // Scroll a long one through the same 600 the PS1 note below the app menu's title gets.
     fntRenderStringFit(gTheme->fonts[0], 320, 20, ALIGN_CENTER, 600, cfgTitleDisplayName((item_list_t *)selected_item->item->userdata, selected_item->item->current->item.id, submenuItemGetText(&selected_item->item->current->item)), gTheme->selTextColor, 1);
