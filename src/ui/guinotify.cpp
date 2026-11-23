@@ -44,41 +44,53 @@ void Notifications::reset()
     popupArmed_ = false;
 }
 
-int Notifications::render(const char *string, int y, int yadd)
+int Notifications::render(const char *string, int y, int yadd, int iconId)
 {
     // Right-aligned with nothing to stop it, a notice wider than the screen started off its left edge: the UDPBD
     // static-IP note is about 1020 wide on the 640 grid, the CF notice from the game menu about 890. Size the box to
     // the text but never wider than the screen less its margins, and wrap a longer notice onto more lines, the way
     // the settings hint box does (diaDrawHint). A notice that fits is drawn exactly as before.
+    int iconH = 20;
+    GSTEXTURE *icon = iconId >= 0 ? thmGetTexture(iconId) : nullptr;
+    int iconW = icon && icon->Mem && icon->Height ? icon->Width * iconH / icon->Height : 0;
+    if (iconW > 40) {
+        iconH = iconH * 40 / iconW;
+        iconW = iconH ? icon->Width * iconH / icon->Height : 0;
+    }
+    int textOffset = iconW ? rmWideScale(iconW) + 4 : 0;
     int textW = rmUnScaleX(fntCalcDimensions(gTheme->fonts[0], string));
-    int boxW = textW + 10;
+    int boxW = textW + textOffset + 10;
     if (boxW > gGuiScreenWidth - 20)
         boxW = gGuiScreenWidth - 20;
     int x = gGuiScreenWidth - boxW - 10;
-    int innerW = boxW - 10;
+    int innerW = boxW - textOffset - 10;
 
-    if (textW <= innerW) {
-        rmDrawRect(x, y, boxW, MENU_ITEM_HEIGHT + 10, gColDarker);
-        fntRenderString(gTheme->fonts[0], x + 5, y + 5, ALIGN_NONE, 0, 0, string, gTheme->textColor);
-        return y + yadd;
-    }
-
-    // fntRenderString does not wrap; it breaks a line only at '\n', and only when given a width. The clip gets the
-    // box's 5 px right padding as slack, so a glyph drawn a little past its advance at a line's end is not dropped.
     char wrapped[512];
-    int lines = fntWrapText(gTheme->fonts[0], string, innerW, wrapped, sizeof(wrapped));
-    if (lines < 1)
-        lines = 1;
+    int lines = 1;
+    int clipW = 0;
+    int clipH = 0;
+    if (textW > innerW) {
+        lines = fntWrapText(gTheme->fonts[0], string, innerW, wrapped, sizeof(wrapped));
+        if (lines < 1)
+            lines = 1;
+        // Include the right padding so glyphs can extend a little past their advance.
+        clipW = innerW + 5;
+        clipH = lines * MENU_ITEM_HEIGHT + 5;
+        string = wrapped;
+    }
     int boxH = lines * MENU_ITEM_HEIGHT + 10;
     rmDrawRect(x, y, boxW, boxH, gColDarker);
-    fntRenderString(gTheme->fonts[0], x + 5, y + 5, ALIGN_NONE, innerW + 5, boxH - 5, wrapped, gTheme->textColor);
+    if (iconW)
+        rmDrawPixmap(icon, x + 5, y + (MENU_ITEM_HEIGHT + 10) / 2, ALIGN_VCENTER, iconW, iconH, SCALING_RATIO, gDefaultCol, 0);
+    fntRenderString(gTheme->fonts[0], x + 5 + textOffset, y + 5, ALIGN_NONE, clipW, clipH, string, gTheme->textColor);
     return y + yadd + (lines - 1) * MENU_ITEM_HEIGHT;
 }
 
-void Notifications::setToast(const char *text)
+void Notifications::setToast(const char *text, int iconId)
 {
     snprintf(toast_, sizeof(toast_), "%s", text ? text : "");
     toastStart_ = clock();
+    toastIcon_ = iconId;
 }
 
 void Notifications::drawToast()
@@ -90,7 +102,7 @@ void Notifications::drawToast()
         toast_[0] = '\0';
         return;
     }
-    render(toast_, 10, 0);
+    render(toast_, 10, 0, toastIcon_);
 }
 
 void Notifications::show()

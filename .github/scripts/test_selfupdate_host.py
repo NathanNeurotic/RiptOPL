@@ -8,6 +8,7 @@ order: the digest is compared before the running ELF is touched, and the ELF is 
 """
 import os
 import re
+import struct
 import shutil
 import subprocess
 import sys
@@ -24,6 +25,9 @@ DRIVER = r"""
 #include <stdlib.h>
 #include <string.h>
 #include "include/selfupdate.h"
+
+#define APA_IDMAX 32
+@APA_BOOT_PARSER@
 
 static char *slurp(const char *path, int *len)
 {
@@ -62,15 +66,97 @@ int main(int argc, char **argv)
         char out[64];
         int rc = suJoin(out, atoi(argv[5]), argv[2], argv[3], argv[4]);
         printf(rc == 0 ? "%s\n" : "FAIL\n", out);
-    } else if (argc == 3 && !strcmp(argv[1], "elf")) {
-        unsigned char head[64];
+    } else if (argc == 3 && !strcmp(argv[1], "apa")) {
+        char partition[38], directory[256];
+        int rc = hddParseBootDirectory(argv[2], partition, sizeof(partition), directory, sizeof(directory));
+        printf(rc == 0 ? "%s|%s\n" : "FAIL\n", partition, directory);
+    } else if (argc == 3 && (!strcmp(argv[1], "elf") || !strcmp(argv[1], "format"))) {
         int len = 0;
-        char *data = slurp(argv[2], &len);
-        memcpy(head, data, len < 64 ? len : 64);
-        printf("%d\n", suLooksLikeElf(head, len < 64 ? len : 64));
+        unsigned char *data = (unsigned char *)slurp(argv[2], &len);
+        printf("%d\n", !strcmp(argv[1], "format") ? suElfFormat(data, len) : suLooksLikeElf(data, len));
+        free(data);
     } else {
         return 2;
     }
+    return 0;
+}
+"""
+
+VERSION_DRIVER = r"""
+#include <assert.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include "include/selfupdate.h"
+#define SU_FIO_WRONLY 0x0002
+#define SU_FIO_CREAT  0x0200
+#define SU_FIO_TRUNC  0x0400
+static char path[272], contents[32];
+static int shortWrite, closes, suRemoteRev = 4321, suStep;
+int fileXioOpen(const char *name, int, int) { snprintf(path, sizeof(path), "%s", name); return 1; }
+int fileXioWrite(int, const void *data, int len) {
+    if (shortWrite) return -5;
+    memcpy(contents, data, (size_t)len);
+    contents[len] = 0;
+    return len;
+}
+int fileXioClose(int) { closes++; return 0; }
+@VERSION_WRITER@
+int main() {
+    int rc = suWriteVersion("mc0:/APPS/RIPTOPL.ELF");
+    assert(rc == 0 && !strcmp(path, "mc0:/APPS/version.txt"));
+    assert(!strcmp(contents, "4321\n") && suStep == 6);
+    shortWrite = 1;
+    assert(suWriteVersion("mc0:/APPS/RIPTOPL.ELF") < 0 && closes == 2);
+    puts("version.txt: sibling path, validated decimal revision, and write failure handling ok");
+    return 0;
+}
+"""
+
+TARGET_DRIVER = r"""
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include "include/selfupdate.h"
+#define APA_IDMAX 32
+#define SU_MC_NAME_MAX 31
+#define FIO_MT_RDONLY 0
+#define FIO_MT_RDWR 1
+static char gBootDir[256], gBootLaunchDir[256], gBootElfName[64], gOPLPart[128];
+static const char *gHDDPrefix = "pfs0:/OPL/";
+struct HddStub { int loadCoreSupportModules() { return 1; } } gHddSupport;
+static int hddLoadModulesReady() { return 1; }
+static char mountedPartition[64];
+int fileXioMount(const char *, const char *partition, int) {
+    snprintf(mountedPartition, sizeof(mountedPartition), "%s", partition);
+    return 0;
+}
+int fileXioUmount(const char *) { return 0; }
+@APA_BOOT_PARSER@
+@SET_BOOT_DIR@
+@TARGET_RESOLVER@
+int main() {
+    const char *launch = "hdd0:__system:pfs:/launcher/RIPTOPL.ELF";
+    setBootDir(launch);
+    snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:+OPL");
+    const char *homes[] = {"pfs0:/OPL", "mass0:/"};
+    for (int i = 0; i < 2; i++) {
+        snprintf(gBootDir, sizeof(gBootDir), "%s", homes[i]);
+        SuTarget target;
+        assert(suResolveTarget(target, false));
+        assert(target.apa && target.mounted && !strcmp(mountedPartition, "hdd0:__system"));
+        assert(!strcmp(target.path, "pfs1:/launcher/RIPTOPL.ELF"));
+        target.close();
+    }
+    snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:__system");
+    snprintf(gBootDir, sizeof(gBootDir), "pfs0:/OPL");
+    SuTarget samePartition;
+    assert(suResolveTarget(samePartition, false));
+    assert(samePartition.apa && !samePartition.mounted);
+    assert(!strcmp(samePartition.path, "pfs0:/launcher/RIPTOPL.ELF"));
+    assert(!strcmp(gBootLaunchDir, "hdd0:__system:pfs:/launcher"));
+    assert(!strcmp(gBootElfName, "RIPTOPL.ELF"));
+    puts("APA update target survives settings-home transitions and reuses a same-partition pfs0 mount");
     return 0;
 }
 """
@@ -104,14 +190,38 @@ def source_checks():
     inst = src[src.index("static void suInstallWorker"):]
     inst = inst[:inst.index("\n}\n")]
     # The digest is compared before anything touches the running ELF, and a mismatch removes the download.
-    a = inst.index("fileXioOpen(cur,")
-    check("verify_before_swap", inst.index("memcmp(") < a, "digest compare must come first")
-    # The ELF is overwritten in place: opened with O_TRUNC, no second file, no rename, no delete, no backup.
-    check("overwrite_in_place", "SU_FIO_WRONLY | SU_FIO_CREAT | SU_FIO_TRUNC" in inst[a:a + 200], "cur opened with CREAT | TRUNC through fileXioOpen, as Launchstation does")
-    check("no_second_file", not re.search(r"unlink\(|rename\(|\.NEW|bak", inst.lower().replace("break", "")), "no unlink, rename, .NEW or backup")
+    a = inst.index("suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f)")
+    check("verify_before_write", inst.index("memcmp(") < a and inst.index("suElfFormat(") < a)
+    check("ram_only_direct_install", "suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f)" in inst and
+          "suInstallApa" not in inst and ".update" not in src and ".bak" not in src,
+          "verified downloads must overwrite the existing ELF directly without staged or backup copies")
+    sync_pos = inst.find("fileXioSync(")
+    check("apa_sync_before_metadata", "rc >= 0 && target.apa" in inst and a < sync_pos and
+          inst.find("if (rc < 0)", sync_pos) < inst.rfind("suWriteVersion(target.path)"),
+          "APA direct writes must commit the PFS cache and handle failure before version metadata")
+    check("apa_relaunch_uses_launch_identity", "target.apa ? gBootLaunchDir : gBootDir" in src,
+          "APA relaunch must not use the settings home as the physical launch identity")
+    version_call = "suWriteVersion(target.path)"
+    version_pos = inst.rindex(version_call)
+    success_pos = inst.rindex("suResult = SU_OK")
+    check("version_after_install", version_call in inst and
+          inst.index("suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f)") < version_pos and
+          version_pos < success_pos,
+          "the direct ELF install completes before the validated revision write, which precedes success")
+    labels = re.findall(r"^\s*(?:-\s*)?label:\s*(\S+)\s*$", (ROOT / "lng/tmpl/_base.yml").read_text(encoding="utf-8"), re.M)
+    check("update_labels_append", labels.index("UPDATE_RELAUNCH") > labels.index("UPDATE_ERR_RESTORE") and
+          labels.index("UPDATE_RELAUNCH_FAILED") > labels.index("UPDATE_ERR_RESTORE"),
+          "new update labels must append after existing labels to preserve positional language-pack IDs")
+    check("boot_version_txt_rejected", 'strcasecmp(gBootElfName, "version.txt") == 0' in src,
+          "a boot ELF named version.txt in any case must be rejected before update writes")
+    check("metadata_retry_result_checked", "suVersionPending && suResult != SU_OK" in src,
+          "a failed metadata retry must report instead of reaching UPDATE_DONE")
+    check("metadata_retry_is_separate", "suVersionPending" in src and "_STR_UPDATE_ERR_METADATA" in src and
+          "suVersionPending = 1" in inst,
+          "metadata failure is distinct and records a retry without another ELF install")
     # Redirects are followed only to GitHub's hosts, and only a few times.
     check("redirects_allowlisted", "suSplitUrl(" in src and re.search(r"for \(hop = 0; hop < 4", src) is not None)
-    callers = sorted(str(p.relative_to(ROOT)) for p in (ROOT / "src").rglob("*.c*")
+    callers = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "src").rglob("*.c*")
                      if "selfUpdateMenu" in p.read_text(encoding="utf-8", errors="replace"))
     check("no_auto_check", callers == ["src/ui/menusys.cpp", "src/ui/selfupdate.cpp"],
           f"the check runs only from the menu: {callers}")
@@ -121,8 +231,10 @@ def main():
     source_checks()
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        (tmp / "driver.c").write_text(DRIVER)
-        exe = tmp / "driver"
+        hdd = (ROOT / "src/platform/hdd.cpp").read_text(encoding="utf-8")
+        parser = hdd[hdd.index("int hddParseBootDirectory("):].split("\n}\n", 1)[0] + "\n}"
+        (tmp / "driver.c").write_text(DRIVER.replace("@APA_BOOT_PARSER@", parser))
+        exe = tmp / ("driver.exe" if os.name == "nt" else "driver")
         subprocess.run([CC, "-O1", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT), str(tmp / "driver.c"),
                         str(ROOT / "src/platform/selfupdate.c"), "-o", str(exe)], check=True)
 
@@ -197,6 +309,61 @@ def main():
                                  ("short", mips[:19], "0")):
             (tmp / "head.bin").write_bytes(data)
             check(f"elf_{name}", run(exe, "elf", tmp / "head.bin") == want)
+
+        def elf_format(data_offset, address, align, headers=1):
+            header = bytearray(mips[:52])
+            struct.pack_into("<II", header, 24, address, 52)
+            struct.pack_into("<HH", header, 42, 32, headers)
+            header.extend(struct.pack("<8I", 1, data_offset, address, address, 16, 16, 7, align))
+            header.extend(bytes(32 * (headers - 1)))
+            return header
+
+        packed = elf_format(96, 0x01B00000, 16)
+        for name, data, want in (
+                ("packed", packed, "1"),
+                ("gnu_unpacked", elf_format(128, 0x00100000, 128), "2"),
+                ("llvm_unpacked", elf_format(256, 0x00100000, 128, 3), "2"),
+                ("short_program_headers", packed[:83], "0"),
+                ("unknown_layout", elf_format(128, 0x00200000, 128), "0")):
+            (tmp / "head.bin").write_bytes(data)
+            check(f"format_{name}", run(exe, "format", tmp / "head.bin") == want)
+
+        for directory, want in (
+                ("hdd0:__system:pfs:/launcher", "hdd0:__system|/launcher"),
+                ("hdd0:/__system/launcher", "hdd0:__system|/launcher"),
+                ("hdd0:__system:pfs0:launcher", "hdd0:__system|/launcher"),
+                ("hdd0:+OPL:pfs:", "hdd0:+OPL|/"),
+                ("pfs0:/launcher", "FAIL"),
+                ("hdd0::pfs:/launcher", "FAIL"),
+                ("hdd0:__system:other:/launcher", "FAIL")):
+            check(f"apa_{directory}", run(exe, "apa", directory) == want)
+
+        updater = (ROOT / "src/ui/selfupdate.cpp").read_text(encoding="utf-8")
+        if "static int suWriteVersion(" in updater:
+            writer = updater[updater.index("static int suWriteVersion("):]
+            writer = writer[:writer.index("\n}\n") + 2]
+            (tmp / "version-driver.cpp").write_text(VERSION_DRIVER.replace("@VERSION_WRITER@", writer))
+            subprocess.run([CC, "-O1", "-I", str(ROOT), "-c", str(ROOT / "src/platform/selfupdate.c"),
+                            "-o", str(tmp / "selfupdate.o")], check=True)
+            version_exe = tmp / ("version-driver.exe" if os.name == "nt" else "version-driver")
+            subprocess.run([os.environ.get("CXX", "c++"), "-O1", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT),
+                            str(tmp / "version-driver.cpp"), str(tmp / "selfupdate.o"), "-o", str(version_exe)], check=True)
+            subprocess.run([str(version_exe)], check=True)
+            check("version_metadata_behavior", True)
+        else:
+            check("version_metadata_behavior", False, "suWriteVersion is missing")
+
+        opl = (ROOT / "src/app/opl.cpp").read_text(encoding="utf-8")
+        set_boot = opl[opl.index("static void setBootDir("):]
+        set_boot = set_boot[:set_boot.index("\n}\n") + 2]
+        target = updater[updater.index("static int suIsMc("):updater.index("static int suReadBootFormat(")]
+        target_driver = TARGET_DRIVER.replace("@APA_BOOT_PARSER@", parser).replace("@SET_BOOT_DIR@", set_boot).replace("@TARGET_RESOLVER@", target)
+        (tmp / "target-driver.cpp").write_text(target_driver)
+        target_exe = tmp / ("target-driver.exe" if os.name == "nt" else "target-driver")
+        subprocess.run([os.environ.get("CXX", "c++"), "-O1", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT),
+                        str(tmp / "target-driver.cpp"), str(tmp / "selfupdate.o"), "-o", str(target_exe)], check=True)
+        ran = subprocess.run([str(target_exe)], capture_output=True, text=True)
+        check("apa_launch_identity_after_settings_transition", ran.returncode == 0, ran.stdout + ran.stderr)
 
     if failures:
         print(f"{len(failures)} failure(s)")

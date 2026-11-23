@@ -76,6 +76,8 @@
 #define MBEDTLS_PK_PARSE_C
 #define MBEDTLS_X509_USE_C
 #define MBEDTLS_X509_CRT_PARSE_C
+/* Advertise RSA-PSS for TLS 1.3 servers that use an RSA certificate (GitHub release assets). */
+#define MBEDTLS_X509_RSASSA_PSS_SUPPORT
 #define MBEDTLS_X509_CHECK_KEY_USAGE
 #define MBEDTLS_X509_CHECK_EXTENDED_KEY_USAGE
 /* The PS2 libc defines AF_INET6 but has no inet_pton(): use mbedTLS's own

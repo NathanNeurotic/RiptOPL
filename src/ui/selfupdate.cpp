@@ -7,55 +7,52 @@
   downloaded until they accept the offer.
 
   The download is held in RAM. It must match the release's SHA-256 and look like a MIPS ELF before
-  anything on the device is touched. Then the booted ELF is overwritten in place under its own name:
-  no second file, no rename, no backup, so a memory card needs no spare room. If that write fails
-  part-way the ELF may be damaged; the message gives the step and the error. Network and card work
-  run on the I/O worker.
+  anything on the device is touched. Every supported device then installs directly over the existing
+  ELF, without a staged or backup copy. Network and file work run on the I/O worker.
 */
 
 #include "include/opl.h"
 #include "include/oplint.h" /* gBootElfName */
 #include "include/gui.h"
+#include "include/elfldr_args.h"
 #include "include/lang.h"
 #include "include/ioman.h"
 #include "include/netsupport.h"
 #include "include/ethsupport.h"
 #include "include/ratls.h"
 #include "include/guiwait.h"
+#include "include/hdd.h"
+#include "include/hddint.h"
+#include "include/host.h"
 #include "include/selfupdate.h"
 #include "include/sound.h"
+#include "include/supportbase.h"
+#include "include/system.h"
 
 #include "mbedtls/sha256.h"
 
 #define SU_FIO_WRONLY 0x0002 /* iomanX flags, which fileXioOpen takes (newlib's differ) */
-#define SU_FIO_CREAT 0x0200
-#define SU_FIO_TRUNC 0x0400
+#define SU_FIO_CREAT  0x0200
+#define SU_FIO_TRUNC  0x0400
 
 #include <errno.h>
 #define NEWLIB_PORT_AWARE // fileXioOpen/Write/Close: the call Launchstation overwrites its ELF with
 #include <fileXio_rpc.h>
+#include <io_common.h>
+#include <kernel.h>
 #include <fcntl.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <delaythread.h>
 
-/* This build's channel, from tools/build_edition.py update_defines. */
-#if defined(RIPTOPL_UPDATE_TAG_ROLLING)
-#define RIPTOPL_UPDATE_TAG "rolling"
-#elif defined(RIPTOPL_UPDATE_TAG_RA)
-#define RIPTOPL_UPDATE_TAG "rolling-ra"
-#else
-#error "Check for Updates needs a RIPTOPL_UPDATE_TAG_* define (tools/build_edition.py)"
-#endif
-#if defined(RIPTOPL_UPDATE_ELF_PLAIN)
-#define RIPTOPL_UPDATE_ELF "RIPTOPL.ELF"
-#elif defined(RIPTOPL_UPDATE_ELF_RA)
-#define RIPTOPL_UPDATE_ELF "RIPTOPL-RA.ELF"
-#else
-#error "Check for Updates needs a RIPTOPL_UPDATE_ELF_* define (tools/build_edition.py)"
-#endif
+#define SU_STRINGIFY_VALUE(value) #value
+#define SU_STRINGIFY(value)       SU_STRINGIFY_VALUE(value)
+#define SU_RELEASE_PATH           "/NathanNeurotic/RiptOPL/releases/download/" SU_STRINGIFY(RIPTOPL_UPDATE_CHANNEL) "/"
+static const char *suAsset;
+static int suFormat;
 
 
 enum {
@@ -69,11 +66,13 @@ enum {
     SU_ERR_VERIFY,
     SU_ERR_SWAP,
     SU_ERR_MEMORY,
+    SU_ERR_PLACE,
+    SU_ERR_METADATA,
 };
 
 static const int SU_BUF = 16 * 1024;           /* request, headers and each piece of the body */
 static const int SU_LOCATION = 2048;           /* GitHub's signed download redirects run to about 900 bytes */
-static const int SU_SUMS_MAX = 8 * 1024;       /* SHA256SUMS.txt is about 1.6 KB */
+static const int SU_SUMS_MAX = 8 * 1024;       /* bounds the channel's complete checksum list */
 static const int SU_ELF_MAX = 8 * 1024 * 1024; /* RIPTOPL.ELF is about 2.3 MB */
 static const int SU_MC_NAME_MAX = 31;          /* a memory card entry name */
 
@@ -82,6 +81,7 @@ static int suResult;
 static int suError;        /* the RATLS_ERR_* behind SU_ERR_GITHUB */
 static int suRemoteRev;    /* the release's build number */
 static int suInstalledRev; /* a build installed this session: the running ELF is older than the file */
+static int suVersionPending; /* the ELF is installed; only version.txt still needs a retry */
 static unsigned char suSha[32];
 static char suMessage[96]; /* the wait screen's text, rewritten by the I/O worker as the download runs */
 
@@ -113,14 +113,98 @@ static int suIsMc(const char *path)
     return !strncmp(path, "mc", 2) && (path[2] == '0' || path[2] == '1') && path[3] == ':';
 }
 
-/* The boot ELF can be replaced in place only on a memory card or a BDM (USB/exFAT) drive. */
-static int suPlaceOk(void)
+struct SuTarget
 {
-    if (gBootDir[0] == '\0' || gBootElfName[0] == '\0')
-        return 0;
-    if (suIsMc(gBootDir))
-        return strlen(gBootElfName) + 4 <= (size_t)SU_MC_NAME_MAX;
-    return !strncmp(gBootDir, "mass", 4) && gBootDir[4] >= '0' && gBootDir[4] <= '9';
+    char path[256];
+    bool apa = false;
+    bool mounted = false;
+
+    void close()
+    {
+        if (mounted) {
+            fileXioUmount("pfs1:");
+            mounted = false;
+        }
+    }
+
+    ~SuTarget() { close(); }
+};
+
+static bool suNumberedDevice(const char *path, const char *name)
+{
+    size_t length = strlen(name);
+    if (strncmp(path, name, length))
+        return false;
+    const char *unit = path + length;
+    const char *end = unit + strspn(unit, "0123456789");
+    return end != unit && *end == ':';
+}
+
+static bool suResolveTarget(SuTarget &target, bool writing)
+{
+    if (gBootElfName[0] == '\0' || strpbrk(gBootElfName, "/\\:") != NULL ||
+        strcasecmp(gBootElfName, "version.txt") == 0)
+        return false;
+    char partition[APA_IDMAX + 6], directory[256];
+    if (hddParseBootDirectory(gBootLaunchDir, partition, sizeof(partition), directory, sizeof(directory)) == 0) {
+        target.apa = true;
+        // The updater runs on the I/O worker, which also owns the temporary PFS scan slot.
+        const char *device = "pfs0:";
+        if (gHDDPrefix == NULL || strcmp(gOPLPart, partition)) {
+            if (!hddLoadModulesReady() || !gHddSupport.loadCoreSupportModules() ||
+                fileXioMount("pfs1:", partition, writing ? FIO_MT_RDWR : FIO_MT_RDONLY) < 0)
+                return false;
+            target.mounted = true;
+            device = "pfs1:";
+        }
+        char root[256];
+        int len = snprintf(root, sizeof(root), "%s%s", device, directory);
+        return len > 0 && len < (int)sizeof(root) &&
+               suJoin(target.path, sizeof(target.path), root, gBootElfName, "") == 0;
+    }
+    if (!suNumberedDevice(gBootDir, "mass") && !suNumberedDevice(gBootDir, "mmce") &&
+        !(suIsMc(gBootDir) && strlen(gBootElfName) <= (size_t)SU_MC_NAME_MAX))
+        return false;
+    return suJoin(target.path, sizeof(target.path), gBootDir, gBootElfName, "") == 0;
+}
+
+static int suReadBootFormat(SuTarget &target)
+{
+    int fd = fileXioOpen(target.path, 0x0001, 0); // iomanX read-only
+    if (fd < 0 && !target.apa) {
+        // Keep the spelling that actually opened the original for the subsequent write.
+        char *sep = strchr(target.path, ':');
+        if (sep[1] == '/')
+            memmove(sep + 1, sep + 2, strlen(sep + 2) + 1);
+        else if (strlen(target.path) + 1 < sizeof(target.path)) {
+            memmove(sep + 2, sep + 1, strlen(sep + 1) + 1);
+            sep[1] = '/';
+        }
+        fd = fileXioOpen(target.path, 0x0001, 0);
+    }
+    if (fd < 0)
+        return SU_ELF_UNKNOWN;
+    unsigned char head[SU_ELF_HEADER_MAX];
+    int bytes = fileXioRead(fd, head, sizeof(head));
+    fileXioClose(fd);
+    return suElfFormat(head, bytes);
+}
+
+static bool suSelectAsset(void)
+{
+    SuTarget target;
+    if (!suResolveTarget(target, false))
+        return false;
+    suFormat = suReadBootFormat(target);
+    if (suFormat == SU_ELF_PACKED)
+        suAsset = SU_STRINGIFY(RIPTOPL_UPDATE_ASSET);
+#ifdef RIPTOPL_UPDATE_RAW_ASSET
+    else if (suFormat == SU_ELF_UNPACKED)
+        suAsset = SU_STRINGIFY(RIPTOPL_UPDATE_RAW_ASSET);
+#endif
+    else
+        return false;
+    return true;
 }
 
 static int suFromTls(int rc)
@@ -220,16 +304,21 @@ static int suNetworkUp(void)
 
 static void suCheckWorker(void)
 {
+    if (!suSelectAsset()) {
+        suResult = SU_ERR_PLACE;
+        suBusy = 0;
+        return;
+    }
     SuBuffers *b = static_cast<SuBuffers *>(malloc(sizeof(SuBuffers)));
     SuSums sums = {static_cast<char *>(malloc(SU_SUMS_MAX)), 0};
 
     suResult = SU_ERR_MEMORY;
     if (b != NULL && sums.text != NULL && (suResult = suNetworkUp()) == SU_OK) {
-        int rc = suFetch(b, "/NathanNeurotic/RiptOPL/releases/download/" RIPTOPL_UPDATE_TAG "/SHA256SUMS.txt", SU_SUMS_MAX,
+        int rc = suFetch(b, SU_RELEASE_PATH "SHA256SUMS.txt", SU_SUMS_MAX,
                          suSumsSink, &sums);
         if (rc < 0)
             suResult = suFromTls(rc);
-        else if (suParseSums(sums.text, sums.len, RIPTOPL_UPDATE_ELF, suSha, &suRemoteRev) != 0)
+        else if (suParseSums(sums.text, sums.len, suAsset, suSha, &suRemoteRev) != 0)
             suResult = suFromTls(RATLS_ERR_HTTP);
         else
             suResult = suRemoteRev > suRevision(OPL_VERSION) && suRemoteRev > suInstalledRev ? SU_OK : SU_NEWEST;
@@ -241,24 +330,90 @@ static void suCheckWorker(void)
 
 static int suStep, suErrno; /* which write step failed and why, shown after "Could not replace the ELF" */
 
-/* A card allocates in 1 KB clusters. The new ELF has to fit in the free clusters plus the old ELF's own,
-   with one to spare; a card that cannot answer is left to the write to report. */
+static int suWriteElf(const char *path, int flags, const SuFile &file)
+{
+    suStep = 1;
+    int fd = fileXioOpen(path, SU_FIO_WRONLY | flags, 0777);
+    if (fd < 0)
+        return fd;
+    suStep = 2;
+    for (int off = 0; off < file.written;) {
+        int n = file.written - off < 16 * 1024 ? file.written - off : 16 * 1024;
+        int written = fileXioWrite(fd, file.data + off, n);
+        if (written <= 0 || written > n) {
+            fileXioClose(fd);
+            return written < 0 ? written : -ENOSPC;
+        }
+        off += written;
+        guiWaitBarDone = off;
+        snprintf(suMessage, sizeof(suMessage), "Installing... (%d / %d KB)", off / 1024, file.written / 1024);
+    }
+    suStep = 3;
+    return fileXioClose(fd);
+}
+
+static int suWriteVersion(const char *elfPath)
+{
+    char dir[256], path[272], text[16];
+    suStep = 6;
+    if (strlen(elfPath) >= sizeof(dir))
+        return -ENAMETOOLONG;
+    strcpy(dir, elfPath);
+    char *slash = strrchr(dir, '/');
+    if (slash != NULL)
+        *slash = '\0';
+    else {
+        char *colon = strrchr(dir, ':');
+        if (colon == NULL)
+            return -EINVAL;
+        colon[1] = '\0';
+    }
+    if (suJoin(path, sizeof(path), dir, "version.txt", "") != 0)
+        return -ENAMETOOLONG;
+    int len = snprintf(text, sizeof(text), "%d\n", suRemoteRev);
+    int fd = fileXioOpen(path, SU_FIO_WRONLY | SU_FIO_CREAT | SU_FIO_TRUNC, 0777);
+    if (fd < 0)
+        return fd;
+    int rc = fileXioWrite(fd, text, len);
+    int closeRc = fileXioClose(fd);
+    if (rc == len && closeRc >= 0)
+        return 0;
+    return rc < 0 ? rc : closeRc < 0 ? closeRc : -EIO;
+}
+
 static void suInstallWorker(void)
 {
+    SuTarget target;
+    int versionRc;
+    if (suVersionPending) {
+        if (!suResolveTarget(target, true)) {
+            suResult = SU_ERR_PLACE;
+        } else {
+            versionRc = suWriteVersion(target.path);
+            if (versionRc < 0) {
+                suResult = SU_ERR_METADATA;
+                suErrno = -versionRc;
+            } else {
+                suVersionPending = 0;
+                suInstalledRev = suRemoteRev;
+                suResult = SU_OK;
+            }
+        }
+        target.close();
+        suBusy = 0;
+        return;
+    }
+
     SuBuffers *b = static_cast<SuBuffers *>(malloc(sizeof(SuBuffers)));
-    char cur[256];
+    char url[sizeof(SU_RELEASE_PATH) + 64];
     unsigned char sha[32];
     SuFile f;
-    int fd, off;
 
     suResult = SU_ERR_MEMORY;
     if (b == NULL)
         goto done;
     suStep = 0;
     suErrno = 0;
-    suResult = SU_ERR_SWAP;
-    if (suJoin(cur, sizeof(cur), gBootDir, gBootElfName, ""))
-        goto done;
 
     f.data = NULL;
     f.cap = 0;
@@ -269,8 +424,8 @@ static void suInstallWorker(void)
     mbedtls_sha256_init(&f.sha);
     mbedtls_sha256_starts(&f.sha, 0);
     {
-        int rc = suFetch(b, "/NathanNeurotic/RiptOPL/releases/download/" RIPTOPL_UPDATE_TAG "/" RIPTOPL_UPDATE_ELF, SU_ELF_MAX,
-                         suFileSink, &f);
+        snprintf(url, sizeof(url), "%s%s", SU_RELEASE_PATH, suAsset);
+        int rc = suFetch(b, url, SU_ELF_MAX, suFileSink, &f);
         mbedtls_sha256_finish(&f.sha, sha);
         mbedtls_sha256_free(&f.sha);
         if (rc >= 0 && f.written == 0)
@@ -281,7 +436,8 @@ static void suInstallWorker(void)
             goto done;
         }
     }
-    if (f.written != f.cap || memcmp(sha, suSha, sizeof(sha))) {
+    if (f.written != f.cap || memcmp(sha, suSha, sizeof(sha)) ||
+        suElfFormat(f.data, f.written < SU_ELF_HEADER_MAX ? f.written : SU_ELF_HEADER_MAX) != suFormat) {
         free(f.data);
         suResult = SU_ERR_VERIFY;
         goto done;
@@ -291,47 +447,31 @@ static void suInstallWorker(void)
     guiWaitBarTotal = f.written;
     snprintf(suMessage, sizeof(suMessage), "Installing... (%d / %d KB)", 0, f.written / 1024);
 
-    /* Overwrite the booted ELF with the verified bytes, as Launchstation does: fileXioOpen with the iomanX
-       WRONLY|CREAT|TRUNC flags (mcman truncates only in its CREAT branch), trying "dev:/path" and then "dev:path".
-       Step 1 changes nothing if it fails. */
-    suResult = SU_ERR_SWAP;
-    suStep = 1;
-    fd = fileXioOpen(cur, SU_FIO_WRONLY | SU_FIO_CREAT | SU_FIO_TRUNC, 0777);
-    if (fd < 0) {
-        char alt[sizeof(cur) + 2]; // one slash may be added
-        char *sep = strchr(strcpy(alt, cur), ':');
-        if (sep != NULL && sep[1] != '\0') {
-            if (sep[1] == '/')
-                memmove(sep + 1, sep + 2, strlen(sep + 2) + 1);
-            else {
-                memmove(sep + 2, sep + 1, strlen(sep + 1) + 1);
-                sep[1] = '/';
-            }
-            fd = fileXioOpen(alt, SU_FIO_WRONLY | SU_FIO_CREAT | SU_FIO_TRUNC, 0777);
-        }
-    }
-    if (fd < 0) {
-        suErrno = -fd;
+    if (!suResolveTarget(target, true) || suReadBootFormat(target) != suFormat) {
+        suResult = SU_ERR_PLACE;
         free(f.data);
         goto done;
     }
-    suStep = 2;
-    for (off = 0; off < f.written;) {
-        int n = f.written - off < 16 * 1024 ? f.written - off : 16 * 1024;
-        int w = fileXioWrite(fd, f.data + off, n);
-        if (w <= 0 || w > n) {
-            suErrno = w < 0 ? -w : ENOSPC;
-            fileXioClose(fd);
+    {
+        int rc = suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f);
+        if (rc >= 0 && target.apa) {
+            char device[6];
+            snprintf(device, sizeof(device), "%.5s", target.path);
+            suStep = 4;
+            rc = fileXioSync(device, 0);
+        }
+        if (rc < 0) {
+            suResult = SU_ERR_SWAP;
+            suErrno = -rc;
             free(f.data);
             goto done;
         }
-        off += w;
-        guiWaitBarDone = off;
-        snprintf(suMessage, sizeof(suMessage), "Installing... (%d / %d KB)", off / 1024, f.written / 1024);
     }
-    suStep = 3;
-    if (fileXioClose(fd) < 0) {
-        suErrno = EIO;
+    versionRc = suWriteVersion(target.path);
+    if (versionRc < 0) {
+        suResult = SU_ERR_METADATA;
+        suVersionPending = 1;
+        suErrno = -versionRc;
         free(f.data);
         goto done;
     }
@@ -339,6 +479,7 @@ static void suInstallWorker(void)
     suInstalledRev = suRemoteRev;
     suResult = SU_OK;
 done:
+    target.close();
     free(b);
     suBusy = 0;
 }
@@ -357,6 +498,9 @@ static void suReport(void)
     char text[256];
 
     switch (suResult) {
+        case SU_ERR_PLACE:
+            snprintf(text, sizeof(text), "%s", _l(_STR_UPDATE_ERR_PLACE));
+            break;
         case SU_ERR_NETBUSY:
             snprintf(text, sizeof(text), "%s", _l(_STR_UPDATE_ERR_NETBUSY));
             break;
@@ -376,10 +520,53 @@ static void suReport(void)
         case SU_ERR_SWAP:
             snprintf(text, sizeof(text), "%s (%d/%d)", _l(_STR_UPDATE_ERR_SWAP), suStep, suErrno);
             break;
-        default:
-            snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_GITHUB), suError);
+        case SU_ERR_METADATA:
+            snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_METADATA), suErrno);
+            break;
+        default: {
+            int label = _STR_UPDATE_ERR_GITHUB;
+            switch (suError) {
+                case RATLS_ERR_NET:
+                    label = _STR_UPDATE_ERR_CONNECT;
+                    break;
+                case RATLS_ERR_CERT:
+                    label = _STR_UPDATE_ERR_CERTIFICATE;
+                    break;
+                case RATLS_ERR_HTTP:
+                    label = _STR_UPDATE_ERR_RESPONSE;
+                    break;
+                case RATLS_ERR_TIMEOUT:
+                    label = _STR_UPDATE_ERR_TIMEOUT;
+                    break;
+            }
+            snprintf(text, sizeof(text), _l(label), suError);
+            break;
+        }
     }
     guiMsgBox(text, 0, NULL);
+}
+
+static void suRelaunch(void)
+{
+    // Reserve the scratch mount through the handoff and check the child's argument budget.
+    ioBlockOpsTimed(1, 10);
+    const bool drained = !ioHasPendingRequests();
+    SuTarget target;
+    char bootPath[256];
+    char *argv[] = {bootPath};
+    if (drained && suResolveTarget(target, false) && suReadBootFormat(target) == suFormat &&
+        suJoin(bootPath, sizeof(bootPath), target.apa ? gBootLaunchDir : gBootDir, gBootElfName, "") == 0 &&
+        elfldrArgsFit(target.path, 1, argv, target.apa ? "-la=RH" : "-reset-iop", NULL)) {
+        // Load from the live mount, but give the new instance the physical boot identity.
+        host::app().deinitTerminal(sbLoaderDeinitException(target.path) | KEEPIOP_EXCEPTION, IO_MODE_SELECTED_ALL_SPARE);
+        sysLoadELFApp(target.path, "", 1, argv, 1, target.apa);
+        // The UI has already shut down if the loader unexpectedly returns.
+        LoadExecPS2("rom0:OSDSYS", 0, NULL);
+        exit(0);
+    }
+    target.close();
+    ioBlockOps(0);
+    guiMsgBox(_l(_STR_UPDATE_RELAUNCH_FAILED), 0, NULL);
 }
 
 static void suOffer(int local)
@@ -388,43 +575,55 @@ static void suOffer(int local)
 
     if (suInstalledRev > local)
         local = suInstalledRev; /* the file on the device is already that build */
-    suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
-    if (suResult == SU_NEWEST) { /* the checksum is read: offer the same swap again */
-        snprintf(text, sizeof(text), _l(_STR_UPDATE_NEWEST), local);
-        if (suRemoteRev < local) { /* the channel is older than this build: no reinstall offer */
-            guiMsgBox(text, 0, NULL);
+    if (suVersionPending) {
+        suWait(&suInstallWorker, _l(_STR_UPDATE_METADATA_RETRY));
+    } else {
+        suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
+        if (suResult == SU_ERR_CLOCK) {
+            if (!guiMsgBox(_l(_STR_UPDATE_OPEN_CLOCK), 1, NULL) || !guiShowDateTime())
+                return;
+            suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
+        }
+        if (suResult == SU_NEWEST) { /* the checksum is read: offer the same swap again */
+            snprintf(text, sizeof(text), _l(_STR_UPDATE_NEWEST), local);
+            if (suRemoteRev < local) { /* the channel is older than this build: no reinstall offer */
+                guiMsgBox(text, 0, NULL);
+                return;
+            }
+            size_t used = strlen(text);
+            snprintf(text + used, sizeof(text) - used, " %s", _l(_STR_UPDATE_AGAIN));
+        } else if (suResult != SU_OK) {
+            suReport();
+            return;
+        } else {
+            snprintf(text, sizeof(text), _l(_STR_UPDATE_AVAILABLE), suRemoteRev, local);
+        }
+        if (!guiMsgBox(text, 1, NULL))
+            return;
+        if (isBgmPlaying())
+            bgmStop();
+        snprintf(text, sizeof(text), _l(_STR_UPDATE_DOWNLOADING), 0);
+        suWait(&suInstallWorker, text);
+        if (suResult != SU_OK) {
+            suReport();
             return;
         }
-        size_t used = strlen(text);
-        snprintf(text + used, sizeof(text) - used, " %s", _l(_STR_UPDATE_AGAIN));
-    } else if (suResult != SU_OK) {
-        suReport();
-        return;
-    } else {
-        snprintf(text, sizeof(text), _l(_STR_UPDATE_AVAILABLE), suRemoteRev, local);
     }
-    if (!guiMsgBox(text, 1, NULL))
-        return;
-    if (isBgmPlaying())
-        bgmStop();
-    snprintf(text, sizeof(text), _l(_STR_UPDATE_DOWNLOADING), 0);
-    suWait(&suInstallWorker, text);
-    if (suResult != SU_OK) {
+    if (suVersionPending && suResult != SU_OK) {
         suReport();
         return;
     }
     snprintf(text, sizeof(text), _l(_STR_UPDATE_DONE), suRemoteRev);
-    guiMsgBox(text, 0, NULL);
+    size_t used = strlen(text);
+    snprintf(text + used, sizeof(text) - used, " %s", _l(_STR_UPDATE_RELAUNCH));
+    if (guiMsgBox(text, 1, NULL))
+        suRelaunch();
 }
 
 void selfUpdateMenu(void)
 {
     int local = suRevision(OPL_VERSION);
 
-    if (!suPlaceOk()) {
-        guiMsgBox(_l(_STR_UPDATE_ERR_PLACE), 0, NULL);
-        return;
-    }
     if (local < 0) {
         guiMsgBox(_l(_STR_UPDATE_ERR_UNVERSIONED), 0, NULL);
         return;

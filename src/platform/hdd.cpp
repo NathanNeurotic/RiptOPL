@@ -14,6 +14,35 @@ constexpr int HDL_FS_MAGIC = 0x1337;
 
 u8 IOBuffer[2048] ALIGNED(64); // one sector
 
+int hddParseBootDirectory(const char *dir, char *partition, int partitionSize, char *path, int pathSize)
+{
+    // PSBBN / wLaunchELF can report hdd0:__system:pfs:/launcher or hdd0:/__system/launcher.
+    if (strncmp(dir, "hdd0:", 5))
+        return -1;
+    const char *label = dir + 5;
+    if (*label == '/')
+        label++;
+    size_t n = strcspn(label, ":/\\");
+    if (n == 0 || n > APA_IDMAX || n + 5 >= (size_t)partitionSize)
+        return -1;
+    const char *folder = label + n;
+    if (*folder == ':') {
+        if (!strncmp(folder, ":pfs:", 5))
+            folder += 5;
+        else if (!strncmp(folder, ":pfs0:", 6) || !strncmp(folder, ":pfs1:", 6))
+            folder += 6;
+        else
+            return -1;
+    }
+    if (strchr(folder, ':') || strchr(folder, '\\'))
+        return -1;
+    int written = snprintf(path, (size_t)pathSize, "%s%s", *folder == '/' ? "" : "/", folder);
+    if (written < 0 || written >= pathSize)
+        return -1;
+    snprintf(partition, (size_t)partitionSize, "hdd0:%.*s", (int)n, label);
+    return 0;
+}
+
 //-------------------------------------------------------------------------
 int hddCheck(void)
 {

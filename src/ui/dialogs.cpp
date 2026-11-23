@@ -478,11 +478,6 @@ struct UIItem diaConfig[] = {
     {UI_STRING, CFG_CUSTOMCFGPATH, 1, 1, _STR_HINT_CUSTOM_SETTINGS_PATH, 0, 0, DIA_STRING(diaStr_CFG_CUSTOMCFGPATH, NULL)},
     {UI_BREAK},
 
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_DATE_TIME}}},
-    {UI_SPACER},
-    {UI_BUTTON, CFG_DATETIME_BUTTON, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.label = {NULL, _STR_MODIFY}}},
-    {UI_BREAK},
-
     // buttons
     {UI_OK, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_OK}}},
     {UI_BREAK},
@@ -907,7 +902,7 @@ struct UIItem diaLanguageConfig[] = {
     {UI_BREAK},
     {UI_TERMINATOR}};
 
-// General & System -> Date and Time: the console clock, in the console's own time zone. Nothing is saved.
+// Date and Time edits the console clock using the console's time zone.
 struct UIItem diaDateTimeConfig[] = {
     {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_DATE_TIME}}},
     {UI_SPLITTER},
@@ -978,44 +973,10 @@ struct UIItem diaUIConfig[] = {
     {UI_ENUM, UICFG_VMODE, 1, 1, _STR_HINT_MENU_VMODE, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_THEME}}},
-    {UI_SPACER},
-    {UI_ENUM, UICFG_THEME, 1, 1, _STR_HINT_THEME, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    // Multi-view themes: the look a theme draws (List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, Grid (7x2)). Holding L3 cycles it too.
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_THEME_VIEW}}},
-    {UI_SPACER},
-    {UI_ENUM, UICFG_THEME_VIEW, 1, 1, _STR_HINT_THEME_VIEW, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
     // Pages (a tab per device) or All Games (one list) -- the same all_games setting as Game Sources.
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_LIBRARY}}},
     {UI_SPACER},
     {UI_ENUM, UICFG_LIBRARY, 1, 1, _STR_HINT_LIBRARY, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    // The theme's alt= background instead of its default one (KrahJohlito's idea). Themes without alt= ignore it.
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_ALT_BACKGROUND}}},
-    {UI_SPACER},
-    {UI_BOOL, UICFG_THEME_ALT_BG, 1, 1, _STR_HINT_ALT_BACKGROUND, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    // Seconds the start-up screen waits for a saved theme whose drive is still coming up (RIPPS2 build 125 used 6). 0 = off.
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_BOOT_THEME_WAIT}}},
-    {UI_SPACER},
-    {UI_INT, UICFG_BOOT_THEME_WAIT, 1, 1, _STR_HINT_BOOT_THEME_WAIT, 0, 0, {.intvalue = {0, 0, 0, 10}}},
-    {UI_BREAK},
-
-    // wallpaper.png from the settings folder behind the main pages, whatever the theme (Berion's request).
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_WALLPAPER}}},
-    {UI_SPACER},
-    {UI_BOOL, UICFG_WALLPAPER, 1, 1, _STR_HINT_WALLPAPER, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_AMBIENT_EFFECTS}}},
-    {UI_SPACER},
-    {UI_BOOL, UICFG_AMBIENT_EFFECTS, 1, 1, _STR_HINT_AMBIENT_EFFECTS, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
     // The button legend at the bottom of the menu and the info page, in every theme (Berion's request).
@@ -1027,25 +988,6 @@ struct UIItem diaUIConfig[] = {
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_FONT_SIZE}}},
     {UI_SPACER},
     {UI_ENUM, UICFG_FONT_SIZE, 1, 1, _STR_HINT_FONT_SIZE, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLYPH_SET}}},
-    {UI_SPACER},
-    {UI_ENUM, UICFG_GLYPH_SET, 1, 1, _STR_HINT_GLYPH_SET, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    // Theme-specific presentation controls stay together.
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_COVERFLOW_SETTINGS}}},
-    {UI_SPACER},
-    {UI_BUTTON, UICFG_COVERFLOW_BUTTON, 1, 1, _STR_HINT_COVERFLOW_BUTTON, 0, 0, {.label = {NULL, _STR_MODIFY}}},
-    {UI_BREAK},
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_ARTWORK_SETTINGS}}},
-    {UI_SPACER},
-    {UI_BUTTON, UICFG_ARTWORK_BUTTON, 1, 1, _STR_HINT_ARTWORK_BUTTON, 0, 0, {.label = {NULL, _STR_MODIFY}}},
-    {UI_BREAK},
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_COLORS_SETTINGS}}},
-    {UI_SPACER},
-    {UI_BUTTON, UICFG_COLORS_BUTTON, 1, 1, _STR_HINT_COLORS_BUTTON, 0, 0, {.label = {NULL, _STR_MODIFY}}},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_ENABLE_NOTIFICATIONS}}},
@@ -1066,11 +1008,6 @@ struct UIItem diaUIConfig[] = {
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_CFG_TITLES}}},
     {UI_SPACER},
     {UI_BOOL, UICFG_CFG_TITLES, 1, 1, _STR_HINT_CFG_TITLES, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_LIST_CFG_TEXT}}},
-    {UI_SPACER},
-    {UI_ENUM, UICFG_LIST_CFG_TEXT, 1, 1, _STR_HINT_LIST_CFG_TEXT, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_PS1_DUPLICATES}}},
@@ -1118,10 +1055,26 @@ struct UIItem diaUIConfig[] = {
     // end of dialog
     {UI_TERMINATOR}};
 
-// Interface -> Artwork Settings. Rows moved out of diaUIConfig.
-struct UIItem diaArtworkConfig[] = {
-    {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_ARTWORK_SETTINGS}}},
+struct UIItem diaThemeConfig[] = {
+    {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_THEME_SETTINGS}}},
     {UI_SPLITTER},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_THEME}}},
+    {UI_SPACER},
+    {UI_ENUM, UICFG_THEME, 1, 1, _STR_HINT_THEME, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    // Multi-view themes: the look a theme draws (List, Coverflow (3), Coverflow (5), PSBBN Flow, Grid, Grid (7x2)). Holding L3 cycles it too.
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_THEME_VIEW}}},
+    {UI_SPACER},
+    {UI_ENUM, UICFG_THEME_VIEW, 1, 1, _STR_HINT_THEME_VIEW, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    // Theme-specific presentation controls stay together.
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_LAYOUT_SETTINGS}}},
+    {UI_SPACER},
+    {UI_BUTTON, UICFG_COVERFLOW_BUTTON, 1, 1, _STR_HINT_LAYOUT_SETTINGS, 0, 0, {.label = {NULL, _STR_MODIFY}}},
+    {UI_BREAK},
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_COVERART}}},
     {UI_SPACER},
@@ -1158,6 +1111,44 @@ struct UIItem diaArtworkConfig[] = {
     {UI_ENUM, UICFG_ART_DELAY, 1, 1, _STR_HINT_ART_DELAY, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
+    // The theme's alt= background instead of its default one (KrahJohlito's idea). Themes without alt= ignore it.
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_ALT_BACKGROUND}}},
+    {UI_SPACER},
+    {UI_BOOL, UICFG_THEME_ALT_BG, 1, 1, _STR_HINT_ALT_BACKGROUND, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    // wallpaper.png from the settings folder behind the main pages, whatever the theme (Berion's request).
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_WALLPAPER}}},
+    {UI_SPACER},
+    {UI_BOOL, UICFG_WALLPAPER, 1, 1, _STR_HINT_WALLPAPER, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_AMBIENT_EFFECTS}}},
+    {UI_SPACER},
+    {UI_BOOL, UICFG_AMBIENT_EFFECTS, 1, 1, _STR_HINT_AMBIENT_EFFECTS, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_COLORS_SETTINGS}}},
+    {UI_SPACER},
+    {UI_BUTTON, UICFG_COLORS_BUTTON, 1, 1, _STR_HINT_COLORS_BUTTON, 0, 0, {.label = {NULL, _STR_MODIFY}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLYPH_SET}}},
+    {UI_SPACER},
+    {UI_ENUM, UICFG_GLYPH_SET, 1, 1, _STR_HINT_GLYPH_SET, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_LIST_CFG_TEXT}}},
+    {UI_SPACER},
+    {UI_ENUM, UICFG_LIST_CFG_TEXT, 1, 1, _STR_HINT_LIST_CFG_TEXT, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    // Seconds the start-up screen waits for a saved theme whose drive is still coming up (RIPPS2 build 125 used 6). 0 = off.
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_BOOT_THEME_WAIT}}},
+    {UI_SPACER},
+    {UI_INT, UICFG_BOOT_THEME_WAIT, 1, 1, _STR_HINT_BOOT_THEME_WAIT, 0, 0, {.intvalue = {0, 0, 0, 10}}},
+    {UI_BREAK},
+
     // buttons
     {UI_OK, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_OK}}},
     {UI_BREAK},
@@ -1165,7 +1156,7 @@ struct UIItem diaArtworkConfig[] = {
     // end of dialog
     {UI_TERMINATOR}};
 
-// Interface -> Colors. Colour rows + Reset Colors moved out of diaUIConfig.
+// Theme Settings -> Colors.
 struct UIItem diaColorsConfig[] = {
     {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_COLORS_SETTINGS}}},
     {UI_SPLITTER},
@@ -2303,7 +2294,7 @@ struct UIItem diaControllerConfig[] = {
     {UI_TERMINATOR}};
 
 struct UIItem diaCoverflowConfig[] = {
-    {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_COVERFLOW_SETTINGS}}},
+    {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_LAYOUT_SETTINGS}}},
     {UI_SPLITTER},
 
     // The cover count is a Theme View now: Coverflow (3) or Coverflow (5).

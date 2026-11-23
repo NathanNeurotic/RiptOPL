@@ -15,7 +15,7 @@ import time
 import zipfile
 
 from build_configuration import CONFIGURATIONS
-from build_edition import EDITIONS, LITES, LITE, edition_display_name, git, kit_archive_name
+from build_edition import EDITIONS, LITES, LITE, edition_display_name, git, kit_archive_name, publishes_unpacked, update_asset
 import publish_lite
 
 # The original's VARIANTS and DEBUG zips and its RA nopademu loader, published for every theme beside
@@ -135,6 +135,19 @@ def add_sum(path, name, digest):
     sums.write_text("".join(f"{line}\n" for line in [*lines, f"{digest}  {name}"]), encoding="utf-8")
 
 
+def publish_update_elf(path, name, elf):
+    (path / name).write_bytes(elf)
+    add_sum(path, name, hashlib.sha256(elf).hexdigest())
+
+
+def extra_update_assets(edition):
+    configurations = {"standard"}
+    for _, bundled, _ in bundles(EDITIONS[edition]):
+        configurations.update(bundled)
+    return ({update_asset(edition, c) for c in configurations if c != "standard"} |
+            {update_asset(edition, c, unpacked=True) for c in configurations if publishes_unpacked(edition, c)})
+
+
 def bundle_configurations(root, expected_sha, *, editions=None, compiler=None):
     """Pack each edition's configuration builds into its verified release folder."""
     for edition in (EDITIONS if editions is None else editions):
@@ -161,6 +174,10 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None):
                         raise ValueError(f"invalid configuration build: {edition}/{folder}")
                     bundle.writestr(f"{folder}/{elf_name}", elf)
                     bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+                    unpacked = digest == "unpacked_elf_sha256"
+                    if unpacked:
+                        check_unpacked_layout(elf)
+                    publish_update_elf(path, update_asset(edition, configuration, unpacked=unpacked), elf)
                 bundle.writestr("README.txt", BUNDLE_README.format(display=edition_display_name(options), elf=elf_name))
                 # Each loader embeds usmb2 (MIT) and unfs4 (BSD 2-Clause, its notice in CREDITS): the bundle
                 # carries the licences the kit ships.
@@ -186,6 +203,7 @@ def bundle_bug_report(root, edition, expected_sha, compiler=None):
             or manifest.get("unpacked_elf_sha256") != hashlib.sha256(elf).hexdigest()):
         raise ValueError(f"invalid bug-report build: {edition}")
     check_unpacked_layout(elf)
+    publish_update_elf(path, update_asset(edition, "diag", unpacked=True), elf)
     version = manifest["version"].split('"')[1]  # the build's full version, as its screen shows it
     readme = BUGREPORT_README.read_text(encoding="utf-8").format(
         version=version, underline="=" * len("RiptOPL bug-report build, " + version), build=EDITIONS[edition]["title"],
@@ -231,6 +249,7 @@ def verify(root, expected_sha, *, editions=None, compiler=None):
         required = {elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", kit_zip,
                     "LICENSE-USMB2.txt"}
         required |= {f"RIPTOPL-{name}.zip" for name in archives(options)}
+        required |= extra_update_assets(edition)
         if set(sums) != required or actual != required | {"SHA256SUMS.txt"}:
             raise ValueError(f"unexpected release inventory: {edition}")
         if sums[elf] != manifest["elf_sha256"]:

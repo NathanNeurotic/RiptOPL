@@ -31,6 +31,7 @@
 int gGridLayout = 0;      // Settings > Interface > Coverflow Settings > Grid Layout (grid.h, gridLayoutPreset)
 int gGridCompact = 0;     // the Grid (7x2) view pick (themeviews.h, gridCompactShape); Grid Layout leaves it alone
 int gGridSidebarOpen = 0; // menusys gives the device sidebar the pad; only set while a Grid page with a sidebar is on screen
+struct menu_list *gGridSidebarCursor = NULL;
 
 #define GRID_SLIDE_SCALE 8 // the page slide lasts Coverflow's Animation Speed x 8/5 (Normal: 320 ms, RIPPS2's)
 #define GRID_FLIP_HOLD_S 0.42f
@@ -498,22 +499,18 @@ static void drawGlyph(GSTEXTURE *tex, int cell, int row, int cx, int cy, int siz
     rmDrawBlendedTriangles(tex, 2, xy, uv, col);
 }
 
-static void drawDeviceSidebar(struct menu_list *menu, int centerY)
+void gridDrawDeviceSidebar(struct menu_list *menu, int centerY, int open, struct menu_list *highlight)
 {
     struct menu_list *head = menu, *m;
     while (head->prev != NULL)
         head = head->prev;
-    int count = 0, current = 0;
+    int count = 0;
     for (m = head; m != NULL; m = m->next)
-        if (menuItemShown(m->item)) {
-            if (m == menu)
-                current = count;
+        if (menuItemShown(m->item))
             count++;
-        }
     if (count == 0)
         return;
 
-    int open = gGridSidebarOpen;
     u64 sel = gTheme->selTextColor;
     int sr = sel & 0xFF, sg = (sel >> 8) & 0xFF, sb = (sel >> 16) & 0xFF;
     int barW = rmWideScale(open ? GRID_DRAWER_W : GRID_BAR_W), screenH = gTheme->usedHeight > 0 ? gTheme->usedHeight : 480;
@@ -525,23 +522,24 @@ static void drawDeviceSidebar(struct menu_list *menu, int centerY)
     for (m = head; m != NULL; m = m->next) {
         if (!menuItemShown(m->item))
             continue;
-        int y = top + i * GRID_GLYPH_PITCH, lit = (i == current);
-        if (open && lit) // the drawer's cursor, across the row
+        int y = top + i * GRID_GLYPH_PITCH;
+        int active = m == menu, cursor = m == highlight;
+        if (open && cursor)
             rmDrawRect(rmWideScale(3), y - GRID_GLYPH_PITCH / 2 + 3, barW - rmWideScale(6), GRID_GLYPH_PITCH - 6, GS_SETREG_RGBA(sr, sg, sb, 0x50));
-        else if (lit) // the page on screen: an accent at the bar's edge
+        else if (active)
             rmDrawRect(0, y - GRID_GLYPH_SIZE / 2, 3, GRID_GLYPH_SIZE, GS_SETREG_RGBA(sr, sg, sb, 0x70));
         int glyph = gridGlyphFor(m);
         if (tex != NULL) {
-            if (lit)
+            if (active || cursor)
                 drawGlyph(tex, glyph, 1, glyphX, y, GRID_GLYPH_SIZE * 13 / 10, GS_SETREG_RGBA(0x24, 0x58, 0x80, 0x40));
-            drawGlyph(tex, glyph, 0, glyphX, y, GRID_GLYPH_SIZE, lit ? GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80) : GS_SETREG_RGBA(0x55, 0x5E, 0x76, 0x60));
+            drawGlyph(tex, glyph, 0, glyphX, y, GRID_GLYPH_SIZE, active || cursor ? GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80) : GS_SETREG_RGBA(0x55, 0x5E, 0x76, 0x60));
         }
         if (open) {
             const char *name = m->item->text_id >= 0 ? _l(m->item->text_id) : m->item->text;
             int x = rmWideScale(GRID_BAR_W + 4);
             if (name != NULL)
                 fntRenderStringFit(gTheme->fonts[0], x, y, ALIGN_VCENTER, barW - x - rmWideScale(6), name,
-                                   lit ? gTheme->selTextColor : gTheme->textColor, 0);
+                                   cursor ? gTheme->selTextColor : gTheme->textColor, 0);
         }
         i++;
     }
@@ -564,7 +562,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
         return;
     if (item == NULL) { // an empty device page: no covers, but the sidebar may hold the pad and must show
         if (gTheme->gridDevices && gTheme->grid != NULL)
-            drawDeviceSidebar(menu, elem->posY);
+            gridDrawDeviceSidebar(menu, elem->posY, gGridSidebarOpen, gGridSidebarCursor);
         return;
     }
 
@@ -679,15 +677,13 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
     }
 
     if (sidebar)
-        drawDeviceSidebar(menu, elem->posY);
+        gridDrawDeviceSidebar(menu, elem->posY, gGridSidebarOpen, gGridSidebarCursor);
 }
 
 void gridReleaseGlyphs(void)
 {
-    if (gridGlyphs.Mem != NULL) {
-        rmUnloadTexture(&gridGlyphs);
-        texFree(&gridGlyphs);
-    }
+    if (gridGlyphs.Mem != NULL)
+        rmReleaseTexture(&gridGlyphs);
     gridGlyphsTried = 0;
 }
 

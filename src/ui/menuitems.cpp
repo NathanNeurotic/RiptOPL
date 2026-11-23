@@ -276,6 +276,9 @@ void itemExecToggleView(struct menu_item *curMenu)
     cacheDropQueuedArt();
 
     sfxPlay(SFX_CONFIRM);
+    if (thmCanCycleView())
+        return; // the main menu shows the hold hint in place of the destination notice
+
     // Favorites has five stops (PS2 -> PS1 -> ELF -> All -> Recent), so the toast names the
     // one you landed on rather than reading as an on/off flag.
     {

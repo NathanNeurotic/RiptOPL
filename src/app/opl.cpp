@@ -387,19 +387,8 @@ void moduleUpdateMenuInternal(opl_io_module_t *mod, int themeChanged, int langCh
         if (gFAVStartMode || gAllGames)
             menuAddHint(&mod->menuItem, _STR_FAV_HINT, R3_ICON);
 
-        // L3 moves the page around its ring of lists. Both and Mixed expose rings; PS2/PS1 pin an
-        // ordinary device page, while Favorites and APPS retain their independent display rules.
-        //
-        // The question is "does this page have more than one list", NOT "does it have a VCD list".
-        // Those were the same thing while every ring was ISO<->VCD, and stop being the same as soon
-        // as a page offers a third; libViewRingSize keeps the hint honest either way.
-        if (libViewRingUsable(mod->support->mode)) {
-            int hint = _STR_VCD;
-            if (mod->support->mode == FAV_MODE || mod->support->mode == APP_MODE ||
-                gDefaultGameView == GAME_VIEW_MIXED)
-                hint = _STR_VIEW;
-            menuAddHint(&mod->menuItem, hint, L3_ICON);
-        }
+        if (libViewRingUsable(mod->support->mode) || thmCanCycleView())
+            menuAddHint(&mod->menuItem, _STR_L3_VIEW_FILTER, L3_ICON);
     }
 
     menuHintsUnlock();
@@ -2071,6 +2060,7 @@ static void setBootDir(const char *bootPath)
 {
     gBootDir[0] = '\0';
     gBootElfName[0] = '\0';
+    gBootLaunchDir[0] = '\0';
     if (bootPath == NULL || bootPath[0] == '\0')
         return;
 
@@ -2100,6 +2090,7 @@ static void setBootDir(const char *bootPath)
             snprintf(gBootElfName, sizeof(gBootElfName), "%s", colon + 1);
         }
     }
+    snprintf(gBootLaunchDir, sizeof(gBootLaunchDir), "%s", gBootDir);
 }
 
 int main(int argc, char *argv[])

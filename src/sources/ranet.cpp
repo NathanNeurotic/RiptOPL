@@ -110,7 +110,6 @@ constexpr int RA_PORT = 18194;
 constexpr int RA_MY_PORT = 18196; /* own port: the PC replies here directly, past NAT */
 constexpr int RA_CHUNK = 896;     /* agreed with the PC; rule 3 in the header */
 constexpr int RA_RECV_MAX = 992;  /* cap for one recvfrom; rule 3 */
-constexpr int RA_TRY = 12;        /* attempts per request */
 constexpr int RA_POLL_MS = 25;    /* pause between polls for a reply */
 /* How many times to ask again while the PC answers WAIT. Identifying
    the image is a live request to the RetroAchievements server and
@@ -273,7 +272,7 @@ unsigned int Ranet::peerIP() const
 /* ask() over mstack:. One devctl per attempt sends the request and waits up
    to the same 10 polls the socket path waits; the retries, the reply-source
    check and replyIP_ are the socket path's. */
-int Ranet::askMstack(struct sockaddr_in *to, const char *req, char *out, int asklen)
+int Ranet::askMstack(struct sockaddr_in *to, const char *req, char *out, int asklen, int attempts)
 {
     int len = strlen(req);
 
@@ -285,7 +284,7 @@ int Ranet::askMstack(struct sockaddr_in *to, const char *req, char *out, int ask
     xreq_.len = len;
     memcpy(xreq_.data, req, len);
 
-    for (int t = 0; t < RA_TRY; t++) {
+    for (int t = 0; t < attempts; t++) {
         int got = fileXioDevctl(MSTACK_XCHG_DEVICE, MSTACK_DEVCTL_UDP_XCHG, &xreq_, MSTACK_XCHG_REQ_HDR + len,
                                 &xreply_, sizeof(xreply_));
         if (got <= 0)
@@ -306,7 +305,7 @@ int Ranet::askMstack(struct sockaddr_in *to, const char *req, char *out, int ask
 /* Waits for a reply, resending the request. Returns the length or -1.
    The socket is non-blocking; SO_RCVTIMEO is not to be trusted on this
    stack. A unicast request accepts its reply only from that host. */
-int Ranet::ask(int sock, struct sockaddr_in *to, const char *req, char *out, int outmax)
+int Ranet::ask(int sock, struct sockaddr_in *to, const char *req, char *out, int outmax, int attempts)
 {
     int t;
 
@@ -317,9 +316,9 @@ int Ranet::ask(int sock, struct sockaddr_in *to, const char *req, char *out, int
         asklen = RA_RECV_MAX;
 
     if (sock == RA_LINK_MSTACK)
-        return askMstack(to, req, out, asklen);
+        return askMstack(to, req, out, asklen, attempts);
 
-    for (t = 0; t < RA_TRY; t++) {
+    for (t = 0; t < attempts; t++) {
         struct sockaddr_in from;
         socklen_t fromlen = sizeof(from);
         int got, w;
@@ -655,6 +654,7 @@ int Ranet::askPc(const char *hash, const char *serial, const char *savepath,
 
     LOG("RA: list is %d bytes in %d chunks\n", total, chunks);
 
+    const int chunkAttempts = gRAMode == RA_MODE_XERABORA ? RA_TRY_CHUNK : RA_TRY;
     for (i = 0; i < chunks; i++) {
         int idx = -1, len = -1, hdr = 0;
         bool matched = false;
@@ -664,7 +664,7 @@ int Ranet::askPc(const char *hash, const char *serial, const char *savepath,
         /* A reply carrying another chunk's index is a leftover from an
            earlier request: ask again rather than fail. */
         for (int attempt = 0; attempt < 3; attempt++) {
-            got = ask(sock, &to, req, rx_, sizeof(rx_));
+            got = ask(sock, &to, req, rx_, sizeof(rx_), chunkAttempts);
             if (got <= 0) {
                 LOG("RA: chunk %d did not arrive\n", i);
                 closePcLink(sock);

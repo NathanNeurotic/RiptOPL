@@ -159,7 +159,7 @@ static int gRAMode = RA_MODE_CADUCEUS, scenario, calls, queries, closed;
 static void DelayThread(int) {}
 int Ranet::openPcLink(char *, int, unsigned char *) { return 7; }
 void Ranet::closePcLink(int) { closed++; }
-int Ranet::ask(int, sockaddr_in *to, const char *req, char *out, int) {
+int Ranet::ask(int, sockaddr_in *to, const char *req, char *out, int, int) {
  calls++;
  if (to->sin_port == RA_CADUCEUS_PORT) {
   assert(!strcmp(req, RA_CADUCEUS_PROBE) && to->sin_addr.s_addr == 42);

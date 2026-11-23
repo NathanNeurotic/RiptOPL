@@ -283,6 +283,12 @@ def download_checks(exe, d, tag):
     rc, _, _, body = download(exe, s.port, d, anchors=("rsaca.der",))
     s.finish()
     check(f"{tag}_download_rsa_chain", rc == 4000 and body == elf[:4000], f"rc={rc}")
+    if tag == "ra":
+        # The release CDN uses an RSA certificate. TLS 1.3 requires RSA-PSS for its handshake signature.
+        s = Server(d, cert="rsaleaf", version="1.3", response=sized(elf[:4000]))
+        rc, _, _, body = download(exe, s.port, d, anchors=("rsaca.der",))
+        s.finish()
+        check("ra_download_tls13_rsa_pss", rc == 4000 and body == elf[:4000], f"rc={rc}")
 
 
 def http(body, extra=b""):

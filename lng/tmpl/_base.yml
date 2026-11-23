@@ -1189,7 +1189,7 @@ gui_strings:
 - label: GAME_VIEW_MODE
   string: PS2/PS1 Game Display
 - label: HINT_GAME_VIEW_MODE
-  string: "Both mode uses separate PS2/PS1 pages toggled with L3. Mixed combines them and L3 cycles Mixed, PS2, PS1. PS2 or PS1 shows only that type and fully disables L3. APPS and Favorites use their own display rules."
+  string: "Both mode uses separate PS2/PS1 pages toggled with L3. Mixed combines them and L3 cycles Mixed, PS2, PS1. PS2 or PS1 fixes the filter. Holding L3 still changes the style if the theme offers multiple layouts. Apps and Favorites have their own filters."
 - label: VIEW_MIXED
   string: Showing PS2 + PS1 games
 - label: VIEW_PS1_ELF
@@ -2571,7 +2571,7 @@ gui_strings:
   string: User Wallpaper
 - label: HINT_WALLPAPER
   string: "Draws wallpaper.png from the folder your settings are saved in behind the menu pages, in any theme. 512x512 at most, 8-bit (256 colour) palette."
-- comment: Interface setting under User Wallpaper. Procedural background and launch animation.
+- comment: Theme setting under User Wallpaper. Procedural background and launch animation.
   label: AMBIENT_EFFECTS
   string: Ambient Effects
 - label: HINT_AMBIENT_EFFECTS
@@ -2626,9 +2626,9 @@ gui_strings:
 - comment: The update is installed. %d is the new build's number.
   label: UPDATE_DONE
   string: Updated to build %d. It starts the next time you open RiptOPL.
-- comment: Check for Updates can only replace an ELF started from a memory card or a USB/exFAT drive.
+- comment: The current ELF's path or packed/unpacked format cannot be resolved safely for updating.
   label: UPDATE_ERR_PLACE
-  string: Check for Updates works when RiptOPL was started from a memory card or a USB/exFAT drive.
+  string: Could not identify the running ELF for a safe update. Start it from a memory card, MMCE, USB/exFAT or a full APA partition path.
 - comment: The running build's version has no build number (a local or tagged build), so it cannot be compared.
   label: UPDATE_ERR_UNVERSIONED
   string: This build has no build number to compare with the release. Download the release from GitHub instead.
@@ -2640,10 +2640,10 @@ gui_strings:
   string: No network. Check the cable and the network settings.
 - comment: Secure connections need the console's date and time.
   label: UPDATE_ERR_CLOCK
-  string: Set the console's date and time first (Settings > General & System > Date and Time). Secure connections need them.
-- comment: GitHub could not be reached or answered wrongly. %d is the error code.
+  string: Set the console's clock from Date and Time in the main menu. Secure connections need it.
+- comment: The GitHub HTTPS connection failed. %d is the error code.
   label: UPDATE_ERR_GITHUB
-  string: Could not reach GitHub (error %d). Check that the network has internet access and that the console's date is right.
+  string: GitHub secure connection failed (error %d).
 - comment: Writing the downloaded ELF failed.
   label: UPDATE_ERR_WRITE
   string: Could not write the update. Is the device full? RiptOPL was not changed.
@@ -2656,7 +2656,7 @@ gui_strings:
 - comment: The swap failed and the old ELF could not be put back. %s is the ELF's name; the old one is that name plus .BAK.
   label: UPDATE_ERR_RESTORE
   string: Could not replace the ELF or put it back. The old one is %s.BAK beside it. Rename it back with a file manager.
-- comment: "General & System row and dialog title. Sets the console's own clock (Launchstation issue 346 request)."
+- comment: "Main menu entry and dialog title. Sets the console's own clock (Launchstation issue 346 request)."
   label: DATE_TIME
   string: Date and Time
 - label: HINT_DATE_TIME
@@ -2727,3 +2727,41 @@ gui_strings:
 - comment: POPStarter uses the first present MMCE. This message is shown when a Slot 2 VCD is selected with Slot 1 connected.
   label: POPSTARTER_MMCE_TWO_CARDS
   string: "POPStarter uses MMCE Slot 1 while it is connected. Remove that card to launch this game from Slot 2."
+- comment: L3 button hint. Tap to change the library filter or hold to change the theme view.
+  label: L3_VIEW_FILTER
+  string: View/Filter
+- comment: Brief toast after tapping L3 when another theme view is available.
+  label: L3_HOLD_FOR_THEME
+  string: Hold for Theme
+- comment: Brief toast after holding L3 to switch styles when the current page has another library filter.
+  label: L3_TAP_FOR_FILTER
+  string: Tap for Filter
+- comment: Offer to open the clock setting when Check for Updates detects an unset clock.
+  label: UPDATE_OPEN_CLOCK
+  string: Check for Updates needs the PS2 clock. Open Date and Time now?
+- comment: GitHub DNS or TCP connection failed. %d is the error code.
+  label: UPDATE_ERR_CONNECT
+  string: Could not connect to GitHub (error %d). Check the network's DNS and internet access.
+- comment: GitHub certificate verification failed. %d is the error code.
+  label: UPDATE_ERR_CERTIFICATE
+  string: Could not verify GitHub's certificate (error %d). Check Date and Time in the main menu.
+- comment: The GitHub response or release manifest was invalid. %d is the error code.
+  label: UPDATE_ERR_RESPONSE
+  string: GitHub returned an unusable update response (error %d).
+- comment: The GitHub connection or download timed out. %d is the error code.
+  label: UPDATE_ERR_TIMEOUT
+  string: The GitHub update request timed out (error %d).
+- label: THEME_SETTINGS
+  string: Theme Settings
+- label: LAYOUT_SETTINGS
+  string: Layout Settings
+- label: HINT_LAYOUT_SETTINGS
+  string: "Adjust Coverflow size, animation and dimming, or choose a Grid layout."
+- label: UPDATE_RELAUNCH
+  string: Launch it now?
+- label: UPDATE_RELAUNCH_FAILED
+  string: The update is installed. Open RiptOPL again from your launcher.
+- label: UPDATE_ERR_METADATA
+  string: 'The ELF was installed, but version.txt could not be written (error %d). Check for Updates to retry only that file.'
+- label: UPDATE_METADATA_RETRY
+  string: Writing version.txt...

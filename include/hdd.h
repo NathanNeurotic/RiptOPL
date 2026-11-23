@@ -1,6 +1,9 @@
 #ifndef __HDD_H
 #define __HDD_H
 
+// Parse a qualified APA boot directory into a partition mount source and a path on that partition.
+int hddParseBootDirectory(const char *dir, char *partition, int partitionSize, char *path, int pathSize);
+
 typedef struct
 {
     u32 start;  // Sector address

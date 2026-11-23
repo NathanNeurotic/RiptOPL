@@ -49,7 +49,7 @@
 #include "include/sound.h"
 #include "include/guigame.h"
 #include "include/texcache.h"
-#include "include/appsupport.h" // appGetObject() -- push a live Art Delay change onto the APPS list
+#include "include/appsupport.h"
 #include "include/tar.h"        // tarInvalidate -- re-arm the .tar probe when the toggle flips
 #include "include/grid.h"       // GRID_LAYOUTS -- Grid Layout's presets
 #include "include/nettime.h"    // netTimeFetch -- Date and Time: Set from Internet
@@ -73,7 +73,6 @@ static void guiShowVcdListConfig(void);
 static void guiShowCoverflowConfig(void);
 
 // forward declaration (was declared in the header before it became file-local)
-static void guiShowArtworkConfig(void);
 
 // forward declaration (was declared in the header before it became file-local)
 static int guiShowMmceConfig(void);
@@ -1778,52 +1777,6 @@ static int artDelayToEnum(int delay)
     return 3;
 }
 
-// Interface -> Artwork Settings (cover art display + ART.TAR loading).
-static void guiShowArtworkConfig(void)
-{
-    diaSetInt(diaArtworkConfig, UICFG_COVERART, gEnableArt);
-    diaSetInt(diaArtworkConfig, UICFG_ENABLE_DISCART, gEnableDiscArt);
-    diaSetInt(diaArtworkConfig, UICFG_ENABLE_LOGOART, gEnableLogoArt);
-    diaSetInt(diaArtworkConfig, UICFG_ENABLE_BGART, gEnableBGArt);
-    diaSetInt(diaArtworkConfig, UICFG_ENABLE_SAVE_ICONS, gEnableSaveIcons);
-    diaSetInt(diaArtworkConfig, UICFG_ENABLE_ART_TAR, gEnableArtTar);
-    diaSetEnum(diaArtworkConfig, UICFG_ART_DELAY, artDelayNames);
-    diaSetInt(diaArtworkConfig, UICFG_ART_DELAY, artDelayToEnum(gArtDelay));
-
-    int ret = diaExecuteDialog(diaArtworkConfig, -1, 1, NULL);
-    if (ret) {
-        diaGetInt(diaArtworkConfig, UICFG_COVERART, &gEnableArt);
-        diaGetInt(diaArtworkConfig, UICFG_ENABLE_DISCART, &gEnableDiscArt);
-        diaGetInt(diaArtworkConfig, UICFG_ENABLE_LOGOART, &gEnableLogoArt);
-        diaGetInt(diaArtworkConfig, UICFG_ENABLE_BGART, &gEnableBGArt);
-        diaGetInt(diaArtworkConfig, UICFG_ENABLE_SAVE_ICONS, &gEnableSaveIcons);
-        if (!gEnableSaveIcons)
-            saveIconReset(); // hand back the model, its texture and the work buffers
-        {
-            // Re-arm the .tar probe when the toggle actually flips. tarFind's "no archive anywhere"
-            // latch is write-once and process-wide, so a user who turns the loader on after boot would
-            // otherwise keep getting nothing until a reboot -- which looks exactly like "the toggle
-            // does nothing".
-            int previousArtTar = gEnableArtTar;
-            diaGetInt(diaArtworkConfig, UICFG_ENABLE_ART_TAR, &gEnableArtTar);
-            if (gEnableArtTar != previousArtTar)
-                tarInvalidate(TAR_KIND_ART);
-        }
-        int artDelayIdx = 0;
-        diaGetInt(diaArtworkConfig, UICFG_ART_DELAY, &artDelayIdx);
-        if (artDelayIdx >= 0 && artDelayIdx < 4) {
-            gArtDelay = artDelayValues[artDelayIdx];
-            item_list_t *lists[] = {appGetObject(1), hddGetObject(1), ethGetObject(1), mmceGetSlotObject(0, 1), mmceGetSlotObject(1, 1), udpfsGetObject(1), favGetObject(1)};
-            for (int i = 0; i < 7; i++) {
-                if (lists[i] != NULL)
-                    lists[i]->delay = gArtDelay;
-            }
-        }
-
-        applyConfig(-1, -1, 1);
-    }
-}
-
 void guiShowColorsConfig(void)
 {
     int themeID = thmGetGuiValue();
@@ -2214,6 +2167,7 @@ enum gui_settings_page {
     SETTINGS_LANGUAGE,
     SETTINGS_NETWORK,
     SETTINGS_INTERFACE,
+    SETTINGS_THEME,
     SETTINGS_LAUNCH,
     SETTINGS_POPSTARTER,
     SETTINGS_CONTROLLERS,
@@ -2323,7 +2277,7 @@ static int guiClockWrite(const int t[5], int second)
     return 0;
 }
 
-static void guiSettingsShowDateTime(void)
+int guiShowDateTime(void)
 {
     static const int ids[5] = {DATETIME_YEAR, DATETIME_MONTH, DATETIME_DAY, DATETIME_HOUR, DATETIME_MINUTE};
     int t[5], i, ok, result;
@@ -2355,16 +2309,17 @@ static void guiSettingsShowDateTime(void)
             ok = guiClockShift(t, 540) && guiClockWrite(t, guiClockSyncTime[5] > 59 ? 59 : guiClockSyncTime[5]);
             guiMsgBox(_l(ok ? _STR_DATE_TIME_SYNCED : _STR_DATE_TIME_ERROR), 0, NULL);
             if (ok)
-                return;
+                return 1;
             continue;
         }
         for (i = 0; i < 5; i++)
             diaGetInt(diaDateTimeConfig, ids[i], &t[i]);
         ok = t[2] <= guiClockDaysIn(t[0], t[1]) && guiClockShift(t, -guiClockLocalOffset());
         if (ok && guiClockWrite(t, 0))
-            return;
+            return 1;
         guiMsgBox(_l(_STR_DATE_TIME_ERROR), 0, NULL); // the dialog then shows the entries again
     }
+    return 0;
 }
 
 static int guiSettingsShowGeneral(void)
@@ -2398,12 +2353,7 @@ static int guiSettingsShowGeneral(void)
     guiSetAdvancedSettings(ui);
     gSettingsShell.beginDialog(ui);
 
-reshow_general:
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsGeneralUpdater);
-    if (result == CFG_DATETIME_BUTTON) {
-        guiSettingsShowDateTime(); // writes the console clock only; nothing to save
-        goto reshow_general;
-    }
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);
@@ -2615,8 +2565,6 @@ static int guiSettingsDisplayUpdater(int modified)
             guiUpdateScreenScale();
         }
     }
-    if (diaGetInt(activeDialog, UICFG_GLYPH_SET, &temp))
-        gGlyphSet = temp; // the next frame swaps the glyphs (thmGlyphSetRefresh)
     return 0;
 }
 
@@ -2634,38 +2582,19 @@ static int guiSettingsShowInterface(void)
                                 "PAL 704x576i @50Hz 24bit (HIRES, FLICKER FILTER)", "NTSC 704x480i @60Hz 24bit (HIRES, FLICKER FILTER)",
                                 "NTSC 704x480i @60Hz 24bit (HIRES, 448 lines, FLICKER FILTER)", NULL};
     struct UIItem *ui = gSettingsShell.compose(parts, 1, NULL, 0, -1, 1);
-    const char **themeNamesSnap = NULL;
-    int themeID, previousTheme, previousVMode, result;
-    int gameViewChanged = 0;
-    int appsViewChanged = 0;
-    int themeViewRequest = gThemeViewRequest;
-    int altBackgroundRequest = gThemeAltBackground, wallpaperRequest = gThemeWallpaper, viewPending = 0;
-    int allGamesChanged = 0;
-
     if (ui == NULL)
         return 0;
 
     showCfgPopup = 0;
     guiResetNotifications();
-    previousTheme = thmGetGuiValue();
-    previousVMode = gVMode;
-    int openX = gXOff, openY = gYOff, openOver = gOverscan; // the position kept for each video mode
+    const int previousVMode = gVMode;
+    const int openX = gXOff, openY = gYOff, openOver = gOverscan;
 
-    guiLock();
-    themeNamesSnap = guiCopyNameList((const char **)thmGetGuiList());
-    guiUnlock();
-    diaSetEnum(ui, UICFG_THEME, themeNamesSnap != NULL ? themeNamesSnap : (const char **)thmGetGuiList());
     guiSetGameViewPicker(ui);
     guiSetAppsViewPicker(ui);
-    guiSetThemeViewPicker(ui);
-    diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
-    diaSetInt(ui, UICFG_WALLPAPER, gThemeWallpaper);
-    diaSetInt(ui, UICFG_AMBIENT_EFFECTS, gEnableAmbientEffects);
     diaSetInt(ui, UICFG_SHOW_LEGEND, gShowLegend);
-    diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
     guiSetLibraryPicker(ui);
     diaSetEnum(ui, UICFG_VMODE, vmodeNames);
-    diaSetInt(ui, UICFG_THEME, thmGetGuiValue());
     const char *sortNames[] = {_l(_STR_OFF), _l(_STR_SORT_AZ), _l(_STR_SORT_LAST_PLAYED), NULL};
     diaSetEnum(ui, UICFG_AUTOSORT, sortNames);
     diaSetInt(ui, UICFG_AUTOSORT, gAutosort);
@@ -2676,16 +2605,9 @@ static int guiSettingsShowInterface(void)
     diaSetEnum(ui, UICFG_PS1_DUPLICATES, ps1DupNames);
     diaSetInt(ui, UICFG_PS1_DUPLICATES, gPs1Duplicates);
     diaSetInt(ui, UICFG_GAME_TYPE_LABELS, gGameTypeLabels);
-    const char *listCfgNames[] = {_l(_STR_THEME), _l(_STR_ON), _l(_STR_OFF), NULL};
-    diaSetEnum(ui, UICFG_LIST_CFG_TEXT, listCfgNames);
-    diaSetInt(ui, UICFG_LIST_CFG_TEXT, gListCfgText);
-    // Keep the editor reachable even when the current theme has no active Coverflow view; users
-    // need to be able to configure it before enabling or switching to a Coverflow-capable theme.
-    diaSetVisible(ui, UICFG_COVERFLOW_BUTTON, 1);
     diaSetInt(ui, UICFG_VMODE, gVMode);
     diaSetInt(ui, UICFG_WIDESCREEN, gWideScreen);
-    // diaSetEnum retains the pointer while the child dialogs can reopen this page.
-    // Keep the 21 labels and their pointer array alive throughout the settings shell.
+    // diaSetEnum retains the labels and their pointer array while the page is open.
     static char fontSizeLabels[FONT_SIZE_COUNT][8];
     static const char *fontSizeNames[FONT_SIZE_COUNT + 1];
     for (int i = 0; i < FONT_SIZE_COUNT; ++i) {
@@ -2695,9 +2617,6 @@ static int guiSettingsShowInterface(void)
     fontSizeNames[FONT_SIZE_COUNT] = NULL;
     diaSetEnum(ui, UICFG_FONT_SIZE, fontSizeNames);
     diaSetInt(ui, UICFG_FONT_SIZE, fntFontSizeIndex(gFontSize));
-    const char *glyphSetNames[] = {_l(_STR_THEME), _l(_STR_GLYPHS_BUILTIN), _l(_STR_GLYPHS_STANDARD), _l(_STR_GLYPHS_WHITE), NULL};
-    diaSetEnum(ui, UICFG_GLYPH_SET, glyphSetNames);
-    diaSetInt(ui, UICFG_GLYPH_SET, gGlyphSet);
     diaSetInt(ui, UICFG_XOFF, gXOff);
     diaSetInt(ui, UICFG_YOFF, gYOff);
     diaSetInt(ui, UICFG_OVERSCAN, gOverscan);
@@ -2706,24 +2625,10 @@ static int guiSettingsShowInterface(void)
     diaSetEnum(ui, CFG_APPLYGAMEID, gameIDModes);
     diaSetInt(ui, CFG_APPLYGAMEID, guiGameIdModeFromGlobals());
     gSettingsShell.beginDialog(ui);
-reshow_interface:
-    result = diaExecuteDialog(ui, -1, 1, &guiSettingsDisplayUpdater);
-    if (result == UICFG_ARTWORK_BUTTON) {
-        guiShowArtworkConfig();
-        goto reshow_interface;
-    }
-    if (result == UICFG_COVERFLOW_BUTTON) {
-        guiShowCoverflowConfig();
-        goto reshow_interface;
-    }
-    if (result == UICFG_COLORS_BUTTON) {
-        guiShowColorsConfig();
-        goto reshow_interface;
-    }
+    const int result = diaExecuteDialog(ui, -1, 1, &guiSettingsDisplayUpdater);
 
     padRumbleFlush();
     if (result != UIID_BTN_CANCEL && result != -1) {
-        diaGetInt(ui, UICFG_THEME, &themeID);
         int previousSort = gAutosort;
         diaGetInt(ui, UICFG_AUTOSORT, &gAutosort);
         diaGetInt(ui, UICFG_AUTOREFRESH, &gAutoRefresh);
@@ -2737,28 +2642,15 @@ reshow_interface:
         if (previousPs1Dup != gPs1Duplicates)
             hddVcdInvalidateCache(); // the HDD PS1 list applies the setting when it is built
         diaGetInt(ui, UICFG_GAME_TYPE_LABELS, &gGameTypeLabels);
-        diaGetInt(ui, UICFG_LIST_CFG_TEXT, &gListCfgText); // read as each frame draws; applyConfig reloads a theme with _desc keys
-        gameViewChanged = guiReadGameViewPicker(ui);
-        appsViewChanged = guiReadAppsViewPicker(ui);
-        themeViewRequest = guiReadThemeViewPicker(ui);
-        diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
-        diaGetInt(ui, UICFG_WALLPAPER, &wallpaperRequest);
-        diaGetInt(ui, UICFG_AMBIENT_EFFECTS, &gEnableAmbientEffects);
+        const int gameViewChanged = guiReadGameViewPicker(ui);
+        const int appsViewChanged = guiReadAppsViewPicker(ui);
         diaGetInt(ui, UICFG_SHOW_LEGEND, &gShowLegend); // read as each frame draws: nothing to rebuild
-        diaGetInt(ui, UICFG_BOOT_THEME_WAIT, &gBootThemeWait);
-        // With a view change pending, the alt change waits for that reload so the theme loads once.
-        viewPending = themeViewRequest != gThemeViewRequest;
-        if (!viewPending) {
-            gThemeAltBackground = altBackgroundRequest; // applyConfig reloads a theme with alt= keys
-            gThemeWallpaper = wallpaperRequest;         // and any theme when User Wallpaper changes
-        }
-        allGamesChanged = guiReadLibraryPicker(ui);
+        const int allGamesChanged = guiReadLibraryPicker(ui);
         diaGetInt(ui, UICFG_VMODE, &gVMode);
         diaGetInt(ui, UICFG_WIDESCREEN, &gWideScreen);
         int fontSizeIndex = fntFontSizeIndex(gFontSize);
         diaGetInt(ui, UICFG_FONT_SIZE, &fontSizeIndex);
         gFontSize = fntFontSizePercentFromIndex(fontSizeIndex);
-        diaGetInt(ui, UICFG_GLYPH_SET, &gGlyphSet);
         diaGetInt(ui, UICFG_XOFF, &gXOff);
         diaGetInt(ui, UICFG_YOFF, &gYOff);
         diaGetInt(ui, UICFG_OVERSCAN, &gOverscan);
@@ -2769,21 +2661,9 @@ reshow_interface:
             guiApplyGameIdMode(gameIDMode);
         }
 
-        if (previousTheme != themeID && isBgmPlaying())
-            bgmStop();
         if (previousVMode != gVMode)
             guiFadeCurrentScreenToBlack();
-        applyConfig(themeID, -1, 1);
-        // A theme picked here is the user's choice, even the built-in one, so the save writes it although a saved
-        // disk theme is still waiting for its drive (_saveConfig keeps the saved name only while nothing was picked).
-        if (previousTheme != themeID)
-            configSetStr(configGetByType(CONFIG_OPL), CONFIG_OPL_THEME, thmGetValue());
-        if (viewPending) {
-            gThemeAltBackground = altBackgroundRequest;
-            gThemeWallpaper = wallpaperRequest;
-            if (!thmSetView(themeViewRequest)) // reloads only when the theme now shows a different view
-                thmRefreshDisplayLayout();     // same view: the alt or wallpaper change still needs its reload
-        }
+        applyConfig(-1, -1, 1);
         if (allGamesChanged) {
             guiApplyAllGamesChange(); // rebuilds every game list too
         } else if (cfgTitlesChanged) {
@@ -2804,6 +2684,122 @@ reshow_interface:
             gOverscan = openOver;
             applyConfig(-1, -1, 1);
         }
+    }
+
+    gSettingsShell.endDialog();
+    gSettingsShell.setActiveDialog(NULL);
+    return gSettingsShell.pageResult(result);
+}
+
+static int guiSettingsThemeUpdater(int modified)
+{
+    if (modified) {
+        gSettingsShell.markSavePending();
+        diaGetInt(gSettingsShell.activeDialog(), UICFG_GLYPH_SET, &gGlyphSet);
+    }
+    return 0;
+}
+
+static int guiSettingsShowTheme(void)
+{
+    const struct UIItem *parts[] = {diaThemeConfig};
+    struct UIItem *ui = gSettingsShell.compose(parts, 1, NULL, 0, -1, 1);
+    if (ui == NULL)
+        return 0;
+
+    showCfgPopup = 0;
+    guiResetNotifications();
+    guiLock();
+    const int previousTheme = thmGetGuiValue();
+    const char **themeNamesSnap = guiCopyNameList((const char **)thmGetGuiList());
+    guiUnlock();
+
+    diaSetEnum(ui, UICFG_THEME, themeNamesSnap != NULL ? themeNamesSnap : (const char **)thmGetGuiList());
+    diaSetInt(ui, UICFG_THEME, previousTheme);
+    guiSetThemeViewPicker(ui);
+    diaSetInt(ui, UICFG_COVERART, gEnableArt);
+    diaSetInt(ui, UICFG_ENABLE_DISCART, gEnableDiscArt);
+    diaSetInt(ui, UICFG_ENABLE_LOGOART, gEnableLogoArt);
+    diaSetInt(ui, UICFG_ENABLE_BGART, gEnableBGArt);
+    diaSetInt(ui, UICFG_ENABLE_SAVE_ICONS, gEnableSaveIcons);
+    diaSetInt(ui, UICFG_ENABLE_ART_TAR, gEnableArtTar);
+    const int displayedArtDelay = artDelayToEnum(gArtDelay);
+    diaSetEnum(ui, UICFG_ART_DELAY, artDelayNames);
+    diaSetInt(ui, UICFG_ART_DELAY, displayedArtDelay);
+    diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
+    diaSetInt(ui, UICFG_WALLPAPER, gThemeWallpaper);
+    diaSetInt(ui, UICFG_AMBIENT_EFFECTS, gEnableAmbientEffects);
+    diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
+    const char *listCfgNames[] = {_l(_STR_THEME), _l(_STR_ON), _l(_STR_OFF), NULL};
+    diaSetEnum(ui, UICFG_LIST_CFG_TEXT, listCfgNames);
+    diaSetInt(ui, UICFG_LIST_CFG_TEXT, gListCfgText);
+    const char *glyphSetNames[] = {_l(_STR_THEME), _l(_STR_GLYPHS_BUILTIN), _l(_STR_GLYPHS_STANDARD), _l(_STR_GLYPHS_WHITE), NULL};
+    diaSetEnum(ui, UICFG_GLYPH_SET, glyphSetNames);
+    diaSetInt(ui, UICFG_GLYPH_SET, gGlyphSet);
+    gSettingsShell.beginDialog(ui);
+    int result;
+    while ((result = diaExecuteDialog(ui, -1, 1, &guiSettingsThemeUpdater)) == UICFG_COVERFLOW_BUTTON || result == UICFG_COLORS_BUTTON) {
+        if (result == UICFG_COVERFLOW_BUTTON)
+            guiShowCoverflowConfig();
+        else
+            guiShowColorsConfig();
+    }
+
+    padRumbleFlush();
+    if (result != UIID_BTN_CANCEL && result != -1) {
+        int themeID = previousTheme;
+        diaGetInt(ui, UICFG_THEME, &themeID);
+        diaGetInt(ui, UICFG_COVERART, &gEnableArt);
+        diaGetInt(ui, UICFG_ENABLE_DISCART, &gEnableDiscArt);
+        diaGetInt(ui, UICFG_ENABLE_LOGOART, &gEnableLogoArt);
+        diaGetInt(ui, UICFG_ENABLE_BGART, &gEnableBGArt);
+        const int previousSaveIcons = gEnableSaveIcons;
+        diaGetInt(ui, UICFG_ENABLE_SAVE_ICONS, &gEnableSaveIcons);
+        if (previousSaveIcons && !gEnableSaveIcons)
+            saveIconReset();
+        const int previousArtTar = gEnableArtTar;
+        diaGetInt(ui, UICFG_ENABLE_ART_TAR, &gEnableArtTar);
+        if (gEnableArtTar != previousArtTar)
+            tarInvalidate(TAR_KIND_ART); // let the next art request probe again
+        int artDelayIdx = displayedArtDelay;
+        diaGetInt(ui, UICFG_ART_DELAY, &artDelayIdx);
+        if (artDelayIdx != displayedArtDelay && artDelayIdx >= 0 && artDelayIdx < (int)(sizeof(artDelayValues) / sizeof(artDelayValues[0]))) {
+            gArtDelay = artDelayValues[artDelayIdx];
+            item_list_t *lists[] = {appGetObject(1), hddGetObject(1), ethGetObject(1), mmceGetSlotObject(0, 1), mmceGetSlotObject(1, 1), udpfsGetObject(1), favGetObject(1)};
+            for (int i = 0; i < 7; i++) {
+                if (lists[i] != NULL)
+                    lists[i]->delay = gArtDelay;
+            }
+        }
+        diaGetInt(ui, UICFG_BOOT_THEME_WAIT, &gBootThemeWait);
+        diaGetInt(ui, UICFG_LIST_CFG_TEXT, &gListCfgText);
+        diaGetInt(ui, UICFG_GLYPH_SET, &gGlyphSet);
+        int altBackgroundRequest = gThemeAltBackground, wallpaperRequest = gThemeWallpaper;
+        diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
+        diaGetInt(ui, UICFG_WALLPAPER, &wallpaperRequest);
+        diaGetInt(ui, UICFG_AMBIENT_EFFECTS, &gEnableAmbientEffects);
+        const int themeViewRequest = guiReadThemeViewPicker(ui);
+        const bool viewPending = themeViewRequest != gThemeViewRequest;
+        if (!viewPending) {
+            gThemeAltBackground = altBackgroundRequest;
+            gThemeWallpaper = wallpaperRequest;
+        }
+
+        if (previousTheme != themeID && isBgmPlaying())
+            bgmStop();
+        applyConfig(themeID, -1, 1);
+        // Persist an explicit choice even if a disk theme is still waiting for its drive.
+        if (previousTheme != themeID)
+            configSetStr(configGetByType(CONFIG_OPL), CONFIG_OPL_THEME, thmGetValue());
+        if (viewPending) {
+            gThemeAltBackground = altBackgroundRequest;
+            gThemeWallpaper = wallpaperRequest;
+            if (!thmSetView(themeViewRequest))
+                thmRefreshDisplayLayout();
+        }
+        sfxInit(0);
+        if (gEnableBGM && !isBgmPlaying())
+            bgmStart();
     }
 
     guiFreeNameList(themeNamesSnap);
@@ -3202,6 +3198,7 @@ int SettingsShell::showIndex(int *page)
         _l(_STR_LANGUAGE),
         _l(_STR_MENU_NETWORK),
         _l(_STR_INTERFACE_SETTINGS),
+        _l(_STR_THEME_SETTINGS),
         _l(_STR_GAME_LAUNCHING),
         _l(_STR_POPSTARTER),
         _l(_STR_CONTROLLER_SETTINGS),
@@ -3321,6 +3318,9 @@ void SettingsShell::showFromPage(int page, int showIndexFirst)
                 break;
             case SETTINGS_INTERFACE:
                 result = guiSettingsShowInterface();
+                break;
+            case SETTINGS_THEME:
+                result = guiSettingsShowTheme();
                 break;
             case SETTINGS_LAUNCH:
                 result = guiSettingsShowLaunch();
