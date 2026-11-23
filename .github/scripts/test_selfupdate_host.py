@@ -113,80 +113,50 @@ int main() {
 }
 """
 
-APA_DRIVER = r"""
+TARGET_DRIVER = r"""
 #include <assert.h>
-#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#define SU_FIO_CREAT 0x0200
-#define SU_FIO_TRUNC 0x0400
-#define ENOENT 2
-#define EEXIST 17
-typedef struct { int size; } iox_stat_t;
-struct SuFile { unsigned char *data; int written; };
-static int pathExists = 1, stagedExists, backupExists, writes, removeCalls, syncCalls, syncFailAt = -1, statError, stagedSize;
-static int suStep;
-static char stagedData[32];
-static int suWriteElf(const char *, int, const SuFile &) { writes++; stagedExists = 1; stagedSize = 4; memcpy(stagedData, "ELF!", 4); return 0; }
-int fileXioGetStat(const char *path, iox_stat_t *st) {
-    st->size = stagedSize;
-    if (strstr(path, ".update")) return stagedExists ? 0 : -ENOENT;
-    if (strstr(path, ".bak")) return backupExists ? 0 : -ENOENT;
-    return statError ? statError : pathExists ? 0 : -ENOENT;
-}
-int fileXioOpen(const char *, int, int) { return 1; }
-int fileXioRead(int, void *data, int len) { memcpy(data, stagedData, (size_t)len); return len; }
-int fileXioClose(int) { return 0; }
-int fileXioSync(const char *, int) { return syncCalls++ == syncFailAt ? -1 : 0; }
-int fileXioRename(const char *from, const char *to) {
-    if (strstr(to, ".bak")) { backupExists = 1; pathExists = 0; }
-    else if (strstr(from, ".update")) { pathExists = 1; stagedExists = 0; }
-    else { pathExists = 1; backupExists = 0; }
+#include "include/selfupdate.h"
+#define APA_IDMAX 32
+#define SU_MC_NAME_MAX 31
+#define FIO_MT_RDONLY 0
+#define FIO_MT_RDWR 1
+static char gBootDir[256], gBootLaunchDir[256], gBootElfName[64], gOPLPart[128];
+static const char *gHDDPrefix = "pfs0:/OPL/";
+struct HddStub { int loadCoreSupportModules() { return 1; } } gHddSupport;
+static int hddLoadModulesReady() { return 1; }
+static char mountedPartition[64];
+int fileXioMount(const char *, const char *partition, int) {
+    snprintf(mountedPartition, sizeof(mountedPartition), "%s", partition);
     return 0;
 }
-int fileXioRemove(const char *path) {
-    if (strstr(path, ".update")) { stagedExists = 0; return 0; }
-    if (removeCalls++ == 0) return -1;
-    backupExists = 0;
-    return 0;
-}
-@APA_INSTALL@
-static void resetInstall(void) {
-    pathExists = 1; stagedExists = backupExists = 0; stagedSize = 0;
-    syncCalls = 0; syncFailAt = -1; statError = 0; stagedData[0] = 0;
-}
+int fileXioUmount(const char *) { return 0; }
+@APA_BOOT_PARSER@
+@SET_BOOT_DIR@
+@TARGET_RESOLVER@
 int main() {
-    SuFile file{(unsigned char *)"ELF!", 4};
-    int rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
-    assert(rc == 0 && pathExists && backupExists && writes == 1);
-    rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
-    assert(rc == 0 && !backupExists && writes == 2);
-    puts("APA committed swap survives cleanup failure and permits the next update");
-
-    resetInstall(); syncFailAt = 1;
-    rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
-    assert(rc < 0 && backupExists && pathExists && !stagedExists);
-    puts("APA post-swap sync failure preserves the backup");
-
-    resetInstall(); backupExists = 1; statError = -95;
-    rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
-    assert(rc == -95 && backupExists && writes == 3);
-    puts("APA original-stat error preserves the backup");
-
-    resetInstall(); stagedExists = 1; stagedSize = 2; memcpy(stagedData, "EL", 2);
-    rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
-    assert(rc == 0 && writes == 4);
-    puts("APA matching partial stage is cleaned and retried");
-
-    resetInstall(); stagedExists = 1; stagedSize = 2; memcpy(stagedData, "XX", 2);
-    rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
-    assert(rc == -EEXIST && stagedExists && writes == 4);
-    puts("APA unrecognized stage is preserved");
-
-    resetInstall(); stagedExists = 1; stagedSize = -2147483648; memcpy(stagedData, "EL", 2);
-    rc = suInstallApa("pfs1:/launcher/RIPTOPL.ELF", file);
-    assert(rc == -EEXIST && stagedExists && writes == 4);
-    puts("APA negative staged size is preserved as a mismatch");
+    const char *launch = "hdd0:__system:pfs:/launcher/RIPTOPL.ELF";
+    setBootDir(launch);
+    snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:+OPL");
+    const char *homes[] = {"pfs0:/OPL", "mass0:/"};
+    for (int i = 0; i < 2; i++) {
+        snprintf(gBootDir, sizeof(gBootDir), "%s", homes[i]);
+        SuTarget target;
+        assert(suResolveTarget(target, false));
+        assert(target.apa && target.mounted && !strcmp(mountedPartition, "hdd0:__system"));
+        assert(!strcmp(target.path, "pfs1:/launcher/RIPTOPL.ELF"));
+        target.close();
+    }
+    snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:__system");
+    snprintf(gBootDir, sizeof(gBootDir), "pfs0:/OPL");
+    SuTarget samePartition;
+    assert(suResolveTarget(samePartition, false));
+    assert(samePartition.apa && !samePartition.mounted);
+    assert(!strcmp(samePartition.path, "pfs0:/launcher/RIPTOPL.ELF"));
+    assert(!strcmp(gBootLaunchDir, "hdd0:__system:pfs:/launcher"));
+    assert(!strcmp(gBootElfName, "RIPTOPL.ELF"));
+    puts("APA update target survives settings-home transitions and reuses a same-partition pfs0 mount");
     return 0;
 }
 """
@@ -220,20 +190,24 @@ def source_checks():
     inst = src[src.index("static void suInstallWorker"):]
     inst = inst[:inst.index("\n}\n")]
     # The digest is compared before anything touches the running ELF, and a mismatch removes the download.
-    a = inst.index("suInstallApa(")
-    check("verify_before_swap", inst.index("memcmp(") < a and inst.index("suElfFormat(") < a)
-    check("overwrite_in_place", "suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f)" in inst)
-    apa = src[src.index("static int suInstallApa("):src.index("static void suInstallWorker(")]
-    check("stage_before_apa_swap", apa.index("suWriteElf(staged,") < apa.index("fileXioRename(path, backup)"))
-    check("rollback_apa_swap", "fileXioRename(backup, path)" in apa)
+    a = inst.index("suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f)")
+    check("verify_before_write", inst.index("memcmp(") < a and inst.index("suElfFormat(") < a)
+    check("ram_only_direct_install", "suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f)" in inst and
+          "suInstallApa" not in inst and ".update" not in src and ".bak" not in src,
+          "verified downloads must overwrite the existing ELF directly without staged or backup copies")
+    sync_pos = inst.find("fileXioSync(")
+    check("apa_sync_before_metadata", "rc >= 0 && target.apa" in inst and a < sync_pos and
+          inst.find("if (rc < 0)", sync_pos) < inst.rfind("suWriteVersion(target.path)"),
+          "APA direct writes must commit the PFS cache and handle failure before version metadata")
+    check("apa_relaunch_uses_launch_identity", "target.apa ? gBootLaunchDir : gBootDir" in src,
+          "APA relaunch must not use the settings home as the physical launch identity")
     version_call = "suWriteVersion(target.path)"
     version_pos = inst.rindex(version_call)
     success_pos = inst.rindex("suResult = SU_OK")
     check("version_after_install", version_call in inst and
-          inst.index("suInstallApa(") < version_pos and
           inst.index("suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f)") < version_pos and
           version_pos < success_pos,
-          "both ELF install paths complete before the validated revision write, which precedes success")
+          "the direct ELF install completes before the validated revision write, which precedes success")
     labels = re.findall(r"^\s*(?:-\s*)?label:\s*(\S+)\s*$", (ROOT / "lng/tmpl/_base.yml").read_text(encoding="utf-8"), re.M)
     check("update_labels_append", labels.index("UPDATE_RELAUNCH") > labels.index("UPDATE_ERR_RESTORE") and
           labels.index("UPDATE_RELAUNCH_FAILED") > labels.index("UPDATE_ERR_RESTORE"),
@@ -242,12 +216,6 @@ def source_checks():
           "a boot ELF named version.txt in any case must be rejected before update writes")
     check("metadata_retry_result_checked", "suVersionPending && suResult != SU_OK" in src,
           "a failed metadata retry must report instead of reaching UPDATE_DONE")
-    check("apa_stat_error_preserves_backup", "originalStat" in apa and "return originalStat" in apa,
-          "an original-stat I/O error must abort before removing the previous backup")
-    check("apa_sync_error_preserves_backup", "syncRc" in apa and "syncRc < 0" in apa,
-          "a post-swap sync failure must leave the backup in place")
-    check("staged_requires_download_match", "suStagedMatches" in apa,
-          "an interrupted stage is reused or removed only after comparison with the downloaded bytes")
     check("metadata_retry_is_separate", "suVersionPending" in src and "_STR_UPDATE_ERR_METADATA" in src and
           "suVersionPending = 1" in inst,
           "metadata failure is distinct and records a retry without another ELF install")
@@ -385,14 +353,17 @@ def main():
         else:
             check("version_metadata_behavior", False, "suWriteVersion is missing")
 
-        apa_start = updater.index("static int suStagedMatches(") if "static int suStagedMatches(" in updater else updater.index("static int suInstallApa(")
-        apa = updater[apa_start:updater.index("static void suInstallWorker(")]
-        (tmp / "apa-driver.cpp").write_text(APA_DRIVER.replace("@APA_INSTALL@", apa))
-        apa_exe = tmp / ("apa-driver.exe" if os.name == "nt" else "apa-driver")
-        subprocess.run([os.environ.get("CXX", "c++"), "-O1", "-Wall", "-Wextra", "-Werror",
-                        str(tmp / "apa-driver.cpp"), "-o", str(apa_exe)], check=True)
-        subprocess.run([str(apa_exe)], check=True)
-        check("apa_committed_swap_retry", True)
+        opl = (ROOT / "src/app/opl.cpp").read_text(encoding="utf-8")
+        set_boot = opl[opl.index("static void setBootDir("):]
+        set_boot = set_boot[:set_boot.index("\n}\n") + 2]
+        target = updater[updater.index("static int suIsMc("):updater.index("static int suReadBootFormat(")]
+        target_driver = TARGET_DRIVER.replace("@APA_BOOT_PARSER@", parser).replace("@SET_BOOT_DIR@", set_boot).replace("@TARGET_RESOLVER@", target)
+        (tmp / "target-driver.cpp").write_text(target_driver)
+        target_exe = tmp / ("target-driver.exe" if os.name == "nt" else "target-driver")
+        subprocess.run([os.environ.get("CXX", "c++"), "-O1", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT),
+                        str(tmp / "target-driver.cpp"), str(tmp / "selfupdate.o"), "-o", str(target_exe)], check=True)
+        ran = subprocess.run([str(target_exe)], capture_output=True, text=True)
+        check("apa_launch_identity_after_settings_transition", ran.returncode == 0, ran.stdout + ran.stderr)
 
     if failures:
         print(f"{len(failures)} failure(s)")

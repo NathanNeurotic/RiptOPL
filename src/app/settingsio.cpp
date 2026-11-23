@@ -171,6 +171,7 @@ static int gBootHomeHybridExfat = 0;
 // concrete slot and is identified from that slot's own ioctls instead. Empty when argv[0] had no
 // filename part or the boot dir came from getcwd().
 char gBootElfName[64];
+char gBootLaunchDir[256];
 // BDM_TYPE_* of the resolved boot device, BDM_TYPE_UNKNOWN for an unclassified boot. The save-path
 // retry pins a later re-resolve to this type; config recovery also uses it to keep a known BDM boot
 // from probing unrelated storage classes.

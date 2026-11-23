@@ -37,7 +37,31 @@ enum { GS_PSM_CT32 = 0, GS_PSM_CT24 = 1, GS_PSM_CT16S = 2, GS_PSM_T8 = 3, GS_PSM
 static int hires;
 static int rmUse16BitArt() { return hires; }
 static u32 gsKit_texture_size_ee(int w, int h, int psm) { return (u32)w * h * (psm == GS_PSM_CT24 || psm == GS_PSM_CT32 ? 4 : psm == GS_PSM_CT16S ? 2 : 1); }
-static void gsKit_texture_to_psm16(GSTEXTURE *texture) { texture->PSM = GS_PSM_CT16S; }
+static int failAlignedAllocation;
+static void *controlledMemalign(size_t alignment, size_t size) {
+    if (failAlignedAllocation) return NULL;
+    (void)alignment;
+    return malloc(size);
+}
+#define memalign controlledMemalign
+static void gsKit_texture_to_psm16(GSTEXTURE *texture) {
+    const s8 matrix[16] = {-4,2,-3,3,0,-2,1,-1,-3,3,-4,2,1,-1,0,-2};
+    u16 *out = (u16 *)memalign(128, (size_t)texture->Width * texture->Height * 2);
+    const u8 *in = (const u8 *)texture->Mem;
+    for (int y = 0; y < texture->Height; y++) for (int x = 0; x < texture->Width; x++) {
+        int i = y * texture->Width + x;
+        int d = matrix[(y & 3) * 4 + (x & 3)];
+        u16 c[3];
+        for (int channel = 0; channel < 3; channel++) {
+            int v = in[i * 3 + channel] + d;
+            c[channel] = v > 255 ? 31 : v < 0 ? 0 : (u16)(v >> 3);
+        }
+        out[i] = 0x8000 | (c[2] << 10) | (c[1] << 5) | c[0];
+    }
+    free(texture->Mem);
+    texture->Mem = (u32 *)out;
+    texture->PSM = GS_PSM_CT16S;
+}
 constexpr int TEX_BG_MAX_W = 720, TEX_BG_MAX_H = 512;
 @HELPER@
 static int failures;
@@ -55,11 +79,15 @@ int main() {
     GSTEXTURE t = make(2, 2, pixels);
     texPrepareArtForDisplay(&t, 1);
     CHECK(t.PSM == GS_PSM_CT16S && t.Width == 2 && t.Height == 2);
-    u8 *out = (u8 *)t.Mem;
-    CHECK(out[0] == 10 && out[1] == 10 && out[2] == 10);
+    if (TEX_BG_MAX_W == 720) {
+        const u16 expected[4] = {0x8000, 0x8842, 0x8C63, 0x9084};
+        for (int i = 0; i < 4; i++) CHECK(((const u16 *)t.Mem)[i] == expected[i]);
+    } else {
+        CHECK(((const u16 *)t.Mem)[0] == 0x8842);
+    }
     free(t.Mem);
 
-    const u8 bigPixels[1024 * 768 * 3] = {};
+    static const u8 bigPixels[1024 * 768 * 3] = {};
     GSTEXTURE big = make(1024, 768, bigPixels);
     texPrepareArtForDisplay(&big, 1);
     CHECK(big.PSM == GS_PSM_CT16S && big.Width == 682 && big.Height == 512);
@@ -101,6 +129,14 @@ int main() {
     texPrepareArtForDisplay(&notBackground, 0);
     CHECK(notBackground.PSM == GS_PSM_CT24 && notBackground.Mem == original);
     free(notBackground.Mem);
+
+    GSTEXTURE oom = make(2, 2, pixels);
+    original = oom.Mem;
+    failAlignedAllocation = 1;
+    texPrepareArtForDisplay(&oom, 1);
+    failAlignedAllocation = 0;
+    CHECK(oom.PSM == GS_PSM_CT24 && oom.Mem == original && oom.Width == 2 && oom.Height == 2);
+    free(oom.Mem);
     return failures ? 1 : 0;
 }
 '''.replace("@HELPER@", helper)
@@ -119,7 +155,6 @@ def compile_and_run(folder, name, text):
 
 small_cap = program.replace("constexpr int TEX_BG_MAX_W = 720, TEX_BG_MAX_H = 512;", "constexpr int TEX_BG_MAX_W = 1, TEX_BG_MAX_H = 1;")
 small_cap = small_cap.replace("t.Width == 2 && t.Height == 2", "t.Width == 1 && t.Height == 1")
-small_cap = small_cap.replace("out[0] == 10 && out[1] == 10 && out[2] == 10", "out[0] == 25 && out[1] == 25 && out[2] == 25")
 small_cap = small_cap.replace("big.Width == 682 && big.Height == 512", "big.Width == 1 && big.Height == 1")
 small_cap = small_cap.replace("rgba.Width == 2 && rgba.Height == 1", "rgba.Width == 1 && rgba.Height == 1")
 small_cap = small_cap.replace("rgbaOut[0] == 0x83E0 && rgbaOut[1] == 0x7C1F", "rgbaOut[0] == 0xBDEF")

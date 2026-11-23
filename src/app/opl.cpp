@@ -2060,6 +2060,7 @@ static void setBootDir(const char *bootPath)
 {
     gBootDir[0] = '\0';
     gBootElfName[0] = '\0';
+    gBootLaunchDir[0] = '\0';
     if (bootPath == NULL || bootPath[0] == '\0')
         return;
 
@@ -2089,6 +2090,7 @@ static void setBootDir(const char *bootPath)
             snprintf(gBootElfName, sizeof(gBootElfName), "%s", colon + 1);
         }
     }
+    snprintf(gBootLaunchDir, sizeof(gBootLaunchDir), "%s", gBootDir);
 }
 
 int main(int argc, char *argv[])

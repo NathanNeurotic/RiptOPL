@@ -1324,12 +1324,12 @@ void texPrepareArtForDisplay(GSTEXTURE *texture, int background)
         texture->Width = outW;
         texture->Height = outH;
     }
-    if (texture->PSM == GS_PSM_CT24) {
-        gsKit_texture_to_psm16(texture);
-        return;
-    }
-
-    static const s8 ditherMatrix[16] = {-4, 2, -3, 3, -2, 1, -1, -3, 3, -4, 2, 1, -1, 2, -2, 3};
+    const int ct24 = texture->PSM == GS_PSM_CT24;
+    const int channels = ct24 ? 3 : 4;
+    static const s8 ditherMatrix[2][16] = {
+        {-4, 2, -3, 3, -2, 1, -1, -3, 3, -4, 2, 1, -1, 2, -2, 3},
+        {-4, 2, -3, 3, 0, -2, 1, -1, -3, 3, -4, 2, 1, -1, 0, -2},
+    };
     u32 *pixels = static_cast<u32 *>(memalign(128, gsKit_texture_size_ee(outW, outH, GS_PSM_CT16S)));
     if (pixels == NULL)
         return;
@@ -1338,7 +1338,7 @@ void texPrepareArtForDisplay(GSTEXTURE *texture, int background)
     for (int y = 0; y < outH; y++) {
         for (int x = 0; x < outW; x++) {
             int i = y * outW + x;
-            const s8 dither = ditherMatrix[(y & 3) * 4 + (x & 3)];
+            const s8 dither = ditherMatrix[ct24][(y & 3) * 4 + (x & 3)];
             auto to5 = [dither](int value) -> u16 {
                 value += dither;
                 if (value > 255)
@@ -1347,8 +1347,8 @@ void texPrepareArtForDisplay(GSTEXTURE *texture, int background)
                     return 0;
                 return static_cast<u16>(value >> 3);
             };
-            u16 alpha = src[i * 4 + 3] >= 0x40 ? 0x8000 : 0;
-            dst[i] = alpha | (to5(src[i * 4 + 2]) << 10) | (to5(src[i * 4 + 1]) << 5) | to5(src[i * 4]);
+            u16 alpha = (ct24 || src[i * channels + 3] >= 0x40) ? 0x8000 : 0;
+            dst[i] = alpha | (to5(src[i * channels + 2]) << 10) | (to5(src[i * channels + 1]) << 5) | to5(src[i * channels]);
         }
     }
     free(texture->Mem);

@@ -7,9 +7,8 @@
   downloaded until they accept the offer.
 
   The download is held in RAM. It must match the release's SHA-256 and look like a MIPS ELF before
-  anything on the device is touched. Memory cards and BDM retain the in-place install. An APA launcher
-  receives a staged ELF and keeps the old file recoverable while swapping names. Network and file
-  work run on the I/O worker.
+  anything on the device is touched. Every supported device then installs directly over the existing
+  ELF, without a staged or backup copy. Network and file work run on the I/O worker.
 */
 
 #include "include/opl.h"
@@ -147,7 +146,7 @@ static bool suResolveTarget(SuTarget &target, bool writing)
         strcasecmp(gBootElfName, "version.txt") == 0)
         return false;
     char partition[APA_IDMAX + 6], directory[256];
-    if (hddParseBootDirectory(gBootDir, partition, sizeof(partition), directory, sizeof(directory)) == 0) {
+    if (hddParseBootDirectory(gBootLaunchDir, partition, sizeof(partition), directory, sizeof(directory)) == 0) {
         target.apa = true;
         // The updater runs on the I/O worker, which also owns the temporary PFS scan slot.
         const char *device = "pfs0:";
@@ -382,94 +381,6 @@ static int suWriteVersion(const char *elfPath)
     return rc < 0 ? rc : closeRc < 0 ? closeRc : -EIO;
 }
 
-static int suStagedMatches(const char *path, const SuFile &file, int size)
-{
-    if (size < 0 || size > file.written)
-        return 0;
-    int fd = fileXioOpen(path, 0x0001, 0);
-    if (fd < 0)
-        return 0;
-    unsigned char buffer[2048];
-    int offset = 0;
-    int matches = 1;
-    while (offset < size) {
-        int chunk = size - offset < (int)sizeof(buffer) ? size - offset : (int)sizeof(buffer);
-        int got = fileXioRead(fd, buffer, chunk);
-        if (got != chunk || memcmp(buffer, file.data + offset, chunk) != 0) {
-            matches = 0;
-            break;
-        }
-        offset += chunk;
-    }
-    fileXioClose(fd);
-    return matches;
-}
-
-static int suInstallApa(const char *path, const SuFile &file)
-{
-    char staged[264], backup[264], device[6];
-    iox_stat_t status;
-    snprintf(staged, sizeof(staged), "%s.update", path);
-    snprintf(backup, sizeof(backup), "%s.bak", path);
-    snprintf(device, sizeof(device), "%.5s", path);
-    suStep = 1;
-    int reuseStaged = 0;
-    int stagedStat = fileXioGetStat(staged, &status);
-    if (stagedStat >= 0) {
-        if (!suStagedMatches(staged, file, status.size))
-            return -EEXIST;
-        if (status.size == file.written) {
-            reuseStaged = 1;
-        } else {
-            int cleanup = fileXioRemove(staged);
-            if (cleanup < 0)
-                return cleanup;
-        }
-    } else if (stagedStat != -ENOENT) {
-        return stagedStat;
-    }
-    int backupStat = fileXioGetStat(backup, &status);
-    if (backupStat >= 0) {
-        // A committed update may have left a backup. Never remove it when it is the only boot copy.
-        int originalStat = fileXioGetStat(path, &status);
-        if (originalStat == -ENOENT)
-            return -EEXIST;
-        if (originalStat < 0)
-            return originalStat;
-        int cleanup = fileXioRemove(backup);
-        if (cleanup < 0)
-            return cleanup;
-    } else if (backupStat != -ENOENT) {
-        return backupStat;
-    }
-    int rc = reuseStaged ? 0 : suWriteElf(staged, SU_FIO_CREAT | SU_FIO_TRUNC, file);
-    if (rc >= 0) {
-        suStep = 4;
-        rc = fileXioSync(device, 0);
-        if (rc >= 0)
-            rc = fileXioRename(path, backup);
-        if (rc >= 0) {
-            rc = fileXioRename(staged, path);
-            if (rc < 0) {
-                if (fileXioRename(backup, path) < 0)
-                    suStep = 5; // preserve both files for recovery
-            } else {
-                int syncRc = fileXioSync(device, 0);
-                if (syncRc < 0) {
-                    rc = syncRc; // the backup is still the recovery copy; do not remove it
-                } else {
-                    // The swap is committed. Cleanup can finish on the next verified update.
-                    fileXioRemove(backup);
-                    rc = 0;
-                }
-            }
-        }
-    }
-    if (rc < 0 && suStep != 5)
-        fileXioRemove(staged);
-    return rc;
-}
-
 static void suInstallWorker(void)
 {
     SuTarget target;
@@ -542,8 +453,13 @@ static void suInstallWorker(void)
         goto done;
     }
     {
-        // Memory cards need no spare space. mcman only truncates in its CREAT branch.
-        int rc = target.apa ? suInstallApa(target.path, f) : suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f);
+        int rc = suWriteElf(target.path, SU_FIO_CREAT | SU_FIO_TRUNC, f);
+        if (rc >= 0 && target.apa) {
+            char device[6];
+            snprintf(device, sizeof(device), "%.5s", target.path);
+            suStep = 4;
+            rc = fileXioSync(device, 0);
+        }
         if (rc < 0) {
             suResult = SU_ERR_SWAP;
             suErrno = -rc;
@@ -639,7 +555,7 @@ static void suRelaunch(void)
     char bootPath[256];
     char *argv[] = {bootPath};
     if (drained && suResolveTarget(target, false) && suReadBootFormat(target) == suFormat &&
-        suJoin(bootPath, sizeof(bootPath), gBootDir, gBootElfName, "") == 0 &&
+        suJoin(bootPath, sizeof(bootPath), target.apa ? gBootLaunchDir : gBootDir, gBootElfName, "") == 0 &&
         elfldrArgsFit(target.path, 1, argv, target.apa ? "-la=RH" : "-reset-iop", NULL)) {
         // Load from the live mount, but give the new instance the physical boot identity.
         host::app().deinitTerminal(sbLoaderDeinitException(target.path) | KEEPIOP_EXCEPTION, IO_MODE_SELECTED_ALL_SPARE);
