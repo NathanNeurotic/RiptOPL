@@ -383,11 +383,8 @@ void CfgTitles::refresh(item_list_t *support, int count)
                                         ember ? PS1_ROW_CUE : PS1_ROW_VCD, gsOf(support)->rowPrefix(support, i));
                 }
                 config = gsOf(support)->config(support, i);
-                if (config == NULL) {
-                    if (read != NULL)
-                        read[i] = 1; /* no CFG: no title, until a later pass finds one */
-                    continue;
-                }
+                if (config == NULL)
+                    continue; /* not a result: out of memory or a stale row (a game with no CFG still gets a config) */
                 if (configGetStr(config, "Title", &title) && cfgTitleClean(title, clean, sizeof(clean)))
                     fresh[i] = keepTitle(support, i, clean);
                 else

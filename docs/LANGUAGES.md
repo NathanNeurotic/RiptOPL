@@ -77,10 +77,11 @@ The `TRANSLATIONS` list in the `Makefile` decides which `lang_<Language>.lng` fi
 language exists upstream as `lng_src/<Language>.yml`; to ship it, add its name to that list.
 
 - **Fonts.** A language that needs glyphs the built-in font lacks has a `font_<Language>.ttf` (or
-  `.otf`) in the upstream repo's `thirdparty/` folder. `tools/lng_pack.sh` copies it beside the
-  `.lng` in the `RIPTOPL-LANGS` pack, and the loader picks it up from the same folder.
+  `.otf`) in the upstream repo's `thirdparty/` folder. `tools/package_edition.py` copies it beside the
+  `.lng` in the `RIPTOPL-LANGS` pack, and the loader picks it up from the same folder. (The old
+  `tools/lng_pack.sh` is no longer run by any build and does not carry the Japanese font below.)
 - **Serbian** has no font upstream, and the built-in font has no `č`, `ć` or `đ`. Serbian Latin uses
-  exactly Croatian's letters, so `lng_pack.sh` ships `font_Croatian.ttf` as `font_Serbian.ttf`.
+  exactly Croatian's letters, so the pack ships `font_Croatian.ttf` as `font_Serbian.ttf`.
   Check a new language's characters against the built-in font before assuming it needs no font.
 - **Japanese** ships `third_party/fonts/MPLUS1p-Regular-JIS.ttf` (M PLUS 1p, SIL OFL 1.1, licence in
   `MPLUS1P-OFL.txt`, packed beside it) as `font_Japanese.ttf`, not upstream's `font_Japanese.otf`: that one
