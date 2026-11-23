@@ -56,7 +56,7 @@ harness = r"""
 #define DBGCOL(...) ((void)0)
 #define DBGCOL_BLNK(...) ((void)0)
 typedef struct EECoreConfig_t {
-    char GameID[16], raHost[16];
+    char GameID[16], raHost[RA_ARG_TAIL_MAX + 1];
     int GameMode, raClientMode, raHostPinned;
 } EECoreConfig_t;
 static int moduleStartResult;
@@ -123,6 +123,12 @@ int main(void) {
     assert(!memcmp(&last_args[RA_ARG_ID],"SLUS_212.69XXXX",RA_ARG_ID_MAX) && !strcmp(&last_args[RA_ARG_HOST],"255.255.255.255"));
     assert(last_argc<=RA_ARG_MAX+1+38);
     puts("PASS: the longest serial and host stay inside RA_ARG_MAX");
+
+    reset(); strcpy(c.raHost,"255.255.255.255,0123456789abcdef0123456789ABCDEF"); load_ra(&c);
+    assert((int)strlen(c.raHost)==RA_ARG_TAIL_MAX);
+    assert(!strcmp(&last_args[RA_ARG_HOST],"255.255.255.255,0123456789abcdef0123456789ABCDEF"));
+    assert(last_argc==RA_ARG_MAX+1+38 && !memcmp(&last_args[RA_ARG_MAX+1],g_ipconfig,38));
+    puts("PASS: the image hash rides behind the host and the longest argument is exactly RA_ARG_MAX");
     strcpy(c.raHost,"192.168.1.5"); strcpy(c.GameID,"SLUS_212.69");
 
     reset(); snap_bytes=0; load_ra(&c);

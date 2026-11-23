@@ -401,7 +401,7 @@ translations:
   RA_DISC_CHECKING: Sprawdzanie płyty pod kątem RetroAchievements
   RA_DISC_HASH_FAILED: Nie udało się obliczyć skrótu płyty -- sprawdź RA/hashes.txt w folderze ustawień
   RA_DISC_HOME_ERROR: Ścieżki ustawień nie można użyć dla list śledzenia płyt
-  RA_DISC_ENABLE: Najpierw włącz telemetrię RetroAchievements w ustawieniach sieci
+  RA_DISC_ENABLE: Najpierw włącz telemetrię RetroAchievements w ustawieniach RetroAchievements
   RA_DISC_CHECK_FIRST: 'Brak listy śledzenia dla tej płyty -- najpierw użyj RA: sprawdź obsługę płyty'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: znaleziono HDD, ale nie da się odczytać jego tablicy partycji APA. Nie formatuj go -- twoje gry mogą dać się odzyskać.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: dysk nie został zamontowany, bo jego sektory nie mają 512 bajtów (np. dysk z sektorami 4K). OPL czyta tylko sektory 512-bajtowe.'
@@ -567,8 +567,8 @@ translations:
   CAD_UNTRACKED: Caduceus nie jest gotowy. Tym razem uruchamianie bez osiągnięć.
   RA_CADUCEUS_OFFLINE: Sesja RA Caduceus jest offline.
   RA_CADUCEUS_SIGN_IN: Zaloguj się do RetroAchievements w Caduceus i spróbuj ponownie.
-  RA_EXPERIMENTAL_CARDS: Eksperymentalne karty Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: Eksperymentalne karty osiągnięć w grach PS2. Mogą migać lub zawieszać gry. Tylko Caduceus; Wył. używa złotego pulsu. Działa od następnego uruchomienia gry.
+  RA_EXPERIMENTAL_CARDS: Eksperymentalne karty
+  HINT_RA_EXPERIMENTAL_CARDS: Eksperymentalne karty osiągnięć w grach PS2. Mogą migać lub zawieszać gry. Wył. używa złotego pulsu. Działa od następnego uruchomienia gry.
   CAD_ACHIEVEMENTS: Osiągnięcia Caduceus
   CAD_VIEW_ACHIEVEMENTS: Zobacz osiągnięcia
   CAD_BACK: Wstecz

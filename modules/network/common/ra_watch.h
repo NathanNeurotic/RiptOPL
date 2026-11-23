@@ -143,8 +143,10 @@ struct ra_node_file
     unsigned int count; /* nodes that follow */
 };
 
-/* Optional xeRAbora v2.1 image-hash tail, after entries and optional nodes.
-   The loader validates it but uses serial-based launch identification. */
+/* Optional xeRAbora v2.1 image-hash tail, after entries and optional nodes: the
+   image the list was built for, 32 hex digits without a terminator. The loader
+   keeps it with the list and raudp names it to the PC while the game runs
+   ("RAI1 <serial> <hash>"), so a client that never saw the game loads its set. */
 #define RA_HASH_MAGIC 0x31484152 /* "RAH1" */
 #define RA_HASH_LEN   32
 struct ra_hash_file

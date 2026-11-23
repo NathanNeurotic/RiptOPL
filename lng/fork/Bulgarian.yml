@@ -395,7 +395,7 @@ translations:
   RA_DISC_CHECKING: Проверка на диска за RetroAchievements
   RA_DISC_HASH_FAILED: Хешът на диска не можа да се изчисли -- проверете RA/hashes.txt в папката с настройки
   RA_DISC_HOME_ERROR: Пътят с настройките не може да се използва за списъци за следене на дискове
-  RA_DISC_ENABLE: Първо включете телеметрията на RetroAchievements в мрежовите настройки
+  RA_DISC_ENABLE: Първо включете телеметрията на RetroAchievements в настройките на RetroAchievements
   RA_DISC_CHECK_FIRST: 'Няма списък за следене за този диск -- първо използвайте RA: проверка на поддръжката на диска'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: Намерен е HDD, но таблицата му с APA дялове не може да се прочете. Не го форматирайте -- игрите ви може да са възстановими.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Устройство не беше монтирано, защото секторите му не са по 512 байта (напр. устройство с 4K сектори). OPL може да чете само сектори от 512 байта.'
@@ -563,8 +563,8 @@ translations:
   CAD_UNTRACKED: Caduceus не е готов. Този път стартиране без постижения.
   RA_CADUCEUS_OFFLINE: RA сесията на Caduceus е офлайн.
   RA_CADUCEUS_SIGN_IN: Влезте в RetroAchievements в Caduceus и опитайте отново.
-  RA_EXPERIMENTAL_CARDS: Експериментални карти на Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: Експериментални карти с постижения в PS2 игрите. Може да трептят или да замразяват игри. Само Caduceus; Изкл. използва златния пулс. Влиза в сила при следващото стартиране на игра.
+  RA_EXPERIMENTAL_CARDS: Експериментални карти
+  HINT_RA_EXPERIMENTAL_CARDS: Експериментални карти с постижения в PS2 игрите. Може да трептят или да замразяват игри. Изкл. използва златния пулс. Влиза в сила при следващото стартиране на игра.
   CAD_ACHIEVEMENTS: Постижения в Caduceus
   CAD_VIEW_ACHIEVEMENTS: Преглед на постиженията
   CAD_BACK: Назад

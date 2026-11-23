@@ -406,7 +406,7 @@ translations:
   RA_DISC_CHECKING: Έλεγχος του δίσκου για RetroAchievements
   RA_DISC_HASH_FAILED: Δεν υπολογίστηκε ο κατακερματισμός του δίσκου -- ελέγξτε το RA/hashes.txt στον φάκελο ρυθμίσεων
   RA_DISC_HOME_ERROR: Η διαδρομή ρυθμίσεων δεν μπορεί να χρησιμοποιηθεί για λίστες παρακολούθησης δίσκων
-  RA_DISC_ENABLE: Ενεργοποιήστε πρώτα την τηλεμετρία RetroAchievements στις ρυθμίσεις Δικτύου
+  RA_DISC_ENABLE: Ενεργοποιήστε πρώτα την τηλεμετρία RetroAchievements στις ρυθμίσεις RetroAchievements
   RA_DISC_CHECK_FIRST: 'Καμία λίστα παρακολούθησης για αυτόν τον δίσκο -- χρησιμοποιήστε πρώτα RA: έλεγχος υποστήριξης δίσκου'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: Βρέθηκε HDD, αλλά ο πίνακας διαμερισμάτων APA του δεν διαβάζεται. Μην τον διαμορφώσετε -- τα παιχνίδια σας ίσως σώζονται.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Ένας δίσκος δεν προσαρτήθηκε επειδή οι τομείς του δεν είναι 512 byte (π.χ. δίσκος με τομείς 4K). Το OPL διαβάζει μόνο τομείς 512 byte.'
@@ -572,8 +572,8 @@ translations:
   CAD_UNTRACKED: Το Caduceus δεν είναι έτοιμο. Αυτή τη φορά εκκίνηση χωρίς επιτεύγματα.
   RA_CADUCEUS_OFFLINE: Η συνεδρία RA του Caduceus είναι εκτός σύνδεσης.
   RA_CADUCEUS_SIGN_IN: Συνδεθείτε στο RetroAchievements μέσα στο Caduceus και δοκιμάστε ξανά.
-  RA_EXPERIMENTAL_CARDS: Πειραματικές κάρτες Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: Πειραματικές κάρτες επιτευγμάτων μέσα σε παιχνίδια PS2. Μπορεί να τρεμοπαίζουν ή να παγώνουν παιχνίδια. Μόνο Caduceus· το Ανενεργό χρησιμοποιεί τον χρυσό παλμό. Ισχύει από την επόμενη εκκίνηση παιχνιδιού.
+  RA_EXPERIMENTAL_CARDS: Πειραματικές κάρτες
+  HINT_RA_EXPERIMENTAL_CARDS: Πειραματικές κάρτες επιτευγμάτων μέσα σε παιχνίδια PS2. Μπορεί να τρεμοπαίζουν ή να παγώνουν παιχνίδια. Το Ανενεργό χρησιμοποιεί τον χρυσό παλμό. Ισχύει από την επόμενη εκκίνηση παιχνιδιού.
   CAD_ACHIEVEMENTS: Επιτεύγματα Caduceus
   CAD_VIEW_ACHIEVEMENTS: Προβολή επιτευγμάτων
   CAD_BACK: Πίσω

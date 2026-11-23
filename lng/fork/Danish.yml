@@ -410,7 +410,7 @@ translations:
   RA_DISC_CHECKING: Tjekker disken for RetroAchievements
   RA_DISC_HASH_FAILED: Diskens hash kunne ikke beregnes -- tjek RA/hashes.txt i indstillingsmappen
   RA_DISC_HOME_ERROR: Indstillingsstien kan ikke bruges til diskenes overvågningslister
-  RA_DISC_ENABLE: Slå RetroAchievements-telemetri til i netværksindstillingerne først
+  RA_DISC_ENABLE: Slå RetroAchievements-telemetri til i RetroAchievements-indstillingerne først
   RA_DISC_CHECK_FIRST: 'Ingen overvågningsliste for denne disk -- brug RA: tjek diskunderstøttelse først'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD fundet, men dens APA-partitionstabel kan ikke læses. Formater den ikke -- dine spil kan måske reddes.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Et drev blev ikke monteret, fordi dets sektorer ikke er på 512 byte (f.eks. et drev med 4K-sektorer). OPL kan kun læse sektorer på 512 byte.'
@@ -576,8 +576,8 @@ translations:
   CAD_UNTRACKED: Caduceus er ikke klar. Starter uden præstationer denne gang.
   RA_CADUCEUS_OFFLINE: Caduceus' RA-session er offline.
   RA_CADUCEUS_SIGN_IN: Log ind på RetroAchievements i Caduceus, og prøv igen.
-  RA_EXPERIMENTAL_CARDS: Eksperimentelle Caduceus-kort
-  HINT_RA_EXPERIMENTAL_CARDS: Eksperimentelle præstationskort i PS2-spil. Kan flimre eller fryse spil. Kun Caduceus; Fra bruger den gyldne puls. Træder i kraft ved næste spilstart.
+  RA_EXPERIMENTAL_CARDS: Eksperimentelle kort
+  HINT_RA_EXPERIMENTAL_CARDS: Eksperimentelle præstationskort i PS2-spil. Kan flimre eller fryse spil. Fra bruger den gyldne puls. Træder i kraft ved næste spilstart.
   CAD_ACHIEVEMENTS: Caduceus-præstationer
   CAD_VIEW_ACHIEVEMENTS: Se præstationer
   CAD_BACK: Tilbage

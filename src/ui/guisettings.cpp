@@ -681,13 +681,6 @@ static int netConfigUpdater(int modified)
             diaSetEnabled(diaNetConfig, NETCFG_PS2_IP_ADDR_TYPE, 1);
         }
         netConfigLastProtocol = netProto;
-#ifdef RETROACHIEVEMENTS
-        // Cards are a Caduceus feature and need telemetry; the saved choice survives a switch away.
-        int raMode, raTelemetry;
-        diaGetInt(diaNetConfig, NETCFG_RA_MODE, &raMode);
-        diaGetInt(diaNetConfig, NETCFG_RA_TELEMETRY, &raTelemetry);
-        diaSetEnabled(diaNetConfig, NETCFG_RA_EXPERIMENTAL_CARDS, raMode == RA_MODE_CADUCEUS && raTelemetry);
-#endif
 
         diaSetVisible(diaNetConfig, NETCFG_SHARE_NB_ADDR, isNetBIOS);
 
@@ -878,19 +871,6 @@ int guiShowNetConfig(void)
     diaSetString(diaNetConfig, NETCFG_SHARE_USERNAME, gPCUserName);
     diaSetString(diaNetConfig, NETCFG_SHARE_PASSWORD, gPCPassword);
     diaSetInt(diaNetConfig, NETCFG_ETHOPMODE, gETHOpMode);
-#ifdef RETROACHIEVEMENTS
-    static const char *raModes[] = {"Xerabora", "Caduceus", NULL};
-    diaSetEnum(diaNetConfig, NETCFG_RA_MODE, raModes);
-    diaSetInt(diaNetConfig, NETCFG_RA_MODE, gRAMode);
-    for (i = 0; i < 4; ++i)
-        diaSetInt(diaNetConfig, NETCFG_RA_HOST_IP_0 + i, gRAHostIp[i]);
-    diaSetInt(diaNetConfig, NETCFG_RA_TELEMETRY, gRATelemetry);
-    diaSetInt(diaNetConfig, NETCFG_RA_BADGES, gRABadges);
-    const char *raBadgePos[] = {_l(_STR_RA_BADGE_PREFIX), _l(_STR_RA_BADGE_SUFFIX), NULL};
-    diaSetEnum(diaNetConfig, NETCFG_RA_BADGE_SUFFIX, raBadgePos);
-    diaSetInt(diaNetConfig, NETCFG_RA_BADGE_SUFFIX, gRABadgeSuffix);
-    diaSetInt(diaNetConfig, NETCFG_RA_EXPERIMENTAL_CARDS, gRAExperimentalCards);
-#endif
 
     // Protocol rows, seeded from the authoritative gNetworkProtocol.
     //   Protocol: SMB(0)/UDPFS(1)/UDPBD(2)  -- OFF and UDPFSBD both collapse to their protocol
@@ -979,24 +959,6 @@ reshow_network:
             diaGetInt(diaNetConfig, NETCFG_SHARE_IP_ADDR_0 + i, &pc_ip[i]);
         }
         diaGetInt(diaNetConfig, NETCFG_ETHOPMODE, &gETHOpMode);
-#ifdef RETROACHIEVEMENTS
-        int raBadgeState = gRATelemetry << 2 | gRABadges << 1 | gRABadgeSuffix;
-        int raMode = gRAMode;
-        diaGetInt(diaNetConfig, NETCFG_RA_MODE, &gRAMode);
-        if (gRAMode != raMode)
-            menuReinitMainMenu(); // the browser's entry is named after the mode
-        for (i = 0; i < 4; ++i)
-            diaGetInt(diaNetConfig, NETCFG_RA_HOST_IP_0 + i, &gRAHostIp[i]);
-        diaGetInt(diaNetConfig, NETCFG_RA_TELEMETRY, &gRATelemetry);
-        diaGetInt(diaNetConfig, NETCFG_RA_BADGES, &gRABadges);
-        diaGetInt(diaNetConfig, NETCFG_RA_BADGE_SUFFIX, &gRABadgeSuffix);
-        diaGetInt(diaNetConfig, NETCFG_RA_EXPERIMENTAL_CARDS, &gRAExperimentalCards);
-        gRABadgeSuffix = (gRABadgeSuffix == 1);
-        // Badges are resolved on the I/O thread when rows are built: rebuild every list (HTTP and
-        // Favorites too) when visibility or placement changes, not on the next unrelated rescan.
-        if ((gRATelemetry << 2 | gRABadges << 1 | gRABadgeSuffix) != raBadgeState)
-            guiRefreshCfgTitles();
-#endif
 
         diaGetInt(diaNetConfig, NETCFG_SHARE_PORT, &gPCPort);
         for (i = 0; i < 4; ++i)
@@ -1034,7 +996,7 @@ reshow_network:
             guiNetProtocolOfferRestart();
 
 #ifdef RETROACHIEVEMENTS
-        // Applied network/RA settings invalidate the peer a previous menu query verified.
+        // Applied network settings invalidate the peer a previous menu query verified.
         raNetForgetPeer();
 #endif
         applyConfig(-1, -1, 0);
@@ -1935,6 +1897,68 @@ static int guiAudioUpdater(int modified)
     return 0;
 }
 
+#ifdef RETROACHIEVEMENTS
+static int guiRAUpdater(int modified)
+{
+    if (modified) {
+        // Cards need telemetry, with either client; the saved choice survives telemetry going Off.
+        int raTelemetry;
+        diaGetInt(diaRAConfig, NETCFG_RA_TELEMETRY, &raTelemetry);
+        diaSetEnabled(diaRAConfig, NETCFG_RA_EXPERIMENTAL_CARDS, raTelemetry);
+    }
+    return 0;
+}
+
+// The RetroAchievements page: the PC client, its address, telemetry, badges and the opt-in card.
+static int guiShowRAConfig(void)
+{
+    if (achievementsBusy()) { // a browser page still owns the network and the share
+        guiShowRANotice(_l(_STR_RA_CHECK_RUNNING), NULL);
+        return gSettingsShell.pageResult(UIID_BTN_CANCEL);
+    }
+    int i;
+    static const char *raModes[] = {"Xerabora", "Caduceus", NULL};
+    diaSetEnum(diaRAConfig, NETCFG_RA_MODE, raModes);
+    diaSetInt(diaRAConfig, NETCFG_RA_MODE, gRAMode);
+    for (i = 0; i < 4; ++i)
+        diaSetInt(diaRAConfig, NETCFG_RA_HOST_IP_0 + i, gRAHostIp[i]);
+    diaSetInt(diaRAConfig, NETCFG_RA_TELEMETRY, gRATelemetry);
+    diaSetInt(diaRAConfig, NETCFG_RA_BADGES, gRABadges);
+    const char *raBadgePos[] = {_l(_STR_RA_BADGE_PREFIX), _l(_STR_RA_BADGE_SUFFIX), NULL};
+    diaSetEnum(diaRAConfig, NETCFG_RA_BADGE_SUFFIX, raBadgePos);
+    diaSetInt(diaRAConfig, NETCFG_RA_BADGE_SUFFIX, gRABadgeSuffix);
+    diaSetInt(diaRAConfig, NETCFG_RA_EXPERIMENTAL_CARDS, gRAExperimentalCards);
+    diaSetEnabled(diaRAConfig, NETCFG_RA_EXPERIMENTAL_CARDS, gRATelemetry);
+
+    gSettingsShell.beginDialog(diaRAConfig);
+    int result = diaExecuteDialog(diaRAConfig, -1, 1, guiRAUpdater);
+    if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(diaRAConfig, result, NULL, NULL)) {
+        int raBadgeState = gRATelemetry << 2 | gRABadges << 1 | gRABadgeSuffix;
+        int raMode = gRAMode;
+        diaGetInt(diaRAConfig, NETCFG_RA_MODE, &gRAMode);
+        if (gRAMode != raMode)
+            menuReinitMainMenu(); // the browser's entry is named after the mode
+        for (i = 0; i < 4; ++i)
+            diaGetInt(diaRAConfig, NETCFG_RA_HOST_IP_0 + i, &gRAHostIp[i]);
+        diaGetInt(diaRAConfig, NETCFG_RA_TELEMETRY, &gRATelemetry);
+        diaGetInt(diaRAConfig, NETCFG_RA_BADGES, &gRABadges);
+        diaGetInt(diaRAConfig, NETCFG_RA_BADGE_SUFFIX, &gRABadgeSuffix);
+        diaGetInt(diaRAConfig, NETCFG_RA_EXPERIMENTAL_CARDS, &gRAExperimentalCards);
+        gRABadgeSuffix = (gRABadgeSuffix == 1);
+        // Badges are resolved on the I/O thread when rows are built: rebuild every list (HTTP and
+        // Favorites too) when visibility or placement changes, not on the next unrelated rescan.
+        if ((gRATelemetry << 2 | gRABadges << 1 | gRABadgeSuffix) != raBadgeState)
+            guiRefreshCfgTitles();
+        // A changed client or address invalidates the peer a previous menu query verified.
+        raNetForgetPeer();
+        gSettingsShell.markSavePending();
+    }
+
+    gSettingsShell.endDialog();
+    return gSettingsShell.pageResult(result);
+}
+#endif
+
 static int guiShowAudioConfig(void)
 {
     diaSetInt(diaAudioConfig, CFG_SFX, gEnableSFX);
@@ -2166,6 +2190,9 @@ enum gui_settings_page {
     SETTINGS_GENERAL,
     SETTINGS_LANGUAGE,
     SETTINGS_NETWORK,
+#ifdef RETROACHIEVEMENTS
+    SETTINGS_RA, // RetroAchievements builds only
+#endif
     SETTINGS_INTERFACE,
     SETTINGS_THEME,
     SETTINGS_LAUNCH,
@@ -3197,6 +3224,9 @@ int SettingsShell::showIndex(int *page)
         _l(_STR_GENERAL_SYSTEM),
         _l(_STR_LANGUAGE),
         _l(_STR_MENU_NETWORK),
+#ifdef RETROACHIEVEMENTS
+        "RetroAchievements",
+#endif
         _l(_STR_INTERFACE_SETTINGS),
         _l(_STR_THEME_SETTINGS),
         _l(_STR_GAME_LAUNCHING),
@@ -3207,7 +3237,8 @@ int SettingsShell::showIndex(int *page)
     };
     int selected = *page;
     const int itemCount = SETTINGS_PAGE_COUNT + 1;
-    int spacing = 25;
+    // A RetroAchievements build lists one page more: closer rows keep the first one clear of the version line.
+    int spacing = itemCount > 11 ? 22 : 25;
     int y;
 
     if (selected < SETTINGS_SOURCES || selected >= SETTINGS_PAGE_COUNT)
@@ -3316,6 +3347,11 @@ void SettingsShell::showFromPage(int page, int showIndexFirst)
             case SETTINGS_NETWORK:
                 result = guiShowNetConfig();
                 break;
+#ifdef RETROACHIEVEMENTS
+            case SETTINGS_RA:
+                result = guiShowRAConfig();
+                break;
+#endif
             case SETTINGS_INTERFACE:
                 result = guiSettingsShowInterface();
                 break;

@@ -104,6 +104,11 @@ int raPopsPrepare(const char *root, const char *watchRoot, const char *vcdPath, 
     } else if (cfg->host_pinned) {
         snprintf(cfg->host, sizeof(cfg->host), "%u.%u.%u.%u", gRAHostIp[0], gRAHostIp[1], gRAHostIp[2], gRAHostIp[3]);
     }
+    /* xeRAbora 2.1.0: the list's image hash rides behind the host, for raudp's "RAI1 <serial> <hash>". */
+    if (GetWatchHash()[0] != '\0') {
+        const size_t used = strlen(cfg->host);
+        snprintf(cfg->host + used, sizeof(cfg->host) - used, ",%s", GetWatchHash());
+    }
     /* Ownership/absence was checked before preparation. O_EXCL is only a supplementary guard on
        backends that implement it; PS2 FAT currently ignores that flag. */
     fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0644);

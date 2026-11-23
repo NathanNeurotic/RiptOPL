@@ -149,6 +149,10 @@ static struct ra_event ra_event __attribute__((aligned(64)));
 static u32 ra_hb_rx = 0;  /* datagrams that reached ra_poll_pc */
 static u32 ra_hb_rau = 0; /* unlock notices among them */
 
+/* The image hash of the game's watch list, behind the host in the load
+   argument; empty when the list carries none (an older client's list). */
+static char ra_game_hash[RA_HASH_LEN + 1] = {0};
+
 /* Discovery socket, kept open for the PC's messages. */
 static int ra_sock = -1;
 
@@ -1179,6 +1183,31 @@ static void ra_heartbeat(void)
     ra_ctl_send(hb, n);
 }
 
+/* Every second: "RAI1 <serial> <hash>", so a PC client that has never
+   seen this game -- another PC, or one that lost its record -- knows
+   which image runs and loads its set (xeRAbora 2.1.0). Nothing without
+   a hash, and nothing to the Caduceus bridge, which has no such message. */
+static void ra_identify(void)
+{
+    char msg[RA_CTL_MAX];
+    int n = 0, i;
+
+    if (ra_caduceus || ra_game_hash[0] == '\0' || ra_game_id[0] == '\0')
+        return;
+
+    msg[n++] = 'R';
+    msg[n++] = 'A';
+    msg[n++] = 'I';
+    msg[n++] = '1';
+    msg[n++] = ' ';
+    for (i = 0; i < (int)sizeof(ra_game_id) - 1 && ra_game_id[i] != '\0'; i++)
+        msg[n++] = ra_game_id[i];
+    msg[n++] = ' ';
+    for (i = 0; i < RA_HASH_LEN; i++)
+        msg[n++] = ra_game_hash[i];
+    ra_ctl_send(msg, n);
+}
+
 /* ---- Thread and module entry ------------------------------------------- */
 
 static void ra_thread(void *arg)
@@ -1223,6 +1252,8 @@ static void ra_thread(void *arg)
             ra_drain_rx();
             ra_poll_pc();
         }
+        if (iter % RA_KEEPALIVE_TICKS == 0)
+            ra_identify();
         if (++iter % RA_HEARTBEAT_TICKS == 0)
             ra_heartbeat();
         DelayThread(RA_POLL_US);
@@ -1239,6 +1270,33 @@ int _shutdown(void)
    argv[2] is the own IP in dotted form (followed by routing netmask and gateway,
    used to resolve the next hop). argv[0] is the module name, inserted
    by the IOP loader. */
+/* The RA_ARG_HOST field: the companion's address and, behind a ',', the
+   image hash of the watch list. The hash counts only whole: exactly
+   RA_HASH_LEN hex digits up to the end of the argument. */
+static void ra_parse_host(const char *tail)
+{
+    char host[RA_ARG_HOST_MAX + 1];
+    int i, k;
+
+    for (i = 0; i < RA_ARG_HOST_MAX && tail[i] != '\0' && tail[i] != ','; i++)
+        host[i] = tail[i];
+    host[i] = '\0';
+    ra_server_ip = inet_addr(host);
+
+    ra_game_hash[0] = '\0';
+    if (tail[i] != ',')
+        return;
+    tail += i + 1;
+    for (k = 0; k < RA_HASH_LEN; k++) {
+        char c = tail[k];
+
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+            break;
+        ra_game_hash[k] = c;
+    }
+    ra_game_hash[(k == RA_HASH_LEN && tail[k] == '\0') ? RA_HASH_LEN : 0] = '\0';
+}
+
 int _start(int argc, char *argv[])
 {
     iop_thread_t thread;
@@ -1268,7 +1326,7 @@ int _start(int argc, char *argv[])
             ra_game_id[i] = '\0';
         }
         if (len > RA_ARG_HOST && argv[1][RA_ARG_HOST - 1] == ',')
-            ra_server_ip = inet_addr(&argv[1][RA_ARG_HOST]);
+            ra_parse_host(&argv[1][RA_ARG_HOST]);
     }
 
     /* SMAP passes NUL-delimited IP, netmask and gateway arguments. */

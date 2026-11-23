@@ -462,7 +462,7 @@ translations:
   RA_DISC_CHECKING: ກຳລັງກວດແຜ່ນ ສຳລັບ RetroAchievements
   RA_DISC_HASH_FAILED: 'ແຮຊແຜ່ນ ບໍ່ໄດ້: ກວດ RA/hashes.txt ໃນໂຟນເດີການຕັ້ງຄ່າ'
   RA_DISC_HOME_ERROR: ເສັ້ນທາງການຕັ້ງຄ່າ ໃຊ້ບໍ່ໄດ້ ສຳລັບລາຍການຕິດຕາມແຜ່ນ
-  RA_DISC_ENABLE: ເປີດ ເທເລເມທຣີ RetroAchievements ໃນການຕັ້ງຄ່າເຄືອຂ່າຍ ກ່ອນ
+  RA_DISC_ENABLE: ເປີດ ເທເລເມທຣີ RetroAchievements ໃນການຕັ້ງຄ່າ RetroAchievements ກ່ອນ
   RA_DISC_CHECK_FIRST: 'ບໍ່ມີລາຍການຕິດຕາມ ສຳລັບແຜ່ນນີ້: ໃຊ້ RA ກວດ ການຮອງຮັບແຜ່ນ ກ່ອນ'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: ພົບ HDD, ແຕ່ອ່ານຕາຕະລາງພາທິຊັນ APA ຂອງມັນ ບໍ່ໄດ້. ຢ່າຟໍແມັດມັນ: ເກມຂອງທ່ານ ອາດກູ້ຄືນໄດ້.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: ໄດຣຟ໌ໜຶ່ງ ບໍ່ໄດ້ເມົາ ເພາະເຊັກເຕີ ຂອງມັນບໍ່ແມ່ນ 512 ໄບຕ໌ (ເຊັ່ນ ໄດຣຟ໌ ເຊັກເຕີ 4K). OPL ອ່ານໄດ້ສະເພາະ ເຊັກເຕີ 512 ໄບຕ໌.'
@@ -630,8 +630,8 @@ translations:
   CAD_UNTRACKED: Caduceus ບໍ່ພ້ອມ. ເທື່ອນີ້ ເລີ່ມໂດຍບໍ່ມີຄວາມສຳເລັດ.
   RA_CADUCEUS_OFFLINE: session RA ຂອງ Caduceus ອອບລາຍ.
   RA_CADUCEUS_SIGN_IN: ເຂົ້າສູ່ລະບົບ RetroAchievements ໃນ Caduceus, ແລ້ວລອງໃໝ່.
-  RA_EXPERIMENTAL_CARDS: ກາດທົດລອງ Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: ກາດຄວາມສຳເລັດ ໃນເກມ PS2 ແບບທົດລອງ. ອາດເຮັດໃຫ້ເກມ ກະພິບ ຫຼື ຄ້າງ. Caduceus ເທົ່ານັ້ນ; ປິດ ໃຊ້ຈັງຫວະສີທອງ. ມີຜົນ ຕອນເປີດເກມ ເທື່ອຕໍ່ໄປ.
+  RA_EXPERIMENTAL_CARDS: ກາດທົດລອງ
+  HINT_RA_EXPERIMENTAL_CARDS: ກາດຄວາມສຳເລັດ ໃນເກມ PS2 ແບບທົດລອງ. ອາດເຮັດໃຫ້ເກມ ກະພິບ ຫຼື ຄ້າງ. ປິດ ໃຊ້ຈັງຫວະສີທອງ. ມີຜົນ ຕອນເປີດເກມ ເທື່ອຕໍ່ໄປ.
   CAD_ACHIEVEMENTS: ຄວາມສຳເລັດ Caduceus
   CAD_VIEW_ACHIEVEMENTS: ເບິ່ງ ຄວາມສຳເລັດ
   CAD_BACK: ກັບຄືນ

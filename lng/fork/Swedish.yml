@@ -415,7 +415,7 @@ translations:
   RA_DISC_CHECKING: Kontrollerar skivan för RetroAchievements
   RA_DISC_HASH_FAILED: Skivans hash kunde inte beräknas -- kontrollera RA/hashes.txt i inställningsmappen
   RA_DISC_HOME_ERROR: Inställningssökvägen kan inte användas för skivornas bevakningslistor
-  RA_DISC_ENABLE: Slå på RetroAchievements-telemetri i nätverksinställningarna först
+  RA_DISC_ENABLE: Slå på RetroAchievements-telemetri i RetroAchievements-inställningarna först
   RA_DISC_CHECK_FIRST: 'Ingen bevakningslista för den här skivan -- använd RA: kontrollera skivstöd först'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD hittad, men dess APA-partitionstabell kan inte läsas. Formatera den inte -- dina spel kan kanske räddas.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: En enhet monterades inte eftersom dess sektorer inte är 512 byte (t.ex. en enhet med 4K-sektorer). OPL kan bara läsa 512-bytessektorer.'
@@ -581,8 +581,8 @@ translations:
   CAD_UNTRACKED: Caduceus är inte redo. Startar utan prestationer den här gången.
   RA_CADUCEUS_OFFLINE: Caduceus RA-session är offline.
   RA_CADUCEUS_SIGN_IN: Logga in på RetroAchievements i Caduceus och försök igen.
-  RA_EXPERIMENTAL_CARDS: Experimentella Caduceus-kort
-  HINT_RA_EXPERIMENTAL_CARDS: Experimentella prestationskort i PS2-spel. Kan flimra eller frysa spel. Bara Caduceus; Av använder den gyllene pulsen. Gäller från nästa spelstart.
+  RA_EXPERIMENTAL_CARDS: Experimentella kort
+  HINT_RA_EXPERIMENTAL_CARDS: Experimentella prestationskort i PS2-spel. Kan flimra eller frysa spel. Av använder den gyllene pulsen. Gäller från nästa spelstart.
   CAD_ACHIEVEMENTS: Caduceus-prestationer
   CAD_VIEW_ACHIEVEMENTS: Visa prestationer
   CAD_BACK: Tillbaka

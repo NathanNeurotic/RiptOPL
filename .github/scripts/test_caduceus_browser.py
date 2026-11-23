@@ -312,7 +312,7 @@ build('ui', ui + function('static void achievementReload(') + function('void men
 
 # A browser request owns the network and the share: no launch, test launch or network apply meanwhile.
 for name, signature in (('src/ui/menuitems.cpp', 'static void itemExecSelect('), ('src/ui/guigame.cpp', 'void guiGameTestSettings('),
-                        ('src/ui/guisettings.cpp', 'int guiShowNetConfig(')):
+                        ('src/ui/guisettings.cpp', 'int guiShowNetConfig('), ('src/ui/guisettings.cpp', 'static int guiShowRAConfig(')):
     text = (root / name).read_text()
     body = text[text.index(signature):]
     assert body.index('if (achievementsBusy())') < body.index('\n}'), name
