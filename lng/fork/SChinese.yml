@@ -561,7 +561,7 @@ translations:
   CAD_UNTRACKED: Caduceus 尚未就绪。这次不带成就启动。
   RA_CADUCEUS_OFFLINE: Caduceus 的 RA 会话处于离线状态。
   RA_CADUCEUS_SIGN_IN: 请在 Caduceus 中登录 RetroAchievements 后重试。
-  RA_EXPERIMENTAL_CARDS: Caduceus 实验性卡片
+  RA_EXPERIMENTAL_CARDS: 实验性卡片
   HINT_RA_EXPERIMENTAL_CARDS: PS2 游戏内的实验性成就卡片。可能闪烁或导致游戏卡死。关闭则使用金色脉冲。下次启动游戏时生效。
   CAD_ACHIEVEMENTS: Caduceus 成就
   CAD_VIEW_ACHIEVEMENTS: 查看成就

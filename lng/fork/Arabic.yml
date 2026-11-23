@@ -614,7 +614,7 @@ translations:
   CAD_UNTRACKED: Caduceus غير جاهز. التشغيل دون إنجازات هذه المرة.
   RA_CADUCEUS_OFFLINE: جلسة Caduceus RA غير متصلة.
   RA_CADUCEUS_SIGN_IN: سجّل الدخول إلى RetroAchievements في Caduceus، ثم حاول مرة أخرى.
-  RA_EXPERIMENTAL_CARDS: بطاقات Caduceus التجريبية
+  RA_EXPERIMENTAL_CARDS: البطاقات التجريبية
   HINT_RA_EXPERIMENTAL_CARDS: بطاقات إنجازات تجريبية داخل ألعاب PS2. قد تومض أو تجمّد الألعاب. الإيقاف يستخدم النبض الذهبي. يسري من تشغيل اللعبة التالي.
   CAD_ACHIEVEMENTS: إنجازات Caduceus
   CAD_VIEW_ACHIEVEMENTS: عرض الإنجازات

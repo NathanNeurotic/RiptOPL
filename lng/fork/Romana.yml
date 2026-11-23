@@ -615,7 +615,7 @@ translations:
   CAD_UNTRACKED: Caduceus nu este gata. De data aceasta se lansează fără realizări.
   RA_CADUCEUS_OFFLINE: Sesiunea RA din Caduceus este offline.
   RA_CADUCEUS_SIGN_IN: Autentifică-te în RetroAchievements în Caduceus, apoi încearcă din nou.
-  RA_EXPERIMENTAL_CARDS: Carduri experimentale Caduceus
+  RA_EXPERIMENTAL_CARDS: Carduri experimentale
   HINT_RA_EXPERIMENTAL_CARDS: Carduri de realizări experimentale în jocurile PS2. Pot pâlpâi sau bloca jocurile. Oprit folosește pulsul auriu. Intră în vigoare la următoarea lansare a unui joc.
   CAD_ACHIEVEMENTS: Realizări Caduceus
   CAD_VIEW_ACHIEVEMENTS: Vezi realizările
