@@ -406,8 +406,10 @@ static void IGR_CheckInputs(void)
 static void IGR_StopDmaAndGs(void)
 {
     // Some game (GT4, GTA) start the performance counter, and when it overflows an exception occurs, so stop it
-    // before anything else of the reset can wait on it
-    u32 perf = GetCop0(25);
+    // before anything else of the reset can wait on it. Read in place, as the write below is: the plain combo and the
+    // power button call this from the VBLANK handler, where the kernel call that reads it (a thread's syscall) may not be used
+    u32 perf;
+    asm volatile("mfc0 %0, $25\n" : "=r"(perf));
     if (perf & 0x80000000)
         asm volatile("mtc0 %0, $25\n sync.p\n" ::"r"(perf & 0x7fffffff));
 

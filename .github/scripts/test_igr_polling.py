@@ -57,6 +57,12 @@ common = ''.join(function_text(sig) for sig in (
     'static void IGR_CheckInputs(',
     'static void IGR_StopDmaAndGs(',
 ))
+# The plain combo and the power button stop DMA and the GS from the VBLANK handler. A thread's syscall there
+# (GetCop0, not iGetCop0) goes through the kernel's thread syscall path and froze the console.
+if 'GetCop0(' in function_text('static void IGR_StopDmaAndGs('):
+    failures.append('padhook.c: IGR_StopDmaAndGs runs in the VBLANK handler and must not call GetCop0()')
+if 'asm volatile("mfc0 %0, $25' not in function_text('static void IGR_StopDmaAndGs('):
+    failures.append('padhook.c: IGR_StopDmaAndGs must read the performance counter in place')
 reset = function_text('void Reset_Padhook(')
 handler = function_text('static int IGR_Intc_Handler(')
 worker = function_text('static void IGR_Thread(')
@@ -136,7 +142,9 @@ RESET_CHECKS = r'''
 def host_safe(text):
     # MIPS hardware instructions have no host meaning; retain the production C logic.
     text = text.replace('asm volatile("sync.l\\n");', ';')
-    # GetCop0 is stubbed to zero, so this MIPS-only performance-counter branch is never taken.
+    # The performance counter reads as stopped, so its MIPS-only branch is never taken.
+    read = 'asm volatile("mfc0 %0, $25\\n" : "=r"(perf));'
+    text = text.replace(read, 'perf = 0;')
     return re.sub(r'asm volatile\("mtc0 %0, \$25\\n sync\.p\\n" ::"r"\(perf & 0x7fffffff\)\);', ';', text)
 
 
@@ -348,7 +356,6 @@ static void oplIGRShutdown(int poweroff) { (void)poweroff; workerShutdowns++; }
 static int Reset_Iop(const char *arg, int len) { (void)arg; (void)len; return 1; }
 static void Remove_Kernel_Hooks(void) {}
 static void InitializeTLB(void) {}
-static u32 GetCop0(int reg) { (void)reg; return 0; }
 static void DisableGSM(void) {}
 static void DisableCheats(void) {}
 static int SifIopSync(void) { return 1; }
