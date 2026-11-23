@@ -383,8 +383,13 @@ with tempfile.TemporaryDirectory(prefix="hires-texture-ownership-") as tmp:
             if (block->iSize >= size)
                 break;
         }'''
-        if corrected_scan in manager_program:
-            previous_program = manager_program.replace(corrected_scan, previous_scan)
+        manager_source = manager.read_text(encoding="utf-8")
+        if manager_source.count(corrected_scan) != 1:
+            print("FAIL: production allocation scan is not uniquely identifiable")
+            results.append(1)
+        else:
+            previous_source = manager_source.replace(corrected_scan, previous_scan, 1)
+            previous_program = manager_program.replace('#include "src/gfx/texmanager.cpp"', previous_source, 1)
             if compile_and_run(folder, "texture-manager-previous", previous_program) == 0:
                 print("FAIL: previous allocation scan also satisfies the fragmented release case")
                 results.append(1)
