@@ -329,7 +329,7 @@ static void IGR_CheckInputs(void)
                 // The user's own combo: exactly these buttons held (libpad PAD_* bits; both pad bytes are
                 // active low) resets. The default combos are left to the game, and the pad has no power
                 // off (the in-game menu and the power button still have it).
-                if ((u16)~(pad_pos_combo2 | (pad_pos_combo1 << 8)) == config->IgrAltCombo)
+                if (((pad_pos_combo2 | (pad_pos_combo1 << 8)) ^ 0xFFFF) == config->IgrAltCombo)
                     Pad_Data.combo_type = IGR_COMBO_START_SELECT;
             }
             // Combo R1 + L1 + R2 + L2, then Start + Select (reset) or R3 + L3 (poweroff)
