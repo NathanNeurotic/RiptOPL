@@ -324,6 +324,19 @@ int main() {
     CHECK(h.Vram == ordinaryVram);
     releaseNow(&h);
 
+    // Expired free blocks coalesce before allocation: six 512 KiB releases must satisfy a 1 MiB request.
+    reset(1);
+    std::vector<GSTEXTURE> fragments(6);
+    for (GSTEXTURE &t : fragments) t = makeTexture(512, 512);
+    for (GSTEXTURE &t : fragments)
+        CHECK(gsKit_TexManager_bind(&global, &t) != GSKIT_TEXMGR_BIND_DEFERRED);
+    gsKit_TexManager_commitFrame(1);
+    for (GSTEXTURE &t : fragments) releaseNow(&t);
+    gsKit_TexManager_commitFrame(1); // expire the released blocks before the larger request
+    GSTEXTURE merged = makeTexture(1024, 512);
+    CHECK(gsKit_TexManager_bind(&global, &merged) != GSKIT_TEXMGR_BIND_DEFERRED);
+    releaseNow(&merged);
+
     // Shutdown also releases source pixels immediately; no deferred bookkeeping remains.
     reset(1);
     GSTEXTURE z = makeTexture(64, 64, true);

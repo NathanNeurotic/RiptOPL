@@ -65,12 +65,12 @@ int main() {
     CHECK(big.PSM == GS_PSM_CT16S && big.Width == 682 && big.Height == 512);
     free(big.Mem);
 
-    const u8 rgbaPixels[8] = {255,0,248,128, 0,255,0,127};
+    const u8 rgbaPixels[8] = {0,255,0,127, 255,0,248,0};
     GSTEXTURE rgba = make(2, 1, rgbaPixels, GS_PSM_CT32);
     texPrepareArtForDisplay(&rgba, 1);
     CHECK(rgba.PSM == GS_PSM_CT16S && rgba.Width == 2 && rgba.Height == 1);
     const u16 *rgbaOut = (const u16 *)rgba.Mem;
-    CHECK(rgbaOut[0] == 0xF81F && rgbaOut[1] == 0x03E0);
+    CHECK(rgbaOut[0] == 0x83E0 && rgbaOut[1] == 0x7C1F);
     free(rgba.Mem);
 
     u32 *original;
@@ -122,7 +122,7 @@ small_cap = small_cap.replace("t.Width == 2 && t.Height == 2", "t.Width == 1 && 
 small_cap = small_cap.replace("out[0] == 10 && out[1] == 10 && out[2] == 10", "out[0] == 25 && out[1] == 25 && out[2] == 25")
 small_cap = small_cap.replace("big.Width == 682 && big.Height == 512", "big.Width == 1 && big.Height == 1")
 small_cap = small_cap.replace("rgba.Width == 2 && rgba.Height == 1", "rgba.Width == 1 && rgba.Height == 1")
-small_cap = small_cap.replace("rgbaOut[0] == 0xF81F && rgbaOut[1] == 0x03E0", "rgbaOut[0] == 0xBDEF")
+small_cap = small_cap.replace("rgbaOut[0] == 0x83E0 && rgbaOut[1] == 0x7C1F", "rgbaOut[0] == 0xBDEF")
 
 with tempfile.TemporaryDirectory(prefix="background-art-") as tmp:
     folder = Path(tmp)

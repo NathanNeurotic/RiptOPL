@@ -135,8 +135,11 @@ static SVramBlock *_blockAlloc(unsigned int size)
 {
     SVramBlock *block;
     for (block = __head; block != NULL; block = block->pNext) {
-        if (block->tex == NULL && _blockReclaimable(block) && block->iSize >= size)
-            break;
+        if (block->tex == NULL && _blockReclaimable(block)) {
+            block = _blockMergeFree(block);
+            if (block->iSize >= size)
+                break;
+        }
     }
 
     unsigned int weight = 0;

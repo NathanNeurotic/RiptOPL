@@ -469,8 +469,11 @@ void Renderer::drawQuad(rm_quad_t *q)
         gsKit_set_test(gsGlobal, GS_ATEST_OFF);
     }
 
-    if (gsKit_TexManager_bind(gsGlobal, q->txt) == GSKIT_TEXMGR_BIND_DEFERRED)
+    if (gsKit_TexManager_bind(gsGlobal, q->txt) == GSKIT_TEXMGR_BIND_DEFERRED) {
+        if (fixedAlpha)
+            gsKit_set_primalpha(gsGlobal, gDefaultAlpha, 0);
         return;
+    }
     gsKit_prim_sprite_texture(gsGlobal, q->txt,
                               q->ul.x + renderXOff_, q->ul.y + renderYOff_,
                               q->ul.u, q->ul.v,

@@ -1347,7 +1347,7 @@ void texPrepareArtForDisplay(GSTEXTURE *texture, int background)
                     return 0;
                 return static_cast<u16>(value >> 3);
             };
-            u16 alpha = src[i * 4 + 3] & 0x80 ? 0x8000 : 0;
+            u16 alpha = src[i * 4 + 3] >= 0x40 ? 0x8000 : 0;
             dst[i] = alpha | (to5(src[i * 4 + 2]) << 10) | (to5(src[i * 4 + 1]) << 5) | to5(src[i * 4]);
         }
     }

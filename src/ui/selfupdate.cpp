@@ -67,6 +67,7 @@ enum {
     SU_ERR_SWAP,
     SU_ERR_MEMORY,
     SU_ERR_PLACE,
+    SU_ERR_METADATA,
 };
 
 static const int SU_BUF = 16 * 1024;           /* request, headers and each piece of the body */
@@ -80,6 +81,7 @@ static int suResult;
 static int suError;        /* the RATLS_ERR_* behind SU_ERR_GITHUB */
 static int suRemoteRev;    /* the release's build number */
 static int suInstalledRev; /* a build installed this session: the running ELF is older than the file */
+static int suVersionPending; /* the ELF is installed; only version.txt still needs a retry */
 static unsigned char suSha[32];
 static char suMessage[96]; /* the wait screen's text, rewritten by the I/O worker as the download runs */
 
@@ -140,7 +142,8 @@ static bool suNumberedDevice(const char *path, const char *name)
 
 static bool suResolveTarget(SuTarget &target, bool writing)
 {
-    if (gBootElfName[0] == '\0' || strpbrk(gBootElfName, "/\\:") != NULL)
+    if (gBootElfName[0] == '\0' || strpbrk(gBootElfName, "/\\:") != NULL ||
+        strcmp(gBootElfName, "version.txt") == 0)
         return false;
     char partition[APA_IDMAX + 6], directory[256];
     if (hddParseBootDirectory(gBootDir, partition, sizeof(partition), directory, sizeof(directory)) == 0) {
@@ -378,6 +381,29 @@ static int suWriteVersion(const char *elfPath)
     return rc < 0 ? rc : closeRc < 0 ? closeRc : -EIO;
 }
 
+static int suStagedMatches(const char *path, const SuFile &file, int size)
+{
+    if (size > file.written)
+        return 0;
+    int fd = fileXioOpen(path, 0x0001, 0);
+    if (fd < 0)
+        return 0;
+    unsigned char buffer[2048];
+    int offset = 0;
+    int matches = 1;
+    while (offset < size) {
+        int chunk = size - offset < (int)sizeof(buffer) ? size - offset : (int)sizeof(buffer);
+        int got = fileXioRead(fd, buffer, chunk);
+        if (got != chunk || memcmp(buffer, file.data + offset, chunk) != 0) {
+            matches = 0;
+            break;
+        }
+        offset += chunk;
+    }
+    fileXioClose(fd);
+    return matches;
+}
+
 static int suInstallApa(const char *path, const SuFile &file)
 {
     char staged[264], backup[264], device[6];
@@ -386,17 +412,36 @@ static int suInstallApa(const char *path, const SuFile &file)
     snprintf(backup, sizeof(backup), "%s.bak", path);
     snprintf(device, sizeof(device), "%.5s", path);
     suStep = 1;
-    if (fileXioGetStat(staged, &status) != -ENOENT)
-        return -EEXIST;
-    if (fileXioGetStat(backup, &status) != -ENOENT) {
-        // A committed update may have left a backup. Never remove it when it is the only boot copy.
-        if (fileXioGetStat(path, &status) == -ENOENT)
+    int reuseStaged = 0;
+    int stagedStat = fileXioGetStat(staged, &status);
+    if (stagedStat >= 0) {
+        if (!suStagedMatches(staged, file, status.size))
             return -EEXIST;
+        if (status.size == file.written) {
+            reuseStaged = 1;
+        } else {
+            int cleanup = fileXioRemove(staged);
+            if (cleanup < 0)
+                return cleanup;
+        }
+    } else if (stagedStat != -ENOENT) {
+        return stagedStat;
+    }
+    int backupStat = fileXioGetStat(backup, &status);
+    if (backupStat >= 0) {
+        // A committed update may have left a backup. Never remove it when it is the only boot copy.
+        int originalStat = fileXioGetStat(path, &status);
+        if (originalStat == -ENOENT)
+            return -EEXIST;
+        if (originalStat < 0)
+            return originalStat;
         int cleanup = fileXioRemove(backup);
         if (cleanup < 0)
             return cleanup;
+    } else if (backupStat != -ENOENT) {
+        return backupStat;
     }
-    int rc = suWriteElf(staged, SU_FIO_CREAT | SU_FIO_TRUNC, file);
+    int rc = reuseStaged ? 0 : suWriteElf(staged, SU_FIO_CREAT | SU_FIO_TRUNC, file);
     if (rc >= 0) {
         suStep = 4;
         rc = fileXioSync(device, 0);
@@ -408,10 +453,14 @@ static int suInstallApa(const char *path, const SuFile &file)
                 if (fileXioRename(backup, path) < 0)
                     suStep = 5; // preserve both files for recovery
             } else {
-                // The swap is committed. Cleanup can finish on the next verified update.
-                fileXioSync(device, 0);
-                fileXioRemove(backup);
-                rc = 0;
+                int syncRc = fileXioSync(device, 0);
+                if (syncRc < 0) {
+                    rc = syncRc; // the backup is still the recovery copy; do not remove it
+                } else {
+                    // The swap is committed. Cleanup can finish on the next verified update.
+                    fileXioRemove(backup);
+                    rc = 0;
+                }
             }
         }
     }
@@ -422,12 +471,31 @@ static int suInstallApa(const char *path, const SuFile &file)
 
 static void suInstallWorker(void)
 {
+    SuTarget target;
+    int versionRc;
+    if (suVersionPending) {
+        if (!suResolveTarget(target, true)) {
+            suResult = SU_ERR_PLACE;
+        } else {
+            versionRc = suWriteVersion(target.path);
+            if (versionRc < 0) {
+                suResult = SU_ERR_METADATA;
+                suErrno = -versionRc;
+            } else {
+                suVersionPending = 0;
+                suInstalledRev = suRemoteRev;
+                suResult = SU_OK;
+            }
+        }
+        target.close();
+        suBusy = 0;
+        return;
+    }
+
     SuBuffers *b = static_cast<SuBuffers *>(malloc(sizeof(SuBuffers)));
     char url[sizeof(SU_RELEASE_PATH) + 64];
     unsigned char sha[32];
     SuFile f;
-    SuTarget target;
-    int versionRc;
 
     suResult = SU_ERR_MEMORY;
     if (b == NULL)
@@ -484,7 +552,8 @@ static void suInstallWorker(void)
     }
     versionRc = suWriteVersion(target.path);
     if (versionRc < 0) {
-        suResult = SU_ERR_SWAP;
+        suResult = SU_ERR_METADATA;
+        suVersionPending = 1;
         suErrno = -versionRc;
         free(f.data);
         goto done;
@@ -533,6 +602,9 @@ static void suReport(void)
             break;
         case SU_ERR_SWAP:
             snprintf(text, sizeof(text), "%s (%d/%d)", _l(_STR_UPDATE_ERR_SWAP), suStep, suErrno);
+            break;
+        case SU_ERR_METADATA:
+            snprintf(text, sizeof(text), _l(_STR_UPDATE_ERR_METADATA), suErrno);
             break;
         default: {
             int label = _STR_UPDATE_ERR_GITHUB;
@@ -586,35 +658,39 @@ static void suOffer(int local)
 
     if (suInstalledRev > local)
         local = suInstalledRev; /* the file on the device is already that build */
-    suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
-    if (suResult == SU_ERR_CLOCK) {
-        if (!guiMsgBox(_l(_STR_UPDATE_OPEN_CLOCK), 1, NULL) || !guiShowDateTime())
-            return;
+    if (suVersionPending) {
+        suWait(&suInstallWorker, _l(_STR_UPDATE_METADATA_RETRY));
+    } else {
         suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
-    }
-    if (suResult == SU_NEWEST) { /* the checksum is read: offer the same swap again */
-        snprintf(text, sizeof(text), _l(_STR_UPDATE_NEWEST), local);
-        if (suRemoteRev < local) { /* the channel is older than this build: no reinstall offer */
-            guiMsgBox(text, 0, NULL);
+        if (suResult == SU_ERR_CLOCK) {
+            if (!guiMsgBox(_l(_STR_UPDATE_OPEN_CLOCK), 1, NULL) || !guiShowDateTime())
+                return;
+            suWait(&suCheckWorker, _l(_STR_UPDATE_CHECKING));
+        }
+        if (suResult == SU_NEWEST) { /* the checksum is read: offer the same swap again */
+            snprintf(text, sizeof(text), _l(_STR_UPDATE_NEWEST), local);
+            if (suRemoteRev < local) { /* the channel is older than this build: no reinstall offer */
+                guiMsgBox(text, 0, NULL);
+                return;
+            }
+            size_t used = strlen(text);
+            snprintf(text + used, sizeof(text) - used, " %s", _l(_STR_UPDATE_AGAIN));
+        } else if (suResult != SU_OK) {
+            suReport();
+            return;
+        } else {
+            snprintf(text, sizeof(text), _l(_STR_UPDATE_AVAILABLE), suRemoteRev, local);
+        }
+        if (!guiMsgBox(text, 1, NULL))
+            return;
+        if (isBgmPlaying())
+            bgmStop();
+        snprintf(text, sizeof(text), _l(_STR_UPDATE_DOWNLOADING), 0);
+        suWait(&suInstallWorker, text);
+        if (suResult != SU_OK) {
+            suReport();
             return;
         }
-        size_t used = strlen(text);
-        snprintf(text + used, sizeof(text) - used, " %s", _l(_STR_UPDATE_AGAIN));
-    } else if (suResult != SU_OK) {
-        suReport();
-        return;
-    } else {
-        snprintf(text, sizeof(text), _l(_STR_UPDATE_AVAILABLE), suRemoteRev, local);
-    }
-    if (!guiMsgBox(text, 1, NULL))
-        return;
-    if (isBgmPlaying())
-        bgmStop();
-    snprintf(text, sizeof(text), _l(_STR_UPDATE_DOWNLOADING), 0);
-    suWait(&suInstallWorker, text);
-    if (suResult != SU_OK) {
-        suReport();
-        return;
     }
     snprintf(text, sizeof(text), _l(_STR_UPDATE_DONE), suRemoteRev);
     size_t used = strlen(text);

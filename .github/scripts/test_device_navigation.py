@@ -39,12 +39,16 @@ input_program = r'''
 typedef unsigned long long u64;
 enum { KEY_LEFT=1, KEY_RIGHT=2, KEY_UP=4, KEY_DOWN=8, KEY_CROSS=16, KEY_CIRCLE=32, KEY_START=64 };
 enum { SFX_CURSOR=1, GUI_SCREEN_MENU=1 };
-struct submenu_list { int unused; };
+struct submenu_list;
 struct menu_item;
 struct menu_list { menu_item *item; menu_list *next, *prev; };
+struct submenu_list { menu_item *current = nullptr; submenu_list *next = nullptr; };
+typedef submenu_list submenu_list_t;
 struct menu_item {
     int visible = 1;
     submenu_list *current = nullptr;
+    submenu_list *submenu = nullptr;
+    submenu_list *pagestart = nullptr;
     void *userdata = nullptr;
     void (*execCross)(menu_item *) = nullptr;
 };
@@ -69,14 +73,19 @@ static void guiSwitchScreen(int) {}
 static int menuPageIsGrid() { return menuPageIsGridResult; }
 static int menuCoverflowDeviceBarAvailable() { return coverflowBarAvailable; }
 static int menuGridAtRowStart() { return 1; }
-static void menuGridRow(int) {}
 static void menuPrevV() { previousCoverMoves++; }
 static void menuNextV() { nextCoverMoves++; }
-struct theme { int gridDevices; void *coverflow; void *psbbnFlow; } themeStore;
+struct theme { int gridDevices; int gridColumns; int gridRows; void *coverflow; void *psbbnFlow; } themeStore;
 static theme *gTheme = &themeStore;
+static int gridRowStep(int, int, int, int) { return -1; }
+static int gridPageStep(int, int, int, int, int) { return -1; }
+static void menuFirstPage() {}
+static void menuLastPage() {}
 @ACTIVATE_FALLBACK@
 @NEXT@
 @PREV@
+@GRID_ROW@
+@GRID_PAGE@
 @SIDEBAR@
 @LEFT@
 @UP@
@@ -143,12 +152,28 @@ int main() {
     keys = KEY_DOWN; menuNavigateDown();
     CHECK(selected_item == &pages[2]);
     CHECK(itemConfigGeneration == 1 && gCoverflowDeviceBarFocused == 0 && launches == 0);
+
+    resetInput(); themeStore.gridDevices = 0; selected_item = &pages[1];
+    pages[1].item->current = nullptr; pages[1].item->submenu = nullptr;
+    menuGridRow(-1);
+    CHECK(selected_item == &pages[0]);
+    selected_item = &pages[1];
+    menuGridRow(1);
+    CHECK(selected_item == &pages[2]);
+    selected_item = &pages[1];
+    menuGridPage(-1);
+    CHECK(selected_item == &pages[0]);
+    selected_item = &pages[1];
+    menuGridPage(1);
+    CHECK(selected_item == &pages[2]);
     return failures ? 1 : 0;
 }
 '''
-input_program = (input_program.replace("@ACTIVATE_FALLBACK@", "static void menuActivateH(struct menu_list *) {}" if not activate else "")
+input_program = (input_program.replace("@GRID_ROW@", function_text(menusys, "static void menuGridRow(int dir)"))
+                 .replace("@ACTIVATE_FALLBACK@", "static void menuActivateH(struct menu_list *) {}" if not activate else "")
                  .replace("@NEXT@", function_text(menusys, "static void menuNextH()"))
                  .replace("@PREV@", function_text(menusys, "static void menuPrevH()"))
+                 .replace("@GRID_PAGE@", function_text(menusys, "static void menuGridPage(int dir)"))
                  .replace("@SIDEBAR@", function_text(menusys, "static void menuGridSidebarInput(void)"))
                  .replace("@LEFT@", function_text(menusys, "static void menuNavigateLeft()"))
                  .replace("@UP@", function_text(menusys, "static void menuNavigateUp()"))
@@ -231,9 +256,15 @@ def compile_and_run(folder, name, source):
     return ran.returncode
 
 
+themes = (root / "src/gfx/themes.cpp").read_text(encoding="utf-8")
+can_cycle = function_text(themes, "int thmCanCycleView(void)")
+cycle_variants = all(name in can_cycle for name in ("THM_VIEW_COVERFLOW", "THM_VIEW_GRID"))
+if not cycle_variants:
+    print("FAIL: single-mask Coverflow/Grid variants cannot start hold-to-cycle")
+
 with tempfile.TemporaryDirectory(prefix="device-navigation-") as tmp:
     folder = Path(tmp)
-    results = [compile_and_run(folder, "input", input_program), compile_and_run(folder, "render", render_program)]
+    results = [compile_and_run(folder, "input", input_program), compile_and_run(folder, "render", render_program), 0 if cycle_variants else 1]
 if any(results):
     sys.exit("FAIL: device navigation/presentation behavior differs from the approved contract")
 print("PASS: Grid highlight/X behavior, direct vertical Coverflow devices, and PSBBN Flow control")

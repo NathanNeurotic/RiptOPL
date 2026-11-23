@@ -17,6 +17,11 @@ wrapper = re.search(r'^void rmDiscardFrame\(void\)\n\{.*?^\}', renderer, re.M | 
 load = themes[themes.index('static int thmLoad('):themes.index('int thmRefreshFontSize(')]
 publish = load[load.rindex('    host::ui().lock();'):load.rindex('    return 0;')]
 assert publish.index('rmDiscardFrame();') < publish.index('thmFree(curT);') < publish.index('host::ui().unlock();')
+draw_quad = re.search(r'^void Renderer::drawQuad\(rm_quad_t \*q\)\n\{.*?^\}', renderer, re.M | re.S).group(0)
+assert re.search(r'if \(gsKit_TexManager_bind\(gsGlobal, q->txt\) == GSKIT_TEXMGR_BIND_DEFERRED\) \{\n'
+                 r'        if \(fixedAlpha\)\n'
+                 r'            gsKit_set_primalpha\(gsGlobal, gDefaultAlpha, 0\);\n'
+                 r'        return;\n    \}', draw_quad), 'deferred CT24 draw must restore fixed alpha'
 
 fixture = r'''
 #include <cassert>

@@ -2214,7 +2214,11 @@ int thmReload(void)
 
 int thmCanCycleView(void)
 {
-    return gTheme != NULL && (gTheme->viewMask & (gTheme->viewMask - 1)) != 0;
+    if (gTheme == NULL)
+        return 0;
+    if ((gTheme->viewMask & (gTheme->viewMask - 1)) != 0)
+        return 1;
+    return (gTheme->viewMask & ((1u << THM_VIEW_COVERFLOW) | (1u << THM_VIEW_GRID))) != 0;
 }
 
 int thmCycleView(void)

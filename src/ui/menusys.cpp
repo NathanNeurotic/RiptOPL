@@ -2655,6 +2655,13 @@ static void menuGridRow(int dir)
             index = count;
         count++;
     }
+    if (!gTheme->gridDevices && (count == 0 || cur == NULL)) {
+        if (dir < 0)
+            menuPrevH();
+        else
+            menuNextH();
+        return;
+    }
     if (!gTheme->gridDevices && count > 0 && cur != NULL) {
         int firstRow = index < gTheme->gridColumns;
         int lastRow = index / gTheme->gridColumns == (count - 1) / gTheme->gridColumns;
@@ -2700,6 +2707,13 @@ static void menuGridPage(int dir)
         count++;
     }
     int target = cur != NULL ? gridPageStep(count, index, gTheme->gridRows, gTheme->gridColumns, dir) : -1;
+    if (target < 0 && !gTheme->gridDevices && (count == 0 || cur == NULL)) {
+        if (dir < 0)
+            menuPrevH();
+        else
+            menuNextH();
+        return;
+    }
     if (target < 0) {
         if (count > gTheme->gridRows * gTheme->gridColumns) { // a single page has nowhere to wrap to
             if (dir < 0)

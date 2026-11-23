@@ -2626,10 +2626,6 @@ gui_strings:
 - comment: The update is installed. %d is the new build's number.
   label: UPDATE_DONE
   string: Updated to build %d. It starts the next time you open RiptOPL.
-- label: UPDATE_RELAUNCH
-  string: Launch it now?
-- label: UPDATE_RELAUNCH_FAILED
-  string: The update is installed. Open RiptOPL again from your launcher.
 - comment: The current ELF's path or packed/unpacked format cannot be resolved safely for updating.
   label: UPDATE_ERR_PLACE
   string: Could not identify the running ELF for a safe update. Start it from a memory card, MMCE, USB/exFAT or a full APA partition path.
@@ -2761,3 +2757,11 @@ gui_strings:
   string: Layout Settings
 - label: HINT_LAYOUT_SETTINGS
   string: "Adjust Coverflow size, animation and dimming, or choose a Grid layout."
+- label: UPDATE_RELAUNCH
+  string: Launch it now?
+- label: UPDATE_RELAUNCH_FAILED
+  string: The update is installed. Open RiptOPL again from your launcher.
+- label: UPDATE_ERR_METADATA
+  string: 'The ELF was installed, but version.txt could not be written (error %d). Check for Updates to retry only that file.'
+- label: UPDATE_METADATA_RETRY
+  string: Writing version.txt...
