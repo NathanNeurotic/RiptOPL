@@ -1,9 +1,0 @@
-https://github.com/ps2dev/ps2sdk
-ac92a9f657d2e531dd8f060250b07f2a5ac6dea5
-
-Historical RA fallback, retired from build graphs after sdk-core v2026.10.13
-added native libcglue socket/netdb/select entrypoints. Source and notices remain
-for provenance and source-archive attribution; no fallback archive is linked.
-Native implementation: https://git.techwritescode.dev/ps2/sdk-core
-v2026.10.13, c8283e7fe933aab65b4ecc48d39ce2f39bdb2886
-core/libcglue/src/socket.c, glue.c and fdman.c

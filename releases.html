@@ -1,0 +1,184 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Releases · RiptOPL Docs</title>
+<meta name="description" content="The rolling and tagged release channels, and how to pull.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<meta property="og:site_name" content="RiptOPL Docs">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
+<link rel="stylesheet" href="assets/style.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    RiptOPL <small>DOCS</small></a>
+    <div class="topbar-actions">
+    <a class="topbar-btn primary" href="releases.html" title="Downloads &amp; Releases"><span class="icon icon-releases"></span>Downloads</a>
+    <a class="topbar-btn" href="https://github.com/NathanNeurotic/RiptOPL" target="_blank" rel="noopener" title="GitHub Repository"><span class="icon icon-github"></span>GitHub</a>
+  </div>
+  <div class="search">
+    <span class="ico"></span>
+    <input id="q" type="search" aria-label="Search documentation" placeholder="Search devices, themes, Neutrino, settings…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-brand-sub">PLAYSTATION 2 // RIPTOPL</div>
+    <a href="index.html"><span class="icon icon-home"></span>Home</a>
+    <h4>Start</h4>
+    <a href="getting-started.html"><span class="icon icon-start"></span>Getting Started</a>
+    <a href="install.html"><span class="icon icon-install"></span>Install &amp; First Boot</a>
+    <h4>Game sources</h4>
+    <a href="usb.html"><span class="icon icon-usb"></span>USB / MX4SIO / iLink</a>
+    <a href="mmce.html"><span class="icon icon-mmce"></span>MMCE</a>
+    <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
+    <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
+    <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/NFS/UDPFS/UDPBD)</a>
+    <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
+    <h4>Features</h4>
+    <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
+    <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
+    <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
+    <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
+    <a href="library.html"><span class="icon icon-apps"></span>Game Library</a>
+    <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
+    <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
+    <a href="gsm.html"><span class="icon icon-gsm"></span>GSM Video Modes</a>
+    <a href="igr.html"><span class="icon icon-igr"></span>In-Game Reset</a>
+    <a href="vmc.html"><span class="icon icon-vmc"></span>VMC</a>
+    <a href="file-manager.html"><span class="icon icon-apps"></span>File Manager</a>
+    <a href="cheats.html"><span class="icon icon-cheats"></span>Cheats</a>
+    <a href="retroachievements.html"><span class="icon icon-ra"></span>RetroAchievements</a>
+    <h4>Theme Engine</h4>
+    <a href="themes.html"><span class="icon icon-themes"></span>Theme Engine</a>
+    <h4>Reference</h4>
+    <a href="settings.html"><span class="icon icon-settings"></span>Settings Reference</a>
+    <a href="controls.html"><span class="icon icon-controls"></span>Controls</a>
+    <a href="languages.html"><span class="icon icon-languages"></span>Languages</a>
+    <a href="unicode-titles.html"><span class="icon icon-languages"></span>Japanese / Unicode Titles</a>
+    <a href="pademu.html"><span class="icon icon-pademu"></span>PADEMU</a>
+    <a href="nbd.html"><span class="icon icon-nbd"></span>NBD Server</a>
+    <a href="zso.html"><span class="icon icon-zso"></span>ZSO Format</a>
+    <a href="ps3-bc.html"><span class="icon icon-ps3"></span>PS3 BC</a>
+    <a href="releases.html" class="active"><span class="icon icon-releases"></span>Releases</a>
+    <a href="fork-gaps.html"><span class="icon icon-fork-gaps"></span>Fork Feature Gaps <span class="nav-badge">AUDIT</span></a>
+    <a href="ps2sdk-notes.html"><span class="icon icon-book"></span>Notes for ps2sdk</a>
+    <a href="troubleshooting.html"><span class="icon icon-troubleshoot"></span>Troubleshooting</a>
+    <a href="launch-diagnostics.html"><span class="icon icon-troubleshoot"></span>Launch Diagnostics</a>
+    <a href="credits.html"><span class="icon icon-credits"></span>Credits &amp; Sources</a>
+    <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
+  </nav>
+  <main class="content">
+<h1>Releases and packages</h1>
+<p>For a first installation, choose the full <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling">RiptOPL kit</a>. Choose the <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra">RetroAchievements kit</a> if you use xeRAbora. The <a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite">RiptOPLite channel</a> supplies smaller loaders for existing installations that use one game device. All three channels use the built-in PSBBN theme, with List, Grid, Coverflow and PSBBN Flow views.</p>
+
+<h2 id="channels">Editions and channels</h2>
+<table><thead><tr><th>Edition</th><th>Channel</th><th>Download</th></tr></thead><tbody>
+<tr><td>RiptOPL</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling"><code>rolling</code></a></td><td>Standard full kit, built with LLVM/Clang and marked Latest. Choose <code>RIPTOPL-&lt;version&gt;.zip</code>.</td></tr>
+<tr><td>RetroAchievements</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-ra"><code>rolling-ra</code></a></td><td>Full GCC kit with the pinned NULD runtime and a xeRAbora shortcut. Choose <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>.</td></tr>
+<tr><td>RiptOPLite and RiptOPLite RA</td><td><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite"><code>rolling-lite</code></a></td><td>GCC loaders for individual game devices. The standard loaders are ELFs, and RA loaders come in ZIPs with the matching runtime.</td></tr>
+</tbody></table>
+
+<h2 id="rolling-assets">What each channel carries</h2>
+<p>Both full kits include the matching app under <code>APPS/</code>, artwork, a PSU app save, <code>POPS/</code> drivers, <code>EMBER/</code>, the bundled Neutrino runtime, licenses and credits. Both channels publish the packed ELF, source snapshot, language pack, build manifest and SHA-256 checksums. Sony BIOS and emulator files must be supplied separately where required.</p>
+<ul>
+<li><b>RiptOPL:</b> <code>RIPTOPL-VARIANTS-&lt;version&gt;.zip</code> contains <code>pademu0</code>, <code>ds5</code>, <code>extras</code> and <code>extras_ds5</code>. <code>RIPTOPL-DEBUG-&lt;version&gt;.zip</code> contains diagnostic configurations. <code>RIPTOPL-BUGREPORT-&lt;version&gt;.zip</code> contains the unpacked diagnostic loader and reporting instructions.</li>
+<li><b>RetroAchievements:</b> <code>RIPTOPL-RA-VARIANTS-&lt;version&gt;.zip</code> contains <code>pademu0</code> and unpacked loader builds. Use the runtime packaged with the RA release.</li>
+</ul>
+<p>For the supported options and exact toolchains, see <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md">Build configurations</a> and the <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/ROLLING_RELEASE.md">release contract</a>.</p>
+
+<h2 id="riptoplite">RiptOPLite: one loader per game device</h2>
+<p><a href="https://github.com/NathanNeurotic/RiptOPL/releases/tag/rolling-lite">rolling-lite</a> is for consoles that play from one device only. Each standard build includes
+the game drivers for its chosen device; the memory card (MMCE) and network modules stay in every build, and the RetroAchievements builds also
+keep everything RetroAchievements uses on any device.</p>
+<table><thead><tr><th>Device</th><th>Standard</th><th>RetroAchievements</th></tr></thead><tbody>
+<tr><td>USB</td><td><code>RIPTOPLITE-USB.ELF</code></td><td><code>RIPTOPLITE-RA-USB-&lt;version&gt;.zip</code></td></tr>
+<tr><td>MX4SIO</td><td><code>RIPTOPLITE-MX4SIO.ELF</code></td><td><code>RIPTOPLITE-RA-MX4SIO-&lt;version&gt;.zip</code></td></tr>
+<tr><td>iLink</td><td><code>RIPTOPLITE-ILINK.ELF</code></td><td><code>RIPTOPLITE-RA-ILINK-&lt;version&gt;.zip</code></td></tr>
+<tr><td>HDD (APA, exFAT, DESR DVR)</td><td><code>RIPTOPLITE-HDD.ELF</code></td><td><code>RIPTOPLITE-RA-HDD-&lt;version&gt;.zip</code></td></tr>
+<tr><td>SMB</td><td><code>RIPTOPLITE-SMB.ELF</code></td><td><code>RIPTOPLITE-RA-SMB-&lt;version&gt;.zip</code></td></tr>
+<tr><td>UDPBD</td><td><code>RIPTOPLITE-UDPBD.ELF</code></td><td><code>RIPTOPLITE-RA-UDPBD-&lt;version&gt;.zip</code></td></tr>
+<tr><td>UDPFS (Files and IMG)</td><td><code>RIPTOPLITE-UDPFS.ELF</code></td><td><code>RIPTOPLITE-RA-UDPFS-&lt;version&gt;.zip</code></td></tr>
+<tr><td>MMCE</td><td><code>RIPTOPLITE-MMCE.ELF</code></td><td><code>RIPTOPLITE-RA-MMCE-&lt;version&gt;.zip</code></td></tr>
+</tbody></table>
+<p>HTTP and PC Card CF have no lite build. A standard Lite ELF can replace <code>RIPTOPL.ELF</code> in an existing RiptOPL installation. Keep the companion folders for any cores you use. RetroAchievements needs files outside the loader (NULD's Neutrino RA runtime, formerly ORBIT), so each RA lite download is a ZIP with the
+ELF, <code>neutrino/</code>, the xeRAbora shortcut, licences, manifest and a README saying where each goes. A lite loader shares the full
+loader's settings file and leaves the device settings it has no drivers for unchanged; it cannot read settings from such a device, so keep them
+on its own device, a memory card or a USB stick. The channel also carries <code>BUILD-MANIFEST.json</code>, <code>SHA256SUMS.txt</code> and
+<code>LICENSE-USMB2.txt</code>. See <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/RIPTOPLITE.md">RIPTOPLITE.md</a>.</p>
+
+<h2 id="riptopllvm">Moving from an earlier edition</h2>
+<p>Older Korium, IncebtIon and RiptOPLLVM installations use earlier channel names. Switch once by downloading and installing the full current kit manually. Back up your settings and saves first. Copy the companion folders with the new kit so the installed loader, Neutrino and POPStarter drivers agree. The standard RiptOPL kit now uses LLVM/Clang.</p>
+
+<h2 id="install">Installing and updating</h2>
+<p>Use <a href="install.html">Install &amp; First Boot</a> to copy the app and companion files. Standard RiptOPL and RetroAchievements can check their own channels from the main menu after that first manual migration. The updater replaces the ELF. Read the release notes to see when to update the companion folders separately.</p>
+
+<h2 id="identity">Identify a tested build</h2>
+<p>Report the source commit, edition, configuration and compiler from <code>BUILD-MANIFEST.json</code>, plus your PS2 model, storage device, launch core and exact result. Verify the download with its channel's <code>SHA256SUMS.txt</code>.</p>
+
+<h2 id="how-to-pull">Stable download links</h2>
+<p>Install ZIP names include the version. For a loader-only replacement, use <a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling/RIPTOPL.ELF"><code>RIPTOPL.ELF</code></a> or <a href="https://github.com/NathanNeurotic/RiptOPL/releases/download/rolling-ra/RIPTOPL-RA.ELF"><code>RIPTOPL-RA.ELF</code></a>. Match the loader to the kit already installed.</p>
+
+<h2 id="bundled-neutrino">Bundled Neutrino core</h2>
+<p>The standard kit uses the <a href="https://github.com/ps2max32/neutrino/releases/tag/latest">Neutrino development release</a> selected at packaging time, with RiptOPL's UDPFS configuration and i.LINK drivers. The RetroAchievements kit uses <a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.14">NULD v1.2.14</a> (formerly ORBIT). Use each kit's own <code>neutrino/</code> folder. See <a href="neutrino.html">Neutrino</a> and <a href="retroachievements.html">RetroAchievements</a>.</p>
+
+<h2 id="test-artifacts">Download a PR or Actions test build</h2>
+<p>Open the supplied Actions run and verify the commit. Under Artifacts, <code>release-riptopl-attempt&lt;run&gt;</code> and <code>release-ra-attempt&lt;run&gt;</code> contain their full kits. Variant and Lite artifacts carry individual loader builds. Test artifacts expire. See <a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/TEST-BUILDS.md">Test builds</a> for artifact names and report details.</p>
+
+<h2 id="changes">What changed</h2>
+<p>Each channel's release notes list the ten newest changes in the build and link the full history, so they are always current for that build.
+Read them on the <a href="https://github.com/NathanNeurotic/RiptOPL/releases">releases list</a>, or see the <a href="https://github.com/NathanNeurotic/RiptOPL/commits/rebuild/main">rebuild/main history</a>
+for everything merged since the last publish.</p>
+<h2 id="archive">Older builds</h2>
+<p>Each channel holds only its newest build. The <a href="https://mega.nz/folder/74pRHKRB#9SLDkrkvZAbeKO4Qvxg9LQ">MEGA rolling archive</a>
+keeps historical builds of the legacy C edition; automatic archiving of the C++ editions is not set up, so keep a copy of a build
+you may want to return to.</p>
+<h2 id="building">Building it yourself</h2><p>With ps2build installed, run from the repository root:</p>
+<pre>python tools/assets.py fetch
+python tools/assets.py lang
+python tools/build_edition.py riptopl
+python tools/build_edition.py riptopl --configuration extras</pre>
+<p>Build <code>riptopl</code> for the standard LLVM loader, <code>ra</code> for GCC RetroAchievements, or
+<code>lite</code> and <code>lite_ra</code> with <code>--device &lt;device&gt;</code> for RiptOPLite. See
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/ROLLING_RELEASE.md">ROLLING_RELEASE.md</a> and
+<a href="https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md">Build configurations</a>.</p>
+
+<section class="callout info" id="external-tools"><div class="h">External Tools &amp; Services</div>
+<p><b><a href="https://github.com/NathanNeurotic/PS2-Servers">PS2-Servers</a></b> by <b><a href="https://github.com/NathanNeurotic">Ripto</a></b> — all-in-one PC server launcher for <b>SMB, NFS, UDPFS, UDPBD and HTTP</b>.<br>
+<b><a href="https://github.com/YouKnow-sys/udpfs-server">udpfs-server</a></b> by <b><a href="https://github.com/YouKnow-sys">YouKnow-sys</a></b> — the same idea from a phone: an <b>Android</b> app that shares folders and disk images to the PS2 over <b>UDPFS</b>, found by broadcast so there is no server address to type in on the console. Built on <a href="https://github.com/pcm720/udpfsd">udpfsd</a> by <a href="https://github.com/pcm720">pcm720</a>; MIT licensed.<br>
+<b><a href="https://github.com/Luden02/OrbitPS2-Manager">OrbitPS2 Manager</a></b> by <b><a href="https://github.com/Luden02">Luden</a></b> — cross-platform PC library manager for importing discs, artwork/screenshots, ZSO compression, per-game settings and VMC management.<br>
+<b><a href="https://gitlab.com/akilluminati247/RIPPS2">RIPPS2</a></b> by <b><a href="https://gitlab.com/akilluminati247">Akilluminati47</a></b> — a PS2 front end and loader developed in collaboration with RiptOPL, with its own interface, game libraries, Memory Files browser and save tools. Built on the RiptOPL legacy C tree; see its <a href="https://gitlab.com/akilluminati247/RIPPS2/-/releases">releases</a> for current PS2 builds.<br>
+<b><a href="https://github.com/shaanhomebrew-cloud/OPL-PS1-AIO-Converter-GUI">OPL PS1 AIO Converter GUI</a></b> by <b><a href="https://github.com/shaanhomebrew-cloud">shaan</a></b> — Windows all-in-one PS1/POPStarter preparation tool for BIN/CUE → VCD conversion and installation to USB, MX4SIO, MMCE, iLink, exFAT HDD, SMB and APA internal HDD.<br>
+<b><a href="https://github.com/hacan359/xerabora">xeRAbora</a></b> by <b><a href="https://github.com/hacan359">hacan359</a></b> — the PC client for <b>RetroAchievements</b> on real PS2 hardware. Client: <b><a href="https://github.com/hacan359/xerabora/releases/tag/v2.2.0">v2.2.0</a></b>; v1.0.1 (alpha.17 or later) also works. RiptOPL's RA build reads both clients' watch lists. After updating both the loader and client, run <b>RA: check game support</b> again for every game you play. xeRAbora runs rcheevos, talks to the RetroAchievements servers, unlocks achievements and builds the per-game watch list. Shipped as a shortcut inside <code>RIPTOPL-RetroAchievements-&lt;version&gt;.zip</code>; MIT licensed. RiptOPL’s RA stabilization on real hardware was driven by <b><a href="https://github.com/oMrRexD">oMrRexD</a></b>, whose PRs #702–#705 fixed the ee_core stack squeeze, MMCE DEV9 path, cold-launch networking and settings placement.<br>
+<b><a href="https://github.com/Docmine17/Open-PS2-Loader-HTTP">OPL HTTP PC server</a></b> by <b><a href="https://github.com/Docmine17">Docmine17</a></b> — the PC side of RiptOPL’s <b>HTTP</b> protocol: a small static HTTP server with byte-range support that serves your <code>games.csv</code> catalog and streams the ISOs. RiptOPL works with it <b>unmodified</b> — no new API, no catalog conversion, no changed layout — with host conformance checks against the upstream server; PS2 hardware validation is still pending.<br>
+<b><a href="https://github.com/TheRealNextria/PS2RD-CHT-Manager">PS2RD CHT Manager</a></b> by <b><a href="https://github.com/TheRealNextria">TheRealNextria</a></b> — PC manager for the PS2RD <code>.cht</code> cheat files RiptOPL reads from your device's <code>CHT</code> folder.<br>
+<b><a href="https://github.com/Gageformer/Ember">Ember</a></b> by <b><a href="https://github.com/Gageformer">Gageformer</a></b> — a PS1 emulator running natively on the PS2, used as RiptOPL's second PS1 core alongside <a href="https://www.psx-place.com/resources/popstarter.683/">POPSTARTER</a>. Ships as an <code>EMBER/</code> folder inside the release package, bundled unmodified under the Ember Public Beta Testing Licence (<code>EMBER/LICENSE-BETA.txt</code>); <a href="https://github.com/Gageformer/Ember/releases">releases</a>.<br>
+<b><a href="https://github.com/Okeanos86/BDMAssault/releases">BDM-UDPFS Assault</a></b> by <b><a href="https://github.com/Okeanos86">Okeanos</a></b> — UDPFS Assault (release 1.0.1 of 2026-11-08), the <a href="https://www.psx-place.com/resources/popstarter.683/">POPSTARTER</a> network VCD driver RiptOPL ships as <code>POPS/usbd.irx.udpfs</code>: it reads every VCD file, plays <code>.cue</code> + <code>.bin</code> games without conversion, writes VMC saves on the PC and can share one save folder between the discs of a game (<code>PATHMAP.INI</code>). Based on <a href="https://github.com/israpps">israpps</a>' BDM Assault.<br>
+<b><a href="https://www.psx-place.com/resources/popstarter.683/">POPStarter</a></b> by <b><a href="https://www.psx-place.com/members/krhacken.98/">krHACKen</a></b> — a PS1 launcher built around Sony's native <b>POPS</b> emulator for the PS2, used as RiptOPL's primary PS1 core alongside <a href="https://github.com/Gageformer/Ember">Ember</a>. POPStarter provides the compatibility and launch layer for running PS1 VCDs from USB, MX4SIO, MMCE, iLink, internal HDD, and SMB; RiptOPL's iLink handoff is wired but still awaiting a passing hardware retest. The official POPStarter r13 package contains no Sony emulator binaries, libraries, or BIOS files; those components must be supplied separately by the user. Official download, documentation, compatibility information, and releases are maintained on <a href="https://www.psx-place.com/resources/popstarter.683/">PSX-Place</a>.<br>
+<b><a href="https://github.com/danielnuld/nuld/releases/tag/v1.2.14">NULD (formerly ORBIT) Neutrino RA runtime</a></b> by <b><a href="https://github.com/danielnuld">Daniel (danielnuld)</a></b> — the existing RA-capable <a href="https://github.com/ps2max32/neutrino">Neutrino</a> runtime, bundled only in the RetroAchievements kit. Based on Neutrino by <a href="https://github.com/rickgaiser">Maximus32</a> and <a href="https://github.com/hacan359/xerabora">xeRAbora</a> protocol work by <a href="https://github.com/hacan359">hacan359</a>; AFL-3.0. Exact release, archive digest and source commit ship in <code>neutrino/ORBIT-RA.json</code>. Standard kits retain ordinary upstream Neutrino.<br>
+<b><a href="https://github.com/ps2max32/neutrino">Neutrino</a></b> by <b><a href="https://github.com/rickgaiser">rickgaiser</a></b> — a small, fast, modular PS2 device emulator, and RiptOPL's second PS2 loader core alongside OPL's own. Ships as a ready-to-use <code>neutrino/</code> folder inside each installable ZIP (drag-and-drop to <code>mc?:/neutrino/</code>), under the <b>AFL-3.0</b> licence; <a href="https://github.com/ps2max32/neutrino/releases">releases</a>.<br>
+<b><a href="https://git.techwritescode.dev/techwritescode/PSUManager">PSUManager</a></b> by <b><a href="https://github.com/techwritescode">techwritescode</a></b> — the CC0 PS2 save-container implementation used by RiptOPL release tooling to independently validate <code>APP_RIPTOPL.psu</code> and <code>APP_RIPTOPL-RA.psu</code>. The exact upstream core and license used by CI are preserved in <code>third_party/PSUManager/</code>.</p></section>
+<h2 id="source">Source and licenses</h2><p>Each channel includes a source snapshot, credits, licensing and the exact build manifest. Companion binaries retain their own licenses. Every loader embeds <a href="https://github.com/sahlberg/usmb2">usmb2</a> by <a href="https://github.com/sahlberg">Ronnie Sahlberg</a>, used under the MIT licence, so every kit and bundle zip carries its licence, and each channel publishes the same file beside the standalone loader.</p>
+<span id="two-toolchains"></span><span id="four-flavours"></span><span id="pipeline"></span><span id="getting-started"></span><span id="archive-availability"></span><span id="ecosystem"></span>
+</main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>RiptOPL Documentation</b> — for the opinionated Open PS2 Loader fork. Built on, and grateful to, the
+  <a href="https://github.com/ps2homebrew">ps2homebrew</a> team and the wider OPL family — see
+  <a href="credits.html">Credits &amp; Sources</a>. For the canonical project, see
+  <a href="https://github.com/ps2homebrew/Open-PS2-Loader">ps2homebrew/Open-PS2-Loader</a>.</p>
+  <p class="prov-inline">RiptOPL is a downstream fork, not the canonical project. POPSTARTER uses Sony's POPS; Ember is a separate emulator. Sony's POPS is
+  <b>not</b> distributed here. PS1/POPSTARTER deep reference: the sister
+  <a href="https://nathanneurotic.github.io/POPSLoader/">POPStarter docs</a>.</p>
+</footer>
+<script src="assets/app.js"></script>
+<script src="assets/orbs.js"></script>
+</body></html>

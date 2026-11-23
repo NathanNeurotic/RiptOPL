@@ -1,7 +1,0 @@
-PPC TTY driver: https://github.com/ps2dev/ps2sdk (AFL-2.0)
-Resolved from the installed ps2build sdk-world v2026.10.12.2 or newer,
-using its ppctty package for the selected compiler. No bundled driver is built.
-The build manifest records the actual SDK component versions; the resolved
-definition imports ppctty through embed_irx. LICENSE is retained for distribution.
-The previous source fallback at ac92a9f657d2e531dd8f060250b07f2a5ac6dea5
-was removed after verifying the released GCC and LLVM packages.
