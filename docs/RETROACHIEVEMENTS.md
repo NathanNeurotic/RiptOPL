@@ -41,7 +41,7 @@ as finished.
 | Menu actions: check game support, test PC link | both used on hardware: the support check's hashing by [hacan359](https://github.com/hacan359), the PC link test in #704 |
 | List badges and the cover mark | written, **not yet confirmed on hardware** |
 | Unlock overlay | **hardware-tested**: the gold overlay showed over the running game on an unlock (#704) |
-| Settings: RA telemetry, RA badges | done; on the **Network** page since #705, where switching telemetry off and on was checked on hardware |
+| Settings: RA telemetry, RA badges | done; on the **Network** page since #705, where switching telemetry off and on was checked on hardware. They now have a **RetroAchievements** page of their own, **not yet tried on hardware** |
 | Disc in the tray | implemented in the RA build; **not hardware-tested** |
 
 ---
@@ -53,7 +53,7 @@ as finished.
 1. Start **RIPTOPL-RA.ELF** from the RetroAchievements kit (`rolling-ra`). The standard RiptOPL kit runs without achievement telemetry or a companion PC.
 2. Run **xeRAbora v2.2.0** on the companion PC and sign in to your RetroAchievements
    account in its Settings page. Keep it running.
-3. In **Settings → Network**, leave **RA Mode** on **Xerabora**, turn **RetroAchievements
+3. In **Settings → RetroAchievements**, leave **RA Mode** on **Xerabora**, turn **RetroAchievements
    telemetry** on and save. Telemetry is Off on a fresh start. Give the PS2 working network
    settings on the same LAN as the PC, and set **RA companion IP** to the PC's IPv4 address to
    target it directly (0.0.0.0 finds it by broadcast).
@@ -74,7 +74,7 @@ run one achievement service per PC.
 
 ### Settings and menu actions
 
-The settings, on the **Network** settings page:
+The settings, on the **RetroAchievements** settings page (RetroAchievements builds list it in the Settings hub, right after Network):
 
 | Setting | Default | Effect |
 | --- | --- | --- |
@@ -100,7 +100,7 @@ RiptOPL's main menu:
 
 1. Choose **RA: check disc support**. RiptOPL hashes the disc's boot executable and asks the PC
    client for its watch list. The check runs in the background and reports its result on screen.
-2. Enable **RetroAchievements telemetry** in **Network** settings.
+2. Enable **RetroAchievements telemetry** in **RetroAchievements** settings.
 3. Choose **RA: launch disc**. This action requires a watch list for the disc currently in the tray.
 
 Disc watch lists and hash logs use `RA/` inside the active settings folder: for example,
@@ -274,7 +274,7 @@ network driver would otherwise wait for a cable for ever and the game would neve
 
 ### RA Mode and the companion PC
 
-**Settings → Network → RA Mode** picks the PC service: **Xerabora** (the default; configurations
+**Settings → RetroAchievements → RA Mode** picks the PC service: **Xerabora** (the default; configurations
 without `ra_mode` keep it) or **Caduceus**. It does not switch telemetry on by itself; **RA Telemetry**
 still does. **RA companion IP** names the PC that runs the service; **0.0.0.0** keeps the fallback.
 
@@ -290,11 +290,12 @@ RiptOPL never stores a RetroAchievements password or key. Caduceus here covers t
 watch lists, telemetry, in-game notices and the achievement browser below. **Caduceus end-to-end
 console tracking is NOT TESTED on hardware.**
 
-In the game an unlock shows as a gold pulse (Xerabora always, Caduceus by default). **Settings →
-Network → Caduceus experimental cards** (Off by default, saved as `ra_experimental_cards=1`; any other
-value reads as Off) instead draws a small card with the achievement's title and points in the upper
-right. The row is available only with RA Mode Caduceus and telemetry on, and a switch away keeps the
-saved choice. With cards Off a launch reserves nothing extra and installs no GS tracker. With cards on,
+In the game an unlock shows as a gold pulse by default, with either client. **Settings →
+RetroAchievements → Experimental achievement cards** (Off by default, saved as `ra_experimental_cards=1`; any other
+value reads as Off) instead draws a small card in the upper right: "ACHIEVEMENT UNLOCKED", the
+achievement's title and its points. xeRAbora (the upstream client and PS2 Servers' xeRAbora mode alike)
+sends the achievement's number and points but no title, so its card shows the points in the title's
+place; Caduceus sends the title. The row is available with telemetry on, in either RA Mode. With cards Off a launch reserves nothing extra and installs no GS tracker. With cards on,
 a tracked launch reserves about 30 KiB more in module storage, kept below 1 MB when the storage starts
 there; without room, or for a display the renderer cannot draw on, the pulse is used instead. The
 renderer is the original's (adapted from [Rian6's caduceus-opl](https://github.com/Rian6/caduceus-opl/tree/2a98a9d7361f8e33f421244bc88c318eab3bdf2f),
@@ -353,6 +354,8 @@ Updating the external client alone does not update the telemetry code in your EL
 - **Bounded telemetry cadence:** up to three snapshot packets per video frame on average. Sets needing four to six parts are sampled every second frame, seven to nine parts every third frame; smaller sets every frame.
 - **Read-cost diagnostics:** the PC receives the COP0 ticks spent reading a snapshot and the ticks per video frame.
 - **Watch-list validation and read safety:** only 1-, 2- and 4-byte entries with an exact declared byte sum are accepted. Addresses outside `0x00080000..0x02000000` (some sets, like X-Men Origins, carry `0x00000000`) are never read from the VBlank handler, where they took a TLB miss and hung the game; they are sent as 0 so the snapshot keeps its shape.
+- **Scratchpad:** entries in `0x02000000..0x02003FFF`, where RetroAchievements numbers the 16 KB scratchpad, are read at `0x70000000` (xeRAbora v2.1.0). Direct entries only: a pointer chain that starts or ends there still reports nothing. OPL-core games; **NOT TESTED on hardware**.
+- **Game announcement:** when the watch list carries the RAH1 image hash, the loader hands it to `raudp` behind the companion address (`RA_ARG_HOST`: `<ipv4>[,<32 hex digits>]`) and `raudp` sends `RAI1 <serial> <hash>` once a second (xeRAbora v2.1.0), so a client that has never seen the game loads its set. PS2 (OPL core) and PS1 (POPStarter); not sent for lists without a hash or to the Caduceus bridge. **NOT TESTED on hardware**.
 - **Set identification:** while the PC replies WAIT, the console pauses 500 ms between up to 20 rounds. A newer client's refusal reason is shown rather than a generic unknown-image message.
 - **PC-requested return:** the client's return command takes the existing IGR path, so it is unavailable in Mode 6.
 - **Snapshot delivery:** telemetry polls every 4 ms, sends each new snapshot once, retries busy or torn copies, repeats an unchanged snapshot after ~1 second, and marks the staged sequence sent only after every part is accepted.

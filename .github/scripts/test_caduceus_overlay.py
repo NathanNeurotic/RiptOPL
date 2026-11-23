@@ -44,8 +44,7 @@ int main(void) {
  assert(sizeof(struct ra_event)==128);
  assert(RA_OverlayEventBuffer()==pulse_buffer);
  RA_OverlayOnVblank(1);assert(pulses==1);
- g_ee_core_config.raClientMode=1;
- assert(RA_OverlayEventBuffer()==pulse_buffer); /* opt-out / no room */
+ assert(RA_OverlayEventBuffer()==pulse_buffer); /* opt-out / no room; the client mode (0: xeRAbora) plays no part */
  RA_OverlaySetPacketBuffer(packet+64);
  struct ra_event *event=RA_OverlayEventBuffer();
  assert(event!=(struct ra_event *)pulse_buffer);
@@ -94,10 +93,22 @@ int main(void) {
  event->seq=6;event->commit=6;event->kind=RA_EVENT_RESET;race_mode=3;
  RA_OverlayOnVblank(221);assert(resets==3 && ra_ovl_seen==5);
  RA_OverlayOnVblank(222);assert(resets==3 && ra_ovl_seen==7);
+ {
+  /* xeRAbora sends id and points only: the card is drawn without a title, the points in its place. */
+  static unsigned char titled[sizeof(packet)];
+  memcpy(titled,packet,sizeof(packet));
+  race_mode=0;event->seq=8;event->commit=8;event->kind=RA_EVENT_MAKE_UNLOCK(10);event->arg=456;event->title[0]=0;
+  GIF_D2_QWC=0;
+  for(unsigned f=230;f<245;f++) { GIF_D2_CHCR=0;RA_OverlayOnVblank(f); }
+  assert(ra_ovl_running && !ra_ovl_title[0] && ra_ovl_points==10 && GIF_D2_QWC==966);
+  assert(memcmp(titled,packet,sizeof(packet)));
+  for(int i=0;i<64;i++) assert(packet[i]==0xCD);
+  RA_OverlayOnVblank(460);assert(!ra_ovl_running);
+ }
  RA_OverlaySetPacketBuffer(NULL);assert(!draw_card());
  assert(RA_OverlayEventBuffer()==pulse_buffer);
  RA_OverlayOnVblank(221);assert(pulses==2);
- puts("PASS: card bounds, sliced rasterization, GIF state refusal, CT32/CT16 packet lengths, torn events, reset and Xerabora dispatch");
+ puts("PASS: card bounds, sliced rasterization, GIF state refusal, CT32/CT16 packet lengths, torn events, reset, an untitled (xeRAbora) card and the pulse fallback");
 }
 """
 fallback_tests=r"""

@@ -72,6 +72,18 @@ int main(void)
     assert(resolve(&fonts_[0], 0x3042) == &fonts_[0]); /* Safe if unavailable. */
     fallbackFontId_ = -1;
     assert(resolve(&fonts_[0], 0x3042) == &fonts_[0]); /* Safe if absent. */
+    /* A translation's font is the menu font: a theme font without Japanese borrows from it. */
+    fonts_[0] = (font_t){1, (void*)1}; /* Japanese UI font. */
+    fonts_[3] = (font_t){1, (void*)3}; /* Theme Latin font. */
+    assert(resolve(&fonts_[3], 0x3042) == &fonts_[0]);
+    assert(resolve(&fonts_[3], 'A') == &fonts_[3]); /* Never steal ASCII. */
+    assert(resolve(&fonts_[3], 0x03A9) == &fonts_[3]); /* Neither face has it: keep the theme font. */
+    fonts_[1] = (font_t){1, (void*)2};
+    fallbackFontId_ = 1;
+    assert(resolve(&fonts_[3], 0x03A9) == &fonts_[1]); /* The optional fallback still comes first. */
+    fonts_[0].isValid = 0;
+    fallbackFontId_ = -1;
+    assert(resolve(&fonts_[3], 0x3042) == &fonts_[3]); /* Safe if the menu font is unavailable. */
     return 0;
 }
 """

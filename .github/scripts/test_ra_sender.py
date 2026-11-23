@@ -47,7 +47,7 @@ static u32 ra_seq, ra_fail, ra_us, ra_us_max, ra_rxq, ra_skip, ra_snap_bad, ra_s
 static int ra_err, ra_sent_any, ra_rx_in_game = 1;
 static unsigned rx_backlog;
 static u32 ra_disc_us;
-static unsigned packets, failed_packet, advance_packet, busy, drains, polls, heartbeats, sentBytes;
+static unsigned packets, failed_packet, advance_packet, busy, drains, polls, heartbeats, identifies, sentBytes;
 static u32 ra_hb_rx, ra_hb_rau, ra_ee_event = 1, ra_dst_ip;
 static struct ra_event ra_event;
 typedef struct { void *src, *dest; int size, attr; } SifDmaTransfer_t;
@@ -90,6 +90,7 @@ static void ra_frame_init(void);
 static void ra_drain_rx(void) { drains++; }
 static void ra_poll_pc(void) { polls++; }
 static void ra_heartbeat(void) { heartbeats++; }
+static void ra_identify(void) { identifies++; }
 static void DelayThread(unsigned);
 '''
 stubs = r'''
@@ -122,7 +123,7 @@ static void DelayThread(unsigned us) {
 static void reset(void) {
     ra_seq = ra_fail = ra_us = ra_us_max = ra_rxq = ra_skip = ra_snap_bad = ra_sent_sq = 0;
     ra_err = ra_sent_any = 0;
-    packets = failed_packet = advance_packet = busy = drains = polls = heartbeats = 0;
+    packets = failed_packet = advance_packet = busy = drains = polls = heartbeats = identifies = 0;
     tick = limit = produce = quiet = 0;
     sentBytes = 0;
     rx_backlog = 0;
@@ -186,6 +187,7 @@ int main(void) {
     puts("PASS: DMA advancement during multipart send and sequence wraparound");
     reset(); produce = 1; loop(2500);
     assert(packets == 625 && drains == 625 && polls == 625 && heartbeats == 1);
+    assert(identifies == 2500 / RA_KEEPALIVE_TICKS); /* once a second, as the keepalive */
     reset(); ra_rx_in_game = 0; loop(501);
     assert(packets == 3 && !drains && !polls && quiet == 1);
     reset(); ra_rx_in_game = 0; rx_backlog = 2;

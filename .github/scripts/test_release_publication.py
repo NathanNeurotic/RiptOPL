@@ -24,7 +24,9 @@ class PublicationTests(unittest.TestCase):
             if "into" in options:
                 continue  # a companion's links are in its parent's notes
             with patch.object(publisher, "git", return_value=history) as git:
-                body = publisher.release_notes(options, sha, "NULD-v1.2.14" if options["ra"] else "v1.8.0", "v1.2.0-Beta-3925")
+                pin = json.loads(publisher.ORBIT_PIN.read_text(encoding="utf-8"))
+                runtime = Path(pin["asset"]).stem if options["ra"] else "v1.8.0"
+                body = publisher.release_notes(options, sha, runtime, "v1.2.0-Beta-3925")
             git.assert_called_once_with("log", "--no-merges", "-10", "--format=%H%x00%s", sha, "--")
             self.assertIn("## Changes\n\n", body)
             self.assertIn(r"Fix \[launch\] \<edge\>", body)
@@ -62,8 +64,8 @@ class PublicationTests(unittest.TestCase):
                 self.assertNotIn("BUGREPORT", body)
             self.assertEqual({"rolling-ra": 7}.get(options["tag"], 9), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
-                self.assertIn("Included build: NULD-v1.2.14 -- [NULD (formerly ORBIT) Neutrino RA runtime v1.2.14]"
-                              "(https://github.com/danielnuld/nuld/releases/tag/v1.2.14)", body)
+                self.assertIn(f"Included build: {runtime} -- [NULD (formerly ORBIT) Neutrino RA runtime {pin['tag']}]"
+                              f"(https://github.com/{pin['repository']}/releases/tag/{pin['tag']})", body)
                 self.assertIn("by [danielnuld](https://github.com/danielnuld)", body)
             else:
                 self.assertIn("Included build: v1.8.0 -- Neutrino.", body)

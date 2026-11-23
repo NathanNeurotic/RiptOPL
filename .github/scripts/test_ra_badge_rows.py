@@ -162,9 +162,9 @@ update = function(opl, 'static void updateMenuFromGameList(')
 assert 'gup->submenu.raText = badge != NULL ? strdup(badge) : NULL;' in update
 assert 'gup->submenu.text = mdl->support->mode == FAV_MODE ? const_cast<char *>(favGetItemDisplay(i)) : gsOf(mdl->support)->name(mdl->support, i);' in update and '(badge != NULL ? badge' not in update
 # Toggling telemetry, badges or placement rebuilds the lists (badges are resolved when rows are built).
-net = function(settings, 'int guiShowNetConfig(')
+net = function(settings, 'static int guiShowRAConfig(')
 snap = net.index('int raBadgeState')
-assert snap < net.index('diaGetInt(diaNetConfig, NETCFG_RA_TELEMETRY') < net.index('guiRefreshCfgTitles();')
+assert snap < net.index('diaGetInt(diaRAConfig, NETCFG_RA_TELEMETRY') < net.index('guiRefreshCfgTitles();')
 assert 'gRABadgeSuffix = (gRABadgeSuffix == 1);' in net
 
 with tempfile.TemporaryDirectory() as tmp:

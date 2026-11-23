@@ -173,7 +173,7 @@ Bundled third-party software, shipped in the release package and NOT part of Rip
   - NULD (formerly ORBIT) Neutrino RA runtime, by Daniel (danielnuld)   https://github.com/danielnuld/nuld
     The RetroAchievements kit's neutrino/: Neutrino by Maximus32 with an
     achievement agent speaking xeRAbora's protocol (hacan359). AFL-3.0; the
-    pinned v1.2.14 release, source commit and archive digest ship as
+    pinned release, source commit and archive digest ship as
     neutrino/ORBIT-RA.json (third_party/orbit-neutrino). Not in the other kits.
 
   - POPStarter, by krHACKen          https://www.psx-place.com/resources/popstarter.683/

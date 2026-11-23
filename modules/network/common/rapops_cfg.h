@@ -12,7 +12,7 @@
 #ifndef __RAPOPS_CFG_H__
 #define __RAPOPS_CFG_H__
 
-#include "ra_watch.h"
+#include "ra_snap.h" /* RA_ARG_TAIL_MAX; brings ra_watch.h */
 
 #define RAPOPS_MAGIC     "RIPTRA02"
 #define RAPOPS_IPCFG_MAX 64
@@ -36,7 +36,7 @@ struct rapops_cfg
     char game_id[16];                         /* the VCD watch key, e.g. "P123456789abcde" */
     unsigned int client_mode;
     unsigned int host_pinned;
-    char host[16];
+    char host[RA_ARG_TAIL_MAX + 1]; /* "<ipv4>[,<image hash>]", as RA_ARG_HOST takes it */
     /* the watch list for rapull, the reader on the IOP; count 0: no list */
     unsigned int count;
     unsigned int bytes;

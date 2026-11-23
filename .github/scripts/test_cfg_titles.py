@@ -274,6 +274,38 @@ int main(void)
     a.item.isFolder = 0; gCfgTitlesInLists = 0;
     assert(submenuSortCompare(&a, &b, &bdm) < 0);
     cfgTitleForget(&bdm);
+
+    /* memo: a list read before shows its titles at once on the next rebuild, with no CFG read. */
+    {
+        CfgTitles memo;
+        item_list_t hdd = {HDD_MODE, getName, getGame, getConfig};
+        int i;
+        for (i = 0; i < 8; i++) { titles[i] = NULL; ps1Row[i] = 0; games[i].format = 0; }
+        gCfgTitlesInLists = 1;
+        titles[0] = "Title Zero"; /* rows 1 and 2 have no title, row 3 has no CFG at all */
+        assert(memo.prefill(&hdd, 4) == 4); /* nothing known: the caller reads before listing */
+        assert(memo.forRow(&hdd, 0) == NULL);
+        configReads = 0;
+        memo.refresh(&hdd, 4);
+        assert(configReads == 4 && !strcmp(memo.forRow(&hdd, 0), "Title Zero"));
+        memo.forget(&hdd);
+        configReads = 0;
+        assert(memo.prefill(&hdd, 4) == 0 && configReads == 0); /* every row answered, untitled ones too */
+        assert(!strcmp(memo.forRow(&hdd, 0), "Title Zero") && memo.forRow(&hdd, 1) == NULL);
+        /* a changed title arrives with the pass after the rows */
+        titles[0] = "Title Changed";
+        memo.refresh(&hdd, 4);
+        memo.forget(&hdd);
+        assert(memo.prefill(&hdd, 4) == 0 && !strcmp(memo.forRow(&hdd, 0), "Title Changed"));
+        /* the other view is keyed apart: a PS1 row of the same name is not answered by the PS2 one */
+        ps1Row[0] = 1;
+        assert(memo.prefill(&hdd, 1) == 1 && memo.forRow(&hdd, 0) == NULL);
+        ps1Row[0] = 0;
+        /* switched off: no table, no misses */
+        gCfgTitlesInLists = 0;
+        assert(memo.prefill(&hdd, 4) == 0);
+        gCfgTitlesInLists = 1;
+    } /* the destructor frees the table and the memo (ASan checks) */
     assert(locks == unlocks);
     puts("ok");
     return 0;
@@ -292,10 +324,16 @@ with tempfile.TemporaryDirectory() as tmp:
 opl = (ROOT / "src/app/opl.cpp").read_text(encoding="utf-8")
 update = opl[opl.index("static void updateMenuFromGameList("):]
 update = update[:update.index("\n}\n")]
-# Rows appear with file names at once; the CFG pass runs after them and the sort follows it.
-assert update.index("cfgTitleForget(mdl->support);") < update.index("gsOf(mdl->support)->update(mdl->support)") < update.index("guiDeferUpdate(gup);")
-assert update.index("guiDeferUpdate(gup);") < update.index("cfgTitleRefresh(mdl->support, count);") < update.index("GUI_OP_SORT")
-assert update.index("libViewFinishPending(") < update.index("cfgTitleRefresh(mdl->support, count);")
+# Titles are in place before any row is queued, so no row shows its file name before its title
+# (CosmicScale: the PS1/PS2 switch flashed them). Remembered titles fill the table at once; only rows
+# memory cannot answer make the CFG pass run before the rows, otherwise it runs after them.
+prefill = update.index("int titlesPending = cfgTitlePrefill(mdl->support, count) > 0;")
+assert update.index("cfgTitleForget(mdl->support);") < update.index("gsOf(mdl->support)->update(mdl->support)") < prefill
+assert update.index("raBadgeRefresh(mdl->support, count);") < prefill
+assert update.count("cfgTitleRefresh(mdl->support, count);") == 2
+early = update.index("if (titlesPending)\n        cfgTitleRefresh(mdl->support, count);")
+late = update.index("if (!titlesPending)\n        cfgTitleRefresh(mdl->support, count);")
+assert prefill < early < update.index("guiDeferUpdate(gup);") < update.index("libViewFinishPending(") < late < update.index("GUI_OP_SORT")
 assert "gup->submenu.text = mdl->support->mode == FAV_MODE ? const_cast<char *>(favGetItemDisplay(i)) : gsOf(mdl->support)->name(mdl->support, i);" in update  # identity unchanged
 menusys = (ROOT / "src/ui/menusys.cpp").read_text(encoding="utf-8")
 sort = menusys[menusys.index("static int submenuSortCompare("):]

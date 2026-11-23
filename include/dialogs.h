@@ -229,7 +229,7 @@ enum UI_ITEMS {
     NETCFG_POPS_PATHMAP_1,
     NETCFG_POPS_PATHMAP_2,
 #ifdef RETROACHIEVEMENTS
-    // RA rows on the Network page. Guarded in lockstep with their rows in diaNetConfig --
+    // RA rows on the RetroAchievements page. Guarded in lockstep with diaRAConfig --
     // guard one and not the other and the array carries an id the enum does not define.
     NETCFG_RA_MODE,
     NETCFG_RA_HOST_IP_0,
@@ -423,6 +423,9 @@ extern struct UIItem diaPadEmuInfo[];
 #endif
 
 extern struct UIItem diaNetConfig[];
+#ifdef RETROACHIEVEMENTS
+extern struct UIItem diaRAConfig[];
+#endif
 extern struct UIItem diaUIConfig[];
 extern struct UIItem diaThemeConfig[];
 extern struct UIItem diaLanguageConfig[];

@@ -43,6 +43,8 @@ typedef uint64_t u64;
 '''
 state = core[core.index('static u8 *ra_snap_buf'):core.index('#define RA_RAM_HIGH')]
 state += '#define RA_RAM_HIGH 0x02000000\n'
+# The scratchpad has no host address either: the reader's 0x70000000 becomes a 16 KB array.
+state += '#undef RA_SPR_BASE\nstatic u8 scratchpad[0x4000 + 16];\n#define RA_SPR_BASE ((uintptr_t)scratchpad)\n'
 # COP0 Count has no host equivalent: each read advances a fake clock by 7.
 state = state.replace(function(state, 'static inline u32 ra_ticks'), 'static u32 ticks;\nstatic u32 ra_ticks(void) { return ticks += 7; }')
 run('ee_ra_budget', prefix + r'''
@@ -122,6 +124,28 @@ int main() {
         assert(value==(i==RA_NODE_MAX-1 ? lastValue : i==RA_NODE_MAX-2 ? secondBase : 0x12340000+(u32)i));
     }
     tailUnchanged(g_ee_core_config.raWorkBytes);
+    // xeRAbora 2.1.0: direct entries in 0x02000000-0x02003FFF are read from the scratchpad, at every
+    // size and alignment. One that would run past its end, and anything above it, is sent as zero.
+    memset(scratchpad,0xEE,sizeof(scratchpad));
+    for(int i=0;i<16;i++){scratchpad[i]=0x10+i;scratchpad[0x3FF0+i]=0xA0+i;}
+    entries[0]=RA_WATCH_PACK(0x02000000,4);entries[1]=RA_WATCH_PACK(0x02000005,4);
+    entries[2]=RA_WATCH_PACK(0x02000008,2);entries[3]=RA_WATCH_PACK(0x0200000B,2);
+    entries[4]=RA_WATCH_PACK(0x0200000D,1);entries[5]=RA_WATCH_PACK(0x02003FFC,4);
+    entries[6]=RA_WATCH_PACK(0x02003FFF,1);entries[7]=RA_WATCH_PACK(0x02003FFE,4);
+    entries[8]=RA_WATCH_PACK(0x02003FFF,2);entries[9]=RA_WATCH_PACK(0x02004000,1);
+    entries[10]=RA_WATCH_PACK(0x01FFFFFF,2);entries[11]=RA_WATCH_PACK(0x01FFFFFE,2);
+    gameRam[0x01FFFFFE]=0x61;gameRam[0x01FFFFFF]=0x62;
+    setup(12,4+4+2+2+1+4+1+4+2+1+2+2);ra_snap_send();
+    {
+        const u8 want[]={0x10,0x11,0x12,0x13, 0x15,0x16,0x17,0x18, 0x18,0x19, 0x1B,0x1C, 0x1D,
+                         0xAC,0xAD,0xAE,0xAF, 0xAF, 0,0,0,0, 0,0, 0, 0,0, 0x61,0x62};
+        assert(!memcmp(work+RA_SNAP_HDR,want,sizeof(want)));
+    }
+    // A chain whose parent sits in the scratchpad stays unresolved, as upstream leaves it.
+    nodes[0]={RA_NODE_PACK(0,0,1,0,0),0x100000,1};
+    u32 pair[4];
+    setup(1,4,1);ra_snap_send();memcpy(pair,work+RA_SNAP_HDR+4,8);
+    assert(!memcmp(work+RA_SNAP_HDR,scratchpad,4) && pair[0]==0 && pair[1]==0);
     // RAN2 nibble extraction, index zero, negative scale and dependent nodes.
     entries[0]=RA_WATCH_PACK(0x80000,1);
     gameRam[0x80000]=0x30; gameRam[0x10000c]=0x5A;
@@ -129,7 +153,7 @@ int main() {
     nodes[1]={RA_NODE_PACK(0,1,1,0,0),0x11005a,0xFFFFFFFFu};
     gameRam[0x110000]=0x77;
     setup(1,1,2);ra_snap_send();
-    u32 pair[4];memcpy(pair,work+RA_SNAP_HDR+1,sizeof(pair));
+    memcpy(pair,work+RA_SNAP_HDR+1,sizeof(pair));
     assert(pair[0]==0x10000c && pair[1]==0x5A && pair[2]==0x110000 && pair[3]==0x77);
     gameRam[0x80000]=0;gameRam[0x100000]=0x33;
     setup(1,1,1);ra_snap_send();memcpy(pair,work+RA_SNAP_HDR+1,8);
@@ -248,11 +272,19 @@ int main() {
         auto current=withHash(original);
         int expected=original.size()==bare.size()?0:original.size()==legacy.size()?1:RA_NODE_MAX;
         assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")>0 && watch.nodeCount()==expected);
+        assert(!strcmp(watch.watchHash(),"0123456789abcdef0123456789abcdef"));
         disk=current;watch.clearWatchList();
+        assert(!watch.watchHash()[0]);
         assert(watch.loadWatchList("hash.wl","SLUS_123.45")>0 && watch.nodeCount()==expected);
+        assert(!strcmp(watch.watchHash(),"0123456789abcdef0123456789abcdef"));
+        // The same list from a client before 2.1.0 carries no hash and leaves none behind.
+        assert(watch.setWatchList(original.data(),original.size()*4,"SLUS_123.45")>0 && !watch.watchHash()[0]);
+        assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")>0 && watch.watchHash()[0]);
         current.back()=0x7A7A7A7A; // not hexadecimal
         assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")<0 && !watch.watchCount());
+        assert(!watch.watchHash()[0]);
         disk=current;assert(watch.loadWatchList("invalid.wl","SLUS_123.45")<0 && !watch.watchCount());
+        assert(!watch.watchHash()[0]);
         current=withHash(original);current.pop_back();
         assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")<0 && !watch.watchCount());
         disk=current;assert(watch.loadWatchList("short.wl","SLUS_123.45")<0 && !watch.watchCount());
@@ -311,7 +343,7 @@ int main() {
     entries[0]=RA_WATCH_PACK(0x80000,3);assert(!launch.raWorkBytes(nullptr));
     entries[0]=RA_WATCH_PACK(0x80000,1);gRATelemetry=0;assert(!launch.raWorkBytes(nullptr));
     puts("PASS: actual C++ launch service reserves only validated set-sized module storage");
-    // Cards: Caduceus and an explicit opt-in add a cache-aligned packet behind the list,
+    // Cards: an explicit opt-in adds a cache-aligned packet behind the list,
     // never past 1 MB when the block starts below it; the ee_core pointer follows the size.
     static u8 area[1];
     const void *low=(const void *)0x000C0000, *high=(const void *)0x00200000;
@@ -321,12 +353,12 @@ int main() {
     gRAMode=1;assert(launch.raWorkBytes(low)==list);
     gRAExperimentalCards=1;assert(launch.raWorkBytes(low)==cards);
     assert(launch.overlayFor(area,cards)==area+((list+63)&~63u) && !launch.overlayFor(area,cards-1));
-    gRAMode=0;assert(launch.raWorkBytes(low)==list);gRAMode=1;
+    gRAMode=0;assert(launch.raWorkBytes(low)==cards);gRAMode=1; // xeRAbora takes the same opt-in
     assert(!notes && launch.raWorkBytes((const void *)(0x00100000-cards))==cards);
     assert(launch.raWorkBytes((const void *)(0x00100000-cards+64))==list && notes==1);
     assert(launch.raWorkBytes(high)==cards && launch.raWorkBytes((const void *)(0x02000000-cards+64))==list);
     assert(!launch.raWorkBytes((const void *)0x02000040) && notes==2);
     count=0;assert(!launch.raWorkBytes(low) && !launch.overlayFor(area,0));
-    puts("PASS: card packet only for Caduceus opt-in, cache-aligned, below the 1 MB/32 MB limit, else the pulse");
+    puts("PASS: card packet only for the opt-in, either client, cache-aligned, below the 1 MB/32 MB limit, else the pulse");
 }
 ''')

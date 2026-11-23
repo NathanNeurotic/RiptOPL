@@ -61,7 +61,6 @@ extern struct ra_gs_source_regs GSMSourceGSRegs;
 static struct ra_event ra_ovl_event __attribute__((aligned(64)));
 static unsigned int ra_ovl_seen;
 static unsigned int ra_ovl_start;
-static unsigned int ra_ovl_id;
 static unsigned int ra_ovl_points;
 static char ra_ovl_title[64];
 static int ra_dirty = 1;
@@ -214,7 +213,7 @@ static int draw_card(void)
     unsigned int fbp, fbw, psm, dbx, dby;
     int width, visible_width, visible_height, x, y, pixel_dirty, header_dirty;
     u64 transfer_fb, transfer_pos;
-    char id[12], pts[12], line[20];
+    char pts[12], line[20];
     int i, j;
     if (ra_pkt == NULL)
         return 0;
@@ -280,16 +279,6 @@ static int draw_card(void)
                 if (i == 19 && ra_ovl_title[i])
                     title[16] = title[17] = title[18] = '.';
                 text3x5(32, 16, title, 2, 0xE8F0E5);
-            } else {
-                u32dec(id, ra_ovl_id);
-                line[0] = 'I';
-                line[1] = 'D';
-                line[2] = ' ';
-                i = 3;
-                for (j = 0; id[j] && i < 18; j++)
-                    line[i++] = id[j];
-                line[i] = 0;
-                text3x5(32, 16, line, 2, 0xE8F0E5);
             }
             u32dec(pts, ra_ovl_points);
             line[0] = '+';
@@ -305,7 +294,11 @@ static int draw_card(void)
             if (ra_ovl_points != 1)
                 line[i++] = 'S';
             line[i] = 0;
-            text3x5(32, 31, line, 1, 0x72F2D3);
+            /* No title (xeRAbora sends id and points only): the points take its place. */
+            if (ra_ovl_title[0])
+                text3x5(32, 31, line, 1, 0x72F2D3);
+            else
+                text3x5(32, 18, line, 2, 0xE8F0E5);
             x = pixel_x;
             y = pixel_y;
         }
@@ -366,7 +359,7 @@ void *RA_OverlayEventBuffer(void)
     struct ra_event *e = (struct ra_event *)UNCACHED_SEG(&ra_ovl_event);
     e->magic = e->seq = e->kind = e->arg = e->commit = 0;
     ra_ovl_seen = 0;
-    if (g_ee_core_config.raClientMode == 0 || !RA_EXPERIMENTAL_CARD_DMA || ra_pkt == NULL)
+    if (!RA_EXPERIMENTAL_CARD_DMA || ra_pkt == NULL)
         return RA_PulseEventBuffer();
     return &ra_ovl_event;
 }
@@ -374,7 +367,7 @@ void RA_OverlayOnVblank(unsigned int frames)
 {
     const volatile struct ra_event *e = (const volatile struct ra_event *)UNCACHED_SEG(&ra_ovl_event);
     unsigned int kind;
-    if (g_ee_core_config.raClientMode == 0 || !RA_EXPERIMENTAL_CARD_DMA || ra_pkt == NULL) {
+    if (!RA_EXPERIMENTAL_CARD_DMA || ra_pkt == NULL) {
         RA_PulseOnVblank(frames);
         return;
     }
@@ -401,7 +394,6 @@ void RA_OverlayOnVblank(unsigned int frames)
                 ra_ovl_title[63] = 0;
                 ra_dirty = 1;
                 ra_build_row = 0;
-                ra_ovl_id = notice.arg;
                 ra_ovl_points = RA_EVENT_POINTS(notice.kind);
                 ra_ovl_start = frames;
                 ra_ovl_running = 1;

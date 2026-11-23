@@ -399,7 +399,7 @@ translations:
   RA_DISC_CHECKING: Disk RetroAchievements için kontrol ediliyor
   RA_DISC_HASH_FAILED: Diskin özeti hesaplanamadı -- ayarlar klasöründeki RA/hashes.txt dosyasını kontrol edin
   RA_DISC_HOME_ERROR: Ayarlar yolu disk izleme listeleri için kullanılamaz
-  RA_DISC_ENABLE: Önce Ağ ayarlarında RetroAchievements telemetrisini açın
+  RA_DISC_ENABLE: Önce RetroAchievements ayarlarında RetroAchievements telemetrisini açın
   RA_DISC_CHECK_FIRST: 'Bu disk için izleme listesi yok -- önce RA: disk desteğini kontrol et''i kullanın'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD bulundu, ama APA bölüm tablosu okunamıyor. Biçimlendirmeyin -- oyunlarınız kurtarılabilir.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Sektörleri 512 bayt olmadığı için bir sürücü bağlanmadı (örneğin 4K sektörlü bir sürücü). OPL yalnızca 512 baytlık sektörleri okuyabilir.'
@@ -565,8 +565,8 @@ translations:
   CAD_UNTRACKED: Caduceus hazır değil. Bu sefer başarımlar olmadan başlatılıyor.
   RA_CADUCEUS_OFFLINE: Caduceus RA oturumu çevrimdışı.
   RA_CADUCEUS_SIGN_IN: Caduceus'ta RetroAchievements'a giriş yapıp yeniden deneyin.
-  RA_EXPERIMENTAL_CARDS: Caduceus deneysel kartları
-  HINT_RA_EXPERIMENTAL_CARDS: Deneysel PS2 oyun içi başarım kartları. Titreyebilir veya oyunları dondurabilir. Yalnızca Caduceus; Kapalı altın nabzı kullanır. Bir sonraki oyun başlatmada geçerli olur.
+  RA_EXPERIMENTAL_CARDS: Deneysel kartlar
+  HINT_RA_EXPERIMENTAL_CARDS: Deneysel PS2 oyun içi başarım kartları. Titreyebilir veya oyunları dondurabilir. Kapalı altın nabzı kullanır. Bir sonraki oyun başlatmada geçerli olur.
   CAD_ACHIEVEMENTS: Caduceus başarımları
   CAD_VIEW_ACHIEVEMENTS: Başarımları görüntüle
   CAD_BACK: Geri

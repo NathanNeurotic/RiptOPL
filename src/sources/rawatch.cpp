@@ -66,6 +66,11 @@ int GetNodeCount(void)
     return gRaWatch.nodeCount();
 }
 
+const char *GetWatchHash(void)
+{
+    return gRaWatch.watchHash();
+}
+
 void ClearWatchList(void)
 {
     gRaWatch.clearWatchList();
@@ -112,6 +117,7 @@ void RaWatch::clearWatchList()
     watchBytes_ = 0;
     nodeCount_ = 0;
     watchStartup_[0] = '\0';
+    watchHash_[0] = '\0';
 }
 
 /* Appends one line per event while a game launches.
@@ -152,8 +158,9 @@ void raLaunchNote(const char *what, int a, int b)
 }
 
 /* The xeRAbora v2.1 RAH1 tail is a magic word and exactly 32 hex digits.
-   Do not accept random extra bytes as a valid achievement watch list. */
-static bool raWatchHashTailValid(const unsigned char *data, int len)
+   Do not accept random extra bytes as a valid achievement watch list.
+   A valid tail's digits go to out (RA_HASH_LEN + 1 bytes), which is left alone otherwise. */
+static bool raWatchHashTailValid(const unsigned char *data, int len, char *out)
 {
     struct ra_hash_file hash;
     if (data == NULL || len != (int)sizeof(hash))
@@ -166,6 +173,8 @@ static bool raWatchHashTailValid(const unsigned char *data, int len)
         if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
             return false;
     }
+    memcpy(out, hash.hash, RA_HASH_LEN);
+    out[RA_HASH_LEN] = '\0';
     return true;
 }
 
@@ -207,7 +216,8 @@ int RaWatch::setWatchList(const void *data, int len, const char *startup)
     // optional trailing RAH1 image hash, but never unrecognized extra bytes.
     const unsigned char *tail = (const unsigned char *)data + sizeof(*hdr) + need;
     const int left = len - (int)(sizeof(*hdr) + need);
-    if (left != 0 && !raWatchHashTailValid(tail, left)) {
+    char hash[RA_HASH_LEN + 1] = "";
+    if (left != 0 && !raWatchHashTailValid(tail, left, hash)) {
         struct ra_node_file nf;
         if (left < (int)sizeof(nf)) {
             clearWatchList();
@@ -222,12 +232,13 @@ int RaWatch::setWatchList(const void *data, int len, const char *startup)
         const unsigned int stride = nf.magic == RA_NODE_MAGIC ? sizeof(struct ra_node) : 8;
         const int nodesLen = (int)sizeof(nf) + (int)nf.count * (int)stride;
         if (nodesLen > left ||
-            (nodesLen < left && !raWatchHashTailValid(tail + nodesLen, left - nodesLen)) ||
+            (nodesLen < left && !raWatchHashTailValid(tail + nodesLen, left - nodesLen, hash)) ||
             !takeNodes(tail + sizeof(nf), nf.count, nf.magic)) {
             clearWatchList();
             return -9;
         }
     }
+    memcpy(watchHash_, hash, sizeof(watchHash_)); // only now: the whole list was accepted
 
     LOG("RA: list received over the network: %d entries, %d chains, snapshot %d bytes\n",
         watchCount_, nodeCount_, watchBytes_);
@@ -317,6 +328,7 @@ int RaWatch::loadWatchList(const char *file, const char *startup)
 
     struct ra_node_file nf = {};
     const int tailBytes = read(fd, &nf, sizeof(nf));
+    char digits[RA_HASH_LEN + 1] = "";
     if (tailBytes != 0) {
         unsigned char hash[sizeof(struct ra_hash_file)];
         unsigned char extra;
@@ -326,7 +338,7 @@ int RaWatch::loadWatchList(const char *file, const char *startup)
             memcpy(hash, &nf, sizeof(nf));
             valid = read(fd, hash + sizeof(nf), sizeof(hash) - sizeof(nf)) ==
                         (int)(sizeof(hash) - sizeof(nf)) &&
-                    raWatchHashTailValid(hash, sizeof(hash)) && read(fd, &extra, 1) == 0;
+                    raWatchHashTailValid(hash, sizeof(hash), digits) && read(fd, &extra, 1) == 0;
         } else if (valid) {
             if ((nf.magic != RA_NODE_MAGIC && nf.magic != RA_NODE_LEGACY_MAGIC) ||
                 nf.count == 0 || nf.count > RA_NODE_MAX) {
@@ -339,7 +351,7 @@ int RaWatch::loadWatchList(const char *file, const char *startup)
                     const int hashBytes = read(fd, hash, sizeof(hash));
                     valid = hashBytes == 0 ||
                             (hashBytes == (int)sizeof(hash) &&
-                             raWatchHashTailValid(hash, hashBytes) && read(fd, &extra, 1) == 0);
+                             raWatchHashTailValid(hash, hashBytes, digits) && read(fd, &extra, 1) == 0);
                 }
                 if (valid)
                     valid = takeNodes(nodeList_, nf.count, nf.magic);
@@ -353,6 +365,7 @@ int RaWatch::loadWatchList(const char *file, const char *startup)
     }
 
     close(fd);
+    memcpy(watchHash_, digits, sizeof(watchHash_)); // only now: the whole file was accepted
 
     LOG("RA: list loaded: %d entries, %d chains, snapshot %d bytes\n",
         watchCount_, nodeCount_, watchBytes_);

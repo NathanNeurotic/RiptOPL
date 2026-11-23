@@ -1332,7 +1332,7 @@ gui_strings:
 - label: RA_DISC_HOME_ERROR
   string: The settings path cannot be used for disc watch lists
 - label: RA_DISC_ENABLE
-  string: Enable RetroAchievements telemetry in Network settings first
+  string: Enable telemetry in RetroAchievements settings first
 - label: RA_DISC_CHECK_FIRST
   string: No watch list for this disc -- use RA check disc support first
 - label: HDD_APA_TABLE_UNREADABLE_ERROR
@@ -1930,9 +1930,9 @@ gui_strings:
 - label: RA_CADUCEUS_SIGN_IN
   string: Sign in to RetroAchievements in Caduceus, then try again.
 - label: RA_EXPERIMENTAL_CARDS
-  string: "Caduceus experimental cards"
+  string: "Experimental achievement cards"
 - label: HINT_RA_EXPERIMENTAL_CARDS
-  string: "Experimental PS2 in-game achievement cards. May flicker or freeze games. Caduceus only; Off uses the gold pulse. Takes effect on the next game launch."
+  string: "Experimental PS2 in-game achievement cards. May flicker or freeze games. Off uses the gold pulse. Takes effect on the next game launch."
 - label: CAD_ACHIEVEMENTS
   string: "Caduceus achievements"
 - label: CAD_VIEW_ACHIEVEMENTS

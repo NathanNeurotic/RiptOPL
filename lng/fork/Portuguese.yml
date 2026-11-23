@@ -397,7 +397,7 @@ translations:
   RA_DISC_CHECKING: A verificar o disco para o RetroAchievements
   RA_DISC_HASH_FAILED: Não foi possível calcular o hash do disco -- veja RA/hashes.txt na pasta de definições
   RA_DISC_HOME_ERROR: A pasta de definições não pode ser usada para listas de acompanhamento de discos
-  RA_DISC_ENABLE: Ligue antes a telemetria do RetroAchievements nas definições de rede
+  RA_DISC_ENABLE: Ligue antes a telemetria do RetroAchievements nas definições do RetroAchievements
   RA_DISC_CHECK_FIRST: 'Não há lista de acompanhamento para este disco -- use antes RA: verificar suporte do disco'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: disco rígido encontrado, mas a tabela de partições APA dele não pode ser lida. Não formate -- os seus jogos talvez possam ser recuperados.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: uma unidade não foi montada porque os setores dela não têm 512 bytes (por exemplo, um disco de setores de 4K). O OPL só lê setores de 512 bytes.'
@@ -563,8 +563,8 @@ translations:
   CAD_UNTRACKED: O Caduceus não está pronto. Iniciando sem conquistas desta vez.
   RA_CADUCEUS_OFFLINE: A sessão RA do Caduceus está offline.
   RA_CADUCEUS_SIGN_IN: Entre no RetroAchievements no Caduceus e tente de novo.
-  RA_EXPERIMENTAL_CARDS: Cartões experimentais do Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: Cartões experimentais de conquistas dentro do jogo no PS2. Podem piscar ou bloquear jogos. Só Caduceus; Desligado usa o pulso dourado. Vale a partir do próximo jogo iniciado.
+  RA_EXPERIMENTAL_CARDS: Cartões experimentais
+  HINT_RA_EXPERIMENTAL_CARDS: Cartões experimentais de conquistas dentro do jogo no PS2. Podem piscar ou bloquear jogos. Desligado usa o pulso dourado. Vale a partir do próximo jogo iniciado.
   CAD_ACHIEVEMENTS: Conquistas do Caduceus
   CAD_VIEW_ACHIEVEMENTS: Ver conquistas
   CAD_BACK: Voltar
