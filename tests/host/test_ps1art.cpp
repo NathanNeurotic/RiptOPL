@@ -46,11 +46,19 @@ int bgmDiscretionaryIoAllowed(void) { return 1; }
 int getKeyPressed(int) { return 0; }
 void artIndexSetOwnerThread(int) {}
 void rmUnloadTexture(GSTEXTURE *) {}
+void rmReleaseTexture(GSTEXTURE *texture)
+{
+    free(texture->Mem);
+    free(texture->Clut);
+    texture->Mem = NULL;
+    texture->Clut = NULL;
+}
 int tarLoadFile(TarKind, const char *) { return -1; }
 TarEntryBase *tarFindPrefix(TarKind, const char *) { return NULL; }
 TarEntryBase *tarFindPrefixExact(TarKind, const char *) { return NULL; }
 u32 tarRead(TarKind, const TarEntryBase *, void *, u32) { return 0; }
 int texLoadArtFromMemory(GSTEXTURE *, const void *, u32, int) { return -1; }
+void texPrepareArtForDisplay(GSTEXTURE *, int) {}
 int texArtAlias(const char *, char *, int) { return 0; }
 void texSetLoadAbortFlag(volatile int *) {}
 void texFree(GSTEXTURE *texture)

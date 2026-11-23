@@ -242,8 +242,12 @@ void FontSystem::prepareCLUT()
 
 void FontSystem::destroyCLUT()
 {
-    free(clut_.Clut);
-    clut_.Clut = NULL;
+    if (clut_.Clut != NULL) {
+        GSTEXTURE release = {};
+        release.Clut = clut_.Clut;
+        clut_.Clut = NULL;
+        rmReleaseTexture(&release);
+    }
 }
 
 // A face drawn at a weight (RIPPS2 build 114, akilluminati47). A variable face (a wght axis) takes it as designed,

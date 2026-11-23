@@ -220,13 +220,21 @@ static uint32_t tick;
 #define CLOCKS_PER_SEC 1000000
 class Notifications {
 public:
-    void setToast(const char*); void drawToast();
+    void setToast(const char*, int iconId = -1); void drawToast();
     char toast_[TOAST_SIZE] = {0}; uint32_t toastStart_ = 0;
+    int toastIcon_ = -1;
     // The toast is drawn alone at the top: nothing stacks below it, so no y advance.
-    static int render(const char *text, int y, int yadd) { assert(text[0] && y == 10 && yadd == 0); ++draws; return y + yadd; }
+    static int render(const char *text, int y, int yadd, int iconId) {
+        assert(text[0] && y == 10 && yadd == 0);
+        drawnIcon = iconId;
+        ++draws;
+        return y + yadd;
+    }
     static int draws;
+    static int drawnIcon;
 };
 int Notifications::draws;
+int Notifications::drawnIcon;
 ''' + function(notify, "void Notifications::setToast(") + function(notify, "void Notifications::drawToast(") + r'''
 int main() {
     Notifications n; n.drawToast(); assert(!n.draws);
@@ -239,6 +247,9 @@ int main() {
     char longText[TOAST_SIZE + 100]; memset(longText, 'x', sizeof(longText) - 1); longText[sizeof(longText) - 1] = 0;
     n.setToast(longText); assert(strlen(n.toast_) == TOAST_SIZE - 1);
     n.setToast(nullptr); n.drawToast(); assert(!n.toast_[0]);
+    constexpr int testIcon = 3;
+    n.setToast("Tap for Filter", testIcon); n.drawToast(); assert(n.drawnIcon == testIcon);
+    n.setToast("Saving..."); n.drawToast(); assert(n.drawnIcon == -1);
 }
 ''')
 gui = read("src/ui/gui.cpp")

@@ -78,6 +78,8 @@ static void ChangeThreadPriority(int id, int p) { priority[id] = p; priorityWrit
 static int hiresActive = 0;
 static GSGLOBAL *gsKit_init_global() { memset(&globalStore, 0, sizeof(globalStore)); globalStore.Test = &globalStore.testStore; return &globalStore; }
 static GSGLOBAL *gsKit_hires_init_global() { return gsKit_init_global(); }
+static void gsKit_TexManager_setQueueLatency(int) {}
+static void gsKit_TexManager_flush() {}
 static void gsKit_deinit_global(GSGLOBAL *) {}
 static void gsKit_hires_deinit_global(GSGLOBAL *) { assert(hiresActive); hiresActive = 0; } // never restores (gsHires.c)
 static void gsKit_hires_init_screen(GSGLOBAL *, int) { hiresActive = 1; ChangeThreadPriority(GetThreadId(), 2); } // the HACK

@@ -16,7 +16,7 @@ public:
     // One frame: draw whatever is pending and expire it after 5 s.
     void show();
     // GUI-thread action feedback, drawn even when courtesy notifications are disabled.
-    void setToast(const char *text);
+    void setToast(const char *text, int iconId);
     void drawToast();
 #ifdef RETROACHIEVEMENTS
     void setRA(const char *line1, const char *line2);
@@ -25,7 +25,7 @@ public:
 
 private:
     // Draw one notice whose box starts at y; returns the y for the next one (yadd lower, plus any wrapped lines).
-    static int render(const char *string, int y, int yadd);
+    static int render(const char *string, int y, int yadd, int iconId = -1);
 
     bool showPart_ = false;
     bool showTheme_ = false;
@@ -39,6 +39,7 @@ private:
     // and 96 bytes cut the English CF notice mid-sentence. test_menu_text_fit.py checks every language against these.
     char toast_[384] = {0};
     clock_t toastStart_ = 0;
+    int toastIcon_ = -1;
 #ifdef RETROACHIEVEMENTS
     char raNotice_[2][256] = {{0}, {0}};
     int raNoticeLines_ = 0;

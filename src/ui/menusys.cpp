@@ -68,6 +68,7 @@ enum MENU_IDs {
 #endif
     MENU_FILE_MANAGER, // after RIPPS2's Memory Files browser (akilluminati47)
     MENU_UPDATE,       // Check for Updates (src/ui/selfupdate.cpp)
+    MENU_DATE_TIME,
 };
 
 enum GAME_MENU_IDs {
@@ -1283,6 +1284,7 @@ static void menuInitMainMenu(void)
 #ifdef RIPTOPL_UPDATER
     submenuAppendItem(&mainMenu, -1, NULL, MENU_UPDATE, _STR_UPDATE_CHECK);
 #endif
+    submenuAppendItem(&mainMenu, -1, NULL, MENU_DATE_TIME, _STR_DATE_TIME);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_ABOUT, _STR_ABOUT);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_EXIT, _STR_EXIT);
     submenuAppendItem(&mainMenu, -1, NULL, MENU_POWER_OFF, _STR_POWEROFF);
@@ -1912,6 +1914,25 @@ static void menuFolderResetLeaving(struct menu_list *leaving)
     ioPutRequest(IO_MENU_UPDATE_DEFFERED, &support->mode);
 }
 
+static void menuActivateH(struct menu_list *target)
+{
+    int moved = 0;
+    {
+        raii::SemaLock lock(menuSemaId);
+        if (target != NULL && target != selected_item && menuItemShown(target->item)) {
+            menuFolderResetLeaving(selected_item);
+            selected_item = target;
+            itemConfigId = -1;
+            itemConfigGeneration++;
+            moved = 1;
+        }
+    }
+    if (moved) {
+        gGridSidebarCursor = selected_item;
+        sfxPlay(SFX_CURSOR);
+    }
+}
+
 static void menuNextH()
 {
     int moved = 0;
@@ -2089,11 +2110,41 @@ static void menuPrevV()
     }
 }
 
+static constexpr int carouselPageStep = 15;
+
+static void menuCarouselPage(int dir)
+{
+    menu_item_t *page = selected_item->item;
+    submenu_list_t *previous = page->current;
+    if (previous == NULL)
+        return;
+    submenu_list_t *target = previous;
+    if (dir < 0) {
+        if (target->prev == NULL) {
+            while (target->next != NULL)
+                target = target->next;
+        } else {
+            for (int i = 0; i < carouselPageStep && target->prev != NULL; i++)
+                target = target->prev;
+        }
+    } else if (target->next == NULL) {
+        target = page->submenu;
+    } else {
+        for (int i = 0; i < carouselPageStep && target->next != NULL; i++)
+            target = target->next;
+    }
+    page->current = page->pagestart = target;
+    if (target != previous) {
+        sfxPlay(SFX_CURSOR);
+        thmTriggerCoverflowAnim(dir);
+    }
+}
+
 static int menuPageStep()
 {
     // Use a 15-title browse step when the view has no multi-row page.
     const int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
-    return displayed == 1 ? 15 : displayed;
+    return displayed == 1 ? carouselPageStep : displayed;
 }
 
 static void menuNextPage()
@@ -2388,6 +2439,9 @@ void menuHandleInputMenu()
             if (menuCheckParentalLock() == 0) // it replaces the ELF
                 selfUpdateMenu();
 #endif
+        } else if (id == MENU_DATE_TIME) {
+            if (menuCheckParentalLock() == 0)
+                guiShowDateTime();
         } else if (id == MENU_ABOUT) {
             guiShowAbout();
         } else if (id == MENU_SAVE_CHANGES) {
@@ -2590,7 +2644,7 @@ void menuRenderMain(void)
 // carousel (a vertical list move) while Up/Down switch device menus. Non-coverflow themes
 // behave exactly as before. The info screen is intentionally NOT rotated (menuHandleInputInfo).
 // The Grid view: Left/Right step one cover, Up/Down one row of covers. With the device sidebar (the
-// default) the cursor stops at the top and bottom rows and Left from the first column opens the sidebar;
+// default) Up/Down wraps between the first and last rows and Left from the first column opens the sidebar;
 // a theme without it (<block>_devices=0) leaves for the previous/next device menu from the top/bottom row.
 static void menuGridRow(int dir)
 {
@@ -2601,16 +2655,27 @@ static void menuGridRow(int dir)
             index = count;
         count++;
     }
-    int target = cur != NULL ? gridRowStep(count, index, gTheme->gridColumns, dir) : -1;
-    if (target < 0) {
-        if (gTheme->gridDevices)
-            return; // the top and bottom rows are the list's ends; devices change in the sidebar (RIPPS2 build 115)
+    if (!gTheme->gridDevices && (count == 0 || cur == NULL)) {
         if (dir < 0)
             menuPrevH();
         else
             menuNextH();
         return;
     }
+    if (!gTheme->gridDevices && count > 0 && cur != NULL) {
+        int firstRow = index < gTheme->gridColumns;
+        int lastRow = index / gTheme->gridColumns == (count - 1) / gTheme->gridColumns;
+        if ((dir < 0 && firstRow) || (dir > 0 && lastRow)) {
+            if (dir < 0)
+                menuPrevH();
+            else
+                menuNextH();
+            return;
+        }
+    }
+    int target = cur != NULL ? gridRowStep(count, index, gTheme->gridColumns, dir) : -1;
+    if (target < 0)
+        return;
     for (walk = selected_item->item->submenu; target > 0 && walk != NULL; target--)
         walk = walk->next;
     if (walk == NULL)
@@ -2642,6 +2707,13 @@ static void menuGridPage(int dir)
         count++;
     }
     int target = cur != NULL ? gridPageStep(count, index, gTheme->gridRows, gTheme->gridColumns, dir) : -1;
+    if (target < 0 && !gTheme->gridDevices && (count == 0 || cur == NULL)) {
+        if (dir < 0)
+            menuPrevH();
+        else
+            menuNextH();
+        return;
+    }
     if (target < 0) {
         if (count > gTheme->gridRows * gTheme->gridColumns) { // a single page has nowhere to wrap to
             if (dir < 0)
@@ -2661,8 +2733,8 @@ static void menuGridPage(int dir)
 }
 
 // The Grid's device sidebar (RIPPS2 build 113's category sidebar, akilluminati47): while it has the pad,
-// Up/Down switch device page and the grid shows that device at once; Right, Cross or Circle go back to the
-// covers. Drawn by grid.cpp.
+// Up/Down move its highlight without changing the active page. Cross activates an inactive highlight and
+// returns to the covers; Right or Circle only returns to the covers. Drawn by grid.cpp.
 int menuGridSidebarFocused(void)
 {
     return gGridSidebarOpen && gTheme != NULL && gTheme->gridDevices && menuPageIsGrid();
@@ -2682,11 +2754,25 @@ static int menuGridAtRowStart(void)
 
 static void menuGridSidebarInput(void)
 {
-    if (getKey(KEY_UP)) {
-        menuPrevH();
-    } else if (getKey(KEY_DOWN)) {
-        menuNextH();
-    } else if (getKeyOn(KEY_RIGHT) || getKeyOn(KEY_CROSS) || getKeyOn(KEY_CIRCLE)) {
+    if (gGridSidebarCursor == NULL || !menuItemShown(gGridSidebarCursor->item))
+        gGridSidebarCursor = selected_item;
+
+    if (getKey(KEY_UP) || getKey(KEY_DOWN)) {
+        int dir = getKey(KEY_UP) ? -1 : 1;
+        struct menu_list *walk = dir < 0 ? gGridSidebarCursor->prev : gGridSidebarCursor->next;
+        while (walk != NULL && !menuItemShown(walk->item))
+            walk = dir < 0 ? walk->prev : walk->next;
+        if (walk != NULL) {
+            gGridSidebarCursor = walk;
+            sfxPlay(SFX_CURSOR);
+        }
+    } else if (getKeyOn(KEY_CROSS)) {
+        if (gGridSidebarCursor != selected_item)
+            menuActivateH(gGridSidebarCursor);
+        else
+            sfxPlay(SFX_CURSOR);
+        gGridSidebarOpen = 0;
+    } else if (getKeyOn(KEY_RIGHT) || getKeyOn(KEY_CIRCLE)) {
         gGridSidebarOpen = 0;
         sfxPlay(SFX_CURSOR);
     } else if (getKeyOn(KEY_START)) {
@@ -2704,26 +2790,6 @@ static int menuCoverflowDeviceBarAvailable(void)
         menuPageIsGrid() || selected_item == NULL || selected_item->item == NULL)
         return 0;
     return menuGetMainElems((item_list_t *)selected_item->item->userdata)->hasDeviceBar;
-}
-
-static void menuCoverflowDeviceBarInput(void)
-{
-    if (!menuCoverflowDeviceBarAvailable()) {
-        gCoverflowDeviceBarFocused = 0;
-        return;
-    }
-    if (getKey(KEY_LEFT)) {
-        menuPrevH();
-    } else if (getKey(KEY_RIGHT)) {
-        menuNextH();
-    } else if (getKeyOn(KEY_UP) || getKeyOn(KEY_CROSS) || getKeyOn(KEY_CIRCLE)) {
-        gCoverflowDeviceBarFocused = 0;
-        sfxPlay(SFX_CURSOR);
-    } else if (getKeyOn(KEY_START)) {
-        gCoverflowDeviceBarFocused = 0;
-        menuInitMainMenu();
-        guiSwitchScreen(GUI_SCREEN_MENU);
-    }
 }
 
 static int menuGridAtRowEnd(void)
@@ -2744,6 +2810,7 @@ static void menuNavigateLeft()
     if (menuPageIsGrid()) {
         if (menuGridAtRowStart()) {
             if (gTheme->gridDevices && getKeyOn(KEY_LEFT)) { // a fresh press, so a held Left stops at the first column
+                gGridSidebarCursor = selected_item;
                 gGridSidebarOpen = 1;
                 sfxPlay(SFX_CURSOR);
             }
@@ -2776,7 +2843,7 @@ static void menuNavigateUp()
     if (menuPageIsGrid())
         menuGridRow(-1);
     else if (menuCoverflowDeviceBarAvailable())
-        return; // Down/Up moves focus between Coverflow and its horizontal device bar
+        menuPrevH();
     else if (gTheme->coverflow)
         menuPrevH();
     else
@@ -2787,12 +2854,9 @@ static void menuNavigateDown()
 {
     if (menuPageIsGrid())
         menuGridRow(1);
-    else if (menuCoverflowDeviceBarAvailable()) {
-        if (getKeyOn(KEY_DOWN)) {
-            gCoverflowDeviceBarFocused = 1;
-            sfxPlay(SFX_CURSOR);
-        }
-    } else if (gTheme->coverflow)
+    else if (menuCoverflowDeviceBarAvailable())
+        menuNextH();
+    else if (gTheme->coverflow)
         menuNextH();
     else
         menuNextV();
@@ -2812,11 +2876,15 @@ static int menuL3HoldReached(void)
 
 static void menuL3Tap(int viewPending)
 {
-    if (!viewPending && selected_item->item->toggleView)
+    if (viewPending)
+        return;
+    if (selected_item->item->toggleView)
         selected_item->item->toggleView(selected_item->item);
+    if (thmCanCycleView())
+        guiShowToast(_l(_STR_L3_HOLD_FOR_THEME), L3_ICON);
 }
 
-static void menuHandleViewHold(int viewPending)
+static void menuHandleViewHold(int viewPending, const item_list_t *support)
 {
     if (menuL3State == 0)
         return;
@@ -2827,8 +2895,10 @@ static void menuHandleViewHold(int viewPending)
         menuL3State = 0;
     } else if (menuL3State == 1 && menuL3HoldReached()) {
         menuL3State = 2;
-        if (!viewPending)
-            thmCycleView();
+        const bool canFilter = support != NULL && support->enabled &&
+                               selected_item->item->toggleView && libViewRingUsable(support->mode);
+        if (!viewPending && thmCycleView() && canFilter)
+            guiShowToast(_l(_STR_L3_TAP_FOR_FILTER), L3_ICON);
     }
 }
 
@@ -2852,14 +2922,6 @@ void menuHandleInputMain()
         return;
     }
     gGridSidebarOpen = 0;
-
-    if (gCoverflowDeviceBarFocused && menuCoverflowDeviceBarAvailable()) {
-        if (getKeyOn(KEY_R3) && !viewPending && selected_item->item->fav)
-            selected_item->item->fav(selected_item->item);
-        menuCoverflowDeviceBarInput();
-        return;
-    }
-    gCoverflowDeviceBarFocused = 0;
 
     if (getKey(KEY_LEFT)) {
         menuNavigateLeft();
@@ -2891,11 +2953,15 @@ void menuHandleInputMain()
     } else if (getKey(KEY_L1)) {
         if (menuPageIsGrid())
             menuGridPage(-1);
+        else if (gTheme->coverflow)
+            menuCarouselPage(-1);
         else
             menuPrevPage();
     } else if (getKey(KEY_R1)) {
         if (menuPageIsGrid())
             menuGridPage(1);
+        else if (gTheme->coverflow)
+            menuCarouselPage(1);
         else
             menuNextPage();
     } else if (getKeyOn(KEY_L2)) { // home
@@ -2906,13 +2972,13 @@ void menuHandleInputMain()
         if (!viewPending && selected_item->item->fav)
             selected_item->item->fav(selected_item->item);
     } else if (getKeyOn(KEY_L3)) { // advance the current page's library-view ring; hold = next theme view
-        if (gTheme->viewMask & (gTheme->viewMask - 1)) {
+        if (thmCanCycleView()) {
             menuL3Down = clock();
             menuL3State = 1;
         } else
             menuL3Tap(viewPending);
     }
-    menuHandleViewHold(viewPending);
+    menuHandleViewHold(viewPending, support);
 
     // Last Played Auto Start
     if (gRememberLastPlayed && gAutoStartLastPlayed > 0 && RemainSecs < 0 && DisableCron == 0 && !viewPending) {

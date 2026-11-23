@@ -33,10 +33,11 @@ import yaml
 root = Path(__file__).resolve().parents[2]
 failures = []
 
-if (root / 'src/ui/guinotify.cpp').exists():  # RiptOPL
+RIPTOPL = (root / 'src/ui/guinotify.cpp').exists()
+if RIPTOPL:
     LAYOUT = dict(
         notify='src/ui/guinotify.cpp', notify_h='include/guinotify.h',
-        render_sig='int Notifications::render(const char *string, int y, int yadd)', render='render',
+        render_sig='int Notifications::render(const char *string, int y, int yadd, int iconId)', render='render',
         toast='toast_', toast_buf=r'char toast_\[(\d+)\]', ra_buf=r'char raNotice_\[2\]\[(\d+)\]',
         ra_line='raNotice_[i]', screen='gGuiScreenWidth', fnt='src/gfx/fntsys.cpp', menusys='src/ui/menusys.cpp',
         cheats='src/ui/guimodal.cpp', cheats_sig='void CheatScreen::draw()', base='lng/tmpl/_base.yml',
@@ -89,8 +90,8 @@ if not ra_size or not toast_size:
 
 # --- 1. the notice box, compiled and run --------------------------------------------------------------------------
 render = function(notify, LAYOUT['render_sig'])
-render = re.sub(r'^.*?\(const char \*string, int y, int yadd\)', 'static int render(const char *string, int y, int yadd)',
-                render, count=1)
+render = render.replace(LAYOUT['render_sig'], 'static int render(const char *string, int y, int yadd'
+                        + (', int iconId = -1' if RIPTOPL else '') + ')', 1)
 wrap = function(fnt, 'static int fntWrapPut(') + function(fnt, 'int fntWrapText(')
 
 english = {e['label']: e['string'] for e in yaml.safe_load(read(LAYOUT['base']))['gui_strings']
@@ -122,6 +123,21 @@ static int txtBreakAt(const char *start, const char *s) { (void)start; (void)s; 
 static struct { int x, y, w, h; } box;
 static struct { int x, y, w, h; char text[1024]; } drawn;
 static int boxes, draws;
+#ifdef TEST_TOAST_ICON
+struct GSTEXTURE { int Width, Height; const void *Mem; };
+static GSTEXTURE glyph = {20, 20, &glyph};
+static GSTEXTURE *thmGetTexture(int iconId) { assert(iconId == 3); return &glyph; }
+static int rmWideScale(int w) { return w; }
+enum { ALIGN_VCENTER = 2, SCALING_RATIO = 1, gDefaultCol = 0 };
+static int icons, iconX;
+static void rmDrawPixmap(GSTEXTURE *icon, int x, int y, short align, int w, int h, short scale, u64 color, int reflection)
+{
+    assert(icon == &glyph && align == ALIGN_VCENTER && scale == SCALING_RATIO && color == gDefaultCol && reflection == 0);
+    assert(w == 20 && h == 20 && y == box.y + (MENU_ITEM_HEIGHT + 10) / 2);
+    iconX = x;
+    ++icons;
+}
+#endif
 static void rmDrawRect(int x, int y, int w, int h, u64 colour) { assert(colour == gColDarker); box.x = x; box.y = y; box.w = w; box.h = h; boxes++; }
 static int fntRenderString(int id, int x, int y, short aligned, size_t w, size_t h, const char *s, u64 colour)
 {
@@ -192,6 +208,14 @@ int main(void)
     edge[76] = '\0';
     checkOneLine(edge, 10);
     assert(box.x == 12);
+#ifdef TEST_TOAST_ICON
+    assert(icons == 0);
+    render("Hold for Theme", 10, 0, 3);
+    assert(icons == 1 && iconX == box.x + 5 && drawn.x == iconX + 24 && drawn.w == 0);
+    render(edge, 10, 0, 3);
+    assert(icons == 2 && drawn.x == iconX + 24 && lineCount(drawn.text, &i) == 2);
+    assert(i <= box.w - 10 - 24 && drawn.x + drawn.w <= box.x + box.w);
+#endif
     edge[76] = 'x';
     edge[77] = '\0';
     checkWrapped(edge, 10, 2);
@@ -229,6 +253,8 @@ if render and wrap and toast_size:
                 .replace('@SCREEN@', LAYOUT['screen']).replace('@TOASTMAX@', toast_size.group(1))
                 .replace('@UDPBD@', c_string(english['UDPBD_NEEDS_STATIC_IP']))
                 .replace('@PCCF@', c_string(english['PCCF_UNSUPPORTED_GAME'])))
+        if RIPTOPL:
+            code = '#define TEST_TOAST_ICON\n' + code
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
             source = path / ('notify' + LAYOUT['ext'])
@@ -249,7 +275,7 @@ if render and wrap and toast_size:
 calls = re.findall(r'^[ \t]*([^\n]*\b%s\([^;{}\n]*\);)' % re.escape(RENDER), notify, re.M)
 for call in calls:
     call = call.strip()
-    if call == '%s(%s, 10, 0);' % (RENDER, LAYOUT['toast']):
+    if call == '%s(%s, 10, 0%s);' % (RENDER, LAYOUT['toast'], ', toastIcon_' if RIPTOPL else ''):
         continue  # the toast is drawn alone
     if not re.fullmatch(r'y = %s\(.+, y, yadd\);' % re.escape(RENDER), call):
         failures.append('%s: a notice that wraps must move the next one down: %s' % (LAYOUT['notify'], call))

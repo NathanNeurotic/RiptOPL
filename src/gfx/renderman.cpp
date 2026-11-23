@@ -11,6 +11,7 @@
 #include "include/renderman.h"
 #include "include/renderer.h"
 #include "include/ioman.h"
+#include "include/texmanager.h"
 
 // Allocateable space in vram, as indicated in GsKit's code
 #define __VRAM_SIZE 4194304
@@ -146,9 +147,15 @@ void Renderer::startFrame(void)
 
 void Renderer::endFrame(void)
 {
+    int completed = 1;
     if (hires_) {
         gsKit_hires_sync(gsGlobal);
-        gsKit_hires_flip(gsGlobal);
+        if (gsKit_TexManager_starved()) {
+            gsKit_queue_reset(gsGlobal->CurQueue);
+            completed = 0;
+        } else {
+            gsKit_hires_flip(gsGlobal);
+        }
     } else {
         gsKit_set_finish(gsGlobal);
         gsKit_queue_exec(gsGlobal);
@@ -179,7 +186,7 @@ void Renderer::endFrame(void)
         gsKit_setactive(gsGlobal);
     }
 
-    gsKit_TexManager_nextFrame(gsGlobal);
+    gsKit_TexManager_commitFrame(completed);
 }
 
 void Renderer::discardFrame(void)
@@ -189,6 +196,7 @@ void Renderer::discardFrame(void)
         // empty: flip to it, waiting out the old DMA, before its referenced pixel buffers are freed.
         gsKit_hires_sync(gsGlobal);
         gsKit_hires_flip(gsGlobal);
+        gsKit_TexManager_commitFrame(1);
     }
 }
 
@@ -323,6 +331,7 @@ int Renderer::setMode(int force)
             gsKit_mode_switch(gsGlobal, GS_ONESHOT);
         }
 
+        gsKit_TexManager_setQueueLatency(hires_);
         gsKit_set_test(gsGlobal, GS_ZTEST_OFF);
         gsKit_set_primalpha(gsGlobal, gDefaultAlpha, 0);
         gsKit_set_clamp(gsGlobal, GS_CMODE_CLAMP);
@@ -392,6 +401,7 @@ void Renderer::end(void)
         gsKit_remove_vsync_handler(vsyncId_);
     }
 
+    gsKit_TexManager_flush();
     vmode_ = -1;
 }
 
@@ -459,7 +469,11 @@ void Renderer::drawQuad(rm_quad_t *q)
         gsKit_set_test(gsGlobal, GS_ATEST_OFF);
     }
 
-    gsKit_TexManager_bind(gsGlobal, q->txt);
+    if (gsKit_TexManager_bind(gsGlobal, q->txt) == GSKIT_TEXMGR_BIND_DEFERRED) {
+        if (fixedAlpha)
+            gsKit_set_primalpha(gsGlobal, gDefaultAlpha, 0);
+        return;
+    }
     gsKit_prim_sprite_texture(gsGlobal, q->txt,
                               q->ul.x + renderXOff_, q->ul.y + renderYOff_,
                               q->ul.u, q->ul.v,
@@ -497,7 +511,8 @@ void Renderer::drawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float
     float ry = bottomY + reflectionYOff_;
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
-    gsKit_TexManager_bind(gsGlobal, txt);
+    if (gsKit_TexManager_bind(gsGlobal, txt) == GSKIT_TEXMGR_BIND_DEFERRED)
+        return;
 
     const int strips = 12;
     const int topAlpha = 0x23; // gsKit modulate alpha right under the cover (reduced again, ~27% below original); fades to 0
@@ -562,8 +577,8 @@ void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned
     float u1 = (float)inlay->Width - u0;
     float v1 = (float)inlay->Height - v0;
 
-    gsKit_TexManager_bind(gsGlobal, inlay);
-    gsKit_prim_quad_texture(gsGlobal, inlay,
+    if (gsKit_TexManager_bind(gsGlobal, inlay) != GSKIT_TEXMGR_BIND_DEFERRED)
+        gsKit_prim_quad_texture(gsGlobal, inlay,
                             quad.ul.x + ulx + renderXOff_, quad.ul.y + uly + renderYOff_,
                             u0, v0,
                             quad.ul.x + urx + renderXOff_, quad.ul.y + ury + renderYOff_,
@@ -676,8 +691,11 @@ void Renderer::drawTriangles(GSTEXTURE *txt, int count, const float *xy, const f
     gsGlobal->PrimAlphaEnable = blend ? GS_SETTING_ON : GS_SETTING_OFF;
     gsKit_set_test(gsGlobal, GS_ATEST_OFF);
     // One bind for the batch: nothing else binds between these triangles, so it stays resident.
-    if (txt != NULL)
-        gsKit_TexManager_bind(gsGlobal, txt);
+    if (txt != NULL && gsKit_TexManager_bind(gsGlobal, txt) == GSKIT_TEXMGR_BIND_DEFERRED) {
+        if (fixed)
+            gsKit_set_primalpha(gsGlobal, gDefaultAlpha, 0);
+        return;
+    }
     for (int i = 0; i < count; i++, xy += 6, uv += (txt != NULL) ? 6 : 0, colors += 3) {
         float x0 = scaleX(xy[0]) + renderXOff_, y0 = scaleY(xy[1]) + renderYOff_;
         float x1 = scaleX(xy[2]) + renderXOff_, y1 = scaleY(xy[3]) + renderYOff_;
@@ -851,6 +869,11 @@ void rmUnloadTexture(GSTEXTURE *txt)
     gRenderer.unloadTexture(txt);
 }
 
+void rmReleaseTexture(GSTEXTURE *txt)
+{
+    gsKit_TexManager_release(gsGlobal, txt);
+}
+
 void rmStartFrame(void)
 {
     gRenderer.startFrame();
@@ -947,6 +970,12 @@ void rmSetDisplayOffset(int x, int y)
 void rmSetAspectRatio(enum rm_aratio dar)
 {
     gRenderer.setAspectRatio(dar);
+}
+
+int rmUse16BitArt(void)
+{
+    return rm_mode_table[gVMode].passes > 1 &&
+           rm_mode_table[gVMode].width * rm_mode_table[gVMode].height > 704 * 576;
 }
 
 int rmIsWideDisplay(void)

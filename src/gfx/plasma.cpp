@@ -198,10 +198,8 @@ void PlasmaBackground::init()
 
 void PlasmaBackground::shutdown()
 {
-    if (tex_.Mem) {
-        free(tex_.Mem);
-        tex_.Mem = NULL;
-    }
+    if (tex_.Mem)
+        rmReleaseTexture(&tex_);
 }
 
 void PlasmaBackground::draw(const unsigned char *tint, const unsigned char *blendColor, int screenWidth, int screenHeight)

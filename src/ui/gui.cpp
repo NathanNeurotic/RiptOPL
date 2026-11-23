@@ -473,9 +473,9 @@ void Gui::updateScreenScale()
     unlock();
 }
 
-void Gui::showToast(const char *text)
+void Gui::showToast(const char *text, int iconId)
 {
-    gNotifications.setToast(text);
+    gNotifications.setToast(text, iconId);
     startFrame();
     show();
     guiDrawOverlays();
@@ -491,7 +491,7 @@ void guiUnlock(void) { gGui.unlock(); }
 void guiStartFrame(void) { gGui.startFrame(); }
 void guiEndFrame(void) { gGui.endFrame(); }
 void guiShow() { gGui.show(); }
-void guiShowToast(const char *text) { gGui.showToast(text); }
+void guiShowToast(const char *text, int iconId) { gGui.showToast(text, iconId); }
 void guiDrawToast(void) { gNotifications.drawToast(); }
 void guiDrawBGPlasma() { gGui.drawBackground(); }
 void guiDrawAmbientEffects() { gGui.drawAmbientEffects(); }

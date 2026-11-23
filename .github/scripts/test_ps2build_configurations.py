@@ -226,6 +226,8 @@ class PublisherTests(unittest.TestCase):
                 langs.writestr("README.txt", "synthetic")
             for name in publish_editions.archives(options):
                 (path / f"RIPTOPL-{name}.zip").write_bytes(b"synthetic-bundle")
+            for name in publish_editions.extra_update_assets(edition):
+                (path / name).write_bytes(b"synthetic-update")
             with zipfile.ZipFile(path / editions.kit_archive_name(options), "w") as kit:
                 kit.writestr("BUILD-MANIFEST.json", json.dumps(manifest))
                 kit.writestr(f"APPS/{app}/{elf}", payload)
@@ -248,7 +250,7 @@ class PublisherTests(unittest.TestCase):
                             "elf_sha256": hashlib.sha256(payload).hexdigest(), **changes.get(configuration, {})}
                 (stage / "RIPTOPL.ELF").write_bytes(payload)
                 if options["ra"]:
-                    unpacked = b"\x7fELFunpacked-" + configuration.encode()
+                    unpacked = unpacked_elf() + configuration.encode()
                     (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
                     manifest.setdefault("unpacked_elf_sha256", hashlib.sha256(unpacked).hexdigest())
                 if configuration == "diag":
@@ -270,6 +272,12 @@ class PublisherTests(unittest.TestCase):
             self.variants(root)
             publish_editions.bundle_configurations(root, self.sha)
             self.assertEqual(len(publish_editions.verify(root, self.sha)), 2)
+            self.assertEqual((root / "release-ra/RIPTOPL-RA-UNPACKED.ELF").read_bytes(),
+                             (root / "variant-ra-standard/RIPTOPL-UNPACKED.ELF").read_bytes())
+            self.assertEqual((root / "release-ra/RIPTOPL-RA-PADEMU0.ELF").read_bytes(),
+                             (root / "variant-ra-pademu0/RIPTOPL.ELF").read_bytes())
+            self.assertEqual((root / "release-riptopl/RIPTOPL-DIAG-UNPACKED.ELF").read_bytes(),
+                             (root / "variant-riptopl-diag/RIPTOPL-UNPACKED.ELF").read_bytes())
             for edition in ("riptopl",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("ds5/RIPTOPL.ELF"), b"\x7fELFds5")
@@ -287,8 +295,8 @@ class PublisherTests(unittest.TestCase):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")
                     # The standard and pademu0 RA loaders also ship unpacked, each with its manifest.
-                    self.assertEqual(bundle.read("standard-unpacked/RIPTOPL-RA.ELF"), b"\x7fELFunpacked-standard")
-                    self.assertEqual(bundle.read("pademu0-unpacked/RIPTOPL-RA.ELF"), b"\x7fELFunpacked-pademu0")
+                    self.assertEqual(bundle.read("standard-unpacked/RIPTOPL-RA.ELF"), unpacked_elf() + b"standard")
+                    self.assertEqual(bundle.read("pademu0-unpacked/RIPTOPL-RA.ELF"), unpacked_elf() + b"pademu0")
                     self.assertIn("pademu0-unpacked/BUILD-MANIFEST.json", bundle.namelist())
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 3)
                     self.assertIn("RIPTOPL-RA.ELF", bundle.read("README.txt").decode())

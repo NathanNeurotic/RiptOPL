@@ -58,19 +58,23 @@ static inline int gridPageStep(int count, int index, int rows, int columns, int 
 // The selected cover is drawn this much larger (percent) and last, over its neighbours (RIPPS2 build 78).
 #define GRID_SELECTED_SCALE 112
 
-// Up (dir < 0) or Down (dir > 0) one row, keeping the column. A short last row takes its last cover.
-// -1 when there is no row that way: the cursor stays when the device sidebar is on (devices change there,
-// as in RIPPS2's grid), else the caller switches device page, as Up/Down do in Coverflow.
+// Up (dir < 0) or Down (dir > 0) one row, keeping the column and wrapping at the list's ends.
+// Moving up into a short last row takes its last cover. -1 is reserved for an invalid list or index;
+// the caller handles device-page switching at an edge when the theme has no device sidebar.
 static inline int gridRowStep(int count, int index, int columns, int dir)
 {
     if (count <= 0 || columns < 1 || index < 0 || index >= count)
         return -1;
     int row = index / columns, lastRow = (count - 1) / columns;
-    if (dir < 0)
-        return row == 0 ? -1 : index - columns;
-    if (row == lastRow)
-        return -1;
-    return index + columns < count ? index + columns : count - 1;
+    if (dir < 0) {
+        if (row > 0)
+            return index - columns;
+        int target = lastRow * columns + index;
+        return target < count ? target : count - 1;
+    }
+    if (row < lastRow)
+        return index + columns < count ? index + columns : count - 1;
+    return index % columns;
 }
 
 // Settings > Interface > Coverflow Settings > Grid Layout, after RIPPS2's (build 91/98, akilluminati47): 0 the

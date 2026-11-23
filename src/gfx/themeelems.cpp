@@ -773,15 +773,8 @@ void findDuplicate(theme_element_t *first, int type, const char *cachePattern, c
 static void freeImageTexture(image_texture_t *texture)
 {
     if (texture) {
-        if (texture->source.Mem) {
-            rmUnloadTexture(&texture->source);
-            free(texture->source.Mem);
-            texture->source.Mem = NULL;
-        }
-        if (texture->source.Clut) {
-            free(texture->source.Clut);
-            texture->source.Clut = NULL;
-        }
+        if (texture->source.Mem)
+            rmReleaseTexture(&texture->source);
         if (texture->name) {
             free(texture->name);
             texture->name = NULL;
@@ -873,7 +866,7 @@ static image_texture_t *initImageInternalTexture(config_set_t *themeConfig, cons
 {
     // calloc so the embedded source GSTEXTURE is zeroed: if texLookupInternalTexId
     // fails below, freeImageTexture() reads texture->source.Mem/.Clut and must not
-    // see uninitialized garbage (which it would rmUnloadTexture()/free()).
+    // see uninitialized garbage (which it would rmReleaseTexture()).
     image_texture_t *texture = (image_texture_t *)calloc(1, sizeof(image_texture_t));
     texture->name = NULL;
     int result;
@@ -2107,6 +2100,11 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
     }
 
     if (elem->style == THM_MENU_STYLE_PSBBN_BAR) {
+        if (gTheme != NULL && gTheme->coverflow != NULL && gTheme->psbbnFlow == NULL &&
+            (elem->family == NULL || !elem->family->hasGrid)) {
+            gridDrawDeviceSidebar(menu, gTheme->usedHeight > 0 ? gTheme->usedHeight / 2 : 240, 0, menu);
+            return;
+        }
         struct menu_list *pages[16];
         const char *labels[16];
         int widths[16];
@@ -2175,25 +2173,17 @@ void drawMenuText(struct menu_list *menu, struct submenu_list *item, config_set_
         u64 dimGlyph = GS_SETREG_RGBA(0x55, 0x5E, 0x76, 0x58);
         u64 litGlyph = GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80);
 
-        int barFocused = gCoverflowDeviceBarFocused && gTheme != NULL && gTheme->coverflow != NULL && gTheme->psbbnFlow == NULL;
-        u64 sel = gTheme != NULL ? gTheme->selTextColor : elem->color;
-        int sr = sel & 0xFF, sg = (sel >> 8) & 0xFF, sb = (sel >> 16) & 0xFF;
-
         if (start > 0)
             fntRenderString(elem->font, x - rmWideScale(10), cy, ALIGN_VCENTER, 0, 0, "<", dimText);
         for (int i = start; i <= end; i++) {
             int lit = (i == current);
             int entryW = widths[i];
-            if (lit && barFocused) {
-                int pad = rmWideScale(4);
-                rmDrawRect(x - pad, cy - 10, entryW + 2 * pad, 20, GS_SETREG_RGBA(sr, sg, sb, 0x45));
-            }
             gridDrawPageGlyph(pages[i], x + glyphW / 2, cy, glyphSize, lit ? litGlyph : dimGlyph);
             fntRenderStringFit(elem->font, x + glyphW + iconTextGap, cy, ALIGN_VCENTER,
                                entryW - glyphW - iconTextGap, labels[i],
-                               lit ? (barFocused ? gTheme->selTextColor : elem->color) : dimText, 0);
+                               lit ? elem->color : dimText, 0);
             if (lit)
-                rmDrawRect(x, cy + 8, entryW, 2, barFocused ? GS_SETREG_RGBA(sr, sg, sb, 0x80) : GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x70));
+                rmDrawRect(x, cy + 8, entryW, 2, GS_SETREG_RGBA(0x58, 0x98, 0xff, 0x70));
             x += entryW + itemGap;
         }
         if (end < count - 1)

@@ -175,7 +175,7 @@ typedef struct theme_elems
     unsigned char needsSaveIconConfig;
     // Set when this family contains a Grid: Left/Right and Up/Down follow the grid on its pages only.
     unsigned char hasGrid;
-    // Set when this family contains a horizontal device strip (MenuText with style=psbbn_bar).
+    // Set when this family contains a device strip (MenuText with style=psbbn_bar).
     unsigned char hasDeviceBar;
 } theme_elems_t;
 
@@ -345,11 +345,11 @@ extern theme_t *gTheme;
 extern int gThemeViewRequest;
 
 extern int gCoverflowCount, gCoverflowCenterScale, gCoverflowAnimSpeed, gCoverflowDimCovers;
-extern int gCoverflowDeviceBarFocused; // Coverflow's bottom horizontal device bar has the pad (Down/Up swaps focus)
-extern int gGridSidebarOpen;           // the Grid's device sidebar has the pad (menusys sets it, grid.cpp draws it open)
-void gridForgetItem(const void *item); // a list item is freed: drop its case-flip state (grid.cpp)
-extern int gGridCompact;               // Grid (7x2) view pick: 1 the fixed 7 x 2 page, 0 the theme's / Grid Layout's
-extern int gGridLayout;                // Grid Layout: 0 the theme's, 1..GRID_LAYOUTS RIPPS2's presets (grid.h)
+extern int gGridSidebarOpen;                 // the Grid's device sidebar has the pad (menusys sets it, grid.cpp draws it open)
+extern struct menu_list *gGridSidebarCursor; // highlighted device, independent of the active page in selected_item
+void gridForgetItem(const void *item);       // a list item is freed: drop its case-flip state (grid.cpp)
+extern int gGridCompact;                     // Grid (7x2) view pick: 1 the fixed 7 x 2 page, 0 the theme's / Grid Layout's
+extern int gGridLayout;                      // Grid Layout: 0 the theme's, 1..GRID_LAYOUTS RIPPS2's presets (grid.h)
 void thmTriggerCoverflowAnim(int dir);
 
 void thmInit(void);
@@ -380,6 +380,8 @@ int thmGetGuiValue(void);
 // Ask for a view (THM_VIEW_*, -1 = the theme's default) and reload the active theme when that changes
 // what is shown. Returns 1 when the theme was reloaded. GUI thread, outside a frame.
 int thmSetView(int view);
+// Whether holding L3 switches the active theme's layout.
+int thmCanCycleView(void);
 // Switch to the next view the active theme offers (hold L3), Coverflow (3) and Coverflow (5) counting as
 // two stops. Returns 1 when the view changed; a step between the two Coverflow stops does not reload.
 int thmCycleView(void);

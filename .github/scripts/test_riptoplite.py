@@ -122,7 +122,7 @@ class ChannelTests(unittest.TestCase):
                 write_manifest(stage, **manifest)
                 (stage / name).write_bytes(elf)
 
-    def test_channel_holds_korium_elfs_and_ra_zips(self):
+    def test_channel_holds_all_elfs_and_ra_install_zips(self):
         sha = "a" * 40
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -132,15 +132,15 @@ class ChannelTests(unittest.TestCase):
             self.assertEqual(set(sums), publish_lite.expected_assets())
             for device, options in lite.DEVICES.items():
                 self.assertEqual((path / f"RIPTOPLITE-{options['title']}.ELF").read_bytes(), f"lite-{device}".encode())
-                self.assertFalse((path / f"RIPTOPLITE-RA-{options['title']}.ELF").exists())  # RA ships as a ZIP
+                ra = f"RIPTOPLITE-RA-{options['title']}.ELF"
+                self.assertEqual((path / ra).read_bytes(), f"lite_ra-{device}".encode())
                 with zipfile.ZipFile(path / f"RIPTOPLITE-RA-{options['title']}.zip") as z:
                     names = set(z.namelist())
-                    self.assertEqual(z.read(f"RIPTOPLITE-RA-{options['title']}.ELF"), f"lite_ra-{device}".encode())
+                    self.assertEqual(z.read(ra), (path / ra).read_bytes())
                     self.assertIn("neutrino/modules/raagent.irx", names)  # ORBIT's runtime, RA's outside need
                     self.assertLessEqual({"README.txt", "BUILD-MANIFEST.json", *publish_lite.RA_KIT_FILES}, names)
                     self.assertFalse(any(n.startswith("APPS/") for n in names))
-            # Korium ELFs carry no RA resources.
-            self.assertFalse(any("RA" in n and n.endswith(".ELF") for n in sums))
+            self.assertIn("LICENSE-MBEDTLS.txt", sums)
 
     def test_a_build_from_another_commit_is_refused(self):
         with tempfile.TemporaryDirectory() as temp:

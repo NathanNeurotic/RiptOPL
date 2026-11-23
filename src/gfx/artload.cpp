@@ -583,7 +583,7 @@ static void cacheLoadImage(load_image_request_t *req)
     // first; they cannot stop the stale reads existing.
     if ((u32)(guiFrameId - req->entry->lastUsed) > ART_CANCEL_STALE_FRAMES) {
         // freeTxt 0, not 1: the entry holds NO texture during the in-flight window (the enqueue
-        // cleared it on the GUI thread) and rmUnloadTexture must never run off the GUI thread --
+        // cleared it on the GUI thread) and rmReleaseTexture must never run off the GUI thread --
         // see the GS/VRAM note at the staged decode below.
         cacheClearItem(req->entry, 0);
         artReleaseRequest(req, 0);
@@ -616,7 +616,7 @@ static void cacheLoadImage(load_image_request_t *req)
     // STAGED TEXTURE. The decode lands in a GSTEXTURE this THREAD owns, and only a finished image is
     // copied into the cache entry. Two things fall out of that and both are load-bearing:
     //
-    //  1. GS/VRAM IS NEVER TOUCHED OFF THE GUI THREAD. cacheClearItem(item, 1) calls rmUnloadTexture
+    //  1. GS/VRAM IS NEVER TOUCHED OFF THE GUI THREAD. cacheClearItem(item, 1) calls rmReleaseTexture
     //     -> gsKit_TexManager_free, which mutates gsKit's VRAM allocator list while the GUI thread
     //     may be inside gsKit_TexManager_bind on that same list. Today that call is REACHABLE from
     //     the io worker and is saved only by an accident: the enqueue cleared the entry with
@@ -692,6 +692,11 @@ static void cacheLoadImage(load_image_request_t *req)
         free(req);
         gArtW.terminate = 1;
         return;
+    }
+
+    if (result >= 0) {
+        const char *suffix = req->cache->suffix();
+        texPrepareArtForDisplay(&staged, suffix != NULL && strcmp(suffix, "BG") == 0);
     }
 
     // clock() is microseconds here; the elapsed form is single-wrap safe.

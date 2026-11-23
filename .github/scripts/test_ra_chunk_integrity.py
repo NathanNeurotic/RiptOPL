@@ -25,6 +25,8 @@ program = r'''
 #include "include/ranet.h"
 struct sockaddr_in {int unused;};
 constexpr int RA_CHUNK=896, RA_WAIT_ROUNDS=20, RA_WAIT_PAUSE_MS=500, RA_LINK_BUSY=-8, RA_LINK_MSTACK=0x10000;
+enum {RA_MODE_XERABORA, RA_MODE_CADUCEUS};
+static int gRAMode = RA_MODE_XERABORA;
 enum {_STR_RA_SUPPORTED,_STR_RA_ACHIEVEMENTS_FULL,_STR_RA_ACHIEVEMENTS,_STR_RA_WL_NOT_SAVED};
 static void DelayThread(int) {}
 #define LOG(...) ((void)0)
@@ -39,13 +41,14 @@ int Ranet::openPcLink(char *address,int,unsigned char ip[4]) {address[0]=0;memse
 int Ranet::pcTarget(int,sockaddr_in*,const char*,char*,int) {return 0;}
 void Ranet::forgetPeer() {}
 void Ranet::rememberPeer(unsigned int) {}
-int Ranet::ask(int, sockaddr_in*, const char*, char *out, int max) {
+int Ranet::ask(int, sockaddr_in*, const char *req, char *out, int max, int attempts) {
+    assert(attempts == (!strncmp(req, "RAG1 ", 5) && gRAMode == RA_MODE_XERABORA ? 60 : 12));
     if(cursor==(int)replies.size())return -1;
     const auto &reply=replies[cursor++];assert(reply.size()<(unsigned)max);
     memcpy(out,reply.data(),reply.size());out[reply.size()]=0;return reply.size();
 }
 void Ranet::closePcLink(int) {disconnected++;}
-static int unlink(const char*) {return 0;}
+static int fake_unlink(const char*) {return 0;}
 static int SetWatchList(const void *data,int len,const char*) {
     parsed++;published.assign((const unsigned char*)data,(const unsigned char*)data+len);return parserResult;
 }
@@ -57,11 +60,13 @@ static int fake_close(FILE*) {closes++;return 0;}
 #define fopen fake_open
 #define fwrite fake_write
 #define fclose fake_close
+#define unlink fake_unlink
 @HELPER@
 @FUNCTION@
 #undef fopen
 #undef fwrite
 #undef fclose
+#undef unlink
 static Ranet client;
 static std::string padded(std::string packet) {
     packet.resize(std::max<size_t>(128,(packet.size()+63)/64*64),' ');return packet;
@@ -101,6 +106,8 @@ int main() {
         assert(transfer()==0 && parsed==1 && files==1);
         assert(published==std::vector<unsigned char>(expected.begin(),expected.end()));
     }
+    reset();gRAMode=RA_MODE_CADUCEUS;announce(1,1);chunk(0,"a");assert(transfer()==0);
+    gRAMode=RA_MODE_XERABORA;
     reset();announce(1,1);chunk(0,"x");parserResult=-3;
     assert(transfer()==-6 && parsed==1 && !files && !writes && disconnected==1);
     reset();reserved=true;assert(transfer()==-8 && !cursor && !parsed && !files);

@@ -42,7 +42,7 @@ struct rapops_cfg
     unsigned int bytes;
     unsigned int node_count;
     unsigned int list[RA_WATCH_MAX];
-    struct ra_node nodes[RA_NODE_MAX];
+    struct ra_node nodes[RA_NODE_MAX_PS1];
     /* each module at blob + off[i], 16-byte aligned for LoadModuleBuffer; size 0: absent */
     unsigned int blob_off[RAPOPS_BLOBS];
     unsigned int blob_size[RAPOPS_BLOBS];

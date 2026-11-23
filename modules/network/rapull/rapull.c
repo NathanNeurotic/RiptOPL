@@ -387,7 +387,7 @@ int _start(int argc, char *argv[])
         rp_bytes = rp_hex_at(argv[1], 36, 8);
         rp_nodes = (const struct ra_node *)&rp_list[rp_count];
 
-        if (rp_snap == NULL || rp_list == NULL || rp_count == 0 || rp_count > RA_WATCH_MAX || rp_node_count > RA_NODE_MAX)
+        if (rp_snap == NULL || rp_list == NULL || rp_count == 0 || rp_count > RA_WATCH_MAX || rp_node_count > RA_NODE_MAX_PS1)
             return MODULE_NO_RESIDENT_END;
         if (rp_bytes == 0 || rp_bytes > RA_SNAP_MAX_BYTES || rp_bytes + rp_node_count * RA_NODE_PAIR_BYTES > RA_SNAP_MAX_BYTES)
             return MODULE_NO_RESIDENT_END;

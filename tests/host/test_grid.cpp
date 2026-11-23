@@ -40,13 +40,19 @@ int main()
     CHECK(gridPageStep(30, 40, 2, 4, -1) == -1); // stale index
     CHECK(GRID_SELECTED_SCALE > 100);
 
-    // ---- Up/Down: keep the column, a short last row takes its last cover, -1 leaves the grid ------
-    CHECK(gridRowStep(10, 1, 4, -1) == -1); // top row: the cursor stays (or, with no sidebar, the previous device)
+    // ---- Up/Down: keep the column, wrap at both ends, and clamp a short last row to its last cover ----
+    CHECK(gridRowStep(10, 1, 4, -1) == 9); // first row -> short last row's last cover
+    CHECK(gridRowStep(10, 0, 4, -1) == 8);
     CHECK(gridRowStep(10, 5, 4, -1) == 1);
     CHECK(gridRowStep(10, 1, 4, 1) == 5);
-    CHECK(gridRowStep(10, 7, 4, 1) == 9);  // row 2 holds 8 and 9 only
-    CHECK(gridRowStep(10, 9, 4, 1) == -1); // last row: Down goes to the next device menu
+    CHECK(gridRowStep(10, 7, 4, 1) == 9); // row 2 holds 8 and 9 only
+    CHECK(gridRowStep(10, 9, 4, 1) == 1); // last row -> same column on the first row
+    CHECK(gridRowStep(10, 8, 4, 1) == 0);
     CHECK(gridRowStep(10, 8, 4, -1) == 4);
+    CHECK(gridRowStep(12, 11, 4, 1) == 3); // a full final row wraps without clamping
+    CHECK(gridRowStep(12, 3, 4, -1) == 11);
+    CHECK(gridRowStep(3, 1, 4, -1) == 1); // one row wraps in place
+    CHECK(gridRowStep(3, 1, 4, 1) == 1);
     CHECK(gridRowStep(0, 0, 4, 1) == -1);   // empty page
     CHECK(gridRowStep(10, 12, 4, 1) == -1); // stale index
 

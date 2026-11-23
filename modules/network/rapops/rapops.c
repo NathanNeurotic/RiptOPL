@@ -61,7 +61,7 @@ static void start_rapull(void *snap)
     u32 *list;
     int n, i;
 
-    if (g_cfg.count == 0 || g_cfg.count > RA_WATCH_MAX || g_cfg.node_count > RA_NODE_MAX)
+    if (g_cfg.count == 0 || g_cfg.count > RA_WATCH_MAX || g_cfg.node_count > RA_NODE_MAX_PS1)
         return;
 
     list = AllocSysMemory(ALLOC_FIRST, (g_cfg.count + g_cfg.node_count * 3) * sizeof(u32), NULL);
@@ -104,7 +104,7 @@ int _start(int argc, char *argv[])
     (void)argv;
 
     if (g_cfg.ipcfg_len <= 0 || g_cfg.ipcfg_len > RAPOPS_IPCFG_MAX ||
-        g_cfg.count == 0 || g_cfg.count > RA_WATCH_MAX || g_cfg.node_count > RA_NODE_MAX ||
+        g_cfg.count == 0 || g_cfg.count > RA_WATCH_MAX || g_cfg.node_count > RA_NODE_MAX_PS1 ||
         g_cfg.bytes == 0 || g_cfg.bytes > RA_SNAP_MAX_BYTES ||
         g_cfg.bytes + g_cfg.node_count * RA_NODE_PAIR_BYTES > RA_SNAP_MAX_BYTES)
         return MODULE_NO_RESIDENT_END; /* not written by OPL */

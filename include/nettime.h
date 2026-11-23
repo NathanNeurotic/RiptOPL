@@ -1,7 +1,7 @@
 #ifndef __NETTIME_H
 #define __NETTIME_H
 
-// General & System -> Date and Time -> Set from Internet (Launchstation issue 346 request).
+// Main menu -> Date and Time -> Set from Internet (Launchstation issue 346 request).
 enum {
     NETTIME_OK = 0,
     NETTIME_ERR_NETBUSY, // UDPBD or UDPFS owns the network adapter

@@ -94,14 +94,21 @@ int main() {
         tailUnchanged(g_ee_core_config.raWorkBytes);
     }
     // Full entry/node budgets, with source + scratch words beyond 4096.
-    int bytes=0;
+    int bytes=0, extra=RA_SNAP_MAX_BYTES-RA_NODE_MAX*RA_NODE_PAIR_BYTES-RA_WATCH_MAX;
     for(int i=0;i<RA_WATCH_MAX;i++) {
-        int size=i<1795 ? 4 : 1; // 9481 direct + 256*8 node bytes at the snapshot ceiling
+        int size=extra>=3 ? 4 : extra>0 ? 2 : 1;
+        extra-=size-1;
         entries[i]=RA_WATCH_PACK(0x80000+4*i,size);bytes+=size;
     }
+    assert(extra==0 && RA_NODE_MAX==512);
     for(int i=0;i<RA_NODE_MAX;i++)nodes[i]={RA_NODE_PACK(0,0,4,0,0),(u32)i*4,1};
     u32 base=0x100000;memcpy(gameRam+0x80000,&base,4);
     for(int i=0;i<RA_NODE_MAX;i++){u32 v=0x12340000+i;memcpy(gameRam+base+i*4,&v,4);}
+    // The final node follows a pointer from node 510, beyond the old index ceiling.
+    const u32 secondBase=0x110000, lastValue=0xABCD1234;
+    memcpy(gameRam+base+(RA_NODE_MAX-2)*4,&secondBase,4);
+    memcpy(gameRam+secondBase,&lastValue,4);
+    nodes[RA_NODE_MAX-1]={RA_NODE_PACK(RA_NODE_MAX-2,1,4,0,0),0,1};
     setup(RA_WATCH_MAX,bytes,RA_NODE_MAX);
     assert(ra_watch_count==4096 && ra_node_count==RA_NODE_MAX && ra_snap_bytes==RA_SNAP_MAX_BYTES && ra_snap_every==3);
     ra_snap_send();assert(transfers==1 && RA_SnapBytes()==RA_SNAP_MAX_BYTES);
@@ -111,7 +118,8 @@ int main() {
     const u8 *vals=work+RA_SNAP_HDR;
     for(int i=0;i<RA_NODE_MAX;i++) {
         u32 address,value;memcpy(&address,vals+bytes+i*8,4);memcpy(&value,vals+bytes+i*8+4,4);
-        assert(address==base+(u32)i*4 && value==0x12340000+(u32)i);
+        assert(address==(i==RA_NODE_MAX-1 ? secondBase : base+(u32)i*4));
+        assert(value==(i==RA_NODE_MAX-1 ? lastValue : i==RA_NODE_MAX-2 ? secondBase : 0x12340000+(u32)i));
     }
     tailUnchanged(g_ee_core_config.raWorkBytes);
     // RAN2 nibble extraction, index zero, negative scale and dependent nodes.
@@ -171,6 +179,9 @@ int main() {
 
 run('loader_ra_budget', prefix + r'''
 #include "include/rawatch.h"
+#include "include/ranet.h"
+#include "modules/network/common/rapops_cfg.h"
+static_assert(RA_NODE_MAX_PS1 == 256 && sizeof(rapops_cfg::nodes) / sizeof(ra_node) == RA_NODE_MAX_PS1);
 #define LOG(...) ((void)0)
 static std::vector<u32> disk;
 static unsigned readPosition;
@@ -196,7 +207,7 @@ int main() {
     auto *node=(ra_node*)(nf+1);for(int i=0;i<RA_NODE_MAX;i++)node[i]={RA_NODE_PACK(0,0,1,0,0),0,1};
     int len=blob.size()*4;
     assert(watch.setWatchList(blob.data(),len,"SLUS_123.45")==4096 && watch.nodeCount()==RA_NODE_MAX);
-    assert(len<20*1024);
+    assert(len>20*1024 && len<RA_MAX_BYTES);
     disk=blob;watch.clearWatchList();
     assert(watch.loadWatchList("save.wl","SLUS_123.45")==4096 && watch.nodeCount()==RA_NODE_MAX);
     for(int bad : {0,3,5,15}) {
@@ -222,7 +233,7 @@ int main() {
     watch.clearWatchList();assert(watch.loadWatchList("unknown.wl","SLUS_123.45")<0 && !watch.watchCount());
     disk[5]=RA_NODE_MAGIC;
     assert(watch.setWatchList(disk.data(),disk.size()*4,"SLUS_123.45")<0);
-    // xeRAbora 2.1 hash suffix: direct-only, legacy chains and all 256 RAN2 nodes.
+    // xeRAbora hash suffix: direct-only, legacy chains and all 512 PS2 RAN2 nodes.
     auto withHash = [](std::vector<u32> original) {
         const char *md5 = "0123456789abcdef0123456789abcdef";
         original.push_back(RA_HASH_MAGIC);
@@ -249,7 +260,7 @@ int main() {
         assert(watch.setWatchList(current.data(),current.size()*4,"SLUS_123.45")<0 && !watch.watchCount());
         disk=current;assert(watch.loadWatchList("extra.wl","SLUS_123.45")<0 && !watch.watchCount());
     }
-    assert(16+4*RA_WATCH_MAX+8+12*RA_NODE_MAX+sizeof(ra_hash_file)<20*1024);
+    assert(16+4*RA_WATCH_MAX+8+12*RA_NODE_MAX+sizeof(ra_hash_file)<=RA_MAX_BYTES);
     puts("PASS: real C++ parser accepts RAH1/RANL/RAN2 and rejects invalid suffixes");
 }
 ''')
@@ -289,6 +300,12 @@ int main() {
     }
     count=bytes=4096;nodes=RA_NODE_MAX;
     assert(launch.raWorkBytes(nullptr)==RA_EE_WORK_BYTES(4096,RA_NODE_MAX));
+    const unsigned full=RA_EE_WORK_BYTES(4096,RA_NODE_MAX);
+    const unsigned aligned=(full+63)&~63u;
+    for (uintptr_t end : {uintptr_t(0x00100000),uintptr_t(0x02000000)}) {
+        assert(launch.raWorkBytes((const void *)(end-aligned))==full);
+        assert(!launch.raWorkBytes((const void *)(end-aligned+64)));
+    }
     nodes=-1;assert(!launch.raWorkBytes(nullptr));nodes=RA_NODE_MAX+1;assert(!launch.raWorkBytes(nullptr));
     nodes=0;bytes--;assert(!launch.raWorkBytes(nullptr));bytes++;
     entries[0]=RA_WATCH_PACK(0x80000,3);assert(!launch.raWorkBytes(nullptr));
@@ -308,7 +325,7 @@ int main() {
     assert(!notes && launch.raWorkBytes((const void *)(0x00100000-cards))==cards);
     assert(launch.raWorkBytes((const void *)(0x00100000-cards+64))==list && notes==1);
     assert(launch.raWorkBytes(high)==cards && launch.raWorkBytes((const void *)(0x02000000-cards+64))==list);
-    assert(launch.raWorkBytes((const void *)0x02000040)==list && notes==3);
+    assert(!launch.raWorkBytes((const void *)0x02000040) && notes==2);
     count=0;assert(!launch.raWorkBytes(low) && !launch.overlayFor(area,0));
     puts("PASS: card packet only for Caduceus opt-in, cache-aligned, below the 1 MB/32 MB limit, else the pulse");
 }

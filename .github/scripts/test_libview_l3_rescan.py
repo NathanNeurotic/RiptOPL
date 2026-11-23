@@ -78,12 +78,13 @@ static int gAllGames;
 typedef struct { short mode; } item_list_t;
 struct menu_item { void *userdata; };
 static int queueReject, stageReject, folderDepth;
-static int dirty, queues, scans, cacheDrops, warnings;
+static int dirty, queues, scans, cacheDrops, warnings, multipleStyles;
 static int staged, pending;
 static char sequence[64];
 static void record(char c) { size_t n = strlen(sequence); sequence[n] = c; sequence[n + 1] = 0; }
 static int libViewRingUsable(int mode) { (void)mode; return 1; }
 static int libViewPending(int mode) { (void)mode; return pending; }
+static int thmCanCycleView(void) { return multipleStyles; }
 static int ioPutRequest(int type, void *data) {
     (void)data; if (type != IO_MENU_UPDATE_DEFFERED) return -1;
     record('Q'); queues++; return queueReject ? -1 : IO_OK;
@@ -111,7 +112,7 @@ static void guiWarning(const char *s, int duration) {
 
 static void reset_case(void) {
     queueReject = stageReject = folderDepth = 0;
-    dirty = queues = scans = cacheDrops = warnings = staged = pending = 0;
+    dirty = queues = scans = cacheDrops = warnings = staged = pending = multipleStyles = 0;
     sequence[0] = 0;
 }
 static void consume_bdm_scan(void) {
@@ -142,7 +143,14 @@ int main(void) {
     if (staged || scans || cacheDrops || dirty || strcmp(sequence, "QFS"))
         { printf("FAIL rejected stage: %s\n", sequence); return 1; }
 
-    puts("L3: root switch scans once; rejected transitions do not scan");
+    reset_case();
+    multipleStyles = 1;
+    itemExecToggleView(&menu);
+    consume_bdm_scan();
+    if (!staged || scans != 1 || warnings != 0 || strcmp(sequence, "QFSDC"))
+        { printf("FAIL L3 filter with a theme that cycles styles: %s\n", sequence); return 1; }
+
+    puts("L3: root switch scans once; rejected transitions do not scan; theme tip can replace the destination notice");
     return 0;
 }
 """.replace("@TOGGLE@", toggle)

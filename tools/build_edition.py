@@ -44,30 +44,32 @@ def kit_archive_name(options):
     return "RIPTOPL.zip" if options["title"] == "RiptOPL" else f"RIPTOPL-{options['title']}.zip"
 
 
-UPDATE_ELF_IDS = {"RIPTOPL.ELF": "PLAIN", "RIPTOPL-RA.ELF": "RA"}
+def update_asset(edition, configuration="standard", device=None, *, unpacked=False):
+    if edition in LITES:
+        return elf_name(device, edition == LITE_RA)
+    stem = "RIPTOPL-RA" if EDITIONS[edition]["ra"] else "RIPTOPL"
+    if configuration != "standard":
+        stem += "-" + configuration.upper().replace("_", "-")
+    return stem + ("-UNPACKED" if unpacked else "") + ".ELF"
 
 
-def update_defines(channel):
-    """The channel as two plain defines (src/ui/selfupdate.cpp maps them back to the names)."""
-    tag_key = "ROLLING" if channel[0] == "rolling" else channel[0].replace("rolling-", "").upper()
-    return ["RIPTOPL_UPDATE_TAG_" + tag_key,
-            "RIPTOPL_UPDATE_ELF_" + UPDATE_ELF_IDS[channel[1]]]
+def publishes_unpacked(edition, configuration):
+    return (edition == "ra" and configuration in ("standard", "pademu0")) or (edition == "riptopl" and configuration == "diag")
 
 
-def update_channel(edition, configuration="standard", toolchain=None):
-    """(release tag, ELF asset) that Check for Updates fetches (src/ui/selfupdate.cpp), or None.
-
-    Only a published standard build updates itself, and only from its own channel and compiler:
-    a variant, debug, lite or alternate-compiler build would otherwise be replaced by another build."""
-    if edition in LITES or configuration != "standard":
-        return None
-    options = EDITIONS[edition]
+def update_channel(edition, configuration="standard", toolchain=None, device=None):
+    """Return the channel and packed asset for a published edition/configuration/device."""
+    options = edition_options(edition)
     if toolchain is None:
         toolchain = options["compiler"]
     if toolchain != options["compiler"]:
         return None
-    elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
-    return options["tag"], elf
+    if edition in LITES:
+        if configuration != "standard" or device not in LITE_DEVICES:
+            return None
+    elif configuration not in CONFIGURATIONS or (edition == "ra" and configuration not in ("standard", "pademu0")):
+        return None
+    return options["tag"], update_asset(edition, configuration, device)
 
 
 def add(target, field, *values):
@@ -132,7 +134,7 @@ def definition(edition, configuration="standard", toolchain=None, device=None):
         for name in ("bdm_cdvdman", "mmce_cdvdman"):
             add(targets[name], "defines", "__USE_DEV9")
             add(targets[name], "sources", "modules/iopcore/cdvdman/dev9.c")
-    channel = update_channel(edition, configuration, toolchain)
+    channel = update_channel(edition, configuration, toolchain, device)
     if channel is not None:
         tls = ["third_party/mbedtls/include", "third_party/mbedtls"]
         if not options["ra"]:
@@ -144,10 +146,12 @@ def definition(edition, configuration="standard", toolchain=None, device=None):
             add(main, "sources", "src/platform/ratls.c", "src/sources/ratls_ps2.cpp")
             add(main, "include_dirs", *tls)
             add(main, "libs", "mbedtls")
-        # Plain names, no quoted strings, on the main target: include/ratls.h picks the slim configuration
-        # from RIPTOPL_UPDATER without RETROACHIEVEMENTS, and selfupdate.cpp spells out the channel.
+        # selfupdate.cpp stringifies these values, keeping the asset names shared with the publisher.
         add(main, "sources", "src/platform/selfupdate.c", "src/ui/selfupdate.cpp")
-        add(main, "defines", "RIPTOPL_UPDATER", *update_defines(channel))
+        add(main, "defines", "RIPTOPL_UPDATER", f"RIPTOPL_UPDATE_CHANNEL={channel[0]}",
+            f"RIPTOPL_UPDATE_ASSET={channel[1]}")
+        if publishes_unpacked(edition, configuration):
+            add(main, "defines", f"RIPTOPL_UPDATE_RAW_ASSET={update_asset(edition, configuration, unpacked=True)}")
     if edition in LITES:
         apply_lite(config, device, ROOT, options["ra"])
     elif device is not None:
@@ -206,7 +210,7 @@ def main():
     if args.toolchain is None:
         args.toolchain = options["compiler"]
     os.environ["RIPTOPL_RA"] = "1" if options["ra"] else "0"
-    os.environ["RIPTOPL_UPDATER"] = "1" if update_channel(args.edition, args.configuration, args.toolchain) else "0"
+    os.environ["RIPTOPL_UPDATER"] = "1" if update_channel(args.edition, args.configuration, args.toolchain, args.device) else "0"
     suffix = "" if args.configuration == "standard" else f"-{args.configuration.upper()}"
     title = options["title"] if args.device is None else f"{options['title']}-{LITE_DEVICES[args.device]['title']}"
     os.environ["LOCALVERSION"] = f"PS2BUILD-{title}-{args.toolchain.upper()}{suffix}"
@@ -244,7 +248,7 @@ def main():
         "run_url": os.environ.get("GITHUB_SERVER_URL", "https://github.com") + "/" +
             os.environ.get("GITHUB_REPOSITORY", "NathanNeurotic/RiptOPL") + "/actions/runs/" + os.environ.get("GITHUB_RUN_ID", "local"),
     }
-    if args.configuration == "diag" or options["ra"]:
+    if publishes_unpacked(args.edition, args.configuration):
         # The bug-report build (publish_editions.py) ships diag before compression: the unpacked ELF
         # started from a launch path where every packed build showed a black screen. RIPTOPL-RA-VARIANTS
         # also ships the RA loaders unpacked: they start without the decompression step (CosmicScale).
