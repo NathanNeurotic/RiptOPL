@@ -222,7 +222,7 @@ public:
             config->GsmConfig.FIELD_fix = gsm_config.FIELD_fix;
         }
 
-        config->IgrAltCombo = gIgrAltCombo;
+        config->IgrAltCombo = guiIgrComboMask(gIgrAltCombo); // the user's own IGR combo, 0: the usual ones
 #ifdef IGR_MENU
         // The in-game menu (RIPPS2's, by akilluminati47; ee_core igrmenu.c). RetroAchievements editions and the IGS
         // and freeze-report configurations build ee_core without it (no room), and leave these zero.

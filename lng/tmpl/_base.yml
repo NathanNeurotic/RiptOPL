@@ -2196,10 +2196,13 @@ gui_strings:
   string: "The IGR combo pauses the game under a menu: Resume, Cheats, Exit Game, Power Off. OPL core games on a real PS2 only; where it cannot draw, the combo leaves the game as before."
 
 - label: IGR_ALT_COMBO
-  string: IGR on L3 + R3
+  string: IGR Combo
 
 - label: HINT_IGR_ALT_COMBO
-  string: "When on (OPL core games): L1+L2+R1+R2+L3+R3 leaves the game, and L1+L2+R1+R2+Start+Select is left to the game. The pad can no longer power off; the power button still can."
+  string: "The buttons that leave a game (OPL core games). Press to record your own: hold at least 3 buttons for 3 seconds. With your own combo, the usual combos are left to the game and the pad can no longer power off; the power button still can."
+
+- label: IGR_COMBO_RECORD
+  string: "Hold the buttons for your IGR combo (at least 3) for 3 seconds. Hold L1+L2+R1+R2+Start+Select to go back to the usual combo. Let go of every button for 10 seconds to cancel."
 
 - comment: Coverflow Settings dialog. Grid Layout picks how many covers a Grid view page shows; the presets follow RIPPS2's grid (by akilluminati47). "4 x 2" and the other sizes are not translated; "Large" reuses LARGE.
   label: GRID_LAYOUT

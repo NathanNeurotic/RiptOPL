@@ -133,11 +133,20 @@ int main(void) {
  memset(fresh,0,sizeof(fresh));Pad_Data.combo_type=0;
  fresh[4]=IGR_PAD_STABLE_V2;fresh[29]=IGR_COMBO_R1_L1_R2_L2;fresh[28]=IGR_COMBO_START_SELECT;
  assert(tick()==IGR_COMBO_START_SELECT && intrEnabled);
- /* #416: with the alternative combo, Start + Select is the game's and R3 + L3 leaves the game. */
- g_cfg.IgrAltCombo=1;Pad_Data.combo_type=0;
+ /* The user's own combo (PAD_* bits): here the old L3 + R3 toggle, so Start + Select is the game's and
+    R3 + L3 leaves the game. */
+ g_cfg.IgrAltCombo=0x0F06;Pad_Data.combo_type=0;
  assert(tick()==0);
  fresh[28]=IGR_COMBO_R3_L3;Pad_Data.combo_type=0;
  assert(tick()==IGR_COMBO_START_SELECT);
+ /* A combo without L1 + L2 + R1 + R2 (Triangle + Start + Select): exactly those buttons, nothing more. */
+ g_cfg.IgrAltCombo=0x1009;Pad_Data.combo_type=0;
+ assert(tick()==0);
+ fresh[29]=0xEF;fresh[28]=IGR_COMBO_START_SELECT;Pad_Data.combo_type=0;
+ assert(tick()==IGR_COMBO_START_SELECT);
+ fresh[29]=0xEE;Pad_Data.combo_type=0; /* plus Square: not the combo */
+ assert(tick()==0);
+ fresh[29]=IGR_COMBO_R1_L1_R2_L2;fresh[28]=IGR_COMBO_R3_L3;
  g_cfg.IgrAltCombo=0;Pad_Data.combo_type=0;
  assert(tick()==IGR_COMBO_R3_L3);
  fresh[28]=IGR_COMBO_START_SELECT;Pad_Data.combo_type=0;

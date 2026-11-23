@@ -325,23 +325,22 @@ static void IGR_CheckInputs(void)
                 Pad_Data.vb_count = 0;
             }
 
-            // Combo R1 + L1 + R2 + L2
-            if (pad_pos_combo1 == IGR_COMBO_R1_L1_R2_L2) {
-                if (config->IgrAltCombo) {
-                    // Alternative combo (#416): R3 + L3 resets, Start + Select is left to the game, and the
-                    // pad has no power off (the in-game menu and the power button still have it).
-                    if (pad_pos_combo2 == IGR_COMBO_R3_L3)
-                        Pad_Data.combo_type = IGR_COMBO_START_SELECT;
-                }
-                // Combo Start + Select or R3 + L3
-                else if ((pad_pos_combo2 == IGR_COMBO_START_SELECT) || // Start + Select combo, so reset
-                         (pad_pos_combo2 == IGR_COMBO_R3_L3))          // R3 + L3 combo, so poweroff
-                    Pad_Data.combo_type = pad_pos_combo2;
-#ifdef IGS
-                if ((pad_pos_combo2 == IGR_COMBO_UP) && (config->EnableGSMOp)) // UP combo, so take IGS
-                    Pad_Data.combo_type = pad_pos_combo2;
-#endif
+            if (config->IgrAltCombo) {
+                // The user's own combo: exactly these buttons held (libpad PAD_* bits; both pad bytes are
+                // active low) resets. The default combos are left to the game, and the pad has no power
+                // off (the in-game menu and the power button still have it).
+                if ((u16)~(pad_pos_combo2 | (pad_pos_combo1 << 8)) == config->IgrAltCombo)
+                    Pad_Data.combo_type = IGR_COMBO_START_SELECT;
             }
+            // Combo R1 + L1 + R2 + L2, then Start + Select (reset) or R3 + L3 (poweroff)
+            else if ((pad_pos_combo1 == IGR_COMBO_R1_L1_R2_L2) &&
+                     ((pad_pos_combo2 == IGR_COMBO_START_SELECT) || (pad_pos_combo2 == IGR_COMBO_R3_L3)))
+                Pad_Data.combo_type = pad_pos_combo2;
+#ifdef IGS
+            if ((pad_pos_combo1 == IGR_COMBO_R1_L1_R2_L2) && (pad_pos_combo2 == IGR_COMBO_UP) &&
+                (config->EnableGSMOp)) // UP combo, so take IGS
+                Pad_Data.combo_type = pad_pos_combo2;
+#endif
         }
     }
 

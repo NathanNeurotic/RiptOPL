@@ -252,6 +252,7 @@ prefix=r'''
 #include <stdio.h>
 #define RETROACHIEVEMENTS 1
 typedef unsigned char u8;
+typedef unsigned short u16;
 enum { DISC_MODE=1, OTHER_MODE, IGR_LIBPAD, IGR_LIBPAD2,
        IGR_PAD_STABLE_V1, IGR_PAD_STABLE_V2, IGR_COMBO_R1_L1_R2_L2,
        IGR_COMBO_START_SELECT, IGR_COMBO_R3_L3 };

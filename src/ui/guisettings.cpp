@@ -2839,7 +2839,10 @@ static int guiSettingsShowLaunch(void)
 #ifdef IGR_MENU
     diaSetInt(ui, CFG_IGR_MENU, gIgrMenu);
 #endif
-    diaSetInt(ui, CFG_IGR_ALT_COMBO, gIgrAltCombo);
+    // The IGR combo button shows the combo itself; the buffer outlives the dialog (diaSetLabel keeps the pointer).
+    static char igrComboLabel[96];
+    guiIgrComboName(gIgrAltCombo, igrComboLabel, sizeof(igrComboLabel));
+    diaSetLabel(ui, CFG_IGR_ALT_COMBO, igrComboLabel);
     diaSetInt(ui, CFG_PS2LOGO, gPS2Logo);
     const char *appHandoffStrs[] = {_l(_STR_APP_HANDOFF_LEGACY), _l(_STR_APP_HANDOFF_TYPED), NULL};
     diaSetEnum(ui, CFG_APP_HANDOFF_PATH, appHandoffStrs);
@@ -2861,6 +2864,15 @@ reshow_launch:
             gSettingsShell.markSavePending();
         goto reshow_launch;
     }
+    if (result == CFG_IGR_ALT_COMBO) {
+        int combo = guiIgrComboCapture();
+        if (combo >= 0 && combo != guiIgrComboMask(gIgrAltCombo)) {
+            gIgrAltCombo = combo;
+            guiIgrComboName(gIgrAltCombo, igrComboLabel, sizeof(igrComboLabel));
+            gSettingsShell.markSavePending();
+        }
+        goto reshow_launch;
+    }
     if (result == CFG_NEUTRINO_ARGS) {
         if (guiShowNeutrinoArgsConfig(gNeutrinoArgs, sizeof(gNeutrinoArgs)))
             gSettingsShell.markSavePending();
@@ -2873,7 +2885,6 @@ reshow_launch:
 #ifdef IGR_MENU
         diaGetInt(ui, CFG_IGR_MENU, &gIgrMenu);
 #endif
-        diaGetInt(ui, CFG_IGR_ALT_COMBO, &gIgrAltCombo);
         diaGetInt(ui, CFG_PS2LOGO, &gPS2Logo);
         diaGetInt(ui, CFG_APP_HANDOFF_PATH, &gAppHandoffPath);
         if (strcmp(gNeutrinoPath, neutrinoPathEdit) != 0)
