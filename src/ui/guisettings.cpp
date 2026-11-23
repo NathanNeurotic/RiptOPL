@@ -2866,7 +2866,13 @@ static int guiSettingsShowLaunch(void)
 #ifdef IGR_MENU
     diaSetInt(ui, CFG_IGR_MENU, gIgrMenu);
 #endif
-    diaSetInt(ui, CFG_IGR_ALT_COMBO, gIgrAltCombo);
+    // The IGR combo button shows the combo itself; the buffer outlives the dialog (diaSetLabel keeps the pointer).
+    static char igrComboLabel[96];
+    static char igrPowerLabel[96];
+    guiIgrComboName(gIgrAltCombo, igrComboLabel, sizeof(igrComboLabel));
+    diaSetLabel(ui, CFG_IGR_ALT_COMBO, igrComboLabel);
+    guiIgrPowerLabel(igrPowerLabel, sizeof(igrPowerLabel));
+    diaSetLabel(ui, CFG_IGR_POWER_COMBO, igrPowerLabel);
     diaSetInt(ui, CFG_PS2LOGO, gPS2Logo);
     const char *appHandoffStrs[] = {_l(_STR_APP_HANDOFF_LEGACY), _l(_STR_APP_HANDOFF_TYPED), NULL};
     diaSetEnum(ui, CFG_APP_HANDOFF_PATH, appHandoffStrs);
@@ -2888,6 +2894,31 @@ reshow_launch:
             gSettingsShell.markSavePending();
         goto reshow_launch;
     }
+    if (result == CFG_IGR_ALT_COMBO || result == CFG_IGR_POWER_COMBO) {
+        int power = result == CFG_IGR_POWER_COMBO;
+        int combo = guiIgrComboCapture(power ? _STR_IGR_POWER_COMBO_RECORD : _STR_IGR_COMBO_RECORD,
+                                       power ? _STR_IGR_COMBO_TURN_OFF : _STR_IGR_COMBO_USE_DEFAULT);
+        // Recording the usual combo as the IGR Combo is the default (0).
+        if (!power && combo == IGR_COMBO_DEFAULT_MASK)
+            combo = 0;
+        // The reset and power-off combos must differ: the same buttons would always power off. The reset combo
+        // in effect is the user's own, or the usual one.
+        int resetMask = guiIgrComboMask(power ? gIgrAltCombo : combo);
+        if (resetMask == 0)
+            resetMask = IGR_COMBO_DEFAULT_MASK;
+        if (combo >= 0 && resetMask == (power ? combo : gIgrPowerCombo))
+            guiMsgBox(_l(_STR_IGR_COMBO_TAKEN), 0, NULL);
+        else if (combo >= 0 && combo != (power ? gIgrPowerCombo : guiIgrComboMask(gIgrAltCombo))) {
+            if (power)
+                gIgrPowerCombo = combo;
+            else
+                gIgrAltCombo = combo;
+            guiIgrComboName(gIgrAltCombo, igrComboLabel, sizeof(igrComboLabel));
+            guiIgrPowerLabel(igrPowerLabel, sizeof(igrPowerLabel));
+            gSettingsShell.markSavePending();
+        }
+        goto reshow_launch;
+    }
     if (result == CFG_NEUTRINO_ARGS) {
         if (guiShowNeutrinoArgsConfig(gNeutrinoArgs, sizeof(gNeutrinoArgs)))
             gSettingsShell.markSavePending();
@@ -2900,7 +2931,6 @@ reshow_launch:
 #ifdef IGR_MENU
         diaGetInt(ui, CFG_IGR_MENU, &gIgrMenu);
 #endif
-        diaGetInt(ui, CFG_IGR_ALT_COMBO, &gIgrAltCombo);
         diaGetInt(ui, CFG_PS2LOGO, &gPS2Logo);
         diaGetInt(ui, CFG_APP_HANDOFF_PATH, &gAppHandoffPath);
         if (strcmp(gNeutrinoPath, neutrinoPathEdit) != 0)

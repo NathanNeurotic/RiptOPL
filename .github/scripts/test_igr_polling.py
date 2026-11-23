@@ -207,7 +207,7 @@ typedef struct {
     u32 option;
 } ee_thread_t;
 
-struct cfg { int EnableGSMOp; int GameMode; int gCheatList; int MMCEIGRSettings; int IgrAltCombo; };
+struct cfg { int EnableGSMOp; int GameMode; int gCheatList; int MMCEIGRSettings; int IgrAltCombo; int IgrPowerCombo; };
 static struct cfg g_cfg;
 #define USE_LOCAL_EECORE_CONFIG struct cfg *config = &g_cfg;
 

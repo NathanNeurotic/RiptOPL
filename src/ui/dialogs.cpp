@@ -1245,7 +1245,12 @@ struct UIItem diaLaunchConfig[] = {
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_IGR_ALT_COMBO}}},
     {UI_SPACER},
-    {UI_BOOL, CFG_IGR_ALT_COMBO, 1, 1, _STR_HINT_IGR_ALT_COMBO, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BUTTON, CFG_IGR_ALT_COMBO, 1, 1, _STR_HINT_IGR_ALT_COMBO, 0, 0, {.label = {NULL, _STR_IGR_ALT_COMBO}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_IGR_POWER_COMBO}}},
+    {UI_SPACER},
+    {UI_BUTTON, CFG_IGR_POWER_COMBO, 1, 1, _STR_HINT_IGR_POWER_COMBO, 0, 0, {.label = {NULL, _STR_IGR_POWER_COMBO}}},
     {UI_BREAK},
 
     // Neutrino's fields are composed below; the Settings shell skips this legacy button.

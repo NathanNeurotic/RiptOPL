@@ -147,6 +147,13 @@ int guiPopstarterPathHandler(char *text, int maxLen);
 int guiExitPathHandler(char *text, int maxLen);
 int guiNfsExportHandler(char *text, int maxLen);
 int guiShowNeutrinoArgsConfig(char *argsBuf, int bufSize); // 1 when the saved args changed
+// The usual IGR combo as PAD_* bits: L1 + L2 + R1 + R2 + Start + Select.
+#define IGR_COMBO_DEFAULT_MASK 0x0F09
+// The user's own IGR combo (gIgrAltCombo): 0 = the usual combos, 1 = the old L3 + R3 toggle, else libpad PAD_* bits.
+int guiIgrComboMask(int value);                       // the PAD_* bits ee_core gets (0: the usual combos)
+void guiIgrComboName(int value, char *buf, int size); // "L1+L2+R1+R2+Start+Select"
+void guiIgrPowerLabel(char *buf, int size);           // gIgrPowerCombo's name, or "Off"
+int guiIgrComboCapture(int promptId, int defaultId);  // hold-to-record screen: the new value, or -1 (cancelled)
 int guiNeutrinoArgsCwdHandler(char *text, int maxLen);
 int guiNeutrinoArgsCfgHandler(char *text, int maxLen);
 int guiNeutrinoArgsElfHandler(char *text, int maxLen);

@@ -451,3 +451,183 @@ void guiManageCheats(config_set_t *configSet)
     CheatScreen screen(configSet);
     screen.run();
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// The user's own IGR combo (Settings > Launch). gIgrAltCombo holds libpad PAD_* bits -- the same bits ee_core reads
+// from the game's pad buffer (padhook.c) -- 0 for the usual combos, or 1 for the old "IGR on L3 + R3" toggle.
+
+static const struct
+{
+    unsigned char key;
+    unsigned short bit;
+    const char *name;
+} igrComboButtons[] = {
+    {KEY_L1, 0x0400, "L1"},
+    {KEY_L2, 0x0100, "L2"},
+    {KEY_R1, 0x0800, "R1"},
+    {KEY_R2, 0x0200, "R2"},
+    {KEY_TRIANGLE, 0x1000, "Triangle"},
+    {KEY_CIRCLE, 0x2000, "Circle"},
+    {KEY_CROSS, 0x4000, "Cross"},
+    {KEY_SQUARE, 0x8000, "Square"},
+    {KEY_SELECT, 0x0001, "Select"},
+    {KEY_START, 0x0008, "Start"},
+    {KEY_L3, 0x0002, "L3"},
+    {KEY_R3, 0x0004, "R3"},
+    {KEY_UP, 0x0010, "Up"},
+    {KEY_DOWN, 0x0040, "Down"},
+    {KEY_LEFT, 0x0080, "Left"},
+    {KEY_RIGHT, 0x0020, "Right"},
+};
+
+#define IGR_COMBO_LEGACY_MASK  0x0F06 // L1 + L2 + R1 + R2 + L3 + R3 (the old toggle, #416)
+#define IGR_COMBO_MIN_BUTTONS  3
+#define IGR_COMBO_HOLD_SECONDS 3
+
+int guiIgrComboMask(int value)
+{
+    return value == 1 ? IGR_COMBO_LEGACY_MASK : (value & 0xFFFF);
+}
+
+void guiIgrComboName(int value, char *buf, int size)
+{
+    int mask = guiIgrComboMask(value);
+    int len = 0;
+
+    if (mask == 0)
+        mask = IGR_COMBO_DEFAULT_MASK;
+    buf[0] = '\0';
+    for (unsigned i = 0; i < sizeof(igrComboButtons) / sizeof(igrComboButtons[0]); i++) {
+        if (!(mask & igrComboButtons[i].bit))
+            continue;
+        int n = snprintf(buf + len, size - len, "%s%s", len ? "+" : "", igrComboButtons[i].name);
+        if (n < 0 || n >= size - len)
+            break;
+        len += n;
+    }
+}
+
+void guiIgrPowerLabel(char *buf, int size)
+{
+    if (gIgrPowerCombo == 0)
+        snprintf(buf, size, "%s", _l(_STR_OFF));
+    else
+        guiIgrComboName(gIgrPowerCombo, buf, size);
+}
+
+static int igrComboHeld(void)
+{
+    int mask = 0;
+    for (unsigned i = 0; i < sizeof(igrComboButtons) / sizeof(igrComboButtons[0]); i++)
+        if (getKeyPressed(igrComboButtons[i].key))
+            mask |= igrComboButtons[i].bit;
+    return mask;
+}
+
+static int igrComboCount(int mask)
+{
+    int n = 0;
+    for (; mask; mask &= mask - 1)
+        n++;
+    return n;
+}
+
+// Hold the new combo (at least IGR_COMBO_MIN_BUTTONS) for IGR_COMBO_HOLD_SECONDS. A combo needs 3 buttons, so a
+// single button held alone is free for the screen's own keys: Circle alone cancels, Triangle alone sets the default
+// (the usual combo, or no power-off combo), each after IGR_COMBO_KEY_SECONDS, with a countdown on screen.
+#define IGR_COMBO_KEY_SECONDS 5
+#define IGR_COMBO_CIRCLE      0x2000
+#define IGR_COMBO_TRIANGLE    0x1000
+
+class IgrComboScreen: public ModalScreen
+{
+public:
+    IgrComboScreen(int promptId, int defaultId)
+        : promptId_(promptId)
+        , defaultId_(defaultId)
+    {
+    }
+
+private:
+    // Seconds a held set needs before it acts, or 0 when it does nothing.
+    int holdNeeded(int held) const
+    {
+        if (held == IGR_COMBO_CIRCLE || held == IGR_COMBO_TRIANGLE)
+            return IGR_COMBO_KEY_SECONDS;
+        return igrComboCount(held) >= IGR_COMBO_MIN_BUTTONS ? IGR_COMBO_HOLD_SECONDS : 0;
+    }
+
+    bool onKeys() override
+    {
+        clock_t now = clock();
+        int held = igrComboHeld();
+
+        if (!armed_) { // the Cross / Circle press that opened this screen is still down
+            if (held == 0)
+                armed_ = 1;
+            return false;
+        }
+
+        if (held != held_) {
+            held_ = held;
+            since_ = now;
+        }
+        held_s_ = (int)((now - since_) / CLOCKS_PER_SEC);
+
+        int need = holdNeeded(held_);
+        if (need == 0 || held_s_ < need)
+            return false;
+        if (held_ == IGR_COMBO_CIRCLE)
+            result_ = -1;
+        else if (held_ == IGR_COMBO_TRIANGLE)
+            result_ = 0;
+        else
+            result_ = held_;
+        return true;
+    }
+
+    void draw() override
+    {
+        char line[160];
+
+        rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, gColBlack);
+        rmDrawLine(50, 75, gGuiScreenWidth - 50, 75, gColWhite);
+        rmDrawLine(50, 410, gGuiScreenWidth - 50, 410, gColWhite);
+
+        int y = guiDrawMsgText(_l(promptId_));
+        if (held_ != 0) {
+            if (held_ == IGR_COMBO_CIRCLE)
+                snprintf(line, sizeof(line), "%s", _l(_STR_CANCEL));
+            else if (held_ == IGR_COMBO_TRIANGLE)
+                snprintf(line, sizeof(line), "%s", _l(defaultId_));
+            else
+                guiIgrComboName(held_, line, sizeof(line));
+            int need = holdNeeded(held_);
+            if (need > held_s_) {
+                int n = strlen(line);
+                snprintf(line + n, sizeof(line) - n, "  (%d)", need - held_s_);
+            }
+            fntRenderString(gTheme->fonts[0], gGuiScreenWidth >> 1, y + 2 * MENU_ITEM_HEIGHT, ALIGN_CENTER, 0, 0, line, gTheme->textColor);
+        }
+    }
+
+    int finish() override
+    {
+        sfxPlay(result_ < 0 ? SFX_CANCEL : SFX_CONFIRM);
+        return result_;
+    }
+
+    int promptId_;
+    int defaultId_;
+    int armed_ = 0;
+    int held_ = 0;
+    int held_s_ = 0;
+    int result_ = -1;
+    clock_t since_ = 0;
+};
+
+int guiIgrComboCapture(int promptId, int defaultId)
+{
+    IgrComboScreen screen(promptId, defaultId);
+    return screen.run();
+}

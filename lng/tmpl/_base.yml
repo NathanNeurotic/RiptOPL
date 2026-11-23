@@ -2196,10 +2196,31 @@ gui_strings:
   string: "The IGR combo pauses the game under a menu: Resume, Cheats, Exit Game, Power Off. OPL core games on a real PS2 only; where it cannot draw, the combo leaves the game as before."
 
 - label: IGR_ALT_COMBO
-  string: IGR on L3 + R3
+  string: IGR Combo
 
 - label: HINT_IGR_ALT_COMBO
-  string: "When on (OPL core games): L1+L2+R1+R2+L3+R3 leaves the game, and L1+L2+R1+R2+Start+Select is left to the game. The pad can no longer power off; the power button still can."
+  string: "The buttons that leave a game (OPL core games). Press to record your own: hold at least 3 buttons for 3 seconds. With your own combo, the usual combos are left to the game, and only the IGR Power-Off Combo (if set) or the power button powers off."
+
+- label: IGR_POWER_COMBO
+  string: IGR Power-Off Combo
+
+- label: HINT_IGR_POWER_COMBO
+  string: "Off by default. Press to record buttons that power the console off from a game (OPL core games): hold at least 3 buttons for 3 seconds. It must differ from the IGR Combo."
+
+- label: IGR_POWER_COMBO_RECORD
+  string: "Hold the buttons for your power-off combo (at least 3) for 3 seconds. Hold Triangle alone for 5 seconds to turn it off. Hold Circle alone for 5 seconds to cancel."
+
+- label: IGR_COMBO_TAKEN
+  string: "The IGR Combo and the IGR Power-Off Combo must use different buttons. Nothing was changed."
+
+- label: IGR_COMBO_RECORD
+  string: "Hold the buttons for your IGR combo (at least 3) for 3 seconds. Hold Triangle alone for 5 seconds to go back to the usual combo (L1+L2+R1+R2+Start+Select). Hold Circle alone for 5 seconds to cancel."
+
+- label: IGR_COMBO_USE_DEFAULT
+  string: Back to the usual combo
+
+- label: IGR_COMBO_TURN_OFF
+  string: Turn off
 
 - comment: Coverflow Settings dialog. Grid Layout picks how many covers a Grid view page shows; the presets follow RIPPS2's grid (by akilluminati47). "4 x 2" and the other sizes are not translated; "Large" reuses LARGE.
   label: GRID_LAYOUT
