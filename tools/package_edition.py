@@ -86,6 +86,8 @@ Settings > Language and save your settings. Every edition reads the same files.
 def language_pack(destination, version):
     """The .lng files and the fonts their scripts need: neither is in the ELF (original tools/lng_pack.sh)."""
     fonts = ROOT / "lng_src/thirdparty"
+    # Upstream's Japanese font holds only the menu's 325 characters; game titles need the rest of JIS.
+    japanese = ROOT / "third_party/fonts/MPLUS1p-Regular-JIS.ttf"
     languages = sorted((ROOT / "lng").glob("lang_*.lng"))
     if not languages:
         raise ValueError("no lng/lang_*.lng; run tools/assets.py fetch and lang first")
@@ -95,10 +97,13 @@ def language_pack(destination, version):
             folder = f"{name}-{version}/"
             pack.write(lng, folder + lng.name)
             # No Serbian font upstream, and Serbian Latin uses exactly Croatian's letters.
-            for font in (fonts / f"font_{name}.ttf", fonts / f"font_{name}.otf",
+            for font in (japanese if name == "Japanese" else None,
+                         fonts / f"font_{name}.ttf", fonts / f"font_{name}.otf",
                          fonts / "font_Croatian.ttf" if name == "Serbian" else None):
                 if font is not None and font.is_file():
                     pack.write(font, f"{folder}font_{name}{font.suffix}")
+                    if font == japanese:
+                        pack.write(ROOT / "third_party/fonts/MPLUS1P-OFL.txt", f"{folder}LICENSE-font_Japanese.txt")
                     break
         pack.writestr("README.txt", LANGS_README)
 
