@@ -409,7 +409,8 @@ static void IGR_StopDmaAndGs(void)
     // before anything else of the reset can wait on it. Read in place, as the write below is: the plain combo and the
     // power button call this from the VBLANK handler, where the kernel call that reads it (a thread's syscall) may not be used
     u32 perf;
-    asm volatile("mfc0 %0, $25\n" : "=r"(perf));
+    asm volatile("mfc0 %0, $25\n"
+                 : "=r"(perf));
     if (perf & 0x80000000)
         asm volatile("mtc0 %0, $25\n sync.p\n" ::"r"(perf & 0x7fffffff));
 
