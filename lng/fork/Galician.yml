@@ -314,7 +314,7 @@ translations:
   RA_DISC_CHECKING: Comprobando o disco para RetroAchievements
   RA_DISC_HASH_FAILED: 'Non se puido calcular o hash do disco: comprobe RA/hashes.txt no cartafol de configuración'
   RA_DISC_HOME_ERROR: A ruta de configuración non se pode usar para as listas de seguimento de discos
-  RA_DISC_ENABLE: Active primeiro a telemetría de RetroAchievements na configuración de rede
+  RA_DISC_ENABLE: Active primeiro a telemetría de RetroAchievements na configuración de RetroAchievements
   RA_DISC_CHECK_FIRST: 'Non hai lista de seguimento para este disco: use primeiro RA: comprobar a compatibilidade do disco'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: Atopouse un HDD, pero non se pode ler a súa táboa de particións APA. Non o formate: os seus xogos poden ser recuperables.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Non se montou unha unidade porque os seus sectores non son de 512 bytes (p. ex. unha unidade de sectores de 4K). OPL só le sectores de 512 bytes.'

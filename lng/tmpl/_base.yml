@@ -1332,7 +1332,7 @@ gui_strings:
 - label: RA_DISC_HOME_ERROR
   string: The settings path cannot be used for disc watch lists
 - label: RA_DISC_ENABLE
-  string: Enable RetroAchievements telemetry in Network settings first
+  string: Enable telemetry in RetroAchievements settings first
 - label: RA_DISC_CHECK_FIRST
   string: No watch list for this disc -- use RA check disc support first
 - label: HDD_APA_TABLE_UNREADABLE_ERROR

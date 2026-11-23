@@ -404,7 +404,7 @@ translations:
   RA_DISC_CHECKING: 正在為 RetroAchievements 檢查光碟
   RA_DISC_HASH_FAILED: 無法計算光碟的雜湊 -- 請查看設定資料夾中的 RA/hashes.txt
   RA_DISC_HOME_ERROR: 設定路徑不能用於光碟的追蹤清單
-  RA_DISC_ENABLE: 請先在網路設定中開啟 RetroAchievements 遙測
+  RA_DISC_ENABLE: 請先在 RetroAchievements 設定中開啟 RetroAchievements 遙測
   RA_DISC_CHECK_FIRST: 這張光碟沒有追蹤清單 -- 請先使用「RA：檢查光碟支援」
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d：找到硬碟，但無法讀取其 APA 分割表。請不要格式化 -- 你的遊戲也許還能救回。'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d：有一個磁碟機沒有掛載，因為它的磁區不是 512 位元組（例如 4K 磁區的硬碟）。OPL 只能讀取 512 位元組的磁區。'

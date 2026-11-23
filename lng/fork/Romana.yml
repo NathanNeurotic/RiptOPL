@@ -447,7 +447,7 @@ translations:
   RA_DISC_CHECKING: Se verifică discul pentru RetroAchievements
   RA_DISC_HASH_FAILED: Hash-ul discului nu a putut fi calculat -- verifică RA/hashes.txt în folderul de setări
   RA_DISC_HOME_ERROR: Calea setărilor nu poate fi folosită pentru listele de urmărire ale discurilor
-  RA_DISC_ENABLE: Pornește întâi telemetria RetroAchievements în setările de rețea
+  RA_DISC_ENABLE: Pornește întâi telemetria RetroAchievements în setările RetroAchievements
   RA_DISC_CHECK_FIRST: 'Nu există listă de urmărire pentru acest disc -- folosește întâi RA: verifică suportul discului'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD găsit, dar tabelul lui de partiții APA nu poate fi citit. Nu îl formata -- jocurile tale pot fi încă recuperabile.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: O unitate nu a fost montată pentru că sectoarele ei nu au 512 octeți (de ex. o unitate cu sectoare de 4K). OPL poate citi doar sectoare de 512 octeți.'

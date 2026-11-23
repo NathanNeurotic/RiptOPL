@@ -400,7 +400,7 @@ translations:
   RA_DISC_CHECKING: Vérification du disque pour RetroAchievements
   RA_DISC_HASH_FAILED: L'empreinte du disque n'a pas pu être calculée -- voir RA/hashes.txt dans le dossier des paramètres
   RA_DISC_HOME_ERROR: Le dossier des paramètres ne peut pas servir aux listes de suivi des disques
-  RA_DISC_ENABLE: Activez d'abord la télémétrie RetroAchievements dans les paramètres réseau
+  RA_DISC_ENABLE: Activez d'abord la télémétrie RetroAchievements dans les paramètres RetroAchievements
   RA_DISC_CHECK_FIRST: 'Aucune liste de suivi pour ce disque -- utilisez d''abord RA : vérifier le support du disque'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d : disque dur trouvé, mais sa table de partitions APA est illisible. Ne le formatez pas -- vos jeux sont peut-être récupérables.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d : un périphérique n''a pas été monté car ses secteurs ne font pas 512 octets (par ex. un disque à secteurs de 4K). OPL ne lit que les secteurs de 512 octets.'

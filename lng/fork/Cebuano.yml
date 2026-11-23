@@ -420,7 +420,7 @@ translations:
   RA_DISC_CHECKING: Gisusi ang disc alang sa RetroAchievements
   RA_DISC_HASH_FAILED: 'Dili ma-hash ang disc: susiha ang RA/hashes.txt sa settings folder'
   RA_DISC_HOME_ERROR: Dili magamit ang settings path alang sa mga watch list sa disc
-  RA_DISC_ENABLE: I-enable una ang RetroAchievements telemetry sa Network settings
+  RA_DISC_ENABLE: I-enable una ang RetroAchievements telemetry sa RetroAchievements settings
   RA_DISC_CHECK_FIRST: 'Walay watch list kining disc: gamita una ang RA check disc support'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: Nakit-an ang HDD, apan dili mabasa ang APA partition table niini. Ayaw kini i-format: tingali mabawi pa ang imong mga dula.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Wala na-mount ang usa ka drive tungod kay dili 512 byte ang mga sector niini (pananglitan drive nga 4K ang sector). 512-byte nga sector ra ang mabasa sa OPL.'

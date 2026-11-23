@@ -41,7 +41,7 @@ as finished.
 | Menu actions: check game support, test PC link | both used on hardware: the support check's hashing by [hacan359](https://github.com/hacan359), the PC link test in #704 |
 | List badges and the cover mark | written, **not yet confirmed on hardware** |
 | Unlock overlay | **hardware-tested**: the gold overlay showed over the running game on an unlock (#704) |
-| Settings: RA telemetry, RA badges | done; on the **Network** page since #705, where switching telemetry off and on was checked on hardware |
+| Settings: RA telemetry, RA badges | done; on the **Network** page since #705, where switching telemetry off and on was checked on hardware. They now have a **RetroAchievements** page of their own, **not yet tried on hardware** |
 | Disc in the tray | implemented in the RA build; **not hardware-tested** |
 
 ---
@@ -53,7 +53,7 @@ as finished.
 1. Start **RIPTOPL-RA.ELF** from the RetroAchievements kit (`rolling-ra`). The standard RiptOPL kit runs without achievement telemetry or a companion PC.
 2. Run **xeRAbora v2.2.0** on the companion PC and sign in to your RetroAchievements
    account in its Settings page. Keep it running.
-3. In **Settings → Network**, leave **RA Mode** on **Xerabora**, turn **RetroAchievements
+3. In **Settings → RetroAchievements**, leave **RA Mode** on **Xerabora**, turn **RetroAchievements
    telemetry** on and save. Telemetry is Off on a fresh start. Give the PS2 working network
    settings on the same LAN as the PC, and set **RA companion IP** to the PC's IPv4 address to
    target it directly (0.0.0.0 finds it by broadcast).
@@ -74,7 +74,7 @@ run one achievement service per PC.
 
 ### Settings and menu actions
 
-The settings, on the **Network** settings page:
+The settings, on the **RetroAchievements** settings page (RetroAchievements builds list it in the Settings hub, right after Network):
 
 | Setting | Default | Effect |
 | --- | --- | --- |
@@ -100,7 +100,7 @@ RiptOPL's main menu:
 
 1. Choose **RA: check disc support**. RiptOPL hashes the disc's boot executable and asks the PC
    client for its watch list. The check runs in the background and reports its result on screen.
-2. Enable **RetroAchievements telemetry** in **Network** settings.
+2. Enable **RetroAchievements telemetry** in **RetroAchievements** settings.
 3. Choose **RA: launch disc**. This action requires a watch list for the disc currently in the tray.
 
 Disc watch lists and hash logs use `RA/` inside the active settings folder: for example,
@@ -274,7 +274,7 @@ network driver would otherwise wait for a cable for ever and the game would neve
 
 ### RA Mode and the companion PC
 
-**Settings → Network → RA Mode** picks the PC service: **Xerabora** (the default; configurations
+**Settings → RetroAchievements → RA Mode** picks the PC service: **Xerabora** (the default; configurations
 without `ra_mode` keep it) or **Caduceus**. It does not switch telemetry on by itself; **RA Telemetry**
 still does. **RA companion IP** names the PC that runs the service; **0.0.0.0** keeps the fallback.
 
@@ -291,7 +291,7 @@ watch lists, telemetry, in-game notices and the achievement browser below. **Cad
 console tracking is NOT TESTED on hardware.**
 
 In the game an unlock shows as a gold pulse by default, with either client. **Settings →
-Network → Experimental achievement cards** (Off by default, saved as `ra_experimental_cards=1`; any other
+RetroAchievements → Experimental achievement cards** (Off by default, saved as `ra_experimental_cards=1`; any other
 value reads as Off) instead draws a small card in the upper right: "ACHIEVEMENT UNLOCKED", the
 achievement's title and its points. xeRAbora (the upstream client and PS2 Servers' xeRAbora mode alike)
 sends the achievement's number and points but no title, so its card shows the points in the title's

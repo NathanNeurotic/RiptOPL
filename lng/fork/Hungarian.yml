@@ -402,7 +402,7 @@ translations:
   RA_DISC_CHECKING: A lemez ellenőrzése a RetroAchievementshez
   RA_DISC_HASH_FAILED: A lemez hash-e nem számítható ki -- nézd meg az RA/hashes.txt fájlt a beállítási mappában
   RA_DISC_HOME_ERROR: A beállítási útvonal nem használható lemezek figyelési listáihoz
-  RA_DISC_ENABLE: Előbb kapcsold be a RetroAchievements telemetriát a Hálózati beállításokban
+  RA_DISC_ENABLE: Előbb kapcsold be a RetroAchievements telemetriát a RetroAchievements beállításokban
   RA_DISC_CHECK_FIRST: 'Ehhez a lemezhez nincs figyelési lista -- előbb használd az RA: lemeztámogatás ellenőrzése opciót'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD található, de az APA partíciós táblája nem olvasható. Ne formázd -- a játékaid talán még menthetők.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Egy meghajtó nem lett csatolva, mert a szektorai nem 512 bájtosak (pl. 4K szektoros meghajtó). Az OPL csak 512 bájtos szektorokat tud olvasni.'

@@ -303,7 +303,7 @@ translations:
   RA_DISC_CHECKING: Provera diska za RetroAchievements
   RA_DISC_HASH_FAILED: 'Heš diska nije mogao da se izračuna: proverite RA/hashes.txt u fascikli podešavanja'
   RA_DISC_HOME_ERROR: Putanja podešavanja ne može da se koristi za liste praćenja diskova
-  RA_DISC_ENABLE: Prvo uključite RetroAchievements telemetriju u mrežnim podešavanjima
+  RA_DISC_ENABLE: Prvo uključite RetroAchievements telemetriju u podešavanjima RetroAchievements
   RA_DISC_CHECK_FIRST: 'Za ovaj disk nema liste praćenja: prvo koristite RA proveru podrške za disk'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD je pronađen, ali njegova APA tabela particija ne može da se pročita. Ne formatirajte ga: vaše igre se možda mogu spasiti.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Disk nije montiran jer njegovi sektori nisu od 512 bajtova (npr. disk sa sektorima od 4K). OPL može da čita samo sektore od 512 bajtova.'

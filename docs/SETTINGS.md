@@ -11,11 +11,12 @@ table in `src/core/settings.cpp` or through `src/app/settingsio.cpp`.
 
 ## How the hub works
 
-* The hub lists nine pages and **Save Changes**, and shows the running RiptOPL version under its
+* The hub lists ten pages (eleven in a RetroAchievements edition, which adds **RetroAchievements**
+  after Network) and **Save Changes**, and shows the running RiptOPL version under its
   title. Up and Down pick a page; Cross (or Circle, if swapped) opens it; L1 and R1 move between
   pages while one is open.
 * Most changes take effect when you leave the page with OK, Back or L1/R1. On Game Sources,
-  General & System, Network, Game Launching and PS Emulation Settings, Back or L1/R1 off the page
+  General & System, Network, RetroAchievements, Game Launching and PS Emulation Settings, Back or L1/R1 off the page
   without changing a row applies nothing; the other pages re-apply their rows even then. Audio rows
   and the Interface page's screen position, overscan and widescreen rows apply as you change them.
   Nothing is written to the memory card or device until **Save Changes**, except the cases in the
@@ -127,7 +128,6 @@ HTTP and [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md) for the RA rows.
 | NFS Writes | NFS only. Off (the default): read only, no Rename or Delete, no VMC on the export, game settings kept next to RiptOPL's own. On: writes where the server allows them. | `nfs_writes` *(net)* |
 | HTTP server, HTTP port, HTTP base path | HTTP only: the catalogue server. | `http_ip`, `http_port`, `http_base_path` *(net)* |
 | Test HTTP server *(button)* | Fetches the catalogue once and reports the result. | |
-| RA Mode, RA companion IP, RetroAchievements telemetry, RetroAchievements badges, RA mark in game list, Experimental achievement cards | RA editions only. | `ra_mode`, `ra_host_ip`, `ra_telemetry`, `ra_badges`, `ra_badge_suffix`, `ra_experimental_cards` |
 | OK / Reconnect | OK applies; Reconnect restarts the network connection with the new values. | |
 
 On a fresh installation of **full RiptOPL**, Network Connectivity starts **Off**, but the
@@ -140,6 +140,21 @@ protocol pick retain their previous SMB fallback.
 
 POPSTARTER's own network files are edited from **PS Emulation Settings → POPSTARTER Network
 Settings**.
+
+## RetroAchievements
+
+RetroAchievements editions only; the standard editions have no such page.
+
+| Row | What it does | Key |
+| --- | --- | --- |
+| RA Mode | The PC client: Xerabora (the default) or Caduceus. | `ra_mode` |
+| RA companion IP | Optional: the PC client's own address. 0.0.0.0 (the default) uses the SMB or HTTP server's address, or xeRAbora discovery. | `ra_host_ip` |
+| RetroAchievements telemetry | The master switch, Off by default. Off launches games exactly as a standard edition does. | `ra_telemetry` |
+| RetroAchievements badges | Marks games that have achievements in the list; nothing shows while telemetry is Off. | `ra_badges` |
+| RA mark in game list | Prefix puts "RA " before the name, Suffix puts " [RA]" after it. | `ra_badge_suffix` |
+| Experimental achievement cards | Off by default; needs telemetry. On: an unlock shows a small text card instead of the gold pulse. | `ra_experimental_cards` |
+
+See [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md).
 
 ## Interface
 
@@ -252,5 +267,6 @@ Each of these used to be reachable from two or three pages and is now on one:
 | POPSTARTER Network Settings | PS Emulation Settings (was also on Network) |
 | PS2/PS1 Game Display | Interface (was also on PS Emulation Settings) |
 | Video Mode | Interface (a second copy in a separate display table is gone) |
+| The six RetroAchievements rows | RetroAchievements, in RA editions (were on Network) |
 
 No key changed: a configuration saved by an older build loads unchanged.

@@ -462,7 +462,7 @@ translations:
   RA_DISC_CHECKING: ກຳລັງກວດແຜ່ນ ສຳລັບ RetroAchievements
   RA_DISC_HASH_FAILED: 'ແຮຊແຜ່ນ ບໍ່ໄດ້: ກວດ RA/hashes.txt ໃນໂຟນເດີການຕັ້ງຄ່າ'
   RA_DISC_HOME_ERROR: ເສັ້ນທາງການຕັ້ງຄ່າ ໃຊ້ບໍ່ໄດ້ ສຳລັບລາຍການຕິດຕາມແຜ່ນ
-  RA_DISC_ENABLE: ເປີດ ເທເລເມທຣີ RetroAchievements ໃນການຕັ້ງຄ່າເຄືອຂ່າຍ ກ່ອນ
+  RA_DISC_ENABLE: ເປີດ ເທເລເມທຣີ RetroAchievements ໃນການຕັ້ງຄ່າ RetroAchievements ກ່ອນ
   RA_DISC_CHECK_FIRST: 'ບໍ່ມີລາຍການຕິດຕາມ ສຳລັບແຜ່ນນີ້: ໃຊ້ RA ກວດ ການຮອງຮັບແຜ່ນ ກ່ອນ'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: ພົບ HDD, ແຕ່ອ່ານຕາຕະລາງພາທິຊັນ APA ຂອງມັນ ບໍ່ໄດ້. ຢ່າຟໍແມັດມັນ: ເກມຂອງທ່ານ ອາດກູ້ຄືນໄດ້.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: ໄດຣຟ໌ໜຶ່ງ ບໍ່ໄດ້ເມົາ ເພາະເຊັກເຕີ ຂອງມັນບໍ່ແມ່ນ 512 ໄບຕ໌ (ເຊັ່ນ ໄດຣຟ໌ ເຊັກເຕີ 4K). OPL ອ່ານໄດ້ສະເພາະ ເຊັກເຕີ 512 ໄບຕ໌.'

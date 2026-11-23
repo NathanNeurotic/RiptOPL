@@ -419,7 +419,7 @@ translations:
   RA_DISC_CHECKING: Memeriksa disk untuk RetroAchievements
   RA_DISC_HASH_FAILED: Hash disk tidak bisa dihitung -- periksa RA/hashes.txt di folder pengaturan
   RA_DISC_HOME_ERROR: Jalur pengaturan tidak bisa dipakai untuk daftar pantau disk
-  RA_DISC_ENABLE: Nyalakan telemetri RetroAchievements di pengaturan Jaringan lebih dulu
+  RA_DISC_ENABLE: Nyalakan telemetri RetroAchievements di pengaturan RetroAchievements lebih dulu
   RA_DISC_CHECK_FIRST: 'Tidak ada daftar pantau untuk disk ini -- pakai RA: periksa dukungan disk lebih dulu'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD ditemukan, tetapi tabel partisi APA-nya tidak bisa dibaca. Jangan diformat -- game-gamemu mungkin masih bisa diselamatkan.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Sebuah drive tidak dipasang karena sektornya bukan 512 byte (misalnya drive sektor 4K). OPL hanya bisa membaca sektor 512 byte.'

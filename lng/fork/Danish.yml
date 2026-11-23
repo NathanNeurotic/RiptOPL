@@ -410,7 +410,7 @@ translations:
   RA_DISC_CHECKING: Tjekker disken for RetroAchievements
   RA_DISC_HASH_FAILED: Diskens hash kunne ikke beregnes -- tjek RA/hashes.txt i indstillingsmappen
   RA_DISC_HOME_ERROR: Indstillingsstien kan ikke bruges til diskenes overvågningslister
-  RA_DISC_ENABLE: Slå RetroAchievements-telemetri til i netværksindstillingerne først
+  RA_DISC_ENABLE: Slå RetroAchievements-telemetri til i RetroAchievements-indstillingerne først
   RA_DISC_CHECK_FIRST: 'Ingen overvågningsliste for denne disk -- brug RA: tjek diskunderstøttelse først'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD fundet, men dens APA-partitionstabel kan ikke læses. Formater den ikke -- dine spil kan måske reddes.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Et drev blev ikke monteret, fordi dets sektorer ikke er på 512 byte (f.eks. et drev med 4K-sektorer). OPL kan kun læse sektorer på 512 byte.'

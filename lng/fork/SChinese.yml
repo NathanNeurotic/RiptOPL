@@ -395,7 +395,7 @@ translations:
   RA_DISC_CHECKING: 正在为 RetroAchievements 检查光盘
   RA_DISC_HASH_FAILED: 无法计算光盘的哈希 -- 请查看设置目录中的 RA/hashes.txt
   RA_DISC_HOME_ERROR: 设置目录不能用于光盘的追踪列表
-  RA_DISC_ENABLE: 请先在网络设置中开启 RetroAchievements 遥测
+  RA_DISC_ENABLE: 请先在 RetroAchievements 设置中开启 RetroAchievements 遥测
   RA_DISC_CHECK_FIRST: 这张光盘没有追踪列表 -- 请先使用“RA：检查光盘支持”
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d：找到硬盘，但无法读取其 APA 分区表。请不要格式化 -- 你的游戏也许还能恢复。'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d：有一个驱动器未挂载，因为它的扇区不是 512 字节（例如 4K 扇区的硬盘）。OPL 只能读取 512 字节的扇区。'

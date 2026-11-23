@@ -415,7 +415,7 @@ translations:
   RA_DISC_CHECKING: Duke kontrolluar diskun për RetroAchievements
   RA_DISC_HASH_FAILED: 'Hash-i i diskut nuk u llogarit dot: kontrollo RA/hashes.txt në dosjen e cilësimeve'
   RA_DISC_HOME_ERROR: Shtegu i cilësimeve nuk mund të përdoret për listat e ndjekjes së disqeve
-  RA_DISC_ENABLE: Ndiz së pari telemetrinë e RetroAchievements te cilësimet e rrjetit
+  RA_DISC_ENABLE: Ndiz së pari telemetrinë e RetroAchievements te cilësimet e RetroAchievements
   RA_DISC_CHECK_FIRST: 'Nuk ka listë ndjekjeje për këtë disk: përdor së pari kontrollin RA të mbështetjes së diskut'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD u gjet, por tabela e saj e particioneve APA nuk lexohet. Mos e formato: lojërat e tua mund të rikuperohen.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Një njësi nuk u montua sepse sektorët e saj nuk janë 512 bajte (p.sh. një njësi me sektorë 4K). OPL lexon vetëm sektorë 512 bajte.'

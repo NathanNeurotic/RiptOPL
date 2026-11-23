@@ -393,7 +393,7 @@ translations:
   RA_DISC_CHECKING: Kontrola disku pro RetroAchievements
   RA_DISC_HASH_FAILED: Hash disku nešlo spočítat -- zkontrolujte RA/hashes.txt ve složce nastavení
   RA_DISC_HOME_ERROR: Cestu nastavení nelze použít pro seznamy sledování disků
-  RA_DISC_ENABLE: Nejdřív zapněte telemetrii RetroAchievements v nastavení sítě
+  RA_DISC_ENABLE: Nejdřív zapněte telemetrii RetroAchievements v nastavení RetroAchievements
   RA_DISC_CHECK_FIRST: 'Pro tento disk není seznam sledování -- nejdřív použijte RA: zkontrolovat podporu disku'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD nalezen, ale jeho tabulku oddílů APA nelze přečíst. Neformátujte ho -- vaše hry možná půjde zachránit.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Disk nebyl připojen, protože jeho sektory nemají 512 bajtů (např. disk se sektory 4K). OPL umí číst jen sektory 512 bajtů.'

@@ -394,7 +394,7 @@ translations:
   RA_DISC_CHECKING: Проверка диска для RetroAchievements
   RA_DISC_HASH_FAILED: Не удалось вычислить хэш диска -- см. RA/hashes.txt в папке настроек
   RA_DISC_HOME_ERROR: Папку настроек нельзя использовать для списков отслеживания дисков
-  RA_DISC_ENABLE: Сначала включите телеметрию RetroAchievements в настройках сети
+  RA_DISC_ENABLE: Сначала включите телеметрию RetroAchievements в настройках RetroAchievements
   RA_DISC_CHECK_FIRST: 'Для этого диска нет списка отслеживания -- сначала используйте «RA: проверить поддержку диска»'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD найден, но его таблица разделов APA не читается. Не форматируйте его -- ваши игры, возможно, ещё можно спасти.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: накопитель не смонтирован, потому что у него секторы не по 512 байт (например, диск с секторами 4K). OPL читает только секторы по 512 байт.'

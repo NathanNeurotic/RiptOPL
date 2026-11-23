@@ -394,7 +394,7 @@ translations:
   RA_DISC_CHECKING: RetroAchievements용으로 디스크를 확인하는 중
   RA_DISC_HASH_FAILED: 디스크의 해시를 계산할 수 없었습니다 -- 설정 폴더의 RA/hashes.txt를 확인하세요
   RA_DISC_HOME_ERROR: 이 설정 경로는 디스크 추적 목록에 쓸 수 없습니다
-  RA_DISC_ENABLE: 먼저 네트워크 설정에서 RetroAchievements 텔레메트리를 켜세요
+  RA_DISC_ENABLE: 먼저 RetroAchievements 설정에서 RetroAchievements 텔레메트리를 켜세요
   RA_DISC_CHECK_FIRST: '이 디스크의 추적 목록이 없습니다 -- 먼저 RA: 디스크 지원 확인을 쓰세요'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD를 찾았지만 APA 파티션 테이블을 읽을 수 없습니다. 포맷하지 마세요 -- 게임을 되살릴 수 있을지도 모릅니다.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: 섹터가 512바이트가 아닌 드라이브(예: 4K 섹터 드라이브)는 마운트하지 않았습니다. OPL은 512바이트 섹터만 읽을 수 있습니다.'

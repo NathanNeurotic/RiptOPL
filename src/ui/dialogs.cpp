@@ -41,6 +41,57 @@ static struct UIString diaStr_NARGS_ATA0ID __attribute__((unused)) = {};
 static struct UIString diaStr_NARGS_ATA1 __attribute__((unused)) = {};
 static struct UIString diaStr_NARGS_EXTRA __attribute__((unused)) = {};
 
+#ifdef RETROACHIEVEMENTS
+// RetroAchievements page (RetroAchievements builds only). Telemetry rides whatever SMAP the launch
+// loaded, so nothing here depends on the Network page's protocol; only the menu-side check is
+// refused under UDPBD/UDPFS, and it says so when asked. The name is a proper noun, shown as is in
+// every language. guiShowRAConfig reads and writes these rows through diaRAConfig.
+struct UIItem diaRAConfig[] = {
+    {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {"RetroAchievements", -1}}},
+    {UI_SPLITTER},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_MODE}}},
+    {UI_SPACER},
+    {UI_ENUM, NETCFG_RA_MODE, 1, 1, _STR_HINT_RA_MODE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_HOST_IP}}},
+    {UI_SPACER},
+    {UI_INT, NETCFG_RA_HOST_IP_0, 1, 1, _STR_HINT_RA_HOST_IP, 0, 0, {.intvalue = {0, 0, 0, 255}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {".", -1}}},
+    {UI_INT, NETCFG_RA_HOST_IP_1, 1, 1, _STR_HINT_RA_HOST_IP, 0, 0, {.intvalue = {0, 0, 0, 255}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {".", -1}}},
+    {UI_INT, NETCFG_RA_HOST_IP_2, 1, 1, _STR_HINT_RA_HOST_IP, 0, 0, {.intvalue = {0, 0, 0, 255}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {".", -1}}},
+    {UI_INT, NETCFG_RA_HOST_IP_3, 1, 1, _STR_HINT_RA_HOST_IP, 0, 0, {.intvalue = {0, 0, 0, 255}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_TELEMETRY}}},
+    {UI_SPACER},
+    {UI_BOOL, NETCFG_RA_TELEMETRY, 1, 1, _STR_HINT_RA_TELEMETRY, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_BADGES}}},
+    {UI_SPACER},
+    {UI_BOOL, NETCFG_RA_BADGES, 1, 1, _STR_HINT_RA_BADGES, 0, 0, {.intvalue = {1, 0}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_BADGE_POS}}},
+    {UI_SPACER},
+    {UI_ENUM, NETCFG_RA_BADGE_SUFFIX, 1, 1, _STR_HINT_RA_BADGE_SUFFIX, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_EXPERIMENTAL_CARDS}}},
+    {UI_SPACER},
+    {UI_BOOL, NETCFG_RA_EXPERIMENTAL_CARDS, 1, 1, _STR_HINT_RA_EXPERIMENTAL_CARDS, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    {UI_OK, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_OK}}},
+
+    // end of dialog
+    {UI_TERMINATOR}};
+#endif
+
 // Network page (settings-layout restructure): POPSTARTER's shared editor entry plus the
 // OPL/Neutrino transport and SMB fields live here. The POPSTARTER network state itself remains
 // owned by diaPopsNetConfig.
@@ -221,48 +272,6 @@ struct UIItem diaNetConfig[] = {
     {UI_SPACER},
     {UI_BUTTON, NETCFG_HTTP_TEST, 1, 1, _STR_HINT_HTTP_TEST, 0, 0, {.label = {NULL, _STR_TEST}}},
     {UI_BREAK},
-
-#ifdef RETROACHIEVEMENTS
-    // RetroAchievements. Always visible: telemetry rides whatever SMAP the LAUNCH loaded, so
-    // unlike the SMB block above it is not conditioned on the selected network protocol. Only
-    // the menu-side check is refused under UDPBD/UDPFS, and it says so when asked. These rows
-    // belong to THIS page: guiShowNetConfig reads and writes them through diaNetConfig.
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_MODE}}},
-    {UI_SPACER},
-    {UI_ENUM, NETCFG_RA_MODE, 1, 1, _STR_HINT_RA_MODE, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_HOST_IP}}},
-    {UI_SPACER},
-    {UI_INT, NETCFG_RA_HOST_IP_0, 1, 1, _STR_HINT_RA_HOST_IP, 0, 0, {.intvalue = {0, 0, 0, 255}}},
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {".", -1}}},
-    {UI_INT, NETCFG_RA_HOST_IP_1, 1, 1, _STR_HINT_RA_HOST_IP, 0, 0, {.intvalue = {0, 0, 0, 255}}},
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {".", -1}}},
-    {UI_INT, NETCFG_RA_HOST_IP_2, 1, 1, _STR_HINT_RA_HOST_IP, 0, 0, {.intvalue = {0, 0, 0, 255}}},
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {".", -1}}},
-    {UI_INT, NETCFG_RA_HOST_IP_3, 1, 1, _STR_HINT_RA_HOST_IP, 0, 0, {.intvalue = {0, 0, 0, 255}}},
-    {UI_BREAK},
-
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_TELEMETRY}}},
-    {UI_SPACER},
-    {UI_BOOL, NETCFG_RA_TELEMETRY, 1, 1, _STR_HINT_RA_TELEMETRY, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_BADGES}}},
-    {UI_SPACER},
-    {UI_BOOL, NETCFG_RA_BADGES, 1, 1, _STR_HINT_RA_BADGES, 0, 0, {.intvalue = {1, 0}}},
-    {UI_BREAK},
-
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_BADGE_POS}}},
-    {UI_SPACER},
-    {UI_ENUM, NETCFG_RA_BADGE_SUFFIX, 1, 1, _STR_HINT_RA_BADGE_SUFFIX, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-
-    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_RA_EXPERIMENTAL_CARDS}}},
-    {UI_SPACER},
-    {UI_BOOL, NETCFG_RA_EXPERIMENTAL_CARDS, 1, 1, _STR_HINT_RA_EXPERIMENTAL_CARDS, 0, 0, {.intvalue = {0, 0}}},
-    {UI_BREAK},
-#endif
 
     // POPSTARTER Network Settings (its own IPCONFIG.DAT / SMBCONFIG.DAT editor) is reached from the
     // POPSTARTER page only: it is POPSTARTER's server setup, not the PS2's network setup.

@@ -626,7 +626,7 @@ translations:
   RA_DISC_CHECKING: در حال بررسی دیسک برای RetroAchievements
   RA_DISC_HASH_FAILED: 'هش دیسک محاسبه نشد: RA/hashes.txt را در پوشه تنظیمات بررسی کنید'
   RA_DISC_HOME_ERROR: مسیر تنظیمات برای فهرست‌های پایش دیسک قابل استفاده نیست
-  RA_DISC_ENABLE: اول تله‌متری RetroAchievements را در تنظیمات شبکه روشن کنید
+  RA_DISC_ENABLE: اول تله‌متری RetroAchievements را در تنظیمات RetroAchievements روشن کنید
   RA_DISC_CHECK_FIRST: 'این دیسک فهرست پایش ندارد: اول از بررسی پشتیبانی دیسک RA استفاده کنید'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: هارد پیدا شد، اما جدول پارتیشن APA آن خوانده نمی‌شود. آن را فرمت نکنید: شاید بازی‌های شما قابل بازیابی باشند.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: یک درایو سوار نشد چون سکتورهایش 512 بایتی نیستند (مثلاً درایو با سکتور 4K). OPL فقط سکتورهای 512 بایتی را می‌خواند.'

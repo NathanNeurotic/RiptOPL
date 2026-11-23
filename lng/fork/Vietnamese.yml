@@ -437,7 +437,7 @@ translations:
   RA_DISC_CHECKING: Đang kiểm tra đĩa cho RetroAchievements
   RA_DISC_HASH_FAILED: Không tính được mã băm của đĩa -- hãy xem RA/hashes.txt trong thư mục cài đặt
   RA_DISC_HOME_ERROR: Không dùng được đường dẫn cài đặt cho danh sách theo dõi đĩa
-  RA_DISC_ENABLE: Hãy bật đo đạc RetroAchievements trong cài đặt Mạng trước
+  RA_DISC_ENABLE: Hãy bật đo đạc RetroAchievements trong cài đặt RetroAchievements trước
   RA_DISC_CHECK_FIRST: 'Đĩa này chưa có danh sách theo dõi -- hãy dùng RA: kiểm tra hỗ trợ đĩa trước'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: Đã tìm thấy HDD, nhưng không đọc được bảng phân vùng APA của nó. Đừng định dạng -- các trò chơi có thể vẫn cứu được.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Một ổ không được gắn vì cung từ của nó không phải 512 byte (ví dụ ổ cung từ 4K). OPL chỉ đọc được cung từ 512 byte.'
