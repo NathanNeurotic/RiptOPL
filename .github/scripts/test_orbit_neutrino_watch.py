@@ -128,6 +128,15 @@ class OrbitUpdateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as out:
             watch.staging().stage_orbit(new, Path(out) / "neutrino", pin)
 
+    def test_new_tag_extending_the_old_one_is_linked_once(self):
+        tag = self.pin["tag"] + ".1"
+        new = self.archive("ext.zip", elf=b"ELF v2 -ra=<file>")
+        self.update(new, release=self.release(new, tag))
+        url = "https://github.com/danielnuld/nuld/releases/tag/" + tag
+        text = (self.root / "README.md").read_text()
+        self.assertIn(url, text)
+        self.assertNotIn(url + ".1", text)
+
     def test_refusals_write_nothing(self):
         before = self.snapshot()
         cases = {
@@ -136,6 +145,7 @@ class OrbitUpdateTests(unittest.TestCase):
             "unreadable agent": (self.archive("c.zip", elf=b"ELF v2 -ra=<file>"), "", None),
         }
         bad = self.archive("d.zip", elf=b"ELF v3 -ra=<file>")
+        cases["no published digest"] = (bad, AGENT, dict(self.release(bad), assets=[{"name": "NULD-v9.9.zip"}]))
         cases["digest mismatch"] = (bad, AGENT, dict(self.release(bad), assets=[{"name": "NULD-v9.9.zip",
                                                                                   "digest": "sha256:" + "00" * 32}]))
         for label, (new, agent, release) in cases.items():

@@ -124,8 +124,10 @@ def rewrite_docs(root, old, new, changed, today):
         if not path.is_file():
             continue
         text = path.read_text(encoding="utf-8")
-        lines = [line.replace(old_url, new_url).replace(old["tag"], new["tag"]) if old_url in line else line
-                 for line in text.split("\n")]
+        # Swap the URL out first so the tag rename cannot touch it (v1.2 -> v1.2.1 must not give v1.2.1.1).
+        hold = "\0NULD-RELEASE-URL\0"
+        lines = [line.replace(old_url, hold).replace(old["tag"], new["tag"]).replace(hold, new_url)
+                 if old_url in line else line for line in text.split("\n")]
         result = "\n".join(lines)
         if relative == NOTES:
             result = re.sub(r"Source: \[[^\]]*\]\(https://github\.com/[^)\s]+/tree/[0-9a-f]{40}/third_party/neutrino-igr\)",
@@ -149,8 +151,10 @@ def update(release, pin, old_archive, new_archive, agent_source, commit, root=RO
     asset = pick_asset(release, pin)
     if asset is None:
         raise SystemExit("The newest release carries no NULD-*.zip.")
+    if not digest_of(asset):
+        raise SystemExit("GitHub publishes no SHA-256 for " + asset["name"] + "; refusing to pin it.")
     sha256 = hashlib.sha256(Path(new_archive).read_bytes()).hexdigest()
-    if digest_of(asset) and digest_of(asset) != sha256:
+    if digest_of(asset) != sha256:
         raise SystemExit("Downloaded " + asset["name"] + " is " + sha256 + ", but GitHub says " + digest_of(asset) + ".")
     if not re.fullmatch(r"[0-9a-f]{40}", commit or ""):
         raise SystemExit("No commit for tag " + release.get("tag_name", "?") + "; cannot pin its source.")
