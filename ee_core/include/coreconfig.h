@@ -120,6 +120,8 @@ struct EECoreConfig_t
        buttons leaves the game; the usual combos are then left to the game and the pad has no power off.
        0: the usual combos. */
     int IgrAltCombo;
+    /* IgrPowerCombo: the user's own power-off combo, PAD_* bits like IgrAltCombo; 0: none (the default). */
+    int IgrPowerCombo;
 #ifdef RETROACHIEVEMENTS
     /* The menu's ACHIEVEMENTS page (RIPPS2 build 94), RA editions: RA/<startup>.ach as the launch found it.
        IgrRaTotal achievements, IgrRaUnlocked of them unlocked (0 total: no list). IgrRaHunt: IgrRaHuntCount of the

@@ -33,7 +33,7 @@ typedef unsigned short u16;
 #define IGR_COMBO_R1_L1_R2_L2 0xf0
 #define IGR_COMBO_START_SELECT 0xf6
 #define IGR_COMBO_R3_L3 0xf9
-struct cfg { int IgrAltCombo; };
+struct cfg { int IgrAltCombo; int IgrPowerCombo; };
 static struct cfg g_cfg;
 #define USE_LOCAL_EECORE_CONFIG struct cfg *config = &g_cfg;
 #define kINTC_VBLANK_END 3
@@ -144,8 +144,14 @@ int main(void) {
  assert(tick()==0);
  fresh[29]=0xEF;fresh[28]=IGR_COMBO_START_SELECT;Pad_Data.combo_type=0;
  assert(tick()==IGR_COMBO_START_SELECT);
- fresh[29]=0xEE;Pad_Data.combo_type=0; /* plus Square: not the combo */
+ fresh[29]=0x6F;Pad_Data.combo_type=0; /* plus Square: not the combo */
  assert(tick()==0);
+ /* The user's own power-off combo (Square + Triangle + Start + Select) powers off; off by default (0). */
+ g_cfg.IgrPowerCombo=0x9009;Pad_Data.combo_type=0;
+ assert(tick()==IGR_COMBO_R3_L3);
+ fresh[29]=0xEF;Pad_Data.combo_type=0; /* the reset combo still resets */
+ assert(tick()==IGR_COMBO_START_SELECT);
+ g_cfg.IgrPowerCombo=0;
  fresh[29]=IGR_COMBO_R1_L1_R2_L2;fresh[28]=IGR_COMBO_R3_L3;
  g_cfg.IgrAltCombo=0;Pad_Data.combo_type=0;
  assert(tick()==IGR_COMBO_R3_L3);

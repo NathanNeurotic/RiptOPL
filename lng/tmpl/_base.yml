@@ -2199,7 +2199,19 @@ gui_strings:
   string: IGR Combo
 
 - label: HINT_IGR_ALT_COMBO
-  string: "The buttons that leave a game (OPL core games). Press to record your own: hold at least 3 buttons for 3 seconds. With your own combo, the usual combos are left to the game and the pad can no longer power off; the power button still can."
+  string: "The buttons that leave a game (OPL core games). Press to record your own: hold at least 3 buttons for 3 seconds. With your own combo, the usual combos are left to the game, and only the IGR Power-Off Combo (if set) or the power button powers off."
+
+- label: IGR_POWER_COMBO
+  string: IGR Power-Off Combo
+
+- label: HINT_IGR_POWER_COMBO
+  string: "Off by default. Press to record buttons that power the console off from a game (OPL core games): hold at least 3 buttons for 3 seconds. It must differ from the IGR Combo."
+
+- label: IGR_POWER_COMBO_RECORD
+  string: "Hold the buttons for your power-off combo (at least 3) for 3 seconds. Hold L1+L2+R1+R2+Start+Select to turn it off. Let go of every button for 10 seconds to cancel."
+
+- label: IGR_COMBO_TAKEN
+  string: "The IGR Combo and the IGR Power-Off Combo must use different buttons. Nothing was changed."
 
 - label: IGR_COMBO_RECORD
   string: "Hold the buttons for your IGR combo (at least 3) for 3 seconds. Hold L1+L2+R1+R2+Start+Select to go back to the usual combo. Let go of every button for 10 seconds to cancel."

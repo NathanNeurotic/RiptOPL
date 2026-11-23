@@ -509,6 +509,14 @@ void guiIgrComboName(int value, char *buf, int size)
     }
 }
 
+void guiIgrPowerLabel(char *buf, int size)
+{
+    if (gIgrPowerCombo == 0)
+        snprintf(buf, size, "%s", _l(_STR_OFF));
+    else
+        guiIgrComboName(gIgrPowerCombo, buf, size);
+}
+
 static int igrComboHeld(void)
 {
     int mask = 0;
@@ -530,6 +538,12 @@ static int igrComboCount(int mask)
 // press: letting go of every button for IGR_COMBO_IDLE_SECONDS cancels.
 class IgrComboScreen: public ModalScreen
 {
+public:
+    explicit IgrComboScreen(int promptId)
+        : promptId_(promptId)
+    {
+    }
+
 private:
     bool onKeys() override
     {
@@ -567,7 +581,7 @@ private:
         rmDrawLine(50, 75, gGuiScreenWidth - 50, 75, gColWhite);
         rmDrawLine(50, 410, gGuiScreenWidth - 50, 410, gColWhite);
 
-        int y = guiDrawMsgText(_l(_STR_IGR_COMBO_RECORD));
+        int y = guiDrawMsgText(_l(promptId_));
         if (held_ != 0) {
             guiIgrComboName(held_, line, sizeof(line));
             int left = IGR_COMBO_HOLD_SECONDS - held_s_;
@@ -586,9 +600,10 @@ private:
             return -1;
         }
         sfxPlay(SFX_CONFIRM);
-        return result_ == IGR_COMBO_DEFAULT_MASK ? 0 : result_; // the usual combo: back to the default
+        return result_ == IGR_COMBO_DEFAULT_MASK ? 0 : result_; // the usual combo: back to the default (or off)
     }
 
+    int promptId_;
     int armed_ = 0;
     int held_ = 0;
     int held_s_ = 0;
@@ -596,8 +611,8 @@ private:
     clock_t since_ = 0;
 };
 
-int guiIgrComboCapture(void)
+int guiIgrComboCapture(int promptId)
 {
-    IgrComboScreen screen;
+    IgrComboScreen screen(promptId);
     return screen.run();
 }

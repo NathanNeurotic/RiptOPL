@@ -325,17 +325,21 @@ static void IGR_CheckInputs(void)
                 Pad_Data.vb_count = 0;
             }
 
+            // The buttons held, as libpad PAD_* bits (both pad bytes are active low).
+            int held = (pad_pos_combo2 | (pad_pos_combo1 << 8)) ^ 0xFFFF;
             if (config->IgrAltCombo) {
-                // The user's own combo: exactly these buttons held (libpad PAD_* bits; both pad bytes are
-                // active low) resets. The default combos are left to the game, and the pad has no power
-                // off (the in-game menu and the power button still have it).
-                if (((pad_pos_combo2 | (pad_pos_combo1 << 8)) ^ 0xFFFF) == config->IgrAltCombo)
+                // The user's own combo: exactly these buttons held resets. The default combos are left to the
+                // game, and the pad has no power off unless IgrPowerCombo gives one.
+                if (held == config->IgrAltCombo)
                     Pad_Data.combo_type = IGR_COMBO_START_SELECT;
             }
             // Combo R1 + L1 + R2 + L2, then Start + Select (reset) or R3 + L3 (poweroff)
             else if ((pad_pos_combo1 == IGR_COMBO_R1_L1_R2_L2) &&
                      ((pad_pos_combo2 == IGR_COMBO_START_SELECT) || (pad_pos_combo2 == IGR_COMBO_R3_L3)))
                 Pad_Data.combo_type = pad_pos_combo2;
+            // The user's own power-off combo (0: none). The settings page keeps it apart from the reset combo.
+            if (config->IgrPowerCombo && held == config->IgrPowerCombo)
+                Pad_Data.combo_type = IGR_COMBO_R3_L3;
 #ifdef IGS
             if ((pad_pos_combo1 == IGR_COMBO_R1_L1_R2_L2) && (pad_pos_combo2 == IGR_COMBO_UP) &&
                 (config->EnableGSMOp)) // UP combo, so take IGS

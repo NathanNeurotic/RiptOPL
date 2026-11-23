@@ -193,8 +193,9 @@ enum { NEUTRINO_DEV_AUTO = 0, // game device, then mc0/mc1
 extern int gNeutrinoDevice;
 extern int gDefaultCoreLoader;
 extern int gAutoCreateVmc;
-extern int gIgrAltCombo; // the user's own IGR combo: 0 the usual combos (default), 1 the old L3 + R3 toggle, else PAD_* bits
-extern int gIgrMenu;     // the in-game menu (ee_core igrmenu.c), off by default; not in RetroAchievements editions
+extern int gIgrPowerCombo; // the user's own power-off combo (PAD_* bits), 0: none (default)
+extern int gIgrAltCombo;   // the user's own IGR combo: 0 the usual combos (default), 1 the old L3 + R3 toggle, else PAD_* bits
+extern int gIgrMenu;       // the in-game menu (ee_core igrmenu.c), off by default; not in RetroAchievements editions
 extern int gNeutrinoVideoDefault;
 extern int gNeutrinoGsmCompDefault;
 extern int gNeutrinoElfArg;

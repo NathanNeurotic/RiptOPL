@@ -2841,8 +2841,11 @@ static int guiSettingsShowLaunch(void)
 #endif
     // The IGR combo button shows the combo itself; the buffer outlives the dialog (diaSetLabel keeps the pointer).
     static char igrComboLabel[96];
+    static char igrPowerLabel[96];
     guiIgrComboName(gIgrAltCombo, igrComboLabel, sizeof(igrComboLabel));
     diaSetLabel(ui, CFG_IGR_ALT_COMBO, igrComboLabel);
+    guiIgrPowerLabel(igrPowerLabel, sizeof(igrPowerLabel));
+    diaSetLabel(ui, CFG_IGR_POWER_COMBO, igrPowerLabel);
     diaSetInt(ui, CFG_PS2LOGO, gPS2Logo);
     const char *appHandoffStrs[] = {_l(_STR_APP_HANDOFF_LEGACY), _l(_STR_APP_HANDOFF_TYPED), NULL};
     diaSetEnum(ui, CFG_APP_HANDOFF_PATH, appHandoffStrs);
@@ -2864,11 +2867,20 @@ reshow_launch:
             gSettingsShell.markSavePending();
         goto reshow_launch;
     }
-    if (result == CFG_IGR_ALT_COMBO) {
-        int combo = guiIgrComboCapture();
-        if (combo >= 0 && combo != guiIgrComboMask(gIgrAltCombo)) {
-            gIgrAltCombo = combo;
+    if (result == CFG_IGR_ALT_COMBO || result == CFG_IGR_POWER_COMBO) {
+        int power = result == CFG_IGR_POWER_COMBO;
+        int combo = guiIgrComboCapture(power ? _STR_IGR_POWER_COMBO_RECORD : _STR_IGR_COMBO_RECORD);
+        // The reset and power-off combos must differ: the same buttons would always power off.
+        int other = power ? guiIgrComboMask(gIgrAltCombo) : gIgrPowerCombo;
+        if (combo > 0 && combo == other)
+            guiMsgBox(_l(_STR_IGR_COMBO_TAKEN), 0, NULL);
+        else if (combo >= 0 && combo != (power ? gIgrPowerCombo : guiIgrComboMask(gIgrAltCombo))) {
+            if (power)
+                gIgrPowerCombo = combo;
+            else
+                gIgrAltCombo = combo;
             guiIgrComboName(gIgrAltCombo, igrComboLabel, sizeof(igrComboLabel));
+            guiIgrPowerLabel(igrPowerLabel, sizeof(igrPowerLabel));
             gSettingsShell.markSavePending();
         }
         goto reshow_launch;
