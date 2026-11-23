@@ -18,7 +18,7 @@ value token, and built-in asset name the engine understands, including this fork
 
 ## PSBBN Flow
 
-With the `<OPL>` theme, select **PSBBN Flow** under **Settings → Interface → Theme View** (or hold L3 on the
+With the `<OPL>` theme, select **PSBBN Flow** under **Settings → Theme Settings → Theme View** (or hold L3 on the
 main page until it appears), then apply and save.
 It recreates the Game Collection of [CosmicScale](https://github.com/CosmicScale)'s
 [PSBBN Definitive Project](https://github.com/CosmicScale/PSBBN-Definitive-Project): black header
@@ -75,7 +75,7 @@ outgoing cover. The header and hint bands with their rules, the star field, the 
 Collection outline, the page list, the rim, the count, the cubic 25-frame animation and the
 distance shading belong to this renderer. The nebula is the theme's own `Background`
 (`default=psbbn_bg` in the built-in). The page list and count use the text colour, and the title
-uses the selected-text colour, from **Settings → Interface → Colors**.
+uses the selected-text colour, from **Settings → Theme Settings → Colors**.
 `coverflow_count`, `coverflow_scale`, `coverflow_anim`, `coverflow_dim` and
 `coverflow_cover_offset` affect `Coverflow` only. `PSBBNFlow` fixes centered alignment and
 aspect correction, supplies no mirrored reflection, and uses `width` for the square slot;
@@ -117,8 +117,8 @@ See [`misc/theme_psbbn_flow.cfg`](../misc/theme_psbbn_flow.cfg) for the full exa
 
 Use `type=Grid` for the page's covers in rows and columns. The selected cover is drawn 12% larger
 and last, over its neighbours, inside a soft glow and a 2-pixel frame in the selected-text colour; the
-others are a step darker under a vignette. Left/Right step one cover; Up/Down step one row and keep the
-column (a short last row takes its last cover), and stop at the top and bottom rows. L1/R1 turn a whole
+others are a step darker under a vignette. Left/Right step one cover; Up/Down step one row, keep the
+column (a short last row takes its last cover), and wrap between the first and last rows. L1/R1 turn a whole
 page, the cursor keeping its place on it, and wrap at either end as they do in the list. The grid shows
 whole pages: the page holding the selection stays still while the cursor moves on it, a new page slides
 in as the old one slides out (at Coverflow's Animation Speed; Off turns the slide off), and a short last
@@ -126,10 +126,11 @@ page keeps its covers in their cells from the top. A position counter (`12/40`) 
 lower right corner.
 
 The devices sit in a slim sidebar on the left, one glyph each, the page on screen lit. Left from the
-grid's first column opens it into a drawer with the devices' names; Up/Down there switch device (the grid
-shows that device at once), and Right, Cross or Circle go back to the covers. Hold the right stick to one
+grid's first column opens it into a drawer with the devices' names; Up/Down there only moves the highlight.
+Cross activates an inactive highlighted device and returns to its covers; on the active device it only returns
+to the covers. Right or Circle also returns without activating a different device. Hold the right stick to one
 side for half a second and the selected case turns over to its back cover (`COV2`), the way the stick
-leans; it stays turned until the stick turns it home. *Settings → Interface → Coverflow Settings → Grid
+leans; it stays turned until the stick turns it home. *Settings → Theme Settings → Layout Settings → Grid
 Layout* swaps the theme's shape for 4 x 2, 5 x 2, 3 x 2 Large or 6 x 3 Compact (6 x 2, 7 x 2, 5 x 2 and
 8 x 3 on a 16:9 picture), and *Dim Side Covers* there makes the vignette full strength. Idea: [KrahJohlito](https://github.com/KrahJohlito)
 (multi-view themes); the pages, slide, selection, vignette, case flip, sidebar, tiles and layouts follow
@@ -305,7 +306,7 @@ a block, **renumber** the ones after it so there are no holes.
 
 One `conf_theme.cfg` can describe several **views** of the main and info pages: `list`, `coverflow`,
 `psbbn` and `grid`. The user picks a view under
-**Settings → Interface → Theme View**, or holds **L3** for half a second on the main page to switch to
+**Settings → Theme Settings → Theme View**, or holds **L3** for half a second on the main page to switch to
 the next view the theme offers (a tap on L3 still cycles the library view). The picker and L3 list
 the `coverflow` view twice, as **Coverflow (3)** and **Coverflow (5)**: one view, drawn with 3 or 5
 covers (`coverflow_count`), so a theme declares `coverflow` once. Idea and design:
@@ -442,7 +443,7 @@ out for 16:9 already), and `scaled=0` images (16:9 still draws those full width)
 ### Alternate background (`alt=`) — *this fork*
 
 A theme can ship a second background in the same `conf_theme.cfg`, and the user picks it with
-**Settings → Interface → Alternate Background** (Off by default). Idea: [KrahJohlito](https://github.com/KrahJohlito) ("one theme, a
+**Settings → Theme Settings → Alternate Background** (Off by default). Idea: [KrahJohlito](https://github.com/KrahJohlito) ("one theme, a
 toggle switch").
 
 ```ini
@@ -507,7 +508,7 @@ embedded font for a slot.
 | Key | Value | Meaning |
 |---|---|---|
 | `coverflow_cover_offset` | int (−1024…1024, default 0) | Horizontal nudge for the Coverflow carousel (see §8). |
-| `list_cfg_text` | 0/1 (default 1) | `0` leaves the game CFG's `Title` and `Description` off the list pages: an `AttributeText` with `attribute=Title` or `attribute=Description` in a `main` family (`main`, `appsMain`, `favsMain`, `vcdMain`, `favsVcdMain`, `favsAppsMain`, and their view blocks). The info page keeps them. A word such as `on` reads as `0` and hides them too, as in [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2). **Settings → Interface → List Title and Description** follows this key on **Theme**, its default. **On** and **Off** override it. From [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) ([akilluminati47](https://gitlab.com/akilluminati247), build 126). |
+| `list_cfg_text` | 0/1 (default 1) | `0` leaves the game CFG's `Title` and `Description` off the list pages: an `AttributeText` with `attribute=Title` or `attribute=Description` in a `main` family (`main`, `appsMain`, `favsMain`, `vcdMain`, `favsVcdMain`, `favsAppsMain`, and their view blocks). The info page keeps them. A word such as `on` reads as `0` and hides them too, as in [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2). **Settings → Theme Settings → List Title and Description** follows this key on **Theme**, its default. **On** and **Off** override it. From [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2) ([akilluminati47](https://gitlab.com/akilluminati247), build 126). |
 | `<key>_desc` | any value | Used in place of `<key>` while **List Title and Description** shows the CFG text on the list pages (On, or Theme when `list_cfg_text` does not hide it), so a theme can make room beside its list only then: `main16_enabled_desc=0` hides a cover, and a block whose only type is `main20_type_desc=AttributeText` exists only in that mode, so with the setting off no block reads the game's CFG. Changing the setting reloads a theme that has `_desc` keys. The Title and Description layout originated with CosmicScale's request, after [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s game list. *This fork.* |
 | `use_default` | 0/1 | Use OPL's embedded default assets for anything the theme omits. With `0`, the pictures stock OPL never had a name for (`mmce`, `udp_bd`, `udp_fs`, `fav`, `fav_mark`) still come from the built-in set when the theme has none, so a theme made for stock OPL shows an icon on the pages RiptOPL added. Ship your own (a transparent one to show nothing) to replace them. |
 | `use_real_height` | 0/1 | Lay out against the real screen height instead of 480. |
@@ -520,7 +521,7 @@ exactly as before.
 
 | Key | Value | Meaning |
 |---|---|---|
-| `glyph_set` | `theme` / `builtin` / `standard` / `white` | The button pictures every hint draws. `theme` (the default) uses the theme's own glyph PNGs, with the built-in ones filling gaps when `use_default=1`. `builtin` uses the built-in glyphs. `standard` and `white` are two sets built into the ELF, drawn from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s Adapt and Grunge themes. **Settings → Interface → Button Glyphs** overrides this on every theme; its **Theme** choice follows this key. |
+| `glyph_set` | `theme` / `builtin` / `standard` / `white` | The button pictures every hint draws. `theme` (the default) uses the theme's own glyph PNGs, with the built-in ones filling gaps when `use_default=1`. `builtin` uses the built-in glyphs. `standard` and `white` are two sets built into the ELF, drawn from [RIPPS2](https://gitlab.com/akilluminati247/RIPPS2)'s Adapt and Grunge themes. **Settings → Theme Settings → Button Glyphs** overrides this on every theme; its **Theme** choice follows this key. |
 | `hints_hide` | hint list | Hints the theme leaves off the bar, e.g. `hints_hide=star,view`. |
 | `hints_order` | hint list | These hints come first, in this order. The rest follow in the order the page adds them. Example: `hints_order=run,info,menu`. |
 | `hints_labels` | 0/1 | `0` draws the glyphs alone, without the labels. `1` (the default) draws a glyph and its label. |
@@ -622,7 +623,7 @@ art declared after it.
 
 Images keyed on the **`ICO`** suffix (an `ItemIcon`, a `GameImage` with `pattern=ICO`, or an
 `ItemsList` with `decorator=ICO`) are the theme's disc art. The user can hide them with **Disc Artwork**
-(*Settings -> Interface -> Artwork Settings*, on by default), including the element's `default=` image.
+(*Settings → Theme Settings*, on by default), including the element's `default=` image.
 The independent **Logo Artwork** option similarly controls art keyed on **`LGO`**, such as
 `<GAME_ID>_LGO.png` files in `ART/` used by `GameImage pattern=LGO`, `ItemsList decorator=LGO`,
 or a theme's custom image element. Disabling it also suppresses the default image and overlays
@@ -830,7 +831,7 @@ You can point `default=`/`overlay=` at any of OPL's embedded textures (no file n
 - **Media icons:** `APP`, `CD`, `DVD`
 - **Aspect / scan / vmode / rating** sets as listed in §6.
 
-(`settings_bg`, `case_overlay`, `incebtion` and `ip` are theme-supplied. `Device_*` indicators are deprecated.)
+(`settings_bg` is theme-supplied. Use `psbbn_bg` for the embedded PSBBN background. `Device_*` indicators are deprecated.)
 
 ---
 
@@ -934,18 +935,17 @@ Slots `favsVcdMain0`, `favsVcdMain1`, `favsVcdMain3`… are not declared here, s
 these carousels too.
 
 This example assumes a theme that already uses Coverflow. A `Coverflow` block in **any** family makes
-the whole theme a Coverflow theme: Left/Right steps through the list on every browse page and the
-Coverflow Settings menu appears. Adding one only to `favsVcdMain*` in a list-based theme therefore
-changes navigation on the device pages as well.
+the whole view a Coverflow view, so Left/Right steps through the list on every browse page. Adding
+one only to `favsVcdMain*` in a list-based view therefore changes navigation on the device pages as well.
 
 ### Global Coverflow tuning (NOT in the theme)
 
-These live in **`settings_riptopl.cfg`** and are exposed in the **Coverflow Settings** menu (shown
-while a Coverflow theme is active). They apply to *any* Coverflow theme:
+These live in **`settings_riptopl.cfg`**. Open **Theme Settings → Layout Settings** to change them.
+They apply to any theme's Coverflow view:
 
 | Setting / key | Values | Effect |
 |---|---|---|
-| `coverflow_count` | 3 or 5 | Number of covers shown. Set by the Theme View pick, Coverflow (3) or Coverflow (5); no longer on the Coverflow Settings page. |
+| `coverflow_count` | 3 or 5 | Number of covers shown. Set by the Theme View pick, Coverflow (3) or Coverflow (5); no longer on the Layout Settings page. |
 | `coverflow_scale` | px | How much the center cover grows. |
 | `coverflow_anim` | ms | Slide animation duration (0 = instant). |
 | `coverflow_dim` | 0/1 | Dim the non-center covers. |
@@ -975,8 +975,8 @@ Ember's single-hop `SharedMC.txt` redirects are supported. The first valid activ
 dedicated card supplies the icon; PS1 cards have no save timestamps. Deleted saves and damaged
 card chains are ignored. PS1 icons retain their pixel art rather than acquiring a 3D spin.
 
-It draws **nothing** while the user's **3D Save Icons** setting is off (*Settings → Interface →
-Artwork Settings*, off by default), on an app row, or when the
+It draws **nothing** while the user's **3D Save Icons** setting in **Theme Settings** is off (the
+default), on an app row, or when the
 game has no readable save. A theme can place it unconditionally, but should not put anything under it
 that depends on it being there. The cards are read only once the cursor has rested on a game for a
 quarter of a second, on the worker that also loads cover art.
