@@ -33,13 +33,14 @@ The `RIPTOPL-LANGS` ZIP contains translated `.lng` files and matching fonts such
 - **Display only.** The file name stays the game's identity: renaming, Favorites, cover art, per-game settings and launching all keep using it. Rows without a usable `Title` (missing, empty, not valid UTF-8, or containing control characters) show the file name. Titles are kept up to 127 bytes, cut on a character boundary; the row fits or scrolls them like any name.
 - **Japanese titles need a font.** A title in Japanese needs the optional `font_CJK.ttf` described above (or the Japanese interface language), exactly like a Japanese file name; without one its characters show as boxes.
 - **Renaming keeps the title.** A PS2 game's CFG is keyed by its game ID, so after a rename the row still shows the same title. A PS1 (VCD) game's CFG is keyed by its file name, so renaming it leaves its old CFG, and its title, behind.
-- **Slower list loads.** With the setting on, every list refresh reads every game's CFG once, on the background I/O thread. The rows appear with their file names first and switch to their titles (and re-sort) when the pass finishes. That pass is why the setting is off by default: on SMB, MMCE and MX4SIO a large library takes noticeably longer to settle, and cover art loads after it.
+- **Slower list loads.** With the setting on, every list refresh reads every game's CFG once, on the background I/O thread. RiptOPL remembers every title it has read since boot, for each device and both the PS1 and PS2 lists: a list it has read before shows its titles at once and re-reads the CFGs in the background to pick up changes. The first time a list is opened after boot, its rows wait for the pass, so a row never shows its file name before its title. The memory costs roughly 100 bytes per game. That pass is why the setting is off by default: on SMB, MMCE and MX4SIO a large library takes noticeably longer to settle, and cover art loads after it.
 - Folders and the Apps list are not affected. Turning the setting on or off rebuilds the game lists.
 
 ### What it supports
 
 - UTF-8 titles on ISO/ZSO/VCD game lists and other text already supplied to RiptOPL's Unicode renderer, with mixed English/Japanese characters.
 - Font fallback for built-in, language-pack and theme fonts that lack the relevant glyphs.
+- With a translation selected, theme fonts that lack a character (the built-in theme's title bar and tabs use Roboto) borrow it from the translation's font, after the optional fallback font.
 - No changes to disc/startup ID, game filename, art lookup, launch path, VMC, or favorites identity.
 
 ### Current limits

@@ -739,6 +739,14 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
     raBadgeRefresh(mdl->support, count);
 #endif
 
+    // CFG titles (when shown) must be in place before any row is queued, or the rows arrive with their
+    // file names and switch a moment later (CosmicScale saw it on every PS1/PS2 view switch). The titles
+    // this source showed before come from memory at once; only a list with rows memory cannot answer
+    // (its first visit after boot) waits for the CFG pass here. After the badges, which titles copy.
+    int titlesPending = cfgTitlePrefill(mdl->support, count) > 0;
+    if (titlesPending)
+        cfgTitleRefresh(mdl->support, count);
+
     // Folder browsing: while inside a subfolder, show the breadcrumb ("Device: RPGs/SNES") as the page
     // title. folderGetSub() points at persistent static state, so the char* stays valid. At the device
     // root the device name set above stands. Only one device is ever inside a folder at a time (the
@@ -831,7 +839,8 @@ static void updateMenuFromGameList(opl_io_module_t *mdl)
     // Complete the view transition before the optional slow per-game CFG pass.
     if (viewTransition)
         libViewFinishPending(mdl->support->mode);
-    cfgTitleRefresh(mdl->support, count);
+    if (!titlesPending)
+        cfgTitleRefresh(mdl->support, count); // the rows already show remembered titles: this catches changes
 
     // The Favourites Recent stop is already in play order; sorting it would undo the point.
     if (gAutosort && !(mdl->support->mode == FAV_MODE && libViewActive(FAV_MODE) == LIB_VIEW_RECENT)) {

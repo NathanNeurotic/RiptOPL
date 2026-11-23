@@ -176,16 +176,24 @@ class LanguagePackTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "no lng/lang_"):
                     package_edition.language_pack(root / "none.zip", "1.0")
                 (root / "lng").mkdir()
-                for name in ("French", "Serbian", "Greek"):
+                for name in ("French", "Serbian", "Greek", "Japanese"):
                     (root / "lng" / f"lang_{name}.lng").write_text(name)
                 (root / "lng_src/thirdparty/font_French.otf").write_text("otf")
                 (root / "lng_src/thirdparty/font_Croatian.ttf").write_text("croatian")
+                (root / "lng_src/thirdparty/font_Japanese.otf").write_text("menu-only subset")
+                (root / "third_party/fonts").mkdir(parents=True)
+                (root / "third_party/fonts/MPLUS1p-Regular-JIS.ttf").write_text("jis")
+                (root / "third_party/fonts/MPLUS1P-OFL.txt").write_text("ofl")
                 package_edition.language_pack(root / "langs.zip", "1.0")
             with zipfile.ZipFile(root / "langs.zip") as pack:
                 self.assertEqual(sorted(pack.namelist()), [
                     "French-1.0/font_French.otf", "French-1.0/lang_French.lng", "Greek-1.0/lang_Greek.lng",
+                    "Japanese-1.0/LICENSE-font_Japanese.txt", "Japanese-1.0/font_Japanese.ttf",
+                    "Japanese-1.0/lang_Japanese.lng",
                     "README.txt", "Serbian-1.0/font_Serbian.ttf", "Serbian-1.0/lang_Serbian.lng"])
                 self.assertEqual(pack.read("Serbian-1.0/font_Serbian.ttf"), b"croatian")
+                self.assertEqual(pack.read("Japanese-1.0/font_Japanese.ttf"), b"jis")
+                self.assertEqual(pack.read("Japanese-1.0/LICENSE-font_Japanese.txt"), b"ofl")
 
 
 def unpacked_elf(offset=0x80, vaddr=0x00100000):
