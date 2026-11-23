@@ -2869,7 +2869,8 @@ reshow_launch:
     }
     if (result == CFG_IGR_ALT_COMBO || result == CFG_IGR_POWER_COMBO) {
         int power = result == CFG_IGR_POWER_COMBO;
-        int combo = guiIgrComboCapture(power ? _STR_IGR_POWER_COMBO_RECORD : _STR_IGR_COMBO_RECORD);
+        int combo = guiIgrComboCapture(power ? _STR_IGR_POWER_COMBO_RECORD : _STR_IGR_COMBO_RECORD,
+                                       power ? _STR_IGR_COMBO_TURN_OFF : _STR_IGR_COMBO_USE_DEFAULT);
         // The reset and power-off combos must differ: the same buttons would always power off.
         int other = power ? guiIgrComboMask(gIgrAltCombo) : gIgrPowerCombo;
         if (combo > 0 && combo == other)

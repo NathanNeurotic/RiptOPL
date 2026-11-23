@@ -151,7 +151,7 @@ int guiShowNeutrinoArgsConfig(char *argsBuf, int bufSize); // 1 when the saved a
 int guiIgrComboMask(int value);                       // the PAD_* bits ee_core gets (0: the usual combos)
 void guiIgrComboName(int value, char *buf, int size); // "L1+L2+R1+R2+Start+Select"
 void guiIgrPowerLabel(char *buf, int size);           // gIgrPowerCombo's name, or "Off"
-int guiIgrComboCapture(int promptId);                 // hold-to-record screen: the new value, or -1 (cancelled)
+int guiIgrComboCapture(int promptId, int defaultId);  // hold-to-record screen: the new value, or -1 (cancelled)
 int guiNeutrinoArgsCwdHandler(char *text, int maxLen);
 int guiNeutrinoArgsCfgHandler(char *text, int maxLen);
 int guiNeutrinoArgsElfHandler(char *text, int maxLen);
