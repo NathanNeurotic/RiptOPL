@@ -480,7 +480,6 @@ static const struct
     {KEY_RIGHT, 0x0020, "Right"},
 };
 
-#define IGR_COMBO_DEFAULT_MASK 0x0F09 // L1 + L2 + R1 + R2 + Start + Select
 #define IGR_COMBO_LEGACY_MASK  0x0F06 // L1 + L2 + R1 + R2 + L3 + R3 (the old toggle, #416)
 #define IGR_COMBO_MIN_BUTTONS  3
 #define IGR_COMBO_HOLD_SECONDS 3
@@ -583,7 +582,7 @@ private:
         else if (held_ == IGR_COMBO_TRIANGLE)
             result_ = 0;
         else
-            result_ = held_ == IGR_COMBO_DEFAULT_MASK ? 0 : held_; // the usual combo: the default too
+            result_ = held_;
         return true;
     }
 

@@ -2898,9 +2898,15 @@ reshow_launch:
         int power = result == CFG_IGR_POWER_COMBO;
         int combo = guiIgrComboCapture(power ? _STR_IGR_POWER_COMBO_RECORD : _STR_IGR_COMBO_RECORD,
                                        power ? _STR_IGR_COMBO_TURN_OFF : _STR_IGR_COMBO_USE_DEFAULT);
-        // The reset and power-off combos must differ: the same buttons would always power off.
-        int other = power ? guiIgrComboMask(gIgrAltCombo) : gIgrPowerCombo;
-        if (combo > 0 && combo == other)
+        // Recording the usual combo as the IGR Combo is the default (0).
+        if (!power && combo == IGR_COMBO_DEFAULT_MASK)
+            combo = 0;
+        // The reset and power-off combos must differ: the same buttons would always power off. The reset combo
+        // in effect is the user's own, or the usual one.
+        int resetMask = guiIgrComboMask(power ? gIgrAltCombo : combo);
+        if (resetMask == 0)
+            resetMask = IGR_COMBO_DEFAULT_MASK;
+        if (combo >= 0 && resetMask == (power ? combo : gIgrPowerCombo))
             guiMsgBox(_l(_STR_IGR_COMBO_TAKEN), 0, NULL);
         else if (combo >= 0 && combo != (power ? gIgrPowerCombo : guiIgrComboMask(gIgrAltCombo))) {
             if (power)
