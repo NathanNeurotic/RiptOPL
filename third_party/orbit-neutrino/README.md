@@ -44,11 +44,16 @@ is also what Caduceus's engine receives, so both RA modes use it. v1.2.14 can pa
 about 2.5 s under an unlock box when the client sends `RAU1 <id> <points>`; RiptOPL hands over no titles
 for it and does not claim console unlock cards. ORBIT is Neutrino v1.8.0 based: Neutrino cheats are not available through it.
 
-Do not replace this pin automatically when a new release appears: review the new
-release's handoff, snapshot limit and chain support first, then update `release.json`,
-`RA_ORBIT_SNAPSHOT_MAX` (`src/sources/supportbase.cpp`) and the tests together.
-`.github/workflows/orbit-neutrino-watch.yml` checks ORBIT's latest release on Neutrino Watch's
-schedule and opens the "ORBIT Neutrino RA runtime update" issue when it differs from this pin
-(a newer tag, or the same tag with a replaced archive). It never edits the pin.
+The pin moves automatically. `.github/workflows/orbit-neutrino-watch.yml` (NULD Neutrino RA
+Watch, daily) compares NULD's newest stable release with this pin. When only NULD's launcher
+changed, the `neutrino/` folder the RA kits ship is byte-identical and nothing happens (v1.3 was
+such a release). When `neutrino/` changed, the watch checks the new archive against GitHub's
+digest, runs `stage_orbit`'s checks on it, reads the snapshot limit from NULD's agent source at
+the new tag (`PAYLOAD - 256` in `raagent/src/main.c`, which must still equal
+`snapshot_bytes_max` and `RA_ORBIT_SNAPSHOT_MAX`), then updates `release.json`, the release
+links and this file, runs the RA tests, commits to rebuild/main and starts the rolling release.
+If any check fails, the run fails and nothing changes: a new snapshot limit or a new handoff
+needs a code change here first. It never opens issues. Pointer-chain support cannot be read from
+the binaries, so `pointer_chains` stays as reviewed until someone changes it by hand.
 
 **NOT TESTED on hardware** in RiptOPL.

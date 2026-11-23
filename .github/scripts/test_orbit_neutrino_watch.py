@@ -1,21 +1,26 @@
-"""ORBIT Neutrino Watch: when the RA runtime pin needs a review, and that the watch never moves it."""
+"""NULD Neutrino RA Watch: when the RA runtime pin moves by itself, and when it must not."""
+import hashlib
 import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / ".github/scripts"))
 import orbit_neutrino_watch as watch  # noqa: E402
 
 WORKFLOWS = ROOT / ".github/workflows"
+AGENT = "#define PAYLOAD     1472 // 1500 MTU - IP - UDP\n#define AGENT_BYTES (PAYLOAD - 256) // values in one packet\n"
+COMMIT = "c0ffee" * 6 + "abcd"
 
 
 class OrbitWatchTests(unittest.TestCase):
     def setUp(self):
-        self.pin = json.loads((ROOT / "third_party/orbit-neutrino/release.json").read_text())
+        self.pin = json.loads(watch.PIN.read_text())
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.out = Path(self.temp.name)
@@ -23,106 +28,165 @@ class OrbitWatchTests(unittest.TestCase):
     def release(self, tag=None, name=None, digest="pin", **extra):
         digest = "sha256:" + self.pin["sha256"] if digest == "pin" else digest
         asset = {"name": name or self.pin["asset"], "digest": digest}
-        release = {"tag_name": tag or self.pin["tag"], "html_url": "https://example.invalid/r",
+        release = {"tag_name": tag or self.pin["tag"], "html_url": "https://github.com/danielnuld/nuld/releases/tag/x",
                    "draft": False, "prerelease": False, "assets": [{"name": "launcher.elf"}, asset]}
         release.update(extra)
         return release
 
-    def run_watch(self, release, *args):
+    def check(self, release, *args):
         path = self.out / "release.json"
         path.write_text(json.dumps(release))
-        watch.main(["--release", str(path), "--out", str(self.out / "o"), *args])
-        issue = self.out / "o/issue.md"
-        return (self.out / "o/status").read_text(), issue.read_text() if issue.exists() else None
+        watch.main(["check", "--release", str(path), "--out", str(self.out / "o"), *args])
+        return (self.out / "o/status").read_text()
 
     def test_pinned_release_is_current(self):
-        self.assertEqual(self.run_watch(self.release()), ("current", None))
+        self.assertEqual(self.check(self.release()), "current")
 
     def test_digest_compare_ignores_case(self):
-        release = self.release(digest="sha256:" + self.pin["sha256"].upper())
-        self.assertEqual(self.run_watch(release)[0], "current")
+        self.assertEqual(self.check(self.release(digest="sha256:" + self.pin["sha256"].upper())), "current")
 
-    def test_newer_release_asks_for_review(self):
-        status, issue = self.run_watch(self.release("v9.9", "ORBIT-v9.9.zip", "sha256:" + "ab" * 32),
-                                       "--tag-commit", "c0ffee")
-        self.assertEqual(status, "changed")
-        self.assertIn("`" + self.pin["tag"] + "` | `v9.9`", issue)
-        suggested = json.loads(re.search(r"```json\n(.*?)\n```", issue, re.S).group(1))
-        self.assertEqual((suggested["tag"], suggested["asset"], suggested["sha256"], suggested["source_commit"]),
-                         ("v9.9", "ORBIT-v9.9.zip", "ab" * 32, "c0ffee"))
-        # Review-only fields are carried over, never guessed.
-        self.assertEqual(suggested["snapshot_bytes_max"], self.pin["snapshot_bytes_max"])
-        self.assertIn("ordinary kits keep the upstream Neutrino", issue)
+    def test_newer_or_replaced_release_is_new(self):
+        self.assertEqual(self.check(self.release("v9.9", "NULD-v9.9.zip", "sha256:" + "ab" * 32)), "new")
+        self.assertEqual(self.check(self.release(digest="sha256:" + "ab" * 32)), "new")
 
-    def test_renamed_project_archive_and_repository_are_recognised(self):
-        # ORBIT became NULD at v1.2: NULD-<tag>.zip in danielnuld/nuld.
-        release = self.release("v1.2.12", "NULD-v1.2.12.zip", "sha256:" + "cd" * 32,
-                               html_url="https://github.com/danielnuld/nuld/releases/tag/v1.2.12")
-        status, issue = self.run_watch(release)
-        self.assertEqual(status, "changed")
-        self.assertIn("`NULD-v1.2.12.zip`", issue)
-        self.assertNotIn("not reported", issue)
-        suggested = json.loads(re.search(r"```json\n(.*?)\n```", issue, re.S).group(1))
-        self.assertEqual((suggested["repository"], suggested["asset"], suggested["sha256"]),
-                         ("danielnuld/nuld", "NULD-v1.2.12.zip", "cd" * 32))
+    def test_missing_digest_asks_for_a_download(self):
+        self.assertEqual(self.check(self.release(digest="")), "unverified")
+        self.assertEqual(self.check(self.release(digest=""), "--asset-sha256", self.pin["sha256"]), "current")
 
-    def test_suggested_repository_falls_back_to_the_pin(self):
-        _, issue = self.run_watch(self.release("v9.9"))
-        suggested = json.loads(re.search(r"```json\n(.*?)\n```", issue, re.S).group(1))
-        self.assertEqual(suggested["repository"], self.pin["repository"])
+    def test_agent_snapshot_limit(self):
+        self.assertEqual(watch.agent_snapshot_bytes(AGENT), 1216)
+        self.assertEqual(watch.agent_snapshot_bytes("#define AGENT_BYTES 1000\n"), 1000)
+        self.assertIsNone(watch.agent_snapshot_bytes("#define AGENT_BYTES (PAYLOAD / 2)\n"))
+        self.assertEqual(self.pin["snapshot_bytes_max"], 1216)
 
-    def test_replaced_archive_under_the_same_tag_is_a_change(self):
-        status, issue = self.run_watch(self.release(digest="sha256:" + "00" * 32))
-        self.assertEqual(status, "changed")
-        self.assertIn("archive was replaced", issue)
 
-    def test_missing_pinned_asset_is_a_change(self):
-        self.assertEqual(self.run_watch(self.release(name="ORBIT-renamed.zip"))[0], "changed")
+class OrbitUpdateTests(unittest.TestCase):
+    """update: launcher-only releases change nothing; a changed neutrino/ moves the pin and the links."""
 
-    def test_missing_digest_needs_a_download_then_decides(self):
-        self.assertEqual(self.run_watch(self.release(digest=None))[0], "unverified")
-        self.assertEqual(self.run_watch(self.release(digest=None), "--asset-sha256", self.pin["sha256"])[0], "current")
-        self.assertEqual(self.run_watch(self.release(digest=None), "--asset-sha256", "11" * 32)[0], "changed")
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.dir = Path(self.temp.name)
+        self.root = self.dir / "repo"
+        for relative in ("third_party/orbit-neutrino/release.json", *watch.DOC_SITES):
+            (self.root / relative).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / relative).write_bytes((ROOT / relative).read_bytes())
+        self.old = self.archive("old.zip")
+        self.pin = dict(json.loads(watch.PIN.read_text()), sha256=hashlib.sha256(self.old.read_bytes()).hexdigest())
 
-    def test_prerelease_counts_as_newer(self):
-        status, issue = self.run_watch(self.release("v9.9", prerelease=True))
-        self.assertEqual(status, "changed")
-        self.assertIn("a pre-release", issue)
+    def archive(self, name, elf=b"ELF -ra=<file>", launcher=b"launcher"):
+        path = self.dir / name
+        files = {n: b"payload " + n.encode() for n in (
+            "modules/ee_core.elf", "modules/raagent.irx", "modules/IEEE1394_bd_mini.irx", "modules/iLinkman.irx",
+            "config/system.toml", "config/bsd-udpfs.toml", "LICENSE")}
+        files["neutrino.elf"] = elf
+        with zipfile.ZipFile(path, "w") as z:
+            for member, data in files.items():
+                z.writestr("NULD/neutrino/" + member, data)
+            z.writestr("NULD/nuld.elf", launcher)
+        return path
 
-    def test_draft_answer_is_ignored(self):
-        self.assertEqual(self.run_watch(self.release("v9.9", draft=True)), ("unknown", None))
-        self.assertEqual(self.run_watch(self.release(tag_name="")), ("unknown", None))
+    def release(self, new, tag="v9.9"):
+        digest = "sha256:" + hashlib.sha256(new.read_bytes()).hexdigest()
+        return {"tag_name": tag, "html_url": "https://github.com/danielnuld/nuld/releases/tag/" + tag,
+                "draft": False, "prerelease": False, "assets": [{"name": "NULD-" + tag + ".zip", "digest": digest}]}
 
-    def test_issue_names_this_repository_snapshot_limit(self):
-        _, issue = self.run_watch(self.release("v9.9"))
-        self.assertTrue(any(path in issue for path, _ in watch.LIMIT_SITES))
+    def update(self, new, agent=AGENT, release=None):
+        return watch.update(release or self.release(new), self.pin, self.old, new, agent, COMMIT, self.root,
+                            today="2026-11-23")
 
-    def test_pin_file_is_untouched(self):
-        pin_path = ROOT / "third_party/orbit-neutrino/release.json"
-        before = pin_path.read_bytes()
-        self.run_watch(self.release("v9.9"))
-        self.assertEqual(pin_path.read_bytes(), before)
+    def snapshot(self):
+        return {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+
+    def test_launcher_only_release_changes_nothing(self):
+        before = self.snapshot()
+        status, message, touched = self.update(self.archive("new.zip", launcher=b"launcher v1.3"))
+        self.assertEqual((status, touched), ("launcher-only", []))
+        self.assertIn("byte-identical", message)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_changed_runtime_moves_the_pin_and_links(self):
+        new = self.archive("new.zip", elf=b"ELF v2 -ra=<file>")
+        status, message, touched = self.update(new)
+        self.assertEqual(status, "updated")
+        pin = json.loads((self.root / "third_party/orbit-neutrino/release.json").read_text())
+        self.assertEqual((pin["tag"], pin["asset"], pin["source_commit"], pin["sha256"]),
+                         ("v9.9", "NULD-v9.9.zip", COMMIT, hashlib.sha256(new.read_bytes()).hexdigest()))
+        self.assertEqual(pin["snapshot_bytes_max"], self.pin["snapshot_bytes_max"])
+        self.assertIn("- neutrino.elf", message)
+        self.assertNotIn("raagent", message)
+        old_url = "https://github.com/" + self.pin["repository"] + "/releases/tag/" + self.pin["tag"]
+        for relative in touched[1:]:
+            text = (self.root / relative).read_text()
+            self.assertNotIn(old_url, text, relative)
+            self.assertIn("https://github.com/danielnuld/nuld/releases/tag/v9.9", text, relative)
+        notes = (self.root / watch.NOTES).read_text()
+        self.assertIn("/tree/" + COMMIT + "/third_party/neutrino-igr)", notes)
+        self.assertIn("v9.9 (updated automatically by NULD Neutrino Watch on 2026-11-23", notes)
+        self.assertIn("README.md", touched)
+        # The packer accepts what the watch pinned.
+        with tempfile.TemporaryDirectory() as out:
+            watch.staging().stage_orbit(new, Path(out) / "neutrino", pin)
+
+    def test_new_tag_extending_the_old_one_is_linked_once(self):
+        tag = self.pin["tag"] + ".1"
+        new = self.archive("ext.zip", elf=b"ELF v2 -ra=<file>")
+        self.update(new, release=self.release(new, tag))
+        url = "https://github.com/danielnuld/nuld/releases/tag/" + tag
+        text = (self.root / "README.md").read_text()
+        self.assertIn(url, text)
+        self.assertNotIn(url + ".1", text)
+
+    def test_refusals_write_nothing(self):
+        before = self.snapshot()
+        cases = {
+            "no handoff": (self.archive("a.zip", elf=b"stock"), AGENT, None),
+            "new snapshot limit": (self.archive("b.zip", elf=b"ELF v2 -ra=<file>"), AGENT.replace("1472", "1400"), None),
+            "unreadable agent": (self.archive("c.zip", elf=b"ELF v2 -ra=<file>"), "", None),
+        }
+        bad = self.archive("d.zip", elf=b"ELF v3 -ra=<file>")
+        cases["no published digest"] = (bad, AGENT, dict(self.release(bad), assets=[{"name": "NULD-v9.9.zip"}]))
+        cases["digest mismatch"] = (bad, AGENT, dict(self.release(bad), assets=[{"name": "NULD-v9.9.zip",
+                                                                                  "digest": "sha256:" + "00" * 32}]))
+        for label, (new, agent, release) in cases.items():
+            with self.subTest(label), self.assertRaises(SystemExit):
+                self.update(new, agent, release)
+            self.assertEqual(self.snapshot(), before, label)
+
+    def test_every_file_linking_the_pinned_release_is_rewritten(self):
+        pin = json.loads(watch.PIN.read_text())
+        url = "https://github.com/" + pin["repository"] + "/releases/tag/" + pin["tag"]
+        listed = subprocess.run(["git", "-C", str(ROOT), "grep", "-l", "-F", url], capture_output=True, text=True).stdout
+        tests = {".github/scripts/test_release_publication.py"}
+        self.assertEqual(set(listed.split()) - tests, set(watch.DOC_SITES))
 
 
 class OrbitWatchWorkflowTests(unittest.TestCase):
     def setUp(self):
         self.text = (WORKFLOWS / "orbit-neutrino-watch.yml").read_text()
 
-    def test_runs_on_the_neutrino_watch_schedule(self):
-        cron = lambda text: re.findall(r"cron:\s*[\"']([^\"']+)", text)
-        self.assertEqual(cron((WORKFLOWS / "neutrino-watch.yml").read_text()), cron(self.text))
+    def test_updates_instead_of_opening_issues(self):
+        self.assertNotIn("issue", self.text.replace("never opens issues", "").replace("It never opens issues", ""))
+        for needed in ("contents: write", "actions: write", "git push origin HEAD:rebuild/main",
+                       "gh workflow run rolling-release.yml", "orbit_neutrino_watch.py update"):
+            self.assertIn(needed, self.text)
 
-    def test_reports_but_never_writes_the_repository(self):
-        self.assertIn("contents: read", self.text)
-        self.assertIn("issues: write", self.text)
-        for forbidden in ("contents: write", "git push", "git commit", "actions: write"):
-            self.assertNotIn(forbidden, self.text)
+    def test_tests_run_before_the_commit(self):
+        self.assertLess(self.text.index("test_package_orbit_neutrino.py"), self.text.index("git commit"))
 
-    def test_uses_the_script_and_includes_prereleases(self):
-        self.assertIn(".github/scripts/orbit_neutrino_watch.py", self.text)
-        self.assertIn("releases?per_page=100", self.text)
-        self.assertNotIn("releases/latest", self.text.replace('"releases/latest" would', ""))
+    def test_stable_releases_only_and_daily(self):
+        self.assertIn("select(.prerelease | not)", self.text)
+        self.assertIn('cron: "41 5 * * *"', self.text)
         self.assertIn("ORBIT_REPO: danielnuld/nuld\n", self.text)
+
+    def test_no_workflow_file_is_committed(self):
+        # A GITHUB_TOKEN push may not change .github/workflows; docs-sync.yml reads the pin instead.
+        add = re.search(r"git add[^\n]*", self.text).group(0)
+        self.assertNotIn(".github/workflows", add)
+        self.assertTrue(all(not site.startswith(".github/workflows") for site in watch.DOC_SITES))
+        docs_sync = (WORKFLOWS / "docs-sync.yml").read_text()
+        self.assertIn('Path("third_party/orbit-neutrino/release.json")', docs_sync)
+        self.assertNotIn("danielnuld/nuld/releases/tag/v", docs_sync)
 
 
 if __name__ == "__main__":
