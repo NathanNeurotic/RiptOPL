@@ -404,7 +404,7 @@ translations:
   RA_DISC_CHECKING: Prüfe die Disc für RetroAchievements
   RA_DISC_HASH_FAILED: Der Hash der Disc konnte nicht berechnet werden -- siehe RA/hashes.txt im Einstellungsordner
   RA_DISC_HOME_ERROR: Der Einstellungsordner kann nicht für Disc-Beobachtungslisten genutzt werden
-  RA_DISC_ENABLE: Schalte zuerst die RetroAchievements-Telemetrie in den Netzwerkeinstellungen ein
+  RA_DISC_ENABLE: Schalte zuerst die RetroAchievements-Telemetrie in den RetroAchievements-Einstellungen ein
   RA_DISC_CHECK_FIRST: 'Keine Beobachtungsliste für diese Disc -- nutze zuerst RA: Disc-Unterstützung prüfen'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: Festplatte gefunden, aber ihre APA-Partitionstabelle ist unlesbar. Nicht formatieren -- deine Spiele sind vielleicht zu retten.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Ein Laufwerk wurde nicht eingebunden, weil seine Sektoren nicht 512 Byte groß sind (z. B. ein Laufwerk mit 4K-Sektoren). OPL kann nur 512-Byte-Sektoren lesen.'
@@ -565,8 +565,8 @@ translations:
   CAD_UNTRACKED: Caduceus ist nicht bereit. Diesmal ohne Erfolge gestartet.
   RA_CADUCEUS_OFFLINE: Die RA-Sitzung von Caduceus ist offline.
   RA_CADUCEUS_SIGN_IN: Melde dich in Caduceus bei RetroAchievements an und versuche es erneut.
-  RA_EXPERIMENTAL_CARDS: Experimentelle Caduceus-Karten
-  HINT_RA_EXPERIMENTAL_CARDS: Experimentelle PS2-Erfolgskarten im Spiel. Können flackern oder Spiele einfrieren. Nur Caduceus; Aus nutzt den goldenen Puls. Wirkt beim nächsten Spielstart.
+  RA_EXPERIMENTAL_CARDS: Experimentelle Karten
+  HINT_RA_EXPERIMENTAL_CARDS: Experimentelle PS2-Erfolgskarten im Spiel. Können flackern oder Spiele einfrieren. Aus nutzt den goldenen Puls. Wirkt beim nächsten Spielstart.
   CAD_ACHIEVEMENTS: Caduceus-Erfolge
   CAD_VIEW_ACHIEVEMENTS: Erfolge ansehen
   CAD_BACK: Zurück

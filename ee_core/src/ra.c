@@ -96,6 +96,13 @@ static int ra_node_count = 0;
 /* Direct values plus eight bytes per chain: what a snapshot carries. */
 static int ra_snap_bytes = 0;
 
+/* The 16 KB scratchpad. RetroAchievements numbers it right above the RAM; the console has it at
+   0x70000000, on the kernel's own wired TLB entry. Direct entries only (xeRAbora 2.1.0, upstream
+   e37aae73): a chain that starts or ends there still reports address 0. */
+#define RA_SPR_LOW  0x02000000
+#define RA_SPR_HIGH 0x02004000
+#define RA_SPR_BASE 0x70000000
+
 /* Readable window for a watch address. UNCACHED_SEG puts it in the 0x20000000 mirror, which the
    kernel's default TLB maps only from 0x20080000 up to the end of the 32 MB of RAM (ps2sdk
    ee/kernel/src/tlbfunc.c). An address outside that -- a watch list can carry 0x00000000 -- takes a
@@ -249,27 +256,36 @@ static void ra_snap_send(void)
         if ((size != 1 && size != 2 && size != 4) || size > (u32)(ra_watch_bytes - off))
             break;
 
-        if (addr < RA_RAM_LOW || addr >= RA_RAM_HIGH || size > RA_RAM_HIGH - addr) {
+        /* Where the entry is read: RAM through its uncached mirror, the scratchpad at its own
+           address (it is not RAM and has no mirror). Both keep the entry's alignment. */
+        const volatile u8 *at = (const volatile u8 *)UNCACHED_SEG(addr);
+
+        if (addr >= RA_SPR_LOW && addr < RA_SPR_HIGH && size <= RA_SPR_HIGH - addr)
+            at = (const volatile u8 *)(RA_SPR_BASE - RA_SPR_LOW + addr);
+        else if (addr < RA_RAM_LOW || addr >= RA_RAM_HIGH || size > RA_RAM_HIGH - addr)
+            at = NULL;
+
+        if (at == NULL) {
             u32 n = (size == 4 || size == 2) ? size : 1; // exactly what the read below would pack
 
             while (n-- > 0)
                 vals[off++] = 0;
         } else if (size == 4 && (addr & 3) == 0) {
-            u32 v = *(volatile u32 *)UNCACHED_SEG(addr);
+            u32 v = *(const volatile u32 *)at;
 
             vals[off++] = (u8)v;
             vals[off++] = (u8)(v >> 8);
             vals[off++] = (u8)(v >> 16);
             vals[off++] = (u8)(v >> 24);
         } else if (size == 2 && (addr & 1) == 0) {
-            u16 v = *(volatile u16 *)UNCACHED_SEG(addr);
+            u16 v = *(const volatile u16 *)at;
 
             vals[off++] = (u8)v;
             vals[off++] = (u8)(v >> 8);
         } else {
             u32 j;
             for (j = 0; j < size; j++)
-                vals[off++] = *(volatile u8 *)UNCACHED_SEG(addr + j);
+                vals[off++] = at[j];
         }
     }
 

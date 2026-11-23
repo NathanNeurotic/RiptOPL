@@ -446,7 +446,7 @@ translations:
   RA_DISC_CHECKING: جارٍ فحص القرص لـ RetroAchievements
   RA_DISC_HASH_FAILED: 'تعذّر حساب بصمة القرص: افحص RA/hashes.txt في مجلد الإعدادات'
   RA_DISC_HOME_ERROR: لا يمكن استخدام مسار الإعدادات لقوائم مراقبة الأقراص
-  RA_DISC_ENABLE: فعّل القياس عن بُعد لـ RetroAchievements في إعدادات الشبكة أولاً
+  RA_DISC_ENABLE: فعّل القياس عن بُعد لـ RetroAchievements في إعدادات RetroAchievements أولاً
   RA_DISC_CHECK_FIRST: 'لا توجد قائمة مراقبة لهذا القرص: استخدم فحص دعم القرص في RA أولاً'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: عُثر على القرص الصلب، لكن تعذّرت قراءة جدول أقسام APA الخاص به. لا تهيّئه: قد يمكن استعادة ألعابك.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: لم يُركّب محرك لأن قطاعاته ليست 512 بايت (مثل محرك بقطاعات 4K). لا يقرأ OPL إلا قطاعات 512 بايت.'
@@ -614,8 +614,8 @@ translations:
   CAD_UNTRACKED: Caduceus غير جاهز. التشغيل دون إنجازات هذه المرة.
   RA_CADUCEUS_OFFLINE: جلسة Caduceus RA غير متصلة.
   RA_CADUCEUS_SIGN_IN: سجّل الدخول إلى RetroAchievements في Caduceus، ثم حاول مرة أخرى.
-  RA_EXPERIMENTAL_CARDS: بطاقات Caduceus التجريبية
-  HINT_RA_EXPERIMENTAL_CARDS: بطاقات إنجازات تجريبية داخل ألعاب PS2. قد تومض أو تجمّد الألعاب. لـ Caduceus فقط؛ والإيقاف يستخدم النبض الذهبي. يسري من تشغيل اللعبة التالي.
+  RA_EXPERIMENTAL_CARDS: البطاقات التجريبية
+  HINT_RA_EXPERIMENTAL_CARDS: بطاقات إنجازات تجريبية داخل ألعاب PS2. قد تومض أو تجمّد الألعاب. الإيقاف يستخدم النبض الذهبي. يسري من تشغيل اللعبة التالي.
   CAD_ACHIEVEMENTS: إنجازات Caduceus
   CAD_VIEW_ACHIEVEMENTS: عرض الإنجازات
   CAD_BACK: رجوع

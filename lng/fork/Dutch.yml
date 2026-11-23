@@ -458,7 +458,7 @@ translations:
   RA_DISC_CHECKING: De schijf controleren voor RetroAchievements
   RA_DISC_HASH_FAILED: De hash van de schijf kon niet worden berekend -- controleer RA/hashes.txt in de instellingenmap
   RA_DISC_HOME_ERROR: Het instellingenpad kan niet worden gebruikt voor volglijsten van schijven
-  RA_DISC_ENABLE: Zet eerst RetroAchievements-telemetrie aan in de netwerkinstellingen
+  RA_DISC_ENABLE: Zet eerst RetroAchievements-telemetrie aan in de RetroAchievements-instellingen
   RA_DISC_CHECK_FIRST: 'Geen volglijst voor deze schijf -- gebruik eerst RA: schijfondersteuning controleren'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD gevonden, maar de APA-partitietabel kan niet worden gelezen. Niet formatteren -- je games zijn misschien te herstellen.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Een schijf is niet gekoppeld omdat de sectoren niet 512 bytes zijn (bijv. een schijf met 4K-sectoren). OPL kan alleen sectoren van 512 bytes lezen.'
@@ -624,8 +624,8 @@ translations:
   CAD_UNTRACKED: Caduceus is niet klaar. Deze keer starten zonder prestaties.
   RA_CADUCEUS_OFFLINE: De RA-sessie van Caduceus is offline.
   RA_CADUCEUS_SIGN_IN: Meld je in Caduceus aan bij RetroAchievements en probeer het opnieuw.
-  RA_EXPERIMENTAL_CARDS: Experimentele Caduceus-kaarten
-  HINT_RA_EXPERIMENTAL_CARDS: Experimentele prestatiekaarten in PS2-games. Kunnen flikkeren of games laten vastlopen. Alleen Caduceus; Uit gebruikt de gouden puls. Werkt vanaf de volgende gamestart.
+  RA_EXPERIMENTAL_CARDS: Experimentele kaarten
+  HINT_RA_EXPERIMENTAL_CARDS: Experimentele prestatiekaarten in PS2-games. Kunnen flikkeren of games laten vastlopen. Uit gebruikt de gouden puls. Werkt vanaf de volgende gamestart.
   CAD_ACHIEVEMENTS: Caduceus-prestaties
   CAD_VIEW_ACHIEVEMENTS: Prestaties bekijken
   CAD_BACK: Terug

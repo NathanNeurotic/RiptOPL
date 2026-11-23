@@ -303,7 +303,7 @@ translations:
   RA_DISC_CHECKING: Provera diska za RetroAchievements
   RA_DISC_HASH_FAILED: 'Heš diska nije mogao da se izračuna: proverite RA/hashes.txt u fascikli podešavanja'
   RA_DISC_HOME_ERROR: Putanja podešavanja ne može da se koristi za liste praćenja diskova
-  RA_DISC_ENABLE: Prvo uključite RetroAchievements telemetriju u mrežnim podešavanjima
+  RA_DISC_ENABLE: Prvo uključite RetroAchievements telemetriju u podešavanjima RetroAchievements
   RA_DISC_CHECK_FIRST: 'Za ovaj disk nema liste praćenja: prvo koristite RA proveru podrške za disk'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: HDD je pronađen, ali njegova APA tabela particija ne može da se pročita. Ne formatirajte ga: vaše igre se možda mogu spasiti.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Disk nije montiran jer njegovi sektori nisu od 512 bajtova (npr. disk sa sektorima od 4K). OPL može da čita samo sektore od 512 bajtova.'
@@ -471,8 +471,8 @@ translations:
   CAD_UNTRACKED: Caduceus nije spreman. Ovaj put pokretanje bez dostignuća.
   RA_CADUCEUS_OFFLINE: Caduceus RA sesija nije na mreži.
   RA_CADUCEUS_SIGN_IN: Prijavite se na RetroAchievements u Caduceus-u, pa pokušajte ponovo.
-  RA_EXPERIMENTAL_CARDS: Eksperimentalne Caduceus kartice
-  HINT_RA_EXPERIMENTAL_CARDS: Eksperimentalne PS2 kartice dostignuća u igri. Mogu da trepere ili zamrznu igre. Samo Caduceus; Isključeno koristi zlatni puls. Važi od sledećeg pokretanja igre.
+  RA_EXPERIMENTAL_CARDS: Eksperimentalne kartice
+  HINT_RA_EXPERIMENTAL_CARDS: Eksperimentalne PS2 kartice dostignuća u igri. Mogu da trepere ili zamrznu igre. Isključeno koristi zlatni puls. Važi od sledećeg pokretanja igre.
   CAD_ACHIEVEMENTS: Caduceus dostignuća
   CAD_VIEW_ACHIEVEMENTS: Prikaži dostignuća
   CAD_BACK: Nazad

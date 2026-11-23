@@ -394,7 +394,7 @@ translations:
   RA_DISC_CHECKING: RetroAchievements 用にディスクを確認しています
   RA_DISC_HASH_FAILED: ディスクのハッシュを計算できませんでした -- 設定フォルダの RA/hashes.txt を確認してください
   RA_DISC_HOME_ERROR: この設定のパスはディスクの追跡リストに使えません
-  RA_DISC_ENABLE: まずネットワーク設定で RetroAchievements テレメトリーをオンにしてください
+  RA_DISC_ENABLE: まずRetroAchievements 設定で RetroAchievements テレメトリーをオンにしてください
   RA_DISC_CHECK_FIRST: このディスクの追跡リストがありません -- まず「RA：ディスクの対応を確認」を使ってください
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d：HDD は見つかりましたが、APA パーティションテーブルを読めません。フォーマットしないでください -- ゲームを取り戻せるかもしれません。'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d：セクターが 512 バイトではないドライブ（4K セクターのドライブなど）をマウントしませんでした。OPL は 512 バイトのセクターしか読めません。'
@@ -560,8 +560,8 @@ translations:
   CAD_UNTRACKED: Caduceus の準備ができていません。今回は実績なしで起動します。
   RA_CADUCEUS_OFFLINE: Caduceus の RA セッションはオフラインです。
   RA_CADUCEUS_SIGN_IN: Caduceus で RetroAchievements にサインインしてから、もう一度お試しください。
-  RA_EXPERIMENTAL_CARDS: Caduceus の実験的カード
-  HINT_RA_EXPERIMENTAL_CARDS: PS2 のゲーム内に出る実験的な実績カード。ちらついたりゲームが固まったりすることがあります。Caduceus のみ。オフでは金色のパルスを使います。次のゲーム起動から有効です。
+  RA_EXPERIMENTAL_CARDS: 実験的カード
+  HINT_RA_EXPERIMENTAL_CARDS: PS2 のゲーム内に出る実験的な実績カード。ちらついたりゲームが固まったりすることがあります。オフでは金色のパルスを使います。次のゲーム起動から有効です。
   CAD_ACHIEVEMENTS: Caduceus の実績
   CAD_VIEW_ACHIEVEMENTS: 実績を見る
   CAD_BACK: 戻る

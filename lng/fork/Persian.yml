@@ -626,7 +626,7 @@ translations:
   RA_DISC_CHECKING: در حال بررسی دیسک برای RetroAchievements
   RA_DISC_HASH_FAILED: 'هش دیسک محاسبه نشد: RA/hashes.txt را در پوشه تنظیمات بررسی کنید'
   RA_DISC_HOME_ERROR: مسیر تنظیمات برای فهرست‌های پایش دیسک قابل استفاده نیست
-  RA_DISC_ENABLE: اول تله‌متری RetroAchievements را در تنظیمات شبکه روشن کنید
+  RA_DISC_ENABLE: اول تله‌متری RetroAchievements را در تنظیمات RetroAchievements روشن کنید
   RA_DISC_CHECK_FIRST: 'این دیسک فهرست پایش ندارد: اول از بررسی پشتیبانی دیسک RA استفاده کنید'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: هارد پیدا شد، اما جدول پارتیشن APA آن خوانده نمی‌شود. آن را فرمت نکنید: شاید بازی‌های شما قابل بازیابی باشند.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: یک درایو سوار نشد چون سکتورهایش 512 بایتی نیستند (مثلاً درایو با سکتور 4K). OPL فقط سکتورهای 512 بایتی را می‌خواند.'
@@ -794,8 +794,8 @@ translations:
   CAD_UNTRACKED: Caduceus آماده نیست. این بار بدون دستاوردها اجرا می‌شود.
   RA_CADUCEUS_OFFLINE: نشست RA در Caduceus آفلاین است.
   RA_CADUCEUS_SIGN_IN: در Caduceus وارد RetroAchievements شوید، سپس دوباره تلاش کنید.
-  RA_EXPERIMENTAL_CARDS: کارت‌های آزمایشی Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: کارت‌های آزمایشی دستاورد درون بازی PS2. ممکن است بازی‌ها را چشمک‌زن یا هنگ کنند. فقط Caduceus؛ خاموش از پالس طلایی استفاده می‌کند. از اجرای بعدی بازی اعمال می‌شود.
+  RA_EXPERIMENTAL_CARDS: کارت‌های آزمایشی
+  HINT_RA_EXPERIMENTAL_CARDS: کارت‌های آزمایشی دستاورد درون بازی PS2. ممکن است بازی‌ها را چشمک‌زن یا هنگ کنند. خاموش از پالس طلایی استفاده می‌کند. از اجرای بعدی بازی اعمال می‌شود.
   CAD_ACHIEVEMENTS: دستاوردهای Caduceus
   CAD_VIEW_ACHIEVEMENTS: مشاهده دستاوردها
   CAD_BACK: بازگشت

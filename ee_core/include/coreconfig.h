@@ -102,10 +102,12 @@ struct EECoreConfig_t
        device. Module storage is kept for the whole game: the kernel wipes
        user memory only from ModuleStorageEnd up. */
     void *raWorkArea;
-    u32 raWorkBytes;    /* Actual reserved capacity, including node scratch words. */
-    int raClientMode;   /* RA_MODE_*: 1 selects the Caduceus bridge */
-    int raHostPinned;   /* a companion IP was configured: discovery asks only it */
-    char raHost[16];    /* the companion's IPv4, dotted; raudp's passive and pinned target */
+    u32 raWorkBytes;  /* Actual reserved capacity, including node scratch words. */
+    int raClientMode; /* RA_MODE_*: 1 selects the Caduceus bridge */
+    int raHostPinned; /* a companion IP was configured: discovery asks only it */
+    /* raudp's host argument, copied as it is: the companion's IPv4, dotted (its passive and
+       pinned target), then ',' and the watch list's 32-digit image hash when it carries one. */
+    char raHost[16 + 1 + 32];
     void *raOverlayBuf; /* RA_CARD_PACKET_BYTES in the work area for Caduceus cards, or NULL */
 #endif
     /* The in-game menu (igrmenu.c; RIPPS2's, by akilluminati47). APPENDED, like the above.

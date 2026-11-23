@@ -420,7 +420,7 @@ translations:
   RA_DISC_CHECKING: Gisusi ang disc alang sa RetroAchievements
   RA_DISC_HASH_FAILED: 'Dili ma-hash ang disc: susiha ang RA/hashes.txt sa settings folder'
   RA_DISC_HOME_ERROR: Dili magamit ang settings path alang sa mga watch list sa disc
-  RA_DISC_ENABLE: I-enable una ang RetroAchievements telemetry sa Network settings
+  RA_DISC_ENABLE: I-enable una ang RetroAchievements telemetry sa RetroAchievements settings
   RA_DISC_CHECK_FIRST: 'Walay watch list kining disc: gamita una ang RA check disc support'
   HDD_APA_TABLE_UNREADABLE_ERROR: '%d: Nakit-an ang HDD, apan dili mabasa ang APA partition table niini. Ayaw kini i-format: tingali mabawi pa ang imong mga dula.'
   BDM_UNSUPPORTED_SECTOR_SIZE_ERROR: '%d: Wala na-mount ang usa ka drive tungod kay dili 512 byte ang mga sector niini (pananglitan drive nga 4K ang sector). 512-byte nga sector ra ang mabasa sa OPL.'
@@ -588,8 +588,8 @@ translations:
   CAD_UNTRACKED: Dili pa andam ang Caduceus. Ilansad nga walay achievement karon.
   RA_CADUCEUS_OFFLINE: Offline ang Caduceus RA session.
   RA_CADUCEUS_SIGN_IN: Pag-sign in sa RetroAchievements sa Caduceus, unya sulayi pag-usab.
-  RA_EXPERIMENTAL_CARDS: Mga eksperimental nga card sa Caduceus
-  HINT_RA_EXPERIMENTAL_CARDS: Mga eksperimental nga achievement card sulod sa PS2 nga dula. Mahimong mokidlap o mo-freeze ang mga dula. Caduceus ra; gold pulse ang gamit sa Off. Magsugod kini sa sunod nga paglansad sa dula.
+  RA_EXPERIMENTAL_CARDS: Mga eksperimental nga card
+  HINT_RA_EXPERIMENTAL_CARDS: Mga eksperimental nga achievement card sulod sa PS2 nga dula. Mahimong mokidlap o mo-freeze ang mga dula. Gold pulse ang gamit sa Off. Magsugod kini sa sunod nga paglansad sa dula.
   CAD_ACHIEVEMENTS: Mga achievement sa Caduceus
   CAD_VIEW_ACHIEVEMENTS: Tan-awa ang mga achievement
   CAD_BACK: Balik
