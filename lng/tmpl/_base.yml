@@ -2799,3 +2799,5 @@ gui_strings:
   string: 'The ELF was installed, but version.txt could not be written (error %d). Check for Updates to retry only that file.'
 - label: UPDATE_METADATA_RETRY
   string: Writing version.txt...
+- label: PROJECT_HOME
+  string: 'Project Home:'

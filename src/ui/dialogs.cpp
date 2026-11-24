@@ -2188,8 +2188,9 @@ struct UIItem diaAbout[] = {
     {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - sahlberg - techwritescode", -1}}},
     {UI_BREAK},
 
-    // Quality Assurance
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {NULL, _STR_QANDA}}},
+    // Quality Assurance. The headings here and on the Network update row keep the plain row height, so the page
+    // fits 4:3 SD at the default font size without scrolling (it has no control to scroll with).
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_QANDA}}},
     {UI_BREAK},
 
     {UI_SPACER},
@@ -2202,13 +2203,13 @@ struct UIItem diaAbout[] = {
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Akilluminati47, eliminator, V3ditata", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"CosmicScale, eliminator, TnA, V3ditata", -1}}},
     {UI_BREAK},
 
     // Network update
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {NULL, _STR_NET_UPDATE}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_NET_UPDATE}}},
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"icyson55", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"icyson55", -1}}},
     {UI_BREAK},
 
     // Build Options
@@ -2223,9 +2224,12 @@ struct UIItem diaAbout[] = {
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"psx-place.com", -1}}},
     {UI_BREAK},
 
-    // buttons
-    {UI_OK, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_OK}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_PROJECT_HOME}}},
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"github.com/NathanNeurotic/RiptOPL", -1}}},
     {UI_BREAK},
+
+    // no buttons: any button closes the page (diaShowPage)
 
     // end of dialog
     {UI_TERMINATOR}};

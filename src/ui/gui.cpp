@@ -175,7 +175,7 @@ void Gui::showAbout()
 #endif
     );
 
-    diaExecuteDialog(diaAbout, -1, 1, NULL);
+    diaShowPage(diaAbout);
 }
 
 int Gui::showKeyboard(char *value, int maxLength)
