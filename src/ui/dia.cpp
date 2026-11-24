@@ -36,7 +36,6 @@ constexpr int UI_BREAK_LEN = 600;
 // See diaScrollDelay(); medium is unchanged, so most users see no difference.
 constexpr int DIA_SCROLL_MIN_MS = 200;
 // scroll speed (delay in ms!) when setting int value
-constexpr int DIA_INT_SET_SPEED = 100;
 
 static struct UIItem *diaSettingsShellUI;
 static const char *diaSettingsIndicator;
@@ -844,17 +843,11 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
         diaDrawHint(cur->hintId, curBot);
     }
 
-    /* A focused int accepts Triangle for direct entry, and nothing on screen would otherwise say so:
-       dialogs have no per-item hint row while focused (diaDrawHint above is skipped in that state),
-       so an undocumented binding would be an undiscoverable one. Widen the standard two-hint footer
-       to three for exactly as long as the pad is reachable. */
-    int intFocus = (cur != NULL) && haveFocus && (cur->type == UI_INT);
-
     int uiY = gTheme->usedHeight - 32;
     if (settingsContext) {
-        int uiHints[3] = {_STR_SELECT, _STR_BACK, _STR_ENTER};
-        int uiIcons[3] = {guiConfirmIcon(), guiCancelIcon(), TRIANGLE_ICON};
-        int uiX = guiAlignSubMenuHints(intFocus ? 3 : 2, uiHints, uiIcons, gTheme->fonts[0], 12, 2);
+        int uiHints[2] = {_STR_SELECT, _STR_BACK};
+        int uiIcons[2] = {guiConfirmIcon(), guiCancelIcon()};
+        int uiX = guiAlignSubMenuHints(2, uiHints, uiIcons, gTheme->fonts[0], 12, 2);
 
         if (settingsShell) {
             // Use the same controller button textures as the rest of OPL. Do not introduce a
@@ -876,24 +869,15 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
         }
         uiX = guiDrawIconAndText(uiIcons[0], uiHints[0], gTheme->fonts[0], uiX, uiY, gTheme->textColor);
         uiX += 12;
-        uiX = guiDrawIconAndText(uiIcons[1], uiHints[1], gTheme->fonts[0], uiX, uiY, gTheme->textColor);
-        if (intFocus) {
-            uiX += 12;
-            guiDrawIconAndText(uiIcons[2], uiHints[2], gTheme->fonts[0], uiX, uiY, gTheme->textColor);
-        }
+        guiDrawIconAndText(uiIcons[1], uiHints[1], gTheme->fonts[0], uiX, uiY, gTheme->textColor);
     } else {
-        int uiHints[3] = {_STR_SELECT, _STR_BACK, _STR_ENTER};
-        int uiIcons[3] = {CIRCLE_ICON, CROSS_ICON, TRIANGLE_ICON};
-        int uiX = guiAlignSubMenuHints(intFocus ? 3 : 2, uiHints, uiIcons, gTheme->fonts[0], 12, 2);
+        int uiHints[2] = {_STR_SELECT, _STR_BACK};
+        int uiIcons[2] = {CIRCLE_ICON, CROSS_ICON};
+        int uiX = guiAlignSubMenuHints(2, uiHints, uiIcons, gTheme->fonts[0], 12, 2);
 
         uiX = guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? uiIcons[0] : uiIcons[1], uiHints[0], gTheme->fonts[0], uiX, uiY, gTheme->textColor);
         uiX += 12;
-        uiX = guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? uiIcons[1] : uiIcons[0], uiHints[1], gTheme->fonts[0], uiX, uiY, gTheme->textColor);
-        if (intFocus) {
-            // Triangle stays Triangle: the swap above only ever exchanges cross and circle.
-            uiX += 12;
-            guiDrawIconAndText(uiIcons[2], uiHints[2], gTheme->fonts[0], uiX, uiY, gTheme->textColor);
-        }
+        guiDrawIconAndText(gSelectButton == KEY_CIRCLE ? uiIcons[1] : uiIcons[0], uiHints[1], gTheme->fonts[0], uiX, uiY, gTheme->textColor);
     }
 }
 
@@ -943,57 +927,32 @@ static int diaHandleInput(struct UIItem *item, int *modified)
         return 0;
     }
     if (item->type == UI_INT) {
-        /* DIRECT ENTRY. Nudging with up/down is fine for a value near where it already is and awful
-           for anything else -- an IP octet or a 65535-max port is not something you hold a direction
-           to reach. Triangle opens diaShowNumPad() seeded with the current value.
+        /* DIRECT ENTRY. Confirming a number opens diaShowNumPad() with the current value, the way a
+           text field opens the keyboard. Numbers used to be stepped with Up/Down one at a time, which
+           is no way to reach an IP octet or a 65535-max port; the pad is the one way in for every
+           number, small ranges included, so a number row always behaves the same. */
+        char numbuf[16];
+        char *end = NULL;
+        long entered;
 
-           Up/down still nudge, deliberately: most int fields here are small ranges (mtap port 1-2,
-           turbo speed 1-4, caches 0-32) where one press IS the fastest route, and taking that away
-           to fix the octets would just move the annoyance. Triangle is free while an int has focus
-           -- dia.c binds it only INSIDE the keyboard, for space -- so this adds a way in without
-           taking one away, and cross/circle still accept/cancel exactly as before. */
-        if (getKeyOn(KEY_TRIANGLE)) {
-            char numbuf[16];
-            char *end = NULL;
-            long entered;
-
-            snprintf(numbuf, sizeof(numbuf), "%d", item->intvalue.current);
-            if (diaShowNumPad(numbuf, sizeof(numbuf), item->intvalue.min, item->intvalue.max)) {
-                entered = strtol(numbuf, &end, 10);
-                // Reject junk instead of storing it: strtol answers 0 for "abc", which would look
-                // like a deliberate entry. Only commit when at least one digit was consumed.
-                if (end != numbuf) {
-                    if (entered < item->intvalue.min)
-                        entered = item->intvalue.min;
-                    if (entered > item->intvalue.max)
-                        entered = item->intvalue.max;
+        *modified = 0;
+        snprintf(numbuf, sizeof(numbuf), "%d", item->intvalue.current);
+        if (diaShowNumPad(numbuf, sizeof(numbuf), item->intvalue.min, item->intvalue.max)) {
+            entered = strtol(numbuf, &end, 10);
+            // Reject junk instead of storing it: strtol answers 0 for "abc", which would look
+            // like a deliberate entry. Only commit when at least one digit was consumed.
+            if (end != numbuf) {
+                if (entered < item->intvalue.min)
+                    entered = item->intvalue.min;
+                if (entered > item->intvalue.max)
+                    entered = item->intvalue.max;
+                if (item->intvalue.current != (int)entered) {
                     item->intvalue.current = (int)entered;
+                    *modified = 1;
                 }
             }
-            return 0; // lose focus after editing, same as the string fields
         }
-
-        // to be sure
-        setButtonDelay(KEY_UP, DIA_INT_SET_SPEED);
-        setButtonDelay(KEY_DOWN, DIA_INT_SET_SPEED);
-
-        // up and down
-        if (getKey(KEY_UP)) {
-            sfxPlay(SFX_CURSOR);
-            if (item->intvalue.current < item->intvalue.max) {
-                item->intvalue.current++;
-            } else {
-                item->intvalue.current = item->intvalue.min; // was "= 0;"
-            }
-        } else if (getKey(KEY_DOWN)) {
-            sfxPlay(SFX_CURSOR);
-            if (item->intvalue.current > item->intvalue.min) {
-                item->intvalue.current--;
-            } else {
-                item->intvalue.current = item->intvalue.max;
-            }
-        } else
-            *modified = 0;
+        return 0; // lose focus after editing, same as the string fields
     } else if ((item->type == UI_STRING) || (item->type == UI_PASSWORD)) {
         char tmp[32];
         strncpy(tmp, item->stringvalue.text, sizeof(tmp));
