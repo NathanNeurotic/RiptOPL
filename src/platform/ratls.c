@@ -120,9 +120,18 @@ long long raTlsClockNow(ratls_clock_t *c, const ratls_clock_ops_t *ops)
         c->resting = 1;
         c->rest_at = at;
     }
-    /* The counter wraps (about 71 minutes on the console): past that the time steps back by one
-       wrap, which a certificate's validity, counted in days, does not notice. */
-    return c->known ? c->base + (at - c->base_at) / ops->per_second : -1;
+    if (!c->known)
+        return -1;
+    /* The counter wraps (about 71 minutes on the console). Whole seconds are moved into the base on
+       every call, so the time keeps up across wraps as long as it is asked for more often than that;
+       a longer silence loses one wrap, which a certificate's validity, counted in days, does not notice. */
+    {
+        unsigned int secs = (at - c->base_at) / ops->per_second;
+
+        c->base += secs;
+        c->base_at += secs * ops->per_second;
+    }
+    return c->base;
 }
 
 void raTlsClockSet(ratls_clock_t *c, const ratls_clock_ops_t *ops, long long utc)
