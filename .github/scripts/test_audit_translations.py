@@ -45,7 +45,10 @@ with tempfile.TemporaryDirectory(prefix='lngaudit-') as temp:
     rc, out = strict(tree)
     assert rc == 0 and 'WARNING: Swedish/SETTINGS_SAVED (upstream)' in out, out
 
-    # overrides: replace upstream at build time, so a bad one is ours: an error, even over upstream.
+    # overrides: replace upstream at build time, so a bad one is ours: an error, even over a valid upstream.
+    (tree / 'lng_src/Swedish.yml').write_text(
+        yaml.safe_dump({'translations': {'SETTINGS_SAVED': 'Inställningar sparade till %s'}}, allow_unicode=True),
+        encoding='utf-8')
     data['overrides'] = {'SETTINGS_SAVED': 'Inställningar sparade %d'}
     overlay.write_text(yaml.safe_dump(data, allow_unicode=True), encoding='utf-8')
     rc, out = strict(tree)
