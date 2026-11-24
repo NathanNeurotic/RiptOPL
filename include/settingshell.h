@@ -75,6 +75,9 @@ private:
     bool shellActive_ = false;
     int currentPage_ = 0;
     int savePending_ = 0;
+    // The page dialog on screen and the dialog-run count when it opened (see endDialog).
+    struct UIItem *shownDialog_ = NULL;
+    unsigned int shownAtRun_ = 0;
     char pageIndicator_[32] = {};
     SourceState sourceState_ = {};
 };

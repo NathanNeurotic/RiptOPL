@@ -1232,8 +1232,16 @@ void diaShowPage(struct UIItem *ui)
     }
 }
 
+static unsigned int diaExecuteRuns;
+
+unsigned int diaExecuteCount(void)
+{
+    return diaExecuteRuns;
+}
+
 int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(int modified))
 {
+    diaExecuteRuns++;
     rmGetScreenExtents(&diaScreenWidth, &diaScreenHeight);
 
     struct UIItem *cur = NULL;

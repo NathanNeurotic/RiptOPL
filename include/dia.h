@@ -139,6 +139,8 @@ void diaSetShowDefaultWhenEmpty(struct UIItem *ui, int id, int show);
 void diaSetVisible(struct UIItem *ui, int id, int visible);
 int diaGetInt(struct UIItem *ui, int id, int *value);
 int diaHasChanges(struct UIItem *ui);
+// How many dialogs diaExecuteDialog has run so far: lets a caller tell whether another one ran in between.
+unsigned int diaExecuteCount(void);
 int diaSetInt(struct UIItem *ui, int id, int value);
 int diaGetString(struct UIItem *ui, int id, char *value, int length);
 int diaSetString(struct UIItem *ui, int id, const char *text);
