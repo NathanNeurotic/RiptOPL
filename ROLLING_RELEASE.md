@@ -88,8 +88,9 @@ The two full channels each carry:
   Neutrino companions. RA ships the pinned RA runtime and its required files.
 
 `rolling` also publishes `RIPTOPL-VARIANTS.zip` (PADEMU0, DS5,
-extras and extras+DS5), `RIPTOPL-DEBUG.zip` (debug and diagnostic
-configurations), and `RIPTOPL-BUGREPORT.zip` (unpacked diag build).
+extras and extras+DS5, plus each of them and the standard loader unpacked), `RIPTOPL-DEBUG.zip` (debug and diagnostic
+configurations), and `RIPTOPL-BUGREPORT.zip` (unpacked diag build). Debug and bug-report
+builds have no updater; every other loader updates to its own build, packed or unpacked.
 `rolling-ra` publishes `RIPTOPL-RA-VARIANTS.zip`, including the
 supported PADEMU0 and unpacked RA loaders.
 

@@ -54,8 +54,15 @@ def update_asset(edition, configuration="standard", device=None, *, unpacked=Fal
     return stem + ("-UNPACKED" if unpacked else "") + ".ELF"
 
 
+# The builds with Check for Updates, each to its own asset, packed and unpacked: the standard loader and the
+# player variants. Debug, diagnostic and bug-report builds have no updater (nothing replaces them in place).
+# RiptOPLite: the standard build of each device, packed only (update_channel).
+UPDATABLE = {"riptopl": ("standard", "pademu0", "ds5", "extras", "extras_ds5"), "ra": ("standard", "pademu0")}
+
+
 def publishes_unpacked(edition, configuration):
-    return (edition == "ra" and configuration in ("standard", "pademu0")) or (edition == "riptopl" and configuration == "diag")
+    """Builds also published before compression: every updatable one, and the bug-report diag build."""
+    return configuration in UPDATABLE.get(edition, ()) or (edition == "riptopl" and configuration == "diag")
 
 
 def update_channel(edition, configuration="standard", toolchain=None, device=None):
@@ -68,7 +75,7 @@ def update_channel(edition, configuration="standard", toolchain=None, device=Non
     if edition in LITES:
         if configuration != "standard" or device not in LITE_DEVICES:
             return None
-    elif configuration not in CONFIGURATIONS or (edition == "ra" and configuration not in ("standard", "pademu0")):
+    elif configuration not in UPDATABLE[edition]:
         return None
     return options["tag"], update_asset(edition, configuration, device)
 

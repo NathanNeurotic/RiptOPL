@@ -8,9 +8,11 @@ until you choose the entry: RiptOPL never checks or downloads on its own.
 
 | Build | GitHub release | Matched by |
 | --- | --- | --- |
-| RiptOPL (LLVM) | `rolling` | Standard, controller variants and diagnostic configurations |
+| RiptOPL (LLVM) | `rolling` | Standard, PadEmu Off, DS5, Extras or Extras+DS5, packed or unpacked |
 | RetroAchievements (GCC) | `rolling-ra` | Standard or PadEmu Off, packed or unpacked |
-| RiptOPLite (GCC) | `rolling-lite` | Selected device and RetroAchievements support |
+| RiptOPLite (GCC) | `rolling-lite` | Selected device and RetroAchievements support (packed only) |
+
+Debug, diagnostic and bug-report builds have no Check for Updates: install them by hand.
 
 Korium, IncebtIon and the old independent LLVM channel are retired. To move
 from one of those channels, install a current standard RiptOPL ELF manually

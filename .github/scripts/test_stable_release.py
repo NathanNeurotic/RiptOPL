@@ -102,8 +102,7 @@ def make_artifacts(root, channel="stable", stable="1.3.0", tamper=None):
         sums = "".join(hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name + "\n" for p in sorted(path.iterdir()))
         (path / "SHA256SUMS.txt").write_text(sums)
         configurations = {c for _, bundled, _ in publish_editions.bundles(options) for c in bundled}
-        if options["ra"]:
-            configurations |= set(publish_editions.RA_UNPACKED)
+        configurations |= set(publish_editions.UPDATABLE[edition])
         for configuration in sorted(configurations):
             stage = root / f"variant-{edition}-{configuration}"
             stage.mkdir()
@@ -113,7 +112,7 @@ def make_artifacts(root, channel="stable", stable="1.3.0", tamper=None):
                        "release_channel": "rolling" if tamper == ("variant", configuration) else channel,
                        "version": version_line(f"{options['title']}-X-{configuration.upper()}", stable=stable)}
             (stage / "RIPTOPL.ELF").write_bytes(packed)
-            if options["ra"] or configuration == "diag":
+            if configuration in publish_editions.UPDATABLE[edition] or configuration == "diag":
                 raw = unpacked_elf() + f"{edition}-{configuration}".encode()
                 (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(raw)
                 variant["unpacked_elf_sha256"] = hashlib.sha256(raw).hexdigest()
@@ -221,7 +220,11 @@ class StableReleaseTests(unittest.TestCase):
             for asset in publish_stable.expected_update_assets() | {publish_stable.MARKER}:
                 self.assertIn(asset, names)
                 self.assertEqual(publish_stable.updater_view(sums, asset)[1], 4400, asset)
-            self.assertEqual(len(publish_stable.expected_update_assets()), 36)
+            # RiptOPL 5 builds and RA 2, each packed and unpacked, and 16 RiptOPLite: 10 + 4 + 16.
+            self.assertEqual(len(publish_stable.expected_update_assets()), 30)
+            # Debug and bug-report builds have no updater, so no single ELF of theirs is published.
+            self.assertFalse({"RIPTOPL-DEBUG-UART.ELF", "RIPTOPL-DIAG.ELF", "RIPTOPL-DIAG-UNPACKED.ELF"} & names)
+            self.assertIn("RIPTOPL-EXTRAS-DS5-UNPACKED.ELF", names)
             # Kits, bundles, Lite RA zips, languages and sources, all versioned.
             for name in ("RIPTOPL-v1.3.0-4400.zip", "RIPTOPL-RetroAchievements-v1.3.0-4400.zip",
                          "RIPTOPL-VARIANTS-v1.3.0-4400.zip", "RIPTOPL-DEBUG-v1.3.0-4400.zip",

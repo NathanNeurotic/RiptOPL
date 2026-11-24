@@ -16,7 +16,8 @@ import zipfile
 from types import SimpleNamespace
 
 from build_configuration import CONFIGURATIONS
-from build_edition import EDITIONS, LITES, LITE, edition_display_name, git, kit_archive_name, publishes_unpacked, update_asset
+from build_edition import (EDITIONS, LITES, LITE, UPDATABLE, edition_display_name, git, kit_archive_name, update_asset,
+                           update_channel)
 import publish_lite
 
 # The original's VARIANTS and DEBUG zips and its RA nopademu loader, published for every theme beside
@@ -24,13 +25,13 @@ import publish_lite
 # (name, configurations, release-notes description). docs/BUILD-CONFIGURATIONS.md has each one.
 VARIANTS = ("pademu0", "ds5", "extras", "extras_ds5")
 STANDARD_BUNDLES = (
-    ("VARIANTS", VARIANTS, "pad emulation off, DualSense and extras builds"),
+    ("VARIANTS", VARIANTS, "pad emulation off, DualSense and extras builds, and the loaders unpacked"),
     ("DEBUG", tuple(c for c in CONFIGURATIONS if c != "standard" and c not in VARIANTS), "debug and diagnostic builds"),
 )
 RA_BUNDLES = (("RA-VARIANTS", ("pademu0",), "pad emulation off, and the loaders unpacked"),)
-# RA-VARIANTS also carries these RA builds before compression, as <configuration>-unpacked/RIPTOPL-RA.ELF:
-# an unpacked loader starts without the decompression step (asked for by CosmicScale, 2026-11-16).
-RA_UNPACKED = ("standard", "pademu0")
+# Each VARIANTS zip also carries its edition's updatable builds before compression (build_edition.UPDATABLE),
+# as APP_<ELF>-UNPACKED/<ELF>-UNPACKED.ELF: an unpacked loader starts without the decompression step
+# (asked for by CosmicScale, 2026-11-16), and Check for Updates keeps it unpacked.
 # The RA kits ship ORBIT's pinned RA runtime in place of upstream Neutrino; their notes link it.
 ORBIT_PIN = Path(__file__).resolve().parents[1] / "third_party/orbit-neutrino/release.json"
 
@@ -85,8 +86,9 @@ def check_unpacked_layout(elf):
 BUNDLE_README = ("{display} configuration builds. Each loader has its own folder, named APP_ plus its ELF\n"
                  "name (APP_RIPTOPL-PADEMU0/RIPTOPL-PADEMU0.ELF), with the manifest it was built from. Copy a\n"
                  "folder beside your {elf} folder: its first start reads that loader's settings once and then\n"
-                 "keeps its own; your {elf} folder is never changed. Check for Updates keeps each one on its own\n"
-                 "configuration. What each configuration\n"
+                 "keeps its own; your {elf} folder is never changed. Check for Updates keeps each player build on\n"
+                 "its own configuration, packed or unpacked (APP_..-UNPACKED); debug builds have no updater.\n"
+                 "What each configuration\n"
                  "changes: https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md\n"
                  "Every loader embeds usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\n"
                  "MIT licence; its licence is LICENSE-USMB2.txt beside this file. They also embed his unfs4,\n"
@@ -145,11 +147,9 @@ def publish_update_elf(path, name, elf):
 
 
 def extra_update_assets(edition):
-    configurations = {"standard"}
-    for _, bundled, _ in bundles(EDITIONS[edition]):
-        configurations.update(bundled)
-    return ({update_asset(edition, c) for c in configurations if c != "standard"} |
-            {update_asset(edition, c, unpacked=True) for c in configurations if publishes_unpacked(edition, c)})
+    """The update ELFs a channel carries beside its kit's own: every updatable variant, packed and unpacked."""
+    return ({update_asset(edition, c) for c in UPDATABLE[edition] if c != "standard"} |
+            {update_asset(edition, c, unpacked=True) for c in UPDATABLE[edition]})
 
 
 def channel_of(manifest):
@@ -178,8 +178,9 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
             archive = path / f"RIPTOPL-{name}.zip"
             with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
                 folders = [(c, "RIPTOPL.ELF", "elf_sha256", c) for c in configurations]
-                if options["ra"]:
-                    folders += [(c, "RIPTOPL-UNPACKED.ELF", "unpacked_elf_sha256", f"{c}-unpacked") for c in RA_UNPACKED]
+                if name.endswith("VARIANTS"):
+                    folders += [(c, "RIPTOPL-UNPACKED.ELF", "unpacked_elf_sha256", f"{c}-unpacked")
+                                for c in UPDATABLE[edition]]
                 for configuration, source, digest, label in folders:
                     stage = root / f"variant-{edition}-{configuration}"
                     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
@@ -201,14 +202,16 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
                     bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
                     # The same icon, music, title.cfg and APPINFO.PBT as every app folder, booting this ELF.
                     title = "RiptOPL " + asset[len("RIPTOPL-"):-len(".ELF")]  # RiptOPL PADEMU0, RiptOPL RA-UNPACKED
-                    for name, data in publish_lite.app.app_companions(SimpleNamespace(
+                    for file, data in publish_lite.app.app_companions(SimpleNamespace(
                             app_name=folder, elf_name=asset, title=title, pbt_title=title,
                             version=manifest["version"].split('"')[1], flavour="PS2BUILD", channel=options["title"],
                             description=f"{title} configuration build")).items():
-                        bundle.writestr(f"{folder}/{name}", data)
+                        bundle.writestr(f"{folder}/{file}", data)
                     if unpacked:
                         check_unpacked_layout(elf)
-                    publish_update_elf(path, asset, elf)
+                    if update_channel(edition, configuration) is not None:
+                        # Check for Updates downloads it by name; debug builds have no updater.
+                        publish_update_elf(path, asset, elf)
                 bundle.writestr("README.txt", BUNDLE_README.format(display=edition_display_name(options), elf=elf_name))
                 # Each loader embeds usmb2 (MIT) and unfs4 (BSD 2-Clause, its notice in CREDITS): the bundle
                 # carries the licences the kit ships.
@@ -235,8 +238,7 @@ def bundle_bug_report(root, edition, expected_sha, compiler=None, channel="rolli
             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
             or manifest.get("unpacked_elf_sha256") != hashlib.sha256(elf).hexdigest()):
         raise ValueError(f"invalid bug-report build: {edition}")
-    check_unpacked_layout(elf)
-    publish_update_elf(path, update_asset(edition, "diag", unpacked=True), elf)
+    check_unpacked_layout(elf)  # no update asset: the bug-report build has no updater
     version = manifest["version"].split('"')[1]  # the build's full version, as its screen shows it
     readme = BUGREPORT_README.read_text(encoding="utf-8").format(
         version=version, underline="=" * len("RiptOPL bug-report build, " + version), build=EDITIONS[edition]["title"],

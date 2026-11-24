@@ -248,8 +248,7 @@ class PublisherTests(unittest.TestCase):
     def variants(self, root, **changes):
         for edition, options in publish_editions.EDITIONS.items():
             configurations = {c for _, configurations, _ in publish_editions.bundles(options) for c in configurations}
-            if options["ra"]:
-                configurations |= set(publish_editions.RA_UNPACKED)
+            configurations |= set(publish_editions.UPDATABLE[edition])
             for configuration in sorted(configurations):
                 stage = root / f"variant-{edition}-{configuration}"
                 stage.mkdir()
@@ -258,7 +257,7 @@ class PublisherTests(unittest.TestCase):
                             "configuration": configuration, "ps2build_version": "test", "components": {}, "ports": {},
                             "elf_sha256": hashlib.sha256(payload).hexdigest(), **changes.get(configuration, {})}
                 (stage / "RIPTOPL.ELF").write_bytes(payload)
-                if options["ra"]:
+                if configuration in publish_editions.UPDATABLE[edition]:
                     unpacked = unpacked_elf() + configuration.encode()
                     (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
                     manifest.setdefault("unpacked_elf_sha256", hashlib.sha256(unpacked).hexdigest())
@@ -285,12 +284,20 @@ class PublisherTests(unittest.TestCase):
                              (root / "variant-ra-standard/RIPTOPL-UNPACKED.ELF").read_bytes())
             self.assertEqual((root / "release-ra/RIPTOPL-RA-PADEMU0.ELF").read_bytes(),
                              (root / "variant-ra-pademu0/RIPTOPL.ELF").read_bytes())
-            self.assertEqual((root / "release-riptopl/RIPTOPL-DIAG-UNPACKED.ELF").read_bytes(),
-                             (root / "variant-riptopl-diag/RIPTOPL-UNPACKED.ELF").read_bytes())
+            # Every player build updates to itself, packed and unpacked; debug and bug-report builds have no update ELF.
+            for configuration in ("standard", "pademu0", "ds5", "extras", "extras_ds5"):
+                self.assertEqual((root / f"release-riptopl/{editions.update_asset('riptopl', configuration, unpacked=True)}").read_bytes(),
+                                 (root / f"variant-riptopl-{configuration}/RIPTOPL-UNPACKED.ELF").read_bytes())
+            self.assertEqual(sorted(p.name for p in (root / "release-riptopl").glob("RIPTOPL-*.ELF")),
+                             sorted(["RIPTOPL-PADEMU0.ELF", "RIPTOPL-DS5.ELF", "RIPTOPL-EXTRAS.ELF", "RIPTOPL-EXTRAS-DS5.ELF",
+                                     "RIPTOPL-UNPACKED.ELF", "RIPTOPL-PADEMU0-UNPACKED.ELF", "RIPTOPL-DS5-UNPACKED.ELF",
+                                     "RIPTOPL-EXTRAS-UNPACKED.ELF", "RIPTOPL-EXTRAS-DS5-UNPACKED.ELF"]))
             for edition in ("riptopl",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("APP_RIPTOPL-DS5/RIPTOPL-DS5.ELF"), b"\x7fELFds5")
-                    self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 4)
+                    self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 9)
+                    self.assertEqual(bundle.read("APP_RIPTOPL-EXTRAS-DS5-UNPACKED/RIPTOPL-EXTRAS-DS5-UNPACKED.ELF"),
+                                     unpacked_elf() + b"extras_ds5")
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-DEBUG.zip") as bundle:
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 10)

@@ -97,7 +97,8 @@ builds remain Actions artifacts. See [release channels and packaging](ROLLING_RE
 **Moving from Korium, IncebtIon or RiptOPLLVM?** Install the current full kit once to switch channels. Back up your settings and saves, then copy the updated companion folders from the kit for the cores you use.
 
 **Updating:** published RiptOPL, RetroAchievements and RiptOPLite builds use
-**Check for Updates** to download a verified replacement for their own configuration.
+**Check for Updates** to download a verified replacement for their own configuration
+(debug and bug-report builds have no updater).
 The updater preserves packed or unpacked format, including RetroAchievements ELFs
 launched from a qualified APA path such as `hdd0:__system:pfs:/launcher/RIPTOPL-RA.ELF`.
 A successful update also writes the new build number to `version.txt` beside the ELF.
