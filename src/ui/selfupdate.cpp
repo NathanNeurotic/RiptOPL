@@ -620,6 +620,21 @@ static void suOffer(int local)
         suRelaunch();
 }
 
+int selfUpdateTakeNic(void)
+{
+    return oplSwapNicForUpdate(1) == 0;
+}
+
+void selfUpdateGiveNic(void)
+{
+    /* each try waits for the menu's work to drain; the saved protocol is already back, so a restart applies it */
+    for (int tries = 0; oplSwapNicForUpdate(0) != 0;)
+        if (++tries == 10) {
+            guiMsgBox(_l(_STR_NETBOOT_RESTART), 0, NULL);
+            break;
+        }
+}
+
 void selfUpdateMenu(void)
 {
     int local = suRevision(OPL_VERSION);
@@ -634,15 +649,10 @@ void selfUpdateMenu(void)
         suOffer(local);
         return;
     }
-    if (oplSwapNicForUpdate(1) != 0) {
+    if (!selfUpdateTakeNic()) {
         guiMsgBox(_l(_STR_UPDATE_ERR_NETBUSY), 0, NULL);
         return;
     }
     suOffer(local);
-    /* each try waits for the menu's work to drain; the saved protocol is already back, so a restart applies it */
-    for (int tries = 0; oplSwapNicForUpdate(0) != 0;)
-        if (++tries == 10) {
-            guiMsgBox(_l(_STR_NETBOOT_RESTART), 0, NULL);
-            break;
-        }
+    selfUpdateGiveNic();
 }
