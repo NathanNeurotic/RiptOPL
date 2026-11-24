@@ -2756,6 +2756,8 @@ static int guiSettingsShowTheme(void)
     diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
     diaSetInt(ui, UICFG_WALLPAPER, gThemeWallpaper);
     diaSetInt(ui, UICFG_AMBIENT_EFFECTS, gEnableAmbientEffects);
+    for (int i = 0; i < 3; i++)
+        diaSetInt(ui, UICFG_SEL_COLOR + i, (gSelStyle >> i) & 1);
     diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
     const char *listCfgNames[] = {_l(_STR_THEME), _l(_STR_ON), _l(_STR_OFF), NULL};
     diaSetEnum(ui, UICFG_LIST_CFG_TEXT, listCfgNames);
@@ -2805,6 +2807,15 @@ static int guiSettingsShowTheme(void)
         diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
         diaGetInt(ui, UICFG_WALLPAPER, &wallpaperRequest);
         diaGetInt(ui, UICFG_AMBIENT_EFFECTS, &gEnableAmbientEffects);
+        {
+            int selStyle = 0; // read as each frame draws: nothing to rebuild
+            for (int i = 0; i < 3; i++) {
+                int on = (gSelStyle >> i) & 1;
+                diaGetInt(ui, UICFG_SEL_COLOR + i, &on);
+                selStyle |= (on ? 1 : 0) << i;
+            }
+            gSelStyle = selStyle;
+        }
         const int themeViewRequest = guiReadThemeViewPicker(ui);
         const bool viewPending = themeViewRequest != gThemeViewRequest;
         if (!viewPending) {

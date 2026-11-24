@@ -2357,15 +2357,18 @@ void drawItemsList(struct menu_list *menu, struct submenu_list *item, config_set
         }
         while (ps && (others++ < itemsList->displayedItems)) {
             if (ps == item) {
-                color = gTheme->selTextColor;
+                // Theme Settings -> Selection: each piece can be turned off; all on is the original look.
+                color = (gSelStyle & SEL_STYLE_COLOR) ? gTheme->selTextColor : elem->color;
                 if (!(elem->aligned & ALIGN_HCENTER)) {
                     int hlX = elem->posX;
                     if (elem->aligned & ALIGN_RIGHT)
                         hlX -= elem->width;
                     if (itemsList->highlight == THM_HL_BAR) {
-                        rmDrawRect(hlX - 12, posY + 1, elem->width + 12, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0x1E, 0x3C, 0x9C, 0x5C, 0x00));
-                        rmDrawRect(hlX - 12, posY + 1, 3, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
-                    } else if (itemsList->highlight == THM_HL_LINE) {
+                        if (gSelStyle & SEL_STYLE_HIGHLIGHT)
+                            rmDrawRect(hlX - 12, posY + 1, elem->width + 12, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0x1E, 0x3C, 0x9C, 0x5C, 0x00));
+                        if (gSelStyle & SEL_STYLE_CURSOR)
+                            rmDrawRect(hlX - 12, posY + 1, 3, MENU_ITEM_HEIGHT - 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
+                    } else if (itemsList->highlight == THM_HL_LINE && (gSelStyle & SEL_STYLE_HIGHLIGHT)) {
                         rmDrawRect(hlX - 12, posY + MENU_ITEM_HEIGHT - 3, elem->width + 12, 2, GS_SETREG_RGBAQ(0xB4, 0xC8, 0xFF, 0x80, 0x00));
                     }
                 }

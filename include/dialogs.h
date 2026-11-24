@@ -352,6 +352,9 @@ enum UI_ITEMS {
     UICFG_SHOW_LEGEND,
     UICFG_WALLPAPER,
     UICFG_AMBIENT_EFFECTS,
+    UICFG_SEL_COLOR, // Selection: Colored, Cursor, Highlight -- kept in SEL_STYLE_* bit order
+    UICFG_SEL_CURSOR,
+    UICFG_SEL_HIGHLIGHT,
     DATETIME_YEAR,
     DATETIME_MONTH,
     DATETIME_DAY,

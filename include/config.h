@@ -93,6 +93,7 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_THEME_VIEW                 "theme_view"      // list/coverflow/psbbn/grid; absent = the theme's default view
 #define CONFIG_OPL_THEME_ALT_BG               "theme_alt_bg"    // 1 = the theme's alt= background (themeviews.h); absent = its default=
 #define CONFIG_OPL_SHOW_LEGEND                "show_legend"     // 0 = no button legend (HintText, InfoHintText); absent = shown
+#define CONFIG_OPL_SEL_STYLE                  "sel_style"       // SEL_STYLE_* bits for the selected list row; absent = 7 (all)
 #define CONFIG_OPL_WALLPAPER                  "wallpaper"       // 1 = wallpaper.png in the settings folder behind the menus; absent = the theme's
 #define CONFIG_OPL_AMBIENT_EFFECTS            "ambient_effects" // 0 = no procedural ambient backdrop; absent = On
 // Boot Theme Wait: seconds the intro waits for the saved theme; 0 = off

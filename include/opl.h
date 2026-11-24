@@ -426,6 +426,10 @@ extern int gGlyphSet;             // GLYPH_SET_* (themes.h); GLYPH_SET_THEME fol
 extern int gThemeAltBackground;   // Alternate Background: the theme's alt= pictures (thmApplyAltBackground)
 extern int gBootThemeWait;        // Boot Theme Wait: seconds the intro holds for the saved theme (0 = off)
 extern int gShowLegend;           // Show Legend: 0 hides the theme's button legend (HintText, InfoHintText)
+extern int gSelStyle;             // Selection: SEL_STYLE_* bits for how a List draws its selected row
+#define SEL_STYLE_COLOR     1     // the theme's selected text color
+#define SEL_STYLE_CURSOR    2     // the small bar at the row's left edge
+#define SEL_STYLE_HIGHLIGHT 4     // the bar (or the theme's line) behind the row
 extern int gThemeWallpaper;       // User Wallpaper: wallpaper.png from the settings folder behind the main pages
 extern int gEnableAmbientEffects; // Ambient Effects: Crystal orbs, pointed caps and glints over the built-in/settings backdrops
 extern int gVMode;                // 0 - Auto, 1 - PAL, 2 - NTSC
