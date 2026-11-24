@@ -432,6 +432,8 @@ def main():
         # Asked for more often than the counter wraps (4294 s), the given time keeps up across wraps.
         check("clock_keeps_up_across_wraps", clock("r=1," + made_up, "now", "set=1800000000", "adv=3000", "now",
                                                     "adv=3000", "now")[1:] == [(1800003000, 1), (1800006000, 1)])
+        check("clock_busy_repeat_subsecond", clock("r=1," + good, "now", "r=0," + good, "at=500000", "now", "at=1000000",
+                                                    "now", "at=1500000", "now", "at=2000000", "now")[-1][0] == t + 2)
         check("clock_month_flag_bit", clock("r=1,0000000900129026", "now") == [(t, 1)])
         # A time learnt earlier carries on when the clock stops answering mid-request (0.25 s of retries).
         check("clock_carries_on", clock("r=1," + good, "now", "r=0," + made_up, "adv=5", "now") == [(t, 1), (t + 5, 6)])

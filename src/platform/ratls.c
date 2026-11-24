@@ -103,8 +103,9 @@ long long raTlsClockNow(ratls_clock_t *c, const ratls_clock_ops_t *ops)
             long long now = raTlsClockDecode(raw, ops->min_year);
 
             /* A busy reply (not taken) carries the driver's last good reading, which may be old: once a
-               time is known, such a reply counts only if it is not behind where the counter says it is. */
-            if (now >= 0 && (taken || !c->known || now >= c->base + (ops->ticks() - c->base_at) / ops->per_second)) {
+               time is known, such a reply counts only if it is ahead of where the counter says it is (the same reading again,
+               asked for more than once a second, would otherwise hold the time still). */
+            if (now >= 0 && (taken || !c->known || now > c->base + (ops->ticks() - c->base_at) / ops->per_second)) {
                 c->known = 1;
                 c->resting = 0;
                 c->base = now;
