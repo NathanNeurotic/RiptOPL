@@ -662,3 +662,29 @@ translations:
   HINT_THEME_VIEW: "Cara tema menampilkan game Anda: List, Coverflow, PSBBN Flow atau Grid. Tahan L3 di halaman utama untuk beralih. Tema tanpa tampilan itu memakai tampilan bawaannya."
   BOTH: Keduanya
   NET_READ_ONLY_VMC: "Server UDPBD/UDPFS ini hanya-baca, jadi VMC tidak dapat digunakan di sana. Game menyimpan ke memory card asli."
+# Corrections reviewed by a native Indonesian speaker (2026-11). These replace the upstream
+# OPL language pack strings too; see lng/README.md.
+overrides:
+  ERROR_SAVING_SETTINGS: Error menyimpan pengaturan!
+  SETTINGS: Pengaturan
+  CONFIRMATION_POFF: Matikan sistem
+  HDD_NOT_CONNECTED_ERROR: '%d: Harddisk tidak terdeteksi'
+  NETWORK_STARTUP_ERROR: '%d: Error memulai jaringan'
+  NETWORK_STARTUP_ERROR_NETIF: '%d: Network Adaptor tidak terdeteksi'
+  NETWORK_STARTUP_ERROR_CONN: '%d: Gagal terhubung ke SMB server'
+  NETWORK_STARTUP_ERROR_LOGON: '%d: Gagal login ke SMB server'
+  NETWORK_STARTUP_ERROR_SHARE: '%d: Gagal membuka SMB Share. Cek nama Share, User dan Sandi'
+  NETWORK_SHARE_LIST_ERROR: '%d: Tidak ada daftar SMB share'
+  COMPAT_SETTINGS: Pengaturan game
+  REMOVE_ALL_SETTINGS: Hapus pengaturan
+  SCROLLING: Geser
+  ERROR_LOADING_ID: Error memuat game ID
+  COVERART: Cover game
+  BGCOLOR: Warna background
+  SHARE: Share
+  ENABLE_WRITE: Opsi Perubahan
+  LASTPLAYED: Game terakhir yang dimainkan
+  SELECTBUTTON: Tombol pilih
+  ERR_FRAGMENTED: Error, game terfragmentasi
+  ERR_FILE_INVALID: Error, tidak bisa menjalankan item
+  HINT_GUEST: Kosongkan untuk Tamu

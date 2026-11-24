@@ -130,6 +130,11 @@ def overlay_translation_yml(translation_obj: Dict[str, Any], overlay_obj: Dict[s
         if isinstance(translations.get(label), str):
             continue  # already translated (don't clobber a human translation)
         translations[label] = value
+    # 'overrides:' entries are reviewed corrections by a native speaker: they replace the
+    # upstream string too. Kept separate so the gap-only rule above stays the default.
+    for label, value in ((overlay_obj or {}).get('overrides', {}) or {}).items():
+        if isinstance(value, str):
+            translations[label] = value
 
     yaml.dump(translation_obj, output_file, **YAML_DUMP_ARGS)
 
