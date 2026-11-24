@@ -72,6 +72,20 @@ static int diaShouldBreakLineAfter(struct UIItem *ui)
     return (ui->type == UI_SPLITTER);
 }
 
+// Whether `cur` sits on the line that starts at `row` (up to the next item that starts a line of its own).
+static int diaRowHolds(struct UIItem *row, const struct UIItem *cur)
+{
+    for (struct UIItem *it = row; it->type != UI_TERMINATOR; it++) {
+        if (it != row && diaShouldBreakLine(it))
+            return 0;
+        if (it == cur)
+            return 1;
+        if (diaShouldBreakLineAfter(it))
+            return 0;
+    }
+    return 0;
+}
+
 static void diaDrawHint(int text_id, int selBottom)
 {
     char *text = _l(text_id);
@@ -668,6 +682,11 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
     int contentBottom = y0;          // lowest rendered pixel (screen-space), for the maxScroll upper clamp
     int rowHidden = 0, rowShown = 0; // a row of hidden controls takes no line (diaRowCollapses)
     int lead = 1;                    // nothing but spacers drew on this row yet (diaWrapRoom, as diaLayoutBottom)
+    int rowStart = 1;                // rc is the first item of its line (the selected row's bar is drawn there)
+    // The selected row gets a faint bar in the theme's selected-text colour across the whole line, label and value,
+    // under the box around the value: with many settings on a page the box alone is hard to follow. Theme Settings
+    // -> Selection -> Highlight turns it off with the list's bar. An OK button row keeps just its box.
+    const int rowBar = cur != NULL && cur->type != UI_OK && (gSelStyle & SEL_STYLE_HIGHLIGHT);
 
     while (rc->type != UI_TERMINATOR) {
         int w = 0, h = 0;
@@ -675,6 +694,7 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
         if (diaRowCollapses(rc, rowHidden, rowShown)) {
             x = x0; // its spacer moved x along: the next row starts at the margin, on this same line
             lead = 1;
+            rowStart = 1;
             rowHidden = rowShown = 0;
             rc++;
             continue;
@@ -686,6 +706,7 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
         if (diaShouldBreakLine(rc)) {
             x = x0;
             lead = 1;
+            rowStart = 1;
 
             if (hmax > 0)
                 y += hmax + gapH;
@@ -711,6 +732,16 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
         int wrapRoom = diaWrapRoom(rc, x, lead);
         int rowH = diaItemHeight(rc, spacingH, diaWrapExtra(rc, wrapRoom));
         int viewBottom = gTheme->usedHeight - 40; // the same bound the scroll clamp below uses
+        if (rowStart) {
+            rowStart = 0;
+            if (rowBar && diaRowHolds(rc, cur)) {
+                // The value's box spans y .. y + h + 10 (diaDrawBoundingBox); the bar takes the same height.
+                const int barH = diaItemHeight(cur, spacingH, 0) + 10;
+                if (y >= y0 && y + barH <= viewBottom + 10)
+                    rmDrawRect(x0 - 5, y, diaScreenWidth - DIA_VALUE_MARGIN - x0 + 10, barH,
+                               (gTheme->selTextColor & GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x00)) | GS_SETREG_RGBA(0, 0, 0, 0x20));
+            }
+        }
         // A row is drawn whole or not at all: the right stick slides the page by the pixel, and a row only partly
         // in view drew over the page's header or the hints. A peek may leave the chosen row out of view too.
         if ((rc != cur || diaPeek) && (y < y0 || y + rowH > viewBottom)) {
@@ -739,6 +770,7 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
         if (diaShouldBreakLineAfter(rc)) {
             x = x0;
             lead = 1;
+            rowStart = 1;
 
             if (hmax > 0)
                 y += hmax + gapH;

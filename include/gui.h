@@ -71,6 +71,8 @@ constexpr int GUI_SCREEN_ACHIEVEMENTS = 5;
 #endif
 
 void guiSwitchScreen(int target);
+// Dip the screen to black, run `change` once it is black (GUI thread, outside a frame), and fade back in.
+void guiDipScreen(void (*change)(void));
 
 void guiReloadScreenExtents();
 

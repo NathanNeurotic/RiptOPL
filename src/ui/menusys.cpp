@@ -2884,7 +2884,22 @@ static void menuL3Tap(int viewPending)
         guiShowToast(_l(_STR_L3_HOLD_FOR_THEME), L3_ICON);
 }
 
-static void menuHandleViewHold(int viewPending, const item_list_t *support)
+// Hold L3: the next layout of the theme, run by guiDipScreen once the screen is black. The page is read again
+// here, as the hold was a few frames ago.
+static void menuCycleThemeView(void)
+{
+    if (selected_item == NULL || selected_item->item == NULL)
+        return;
+    const item_list_t *support = static_cast<item_list_t *>(selected_item->item->userdata);
+    if (support != NULL && libViewPending(support->mode))
+        return;
+    const bool canFilter = support != NULL && support->enabled && selected_item->item->toggleView &&
+                           libViewRingUsable(support->mode);
+    if (thmCycleView() && canFilter)
+        guiShowToast(_l(_STR_L3_TAP_FOR_FILTER), L3_ICON);
+}
+
+static void menuHandleViewHold(int viewPending)
 {
     if (menuL3State == 0)
         return;
@@ -2895,10 +2910,8 @@ static void menuHandleViewHold(int viewPending, const item_list_t *support)
         menuL3State = 0;
     } else if (menuL3State == 1 && menuL3HoldReached()) {
         menuL3State = 2;
-        const bool canFilter = support != NULL && support->enabled &&
-                               selected_item->item->toggleView && libViewRingUsable(support->mode);
-        if (!viewPending && thmCycleView() && canFilter)
-            guiShowToast(_l(_STR_L3_TAP_FOR_FILTER), L3_ICON);
+        if (!viewPending && thmCanCycleView())
+            guiDipScreen(&menuCycleThemeView); // switch while the screen is dipped to black
     }
 }
 
@@ -2978,7 +2991,7 @@ void menuHandleInputMain()
         } else
             menuL3Tap(viewPending);
     }
-    menuHandleViewHold(viewPending, support);
+    menuHandleViewHold(viewPending);
 
     // Last Played Auto Start
     if (gRememberLastPlayed && gAutoStartLastPlayed > 0 && RemainSecs < 0 && DisableCron == 0 && !viewPending) {
