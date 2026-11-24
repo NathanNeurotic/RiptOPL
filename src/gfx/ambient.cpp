@@ -146,15 +146,44 @@ void AmbientEffects::triangle(float x0, float y0, u64 c0, float x1, float y1, u6
     triangles_++;
 }
 
-void AmbientEffects::glow(float x, float y, float rx, float ry, u64 rgb, int alpha, int segments)
+void AmbientEffects::glow(float x, float y, float rx, float ry, u64 rgb, int alpha)
 {
     u64 center = withAlpha(rgb, alpha);
-    for (int k = 0; k < segments; k++) {
-        float x0 = segments == 8 ? kFan8X[k] : kFan6X[k];
-        float y0 = segments == 8 ? kFan8Y[k] : kFan6Y[k];
-        float x1 = segments == 8 ? kFan8X[k + 1] : kFan6X[k + 1];
-        float y1 = segments == 8 ? kFan8Y[k + 1] : kFan6Y[k + 1];
-        triangle(x, y, center, x + rx * x0, y + ry * y0, rgb, x + rx * x1, y + ry * y1, rgb);
+    for (int k = 0; k < 6; k++)
+        triangle(x, y, center, x + rx * kFan6X[k], y + ry * kFan6Y[k], rgb, x + rx * kFan6X[k + 1], y + ry * kFan6Y[k + 1], rgb);
+}
+
+// A large soft light, turned by (cosR, sinR). One fan fading in a straight line from its centre shows a bright point,
+// eight spokes and an eight-sided rim, so it reads as a disc sliding about. This one fades along a bell curve over
+// three rings, with no point in the middle, and the middle ring is turned half a segment so the rings do not line up
+// into spokes. The rings do not overlap: a light costs the GS only the pixels it covers, as the single fan did.
+void AmbientEffects::orb(float x, float y, float rx, float ry, float cosR, float sinR, u64 rgb, int alpha)
+{
+    static const float ringRadius[3] = {0.30f, 0.65f, 1.0f};
+    static const int ringAlpha[3] = {205, 90, 0}; // of 256
+    float px[3][9], py[3][9];
+    u64 color[3];
+    for (int ring = 0; ring < 3; ring++) {
+        color[ring] = withAlpha(rgb, alpha * ringAlpha[ring] / 256);
+        for (int k = 0; k < 9; k++) {
+            float ux = kFan8X[k], uy = kFan8Y[k];
+            if (ring == 1) { // 22.5 degrees
+                ux = kFan8X[k] * 0.9238795f - kFan8Y[k] * 0.3826834f;
+                uy = kFan8X[k] * 0.3826834f + kFan8Y[k] * 0.9238795f;
+            }
+            ux *= rx * ringRadius[ring];
+            uy *= ry * ringRadius[ring];
+            px[ring][k] = x + ux * cosR - uy * sinR;
+            py[ring][k] = y + ux * sinR + uy * cosR;
+        }
+    }
+    u64 center = withAlpha(rgb, alpha);
+    for (int k = 0; k < 8; k++) {
+        triangle(x, y, center, px[0][k], py[0][k], color[0], px[0][k + 1], py[0][k + 1], color[0]);
+        for (int side = 0; side < 3; side += 2) { // the core's edge, then the rim, each joined to the turned ring
+            triangle(px[side][k], py[side][k], color[side], px[1][k], py[1][k], color[1], px[side][k + 1], py[side][k + 1], color[side]);
+            triangle(px[1][k], py[1][k], color[1], px[side][k + 1], py[side][k + 1], color[side], px[1][k + 1], py[1][k + 1], color[1]);
+        }
     }
 }
 
@@ -187,7 +216,7 @@ void AmbientEffects::tower(const Tower &tower, float phase, float pull, float su
         triangle(x0, topY, top, x1, topY, top, tower.x * sx, tipY, tip);
     }
     glow(tower.x * sx, tipY + tower.radius * sy, tower.radius * sx * 2.6f, tower.radius * sy * 2.6f,
-         rgba(170, 220, 255, 0), (int)(60 * strength), 6);
+         rgba(170, 220, 255, 0), (int)(60 * strength));
 }
 
 void AmbientEffects::build(clock_t now, const unsigned char *background, u64 text, int width, int height)
@@ -225,8 +254,13 @@ void AmbientEffects::build(clock_t now, const unsigned char *background, u64 tex
         float cy = 210.0f * scale + cosf(phase * (1 + (i + 1) % 2) + i * 2.3f) * (110.0f + i * 10.0f) * scale;
         cx += (width * 0.5f - cx) * pull;
         cy += (height * 0.5f - cy) * pull;
-        int alpha = (int)((i == 3 ? 16 : 34) * launchAlpha);
-        glow(cx, cy, radii[i] * scale, radii[i] * scale * 0.8f, hueRgb(hues[i], 170, 200), alpha, 8);
+        // Wider and fainter than a plain disc, slowly swelling one way while it narrows the other and turning as it
+        // drifts, all on whole cycles of the loop: the four lights run into each other as one wash of colour.
+        int alpha = (int)((i == 3 ? 12 : 26) * launchAlpha);
+        float swell = 0.18f * sinf(phase * 2.0f + i * 1.3f);
+        float turn = (i & 1 ? phase : -phase) + i * 0.9f;
+        float radius = radii[i] * scale * 1.12f;
+        orb(cx, cy, radius * (1.0f + swell), radius * 0.8f * (1.0f - swell), cosf(turn), sinf(turn), hueRgb(hues[i], 170, 200), alpha);
     }
 
     for (int i = 0; i < kTowerCount; i++)
@@ -241,7 +275,7 @@ void AmbientEffects::build(clock_t now, const unsigned char *background, u64 tex
         float curve = sinf(kPi * pull) * width * 0.04f * (i & 1 ? 1.0f : -1.0f);
         x += (width * 0.5f - x) * pull + curve;
         y += (height * 0.5f - y) * pull - curve * 0.25f;
-        glow(x, y, radius, radius, glintRgb, alpha, 6);
+        glow(x, y, radius, radius, glintRgb, alpha);
     }
 
 }

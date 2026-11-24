@@ -76,12 +76,30 @@ static void checkGeometry(const Capture &capture, int width, int height)
     CHECK(capture.colors.size() == (size_t)capture.count * 3);
     for (size_t i = 0; i < capture.xy.size(); i += 2) {
         CHECK(std::isfinite(capture.xy[i]) && std::isfinite(capture.xy[i + 1]));
-        CHECK(capture.xy[i] >= -width / 4 && capture.xy[i] <= width * 5 / 4);
-        CHECK(capture.xy[i + 1] >= -height / 4 && capture.xy[i + 1] <= height * 5 / 4);
+        // The GS draws into a 4096-pixel space centred on the frame. The widest mode (1920) leaves 1088 pixels each
+        // side, 362 at this 640 scale, so half a screen of overhang stays inside it in every mode.
+        CHECK(capture.xy[i] >= -width / 2 && capture.xy[i] <= width * 3 / 2);
+        CHECK(capture.xy[i + 1] >= -height / 2 && capture.xy[i + 1] <= height * 3 / 2);
     }
     for (u64 color : capture.colors) {
         CHECK((color >> 32) == 0);
         CHECK(((color >> 24) & 0xff) <= 0x80);
+    }
+}
+
+// The four large lights come first. Each fades from its centre, the first vertex, to nothing at its rim.
+static void checkOrbFalloff(const Capture &capture)
+{
+    for (int orb = 0; orb < AmbientEffects::kOrbCount; orb++) {
+        const u64 *colors = capture.colors.data() + orb * AmbientEffects::kOrbTriangles * 3;
+        int centre = (colors[0] >> 24) & 0xff, faintest = 0xff;
+        CHECK(centre > 0);
+        for (int i = 0; i < AmbientEffects::kOrbTriangles * 3; i++) {
+            int alpha = (colors[i] >> 24) & 0xff;
+            CHECK(alpha <= centre);
+            faintest = std::min(faintest, alpha);
+        }
+        CHECK(faintest == 0);
     }
 }
 
@@ -108,8 +126,9 @@ int main()
     // One or many complete periods return every vertex and colour to its exact starting value.
     Capture start = draw(fx, true, 0, 0);
     checkGeometry(start, 640, 480);
-    CHECK(start.count > AmbientEffects::kOrbCount * AmbientEffects::kGlowSegments + AmbientEffects::kGlintCount * AmbientEffects::kGlintSegments);
-    CHECK(start.count <= AmbientEffects::kOrbCount * AmbientEffects::kGlowSegments + AmbientEffects::kGlintCount * AmbientEffects::kGlintSegments + AmbientEffects::kTowerCount * 12);
+    CHECK(start.count > AmbientEffects::kOrbCount * AmbientEffects::kOrbTriangles + AmbientEffects::kGlintCount * AmbientEffects::kGlintSegments);
+    CHECK(start.count <= AmbientEffects::kOrbCount * AmbientEffects::kOrbTriangles + AmbientEffects::kGlintCount * AmbientEffects::kGlintSegments + AmbientEffects::kTowerCount * 12);
+    checkOrbFalloff(start);
     Capture quarterLoop = draw(fx, true, AmbientEffects::kLoopUs / 4, 1);
     CHECK(start.xy != quarterLoop.xy);
     Capture oneLoop = draw(fx, true, AmbientEffects::kLoopUs, 2);

@@ -13,8 +13,8 @@ public:
     static constexpr int kGlintCount = 32;
     static constexpr int kGlintSegments = 6;
     static constexpr int kTowerCount = 7;
-    static constexpr int kGlowSegments = 8;
-    static constexpr int kMaxTriangles = kOrbCount * kGlowSegments + kGlintCount * kGlintSegments + kTowerCount * 12;
+    static constexpr int kOrbTriangles = 40; // an 8-triangle core and two 16-triangle rings
+    static constexpr int kMaxTriangles = kOrbCount * kOrbTriangles + kGlintCount * kGlintSegments + kTowerCount * 12;
 
     void init();
     void shutdown();
@@ -38,7 +38,8 @@ private:
     void advance(clock_t now, unsigned int frame);
     void build(clock_t now, const unsigned char *background, u64 text, int width, int height);
     void triangle(float x0, float y0, u64 c0, float x1, float y1, u64 c1, float x2, float y2, u64 c2);
-    void glow(float x, float y, float rx, float ry, u64 rgb, int alpha, int segments);
+    void glow(float x, float y, float rx, float ry, u64 rgb, int alpha);
+    void orb(float x, float y, float rx, float ry, float cosR, float sinR, u64 rgb, int alpha);
     void tower(const Tower &tower, float phase, float pull, float surge, int width, int height);
 
     Glint glints_[kGlintCount];
