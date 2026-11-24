@@ -2403,7 +2403,7 @@ static void guiClockZoneKeep(void)
         return;
     gClockZone = zone;
     gClockSummer = summer;
-    saveConfig(CONFIG_OPL, 1);
+    host::app().saveConfig(CONFIG_OPL, 1);
 }
 
 int guiShowDateTime(void)
