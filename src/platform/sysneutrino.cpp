@@ -1271,8 +1271,12 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
            did its job) and then the screen stays black, because Neutrino reset away the stack the
            game path depends on. -qb keeps the inherited environment and skips that reset.
 
-           USB, iLink, ATA/exFAT, UDPFS (both filesystem and block variants) and UDPBD launch
-           through this inherited environment. ATA/exFAT uses its live mount to map the image to
+           USB, iLink, MX4SIO, ATA/exFAT, UDPFS (both filesystem and block variants) and UDPBD
+           launch through this inherited environment. MX4SIO without -qb (FifthFox, SCPH-70012,
+           build 3259): Ember, POPStarter and the OPL core ran from MX4SIO, Neutrino did not, while
+           Neutrino ran from USB and MMCE on the same console. Our -dvd/-mc paths name OUR massN:
+           mount; after Neutrino's own reset only its mx4sio_bd_mini is loaded and the card is
+           renumbered and re-probed, so the path need not point at it. NHDDL passes -qb for MX4SIO. ATA/exFAT uses its live mount to map the image to
            block extents before the IOP reset, so the emulated disc remains available to PS2LOGO.
            ATA modes HDL and raw BD need Neutrino's load-environment drivers.
            For UDPFS, an IOP reset destroys the resident ministack/ioman
@@ -1287,7 +1291,7 @@ static int sysRunNeutrinoLaunch(const char *driver, const char *path, const char
 
            Composed before the budget check so an overfull launch is refused rather than silently
            losing -qb and reproducing the black screen. */
-        if ((!strcmp(deviceName, "usb") || !strcmp(deviceName, "ilink") ||
+        if ((!strcmp(deviceName, "usb") || !strcmp(deviceName, "ilink") || !strcmp(deviceName, "mx4sio") ||
              (!strcmp(deviceName, "ata") && fsOverride <= 1) ||
              !strcmp(deviceName, "udpfs") || !strcmp(deviceName, "udpfsbd") || !strcmp(deviceName, "udpbd")) &&
             argc < argvMax &&

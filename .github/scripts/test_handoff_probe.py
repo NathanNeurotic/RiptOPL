@@ -66,7 +66,7 @@ if '"-dvd=bdfs:%s%dp0", driver, bdDevNr >= 0 ? bdDevNr : 0' not in system_c:
 qb_at = system_c.find('!neutrinoArgHasActiveFlag(gNeutrinoArgs, "-qb")')
 qb_if = system_c.rfind('if ((', 0, qb_at) if qb_at >= 0 else -1
 qb_cond = system_c[qb_if:qb_at] if qb_if >= 0 and qb_at - qb_if < 400 else None
-for dev in ('usb', 'ilink', 'ata', 'udpfs', 'udpfsbd', 'udpbd'):
+for dev in ('usb', 'ilink', 'mx4sio', 'ata', 'udpfs', 'udpfsbd', 'udpbd'):
     if qb_cond is None or ('!strcmp(deviceName, "%s")' % dev) not in qb_cond:
         failures.append('sysLaunchNeutrino: expected automatic quick boot support for %s' % dev)
 if qb_cond is None or 'fsOverride <= 1' not in qb_cond:
