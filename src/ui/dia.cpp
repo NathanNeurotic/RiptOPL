@@ -467,7 +467,9 @@ static void diaRenderItem(int x, int y, struct UIItem *item, int selected, int h
         }
     }
 
-    if (selected && !diaRowBarShown) // the selected row's full-width bar (diaRenderUI) replaces the box
+    // The selected row's full-width bar (diaRenderUI) replaces the box while browsing; the box comes back while the
+    // value is being changed (an enum or a number), so editing still looks different from browsing.
+    if (selected && (haveFocus || !diaRowBarShown))
         diaDrawBoundingBox(x, y, *w, *h, haveFocus);
 
     if (item->fixedWidth != 0) {
