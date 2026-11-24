@@ -20,7 +20,10 @@ public:
     void setCurrent(int screen);
     // Start the fade to `screen`; ignored while one is already running (or it could loop forever).
     void switchTo(int screen);
-    bool transitioning() const { return target_ != nullptr; }
+    // Dip the screen to black and back (about a quarter of a second), running `change` on the GUI thread between frames
+    // while the screen is black: hold L3 switching the theme's layout. Ignored while a fade is already running.
+    void dipTo(void (*change)(void));
+    bool transitioning() const { return target_ != nullptr || dipIndex_ != 0; }
     // Render the active screen, or the fade between two; `plasma` supplies the ease curve.
     void show(const PlasmaBackground &plasma);
     // Run the active screen's input handler unless a fade is running.
@@ -32,6 +35,8 @@ private:
     const Handler *current_ = nullptr; // lazily the menu screen
     const Handler *target_ = nullptr;
     int transIndex_ = 0;
+    void (*dipChange_)(void) = nullptr; // the change still to run at the dip's darkest point
+    int dipIndex_ = 0;                  // 0 = no dip, else the dip frame being drawn (1-based)
 };
 
 extern ScreenManager gScreens;

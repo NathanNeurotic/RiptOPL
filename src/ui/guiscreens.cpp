@@ -15,6 +15,8 @@
 
 ScreenManager gScreens;
 
+static const int DIP_HALF = 8; // frames to black in a dip (hold L3 layout switch); the fade back takes one less
+
 static const ScreenManager::Handler screenHandlers[] = {
     {&menuHandleInputMain, &menuRenderMain, 0},
     {&menuHandleInputMenu, &menuRenderMenu, 1},
@@ -85,14 +87,39 @@ void ScreenManager::show(const PlasmaBackground &plasma)
             current_ = target_;
             target_ = nullptr;
         }
-    } else
+    } else {
         // render with the set screen handler
         current()->renderScreen();
+        if (dipIndex_ != 0) {
+            // Out over DIP_HALF frames to black, the change, then back in over DIP_HALF - 1 frames.
+            const int i = dipIndex_;
+            const float t = (float)(i <= DIP_HALF ? i : 2 * DIP_HALF - i) / DIP_HALF;
+            rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, GS_SETREG_RGBA(0x00, 0x00, 0x00, (u8)(plasma.ease(t) * 0x80)));
+            dipIndex_ = i + 1 < 2 * DIP_HALF ? i + 1 : 0;
+        }
+    }
+}
+
+void ScreenManager::dipTo(void (*change)(void))
+{
+    if (target_ || dipIndex_ != 0)
+        return;
+    dipChange_ = change;
+    dipIndex_ = 1;
 }
 
 
 void ScreenManager::dispatchInput()
 {
+    if (dipIndex_ != 0) {
+        // The black frame is on screen: make the change now, between frames, so the next frame shows it.
+        if (dipChange_ != nullptr && dipIndex_ > DIP_HALF) {
+            void (*change)(void) = dipChange_;
+            dipChange_ = nullptr;
+            change();
+        }
+        return;
+    }
     if (!target_ && current())
         current()->handleInput();
 }
@@ -106,4 +133,9 @@ int guiScreenInMenu(void)
 void guiSwitchScreen(int target)
 {
     gScreens.switchTo(target);
+}
+
+void guiDipScreen(void (*change)(void))
+{
+    gScreens.dipTo(change);
 }
