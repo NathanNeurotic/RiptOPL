@@ -145,9 +145,8 @@ def updater_view(text, name):
 
 
 APP_FOLDER = re.compile(r"APP_RIPTOPL[A-Z0-9-]*")
-# The one loader that is not installed on its own: it goes beside an existing install to read its
-# settings (tools/BUGREPORT-README.txt), so its ZIP holds a bare ELF.
-LOOSE_ELFS = {"RIPTOPL-BUGREPORT.ELF"}
+# Every loader has its own APP_ folder, the bug-report build included.
+LOOSE_ELFS = set()
 
 
 def check_app_folder(where, folder, files):

@@ -13,7 +13,6 @@ import sys
 import tempfile
 import time
 import zipfile
-from types import SimpleNamespace
 
 from build_configuration import CONFIGURATIONS
 from build_edition import (EDITIONS, LITES, LITE, UPDATABLE, edition_display_name, git, kit_archive_name, update_asset,
@@ -84,8 +83,9 @@ def check_unpacked_layout(elf):
 
 
 BUNDLE_README = ("{display} configuration builds. Each loader has its own folder, named APP_ plus its ELF\n"
-                 "name (APP_RIPTOPL-PADEMU0/RIPTOPL-PADEMU0.ELF), with the manifest it was built from. Copy a\n"
-                 "folder beside your {elf} folder: its first start reads that loader's settings once and then\n"
+                 "name (APP_RIPTOPL-PADEMU0/RIPTOPL-PADEMU0.ELF), with the manifest it was built from, and a\n"
+                 "PSU of the same name for a memory card. Copy a folder (or install its PSU) beside your {elf}\n"
+                 "folder: its first start reads that loader's settings once and then\n"
                  "keeps its own; your {elf} folder is never changed. Check for Updates keeps each player build on\n"
                  "its own configuration, packed or unpacked (APP_..-UNPACKED); debug builds have no updater.\n"
                  "What each configuration\n"
@@ -197,16 +197,7 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
                     # Named like every loader: the folder is APP_ plus the ELF name, and the ELF is the
                     # name Check for Updates downloads for this configuration.
                     asset = update_asset(edition, configuration, unpacked=unpacked)
-                    folder = "APP_" + asset[:-len(".ELF")]
-                    bundle.writestr(f"{folder}/{asset}", elf)
-                    bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
-                    # The same icon, music, title.cfg and APPINFO.PBT as every app folder, booting this ELF.
-                    title = "RiptOPL " + asset[len("RIPTOPL-"):-len(".ELF")]  # RiptOPL PADEMU0, RiptOPL RA-UNPACKED
-                    for file, data in publish_lite.app.app_companions(SimpleNamespace(
-                            app_name=folder, elf_name=asset, title=title, pbt_title=title,
-                            version=manifest["version"].split('"')[1], flavour="PS2BUILD", channel=options["title"],
-                            description=f"{title} configuration build")).items():
-                        bundle.writestr(f"{folder}/{file}", data)
+                    write_app(bundle, asset, elf, manifest, options["title"])
                     if unpacked:
                         check_unpacked_layout(elf)
                     if update_channel(edition, configuration) is not None:
@@ -220,6 +211,18 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
             add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
         if BUGREPORT in archives(options):
             bundle_bug_report(root, edition, expected_sha, compiler=expected_compiler, channel=channel)
+
+
+def write_app(bundle, asset, elf, manifest, channel):
+    """APP_<ELF>/ with the ELF, its manifest and the icon, music, title.cfg and APPINFO.PBT of every app
+    folder (booting this ELF), and APP_<ELF>.psu holding that folder for a memory card."""
+    title = "RiptOPL " + asset[len("RIPTOPL-"):-len(".ELF")]  # RiptOPL PADEMU0, RiptOPL RA-UNPACKED
+    files, psu = publish_lite._stage_app(asset, elf, manifest["version"].split('"')[1], title, channel)
+    folder = publish_lite.app_folder(asset)
+    for name, data in files.items():
+        bundle.writestr(f"{folder}/{name}", data)
+    bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+    bundle.writestr(f"{folder}.psu", psu)
 
 
 def bundle_bug_report(root, edition, expected_sha, compiler=None, channel="rolling"):
@@ -245,8 +248,7 @@ def bundle_bug_report(root, edition, expected_sha, compiler=None, channel="rolli
         elf="RIPTOPL.ELF", issues=ISSUES)
     archive = path / f"RIPTOPL-{BUGREPORT}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
-        bundle.writestr("RIPTOPL-BUGREPORT.ELF", elf)
-        bundle.writestr("BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+        write_app(bundle, "RIPTOPL-BUGREPORT.ELF", elf, manifest, EDITIONS[edition]["title"])
         bundle.writestr("README.txt", readme.replace("\n", "\r\n"))
         for name, source in BUGREPORT_LICENCES.items():
             bundle.writestr(name, (ROOT / source).read_bytes())

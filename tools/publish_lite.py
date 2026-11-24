@@ -83,7 +83,7 @@ def app_folder(elf):
     return "APP_" + elf[:-len(".ELF")]
 
 
-def _stage_app(elf_name, elf, version, title):
+def _stage_app(elf_name, elf, version, title, channel="RiptOPLite"):
     """The loader's memory-card folder (same companions as APP_RIPTOPL) and its PSU, as {name: bytes}."""
     folder = app_folder(elf_name)
     with tempfile.TemporaryDirectory(prefix="lite-app-") as temp:
@@ -92,7 +92,7 @@ def _stage_app(elf_name, elf, version, title):
         source.write_bytes(elf)
         app.stage(SimpleNamespace(package=str(kit / "pkg"), source_elf=str(source), app_name=folder, elf_name=elf_name,
                                   title=title, pbt_title=title, version=version, flavour="PS2BUILD",
-                                  channel="RiptOPLite", description=title))
+                                  channel=channel, description=title))
         app_dir = kit / "pkg" / "APPS" / folder
         files = {p.name: p.read_bytes() for p in sorted(app_dir.iterdir()) if p.is_file()}
         psu = (kit / "pkg" / f"{folder}.psu").read_bytes()

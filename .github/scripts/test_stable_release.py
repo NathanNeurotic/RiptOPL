@@ -203,9 +203,12 @@ class StableReleaseTests(unittest.TestCase):
                 bad(Path(temp))
                 with self.assertRaisesRegex(ValueError, why):
                     publish_stable.check_naming(Path(temp))
-        with tempfile.TemporaryDirectory() as temp:  # the bug-report ELF is the one loose loader
+        with tempfile.TemporaryDirectory() as temp:  # no loader is loose, the bug-report build included
             with zipfile.ZipFile(Path(temp) / "RIPTOPL-BUGREPORT-v1.zip", "w") as bundle:
                 bundle.writestr("RIPTOPL-BUGREPORT.ELF", b"x")
+            with self.assertRaisesRegex(ValueError, "not in its own APP_ folder"):
+                publish_stable.check_naming(Path(temp))
+        with tempfile.TemporaryDirectory() as temp:
             (Path(temp) / "APP_RIPTOPL-X.psu").write_bytes(psu)
             publish_stable.check_naming(Path(temp))
 

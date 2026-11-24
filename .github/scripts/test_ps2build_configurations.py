@@ -306,6 +306,7 @@ class PublisherTests(unittest.TestCase):
                         if name.endswith(".ELF"):
                             folder, elf = name.split("/")
                             self.assertEqual(folder, "APP_" + elf[:-4])
+                            self.assertEqual(publish_editions.publish_lite.app.inspect_psu(bundle.read(f"{folder}.psu"))[0], folder)
                             cfg = bundle.read(f"{folder}/title.cfg").decode()
                             self.assertIn(f"\nboot={elf}\n", cfg)
                             self.assertIn(f"title=RiptOPL {elf[len('RIPTOPL-'):-4]}\n", cfg)
@@ -357,12 +358,20 @@ class PublisherTests(unittest.TestCase):
             publish_editions.verify(root, self.sha)
             for edition in ("riptopl",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-BUGREPORT.zip") as bundle:
-                    self.assertEqual(sorted(bundle.namelist()), [
-                        "BUILD-MANIFEST.json", "CREDITS", "LICENSE", "README.txt", "RIPTOPL-BUGREPORT.ELF",
-                        "licenses/usmb2/LICENSE", "licenses/usmb2/VENDORED.txt"])
+                    # Its own folder like every loader, with a PSU of the same name.
+                    app = "APP_RIPTOPL-BUGREPORT"
+                    self.assertEqual(sorted(bundle.namelist()), sorted([
+                        "CREDITS", "LICENSE", "README.txt", "licenses/usmb2/LICENSE", "licenses/usmb2/VENDORED.txt",
+                        f"{app}.psu", *(f"{app}/{n}" for n in ("APPINFO.PBT", "BUILD-MANIFEST.json", "RIPTOPL-BUGREPORT.ELF",
+                                                             "bgm.ogg", "copy.icn", "del.icn", "icon.sys", "list.icn",
+                                                             "title.cfg"))]))
                     self.assertIn(b"Permission is hereby granted", bundle.read("licenses/usmb2/LICENSE"))
-                    self.assertEqual(bundle.read("RIPTOPL-BUGREPORT.ELF"), unpacked_elf())
-                    self.assertEqual(json.loads(bundle.read("BUILD-MANIFEST.json"))["configuration"], "diag")
+                    self.assertEqual(bundle.read(f"{app}/RIPTOPL-BUGREPORT.ELF"), unpacked_elf())
+                    self.assertIn("\nboot=RIPTOPL-BUGREPORT.ELF\n", bundle.read(f"{app}/title.cfg").decode())
+                    name, inside = publish_editions.publish_lite.app.inspect_psu(bundle.read(f"{app}.psu"))
+                    self.assertEqual(name, app)
+                    self.assertEqual(inside["RIPTOPL-BUGREPORT.ELF"], unpacked_elf())
+                    self.assertEqual(json.loads(bundle.read(f"{app}/BUILD-MANIFEST.json"))["configuration"], "diag")
                     readme = bundle.read("README.txt").decode()
                     self.assertIn(f"RiptOPL bug-report build, v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM-DIAG\r\n====", readme)
                     self.assertIn("DIAG.TXT", readme)

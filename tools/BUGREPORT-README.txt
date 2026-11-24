@@ -31,8 +31,10 @@ MIT: its licence and the vendored commit are in licenses/usmb2/.
 
 How to use it
 -------------
-1. Copy RIPTOPL-BUGREPORT.ELF next to your normal {elf} (for example to mc0:/APP_RIPTOPL/ or
-   mmce0:/APP_RIPTOPL/). Keep your normal ELF. Settings, game lists and art are shared.
+1. Copy the APP_RIPTOPL-BUGREPORT folder next to your normal APP_RIPTOPL folder (for example to
+   mc0:/APP_RIPTOPL-BUGREPORT/ or mmce0:/APP_RIPTOPL-BUGREPORT/), or install APP_RIPTOPL-BUGREPORT.psu
+   on a memory card. Keep your normal {elf}. Its first start reads your settings from APP_RIPTOPL
+   beside it, once, and never changes that folder.
 2. Launch RIPTOPL-BUGREPORT.ELF the way you normally launch RiptOPL. A launcher that browses files
    (uLaunchELF, wLaunchELF) can open it directly. A launcher with a fixed entry (OSDMenu, FMCB,
    PS2BBL) keeps starting RIPTOPL.ELF until you point its entry at RIPTOPL-BUGREPORT.ELF or add one.
