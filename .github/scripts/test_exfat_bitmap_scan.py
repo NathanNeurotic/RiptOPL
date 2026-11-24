@@ -32,7 +32,7 @@ static FRESULT move_window(FATFS *fs, LBA_t sect) {
     return FR_OK;
 }
 FIND_BITMAP
-/* The scan as FatFs ships it: one bit at a time. */
+/* The scan one bit at a time, with the same restart at the wrap. */
 static DWORD plain(FATFS *fs, DWORD clst, DWORD ncl) {
     BYTE bm, bv; UINT i; DWORD val, scl, ctr;
     clst -= 2;
@@ -46,6 +46,7 @@ static DWORD plain(FATFS *fs, DWORD clst, DWORD ncl) {
                 bv = fs->win[i] & bm; bm <<= 1;
                 if (++val >= fs->n_fatent - 2) { val = 0; bm = 0; i = SS(fs); }
                 if (bv == 0) { if (++ctr == ncl) return scl + 2; } else { scl = val; ctr = 0; }
+                if (val == 0) { scl = 0; ctr = 0; } /* the end of the volume and its start are not one run */
                 if (val == clst) return 0;
             } while (bm != 0);
             bm = 1;
@@ -79,6 +80,22 @@ int main(void) {
             printf("mismatch: n=%u clst=%u ncl=%u got=%u want=%u\n", n, clst, ncl, a, b);
             return 1;
         }
+        /* Independent of either scan: a found run lies inside the volume and is free throughout,
+           and "not found" means no such run exists. One limit of the scan as FatFs ships it is kept:
+           it starts at clst and stops when it is back there, so it does not join the clusters
+           before clst to those from clst on. That can only refuse; it never returns a bad run. */
+        if (a) {
+            if (a < 2 || a - 2 + ncl > n) { printf("run past the end: n=%u clst=%u ncl=%u got=%u\n", n, clst, ncl, a); return 1; }
+            for (c = a - 2; c < a - 2 + ncl; c++)
+                if (bitmap[c / 8] & (1u << (c % 8))) { printf("run not free: n=%u clst=%u ncl=%u got=%u\n", n, clst, ncl, a); return 1; }
+        } else {
+            DWORD run = 0, from = (clst - 2 >= n) ? 0 : clst - 2;
+            for (c = 0; c < n; c++) {
+                if (c == from) run = 0;
+                run = (bitmap[c / 8] & (1u << (c % 8))) ? 0 : run + 1;
+                if (run == ncl) { printf("missed a run: n=%u clst=%u ncl=%u at=%u\n", n, clst, ncl, c); return 1; }
+            }
+        }
     }
     return 0;
 }
@@ -90,4 +107,4 @@ with tempfile.TemporaryDirectory() as tmp:
     exe = Path(tmp) / 'scan'
     subprocess.run(['cc', '-O1', '-Wall', '-Werror', '-o', str(exe), str(src)], check=True)
     subprocess.run([str(exe)], check=True, timeout=120)
-print('exFAT bitmap scan: fast path matches the plain scan')
+print('exFAT bitmap scan: fast path matches the plain scan; every run found is real and inside the volume')
