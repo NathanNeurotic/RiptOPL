@@ -211,6 +211,43 @@ def inspect_psu(data: bytes) -> tuple[str, dict[str, bytes]]:
     return name, files
 
 
+def app_companions(args) -> dict[str, bytes]:
+    """Every file of an app folder except its ELF: the example's icon set and music, and a title.cfg and
+    APPINFO.PBT that boot args.elf_name from the folder args.app_name. One source for kits, PSUs and ZIPs."""
+    for name in (args.app_name, args.elf_name):
+        require_name(name)
+    files = {}
+    for filename in APP_COMPANIONS:
+        source = APP_TEMPLATE / filename
+        if not source.is_file() or source.stat().st_size == 0:
+            raise ValueError(f"missing example companion: {source}")
+        if filename not in ("APPINFO.PBT", "title.cfg"):
+            files[filename] = source.read_bytes()
+    if files["icon.sys"][:4] != b"PS2D":
+        raise ValueError("invalid icon.sys in example")
+    if files["bgm.ogg"][:4] != b"OggS":
+        raise ValueError("invalid bgm.ogg in example")
+    cfg = replace_cfg_fields((APP_TEMPLATE / "title.cfg").read_text(encoding="utf-8"), {
+        "title": args.title,
+        "boot": args.elf_name,
+        "Title": f"{args.title} {args.version} {args.flavour}",
+        "Version": f"{args.version} {args.flavour}",
+        "Release": args.channel,
+        "Description": args.description,
+        "Notes": "Companion folders are supplied in the release ZIP",
+    })
+    files["title.cfg"] = cfg.encode("utf-8")
+    pbt = replace_pbt_fields((APP_TEMPLATE / "APPINFO.PBT").read_text(encoding="utf-8"), {
+        "TITLE": args.pbt_title,
+        "VERSION": args.version,
+        "DESC": args.description,
+        "ELF": args.elf_name,
+        "SAS": args.app_name,
+    })
+    files["APPINFO.PBT"] = pbt.encode("utf-8")
+    return files
+
+
 def stage(args: argparse.Namespace) -> None:
     for name in (args.app_name, args.elf_name):
         require_name(name)
@@ -224,35 +261,9 @@ def stage(args: argparse.Namespace) -> None:
     art_dir = package / "ART"
     app_dir.mkdir(parents=True, exist_ok=True)
     art_dir.mkdir(parents=True, exist_ok=True)
-    for filename in APP_COMPANIONS:
-        source = APP_TEMPLATE / filename
-        if not source.is_file() or source.stat().st_size == 0:
-            raise ValueError(f"missing example companion: {source}")
-        if filename not in ("APPINFO.PBT", "title.cfg"):
-            shutil.copyfile(source, app_dir / filename)
-    if (app_dir / "icon.sys").read_bytes()[:4] != b"PS2D":
-        raise ValueError("invalid icon.sys in example")
-    if (app_dir / "bgm.ogg").read_bytes()[:4] != b"OggS":
-        raise ValueError("invalid bgm.ogg in example")
+    for name, data in app_companions(args).items():
+        (app_dir / name).write_bytes(data)
     shutil.copyfile(elf, app_dir / args.elf_name)
-    cfg = replace_cfg_fields((APP_TEMPLATE / "title.cfg").read_text(encoding="utf-8"), {
-        "title": args.title,
-        "boot": args.elf_name,
-        "Title": f"{args.title} {args.version} {args.flavour}",
-        "Version": f"{args.version} {args.flavour}",
-        "Release": args.channel,
-        "Description": args.description,
-        "Notes": "Companion folders are supplied in the release ZIP",
-    })
-    (app_dir / "title.cfg").write_bytes(cfg.encode("utf-8"))
-    pbt = replace_pbt_fields((APP_TEMPLATE / "APPINFO.PBT").read_text(encoding="utf-8"), {
-        "TITLE": args.pbt_title,
-        "VERSION": args.version,
-        "DESC": args.description,
-        "ELF": args.elf_name,
-        "SAS": args.app_name,
-    })
-    (app_dir / "APPINFO.PBT").write_bytes(pbt.encode("utf-8"))
     for suffix in ART_SUFFIXES:
         source = ART_TEMPLATE / f"RIPTOPL.ELF_{suffix}.png"
         if not source.is_file() or source.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
@@ -300,7 +311,7 @@ def verify(args: argparse.Namespace) -> None:
             "POPS/POPSTARTER.KELF",
             "POPS/TROJAN_7.BIN",
             "EMBER/ember.elf",
-            "EMBER/LICENSE-BETA.txt",
+            "EMBER/LICENSE.txt",
             "EMBER/Ember Official Webpage.url",
             "EMBER/games/Per-Game-Folder/GAME FILES",
             "neutrino/neutrino.elf",

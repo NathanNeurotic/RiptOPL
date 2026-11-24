@@ -105,12 +105,14 @@ class ChannelTests(unittest.TestCase):
         for edition, options in editions.LITES.items():
             for device in lite.DEVICES:
                 name = lite.elf_name(device, options["ra"])
-                elf = f"{edition}-{device}".encode()
+                elf = b"\x7fELF" + f"{edition}-{device}".encode()
                 stage = root / f"{edition}-{device}"
                 manifest = {"repository": "NathanNeurotic/RiptOPL", "source_commit": sha, "dirty": False,
                             "edition": edition, "device": device, "compiler": "gcc", "configuration": "standard",
                             "theme": options["theme"], "ra": options["ra"], **self.SUITE, "elf": name,
                             "elf_sha256": hashlib.sha256(elf).hexdigest(),
+                            "unpacked_elf": publish_lite.unpacked_name(device, options["ra"]),
+                            "unpacked_elf_sha256": hashlib.sha256(elf + b"-unpakt").hexdigest(),
                             # Each build names its edition and device in LOCALVERSION (build_edition.py).
                             "version": self.VERSION.replace("Korium-GCC", f"{options['title']}-{lite.DEVICES[device]['title']}-GCC")}
                 if tamper == (edition, device):
@@ -121,6 +123,7 @@ class ChannelTests(unittest.TestCase):
                     manifest["version"] = manifest["version"].replace("4000", "4001")
                 write_manifest(stage, **manifest)
                 (stage / name).write_bytes(elf)
+                (stage / publish_lite.unpacked_name(device, options["ra"])).write_bytes(elf + b"-unpakt")
 
     def test_channel_holds_all_elfs_and_ra_install_zips(self):
         sha = "a" * 40
@@ -131,15 +134,38 @@ class ChannelTests(unittest.TestCase):
             self.assertEqual(sums, publish_lite.verify(path))
             self.assertEqual(set(sums), publish_lite.expected_assets())
             for device, options in lite.DEVICES.items():
-                self.assertEqual((path / f"RIPTOPLITE-{options['title']}.ELF").read_bytes(), f"lite-{device}".encode())
+                self.assertEqual((path / f"RIPTOPLITE-{options['title']}.ELF").read_bytes(), b"\x7fELF" + f"lite-{device}".encode())
                 ra = f"RIPTOPLITE-RA-{options['title']}.ELF"
-                self.assertEqual((path / ra).read_bytes(), f"lite_ra-{device}".encode())
+                self.assertEqual((path / ra).read_bytes(), b"\x7fELF" + f"lite_ra-{device}".encode())
                 with zipfile.ZipFile(path / f"RIPTOPLITE-RA-{options['title']}.zip") as z:
                     names = set(z.namelist())
-                    self.assertEqual(z.read(ra), (path / ra).read_bytes())
+                    folder = f"APP_RIPTOPLITE-RA-{options['title']}"
+                    self.assertEqual(z.read(f"APPS/{folder}/{ra}"), (path / ra).read_bytes())
+                    self.assertEqual(z.read(f"{folder}.psu"), (path / f"{folder}.psu").read_bytes())
                     self.assertIn("neutrino/modules/raagent.irx", names)  # ORBIT's runtime, RA's outside need
                     self.assertLessEqual({"README.txt", "BUILD-MANIFEST.json", *publish_lite.RA_KIT_FILES}, names)
-                    self.assertFalse(any(n.startswith("APPS/") for n in names))
+                    # Only the loader's own folder: never the full loader's, never a bare ELF at the top.
+                    self.assertEqual({n.split("/")[1] for n in names if n.startswith("APPS/")}, {folder})
+                    self.assertNotIn(ra, names)
+                for ra_build in (False, True):
+                    unpakt = publish_lite.unpacked_name(device, ra_build)
+                    self.assertEqual(unpakt, lite.elf_name(device, ra_build).replace(".ELF", "-UNPAKT.ELF"))
+                    self.assertEqual((path / unpakt).read_bytes(), (path / lite.elf_name(device, ra_build)).read_bytes() + b"-unpakt")
+                    self.assertLessEqual(len(unpakt) - len(".ELF") + len("APP_"), 31)  # memory card name limit
+                    if ra_build:
+                        with zipfile.ZipFile(path / unpakt.replace(".ELF", ".zip")) as z:
+                            self.assertEqual(z.read(f"APPS/APP_{unpakt[:-4]}/{unpakt}"), (path / unpakt).read_bytes())
+                for elf in (lite.elf_name(device), lite.elf_name(device, True),
+                            publish_lite.unpacked_name(device), publish_lite.unpacked_name(device, True)):
+                    ra_build = "-RA-" in elf
+                    folder = "APP_" + elf[:-4]
+                    name, files = publish_lite.app.inspect_psu((path / f"{folder}.psu").read_bytes())
+                    self.assertEqual(name, folder)
+                    self.assertEqual(files[elf], (path / elf).read_bytes())
+                    self.assertEqual(files["icon.sys"], (publish_lite.app.APP_TEMPLATE / "icon.sys").read_bytes())
+                    self.assertIn(f"\nboot={elf}\n", files["title.cfg"].decode())
+                    self.assertIn(f'SET "ELF" "{elf}"', files["APPINFO.PBT"].decode())
+                    self.assertIn(f'SET "SAS" "{folder}"', files["APPINFO.PBT"].decode())
             self.assertIn("LICENSE-MBEDTLS.txt", sums)
 
     def test_a_build_from_another_commit_is_refused(self):
@@ -168,6 +194,12 @@ class ChannelTests(unittest.TestCase):
         for options in lite.DEVICES.values():
             self.assertIn(f"/releases/download/rolling-lite/RIPTOPLITE-{options['title']}.ELF)", body)
             self.assertIn(f"/releases/download/rolling-lite/RIPTOPLITE-RA-{options['title']}-v1.2.0-Beta-4000.zip)", body)
+            self.assertIn(f"/releases/download/rolling-lite/RIPTOPLITE-{options['title']}-UNPAKT.ELF)", body)
+            self.assertIn(f"/releases/download/rolling-lite/RIPTOPLITE-RA-{options['title']}-UNPAKT-v1.2.0-Beta-4000.zip)", body)
+        self.assertLess(body.index("## Recommended downloads"), body.index("<strong>Loaders</strong>"))
+        # The full RiptOPL kit leads every release, Lite included: it is the safe pick for anyone unsure.
+        self.assertIn("## Recommended downloads\n\n- **[RIPTOPL-v1.2.0-Beta-4000.zip](https://github.com/NathanNeurotic/"
+                      "RiptOPL/releases/download/rolling/RIPTOPL-v1.2.0-Beta-4000.zip)** - Not sure what to pick?", body)
         self.assertIn(r"Add \[lite\]", body)
         for link in re.findall(r"\]\((\S+?\.zip)\)", body):
             self.assertTrue(link.endswith("-v1.2.0-Beta-4000.zip"), link)

@@ -51,7 +51,15 @@
 
 #define SU_STRINGIFY_VALUE(value) #value
 #define SU_STRINGIFY(value)       SU_STRINGIFY_VALUE(value)
-#define SU_RELEASE_PATH           "/NathanNeurotic/RiptOPL/releases/download/" SU_STRINGIFY(RIPTOPL_UPDATE_CHANNEL) "/"
+#ifdef RIPTOPL_UPDATE_STABLE
+/* A stable build reads only GitHub's Latest release, which publish_stable.py makes the newest stable one;
+   GitHub never points Latest at a pre-release, and every rolling channel is one once a stable release
+   exists. The release must also list SU_STABLE_MARKER, which only stable releases carry. */
+#define SU_RELEASE_PATH  "/NathanNeurotic/RiptOPL/releases/latest/download/"
+#define SU_STABLE_MARKER "RIPTOPL-STABLE.txt"
+#else
+#define SU_RELEASE_PATH "/NathanNeurotic/RiptOPL/releases/download/" SU_STRINGIFY(RIPTOPL_UPDATE_CHANNEL) "/"
+#endif
 static const char *suAsset;
 static int suFormat;
 
@@ -73,7 +81,7 @@ enum {
 
 static const int SU_BUF = 16 * 1024;           /* request, headers and each piece of the body */
 static const int SU_LOCATION = 2048;           /* GitHub's signed download redirects run to about 900 bytes */
-static const int SU_SUMS_MAX = 8 * 1024;       /* bounds the channel's complete checksum list */
+static const int SU_SUMS_MAX = 32 * 1024;      /* bounds the release's complete checksum list (publish_stable.py) */
 static const int SU_ELF_MAX = 8 * 1024 * 1024; /* RIPTOPL.ELF is about 2.3 MB */
 static const int SU_MC_NAME_MAX = 31;          /* a memory card entry name */
 
@@ -319,6 +327,15 @@ static int suNetworkUp(void)
     return SU_ERR_NETWORK;
 }
 
+#ifdef SU_STABLE_MARKER
+static bool suListsStableMarker(const char *text, int len)
+{
+    unsigned char sha[32];
+    int rev;
+    return suParseSums(text, len, SU_STABLE_MARKER, sha, &rev) == 0;
+}
+#endif
+
 static void suCheckWorker(void)
 {
     if (!suSelectAsset()) {
@@ -337,6 +354,10 @@ static void suCheckWorker(void)
             suResult = suFromTls(rc);
         else if (suParseSums(sums.text, sums.len, suAsset, suSha, &suRemoteRev) != 0)
             suResult = suFromTls(RATLS_ERR_HTTP);
+#ifdef SU_STABLE_MARKER
+        else if (!suListsStableMarker(sums.text, sums.len))
+            suResult = suFromTls(RATLS_ERR_HTTP); /* not a stable release: never offered to a stable build */
+#endif
         else
             suResult = suRemoteRev > suRevision(OPL_VERSION) && suRemoteRev > suInstalledRev ? SU_OK : SU_NEWEST;
     }

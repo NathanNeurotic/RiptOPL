@@ -21,6 +21,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from stable_channel import stable_version
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
@@ -158,7 +160,9 @@ def opl_version():
     tag = out("git", "describe", "--exact-match", "--tags", "--match", "v*")
     local = os.environ.get("LOCALVERSION", "")
     local = f"-{local}" if local else ""
-    if tag and tag != "latest":
+    # A release build (tools/build_edition.py, LOCALVERSION PS2BUILD-...) always carries its build number,
+    # which Check for Updates compares: a stable tag on the same commit must not drop it.
+    if tag and tag != "latest" and not local.startswith("-PS2BUILD-"):
         return f"{tag}{dirty}{local}"
     # REVISION is the monotonic ordinal (HEAD-based); the hash anchors to the last commit that
     # touched anything the build consumes (see the exclusion list, copied from the old Makefile).
@@ -168,7 +172,9 @@ def opl_version():
     rev = os.environ.get("REVISION") or str(int(out("git", "rev-list", "--count", "HEAD") or "0") + 2)
     git_hash = out("git", "rev-parse", "--short=7", anchor or "HEAD")
     channel = os.environ.get("RELEASE_CHANNEL", "")
-    v = f"v{VERSION}.{SUBVERSION}.{PATCHLEVEL}-{EXTRAVERSION}-{rev}"
+    stable = stable_version()
+    # A stable release names its own version and drops "Beta": v1.3.0-4370-<hash>. Rolling: v1.2.0-Beta-4370-<hash>.
+    v = f"v{stable}-{rev}" if stable else f"v{VERSION}.{SUBVERSION}.{PATCHLEVEL}-{EXTRAVERSION}-{rev}"
     if channel:
         v += f"-{channel}"
     if git_hash:

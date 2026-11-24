@@ -97,7 +97,8 @@ builds remain Actions artifacts. See [release channels and packaging](ROLLING_RE
 **Moving from Korium, IncebtIon or RiptOPLLVM?** Install the current full kit once to switch channels. Back up your settings and saves, then copy the updated companion folders from the kit for the cores you use.
 
 **Updating:** published RiptOPL, RetroAchievements and RiptOPLite builds use
-**Check for Updates** to download a verified replacement for their own configuration.
+**Check for Updates** to download a verified replacement for their own configuration
+(debug and bug-report builds have no updater).
 The updater preserves packed or unpacked format, including RetroAchievements ELFs
 launched from a qualified APA path such as `hdd0:__system:pfs:/launcher/RIPTOPL-RA.ELF`.
 A successful update also writes the new build number to `version.txt` beside the ELF.
@@ -337,10 +338,10 @@ This build layers several features on top of upstream OPL:
   memory cards and `settings.txt` are written straight through it.
 
   **Credit and licence — [Ember](https://github.com/Gageformer/Ember) is created by [Gageformer](https://github.com/Gageformer), and its
-  bundled release is [Ember Beta 2](https://github.com/Gageformer/Ember/releases/tag/Beta-2).**
+  bundled release is [Ember 0.8](https://github.com/Gageformer/Ember/releases/tag/v0.8).**
   The repository shortcut ships as `EMBER/Ember Official Webpage.url`. Ember is an
-  independent PS1 emulator written from scratch for the PS2. It is bundled unmodified under the **Ember Public
-  Beta Testing Licence**, which ships in the release package as `EMBER/LICENSE-BETA.txt` and governs
+  independent PS1 emulator written from scratch for the PS2. It is bundled unmodified under the **Ember
+  Licence 1.0**, which ships in the release package as `EMBER/LICENSE.txt` and governs
   the build it accompanies. That licence permits non-commercial bundling but prohibits selling,
   modifying or repackaging the build. Ember contains no PlayStation BIOS and no game data — you
   supply your own, from hardware and media you lawfully own. Please report Ember problems to *us*
@@ -420,7 +421,7 @@ This build layers several features on top of upstream OPL:
   index. Leaving the start/settings menu returns to the page you paused on when it is still visible;
   it no longer falls back to the first USB page. Every row, page by page, with its saved key:
   **[docs/SETTINGS.md](docs/SETTINGS.md)**.
-- **DualSense / DualShock 5 (USB):** optional controller support — available as `ds5/RIPTOPL.ELF` (and `extras_ds5/`) in the
+- **DualSense / DualShock 5 (USB):** optional controller support — available as `APP_RIPTOPL-DS5/RIPTOPL-DS5.ELF` (and `APP_RIPTOPL-EXTRAS-DS5/`) in the
   RiptOPL release's `RIPTOPL-VARIANTS-<version>.zip`, or build with
   `python tools/build_edition.py riptopl --configuration ds5`.
 - **1080p GSM video mode:** forced progressive 1080p (1920×1080) GSM mode is built directly into all standard builds (`make GSM1080P=1`). Full GSM documentation: **[docs/GSM.md](docs/GSM.md)**. Selecting 1080p in the per-game GSM picker is guarded by a **three-step confirmation**; if a game loses the picture, disable/change its GSM override before relaunching. **Triangle + Cross** at boot affects only the OPL menu and requires a 480p-capable display/connection; **Triangle + Circle** forces the interlaced Auto mode instead.
@@ -964,7 +965,7 @@ RiptOPL is intended to work with these maintained companion tools:
 - **[xeRAbora](https://github.com/hacan359/xerabora)** by **[hacan359](https://github.com/hacan359)** — the PC client for **RetroAchievements** on real PS2 hardware. Client: **[v2.2.0](https://github.com/hacan359/xerabora/releases/tag/v2.2.0)**; v1.0.1 (alpha.17 or later) also works. RiptOPL's RA build reads both clients' watch lists and keeps the snapshot-only Mode 6 behavior. After updating both the loader and client, run **RA: check game support** again for every game you play. xeRAbora runs rcheevos, talks to the RetroAchievements servers and unlocks the achievements. It also builds the per-game watch list the console needs. Shipped as a shortcut inside `RIPTOPL-RetroAchievements-<version>.zip`; MIT licensed. RiptOPL’s RA stabilization on real hardware was driven by **[oMrRexD](https://github.com/oMrRexD)**, whose PRs #702–#705 fixed the ee_core stack squeeze, MMCE DEV9 path, cold-launch networking and settings placement.
 - **[OPL HTTP PC server](https://github.com/Docmine17/Open-PS2-Loader-HTTP)** by **[Docmine17](https://github.com/Docmine17)** — the PC side of RiptOPL’s **HTTP** protocol: a small static HTTP server with byte-range support that serves your `games.csv` catalog and streams the ISOs themselves. RiptOPL works with it **unmodified** — no new API, no catalog conversion, no changed folder layout — with host conformance checks against the upstream server. PS2 hardware validation is still pending.
 - **[PS2RD CHT Manager](https://github.com/TheRealNextria/PS2RD-CHT-Manager)** by **[TheRealNextria](https://github.com/TheRealNextria)** — PC manager for the PS2RD `.cht` cheat files RiptOPL reads from your device's `CHT` folder. A `PS2RD-CHT-Manager.url` shortcut ships in installable packages.
-- **[Ember](https://github.com/Gageformer/Ember)** by **[Gageformer](https://github.com/Gageformer)** — a PS1 emulator that runs natively on the PS2, used as RiptOPL's **second PS1 core** alongside [POPSTARTER](https://www.psx-place.com/resources/popstarter.683/). Unlike the others this one is not just a shortcut: an `EMBER/` folder ships **inside** the release package, ready to drop onto a device. It is bundled unmodified under the Ember Public Beta Testing Licence (`EMBER/LICENSE-BETA.txt` in the package); releases: <https://github.com/Gageformer/Ember/releases>.
+- **[Ember](https://github.com/Gageformer/Ember)** by **[Gageformer](https://github.com/Gageformer)** — a PS1 emulator that runs natively on the PS2, used as RiptOPL's **second PS1 core** alongside [POPSTARTER](https://www.psx-place.com/resources/popstarter.683/). Unlike the others this one is not just a shortcut: an `EMBER/` folder ships **inside** the release package, ready to drop onto a device. It is bundled unmodified under the Ember Licence 1.0 (`EMBER/LICENSE.txt` in the package); releases: <https://github.com/Gageformer/Ember/releases>.
 - **[BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases)** by **[Okeanos](https://github.com/Okeanos86)** — UDPFS Assault (release 1.0.1 of 2026-11-08), the [POPSTARTER](https://www.psx-place.com/resources/popstarter.683/) network VCD driver RiptOPL ships as `POPS/usbd.irx.udpfs`: it reads every VCD file, plays `.cue` + `.bin` games without conversion, writes VMC saves on the PC and can share one save folder between the discs of a game (`PATHMAP.INI`). Based on [israpps](https://github.com/israpps)' BDM Assault.
 - **[POPStarter](https://www.psx-place.com/resources/popstarter.683/)** by **[krHACKen](https://www.psx-place.com/members/krhacken.98/)** — a PS1 launcher built around Sony's native **POPS** emulator for the PS2, used as RiptOPL's **primary PS1 core** alongside [Ember](https://github.com/Gageformer/Ember). POPStarter provides the compatibility and launch layer for running PS1 VCDs from USB, MX4SIO, MMCE, iLink, internal HDD, and SMB; RiptOPL's iLink handoff is wired but still awaiting a passing hardware retest. The official POPStarter r13 package contains **no Sony emulator binaries, libraries, or BIOS files**; those components must be supplied separately by the user. Official download, documentation, compatibility information, and releases are maintained on **[PSX-Place](https://www.psx-place.com/resources/popstarter.683/)**.
 - **[NULD (formerly ORBIT) Neutrino RA runtime](https://github.com/danielnuld/nuld/releases/tag/v1.2.14)** by **[Daniel (danielnuld)](https://github.com/danielnuld)** — the existing RA-capable [Neutrino](https://github.com/ps2max32/neutrino) runtime, bundled only in the RetroAchievements kit. Based on Neutrino by [Maximus32](https://github.com/rickgaiser) and [xeRAbora](https://github.com/hacan359/xerabora) protocol work by [hacan359](https://github.com/hacan359); AFL-3.0. The exact release, archive digest and source commit ship in `neutrino/ORBIT-RA.json`. Standard kits retain ordinary upstream Neutrino.

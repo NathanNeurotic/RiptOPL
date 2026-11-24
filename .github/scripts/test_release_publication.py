@@ -34,35 +34,35 @@ class PublicationTests(unittest.TestCase):
             self.assertIn("/commits/" + sha, body)
             display = publisher.edition_display_name(options)
             self.assertIn(f"**{display}** `v1.2.0-Beta-3925`", body)
-            # The standard full kit leads the notes, before the changelog.
+            # The recommended downloads lead the notes: the full kit, then the loader for an existing install.
             kit = publisher.versioned(publisher.kit_archive_name(options), "v1.2.0-Beta-3925")
-            self.assertIn(f"**Recommended download:** [{kit}](https://github.com/NathanNeurotic/RiptOPL/releases/download/"
-                          f"{options['tag']}/{kit}) - the standard full install kit.", body)
-            self.assertLess(body.index("**Recommended download:**"), body.index("## Changes"))
-            self.assertIn(f"/releases/download/{options['tag']}/{kit})", body)
+            downloads = f"https://github.com/NathanNeurotic/RiptOPL/releases/download/{options['tag']}"
+            self.assertIn(f"## Recommended downloads\n\n- **[{kit}]({downloads}/{kit})** - Not sure what to pick?", body)
+            self.assertLess(body.index("## Recommended downloads"), body.index("<strong>Loaders</strong>"))
+            self.assertLess(body.index("<strong>Other files</strong>"), body.index("## Changes"))
+            # Every file of the channel has one link in the tables, and the tables link nothing else.
+            names = {publisher.versioned(n, "v1.2.0-Beta-3925")
+                     for n in publisher.channel_assets(next(e for e, o in publisher.EDITIONS.items() if o is options))}
+            names.add("SHA256SUMS.txt")
+            tables = body.split("<strong>Loaders</strong>", 1)[1].split("## Changes", 1)[0]
+            self.assertEqual(set(re.findall(re.escape(downloads) + r"/([^)\s]+)\)", tables)), names)
             elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
-            psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
-            self.assertIn(f"/{elf})", body)
-            self.assertIn(f"/{psu})", body)
-            self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-LANGS-v1.2.0-Beta-3925.zip)", body)
-            # The standalone ELF and PSU have no CREDITS beside them: the notes name usmb2 and its licence.
-            self.assertIn(f"- [usmb2 licence](https://github.com/NathanNeurotic/RiptOPL/releases/download/{options['tag']}"
-                          "/LICENSE-USMB2.txt) - every loader embeds [usmb2](https://github.com/sahlberg/usmb2) by "
-                          "[Ronnie Sahlberg](https://github.com/sahlberg), used under the MIT licence.\n", body)
-            self.assertLess(body.index(f"/{psu})"), body.index("/LICENSE-USMB2.txt)"))
-            # Every published loader links Mbed TLS: the notes link its licence at the built commit.
-            self.assertIn("/third_party/mbedtls/LICENSE) - every loader here links "
-                          "[Mbed TLS](https://github.com/Mbed-TLS/mbedtls), used under the Apache-2.0 licence.\n", body)
-            # Every archive link ends with the version; the ELF and PSU links never change.
-            for link in re.findall(r"\]\((\S+?)\)", body.split("## Downloads", 1)[1]):
+            self.assertIn(f"[PSU]({downloads}/APP_{elf[:-4]}.psu)", body)
+            self.assertIn(f"[ELF]({downloads}/{elf[:-4]}-UNPAKT.ELF)", body)
+            for link in re.findall(r"\]\((\S+?)\)", tables):
                 if link.endswith(".zip"):
                     self.assertTrue(link.endswith("-v1.2.0-Beta-3925.zip"), link)
-            if not options["ra"]:  # the bug-report build sits right under the kit
+            if options["ra"]:  # installed unpacked RA loaders keep their old name until they update
+                self.assertIn("RIPTOPL-RA-UNPACKED.ELF", tables)
+            # The notes name usmb2 and its licence, and link Mbed TLS's licence at the built commit.
+            self.assertIn(f"[LICENSE-USMB2.txt]({downloads}/LICENSE-USMB2.txt)", body)
+            self.assertIn("[usmb2](https://github.com/sahlberg/usmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
+                          "used under the MIT licence", body)
+            self.assertIn("/third_party/mbedtls/LICENSE), and embeds", body)
+            if not options["ra"]:
                 self.assertIn(f"/releases/download/{options['tag']}/RIPTOPL-BUGREPORT-v1.2.0-Beta-3925.zip)", body)
-                self.assertLess(body.index("[Bug-report build]"), body.index("[Loader ELF]"))
             else:
                 self.assertNotIn("BUGREPORT", body)
-            self.assertEqual({"rolling-ra": 7}.get(options["tag"], 9), sum(line.startswith("- [") for line in body.split("## Downloads\n\n", 1)[1].splitlines()))
             if options["ra"]:  # the RA kits ship ORBIT's runtime, and their notes link its pinned release
                 self.assertIn(f"Included build: {runtime} -- [NULD (formerly ORBIT) Neutrino RA runtime {pin['tag']}]"
                               f"(https://github.com/{pin['repository']}/releases/tag/{pin['tag']})", body)
@@ -72,7 +72,7 @@ class PublicationTests(unittest.TestCase):
                 self.assertNotIn("ORBIT", body)
             self.assertNotIn("Release compiler", body)
             self.assertNotIn("Imported production documentation", body)
-            self.assertLess(len(body), 2900)  # the RA notes link eight versioned downloads, ORBIT, the usmb2 and Mbed TLS licences and the recommended kit
+            self.assertLess(len(body), 125000)  # GitHub's release body limit
 
     def test_ra_notes_refuse_a_runtime_other_than_the_pin(self):
         with patch.object(publisher, "git", return_value="b" * 40 + "\x00Fix"), self.assertRaises(ValueError):

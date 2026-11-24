@@ -99,7 +99,12 @@ assert build_edition.update_channel("riptopl", toolchain="gcc") is None
 assert build_edition.update_channel("ra") == ("rolling-ra", "RIPTOPL-RA.ELF")
 assert build_edition.update_channel("ra", toolchain="gcc") == ("rolling-ra", "RIPTOPL-RA.ELF")
 assert build_edition.update_channel("ra", toolchain="llvm") is None
-assert build_edition.update_channel("riptopl", "debug_uart") == ("rolling", "RIPTOPL-DEBUG-UART.ELF")
+# Debug and bug-report builds have no updater; every player variant updates to itself, packed or unpacked.
+for configuration in build_edition.CONFIGURATIONS:
+    if configuration not in build_edition.UPDATABLE["riptopl"]:
+        assert build_edition.update_channel("riptopl", configuration) is None, configuration
+assert build_edition.update_channel("riptopl", "extras_ds5") == ("rolling", "RIPTOPL-EXTRAS-DS5.ELF")
+assert build_edition.publishes_unpacked("riptopl", "extras_ds5") and build_edition.publishes_unpacked("riptopl", "standard")
 assert build_edition.update_channel("ra", "pademu0") == ("rolling-ra", "RIPTOPL-RA-PADEMU0.ELF")
 assert build_edition.update_channel("ra", "debug_uart") is None
 for lite in build_edition.LITES:

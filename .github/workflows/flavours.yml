@@ -319,6 +319,8 @@ jobs:
           python3 .github/scripts/test_vmc_past_2tb_ata.py
       - name: Check the exFAT free-space scan steps over full bitmap bytes with the same result
         run: python3 .github/scripts/test_exfat_bitmap_scan.py
+      - name: Check a free run is never made of the end of a volume joined to its start
+        run: python3 .github/scripts/test_fatfs_free_run_wrap.py
       - name: Check the game-list sort keeps the old order in O(n log n)
         run: python3 .github/scripts/test_menu_sort.py
       - name: Check a failed first PS2 scan runs once and names the folder

@@ -1355,6 +1355,9 @@ static DWORD find_bitmap (	/* 0:Not found, 2..:Cluster block found, 0xFFFFFFFF:D
 				} else {
 					scl = val; ctr = 0;		/* Encountered a cluster in-use, restart to scan */
 				}
+				if (val == 0) {	/* RiptOPL: wrapped. The last cluster and the first are not neighbours (ORIGIN.txt 7) */
+					scl = 0; ctr = 0;
+				}
 				if (val == clst) return 0;	/* All cluster scanned? */
 			} while (bm != 0);
 			bm = 1;
@@ -5792,6 +5795,9 @@ FRESULT f_expand (
 				if (++ncl == tcl) break;	/* Break if a contiguous cluster block is found */
 			} else {
 				scl = clst; ncl = 0;		/* Not a free cluster */
+			}
+			if (clst == 2) {	/* RiptOPL: wrapped. The last cluster and the first are not neighbours (ORIGIN.txt 7) */
+				scl = 2; ncl = 0;
 			}
 			if (clst == stcl) {		/* No contiguous cluster? */
 				res = FR_DENIED; break;

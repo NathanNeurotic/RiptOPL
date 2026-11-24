@@ -41,5 +41,11 @@ LOCAL CHANGES (marked "RiptOPL" where they are not whole functions):
    The first allocation after a mount scans from the start of the exFAT bitmap, and doing that one
    bit at a time held the IOP for seconds on a large, mostly full volume. Same result as the plain
    scan. Tests: test_exfat_bitmap_scan.py.
+7. fatfs/ff.c find_bitmap and f_expand: the search for a free run walks the volume in a circle,
+   and counted free clusters at the end of the volume and free clusters at its start as one run
+   although they are not neighbours. On exFAT the run then ran past the last cluster; on FAT the
+   chain write failed partway and left clusters marked with no owner. The count now restarts
+   where the walk wraps; a run that ends on the last cluster is still found. Reachable only when
+   the volume's first clusters are free. Tests: test_fatfs_free_run_wrap.py, test_exfat_bitmap_scan.py.
 
 The sources keep their upstream formatting (.clang-format-ignore) so they diff cleanly against the pins.
