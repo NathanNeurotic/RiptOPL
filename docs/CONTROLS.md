@@ -105,16 +105,12 @@ Menus have two states, and the same buttons do different things in each.
 
 | Button | Action |
 |---|---|
-| **Up / Down** | Cycle the value of a list |
+| **Up / Down** | Cycle the value of a list or number |
+| **Triangle** | Open the on-screen keyboard on a text field |
 | **Cross** | Accept and stop editing |
 
 This is why Up/Down sometimes moves the cursor and sometimes changes a setting: it depends on whether
-a list is currently being edited.
-
-A **number** (a port, an IP address part, an offset, a date) is not stepped with Up/Down. Cross on it
-opens the number pad showing the current value and the allowed range: type the digits (the first
-digit replaces the value shown), **Square** deletes one, **Triangle** clears, **START** accepts and
-Circle cancels. A text field opens the on-screen keyboard the same way.
+a control is currently being edited.
 
 A row that cannot be changed right now is drawn at half strength, label included, and a row whose
 controls are all hidden takes no line. A page too long for the screen shows a scroll bar. The
