@@ -76,9 +76,15 @@ of the game source.
 
 ## General & System
 
-**Date and Time** is in the main menu below **Check for Updates**. It sets the console clock using
-the console's time zone and daylight-saving setting. Choose **Set from Internet** to sync using
-RiptOPL's network settings. Internet sync is unavailable while UDPBD or UDPFS owns the adapter.
+**Date and Time** is in the main menu below **Check for Updates**. It sets the console clock and
+shows it in the zone of the **Time Zone** row. **Console**, the default, follows the time zone and
+summer time set in the console's own System Configuration, and the row shows which zone that is, for
+example `Console (UTC-05:00)`. Pick any other zone (`clock_zone`, minutes east of UTC) to use it
+instead; **Summer Time** (`clock_summer`) then adds an hour. Changing the zone moves the time shown,
+not the clock. Choose **Set from Internet** to sync using RiptOPL's network settings; the clock gets
+the same worldwide time whatever the zone, and the zone decides how it is shown. If the time shown
+after a sync is hours off, the zone is wrong, not the sync. Internet sync is unavailable while UDPBD
+or UDPFS owns the adapter.
 
 | Row | What it does | Key |
 | --- | --- | --- |

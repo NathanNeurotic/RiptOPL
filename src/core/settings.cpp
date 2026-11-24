@@ -186,6 +186,8 @@ constexpr Setting kSettings[] = {
     intSetting(CONFIG_OPL_YSENSITIVITY, &gYSensitivity, 1),
     intSetting(CONFIG_OPL_APP_HANDOFF_PATH, &gAppHandoffPath, APP_HANDOFF_LEGACY), // BDM app argv[0] remains mass<N>: by default; Typed opt-in (non-BDM unaffected)
     intSetting(CONFIG_OPL_EXIT_MENU, &gExitMenu, EXIT_MENU_CONSOLE), // as before the setting existed
+    intSetting(CONFIG_OPL_CLOCK_ZONE, &gClockZone, CLOCK_ZONE_CONSOLE), // the console's own zone, as before the setting existed
+    intSetting(CONFIG_OPL_CLOCK_SUMMER, &gClockSummer, 0),
 };
 
 } // namespace
