@@ -332,7 +332,9 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
         int pageDrawH = ((elem->height > 0) ? elem->height : csh) * drawW / pageW;
         int posY = elem->posY + (pageDrawH - drawH) / 2 + recenterY * drawH / csh;
 
-        u64 coverColor = (gCoverflowDimCovers && i != centerIdx) ? GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x40) : gDefaultCol;
+        // Dim Side Covers darkens the colour and keeps the cover opaque. Half alpha let the page behind
+        // show through the side covers, so the moving ambient backdrop appeared to pass over them.
+        u64 coverColor = (gCoverflowDimCovers && i != centerIdx) ? GS_SETREG_RGBA(0x40, 0x40, 0x40, 0x80) : gDefaultCol;
 
         if (cimg->overlayTexture) {
             // Scale the inlay (cover) corner offsets to the drawn overlay size so the case
