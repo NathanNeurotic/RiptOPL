@@ -129,14 +129,19 @@ static int netTimeAsk(const char *host, int t[6])
     return ok;
 }
 
+int netTimeNicBusy(void)
+{
+    return bdmIsUDPBDLoaded() || udpfsGetModulesLoaded() || gNetworkProtocol == NET_PROTO_UDPFS ||
+           gNetworkProtocol == NET_PROTO_UDPFSBD || gNetworkProtocol == NET_PROTO_UDPBD;
+}
+
 int netTimeFetch(int t[6])
 {
     static const char *const hosts[] = {"github.com", "www.google.com"};
     u8 ip[4], mask[4], gw[4];
     int i;
 
-    if (bdmIsUDPBDLoaded() || udpfsGetModulesLoaded() || gNetworkProtocol == NET_PROTO_UDPFS ||
-        gNetworkProtocol == NET_PROTO_UDPFSBD || gNetworkProtocol == NET_PROTO_UDPBD)
+    if (netTimeNicBusy())
         return NETTIME_ERR_NETBUSY;
     /* Load the network modules if needed and apply the saved settings every time. Modules loaded
        by another path (Check for Updates) keep ps2ip's start-up 192.168.0.80 with no DNS server,

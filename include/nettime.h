@@ -14,6 +14,10 @@ enum {
 // was found.
 int netTimeParseDate(const char *headers, int t[6]);
 
+// 1 when UDPBD or UDPFS owns the network adapter or is the chosen protocol: netTimeFetch then
+// refuses. Date and Time takes the adapter for the request (selfUpdateTakeNic) where it can.
+int netTimeNicBusy(void);
+
 // Brings the network up if needed and reads the current UTC time from a web server's Date header
 // over plain HTTP (the console clock may be too wrong for HTTPS). Every wait is bounded.
 int netTimeFetch(int t[6]);
