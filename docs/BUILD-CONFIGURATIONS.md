@@ -9,12 +9,15 @@ not current release editions.
 `--configuration` selects optional controller, diagnostic or debug behavior
 within an edition. Configuration builds are not new release channels.
 `rolling` carries `RIPTOPL-VARIANTS-<version>.zip` for
-`pademu0`, `ds5`, `extras` and `extras_ds5`;
+`pademu0`, `ds5`, `extras` and `extras_ds5`, plus each of them and the standard
+loader unpacked;
 `RIPTOPL-DEBUG-<version>.zip` for the other nonstandard configurations;
 and `RIPTOPL-BUGREPORT-<version>.zip` for the unpacked `diag` build.
 `rolling-ra` carries `RIPTOPL-RA-VARIANTS-<version>.zip` with the
 supported PADEMU0 and unpacked loaders. All archives preserve their
 applicable manifest, licensing, source and compiler provenance.
+The standard loader and the variants have Check for Updates, each to its own
+build, packed or unpacked; the debug, diagnostic and bug-report builds have none.
 
 Install the SDK described in [PS2BUILD-MIGRATION.md](PS2BUILD-MIGRATION.md)
 and use the standard edition builder:

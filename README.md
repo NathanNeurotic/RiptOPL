@@ -97,7 +97,8 @@ builds remain Actions artifacts. See [release channels and packaging](ROLLING_RE
 **Moving from Korium, IncebtIon or RiptOPLLVM?** Install the current full kit once to switch channels. Back up your settings and saves, then copy the updated companion folders from the kit for the cores you use.
 
 **Updating:** published RiptOPL, RetroAchievements and RiptOPLite builds use
-**Check for Updates** to download a verified replacement for their own configuration.
+**Check for Updates** to download a verified replacement for their own configuration
+(debug and bug-report builds have no updater).
 The updater preserves packed or unpacked format, including RetroAchievements ELFs
 launched from a qualified APA path such as `hdd0:__system:pfs:/launcher/RIPTOPL-RA.ELF`.
 A successful update also writes the new build number to `version.txt` beside the ELF.
@@ -420,7 +421,7 @@ This build layers several features on top of upstream OPL:
   index. Leaving the start/settings menu returns to the page you paused on when it is still visible;
   it no longer falls back to the first USB page. Every row, page by page, with its saved key:
   **[docs/SETTINGS.md](docs/SETTINGS.md)**.
-- **DualSense / DualShock 5 (USB):** optional controller support — available as `ds5/RIPTOPL.ELF` (and `extras_ds5/`) in the
+- **DualSense / DualShock 5 (USB):** optional controller support — available as `APP_RIPTOPL-DS5/RIPTOPL-DS5.ELF` (and `APP_RIPTOPL-EXTRAS-DS5/`) in the
   RiptOPL release's `RIPTOPL-VARIANTS-<version>.zip`, or build with
   `python tools/build_edition.py riptopl --configuration ds5`.
 - **1080p GSM video mode:** forced progressive 1080p (1920×1080) GSM mode is built directly into all standard builds (`make GSM1080P=1`). Full GSM documentation: **[docs/GSM.md](docs/GSM.md)**. Selecting 1080p in the per-game GSM picker is guarded by a **three-step confirmation**; if a game loses the picture, disable/change its GSM override before relaunching. **Triangle + Cross** at boot affects only the OPL menu and requires a 480p-capable display/connection; **Triangle + Circle** forces the interlaced Auto mode instead.

@@ -220,6 +220,7 @@ class PublisherTests(unittest.TestCase):
                         "dirty": dirty, "edition": edition, "compiler": options["compiler"], "sdk": "ps2build",
                         "ra": options["ra"], "configuration": configuration,
                         "ps2build_version": "test", "components": {}, "ports": {},
+                        "version": f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM"',
                         "elf_sha256": hashlib.sha256(payload).hexdigest(),
                         "neutrino_archive": {"filename": ra_neutrino if options["ra"] else "neutrino_v1.8.0.7z",
                                              "sha256": "0" * 64}}
@@ -247,8 +248,7 @@ class PublisherTests(unittest.TestCase):
     def variants(self, root, **changes):
         for edition, options in publish_editions.EDITIONS.items():
             configurations = {c for _, configurations, _ in publish_editions.bundles(options) for c in configurations}
-            if options["ra"]:
-                configurations |= set(publish_editions.RA_UNPACKED)
+            configurations |= set(publish_editions.UPDATABLE[edition])
             for configuration in sorted(configurations):
                 stage = root / f"variant-{edition}-{configuration}"
                 stage.mkdir()
@@ -257,7 +257,7 @@ class PublisherTests(unittest.TestCase):
                             "configuration": configuration, "ps2build_version": "test", "components": {}, "ports": {},
                             "elf_sha256": hashlib.sha256(payload).hexdigest(), **changes.get(configuration, {})}
                 (stage / "RIPTOPL.ELF").write_bytes(payload)
-                if options["ra"]:
+                if configuration in publish_editions.UPDATABLE[edition]:
                     unpacked = unpacked_elf() + configuration.encode()
                     (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
                     manifest.setdefault("unpacked_elf_sha256", hashlib.sha256(unpacked).hexdigest())
@@ -265,7 +265,7 @@ class PublisherTests(unittest.TestCase):
                     unpacked = changes.get("unpacked", unpacked_elf())
                     (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
                     manifest.setdefault("unpacked_elf_sha256", hashlib.sha256(unpacked).hexdigest())
-                    manifest.setdefault("version", f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM-DIAG"')
+                manifest.setdefault("version", f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM-{configuration.upper()}"')
                 (stage / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
 
     def test_configuration_bundles(self):
@@ -280,19 +280,43 @@ class PublisherTests(unittest.TestCase):
             self.variants(root)
             publish_editions.bundle_configurations(root, self.sha)
             self.assertEqual(len(publish_editions.verify(root, self.sha)), 2)
-            self.assertEqual((root / "release-ra/RIPTOPL-RA-UNPACKED.ELF").read_bytes(),
+            self.assertEqual((root / "release-ra/RIPTOPL-RA-UNPAKT.ELF").read_bytes(),
                              (root / "variant-ra-standard/RIPTOPL-UNPACKED.ELF").read_bytes())
+            # Unpacked RA loaders installed before -UNPAKT ask for the old names: rolling-ra keeps them, same bytes.
+            for old, new in editions.LEGACY_UNPACKED.items():
+                self.assertEqual((root / f"release-ra/{old}").read_bytes(), (root / f"release-ra/{new}").read_bytes())
             self.assertEqual((root / "release-ra/RIPTOPL-RA-PADEMU0.ELF").read_bytes(),
                              (root / "variant-ra-pademu0/RIPTOPL.ELF").read_bytes())
-            self.assertEqual((root / "release-riptopl/RIPTOPL-DIAG-UNPACKED.ELF").read_bytes(),
-                             (root / "variant-riptopl-diag/RIPTOPL-UNPACKED.ELF").read_bytes())
+            # Every player build updates to itself, packed and unpacked; debug and bug-report builds have no update ELF.
+            for configuration in ("standard", "pademu0", "ds5", "extras", "extras_ds5"):
+                self.assertEqual((root / f"release-riptopl/{editions.update_asset('riptopl', configuration, unpacked=True)}").read_bytes(),
+                                 (root / f"variant-riptopl-{configuration}/RIPTOPL-UNPACKED.ELF").read_bytes())
+            self.assertEqual(sorted(p.name for p in (root / "release-riptopl").glob("RIPTOPL-*.ELF")),
+                             sorted(["RIPTOPL-PADEMU0.ELF", "RIPTOPL-DS5.ELF", "RIPTOPL-EXTRAS.ELF", "RIPTOPL-EXTRAS-DS5.ELF",
+                                     "RIPTOPL-UNPAKT.ELF", "RIPTOPL-PADEMU0-UNPAKT.ELF", "RIPTOPL-DS5-UNPAKT.ELF",
+                                     "RIPTOPL-EXTRAS-UNPAKT.ELF", "RIPTOPL-EXTRAS-DS5-UNPAKT.ELF"]))
             for edition in ("riptopl",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-VARIANTS.zip") as bundle:
-                    self.assertEqual(bundle.read("ds5/RIPTOPL.ELF"), b"\x7fELFds5")
-                    self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 4)
+                    self.assertEqual(bundle.read("APP_RIPTOPL-DS5/RIPTOPL-DS5.ELF"), b"\x7fELFds5")
+                    self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 9)
+                    self.assertEqual(bundle.read("APP_RIPTOPL-EXTRAS-DS5-UNPAKT/RIPTOPL-EXTRAS-DS5-UNPAKT.ELF"),
+                                     unpacked_elf() + b"extras_ds5")
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-DEBUG.zip") as bundle:
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 10)
+                    # Every folder is APP_ plus its ELF name, and its title.cfg and APPINFO.PBT boot that ELF.
+                    for name in bundle.namelist():
+                        if name.endswith(".ELF"):
+                            folder, elf = name.split("/")
+                            self.assertEqual(folder, "APP_" + elf[:-4])
+                            self.assertEqual(publish_editions.publish_lite.app.inspect_psu(bundle.read(f"{folder}.psu"))[0], folder)
+                            cfg = bundle.read(f"{folder}/title.cfg").decode()
+                            self.assertIn(f"\nboot={elf}\n", cfg)
+                            self.assertIn(f"title=RiptOPL {elf[len('RIPTOPL-'):-4]}\n", cfg)
+                            pbt = bundle.read(f"{folder}/APPINFO.PBT").decode()
+                            self.assertIn(f'SET "ELF" "{elf}"', pbt)
+                            self.assertIn(f'SET "SAS" "{folder}"', pbt)
+                            self.assertEqual(bundle.read(f"{folder}/icon.sys"), (publish_editions.publish_lite.app.APP_TEMPLATE / "icon.sys").read_bytes())
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                     self.assertIn("usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\nMIT licence; "
                                   "its licence is LICENSE-USMB2.txt", bundle.read("README.txt").decode())
@@ -301,16 +325,19 @@ class PublisherTests(unittest.TestCase):
                                   bundle.read("README.txt").decode())
             for edition in ("ra",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
-                    self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")
+                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-PADEMU0/RIPTOPL-RA-PADEMU0.ELF"), b"\x7fELFpademu0")
                     # The standard and pademu0 RA loaders also ship unpacked, each with its manifest.
-                    self.assertEqual(bundle.read("standard-unpacked/RIPTOPL-RA.ELF"), unpacked_elf() + b"standard")
-                    self.assertEqual(bundle.read("pademu0-unpacked/RIPTOPL-RA.ELF"), unpacked_elf() + b"pademu0")
-                    self.assertIn("pademu0-unpacked/BUILD-MANIFEST.json", bundle.namelist())
+                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-UNPAKT/RIPTOPL-RA-UNPAKT.ELF"), unpacked_elf() + b"standard")
+                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-PADEMU0-UNPAKT/RIPTOPL-RA-PADEMU0-UNPAKT.ELF"), unpacked_elf() + b"pademu0")
+                    self.assertIn("APP_RIPTOPL-RA-PADEMU0-UNPAKT/BUILD-MANIFEST.json", bundle.namelist())
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 3)
                     self.assertIn("RIPTOPL-RA.ELF", bundle.read("README.txt").decode())
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
         for bad in ({"ds5": {"configuration": "extras"}}, {"debug": {"source_commit": "0" * 40}},
                     {"dtl": {"elf_sha256": "0" * 64}}, {"diag": {"ps2build_version": "other"}},
+                    # Same commit and channel, another cut's version: never joins this release.
+                    {"ds5": {"version": '#define OPL_VERSION "v1.3.1-4031-abcdef0-PS2BUILD-riptopl-LLVM-DS5"'}},
+                    {"pademu0": {"version": "no PS2BUILD marker"}},
                     {"standard": {"unpacked_elf_sha256": "0" * 64}}):
             with self.subTest(bad=bad), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
                 root = Path(directory)
@@ -334,12 +361,20 @@ class PublisherTests(unittest.TestCase):
             publish_editions.verify(root, self.sha)
             for edition in ("riptopl",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-BUGREPORT.zip") as bundle:
-                    self.assertEqual(sorted(bundle.namelist()), [
-                        "BUILD-MANIFEST.json", "CREDITS", "LICENSE", "README.txt", "RIPTOPL-BUGREPORT.ELF",
-                        "licenses/usmb2/LICENSE", "licenses/usmb2/VENDORED.txt"])
+                    # Its own folder like every loader, with a PSU of the same name.
+                    app = "APP_RIPTOPL-BUGREPORT"
+                    self.assertEqual(sorted(bundle.namelist()), sorted([
+                        "CREDITS", "LICENSE", "README.txt", "licenses/usmb2/LICENSE", "licenses/usmb2/VENDORED.txt",
+                        f"{app}.psu", *(f"{app}/{n}" for n in ("APPINFO.PBT", "BUILD-MANIFEST.json", "RIPTOPL-BUGREPORT.ELF",
+                                                             "bgm.ogg", "copy.icn", "del.icn", "icon.sys", "list.icn",
+                                                             "title.cfg"))]))
                     self.assertIn(b"Permission is hereby granted", bundle.read("licenses/usmb2/LICENSE"))
-                    self.assertEqual(bundle.read("RIPTOPL-BUGREPORT.ELF"), unpacked_elf())
-                    self.assertEqual(json.loads(bundle.read("BUILD-MANIFEST.json"))["configuration"], "diag")
+                    self.assertEqual(bundle.read(f"{app}/RIPTOPL-BUGREPORT.ELF"), unpacked_elf())
+                    self.assertIn("\nboot=RIPTOPL-BUGREPORT.ELF\n", bundle.read(f"{app}/title.cfg").decode())
+                    name, inside = publish_editions.publish_lite.app.inspect_psu(bundle.read(f"{app}.psu"))
+                    self.assertEqual(name, app)
+                    self.assertEqual(inside["RIPTOPL-BUGREPORT.ELF"], unpacked_elf())
+                    self.assertEqual(json.loads(bundle.read(f"{app}/BUILD-MANIFEST.json"))["configuration"], "diag")
                     readme = bundle.read("README.txt").decode()
                     self.assertIn(f"RiptOPL bug-report build, v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM-DIAG\r\n====", readme)
                     self.assertIn("DIAG.TXT", readme)

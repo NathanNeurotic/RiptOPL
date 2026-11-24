@@ -88,8 +88,9 @@ The two full channels each carry:
   Neutrino companions. RA ships the pinned RA runtime and its required files.
 
 `rolling` also publishes `RIPTOPL-VARIANTS.zip` (PADEMU0, DS5,
-extras and extras+DS5), `RIPTOPL-DEBUG.zip` (debug and diagnostic
-configurations), and `RIPTOPL-BUGREPORT.zip` (unpacked diag build).
+extras and extras+DS5, plus each of them and the standard loader unpacked), `RIPTOPL-DEBUG.zip` (debug and diagnostic
+configurations), and `RIPTOPL-BUGREPORT.zip` (unpacked diag build). Debug and bug-report
+builds have no updater; every other loader updates to its own build, packed or unpacked.
 `rolling-ra` publishes `RIPTOPL-RA-VARIANTS.zip`, including the
 supported PADEMU0 and unpacked RA loaders.
 
@@ -114,11 +115,37 @@ source SHA, clean state, SDK consistency, exact file inventory, source ZIP
 commit, installed ELF/PSU bytes and all checksums before touching GitHub.
 An integration branch that advanced during the build must be rebuilt instead.
 GitHub-reported asset sizes/digests and final tag SHA are verified on publication.
-RiptOPL (`rolling`) owns GitHub's Latest marker; RetroAchievements and RiptOPLite have their own stable URLs.
+RiptOPL (`rolling`) owns GitHub's Latest marker until the first stable release; from then on Latest is always the newest stable release and every rolling channel is a pre-release. RetroAchievements and RiptOPLite have their own stable URLs.
 
 The three GitHub release updates are sequential, not an atomic transaction.
 A network/API failure can leave a partial publication and must be inspected
 before retrying. No historical production releases are deleted or rewritten.
+
+## Stable releases
+
+A stable release is one versioned GitHub release, tagged `v<version>` (for example `v1.3.0`),
+holding every build the three rolling channels carry, from one commit: both full install kits,
+every RiptOPL and RetroAchievements variant, debug and bug-report bundles, all sixteen RiptOPLite
+builds (the RA ones as ZIPs with their runtime), languages, sources, manifests, licences and one
+`SHA256SUMS.txt`. Its notes open with a "pick one" table and the recommended full kit.
+
+To cut one, dispatch **Rolling Release** on `rebuild/main` with `stable_version` (for example
+`1.3.0`) and `publish` on. Every build is then made as a stable build
+(`RIPTOPL_STABLE_VERSION`, `tools/stable_channel.py`): its version reads `v1.3.0-<build>`, and
+its Check for Updates reads only GitHub's **Latest** release, and only one that lists
+`RIPTOPL-STABLE.txt`. It asks for the same file name as before, so every build updates to the same
+build: RiptOPL to RiptOPL, RA to RA, each Lite device to that device, each variant to that variant.
+`publish` off builds and verifies the same release without publishing it.
+
+`tools/publish_stable.py` refuses rolling builds, builds of another version, a version that is
+already released, a tag on another commit and a version that is not newer than the current stable
+release. It also refuses any PSU or ZIP that breaks the naming rule: every loader's folder and PSU
+are `APP_` plus its ELF name (`APP_RIPTOPLITE-USB/RIPTOPLITE-USB.ELF`), with a `title.cfg` and
+`APPINFO.PBT` that boot that ELF and the shipped `icon.sys`. It publishes the release as Latest, then
+makes `rolling`, `rolling-ra` and `rolling-lite` pre-releases; once a stable release exists,
+`publish_editions.py` keeps them pre-releases on every rolling publication, so Latest is only ever
+a stable release. Rolling builds keep updating from their own channels, unchanged. Stable releases
+are never moved, rewritten or deleted.
 
 Build/test/package success is separate from console acceptance. Test the exact
 edition and source SHA on the relevant console, storage backend, core, settings,

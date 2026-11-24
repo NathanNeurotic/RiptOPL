@@ -15,21 +15,23 @@ import time
 import zipfile
 
 from build_configuration import CONFIGURATIONS
-from build_edition import EDITIONS, LITES, LITE, edition_display_name, git, kit_archive_name, publishes_unpacked, update_asset
+from build_edition import (EDITIONS, LEGACY_UNPACKED, LITES, LITE, UPDATABLE, edition_display_name, git, kit_archive_name, update_asset,
+                           update_channel)
 import publish_lite
+import release_table
 
 # The original's VARIANTS and DEBUG zips and its RA nopademu loader, published for every theme beside
 # its edition's kit: configurations are never channels of their own.
 # (name, configurations, release-notes description). docs/BUILD-CONFIGURATIONS.md has each one.
 VARIANTS = ("pademu0", "ds5", "extras", "extras_ds5")
 STANDARD_BUNDLES = (
-    ("VARIANTS", VARIANTS, "pad emulation off, DualSense and extras builds"),
+    ("VARIANTS", VARIANTS, "pad emulation off, DualSense and extras builds, and the loaders unpacked"),
     ("DEBUG", tuple(c for c in CONFIGURATIONS if c != "standard" and c not in VARIANTS), "debug and diagnostic builds"),
 )
 RA_BUNDLES = (("RA-VARIANTS", ("pademu0",), "pad emulation off, and the loaders unpacked"),)
-# RA-VARIANTS also carries these RA builds before compression, as <configuration>-unpacked/RIPTOPL-RA.ELF:
-# an unpacked loader starts without the decompression step (asked for by CosmicScale, 2026-11-16).
-RA_UNPACKED = ("standard", "pademu0")
+# Each VARIANTS zip also carries its edition's updatable builds before compression (build_edition.UPDATABLE),
+# as APP_<ELF>-UNPAKT/<ELF>-UNPAKT.ELF: an unpacked loader starts without the decompression step
+# (asked for by CosmicScale, 2026-11-16), and Check for Updates keeps it unpacked.
 # The RA kits ship ORBIT's pinned RA runtime in place of upstream Neutrino; their notes link it.
 ORBIT_PIN = Path(__file__).resolve().parents[1] / "third_party/orbit-neutrino/release.json"
 
@@ -81,8 +83,13 @@ def check_unpacked_layout(elf):
         raise ValueError("bug-report build is truncated: its program runs past the end of the file")
 
 
-BUNDLE_README = ("{display} configuration builds. Each folder holds one {elf} and the manifest it was\n"
-                 "built from; replace the ELF of an existing {display} install to use one. What each configuration\n"
+BUNDLE_README = ("{display} configuration builds. Each loader has its own folder, named APP_ plus its ELF\n"
+                 "name (APP_RIPTOPL-PADEMU0/RIPTOPL-PADEMU0.ELF), with the manifest it was built from, and a\n"
+                 "PSU of the same name for a memory card. Copy a folder (or install its PSU) beside your {elf}\n"
+                 "folder: its first start reads that loader's settings once and then\n"
+                 "keeps its own; your {elf} folder is never changed. Check for Updates keeps each player build on\n"
+                 "its own configuration, packed or unpacked (APP_..-UNPAKT); debug builds have no updater.\n"
+                 "What each configuration\n"
                  "changes: https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md\n"
                  "Every loader embeds usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\n"
                  "MIT licence; its licence is LICENSE-USMB2.txt beside this file. They also embed his unfs4,\n"
@@ -140,15 +147,29 @@ def publish_update_elf(path, name, elf):
     add_sum(path, name, hashlib.sha256(elf).hexdigest())
 
 
-def extra_update_assets(edition):
-    configurations = {"standard"}
-    for _, bundled, _ in bundles(EDITIONS[edition]):
-        configurations.update(bundled)
-    return ({update_asset(edition, c) for c in configurations if c != "standard"} |
-            {update_asset(edition, c, unpacked=True) for c in configurations if publishes_unpacked(edition, c)})
+def extra_update_assets(edition, channel="rolling"):
+    """The update ELFs a channel carries beside its kit's own: every updatable variant, packed and unpacked,
+    and on the rolling channel the old -UNPACKED names unpacked loaders installed before -UNPAKT ask for."""
+    names = ({update_asset(edition, c) for c in UPDATABLE[edition] if c != "standard"} |
+             {update_asset(edition, c, unpacked=True) for c in UPDATABLE[edition]})
+    return names | ({old for old, new in LEGACY_UNPACKED.items() if new in names} if channel == "rolling" else set())
 
 
-def bundle_configurations(root, expected_sha, *, editions=None, compiler=None):
+def channel_of(manifest):
+    """The release a build was made for (tools/stable_channel.py); builds from before the field are rolling."""
+    return manifest.get("release_channel", "rolling")
+
+
+def common_version(manifest):
+    """The version a build shows without its LOCALVERSION (edition, compiler, configuration):
+    v1.3.0-4400-abcdef0 for every build of one stable cut, so a variant from another cut never joins it."""
+    version = manifest.get("version", "")
+    version = version.split('"')[1] if '"' in version else version
+    head, marker, _ = version.partition("-PS2BUILD-")
+    return head if marker else None
+
+
+def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, channel="rolling"):
     """Pack each edition's configuration builds into its verified release folder."""
     for edition in (EDITIONS if editions is None else editions):
         options = EDITIONS[edition]
@@ -160,24 +181,34 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None):
             archive = path / f"RIPTOPL-{name}.zip"
             with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
                 folders = [(c, "RIPTOPL.ELF", "elf_sha256", c) for c in configurations]
-                if options["ra"]:
-                    folders += [(c, "RIPTOPL-UNPACKED.ELF", "unpacked_elf_sha256", f"{c}-unpacked") for c in RA_UNPACKED]
-                for configuration, source, digest, folder in folders:
+                if name.endswith("VARIANTS"):
+                    folders += [(c, "RIPTOPL-UNPACKED.ELF", "unpacked_elf_sha256", f"{c}-unpacked")
+                                for c in UPDATABLE[edition]]
+                for configuration, source, digest, label in folders:
                     stage = root / f"variant-{edition}-{configuration}"
                     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
                     elf = (stage / source).read_bytes()
                     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
+                            or channel_of(manifest) != channel or channel_of(kit) != channel
+                            or common_version(manifest) is None or common_version(manifest) != common_version(kit)
                             or manifest["compiler"] != expected_compiler or manifest["configuration"] != configuration
                             or manifest["ps2build_version"] != kit["ps2build_version"]
                             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
                             or manifest.get(digest) != hashlib.sha256(elf).hexdigest()):
-                        raise ValueError(f"invalid configuration build: {edition}/{folder}")
-                    bundle.writestr(f"{folder}/{elf_name}", elf)
-                    bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+                        raise ValueError(f"invalid configuration build: {edition}/{label}")
                     unpacked = digest == "unpacked_elf_sha256"
+                    # Named like every loader: the folder is APP_ plus the ELF name, and the ELF is the
+                    # name Check for Updates downloads for this configuration.
+                    asset = update_asset(edition, configuration, unpacked=unpacked)
+                    write_app(bundle, asset, elf, manifest, options["title"])
                     if unpacked:
                         check_unpacked_layout(elf)
-                    publish_update_elf(path, update_asset(edition, configuration, unpacked=unpacked), elf)
+                    if update_channel(edition, configuration) is not None:
+                        # Check for Updates downloads it by name; debug builds have no updater.
+                        publish_update_elf(path, asset, elf)
+                        if channel == "rolling":
+                            for old in (old for old, new in LEGACY_UNPACKED.items() if new == asset):
+                                publish_update_elf(path, old, elf)
                 bundle.writestr("README.txt", BUNDLE_README.format(display=edition_display_name(options), elf=elf_name))
                 # Each loader embeds usmb2 (MIT) and unfs4 (BSD 2-Clause, its notice in CREDITS): the bundle
                 # carries the licences the kit ships.
@@ -185,10 +216,22 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None):
                 bundle.writestr("CREDITS", (ROOT / "CREDITS").read_bytes())
             add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
         if BUGREPORT in archives(options):
-            bundle_bug_report(root, edition, expected_sha, compiler=expected_compiler)
+            bundle_bug_report(root, edition, expected_sha, compiler=expected_compiler, channel=channel)
 
 
-def bundle_bug_report(root, edition, expected_sha, compiler=None):
+def write_app(bundle, asset, elf, manifest, channel):
+    """APP_<ELF>/ with the ELF, its manifest and the icon, music, title.cfg and APPINFO.PBT of every app
+    folder (booting this ELF), and APP_<ELF>.psu holding that folder for a memory card."""
+    title = "RiptOPL " + asset[len("RIPTOPL-"):-len(".ELF")]  # RiptOPL PADEMU0, RiptOPL RA-UNPAKT
+    files, psu = publish_lite._stage_app(asset, elf, manifest["version"].split('"')[1], title, channel)
+    folder = publish_lite.app_folder(asset)
+    for name, data in files.items():
+        bundle.writestr(f"{folder}/{name}", data)
+    bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+    bundle.writestr(f"{folder}.psu", psu)
+
+
+def bundle_bug_report(root, edition, expected_sha, compiler=None, channel="rolling"):
     """RIPTOPL-BUGREPORT.zip: the edition's diag build, unpacked, its manifest and a README on what to send."""
     expected_compiler = EDITIONS[edition]["compiler"] if compiler is None else compiler
     path = root / ("release-" + edition)
@@ -197,28 +240,28 @@ def bundle_bug_report(root, edition, expected_sha, compiler=None):
     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     elf = (stage / "RIPTOPL-UNPACKED.ELF").read_bytes()
     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
+            or channel_of(manifest) != channel
+            or common_version(manifest) is None or common_version(manifest) != common_version(kit)
             or manifest["compiler"] != expected_compiler or manifest["configuration"] != "diag"
             or manifest["ps2build_version"] != kit["ps2build_version"]
             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
             or manifest.get("unpacked_elf_sha256") != hashlib.sha256(elf).hexdigest()):
         raise ValueError(f"invalid bug-report build: {edition}")
-    check_unpacked_layout(elf)
-    publish_update_elf(path, update_asset(edition, "diag", unpacked=True), elf)
+    check_unpacked_layout(elf)  # no update asset: the bug-report build has no updater
     version = manifest["version"].split('"')[1]  # the build's full version, as its screen shows it
     readme = BUGREPORT_README.read_text(encoding="utf-8").format(
         version=version, underline="=" * len("RiptOPL bug-report build, " + version), build=EDITIONS[edition]["title"],
         elf="RIPTOPL.ELF", issues=ISSUES)
     archive = path / f"RIPTOPL-{BUGREPORT}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
-        bundle.writestr("RIPTOPL-BUGREPORT.ELF", elf)
-        bundle.writestr("BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+        write_app(bundle, "RIPTOPL-BUGREPORT.ELF", elf, manifest, EDITIONS[edition]["title"])
         bundle.writestr("README.txt", readme.replace("\n", "\r\n"))
         for name, source in BUGREPORT_LICENCES.items():
             bundle.writestr(name, (ROOT / source).read_bytes())
     add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
 
 
-def verify(root, expected_sha, *, editions=None, compiler=None):
+def verify(root, expected_sha, *, editions=None, compiler=None, channel="rolling"):
     candidates = []
     suites_by_compiler = {}
     for edition in (EDITIONS if editions is None else editions):
@@ -228,6 +271,7 @@ def verify(root, expected_sha, *, editions=None, compiler=None):
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
         if (manifest["repository"] != "NathanNeurotic/RiptOPL" or manifest["source_commit"] != expected_sha
                 or manifest["dirty"] or manifest["edition"] != edition or manifest["compiler"] != expected_compiler
+                or channel_of(manifest) != channel
                 or manifest["sdk"] != "ps2build" or manifest["ra"] != options["ra"]
                 or manifest.get("configuration", "standard") != "standard"):
             raise ValueError(f"invalid source/edition manifest for {edition}")
@@ -246,10 +290,7 @@ def verify(root, expected_sha, *, editions=None, compiler=None):
         elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
         psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
         kit_zip = kit_archive_name(options)
-        required = {elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", kit_zip,
-                    "LICENSE-USMB2.txt"}
-        required |= {f"RIPTOPL-{name}.zip" for name in archives(options)}
-        required |= extra_update_assets(edition)
+        required = channel_assets(edition, channel)
         if set(sums) != required or actual != required | {"SHA256SUMS.txt"}:
             raise ValueError(f"unexpected release inventory: {edition}")
         if sums[elf] != manifest["elf_sha256"]:
@@ -353,8 +394,19 @@ def included_neutrino(options, neutrino):
             "based on Neutrino v1.8.0; it replaces upstream Neutrino in the RA kits.\n\n")
 
 
-def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"):
-    """Keep release changes visible; installation detail belongs in the guides."""
+def channel_assets(edition, channel="rolling"):
+    """Every file an edition's channel folder carries before versioned names, SHA256SUMS.txt aside."""
+    options = EDITIONS[edition]
+    elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
+    psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
+    return ({elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", kit_archive_name(options),
+             "LICENSE-USMB2.txt"} | {f"RIPTOPL-{name}.zip" for name in archives(options)}
+            | extra_update_assets(edition, channel))
+
+
+def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL", names=None):
+    """Recommended downloads first, then a table of every file the release carries (release_table.py),
+    built from the published names so it cannot drift from the assets; then the changes."""
     base = f"https://github.com/{repo}"
     history = git("log", "--no-merges", "-10", "--format=%H%x00%s", sha, "--")
     changes = []
@@ -364,44 +416,31 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
         changes.append(f"- {title} ([{commit[:8]}]({base}/commit/{commit}))")
     if not changes:
         raise ValueError("Release commit has no changelog entries")
+    edition = next(e for e, o in EDITIONS.items() if o is options)
+    if names is None:
+        names = [versioned(n, version) for n in channel_assets(edition)] + ["SHA256SUMS.txt"]
     elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
-    psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
     downloads = f"{base}/releases/download/{options['tag']}"
     display = edition_display_name(options)
     kit_zip = versioned(kit_archive_name(options), version)
+    recommended = [(elf, "already installed: replace your " + elf + ", or use Check for Updates in RiptOPL.")]
     return (
         f"**{display}** `{version}` - Development build [{sha[:8]}]({base}/commit/{sha}).\n\n"
         # First, so a reader can take the standard kit without reading on (jolek, 2026-11-10).
-        f"**Recommended download:** [{kit_zip}]({downloads}/{kit_zip})"
-        " - the standard full install kit. Everything below is optional.\n\n"
-        "## Changes\n\n" + "\n".join(changes)
-        + f"\n\n[Full history]({base}/commits/{sha})\n\n"
-        "## Downloads\n\n"
-        f"- [Full install kit]({downloads}/{kit_zip}) - loader and companions.\n"
-        + (f"- [Bug-report build]({downloads}/RIPTOPL-{BUGREPORT}-{version}.zip) - RiptOPL will not start or freezes? "
-           "This build shows each start-up step on screen and writes a report; its README says what to send.\n"
-           if BUGREPORT in archives(options) else "")
-        + f"- [Loader ELF]({downloads}/{elf}) - update an existing installation.\n"
-        f"- [Memory-card app]({downloads}/{psu}) - PSU import.\n"
-        # The standalone ELF and PSU go out as single files: this line is their notice that the loader uses
-        # usmb2 under the MIT licence, whose notice must travel with copies, and it links the licence published beside them.
-        f"- [usmb2 licence]({downloads}/LICENSE-USMB2.txt) - every loader embeds "
-        "[usmb2](https://github.com/sahlberg/usmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
-        "used under the MIT licence.\n"
+        + release_table.tables(names, downloads, version, kit_zip, recommended,
+                               kit_why=release_table.KIT_WHY + (" RetroAchievements needs this kit: it carries the RA "
+                                                                 "runtime." if options["ra"] else ""))
         # Every published loader links Mbed TLS (RA lookup or Check for Updates): its Apache-2.0 licence,
-        # pinned to the built commit, for those who take only the standalone ELF or PSU.
-        f"- [Mbed TLS licence]({base}/blob/{sha}/third_party/mbedtls/LICENSE) - every loader here links "
-        "[Mbed TLS](https://github.com/Mbed-TLS/mbedtls), used under the Apache-2.0 licence.\n"
-        f"- [Languages]({downloads}/RIPTOPL-LANGS-{version}.zip) - translations and their fonts.\n"
-        + "".join(f"- [{name.replace('-', ' ').title().replace('Ra ', 'RA ')}]({downloads}/RIPTOPL-{name}-{version}.zip) - {what}.\n"
-                  for name, _, what in bundles(options))
-        + "".join(f"- {other['label']} theme: " + ", ".join(f"[{what}]({downloads}/{versioned(name, version)})" for what, name in
-                  zip(("install kit", "ELF", "app", *(what for _, _, what in bundles(other))),
-                      companion_assets(other).values())) + ".\n"
-                  for other in EDITIONS.values() if EDITIONS.get(other.get("into")) is options)
-        + "\n"
+        # pinned to the built commit, for those who take only the standalone ELF or PSU. The usmb2 licence
+        # (MIT), whose notice must travel with copies of the loaders, is LICENSE-USMB2.txt in the table.
+        + f"Every loader here links [Mbed TLS](https://github.com/Mbed-TLS/mbedtls), used under the "
+        f"[Apache-2.0 licence]({base}/blob/{sha}/third_party/mbedtls/LICENSE), and embeds "
+        "[usmb2](https://github.com/sahlberg/usmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
+        "used under the MIT licence.\n\n"
         + included_neutrino(options, neutrino)
-        + "[Installation and guides](https://nathanneurotic.github.io/RiptOPL/) - "
+        + "## Changes\n\n" + "\n".join(changes)
+        + f"\n\n[Full history]({base}/commits/{sha})\n\n"
+        "[Installation and guides](https://nathanneurotic.github.io/RiptOPL/) - "
         f"[Wiki]({base}/wiki)\n"
     )
 
@@ -598,15 +637,37 @@ def successor_run(repo, polls=SUCCESSOR_POLLS, workflow="rolling-release.yml"):
     return None
 
 
-def lite_candidates(root, sha, compiler="gcc"):
+def lite_candidates(root, sha, compiler="gcc", channel="rolling"):
     """rolling-lite: the RiptOPLite ELFs and RA ZIPs, checked against the same commit and SDK as the kits."""
-    path, _ = publish_lite.assemble(root, sha, compiler=compiler)
+    path, _ = publish_lite.assemble(root, sha, compiler=compiler, channel=channel)
     return [(LITE, LITES[LITE], path, publish_lite.verify(path))]
 
 
-def latest_release_arg(edition):
-    """Only RiptOPL (rolling) is presented as GitHub's Latest release."""
-    return "--latest=" + ("true" if edition == "riptopl" else "false")
+def latest_release_arg(edition, stable_exists=False):
+    """Only RiptOPL (rolling) is presented as GitHub's Latest release, until a stable release exists:
+    from then on Latest is always the newest stable release (publish_stable.py)."""
+    return "--latest=" + ("true" if edition == "riptopl" and not stable_exists else "false")
+
+
+# A stable release's tag (publish_stable.py): v1.3.0.
+STABLE_TAG = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+")
+
+
+def stable_release_exists(repo):
+    """True once GitHub's Latest release is a stable one. The rolling channels are then pre-releases, so
+    GitHub never points Latest (which every stable build's Check for Updates reads) at one of them.
+    Before the first stable release they stay as they were, so the repository keeps a Latest release."""
+    result = subprocess.run(["gh", "api", f"repos/{repo}/releases/latest", "--jq", ".tag_name"],
+                            capture_output=True, text=True)
+    if result.returncode == 0:
+        return bool(STABLE_TAG.fullmatch(result.stdout.strip()))
+    if "HTTP 404" in result.stderr:
+        return False
+    raise RuntimeError(f"cannot read the Latest release: {result.stderr.strip()}")
+
+
+def channel_flags(edition, stable_exists):
+    return ("--prerelease=" + ("true" if stable_exists else "false"), latest_release_arg(edition, stable_exists))
 
 
 def main():
@@ -634,13 +695,15 @@ def main():
         print(f"::notice::rebuild/main moved on from {sha[:8]} during this run; nothing published. "
               f"The newer head publishes from {successor}")
         return
+    stable_exists = stable_release_exists(repo)
     for edition, options, path, sums in candidates:
         tag = options["tag"]
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
+        names = [p.name for p in path.iterdir() if p.is_file()]
         if edition == LITE:
-            notes = publish_lite.release_notes(sha, version, git, repo)
+            notes = publish_lite.release_notes(sha, version, git, repo, names)
         else:
-            notes = release_notes(options, sha, bundled_neutrino(manifest), version, repo)
+            notes = release_notes(options, sha, bundled_neutrino(manifest), version, repo, names)
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".md", delete=False) as stream:
             stream.write(notes)
             notes_path = Path(stream.name)
@@ -649,7 +712,7 @@ def main():
             assets = [str(p) for p in sorted(path.iterdir()) if p.is_file()]
             upload_verified(repo, tag, sha, "RiptOPLite" if edition == LITE else options["title"], notes_path, assets, exists)
             update_tag(repo, tag, sha)
-            flags = ("--prerelease=false", latest_release_arg(edition))
+            flags = channel_flags(edition, stable_exists)
             title = "RiptOPLite" if edition == LITE else options["title"]
             gh("release", "edit", tag, "--repo", repo, "--title", title, "--notes-file", str(notes_path),
                "--draft=false", *flags)
