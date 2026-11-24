@@ -1336,6 +1336,15 @@ static DWORD find_bitmap (	/* 0:Not found, 2..:Cluster block found, 0xFFFFFFFF:D
 		if (move_window(fs, fs->bitbase + val / 8 / SS(fs)) != FR_OK) return 0xFFFFFFFF;
 		i = val / 8 % SS(fs); bm = 1 << (val % 8);
 		do {
+			/* RiptOPL: a byte whose eight clusters are all in use can neither start nor extend a
+			   free run, so pass it in one step. Testing it bit by bit kept the IOP busy for seconds
+			   on a large, mostly full volume, and the first allocation after a mount scans from the
+			   start of the bitmap. The step never crosses the wrap or the cluster the scan started
+			   from, so both termination tests below still see them. */
+			if (bm == 1 && fs->win[i] == 0xFF && val + 8 < fs->n_fatent - 2 && (clst <= val || clst > val + 8)) {
+				val += 8; scl = val; ctr = 0;
+				continue;
+			}
 			do {
 				bv = fs->win[i] & bm; bm <<= 1;		/* Get bit value */
 				if (++val >= fs->n_fatent - 2) {	/* Next cluster (with wrap-around) */
