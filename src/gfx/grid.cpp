@@ -420,7 +420,8 @@ static void drawFrameBorder(int x, int y, int w, int h, u64 color)
 
 // ---- the device sidebar (RIPPS2 build 113's category sidebar, by akilluminati47): the device pages as glyphs
 // in a slim bar on the grid's left, the one on screen lit. Left from the grid's first column opens it into a
-// drawer with the devices' names; Up/Down there switch device, Right, Cross or Circle go back to the covers.
+// drawer with the devices' names; Up/Down there pick a device, Right or Cross open it, Circle goes back to the
+// covers. The highlighted name ends in "->" to say Right works.
 // The glyphs are RIPPS2's atlas (its elf/theme/make_sidebar_icons.py): 32 px cells, row 0 the lines, row 1
 // their glow.
 extern unsigned char grid_devices_png[];
@@ -536,9 +537,14 @@ void gridDrawDeviceSidebar(struct menu_list *menu, int centerY, int open, struct
         }
         if (open) {
             const char *name = m->item->text_id >= 0 ? _l(m->item->text_id) : m->item->text;
-            int x = rmWideScale(GRID_BAR_W + 4);
+            int x = rmWideScale(GRID_BAR_W + 4), end = barW - rmWideScale(6);
+            if (cursor) { // the D-pad hint: Right leaves the drawer onto this device
+                end -= rmUnScaleX(fntCalcDimensions(gTheme->fonts[0], "->"));
+                fntRenderString(gTheme->fonts[0], end, y, ALIGN_VCENTER, 0, 0, "->", gTheme->selTextColor);
+                end -= rmWideScale(4);
+            }
             if (name != NULL)
-                fntRenderStringFit(gTheme->fonts[0], x, y, ALIGN_VCENTER, barW - x - rmWideScale(6), name,
+                fntRenderStringFit(gTheme->fonts[0], x, y, ALIGN_VCENTER, end - x, name,
                                    cursor ? gTheme->selTextColor : gTheme->textColor, 0);
         }
         i++;

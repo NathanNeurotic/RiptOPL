@@ -2733,8 +2733,8 @@ static void menuGridPage(int dir)
 }
 
 // The Grid's device sidebar (RIPPS2 build 113's category sidebar, akilluminati47): while it has the pad,
-// Up/Down move its highlight without changing the active page. Cross activates an inactive highlight and
-// returns to the covers; Right or Circle only returns to the covers. Drawn by grid.cpp.
+// Up/Down move its highlight without changing the active page. Cross or Right activates an inactive highlight
+// and returns to the covers; Circle only returns to the covers. Drawn by grid.cpp.
 int menuGridSidebarFocused(void)
 {
     return gGridSidebarOpen && gTheme != NULL && gTheme->gridDevices && menuPageIsGrid();
@@ -2766,13 +2766,13 @@ static void menuGridSidebarInput(void)
             gGridSidebarCursor = walk;
             sfxPlay(SFX_CURSOR);
         }
-    } else if (getKeyOn(KEY_CROSS)) {
+    } else if (getKeyOn(KEY_CROSS) || getKeyOn(KEY_RIGHT)) {
         if (gGridSidebarCursor != selected_item)
             menuActivateH(gGridSidebarCursor);
         else
             sfxPlay(SFX_CURSOR);
         gGridSidebarOpen = 0;
-    } else if (getKeyOn(KEY_RIGHT) || getKeyOn(KEY_CIRCLE)) {
+    } else if (getKeyOn(KEY_CIRCLE)) {
         gGridSidebarOpen = 0;
         sfxPlay(SFX_CURSOR);
     } else if (getKeyOn(KEY_START)) {

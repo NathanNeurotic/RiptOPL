@@ -130,6 +130,11 @@ int main() {
     CHECK(selected_item == &pages[1]);
     CHECK(itemConfigGeneration == 0 && launches == 0 && gGridSidebarOpen == 0);
 
+    resetInput(); selected_item = &pages[0]; gGridSidebarCursor = &pages[2]; gGridSidebarOpen = 1;
+    keys = KEY_RIGHT; menuGridSidebarInput(); // Right leaves onto the highlighted device, no Cross needed
+    CHECK(selected_item == &pages[2]);
+    CHECK(itemConfigGeneration == 1 && launches == 0 && gGridSidebarOpen == 0);
+
     resetInput(); selected_item = &pages[1]; gGridSidebarCursor = &pages[0]; gGridSidebarOpen = 1;
     keys = KEY_CIRCLE; menuGridSidebarInput();
     CHECK(selected_item == &pages[1]);
