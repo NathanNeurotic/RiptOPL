@@ -77,6 +77,7 @@ def expected_update_assets():
     for edition in LITES:
         for device in LITE_DEVICES:
             names.add(update_asset(edition, device=device))
+            names.add(update_asset(edition, device=device, unpacked=True))
     return names
 
 
@@ -259,64 +260,29 @@ def changes(sha, tag, base):
 
 
 def release_notes(stable, version, sha, out, neutrino, ra_neutrino, repo=REPO):
-    """A table first, so a new user picks one download and can skip the rest."""
+    """Recommended downloads first, so a new user picks one; then every file in a table (release_table.py)."""
+    import release_table
+
     base = f"https://github.com/{repo}"
     downloads = f"{base}/releases/download/v{stable}"
     v = lambda name: rolling.versioned(name, version)  # noqa: E731
-    present = {p.name for p in out.iterdir()}
-    kit, ra_kit = v(kit_archive_name(EDITIONS["riptopl"])), v(kit_archive_name(EDITIONS["ra"]))
-
-    def maybe(name, text=None):
-        if name not in present:
-            raise ValueError(f"release notes link a missing file: {name}")
-        return link(downloads, name, text)
-
-    lite_rows = "".join(
-        f"| {d['title']} | {maybe(elf_name(device))} | {maybe('APP_' + elf_name(device)[:-4] + '.psu')} | "
-        f"{maybe(v(elf_name(device, True).replace('.ELF', '.zip')))} | {maybe('APP_' + elf_name(device, True)[:-4] + '.psu')} |\n"
-        for device, d in LITE_DEVICES.items())
-    variants = sorted(n for n in present if n.endswith(".ELF")
-                      and n not in {"RIPTOPL.ELF", "RIPTOPL-RA.ELF"} and not n.startswith("RIPTOPLITE-"))
-    sources = sorted(n for n in present if "-src" in n or n.startswith("BUILD-MANIFEST") or n.startswith("LICENSE"))
+    names = [p.name for p in out.iterdir() if p.is_file()]
+    recommended = [
+        (v(kit_archive_name(EDITIONS["ra"])), "RiptOPL with RetroAchievements, with the RA runtime it needs."),
+        ("RIPTOPL.ELF", "already installed: replace your RIPTOPL.ELF, or use Check for Updates in RiptOPL.")]
     return (
         f"**RiptOPL {stable}** (`{version}`) - stable release, built from [{sha[:8]}]({base}/commit/{sha}).\n\n"
-        "## New here? Pick one\n\n"
-        "| I want | Download |\n|---|---|\n"
-        f"| **RiptOPL, everything ready to copy (most people)** | **{maybe(kit)}** |\n"
-        f"| RiptOPL with RetroAchievements | {maybe(ra_kit)} |\n"
-        "| A smaller loader for a console that plays from one device only | RiptOPLite, in the table below |\n"
-        "| To update a loader I already have | Check for Updates in its menu, or one ELF below |\n\n"
-        "Everything else here is optional.\n\n"
-        "## Updating\n\n"
+        + release_table.tables(names, downloads, version, v(kit_archive_name(EDITIONS["riptopl"])), recommended,
+                               "A console that plays from one device only? RiptOPLite, in the table below, is "
+                               "smaller and starts faster. Everything else here is optional.")
+        + "## Updating\n\n"
         "Check for Updates in this release installs only the next **stable** release, never a rolling "
         "(development) build, and always the same build you run: RiptOPL stays RiptOPL, RetroAchievements "
-        "stays RetroAchievements, a RiptOPLite build keeps its device, a variant keeps its variant.\n\n"
-        "| Loader | ELF | Memory-card app |\n|---|---|---|\n"
-        f"| RiptOPL | {maybe('RIPTOPL.ELF')} | {maybe('APP_RIPTOPL.psu')} |\n"
-        f"| RetroAchievements | {maybe('RIPTOPL-RA.ELF')} | {maybe('APP_RIPTOPL-RA.psu')} |\n\n"
-        "## RiptOPLite: one loader per game device\n\n"
-        "RiptOPL with only that device's drivers, so it is smaller and starts faster. Each loader has its own "
-        "folder, APP_ plus its ELF name (`APP_RIPTOPLITE-USB/RIPTOPLITE-USB.ELF`); the PSU makes it on a memory "
-        "card. Its first start there reads the full loader's settings from `APP_RIPTOPL` (or `APP_RIPTOPL-RA`) "
-        "beside it, once, and never changes that folder. Each RetroAchievements ZIP carries the folder and the "
-        "RA runtime it needs; its README says where they go.\n\n"
-        "| Device | RiptOPL | Memory card | RetroAchievements | RA memory card |\n|---|---|---|---|---|\n"
-        + lite_rows + "\n"
-        "## Extras\n\n"
-        f"- {maybe(v('RIPTOPL-BUGREPORT.zip'), 'Bug-report build')} - RiptOPL will not start or freezes? This "
-        "build shows each start-up step on screen and writes a report; its README says what to send.\n"
-        f"- {maybe(v('RIPTOPL-VARIANTS.zip'), 'RiptOPL variants')} - pad emulation off, DualSense and extras builds, and the loaders unpacked.\n"
-        f"- {maybe(v('RIPTOPL-DEBUG.zip'), 'RiptOPL debug builds')} - debug and diagnostic builds. They have no Check for Updates.\n"
-        f"- {maybe(v('RIPTOPL-RA-VARIANTS.zip'), 'RetroAchievements variants')} - pad emulation off, and the loaders unpacked.\n"
-        f"- {maybe(v('RIPTOPL-LANGS.zip'), 'Languages')} - translations and their fonts.\n"
-        f"- Single variant ELFs, which Check for Updates uses: {len(variants)} files named "
-        "`RIPTOPL-<VARIANT>.ELF` and `RIPTOPL-RA-<VARIANT>.ELF`. The bundles above hold the same builds.\n\n"
-        "## Source, licences and checksums\n\n"
-        + "".join(f"- {maybe(n)}\n" for n in sources) +
-        f"- {maybe('SHA256SUMS.txt')} - every file's SHA-256.\n"
-        f"- [Mbed TLS licence]({base}/blob/{sha}/third_party/mbedtls/LICENSE) - every loader here links "
-        "[Mbed TLS](https://github.com/Mbed-TLS/mbedtls), used under the Apache-2.0 licence. Every loader "
-        "embeds [usmb2](https://github.com/sahlberg/usmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
+        "stays RetroAchievements, a RiptOPLite build keeps its device, a variant keeps its variant, and a "
+        "packed or unpacked loader stays packed or unpacked.\n\n"
+        f"Every loader here links [Mbed TLS](https://github.com/Mbed-TLS/mbedtls), used under the "
+        f"[Apache-2.0 licence]({base}/blob/{sha}/third_party/mbedtls/LICENSE), and embeds "
+        "[usmb2](https://github.com/sahlberg/usmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
         "used under the MIT licence (LICENSE-USMB2.txt).\n\n"
         + rolling.included_neutrino(EDITIONS["riptopl"], neutrino)
         + rolling.included_neutrino(EDITIONS["ra"], ra_neutrino)

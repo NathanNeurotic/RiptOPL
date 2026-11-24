@@ -47,21 +47,33 @@ def kit_archive_name(options):
 
 def update_asset(edition, configuration="standard", device=None, *, unpacked=False):
     if edition in LITES:
-        return elf_name(device, edition == LITE_RA)
-    stem = "RIPTOPL-RA" if EDITIONS[edition]["ra"] else "RIPTOPL"
-    if configuration != "standard":
-        stem += "-" + configuration.upper().replace("_", "-")
-    return stem + ("-UNPACKED" if unpacked else "") + ".ELF"
+        stem = elf_name(device, edition == LITE_RA).removesuffix(".ELF")
+    else:
+        stem = "RIPTOPL-RA" if EDITIONS[edition]["ra"] else "RIPTOPL"
+        if configuration != "standard":
+            stem += "-" + configuration.upper().replace("_", "-")
+    return stem + (UNPAKT if unpacked else "") + ".ELF"
+
+
+# Unpacked builds end in -UNPAKT (APP_RIPTOPL-DS5-UNPAKT/RIPTOPL-DS5-UNPAKT.ELF); the longest folder,
+# APP_RIPTOPLITE-RA-MX4SIO-UNPAKT, is exactly the 31-character memory card limit.
+UNPAKT = "-UNPAKT"
+# Before the rename the unpacked RA loaders asked for these names: rolling-ra keeps publishing them
+# (the same bytes as the -UNPAKT build) so the copies already installed still update.
+LEGACY_UNPACKED = {"RIPTOPL-RA-UNPACKED.ELF": "RIPTOPL-RA-UNPAKT.ELF",
+                   "RIPTOPL-RA-PADEMU0-UNPACKED.ELF": "RIPTOPL-RA-PADEMU0-UNPAKT.ELF"}
 
 
 # The builds with Check for Updates, each to its own asset, packed and unpacked: the standard loader and the
 # player variants. Debug, diagnostic and bug-report builds have no updater (nothing replaces them in place).
-# RiptOPLite: the standard build of each device, packed only (update_channel).
+# RiptOPLite: the standard build of each device, packed and unpacked (update_channel).
 UPDATABLE = {"riptopl": ("standard", "pademu0", "ds5", "extras", "extras_ds5"), "ra": ("standard", "pademu0")}
 
 
 def publishes_unpacked(edition, configuration):
     """Builds also published before compression: every updatable one, and the bug-report diag build."""
+    if edition in LITES:
+        return configuration == "standard"
     return configuration in UPDATABLE.get(edition, ()) or (edition == "riptopl" and configuration == "diag")
 
 
@@ -162,7 +174,7 @@ def definition(edition, configuration="standard", toolchain=None, device=None):
             # The same asset name, from the newest stable release only (src/ui/selfupdate.cpp).
             add(main, "defines", "RIPTOPL_UPDATE_STABLE")
         if publishes_unpacked(edition, configuration):
-            add(main, "defines", f"RIPTOPL_UPDATE_RAW_ASSET={update_asset(edition, configuration, unpacked=True)}")
+            add(main, "defines", f"RIPTOPL_UPDATE_RAW_ASSET={update_asset(edition, configuration, device, unpacked=True)}")
     if edition in LITES:
         apply_lite(config, device, ROOT, options["ra"])
     elif device is not None:
@@ -312,6 +324,8 @@ def stage_lite(args, options, source, dirty, canonical, elf, output, stage):
     title = LITE_DEVICES[args.device]["title"]
     name = elf_name(args.device, options["ra"])
     shutil.copyfile(elf, stage / name)
+    # The same build before compression, published beside it with its own Check for Updates asset.
+    shutil.copyfile(output / "bin/riptopl.elf", stage / update_asset(args.edition, args.configuration, args.device, unpacked=True))
     main = next(t for t in yaml.safe_load(canonical)["targets"] if t["name"] == "riptopl")
     embedded = {entry.partition(":")[0] for entry in main["embed_irx"]}
     manifest = {
@@ -322,6 +336,8 @@ def stage_lite(args, options, source, dirty, canonical, elf, output, stage):
         "definition_sha256": hashlib.sha256(canonical.encode()).hexdigest(),
         "elf_sha256": hashlib.sha256(elf.read_bytes()).hexdigest(),
         "elf_size": elf.stat().st_size,
+        "unpacked_elf": update_asset(args.edition, args.configuration, args.device, unpacked=True),
+        "unpacked_elf_sha256": hashlib.sha256((output / "bin/riptopl.elf").read_bytes()).hexdigest(),
         "unpacked_elf_size": (output / "bin/riptopl.elf").stat().st_size,
         "embedded_irx": sorted(embedded),
         "version": (ROOT / "asm/opl_version.h").read_text().strip(),

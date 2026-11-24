@@ -15,9 +15,10 @@ import time
 import zipfile
 
 from build_configuration import CONFIGURATIONS
-from build_edition import (EDITIONS, LITES, LITE, UPDATABLE, edition_display_name, git, kit_archive_name, update_asset,
+from build_edition import (EDITIONS, LEGACY_UNPACKED, LITES, LITE, UPDATABLE, edition_display_name, git, kit_archive_name, update_asset,
                            update_channel)
 import publish_lite
+import release_table
 
 # The original's VARIANTS and DEBUG zips and its RA nopademu loader, published for every theme beside
 # its edition's kit: configurations are never channels of their own.
@@ -29,7 +30,7 @@ STANDARD_BUNDLES = (
 )
 RA_BUNDLES = (("RA-VARIANTS", ("pademu0",), "pad emulation off, and the loaders unpacked"),)
 # Each VARIANTS zip also carries its edition's updatable builds before compression (build_edition.UPDATABLE),
-# as APP_<ELF>-UNPACKED/<ELF>-UNPACKED.ELF: an unpacked loader starts without the decompression step
+# as APP_<ELF>-UNPAKT/<ELF>-UNPAKT.ELF: an unpacked loader starts without the decompression step
 # (asked for by CosmicScale, 2026-11-16), and Check for Updates keeps it unpacked.
 # The RA kits ship ORBIT's pinned RA runtime in place of upstream Neutrino; their notes link it.
 ORBIT_PIN = Path(__file__).resolve().parents[1] / "third_party/orbit-neutrino/release.json"
@@ -87,7 +88,7 @@ BUNDLE_README = ("{display} configuration builds. Each loader has its own folder
                  "PSU of the same name for a memory card. Copy a folder (or install its PSU) beside your {elf}\n"
                  "folder: its first start reads that loader's settings once and then\n"
                  "keeps its own; your {elf} folder is never changed. Check for Updates keeps each player build on\n"
-                 "its own configuration, packed or unpacked (APP_..-UNPACKED); debug builds have no updater.\n"
+                 "its own configuration, packed or unpacked (APP_..-UNPAKT); debug builds have no updater.\n"
                  "What each configuration\n"
                  "changes: https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md\n"
                  "Every loader embeds usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\n"
@@ -146,10 +147,12 @@ def publish_update_elf(path, name, elf):
     add_sum(path, name, hashlib.sha256(elf).hexdigest())
 
 
-def extra_update_assets(edition):
-    """The update ELFs a channel carries beside its kit's own: every updatable variant, packed and unpacked."""
-    return ({update_asset(edition, c) for c in UPDATABLE[edition] if c != "standard"} |
-            {update_asset(edition, c, unpacked=True) for c in UPDATABLE[edition]})
+def extra_update_assets(edition, channel="rolling"):
+    """The update ELFs a channel carries beside its kit's own: every updatable variant, packed and unpacked,
+    and on the rolling channel the old -UNPACKED names unpacked loaders installed before -UNPAKT ask for."""
+    names = ({update_asset(edition, c) for c in UPDATABLE[edition] if c != "standard"} |
+             {update_asset(edition, c, unpacked=True) for c in UPDATABLE[edition]})
+    return names | ({old for old, new in LEGACY_UNPACKED.items() if new in names} if channel == "rolling" else set())
 
 
 def channel_of(manifest):
@@ -203,6 +206,9 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
                     if update_channel(edition, configuration) is not None:
                         # Check for Updates downloads it by name; debug builds have no updater.
                         publish_update_elf(path, asset, elf)
+                        if channel == "rolling":
+                            for old in (old for old, new in LEGACY_UNPACKED.items() if new == asset):
+                                publish_update_elf(path, old, elf)
                 bundle.writestr("README.txt", BUNDLE_README.format(display=edition_display_name(options), elf=elf_name))
                 # Each loader embeds usmb2 (MIT) and unfs4 (BSD 2-Clause, its notice in CREDITS): the bundle
                 # carries the licences the kit ships.
@@ -216,7 +222,7 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
 def write_app(bundle, asset, elf, manifest, channel):
     """APP_<ELF>/ with the ELF, its manifest and the icon, music, title.cfg and APPINFO.PBT of every app
     folder (booting this ELF), and APP_<ELF>.psu holding that folder for a memory card."""
-    title = "RiptOPL " + asset[len("RIPTOPL-"):-len(".ELF")]  # RiptOPL PADEMU0, RiptOPL RA-UNPACKED
+    title = "RiptOPL " + asset[len("RIPTOPL-"):-len(".ELF")]  # RiptOPL PADEMU0, RiptOPL RA-UNPAKT
     files, psu = publish_lite._stage_app(asset, elf, manifest["version"].split('"')[1], title, channel)
     folder = publish_lite.app_folder(asset)
     for name, data in files.items():
@@ -284,10 +290,7 @@ def verify(root, expected_sha, *, editions=None, compiler=None, channel="rolling
         elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
         psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
         kit_zip = kit_archive_name(options)
-        required = {elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", kit_zip,
-                    "LICENSE-USMB2.txt"}
-        required |= {f"RIPTOPL-{name}.zip" for name in archives(options)}
-        required |= extra_update_assets(edition)
+        required = channel_assets(edition, channel)
         if set(sums) != required or actual != required | {"SHA256SUMS.txt"}:
             raise ValueError(f"unexpected release inventory: {edition}")
         if sums[elf] != manifest["elf_sha256"]:
@@ -391,8 +394,19 @@ def included_neutrino(options, neutrino):
             "based on Neutrino v1.8.0; it replaces upstream Neutrino in the RA kits.\n\n")
 
 
-def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"):
-    """Keep release changes visible; installation detail belongs in the guides."""
+def channel_assets(edition, channel="rolling"):
+    """Every file an edition's channel folder carries before versioned names, SHA256SUMS.txt aside."""
+    options = EDITIONS[edition]
+    elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
+    psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
+    return ({elf, psu, "BUILD-MANIFEST.json", "RIPTOPL-src.zip", "RIPTOPL-LANGS.zip", kit_archive_name(options),
+             "LICENSE-USMB2.txt"} | {f"RIPTOPL-{name}.zip" for name in archives(options)}
+            | extra_update_assets(edition, channel))
+
+
+def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL", names=None):
+    """Recommended downloads first, then a table of every file the release carries (release_table.py),
+    built from the published names so it cannot drift from the assets; then the changes."""
     base = f"https://github.com/{repo}"
     history = git("log", "--no-merges", "-10", "--format=%H%x00%s", sha, "--")
     changes = []
@@ -402,44 +416,31 @@ def release_notes(options, sha, neutrino, version, repo="NathanNeurotic/RiptOPL"
         changes.append(f"- {title} ([{commit[:8]}]({base}/commit/{commit}))")
     if not changes:
         raise ValueError("Release commit has no changelog entries")
+    edition = next(e for e, o in EDITIONS.items() if o is options)
+    if names is None:
+        names = [versioned(n, version) for n in channel_assets(edition)] + ["SHA256SUMS.txt"]
     elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
-    psu = "APP_RIPTOPL-RA.psu" if options["ra"] else "APP_RIPTOPL.psu"
     downloads = f"{base}/releases/download/{options['tag']}"
     display = edition_display_name(options)
     kit_zip = versioned(kit_archive_name(options), version)
+    recommended = [(elf, "already installed: replace your " + elf + ", or use Check for Updates in RiptOPL.")]
     return (
         f"**{display}** `{version}` - Development build [{sha[:8]}]({base}/commit/{sha}).\n\n"
         # First, so a reader can take the standard kit without reading on (jolek, 2026-11-10).
-        f"**Recommended download:** [{kit_zip}]({downloads}/{kit_zip})"
-        " - the standard full install kit. Everything below is optional.\n\n"
-        "## Changes\n\n" + "\n".join(changes)
-        + f"\n\n[Full history]({base}/commits/{sha})\n\n"
-        "## Downloads\n\n"
-        f"- [Full install kit]({downloads}/{kit_zip}) - loader and companions.\n"
-        + (f"- [Bug-report build]({downloads}/RIPTOPL-{BUGREPORT}-{version}.zip) - RiptOPL will not start or freezes? "
-           "This build shows each start-up step on screen and writes a report; its README says what to send.\n"
-           if BUGREPORT in archives(options) else "")
-        + f"- [Loader ELF]({downloads}/{elf}) - update an existing installation.\n"
-        f"- [Memory-card app]({downloads}/{psu}) - PSU import.\n"
-        # The standalone ELF and PSU go out as single files: this line is their notice that the loader uses
-        # usmb2 under the MIT licence, whose notice must travel with copies, and it links the licence published beside them.
-        f"- [usmb2 licence]({downloads}/LICENSE-USMB2.txt) - every loader embeds "
-        "[usmb2](https://github.com/sahlberg/usmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
-        "used under the MIT licence.\n"
+        + release_table.tables(names, downloads, version, kit_zip, recommended,
+                               kit_why=release_table.KIT_WHY + (" RetroAchievements needs this kit: it carries the RA "
+                                                                 "runtime." if options["ra"] else ""))
         # Every published loader links Mbed TLS (RA lookup or Check for Updates): its Apache-2.0 licence,
-        # pinned to the built commit, for those who take only the standalone ELF or PSU.
-        f"- [Mbed TLS licence]({base}/blob/{sha}/third_party/mbedtls/LICENSE) - every loader here links "
-        "[Mbed TLS](https://github.com/Mbed-TLS/mbedtls), used under the Apache-2.0 licence.\n"
-        f"- [Languages]({downloads}/RIPTOPL-LANGS-{version}.zip) - translations and their fonts.\n"
-        + "".join(f"- [{name.replace('-', ' ').title().replace('Ra ', 'RA ')}]({downloads}/RIPTOPL-{name}-{version}.zip) - {what}.\n"
-                  for name, _, what in bundles(options))
-        + "".join(f"- {other['label']} theme: " + ", ".join(f"[{what}]({downloads}/{versioned(name, version)})" for what, name in
-                  zip(("install kit", "ELF", "app", *(what for _, _, what in bundles(other))),
-                      companion_assets(other).values())) + ".\n"
-                  for other in EDITIONS.values() if EDITIONS.get(other.get("into")) is options)
-        + "\n"
+        # pinned to the built commit, for those who take only the standalone ELF or PSU. The usmb2 licence
+        # (MIT), whose notice must travel with copies of the loaders, is LICENSE-USMB2.txt in the table.
+        + f"Every loader here links [Mbed TLS](https://github.com/Mbed-TLS/mbedtls), used under the "
+        f"[Apache-2.0 licence]({base}/blob/{sha}/third_party/mbedtls/LICENSE), and embeds "
+        "[usmb2](https://github.com/sahlberg/usmb2) by [Ronnie Sahlberg](https://github.com/sahlberg), "
+        "used under the MIT licence.\n\n"
         + included_neutrino(options, neutrino)
-        + "[Installation and guides](https://nathanneurotic.github.io/RiptOPL/) - "
+        + "## Changes\n\n" + "\n".join(changes)
+        + f"\n\n[Full history]({base}/commits/{sha})\n\n"
+        "[Installation and guides](https://nathanneurotic.github.io/RiptOPL/) - "
         f"[Wiki]({base}/wiki)\n"
     )
 
@@ -698,10 +699,11 @@ def main():
     for edition, options, path, sums in candidates:
         tag = options["tag"]
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
+        names = [p.name for p in path.iterdir() if p.is_file()]
         if edition == LITE:
-            notes = publish_lite.release_notes(sha, version, git, repo)
+            notes = publish_lite.release_notes(sha, version, git, repo, names)
         else:
-            notes = release_notes(options, sha, bundled_neutrino(manifest), version, repo)
+            notes = release_notes(options, sha, bundled_neutrino(manifest), version, repo, names)
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".md", delete=False) as stream:
             stream.write(notes)
             notes_path = Path(stream.name)

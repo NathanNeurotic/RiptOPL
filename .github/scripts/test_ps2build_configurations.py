@@ -280,8 +280,11 @@ class PublisherTests(unittest.TestCase):
             self.variants(root)
             publish_editions.bundle_configurations(root, self.sha)
             self.assertEqual(len(publish_editions.verify(root, self.sha)), 2)
-            self.assertEqual((root / "release-ra/RIPTOPL-RA-UNPACKED.ELF").read_bytes(),
+            self.assertEqual((root / "release-ra/RIPTOPL-RA-UNPAKT.ELF").read_bytes(),
                              (root / "variant-ra-standard/RIPTOPL-UNPACKED.ELF").read_bytes())
+            # Unpacked RA loaders installed before -UNPAKT ask for the old names: rolling-ra keeps them, same bytes.
+            for old, new in editions.LEGACY_UNPACKED.items():
+                self.assertEqual((root / f"release-ra/{old}").read_bytes(), (root / f"release-ra/{new}").read_bytes())
             self.assertEqual((root / "release-ra/RIPTOPL-RA-PADEMU0.ELF").read_bytes(),
                              (root / "variant-ra-pademu0/RIPTOPL.ELF").read_bytes())
             # Every player build updates to itself, packed and unpacked; debug and bug-report builds have no update ELF.
@@ -290,13 +293,13 @@ class PublisherTests(unittest.TestCase):
                                  (root / f"variant-riptopl-{configuration}/RIPTOPL-UNPACKED.ELF").read_bytes())
             self.assertEqual(sorted(p.name for p in (root / "release-riptopl").glob("RIPTOPL-*.ELF")),
                              sorted(["RIPTOPL-PADEMU0.ELF", "RIPTOPL-DS5.ELF", "RIPTOPL-EXTRAS.ELF", "RIPTOPL-EXTRAS-DS5.ELF",
-                                     "RIPTOPL-UNPACKED.ELF", "RIPTOPL-PADEMU0-UNPACKED.ELF", "RIPTOPL-DS5-UNPACKED.ELF",
-                                     "RIPTOPL-EXTRAS-UNPACKED.ELF", "RIPTOPL-EXTRAS-DS5-UNPACKED.ELF"]))
+                                     "RIPTOPL-UNPAKT.ELF", "RIPTOPL-PADEMU0-UNPAKT.ELF", "RIPTOPL-DS5-UNPAKT.ELF",
+                                     "RIPTOPL-EXTRAS-UNPAKT.ELF", "RIPTOPL-EXTRAS-DS5-UNPAKT.ELF"]))
             for edition in ("riptopl",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("APP_RIPTOPL-DS5/RIPTOPL-DS5.ELF"), b"\x7fELFds5")
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 9)
-                    self.assertEqual(bundle.read("APP_RIPTOPL-EXTRAS-DS5-UNPACKED/RIPTOPL-EXTRAS-DS5-UNPACKED.ELF"),
+                    self.assertEqual(bundle.read("APP_RIPTOPL-EXTRAS-DS5-UNPAKT/RIPTOPL-EXTRAS-DS5-UNPAKT.ELF"),
                                      unpacked_elf() + b"extras_ds5")
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-DEBUG.zip") as bundle:
@@ -324,9 +327,9 @@ class PublisherTests(unittest.TestCase):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
                     self.assertEqual(bundle.read("APP_RIPTOPL-RA-PADEMU0/RIPTOPL-RA-PADEMU0.ELF"), b"\x7fELFpademu0")
                     # The standard and pademu0 RA loaders also ship unpacked, each with its manifest.
-                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-UNPACKED/RIPTOPL-RA-UNPACKED.ELF"), unpacked_elf() + b"standard")
-                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-PADEMU0-UNPACKED/RIPTOPL-RA-PADEMU0-UNPACKED.ELF"), unpacked_elf() + b"pademu0")
-                    self.assertIn("APP_RIPTOPL-RA-PADEMU0-UNPACKED/BUILD-MANIFEST.json", bundle.namelist())
+                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-UNPAKT/RIPTOPL-RA-UNPAKT.ELF"), unpacked_elf() + b"standard")
+                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-PADEMU0-UNPAKT/RIPTOPL-RA-PADEMU0-UNPAKT.ELF"), unpacked_elf() + b"pademu0")
+                    self.assertIn("APP_RIPTOPL-RA-PADEMU0-UNPAKT/BUILD-MANIFEST.json", bundle.namelist())
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 3)
                     self.assertIn("RIPTOPL-RA.ELF", bundle.read("README.txt").decode())
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")

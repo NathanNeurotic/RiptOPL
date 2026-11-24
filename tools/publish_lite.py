@@ -20,7 +20,7 @@ import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
-from build_edition import LITE, LITE_RA, LITES, EDITIONS
+from build_edition import LITE, LITE_RA, LITES, EDITIONS, update_asset
 from lite_devices import DEVICES, elf_name
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,7 +60,12 @@ Problems: {issues}
 """
 
 
-def _check(manifest, edition, device, sha, kit, elf_bytes, compiler="gcc", channel="rolling"):
+def unpacked_name(device, ra=False):
+    """The same build before compression: RIPTOPLITE[-RA]-<DEVICE>-UNPAKT.ELF (build_edition.update_asset)."""
+    return update_asset(LITE_RA if ra else LITE, "standard", device, unpacked=True)
+
+
+def _check(manifest, edition, device, sha, kit, elf_bytes, compiler="gcc", channel="rolling", unpacked=None):
     if (manifest.get("repository") != "NathanNeurotic/RiptOPL" or manifest.get("source_commit") != sha
             or manifest.get("release_channel", "rolling") != channel
             or manifest.get("dirty") or manifest.get("edition") != edition or manifest.get("device") != device
@@ -68,7 +73,9 @@ def _check(manifest, edition, device, sha, kit, elf_bytes, compiler="gcc", chann
             or manifest.get("theme") != LITES[edition]["theme"] or manifest.get("ra") != LITES[edition]["ra"]
             or any(manifest.get(field) != kit.get(field) for field in SDK_SUITE)
             or manifest.get("elf") != elf_name(device, LITES[edition]["ra"])
-            or manifest.get("elf_sha256") != hashlib.sha256(elf_bytes).hexdigest()):
+            or manifest.get("elf_sha256") != hashlib.sha256(elf_bytes).hexdigest()
+            or (unpacked is not None and (manifest.get("unpacked_elf") != unpacked_name(device, LITES[edition]["ra"])
+                                          or manifest.get("unpacked_elf_sha256") != hashlib.sha256(unpacked).hexdigest()))):
         raise ValueError(f"invalid lite build: {edition}/{device}")
 
 
@@ -130,38 +137,35 @@ def assemble(root, sha, compiler="gcc", channel="rolling"):
         if "neutrino/ORBIT-RA.txt" not in runtime or not any(n.lower().endswith("raagent.irx") for n in runtime):
             raise ValueError("RA install kit carries no ORBIT runtime")
         for device, options in DEVICES.items():
-            stage = root / f"lite-{device}"
-            name = elf_name(device)
-            elf = (stage / name).read_bytes()
-            manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-            _check(manifest, LITE, device, sha, ra_kit_manifest, elf, compiler, channel)
-            (path / name).write_bytes(elf)
-            manifests[name] = manifest
-            _, psu = _stage_app(name, elf, _version(manifest), f"RiptOPLite {options['title']}")
-            (path / f"{app_folder(name)}.psu").write_bytes(psu)
-
-            stage = root / f"lite_ra-{device}"
-            name = elf_name(device, ra=True)
-            elf = (stage / name).read_bytes()
-            manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-            _check(manifest, LITE_RA, device, sha, ra_kit_manifest, elf, compiler, channel)
-            (path / name).write_bytes(elf)
-            version = _version(manifest)
-            folder = app_folder(name)
-            files, psu = _stage_app(name, elf, version, f"RiptOPLite RA {options['title']}")
-            (path / f"{folder}.psu").write_bytes(psu)
-            readme = RA_README.format(title=options["title"], version=version, folder=folder, issues=ISSUES,
-                                      underline="=" * len(f"RiptOPLite RetroAchievements {options['title']}, {version}"))
-            archive = path / name.replace(".ELF", ".zip")
-            with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
-                for file, data in files.items():
-                    bundle.writestr(f"APPS/{folder}/{file}", data)
-                bundle.writestr(f"{folder}.psu", psu)
-                bundle.writestr("BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
-                bundle.writestr("README.txt", readme.replace("\n", "\r\n"))
-                for entry in (*runtime, *RA_KIT_FILES):
-                    bundle.writestr(entry, kit.read(entry))
-            manifests[archive.name] = manifest
+            for edition, ra, label in ((LITE, False, "RiptOPLite"), (LITE_RA, True, "RiptOPLite RA")):
+                stage = root / f"{edition}-{device}"
+                manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
+                version = _version(manifest)
+                packed = elf_name(device, ra)
+                builds = ((packed, (stage / packed).read_bytes(), f"{label} {options['title']}"),
+                          (unpacked_name(device, ra), (stage / unpacked_name(device, ra)).read_bytes(),
+                           f"{label} {options['title']} UNPAKT"))
+                _check(manifest, edition, device, sha, ra_kit_manifest, builds[0][1], compiler, channel, builds[1][1])
+                for name, elf, title in builds:
+                    (path / name).write_bytes(elf)
+                    manifests[name] = manifest
+                    folder = app_folder(name)
+                    files, psu = _stage_app(name, elf, version, title)
+                    (path / f"{folder}.psu").write_bytes(psu)
+                    if not ra:
+                        continue
+                    readme = RA_README.format(title=options["title"], version=version, folder=folder, issues=ISSUES,
+                                              underline="=" * len(f"RiptOPLite RetroAchievements {options['title']}, {version}"))
+                    archive = path / name.replace(".ELF", ".zip")
+                    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
+                        for file, data in files.items():
+                            bundle.writestr(f"APPS/{folder}/{file}", data)
+                        bundle.writestr(f"{folder}.psu", psu)
+                        bundle.writestr("BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+                        bundle.writestr("README.txt", readme.replace("\n", "\r\n"))
+                        for entry in (*runtime, *RA_KIT_FILES):
+                            bundle.writestr(entry, kit.read(entry))
+                    manifests[archive.name] = manifest
         (path / "LICENSE-MBEDTLS.txt").write_bytes(kit.read("LICENSE-MBEDTLS.txt"))
     versions = {_common_version(m) for m in manifests.values()} | {_common_version(ra_kit_manifest)}
     if len(versions) != 1:
@@ -178,9 +182,10 @@ def assemble(root, sha, compiler="gcc", channel="rolling"):
 def expected_assets():
     names = {"BUILD-MANIFEST.json", "LICENSE-MBEDTLS.txt", "LICENSE-USMB2.txt"}
     for device in DEVICES:
-        ra = elf_name(device, ra=True)
-        names |= {elf_name(device), ra, ra.replace(".ELF", ".zip"),
-                  f"{app_folder(elf_name(device))}.psu", f"{app_folder(ra)}.psu"}
+        for elf in (elf_name(device), unpacked_name(device)):
+            names |= {elf, f"{app_folder(elf)}.psu"}
+        for elf in (elf_name(device, ra=True), unpacked_name(device, ra=True)):
+            names |= {elf, f"{app_folder(elf)}.psu", elf.replace(".ELF", ".zip")}
     return names
 
 
@@ -199,7 +204,10 @@ def verify(path):
     return sums
 
 
-def release_notes(sha, version, git, repo="NathanNeurotic/RiptOPL"):
+def release_notes(sha, version, git, repo="NathanNeurotic/RiptOPL", names=None):
+    """Recommended downloads, then every file in a table (release_table.py) built from the published names."""
+    import release_table
+
     base = f"https://github.com/{repo}"
     downloads = f"{base}/releases/download/{TAG}"
     changes = []
@@ -209,29 +217,25 @@ def release_notes(sha, version, git, repo="NathanNeurotic/RiptOPL"):
         changes.append(f"- {title} ([{commit[:8]}]({base}/commit/{commit}))")
     if not changes:
         raise ValueError("Release commit has no changelog entries")
-    def psu(elf):
-        return f"[{app_folder(elf)}.psu]({downloads}/{app_folder(elf)}.psu)"
-
-    rows = "".join(
-        f"| {options['title']} | [{elf_name(device)}]({downloads}/{elf_name(device)}) | {psu(elf_name(device))} | "
-        f"[{elf_name(device, True).replace('.ELF', '.zip')}]({downloads}/{elf_name(device, True).replace('.ELF', f'-{version}.zip')}) |\n"
-        for device, options in DEVICES.items())
+    if names is None:
+        names = [n.replace(".zip", f"-{version}.zip") for n in expected_assets()] + ["SHA256SUMS.txt"]
+    kit = f"{base}/releases/download/{EDITIONS['riptopl']['tag']}/RIPTOPL-{version}.zip"
+    recommended = [(elf_name("usb"), "a smaller loader for a console that plays from a USB drive only. Every other "
+                    "device has its own row in the Loaders list; take the one your games are on."),
+                   (elf_name("usb", True).replace(".ELF", f"-{version}.zip"),
+                    "RetroAchievements on a USB drive: take the ZIP, it carries the RA runtime the loader needs.")]
     return (
         f"**RiptOPLite** `{version}` - Development build [{sha[:8]}]({base}/commit/{sha}).\n\n"
         "One loader per game device, for consoles that only play from one. Each is RiptOPL with "
         "that device's drivers alone, so it is smaller and starts faster; Memory Card (MMCE) and network "
         "modules stay in every build. HDD covers both APA and exFAT drives and DESR DVR games; UDPFS covers "
         "Files and IMG.\n\n"
-        "## Downloads\n\n"
-        "| Device | RiptOPL | Memory card | RetroAchievements |\n|---|---|---|---|\n" + rows +
-        "\nEach loader has its own folder, named APP_ plus its ELF name: `RIPTOPLITE-USB.ELF` goes in "
-        "`APP_RIPTOPLITE-USB`, `RIPTOPLITE-RA-USB.ELF` in `APP_RIPTOPLITE-RA-USB`. The PSU makes that folder on a "
-        "memory card. RetroAchievements needs files outside the loader (NULD's (formerly ORBIT) Neutrino RA "
-        "runtime), so each RA download is a ZIP that carries them and the folder; its README says where they go.\n\n"
-        "The first time a RiptOPLite loader starts from its own folder, it reads the full loader's settings from "
+        + release_table.tables(names, downloads, version, kit, recommended,
+                               kit_why="Not sure what to pick? Take the full RiptOPL kit. It plays from every device, "
+                               "has everything ready to copy, and this page is optional.")
+        + "The first time a RiptOPLite loader starts from its own folder, it reads the full loader's settings from "
         "`APP_RIPTOPL` (or `APP_RIPTOPL-RA`) beside it, if there are any, and saves in its own folder from then "
-        "on. The full loader's folder is never changed or deleted. A RiptOPLite ELF kept in the full loader's "
-        "folder works as before.\n\n"
+        "on. The full loader's folder is never changed or deleted.\n\n"
         "## Changes\n\n" + "\n".join(changes)
         + f"\n\n[Full history]({base}/commits/{sha})\n\n"
         "[Installation and guides](https://nathanneurotic.github.io/RiptOPL/) - "

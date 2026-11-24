@@ -127,10 +127,13 @@ def make_artifacts(root, channel="stable", stable="1.3.0", tamper=None):
             manifest = {"repository": "NathanNeurotic/RiptOPL", "source_commit": SHA, "dirty": False, "edition": edition,
                         "device": device, "compiler": "gcc", "configuration": "standard", "theme": options["theme"],
                         "ra": options["ra"], **SUITE, "elf": name, "elf_sha256": hashlib.sha256(elf).hexdigest(),
+                        "unpacked_elf": publish_lite.unpacked_name(device, options["ra"]),
+                        "unpacked_elf_sha256": hashlib.sha256(elf + b"-unpakt").hexdigest(),
                         "release_channel": "rolling" if tamper == ("lite", edition, device) else channel,
                         "version": version_line(f"{options['title']}-{lite.DEVICES[device]['title']}-GCC", stable=stable)}
             (stage / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
             (stage / name).write_bytes(elf)
+            (stage / publish_lite.unpacked_name(device, options["ra"])).write_bytes(elf + b"-unpakt")
 
 
 def history(*args):
@@ -182,7 +185,8 @@ class StableReleaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             version, out, _ = (lambda root: (make_artifacts(root), cut(root))[1])(Path(temp))
             psus = sorted(p.name for p in out.iterdir() if p.suffix == ".psu")
-            self.assertEqual(len(psus), 2 + 2 * len(lite.DEVICES))
+            self.assertEqual(len(psus), 2 + 4 * len(lite.DEVICES))  # packed and unpacked, standard and RA
+            self.assertIn("APP_RIPTOPLITE-RA-MX4SIO-UNPAKT.psu", psus)
             self.assertIn("APP_RIPTOPLITE-RA-USB.psu", psus)
         with tempfile.TemporaryDirectory() as temp:  # a kit whose title.cfg boots another ELF
             make_artifacts(Path(temp), tamper=("cfg", "riptopl"))
@@ -224,11 +228,14 @@ class StableReleaseTests(unittest.TestCase):
             for asset in publish_stable.expected_update_assets() | {publish_stable.MARKER}:
                 self.assertIn(asset, names)
                 self.assertEqual(publish_stable.updater_view(sums, asset)[1], 4400, asset)
-            # RiptOPL 5 builds and RA 2, each packed and unpacked, and 16 RiptOPLite: 10 + 4 + 16.
-            self.assertEqual(len(publish_stable.expected_update_assets()), 30)
+            # RiptOPL 5 builds and RA 2, and 16 RiptOPLite, each packed and unpacked: 10 + 4 + 32.
+            self.assertEqual(len(publish_stable.expected_update_assets()), 46)
             # Debug and bug-report builds have no updater, so no single ELF of theirs is published.
             self.assertFalse({"RIPTOPL-DEBUG-UART.ELF", "RIPTOPL-DIAG.ELF", "RIPTOPL-DIAG-UNPACKED.ELF"} & names)
-            self.assertIn("RIPTOPL-EXTRAS-DS5-UNPACKED.ELF", names)
+            self.assertIn("RIPTOPL-EXTRAS-DS5-UNPAKT.ELF", names)
+            self.assertIn("RIPTOPLITE-RA-MX4SIO-UNPAKT.ELF", names)
+            # The old -UNPACKED names serve rolling builds installed before the rename, never stable.
+            self.assertFalse({n for n in names if "UNPACKED" in n})
             # Kits, bundles, Lite RA zips, languages and sources, all versioned.
             for name in ("RIPTOPL-v1.3.0-4400.zip", "RIPTOPL-RetroAchievements-v1.3.0-4400.zip",
                          "RIPTOPL-VARIANTS-v1.3.0-4400.zip", "RIPTOPL-DEBUG-v1.3.0-4400.zip",
@@ -243,15 +250,16 @@ class StableReleaseTests(unittest.TestCase):
             # The marker is listed, so a stable updater accepts this release.
             self.assertIn("stable", (out / publish_stable.MARKER).read_text())
 
-            # Notes: the pick-one table first, the full kit recommended, every link to a real file.
+            # Notes: the recommended downloads first, then every file in the generated tables.
             self.assertTrue(notes.startswith("**RiptOPL 1.3.0** (`v1.3.0-4400`) - stable release"))
-            self.assertLess(notes.index("## New here? Pick one"), notes.index("## Updating"))
-            self.assertIn("| **RiptOPL, everything ready to copy (most people)** | **[RIPTOPL-v1.3.0-4400.zip]"
-                          "(https://github.com/NathanNeurotic/RiptOPL/releases/download/v1.3.0/RIPTOPL-v1.3.0-4400.zip)** |", notes)
-            self.assertIn("| Device | RiptOPL | Memory card | RetroAchievements | RA memory card |", notes)
+            self.assertLess(notes.index("## Recommended downloads"), notes.index("<strong>Loaders</strong>"))
+            self.assertLess(notes.index("<strong>Loaders</strong>"), notes.index("## Updating"))
+            self.assertIn("- **[RIPTOPL-v1.3.0-4400.zip]"
+                          "(https://github.com/NathanNeurotic/RiptOPL/releases/download/v1.3.0/RIPTOPL-v1.3.0-4400.zip)** - Not sure what to pick?", notes)
+            self.assertIn("| RIPTOPLITE-RA-MX4SIO | ", notes)
+            linked = set(re.findall(r"/releases/download/v1\.3\.0/([^)\s]+)\)", notes))
+            self.assertEqual(linked, names)  # every file in the release has a link, and nothing else
             self.assertIn("never a rolling", notes)
-            for target in re.findall(r"/releases/download/v1\.3\.0/([^)\s]+)\)", notes):
-                self.assertIn(target, names)
             self.assertIn(f"Included build: {Path(PIN['asset']).stem} -- [NULD", notes)
             self.assertIn("Included build: v1.8.0 -- Neutrino.", notes)
             self.assertIn("The first stable release.", notes)
