@@ -53,6 +53,9 @@
 #include "include/tar.h"        // tarInvalidate -- re-arm the .tar probe when the toggle flips
 #include "include/grid.h"       // GRID_LAYOUTS -- Grid Layout's presets
 #include "include/nettime.h"    // netTimeFetch -- Date and Time: Set from Internet
+#ifdef RIPTOPL_UPDATER
+#include "include/selfupdate.h" // selfUpdateTakeNic -- Set from Internet with UDPBD or UDPFS on
+#endif
 #include "include/riptlite.h"   // LITE_HAS_NET_SOURCE / LITE_HAS_SMB_SHARE -- the Network page in a RiptOPLite build
 #include <limits.h>
 #include <strings.h> // strcasecmp: the disc list drops each CUE name's .cue
@@ -2323,10 +2326,20 @@ int guiShowDateTime(void)
 
     while ((result = diaExecuteDialog(diaDateTimeConfig, -1, 1, NULL)) == UIID_BTN_OK || result == DATETIME_SYNC) {
         if (result == DATETIME_SYNC) {
+#ifdef RIPTOPL_UPDATER
+            // UDPBD or UDPFS holds the network adapter: reset the IOP to take it for the request and again
+            // after to give it back, as Check for Updates does. Inside Check for Updates the
+            // adapter is already taken, so no second swap.
+            int swapped = netTimeNicBusy() && selfUpdateTakeNic();
+#endif
             guiClockSyncBusy = 1;
             guiClockSyncResult = NETTIME_ERR_NETWORK; // stays set if the request is never queued
             guiHandleDeferedIO(&guiClockSyncBusy, _l(_STR_DATE_TIME_SYNCING), IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&guiClockSyncWorker), 0);
             if (guiClockSyncResult != NETTIME_OK) {
+#ifdef RIPTOPL_UPDATER
+                if (swapped)
+                    selfUpdateGiveNic();
+#endif
                 guiMsgBox(_l(guiClockSyncResult == NETTIME_ERR_NETBUSY ? _STR_UPDATE_ERR_NETBUSY : guiClockSyncResult == NETTIME_ERR_NETWORK ? _STR_UPDATE_ERR_NETWORK : _STR_DATE_TIME_SYNC_ERROR), 0, NULL);
                 continue;
             }
@@ -2334,6 +2347,11 @@ int guiShowDateTime(void)
             for (i = 0; i < 5; i++)
                 t[i] = guiClockSyncTime[i];
             ok = guiClockShift(t, 540) && guiClockWrite(t, guiClockSyncTime[5] > 59 ? 59 : guiClockSyncTime[5]);
+            // the clock is written first: giving the adapter back takes IOP resets
+#ifdef RIPTOPL_UPDATER
+            if (swapped)
+                selfUpdateGiveNic();
+#endif
             guiMsgBox(_l(ok ? _STR_DATE_TIME_SYNCED : _STR_DATE_TIME_ERROR), 0, NULL);
             if (ok)
                 return 1;

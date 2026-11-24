@@ -15,7 +15,7 @@ read = lambda p: (root / p).read_text(encoding="utf-8")
 
 gui = read("src/ui/gui.cpp")
 body = gui[gui.index("void Gui::showAbout()") :]
-body = body[: body.index("diaExecuteDialog")]
+body = body[: body.index("diaShowPage")]
 assert "char OPLVersion[" not in body and "char OPLBuildDetails[" not in body, "About still formats into fixed buffers"
 assert 'diaSetLabel(diaAbout, ABOUT_TITLE, "Open PS2 Loader " OPL_VERSION);' in body
 assert '" - IGS " IGS_VERSION' in body and '"GSM " GSM_VERSION' in body

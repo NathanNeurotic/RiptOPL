@@ -122,6 +122,7 @@ struct UIItem
 
 /// Dialog display
 int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(int modified));
+void diaShowPage(struct UIItem *ui);
 void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFocus);
 void diaSetSettingsShell(struct UIItem *ui, const char *indicator);
 // Marks ordinary child editors opened from a Settings page so they keep Settings' controller

@@ -1146,6 +1146,52 @@ static int diaScrollDelay(void)
 }
 
 
+static void diaPeekStick(clock_t *last)
+{
+    int sx, sy;
+    clock_t now = clock();
+    float dt = (float)(now - *last) / CLOCKS_PER_SEC;
+    *last = now;
+    if (dt > 0.1f)
+        dt = 0.1f;
+    padGetRightStick(&sx, &sy);
+    if ((sy > DIA_PEEK_STICK || sy < -DIA_PEEK_STICK) && diaScrollRange > 0) { // a page that fits has nothing to slide
+        if (!diaPeek) {
+            diaPeek = 1;
+            diaPeekPos = (float)diaScrollOffset;
+        }
+        diaPeekPos += (float)sy / 127.0f * DIA_PEEK_SPEED * dt;
+    }
+}
+
+// A page with nothing to choose (About): drawn until any button is pressed. The right stick still slides it
+// when a large font makes it taller than the screen.
+void diaShowPage(struct UIItem *ui)
+{
+    rmGetScreenExtents(&diaScreenWidth, &diaScreenHeight);
+    diaScrollOffset = 0;
+    diaScrollRange = 0;
+    diaPeek = 0;
+    clock_t peekLast = clock();
+
+    while (1) {
+        guiLock(); // as diaExecuteDialog: the IO thread may swap the theme or language under the GUI lock
+        rmStartFrame();
+        diaRenderUI(ui, 1, NULL, 0);
+        rmEndFrame();
+        guiUnlock();
+
+        readPads();
+        diaPeekStick(&peekLast);
+        for (int key = KEY_LEFT; key <= KEY_L2; key++) {
+            if (getKeyOn(key)) {
+                sfxPlay(SFX_CANCEL);
+                return;
+            }
+        }
+    }
+}
+
 int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(int modified))
 {
     rmGetScreenExtents(&diaScreenWidth, &diaScreenHeight);
@@ -1246,23 +1292,7 @@ int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(i
                 }
             }
 
-            // the right stick peeks up or down a long page, silently; the cursor stays put
-            {
-                int sx, sy;
-                clock_t now = clock();
-                float dt = (float)(now - peekLast) / CLOCKS_PER_SEC;
-                peekLast = now;
-                if (dt > 0.1f)
-                    dt = 0.1f;
-                padGetRightStick(&sx, &sy);
-                if ((sy > DIA_PEEK_STICK || sy < -DIA_PEEK_STICK) && diaScrollRange > 0) { // a page that fits has nothing to slide
-                    if (!diaPeek) {
-                        diaPeek = 1;
-                        diaPeekPos = (float)diaScrollOffset;
-                    }
-                    diaPeekPos += (float)sy / 127.0f * DIA_PEEK_SPEED * dt;
-                }
-            }
+            diaPeekStick(&peekLast); // the right stick peeks up or down a long page, silently; the cursor stays put
 
             if (getKey(KEY_LEFT)) {
                 newf = diaGetPrevControl(cur, ui);

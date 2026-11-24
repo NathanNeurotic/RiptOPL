@@ -138,8 +138,10 @@ def check_wiring(dia, pad):
     assert 'if (!cur || !diaIsControllable(cur))' in exe, 'a hidden remembered row falls back to the first control'
     i = exe.index('if (cur->type == UI_BUTTON) {')
     assert 'diaReturnRemember(ui, cur->id);' in exe[i:i + 200], 'a button remembers itself'
-    assert '(sy > DIA_PEEK_STICK || sy < -DIA_PEEK_STICK) && diaScrollRange > 0' in exe and '#define DIA_PEEK_STICK 64' in dia and 'diaScrollRange = maxScroll;' in ui, 'a page that fits never enters peek'
-    assert 'padGetRightStick(&sx, &sy);' in exe and 'diaPeek = 0; // the view follows the cursor again' in exe, 'peek input'
+    peek = function(dia, 'static void diaPeekStick(')
+    assert 'diaPeekStick(&peekLast);' in exe and 'diaPeekStick(&peekLast);' in function(dia, 'void diaShowPage('), 'both loops read the stick'
+    assert '(sy > DIA_PEEK_STICK || sy < -DIA_PEEK_STICK) && diaScrollRange > 0' in peek and '#define DIA_PEEK_STICK 64' in dia and 'diaScrollRange = maxScroll;' in ui, 'a page that fits never enters peek'
+    assert 'padGetRightStick(&sx, &sy);' in peek and 'diaPeek = 0; // the view follows the cursor again' in exe, 'peek input'
     assert 'if (diaPeek && getKeyOn(guiConfirmKey()))' not in exe, 'a confirm mid-peek is never swallowed'
     i = exe.index('if (getKeyOn(guiConfirmKey())) {')
     assert exe[i:i + 120].split('{', 1)[1].lstrip().startswith('diaPeek = 0;\n                haveFocus = 1;'), \
