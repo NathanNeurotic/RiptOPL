@@ -291,21 +291,27 @@ def release_state(repo, tag):
     return "draft" if json.loads(result.stdout)["isDraft"] else "published"
 
 
-def tag_exists(repo, tag):
+def tag_sha(repo, tag):
+    """The commit the tag points at, or None when there is no such tag."""
     result = subprocess.run(["gh", "api", f"repos/{repo}/git/ref/tags/{tag}"], capture_output=True, text=True)
     if result.returncode == 0:
-        return True
+        return json.loads(result.stdout)["object"]["sha"]
     if "HTTP 404" in result.stderr:
-        return False
+        return None
     raise RuntimeError(f"cannot inspect tag {tag}: {result.stderr.strip()}")
 
 
-def preflight(repo, tag):
-    """Refuse a published or tagged version and one not newer than the current stable release.
-    A draft left by a failed attempt of this script (no tag) is removed so the cut can run again."""
+def preflight(repo, tag, sha):
+    """Refuse a published version, a tag on another commit, and a version not newer than the current
+    stable release. An unpublished draft left by a failed attempt of this script is removed so the cut
+    can run again -- also when that attempt had already tagged this same commit (the tag is reused;
+    the assets are uploaded and verified again from scratch)."""
     state = release_state(repo, tag)
-    if state == "published" or tag_exists(repo, tag):
-        raise ValueError(f"{tag} is already released or tagged; stable releases are never rewritten")
+    if state == "published":
+        raise ValueError(f"{tag} is already released; stable releases are never rewritten")
+    tagged = tag_sha(repo, tag)
+    if tagged is not None and tagged != sha:
+        raise ValueError(f"{tag} is already tagged at {tagged[:8]}, not {sha[:8]}; stable releases are never rewritten")
     latest = current_stable(repo)
     if latest is not None and version_key(latest) >= version_key(tag):
         raise ValueError(f"{tag} is not newer than the current stable release {latest}")
@@ -315,7 +321,7 @@ def preflight(repo, tag):
 
 
 def publish(repo, tag, sha, title, notes, out):
-    preflight(repo, tag)
+    preflight(repo, tag, sha)
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".md", delete=False) as stream:
         stream.write(notes)
         notes_path = Path(stream.name)

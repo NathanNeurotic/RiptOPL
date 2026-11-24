@@ -220,6 +220,7 @@ class PublisherTests(unittest.TestCase):
                         "dirty": dirty, "edition": edition, "compiler": options["compiler"], "sdk": "ps2build",
                         "ra": options["ra"], "configuration": configuration,
                         "ps2build_version": "test", "components": {}, "ports": {},
+                        "version": f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM"',
                         "elf_sha256": hashlib.sha256(payload).hexdigest(),
                         "neutrino_archive": {"filename": ra_neutrino if options["ra"] else "neutrino_v1.8.0.7z",
                                              "sha256": "0" * 64}}
@@ -265,7 +266,7 @@ class PublisherTests(unittest.TestCase):
                     unpacked = changes.get("unpacked", unpacked_elf())
                     (stage / "RIPTOPL-UNPACKED.ELF").write_bytes(unpacked)
                     manifest.setdefault("unpacked_elf_sha256", hashlib.sha256(unpacked).hexdigest())
-                    manifest.setdefault("version", f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM-DIAG"')
+                manifest.setdefault("version", f'#define OPL_VERSION "v1.2.0-Beta-4030-abcdef0-PS2BUILD-{edition}-LLVM-{configuration.upper()}"')
                 (stage / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
 
     def test_configuration_bundles(self):
@@ -316,6 +317,9 @@ class PublisherTests(unittest.TestCase):
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
         for bad in ({"ds5": {"configuration": "extras"}}, {"debug": {"source_commit": "0" * 40}},
                     {"dtl": {"elf_sha256": "0" * 64}}, {"diag": {"ps2build_version": "other"}},
+                    # Same commit and channel, another cut's version: never joins this release.
+                    {"ds5": {"version": '#define OPL_VERSION "v1.3.1-4031-abcdef0-PS2BUILD-riptopl-LLVM-DS5"'}},
+                    {"pademu0": {"version": "no PS2BUILD marker"}},
                     {"standard": {"unpacked_elf_sha256": "0" * 64}}):
             with self.subTest(bad=bad), tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
                 root = Path(directory)

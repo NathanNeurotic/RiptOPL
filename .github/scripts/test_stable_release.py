@@ -251,23 +251,29 @@ class StableReleaseTests(unittest.TestCase):
             publish_editions.stable_release_exists("o/r")
 
     def test_preflight_never_rewrites_or_downgrades_a_stable_release(self):
+        sha, other = "a" * 40, "b" * 40
         with patch.object(publish_stable, "release_state", return_value="published"), \
-                patch.object(publish_stable, "tag_exists", return_value=True), self.assertRaises(ValueError):
-            publish_stable.preflight("o/r", "v1.3.0")
-        with patch.object(publish_stable, "release_state", return_value=None), \
-                patch.object(publish_stable, "tag_exists", return_value=True), self.assertRaises(ValueError):
-            publish_stable.preflight("o/r", "v1.3.0")
+                patch.object(publish_stable, "tag_sha", return_value=sha), self.assertRaises(ValueError):
+            publish_stable.preflight("o/r", "v1.3.0", sha)
+        for state in (None, "draft"):  # a tag on another commit is never moved
+            with patch.object(publish_stable, "release_state", return_value=state), \
+                    patch.object(publish_stable, "tag_sha", return_value=other), \
+                    patch.object(publish_stable.rolling, "gh") as gh, self.assertRaises(ValueError):
+                publish_stable.preflight("o/r", "v1.3.0", sha)
+            gh.assert_not_called()
         for latest in ("v1.3.0", "v1.10.0"):
             with patch.object(publish_stable, "release_state", return_value=None), \
-                    patch.object(publish_stable, "tag_exists", return_value=False), \
+                    patch.object(publish_stable, "tag_sha", return_value=None), \
                     patch.object(publish_stable, "current_stable", return_value=latest), self.assertRaises(ValueError):
-                publish_stable.preflight("o/r", "v1.9.0" if latest == "v1.10.0" else "v1.3.0")
-        with patch.object(publish_stable, "release_state", return_value="draft"), \
-                patch.object(publish_stable, "tag_exists", return_value=False), \
-                patch.object(publish_stable, "current_stable", return_value="v1.2.9"), \
-                patch.object(publish_stable.rolling, "gh") as gh:
-            publish_stable.preflight("o/r", "v1.3.0")
-            gh.assert_called_once_with("release", "delete", "v1.3.0", "--repo", "o/r", "--yes")
+                publish_stable.preflight("o/r", "v1.9.0" if latest == "v1.10.0" else "v1.3.0", sha)
+        # A draft from a failed attempt, untagged or already tagged at this same commit: removed, cut runs again.
+        for tagged in (None, sha):
+            with patch.object(publish_stable, "release_state", return_value="draft"), \
+                    patch.object(publish_stable, "tag_sha", return_value=tagged), \
+                    patch.object(publish_stable, "current_stable", return_value="v1.2.9"), \
+                    patch.object(publish_stable.rolling, "gh") as gh:
+                publish_stable.preflight("o/r", "v1.3.0", sha)
+                gh.assert_called_once_with("release", "delete", "v1.3.0", "--repo", "o/r", "--yes")
 
     def test_publish_marks_stable_latest_then_flips_rolling(self):
         calls = []

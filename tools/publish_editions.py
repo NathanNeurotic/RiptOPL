@@ -156,6 +156,15 @@ def channel_of(manifest):
     return manifest.get("release_channel", "rolling")
 
 
+def common_version(manifest):
+    """The version a build shows without its LOCALVERSION (edition, compiler, configuration):
+    v1.3.0-4400-abcdef0 for every build of one stable cut, so a variant from another cut never joins it."""
+    version = manifest.get("version", "")
+    version = version.split('"')[1] if '"' in version else version
+    head, marker, _ = version.partition("-PS2BUILD-")
+    return head if marker else None
+
+
 def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, channel="rolling"):
     """Pack each edition's configuration builds into its verified release folder."""
     for edition in (EDITIONS if editions is None else editions):
@@ -176,6 +185,7 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
                     elf = (stage / source).read_bytes()
                     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
                             or channel_of(manifest) != channel or channel_of(kit) != channel
+                            or common_version(manifest) is None or common_version(manifest) != common_version(kit)
                             or manifest["compiler"] != expected_compiler or manifest["configuration"] != configuration
                             or manifest["ps2build_version"] != kit["ps2build_version"]
                             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
@@ -211,6 +221,7 @@ def bundle_bug_report(root, edition, expected_sha, compiler=None, channel="rolli
     elf = (stage / "RIPTOPL-UNPACKED.ELF").read_bytes()
     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
             or channel_of(manifest) != channel
+            or common_version(manifest) is None or common_version(manifest) != common_version(kit)
             or manifest["compiler"] != expected_compiler or manifest["configuration"] != "diag"
             or manifest["ps2build_version"] != kit["ps2build_version"]
             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
