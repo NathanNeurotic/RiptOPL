@@ -2718,11 +2718,28 @@ static int guiSettingsShowInterface(void)
     return gSettingsShell.pageResult(result);
 }
 
+static int sSelShown; // the Selection rows as the Theme page shows them (SEL_STYLE_* bits)
+
 static int guiSettingsThemeUpdater(int modified)
 {
     if (modified) {
+        struct UIItem *ui = gSettingsShell.activeDialog();
         gSettingsShell.markSavePending();
-        diaGetInt(gSettingsShell.activeDialog(), UICFG_GLYPH_SET, &gGlyphSet);
+        diaGetInt(ui, UICFG_GLYPH_SET, &gGlyphSet);
+        // Selection: one of Colored, Cursor and Highlight always stays on. Turning off the last one
+        // (one press toggles one row, so sSelShown holds only that row) turns it straight back on.
+        int sel = 0;
+        for (int i = 0; i < 3; i++) {
+            int on = 0;
+            diaGetInt(ui, UICFG_SEL_COLOR + i, &on);
+            sel |= (on ? 1 : 0) << i;
+        }
+        if (sel == 0) {
+            for (int i = 0; i < 3; i++)
+                if (sSelShown & (1 << i))
+                    diaSetInt(ui, UICFG_SEL_COLOR + i, 1);
+        } else
+            sSelShown = sel;
     }
     return 0;
 }
@@ -2756,6 +2773,9 @@ static int guiSettingsShowTheme(void)
     diaSetInt(ui, UICFG_THEME_ALT_BG, gThemeAltBackground);
     diaSetInt(ui, UICFG_WALLPAPER, gThemeWallpaper);
     diaSetInt(ui, UICFG_AMBIENT_EFFECTS, gEnableAmbientEffects);
+    sSelShown = gSelStyle;
+    for (int i = 0; i < 3; i++)
+        diaSetInt(ui, UICFG_SEL_COLOR + i, (gSelStyle >> i) & 1);
     diaSetInt(ui, UICFG_BOOT_THEME_WAIT, gBootThemeWait);
     const char *listCfgNames[] = {_l(_STR_THEME), _l(_STR_ON), _l(_STR_OFF), NULL};
     diaSetEnum(ui, UICFG_LIST_CFG_TEXT, listCfgNames);
@@ -2805,6 +2825,16 @@ static int guiSettingsShowTheme(void)
         diaGetInt(ui, UICFG_THEME_ALT_BG, &altBackgroundRequest);
         diaGetInt(ui, UICFG_WALLPAPER, &wallpaperRequest);
         diaGetInt(ui, UICFG_AMBIENT_EFFECTS, &gEnableAmbientEffects);
+        {
+            int selStyle = 0; // read as each frame draws: nothing to rebuild
+            for (int i = 0; i < 3; i++) {
+                int on = (gSelStyle >> i) & 1;
+                diaGetInt(ui, UICFG_SEL_COLOR + i, &on);
+                selStyle |= (on ? 1 : 0) << i;
+            }
+            if (selStyle)
+                gSelStyle = selStyle; // never all off (the updater keeps one on)
+        }
         const int themeViewRequest = guiReadThemeViewPicker(ui);
         const bool viewPending = themeViewRequest != gThemeViewRequest;
         if (!viewPending) {

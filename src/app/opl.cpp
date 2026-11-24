@@ -272,6 +272,7 @@ int gThemeAltBackground;
 int gBootThemeWait;
 // Show Legend (Berion's request): 0 hides the button legend of every theme.
 int gShowLegend = 1;
+int gSelStyle = SEL_STYLE_COLOR | SEL_STYLE_CURSOR | SEL_STYLE_HIGHLIGHT;
 // User Wallpaper (Berion's request): wallpaper.png from the settings folder instead of the theme's background.
 int gThemeWallpaper;
 int gEnableAmbientEffects = 1;

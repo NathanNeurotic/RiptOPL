@@ -16,6 +16,7 @@ Settings row, the page it is on and the key it is saved under, see
 | Alternate Background | Off (the theme's `default=` background) | Settings → Theme Settings → Alternate Background |
 | Boot Theme Wait | Off (0 s: the menu opens without waiting for the saved theme) | Settings → Theme Settings → Boot Theme Wait |
 | Ambient Effects | On (24-second crystal light loop and 0.7-second launch convergence) | Settings → Theme Settings → Ambient Effects |
+| Selection: Colored, Cursor, Highlight | All on (the original selected-row look) | Settings → Theme Settings |
 | Cover and disc artwork | On | Settings → Theme Settings |
 | Per-game background art | Off | Settings → Theme Settings |
 | Notifications | On | Settings → Interface |

@@ -2582,6 +2582,19 @@ gui_strings:
 - comment: General & System, Advanced section.
   label: ADV_SMB_CACHE
   string: SMB Cache
+- comment: Theme setting under Ambient Effects. How a List shows its selected row; all three on is the original look. One always stays on.
+  label: SEL_COLORED
+  string: "Selection: Colored"
+- label: HINT_SEL_COLORED
+  string: "Draws the selected row in the Selected Color. Off draws it in the same color as the other rows."
+- label: SEL_CURSOR
+  string: "Selection: Cursor"
+- label: HINT_SEL_CURSOR
+  string: "Draws the small bar at the left edge of the selected row. Themes that underline the row have no cursor."
+- label: SEL_HIGHLIGHT
+  string: "Selection: Highlight"
+- label: HINT_SEL_HIGHLIGHT
+  string: "Draws the bar behind the selected row, or the line under it in themes that use one."
 - comment: Interface setting under User Wallpaper (Berion's request). Off hides the button legend of every theme.
   label: SHOW_LEGEND
   string: Show Legend

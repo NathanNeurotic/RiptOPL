@@ -196,6 +196,7 @@ Open **Theme Settings** from the Settings index, or press **R1** from **Interfac
 | Alternate Background | The theme's `alt=` background. | `theme_alt_bg` |
 | User Wallpaper | Draws `wallpaper.png` from the settings folder behind the menu pages, in any theme (512x512 at most, 8-bit palette). See [INTERFACE.md](INTERFACE.md). | `wallpaper` |
 | Ambient Effects | Shows a seamless 24-second crystal light scene and a 0.7-second animation before the launch fade. Off keeps static backgrounds and the original launch fade. | `ambient_effects` |
+| Selection: Colored / Cursor / Highlight | How a List shows its selected row: the Selected Color, the small bar at its left edge, and the bar behind it (or the theme's line under it). All three on is the original look; one always stays on. | `sel_style` (bits: 1 Colored, 2 Cursor, 4 Highlight; absent = 7) |
 | Colors *(Modify)* | Text, selected, UI, title, background and plasma colours, and Reset Colors. | `text_color`, `sel_text_color`, `ui_text_color`, `title_color`, `bg_color`, `plasma_blend_color` |
 | Button Glyphs | The theme's glyphs or a built-in set. | `glyph_set` |
 | List Title and Description | Theme, On or Off. On displays the game's CFG Title and Description in supported list layouts. | `list_cfg_text` |

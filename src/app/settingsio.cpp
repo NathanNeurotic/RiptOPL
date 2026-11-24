@@ -1620,6 +1620,8 @@ void _loadConfig()
             gShowHidden = gShowHidden != 0;
             if (gBootThemeWait < 0 || gBootThemeWait > 10)
                 gBootThemeWait = gBootThemeWait < 0 ? 0 : 10; // a hand-edited value: show and save what the intro uses
+            if (!(gSelStyle & (SEL_STYLE_COLOR | SEL_STYLE_CURSOR | SEL_STYLE_HIGHLIGHT)))
+                gSelStyle = SEL_STYLE_COLOR | SEL_STYLE_CURSOR | SEL_STYLE_HIGHLIGHT; // one stays on: a hand-edited 0 is the default
             configReadRA(configOPL);
 
 
