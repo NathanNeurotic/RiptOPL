@@ -48,8 +48,8 @@ Coverflow shows devices in a left vertical list. **Up / Down** switches the acti
 **Left / Right** stays with the covers. No focus change or Cross press is needed.
 
 Grid uses a separate device sidebar because its covers need all four directions. **Up / Down** moves only
-the device highlight. **Cross** activates an inactive highlighted device and returns to the covers; on the
-active device it only returns to the covers. **Right** or **Circle** returns without activation. A theme can
+the device highlight. **Cross** or **Right** activates an inactive highlighted device and returns to the covers;
+on the active device it only returns to the covers. **Circle** returns without activation. A theme can
 drop the sidebar (`<block>_devices=0`); Up/Down then switch device page from the top and bottom rows, and
 Left on the first column stays there.
 

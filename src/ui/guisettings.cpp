@@ -2335,11 +2335,11 @@ int guiShowDateTime(void)
             guiClockSyncBusy = 1;
             guiClockSyncResult = NETTIME_ERR_NETWORK; // stays set if the request is never queued
             guiHandleDeferedIO(&guiClockSyncBusy, _l(_STR_DATE_TIME_SYNCING), IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&guiClockSyncWorker), 0);
-#ifdef RIPTOPL_UPDATER
-            if (swapped)
-                selfUpdateGiveNic();
-#endif
             if (guiClockSyncResult != NETTIME_OK) {
+#ifdef RIPTOPL_UPDATER
+                if (swapped)
+                    selfUpdateGiveNic();
+#endif
                 guiMsgBox(_l(guiClockSyncResult == NETTIME_ERR_NETBUSY ? _STR_UPDATE_ERR_NETBUSY : guiClockSyncResult == NETTIME_ERR_NETWORK ? _STR_UPDATE_ERR_NETWORK : _STR_DATE_TIME_SYNC_ERROR), 0, NULL);
                 continue;
             }
@@ -2347,6 +2347,11 @@ int guiShowDateTime(void)
             for (i = 0; i < 5; i++)
                 t[i] = guiClockSyncTime[i];
             ok = guiClockShift(t, 540) && guiClockWrite(t, guiClockSyncTime[5] > 59 ? 59 : guiClockSyncTime[5]);
+            // the clock is written first: giving the adapter back takes IOP resets
+#ifdef RIPTOPL_UPDATER
+            if (swapped)
+                selfUpdateGiveNic();
+#endif
             guiMsgBox(_l(ok ? _STR_DATE_TIME_SYNCED : _STR_DATE_TIME_ERROR), 0, NULL);
             if (ok)
                 return 1;
