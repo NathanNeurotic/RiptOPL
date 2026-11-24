@@ -2112,98 +2112,67 @@ static void menuPrevV()
 
 static constexpr int carouselPageStep = 15;
 
-static void menuCarouselPage(int dir)
+// L1 (dir < 0) / R1 (dir > 0): `step` titles back or on, the page of `rows` titles moving with the cursor, so the
+// cursor keeps its row on screen: a whole page in a list, 15 titles where one title shows (Coverflow, PSBBN Flow).
+// A jump that would pass the first or last title stops on it; the next press wraps to the other end. A page never
+// moves past the last title, so a short list keeps all its rows (#48).
+static void menuPageJump(int dir, int step, int rows)
 {
     menu_item_t *page = selected_item->item;
-    submenu_list_t *previous = page->current;
-    if (previous == NULL)
+    submenu_list_t *previous = page->current, *cur = previous, *top = page->pagestart, *bottom;
+    if (cur == NULL)
         return;
-    submenu_list_t *target = previous;
-    if (dir < 0) {
-        if (target->prev == NULL) {
-            while (target->next != NULL)
-                target = target->next;
-        } else {
-            for (int i = 0; i < carouselPageStep && target->prev != NULL; i++)
-                target = target->prev;
+    int i = 0;
+    for (bottom = top; bottom != NULL && bottom != cur && i < rows; bottom = bottom->next)
+        i++;
+    if (bottom != cur || i >= rows) // the page does not hold the cursor (one title shows, or Info kept a page start)
+        top = cur;
+    for (bottom = top, i = 1; i < rows && bottom->next != NULL; i++)
+        bottom = bottom->next;
+    if ((dir > 0 ? cur->next : cur->prev) == NULL) { // at an end: wrap
+        if (dir > 0)
+            cur = top = page->submenu;
+        else {
+            while (cur->next != NULL)
+                cur = cur->next;
+            for (top = cur, i = 1; i < rows && top->prev != NULL; i++)
+                top = top->prev;
         }
-    } else if (target->next == NULL) {
-        target = page->submenu;
     } else {
-        for (int i = 0; i < carouselPageStep && target->next != NULL; i++)
-            target = target->next;
+        for (i = 0; i < step && (dir > 0 ? cur->next : cur->prev) != NULL; i++) {
+            if (dir > 0) {
+                cur = cur->next;
+                if (bottom->next != NULL) {
+                    top = top->next;
+                    bottom = bottom->next;
+                }
+            } else {
+                cur = cur->prev;
+                if (top->prev != NULL)
+                    top = top->prev;
+            }
+        }
     }
-    page->current = page->pagestart = target;
-    if (target != previous) {
+    page->current = cur;
+    page->pagestart = top;
+    if (cur != previous) {
         sfxPlay(SFX_CURSOR);
-        thmTriggerCoverflowAnim(dir);
+        if (gTheme->coverflow)
+            thmTriggerCoverflowAnim(dir);
     }
 }
 
-static int menuPageStep()
+// Coverflow and PSBBN Flow: 15 titles, whatever rows the theme's ItemsList has.
+static void menuCarouselPage(int dir)
 {
-    // Use a 15-title browse step when the view has no multi-row page.
-    const int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
-    return displayed == 1 ? carouselPageStep : displayed;
+    menuPageJump(dir, carouselPageStep, 1);
 }
 
-static void menuNextPage()
+// A list (and Info): a page of the rows on screen; a one-row list takes 15 titles.
+static void menuListPage(int dir)
 {
-    submenu_list_t *previous = selected_item->item->current;
-    int displayed = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
-    // Info can inherit a multi-row page start; a one-row page starts at the selected title.
-    if (displayed == 1)
-        selected_item->item->pagestart = previous;
-    submenu_list_t *cur = selected_item->item->pagestart;
-
-    // Probe to the item one row past the bottom of the current page. If the end comes first, the
-    // rest of the list is already on screen, so never page onto it: that over-scroll collapsed a
-    // sub-page list to just its last item (#48).
-    submenu_list_t *probe = cur;
-    int n = displayed;
-    while (n-- && probe)
-        probe = probe->next;
-
-    if (cur && probe) {
-        int itms = menuPageStep() + 1;
-        sfxPlay(SFX_CURSOR);
-
-        while (--itms && cur->next)
-            cur = cur->next;
-
-        selected_item->item->current = cur;
-        selected_item->item->pagestart = selected_item->item->current;
-    } else { // wrap to start
-        // Mirror L1's wrap from the first page to the last.
-        menuFirstPage();
-    }
-    // Page keys use the carousel animation only when the selection changes.
-    if (gTheme->coverflow && previous != selected_item->item->current)
-        thmTriggerCoverflowAnim(1);
-}
-
-static void menuPrevPage()
-{
-    submenu_list_t *previous = selected_item->item->current;
-    if (((items_list_t *)gTheme->itemsList->extended)->displayedItems == 1)
-        selected_item->item->pagestart = previous;
-    submenu_list_t *cur = selected_item->item->pagestart;
-
-    if (cur && cur->prev) {
-        int itms = menuPageStep() + 1;
-        sfxPlay(SFX_CURSOR);
-
-        while (--itms && cur->prev)
-            cur = cur->prev;
-
-        selected_item->item->current = cur;
-        selected_item->item->pagestart = selected_item->item->current;
-    } else { // wrap to end
-        menuLastPage();
-    }
-    // Page keys use the carousel animation only when the selection changes.
-    if (gTheme->coverflow && previous != selected_item->item->current)
-        thmTriggerCoverflowAnim(-1);
+    const int rows = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
+    menuPageJump(dir, rows == 1 ? carouselPageStep : rows, rows);
 }
 
 void menuSetSelectedItem(menu_item_t *item)
@@ -2696,7 +2665,7 @@ static int menuPageIsGrid(void)
 
 // L1/R1 on a Grid page turn a whole page of covers, the cursor keeping its place on the page (RIPPS2 build
 // 98, akilluminati47). Through the list's own paging they moved one cover: the grid's items list is one row
-// high. Past either end they wrap, as L1/R1 do in the list; on a single page they do nothing.
+// high. With no page that way they stop on the first / last cover, then wrap, as L1/R1 do in the list.
 static void menuGridPage(int dir)
 {
     submenu_list_t *cur = selected_item->item->current, *walk;
@@ -2714,14 +2683,16 @@ static void menuGridPage(int dir)
             menuNextH();
         return;
     }
-    if (target < 0) {
-        if (count > gTheme->gridRows * gTheme->gridColumns) { // a single page has nowhere to wrap to
+    if (target < 0) { // no page that way: stop on the first / last cover, and wrap from there on the next press
+        if (dir < 0 ? index > 0 : index < count - 1)
+            target = dir < 0 ? 0 : count - 1;
+        else {
             if (dir < 0)
                 menuLastPage();
             else
                 menuFirstPage();
+            return;
         }
-        return;
     }
     for (walk = selected_item->item->submenu; target > 0 && walk != NULL; target--)
         walk = walk->next;
@@ -2969,14 +2940,14 @@ void menuHandleInputMain()
         else if (gTheme->coverflow)
             menuCarouselPage(-1);
         else
-            menuPrevPage();
+            menuListPage(-1);
     } else if (getKey(KEY_R1)) {
         if (menuPageIsGrid())
             menuGridPage(1);
         else if (gTheme->coverflow)
             menuCarouselPage(1);
         else
-            menuNextPage();
+            menuListPage(1);
     } else if (getKeyOn(KEY_L2)) { // home
         menuFirstPage();
     } else if (getKeyOn(KEY_R2)) { // end
@@ -3047,10 +3018,10 @@ void menuHandleInputInfo()
         else
             selected_item->item->execCircle(selected_item->item);
     } else if (getKey(KEY_L1)) {
-        menuPrevPage();
+        menuListPage(-1);
         menuRequestInfoSize(); // each row reached from the info page needs its own #Size
     } else if (getKey(KEY_R1)) {
-        menuNextPage();
+        menuListPage(1);
         menuRequestInfoSize(); // each row reached from the info page needs its own #Size
     } else if (getKeyOn(KEY_L2)) {
         menuFirstPage();

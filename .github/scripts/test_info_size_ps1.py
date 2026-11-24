@@ -89,8 +89,8 @@ with tempfile.TemporaryDirectory(prefix="info-size-") as tmp:
     subprocess.run([str(exe), str(lib)], check=True)
 
 info = function(read("src/ui/menusys.cpp"), "void menuHandleInputInfo()")
-for move in ("menuPrevV", "menuNextV", "menuPrevPage", "menuNextPage", "menuFirstPage", "menuLastPage"):
-    assert re.search(move + r"\(\);\s*menuRequestInfoSize\(\);", info), move
+for move in ("menuPrevV()", "menuNextV()", "menuListPage(-1)", "menuListPage(1)", "menuFirstPage()", "menuLastPage()"):
+    assert re.search(re.escape(move) + r";\s*menuRequestInfoSize\(\);", info), move
 request = function(read("src/ui/menusys.cpp"), "void menuRequestInfoSize(")
 assert "isFolder" in request and "LIB_VIEW_PS1" in request, "row eligibility lives in menuRequestInfoSize"
 assert "LIB_VIEW_PS1" not in function(read("src/ui/menuitems.cpp"), "void itemExecSquare("), "PS1 rows are sized now"

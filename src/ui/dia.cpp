@@ -320,6 +320,8 @@ static int diaRowDisabled(const struct UIItem *item)
 
 /// renders an ui item (either selected or not)
 /// sets width and height of the render into the parameters
+static int diaRowBarShown; // diaRenderUI drew the selected row's bar this frame
+
 static void diaRenderItem(int x, int y, struct UIItem *item, int selected, int haveFocus, int spacingH, int wrapRoom, int *w, int *h)
 {
     // Don't draw controllable items that are not visible.
@@ -465,7 +467,9 @@ static void diaRenderItem(int x, int y, struct UIItem *item, int selected, int h
         }
     }
 
-    if (selected)
+    // The selected row's full-width bar (diaRenderUI) replaces the box while browsing; the box comes back while the
+    // value is being changed (an enum or a number), so editing still looks different from browsing.
+    if (selected && (haveFocus || !diaRowBarShown))
         diaDrawBoundingBox(x, y, *w, *h, haveFocus);
 
     if (item->fixedWidth != 0) {
@@ -684,8 +688,10 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
     int lead = 1;                    // nothing but spacers drew on this row yet (diaWrapRoom, as diaLayoutBottom)
     int rowStart = 1;                // rc is the first item of its line (the selected row's bar is drawn there)
     // The selected row gets a faint bar in the theme's selected-text colour across the whole line, label and value,
-    // under the box around the value: with many settings on a page the box alone is hard to follow. Theme Settings
-    // -> Selection -> Highlight turns it off with the list's bar. An OK button row keeps just its box.
+    // in place of the box around the value: with many settings on a page the box alone is hard to follow. Theme
+    // Settings -> Selection -> Highlight turns it off with the list's bar, and the box comes back. An OK button row,
+    // and a row whose bar is out of view, keep the box.
+    diaRowBarShown = 0;
     const int rowBar = cur != NULL && cur->type != UI_OK && (gSelStyle & SEL_STYLE_HIGHLIGHT);
 
     while (rc->type != UI_TERMINATOR) {
@@ -737,9 +743,11 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
             if (rowBar && diaRowHolds(rc, cur)) {
                 // The value's box spans y .. y + h + 10 (diaDrawBoundingBox); the bar takes the same height.
                 const int barH = diaItemHeight(cur, spacingH, 0) + 10;
-                if (y >= y0 && y + barH <= viewBottom + 10)
+                if (y >= y0 && y + barH <= viewBottom + 10) {
+                    diaRowBarShown = 1;
                     rmDrawRect(x0 - 5, y, diaScreenWidth - DIA_VALUE_MARGIN - x0 + 10, barH,
                                (gTheme->selTextColor & GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x00)) | GS_SETREG_RGBA(0, 0, 0, 0x20));
+                }
             }
         }
         // A row is drawn whole or not at all: the right stick slides the page by the pixel, and a row only partly

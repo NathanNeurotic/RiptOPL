@@ -10,10 +10,7 @@ source = (Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'src/ui/menusys.cpp
 functions = []
 start = source.index('static constexpr int carouselPageStep')
 functions.append(source[start:source.index('\n}', start) + 2])
-if 'static int menuPageStep(' in source:
-    start = source.index('static int menuPageStep(')
-    functions.append(source[start:source.index('\n}', start) + 2])
-for name in ('menuFirstPage', 'menuLastPage', 'menuNextV', 'menuPrevV', 'menuNextPage', 'menuPrevPage'):
+for name in ('menuFirstPage', 'menuLastPage', 'menuNextV', 'menuPrevV', 'menuCarouselPage', 'menuListPage'):
     start = source.index('static void ' + name + '(')
     functions.append(source[start:source.index('\n}', start) + 2])
 harness = r'''
@@ -36,6 +33,8 @@ static void sfxPlay(int id) {(void)id;sounds++;}
 static int animations, direction;
 [[maybe_unused]] static void thmTriggerCoverflowAnim(int dir) {animations++;direction=dir;}
 @FUNCTIONS@
+#define menuNextPage() menuListPage(1)
+#define menuPrevPage() menuListPage(-1)
 static submenu_list_t nodes[64];
 static void setup(int count, int selected, int first=0) {
     for (int i=0;i<count;i++) {
@@ -97,22 +96,39 @@ int main(void) {
     menuNextV();assert(item.current==&nodes[0] && item.pagestart==&nodes[0]);
     menuPrevV();assert(item.current==&nodes[39] && item.pagestart==&nodes[39]);
     menuFirstPage();assert(item.current==&nodes[0] && item.pagestart==&nodes[0]);
-    /* Multi-row lists retain their visible-row paging and the short-page guard (#48).
-       Vary the selection within each page, as well as page size and start. */
+    /* Multi-row lists move a whole page: the cursor moves `rows` titles and keeps its row on screen.
+       A jump past either end stops on the first / last title, the next press wraps, and the page never
+       moves past the last title, so a short list keeps all its rows (#48). Vary page size, start and row. */
     for (int carousel=0;carousel<=1;carousel++) {
         theme.coverflow=carousel;
         for (int rows=2;rows<=16;rows++) {
             list.displayedItems=rows;
             for (int n=1;n<=40;n++) for (int first=0;first<n;first++)
                 for (int s=first;s<n && s<first+rows;s++) {
-                    int next=first+rows<n ? first+rows : 0;
-                    checkPage(n,s,first,1,next,next);
-                    int prev=first ? (first>rows ? first-rows : 0) : n-1;
-                    int top=first ? prev : (n>rows ? n-rows : 0);
+                    int bottom=first+rows-1<n-1 ? first+rows-1 : n-1, lastTop=n>rows ? n-rows : 0;
+                    int next=s==n-1 ? 0 : (s+rows<n ? s+rows : n-1);
+                    int k=next-s, room=n-1-bottom;
+                    int top=s==n-1 ? 0 : first+(k<room ? k : room);
+                    checkPage(n,s,first,1,next,top);
+                    assert(next>=top && next<top+rows);
+                    int prev=s==0 ? n-1 : (s>rows ? s-rows : 0);
+                    k=s-prev;
+                    top=s==0 ? lastTop : first-(k<first ? k : first);
                     checkPage(n,s,first,-1,prev,top);
+                    assert(prev>=top && prev<top+rows);
                 }
+            /* A page start that does not hold the cursor restarts the page at the cursor. */
+            {
+                int bottom=25+rows-1<39 ? 25+rows-1 : 39, next=25+rows<40 ? 25+rows : 39, k=next-25, room=39-bottom;
+                checkPage(40,25,0,1,next,25+(k<room ? k : room));
+            }
         }
     }
+    /* Repeated R1 then L1 on a 40-title, 10-row list: whole pages, a stop at each end, then a wrap. */
+    theme.coverflow=0;list.displayedItems=10;setup(40,3);
+    int pages[]={13,23,33,39,0}, back[]={39,29,19,9,0,39};
+    for (int target:pages) {menuNextPage();assert(item.current==&nodes[target]);}
+    for (int target:back) {menuPrevPage();assert(item.current==&nodes[target]);}
     /* Empty and one-title libraries stay silent and do not animate. */
     for (int rows=1;rows<=4;rows++) {
         list.displayedItems=rows;setup(0,0);
@@ -121,7 +137,7 @@ int main(void) {
         setup(1,0);menuNextPage();menuPrevPage();
         assert(item.current==&nodes[0] && !animations && !sounds);
     }
-    puts("PASS: 15-title jumps and wraps, multi-row paging, D-pad, home/end, animation, empty/single libraries");
+    puts("PASS: 15-title jumps, whole-page list jumps, stops then wraps at both ends, D-pad, home/end, animation, empty/single libraries");
 }
 '''.replace('@FUNCTIONS@', '\n'.join(functions))
 with tempfile.TemporaryDirectory() as tmp:
