@@ -87,7 +87,8 @@ def make_artifacts(root, channel="stable", stable="1.3.0", tamper=None):
             source.comment = SHA.encode()
             source.writestr("README.md", "source " + edition)  # differs per edition: exercises the label rename
         with zipfile.ZipFile(path / "RIPTOPL-LANGS.zip", "w") as langs:
-            langs.writestr("README.txt", "same")
+            # A fixed date: a bare name takes the clock, so two editions written a second apart would differ.
+            langs.writestr(zipfile.ZipInfo("README.txt", (2026, 1, 1, 0, 0, 0)), "same")
         with zipfile.ZipFile(path / editions.kit_archive_name(options), "w") as kit:
             kit.writestr("BUILD-MANIFEST.json", json.dumps(manifest))
             for name, data in files.items():
