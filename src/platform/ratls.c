@@ -60,6 +60,88 @@ long long raTlsRtcToUtc(int year, int month, int day, int hour, int minute, int 
     return days * 86400 + hour * 3600 + minute * 60 + second - RATLS_RTC_ZONE_SECONDS;
 }
 
+/* -1 for a byte that is not two decimal digits: 0x1A would otherwise read as a valid 20. */
+static int clockBcd(unsigned char v)
+{
+    if ((v >> 4) > 9 || (v & 0x0F) > 9)
+        return -1;
+    return (v >> 4) * 10 + (v & 0x0F);
+}
+
+long long raTlsClockDecode(const unsigned char raw[8], int min_year)
+{
+    static const unsigned char days[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    int second = clockBcd(raw[1]), minute = clockBcd(raw[2]), hour = clockBcd(raw[3]);
+    int day = clockBcd(raw[5]), month = clockBcd(raw[6] & 0x1F), year = clockBcd(raw[7]);
+
+    if (year < 0 || second < 0 || minute < 0 || hour < 0)
+        return -1;
+    year += 2000;
+    if (year < min_year || month < 1 || month > 12 || day < 1 || day > days[month - 1] || hour > 23 || minute > 59 ||
+        second > 59)
+        return -1;
+    if (month == 2 && day == 29 && (year % 4 != 0 || (year % 100 == 0 && year % 400 != 0)))
+        return -1;
+    return raTlsRtcToUtc(year, month, day, hour, minute, second);
+}
+
+/* The console's own driver (ps2sdk iop/cdvd/cdvdman, sceCdReadClock) answers 0 whenever the drive's
+   command channel is busy: another command in flight, or the drive at work for longer than it waits.
+   It then hands back its last good reading, or a made-up date in 2000 when it has none. ps2sdk's own
+   time() ignores that result and uses the bytes. So the date decides here, not the result: a valid
+   date from min_year on is the clock (raw starts zeroed, which is 2000 and refused), and a 0 with no
+   such date is asked again. A read that was taken and still holds no such date is an unset clock. */
+long long raTlsClockNow(ratls_clock_t *c, const ratls_clock_ops_t *ops)
+{
+    unsigned int at = ops->ticks();
+    int i;
+
+    if (!(c->known && c->resting && (at - c->rest_at) / ops->per_second < RATLS_CLOCK_REST_S)) {
+        for (i = 0; i < RATLS_CLOCK_TRIES; i++) {
+            unsigned char raw[8] = {0};
+            int taken = ops->read(raw);
+            long long now = raTlsClockDecode(raw, ops->min_year);
+
+            /* A busy reply (not taken) carries the driver's last good reading, which may be old: once a
+               time is known, such a reply counts only if it is ahead of where the counter says it is (the same reading again,
+               asked for more than once a second, would otherwise hold the time still). */
+            if (now >= 0 && (taken || !c->known || now > c->base + (ops->ticks() - c->base_at) / ops->per_second)) {
+                c->known = 1;
+                c->resting = 0;
+                c->base = now;
+                c->base_at = ops->ticks();
+                return now;
+            }
+            if (taken)
+                break;
+            if (i + 1 < RATLS_CLOCK_TRIES)
+                ops->rest();
+        }
+        at = ops->ticks();
+        c->resting = 1;
+        c->rest_at = at;
+    }
+    if (!c->known)
+        return -1;
+    /* The counter wraps (about 71 minutes on the console). Whole seconds are moved into the base on
+       every call, so the time keeps up across wraps as long as it is asked for more often than that;
+       a longer silence loses one wrap, which a certificate's validity, counted in days, does not notice. */
+    {
+        unsigned int secs = (at - c->base_at) / ops->per_second;
+
+        c->base += secs;
+        c->base_at += secs * ops->per_second;
+    }
+    return c->base;
+}
+
+void raTlsClockSet(ratls_clock_t *c, const ratls_clock_ops_t *ops, long long utc)
+{
+    c->known = 1;
+    c->base = utc;
+    c->base_at = ops->ticks();
+}
+
 int raTlsClockOk(long long (*now_utc)(void))
 {
     return now_utc != NULL && now_utc() >= 0;
@@ -184,6 +266,8 @@ static int finishResponse(char *buf, int len, int *length)
     return bodyAt;
 }
 
+unsigned int raTlsVerifyFlags;
+
 static int mapError(int rc, const mbedtls_ssl_context *ssl)
 {
     uint32_t flags;
@@ -193,8 +277,10 @@ static int mapError(int rc, const mbedtls_ssl_context *ssl)
     if (rc == MBEDTLS_ERR_SSL_ALLOC_FAILED)
         return RATLS_ERR_MEM;
     flags = mbedtls_ssl_get_verify_result(ssl);
-    if (rc == MBEDTLS_ERR_X509_CERT_VERIFY_FAILED || (flags != 0 && flags != (uint32_t)-1))
+    if (rc == MBEDTLS_ERR_X509_CERT_VERIFY_FAILED || (flags != 0 && flags != (uint32_t)-1)) {
+        raTlsVerifyFlags = flags;
         return RATLS_ERR_CERT;
+    }
     return RATLS_ERR_TLS;
 }
 

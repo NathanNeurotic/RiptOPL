@@ -72,6 +72,22 @@ static int diaShouldBreakLineAfter(struct UIItem *ui)
     return (ui->type == UI_SPLITTER);
 }
 
+// How many controls the line starting at row holds. An IP address is four numbers on one line; the selected row's
+// bar cannot say which of them the cursor is on, so the selected one is underlined (diaRenderItem).
+static int diaRowControls(struct UIItem *row)
+{
+    int n = 0;
+    for (struct UIItem *it = row; it->type != UI_TERMINATOR; it++) {
+        if (it != row && diaShouldBreakLine(it))
+            break;
+        if (diaIsControllable(it))
+            n++;
+        if (diaShouldBreakLineAfter(it))
+            break;
+    }
+    return n;
+}
+
 // Whether `cur` sits on the line that starts at `row` (up to the next item that starts a line of its own).
 static int diaRowHolds(struct UIItem *row, const struct UIItem *cur)
 {
@@ -320,7 +336,8 @@ static int diaRowDisabled(const struct UIItem *item)
 
 /// renders an ui item (either selected or not)
 /// sets width and height of the render into the parameters
-static int diaRowBarShown; // diaRenderUI drew the selected row's bar this frame
+static int diaRowBarShown; // diaRenderUI drew the selected row's bar this frame (DIA_ROW_BAR_PARTS: over several values)
+constexpr int DIA_ROW_BAR_PARTS = 2;
 
 static void diaRenderItem(int x, int y, struct UIItem *item, int selected, int haveFocus, int spacingH, int wrapRoom, int *w, int *h)
 {
@@ -471,6 +488,10 @@ static void diaRenderItem(int x, int y, struct UIItem *item, int selected, int h
     // value is being changed (an enum or a number), so editing still looks different from browsing.
     if (selected && (haveFocus || !diaRowBarShown))
         diaDrawBoundingBox(x, y, *w, *h, haveFocus);
+    else if (selected && diaRowBarShown == DIA_ROW_BAR_PARTS)
+        // One of several values on the line (a part of an IP address): a short line under it, inside the row's bar,
+        // says which one Left/Right is on. The box is kept for changing a value.
+        rmDrawRect(x - 2, y + *h + 4, *w + 4, 3, gTheme->selTextColor | GS_SETREG_RGBA(0, 0, 0, 0x80));
 
     if (item->fixedWidth != 0) {
         int newSize;
@@ -744,7 +765,8 @@ void diaRenderUI(struct UIItem *ui, short inMenu, struct UIItem *cur, int haveFo
                 // The value's box spans y .. y + h + 10 (diaDrawBoundingBox); the bar takes the same height.
                 const int barH = diaItemHeight(cur, spacingH, 0) + 10;
                 if (y >= y0 && y + barH <= viewBottom + 10) {
-                    diaRowBarShown = 1;
+                    // Left/Right move between the controls of a line: with more than one, the selected one is underlined.
+                    diaRowBarShown = diaRowControls(rc) < 2 ? 1 : DIA_ROW_BAR_PARTS;
                     rmDrawRect(x0 - 5, y, diaScreenWidth - DIA_VALUE_MARGIN - x0 + 10, barH,
                                (gTheme->selTextColor & GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x00)) | GS_SETREG_RGBA(0, 0, 0, 0x20));
                 }

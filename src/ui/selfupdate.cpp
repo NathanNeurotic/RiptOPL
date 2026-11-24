@@ -20,6 +20,7 @@
 #include "include/netsupport.h"
 #include "include/ethsupport.h"
 #include "include/ratls.h"
+#include "include/nettime.h"
 #include "include/guiwait.h"
 #include "include/hdd.h"
 #include "include/hddint.h"
@@ -219,6 +220,20 @@ static int suFromTls(int rc)
     return SU_ERR_GITHUB;
 }
 
+/* The console clock gave no usable time (unset, or it cannot be read): take the time from a web
+   server's Date header, as Date and Time > Set from Internet does, and check certificates against
+   that. Kept in memory only: the console clock is not written. The download is still checked
+   against the SHA-256 read over HTTPS. */
+static bool suInternetTime(void)
+{
+    int t[6];
+
+    if (netTimeFetch(t) != NETTIME_OK)
+        return false;
+    raHttpsSetTime(raTlsRtcToUtc(t[0], t[1], t[2], t[3], t[4], t[5]) + 9 * 60 * 60); /* raTlsRtcToUtc takes Japan time */
+    return true;
+}
+
 /* Follows up to three redirects, to GitHub's hosts only. The body length, or RATLS_ERR_*. */
 static int suFetch(SuBuffers *b, const char *path, int max_body, ratls_sink_t sink, void *ctx)
 {
@@ -228,6 +243,8 @@ static int suFetch(SuBuffers *b, const char *path, int max_body, ratls_sink_t si
     for (hop = 0; hop < 4; hop++) {
         char *location = b->location[hop & 1]; /* path may point into the other one */
         rc = raHttpsDownload(host, path, b->buf, SU_BUF, max_body, sink, ctx, location, SU_LOCATION);
+        if (rc == RATLS_ERR_CLOCK && suInternetTime()) /* refused before anything was sent */
+            rc = raHttpsDownload(host, path, b->buf, SU_BUF, max_body, sink, ctx, location, SU_LOCATION);
         if (rc != RATLS_ERR_REDIRECT)
             return rc;
         if ((path = suSplitUrl(location, host, sizeof(host))) == NULL)
@@ -539,7 +556,8 @@ static void suReport(void)
                     label = _STR_UPDATE_ERR_TIMEOUT;
                     break;
             }
-            snprintf(text, sizeof(text), _l(label), suError);
+            /* a certificate error shows mbedTLS's reasons: 1 expired, 512 not yet valid, 8 not trusted, 4 wrong name */
+            snprintf(text, sizeof(text), _l(label), suError == RATLS_ERR_CERT ? (int)raTlsVerifyFlags : suError);
             break;
         }
     }

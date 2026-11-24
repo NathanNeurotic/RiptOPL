@@ -464,6 +464,7 @@ int diaShowNumPad(char *text, int maxLen, int minv, int maxv)
         '-', '0', '<'};
     const int allowNegative = (minv < 0);
     int len = strlen(text), sel = 0, i, j;
+    int fresh = 1; // the pad opens showing the current value: the first digit typed replaces it
     char c[2] = {'\0', '\0'};
     char range[32];
 
@@ -524,34 +525,41 @@ int diaShowNumPad(char *text, int maxLen, int minv, int maxv)
         } else if (getKeyOn(gSelectButton)) {
             c[0] = numpad[sel];
             if (c[0] == '<') {
+                fresh = 0; // backspace and the sign edit the value shown
                 if (len > 0) {
                     sfxPlay(SFX_CANCEL);
                     text[--len] = '\0';
                 }
             } else if (c[0] == '-') {
                 if (!allowNegative)
-                    sfxPlay(SFX_CANCEL);
+                    sfxPlay(SFX_CANCEL); // a key that is off changes nothing: the next digit still replaces
                 else if (text[0] == '-') {
                     sfxPlay(SFX_CONFIRM);
                     memmove(text, text + 1, len); // len bytes == the remaining chars AND the NUL
                     len--;
+                    fresh = 0;
                 } else if (len < (maxLen - 1)) {
                     sfxPlay(SFX_CONFIRM);
                     memmove(text + 1, text, len + 1);
                     text[0] = '-';
                     len++;
+                    fresh = 0;
                 }
-            } else if (len < (maxLen - 1)) {
+            } else if (fresh || len < (maxLen - 1)) {
                 sfxPlay(SFX_CONFIRM);
+                if (fresh)
+                    len = 0;
                 text[len++] = c[0];
                 text[len] = '\0';
+                fresh = 0;
             }
         } else if (getKey(KEY_SQUARE)) { // BACKSPACE
+            fresh = 0;
             if (len > 0) {
                 sfxPlay(SFX_CANCEL);
                 text[--len] = '\0';
             }
-        } else if (getKeyOn(KEY_TRIANGLE)) { // CLEAR -- the same button that opened the pad
+        } else if (getKeyOn(KEY_TRIANGLE)) { // CLEAR
             sfxPlay(SFX_CANCEL);
             len = 0;
             text[0] = '\0';

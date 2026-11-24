@@ -53,6 +53,8 @@ constexpr int RATLS_MIN_YEAR = 2025; /* an earlier RTC is unset: fail closed */
 
 constexpr int RATLS_IDLE_MS = 15000; /* raHttpsDownload: no data for this long ends it */
 
+constexpr int RATLS_CLOCK_RETRY_MS = 50; /* between clock reads the drive did not take */
+
 extern "C" {
 #ifdef RETROACHIEVEMENTS
 extern unsigned char ratls_root_gtsr1[], ratls_root_gtsr3[], ratls_root_gtsr4[];
@@ -68,21 +70,40 @@ mbedtls_ms_time_t mbedtls_ms_time(void);
 int mbedtls_hardware_poll(void *data, unsigned char *out, size_t len, size_t *olen);
 }
 
-static int bcd(unsigned char v)
-{
-    return (v >> 4) * 10 + (v & 0x0F);
-}
+static_assert(sizeof(sceCdCLOCK) == 8, "raTlsClockDecode reads the clock reply as 8 bytes");
 
-static long long ratlsNow(void)
+static int ratlsClockRead(unsigned char raw[8])
 {
     sceCdCLOCK clk;
 
-    if (sceCdReadClock(&clk) == 0)
-        return -1;
-    int year = 2000 + bcd(clk.year);
-    if (year < RATLS_MIN_YEAR)
-        return -1;
-    return raTlsRtcToUtc(year, bcd(clk.month & 0x1F), bcd(clk.day), bcd(clk.hour), bcd(clk.minute), bcd(clk.second));
+    memset(&clk, 0, sizeof(clk)); /* a call that never reached the console leaves it untouched */
+    int taken = sceCdReadClock(&clk);
+    memcpy(raw, &clk, sizeof(clk));
+    return taken;
+}
+
+static void ratlsClockRest(void)
+{
+    DelayThread(RATLS_CLOCK_RETRY_MS * 1000);
+}
+
+static unsigned int ratlsClockTicks(void)
+{
+    return static_cast<unsigned int>(clock());
+}
+
+static const ratls_clock_ops_t ratlsClockOps = {ratlsClockRead, ratlsClockRest, ratlsClockTicks, static_cast<unsigned int>(CLOCKS_PER_SEC), RATLS_MIN_YEAR};
+static ratls_clock_t ratlsClock;
+
+/* See raTlsClockNow: a busy drive answers a clock read with 0, which is not an unset clock. */
+static long long ratlsNow(void)
+{
+    return raTlsClockNow(&ratlsClock, &ratlsClockOps);
+}
+
+extern "C" void raHttpsSetTime(long long utc)
+{
+    raTlsClockSet(&ratlsClock, &ratlsClockOps, utc);
 }
 
 mbedtls_ms_time_t mbedtls_ms_time(void)
