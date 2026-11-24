@@ -741,12 +741,40 @@ static int bootHomeIsKnownBdm(void)
 // before this function, so these probes are migration reads only: <device>:/OPL then the device
 // root. They cannot wake USB/ATA/MMCE/other MC slots or turn an absent first-run config into a
 // whole-machine discovery pass.
+// Every RiptOPL loader has its own folder, APP_ plus its ELF name: APP_RIPTOPL-PADEMU0, APP_RIPTOPLITE-USB,
+// APP_RIPTOPLITE-RA-USB. Its first start there finds no settings, so it reads the full loader's folder
+// beside it -- APP_RIPTOPL, or APP_RIPTOPL-RA for a RetroAchievements build -- before the device's legacy
+// homes. Read-old, write-new like those: the next save goes beside this ELF and the full loader's folder
+// is never written. 0 when the boot folder is not a variant folder (or is the full loader's own) or the
+// sibling path would not fit.
+static int variantSiblingHome(char *home, size_t size)
+{
+#ifdef RETROACHIEVEMENTS
+    static const char full[] = "APP_RIPTOPL-RA";
+#else
+    static const char full[] = "APP_RIPTOPL";
+#endif
+    size_t len = strlen(gBootDir);
+    size_t start;
+
+    while (len > 0 && gBootDir[len - 1] == '/')
+        len--;
+    start = len;
+    while (start > 0 && gBootDir[start - 1] != '/' && gBootDir[start - 1] != ':')
+        start--;
+    // Longer than the full loader's own folder name, so never that folder itself.
+    if (start == 0 || len - start <= sizeof(full) - 1 || strncmp(&gBootDir[start], "APP_RIPTOPL", 11) != 0)
+        return 0;
+    int n = snprintf(home, size, "%.*s%s", (int)start, gBootDir, full);
+    return n > 0 && n < (int)size;
+}
+
 static int tryKnownBootConfigRecovery(int types)
 {
     const char *colon = strchr(gBootDir, ':');
     char root[16];
-    char legacyHome[2][32];
-    int legacyFound[2];
+    char legacyHome[3][sizeof(gBootDir)];
+    int legacyFound[3] = {0};
     int value;
     int n;
 
@@ -759,18 +787,17 @@ static int tryKnownBootConfigRecovery(int types)
     memcpy(root, gBootDir, n);
     root[n] = '\0';
 
-    snprintf(legacyHome[0], sizeof(legacyHome[0]), "%s/OPL", root);
-    legacyFound[0] = tryReadRecoveryConfigHome(types, legacyHome[0]);
-    if (legacyFound[0] & CONFIG_OPL) {
-        restoreRecoverySaveHome(legacyHome[0]);
-        return legacyFound[0];
-    }
-
-    snprintf(legacyHome[1], sizeof(legacyHome[1]), "%s/", root);
-    legacyFound[1] = tryReadRecoveryConfigHome(types, legacyHome[1]);
-    if (legacyFound[1] & CONFIG_OPL) {
-        restoreRecoverySaveHome(legacyHome[1]);
-        return legacyFound[1];
+    n = 0;
+    if (variantSiblingHome(legacyHome[n], sizeof(legacyHome[n])))
+        n++;
+    snprintf(legacyHome[n++], sizeof(legacyHome[0]), "%s/OPL", root);
+    snprintf(legacyHome[n++], sizeof(legacyHome[0]), "%s/", root);
+    for (int i = 0; i < n; i++) {
+        legacyFound[i] = tryReadRecoveryConfigHome(types, legacyHome[i]);
+        if (legacyFound[i] & CONFIG_OPL) {
+            restoreRecoverySaveHome(legacyHome[i]);
+            return legacyFound[i];
+        }
     }
 
     // Failed recovery probes re-home every config set. Restore the known source before returning
@@ -787,7 +814,7 @@ static int tryKnownBootConfigRecovery(int types)
     // away. Read the sets the boot home lacks from the legacy home that had them -- same order as
     // the probes, files in the boot home always win -- then point every set back at the boot home
     // so the first explicit save writes them beside the ELF: read-old, write-new.
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < n; i++) {
         int missing = legacyFound[i] & types & ~CONFIG_OPL & ~value;
         if (missing == 0)
             continue;

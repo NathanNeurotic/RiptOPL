@@ -81,8 +81,11 @@ def check_unpacked_layout(elf):
         raise ValueError("bug-report build is truncated: its program runs past the end of the file")
 
 
-BUNDLE_README = ("{display} configuration builds. Each folder holds one {elf} and the manifest it was\n"
-                 "built from; replace the ELF of an existing {display} install to use one. What each configuration\n"
+BUNDLE_README = ("{display} configuration builds. Each loader has its own folder, named APP_ plus its ELF\n"
+                 "name (APP_RIPTOPL-PADEMU0/RIPTOPL-PADEMU0.ELF), with the manifest it was built from. Copy a\n"
+                 "folder beside your {elf} folder: its first start reads that loader's settings once and then\n"
+                 "keeps its own; your {elf} folder is never changed. Check for Updates keeps each one on its own\n"
+                 "configuration. What each configuration\n"
                  "changes: https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/BUILD-CONFIGURATIONS.md\n"
                  "Every loader embeds usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\n"
                  "MIT licence; its licence is LICENSE-USMB2.txt beside this file. They also embed his unfs4,\n"
@@ -167,7 +170,7 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
                 folders = [(c, "RIPTOPL.ELF", "elf_sha256", c) for c in configurations]
                 if options["ra"]:
                     folders += [(c, "RIPTOPL-UNPACKED.ELF", "unpacked_elf_sha256", f"{c}-unpacked") for c in RA_UNPACKED]
-                for configuration, source, digest, folder in folders:
+                for configuration, source, digest, label in folders:
                     stage = root / f"variant-{edition}-{configuration}"
                     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
                     elf = (stage / source).read_bytes()
@@ -177,13 +180,17 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
                             or manifest["ps2build_version"] != kit["ps2build_version"]
                             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
                             or manifest.get(digest) != hashlib.sha256(elf).hexdigest()):
-                        raise ValueError(f"invalid configuration build: {edition}/{folder}")
-                    bundle.writestr(f"{folder}/{elf_name}", elf)
-                    bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+                        raise ValueError(f"invalid configuration build: {edition}/{label}")
                     unpacked = digest == "unpacked_elf_sha256"
+                    # Named like every loader: the folder is APP_ plus the ELF name, and the ELF is the
+                    # name Check for Updates downloads for this configuration.
+                    asset = update_asset(edition, configuration, unpacked=unpacked)
+                    folder = "APP_" + asset[:-len(".ELF")]
+                    bundle.writestr(f"{folder}/{asset}", elf)
+                    bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
                     if unpacked:
                         check_unpacked_layout(elf)
-                    publish_update_elf(path, update_asset(edition, configuration, unpacked=unpacked), elf)
+                    publish_update_elf(path, asset, elf)
                 bundle.writestr("README.txt", BUNDLE_README.format(display=edition_display_name(options), elf=elf_name))
                 # Each loader embeds usmb2 (MIT) and unfs4 (BSD 2-Clause, its notice in CREDITS): the bundle
                 # carries the licences the kit ships.

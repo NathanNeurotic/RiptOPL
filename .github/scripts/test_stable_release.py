@@ -101,7 +101,7 @@ def make_artifacts(root, channel="stable", stable="1.3.0", tamper=None):
     for edition, options in editions.LITES.items():
         for device in lite.DEVICES:
             name = lite.elf_name(device, options["ra"])
-            elf = f"{edition}-{device}".encode()
+            elf = b"\x7fELF" + f"{edition}-{device}".encode()
             stage = root / f"{edition}-{device}"
             stage.mkdir()
             manifest = {"repository": "NathanNeurotic/RiptOPL", "source_commit": SHA, "dirty": False, "edition": edition,
@@ -189,7 +189,7 @@ class StableReleaseTests(unittest.TestCase):
             self.assertLess(notes.index("## New here? Pick one"), notes.index("## Updating"))
             self.assertIn("| **RiptOPL, everything ready to copy (most people)** | **[RIPTOPL-v1.3.0-4400.zip]"
                           "(https://github.com/NathanNeurotic/RiptOPL/releases/download/v1.3.0/RIPTOPL-v1.3.0-4400.zip)** |", notes)
-            self.assertIn("| Device | RiptOPL | RetroAchievements |", notes)
+            self.assertIn("| Device | RiptOPL | Memory card | RetroAchievements | RA memory card |", notes)
             self.assertIn("never a rolling", notes)
             for target in re.findall(r"/releases/download/v1\.3\.0/([^)\s]+)\)", notes):
                 self.assertIn(target, names)

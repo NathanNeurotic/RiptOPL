@@ -209,7 +209,8 @@ def release_notes(stable, version, sha, out, neutrino, ra_neutrino, repo=REPO):
         return link(downloads, name, text)
 
     lite_rows = "".join(
-        f"| {d['title']} | {maybe(elf_name(device))} | {maybe(v(elf_name(device, True).replace('.ELF', '.zip')))} |\n"
+        f"| {d['title']} | {maybe(elf_name(device))} | {maybe('APP_' + elf_name(device)[:-4] + '.psu')} | "
+        f"{maybe(v(elf_name(device, True).replace('.ELF', '.zip')))} | {maybe('APP_' + elf_name(device, True)[:-4] + '.psu')} |\n"
         for device, d in LITE_DEVICES.items())
     variants = sorted(n for n in present if n.endswith(".ELF")
                       and n not in {"RIPTOPL.ELF", "RIPTOPL-RA.ELF"} and not n.startswith("RIPTOPLITE-"))
@@ -231,10 +232,13 @@ def release_notes(stable, version, sha, out, neutrino, ra_neutrino, repo=REPO):
         f"| RiptOPL | {maybe('RIPTOPL.ELF')} | {maybe('APP_RIPTOPL.psu')} |\n"
         f"| RetroAchievements | {maybe('RIPTOPL-RA.ELF')} | {maybe('APP_RIPTOPL-RA.psu')} |\n\n"
         "## RiptOPLite: one loader per game device\n\n"
-        "RiptOPL with only that device's drivers, so it is smaller and starts faster. The ELF replaces "
-        "RIPTOPL.ELF in an existing install; each RetroAchievements ZIP carries the RA runtime it needs, and "
-        "its README says where it goes.\n\n"
-        "| Device | RiptOPL | RetroAchievements |\n|---|---|---|\n" + lite_rows + "\n"
+        "RiptOPL with only that device's drivers, so it is smaller and starts faster. Each loader has its own "
+        "folder, APP_ plus its ELF name (`APP_RIPTOPLITE-USB/RIPTOPLITE-USB.ELF`); the PSU makes it on a memory "
+        "card. Its first start there reads the full loader's settings from `APP_RIPTOPL` (or `APP_RIPTOPL-RA`) "
+        "beside it, once, and never changes that folder. Each RetroAchievements ZIP carries the folder and the "
+        "RA runtime it needs; its README says where they go.\n\n"
+        "| Device | RiptOPL | Memory card | RetroAchievements | RA memory card |\n|---|---|---|---|---|\n"
+        + lite_rows + "\n"
         "## Extras\n\n"
         f"- {maybe(v('RIPTOPL-BUGREPORT.zip'), 'Bug-report build')} - RiptOPL will not start or freezes? This "
         "build shows each start-up step on screen and writes a report; its README says what to send.\n"

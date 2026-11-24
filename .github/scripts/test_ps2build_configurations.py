@@ -288,11 +288,16 @@ class PublisherTests(unittest.TestCase):
                              (root / "variant-riptopl-diag/RIPTOPL-UNPACKED.ELF").read_bytes())
             for edition in ("riptopl",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-VARIANTS.zip") as bundle:
-                    self.assertEqual(bundle.read("ds5/RIPTOPL.ELF"), b"\x7fELFds5")
+                    self.assertEqual(bundle.read("APP_RIPTOPL-DS5/RIPTOPL-DS5.ELF"), b"\x7fELFds5")
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 4)
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-DEBUG.zip") as bundle:
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 10)
+                    # Every folder is APP_ plus its ELF name.
+                    for name in bundle.namelist():
+                        if name.endswith(".ELF"):
+                            folder, elf = name.split("/")
+                            self.assertEqual(folder, "APP_" + elf[:-4])
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                     self.assertIn("usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\nMIT licence; "
                                   "its licence is LICENSE-USMB2.txt", bundle.read("README.txt").decode())
@@ -301,11 +306,11 @@ class PublisherTests(unittest.TestCase):
                                   bundle.read("README.txt").decode())
             for edition in ("ra",):
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-RA-VARIANTS.zip") as bundle:
-                    self.assertEqual(bundle.read("pademu0/RIPTOPL-RA.ELF"), b"\x7fELFpademu0")
+                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-PADEMU0/RIPTOPL-RA-PADEMU0.ELF"), b"\x7fELFpademu0")
                     # The standard and pademu0 RA loaders also ship unpacked, each with its manifest.
-                    self.assertEqual(bundle.read("standard-unpacked/RIPTOPL-RA.ELF"), unpacked_elf() + b"standard")
-                    self.assertEqual(bundle.read("pademu0-unpacked/RIPTOPL-RA.ELF"), unpacked_elf() + b"pademu0")
-                    self.assertIn("pademu0-unpacked/BUILD-MANIFEST.json", bundle.namelist())
+                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-UNPACKED/RIPTOPL-RA-UNPACKED.ELF"), unpacked_elf() + b"standard")
+                    self.assertEqual(bundle.read("APP_RIPTOPL-RA-PADEMU0-UNPACKED/RIPTOPL-RA-PADEMU0-UNPACKED.ELF"), unpacked_elf() + b"pademu0")
+                    self.assertIn("APP_RIPTOPL-RA-PADEMU0-UNPACKED/BUILD-MANIFEST.json", bundle.namelist())
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 3)
                     self.assertIn("RIPTOPL-RA.ELF", bundle.read("README.txt").decode())
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")

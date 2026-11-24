@@ -420,7 +420,7 @@ This build layers several features on top of upstream OPL:
   index. Leaving the start/settings menu returns to the page you paused on when it is still visible;
   it no longer falls back to the first USB page. Every row, page by page, with its saved key:
   **[docs/SETTINGS.md](docs/SETTINGS.md)**.
-- **DualSense / DualShock 5 (USB):** optional controller support — available as `ds5/RIPTOPL.ELF` (and `extras_ds5/`) in the
+- **DualSense / DualShock 5 (USB):** optional controller support — available as `APP_RIPTOPL-DS5/RIPTOPL-DS5.ELF` (and `APP_RIPTOPL-EXTRAS-DS5/`) in the
   RiptOPL release's `RIPTOPL-VARIANTS-<version>.zip`, or build with
   `python tools/build_edition.py riptopl --configuration ds5`.
 - **1080p GSM video mode:** forced progressive 1080p (1920×1080) GSM mode is built directly into all standard builds (`make GSM1080P=1`). Full GSM documentation: **[docs/GSM.md](docs/GSM.md)**. Selecting 1080p in the per-game GSM picker is guarded by a **three-step confirmation**; if a game loses the picture, disable/change its GSM override before relaunching. **Triangle + Cross** at boot affects only the OPL menu and requires a 480p-capable display/connection; **Triangle + Circle** forces the interlaced Auto mode instead.
