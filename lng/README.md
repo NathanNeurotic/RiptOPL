@@ -74,6 +74,15 @@ During `make languages`, after each upstream `lng_src/<Language>.yml` is merged 
 - It is **idempotent** and **optional** per language: no overlay file simply means English
   fallback for the fork strings, exactly as before.
 
+An overlay file may also carry an `overrides:` map. Those entries are corrections reviewed by a
+native speaker and, unlike `translations:`, they **do** replace the upstream string. Use it only for
+human-reviewed fixes (for example `lng/fork/Indonesian.yml`); everything else belongs in `translations:`.
+
+```yml
+overrides:
+  SETTINGS: Pengaturan
+```
+
 The bundled overlays are **machine-generated, best-effort** translations — corrections are
 very welcome. To fix or add one:
 

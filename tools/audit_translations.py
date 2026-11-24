@@ -3,7 +3,7 @@
 
 Usage: python3 tools/audit_translations.py [--strict] [--json] [--root DIR]
 Reads the languages tools/assets.py builds, the base labels, the community files in lng_src/ (when
-downloaded) and the fork overlays in lng/fork/. No files are changed.
+downloaded) and the fork overlays in lng/fork/ (their translations: and overrides: maps). No files are changed.
 
 --strict fails on an overlay label the base does not have, or an overlay string whose printf tokens
 differ from English. A community string that differs is only a warning: lang.cpp's lngFormatFits
@@ -46,12 +46,12 @@ def languages(root):
     return names
 
 
-def read_map(path):
+def read_map(path, section="translations"):
     if not path.exists():
         return {}
-    entries = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("translations", {})
+    entries = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get(section, {}) or {}
     if not isinstance(entries, dict):
-        raise ValueError(f"{path}: translations is not a map")
+        raise ValueError(f"{path}: {section} is not a map")
     return {k: v for k, v in entries.items() if isinstance(v, str)}
 
 
@@ -65,7 +65,11 @@ def audit(root):
               "languages": {}, "errors": [], "warnings": []}
     for name in languages(root):
         overlay = read_map(root / "lng/fork" / (name + ".yml"))
+        overrides = read_map(root / "lng/fork" / (name + ".yml"), "overrides")
         upstream = read_map(root / "lng_src" / (name + ".yml"))
+        # The build applies overrides last, so they also win over upstream (and are checked as ours).
+        overlay = {**overlay, **overrides}
+        upstream = {k: v for k, v in upstream.items() if k not in overrides}
         merged = {**overlay, **upstream}
         report["errors"] += [f"{name}: overlay has unknown label {k}" for k in sorted(set(overlay) - set(english))]
         for key, value in merged.items():

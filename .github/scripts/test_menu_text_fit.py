@@ -289,7 +289,7 @@ if len(calls) < 7 or not any(LAYOUT['ra_line'] in call for call in calls):
 languages = {'English': english}
 for path in sorted((root / LAYOUT['fork']).glob('*.yml')):
     data = yaml.safe_load(path.read_text(encoding='utf-8')) or {}
-    languages[path.stem] = data.get('translations') or {}
+    languages[path.stem] = {**(data.get('translations') or {}), **(data.get('overrides') or {})}
 
 
 def longest(ids):
