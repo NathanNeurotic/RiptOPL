@@ -294,11 +294,18 @@ class PublisherTests(unittest.TestCase):
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                 with zipfile.ZipFile(root / f"release-{edition}/RIPTOPL-DEBUG.zip") as bundle:
                     self.assertEqual(len([n for n in bundle.namelist() if n.endswith(".ELF")]), 10)
-                    # Every folder is APP_ plus its ELF name.
+                    # Every folder is APP_ plus its ELF name, and its title.cfg and APPINFO.PBT boot that ELF.
                     for name in bundle.namelist():
                         if name.endswith(".ELF"):
                             folder, elf = name.split("/")
                             self.assertEqual(folder, "APP_" + elf[:-4])
+                            cfg = bundle.read(f"{folder}/title.cfg").decode()
+                            self.assertIn(f"\nboot={elf}\n", cfg)
+                            self.assertIn(f"title=RiptOPL {elf[len('RIPTOPL-'):-4]}\n", cfg)
+                            pbt = bundle.read(f"{folder}/APPINFO.PBT").decode()
+                            self.assertIn(f'SET "ELF" "{elf}"', pbt)
+                            self.assertIn(f'SET "SAS" "{folder}"', pbt)
+                            self.assertEqual(bundle.read(f"{folder}/icon.sys"), (publish_editions.publish_lite.app.APP_TEMPLATE / "icon.sys").read_bytes())
                     self.assertEqual(bundle.read("LICENSE-USMB2.txt"), b"synthetic-lgpl")
                     self.assertIn("usmb2, by Ronnie Sahlberg (https://github.com/sahlberg), used under the\nMIT licence; "
                                   "its licence is LICENSE-USMB2.txt", bundle.read("README.txt").decode())

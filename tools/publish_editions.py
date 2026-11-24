@@ -13,6 +13,7 @@ import sys
 import tempfile
 import time
 import zipfile
+from types import SimpleNamespace
 
 from build_configuration import CONFIGURATIONS
 from build_edition import EDITIONS, LITES, LITE, edition_display_name, git, kit_archive_name, publishes_unpacked, update_asset
@@ -198,6 +199,13 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, c
                     folder = "APP_" + asset[:-len(".ELF")]
                     bundle.writestr(f"{folder}/{asset}", elf)
                     bundle.writestr(f"{folder}/BUILD-MANIFEST.json", json.dumps(manifest, indent=2) + "\n")
+                    # The same icon, music, title.cfg and APPINFO.PBT as every app folder, booting this ELF.
+                    title = "RiptOPL " + asset[len("RIPTOPL-"):-len(".ELF")]  # RiptOPL PADEMU0, RiptOPL RA-UNPACKED
+                    for name, data in publish_lite.app.app_companions(SimpleNamespace(
+                            app_name=folder, elf_name=asset, title=title, pbt_title=title,
+                            version=manifest["version"].split('"')[1], flavour="PS2BUILD", channel=options["title"],
+                            description=f"{title} configuration build")).items():
+                        bundle.writestr(f"{folder}/{name}", data)
                     if unpacked:
                         check_unpacked_layout(elf)
                     publish_update_elf(path, asset, elf)

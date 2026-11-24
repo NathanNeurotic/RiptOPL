@@ -150,7 +150,10 @@ class ChannelTests(unittest.TestCase):
                     name, files = publish_lite.app.inspect_psu((path / f"{folder}.psu").read_bytes())
                     self.assertEqual(name, folder)
                     self.assertEqual(files[elf], (path / elf).read_bytes())
-                    self.assertIn("icon.sys", files)
+                    self.assertEqual(files["icon.sys"], (publish_lite.app.APP_TEMPLATE / "icon.sys").read_bytes())
+                    self.assertIn(f"\nboot={elf}\n", files["title.cfg"].decode())
+                    self.assertIn(f'SET "ELF" "{elf}"', files["APPINFO.PBT"].decode())
+                    self.assertIn(f'SET "SAS" "{folder}"', files["APPINFO.PBT"].decode())
             self.assertIn("LICENSE-MBEDTLS.txt", sums)
 
     def test_a_build_from_another_commit_is_refused(self):
