@@ -9,6 +9,9 @@
  *             sink refuses once it holds that many bytes, -1 never)
  *   host_main anchors FILE.der...
  *   host_main rtc Y M D h m s
+ *   host_main clock STEP...   (raTlsClockNow against a scripted console clock, 1,000,000 ticks a second)
+ *             r=TAKEN,HEX16  queue one clock reply (the last one repeats)   now       print the time and the reads it took
+ *             adv=SECONDS    let time pass      at=TICKS  set the counter      set=UTC   raTlsClockSet
  *   host_main drbg
  */
 #include <stdio.h>
@@ -304,6 +307,71 @@ static void print_random(void)
 }
 #endif
 
+/* A scripted console clock for raTlsClockNow. */
+static struct
+{
+    int taken[32];
+    unsigned char raw[32][8];
+    int count, next, reads;
+    unsigned int ticks;
+} clk;
+
+static int clk_read(unsigned char raw[8])
+{
+    int i = clk.next < clk.count ? clk.next++ : clk.count - 1;
+
+    clk.reads++;
+    if (i < 0)
+        return 0; /* nothing queued: the call never reached the console, raw stays zeroed */
+    memcpy(raw, clk.raw[i], 8);
+    return clk.taken[i];
+}
+
+static void clk_rest(void)
+{
+    clk.ticks += 50000;
+}
+
+static unsigned int clk_ticks(void)
+{
+    return clk.ticks;
+}
+
+static int cmd_clock(int argc, char **argv)
+{
+    static const ratls_clock_ops_t ops = {clk_read, clk_rest, clk_ticks, 1000000, 2025};
+    ratls_clock_t state;
+    int i, j;
+
+    memset(&state, 0, sizeof(state));
+    for (i = 2; i < argc; i++) {
+        const char *a = argv[i];
+        if (!strncmp(a, "r=", 2) && strlen(a) == 20 && clk.count < 32) {
+            clk.taken[clk.count] = a[2] - '0';
+            for (j = 0; j < 8; j++) {
+                unsigned int byte = 0;
+                sscanf(a + 4 + j * 2, "%2x", &byte);
+                clk.raw[clk.count][j] = (unsigned char)byte;
+            }
+            clk.count++;
+        } else if (!strcmp(a, "now")) {
+            clk.reads = 0;
+            long long now = raTlsClockNow(&state, &ops);
+            printf("now=%lld reads=%d\n", now, clk.reads);
+        } else if (!strncmp(a, "adv=", 4)) {
+            clk.ticks += (unsigned int)atoi(a + 4) * 1000000u;
+        } else if (!strncmp(a, "at=", 3)) {
+            clk.ticks = (unsigned int)strtoul(a + 3, NULL, 10);
+        } else if (!strncmp(a, "set=", 4)) {
+            raTlsClockSet(&state, &ops, atoll(a + 4));
+        } else {
+            fprintf(stderr, "bad clock step %s\n", a);
+            return 2;
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
 #ifdef _WIN32
@@ -318,6 +386,8 @@ int main(int argc, char **argv)
         return cmd_download(argc, argv);
     if (argc >= 3 && !strcmp(argv[1], "anchors"))
         return cmd_anchors(argc, argv);
+    if (argc >= 3 && !strcmp(argv[1], "clock"))
+        return cmd_clock(argc, argv);
     if (argc == 8 && !strcmp(argv[1], "rtc")) {
         printf("%lld\n", raTlsRtcToUtc(atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7])));
         return 0;

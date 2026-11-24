@@ -404,6 +404,38 @@ def main():
         out = subprocess.run([str(exe), "rtc", "2026", "10", "12", "9", "0", "0"], capture_output=True, text=True).stdout
         check("rtc_to_utc", out.strip() == "1791763200", out.strip())
 
+        # The console clock (raTlsClockNow). The console's driver answers a clock read with 0 while the
+        # drive's command channel is busy and hands back its last good reading (or a made-up date in
+        # 2000): a 0 is not an unset clock. Replies are stat, second, minute, hour, pad, day, month, year.
+        def clock(*steps):
+            out = subprocess.run([str(exe), "clock", *steps], capture_output=True, text=True).stdout.split()
+            return [tuple(int(x.split("=")[1]) for x in out[i:i + 2]) for i in range(0, len(out), 2)]
+
+        good, t = "0000000900121026", 1791763200  # 2026-10-12 09:00:00 Japan time
+        made_up = "0007060500040300"              # the driver's stand-in when it has no reading
+        check("clock_good", clock("r=1," + good, "now") == [(t, 1)])
+        check("clock_busy_with_last_reading", clock("r=0," + good, "now") == [(t, 1)])
+        check("clock_busy_then_good", clock("r=0," + "0" * 16, "r=0," + made_up, "r=1," + good, "now") == [(t, 3)])
+        check("clock_never_reached", clock("now") == [(-1, 6)])
+        check("clock_always_busy", clock("r=0," + made_up, "now") == [(-1, 6)])
+        check("clock_unset_no_retry", clock("r=1," + made_up, "now") == [(-1, 1)])
+        check("clock_before_2025", clock("r=1,0059592300311224", "now") == [(-1, 1)])
+        check("clock_first_of_2025", clock("r=1,0000000000010125", "now") == [(1735657200, 1)])
+        check("clock_bad_month", clock("r=1,0000000900121326", "now") == [(-1, 1)])
+        check("clock_bad_day", clock("r=1,0000000900310426", "now") == [(-1, 1)])
+        check("clock_month_flag_bit", clock("r=1,0000000900129026", "now") == [(t, 1)])
+        # A time learnt earlier carries on when the clock stops answering mid-request (0.25 s of retries).
+        check("clock_carries_on", clock("r=1," + good, "now", "r=0," + made_up, "adv=5", "now") == [(t, 1), (t + 5, 6)])
+        # An unset clock with a time given (Check for Updates, from a Date header): used, and the clock
+        # is left alone for 30 s, then asked again; a clock that has come good wins.
+        check("clock_given_time", clock("r=1," + made_up, "now", "set=1800000000", "adv=10", "now", "adv=19", "now",
+                                        "adv=2", "now") == [(-1, 1), (1800000010, 0), (1800000029, 0), (1800000031, 1)])
+        check("clock_good_beats_given", clock("r=1," + made_up, "now", "set=1800000000", "r=1," + good, "adv=31", "now")
+              == [(-1, 1), (t, 1)])
+        # The counter wraps at 2^32: elapsed time is a difference, never an absolute deadline.
+        check("clock_counter_wrap", clock("at=4294000000", "r=1," + made_up, "now", "set=1800000000", "adv=3", "now")
+              == [(-1, 1), (1800000003, 0)])
+
         lines = []
         for _ in range(2):
             lines += subprocess.run([str(exe), "drbg"], capture_output=True, text=True).stdout.split()

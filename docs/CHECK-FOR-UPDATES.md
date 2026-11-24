@@ -30,13 +30,17 @@ Local builds using an alternate compiler have no matching asset on the rolling c
 - A network adapter with working DNS and internet access. The updater uses **Settings → Network** to
   reach GitHub over HTTPS. The SMB version only controls access to SMB shares. RiptOPL temporarily
   switches network stacks when UDPBD or UDPFS owns the adapter, then restores the chosen protocol.
-- The console clock set to the current date and time. Open **Date and Time** in the main menu to
-  enter local time manually or choose **Set from Internet**. If Check for Updates
-  detects an unset clock, it offers to open this dialog and retries the check after you set the clock.
+- The current date and time, which secure connections need. Check for Updates reads the console
+  clock. When the clock is not set, or the console does not answer the clock read, it reads the time
+  from a web server for that check instead (the same source as **Set from Internet**; the console
+  clock is not changed). Only when that also fails does it offer to open **Date and Time**, where you
+  can enter local time manually or choose **Set from Internet**, and then retries the check.
 
 If an update check fails, the message distinguishes a connection failure, a secure connection or
 certificate failure, a timeout, and an unusable release response. Include the exact message and the
-build version from **About** when reporting a failure.
+build version from **About** when reporting a failure. The number in a certificate message is the sum
+of the reasons: 1 expired, 512 not yet valid (both point to the date), 4 wrong host name, 8 not
+signed by a built-in root.
 
 ## What it does
 
@@ -68,6 +72,9 @@ E46 and R46, and its release download host uses ISRG X1 and X2. Redirects are fo
 only to `github.com`, `release-assets.githubusercontent.com` and `objects.githubusercontent.com`, at
 most three times. The RetroAchievements build uses TLS 1.3 and 1.2, with RSA-PSS for TLS 1.3 handshakes
 when the server uses an RSA certificate. The standard LLVM build uses TLS 1.2.
+
+A time read from a web server (see Requirements) comes over plain HTTP, so it is only as trustworthy
+as the network. The downloaded ELF is still checked against the SHA-256 read over HTTPS.
 
 ## Status
 
