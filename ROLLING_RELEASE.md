@@ -136,8 +136,11 @@ its Check for Updates reads only GitHub's **Latest** release, and only one that 
 build: RiptOPL to RiptOPL, RA to RA, each Lite device to that device, each variant to that variant.
 `publish` off builds and verifies the same release without publishing it.
 
-`tools/publish_stable.py` refuses rolling builds, a version that is already released or tagged and
-one that is not newer than the current stable release. It publishes the release as Latest, then
+`tools/publish_stable.py` refuses rolling builds, builds of another version, a version that is
+already released, a tag on another commit and a version that is not newer than the current stable
+release. It also refuses any PSU or ZIP that breaks the naming rule: every loader's folder and PSU
+are `APP_` plus its ELF name (`APP_RIPTOPLITE-USB/RIPTOPLITE-USB.ELF`), with a `title.cfg` and
+`APPINFO.PBT` that boot that ELF and the shipped `icon.sys`. It publishes the release as Latest, then
 makes `rolling`, `rolling-ra` and `rolling-lite` pre-releases; once a stable release exists,
 `publish_editions.py` keeps them pre-releases on every rolling publication, so Latest is only ever
 a stable release. Rolling builds keep updating from their own channels, unchanged. Stable releases

@@ -28,6 +28,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import zipfile
 from pathlib import Path
 
 from build_configuration import CONFIGURATIONS
@@ -143,8 +144,71 @@ def updater_view(text, name):
     return None if found is None or rev < 0 else (found, rev)
 
 
+APP_FOLDER = re.compile(r"APP_RIPTOPL[A-Z0-9-]*")
+# The one loader that is not installed on its own: it goes beside an existing install to read its
+# settings (tools/BUGREPORT-README.txt), so its ZIP holds a bare ELF.
+LOOSE_ELFS = {"RIPTOPL-BUGREPORT.ELF"}
+
+
+def check_app_folder(where, folder, files):
+    """One app folder against the naming rule: APP_ plus the ELF name, the ELF beside its title.cfg and
+    APPINFO.PBT, both naming it, and the same icon.sys as every other folder."""
+    if not APP_FOLDER.fullmatch(folder) or len(folder) > rolling.publish_lite.app.MAX_MC_NAME:
+        raise ValueError(f"{where}: folder {folder} is not APP_ plus an upper-case loader name")
+    elf = folder[len("APP_"):] + ".ELF"
+    elfs = sorted(n for n in files if n.upper().endswith(".ELF"))
+    if elfs != [elf]:
+        raise ValueError(f"{where}: {folder} must hold exactly {elf}, holds {elfs}")
+    template = rolling.publish_lite.app.APP_TEMPLATE
+    if files.get("icon.sys") != (template / "icon.sys").read_bytes():
+        raise ValueError(f"{where}: {folder}/icon.sys differs from the shipped icon.sys")
+    cfg = files.get("title.cfg", b"").decode("utf-8", "replace").splitlines()
+    if f"boot={elf}" not in cfg:
+        raise ValueError(f"{where}: {folder}/title.cfg does not boot {elf}")
+    pbt = files.get("APPINFO.PBT", b"").decode("utf-8", "replace").splitlines()
+    if f'SET "ELF" "{elf}"' not in pbt or f'SET "SAS" "{folder}"' not in pbt:
+        raise ValueError(f"{where}: {folder}/APPINFO.PBT does not name {elf} in {folder}")
+
+
+def check_naming(out):
+    """Every PSU and every loader inside a ZIP follows the naming rule: folder and PSU are APP_ plus the
+    ELF name (APP_RIPTOPLITE-USB/RIPTOPLITE-USB.ELF), and title.cfg boots that ELF. Fails the cut otherwise."""
+    app = rolling.publish_lite.app
+    for path in sorted(out.iterdir()):
+        if path.suffix == ".psu":
+            folder, files = app.inspect_psu(path.read_bytes())
+            if path.stem != folder:
+                raise ValueError(f"{path.name} holds the folder {folder}")
+            check_app_folder(path.name, folder, files)
+        elif path.suffix == ".zip" and "-src" not in path.name:
+            with zipfile.ZipFile(path) as bundle:
+                names = [n for n in bundle.namelist() if not n.endswith("/")]
+                folders = {}
+                for name in names:
+                    parts = name.split("/")
+                    if parts[-1].upper().endswith(".ELF") and parts[-1].upper().startswith("RIPTOPL"):
+                        if len(parts) == 1:
+                            if parts[0] not in LOOSE_ELFS:
+                                raise ValueError(f"{path.name}: {name} is not in its own APP_ folder")
+                            continue
+                        folders.setdefault("/".join(parts[:-1]), None)
+                    elif name.endswith(".psu") and "/" not in name:
+                        folder, files = app.inspect_psu(bundle.read(name))
+                        if name[:-4] != folder:
+                            raise ValueError(f"{path.name}: {name} holds the folder {folder}")
+                        check_app_folder(f"{path.name}/{name}", folder, files)
+                for parent in folders:
+                    folder = parent.rsplit("/", 1)[-1]
+                    if parent not in (folder, f"APPS/{folder}"):
+                        raise ValueError(f"{path.name}: {parent} is not APPS/<folder> or <folder>")
+                    files = {n[len(parent) + 1:]: bundle.read(n) for n in names
+                             if n.startswith(parent + "/") and "/" not in n[len(parent) + 1:]}
+                    check_app_folder(f"{path.name}/{parent}", folder, files)
+
+
 def check_release(out, version):
     """The checks a stable build's updater depends on, before anything reaches GitHub."""
+    check_naming(out)
     text = (out / "SHA256SUMS.txt").read_text(encoding="utf-8")
     if len(text.encode()) > SUMS_LIMIT:
         raise ValueError(f"SHA256SUMS.txt is {len(text.encode())} bytes; the updater reads at most {SUMS_LIMIT}")

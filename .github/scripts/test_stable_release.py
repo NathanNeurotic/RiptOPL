@@ -18,6 +18,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -46,6 +47,21 @@ def version_line(label, build="4400", stable="1.3.0"):
     return f'#define OPL_VERSION "v{stable}-{build}-abcdef0-PS2BUILD-{label}"\n'
 
 
+def app_folder(folder, elf, payload):
+    """A real app folder (companions + ELF) and its PSU, as the kit packager makes them."""
+    app = publish_lite.app
+    files = app.app_companions(SimpleNamespace(app_name=folder, elf_name=elf, title="RiptOPL", pbt_title="RiptOPL",
+                                               version="v1", flavour="PS2BUILD", channel="test", description="test"))
+    files[elf] = payload
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp) / folder
+        directory.mkdir()
+        for name, data in files.items():
+            (directory / name).write_bytes(data)
+        app.build_psu(directory, Path(temp) / "out.psu")
+        return files, (Path(temp) / "out.psu").read_bytes()
+
+
 def make_artifacts(root, channel="stable", stable="1.3.0", tamper=None):
     """release-*, variant-* and lite*-* folders as rolling-release.yml downloads them."""
     for edition, options in editions.EDITIONS.items():
@@ -61,7 +77,10 @@ def make_artifacts(root, channel="stable", stable="1.3.0", tamper=None):
                     "version": version_line(f"{options['title']}-X", stable=stable),
                     "neutrino_archive": {"filename": PIN["asset"] if options["ra"] else "neutrino_v1.8.0.7z", "sha256": "0" * 64}}
         (path / elf).write_bytes(payload)
-        (path / psu).write_bytes(b"psu-" + edition.encode())
+        files, psu_bytes = app_folder(app, elf, payload)
+        if tamper == ("cfg", edition):
+            files["title.cfg"] = files["title.cfg"].replace(f"boot={elf}".encode(), b"boot=OTHER.ELF")
+        (path / psu).write_bytes(psu_bytes)
         (path / "LICENSE-USMB2.txt").write_bytes(b"usmb2 licence")
         (path / "BUILD-MANIFEST.json").write_text(json.dumps(manifest))
         with zipfile.ZipFile(path / "RIPTOPL-src.zip", "w") as source:
@@ -71,8 +90,9 @@ def make_artifacts(root, channel="stable", stable="1.3.0", tamper=None):
             langs.writestr("README.txt", "same")
         with zipfile.ZipFile(path / editions.kit_archive_name(options), "w") as kit:
             kit.writestr("BUILD-MANIFEST.json", json.dumps(manifest))
-            kit.writestr(f"APPS/{app}/{elf}", payload)
-            kit.writestr(psu, b"psu-" + edition.encode())
+            for name, data in files.items():
+                kit.writestr(f"APPS/{app}/{name}", data)
+            kit.writestr(psu, psu_bytes)
             kit.writestr("LICENSE-USMB2.txt", b"usmb2 licence")
             if options["ra"]:
                 for name in ("neutrino/neutrino.elf", "neutrino/modules/raagent.irx", "neutrino/ORBIT-RA.txt",
@@ -156,6 +176,38 @@ class StableReleaseTests(unittest.TestCase):
         for bad in ("1.3", "v1.3.0", "1.3.0-beta", "1.3.0 ; rm"):
             with patch.dict(os.environ, {"RIPTOPL_STABLE_VERSION": bad}), self.assertRaises(SystemExit):
                 stable_channel.stable_version()
+
+    def test_the_cut_enforces_one_naming_rule(self):
+        """APP_ folder = PSU = APP_ plus the ELF name, and title.cfg boots that ELF, in every PSU and ZIP."""
+        with tempfile.TemporaryDirectory() as temp:
+            version, out, _ = (lambda root: (make_artifacts(root), cut(root))[1])(Path(temp))
+            psus = sorted(p.name for p in out.iterdir() if p.suffix == ".psu")
+            self.assertEqual(len(psus), 2 + 2 * len(lite.DEVICES))
+            self.assertIn("APP_RIPTOPLITE-RA-USB.psu", psus)
+        with tempfile.TemporaryDirectory() as temp:  # a kit whose title.cfg boots another ELF
+            make_artifacts(Path(temp), tamper=("cfg", "riptopl"))
+            with self.assertRaisesRegex(ValueError, "title.cfg does not boot RIPTOPL.ELF"):
+                cut(Path(temp))
+        app = publish_lite.app
+        files, psu = app_folder("APP_RIPTOPL-X", "RIPTOPL-X.ELF", b"\x7fELF")
+        for bad, why in ((lambda d: (d / "APP_RIPTOPL-Y.psu").write_bytes(psu), "holds the folder"),
+                         (lambda d: (d / "APP_RIPTOPL-X.psu").write_bytes(app_folder("APP_RIPTOPL-X", "RIPTOPL.ELF", b"\x7fELF")[1]),
+                          "must hold exactly RIPTOPL-X.ELF"),
+                         (lambda d: zipfile.ZipFile(d / "RIPTOPL-Z.zip", "w").writestr("RIPTOPL-Z.ELF", b"x"),
+                          "not in its own APP_ folder"),
+                         (lambda d: zipfile.ZipFile(d / "RIPTOPL-Z.zip", "w").writestr("pademu0/RIPTOPL-PADEMU0.ELF", b"x"),
+                          "folder pademu0 is not APP_"),
+                         (lambda d: zipfile.ZipFile(d / "RIPTOPL-Z.zip", "w").writestr("APPS_RiptOPL/RIPTOPL.ELF", b"x"),
+                          "folder APPS_RiptOPL is not APP_")):
+            with self.subTest(why=why), tempfile.TemporaryDirectory() as temp:
+                bad(Path(temp))
+                with self.assertRaisesRegex(ValueError, why):
+                    publish_stable.check_naming(Path(temp))
+        with tempfile.TemporaryDirectory() as temp:  # the bug-report ELF is the one loose loader
+            with zipfile.ZipFile(Path(temp) / "RIPTOPL-BUGREPORT-v1.zip", "w") as bundle:
+                bundle.writestr("RIPTOPL-BUGREPORT.ELF", b"x")
+            (Path(temp) / "APP_RIPTOPL-X.psu").write_bytes(psu)
+            publish_stable.check_naming(Path(temp))
 
     def test_one_release_carries_every_build_and_every_updater_finds_its_own(self):
         with tempfile.TemporaryDirectory() as temp:
