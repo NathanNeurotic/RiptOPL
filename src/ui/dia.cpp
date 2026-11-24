@@ -72,7 +72,6 @@ static int diaShouldBreakLineAfter(struct UIItem *ui)
     return (ui->type == UI_SPLITTER);
 }
 
-// Whether `cur` sits on the line that starts at `row` (up to the next item that starts a line of its own).
 // How many controls the line starting at row holds. An IP address is four numbers on one line; the selected row's
 // bar cannot say which of them the cursor is on, so the selected one is underlined (diaRenderItem).
 static int diaRowControls(struct UIItem *row)
@@ -89,6 +88,7 @@ static int diaRowControls(struct UIItem *row)
     return n;
 }
 
+// Whether `cur` sits on the line that starts at `row` (up to the next item that starts a line of its own).
 static int diaRowHolds(struct UIItem *row, const struct UIItem *cur)
 {
     for (struct UIItem *it = row; it->type != UI_TERMINATOR; it++) {
