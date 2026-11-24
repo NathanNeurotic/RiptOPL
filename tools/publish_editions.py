@@ -148,7 +148,12 @@ def extra_update_assets(edition):
             {update_asset(edition, c, unpacked=True) for c in configurations if publishes_unpacked(edition, c)})
 
 
-def bundle_configurations(root, expected_sha, *, editions=None, compiler=None):
+def channel_of(manifest):
+    """The release a build was made for (tools/stable_channel.py); builds from before the field are rolling."""
+    return manifest.get("release_channel", "rolling")
+
+
+def bundle_configurations(root, expected_sha, *, editions=None, compiler=None, channel="rolling"):
     """Pack each edition's configuration builds into its verified release folder."""
     for edition in (EDITIONS if editions is None else editions):
         options = EDITIONS[edition]
@@ -167,6 +172,7 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None):
                     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
                     elf = (stage / source).read_bytes()
                     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
+                            or channel_of(manifest) != channel or channel_of(kit) != channel
                             or manifest["compiler"] != expected_compiler or manifest["configuration"] != configuration
                             or manifest["ps2build_version"] != kit["ps2build_version"]
                             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
@@ -185,10 +191,10 @@ def bundle_configurations(root, expected_sha, *, editions=None, compiler=None):
                 bundle.writestr("CREDITS", (ROOT / "CREDITS").read_bytes())
             add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
         if BUGREPORT in archives(options):
-            bundle_bug_report(root, edition, expected_sha, compiler=expected_compiler)
+            bundle_bug_report(root, edition, expected_sha, compiler=expected_compiler, channel=channel)
 
 
-def bundle_bug_report(root, edition, expected_sha, compiler=None):
+def bundle_bug_report(root, edition, expected_sha, compiler=None, channel="rolling"):
     """RIPTOPL-BUGREPORT.zip: the edition's diag build, unpacked, its manifest and a README on what to send."""
     expected_compiler = EDITIONS[edition]["compiler"] if compiler is None else compiler
     path = root / ("release-" + edition)
@@ -197,6 +203,7 @@ def bundle_bug_report(root, edition, expected_sha, compiler=None):
     manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     elf = (stage / "RIPTOPL-UNPACKED.ELF").read_bytes()
     if (manifest["source_commit"] != expected_sha or manifest["dirty"] or manifest["edition"] != edition
+            or channel_of(manifest) != channel
             or manifest["compiler"] != expected_compiler or manifest["configuration"] != "diag"
             or manifest["ps2build_version"] != kit["ps2build_version"]
             or manifest["components"] != kit["components"] or manifest["ports"] != kit["ports"]
@@ -218,7 +225,7 @@ def bundle_bug_report(root, edition, expected_sha, compiler=None):
     add_sum(path, archive.name, hashlib.sha256(archive.read_bytes()).hexdigest())
 
 
-def verify(root, expected_sha, *, editions=None, compiler=None):
+def verify(root, expected_sha, *, editions=None, compiler=None, channel="rolling"):
     candidates = []
     suites_by_compiler = {}
     for edition in (EDITIONS if editions is None else editions):
@@ -228,6 +235,7 @@ def verify(root, expected_sha, *, editions=None, compiler=None):
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
         if (manifest["repository"] != "NathanNeurotic/RiptOPL" or manifest["source_commit"] != expected_sha
                 or manifest["dirty"] or manifest["edition"] != edition or manifest["compiler"] != expected_compiler
+                or channel_of(manifest) != channel
                 or manifest["sdk"] != "ps2build" or manifest["ra"] != options["ra"]
                 or manifest.get("configuration", "standard") != "standard"):
             raise ValueError(f"invalid source/edition manifest for {edition}")
@@ -598,15 +606,37 @@ def successor_run(repo, polls=SUCCESSOR_POLLS, workflow="rolling-release.yml"):
     return None
 
 
-def lite_candidates(root, sha, compiler="gcc"):
+def lite_candidates(root, sha, compiler="gcc", channel="rolling"):
     """rolling-lite: the RiptOPLite ELFs and RA ZIPs, checked against the same commit and SDK as the kits."""
-    path, _ = publish_lite.assemble(root, sha, compiler=compiler)
+    path, _ = publish_lite.assemble(root, sha, compiler=compiler, channel=channel)
     return [(LITE, LITES[LITE], path, publish_lite.verify(path))]
 
 
-def latest_release_arg(edition):
-    """Only RiptOPL (rolling) is presented as GitHub's Latest release."""
-    return "--latest=" + ("true" if edition == "riptopl" else "false")
+def latest_release_arg(edition, stable_exists=False):
+    """Only RiptOPL (rolling) is presented as GitHub's Latest release, until a stable release exists:
+    from then on Latest is always the newest stable release (publish_stable.py)."""
+    return "--latest=" + ("true" if edition == "riptopl" and not stable_exists else "false")
+
+
+# A stable release's tag (publish_stable.py): v1.3.0.
+STABLE_TAG = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+")
+
+
+def stable_release_exists(repo):
+    """True once GitHub's Latest release is a stable one. The rolling channels are then pre-releases, so
+    GitHub never points Latest (which every stable build's Check for Updates reads) at one of them.
+    Before the first stable release they stay as they were, so the repository keeps a Latest release."""
+    result = subprocess.run(["gh", "api", f"repos/{repo}/releases/latest", "--jq", ".tag_name"],
+                            capture_output=True, text=True)
+    if result.returncode == 0:
+        return bool(STABLE_TAG.fullmatch(result.stdout.strip()))
+    if "HTTP 404" in result.stderr:
+        return False
+    raise RuntimeError(f"cannot read the Latest release: {result.stderr.strip()}")
+
+
+def channel_flags(edition, stable_exists):
+    return ("--prerelease=" + ("true" if stable_exists else "false"), latest_release_arg(edition, stable_exists))
 
 
 def main():
@@ -634,6 +664,7 @@ def main():
         print(f"::notice::rebuild/main moved on from {sha[:8]} during this run; nothing published. "
               f"The newer head publishes from {successor}")
         return
+    stable_exists = stable_release_exists(repo)
     for edition, options, path, sums in candidates:
         tag = options["tag"]
         manifest = json.loads((path / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
@@ -649,7 +680,7 @@ def main():
             assets = [str(p) for p in sorted(path.iterdir()) if p.is_file()]
             upload_verified(repo, tag, sha, "RiptOPLite" if edition == LITE else options["title"], notes_path, assets, exists)
             update_tag(repo, tag, sha)
-            flags = ("--prerelease=false", latest_release_arg(edition))
+            flags = channel_flags(edition, stable_exists)
             title = "RiptOPLite" if edition == LITE else options["title"]
             gh("release", "edit", tag, "--repo", repo, "--title", title, "--notes-file", str(notes_path),
                "--draft=false", *flags)

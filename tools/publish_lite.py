@@ -50,8 +50,9 @@ Problems: {issues}
 """
 
 
-def _check(manifest, edition, device, sha, kit, elf_bytes, compiler="gcc"):
+def _check(manifest, edition, device, sha, kit, elf_bytes, compiler="gcc", channel="rolling"):
     if (manifest.get("repository") != "NathanNeurotic/RiptOPL" or manifest.get("source_commit") != sha
+            or manifest.get("release_channel", "rolling") != channel
             or manifest.get("dirty") or manifest.get("edition") != edition or manifest.get("device") != device
             or manifest.get("compiler") != compiler or manifest.get("configuration") != "standard"
             or manifest.get("theme") != LITES[edition]["theme"] or manifest.get("ra") != LITES[edition]["ra"]
@@ -77,7 +78,7 @@ def _common_version(manifest):
     return version
 
 
-def assemble(root, sha, compiler="gcc"):
+def assemble(root, sha, compiler="gcc", channel="rolling"):
     """Build root/release-lite from the lite-* and lite_ra-* artifacts. Returns (path, sums)."""
     ra_kit_manifest = json.loads((root / "release-ra" / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
     ra_kit = root / "release-ra" / f"RIPTOPL-{EDITIONS['ra']['title']}.zip"
@@ -97,7 +98,7 @@ def assemble(root, sha, compiler="gcc"):
             name = elf_name(device)
             elf = (stage / name).read_bytes()
             manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-            _check(manifest, LITE, device, sha, ra_kit_manifest, elf, compiler)
+            _check(manifest, LITE, device, sha, ra_kit_manifest, elf, compiler, channel)
             (path / name).write_bytes(elf)
             manifests[name] = manifest
 
@@ -105,7 +106,7 @@ def assemble(root, sha, compiler="gcc"):
             name = elf_name(device, ra=True)
             elf = (stage / name).read_bytes()
             manifest = json.loads((stage / "BUILD-MANIFEST.json").read_text(encoding="utf-8"))
-            _check(manifest, LITE_RA, device, sha, ra_kit_manifest, elf, compiler)
+            _check(manifest, LITE_RA, device, sha, ra_kit_manifest, elf, compiler, channel)
             (path / name).write_bytes(elf)
             version = _version(manifest)
             readme = RA_README.format(title=options["title"], version=version, elf=name, issues=ISSUES,

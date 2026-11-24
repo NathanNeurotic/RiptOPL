@@ -13,6 +13,7 @@ import sys
 from build_configuration import CONFIGURATIONS, apply_configuration
 from lite_devices import DEVICES as LITE_DEVICES, apply_lite, elf_name
 from install_ports import LIBRARIES
+from stable_channel import release_channel
 
 ROOT = Path(__file__).resolve().parents[1]
 EDITIONS = {
@@ -150,6 +151,9 @@ def definition(edition, configuration="standard", toolchain=None, device=None):
         add(main, "sources", "src/platform/selfupdate.c", "src/ui/selfupdate.cpp")
         add(main, "defines", "RIPTOPL_UPDATER", f"RIPTOPL_UPDATE_CHANNEL={channel[0]}",
             f"RIPTOPL_UPDATE_ASSET={channel[1]}")
+        if release_channel() == "stable":
+            # The same asset name, from the newest stable release only (src/ui/selfupdate.cpp).
+            add(main, "defines", "RIPTOPL_UPDATE_STABLE")
         if publishes_unpacked(edition, configuration):
             add(main, "defines", f"RIPTOPL_UPDATE_RAW_ASSET={update_asset(edition, configuration, unpacked=True)}")
     if edition in LITES:
@@ -245,6 +249,7 @@ def main():
         "ilink_bd_sha256": hashlib.sha256((stage / "IEEE1394_bd_mini.irx").read_bytes()).hexdigest(),
         "ilink_manager_sha256": hashlib.sha256((stage / "iLinkman.irx").read_bytes()).hexdigest(),
         "version": (ROOT / "asm/opl_version.h").read_text().strip(),
+        "release_channel": release_channel(),
         "run_url": os.environ.get("GITHUB_SERVER_URL", "https://github.com") + "/" +
             os.environ.get("GITHUB_REPOSITORY", "NathanNeurotic/RiptOPL") + "/actions/runs/" + os.environ.get("GITHUB_RUN_ID", "local"),
     }
@@ -313,6 +318,7 @@ def stage_lite(args, options, source, dirty, canonical, elf, output, stage):
         "unpacked_elf_size": (output / "bin/riptopl.elf").stat().st_size,
         "embedded_irx": sorted(embedded),
         "version": (ROOT / "asm/opl_version.h").read_text().strip(),
+        "release_channel": release_channel(),
         "run_url": os.environ.get("GITHUB_SERVER_URL", "https://github.com") + "/" +
             os.environ.get("GITHUB_REPOSITORY", "NathanNeurotic/RiptOPL") + "/actions/runs/" + os.environ.get("GITHUB_RUN_ID", "local"),
     }
