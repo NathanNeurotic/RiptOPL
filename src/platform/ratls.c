@@ -60,8 +60,11 @@ long long raTlsRtcToUtc(int year, int month, int day, int hour, int minute, int 
     return days * 86400 + hour * 3600 + minute * 60 + second - RATLS_RTC_ZONE_SECONDS;
 }
 
+/* -1 for a byte that is not two decimal digits: 0x1A would otherwise read as a valid 20. */
 static int clockBcd(unsigned char v)
 {
+    if ((v >> 4) > 9 || (v & 0x0F) > 9)
+        return -1;
     return (v >> 4) * 10 + (v & 0x0F);
 }
 
@@ -69,10 +72,15 @@ long long raTlsClockDecode(const unsigned char raw[8], int min_year)
 {
     static const unsigned char days[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     int second = clockBcd(raw[1]), minute = clockBcd(raw[2]), hour = clockBcd(raw[3]);
-    int day = clockBcd(raw[5]), month = clockBcd(raw[6] & 0x1F), year = 2000 + clockBcd(raw[7]);
+    int day = clockBcd(raw[5]), month = clockBcd(raw[6] & 0x1F), year = clockBcd(raw[7]);
 
+    if (year < 0 || second < 0 || minute < 0 || hour < 0)
+        return -1;
+    year += 2000;
     if (year < min_year || month < 1 || month > 12 || day < 1 || day > days[month - 1] || hour > 23 || minute > 59 ||
         second > 59)
+        return -1;
+    if (month == 2 && day == 29 && (year % 4 != 0 || (year % 100 == 0 && year % 400 != 0)))
         return -1;
     return raTlsRtcToUtc(year, month, day, hour, minute, second);
 }
@@ -94,7 +102,9 @@ long long raTlsClockNow(ratls_clock_t *c, const ratls_clock_ops_t *ops)
             int taken = ops->read(raw);
             long long now = raTlsClockDecode(raw, ops->min_year);
 
-            if (now >= 0) {
+            /* A busy reply (not taken) carries the driver's last good reading, which may be old: once a
+               time is known, such a reply counts only if it is not behind where the counter says it is. */
+            if (now >= 0 && (taken || !c->known || now >= c->base + (ops->ticks() - c->base_at) / ops->per_second)) {
                 c->known = 1;
                 c->resting = 0;
                 c->base = now;

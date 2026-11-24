@@ -423,6 +423,12 @@ def main():
         check("clock_first_of_2025", clock("r=1,0000000000010125", "now") == [(1735657200, 1)])
         check("clock_bad_month", clock("r=1,0000000900121326", "now") == [(-1, 1)])
         check("clock_bad_day", clock("r=1,0000000900310426", "now") == [(-1, 1)])
+        check("clock_bad_digit", clock("r=1,001A000900121026", "now") == [(-1, 1)])
+        check("clock_feb29_plain_year", clock("r=1,0000000900290225", "now") == [(-1, 1)])
+        check("clock_feb29_leap_year", clock("r=1,0000000900290228", "now") == [(1835395200, 1)])
+        # A busy reply repeats the driver's last good reading; it must not pull a known time back.
+        check("clock_busy_repeat_keeps_time", clock("r=1," + good, "now", "r=0," + good, "adv=60", "now")
+              == [(t, 1), (t + 60, 6)])
         check("clock_month_flag_bit", clock("r=1,0000000900129026", "now") == [(t, 1)])
         # A time learnt earlier carries on when the clock stops answering mid-request (0.25 s of retries).
         check("clock_carries_on", clock("r=1," + good, "now", "r=0," + made_up, "adv=5", "now") == [(t, 1), (t + 5, 6)])
