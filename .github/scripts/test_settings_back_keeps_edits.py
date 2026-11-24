@@ -8,7 +8,10 @@ Index. Leaving Settings is where the decision is made (Save / Exit without savin
 Checked here, from the production source:
 - dia.c: on a Settings PAGE (the shell UI), Circle returns DIA_RESULT_INDEX, before the generic
   Cancel; sub-dialogs opened from a page are not the shell UI and keep Circle = Cancel.
-- gui.c: gSettingsShell.pageResult arms the save prompt for DIA_RESULT_INDEX (compiled and run).
+- gui.c: Back/L1/R1 off a page arm the save prompt only when the page was changed (V3ditata,
+  Beta-4356: merely opening a page and backing out asked to save). SettingsShell::endDialog arms it
+  for a changed row or for anything beyond the page's one pass (compiled and run); pageResult no
+  longer arms it for every Back.
 - every page applies its rows for any result other than Cancel, so DIA_RESULT_INDEX applies them --
   except that Back/L1/R1 off a page whose rows were NOT changed applies nothing. The pages whose
   apply is a full device re-apply (General, Game Sources, Network, Launch, PS1) gate on
@@ -122,13 +125,13 @@ static void expect(const char *what, int result, int wantReturn, int wantPending
 
 int main(void)
 {
-    expect("Back from a page (Index)", DIA_RESULT_INDEX, DIA_RESULT_INDEX, 1);
-    expect("L1 from a page", DIA_RESULT_PREV, DIA_RESULT_PREV, 1);
-    expect("R1 from a page", DIA_RESULT_NEXT, DIA_RESULT_NEXT, 1);
+    expect("Back from a page (Index)", DIA_RESULT_INDEX, DIA_RESULT_INDEX, 0);
+    expect("L1 from a page", DIA_RESULT_PREV, DIA_RESULT_PREV, 0);
+    expect("R1 from a page", DIA_RESULT_NEXT, DIA_RESULT_NEXT, 0);
     expect("OK from a page", UIID_BTN_OK, DIA_RESULT_INDEX, 1);
     expect("a Cancel that still reaches here", UIID_BTN_CANCEL, DIA_RESULT_INDEX, 0);
     if (!fails)
-        printf("settings back: Back, L1/R1 and OK all keep a page's edits and arm the save prompt\n")
+        printf("settings back: OK arms the save prompt; Back and L1/R1 leave that to what the page changed\n")
             ;
     return fails ? 1 : 0;
 }
@@ -141,6 +144,83 @@ page_functions = ''.join(function_text(gui_c, 'src/ui/guisettings.cpp', sig) for
 ))
 if page_functions.count('{') >= 3:
     compile_and_run('settings_page_result', PAGE_HARNESS.replace('@FUNCTIONS@', page_functions), cpp=True)
+
+# --- a page left alone arms nothing; a changed row or a second dialog run does (compiled, run) --
+
+END_HARNESS = r'''
+#include <stdio.h>
+struct UIItem { int changed; };
+static unsigned int runs;
+static unsigned int diaExecuteCount(void) { return runs; }
+static int diaHasChanges(struct UIItem *ui) { return ui->changed; }
+static void diaSetSettingsShell(struct UIItem *ui, const char *text) { (void)ui; (void)text; }
+static void diaSetSettingsContext(int on) { (void)on; }
+#define SETTINGS_PAGE_COUNT 10
+
+struct SettingsShell {
+    bool shellActive_;
+    int currentPage_;
+    int savePending_;
+    char pageIndicator_[32];
+    struct UIItem *shownDialog_;
+    unsigned int shownAtRun_;
+    void beginDialog(struct UIItem *ui);
+    void endDialog();
+};
+
+@FUNCTIONS@
+
+static int fails;
+static void expect(const char *what, bool active, int pageRuns, int changed, int wantPending)
+{
+    SettingsShell shell = {};
+    struct UIItem page = {0};
+    shell.shellActive_ = active;
+    shell.beginDialog(&page);
+    runs += pageRuns;
+    page.changed = changed;
+    shell.endDialog();
+    if (shell.savePending_ != wantPending || shell.shownDialog_ != NULL) {
+        printf("FAIL %s: pending %d, want %d\n", what, shell.savePending_, wantPending);
+        fails++;
+    }
+}
+
+int main(void)
+{
+    runs = 0xFFFFFFFEu; // the count wraps: only the difference matters
+    expect("a page opened and left alone", true, 1, 0, 0);
+    expect("a changed row", true, 1, 1, 1);
+    expect("a child screen or a page shown again", true, 2, 0, 1);
+    expect("a page that never ran", true, 0, 0, 1);
+    expect("a page outside the Settings shell", false, 1, 1, 0);
+    if (!fails)
+        printf("settings back: only a changed page arms the save prompt\n");
+    return fails ? 1 : 0;
+}
+'''
+
+end_functions = ''.join(function_text(gui_c, 'src/ui/guisettings.cpp', sig) for sig in (
+    'void SettingsShell::beginDialog(',
+    'void SettingsShell::endDialog(',
+))
+if end_functions.count('{') >= 2:
+    compile_and_run('settings_end_dialog', END_HARNESS.replace('@FUNCTIONS@', end_functions), cpp=True)
+if 'diaExecuteRuns++;' not in execute:
+    failures.append('diaExecuteDialog: must count each run, so the shell can tell a child screen was opened')
+page_result = function_text(gui_c, 'src/ui/guisettings.cpp', 'int SettingsShell::pageResult(')
+if re.search(r'if \(isShellResult\(result\)\)\s*\{[^}]*savePending_ = 1;', page_result):
+    failures.append('SettingsShell::pageResult: Back/L1/R1 off an untouched page must not arm the save prompt')
+# A long path edited past its 31-character preview changes no row: those pages mark the save themselves.
+for sig, guard in (('static int guiSettingsShowGeneral(', 'exitPathEdit, gExitPath)) {'),
+                   ('static int guiSettingsShowLaunch(', 'neutrinoPathEdit, gNeutrinoPath)) {'),
+                   ('static int guiSettingsShowPopstarter(', 'popstarterPathEdit, gPopstarterPath)) {')):
+    body = function_text(gui_c, 'src/ui/guisettings.cpp', sig)
+    if body and not re.search(re.escape(guard) + r'\s*gSettingsShell\.markSavePending\(\);', body):
+        failures.append('%s...): its apply block must mark the save pending (long path edits)' % sig)
+net_page = function_text(gui_c, 'src/ui/guisettings.cpp', 'int guiShowNetConfig(')
+if net_page and not re.search(r'if \(gSettingsShell\.isShellResult\(result\)\)\s*gSettingsShell\.markSavePending\(\);', net_page):
+    failures.append('guiShowNetConfig: a Back/L1/R1 that applies a change must mark the save pending')
 
 # --- every page applies its rows for DIA_RESULT_INDEX ------------------------------------------
 

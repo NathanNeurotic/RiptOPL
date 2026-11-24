@@ -37,5 +37,9 @@ LOCAL CHANGES (marked "RiptOPL" where they are not whole functions):
 5. src/fs_driver.c BDM_DEVCTL_VOLINFO (Drive Status, ported from RIPPS2 build 114): free and total
    clusters, cluster bytes and FatFs type. Clusters, not KB, so a drive over 4 TB shows its full
    size. Tests: test_ripps2_drive_status.py.
+6. fatfs/ff.c find_bitmap: a bitmap byte whose eight clusters are all in use is passed in one step.
+   The first allocation after a mount scans from the start of the exFAT bitmap, and doing that one
+   bit at a time held the IOP for seconds on a large, mostly full volume. Same result as the plain
+   scan. Tests: test_exfat_bitmap_scan.py.
 
 The sources keep their upstream formatting (.clang-format-ignore) so they diff cleanly against the pins.

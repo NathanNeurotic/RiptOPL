@@ -937,6 +937,10 @@ reshow_network:
     // UDPFS Access or DHCP choice made before switching back is invisible to diaHasChanges: check it here.
     if (result && (!gSettingsShell.leftUntouched(diaNetConfig, result, nfsExportEdit, gNfsExport) ||
                    netConfigUdpfsAccess != gUdpfsAccessMode || netConfigDhcpPreference != ps2_ip_use_dhcp)) {
+        // Back/L1/R1 reach here only with something changed, and neither a long NFS export nor the two
+        // choices above need show as a changed row. OK and Reconnect are settled at the end of the page.
+        if (gSettingsShell.isShellResult(result))
+            gSettingsShell.markSavePending();
         // Seeded with what the page showed: a RiptOPLite page has no Protocol row, and only UDPFS has Access.
         int netProtoVal2 = netProtoVal, netAccessVal2 = netAccessVal;
         diaGetInt(diaNetConfig, CFG_NETPROTOCOL, &netProtoVal2);
@@ -2164,11 +2168,11 @@ int SettingsShell::leftUntouched(struct UIItem *ui, int result, const char *path
 
 int SettingsShell::pageResult(int result)
 {
-    // L1/R1 peer paging and an explicit Index request pass straight back to the shell loop.
-    if (isShellResult(result)) {
-        savePending_ = 1;
+    // L1/R1 peer paging and an explicit Index request pass straight back to the shell loop. They keep
+    // the page's edits, so they arm the save prompt only when there are any: endDialog and the pages'
+    // own apply blocks have marked those by now. A page opened and left alone has nothing to save.
+    if (isShellResult(result))
         return result;
-    }
 
     /* EVERY other way out of a page finishes at the Settings Index -- never at the main menu.
        Only showIndex leaves Settings, and only after offering to save.
@@ -2213,10 +2217,18 @@ void SettingsShell::beginDialog(struct UIItem *ui)
     snprintf(pageIndicator_, sizeof(pageIndicator_), "%d/%d", currentPage_ + 1, (int)SETTINGS_PAGE_COUNT);
     diaSetSettingsShell(ui, pageIndicator_);
     diaSetSettingsContext(1);
+    shownDialog_ = ui;
+    shownAtRun_ = diaExecuteCount();
 }
 
 void SettingsShell::endDialog()
 {
+    // The page is closing. A changed value row, or anything beyond the page's one pass (a child screen,
+    // a page shown again after one of its buttons), may have left something to save: arm the prompt.
+    // Only a single pass with every row as it opened counts as left alone.
+    if (shownDialog_ != NULL && (diaExecuteCount() != shownAtRun_ + 1 || diaHasChanges(shownDialog_)))
+        savePending_ = 1;
+    shownDialog_ = NULL;
     diaSetSettingsShell(NULL, NULL);
     diaSetSettingsContext(0);
 }
@@ -2401,6 +2413,7 @@ static int guiSettingsShowGeneral(void)
     result = diaExecuteDialog(ui, -1, 1, &guiSettingsGeneralUpdater);
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, exitPathEdit, gExitPath)) {
+        gSettingsShell.markSavePending(); // an edit past a long path's preview changes no row
         snprintf(gExitPath, sizeof(gExitPath), "%s", exitPathEdit);
         diaGetInt(ui, CFG_EXITMENU, &exitMenuIdx);
         gExitMenu = exitMenuOrder[exitMenuIdx >= 0 && exitMenuIdx <= 4 ? exitMenuIdx : 2];
@@ -2974,6 +2987,7 @@ reshow_launch:
     }
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, neutrinoPathEdit, gNeutrinoPath)) {
+        gSettingsShell.markSavePending(); // an edit past a long path's preview changes no row
         diaGetInt(ui, CFG_DEFAULT_CORE, &gDefaultCoreLoader);
         diaGetInt(ui, CFG_AUTO_CREATE_VMC, &gAutoCreateVmc);
 #ifdef IGR_MENU
@@ -3086,6 +3100,7 @@ reshow_popstarter:
     }
 
     if (result != UIID_BTN_CANCEL && result != -1 && !gSettingsShell.leftUntouched(ui, result, popstarterPathEdit, gPopstarterPath)) {
+        gSettingsShell.markSavePending(); // an edit past a long path's preview changes no row
         diaGetInt(ui, CFG_POPSTARTER_RETROGEM_GAMEID, &gPopstarterRetroGemGameID);
         int emberDisplay = emberSettingFromRow(ui, CFG_EMBER_DISPLAY, emberDisplayShown, gEmberDisplay);
         // 480p is the one choice that can blank the screen (composite shows nothing): ask first, and
