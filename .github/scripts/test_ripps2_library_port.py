@@ -44,9 +44,11 @@ static fav_raw_t *favReadFile(int *count, int *editable, const char *name)
     memcpy(p, disk.data(), disk.size() * sizeof(fav_raw_t));
     return p;
 }
-static int favWriteFile(fav_raw_t *recs, int count, const char *name)
+static int replaceable;
+static bool recentReplaceable(void) { return replaceable; }
+static int recentWriteFile(fav_raw_t *recs, int count)
 {
-    assert(!strcmp(name, kRecentFile) && count <= RECENT_MAX_ITEMS);
+    assert(count <= RECENT_MAX_ITEMS);
     writes++;
     disk.assign(recs, recs + count);
     return 1;
@@ -74,6 +76,8 @@ int main(void)
     assert(!recentRecord(1, 1, 0, 0, "", 0) && writes == before);               /* nothing to record */
     editableFile = 0;
     assert(!recentRecord(1, 1, 0, 0, "X", 0) && writes == before);              /* unreadable file is kept */
+    replaceable = 1;                                                           /* a write cut short: replaced */
+    assert(recentRecord(1, 1, 0, 0, "X", 0) && writes == before + 1 && !strcmp(disk[0].text, "X"));
     return 0;
 }
 '''

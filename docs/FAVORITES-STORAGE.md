@@ -62,6 +62,8 @@ memory-card, BDM, MMCE, HDD and network filesystem acceptance remains separate.
 
 `recents.bin` sits beside `favourites.bin` and uses the same OFAV record format. It holds the last
 10 games launched, newest first, one row per game. A launch rewrites it only while the Favourites
-page or All Games is on, or Sort Games is **Last played**. An unreadable or unknown-version
-`recents.bin` is never replaced, as with `favourites.bin`. See [Game library](GAME-LIBRARY.md)
-for what reads it. NOT TESTED on hardware.
+page or All Games is on, or Sort Games is **Last played**. That rewrite sits between the launch
+press and the game, so it is one write in place: no `.new` copy and no read-back, unlike
+`favourites.bin`. A `recents.bin` the device cannot read is never replaced; one that reads but is
+cut short or not understood is replaced by the next launch, as the list is rebuilt by playing.
+See [Game library](GAME-LIBRARY.md) for what reads it. NOT TESTED on hardware.

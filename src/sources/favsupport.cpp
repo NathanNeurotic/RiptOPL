@@ -1559,6 +1559,36 @@ int removeFavouriteByIdAndText(int mode, int id, const char *text, int kind)
 // Ported from RIPPS2 (akilluminati47) build 115's recents list. Same record format as the
 // favourites, newest first, capped at RECENT_MAX_ITEMS. Each launch moves its game to the front.
 
+// This runs on every launch, between the press and the game, on the device that holds the settings. The
+// list is rebuilt by playing, so it is written once, in place: no second copy beside it, no read-back.
+// favWriteFile's way (a .new copy, the file, both read back, the copy deleted) made a launch wait for
+// two writes, a file creation, a deletion and three reads; on an exFAT drive each new file also
+// searched the drive's space map from the start on the first launch since power-on.
+static int recentWriteFile(fav_raw_t *recs, int count)
+{
+    int size;
+    char path[256], staged[264];
+    u8 *image = favBuildImage(recs, count, &size);
+    if (image == NULL)
+        return 0;
+    int ok = favStoragePaths(path, sizeof(path), staged, sizeof(staged), kRecentFile) && favWriteWhole(path, image, size);
+    free(image);
+    return ok;
+}
+
+// A write cut short (power lost during a launch) leaves a file that reads but does not parse. With no
+// second copy to restore from, such a file is replaced; one the device could not read is left alone.
+static bool recentReplaceable(void)
+{
+    char path[256], staged[264];
+    if (!favStoragePaths(path, sizeof(path), staged, sizeof(staged), kRecentFile))
+        return false;
+    FavImage image = favLoadImage(path);
+    bool replaceable = image.missing || image.readable;
+    free(image.data);
+    return replaceable;
+}
+
 int recentRecord(int mode, int id, int icon_id, int text_id, const char *text, int kind)
 {
     if (text == NULL || text[0] == '\0')
@@ -1566,7 +1596,7 @@ int recentRecord(int mode, int id, int icon_id, int text_id, const char *text, i
 
     int count = 0, editable = 0;
     fav_raw_t *recs = favReadFile(&count, &editable, kRecentFile);
-    if (!editable) { // an unreadable or foreign-version file is never replaced (as favourites.bin)
+    if (!editable && !recentReplaceable()) { // a file the device could not read is never replaced
         free(recs);
         return 0;
     }
@@ -1589,7 +1619,7 @@ int recentRecord(int mode, int id, int icon_id, int text_id, const char *text, i
             continue;
         out[n++] = recs[i];
     }
-    int ok = favWriteFile(out, n, kRecentFile);
+    int ok = recentWriteFile(out, n);
     free(out);
     free(recs);
     recentInvalidate();

@@ -317,6 +317,35 @@ int main() {
  reset();disk[6]=1;disk[7]=2;expect(FAV_MAX_ITEMS,0);
 }
 ''')
+# The recents list is written on every launch, so it is one write in place: no .new copy, no read-back.
+run("recents_single_write", prefix + io + reader + writer + r"""
+static const char kRecentFile[] = "recents.bin";
+""" + function("static int recentWriteFile(") + function("static bool recentReplaceable(") + r"""
+int main() {
+ fav_raw_t row{};row.mode=3;row.id=7;strcpy(row.text,"game");
+ // The favourites way, for the count it costs: five opens (three of them reads) and a deletion.
+ reset();primaryExists=false;assert(favWriteFile(&row,1));const auto valid=disk;
+ reset();assert(favWriteFile(&row,1) && opens==5 && reads>=3 && !stagedExists);
+ // The recents way: one open for writing, nothing read, nothing created beside the file.
+ disk.clear();reset();assert(recentWriteFile(&row,1));
+ assert(opens==1 && closes==1 && reads==0 && !stagedExists && disk==valid);
+ disk=valid;reset();writeLimit=2;assert(recentWriteFile(&row,1) && opens==1 && disk==valid);
+ // A failed write or close is reported, and nothing else is tried.
+ reset();writeErrorAt=4;assert(!recentWriteFile(&row,1) && opens==1 && !stagedExists);
+ reset();closeError=1;assert(!recentWriteFile(&row,1));
+ reset();openError=EACCES;assert(!recentWriteFile(&row,1) && closes==0);
+ reset();failAllocation=true;assert(!recentWriteFile(&row,1) && opens==0);
+ // A file cut short reads but does not parse: it may be replaced. One the device cannot read may not.
+ disk={0x4f,0x46,0x41};primaryExists=true;reset();
+ int n,e;free(favReadFile(&n,&e,kRecentFile));assert(!e);
+ resetFaults();assert(recentReplaceable() && closes==opened);
+ disk.clear();resetFaults();assert(recentReplaceable());
+ primaryExists=false;resetFaults();assert(recentReplaceable());
+ primaryExists=true;disk=valid;resetFaults();failReadAt=0;assert(!recentReplaceable());
+ resetFaults();openError=EIO;assert(!recentReplaceable());
+ resetFaults();closeError=1;assert(!recentReplaceable());
+}
+""")
 run("favorites_path_bounds", prefix + r'''
 #define CONFIG_OPL 1
 #define CONFIG_OPL_FILENAME "settings_riptopl.cfg"
