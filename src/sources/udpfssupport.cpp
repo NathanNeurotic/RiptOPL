@@ -1169,7 +1169,8 @@ void UdpfsSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     if (sbNeutrinoHandCheats(game->startup, neutrinoPath, neutrinoExtraArgs) < 0)
         return;
 #ifdef RETROACHIEVEMENTS
-    sbNeutrinoPrepareRA(udpfsPrefix, game->startup, "udpfs", neutrinoPath, neutrinoExtraArgs);
+    if (!sbGameRAOff(configSet))
+        sbNeutrinoPrepareRA(udpfsPrefix, game->startup, "udpfs", neutrinoPath, neutrinoExtraArgs);
 #endif
     if (sysNeutrinoArgsPreflight("udpfs", partname, game->startup, compatmask, EnablePS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0, -1, &neutrinoVmc) < 0)
         return;

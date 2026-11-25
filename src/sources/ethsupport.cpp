@@ -1400,7 +1400,8 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     // RA: this game's watch list, settled before sysLaunchLoaderElf reads
     // GetWatchCount() to decide whether the network modules travel with the
     // launch. Absent is normal -- the game is simply not tracked.
-    sbLoadWatchList(gEthSupport.prefix(), game->startup);
+    if (!sbGameRAOff(configSet))
+        sbLoadWatchList(gEthSupport.prefix(), game->startup);
 #endif
     if ((result = sbLoadCheats(gEthSupport.prefix(), game->startup, configSet)) < 0) {
         // #265: let the user back out instead of sitting through the whole load. The helper does

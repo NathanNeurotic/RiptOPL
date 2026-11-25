@@ -1457,6 +1457,12 @@ struct UIItem diaCompatConfig[] = {
     {UI_SPACER},
     {UI_BOOL, COMPAT_PARENTAL_LOCK, 1, 1, _STR_PARENLOCK_GAME_HINT, 0, 0, {.intvalue = {0, 0}}},
     {UI_SPLITTER},
+#ifdef RETROACHIEVEMENTS
+    {UI_LABEL, 0, 1, 1, -1, -30, 0, {.label = {NULL, _STR_RA_GAME_OFF}}},
+    {UI_SPACER},
+    {UI_BOOL, COMPAT_RA_DISABLE, 1, 1, _STR_HINT_RA_GAME_OFF, 0, 0, {.intvalue = {0, 0}}},
+    {UI_SPLITTER},
+#endif
 
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_MODE1}}},
     {UI_SPACER},

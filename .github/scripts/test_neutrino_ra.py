@@ -96,13 +96,17 @@ static int ethGetNetConfig(unsigned char *ip,unsigned char *mask,unsigned char *
 /* The link test is the only way a peer appears here: it verifies linkPeer (0 = no PC answered). */
 static int linkTests;static unsigned int linkPeer,verifiedPeer;
 static unsigned int raNetPeerIP(void){return verifiedPeer;}
-static int raNetTestLink(char *a,int an,char *b,int bn){(void)an;(void)bn;a[0]=b[0]=0;linkTests++;verifiedPeer=linkPeer;return linkPeer!=0;}
+/* The launch-time link test runs with the short first-contact wait, and only it does. */
+static int quickContact;
+static void raNetQuickFirstContact(int on){assert(quickContact!=on);quickContact=on;}
+static int raNetTestLink(char *a,int an,char *b,int bn){(void)an;(void)bn;a[0]=b[0]=0;assert(quickContact);linkTests++;verifiedPeer=linkPeer;return linkPeer!=0;}
 static const char *_l(int x){(void)x;return "untracked";}
 static void guiWarning(const char *s,int seconds){(void)s;(void)seconds;warning++;}
 @FUNCTIONS@
 static void prepare(const char *driver,const char *args) {
     writes=networkCalls=warning=0;watchLen=0;
     sbNeutrinoPrepareRA("mmce1:/Games/","SLUS_123.45",driver,"mmce1:/neutrino/neutrino.elf",args);
+    assert(!quickContact);
 }
 int main(void) {
     prepare("mmce", "-cfg=mine");
