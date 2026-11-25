@@ -77,7 +77,7 @@ for typ in ("SMBHeader_t", "FindClose2Request_t", "CloseResponse_t"):
 code = code.replace("@WIRE_TYPES@", "\n".join(wire_types))
 start = fio.index("typedef struct", fio.index("#define SMB_NAME_MAX"))
 code += fio[start:fio.index("} FHANDLE;", start) + len("} FHANDLE;")] + "\n"
-code += "#define MAX_FDHANDLES 4\nstatic FHANDLE smbman_fdhandles[MAX_FDHANDLES];\n"
+code += "#define MAX_FDHANDLES 4\nstatic FHANDLE smbman_fdhandles[MAX_FDHANDLES];\nstatic u8 DirBufUsed[4];\n"
 code += function(smb, "int smb_FindClose2(")
 code += function(smb, "int smb_AbortConnection(")
 code += function(fio, "int smb_close(")
