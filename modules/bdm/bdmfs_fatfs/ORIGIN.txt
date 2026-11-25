@@ -53,5 +53,13 @@ LOCAL CHANGES (marked "RiptOPL" where they are not whole functions):
    first allocation after a mount. The window is written out first if it was changed, a failed read
    leaves the work to the plain scan, and the step stops short of the wrap and of the cluster the scan
    started from. Same result as the plain scan. Tests: test_exfat_bitmap_scan.py.
+9. fatfs/ff.c sync_window, fatfs/diskio.c disk_write: a write the block device refuses before it reaches
+   the disk (-EROFS; today only atad's APA fence, docs/APA-SAFETY.md) is reported as RES_WRPRT, and
+   sync_window then drops the changed sector and returns FR_WRITE_PROTECTED. Upstream keeps the sector
+   as changed and writes it again before every read of another sector, so one refused folder create left
+   every later open on the volume failing with FR_DISK_ERR until the next mount. After the first
+   refusal the volume takes no further write until it is mounted again (disk_status reports
+   STA_PROTECT), so no later write can land beside a dropped one. A plain write error keeps the
+   upstream behaviour. Tests: test_fatfs_refused_write.py.
 
 The sources keep their upstream formatting (.clang-format-ignore) so they diff cleanly against the pins.
