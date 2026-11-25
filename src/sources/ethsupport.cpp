@@ -805,7 +805,10 @@ int EthSource::update(item_list_t *itemList)
         if (gNetworkStartup != 0)
             return 0;
 
-        if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
+        // An L3 view flip changes which list the page shows, not what is on the share, so it reuses the
+        // PS1 rows already scanned: the scan opens every Ember folder. Refresh and reconnect still scan.
+        const int reusePs1 = libViewPending(itemList->mode) && gEthSupport.ps1Games() != NULL && !gEthSupport.ps1ScanFailed();
+        if ((view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) && !reusePs1) {
             // SMB: one list, both cores. NFS lists Ember ONLY, as UDPBD does: POPSTARTER resets the IOP and
             // dials SMB itself, while Ember keeps the live nfs: mount. Keep readable rows while retrying.
             const int nfs = gEthSupport.nfs();
