@@ -167,9 +167,12 @@ static void drawCover(struct menu_list *menu, struct submenu_list *item, theme_e
         glide_box_t box = {(float)x, (float)y, (float)w, (float)h};
         int a = coverGlide(item->item.text, item->item.id, (position < 0 ? -position : position) / 1000, &box);
         if (box.x != x || box.y != y || box.w != w || box.h != h || a < 0x80) { // on its way: flat until it lands
-            u64 moving = (color & ~(0xffULL << 24)) | ((u64)(card.alpha * a >> 7) << 24);
-            rmDrawPixmap(texture, (int)box.x, (int)box.y, ALIGN_CENTER, (int)box.w, (int)box.h, SCALING_RATIO, moving, 0);
-            return;
+            x = (int)box.x, y = (int)box.y, w = (int)box.w, h = (int)box.h;
+            color = (color & ~(0xffULL << 24)) | ((u64)(card.alpha * a >> 7) << 24);
+            if (!image->overlayTexture) { // a framed cover keeps its frame below
+                rmDrawPixmap(texture, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
+                return;
+            }
         }
     }
     if (image->overlayTexture) {
