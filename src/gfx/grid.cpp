@@ -326,9 +326,22 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     w = w * scale / 100;
     h = h * scale / 100;
     if (steps >= 0) { // a cover on the page now (not the one sliding out) takes part in a layout switch
-        glide_box_t box = {(float)x, (float)y, (float)w, (float)h};
+        // It flies as the whole case, as the other layouts draw it, and its cover window is found from that.
+        int ow = w, oh = h, dx = 0, dy = 0;
+        if (image->overlayTexture && coverElem->width > 0 && coverElem->height > 0) {
+            int left, top, right, bottom;
+            gridCoverWindow(coverElem, &left, &top, &right, &bottom);
+            gridCaseRect(w, h, coverElem->width, coverElem->height, left, top, right, bottom, &ow, &oh, &dx, &dy);
+        }
+        if (ow < 1)
+            ow = 1;
+        if (oh < 1)
+            oh = 1;
+        glide_box_t box = {(float)(x + rmWideScale(dx)), (float)(y + dy), (float)ow, (float)oh};
         int a = coverGlide(item->item.text, item->item.id, steps, &box);
-        x = (int)box.x, y = (int)box.y, w = (int)box.w, h = (int)box.h;
+        float kw = box.w / ow, kh = box.h / oh;
+        w = (int)(w * kw + 0.5f), h = (int)(h * kh + 0.5f);
+        x = (int)box.x - rmWideScale((int)(dx * kw)), y = (int)box.y - (int)(dy * kh);
         color = (color & ~(0xffULL << 24)) | ((((color >> 24) & 0xff) * a >> 7) << 24);
     }
     float squash = fabsf(cosf(turn));
