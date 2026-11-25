@@ -406,7 +406,7 @@ int bdmUpdateDeviceData(item_list_t *itemList)
             LOG("bdmUpdateDeviceData: setting device %d visible\n", itemList->mode);
             ((opl_io_module_t *)itemList->owner)->menuItem.visible = 1;
             host::app().moduleUpdateMenu(itemList->mode, 0, 0);
-            oplBootPageArrived(itemList->mode);
+            host::app().bootPageArrived(itemList->mode);
         }
 
         // Close the device handle.

@@ -31,8 +31,8 @@ after = opl[after_start:opl.index('\n', opl.index('gBootAwaitsInternalDrive = 0;
 fstart = opl.index('void oplBootPageArrived(int mode)')
 arrived = opl[fstart:opl.index('\n}\n', fstart) + 3]
 
-assert 'oplBootPageArrived(itemList->mode);' in devices, 'a BDM page that becomes visible must be reported'
-assert devices.index('menuItem.visible = 1;') < devices.index('oplBootPageArrived(itemList->mode);')
+assert 'host::app().bootPageArrived(itemList->mode);' in devices, 'a BDM page that becomes visible must be reported'
+assert devices.index('menuItem.visible = 1;') < devices.index('host::app().bootPageArrived(itemList->mode);')
 assert 'data->bdmDeviceType == BDM_TYPE_ATA' in support[support.index('int bdmModeIsATA(int mode)'):][:400]
 
 HARNESS = r'''
