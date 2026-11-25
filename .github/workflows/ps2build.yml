@@ -74,10 +74,11 @@ jobs:
       - name: Build
         shell: bash   # -o pipefail, so a failed build is not masked by tee
         run: python3 tools/build.py 2>&1 | tee build.log
-      - name: IOP module addresses (report only)
-        # ld.lld -r can write a static function's address 64 KiB too low (tools/check_irx_addresses.py). The SDK's
-        # own ps2ip has one such pair, so this step reports and does not fail the build yet.
-        continue-on-error: true
+      - name: IOP module addresses
+        # ld.lld -r can write the address of something static 64 KiB off. tools/build.py links the modules
+        # built here through tools/link_iop.py, which corrects every such address, and corrects the SDK's
+        # ready-made modules (ps2ip had one) with tools/check_irx_addresses.py --repair. This step fails
+        # when a module in the build still holds an address outside itself.
         run: python3 tools/check_irx_addresses.py build
       - name: Warning baseline (no new warnings)
         # The existing baseline was measured with GCC. LLVM has distinct

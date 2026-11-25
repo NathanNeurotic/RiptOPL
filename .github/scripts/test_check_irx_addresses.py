@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory() as tmp:
     found = tool.scan_file(tmp / 'good.irx')
     assert len(found) == 1 and found[0][3] == 4 and found[0][4] == [], found
     found = tool.scan_file(tmp / 'bad.irx')
-    assert [(o, a) for _, o, a in found[0][4]] == [(8, -0x7D6C), (16, 0x19000)], found
+    assert [(o, a, r) for _, o, a, _, r in found[0][4]] == [(8, -0x7D6C, 1), (16, 0x19000, 1)], found
     found = tool.scan_file(tmp / 'embedded.elf')
     assert [len(f[4]) for f in found] == [0, 2], found
     assert tool.scan_file(tmp / 'notes.txt') == []
@@ -58,6 +58,17 @@ with tempfile.TemporaryDirectory() as tmp:
     assert tool.main([str(tmp / 'bad.irx')]) == 1
     assert tool.main([str(tmp)]) == 1
     assert tool.main([str(tmp / 'notes.txt')]) == 2
+
+    # --repair sets each wrong high half to the neighbour inside the module, in a bare module and in one
+    # embedded in another file; a pair with no neighbour inside (here 0x39000) stays wrong and reported.
+    before = (tmp / 'embedded.elf').read_bytes()
+    assert tool.main(['--repair', str(tmp / 'bad.irx'), str(tmp / 'embedded.elf'), str(tmp / 'good.irx')]) == 0
+    assert (tmp / 'bad.irx').read_bytes() == irx([(0, 0x7CC4), (1, 0x8294), (1, 0x9000)])
+    after = (tmp / 'embedded.elf').read_bytes()
+    assert after == b'\x7fELF' + bytes(60) + good + bytes(8) + irx([(0, 0x7CC4), (1, 0x8294), (1, 0x9000)]) and after != before
+    assert (tmp / 'good.irx').read_bytes() == good
+    (tmp / 'far.irx').write_bytes(irx([(4, 0x9000)]))
+    assert tool.main(['--repair', str(tmp / 'far.irx')]) == 1 and (tmp / 'far.irx').read_bytes() == irx([(4, 0x9000)])
 
 dev9 = (root / 'modules/iopcore/cdvdman/dev9.c').read_text()
 heap = (root / 'modules/iopcore/cdvdman/heapdiag.c').read_text()

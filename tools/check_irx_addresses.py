@@ -17,8 +17,13 @@ A pair is reported when the address it encodes is below 0, or more than 32 KiB p
 (the gp pointer legitimately sits up to 0x7FF0 past a section). A wrong pair whose result still lands inside
 a module larger than 64 KiB cannot be told from a right one, so a clean result does not prove such a module.
 
-Usage: check_irx_addresses.py PATH [PATH ...]   (IRX files, ELF files with IRX modules embedded, or folders)
+Usage: check_irx_addresses.py [--repair] PATH [PATH ...]   (IRX files, ELF files with IRX modules embedded, or folders)
 Exit status: 0 nothing found, 1 at least one address outside its module, 2 no module was found to check.
+
+--repair corrects what it finds, in the files themselves: a pair outside its module is 64 KiB off and only one
+of the two neighbours lies inside, so its high half is set to that one. It is for modules that come ready-made
+(the SDK's); modules built here are linked through tools/link_iop.py, which corrects every pair, also those
+this check cannot see. Corrected pairs are counted and no longer reported.
 """
 import struct
 import sys
@@ -31,7 +36,9 @@ GP_REACH = 0x8000
 
 
 def scan_irx(e):
-    """Return (name, memory size, pairs checked, [(section, offset, encoded address)])."""
+    """Return (name, memory size, pairs checked, [(section, offset, encoded address, offset in e, right high half)]).
+
+    The right high half is None when neither neighbouring 64 KiB step puts the address inside the module."""
     shoff, = struct.unpack_from('<I', e, 0x20)
     phoff, = struct.unpack_from('<I', e, 0x1C)
     phentsize, phnum, shentsize, shnum, shstrndx = struct.unpack_from('<HHHHH', e, 0x2A)
@@ -76,7 +83,9 @@ def scan_irx(e):
             address = (hi << 16) + (lo - 0x10000 if lo & 0x8000 else lo)
             pairs += 1
             if address < 0 or address > memsz + GP_REACH:
-                bad.append((name(target[0]), r_off, address))
+                moved = address + 0x10000 if address < 0 else address - 0x10000
+                right = (hi + (1 if address < 0 else -1)) & 0xFFFF if 0 <= moved <= memsz + GP_REACH else None
+                bad.append((name(target[0]), r_off, address, toff + r_off - taddr, right))
     return module, memsz, pairs, bad
 
 
@@ -102,22 +111,48 @@ def scan_file(path):
     return results
 
 
+def repair_file(path):
+    """Correct every repairable pair of `path` in place; return how many were corrected."""
+    data = bytearray(path.read_bytes())
+    corrected = 0
+    for start, _, _, _, bad in scan_file(path):
+        for _, _, _, field, right in bad:
+            if right is not None:
+                struct.pack_into('<H', data, start + field, right)
+                corrected += 1
+    if corrected:
+        path.write_bytes(data)
+    return corrected
+
+
 def main(argv):
+    repair = '--repair' in argv
+    argv = [a for a in argv if a != '--repair']
     files = []
     for arg in argv:
         p = Path(arg)
         files.extend(sorted(q for q in p.rglob('*') if q.is_file()) if p.is_dir() else [p])
-    modules = pairs_total = bad_total = 0
+    modules = pairs_total = bad_total = corrected = 0
     for f in files:
+        if repair:
+            try:
+                done = repair_file(f)
+            except OSError as e:
+                print(f'{f}: not corrected: {e}')
+            else:
+                corrected += done
+                if done:
+                    print(f'{f}: {done} address pairs corrected')
         for offset, module, memsz, pairs, bad in scan_file(f):
             modules += 1
             pairs_total += pairs
             bad_total += len(bad)
-            for section, r_off, address in bad:
+            for section, r_off, address, _, _ in bad:
                 where = f'{f}' + (f' (module at file offset 0x{offset:x})' if offset else '')
                 print(f'{where}: {module}: {section}+0x{r_off:x} encodes address '
                       f'{"-" if address < 0 else ""}0x{abs(address):x}, outside the module (0..0x{memsz:x})')
-    print(f'{modules} IOP modules, {pairs_total} address pairs checked, {bad_total} outside their module')
+    print(f'{modules} IOP modules, {pairs_total} address pairs checked, {bad_total} outside their module'
+          + (f', {corrected} corrected' if repair else ''))
     if modules == 0:
         return 2
     return 1 if bad_total else 0

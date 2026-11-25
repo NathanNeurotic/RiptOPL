@@ -323,6 +323,8 @@ jobs:
         run: python3 .github/scripts/test_default_page_internal_drive.py
       - name: Check the IOP module address check reports a pair that points outside its module
         run: python3 .github/scripts/test_check_irx_addresses.py
+      - name: Check the IOP link step corrects the address halves ld.lld -r gets wrong
+        run: python3 .github/scripts/test_link_iop.py
       - name: Check a free run is never made of the end of a volume joined to its start
         run: python3 .github/scripts/test_fatfs_free_run_wrap.py
       - name: Check the game-list sort keeps the old order in O(n log n)
