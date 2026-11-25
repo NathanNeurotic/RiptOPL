@@ -2627,7 +2627,8 @@ int menuRenderLaunchCover(float in)
     WaitSema(menuSemaId);
     if (gTheme != NULL && selected_item != NULL && selected_item->item != NULL && selected_item->item->current != NULL) {
         submenu_item_t *item = &selected_item->item->current->item;
-        GSTEXTURE *cover = thmResidentCover(menuGetMainElems(static_cast<item_list_t *>(selected_item->item->userdata)), item);
+        GSTEXTURE *cover = thmResidentCover(menuGetMainElems(static_cast<item_list_t *>(selected_item->item->userdata)), selected_item,
+                                            selected_item->item->current);
         if (cover != NULL && cover->Height > 0) {
             // 45% of the screen's height when in, growing from nine tenths of that.
             int h = (int)(gGuiScreenHeight * 0.45f * (0.9f + 0.1f * in)), w = h * (int)cover->Width / (int)cover->Height;

@@ -384,9 +384,10 @@ int thmSetView(int view);
 int thmCanCycleView(void);
 // Part of the page's background: the family's leading Background, or a full-screen picture (the caller checks it
 // follows the Background). The hold L3 layout switch fades only what comes after these.
-// The cover of `item` if a cover cache of `family` holds it now, else NULL. Never asks for a load: the game launch
+// The cover of `row` if a cover cache of `family` holds it now, else NULL: the cover the page draws for it, so an
+// app or PS1 row on a mixed page looks in its own kind's cover cache. Never asks for a load: the game launch
 // animation draws it while the art worker is held.
-GSTEXTURE *thmResidentCover(const theme_elems_t *family, struct submenu_item *item);
+GSTEXTURE *thmResidentCover(const theme_elems_t *family, struct menu_list *menu, struct submenu_list *row);
 int thmIsBackdropElem(const theme_elems_t *family, const theme_element_t *elem);
 // Switch to the next view the active theme offers (hold L3), Coverflow (3) and Coverflow (5) counting as
 // two stops. Returns 1 when the view changed; a step between the two Coverflow stops does not reload.

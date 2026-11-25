@@ -1203,12 +1203,13 @@ static GSTEXTURE *getGameImageCached(image_cache_t *cache, struct submenu_item *
     return cacheLookupTexture(cache, &item->cache_id[cache->userId()], &item->cache_uid[cache->userId()]);
 }
 
-GSTEXTURE *thmResidentCover(const theme_elems_t *family, struct submenu_item *item)
+GSTEXTURE *thmResidentCover(const theme_elems_t *family, struct menu_list *menu, struct submenu_list *row)
 {
-    for (const theme_element_t *elem = family->first; elem != NULL; elem = elem->next) {
+    struct submenu_item *item = &row->item;
+    for (theme_element_t *elem = family->first; elem != NULL; elem = elem->next) {
         const mutable_image_t *image = NULL;
         if (elem->type == ELEM_TYPE_GAME_IMAGE || elem->type == ELEM_TYPE_COVERFLOW || elem->type == ELEM_TYPE_PSBBN_FLOW || elem->type == ELEM_TYPE_GRID)
-            image = (const mutable_image_t *)elem->extended;
+            image = (const mutable_image_t *)thmGetElemForItem(menu, row, elem)->extended; // the row's own cover, as drawn
         else if (elem->type == ELEM_TYPE_ITEMS_LIST && elem->extended != NULL)
             image = ((const items_list_t *)elem->extended)->decoratorImage;
         if (image == NULL || image->cache == NULL || image->cache->suffix() == NULL || strcmp(image->cache->suffix(), "COV") != 0)

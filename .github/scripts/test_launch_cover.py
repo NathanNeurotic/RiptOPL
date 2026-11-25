@@ -31,6 +31,7 @@ assert launch.index("holdContentFade((u8)") < launch.index("show();") < launch.i
 
 cover = body("src/gfx/themeelems.cpp", "GSTEXTURE *thmResidentCover(")
 assert "getGameImageCached(" in cover and "getGameImageTexture" not in cover, "the launch must never ask for a load"
+assert "thmGetElemForItem(menu, row, elem)->extended" in cover, "an app or PS1 row on a mixed page takes the cover the page draws for it"
 draw = body("src/ui/menusys.cpp", "int menuRenderLaunchCover(float in)")
 assert "thmResidentCover(" in draw and "getGameImageTexture" not in draw
 assert draw.count("WaitSema(menuSemaId);") == 1 and draw.count("SignalSema(menuSemaId);") == 1 and "return drawn;" in draw
