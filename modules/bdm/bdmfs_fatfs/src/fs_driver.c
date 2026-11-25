@@ -760,6 +760,23 @@ static int get_frag_list(FIL *file, void *rdata, unsigned int rdatalen)
     iClusterStart = file->obj.sclust;
     DWORD iClusterCurrent = iClusterStart;
 
+#if FF_FS_EXFAT
+    // An exFAT file flagged contiguous (no FAT chain) is one fragment by definition; walking it
+    // cluster by cluster costs about 0.2 s per GiB on the IOP for the same answer.
+    if (fs->fs_type == FS_EXFAT && file->obj.stat == 2) {
+        if (iClusterStart < 2 || clusters > fs->n_fatent - iClusterStart)
+            return -EIO;
+        u64 count = clusters * fs->csize;
+        if (count > 0xFFFFFFFF)
+            return -EOVERFLOW;
+        if (iMaxFragments > 0) {
+            f[0].sector = clst2sect(fs, iClusterStart) + bd->sectorOffset;
+            f[0].count = count;
+        }
+        return 1;
+    }
+#endif
+
     // The file length bounds traversal even for a cyclic/corrupt FAT chain.
     for (visited = 0; visited < clusters; visited++) {
         if (iClusterCurrent < 2 || iClusterCurrent >= fs->n_fatent)

@@ -30,7 +30,7 @@ typedef uint64_t u64;
 typedef uint32_t DWORD;
 typedef struct { u64 sector; unsigned int count; } bd_fragment_t;
 typedef struct { unsigned int csize, n_fatent, pdrv, fs_type; } FATFS;
-typedef struct { FATFS *fs; DWORD sclust; u64 objsize; } FFOBJID;
+typedef struct { FATFS *fs; DWORD sclust; u64 objsize; unsigned char stat; } FFOBJID;
 typedef struct { FFOBJID obj; } FIL;
 struct block_device { u64 sectorOffset; };
 #define FF_MAX_SS 512
@@ -97,6 +97,15 @@ int main(void) {
     reset(); file.obj.objsize=8*512; CHECK(get_frag_list(&file,NULL,0)<0);
     reset(); fs.fs_type=FS_EXFAT; no_fat_chain=1;
     CHECK(get_frag_list(&file,out,sizeof(out))==1 && out[0].count==24);
+    /* exFAT contiguous file (stat 2, no FAT chain): one fragment straight from the start cluster, no walk. */
+    reset(); fs.fs_type=FS_EXFAT; file.obj.stat=2;
+    CHECK(get_frag_list(&file,out,sizeof(out))==1 && calls==0 && out[0].sector==1100 && out[0].count==24);
+    CHECK(get_frag_list(&file,NULL,0)==1 && calls==0);
+    reset(); fs.fs_type=FS_EXFAT; file.obj.stat=2; file.obj.sclust=62; CHECK(get_frag_list(&file,NULL,0)<0);
+    reset(); fs.fs_type=FS_EXFAT; file.obj.stat=2; file.obj.sclust=61; CHECK(get_frag_list(&file,NULL,0)==1);
+    reset(); fs.fs_type=FS_EXFAT; file.obj.stat=2; file.obj.sclust=1; CHECK(get_frag_list(&file,NULL,0)<0);
+    /* stat 3 (fragmented in the FAT) still walks the chain. */
+    reset(); fs.fs_type=FS_EXFAT; file.obj.stat=3; fat[4]=0x7FFFFFFF; CHECK(get_frag_list(&file,NULL,0)==1 && calls==3);
     /* exFAT has one EOC marker; get_fat masks its high bit. */
     reset(); fs.fs_type=FS_EXFAT; fat[4]=0x7FFFFFFF; CHECK(get_frag_list(&file,NULL,0)==1);
     reset(); fs.fs_type=FS_EXFAT; fat[4]=0x7FFFFFF8; CHECK(get_frag_list(&file,NULL,0)<0);
