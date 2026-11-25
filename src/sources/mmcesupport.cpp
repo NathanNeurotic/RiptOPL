@@ -1424,10 +1424,6 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     if (compatmask < 0)
         return;
     settings = (struct cdvdman_settings_mmce *)((u8 *)irx + index);
-#ifdef RETROACHIEVEMENTS
-    // This leg reads no watch list of its own: drop one an earlier check left loaded when RA is off for the game.
-    sbGameRAOff(configSet);
-#endif
 
     // Persist last-played BEFORE any card switch below.
     if (gRememberLastPlayed) {
@@ -1461,7 +1457,8 @@ void MmceSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
     mmcePrepareVmcSlots(slot->prefix, configSet, vmc_fds, &size_mcemu_irx);
 
 #ifdef RETROACHIEVEMENTS
-    sbLoadWatchList(slot->prefix, game->startup);
+    if (!sbGameRAOff(configSet))
+        sbLoadWatchList(slot->prefix, game->startup);
 #endif
     if ((result = sbLoadCheats(slot->prefix, game->startup, configSet)) < 0) {
         if (!sbCheatsMissingContinue(&settings->common, result)) {

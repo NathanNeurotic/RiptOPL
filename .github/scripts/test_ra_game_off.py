@@ -31,7 +31,7 @@ gated = {
     "src/sources/ethsupport.cpp": ["sbLoadWatchList("],
     "src/sources/httpsupport.cpp": ["sbLoadWatchList("],
     "src/sources/udpfssupport.cpp": ["sbNeutrinoPrepareRA("],
-    "src/sources/mmcesupport.cpp": ["sbNeutrinoPrepareRA("],
+    "src/sources/mmcesupport.cpp": ["sbLoadWatchList(", "sbNeutrinoPrepareRA("],
     "src/app/autolaunch.cpp": ["sbAutoLaunchCheckRA("],
 }
 for rel, calls in gated.items():
@@ -43,10 +43,6 @@ for rel, calls in gated.items():
             line_start = text.rfind("\n", 0, at)
             before = text[text.rfind("\n", 0, line_start - 1):at]
             assert "sbGameRAOff(configSet)" in before, (rel, call, text[line_start:at + 60])
-mmce = read("src/sources/mmcesupport.cpp")
-prepare = mmce.index("compatmask = sbPrepare(game, configSet")
-assert mmce.index("sbGameRAOff(configSet);", prepare) < mmce.index("if (!coreLoader)", prepare), \
-    "the MMCE native leg reads no list of its own and must still drop a loaded one"
 
 # 2. sbGameRAOff itself.
 supportbase = read("src/sources/supportbase.cpp")
