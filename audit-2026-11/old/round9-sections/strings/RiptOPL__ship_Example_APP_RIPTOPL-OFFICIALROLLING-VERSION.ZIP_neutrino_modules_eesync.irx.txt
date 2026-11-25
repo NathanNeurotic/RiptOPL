@@ -1,0 +1,14 @@
+eesync
+loadcore
+sifman
+SyncEE
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

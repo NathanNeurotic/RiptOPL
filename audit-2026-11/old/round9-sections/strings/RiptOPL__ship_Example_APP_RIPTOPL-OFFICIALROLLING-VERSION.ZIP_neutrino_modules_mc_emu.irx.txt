@@ -1,0 +1,39 @@
+$% @
+'!0C
+b$+ B
+	$!(
+d&%(@
+(~c$@
+$!(C
+	$!@
+$%0`
+$$(%
+$%0`
+dmacman
+intrman
+loadcore
+sifcmd
+sifman
+sysclib
+sysmem
+thbase
+modload
+dmacman
+loadcore
+sio2man
+secrman
+mcman
+mc2_s1
+mc2_d 
+mcemu
+.iopmod
+.text
+.rel.text
+.rodata
+.rel.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

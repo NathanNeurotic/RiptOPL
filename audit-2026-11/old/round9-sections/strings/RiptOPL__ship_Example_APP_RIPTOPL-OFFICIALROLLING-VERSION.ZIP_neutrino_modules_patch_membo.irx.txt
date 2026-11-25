@@ -1,0 +1,14 @@
+intrman
+loadcore
+sysmem
+pmembo
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

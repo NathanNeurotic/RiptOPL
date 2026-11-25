@@ -1,0 +1,42 @@
+$+0e
+0! D
+'%8@
+'%( 
+'%( 
+e%%H
+12$ d
+B$@0
+6% `
+J%$PW
+'%(@
+'%(@
+dmacman
+intrman
+ioman
+loadcore
+stdio
+sysclib
+sysmem
+thbase
+kupdate: panic ! '%s' not found
+!addr 
+!include 
+-nobusini
+-nocacheini
+kupdate: pannic ! file '%s' can't open
+kupdate: pannic ! can not alloc memory
+  Logical memory size 8MB ---> 2MB
+OLDROM
+  use alternate ROM image
+IOPBTCONF
+UpDate DownLoader
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

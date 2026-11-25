@@ -1,0 +1,36 @@
+$+0e
+0! D
+'%( 
+'%( 
+e%%H
+12$ d
+$% @
+J%$PU
+1&% @
+'%(`
+'% `
+'% `
+dmacman
+intrman
+ioman
+stdio
+sysclib
+sysmem
+thbase
+panic ! '%s' not found
+!addr 
+!include 
+file '%s' can't open
+pannic ! can not alloc memory
+IOPBTCONF
+UpDate DownLoader
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

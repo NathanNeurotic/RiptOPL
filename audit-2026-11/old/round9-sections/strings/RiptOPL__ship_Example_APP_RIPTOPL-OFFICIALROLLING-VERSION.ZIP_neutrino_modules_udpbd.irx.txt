@@ -1,0 +1,58 @@
+<4	 
+<L	c
+<@	B
+<<	B
+<D	c
+<4	 
+<D	#
+<8	B
+<8	"
+<4	B
+<4	"
+<@	B
+<L	B
+<L	"
+<<	4
+<8	4
+<D	7
+<4	"
+<L	B
+<@	 
+<<	 
+<8	 
+<4	 
+<D	 
+<@	B
+<L	B
+<L	"
+<L	B
+<L	B
+<H	B
+<H	"
+<T	"
+<h	"
+<x	"
+<|	"
+<l	#
+<X	 
+<\	 
+<P	 
+<0	"
+<L	B
+mstack
+smap
+thbase
+stdio
+thevent
+UDPBD_driver
+udpbd
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

@@ -1,0 +1,13 @@
+ioman
+sysclib
+img_driver
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

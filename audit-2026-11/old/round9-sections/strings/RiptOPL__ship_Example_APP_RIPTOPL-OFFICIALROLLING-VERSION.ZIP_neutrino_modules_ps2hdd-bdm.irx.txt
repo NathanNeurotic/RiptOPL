@@ -1,0 +1,145 @@
+G$%0
+$! d
+H1&%
+1&%(
+$% `
+$%(`
+$%(@
+Hs&%
+<APB$
+<,I1&%
+Pc$!
+$% @
+$% @
+'%( 
+'%(@
+$%(@
+$%( 
+<pHB$!
+'%8`
+HB$!
+HB$!
+PB$!
+PB$!
+PB$!
+PB$!
+Pc$%
+Pc$!
+PB$%
+PB$!
+PB$!
+PB$!
+PB$!
+LB$(
+<\LB$
+<`Qc$
+cdvdman
+intrman
+iomanx
+stdio
+sysclib
+sysmem
+thbase
+thsemap
+%%8g
+J%%HI
+<@Ik%
+<qP"
+<rP"
+<sP"
+<tP"
+<uP"
+<vP"
+R4%(
+<`Q$
+<dQ"
+$+(P
+<`QB
+<dQB
+<`QB
+<`QB
+<dQc
+<dQB
+<dQB
+<dQB
+<APB$
+<APB$
+<APB$@
+<APB$
+c$+ 
+LAB$
+<pQ"
+<pQ1&
+<pQR&
+LAc$
+:2*"
+<4,$
+>6.&
+@80( 
+91)!
+;3+#
+=5-%
+?7/'
+(3-!0,1'8"5.*2$
+91)!
+:2*"
+;3+#
+<4,$?7/'
+>6.&
+=5-%
+Sony Computer Entertainment Inc.
+hdd: Error: Invalid partition size, %s.
+hdd: error: Invalid fstype, %s.
+__mbr
+sce_mbr
+_tmp
+hdd: mbr start: %ld
+hdd: mbr size : %ld
+EXT2SWAP
+EXT2
+REISER
+128M
+256M
+512M
+__net
+__system
+__sysconf
+__common
+ps2hdd
+hdd: error: can't stop module(fd busy)
+hdd: stopped module
+hdd: PS2 APA Driver v%d.%d (c) 2003 Vector
+hdd: Error: Usage: %s [-o <apaMaxOpen>] [-n <maxcache>]
+hdd: max open = %d, %d buffers
+hdd: error: could not get date.
+hdd: %02d:%02d:%02d %02d/%02d/%d
+hdd: error: file descriptor initialization failed.
+hdd: error: cache buffer initialization failed.
+hdd: version %04x driver start.
+hdd: error: add device failed.
+hdd_driver
+hdd: error: out of memory
+hdd: Error: cannot get id
+hdd: error: disk err %d on device %ld, sector %ld, type %d
+hdd: error: free buffer empty
+hdd: error: dirty buffer allocated
+hdd: error: null buffer returned
+hdd: error: unused cache returned
+hdd: error: dirty buffer returned
+_tmp
+__empty
+hdd: error: invalid partition table or version newer than I know.
+hdd: Warning: Invalid partition information. start != prev
+hdd: checking log...
+hdd: total = %08lx sectors, installable = %08lx sectors.
+.iopmod
+.text
+.rel.text
+.rodata
+.rel.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

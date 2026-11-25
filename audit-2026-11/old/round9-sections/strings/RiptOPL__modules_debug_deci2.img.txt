@@ -1,0 +1,379 @@
+RESET
+ROMDIR
+EXTINFO
+IOPBTCONF
+DECI2
+DECI2DRS
+DECI2FILE
+DECI2HSYN
+DECI2LOAD
+20170610,conffile,IOPRP.img,nozomi@NozomiType-R//home/nozomi/PS2/tools/ROMIMG
+Deci2_Manager
+Deci2_SIF2_interface_driver
+Deci2_TTY/FILE_driver
+DECI2_host_sync
+Deci2_Load_Manager
+!include IOPBTCONF
+DECI2
+DECI2HSYN
+DECI2DRS
+DECI2FILE
+#DECI2KPRT
+DECI2LOAD
+Deci2_Manager
+$!(@
+$!(@
+$!0 
+#*!( 
+$!0 
+$!(@
+%2!8
+$$ E
+k!$!
+ B0"
+$!(@
+k1&!
+k!$!
+k!$!
+k!$!
+b,!8
+<0e!$!
+kc$!
+$! @
+$!  
+$!  
+$! @
+b,!(
+<`2B$
+b(!(
+$!( 
+c4! 
+Q$! @
+$! @
+dB$,
+IB$(
+<pHB$
+<PLc$$
+Lc$$
+<LN{
+)5$@	
+5$PH
+@	<%@	
+@	<%@	
+@	<%@	
+@	<%@	
+excepman
+intrman
+loadcore
+stdio
+sysclib
+sysmem
+thbase
+thevent
+thsemap
+deci2api
+deci2log
+Deci2_Manager
+ socket %2d proto=0x%x handler=0x%x opt=0x%x
+socket=%d point to if=%d
+socket=%d point to if=%d (host route)
+  new_bind_poll() #%d
+new_bind_poll() end
+new_bind_poll()
+DECI2 start d2manCB = 0x%x debugflag = 0x%x intrhandlers = 0x%x 
+ interface %d dest=0x%x handler=0x%x opt=0x%x interface=0x%x
+Send DECI2_READ event to socket=%d
+IFM_IN event from if driver %d
+IFM_INDONE: Receive Socket not found
+Send DECI2_READDONE event to socket=%d
+Send DECI2Ex_RflagDone event to socket=%d
+IFM_INDONE: Receive packet too large %d>%d
+IFM_INDONE event from if driver %d
+Send DECI2_WRITE event to socket=%d
+IFM_OUT: Send Socket not found
+IFM_OUT event from if driver %d
+interface_packet_send_done: 0x%x != 0x%x
+Send DECI2_WRITEDONE event to socket=%d
+Send DECI2Ex_WflagDone event to socket=%d
+IFM_OUTDONE: Send Socket not found
+IFM_OUTDONE event from if driver %d
+ interface %d active
+IOP DECI2 manager Version 0.9.4 [SilverBull]
+    Original Copyright 1999,2000,2003 (C) Sony Computer Entertainment Inc.
+    Copyright of this version (C) SilverBull/ASSEMblergames forums
+DECI2 manager start.
+    dbg rcvcount=0x%x
+    ExRecv error return=%d
+ dbg buf=0x%x, request size=0x%x
+Dbg ReadDoneHandler: buffer overflow
+    ExSend error return=%d
+DbgHandler: unsupported event 0x%x
+DbgHandler: unknown event 0x%x
+DCMP request_send: ReqSend error %d
+DCMP request_send: unknown type 0x%x
+DCMP request_send: STATUS %d can not send
+DCMPT_XXXX: unknown type 0x%x
+DCMPT_ERROR: unknown code 0x%x
+DCMPT_ERROR: unknown proto 0x%x
+DCMPT_STATUS: unknown code 0x%x
+DCMPT_CONNECT: unknown code 0x%x
+DCMPT_ECHO: buffer over flow
+DCMPT_ECHO: unknown code 0x%x
+DCMP WriteDoneHandler: ReqSend error %d
+DcmpHandler: unsupported event 0x%x
+DcmpHandler: unknown event 0x%x
+DCMPT_STATUS: buffer over flow
+DCMPT_ERROR: buffer over flow
+ErrorIn: unknown event 0x%x
+ErrorIn: read error packet header
+ErrorIn: skip error packet
+error_rcv_packet: flag = 0x%x
+RelayInOut: unknown event 0x%x
+relay_rcv_packet: flag = 0x%x
+Relay start slot %d (sock=%d) %c->%c
+deliver_rcv_packet: no route error prot=%d dest=%c
+deliver_rcv_packet: rcvsocket %x
+bind_socket_interface() end
+Send DECI2Ex_WriteStart event to socket=%d
+BIND socket=%d and if=%d
+bind_socket_interface()
+Dbg ReadHandler: invalid command
+Dbg ReadHandler: unknown size
+Dbg ReadDoneHandler: buffer overflow
+DECI2 interrupt start
+DECI2 interrupt end
+DECI2 sdb panic ! nest = %x
+*%'&+
+)#$ 
+.shstrtab
+.iopmod
+.rel.text
+.rel.rodata
+.rel.data
+.bss
+Deci2_SIF2_interface_driver
+"B4$
+@c4!
+ b4$
+$!(`
+B0!8
+$!(@
+B4!@
+$!(@
+$!(`
+	B$!0
+$!(`
+$!(@
+$!(`
+$!(@
+4$(e
+deci2api
+intrman
+loadcore
+sifman
+sysclib
+Deci2_SIF2_interface_driver
+RCV_START
+RCV_READ
+RCV_END
+SEND_START
+SEND_WRITE
+SEND_END
+POLL
+RCV_OFF
+RCV_ON
+SEND_OFF
+SEND_ON
+DEBUG
+SHUTDOWN
+		sif2 func %s flag = %x
+		sif2 read spec %x and DECI2_ACCEPT
+		sif2 read msflag for rcv %x
+		sif2 read msflag for send %x
+		sif2 send dma start addr=%x, size=%x
+		SIF2 SENDING unexpected DECI2_ACCEPT !
+		sif2 send dma end %08x %08x %08x %08x ...
+		sif2 recv dma end %08x %08x %08x %08x ...
+		sif2 unexpected DMA interrupt
+		sif2 packet receive start flag = %x
+		sif2 rcv dma start %d byte
+		sif2 packet receive end flag = %x
+		sif2 packet send start flag = %x
+		sif2 write spec %x and DECI2_START
+		sif2 packet send end  flag = %x
+			sif2 rcv off flag = %x
+			sif2 rcv on flag = %x
+			sif2 send off flag = %x
+			sif2 send on flag = %x
+.shstrtab
+.iopmod
+.rel.text
+.rodata
+.rel.data
+.bss
+Deci2_TTY/FILE_driver
+0B00
+ B0:
+0B0'
+0B0	
+$!(`
+2!( 
+"2#0
+'!0@
+0!( 
+ B0J
+0B0%
+$!( 
+61&!
+3!$!0&
+6R&!
+9c$+
+$$0f
+3!$!0&
+3!$!
+B$! @
+3!$!
+9c$+
+9c$+
+6s&!
+9c$+
+B$! @
+6s&!
+9c$+
+B$!  
+B$! `
+6s&!
+9c$+
+$!(#
+>1&!
+>1&!
+'!(`
+;1& 
+$! `
+deci2api
+intrman
+ioman
+loadcore
+sysclib
+sysmem
+thevent
+thsemap
+Deci2_TTY/FILE_driver
+OPEN
+OPENR
+CLOSE
+CLOSER
+READ
+READR
+WRITE
+WRITER
+SEEK
+SEEKR
+IOCTL
+IOCTLR
+REMOVE
+REMOVER
+MKDIR
+MKDIRR
+RMDIR
+RMDIRR
+DOPEN
+DOPENR
+DCLOSE
+DCLOSER
+DREAD
+DREADR
+GETSTAT
+GETSTATR
+CHSTAT
+CHSTATR
+FORMAT
+FORMATR
+RENAME
+RENAMER
+CHDIR
+CHDIRR
+SYNC
+SYNCR
+MOUNT
+MOUNTR
+UMOUNT
+UMOUNTR
+SEEK64
+SEEK64R
+DEVCTL
+DEVCTLR
+SYMLINK
+SYMLINKR
+READLINK
+READLINKR
+transaction WaitEventFlag()
+deci_transaction_raw(unit=%d) -> rep=0x%x:0x%x:0x%x:0x%x, recvcnt=0x%x
+transaction end
+transaction sceDeci2Poll()
+deci_transaction_raw(unit=%d,req=0x%x:0x%x:0x%x:0x%x,code=%s)
+DrfpProtocolHandler: Unexpected packet comming
+DrfpProtocolHandler: Unexpected phase
+DrfpProtocolHandler: Unexpected size packet comming
+DrfpProtocolHandler: unsupported event 0x%x
+DrfpProtocolHandler: unknown event 0x%x
+host
+HOST file via DECI2
+deci2_transaction(unit=%d,req=0x%x:0x%x:0x%x:0x%x,code=%s)
+_circgetc empty error
+_circputc full error
+TtyProtocolHandler: unknown event 0x%x
+DECI2_CONSOLE
+tty00:
+.shstrtab
+.iopmod
+.rel.text
+.rel.rodata
+.rel.data
+.bss
+DECI2_host_sync
+deci2api
+loadcore
+DECI2_host_sync
+.shstrtab
+.iopmod
+.rel.text
+.rodata
+.rel.data
+.bss
+Deci2_Load_Manager
+D&!(
+D&!(
+D&!(
+$!  
+$!(@
+Q&! `
+$!( 
+b0%(
+c,*P+
+B$! @
+0&! 
+0%(C
+deci2api
+intrman
+loadcore
+modload
+sysclib
+sysmem
+thbase
+Deci2_Load_Manager
+Moldule_File_loader
+ILOAD START unexpected error 0x%x
+ILOAD request_send: ReqSend error %d
+ILOAD request_send: unknown reply code 0x%x
+LoadHandler: MODC_WATCH unknown module status 0x%x
+LoadHandler: WRITE unknown case 0x%x
+LoadHandler: unknown event 0x%x
+ILOAD send buffer overflow
+ILOAD send buffer underflow
+.shstrtab
+.iopmod
+.rel.text
+.rel.rodata
+.rel.data
+.bss
