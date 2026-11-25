@@ -77,6 +77,9 @@ typedef struct
     u32 mode;
     unsigned char dir_eos; // SMB1 FIND_LAST: the last returned entry still belongs in the list
     unsigned char dir_stale; // the SMB session closed before this search reached EOS
+    unsigned char dir_buf;  // 1 + index of this search's DirBuf, 0 = none (one entry per request)
+    unsigned short dir_left; // entries of the last reply not yet returned by dread
+    unsigned short dir_off;  // offset of the next of them in DirBuf
     char name[SMB_NAME_MAX];
 } FHANDLE;
 
@@ -88,6 +91,11 @@ FHANDLE smbman_fdhandles[MAX_FDHANDLES];
 
 static ShareEntry_t ShareList;
 static u8 SearchBuf[SMB_SEARCH_BUF_MAX];
+// Replies to batched directory searches, one per directory open at once (a scan that probes the
+// folders of a folder holds two). A directory opened beyond these reads one entry per request.
+#define SMB_DIR_BUFS 4
+static u8 DirBuf[SMB_DIR_BUFS][SMB_FIND_BATCH_SIZE];
+static u8 DirBufUsed[SMB_DIR_BUFS];
 static char smb_curdir[SMB_PATH_MAX];
 static char smb_curpath[SMB_PATH_MAX];
 static char smb_secpath[SMB_PATH_MAX];
@@ -409,6 +417,8 @@ int smb_close(iop_file_t *f)
                 }
             }
         }
+        if (fh->dir_buf)
+            DirBufUsed[fh->dir_buf - 1] = 0;
         memset(fh, 0, sizeof(FHANDLE));
         fh->smb_fid = -1;
     }
@@ -678,6 +688,15 @@ int smb_dopen(iop_file_t *f, const char *dirname)
         fh->smb_fid  = -1;
         fh->dir_eos  = 0;
         fh->dir_stale = 0;
+        fh->dir_left  = 0;
+        fh->dir_buf   = 0;
+        for (r = 0; r < SMB_DIR_BUFS; r++) {
+            if (!DirBufUsed[r]) {
+                DirBufUsed[r] = 1;
+                fh->dir_buf   = r + 1;
+                break;
+            }
+        }
         fh->filesize = 0;
         fh->position = 0;
 
@@ -722,36 +741,41 @@ int smb_dread(iop_file_t *f, iox_dirent_t *dirent)
         goto io_unlock;
     }
 
-    // FIND_FIRST2 returns the final entry with EndOfSearch set. Do not send
-    // FIND_NEXT2 on a search that the server has already closed.
-    if (fh->dir_eos) {
-        r = 0;
-        goto io_unlock;
-    }
+    u8 *batch = fh->dir_buf ? DirBuf[fh->dir_buf - 1] : NULL;
+    int count = 0;
 
-    if (fh->smb_fid == -1) {
-        r = smb_FindFirstNext2(UID, TID, fh->name, TRANS2_FIND_FIRST2, info);
+    if (fh->dir_left == 0) {
+        // FIND_FIRST2 returns the final entry with EndOfSearch set. Do not send
+        // FIND_NEXT2 on a search that the server has already closed.
+        if (fh->dir_eos) {
+            r = 0;
+            goto io_unlock;
+        }
+
+        if (fh->smb_fid == -1) {
+            r = smb_FindFirstNext2(UID, TID, fh->name, TRANS2_FIND_FIRST2, info, batch, SMB_FIND_BATCH_SIZE, &count);
+            if (r == 0)
+                fh->smb_fid = info->SID;
+        } else {
+            info->SID = fh->smb_fid;
+            r         = smb_FindFirstNext2(UID, TID, NULL, TRANS2_FIND_NEXT2, info, batch, SMB_FIND_BATCH_SIZE, &count);
+        }
         if (r != 0) {
             if (r > 0) {
-                fh->dir_eos = 1; // empty directory; normal end, not a scan error
-                r = 0;
+                fh->dir_eos = 1; // empty directory or end of list; normal end, not a scan error
+                r           = 0;
             }
             goto io_unlock;
         }
-        fh->smb_fid = info->SID;
-    } else {
-        info->SID = fh->smb_fid;
-        r = smb_FindFirstNext2(UID, TID, NULL, TRANS2_FIND_NEXT2, info);
-        if (r != 0) {
-            if (r > 0) {
-                fh->dir_eos = 1;
-                r = 0;
-            }
-            goto io_unlock;
-        }
+        fh->dir_eos  = (info->EOS != 0);
+        fh->dir_left = count;
+        fh->dir_off  = 0;
     }
 
-    fh->dir_eos = (info->EOS != 0);
+    if (batch != NULL) {
+        fh->dir_off += smb_FindEntry(&batch[fh->dir_off], info);
+        fh->dir_left--;
+    }
     smb_statFiller(&info->fileInfo, &dirent->stat);
     strncpy(dirent->name, info->FileName, SMB_NAME_MAX);
     r = 1;
