@@ -20,6 +20,7 @@
 #include "include/themes.h"
 #include "include/pad.h"
 #include "include/gui.h"
+#include "include/coverglide.h"
 #include "include/guigame.h"
 #include "include/guiint.h" // gGuiScreenWidth, gGuiScreenHeight -- the launch cover
 #include "include/system.h"
@@ -2506,7 +2507,7 @@ static void menuRenderElements(theme_elems_t *elems)
         }
     }
 
-    // A layout switch fades the content in front of the background, not the background (see guiDipScreen).
+    // A content fade (guiContentFade) covers what is in front of the background, not the background.
     float rise;
     const u8 fade = guiContentFade(&rise);
     int backdrop = fade < 0x80;
@@ -2589,6 +2590,7 @@ static theme_elems_t *menuGetMainElems(item_list_t *list)
 
 void menuRenderMain(void)
 {
+    coverGlideFrame();
     item_list_t *list = static_cast<item_list_t *>(selected_item->item->userdata);
     theme_elems_t *kindElems = menuGetMainElems(list);
 
@@ -2893,8 +2895,7 @@ static void menuL3Tap(int viewPending)
         guiShowToast(_l(_STR_L3_HOLD_FOR_THEME), L3_ICON);
 }
 
-// Hold L3: the next layout of the theme, run by guiDipScreen once the content has faded out. The page is read again
-// here, as the hold was a few frames ago.
+// Hold L3: the next layout of the theme. Its covers fly from where they were to their new places (coverglide.h).
 static void menuCycleThemeView(void)
 {
     if (selected_item == NULL || selected_item->item == NULL)
@@ -2904,6 +2905,7 @@ static void menuCycleThemeView(void)
         return;
     const bool canFilter = support != NULL && support->enabled && selected_item->item->toggleView &&
                            libViewRingUsable(support->mode);
+    coverGlideStart();
     if (thmCycleView() && canFilter)
         guiShowToast(_l(_STR_L3_TAP_FOR_FILTER), L3_ICON);
 }
@@ -2920,7 +2922,7 @@ static void menuHandleViewHold(int viewPending)
     } else if (menuL3State == 1 && menuL3HoldReached()) {
         menuL3State = 2;
         if (!viewPending && thmCanCycleView())
-            guiDipScreen(&menuCycleThemeView); // switch while the content is faded out
+            menuCycleThemeView();
     }
 }
 

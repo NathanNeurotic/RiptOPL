@@ -13,6 +13,7 @@
 #include "include/saveicon.h"
 #include "include/pad.h"
 #include "include/grid.h"
+#include "include/coverglide.h"
 #include "include/lang.h"
 
 #include <math.h>
@@ -314,7 +315,7 @@ static void drawCoverlessTile(struct menu_list *menu, struct submenu_list *item,
 // One cover. turn: the case flip (0 its front; past pi/2 its back, drawn plain); w/h the cover's size before
 // the turn narrows it.
 static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_element_t *elem, int x, int y, u64 color, int scale,
-                     float turn, GSTEXTURE *back, int vignette)
+                     float turn, GSTEXTURE *back, int vignette, int steps)
 {
     theme_element_t *coverElem = thmGetElemForItem(menu, item, elem);
     mutable_image_t *image = (mutable_image_t *)coverElem->extended;
@@ -324,6 +325,12 @@ static void drawCell(struct menu_list *menu, struct submenu_list *item, theme_el
     gridCoverSize(elem, coverElem, &w, &h);
     w = w * scale / 100;
     h = h * scale / 100;
+    if (steps >= 0) { // a cover on the page now (not the one sliding out) takes part in a layout switch
+        glide_box_t box = {(float)x, (float)y, (float)w, (float)h};
+        int a = coverGlide(item->item.text, item->item.id, steps, &box);
+        x = (int)box.x, y = (int)box.y, w = (int)box.w, h = (int)box.h;
+        color = (color & ~(0xffULL << 24)) | ((((color >> 24) & 0xff) * a >> 7) << 24);
+    }
     float squash = fabsf(cosf(turn));
     int tw = (int)(w * squash + 0.5f);
     if (tw < 1)
@@ -618,7 +625,7 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
             for (int slot = 0; slot < perPage && old != NULL; slot++, old = old->next) {
                 float turn = gridFlipTurn(old);
                 drawCell(menu, old, elem, x0 + (slot % columns) * stepX, y0 + (slot / columns) * stepY + oshiftY, outDim, 100, turn,
-                         turn != 0.0f ? gridBackTexture(menu, old, elem, 0) : NULL, 0);
+                         turn != 0.0f ? gridBackTexture(menu, old, elem, 0) : NULL, 0, -1);
             }
         }
     }
@@ -641,7 +648,8 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
             continue; // drawn last, larger, over its neighbours
         }
         float turn = gridFlipTurn(cell); // a case left turned keeps its back
-        drawCell(menu, cell, elem, x, y, inDim, 100, turn, turn != 0.0f ? gridBackTexture(menu, cell, elem, 0) : NULL, activeVignette);
+        drawCell(menu, cell, elem, x, y, inDim, 100, turn, turn != 0.0f ? gridBackTexture(menu, cell, elem, 0) : NULL, activeVignette,
+                 abs(first + slot - index));
     }
     if (shown) {
         float turn = gridFlipTurn(item);
@@ -653,10 +661,12 @@ static void drawGrid(struct menu_list *menu, struct submenu_list *item, config_s
         coverH = coverH * GRID_SELECTED_SCALE / 100;
         int frameW = (int)(coverW * fabsf(cosf(turn)) + 0.5f);
         int drawnSelW = rmWideScale(frameW > 1 ? frameW : 1);
-        if (focused && gridSlideFrom < 0)
+        // The selection frame waits for a layout switch's covers to land.
+        int frame = focused && gridSlideFrom < 0 && !coverGlideActive();
+        if (frame)
             drawFrameGlow(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
-        drawCell(menu, item, elem, selX, selY, inSel, GRID_SELECTED_SCALE, turn, selBack, 0);
-        if (focused && gridSlideFrom < 0)
+        drawCell(menu, item, elem, selX, selY, inSel, GRID_SELECTED_SCALE, turn, selBack, 0, 0);
+        if (frame)
             drawFrameBorder(selX, selY, drawnSelW, coverH, gTheme->selTextColor);
     }
 

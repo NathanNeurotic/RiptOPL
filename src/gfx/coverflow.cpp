@@ -13,6 +13,7 @@
 #include "include/pad.h"
 #include "include/sound.h"
 #include "include/texcache.h"
+#include "include/coverglide.h"
 #include "include/favsupport.h"
 #include "include/vcdsupport.h" // vcdDisplayName -- display-only VCD game-ID prefix hide
 #include "include/libview.h"    // libViewActive / libListViewActive -- which list this page shows
@@ -335,6 +336,12 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
         // Dim Side Covers darkens the colour and keeps the cover opaque. Half alpha let the page behind
         // show through the side covers, so the moving ambient backdrop appeared to pass over them.
         u64 coverColor = (gCoverflowDimCovers && i != centerIdx) ? GS_SETREG_RGBA(0x40, 0x40, 0x40, 0x80) : gDefaultCol;
+
+        // Hold L3 layout switch: where the cover is on its way here (coverglide.h).
+        glide_box_t box = {(float)posX, (float)posY, (float)drawW, (float)drawH};
+        int glideAlpha = coverGlide(covers[i]->item.text, covers[i]->item.id, abs(i - centerIdx), &box);
+        posX = (int)box.x, posY = (int)box.y, drawW = (int)box.w, drawH = (int)box.h;
+        coverColor = (coverColor & ~(0xffULL << 24)) | ((u64)glideAlpha << 24);
 
         if (cimg->overlayTexture) {
             // Scale the inlay (cover) corner offsets to the drawn overlay size so the case

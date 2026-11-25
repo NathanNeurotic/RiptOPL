@@ -8,6 +8,7 @@
 #include "include/lang.h"
 #include "include/texcache.h"
 #include "include/psbbnflow.h"
+#include "include/coverglide.h"
 
 #include <stdio.h>
 
@@ -159,11 +160,21 @@ static void drawCover(struct menu_list *menu, struct submenu_list *item, theme_e
         return;
 
     u64 color = GS_SETREG_RGBA(card.shade, card.shade, card.shade, card.alpha);
+    // The card flat, at its size: how a framed cover is drawn, and where a layout switch flies a cover to.
+    int w = (card.xr - card.xl) * 1000 / rmWideScale(1000), h = card.hl > card.hr ? card.hl : card.hr;
+    int x = (card.xl + card.xr) / 2, y = card.yc;
+    if (position > -1000 && position < 1000 * (PSBBN_FLOW_TAIL + 1)) { // the cards in the row, not the one leaving
+        glide_box_t box = {(float)x, (float)y, (float)w, (float)h};
+        int a = coverGlide(item->item.text, item->item.id, (position < 0 ? -position : position) / 1000, &box);
+        if (box.x != x || box.y != y || box.w != w || box.h != h || a < 0x80) { // on its way: flat until it lands
+            u64 moving = (color & ~(0xffULL << 24)) | ((u64)(card.alpha * a >> 7) << 24);
+            rmDrawPixmap(texture, (int)box.x, (int)box.y, ALIGN_CENTER, (int)box.w, (int)box.h, SCALING_RATIO, moving, 0);
+            return;
+        }
+    }
     if (image->overlayTexture) {
         // Framed covers keep their frame: drawn flat at the card's size, without the perspective.
         image_texture_t *ov = image->overlayTexture;
-        int w = (card.xr - card.xl) * 1000 / rmWideScale(1000), h = card.hl > card.hr ? card.hl : card.hr;
-        int x = (card.xl + card.xr) / 2, y = card.yc;
         int cw = coverElem->width > 0 ? coverElem->width : 1;
         int ch = coverElem->height > 0 ? coverElem->height : 1;
         rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color,
