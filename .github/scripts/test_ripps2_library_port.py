@@ -46,9 +46,9 @@ static fav_raw_t *favReadFile(int *count, int *editable, const char *name)
 }
 static int replaceable;
 static bool recentReplaceable(void) { return replaceable; }
-static int recentWriteFile(fav_raw_t *recs, int count)
+static int favWriteFile(fav_raw_t *recs, int count, const char *name)
 {
-    assert(count <= RECENT_MAX_ITEMS);
+    assert(!strcmp(name, kRecentFile) && count <= RECENT_MAX_ITEMS);
     writes++;
     disk.assign(recs, recs + count);
     return 1;

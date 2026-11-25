@@ -388,7 +388,7 @@ static fav_raw_t *favReadPath(const char *path, int *count, int *complete, int *
     fav_raw_t *records = favParseImage(image.data, image.size, count, &valid, allowImport, &recognized);
     *complete = image.readable && valid;
     *recoverable = image.readable && recognized;
-    *missing = image.missing;
+    *missing = image.missing || (image.readable && image.size == 0); // an empty file holds nothing to keep: a save cut right after it began
     free(image.data);
     return records;
 }
@@ -507,66 +507,21 @@ static int favWriteWhole(const char *path, const u8 *image, int size)
     return written == size && closed >= 0;
 }
 
-static bool favImageMatches(const char *path, const u8 *data, int size)
-{
-    FavImage image = favLoadImage(path);
-    bool matches = image.readable && image.size == size && memcmp(image.data, data, size) == 0;
-    free(image.data);
-    return matches;
-}
-
-static bool favImageValid(const FavImage &image, int allowImport, bool *recoverable)
-{
-    int count, complete, recognized;
-    fav_raw_t *records = favParseImage(image.data, image.size, &count, &complete, allowImport, &recognized);
-    free(records);
-    *recoverable = image.readable && recognized;
-    return image.readable && complete;
-}
-
-// Before reusing .new, restore it when it is the only complete copy. Re-read each
-// path rather than caching authority across config-path changes or PC edits.
-static bool favPrepareSave(const char *path, const char *staged)
-{
-    FavImage primary = favLoadImage(path);
-    bool recoverable;
-    bool complete = favImageValid(primary, 1, &recoverable);
-    bool missing = primary.missing;
-    free(primary.data);
-    if (complete)
-        return true;
-    FavImage recovery = favLoadImage(staged);
-    bool unused;
-    bool stagedComplete = favImageValid(recovery, 0, &unused);
-    bool ok = missing && recovery.missing;
-    if (stagedComplete && (missing || recoverable))
-        ok = favWriteWhole(path, recovery.data, recovery.size) && favImageMatches(path, recovery.data, recovery.size);
-    free(recovery.data);
-    return ok;
-}
-
+// One open, one write, in place: no .new copy beside the file, no read-back. This used to read the file,
+// write a .new copy, read it back, write the file, read it back and delete the copy; on an exFAT drive the
+// new copy also searched the drive's space map from its start on the first save since power-on. Write and
+// close results are still checked. A save cut by a power loss can leave the file short: favReadFile then
+// shows what it can read and refuses edits, and an empty file counts as no file. A .new copy left by an
+// older build is still read when the file is missing or short.
 static int favWriteFile(fav_raw_t *recs, int count, const char *name = FAV_FILE_NAME)
 {
     int size;
+    char path[256], staged[264];
     u8 *image = favBuildImage(recs, count, &size);
     if (image == NULL)
         return 0;
-    char path[256], staged[264];
-    if (!favStoragePaths(path, sizeof(path), staged, sizeof(staged), name) || !favPrepareSave(path, staged)) {
-        free(image);
-        return 0;
-    }
-    // No ENOSPC in-place fallback: never truncate the last complete copy when
-    // staging failed. Both successful writes must close and read back exactly.
-    if (!favWriteWhole(staged, image, size) || !favImageMatches(staged, image, size)) {
-        remove(staged); // The primary has not been touched; cleanup is best effort.
-        free(image);
-        return 0;
-    }
-    bool ok = favWriteWhole(path, image, size) && favImageMatches(path, image, size);
+    int ok = favStoragePaths(path, sizeof(path), staged, sizeof(staged), name) && favWriteWhole(path, image, size);
     free(image);
-    if (ok)
-        remove(staged); // A stale recovery file is harmless: the complete primary wins.
     return ok;
 }
 
@@ -1559,25 +1514,8 @@ int removeFavouriteByIdAndText(int mode, int id, const char *text, int kind)
 // Ported from RIPPS2 (akilluminati47) build 115's recents list. Same record format as the
 // favourites, newest first, capped at RECENT_MAX_ITEMS. Each launch moves its game to the front.
 
-// This runs on every launch, between the press and the game, on the device that holds the settings. The
-// list is rebuilt by playing, so it is written once, in place: no second copy beside it, no read-back.
-// favWriteFile's way (a .new copy, the file, both read back, the copy deleted) made a launch wait for
-// two writes, a file creation, a deletion and three reads; on an exFAT drive each new file also
-// searched the drive's space map from the start on the first launch since power-on.
-static int recentWriteFile(fav_raw_t *recs, int count)
-{
-    int size;
-    char path[256], staged[264];
-    u8 *image = favBuildImage(recs, count, &size);
-    if (image == NULL)
-        return 0;
-    int ok = favStoragePaths(path, sizeof(path), staged, sizeof(staged), kRecentFile) && favWriteWhole(path, image, size);
-    free(image);
-    return ok;
-}
-
-// A write cut short (power lost during a launch) leaves a file that reads but does not parse. With no
-// second copy to restore from, such a file is replaced; one the device could not read is left alone.
+// The recents list is rebuilt by playing, so a file a cut write left short is replaced, where favourites.bin
+// refuses edits; one the device could not read is left alone.
 static bool recentReplaceable(void)
 {
     char path[256], staged[264];
@@ -1619,7 +1557,7 @@ int recentRecord(int mode, int id, int icon_id, int text_id, const char *text, i
             continue;
         out[n++] = recs[i];
     }
-    int ok = recentWriteFile(out, n);
+    int ok = favWriteFile(out, n, kRecentFile);
     free(out);
     free(recs);
     recentInvalidate();
