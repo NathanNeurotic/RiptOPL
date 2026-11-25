@@ -754,17 +754,17 @@ int EthSource::needsUpdate(item_list_t *itemList)
     result = 0;
 
     // Explicit refresh/view changes re-arm recovery; failed background scans keep their budget.
+    // A requested rebuild still records the CD/DVD folder times below. Returning before that left them
+    // unset, so the next Automatic Refresh tick saw a "change" and scanned the whole share a second time.
     if (host::library().consumeDirty(itemList->mode)) {
         gEthSupport.ps1ScanRetries() = 0;
-        return 1;
-    }
-    if (gEthSupport.shareChosen() && gNetworkStartup == 0 && gEthSupport.ps1ScanFailed() &&
-        gEthSupport.ps1ScanRetries() < ETH_PS1_SCAN_RETRY_MAX &&
-        (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
+        result = 1;
+    } else if (gEthSupport.shareChosen() && gNetworkStartup == 0 && gEthSupport.ps1ScanFailed() &&
+               gEthSupport.ps1ScanRetries() < ETH_PS1_SCAN_RETRY_MAX &&
+               (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
         gEthSupport.ps1ScanRetries()++;
         return 1;
-    }
-    if (gEthSupport.shareChosen() && (host::library().listViewActive(itemList) == LIB_VIEW_PS1))
+    } else if (gEthSupport.shareChosen() && (host::library().listViewActive(itemList) == LIB_VIEW_PS1))
         return 0;
 
     if (gEthSupport.ulSizePrev() == -2)
