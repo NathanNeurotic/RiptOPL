@@ -50,6 +50,7 @@ jobs:
           python3 .github/scripts/test_cdvdman_own_stack.py
           python3 .github/scripts/test_mx4sio_host_boot.py
           python3 .github/scripts/test_mx4sio_retry.py
+          python3 .github/scripts/test_mx4sio_detect_unlock.py
           python3 .github/scripts/test_vmc_write_result.py
           python3 .github/scripts/test_mmce_read_recovery.py
           python3 .github/scripts/test_pr894_hardening.py
