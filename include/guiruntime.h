@@ -27,6 +27,7 @@ public:
     void drawBackground();
     void drawAmbientEffects();
     void playLaunchTransition();
+    void playLaunchCover();
     void reloadScreenExtents();
 
     void mainLoop();

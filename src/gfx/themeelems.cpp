@@ -1203,6 +1203,24 @@ static GSTEXTURE *getGameImageCached(image_cache_t *cache, struct submenu_item *
     return cacheLookupTexture(cache, &item->cache_id[cache->userId()], &item->cache_uid[cache->userId()]);
 }
 
+GSTEXTURE *thmResidentCover(const theme_elems_t *family, struct menu_list *menu, struct submenu_list *row)
+{
+    struct submenu_item *item = &row->item;
+    for (theme_element_t *elem = family->first; elem != NULL; elem = elem->next) {
+        const mutable_image_t *image = NULL;
+        if (elem->type == ELEM_TYPE_GAME_IMAGE || elem->type == ELEM_TYPE_COVERFLOW || elem->type == ELEM_TYPE_PSBBN_FLOW || elem->type == ELEM_TYPE_GRID)
+            image = (const mutable_image_t *)thmGetElemForItem(menu, row, elem)->extended; // the row's own cover, as drawn
+        else if (elem->type == ELEM_TYPE_ITEMS_LIST && elem->extended != NULL)
+            image = ((const items_list_t *)elem->extended)->decoratorImage;
+        if (image == NULL || image->cache == NULL || image->cache->suffix() == NULL || strcmp(image->cache->suffix(), "COV") != 0)
+            continue;
+        GSTEXTURE *cover = getGameImageCached(image->cache, item);
+        if (cover != NULL && cover->Mem != NULL)
+            return cover;
+    }
+    return NULL;
+}
+
 // Frames past the art delay that a Background keeps showing the previous game's art while the selected one has not
 // been requested yet (the Coverflow gate above can hold the BG request back until the cover settles).
 #define BG_HOLD_GRACE_FRAMES 30
