@@ -2153,113 +2153,7 @@ struct UIItem diaAbout[] = {
     {UI_HEADER, ABOUT_TITLE, 1, 1, -1, 0, 0, {.label = {NULL, -1}}},
     {UI_SPLITTER},
 
-    // Coders
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_DEVS}}},
-    {UI_BREAK},
-
-    // Each row fits the 4:3 SD screen at the default font size (about 570 wide after the indent); the widest
-    // coder row measures about 505 with the menu font. Every build shows every name: hacan359 authored the RA
-    // design/client and oMrRexD supplied the hardware stabilization and font-lock fixes. CREDITS and README have
-    // the full provenance for every name on this page.
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"BatRastard - bbsan2k - belek666 - crazyc - dlanor - doctorxyz", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"hacan359 - oMrRexD - hominem.te.esse - ifcaro - izdubar", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"jimmikaelkael - KrahJohlito - kr_ps2 - Maximus32 - misfire", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Polo35 - reprep - saildot4k - SP193 - volca", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    // Akilluminati47 (RIPPS2, affiliated), belomaxorka (YAOPL), darkladark (LUNA), mihhru (PS2CF).
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Akilluminati47 - belomaxorka - darkladark - mihhru", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    // NathanNeurotic (maintainer). sahlberg (Ronnie Sahlberg) wrote usmb2 and unfs4, under the SMB2 and NFS
-    // drivers. danielnuld (Daniel) makes NULD; the hold L3 layout switch follows its view switch.
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - danielnuld - sahlberg - techwritescode", -1}}},
-    {UI_BREAK},
-
-    // Quality Assurance: the original OPL testers, then this fork's testers and the people whose reports
-    // CREDITS, README and CHANGELOG name.
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_QANDA}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"algol, Berion, Blade1984, El_Patas, EP, gledson999, jolek, lee4, Vapor", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"LocalH, RandQalan, ShaolinAssassin, yoshi314, zero35, zackcage6", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"CosmicScale, eliminator, TnA, V3ditata", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"AcidReach, Aerosol, Aislinn, AndrewBento, bodvenomz", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Davood TiTaN, Ethyls, FifthFox, jennyjan107-web", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"lucaslmgv, nuno6573, Volventura", -1}}},
-    {UI_BREAK},
-
-    // Special Thanks: the OPL forks RiptOPL draws on (Wolf3s, mystyq, Jay-Jay-OPL, pcm720's nhddl, Docmine17's
-    // OPL HTTP, AdityaKumar7209's Modulo-R1, Irfanlesnar's PS2-Launcher), zokzot (xeRAbora OPL), fjtrujy (CI),
-    // the module and library authors in CREDITS, and the authors of the bundled and companion tools.
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_ABOUT_THANKS}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Wolf3s - mystyq - Jay-Jay-OPL - pcm720 - Docmine17", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"AdityaKumar7209 - Irfanlesnar - zokzot - fjtrujy", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Eugene Plotnikov - Marcus R. Brown - Eric Young", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Gageformer (Ember) - krHACKen (POPStarter)", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Okeanos - israpps - YouKnow-sys - Luden - shaan", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"TheRealNextria - L. Peter Deutsch - the ps2dev team", -1}}},
-    {UI_BREAK},
-
-    // Network update
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_NET_UPDATE}}},
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"icyson55", -1}}},
-    {UI_BREAK},
-
-    // Build Options
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_BUILD_DETAILS}}},
-    {UI_SPACER},
-    {UI_LABEL, ABOUT_BUILD_DETAILS, 1, 1, -1, 0, 0, {.label = {NULL, -1}}},
-    {UI_BREAK},
-
-    // Support details
+    // The links first, right under the page header
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_FORUM_DETAILS}}},
     {UI_SPACER},
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"psx-place.com", -1}}},
@@ -2268,6 +2162,77 @@ struct UIItem diaAbout[] = {
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_PROJECT_HOME}}},
     {UI_SPACER},
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"github.com/NathanNeurotic/RiptOPL", -1}}},
+    {UI_BREAK},
+
+    {UI_SPLITTER},
+
+    // One wall of names, no headings: everyone CREDITS, README and CHANGELOG credit, in every build. NathanNeurotic
+    // (maintainer) first, then A to Z. Each row stays within about 500 wide with the menu font (the widest row
+    // that already fit 4:3 SD at the default font size); CREDITS and README say what each person did.
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - AcidReach - Aerosol - Aislinn", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Akilluminati47 - algol - AndrewBento - BatRastard - bbsan2k", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"belek666 - belomaxorka - Berion - Blade1984 - bodvenomz", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"CosmicScale - crazyc - danielnuld - darkladark", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Davood TiTaN - dlanor - doctorxyz - El_Patas - eliminator", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"EP - Eric Young - Ethyls - Eugene Plotnikov - FifthFox", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"fjtrujy - Gageformer - gledson999 - hacan359", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"hominem.te.esse - icyson55 - ifcaro - israpps - izdubar", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"jennyjan107-web - jimmikaelkael - jolek - kr_ps2 - KrahJohlito", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"krHACKen - L. Peter Deutsch - lee4 - LocalH - lucaslmgv", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Marcus R. Brown - Maximus32 - mihhru - misfire - nuno6573", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Okeanos - oMrRexD - Polo35 - RandQalan - reprep - sahlberg", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"saildot4k - ShaolinAssassin - SP193 - techwritescode - TnA", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"V3ditata - Vapor - volca - Volventura - yoshi314 - zackcage6", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"zero35 - zokzot", -1}}},
+    {UI_BREAK},
+
+    // Build Options
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_BUILD_DETAILS}}},
+    {UI_SPACER},
+    {UI_LABEL, ABOUT_BUILD_DETAILS, 1, 1, -1, 0, 0, {.label = {NULL, -1}}},
     {UI_BREAK},
 
     // no buttons: any button closes the page (diaShowPage)

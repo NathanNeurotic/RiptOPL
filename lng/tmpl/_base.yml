@@ -2818,6 +2818,3 @@ gui_strings:
   string: RetroAchievements Off
 - label: HINT_RA_GAME_OFF
   string: Launch this game without RetroAchievements. The game starts as it does with RetroAchievements switched off. Other games keep it.
-- comment: About page heading, above the people whose code, tools and ideas RiptOPL uses.
-  label: ABOUT_THANKS
-  string: 'Special Thanks:'
