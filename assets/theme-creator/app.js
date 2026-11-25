@@ -124,7 +124,7 @@
     if (b.view !== st.pv.view && !note) note = "Showing " + S.VIEW_LABEL[b.view] + ".";
     $("#pv-note").textContent = note || "";
     $("#pv-note").hidden = !note;
-    $("#pv-widehint").hidden = !(st.pv.wide && parseInt(b.globals.hd_autofit, 10) !== 1);
+    $("#pv-widehint").hidden = !(st.pv.wide && b.globals.hd_autofit === undefined); // only when the theme has not chosen
     drawOverlay();
     renderInspector(); updatePills();
   }
@@ -267,7 +267,10 @@
   function toScreenX(x, sq) { return sq ? R.autofitX(x) : x; }
   function fromScreenX(x, sq) { return sq ? 320 + (x - 320) * 4 / 3 : x; }
   function drawPixelGrid(c, k) {
-    var sq = squeezedGrid(), ux = (sq ? 0.75 : 1) / k, uy = 1 / k; // screen pixels per unit
+    var rect = $("#pv-over").getBoundingClientRect(), sq = squeezedGrid();
+    var ux = (sq ? 0.75 : 1) * rect.width / R.W, uy = rect.height / R.H; // screen pixels per unit (16:9 stretches the box)
+    // when zoomed, keep the rulers along the visible part of the screen
+    var bx = $(".tc-canvas-box"), ox = bx.scrollLeft * R.W / rect.width, oy = bx.scrollTop * R.H / rect.height, ky = R.H / rect.height;
     var lo = sq ? -107 : 0, hi = sq ? 747 : R.W;
     var line = function (x0, y0, x1, y1, a) { c.strokeStyle = "rgba(255,255,255," + a + ")"; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); };
     c.lineWidth = k;
@@ -276,11 +279,13 @@
     for (var y = 0; y <= R.H; y += stepY) line(0, y, R.W, y, y % 100 === 0 ? 0.3 : y % 10 === 0 ? 0.14 : 0.06);
     // rulers along the top and left, numbered in RiptOPL pixels
     var lab = [10, 20, 40, 80, 160].filter(function (n) { return n * ux >= 44; })[0] || 160, labY = [10, 20, 40, 80, 160].filter(function (n) { return n * uy >= 28; })[0] || 160;
-    var rs = 14 * k;
-    c.fillStyle = "rgba(0,0,0,.6)"; c.fillRect(0, 0, R.W, rs); c.fillRect(0, 0, rs * 2.4, R.H);
+    var rs = 14 * ky, rw = 34 * k;
+    c.fillStyle = "rgba(0,0,0,.6)"; c.fillRect(0, oy, R.W, rs); c.fillRect(ox, 0, rw, R.H);
     c.fillStyle = "#cfe8ff"; c.font = (10 * k) + "px ui-monospace, Menlo, Consolas, monospace"; c.textBaseline = "top";
-    for (x = Math.ceil(lo / lab) * lab; x <= hi; x += lab) { sx = toScreenX(x, sq); if (sx < rs * 2.4 || sx > R.W - 2 * k) continue; line(sx, 0, sx, rs, 0.8); c.fillText(String(x), sx + 2 * k, 2 * k); }
-    for (y = lab > labY ? labY : labY; y <= R.H; y += labY) { if (y < rs) continue; line(0, y, rs * 2.4, y, 0.8); c.fillText(String(y), 2 * k, y + 1 * k); }
+    // text drawn in a 4:3 canvas that 16:9 stretches: undo the stretch so the numbers keep their shape
+    var txt = function (t, x, y) { c.save(); c.translate(x, y); c.scale(1, ky / k); c.fillText(t, 0, 0); c.restore(); };
+    for (x = Math.ceil(lo / lab) * lab; x <= hi; x += lab) { sx = toScreenX(x, sq); if (sx < ox + rw || sx > R.W - 2 * k) continue; line(sx, oy, sx, oy + rs, 0.8); txt(String(x), sx + 2 * k, oy + 2 * ky); }
+    for (y = labY; y <= R.H; y += labY) { if (y < oy + rs) continue; line(ox, y, ox + rw, y, 0.8); txt(String(y), ox + 2 * k, y + 1 * ky); }
   }
   function showCoords(p) {
     var o = $("#ed-coords"); if (!o) return;
@@ -289,14 +294,15 @@
     o.textContent = "RiptOPL pixels: x " + x + ", y " + y + (sq ? " (widescreen squeezes x toward the centre, as on the PS2)" : "");
   }
   function squeezedGrid() {
-    if (!st.pv.wide || !lastBuilt) return false;
+    if (!st.pv.wide || !lastBuilt || st.hd) return false; // a separate 16:9 place is written in real screen pixels
     var e = st.selected && elOf(st.selected);
     if (e) return R.posOf(lastBuilt, e, true).kx !== 1;
-    return !st.hd && parseInt(lastBuilt.globals.hd_autofit, 10) === 1;
+    return parseInt(lastBuilt.globals.hd_autofit, 10) === 1;
   }
   function drawOverlay() {
     var ov = $("#pv-over"), c = ov.getContext("2d"), k = scaleNow();
-    // Draw the overlay at the screen's own resolution so thin lines stay sharp when zoomed in.
+    // Draw the overlay near the screen's own resolution so thin lines stay sharp when zoomed in
+    // (capped at 4096 pixels wide to keep memory down, so 8x zoom on a sharp screen is a little soft).
     var cw = ov.getBoundingClientRect().width, want = Math.min(4096, Math.max(R.W, Math.round(cw * (window.devicePixelRatio || 1))));
     if (cw && ov.width !== want) { ov.width = want; ov.height = Math.round(want * R.H / R.W); }
     var f = ov.width / R.W;
@@ -334,6 +340,8 @@
   function startDrag(block, mode, p, h) {
     var e = elOf(block); if (!e) return false;
     var q = R.posOf(lastBuilt, e, st.pv.wide);
+    // the first move to a new separate 16:9 x starts from where the element is drawn now, in real screen pixels
+    if (q.kx !== 1 && /_hd$/.test(effKey(block, "x"))) { q.ax = q.x; q.kx = 1; }
     var keys = ["x", "y", "width", "height"].map(function (k) { var kk = effKey(block, k); return [kk, st.map.get(kk)]; });
     if (st.pv.wide && !st.hd && st.map.has(block + "_wsX")) keys.push([block + "_wsX", st.map.get(block + "_wsX")]);
     drag = { block: block, mode: mode, e: e, q: q, start: p, box0: { x: h.x, y: h.y, w: h.w, h: h.h }, keys: keys, moved: false };
@@ -346,6 +354,7 @@
       var p = canvasPoint(ev), sh = selHit(), mode = null;
       if (sh && canResize(elOf(sh.block))) mode = handleAt(sh, p);
       var h = mode ? sh : hitAt(p);
+      if (!h && ev.pointerType === "touch" && ed.zoom > 1) return; // a swipe on empty space scrolls the zoomed preview
       if (!h) { if (st.selected) { st.selected = null; renderElements(); schedule(); } return; }
       if (!mode) mode = "move";
       if (st.selected !== h.block) selectBlock(h.block);
@@ -357,7 +366,8 @@
       ov.style.cursor = m ? CURSOR[m] : hitAt(p) ? "move" : "default";
       showCoords(p);
     });
-    var end = function () { if (drag && drag.moved) { guideLines = []; changed(); } drag = null; guideLines = []; schedule(); };
+    var end = function (ev) { if (drag && drag.moved) { guideLines = []; changed(); } drag = null; guideLines = []; schedule();
+      var r = ov.getBoundingClientRect(); if (!ev || ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom) showCoords(null); };
     ov.addEventListener("pointerleave", function () { if (!drag) showCoords(null); });
     ov.addEventListener("pointerup", end); ov.addEventListener("pointercancel", end);
     ov.addEventListener("dblclick", function (ev) { var h = hitAt(canvasPoint(ev)); if (h) { selectBlock(h.block); var f = $("#el-props input, #el-props select"); if (f) f.focus(); } });
@@ -441,12 +451,19 @@
     var bindCb = function (id, k) { var e = $(id); e.checked = !!ed[k]; e.addEventListener("change", function () { ed[k] = e.checked; saveEd(); schedule(); }); };
     bindCb("#ed-snap", "snap"); bindCb("#ed-showgrid", "showGrid"); bindCb("#ed-guides", "guides"); bindCb("#ed-outlines", "outlines");
     bindCb("#ed-pixels", "pixels");
-    $("#pv-autofit").addEventListener("click", function () { st.map.set("hd_autofit", "1"); st.isBuiltin = false; changed(); toast("Widescreen now keeps the 4:3 shape (hd_autofit=1). Undo takes it back."); });
+    $("#pv-autofit").addEventListener("click", function () {
+      st.map.set("hd_autofit", "1");
+      if (lastBuilt && lastBuilt.view) st.map.delete(lastBuilt.view + ".hd_autofit"); // a per-view setting would win over it
+      st.isBuiltin = false; changed();
+      if (parseInt(built().globals.hd_autofit, 10) === 1) toast("Widescreen now keeps the 4:3 shape (hd_autofit=1). Undo takes it back.");
+      else toast("hd_autofit is set, but something else in the theme still turns it off for this view. Check the Config file tab.", "bad");
+    });
     var z = $("#ed-zoom"), setZoom = function () {
       var n = Math.max(1, +ed.zoom || 1), box = $(".tc-canvas-box"); z.value = String(n);
       $(".tc-zoom").style.width = (n * 100) + "%"; box.classList.toggle("zoomed", n > 1); schedule();
     };
     z.addEventListener("change", function () { ed.zoom = +z.value; saveEd(); setZoom(); }); setZoom();
+    $(".tc-canvas-box").addEventListener("scroll", function () { if (ed.pixels) schedule(); }, { passive: true });
     var g = $("#ed-grid"); g.value = String(ed.grid); g.addEventListener("change", function () { ed.grid = +g.value; saveEd(); schedule(); });
     $("#ed-undo").addEventListener("click", undo); $("#ed-redo").addEventListener("click", redo);
     $$("[data-align]").forEach(function (b) { b.addEventListener("click", function () { alignTo(b.dataset.align); }); });
@@ -489,7 +506,8 @@
     $("#pv-page").addEventListener("change", function () {
       setScreen(this.value);
     });
-    bind("#pv-wide", "wide"); bind("#pv-alt", "alt"); bind("#pv-desc", "desc"); bind("#pv-art", "art"); bind("#pv-disc", "discArt");
+    bind("#pv-wide", "wide");
+    $("#pv-wide2").addEventListener("change", function () { var w = $("#pv-wide"); w.checked = this.checked; w.dispatchEvent(new Event("change")); }); bind("#pv-alt", "alt"); bind("#pv-desc", "desc"); bind("#pv-art", "art"); bind("#pv-disc", "discArt");
     bind("#pv-dim", "dim"); bind("#pv-save", "saveIcons");
     $$(".pv-sel").forEach(function (cb) { cb.addEventListener("change", function () {
       var v = 0; $$(".pv-sel").forEach(function (x) { if (x.checked) v |= +x.value; });
@@ -522,9 +540,9 @@
   };
   async function startFrom(kind) {
     if ((st.images.size || st.fonts.size || st.extras.size) && !(await ask("Start over? Your layout can be brought back with Undo, but the pictures and fonts you added will be cleared. Download the zip first to keep them.", "Start over", "Keep editing"))) return;
+    if (kind === "builtin" && !st.builtinCfg) { toast("The built-in theme file did not load. Check your connection and reload the page. Nothing was cleared.", "bad"); return; }
     clearAll();
     if (kind === "builtin") {
-      if (!st.builtinCfg) { toast("The built-in theme file did not load. Check your connection and reload the page.", "bad"); return; }
       st.map = new Map(st.builtinCfg); st.name = "MyRiptOPL";
       // A disk theme only gets OPL's own badge pictures with badge_set=ripps2 (themes.cpp thmLoad)
       if (!st.map.has("badge_set")) st.map.set("badge_set", "ripps2");
@@ -574,7 +592,7 @@
       try {
         var buf = await f.arrayBuffer();
         if (/\.zip$/i.test(f.name)) await importFiles(await IO.unzip(buf));
-        else if (/\.tar$/i.test(f.name)) await importFiles(IO.untar(buf).map(function (x) { return x; }).concat(/thm_/i.test(f.name) ? [] : []), f.name);
+        else if (/\.tar$/i.test(f.name)) await importFiles(IO.untar(buf));
         else if (/\.cfg$/i.test(f.name)) await importFiles([{ path: "conf_theme.cfg", data: new Uint8Array(buf) }]);
         else throw new Error("Pick a .zip, a .tar or a conf_theme.cfg.");
         if (/\.tar$/i.test(f.name) && /^thm_/i.test(f.name)) { st.name = f.name.replace(/^thm_/i, "").replace(/\.tar$/i, ""); $("#th-name").value = st.name; save(); }
@@ -1035,6 +1053,7 @@
     $$("#pv-pages .tc-pill").forEach(function (b) { b.setAttribute("aria-selected", b.dataset.page === st.pv.family ? "true" : "false"); });
     $$("#pv-views .tc-pill").forEach(function (b) { b.setAttribute("aria-selected", b.dataset.view === vcur ? "true" : "false"); });
     var n = $("#ed-scope-name"); if (n) n.textContent = "the " + screenLabel(st.pv.family);
+    var w2 = $("#pv-wide2"); if (w2) w2.checked = !!st.pv.wide;
   }
 
   // ---- Adding ------------------------------------------------------------------------------------------
@@ -1082,7 +1101,8 @@
       var a = st.images.get(n), big = a.w > S.TEX_MAX || a.h > S.TEX_MAX;
       var nameIn = el("input", { type: "text", value: n, size: 16, spellcheck: "false", "aria-label": "Picture name" });
       nameIn.addEventListener("change", function () {
-        var nn = cleanName(nameIn.value.trim()); if (!nn || nn === n) return;
+        var nn = cleanName(nameIn.value.trim()); if (!nn || nn === n) { nameIn.value = n; return; }
+        if (st.images.has(nn)) { toast("There is already a picture called " + nn + ". Pick another name, or remove that one first.", "bad"); nameIn.value = n; return; }
         st.images.set(nn, a); st.images.delete(n);
         st.map.forEach(function (v, k) { if (v === n && /_(default|overlay|overlay2|alt)(_hd|_sd|_desc)?$|^alt$/.test(k)) st.map.set(k, nn); });
         changed();
