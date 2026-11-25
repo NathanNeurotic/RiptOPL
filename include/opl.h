@@ -241,6 +241,11 @@ enum { EXIT_MENU_CONSOLE = 0,
        EXIT_MENU_BOOT2,
        EXIT_MENU_BOOT };
 extern int gExitMenu;
+// Date and Time > Time Zone: minutes east of UTC, or CLOCK_ZONE_CONSOLE to follow the console's own zone
+// and summer time. gClockSummer adds an hour to a chosen zone.
+#define CLOCK_ZONE_CONSOLE 0x7FFF
+extern int gClockZone;
+extern int gClockSummer;
 extern int gGameTypeLabels; // optional [PS1]/[PS2] prefixes in game lists; default off
 // Interface > List Title and Description (RIPPS2 build 126): the Title and Description from a game's CFG that a
 // theme shows on its list pages. Theme: as its list_cfg_text key says. The info page always shows them.

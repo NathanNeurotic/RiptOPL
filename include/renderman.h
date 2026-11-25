@@ -123,6 +123,10 @@ void rmDrawLine(int x1, int y1, int x2, int y2, u64 color);
 void rmDrawTriangles(GSTEXTURE *txt, int count, const float *xy, const float *uv, const u64 *colors);
 void rmDrawBlendedTriangles(GSTEXTURE *txt, int count, const float *xy, const float *uv, const u64 *colors);
 
+/** Fades everything drawn after this call to alpha (0x80 = opaque, as a colour's alpha) and draws it `rise` virtual
+ * pixels lower. rmSetFade(0x80, 0) turns it off. The hold L3 layout switch uses it on the page's content. */
+void rmSetFade(u8 alpha, float rise);
+
 /** Starts the frame - first to call every frame */
 void rmStartFrame(void);
 

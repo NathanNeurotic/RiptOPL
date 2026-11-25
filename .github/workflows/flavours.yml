@@ -301,6 +301,8 @@ jobs:
         run: |
           python3 .github/scripts/test_ra_runtime_budget.py
           python3 .github/scripts/test_neutrino_ra.py
+      - name: Check per-game RetroAchievements off and the launch-time first contact
+        run: python3 .github/scripts/test_ra_game_off.py
 
   bdm-host-tests:
     runs-on: ubuntu-24.04

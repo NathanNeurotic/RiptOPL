@@ -911,7 +911,7 @@ struct UIItem diaLanguageConfig[] = {
     {UI_BREAK},
     {UI_TERMINATOR}};
 
-// Date and Time edits the console clock using the console's time zone.
+// Date and Time edits the console clock in the chosen time zone (the console's own by default).
 struct UIItem diaDateTimeConfig[] = {
     {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_DATE_TIME}}},
     {UI_SPLITTER},
@@ -930,6 +930,16 @@ struct UIItem diaDateTimeConfig[] = {
     {UI_INT, DATETIME_HOUR, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {0, 0, 0, 23}}},
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {":", -1}}},
     {UI_INT, DATETIME_MINUTE, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {0, 0, 0, 59}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_TIME_ZONE}}},
+    {UI_SPACER},
+    {UI_ENUM, DATETIME_ZONE, 1, 1, _STR_HINT_TIME_ZONE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    {UI_LABEL, DATETIME_SUMMER_LBL, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SUMMER_TIME}}},
+    {UI_SPACER},
+    {UI_BOOL, DATETIME_SUMMER, 1, 1, _STR_HINT_SUMMER_TIME, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
     {UI_BUTTON, DATETIME_SYNC, 1, 1, _STR_HINT_DATE_TIME_SYNC, 0, 0, {.label = {NULL, _STR_DATE_TIME_SYNC}}},
@@ -1447,6 +1457,12 @@ struct UIItem diaCompatConfig[] = {
     {UI_SPACER},
     {UI_BOOL, COMPAT_PARENTAL_LOCK, 1, 1, _STR_PARENLOCK_GAME_HINT, 0, 0, {.intvalue = {0, 0}}},
     {UI_SPLITTER},
+#ifdef RETROACHIEVEMENTS
+    {UI_LABEL, 0, 1, 1, -1, -30, 0, {.label = {NULL, _STR_RA_GAME_OFF}}},
+    {UI_SPACER},
+    {UI_BOOL, COMPAT_RA_DISABLE, 1, 1, _STR_HINT_RA_GAME_OFF, 0, 0, {.intvalue = {0, 0}}},
+    {UI_SPLITTER},
+#endif
 
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_MODE1}}},
     {UI_SPACER},
@@ -2185,7 +2201,8 @@ struct UIItem diaAbout[] = {
     // NathanNeurotic (maintainer). A fifth coder row: the rows above are full, and the dialog's height is
     // kept by putting Network update and its name on one row below, as Build Options and the forum are.
     // sahlberg (Ronnie Sahlberg) wrote usmb2 and unfs4, under the SMB2 and NFS drivers; CREDITS has the detail.
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - sahlberg - techwritescode", -1}}},
+    // danielnuld (Daniel) makes NULD; the hold L3 layout switch follows its view switch.
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - danielnuld - sahlberg - techwritescode", -1}}},
     {UI_BREAK},
 
     // Quality Assurance. The headings here and on the Network update row keep the plain row height, so the page

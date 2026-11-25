@@ -1967,6 +1967,19 @@ image_texture_t *thmWallpaperLoad(void)
     return wallpaper;
 }
 
+// A picture laid over the whole screen at its origin: part of the page's background when it follows the Background.
+static int thmFullScreenImage(const theme_element_t *e)
+{
+    int originX = e->aligned ? gThmScreenWidth / 2 : 0, originY = e->aligned ? gThmScreenHeight / 2 : 0;
+    return e->type == ELEM_TYPE_STATIC_IMAGE && e->extended != NULL && e->posX == originX && e->posY == originY &&
+           e->width >= gThmScreenWidth && e->height >= gThmScreenHeight;
+}
+
+int thmIsBackdropElem(const theme_elems_t *family, const theme_element_t *elem)
+{
+    return (elem == family->first && elem->type == ELEM_TYPE_BACKGROUND) || thmFullScreenImage(elem);
+}
+
 void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper, int builtInTheme)
 {
     // Validation put a Background first in every main family that has elements. Per-game BG art (Background Art)
@@ -1983,12 +1996,8 @@ void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper, int bu
     // foreground art (panels, labels), so disk themes keep every layer.
     if (!builtInTheme)
         return;
-    for (theme_element_t *e = bg->next; e != NULL && e->type == ELEM_TYPE_STATIC_IMAGE && e->extended != NULL; e = e->next) {
-        int originX = e->aligned ? gThmScreenWidth / 2 : 0, originY = e->aligned ? gThmScreenHeight / 2 : 0;
-        if (e->posX != originX || e->posY != originY || e->width < gThmScreenWidth || e->height < gThmScreenHeight)
-            break;
+    for (theme_element_t *e = bg->next; e != NULL && thmFullScreenImage(e); e = e->next)
         ((mutable_image_t *)e->extended)->backdropLayer = 1;
-    }
 }
 
 void thmWallpaperFree(image_texture_t *wallpaper)

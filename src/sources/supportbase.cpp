@@ -1928,7 +1928,9 @@ void sbNeutrinoPrepareRA(const char *prefix, const char *startup, const char *dr
             // No support check or link test this boot (always so on Auto Loading): find the PC the
             // way the link test does, rather than launching untracked.
             char line1[96], line2[96];
+            raNetQuickFirstContact(1); // the game is waiting: an absent PC costs 1.5 s, not 3
             raNetTestLink(line1, sizeof(line1), line2, sizeof(line2));
+            raNetQuickFirstContact(0);
             verified = raNetPeerIP();
         }
         memcpy(peer, &verified, sizeof(peer)); // network byte order
@@ -2820,6 +2822,19 @@ int sbReadWatchList(const char *path, const char *file)
     return result;
 }
 
+int sbGameRAOff(config_set_t *configSet)
+{
+    int off = 0;
+
+    if (!configGetInt(configSet, CONFIG_ITEM_RA_DISABLE, &off) || !off)
+        return 0;
+    sysNeutrinoHandRA(NULL, NULL, NULL, 0, NULL, NULL, NULL, 0);
+    ClearWatchList();
+    sbRaHuntCount = sbRaHuntBytes = sbRaHuntTotal = sbRaHuntUnlocked = 0;
+    LOG("RA: off for this game, launching without achievements\n");
+    return 1;
+}
+
 int sbLoadWatchList(const char *path, const char *file)
 {
     int result = sbReadWatchList(path, file);
@@ -3177,10 +3192,12 @@ void sbAutoLaunchCheckRA(const char *path, const char *name, const char *ext, co
         return;
     if (sbReadWatchList(path, startup) > 0)
         return; // checked before: the launch reads this list
+    raNetQuickFirstContact(1); // the game is waiting: an absent PC costs 1.5 s, not 3
     if (start_sector)
         sbHashHdlGame(path, name, startup, start_sector);
     else if (ext != NULL) // an HDL launch with no start sector has no image to hash
         sbHashGame(path, name, ext, startup, format);
+    raNetQuickFirstContact(0);
 }
 #endif
 

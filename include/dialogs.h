@@ -361,6 +361,9 @@ enum UI_ITEMS {
     DATETIME_HOUR,
     DATETIME_MINUTE,
     DATETIME_SYNC, // Date and Time: Set from Internet
+    DATETIME_ZONE, // Time Zone: Console, then guiClockZones
+    DATETIME_SUMMER_LBL,
+    DATETIME_SUMMER,
 
 #ifdef PADEMU
     PADEMU_GLOBAL_BUTTON,
@@ -409,6 +412,7 @@ enum UI_ITEMS {
     COMPAT_MODE_BASE = 200,
 #endif
     COMPAT_ILINK_ID = 280, // Reserved beyond the compatibility-mode rows; preserve existing IDs.
+    COMPAT_RA_DISABLE,     // 281, RA builds: RetroAchievements off for this game ($RADisable)
 };
 
 constexpr int COMPAT_NOEXIT = 0x70000000;

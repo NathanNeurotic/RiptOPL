@@ -111,3 +111,5 @@ CHECK(gXSensitivity == (1));
 CHECK(gYSensitivity == (1));
 CHECK(gAppHandoffPath == (0));
 CHECK(gExitMenu == (0));
+CHECK(gClockZone == (CLOCK_ZONE_CONSOLE));
+CHECK(gClockSummer == (0));

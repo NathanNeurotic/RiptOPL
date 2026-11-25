@@ -58,6 +58,7 @@ enum CONFIG_INDEX {
 #define CONFIG_ITEM_EMBER_CONTROLLER "$EmberController" // per-game Ember controller override; 0 = inherit global
 #define CONFIG_ITEM_ILINK_ID         "$ILinkID"         // Optional native-core console identity, 16 hex digits
 #define CONFIG_ITEM_DNAS             "$DNAS"
+#define CONFIG_ITEM_RA_DISABLE       "$RADisable" // RA builds: 1 = launch this game without RetroAchievements; absent = follow the global switch
 #define CONFIG_ITEM_CONFIGSOURCE     "$ConfigSource"
 
 #define CONFIG_ITEM_OSD_SETTINGS_LANGID "$CustomLanguageValue"
@@ -164,7 +165,9 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_VCD_SHOW_PP_POPS     "vcd_show_pp_pops"    // enumeration-only: list strict PP.<ID>.POPS.<name> one-game HDD partitions as VCDs
 #define CONFIG_OPL_HDD_GAME_LIST_CACHE  "hdd_game_list_cache"
 #define CONFIG_OPL_EXIT_PATH            "exit_path"
-#define CONFIG_OPL_EXIT_MENU            "exit_menu" // EXIT_MENU_*; default the console's own exit
+#define CONFIG_OPL_CLOCK_ZONE           "clock_zone"   // minutes east of UTC, or CLOCK_ZONE_CONSOLE (default)
+#define CONFIG_OPL_CLOCK_SUMMER         "clock_summer" // 1 adds an hour; used only with a chosen clock_zone
+#define CONFIG_OPL_EXIT_MENU            "exit_menu"    // EXIT_MENU_*; default the console's own exit
 // Opt-in user override for WHERE settings are stored. Empty = the normal boot-dir/discovery home.
 // Bootstrapped by the cwd "config.path" redirect, because this key lives INSIDE the config that
 // the path points at -- see readConfigPathRedirect() in opl.c.

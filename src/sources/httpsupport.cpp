@@ -809,7 +809,8 @@ void HttpSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
 #ifdef RETROACHIEVEMENTS
     // Settled before sysLaunchLoaderElf reads GetWatchCount(). Local, like the rest of HTTP's
     // per-game data -- there is no writable server side to put a watch list on.
-    sbLoadWatchList(gHttpSupport.localPrefix(), startup);
+    if (!sbGameRAOff(configSet))
+        sbLoadWatchList(gHttpSupport.localPrefix(), startup);
 #endif
     if ((result = sbLoadCheats(gHttpSupport.localPrefix(), startup, configSet)) < 0) {
         if (!sbCheatsMissingContinue((u8 *)(&http_cdvdman_irx) + i, result))
