@@ -1915,6 +1915,7 @@ int BdmSource::update(item_list_t *itemList)
     }
     if (view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) {
         const char *sub = folderGetSub(itemList->mode);
+        sbListCacheFirstRead(itemList->mode, pDeviceData->bdmDeviceType);
         sbListCacheReadOnly = (itemList->flags & MODE_FLAG_READ_ONLY) != 0;
         sbReadList(&pDeviceData->bdmGames, pDeviceData->bdmPrefix, sub, &pDeviceData->bdmULSizePrev, &pDeviceData->bdmGameCount);
         sbListCacheReadOnly = 0;

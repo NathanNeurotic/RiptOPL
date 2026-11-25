@@ -164,6 +164,7 @@ enum CONFIG_INDEX {
 #define CONFIG_OPL_VCD_FIRST_DISC_ONLY  "vcd_first_disc_only" // #118: hide discs 2+ of a multi-disc PS1 set from the device VCD lists
 #define CONFIG_OPL_VCD_SHOW_PP_POPS     "vcd_show_pp_pops"    // enumeration-only: list strict PP.<ID>.POPS.<name> one-game HDD partitions as VCDs
 #define CONFIG_OPL_HDD_GAME_LIST_CACHE  "hdd_game_list_cache"
+#define CONFIG_OPL_GAME_LIST_CACHE      "game_list_cache" // Cache Game List for the other devices: one bit each (GLC_*)
 #define CONFIG_OPL_EXIT_PATH            "exit_path"
 #define CONFIG_OPL_CLOCK_ZONE           "clock_zone"   // minutes east of UTC, or CLOCK_ZONE_CONSOLE (default)
 #define CONFIG_OPL_CLOCK_SUMMER         "clock_summer" // 1 adds an hour; used only with a chosen clock_zone

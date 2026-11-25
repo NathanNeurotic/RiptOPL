@@ -282,6 +282,7 @@ int gYOff;
 int gOverscan;
 int gSelectButton;
 int gHDDGameListCache;
+int gGameListCache;
 int gEnableSFX;
 int gEnableRumble;
 int gEnableBootSND;

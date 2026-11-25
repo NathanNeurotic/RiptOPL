@@ -451,6 +451,7 @@ void screenPosSave(config_set_t *configOPL);
 void screenPosReset(void);
 extern int gSelectButton;
 extern int gHDDGameListCache;
+extern int gGameListCache; // Cache Game List bits for every device but the APA HDD (GLC_* in supportbase.h)
 
 extern int gEnableSFX;
 extern int gEnableRumble;

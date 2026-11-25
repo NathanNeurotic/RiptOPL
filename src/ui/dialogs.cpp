@@ -1398,6 +1398,64 @@ struct UIItem diaAdvancedConfig[] = {
     {UI_SPACER},
     {UI_BOOL, CFG_HDDGAMELISTCACHE, 1, 1, _STR_HINT_HDDGAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
+    // Cache Game List for every other device (game_list_cache bits, all off). The device rows reuse the
+    // Game Sources names, indented under this heading.
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_CACHE_GAME_LIST}}},
+    {UI_BREAK},
+#if LITE_HAS_BDMHDD
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_BDM_HDD}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_BDMHDD, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_USB
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_USB}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_USB, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_MX4SIO
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_MX4SIO}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_MX4SIO, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_PCCF
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_PCCF}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_PCCF, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_ILINK
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_ILINK}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_ILINK, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_UDPBD
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLC_UDPBD}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_UDPBD, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_MMCE_GAMES
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLC_MMCE}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_MMCE, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_SMB || LITE_HAS_NFS
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLC_NETWORK}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_ETH, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_UDPFS
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLC_UDPFS}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_UDPFS, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_ADV_BDM_CACHE}}},
     {UI_SPACER},

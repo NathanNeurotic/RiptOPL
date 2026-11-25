@@ -87,6 +87,7 @@ typedef struct
 } item_list_t;
 #define MODE_FLAG_READ_ONLY 0x08
 static int sbListCacheReadOnly;
+static void sbListCacheFirstRead(int mode, int bit) { (void)mode; (void)bit; } /* Cache Game List: off here */
 
 typedef struct
 {
@@ -449,6 +450,7 @@ struct game_cache_list
 };
 
 static int gEnableFolderNav;
+static int sbListCacheTrust; /* Cache Game List: off in this harness, so every scan reads the folders */
 
 /* Scripted device: which folder names refuse opendir, and with what errno. Opened folders are empty. */
 static const char *failPath1, *failPath2;

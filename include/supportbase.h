@@ -52,6 +52,13 @@ int sbCreateSemaphore(void);
 // Pass fsize=NULL for ISO-only scanning, without probing or updating UL-size state.
 int sbReadList(base_game_info_t **list, const char *prefix, const char *sub, int *fsize, int *gamecount);
 extern int sbListCacheReadOnly; // set around sbReadList() for a read-only device: its games.bin is not written
+// Cache Game List (game_list_cache, all off): a BDM device uses its BDM_TYPE_* number as its bit.
+#define GLC_MMCE  6
+#define GLC_ETH   7
+#define GLC_UDPFS 8
+// Call just before sbReadList(). When the device's bit is on, the first list of this page in a session
+// comes from the saved games.bin alone, without reading the CD/DVD folders. Later lists read them.
+void sbListCacheFirstRead(int mode, int bit);
 // errno of the last CD/DVD folder the latest sbReadList could not open (0 = both opened).
 int sbGetReadListError(void);
 // Folder browsing: set the active subpath the path composers inject (see sbBrowseSub in supportbase.c).

@@ -224,6 +224,18 @@ static void freeISOGameListCache(struct game_cache_list *cache)
 // drop it and every refresh would write it again (belomaxorka / YAOPL afe59be2).
 int sbListCacheReadOnly;
 
+// Cache Game List: set by sbListCacheFirstRead for the next sbReadList only. glcUsedModes holds the
+// pages that have had their one saved list this session, so Refresh, a replug or a delete reads the folders.
+static int sbListCacheTrust;
+static unsigned int glcUsedModes;
+
+void sbListCacheFirstRead(int mode, int bit)
+{
+    unsigned int m = 1u << mode;
+    sbListCacheTrust = ((gGameListCache >> bit) & 1) && !(glcUsedModes & m);
+    glcUsedModes |= m;
+}
+
 static int updateISOGameList(const char *path, const struct game_cache_list *cache, const struct game_list_t *head, int count)
 {
     char filename[256];
@@ -255,7 +267,7 @@ static int updateISOGameList(const char *path, const struct game_cache_list *cac
                 }
             }
         } else {
-            modified = 0;
+            modified = 1; // the folder was read and is empty now: drop the saved list below
         }
     } else {
         modified = ((head != NULL) && (count > 0)) ? 1 : 0;
@@ -369,6 +381,25 @@ static int scanForISO(char *path, char type, struct game_list_t **glist, struct 
 
     int cacheLoaded = loadISOGameListCache(path, &cache) == 0;
     int cacheHint = -1; // index of the last cache hit (queryISOGameListCache)
+
+    // Cache Game List: the saved rows, in the order a scan of the unchanged folder gives, without
+    // reading the folder. games.bin never holds folder rows, so folder browsing always reads it.
+    if (cacheLoaded && sbListCacheTrust && folderlist == NULL) {
+        for (int i = (int)cache.count - 1; i >= 0; i--) {
+            struct game_list_t *next = static_cast<game_list_t *>(malloc(sizeof(struct game_list_t)));
+            if (!next)
+                break; // Out of memory
+            memcpy(&next->gameinfo, &cache.games[i], sizeof(base_game_info_t));
+            next->gameinfo.name[ISO_GAME_NAME_MAX] = '\0';
+            next->gameinfo.startup[GAME_STARTUP_MAX] = '\0';
+            next->gameinfo.extension[ISO_GAME_EXTENSION_MAX] = '\0';
+            next->next = *glist;
+            *glist = next;
+            count++;
+        }
+        freeISOGameListCache(&cache);
+        return count;
+    }
 
     errno = 0; // so the failure branch reads THIS opendir's errno
     if ((dir = opendir(path)) != NULL) {
@@ -577,6 +608,7 @@ int sbReadList(base_game_info_t **list, const char *prefix, const char *sub, int
     else
         snprintf(path, sizeof(path), "%sDVD/%s", prefix, sub);
     dvdRet = scanForISO(path, SCECdPS2DVD, &dlist_head, folderlist);
+    sbListCacheTrust = 0; // one list only; see sbListCacheFirstRead
     if (dvdRet >= 0) {
         count = count < 0 ? dvdRet : count + dvdRet;
     }

@@ -90,6 +90,7 @@ struct USBExtreme_game_entry_t { char name[32], startup[13]; int parts, media; }
 struct game_list_t { base_game_info_t gameinfo; game_list_t *next; };
 static int sbReadListErrno, cdResult, dvdResult, probes, ulPresent;
 static bool gEnableFolderNav;
+static int sbListCacheTrust; // Cache Game List off: every scan reads the folders
 static void sbSetBrowseSub(const char*) {}
 static int scanForISO(const char*, int type, game_list_t **head, game_list_t**) {
     int count = type == SCECdPS2CD ? cdResult : dvdResult;

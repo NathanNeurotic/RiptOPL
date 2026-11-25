@@ -1056,6 +1056,7 @@ int MmceSource::update(item_list_t *itemList)
         result += slot->ps1GameCount;
     }
     if (view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) {
+        sbListCacheFirstRead(itemList->mode, GLC_MMCE);
         sbReadList(&slot->games, slot->prefix, folderGetSub(itemList->mode), &slot->ulSizePrev, &slot->gameCount);
         result += slot->gameCount;
     }
