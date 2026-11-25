@@ -119,6 +119,7 @@ static int GetSMBServerReply(int a, void *b, int c) {
     eos = cursor[sid] >= ENTRIES;
     if (corrupt == 1) { u32 bad = 0x7fffffff; memcpy(&data[60], &bad, 4); } // FileNameLen
     if (corrupt == 2 && n > 1) { u32 bad = 0x4000; memcpy(&data[0], &bad, 4); } // NextEntryOffset
+    if (corrupt == 3 && n > 1) { u32 next, bad = 0; memcpy(&next, &data[0], 4); memcpy(&data[next + 60], &bad, 4); } // empty name
     {
         FindFirstNext2Response_t *rs = &SMB_buf.smb.findFirstNext2Response;
         int poff = (sizeof(FindFirstNext2Response_t) + 3) & ~3, plen = first ? 10 : 8, doff;
@@ -132,8 +133,8 @@ static int GetSMBServerReply(int a, void *b, int c) {
         rs->smbTrans.DataOffset = doff;
         rs->smbTrans.DataCount = rs->smbTrans.TotalDataCount = len;
         memcpy(&SMB_buf.smb.u8buff[doff], data, len);
+        return corrupt == 4 ? doff + len - 1 : doff + len; // the length received, as the transport reports it
     }
-    return 1;
 }
 static void smb_io_lock(void) {}
 static void smb_io_unlock(void) {}
@@ -248,12 +249,14 @@ int main(void) {
     assert(requests >= 2 * ENTRIES + 2 * SMB_DIR_BUFS && requests <= 2 * ENTRIES + 4 * SMB_DIR_BUFS);
 
     // A reply whose lengths or offsets point outside it is an error, never a read past the buffer.
-    for (i = 1; i <= 2; i++) {
+    // So is an empty name (the decoder would read to the next NUL) and a reply shorter than it claims.
+    // The search the rejected reply opened is still closed on the server.
+    for (i = 1; i <= 4; i++) {
         reset(64);
         corrupt = i;
         open_dir(0);
         assert(smb_dread(&files[0], &de) == -EIO);
-        assert(smb_close(&files[0]) == 0);
+        assert(smb_close(&files[0]) == 0 && closes == 1);
     }
     puts("PASS: smbman batched directory reads keep every entry in order, fall back, and reject bad replies");
     return 0;

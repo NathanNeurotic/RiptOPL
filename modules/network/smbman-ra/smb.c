@@ -1539,14 +1539,15 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
         int n, off = 0, len = FFNRsp->smbTrans.DataCount;
 
         if (len > batchSize || len != FFNRsp->smbTrans.TotalDataCount ||
-            FFNRsp->smbTrans.DataOffset + len > (int)sizeof(SMB_buf.smb))
+            FFNRsp->smbTrans.DataOffset + len > (int)sizeof(SMB_buf.smb) || FFNRsp->smbTrans.DataOffset + len > r)
             return -EIO;
         memcpy(batch, FFRspData, len);
         // Walk the chain once here, so smb_dread can trust every offset it follows.
         for (n = 0; n < FFNRspParam->SearchCount;) {
             const FindFirst2ResponseData_t *e = (const FindFirst2ResponseData_t *)&batch[off];
 
-            if (off + (int)sizeof(FindFirst2ResponseData_t) > len ||
+            // A zero name length would make the name decoder read up to the next NUL instead.
+            if (off + (int)sizeof(FindFirst2ResponseData_t) > len || e->FileNameLen == 0 ||
                 e->FileNameLen > (u32)(len - off - (int)sizeof(FindFirst2ResponseData_t)))
                 return -EIO;
             n++;

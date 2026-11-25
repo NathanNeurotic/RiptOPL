@@ -753,9 +753,13 @@ int smb_dread(iop_file_t *f, iox_dirent_t *dirent)
         }
 
         if (fh->smb_fid == -1) {
+            info->SID = -1;
             r = smb_FindFirstNext2(UID, TID, fh->name, TRANS2_FIND_FIRST2, info, batch, SMB_FIND_BATCH_SIZE, &count);
-            if (r == 0)
+            // A reply that opened a search owns it even when its entries are rejected, so dclose closes it.
+            if (r <= 0 && info->SID != -1) {
                 fh->smb_fid = info->SID;
+                fh->dir_eos = (info->EOS != 0);
+            }
         } else {
             info->SID = fh->smb_fid;
             r         = smb_FindFirstNext2(UID, TID, NULL, TRANS2_FIND_NEXT2, info, batch, SMB_FIND_BATCH_SIZE, &count);
