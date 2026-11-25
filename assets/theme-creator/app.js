@@ -36,7 +36,8 @@
     return new Promise(function (res) { var i = new Image(); i.onload = function () { res(i); }; i.onerror = function () { res(null); }; i.src = url; });
   }
   function builtin(name) {
-    if (!S.BUILTIN_ALL[name] || S.BUILTIN_EMPTY[name]) return null; // only names OPL has a picture for
+    // only names OPL has a picture for (and the two built-in button sets)
+    if ((!S.BUILTIN_ALL[name] && !/^glyph_(standard|white)_/.test(name)) || S.BUILTIN_EMPTY[name]) return null;
     var file = S.BUILTIN_FILE[name] || name;
     var b = builtinImgs[file];
     if (b === undefined) {
@@ -95,6 +96,7 @@
   function schedule() { if (!pending) { pending = true; requestAnimationFrame(function () { pending = false; draw(); }); } }
   function changed(opts) {
     st.isBuiltin = false;
+    remember();
     save();
     refreshAll(opts);
   }
@@ -122,49 +124,292 @@
     if (b.view !== st.pv.view && !note) note = "Showing " + S.VIEW_LABEL[b.view] + ".";
     $("#pv-note").textContent = note || "";
     $("#pv-note").hidden = !note;
-    if (st.selected) {
-      var h = hits.filter(function (x) { return x.block === st.selected; }).pop();
-      if (h) { var c = cv.getContext("2d"); c.save(); c.strokeStyle = "#ffd54a"; c.lineWidth = 2; c.setLineDash([5, 3]); c.strokeRect(h.x, h.y, h.w, h.h); c.restore(); }
-    }
+    drawOverlay();
+    renderInspector();
   }
   function canvasPoint(ev) {
-    var cv = $("#pv-canvas"), r = cv.getBoundingClientRect();
+    var cv = $("#pv-over"), r = cv.getBoundingClientRect();
     return { x: (ev.clientX - r.left) * R.W / r.width, y: (ev.clientY - r.top) * R.H / r.height };
   }
+  // A full-screen picture (a backdrop) is only picked when nothing smaller is under the pointer.
+  function isBackdrop(h) { return h.type === "Background" || (h.w >= R.W - 1 && h.h >= R.H - 1); }
   function hitAt(p) {
-    for (var i = hits.length - 1; i >= 0; i--) { var h = hits[i]; if (h.type === "Background") continue; if (p.x >= h.x && p.x <= h.x + h.w && p.y >= h.y && p.y <= h.y + h.h) return h; }
+    var back = null;
+    for (var i = hits.length - 1; i >= 0; i--) {
+      var h = hits[i]; if (/^\(/.test(h.block)) continue;
+      if (p.x >= h.x && p.x <= h.x + h.w && p.y >= h.y && p.y <= h.y + h.h) { if (isBackdrop(h)) { if (!back && h.type !== "Background") back = h; continue; } return h; }
+    }
+    return back;
+  }
+
+  // ---- Canvas editor: snap grid, guides, resize handles, nudge, align, undo -----------------------------
+  var ed = { snap: true, grid: 8, showGrid: true, guides: true, outlines: false };
+  try { var savedEd = JSON.parse(localStorage.getItem(LS_KEY + "-editor") || "null"); if (savedEd) Object.keys(ed).forEach(function (k) { if (savedEd[k] !== undefined) ed[k] = savedEd[k]; }); } catch (e) { /* storage off */ }
+  function saveEd() { try { localStorage.setItem(LS_KEY + "-editor", JSON.stringify(ed)); } catch (e) { /* storage off */ } }
+  var drag = null, guideLines = [], canvasActive = false;
+  var RESIZABLE = { StaticImage: 1, GameImage: 1, AttributeImage: 1, ItemCover: 1, ItemIcon: 1, ItemsList: 1, MenuText: 1, MenuIcon: 1, LoadingIcon: 1, BdmIndex: 1, Coverflow: 1, PSBBNFlow: 1, Grid: 1, SaveIcon: 1 };
+  function elOf(block) { return lastBuilt ? lastBuilt.elements.filter(function (x) { return x.block === block; })[0] || null : null; }
+  function selHit() { if (!st.selected) return null; return hits.filter(function (x) { return x.block === st.selected; }).pop() || null; }
+  function canResize(e) { return !!e && (RESIZABLE[e.type] === 1 || e.props.width !== undefined || e.props.height !== undefined); }
+  function scaleNow() { var r = $("#pv-over").getBoundingClientRect(); return r.width ? R.W / r.width : 1; }
+
+  // The key that is in effect for this view: _hd in 16:9 (or _wsX for x), _sd in 4:3, _desc with List Title and Description.
+  function effKey(block, k) {
+    var base = block + "_" + k;
+    if (st.pv.desc && st.map.has(base + "_desc")) return base + "_desc";
+    if (st.pv.wide) {
+      if (st.hd || st.map.has(base + "_hd")) return base + "_hd";
+      if (k === "x" && st.map.has(block + "_wsX")) return block + "_wsX";
+    } else if (st.map.has(base + "_sd")) return base + "_sd";
+    return base;
+  }
+  function curVal(block, k) { var v = st.map.get(effKey(block, k)); return v !== undefined ? v : st.map.get(block + "_" + k); }
+  // Write an anchor value, keeping it counted from the same edge (or POS_MID) it was before.
+  function writeAxis(block, e, k, v, size) {
+    var t = S.TYPES[e.type] || {}, old = curVal(block, k), d = k === "x" ? t.x : t.y;
+    v = Math.round(v);
+    var fromEnd = old !== undefined ? /^\s*-/.test(old) : typeof d === "number" && d < 0;
+    var wasMid = old !== undefined ? /^\s*POS_MID/.test(old) : d === "MID";
+    var out = wasMid && v === size >> 1 ? "POS_MID" : fromEnd && v - size < 0 ? String(v - size) : String(v);
+    st.map.set(effKey(block, k), out);
+  }
+  function anchorOf(q, box) {
+    return { x: q.al === 1 ? box.x + box.w / 2 : q.al === 2 ? box.x + box.w : box.x, y: q.al === 0 ? box.y : box.y + box.h / 2 };
+  }
+  // Turn a new on-screen box into x, y, width and height for the block, from the drag's starting state.
+  function applyBox(d, nb) {
+    var q = d.q, b0 = d.box0, e = d.e, t = S.TYPES[e.type] || {};
+    var snapGrid = ed.snap && !d.free, g = ed.grid;
+    var gr = function (v, on) { return on && g > 1 ? Math.round(v / g) * g : Math.round(v); };
+    if (d.mode !== "move") {
+      var w0 = q.w != null ? q.w : b0.w / q.rx, h0 = q.h != null ? q.h : b0.h;
+      if (/[ew]/.test(d.mode)) st.map.set(effKey(d.block, "width"), String(Math.max(1, gr(w0 * nb.w / b0.w, snapGrid && !d.gx))));
+      if (/[ns]/.test(d.mode)) st.map.set(effKey(d.block, "height"), String(Math.max(1, gr(h0 * nb.h / b0.h, snapGrid && !d.gy))));
+      if (t.presenter) return; // a cover row grows around its anchor
+    }
+    var a0 = anchorOf(q, b0), a1 = anchorOf(q, nb);
+    var moveX = d.mode === "move" || /[ew]/.test(d.mode), moveY = d.mode === "move" || /[ns]/.test(d.mode);
+    if (moveX && Math.abs(a1.x - a0.x) > 0.01) writeAxis(d.block, e, "x", gr(q.ax + (a1.x - a0.x) / q.kx, snapGrid && !d.gx), R.W);
+    if (moveY && Math.abs(a1.y - a0.y) > 0.01) writeAxis(d.block, e, "y", gr(q.ay + (a1.y - a0.y), snapGrid && !d.gy), R.H);
+  }
+  // Snap the moving edges of a box to the screen's edges and centre and to other elements, within 6 screen pixels.
+  function guideTargets(axis) {
+    var out = axis === "x" ? [0, R.W / 2, R.W] : [0, R.H / 2, R.H];
+    hits.forEach(function (h) {
+      if (h.block === st.selected || /^\(/.test(h.block) || isBackdrop(h)) return;
+      if (axis === "x") out.push(h.x, h.x + h.w / 2, h.x + h.w); else out.push(h.y, h.y + h.h / 2, h.y + h.h);
+    });
+    return out;
+  }
+  function snapEdges(edges, axis, thr) {
+    var best = null, targets = guideTargets(axis);
+    edges.forEach(function (v) { targets.forEach(function (tg) { var dd = tg - v; if (Math.abs(dd) <= thr && (!best || Math.abs(dd) < Math.abs(best.d))) best = { d: dd, at: tg }; }); });
+    return best;
+  }
+  function onMove(ev) {
+    if (!drag) return;
+    var p = canvasPoint(ev), dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
+    drag.moved = true; drag.free = ev.altKey;
+    var b0 = drag.box0, thr = 6 * scaleNow(), nb;
+    guideLines = []; drag.gx = drag.gy = false;
+    if (drag.mode === "move") {
+      if (ev.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; } // straight line
+      nb = { x: b0.x + dx, y: b0.y + dy, w: b0.w, h: b0.h };
+      if (ed.guides && !drag.free) {
+        var sx = snapEdges([nb.x, nb.x + nb.w / 2, nb.x + nb.w], "x", thr), sy = snapEdges([nb.y, nb.y + nb.h / 2, nb.y + nb.h], "y", thr);
+        if (sx) { nb.x += sx.d; drag.gx = true; guideLines.push({ v: true, at: sx.at }); }
+        if (sy) { nb.y += sy.d; drag.gy = true; guideLines.push({ v: false, at: sy.at }); }
+      }
+    } else {
+      var l = b0.x, tp = b0.y, r = b0.x + b0.w, bt = b0.y + b0.h, m = drag.mode, sym = !!(S.TYPES[drag.e.type] || {}).presenter;
+      if (/w/.test(m)) l += dx; if (/e/.test(m)) r += dx; if (/n/.test(m)) tp += dy; if (/s/.test(m)) bt += dy;
+      if (ed.guides && !drag.free) {
+        var ex = /w/.test(m) ? l : /e/.test(m) ? r : null, ey = /n/.test(m) ? tp : /s/.test(m) ? bt : null;
+        var gx = ex !== null ? snapEdges([ex], "x", thr) : null, gy = ey !== null ? snapEdges([ey], "y", thr) : null;
+        if (gx) { if (/w/.test(m)) l += gx.d; else r += gx.d; drag.gx = true; guideLines.push({ v: true, at: gx.at }); }
+        if (gy) { if (/n/.test(m)) tp += gy.d; else bt += gy.d; drag.gy = true; guideLines.push({ v: false, at: gy.at }); }
+      }
+      if (ev.shiftKey && m.length === 2 && b0.w && b0.h) { // keep the shape
+        var f = Math.max((r - l) / b0.w, (bt - tp) / b0.h);
+        if (/w/.test(m)) l = r - b0.w * f; else r = l + b0.w * f;
+        if (/n/.test(m)) tp = bt - b0.h * f; else bt = tp + b0.h * f;
+      }
+      if (sym) { var cx = b0.x + b0.w / 2, cy = b0.y + b0.h / 2, hw = Math.max(Math.abs(r - cx), Math.abs(l - cx)), hh = Math.max(Math.abs(bt - cy), Math.abs(tp - cy));
+        if (/[ew]/.test(m)) { l = cx - hw; r = cx + hw; } if (/[ns]/.test(m)) { tp = cy - hh; bt = cy + hh; } }
+      if (r - l < 2) { if (/w/.test(m)) l = r - 2; else r = l + 2; }
+      if (bt - tp < 2) { if (/n/.test(m)) tp = bt - 2; else bt = tp + 2; }
+      nb = { x: l, y: tp, w: r - l, h: bt - tp };
+    }
+    // start each step from the values the drag began with
+    drag.keys.forEach(function (kv) { if (kv[1] === undefined) st.map.delete(kv[0]); else st.map.set(kv[0], kv[1]); });
+    applyBox(drag, nb);
+    st.isBuiltin = false;
+    schedule();
+  }
+  function handleAt(h, p) {
+    var hs = 7 * scaleNow(), pts = handlePoints(h);
+    for (var k in pts) if (Math.abs(p.x - pts[k].x) <= hs && Math.abs(p.y - pts[k].y) <= hs) return k;
     return null;
   }
-  var drag = null;
-  function initPreview() {
-    var cv = $("#pv-canvas");
-    cv.addEventListener("pointerdown", function (ev) {
-      var p = canvasPoint(ev), h = hitAt(p);
-      if (!h || /^\(/.test(h.block)) { if (!h) { st.selected = null; renderElements(); schedule(); } return; }
-      if (st.selected !== h.block) { selectBlock(h.block); }
-      var e = lastBuilt.elements.filter(function (x) { return x.block === h.block; })[0];
-      if (!e) return;
-      drag = { block: h.block, start: p, x0: num(e.props.x), y0: num(e.props.y), xs: e.props.x, ys: e.props.y, moved: false, type: e.type };
-      cv.setPointerCapture(ev.pointerId);
-    });
-    cv.addEventListener("pointermove", function (ev) {
-      if (!drag) return;
-      var p = canvasPoint(ev), dx = Math.round(p.x - drag.start.x), dy = Math.round(p.y - drag.start.y);
-      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
-      drag.moved = true;
-      var t = S.TYPES[drag.type] || {};
-      var bx = resolveAxis(drag.xs, t.x, R.W), by = resolveAxis(drag.ys, t.y, R.H);
-      var nx = bx + dx, ny = by + dy;
-      // keep an edge-anchored value anchored to the same edge
-      if (drag.xs !== undefined && /^-/.test(String(drag.xs))) nx = nx - R.W;
-      if (drag.ys !== undefined && /^-/.test(String(drag.ys))) ny = ny - R.H;
-      var sfx = st.hd ? "_hd" : "";
-      st.map.set(drag.block + "_x" + sfx, String(nx)); st.map.set(drag.block + "_y" + sfx, String(ny));
-      st.isBuiltin = false;
-      schedule();
-    });
-    cv.addEventListener("pointerup", function () { if (drag && drag.moved) changed(); drag = null; });
+  function handlePoints(h) {
+    var l = h.x, r = h.x + h.w, t = h.y, b = h.y + h.h, cx = l + h.w / 2, cy = t + h.h / 2;
+    return { nw: { x: l, y: t }, n: { x: cx, y: t }, ne: { x: r, y: t }, e: { x: r, y: cy }, se: { x: r, y: b }, s: { x: cx, y: b }, sw: { x: l, y: b }, w: { x: l, y: cy } };
   }
+  var CURSOR = { nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize", n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize" };
+  function drawOverlay() {
+    var ov = $("#pv-over"), c = ov.getContext("2d"), k = scaleNow();
+    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, R.W, R.H);
+    if (ed.showGrid && ed.grid >= 4) {
+      c.lineWidth = k;
+      for (var gx = ed.grid, i = 1; gx < R.W; gx += ed.grid, i++) { c.strokeStyle = i % 4 ? "rgba(255,255,255,.07)" : "rgba(255,255,255,.16)"; c.beginPath(); c.moveTo(gx + .5 * k, 0); c.lineTo(gx + .5 * k, R.H); c.stroke(); }
+      for (var gy = ed.grid, j = 1; gy < R.H; gy += ed.grid, j++) { c.strokeStyle = j % 4 ? "rgba(255,255,255,.07)" : "rgba(255,255,255,.16)"; c.beginPath(); c.moveTo(0, gy + .5 * k); c.lineTo(R.W, gy + .5 * k); c.stroke(); }
+      c.strokeStyle = "rgba(90,200,255,.35)"; c.setLineDash([4 * k, 4 * k]);
+      c.beginPath(); c.moveTo(R.W / 2, 0); c.lineTo(R.W / 2, R.H); c.moveTo(0, R.H / 2); c.lineTo(R.W, R.H / 2); c.stroke(); c.setLineDash([]);
+    }
+    if (ed.outlines) {
+      c.lineWidth = k; c.strokeStyle = "rgba(120,200,255,.7)"; c.setLineDash([3 * k, 3 * k]);
+      hits.forEach(function (h) { if (!isBackdrop(h)) c.strokeRect(h.x, h.y, h.w, h.h); });
+      c.setLineDash([]);
+    }
+    var h = selHit();
+    if (h) {
+      c.lineWidth = 2 * k; c.strokeStyle = "#ffd54a"; c.strokeRect(h.x, h.y, h.w, h.h);
+      if (canResize(elOf(h.block))) {
+        var pts = handlePoints(h), s = 5 * k;
+        Object.keys(pts).forEach(function (n) { c.fillStyle = "#ffd54a"; c.fillRect(pts[n].x - s, pts[n].y - s, 2 * s, 2 * s); c.strokeStyle = "#000"; c.lineWidth = k; c.strokeRect(pts[n].x - s, pts[n].y - s, 2 * s, 2 * s); });
+      }
+    }
+    c.strokeStyle = "#ff4fd8"; c.lineWidth = k;
+    guideLines.forEach(function (gl) { c.beginPath(); if (gl.v) { c.moveTo(gl.at, 0); c.lineTo(gl.at, R.H); } else { c.moveTo(0, gl.at); c.lineTo(R.W, gl.at); } c.stroke(); });
+  }
+  function startDrag(block, mode, p, h) {
+    var e = elOf(block); if (!e) return false;
+    var q = R.posOf(lastBuilt, e, st.pv.wide);
+    var keys = ["x", "y", "width", "height"].map(function (k) { var kk = effKey(block, k); return [kk, st.map.get(kk)]; });
+    if (st.pv.wide && !st.hd && st.map.has(block + "_wsX")) keys.push([block + "_wsX", st.map.get(block + "_wsX")]);
+    drag = { block: block, mode: mode, e: e, q: q, start: p, box0: { x: h.x, y: h.y, w: h.w, h: h.h }, keys: keys, moved: false };
+    return true;
+  }
+  function initPreview() {
+    var ov = $("#pv-over");
+    ov.addEventListener("pointerdown", function (ev) {
+      canvasActive = true;
+      var p = canvasPoint(ev), sh = selHit(), mode = null;
+      if (sh && canResize(elOf(sh.block))) mode = handleAt(sh, p);
+      var h = mode ? sh : hitAt(p);
+      if (!h) { if (st.selected) { st.selected = null; renderElements(); schedule(); } return; }
+      if (!mode) mode = "move";
+      if (st.selected !== h.block) selectBlock(h.block);
+      if (startDrag(h.block, mode, p, h)) { ov.setPointerCapture(ev.pointerId); ev.preventDefault(); }
+    });
+    ov.addEventListener("pointermove", function (ev) {
+      if (drag) { onMove(ev); return; }
+      var sh = selHit(), p = canvasPoint(ev), m = sh && canResize(elOf(sh.block)) ? handleAt(sh, p) : null;
+      ov.style.cursor = m ? CURSOR[m] : hitAt(p) ? "move" : "default";
+    });
+    var end = function () { if (drag && drag.moved) { guideLines = []; changed(); } drag = null; guideLines = []; schedule(); };
+    ov.addEventListener("pointerup", end); ov.addEventListener("pointercancel", end);
+    ov.addEventListener("dblclick", function (ev) { var h = hitAt(canvasPoint(ev)); if (h) { selectBlock(h.block); var f = $("#el-props input, #el-props select"); if (f) f.focus(); } });
+    document.addEventListener("pointerdown", function (ev) { if (!ev.target.closest || !ev.target.closest(".tc-canvas-box, .tc-edbar, .tc-insp")) canvasActive = false; });
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", schedule);
+  }
+  function typingIn(t) { return t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable); }
+  function onKey(ev) {
+    var mod = ev.ctrlKey || ev.metaKey, key = ev.key;
+    if ($(".tc-modal")) { if (key === "Escape") closeModal(false); return; }
+    if (typingIn(ev.target)) return;
+    if (mod && (key === "z" || key === "Z")) { ev.preventDefault(); if (ev.shiftKey) redo(); else undo(); return; }
+    if (mod && (key === "y" || key === "Y")) { ev.preventDefault(); redo(); return; }
+    if (!canvasActive || !st.selected) return;
+    var step = ev.shiftKey ? Math.max(ed.grid, 2) : 1;
+    var dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[key];
+    if (dir) { ev.preventDefault(); nudge(dir[0] * step, dir[1] * step); return; }
+    if (key === "Delete" || key === "Backspace") { ev.preventDefault(); var b = st.selected; deleteBlock(b); toast("Deleted " + b + ". Press Ctrl+Z to bring it back."); return; }
+    if (mod && (key === "d" || key === "D")) { ev.preventDefault(); dupBlock(st.selected); return; }
+    if (key === "Escape") { st.selected = null; renderElements(); schedule(); }
+  }
+  function nudge(dx, dy) {
+    var h = selHit(); if (!h) return;
+    if (!startDrag(st.selected, "move", { x: 0, y: 0 }, h)) return;
+    drag.free = true; // a nudge moves by exactly what was pressed
+    applyBox(drag, { x: h.x + dx * drag.q.kx, y: h.y + dy, w: h.w, h: h.h });
+    drag = null; changed();
+  }
+  function alignTo(where) {
+    var h = selHit(); if (!h) { toast("Pick an element first: click it in the preview.", "warn"); return; }
+    var nb = { x: h.x, y: h.y, w: h.w, h: h.h };
+    if (where === "left") nb.x = 0; if (where === "hcenter") nb.x = (R.W - h.w) / 2; if (where === "right") nb.x = R.W - h.w;
+    if (where === "top") nb.y = 0; if (where === "vmiddle") nb.y = (R.H - h.h) / 2; if (where === "bottom") nb.y = R.H - h.h;
+    if (!startDrag(st.selected, "move", { x: 0, y: 0 }, h)) return;
+    drag.free = true; applyBox(drag, nb); drag = null; changed();
+  }
+  // The bar under the preview: the selected element's position and size, editable.
+  function renderInspector() {
+    var box = $("#ed-insp"); if (!box) return;
+    var b = st.selected, e = b ? elOf(b) : null;
+    if (!e) { if (box.dataset.for !== "") { box.dataset.for = ""; box.innerHTML = ""; box.appendChild(el("span", { "class": "tc-hint", text: "Click an element to select it. Drag to move, drag a yellow handle to resize. Arrow keys nudge (Shift: one grid step), Alt turns snapping off while dragging, Delete removes, Ctrl+Z undoes." })); } return; }
+    var keyFor = function (k) { return effKey(b, k); };
+    if (box.dataset.for !== b + "|" + keyFor("x")) {
+      box.dataset.for = b + "|" + keyFor("x"); box.innerHTML = "";
+      box.appendChild(el("b", { text: e.type }));
+      box.appendChild(el("code", { text: b }));
+      ["x", "y", "width", "height"].forEach(function (k) {
+        var id = "ed-v-" + k;
+        var inp = el("input", { id: id, type: "text", size: 6, spellcheck: "false", "data-k": k });
+        inp.addEventListener("change", function () { setKey(keyFor(k), inp.value.trim()); });
+        inp.addEventListener("keydown", function (ev) { if (ev.key === "ArrowUp" || ev.key === "ArrowDown") { var n = parseInt(inp.value, 10); if (!isNaN(n)) { ev.preventDefault(); inp.value = String(n + (ev.key === "ArrowUp" ? 1 : -1) * (ev.shiftKey ? 10 : 1)); setKey(keyFor(k), inp.value); } } });
+        box.appendChild(el("label", { "for": id }, [{ x: "X", y: "Y", width: "W", height: "H" }[k] + " ", inp]));
+      });
+      box.appendChild(el("small", { "class": "tc-keys" }));
+    }
+    var t = S.TYPES[e.type] || {};
+    $$("input[data-k]", box).forEach(function (inp) {
+      if (document.activeElement === inp) return;
+      var k = inp.dataset.k, v = curVal(b, k);
+      inp.value = v !== undefined ? v : "";
+      var d = k === "x" ? t.x : k === "y" ? t.y : k === "width" ? t.w : t.h;
+      inp.placeholder = d === null || d === undefined ? "auto" : d === "MID" ? "POS_MID" : d === "INF" ? "DIM_INF" : String(d);
+    });
+    var note = /_hd$/.test(keyFor("x")) ? "Editing the 16:9 (_hd) values" : /_sd$/.test(keyFor("x")) ? "Editing the 4:3 (_sd) values" : /_wsX$/.test(keyFor("x")) ? "x is the _wsX value in 16:9" : "";
+    $(".tc-keys", box).textContent = note;
+  }
+
+  // ---- Undo ----------------------------------------------------------------------------------------------
+  var undoStack = [], redoStack = [], lastSnap = null;
+  function remember() {
+    var now = C.serialize(st.map);
+    if (lastSnap !== null && now !== lastSnap) { undoStack.push(lastSnap); if (undoStack.length > 300) undoStack.shift(); redoStack = []; }
+    lastSnap = now; updateUndoButtons();
+  }
+  function restore(cfg) { st.map = C.parse(cfg).map; lastSnap = cfg; st.isBuiltin = false; if (st.selected && !blockKeys(st.selected).length) st.selected = null; save(); refreshAll(); updateUndoButtons(); }
+  function undo() { if (!undoStack.length) { toast("Nothing to undo."); return; } redoStack.push(lastSnap); restore(undoStack.pop()); }
+  function redo() { if (!redoStack.length) { toast("Nothing to redo."); return; } undoStack.push(lastSnap); restore(redoStack.pop()); }
+  function updateUndoButtons() { var u = $("#ed-undo"), r = $("#ed-redo"); if (u) u.disabled = !undoStack.length; if (r) r.disabled = !redoStack.length; }
+  function initEditorBar() {
+    var bindCb = function (id, k) { var e = $(id); e.checked = !!ed[k]; e.addEventListener("change", function () { ed[k] = e.checked; saveEd(); schedule(); }); };
+    bindCb("#ed-snap", "snap"); bindCb("#ed-showgrid", "showGrid"); bindCb("#ed-guides", "guides"); bindCb("#ed-outlines", "outlines");
+    var g = $("#ed-grid"); g.value = String(ed.grid); g.addEventListener("change", function () { ed.grid = +g.value; saveEd(); schedule(); });
+    $("#ed-undo").addEventListener("click", undo); $("#ed-redo").addEventListener("click", redo);
+    $$("[data-align]").forEach(function (b) { b.addEventListener("click", function () { alignTo(b.dataset.align); }); });
+    $("#ed-big").addEventListener("click", function () { var w = $(".tc-wrap"); w.classList.toggle("big"); this.textContent = w.classList.contains("big") ? "Smaller preview" : "Bigger preview"; schedule(); });
+    updateUndoButtons();
+  }
+
+  // ---- In-page questions (the browser's own pop-ups are blocked in some viewers) -------------------------
+  var modalDone = null;
+  function ask(msg, okText, cancelText) {
+    return new Promise(function (res) {
+      closeModal(false);
+      var ok = el("button", { type: "button", "class": "btn", text: okText || "OK", onclick: function () { closeModal(true); } });
+      var no = el("button", { type: "button", "class": "tc-mini", text: cancelText || "Cancel", onclick: function () { closeModal(false); } });
+      var m = el("div", { "class": "tc-modal", role: "dialog", "aria-modal": "true" }, [el("div", { "class": "tc-dialog" }, [el("p", { text: msg }), el("div", { "class": "tc-acts" }, [ok, no])])]);
+      m.addEventListener("click", function (ev) { if (ev.target === m) closeModal(false); });
+      document.body.appendChild(m); modalDone = res; ok.focus();
+    });
+  }
+  function closeModal(v) { var m = $(".tc-modal"); if (m) m.remove(); var f = modalDone; modalDone = null; if (f) f(v); }
   function resolveAxis(v, d, size) {
     if (v === undefined) return d === "MID" ? size >> 1 : (d < 0 ? size + d : d || 0);
     if (String(v).indexOf("POS_MID") === 0) return size >> 1;
@@ -216,7 +461,7 @@
     psbbn: "main0:\n\ttype=Background\n\tdefault=psbbn_bg\n\taligned=0\n\twidth=DIM_INF\n\theight=DIM_INF\nmain1:\n\ttype=PSBBNFlow\n\tdefault=cover\nappsMain1:\n\ttype=PSBBNFlow\n\tdefault=coverapp\nvcdMain1:\n\ttype=PSBBNFlow\n\tdefault=cover\nmain2:\n\ttype=ItemsList\n\tx=340\n\ty=114\n\twidth=260\n\theight=24\nmain3:\n\ttype=HintText\n"
   };
   async function startFrom(kind) {
-    if (st.map.size && !confirm("Replace the theme you are editing? Download it first if you want to keep it.")) return;
+    if ((st.images.size || st.fonts.size || st.extras.size) && !(await ask("Start over? Your layout can be brought back with Undo, but the pictures and fonts you added will be cleared. Download the zip first to keep them.", "Start over", "Keep editing"))) return;
     clearAll();
     if (kind === "builtin") {
       if (!st.builtinCfg) { toast("The built-in theme file did not load. Check your connection and reload the page.", "bad"); return; }
@@ -616,7 +861,7 @@
   }
   function renderImages() {
     var box = $("#img-list"); box.innerHTML = "";
-    if (!st.images.size) box.appendChild(el("p", { "class": "tc-hint", text: "No pictures of your own yet. Add some above, or replace one of OPL's below." }));
+    if (!st.images.size) box.appendChild(el("p", { "class": "tc-hint", text: "No pictures of your own yet. Add some above, or use the badge and picture sections below." }));
     Array.from(st.images.keys()).sort().forEach(function (n) {
       var a = st.images.get(n), big = a.w > S.TEX_MAX || a.h > S.TEX_MAX;
       var nameIn = el("input", { type: "text", value: n, size: 16, spellcheck: "false", "aria-label": "Picture name" });
@@ -626,41 +871,194 @@
         st.map.forEach(function (v, k) { if (v === n && /_(default|overlay|overlay2|alt)(_hd|_sd|_desc)?$|^alt$/.test(k)) st.map.set(k, nn); });
         changed();
       });
+      var role = pictureRole(n);
       var card = el("div", { "class": "tc-imgcard" + (big ? " bad" : "") }, [
         el("div", { "class": "th" }, [a.img ? el("img", { src: a.url, alt: n }) : el("span", { text: "?" })]),
         el("div", { "class": "meta" }, [
           el("div", {}, [nameIn, el("code", { text: ".png" })]),
-          el("small", { text: a.w + " × " + a.h + " · " + Math.round(a.data.length / 1024) + " KB · used " + usesOf(n) + "×" + (S.BUILTIN_ALL[n] ? " · replaces OPL's " + n : "") }),
+          el("small", { text: a.w + " × " + a.h + " · " + Math.round(a.data.length / 1024) + " KB · used " + usesOf(n) + "×" + (role ? " · " + role : "") }),
           big ? el("small", { "class": "bad", text: "Too big: OPL refuses pictures over 1024 pixels a side." }) : null,
           el("div", { "class": "tc-acts" }, [
             (a.w > 640 || a.h > 480 || big) ? el("button", { type: "button", "class": "tc-mini", text: "Shrink to fit 640 × 480", onclick: function () { shrink(n, 640, 480); } }) : null,
-            el("button", { type: "button", "class": "tc-mini danger", text: "Remove", onclick: function () { if (a.url) URL.revokeObjectURL(a.url); st.images.delete(n); changed(); } })
+            el("button", { type: "button", "class": "tc-mini danger", text: "Remove", onclick: function () { dropImage(n); changed(); } })
           ])
         ])
       ]);
       box.appendChild(card);
     });
-    // replace-a-built-in grid
-    var rep = $("#img-builtins"); if (rep.childElementCount) { $$(".tc-bi", rep).forEach(function (b) { b.classList.toggle("mine", st.images.has(b.dataset.name)); }); return; }
-    Object.keys(S.BUILTIN).forEach(function (gname) {
-      rep.appendChild(el("h4", { text: gname }));
+    renderBadges();
+    renderBuiltins();
+  }
+  function dropImage(n) { var a = st.images.get(n); if (a && a.url) URL.revokeObjectURL(a.url); st.images.delete(n); }
+  // What RiptOPL does with a theme file of this name, in a few words (for the picture cards).
+  function pictureRole(n) {
+    var b = badgeOfFile(n);
+    if (b) return "badge for " + b.attr + " = " + b.value;
+    for (var i = 0; i < S.BUILTIN_GROUPS.length; i++) if (S.BUILTIN_GROUPS[i].names.indexOf(n) >= 0) return (S.BUILTIN_GROUPS[i].auto ? "replaces OPL's " : "stands in for OPL's ") + n;
+    return S.BUILTIN_ALL[n] ? "stands in for OPL's " + n : "";
+  }
+
+  // ---- Badges (AttributeImage) ------------------------------------------------------------------------
+  function badgeSetOn() { return String(st.map.get("badge_set") || "").toLowerCase() === "ripps2"; }
+  // themeelems.cpp drawAttributeImage: with badge_set=ripps2 a theme file named after RiptOPL's own badge
+  // (ISO.png) is used; without it the file is <value>_<attribute>.png. #DiscType has no built-in badge, so it
+  // is always read as <value>_#DiscType.png.
+  function badgeFile(b, v, on) { return (on === undefined ? badgeSetOn() : on) && !b.noBuiltin ? v : v + "_" + b.attr; }
+  function badgeOfFile(n) {
+    for (var i = 0; i < S.BADGES.length; i++) {
+      var b = S.BADGES[i];
+      for (var j = 0; j < b.values.length; j++) {
+        if (n === b.values[j] + "_" + b.attr || (!b.noBuiltin && n === b.values[j] && badgeSetOn())) return { attr: b.attr, value: b.values[j] };
+      }
+    }
+    return null;
+  }
+  // Switching badge_set renames the badge files the theme already has, so nothing is lost.
+  function setBadgeSet(on) {
+    var moved = 0;
+    S.BADGES.forEach(function (b) {
+      if (b.noBuiltin) return;
+      b.values.forEach(function (v) {
+        var from = badgeFile(b, v, !on), to = badgeFile(b, v, on);
+        if (st.images.has(from) && !st.images.has(to)) { st.images.set(to, st.images.get(from)); st.images.delete(from); moved++; }
+      });
+    });
+    if (on) st.map.set("badge_set", "ripps2"); else st.map.delete("badge_set");
+    changed();
+    toast((on ? "Badges now use RiptOPL's names, and any badge you have not supplied shows RiptOPL's own." : "Badges now use the <value>_<attribute>.png names; a badge you have not supplied shows nothing.") + (moved ? " Renamed " + moved + " file" + (moved > 1 ? "s" : "") + " to match." : ""));
+  }
+  async function fetchBuiltinPng(name) {
+    var file = S.BUILTIN_FILE[name] || name;
+    var r = await fetch(BASE + encodeURIComponent(file) + ".png");
+    if (!r.ok) throw new Error("Could not load OPL's " + name + " picture (" + r.status + ").");
+    return new Uint8Array(await r.arrayBuffer());
+  }
+  async function fillBadges(b) {
+    var list = b ? [b] : S.BADGES, n = 0, fails = 0;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].noBuiltin) continue;
+      for (var j = 0; j < list[i].values.length; j++) {
+        var v = list[i].values[j], fn = badgeFile(list[i], v);
+        if (st.images.has(fn)) continue;
+        try { await addImage(fn, await fetchBuiltinPng(v)); n++; } catch (e) { fails++; }
+      }
+    }
+    changed();
+    toast(n ? "Copied " + n + " of RiptOPL's badge pictures into your theme, ready to edit or replace." : "Every badge already has a picture.", fails ? "warn" : "");
+  }
+  // Puts an AttributeImage for this badge on the game info page, next to the last badge there.
+  function addBadgeElement(b) {
+    var fam = "info", base = buildBase(fam), last = null;
+    base.elements.forEach(function (e) { if (e.type === "AttributeImage") last = e; });
+    var n = firstFree("", fam), bl = blockName("", fam, n);
+    st.map.set(bl + "_type", "AttributeImage");
+    st.map.set(bl + "_attribute", b.attr);
+    if (last) {
+      var lx = parseInt(last.props.x, 10), ly = last.props.y;
+      st.map.set(bl + "_x", isNaN(lx) ? "40" : String(lx + (lx < 0 ? -1 : 1) * (parseInt(last.props.width, 10) || 48) + (lx < 0 ? -8 : 8)));
+      if (ly !== undefined) st.map.set(bl + "_y", String(ly));
+      if (last.props.width) st.map.set(bl + "_width", String(last.props.width));
+      if (last.props.height) st.map.set(bl + "_height", String(last.props.height));
+    } else { st.map.set(bl + "_x", "40"); st.map.set(bl + "_y", "-60"); st.map.set(bl + "_width", "48"); st.map.set(bl + "_height", "24"); }
+    st.editView = ""; st.editFamily = fam; st.selected = bl;
+    st.pv.page = "info"; st.pv.family = "info"; var pg = $("#pv-page"); if (pg) pg.value = "info";
+    changed();
+    toast("Added the " + b.label.toLowerCase() + " badge (" + bl + ") to the game info page. Drag it into place on the preview.");
+  }
+  function badgeUsed(b) {
+    var used = false; st.map.forEach(function (v, k) { if (/_attribute$/.test(k) && v === b.attr && st.map.get(k.replace(/_attribute$/, "_type")) === "AttributeImage") used = true; }); return used;
+  }
+  function uploadInto(name, after) {
+    var up = el("input", { type: "file", accept: "image/*", hidden: "hidden" });
+    up.addEventListener("change", async function () {
+      var f = up.files[0]; up.value = ""; if (!f) return;
+      try { await addImage(name, await toPng(f.name, new Uint8Array(await f.arrayBuffer()))); changed(); toast(after || "Saved as " + name + ".png in your theme."); } catch (e) { toast(e.message, "bad"); }
+    });
+    document.body.appendChild(up); up.click(); setTimeout(function () { up.remove(); }, 60000);
+  }
+  function tile(name, label, fallbackSrc, opts) {
+    opts = opts || {};
+    var mine = st.images.get(name);
+    var pic = mine && mine.url ? el("img", { src: mine.url, alt: "" }) : fallbackSrc ? el("img", { src: fallbackSrc, alt: "", loading: "lazy", "class": "theirs" }) : el("span", { "class": "noimg", text: opts.emptyText || "nothing yet" });
+    var t = el("div", { "class": "tc-bi" + (mine ? " mine" : ""), "data-name": name }, [
+      el("button", { type: "button", "class": "tc-bipick", title: (mine ? "Replace " : "Add ") + name + ".png", onclick: function () { uploadInto(name, opts.after); } }, [pic, el("code", { text: label || name })]),
+      el("small", { text: mine ? "yours: " + name + ".png" : (fallbackSrc ? (opts.theirsText || "OPL's own") : "") }),
+      mine ? el("button", { type: "button", "class": "tc-x", title: "Remove your " + name + ".png", "aria-label": "Remove " + name, onclick: function () { dropImage(name); changed(); } }, ["×"]) : null
+    ]);
+    return t;
+  }
+  function renderBadges() {
+    var box = $("#img-badges"); if (!box) return; box.innerHTML = "";
+    var on = badgeSetOn();
+    var cb = el("input", { type: "checkbox" }); cb.checked = on;
+    cb.addEventListener("change", function () { setBadgeSet(cb.checked); });
+    box.appendChild(el("p", {}, [el("label", { "class": "tc-hdtoggle" }, [cb, " Use RiptOPL's badge set for anything I don't supply (", el("code", { text: "badge_set=ripps2" }), ")"])]));
+    box.appendChild(el("p", { "class": "tc-hint", text: on
+      ? "On: a badge you add is saved under RiptOPL's own name (for example ISO.png) and replaces that one badge; the rest show RiptOPL's pictures."
+      : "Off: a badge you add is saved as <value>_<attribute>.png (for example ISO_#Format.png). A badge you leave out shows the element's own Picture, or nothing. Faded pictures below are RiptOPL's, shown for reference only." }));
+    box.appendChild(el("div", { "class": "tc-acts" }, [
+      el("button", { type: "button", "class": "tc-mini", text: "Copy all of RiptOPL's badges into my theme", onclick: function () { fillBadges(); } }),
+      el("button", { type: "button", "class": "tc-mini danger", text: "Remove all my badge pictures", onclick: async function () {
+        var names = Array.from(st.images.keys()).filter(function (n) { return badgeOfFile(n); });
+        if (!names.length) { toast("There are no badge pictures to remove."); return; }
+        if (!(await ask("Remove " + names.length + " badge picture" + (names.length > 1 ? "s" : "") + " from your theme?", "Remove", "Keep them"))) return;
+        names.forEach(dropImage); changed();
+      } })
+    ]));
+    S.BADGES.forEach(function (b) {
+      var used = badgeUsed(b);
+      var fs = el("fieldset", { "class": "tc-fs tc-badgeset" }, [el("legend", {}, [b.label + " ", el("code", { text: "attribute=" + b.attr })])]);
+      fs.appendChild(el("div", { "class": "tc-acts" }, [
+        el("span", { "class": "tc-small", text: used ? "Shown by an element in your theme." : "No element shows this badge yet." }),
+        el("button", { type: "button", "class": "tc-mini", text: used ? "Add another to the info page" : "Add it to the info page", onclick: function () { addBadgeElement(b); } }),
+        b.noBuiltin ? null : el("button", { type: "button", "class": "tc-mini", text: "Copy RiptOPL's set", onclick: function () { fillBadges(b); } })
+      ]));
+      if (b.noBuiltin) fs.appendChild(el("p", { "class": "tc-hint", text: "RiptOPL has no pictures of its own for this one: supply all three, or it shows nothing." }));
       var grid = el("div", { "class": "tc-bigrid" });
-      S.BUILTIN[gname].forEach(function (n) {
-        var file = S.BUILTIN_FILE[n] || n;
-        var up = el("input", { type: "file", accept: "image/*", hidden: "hidden" });
-        up.addEventListener("change", async function () {
-          var f = up.files[0]; up.value = ""; if (!f) return;
-          try { await addImage(n, await toPng(f.name, new Uint8Array(await f.arrayBuffer()))); changed(); toast("Your " + n + ".png now replaces OPL's."); } catch (e) { toast(e.message, "bad"); }
-        });
-        var btn = el("button", { type: "button", "class": "tc-bi", "data-name": n, title: "Replace " + n + ".png", onclick: function () { up.click(); } }, [
-          S.BUILTIN_EMPTY[n] ? el("span", { "class": "noimg", text: "none built in" }) : el("img", { src: BASE + encodeURIComponent(file) + ".png", alt: "", loading: "lazy" }),
-          el("code", { text: n })
-        ]);
-        grid.appendChild(btn); grid.appendChild(up);
+      b.values.forEach(function (v) {
+        var fn = badgeFile(b, v);
+        grid.appendChild(tile(fn, v, b.noBuiltin ? null : BASE + encodeURIComponent(S.BUILTIN_FILE[v] || v) + ".png",
+          { theirsText: on ? "OPL's own (shown)" : "OPL's (reference)", emptyText: "none yet", after: "Saved as " + fn + ".png: the badge for " + b.attr + " = " + v + "." }));
+      });
+      fs.appendChild(grid);
+      box.appendChild(fs);
+    });
+    box.appendChild(el("p", { "class": "tc-hint", text: "RiptOPL has no ESRB or other age-rating badge. Rating is the 0 to 5 star rating from each game's settings file. The preview's stand-in games carry made-up values; step through them with ▲ ▼ to see each badge." }));
+  }
+
+  // ---- OPL's own pictures a theme can replace -----------------------------------------------------------
+  async function copyGlyphSet(set) {
+    var n = 0;
+    for (var i = 0; i < S.GLYPH_NAMES.length; i++) {
+      var g = S.GLYPH_NAMES[i];
+      try {
+        var r = await fetch(BASE + S.GLYPH_SETS[set] + g + ".png"); if (!r.ok) continue;
+        await addImage(g, new Uint8Array(await r.arrayBuffer())); n++;
+      } catch (e) { /* counted below */ }
+    }
+    changed();
+    toast(n === S.GLYPH_NAMES.length ? "Copied RiptOPL's " + set + " button set into your theme as cross.png, circle.png and the rest." : "Copied " + n + " of " + S.GLYPH_NAMES.length + " button pictures.", n === S.GLYPH_NAMES.length ? "" : "warn");
+  }
+  function renderBuiltins() {
+    var rep = $("#img-builtins"); rep.innerHTML = "";
+    S.BUILTIN_GROUPS.forEach(function (gr) {
+      var head = el("h4", {}, [gr.name + " ", el("span", { "class": "tc-badge " + (gr.auto ? "good" : "warn"), text: gr.auto ? "used automatically" : "used where an element names it" })]);
+      rep.appendChild(head);
+      rep.appendChild(el("p", { "class": "tc-hint", text: gr.note }));
+      if (gr.glyphs) {
+        rep.appendChild(el("div", { "class": "tc-acts" }, [
+          el("button", { type: "button", "class": "tc-mini", text: "Copy the standard button set into my theme", onclick: function () { copyGlyphSet("standard"); } }),
+          el("button", { type: "button", "class": "tc-mini", text: "Copy the white button set", onclick: function () { copyGlyphSet("white"); } })
+        ]));
+      }
+      var grid = el("div", { "class": "tc-bigrid" });
+      gr.names.forEach(function (n) {
+        grid.appendChild(tile(n, n, S.BUILTIN_EMPTY[n] ? null : BASE + encodeURIComponent(S.BUILTIN_FILE[n] || n) + ".png",
+          { emptyText: "none built in", after: "Your " + n + ".png now " + (gr.auto ? "replaces OPL's." : "stands in wherever an element names " + n + ".") }));
       });
       rep.appendChild(grid);
     });
-    $$(".tc-bi", rep).forEach(function (b) { b.classList.toggle("mine", st.images.has(b.dataset.name)); });
+    rep.appendChild(el("p", { "class": "tc-hint", text: "Not replaceable: the animated boot logo frames (" + S.FIXED_PICTURES.join(", ") + ") always come from RiptOPL itself. A theme's logo.png is used only where an element names logo." }));
   }
   async function shrink(n, mw, mh) {
     var a = st.images.get(n); if (!a || !a.img) return;
@@ -702,12 +1100,33 @@
       ["font" + i, "font" + i + "_size", "font" + i + "_weight"].forEach(function (k) { fs.appendChild(field(k, S.GLOBALS[k], st.map.get(k), function (v) { setKey(k, v); }, { global: true })); });
     }
     slots.appendChild(fs);
+    var ss = $("#sound-slots"); ss.innerHTML = "";
+    S.SOUNDS.forEach(function (snd) {
+      var d = st.extras.get(snd.file);
+      var pick = function () {
+        var up = el("input", { type: "file", accept: snd.file.slice(snd.file.lastIndexOf(".")), hidden: "hidden" });
+        up.addEventListener("change", async function () {
+          var f = up.files[0]; up.value = ""; if (!f) return;
+          var want = snd.file.slice(snd.file.lastIndexOf(".")).toLowerCase();
+          if (f.name.toLowerCase().slice(-want.length) !== want) toast("\"" + f.name + "\" is not a " + want + " file. Added it as " + snd.file + " anyway; RiptOPL plays its own sound if it cannot read it.", "warn");
+          st.extras.set(snd.file, new Uint8Array(await f.arrayBuffer())); changed();
+        });
+        document.body.appendChild(up); up.click(); setTimeout(function () { up.remove(); }, 60000);
+      };
+      ss.appendChild(el("div", { "class": "tc-fontrow" }, [
+        el("b", { text: snd.label }), el("code", { text: snd.file }),
+        el("small", { text: d ? "yours, " + Math.round(d.length / 1024) + " KB" : (/bgm/.test(snd.file) ? "none: the music chosen in Settings plays, if any" : "RiptOPL's own") }),
+        el("button", { type: "button", "class": "tc-mini", text: d ? "Replace" : "Add", onclick: pick }),
+        d ? el("button", { type: "button", "class": "tc-mini danger", text: "Remove", onclick: function () { st.extras.delete(snd.file); changed(); } }) : null
+      ]));
+    });
     var ex = $("#extra-list"); ex.innerHTML = "";
     st.extras.forEach(function (d, p) {
+      if (S.SOUNDS.some(function (x) { return x.file === p; })) return;
       ex.appendChild(el("div", { "class": "tc-fontrow" }, [el("code", { text: p }), el("small", { text: Math.round(d.length / 1024) + " KB" }),
         el("button", { type: "button", "class": "tc-mini danger", text: "Remove", onclick: function () { st.extras.delete(p); changed(); } })]));
     });
-    if (!st.extras.size) ex.appendChild(el("p", { "class": "tc-hint", text: "None. Sounds go in sound/ (for example sound/bgm.ogg)." }));
+    if (!ex.childElementCount) ex.appendChild(el("p", { "class": "tc-hint", text: "None." }));
   }
   function initFonts() {
     $("#font-add").addEventListener("change", async function () {
@@ -789,9 +1208,9 @@
   }
   function initDownload() {
     $("#th-name").addEventListener("change", function () { st.name = this.value.trim() || "MyTheme"; save(); refreshAll(); });
-    $$("[data-dl]").forEach(function (b) { b.addEventListener("click", function () {
+    $$("[data-dl]").forEach(function (b) { b.addEventListener("click", async function () {
       var errs = findings().filter(function (x) { return x.level === "error"; });
-      if (errs.length && !confirm("The Check tab lists " + errs.length + " problem" + (errs.length > 1 ? "s" : "") + " that will show on the PS2. Download anyway?")) { showTab("check"); return; }
+      if (errs.length && !(await ask("The Check tab lists " + errs.length + " problem" + (errs.length > 1 ? "s" : "") + " that will show on the PS2. Download anyway?", "Download anyway", "Show the problems"))) { showTab("check"); return; }
       var dir = "thm_" + safeName();
       if (b.dataset.dl === "zip") IO.download(IO.zip(files().map(function (f) { return { path: dir + "/" + f.path, data: f.data }; })), dir + ".zip");
       else { try { IO.download(IO.tar(files()), dir + ".tar"); } catch (e) { toast(e.message, "bad"); } }
@@ -806,7 +1225,7 @@
 
   // ---- Boot ----------------------------------------------------------------------------------------------
   async function boot() {
-    initTabs(); initPreview(); initPreviewControls(); initStart(); initElements(); initImages(); initFonts(); initCfg(); initDownload();
+    initTabs(); initPreview(); initEditorBar(); initPreviewControls(); initStart(); initElements(); initImages(); initFonts(); initCfg(); initDownload();
     try {
       var r = await fetch(BASE + "conf_theme_OPL.cfg"); if (!r.ok) throw new Error(r.status);
       st.builtinCfg = C.parse(await r.text()).map;
@@ -817,6 +1236,7 @@
       toast("Restored your last theme layout. Pictures and fonts are not kept between visits: download the zip to keep them.");
     } else if (st.builtinCfg) { st.map = new Map(st.builtinCfg); st.name = "MyRiptOPL"; st.isBuiltin = false; if (!st.map.has("badge_set")) st.map.set("badge_set", "ripps2"); }
     $("#th-name").value = st.name;
+    lastSnap = C.serialize(st.map);
     refreshAll();
     showTab(saved ? "elements" : "start");
   }

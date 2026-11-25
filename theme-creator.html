@@ -107,7 +107,30 @@ nothing you add is uploaded anywhere.</p>
       <span class="tc-step"><button type="button" id="pv-prev" class="tc-mini" aria-label="Previous game">▲</button><button type="button" id="pv-next" class="tc-mini" aria-label="Next game">▼</button></span>
       <button type="button" id="pv-png" class="tc-mini">Save picture</button>
     </div>
-    <div class="tc-canvas-box"><canvas id="pv-canvas" width="640" height="480" aria-label="Theme preview. Click an element to select it, drag to move it."></canvas></div>
+    <div class="tc-edbar" role="toolbar" aria-label="Layout tools">
+      <span class="tc-grp">
+        <label title="Moves and resizes land on the grid"><input type="checkbox" id="ed-snap"> Snap</label>
+        <select id="ed-grid" aria-label="Grid size"><option value="4">4 px</option><option value="8">8 px</option><option value="10">10 px</option><option value="16">16 px</option><option value="20">20 px</option><option value="32">32 px</option></select>
+        <label><input type="checkbox" id="ed-showgrid"> Show grid</label>
+        <label title="Snap to the screen edges, the centre and other elements"><input type="checkbox" id="ed-guides"> Guides</label>
+        <label title="Draw a box round every element"><input type="checkbox" id="ed-outlines"> Outlines</label>
+      </span>
+      <span class="tc-grp" aria-label="Align the selected element to the screen">
+        <button type="button" class="tc-mini" data-align="left" title="Align to the left edge">⇤</button>
+        <button type="button" class="tc-mini" data-align="hcenter" title="Centre across">↔</button>
+        <button type="button" class="tc-mini" data-align="right" title="Align to the right edge">⇥</button>
+        <button type="button" class="tc-mini" data-align="top" title="Align to the top">⤒</button>
+        <button type="button" class="tc-mini" data-align="vmiddle" title="Centre up and down">↕</button>
+        <button type="button" class="tc-mini" data-align="bottom" title="Align to the bottom">⤓</button>
+      </span>
+      <span class="tc-grp">
+        <button type="button" class="tc-mini" id="ed-undo" title="Undo (Ctrl+Z)">Undo</button>
+        <button type="button" class="tc-mini" id="ed-redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+        <button type="button" class="tc-mini" id="ed-big">Bigger preview</button>
+      </span>
+    </div>
+    <div class="tc-canvas-box"><canvas id="pv-canvas" width="640" height="480" aria-hidden="true"></canvas><canvas id="pv-over" width="640" height="480" aria-label="Theme preview. Click an element to select it, drag it to move, drag the corner handles to resize."></canvas></div>
+    <div id="ed-insp" class="tc-insp"></div>
     <p id="pv-note" class="tc-note" hidden></p>
     <details class="tc-pvopts">
       <summary>Preview settings (the same switches as on the PS2)</summary>
@@ -186,7 +209,11 @@ nothing you add is uploaded anywhere.</p>
       <code>name.png</code> in the theme folder; use that name in an element's picture field.</p>
       <p><label class="btn tc-file">Add pictures<input type="file" id="img-add" accept="image/*" multiple></label></p>
       <div id="img-list" class="tc-imgs"></div>
-      <h3>Replace a built-in picture</h3>
+      <h3>Badges</h3>
+      <p class="tc-small">The little pictures on the game list and info page that show each game's console, disc, file
+      format, star rating, players, video mode, screen shape and picture lines. Click a badge to use your own picture.</p>
+      <div id="img-badges" class="tc-bis"></div>
+      <h3>RiptOPL's other pictures</h3>
       <p class="tc-small">Click one to swap it for your own. Your version goes in the theme folder under the same name.</p>
       <div id="img-builtins" class="tc-bis"></div>
     </div>
@@ -197,6 +224,10 @@ nothing you add is uploaded anywhere.</p>
       <p><label class="btn tc-file">Add fonts<input type="file" id="font-add" accept=".ttf,.otf" multiple></label></p>
       <div id="font-list"></div>
       <div id="font-slots" class="tc-form"></div>
+      <h3>Sounds</h3>
+      <p class="tc-small">RiptOPL plays these from the theme's <code>sound</code> folder in place of its own. Sound effects are
+      PS2 ADPCM (<code>.adp</code>) files; the music is Ogg Vorbis. The preview does not play them.</p>
+      <div id="sound-slots"></div>
       <h3>Other files</h3>
       <p class="tc-small">Anything else to carry in the theme folder, such as sounds. Pick a folder inside the theme first if it needs one (for example <code>sound</code>).</p>
       <div class="tc-row"><label>Folder <input type="text" id="extra-dir" placeholder="(top of the theme)" size="14"></label>

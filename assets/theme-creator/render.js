@@ -10,10 +10,10 @@
 
   var GAMES = [
     { name: "Crystal Keep Chronicles", id: "SLUS_201.23", dev: "Northwind", genre: "RPG", rel: "2003", system: "PS2", media: "DVD", format: "ISO", disc: "PS2DVD", rating: "Rating_4", players: "Players_1", vmode: "Vmode_ntsc", aspect: "Aspect_w", scan: "Scan_480p", size: "3910", hue: 210 },
-    { name: "Neon Drift Racing", id: "SLES_512.04", dev: "Apex Arcade", genre: "Racing", rel: "2004", system: "PS2", media: "DVD", format: "ZSO", disc: "PS2DVD", rating: "Rating_3", players: "Players_1", vmode: "Vmode_pal", aspect: "Aspect_s", scan: "Scan_480i", size: "2140", hue: 320 },
+    { name: "Neon Drift Racing", id: "SLES_512.04", dev: "Apex Arcade", genre: "Racing", rel: "2004", system: "PS2", media: "DVD", format: "ZSO", disc: "PS2DVD", rating: "Rating_3", players: "Players_2", vmode: "Vmode_pal", aspect: "Aspect_s", scan: "Scan_480i", size: "2140", hue: 320 },
     { name: "Iron Lantern", id: "SLUS_209.80", dev: "Quiet Forge", genre: "Action", rel: "2005", system: "PS2", media: "CD", format: "ISO", disc: "PS2CD", rating: "Rating_5", players: "Players_1", vmode: "Vmode_ntsc", aspect: "Aspect_w", scan: "Scan_480p", size: "640", hue: 30 },
     { name: "Moonlit Harbour", id: "SCUS_973.01", dev: "Tidewater", genre: "Adventure", rel: "2002", system: "PS2", media: "DVD", format: "ISO", disc: "PS2DVD", rating: "Rating_2", players: "Players_1", vmode: "Vmode_ntsc", aspect: "Aspect_s", scan: "Scan_480i", size: "4100", hue: 260 },
-    { name: "Pocket Robot League", id: "SLUS_214.56", dev: "Gearbox Kids", genre: "Sports", rel: "2006", system: "PS2", media: "CD", format: "ZSO", disc: "PS2CD", rating: "Rating_3", players: "Players_1", vmode: "Vmode_multi", aspect: "Aspect_s", scan: "Scan_480i", size: "580", hue: 120 },
+    { name: "Pocket Robot League", id: "SLUS_214.56", dev: "Gearbox Kids", genre: "Sports", rel: "2006", system: "PS2", media: "CD", format: "ZSO", disc: "PS2CD", rating: "Rating_3", players: "Players_4", vmode: "Vmode_multi", aspect: "Aspect_s", scan: "Scan_480i", size: "580", hue: 120 },
     { name: "Shadow of the Ninth Bell", id: "SLES_533.77", dev: "Lamplight", genre: "Horror", rel: "2004", system: "PS2", media: "DVD", format: "ISO", disc: "PS2DVD", rating: "Rating_4", players: "Players_1", vmode: "Vmode_pal", aspect: "Aspect_w", scan: "Scan_576i", size: "3300", hue: 0 },
     { name: "Sky Garden Tactics", id: "SLUS_207.11", dev: "Paper Kite", genre: "Strategy", rel: "2003", system: "PS2", media: "DVD", format: "ISO", disc: "PS2DVD", rating: "Rating_3", players: "Players_1", vmode: "Vmode_ntsc", aspect: "Aspect_s", scan: "Scan_480i", size: "1800", hue: 170 },
     { name: "Thunder Valley Rally", id: "SLUS_219.02", dev: "Apex Arcade", genre: "Racing", rel: "2007", system: "PS2", media: "DVD", format: "ISO", disc: "PS2DVD", rating: "Rating_4", players: "Players_1", vmode: "Vmode_ntsc", aspect: "Aspect_w", scan: "Scan_480p", size: "2900", hue: 50 },
@@ -248,7 +248,8 @@
     // themeelems.cpp drawAttributeImage: the built-in theme, or a disk theme with badge_set=ripps2, uses the
     // embedded badge for the value (or <attribute>_<value>); a disk theme otherwise reads <value>_<attribute>.png.
     var bs = X.o.isBuiltin || String(X.b.globals.badge_set || "").toLowerCase() === "ripps2";
-    if (v && bs) pic = X.a.builtin(v) || X.a.builtin(attr + "_" + v);
+    // With badge_set a theme file named after the built-in picture (ISO.png, Scan_480p.png) wins (thmLoadResource).
+    if (v && bs) pic = (X.o.isBuiltin ? null : X.a.user(v) || X.a.user(attr + "_" + v)) || X.a.builtin(v) || X.a.builtin(attr + "_" + v);
     if (v && !pic && !X.o.isBuiltin) pic = X.a.user(v + "_" + attr);
     if (!pic && X.o.isBuiltin && v) return;
     if (!pic) pic = X.img(e.props["default"]);
@@ -489,5 +490,15 @@
     return X.hits;
   }
 
-  g.RTC_RENDER = { render: render, GAMES: GAMES, W: W, H: H };
+  // Where an element's anchor sits, for the editor: q from Ctx.pos, and kx = how far the anchor moves on screen
+  // per unit of x (0.75 when hd_autofit squeezes it in 16:9, else 1).
+  function posOf(built, e, wide) {
+    var q = Ctx.prototype.pos.call({ b: built, wide: wide }, e);
+    var raw = Ctx.prototype.pos.call({ b: built, wide: false }, e);
+    q.kx = wide && q.x !== raw.x ? 0.75 : 1;
+    q.rx = wide && q.sc ? 0.75 : 1; // drawn width per unit of width=
+    q.ax = raw.x; q.ay = raw.y;      // the anchor as the file states it, before the 16:9 squeeze
+    return q;
+  }
+  g.RTC_RENDER = { render: render, posOf: posOf, GAMES: GAMES, W: W, H: H };
 })(window);

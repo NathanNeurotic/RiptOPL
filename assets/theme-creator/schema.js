@@ -159,19 +159,54 @@
   var DEVICE_NAMES = ["usb", "ilink", "mx4sio", "hdd_bd", "hdd", "eth", "smb", "mmce", "udpbd", "udpfs", "app", "fav", "bdm"];
   var HINT_NAMES = ["menu", "run", "info", "options", "refresh", "star", "view", "start", "select", "r3", "l3", "cross", "circle", "square", "triangle"];
 
-  // textures.cpp internalDefault: names default=/overlay= may use with no file. A theme file of the same
-  // name (<name>.png in the theme folder) replaces it.
-  var BUILTIN = {
-    "Covers and art": ["cover", "coverapp", "disc", "screen", "screens", "missing", "case", "apps_case", "case_overlay", "psbbn_bg", "bezel_top", "bezel_bottom", "settings_bg"],
-    "Device icons": ["usb", "usb_bd", "ilk_bd", "m4s_bd", "hdd_bd", "mmce", "hdd", "eth", "udp_bd", "udp_fs", "app", "fav"],
-    "Buttons": ["cross", "circle", "triangle", "square", "left", "right", "select", "start", "L1", "R1", "L3", "R3", "fav_mark"],
-    "Loading and drives": ["load0", "load1", "load2", "load3", "load4", "load5", "load6", "load7", "Index_0", "Index_1", "Index_2", "Index_3", "Index_4"],
-    "Badges": ["PS1", "PS2", "ELF", "HDL", "ISO", "VCD", "ZSO", "UL", "CUE", "EXE", "BIN", "APP", "CD", "DVD", "Aspect_s", "Aspect_w", "Aspect_w1", "Aspect_w2",
-      "Rating_0", "Rating_1", "Rating_2", "Rating_3", "Rating_4", "Rating_5", "no_Rating", "Players_1", "Players_2", "Players_3", "Players_4",
-      "Scan_240p", "Scan_240p1", "Scan_480i", "Scan_480p", "Scan_480p1", "Scan_480p2", "Scan_480p3", "Scan_480p4", "Scan_480p5", "Scan_576i", "Scan_576p",
-      "Scan_720p", "Scan_1080i", "Scan_1080i2", "Scan_1080p", "Vmode_multi", "Vmode_ntsc", "Vmode_pal", "no_Device"],
-    "Boot logo": ["logo"]
-  };
+  // Every picture RiptOPL knows by name (textures.cpp internalDefault), grouped by how a disk theme uses it
+  // (themes.cpp thmLoad). "auto": RiptOPL loads <name>.png from the theme folder on its own and uses it in
+  // place of its own picture. Otherwise the picture only shows where an element names it in default= or overlay=.
+  var BUILTIN_GROUPS = [
+    { name: "Device icons", auto: true, note: "The tab icon for each device page. Your file is used automatically.",
+      names: ["usb", "usb_bd", "ilk_bd", "m4s_bd", "hdd_bd", "mmce", "hdd", "eth", "udp_bd", "udp_fs", "app", "fav"] },
+    { name: "Buttons", auto: true, glyphs: true, note: "Button pictures in the hint bar, menus and dialogs. Your file is used automatically. The theme's glyph_set can swap them for RiptOPL's standard or white set instead.",
+      names: ["cross", "circle", "triangle", "square", "left", "right", "select", "start", "L1", "R1", "L3", "R3", "fav_mark"] },
+    { name: "Loading animation", auto: true, note: "Frames shown while something loads. Start at load0 and number them in order: RiptOPL stops at the first frame your theme is missing.",
+      names: ["load0", "load1", "load2", "load3", "load4", "load5", "load6", "load7"] },
+    { name: "Drive dots", auto: true, note: "The BdmIndex dots that show which USB-style drive you are on. Index_0 to Index_4 are the five-drive set; Index2, Index3 and Index4 are used when only two, three or four drives are in. A theme with only the five-drive set keeps those dots for every count.",
+      names: ["Index_0", "Index_1", "Index_2", "Index_3", "Index_4", "Index2_0", "Index2_1", "Index3_0", "Index3_1", "Index3_2", "Index4_0", "Index4_1", "Index4_2", "Index4_3"] },
+    { name: "Settings background", auto: true, note: "Drawn behind the Settings screens in place of the moving plasma, only when the Theme tab's use_settings_bg is on.",
+      names: ["settings_bg"] },
+    { name: "Covers, cases and art", auto: false, note: "Used only where an element names them in its Picture (default=) or Frame (overlay=) box. Name your own file the same to replace OPL's picture there.",
+      names: ["cover", "coverapp", "disc", "screen", "screens", "missing", "case", "apps_case", "case_overlay", "psbbn_bg", "bezel_top", "bezel_bottom", "logo", "no_Rating", "no_Device"] }
+  ];
+  // Per-game badges (AttributeImage). values are what OPL sets; glyph is RiptOPL's built-in picture name for the value.
+  var BADGES = [
+    { attr: "#System", label: "Console", values: ["PS1", "PS2"] },
+    { attr: "#Media", label: "Disc kind", values: ["CD", "DVD"] },
+    { attr: "#Format", label: "Game file format", values: ["ISO", "ZSO", "VCD", "UL", "ELF", "HDL", "CUE", "EXE", "BIN"] },
+    { attr: "#DiscType", label: "Console and disc together", values: ["PS1CD", "PS2CD", "PS2DVD"], noBuiltin: true },
+    { attr: "Rating", label: "Star rating", values: ["Rating_0", "Rating_1", "Rating_2", "Rating_3", "Rating_4", "Rating_5"] },
+    { attr: "Players", label: "Number of players", values: ["Players_1", "Players_2", "Players_3", "Players_4"] },
+    { attr: "Vmode", label: "Video mode", values: ["Vmode_multi", "Vmode_ntsc", "Vmode_pal"] },
+    { attr: "Aspect", label: "Screen shape", values: ["Aspect_s", "Aspect_w", "Aspect_w1", "Aspect_w2"] },
+    { attr: "Scan", label: "Picture lines", values: ["Scan_240p", "Scan_240p1", "Scan_480i", "Scan_480p", "Scan_480p1", "Scan_480p2", "Scan_480p3", "Scan_480p4", "Scan_480p5", "Scan_576i", "Scan_576p", "Scan_720p", "Scan_1080i", "Scan_1080i2", "Scan_1080p"] }
+  ];
+  // RiptOPL's own pictures a theme cannot replace (texLoadInternal only), listed so nobody wonders.
+  var FIXED_PICTURES = ["logo0", "logo1", "logo2", "logo3", "logo4", "logo5", "logo6"];
+  // The button glyph sets built into RiptOPL (glyph_set=standard / white): file names in assets/thm/.
+  var GLYPH_SETS = { standard: "glyph_standard_", white: "glyph_white_" };
+  var GLYPH_NAMES = ["cross", "circle", "square", "triangle", "start", "select", "L1", "R1", "L3", "R3", "left", "right"];
+  // Theme sounds (sound/ in the theme folder).
+  var SOUNDS = [
+    { file: "sound/boot.adp", label: "Start-up" }, { file: "sound/cursor.adp", label: "Cursor move" },
+    { file: "sound/confirm.adp", label: "Confirm" }, { file: "sound/cancel.adp", label: "Cancel" },
+    { file: "sound/message.adp", label: "Message box" }, { file: "sound/transition.adp", label: "Page change" },
+    { file: "sound/bd_connect.adp", label: "Drive plugged in" }, { file: "sound/bd_disconnect.adp", label: "Drive pulled out" },
+    { file: "sound/bgm.ogg", label: "Background music" }
+  ];
+
+  var BUILTIN = {};
+  BUILTIN_GROUPS.forEach(function (gr) { BUILTIN[gr.name] = gr.names; });
+  var badgeGlyphs = [];
+  BADGES.forEach(function (b) { if (!b.noBuiltin) badgeGlyphs = badgeGlyphs.concat(b.values); });
+  BUILTIN["Badges"] = badgeGlyphs.concat(["APP"]);
   // Built-in names whose embedded picture is another file (textures.cpp internalDefault).
   var BUILTIN_FILE = { APP: "APPS", apps_case: "case", no_Rating: "Rating_0" };
   var BUILTIN_ALL = {};
@@ -184,6 +219,7 @@
     VIEWS: VIEWS, VIEW_LABEL: VIEW_LABEL, FAMILIES: FAMILIES, FAMILY_NAMES: FAMILY_NAMES, BLOCK_RE: BLOCK_RE,
     TYPES: TYPES, TYPE_NAMES: TYPE_NAMES, GLOBALS: GLOBALS, VIEW_GLOBALS: VIEW_GLOBALS, PROPS: PROPS,
     GRID_ONLY_NAMES: GRID_ONLY_NAMES, ATTR_TEXT: ATTR_TEXT, ATTR_IMAGE: ATTR_IMAGE, DEVICE_NAMES: DEVICE_NAMES,
-    HINT_NAMES: HINT_NAMES, BUILTIN: BUILTIN, BUILTIN_FILE: BUILTIN_FILE, BUILTIN_ALL: BUILTIN_ALL, BUILTIN_EMPTY: BUILTIN_EMPTY
+    HINT_NAMES: HINT_NAMES, BUILTIN: BUILTIN, BUILTIN_GROUPS: BUILTIN_GROUPS, BADGES: BADGES, FIXED_PICTURES: FIXED_PICTURES,
+    GLYPH_SETS: GLYPH_SETS, GLYPH_NAMES: GLYPH_NAMES, SOUNDS: SOUNDS, BUILTIN_FILE: BUILTIN_FILE, BUILTIN_ALL: BUILTIN_ALL, BUILTIN_EMPTY: BUILTIN_EMPTY
   };
 })(typeof window !== "undefined" ? window : globalThis);

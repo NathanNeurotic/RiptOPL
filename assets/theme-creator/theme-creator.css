@@ -127,3 +127,33 @@
 .tc-content ul.tc-list, .tc-content ul.tc-findings { padding: 0; margin-left: 0; }
 .tc-content ul.tc-list li, .tc-content ul.tc-findings li { margin: 0; }
 .tc-content ul.tc-list li::before, .tc-content ul.tc-findings li::before { content: none; }
+
+/* Layout editor */
+.tc-canvas-box { position: relative; }
+#pv-over { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+#pv-canvas { cursor: default; }
+.tc-wrap.big { grid-template-columns: minmax(0, 1fr); }
+.tc-wrap.big .tc-preview { position: static; }
+.tc-edbar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 0 0 8px; font-size: 13px; color: var(--ink2); }
+.tc-grp { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.tc-grp label { display: inline-flex; gap: 4px; align-items: center; }
+.tc-mini:disabled { opacity: 0.4; cursor: default; }
+.tc-insp { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-top: 8px; font-size: 13px; min-height: 28px; }
+.tc-insp label { display: inline-flex; gap: 4px; align-items: center; color: var(--ink2); }
+.tc-insp input[type=text], .tc-insp input[type=number] { width: 78px; background: #1b1b1b; color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 3px 5px; font: inherit; font-size: 13px; }
+.tc-insp b { color: #ffd54a; }
+.tc-keys { margin-top: 6px; }
+
+/* In-page questions */
+.tc-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+.tc-dialog { background: #222; border: 1px solid var(--line2); border-radius: 6px; padding: 16px 18px; max-width: 460px; font-size: 14px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
+.tc-dialog p { margin: 0 0 12px; }
+
+/* Badges and picture tiles */
+.tc-badgeset legend code { font-size: 11px; color: var(--ink3); }
+.tc-bi { position: relative; padding: 4px; cursor: default; }
+.tc-bipick { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: inherit; cursor: pointer; padding: 2px; width: 100%; }
+.tc-bi small { font-size: 10px; color: var(--ink3); text-align: center; overflow-wrap: anywhere; }
+.tc-bi img.theirs { opacity: 0.55; }
+.tc-bi .tc-x { position: absolute; top: 0; right: 0; }
+.tc-panel h4 .tc-badge { font-weight: 400; }
