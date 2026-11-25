@@ -161,6 +161,8 @@ PAIRS = {
     "Game-Library": "docs/GAME-LIBRARY.md",
 }
 SITE_MAP = {name + ".html": page for group in SITE_GROUPS.values() for name, page, _ in group}
+# Website tools that only work in a browser get no wiki page; links to them stay on the website.
+SITE_ONLY = {"theme-creator.html"}
 
 # Retain existing wiki URLs and source heading anchors without a second full copy
 # of the same subject. The current guide is in the wiki; source-only details stay
@@ -640,7 +642,7 @@ def main():
         if git(path, "status", "--porcelain"):
             raise ValueError(f"Source checkout is dirty: {path}")
     source_sha, site_sha = git(source, "rev-parse", "HEAD"), git(site, "rev-parse", "HEAD")
-    discovered = {p.name for p in site.glob("*.html")}
+    discovered = {p.name for p in site.glob("*.html")} - SITE_ONLY
     if discovered != set(SITE_MAP):
         raise ValueError(f"Website mapping differs: {discovered.symmetric_difference(SITE_MAP)}")
     pages, origins = {}, {}
