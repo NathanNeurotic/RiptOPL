@@ -109,6 +109,8 @@ public:
 private:
     friend image_cache_t *cacheInitCache(int, const char *, int, const char *, int);
     friend void cacheDestroyCache(image_cache_t *);
+    friend void cacheNewGeneration(void);
+    friend void cacheRehomeLoaded(image_cache_t *);
     friend GSTEXTURE *cacheGetTextureEx(image_cache_t *, item_list_t *, int *, int *, char *, int);
     friend GSTEXTURE *cacheLookupTexture(image_cache_t *, int *, int *);
     friend void cacheAbortOtherBackgrounds(image_cache_t *, const char *);
@@ -132,6 +134,17 @@ private:
     /// use-after-free, so cacheDestroyCache now waits on this and leaks rather than frees if the
     /// wait expires.
     volatile int activeRequests_;
+
+    /// The game art caches alive now (userId >= 0), newest first, and the theme load each was made for. A
+    /// theme reload builds the new theme's caches before the old theme's are destroyed, so a destroyed cache
+    /// hands its loaded pictures to the new load's cache that takes its place (cacheRehomeLoaded) instead of
+    /// freeing them. artRank_: how many caches of the same art (folder and suffix) its load made before it; a
+    /// theme makes its Games cover cache before its Apps one in every layout.
+    image_cache_t *nextLive_;
+    unsigned int generation_;
+    int artRank_;
+    inline static image_cache_t *sLive_ = nullptr;
+    inline static unsigned int sGeneration_ = 0;
 };
 
 /** Initializes the cache subsystem.
@@ -162,6 +175,13 @@ image_cache_t *cacheInitCache(int userId, const char *prefix, int isPrefixRelati
 /** Destroys a given cache (unallocates all memory stored there, disconnects the pixmaps from the usage points).
  */
 void cacheDestroyCache(image_cache_t *cache);
+
+/** A theme load starts making its caches: the caches made from now on belong to it. When a cache of an earlier
+ * load is destroyed, its loaded pictures move to this load's cache of the same art (same folder and suffix,
+ * made in the same order),
+ * so a layout switch or a theme reload does not read every cover from the device again. GUI lock or pre-GUI.
+ */
+void cacheNewGeneration(void);
 
 /** A game row's (slot, UID) pairs, one per cache of the theme on screen, made ready for that theme: `count`
  * pairs (theme_t::gameCacheCount) made for load `generation` (theme_t::artGeneration). Pairs from another load

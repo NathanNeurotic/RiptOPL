@@ -107,6 +107,8 @@ jobs:
       - name: Check image cache, menu allocation and queue lifetime failures
         run: |
           python3 .github/scripts/test_cache_allocation.py
+          python3 .github/scripts/test_cache_rehome.py
+          python3 .github/scripts/test_launch_cover.py
           python3 .github/scripts/test_menu_allocation.py
           python3 .github/scripts/test_io_menu_lifetime.py
 

@@ -37,6 +37,12 @@ void cacheClearItem(cache_entry_t *item, int freeTxt)
     item->UID = 0;
 }
 
+static int cacheSameArt(const image_cache_t *a, const image_cache_t *b)
+{
+    const char *pa = a->prefix() != NULL ? a->prefix() : "", *pb = b->prefix() != NULL ? b->prefix() : "";
+    return a->isPrefixRelative() == b->isPrefixRelative() && strcmp(pa, pb) == 0 && strcmp(a->suffix(), b->suffix()) == 0;
+}
+
 image_cache_t *cacheInitCache(int userId, const char *prefix, int isPrefixRelative, const char *suffix, int count)
 {
     image_cache_t *cache;
@@ -72,6 +78,14 @@ image_cache_t *cacheInitCache(int userId, const char *prefix, int isPrefixRelati
     for (i = 0; i < count; ++i)
         cacheClearItem(&cache->content_[i], 0);
 
+    if (userId >= 0) { // game art: cacheRehomeLoaded may fill it from a cache of the theme load before
+        cache->generation_ = image_cache_t::sGeneration_;
+        for (const image_cache_t *c = image_cache_t::sLive_; c != NULL; c = c->nextLive_)
+            cache->artRank_ += c->generation_ == cache->generation_ && cacheSameArt(c, cache);
+        cache->nextLive_ = image_cache_t::sLive_;
+        image_cache_t::sLive_ = cache;
+    }
+
     return cache;
 
 allocation_failed:
@@ -84,12 +98,76 @@ allocation_failed:
     return NULL;
 }
 
+void cacheNewGeneration(void)
+{
+    image_cache_t::sGeneration_++;
+}
+
+// A cache of an earlier theme load is being destroyed while the caches of the load that replaces it exist (a
+// layout switch, a theme reload): move its loaded pictures, most recently drawn first, into the new load's cache
+// that takes its place -- the same art at the same position (artRank_), so the Games page's covers go to the new
+// Games cover cache and not to the Apps one, which holds the same art and would hide them from the page on
+// screen. Rows find them by key (cacheGetTextureEx's reunion by value); their old slot numbers are reset by
+// cacheRowPairsReady. A picture with no free slot to go to is left for the caller to free. Caller:
+// cacheDestroyCache, once no art request references `from`.
+void cacheRehomeLoaded(image_cache_t *from)
+{
+    if (from->userId_ < 0 || from->generation_ == image_cache_t::sGeneration_)
+        return;
+
+    image_cache_t *to = image_cache_t::sLive_;
+    while (to != NULL && (to->generation_ != image_cache_t::sGeneration_ || to->artRank_ != from->artRank_ || !cacheSameArt(from, to)))
+        to = to->nextLive_;
+    if (to == NULL)
+        return;
+
+    int last = 0x7fffffff; // the newest stamp not yet offered; each pass offers the slots stamped just below it
+    for (;;) {
+        int stamp = 0;
+        for (int i = 0; i < from->count_; i++) {
+            const cache_entry_t *e = &from->content_[i];
+            if (e->qr == NULL && e->texture.Mem != NULL && e->key[0] != '\0' && e->lastUsed < last && e->lastUsed > stamp)
+                stamp = e->lastUsed;
+        }
+        if (stamp == 0)
+            return;
+        last = stamp;
+
+        for (int i = 0; i < from->count_; i++) {
+            cache_entry_t *e = &from->content_[i];
+            if (e->qr != NULL || e->texture.Mem == NULL || e->key[0] == '\0' || e->lastUsed != stamp)
+                continue;
+            cache_entry_t *room = NULL;
+            int j;
+            for (j = 0; j < to->count_; j++) {
+                cache_entry_t *t = &to->content_[j];
+                if (t->key[0] != '\0' && strcmp(t->key, e->key) == 0)
+                    break; // it has this one already
+                if (room == NULL && t->qr == NULL && t->texture.Mem == NULL && t->lastUsed < 0)
+                    room = t;
+            }
+            if (j < to->count_ || room == NULL)
+                continue;
+            rmUnloadTexture(&e->texture); // the texture manager knows a texture by its address
+            *room = *e;
+            room->UID = to->nextUID_++;
+            cacheClearItem(e, 0); // moved: the pixels are room's now
+        }
+    }
+}
+
 void cacheDestroyCache(image_cache_t *cache)
 {
     int i, ms = ART_FOREGROUND_DRAIN_MS;
 
     if (cache == NULL)
         return;
+
+    for (image_cache_t **link = &image_cache_t::sLive_; *link != NULL; link = &(*link)->nextLive_)
+        if (*link == cache) {
+            *link = cache->nextLive_;
+            break;
+        }
 
     // Belt and braces on top of the drain the CALLER should have done. The dangerous caller is
     // exactly one: endMutableImage via thmFree, i.e. a theme switch. The others destroy a fresh
@@ -117,6 +195,8 @@ void cacheDestroyCache(image_cache_t *cache)
             cache->activeRequests_);
         return;
     }
+
+    cacheRehomeLoaded(cache);
 
     for (i = 0; i < cache->count_; ++i) {
         cacheClearItem(&cache->content_[i], 1); // GUI thread: gsKit contact is correct here

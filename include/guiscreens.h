@@ -26,6 +26,9 @@ public:
     void dipTo(void (*change)(void));
     // True while input waits: a screen fade, or a layout switch until its change has run (the ease back in takes input).
     bool transitioning() const;
+    // Hold the page's content at this fade (0x80 = none) on every frame shown, whatever else runs: a game launch
+    // fades the content out behind the game's cover (Gui::playLaunchTransition).
+    void holdContentFade(u8 alpha) { held_ = alpha; }
     // The fade the page's content is drawn with this frame (0x80 = none) and how far below its place it is, in virtual
     // pixels. Read by the main page's element drawing, which keeps the background out of it.
     u8 contentFade(float *rise) const
@@ -49,6 +52,7 @@ private:
     float dipRemain_ = 1.0f;            // the ease back in: the part of the way still to go
     u8 fade_ = 0x80;                    // contentFade, set only while the screen draws
     float rise_ = 0.0f;
+    u8 held_ = 0x80; // holdContentFade
 };
 
 extern ScreenManager gScreens;

@@ -80,6 +80,32 @@ void guiFadeCurrentScreenToBlack(void)
 theme_t *gTheme;
 int gEnableAmbientEffects = 1;
 
+// The launch cover: whether the selected game's cover is in memory, and what the animation drew.
+#include "include/guiscreens.h"
+ScreenManager gScreens;
+int gGuiScreenWidth = 640, gGuiScreenHeight = 448;
+float PlasmaBackground::smoothStep(float t) const
+{
+    return t;
+}
+static int coverResident;
+static int coverDraws;
+static int rects;
+int menuRenderLaunchCover(float in)
+{
+    CHECK(lockDepth == 1 && in >= 0.0f && in <= 1.0f);
+    coverDraws += coverResident;
+    return coverResident;
+}
+void rmDrawRect(int, int, int, int, u64)
+{
+    CHECK(lockDepth == 1);
+    rects++;
+}
+#ifndef GS_SETREG_RGBA
+#define GS_SETREG_RGBA(r, g, b, a) ((u64)(r) | ((u64)(g) << 8) | ((u64)(b) << 16) | ((u64)(a) << 24))
+#endif
+
 #define strcmp testLaunchThemeStrcmp
 #include "../../src/ui/guilaunch.cpp"
 #undef strcmp
@@ -92,6 +118,8 @@ static void resetCounts()
     fades = 0;
     launchBegins = 0;
     launchEnds = 0;
+    coverDraws = 0;
+    rects = 0;
 }
 
 int main()
@@ -120,8 +148,18 @@ int main()
     gui.playLaunchTransition();
     CHECK(unlockedThemeReads == 0);
     CHECK(launchBegins == 0 && launchEnds == 0);
-    CHECK(frames == 0 && fades == 1);
+    CHECK(frames == 1 && fades == 1); // one ordinary frame finds no cover in memory, then the plain fade
     CHECK(lockDepth == 0);
+
+    // The cover is in memory: a counted run of frames that draws it on each, fades to black on the last eight, and
+    // never falls back to the plain fade.
+    coverResident = 1;
+    resetCounts();
+    gui.playLaunchTransition();
+    CHECK(frames == 28 && coverDraws == 28 && rects == 8 && fades == 0);
+    CHECK(lockDepth == 0);
+    float rise;
+    CHECK(gScreens.contentFade(&rise) == 0x80);
 
     TEST_DONE("GUI launch");
 }

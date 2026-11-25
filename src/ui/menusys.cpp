@@ -21,6 +21,7 @@
 #include "include/pad.h"
 #include "include/gui.h"
 #include "include/guigame.h"
+#include "include/guiint.h" // gGuiScreenWidth, gGuiScreenHeight -- the launch cover
 #include "include/system.h"
 #ifdef RETROACHIEVEMENTS
 #include "include/discsupport.h"
@@ -2618,6 +2619,31 @@ void menuRenderMain(void)
         // Page) derefs gTheme->itemsList->extended with no NULL check.
         gTheme->itemsList = thmResolveItemsList(&gTheme->mainElems, gTheme->gamesItemsList, selected_item->item->icon_id);
     }
+}
+
+int menuRenderLaunchCover(float in)
+{
+    int drawn = 0;
+    WaitSema(menuSemaId);
+    if (gTheme != NULL && selected_item != NULL && selected_item->item != NULL && selected_item->item->current != NULL) {
+        submenu_item_t *item = &selected_item->item->current->item;
+        GSTEXTURE *cover = thmResidentCover(menuGetMainElems(static_cast<item_list_t *>(selected_item->item->userdata)), selected_item,
+                                            selected_item->item->current);
+        if (cover != NULL && cover->Height > 0) {
+            // 45% of the screen's height when in, growing from nine tenths of that.
+            int h = (int)(gGuiScreenHeight * 0.45f * (0.9f + 0.1f * in)), w = h * (int)cover->Width / (int)cover->Height;
+            int x = gGuiScreenWidth / 2, y = gGuiScreenHeight * 42 / 100;
+            rmSetFade((u8)(in * 0x80), 0.0f);
+            rmDrawPixmap(cover, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, gDefaultCol, 0);
+            const char *title = submenuItemGetText(item);
+            if (title != NULL)
+                fntRenderStringFit(gTheme->fonts[0], x, y + h / 2 + 12, ALIGN_HCENTER, gGuiScreenWidth - 80, title, gTheme->textColor, 0);
+            rmSetFade(0x80, 0.0f);
+            drawn = 1;
+        }
+    }
+    SignalSema(menuSemaId);
+    return drawn;
 }
 
 // Coverflow rotates the nav axis on the MAIN screen only: Left/Right step through the

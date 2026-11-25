@@ -112,6 +112,10 @@ void ScreenManager::show(const PlasmaBackground &plasma)
             if (i != DIP_OUT || dipChange_ == nullptr)
                 dipIndex_ = i < DIP_OUT + DIP_IN ? i + 1 : 0;
         }
+        if (held_ < 0x80) {
+            fade_ = held_;
+            rise_ = 0.0f;
+        }
         // render with the set screen handler
         current()->renderScreen();
         fade_ = 0x80;
