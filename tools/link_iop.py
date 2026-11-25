@@ -10,7 +10,8 @@ After the link, every such pair is worked out again from the files that were lin
 each of their sections went) and the high half in the module is set to the right value. Each low half the
 linker wrote must be the one worked out here, and each high half must be either right or wrong in exactly the
 known way; anything else stops the build, because it would mean this step does not understand the link.
-A linker that has the fix leaves nothing to correct.
+A linker that has the fix leaves nothing to correct. A line is printed for a module with corrections; with
+LINK_IOP_REPORT set in the environment, for every module (how many halves were checked).
 
 Usage: link_iop.py LINKER ARGUMENT...      (ARGUMENT... as given to the linker, "-o OUTPUT" among them)
        link_iop.py --repair OUTPUT MAP     (correct an existing partial link from its -Map file)
@@ -264,7 +265,7 @@ def repair(output, map_path):
         except OSError:
             pass
         return 1
-    if corrected:
+    if corrected or os.environ.get('LINK_IOP_REPORT'):
         print(f'link_iop: {output}: {corrected} of {checked} address halves corrected')
     return 0
 

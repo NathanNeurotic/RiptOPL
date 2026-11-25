@@ -73,6 +73,8 @@ jobs:
         run: tools/run_tests.sh -k
       - name: Build
         shell: bash   # -o pipefail, so a failed build is not masked by tee
+        env:
+          LINK_IOP_REPORT: 1   # one line per IOP module: address halves checked and corrected (tools/link_iop.py)
         run: python3 tools/build.py 2>&1 | tee build.log
       - name: IOP module addresses
         # ld.lld -r can write the address of something static 64 KiB off. tools/build.py links the modules
