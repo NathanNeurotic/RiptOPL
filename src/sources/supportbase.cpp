@@ -2599,7 +2599,8 @@ const char *sbResolveNeutrinoPath(const char *activePrefix)
     // One deterministic policy for every launch:
     //   1) user-entered full path,
     //   2) the active game's device,
-    //   3) mc0:/mc1:.
+    //   3) mc0:/mc1:,
+    //   4) any other mounted BDM device.
     // A Memory Card or HDD (APA) choice from the retired picker was migrated into gNeutrinoPath at
     // config load; while that path is untouched, tier 1 also repeats the old picker's case variants.
     if (gNeutrinoPath[0] != '\0' &&
@@ -2625,7 +2626,21 @@ const char *sbResolveNeutrinoPath(const char *activePrefix)
             return mcHit;
     }
 
-    LOG("[NEUTRINO] no complete install found (custom -> game device -> mc0/mc1)\n");
+    // 4) Any other mounted BDM device, as NHDDL does (massX:/neutrino/neutrino.elf). Without it a game
+    // on MX4SIO with Neutrino only on the USB stick fell back to the OPL core. Mounted roots only: no
+    // device is started here. The handoff keeps this device's mount too (deinitEx's second mode).
+    for (int mode = BDM_MODE; mode <= BDM_MODE_LAST; mode++) {
+        const char *root = bdmModeMountedRoot(mode);
+        if (root == NULL || (activePrefix != NULL && !strncmp(activePrefix, root, strlen(root))))
+            continue; // not mounted, or the game's own device (tier 2 already looked there)
+        char rootDir[BDM_DEVICE_ROOT_MAX + 2]; // "massN:/", the form NHDDL probes
+        snprintf(rootDir, sizeof(rootDir), "%s/", root);
+        const char *otherHit = sbNeutrinoProbeGameDevice(rootDir);
+        if (otherHit != NULL)
+            return otherHit;
+    }
+
+    LOG("[NEUTRINO] no complete install found (custom -> game device -> mc0/mc1 -> other BDM devices)\n");
     return NULL;
 }
 

@@ -56,6 +56,16 @@ static int bdmSlotIdentified(const bdm_device_data_t *pDeviceData)
            pDeviceData->bdmDeviceType != BDM_TYPE_UNKNOWN && pDeviceData->bdmULSizePrev != -2;
 }
 
+// The massN: root of a BDM slot whose device is mounted and identified, or NULL. For the Neutrino
+// lookup's other-device tier (sbResolveNeutrinoPath): NHDDL finds neutrino.elf on any massX device.
+const char *bdmModeMountedRoot(int mode)
+{
+    if (mode < BDM_MODE || mode > BDM_MODE_LAST)
+        return NULL;
+    const bdm_device_data_t *pDeviceData = (const bdm_device_data_t *)bdmDeviceList[mode - BDM_MODE].priv;
+    return bdmSlotIdentified(pDeviceData) ? pDeviceData->bdmDeviceRoot : NULL;
+}
+
 void bdmInitDevicesData()
 {
     // If the device list hasn't been initialized do it now.
