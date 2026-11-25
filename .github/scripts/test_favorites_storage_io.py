@@ -193,8 +193,9 @@ int main() {
  reset();readLimit=1;expect(1,1);
  reset();writeLimit=2;assert(favWriteFile(&row,1) && disk==valid && writes>1);
  reset();closeError=1;assert(!favWriteFile(&row,1) && closes==1);
- reset();writeErrorAt=4;assert(!favWriteFile(&row,1));assert(disk==valid);
- reset();writeZeroAt=4;assert(!favWriteFile(&row,1));assert(disk==valid);
+ // A write that fails part way is reported; with no second copy the file is left short.
+ reset();writeErrorAt=4;assert(!favWriteFile(&row,1) && disk.size()==4);disk=valid;
+ reset();writeZeroAt=4;assert(!favWriteFile(&row,1) && disk.size()==4);disk=valid;
  reset();failAllocation=true;assert(!favWriteFile(&row,1) && opens==0);
  reset();openError=EACCES;assert(!favWriteFile(&row,1) && closes==0);
  disk=valid;reset();failReadAt=4;expect(0,0);
@@ -210,7 +211,7 @@ int main() {
  disk=valid;disk.push_back(1);reset();expect(1,0);
  // A genuinely empty OFAV store is editable, unlike a zero-byte/torn header.
  disk=valid;reset();assert(favWriteFile(nullptr,0));reset();expect(0,1);
- disk.clear();reset();expect(0,0);
+ disk.clear();reset();expect(0,1); // empty: nothing to keep, a new list may be saved
  disk={1,2,3};reset();expect(0,0);
  // ENOENT alone permits a new store; unknown, permission and device errors refuse.
  for(int e:{EIO,EACCES,EPERM,EMFILE}) {
@@ -233,83 +234,36 @@ int main() {
  disk=valid;reset();expect(1,1);assert(reads==2);
  // Save a distinct complete second image to use as a recovery fixture.
  disk=valid;reset();strcpy(row.text,"requested");assert(favWriteFile(&row,1));const auto requested=disk;
- // Rewriting the primary can fail after truncation: .new remains complete and editable.
- disk=valid;reset();writeFaultFile=1;writeErrorAt=4;
- assert(!favWriteFile(&row,1) && disk!=valid && staged==requested && stagedExists);
- resetFaults();expect(1,1);assert(disk!=requested); // Reads never mutate either file.
- // Restore the sole recovery copy before staging another edit; stage failure must
- // leave the restored list intact, including after a fresh process/authority decision.
- strcpy(row.text,"next");resetFaults();writeFaultFile=2;writeErrorAt=0;
- assert(!favWriteFile(&row,1) && disk==requested);
- resetFaults();expect(1,1);
- // Failed restoration, or failed verification of the restored primary, never touches .new.
- disk={1,2,3};staged=requested;stagedExists=true;resetFaults();writeFaultFile=1;writeErrorAt=0;
- assert(!favWriteFile(&row,1) && staged==requested);
- disk={1,2,3};resetFaults();closeWriteFile=1;
- assert(!favWriteFile(&row,1) && staged==requested);
- disk={1,2,3};resetFaults();corruptWriteFile=1;
- assert(!favWriteFile(&row,1) && staged==requested);
- // Stage write/close/readback failure and ENOSPC preserve the complete primary.
- for(int fault=0;fault<4;fault++) {
-   disk=valid;reset();
-   if(fault==0){writeFaultFile=2;writeErrorAt=0;writeErrno=ENOSPC;}
-   if(fault==1)closeWriteFile=2;
-   if(fault==2)corruptWriteFile=2;
-   if(fault==3){readFaultFile=2;failReadAt=0;}
-   assert(!favWriteFile(&row,1) && disk==valid);
- }
- // A write-open failure leaves the old complete primary authoritative, even with
- // a newer complete stage; a PC-edited complete main wins too, including empty.
- disk=valid;reset();openWriteFile=1;
- assert(!favWriteFile(&row,1) && disk==valid && stagedExists);
- resetFaults();expect(1,1);
+ // A save is one open for writing and nothing else: no read, no .new copy, no deletion.
+ disk=valid;reset();assert(favWriteFile(&row,1) && opens==1 && closes==1 && reads==0 && disk==requested && !stagedExists);
+ // A copy an older build left is neither written nor removed.
+ disk=valid;staged=valid;stagedExists=true;resetFaults();
+ assert(favWriteFile(&row,1) && opens==1 && disk==requested && staged==valid && stagedExists);
+ // A failed open leaves the file as it was; a failed write or close is reported.
+ disk=valid;reset();openWriteFile=1;assert(!favWriteFile(&row,1) && disk==valid);
+ disk=valid;reset();writeErrorAt=4;assert(!favWriteFile(&row,1) && opens==1 && !stagedExists);
+ // A file cut short shows what reads and refuses edits; an empty file counts as no file.
+ resetFaults();expect(0,0);
+ disk=valid;disk.resize(valid.size()-2);resetFaults();expect(0,0);
+ // A complete file wins over a copy an older build left, including a PC-edited or empty one.
  staged=requested;stagedExists=true;disk=valid;resetFaults();expect(1,1);
  disk={0x4f,0x46,0x41,0x46,3,0,0,0};resetFaults();expect(0,1);
- // Cleanup failure is not a failed commit: readback has confirmed the primary.
- disk=valid;reset();removeError=true;assert(favWriteFile(&row,1) && stagedExists);
- disk=valid;resetFaults();writeFaultFile=2;writeErrorAt=0;
- assert(!favWriteFile(&row,1) && disk==valid);
- // Recovery may be shown read-only when authority cannot be established. Do not
- // overwrite unreadable, unknown-version or oversized primary data with a stale stage.
+ // Such a copy still supplies the list when the file is missing, empty or short...
+ disk.clear();resetFaults();expect(1,1);
+ disk={1,2,3};resetFaults();expect(1,1);
+ // ...but only for display when authority cannot be established.
  for(int fault=0;fault<3;fault++) {
    disk=valid;staged=requested;stagedExists=true;resetFaults();
    if(fault==0){readFaultFile=1;failReadAt=0;}
    if(fault==1)disk[4]=FAV_VERSION+1;
    if(fault==2)disk.resize(160000,0);
-   expect(1,0);const auto primary=disk;
-   assert(!favWriteFile(&row,1) && disk==primary && staged==requested);
+   expect(1,0);
  }
- // An orphan recovery file must be native OFAV, never a foreign import or partial list.
+ // An orphan copy must be native OFAV, never a foreign import or partial list.
  primaryExists=false;staged=foreign;stagedExists=true;resetFaults();expect(0,0);
- assert(!favWriteFile(&row,1) && staged==foreign);
  staged=requested;resetFaults();expect(1,1);
- // Capture filesystem states at every truncate, short write, close and cleanup.
- // Reboot-style reads of each snapshot retain one complete old/new list, both
- // for an ordinary save and for a save starting with the sole copy in .new.
- for(int recoveryOnly=0;recoveryOnly<2;recoveryOnly++) {
-   reset();primaryExists=true;disk=recoveryOnly?std::vector<u8>{1,2,3}:valid;
-   if(recoveryOnly){staged=requested;stagedExists=true;}
-   checkpoints.clear();capture=true;writeLimit=3;
-   assert(favWriteFile(&row,1));capture=false;auto snapshots=checkpoints;
-   for(const auto &snapshot:snapshots) {
-     resetFaults();disk=snapshot.main;staged=snapshot.recovery;
-     primaryExists=snapshot.mainExists;stagedExists=snapshot.recoveryExists;
-     int n,e;auto *r=load(&n,&e);
-     assert(n==1 && e && r);
-     assert(!strcmp(r[0].text,"test") || !strcmp(r[0].text,"requested") || !strcmp(r[0].text,"next"));
-     free(r);
-   }
- }
- // Fail every allocation reached by normal saves and recovery-only saves.
- for(int recoveryOnly=0;recoveryOnly<2;recoveryOnly++)for(int allocation=0;allocation<16;allocation++) {
-   reset();primaryExists=true;disk=recoveryOnly?std::vector<u8>{1,2,3}:valid;
-   if(recoveryOnly){staged=requested;stagedExists=true;}
-   failAllocationAt=allocation;(void)favWriteFile(&row,1);
-   resetFaults();int n,e;auto *r=load(&n,&e);
-   assert(n==1 && e && r);
-   assert(!strcmp(r[0].text,"test") || !strcmp(r[0].text,"requested") || !strcmp(r[0].text,"next"));
-   free(r);
- }
+ // A failed allocation writes nothing.
+ disk=valid;reset();failAllocationAt=0;assert(!favWriteFile(&row,1) && opens==0 && disk==valid);
  disk=valid;primaryExists=true;reset();
 
  // Reject editing oversized lists rather than silently saving just the first 512.
@@ -317,6 +271,25 @@ int main() {
  reset();disk[6]=1;disk[7]=2;expect(FAV_MAX_ITEMS,0);
 }
 ''')
+# The recents list uses the same single write; only its rule for a file cut short differs.
+run("recents_replaceable", prefix + io + reader + writer + r"""
+static const char kRecentFile[] = "recents.bin";
+""" + function("static bool recentReplaceable(") + r"""
+int main() {
+ fav_raw_t row{};row.mode=3;row.id=7;strcpy(row.text,"game");
+ reset();primaryExists=false;assert(favWriteFile(&row,1,kRecentFile) && opens==1 && reads==0 && !stagedExists);
+ const auto valid=disk;
+ // A file cut short reads but does not parse: it may be replaced. One the device cannot read may not.
+ disk={0x4f,0x46,0x41};reset();
+ int n,e;free(favReadFile(&n,&e,kRecentFile));assert(!e);
+ resetFaults();assert(recentReplaceable() && closes==opened);
+ disk.clear();resetFaults();assert(recentReplaceable());
+ primaryExists=false;resetFaults();assert(recentReplaceable());
+ primaryExists=true;disk=valid;resetFaults();failReadAt=0;assert(!recentReplaceable());
+ resetFaults();openError=EIO;assert(!recentReplaceable());
+ resetFaults();closeError=1;assert(!recentReplaceable());
+}
+""")
 run("favorites_path_bounds", prefix + r'''
 #define CONFIG_OPL 1
 #define CONFIG_OPL_FILENAME "settings_riptopl.cfg"

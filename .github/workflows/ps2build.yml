@@ -73,7 +73,15 @@ jobs:
         run: tools/run_tests.sh -k
       - name: Build
         shell: bash   # -o pipefail, so a failed build is not masked by tee
+        env:
+          LINK_IOP_REPORT: 1   # one line per IOP module: address halves checked and corrected (tools/link_iop.py)
         run: python3 tools/build.py 2>&1 | tee build.log
+      - name: IOP module addresses
+        # ld.lld -r can write the address of something static 64 KiB off. tools/build.py links the modules
+        # built here through tools/link_iop.py, which corrects every such address, and corrects the SDK's
+        # ready-made modules (ps2ip had one) with tools/check_irx_addresses.py --repair. This step fails
+        # when a module in the build still holds an address outside itself.
+        run: python3 tools/check_irx_addresses.py build
       - name: Warning baseline (no new warnings)
         # The existing baseline was measured with GCC. LLVM has distinct
         # diagnostics; keep its build mandatory without inventing a baseline.

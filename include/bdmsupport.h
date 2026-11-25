@@ -135,6 +135,7 @@ int bdmGetLoadedNetProtocol(void);
 int bdmSupportIsUDPBD(const item_list_t *support); // 1 if this support is the UDPBD block device (UDPBD or UDPFS block)
 int bdmModeIsPCCF(int mode);                       // 1 if this BDM mode slot is the PC CARD CF device
 int bdmModeIsUSB(int mode);                        // 1 if this BDM mode slot is a USB mass-storage device
+int bdmModeIsATA(int mode);                        // 1 if this BDM mode slot is the internal drive (exFAT/FAT32)
 int bdmModeIsUDPBD(int mode);                      // 1 if this BDM mode slot is the UDPBD block device
 int bdmModeIsReadOnly(int mode);                   // 1 if this BDM mode slot does not keep what is written (MODE_FLAG_READ_ONLY)
 int bdmIsReadOnlyPath(const char *path);           // 1 if a "massN:..." path is on such a device

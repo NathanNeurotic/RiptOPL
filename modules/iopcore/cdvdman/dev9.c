@@ -66,7 +66,11 @@ static dev9_shutdown_cb_t dev9_shutdown_cbs[16];
 
 static dev9_dma_cb_t dev9_predma_cbs[4], dev9_postdma_cbs[4];
 
-static int dev9_intr_dispatch(int flag);
+// Not static, on purpose: ld.lld -r can write the address of a STATIC function 64 KiB too low when its object
+// file lies across a 32 KiB boundary of the module (tools/check_irx_addresses.py). A global symbol is not affected.
+int dev9_intr_dispatch(int flag);
+int pcmcia_intr(void *unused);
+int expbay_intr(void *unused);
 
 static void dev9_set_stat(int stat);
 static int read_eeprom_data(void);
@@ -186,7 +190,7 @@ void dev9RegisterPostDmaCb(int ctrl, dev9_dma_cb_t cb)
 }
 
 /* flag is 1 if a card (pcmcia) was removed or added */
-static int dev9_intr_dispatch(int flag)
+int dev9_intr_dispatch(int flag)
 {
     USE_SPD_REGS;
     int i, bit;
@@ -533,7 +537,7 @@ static int pcmcia_device_probe(void)
 }
 #endif
 
-static int pcmcia_intr(void *unused)
+int pcmcia_intr(void *unused)
 {
     USE_AIF_REGS;
     USE_DEV9_REGS;
@@ -621,7 +625,7 @@ static void expbay_set_stat(int stat)
     DEV9_REG(DEV9_R_1464) = stat & 0x3f;
 }
 
-static int expbay_intr(void *unused)
+int expbay_intr(void *unused)
 {
     USE_DEV9_REGS;
 

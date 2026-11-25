@@ -83,6 +83,7 @@ public:
     void applyConfig(int themeID, int langID, int skipDeviceRefresh) override { ::applyConfig(themeID, langID, skipDeviceRefresh); }
     void initSupport(item_list_t *itemList, int mode, int forceReinit) override { ::initSupport(itemList, mode, forceReinit); }
     void moduleUpdateMenu(int mode, int themeChanged, int langChanged) override { ::moduleUpdateMenu(mode, themeChanged, langChanged); }
+    void bootPageArrived(int mode) override { oplBootPageArrived(mode); }
     int pathToMode(const char *path) override { return oplPath2Mode(path); }
 
     void setError(int strId, int error) override { setErrorMessageWithCode(strId, error); }

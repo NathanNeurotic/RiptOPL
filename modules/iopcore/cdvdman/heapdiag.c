@@ -64,7 +64,12 @@ static void heap_diag_note_free_memory(int allocated)
     }
 }
 
-static void *hook_AllocSysMemory(int mode, int size, void *ptr)
+// Not static, on purpose: ld.lld -r can write the address of a STATIC function 64 KiB too low when its object
+// file lies across a 32 KiB boundary of the module (tools/check_irx_addresses.py). A global symbol is not affected.
+void *hook_AllocSysMemory(int mode, int size, void *ptr);
+int hook_FreeSysMemory(void *ptr);
+
+void *hook_AllocSysMemory(int mode, int size, void *ptr)
 {
     unsigned int ra = (unsigned int)__builtin_return_address(0);
     heap_diag_block_t *slot;
@@ -108,7 +113,7 @@ static void *hook_AllocSysMemory(int mode, int size, void *ptr)
     return result;
 }
 
-static int hook_FreeSysMemory(void *ptr)
+int hook_FreeSysMemory(void *ptr)
 {
     int result, oldstate, i;
 

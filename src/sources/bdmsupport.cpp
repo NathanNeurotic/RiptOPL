@@ -1242,6 +1242,14 @@ int bdmModeIsUSB(int mode)
     return data != NULL && data->bdmDeviceType == BDM_TYPE_USB;
 }
 
+int bdmModeIsATA(int mode)
+{
+    if (mode < BDM_MODE || mode > BDM_MODE_LAST)
+        return 0;
+    bdm_device_data_t *data = (bdm_device_data_t *)bdmDeviceList[mode - BDM_MODE].priv;
+    return data != NULL && data->bdmDeviceType == BDM_TYPE_ATA;
+}
+
 static void bdmLoadPccfModule(void)
 {
     if (gEnablePCCF && !pccfModLoaded && pccfAttemptGeneration != pccfProbeGeneration) {
