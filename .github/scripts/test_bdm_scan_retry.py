@@ -314,6 +314,20 @@ static void subfolderAndPs1AreQuiet(void)
     CHECK(scans == 0 && messages == 0, "PS1 view: %d PS2 scans / %d messages, want 0 / 0", scans, messages);
 }
 
+/* CodeRabbit on PR 541: an L3 to the PS2 view committed after the retry was chosen must still scan PS2. */
+static void retryThenViewChange(void)
+{
+    reset(); scanFails = 0;
+    view = LIB_VIEW_PS1;
+    ps1Result = 1; ps1Incomplete = 1;
+    connectDevice();
+    int ps2Before = scans;
+    CHECK(bdmNeedsUpdate(&list) == 1 && dev.ps1RetryPass, "a PS1 retry should be chosen");
+    view = LIB_VIEW_ISO; /* the pending L3 commits before the scan */
+    bdmUpdateGameList(&list);
+    CHECK(scans == ps2Before + 1 && !dev.ps1RetryPass, "a view change after the retry was chosen must scan PS2");
+}
+
 static void ps1Recovery(void)
 {
     for (int mixed = 0; mixed < 2; mixed++) {
@@ -377,6 +391,7 @@ int main(void)
     successIsQuiet();
     subfolderAndPs1AreQuiet();
     ps1Recovery();
+    retryThenViewChange();
     if (!failed)
         printf("bdm scan retry: all cases passed\n");
     return failed;

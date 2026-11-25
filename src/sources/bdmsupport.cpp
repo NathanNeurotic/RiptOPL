@@ -1787,7 +1787,7 @@ int BdmSource::needsUpdate(item_list_t *itemList)
                pDeviceData->bdmMissCount == 0 &&
                (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
         pDeviceData->ps1ScanRetries++;
-        pDeviceData->ps1RetryPass = 1;
+        pDeviceData->ps1RetryPass = 1 + host::library().listViewActive(itemList); // the view it was meant for
         return 1;
     }
     if (pDeviceData->bdmDeviceTick >= 0 && (unsigned int)pDeviceData->bdmDeviceTick == BdmGeneration && pDeviceData->bdmULSizePrev != -2) {
@@ -1900,6 +1900,10 @@ int BdmSource::update(item_list_t *itemList)
     bdm_device_data_t *pDeviceData = (bdm_device_data_t *)itemList->priv;
     int view = host::library().listViewActive(itemList);
     int result = 0;
+
+    // An L3 committed between needsUpdate and here changed the view: this is a full pass for that view.
+    if (pDeviceData->ps1RetryPass != 0 && pDeviceData->ps1RetryPass != 1 + view)
+        pDeviceData->ps1RetryPass = 0;
 
     // #120: each view scans into its OWN array (see bdm_device_data_t). Previously both shared
     // bdmGames, so a VCD scan reporting failure (r < 0) left the ISO list published under the VCD

@@ -56,7 +56,7 @@ typedef struct
     base_game_info_t *bdmPs1Games;
     int ps1ScanFailed;
     int ps1ScanRetries;
-    int ps1RetryPass; // this pass is only the PS1 retry: the PS2 list and APPS are unchanged
+    int ps1RetryPass; // 1 + the view, when this pass is only the PS1 retry for that view; else 0
     char bdmDriver[32];
     int bdmDeviceType;      // Type of BDM device, see BDM_TYPE_* above
     int bdmDeviceTick;      // Used alongside BdmGeneration to tell if device data needs to be refreshed
