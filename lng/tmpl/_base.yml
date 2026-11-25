@@ -2714,18 +2714,6 @@ gui_strings:
   string: The clock was set from the Internet.
 - label: DATE_TIME_SYNC_ERROR
   string: No time server answered. Check the cable and the network settings, then try again.
-- comment: Date and Time dialog. The row that picks the time zone the date and time are shown in.
-  label: TIME_ZONE
-  string: Time Zone
-- label: HINT_TIME_ZONE
-  string: "Console follows the time zone and summer time set in the console's System Configuration. Pick another to show the clock in that zone instead."
-- comment: Date and Time dialog, first Time Zone choice. Followed by the console's own zone, e.g. Console (UTC-05:00).
-  label: TIME_ZONE_CONSOLE
-  string: Console
-- label: SUMMER_TIME
-  string: Summer Time
-- label: HINT_SUMMER_TIME
-  string: Adds one hour to the chosen time zone.
 - comment: Network page header above the server address rows while Network Protocol is NFS.
   label: CAT_NFS_SERVER
   string: '- NFS Server -'
@@ -2813,3 +2801,15 @@ gui_strings:
   string: Writing version.txt...
 - label: PROJECT_HOME
   string: 'Project Home:'
+- comment: Date and Time dialog. The row that picks the time zone the date and time are shown in.
+  label: TIME_ZONE
+  string: Time Zone
+- label: HINT_TIME_ZONE
+  string: "Console follows the time zone and summer time set in the console's System Configuration. Pick another to show the clock in that zone instead."
+- comment: Date and Time dialog, first Time Zone choice. Followed by the console's own zone, e.g. Console (UTC-05:00).
+  label: TIME_ZONE_CONSOLE
+  string: Console
+- label: SUMMER_TIME
+  string: Summer Time
+- label: HINT_SUMMER_TIME
+  string: Adds one hour to the chosen time zone.

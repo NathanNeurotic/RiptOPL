@@ -2361,32 +2361,47 @@ static int guiClockDialogOffset(void)
                               configGetTimezone(), configIsDaylightSavingEnabled());
 }
 
+static int guiClockPickIndex, guiClockPickSummer; // the picker as last accepted
+
 static int guiClockZoneUpdater(int modified)
 {
-    int index = 0, off, i, t[5], shown[5];
+    int index = 0, summer = 0, off, i, t[5], shown[5], ok;
 
     if (!modified)
         return 0;
     diaGetInt(diaDateTimeConfig, DATETIME_ZONE, &index);
+    diaGetInt(diaDateTimeConfig, DATETIME_SUMMER, &summer);
+    off = guiClockDialogOffset();
+    if (off != guiClockOff) {
+        for (i = 0; i < 5; i++) {
+            diaGetInt(diaDateTimeConfig, guiClockIds[i], &t[i]);
+            shown[i] = guiClockShown[i];
+        }
+        // Two steps: the two zones can be more than a day apart, and one shift moves less than a day.
+        ok = t[2] <= guiClockDaysIn(t[0], t[1]) && guiClockShift(t, -guiClockOff) && guiClockShift(t, off);
+        if (ok && guiClockShown[0] != 0)
+            ok = guiClockShift(shown, -guiClockOff) && guiClockShift(shown, off);
+        if (!ok) {
+            // The time cannot be shown in that zone (outside 2000-2099, or a day the month lacks). Keep the
+            // zone the rows are in: OK would otherwise save the new zone against rows of the old one.
+            index = guiClockPickIndex;
+            diaSetInt(diaDateTimeConfig, DATETIME_ZONE, index);
+            diaSetInt(diaDateTimeConfig, DATETIME_SUMMER, guiClockPickSummer);
+            diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER_LBL, index != 0);
+            diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER, index != 0);
+            return 0;
+        }
+        for (i = 0; i < 5; i++) {
+            diaSetInt(diaDateTimeConfig, guiClockIds[i], t[i]);
+            if (guiClockShown[0] != 0)
+                guiClockShown[i] = shown[i];
+        }
+        guiClockOff = off;
+    }
+    guiClockPickIndex = index;
+    guiClockPickSummer = summer;
     diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER_LBL, index != 0);
     diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER, index != 0);
-    off = guiClockDialogOffset();
-    if (off == guiClockOff)
-        return 0;
-    for (i = 0; i < 5; i++) {
-        diaGetInt(diaDateTimeConfig, guiClockIds[i], &t[i]);
-        shown[i] = guiClockShown[i];
-    }
-    // Two steps: the two zones can be more than a day apart, and one shift moves less than a day.
-    if (t[2] <= guiClockDaysIn(t[0], t[1]) && guiClockShift(t, -guiClockOff) && guiClockShift(t, off))
-        for (i = 0; i < 5; i++)
-            diaSetInt(diaDateTimeConfig, guiClockIds[i], t[i]);
-    if (guiClockShift(shown, -guiClockOff) && guiClockShift(shown, off))
-        for (i = 0; i < 5; i++)
-            guiClockShown[i] = shown[i];
-    else
-        guiClockShown[0] = 0; // no longer matches any entry: OK writes the clock
-    guiClockOff = off;
     return 0;
 }
 
@@ -2431,6 +2446,8 @@ int guiShowDateTime(void)
     diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER_LBL, index != 0);
     diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER, index != 0);
     guiClockOff = guiClockLocalOffset();
+    guiClockPickIndex = index;
+    guiClockPickSummer = gClockSummer != 0;
     guiClockShown[0] = 0;
 
     if (sceCdReadClock(&clk) && !clk.stat) {
