@@ -1534,9 +1534,14 @@ int recentRecord(int mode, int id, int icon_id, int text_id, const char *text, i
 
     int count = 0, editable = 0;
     fav_raw_t *recs = favReadFile(&count, &editable, kRecentFile);
-    if (!editable && !recentReplaceable()) { // a file the device could not read is never replaced
+    if (!editable) {
+        if (!recentReplaceable()) { // a file the device could not read is never replaced
+            free(recs);
+            return 0;
+        }
+        // The file reads now: keep what it holds, in case the first read failed for a moment.
         free(recs);
-        return 0;
+        recs = favReadFile(&count, NULL, kRecentFile);
     }
     fav_raw_t *out = (fav_raw_t *)calloc(RECENT_MAX_ITEMS, sizeof(fav_raw_t));
     if (out == NULL) {
