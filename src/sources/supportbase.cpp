@@ -2569,6 +2569,8 @@ static const char *sbProbeNeutrinoMc(void)
         "mc1:/neutrino/NEUTRINO.ELF",
         "mc0:NEUTRINO/NEUTRINO.ELF",
         "mc1:/NEUTRINO/NEUTRINO.ELF",
+        "mc0:/APPS/neutrino/neutrino.elf", // NHDDL's first memory-card spot
+        "mc1:/APPS/neutrino/neutrino.elf",
     };
     for (int i = 0; i < (int)(sizeof(candidates) / sizeof(candidates[0])); i++) {
         if (sbFileExists(candidates[i]) && sbNeutrinoInstallComplete(candidates[i]))
@@ -2600,7 +2602,7 @@ const char *sbResolveNeutrinoPath(const char *activePrefix)
     //   1) user-entered full path,
     //   2) the active game's device,
     //   3) mc0:/mc1:,
-    //   4) any other mounted BDM device.
+    //   4) any other mounted BDM device, then mmce0:/mmce1: (not for an MX4SIO game).
     // A Memory Card or HDD (APA) choice from the retired picker was migrated into gNeutrinoPath at
     // config load; while that path is untouched, tier 1 also repeats the old picker's case variants.
     if (gNeutrinoPath[0] != '\0' &&
@@ -2639,8 +2641,20 @@ const char *sbResolveNeutrinoPath(const char *activePrefix)
         if (otherHit != NULL)
             return otherHit;
     }
+    // ...and an MMCE card's own file system, as NHDDL does, except for a game on MX4SIO: NHDDL and NULD
+    // never use MMCE alongside MX4SIO (both on SIO2).
+    if (!bdmModeIsSIO2(host::app().pathToMode(activePrefix))) {
+        static const char *mmceRoots[] = {"mmce0:/", "mmce1:/"};
+        for (int i = 0; i < 2; i++) {
+            if (activePrefix != NULL && !strncmp(activePrefix, mmceRoots[i], 5))
+                continue; // the game's own card: tier 2 already looked there
+            const char *mmceHit = sbNeutrinoProbeGameDevice(mmceRoots[i]);
+            if (mmceHit != NULL)
+                return mmceHit;
+        }
+    }
 
-    LOG("[NEUTRINO] no complete install found (custom -> game device -> mc0/mc1 -> other BDM devices)\n");
+    LOG("[NEUTRINO] no complete install found (custom -> game device -> mc0/mc1 -> other devices)\n");
     return NULL;
 }
 

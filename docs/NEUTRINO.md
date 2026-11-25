@@ -45,10 +45,11 @@ The lookup order is fixed:
 1. **Custom Path** — if Neutrino Path is non-empty, RiptOPL resolves that exact full path first.
 2. **Game Device** — if the custom path is absent or unavailable, RiptOPL checks the active game's
    device for `neutrino/neutrino.elf` (including the established case variants).
-3. **Memory Card** — `mc0:`, then `mc1:`.
+3. **Memory Card** — `mc0:`, then `mc1:` (`NEUTRINO/`, `neutrino/` and NHDDL's `APPS/neutrino/`).
 4. **Other devices** — finally `neutrino/neutrino.elf` on any other USB, MX4SIO, iLink or exFAT HDD
-   device that is already mounted, as NHDDL does. A game on MX4SIO can use the Neutrino folder on a
-   USB stick.
+   device that is already mounted, then on `mmce0:`/`mmce1:`, as NHDDL does. A game on MX4SIO can use
+   the Neutrino folder on a USB stick. MMCE is not searched for an MX4SIO game: NHDDL and NULD never use
+   the two together.
 
 There is no Neutrino device picker anymore. When you upgrade, an old **Memory Card** or **HDD (APA)**
 choice becomes the matching Neutrino Path: `mc:/NEUTRINO/neutrino.elf` or `hdd:/neutrino/neutrino.elf`.
