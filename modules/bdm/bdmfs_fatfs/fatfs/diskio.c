@@ -9,6 +9,7 @@
 
 #include <bdm.h>
 #include <cdvdman.h>
+#include <errno.h>
 
 #include "ff.h"			/* Basic definitions of FatFs */
 #include "diskio.h"		/* Declarations FatFs MAI */
@@ -18,13 +19,19 @@
 /* Get Drive Status                                                      */
 /*-----------------------------------------------------------------------*/
 
+/* RiptOPL: set when the block device refused a write before it reached the disk (-EROFS; atad's APA
+   fence, docs/APA-SAFETY.md). From then on the volume takes no write at all until it is mounted again:
+   the fence covers only part of the volume, and a later write above it must not land beside a change
+   that was dropped below it. */
+static BYTE write_refused[FF_VOLUMES];
+
 DSTATUS disk_status (
 	BYTE pdrv		/* Physical drive nmuber to identify the drive */
 )
 {
 	int result;
 
-	result = (fatfs_fs_driver_get_mounted_bd_from_index(pdrv) == NULL) ? (STA_NOINIT | STA_NODISK) : 0;
+	result = (fatfs_fs_driver_get_mounted_bd_from_index(pdrv) == NULL) ? (STA_NOINIT | STA_NODISK) : (write_refused[pdrv] ? STA_PROTECT : 0);
 
 	return result;
 }
@@ -42,6 +49,7 @@ DSTATUS disk_initialize (
 	int result;
 
 	result = (fatfs_fs_driver_get_mounted_bd_from_index(pdrv) == NULL) ? (STA_NOINIT | STA_NODISK) : 0;
+	write_refused[pdrv] = 0;	/* a fresh mount */
 
 	return result;
 }
@@ -88,7 +96,7 @@ DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
-	DRESULT res;
+	int res;
 	struct block_device *mounted_bd;
 
 	mounted_bd = fatfs_fs_driver_get_mounted_bd_from_index(pdrv);
@@ -97,7 +105,15 @@ DRESULT disk_write (
 		return RES_NOTRDY;
 	}
 
+	if (write_refused[pdrv])
+		return RES_WRPRT;
+
 	res = mounted_bd->write(mounted_bd, sector, buff, count);
+
+	if (res == -EROFS) {
+		write_refused[pdrv] = 1;
+		return RES_WRPRT;
+	}
 
 	return (res == count) ? RES_OK : RES_ERROR;
 }
