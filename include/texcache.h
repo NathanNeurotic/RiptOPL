@@ -137,9 +137,12 @@ private:
 
     /// The game art caches alive now (userId >= 0), newest first, and the theme load each was made for. A
     /// theme reload builds the new theme's caches before the old theme's are destroyed, so a destroyed cache
-    /// hands its loaded pictures to the new load's caches (cacheRehomeLoaded) instead of freeing them.
+    /// hands its loaded pictures to the new load's cache that takes its place (cacheRehomeLoaded) instead of
+    /// freeing them. artRank_: how many caches of the same art (folder and suffix) its load made before it; a
+    /// theme makes its Games cover cache before its Apps one in every layout.
     image_cache_t *nextLive_;
     unsigned int generation_;
+    int artRank_;
     inline static image_cache_t *sLive_ = nullptr;
     inline static unsigned int sGeneration_ = 0;
 };
@@ -174,7 +177,8 @@ image_cache_t *cacheInitCache(int userId, const char *prefix, int isPrefixRelati
 void cacheDestroyCache(image_cache_t *cache);
 
 /** A theme load starts making its caches: the caches made from now on belong to it. When a cache of an earlier
- * load is destroyed, its loaded pictures move to this load's caches of the same art (same folder and suffix),
+ * load is destroyed, its loaded pictures move to this load's cache of the same art (same folder and suffix,
+ * made in the same order),
  * so a layout switch or a theme reload does not read every cover from the device again. GUI lock or pre-GUI.
  */
 void cacheNewGeneration(void);

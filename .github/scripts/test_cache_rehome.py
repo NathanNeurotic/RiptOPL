@@ -26,9 +26,9 @@ cache_class = header[header.index("class ImageCache;"):header.index("/** Initial
 cache_class = cache_class.replace("private:", "public:")
 functions = "\n".join(function(s) for s in (
     "void cacheClearItem(cache_entry_t *item, int freeTxt)",
+    "static int cacheSameArt(",
     "image_cache_t *cacheInitCache(",
     "void cacheNewGeneration(void)",
-    "static int cacheSameArt(",
     "void cacheRehomeLoaded(image_cache_t *from)",
 ))
 
@@ -81,10 +81,12 @@ static int loaded(image_cache_t *c)
 }
 int main(void)
 {
-    // The old layout: a cover cache with four covers, one still loading and one known absent, and a disc cache.
+    // The old layout: the Games cover cache with four covers, one still loading and one known absent, the Apps
+    // cover cache (the same art, made after it) with one, and a disc cache.
     cacheNewGeneration();
     image_cache_t *oldCov = cacheInitCache(0, "ART", 1, "COV", 6);
-    image_cache_t *oldIco = cacheInitCache(1, "ART", 1, "ICO", 4);
+    image_cache_t *oldApps = cacheInitCache(1, "ART", 1, "COV", 6);
+    image_cache_t *oldIco = cacheInitCache(2, "ART", 1, "ICO", 4);
     image_cache_t *attr = cacheInitCache(-1, "mass0:/THM/x", 0, "COV", 4); // a theme's own images: never handed over
     put(oldCov, 0, "SLUS_000.01", 10);
     put(oldCov, 1, "SLUS_000.02", 40);
@@ -95,6 +97,7 @@ int main(void)
     oldCov->content_[4].lastUsed = 50;
     strcpy(oldCov->content_[5].key, "SLUS_000.06"); // known absent
     oldCov->content_[5].lastUsed = 0;
+    put(oldApps, 0, "APP.ELF", 45);
     put(oldIco, 0, "SLUS_000.01", 10);
     put(attr, 0, "SLUS_000.01", 10);
     void *pixels2 = oldCov->content_[1].texture.Mem;
@@ -103,19 +106,21 @@ int main(void)
     cacheRehomeLoaded(oldCov);
     assert(loaded(oldCov) == 4 && unloaded == 0);
 
-    // The new layout: a smaller cover cache (three slots), a second cover cache, another device's, and no disc cache.
+    // The new layout: another device's cover cache, a smaller Games cover cache (three slots), a roomy Apps cover
+    // cache made after it, and no disc cache.
     cacheNewGeneration();
     image_cache_t *newOther = cacheInitCache(0, "mass0:/ART", 0, "COV", 6);
-    image_cache_t *newCov2 = cacheInitCache(1, "ART", 1, "COV", 1);
-    image_cache_t *newCov = cacheInitCache(2, "ART", 1, "COV", 3);
-    put(newCov2, 0, "SLUS_000.02", 60); // already holds the newest cover
+    image_cache_t *newCov = cacheInitCache(1, "ART", 1, "COV", 3);
+    image_cache_t *newApps = cacheInitCache(2, "ART", 1, "COV", 8);
 
     cacheRehomeLoaded(oldCov);
-    // Newest first: .02 is in newCov2 already so it goes to newCov, then .03 and .04; .01 finds no room and stays.
+    // The Games covers go to the new Games cover cache, newest first: .02, .03, .04; .01 finds no room and stays.
+    // None goes to the Apps cover cache, where the Games page would not find it (the first layout switch read
+    // every cover from the device again).
     assert(loaded(newCov) == 3 && find(newCov, "SLUS_000.02") && find(newCov, "SLUS_000.03") && find(newCov, "SLUS_000.04"));
     assert(find(newCov, "SLUS_000.02")->texture.Mem == pixels2 && find(newCov, "SLUS_000.02")->texture.Vram == 0);
     assert(find(newCov, "SLUS_000.02")->lastUsed == 40 && find(newCov, "SLUS_000.02")->UID > 0);
-    assert(loaded(newCov2) == 1 && loaded(newOther) == 0 && unloaded == 3);
+    assert(loaded(newApps) == 0 && loaded(newOther) == 0 && unloaded == 3);
     assert(loaded(oldCov) == 1 && find(oldCov, "SLUS_000.01") && !find(oldCov, "SLUS_000.02"));
     assert(oldCov->content_[4].qr != NULL && !strcmp(oldCov->content_[4].key, "SLUS_000.05")); // loading slot untouched
     assert(oldCov->content_[1].lastUsed == -1 && oldCov->content_[1].texture.Mem == NULL);     // moved slots cleared
@@ -124,10 +129,17 @@ int main(void)
         for (int j = i + 1; j < 3; j++)
             assert(newCov->content_[i].texture.Mem != newCov->content_[j].texture.Mem && newCov->content_[i].UID != newCov->content_[j].UID);
 
+    // The Apps cover goes to the new Apps cover cache; one it holds already stays behind for the caller to free.
+    put(oldApps, 1, "APP2.ELF", 44);
+    put(newApps, 0, "APP2.ELF", 60);
+    cacheRehomeLoaded(oldApps);
+    assert(loaded(newApps) == 2 && find(newApps, "APP.ELF") && loaded(newCov) == 3 && unloaded == 4);
+    assert(loaded(oldApps) == 1 && find(oldApps, "APP2.ELF"));
+
     // No cache of the same art in the new load, and a cache that is not game art: nothing moves.
     cacheRehomeLoaded(oldIco);
     cacheRehomeLoaded(attr);
-    assert(loaded(oldIco) == 1 && loaded(attr) == 1 && unloaded == 3 && released == 0);
+    assert(loaded(oldIco) == 1 && loaded(attr) == 1 && unloaded == 4 && released == 0);
     puts("PASS: a destroyed cover cache hands its loaded pictures to the next theme load");
     return 0;
 }
