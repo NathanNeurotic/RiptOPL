@@ -3016,6 +3016,7 @@ void menuHandleInputMain()
 
 void menuRenderInfo(void)
 {
+    coverGlideFrame(); // a layout switch's covers keep flying while Info is shown
     item_list_t *list = static_cast<item_list_t *>(selected_item->item->userdata);
     theme_elems_t *kindElems = menuGetInfoElems(list);
 
