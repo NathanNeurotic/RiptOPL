@@ -287,6 +287,7 @@ int bdmUpdateDeviceData(item_list_t *itemList)
         if (itemList->owner != NULL) {
             ((opl_io_module_t *)itemList->owner)->menuItem.visible = 1;
             host::app().moduleUpdateMenu(itemList->mode, 0, 0);
+            host::app().bootPageArrived(itemList->mode);
         }
         // All Games dropped this slot's rows when its page hid, and this pass rebuilds nothing, so
         // ask for the one list again (one FAV rebuild, from the rows this slot already holds). Not for a
