@@ -1,4 +1,7 @@
 #include "include/guiruntime.h"
+#include "include/guiscreens.h"
+#include "include/menusys.h"
+#include "include/renderman.h"
 #include "include/themes.h"
 #include "include/themeint.h"
 
@@ -35,9 +38,36 @@ void Gui::playLaunchTransition()
             if ((u32)clock() - (u32)started >= (u32)AmbientEffects::kLaunchUs)
                 break;
         }
-        guiFadeCurrentScreenToBlack();
+        playLaunchCover();
         ambient_.endLaunch();
         return;
     }
-    guiFadeCurrentScreenToBlack();
+    playLaunchCover();
+}
+
+// The game's cover steps forward: the page's content fades out over its background while the selected game's cover
+// and name come up in the middle of the screen, hold, and the screen fades to black for the hand-off. A counted
+// loop of frames that waits on nothing; it draws only a cover already in memory (the art worker is held by now)
+// and is the plain fade to black when there is none.
+static const int LAUNCH_IN = 10, LAUNCH_HOLD = 10, LAUNCH_OUT = 8;
+
+void Gui::playLaunchCover()
+{
+    for (int frame = 1; frame <= LAUNCH_IN + LAUNCH_HOLD + LAUNCH_OUT; ++frame) {
+        const float in = frame < LAUNCH_IN ? plasma_.ease((float)frame / LAUNCH_IN) : 1.0f;
+        startFrame();
+        gScreens.holdContentFade((u8)((1.0f - in) * 0x80));
+        show();
+        gScreens.holdContentFade(0x80);
+        const int drawn = menuRenderLaunchCover(in);
+        if (!drawn && frame == 1) { // no cover in memory: today's fade, nothing else
+            endFrame();
+            guiFadeCurrentScreenToBlack();
+            return;
+        }
+        const int out = frame - LAUNCH_IN - LAUNCH_HOLD;
+        if (out > 0)
+            rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, GS_SETREG_RGBA(0, 0, 0, (out * 0x80) / LAUNCH_OUT));
+        endFrame();
+    }
 }
