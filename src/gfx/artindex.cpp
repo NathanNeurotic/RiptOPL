@@ -442,7 +442,7 @@ void ArtIndex::invalidate()
     // Callable from ANY thread, so it deliberately does NOT free: the owner thread may be searching a
     // buffer right now, and releasing it underneath would be a use-after-free. Marking the slots
     // unusable is enough -- the next build on the owner thread reclaims the memory, and the bounded
-    // three slots cap what can be held meanwhile.
+    // kSlots slots cap what can be held meanwhile.
     gen_++;
 
     for (i = 0; i < kSlots; i++) {
