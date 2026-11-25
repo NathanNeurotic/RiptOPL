@@ -278,17 +278,17 @@ ArtIndex::Dir *ArtIndex::build(const char *dir)
 
     // Give back what the folder did not use: the buffers above are sized for kMaxEntries, so an
     // untrimmed slot holds ~64 KiB whatever the folder size. Trimmed, a slot costs what its folder
-    // holds, which is what lets kSlots cover every device at once. A failed shrink keeps the block.
-    if (n > 0) {
-        unsigned int *fit = (unsigned int *)realloc(hashes, n * sizeof(unsigned int));
-        if (fit != NULL)
-            hashes = fit;
-    }
-    if (pics != NULL && picCount > 0) {
-        Pic *fit = (Pic *)realloc(pics, picCount * sizeof(Pic));
-        if (fit != NULL)
-            pics = fit;
-        char *fitNames = (char *)realloc(names, namesUsed);
+    // holds, which is what lets kSlots cover every device at once. An empty list keeps one element:
+    // pics must stay non-NULL (NULL means "names not kept, probe the device"), and a POPS folder
+    // usually has VCDs but no pictures. A failed shrink keeps the block.
+    unsigned int *fit = (unsigned int *)realloc(hashes, (n > 0 ? n : 1) * sizeof(unsigned int));
+    if (fit != NULL)
+        hashes = fit;
+    if (pics != NULL) {
+        Pic *fitPics = (Pic *)realloc(pics, (picCount > 0 ? picCount : 1) * sizeof(Pic));
+        if (fitPics != NULL)
+            pics = fitPics;
+        char *fitNames = (char *)realloc(names, namesUsed > 0 ? namesUsed : 1);
         if (fitNames != NULL)
             names = fitNames;
     }
