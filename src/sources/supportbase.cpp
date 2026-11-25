@@ -1488,8 +1488,8 @@ config_set_t *sbPopulateConfigIn(base_game_info_t *game, const char *prefix, con
             configSetStr(config, CONFIG_ITEM_FORMAT, "ISO");
         else if (!strcmp(game->extension, ".zso"))
             configSetStr(config, CONFIG_ITEM_FORMAT, "ZSO");
-        else if (isVcd)
-            configSetStr(config, CONFIG_ITEM_FORMAT, "VCD"); // VCD listing -> the VCD format glyph
+        else if (isVcd) // a UDPFS POPS/*.cue is listed as a VCD row: badge the file it is
+            configSetStr(config, CONFIG_ITEM_FORMAT, game->media == CUE_IMAGE_CUE ? "CUE" : "VCD");
         else if (cueImageFormat(game) != NULL)
             configSetStr(config, CONFIG_ITEM_FORMAT, cueImageFormat(game)); // Ember: the image it boots, not "ELF"
     } else if (game->format == GAME_FORMAT_USBLD)
