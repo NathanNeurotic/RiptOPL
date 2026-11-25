@@ -3093,7 +3093,10 @@ config_set_t *HddSource::config(item_list_t *itemList, int id)
             return NULL;
         configSetStr(config, CONFIG_ITEM_NAME, g->name);
         configSetInt(config, CONFIG_ITEM_SIZE, g->sizeMB);
-        configSetStr(config, CONFIG_ITEM_FORMAT, "VCD");
+        // An Ember row shares this array: badge the image it boots, as sbPopulateConfig does.
+        const char *format = cueIsCueEntry(g) ? cueImageFormat(g) : "VCD";
+        if (format != NULL)
+            configSetStr(config, CONFIG_ITEM_FORMAT, format);
         sbSetDiscAttributes(config, 1, 1);
         configSetStr(config, CONFIG_ITEM_STARTUP,
                      vcdExtractGameId(g->name, vcdId, sizeof(vcdId)) ? vcdId : g->name);
