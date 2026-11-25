@@ -1085,7 +1085,8 @@ work it is built on:
 
 Enormous thanks to the testers who run rolling builds on real consoles and file the
 reports that shape the fixes — **eliminator1403, [lucaslmgv](https://github.com/lucaslmgv), [AndrewBento](https://github.com/AndrewBento), [AcidReach](https://github.com/AcidReach), bodvenomz,
-[nuno6573](https://github.com/nuno6573), [zackcage6](https://github.com/zackcage6), [Blade1984](https://github.com/Blade1984) and Aislinn🏳️‍⚧️**.
+[nuno6573](https://github.com/nuno6573), [zackcage6](https://github.com/zackcage6), [Blade1984](https://github.com/Blade1984), Aislinn🏳️‍⚧️, FifthFox, [jennyjan107-web](https://github.com/jennyjan107-web), Ethyls,
+Davood TiTaN and Volventura**.
 
 ### The upstream project
 

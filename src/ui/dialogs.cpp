@@ -2157,61 +2157,43 @@ struct UIItem diaAbout[] = {
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_DEVS}}},
     {UI_BREAK},
 
-    // Each coder row fits the 4:3 SD screen at the default font size (about 570 wide after the indent): measured
-    // with the menu font, the rows that ended in "hacan359", "KrahJohlito" and "volca" ran 10 to 40 past the
-    // right edge. hacan359 authored the RA design/client and oMrRexD supplied the hardware stabilization fixes;
-    // CREDITS has the full provenance for both, and the standard ELF's rows leave them out.
+    // Each row fits the 4:3 SD screen at the default font size (about 570 wide after the indent); the widest
+    // coder row measures about 505 with the menu font. Every build shows every name: hacan359 authored the RA
+    // design/client and oMrRexD supplied the hardware stabilization and font-lock fixes. CREDITS and README have
+    // the full provenance for every name on this page.
     {UI_SPACER},
     {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"BatRastard - bbsan2k - belek666 - crazyc - dlanor - doctorxyz", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-#ifdef RETROACHIEVEMENTS
     {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"hacan359 - oMrRexD - hominem.te.esse - ifcaro - izdubar", -1}}},
-#else
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"hominem.te.esse - ifcaro - izdubar - jimmikaelkael - KrahJohlito", -1}}},
-#endif
     {UI_BREAK},
 
     {UI_SPACER},
-#ifdef RETROACHIEVEMENTS
     {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"jimmikaelkael - KrahJohlito - kr_ps2 - Maximus32 - misfire", -1}}},
-#else
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"kr_ps2 - Maximus32 - misfire - Polo35 - reprep - saildot4k", -1}}},
-#endif
     {UI_BREAK},
 
     {UI_SPACER},
-#ifdef RETROACHIEVEMENTS
     {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Polo35 - reprep - saildot4k - SP193 - volca", -1}}},
-#else
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"SP193 - volca", -1}}},
-#endif
     {UI_BREAK},
 
     {UI_SPACER},
-    // Preserve this non-scrolling dialog at 4:3 SD resolution: add belomaxorka
-    // and Akilluminati47 (RIPPS2 co-developer) without adding a row or exceeding the
-    // widest coder row. CREDITS and README explain the RIPPS2, YAOPL, LUNA,
-    // PS2CF, and PSUManager contributions in full.
+    // Akilluminati47 (RIPPS2, affiliated), belomaxorka (YAOPL), darkladark (LUNA), mihhru (PS2CF).
     {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Akilluminati47 - belomaxorka - darkladark - mihhru", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    // NathanNeurotic (maintainer). A fifth coder row: the rows above are full, and the dialog's height is
-    // kept by putting Network update and its name on one row below, as Build Options and the forum are.
-    // sahlberg (Ronnie Sahlberg) wrote usmb2 and unfs4, under the SMB2 and NFS drivers; CREDITS has the detail.
-    // danielnuld (Daniel) makes NULD; the hold L3 layout switch follows its view switch.
+    // NathanNeurotic (maintainer). sahlberg (Ronnie Sahlberg) wrote usmb2 and unfs4, under the SMB2 and NFS
+    // drivers. danielnuld (Daniel) makes NULD; the hold L3 layout switch follows its view switch.
     {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - danielnuld - sahlberg - techwritescode", -1}}},
     {UI_BREAK},
 
-    // Quality Assurance. The headings here and on the Network update row keep the plain row height, so the page
-    // fits 4:3 SD at the default font size without scrolling (it has no control to scroll with).
+    // Quality Assurance: the original OPL testers, then this fork's testers and the people whose reports
+    // CREDITS, README and CHANGELOG name.
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_QANDA}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    // Keep QA names on short rows in the non-scrolling About dialog.
     {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"algol, Berion, Blade1984, El_Patas, EP, gledson999, jolek, lee4, Vapor", -1}}},
     {UI_BREAK},
 
@@ -2221,6 +2203,48 @@ struct UIItem diaAbout[] = {
 
     {UI_SPACER},
     {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"CosmicScale, eliminator, TnA, V3ditata", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"AcidReach, Aerosol, Aislinn, AndrewBento, bodvenomz", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Davood TiTaN, Ethyls, FifthFox, jennyjan107-web", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"lucaslmgv, nuno6573, Volventura", -1}}},
+    {UI_BREAK},
+
+    // Special Thanks: the OPL forks RiptOPL draws on (Wolf3s, mystyq, Jay-Jay-OPL, pcm720's nhddl, Docmine17's
+    // OPL HTTP, AdityaKumar7209's Modulo-R1, Irfanlesnar's PS2-Launcher), zokzot (xeRAbora OPL), fjtrujy (CI),
+    // the module and library authors in CREDITS, and the authors of the bundled and companion tools.
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_ABOUT_THANKS}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Wolf3s - mystyq - Jay-Jay-OPL - pcm720 - Docmine17", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"AdityaKumar7209 - Irfanlesnar - zokzot - fjtrujy", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Eugene Plotnikov - Marcus R. Brown - Eric Young", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Gageformer (Ember) - krHACKen (POPStarter)", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Okeanos - israpps - YouKnow-sys - Luden - shaan", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"TheRealNextria - L. Peter Deutsch - the ps2dev team", -1}}},
     {UI_BREAK},
 
     // Network update

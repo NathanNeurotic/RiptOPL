@@ -4,7 +4,9 @@
 Ports upstream PR #944:
 1. The Quality Assurance rows credit the testers.
 2. The obsolete in-app Financial Support section is removed from diaAbout.
-3. Excess UI_BREAK rows are trimmed to prevent vertical overflow in the fixed non-scrolling dialog.
+3. Every build credits the same people: no RETROACHIEVEMENTS-only rows, and everyone CREDITS, README and
+   CHANGELOG name has a place (testers under QA, the rest under Special Thanks).
+4. The page is taller than the screen now, so D-pad Up/Down slide it instead of closing it.
 """
 import pathlib
 import sys
@@ -39,7 +41,27 @@ assert net != -1, "Network update row is present"
 icyson = dia_about.find('"icyson55"', net)
 assert icyson != -1, "icyson55 is credited on the Network update row"
 assert icyson < dia_about.find("UI_BREAK", net), "Network update and icyson55 share a row"
-print("PASS: NathanNeurotic credited; About keeps its row count")
+print("PASS: NathanNeurotic credited; Network update shares one row with icyson55")
+
+# 6. One set of rows for every build, with everyone CREDITS, README and CHANGELOG name
+assert "#ifdef" not in dia_about and "#else" not in dia_about, "every build shows the same credits"
+assert '"hacan359 - oMrRexD - hominem.te.esse - ifcaro - izdubar"' in dia_about
+for name in ["AcidReach", "Aerosol", "Aislinn", "AndrewBento", "bodvenomz", "Davood TiTaN", "Ethyls", "FifthFox",
+             "jennyjan107-web", "lucaslmgv", "nuno6573", "Volventura", "Wolf3s", "mystyq", "Jay-Jay-OPL", "pcm720",
+             "Docmine17", "AdityaKumar7209", "Irfanlesnar", "zokzot", "fjtrujy", "Eugene Plotnikov", "Marcus R. Brown",
+             "Eric Young", "Gageformer", "krHACKen", "Okeanos", "israpps", "YouKnow-sys", "Luden", "shaan",
+             "TheRealNextria", "L. Peter Deutsch", "ps2dev"]:
+    assert name in dia_about, name + " should be credited on the About page"
+thanks = dia_about.find("_STR_ABOUT_THANKS")
+assert dia_about.find("_STR_QANDA") < thanks < dia_about.find("_STR_NET_UPDATE"), "Special Thanks sits between QA and Network update"
+base = (root / "lng/tmpl/_base.yml").read_text(encoding="utf-8")
+assert "label: ABOUT_THANKS" in base
+dia_cpp = (root / "src/ui/dia.cpp").read_text(encoding="utf-8")
+page = dia_cpp[dia_cpp.find("void diaShowPage("):]
+page = page[: page.find("\n}\n")]
+assert "getKeyPressed(KEY_DOWN)" in page and "getKeyPressed(KEY_UP)" in page, "D-pad slides a tall page"
+assert "key == KEY_UP || key == KEY_DOWN" in page, "Up/Down do not close a tall page"
+print("PASS: every build shows every name; a tall About page slides with the D-pad")
 
 # 5. Project Home follows Support Forums; no OK button: any button closes the page (diaShowPage)
 forum = dia_about.find("_STR_FORUM_DETAILS")

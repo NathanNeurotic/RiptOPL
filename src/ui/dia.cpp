@@ -1208,7 +1208,8 @@ static int diaScrollDelay(void)
 }
 
 
-static void diaPeekStick(clock_t *last)
+// dpadY: on a page with nothing to choose (diaShowPage), D-pad Up/Down held slide it like the stick at full tilt
+static void diaPeekStick(clock_t *last, int dpadY = 0)
 {
     int sx, sy;
     clock_t now = clock();
@@ -1217,6 +1218,8 @@ static void diaPeekStick(clock_t *last)
     if (dt > 0.1f)
         dt = 0.1f;
     padGetRightStick(&sx, &sy);
+    if (dpadY)
+        sy = dpadY;
     if ((sy > DIA_PEEK_STICK || sy < -DIA_PEEK_STICK) && diaScrollRange > 0) { // a page that fits has nothing to slide
         if (!diaPeek) {
             diaPeek = 1;
@@ -1226,8 +1229,8 @@ static void diaPeekStick(clock_t *last)
     }
 }
 
-// A page with nothing to choose (About): drawn until any button is pressed. The right stick still slides it
-// when a large font makes it taller than the screen.
+// A page with nothing to choose (About): drawn until any button is pressed. When it is taller than the screen,
+// D-pad Up/Down or the right stick slide it, and Up/Down no longer close it.
 void diaShowPage(struct UIItem *ui)
 {
     rmGetScreenExtents(&diaScreenWidth, &diaScreenHeight);
@@ -1244,8 +1247,18 @@ void diaShowPage(struct UIItem *ui)
         guiUnlock();
 
         readPads();
-        diaPeekStick(&peekLast);
+        int tall = diaScrollRange > 0;
+        int dpadY = 0;
+        if (tall) {
+            if (getKeyPressed(KEY_DOWN))
+                dpadY = 127;
+            else if (getKeyPressed(KEY_UP))
+                dpadY = -127;
+        }
+        diaPeekStick(&peekLast, dpadY);
         for (int key = KEY_LEFT; key <= KEY_L2; key++) {
+            if (tall && (key == KEY_UP || key == KEY_DOWN))
+                continue;
             if (getKeyOn(key)) {
                 sfxPlay(SFX_CANCEL);
                 return;
