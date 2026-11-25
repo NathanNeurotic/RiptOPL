@@ -87,6 +87,7 @@ void applyConfig(int themeID, int langID, int skipDeviceRefresh);
 int oplIsBootInProgress(void);
 void menuDeferredUpdate(void *data);
 void moduleUpdateMenu(int mode, int themeChanged, int langChanged);
+void oplBootPageArrived(int mode); // a massN: page became visible; boots onto it when the Default Menu was waiting for it
 void handleLwnbdSrv();
 void deinit(int exception, int modeSelected);
 void deinitTerminal(int exception, int modeSelected);

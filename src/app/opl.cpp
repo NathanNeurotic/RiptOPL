@@ -319,6 +319,7 @@ char gETHPrefix[32];
 char gMMCEPrefix[32];
 int gRememberLastPlayed;
 int KeyPressedOnce;
+static int gBootAwaitsInternalDrive; // Default Menu is HDD Games and the internal exFAT/FAT32 page is not up yet
 int gAutoStartLastPlayed;
 int RemainSecs, DisableCron;
 clock_t CronStart;
@@ -1827,6 +1828,23 @@ static void deferredInit(void)
             }
         }
     }
+    // "HDD Games" is the Default Menu entry for the internal drive, however it is formatted. HDD_MODE is
+    // only the APA page; an exFAT/FAT32 internal drive lists its games on a massN: page instead, and with
+    // (APA) Start Mode off HDD_MODE has no support at all, so every such boot fell through to MMCE below.
+    // That page only appears once the drive has attached: take it if it is already up, else let
+    // oplBootPageArrived() select it when it shows.
+    gBootAwaitsInternalDrive = 0;
+    if (bootMode == HDD_MODE && gEnableBdmHDD &&
+        (list_support[HDD_MODE].support == NULL || !list_support[HDD_MODE].menuItem.visible)) {
+        gBootAwaitsInternalDrive = 1;
+        for (int i = BDM_MODE; i <= BDM_MODE_LAST; i++) {
+            if (list_support[i].support != NULL && list_support[i].menuItem.visible && bdmModeIsATA(i)) {
+                bootMode = i;
+                gBootAwaitsInternalDrive = 0;
+                break;
+            }
+        }
+    }
     // All Games: the device pages step aside for the one list, so boot onto it.
     if (gAllGames && list_support[FAV_MODE].support != NULL)
         bootMode = FAV_MODE;
@@ -1834,6 +1852,8 @@ static void deferredInit(void)
         (list_support[MMCE_MODE].support == NULL || list_support[MMCE_MODE].menuItem.visible == 0) &&
         list_support[MMCE_MODE1].support != NULL && list_support[MMCE_MODE1].menuItem.visible != 0)
         bootMode = MMCE_MODE1;
+    if (bootMode != HDD_MODE)
+        gBootAwaitsInternalDrive = 0; // All Games (or a drive page already up) took the boot
     if (list_support[bootMode].support == NULL ||
         (isMmceMode(bootMode) && !list_support[bootMode].menuItem.visible)) {
         if (list_support[MMCE_MODE].support != NULL && list_support[MMCE_MODE].menuItem.visible != 0)
@@ -1858,6 +1878,23 @@ static void deferredInit(void)
             id->menu.menu = &list_support[bootMode].menuItem;
             guiDeferUpdate(id);
         }
+    }
+}
+
+// A massN: page has just become visible. When the Default Menu is "HDD Games" and the boot was waiting
+// for the internal exFAT/FAT32 drive (see deferredInit), move onto it -- once, and only while the user
+// has not pressed anything, so a page they already chose is never pulled away from them.
+void oplBootPageArrived(int mode)
+{
+    if (!gBootAwaitsInternalDrive || !bdmModeIsATA(mode))
+        return;
+    gBootAwaitsInternalDrive = 0;
+    if (KeyPressedOnce || list_support[mode].support == NULL)
+        return;
+    struct gui_update_t *id = guiOpCreate(GUI_OP_SELECT_MENU);
+    if (id) {
+        id->menu.menu = &list_support[mode].menuItem;
+        guiDeferUpdate(id);
     }
 }
 
