@@ -21,6 +21,7 @@
 #include "include/pad.h"
 #include "include/gui.h"
 #include "include/guigame.h"
+#include "include/guiint.h" // gGuiScreenWidth, gGuiScreenHeight -- the launch cover
 #include "include/system.h"
 #ifdef RETROACHIEVEMENTS
 #include "include/discsupport.h"

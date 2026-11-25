@@ -1,4 +1,5 @@
 #include "include/guiruntime.h"
+#include "include/guiint.h" // gGuiScreenWidth, gGuiScreenHeight
 #include "include/guiscreens.h"
 #include "include/menusys.h"
 #include "include/renderman.h"

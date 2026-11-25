@@ -42,4 +42,7 @@ assert transition.count("playLaunchCover();") == 2
 opl = (root / "src/app/opl.cpp").read_text(encoding="utf-8")
 for m in re.finditer(r"guiPlayLaunchTransition\(\);", opl):
     assert "cacheHoldArtStarts();" in opl[m.start() - 200:m.start()]
+# The screen size comes from guiint.h, which neither file gets through another header.
+for path in ("src/ui/guilaunch.cpp", "src/ui/menusys.cpp"):
+    assert '#include "include/guiint.h"' in (root / path).read_text(encoding="utf-8"), path
 print("PASS: the launch animation is bounded and draws only resident art")
