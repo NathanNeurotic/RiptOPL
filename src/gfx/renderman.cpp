@@ -459,7 +459,8 @@ void Renderer::setupQuad(GSTEXTURE *txt, int x, int y, short aligned, int w, int
 void Renderer::drawQuad(rm_quad_t *q)
 {
     int hasAlpha = (q->txt->PSM == GS_PSM_CT32) || (q->txt->Clut && q->txt->ClutPSM == GS_PSM_CT32);
-    u8 primAlpha = (u8)((q->color >> 24) & 0xff);
+    const u64 color = faded(q->color);
+    u8 primAlpha = (u8)((color >> 24) & 0xff);
     int fixedAlpha = !hasAlpha && primAlpha < 0x80;
     if (hasAlpha) {
         gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
@@ -482,7 +483,7 @@ void Renderer::drawQuad(rm_quad_t *q)
                               q->ul.x + renderXOff_, q->ul.y + renderYOff_,
                               q->ul.u, q->ul.v,
                               q->br.x + renderXOff_, q->br.y + renderYOff_,
-                              q->br.u, q->br.v, order_, q->color);
+                              q->br.u, q->br.v, order_, color);
     order_++;
     if (fixedAlpha)
         gsKit_set_primalpha(gsGlobal, gDefaultAlpha, 0);
@@ -535,7 +536,7 @@ void Renderer::drawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float
                                   q->ul.x + renderXOff_, y0 + renderYOff_,
                                   q->ul.u, v0,
                                   q->br.x + renderXOff_, y1 + renderYOff_,
-                                  q->br.u, v1, order_, GS_SETREG_RGBA(0x80, 0x80, 0x80, a));
+                                  q->br.u, v1, order_, faded(GS_SETREG_RGBA(0x80, 0x80, 0x80, a)));
         order_++;
     }
 }
@@ -554,6 +555,7 @@ void Renderer::drawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned
 {
     rm_quad_t quad;
     setupQuad(overlay, x, y, aligned, w, h, scaled, color, &quad);
+    color = faded(color); // the inlay's; drawQuad fades the frame's own
     int origBly = bly, origBry = bry; // unscaled inlay lower corners (element/texture space) for the reflection
     ulx = scaleX(ulx * aspectWidth_) >> 2;
     urx = scaleX(urx * aspectWidth_) >> 2;
@@ -645,7 +647,7 @@ void Renderer::drawRect(int x, int y, int w, int h, u64 color)
     float fh = y1 - y0;
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
-    gsKit_prim_sprite(gsGlobal, fx, fy, fx + fw, fy + fh, order_, color);
+    gsKit_prim_sprite(gsGlobal, fx, fy, fx + fw, fy + fh, order_, faded(color));
     order_++;
 }
 
@@ -665,10 +667,10 @@ void Renderer::drawFramedRect(int x, int y, int w, int h, int border, u64 frameC
         by = 1;
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
-    gsKit_prim_sprite(gsGlobal, x0 + renderXOff_, y0 + renderYOff_, x1 + renderXOff_, y1 + renderYOff_, order_, frameColor);
+    gsKit_prim_sprite(gsGlobal, x0 + renderXOff_, y0 + renderYOff_, x1 + renderXOff_, y1 + renderYOff_, order_, faded(frameColor));
     order_++;
     if (x1 - x0 > 2 * bx && y1 - y0 > 2 * by) {
-        gsKit_prim_sprite(gsGlobal, x0 + bx + renderXOff_, y0 + by + renderYOff_, x1 - bx + renderXOff_, y1 - by + renderYOff_, order_, fillColor);
+        gsKit_prim_sprite(gsGlobal, x0 + bx + renderXOff_, y0 + by + renderYOff_, x1 - bx + renderXOff_, y1 - by + renderYOff_, order_, faded(fillColor));
         order_++;
     }
 }
@@ -681,7 +683,7 @@ void Renderer::drawLine(int x1, int y1, int x2, int y2, u64 color)
     float fy2 = scaleY(y2) + renderYOff_;
 
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
-    gsKit_prim_line(gsGlobal, fx1, fy1, fx2, fy2, order_, color);
+    gsKit_prim_line(gsGlobal, fx1, fy1, fx2, fy2, order_, faded(color));
     order_++;
 }
 
@@ -689,9 +691,14 @@ void Renderer::drawTriangles(GSTEXTURE *txt, int count, const float *xy, const f
 {
     // A texture without its own alpha channel (CT24) has none to blend with, so a fade uses the first
     // vertex's alpha as the GS's fixed blend factor instead; the default blend comes back afterwards.
+    // Under a fade (setFade) opaque triangles blend too, at the fade's alpha.
+    const int opaqueFaded = !blend && fade_ < 0x80;
+    if (opaqueFaded)
+        blend = 1;
+    auto vtx = [&](u64 c) { return opaqueFaded ? (c & ~(0xffull << 24)) | ((u64)fade_ << 24) : faded(c); };
     int fixed = blend && txt != NULL && count > 0 && txt->PSM != GS_PSM_CT32 && !(txt->Clut && txt->ClutPSM == GS_PSM_CT32);
     if (fixed)
-        gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 2, 1, (colors[0] >> 24) & 0xff), 0);
+        gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 2, 1, (vtx(colors[0]) >> 24) & 0xff), 0);
     gsGlobal->PrimAlphaEnable = blend ? GS_SETTING_ON : GS_SETTING_OFF;
     gsKit_set_test(gsGlobal, GS_ATEST_OFF);
     // One bind for the batch: nothing else binds between these triangles, so it stays resident.
@@ -706,9 +713,9 @@ void Renderer::drawTriangles(GSTEXTURE *txt, int count, const float *xy, const f
         float x2 = scaleX(xy[4]) + renderXOff_, y2 = scaleY(xy[5]) + renderYOff_;
         if (txt != NULL)
             gsKit_prim_triangle_goraud_texture_3d(gsGlobal, txt, x0, y0, order_, uv[0], uv[1], x1, y1, order_, uv[2], uv[3],
-                                                  x2, y2, order_, uv[4], uv[5], colors[0], colors[1], colors[2]);
+                                                  x2, y2, order_, uv[4], uv[5], vtx(colors[0]), vtx(colors[1]), vtx(colors[2]));
         else
-            gsKit_prim_triangle_gouraud_3d(gsGlobal, x0, y0, order_, x1, y1, order_, x2, y2, order_, colors[0], colors[1], colors[2]);
+            gsKit_prim_triangle_gouraud_3d(gsGlobal, x0, y0, order_, x1, y1, order_, x2, y2, order_, vtx(colors[0]), vtx(colors[1]), vtx(colors[2]));
     }
     order_++;
     if (fixed)
@@ -854,6 +861,15 @@ void Renderer::setOverscan(int overscan)
 
     if (interlacedFrameMode() == 1)
         renderYOff_ += 0.25f;
+    renderYOff_ += fadeRise_;
+}
+
+void Renderer::setFade(u8 alpha, float rise)
+{
+    fade_ = alpha;
+    float px = scaleY(rise);
+    renderYOff_ += px - fadeRise_;
+    fadeRise_ = px;
 }
 
 unsigned char Renderer::getHsync(void)
@@ -964,6 +980,11 @@ void rmDrawTriangles(GSTEXTURE *txt, int count, const float *xy, const float *uv
 void rmDrawBlendedTriangles(GSTEXTURE *txt, int count, const float *xy, const float *uv, const u64 *colors)
 {
     gRenderer.drawTriangles(txt, count, xy, uv, colors, 1);
+}
+
+void rmSetFade(u8 alpha, float rise)
+{
+    gRenderer.setFade(alpha, rise);
 }
 
 void rmSetDisplayOffset(int x, int y)

@@ -33,6 +33,8 @@ public:
     // Gouraud triangles in virtual 640x480 units; blend uses the vertex alpha (or, for a texture
     // without alpha, the first vertex's alpha as a fixed factor).
     void drawTriangles(GSTEXTURE *txt, int count, const float *xy, const float *uv, const u64 *colors, int blend);
+    // Fade everything drawn after this call to alpha/0x80 and draw it `rise` virtual pixels lower (0x80, 0 = off).
+    void setFade(u8 alpha, float rise);
     void setDisplayOffset(int x, int y);
     void setAspectRatio(enum rm_aratio dar);
     int wideScale(int x);
@@ -52,6 +54,13 @@ private:
     void drawReflection(GSTEXTURE *txt, rm_quad_t *q, float bottomY, float botV);
     int interlacedFrameMode();
     void applyLineBlend(void);
+    // `c` with its alpha scaled by the fade (setFade); unchanged while no fade is set.
+    u64 faded(u64 c) const
+    {
+        if (fade_ >= 0x80)
+            return c;
+        return (c & ~(0xffull << 24)) | ((((c >> 24) & 0xff) * fade_ >> 7) << 24);
+    }
 
     // 640x480 virtual -> display pixels (after overscan).
     template <typename T>
@@ -87,6 +96,10 @@ private:
     // Transposition values including overscan compensation
     float renderXOff_ = 0.0f;
     float renderYOff_ = 0.0f;
+
+    // setFade: the alpha (0x80 = none) and the display pixels renderYOff_ is lifted by.
+    u8 fade_ = 0x80;
+    float fadeRise_ = 0.0f;
 
     // Vertical offset (px) applied to the coverflow reflection; set per-element by drawCoverFlow
     // from the theme's reflection_offset. 0 = flush under the cover, negative = up, positive = down.

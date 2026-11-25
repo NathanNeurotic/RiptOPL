@@ -293,6 +293,8 @@ Special and sincere thanks to:
     The unchanged driver pair, archive hash and complete upstream license/credit
     notices are preserved under ship/POPS/UDPFS-NOTICES/.
   - pcm720 - for udpfsd and nhddl, key foundations for modern PS2 streaming.
+  - Daniel (danielnuld) - creator of NULD (https://github.com/danielnuld/nuld).
+    The hold-L3 layout switch is modelled on NULD's view switch.
   - Ronnie Sahlberg (sahlberg) - for usmb2, the base of the fork's SMB2
     driver (https://github.com/sahlberg/usmb2), for libsmb2, which it used
     before, for unfs4, the NFS client under the NFS browse driver

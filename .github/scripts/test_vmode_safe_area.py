@@ -62,7 +62,7 @@ struct Renderer {
     short int vmode_ = -1;
     enum rm_aratio dar_ = RM_ARATIO_4_3;
     int displayXOff_ = 0, displayYOff_ = 0, displayWidth_ = 0, displayHeight_ = 0;
-    float renderXOff_ = 0, renderYOff_ = 0;
+    float renderXOff_ = 0, renderYOff_ = 0, fadeRise_ = 0;
     void setOverscan(int overscan);
     float getPAR();
     int interlacedFrameMode();
