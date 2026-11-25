@@ -80,9 +80,55 @@ if funcs:
         if subprocess.run([str(exe)]).returncode != 0:
             failures.append('clock shift harness failed')
 
-# The local offset uses PS2SDK's readers (sign, unset config and DTL-T10000 handled there).
-if 'configGetTimezone() - 540 + (configIsDaylightSavingEnabled() ? 60 : 0)' not in settings:
-    failures.append('guiClockLocalOffset must be configGetTimezone() - 540 (+60 with daylight saving)')
+# The local offset: the Time Zone row's choice, or the console's own pair through PS2SDK's readers (sign,
+# unset config and DTL-T10000 handled there) while the row says Console.
+if 'guiClockZoneOffset(gClockZone, gClockSummer, configGetTimezone(), configIsDaylightSavingEnabled())' not in settings:
+    failures.append('guiClockLocalOffset must pass the saved choice and the console pair to guiClockZoneOffset')
+zones = re.search(r'^static const short guiClockZones\[\] = \{.*?\};\n#define GUI_CLOCK_ZONES [^\n]*\n', settings, re.M | re.S)
+zone_funcs = function_text(settings, 'static int guiClockZoneOffset(') + function_text(settings, 'static void guiClockZoneText(')
+if zones is None:
+    failures.append('guisettings.cpp: guiClockZones not found')
+elif zone_funcs:
+    ZONE = r"""
+#include <stdio.h>
+#include <string.h>
+#define CLOCK_ZONE_CONSOLE 0x7FFF
+@ZONES@
+@FUNCS@
+int main(void) {
+    int bad = 0, i; char s[16];
+    /* Console: the console's own zone and summer time, whatever the Summer Time row holds. */
+    if (guiClockZoneOffset(CLOCK_ZONE_CONSOLE, 1, -300, 0) != -840) { printf("FAIL console zone\n"); bad = 1; }
+    if (guiClockZoneOffset(CLOCK_ZONE_CONSOLE, 0, -300, 1) != -780) { printf("FAIL console summer\n"); bad = 1; }
+    if (guiClockZoneOffset(CLOCK_ZONE_CONSOLE, 0, 540, 0) != 0) { printf("FAIL console Japan\n"); bad = 1; }
+    /* A chosen zone ignores the console pair: a console left on Japan, user in UTC-5, was 14 h ahead. */
+    if (guiClockZoneOffset(-300, 0, 540, 0) != -840) { printf("FAIL chosen zone\n"); bad = 1; }
+    if (guiClockZoneOffset(-300, 1, 540, 0) != -780) { printf("FAIL chosen summer\n"); bad = 1; }
+    if (guiClockZoneOffset(0, 0, 540, 1) != -540) { printf("FAIL UTC is a choice, not Console\n"); bad = 1; }
+    /* A saved value that is not on the list falls back to the console. */
+    if (guiClockZoneOffset(7, 1, 60, 0) != -480) { printf("FAIL unknown zone\n"); bad = 1; }
+    for (i = 0; i < GUI_CLOCK_ZONES; i++) {
+        if (guiClockZones[i] < -720 || guiClockZones[i] > 840 || guiClockZones[i] % 15 || (i && guiClockZones[i] <= guiClockZones[i - 1])) { printf("FAIL zone list entry %d\n", i); bad = 1; }
+        if (guiClockZoneOffset(guiClockZones[i], 1, 0, 0) != guiClockZones[i] - 480) { printf("FAIL zone %d\n", i); bad = 1; }
+    }
+    guiClockZoneText(s, sizeof(s), -570); if (strcmp(s, "UTC-09:30")) { printf("FAIL text %s\n", s); bad = 1; }
+    guiClockZoneText(s, sizeof(s), 345); if (strcmp(s, "UTC+05:45")) { printf("FAIL text %s\n", s); bad = 1; }
+    guiClockZoneText(s, sizeof(s), 0); if (strcmp(s, "UTC+00:00")) { printf("FAIL text %s\n", s); bad = 1; }
+    if (!bad) printf("PASS: time zone choice (%d zones, Console default, summer time, unknown value)\n", GUI_CLOCK_ZONES);
+    return bad;
+}
+"""
+    cc = shutil.which('cc') or shutil.which('gcc')
+    with tempfile.TemporaryDirectory() as d:
+        c = Path(d) / 'z.c'
+        c.write_text(ZONE.replace('@ZONES@', zones.group(0)).replace('@FUNCS@', zone_funcs), encoding='utf-8')
+        exe = Path(d) / 'z'
+        subprocess.run([cc, '-std=gnu99', '-Wall', '-Werror', str(c), '-o', str(exe)], check=True)
+        if subprocess.run([str(exe)]).returncode != 0:
+            failures.append('time zone harness failed')
+# Cancel keeps the saved zone; a zone-only OK leaves the clock (and its seconds) alone.
+if 'memcmp(t, guiClockShown, sizeof(t)) == 0' not in function_text(settings, 'int guiShowDateTime('):
+    failures.append('guiShowDateTime: OK with untouched date rows must not rewrite the clock')
 # The write rebuilds the request on each try (the reply overwrites it) and checks the command error bit.
 show = function_text(settings, 'int guiShowDateTime(')
 write = function_text(settings, 'static int guiClockWrite(')
@@ -107,7 +153,8 @@ if not re.search(r'id == MENU_DATE_TIME\) \{\s*if \(menuCheckParentalLock\(\) ==
 if 'CFG_DATETIME_BUTTON' in dialogs or 'CFG_DATETIME_BUTTON' in settings:
     failures.append('Date and Time must have one menu location')
 for label in ('DATE_TIME', 'HINT_DATE_TIME', 'DATE', 'TIME', 'DATE_TIME_ERROR', 'DATE_TIME_SYNC', 'HINT_DATE_TIME_SYNC',
-              'DATE_TIME_SYNCING', 'DATE_TIME_SYNCED', 'DATE_TIME_SYNC_ERROR'):
+              'DATE_TIME_SYNCING', 'DATE_TIME_SYNCED', 'DATE_TIME_SYNC_ERROR', 'TIME_ZONE', 'HINT_TIME_ZONE',
+              'TIME_ZONE_CONSOLE', 'SUMMER_TIME', 'HINT_SUMMER_TIME'):
     if not re.search(r'^(?:- |\s+)label: %s$' % label, base, re.M):
         failures.append('_base.yml: label %s missing' % label)
 

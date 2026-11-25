@@ -361,6 +361,9 @@ enum UI_ITEMS {
     DATETIME_HOUR,
     DATETIME_MINUTE,
     DATETIME_SYNC, // Date and Time: Set from Internet
+    DATETIME_ZONE, // Time Zone: Console, then guiClockZones
+    DATETIME_SUMMER_LBL,
+    DATETIME_SUMMER,
 
 #ifdef PADEMU
     PADEMU_GLOBAL_BUTTON,

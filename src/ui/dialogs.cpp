@@ -911,7 +911,7 @@ struct UIItem diaLanguageConfig[] = {
     {UI_BREAK},
     {UI_TERMINATOR}};
 
-// Date and Time edits the console clock using the console's time zone.
+// Date and Time edits the console clock in the chosen time zone (the console's own by default).
 struct UIItem diaDateTimeConfig[] = {
     {UI_HEADER, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_DATE_TIME}}},
     {UI_SPLITTER},
@@ -930,6 +930,16 @@ struct UIItem diaDateTimeConfig[] = {
     {UI_INT, DATETIME_HOUR, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {0, 0, 0, 23}}},
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {":", -1}}},
     {UI_INT, DATETIME_MINUTE, 1, 1, _STR_HINT_DATE_TIME, 0, 0, {.intvalue = {0, 0, 0, 59}}},
+    {UI_BREAK},
+
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_TIME_ZONE}}},
+    {UI_SPACER},
+    {UI_ENUM, DATETIME_ZONE, 1, 1, _STR_HINT_TIME_ZONE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+
+    {UI_LABEL, DATETIME_SUMMER_LBL, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SUMMER_TIME}}},
+    {UI_SPACER},
+    {UI_BOOL, DATETIME_SUMMER, 1, 1, _STR_HINT_SUMMER_TIME, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
 
     {UI_BUTTON, DATETIME_SYNC, 1, 1, _STR_HINT_DATE_TIME_SYNC, 0, 0, {.label = {NULL, _STR_DATE_TIME_SYNC}}},

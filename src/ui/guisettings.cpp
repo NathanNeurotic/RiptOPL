@@ -2286,9 +2286,36 @@ static int guiClockShift(int *t, int minutes)
     return t[0] >= 2000 && t[0] <= 2099;
 }
 
+// Time Zone choices, in minutes east of UTC. CLOCK_ZONE_CONSOLE (the default) follows the console's own
+// time zone and summer time; any other choice uses the Summer Time row below it instead.
+static const short guiClockZones[] = {-720, -660, -600, -570, -540, -480, -420, -360, -300, -240, -210, -180, -120, -60, 0,
+                                      60, 120, 180, 210, 240, 270, 300, 330, 345, 360, 390, 420, 480, 525, 540, 570, 600,
+                                      630, 660, 720, 765, 780, 840};
+#define GUI_CLOCK_ZONES ((int)(sizeof(guiClockZones) / sizeof(guiClockZones[0])))
+
+// Minutes from the clock's Japan time to local time. zone and summer are the saved choice; the console's
+// own pair is used while zone is CLOCK_ZONE_CONSOLE or is not one of the choices.
+static int guiClockZoneOffset(int zone, int summer, int consoleZone, int consoleSummer)
+{
+    int i;
+
+    for (i = 0; i < GUI_CLOCK_ZONES; i++)
+        if (guiClockZones[i] == zone)
+            return zone - 540 + (summer ? 60 : 0);
+    return consoleZone - 540 + (consoleSummer ? 60 : 0);
+}
+
+// "UTC+05:30" for 330.
+static void guiClockZoneText(char *out, int size, int minutes)
+{
+    int a = minutes < 0 ? -minutes : minutes;
+
+    snprintf(out, size, "UTC%c%02d:%02d", minutes < 0 ? '-' : '+', a / 60, a % 60);
+}
+
 static int guiClockLocalOffset(void)
 {
-    return configGetTimezone() - 540 + (configIsDaylightSavingEnabled() ? 60 : 0);
+    return guiClockZoneOffset(gClockZone, gClockSummer, configGetTimezone(), configIsDaylightSavingEnabled());
 }
 
 // Set from Internet runs on the I/O thread, as the network settings do; the GUI shows a wait message.
@@ -2319,11 +2346,109 @@ static int guiClockWrite(const int t[5], int second)
     return 0;
 }
 
+// The dialog's rows show local time under the zone picked in it. A change of zone moves the shown time,
+// not the clock: guiClockShown is what the rows held when nothing had been typed.
+static int guiClockOff, guiClockShown[5];
+static const int guiClockIds[5] = {DATETIME_YEAR, DATETIME_MONTH, DATETIME_DAY, DATETIME_HOUR, DATETIME_MINUTE};
+
+static int guiClockDialogOffset(void)
+{
+    int index = 0, summer = 0;
+
+    diaGetInt(diaDateTimeConfig, DATETIME_ZONE, &index);
+    diaGetInt(diaDateTimeConfig, DATETIME_SUMMER, &summer);
+    return guiClockZoneOffset(index >= 1 && index <= GUI_CLOCK_ZONES ? guiClockZones[index - 1] : CLOCK_ZONE_CONSOLE, summer,
+                              configGetTimezone(), configIsDaylightSavingEnabled());
+}
+
+static int guiClockPickIndex, guiClockPickSummer; // the picker as last accepted
+
+static int guiClockZoneUpdater(int modified)
+{
+    int index = 0, summer = 0, off, i, t[5], shown[5], ok;
+
+    if (!modified)
+        return 0;
+    diaGetInt(diaDateTimeConfig, DATETIME_ZONE, &index);
+    diaGetInt(diaDateTimeConfig, DATETIME_SUMMER, &summer);
+    off = guiClockDialogOffset();
+    if (off != guiClockOff) {
+        for (i = 0; i < 5; i++) {
+            diaGetInt(diaDateTimeConfig, guiClockIds[i], &t[i]);
+            shown[i] = guiClockShown[i];
+        }
+        // Two steps: the two zones can be more than a day apart, and one shift moves less than a day.
+        ok = t[2] <= guiClockDaysIn(t[0], t[1]) && guiClockShift(t, -guiClockOff) && guiClockShift(t, off);
+        if (ok && guiClockShown[0] != 0)
+            ok = guiClockShift(shown, -guiClockOff) && guiClockShift(shown, off);
+        if (!ok) {
+            // The time cannot be shown in that zone (outside 2000-2099, or a day the month lacks). Keep the
+            // zone the rows are in: OK would otherwise save the new zone against rows of the old one.
+            index = guiClockPickIndex;
+            diaSetInt(diaDateTimeConfig, DATETIME_ZONE, index);
+            diaSetInt(diaDateTimeConfig, DATETIME_SUMMER, guiClockPickSummer);
+            diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER_LBL, index != 0);
+            diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER, index != 0);
+            return 0;
+        }
+        for (i = 0; i < 5; i++) {
+            diaSetInt(diaDateTimeConfig, guiClockIds[i], t[i]);
+            if (guiClockShown[0] != 0)
+                guiClockShown[i] = shown[i];
+        }
+        guiClockOff = off;
+    }
+    guiClockPickIndex = index;
+    guiClockPickSummer = summer;
+    diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER_LBL, index != 0);
+    diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER, index != 0);
+    return 0;
+}
+
+// Keeps the dialog's Time Zone and Summer Time. Cancel never reaches this.
+static void guiClockZoneKeep(void)
+{
+    int index = 0, summer = 0, zone;
+
+    diaGetInt(diaDateTimeConfig, DATETIME_ZONE, &index);
+    diaGetInt(diaDateTimeConfig, DATETIME_SUMMER, &summer);
+    zone = index >= 1 && index <= GUI_CLOCK_ZONES ? guiClockZones[index - 1] : CLOCK_ZONE_CONSOLE;
+    summer = summer != 0;
+    if (zone == gClockZone && summer == gClockSummer)
+        return;
+    gClockZone = zone;
+    gClockSummer = summer;
+    host::app().saveConfig(CONFIG_OPL, 1);
+}
+
 int guiShowDateTime(void)
 {
-    static const int ids[5] = {DATETIME_YEAR, DATETIME_MONTH, DATETIME_DAY, DATETIME_HOUR, DATETIME_MINUTE};
-    int t[5], i, ok, result;
+    static char zoneText[GUI_CLOCK_ZONES + 1][40];
+    static const char *zoneVals[GUI_CLOCK_ZONES + 2];
+    const int *ids = guiClockIds;
+    int t[5], i, ok, result, index = 0;
     sceCdCLOCK clk;
+
+    // "Console (UTC-05:00)": the console's own zone is shown, so a console set to the wrong one is plain to see.
+    guiClockZoneText(zoneText[1], sizeof(zoneText[1]), configGetTimezone());
+    snprintf(zoneText[0], sizeof(zoneText[0]), "%s (%s%s)", _l(_STR_TIME_ZONE_CONSOLE), zoneText[1], configIsDaylightSavingEnabled() ? " +1 h" : "");
+    zoneVals[0] = zoneText[0];
+    for (i = 0; i < GUI_CLOCK_ZONES; i++) {
+        guiClockZoneText(zoneText[i + 1], sizeof(zoneText[i + 1]), guiClockZones[i]);
+        zoneVals[i + 1] = zoneText[i + 1];
+        if (guiClockZones[i] == gClockZone)
+            index = i + 1;
+    }
+    zoneVals[GUI_CLOCK_ZONES + 1] = NULL;
+    diaSetEnum(diaDateTimeConfig, DATETIME_ZONE, zoneVals);
+    diaSetInt(diaDateTimeConfig, DATETIME_ZONE, index);
+    diaSetInt(diaDateTimeConfig, DATETIME_SUMMER, gClockSummer != 0);
+    diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER_LBL, index != 0);
+    diaSetVisible(diaDateTimeConfig, DATETIME_SUMMER, index != 0);
+    guiClockOff = guiClockLocalOffset();
+    guiClockPickIndex = index;
+    guiClockPickSummer = gClockSummer != 0;
+    guiClockShown[0] = 0;
 
     if (sceCdReadClock(&clk) && !clk.stat) {
         t[0] = 2000 + btoi(clk.year);
@@ -2331,12 +2456,14 @@ int guiShowDateTime(void)
         t[2] = btoi(clk.day);
         t[3] = btoi(clk.hour);
         t[4] = btoi(clk.minute);
-        if (t[1] >= 1 && t[1] <= 12 && t[2] >= 1 && t[2] <= guiClockDaysIn(t[0], t[1]) && t[3] < 24 && t[4] < 60 && guiClockShift(t, guiClockLocalOffset()))
-            for (i = 0; i < 5; i++)
+        if (t[1] >= 1 && t[1] <= 12 && t[2] >= 1 && t[2] <= guiClockDaysIn(t[0], t[1]) && t[3] < 24 && t[4] < 60 && guiClockShift(t, guiClockOff))
+            for (i = 0; i < 5; i++) {
                 diaSetInt(diaDateTimeConfig, ids[i], t[i]);
+                guiClockShown[i] = t[i];
+            }
     }
 
-    while ((result = diaExecuteDialog(diaDateTimeConfig, -1, 1, NULL)) == UIID_BTN_OK || result == DATETIME_SYNC) {
+    while ((result = diaExecuteDialog(diaDateTimeConfig, -1, 1, &guiClockZoneUpdater)) == UIID_BTN_OK || result == DATETIME_SYNC) {
         if (result == DATETIME_SYNC) {
 #ifdef RIPTOPL_UPDATER
             // UDPBD or UDPFS holds the network adapter: reset the IOP to take it for the request and again
@@ -2355,7 +2482,7 @@ int guiShowDateTime(void)
                 guiMsgBox(_l(guiClockSyncResult == NETTIME_ERR_NETBUSY ? _STR_UPDATE_ERR_NETBUSY : guiClockSyncResult == NETTIME_ERR_NETWORK ? _STR_UPDATE_ERR_NETWORK : _STR_DATE_TIME_SYNC_ERROR), 0, NULL);
                 continue;
             }
-            // UTC to the clock's Japan time.
+            // UTC to the clock's Japan time. The time zone plays no part in what is written.
             for (i = 0; i < 5; i++)
                 t[i] = guiClockSyncTime[i];
             ok = guiClockShift(t, 540) && guiClockWrite(t, guiClockSyncTime[5] > 59 ? 59 : guiClockSyncTime[5]);
@@ -2365,15 +2492,24 @@ int guiShowDateTime(void)
                 selfUpdateGiveNic();
 #endif
             guiMsgBox(_l(ok ? _STR_DATE_TIME_SYNCED : _STR_DATE_TIME_ERROR), 0, NULL);
-            if (ok)
+            if (ok) {
+                guiClockZoneKeep();
                 return 1;
+            }
             continue;
         }
         for (i = 0; i < 5; i++)
             diaGetInt(diaDateTimeConfig, ids[i], &t[i]);
-        ok = t[2] <= guiClockDaysIn(t[0], t[1]) && guiClockShift(t, -guiClockLocalOffset());
-        if (ok && guiClockWrite(t, 0))
+        // Only a new time zone: the clock is right already and keeps its seconds.
+        if (guiClockShown[0] != 0 && memcmp(t, guiClockShown, sizeof(t)) == 0) {
+            guiClockZoneKeep();
             return 1;
+        }
+        ok = t[2] <= guiClockDaysIn(t[0], t[1]) && guiClockShift(t, -guiClockOff);
+        if (ok && guiClockWrite(t, 0)) {
+            guiClockZoneKeep();
+            return 1;
+        }
         guiMsgBox(_l(_STR_DATE_TIME_ERROR), 0, NULL); // the dialog then shows the entries again
     }
     return 0;

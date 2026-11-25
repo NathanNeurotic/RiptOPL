@@ -306,6 +306,8 @@ int gPadMacroSettings;
 int gScrollSpeed;
 char gExitPath[256];
 int gExitMenu; // EXIT_MENU_*: where the main menu's Exit goes
+int gClockZone = CLOCK_ZONE_CONSOLE;
+int gClockSummer;
 char gCustomSettingsPath[64];
 int gEnableDebug;
 int gPS2Logo;
