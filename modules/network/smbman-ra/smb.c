@@ -765,7 +765,7 @@ int smb_QueryInformationDisk(int UID, int TID, smbQueryDiskInfo_out_t *QueryInfo
 }
 
 //-------------------------------------------------------------------------
-int smb_QueryPathInformation(int UID, int TID, PathInformation_t *Info, char *Path)
+int smb_QueryPathInformation(int UID, int TID, PathInformation_t *Info, char *Path, int basicOnly)
 {
     int r, PathLen, queryType;
     QueryPathInformationRequest_t *QPIR    = &SMB_buf.smb.queryPathInformationRequest;
@@ -844,6 +844,10 @@ query:
         Info->LastWrite      = BFI->LastWrite;
         Info->Change         = BFI->Change;
         Info->FileAttributes = BFI->FileAttributes;
+
+        // dopen only needs the attributes: one request per folder instead of two
+        if (basicOnly)
+            return 0;
 
         // a 2nd query is done with SMB_QUERY_FILE_STANDARD_INFO LevelOfInterest to get a valid 64bit size
         queryType = SMB_QUERY_FILE_STANDARD_INFO;
@@ -1020,7 +1024,7 @@ static int smb_LegacyOpenAndX(int UID, int TID, char *filename, s64 *filesize, i
 
     r = (int)ORsp->FID;
 
-    if (smb_QueryPathInformation(UID, TID, &info, filename) >= 0)
+    if (smb_QueryPathInformation(UID, TID, &info, filename, 0) >= 0)
         *filesize = info.EndOfFile;
     else
         r = -1;

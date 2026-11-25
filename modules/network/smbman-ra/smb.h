@@ -890,7 +890,7 @@ extern int smb_TreeConnectAndX(int UID, char *ShareName, char *Password, int Pas
 extern int smb_TreeDisconnect(int UID, int TID);
 extern int smb_NetShareEnum(int UID, int TID, ShareEntry_t *shareEntries, int index, int maxEntries);
 extern int smb_QueryInformationDisk(int UID, int TID, smbQueryDiskInfo_out_t *QueryInformationDisk);
-extern int smb_QueryPathInformation(int UID, int TID, PathInformation_t *Info, char *Path);
+extern int smb_QueryPathInformation(int UID, int TID, PathInformation_t *Info, char *Path, int basicOnly);
 extern int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info, u8 *batch, int batchSize, int *count);
 extern int smb_FindEntry(const u8 *entry, SearchInfo_t *info);
 extern int smb_FindClose2(int UID, int TID, int SID);

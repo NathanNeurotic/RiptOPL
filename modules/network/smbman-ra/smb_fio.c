@@ -568,7 +568,7 @@ int smb_rmdir(iop_file_t *f, const char *dirname)
 
     smb_io_lock();
 
-    r = smb_QueryPathInformation(UID, TID, &info, path);
+    r = smb_QueryPathInformation(UID, TID, &info, path, 0);
     if (r < 0) {
         goto io_unlock;
     }
@@ -670,7 +670,7 @@ int smb_dopen(iop_file_t *f, const char *dirname)
     smb_io_lock();
 
     // test if the dir exists
-    r = smb_QueryPathInformation(UID, TID, &info, path);
+    r = smb_QueryPathInformation(UID, TID, &info, path, 1);
     if (r < 0) {
         goto io_unlock;
     }
@@ -806,7 +806,7 @@ int smb_getstat(iop_file_t *f, const char *filename, iox_stat_t *stat)
 
     memset((void *)stat, 0, sizeof(iox_stat_t));
 
-    r = smb_QueryPathInformation(UID, TID, &info, path);
+    r = smb_QueryPathInformation(UID, TID, &info, path, 0);
     if (r < 0) {
         goto io_unlock;
     }
@@ -875,7 +875,7 @@ int smb_chdir(iop_file_t *f, const char *dirname)
     } else if (path[strlen(path) - 1] == '.') {
         smb_curdir[0] = 0;
     } else {
-        r = smb_QueryPathInformation(UID, TID, &info, path);
+        r = smb_QueryPathInformation(UID, TID, &info, path, 0);
         if (r < 0) {
             goto io_unlock;
         }
