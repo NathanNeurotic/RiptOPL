@@ -47,5 +47,11 @@ LOCAL CHANGES (marked "RiptOPL" where they are not whole functions):
    chain write failed partway and left clusters marked with no owner. The count now restarts
    where the walk wraps; a run that ends on the last cluster is still found. Reachable only when
    the volume's first clusters are free. Tests: test_fatfs_free_run_wrap.py, test_exfat_bitmap_scan.py.
+8. fatfs/ff.c find_bitmap: at the start of a bitmap sector the scan reads up to 16 sectors in one request
+   and passes every leading sector whose clusters are all in use. The window is one sector per request,
+   which on a large, mostly full volume was thousands of requests before the first free cluster, on the
+   first allocation after a mount. The window is written out first if it was changed, a failed read
+   leaves the work to the plain scan, and the step stops short of the wrap and of the cluster the scan
+   started from. Same result as the plain scan. Tests: test_exfat_bitmap_scan.py.
 
 The sources keep their upstream formatting (.clang-format-ignore) so they diff cleanly against the pins.

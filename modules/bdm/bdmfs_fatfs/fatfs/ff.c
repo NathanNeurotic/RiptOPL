@@ -1327,12 +1327,50 @@ static DWORD find_bitmap (	/* 0:Not found, 2..:Cluster block found, 0xFFFFFFFF:D
 	BYTE bm, bv;
 	UINT i;
 	DWORD val, scl, ctr;
+	/* RiptOPL: see the block at the top of the loop. One buffer for every volume: all calls into
+	   this file are made under the driver's single lock (src/fs_driver.c _fs_lock). */
+	static DWORD bulk[16 * FF_MAX_SS / 4];
+	UINT hold = 0, n, k, w;
+	DWORD lim;
 
 
 	clst -= 2;	/* The first bit in the bitmap corresponds to cluster #2 */
 	if (clst >= fs->n_fatent - 2) clst = 0;
 	scl = val = clst; ctr = 0;
 	for (;;) {
+		/* RiptOPL: at the start of a bitmap sector, read up to 16 sectors in one request and pass
+		   every leading sector whose clusters are all in use. The window below is one sector per
+		   request, which on a large, mostly full volume is thousands of requests before the first
+		   free cluster. Like the byte step below, this never crosses the wrap or the cluster the
+		   scan started from, and a sector that is not full is left to the plain scan. After such a
+		   sector the next ones in that read go to the plain scan too, so a fragmented stretch is
+		   not read twice over. A failed read here is not an error: the plain scan repeats it. */
+		if (hold) {
+			hold--;
+		} else {
+			while (val % (8 * SS(fs)) == 0) {
+				lim = (fs->n_fatent - 2 - val - 1) / (8 * SS(fs));
+				n = (lim > 16) ? 16 : (UINT)lim;
+				if (clst > val) {
+					lim = (clst - val - 1) / (8 * SS(fs));
+					if (lim < n) n = (UINT)lim;
+				}
+				if (n == 0) break;
+				if (sync_window(fs) != FR_OK) return 0xFFFFFFFF;
+				if (disk_read(fs->pdrv, (BYTE*)bulk, fs->bitbase + val / 8 / SS(fs), n) != RES_OK) break;
+				for (k = 0; k < n; k++) {
+					for (w = 0; w < SS(fs) / 4 && bulk[k * (SS(fs) / 4) + w] == 0xFFFFFFFF; w++) ;
+					if (w < SS(fs) / 4) break;
+				}
+				if (k) {
+					val += (DWORD)k * 8 * SS(fs); scl = val; ctr = 0;
+				}
+				if (k < n) {
+					hold = n - k - 1;
+					break;
+				}
+			}
+		}
 		if (move_window(fs, fs->bitbase + val / 8 / SS(fs)) != FR_OK) return 0xFFFFFFFF;
 		i = val / 8 % SS(fs); bm = 1 << (val % 8);
 		do {
