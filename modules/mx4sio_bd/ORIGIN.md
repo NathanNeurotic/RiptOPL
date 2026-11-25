@@ -41,3 +41,9 @@ Unaligned buffers: port of Rick Gaiser's ps2dev/ps2sdk#959 (commit
 Reads and writes with a buffer that is not word aligned go one sector at a
 time through an aligned bounce buffer; the alignment test casts through
 `uintptr_t` so the host harnesses build on 64-bit hosts.
+
+Card detect unmount order (local): `sd_detect()` used to call `bdm_disconnect_bd()` while it still
+held the SIO2 lock. The unmount takes the filesystem lock, and a file operation holds that lock
+while it waits for the SIO2 lock, so a failed card check at that moment left both waiting forever
+(and the pads, which share SIO2, with them). The disconnect now runs after the unlock.
+Test: `.github/scripts/test_mx4sio_detect_unlock.py`.
