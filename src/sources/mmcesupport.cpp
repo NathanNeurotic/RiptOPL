@@ -184,6 +184,7 @@ int MmceSupport::sendGameID(const char *startup, const char *protectMcPath, int 
             continue;
 
         gameIdTargetMask |= (1 << slot);
+        diagLog("gameid %s (%s): sent", startup, mmceDevice);
     }
 
     if (gameIdTargetMask == 0)
