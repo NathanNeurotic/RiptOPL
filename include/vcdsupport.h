@@ -29,6 +29,7 @@ typedef struct
 {
     char name[VCD_NAME_MAX]; // VCD basename WITHOUT ".VCD" (the POPSTARTER selector game name)
     u32 sizeMB;              // vcdScanDirRoot only (0 otherwise): the file size, read while mounted
+    unsigned char cue;       // 1: listed from a UDPFS POPS/<name>.cue with no real .VCD beside it (#Format CUE)
 } vcd_entry_t;
 
 

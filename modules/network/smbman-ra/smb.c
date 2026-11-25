@@ -765,7 +765,7 @@ int smb_QueryInformationDisk(int UID, int TID, smbQueryDiskInfo_out_t *QueryInfo
 }
 
 //-------------------------------------------------------------------------
-int smb_QueryPathInformation(int UID, int TID, PathInformation_t *Info, char *Path)
+int smb_QueryPathInformation(int UID, int TID, PathInformation_t *Info, char *Path, int basicOnly)
 {
     int r, PathLen, queryType;
     QueryPathInformationRequest_t *QPIR    = &SMB_buf.smb.queryPathInformationRequest;
@@ -844,6 +844,10 @@ query:
         Info->LastWrite      = BFI->LastWrite;
         Info->Change         = BFI->Change;
         Info->FileAttributes = BFI->FileAttributes;
+
+        // dopen only needs the attributes: one request per folder instead of two
+        if (basicOnly)
+            return 0;
 
         // a 2nd query is done with SMB_QUERY_FILE_STANDARD_INFO LevelOfInterest to get a valid 64bit size
         queryType = SMB_QUERY_FILE_STANDARD_INFO;
@@ -1020,7 +1024,7 @@ static int smb_LegacyOpenAndX(int UID, int TID, char *filename, s64 *filesize, i
 
     r = (int)ORsp->FID;
 
-    if (smb_QueryPathInformation(UID, TID, &info, filename) >= 0)
+    if (smb_QueryPathInformation(UID, TID, &info, filename, 0) >= 0)
         *filesize = info.EndOfFile;
     else
         r = -1;
@@ -1414,7 +1418,11 @@ static int smbFindFirstEmptyDosStatus(int cmd, u32 status)
 }
 
 //-------------------------------------------------------------------------
-int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info)
+// Batched search: with a batch buffer the server is asked for as many entries as fit in it, and
+// the reply is kept there because the next request reuses SMB_buf. One round trip per entry made a
+// folder of N entries cost N requests. A server that still answers one entry at a time works as
+// before. Without a buffer (batch == NULL) one entry is asked for and returned in info.
+int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info, u8 *batch, int batchSize, int *count)
 {
     int r, PathLen, offset;
     FindFirstNext2Request_t *FFNR    = &SMB_buf.smb.findFirstNext2Request;
@@ -1437,7 +1445,7 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
 
     FFNR->smbTrans.ParamOffset   = (sizeof(FindFirstNext2Request_t) + 3) & ~3; // Keep aligned to a 4-byte boundary as required.
     FFNR->smbTrans.MaxParamCount = 256;                                        // Max Parameters len in reply
-    FFNR->smbTrans.MaxDataCount  = MAX_SMB_BUF - FFNR->smbTrans.MaxParamCount; // Max Data len in reply
+    FFNR->smbTrans.MaxDataCount  = batch ? batchSize : MAX_SMB_BUF - FFNR->smbTrans.MaxParamCount; // Max Data len in reply
 
     // Zero Pad1.
     memset((void *)(FFNR + 1), 0, FFNR->smbTrans.ParamOffset - sizeof(FindFirstNext2Request_t));
@@ -1446,7 +1454,7 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
         FindFirst2RequestParam_t *FFRParam = (FindFirst2RequestParam_t *)&SMB_buf.smb.u8buff[FFNR->smbTrans.ParamOffset];
 
         FFRParam->SearchAttributes = ATTR_READONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_DIRECTORY | ATTR_ARCHIVE;
-        FFRParam->SearchCount      = 1;
+        FFRParam->SearchCount      = batch ? SMB_FIND_BATCH_COUNT : 1;
         FFRParam->Flags            = CLOSE_SEARCH_IF_EOS | RESUME_SEARCH;
         FFRParam->LevelOfInterest  = SMB_FIND_FILE_BOTH_DIRECTORY_INFO;
         FFRParam->StorageType      = 0;
@@ -1459,7 +1467,7 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
         FindNext2RequestParam_t *FNRParam = (FindNext2RequestParam_t *)&SMB_buf.smb.u8buff[FFNR->smbTrans.ParamOffset];
 
         FNRParam->SearchID        = (u16)info->SID;
-        FNRParam->SearchCount     = 1;
+        FNRParam->SearchCount     = batch ? SMB_FIND_BATCH_COUNT : 1;
         FNRParam->LevelOfInterest = SMB_FIND_FILE_BOTH_DIRECTORY_INFO;
         FNRParam->ResumeKey       = 0;
         FNRParam->Flags           = CLOSE_SEARCH_IF_EOS | RESUME_SEARCH | CONTINUE_SEARCH;
@@ -1527,6 +1535,45 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
     if (FFNRspParam->SearchCount == 0)
         return FFNRspParam->EndOfSearch ? 1 : -EIO;
 
+    if (batch != NULL) {
+        int n, off = 0, len = FFNRsp->smbTrans.DataCount;
+
+        if (len > batchSize || len != FFNRsp->smbTrans.TotalDataCount ||
+            FFNRsp->smbTrans.DataOffset + len > (int)sizeof(SMB_buf.smb) || FFNRsp->smbTrans.DataOffset + len > r)
+            return -EIO;
+        memcpy(batch, FFRspData, len);
+        // Walk the chain once here, so smb_dread can trust every offset it follows.
+        for (n = 0; n < FFNRspParam->SearchCount;) {
+            const FindFirst2ResponseData_t *e = (const FindFirst2ResponseData_t *)&batch[off];
+
+            // A zero name length would make the name decoder read up to the next NUL instead.
+            if (off + (int)sizeof(FindFirst2ResponseData_t) > len || e->FileNameLen == 0 ||
+                e->FileNameLen > (u32)(len - off - (int)sizeof(FindFirst2ResponseData_t)))
+                return -EIO;
+            n++;
+            if (e->NextEntryOffset == 0)
+                break;
+            if (e->NextEntryOffset > (u32)(len - off))
+                return -EIO;
+            off += e->NextEntryOffset;
+        }
+        if (n != FFNRspParam->SearchCount)
+            return -EIO;
+        *count = n;
+        return 0;
+    }
+
+    smb_FindEntry((const u8 *)FFRspData, info);
+
+    return 0;
+}
+
+//-------------------------------------------------------------------------
+// Fill info from one SMB_FIND_FILE_BOTH_DIRECTORY_INFO entry; returns the offset to the next one.
+int smb_FindEntry(const u8 *entry, SearchInfo_t *info)
+{
+    const FindFirst2ResponseData_t *FFRspData = (const FindFirst2ResponseData_t *)entry;
+
     info->fileInfo.Created        = FFRspData->Created;
     info->fileInfo.LastAccess     = FFRspData->LastAccess;
     info->fileInfo.LastWrite      = FFRspData->LastWrite;
@@ -1537,7 +1584,7 @@ int smb_FindFirstNext2(int UID, int TID, char *Path, int cmd, SearchInfo_t *info
     info->fileInfo.EndOfFile      = FFRspData->EndOfFile;
     getStringField(info->FileName, FFRspData->FileName, FFRspData->FileNameLen);
 
-    return 0;
+    return FFRspData->NextEntryOffset;
 }
 
 //-------------------------------------------------------------------------

@@ -96,6 +96,7 @@ public:
     virtual int viewActive(int mode) = 0;
     virtual int consumeDirty(int mode) = 0;
     virtual void markDirty(int mode) = 0;
+    virtual int viewPending(int mode) = 0;
     virtual int listRowView(item_list_t *itemList, int id) = 0;
     virtual int listSourceId(item_list_t *itemList, int id) = 0;
     // Borrowed presentation text; caller holds the GUI frame lock. Never reads CFG files.

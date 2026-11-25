@@ -755,13 +755,16 @@ static int vcdScanOpenDir(const char *dirPath, vcd_entry_t **outList, int statSi
                 dup = !strcmp(list[k].name, list[count].name);
             if (dup)
                 continue;
+            list[count].cue = 1;
             cueCount++;
         } else if (cueCount > 0) {
             int k = 0;
             while (k < count && strcmp(list[k].name, list[count].name) != 0)
                 k++;
-            if (k < count)
-                continue; // the cue row already stands for this game, and launches the .VCD
+            if (k < count) {
+                list[k].cue = 0; // the cue row already stands for this game, and launches the .VCD
+                continue;
+            }
         }
         gVcdSupport.noteScanDir(list[count].name, dirPath); // string only -- NO device IO on the scan path
         if (statSize) {
@@ -1108,6 +1111,8 @@ int vcdFillGameList(const char *devPrefix, base_game_info_t **outGames)
             snprintf(games[kept].extension, sizeof(games[kept].extension), ".VCD");
             games[kept].parts = 1;
             games[kept].format = GAME_FORMAT_ISO; // harmless; the per-mode VCD flag gates the launch path
+            // #Format badge only (a UDPFS cue sheet shows CUE); the VCD launch never reads media.
+            games[kept].media = vcds[i].cue ? CUE_IMAGE_CUE : 0;
             kept++;
         }
     }

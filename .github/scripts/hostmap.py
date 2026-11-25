@@ -26,6 +26,7 @@ HOST_TO_OLD = {
     'host::library().consumeDirty': 'libViewConsumeDirty', 'host::library().markDirty': 'libViewMarkDirty',
     'host::library().listRowView': 'libListRowView', 'host::library().listSourceId': 'libListSourceId',
     'host::library().bdmAttach': 'libViewBdmAttach',
+    'host::library().viewPending': 'libViewPending',
 }
 _RX = re.compile('|'.join(re.escape(k) for k in sorted(HOST_TO_OLD, key=len, reverse=True)))
 
