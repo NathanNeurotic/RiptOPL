@@ -80,8 +80,6 @@ public:
 
     // *start: see waitSwapDoneOn; NULL for a single look.
     int waitCardReady(const char *device, int *start);
-    // Wait for one slot's 0x8 GameID switch to begin and complete; 1 = settled, -1 = unconfirmed.
-    int waitGameIdSendOn(const char *device, int slot, const char *startup, int *start);
 
     MmceSlotState slots[MMCE_MODE_COUNT] = {};
     int modLoaded = 0;            // latched by loadModules; read by sendGameID's arm check
