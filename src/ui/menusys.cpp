@@ -2591,7 +2591,7 @@ static theme_elems_t *menuGetMainElems(item_list_t *list)
 }
 
 // After a layout switch, a list shows a full page around the cursor. Grid and the flow views leave the page start on
-// the cursor, so a List entered on the last game drew that one row.
+// the cursor, so a List entered on the last game drew that one row. menuRenderMain runs it before the page draws.
 static int menuViewSwitched;
 static void menuFillPage(void)
 {
@@ -2618,7 +2618,6 @@ void menuRenderMain(void)
         // the theme declared in the family (the one drawn), falling back to the slot this view used
         // before the family existed: the VCD list for the PS1 view, the favourites list for the ELF view.
         theme_element_t *slot = (kindElems == &gTheme->favsVcdMainElems) ? (gTheme->vcdItemsList ? gTheme->vcdItemsList : gTheme->gamesItemsList) : (gTheme->favsItemsList ? gTheme->favsItemsList : gTheme->gamesItemsList);
-        menuRenderElements(kindElems);
         gTheme->itemsList = thmFamilyItemsList(kindElems, slot, selected_item->item->icon_id);
     } else if (libViewActive(list->mode) == LIB_VIEW_PS1) {
         // VCD/PS1 listings render with the vcd family (vcdMain*; each slot falls back at parse time to
@@ -2626,24 +2625,22 @@ void menuRenderMain(void)
         // SEPARATE cover cache from the device's ISO list -- the view reuses the device's game list
         // (same item ids), so a shared cache thrashes on every L3 toggle. This also covers the
         // Favourites tab's own VCD view: VCD favourites render with the PS1 family, not the favs one.
-        menuRenderElements(menuGetMainElems(list));
         gTheme->itemsList = thmResolveItemsList(&gTheme->vcdMainElems, gTheme->vcdItemsList ? gTheme->vcdItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
     } else if (list->mode == FAV_MODE) {
-        menuRenderElements(menuGetMainElems(list));
         gTheme->itemsList = thmResolveItemsList(&gTheme->favsMainElems, gTheme->favsItemsList ? gTheme->favsItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
     } else if (list->mode == APP_MODE) {
-        menuRenderElements(menuGetMainElems(list));
         gTheme->itemsList = thmResolveItemsList(&gTheme->appsMainElems, gTheme->appsItemsList ? gTheme->appsItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
     } else {
-        menuRenderElements(menuGetMainElems(list));
         // Always falls back to gamesItemsList, never NULL: the scroll/paging code (menuNextV/PrevV/
         // Page) derefs gTheme->itemsList->extended with no NULL check.
         gTheme->itemsList = thmResolveItemsList(&gTheme->mainElems, gTheme->gamesItemsList, selected_item->item->icon_id);
     }
+    // The list is resolved before the page draws, so the first frame after a layout switch already shows the full page.
     if (menuViewSwitched) {
         menuViewSwitched = 0;
         menuFillPage();
     }
+    menuRenderElements(kindElems);
 }
 
 // Coverflow rotates the nav axis on the MAIN screen only: Left/Right step through the
