@@ -197,3 +197,11 @@
   .tc-wrap:not(.big) .tc-canvas-box { max-width: max(360px, calc((100vh - 330px) * 4 / 3)); }
   .tc-wrap:not(.big) .tc-canvas-box:has(#pv-canvas.wide) { max-width: max(360px, calc((100vh - 330px) * 16 / 9)); }
 }
+/* Zoom and RiptOPL pixel grid */
+.tc-zoom { position: relative; width: 100%; }
+.tc-canvas-box.zoomed { overflow: auto; max-height: 70vh; }
+.tc-canvas-box.zoomed #pv-canvas { image-rendering: pixelated; }
+/* touch: swipe to look around a zoomed preview (drag elements at Fit, or with the X/Y boxes) */
+.tc-canvas-box.zoomed #pv-over { touch-action: pan-x pan-y; }
+.tc-coords { margin: 4px 0 0; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; color: var(--muted, #9aa); min-height: 1.4em; }
+.tc-widetog { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 14px; }

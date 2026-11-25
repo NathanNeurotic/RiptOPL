@@ -127,6 +127,8 @@
     if (S.BUILTIN_ALL[name] && (this.useDefault || this.o.isBuiltin)) return this.a.builtin(name);
     return null;
   };
+  // themes.cpp thmLayoutAutoFitX, rounded the same way the renderer places elements
+  function autofitX(x) { return Math.round(320 + (x - 320) * 3 / 4); }
   Ctx.prototype.pos = function (e, def) {
     var p = e.props, t = S.TYPES[e.type] || {};
     function axis(v, d, size) {
@@ -146,10 +148,10 @@
     var al = p.aligned !== undefined ? (num(p.aligned, 0) === 0 ? 0 : num(p.aligned, 0) === 2 ? 2 : 1) : t.aligned;
     var sc = p.scaled !== undefined ? num(p.scaled, 1) !== 0 : !!t.scaled;
     // hd_autofit=1: 320 + (x - 320) * 3/4, for elements without their own 16:9 x (themes.cpp thmLayoutAutoFitX)
-    var m = this.b.map, blk = e.block;
+    var m = this.b.map, blk = e.block, af = false;
     if (this.wide && num(this.b.globals.hd_autofit, 0) === 1 && e.type !== "Background" && !t.presenter &&
-        !m.has(blk + "_x_hd") && !m.has(blk + "_wsX") && w !== W && !(t.image && !sc)) x = Math.round(320 + (x - 320) * 3 / 4);
-    return { x: x, y: y, w: w, h: h, al: al, sc: sc };
+        !m.has(blk + "_x_hd") && !m.has(blk + "_wsX") && w !== W && !(t.image && !sc)) { x = autofitX(x); af = true; }
+    return { x: x, y: y, w: w, h: h, al: al, sc: sc, af: af };
   };
   // rmDrawPixmap: anchor, size (null = the picture's own), 16:9 width rule for scaled elements
   Ctx.prototype.box = function (q, natW, natH) {
@@ -495,10 +497,10 @@
   function posOf(built, e, wide) {
     var q = Ctx.prototype.pos.call({ b: built, wide: wide }, e);
     var raw = Ctx.prototype.pos.call({ b: built, wide: false }, e);
-    q.kx = wide && q.x !== raw.x ? 0.75 : 1;
+    q.kx = q.af ? 0.75 : 1;
     q.rx = wide && q.sc ? 0.75 : 1; // drawn width per unit of width=
     q.ax = raw.x; q.ay = raw.y;      // the anchor as the file states it, before the 16:9 squeeze
     return q;
   }
-  g.RTC_RENDER = { render: render, posOf: posOf, GAMES: GAMES, W: W, H: H };
+  g.RTC_RENDER = { render: render, posOf: posOf, autofitX: autofitX, GAMES: GAMES, W: W, H: H };
 })(window);
