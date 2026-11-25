@@ -71,9 +71,6 @@ constexpr int GUI_SCREEN_ACHIEVEMENTS = 5;
 #endif
 
 void guiSwitchScreen(int target);
-// Fade the page's content out over its background, run `change` once it is gone (GUI thread, outside a frame), and
-// ease the new content back in (hold L3 layout switch, after NULD).
-void guiDipScreen(void (*change)(void));
 // The fade for the page's content this frame (0x80 = none) and its offset below its place in virtual pixels.
 u8 guiContentFade(float *rise);
 

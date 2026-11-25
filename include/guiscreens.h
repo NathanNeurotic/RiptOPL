@@ -20,12 +20,7 @@ public:
     void setCurrent(int screen);
     // Start the fade to `screen`; ignored while one is already running (or it could loop forever).
     void switchTo(int screen);
-    // Hold L3 switching the theme's layout, after NULD (danielnuld): the page's content fades out over its background,
-    // `change` runs on the GUI thread between frames once the content is gone, and the new content eases back in while
-    // settling up into place. The background stays on screen throughout. Ignored while a fade is already running.
-    void dipTo(void (*change)(void));
-    // True while input waits: a screen fade, or a layout switch until its change has run (the ease back in takes input).
-    bool transitioning() const;
+    bool transitioning() const { return target_ != nullptr; }
     // Hold the page's content at this fade (0x80 = none) on every frame shown, whatever else runs: a game launch
     // fades the content out behind the game's cover (Gui::playLaunchTransition).
     void holdContentFade(u8 alpha) { held_ = alpha; }
@@ -47,10 +42,7 @@ private:
     const Handler *current_ = nullptr; // lazily the menu screen
     const Handler *target_ = nullptr;
     int transIndex_ = 0;
-    void (*dipChange_)(void) = nullptr; // the change still to run once the content has faded out
-    int dipIndex_ = 0;                  // 0 = no layout switch, else its frame being drawn (1-based)
-    float dipRemain_ = 1.0f;            // the ease back in: the part of the way still to go
-    u8 fade_ = 0x80;                    // contentFade, set only while the screen draws
+    u8 fade_ = 0x80; // contentFade, set only while the screen draws
     float rise_ = 0.0f;
     u8 held_ = 0x80; // holdContentFade
 };
