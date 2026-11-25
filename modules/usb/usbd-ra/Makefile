@@ -4,7 +4,8 @@
 # and a CD-era game run off a USB stick loses its controller and its sound
 # at its first IOP reboot ever since -- Dynasty Warriors 2 on real hardware,
 # 10.09.2026, with the official OPL release as much as with this fork. The
-# source here is ps2sdk iop/usb/usbd as of 314d87e7 (01.04.2024), untouched;
+# source here is ps2sdk iop/usb/usbd as of 314d87e7 (01.04.2024), with one
+# change in usbd.c's _start (root-port scan for the menu, see there);
 # built with today's toolchain it plays. Only this Makefile is ours:
 # exports.o first for srxfixup, and no gp switching (USE_GP_REGISTER=0).
 # docs/PS2SDK-NOTES.md#usbd-usbd_mini has the ps2sdk side (issue #908).

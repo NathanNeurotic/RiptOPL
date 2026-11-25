@@ -19,6 +19,8 @@
 #include "hub.h"
 #include "usbio.h"
 
+void handleRhsc(void); // hcd.c
+
 #include "stdio.h"
 #include "sysclib.h"
 #include "thsemap.h"
@@ -403,7 +405,25 @@ int _start(int argc, char *argv[])
     sema.max     = 1;
     usbdSema     = CreateSema(&sema);
 
-    hcdInit();
+    /* RiptOPL: when loaded without options (the menu, and the IGR Path's USB pair), look at the
+       root-hub ports once after start-up. An IOP reboot does not reset the USB host controller or
+       its root hub. A stick left plugged in across one stays connected with its change bits
+       already cleared by the driver that ran before, so this driver gets no root-hub interrupt for
+       it and the stick stays missing until it is unplugged and plugged back in. Both ports are
+       disabled first (writing PORT_CONNECTION is OHCI's ClearPortEnable): a stick left enabled
+       keeps the address the old driver gave it and could answer for a new one. handleRhsc() is the
+       interrupt's own handler: it sees the connected port and starts the normal attach, whose port
+       resets go one at a time (delayResets), so two sticks are never both at address 0.
+       Current ps2sdk usbd reaches the same end by resetting both root ports at IOP reboot
+       (usbdRebootInner, hub_resets.c). In game USBD is always loaded with options (ee_core
+       iopmgr.c), so a game is not affected. */
+    if (hcdInit() == 0 && argc < 2) {
+        memPool.ohciRegs->HcRhPortStatus[0] = BIT(PORT_CONNECTION);
+        memPool.ohciRegs->HcRhPortStatus[1] = BIT(PORT_CONNECTION);
+        usbdLock();
+        handleRhsc();
+        usbdUnlock();
+    }
 
     dbg_printf("Init done\n");
     return MODULE_RESIDENT_END;
