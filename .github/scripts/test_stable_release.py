@@ -252,10 +252,10 @@ class StableReleaseTests(unittest.TestCase):
 
             # Notes: the recommended downloads first, then every file in the generated tables.
             self.assertTrue(notes.startswith("**RiptOPL 1.3.0** (`v1.3.0-4400`) - stable release"))
-            self.assertLess(notes.index("## Recommended downloads"), notes.index("<strong>Loaders</strong>"))
-            self.assertLess(notes.index("<strong>Loaders</strong>"), notes.index("## Updating"))
-            self.assertIn("- **[RIPTOPL-v1.3.0-4400.zip]"
-                          "(https://github.com/NathanNeurotic/RiptOPL/releases/download/v1.3.0/RIPTOPL-v1.3.0-4400.zip)** - Not sure what to pick?", notes)
+            self.assertLess(notes.index("## Recommended downloads"), notes.index("<h3>Loaders:"))
+            self.assertLess(notes.index("<h3>Loaders:"), notes.index("## Updating"))
+            self.assertIn("### Start here: [RIPTOPL-v1.3.0-4400.zip]"
+                          "(https://github.com/NathanNeurotic/RiptOPL/releases/download/v1.3.0/RIPTOPL-v1.3.0-4400.zip)\n\nNot sure what to pick?", notes)
             self.assertIn("| RIPTOPLITE-RA-MX4SIO | ", notes)
             linked = set(re.findall(r"/releases/download/v1\.3\.0/([^)\s]+)\)", notes))
             self.assertEqual(linked, names)  # every file in the release has a link, and nothing else

@@ -196,10 +196,10 @@ class ChannelTests(unittest.TestCase):
             self.assertIn(f"/releases/download/rolling-lite/RIPTOPLITE-RA-{options['title']}-v1.2.0-Beta-4000.zip)", body)
             self.assertIn(f"/releases/download/rolling-lite/RIPTOPLITE-{options['title']}-UNPAKT.ELF)", body)
             self.assertIn(f"/releases/download/rolling-lite/RIPTOPLITE-RA-{options['title']}-UNPAKT-v1.2.0-Beta-4000.zip)", body)
-        self.assertLess(body.index("## Recommended downloads"), body.index("<strong>Loaders</strong>"))
+        self.assertLess(body.index("## Recommended downloads"), body.index("<h3>Loaders:"))
         # The full RiptOPL kit leads every release, Lite included: it is the safe pick for anyone unsure.
-        self.assertIn("## Recommended downloads\n\n- **[RIPTOPL-v1.2.0-Beta-4000.zip](https://github.com/NathanNeurotic/"
-                      "RiptOPL/releases/download/rolling/RIPTOPL-v1.2.0-Beta-4000.zip)** - Not sure what to pick?", body)
+        self.assertIn("## Recommended downloads\n\n### Start here: [RIPTOPL-v1.2.0-Beta-4000.zip](https://github.com/NathanNeurotic/"
+                      "RiptOPL/releases/download/rolling/RIPTOPL-v1.2.0-Beta-4000.zip)\n\nNot sure what to pick?", body)
         self.assertIn(r"Add \[lite\]", body)
         for link in re.findall(r"\]\((\S+?\.zip)\)", body):
             self.assertTrue(link.endswith("-v1.2.0-Beta-4000.zip"), link)

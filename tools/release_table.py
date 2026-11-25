@@ -100,7 +100,10 @@ def tables(names, downloads, version, kit, recommended=(), advice="", kit_why=KI
         kit_link = link(downloads, kit)
     else:
         raise ValueError(f"the full kit is not in the release: {kit}")
-    out = ["## Recommended downloads\n", f"- **{kit_link}** - {kit_why}"]
+    # The kit is a heading of its own so nobody misses it; the other picks stay a plain list under it.
+    out = ["## Recommended downloads\n", f"### Start here: {kit_link}\n", kit_why]
+    if recommended:
+        out.append("")
     for name, why in recommended:
         if name not in names:
             raise ValueError(f"recommended download is not in the release: {name}")
@@ -127,7 +130,7 @@ def tables(names, downloads, version, kit, recommended=(), advice="", kit_why=KI
     # Folded (GitHub renders Markdown inside <details> when blank lines surround it): the kit above is
     # enough for most people, and the full list stays one click away.
     if rows:
-        out += ["", "<details>", f"<summary><strong>Loaders</strong> ({len(rows)} builds, packed and unpacked)</summary>",
+        out += ["", "<details>", f"<summary><h3>Loaders: {len(rows)} builds, packed and unpacked (click to open)</h3></summary>",
                 "",
                 "Each loader goes in its own folder, `APP_` plus its ELF name (`APP_RIPTOPL-DS5/RIPTOPL-DS5.ELF`); "
                 "the PSU makes that folder on a memory card. Unpacked (UNPAKT) loaders skip the decompression step: "
@@ -135,7 +138,7 @@ def tables(names, downloads, version, kit, recommended=(), advice="", kit_why=KI
                 "loader on its own build, packed or unpacked.", "",
                 "| Build | What it is | Packed | Unpacked |", "|---|---|---|---|", *rows, "", "</details>"]
     if others:
-        out += ["", "<details>", f"<summary><strong>Other files</strong> ({len(others)})</summary>", "",
+        out += ["", "<details>", f"<summary><h3>Other files: {len(others)} (click to open)</h3></summary>", "",
                 "| File | What it is |", "|---|---|",
                 *(f"| {link(downloads, name)} | {text} |" for _, text, name in sorted(others)), "", "</details>"]
     return "\n".join(out) + "\n\n"
