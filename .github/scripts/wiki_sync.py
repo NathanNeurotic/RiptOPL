@@ -558,7 +558,7 @@ publication job or additional credential configured by this setup.
 
 - Source: [{source_sha[:12]}]({REPO}/commit/{source_sha})
 - Website: [{site_sha[:12]}]({REPO}/commit/{site_sha})
-- All website HTML pages are included, with explicit source-to-wiki mappings.
+- Every website HTML page is included, with explicit source-to-wiki mappings, except browser-only tools ({', '.join(sorted(SITE_ONLY))}), which stay on the website.
 - Current user/developer references are included. Overlapping references keep their old URLs and anchors as short indexes pointing to the current guide and pinned source sections.
 - `_tools/manifest.json` records source revisions, per-page origins, output hashes and validation counts.
 
