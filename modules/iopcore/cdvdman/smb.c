@@ -285,7 +285,7 @@ static int smb_RecvTimed(int sock, void *header, int hlen, void *payload, int pl
             smb_rx.timed_out = 1;
             return -2;
         }
-        result = plwip_recvfrom(sock, header, hlen, payload, plen, MSG_DONTWAIT, NULL, NULL);
+        result = plwip_recvfrom(sock, header, hlen, payload, plen, 0, NULL, NULL); // MEASURE ONLY: blocking, as official OPL
         if (result == 0) {
             smb_Disconnect(); // EOF: do not leave a dead socket in service.
             return 0;
