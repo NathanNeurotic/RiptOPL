@@ -101,9 +101,13 @@ jobs:
           name: riptopl-ps2build-${{ matrix.toolchain }}
           path: |
             build/bin/riptopl-packed.elf
-            build/bin/riptopl-unpacked.elf
             build/bin/LICENSE-USMB2.txt
             build/bin/CREDITS
+      - name: TEST ONLY rig unpacked build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: riptopl-unpacked-${{ matrix.toolchain }}
+          path: build/bin/riptopl-unpacked.elf
       - name: Upload the SMB2 hardware probe (tools/hwtest/smb2probe, not part of any release)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
