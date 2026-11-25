@@ -130,9 +130,11 @@ class BuildDriverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=TEMP_DIR) as directory:
             root = Path(directory)
             (root / "ps2.yaml").write_text("targets: [{name: test, cflags: []}]")
-            with patch.object(driver, "ROOT", root), patch.object(driver.subprocess, "call", side_effect=OSError("launch failed")):
-                with self.assertRaises(OSError):
+            with patch.object(driver, "ROOT", root), patch.object(driver, "repair_sdk_modules"), \
+                    patch.object(driver.subprocess, "call", side_effect=OSError("launch failed")) as launch:
+                with self.assertRaisesRegex(OSError, "launch failed"):
                     driver.build("llvm", "build", {"targets": [{"name": "test", "cflags": []}]})
+            launch.assert_called_once()
             self.assertEqual(list(root.iterdir()), [root / "ps2.yaml"])
 
 
