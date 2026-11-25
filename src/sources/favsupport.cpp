@@ -1309,6 +1309,17 @@ config_set_t *FavSource::config(item_list_t *itemList, int id)
                  (fav->kind == FAV_KIND_CUE) ? CUE_ROW_EXTENSION : ".VCD");
         game.parts = 1;
         game.format = GAME_FORMAT_ISO; // matches the device scans; the extension drives the PS1 badge
+        // An Ember row's #Format badge is the image its scan found (CUE/EXE/BIN, kept in `media`).
+        // The record does not store it, so take it from the device row; without it the badge fell
+        // back to the theme default.
+        int sourceId;
+        if (fav->kind == FAV_KIND_CUE && gsOf(o)->hasGame() && gFavSupport.sourceItem(id, &ownerView, &sourceId) != NULL) {
+            host::ui().lock();
+            const base_game_info_t *row = (const base_game_info_t *)gsOf(o)->game(o, sourceId);
+            if (row != NULL && cueIsCueEntry(row) && strcmp(row->name, game.name) == 0)
+                game.media = row->media;
+            host::ui().unlock();
+        }
         config_set_t *config = sbPopulateConfig(&game, prefix, sep);
         gsOf(o)->ps1Size(o, &game, config); // the owner's PS1 root; a stack copy, so per Info open
         return config;
