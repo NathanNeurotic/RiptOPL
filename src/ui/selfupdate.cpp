@@ -253,6 +253,10 @@ static int suFetch(SuBuffers *b, const char *path, int max_body, ratls_sink_t si
         rc = raHttpsDownload(host, path, b->buf, SU_BUF, max_body, sink, ctx, location, SU_LOCATION);
         if (rc == RATLS_ERR_CLOCK && suInternetTime()) /* refused before anything was sent */
             rc = raHttpsDownload(host, path, b->buf, SU_BUF, max_body, sink, ctx, location, SU_LOCATION);
+        if (rc == RATLS_ERR_NET && hop == 0) { /* the first lookup or connect after the network came up */
+            DelayThread(1000 * 1000);
+            rc = raHttpsDownload(host, path, b->buf, SU_BUF, max_body, sink, ctx, location, SU_LOCATION);
+        }
         if (rc != RATLS_ERR_REDIRECT)
             return rc;
         if ((path = suSplitUrl(location, host, sizeof(host))) == NULL)
@@ -596,15 +600,12 @@ static void suRelaunch(void)
     if (drained && suResolveTarget(target, false) && suReadBootFormat(target) == suFormat &&
         suJoin(bootPath, sizeof(bootPath), target.apa ? gBootLaunchDir : gBootDir, gBootElfName, "") == 0 &&
         elfldrArgsFit(target.path, 1, argv, "-la=RH", NULL)) {
-        // Load from the live mount, but give the new instance the physical boot identity.
-        host::app().deinitTerminal(sbLoaderDeinitException(target.path) | KEEPIOP_EXCEPTION, IO_MODE_SELECTED_ALL_SPARE);
-        // The teardown above keeps the update's network stack, and any HDD, live with DEV9 powered.
-        // An IOP reset against that can hang (#307), so from every boot device the loader closes
-        // PFS, idles the HDD and powers DEV9 off once the new ELF is in memory, then resets.
+        // The Apps launch with Reboot IOP: load from the live mount, give the new instance the physical
+        // boot identity, and have the loader power DEV9 off (it still runs the update's network) first.
+        host::app().deinitTerminal(sbLoaderDeinitException(target.path), IO_MODE_SELECTED_ALL_SPARE);
         sysLoadELFApp(target.path, "", 1, argv, 1, 1);
         // The UI has already shut down if the loader unexpectedly returns.
         LoadExecPS2("rom0:OSDSYS", 0, NULL);
-        exit(0);
     }
     target.close();
     ioBlockOps(0);
