@@ -124,6 +124,7 @@
     if (b.view !== st.pv.view && !note) note = "Showing " + S.VIEW_LABEL[b.view] + ".";
     $("#pv-note").textContent = note || "";
     $("#pv-note").hidden = !note;
+    $("#pv-widehint").hidden = !(st.pv.wide && parseInt(b.globals.hd_autofit, 10) !== 1);
     drawOverlay();
     renderInspector(); updatePills();
   }
@@ -143,7 +144,7 @@
   }
 
   // ---- Canvas editor: snap grid, guides, resize handles, nudge, align, undo -----------------------------
-  var ed = { snap: true, grid: 8, showGrid: true, guides: true, outlines: false, scope: "all" };
+  var ed = { snap: true, grid: 8, showGrid: true, guides: true, outlines: false, pixels: false, zoom: 1, scope: "all" };
   try { var savedEd = JSON.parse(localStorage.getItem(LS_KEY + "-editor") || "null"); if (savedEd) Object.keys(ed).forEach(function (k) { if (savedEd[k] !== undefined) ed[k] = savedEd[k]; }); } catch (e) { /* storage off */ }
   function saveEd() { try { localStorage.setItem(LS_KEY + "-editor", JSON.stringify(ed)); } catch (e) { /* storage off */ } }
   var drag = null, guideLines = [], canvasActive = false;
@@ -261,12 +262,55 @@
     return { nw: { x: l, y: t }, n: { x: cx, y: t }, ne: { x: r, y: t }, e: { x: r, y: cy }, se: { x: r, y: b }, s: { x: cx, y: b }, sw: { x: l, y: b }, w: { x: l, y: cy } };
   }
   var CURSOR = { nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize", n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize" };
+  // RiptOPL's own 640 x 480 units, the ones every x, y, width and height in the theme file use.
+  // A line for every unit once they are at least 4 screen pixels apart (zoom in), else every 10.
+  function toScreenX(x, sq) { return sq ? R.autofitX(x) : x; }
+  function fromScreenX(x, sq) { return sq ? 320 + (x - 320) * 4 / 3 : x; }
+  function drawPixelGrid(c, k) {
+    var sq = squeezedGrid(), ux = (sq ? 0.75 : 1) / k, uy = 1 / k; // screen pixels per unit
+    var lo = sq ? -107 : 0, hi = sq ? 747 : R.W;
+    var line = function (x0, y0, x1, y1, a) { c.strokeStyle = "rgba(255,255,255," + a + ")"; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); };
+    c.lineWidth = k;
+    var stepX = ux >= 4 ? 1 : 10, stepY = uy >= 4 ? 1 : 10;
+    for (var x = Math.ceil(lo / stepX) * stepX; x <= hi; x += stepX) { var sx = toScreenX(x, sq); if (sx < 0 || sx > R.W) continue; line(sx, 0, sx, R.H, x % 100 === 0 ? 0.3 : x % 10 === 0 ? 0.14 : 0.06); }
+    for (var y = 0; y <= R.H; y += stepY) line(0, y, R.W, y, y % 100 === 0 ? 0.3 : y % 10 === 0 ? 0.14 : 0.06);
+    // rulers along the top and left, numbered in RiptOPL pixels
+    var lab = [10, 20, 40, 80, 160].filter(function (n) { return n * ux >= 44; })[0] || 160, labY = [10, 20, 40, 80, 160].filter(function (n) { return n * uy >= 28; })[0] || 160;
+    var rs = 14 * k;
+    c.fillStyle = "rgba(0,0,0,.6)"; c.fillRect(0, 0, R.W, rs); c.fillRect(0, 0, rs * 2.4, R.H);
+    c.fillStyle = "#cfe8ff"; c.font = (10 * k) + "px ui-monospace, Menlo, Consolas, monospace"; c.textBaseline = "top";
+    for (x = Math.ceil(lo / lab) * lab; x <= hi; x += lab) { sx = toScreenX(x, sq); if (sx < rs * 2.4 || sx > R.W - 2 * k) continue; line(sx, 0, sx, rs, 0.8); c.fillText(String(x), sx + 2 * k, 2 * k); }
+    for (y = lab > labY ? labY : labY; y <= R.H; y += labY) { if (y < rs) continue; line(0, y, rs * 2.4, y, 0.8); c.fillText(String(y), 2 * k, y + 1 * k); }
+  }
+  function showCoords(p) {
+    var o = $("#ed-coords"); if (!o) return;
+    if (!p) { o.textContent = "Point at the preview to see where it is in RiptOPL pixels."; return; }
+    var sq = squeezedGrid(), x = Math.round(fromScreenX(p.x, sq)), y = Math.round(p.y);
+    o.textContent = "RiptOPL pixels: x " + x + ", y " + y + (sq ? " (widescreen squeezes x toward the centre, as on the PS2)" : "");
+  }
+  function squeezedGrid() {
+    if (!st.pv.wide || !lastBuilt) return false;
+    var e = st.selected && elOf(st.selected);
+    if (e) return R.posOf(lastBuilt, e, true).kx !== 1;
+    return !st.hd && parseInt(lastBuilt.globals.hd_autofit, 10) === 1;
+  }
   function drawOverlay() {
     var ov = $("#pv-over"), c = ov.getContext("2d"), k = scaleNow();
-    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, R.W, R.H);
+    // Draw the overlay at the screen's own resolution so thin lines stay sharp when zoomed in.
+    var cw = ov.getBoundingClientRect().width, want = Math.min(4096, Math.max(R.W, Math.round(cw * (window.devicePixelRatio || 1))));
+    if (cw && ov.width !== want) { ov.width = want; ov.height = Math.round(want * R.H / R.W); }
+    var f = ov.width / R.W;
+    c.setTransform(f, 0, 0, f, 0, 0); c.clearRect(0, 0, R.W, R.H);
+    if (ed.pixels) drawPixelGrid(c, k);
     if (ed.showGrid && ed.grid >= 4) {
       c.lineWidth = k;
-      for (var gx = ed.grid, i = 1; gx < R.W; gx += ed.grid, i++) { c.strokeStyle = i % 4 ? "rgba(255,255,255,.07)" : "rgba(255,255,255,.16)"; c.beginPath(); c.moveTo(gx + .5 * k, 0); c.lineTo(gx + .5 * k, R.H); c.stroke(); }
+      // In 16:9 with hd_autofit the PS2 squeezes x toward the centre (320 + (x - 320) * 3/4), so the grid is drawn
+      // where whole grid steps of x land on screen; elements placed in real screen pixels keep the plain grid.
+      var sq = squeezedGrid();
+      var lo = sq ? Math.floor(-320 / 3 / ed.grid) * ed.grid : ed.grid, hi = sq ? R.W + 320 / 3 : R.W - 1;
+      for (var gx = lo; gx <= hi; gx += ed.grid) {
+        var sxp = sq ? R.autofitX(gx) : gx; if (sxp <= 0 || sxp >= R.W) continue;
+        c.strokeStyle = Math.round(gx / ed.grid) % 4 ? "rgba(255,255,255,.07)" : "rgba(255,255,255,.16)"; c.beginPath(); c.moveTo(sxp + .5 * k, 0); c.lineTo(sxp + .5 * k, R.H); c.stroke(); }
       for (var gy = ed.grid, j = 1; gy < R.H; gy += ed.grid, j++) { c.strokeStyle = j % 4 ? "rgba(255,255,255,.07)" : "rgba(255,255,255,.16)"; c.beginPath(); c.moveTo(0, gy + .5 * k); c.lineTo(R.W, gy + .5 * k); c.stroke(); }
       c.strokeStyle = "rgba(90,200,255,.35)"; c.setLineDash([4 * k, 4 * k]);
       c.beginPath(); c.moveTo(R.W / 2, 0); c.lineTo(R.W / 2, R.H); c.moveTo(0, R.H / 2); c.lineTo(R.W, R.H / 2); c.stroke(); c.setLineDash([]);
@@ -308,11 +352,13 @@
       if (startDrag(h.block, mode, p, h)) { ov.setPointerCapture(ev.pointerId); ev.preventDefault(); }
     });
     ov.addEventListener("pointermove", function (ev) {
-      if (drag) { onMove(ev); return; }
+      if (drag) { onMove(ev); showCoords(canvasPoint(ev)); return; }
       var sh = selHit(), p = canvasPoint(ev), m = sh && canResize(elOf(sh.block)) ? handleAt(sh, p) : null;
       ov.style.cursor = m ? CURSOR[m] : hitAt(p) ? "move" : "default";
+      showCoords(p);
     });
     var end = function () { if (drag && drag.moved) { guideLines = []; changed(); } drag = null; guideLines = []; schedule(); };
+    ov.addEventListener("pointerleave", function () { if (!drag) showCoords(null); });
     ov.addEventListener("pointerup", end); ov.addEventListener("pointercancel", end);
     ov.addEventListener("dblclick", function (ev) { var h = hitAt(canvasPoint(ev)); if (h) { selectBlock(h.block); var f = $("#el-props input, #el-props select"); if (f) f.focus(); } });
     document.addEventListener("pointerdown", function (ev) { if (!ev.target.closest || !ev.target.closest(".tc-canvas-box, .tc-edbar, .tc-insp")) canvasActive = false; });
@@ -394,6 +440,13 @@
   function initEditorBar() {
     var bindCb = function (id, k) { var e = $(id); e.checked = !!ed[k]; e.addEventListener("change", function () { ed[k] = e.checked; saveEd(); schedule(); }); };
     bindCb("#ed-snap", "snap"); bindCb("#ed-showgrid", "showGrid"); bindCb("#ed-guides", "guides"); bindCb("#ed-outlines", "outlines");
+    bindCb("#ed-pixels", "pixels");
+    $("#pv-autofit").addEventListener("click", function () { st.map.set("hd_autofit", "1"); st.isBuiltin = false; changed(); toast("Widescreen now keeps the 4:3 shape (hd_autofit=1). Undo takes it back."); });
+    var z = $("#ed-zoom"), setZoom = function () {
+      var n = Math.max(1, +ed.zoom || 1), box = $(".tc-canvas-box"); z.value = String(n);
+      $(".tc-zoom").style.width = (n * 100) + "%"; box.classList.toggle("zoomed", n > 1); schedule();
+    };
+    z.addEventListener("change", function () { ed.zoom = +z.value; saveEd(); setZoom(); }); setZoom();
     var g = $("#ed-grid"); g.value = String(ed.grid); g.addEventListener("change", function () { ed.grid = +g.value; saveEd(); schedule(); });
     $("#ed-undo").addEventListener("click", undo); $("#ed-redo").addEventListener("click", redo);
     $$("[data-align]").forEach(function (b) { b.addEventListener("click", function () { alignTo(b.dataset.align); }); });
