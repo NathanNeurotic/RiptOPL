@@ -56,6 +56,7 @@ typedef struct
     base_game_info_t *bdmPs1Games;
     int ps1ScanFailed;
     int ps1ScanRetries;
+    int ps1RetryPass; // this pass is only the PS1 retry: the PS2 list and APPS are unchanged
     char bdmDriver[32];
     int bdmDeviceType;      // Type of BDM device, see BDM_TYPE_* above
     int bdmDeviceTick;      // Used alongside BdmGeneration to tell if device data needs to be refreshed
@@ -156,6 +157,7 @@ int bdmEffectiveStartMode(void);
 // Current BDM device-change generation (bumped on hotplug / Device-Settings apply). The menu hook
 // reads this to bypass its background SIO2 rescan throttle when a real device change occurs.
 unsigned int bdmGetGeneration(void);
+int bdmLastPassWasPs1Retry(const item_list_t *itemList);
 
 // Diagnostic-only hooks used by the generic game-settings save worker. They are no-ops for
 // non-BDM lists and never change which filesystem path configWrite() consumes.

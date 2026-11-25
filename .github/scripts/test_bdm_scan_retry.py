@@ -113,7 +113,7 @@ typedef struct
     int bdmGameCount;
     base_game_info_t *bdmPs1Games;
     int bdmPs1GameCount;
-    int ps1ScanFailed, ps1ScanRetries;
+    int ps1ScanFailed, ps1ScanRetries, ps1RetryPass;
 } bdm_device_data_t;
 
 static int bdmDeviceModeStarted;
@@ -322,8 +322,10 @@ static void ps1Recovery(void)
         ps1Result = 1; ps1Incomplete = 1;
         connectDevice();
         CHECK(dev.bdmPs1GameCount == 1 && dev.ps1ScanFailed, "partial list must retain the retry flag");
+        int ps2Before = scans;
         pass();
         CHECK(ps1Scans == 2 && dev.ps1ScanRetries == 1, "cached generation must not swallow retry");
+        CHECK(scans == ps2Before && dev.ps1RetryPass, "a PS1 retry pass must not rescan the PS2 folders");
         ps1Result = 2; ps1Incomplete = 0; pass();
         CHECK(dev.bdmPs1GameCount == 2 && !dev.ps1ScanFailed && !dev.ps1ScanRetries, "retry must restore both cores");
         int previous = ps1Scans; pass();
