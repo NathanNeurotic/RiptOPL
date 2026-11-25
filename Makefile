@@ -760,7 +760,8 @@ $(EE_ASM_DIR)isofs.c: modules/isofs/isofs.irx | $(EE_ASM_DIR)
 # Hardware-checked by Zack, 2026-09-10: no noticeable USB regressions on the promoted build.
 #
 # The source here is ps2sdk iop/usb/usbd as of 314d87e7 (2024-04-01), the last state before the
-# rewrite -- verified byte-identical to that tree, every file, with ONLY the Makefile ours
+# rewrite -- verified byte-identical to that tree, every file, with ONLY the Makefile ours and one
+# block in usbd.c's _start (reset both root ports when loaded without options, i.e. in the menu)
 # (exports.o first for srxfixup, -DMINI_DRIVER, no gp switching). Do not reformat it: the whole
 # value of this vendoring is that it still diffs cleanly against ps2sdk.
 modules/usb/usbd-ra/usbd_mini.irx: $(wildcard modules/usb/usbd-ra/src/*.c) $(wildcard modules/usb/usbd-ra/src/*.h) $(wildcard modules/usb/usbd-ra/include/*.h) modules/usb/usbd-ra/src/imports.lst modules/usb/usbd-ra/src/exports.tab modules/usb/usbd-ra/Makefile

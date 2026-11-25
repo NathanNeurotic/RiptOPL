@@ -25,7 +25,7 @@ Each entry gives its evidence:
 | Module | ps2sdk source | Our copy | Still in master | Fixed in master since our copy | Our own choices |
 | --- | --- | --- | --- | --- | --- |
 | [smbman](#smbman) | `iop/network/smbman` | [`modules/network/smbman-ra`](../modules/network/smbman-ra/) | 5 | 0 | 1 |
-| [usbd (usbd_mini)](#usbd-usbd_mini) | `iop/usb/usbd` | [`modules/usb/usbd-ra`](../modules/usb/usbd-ra/) | 2 | 0 | 0 |
+| [usbd (usbd_mini)](#usbd-usbd_mini) | `iop/usb/usbd` | [`modules/usb/usbd-ra`](../modules/usb/usbd-ra/) | 2 | 1 | 0 |
 | [ps2ips](#ps2ips) | `iop/tcpip/tcpips` | [`modules/network/ps2ips`](../modules/network/ps2ips/) | 5 | 0 | 0 |
 | [atad (ata_bd)](#atad-ata_bd) | `iop/dev9/atad` | [`modules/hdd/atad`](../modules/hdd/atad/) | 3 | 1 | 1 |
 | [APA (ps2hdd-osd)](#apa-ps2hdd-osd) | `iop/hdd/apa`, `iop/hdd/libapa` | [`modules/hdd/apa`](../modules/hdd/apa/) | 7 | 0 | 4 |
@@ -165,7 +165,8 @@ violation could go to ps2sdk on its own; the read-only limit is OPL's choice.
 
 Our copy is ps2sdk's `iop/usb/usbd` at
 [`314d87e7`](https://github.com/ps2dev/ps2sdk/commit/314d87e71e298b06b7ec459a97dd0b54a3e0cb5c)
-(2024-04-01), built as usbd_mini with byte-identical sources. That is FreeUsbd 0.1.2, the driver before
+(2024-04-01), built as usbd_mini with byte-identical sources except one block in `usbd.c`'s `_start`
+(below). That is FreeUsbd 0.1.2, the driver before
 the rewrite [`b1f7ff96`](https://github.com/ps2dev/ps2sdk/commit/b1f7ff96647e8929acc9643d9b27af3af32c4ad5)
 ("USBD feature update", authored 2024-09-04, merged on 2024-09-24). The rewrite's real parent is
 `2dc6b32f`; our copy lacks three small header changes made in between. Every edition embeds it, and the
@@ -174,6 +175,24 @@ game's IOP loads it again after the game's IOP reboot when the game runs from US
 Our copy exports usbd version 1.1, and current SDK clients import 1.2. ps2sdk's loadcore matches on the
 major version only, so they link. Whether the console ROM's loadcore does the same was not checked; a
 hardware no-regression run (below) found no problem.
+
+### Fixed in master: a stick left plugged in across an IOP reboot is not found
+
+Master fixed it in the rewrite; our copy now does the same in its own place.
+
+- **Where:** `iop/usb/usbd/src` at `314d87e7`. An IOP reboot does not reset the USB host controller or its
+  root hub. The driver finds devices only through root-hub status-change interrupts, and the driver that
+  ran before the reboot has already cleared the change bits of a stick that is still plugged in.
+- **What goes wrong:** after a warm restart into the menu (IGR, or another program rebooting the IOP),
+  the stick is not listed until it is unplugged and plugged back in.
+- **Master:** the rewrite exports `usbdReboot` (library entry 2), which resets both root ports at IOP
+  reboot (`usbdRebootInner`, `hub_resets.c`), so the next driver gets a change interrupt.
+- **Our change:** `_start` resets both root ports once after `hcdInit()` when the module is loaded
+  without options. The menu (`src/platform/system.cpp`) and the IGR Path's `mc?:/SYS-CONF/USBD.IRX`
+  load it that way. ee_core always passes `thpri=2,3` in game, so a game's IOP reboot is unchanged.
+  `.github/scripts/test_usbd_root_port_reset.py` checks those three facts.
+- **Evidence:** source comparison with ps2sdk master, and a PS2 tester report (FifthFox, 2026-11-24:
+  "I have to remove and reinsert to get it to show up"). Not tested on hardware or in PCSX2.
 
 ### A game run from USB loses its controller and sound at its first IOP reboot
 

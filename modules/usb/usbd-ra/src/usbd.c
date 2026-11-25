@@ -403,7 +403,18 @@ int _start(int argc, char *argv[])
     sema.max     = 1;
     usbdSema     = CreateSema(&sema);
 
-    hcdInit();
+    /* RiptOPL: reset both root-hub ports once when loaded without options (the menu, and the IGR
+       Path's USB pair). An IOP reboot does not reset the USB host controller or its root hub. A
+       stick left plugged in across one stays connected with its change bits already cleared by
+       the driver that ran before, so this driver gets no root-hub interrupt for it and the stick
+       stays missing until it is unplugged and plugged back in. A port reset ends with a change
+       bit, and the normal attach path then finds the stick. Current ps2sdk usbd does the same two
+       writes at IOP reboot (usbdRebootInner, hub_resets.c); this pre-rewrite copy never did. In
+       game USBD is always loaded with options (ee_core iopmgr.c), so a game is not affected. */
+    if (hcdInit() == 0 && argc < 2) {
+        memPool.ohciRegs->HcRhPortStatus[0] = BIT(PORT_RESET);
+        memPool.ohciRegs->HcRhPortStatus[1] = BIT(PORT_RESET);
+    }
 
     dbg_printf("Init done\n");
     return MODULE_RESIDENT_END;
