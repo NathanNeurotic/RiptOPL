@@ -40,6 +40,10 @@ int main()
     glide_box_t again = box(400, 300, 100, 140);
     coverGlide("Game A", 1, 0, &again);
     CHECK(fabsf(again.x - a.x) < 0.001f);
+    // A second copy of A elsewhere in the same frame (a short list shown twice) stays at its own place.
+    glide_box_t copy = box(900, 300, 100, 140);
+    coverGlide("Game A", 1, 0, &copy);
+    CHECK(copy.x == 900);
 
     // Run it out: every cover lands exactly, C fully opaque, and the glide ends by itself.
     int frames = 1;

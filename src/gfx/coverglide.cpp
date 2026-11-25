@@ -115,6 +115,9 @@ int coverGlide(const char *title, int id, int steps, glide_box_t *box)
         e->at = *box;
         e->alpha = active ? 0.0f : 1.0f; // new to the screen in a glide: fades in where it lands
     }
+    // A second copy of a game this frame (a short list's window can show it twice) is drawn at its own place.
+    if (e->seen == now && (e->to.x != box->x || e->to.y != box->y || e->to.w != box->w || e->to.h != box->h))
+        return active ? (int)(e->alpha * 0x80 + 0.5f) : 0x80;
     e->to = *box;
     e->seen = now;
     if (!active)
