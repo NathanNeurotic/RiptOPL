@@ -58,6 +58,7 @@
     <a href="retroachievements.html"><span class="icon icon-ra"></span>RetroAchievements</a>
     <h4>Theme Engine</h4>
     <a href="themes.html" class="active"><span class="icon icon-themes"></span>Theme Engine</a>
+    <a href="theme-creator.html"><span class="icon icon-themes"></span>Theme Creator <span class="nav-badge">NEW</span></a>
     <h4>Reference</h4>
     <a href="settings.html"><span class="icon icon-settings"></span>Settings Reference</a>
     <a href="controls.html"><span class="icon icon-controls"></span>Controls</a>
@@ -81,6 +82,10 @@ that lays out the whole UI on a virtual <b>640×480</b> canvas. This page is the
 reference: every block family, every element type, every property and value token the parser in
 <code>src/gfx/themes.cpp</code> actually understands, including this fork's <b>Coverflow</b> carousel, <b>PSBBN Flow</b> fan and the
 <b>two-layer overlay</b> system. Nothing here is invented — if a key isn't listed, the engine ignores it.</p>
+
+<div class="callout info"><div class="h">Make one in your browser</div>The <a href="theme-creator.html"><b>Theme Creator</b></a>
+builds a theme with a live preview of all four views. Add your own pictures and fonts, drag elements into place, and download a
+theme folder (or one-file <code>.tar</code>) ready to copy into <code>THM/</code>. Nothing is uploaded.</div>
 
 <div class="callout info"><div class="h">i Mental model</div>A theme is a flat, ordered list of
 <b>elements</b>. Each element has a <code>type=</code> and a handful of position/size properties. OPL draws

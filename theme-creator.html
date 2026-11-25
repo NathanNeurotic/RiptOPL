@@ -1,0 +1,301 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Theme Creator · RiptOPL Docs</title>
+<meta name="description" content="Make a RiptOPL theme in your browser with a live preview, your own pictures and fonts, and a ready-to-copy download.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<meta property="og:site_name" content="RiptOPL Docs">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://nathanneurotic.github.io/RiptOPL/assets/riptopl.png">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/theme-creator/theme-creator.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    RiptOPL <small>DOCS</small></a>
+    <div class="topbar-actions">
+    <a class="topbar-btn primary" href="releases.html" title="Downloads &amp; Releases"><span class="icon icon-releases"></span>Downloads</a>
+    <a class="topbar-btn" href="https://github.com/NathanNeurotic/RiptOPL" target="_blank" rel="noopener" title="GitHub Repository"><span class="icon icon-github"></span>GitHub</a>
+  </div>
+  <div class="search">
+    <span class="ico"></span>
+    <input id="q" type="search" aria-label="Search documentation" placeholder="Search devices, themes, Neutrino, settings…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout tc-layout">
+  <nav class="sidebar">
+    <div class="sidebar-brand-sub">PLAYSTATION 2 // RIPTOPL</div>
+    <a href="index.html"><span class="icon icon-home"></span>Home</a>
+    <h4>Start</h4>
+    <a href="getting-started.html"><span class="icon icon-start"></span>Getting Started</a>
+    <a href="install.html"><span class="icon icon-install"></span>Install &amp; First Boot</a>
+    <h4>Game sources</h4>
+    <a href="usb.html"><span class="icon icon-usb"></span>USB / MX4SIO / iLink</a>
+    <a href="mmce.html"><span class="icon icon-mmce"></span>MMCE</a>
+    <a href="hdd.html"><span class="icon icon-hdd"></span>Internal HDD (APA &amp; exFAT)</a>
+    <a href="psx-dvr.html"><span class="icon icon-hdd"></span>PSX DVR (DESR)</a>
+    <a href="pc-card-cf.html"><span class="icon icon-hdd"></span>PC CARD CompactFlash</a>
+    <a href="network-boot.html"><span class="icon icon-netboot"></span>Network (SMB/NFS/UDPFS/UDPBD)</a>
+    <a href="http.html"><span class="icon icon-http"></span>HTTP</a>
+    <h4>Features</h4>
+    <a href="game-formats.html"><span class="icon icon-zso"></span>Game Image Formats</a>
+    <a href="ps1-vcd.html"><span class="icon icon-ps1"></span>PS1 Games</a>
+    <a href="neutrino.html"><span class="icon icon-neutrino"></span>Neutrino Core</a>
+    <a href="coverflow.html"><span class="icon icon-coverflow"></span>Coverflow &amp; PSBBN Flow</a>
+    <a href="favourites.html"><span class="icon icon-favorites"></span>Favorites</a>
+    <a href="library.html"><span class="icon icon-apps"></span>Game Library</a>
+    <a href="apps.html"><span class="icon icon-apps"></span>Apps</a>
+    <a href="per-game-settings.html"><span class="icon icon-settings-pergame"></span>Per-game Settings</a>
+    <a href="gsm.html"><span class="icon icon-gsm"></span>GSM Video Modes</a>
+    <a href="igr.html"><span class="icon icon-igr"></span>In-Game Reset</a>
+    <a href="vmc.html"><span class="icon icon-vmc"></span>VMC</a>
+    <a href="file-manager.html"><span class="icon icon-apps"></span>File Manager</a>
+    <a href="cheats.html"><span class="icon icon-cheats"></span>Cheats</a>
+    <a href="retroachievements.html"><span class="icon icon-ra"></span>RetroAchievements</a>
+    <h4>Theme Engine</h4>
+    <a href="themes.html"><span class="icon icon-themes"></span>Theme Engine</a>
+    <a href="theme-creator.html" class="active"><span class="icon icon-themes"></span>Theme Creator <span class="nav-badge">NEW</span></a>
+    <h4>Reference</h4>
+    <a href="settings.html"><span class="icon icon-settings"></span>Settings Reference</a>
+    <a href="controls.html"><span class="icon icon-controls"></span>Controls</a>
+    <a href="languages.html"><span class="icon icon-languages"></span>Languages</a>
+    <a href="pademu.html"><span class="icon icon-pademu"></span>PADEMU</a>
+    <a href="nbd.html"><span class="icon icon-nbd"></span>NBD Server</a>
+    <a href="zso.html"><span class="icon icon-zso"></span>ZSO Format</a>
+    <a href="ps3-bc.html"><span class="icon icon-ps3"></span>PS3 BC</a>
+    <a href="releases.html"><span class="icon icon-releases"></span>Releases</a>
+    <a href="fork-gaps.html"><span class="icon icon-fork-gaps"></span>Fork Feature Gaps <span class="nav-badge">AUDIT</span></a>
+    <a href="ps2sdk-notes.html"><span class="icon icon-book"></span>Notes for ps2sdk</a>
+    <a href="troubleshooting.html"><span class="icon icon-troubleshoot"></span>Troubleshooting</a>
+    <a href="launch-diagnostics.html"><span class="icon icon-troubleshoot"></span>Launch Diagnostics</a>
+    <a href="credits.html"><span class="icon icon-credits"></span>Credits &amp; Sources</a>
+    <a href="https://nathanneurotic.github.io/POPSLoader/"><span class="icon icon-book"></span>POPStarter docs ↗</a>
+  </nav>
+    <main class="content tc-content">
+<h1>Theme Creator</h1>
+<p class="lead">Make a RiptOPL theme in your browser. Move things around on the live preview, add your own pictures and
+fonts, and download a theme folder that is ready to copy to your PS2. Everything stays on your computer:
+nothing you add is uploaded anywhere.</p>
+
+<ol class="tc-howto" id="tc-howto">
+  <li><b>Pick a start</b> on the right: RiptOPL's own theme or a ready layout.</li>
+  <li><b>Click anything</b> on the preview to move it, resize it or change it. Pick a screen above the preview to edit that screen.</li>
+  <li><b>Download</b> the theme and copy it to your PS2.</li>
+</ol>
+
+<div class="tc-wrap">
+  <section class="tc-preview" aria-label="Live preview">
+    <div class="tc-screens">
+      <div class="tc-pills" id="pv-pages" role="tablist" aria-label="Screen"></div>
+      <div class="tc-pills tc-pills-sm" id="pv-views" role="tablist" aria-label="Layout"></div>
+    </div>
+    <div class="tc-pvbar">
+      <label hidden>View <select id="pv-view">
+        <option value="list">List</option>
+        <option value="coverflow3">Coverflow (3 covers)</option>
+        <option value="coverflow5">Coverflow (5 covers)</option>
+        <option value="psbbn">PSBBN Flow</option>
+        <option value="grid">Grid</option>
+      </select></label>
+      <label hidden>Screen <select id="pv-page">
+        <option value="main">Games list</option>
+        <option value="appsMain">Apps list</option>
+        <option value="favsMain">Favorites list</option>
+        <option value="vcdMain">PS1 list</option>
+        <option value="favsVcdMain">Favorites PS1 list</option>
+        <option value="favsAppsMain">Favorites apps list</option>
+        <option value="info">Game info</option>
+        <option value="appsInfo">App info</option>
+        <option value="favsInfo">Favorites info</option>
+        <option value="vcdInfo">PS1 info</option>
+      </select></label>
+      <span class="tc-step">Game <button type="button" id="pv-prev" class="tc-mini" aria-label="Previous game">▲</button><button type="button" id="pv-next" class="tc-mini" aria-label="Next game">▼</button></span>
+      <button type="button" id="pv-png" class="tc-mini">Save picture</button>
+    </div>
+    <div class="tc-scope" role="radiogroup" aria-label="What an edit changes">
+      <span>Changes apply to</span>
+      <label><input type="radio" name="ed-scope" value="all" checked> every screen that shares the element</label>
+      <label><input type="radio" name="ed-scope" value="screen"> <b id="ed-scope-name">this screen</b> only</label>
+    </div>
+    <div class="tc-edbar" role="toolbar" aria-label="Layout tools">
+      <span class="tc-grp">
+        <label title="Moves and resizes land on the grid"><input type="checkbox" id="ed-snap"> Snap</label>
+        <select id="ed-grid" aria-label="Grid size"><option value="4">4 px</option><option value="8">8 px</option><option value="10">10 px</option><option value="16">16 px</option><option value="20">20 px</option><option value="32">32 px</option></select>
+        <label><input type="checkbox" id="ed-showgrid"> Show grid</label>
+        <label title="Snap to the screen edges, the centre and other elements"><input type="checkbox" id="ed-guides"> Guides</label>
+        <label title="Draw a box round every element"><input type="checkbox" id="ed-outlines"> Outlines</label>
+      </span>
+      <span class="tc-grp" aria-label="Align the selected element to the screen">
+        <button type="button" class="tc-mini" data-align="left" title="Align to the left edge">⇤</button>
+        <button type="button" class="tc-mini" data-align="hcenter" title="Centre across">↔</button>
+        <button type="button" class="tc-mini" data-align="right" title="Align to the right edge">⇥</button>
+        <button type="button" class="tc-mini" data-align="top" title="Align to the top">⤒</button>
+        <button type="button" class="tc-mini" data-align="vmiddle" title="Centre up and down">↕</button>
+        <button type="button" class="tc-mini" data-align="bottom" title="Align to the bottom">⤓</button>
+      </span>
+      <span class="tc-grp">
+        <button type="button" class="tc-mini" id="ed-undo" title="Undo (Ctrl+Z)">Undo</button>
+        <button type="button" class="tc-mini" id="ed-redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+        <button type="button" class="tc-mini" id="ed-big">Bigger preview</button>
+      </span>
+    </div>
+    <div class="tc-canvas-box"><canvas id="pv-canvas" width="640" height="480" aria-hidden="true"></canvas><canvas id="pv-over" width="640" height="480" aria-label="Theme preview. Click an element to select it, drag it to move, drag the corner handles to resize."></canvas></div>
+    <div id="ed-insp" class="tc-insp"></div>
+    <p id="pv-note" class="tc-note" hidden></p>
+    <details class="tc-pvopts">
+      <summary>Preview settings (the same switches as on the PS2)</summary>
+      <div class="tc-checks">
+        <label><input type="checkbox" id="pv-wide"> Widescreen (16:9)</label>
+        <label><input type="checkbox" id="pv-alt"> Alternative layout (Select)</label>
+        <label><input type="checkbox" id="pv-desc"> List Title and Description</label>
+        <label><input type="checkbox" id="pv-art" checked> Show artwork</label>
+        <label><input type="checkbox" id="pv-disc" checked> Disc icons</label>
+        <label><input type="checkbox" id="pv-dim"> Dim side covers</label>
+        <label><input type="checkbox" id="pv-save"> Save icons</label>
+      </div>
+      <div class="tc-checks"><span>Selection:</span>
+        <label><input type="checkbox" class="pv-sel" value="1" checked> Colored</label>
+        <label><input type="checkbox" class="pv-sel" value="2" checked> Cursor</label>
+        <label><input type="checkbox" class="pv-sel" value="4" checked> Highlight</label>
+      </div>
+    </details>
+    <p class="tc-small">The preview uses invented game names and stand-in covers. It follows RiptOPL's own rules for
+    reading the file, but it is an approximation: the PS2 is the final word on how a theme looks.</p>
+  </section>
+
+  <section class="tc-editor" aria-label="Editor">
+    <div class="tc-tabs" role="tablist">
+      <button type="button" role="tab" data-tab="start">Start</button>
+      <button type="button" role="tab" data-tab="elements">Layout</button>
+      <button type="button" role="tab" data-tab="images">Pictures</button>
+      <button type="button" role="tab" data-tab="fonts">Fonts &amp; sounds</button>
+      <button type="button" role="tab" data-tab="theme">Colours &amp; settings</button>
+      <button type="button" role="tab" data-tab="check">Check <span id="chk-badge" class="tc-badge">✓</span></button>
+      <button type="button" role="tab" data-tab="download">Download</button>
+      <button type="button" role="tab" data-tab="cfg" class="tc-adv">Config file</button>
+    </div>
+
+    <div class="tc-panel" id="tab-start">
+      <h3>Start from</h3>
+      <div class="tc-starts">
+        <button type="button" class="tc-start" data-start="builtin"><b>RiptOPL's built-in theme</b><span>All four views, ready to change.</span></button>
+        <button type="button" class="tc-start" data-start="blank"><b>Simple list</b><span>A list, a cover and an info page.</span></button>
+        <button type="button" class="tc-start" data-start="coverflow"><b>Coverflow</b><span>Covers in a row, plus a list view.</span></button>
+        <button type="button" class="tc-start" data-start="grid"><b>Grid</b><span>Rows of covers, plus a list view.</span></button>
+        <button type="button" class="tc-start" data-start="psbbn"><b>PSBBN Flow</b><span>The PSBBN-style cover bands.</span></button>
+      </div>
+      <h3>Or open a theme you already have</h3>
+      <p>A zip, a one-file theme (<code>.tar</code>), or just a <code>conf_theme.cfg</code>:</p>
+      <p><label class="btn tc-file">Open a file<input type="file" id="imp-file" accept=".zip,.tar,.cfg,.txt"></label>
+      <label class="btn tc-file">Open a theme folder<input type="file" id="imp-dir" webkitdirectory multiple></label></p>
+      <p class="tc-small">Your layout is remembered in this browser between visits. Pictures and fonts are not, so
+      download the zip to keep them.</p>
+    </div>
+
+    <div class="tc-panel" id="tab-theme" hidden>
+      <h3>Colors, fonts and behavior</h3>
+      <p class="tc-small">Settings for the whole theme. Leave a field empty to use RiptOPL's default.</p>
+      <div id="theme-fields" class="tc-form"></div>
+    </div>
+
+    <div class="tc-panel" id="tab-elements" hidden>
+      <div id="el-props" class="tc-form"></div>
+      <h3 id="el-listhead">On this screen</h3>
+      <p class="tc-small">Everything on the screen shown in the preview, back to front. Click one to change it.
+      The eye hides it on this screen only.</p>
+      <ul id="el-list" class="tc-list"></ul>
+      <h3>Add to this screen</h3>
+      <div id="el-palette" class="tc-palette"></div>
+      <details class="tc-more"><summary>More kinds</summary><div id="el-palette-more" class="tc-palette"></div></details>
+      <p id="el-addhelp" class="tc-small"></p>
+      <div hidden><select id="el-view"></select><select id="el-family"></select><select id="el-addtype"></select><button type="button" id="el-add"></button></div>
+      <p class="tc-small"><button type="button" id="el-renumber" class="tc-mini" title="Close gaps in the numbering so every block is read">Fix numbering</button>
+      Only needed after editing the config file by hand: RiptOPL stops reading a screen at the first missing number.</p>
+    </div>
+
+    <div class="tc-panel" id="tab-images" hidden>
+      <h3>Your pictures</h3>
+      <p>Add PNG, JPG, WebP or GIF pictures. Others are turned into PNG for you. Each one is saved as
+      <code>name.png</code> in the theme folder; use that name in an element's picture field.</p>
+      <p><label class="btn tc-file">Add pictures<input type="file" id="img-add" accept="image/*" multiple></label></p>
+      <div id="img-list" class="tc-imgs"></div>
+      <h3>Badges</h3>
+      <p class="tc-small">The little pictures on the game list and info page that show each game's console, disc, file
+      format, star rating, players, video mode, screen shape and picture lines. Click a badge to use your own picture.</p>
+      <div id="img-badges" class="tc-bis"></div>
+      <h3>RiptOPL's other pictures</h3>
+      <p class="tc-small">Click one to swap it for your own. Your version goes in the theme folder under the same name.</p>
+      <div id="img-builtins" class="tc-bis"></div>
+    </div>
+
+    <div class="tc-panel" id="tab-fonts" hidden>
+      <h3>Fonts</h3>
+      <p>Add TrueType or OpenType fonts (<code>.ttf</code>, <code>.otf</code>), then pick which font slot uses each one.</p>
+      <p><label class="btn tc-file">Add fonts<input type="file" id="font-add" accept=".ttf,.otf" multiple></label></p>
+      <div id="font-list"></div>
+      <div id="font-slots" class="tc-form"></div>
+      <h3>Sounds</h3>
+      <p class="tc-small">RiptOPL plays these from the theme's <code>sound</code> folder in place of its own. Sound effects are
+      PS2 ADPCM (<code>.adp</code>) files; the music is Ogg Vorbis. The preview does not play them.</p>
+      <div id="sound-slots"></div>
+      <h3>Other files</h3>
+      <p class="tc-small">Anything else to carry in the theme folder, such as sounds. Pick a folder inside the theme first if it needs one (for example <code>sound</code>).</p>
+      <div class="tc-row"><label>Folder <input type="text" id="extra-dir" placeholder="(top of the theme)" size="14"></label>
+      <label class="btn tc-file">Add files<input type="file" id="extra-add" multiple></label></div>
+      <div id="extra-list"></div>
+    </div>
+
+    <div class="tc-panel" id="tab-cfg" hidden>
+      <h3>conf_theme.cfg</h3>
+      <p class="tc-small">This is the file the creator writes. You can edit it here or paste one in, then press Apply.</p>
+      <textarea id="cfg-text" spellcheck="false" rows="22" aria-label="conf_theme.cfg"></textarea>
+      <p><button type="button" id="cfg-apply" class="btn">Apply</button> <button type="button" id="cfg-copy" class="tc-mini">Copy</button></p>
+    </div>
+
+    <div class="tc-panel" id="tab-check" hidden>
+      <h3>Check</h3>
+      <p id="chk-sum"></p>
+      <ul id="chk-list" class="tc-findings"></ul>
+    </div>
+
+    <div class="tc-panel" id="tab-download" hidden>
+      <h3>Download</h3>
+      <p><label>Theme name <input type="text" id="th-name" maxlength="40" size="24"></label></p>
+      <p><button type="button" class="btn" data-dl="zip">Download zip</button>
+      <button type="button" class="btn" data-dl="tar">Download one-file theme (.tar)</button></p>
+      <h3>Put it on your PS2</h3>
+      <ol>
+        <li><b>Zip:</b> unzip it. You get a folder named <code>thm_YourName</code>. Copy that folder into the
+        <code>THM</code> folder on your memory card, USB drive, HDD or network share (the same place RiptOPL keeps its other themes).</li>
+        <li><b>One-file theme:</b> copy <code>thm_YourName.tar</code> straight into that <code>THM</code> folder. No unzipping.</li>
+        <li>In RiptOPL open <b>Settings → Theme Settings</b>, pick it under <b>Theme</b>, then save.</li>
+      </ol>
+      <p class="tc-small">For every element and setting, see the <a href="themes.html">Theme Engine</a> reference.</p>
+    </div>
+  </section>
+</div>
+<div id="tc-toasts" class="tc-toasts" aria-live="polite"></div>
+  </main>
+</div>
+<footer>
+  <p><b>RiptOPL Documentation</b> — for the opinionated Open PS2 Loader fork. Built on, and grateful to, the
+  <a href="https://github.com/ps2homebrew">ps2homebrew</a> team and the wider OPL family — see
+  <a href="credits.html">Credits &amp; Sources</a>. For the canonical project, see
+  <a href="https://github.com/ps2homebrew/Open-PS2-Loader">ps2homebrew/Open-PS2-Loader</a>.</p>
+  <p class="prov-inline">RiptOPL is a downstream fork, not the canonical project. POPSTARTER uses Sony's POPS; Ember is a separate emulator. Sony's POPS is
+  <b>not</b> distributed here. PS1/POPSTARTER deep reference: the sister
+  <a href="https://nathanneurotic.github.io/POPSLoader/">POPStarter docs</a>.</p>
+</footer>
+<script src="assets/theme-creator/schema.js"></script>
+<script src="assets/theme-creator/cfg.js"></script>
+<script src="assets/theme-creator/render.js"></script>
+<script src="assets/theme-creator/io.js"></script>
+<script src="assets/theme-creator/app.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/orbs.js"></script>
+</body></html>
