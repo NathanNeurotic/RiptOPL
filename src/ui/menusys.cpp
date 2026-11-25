@@ -2505,14 +2505,25 @@ static void menuRenderElements(theme_elems_t *elems)
         }
     }
 
+    // A layout switch fades the content in front of the background, not the background (see guiDipScreen).
+    float rise;
+    const u8 fade = guiContentFade(&rise);
+    int backdrop = fade < 0x80;
+
     WaitSema(menuSemaId);
 
     while (elem) {
+        if (backdrop && !thmIsBackdropElem(elems, elem)) {
+            backdrop = 0;
+            rmSetFade(fade, rise);
+        }
         if (elem->drawElem)
             elem->drawElem(selected_item, selected_item->item->current, itemConfig, elem);
 
         elem = elem->next;
     }
+    if (fade < 0x80)
+        rmSetFade(0x80, 0.0f);
     SignalSema(menuSemaId);
 }
 
@@ -2855,7 +2866,7 @@ static void menuL3Tap(int viewPending)
         guiShowToast(_l(_STR_L3_HOLD_FOR_THEME), L3_ICON);
 }
 
-// Hold L3: the next layout of the theme, run by guiDipScreen once the screen is black. The page is read again
+// Hold L3: the next layout of the theme, run by guiDipScreen once the content has faded out. The page is read again
 // here, as the hold was a few frames ago.
 static void menuCycleThemeView(void)
 {
@@ -2882,7 +2893,7 @@ static void menuHandleViewHold(int viewPending)
     } else if (menuL3State == 1 && menuL3HoldReached()) {
         menuL3State = 2;
         if (!viewPending && thmCanCycleView())
-            guiDipScreen(&menuCycleThemeView); // switch while the screen is dipped to black
+            guiDipScreen(&menuCycleThemeView); // switch while the content is faded out
     }
 }
 

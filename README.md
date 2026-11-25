@@ -1034,6 +1034,7 @@ With special and sincere thanks to:
   PS2-inspired glass interface and four switchable library views. He also contributes to
   RiptOPL directly: his [#733](https://github.com/NathanNeurotic/Open-PS2-Loader/pull/733) brings
   LUNA's Collection cover-art screen to RiptOPL's renderer. Thank you for sharing your work with us.
+- **[Daniel (danielnuld)](https://github.com/danielnuld)** — creator of **[NULD](https://github.com/danielnuld/nuld)**. The hold-L3 layout switch is modelled on NULD's view switch; the two projects share work in both directions.
 - **[saildot4k](https://github.com/saildot4k)** — for **BDMA-ATA** (exFAT internal-HDD block-device support), and the fixes,
   feedback, and oversight that shaped this fork's block-device work. A big piece of getting it right.
 - **[Ronnie Sahlberg](https://github.com/sahlberg)** — for **[usmb2](https://github.com/sahlberg/usmb2)**,

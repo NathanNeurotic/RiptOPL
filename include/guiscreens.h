@@ -20,10 +20,19 @@ public:
     void setCurrent(int screen);
     // Start the fade to `screen`; ignored while one is already running (or it could loop forever).
     void switchTo(int screen);
-    // Dip the screen to black and back (about a quarter of a second), running `change` on the GUI thread between frames
-    // while the screen is black: hold L3 switching the theme's layout. Ignored while a fade is already running.
+    // Hold L3 switching the theme's layout, after NULD (danielnuld): the page's content fades out over its background,
+    // `change` runs on the GUI thread between frames once the content is gone, and the new content eases back in while
+    // settling up into place. The background stays on screen throughout. Ignored while a fade is already running.
     void dipTo(void (*change)(void));
-    bool transitioning() const { return target_ != nullptr || dipIndex_ != 0; }
+    // True while input waits: a screen fade, or a layout switch until its change has run (the ease back in takes input).
+    bool transitioning() const;
+    // The fade the page's content is drawn with this frame (0x80 = none) and how far below its place it is, in virtual
+    // pixels. Read by the main page's element drawing, which keeps the background out of it.
+    u8 contentFade(float *rise) const
+    {
+        *rise = rise_;
+        return fade_;
+    }
     // Render the active screen, or the fade between two; `plasma` supplies the ease curve.
     void show(const PlasmaBackground &plasma);
     // Run the active screen's input handler unless a fade is running.
@@ -35,8 +44,11 @@ private:
     const Handler *current_ = nullptr; // lazily the menu screen
     const Handler *target_ = nullptr;
     int transIndex_ = 0;
-    void (*dipChange_)(void) = nullptr; // the change still to run at the dip's darkest point
-    int dipIndex_ = 0;                  // 0 = no dip, else the dip frame being drawn (1-based)
+    void (*dipChange_)(void) = nullptr; // the change still to run once the content has faded out
+    int dipIndex_ = 0;                  // 0 = no layout switch, else its frame being drawn (1-based)
+    float dipRemain_ = 1.0f;            // the ease back in: the part of the way still to go
+    u8 fade_ = 0x80;                    // contentFade, set only while the screen draws
+    float rise_ = 0.0f;
 };
 
 extern ScreenManager gScreens;

@@ -15,7 +15,14 @@
 
 ScreenManager gScreens;
 
-static const int DIP_HALF = 8; // frames to black in a dip (hold L3 layout switch); the fade back takes one less
+// Hold L3 layout switch, after NULD's view switch (danielnuld, github.com/danielnuld/nuld): the content fades out over
+// DIP_OUT frames, then eases back in the way NULD's covers ease to their places, closing DIP_RATE of the remaining way
+// each frame, for DIP_IN frames, from DIP_RISE virtual pixels below. The background is never faded, so the screen does
+// not dim.
+static const int DIP_OUT = 8;
+static const int DIP_IN = 24;
+static const float DIP_RATE = 0.16f;
+static const float DIP_RISE = 12.0f;
 
 static const ScreenManager::Handler screenHandlers[] = {
     {&menuHandleInputMain, &menuRenderMain, 0},
@@ -50,6 +57,8 @@ void ScreenManager::switchTo(int screen)
     // Only initiate the transition once or else we could get stuck in an infinite loop.
     if (target_ != nullptr)
         return;
+    if (dipChange_ == nullptr)
+        dipIndex_ = 0; // a layout switch easing back in ends here
     sfxPlay(SFX_TRANSITION);
     transIndex_ = 0;
     target_ = &screenHandlers[screen];
@@ -88,16 +97,31 @@ void ScreenManager::show(const PlasmaBackground &plasma)
             target_ = nullptr;
         }
     } else {
+        if (dipIndex_ != 0) {
+            const int i = dipIndex_;
+            if (i <= DIP_OUT) {
+                fade_ = (u8)((1.0f - plasma.ease((float)i / DIP_OUT)) * 0x80);
+                rise_ = 0.0f;
+                dipRemain_ = 1.0f;
+            } else {
+                dipRemain_ *= 1.0f - DIP_RATE;
+                fade_ = (u8)((1.0f - dipRemain_) * 0x80);
+                rise_ = dipRemain_ * DIP_RISE;
+            }
+            // Hold at the faded-out frame until dispatchInput has made the change.
+            if (i != DIP_OUT || dipChange_ == nullptr)
+                dipIndex_ = i < DIP_OUT + DIP_IN ? i + 1 : 0;
+        }
         // render with the set screen handler
         current()->renderScreen();
-        if (dipIndex_ != 0) {
-            // Out over DIP_HALF frames to black, the change, then back in over DIP_HALF - 1 frames.
-            const int i = dipIndex_;
-            const float t = (float)(i <= DIP_HALF ? i : 2 * DIP_HALF - i) / DIP_HALF;
-            rmDrawRect(0, 0, gGuiScreenWidth, gGuiScreenHeight, GS_SETREG_RGBA(0x00, 0x00, 0x00, (u8)(plasma.ease(t) * 0x80)));
-            dipIndex_ = i + 1 < 2 * DIP_HALF ? i + 1 : 0;
-        }
+        fade_ = 0x80;
+        rise_ = 0.0f;
     }
+}
+
+bool ScreenManager::transitioning() const
+{
+    return target_ != nullptr || (dipIndex_ != 0 && (dipIndex_ <= DIP_OUT || dipChange_ != nullptr));
 }
 
 void ScreenManager::dipTo(void (*change)(void))
@@ -111,9 +135,9 @@ void ScreenManager::dipTo(void (*change)(void))
 
 void ScreenManager::dispatchInput()
 {
-    if (dipIndex_ != 0) {
-        // The black frame is on screen: make the change now, between frames, so the next frame shows it.
-        if (dipChange_ != nullptr && dipIndex_ > DIP_HALF) {
+    if (dipIndex_ != 0 && dipIndex_ <= DIP_OUT) {
+        // Once the content has faded out, make the change between frames, so the next frame eases the new one in.
+        if (dipChange_ != nullptr && dipIndex_ == DIP_OUT) {
             void (*change)(void) = dipChange_;
             dipChange_ = nullptr;
             change();
@@ -138,4 +162,9 @@ void guiSwitchScreen(int target)
 void guiDipScreen(void (*change)(void))
 {
     gScreens.dipTo(change);
+}
+
+u8 guiContentFade(float *rise)
+{
+    return gScreens.contentFade(rise);
 }
