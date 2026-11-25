@@ -122,7 +122,7 @@ with tempfile.TemporaryDirectory() as tmp:
         (tmp / 'out.map').write_text(link_map(b_name))
         run = subprocess.run([sys.executable, str(root / 'tools/link_iop.py'), '--repair', 'out.o', 'out.map'],
                              cwd=tmp, capture_output=True, text=True)
-        assert run.returncode == 0 and '2 of 9 address halves corrected' in run.stdout, (run.stdout, run.stderr)
+        assert run.returncode == 0 and '2 of 11 address halves corrected' in run.stdout, (run.stdout, run.stderr)
         assert (tmp / 'out.o').read_bytes() == module(right_b), b_name
         run = subprocess.run([sys.executable, str(root / 'tools/link_iop.py'), '--repair', 'out.o', 'out.map'],
                              cwd=tmp, capture_output=True, text=True)
@@ -138,6 +138,22 @@ with tempfile.TemporaryDirectory() as tmp:
     run = subprocess.run([sys.executable, str(root / 'tools/link_iop.py'), '--repair', 'out.o', 'out.map'],
                          cwd=tmp, capture_output=True, text=True)
     assert run.returncode == 1 and 'high half' in run.stderr and not (tmp / 'out.o').exists(), run
+    # A low half that points into a joined string at the wrong byte ("bc" for "abc").
+    (tmp / 'out.o').write_bytes(module(linked_b.replace(pair(1, 0x8004), pair(1, 0x8005))))
+    run = subprocess.run([sys.executable, str(root / 'tools/link_iop.py'), '--repair', 'out.o', 'out.map'],
+                         cwd=tmp, capture_output=True, text=True)
+    assert run.returncode == 1 and 'low half' in run.stderr and not (tmp / 'out.o').exists(), run
+    # A high half for a joined string that is neither right nor wrong in the known way.
+    (tmp / 'out.o').write_bytes(module(linked_b.replace(pair(1, 0x7FFC), pair(2, 0x7FFC))))
+    run = subprocess.run([sys.executable, str(root / 'tools/link_iop.py'), '--repair', 'out.o', 'out.map'],
+                         cwd=tmp, capture_output=True, text=True)
+    assert run.returncode == 1 and 'high half' in run.stderr and not (tmp / 'out.o').exists(), run
+    # A link map that names no linked file.
+    (tmp / 'out.o').write_bytes(module(linked_b))
+    (tmp / 'out.map').write_text('     VMA      LMA     Size Align Out     In      Symbol\n')
+    run = subprocess.run([sys.executable, str(root / 'tools/link_iop.py'), '--repair', 'out.o', 'out.map'],
+                         cwd=tmp, capture_output=True, text=True)
+    assert run.returncode == 1 and 'no linked file' in run.stderr and not (tmp / 'out.o').exists(), run
     # A file the link map names that is not there.
     (tmp / 'out.o').write_bytes(module(linked_b))
     (tmp / 'out.map').write_text(link_map('missing.o'))

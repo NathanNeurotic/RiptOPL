@@ -208,6 +208,7 @@ class Repair:
                 continue
             data = elf.content(index)
             relocations = elf.relocations(index)
+            highs = {}
             for n, (offset, kind, symbol) in enumerate(relocations):
                 if kind not in (R_MIPS_HI16, R_MIPS_LO16) or elf.symbols[symbol][3] & 0xF != STT_SECTION:
                     continue
@@ -215,18 +216,24 @@ class Repair:
                 field = out[4] + base + offset
                 written, = struct.unpack_from('<H', self.out.data, field)
                 half, = struct.unpack_from('<h', data, offset)
-                plain = to in where
                 if kind == R_MIPS_LO16:
-                    if plain and written != (where[to][1] + half) & 0xFFFF:
+                    # A low half belongs to the high half before it (same section); one on its own stands alone.
+                    full = (highs.get(symbol, 0) << 16) + half
+                    if written != self.target(elf, where, to, full)[1] & 0xFFFF:
                         raise LinkNotUnderstood(f'low half at {out_section}+{base + offset:#x} is not the expected one')
-                    checked += plain
+                    checked += 1
                     continue
+                highs[symbol] = half
                 low = next((struct.unpack_from('<h', data, o)[0] for o, k, s in relocations[n + 1:]
                             if k == R_MIPS_LO16 and s == symbol), None)
                 if low is None:
                     continue    # a high half on its own: the linker has nothing to pair it with either
                 right = ((self.target(elf, where, to, (half << 16) + low)[1] + 0x8000) >> 16) & 0xFFFF
-                if plain and written not in (right, (((half << 16) + where[to][1] + 0x8000) >> 16) & 0xFFFF):
+                try:    # what the linker writes when it moves the high half without its low half
+                    known = ((self.target(elf, where, to, half << 16)[1] + 0x8000) >> 16) & 0xFFFF
+                except LinkNotUnderstood:
+                    known = right
+                if written not in (right, known):
                     raise LinkNotUnderstood(f'high half at {out_section}+{base + offset:#x} is neither right nor wrong in the known way')
                 checked += 1
                 if written != right:
@@ -234,6 +241,8 @@ class Repair:
         return changes, checked
 
     def run(self):
+        if not self.placed:
+            raise LinkNotUnderstood('the link map names no linked file')
         for name, placed in self.placed.items():
             problem = None
             for elf in self.candidates(name):
