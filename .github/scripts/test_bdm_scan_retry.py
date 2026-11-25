@@ -114,7 +114,7 @@ typedef struct
     int bdmGameCount;
     base_game_info_t *bdmPs1Games;
     int bdmPs1GameCount;
-    int ps1ScanFailed, ps1ScanRetries;
+    int ps1ScanFailed, ps1ScanRetries, ps1RetryPass;
 } bdm_device_data_t;
 
 static int bdmDeviceModeStarted;
@@ -315,6 +315,20 @@ static void subfolderAndPs1AreQuiet(void)
     CHECK(scans == 0 && messages == 0, "PS1 view: %d PS2 scans / %d messages, want 0 / 0", scans, messages);
 }
 
+/* CodeRabbit on PR 541: an L3 to the PS2 view committed after the retry was chosen must still scan PS2. */
+static void retryThenViewChange(void)
+{
+    reset(); scanFails = 0;
+    view = LIB_VIEW_PS1;
+    ps1Result = 1; ps1Incomplete = 1;
+    connectDevice();
+    int ps2Before = scans;
+    CHECK(bdmNeedsUpdate(&list) == 1 && dev.ps1RetryPass, "a PS1 retry should be chosen");
+    view = LIB_VIEW_ISO; /* the pending L3 commits before the scan */
+    bdmUpdateGameList(&list);
+    CHECK(scans == ps2Before + 1 && !dev.ps1RetryPass, "a view change after the retry was chosen must scan PS2");
+}
+
 static void ps1Recovery(void)
 {
     for (int mixed = 0; mixed < 2; mixed++) {
@@ -323,8 +337,10 @@ static void ps1Recovery(void)
         ps1Result = 1; ps1Incomplete = 1;
         connectDevice();
         CHECK(dev.bdmPs1GameCount == 1 && dev.ps1ScanFailed, "partial list must retain the retry flag");
+        int ps2Before = scans;
         pass();
         CHECK(ps1Scans == 2 && dev.ps1ScanRetries == 1, "cached generation must not swallow retry");
+        CHECK(scans == ps2Before && dev.ps1RetryPass, "a PS1 retry pass must not rescan the PS2 folders");
         ps1Result = 2; ps1Incomplete = 0; pass();
         CHECK(dev.bdmPs1GameCount == 2 && !dev.ps1ScanFailed && !dev.ps1ScanRetries, "retry must restore both cores");
         int previous = ps1Scans; pass();
@@ -376,6 +392,7 @@ int main(void)
     successIsQuiet();
     subfolderAndPs1AreQuiet();
     ps1Recovery();
+    retryThenViewChange();
     if (!failed)
         printf("bdm scan retry: all cases passed\n");
     return failed;

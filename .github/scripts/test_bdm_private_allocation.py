@@ -62,7 +62,7 @@ typedef struct {
 typedef struct {
     int bdmULSizePrev, bdmModifiedCDPrev, bdmModifiedDVDPrev;
     int bdmGameCount, bdmPs1GameCount, FoldersCreated, bdmDeviceType;
-    int ps1ScanFailed, ps1ScanRetries;
+    int ps1ScanFailed, ps1ScanRetries, ps1RetryPass;
     int bdmHddIsLBA48, ataHighestUDMAMode, bdmDeviceTick;
     void *bdmGames, *bdmPs1Games;
     char bdmDeviceRoot[32], bdmDriver[32], bdmPrefix[64];

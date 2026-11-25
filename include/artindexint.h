@@ -23,10 +23,12 @@ public:
     void debug(int *dirsHeld, unsigned int *absentAnswered, unsigned int *sweepsFailed);
 
 private:
-    // Directories held at once. Three covers the realistic worst case in one view -- a device's
-    // ART/ folder, a second device's, and the POPS folder the VCD fallback probes -- without
-    // turning this into a cache that needs an eviction policy of its own.
-    static constexpr int kSlots = 3;
+    // Directories held at once, replaced round-robin. Three was too few: Favourites, All Games and
+    // APPS show rows from every device, and each device brings its ART/ folder plus the POPS folder
+    // the VCD fallback probes. With four devices that is eight folders, so three slots evicted on
+    // nearly every cover and re-listed a whole ART folder each time -- on the one I/O channel the
+    // music and the settings save also use. Slots are trimmed to their folder's size (build()).
+    static constexpr int kSlots = 8;
     // Refuse to hold a directory larger than this. Not a memory limit so much as a sanity limit:
     // a sweep that big is itself slow enough to be the wrong trade, and a caller is better served
     // by the ordinary probe path. 4096 entries is far past any real ART folder (a 400-game
