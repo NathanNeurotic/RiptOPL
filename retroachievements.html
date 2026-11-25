@@ -207,6 +207,16 @@ run one achievement service per PC.</p>
 </ul>
 <p>A game the console has a watch list for shows the badge and the cover mark after the next list
 refresh. Switch telemetry on and launch it.</p>
+<p>One per-game setting, on the game's <strong>Modes</strong> page:</p>
+<ul>
+<li><strong>RetroAchievements Off</strong> (default unticked, which follows the master switch) — launches that one
+game as if telemetry were off: no watch list, no in-game network stack, no Neutrino or POPStarter
+RA hand-over, and no support check on Auto Loading. Saved as <code>$RADisable=1</code> in the game's CFG.
+For a game that misbehaves with RA, or one that has no achievements set. <strong>NOT TESTED on hardware.</strong></li>
+</ul>
+<p>At launch the first call to the PC client (the Auto Loading support check, and the Neutrino leg's
+search for the PC) waits 1.5 s for an answer instead of 3 s, so an absent client delays the launch
+less. Once the client answers, every later request keeps its full wait.</p>
 <hr/>
 <h2 id="physical-discs">Physical discs</h2>
 <p>Use an RA build and the upstream xeRAbora PC client. Insert a PS2 game disc, then open
