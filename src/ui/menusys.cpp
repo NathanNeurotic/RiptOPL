@@ -2112,6 +2112,7 @@ static void menuPrevV()
 }
 
 static constexpr int carouselPageStep = 15;
+static constexpr int listPageMinRows = 3; // a shorter list pages as the flow views do
 
 // L1 (dir < 0) / R1 (dir > 0): `step` titles back or on, the page of `rows` titles moving with the cursor, so the
 // cursor keeps its row on screen: a whole page in a list, 15 titles where one title shows (Coverflow, PSBBN Flow).
@@ -2169,11 +2170,14 @@ static void menuCarouselPage(int dir)
     menuPageJump(dir, carouselPageStep, 1);
 }
 
-// A list (and Info): a page of the rows on screen; a one-row list takes 15 titles.
+// A list (and Info): a page of the rows on screen. A hidden list (PSBBN Flow, or a theme that shows the titles some
+// other way) has no page on screen: its row count only follows the font size, so a small font gave two titles a
+// jump. It takes 15, as the flow views do, and so does a list of one or two rows.
 static void menuListPage(int dir)
 {
-    const int rows = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
-    menuPageJump(dir, rows == 1 ? carouselPageStep : rows, rows);
+    const items_list_t *list = (items_list_t *)gTheme->itemsList->extended;
+    const int rows = list->hidden ? 1 : list->displayedItems;
+    menuPageJump(dir, rows < listPageMinRows ? carouselPageStep : rows, rows);
 }
 
 void menuSetSelectedItem(menu_item_t *item)
@@ -2587,6 +2591,24 @@ static theme_elems_t *menuGetMainElems(item_list_t *list)
     return &gTheme->mainElems;
 }
 
+// After a layout switch, a list shows a full page around the cursor. Grid and the flow views leave the page start on
+// the cursor, so a List entered on the last game drew that one row. menuRenderMain runs it before the page draws.
+static int menuViewSwitched;
+static void menuFillPage(void)
+{
+    menu_item_t *page = selected_item->item;
+    const items_list_t *list = (items_list_t *)gTheme->itemsList->extended;
+    submenu_list_t *top = page->current, *walk;
+    if (top == NULL || list->hidden)
+        return;
+    int shown = 1;
+    for (walk = top; walk->next != NULL && shown < list->displayedItems; walk = walk->next)
+        shown++;
+    for (; shown < list->displayedItems && top->prev != NULL; shown++)
+        top = top->prev;
+    page->pagestart = top;
+}
+
 void menuRenderMain(void)
 {
     item_list_t *list = static_cast<item_list_t *>(selected_item->item->userdata);
@@ -2597,7 +2619,6 @@ void menuRenderMain(void)
         // the theme declared in the family (the one drawn), falling back to the slot this view used
         // before the family existed: the VCD list for the PS1 view, the favourites list for the ELF view.
         theme_element_t *slot = (kindElems == &gTheme->favsVcdMainElems) ? (gTheme->vcdItemsList ? gTheme->vcdItemsList : gTheme->gamesItemsList) : (gTheme->favsItemsList ? gTheme->favsItemsList : gTheme->gamesItemsList);
-        menuRenderElements(kindElems);
         gTheme->itemsList = thmFamilyItemsList(kindElems, slot, selected_item->item->icon_id);
     } else if (libViewActive(list->mode) == LIB_VIEW_PS1) {
         // VCD/PS1 listings render with the vcd family (vcdMain*; each slot falls back at parse time to
@@ -2605,20 +2626,22 @@ void menuRenderMain(void)
         // SEPARATE cover cache from the device's ISO list -- the view reuses the device's game list
         // (same item ids), so a shared cache thrashes on every L3 toggle. This also covers the
         // Favourites tab's own VCD view: VCD favourites render with the PS1 family, not the favs one.
-        menuRenderElements(menuGetMainElems(list));
         gTheme->itemsList = thmResolveItemsList(&gTheme->vcdMainElems, gTheme->vcdItemsList ? gTheme->vcdItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
     } else if (list->mode == FAV_MODE) {
-        menuRenderElements(menuGetMainElems(list));
         gTheme->itemsList = thmResolveItemsList(&gTheme->favsMainElems, gTheme->favsItemsList ? gTheme->favsItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
     } else if (list->mode == APP_MODE) {
-        menuRenderElements(menuGetMainElems(list));
         gTheme->itemsList = thmResolveItemsList(&gTheme->appsMainElems, gTheme->appsItemsList ? gTheme->appsItemsList : gTheme->gamesItemsList, selected_item->item->icon_id);
     } else {
-        menuRenderElements(menuGetMainElems(list));
         // Always falls back to gamesItemsList, never NULL: the scroll/paging code (menuNextV/PrevV/
         // Page) derefs gTheme->itemsList->extended with no NULL check.
         gTheme->itemsList = thmResolveItemsList(&gTheme->mainElems, gTheme->gamesItemsList, selected_item->item->icon_id);
     }
+    // The list is resolved before the page draws, so the first frame after a layout switch already shows the full page.
+    if (menuViewSwitched) {
+        menuViewSwitched = 0;
+        menuFillPage();
+    }
+    menuRenderElements(kindElems);
 }
 
 int menuRenderLaunchCover(float in)
@@ -2904,7 +2927,10 @@ static void menuCycleThemeView(void)
         return;
     const bool canFilter = support != NULL && support->enabled && selected_item->item->toggleView &&
                            libViewRingUsable(support->mode);
-    if (thmCycleView() && canFilter)
+    if (!thmCycleView())
+        return;
+    menuViewSwitched = 1; // the list of the new view is resolved by the next menuRenderMain
+    if (canFilter)
         guiShowToast(_l(_STR_L3_TAP_FOR_FILTER), L3_ICON);
 }
 
