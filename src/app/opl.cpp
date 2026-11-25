@@ -4,6 +4,7 @@
   Review OpenUsbLd README & LICENSE files for further details.
 */
 
+#include "include/rigtest.h"
 #include "include/settings.h"
 #include "include/diaglog.h" // the hardware log, DIAG.TXT (RIPPS2 build 115)
 #include "include/menuwatch.h"
@@ -1648,6 +1649,20 @@ static void setDefaults(void)
     DisableCron = 1; // Auto Start Last Played counter disabled by default
     CronStart = 0;
     RemainSecs = 0;
+
+#ifdef RIG_SMB_TEST
+    gPCPort = RIG_SMB_PORT;
+    strcpy(gPCShareName, RIG_SMB_SHARE);
+    gSMBDialect = SMB_DIALECT_V1;
+    gNetworkProtocol = NET_PROTO_SMB;
+    gNetProtocolPick = NET_PROTO_SMB;
+    gNetStartMode = START_MODE_AUTO;
+    gETHStartMode = START_MODE_AUTO;
+    gDefaultDevice = ETH_MODE;
+    gRememberLastPlayed = 1;
+    gAutoStartLastPlayed = 3;
+    strcpy(gExitPath, RIG_EXIT_PATH);
+#endif
 }
 
 // RIPPS2 build 120 (akilluminati47): start the screen in the saved video mode. rmInit() runs before

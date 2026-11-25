@@ -4,6 +4,7 @@
   Review OpenUsbLd README & LICENSE files for further details.
 */
 
+#include "include/rigtest.h"
 #include "include/opl.h"
 #include "include/diag.h"
 #include "include/util.h"
@@ -1497,6 +1498,10 @@ constexpr int CONFIG_MAX_RESTORE_BYTES = (256 * 1024);
 
 int configWrite(config_set_t *configSet)
 {
+#ifdef RIG_SMB_TEST
+    (void)configSet;
+    return 0; // write nothing on the rig console
+#endif
     if (configSet == NULL)
         return 0;
 
@@ -1700,6 +1705,13 @@ int configWrite(config_set_t *configSet)
 int configReadMulti(int types)
 {
     int result = 0, index;
+
+#ifdef RIG_SMB_TEST
+    // Read nothing: the defaults (rigtest.h) are the whole configuration, and the last-played game is the test disc.
+    (void)index;
+    configSetStr(configGetByType(CONFIG_LAST), "last_played", RIG_STARTUP);
+    return result;
+#endif
 
     for (index = 0; index < CONFIG_INDEX_COUNT; index++) {
         config_set_t *configSet = &configFiles[index];
