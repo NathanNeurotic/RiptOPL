@@ -262,15 +262,20 @@ int main(void)
     opens = 0;
     sbReadList(&list, "mass2:", "", &fsize, &count);
     check(opens == 0, "a second page on the same bit gets its own cached list");
+    /* sbReadList without sbListCacheFirstRead first (another caller) never uses the cache: the cached
+       read just above must have cleared the one-shot flag. */
+    opens = 0;
+    sbReadList(&list, "mass2:", "", &fsize, &count);
+    check(opens == 2, "the cached list is used only right after sbListCacheFirstRead");
+    /* An unclassified BDM device (BDM_TYPE_UNKNOWN, -1) has no row and reads its folders. */
+    sbListCacheFirstRead(7, -1);
+    opens = 0;
+    sbReadList(&list, "mass7:", "", &fsize, &count);
+    check(opens == 2, "an unknown device type (-1) reads its folders");
     sbListCacheFirstRead(3, 1);
     opens = 0;
     sbReadList(&list, "mass3:", "", &fsize, &count);
     check(opens == 2, "a page whose bit is off reads the folders");
-
-    /* sbReadList without sbListCacheFirstRead first (another caller) never uses the cache. */
-    opens = 0;
-    sbReadList(&list, "mass2:", "", &fsize, &count);
-    check(opens == 2, "the cached list is used only right after sbListCacheFirstRead");
 
     /* Folder browsing on: the folders are always read (games.bin holds no folder rows). */
     gEnableFolderNav = 1;

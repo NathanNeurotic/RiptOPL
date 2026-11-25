@@ -232,7 +232,8 @@ static unsigned int glcUsedModes;
 void sbListCacheFirstRead(int mode, int bit)
 {
     unsigned int m = 1u << mode;
-    sbListCacheTrust = ((gGameListCache >> bit) & 1) && !(glcUsedModes & m);
+    // A BDM device whose driver is not classified (BDM_TYPE_UNKNOWN, -1) has no row: it reads its folders.
+    sbListCacheTrust = bit >= 0 && bit < 32 && ((gGameListCache >> bit) & 1) && !(glcUsedModes & m);
     glcUsedModes |= m;
 }
 
