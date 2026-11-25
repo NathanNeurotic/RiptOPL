@@ -2588,7 +2588,8 @@ static int hddTryNeutrinoLaunch(hdl_game_info_t *game, config_set_t *configSet)
     if (sbNeutrinoLoadCheats(gHDDPrefix, game->startup, configSet, neutrinoPath, neutrinoExtraArgs) < 0)
         return gAutoLaunchGame == NULL ? 1 : 0;
 #ifdef RETROACHIEVEMENTS
-    sbNeutrinoPrepareRA(gHDDPrefix, game->startup, "apa", neutrinoPath, neutrinoExtraArgs);
+    if (!sbGameRAOff(configSet))
+        sbNeutrinoPrepareRA(gHDDPrefix, game->startup, "apa", neutrinoPath, neutrinoExtraArgs);
 #endif
     if (sysNeutrinoArgsPreflight("apa", apaPart, game->startup, compatMode, gPS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, 0, -1, NULL) < 0)
         return gAutoLaunchGame == NULL ? 1 : 0; // autolaunch needs the native path to own its teardown
@@ -2943,7 +2944,8 @@ void HddSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         // RA: this game's watch list, settled before sysLaunchLoaderElf reads
         // GetWatchCount() to decide whether the network modules travel with the
         // launch. Absent is normal -- the game is simply not tracked.
-        sbLoadWatchList(gHDDPrefix, game->startup);
+        if (!sbGameRAOff(configSet))
+            sbLoadWatchList(gHDDPrefix, game->startup);
 #endif
         if ((result = sbLoadCheats(gHDDPrefix, game->startup, configSet)) < 0) {
             // #265: let the user back out instead of sitting through the whole load. The helper does

@@ -2813,3 +2813,8 @@ gui_strings:
   string: Summer Time
 - label: HINT_SUMMER_TIME
   string: Adds one hour to the chosen time zone.
+- comment: RA builds, a game's own settings (Modes page). Launches this one game without RetroAchievements while RetroAchievements stays on for the rest.
+  label: RA_GAME_OFF
+  string: RetroAchievements Off
+- label: HINT_RA_GAME_OFF
+  string: Launch this game without RetroAchievements. The game starts as it does with RetroAchievements switched off. Other games keep it.

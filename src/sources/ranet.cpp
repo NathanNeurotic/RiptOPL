@@ -162,6 +162,11 @@ int raNetTestLink(char *line1, int sz1, char *line2, int sz2)
     return gRanet.netTestLink(line1, sz1, line2, sz2);
 }
 
+void raNetQuickFirstContact(int on)
+{
+    gRanet.quickFirstContact(on);
+}
+
 int raNetNicBusy(void)
 {
     return Ranet::nicBusy();
@@ -315,8 +320,14 @@ int Ranet::ask(int sock, struct sockaddr_in *to, const char *req, char *out, int
     if (asklen > RA_RECV_MAX)
         asklen = RA_RECV_MAX;
 
-    if (sock == RA_LINK_MSTACK)
-        return askMstack(to, req, out, asklen, attempts);
+    if (quickTries_ > 0 && attempts == RA_TRY)
+        attempts = quickTries_;
+    if (sock == RA_LINK_MSTACK) {
+        int got = askMstack(to, req, out, asklen, attempts);
+        if (got > 0)
+            quickTries_ = 0; // the PC is there: later asks get their full wait
+        return got;
+    }
 
     for (t = 0; t < attempts; t++) {
         struct sockaddr_in from;
@@ -340,6 +351,7 @@ int Ranet::ask(int sock, struct sockaddr_in *to, const char *req, char *out, int
                     continue;
                 out[got] = '\0';
                 replyIP_ = from.sin_addr.s_addr;
+                quickTries_ = 0; // the PC is there: later asks get their full wait
                 return got;
             }
 

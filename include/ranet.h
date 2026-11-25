@@ -64,9 +64,14 @@ public:
     /* One non-blocking TCP read of at most max (<= 992) bytes into a 64-byte-aligned buffer:
        the count, 0 when the peer closed, negative when nothing is waiting. */
     static int tcpRecv(int sock, void *aligned, int max);
+    /* A launch is waiting on the next first contact: until a reply arrives, an ask that would
+       wait RA_TRY rounds (3 s) waits RA_TRY_LAUNCH (1.5 s). A PC on the LAN answers in well under
+       that, so only an absent PC client costs less. Off again with 0. */
+    void quickFirstContact(int on) { quickTries_ = on ? RA_TRY_LAUNCH : 0; }
 
 private:
     static constexpr int RA_TRY = 12;
+    static constexpr int RA_TRY_LAUNCH = 6;
     static constexpr int RA_TRY_CHUNK = 60; // xeRAbora allows a longer wait once transfer begins
     static int hostIsExplicit();
     void rememberPeer(unsigned int ip);
@@ -93,6 +98,7 @@ private:
     mstack_xchg_req_t xreq_ __attribute__((aligned(64)));
     mstack_xchg_reply_t xreply_ __attribute__((aligned(64)));
     unsigned int replyIP_ = 0; // last responder, network order; not yet verified
+    int quickTries_ = 0;       // quickFirstContact: the attempts for RA_TRY asks until a reply
     unsigned int verifiedIP_ = 0;
     int verifiedMode_ = -1;
     int verifiedSMBHost_[4] = {};
@@ -106,6 +112,7 @@ int raAskPC(const char *hash, const char *serial, const char *savepath,
             char *info, int infosz, char *info2, int info2sz);
 void raLaunchNetworkUp(void);
 int raNetTestLink(char *line1, int sz1, char *line2, int sz2);
+void raNetQuickFirstContact(int on);
 int raNetNicBusy(void);
 int raNetNicReserved(void);
 int raNetUdpfsNotLoaded(void);

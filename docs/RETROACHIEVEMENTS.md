@@ -91,6 +91,17 @@ Two actions on a game's own menu:
 A game the console has a watch list for shows the badge and the cover mark after the next list
 refresh. Switch telemetry on and launch it.
 
+One per-game setting, on the game's **Modes** page:
+
+* **RetroAchievements Off** (default unticked, which follows the master switch) — launches that one
+  game as if telemetry were off: no watch list, no in-game network stack, no Neutrino or POPStarter
+  RA hand-over, and no support check on Auto Loading. Saved as `$RADisable=1` in the game's CFG.
+  For a game that misbehaves with RA, or one that has no achievements set. **NOT TESTED on hardware.**
+
+At launch the first call to the PC client (the Auto Loading support check, and the Neutrino leg's
+search for the PC) waits 1.5 s for an answer instead of 3 s, so an absent client delays the launch
+less. Once the client answers, every later request keeps its full wait.
+
 ---
 
 ## Physical discs

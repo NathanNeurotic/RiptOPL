@@ -58,6 +58,7 @@ enum CONFIG_INDEX {
 #define CONFIG_ITEM_EMBER_CONTROLLER "$EmberController" // per-game Ember controller override; 0 = inherit global
 #define CONFIG_ITEM_ILINK_ID         "$ILinkID"         // Optional native-core console identity, 16 hex digits
 #define CONFIG_ITEM_DNAS             "$DNAS"
+#define CONFIG_ITEM_RA_DISABLE       "$RADisable" // RA builds: 1 = launch this game without RetroAchievements; absent = follow the global switch
 #define CONFIG_ITEM_CONFIGSOURCE     "$ConfigSource"
 
 #define CONFIG_ITEM_OSD_SETTINGS_LANGID "$CustomLanguageValue"

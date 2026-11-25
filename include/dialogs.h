@@ -412,6 +412,7 @@ enum UI_ITEMS {
     COMPAT_MODE_BASE = 200,
 #endif
     COMPAT_ILINK_ID = 280, // Reserved beyond the compatibility-mode rows; preserve existing IDs.
+    COMPAT_RA_DISABLE,     // 281, RA builds: RetroAchievements off for this game ($RADisable)
 };
 
 constexpr int COMPAT_NOEXIT = 0x70000000;

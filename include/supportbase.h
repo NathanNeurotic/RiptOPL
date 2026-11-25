@@ -158,6 +158,9 @@ void sbBuildVmcNeutrinoArgs(config_set_t *configSet, const char *vmcPrefix, neut
 int sbLoadWatchList(const char *path, const char *file);
 /* The same, without raising the network (an external runtime brings its own). */
 int sbReadWatchList(const char *path, const char *file);
+// Per-game RetroAchievements off ($RADisable): 1 when this game launches without RA. It then also drops any watch
+// list, hunt list and Neutrino hand-over an earlier check or launch left loaded, so nothing RA travels with it.
+int sbGameRAOff(config_set_t *configSet);
 // What the last of those read from <path>RA/<file>.ach, for the in-game menu: the locked achievements packed in its
 // lines (rahunt.h), *count of them in *bytes, of *total with *unlocked unlocked; NULL when there was no list, or it
 // was for another file than this one.

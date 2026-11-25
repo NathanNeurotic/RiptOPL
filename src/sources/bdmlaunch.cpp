@@ -236,7 +236,7 @@ void BdmLauncher::launchVcd(item_list_t *itemList, const char *vcdName, config_s
         host::ui().msgBox(_l(_STR_PS1_RA_REMOVE_PREVIOUS), 0, NULL);
         return;
     }
-    if (pDeviceData->bdmDeviceType == BDM_TYPE_USB && raPopsPrepare(vcdPrefix, pDeviceData->bdmPrefix, vcdFullPath, raModule == 0) < 0) {
+    if (pDeviceData->bdmDeviceType == BDM_TYPE_USB && !sbGameRAOff(configSet) && raPopsPrepare(vcdPrefix, pDeviceData->bdmPrefix, vcdFullPath, raModule == 0) < 0) {
         host::ui().msgBox(_l(_STR_PS1_RA_PREPARE_FAILED), 0, NULL);
         return;
     }
@@ -504,7 +504,8 @@ int NeutrinoLauncher::tryLaunch(item_list_t *itemList, base_game_info_t *game, b
     if (sbNeutrinoLoadCheats(pDeviceData->bdmPrefix, game->startup, configSet, neutrinoPath, neutrinoExtraArgs) < 0)
         return abortLaunch(1, configSet);
 #ifdef RETROACHIEVEMENTS
-    sbNeutrinoPrepareRA(pDeviceData->bdmPrefix, game->startup, bdmCurrentDriver, neutrinoPath, neutrinoExtraArgs);
+    if (!sbGameRAOff(configSet))
+        sbNeutrinoPrepareRA(pDeviceData->bdmPrefix, game->startup, bdmCurrentDriver, neutrinoPath, neutrinoExtraArgs);
 #endif
     if (sysNeutrinoArgsPreflight(bdmCurrentDriver, partname, game->startup, compatmask, gPS2Logo, neutrinoPath, neutrinoExtraArgs, neutrinoVideo, neutrinoGsmComp, neutrinoBsdfs, bdmDevNr, &neutrinoVmc) < 0)
         return abortLaunch(1, configSet); // an overfull Neutrino argv must not silently fall back to the native core
@@ -923,7 +924,8 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
     // RA: this game's watch list, settled before sysLaunchLoaderElf reads
     // GetWatchCount() to decide whether the network modules travel with the
     // launch. Absent is normal -- the game is simply not tracked.
-    sbLoadWatchList(pDeviceData->bdmPrefix, game->startup);
+    if (!sbGameRAOff(configSet))
+        sbLoadWatchList(pDeviceData->bdmPrefix, game->startup);
 #endif
     if ((result = sbLoadCheats(pDeviceData->bdmPrefix, game->startup, configSet)) < 0) {
         // #265: let the user back out instead of sitting through the whole load. The helper does

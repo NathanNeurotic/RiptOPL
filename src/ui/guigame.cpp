@@ -1998,6 +1998,17 @@ static int guiGameApplyConfig(config_set_t *configSet, item_list_t *support)
     else
         configRemoveKey(configSet, CONFIG_ITEM_DNAS); // clear stale GameID when user empties the field
 
+#ifdef RETROACHIEVEMENTS
+    {
+        int raDisable = 0;
+        diaGetInt(diaCompatConfig, COMPAT_RA_DISABLE, &raDisable);
+        if (raDisable)
+            result = configSetInt(configSet, CONFIG_ITEM_RA_DISABLE, 1);
+        else
+            configRemoveKey(configSet, CONFIG_ITEM_RA_DISABLE); // absent = follow the global switch
+    }
+#endif
+
     diaGetString(diaCompatConfig, COMPAT_ALTSTARTUP, altStartup, sizeof(altStartup));
     if (altStartup[0] != '\0')
         result = configSetStr(configSet, CONFIG_ITEM_ALTSTARTUP, altStartup);
@@ -2129,6 +2140,7 @@ void guiGameRemoveSettings(config_set_t *configSet)
         configRemoveKey(configSet, CONFIG_ITEM_DNAS);
         configRemoveKey(configSet, CONFIG_ITEM_ALTSTARTUP);
         configRemoveKey(configSet, CONFIG_ITEM_PARENTAL_LOCK);
+        configRemoveKey(configSet, CONFIG_ITEM_RA_DISABLE);
 
         // GSM
         configRemoveKey(configSet, CONFIG_ITEM_GSMSOURCE);
@@ -2574,6 +2586,11 @@ void guiGameLoadConfig(int id, item_list_t *support, config_set_t *configSet)
     int parentalLock = 0;
     configGetInt(configSet, CONFIG_ITEM_PARENTAL_LOCK, &parentalLock);
     diaSetInt(diaCompatConfig, COMPAT_PARENTAL_LOCK, parentalLock ? 1 : 0);
+#ifdef RETROACHIEVEMENTS
+    int raDisable = 0;
+    configGetInt(configSet, CONFIG_ITEM_RA_DISABLE, &raDisable);
+    diaSetInt(diaCompatConfig, COMPAT_RA_DISABLE, raDisable ? 1 : 0);
+#endif
 
     // Per-game Neutrino args live in the neutrinoArgs buffer, edited via the structured sub-screen
     // opened by the COMPAT_NEUTRINO_ARGS button. The dialog item is a UI_BUTTON (no stringvalue), so
