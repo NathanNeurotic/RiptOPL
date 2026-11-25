@@ -187,8 +187,11 @@ Master fixed it in the rewrite; our copy now does the same in its own place.
   the stick is not listed until it is unplugged and plugged back in.
 - **Master:** the rewrite exports `usbdReboot` (library entry 2), which resets both root ports at IOP
   reboot (`usbdRebootInner`, `hub_resets.c`), so the next driver gets a change interrupt.
-- **Our change:** `_start` resets both root ports once after `hcdInit()` when the module is loaded
-  without options. The menu (`src/platform/system.cpp`) and the IGR Path's `mc?:/SYS-CONF/USBD.IRX`
+- **Our change:** `_start`, after `hcdInit()` and only when the module is loaded without options,
+  disables both root ports (OHCI ClearPortEnable, so a stick left enabled cannot answer with its old
+  address) and runs the root-hub change handler once. The handler's normal attach resets one port at a
+  time, so two sticks are never both at address 0. Master's two simultaneous port resets are not copied
+  for that reason. The menu (`src/platform/system.cpp`) and the IGR Path's `mc?:/SYS-CONF/USBD.IRX`
   load it that way. ee_core always passes `thpri=2,3` in game, so a game's IOP reboot is unchanged.
   `.github/scripts/test_usbd_root_port_reset.py` checks those three facts.
 - **Evidence:** source comparison with ps2sdk master, and a PS2 tester report (FifthFox, 2026-11-24:
