@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check 15-title jumps, multi-row paging, wraparound, home/end and animation."""
+"""Check 15-title jumps, multi-row paging, wraparound, home/end, animation and the page after a layout switch."""
 from pathlib import Path
 import subprocess
 import tempfile
@@ -10,7 +10,7 @@ source = (Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'src/ui/menusys.cpp
 functions = []
 start = source.index('static constexpr int carouselPageStep')
 functions.append(source[start:source.index('\n}', start) + 2])
-for name in ('menuFirstPage', 'menuLastPage', 'menuNextV', 'menuPrevV', 'menuCarouselPage', 'menuListPage'):
+for name in ('menuFirstPage', 'menuLastPage', 'menuNextV', 'menuPrevV', 'menuCarouselPage', 'menuListPage', 'menuFillPage'):
     start = source.index('static void ' + name + '(')
     functions.append(source[start:source.index('\n}', start) + 2])
 harness = r'''
@@ -137,6 +137,19 @@ int main(void) {
     menuNextPage();assert(item.current==&nodes[30] && item.pagestart==&nodes[30]);
     menuNextPage();assert(item.current==&nodes[39] && item.pagestart==&nodes[38]);
     menuPrevPage();assert(item.current==&nodes[24] && item.pagestart==&nodes[23]);
+    /* After a layout switch (Grid and the flow views leave the page start on the cursor) the list shows a full
+       page: the cursor stays on top unless the list ends first; a hidden list is left alone. */
+    list.hidden=0;
+    for (int rows=1;rows<=17;rows++) {
+        list.displayedItems=rows;
+        for (int n=1;n<=40;n++) for (int s=0;s<n;s++) {
+            setup(n,s,s);menuFillPage();
+            int top=s+rows<=n ? s : (n>rows ? n-rows : 0);
+            assert(item.current==&nodes[s] && item.pagestart==&nodes[top]);
+        }
+    }
+    list.hidden=1;list.displayedItems=17;setup(40,39,39);menuFillPage();assert(item.pagestart==&nodes[39]);
+    list.hidden=0;
     /* Repeated R1 then L1 on a 40-title, 10-row list: whole pages, a stop at each end, then a wrap. */
     theme.coverflow=0;list.displayedItems=10;setup(40,3);
     int pages[]={13,23,33,39,0}, back[]={39,29,19,9,0,39};
@@ -150,7 +163,7 @@ int main(void) {
         setup(1,0);menuNextPage();menuPrevPage();
         assert(item.current==&nodes[0] && !animations && !sounds);
     }
-    puts("PASS: 15-title jumps, whole-page list jumps, stops then wraps at both ends, D-pad, home/end, animation, empty/single libraries");
+    puts("PASS: 15-title jumps, whole-page list jumps, stops then wraps at both ends, D-pad, home/end, animation, empty/single libraries, full page after a layout switch");
 }
 '''.replace('@FUNCTIONS@', '\n'.join(functions))
 with tempfile.TemporaryDirectory() as tmp:

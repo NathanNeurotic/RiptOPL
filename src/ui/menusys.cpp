@@ -2590,6 +2590,24 @@ static theme_elems_t *menuGetMainElems(item_list_t *list)
     return &gTheme->mainElems;
 }
 
+// After a layout switch, a list shows a full page around the cursor. Grid and the flow views leave the page start on
+// the cursor, so a List entered on the last game drew that one row.
+static int menuViewSwitched;
+static void menuFillPage(void)
+{
+    menu_item_t *page = selected_item->item;
+    const items_list_t *list = (items_list_t *)gTheme->itemsList->extended;
+    submenu_list_t *top = page->current, *walk;
+    if (top == NULL || list->hidden)
+        return;
+    int shown = 1;
+    for (walk = top; walk->next != NULL && shown < list->displayedItems; walk = walk->next)
+        shown++;
+    for (; shown < list->displayedItems && top->prev != NULL; shown++)
+        top = top->prev;
+    page->pagestart = top;
+}
+
 void menuRenderMain(void)
 {
     item_list_t *list = static_cast<item_list_t *>(selected_item->item->userdata);
@@ -2621,6 +2639,10 @@ void menuRenderMain(void)
         // Always falls back to gamesItemsList, never NULL: the scroll/paging code (menuNextV/PrevV/
         // Page) derefs gTheme->itemsList->extended with no NULL check.
         gTheme->itemsList = thmResolveItemsList(&gTheme->mainElems, gTheme->gamesItemsList, selected_item->item->icon_id);
+    }
+    if (menuViewSwitched) {
+        menuViewSwitched = 0;
+        menuFillPage();
     }
 }
 
@@ -2882,7 +2904,10 @@ static void menuCycleThemeView(void)
         return;
     const bool canFilter = support != NULL && support->enabled && selected_item->item->toggleView &&
                            libViewRingUsable(support->mode);
-    if (thmCycleView() && canFilter)
+    if (!thmCycleView())
+        return;
+    menuViewSwitched = 1; // the list of the new view is resolved by the next menuRenderMain
+    if (canFilter)
         guiShowToast(_l(_STR_L3_TAP_FOR_FILTER), L3_ICON);
 }
 
