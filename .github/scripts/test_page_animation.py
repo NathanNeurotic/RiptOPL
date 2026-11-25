@@ -18,8 +18,8 @@ harness = r'''
 #include <stddef.h>
 #include <stdio.h>
 typedef struct node {struct node *next, *prev;} submenu_list_t;
-typedef struct {int displayedItems;} items_list_t;
-static items_list_t list = {1};
+typedef struct {int displayedItems; int hidden;} items_list_t;
+static items_list_t list = {1, 0};
 static struct {void *extended;} element = {&list};
 static struct {int coverflow; __typeof__(element) *itemsList;} theme = {1, &element};
 static __typeof__(theme) *gTheme = &theme;
@@ -101,7 +101,7 @@ int main(void) {
        moves past the last title, so a short list keeps all its rows (#48). Vary page size, start and row. */
     for (int carousel=0;carousel<=1;carousel++) {
         theme.coverflow=carousel;
-        for (int rows=2;rows<=16;rows++) {
+        for (int rows=3;rows<=16;rows++) {
             list.displayedItems=rows;
             for (int n=1;n<=40;n++) for (int first=0;first<n;first++)
                 for (int s=first;s<n && s<first+rows;s++) {
@@ -124,6 +124,19 @@ int main(void) {
             }
         }
     }
+    /* A hidden list (PSBBN Flow, a theme that shows the titles another way) is no page whatever rows a small font
+       fits in it, and a visible list of two rows is too short to page by: both take 15 titles. */
+    theme.coverflow=0;
+    for (int rows=1;rows<=17;rows++) {
+        list.displayedItems=rows;list.hidden=1;setup(40,0);
+        menuNextPage();assert(item.current==&nodes[15] && item.pagestart==&nodes[15]);
+        menuPrevPage();assert(item.current==&nodes[0] && item.pagestart==&nodes[0]);
+    }
+    list.hidden=0;list.displayedItems=2;setup(40,0);
+    menuNextPage();assert(item.current==&nodes[15] && item.pagestart==&nodes[15]);
+    menuNextPage();assert(item.current==&nodes[30] && item.pagestart==&nodes[30]);
+    menuNextPage();assert(item.current==&nodes[39] && item.pagestart==&nodes[38]);
+    menuPrevPage();assert(item.current==&nodes[24] && item.pagestart==&nodes[23]);
     /* Repeated R1 then L1 on a 40-title, 10-row list: whole pages, a stop at each end, then a wrap. */
     theme.coverflow=0;list.displayedItems=10;setup(40,3);
     int pages[]={13,23,33,39,0}, back[]={39,29,19,9,0,39};

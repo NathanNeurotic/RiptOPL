@@ -2111,6 +2111,7 @@ static void menuPrevV()
 }
 
 static constexpr int carouselPageStep = 15;
+static constexpr int listPageMinRows = 3; // a shorter list pages as the flow views do
 
 // L1 (dir < 0) / R1 (dir > 0): `step` titles back or on, the page of `rows` titles moving with the cursor, so the
 // cursor keeps its row on screen: a whole page in a list, 15 titles where one title shows (Coverflow, PSBBN Flow).
@@ -2168,11 +2169,14 @@ static void menuCarouselPage(int dir)
     menuPageJump(dir, carouselPageStep, 1);
 }
 
-// A list (and Info): a page of the rows on screen; a one-row list takes 15 titles.
+// A list (and Info): a page of the rows on screen. A hidden list (PSBBN Flow, or a theme that shows the titles some
+// other way) has no page on screen: its row count only follows the font size, so a small font gave two titles a
+// jump. It takes 15, as the flow views do, and so does a list of one or two rows.
 static void menuListPage(int dir)
 {
-    const int rows = ((items_list_t *)gTheme->itemsList->extended)->displayedItems;
-    menuPageJump(dir, rows == 1 ? carouselPageStep : rows, rows);
+    const items_list_t *list = (items_list_t *)gTheme->itemsList->extended;
+    const int rows = list->hidden ? 1 : list->displayedItems;
+    menuPageJump(dir, rows < listPageMinRows ? carouselPageStep : rows, rows);
 }
 
 void menuSetSelectedItem(menu_item_t *item)
