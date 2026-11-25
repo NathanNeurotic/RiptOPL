@@ -9,7 +9,7 @@ adds the load address to exactly that.
 ld.lld's partial link (-r) can write the high half without the carry of a low half of 0x8000 or more, when
 the target is a static function or static data and its object file lies across a 32 KiB boundary of the
 module. The pair then says "64 KiB lower", and the module uses a wrong address on the console. Found in
-build 4370: the ingamediag build's memory-record hooks in bdm_ata_cdvdman (the console stopped while the
+the rolling build of commit 5881885: the ingamediag build's memory-record hooks in bdm_ata_cdvdman (the console stopped while the
 IOP restarted, before the game loaded) and, in the normal build, the three DEV9 interrupt handlers of
 smb_cdvdman and one callback in the SDK's ps2ip.
 

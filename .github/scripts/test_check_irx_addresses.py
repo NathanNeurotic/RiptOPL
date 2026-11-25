@@ -2,7 +2,7 @@
 
 Builds small IRX-shaped ELF files in memory: one whose HI16/LO16 pairs are right (a low half below 0x8000,
 a low half of 0x8000 or more with the carry in the high half, and a gp pointer just past the module), and
-one where the carry is missing, as ld.lld -r wrote it for the static handlers in build 4370.
+one where the carry is missing, as ld.lld -r wrote it for the static handlers in the rolling build of commit 5881885.
 Also checks that the handlers found broken in that build are no longer static.
 """
 from pathlib import Path
