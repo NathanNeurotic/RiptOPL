@@ -2166,67 +2166,79 @@ struct UIItem diaAbout[] = {
 
     {UI_SPLITTER},
 
-    // One wall of names, no headings: everyone CREDITS, README and CHANGELOG credit, in every build. NathanNeurotic
-    // (maintainer) first, then A to Z. Each row stays within about 500 wide with the menu font (the widest row
+    // One wall of names, no headings: everyone CREDITS, README, CHANGELOG and the docs name, in every build.
+    // NathanNeurotic (maintainer) first, then A to Z. Each row stays within about 500 wide with the menu font (the widest row
     // that already fit 4:3 SD at the default font size); CREDITS and README say what each person did.
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - AcidReach - Aerosol - Aislinn", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - AcidReach - AdityaKumar7209 - Aerosol", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Akilluminati47 - algol - AndrewBento - BatRastard - bbsan2k", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Aislinn - Akilluminati47 - AKuHAK - algol - AndrewBento", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"belek666 - belomaxorka - Berion - Blade1984 - bodvenomz", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"BatRastard - bbsan2k - belek666 - belomaxorka - Berion", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"CosmicScale - crazyc - danielnuld - darkladark", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Blade1984 - bodvenomz - CosmicScale - crazyc - danielnuld", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Davood TiTaN - dlanor - doctorxyz - El_Patas - eliminator", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"darkladark - Davood TiTaN - dlanor - Docmine17 - doctorxyz", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"EP - Eric Young - Ethyls - Eugene Plotnikov - FifthFox", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"El_Patas - eliminator1403 - EP - Eric Young - Ethyls", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"fjtrujy - Gageformer - gledson999 - hacan359", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Eugene Plotnikov - FifthFox - fjtrujy - freergam3r", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"hominem.te.esse - icyson55 - ifcaro - israpps - izdubar", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Gageformer - gledson999 - hacan359 - hominem.te.esse", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"jennyjan107-web - jimmikaelkael - jolek - kr_ps2 - KrahJohlito", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"icyson55 - ifcaro - Irfanlesnar - israpps - izdubar", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"krHACKen - L. Peter Deutsch - lee4 - LocalH - lucaslmgv", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Jay-Jay-OPL - jennyjan107-web - jimmikaelkael - jolek", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Marcus R. Brown - Maximus32 - mihhru - misfire - nuno6573", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"kr_ps2 - KrahJohlito - krHACKen - L. Peter Deutsch - lee4", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Okeanos - oMrRexD - Polo35 - RandQalan - reprep - sahlberg", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"LocalH - lucaslmgv - Luden - Marcus R. Brown - Maximus32", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"saildot4k - ShaolinAssassin - SP193 - techwritescode - TnA", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"mihhru - misfire - mystyq - nuno6573 - Okeanos - oMrRexD", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"V3ditata - Vapor - volca - Volventura - yoshi314 - zackcage6", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"pcm720 - Polo35 - RandQalan - reprep - sahlberg - saildot4k", -1}}},
     {UI_BREAK},
 
     {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"zero35 - zokzot", -1}}},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"shaan - ShaolinAssassin - SP193 - techwritescode", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"TheRealNextria - TnA - V3ditata - Vapor - volca - Volventura", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Wolf3s - yoshi314 - YouKnow-sys - zackcage6 - zero35", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"zokzot", -1}}},
     {UI_BREAK},
 
     // Build Options

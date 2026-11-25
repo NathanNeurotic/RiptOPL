@@ -3,7 +3,7 @@
 
 1. The links (Support Forums, Project Home) come first, right under the page header.
 2. Then one wall of names with no headings, the same in every build (no RETROACHIEVEMENTS-only rows), holding
-   everyone CREDITS, README and CHANGELOG credit.
+   everyone CREDITS, README, CHANGELOG and the docs name.
 3. No Financial Support section and no OK button: any button closes the page (diaShowPage).
 4. The page is taller than the screen, so D-pad Up/Down slide it instead of closing it.
 """
@@ -42,8 +42,10 @@ expected = """NathanNeurotic BatRastard bbsan2k belek666 crazyc dlanor doctorxyz
 izdubar jimmikaelkael KrahJohlito kr_ps2 Maximus32 misfire Polo35 reprep saildot4k SP193 volca Akilluminati47
 belomaxorka darkladark mihhru danielnuld sahlberg techwritescode zokzot fjtrujy Gageformer krHACKen Okeanos israpps
 algol Berion Blade1984 El_Patas EP gledson999 jolek lee4 Vapor LocalH RandQalan ShaolinAssassin yoshi314 zero35
-zackcage6 CosmicScale eliminator TnA V3ditata AcidReach Aerosol Aislinn AndrewBento bodvenomz Ethyls FifthFox
-jennyjan107-web lucaslmgv nuno6573 Volventura icyson55""".split()
+zackcage6 CosmicScale eliminator1403 TnA V3ditata AcidReach Aerosol Aislinn AndrewBento bodvenomz Ethyls FifthFox
+jennyjan107-web lucaslmgv nuno6573 Volventura icyson55
+Wolf3s mystyq Jay-Jay-OPL pcm720 Docmine17 AdityaKumar7209 Irfanlesnar YouKnow-sys Luden shaan
+TheRealNextria AKuHAK freergam3r""".split()
 expected += ["Eugene Plotnikov", "Marcus R. Brown", "Eric Young", "L. Peter Deutsch", "Davood TiTaN"]
 for name in expected:
     assert name in names, name + " should be on the About page"
