@@ -827,10 +827,12 @@ int EthSource::update(item_list_t *itemList)
             // NULL sub opts SMB/ETH out of folder-row collection: it uses a "\\" separator and does not
             // participate in folder browsing (see the folderlist gate in sbReadList).
         }
-        if ((view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) &&
-            (sbReadList(&gEthSupport.games(), gEthSupport.prefix(), /* sub: */ NULL, &gEthSupport.ulSizePrev(), &gEthSupport.gameCount())) < 0) {
-            gNetworkStartup = ERROR_ETH_SMB_LISTGAMES;
-            gEthSupport.displayErrorStatus();
+        if (view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) {
+            sbListCacheFirstRead(itemList->mode, GLC_ETH);
+            if (sbReadList(&gEthSupport.games(), gEthSupport.prefix(), /* sub: */ NULL, &gEthSupport.ulSizePrev(), &gEthSupport.gameCount()) < 0) {
+                gNetworkStartup = ERROR_ETH_SMB_LISTGAMES;
+                gEthSupport.displayErrorStatus();
+            }
         }
     } else {
         int i, count;

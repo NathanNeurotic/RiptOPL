@@ -683,6 +683,7 @@ int UdpfsSource::update(item_list_t *itemList)
     }
     if (view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) {
         // Neutrino cannot launch USBExtreme parts. A failed scan keeps the last-good library.
+        sbListCacheFirstRead(itemList->mode, GLC_UDPFS);
         if (sbReadList(&gUdpfsSupport.games_, udpfsPrefix, folderGetSub(itemList->mode), NULL, &gUdpfsSupport.gameCount_) < 0) {
             gUdpfsSupport.isoScanned_ = 0;
         } else {

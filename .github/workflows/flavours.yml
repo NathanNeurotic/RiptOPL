@@ -314,6 +314,8 @@ jobs:
           persist-credentials: false
       - name: Check the games.bin cache answers as before without O(n^2) work per scan
         run: python3 .github/scripts/test_iso_cache.py
+      - name: Check Cache Game List shows the scanned list without reading the folders, once per page
+        run: python3 .github/scripts/test_game_list_cache.py
       - name: Check the BDM block cache never returns stale data on a failed refill
         run: python3 .github/scripts/test_bdm_cache.py
       - name: Check BDM partition I/O bounds and sector-size refusal

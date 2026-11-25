@@ -40,6 +40,7 @@ struct game_list_t { base_game_info_t gameinfo; game_list_t *next; };
 static int sbReadListErrno, fileSize, offset, maxRead, failAt, zeroAt, reads, closes;
 static int isoCount, folderCount;
 static bool gEnableFolderNav = true, failClose, failAllocation;
+static int sbListCacheTrust; // Cache Game List off: every scan reads the folders
 static std::vector<unsigned char> contents;
 static void sbSetBrowseSub(const char*) {}
 static int scanForISO(const char*, int type, game_list_t **head, game_list_t **folders) {
