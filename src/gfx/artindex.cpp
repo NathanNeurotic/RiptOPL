@@ -276,6 +276,23 @@ ArtIndex::Dir *ArtIndex::build(const char *dir)
     if (pics != NULL)
         qsort(pics, picCount, sizeof(Pic), &picCmp);
 
+    // Give back what the folder did not use: the buffers above are sized for kMaxEntries, so an
+    // untrimmed slot holds ~64 KiB whatever the folder size. Trimmed, a slot costs what its folder
+    // holds, which is what lets kSlots cover every device at once. A failed shrink keeps the block.
+    if (n > 0) {
+        unsigned int *fit = (unsigned int *)realloc(hashes, n * sizeof(unsigned int));
+        if (fit != NULL)
+            hashes = fit;
+    }
+    if (pics != NULL && picCount > 0) {
+        Pic *fit = (Pic *)realloc(pics, picCount * sizeof(Pic));
+        if (fit != NULL)
+            pics = fit;
+        char *fitNames = (char *)realloc(names, namesUsed);
+        if (fitNames != NULL)
+            names = fitNames;
+    }
+
     // Publish order matters even on one thread: valid LAST, so the slot is never readable with a
     // count that does not match its buffer.
     slot->hashes = hashes;
