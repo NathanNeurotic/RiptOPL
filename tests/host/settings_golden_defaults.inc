@@ -113,3 +113,4 @@ CHECK(gAppHandoffPath == (0));
 CHECK(gExitMenu == (0));
 CHECK(gClockZone == (CLOCK_ZONE_CONSOLE));
 CHECK(gClockSummer == (0));
+CHECK(gGameListCache == (0));

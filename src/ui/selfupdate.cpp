@@ -595,10 +595,13 @@ static void suRelaunch(void)
     char *argv[] = {bootPath};
     if (drained && suResolveTarget(target, false) && suReadBootFormat(target) == suFormat &&
         suJoin(bootPath, sizeof(bootPath), target.apa ? gBootLaunchDir : gBootDir, gBootElfName, "") == 0 &&
-        elfldrArgsFit(target.path, 1, argv, target.apa ? "-la=RH" : "-reset-iop", NULL)) {
+        elfldrArgsFit(target.path, 1, argv, "-la=RH", NULL)) {
         // Load from the live mount, but give the new instance the physical boot identity.
         host::app().deinitTerminal(sbLoaderDeinitException(target.path) | KEEPIOP_EXCEPTION, IO_MODE_SELECTED_ALL_SPARE);
-        sysLoadELFApp(target.path, "", 1, argv, 1, target.apa);
+        // The teardown above keeps the update's network stack, and any HDD, live with DEV9 powered.
+        // An IOP reset against that can hang (#307), so from every boot device the loader closes
+        // PFS, idles the HDD and powers DEV9 off once the new ELF is in memory, then resets.
+        sysLoadELFApp(target.path, "", 1, argv, 1, 1);
         // The UI has already shut down if the loader unexpectedly returns.
         LoadExecPS2("rom0:OSDSYS", 0, NULL);
         exit(0);

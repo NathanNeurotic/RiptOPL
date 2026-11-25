@@ -14,6 +14,7 @@
 #include "include/pad.h"
 #include "include/sound.h"
 #include "include/texcache.h"
+#include "include/coverglide.h"
 #include "include/favsupport.h"
 #include "include/gamesource.h"
 #include "include/grid.h"
@@ -1203,6 +1204,24 @@ static GSTEXTURE *getGameImageCached(image_cache_t *cache, struct submenu_item *
     return cacheLookupTexture(cache, &item->cache_id[cache->userId()], &item->cache_uid[cache->userId()]);
 }
 
+GSTEXTURE *thmResidentCover(const theme_elems_t *family, struct menu_list *menu, struct submenu_list *row)
+{
+    struct submenu_item *item = &row->item;
+    for (theme_element_t *elem = family->first; elem != NULL; elem = elem->next) {
+        const mutable_image_t *image = NULL;
+        if (elem->type == ELEM_TYPE_GAME_IMAGE || elem->type == ELEM_TYPE_COVERFLOW || elem->type == ELEM_TYPE_PSBBN_FLOW || elem->type == ELEM_TYPE_GRID)
+            image = (const mutable_image_t *)thmGetElemForItem(menu, row, elem)->extended; // the row's own cover, as drawn
+        else if (elem->type == ELEM_TYPE_ITEMS_LIST && elem->extended != NULL)
+            image = ((const items_list_t *)elem->extended)->decoratorImage;
+        if (image == NULL || image->cache == NULL || image->cache->suffix() == NULL || strcmp(image->cache->suffix(), "COV") != 0)
+            continue;
+        GSTEXTURE *cover = getGameImageCached(image->cache, item);
+        if (cover != NULL && cover->Mem != NULL)
+            return cover;
+    }
+    return NULL;
+}
+
 // Frames past the art delay that a Background keeps showing the previous game's art while the selected one has not
 // been requested yet (the Coverflow gate above can hold the BG request back until the cover settles).
 #define BG_HOLD_GRACE_FRAMES 30
@@ -1461,6 +1480,35 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
             } else {
                 if (elem->type == ELEM_TYPE_BACKGROUND)
                     host::ui().drawBackgroundPlasma();
+                return;
+            }
+        }
+
+        // The game's cover picture (a list layout's) takes part in a hold L3 layout switch (coverglide.h): while it is on
+        // its way it is drawn at its box, centred, the case frame's corners scaled with it.
+        if (!isBackground && drawElem->type == ELEM_TYPE_GAME_IMAGE && gameImage->cache->suffix() != NULL &&
+            !strcmp(gameImage->cache->suffix(), "COV") && drawElem->width > 0 && drawElem->height > 0) {
+            int ratio = drawElem->scaled & SCALING_RATIO, dw = ratio ? rmWideScale(drawElem->width) : drawElem->width, dh = drawElem->height;
+            float cx = drawElem->posX, cy = drawElem->posY;
+            if (!(drawElem->aligned & ALIGN_HCENTER))
+                cx += (drawElem->aligned & ALIGN_RIGHT) ? -dw / 2 : dw / 2;
+            if (!(drawElem->aligned & ALIGN_VCENTER))
+                cy += (drawElem->aligned & ALIGN_BOTTOM) ? -dh / 2 : dh / 2;
+            glide_box_t at = {cx, cy, ratio ? (float)drawElem->width : (float)drawElem->width * 1000 / rmWideScale(1000), (float)dh};
+            glide_box_t to = at;
+            int alpha = coverGlide(item->item.text, item->item.id, 0, &at);
+            if (alpha < 0x80 || at.x != to.x || at.y != to.y || at.w != to.w || at.h != to.h) {
+                int x = (int)at.x, y = (int)at.y, w = (int)at.w, h = (int)at.h, ew = drawElem->width, eh = drawElem->height;
+                u64 color = (gDefaultCol & ~(0xffULL << 24)) | ((u64)alpha << 24);
+                image_texture_t *ov = gameImage->overlayTexture;
+                if (ov) {
+                    rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, texture, ov->upperLeft_x * w / ew,
+                                        ov->upperLeft_y * h / eh, ov->upperRight_x * w / ew, ov->upperRight_y * h / eh, ov->lowerLeft_x * w / ew,
+                                        ov->lowerLeft_y * h / eh, ov->lowerRight_x * w / ew, ov->lowerRight_y * h / eh, 0);
+                    if (gameImage->overlayTexture2)
+                        rmDrawPixmap(&gameImage->overlayTexture2->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
+                } else
+                    rmDrawPixmap(texture, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
                 return;
             }
         }

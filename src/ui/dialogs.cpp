@@ -1398,6 +1398,64 @@ struct UIItem diaAdvancedConfig[] = {
     {UI_SPACER},
     {UI_BOOL, CFG_HDDGAMELISTCACHE, 1, 1, _STR_HINT_HDDGAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
     {UI_BREAK},
+    // Cache Game List for every other device (game_list_cache bits, all off). The device rows reuse the
+    // Game Sources names, indented under this heading.
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_CACHE_GAME_LIST}}},
+    {UI_BREAK},
+#if LITE_HAS_BDMHDD
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_BDM_HDD}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_BDMHDD, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_USB
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_USB}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_USB, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_MX4SIO
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_MX4SIO}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_MX4SIO, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_PCCF
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_PCCF}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_PCCF, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_ILINK
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_SOURCE_ILINK}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_ILINK, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_UDPBD
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLC_UDPBD}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_UDPBD, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_MMCE_GAMES
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLC_MMCE}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_MMCE, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_SMB || LITE_HAS_NFS
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLC_NETWORK}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_ETH, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
+#if LITE_HAS_UDPFS
+    {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_GLC_UDPFS}}},
+    {UI_SPACER},
+    {UI_BOOL, CFG_GLC_UDPFS, 1, 1, _STR_HINT_GAMELISTCACHE, 0, 0, {.intvalue = {0, 0}}},
+    {UI_BREAK},
+#endif
 
     {UI_LABEL, 0, 1, 1, -1, -40, 0, {.label = {NULL, _STR_ADV_BDM_CACHE}}},
     {UI_SPACER},
@@ -2153,89 +2211,7 @@ struct UIItem diaAbout[] = {
     {UI_HEADER, ABOUT_TITLE, 1, 1, -1, 0, 0, {.label = {NULL, -1}}},
     {UI_SPLITTER},
 
-    // Coders
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_DEVS}}},
-    {UI_BREAK},
-
-    // Each coder row fits the 4:3 SD screen at the default font size (about 570 wide after the indent): measured
-    // with the menu font, the rows that ended in "hacan359", "KrahJohlito" and "volca" ran 10 to 40 past the
-    // right edge. hacan359 authored the RA design/client and oMrRexD supplied the hardware stabilization fixes;
-    // CREDITS has the full provenance for both, and the standard ELF's rows leave them out.
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"BatRastard - bbsan2k - belek666 - crazyc - dlanor - doctorxyz", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-#ifdef RETROACHIEVEMENTS
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"hacan359 - oMrRexD - hominem.te.esse - ifcaro - izdubar", -1}}},
-#else
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"hominem.te.esse - ifcaro - izdubar - jimmikaelkael - KrahJohlito", -1}}},
-#endif
-    {UI_BREAK},
-
-    {UI_SPACER},
-#ifdef RETROACHIEVEMENTS
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"jimmikaelkael - KrahJohlito - kr_ps2 - Maximus32 - misfire", -1}}},
-#else
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"kr_ps2 - Maximus32 - misfire - Polo35 - reprep - saildot4k", -1}}},
-#endif
-    {UI_BREAK},
-
-    {UI_SPACER},
-#ifdef RETROACHIEVEMENTS
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Polo35 - reprep - saildot4k - SP193 - volca", -1}}},
-#else
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"SP193 - volca", -1}}},
-#endif
-    {UI_BREAK},
-
-    {UI_SPACER},
-    // Preserve this non-scrolling dialog at 4:3 SD resolution: add belomaxorka
-    // and Akilluminati47 (RIPPS2 co-developer) without adding a row or exceeding the
-    // widest coder row. CREDITS and README explain the RIPPS2, YAOPL, LUNA,
-    // PS2CF, and PSUManager contributions in full.
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Akilluminati47 - belomaxorka - darkladark - mihhru", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    // NathanNeurotic (maintainer). A fifth coder row: the rows above are full, and the dialog's height is
-    // kept by putting Network update and its name on one row below, as Build Options and the forum are.
-    // sahlberg (Ronnie Sahlberg) wrote usmb2 and unfs4, under the SMB2 and NFS drivers; CREDITS has the detail.
-    // danielnuld (Daniel) makes NULD; the hold L3 layout switch follows its view switch.
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - danielnuld - sahlberg - techwritescode", -1}}},
-    {UI_BREAK},
-
-    // Quality Assurance. The headings here and on the Network update row keep the plain row height, so the page
-    // fits 4:3 SD at the default font size without scrolling (it has no control to scroll with).
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_QANDA}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    // Keep QA names on short rows in the non-scrolling About dialog.
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"algol, Berion, Blade1984, El_Patas, EP, gledson999, jolek, lee4, Vapor", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"LocalH, RandQalan, ShaolinAssassin, yoshi314, zero35, zackcage6", -1}}},
-    {UI_BREAK},
-
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"CosmicScale, eliminator, TnA, V3ditata", -1}}},
-    {UI_BREAK},
-
-    // Network update
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_NET_UPDATE}}},
-    {UI_SPACER},
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"icyson55", -1}}},
-    {UI_BREAK},
-
-    // Build Options
-    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_BUILD_DETAILS}}},
-    {UI_SPACER},
-    {UI_LABEL, ABOUT_BUILD_DETAILS, 1, 1, -1, 0, 0, {.label = {NULL, -1}}},
-    {UI_BREAK},
-
-    // Support details
+    // The links first, right under the page header
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_FORUM_DETAILS}}},
     {UI_SPACER},
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"psx-place.com", -1}}},
@@ -2244,6 +2220,89 @@ struct UIItem diaAbout[] = {
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_PROJECT_HOME}}},
     {UI_SPACER},
     {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {"github.com/NathanNeurotic/RiptOPL", -1}}},
+    {UI_BREAK},
+
+    {UI_SPLITTER},
+
+    // One wall of names, no headings: everyone CREDITS, README, CHANGELOG and the docs name, in every build.
+    // NathanNeurotic (maintainer) first, then A to Z. Each row stays within about 500 wide with the menu font (the widest row
+    // that already fit 4:3 SD at the default font size); CREDITS and README say what each person did.
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"NathanNeurotic - AcidReach - AdityaKumar7209 - Aerosol", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Aislinn - Akilluminati47 - AKuHAK - algol - AndrewBento", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"BatRastard - bbsan2k - belek666 - belomaxorka - Berion", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Blade1984 - bodvenomz - CosmicScale - crazyc - danielnuld", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"darkladark - Davood TiTaN - dlanor - Docmine17 - doctorxyz", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"El_Patas - eliminator1403 - EP - Eric Young - Ethyls", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Eugene Plotnikov - FifthFox - fjtrujy - freergam3r", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Gageformer - gledson999 - hacan359 - hominem.te.esse", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"icyson55 - ifcaro - Irfanlesnar - israpps - izdubar", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Jay-Jay-OPL - jennyjan107-web - jimmikaelkael - jolek", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"kr_ps2 - KrahJohlito - krHACKen - L. Peter Deutsch - lee4", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"LocalH - lucaslmgv - Luden - Marcus R. Brown - Maximus32", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"mihhru - misfire - mystyq - nuno6573 - Okeanos - oMrRexD", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"pcm720 - Polo35 - RandQalan - reprep - sahlberg - saildot4k", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"shaan - ShaolinAssassin - SP193 - techwritescode", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"TheRealNextria - TnA - V3ditata - Vapor - volca - Volventura", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"Wolf3s - yoshi314 - YouKnow-sys - zackcage6 - zero35", -1}}},
+    {UI_BREAK},
+
+    {UI_SPACER},
+    {UI_LABEL, 0, 1, 1, -1, 0, 15, {.label = {"zokzot", -1}}},
+    {UI_BREAK},
+
+    // Build Options
+    {UI_LABEL, 0, 1, 1, -1, 0, 0, {.label = {NULL, _STR_BUILD_DETAILS}}},
+    {UI_SPACER},
+    {UI_LABEL, ABOUT_BUILD_DETAILS, 1, 1, -1, 0, 0, {.label = {NULL, -1}}},
     {UI_BREAK},
 
     // no buttons: any button closes the page (diaShowPage)

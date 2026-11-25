@@ -105,6 +105,7 @@ public:
     int viewActive(int mode) override { return libViewActive(mode); }
     int consumeDirty(int mode) override { return libViewConsumeDirty(mode); }
     void markDirty(int mode) override { libViewMarkDirty(mode); }
+    int viewPending(int mode) override { return libViewPending(mode); }
     int listRowView(item_list_t *itemList, int id) override { return libListRowView(itemList, id); }
     int listSourceId(item_list_t *itemList, int id) override { return libListSourceId(itemList, id); }
     const char *listDisplayName(item_list_t *itemList, int id, const char *text) override { return cfgTitleDisplayName(itemList, id, text); }

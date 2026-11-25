@@ -616,6 +616,7 @@ void EthSupport::reconnectSmb(void)
     ps1GameCount_ = 0;
     ps1ScanFailed_ = 0;
     ps1ScanRetries_ = 0;
+    ps1Rescan_ = 1;
     gNetworkStartup = ERROR_ETH_NOT_STARTED;
 
     if (!netGetModulesLoaded() || !smbModuleLoaded_)
@@ -661,6 +662,7 @@ void EthSupport::checkedRefreshSmb()
         return;
     }
     // A healthy session keeps its open ART/BGM handles. Refresh either PS1 or PS2 backing view.
+    ps1Rescan_ = 1;
     host::library().markDirty(ETH_MODE);
     ioPutRequest(IO_MENU_UPDATE_DEFFERED, &ethInstance()->mode);
     reconnectQueued_ = 0;
@@ -754,17 +756,17 @@ int EthSource::needsUpdate(item_list_t *itemList)
     result = 0;
 
     // Explicit refresh/view changes re-arm recovery; failed background scans keep their budget.
+    // A requested rebuild still records the CD/DVD folder times below. Returning before that left them
+    // unset, so the next Automatic Refresh tick saw a "change" and scanned the whole share a second time.
     if (host::library().consumeDirty(itemList->mode)) {
         gEthSupport.ps1ScanRetries() = 0;
-        return 1;
-    }
-    if (gEthSupport.shareChosen() && gNetworkStartup == 0 && gEthSupport.ps1ScanFailed() &&
-        gEthSupport.ps1ScanRetries() < ETH_PS1_SCAN_RETRY_MAX &&
-        (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
+        result = 1;
+    } else if (gEthSupport.shareChosen() && gNetworkStartup == 0 && gEthSupport.ps1ScanFailed() &&
+               gEthSupport.ps1ScanRetries() < ETH_PS1_SCAN_RETRY_MAX &&
+               (host::library().listViewActive(itemList) == LIB_VIEW_PS1 || host::library().listViewActive(itemList) == LIB_VIEW_MIXED)) {
         gEthSupport.ps1ScanRetries()++;
         return 1;
-    }
-    if (gEthSupport.shareChosen() && (host::library().listViewActive(itemList) == LIB_VIEW_PS1))
+    } else if (gEthSupport.shareChosen() && (host::library().listViewActive(itemList) == LIB_VIEW_PS1))
         return 0;
 
     if (gEthSupport.ulSizePrev() == -2)
@@ -805,7 +807,11 @@ int EthSource::update(item_list_t *itemList)
         if (gNetworkStartup != 0)
             return 0;
 
-        if (view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) {
+        // An L3 view flip changes which list the page shows, not what is on the share, so it reuses the
+        // PS1 rows already scanned: the scan opens every Ember folder. Refresh and reconnect still scan.
+        const int reusePs1 = host::library().viewPending(itemList->mode) && gEthSupport.ps1Games() != NULL && !gEthSupport.ps1ScanFailed() &&
+                             !gEthSupport.ps1Rescan();
+        if ((view == LIB_VIEW_PS1 || view == LIB_VIEW_MIXED) && !reusePs1) {
             // SMB: one list, both cores. NFS lists Ember ONLY, as UDPBD does: POPSTARTER resets the IOP and
             // dials SMB itself, while Ember keeps the live nfs: mount. Keep readable rows while retrying.
             const int nfs = gEthSupport.nfs();
@@ -814,15 +820,19 @@ int EthSource::update(item_list_t *itemList)
             if (r >= 0) // r < 0: transient scan failure -> preserve the last-good list
                 gEthSupport.ps1GameCount() = r;
             gEthSupport.ps1ScanFailed() = r < 0 || (!nfs && ps1GameListNeedsRetry());
-            if (!gEthSupport.ps1ScanFailed())
+            if (!gEthSupport.ps1ScanFailed()) {
                 gEthSupport.ps1ScanRetries() = 0;
+                gEthSupport.ps1Rescan() = 0;
+            }
             // NULL sub opts SMB/ETH out of folder-row collection: it uses a "\\" separator and does not
             // participate in folder browsing (see the folderlist gate in sbReadList).
         }
-        if ((view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) &&
-            (sbReadList(&gEthSupport.games(), gEthSupport.prefix(), /* sub: */ NULL, &gEthSupport.ulSizePrev(), &gEthSupport.gameCount())) < 0) {
-            gNetworkStartup = ERROR_ETH_SMB_LISTGAMES;
-            gEthSupport.displayErrorStatus();
+        if (view == LIB_VIEW_ISO || view == LIB_VIEW_MIXED) {
+            sbListCacheFirstRead(itemList->mode, GLC_ETH);
+            if (sbReadList(&gEthSupport.games(), gEthSupport.prefix(), /* sub: */ NULL, &gEthSupport.ulSizePrev(), &gEthSupport.gameCount()) < 0) {
+                gNetworkStartup = ERROR_ETH_SMB_LISTGAMES;
+                gEthSupport.displayErrorStatus();
+            }
         }
     } else {
         int i, count;
@@ -1310,6 +1320,7 @@ void EthSource::launch(item_list_t *itemList, int id, config_set_t *configSet)
         gEthSupport.ps1GameCount() = 0;
         gEthSupport.ps1ScanFailed() = 0;
         gEthSupport.ps1ScanRetries() = 0;
+        gEthSupport.ps1Rescan() = 1;
         ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode); // clear the share list
         ioPutRequest(IO_CUSTOM_SIMPLEACTION, reinterpret_cast<void *>(&ethInitSMB));
         ioPutRequest(IO_MENU_UPDATE_DEFFERED, &(*ethInstance()).mode); // reload the game list

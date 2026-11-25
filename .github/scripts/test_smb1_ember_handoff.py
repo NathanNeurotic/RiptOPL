@@ -42,7 +42,7 @@ assert "case DOSERR_NO_MORE_FILES:" in find_fn
 assert "case STATUS_OBJECT_NAME_NOT_FOUND:" in qpi_fn
 assert "case STATUS_OBJECT_PATH_NOT_FOUND:" in qpi_fn
 assert "return -ENOENT;" in qpi_fn
-assert "fh->dir_eos = (info->EOS != 0);" in function(fio, "int smb_dread(")
+assert "fh->dir_eos  = (info->EOS != 0);" in function(fio, "int smb_dread(")
 assert "fh->mode != O_DIROPEN &&" in function(fio, "int smb_close(")
 assert "smb_FindClose2(UID, TID, fh->smb_fid);" in function(fio, "int smb_close(")
 
@@ -84,13 +84,18 @@ typedef struct {
     int smb_fid;
     long long filesize, position;
     unsigned int mode;
-    unsigned char dir_eos, dir_stale;
+    unsigned char dir_eos, dir_stale, dir_buf; /* dir_buf 0: one entry per request, the path under test */
+    unsigned short dir_left, dir_off;
     char name[SMB_NAME_MAX];
 } FHANDLE;
 #define MAX_FDHANDLES 4
 static FHANDLE smbman_fdhandles[MAX_FDHANDLES];
 static int UID = 1, TID = 1, queries, closing, find_closing, test_case;
 static char SearchBuf[sizeof(SearchInfo_t)];
+typedef unsigned char u8;
+#define SMB_FIND_BATCH_SIZE 2048
+static u8 DirBuf[1][SMB_FIND_BATCH_SIZE], DirBufUsed[1];
+static int smb_FindEntry(const u8 *entry, SearchInfo_t *info) { (void)entry; (void)info; assert(!"no batch buffer in this test"); return 0; }
 static void smb_io_lock(void) {}
 static void smb_io_unlock(void) {}
 static void smb_statFiller(const PathInformation_t *src, iox_stat_t *dst)
@@ -101,9 +106,10 @@ static int smb_FindClose2(int a, int b, int sid)
 { (void)a; (void)b; (void)sid; find_closing++; return test_case == 6 ? -ETIMEDOUT : 0; }
 static int aborts;
 static int smb_AbortConnection(void) { aborts++; return 0; }
-static int smb_FindFirstNext2(int a, int b, char *path, int op, SearchInfo_t *info)
+static int smb_FindFirstNext2(int a, int b, char *path, int op, SearchInfo_t *info, u8 *batch, int size, int *count)
 {
-    (void)a; (void)b; (void)path;
+    (void)a; (void)b; (void)path; (void)size; (void)count;
+    assert(batch == NULL);
     assert(op == (queries == 0 ? TRANS2_FIND_FIRST2 : TRANS2_FIND_NEXT2));
     queries++;
     if (test_case == 4) return -EIO;

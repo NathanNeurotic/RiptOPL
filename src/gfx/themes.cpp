@@ -1417,6 +1417,7 @@ static int thmLoad(const char *themePath)
     newT->parsingFavKindFamily = 0;
     newT->gameCacheCount = 0;
     newT->artGeneration = ++thmLoadCount;
+    cacheNewGeneration(); // the old theme's loaded covers move to this load's caches when it is freed
     newT->wallpaperWanted = gThemeWallpaper != 0;
     newT->wallpaper = NULL;
     newT->itemsList = NULL;

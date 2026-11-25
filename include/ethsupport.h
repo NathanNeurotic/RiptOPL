@@ -86,6 +86,7 @@ public:
     base_game_info_t *&ps1Games() { return ps1Games_; }
     int &ps1ScanFailed() { return ps1ScanFailed_; }
     int &ps1ScanRetries() { return ps1ScanRetries_; }
+    unsigned char &ps1Rescan() { return ps1Rescan_; }
 
     // Session predicates and the public cross-module entry points (bodies; the ethXxx free
     // functions in ethsupport.cpp forward here).
@@ -129,6 +130,7 @@ private:
     base_game_info_t *ps1Games_ = NULL;
     int ps1ScanFailed_ = 0;
     int ps1ScanRetries_ = 0;
+    unsigned char ps1Rescan_ = 0; // Refresh, reconnect or a new share: scan PS1 again before an L3 flip reuses the list
     unsigned char smbModuleLoaded_ = 0;
     unsigned char nfs_ = 0; // selectDriver(): which driver smbModuleLoaded_ is about
     int smbNegotiatedDialect_ = 0;

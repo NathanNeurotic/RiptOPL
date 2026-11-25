@@ -276,6 +276,23 @@ ArtIndex::Dir *ArtIndex::build(const char *dir)
     if (pics != NULL)
         qsort(pics, picCount, sizeof(Pic), &picCmp);
 
+    // Give back what the folder did not use: the buffers above are sized for kMaxEntries, so an
+    // untrimmed slot holds ~64 KiB whatever the folder size. Trimmed, a slot costs what its folder
+    // holds, which is what lets kSlots cover every device at once. An empty list keeps one element:
+    // pics must stay non-NULL (NULL means "names not kept, probe the device"), and a POPS folder
+    // usually has VCDs but no pictures. A failed shrink keeps the block.
+    unsigned int *fit = (unsigned int *)realloc(hashes, (n > 0 ? n : 1) * sizeof(unsigned int));
+    if (fit != NULL)
+        hashes = fit;
+    if (pics != NULL) {
+        Pic *fitPics = (Pic *)realloc(pics, (picCount > 0 ? picCount : 1) * sizeof(Pic));
+        if (fitPics != NULL)
+            pics = fitPics;
+        char *fitNames = (char *)realloc(names, namesUsed > 0 ? namesUsed : 1);
+        if (fitNames != NULL)
+            names = fitNames;
+    }
+
     // Publish order matters even on one thread: valid LAST, so the slot is never readable with a
     // count that does not match its buffer.
     slot->hashes = hashes;
@@ -425,7 +442,7 @@ void ArtIndex::invalidate()
     // Callable from ANY thread, so it deliberately does NOT free: the owner thread may be searching a
     // buffer right now, and releasing it underneath would be a use-after-free. Marking the slots
     // unusable is enough -- the next build on the owner thread reclaims the memory, and the bounded
-    // three slots cap what can be held meanwhile.
+    // kSlots slots cap what can be held meanwhile.
     gen_++;
 
     for (i = 0; i < kSlots; i++) {

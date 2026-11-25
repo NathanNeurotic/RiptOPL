@@ -282,6 +282,7 @@ int gYOff;
 int gOverscan;
 int gSelectButton;
 int gHDDGameListCache;
+int gGameListCache;
 int gEnableSFX;
 int gEnableRumble;
 int gEnableBootSND;
@@ -871,6 +872,7 @@ void menuDeferredUpdate(void *data)
     // rebuild below commits the view. (Only L3 stages a view; libViewBdmAttach never does, so a
     // device that attaches still rebuilds APPS.)
     int viewFlip = libViewPending(mod->support->mode);
+    int curMode = mod->support->mode;
 
     // see if we have to update
     if (gsOf(mod->support)->needsUpdate(mod->support)) {
@@ -879,7 +881,10 @@ void menuDeferredUpdate(void *data)
         // If other modes have been updated, then the apps list should be updated too.
         // Exclude FAV: a FAV rebuild marking apps dirty would re-trigger the FAV resync below
         // (an apps refresh calls loadFavourites), looping forever once favNeedsUpdate fires.
-        if (mod->support->mode != APP_MODE && mod->support->mode != FAV_MODE && !viewFlip) {
+        // A BDM PS1 retry pass (only the PS1 folders re-read) cannot change APPS either. Without this,
+        // each retry -- up to BDM_PS1_SCAN_RETRY_MAX per device -- re-walked every device's APPS folder.
+        int ps1RetryOnly = (curMode >= BDM_MODE && curMode <= BDM_MODE_LAST && bdmLastPassWasPs1Retry(mod->support));
+        if (curMode != APP_MODE && curMode != FAV_MODE && !viewFlip && !ps1RetryOnly) {
             gShouldAppsUpdate = 1;
 
             // ...and SCHEDULE the pass that consumes that flag. Raising it is not enough: APPS has

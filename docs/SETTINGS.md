@@ -101,6 +101,7 @@ or UDPFS owns the adapter.
 | ETH Prefix Path | A folder on the SMB share or NFS export that holds the game folders. | `eth_prefix` |
 | HDD Spindown | Minutes before the internal HDD spins down (0 = never). | `hdd_spindown` |
 | Cache Game List (HDD APA) | Keeps the APA game list between starts. | `hdd_game_list_cache` |
+| Cache Game List *(one row per device: Internal HDD (exFAT), USB, MX4SIO, PC CARD CF, iLink, UDPBD, MMCE, Network (SMB/NFS), UDPFS)* | Off for every device by default. On: the first time a device's page lists its PS2 games after start-up, it shows the list saved in that device's `CD/games.bin` and `DVD/games.bin` without reading the CD and DVD folders. SELECT (Refresh), a replug, a reconnect, or a delete or rename reads the folders again. A game added or removed on a PC shows only after SELECT. It is not used while Browse Folders in Game List is on, except on the Network page, which has no folder browsing. PS1 lists are not affected. The device still reads `ul.cfg`. | `game_list_cache` (one bit per device: exFAT HDD 8, USB 1, iLink 2, MX4SIO 4, UDPBD 16, PC CARD CF 32, MMCE 64, Network 128, UDPFS 256) |
 | BDM Cache | In-game read cache for BDM devices (sectors). | `bdm_cache` |
 | HDD Cache | In-game read cache for the APA HDD. | `hdd_cache` |
 | SMB Cache | In-game read cache for SMB. | `smb_cache` |

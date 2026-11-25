@@ -15,7 +15,7 @@ while end < len(source):
     if depth == 0:
         break
 assert depth == 0
-function = source[start:end]
+function = source[source.index("static int cacheSameArt("):end]  # the helper cacheInitCache ranks a new cache with
 
 header = (root / "include/texcache.h").read_text(encoding="utf-8")
 cache_class = header[header.index("class ImageCache;"):header.index("/** Initializes the cache subsystem.")]
