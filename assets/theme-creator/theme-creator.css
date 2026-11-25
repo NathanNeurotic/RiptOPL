@@ -157,3 +157,43 @@
 .tc-bi img.theirs { opacity: 0.55; }
 .tc-bi .tc-x { position: absolute; top: 0; right: 0; }
 .tc-panel h4 .tc-badge { font-weight: 400; }
+
+/* Getting started, screen pickers, scope */
+.tc-howto { display: flex; flex-wrap: wrap; gap: 8px 22px; list-style: none; counter-reset: step; padding: 10px 14px; margin: 0 0 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); font-size: 13.5px; color: var(--ink2); }
+.tc-content ul.tc-howto li::before, .tc-howto li::before { counter-increment: step; content: counter(step); display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #ffd54a; color: #111; font-weight: 700; font-size: 12px; margin-right: 7px; }
+.tc-howto li { flex: 1 1 220px; margin: 0; }
+.tc-howto b { color: var(--ink-bright); }
+.tc-screens { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.tc-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tc-pill { background: #1e1e1e; border: 1px solid var(--line); color: var(--ink2); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+.tc-pill:hover { border-color: var(--line2); color: var(--ink); }
+.tc-pill[aria-selected=true] { background: #ffd54a; border-color: #ffd54a; color: #111; font-weight: 700; }
+.tc-pills-sm .tc-pill { padding: 3px 10px; font-size: 12px; }
+.tc-pills-sm .tc-small { margin-right: 4px; }
+.tc-scope { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; margin: 0 0 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; color: var(--ink2); }
+.tc-scope > span { color: var(--ink-bright); }
+.tc-scope label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.tc-adv { opacity: 0.75; }
+
+/* Layout tab */
+.tc-el { grid-template-columns: 30px 150px minmax(0, 1fr) auto; }
+.tc-eye { background: none; border: 1px solid transparent; border-radius: 3px; color: var(--ink2); cursor: pointer; font-size: 14px; padding: 0 4px; line-height: 1.4; }
+.tc-eye:hover { border-color: var(--line2); }
+.tc-eye.off { color: var(--ink3); }
+.tc-el.off .ty { text-decoration: none; font-style: italic; font-weight: 400; color: var(--ink3); }
+.tc-blk { font-size: 11px; color: var(--ink3); font-weight: 400; }
+.tc-shown .tc-checks { margin: 4px 0; }
+.tc-palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin: 6px 0; }
+.tc-add-btn { text-align: left; background: var(--panel); border: 1px solid var(--line); color: var(--ink); padding: 7px 9px; border-radius: 4px; cursor: pointer; }
+.tc-add-btn:hover { border-color: #ffd54a; }
+.tc-add-btn b { display: block; font-size: 13px; }
+.tc-add-btn span { display: block; font-size: 11.5px; color: var(--ink3); margin-top: 2px; line-height: 1.3; }
+.tc-more summary { cursor: pointer; color: var(--ink2); font-size: 13px; margin: 6px 0; }
+@media (max-width: 560px) { .tc-el { grid-template-columns: 30px 1fr auto; } }
+.tc-pvbar [hidden] { display: none !important; }
+.tc-basic .tc-row > label code { display: none; }
+/* Keep the whole preview on screen while it sticks beside the editor (short laptop screens). */
+@media (min-width: 1241px) {
+  .tc-wrap:not(.big) .tc-canvas-box { max-width: max(360px, calc((100vh - 330px) * 4 / 3)); }
+  .tc-wrap:not(.big) .tc-canvas-box:has(#pv-canvas.wide) { max-width: max(360px, calc((100vh - 330px) * 16 / 9)); }
+}

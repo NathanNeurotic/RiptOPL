@@ -125,7 +125,7 @@
     $("#pv-note").textContent = note || "";
     $("#pv-note").hidden = !note;
     drawOverlay();
-    renderInspector();
+    renderInspector(); updatePills();
   }
   function canvasPoint(ev) {
     var cv = $("#pv-over"), r = cv.getBoundingClientRect();
@@ -143,7 +143,7 @@
   }
 
   // ---- Canvas editor: snap grid, guides, resize handles, nudge, align, undo -----------------------------
-  var ed = { snap: true, grid: 8, showGrid: true, guides: true, outlines: false };
+  var ed = { snap: true, grid: 8, showGrid: true, guides: true, outlines: false, scope: "all" };
   try { var savedEd = JSON.parse(localStorage.getItem(LS_KEY + "-editor") || "null"); if (savedEd) Object.keys(ed).forEach(function (k) { if (savedEd[k] !== undefined) ed[k] = savedEd[k]; }); } catch (e) { /* storage off */ }
   function saveEd() { try { localStorage.setItem(LS_KEY + "-editor", JSON.stringify(ed)); } catch (e) { /* storage off */ } }
   var drag = null, guideLines = [], canvasActive = false;
@@ -210,6 +210,10 @@
     if (!drag) return;
     var p = canvasPoint(ev), dx = p.x - drag.start.x, dy = p.y - drag.start.y;
     if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
+    if (!drag.moved) {
+      var nb0 = forEdit(drag.block);
+      if (nb0 !== drag.block) { var d0 = drag; drag = null; startDrag(nb0, d0.mode, d0.start, d0.box0); if (!drag) return; }
+    }
     drag.moved = true; drag.free = ev.altKey;
     var b0 = drag.box0, thr = 6 * scaleNow(), nb;
     guideLines = []; drag.gx = drag.gy = false;
@@ -331,14 +335,15 @@
     if (key === "Escape") { st.selected = null; renderElements(); schedule(); }
   }
   function nudge(dx, dy) {
-    var h = selHit(); if (!h) return;
+    editBlock(); var h = selHit(); if (!h) return;
     if (!startDrag(st.selected, "move", { x: 0, y: 0 }, h)) return;
     drag.free = true; // a nudge moves by exactly what was pressed
     applyBox(drag, { x: h.x + dx * drag.q.kx, y: h.y + dy, w: h.w, h: h.h });
     drag = null; changed();
   }
   function alignTo(where) {
-    var h = selHit(); if (!h) { toast("Pick an element first: click it in the preview.", "warn"); return; }
+    if (!selHit()) { toast("Pick an element first: click it in the preview.", "warn"); return; }
+    editBlock(); var h = selHit(); if (!h) return;
     var nb = { x: h.x, y: h.y, w: h.w, h: h.h };
     if (where === "left") nb.x = 0; if (where === "hcenter") nb.x = (R.W - h.w) / 2; if (where === "right") nb.x = R.W - h.w;
     if (where === "top") nb.y = 0; if (where === "vmiddle") nb.y = (R.H - h.h) / 2; if (where === "bottom") nb.y = R.H - h.h;
@@ -353,13 +358,12 @@
     var keyFor = function (k) { return effKey(b, k); };
     if (box.dataset.for !== b + "|" + keyFor("x")) {
       box.dataset.for = b + "|" + keyFor("x"); box.innerHTML = "";
-      box.appendChild(el("b", { text: e.type }));
-      box.appendChild(el("code", { text: b }));
+      box.appendChild(el("b", { text: typeLabel(e.type) }));
       ["x", "y", "width", "height"].forEach(function (k) {
         var id = "ed-v-" + k;
         var inp = el("input", { id: id, type: "text", size: 6, spellcheck: "false", "data-k": k });
-        inp.addEventListener("change", function () { setKey(keyFor(k), inp.value.trim()); });
-        inp.addEventListener("keydown", function (ev) { if (ev.key === "ArrowUp" || ev.key === "ArrowDown") { var n = parseInt(inp.value, 10); if (!isNaN(n)) { ev.preventDefault(); inp.value = String(n + (ev.key === "ArrowUp" ? 1 : -1) * (ev.shiftKey ? 10 : 1)); setKey(keyFor(k), inp.value); } } });
+        inp.addEventListener("change", function () { var tb = editBlock(); setKey(effKey(tb, k), inp.value.trim()); });
+        inp.addEventListener("keydown", function (ev) { if (ev.key === "ArrowUp" || ev.key === "ArrowDown") { var n = parseInt(inp.value, 10); if (!isNaN(n)) { ev.preventDefault(); inp.value = String(n + (ev.key === "ArrowUp" ? 1 : -1) * (ev.shiftKey ? 10 : 1)); var tb = editBlock(); setKey(effKey(tb, k), inp.value); } } });
         box.appendChild(el("label", { "for": id }, [{ x: "X", y: "Y", width: "W", height: "H" }[k] + " ", inp]));
       });
       box.appendChild(el("small", { "class": "tc-keys" }));
@@ -394,6 +398,7 @@
     $("#ed-undo").addEventListener("click", undo); $("#ed-redo").addEventListener("click", redo);
     $$("[data-align]").forEach(function (b) { b.addEventListener("click", function () { alignTo(b.dataset.align); }); });
     $("#ed-big").addEventListener("click", function () { var w = $(".tc-wrap"); w.classList.toggle("big"); this.textContent = w.classList.contains("big") ? "Smaller preview" : "Bigger preview"; schedule(); });
+    $$('input[name="ed-scope"]').forEach(function (r) { r.checked = r.value === ed.scope; r.addEventListener("change", function () { if (r.checked) { ed.scope = r.value; saveEd(); } }); });
     updateUndoButtons();
   }
 
@@ -424,10 +429,12 @@
       e.addEventListener("change", function () { var v = get(); st.pv[key] = conv ? conv(v) : v; schedule(); });
     };
     $("#pv-view").addEventListener("change", function () {
-      var v = this.value; st.pv.view = v.replace(/[35]$/, ""); st.pv.cover = /5$/.test(v) ? 5 : 3; schedule();
+      var v = this.value; st.pv.view = v.replace(/[35]$/, ""); st.pv.cover = /5$/.test(v) ? 5 : 3;
+      if (st.selected && !buildScreen(st.pv.family).elements.some(function (e) { return e.block === st.selected; })) st.selected = null;
+      renderElements(); schedule();
     });
     $("#pv-page").addEventListener("change", function () {
-      var v = this.value; st.pv.family = v; st.pv.page = S.FAMILIES[v].page; schedule();
+      setScreen(this.value);
     });
     bind("#pv-wide", "wide"); bind("#pv-alt", "alt"); bind("#pv-desc", "desc"); bind("#pv-art", "art"); bind("#pv-disc", "discArt");
     bind("#pv-dim", "dim"); bind("#pv-save", "saveIcons");
@@ -469,7 +476,7 @@
       // A disk theme only gets OPL's own badge pictures with badge_set=ripps2 (themes.cpp thmLoad)
       if (!st.map.has("badge_set")) st.map.set("badge_set", "ripps2");
       // bezel_top/bottom and psbbn_bg are built in, so nothing needs copying
-      toast("Loaded the built-in RiptOPL theme: four views in one file. Its pictures are OPL's own built-in ones until you replace them on the Images tab.");
+      toast("Loaded the built-in RiptOPL theme: four views in one file. Click anything on the preview to change it, or pick another screen above it.");
     } else {
       st.map = C.parse(STARTERS[kind]).map; st.name = kind === "blank" ? "MyTheme" : "My" + S.VIEW_LABEL[kind].replace(/\s/g, "");
     }
@@ -478,6 +485,7 @@
     else { st.pv.view = "list"; $("#pv-view").value = "list"; }
     $("#th-name").value = st.name;
     changed(); showTab("elements");
+    if (kind !== "builtin") toast("Ready. Click anything on the preview to change it, or pick another screen above it.");
   }
   function clearAll() {
     st.images.forEach(function (a) { if (a.url) URL.revokeObjectURL(a.url); });
@@ -645,28 +653,27 @@
 
   // ---- Elements tab -------------------------------------------------------------------------------------
   function renderElements() {
-    var vSel = $("#el-view"), fSel = $("#el-family");
-    vSel.value = st.editView; fSel.value = st.editFamily;
+    st.editFamily = st.pv.family; st.editView = "";
+    renderPalette(); updatePills();
     var list = $("#el-list"); list.innerHTML = "";
-    var b = C.build(st.map, { view: st.editView || "list", family: st.editFamily, wide: false, desc: false, alt: false, tmpl: null, isBuiltin: true });
-    // build() with isBuiltin skips fallback synthesis, so this lists exactly what the file says.
-    var famPrefix = st.editView ? st.editView + "." : "";
-    var own = st.editFamily;
-    if (!st.editView) b = buildBase(st.editFamily);
+    var head = $("#el-listhead"); if (head) head.textContent = "On the " + screenLabel(st.pv.family) + " screen";
+    var b = buildScreen(st.pv.family), table = screenTable(), all = pageScreens(st.pv.page).length;
     b.elements.forEach(function (e) {
-      var m = S.BLOCK_RE.exec(e.block), isOwn = (m[1] || "") === st.editView && m[2] === own;
-      var from = isOwn ? "" : "from " + e.block;
-      var li = el("li", { "class": "tc-el" + (st.selected === e.block ? " sel" : "") + (isOwn ? "" : " inherited") + (e.off ? " off" : ""), tabindex: "0" }, [
-        el("span", { "class": "slot", text: String(e.slot) }),
-        el("span", { "class": "ty", text: e.off ? "(hidden)" : e.type || "?" }),
+      var on = shownOn(e, table), here = !e.off;
+      var chip = e.off ? "hidden here" : on.length >= all ? "every screen" : on.length > 1 ? on.length + " screens" : "this screen only";
+      var eye = el("button", { type: "button", "class": "tc-eye" + (here ? "" : " off"), title: here ? "Hide it on this screen" : "Show it on this screen", "aria-label": (here ? "Hide " : "Show ") + typeLabel(e.type) + " on this screen",
+        onclick: function (ev) { ev.stopPropagation(); setShown(e, st.pv.family, !here); } }, [here ? "👁" : "⌀"]);
+      var li = el("li", { "class": "tc-el" + (st.selected === e.block ? " sel" : "") + (e.off ? " off" : ""), tabindex: "0" }, [
+        eye,
+        el("span", { "class": "ty", text: e.off ? "(hidden on this screen)" : typeLabel(e.type) }),
         el("span", { "class": "sum", text: summary(e) }),
-        el("span", { "class": "from", text: from })
+        el("span", { "class": "from", text: chip })
       ]);
-      li.addEventListener("click", function () { selectBlock(e.block); });
-      li.addEventListener("keydown", function (ev) { if (ev.key === "Enter") selectBlock(e.block); });
+      li.addEventListener("click", function () { if (!e.off) selectBlock(e.block); });
+      li.addEventListener("keydown", function (ev) { if (ev.key === "Enter" && !e.off) selectBlock(e.block); });
       list.appendChild(li);
     });
-    if (!b.elements.length) list.appendChild(el("li", { "class": "tc-empty", text: "No blocks here yet. Add an element below." }));
+    if (!b.elements.length) list.appendChild(el("li", { "class": "tc-empty", text: "Nothing on this screen yet. Add something below." }));
     renderProps();
   }
   function buildBase(fam) {
@@ -693,55 +700,70 @@
   }
   function selectBlock(b) {
     st.selected = b;
-    var m = S.BLOCK_RE.exec(b);
-    if (m) {
-      var fam = m[2];
-      // show the block in the list that contains it
-      if (st.editView !== (m[1] || "") || !chainHas(st.editFamily, fam)) { st.editView = m[1] || ""; st.editFamily = fam; }
-    }
     showTab("elements"); renderElements(); schedule();
-    var s = $(".tc-el.sel"); if (s && s.scrollIntoView) s.scrollIntoView({ block: "nearest" });
+    // scroll only the list itself: moving the page would pull the preview out from under the pointer
+    var sel = $(".tc-el.sel"), list = $("#el-list");
+    if (sel && list) { var top = sel.offsetTop - list.offsetTop; if (top < list.scrollTop || top + sel.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = top - list.clientHeight / 2; }
   }
   function chainHas(fam, other) { return S.FAMILIES[fam].chain.indexOf(other) >= 0; }
   function renderProps() {
     var box = $("#el-props"); box.innerHTML = "";
     var b = st.selected;
     if (!b || !S.BLOCK_RE.test(b)) { box.appendChild(el("p", { "class": "tc-hint", text: "Pick an element in the list, or click it in the preview. Drag it in the preview to move it." })); return; }
-    var m = S.BLOCK_RE.exec(b), type = st.map.get(b + "_type");
-    var isOwn = (m[1] || "") === st.editView && m[2] === st.editFamily;
-    var head = el("div", { "class": "tc-prophead" }, [el("h3", {}, [el("code", { text: b }), " ", type || "(hidden slot)"]), el("p", { "class": "tc-hint", text: (S.TYPES[type] || {}).desc || "" })]);
-    box.appendChild(head);
-    var acts = el("div", { "class": "tc-acts" });
-    if (!isOwn) acts.appendChild(el("button", { type: "button", "class": "tc-mini", text: "Change it only for " + famLabel(), title: "Copy this block to " + blockName(st.editView, st.editFamily, m[3]) + " so changes apply here only", onclick: function () {
-      var to = blockName(st.editView, st.editFamily, m[3]);
-      blockKeys(b).forEach(function (k) { st.map.set(to + k.slice(b.length), st.map.get(k)); });
-      st.selected = to; changed();
-    } }));
-    acts.appendChild(el("button", { type: "button", "class": "tc-mini", text: st.map.get(b + "_enabled") === "0" ? "Show" : "Hide", onclick: function () { setKey(b + "_enabled", st.map.get(b + "_enabled") === "0" ? "" : "0"); } }));
-    if (isOwn) {
-      acts.appendChild(el("button", { type: "button", "class": "tc-mini", text: "Move up", onclick: function () { moveBlock(b, -1); } }));
-      acts.appendChild(el("button", { type: "button", "class": "tc-mini", text: "Move down", onclick: function () { moveBlock(b, 1); } }));
-      acts.appendChild(el("button", { type: "button", "class": "tc-mini", text: "Duplicate", onclick: function () { dupBlock(b); } }));
-      acts.appendChild(el("button", { type: "button", "class": "tc-mini danger", text: "Delete", onclick: function () { deleteBlock(b); } }));
+    var type = st.map.get(b + "_type");
+    var table = screenTable(), e0 = buildScreen(st.pv.family).elements.filter(function (x) { return x.block === b; })[0];
+    box.appendChild(el("div", { "class": "tc-prophead" }, [
+      el("h3", {}, [typeLabel(type) + " ", el("code", { "class": "tc-blk", text: b })]),
+      el("p", { "class": "tc-hint", text: (S.TYPES[type] || {}).desc || "" })]));
+    if (e0) {
+      var on = shownOn(e0, table), row = table[e0.slot] || {};
+      var sfs = el("fieldset", { "class": "tc-fs tc-shown" }, [el("legend", { text: "Shown on" })]);
+      var boxes = el("div", { "class": "tc-checks" });
+      pageScreens(st.pv.page).forEach(function (f) {
+        var cb = el("input", { type: "checkbox" }); cb.checked = on.indexOf(f) >= 0;
+        cb.addEventListener("change", function () { setShown(e0, f, cb.checked); });
+        var other = row[f] && !row[f].off && row[f].block !== b;
+        boxes.appendChild(el("label", { title: other ? "This screen has its own version of this element (" + row[f].block + ")" : "" }, [cb, " " + screenLabel(f) + (other ? " (own version)" : "")]));
+      });
+      sfs.appendChild(boxes);
+      if (on.length > 1) {
+        sfs.appendChild(el("p", { "class": "tc-hint" }, [
+          "One element shared by " + on.length + " screens: a change shows on all of them. ",
+          el("button", { type: "button", "class": "tc-mini", text: "Make a separate copy for the " + screenLabel(st.pv.family), onclick: function () {
+            var keep = ed.scope; ed.scope = "screen"; var nb = forEdit(b); ed.scope = keep; st.selected = nb; changed(); } })
+        ]));
+      }
+      box.appendChild(sfs);
     }
+    var acts = el("div", { "class": "tc-acts" });
+    acts.appendChild(el("button", { type: "button", "class": "tc-mini", text: "Send back", title: "Draw it behind the element before it", onclick: function () { moveBlock(editBlock(), -1); } }));
+    acts.appendChild(el("button", { type: "button", "class": "tc-mini", text: "Bring forward", title: "Draw it in front of the element after it", onclick: function () { moveBlock(editBlock(), 1); } }));
+    acts.appendChild(el("button", { type: "button", "class": "tc-mini", text: "Duplicate", onclick: function () { dupBlock(b); } }));
+    if (e0) acts.appendChild(el("button", { type: "button", "class": "tc-mini", text: "Hide on this screen", onclick: function () { st.selected = null; setShown(e0, st.pv.family, false); } }));
+    acts.appendChild(el("button", { type: "button", "class": "tc-mini danger", text: e0 && shownOn(e0, table).length > 1 ? "Remove from every screen" : "Remove", onclick: function () { deleteBlock(b); toast("Removed. Undo brings it back."); } }));
     box.appendChild(acts);
-    var hdl = el("label", { "class": "tc-hdtoggle" }, [el("input", { type: "checkbox", checked: st.hd ? "checked" : null, onchange: function () { st.hd = this.checked; if (st.hd && !st.pv.wide) { st.pv.wide = true; $("#pv-wide").checked = true; } renderProps(); schedule(); } }), " Edit the 16:9 values (", el("code", { text: "_hd" }), " keys; Widescreen on)"]);
+    var hdl = el("label", { "class": "tc-hdtoggle" }, [el("input", { type: "checkbox", checked: st.hd ? "checked" : null, onchange: function () { st.hd = this.checked; if (st.hd && !st.pv.wide) { st.pv.wide = true; $("#pv-wide").checked = true; } renderProps(); schedule(); } }), " Give it a separate place in widescreen (16:9)"]);
     box.appendChild(hdl);
     if (!type && st.map.get(b + "_enabled") === "0") return;
     var keys = propsFor(type);
-    var form = el("div", { "class": "tc-form" });
+    var BASIC = ["default", "overlay", "value", "attribute", "title", "display", "font", "color", "aligned", "pattern", "wrap", "reflection", "disc", "rows", "columns", "spacing", "highlight", "style", "devices", "decorator"];
+    var form = el("div", { "class": "tc-form tc-basic" });
+    var more = el("div", { "class": "tc-form" }), nMore = 0;
     keys.forEach(function (k) {
+      var target = BASIC.indexOf(k) >= 0 ? form : (nMore++, more);
       var spec = (type === "Grid" && S.GRID_ONLY_NAMES[k]) || S.PROPS[k];
       var key = b + "_" + k + (st.hd && k !== "type" ? "_hd" : "");
       var v = st.map.get(key);
       var shown = spec;
       if (st.hd && k !== "type" && st.map.has(b + "_" + k)) shown = Object.assign({}, spec, { def: st.map.get(b + "_" + k), help: (spec.help ? spec.help + " " : "") + "4:3 value: " + st.map.get(b + "_" + k) });
-      form.appendChild(field(k, shown, v, function (val) {
+      target.appendChild(field(k, shown, v, function (val) {
         if (k === "type" && !val) return;
-        setKey(key, val);
+        var tb = editBlock(); setKey(tb + key.slice(b.length), val);
       }, { type: type }));
     });
+    if (!form.childElementCount) form.appendChild(el("p", { "class": "tc-hint", text: "Move and resize it on the preview. Everything else is under More settings." }));
     box.appendChild(form);
+    box.appendChild(el("details", { "class": "tc-more" }, [el("summary", { text: "More settings (" + nMore + "): exact position, kind, frame corners, and the rest" }), more]));
     // keys the form does not know, shown raw so nothing is hidden
     var extra = blockKeys(b).map(function (k) { return k.slice(b.length + 1); }).filter(function (k) { return keys.indexOf(k.replace(/_(hd|sd|desc)$/, "")) < 0 || /_(sd|desc)$/.test(k) || (!st.hd && /_hd$/.test(k)); });
     if (extra.length) {
@@ -853,6 +875,147 @@
       st.selected = bl; changed();
     });
     $("#el-renumber").addEventListener("click", renumber);
+  }
+
+  // ---- Screens: which games/apps/PS1/favorites screens show an element ------------------------------------
+  // RiptOPL reads each screen slot by slot along its fallback chain (themes.cpp addGUIElemSlot): the PS1 list
+  // takes slot 3 from vcdMain3, else appsMain3, else main3. <block>_enabled=0 on its own makes the slot present
+  // and empty, which hides it on that screen and on the screens that fall back to it.
+  function pageScreens(page) { return S.FAMILY_NAMES.filter(function (f) { return S.FAMILIES[f].page === page && !S.FAMILIES[f].optIn; }); }
+  function prefixOf(b) { var m = S.BLOCK_RE.exec(b || ""); return m && m[1] ? m[1] + "." : ""; }
+  function famOf(b) { var m = S.BLOCK_RE.exec(b || ""); return m ? m[2] : null; }
+  function slotOf(b) { var m = S.BLOCK_RE.exec(b || ""); return m ? +m[3] : -1; }
+  function screenLabel(f) { return S.FAMILIES[f].label.replace(/ \(opt-in\)$/, ""); }
+  function buildScreen(f) { return C.build(st.map, { view: st.pv.view, family: f, wide: st.pv.wide, desc: st.pv.desc, alt: st.pv.alt, tmpl: null, isBuiltin: true }); }
+  // slot -> { family: { block, off } } for every screen of the page shown in the preview
+  function screenTable() {
+    var t = {};
+    pageScreens(st.pv.page).forEach(function (f) {
+      buildScreen(f).elements.forEach(function (e) { (t[e.slot] = t[e.slot] || {})[f] = { block: e.block, off: !!e.off }; });
+    });
+    return t;
+  }
+  function slotState(j) { return screenTable()[j] || {}; }
+  function sameState(a, b) { return (!a && !b) || (a && b && a.block === b.block && a.off === b.off); }
+  function copyBlock(from, to, src) {
+    src = src || st.map;
+    blockKeys(to).forEach(function (k) { st.map.delete(k); });
+    src.forEach(function (v, k) { if (k.indexOf(from + "_") === 0 && C.blockOf(k) === from) st.map.set(to + k.slice(from.length), v); });
+  }
+  function clearBlock(b) { blockKeys(b).forEach(function (k) { st.map.delete(k); }); }
+  // After one screen changed, give every other screen that changed by accident its old element back.
+  function pin(before, snap, j, except) {
+    for (var pass = 0; pass < 6; pass++) {
+      var now = slotState(j), fixed = false;
+      pageScreens(st.pv.page).forEach(function (f) {
+        if (f === except || sameState(before[f], now[f])) return;
+        var was = before[f], own = prefixOf(was ? was.block : now[f] && now[f].block) + f + j;
+        if (was && !was.off && was.block !== own) copyBlock(was.block, own, snap);
+        else if (!was || was.off) { clearBlock(own); st.map.set(own + "_enabled", "0"); }
+        fixed = true;
+      });
+      if (!fixed) return;
+    }
+  }
+  function shownOn(e, table) {
+    var row = (table || screenTable())[e.slot] || {};
+    return pageScreens(st.pv.page).filter(function (f) { return row[f] && row[f].block === e.block && !row[f].off; });
+  }
+  // The nearest real element (one with a type) in screen f's fallback chain for slot j: what showing it brings back.
+  function sourceFor(f, j, pre, src) {
+    var chain = S.FAMILIES[f].chain, pres = pre ? [pre, ""] : [""];
+    for (var q = 0; q < pres.length; q++) for (var c = 0; c < chain.length; c++) { var b = pres[q] + chain[c] + j; if (src.has(b + "_type")) return b; }
+    return null;
+  }
+  // Show or hide the element in this slot on screen f, leaving every other screen as it was.
+  function setShown(e, f, on) {
+    var j = e.slot, before = slotState(j), snap = new Map(st.map);
+    var cur = before[f], own = prefixOf(cur ? cur.block : e.block) + f + j;
+    if (!on) {
+      if (st.map.has(own + "_type")) clearBlock(own);
+      st.map.set(own + "_enabled", "0");
+    } else {
+      if (st.map.get(own + "_enabled") === "0") { st.map.delete(own + "_enabled"); if (!st.map.has(own + "_type")) clearBlock(own); }
+      var s = slotState(j)[f];
+      if (!s || s.off) { copyBlock(sourceFor(f, j, prefixOf(own), snap) || e.block, own, snap); st.map.delete(own + "_enabled"); }
+    }
+    pin(before, snap, j, f);
+    if (!on && f === st.pv.family && st.selected === e.block) st.selected = null; // it is no longer on the screen in view
+    changed();
+  }
+  // "This screen only": the first change to an element another screen shares makes this screen its own copy.
+  function forEdit(b) {
+    if (ed.scope !== "screen" || !b || !C.present(st.map, b)) return b;
+    var f = st.pv.family;
+    if (!S.FAMILIES[f] || S.FAMILIES[f].optIn || famOf(b) === f) return b;
+    var j = slotOf(b), before = slotState(j), snap = new Map(st.map), own = prefixOf(b) + f + j;
+    copyBlock(b, own, snap); st.map.delete(own + "_enabled");
+    pin(before, snap, j, f);
+    st.selected = own;
+    lastBuilt = built();
+    hits.forEach(function (h) { if (h.block === b) h.block = own; });
+    toast("This change is for the " + screenLabel(f) + " only. The other screens keep the element as it was.");
+    return own;
+  }
+  function editBlock() { return forEdit(st.selected); }
+
+  // ---- Screen and layout pickers above the preview -----------------------------------------------------
+  var PAGE_PILLS = [["main", "Games"], ["appsMain", "Apps"], ["vcdMain", "PS1 games"], ["favsMain", "Favorites"], ["info", "Game info"], ["appsInfo", "App info"], ["vcdInfo", "PS1 info"], ["favsInfo", "Favorites info"]];
+  var VIEW_PILLS = [["list", "List"], ["coverflow3", "Coverflow"], ["coverflow5", "Coverflow ×5"], ["psbbn", "PSBBN"], ["grid", "Grid"]];
+  function initPills() {
+    var pg = $("#pv-pages"), vw = $("#pv-views");
+    PAGE_PILLS.forEach(function (p) {
+      pg.appendChild(el("button", { type: "button", role: "tab", "class": "tc-pill", "data-page": p[0], text: p[1], onclick: function () { setScreen(p[0]); } }));
+    });
+    vw.appendChild(el("span", { "class": "tc-small", text: "Layout" }));
+    VIEW_PILLS.forEach(function (p) {
+      vw.appendChild(el("button", { type: "button", role: "tab", "class": "tc-pill", "data-view": p[0], text: p[1], onclick: function () { var s = $("#pv-view"); s.value = p[0]; s.dispatchEvent(new Event("change")); } }));
+    });
+  }
+  function setScreen(f) {
+    var s = $("#pv-page"); s.value = f; st.pv.family = f; st.pv.page = S.FAMILIES[f].page;
+    if (st.selected && !buildScreen(f).elements.some(function (e) { return e.block === st.selected; })) st.selected = null;
+    renderElements(); schedule();
+  }
+  function updatePills() {
+    var vcur = st.pv.view === "coverflow" ? "coverflow" + st.pv.cover : st.pv.view;
+    $$("#pv-pages .tc-pill").forEach(function (b) { b.setAttribute("aria-selected", b.dataset.page === st.pv.family ? "true" : "false"); });
+    $$("#pv-views .tc-pill").forEach(function (b) { b.setAttribute("aria-selected", b.dataset.view === vcur ? "true" : "false"); });
+    var n = $("#ed-scope-name"); if (n) n.textContent = "the " + screenLabel(st.pv.family);
+  }
+
+  // ---- Adding ------------------------------------------------------------------------------------------
+  function typeLabel(t) { return (S.TYPES[t] || {}).label || t || "?"; }
+  function addElement(type) {
+    var f = st.pv.family, page = st.pv.page, base = page === "info" ? "info" : "main";
+    var info = lastBuilt ? lastBuilt.info : null, view = st.pv.view;
+    var prefix = info && info.own && info.own[view] ? view + "." : "";
+    var fam = ed.scope === "screen" && !S.FAMILIES[f].optIn ? f : base;
+    var n = 0, table = screenTable();
+    Object.keys(table).forEach(function (j) { n = Math.max(n, +j + 1); });
+    while (C.present(st.map, prefix + fam + n)) n++;
+    var before = slotState(n), snap = new Map(st.map), bl = prefix + fam + n, t = S.TYPES[type];
+    st.map.set(bl + "_type", type);
+    if (type === "StaticText") st.map.set(bl + "_value", "Your text");
+    if (type === "AttributeText") st.map.set(bl + "_attribute", "#Name");
+    if (type === "AttributeImage") st.map.set(bl + "_attribute", "#System");
+    if (type === "StaticImage") st.map.set(bl + "_default", "logo");
+    if (type === "GameImage") { st.map.set(bl + "_pattern", "SCR"); st.map.set(bl + "_default", "screen"); st.map.set(bl + "_width", "200"); st.map.set(bl + "_height", "150"); }
+    if (type === "ItemCover" || type === "Coverflow" || type === "Grid" || type === "PSBBNFlow") st.map.set(bl + "_default", /apps|vcd/i.test(fam) ? "coverapp" : "cover");
+    if (type === "ItemCover") { st.map.set(bl + "_width", "180"); st.map.set(bl + "_height", "256"); }
+    if (type !== "Background" && type !== "HintText" && type !== "InfoHintText" && !st.map.has(bl + "_x")) { st.map.set(bl + "_x", "POS_MID"); st.map.set(bl + "_y", "POS_MID"); }
+    if (type === "Background" && n !== 0) toast("A background picture is only used as the first element of a screen. Use a Picture sized to the screen instead.", "warn");
+    if (fam !== base) pin(before, snap, n, f);
+    st.selected = bl; changed();
+    toast("Added " + typeLabel(type).toLowerCase() + " in the middle of the screen" + (fam === base ? " (on every " + (page === "info" ? "info" : "list") + " screen)" : " (on the " + screenLabel(f) + " only)") + ". Drag it where you want it.");
+    void t;
+  }
+  function renderPalette() {
+    var a = $("#el-palette"), b = $("#el-palette-more"); if (!a || a.childElementCount) return;
+    S.TYPE_NAMES.forEach(function (t) {
+      var btn = el("button", { type: "button", "class": "tc-add-btn", title: S.TYPES[t].desc, onclick: function () { addElement(t); } }, [el("b", { text: "+ " + typeLabel(t) }), el("span", { text: S.TYPES[t].desc })]);
+      (S.COMMON_TYPES.indexOf(t) >= 0 ? a : b).appendChild(btn);
+    });
   }
 
   // ---- Images tab -----------------------------------------------------------------------------------------
@@ -1220,12 +1383,13 @@
   // ---- Toasts ---------------------------------------------------------------------------------------------
   function toast(msg, level) {
     var t = el("div", { "class": "tc-toast " + (level || ""), role: "status", text: msg });
-    $("#tc-toasts").appendChild(t); setTimeout(function () { t.classList.add("go"); }, 4200); setTimeout(function () { t.remove(); }, 5000);
+    var box = $("#tc-toasts"); while (box.childElementCount >= 2) box.firstChild.remove(); // keep the newest two
+    box.appendChild(t); setTimeout(function () { t.classList.add("go"); }, 4200); setTimeout(function () { t.remove(); }, 5000);
   }
 
   // ---- Boot ----------------------------------------------------------------------------------------------
   async function boot() {
-    initTabs(); initPreview(); initEditorBar(); initPreviewControls(); initStart(); initElements(); initImages(); initFonts(); initCfg(); initDownload();
+    initTabs(); initPreview(); initEditorBar(); initPills(); initPreviewControls(); initStart(); initElements(); initImages(); initFonts(); initCfg(); initDownload();
     try {
       var r = await fetch(BASE + "conf_theme_OPL.cfg"); if (!r.ok) throw new Error(r.status);
       st.builtinCfg = C.parse(await r.text()).map;

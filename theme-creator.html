@@ -82,17 +82,27 @@
 fonts, and download a theme folder that is ready to copy to your PS2. Everything stays on your computer:
 nothing you add is uploaded anywhere.</p>
 
+<ol class="tc-howto" id="tc-howto">
+  <li><b>Pick a start</b> on the right: RiptOPL's own theme or a ready layout.</li>
+  <li><b>Click anything</b> on the preview to move it, resize it or change it. Pick a screen above the preview to edit that screen.</li>
+  <li><b>Download</b> the theme and copy it to your PS2.</li>
+</ol>
+
 <div class="tc-wrap">
   <section class="tc-preview" aria-label="Live preview">
+    <div class="tc-screens">
+      <div class="tc-pills" id="pv-pages" role="tablist" aria-label="Screen"></div>
+      <div class="tc-pills tc-pills-sm" id="pv-views" role="tablist" aria-label="Layout"></div>
+    </div>
     <div class="tc-pvbar">
-      <label>View <select id="pv-view">
+      <label hidden>View <select id="pv-view">
         <option value="list">List</option>
         <option value="coverflow3">Coverflow (3 covers)</option>
         <option value="coverflow5">Coverflow (5 covers)</option>
         <option value="psbbn">PSBBN Flow</option>
         <option value="grid">Grid</option>
       </select></label>
-      <label>Screen <select id="pv-page">
+      <label hidden>Screen <select id="pv-page">
         <option value="main">Games list</option>
         <option value="appsMain">Apps list</option>
         <option value="favsMain">Favorites list</option>
@@ -104,8 +114,13 @@ nothing you add is uploaded anywhere.</p>
         <option value="favsInfo">Favorites info</option>
         <option value="vcdInfo">PS1 info</option>
       </select></label>
-      <span class="tc-step"><button type="button" id="pv-prev" class="tc-mini" aria-label="Previous game">▲</button><button type="button" id="pv-next" class="tc-mini" aria-label="Next game">▼</button></span>
+      <span class="tc-step">Game <button type="button" id="pv-prev" class="tc-mini" aria-label="Previous game">▲</button><button type="button" id="pv-next" class="tc-mini" aria-label="Next game">▼</button></span>
       <button type="button" id="pv-png" class="tc-mini">Save picture</button>
+    </div>
+    <div class="tc-scope" role="radiogroup" aria-label="What an edit changes">
+      <span>Changes apply to</span>
+      <label><input type="radio" name="ed-scope" value="all" checked> every screen that shares the element</label>
+      <label><input type="radio" name="ed-scope" value="screen"> <b id="ed-scope-name">this screen</b> only</label>
     </div>
     <div class="tc-edbar" role="toolbar" aria-label="Layout tools">
       <span class="tc-grp">
@@ -156,13 +171,13 @@ nothing you add is uploaded anywhere.</p>
   <section class="tc-editor" aria-label="Editor">
     <div class="tc-tabs" role="tablist">
       <button type="button" role="tab" data-tab="start">Start</button>
-      <button type="button" role="tab" data-tab="theme">Theme</button>
-      <button type="button" role="tab" data-tab="elements">Elements</button>
+      <button type="button" role="tab" data-tab="elements">Layout</button>
       <button type="button" role="tab" data-tab="images">Pictures</button>
-      <button type="button" role="tab" data-tab="fonts">Fonts</button>
-      <button type="button" role="tab" data-tab="cfg">Config file</button>
+      <button type="button" role="tab" data-tab="fonts">Fonts &amp; sounds</button>
+      <button type="button" role="tab" data-tab="theme">Colours &amp; settings</button>
       <button type="button" role="tab" data-tab="check">Check <span id="chk-badge" class="tc-badge">✓</span></button>
       <button type="button" role="tab" data-tab="download">Download</button>
+      <button type="button" role="tab" data-tab="cfg" class="tc-adv">Config file</button>
     </div>
 
     <div class="tc-panel" id="tab-start">
@@ -189,18 +204,18 @@ nothing you add is uploaded anywhere.</p>
     </div>
 
     <div class="tc-panel" id="tab-elements" hidden>
-      <div class="tc-row">
-        <label>Applies to <select id="el-view"></select></label>
-        <label>Screen <select id="el-family"></select></label>
-      </div>
-      <ul id="el-list" class="tc-list"></ul>
-      <div class="tc-row tc-add">
-        <label>Add <select id="el-addtype"></select></label>
-        <button type="button" id="el-add" class="btn">Add element</button>
-        <button type="button" id="el-renumber" class="tc-mini" title="Close gaps in the numbering so every block is read">Fix numbering</button>
-      </div>
-      <p id="el-addhelp" class="tc-small"></p>
       <div id="el-props" class="tc-form"></div>
+      <h3 id="el-listhead">On this screen</h3>
+      <p class="tc-small">Everything on the screen shown in the preview, back to front. Click one to change it.
+      The eye hides it on this screen only.</p>
+      <ul id="el-list" class="tc-list"></ul>
+      <h3>Add to this screen</h3>
+      <div id="el-palette" class="tc-palette"></div>
+      <details class="tc-more"><summary>More kinds</summary><div id="el-palette-more" class="tc-palette"></div></details>
+      <p id="el-addhelp" class="tc-small"></p>
+      <div hidden><select id="el-view"></select><select id="el-family"></select><select id="el-addtype"></select><button type="button" id="el-add"></button></div>
+      <p class="tc-small"><button type="button" id="el-renumber" class="tc-mini" title="Close gaps in the numbering so every block is read">Fix numbering</button>
+      Only needed after editing the config file by hand: RiptOPL stops reading a screen at the first missing number.</p>
     </div>
 
     <div class="tc-panel" id="tab-images" hidden>

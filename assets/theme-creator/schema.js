@@ -37,29 +37,31 @@
   // Element types (themes.cpp elementsType) with the defaults initBasic is given for each.
   // x/y "MID" = centre, negative = from the right/bottom edge. w/h null = the picture's own size.
   var TYPES = {
-    Background:    { x: 0, y: 0, aligned: 0, w: "INF", h: "INF", scaled: 0, image: true, desc: "The full-screen picture behind everything. Must be block 0. Without a picture it draws the plasma." },
-    StaticImage:   { x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, image: true, desc: "A fixed picture: a logo, a bezel, a panel." },
-    StaticText:    { x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, text: true, desc: "Fixed text from value=." },
-    AttributeText: { x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, text: true, item: true, desc: "A game's details: title, developer, genre, release, description, size." },
-    GameCountText: { x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, text: true, item: true, desc: "How many items the list holds." },
-    GameImage:     { x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, image: true, item: true, desc: "A game's artwork chosen by pattern= (cover, screenshot, logo, disc...)." },
-    AttributeImage:{ x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, image: true, item: true, desc: "A badge picked by a game attribute, such as PS2_#System.png." },
-    MenuIcon:      { x: "MID", y: 400, aligned: 1, w: null, h: null, scaled: 1, desc: "The icon of the device page you are on." },
-    MenuText:      { x: "MID", y: 20, aligned: 1, w: 200, h: 20, scaled: 1, text: true, desc: "The name of the device page, with arrows." },
-    ItemsList:     { x: 42, y: 42, aligned: 0, w: 400, h: 360, scaled: 1, text: true, item: true, desc: "The scrolling list of games. Keep one without devices= in every theme." },
-    ItemIcon:      { x: 0, y: 0, aligned: 1, w: 64, h: 64, scaled: 1, image: true, item: true, desc: "The selected game's disc icon (ICO art)." },
-    ItemCover:     { x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, image: true, item: true, desc: "The selected game's cover, with an optional case overlay." },
-    ItemText:      { x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, text: true, item: true, desc: "The selected game's startup file name (SLUS_123.45)." },
-    HintText:      { x: 16, y: -32, aligned: 0, w: 12, h: 20, scaled: 1, desc: "The button hints along the bottom of the list page." },
-    InfoHintText:  { x: 16, y: -32, aligned: 0, w: 12, h: 20, scaled: 1, desc: "The button hints of the info page." },
-    LoadingIcon:   { x: -40, y: -60, aligned: 1, w: null, h: null, scaled: 1, desc: "The animated loading spinner." },
-    BdmIndex:      { x: "MID", y: 355, aligned: 1, w: null, h: null, scaled: 1, desc: "Which USB/BDM drive is shown, when there are several." },
-    Coverflow:     { x: "MID", y: "MID", aligned: 1, w: 150, h: 210, scaled: 1, image: true, item: true, presenter: "coverflow", desc: "A carousel of 3 or 5 covers with a reflection." },
-    PSBBNFlow:     { x: -186, y: "MID", aligned: 1, w: 204, h: 204, scaled: 1, image: true, item: true, presenter: "psbbn", desc: "PSBBN's Game Collection fan of square covers." },
-    Grid:          { x: "MID", y: "MID", aligned: 1, w: 80, h: 112, scaled: 1, image: true, item: true, presenter: "grid", desc: "The page's covers in rows and columns." },
-    SaveIcon:      { x: "MID", y: "MID", aligned: 1, w: 64, h: 64, scaled: 1, item: true, desc: "The game's spinning 3D save icon (only while 3D Save Icons is on)." }
+    Background:    { label: "Background picture", x: 0, y: 0, aligned: 0, w: "INF", h: "INF", scaled: 0, image: true, desc: "The full-screen picture behind everything. Must be block 0. Without a picture it draws the plasma." },
+    StaticImage:   { label: "Picture", x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, image: true, desc: "A fixed picture: a logo, a bezel, a panel." },
+    StaticText:    { label: "Text", x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, text: true, desc: "Fixed text from value=." },
+    AttributeText: { label: "Game detail text", x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, text: true, item: true, desc: "A game's details: title, developer, genre, release, description, size." },
+    GameCountText: { label: "Game count", x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, text: true, item: true, desc: "How many items the list holds." },
+    GameImage:     { label: "Game artwork", x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, image: true, item: true, desc: "A game's artwork chosen by pattern= (cover, screenshot, logo, disc...)." },
+    AttributeImage:{ label: "Badge", x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, image: true, item: true, desc: "A badge picked by a game attribute, such as PS2_#System.png." },
+    MenuIcon:      { label: "Device icon", x: "MID", y: 400, aligned: 1, w: null, h: null, scaled: 1, desc: "The icon of the device page you are on." },
+    MenuText:      { label: "Page title", x: "MID", y: 20, aligned: 1, w: 200, h: 20, scaled: 1, text: true, desc: "The name of the device page, with arrows." },
+    ItemsList:     { label: "Game list", x: 42, y: 42, aligned: 0, w: 400, h: 360, scaled: 1, text: true, item: true, desc: "The scrolling list of games. Keep one without devices= in every theme." },
+    ItemIcon:      { label: "Disc icon", x: 0, y: 0, aligned: 1, w: 64, h: 64, scaled: 1, image: true, item: true, desc: "The selected game's disc icon (ICO art)." },
+    ItemCover:     { label: "Cover art", x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, image: true, item: true, desc: "The selected game's cover, with an optional case overlay." },
+    ItemText:      { label: "Game ID text", x: 0, y: 0, aligned: 1, w: null, h: null, scaled: 1, text: true, item: true, desc: "The selected game's startup file name (SLUS_123.45)." },
+    HintText:      { label: "Button hints", x: 16, y: -32, aligned: 0, w: 12, h: 20, scaled: 1, desc: "The button hints along the bottom of the list page." },
+    InfoHintText:  { label: "Info page button hints", x: 16, y: -32, aligned: 0, w: 12, h: 20, scaled: 1, desc: "The button hints of the info page." },
+    LoadingIcon:   { label: "Loading spinner", x: -40, y: -60, aligned: 1, w: null, h: null, scaled: 1, desc: "The animated loading spinner." },
+    BdmIndex:      { label: "Drive dots", x: "MID", y: 355, aligned: 1, w: null, h: null, scaled: 1, desc: "Which USB/BDM drive is shown, when there are several." },
+    Coverflow:     { label: "Coverflow covers", x: "MID", y: "MID", aligned: 1, w: 150, h: 210, scaled: 1, image: true, item: true, presenter: "coverflow", desc: "A carousel of 3 or 5 covers with a reflection." },
+    PSBBNFlow:     { label: "PSBBN covers", x: -186, y: "MID", aligned: 1, w: 204, h: 204, scaled: 1, image: true, item: true, presenter: "psbbn", desc: "PSBBN's Game Collection fan of square covers." },
+    Grid:          { label: "Cover grid", x: "MID", y: "MID", aligned: 1, w: 80, h: 112, scaled: 1, image: true, item: true, presenter: "grid", desc: "The page's covers in rows and columns." },
+    SaveIcon:      { label: "3D save icon", x: "MID", y: "MID", aligned: 1, w: 64, h: 64, scaled: 1, item: true, desc: "The game's spinning 3D save icon (only while 3D Save Icons is on)." }
   };
   var TYPE_NAMES = Object.keys(TYPES);
+  // The add buttons shown first; the rest sit under "More kinds".
+  var COMMON_TYPES = ["StaticText", "StaticImage", "AttributeText", "AttributeImage", "ItemCover", "GameImage", "ItemsList", "MenuText", "MenuIcon", "GameCountText"];
 
   // Global keys (top of the file). kind: color | int | bool | str | font | list | enum
   var GLOBALS = {
@@ -217,7 +219,7 @@
   g.RTC_SCHEMA = {
     SCREEN_W: SCREEN_W, SCREEN_H: SCREEN_H, KEY_MAX: KEY_MAX, VALUE_MAX: VALUE_MAX, TEX_MAX: TEX_MAX,
     VIEWS: VIEWS, VIEW_LABEL: VIEW_LABEL, FAMILIES: FAMILIES, FAMILY_NAMES: FAMILY_NAMES, BLOCK_RE: BLOCK_RE,
-    TYPES: TYPES, TYPE_NAMES: TYPE_NAMES, GLOBALS: GLOBALS, VIEW_GLOBALS: VIEW_GLOBALS, PROPS: PROPS,
+    TYPES: TYPES, TYPE_NAMES: TYPE_NAMES, COMMON_TYPES: COMMON_TYPES, GLOBALS: GLOBALS, VIEW_GLOBALS: VIEW_GLOBALS, PROPS: PROPS,
     GRID_ONLY_NAMES: GRID_ONLY_NAMES, ATTR_TEXT: ATTR_TEXT, ATTR_IMAGE: ATTR_IMAGE, DEVICE_NAMES: DEVICE_NAMES,
     HINT_NAMES: HINT_NAMES, BUILTIN: BUILTIN, BUILTIN_GROUPS: BUILTIN_GROUPS, BADGES: BADGES, FIXED_PICTURES: FIXED_PICTURES,
     GLYPH_SETS: GLYPH_SETS, GLYPH_NAMES: GLYPH_NAMES, SOUNDS: SOUNDS, BUILTIN_FILE: BUILTIN_FILE, BUILTIN_ALL: BUILTIN_ALL, BUILTIN_EMPTY: BUILTIN_EMPTY
