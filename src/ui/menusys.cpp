@@ -2737,6 +2737,15 @@ static void menuGridRow(int dir)
 
 // Whether the page on screen draws a Grid. A theme can mix views per family (a Coverflow games page and
 // a Grid apps page), so this follows the family the page draws, not the theme-wide gTheme->grid.
+// The game list and its Info page draw the same background (the Info page's fade over it, ScreenManager::switchTo).
+int menuMainInfoShareBackdrop(void)
+{
+    if (gTheme == NULL || selected_item == NULL || selected_item->item == NULL)
+        return 0;
+    item_list_t *list = (item_list_t *)selected_item->item->userdata;
+    return thmSameBackdrop(menuGetMainElems(list), menuGetInfoElems(list));
+}
+
 static int menuPageIsGrid(void)
 {
     if (gTheme->grid == NULL || selected_item == NULL || selected_item->item == NULL)

@@ -53,9 +53,11 @@ void ScreenManager::switchTo(int screen)
     target_ = &screenHandlers[screen];
     // The game list and its Info page are both theme pages over the same background: only what is in front of it
     // fades, and quicker, instead of the whole screen going to black and back (the screens' own content fade,
-    // menuRenderElements). The other screens draw a different background, so they keep the dip through black.
+    // menuRenderElements). Only when the two really draw the same background (a theme may give its Info page its own,
+    // and User Wallpaper is a game list's alone); otherwise, like the other screens, the dip through black.
     const Handler *mainPage = &screenHandlers[GUI_SCREEN_MAIN], *infoPage = &screenHandlers[GUI_SCREEN_INFO];
-    contentOnly_ = (current() == mainPage && target_ == infoPage) || (current() == infoPage && target_ == mainPage);
+    contentOnly_ = ((current() == mainPage && target_ == infoPage) || (current() == infoPage && target_ == mainPage)) &&
+                   menuMainInfoShareBackdrop();
 }
 
 // renders the screen and handles inputs. Also handles screen transitions between numerous

@@ -341,15 +341,10 @@ static void drawCoverFlow(struct menu_list *menu, struct submenu_list *item, con
         glide_box_t box = {(float)posX + animOffset, (float)posY, (float)drawW, (float)drawH};
         int glideAlpha = coverGlide(covers[i]->item.text, covers[i]->item.id, abs(i - centerIdx), &box);
         // The draws take the box as it is (fractions included); the frame's corners at rest keep the whole numbers
-        // they always had.
+        // they always had, and move smoothly in between (glideCorner).
         posX = (int)box.x, posY = (int)box.y, drawW = (int)box.w, drawH = (int)box.h;
-        const int whole = box.w == (float)drawW && box.h == (float)drawH;
-        auto cornerX = [&](int v) {
-            return whole ? (float)(v * drawW / csw) : v * box.w / csw;
-        };
-        auto cornerY = [&](int v) {
-            return whole ? (float)(v * drawH / csh) : v * box.h / csh;
-        };
+        auto cornerX = [&](int v) { return glideCorner(v, box.w, csw); };
+        auto cornerY = [&](int v) { return glideCorner(v, box.h, csh); };
         coverColor = (coverColor & ~(0xffULL << 24)) | ((u64)glideAlpha << 24);
 
         if (hasArt)

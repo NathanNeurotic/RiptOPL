@@ -1510,9 +1510,10 @@ void drawGameImage(struct menu_list *menu, struct submenu_list *item, config_set
                 u64 color = (gDefaultCol & ~(0xffULL << 24)) | ((u64)alpha << 24);
                 image_texture_t *ov = gameImage->overlayTexture;
                 if (ov) {
-                    rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, texture, ov->upperLeft_x * w / ew,
-                                        ov->upperLeft_y * h / eh, ov->upperRight_x * w / ew, ov->upperRight_y * h / eh, ov->lowerLeft_x * w / ew,
-                                        ov->lowerLeft_y * h / eh, ov->lowerRight_x * w / ew, ov->lowerRight_y * h / eh, 0);
+                    rmDrawOverlayPixmap(&ov->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, texture, glideCorner(ov->upperLeft_x, w, ew),
+                                        glideCorner(ov->upperLeft_y, h, eh), glideCorner(ov->upperRight_x, w, ew), glideCorner(ov->upperRight_y, h, eh),
+                                        glideCorner(ov->lowerLeft_x, w, ew), glideCorner(ov->lowerLeft_y, h, eh), glideCorner(ov->lowerRight_x, w, ew),
+                                        glideCorner(ov->lowerRight_y, h, eh), 0);
                     if (gameImage->overlayTexture2)
                         rmDrawPixmap(&gameImage->overlayTexture2->source, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, color, 0);
                 } else
@@ -2132,6 +2133,37 @@ static int thmFullScreenImage(const theme_element_t *e)
 int thmIsBackdropElem(const theme_elems_t *family, const theme_element_t *elem)
 {
     return (elem == family->first && elem->type == ELEM_TYPE_BACKGROUND) || thmFullScreenImage(elem);
+}
+
+static int thmSameTexture(const image_texture_t *a, const image_texture_t *b)
+{
+    if (a == b)
+        return 1;
+    return a != NULL && b != NULL && a->name != NULL && b->name != NULL && !strcmp(a->name, b->name);
+}
+
+int thmSameBackdrop(const theme_elems_t *a, const theme_elems_t *b)
+{
+    if (a == NULL || b == NULL)
+        return 0;
+    const theme_element_t *ea = a->first, *eb = b->first;
+    for (; ea != NULL && thmIsBackdropElem(a, ea); ea = ea->next, eb = eb->next) {
+        if (eb == NULL || !thmIsBackdropElem(b, eb) || ea->type != eb->type || ea->drawElem != eb->drawElem ||
+            ea->posX != eb->posX || ea->posY != eb->posY || ea->width != eb->width || ea->height != eb->height ||
+            ea->aligned != eb->aligned || ea->scaled != eb->scaled)
+            return 0;
+        const mutable_image_t *ia = (const mutable_image_t *)ea->extended, *ib = (const mutable_image_t *)eb->extended;
+        if (ia == NULL || ib == NULL) {
+            if (ia != ib)
+                return 0;
+            continue;
+        }
+        const char *sa = ia->cache ? ia->cache->suffix() : NULL, *sb = ib->cache ? ib->cache->suffix() : NULL;
+        if (!thmSameTexture(ia->defaultTexture, ib->defaultTexture) || ia->wallpaper != ib->wallpaper ||
+            ia->backdropLayer != ib->backdropLayer || (sa == NULL) != (sb == NULL) || (sa != NULL && strcmp(sa, sb)))
+            return 0;
+    }
+    return ea == NULL ? (eb == NULL || !thmIsBackdropElem(b, eb)) : 0;
 }
 
 void thmWallpaperApply(theme_elems_t *family, image_texture_t *wallpaper, int builtInTheme)
