@@ -825,7 +825,7 @@ u32 sbGetISO9660MaxLBA(const char *path)
     return maxLBA;
 }
 
-int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset)
+int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset, u64 imageBytes)
 {
     int result = -1, fd;
     char buffer[6];
@@ -838,7 +838,7 @@ int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset)
                     ((IOBuffer[0x00] == 1) && (!strncmp((char *)(&IOBuffer[0x01]), "CD001", 5)))) {
                     result = 0;
                 }
-            } else {
+            } else if (imageBytes == 0 || (u64)layer1_offset * 2048 + sizeof(buffer) <= imageBytes) {
                 if (lseek64(fd, (u64)layer1_offset * 2048, SEEK_SET) == (u64)layer1_offset * 2048) {
                     if ((read(fd, buffer, sizeof(buffer)) == sizeof(buffer)) &&
                         ((buffer[0x00] == 1) && (!strncmp(&buffer[0x01], "CD001", 5)))) {

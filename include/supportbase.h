@@ -100,7 +100,10 @@ u32 sbGetISO9660MaxLBA(const char *path);
 // Real sector count of an image (upstream OPL #1763): the ZSO header's block count, else totalBytes / 2048.
 // 0 = unknown (unopenable, an unreadable ZSO header, or totalBytes 0), which keeps CDVDMAN on the PVD.
 u32 sbGetMediaLsnCount(const char *path, u64 totalBytes);
-int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset);
+// imageBytes: the plain image's size when known (0 = unknown). A layer-1 offset past it cannot hold a
+// descriptor, so the probe returns without the seek, which on FAT/exFAT walks the whole cluster chain.
+// A compressed (ZSO) image is recognised by its header and always probed.
+int sbProbeISO9660(const char *path, base_game_info_t *game, u32 layer1_offset, u64 imageBytes = 0);
 
 int sbLoadCheats(const char *path, const char *file, config_set_t *configSet);
 // The cheats of a Neutrino launch whose leg skips the native preparation (BDM, APA): this game's cheat

@@ -913,13 +913,12 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
             layer1_offset = layer1_start;
     }
 
-    // A single-layer DVD's layer-1 offset is the end of the image, so the probe there can only fail,
-    // and the seek to it walks the whole cluster chain again. Skip it when the size says nothing can
-    // be there. One-part plain ISO only: a ZSO's file size is its compressed size.
-    int layer1PastEnd = isoSizeKnown && game->parts == 1 && game->format != GAME_FORMAT_USBLD &&
-                        strcasecmp(game->extension, ".zso") != 0 && (u64)layer1_offset * 2048 + 6 > isoTotalBytes;
+    // A single-layer DVD's layer-1 offset is the end of the image: the probe there can only fail, and
+    // its seek walks the whole cluster chain again. Give it the size so it can stop early (one-part
+    // images only; the probe itself tells a ZSO by its header and still probes that).
+    u64 probeBytes = (isoSizeKnown && game->parts == 1 && game->format != GAME_FORMAT_USBLD) ? isoTotalBytes : 0;
 
-    if (layer1PastEnd || sbProbeISO9660(partname, game, layer1_offset) != 0) {
+    if (sbProbeISO9660(partname, game, layer1_offset, probeBytes) != 0) {
         layer1_start = 0;
         LOG("DVD detected.\n");
     } else {
