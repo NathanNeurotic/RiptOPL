@@ -37,14 +37,14 @@ class PublicationTests(unittest.TestCase):
             # The recommended downloads lead the notes: the full kit, then the loader for an existing install.
             kit = publisher.versioned(publisher.kit_archive_name(options), "v1.2.0-Beta-3925")
             downloads = f"https://github.com/NathanNeurotic/RiptOPL/releases/download/{options['tag']}"
-            self.assertIn(f"## Recommended downloads\n\n- **[{kit}]({downloads}/{kit})** - Not sure what to pick?", body)
-            self.assertLess(body.index("## Recommended downloads"), body.index("<strong>Loaders</strong>"))
-            self.assertLess(body.index("<strong>Other files</strong>"), body.index("## Changes"))
+            self.assertIn(f"## Recommended downloads\n\n### Start here: [{kit}]({downloads}/{kit})\n\nNot sure what to pick?", body)
+            self.assertLess(body.index("## Recommended downloads"), body.index("<h3>Loaders:"))
+            self.assertLess(body.index("<h3>Other files:"), body.index("## Changes"))
             # Every file of the channel has one link in the tables, and the tables link nothing else.
             names = {publisher.versioned(n, "v1.2.0-Beta-3925")
                      for n in publisher.channel_assets(next(e for e, o in publisher.EDITIONS.items() if o is options))}
             names.add("SHA256SUMS.txt")
-            tables = body.split("<strong>Loaders</strong>", 1)[1].split("## Changes", 1)[0]
+            tables = body.split("<h3>Loaders:", 1)[1].split("## Changes", 1)[0]
             self.assertEqual(set(re.findall(re.escape(downloads) + r"/([^)\s]+)\)", tables)), names)
             elf = "RIPTOPL-RA.ELF" if options["ra"] else "RIPTOPL.ELF"
             self.assertIn(f"[PSU]({downloads}/APP_{elf[:-4]}.psu)", body)
