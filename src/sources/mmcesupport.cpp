@@ -173,8 +173,9 @@ int MmceSupport::sendGameID(const char *startup, const char *protectMcPath, int 
         // card (mcN:) holds the neutrino.elf we are about to load. Skip only this slot so the other
         // slot can still receive its GameID when Both is selected.
         if (protectMcPath != NULL && protectMcPath[0] != '\0') {
+            // ...or whose own file system (mmceN:) holds it: a switch there can leave the card busy as the ELF loads.
             const char *mc = (slot == 0) ? "mc0:" : "mc1:";
-            if (!strncmp(protectMcPath, mc, strlen(mc))) {
+            if (!strncmp(protectMcPath, mc, strlen(mc)) || !strncmp(protectMcPath, mmceDevice, 5)) {
                 host::ui().warning(_l(_STR_MMCE_GAMEID_NEUTRINO_SKIP), 6);
                 continue;
             }
