@@ -21,6 +21,7 @@
 #include <thevent.h>
 #include <thsemap.h>
 #include <sysmem.h>
+#include <kerr.h>
 
 #include "smsutils.h"
 
@@ -468,9 +469,20 @@ sys_sem_t sys_sem_new(u8_t aCount)
 
 } /* end sys_sem_new */
 
+typedef struct
+{
+    int tid;
+    iop_sys_clock_t retry;
+} SemWaitAlarm;
+
+/* An expiry that lands before the waiter is in WaitSema would be lost (the release only works on a
+   waiting thread), so try again shortly until it lands. The waiter always cancels the alarm. */
 static unsigned int TimeoutHandler(void *pvArg)
 {
-    iReleaseWaitThread((int)pvArg);
+    SemWaitAlarm *pAlarm = (SemWaitAlarm *)pvArg;
+
+    if (iReleaseWaitThread(pAlarm->tid) == KE_NOT_WAIT)
+        iSetAlarm(&pAlarm->retry, &TimeoutHandler, pAlarm);
     return 0;
 }
 
@@ -501,14 +513,18 @@ u32_t sys_arch_sem_wait(sys_sem_t aSema, u32_t aTimeout)
         iop_sys_clock_t lTimeout;
         iop_sys_clock_t Start;
         iop_sys_clock_t End;
-        int lTID = GetThreadId();
+        SemWaitAlarm Alarm;
+        int rv;
 
+        Alarm.tid = GetThreadId();
+        USec2SysClock(1000, &Alarm.retry);
         GetSystemTime(&Start);
         USec2SysClock(aTimeout * 1000, &lTimeout);
-        SetAlarm(&lTimeout, &TimeoutHandler, (void *)lTID);
+        SetAlarm(&lTimeout, &TimeoutHandler, &Alarm);
 
-        if (!WaitSema(aSema)) {
-            CancelAlarm(&TimeoutHandler, (void *)lTID);
+        rv = WaitSema(aSema);
+        CancelAlarm(&TimeoutHandler, &Alarm);
+        if (!rv) {
             GetSystemTime(&End);
 
             WaitTime = ComputeTimeDiff(&Start, &End);
