@@ -103,6 +103,15 @@ void rmDrawPixmap(GSTEXTURE *txt, int x, int y, short aligned, int w, int h, sho
 void rmDrawOverlayPixmap(GSTEXTURE *overlay, int x, int y, short aligned, int w, int h, short scaled, u64 color,
                          GSTEXTURE *inlay, int ulx, int uly, int urx, int ury, int blx, int bly, int brx, int bry, int reflection);
 
+/** Cover Shape: crops the art of the cover texture `cover` in the draws that follow until rmSetCoverCrop(NULL, ...).
+ * trim = left, top, right, bottom fractions cut off the art, then the rest is centre-cropped to `aspect` (the box's
+ * width / height, 0 for none). Only that texture is cropped (as a plain pixmap or an overlay's inlay); frames and
+ * every other picture are drawn as before. Only texture coordinates change: no read, no copy, no allocation. */
+void rmSetCoverCrop(GSTEXTURE *cover, const float *trim, float aspect);
+
+/** Applies the current cover crop to uv (u0, v0, u1, v1 in texels) when txt is the cropped cover; returns 1 if it did. */
+int rmCoverCropUV(GSTEXTURE *txt, float uv[4]);
+
 /** Vertical pixel offset applied to the coverflow reflection (0 = flush under the cover, - = up, + = down). */
 void rmSetReflectionYOffset(int yoff);
 

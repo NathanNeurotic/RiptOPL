@@ -876,9 +876,14 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
 
         // A part whose size cannot be read makes the whole size unknown: a partial or wrapped total
         // would be a wrong bound, and an unknown one keeps CDVDMAN on the PVD (sbGetMediaLsnCount).
-        s64 partBytes = lseek64(fd, 0, SEEK_END);
+        // The size comes from the directory entry: lseek(SEEK_END) walks the whole cluster chain
+        // (about 1 s for a 5 GB exFAT image on a real HDD), the directory entry costs nothing.
+        iox_stat_t partStat;
+        u64 partBytes = 0;
+        if (fileXioGetStat(partname, &partStat) >= 0)
+            partBytes = ((u64)partStat.hisize << 32) | partStat.size;
         if (partBytes > 0)
-            isoTotalBytes += (u64)partBytes;
+            isoTotalBytes += partBytes;
         else
             isoSizeKnown = 0;
 
@@ -908,7 +913,12 @@ void BdmLauncher::launch(item_list_t *itemList, int id, config_set_t *configSet,
             layer1_offset = layer1_start;
     }
 
-    if (sbProbeISO9660(partname, game, layer1_offset) != 0) {
+    // A single-layer DVD's layer-1 offset is the end of the image: the probe there can only fail, and
+    // its seek walks the whole cluster chain again. Give it the size so it can stop early (one-part
+    // images only; the probe itself tells a ZSO by its header and still probes that).
+    u64 probeBytes = (isoSizeKnown && game->parts == 1 && game->format != GAME_FORMAT_USBLD) ? isoTotalBytes : 0;
+
+    if (sbProbeISO9660(partname, game, layer1_offset, probeBytes) != 0) {
         layer1_start = 0;
         LOG("DVD detected.\n");
     } else {

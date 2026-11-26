@@ -78,6 +78,7 @@ struct sockaddr;
 typedef int socklen_t;
 #define USE_CUSTOM_RECV 1
 #define MSG_DONTWAIT 0x40
+static int smb_recv_waits; /* no SO_RCVTIMEO here: receives poll */
 #define SMB_REPLY_TIMEOUT_TICKS 368640000U
 static unsigned long long fake_us;
 static void GetSystemTime(iop_sys_clock_t *clock)

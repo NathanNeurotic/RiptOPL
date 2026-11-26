@@ -382,6 +382,12 @@ int lwip_recvfrom(int s, void *header, int index, void *payload, int plen, unsig
        some from the network. */
         buf = netconn_recv(sock->conn);
 
+        if (!buf && sock->conn->recv_timedout) {
+            /* SO_RCVTIMEO passed with no data: the connection is still up. */
+            sock->conn->recv_timedout = 0;
+            sock_set_errno(sock, EWOULDBLOCK);
+            return -1;
+        }
         if (!buf) {
             /* We should really do some error checking here. */
             LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_recvfrom(%d): buf == NULL!\n", s));
@@ -1221,6 +1227,7 @@ int lwip_setsockopt(int s, int level, int optname, const void *optval, socklen_t
                 case SO_REUSEPORT:
 #endif /* SO_REUSE */
                     /* UNIMPL case SO_USELOOPBACK: */
+                case SO_RCVTIMEO: /* an int in milliseconds here, not a struct timeval; 0 waits for ever */
                     if (optlen < sizeof(int)) {
                         err = EINVAL;
                     }
@@ -1317,6 +1324,10 @@ int lwip_setsockopt(int s, int level, int optname, const void *optval, socklen_t
                         sock->conn->pcb.tcp->so_options &= ~optname;
                     }
                     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, SOL_SOCKET, optname=0x%x, ..) -> %s\n", s, optname, (*(int *)optval ? "on" : "off")));
+                    break;
+                case SO_RCVTIMEO:
+                    /* 1 would be a poll to sys_arch_sem_wait, so the shortest wait is 2 ms. */
+                    sock->conn->recv_timeout = (*(int *)optval <= 0) ? 0 : (*(int *)optval < 2 ? 2 : (u32_t) * (int *)optval);
                     break;
             } /* switch */
             break;

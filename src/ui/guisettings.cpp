@@ -2940,6 +2940,9 @@ static int guiSettingsShowTheme(void)
     diaSetInt(ui, UICFG_THEME, previousTheme);
     guiSetThemeViewPicker(ui);
     diaSetInt(ui, UICFG_COVERART, gEnableArt);
+    static const char *coverShapeNames[] = {"Mixed", "PS2", "PS1", "APP", NULL};
+    diaSetEnum(ui, UICFG_COVER_SHAPE, coverShapeNames);
+    diaSetInt(ui, UICFG_COVER_SHAPE, gCoverShape);
     diaSetInt(ui, UICFG_ENABLE_DISCART, gEnableDiscArt);
     diaSetInt(ui, UICFG_ENABLE_LOGOART, gEnableLogoArt);
     diaSetInt(ui, UICFG_ENABLE_BGART, gEnableBGArt);
@@ -2975,6 +2978,7 @@ static int guiSettingsShowTheme(void)
         int themeID = previousTheme;
         diaGetInt(ui, UICFG_THEME, &themeID);
         diaGetInt(ui, UICFG_COVERART, &gEnableArt);
+        diaGetInt(ui, UICFG_COVER_SHAPE, &gCoverShape); // read as each cover draws: nothing to rebuild
         diaGetInt(ui, UICFG_ENABLE_DISCART, &gEnableDiscArt);
         diaGetInt(ui, UICFG_ENABLE_LOGOART, &gEnableLogoArt);
         diaGetInt(ui, UICFG_ENABLE_BGART, &gEnableBGArt);
