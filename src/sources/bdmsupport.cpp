@@ -1311,6 +1311,9 @@ void bdmLoadBlockDeviceModules(void)
     }
 
     if (gEnableILK && !iLinkModLoaded) {
+#ifdef __OPLDIAG
+        bdmDiagIlinkFailShown = 0; // each load attempt that fails gets its own on-screen line
+#endif
         // Load iLink Block Device drivers
         if (!iLinkManModLoaded && (bdmDiagIlinkManResult = bdmDiagLoadOptionalModule("iLinkman", "ILINKMAN", &iLinkman_irx, size_iLinkman_irx)) >= 0)
             iLinkManModLoaded = 1;
