@@ -168,15 +168,48 @@
     c.drawImage(src.img || src, r.x, r.y, r.w, r.h); c.restore();
   };
   // Art inlaid in a frame at the overlay corners (rmDrawOverlayPixmap), then the frame, then overlay2.
+  // The engine hands the four corners to gsKit_prim_quad_texture, which the GS draws as TWO AFFINE TRIANGLES
+  // (upper-left, upper-right, lower-left) and (upper-right, lower-left, lower-right) with no perspective
+  // correction. Skewed corners (Korium's uly=12 / ury=20) therefore slant the art exactly like this, and a
+  // corner the theme does not set is 0 (the image_texture_t is calloc'd), so an overlay with no corners
+  // at all inlays nothing.
   Ctx.prototype.drawFramed = function (art, e, r) {
     var p = e.props, ov = this.img(p.overlay), ov2 = this.img(p.overlay2);
-    if (ov && p.overlay_ulx !== undefined) {
-      var ew = num(p.width, r.w) || r.w, eh = num(p.height, r.h) || r.h, sx = r.w / ew, sy = r.h / eh;
-      var ax = num(p.overlay_ulx, 0), ay = num(p.overlay_uly, 0), bx = num(p.overlay_lrx, ew), by = num(p.overlay_lry, eh);
-      if (art) this.drawImg(art, { x: r.x + ax * sx, y: r.y + ay * sy, w: (bx - ax) * sx, h: (by - ay) * sy });
+    if (ov) {
+      if (art) {
+        var ew = num(p.width, r.w) || r.w, eh = num(p.height, r.h) || r.h, sx = r.w / ew, sy = r.h / eh;
+        var k = function (n) { return num(p["overlay_" + n], 0); };
+        var pt = function (x, y) { return { x: r.x + x * sx, y: r.y + y * sy }; };
+        this.drawQuad(art, pt(k("ulx"), k("uly")), pt(k("urx"), k("ury")), pt(k("llx"), k("lly")), pt(k("lrx"), k("lry")));
+      }
+      this.drawImg(ov, r);
     } else if (art) this.drawImg(art, r);
-    if (ov) this.drawImg(ov, r);
     if (ov2) this.drawImg(ov2, r);
+  };
+  // Draw a whole picture into the quad ul, ur, ll, lr as the GS does: two affine triangles.
+  Ctx.prototype.drawQuad = function (src, ul, ur, ll, lr) {
+    var img = src && (src.img || src); if (!img) return;
+    var W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+    if (!W || !H) return;
+    this.affineTri(img, [ul, ur, ll], [[0, 0], [W, 0], [0, H]]);
+    this.affineTri(img, [ur, ll, lr], [[W, 0], [0, H], [W, H]]);
+  };
+  Ctx.prototype.affineTri = function (img, d, s) {
+    // Solve the affine map texture -> screen for this triangle, clip to it, draw the picture through it.
+    var x0 = s[0][0], y0 = s[0][1], x1 = s[1][0], y1 = s[1][1], x2 = s[2][0], y2 = s[2][1];
+    var den = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+    var area = (d[1].x - d[0].x) * (d[2].y - d[0].y) - (d[2].x - d[0].x) * (d[1].y - d[0].y);
+    if (!den || Math.abs(area) < 0.01) return; // degenerate: the GS draws nothing either
+    var a = ((d[1].x - d[0].x) * (y2 - y0) - (d[2].x - d[0].x) * (y1 - y0)) / den;
+    var b = ((d[1].y - d[0].y) * (y2 - y0) - (d[2].y - d[0].y) * (y1 - y0)) / den;
+    var c2 = ((d[2].x - d[0].x) * (x1 - x0) - (d[1].x - d[0].x) * (x2 - x0)) / den;
+    var d2 = ((d[2].y - d[0].y) * (x1 - x0) - (d[1].y - d[0].y) * (x2 - x0)) / den;
+    var e2 = d[0].x - a * x0 - c2 * y0, f2 = d[0].y - b * x0 - d2 * y0;
+    var c = this.c, cx = (d[0].x + d[1].x + d[2].x) / 3, cy = (d[0].y + d[1].y + d[2].y) / 3;
+    var grow = function (q) { var dx = q.x - cx, dy = q.y - cy, l = Math.hypot(dx, dy) || 1; return { x: q.x + dx / l * 0.6, y: q.y + dy / l * 0.6 }; };
+    var g0 = grow(d[0]), g1 = grow(d[1]), g2 = grow(d[2]); // a hair wider so the two halves meet without a seam
+    c.save(); c.beginPath(); c.moveTo(g0.x, g0.y); c.lineTo(g1.x, g1.y); c.lineTo(g2.x, g2.y); c.closePath(); c.clip();
+    c.transform(a, b, c2, d2, e2, f2); c.drawImage(img, 0, 0); c.restore();
   };
   Ctx.prototype.text = function (str, x, y, align, color, font, maxW, valign) {
     var c = this.c; c.save();
@@ -239,7 +272,7 @@
     if (q.w == null && q.h == null && art) nat = pat.indexOf("SCR") === 0 ? [256, 192] : nat;
     if (q.w == null && q.h == null && !src.w) nat = [140, 200]; // a cover with neither: 140x200
     var r = X.box(q, nat[0], nat[1]); X.drawFramed(src, e, r); X.hit(e, r);
-    if (num(e.props.reflection, 0)) reflect(X, src, r);
+    if (num(e.props.reflection, 0)) reflect(X, src, r, num(e.props.reflection_offset, 0));
   };
   P.ItemCover = function (X, e, pd) { if (!e.props.pattern) e = { block: e.block, type: e.type, props: Object.assign({ pattern: "COV" }, e.props) }; P.GameImage(X, e, pd); };
   P.ItemIcon = function (X, e, pd) { e = { block: e.block, type: e.type, props: Object.assign({}, e.props, { pattern: "ICO" }) }; P.GameImage(X, e, pd); };
@@ -258,8 +291,10 @@
     if (!pic) return;
     var r = X.box(q, pic.w, pic.h); X.drawFramed(pic, e, r); X.hit(e, r);
   };
-  function reflect(X, src, r) {
-    var c = X.c; c.save(); c.translate(r.x, r.y + r.h * 2 + 2); c.scale(1, -1); c.globalAlpha = 0.22;
+  function reflect(X, src, r, offset) {
+    // offset: the element's reflection_offset (coverflow.cpp rmSetReflectionYOffset): 0 sits the mirror flush
+    // under the cover, negative raises it, positive lowers it.
+    var c = X.c; c.save(); c.translate(r.x, r.y + r.h * 2 + 2 + (offset || 0)); c.scale(1, -1); c.globalAlpha = 0.22;
     c.drawImage(src.img || src, 0, 0, r.w, r.h); c.restore();
     var gr = c.createLinearGradient(0, r.y + r.h, 0, r.y + r.h * 1.6); gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,0,0.9)");
   }
@@ -405,7 +440,7 @@
       var art = artFor(X, e, b.it, pd, "COV") || X.img(p["default"]);
       X.c.save(); if (b.d !== 0 && X.o.dim) X.c.globalAlpha = 0.6;
       X.drawFramed(art, e, b.r); X.c.restore();
-      if (num(p.reflection, 0) && art) reflect(X, art, b.r);
+      if (num(p.reflection, 0) && art) reflect(X, art, b.r, num(p.reflection_offset, 0));
     });
     X.hit(e, boxes[boxes.length - 1].r);
   };

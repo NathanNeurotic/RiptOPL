@@ -354,6 +354,17 @@
       if (S.BUILTIN_EMPTY[v]) add("info", "\"" + k + "=" + v + "\": OPL has no built-in " + v + " picture; nothing draws unless the theme ships " + v + ".png.", k);
       else add("error", "\"" + k + "=" + v + "\": no " + v + ".png in the theme and no built-in picture of that name. Add it on the Images tab.", k);
     }
+    // An overlay inlays the art at its corners (rmDrawOverlayPixmap). A corner the theme does not set is 0, so an
+    // overlay with no corners at all draws the frame with no art inside it on the PS2.
+    var CORNERS = ["ulx", "uly", "urx", "ury", "llx", "lly", "lrx", "lry"];
+    Object.keys(seenBlocks).forEach(function (b) {
+      var ov = m.get(b + "_overlay") || m.get(b + "_overlay_hd") || m.get(b + "_overlay_sd");
+      if (!ov) return;
+      var has = CORNERS.filter(function (c) { return m.has(b + "_overlay_" + c) || m.has(b + "_overlay_" + c + "_hd") || m.has(b + "_overlay_" + c + "_sd"); });
+      if (!has.length) add("warn", b + " has overlay=" + ov + " but no overlay corners, so the PS2 draws the frame with no art in it (each missing corner is 0). Set overlay_ulx..overlay_lry to the window the art should fill.", b + "_overlay");
+      else if (has.length < 8) add("note", b + "'s overlay sets only " + has.join(", ") + "; the other corners are 0 on the PS2, which folds the art into that corner.", b + "_overlay");
+    });
+
     // Blocks: contiguous numbering, Background first, one plain ItemsList
     var byFamily = {};
     Object.keys(seenBlocks).forEach(function (b) {
