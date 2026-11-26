@@ -2171,8 +2171,8 @@ static void menuCarouselPage(int dir)
     menuPageJump(dir, carouselPageStep, 1);
 }
 
-// A list (and Info): a page of the rows on screen. A hidden list (PSBBN Flow, or a theme that shows the titles some
-// other way) has no page on screen: its row count only follows the font size, so a small font gave two titles a
+// A list (and Info): a page of the rows on screen. A hidden list (a theme that shows the titles some other way; the
+// flow views page with menuCarouselPage) has no page on screen: its row count only follows the font size, so a small font gave two titles a
 // jump. It takes 15, as the flow views do, and so does a list of one or two rows.
 static void menuListPage(int dir)
 {
@@ -2593,21 +2593,27 @@ static theme_elems_t *menuGetMainElems(item_list_t *list)
 }
 
 // After a layout switch, a list shows a full page around the cursor. Grid and the flow views leave the page start on
-// the cursor, so a List entered on the last game drew that one row. menuRenderMain runs it before the page draws.
+// the cursor, so a List entered on the last game drew that one row. menuRenderMain runs it before the page draws: on
+// the page on screen after hold L3, and on each page the first time it is drawn after a theme load (a layout picked
+// in Settings, or a device tab opened after the switch).
 static int menuViewSwitched;
 static void menuFillPage(void)
 {
     menu_item_t *page = selected_item->item;
     const items_list_t *list = (items_list_t *)gTheme->itemsList->extended;
-    submenu_list_t *top = page->current, *walk;
-    if (top == NULL || list->hidden)
+    if (list->hidden)
         return;
-    int shown = 1;
-    for (walk = top; walk->next != NULL && shown < list->displayedItems; walk = walk->next)
-        shown++;
-    for (; shown < list->displayedItems && top->prev != NULL; shown++)
-        top = top->prev;
-    page->pagestart = top;
+    WaitSema(menuSemaId); // the rows can be replaced by a list refresh
+    submenu_list_t *top = page->current, *walk;
+    if (top != NULL) {
+        int shown = 1;
+        for (walk = top; walk->next != NULL && shown < list->displayedItems; walk = walk->next)
+            shown++;
+        for (; shown < list->displayedItems && top->prev != NULL; shown++)
+            top = top->prev;
+        page->pagestart = top;
+    }
+    SignalSema(menuSemaId);
 }
 
 void menuRenderMain(void)
@@ -2639,8 +2645,9 @@ void menuRenderMain(void)
         gTheme->itemsList = thmResolveItemsList(&gTheme->mainElems, gTheme->gamesItemsList, selected_item->item->icon_id);
     }
     // The list is resolved before the page draws, so the first frame after a layout switch already shows the full page.
-    if (menuViewSwitched) {
+    if (menuViewSwitched || selected_item->item->page_gen != gTheme->artGeneration) {
         menuViewSwitched = 0;
+        selected_item->item->page_gen = gTheme->artGeneration;
         menuFillPage();
     }
     menuRenderElements(kindElems);
@@ -2657,6 +2664,10 @@ int menuRenderLaunchCover(float in)
         if (cover != NULL && cover->Height > 0) {
             // 45% of the screen's height when in, growing from nine tenths of that.
             int h = (int)(gGuiScreenHeight * 0.45f * (0.9f + 0.1f * in)), w = h * (int)cover->Width / (int)cover->Height;
+            if (w > gGuiScreenWidth - 80) { // wide art (an app banner): fit the screen's width instead
+                h = h * (gGuiScreenWidth - 80) / w;
+                w = gGuiScreenWidth - 80;
+            }
             int x = gGuiScreenWidth / 2, y = gGuiScreenHeight * 42 / 100;
             rmSetFade((u8)(in * 0x80), 0.0f);
             rmDrawPixmap(cover, x, y, ALIGN_CENTER, w, h, SCALING_RATIO, gDefaultCol, 0);
