@@ -206,10 +206,10 @@ static bool suSelectAsset(void)
         return false;
     suFormat = suReadBootFormat(target);
     if (suFormat == SU_ELF_PACKED)
-        suAsset = SU_STRINGIFY(RIPTOPL_UPDATE_ASSET);
+        suAsset = RIPTOPL_UPDATE_ASSET;
 #ifdef RIPTOPL_UPDATE_RAW_ASSET
     else if (suFormat == SU_ELF_UNPACKED)
-        suAsset = SU_STRINGIFY(RIPTOPL_UPDATE_RAW_ASSET);
+        suAsset = RIPTOPL_UPDATE_RAW_ASSET;
 #endif
     else
         return false;

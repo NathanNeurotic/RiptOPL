@@ -1,6 +1,7 @@
 """Check release configuration isolation and compile the production texture table."""
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -57,8 +58,54 @@ class EditionsTests(unittest.TestCase):
             for edition in editions.EDITIONS:
                 defines = next(t["defines"] for t in editions.definition(edition)["targets"] if t["name"] == "riptopl")
                 executable = path / edition
-                subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror", *["-D" + d for d in defines], str(path / "textures.cpp"), "-o", str(executable)], check=True)
+                flags = shlex.split(" ".join(f"-D{define}" for define in defines))
+                subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror", *flags, str(path / "textures.cpp"), "-o", str(executable)], check=True)
                 subprocess.run([str(executable)], check=True)
+
+    def test_lite_updater_preserves_published_asset_names(self):
+        compiler = shutil.which("g++")
+        if compiler is None:
+            self.skipTest("g++ unavailable; required in Linux CI")
+        updater = (ROOT / "src/ui/selfupdate.cpp").read_text(encoding="utf-8")
+        select_asset = updater[updater.index("static bool suSelectAsset("):].split("\n}\n", 1)[0] + "\n}\n"
+        driver = """
+#include <cassert>
+#include <cstring>
+
+#define SU_STRINGIFY_VALUE(value) #value
+#define SU_STRINGIFY(value) SU_STRINGIFY_VALUE(value)
+
+enum { SU_ELF_PACKED, SU_ELF_UNPACKED };
+struct SuTarget {};
+static const char *suAsset;
+static int suFormat;
+static int bootFormat;
+static bool suResolveTarget(SuTarget &, bool) { return true; }
+static int suReadBootFormat(const SuTarget &) { return bootFormat; }
+""" + select_asset + """
+int main(int argc, char **argv)
+{
+    assert(argc == 3);
+    bootFormat = SU_ELF_PACKED;
+    assert(suSelectAsset() && std::strcmp(suAsset, argv[1]) == 0);
+    bootFormat = SU_ELF_UNPACKED;
+    assert(suSelectAsset() && std::strcmp(suAsset, argv[2]) == 0);
+}
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "su_asset.cpp"
+            executable = Path(directory) / "su_asset.exe"
+            source.write_text(driver, encoding="utf-8")
+            for edition in editions.LITES:
+                for device in editions.LITE_DEVICES:
+                    with self.subTest(edition=edition, device=device):
+                        targets = editions.definition(edition, device=device)["targets"]
+                        defines = next(target["defines"] for target in targets if target["name"] == "riptopl")
+                        flags = shlex.split(" ".join(f"-D{define}" for define in defines))
+                        subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror", *flags,
+                                        str(source), "-o", str(executable)], check=True)
+                        subprocess.run([str(executable), editions.update_asset(edition, device=device),
+                                        editions.update_asset(edition, device=device, unpacked=True)], check=True)
 
 
 if __name__ == "__main__":

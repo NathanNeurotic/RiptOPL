@@ -166,15 +166,16 @@ def definition(edition, configuration="standard", toolchain=None, device=None):
             add(main, "sources", "src/platform/ratls.c", "src/sources/ratls_ps2.cpp")
             add(main, "include_dirs", *tls)
             add(main, "libs", "mbedtls")
-        # selfupdate.cpp stringifies these values, keeping the asset names shared with the publisher.
+        # Keep filenames as string literals: expanding an unquoted Lite name would turn RIPTOPLITE into 1.
         add(main, "sources", "src/platform/selfupdate.c", "src/ui/selfupdate.cpp")
         add(main, "defines", "RIPTOPL_UPDATER", f"RIPTOPL_UPDATE_CHANNEL={channel[0]}",
-            f"RIPTOPL_UPDATE_ASSET={channel[1]}")
+            rf'RIPTOPL_UPDATE_ASSET=\"{channel[1]}\"')
         if release_channel() == "stable":
             # The same asset name, from the newest stable release only (src/ui/selfupdate.cpp).
             add(main, "defines", "RIPTOPL_UPDATE_STABLE")
         if publishes_unpacked(edition, configuration):
-            add(main, "defines", f"RIPTOPL_UPDATE_RAW_ASSET={update_asset(edition, configuration, device, unpacked=True)}")
+            raw_asset = update_asset(edition, configuration, device, unpacked=True)
+            add(main, "defines", rf'RIPTOPL_UPDATE_RAW_ASSET=\"{raw_asset}\"')
     if edition in LITES:
         apply_lite(config, device, ROOT, options["ra"])
     elif device is not None:

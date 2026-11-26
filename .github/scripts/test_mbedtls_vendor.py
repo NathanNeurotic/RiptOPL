@@ -60,12 +60,10 @@ for edition in build_edition.EDITIONS:
             assert {"src/platform/selfupdate.c", "src/ui/selfupdate.cpp"} <= set(main["sources"]), edition
             assert "RIPTOPL_UPDATER" in main["defines"], edition
             tag, elf = channel
-            assert {f"RIPTOPL_UPDATE_CHANNEL={tag}", f"RIPTOPL_UPDATE_ASSET={elf}"} <= set(main["defines"]), edition
-            # No quoted strings on the main target (test_release_editions.py compiles with its defines).
-            assert not any('"' in d for d in main["defines"]), edition
+            assert {f"RIPTOPL_UPDATE_CHANNEL={tag}", rf'RIPTOPL_UPDATE_ASSET=\"{elf}\"'} <= set(main["defines"]), edition
             raw_defines = [d for d in main["defines"] if d.startswith("RIPTOPL_UPDATE_RAW_ASSET=")]
             expected = build_edition.update_asset(edition, configuration, unpacked=True)
-            assert raw_defines == ([f"RIPTOPL_UPDATE_RAW_ASSET={expected}"]
+            assert raw_defines == ([rf'RIPTOPL_UPDATE_RAW_ASSET=\"{expected}\"']
                                    if build_edition.publishes_unpacked(edition, configuration) else [])
         else:
             assert "RIPTOPL_UPDATER" not in main["defines"] and "selfupdate" not in text, f"{edition}/{configuration}"

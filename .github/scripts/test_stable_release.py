@@ -163,11 +163,11 @@ class StableReleaseTests(unittest.TestCase):
             config = editions.definition("riptopl")
             main = next(t for t in config["targets"] if t["name"] == "riptopl")
             self.assertIn("RIPTOPL_UPDATE_STABLE", main["defines"])
-            self.assertIn("RIPTOPL_UPDATE_ASSET=RIPTOPL.ELF", main["defines"])
+            self.assertIn(r'RIPTOPL_UPDATE_ASSET=\"RIPTOPL.ELF\"', main["defines"])
             lite_config = editions.definition("lite_ra", device="usb")
             lite_main = next(t for t in lite_config["targets"] if t["name"] == "riptopl")
             self.assertIn("RIPTOPL_UPDATE_STABLE", lite_main["defines"])
-            self.assertIn("RIPTOPL_UPDATE_ASSET=RIPTOPLITE-RA-USB.ELF", lite_main["defines"])
+            self.assertIn(r'RIPTOPL_UPDATE_ASSET=\"RIPTOPLITE-RA-USB.ELF\"', lite_main["defines"])
             env = {**os.environ, "LOCALVERSION": "PS2BUILD-RiptOPL-LLVM"}
             version = subprocess.check_output([sys.executable, str(ROOT / "tools/assets.py"), "version-string"],
                                               env=env, text=True).strip()
